@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+.next/
+.medusa/
+out/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+!.env.template
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# test artifacts (full reports live in CI, not git)
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp

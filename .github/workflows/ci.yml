@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+  PNPM_VERSION: 9
+
+jobs:
+  lint-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: ${{ env.PNPM_VERSION }} }
+      - uses: actions/setup-node@v4
+        with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+  backend-tests:
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: medusa, POSTGRES_PASSWORD: medusa, POSTGRES_DB: medusa_test }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U medusa" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgres://medusa:medusa@localhost:5432/medusa_test
+      # medusa-test-utils reads these to create per-suite databases
+      DB_HOST: localhost
+      DB_USERNAME: medusa
+      DB_PASSWORD: medusa
+      REDIS_URL: redis://localhost:6379
+      STRIPE_API_KEY: sk_test_dummy        # provider mocked in integration tests
+      STRIPE_WEBHOOK_SECRET: whsec_dummy
+      JWT_SECRET: test
+      COOKIE_SECRET: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: ${{ env.PNPM_VERSION }} }
+      - uses: actions/setup-node@v4
+        with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter backend test:unit
+      - run: pnpm --filter backend test:integration:modules
+      - run: pnpm --filter backend test:integration:http
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-output
+          path: apps/backend/test-results/
+          if-no-files-found: ignore
+
+  storefront-e2e:
+    runs-on: ubuntu-latest
+    needs: backend-tests
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: medusa, POSTGRES_PASSWORD: medusa, POSTGRES_DB: medusa_e2e }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U medusa" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgres://medusa:medusa@localhost:5432/medusa_e2e
+      REDIS_URL: redis://localhost:6379
+      STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+      NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
+      JWT_SECRET: test
+      COOKIE_SECRET: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: ${{ env.PNPM_VERSION }} }
+      - uses: actions/setup-node@v4
+        with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter storefront exec playwright install --with-deps chromium
+      - name: Install Stripe CLI
+        run: |
+          curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg >/dev/null
+          echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee /etc/apt/sources.list.d/stripe.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq stripe
+      - name: Forward Stripe webhooks to backend (cards + PromptPay)
+        env: { STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }} }
+        run: |
+          stripe listen \
+            --forward-to localhost:9000/hooks/payment/stripe_stripe \
+            --forward-to localhost:9000/hooks/payment/stripe-promptpay_stripe \
+            --print-secret > /tmp/whsec.txt 2>/dev/null &
+          sleep 5
+          echo "STRIPE_WEBHOOK_SECRET=$(head -n1 /tmp/whsec.txt)" >> "$GITHUB_ENV"
+      - run: pnpm --filter backend db:migrate && pnpm --filter backend seed
+      - name: Start backend and capture publishable key
+        run: |
+          pnpm --filter backend build
+          (pnpm --filter backend start &)
+          npx wait-on http://localhost:9000/health
+          echo "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=$(pnpm --filter backend --silent print-publishable-key)" >> "$GITHUB_ENV"
+      - run: pnpm --filter storefront build && (pnpm --filter storefront start &) && npx wait-on http://localhost:8000
+      - run: pnpm --filter storefront test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-evidence
+          path: |
+            apps/storefront/playwright-report/
+            apps/storefront/test-results/
+          retention-days: 14
