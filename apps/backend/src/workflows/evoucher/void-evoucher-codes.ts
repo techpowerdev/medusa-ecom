@@ -9,6 +9,7 @@ import {
 import { MedusaError } from "@medusajs/framework/utils"
 import { adjustInventoryLevelsStep, useQueryGraphStep } from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
+import { EVOUCHER_CODE_NOT_AVAILABLE } from "../../modules/evoucher/errors"
 import EvoucherModuleService from "../../modules/evoucher/service"
 import { resolveEvoucherPoolInventoryStep } from "./import-evoucher-codes"
 
@@ -39,7 +40,8 @@ export const voidAvailableEvoucherCodesStep = createStep(
     if (input.code_id && !voided.length) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        `Evoucher code ${input.code_id} cannot be voided: only available codes can be voided`
+        `Evoucher code ${input.code_id} cannot be voided: only available codes can be voided`,
+        EVOUCHER_CODE_NOT_AVAILABLE
       )
     }
     const ids = voided.map((row) => row.id)
