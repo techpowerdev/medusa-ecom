@@ -1,6 +1,12 @@
 import { z } from "@medusajs/framework/zod"
 import { createFindParams } from "@medusajs/medusa/api/utils/validators"
 
+// Stable pagination: newest first by default, limit capped at 200
+const listParams = () =>
+  createFindParams({ limit: 50, order: "-created_at" }).extend({
+    limit: z.coerce.number().int().min(1).max(200).default(50),
+  })
+
 const id = z.string().min(1)
 
 const ProgramScope = z
@@ -40,13 +46,13 @@ export const AdminUpdateAffiliateProgram = z
   .strict()
 export type AdminUpdateAffiliateProgram = z.infer<typeof AdminUpdateAffiliateProgram>
 
-export const AdminListAffiliatePrograms = createFindParams().extend({
+export const AdminListAffiliatePrograms = listParams().extend({
   status: z.enum(["draft", "published", "ended"]).optional(),
 })
 
 export const AdminGetAffiliateParams = createFindParams()
 
-export const AdminListAffiliates = createFindParams().extend({
+export const AdminListAffiliates = listParams().extend({
   status: z.enum(["pending", "active", "suspended"]).optional(),
 })
 
@@ -58,14 +64,14 @@ export const AdminUpdateAffiliate = z
   .strict()
 export type AdminUpdateAffiliate = z.infer<typeof AdminUpdateAffiliate>
 
-export const AdminListCommissionEntries = createFindParams().extend({
+export const AdminListCommissionEntries = listParams().extend({
   affiliate_id: id.optional(),
   program_id: id.optional(),
   order_id: id.optional(),
   status: z.enum(["pending", "approved", "reversed", "paid"]).optional(),
 })
 
-export const AdminListPayouts = createFindParams().extend({
+export const AdminListPayouts = listParams().extend({
   affiliate_id: id.optional(),
   status: z.enum(["draft", "paid"]).optional(),
 })

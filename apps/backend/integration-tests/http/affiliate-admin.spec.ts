@@ -111,6 +111,11 @@ medusaIntegrationTestRunner({
 
         const fetched = await api.get(`/admin/affiliate/programs/${id}`, { headers })
         expect(fetched.data.program.status).toEqual("ended")
+
+        const missing = await api
+          .get("/admin/affiliate/programs/affprog_missing", { headers })
+          .catch((e) => e.response)
+        expect(missing.status).toEqual(404)
       })
 
       it("rejects an invalid window or rate", async () => {
@@ -223,7 +228,7 @@ medusaIntegrationTestRunner({
       beforeEach(async () => {
         annId = (await createAffiliate("ann")).id
         bobId = (await createAffiliate("bob")).id
-        await service.createCommissionEntries([
+        await service.createAffiliateCommissionEntries([
           entry(annId, 100, "approved", lastMonthMid, "o1"),
           entry(annId, 50, "approved", lastMonthMid, "o2"),
           entry(annId, -30, "reversed", lastMonthMid, "o2"),
@@ -253,6 +258,15 @@ medusaIntegrationTestRunner({
             (e) => e.affiliate_id === annId && e.status === "approved"
           )
         ).toBe(true)
+
+        // newest first by default; limit is capped
+        const all = await api.get(`/admin/affiliate/entries?affiliate_id=${annId}`, { headers })
+        const createdAt = all.data.entries.map((e) => new Date(e.created_at).getTime())
+        expect(createdAt).toEqual([...createdAt].sort((a, b) => b - a))
+        const tooMany = await api
+          .get("/admin/affiliate/entries?limit=500", { headers })
+          .catch((e) => e.response)
+        expect(tooMany.status).toEqual(400)
       })
 
       it("creates a draft payout of approved + reversed entries, then marks it paid", async () => {
@@ -289,7 +303,7 @@ medusaIntegrationTestRunner({
           })
         )
 
-        const entries = await service.listCommissionEntries({ id: payout.entry_ids })
+        const entries = await service.listAffiliateCommissionEntries({ id: payout.entry_ids })
         const statuses = entries.map((e) => [Number(e.amount), e.status]).sort()
         expect(statuses).toEqual(
           [
@@ -299,7 +313,7 @@ medusaIntegrationTestRunner({
             [50, "paid"],
           ].sort()
         )
-        const [pending] = await service.listCommissionEntries({ order_id: "o3" })
+        const [pending] = await service.listAffiliateCommissionEntries({ order_id: "o3" })
         expect(pending.status).toEqual("pending")
 
         const twice = await api
@@ -313,18 +327,56 @@ medusaIntegrationTestRunner({
         expect(list.data.payouts.map((p) => p.id)).toEqual([payout.id])
       })
 
+      it("rolls entries back to approved when marking the payout paid fails", async () => {
+        const created = await api.post("/admin/affiliate/payouts", period(), { headers })
+        const payout = created.data.payout
+
+        // fail setAffiliatePayoutPaidStep after entries were already moved to paid
+        const spy = jest
+          .spyOn(service, "updateAffiliatePayouts")
+          .mockRejectedValueOnce(new Error("bank reference store failed"))
+        const failed = await api
+          .post(`/admin/affiliate/payouts/${payout.id}/mark-paid`, {}, { headers })
+          .catch((e) => e.response)
+        spy.mockRestore()
+        expect(failed.status).toBeGreaterThanOrEqual(400)
+
+        const entries = await service.listAffiliateCommissionEntries({ id: payout.entry_ids })
+        expect(entries.filter((e) => e.status === "paid")).toHaveLength(0)
+        expect(entries.filter((e) => e.status === "approved")).toHaveLength(3)
+        const after = await service.retrieveAffiliatePayout(payout.id)
+        expect(after.status).toEqual("draft")
+        expect(after.paid_at).toBeNull()
+      })
+
+      it("exposes ledger and payouts through Query", async () => {
+        const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
+        const { data: entries } = await query.graph({
+          entity: "affiliate_commission_entry",
+          fields: ["id", "status"],
+          filters: { affiliate_id: annId },
+        })
+        expect(entries).toHaveLength(6)
+        const { data: payouts } = await query.graph({
+          entity: "affiliate_payout",
+          fields: ["id"],
+          filters: { affiliate_id: annId },
+        })
+        expect(payouts).toHaveLength(0)
+      })
+
       it("serializes concurrent payout creation so entries are paid out once", async () => {
         const results = await Promise.all([
           api.post("/admin/affiliate/payouts", period(), { headers }).catch((e) => e.response),
           api.post("/admin/affiliate/payouts", period(), { headers }).catch((e) => e.response),
         ])
         expect(results.map((r) => r.status).sort()).toEqual([200, 400])
-        expect(await service.listPayouts({ affiliate_id: annId })).toHaveLength(1)
+        expect(await service.listAffiliatePayouts({ affiliate_id: annId })).toHaveLength(1)
       })
 
       it("does not create a payout when the net is zero or negative (Q8)", async () => {
         const carol = (await createAffiliate("carol")).id
-        await service.createCommissionEntries([
+        await service.createAffiliateCommissionEntries([
           entry(carol, 40, "approved", lastMonthMid, "o6"),
           entry(carol, -40, "reversed", lastMonthMid, "o6"),
         ])
@@ -333,7 +385,7 @@ medusaIntegrationTestRunner({
           .post("/admin/affiliate/payouts", { ...period(), affiliate_id: carol }, { headers })
           .catch((e) => e.response)
         expect(response.status).toEqual(400)
-        expect(await service.listPayouts({ affiliate_id: carol })).toHaveLength(0)
+        expect(await service.listAffiliatePayouts({ affiliate_id: carol })).toHaveLength(0)
       })
 
       it("summarizes the ledger per affiliate and status", async () => {

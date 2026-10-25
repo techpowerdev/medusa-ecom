@@ -32,12 +32,12 @@ export const prepareAffiliatePayoutStep = createStep(
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
     await service.retrieveAffiliate(input.affiliate_id, { select: ["id"] })
 
-    const payouts = await service.listPayouts(
+    const payouts = await service.listAffiliatePayouts(
       { affiliate_id: input.affiliate_id },
       { select: ["entry_ids"] }
     )
     const taken = new Set(payouts.flatMap((p) => p.entry_ids as string[]))
-    const entries = await service.listCommissionEntries(
+    const entries = await service.listAffiliateCommissionEntries(
       {
         affiliate_id: input.affiliate_id,
         status: ["approved", "reversed"],
@@ -67,7 +67,7 @@ export const createAffiliatePayoutStep = createStep(
     { container }
   ) => {
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
-    const payout = await service.createPayouts({ ...input, status: "draft" })
+    const payout = await service.createAffiliatePayouts({ ...input, status: "draft" })
     return new StepResponse(payout, payout.id)
   },
   async (id, { container }) => {
@@ -75,7 +75,7 @@ export const createAffiliatePayoutStep = createStep(
       return
     }
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
-    await service.deletePayouts(id)
+    await service.deleteAffiliatePayouts(id)
   }
 )
 
@@ -84,18 +84,18 @@ export const markAffiliatePayoutEntriesPaidStep = createStep(
   "mark-affiliate-payout-entries-paid",
   async (input: { id: string }, { container }) => {
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
-    const payout = await service.retrievePayout(input.id, { select: ["id", "status", "entry_ids"] })
+    const payout = await service.retrieveAffiliatePayout(input.id, { select: ["id", "status", "entry_ids"] })
     if (payout.status !== "draft") {
       throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Payout is already paid")
     }
 
-    const approved = await service.listCommissionEntries(
+    const approved = await service.listAffiliateCommissionEntries(
       { id: payout.entry_ids as string[], status: "approved" },
       { select: ["id"] }
     )
     const ids = approved.map((e) => e.id)
     if (ids.length) {
-      await service.updateCommissionEntries({
+      await service.updateAffiliateCommissionEntries({
         selector: { id: ids, status: "approved" },
         data: { status: "paid" },
       })
@@ -108,7 +108,7 @@ export const markAffiliatePayoutEntriesPaidStep = createStep(
       return
     }
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
-    await service.updateCommissionEntries({
+    await service.updateAffiliateCommissionEntries({
       selector: { id: ids, status: "paid" },
       data: { status: "approved" },
     })
@@ -119,7 +119,7 @@ export const setAffiliatePayoutPaidStep = createStep(
   "set-affiliate-payout-paid",
   async (input: MarkAffiliatePayoutPaidInput, { container }) => {
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
-    const payout = await service.updatePayouts({
+    const payout = await service.updateAffiliatePayouts({
       id: input.id,
       status: "paid",
       paid_at: new Date(),
@@ -132,7 +132,7 @@ export const setAffiliatePayoutPaidStep = createStep(
       return
     }
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
-    await service.updatePayouts({ id, status: "draft", paid_at: null, reference: null })
+    await service.updateAffiliatePayouts({ id, status: "draft", paid_at: null, reference: null })
   }
 )
 

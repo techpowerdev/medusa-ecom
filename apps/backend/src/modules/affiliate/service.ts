@@ -25,8 +25,8 @@ class AffiliateModuleService extends MedusaService({
   Affiliate,
   AffiliateProgram,
   AffiliateAttribution,
-  CommissionEntry,
-  Payout,
+  AffiliateCommissionEntry: CommissionEntry,
+  AffiliatePayout: Payout,
 }) {
   // Ledger totals per affiliate/currency/status aggregated in SQL (spec 05 non-functional); window is [from, to)
   @InjectManager()

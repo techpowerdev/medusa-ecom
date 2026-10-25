@@ -13,8 +13,8 @@ apps/storefront typecheck: Done
 ### pnpm --filter backend build
 Backend build completed successfully / Frontend build completed successfully
 ### pnpm --filter backend test:unit
-Test Suites: 16 passed, 16 total
-Tests:       124 passed, 124 total
+Test Suites: 17 passed, 17 total   # หลัง rebase บน develop (#31, #33)
+Tests:       132 passed, 132 total
 # เฉพาะ affiliate:
 PASS src/modules/affiliate/utils/__tests__/payout.unit.spec.ts
   buildPayout
@@ -37,10 +37,17 @@ PASS integration-tests/http/affiliate-admin.spec.ts
     ledger, payouts and summary (AC-7)
       ✓ lists ledger entries filtered by affiliate and status
       ✓ creates a draft payout of approved + reversed entries, then marks it paid
+      ✓ rolls entries back to approved when marking the payout paid fails
+      ✓ exposes ledger and payouts through Query
       ✓ serializes concurrent payout creation so entries are paid out once
       ✓ does not create a payout when the net is zero or negative (Q8)
       ✓ summarizes the ledger per affiliate and status
-Tests:       10 passed, 10 total
+Tests:       12 passed, 12 total
 PASS integration-tests/http/affiliate-auth.spec.ts (8 tests, ของ AF-1 — regression)
 Test Suites: 2 passed, 2 total
-Tests:       18 passed, 18 total
+Tests:       20 passed, 20 total
+### รอบแก้ตาม review (REQUEST CHANGES)
+- service key → AffiliateCommissionEntry / AffiliatePayout; route อ่านผ่าน refetchEntity/refetchEntities (Query) — test "exposes ledger and payouts through Query"
+- compensation ของ markAffiliatePayoutPaidWorkflow — test "rolls entries back to approved ..." (spy ให้ updateAffiliatePayouts ล้ม)
+- list: default order -created_at, limit สูงสุด 200 (limit=500 → 400), GET program ที่ไม่มี → 404
+- lint/typecheck/build ผ่านอีกครั้งหลัง rebase
