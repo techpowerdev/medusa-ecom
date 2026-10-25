@@ -7,6 +7,7 @@ import {
 import { PostAffiliateRegisterSchema } from './affiliate/validators'
 import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
+import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
@@ -40,6 +41,7 @@ export default defineMiddlewares({
     ...adminEvoucherMiddlewares,
     ...storeFlashSaleMiddlewares,
     ...adminAffiliateMiddlewares,
+    ...adminGroupBuyMiddlewares,
     // CORE-6 (spec 01 "ไม่มี guest"): cart + checkout ต้องมี customer ที่ล็อกอิน (AC-6)
     {
       matcher: '/store/carts*',
