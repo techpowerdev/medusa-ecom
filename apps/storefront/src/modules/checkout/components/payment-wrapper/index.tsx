@@ -5,6 +5,7 @@ import React from "react"
 import StripeWrapper from "./stripe-wrapper"
 import { HttpTypes } from "@medusajs/types"
 import { isStripeLike } from "@lib/constants"
+import { isPromptPay } from "@lib/util/payment-session"
 
 type PaymentWrapperProps = {
   cart: HttpTypes.StoreCart
@@ -28,8 +29,10 @@ const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ cart, children }) => {
     (s) => s.status === "pending"
   )
 
+  // PAY-2: PromptPay ก็ใช้ Stripe.js (confirmPromptPayPayment) ผ่าน Elements เดียวกัน
   if (
-    isStripeLike(paymentSession?.provider_id) &&
+    (isStripeLike(paymentSession?.provider_id) ||
+      isPromptPay(paymentSession?.provider_id)) &&
     paymentSession &&
     stripePromise
   ) {
