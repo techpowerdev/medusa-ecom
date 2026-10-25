@@ -16,6 +16,7 @@ import {
   createShippingProfilesWorkflow,
   createStockLocationsWorkflow,
   createTaxRegionsWorkflow,
+  updateShippingOptionsWorkflow,
   createUserAccountWorkflow,
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
@@ -28,6 +29,9 @@ const CURRENCY = "thb"
 const COUNTRY = "th"
 const VAT_RATE = 7
 const STOCK_QUANTITY = 100
+// EV-3 (ADR-006): provider `digital` (src/modules/digital_fulfillment) ลงทะเบียนด้วย id `digital`
+const DIGITAL_PROVIDER_ID = "digital_digital"
+const DIGITAL_OPTION_NAME = "Digital delivery"
 // CORE-7 (ADR-008): th-TH = ภาษาต้นฉบับของเนื้อหาใน admin, en-US มาจาก Translation module
 export const STORE_LOCALES = ["th-TH", "en-US"]
 export const STOREFRONT_KEY_TITLE = "Storefront"
@@ -72,6 +76,7 @@ export default async function seedThailand({ container }: ExecArgs) {
   })
   if (existing.length) {
     logger.info(`Region "${REGION_NAME}" มีอยู่แล้ว — ข้ามการ seed ข้อมูลร้าน`)
+    await upgradeDigitalDelivery(container)
     return
   }
 
@@ -136,10 +141,12 @@ export default async function seedThailand({ container }: ExecArgs) {
     },
   })
   const location = locations[0]
-  await link.create({
-    [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
-    [Modules.FULFILLMENT]: { fulfillment_provider_id: "manual_manual" },
-  })
+  await link.create(
+    ["manual_manual", DIGITAL_PROVIDER_ID].map((fulfillment_provider_id) => ({
+      [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+      [Modules.FULFILLMENT]: { fulfillment_provider_id },
+    }))
+  )
   await linkSalesChannelsToStockLocationWorkflow(container).run({
     input: { id: location.id, add: [salesChannelId] },
   })
@@ -176,11 +183,12 @@ export default async function seedThailand({ container }: ExecArgs) {
     name: string,
     code: string,
     shippingProfileId: string,
-    amount: number
+    amount: number,
+    providerId: string
   ) => ({
     name,
     price_type: "flat" as const,
-    provider_id: "manual_manual",
+    provider_id: providerId,
     service_zone_id: fulfillmentSet.service_zones[0].id,
     shipping_profile_id: shippingProfileId,
     type: { label: name, description: name, code },
@@ -195,8 +203,14 @@ export default async function seedThailand({ container }: ExecArgs) {
   })
   await createShippingOptionsWorkflow(container).run({
     input: [
-      shippingOption("Standard", "standard", defaultProfileId, DEFAULT_REGION_STORE_POLICIES.shipping_rate),
-      shippingOption("Digital delivery", "digital-delivery", digitalProfile.id, 0),
+      shippingOption(
+        "Standard",
+        "standard",
+        defaultProfileId,
+        DEFAULT_REGION_STORE_POLICIES.shipping_rate,
+        "manual_manual"
+      ),
+      shippingOption(DIGITAL_OPTION_NAME, "digital-delivery", digitalProfile.id, 0, DIGITAL_PROVIDER_ID),
     ],
   })
 
@@ -246,6 +260,44 @@ export default async function seedThailand({ container }: ExecArgs) {
   })
 
   logger.info(`Seed ร้าน "${REGION_NAME}" เสร็จแล้ว`)
+}
+
+/**
+ * EV-3: DB ที่ seed ก่อน EV-3 มี Digital delivery ผูกกับ manual_manual → เปิด provider digital ที่ stock location
+ * ของ option นั้นแล้วย้าย option ไปใช้ digital_digital (คง id/ราคาเดิม) รันซ้ำได้: ถ้าย้ายแล้วจะไม่ทำอะไร
+ */
+async function upgradeDigitalDelivery(container: ExecArgs["container"]) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data: options } = await query.graph({
+    entity: "shipping_option",
+    fields: ["id", "provider_id", "service_zone.fulfillment_set.location.id"],
+    filters: { name: DIGITAL_OPTION_NAME },
+  })
+  const option = options[0]
+  const locationId = option?.service_zone?.fulfillment_set?.location?.id
+  if (!option || !locationId || option.provider_id === DIGITAL_PROVIDER_ID) {
+    return
+  }
+
+  const { data: locations } = await query.graph({
+    entity: "stock_location",
+    fields: ["id", "fulfillment_providers.id"],
+    filters: { id: locationId },
+  })
+  const enabled = (locations[0]?.fulfillment_providers ?? []).some((p) => p?.id === DIGITAL_PROVIDER_ID)
+  if (!enabled) {
+    await container.resolve(ContainerRegistrationKeys.LINK).create({
+      [Modules.STOCK_LOCATION]: { stock_location_id: locationId },
+      [Modules.FULFILLMENT]: { fulfillment_provider_id: DIGITAL_PROVIDER_ID },
+    })
+  }
+
+  await updateShippingOptionsWorkflow(container).run({
+    input: [{ id: option.id, provider_id: DIGITAL_PROVIDER_ID }],
+  })
+  container
+    .resolve(ContainerRegistrationKeys.LOGGER)
+    .info(`ย้าย shipping option "${DIGITAL_OPTION_NAME}" ไปใช้ ${DIGITAL_PROVIDER_ID} แล้ว`)
 }
 
 /**
