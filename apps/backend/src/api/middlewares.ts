@@ -7,6 +7,7 @@ import {
 import { PostAffiliateRegisterSchema } from './affiliate/validators'
 import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
+import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
 // the route narrows it to published products in the key's sales channels.
@@ -38,5 +39,6 @@ export default defineMiddlewares({
     },
     ...adminEvoucherMiddlewares,
     ...adminAffiliateMiddlewares,
+    ...adminGroupBuyMiddlewares,
   ],
 })
