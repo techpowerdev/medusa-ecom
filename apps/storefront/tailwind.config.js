@@ -20,6 +20,21 @@ module.exports = {
         padding: "padding-top padding-right padding-bottom padding-left",
       },
       colors: {
+        // [CORE-4a] ADR-008 ข้อ 4: brand tokens แบบ placeholder (โทนเทากลาง) owner เปลี่ยนค่าเองได้
+        // โดยไม่ต้องแก้ component (ใช้ผ่าน class เช่น bg-brand, text-brand-700)
+        brand: {
+          DEFAULT: "#525252",
+          50: "#FAFAFA",
+          100: "#F5F5F5",
+          200: "#E5E5E5",
+          300: "#D4D4D4",
+          400: "#A3A3A3",
+          500: "#737373",
+          600: "#525252",
+          700: "#404040",
+          800: "#262626",
+          900: "#171717",
+        },
         grey: {
           0: "#FFFFFF",
           5: "#F9FAFB",
@@ -59,6 +74,8 @@ module.exports = {
       },
       fontFamily: {
         sans: [
+          // [CORE-4a] Noto Sans Thai จาก next/font (src/app/layout.tsx) มี glyph ไทย + latin
+          "var(--font-noto-sans-thai)",
           "Inter",
           "-apple-system",
           "BlinkMacSystemFont",

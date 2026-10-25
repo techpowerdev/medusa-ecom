@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "analyze": "ANALYZE=true next build",
     "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:unit": "playwright test --project=unit"
   },
@@ -58,6 +59,7 @@
     "postcss": "^8.4.8",
     "prettier": "^2.8.8",
     "tailwindcss": "^3.0.23",
-    "typescript": "^5.3.2"
+    "typescript": "^5.3.2",
+    "vitest": "5.0.5"
   }
 }
