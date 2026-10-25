@@ -31,5 +31,8 @@ module.exports = defineConfig({
     {
       resolve: './src/modules/flash_sale',
     },
+    {
+      resolve: './src/modules/group_buy',
+    },
   ],
 })
