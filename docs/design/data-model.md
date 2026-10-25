@@ -59,12 +59,12 @@ entity หลักของ Medusa (Product, Variant, Cart, Order, Promotion, C
 | `campaign_id` | link → promotion_campaign | unique |
 | `per_customer_limit` | int? | ชิ้นต่อคนทั้งแคมเปญ |
 | `total_cap` | int? | จำนวนชิ้นรวม |
-| `units_sold` | int | counter แบบ atomic |
+| `units_sold` | int | counter แบบ atomic — เพิ่มตอน complete cart (FS-3), ลดตอน cancel/refund (FS-2); ไม่มี check `<= total_cap` (spec 03 กฎข้อ 12) |
 | `show_countdown / show_remaining` | bool |  |
 | `banner_text` | text? |  |
 
 ### FlashSaleUsage
-นับชิ้นที่ลูกค้าซื้อไปแล้วต่อแคมเปญ
+นับชิ้นที่ลูกค้า complete cart สำเร็จแล้วต่อแคมเปญ ลบด้วยที่คืนแล้ว
 
 | ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
@@ -73,6 +73,19 @@ entity หลักของ Medusa (Product, Variant, Cart, Order, Promotion, C
 | `customer_id` | fk → customer |  |
 | `units` | int |  |
 | `(campaign_id, customer_id)` |  | unique |
+
+### FlashSaleReservation
+การจองต่อ cart ต่อแคมเปญ (FS-3) — ใช้ใน compensation และการคืนค่าแบบ idempotent (FS-2)
+
+| ฟิลด์ | ชนิด | หมายเหตุ |
+|---|---|---|
+| `id` | id |  |
+| `cart_id` | text | order หา reservation ผ่าน link `order.cart` ของ Medusa |
+| `campaign_id` | text |  |
+| `customer_id` | text |  |
+| `units` | int | quantity เต็มของ line ที่ได้ส่วนลด flash (spec 03 กฎข้อ 9) |
+| `released_at` | timestamptz? | ตั้งเมื่อคืนค่าแล้ว — `WHERE released_at IS NULL` กันคืนซ้ำ |
+| `(cart_id, campaign_id)` |  | unique |
 
 ## module `group_buy`
 

@@ -49,17 +49,21 @@ sequenceDiagram
   API-->>SF: countdown, flash_price, remaining
   C->>SF: เพิ่มสินค้า, checkout
   SF->>API: POST /store/carts/:id/complete
-  API->>FS: completeCartWorkflow.validate hook
-  FS->>DB: ตรวจ FlashSaleUsage(customer) + per_customer_limit
-  FS->>DB: UPDATE units_sold = units_sold + n WHERE units_sold + n <= total_cap
-  alt ไม่มีแถวถูกอัปเดต
-    FS-->>API: throw FLASH_SOLD_OUT
-    API-->>SF: 400 FLASH_SOLD_OUT
+  API->>FS: completeCartWorkflow.validate hook (handler รวม: PROMO-1 check → FS-3)
+  FS->>FS: lock flash_sale:customer:{campaign_id}:{customer_id}
+  FS->>DB: transaction: usage + n <= per_customer_limit, upsert usage,<br/>UPDATE units_sold = units_sold + n WHERE total_cap IS NULL OR units_sold + n <= total_cap,<br/>insert FlashSaleReservation(cart_id)
+  alt เกิน limit / ไม่มีแถวถูกอัปเดต
+    FS-->>API: throw FLASH_LIMIT_EXCEEDED / FLASH_SOLD_OUT (rollback ทั้ง transaction)
+    API-->>SF: 400
   else ผ่าน
     API->>PR: บันทึก promotion usage
-    API-->>SF: สร้าง order แล้ว
-    API-->>FS: order.placed → upsert FlashSaleUsage (idempotent ด้วย order_id)
+    alt step ถัดไปล้ม
+      API->>FS: compensation → คืน usage + units_sold ตาม reservation ของ cart
+    else สำเร็จ
+      API-->>SF: สร้าง order แล้ว
+    end
   end
+  Note over API,FS: order.canceled / refund เต็มจำนวน → FS-2 คืน usage + units_sold (released_at, idempotent)
 ```
 
 ## Group buy 1/2: join (draft order)
