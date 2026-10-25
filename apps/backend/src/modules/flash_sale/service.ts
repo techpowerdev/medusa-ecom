@@ -30,7 +30,7 @@ const byCampaign = <T extends { campaign_id?: unknown }>(rows: T[]): T[] =>
 
 const limitExceeded = () =>
   new MedusaError(
-    MedusaError.Types.NOT_ALLOWED,
+    MedusaError.Types.CONFLICT,
     "Flash sale limit per customer exceeded",
     FLASH_LIMIT_EXCEEDED
   )
@@ -100,7 +100,7 @@ class FlashSaleModuleService extends MedusaService({
         [units, campaign_id, units]
       )
       if (!sold.length) {
-        throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "This flash sale is sold out", FLASH_SOLD_OUT)
+        throw new MedusaError(MedusaError.Types.CONFLICT, "This flash sale is sold out", FLASH_SOLD_OUT)
       }
 
       // (c) reservation — compensation และ FS-2 คืนค่าตาม units ที่จองจริง

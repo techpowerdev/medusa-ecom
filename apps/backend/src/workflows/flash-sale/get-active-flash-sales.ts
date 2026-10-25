@@ -25,8 +25,8 @@ import {
   type ComputedActionLike,
   flashPreviewContext,
   flashPriceFromActions,
+  flashSaleAvailability,
   mapWithConcurrency,
-  remainingUsage,
 } from "../../lib/flash-sale-preview"
 import { FLASH_SALE_MODULE } from "../../modules/flash_sale"
 import type FlashSaleModuleService from "../../modules/flash_sale/service"
@@ -52,7 +52,9 @@ export type ActiveFlashSale = {
   banner_text: string | null
   show_countdown: boolean
   show_remaining: boolean
-  remaining_usage: number | null
+  /** FS-7: จาก `FlashSaleConfig` (units_sold/total_cap) ไม่ใช่ campaign budget (กฎข้อ 4) */
+  sold_out: boolean
+  remaining_units: number | null
 }
 
 export type FlashVariantPrice = {
@@ -86,7 +88,7 @@ export const listActiveFlashSalesStep = createStep(
     const promotions = (
       await promotionModule.listActivePromotions(
         { is_automatic: true },
-        { relations: ["application_method", "campaign", "campaign.budget"] }
+        { relations: ["application_method", "campaign"] }
       )
     ).filter((p) => p.campaign?.id && p.code)
     if (!promotions.length) {
@@ -96,7 +98,7 @@ export const listActiveFlashSalesStep = createStep(
     const flashSale: FlashSaleModuleService = container.resolve(FLASH_SALE_MODULE)
     const configs = await flashSale.listFlashSaleConfigs(
       { campaign_id: [...new Set(promotions.map((p) => p.campaign!.id))] },
-      { select: ["campaign_id", "banner_text", "show_countdown", "show_remaining"] }
+      { select: ["campaign_id", "banner_text", "show_countdown", "show_remaining", "total_cap", "units_sold"] }
     )
     const configOf = new Map(configs.map((c) => [c.campaign_id, c]))
     const sales = new Map<string, ActiveFlashSale>()
@@ -121,7 +123,7 @@ export const listActiveFlashSalesStep = createStep(
           banner_text: config.banner_text ?? null,
           show_countdown: config.show_countdown,
           show_remaining: config.show_remaining,
-          remaining_usage: remainingUsage(campaign.budget ?? null),
+          ...flashSaleAvailability(config),
         })
       }
     }
