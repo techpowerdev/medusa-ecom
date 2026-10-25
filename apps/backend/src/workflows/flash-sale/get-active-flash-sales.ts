@@ -22,6 +22,7 @@ import type {
   PromotionDTO,
 } from "@medusajs/framework/types"
 import {
+  type ComputedActionLike,
   flashPreviewContext,
   flashPriceFromActions,
   mapWithConcurrency,
@@ -260,9 +261,9 @@ export const previewFlashPricesStep = createStep(
           const actions = await promotionModule.computeActions([...flashCodes], context as ComputeActionContext, {
             prevent_auto_promotions: true,
           })
-          const computed = actions as { action: string; code: string; amount?: number }[]
+          const computed = actions as ComputedActionLike[]
           flash_price = flashPriceFromActions(
-            { price: original_price, subtotal: priceWithoutTax },
+            { price: original_price, subtotal: priceWithoutTax, original_total: priceWithTax },
             computed,
             flashCodes
           )

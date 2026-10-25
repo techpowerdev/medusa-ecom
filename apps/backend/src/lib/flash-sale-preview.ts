@@ -15,6 +15,7 @@ export type ComputedActionLike = {
   code: string
   item_id?: string
   amount?: BigNumberInput
+  is_tax_inclusive?: boolean
 }
 
 export type CampaignBudgetLike = {
@@ -64,10 +65,16 @@ export function flashPreviewContext({
 
 /**
  * ราคาหลังหัก adjustment ของ flash promotion (`flashCodes`); null เมื่อไม่มี flash promotion ใดลด line นี้
- * amount ของ action เป็นฐานไม่รวมภาษี (ฐาน `subtotal`) จึงแปลงเป็นฐานเดียวกับ `price` ด้วย `price / subtotal`
+ * amount ของ action อยู่บนฐานตาม `is_tax_inclusive` ของ promotion (`calculateAdjustmentAmountFromPromotion`):
+ * tax-inclusive → ฐาน `original_total` (รวมภาษี), ไม่ใช่ → ฐาน `subtotal` (ไม่รวมภาษี)
+ * จึงแปลงทีละ adjustment เป็นฐานเดียวกับ `price` ด้วย `price / ฐานของมัน`
  */
 export function flashPriceFromActions(
-  { price, subtotal }: { price: BigNumberInput; subtotal: BigNumberInput },
+  {
+    price,
+    subtotal,
+    original_total,
+  }: { price: BigNumberInput; subtotal: BigNumberInput; original_total: BigNumberInput },
   actions: ComputedActionLike[],
   flashCodes: Set<string>
 ): number | null {
@@ -77,12 +84,16 @@ export function flashPriceFromActions(
   if (!flashAdjustments.length) {
     return null
   }
+  const toPriceBasis = (a: ComputedActionLike) => {
+    const base = a.is_tax_inclusive ? original_total : subtotal
+    const ratio = MathBN.gt(base, 0) ? MathBN.div(price, base) : MathBN.convert(1)
+    return MathBN.mult(a.amount as BigNumberInput, ratio)
+  }
   const discount = flashAdjustments.reduce(
-    (sum, a) => MathBN.add(sum, a.amount as BigNumberInput),
+    (sum, a) => MathBN.add(sum, toPriceBasis(a)),
     MathBN.convert(0)
   )
-  const ratio = MathBN.gt(subtotal, 0) ? MathBN.div(price, subtotal) : MathBN.convert(1)
-  return MathBN.max(MathBN.sub(price, MathBN.mult(discount, ratio)), 0).toNumber()
+  return MathBN.max(MathBN.sub(price, discount), 0).toNumber()
 }
 
 /** map แบบจำกัดจำนวนงานพร้อมกัน (คงลำดับผลลัพธ์) — กัน route สาธารณะใช้ DB pool จนหมด */

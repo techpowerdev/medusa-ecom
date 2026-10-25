@@ -43,10 +43,10 @@ describe("flashPriceFromActions", () => {
   const flashCodes = new Set(["FLASH20"])
 
   it("returns null when no flash promotion adjusts the line", () => {
-    expect(flashPriceFromActions({ price: 500, subtotal: 500 }, [], flashCodes)).toBeNull()
+    expect(flashPriceFromActions({ price: 500, subtotal: 500, original_total: 500 }, [], flashCodes)).toBeNull()
     expect(
       flashPriceFromActions(
-        { price: 500, subtotal: 500 },
+        { price: 500, subtotal: 500, original_total: 500 },
         [{ action: "addItemAdjustment", code: "OTHER", item_id: "i", amount: 50 }],
         flashCodes
       )
@@ -56,7 +56,7 @@ describe("flashPriceFromActions", () => {
   it("subtracts the amounts of flash item adjustments only (BigNumber or number)", () => {
     expect(
       flashPriceFromActions(
-        { price: 500, subtotal: 500 },
+        { price: 500, subtotal: 500, original_total: 500 },
         [
           { action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: new BigNumber(100) },
           { action: "addItemAdjustment", code: "OTHER", item_id: "i", amount: 30 },
@@ -70,17 +70,52 @@ describe("flashPriceFromActions", () => {
   it("converts tax-exclusive adjustment amounts to the price basis (tax-inclusive price: 100 excl. VAT 7% = 107)", () => {
     expect(
       flashPriceFromActions(
-        { price: 535, subtotal: 500 },
+        { price: 535, subtotal: 500, original_total: 535 },
         [{ action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: 100 }],
         flashCodes
       )
     ).toBeCloseTo(428, 6)
   })
 
+  it("does not add tax twice for tax-inclusive promotions (amount already on the original_total basis)", () => {
+    // 535 รวม VAT ลด 20% แบบ tax-inclusive: Medusa คืน amount = 107 (ฐานรวมภาษี) → cart = 428
+    expect(
+      flashPriceFromActions(
+        { price: 535, subtotal: 500, original_total: 535 },
+        [{ action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: 107, is_tax_inclusive: true }],
+        flashCodes
+      )
+    ).toBeCloseTo(428, 6)
+  })
+
+  it("converts each adjustment by its own basis when tax-inclusive and tax-exclusive promotions mix", () => {
+    expect(
+      flashPriceFromActions(
+        { price: 535, subtotal: 500, original_total: 535 },
+        [
+          { action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: 107, is_tax_inclusive: true },
+          { action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: 100, is_tax_inclusive: false },
+        ],
+        flashCodes
+      )
+    ).toBeCloseTo(321, 6)
+  })
+
+  it("keeps a tax-exclusive price basis when the price itself excludes tax", () => {
+    // ราคา 500 ไม่รวม VAT (original_total 535): promotion tax-inclusive amount 107 → ฐานราคา 100
+    expect(
+      flashPriceFromActions(
+        { price: 500, subtotal: 500, original_total: 535 },
+        [{ action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: 107, is_tax_inclusive: true }],
+        flashCodes
+      )
+    ).toBeCloseTo(400, 6)
+  })
+
   it("never goes below zero", () => {
     expect(
       flashPriceFromActions(
-        { price: 100, subtotal: 100 },
+        { price: 100, subtotal: 100, original_total: 100 },
         [{ action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: 150 }],
         flashCodes
       )

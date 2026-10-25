@@ -41,6 +41,7 @@ medusaIntegrationTestRunner({
     let flashVariantId: string // t-shirt L → F (target ตาม product)
     let otherVariantId: string // sweatshirt M → N เท่านั้น
     let fixedVariantId: string // t-shirt S → F + flash fixed 100 THB (is_tax_inclusive=false)
+    let inclusiveVariantId: string // t-shirt M → F + flash 15% (is_tax_inclusive=true)
     let activeCampaignId: string
     let expiredCampaignId: string
     let plainCampaignId: string
@@ -67,6 +68,7 @@ medusaIntegrationTestRunner({
       const sweatshirt = products.find((p) => p.handle === "sweatshirt")!
       flashVariantId = tshirt.variants.find((v) => v.title === "L")!.id
       fixedVariantId = tshirt.variants.find((v) => v.title === "S")!.id
+      inclusiveVariantId = tshirt.variants.find((v) => v.title === "M")!.id
       otherVariantId = sweatshirt.variants.find((v) => v.title === "M")!.id
 
       const promotionModule = container.resolve(Modules.PROMOTION)
@@ -137,6 +139,23 @@ medusaIntegrationTestRunner({
             value: 100,
             currency_code: "thb",
             target_rules: [{ attribute: "items.variant_id", operator: "in", values: [fixedVariantId] }],
+          },
+        },
+        {
+          code: "FS4INCL15",
+          type: "standard",
+          status: "active",
+          is_automatic: true,
+          is_tax_inclusive: true,
+          campaign_id: activeCampaignId,
+          rules: [exclusiveAutomaticRule()],
+          application_method: {
+            type: "percentage",
+            target_type: "items",
+            allocation: "each",
+            max_quantity: 1,
+            value: 15,
+            target_rules: [{ attribute: "items.variant_id", operator: "in", values: [inclusiveVariantId] }],
           },
         },
       ])
@@ -210,18 +229,16 @@ medusaIntegrationTestRunner({
       return data as { flash_sales: FlashSale[]; variants: VariantPreview[] }
     }
 
-    it("matches the real cart line total on tax-inclusive THB (fixed 100 excl. VAT = 107 off)", async () => {
+    // ยอด line ของ cart จริง (ไม่มี code) — ปิด N ชั่วคราวให้ cart มีแต่ส่วนลด flash เทียบกับ preview ได้ตรง
+    const realCartLine = async (variantId: string) => {
       const promotionModule = container.resolve(Modules.PROMOTION)
-      // ปิด N ชั่วคราว ให้ cart มีแต่ส่วนลด flash เทียบกับ preview ได้ตรง
       await promotionModule.updatePromotions(plainPromotionIds.map((id) => ({ id, status: "inactive" as const })))
       try {
-        const [fixed] = (await preview(fixedVariantId)).variants
-
         const { result: cart } = await createCartWorkflow(container).run({
           input: {
             region_id: regionId,
             shipping_address: { country_code: "th", city: "Bangkok", postal_code: "10110" },
-            items: [{ variant_id: fixedVariantId, quantity: 1 }],
+            items: [{ variant_id: variantId, quantity: 1 }],
           },
         })
         const query = container.resolve(ContainerRegistrationKeys.QUERY)
@@ -234,15 +251,29 @@ medusaIntegrationTestRunner({
         const totals = decorateCartTotals(data[0] as unknown as Parameters<typeof decorateCartTotals>[0]) as unknown as {
           items: { variant_id: string; total: unknown; adjustments?: { code: string }[] }[]
         }
-        const line = totals.items.find((i) => i.variant_id === fixedVariantId)!
-        expect((line.adjustments ?? []).map((a) => a.code).sort()).toEqual(["FS4FIXED100", "FS4FLASH20"])
-
-        expect(fixed.flash_price).toBeCloseTo(Number(line.total), 2)
-        // ไม่ใช่ราคา − 20% − 100 แบบไม่คิด VAT
-        expect(Math.abs(fixed.flash_price! - (fixed.original_price * 0.8 - 100))).toBeGreaterThan(1)
+        const line = totals.items.find((i) => i.variant_id === variantId)!
+        return { total: Number(line.total), codes: (line.adjustments ?? []).map((a) => a.code).sort() }
       } finally {
         await promotionModule.updatePromotions(plainPromotionIds.map((id) => ({ id, status: "active" as const })))
       }
+    }
+
+    it("matches the real cart line total on tax-inclusive THB (fixed 100 excl. VAT = 107 off)", async () => {
+      const [fixed] = (await preview(fixedVariantId)).variants
+      const line = await realCartLine(fixedVariantId)
+
+      expect(line.codes).toEqual(["FS4FIXED100", "FS4FLASH20"])
+      expect(fixed.flash_price).toBeCloseTo(line.total, 2)
+      // ไม่ใช่ราคา − 20% − 100 แบบไม่คิด VAT
+      expect(Math.abs(fixed.flash_price! - (fixed.original_price * 0.8 - 100))).toBeGreaterThan(1)
+    })
+
+    it("matches the real cart line total for a tax-inclusive promotion (no double VAT)", async () => {
+      const [inclusive] = (await preview(inclusiveVariantId)).variants
+      const line = await realCartLine(inclusiveVariantId)
+
+      expect(line.codes).toEqual(["FS4FLASH20", "FS4INCL15"])
+      expect(inclusive.flash_price).toBeCloseTo(line.total, 2)
     })
 
     it("ignores order-level flash promotions in flash_price (only target_type items)", async () => {
