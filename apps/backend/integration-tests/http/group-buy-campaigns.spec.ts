@@ -26,6 +26,7 @@ type GraphCampaign = {
     code: string
     status: string
     is_automatic: boolean
+    is_tax_inclusive: boolean
     campaign_id: string
     application_method: {
       type: string
@@ -131,6 +132,7 @@ medusaIntegrationTestRunner({
           "promotion.code",
           "promotion.status",
           "promotion.is_automatic",
+          "promotion.is_tax_inclusive",
           "promotion.campaign_id",
           "promotion.application_method.type",
           "promotion.application_method.value",
@@ -333,6 +335,26 @@ medusaIntegrationTestRunner({
           )
           .catch((e) => e.response)
         expect(response.status).toEqual(400)
+      })
+
+      // GB-2c (กฎข้อ 12, AC-20c): ต้นแบบ is_tax_inclusive ค่าเริ่มต้น true; admin ส่ง false ได้; ไม่ใช่ boolean → 400
+      it("template is_tax_inclusive defaults to true, keeps false, and rejects a non-boolean (AC-20c)", async () => {
+        const byDefault = await createViaApi()
+        expect((await graphCampaign(byDefault.id)).promotion.is_tax_inclusive).toBe(true)
+
+        const exclusive = await createViaApi({ is_tax_inclusive: false })
+        expect((await graphCampaign(exclusive.id)).promotion.is_tax_inclusive).toBe(false)
+
+        const invalid = await api
+          .post("/admin/group-buy/campaigns", { ...campaignInput(), is_tax_inclusive: "yes" }, headers)
+          .catch((e) => e.response)
+        expect(invalid.status).toEqual(400)
+
+        // workflow ใช้ค่าเริ่มต้นเดียวกันเมื่อถูกเรียกตรง (ไม่ผ่าน validator)
+        const { result } = await createGroupBuyCampaignWorkflow(getContainer()).run({
+          input: campaignInput(),
+        })
+        expect((await graphCampaign(result.id)).promotion.is_tax_inclusive).toBe(true)
       })
 
       it("returns 404 for an unknown campaign", async () => {
