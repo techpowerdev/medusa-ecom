@@ -48,3 +48,34 @@ describe("jest.config.js testMatch (AC-8)", () => {
     expect(unit).toEqual(findFiles(path.join(BACKEND_DIR, "src"), UNIT_SPEC))
   })
 })
+
+// hotfix CI OOM (run 40202689427): integration test ต้องรันทีละ suite ใน worker เดียวที่ถูก recycle
+// เมื่อ heap เกินขีด แทน --runInBand ที่สะสมหน่วยความจำทุก suite ใน process เดียวจน heap เต็ม
+describe("integration test ใช้ worker เดียวที่ถูก recycle (CI OOM)", () => {
+  const pkg = require(path.join(BACKEND_DIR, "package.json"))
+
+  function globalConfig(testType: string) {
+    const out = execFileSync(process.execPath, [JEST_BIN, "--showConfig"], {
+      cwd: BACKEND_DIR,
+      env: { ...process.env, TEST_TYPE: testType },
+      encoding: "utf8",
+    })
+    return JSON.parse(out).globalConfig
+  }
+
+  it.each(["test:integration:http", "test:integration:modules"])(
+    "script %s ไม่ใช้ --runInBand",
+    (script) => {
+      expect(pkg.scripts[script]).not.toMatch(/--runInBand|\s-i(\s|$)/)
+    }
+  )
+
+  it.each(["integration:http", "integration:modules"])(
+    "%s: maxWorkers = 1 และตั้ง workerIdleMemoryLimit",
+    (testType) => {
+      const config = globalConfig(testType)
+      expect(config.maxWorkers).toBe(1)
+      expect(config.workerIdleMemoryLimit).toBeGreaterThan(0)
+    }
+  )
+})
