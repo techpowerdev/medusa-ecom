@@ -90,4 +90,35 @@ describe("renderEmailTemplate", () => {
   it("returns null for an unknown template", () => {
     expect(renderEmailTemplate("unknown", { order })).toBeNull()
   })
+
+  describe("e-voucher admin emails (EV-5)", () => {
+    it("renders the low-stock alert with pool name, available count and threshold", () => {
+      const email = renderEmailTemplate(EmailTemplates.EVOUCHER_LOW_STOCK, {
+        pool: { id: "evpool_1", name: "Lotus <500>", available: 3, low_stock_threshold: 20 },
+      })
+
+      expect(email).not.toBeNull()
+      expect(email!.subject).toContain("Lotus")
+      expect(email!.html).toContain("Lotus &lt;500&gt;")
+      expect(email!.html).toContain("<b>3</b>")
+      expect(email!.html).toContain("<b>20</b>")
+    })
+
+    it("renders the daily expiry summary with voided counts per pool", () => {
+      const email = renderEmailTemplate(EmailTemplates.EVOUCHER_EXPIRY_SUMMARY, {
+        date: "2026-10-25",
+        total_voided: 5,
+        pools: [
+          { id: "evpool_1", name: "Lotus 500", voided: 2 },
+          { id: "evpool_2", name: "Big C <100>", voided: 3 },
+        ],
+      })
+
+      expect(email).not.toBeNull()
+      expect(email!.subject).toContain("2026-10-25")
+      expect(email!.html).toContain("Lotus 500")
+      expect(email!.html).toContain("Big C &lt;100&gt;")
+      expect(email!.html).toContain("<b>5</b>")
+    })
+  })
 })
