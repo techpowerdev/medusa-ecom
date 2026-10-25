@@ -109,7 +109,8 @@ export default async function seedThailand({ container }: ExecArgs) {
           countries: [COUNTRY],
           automatic_taxes: true,
           is_tax_inclusive: true,
-          payment_providers: ["pp_system_default"],
+          // spec 06: Stripe บัตร + PromptPay (provider id `stripe` ใน medusa-config.ts)
+          payment_providers: ["pp_system_default", "pp_stripe_stripe", "pp_stripe-promptpay_stripe"],
           metadata: { ...DEFAULT_REGION_STORE_POLICIES },
         },
       ],
