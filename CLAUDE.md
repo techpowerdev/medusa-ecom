@@ -1,5 +1,14 @@
 # CLAUDE.md — Project rules (read first, every session)
 
+## Language (ภาษา)
+- **ตอบและสนทนากับ owner เป็นภาษาไทยเสมอ** ทุก agent (planner, builder, qa, reviewer) ด้วย
+- เขียน **เป็นภาษาไทย**: ชื่อและเนื้อหา PR, commit message (คง prefix แบบ Conventional Commits เป็นอังกฤษ
+  เช่น `feat:`, `fix:`, `chore:` แล้วตามด้วยคำอธิบายภาษาไทย), review comment, evidence `REPORT.md`,
+  ADR และ spec ที่สร้างใหม่
+- คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
+  ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
+- ไฟล์เดิมที่เป็นอังกฤษไม่ต้องแปลย้อนหลัง แก้เฉพาะส่วนที่แตะ
+
 ## What this is
 Production e-commerce store built **on top of Medusa v2** (backend + admin) with the
 **Medusa Next.js Starter** storefront. We extend Medusa; we do not replace it.
