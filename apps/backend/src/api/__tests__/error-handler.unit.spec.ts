@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs"
+import { join } from "node:path"
 import { errorHandler as medusaErrorHandler } from "@medusajs/framework/http"
 import { MedusaError, serializeError } from "@medusajs/framework/utils"
 import { BUSINESS_CONFLICT_CODES, businessErrorHandler } from "../error-handler"
@@ -27,10 +29,21 @@ const run = (handler: (...args: any[]) => unknown, error: unknown): Sent => {
 const medusa = medusaErrorHandler()
 
 describe("businessErrorHandler", () => {
-  it("covers our codes from spec 03 (PROMOTION_NOT_COMBINABLE, FLASH_*)", () => {
+  it("covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void)", () => {
     expect([...BUSINESS_CONFLICT_CODES].sort()).toEqual(
-      ["FLASH_LIMIT_EXCEEDED", "FLASH_SOLD_OUT", "PROMOTION_NOT_COMBINABLE"].sort()
+      ["EVOUCHER_CODE_NOT_AVAILABLE", "FLASH_LIMIT_EXCEEDED", "FLASH_SOLD_OUT", "PROMOTION_NOT_COMBINABLE"].sort()
     )
+  })
+
+  // AC-12 (d): route ของเราไม่ตอบ 409 เอง — ใช้ errorHandler กลางเท่านั้น
+  it("no route under src/api answers 409 by itself", () => {
+    const routeFiles = (readdirSync(join(__dirname, ".."), { recursive: true }) as string[])
+      .filter((f) => /(^|\/)route\.ts$/.test(f))
+      .map((f) => join(__dirname, "..", f))
+    expect(routeFiles.length).toBeGreaterThan(0)
+
+    const offenders = routeFiles.filter((f) => /status\(\s*409\s*\)/.test(readFileSync(f, "utf8")))
+    expect(offenders).toEqual([])
   })
 
   it.each([...BUSINESS_CONFLICT_CODES])("answers %s as 409 conflict with our code and message", (code) => {

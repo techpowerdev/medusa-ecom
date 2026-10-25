@@ -214,7 +214,8 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (c) error อื่นของ Medusa ที่ไม่ใช่ของเรา (เช่น `CONFLICT` ที่ Medusa throw เอง) → status, `type`, `code`, `message` เหมือนก่อนแก้ ✓ PROMO-2
   (d) (owner Q-C) route ของเราที่เคยตอบ 409 เอง (เช่น `POST /admin/evoucher/codes/:id/void` บน code ที่ไม่ใช่ `available`) → ยังได้ 409
   body `{ type: "conflict", code: <code เดิมของ route>, message }` และไฟล์ route ไม่มี `res.status(409)` (ตรวจด้วย test + grep ใน CI/review)
-  — ณ PROMO-2 ไม่มี route ที่ merge แล้วตอบ 409 เอง (grep `res.status(409)` ใน `src/` ว่าง); EV-5 (#43) ยังไม่ merge → ต้องย้ายมาใช้กลไกนี้ใน PR ของตัวเอง
+  ✓ PROMO-2 — `POST /admin/evoucher/codes/:id/void` (EV-5 #43) ย้ายมาแล้ว: route เดิมไม่มี code จึงตั้ง code ใหม่
+  `EVOUCHER_CODE_NOT_AVAILABLE` (spec 02 AC-10 ระบุแค่ `<code ของเรา>`); unit test สแกน `src/api/**/route.ts` ว่าไม่มี `status(409)`
 - AC-13 (FS-7, remaining อิงหน่วย, กฎข้อ 4) config `total_cap=10`, `show_remaining=true`
   (a) `units_sold=7` จาก order เดียว qty 3 + 4 order qty 1 (campaign budget usage ของ Medusa = 5) → `GET /store/flash-sales/active`
   คืน `remaining_units=3`, `sold_out=false` และ response ไม่มี key `remaining_usage`
