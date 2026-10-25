@@ -17,6 +17,7 @@
 | ชำระเงินสำหรับ (draft) order ที่มีอยู่แล้ว | Order payment collection + store payment routes | ใช้ตามเดิม (group buy, spec 04) |
 | Checkout ด้วย Stripe Elements ใน storefront | Next.js starter | ขยายเพื่อรองรับ PromptPay + หน้าชำระเงินของ order |
 | Admin: เปิดใช้ provider ต่อ region, refund | Admin | ตั้งค่า |
+| ยกเลิก PaymentIntent เดิมเมื่อเปลี่ยน session | สร้าง session ใหม่ → Medusa ลบ session เดิม → Stripe provider cancel PI | ใช้ตามเดิม; PAY-5 ยืนยันพฤติกรรมเมื่อ PI `succeeded` ไปแล้ว (กฎข้อ 7) |
 
 ## การตั้งค่า
 - บัญชี Stripe: นิติบุคคลไทย (PromptPay ต้องใช้บัญชี Stripe ประเทศไทย, THB)
@@ -27,12 +28,18 @@
 - Webhooks (สอง endpoint) ลงทะเบียนใน Stripe dashboard; events: `payment_intent.*`
 
 ## Storefront
-- ขั้นตอนชำระเงินใน checkout: "Card" (Stripe Elements) / "PromptPay" (PaymentElement แบบ
-  `promptpay` แสดง QR; poll สถานะ session จนกว่าจะ captured; หมดอายุหลัง 10 นาที)
+- ขั้นตอนชำระเงินใน checkout: "Card" (Stripe Elements) / "PromptPay" (Stripe.js `confirmPromptPayPayment(clientSecret, …,
+  { handleActions: false })` แล้ว storefront แสดงรูป QR จาก `next_action` ของ PaymentIntent เอง — ไม่ใช้ PaymentElement/modal ของ Stripe
+  (ปรับถ้อยคำให้ตรงกับที่ PAY-2 ทำและ reviewer ยอมรับ, 2026-10-26); poll จน webhook complete cart; หมดอายุ 10 นาที **นับจาก
+  `created` ของ PaymentIntent** (สร้างตอนเลือก PromptPay ไม่ใช่ตอนแสดง QR — ดู Q3) — ครบกำหนดแล้วเช็กสถานะ PI ก่อน ถ้ายังไม่ชำระจึงสร้าง
+  session ใหม่ (Medusa ลบ session เดิม → provider cancel PI เดิม))
 - `/account/orders/:id/pay`: ใช้ payment component เดียวกัน ผูกกับ payment collection ของ order
   (ใช้โดย group buying)
 - Error states: บัตรถูกปฏิเสธ, 3DS ล้มเหลว, PromptPay หมดอายุ → ลองใหม่ได้; cart/order ยังคงอยู่
 - ต้อง login ก่อน checkout (กฎทั้งร้าน, spec 01)
+- ภาษา (ADR-014, 2026-10-26): ข้อความ UI เป็นภาษาไทยตรงในโค้ด และ e2e หาด้วย test id — PAY-2 (#48) ทำไปด้วยข้อความอังกฤษแล้ว **ไม่แก้ใน #48**
+  การแปลข้อความของ PAY-2 เป็นภาษาไทยอยู่ใน spec 01 CORE-4d (Depends PAY-2); PAY-3 และ PAY-5 เขียนข้อความใหม่เป็นภาษาไทย (label อังกฤษ
+  ในเครื่องหมายคำพูดใน spec นี้ = ชื่อเรียก element)
 
 ## Business rules
 1. ยอดเงินทั้งหมดเป็น THB ในหน่วยหลัก (major units) ของ Medusa; Stripe provider แปลงเป็นสตางค์เอง
@@ -43,6 +50,12 @@
    ส่งผ่านช่องทางที่ Medusa Stripe provider รองรับ (เช่น `data` ของ payment session) — ถ้าทำไม่ได้โดยไม่เขียน provider เอง ให้หยุดและเขียน ADR
 6. production ห้ามมี `pp_system_default` (manual) ใน region — ADR-010 (accepted) ระดับ D1: seed ไม่ใส่ให้ใน production และ
    `check:go-live` ตรวจ region ก่อนเปิดร้าน (ไม่กัน admin เปิดเองผ่าน dashboard) ส่งมอบใน OPS-7 (spec 07)
+7. (PAY-5, follow-up review PR #48) ห้ามมีกรณี "เงินถูกตัด แต่ไม่มี order และไม่มีการแก้ไขอัตโนมัติ": ถ้าลูกค้าชำระ PromptPay สำเร็จ
+   ในช่วงระหว่าง storefront อ่านสถานะ PI (`retrievePaymentIntent` = ยังไม่ชำระ) กับการสร้าง session ใหม่ (ลบ session เดิม) ผลลัพธ์ต้องเป็น
+   (a) session เดิมไม่ถูกลบและ cart ถูก complete เป็น order ตามปกติ — ทางที่ต้องการ ถ้าพฤติกรรมของ Medusa/Stripe provider รองรับ
+   (cancel PI ที่ `succeeded` แล้วล้ม → การลบ session ล้ม) แล้ว storefront กลับไป poll แทนการแสดง error; หรือ
+   (b) ถ้า Medusa ลบ session/ทิ้ง payment ได้แม้ PI ชำระแล้ว → **หยุดและเขียน ADR** ก่อนเพิ่มกลไก reconciliation ใดๆ (ขัด "ไม่มี custom
+   payment code" ของ ADR-007 และกฎข้อ 4)
 
 ## Acceptance criteria
 - AC-1 บัตร `4242…` → สร้าง order สำเร็จ, `payment_status=captured`
@@ -59,12 +72,23 @@
 - AC-10 ใน CI job `storefront-e2e` webhook ของ Stripe CLI ถึงทั้ง `/hooks/payment/stripe_stripe` และ
   `/hooks/payment/stripe-promptpay_stripe` (Stripe CLI รับ `--forward-to` ได้ปลายทางเดียวต่อ process — ใช้ listener แยกต่อ endpoint
   หรือวิธีที่ตรวจกับ docs แล้ว) วัดผลด้วย: AC-1 และ AC-4 ผ่านใน CI และ log ของ backend มี request เข้าทั้งสอง path
+- AC-11 (PAY-5, กฎข้อ 7) Given cart ที่มี session PromptPay และ PI อยู่สถานะ `requires_action` When test confirm PI ให้ `succeeded` ผ่าน
+  Stripe test API แล้ว**ทันที**เรียกขั้นหมดอายุแบบเดียวกับ storefront (`POST /store/payment-collections/:id/payment-sessions` ด้วย provider
+  PromptPay เดิม) Then ภายใน 60 วินาที cart ถูก complete เป็น order ที่ `payment_status=captured` และไม่มี payment ที่ captured ค้างโดยไม่มี
+  order (ตรวจ PI ใน Stripe: `status=succeeded` ↔ มี order อ้าง PI นั้น) (integration กับ Stripe test mode หรือ e2e)
+  — AC นี้ผ่านได้เฉพาะกรณี (a) ของกฎข้อ 7; ถ้า test พบว่าเป็นกรณี (b) (Medusa ลบ session/ทิ้ง payment แม้ PI ชำระแล้ว) **ผลที่ยอมรับได้ของ
+  PAY-5 คือ** test AC-11 ที่ fail เพื่อยืนยันปัญหา (ทำเครื่องหมาย `skip`/`todo` พร้อมอ้าง ADR) + ADR ใหม่สถานะ `proposed` แล้วหยุด —
+  ไม่ต้องทำ AC-11/AC-12 ให้ผ่านใน PAY-5 และห้ามเขียน reconciliation เอง
+- AC-12 (PAY-5) Given ขั้นสร้าง session ใหม่ตอนหมดอายุล้มเพราะ PI ชำระแล้ว When storefront ได้ error Then แสดง
+  `data-testid="promptpay-awaiting-order"` และ poll ต่อจนไปหน้า order confirmed — ไม่แสดง `promptpay-expired` (e2e, mock response ของ
+  route ได้)
 
 ## Test plan
 - Integration (http): AC-8 โดย mock provider
 - e2e: AC-1..AC-7 กับ Stripe test mode; CI รัน `stripe listen --forward-to` เพื่อให้
   webhook จริงส่งถึง runner; จำลอง PromptPay สำเร็จด้วยการ confirm PaymentIntent ใน test mode
 - e2e: AC-9 (อ่าน PaymentIntent จาก Stripe test mode ระหว่าง AC-1/AC-4); CI: AC-10
+- integration/e2e กับ Stripe test mode: AC-11; e2e: AC-12
 
 ## Tasks
 | ID | Task | Depends |
@@ -73,8 +97,12 @@
 | PAY-2 | Storefront: ขั้นตอนชำระเงินด้วยบัตร + PromptPay, polling, error + e2e (AC-1..AC-5); `payment_method_types: ["card"]` ของ session บัตร (กฎข้อ 5, AC-9); แก้ขั้น `stripe listen` ใน `ci.yml` ที่ใส่ `--forward-to` ซ้ำ (AC-10) | PAY-1, CORE-5 |
 | PAY-3 | หน้าชำระเงินของ order `/account/orders/:id/pay` + e2e (AC-7) | PAY-2 |
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
+| PAY-5 | follow-up review PR #48 (เล็ก): race ระหว่าง QR หมดอายุกับการชำระสำเร็จ — test AC-11 ก่อนเพื่อยืนยันพฤติกรรมของ Medusa/Stripe provider เมื่อลบ session ที่ PI `succeeded` แล้ว; ถ้าเป็นกรณี (a) ของกฎข้อ 7 แก้เฉพาะ storefront ให้ poll ต่อเมื่อสร้าง session ใหม่ล้ม (AC-12); ถ้าเป็นกรณี (b) หยุดแล้วเขียน ADR (ไม่เขียน reconciliation เอง) | PAY-2 |
+PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment` เดียวกับที่ PAY-3 นำไปใช้ซ้ำ — merge PAY-5 ก่อน PAY-3 ถ้าทำพร้อมกัน ให้ rebase)
 
 ## Open questions
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
 - ~~Q2~~ ตัดสินแล้ว (owner, 2026-10-25): production ห้าม `pp_system_default` แบบ D1 ของ ADR-010 (seed + `check:go-live`;
   ไม่กัน admin เปิดเอง) — กฎข้อ 6
+- ~~Q3~~ ตัดสินแล้ว (owner, 2026-10-26): **คงเดิมใน v1** — เวลา 10 นาทีของ PromptPay นับจาก `created` ของ PaymentIntent
+  (อ่านได้จาก PI เสมอแม้โหลดหน้าใหม่) ไม่เปลี่ยนเป็นนับจากตอนแสดง QR

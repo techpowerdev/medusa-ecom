@@ -2,8 +2,8 @@ import { BigNumber } from "@medusajs/framework/utils"
 import {
   flashPreviewContext,
   flashPriceFromActions,
+  flashSaleAvailability,
   mapWithConcurrency,
-  remainingUsage,
 } from "../flash-sale-preview"
 
 // FS-4 (spec 03 "API", AC-4): price preview ของ flash sale — Medusa คำนวณส่วนลด เราแค่รวม adjustment ของ flash promotion
@@ -153,18 +153,33 @@ describe("mapWithConcurrency", () => {
   })
 })
 
-describe("remainingUsage", () => {
-  it("is limit - used for a usage budget", () => {
-    expect(remainingUsage({ type: "usage", limit: 10, used: 3 })).toBe(7)
+// FS-7 (spec 03 กฎข้อ 4, AC-13 a–d): นับจากหน่วยใน FlashSaleConfig ไม่ใช่ campaign budget
+describe("flashSaleAvailability", () => {
+  const cfg = (total_cap: number | null, units_sold: number, show_remaining = true) => ({
+    total_cap,
+    units_sold,
+    show_remaining,
   })
 
-  it("never goes below zero (sold out = 0, rule 4)", () => {
-    expect(remainingUsage({ type: "usage", limit: 10, used: 12 })).toBe(0)
+  it("is total_cap - units_sold while units remain (AC-13 a)", () => {
+    expect(flashSaleAvailability(cfg(10, 7))).toEqual({ sold_out: false, remaining_units: 3 })
   })
 
-  it("is null without a usage budget or limit", () => {
-    expect(remainingUsage(null)).toBeNull()
-    expect(remainingUsage({ type: "spend", limit: 1000, used: 10 })).toBeNull()
-    expect(remainingUsage({ type: "usage", limit: null, used: 0 })).toBeNull()
+  it("is sold out with 0 remaining when units_sold reaches total_cap (AC-13 b)", () => {
+    expect(flashSaleAvailability(cfg(10, 10))).toEqual({ sold_out: true, remaining_units: 0 })
+  })
+
+  it("clamps remaining_units at 0 when total_cap was lowered below units_sold (AC-13 c)", () => {
+    expect(flashSaleAvailability(cfg(5, 10))).toEqual({ sold_out: true, remaining_units: 0 })
+  })
+
+  it("hides remaining_units but still reports sold_out when show_remaining=false (AC-13 d)", () => {
+    expect(flashSaleAvailability(cfg(10, 10, false))).toEqual({ sold_out: true, remaining_units: null })
+    expect(flashSaleAvailability(cfg(10, 3, false))).toEqual({ sold_out: false, remaining_units: null })
+  })
+
+  it("is never sold out and has no remaining_units without total_cap (AC-13 d)", () => {
+    expect(flashSaleAvailability(cfg(null, 10))).toEqual({ sold_out: false, remaining_units: null })
+    expect(flashSaleAvailability(cfg(null, 0, false))).toEqual({ sold_out: false, remaining_units: null })
   })
 })
