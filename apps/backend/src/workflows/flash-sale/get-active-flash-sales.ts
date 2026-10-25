@@ -3,6 +3,7 @@ import {
   MedusaError,
   Modules,
   QueryContext,
+  calculateAmountsWithTax,
 } from "@medusajs/framework/utils"
 import {
   StepResponse,
@@ -11,11 +12,19 @@ import {
   createWorkflow,
   transform,
 } from "@medusajs/framework/workflows-sdk"
-import type { ComputeActionContext } from "@medusajs/framework/types"
+import type {
+  CampaignDTO,
+  ComputeActionContext,
+  FindConfig,
+  FilterablePromotionProps,
+  IPromotionModuleService,
+  ItemTaxLineDTO,
+  PromotionDTO,
+} from "@medusajs/framework/types"
 import {
   flashPreviewContext,
   flashPriceFromActions,
-  isCampaignRunning,
+  mapWithConcurrency,
   remainingUsage,
 } from "../../lib/flash-sale-preview"
 import { FLASH_SALE_MODULE } from "../../modules/flash_sale"
@@ -24,9 +33,14 @@ import type FlashSaleModuleService from "../../modules/flash_sale/service"
 // FS-4 (spec 03 "API", AC-4): อ่านอย่างเดียว ไม่มีการเขียนข้อมูล จึงไม่มี compensation
 // flash sale = Campaign ที่มี FlashSaleConfig + automatic promotion ที่ active ≥1 ตัว ในช่วงเวลา (กฎข้อ 1)
 
+/** computeActions ยิงหลาย query ต่อครั้ง — จำกัดงานพร้อมกันต่อ request เพื่อไม่แย่ง DB pool กับ complete cart */
+export const PREVIEW_CONCURRENCY = 5
+
 export type GetActiveFlashSalesInput = {
   region_id?: string
   variant_ids?: string[]
+  /** sales channel ของ publishable key — กรอง variant แบบเดียวกับ store route ของ Medusa */
+  sales_channel_ids?: string[]
 }
 
 export type ActiveFlashSale = {
@@ -50,8 +64,16 @@ export type FlashVariantPrice = {
 
 type ListActiveFlashSalesOutput = {
   flash_sales: ActiveFlashSale[]
-  /** promotion code → campaign_id ของ flash promotion ที่กำลังทำงาน */
+  /** promotion code → campaign_id ของ flash promotion แบบ `target_type: "items"` ที่กำลังทำงาน */
   flash_codes: Record<string, string>
+}
+
+// `listActivePromotions` (status active + ช่วงเวลา campaign) มีใน service 2.22.1 แต่ไม่อยู่ใน interface
+type PromotionServiceWithActive = IPromotionModuleService & {
+  listActivePromotions(
+    filters: FilterablePromotionProps,
+    config: FindConfig<PromotionDTO>
+  ): Promise<PromotionDTO[]>
 }
 
 const endsAtOrder = (s: ActiveFlashSale) => (s.ends_at ? new Date(s.ends_at).getTime() : Infinity)
@@ -59,61 +81,48 @@ const endsAtOrder = (s: ActiveFlashSale) => (s.ends_at ? new Date(s.ends_at).get
 export const listActiveFlashSalesStep = createStep(
   "list-active-flash-sales",
   async (_: undefined, { container }) => {
-    const flashSale: FlashSaleModuleService = container.resolve(FLASH_SALE_MODULE)
-    const configs = await flashSale.listFlashSaleConfigs(
-      {},
-      { select: ["campaign_id", "banner_text", "show_countdown", "show_remaining"] }
-    )
-    if (!configs.length) {
+    const promotionModule = container.resolve<PromotionServiceWithActive>(Modules.PROMOTION)
+    const promotions = (
+      await promotionModule.listActivePromotions(
+        { is_automatic: true },
+        { relations: ["application_method", "campaign", "campaign.budget"] }
+      )
+    ).filter((p) => p.campaign?.id && p.code)
+    if (!promotions.length) {
       return new StepResponse<ListActiveFlashSalesOutput>({ flash_sales: [], flash_codes: {} })
     }
 
-    const query = container.resolve(ContainerRegistrationKeys.QUERY)
-    const { data: promotions } = await query.graph({
-      entity: "promotion",
-      fields: [
-        "id",
-        "code",
-        "campaign.id",
-        "campaign.name",
-        "campaign.starts_at",
-        "campaign.ends_at",
-        "campaign.budget.type",
-        "campaign.budget.limit",
-        "campaign.budget.used",
-      ],
-      filters: {
-        campaign_id: configs.map((c) => c.campaign_id),
-        is_automatic: true,
-        status: "active",
-      },
-    })
-
-    const now = new Date()
+    const flashSale: FlashSaleModuleService = container.resolve(FLASH_SALE_MODULE)
+    const configs = await flashSale.listFlashSaleConfigs(
+      { campaign_id: [...new Set(promotions.map((p) => p.campaign!.id))] },
+      { select: ["campaign_id", "banner_text", "show_countdown", "show_remaining"] }
+    )
     const configOf = new Map(configs.map((c) => [c.campaign_id, c]))
     const sales = new Map<string, ActiveFlashSale>()
     const flash_codes: Record<string, string> = {}
 
     for (const promotion of promotions) {
-      const campaign = promotion.campaign
-      if (!campaign || !promotion.code || !isCampaignRunning(campaign, now)) {
+      const campaign = promotion.campaign as CampaignDTO
+      const config = configOf.get(campaign.id)
+      if (!config) {
         continue
       }
-      flash_codes[promotion.code] = campaign.id
-      if (sales.has(campaign.id)) {
-        continue
+      // order-level promotion บน line สังเคราะห์ชิ้นเดียวทำให้ราคาต่ำเกินจริง → preview เฉพาะ items
+      if (promotion.application_method?.target_type === "items") {
+        flash_codes[promotion.code!] = campaign.id
       }
-      const config = configOf.get(campaign.id)!
-      sales.set(campaign.id, {
-        id: campaign.id,
-        name: campaign.name ?? "",
-        starts_at: (campaign.starts_at as Date | null | undefined) ?? null,
-        ends_at: (campaign.ends_at as Date | null | undefined) ?? null,
-        banner_text: config.banner_text ?? null,
-        show_countdown: config.show_countdown,
-        show_remaining: config.show_remaining,
-        remaining_usage: remainingUsage(campaign.budget ?? null),
-      })
+      if (!sales.has(campaign.id)) {
+        sales.set(campaign.id, {
+          id: campaign.id,
+          name: campaign.name ?? "",
+          starts_at: (campaign.starts_at as Date | null | undefined) ?? null,
+          ends_at: (campaign.ends_at as Date | null | undefined) ?? null,
+          banner_text: config.banner_text ?? null,
+          show_countdown: config.show_countdown,
+          show_remaining: config.show_remaining,
+          remaining_usage: remainingUsage(campaign.budget ?? null),
+        })
+      }
     }
 
     const flash_sales = [...sales.values()].sort((a, b) => endsAtOrder(a) - endsAtOrder(b))
@@ -124,16 +133,35 @@ export const listActiveFlashSalesStep = createStep(
 type PreviewFlashPricesInput = {
   region_id?: string
   variant_ids?: string[]
+  sales_channel_ids?: string[]
   flash_codes: Record<string, string>
+}
+
+type PreviewVariantRow = {
+  id: string
+  product_id: string | null
+  product: {
+    id: string
+    status: string
+    type_id: string | null
+    sales_channels?: { id: string }[] | null
+  } & Record<string, unknown>
+  calculated_price?: {
+    calculated_amount?: number | null
+    is_calculated_price_tax_inclusive?: boolean
+  } | null
 }
 
 /**
  * ราคา flash ต่อ variant: ให้ Promotion module คำนวณบน line สังเคราะห์ (ADR-003, กฎข้อ 2)
- * แยก compute ทีละ variant เพื่อไม่ให้ allocation `across` / order-level กระจายข้าม variant
+ * แยก compute ทีละ variant (allocation `across` ไม่กระจายข้าม variant) โดยจำกัดพร้อมกันไม่เกิน PREVIEW_CONCURRENCY
  */
 export const previewFlashPricesStep = createStep(
   "preview-flash-prices",
-  async ({ region_id, variant_ids, flash_codes }: PreviewFlashPricesInput, { container }) => {
+  async (
+    { region_id, variant_ids, sales_channel_ids, flash_codes }: PreviewFlashPricesInput,
+    { container }
+  ) => {
     if (!region_id || !variant_ids?.length) {
       return new StepResponse<FlashVariantPrice[]>([])
     }
@@ -141,7 +169,7 @@ export const previewFlashPricesStep = createStep(
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
     const { data: regions } = await query.graph({
       entity: "region",
-      fields: ["id", "currency_code"],
+      fields: ["id", "currency_code", "automatic_taxes", "countries.iso_2"],
       filters: { id: region_id },
     })
     const region = regions[0]
@@ -149,7 +177,7 @@ export const previewFlashPricesStep = createStep(
       throw new MedusaError(MedusaError.Types.NOT_FOUND, `Region with id: ${region_id} was not found`)
     }
 
-    const { data: variants } = await query.graph({
+    const { data } = await query.graph({
       entity: "variant",
       fields: [
         "id",
@@ -160,45 +188,84 @@ export const previewFlashPricesStep = createStep(
         "product.type_id",
         "product.categories.id",
         "product.tags.id",
+        "product.sales_channels.id",
         "calculated_price.calculated_amount",
+        "calculated_price.is_calculated_price_tax_inclusive",
       ],
       filters: { id: variant_ids },
       context: {
         calculated_price: QueryContext({ region_id, currency_code: region.currency_code }),
       },
     })
+    const channels = sales_channel_ids ? new Set(sales_channel_ids) : null
+    const byId = new Map(
+      (data as unknown as PreviewVariantRow[])
+        .filter(
+          (v) =>
+            v.product?.status === "published" &&
+            v.calculated_price?.calculated_amount != null &&
+            (!channels || (v.product.sales_channels ?? []).some((sc) => channels.has(sc.id)))
+        )
+        .map((v) => [v.id, v])
+    )
+    const variants = [...new Set(variant_ids)].map((id) => byId.get(id)).filter((v) => !!v)
+
+    // ภาษีแบบเดียวกับ cart: subtotal ไม่รวมภาษี / original_total รวมภาษี (region ประเทศเดียว + automatic_taxes)
+    const countries = (region.countries ?? []).filter((c) => !!c?.iso_2)
+    const taxLinesOf = new Map<string, { rate: number }[]>()
+    if (region.automatic_taxes && countries.length === 1 && variants.length) {
+      const taxModule = container.resolve(Modules.TAX)
+      const taxLines = await taxModule.getTaxLines(
+        variants.map((v) => ({
+          id: v.id,
+          product_id: v.product.id,
+          product_type_id: v.product.type_id ?? undefined,
+          quantity: 1,
+          unit_price: Number(v.calculated_price!.calculated_amount),
+          currency_code: region.currency_code,
+        })),
+        { address: { country_code: countries[0]!.iso_2! } }
+      )
+      for (const line of taxLines as ItemTaxLineDTO[]) {
+        taxLinesOf.set(line.line_item_id, [...(taxLinesOf.get(line.line_item_id) ?? []), line])
+      }
+    }
 
     const flashCodes = new Set(Object.keys(flash_codes))
     const promotionModule = container.resolve(Modules.PROMOTION)
-    const byId = new Map(variants.map((v) => [v.id, v]))
 
-    const prices = await Promise.all(
-      [...new Set(variant_ids)].map(async (variantId): Promise<FlashVariantPrice | null> => {
-        const variant = byId.get(variantId)
-        // calculated_price มาจาก QueryContext — ไม่อยู่ใน type ที่ generate ของ variant
-        const amount = (variant as { calculated_price?: { calculated_amount?: number | null } | null } | undefined)
-          ?.calculated_price?.calculated_amount
-        if (!variant || variant.product?.status !== "published" || amount == null) {
-          return null
-        }
-        const original_price = Number(amount)
+    const prices = await mapWithConcurrency(
+      variants,
+      PREVIEW_CONCURRENCY,
+      async (variant): Promise<FlashVariantPrice> => {
+        const original_price = Number(variant.calculated_price!.calculated_amount)
         let flash_price: number | null = null
         let campaign_id: string | null = null
 
         if (flashCodes.size) {
+          const { priceWithTax, priceWithoutTax } = calculateAmountsWithTax({
+            taxLines: taxLinesOf.get(variant.id) ?? [],
+            amount: original_price,
+            includesTax: variant.calculated_price!.is_calculated_price_tax_inclusive,
+          })
           const context = flashPreviewContext({
             currency_code: region.currency_code,
             region_id,
-            variant: {
-              id: variant.id,
-              product_id: variant.product_id,
-              product: variant.product as Record<string, unknown> | null,
-            },
-            amount: original_price,
+            variant: { id: variant.id, product_id: variant.product_id, product: variant.product },
+            subtotal: priceWithoutTax,
+            original_total: priceWithTax,
           })
-          const actions = await promotionModule.computeActions([], context as ComputeActionContext)
+          // ระบุเฉพาะ flash promotion แบบ items + ปิด auto discovery: promotion อื่น (order-level, ไม่ใช่ flash)
+          // ที่ value สูงกว่าจะไม่ถูกหักก่อนแล้วทำให้ส่วนลด flash บน line สังเคราะห์เพี้ยน; rule ของ promotion ยังถูกประเมินกับ context
+          const actions = await promotionModule.computeActions([...flashCodes], context as ComputeActionContext, {
+            prevent_auto_promotions: true,
+          })
           const computed = actions as { action: string; code: string; amount?: number }[]
-          flash_price = flashPriceFromActions(original_price, computed, flashCodes)
+          flash_price = flashPriceFromActions(
+            { price: original_price, subtotal: priceWithoutTax },
+            computed,
+            flashCodes
+          )
           const flashAction = computed.find((a) => a.action === "addItemAdjustment" && flashCodes.has(a.code))
           campaign_id = flashAction ? flash_codes[flashAction.code] : null
         }
@@ -210,10 +277,10 @@ export const previewFlashPricesStep = createStep(
           flash_price,
           campaign_id,
         }
-      })
+      }
     )
 
-    return new StepResponse(prices.filter((p): p is FlashVariantPrice => p !== null))
+    return new StepResponse(prices)
   }
 )
 
@@ -225,6 +292,7 @@ export const getActiveFlashSalesWorkflow = createWorkflow(
       transform({ input, active }, ({ input, active }) => ({
         region_id: input.region_id,
         variant_ids: input.variant_ids,
+        sales_channel_ids: input.sales_channel_ids,
         flash_codes: active.flash_codes,
       }))
     )

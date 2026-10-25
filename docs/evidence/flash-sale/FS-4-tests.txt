@@ -1,36 +1,43 @@
 # FS-4 — GET /store/flash-sales/active (spec 03 "API", AC-4 ส่วน API)
-# วันที่: 2026-10-25, base: origin/develop 32a21fa
+# วันที่: 2026-10-25, base: origin/develop 2b9bb68 (รอบแก้ตาม review PR #32)
 
 ## Red (ก่อนเขียนโค้ด)
-- unit: Cannot find module '../flash-sale-preview' (ยังไม่มี lib)
-- integration: ทั้ง 3 test ล้มด้วย 404 (ยังไม่มี route)
-- mutation check: ลบ exclusivity.code_applied="false" ออกจาก context ของ computeActions
-  → "returns flash_price ..." ล้ม (F ถูก prefilter ของ Medusa ตัดทิ้ง, กฎข้อ 6g) แล้วคืนโค้ด
+- รอบแรก: unit ล้มด้วย Cannot find module '../flash-sale-preview'; integration ล้มทั้งหมดด้วย 404 (ยังไม่มี route)
+- รอบ review: unit ใหม่ (mapWithConcurrency, subtotal/original_total, แปลงฐานภาษี) ล้ม 6 test ก่อนแก้ lib
+- mutation check (integration):
+  - ลบ exclusivity.code_applied="false" ออกจาก context → "returns flash_price ..." ล้ม (รอบแรก, ตอนใช้ auto discovery)
+  - ใส่ subtotal = ราคารวม VAT / นับ promotion order-level / ไม่กรอง sales channel → 4 test ล้ม
+    (cart line total, order-level, sales channel, flash_price) แล้วคืนโค้ด
 
-## Green: unit — pnpm --filter backend test:unit (เฉพาะไฟล์)
+## Green: unit — src/lib/__tests__/flash-sale-preview.unit.spec.ts
 PASS src/lib/__tests__/flash-sale-preview.unit.spec.ts
     ✓ always sends exclusivity.code_applied = "false" so exclusive flash promotions survive the prefilter (rule 6g)
-    ✓ builds one synthetic discountable line of quantity 1 at the calculated price
+    ✓ builds one synthetic discountable line of quantity 1 with tax-exclusive subtotal and tax-inclusive original_total (like a cart line)
     ✓ returns null when no flash promotion adjusts the line
     ✓ subtracts the amounts of flash item adjustments only (BigNumber or number)
+    ✓ converts tax-exclusive adjustment amounts to the price basis (tax-inclusive price: 100 excl. VAT 7% = 107)
     ✓ never goes below zero
-    ✓ is true inside [starts_at, ends_at) and for open-ended bounds
-    ✓ is false before starts_at or from ends_at on (matches Medusa listActivePromotions)
+    ✓ keeps input order and never runs more than `limit` tasks at once
+    ✓ runs sequentially when limit is 1 and handles empty input
     ✓ is limit - used for a usage budget
     ✓ never goes below zero (sold out = 0, rule 4)
     ✓ is null without a usage budget or limit
-Tests:       10 passed, 10 total
+Tests:       11 passed, 11 total
 
 ## Green: integration http — integration-tests/http/flash-sale-active.spec.ts
 PASS integration-tests/http/flash-sale-active.spec.ts
     ✓ lists only running flash campaigns with countdown data, publicly (no customer auth)
     ✓ returns flash_price from the Promotion module for exclusive flash promotions only
+    ✓ matches the real cart line total on tax-inclusive THB (fixed 100 excl. VAT = 107 off)
+    ✓ ignores order-level flash promotions in flash_price (only target_type items)
+    ✓ only prices variants sold in the publishable key's sales channels
     ✓ rejects variant_ids without region_id
-Tests:       3 passed, 3 total
+    ✓ rejects more than 24 variant_ids (bounded computeActions per request)
+Tests:       7 passed, 7 total
 
-## test:unit ทั้งชุด
-Test Suites: 16 passed, 16 total
-Tests:       128 passed, 128 total
+## test:unit ทั้งชุด (หลัง rebase)
+Test Suites: 17 passed, 17 total
+Tests:       137 passed, 137 total
 
 ## lint / typecheck / build
 pnpm lint:      backend "No lint issues found" (storefront 0 errors, warning เดิม)

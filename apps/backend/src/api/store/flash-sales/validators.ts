@@ -1,6 +1,6 @@
 import { z } from "@medusajs/framework/zod"
 
-const MAX_VARIANTS = 100
+const MAX_VARIANTS = 24 // PLP ~12–24 ตัว; PDP ไม่กี่ตัว
 
 // GET /store/flash-sales/active (FS-4) — variant_ids ต้องมี region_id เพื่อหาราคา/สกุลเงิน
 export const StoreGetActiveFlashSalesParams = z

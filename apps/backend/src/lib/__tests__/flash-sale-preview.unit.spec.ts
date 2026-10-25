@@ -2,7 +2,7 @@ import { BigNumber } from "@medusajs/framework/utils"
 import {
   flashPreviewContext,
   flashPriceFromActions,
-  isCampaignRunning,
+  mapWithConcurrency,
   remainingUsage,
 } from "../flash-sale-preview"
 
@@ -14,14 +14,14 @@ describe("flashPreviewContext", () => {
     product_id: "prod_1",
     product: { id: "prod_1", collection_id: "pcol_1", categories: [{ id: "pcat_1" }] },
   }
+  const base = { currency_code: "thb", region_id: "reg_1", variant, subtotal: 500, original_total: 535 }
 
   it('always sends exclusivity.code_applied = "false" so exclusive flash promotions survive the prefilter (rule 6g)', () => {
-    const context = flashPreviewContext({ currency_code: "thb", region_id: "reg_1", variant, amount: 500 })
-    expect(context.exclusivity).toEqual({ code_applied: "false" })
+    expect(flashPreviewContext(base).exclusivity).toEqual({ code_applied: "false" })
   })
 
-  it("builds one synthetic discountable line of quantity 1 at the calculated price", () => {
-    const context = flashPreviewContext({ currency_code: "thb", region_id: "reg_1", variant, amount: 500 })
+  it("builds one synthetic discountable line of quantity 1 with tax-exclusive subtotal and tax-inclusive original_total (like a cart line)", () => {
+    const context = flashPreviewContext(base)
     expect(context.currency_code).toBe("thb")
     expect(context.region_id).toBe("reg_1")
     expect(context.region).toEqual({ id: "reg_1" })
@@ -32,7 +32,7 @@ describe("flashPreviewContext", () => {
         product: variant.product,
         quantity: 1,
         subtotal: 500,
-        original_total: 500,
+        original_total: 535,
         is_discountable: true,
       }),
     ])
@@ -43,10 +43,10 @@ describe("flashPriceFromActions", () => {
   const flashCodes = new Set(["FLASH20"])
 
   it("returns null when no flash promotion adjusts the line", () => {
-    expect(flashPriceFromActions(500, [], flashCodes)).toBeNull()
+    expect(flashPriceFromActions({ price: 500, subtotal: 500 }, [], flashCodes)).toBeNull()
     expect(
       flashPriceFromActions(
-        500,
+        { price: 500, subtotal: 500 },
         [{ action: "addItemAdjustment", code: "OTHER", item_id: "i", amount: 50 }],
         flashCodes
       )
@@ -56,7 +56,7 @@ describe("flashPriceFromActions", () => {
   it("subtracts the amounts of flash item adjustments only (BigNumber or number)", () => {
     expect(
       flashPriceFromActions(
-        500,
+        { price: 500, subtotal: 500 },
         [
           { action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: new BigNumber(100) },
           { action: "addItemAdjustment", code: "OTHER", item_id: "i", amount: 30 },
@@ -67,10 +67,20 @@ describe("flashPriceFromActions", () => {
     ).toBe(400)
   })
 
+  it("converts tax-exclusive adjustment amounts to the price basis (tax-inclusive price: 100 excl. VAT 7% = 107)", () => {
+    expect(
+      flashPriceFromActions(
+        { price: 535, subtotal: 500 },
+        [{ action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: 100 }],
+        flashCodes
+      )
+    ).toBeCloseTo(428, 6)
+  })
+
   it("never goes below zero", () => {
     expect(
       flashPriceFromActions(
-        100,
+        { price: 100, subtotal: 100 },
         [{ action: "addItemAdjustment", code: "FLASH20", item_id: "i", amount: 150 }],
         flashCodes
       )
@@ -78,18 +88,33 @@ describe("flashPriceFromActions", () => {
   })
 })
 
-describe("isCampaignRunning", () => {
-  const now = new Date("2026-10-25T05:00:00Z")
+describe("mapWithConcurrency", () => {
+  it("keeps input order and never runs more than `limit` tasks at once", async () => {
+    let running = 0
+    let peak = 0
+    const result = await mapWithConcurrency([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 5, async (n) => {
+      running += 1
+      peak = Math.max(peak, running)
+      await new Promise((r) => setTimeout(r, 5 * (n % 3)))
+      running -= 1
+      return n * 10
+    })
 
-  it("is true inside [starts_at, ends_at) and for open-ended bounds", () => {
-    expect(isCampaignRunning({ starts_at: "2026-10-25T04:00:00Z", ends_at: "2026-10-25T06:00:00Z" }, now)).toBe(true)
-    expect(isCampaignRunning({ starts_at: now, ends_at: null }, now)).toBe(true)
-    expect(isCampaignRunning({ starts_at: null, ends_at: null }, now)).toBe(true)
+    expect(peak).toBe(5)
+    expect(result).toEqual([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120])
   })
 
-  it("is false before starts_at or from ends_at on (matches Medusa listActivePromotions)", () => {
-    expect(isCampaignRunning({ starts_at: "2026-10-25T05:00:01Z", ends_at: null }, now)).toBe(false)
-    expect(isCampaignRunning({ starts_at: null, ends_at: now }, now)).toBe(false)
+  it("runs sequentially when limit is 1 and handles empty input", async () => {
+    let running = 0
+    let peak = 0
+    await mapWithConcurrency([1, 2, 3], 1, async () => {
+      running += 1
+      peak = Math.max(peak, running)
+      await new Promise((r) => setTimeout(r, 1))
+      running -= 1
+    })
+    expect(peak).toBe(1)
+    expect(await mapWithConcurrency([], 5, async (n: number) => n)).toEqual([])
   })
 })
 

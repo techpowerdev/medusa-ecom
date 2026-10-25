@@ -1,6 +1,7 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules, decorateCartTotals } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
+import { createCartWorkflow } from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 import { exclusiveAutomaticRule } from "../../src/lib/promotion-exclusivity"
@@ -39,9 +40,11 @@ medusaIntegrationTestRunner({
     let regionId: string
     let flashVariantId: string // t-shirt L → F (target ตาม product)
     let otherVariantId: string // sweatshirt M → N เท่านั้น
+    let fixedVariantId: string // t-shirt S → F + flash fixed 100 THB (is_tax_inclusive=false)
     let activeCampaignId: string
     let expiredCampaignId: string
     let plainCampaignId: string
+    let plainPromotionIds: string[]
 
     beforeAll(async () => {
       container = getContainer()
@@ -63,6 +66,7 @@ medusaIntegrationTestRunner({
       const tshirt = products.find((p) => p.handle === "t-shirt")!
       const sweatshirt = products.find((p) => p.handle === "sweatshirt")!
       flashVariantId = tshirt.variants.find((v) => v.title === "L")!.id
+      fixedVariantId = tshirt.variants.find((v) => v.title === "S")!.id
       otherVariantId = sweatshirt.variants.find((v) => v.title === "M")!.id
 
       const promotionModule = container.resolve(Modules.PROMOTION)
@@ -117,7 +121,28 @@ medusaIntegrationTestRunner({
         automatic("FS4EXPIRED50", expiredCampaignId, 50, tshirt.id, true),
         automatic("FS4AUTO10", plainCampaignId, 10, tshirt.id, false),
         automatic("FS4AUTO10B", plainCampaignId, 10, sweatshirt.id, false),
+        {
+          code: "FS4FIXED100",
+          type: "standard",
+          status: "active",
+          is_automatic: true,
+          is_tax_inclusive: false,
+          campaign_id: activeCampaignId,
+          rules: [exclusiveAutomaticRule()],
+          application_method: {
+            type: "fixed",
+            target_type: "items",
+            allocation: "each",
+            max_quantity: 1,
+            value: 100,
+            currency_code: "thb",
+            target_rules: [{ attribute: "items.variant_id", operator: "in", values: [fixedVariantId] }],
+          },
+        },
       ])
+      plainPromotionIds = (
+        await promotionModule.listPromotions({ code: ["FS4AUTO10", "FS4AUTO10B"] }, { select: ["id"] })
+      ).map((p) => p.id)
 
       await flashSale.createFlashSaleConfigs([
         {
@@ -177,9 +202,105 @@ medusaIntegrationTestRunner({
       expect(other.campaign_id).toBeNull()
     })
 
+    const preview = async (variantId: string, headers = storeHeaders) => {
+      const { data } = await api.get(
+        `/store/flash-sales/active?region_id=${regionId}&variant_ids[]=${variantId}`,
+        headers
+      )
+      return data as { flash_sales: FlashSale[]; variants: VariantPreview[] }
+    }
+
+    it("matches the real cart line total on tax-inclusive THB (fixed 100 excl. VAT = 107 off)", async () => {
+      const promotionModule = container.resolve(Modules.PROMOTION)
+      // ปิด N ชั่วคราว ให้ cart มีแต่ส่วนลด flash เทียบกับ preview ได้ตรง
+      await promotionModule.updatePromotions(plainPromotionIds.map((id) => ({ id, status: "inactive" as const })))
+      try {
+        const [fixed] = (await preview(fixedVariantId)).variants
+
+        const { result: cart } = await createCartWorkflow(container).run({
+          input: {
+            region_id: regionId,
+            shipping_address: { country_code: "th", city: "Bangkok", postal_code: "10110" },
+            items: [{ variant_id: fixedVariantId, quantity: 1 }],
+          },
+        })
+        const query = container.resolve(ContainerRegistrationKeys.QUERY)
+        const { data } = await query.graph({
+          entity: "cart",
+          fields: ["currency_code", "items.*", "items.tax_lines.*", "items.adjustments.*"],
+          filters: { id: cart.id },
+        })
+        // คำนวณยอด line แบบเดียวกับ store cart API ของ Medusa
+        const totals = decorateCartTotals(data[0] as unknown as Parameters<typeof decorateCartTotals>[0]) as unknown as {
+          items: { variant_id: string; total: unknown; adjustments?: { code: string }[] }[]
+        }
+        const line = totals.items.find((i) => i.variant_id === fixedVariantId)!
+        expect((line.adjustments ?? []).map((a) => a.code).sort()).toEqual(["FS4FIXED100", "FS4FLASH20"])
+
+        expect(fixed.flash_price).toBeCloseTo(Number(line.total), 2)
+        // ไม่ใช่ราคา − 20% − 100 แบบไม่คิด VAT
+        expect(Math.abs(fixed.flash_price! - (fixed.original_price * 0.8 - 100))).toBeGreaterThan(1)
+      } finally {
+        await promotionModule.updatePromotions(plainPromotionIds.map((id) => ({ id, status: "active" as const })))
+      }
+    })
+
+    it("ignores order-level flash promotions in flash_price (only target_type items)", async () => {
+      const promotionModule = container.resolve(Modules.PROMOTION)
+      const [orderPromotion] = await promotionModule.createPromotions([
+        {
+          code: "FS4ORDER50",
+          type: "standard",
+          status: "active",
+          is_automatic: true,
+          campaign_id: activeCampaignId,
+          rules: [exclusiveAutomaticRule()],
+          application_method: {
+            type: "fixed",
+            target_type: "order",
+            allocation: "across",
+            value: 50,
+            currency_code: "thb",
+          },
+        },
+      ])
+      try {
+        const [flash] = (await preview(flashVariantId)).variants
+        expect(flash.flash_price).toBeCloseTo(flash.original_price * 0.8, 2)
+      } finally {
+        await promotionModule.updatePromotions([{ id: orderPromotion.id, status: "inactive" }])
+      }
+    })
+
+    it("only prices variants sold in the publishable key's sales channels", async () => {
+      const salesChannelModule = container.resolve(Modules.SALES_CHANNEL)
+      const apiKeyModule = container.resolve(Modules.API_KEY)
+      const link = container.resolve(ContainerRegistrationKeys.LINK)
+      const channel = await salesChannelModule.createSalesChannels({ name: "FS-4 empty channel" })
+      const key = await apiKeyModule.createApiKeys({ title: "FS-4 other key", type: "publishable", created_by: "" })
+      await link.create({
+        [Modules.API_KEY]: { publishable_key_id: key.id },
+        [Modules.SALES_CHANNEL]: { sales_channel_id: channel.id },
+      })
+
+      const data = await preview(flashVariantId, { headers: { "x-publishable-api-key": key.token } })
+      expect(data.flash_sales.map((f) => f.id)).toEqual([activeCampaignId])
+      expect(data.variants).toEqual([])
+    })
+
     it("rejects variant_ids without region_id", async () => {
       const error = await api
         .get(`/store/flash-sales/active?variant_ids[]=${flashVariantId}`, storeHeaders)
+        .catch((e) => e)
+
+      expect(error.response.status).toBe(400)
+    })
+
+    it("rejects more than 24 variant_ids (bounded computeActions per request)", async () => {
+      const ids = Array.from({ length: 25 }, (_, i) => `variant_${i}`)
+      const qs = ids.map((id) => `variant_ids[]=${id}`).join("&")
+      const error = await api
+        .get(`/store/flash-sales/active?region_id=${regionId}&${qs}`, storeHeaders)
         .catch((e) => e)
 
       expect(error.response.status).toBe(400)

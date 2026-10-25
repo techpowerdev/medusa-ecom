@@ -24,7 +24,8 @@ export type CampaignBudgetLike = {
 } | null
 
 /**
- * context ของ `computeActions` สำหรับ variant หนึ่งตัว: line สังเคราะห์ quantity 1 ราคา `amount`
+ * context ของ `computeActions` สำหรับ variant หนึ่งตัว: line สังเคราะห์ quantity 1 แบบเดียวกับ cart line
+ * (`subtotal` = ราคาไม่รวมภาษี, `original_total` = ราคารวมภาษี) เพื่อให้ promotion แบบ fixed ที่ไม่ tax-inclusive ตรงกับ cart
  * ต้องส่ง `exclusivity.code_applied: "false"` เสมอ (กฎข้อ 6g) — ไม่เช่นนั้น prefilter ของ Medusa ตัด
  * flash promotion ที่มี exclusivity rule ทิ้ง (preview = cart ที่ไม่มี code)
  */
@@ -32,12 +33,14 @@ export function flashPreviewContext({
   currency_code,
   region_id,
   variant,
-  amount,
+  subtotal,
+  original_total,
 }: {
   currency_code: string
   region_id: string
   variant: PreviewVariant
-  amount: number
+  subtotal: BigNumberInput
+  original_total: BigNumberInput
 }) {
   return {
     currency_code,
@@ -51,17 +54,20 @@ export function flashPreviewContext({
         product_id: variant.product_id ?? undefined,
         product: variant.product ?? undefined,
         quantity: 1,
-        subtotal: amount,
-        original_total: amount,
+        subtotal,
+        original_total,
         is_discountable: true,
       },
     ],
   }
 }
 
-/** ราคาหลังหัก adjustment ของ flash promotion (`flashCodes`); null เมื่อไม่มี flash promotion ใดลด line นี้ */
+/**
+ * ราคาหลังหัก adjustment ของ flash promotion (`flashCodes`); null เมื่อไม่มี flash promotion ใดลด line นี้
+ * amount ของ action เป็นฐานไม่รวมภาษี (ฐาน `subtotal`) จึงแปลงเป็นฐานเดียวกับ `price` ด้วย `price / subtotal`
+ */
 export function flashPriceFromActions(
-  original: BigNumberInput,
+  { price, subtotal }: { price: BigNumberInput; subtotal: BigNumberInput },
   actions: ComputedActionLike[],
   flashCodes: Set<string>
 ): number | null {
@@ -75,20 +81,26 @@ export function flashPriceFromActions(
     (sum, a) => MathBN.add(sum, a.amount as BigNumberInput),
     MathBN.convert(0)
   )
-  return MathBN.max(MathBN.sub(original, discount), 0).toNumber()
+  const ratio = MathBN.gt(subtotal, 0) ? MathBN.div(price, subtotal) : MathBN.convert(1)
+  return MathBN.max(MathBN.sub(price, MathBN.mult(discount, ratio)), 0).toNumber()
 }
 
-type DateLike = Date | string | null | undefined
-
-/** campaign อยู่ในช่วงเวลา `[starts_at, ends_at)` — เงื่อนไขเดียวกับ `listActivePromotions_` ของ Medusa */
-export function isCampaignRunning(
-  campaign: { starts_at?: DateLike; ends_at?: DateLike },
-  now: Date = new Date()
-): boolean {
-  const t = now.getTime()
-  const startsOk = !campaign.starts_at || new Date(campaign.starts_at).getTime() <= t
-  const endsOk = !campaign.ends_at || new Date(campaign.ends_at).getTime() > t
-  return startsOk && endsOk
+/** map แบบจำกัดจำนวนงานพร้อมกัน (คงลำดับผลลัพธ์) — กัน route สาธารณะใช้ DB pool จนหมด */
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next++
+      results[index] = await fn(items[index])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
 }
 
 /** หน่วยที่เหลือของ campaign budget แบบ `usage` (spec 03 กฎข้อ 4); null เมื่อไม่มี budget usage หรือไม่ตั้ง limit */
