@@ -7,6 +7,7 @@ import {
 import { PostAffiliateRegisterSchema } from './affiliate/validators'
 import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
+import { adminFlashSaleMiddlewares } from './admin/flash-sales/middlewares'
 import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
 import { storeOwnershipMiddlewares } from './store/ownership/middlewares'
@@ -40,6 +41,7 @@ export default defineMiddlewares({
       middlewares: [authenticate('affiliate', ['session', 'bearer'])],
     },
     ...adminEvoucherMiddlewares,
+    ...adminFlashSaleMiddlewares,
     ...storeFlashSaleMiddlewares,
     ...adminAffiliateMiddlewares,
     ...adminGroupBuyMiddlewares,

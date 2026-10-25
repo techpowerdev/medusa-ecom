@@ -198,7 +198,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
   payment authorization ล้ม) → complete ล้มเหลว, usage และ `units_sold` กลับเป็นค่าก่อน complete, ไม่มี reservation ของ cart นั้น
 - AC-10 (retry) เรียก complete ซ้ำกับ cart ที่ complete สำเร็จแล้ว → ได้ order เดิม, usage และ `units_sold` ไม่เปลี่ยน
 - AC-11 (ลด cap, กฎข้อ 12)
-  (a) `POST /admin/flash-sales/:campaign_id/config` ตั้ง `total_cap=5` ขณะ `units_sold=10` → 200, `units_sold` ยังเป็น 10
+  (a) `POST /admin/flash-sales/:campaign_id/config` ตั้ง `total_cap=5` ขณะ `units_sold=10` → 200, `units_sold` ยังเป็น 10 ✓ FS-5 (#38)
   (b) config ที่มี `units_sold=10`, `total_cap=5` (ตั้งตรงผ่าน module ใน test) → complete cart ที่มี flash 1 หน่วย
   ล้มเหลว `FLASH_SOLD_OUT`
 - AC-12 (PROMO-2, error code ถึง client) error handler ของ Medusa เขียนทับ `code`/`message` ของ `MedusaError.Types.CONFLICT` เป็น

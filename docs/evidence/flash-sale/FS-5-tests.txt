@@ -1,0 +1,23 @@
+# FS-5 — สรุปผล test (Node v22.23.3, Medusa 2.22.1)
+# ในเครื่องรันเฉพาะ: test:unit ทั้งชุด + integration:http flash-sale-admin-config.spec.ts — integration ชุดเต็มรันใน CI
+# Red: ก่อนเขียน route/workflow flash-sale-admin-config.spec.ts ล้ม 5/7 (404 ไม่มี route); unit flash-sale-exclusivity ล้ม (ไม่มี module)
+# D-1 Red: test POST พร้อมกัน 5 ครั้งล้ม (ได้ 400 x3 "already exists") ก่อนใส่ acquireLockStep/releaseLockStep; total_cap=0 ได้ข้อความ "expected at least: '0'" ก่อนเปลี่ยนเป็น min(1)
+# lint ผ่าน | tsc --noEmit (backend + src/admin strict) ผ่าน | medusa build (backend + admin) ผ่าน
+
+## integration:http — integration-tests/http/flash-sale-admin-config.spec.ts (8 passed — รอบแก้ D-1 ของ qa)
+✓ GET before any config returns null config and warns about automatic promotions without the rule
+✓ POST creates the config and adds the exclusivity rule to every automatic promotion of the campaign
+✓ POST is idempotent: saving again updates the same config and never duplicates the rule
+✓ concurrent POSTs on a new config (double-click Save) all return 200 with one config and one rule per promotion
+✓ AC-11 (a): POST total_cap=5 while units_sold=10 → 200 and units_sold stays 10
+✓ rejects units_sold and invalid limits in the body (400)
+✓ returns 404 for an unknown campaign and does not create a config
+✓ requires an authenticated admin user (401)
+
+## unit — src/lib/__tests__/flash-sale-exclusivity.unit.spec.ts (2 passed)
+✓ returns automatic promotions without the exclusivity rule only
+✓ treats missing rules as no rule and tolerates null/undefined lists
+
+## test:unit ทั้งชุด
+Test Suites: 25 passed, 25 total
+Tests:       190 passed, 190 total   (หลัง merge origin/develop)
