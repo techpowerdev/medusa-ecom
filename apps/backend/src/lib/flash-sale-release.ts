@@ -2,6 +2,7 @@ import { MathBN } from "@medusajs/framework/utils"
 import type { BigNumberInput } from "@medusajs/framework/types"
 
 // FS-2 (spec 03 กฎข้อ 10): ตัดสินว่า order ถูก refund เต็มจำนวนหรือไม่ — pure
+// เกณฑ์เดียวไม่ว่า refund มาจาก cancel, return หรือคืนด้วยมือ (owner 2026-10-25) — ดูยอดรวมสะสมทุกครั้ง
 // ใช้ raw_amount + MathBN แบบเดียวกับ validatePaymentsRefundStep ของ Medusa (ไม่ใช้ float)
 
 // query.graph คืน raw_amount เป็น JSON ({ value, precision }) — MathBN แปลงได้โดยตรง

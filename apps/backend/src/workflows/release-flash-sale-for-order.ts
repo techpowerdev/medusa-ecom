@@ -8,7 +8,7 @@ import {
 
 export type ReleaseFlashSaleForOrderInput = {
   order_id: string
-  // "canceled" คืนเสมอ; "refunded" คืนเฉพาะเมื่อ refund เต็มจำนวนแล้ว (spec 03 กฎข้อ 10)
+  // "canceled" คืนเสมอ; "refunded" (ทุกที่มา: cancel, return, คืนด้วยมือ) คืนเมื่อ refund รวม >= capture รวม (spec 03 กฎข้อ 10)
   reason: "canceled" | "refunded"
 }
 

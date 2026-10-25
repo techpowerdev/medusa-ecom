@@ -34,6 +34,21 @@ describe("isOrderFullyRefunded", () => {
     expect(isOrderFullyRefunded(order({ captures: ["300"], refunds: ["300"] }, { captures: ["200"] }))).toBe(false)
   })
 
+  // AC-5 (a) owner: เกณฑ์เดียวไม่ว่า refund มาจาก cancel, return หรือคืนด้วยมือ
+  it("฿1,000 captured: refund ฿1,000 (e.g. from a return) → true; ฿999.99 → false", () => {
+    expect(isOrderFullyRefunded(order({ captures: ["1000"], refunds: ["1000"] }))).toBe(true)
+    expect(isOrderFullyRefunded(order({ captures: ["1000"], refunds: ["999.99"] }))).toBe(false)
+  })
+
+  it("฿600 then ฿400 → false after the first, true after the second", () => {
+    expect(isOrderFullyRefunded(order({ captures: ["1000"], refunds: ["600"] }))).toBe(false)
+    expect(isOrderFullyRefunded(order({ captures: ["1000"], refunds: ["600", "400"] }))).toBe(true)
+  })
+
+  it("capture = 0 is never a full refund", () => {
+    expect(isOrderFullyRefunded(order({ captures: ["0"], refunds: ["0"] }))).toBe(false)
+  })
+
   it("is false when nothing was captured", () => {
     expect(isOrderFullyRefunded(order({}))).toBe(false)
     expect(isOrderFullyRefunded({ payment_collections: [] })).toBe(false)

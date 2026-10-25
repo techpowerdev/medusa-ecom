@@ -194,15 +194,30 @@ medusaIntegrationTestRunner({
         expect(await releasedAt(cartId)).toEqual([expect.any(Date)])
       })
 
-      it("a partial refund does not return anything (rule 10)", async () => {
+      // AC-5 (a): เกณฑ์เดียว refund รวม >= capture รวม ไม่ว่ามาจาก cancel, return หรือคืนด้วยมือ
+      it("a refund 0.01 short of the captured amount does not return anything (rule 10)", async () => {
         const campaignId = await setupFlashSale()
         const { orderId, cartId, customerId } = await placeFlashOrder(2)
         const payment = await capture(orderId)
 
-        await refund(payment.id, 1)
+        await refund(payment.id, Number((payment.amount - 0.01).toFixed(2)))
 
         expect(await state(campaignId, customerId)).toEqual({ units_sold: 2, usage: 2 })
         expect(await releasedAt(cartId)).toEqual([null])
+      })
+
+      it("refunds in two parts (60% then the rest) return once, after the second part", async () => {
+        const campaignId = await setupFlashSale()
+        const { orderId, cartId, customerId } = await placeFlashOrder(2)
+        const payment = await capture(orderId)
+        const first = Number((payment.amount * 0.6).toFixed(2))
+
+        await refund(payment.id, first)
+        expect(await state(campaignId, customerId)).toEqual({ units_sold: 2, usage: 2 })
+
+        await refund(payment.id, Number((payment.amount - first).toFixed(2)))
+        expect(await state(campaignId, customerId)).toEqual({ units_sold: 0, usage: 0 })
+        expect(await releasedAt(cartId)).toEqual([expect.any(Date)])
       })
     })
 
