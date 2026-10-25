@@ -3,8 +3,10 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
+  # ไม่รันบน push ไป develop: ทุก PR sync กับ develop ล่าสุดและผ่าน CI ก่อน merge ทีละตัว
+  # run หลัง merge จึงทดสอบ tree เดียวกันซ้ำ; push ไป main (release) ยังรันครบทุก job
   push:
-    branches: [develop, main]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -13,6 +15,31 @@ concurrency:
 # เวอร์ชัน Node อ่านจาก .nvmrc และ pnpm อ่านจาก "packageManager" ใน package.json ที่ root
 
 jobs:
+  # PR ที่เปลี่ยนเฉพาะเอกสาร (docs/** และ *.md ทุกที่) → code=false แล้วข้าม job หนัก
+  # lint-typecheck รันเสมอ (มี test:e2e:unit ตรวจ evidence); push ไป main → code=true เสมอ
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: classify
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "code=true" | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+          cat "$RUNNER_TEMP/changed.txt"
+          tools/ci/classify-changes.sh < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
+
   lint-typecheck:
     runs-on: ubuntu-latest
     steps:
@@ -32,7 +59,8 @@ jobs:
 
   backend-tests:
     runs-on: ubuntu-latest
-    needs: lint-typecheck
+    needs: [lint-typecheck, changes]
+    if: needs.changes.outputs.code == 'true'
     services:
       postgres:
         image: postgres:16
@@ -75,14 +103,16 @@ jobs:
   # OPS-1 AC-1: build backend image แล้วบูตเป็น server + worker จาก image เดียวกัน
   docker-worker-mode:
     runs-on: ubuntu-latest
-    needs: lint-typecheck
+    needs: [lint-typecheck, changes]
+    if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v4
       - run: tools/ops/smoke-worker-mode.sh
 
   storefront-e2e:
     runs-on: ubuntu-latest
-    needs: backend-tests
+    needs: [backend-tests, changes]
+    if: needs.changes.outputs.code == 'true'
     services:
       postgres:
         image: postgres:16
