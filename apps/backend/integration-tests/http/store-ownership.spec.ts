@@ -258,12 +258,29 @@ medusaIntegrationTestRunner({
         expect(options.status).toEqual(200)
         expect(options.data.shipping_options.map((o) => o.id)).toContain(standardOptionId)
 
-        // "Standard" เป็นราคา flat ของ manual provider ซึ่งคำนวณราคาไม่ได้ (Medusa ตอบ error ของ provider)
-        // ยืนยันเพียงว่า A ผ่าน auth + ownership ไปถึง route ของ Medusa แล้ว (ไม่ใช่ 401/404)
+        // "Standard" เป็นราคา flat ของ manual provider ซึ่งคำนวณราคาไม่ได้: A ผ่าน auth + ownership ไปถึง handler
+        // ของ Medusa แล้ว provider throw → 500 (พฤติกรรมเดิมของ Medusa ไม่เกี่ยวกับ CORE-12)
         const calculate = await call(
           api.post(`/store/shipping-options/${standardOptionId}/calculate`, { cart_id: cartId }, a)
         )
-        expect([401, 404]).not.toContain(calculate.status)
+        expect({ status: calculate.status, type: calculate.data?.type }).toEqual({ status: 500, type: "unknown_error" })
+      })
+
+      it("POST /store/payment-collections/:id/payment-sessions/:session_id → 404 for B; A gets through", async () => {
+        const { paymentCollectionId } = await prepareCartOfA()
+        const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
+        const { data } = await query.graph({
+          entity: "payment_collection",
+          fields: ["payment_sessions.id", "payment_sessions.data"],
+          filters: { id: paymentCollectionId },
+        })
+        const session = (data[0] as any).payment_sessions[0]
+        const url = `/store/payment-collections/${paymentCollectionId}/payment-sessions/${session.id}`
+        const body = { client_data: { note: "core12" } }
+
+        expect((await call(api.post(url, body, customerB.config))).status).toEqual(404)
+        const mine = await call(api.post(url, body, customerA.config))
+        expect({ status: mine.status, message: mine.data?.message }).toEqual({ status: 200, message: undefined })
       })
 
       it("shipping options require a customer session (401 without token)", async () => {

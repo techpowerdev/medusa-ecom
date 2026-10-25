@@ -52,6 +52,7 @@ PASS integration-tests/http/store-ownership.spec.ts (14.973 s)
       ✓ customer B gets 404 on every cart route of A's cart and the cart does not change
       ✓ customer A (owner) can still use the same routes
       ✓ customer B gets 404 and no payment session is created; A gets through
+      ✓ POST /store/payment-collections/:id/payment-sessions/:session_id → 404 for B; A gets through
       ✓ shipping options require a customer session (401 without token)
       ✓ GET /store/orders/:id → 401 without token, 404 for B, 200 for A; GET /store/carts/:id → 401 without token
       ✓ an order id that does not exist → 404
@@ -70,3 +71,7 @@ Tests:       18 passed, 18 total
 
 ## pnpm lint && pnpm typecheck
 backend: No lint issues found; storefront: 0 errors (warning เดิม 38 รายการ); typecheck ผ่านทั้งสอง app
+
+## หลัง review (nit): store-ownership.spec.ts รันเดี่ยว — calculate ของ A assert 500 unknown_error (ถึง handler), เพิ่ม test session_id
+PASS integration-tests/http/store-ownership.spec.ts
+Tests:       8 passed, 8 total
