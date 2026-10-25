@@ -1,0 +1,82 @@
+# CORE-7 test evidence — 2026-10-25 16:51 +0700
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose (DB สุ่มของ medusa-test-utils)
+
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)
+exit=0
+### pnpm typecheck
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+exit=0
+### pnpm --filter backend test:unit
+PASS src/__tests__/medusa-config.unit.spec.ts (10.904 s)
+    ✓ boots as server with admin when MEDUSA_WORKER_MODE=server (8284 ms)
+    ✓ boots as worker without admin when MEDUSA_WORKER_MODE=worker (991 ms)
+    ✓ defaults to shared with admin for local dev when env is unset (847 ms)
+PASS src/modules/resend/__tests__/service.unit.spec.ts (9.992 s)
+    ✓ uses the notification-resend identifier (8 ms)
+      ✓ requires api_key (19 ms)
+      ✓ requires from (8 ms)
+      ✓ accepts valid options
+      ✓ sends the rendered template through the Resend client and returns its id (39 ms)
+      ✓ prefers notification.from over the default sender (2 ms)
+      ✓ throws for an unknown template without calling Resend (9 ms)
+      ✓ throws when Resend returns an error so the notification is marked failed (1 ms)
+PASS src/__tests__/medusa-config.translation.unit.spec.ts (6.866 s)
+    ✓ enables the translation feature flag (5134 ms)
+    ✓ registers the Translation module and does not disable it (651 ms)
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+    ✓ returns null for an unknown template
+      ✓ renders subject with display id and an html body with items and THB totals (7 ms)
+      ✓ escapes html in user-controlled values (1 ms)
+      ✓ renders subject with display id and lists tracking numbers (1 ms)
+      ✓ renders without tracking labels
+      ✓ drops non-http tracking urls
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (1 ms)
+    ✓ treats an empty RESEND_API_KEY as missing
+    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set
+Test Suites: 5 passed, 5 total
+Tests:       22 passed, 22 total
+### pnpm --filter backend test:integration:modules
+PASS src/modules/resend/__tests__/service.unit.spec.ts (7.823 s)
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+Test Suites: 2 passed, 2 total
+Tests:       14 passed, 14 total
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/store-locales.spec.ts (106.955 s)
+    ✓ GET /store/locales returns th-TH and en-US on a freshly seeded DB (4363 ms)
+    ✓ adds missing locales on a DB seeded before CORE-7 (region Thailand exists) (25995 ms)
+    ✓ keeps locales added by admin and does not duplicate on re-run (25524 ms)
+    ✓ serves Thai source content by default and English from the Translation module via x-medusa-locale (6590 ms)
+FAIL integration-tests/http/health.spec.ts (83.344 s)
+      ✕ returns 200 when the app has booted (69 ms)
+PASS integration-tests/http/seed.spec.ts (77.101 s)
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (4015 ms)
+    ✓ sets store default currency to THB (tax-inclusive) (4123 ms)
+    ✓ creates tax region th with VAT 7% (3394 ms)
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (4927 ms)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (2686 ms)
+    ✓ stocks every sample variant at the seeded location (852 ms)
+    ✓ is idempotent: running seed again does not duplicate data (1466 ms)
+PASS integration-tests/http/order-notifications.spec.ts (98.032 s)
+        ✓ sends an order-placed email to the order's email with the order data (3740 ms)
+        ✓ does not send the same order-placed email twice (8222 ms)
+        ✓ sends an order-shipped email with tracking labels (AC-2) (2801 ms)
+        ✓ skips the email when the shipment was created with no_notification (3063 ms)
+Test Suites: 1 failed, 3 passed, 4 total
+Tests:       1 failed, 15 passed, 16 total
+
+### manual: medusa develop :9119 บน DB medusa_core7 (สร้างแล้ว drop) หลัง db:migrate + seed
+# POST /admin/products/:id (title ไทย) -> POST /admin/translations/batch (en-US) -> GET /store/products/:id ไม่มี header / th-TH / en-US
+product=prod_01M5S71E5J05S7NPXYT91Q0M5G
+update=200
+translate=200
+{"product":{"title":"เสื้อยืด Medusa","id":"prod_01M5S71E5J05S7NPXYT91Q0M5G","categories":[{"is_internal":false}]}} <- []
+{"product":{"title":"เสื้อยืด Medusa","id":"prod_01M5S71E5J05S7NPXYT91Q0M5G","categories":[{"is_internal":false}]}} <- [th-TH]
+{"product":{"title":"Medusa T-Shirt","id":"prod_01M5S71E5J05S7NPXYT91Q0M5G","categories":[{"is_internal":false}]}} <- [en-US]
+# GET /store/locales
+{"locales":[{"code":"th-TH","name":"Thai (Thailand)"},{"code":"en-US","name":"English (United States)"}]}
+# รันซ้ำครั้งที่ 2: translate=400 (มี translation en-US ของสินค้านี้อยู่แล้ว) ผลอ่านทั้ง 3 แบบเหมือนเดิม
+{"locales":[{"code":"th-TH","name":"Thai (Thailand)"},{"code":"en-US","name":"English (United States)"}]}

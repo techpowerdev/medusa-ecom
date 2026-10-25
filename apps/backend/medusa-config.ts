@@ -31,5 +31,10 @@ module.exports = defineConfig({
     {
       resolve: './src/modules/flash_sale',
     },
+    // CORE-7 (ADR-008): เนื้อหาสินค้าหลายภาษา — experimental ต้องเปิดคู่กับ featureFlags.translation
+    { resolve: '@medusajs/medusa/translation' },
   ],
+  featureFlags: {
+    translation: true,
+  },
 })
