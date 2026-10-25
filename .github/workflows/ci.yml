@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [develop, main, tmp/chore-ci-test-base]
   # ไม่รันบน push ไป develop: ทุก PR sync กับ develop ล่าสุดและผ่าน CI ก่อน merge ทีละตัว
   # run หลัง merge จึงทดสอบ tree เดียวกันซ้ำ; push ไป main (release) ยังรันครบทุก job
   push:
