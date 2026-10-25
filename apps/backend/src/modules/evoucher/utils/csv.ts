@@ -15,6 +15,11 @@ type Column = (typeof COLUMNS)[number]
  */
 export const normalizeCode = (value: string) => value.trim()
 
+// owner Q4 (AC-12): วันที่ล้วน = ใช้ได้ถึงสิ้นวันนั้นตามเวลาไทย (+07:00); ค่าที่มีเวลา/offset ใช้ตามจริง
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+const parseExpiresAt = (value: string) =>
+  DATE_ONLY.test(value) ? new Date(`${value}T23:59:59.999+07:00`) : new Date(value)
+
 // แยก 1 บรรทัด CSV (รองรับ "quoted", "" escape); ไม่รองรับ newline ภายใน quote
 function splitLine(line: string): string[] {
   const cells: string[] = []
@@ -88,7 +93,7 @@ export function parseEvoucherCsv(content: string): ParsedEvoucherRow[] {
       row.pin = pin
     }
     if (expires) {
-      const date = /^\d{4}-\d{2}-\d{2}/.test(expires) ? new Date(expires) : null
+      const date = /^\d{4}-\d{2}-\d{2}/.test(expires) ? parseExpiresAt(expires) : null
       if (!date || isNaN(date.getTime())) {
         errors.push(`line ${lineNo}: expires_at must be ISO 8601 (YYYY-MM-DD)`)
         continue

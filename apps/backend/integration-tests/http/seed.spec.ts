@@ -140,6 +140,28 @@ medusaIntegrationTestRunner({
       expect(data.fulfillment_providers.map((p) => p.id)).toContain(DIGITAL_PROVIDER_ID)
     })
 
+    // EV-8 AC-14 (spec 02 กฎข้อ 8): หา option ด้วย type.code ไม่ใช่ชื่อ (ชื่อแก้ได้ใน admin)
+    it("AC-14 upgrades Digital delivery renamed in admin, found by type.code, without creating a new option", async () => {
+      const fulfillment = getContainer().resolve(Modules.FULFILLMENT)
+      const [option] = await fulfillment.listShippingOptions({ name: "Digital delivery" })
+      const before = await fulfillment.listShippingOptions({})
+      await fulfillment.updateShippingOptions(option.id, {
+        name: "E-mail delivery",
+        provider_id: "manual_manual",
+      })
+
+      try {
+        await seedThailand({ container: getContainer(), args: [] })
+
+        const after = await fulfillment.listShippingOptions({})
+        expect(after).toHaveLength(before.length)
+        const renamed = await fulfillment.retrieveShippingOption(option.id)
+        expect(renamed).toMatchObject({ name: "E-mail delivery", provider_id: DIGITAL_PROVIDER_ID })
+      } finally {
+        await fulfillment.updateShippingOptions(option.id, { name: "Digital delivery" })
+      }
+    })
+
     it("exposes sample products in THB (tax-inclusive) to the storefront publishable key", async () => {
       const token = await getPublishableKey(getContainer())
       expect(token).toMatch(/^pk_/)

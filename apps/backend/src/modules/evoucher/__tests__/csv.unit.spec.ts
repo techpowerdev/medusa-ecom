@@ -6,7 +6,11 @@ describe("parseEvoucherCsv", () => {
       "code,pin,expires_at\nLOTUS-1,1234,2027-01-31\nLOTUS-2,,\n"
     )
     expect(rows).toEqual([
-      { code: "LOTUS-1", pin: "1234", expires_at: new Date("2027-01-31") },
+      {
+        code: "LOTUS-1",
+        pin: "1234",
+        expires_at: new Date("2027-01-31T23:59:59.999+07:00"),
+      },
       { code: "LOTUS-2" },
     ])
   })
@@ -20,6 +24,22 @@ describe("parseEvoucherCsv", () => {
     const rows = parseEvoucherCsv("expires_at,code\n2027-02-01T00:00:00Z,B1\n")
     expect(rows).toEqual([
       { code: "B1", expires_at: new Date("2027-02-01T00:00:00Z") },
+    ])
+  })
+
+  // AC-12 (EV-8, owner Q4): วันที่ล้วน = ใช้ได้ถึงสิ้นวันนั้นตามเวลาไทย
+  it("AC-12 treats a date-only expires_at as end of that day in Thai time", () => {
+    const [row] = parseEvoucherCsv("code,expires_at\nF1,2026-12-31\n")
+    expect(row.expires_at!.toISOString()).toBe("2026-12-31T16:59:59.999Z")
+  })
+
+  it("AC-12 keeps an ISO timestamp with an offset as given", () => {
+    const rows = parseEvoucherCsv(
+      "code,expires_at\nG1,2026-12-31T10:00:00+07:00\nG2,2026-12-31T00:00:00Z\n"
+    )
+    expect(rows.map((r) => r.expires_at!.toISOString())).toEqual([
+      "2026-12-31T03:00:00.000Z",
+      "2026-12-31T00:00:00.000Z",
     ])
   })
 
