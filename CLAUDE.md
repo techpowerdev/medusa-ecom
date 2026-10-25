@@ -97,6 +97,39 @@ pnpm --filter storefront build && pnpm --filter storefront start
   แล้วรอจนกว่าจะ merge จริง (เช็กด้วย `gh pr view <n> --json state`) ห้ามแตก branch จาก PR ที่ยังไม่ merge
   และห้ามอ่าน spec จาก branch ที่ยังไม่ merge แทน
 
+## บทเรียนที่ต้องไม่ทำผิดซ้ำ (จากรอบ 2026-10-25/26)
+**การ merge และ CI (session หลัก)**
+- ก่อน merge ต้องเห็น `SUCCESS` ครบ **ทุก** job (`gh pr checks <n> --watch`) แม้เป็น PR เอกสาร — conclusion ว่างใน
+  `statusCheckRollup` คือยังรันอยู่ ไม่ใช่ผ่าน
+- merge ทีละตัว และ **รอ CI ของ `develop` จบและเขียวก่อน merge ตัวถัดไป** — merge ติดกันทำให้ run ก่อนหน้าถูก cancel
+  จนไม่รู้ว่าตัวไหนทำพัง
+- PR สองตัวที่เขียวแยกกันอาจพังเมื่อรวมกัน (เช่น test สร้าง cart แบบ guest × PR ที่บังคับ login) → หลัง merge ตัวหนึ่ง
+  ให้ merge `origin/develop` เข้า PR ถัดไปแล้วรอ CI ใหม่บน base ล่าสุด โดยเฉพาะเมื่อ PR ที่เพิ่ง merge เปลี่ยนกติกากลาง
+  (auth, middleware, error handler, hook) — `gh pr merge` ไม่ re-run CI ให้
+- `develop` แดง → หยุด merge ทุกอย่างแล้วทำ hotfix ก่อน อ่าน log จริงก่อนโทษ PR (เช่น `heap out of memory`/exit 134 คือ
+  jest หน่วยความจำเต็ม ไม่ใช่ test ล้ม)
+- conflict ที่ `medusa-config.ts` / `src/api/middlewares.ts` ให้เก็บทั้งสองฝั่ง แล้วรัน `test:unit` + `build` + `typecheck`
+  ก่อน push (เคย resolve ผิดจน module หลุด)
+
+**การสั่ง agent**
+- reviewer/qa ต้องตรวจใน worktree ของตัวเอง (`git worktree add` ใน scratchpad) **ห้าม checkout ใน repo หลัก**
+- builder รันในเครื่องเฉพาะ test ของตัวเอง + unit + build (เครื่องรับ integration พร้อมกันได้น้อย) ชุดเต็มให้ CI รัน
+  และ merge/rebase `origin/develop` ครั้งเดียวก่อน push ห้ามไล่ develop
+- ไฟล์ชั่วคราวใน scratchpad ต้องมี task id ในชื่อ (`pr-body-<TASK>.md`) — เคยเขียนทับกัน
+- port / DB / Redis db ของแต่ละ agent ต้องไม่ซ้ำกัน และปิด server + drop DB เมื่อเสร็จ
+- planner หลายตัวพร้อมกัน → ระบุไฟล์/เลข ADR ที่แต่ละตัวใช้ให้ชัด (เคยได้ ADR เลขเดียวกันสองฉบับ)
+- qa เขียน `REPORT.md` ไม่ได้ (harness) → qa ส่งเนื้อหากลับ session หลัก commit ลง branch ของ PR
+- PR ที่แก้หลัง APPROVE (หรือหลัง REQUEST CHANGES) ต้อง re-review สั้นๆ ก่อน merge; หลัง rebase ใช้ `git range-diff`
+
+**โค้ดและ test**
+- key ของ `MedusaService({...})` ต้องตรงกับชื่อ model (Query ตั้งชื่อ method จากชื่อ entity) และมี test `query.graph`
+- จำนวนเงินคำนวณด้วย `MathBN`/`raw_amount` เสมอ ห้ามใช้ `Number` float (refund 100.10 + 200.20 ≠ 300.30)
+- `createHook` ของ Medusa มี handler ได้ตัวเดียว task ที่ใช้ hook เดียวกันต้องรวม handler
+- หลัง CORE-6/CORE-12 test ที่สร้างหรือแก้ cart ต้องใช้ token ของ customer ที่เป็นเจ้าของ cart
+  (`integration-tests/helpers/customer.ts`)
+- ฟอร์ม/ปุ่ม admin และ API ที่สร้างข้อมูลต้องกันกดซ้ำ/ยิงพร้อมกัน (disable ระหว่างส่ง + lock หรือ idempotent ฝั่ง backend)
+- Stripe ต้องตั้ง secret `STRIPE_TEST_API_KEY` และ `STRIPE_TEST_PUBLISHABLE_KEY` ของบัญชีเดียวกันพร้อมกัน (test mode เท่านั้น)
+
 ## Agents (`.claude/agents/`)
 - `planner` — แปลงเป้าหมายเป็น/อัปเดต spec + task list + ADR ไม่เขียนโค้ด
 - `builder` — รับ task เพียงหนึ่งเดียว, TDD, worktree ของตัวเอง, เปิด PR
