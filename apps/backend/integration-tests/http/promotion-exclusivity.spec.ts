@@ -220,6 +220,23 @@ medusaIntegrationTestRunner({
         const after = await getCart(cart.id)
         expect(promoCodes(after)).toEqual([SAVE10])
         expect(adjustmentCodes(after)).toEqual([SAVE10])
+
+        // control คู่กับ (d): flow เดียวกันแต่ไม่มี code → F ถูกใส่ จึงพิสูจน์ว่า F หลุดเพราะ code
+        const control = await createCart([regularVariantId])
+        await addItem(control.id, flashVariantId)
+        expect(adjustmentCodes(await getCart(control.id))).toEqual([F_CODE])
+      })
+
+      it("(a) via POST /store/carts/:id promo_codes: SAVE10 kept, F dropped", async () => {
+        const cart = await createCart([flashVariantId])
+        expect(adjustmentCodes(cart)).toEqual([F_CODE])
+
+        const res = await api.post(`/store/carts/${cart.id}`, { promo_codes: [SAVE10] }, storeHeaders)
+        expect(res.status).toEqual(200)
+
+        const after = await getCart(cart.id)
+        expect(promoCodes(after)).toEqual([SAVE10])
+        expect(adjustmentCodes(after)).toEqual([SAVE10])
       })
 
       it("(c) removing SAVE10 brings F back", async () => {
