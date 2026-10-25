@@ -36,6 +36,22 @@
 7. Backups: snapshot Postgres รายวัน; จัดทำเอกสารการซ้อม restore
 8. Load test: k6 scripts ใน `tools/load/` สำหรับ browse, flash-sale burst, group-buy join;
    รันใน CI ทุกคืนกับ staging; บันทึกผลไว้ที่ `docs/evidence/scale/`
+9. Env ที่ต้องตั้งใน prod (นอกเหนือจาก `.env.example`):
+   - `TZ=UTC` ในทุก container ของ backend (server + worker) — `schedule` ของ scheduled job ใน Medusa เป็น cron ที่ไม่มีตัวเลือก
+     timezone จึงตีความตามเวลาของ process; spec ที่ระบุเวลาไทย (เช่น job รายวันของ EV-5) ต้องแปลงเป็น UTC ใน cron เอง
+     (00:00 Asia/Bangkok = `0 17 * * *` UTC)
+   - `EVOUCHER_ADMIN_EMAIL` — mailbox เดียวที่รับอีเมลแจ้ง admin ของ e-voucher (spec 02 กฎข้อ 9)
+
+## Checklist ตอน bump `@medusajs/*` (ADR-001: bump เป็น task/ADR แยก)
+PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบใน body:
+1. API ที่เรา cast type หรือเรียกนอก interface สาธารณะยังมีและพฤติกรรมเดิม (ค้นด้วย `as unknown as` / `as any` ใน `apps/`):
+   - `listActivePromotions` ของ Promotion module ที่ FS-4 ใช้ทำ price preview (spec 03)
+   - wrapper plugin ของ `@medusajs/ui-preset` ใน `apps/storefront/tailwind.config.js` (CORE-8) — ชื่อ class `txt-*`/`*-webs` ยังเดิม
+2. ADR-013: store route ใหม่ของ Medusa ที่รับ cart/order/payment collection id ถูกเพิ่มใน matcher ของ `ensureStoreOwnership`
+   และ route ที่ปิดไว้ (order transfer, UCP) ยังถูกปิด
+3. hook ที่เราใช้ (`completeCartWorkflow.hooks.validate`, `updateCartPromotionsWorkflow.hooks.*`) ยังมีชื่อ/รูปแบบ input เดิม และ
+   `errorHandler` ของ Medusa ยังเขียนทับ `CONFLICT` แบบเดิม (spec 03 กฎข้อ 13)
+4. integration test ทุกชุดผ่านบนเวอร์ชันใหม่
 
 ## Acceptance criteria
 - AC-1 Backend boot เป็น `server` และ `worker` ได้จาก image เดียวกัน; scheduled jobs รันเฉพาะบน worker
