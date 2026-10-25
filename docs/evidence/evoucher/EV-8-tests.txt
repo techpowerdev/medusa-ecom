@@ -1,0 +1,80 @@
+EV-8 — hardening จาก review EV-2: requires_shipping=false ตอนสร้าง pool, expires_at วันที่ล้วน, error เดิมไม่ถูกกลบตอน rollback import, seed หา Digital delivery ด้วย type.code (AC-11, AC-12, AC-13, AC-14)
+Spec: docs/spec/02-evoucher.md, ADR-006
+Branch: feat/EV-8-pool-hardening (บน origin/develop 4c994d0)
+วันที่รัน: 2026-10-26, Node v22.23.3, Postgres 16 / Redis 7 (docker compose local), DB สุ่มของ medusa-test-utils
+
+== Red (ก่อนเขียนโค้ด) ==
+csv.unit.spec.ts: 2 failed — AC-12 Expected "2026-12-31T16:59:59.999Z" Received "2026-12-31T00:00:00.000Z"
+evoucher-hardening.spec.ts: ✕ sets requires_shipping=false on the inventory item and on the cart line item (643 ms)
+evoucher-hardening.spec.ts: ✕ rejects a variant with manage_inventory=false with 400 and creates no pool (591 ms)
+evoucher-hardening.spec.ts: ✓ restores requires_shipping when creating the pool fails afterwards (compensation) (457 ms)
+evoucher-hardening.spec.ts: ✕ returns the inventory error (not the delete error) and logs the compensation error with batch_ref (391 ms)
+evoucher-hardening.spec.ts: ✕ returns the chunk insert error when its inline cleanup also fails (484 ms)
+evoucher-hardening.spec.ts: ●  › AC-11 pool creation enforces requires_shipping=false (rule 1) › sets requires_shipping=false on the inventory item and on the cart line item
+evoucher-hardening.spec.ts: Expected: false
+evoucher-hardening.spec.ts: Received: true
+evoucher-hardening.spec.ts: ●  › AC-11 pool creation enforces requires_shipping=false (rule 1) › rejects a variant with manage_inventory=false with 400 and creates no pool
+evoucher-hardening.spec.ts: Expected: 400
+evoucher-hardening.spec.ts: Received: 200
+evoucher-hardening.spec.ts: ●  › AC-13 the original error survives a failing compensation › returns the inventory error (not the delete error) and logs the compensation error with batch_ref
+evoucher-hardening.spec.ts: Expected: ArrayContaining [StringMatching /evbatch_01M5T4Q1BK3TJZXV5A67WXFTNF.*delete batch failed/]
+evoucher-hardening.spec.ts: Received: []
+evoucher-hardening.spec.ts: ●  › AC-13 the original error survives a failing compensation › returns the chunk insert error when its inline cleanup also fails
+evoucher-hardening.spec.ts: Expected: 400
+evoucher-hardening.spec.ts: Received: 500
+evoucher-hardening.spec.ts: Tests:       4 failed, 1 passed, 5 total
+seed.spec.ts: AC-14 ✕ (provider_id ยังเป็น manual_manual เพราะหา option ด้วยชื่อ) — 1 failed, 9 passed
+หมายเหตุ: test compensation ของ AC-11 ผ่านตั้งแต่ Red เพราะตอนนั้นยังไม่มีการแก้ inventory item — มีความหมายหลังโค้ดตั้งค่าเป็น false แล้ว
+
+== pnpm lint ==
+exit 0 (backend ไม่มี issue; storefront 0 errors, warnings เดิมที่ไม่เกี่ยวกับ task นี้)
+
+== pnpm typecheck ==
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+
+== pnpm --filter backend build ==
+Backend build completed successfully / Frontend build completed successfully
+
+== pnpm --filter backend test:unit ==
+Test Suites: 29 passed, 29 total
+Tests:       235 passed, 235 total
+
+== test:integration:http integration-tests/http/evoucher-hardening.spec.ts ==
+      ✓ sets requires_shipping=false on the inventory item and on the cart line item (1001 ms)
+      ✓ rejects a variant with manage_inventory=false with 400 and creates no pool (539 ms)
+      ✓ restores requires_shipping when creating the pool fails afterwards (compensation) (322 ms)
+      ✓ returns the inventory error (not the delete error) and logs the compensation error with batch_ref (428 ms)
+      ✓ returns the chunk insert error when its inline cleanup also fails (495 ms)
+Tests:       5 passed, 5 total
+
+== test:integration:http integration-tests/http/seed.spec.ts ==
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (555 ms)
+    ✓ sets store default currency to THB (tax-inclusive) (503 ms)
+    ✓ creates tax region th with VAT 7% (247 ms)
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (242 ms)
+    ✓ enables fulfillment provider digital at the seeded stock location (EV-3) (199 ms)
+    ✓ upgrades an already-seeded store: Digital delivery moves from manual to digital (EV-3) (299 ms)
+    ✓ AC-14 upgrades Digital delivery renamed in admin, found by type.code, without creating a new option (239 ms)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (227 ms)
+    ✓ stocks every sample variant at the seeded location (200 ms)
+    ✓ is idempotent: running seed again does not duplicate data (187 ms)
+Tests:       10 passed, 10 total
+
+== test:integration:http integration-tests/http/evoucher-admin.spec.ts (regression ของ import/pool ที่แก้) ==
+    ✓ requires an authenticated admin (470 ms)
+    ✓ creates, updates, lists and deletes partners (549 ms)
+    ✓ creates a pool for an existing variant and rejects unknown variants (269 ms)
+    ✓ AC-1 imports 100 codes with 2 duplicates → 98 available, inventory +98 (308 ms)
+    ✓ skips codes that already exist in the pool on re-import (245 ms)
+    ✓ stores only v1: ciphertext (never plaintext) for code and pin (220 ms)
+    ✓ rejects an invalid CSV without inserting anything (218 ms)
+    ✓ rolls back the inserted batch when the inventory adjustment fails (210 ms)
+    ✓ removes earlier chunks when a later insert chunk fails (no orphan rows) (388 ms)
+    ✓ refuses to delete a pool that has codes (240 ms)
+    ✓ checks EVOUCHER_ENCRYPTION_KEY before touching data (245 ms)
+    ✓ AC-8 lists codes masked and reveals the real value with an audit row (377 ms)
+    ✓ returns 404 when revealing an unknown code and writes no audit (245 ms)
+Tests:       13 passed, 13 total
+
+integration ชุดเต็มรันใน CI

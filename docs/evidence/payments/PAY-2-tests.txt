@@ -1,0 +1,131 @@
+# PAY-2 — ผล test (รันในเครื่อง 2026-10-25, Node 22.23.3, Postgres 16 จาก docker compose, DB แยก medusa_pay2)
+# backend :9119 (medusa develop) + storefront :8119 (next dev) + Stripe test mode (บัญชี TH, sk_test_ จาก shell)
+# webhook: `stripe listen` 2 process แยกต่อ endpoint (แบบเดียวกับ ci.yml ใหม่) — secret เดียวกันทั้งสอง process
+
+## Red (ก่อนแก้) — AC-9: session บัตรได้ PaymentIntent ที่เปิด method อื่นด้วย
+    Error: expect(received).toEqual(expected) // deep equality
+    - Expected  - 0
+    + Received  + 1
+    +   "promptpay",
+(DB: pp_stripe_stripe | pending | pi_… | ["card", "promptpay"])
+
+## storefront: pnpm --filter storefront test:unit (src/lib/util/payment-session.test.ts, verbose)
+ ✓ paymentSessionData > provider บัตร pp_stripe_stripe ส่ง payment_method_types = ['card']
+ ✓ paymentSessionData > PromptPay และ provider อื่นไม่ส่ง data (provider กำหนดเอง)
+ ✓ isPromptPay > รู้จักเฉพาะ provider PromptPay ของ Stripe
+ ✓ PromptPay countdown (หมดอายุหลัง 10 นาที) > timeout คือ 10 นาที
+ ✓ PromptPay countdown (หมดอายุหลัง 10 นาที) > secondsLeft นับถอยหลังจาก deadline และไม่ติดลบ
+ ✓ PromptPay countdown (หมดอายุหลัง 10 นาที) > formatCountdown แสดง m:ss
+ ✓ promptPayPollState > cart ที่ completed แล้ว = paid
+ ✓ promptPayPollState > session ถูกยกเลิกหรือ error = failed
+ ✓ promptPayPollState > ยังไม่ชำระ = pending
+ ✓ promptPayQrImage > อ่าน URL รูป QR จาก next_action ของ PaymentIntent ที่ requires_action
+ ✓ promptPayQrImage > ไม่มี QR (ยังไม่ confirm หรือสถานะอื่น) = null
+ Test Files  4 passed (4)   (ทั้ง suite)
+      Tests  38 passed (38)
+
+## storefront: playwright test e2e/payments.spec.ts --project=chromium (E2E_SAVE_EVIDENCE=1)
+  ✓  AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay'] (23.7s)
+  -  AC-1: บัตร 4242 → order สำเร็จ payment_status=captured
+  -  AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ
+  -  AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่
+  -  AC-4: แสดง QR → authorize test payment → webhook → order captured
+  -  AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
+  5 skipped
+  1 passed
+(AC-9 รัน --repeat-each 3 ผ่าน 3/3)
+หมายเหตุ: AC-1..AC-5 ถูก skip เพราะเครื่องนี้ไม่มี NEXT_PUBLIC_STRIPE_KEY (pk_test_) ของบัญชี Stripe เดียวกับ sk_test_
+(Stripe.js ต้องใช้ publishable key) และ GitHub repo ยังไม่มี secret STRIPE_TEST_API_KEY / STRIPE_TEST_PUBLISHABLE_KEY
+
+## ตรวจ backend ของ AC-4 แบบ manual (spec ชั่วคราว ไม่ commit — confirm PaymentIntent ฝั่ง server ด้วย sk_test_ แทน Stripe.js)
+เลือก PromptPay ใน checkout → confirm PI (payment_method_data[type]=promptpay) → requires_action
+→ เปิด next_action.promptpay_display_qr_code.data → "AUTHORIZE TEST PAYMENT"
+→ webhook payment_intent.succeeded → processPaymentWorkflow complete cart → order payment_status=captured
+→ POST /store/carts/:id/complete ซ้ำ (สิ่งที่ storefront ทำหลัง poll เห็น completed_at) = 200 type=order id เดิม
+  ✓  PromptPay webhook → order captured (confirm ฝั่ง server) (23.4s)
+log ของ stripe listen (AC-10 — ทั้งสอง path ตอบ 2xx):
+  <--  [200] POST http://localhost:9119/hooks/payment/stripe-promptpay_stripe [evt_…]
+  <--  [200] POST http://localhost:9119/hooks/payment/stripe_stripe [evt_…]
+regex ของ step "Stripe webhooks reached both endpoints" ใน ci.yml ตรงกับ log จริง (10 บรรทัดต่อ path)
+
+## regression: playwright test e2e/core-store.spec.ts --project=chromium (checkout ด้วย manual payment)
+  ✓  AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart
+  ✓  AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders
+  ✓  AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที
+  3 passed
+
+## pnpm lint && pnpm typecheck
+lint: 0 errors (warning เดิมของ starter; ไฟล์ที่ PAY-2 เพิ่มไม่มี warning)
+typecheck: apps/backend Done, apps/storefront Done
+
+## pnpm --filter storefront build
+สำเร็จ
+
+# ── รอบแก้ตาม review PR #48 (2026-10-26, merge origin/develop แล้ว) ──
+
+## Red → Green: unit ใหม่ (storefront vitest)
+Red: TypeError: promptPayExpiryAction is not a function (3 failed)
+ ✓ promptPayExpiryAction > PaymentIntent succeeded/processing → poll ต่อจน webhook complete cart
+ ✓ promptPayExpiryAction > ยังไม่ชำระหรืออ่านสถานะไม่ได้ → ยกเลิก session แล้วให้ลองใหม่
+ ✓ promptPayDeadline > = created + 10 นาที (ms)
+pnpm --filter storefront test:unit → Tests 51 passed (51)
+
+## Red → Green: guard ของ Stripe key (Playwright project unit — e2e/support/stripe-env.unit.spec.ts)
+Red: Error: Cannot find module './stripe-env'
+ ✓ ไม่มี key ทั้งคู่ → skip ทุก test ของ Stripe (ทั้ง CI และในเครื่อง)
+ ✓ มีครบและเป็น test key → รันทั้งหมด
+ ✓ CI: มี key ตัวเดียว → throw
+ ✓ รูปแบบผิด (live key, restricted key) → throw ทั้ง CI และในเครื่อง
+ ✓ ในเครื่อง: มีแค่ sk_test_ → รัน AC-9 แต่ skip test ที่ต้องใช้ Stripe.js
+pnpm --filter storefront test:e2e:unit → 24 passed
+ตรวจจริง: CI=1 + มีแค่ sk_test_ → payments.spec โหลดไม่ผ่าน
+  Error: CI มี Stripe key ไม่ครบ: ขาด NEXT_PUBLIC_STRIPE_KEY … → exit=1 (ไม่ใช่ skip)
+
+## tools/ci/check-stripe-webhooks.sh (step AC-10 ใน ci.yml) กับ log จริงของ stripe listen
+log ที่มี payment_intent.succeeded → ok: payment_intent.succeeded (evt_…) → …/stripe_stripe ตอบ 2xx (rc=0)
+log ที่มี payment_intent.succeeded → ok: … → …/stripe-promptpay_stripe ตอบ 2xx (rc=0)
+log ที่มีแค่ created/requires_action → ::error::ไม่มี payment_intent.succeeded … (rc=1)
+url ผิด path/port → ::error:: (rc=1)
+
+## e2e ในเครื่อง (sk_test_ อย่างเดียว ไม่มี pk_test_)
+  ✓  AC-9 (13.1s) · 5 skipped (AC-1..AC-5 ต้องใช้ pk_test_ ของบัญชีเดียวกัน)
+spec ชั่วคราว (ไม่ commit): ไม่มี NEXT_PUBLIC_STRIPE_KEY + เลือก PromptPay ถึง review →
+  แสดง promptpay-payment-error-message และปุ่มถูก disable (หน้าไม่พัง) ✓
+
+## lint / typecheck / build
+lint: 0 errors (ไฟล์ที่แก้ไม่มี warning) · typecheck: backend + storefront Done · storefront build สำเร็จ
+
+# ── รอบรัน Stripe test จริง (2026-10-26, บัญชี TH เดียวกัน sk_test_ + pk_test_, Stripe CLI 1.55.1 แบบเดียวกับ CI) ──
+
+## สาเหตุที่ CI ล้ม exit 124 (run 40219369816)
+Stripe CLI รุ่นใหม่ (1.55.1 ที่ apt ติดตั้ง) จบทันทีถ้าไม่ระบุ event:
+  must specify events to forward using --events, --all-snapshot, or --all-thin
+→ ใส่ --events (payment_intent.* ทีละชื่อ) แล้วทั้งสอง process ขึ้น "Ready!" และใช้ secret เดียวกับ --print-secret
+  (จำลองใน HOME ว่าง ไม่มี config, STRIPE_API_KEY จาก env, stdin=/dev/null)
+step จะพิมพ์ tail ของ log listen เมื่อ timeout และ tail /tmp/backend.log ไม่ล้มซ้ำเมื่อยังไม่มีไฟล์
+
+## playwright test e2e/payments.spec.ts --project=chromium (E2E_SAVE_EVIDENCE=1) — backend :9119, storefront build+start :8119
+  ✓  AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay'] (7.8s)
+  ✓  AC-1: บัตร 4242 → order สำเร็จ payment_status=captured (10.5s)
+  ✓  AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ (23.0s)
+  ✓  AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่ (9.0s)
+  ✓  AC-4: แสดง QR → authorize test payment → webhook → order captured (24.8s)
+  ✓  AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้ (10.0s)
+  6 passed (1.4m)
+screenshot: docs/evidence/payments/PAY-2/01..05 (5 รูป, ≤ 62KB ต่อรูป)
+ทั้ง suite chromium (core-store + payments + smoke ฯลฯ): 13 passed
+
+## tools/ci/check-stripe-webhooks.sh กับ log ของ Stripe CLI 1.55.1 หลังรันข้างบน
+ok: payment_intent.succeeded (evt_…) → http://localhost:9119/hooks/payment/stripe_stripe ตอบ 2xx
+ok: payment_intent.succeeded (evt_…) → http://localhost:9119/hooks/payment/stripe-promptpay_stripe ตอบ 2xx
+
+## ปัญหาที่เจอระหว่างรันจริงและแก้แล้ว
+- เลือกวิธีชำระแล้วกด Continue เร็ว → handleSubmit สร้าง session ซ้ำ PaymentIntent ตัวแรกถูก cancel
+  → Stripe ตอบ "A processing error occurred" (PromptPay) — แก้: ล็อกปุ่มระหว่าง initiatePaymentSession
+- Stripe.js สร้าง iframe "Secure payment input frame" หลายตัว → e2e หา frame จากช่องเลขบัตรแทน title
+- ปิดหน้า test payment ของ PromptPay ทันทีหลังคลิก → การ authorize ไม่ถูกบันทึก → รอ PI succeeded ก่อนปิด
+- ปุ่ม COMPLETE ของ 3DS รับคลิกหลัง animation → คลิกซ้ำจน modal ปิด
+- router.push ไป review ของ starter ค้างที่ขั้น payment ~1/6 รอบ → e2e กด Continue ซ้ำจนเห็นขั้น review (continueToReview)
+
+## unit / lint / typecheck
+storefront test:unit 51 passed · test:e2e:unit 24 passed · lint 0 errors · typecheck backend+storefront Done

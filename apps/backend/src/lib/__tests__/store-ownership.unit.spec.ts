@@ -142,6 +142,8 @@ describe("storeOwnershipMiddlewares: which id each matcher checks", () => {
     ["/store/shipping-options", "GET", "cart", { query: { cart_id: "cart_1" } }, "cart_1"],
     ["/store/shipping-options/:id/calculate", "POST", "cart", { params: { id: "so_1" }, body: { cart_id: "cart_1" } }, "cart_1"],
     ["/store/orders/:id", "GET", "order", { params: { id: "order_1" } }, "order_1"],
+    // CORE-13 (AC-39): order ของ return อ่านจาก body ตาม guide "Restrict Return Creation" ของ Medusa
+    ["/store/returns", "POST", "order", { body: { order_id: "order_1" } }, "order_1"],
   ])("%s (%s) → looks up %s", async (matcher, methodName, entity, req, id) => {
     const method = methodName === "ALL" ? undefined : methodName
     const { query, calls } = fakeQuery(rows)
@@ -161,5 +163,31 @@ describe("storeOwnershipMiddlewares: which id each matcher checks", () => {
     const order = storeOwnershipMiddlewares.find((r) => r.matcher === "/store/orders/:id")
     expect(order?.method).toEqual(["GET"])
     expect(order?.middlewares).toHaveLength(2)
+  })
+})
+
+// CORE-13 (spec 01 กฎ 24, owner Q-F3, AC-39/AC-40)
+describe("CORE-13: returns need a customer session; order transfer is disabled", () => {
+  it("adds authenticate(customer) before the order owner check on POST /store/returns", () => {
+    const returns = storeOwnershipMiddlewares.find((r) => r.matcher === "/store/returns")
+    expect(returns?.method).toEqual(["POST"])
+    expect(returns?.middlewares).toHaveLength(2)
+  })
+
+  it("registers the transfer block without a method so it runs before core authenticate (global bucket)", () => {
+    const transfer = storeOwnershipMiddlewares.filter((r) => String(r.matcher).includes("/transfer"))
+    expect(transfer).toHaveLength(1)
+    expect(transfer[0].matcher).toEqual("/store/orders/:id/transfer")
+    expect(transfer[0].method).toBeUndefined()
+    expect(transfer[0].middlewares).toHaveLength(1)
+  })
+
+  it("the transfer block throws 404 for everyone, including the order owner, without querying", async () => {
+    const block = storeOwnershipMiddlewares.find((r) => r.matcher === "/store/orders/:id/transfer")!.middlewares![0]
+    for (const auth_context of [undefined, { actor_id: "cus_a" }]) {
+      const { query, calls } = fakeQuery({ order: [{ customer_id: "cus_a" }] })
+      await expect(run(block, { params: { id: "order_1" }, auth_context }, query)).rejects.toEqual(notFound)
+      expect(calls).toEqual([])
+    }
   })
 })
