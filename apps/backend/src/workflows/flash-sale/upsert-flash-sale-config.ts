@@ -6,7 +6,11 @@ import {
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
 import { Modules } from "@medusajs/framework/utils"
-import { useQueryGraphStep } from "@medusajs/medusa/core-flows"
+import {
+  acquireLockStep,
+  releaseLockStep,
+  useQueryGraphStep,
+} from "@medusajs/medusa/core-flows"
 import { FLASH_SALE_MODULE } from "../../modules/flash_sale"
 import FlashSaleModuleService from "../../modules/flash_sale/service"
 import { exclusiveAutomaticRule } from "../../lib/promotion-exclusivity"
@@ -106,9 +110,17 @@ export const addFlashSaleExclusivityRulesStep = createStep(
   }
 )
 
+export const flashSaleConfigLockKey = (campaignId: string) =>
+  `flash_sale:config:${campaignId}`
+
 export const upsertFlashSaleConfigWorkflow = createWorkflow(
   "upsert-flash-sale-config",
   function (input: UpsertFlashSaleConfigInput) {
+    // lock ต่อ campaign: POST พร้อมกัน (double-click Save) ต้องได้ config 1 แถวและ rule 1 แถวต่อ promotion
+    // อ่าน campaign/rules หลังได้ lock เสมอ จึงข้าม promotion ที่ request ก่อนหน้าใส่ rule ไปแล้ว
+    const lockKey = transform({ input }, ({ input }) => flashSaleConfigLockKey(input.campaign_id))
+    acquireLockStep({ key: lockKey, timeout: 10, ttl: 30 })
+
     const { data: campaigns } = useQueryGraphStep({
       entity: "campaign",
       fields: CAMPAIGN_PROMOTION_FIELDS,
@@ -123,6 +135,8 @@ export const upsertFlashSaleConfigWorkflow = createWorkflow(
 
     const config = upsertFlashSaleConfigStep(input)
     addFlashSaleExclusivityRulesStep({ promotion_ids: promotionIds })
+
+    releaseLockStep({ key: lockKey })
 
     return new WorkflowResponse(config)
   }

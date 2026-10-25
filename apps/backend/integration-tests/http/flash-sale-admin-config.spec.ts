@@ -171,6 +171,23 @@ medusaIntegrationTestRunner({
       expect(await service.listFlashSaleConfigs({ campaign_id: campaignId })).toHaveLength(1)
     })
 
+    it("concurrent POSTs on a new config (double-click Save) all return 200 with one config and one rule per promotion", async () => {
+      const responses = await Promise.all(
+        Array.from({ length: 5 }, (_, i) =>
+          api
+            .post(configUrl(), { per_customer_limit: i + 1 }, { headers })
+            .catch((e) => e.response)
+        )
+      )
+
+      expect(responses.map((r) => r.status)).toEqual([200, 200, 200, 200, 200])
+      expect(await exclusivityRuleCount(promo["FS5-AUTO-MISSING"])).toEqual(1)
+      expect(await exclusivityRuleCount(promo["FS5-AUTO-OK"])).toEqual(1)
+
+      const service: FlashSaleModuleService = getContainer().resolve(FLASH_SALE_MODULE)
+      expect(await service.listFlashSaleConfigs({ campaign_id: campaignId })).toHaveLength(1)
+    })
+
     it("AC-11 (a): POST total_cap=5 while units_sold=10 → 200 and units_sold stays 10", async () => {
       const service: FlashSaleModuleService = getContainer().resolve(FLASH_SALE_MODULE)
       await service.createFlashSaleConfigs({
@@ -199,6 +216,9 @@ medusaIntegrationTestRunner({
         .post(configUrl(), { total_cap: 0 }, { headers })
         .catch((e) => e.response)
       expect(capErr.status).toEqual(400)
+      expect(capErr.data.message).toEqual(
+        "Invalid request: Value for field 'total_cap' too small, expected at least: '1'"
+      )
 
       const limitErr = await api
         .post(configUrl(), { per_customer_limit: 1.5 }, { headers })

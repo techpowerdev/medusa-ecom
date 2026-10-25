@@ -113,7 +113,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
   }
 
   const handleSave = () => {
-    if (invalid) {
+    if (invalid || save.isPending) {
       return
     }
     save.mutate({
@@ -248,7 +248,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
               <Button
                 size="small"
                 onClick={handleSave}
-                disabled={invalid}
+                disabled={invalid || save.isPending}
                 isLoading={save.isPending}
               >
                 Save
