@@ -139,11 +139,11 @@ actor type แยก (Auth module) — ไม่ใช่ customer
 | ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
-| `email` | string | unique |
+| `email` | string | unique (ไม่นับแถวที่ soft-delete); คัดลอกจาก auth identity ตอน register ไม่รับจาก body (spec 05 กฎ 13) |
 | `name` | string |  |
-| `code` | string | slug ที่ unique, index |
-| `status` | enum pending | active | suspended |  |
-| `payout_info` | json | masked ใน API |
+| `code` | string | slug 3–32 ตัว `^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$`, unique (ไม่นับแถวที่ soft-delete) |
+| `status` | enum pending | active | suspended | default pending |
+| `payout_info` | json? | ไม่ส่งออกใน portal API เลย; admin เท่านั้น |
 | `auth_identity.app_metadata.affiliate_id` | (Auth module) | ลิงก์ login |
 
 ### AffiliateProgram
@@ -153,8 +153,8 @@ actor type แยก (Auth module) — ไม่ใช่ customer
 |---|---|---|
 | `id` | id |  |
 | `name` | string |  |
-| `starts_at / ends_at` | timestamptz |  |
-| `status` | enum draft | published | ended | active/upcoming คำนวณจากช่วงเวลา |
+| `starts_at / ends_at` | timestamptz | ช่วง `[starts_at, ends_at)` |
+| `status` | enum draft | published | ended | active/upcoming คำนวณจากช่วงเวลา; `ended` ไม่ active แม้อยู่ในช่วง |
 | `announce_text` | text? | ข้อความ coming soon |
 | `commission_type` | enum percentage | v1 |
 | `commission_value` | bigNumber |  |
@@ -169,24 +169,25 @@ order ไหน ให้เครดิตใคร ภายใต้โปร
 | ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
-| `order_id` | fk → order | unique |
-| `affiliate_id` | fk |  |
-| `program_id` | fk |  |
+| `order_id` | fk → order | unique — กลไก idempotency ของ `order.placed` (AC-10) |
+| `affiliate_id` | fk | index |
+| `program_id` | fk? | null เมื่อไม่มีโปรแกรม active ณ เวลาสั่งซื้อ (AC-2) |
 | `attributed_at` | timestamptz |  |
 
 ### CommissionEntry
-ledger แบบ append-only; reversal = แถวใหม่ติดลบ
+ledger แบบ append-only (ห้ามลบ/แก้ยอด เปลี่ยนได้เฉพาะ status `pending → approved → paid`); reversal = แถวใหม่ติดลบ
 
 | ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `affiliate_id / program_id / order_id` | fk | index (affiliate_id, status, created_at) |
-| `line_item_id` | fk? |  |
+| `line_item_id` | fk? | unique (order_id, line_item_id) WHERE status='pending' — ไม่กันซ้ำเมื่อเป็น NULL |
 | `amount` | bigNumber | ลบได้สำหรับ reversed |
 | `currency` | string | THB |
-| `status` | enum pending | approved | reversed | paid |  |
+| `status` | enum pending | approved | reversed | paid | index (status, matures_at) เพิ่มใน AF-4 |
 | `reason` | string? |  |
-| `created_at / matures_at` | timestamptz |  |
+| `created_at` | timestamptz |  |
+| `matures_at` | timestamptz? | `created_at + hold_days` สำหรับ entry ที่สร้างเป็น pending (คงค่าเมื่อ approved/paid); null สำหรับ reversed |
 
 ### Payout
 รอบจ่ายเงินที่แอดมินสร้างและมาร์คว่าจ่ายแล้ว
@@ -197,7 +198,7 @@ ledger แบบ append-only; reversal = แถวใหม่ติดลบ
 | `affiliate_id` | fk |  |
 | `amount` | bigNumber |  |
 | `currency` | string |  |
-| `period_from / period_to` | date |  |
+| `period_from / period_to` | timestamptz |  |
 | `status` | enum draft | paid |  |
 | `paid_at` | timestamptz? |  |
 | `reference` | string? | เลขอ้างอิงโอน |
