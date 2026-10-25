@@ -1,6 +1,6 @@
 # 03 Flash sale — แคมเปญส่วนลดแบบจำกัดเวลา
 
-สถานะ: draft
+สถานะ: draft (exclusivity ปรับตาม ADR-009, 2026-10-25)
 เป้าหมาย (เจ้าของระบบ): จัดแคมเปญ flash sale ที่ลดราคาสินค้าในช่วงเวลาจำกัดเพื่อกระตุ้นการซื้อ
 การตัดสินใจ: สร้างบน **Promotion module** ของ Medusa (ADR-003) ไม่มี discount engine แยกต่างหาก
 นอกขอบเขต: การเปลี่ยน price list ตามเวลา (ใช้ Promotion แทน), countdown timer ต่อ SKU บน PLP
@@ -17,6 +17,8 @@
 | จำนวนหน่วยที่ลดราคาสูงสุดต่อ cart line | `application_method.max_quantity` | ใช้ตามที่มี |
 | Admin CRUD UI | หน้า Promotions/Campaigns ใน admin | ใช้ตามที่มี + widget |
 | ราคาขีดฆ่าบน storefront | Starter แสดง `original_price` เทียบ `calculated_price` เฉพาะกรณี price list | **ช่องว่าง** → store API คืน promotion preview |
+| Exclusivity ระหว่าง promotion | ไม่มี native (ตรวจ source 2.22.1) | **ขยาย** → hook `setPromotionContext` + `validate` ของ `updateCartPromotionsWorkflow`, `validate` ของ `completeCartWorkflow` (ADR-009) |
+| ข้าม promotion ตามเงื่อนไขของ cart | Promotion rules (operator `ne`) ประเมินกับ promotion context | ใช้ตามที่มี — rule `exclusivity.code_applied ne "true"` |
 
 ช่องว่างที่เราเติม (แบบบาง):
 1. **Per-customer cap** ตลอดทั้งแคมเปญ (เช่น สูงสุด 2 หน่วยต่อลูกค้า) — Promotion มี
@@ -48,6 +50,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (`INSERT ... ON CONFLICT DO UPDATE SET units = units + n`) Idempotent ผ่าน
   processed-set ของ `order_id` (table หรือ Redis SET พร้อม TTL)
 - Subscriber บน order cancel/refund: ลดค่าลง
+- Exclusivity hooks (PROMO-1) ตามกฎข้อ 6 — ไม่มี compensation เพราะไม่เขียนข้อมูล (เติม context / ปฏิเสธเท่านั้น)
 
 ## API
 - Store: `GET /store/flash-sales/active?region_id=&variant_ids[]=` → campaign
@@ -69,12 +72,23 @@ Link: `flash_sale_config ↔ promotion_campaign`
 4. เมื่อ campaign budget (`usage`) หมด Medusa จะหยุดใช้ promotion; storefront แสดง
    "Sold out" เมื่อ `remaining_usage == 0`
 5. เวลาที่กรอกใน admin เป็นเวลา Bangkok จัดเก็บเป็น UTC
-6. **Exclusivity** (เจ้าของระบบ): cart ที่ได้รับ flash-sale promotion จะถือ promotion code อื่น
-   ไม่ได้ และไม่สามารถใช้ code กับ cart ที่มี flash promotion ทำงานอยู่ได้
-   (error `PROMOTION_NOT_COMBINABLE`) implement ครั้งเดียวเป็น hook บน
-   `updateCartPromotionsWorkflow` + validation ของ `completeCartWorkflow` (task PROMO-1) ใช้ร่วมกับ
-   group buying (spec 04 ข้อ 7) Builder ต้องตรวจสอบก่อนว่า Promotion module ของ Medusa
-   เวอร์ชันที่ใช้มี exclusivity แบบ native หรือไม่; หากมี ให้ตั้งค่าใช้และข้าม hook นี้
+6. **Exclusivity** (เจ้าของระบบ, ADR-009): ส่วนลด flash ไม่ซ้อนกับ promotion code ใดๆ — **code ชนะ**
+   (a) exclusive automatic promotion = `is_automatic=true` และมี rule
+   `{ attribute: "exclusivity.code_applied", operator: "ne", values: ["true"] }` (ไม่พึ่ง module `flash_sale`)
+   (b) hook `setPromotionContext` ของ `updateCartPromotionsWorkflow` ตั้ง `exclusivity.code_applied` เป็น `"true"`
+   เมื่อชุด code ผลลัพธ์ (ตาม `action` add/remove/replace) มี promotion ที่ `is_automatic=false` อย่างน้อยหนึ่งตัว
+   (รวม `GB-*`) มิฉะนั้น `"false"` — ตั้งค่าเสมอ; Medusa จึงข้ามส่วนลด flash เอง ทั้งตอน apply code,
+   add-to-cart (`refreshCartItemsWorkflow`) และ refresh; ลบ code ออก → flash กลับมา
+   (c) group buy: `GB-*` เป็น code → ส่วนลด GB ชนะ flash หลุดด้วยกลไกเดียวกัน (spec 04 กฎข้อ 7)
+   (d) hook `validate` ของ `updateCartPromotionsWorkflow` ปฏิเสธ `GB-*` + code อื่นด้วย `PROMOTION_NOT_COMBINABLE`
+   (ไม่ปฏิเสธกรณี flash + code)
+   (e) ด่านสำรอง: hook `validate` ของ `completeCartWorkflow` ปฏิเสธ `PROMOTION_NOT_COMBINABLE` หาก cart มี exclusive
+   automatic promotion ร่วมกับ code ใดๆ หรือ `GB-*` ร่วมกับ code อื่น
+   (f) PROMO-1 ส่งมอบ: constant `EXCLUSIVITY_CODE_APPLIED_ATTRIBUTE`, helper `exclusiveAutomaticRule()` และ
+   `isExclusiveAutomatic(promotion)` (pure, unit test), hook ทั้งสามข้างบน, integration test AC-8 (API)
+   ผู้ใช้: FS-5 (ใส่ rule ให้ flash promotion), FS-6 (ข้อความบน storefront), GB-3 (join)
+7. ทุก automatic promotion ของ flash campaign ต้องมี exclusivity rule; การบันทึก config ใน FS-5 ใส่ให้อัตโนมัติ
+   (idempotent ผ่าน `addPromotionRulesWorkflow`) เพราะฟอร์ม promotion ของ Medusa admin ไม่มี attribute นี้
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญที่ทำงานอยู่ (−20% สำหรับ collection X, automatic) และลูกค้าเพิ่มสินค้า X
@@ -86,9 +100,14 @@ Link: `flash_sale_config ↔ promotion_campaign`
   ในแคมเปญ; PDP แสดง countdown และราคาขีดฆ่า (screenshot)
 - AC-5 เมื่อ order ที่มี flash unit 2 หน่วยถูกยกเลิก usage ของลูกค้าลดลง 2
 - AC-6 การประมวลผล event `order.placed` เดิมสองครั้ง เพิ่ม usage เพียงครั้งเดียว
-- AC-8 เมื่อ cart มี flash promotion ใช้อยู่ การใส่ code `SAVE10` จะคืน
-  `PROMOTION_NOT_COMBINABLE`; cart ที่มี `SAVE10` แล้วเพิ่มสินค้า flash จะยังคง `SAVE10` ไว้และ
-  ไม่ได้ส่วนลด flash (code ชนะ เว้นแต่จะถูกลบออก) — screenshot ข้อความบน storefront
+- AC-8 (code ชนะ, ADR-009) ให้ F = automatic promotion ที่มี exclusivity rule, N = automatic promotion ไม่มี rule
+  (a) cart มีส่วนลด F อยู่ เมื่อใส่ code `SAVE10` → 200, `cart.promotions` มี `SAVE10` ไม่มี F, ไม่มี adjustment จาก F
+  (b) cart มี `SAVE10` แล้วเพิ่มสินค้า flash → ยังมี `SAVE10`, ไม่มี adjustment จาก F
+  (c) จาก (b) ลบ `SAVE10` → adjustment จาก F กลับมา
+  (d) cart ไม่มี code → F ถูกใส่ตามปกติ (context เป็น `"false"` ไม่ใช่ว่าง)
+  (e) cart มี `SAVE10` + สินค้าใน N → ได้ทั้ง `SAVE10` และ N
+  (f) cart ที่ถูกตั้งให้มี F + `SAVE10` พร้อมกัน (สร้างตรงผ่าน module ใน test) → complete cart ล้มเหลว `PROMOTION_NOT_COMBINABLE`
+  (g) storefront: cart ที่มี code และสินค้า flash แสดงข้อความ "Flash sale price can't be combined with promotion codes" (screenshot)
 - AC-7 checkout พร้อมกัน 50 รายการจากลูกค้าต่างคนภายใต้ `total_cap=20` → สำเร็จ 20 รายการพอดี
   (integration concurrency test)
 
@@ -96,21 +115,25 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - การเพิ่ม usage ทำใน worker ไม่ใช่ใน request path
 
 ## แผนการทดสอบ
-- Unit: การคำนวณ limit, helper สำหรับช่วงเวลา
-- Integration (http): AC-1, AC-2, AC-3, AC-5, AC-6, AC-7
+- Unit: การคำนวณ limit, helper สำหรับช่วงเวลา, `exclusiveAutomaticRule` / `isExclusiveAutomatic` /
+  การคำนวณชุด code ผลลัพธ์และค่า flag ตาม `action` (PROMO-1)
+- Integration (http): AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-8 (a)–(f)
+- e2e: AC-8 (g)
 - e2e: AC-4 (screenshot PLP/PDP/cart ที่ T-1min และ T+1min โดยใช้ clock control)
 
 ## Tasks
 | ID | Task | Depends |
 |----|------|---------|
-| PROMO-1 | Hook promotion-exclusivity ที่ใช้ร่วมกัน (flash + group-buy promotion เทียบกับ code อื่น) + test (AC-8) | CORE-2 |
-| FS-1 | Module `flash_sale` model/service/link/migration + unit test | CORE-2 |
+| PROMO-1 | Exclusivity ตามกฎข้อ 6: constant + helper (unit), hook `setPromotionContext` + `validate` ของ `updateCartPromotionsWorkflow`, `validate` ของ `completeCartWorkflow` + integration test (AC-8 a–f; test สร้าง F/N/`GB-*` เองด้วย helper ไม่พึ่ง FS/GB) | CORE-2 |
+| FS-1 | Module `flash_sale` model/service/link/migration + unit test (ไม่กระทบจาก ADR-009: การระบุ exclusive ไม่ใช้ module นี้) | CORE-2 |
 | FS-2 | Usage subscriber (placed/cancel/refund) แบบ idempotent + test (AC-5, AC-6) | FS-1 |
 | FS-3 | Hook validation ตอน complete cart: per-customer limit + total cap แบบ atomic (AC-2, AC-3, AC-7) | FS-1 |
 | FS-4 | Store endpoint `/store/flash-sales/active` พร้อม promotion price preview (AC-4 API) | FS-1 |
-| FS-5 | Admin campaign widget | FS-1 |
-| FS-6 | Storefront banner/countdown/ราคาบน PDP + ข้อความ not-combinable + e2e (AC-1, AC-3, AC-4, AC-8 UI) | FS-4, PROMO-1 |
-FS-2 ∥ FS-3 ∥ FS-4 ∥ FS-5 หลัง FS-1
+| FS-5 | Admin campaign widget + `POST /admin/flash-sales/:campaign_id/config` ใส่ exclusivity rule ให้ทุก automatic promotion ของ campaign (idempotent, ใช้ helper PROMO-1) และ widget เตือน promotion ที่ไม่มี rule (กฎข้อ 7) | FS-1, PROMO-1 |
+| FS-6 | Storefront banner/countdown/ราคาบน PDP + ข้อความ AC-8 (g) + e2e (AC-1, AC-3, AC-4, AC-8 g) | FS-4, PROMO-1 |
+PROMO-1 ∥ FS-1; FS-2 ∥ FS-3 ∥ FS-4 หลัง FS-1; FS-5 หลัง FS-1 และ PROMO-1
 
 ## คำถามที่ยังเปิดอยู่
-- ไม่มี (คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน)
+- คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน
+- Q1 flash promotion ที่สร้างผ่าน admin แต่ยังไม่ได้บันทึก flash config (FS-5) จะไม่มี exclusivity rule และซ้อนกับ code ได้
+  — ยอมรับได้หรือไม่? (ค่าเริ่มต้น: ยอมรับ; widget เตือน)

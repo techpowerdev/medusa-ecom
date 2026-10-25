@@ -110,21 +110,25 @@ entity หลักของ Medusa (Product, Variant, Cart, Order, Promotion, C
 | `starts_at / ends_at` | timestamptz | index (status, ends_at) |
 | `status` | enum open | succeeded | failed |  |
 | `succeeded_at / pay_deadline_at` | timestamptz? |  |
-| `progress_orders / units / people` | int | denormalized, atomic |
+| `progress_orders / units / people` | int | denormalized ภายใต้ lock ของกลุ่ม; นับ membership ที่ไม่ใช่ cancelled (people = ลูกค้าไม่ซ้ำ) |
+| `(status, pay_deadline_at)` |  | index |
 
 ### GroupBuyMembership
-การเข้าร่วม 1 ครั้ง = draft order 1 ใบ
+การเข้าร่วม 1 ครั้ง = draft order 1 ใบ; ลูกค้าเดียวมีได้หลายแถวในกลุ่มเดียว แต่อยู่ได้กลุ่มเดียวต่อแคมเปญ
+(ตรวจใน `joinGroupWorkflow` ภายใต้ lock ไม่ใช่ unique index — ADR-009)
 
 | ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
+| `campaign_id` | fk | denormalized จากกลุ่มตอน join, ไม่เปลี่ยน |
 | `group_id` | fk |  |
 | `customer_id` | fk → customer |  |
-| `order_id` | link → order (draft) | unique |
+| `order_id` | text, read-only link → order (draft) | unique; `defineLink` แบบ `readOnly` ผ่าน field นี้ ไม่มี link table |
 | `units` | int |  |
 | `joined_at` | timestamptz |  |
 | `status` | enum joined | awaiting_payment | paid | cancelled |  |
-| `(group_id, customer_id)` |  | unique |
+| `(campaign_id, customer_id)` |  | index (ไม่ unique) |
+| `(group_id, status)` |  | index (ไม่ unique) |
 
 ## module `affiliate`
 
