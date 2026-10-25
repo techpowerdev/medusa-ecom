@@ -140,6 +140,15 @@ export async function fillCard(page: Page, number: string) {
   await frame.locator('[name="number"]').fill(number)
   await frame.locator('[name="expiry"]').fill("12 / 34")
   await frame.locator('[name="cvc"]').fill("123")
+  // Stripe เดาประเทศจาก IP (runner ของ CI อยู่ US → บังคับ ZIP) — ตั้งเป็น Thailand ให้ตรงกับร้าน
+  const country = frame.locator('select[name="country"]')
+  if (await country.count()) {
+    await country.selectOption("TH")
+  }
+  const postal = frame.locator('[name="postalCode"]')
+  if (await postal.isVisible().catch(() => false)) {
+    await postal.fill("10110")
+  }
 }
 
 /**
