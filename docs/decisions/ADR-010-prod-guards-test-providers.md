@@ -1,6 +1,6 @@
 # ADR-010 Prod guards: ห้าม provider สำหรับทดสอบใน production และ escape hatch สำหรับ CI
 
-สถานะ: proposed
+สถานะ: accepted (เจ้าของโปรเจกต์, 2026-10-25 — เลือก C + D1)
 เกี่ยวข้อง: spec 06 (กฎข้อ 6, Q2), spec 07 (OPS-7, AC-9..11), spec 01 (CORE-3), ADR-007
 
 ## บริบท
@@ -23,14 +23,14 @@ D. ไม่บังคับในโค้ด ใช้ checklist go-live อ
 - D2 D1 + hook หลัง `createRegionsWorkflow`/`updateRegionsWorkflow` ปฏิเสธการเพิ่ม `pp_system_default` ใน production
   (กัน admin เปิดเองภายหลัง) — โค้ดและ test มากขึ้น, ปิดทางใช้ manual payment ใน prod ถาวร
 
-## การตัดสินใจ (เสนอ)
+## การตัดสินใจ
 เลือก C + D1
 1. `ALLOW_TEST_PROVIDERS=true` ปิด guard ทั้งหมด; ค่าอื่น/ไม่ตั้ง = guard ทำงานเมื่อ `NODE_ENV=production`
 2. guard ของ notification: ขาด `RESEND_API_KEY` หรือ `RESEND_FROM_EMAIL` → throw ตอนโหลด config (แบบเดียวกับ OPS-2)
 3. guard ของ payment: seed ไม่ใส่ `pp_system_default`; `check:go-live` (`medusa exec`) ตรวจ region, prefix ของ `STRIPE_API_KEY`,
    และว่าไม่ได้ตั้ง `ALLOW_TEST_PROVIDERS` — exit ≠ 0 ถ้าไม่ผ่าน
 4. CI job ที่รันโหมด production ตั้ง `ALLOW_TEST_PROVIDERS=true`; `docs/ops/production.md` ระบุว่าห้ามตั้งใน prod
-5. D2 ไม่ทำตอนนี้ (รอคำตอบ owner spec 06 Q2 — ถ้า owner ต้องการเก็บ manual payment ไว้ใช้ใน prod ข้อ 3 ส่วน `pp_system_default` ถูกตัดออก)
+5. owner ตอบ spec 06 Q2 แล้ว: production ห้าม `pp_system_default` ระดับ D1 — ไม่ทำ D2 (admin ยังเปิดเองผ่าน dashboard ได้)
 
 ## ผลที่ตามมา
 + prod ที่ตั้งค่าไม่ครบล้มตอนบูต (เห็นทันที) แทนที่จะทำงานผิดเงียบ ๆ

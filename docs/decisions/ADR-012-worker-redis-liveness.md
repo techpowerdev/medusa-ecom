@@ -1,7 +1,7 @@
 # ADR-012 Worker ต้องฟื้นตัวหรือจบ process เมื่อการเชื่อมต่อ Redis ของ event bus ขาด
 
-สถานะ: proposed
-เกี่ยวข้อง: spec 07 (OPS-3, AC-5), OPS-1, OPS-2
+สถานะ: accepted (เจ้าของโปรเจกต์, 2026-10-25)
+เกี่ยวข้อง: spec 07 (OPS-8, AC-5), OPS-1, OPS-2
 
 ## บริบท
 review พบว่า BullMQ worker ของ Redis Event Bus module บน process `worker` หยุดรับงานหลัง Redis ตอบ `ETIMEDOUT`
@@ -19,9 +19,9 @@ C. route `GET /health/ready` ของเราเองที่ ping Redis แ
    ต้องเข้าถึง internal ของ event bus เพื่อรู้สถานะ worker, ยังไม่แก้สาเหตุ
 D. sidecar/probe ภายนอก (เช่น exec probe ที่ตรวจ queue lag) — infra ใหม่ ขัดกฎข้อ 3 ของ CLAUDE.md
 
-## การตัดสินใจ (เสนอ)
+## การตัดสินใจ
 เลือก A ก่อน วัดผลด้วย AC-5 ของ spec 07 (script จำลอง Redis หยุด 30 วินาที)
-1. builder (OPS-3) เขียน `tools/ops/smoke-redis-outage.sh` ให้ fail บน develop ปัจจุบันก่อน (ยืนยันว่า reproduce ได้)
+1. builder (OPS-8) เขียน `tools/ops/smoke-redis-outage.sh` ให้ fail บน develop ปัจจุบันก่อน (ยืนยันว่า reproduce ได้)
 2. ตั้ง `redisOptions`/`workerOptions` ตาม docs ของ Medusa/BullMQ (ตรวจผ่าน context7) จน AC-5 ผ่าน
 3. ถ้า A อย่างเดียวไม่ผ่าน → ทำ B โดยใช้เฉพาะ API สาธารณะของ ioredis/BullMQ ที่ module เปิดให้ ถ้าต้องแตะ internal ให้หยุดและ
    กลับมาอัปเดต ADR นี้ก่อน

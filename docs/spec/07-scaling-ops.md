@@ -50,13 +50,16 @@
 - AC-6 Given `apps/storefront/next.config.js` Then `output === "standalone"` และ `agentRules === false`; Given image `storefront`
   ที่ build ใหม่ When เทียบ `docker image inspect --format '{{.Size}}'` กับขนาดก่อนแก้ (บันทึกใน evidence) Then เล็กลง และ container
   ตอบ `GET /` เป็น 200
-- AC-7 Given รัน `next dev` ใน storefront (มี env ของ AI agent) Then ไม่มีไฟล์ `apps/storefront/AGENTS.md` / `apps/storefront/CLAUDE.md` ถูกสร้าง
+- AC-7 Given รัน `CLAUDECODE=1 pnpm --filter storefront dev` (ตัวแปรที่ Claude Code ตั้ง — builder ยืนยันชื่อตัวแปรที่ Next ใช้ตรวจจับใน
+  `node_modules/next/dist/server/lib/generate-agent-files.js` และใช้ตัวนั้นถ้าต่างกัน) รอจนหน้า `/` ตอบ 200 Then ไม่มีไฟล์
+  `apps/storefront/AGENTS.md` / `apps/storefront/CLAUDE.md`; positive control: ก่อนแก้ (ไม่มี `agentRules: false`) คำสั่งเดียวกันสร้างไฟล์ได้
+  (บันทึกใน evidence เพื่อยืนยันว่าตัวแปรถูกต้อง)
 - AC-8 Given `TEST_TYPE=integration:modules` When `jest --listTests` Then ไม่มีไฟล์ `*.unit.spec.*`; Given `TEST_TYPE=unit` Then ไม่มีไฟล์
   integration ของ module (ทุก unit spec ยังถูกรันใน `test:unit` ครั้งเดียว)
 - AC-9 (ADR-010) Given `NODE_ENV=production` และไม่ตั้ง `ALLOW_TEST_PROVIDERS=true` When `buildNotificationProviders` ถูกเรียกโดยไม่มี
   `RESEND_API_KEY` หรือไม่มี `RESEND_FROM_EMAIL` Then throw พร้อมชื่อตัวแปรที่ขาด; Given `ALLOW_TEST_PROVIDERS=true` Then ได้ provider
   `local` ตามเดิม; Given ไม่ใช่ production Then พฤติกรรมเดิม (unit)
-- AC-10 (ADR-010, ขึ้นกับคำตอบ owner spec 06 Q2) Given `NODE_ENV=production` ไม่มี `ALLOW_TEST_PROVIDERS` When รัน seed บน DB ว่าง Then
+- AC-10 (ADR-010 D1, owner ตอบ spec 06 Q2 แล้ว) Given `NODE_ENV=production` ไม่มี `ALLOW_TEST_PROVIDERS` When รัน seed บน DB ว่าง Then
   region Thailand มี payment provider เฉพาะ `pp_stripe_stripe`, `pp_stripe-promptpay_stripe`; Given `ALLOW_TEST_PROVIDERS=true` Then มี
   `pp_system_default` ด้วย (integration)
 - AC-11 (ADR-010) Given DB ที่ region มี `pp_system_default` หรือ `STRIPE_API_KEY` ขึ้นต้นด้วย `sk_test_` หรือตั้ง `ALLOW_TEST_PROVIDERS`
@@ -68,10 +71,11 @@
 |----|------|---------|
 | OPS-1 | Dockerfiles + compose + env ของ worker mode + health (AC-1) | CORE-1 |
 | OPS-2 | Prod config: Redis modules, pool size, S3, เอกสาร CDN | OPS-1 |
-| OPS-3 | Logging/Sentry + rate limiting + worker ฟื้นตัว/จบ process เมื่อ Redis ขาดตามที่ ADR-012 ตัดสิน (AC-5) | OPS-1, ADR-012 accepted |
+| OPS-3 | Logging/Sentry + rate limiting | OPS-1 |
 | OPS-4 | k6 scripts + nightly CI job + evidence (AC-2, AC-3) | FS-6, GB-7 |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
-| OPS-7 | Prod guards ตาม ADR-010: fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL`, seed ไม่เปิด `pp_system_default` ใน prod, script `check:go-live` + checklist go-live ใน `docs/ops/production.md`, ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production (AC-9, AC-10, AC-11) | OPS-2, PAY-1, CORE-3, ADR-010 accepted, คำตอบ spec 06 Q2 |
-OPS-3 ∥ OPS-6 ∥ OPS-7 (OPS-6 แตะ `next.config.js`/Dockerfile/jest config; OPS-7 แตะ `notification-providers.ts`/seed/`ci.yml` —
-ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)
+| OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production | OPS-2, PAY-1, CORE-3 |
+| OPS-8 | Worker ฟื้นตัว/จบ process เมื่อ Redis ของ event bus ขาด ตาม ADR-012 (accepted): `tools/ops/smoke-redis-outage.sh` (fail ก่อนแก้) + ตั้ง `redisOptions`/`workerOptions` ใน `infra-modules.ts` (AC-5) | OPS-2 |
+OPS-3 ∥ OPS-6 ∥ OPS-7 ∥ OPS-8 (OPS-6 แตะ `next.config.js`/Dockerfile/jest config; OPS-7 แตะ `notification-providers.ts`/seed/`ci.yml`;
+OPS-8 แตะ `infra-modules.ts`/`tools/ops/` — ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)

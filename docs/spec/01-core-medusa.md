@@ -148,8 +148,8 @@ fixture ของ Playwright (CORE-5) ต้องมี helper ตั้ง coo
 | ID | Task | AC | Depends |
 |----|------|----|---------|
 | CORE-4a | Vitest (dev dep, `test:unit`, ขั้นตอนใน CI) + THB format ใน `convertToLocale` + Tailwind `brand` tokens + Noto Sans Thai ผ่าน `next/font` + `<html lang="th">` | AC-7, 8, 9, 11 | CORE-1 |
-| CORE-4b | next-intl infra (plugin ใน `next.config`, `src/i18n/request.ts`, `resolveLocale`), `messages/{th,en}.json`, `<html lang>` ตาม locale, `NextIntlClientProvider`, ปรับ `language-select` (กฎข้อ 7), แปล layout shell (nav, footer, side menu, cart dropdown, not-found), test `getLocaleHeader`, lint rule สำหรับ path ของ 4b | AC-10, 12, 13, 14, 15, 16, 17, 18 (path 4b) | CORE-4a, CORE-5, CORE-5b, CORE-8, CORE-9 |
-| CORE-4c | แปล home, store/PLP, categories, collections, PDP, cart + เพิ่ม `data-testid` ที่ขาด | AC-18 (path 4c), AC-19 (4c) | CORE-4b |
+| CORE-4b | next-intl infra (plugin ใน `next.config`, `src/i18n/request.ts`, `resolveLocale`), `messages/{th,en}.json`, `<html lang>` ตาม locale, `NextIntlClientProvider`, ปรับ `language-select` (กฎข้อ 7), แปล layout shell (nav, footer, side menu, cart dropdown, not-found), test `getLocaleHeader`, lint rule สำหรับ path ของ 4b | AC-10, 12, 13, 14, 15, 16, 17, 18 (path 4b) | CORE-4a, CORE-5, CORE-5b, CORE-8 |
+| CORE-4c | แปล home, store/PLP, categories, collections, PDP, cart + เพิ่ม `data-testid` ที่ขาด | AC-18 (path 4c), AC-19 (4c) | CORE-4b, CORE-9 |
 | CORE-4d | แปล checkout, account, order, policies, shipping nudge, common components + เพิ่ม `data-testid` ที่ขาด | AC-18 (path 4d), AC-19 (4d) | CORE-4b |
 CORE-4c และ CORE-4d ทำขนานกันได้หลัง CORE-4b (ทั้งคู่แก้ `messages/*.json` คนละ namespace — merge ทีหลังต้อง rebase)
 
@@ -165,8 +165,8 @@ CORE-4c และ CORE-4d ทำขนานกันได้หลัง CORE-
 | CORE-2 | Seed script: region Thailand, THB, VAT 7%, shipping option (Standard + Digital delivery), สินค้าตัวอย่าง, admin user; script `print-publishable-key` ที่ CI ใช้ | CORE-1 |
 | CORE-3 | Notification provider (Resend) + template order placed/shipped | CORE-1 |
 | CORE-4a | THB format + theme tokens + Noto Sans Thai + Vitest (ดู "CORE-4 Storefront i18n / theme / THB") | CORE-1 |
-| CORE-4b | next-intl infra + locale จาก cookie + language-select + แปล layout shell | CORE-4a, CORE-5, CORE-5b, CORE-8, CORE-9 |
-| CORE-4c | แปล UI: home, PLP, PDP, cart | CORE-4b |
+| CORE-4b | next-intl infra + locale จาก cookie + language-select + แปล layout shell | CORE-4a, CORE-5, CORE-5b, CORE-8 |
+| CORE-4c | แปล UI: home, PLP, PDP, cart | CORE-4b, CORE-9 |
 | CORE-4d | แปล UI: checkout, account, order และ component กลาง | CORE-4b |
 | CORE-5 | ตั้งค่า Playwright แบบ screenshot ทุก step + convention ของโฟลเดอร์ evidence + helper ตั้ง cookie `_medusa_locale` (ADR-008) | CORE-1 |
 | CORE-6 | Store route เฉพาะลูกค้า (middleware + cart hook + storefront redirect) + e2e สำหรับ AC-1..AC-4, AC-6 ด้วย manual payment provider (หา element ด้วย `data-testid` ตาม ADR-008) | CORE-2,4a,5 |
@@ -178,7 +178,8 @@ CORE-4c และ CORE-4d ทำขนานกันได้หลัง CORE-
 | CORE-11 | Notification: อีเมล shipped แสดงเฉพาะ item ที่ส่ง, order placed เคารพ `no_notification` | CORE-3 |
 CORE-3, CORE-4a และ CORE-5 ทำขนานกันได้หลังจาก CORE-1; CORE-4c ∥ CORE-4d หลัง CORE-4b; CORE-7 ขนานกับ CORE-4b..4d ได้
 (storefront ทำงานได้โดยไม่มี CORE-7 ตามกฎข้อ 6–7 ของ CORE-4)
-CORE-5b ∥ CORE-8 ∥ CORE-9 ∥ CORE-10 ∥ CORE-11 (ไม่แตะไฟล์เดียวกัน) — สามตัวแรกอยู่บน critical path ของ CORE-4b
+CORE-5b ∥ CORE-8 ∥ CORE-9 ∥ CORE-10 ∥ CORE-11 (ไม่แตะไฟล์เดียวกัน) — CORE-5b, CORE-8 อยู่บน critical path ของ CORE-4b;
+CORE-9 เป็น dependency ของ CORE-4c (PLP/PDP)
 
 ## Follow-up จาก review/qa (2026-10-25)
 ที่มา: หัวข้อ Backlog ใน `docs/ROADMAP.md` และ `docs/evidence/core/CORE-4a/REPORT.md` (defect 1–4)
@@ -212,7 +213,8 @@ none
     publishable key ตาม title, category ตามชื่อ, product ตาม handle, inventory level) และสร้างเฉพาะที่ขาด — ไม่ใช้ region
     เป็นตัวตัดสินว่าข้ามทั้งหมด
 18. `.env.example` ของ backend: `SEED_ADMIN_PASSWORD=` ว่าง (ไม่มีรหัสตัวอย่าง)
-19. ค่าส่ง "Standard" = ค่าที่ owner กำหนด (คำถาม Q-F1) จนกว่าจะได้คำตอบคงค่า `shipping_rate: 10` เดิม
+19. ค่าส่ง "Standard" คงค่า `shipping_rate: 10` เดิม (placeholder; owner ยังไม่ตัดสิน Q-F1, 2026-10-25) — CORE-10 ไม่รอ Q-F1
+    เมื่อ owner ตัดสินแล้วเป็น task แยก
 20. อีเมล shipped แสดงเฉพาะ item และจำนวนที่อยู่ใน fulfillment ของ event `shipment.created` นั้น ไม่ใช่ทุก item ของ order
 21. subscriber `order.placed` ไม่ส่งอีเมลเมื่อ `order.no_notification === true`
 
@@ -263,14 +265,16 @@ none
 | CORE-5b | `TASK_ID_RE` รับ suffix ตัวเล็ก, `evidence()` ตรวจงบก่อนเขียน, budget test ตรวจระดับ feature, ย้าย `*-tests.txt` ที่ผิดที่, CI รัน `test:e2e:unit`, อัปเดต `docs/evidence/README.md` | AC-20..23 | CORE-5 |
 | CORE-8 | override font-family ของ class `txt-*`/`*-webs` ให้ใช้ `var(--font-noto-sans-thai)` (plugin/`@layer` ใน storefront) + Vitest + e2e | AC-24, AC-25 | CORE-4a, CORE-5 |
 | CORE-9 | `PRICE_CURRENCIES`/`SEARCH_PRICE_CURRENCIES` = `["thb"]` + unit/integration + e2e หน้า store | AC-26..28 | CORE-2 |
-| CORE-10 | seed: ชื่อสินค้าไทย, เช็กการมีอยู่ทีละ resource, `.env.example` ว่าง, ค่าส่ง Standard ตามคำตอบ Q-F1 | AC-29..31 | CORE-2 (แนะนำ merge หลัง CORE-6 เพราะ e2e ของ CORE-6 ใช้ seed) |
+| CORE-10 | seed: ชื่อสินค้าไทย, เช็กการมีอยู่ทีละ resource, `.env.example` ว่าง (ค่าส่ง Standard คงเดิม กฎข้อ 19) | AC-29..31 | CORE-2 (แนะนำ — ไม่บังคับ — ให้ merge หลัง CORE-6 เพราะ e2e ของ CORE-6 ใช้ seed) |
 | CORE-11 | อีเมล shipped เฉพาะ item ใน fulfillment, `order.placed` เคารพ `no_notification` | AC-32, AC-33 | CORE-3 |
-CORE-5b, CORE-8, CORE-9 ทำขนานกันได้และเป็น dependency ของ CORE-4b; CORE-10 ∥ CORE-11 นอก critical path
+CORE-5b, CORE-8, CORE-9 ทำขนานกันได้; CORE-5b + CORE-8 เป็น dependency ของ CORE-4b, CORE-9 เป็น dependency ของ CORE-4c;
+CORE-10 ∥ CORE-11 นอก critical path และไม่บล็อก release v0.1.0
 evidence ของ CORE-8/CORE-9 (e2e) บันทึกได้หลัง CORE-5b merge (ถ้ายังไม่ merge ให้รัน e2e โดยไม่ตั้ง `E2E_SAVE_EVIDENCE`)
 fail-fast เมื่อ prod ไม่มี `RESEND_API_KEY` อยู่ใน OPS-7 (spec 07, ADR-010) ไม่อยู่ใน CORE-11
 
 ### Open questions (follow-up)
-- Q-F1 ค่าส่ง "Standard" ใน seed/region metadata ควรเป็นเท่าไร (ตอนนี้ 10 THB เป็นค่า placeholder)? ฟรีเมื่อยอดถึงขั้นต่ำหรือไม่
+- Q-F1 (owner 2026-10-25: ยังไม่ตัดสิน คง placeholder) ค่าส่ง "Standard" ใน seed/region metadata ควรเป็นเท่าไร
+  (ตอนนี้ 10 THB)? ฟรีเมื่อยอดถึงขั้นต่ำหรือไม่
   (ถ้าใช่ ใช้ Medusa shipping option rule/promotion — เป็น task แยก)
 
 หมายเหตุจาก CORE-1:

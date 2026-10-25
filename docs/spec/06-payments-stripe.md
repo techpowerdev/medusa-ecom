@@ -41,8 +41,8 @@
 4. Refund ทำผ่าน `refundPaymentWorkflow` เท่านั้น; ห้ามเรียก Stripe API โดยตรงนอก provider
 5. PaymentIntent ของ provider บัตร (`pp_stripe_stripe`) มี `payment_method_types: ["card"]` เท่านั้น (ไม่เปิด method อื่นโดยปริยาย)
    ส่งผ่านช่องทางที่ Medusa Stripe provider รองรับ (เช่น `data` ของ payment session) — ถ้าทำไม่ได้โดยไม่เขียน provider เอง ให้หยุดและเขียน ADR
-6. production ห้ามมี `pp_system_default` (manual) ใน region — กลไกตาม ADR-010 (proposed) ส่งมอบใน OPS-7 (spec 07)
-   ขึ้นกับคำตอบของ owner (Q2)
+6. production ห้ามมี `pp_system_default` (manual) ใน region — ADR-010 (accepted) ระดับ D1: seed ไม่ใส่ให้ใน production และ
+   `check:go-live` ตรวจ region ก่อนเปิดร้าน (ไม่กัน admin เปิดเองผ่าน dashboard) ส่งมอบใน OPS-7 (spec 07)
 
 ## Acceptance criteria
 - AC-1 บัตร `4242…` → สร้าง order สำเร็จ, `payment_status=captured`
@@ -76,5 +76,5 @@
 
 ## Open questions
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
-- Q2 production ต้องไม่มี manual payment (`pp_system_default`) เลยใช่หรือไม่ หรือต้องการเก็บไว้ให้ admin ใช้ (เช่น โอนเงิน/เก็บเงินปลายทาง)?
-  และต้องบังคับระดับใด — ดูทางเลือกใน ADR-010
+- ~~Q2~~ ตัดสินแล้ว (owner, 2026-10-25): production ห้าม `pp_system_default` แบบ D1 ของ ADR-010 (seed + `check:go-live`;
+  ไม่กัน admin เปิดเอง) — กฎข้อ 6

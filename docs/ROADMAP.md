@@ -16,14 +16,18 @@
 | CORE-3 | Resend notifications + templates | ☑ #8 |
 | CORE-4a | THB format + theme tokens + Noto Sans Thai + Vitest (ADR-008) | ☑ #19 |
 | CORE-5b ∥ CORE-8 ∥ CORE-9 | เครื่องมือ evidence e2e ∥ ฟอนต์ ui-preset → Noto Sans Thai ∥ ราคา THB หน้า store | ☐ |
-| CORE-4b | next-intl infra + locale cookie + language-select + layout shell | ☐ (← 4a, CORE-5, 5b, 8, 9) |
-| CORE-4c ∥ 4d | แปล UI: home/PLP/PDP/cart ∥ checkout/account/order | ☐ (← 4b) |
+| CORE-4b | next-intl infra + locale cookie + language-select + layout shell | ☐ (← 4a, CORE-5, 5b, 8) |
+| CORE-4c ∥ 4d | แปล UI: home/PLP/PDP/cart ∥ checkout/account/order | ☐ (4c ← 4b, CORE-9; 4d ← 4b) |
 | CORE-5 | Playwright + convention การเก็บ evidence | ☑ #7 |
 | CORE-6 | store route เฉพาะ customer + e2e AC-1..4, AC-6 | ☐ (← CORE-2, 4a, 5 พร้อมแล้ว) |
 | CORE-7 | Translation module + store locales | ☑ #26 |
 | OPS-1 | Dockerfiles, worker mode, health | ☑ #9 (+ hotfix #18) |
-| CORE-10 ∥ CORE-11 | seed follow-up (ชื่อไทย, idempotency) ∥ อีเมล shipped / `no_notification` | ☐ (CORE-10 หลัง CORE-6, รอ Q-F1) |
 **Release v0.1.0** — ร้านค้าที่เข้าชมได้, ชำระเงิน manual
+
+ไม่บล็อก release v0.1.0:
+| Task | งาน | สถานะ |
+|------|-----|--------|
+| CORE-10 ∥ CORE-11 | seed follow-up (ชื่อไทย, idempotency; ค่าส่งคง placeholder) ∥ อีเมล shipped / `no_notification` | ☐ (← CORE-2 / CORE-3; CORE-10 แนะนำหลัง CORE-6) |
 
 ## M2 การชำระเงิน
 | Task | งาน | สถานะ |
@@ -38,7 +42,7 @@
 EV-1 ☑ #15 · EV-2 ☑ #25 · EV-3 ☐ · EV-4 ☐ (← EV-2, EV-3, CORE-3) · EV-5 ☐ · EV-6 ☐ · EV-7 ☐ (← EV-4) · EV-8 ☐ (← EV-2, EV-3)
 
 ## M4 Flash sale — **v0.4.0**
-PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☐ (← FS-3) · FS-4 ☐ · FS-5 ☐ · FS-6 ☐ (← FS-4, PROMO-1)
+PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☐ (← FS-3) · FS-4 ☐ · FS-5 ☐ · FS-6 ☐ (← FS-4, PROMO-1) · PROMO-2 ☐ (← PROMO-1, FS-3; ควรก่อน FS-6, GB-3)
 (spec 03 ปรับใน #23: FS-3 จองตอน complete cart, FS-2 คืนค่าเฉพาะ cancel/refund เต็มจำนวน)
 
 ## M5 Group buying — **v0.5.0**
@@ -48,16 +52,16 @@ GB-1 ☑ #17 · GB-2 ☐ (critical path) → GB-3 (← GB-2, PROMO-1) → GB-4 �
 AF-1 ☑ #11 · AF-2 ☐ · AF-5 ☐ → AF-3 → (AF-4 ∥ AF-7) → AF-8 ; AF-5 → AF-6
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
-OPS-2 ☑ #27 · OPS-3 ☐ (รอ ADR-012) · OPS-5 ☐ · OPS-6 ☐ · OPS-7 ☐ (รอ ADR-010 + spec 06 Q2) ; OPS-4 ☐ (← FS-6, GB-7)
+OPS-2 ☑ #27 · OPS-3 ☐ · OPS-5 ☐ · OPS-6 ☐ · OPS-7 ☐ · OPS-8 ☐ (← OPS-2) ; OPS-4 ☐ (← FS-6, GB-7)
 
 ## Backlog follow-up (แปลงเป็น task แล้ว 2026-10-25 — รายละเอียด/AC อยู่ใน spec)
-- ราคา THB หน้า store → CORE-9 · ฟอนต์ ui-preset → CORE-8 · เครื่องมือ evidence e2e → CORE-5b (ทั้งสามเป็น dependency ของ CORE-4b)
-- seed (ชื่อไทย, idempotency, `.env.example`, ค่าส่ง Standard รอ owner) → CORE-10 · อีเมล shipped / `no_notification` → CORE-11
-- `pp_system_default` ใน prod + fail-fast `RESEND_API_KEY` + checklist go-live → OPS-7 (ADR-010 proposed)
+- ฟอนต์ ui-preset → CORE-8 · เครื่องมือ evidence e2e → CORE-5b (dependency ของ CORE-4b) · ราคา THB หน้า store → CORE-9 (dependency ของ CORE-4c)
+- seed (ชื่อไทย, idempotency, `.env.example`; ค่าส่ง Standard คง placeholder จนกว่า owner ตัดสิน Q-F1) → CORE-10 · อีเมล shipped / `no_notification` → CORE-11
+- `pp_system_default` ใน prod (D1) + fail-fast `RESEND_API_KEY` + checklist go-live → OPS-7 (ADR-010 accepted)
 - `payment_method_types: ["card"]` + `stripe listen --forward-to` ซ้ำ → PAY-2
 - `void_reason` → EV-5 · `requires_shipping=false`, `expires_at` วันที่ล้วน, error ถูกกลบตอน compensation → EV-8
-- worker ตายหลัง `ETIMEDOUT` → OPS-3 (ADR-012 proposed) · standalone / `agentRules` / `testMatch` → OPS-6
-- error 409 ของ Medusa (`CONFLICT`) เขียนทับ `code`/`message` เป็น `invalid_state_error` — PROMO-1 ต้องตรวจว่า hook ใช้ error type อะไร (spec 04 กฎข้อ 11 ให้ route แปลง 409 เอง) → ยังไม่มี task
+- worker ตายหลัง `ETIMEDOUT` → OPS-8 (ADR-012 accepted) · standalone / `agentRules` / `testMatch` → OPS-6
+- error 409 ของ Medusa (`CONFLICT`) เขียนทับ `code`/`message` เป็น `invalid_state_error` → PROMO-2 (spec 03 กฎข้อ 13, AC-12)
 - cart route ไม่บังคับ `authenticate("customer")` + test PROMO-1/FS-3 ที่ไม่มี token → อยู่ใน CORE-6 (เงื่อนไข CI เขียว ไม่แก้นิยาม task)
 
 ## ข้อตกลงการทำงานต่อ PR

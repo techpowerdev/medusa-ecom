@@ -117,7 +117,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   variant นั้นใน cart มี `requires_shipping=false`; variant ที่ `manage_inventory=false` → 400 และไม่มี pool ถูกสร้าง;
   ถ้าขั้นสร้าง pool ล้มหลังปรับ inventory item → `requires_shipping` กลับเป็นค่าเดิม (compensation)
 - AC-12 import CSV ที่ `expires_at` เป็นวันที่ล้วน `2026-12-31` → เก็บเป็นสิ้นวันเวลาไทย `2026-12-31T16:59:59.999Z`
-  (= 23:59:59.999+07:00; ค่า default รอ owner ยืนยัน Q4); ค่า ISO ที่มี offset เก็บตามจริง; ค่าที่ parse ไม่ได้ → พฤติกรรมเดิมของ EV-2
+  (= 23:59:59.999+07:00; owner ยืนยัน Q4 แล้ว); ค่า ISO ที่มี offset เก็บตามจริง; ค่าที่ parse ไม่ได้ → พฤติกรรมเดิมของ EV-2
 - AC-13 import ที่ขั้นปรับ inventory ล้ม **และ** compensation ลบ batch ก็ล้มด้วย → response/error ที่ผู้เรียกได้รับเป็น error เดิมของขั้นที่ล้ม
   (ไม่ใช่ error ของการลบ) และ error ของ compensation ถูก log พร้อม `batch_ref`
 
@@ -127,9 +127,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - Email template เป็นภาษาไทยและอังกฤษ; มีโลโก้พาร์ทเนอร์ + บล็อกวิธีใช้
 
 ## แผนการทดสอบ
-- Unit: CSV parser, masking, expiry filter, encryption round-trip
+- Unit: CSV parser (รวม AC-12 วันที่ล้วน), masking, expiry filter, encryption round-trip
 - Integration (modules): การ allocate พร้อมกัน (AC-4), idempotency (AC-7)
-- Unit: AC-12 (parser วันที่)
 - Integration (http): AC-1, AC-2, AC-5, AC-8, AC-9, AC-10, AC-11, AC-13 โดย mock notification provider
 - e2e: AC-3, AC-6
 
@@ -151,6 +150,6 @@ EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-8 ∥ EV-4/
 - Q1 พาร์ทเนอร์ให้ PIN มาพร้อม code หรือให้ code อย่างเดียว? (model รองรับทั้งสองแบบ)
 - Q2 วันหมดอายุ: ต่อ code (ใน CSV) หรือต่อ batch? (ค่าเริ่มต้น: คอลัมน์ต่อ code, optional)
 - Q3 admin ควรนำ code จาก order ที่คืนเงินแล้วกลับมาขายใหม่ได้หรือไม่? (ค่าเริ่มต้น: ไม่ได้)
-- Q4 `expires_at` ที่พาร์ทเนอร์ให้เป็นวันที่ล้วน หมายถึง "ใช้ได้ถึงสิ้นวันนั้นตามเวลาไทย" ใช่หรือไม่? (ค่าเริ่มต้นใน AC-12: ใช่)
+- ~~Q4~~ ตัดสินแล้ว (owner, 2026-10-25): `expires_at` ที่เป็นวันที่ล้วน = ใช้ได้ถึงสิ้นวันนั้นตามเวลาไทย (AC-12)
 - Q5 (เทคนิค, ตอบหลัง EV-3) กฎข้อ 1 `requires_shipping=false` กับ AC-3 "shipping method Digital delivery ถูกใช้อัตโนมัติ" —
   Medusa ไม่บังคับ shipping method เมื่อไม่มี item ที่ต้องส่ง ต้องยืนยันว่ากลไกของ EV-3 ใช้แบบใด แล้วปรับ AC-3/AC-11 ให้ตรงกัน
