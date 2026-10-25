@@ -1,0 +1,16 @@
+packages:
+  - "apps/*"
+
+overrides:
+  "@types/react": "19.0.5"
+  "@types/react-dom": "19.0.5"
+  "tsconfig-paths": "^4.2.0"
+
+allowBuilds:
+  "@medusajs/telemetry": true
+  "@swc/core": true
+  "esbuild": true
+  # ไม่รัน build script (พฤติกรรมเดียวกับตอนใช้ pnpm 10 ที่ข้ามไว้) — pnpm 12 บังคับให้ระบุชัด
+  "msgpackr-extract": false
+  "protobufjs": false
+  "unrs-resolver": false

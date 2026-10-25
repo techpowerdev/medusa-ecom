@@ -31,3 +31,4 @@ blob-report/
 .vscode/
 .idea/
 *.swp
+*.tsbuildinfo
