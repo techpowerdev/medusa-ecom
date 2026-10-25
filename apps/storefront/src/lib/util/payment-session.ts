@@ -22,7 +22,19 @@ export function paymentSessionData(providerId: string): Record<string, unknown> 
   return undefined
 }
 
-export const secondsLeft = (deadlineMs: number, nowMs: number) =>
+/** หมดอายุ 10 นาทีนับจากเวลาสร้าง PaymentIntent (`created` เป็นวินาที) — reload หน้าไม่ยืดเวลา */
+export const promptPayDeadline = (intentCreatedSec: number) =>
+  intentCreatedSec * 1000 + PROMPTPAY_TIMEOUT_MS
+
+/**
+ * เมื่อครบเวลา: ถ้า PaymentIntent ชำระแล้ว/กำลังดำเนินการ ห้ามลบ session (provider ไม่ cancel PI ที่ succeeded
+ * → เงินถูกตัดแต่ไม่มี order) ให้ poll ต่อจน webhook complete cart; นอกนั้นยกเลิก session แล้วให้ลองใหม่
+ */
+export function promptPayExpiryAction(intentStatus: string | undefined): "keep-polling" | "reset" {
+  return intentStatus === "succeeded" || intentStatus === "processing" ? "keep-polling" : "reset"
+}
+
+export const secondsLeft =(deadlineMs: number, nowMs: number) =>
   Math.max(0, Math.ceil((deadlineMs - nowMs) / 1000))
 
 export const formatCountdown = (seconds: number) =>

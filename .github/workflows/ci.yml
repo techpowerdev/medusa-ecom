@@ -129,13 +129,17 @@ jobs:
       - name: Forward Stripe webhooks to backend (cards + PromptPay)
         # PAY-2 (spec 06 AC-10): `stripe listen` รับ --forward-to ได้ปลายทางเดียวต่อ process และ --print-secret
         # พิมพ์ secret แล้วจบ (ไม่ listen) → ดึง secret ครั้งเดียว แล้วเปิด listener แยกต่อ endpoint (secret เดียวกัน)
+        # skip ได้เฉพาะเมื่อไม่มี secret ทั้งคู่; มีตัวเดียวหรือไม่ใช่ test key → fail (e2e/support/stripe-env.ts ตรวจซ้ำ)
         env:
           STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+          STRIPE_PUBLISHABLE: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
         run: |
-          if [ -z "$STRIPE_API_KEY" ]; then
-            echo "::warning::ไม่มี secret STRIPE_TEST_API_KEY — e2e ของ Stripe (spec 06) จะถูก skip"
+          if [ -z "$STRIPE_API_KEY" ] && [ -z "$STRIPE_PUBLISHABLE" ]; then
+            echo "::warning::ไม่มี secret STRIPE_TEST_API_KEY/STRIPE_TEST_PUBLISHABLE_KEY — e2e ของ Stripe (spec 06) จะถูก skip"
             exit 0
           fi
+          case "$STRIPE_API_KEY" in sk_test_*) ;; *) echo "::error::STRIPE_TEST_API_KEY ต้องมีและเป็น sk_test_"; exit 1;; esac
+          case "$STRIPE_PUBLISHABLE" in pk_test_*) ;; *) echo "::error::STRIPE_TEST_PUBLISHABLE_KEY ต้องมีและเป็น pk_test_"; exit 1;; esac
           whsec=$(stripe listen --print-secret)
           echo "::add-mask::$whsec"
           echo "STRIPE_WEBHOOK_SECRET=$whsec" >> "$GITHUB_ENV"
@@ -158,13 +162,12 @@ jobs:
       - run: pnpm --filter storefront build && (pnpm --filter storefront start &) && npx wait-on http://localhost:8000
       # project "unit" (กฎ evidence) ไม่ต้องใช้ server — แยกไปเปิดใน CI ตาม backlog (มี *-tests.txt เดิมผิด convention)
       - run: pnpm --filter storefront test:e2e --project=chromium
-      # PAY-2 (AC-10): webhook ต้องถึงทั้งสอง path และ backend ตอบ 2xx
+      # PAY-2 (AC-10): payment_intent.succeeded (จาก AC-1/AC-4) ต้องถึงทั้งสอง path และ backend ตอบ 2xx
       - name: Stripe webhooks reached both endpoints
         if: env.STRIPE_API_KEY != ''
         run: |
           for path in stripe_stripe stripe-promptpay_stripe; do
-            grep -E "<--  \[2[0-9]{2}\] POST http://localhost:9000/hooks/payment/$path " "/tmp/stripe-listen-$path.log" \
-              || { echo "::error::ไม่มี webhook ถึง /hooks/payment/$path"; exit 1; }
+            tools/ci/check-stripe-webhooks.sh "/tmp/stripe-listen-$path.log" "http://localhost:9000/hooks/payment/$path"
           done
       - if: failure()
         run: |

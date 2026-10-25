@@ -242,9 +242,14 @@ test.describe("PromptPay (QR + polling)", () => {
     await step("cart ยังใช้งานได้: ยังไม่ completed และลองใหม่ได้ QR ใหม่", async () => {
       const state = await cartPaymentState(request, pk, customer, cartId)
       expect(state.completed_at).toBeNull()
+      await expect
+        .poll(() => sessionIntentId(request, pk, customer, cartId, PROMPTPAY_PROVIDER), { timeout: 30_000 })
+        .not.toBe(firstIntentId)
+      // deadline อิง `created` ของ PaymentIntent (เวลาจริงของ Stripe) → คืนนาฬิกา browser เป็นเวลาจริงก่อนลองใหม่
+      await page.clock.setSystemTime(new Date())
       await page.getByTestId("promptpay-retry-button").click()
       await expect(page.getByTestId("promptpay-qr")).toBeVisible({ timeout: 30_000 })
-      expect(await sessionIntentId(request, pk, customer, cartId, PROMPTPAY_PROVIDER)).not.toBe(firstIntentId)
+      await expect(page.getByTestId("promptpay-countdown")).toHaveText(/^(10|9):\d{2}$/)
     })
   })
 })

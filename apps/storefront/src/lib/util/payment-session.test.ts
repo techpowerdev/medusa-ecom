@@ -5,6 +5,8 @@ import {
   formatCountdown,
   isPromptPay,
   paymentSessionData,
+  promptPayDeadline,
+  promptPayExpiryAction,
   promptPayPollState,
   promptPayQrImage,
   secondsLeft,
@@ -97,5 +99,27 @@ describe("promptPayQrImage", () => {
   it("ไม่มี QR (ยังไม่ confirm หรือสถานะอื่น) = null", () => {
     expect(promptPayQrImage({ status: "requires_payment_method", next_action: null })).toBeNull()
     expect(promptPayQrImage(undefined)).toBeNull()
+  })
+})
+
+// review PR #48 blocker 2: หมดเวลาพร้อมกับที่ชำระสำเร็จ → ห้ามลบ session (เงินถูกตัดแต่ไม่มี order)
+describe("promptPayExpiryAction", () => {
+  it("PaymentIntent succeeded/processing → poll ต่อจน webhook complete cart", () => {
+    expect(promptPayExpiryAction("succeeded")).toBe("keep-polling")
+    expect(promptPayExpiryAction("processing")).toBe("keep-polling")
+  })
+
+  it("ยังไม่ชำระหรืออ่านสถานะไม่ได้ → ยกเลิก session แล้วให้ลองใหม่", () => {
+    expect(promptPayExpiryAction("requires_action")).toBe("reset")
+    expect(promptPayExpiryAction("requires_payment_method")).toBe("reset")
+    expect(promptPayExpiryAction("canceled")).toBe("reset")
+    expect(promptPayExpiryAction(undefined)).toBe("reset")
+  })
+})
+
+// review PR #48 nit: deadline อิงเวลาสร้าง PaymentIntent (วินาที) ไม่ตั้งใหม่ตอน reload
+describe("promptPayDeadline", () => {
+  it("= created + 10 นาที (ms)", () => {
+    expect(promptPayDeadline(1_800_000_000)).toBe(1_800_000_000_000 + PROMPTPAY_TIMEOUT_MS)
   })
 })

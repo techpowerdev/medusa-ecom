@@ -2,13 +2,16 @@ import { APIRequestContext, BrowserContext, FrameLocator, Page, expect } from "@
 
 import { BACKEND_URL } from "./fixtures"
 import { Customer, shippingOptionId } from "./medusa"
+import { stripeE2eMode } from "./stripe-env"
 
 // PAY-2: อ่านผลจาก Stripe test mode ด้วย secret key จาก env (test key เท่านั้น) และพา checkout ไปถึงขั้น payment
 
 export const STRIPE_SECRET = process.env.STRIPE_API_KEY ?? ""
 export const STRIPE_PUBLISHABLE = process.env.NEXT_PUBLIC_STRIPE_KEY ?? ""
-export const HAS_STRIPE_SECRET = STRIPE_SECRET.startsWith("sk_test_")
-export const HAS_STRIPE_UI = HAS_STRIPE_SECRET && STRIPE_PUBLISHABLE.startsWith("pk_test_")
+// key ไม่ครบใน CI หรือผิดรูปแบบ → throw ตอนโหลด spec (fail ไม่ใช่ skip เงียบ) — ดู stripe-env.ts
+const mode = stripeE2eMode({ ci: !!process.env.CI, secret: STRIPE_SECRET, publishable: STRIPE_PUBLISHABLE })
+export const HAS_STRIPE_SECRET = mode.secret
+export const HAS_STRIPE_UI = mode.ui
 
 export const CARD_PROVIDER = "pp_stripe_stripe"
 export const PROMPTPAY_PROVIDER = "pp_stripe-promptpay_stripe"

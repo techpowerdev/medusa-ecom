@@ -60,3 +60,37 @@ typecheck: apps/backend Done, apps/storefront Done
 
 ## pnpm --filter storefront build
 สำเร็จ
+
+# ── รอบแก้ตาม review PR #48 (2026-10-26, merge origin/develop แล้ว) ──
+
+## Red → Green: unit ใหม่ (storefront vitest)
+Red: TypeError: promptPayExpiryAction is not a function (3 failed)
+ ✓ promptPayExpiryAction > PaymentIntent succeeded/processing → poll ต่อจน webhook complete cart
+ ✓ promptPayExpiryAction > ยังไม่ชำระหรืออ่านสถานะไม่ได้ → ยกเลิก session แล้วให้ลองใหม่
+ ✓ promptPayDeadline > = created + 10 นาที (ms)
+pnpm --filter storefront test:unit → Tests 51 passed (51)
+
+## Red → Green: guard ของ Stripe key (Playwright project unit — e2e/support/stripe-env.unit.spec.ts)
+Red: Error: Cannot find module './stripe-env'
+ ✓ ไม่มี key ทั้งคู่ → skip ทุก test ของ Stripe (ทั้ง CI และในเครื่อง)
+ ✓ มีครบและเป็น test key → รันทั้งหมด
+ ✓ CI: มี key ตัวเดียว → throw
+ ✓ รูปแบบผิด (live key, restricted key) → throw ทั้ง CI และในเครื่อง
+ ✓ ในเครื่อง: มีแค่ sk_test_ → รัน AC-9 แต่ skip test ที่ต้องใช้ Stripe.js
+pnpm --filter storefront test:e2e:unit → 24 passed
+ตรวจจริง: CI=1 + มีแค่ sk_test_ → payments.spec โหลดไม่ผ่าน
+  Error: CI มี Stripe key ไม่ครบ: ขาด NEXT_PUBLIC_STRIPE_KEY … → exit=1 (ไม่ใช่ skip)
+
+## tools/ci/check-stripe-webhooks.sh (step AC-10 ใน ci.yml) กับ log จริงของ stripe listen
+log ที่มี payment_intent.succeeded → ok: payment_intent.succeeded (evt_…) → …/stripe_stripe ตอบ 2xx (rc=0)
+log ที่มี payment_intent.succeeded → ok: … → …/stripe-promptpay_stripe ตอบ 2xx (rc=0)
+log ที่มีแค่ created/requires_action → ::error::ไม่มี payment_intent.succeeded … (rc=1)
+url ผิด path/port → ::error:: (rc=1)
+
+## e2e ในเครื่อง (sk_test_ อย่างเดียว ไม่มี pk_test_)
+  ✓  AC-9 (13.1s) · 5 skipped (AC-1..AC-5 ต้องใช้ pk_test_ ของบัญชีเดียวกัน)
+spec ชั่วคราว (ไม่ commit): ไม่มี NEXT_PUBLIC_STRIPE_KEY + เลือก PromptPay ถึง review →
+  แสดง promptpay-payment-error-message และปุ่มถูก disable (หน้าไม่พัง) ✓
+
+## lint / typecheck / build
+lint: 0 errors (ไฟล์ที่แก้ไม่มี warning) · typecheck: backend + storefront Done · storefront build สำเร็จ

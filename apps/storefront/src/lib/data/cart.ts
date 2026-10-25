@@ -259,7 +259,7 @@ export async function initiatePaymentSession(
   // PAY-2 (spec 06 กฎข้อ 5): provider บัตรขอ PaymentIntent แบบ card เท่านั้น
   const sessionData = paymentSessionData(data.provider_id)
   const body = sessionData
-    ? { ...data, data: { ...sessionData, ...data.data } }
+    ? { ...data, data: { ...data.data, ...sessionData } } // กฎข้อ 5 ชนะเสมอ
     : data
 
   return sdk.store.payment
