@@ -202,23 +202,16 @@ Payout
 | AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts, Profile (Q5) + e2e (AC-9) | AF-7, AF-4 |
 AF-5/AF-6 ∥ AF-3/AF-4; AF-7 ∥ AF-4
 
-## Open questions
-- Q1 เปิดให้ affiliate สมัครเองได้ทุกคน หรือเฉพาะผู้ได้รับเชิญ? (ค่าเริ่มต้น: register → `pending` → admin อนุมัติ)
-- Q2 ขอบเขต `category_ids` นับ category ลูกด้วยหรือไม่? (ค่าเริ่มต้นแนะนำ: v1 **ไม่นับ** — ตรงกับที่ AF-1 ทำ
-  admin เลือก category ลูกเองใน UI; ใช้กฎเดียวกันทั้ง AF-3 และ AF-7)
-- Q3 cap ต่อ order แจกให้ line อย่างไร? ตามลำดับ line item (AF-1 ทำแบบนี้ ผลขึ้นกับลำดับ line) หรือตามสัดส่วนค่าคอมก่อน cap
-  (ค่าเริ่มต้นแนะนำ: **ตามสัดส่วน** ปัด half-up และให้เศษตกที่ line สุดท้าย — partial refund แล้ว reversal
-  = `−entry.amount × ยอดที่คืน / base ของ line` ได้ผลเท่ากันไม่ว่าลำดับ line; ต้องแก้ `utils/commission.ts` ใน AF-3)
-- Q4 `code` เปลี่ยนภายหลังได้ไหม และมีคำสงวนไหม? (ค่าเริ่มต้นแนะนำ: affiliate เปลี่ยนเองไม่ได้ใน v1
-  เพราะลิงก์ที่แชร์แล้วจะเสีย; มีรายการคำสงวน `admin, affiliate, store, auth, api, app, www, support, shop, r`)
-- Q5 หน้า Profile แสดง `payout_info` ไหม? (ค่าเริ่มต้นแนะนำ: ไม่ส่งออกเลยตามกฎ 8; portal แสดงเพียง
-  "ตั้งค่าบัญชีรับเงินแล้ว/ยัง" ผ่าน field boolean `has_payout_info` และ admin เป็นผู้กรอก)
-- Q6 สิทธิ์เข้า portal ตามสถานะ? (ค่าเริ่มต้นแนะนำ: `pending` เข้าได้เฉพาะ `/affiliate/me`;
-  `suspended` เข้า `/affiliate/me`, earnings, payouts แบบอ่านอย่างเดียว; `/affiliate/products` และ programs
-  เฉพาะ `active` อื่น ๆ → 403)
-- Q7 ถ้ามีหลายโปรแกรม published ที่ active พร้อมกันและครอบคลุม line เดียวกัน เลือกอันไหน?
-  (ค่าเริ่มต้นแนะนำ: ต่อ line เลือกโปรแกรมที่อัตราสูงสุด เสมอกันเลือก `starts_at` ล่าสุด; attribution เก็บ
-  `program_id` ของโปรแกรมที่ให้ค่าคอมรวมมากที่สุด)
-- Q8 reversal ที่เกิดหลัง entry `approved`/`paid` หรือ partial refund ระหว่าง `pending` จัดการอย่างไร?
-  (ค่าเริ่มต้นแนะนำ: maturity job อนุมัติ entry ที่ยอดสุทธิของ line (รวม reversal) > 0;
-  payout = Σ `approved` + Σ `reversed` ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป)
+## ข้อตัดสินของ owner (2026-10-25)
+- Q1 สมัครเองได้: register → `pending` → admin อนุมัติ
+- Q2 ขอบเขต `category_ids` **ไม่นับ** category ลูกใน v1 (admin เลือก category ลูกเองใน UI) ใช้กฎเดียวกันทั้ง AF-3 และ AF-7
+- Q3 cap ต่อ order แจกให้ line **ตามลำดับ line item** (แบบที่ AF-1 ทำ ไม่ต้องแก้ `utils/commission.ts`);
+  partial refund ของ line → reversal = `−entry.amount × ยอดที่คืน / base ของ line` (คิดจาก entry ของ line นั้นเอง)
+- Q4 affiliate เปลี่ยน `code` เองไม่ได้ใน v1; คำสงวน `admin, affiliate, store, auth, api, app, www, support, shop, r`
+- Q5 portal ไม่ส่ง `payout_info` ออกเลย แสดงเพียง boolean `has_payout_info`; admin เป็นผู้กรอก
+- Q6 `pending` เข้าได้เฉพาะ `/affiliate/me`; `suspended` เข้า `/affiliate/me`, earnings, payouts แบบอ่านอย่างเดียว;
+  `/affiliate/products` และ programs เฉพาะ `active` อื่น ๆ → 403
+- Q7 หลายโปรแกรม active ครอบ line เดียวกัน: ต่อ line เลือกอัตราสูงสุด เสมอกันเลือก `starts_at` ล่าสุด;
+  attribution เก็บ `program_id` ของโปรแกรมที่ให้ค่าคอมรวมมากที่สุด
+- Q8 maturity job อนุมัติ entry ที่ยอดสุทธิของ line (รวม reversal) > 0; payout = Σ `approved` + Σ `reversed`
+  ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
