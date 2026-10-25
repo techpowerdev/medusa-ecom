@@ -1,0 +1,13 @@
+**/node_modules
+**/.medusa
+**/.next
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.claude
+docs
+tools
+**/coverage
+**/test-results
+**/playwright-report
