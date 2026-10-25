@@ -1,9 +1,9 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules, decorateCartTotals } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { createCartWorkflow } from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
+import { registerCustomer, storeHeadersFor } from "../helpers/customer"
 import { exclusiveAutomaticRule } from "../../src/lib/promotion-exclusivity"
 import { FLASH_SALE_MODULE } from "../../src/modules/flash_sale"
 import type FlashSaleModuleService from "../../src/modules/flash_sale/service"
@@ -37,6 +37,7 @@ medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let container: MedusaContainer
     let storeHeaders: { headers: Record<string, string> }
+    let customerHeaders: { headers: Record<string, string> } // CORE-6: สร้าง cart ได้เฉพาะ customer ที่ล็อกอิน
     let regionId: string
     let flashVariantId: string // t-shirt L → F (target ตาม product)
     let otherVariantId: string // sweatshirt M → N เท่านั้น
@@ -55,6 +56,8 @@ medusaIntegrationTestRunner({
 
       const token = await getPublishableKey(container)
       storeHeaders = { headers: { "x-publishable-api-key": token! } }
+      const customer = await registerCustomer(api, token!, "fs4-customer@example.com", "fs4-customer-password")
+      customerHeaders = storeHeadersFor(token!, customer.token)
 
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
       const { data: regions } = await query.graph({ entity: "region", fields: ["id"] })
@@ -234,13 +237,17 @@ medusaIntegrationTestRunner({
       const promotionModule = container.resolve(Modules.PROMOTION)
       await promotionModule.updatePromotions(plainPromotionIds.map((id) => ({ id, status: "inactive" as const })))
       try {
-        const { result: cart } = await createCartWorkflow(container).run({
-          input: {
+        const {
+          data: { cart },
+        } = await api.post(
+          "/store/carts",
+          {
             region_id: regionId,
             shipping_address: { country_code: "th", city: "Bangkok", postal_code: "10110" },
             items: [{ variant_id: variantId, quantity: 1 }],
           },
-        })
+          customerHeaders
+        )
         const query = container.resolve(ContainerRegistrationKeys.QUERY)
         const { data } = await query.graph({
           entity: "cart",
