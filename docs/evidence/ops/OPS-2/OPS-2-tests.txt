@@ -1,0 +1,103 @@
+# OPS-2 — ผลทดสอบ (docs/spec/07-scaling-ops.md deliverable 2, 3)
+# เครื่อง: macOS, Node v24.12.0 (CI ใช้ .nvmrc), @medusajs/* 2.22.1, rebase บน origin/develop 6380561
+
+## RED — unit test ก่อนแก้ medusa-config.ts (ล้ม 5 ข้อด้วยสาเหตุที่ถูกต้อง: ยังไม่มี Redis/pool/S3/fail-fast)
+    ✕ uses Medusa's Redis modules in production when REDIS_URL is set
+    ✓ keeps Medusa's in-memory defaults for dev (medusa develop)
+    ✓ keeps Medusa's in-memory defaults for jest / medusa-test-utils
+    ✓ keeps Medusa's in-memory defaults for production without REDIS_URL
+    ✕ refuses to boot MEDUSA_WORKER_MODE=server in production without REDIS_URL (in-memory event bus cannot cross processes)
+    ✕ refuses to boot MEDUSA_WORKER_MODE=worker in production without REDIS_URL (in-memory event bus cannot cross processes)
+    ✕ sets the pg pool size from DATABASE_POOL_MIN/MAX
+    ✓ leaves Medusa's default pool when DATABASE_POOL_* is unset
+    ✕ uses the S3 file provider when S3_BUCKET is set
+    ✓ keeps Medusa's local file provider when S3 env is missing (dev/CI)
+Tests:       5 failed, 5 passed, 10 total
+
+## RED — tools/ops/smoke-worker-mode.sh บนโค้ด develop (event bus in-memory: server ประมวลผล event เอง, worker ไม่ได้รับ)
+PASS server GET /health
+PASS worker GET /health
+PASS server serves admin at /app
+PASS worker does not serve admin
+PASS worker does not serve store API
+PASS server serves store API (400 = missing publishable key)
+PASS server runs with MEDUSA_WORKER_MODE=server
+PASS worker runs with MEDUSA_WORKER_MODE=worker
+PASS worker loads scheduled jobs
+PASS server does not load scheduled jobs
+PASS server creates product via admin API
+FAIL worker processes product.created emitted by server (expected 1, got 0)
+FAIL server does not process events itself (expected 0, got 1)
+smoke-worker-mode: 2 check(s) failed
+# log: server-1 "Processing product.created which has 1 subscribers" (event-bus-local)
+
+## GREEN — pnpm --filter backend test:unit
+PASS src/__tests__/medusa-config.unit.spec.ts                (3 tests)
+PASS src/__tests__/medusa-config-modules.unit.spec.ts        (1 test)
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts      (13 tests)
+PASS src/__tests__/medusa-config.infra.unit.spec.ts          (OPS-2)
+    ✓ uses Medusa's Redis modules in production when REDIS_URL is set
+    ✓ keeps Medusa's in-memory defaults for dev (medusa develop)
+    ✓ keeps Medusa's in-memory defaults for jest / medusa-test-utils
+    ✓ keeps Medusa's in-memory defaults for production without REDIS_URL
+    ✓ refuses to boot MEDUSA_WORKER_MODE=server in production without REDIS_URL (in-memory event bus cannot cross processes)
+    ✓ refuses to boot MEDUSA_WORKER_MODE=worker in production without REDIS_URL (in-memory event bus cannot cross processes)
+    ✓ sets the pg pool size from DATABASE_POOL_MIN/MAX
+    ✓ leaves Medusa's default pool when DATABASE_POOL_* is unset
+    ✓ uses the S3 file provider when S3_BUCKET is set
+    ✓ keeps Medusa's local file provider when S3 env is missing (dev/CI)
+PASS src/modules/resend/__tests__/service.unit.spec.ts       (8 tests)
+PASS src/lib/__tests__/notification-providers.unit.spec.ts   (3 tests)
+PASS src/modules/resend/__tests__/templates.unit.spec.ts     (6 tests)
+Test Suites: 7 passed, 7 total
+Tests:       44 passed, 44 total
+
+## GREEN — integration (medusa-test-utils) ตั้ง REDIS_URL=redis://localhost:6379/8 แบบเดียวกับ CI
+## NODE_ENV=test → ยังเป็น in-memory ของ Medusa ตามเดิม (log "redisUrl not found. A fake redis instance will be used."
+## ทุก suite) และ Redis DB 8 dbsize = 0 หลังรัน
+pnpm --filter backend test:integration:modules
+PASS src/modules/flash_sale/__tests__/service.spec.ts
+PASS src/modules/evoucher/__tests__/evoucher-module.spec.ts
+Tests:       43 passed, 43 total   (รวม unit ที่ match pattern)
+pnpm --filter backend test:integration:http
+PASS integration-tests/http/evoucher-links.spec.ts
+PASS integration-tests/http/flash-sale-module.spec.ts
+PASS integration-tests/http/seed.spec.ts
+PASS integration-tests/http/health.spec.ts
+PASS integration-tests/http/order-notifications.spec.ts
+Tests:       15 passed, 15 total
+
+## GREEN — SMOKE_PROJECT=ops2test SERVER_PORT=9118 IMAGE_TAG=ops2 tools/ops/smoke-worker-mode.sh
+PASS server GET /health
+PASS worker GET /health
+PASS server serves admin at /app
+PASS worker does not serve admin
+PASS worker does not serve store API
+PASS server serves store API (400 = missing publishable key)
+PASS server runs with MEDUSA_WORKER_MODE=server
+PASS worker runs with MEDUSA_WORKER_MODE=worker
+PASS worker loads scheduled jobs
+PASS server does not load scheduled jobs
+PASS server creates product via admin API
+PASS worker processes product.created emitted by server
+PASS server does not process events itself
+smoke-worker-mode: all checks passed
+# log: worker-1 "Processing product.created (priority: 100) which has 1 subscribers" (event-bus-redis)
+# boot log: "Connection to Redis in module 'event-bus-redis' established", "[Workflow-engine-redis] Connection to Redis
+# (+PubSub) ... established", "Connection to Redis in \"locking-redis\" provider established",
+# "Redis cache connection test successful" (caching-redis)
+
+## pnpm lint && pnpm typecheck && pnpm --filter backend build
+backend lint: No lint issues found. (storefront: 0 errors, 38 warnings เดิม ไม่เกี่ยวกับ task นี้)
+typecheck: backend Done, storefront Done
+build: Backend build completed successfully, Frontend build completed successfully
+
+## รันซ้ำหลัง rebase บน origin/develop ae8e9fa (รวม PROMO-1)
+test:unit:             Tests: 69 passed, 69 total
+test:integration:http: Tests: 31 passed, 31 total (6 suites รวม promotion-exclusivity.spec.ts; REDIS_URL ตั้งแบบ CI)
+backend lint: No lint issues found. typecheck: ผ่าน. build: Backend/Frontend build completed successfully
+(smoke ไม่ได้รันซ้ำหลัง rebase นี้ — PROMO-1 ไม่แตะ config/infra; CI job docker-worker-mode รันให้)
+
+## ข้อสังเกต: การรัน smoke ครั้งหนึ่ง (เครื่องโหลดหนัก event loop ค้าง ~15s ตอนบูต) worker log
+## "Error: connect ETIMEDOUT" แล้ว "Error running event bus worker: Connection is closed." → BullMQ worker ของ
+## event-bus-redis ไม่เริ่มใหม่เอง (พฤติกรรมของ Medusa/BullMQ) รันซ้ำ 2 ครั้งหลังจากนั้นไม่เกิด — ดูหัวข้อค้างใน PR

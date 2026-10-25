@@ -39,7 +39,7 @@ check "worker loads scheduled jobs" 1 "$(compose logs worker | grep -c 'Jobs reg
 check "server does not load scheduled jobs" 0 "$(compose logs server | grep -c 'Jobs registered' || true)"
 
 # OPS-2: admin สร้าง product บน server → product.created → subscriber search-ingestion ของ Medusa รันบน worker
-# (event-bus-redis log "Processing <event> which has N subscribers" เฉพาะ process ที่รัน BullMQ worker)
+# (event-bus-redis log "Processing <event> ..." เฉพาะ process ที่รัน BullMQ worker)
 ADMIN_EMAIL="smoke-$(openssl rand -hex 4)@example.com"
 ADMIN_PASSWORD="$(openssl rand -hex 16)"
 compose exec -T server /app/node_modules/.bin/medusa user -e "$ADMIN_EMAIL" -p "$ADMIN_PASSWORD" >/dev/null
@@ -56,7 +56,8 @@ create_product() {
       .then((r) => console.log(r.status), () => console.log('ERR'))"
 }
 check "server creates product via admin API" 200 "$(create_product)"
-processed_on() { compose logs "$1" | grep -c 'Processing product.created which has' || true; }
+# event-bus-redis: "Processing product.created (priority: N) which has ..."; event-bus-local ไม่มี priority
+processed_on() { compose logs "$1" | grep -c 'Processing product.created ' || true; }
 for _ in $(seq 1 30); do [ "$(processed_on worker)" -ge 1 ] && break; sleep 1; done
 check "worker processes product.created emitted by server" 1 "$(processed_on worker)"
 check "server does not process events itself" 0 "$(processed_on server)"
