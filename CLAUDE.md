@@ -88,26 +88,28 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - หนึ่ง PR ต่อหนึ่ง task ใน task list ของ spec ขนาดเล็ก (diff < ~400 LOC) CI ต้องผ่าน (green)
 - body ของ PR ทำตาม `.github/pull_request_template.md` agent ที่เปิด PR (builder/planner/qa/reviewer) ห้าม merge เอง
 - **การ merge เข้า `develop`**: session หลักเป็นผู้ merge (owner อนุญาต 2026-10-25) เฉพาะเมื่อครบทุกข้อ: reviewer ให้
-  APPROVE ไม่มี blocker, CI เขียวทุก job, task ที่มี UI ผ่าน qa (มี `REPORT.md`), dependency merge ครบ และ PR ไม่ CONFLICTING
+  APPROVE ไม่มี blocker, CI ทุก job เป็น `SUCCESS` หรือ `SKIPPED` ตามที่ `tools/ci/classify-changes.sh` ตัดสิน, task ที่มี UI ผ่าน qa (มี `REPORT.md`), dependency merge ครบ และ PR ไม่ CONFLICTING
   merge ทีละตัวตามลำดับ critical path แล้วแจ้ง owner ทุกครั้ง **การ merge เข้า `main` (release) owner เป็นผู้ทำเท่านั้น**
 - Release = PR `develop → main` ติด tag `vX.Y.Z` changelog มาจากชื่อ PR
 - **ก่อนเปิด branch ใหม่หรือเริ่ม task ใหม่ ต้องเช็ก dependency ก่อนเสมอ**: ดูคอลัมน์ Depends ในตาราง task ของ spec
-  และ PR ที่เปิดอยู่ (`gh pr list`) ว่างานนี้ต้องใช้ PR ไหน (รวม PR เอกสาร/ADR/spec ที่งานนี้อ้างถึง และ hotfix ที่ทำให้
-  CI ของ `develop` เขียว) ถ้า PR นั้นยังไม่ merge เข้า `develop` → **ห้ามเริ่ม** ให้แจ้ง owner ว่าต้อง merge PR ไหน
+  และ PR ที่เปิดอยู่ (`gh pr list`) ว่างานนี้ต้องใช้ PR ไหน (รวม PR เอกสาร/ADR/spec ที่งานนี้อ้างถึง และ hotfix ที่แก้ `develop`
+  แดง — ดูนิยามในบทเรียนด้านล่าง) ถ้า PR นั้นยังไม่ merge เข้า `develop` → **ห้ามเริ่ม** ให้แจ้ง owner ว่าต้อง merge PR ไหน
   แล้วรอจนกว่าจะ merge จริง (เช็กด้วย `gh pr view <n> --json state`) ห้ามแตก branch จาก PR ที่ยังไม่ merge
   และห้ามอ่าน spec จาก branch ที่ยังไม่ merge แทน
 
 ## บทเรียนที่ต้องไม่ทำผิดซ้ำ (จากรอบ 2026-10-25/26)
 **การ merge และ CI (session หลัก)**
-- ก่อน merge ต้องเห็น `SUCCESS` ครบ **ทุก** job (`gh pr checks <n> --watch`) แม้เป็น PR เอกสาร — conclusion ว่างใน
-  `statusCheckRollup` คือยังรันอยู่ ไม่ใช่ผ่าน
+- ก่อน merge **ทุก** job (`gh pr checks <n> --watch`) ต้องเป็น `SUCCESS` หรือ `SKIPPED` ตามที่ `classify-changes.sh`
+  ตัดสิน — ห้ามมี FAILURE/CANCELLED/ค่าว่าง (conclusion ว่างใน `statusCheckRollup` = ยังรันอยู่ ไม่ใช่ผ่าน)
 - merge ทีละตัว: ก่อน merge แต่ละ PR ต้อง merge `origin/develop` เข้า branch ของ PR (sync) แล้วรอ CI ของ PR นั้นเขียว
   — CI ไม่รันบน push ไป `develop` แล้ว (ทดสอบ tree เดียวกับ PR ที่ sync แล้วซ้ำ) ด่าน "develop เขียว" จึงคือ PR ที่ sync
-  กับ develop ล่าสุดและ CI เขียว; ถ้า develop เปลี่ยนแค่เอกสาร (`docs/**`, `*.md`) นับจาก merge-base ไม่ต้อง sync ใหม่
+  กับ develop ล่าสุดและ CI เขียว; ถ้าสิ่งที่ develop เปลี่ยนนับจาก merge-base เป็นเอกสารล้วนตามนิยามของ
+  `tools/ci/classify-changes.sh` (`code=false`) ไม่ต้อง sync ใหม่
 - PR สองตัวที่เขียวแยกกันอาจพังเมื่อรวมกัน (เช่น test สร้าง cart แบบ guest × PR ที่บังคับ login) → หลัง merge ตัวหนึ่ง
   ให้ merge `origin/develop` เข้า PR ถัดไปแล้วรอ CI ใหม่บน base ล่าสุด โดยเฉพาะเมื่อ PR ที่เพิ่ง merge เปลี่ยนกติกากลาง
   (auth, middleware, error handler, hook) — `gh pr merge` ไม่ re-run CI ให้
-- `develop` แดง → หยุด merge ทุกอย่างแล้วทำ hotfix ก่อน อ่าน log จริงก่อนโทษ PR (เช่น `heap out of memory`/exit 134 คือ
+- `develop` แดง (= CI ของ PR ที่ sync กับ develop ล่าสุดล้มด้วยสาเหตุที่ไม่ใช่โค้ดของ PR นั้น หรือ run ของ `main` ล้ม —
+  develop ไม่มี run ของตัวเองแล้ว) → หยุด merge ทุกอย่างแล้วทำ hotfix ก่อน อ่าน log จริงก่อนโทษ PR (เช่น `heap out of memory`/exit 134 คือ
   jest หน่วยความจำเต็ม ไม่ใช่ test ล้ม)
 - conflict ที่ `medusa-config.ts` / `src/api/middlewares.ts` ให้เก็บทั้งสองฝั่ง แล้วรัน `test:unit` + `build` + `typecheck`
   ก่อน push (เคย resolve ผิดจน module หลุด)
@@ -122,7 +124,7 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - qa เขียน `REPORT.md` ไม่ได้ (harness) → qa ส่งเนื้อหากลับ session หลัก commit ลง branch ของ PR
 - builder push ครั้งเดียวเมื่อพร้อมเปิด PR (ไม่ push ระหว่างทาง) และแก้ตาม review ให้ครบแล้ว push ครั้งเดียว — ทุก push รัน CI
   ชุดเต็มและ cancel run ก่อนหน้า
-- `develop` แดง → สั่ง builder ทุกตัวหยุด push จน hotfix merge (PR ที่ push ช่วงนั้นแดงเพราะ develop ไม่ใช่เพราะตัวเอง)
+- `develop` แดง (ตามนิยามด้านบน) → สั่ง builder ทุกตัวหยุด push จน hotfix merge (PR ที่ push ช่วงนั้นแดงเพราะ develop ไม่ใช่เพราะตัวเอง)
 - session หลัก commit `REPORT.md` รวมกับการ sync develop ใน push เดียว
 - CI ข้าม job หนักให้อัตโนมัติ: PR เอกสารล้วนรันแค่ `lint-typecheck`; PR ที่แก้แค่ `apps/storefront/**` ข้าม `backend-tests`/`docker-worker-mode`
   (กติกาใน `tools/ci/classify-changes.sh`) push ไป `main` รันครบเสมอ

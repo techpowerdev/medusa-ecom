@@ -40,9 +40,8 @@ jobs:
             printf 'code=true\nbackend=true\n' | tee -a "$GITHUB_OUTPUT"
             exit 0
           fi
-          git diff --name-only "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
-          cat "$RUNNER_TEMP/changed.txt"
-          tools/ci/classify-changes.sh < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
+          # script คำนวณรายชื่อไฟล์เองด้วย git diff --no-renames (rename นับทั้ง path เดิมและใหม่) และพิมพ์รายชื่อลง log
+          tools/ci/classify-changes.sh "$BASE_SHA...$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
 
   lint-typecheck:
     runs-on: ubuntu-latest
