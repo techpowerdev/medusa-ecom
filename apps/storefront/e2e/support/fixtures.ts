@@ -3,11 +3,10 @@ import fs from "node:fs"
 import path from "node:path"
 
 import {
-  EVIDENCE_MAX_BYTES,
   EvidenceTarget,
-  checkEvidenceBudget,
   evidenceDir,
   evidenceFileName,
+  planEvidenceWrite,
 } from "./evidence-rules"
 import { REPO_ROOT } from "./paths"
 
@@ -67,23 +66,25 @@ export const test = base.extend<Fixtures & Options>({
           "ต้องตั้ง test.use({ evidenceTarget: { feature, taskId } }) ก่อนบันทึก evidence"
         )
       }
-      if (png.byteLength > EVIDENCE_MAX_BYTES) {
+      // CORE-5b: ตรวจงบกับชุดไฟล์หลังเขียนก่อน แล้วจึงเขียนจริง (เกินงบ → ไม่มีไฟล์ถูกเขียน)
+      const dir = evidenceDir(REPO_ROOT, evidenceTarget)
+      const existing = fs.existsSync(dir)
+        ? fs.readdirSync(dir).map((f) => ({
+            name: f,
+            bytes: fs.statSync(path.join(dir, f)).size,
+          }))
+        : []
+      const violations = planEvidenceWrite(existing, {
+        name: fileName,
+        bytes: png.byteLength,
+      })
+      if (violations.length) {
         throw new Error(
-          `${fileName} ขนาด ${png.byteLength} bytes เกิน ${EVIDENCE_MAX_BYTES} — ใช้ locator.screenshot() หรือ clip ให้เล็กลง`
+          `evidence เกินงบใน ${dir}: ${violations.join("; ")} — ใช้ locator.screenshot() หรือ clip ให้เล็กลง หรือลดจำนวนรูป`
         )
       }
-      const dir = evidenceDir(REPO_ROOT, evidenceTarget)
       fs.mkdirSync(dir, { recursive: true })
       fs.writeFileSync(path.join(dir, fileName), new Uint8Array(png))
-
-      const files = fs.readdirSync(dir).map((f) => ({
-        name: f,
-        bytes: fs.statSync(path.join(dir, f)).size,
-      }))
-      const violations = checkEvidenceBudget(files)
-      if (violations.length) {
-        throw new Error(`evidence เกินงบใน ${dir}: ${violations.join("; ")}`)
-      }
     })
   },
 })

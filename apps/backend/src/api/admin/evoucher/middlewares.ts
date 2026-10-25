@@ -9,6 +9,7 @@ import {
   AdminCreateEvoucherPool,
   AdminListEvoucherCodesParams,
   AdminListEvoucherParams,
+  AdminListEvoucherPoolParams,
   AdminUpdateEvoucherPartner,
   AdminUpdateEvoucherPool,
   AdminVoidEvoucherCode,
@@ -69,7 +70,7 @@ export const adminEvoucherMiddlewares: MiddlewareRoute[] = [
     method: ["GET"],
     matcher: "/admin/evoucher/pools",
     middlewares: [
-      validateAndTransformQuery(AdminListEvoucherParams, {
+      validateAndTransformQuery(AdminListEvoucherPoolParams, {
         defaults: POOL_FIELDS,
         isList: true,
       }),

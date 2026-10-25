@@ -10,6 +10,7 @@ import type { CreateNotificationDTO } from "@medusajs/framework/types"
 import { sendNotificationsStep } from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
 import EvoucherModuleService from "../../modules/evoucher/service"
+import { isLowStock } from "../../modules/evoucher/utils/stats"
 import { EmailTemplates } from "../../modules/resend/templates"
 
 export type SendEvoucherStockAlertsInput = {
@@ -34,13 +35,12 @@ export const buildEvoucherStockAlertsStep = createStep(
       fields: ["id", "name", "low_stock_threshold"],
     })
     const notifications: CreateNotificationDTO[] = []
+    // query เดียวทุก pool + กฎ low-stock ที่เดียวกับ admin UI (EV-6)
+    const counts = await service.countCodesByStatus(pools.map((p) => p.id))
 
     for (const pool of pools) {
-      const [, available] = await service.listAndCountEvoucherCodes(
-        { pool_id: pool.id, status: "available" },
-        { select: ["id"], take: 1 }
-      )
-      if (available >= pool.low_stock_threshold) {
+      const available = counts[pool.id].available
+      if (!isLowStock(available, pool.low_stock_threshold)) {
         continue
       }
       notifications.push({

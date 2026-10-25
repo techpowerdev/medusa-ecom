@@ -17,6 +17,7 @@ import {
   EncryptionKey,
   parseEncryptionKey,
 } from "./utils/crypto"
+import { EvoucherCodeCounts, StatusCountRow, toStatusCounts } from "./utils/stats"
 
 export type EvoucherModuleOptions = {
   /** 64 hex chars จาก env `EVOUCHER_ENCRYPTION_KEY` */
@@ -57,6 +58,24 @@ class EvoucherModuleService extends MedusaService({
 
   async decryptSecret(value: string): Promise<string> {
     return decryptSecret(value, this.key())
+  }
+
+  /** จำนวน code ต่อสถานะของแต่ละ pool (GROUP BY ใช้ index (pool_id, status); ไม่โหลดแถว code) */
+  @InjectManager()
+  async countCodesByStatus(
+    poolIds: string[],
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<Record<string, EvoucherCodeCounts>> {
+    if (!poolIds.length) {
+      return {}
+    }
+    const rows = await sharedContext.manager!.execute<StatusCountRow[]>(
+      `SELECT pool_id, status, count(*) AS count FROM evoucher_code
+       WHERE pool_id IN (?) AND deleted_at IS NULL
+       GROUP BY pool_id, status`,
+      [poolIds]
+    )
+    return toStatusCounts(poolIds, rows)
   }
 
   /**

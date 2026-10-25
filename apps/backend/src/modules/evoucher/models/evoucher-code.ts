@@ -25,6 +25,8 @@ const EvoucherCode = model
   .indexes([
     { on: ["pool_id", "code"], unique: true },
     { on: ["pool_id", "status"] },
+    // EV-6: widget หน้า order / resend ค้นด้วย order_id
+    { on: ["order_id"] },
   ])
 
 export default EvoucherCode

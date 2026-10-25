@@ -15,6 +15,7 @@ import {
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
+import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -127,14 +128,19 @@ export async function addToCart({
     throw new Error("Missing variant ID when adding to cart")
   }
 
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  // CORE-6: ไม่มี guest — ยังไม่ล็อกอินให้ไปหน้า login พร้อม variant ที่ค้างไว้
+  if (!("authorization" in headers)) {
+    redirect(loginPathForAddToCart(countryCode, variantId))
+  }
+
   const cart = await getOrSetCart(countryCode)
 
   if (!cart) {
     throw new Error("Error retrieving or creating cart")
-  }
-
-  const headers = {
-    ...(await getAuthHeaders()),
   }
 
   await sdk.store.cart

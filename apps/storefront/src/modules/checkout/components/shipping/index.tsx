@@ -254,6 +254,7 @@ const Shipping: React.FC<ShippingProps> = ({
                         key={option.id}
                         value={option.id}
                         data-testid="delivery-option-radio"
+                        data-option-id={option.id}
                         disabled={isDisabled}
                         className={clx(
                           "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",

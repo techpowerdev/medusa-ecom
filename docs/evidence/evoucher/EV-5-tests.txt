@@ -66,6 +66,13 @@ Tests:       28 passed, 28 total
 
 integration ชุดเต็มรันใน CI
 
+== หลัง merge origin/develop (มี EV-6 #39): low-stock ใช้ countCodesByStatus + isLowStock ของ EV-6 ==
+medusa db:generate evoucher → Skipped. No changes detected in your models. (ไม่มี migration ใหม่)
+test:unit: Test Suites 25 passed, Tests 193 passed
+test:integration:modules src/modules/evoucher: Tests 8 passed
+evoucher-void-expiry.spec.ts + evoucher-admin-ui.spec.ts: Test Suites 2 passed, Tests 22 passed
+pnpm lint (backend: No lint issues found), pnpm typecheck: Done, backend build: completed
+
 == รอบแก้ตาม review (owner ตัดสิน Q-A: ผู้รับ = mailbox เดียวจาก EVOUCHER_ADMIN_EMAIL) ==
 Red: 4 failed / 13 passed (ผู้รับยังเป็น admin user ทุกคน; ยังไม่ warning/ข้ามเมื่อไม่ตั้ง env)
 Green: pnpm lint (No lint issues found), typecheck, build, test:unit 137 passed, modules evoucher 42 passed

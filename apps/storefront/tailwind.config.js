@@ -1,8 +1,11 @@
 const path = require("path")
+const { withThaiUiPreset } = require("./src/styles/thai-ui-preset")
 
+// [CORE-8] ui-preset fix ฟอนต์ Inter ใน class txt-*/h*-webs → ห่อให้ใช้ Noto Sans Thai ก่อน
+// (throw ตอนโหลด config ถ้าห่อไม่ได้; ต้องทบทวนเมื่อ preset ไป Tailwind v4 — ดู TODO ใน thai-ui-preset.js)
 module.exports = {
   darkMode: "class",
-  presets: [require("@medusajs/ui-preset")],
+  presets: [withThaiUiPreset(require("@medusajs/ui-preset"))],
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx}",
     "./src/pages/**/*.{js,ts,jsx,tsx}",
