@@ -32,6 +32,10 @@ module.exports = defineConfig({
       resolve: './src/modules/flash_sale',
     },
     {
+      resolve: './src/modules/group_buy',
+    },
+    { resolve: './src/modules/affiliate' },
+    {
       // spec 06 / ADR-007: Stripe provider ทางการ → pp_stripe_stripe (บัตร) + pp_stripe-promptpay_stripe
       // webhook: /hooks/payment/stripe_stripe และ /hooks/payment/stripe-promptpay_stripe
       resolve: '@medusajs/medusa/payment',
