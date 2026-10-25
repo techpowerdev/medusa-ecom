@@ -1,0 +1,58 @@
+# CORE-4a — ผล test (spec 01 "CORE-4 Storefront i18n / theme / THB", ADR-008)
+# วันที่ 2026-10-25, Node v24.12.0 (เครื่อง local; CI ใช้ .nvmrc), vitest 5.0.5
+
+## Red (เขียน test ก่อนแก้ money.ts / tailwind.config.js) — pnpm --filter storefront test:unit
+ Test Files  2 failed (2)
+      Tests  16 failed | 6 passed (22)
+ × tailwind.config.js — brand theme (AC-9) > มีสีกลุ่ม brand ครบ DEFAULT และ 50..900
+ × tailwind.config.js — brand theme (AC-9) > fontFamily.sans ตัวแรกคือ Noto Sans Thai
+ × AC-7 locale th-TH / en-US / ไม่ระบุ locale / THB ตัวพิมพ์ใหญ่
+ × AC-8 th-TH: 0, -100, 999.999 ; en-US: ทุกกรณี ; en-US maximumFractionDigits
+ (ตัวอย่าง)
+ FAIL  src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: 1234567.891 → ฿1,234,567.89
+Expected: "฿1,234,567.89"
+Received: "THB 1,234,567.89"
+ FAIL  src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: 999.999 → ฿1,000
+Expected: "฿1,000"
+Received: "THB 1,000.00"
+ FAIL  src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: maximumFractionDigits ของผู้เรียกไม่ถูก override
+Expected: "฿1,001"
+Received: "THB 1,001"
+
+## Green — pnpm --filter storefront test:unit (vitest run --reporter=verbose)
+ ✓ src/styles/tailwind-config.test.ts > tailwind.config.js — brand theme (AC-9) > มีสีกลุ่ม brand ครบ DEFAULT และ 50..900
+ ✓ src/styles/tailwind-config.test.ts > tailwind.config.js — brand theme (AC-9) > fontFamily.sans ตัวแรกคือ Noto Sans Thai (CSS variable จาก next/font)
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-7: 1000 THB แสดงเป็น ฿1,000 > locale th-TH
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-7: 1000 THB แสดงเป็น ฿1,000 > locale en-US
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-7: 1000 THB แสดงเป็น ฿1,000 > ไม่ระบุ locale (default th-TH)
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-7: 1000 THB แสดงเป็น ฿1,000 > currency_code ไม่สนตัวพิมพ์ (THB)
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > th-TH: 1000.5 → ฿1,000.50
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > th-TH: 0.1 → ฿0.10
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > th-TH: 0 → ฿0
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > th-TH: -100 → -฿100
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > th-TH: 1234567.891 → ฿1,234,567.89
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > th-TH: 999.999 → ฿1,000
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: 1000.5 → ฿1,000.50
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: 0.1 → ฿0.10
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: 0 → ฿0
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: -100 → -฿100
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: 1234567.891 → ฿1,234,567.89
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: 999.999 → ฿1,000
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > th-TH: maximumFractionDigits ของผู้เรียกไม่ถูก override
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > AC-8: ทศนิยมตามค่า > en-US: maximumFractionDigits ของผู้เรียกไม่ถูก override
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > สกุลเงินอื่นคงพฤติกรรมเดิม > USD en-US
+ ✓ src/lib/util/money.test.ts > convertToLocale — THB > สกุลเงินอื่นคงพฤติกรรมเดิม > ไม่มี currency_code → amount.toString()
+
+ Test Files  2 passed (2)
+      Tests  22 passed (22)
+
+## lint / typecheck
+pnpm lint       -> 0 errors (storefront มี 38 warnings เดิมจาก starter; ไฟล์ที่ task นี้แตะไม่มี warning)
+pnpm typecheck  -> backend Done, storefront Done
+pnpm install --frozen-lockfile -> Lockfile is up to date
+
+## next build (ตรวจ next/font, ไม่ใช่ AC ของ 4a — AC-10 ตรวจด้วย e2e ใน CORE-4b)
+NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_dummy next build -> สำเร็จ
+CSS ที่ build: html{font-family:var(--font-noto-sans-thai), Inter, ...}
+@font-face "Noto Sans Thai" self-host (woff2 3 ไฟล์ใน .next/static/media)
+ไม่มีการอ้างถึง fonts.googleapis.com ใน .next/static และ .next/server
