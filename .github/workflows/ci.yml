@@ -101,6 +101,8 @@ jobs:
       NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
       JWT_SECRET: test
       COOKIE_SECRET: test
+      # AF-2: secret ของ cookie `aff` (spec 05) — ไม่ตั้ง = ลิงก์ affiliate redirect ได้แต่ไม่มี cookie
+      AFFILIATE_TOKEN_SECRET: test
       STORE_CORS: http://localhost:8000
       ADMIN_CORS: http://localhost:9000
       AUTH_CORS: http://localhost:9000,http://localhost:8000
