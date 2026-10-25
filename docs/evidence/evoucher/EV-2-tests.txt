@@ -90,3 +90,10 @@ POST /admin/evoucher/pools/:id/import ไฟล์ 50,000 แถว (code,pin,ex
 == Red (ก่อนเขียนโค้ด) ==
 unit: csv/mask "Cannot find module", crypto "assertCiphertext is not a function" (6 failed)
 http: 9/10 failed (route ยังไม่มี → 404); "requires an authenticated admin" ผ่านตั้งแต่ต้นเพราะ Medusa บังคับ auth บน /admin/* อยู่แล้ว
+
+== แก้ตาม review PR #25 (rebase บน origin/develop 2088bc4) ==
+Red: "removes earlier chunks when a later insert chunk fails (no orphan rows)" → Expected length 0, Received length 1000
+Green: try/catch ใน insertEvoucherCodesStep → deleteEvoucherCodes({ batch_ref }) ก่อน rethrow
+evoucher-admin.spec.ts: Tests: 13 passed, 13 total
+test:unit: Test Suites: 11 passed, Tests: 88 passed
+lint: No lint issues found / typecheck: ผ่าน / build: Backend + Frontend build completed successfully
