@@ -16,6 +16,9 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET,
     }
   },
+  admin: {
+    disable: process.env.DISABLE_MEDUSA_ADMIN === 'true',
+  },
   modules: [
     {
       resolve: '@medusajs/medusa/notification',
