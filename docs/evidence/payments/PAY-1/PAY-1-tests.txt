@@ -12,11 +12,21 @@ exit=0
 apps/backend typecheck: Done
 apps/storefront typecheck: Done
 exit=0
-### pnpm --filter backend test:unit
-Tests: 3 failed, 17 passed, 20 total
-FAIL src/__tests__/medusa-config.unit.spec.ts (OPS-1: config.admin.disable/path = undefined)
-# ล้มบน develop da39ddf อยู่แล้ว (CI ของ develop fail) — merge c1a1315 (CORE-3) ทำ block `admin` ของ OPS-1
-# ใน medusa-config.ts หาย ไม่เกี่ยวกับ PAY-1 และไม่ได้แก้ใน PR นี้ (เสนอเป็น task แยก)
+### pnpm --filter backend test:unit (หลัง rebase บน hotfix #18)
+Tests:       20 passed, 20 total
+### review fix: integration test ไม่ต้องมี STRIPE_* ใน env (integration-tests/setup.js ใส่ dummy ด้วย ??=)
+# Red (ก่อนแก้ setup.js): unset STRIPE_API_KEY STRIPE_WEBHOOK_SECRET; pnpm test:integration:http health
+#   → "Loaders for module Payment failed: Required option `apiKey` is missing in Stripe plugin"
+# Green: unset STRIPE_API_KEY STRIPE_WEBHOOK_SECRET; pnpm test:integration:http --verbose
+STRIPE_API_KEY set? no
+PASS integration-tests/http/stripe-webhook.spec.ts
+PASS integration-tests/http/health.spec.ts
+PASS integration-tests/http/seed.spec.ts
+PASS integration-tests/http/order-notifications.spec.ts
+Test Suites: 4 passed, 4 total
+Tests:       17 passed, 17 total
+# docker compose -f docker-compose.prod.yml config โดยไม่มี STRIPE_WEBHOOK_SECRET
+#   → "required variable STRIPE_WEBHOOK_SECRET is missing a value" (prod ล้มทันที)
 ### pnpm --filter backend test:integration:modules
 No tests found, exiting with code 0
 ### pnpm --filter backend test:integration:http --verbose

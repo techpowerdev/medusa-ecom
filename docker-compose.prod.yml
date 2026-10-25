@@ -37,7 +37,7 @@ x-backend-env: &backend-env
   LOG_LEVEL: ${LOG_LEVEL:-info}
   # PAY-1: Stripe provider ต้องมี key ตอนบูต (spec 06)
   STRIPE_API_KEY: ${STRIPE_API_KEY:?ต้องตั้ง STRIPE_API_KEY}
-  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?ต้องตั้ง STRIPE_WEBHOOK_SECRET}
 
 services:
   postgres:

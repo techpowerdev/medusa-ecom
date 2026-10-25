@@ -217,10 +217,10 @@ medusaIntegrationTestRunner({
           fields: ["id", "payment_collections.payments.captures.id", "payment_collections.payments.refunds.id"],
           filters: { id: links[0].order_id },
         })
-        const payments = orders[0].payment_collections.flatMap((c) => c.payments)
+        const payments = (orders[0].payment_collections ?? []).flatMap((c) => c?.payments ?? [])
         expect(payments).toHaveLength(1)
-        expect(payments[0].captures).toHaveLength(1)
-        expect(payments[0].refunds ?? []).toHaveLength(0)
+        expect(payments[0]?.captures).toHaveLength(1)
+        expect(payments[0]?.refunds ?? []).toHaveLength(0)
         expect(retrieve).toHaveBeenCalled()
         expect(capture.mock.calls.length).toBeLessThanOrEqual(1)
       })
