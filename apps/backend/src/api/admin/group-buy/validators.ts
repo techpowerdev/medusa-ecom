@@ -56,3 +56,19 @@ export const AdminListGroupBuyCampaigns = createFindParams({
 })
 
 export const AdminGetGroupBuyCampaignParams = createSelectParams()
+
+// ไม่รับ kind จาก body — admin route สร้าง pool เสมอ (spec 04: "pool สร้างได้จาก admin เท่านั้น" บังคับที่ route)
+export const AdminCreateGroupBuyGroup = z
+  .object({ name: z.string().trim().min(1).nullish() })
+  .strict()
+export type AdminCreateGroupBuyGroup = z.infer<typeof AdminCreateGroupBuyGroup>
+
+export const AdminListGroupBuyGroups = createFindParams({
+  limit: 50,
+  order: "-created_at",
+}).extend({
+  status: z.enum(["open", "succeeded", "failed"]).optional(),
+  kind: z.enum(["pool", "team"]).optional(),
+})
+
+export const AdminGetGroupBuyGroupParams = createSelectParams()
