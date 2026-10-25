@@ -16,6 +16,11 @@ import {
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
 import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
+import {
+  PromptPayPollState,
+  paymentSessionData,
+  promptPayPollState,
+} from "@lib/util/payment-session"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -251,14 +256,44 @@ export async function initiatePaymentSession(
     ...(await getAuthHeaders()),
   }
 
+  // PAY-2 (spec 06 กฎข้อ 5): provider บัตรขอ PaymentIntent แบบ card เท่านั้น
+  const sessionData = paymentSessionData(data.provider_id)
+  const body = sessionData
+    ? { ...data, data: { ...data.data, ...sessionData } } // กฎข้อ 5 ชนะเสมอ
+    : data
+
   return sdk.store.payment
-    .initiatePaymentSession(cart, data, {}, headers)
+    .initiatePaymentSession(cart, body, {}, headers)
     .then(async (resp) => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag, { expire: 0 })
       return resp
     })
     .catch(medusaError)
+}
+
+/**
+ * PAY-2: สถานะการชำระ PromptPay ของ cart (อ่านอย่างเดียว ไม่ cache) — order ถูกสร้างโดย webhook
+ * (spec 06 กฎข้อ 3) storefront แค่ poll จน cart ถูก complete
+ */
+export async function getPromptPayState(
+  cartId: string
+): Promise<PromptPayPollState> {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  const cart = await sdk.client
+    .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, {
+      method: "GET",
+      query: { fields: "id,completed_at,*payment_collection.payment_sessions" },
+      headers,
+      cache: "no-store",
+    })
+    .then(({ cart }) => cart)
+    .catch(() => null)
+
+  return promptPayPollState(cart)
 }
 
 export async function applyPromotions(codes: string[]) {

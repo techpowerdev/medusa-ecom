@@ -166,15 +166,36 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee /etc/apt/sources.list.d/stripe.list
           sudo apt-get update -qq && sudo apt-get install -y -qq stripe
       - name: Forward Stripe webhooks to backend (cards + PromptPay)
+        # PAY-2 (spec 06 AC-10): `stripe listen` รับ --forward-to ได้ปลายทางเดียวต่อ process และ --print-secret
+        # พิมพ์ secret แล้วจบ (ไม่ listen) → ดึง secret ครั้งเดียว แล้วเปิด listener แยกต่อ endpoint (secret เดียวกัน)
+        # skip ได้เฉพาะเมื่อไม่มี secret ทั้งคู่; มีตัวเดียวหรือไม่ใช่ test key → fail (e2e/support/stripe-env.ts ตรวจซ้ำ)
         env:
           STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+          STRIPE_PUBLISHABLE: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
         run: |
-          stripe listen \
-            --forward-to localhost:9000/hooks/payment/stripe_stripe \
-            --forward-to localhost:9000/hooks/payment/stripe-promptpay_stripe \
-            --print-secret > /tmp/whsec.txt 2>/dev/null &
-          sleep 5
-          echo "STRIPE_WEBHOOK_SECRET=$(head -n1 /tmp/whsec.txt)" >> "$GITHUB_ENV"
+          if [ -z "$STRIPE_API_KEY" ] && [ -z "$STRIPE_PUBLISHABLE" ]; then
+            echo "::warning::ไม่มี secret STRIPE_TEST_API_KEY/STRIPE_TEST_PUBLISHABLE_KEY — e2e ของ Stripe (spec 06) จะถูก skip"
+            exit 0
+          fi
+          case "$STRIPE_API_KEY" in sk_test_*) ;; *) echo "::error::STRIPE_TEST_API_KEY ต้องมีและเป็น sk_test_"; exit 1;; esac
+          case "$STRIPE_PUBLISHABLE" in pk_test_*) ;; *) echo "::error::STRIPE_TEST_PUBLISHABLE_KEY ต้องมีและเป็น pk_test_"; exit 1;; esac
+          whsec=$(stripe listen --print-secret)
+          echo "::add-mask::$whsec"
+          echo "STRIPE_WEBHOOK_SECRET=$whsec" >> "$GITHUB_ENV"
+          # Stripe CLI รุ่นใหม่ (apt) บังคับ --events ไม่งั้นจบทันทีด้วย "must specify events to forward"
+          events=payment_intent.created,payment_intent.processing,payment_intent.requires_action,payment_intent.amount_capturable_updated,payment_intent.partially_funded,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled
+          stripe version
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            nohup stripe listen --skip-update --events "$events" --forward-to "localhost:9000/hooks/payment/$path" \
+              > "/tmp/stripe-listen-$path.log" 2>&1 < /dev/null &
+          done
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            if ! timeout 60 sh -c "until grep -q 'Ready!' /tmp/stripe-listen-$path.log; do sleep 1; done"; then
+              echo "::error::stripe listen ($path) ไม่ Ready ภายใน 60 วินาที"
+              tail -n 50 "/tmp/stripe-listen-$path.log"
+              exit 1
+            fi
+          done
       - run: pnpm --filter backend db:migrate && pnpm --filter backend seed
       - name: Start backend and capture publishable key
         run: |
@@ -187,8 +208,17 @@ jobs:
       - run: pnpm --filter storefront build && (pnpm --filter storefront start &) && npx wait-on http://localhost:8000
       # project "unit" (กฎ evidence) ไม่ต้องใช้ server — แยกไปเปิดใน CI ตาม backlog (มี *-tests.txt เดิมผิด convention)
       - run: pnpm --filter storefront test:e2e --project=chromium
+      # PAY-2 (AC-10): payment_intent.succeeded (จาก AC-1/AC-4) ต้องถึงทั้งสอง path และ backend ตอบ 2xx
+      - name: Stripe webhooks reached both endpoints
+        if: env.STRIPE_API_KEY != ''
+        run: |
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            tools/ci/check-stripe-webhooks.sh "/tmp/stripe-listen-$path.log" "http://localhost:9000/hooks/payment/$path"
+          done
       - if: failure()
-        run: tail -n 200 /tmp/backend.log
+        run: |
+          tail -n 200 /tmp/backend.log 2>/dev/null || echo "(ไม่มี /tmp/backend.log — backend ยังไม่ได้เริ่ม)"
+          tail -n 50 /tmp/stripe-listen-*.log 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

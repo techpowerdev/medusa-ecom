@@ -30,7 +30,8 @@ export const AdminCreateGroupBuyCampaign = z
       path: ["target_type"],
     }),
     rules: z.array(AdminCreatePromotionRule).optional(),
-    is_tax_inclusive: z.boolean().optional(),
+    // spec 04 กฎข้อ 12 (ADR-011 หมายเหตุ): ราคา THB รวม VAT — ต้นแบบลดยอดที่ลูกค้าจ่ายตามตัวเลขที่ admin กรอก
+    is_tax_inclusive: z.boolean().default(true),
   })
   .strict()
   .refine((c) => !c.starts_at || c.starts_at < c.ends_at, {

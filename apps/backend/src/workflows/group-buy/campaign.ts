@@ -173,7 +173,8 @@ export const createGroupBuyCampaignWorkflow = createWorkflow(
           starts_at: starts_at ? new Date(starts_at) : null,
           ends_at: new Date(ends_at),
         },
-        promotion: { application_method, rules, is_tax_inclusive },
+        // spec 04 กฎข้อ 12: ค่าเริ่มต้น true (Medusa ใช้ false) เพราะราคา THB รวม VAT
+        promotion: { application_method, rules, is_tax_inclusive: is_tax_inclusive ?? true },
       }
     })
 

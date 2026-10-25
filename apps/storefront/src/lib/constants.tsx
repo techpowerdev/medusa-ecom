@@ -1,4 +1,4 @@
-import { CreditCard } from "@medusajs/icons"
+import { CreditCard, Scan } from "@medusajs/icons"
 import Bancontact from "@modules/common/icons/bancontact"
 import Ideal from "@modules/common/icons/ideal"
 import PayPal from "@modules/common/icons/paypal"
@@ -12,6 +12,11 @@ export const paymentInfoMap: Record<
   pp_stripe_stripe: {
     title: "Credit card",
     icon: <CreditCard />,
+  },
+  // PAY-2 (spec 06): PromptPay ผ่าน Stripe — QR + poll ใน PromptPayPaymentButton
+  "pp_stripe-promptpay_stripe": {
+    title: "PromptPay",
+    icon: <Scan />,
   },
   "pp_medusa-payments_default": {
     title: "Credit card",
