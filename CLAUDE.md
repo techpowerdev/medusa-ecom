@@ -7,8 +7,9 @@
   และเอกสารทั้งหมดใน `docs/` (spec, ADR, design, ROADMAP) รวมถึง `.claude/agents/*.md`
 - คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
-- UI label ที่ test/screenshot อ้างถึง (เช่น "Add to cart", "Sold out") คงเป็นอังกฤษใน spec จนกว่าจะตัดสินใจเรื่อง
-  i18n ของ storefront
+- ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
+  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
+  regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
 
 ## โปรเจกต์นี้คืออะไร
 ร้านค้า e-commerce ระดับ production ที่สร้าง **บน Medusa v2** (backend + admin) ร่วมกับ
