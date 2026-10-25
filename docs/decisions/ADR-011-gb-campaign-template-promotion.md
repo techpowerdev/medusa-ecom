@@ -1,7 +1,7 @@
 # ADR-011 ส่วนลด/ขอบเขตสินค้าระดับแคมเปญ group buy เก็บใน promotion "ต้นแบบ" (draft) แล้ว clone ต่อกลุ่ม
 
 สถานะ: accepted (owner อนุมัติ 2026-10-25 พร้อมค่าเริ่มต้นของ Q5–Q7 ใน spec 04)
-เกี่ยวข้อง: spec 04 (GB-2, GB-3), ADR-004, ADR-009, `docs/design/data-model.md` (module `group_buy`)
+เกี่ยวข้อง: spec 04 (GB-2a, GB-2b, GB-3), ADR-004, ADR-009, `docs/design/data-model.md` (module `group_buy`)
 
 ## บริบท
 spec 04 ให้ `createGroupWorkflow` สร้าง promotion `GB-<token>` ต่อกลุ่ม (ADR-004) แต่ Data model บอกว่า discount
@@ -44,16 +44,20 @@ C. ใช้ promotion ของกลุ่มแรกเป็นต้นแ
 3. ต้นแบบต้องคงเป็น `draft` ตลอดอายุแคมเปญ; การแก้ส่วนลด/scope ทำผ่านหน้า promotion ของ Medusa admin
    และ **มีผลเฉพาะกลุ่มที่สร้างหลังจากนั้น** (กลุ่มเดิมถือ promotion ของตัวเอง; draft order ที่สร้างแล้วถูก freeze อยู่แล้ว)
 4. การตรวจ "cart มีเฉพาะสินค้าในขอบเขตแคมเปญ" ใน `joinGroupWorkflow` อ่าน `target_rules` จาก promotion ของกลุ่ม
-5. ช่วงเวลาใช้งานของ `GB-*` ถูกคุมโดย `starts_at/ends_at` ของ Medusa campaign อยู่แล้ว (`listActivePromotions_`)
+5. ช่วงเวลาใช้งานของ `GB-*` ถูกคุมโดย `starts_at/ends_at` ของ Medusa campaign (`listActivePromotions_`) — นอกช่วงนี้
+   code ใส่ได้แต่ไม่มี adjustment ดังนั้น `createGroupWorkflow`/`joinGroupWorkflow` ต้องตรวจช่วงเวลาเอง (400 `NOT_ALLOWED`)
+   และ `joinGroupWorkflow` ต้องยืนยันว่า cart มี adjustment ของ `GB-<token>` ก่อนสร้าง draft order (spec 04 กฎข้อ 10, AC-23)
 
 ## ผลที่ตามมา
 + ไม่ต้องมีคอลัมน์ส่วนลด/scope และไม่ต้องสร้างฟอร์มส่วนลดเองใน admin — ใช้ editor promotion ของ Medusa
 + ทำงานเหมือนกันทั้ง pool และ team; ไม่ต้องมี migration ใหม่ใน `group_buy` นอกจาก link
-+ budget ของ Medusa campaign (ถ้าตั้ง) ครอบทุก `GB-*` ของแคมเปญโดยอัตโนมัติ
+− **ห้ามพึ่ง budget ของ Medusa campaign** (และ `limit`/`used` ของ promotion) เพื่อจำกัดแคมเปญ group buy: Medusa บันทึก
+  usage เฉพาะใน `completeCartWorkflow` แต่ flow ของเราสร้าง draft order ด้วย `createOrderWorkflow` แล้ว convert ภายหลัง
+  จึงไม่มีการบันทึก usage — เพดานทั้งหมดใช้ `max_total_orders` / `max_units_per_person` ของ `GroupBuyCampaign` (ADR-009)
 − ต้นแบบปรากฏในรายการ promotion ของ Medusa admin; ถ้า admin เปลี่ยนเป็น `active` เอง code `GBT-*` จะใช้ได้
   โดยไม่ต้องเข้ากลุ่ม — บรรเทาด้วย code แบบสุ่มเดาไม่ได้ และ widget/หน้า GB-6 แสดงคำเตือน (ไม่เพิ่ม hook)
 − ลูกค้าที่รู้ code `GBT-*` แล้วใส่ลง cart จะไม่ได้ส่วนลด แต่ hook `setPromotionContext` ของ ADR-009 จะนับเป็น
   code (`is_automatic=false`) ทำให้ส่วนลด flash หลุด — ผลกระทบเฉพาะตัวผู้ใส่เอง ยอมรับได้
 − การ clone ต้อง map field ให้ครบ (`application_method.type/target_type/allocation/value/currency_code/max_quantity/
   target_rules`, `rules`, `is_tax_inclusive`); ถ้า Medusa เพิ่ม field ในอนาคตต้องตามแก้ — ครอบด้วย integration test
-  (spec 04 AC-20)
+  (spec 04 AC-20b)

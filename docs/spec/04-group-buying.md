@@ -2,7 +2,7 @@
 
 สถานะ: draft (ปรับดีไซน์ 2026-10-25 ตามความต้องการของเจ้าของ: ใช้ flow แบบ draft order เหมือนตัวอย่าง Quotes ของ Medusa;
 ปรับ membership หลายออเดอร์ต่อคน + exclusivity ตาม ADR-009; 2026-10-25 แก้ความกำกวมที่ GB-2 พบ:
-ส่วนลดระดับแคมเปญเก็บใน promotion ต้นแบบตาม ADR-011, สถานะแคมเปญ, error mapping, แบ่ง scope GB-2/GB-3)
+ส่วนลดระดับแคมเปญเก็บใน promotion ต้นแบบตาม ADR-011, สถานะแคมเปญ, error mapping, แบ่ง GB-2 เป็น GB-2a/GB-2b และแบ่ง scope กับ GB-3)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -89,14 +89,23 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - `updateGroupBuyCampaignWorkflow(id, patch)` (admin): แก้คอนฟิกได้เฉพาะเมื่อ `draft`; เมื่อ `active` แก้ได้เฉพาะ
   `name`, `pay_within_hours`; `ended` แก้ไม่ได้ (400 `NOT_ALLOWED`) การเปลี่ยน `status` ทำผ่าน workflow ด้านล่างเท่านั้น
   ส่วนลด/scope แก้ที่ promotion ต้นแบบผ่านหน้า promotion ของ Medusa admin (มีผลเฉพาะกลุ่มที่สร้างหลังจากนั้น)
+- `deleteGroupBuyCampaignWorkflow(id)` (admin, เฉพาะ `draft` — แคมเปญ `draft` ไม่มีกลุ่มอยู่แล้วเพราะสร้างกลุ่มได้เฉพาะ `active`):
+  1. ตรวจ `status=draft` มิฉะนั้น 400 `NOT_ALLOWED`
+  2. dismiss link template + promotion_campaign — compensation: สร้าง link คืน
+  3. soft-delete `GroupBuyCampaign` — compensation: restore
+  4. `deletePromotionsWorkflow([template_id])` แล้ว `deleteCampaignsWorkflow([campaign_id])` (รันเป็น step;
+     compensation ตามที่ workflow ของ Medusa มีให้)
 - `setGroupBuyCampaignStatusWorkflow(id, status)` (admin) — transition ที่อนุญาต (กฎข้อ 10):
   `draft → active` (ตรวจว่ามี template ที่มี `application_method` และ Medusa campaign มี `ends_at > now`),
   `active → ended` (manual); อย่างอื่น → 400 `NOT_ALLOWED`; ตั้งค่าเดิมซ้ำ = no-op (idempotent)
 - `createGroupWorkflow({ campaign_id, kind, customer_id?, name? })`:
   1. โหลดแคมเปญ + Medusa campaign + template (`query.graph`)
-  2. ตรวจ: แคมเปญ `active` และ `now < campaign.ends_at` มิฉะนั้น 400 `NOT_ALLOWED`;
+  2. ตรวจ: แคมเปญ `active` และอยู่ในช่วงเวลา (`campaign.starts_at` เป็น null หรือ `<= now`, และ `now < campaign.ends_at`)
+     มิฉะนั้น 400 `NOT_ALLOWED` (กฎข้อ 10);
      `kind=team` ต้อง `group_mode ∈ {team, both}` และ `customer_id` ต้องมี; `kind=pool` ต้อง `group_mode ∈ {pool, both}`
-     และเรียกจาก admin เท่านั้น — mode ไม่ตรง → **403 `MedusaError.Types.FORBIDDEN`** (ไม่ใช่ `NOT_ALLOWED` ซึ่ง map เป็น 400)
+     — mode ไม่ตรง → **403 `MedusaError.Types.FORBIDDEN`** (ไม่ใช่ `NOT_ALLOWED` ซึ่ง map เป็น 400)
+     "pool สร้างได้จาก admin เท่านั้น" บังคับที่ **ระดับ route** ไม่ใช่ workflow: มีแค่ admin route ที่ส่ง `kind=pool`;
+     store route `POST /store/group-buy/groups` ส่ง `kind=team` เสมอ (ไม่รับ `kind` จาก body)
   3. สร้าง `join_token` (unique, สุ่ม URL-safe) และ `ends_at = computeGroupEndsAt(kind, now, team_duration_hours, campaign.ends_at)`
      (กฎข้อ 2); `starts_at = now`
   4. clone template → promotion `GB-<token>` (`createPromotionsWorkflow`): **`status: "active"` ระบุเสมอ** (ค่าเริ่มต้นของ
@@ -108,12 +117,16 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   1. acquire lock ตามลำดับ (ADR-009): `group_buy:campaign:<id>` (เฉพาะเมื่อตั้ง `max_total_orders`) →
      `group_buy:group:<id>` → `group_buy:customer:<campaign_id>:<customer_id>`
      แล้วตรวจ (นับเฉพาะ membership ที่ไม่ใช่ `cancelled`):
-     แคมเปญ `active` (มิฉะนั้น 400 `NOT_ALLOWED`); กลุ่ม `open` และยังไม่หมดเวลา; ลูกค้าไม่มี membership ใน **กลุ่มอื่น** ของแคมเปญนี้
+     แคมเปญ `active` และอยู่ในช่วงเวลาของ Medusa campaign (`starts_at` null หรือ `<= now`, `now < ends_at`)
+     มิฉะนั้น 400 `NOT_ALLOWED`; กลุ่ม `open` และยังไม่หมดเวลา; ลูกค้าไม่มี membership ใน **กลุ่มอื่น** ของแคมเปญนี้
      (409 `GB_ALREADY_IN_OTHER_GROUP`); หากลูกค้ายังไม่มี membership ในกลุ่มนี้ → `progress_people < max_people_per_group`;
      จำนวน membership ทั้งแคมเปญ < `max_total_orders`; ผลรวม `units` ของลูกค้าในแคมเปญ + จำนวนชิ้นใน cart
      ≤ `max_units_per_person`; cart มีเฉพาะสินค้าในขอบเขตแคมเปญ (อ่าน `target_rules` จาก promotion ของกลุ่ม); cart ไม่มี promotion code อื่น (กฎข้อ 7)
      ข้อจำกัดที่ไม่ผ่าน → 409 พร้อม code ของข้อนั้น
   2. ใส่ `GB-<token>` ให้ cart (`updateCartPromotionsWorkflow`) — ส่วนลด flash ที่มีอยู่หลุดเองผ่าน hook ของ PROMO-1;
+     จากนั้นอ่าน cart ใหม่ ถ้า **ไม่มี** adjustment ที่ `code = GB-<token>` อย่างน้อยหนึ่ง line → throw 400 `NOT_ALLOWED`
+     code `GB_DISCOUNT_NOT_APPLIED` ให้ workflow ล้มทั้งชุด (ไม่สร้าง draft order ราคาเต็ม; กฎข้อ 5) — compensation ของขั้นนี้:
+     เอา `GB-<token>` ออกจาก cart (`updateCartPromotionsWorkflow` action `remove`)
   3. สร้าง draft order จาก cart (`createOrderWorkflow`, `is_draft_order: true`,
      metadata `{group_buy_group_id, group_buy_membership_id}`) — compensation: ยกเลิก order นั้น;
   4. สร้าง membership (`joined`, `campaign_id` จากกลุ่ม, `order_id`) + ปรับตัวนับ: `progress_orders +1`,
@@ -139,8 +152,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - การยกเลิกหลังกลุ่ม `succeeded`/`failed` (fail, หมดเวลาชำระเงิน) ไม่ปรับตัวนับ (กฎข้อ 8)
 
 ## API (store route ทั้งหมดต้อง auth ด้วย customer)
-- Admin (GB-2 ยกเว้น succeed/fail): CRUD `/admin/group-buy/campaigns` (`POST` = `createGroupBuyCampaignWorkflow`, คืน
-  `template_promotion_id` ให้ admin ไปแก้ใน Medusa admin ได้; `DELETE` เฉพาะ `draft` ที่ยังไม่มีกลุ่ม),
+- Admin (campaigns + `.../status` = GB-2a; `.../campaigns/:id/groups` = GB-2b; succeed/fail = GB-4): CRUD `/admin/group-buy/campaigns` (`POST` = `createGroupBuyCampaignWorkflow`, คืน
+  `template_promotion_id` ให้ admin ไปแก้ใน Medusa admin ได้; `DELETE` = `deleteGroupBuyCampaignWorkflow` เฉพาะ `draft`
+  มิฉะนั้น 400 `NOT_ALLOWED`),
   `POST /admin/group-buy/campaigns/:id/status` `{status: "active"|"ended"}`, `POST /admin/group-buy/campaigns/:id/groups`
   (pool), `GET .../groups`, `POST /admin/group-buy/groups/:id/succeed|fail` (override แบบ manual, GB-4)
 - Store: `GET /store/group-buy/campaigns/active`, `GET /store/group-buy/groups/:token`
@@ -162,6 +176,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 1. 1 membership = 1 draft order; ลูกค้าเดียวสั่งซ้ำในกลุ่มเดิมได้ (หลาย membership) เป้าหมาย (นับเฉพาะ membership
    ที่ไม่ใช่ `cancelled`): `orders` = จำนวน membership; `units` = ผลรวม `units`; `people` = จำนวนลูกค้าไม่ซ้ำ
 2. Deadline ของกลุ่ม: pool → `ends_at` ของแคมเปญ; team → `min(created + team_duration_hours, campaign.ends_at)`
+   คำนวณครั้งเดียวตอนสร้างกลุ่ม — ถ้าแก้ `ends_at` ของ Medusa campaign ภายหลัง กลุ่มที่สร้างแล้ว **ไม่** ปรับตาม
 3. ลูกค้าหนึ่งคนอยู่ได้หนึ่งกลุ่มต่อแคมเปญ (มีหลาย membership ได้แต่ต้องอยู่กลุ่มเดียว) ตรวจใน workflow
    ไม่ใช่ unique index; ออกครบทุก membership แล้วเข้ากลุ่มอื่นได้ ทุกการกระทำเกี่ยวกับกลุ่มต้อง login
 4. ข้อจำกัดทั้งหมดถูกบังคับใช้ภายใต้ lock ใน `joinGroupWorkflow` (scope และลำดับตาม ADR-009):
@@ -182,9 +197,11 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 8. กลุ่มสำเร็จได้มากที่สุดครั้งเดียว; ขั้นตอน succeed/fail/cancel ต้อง idempotent และรันซ้ำได้
 9. อีเมล: เข้าร่วมแล้ว, กลุ่มสำเร็จ (ลิงก์ชำระเงิน + deadline), ได้รับการชำระเงินแล้ว, กลุ่มไม่สำเร็จ,
    หมดเวลาชำระเงิน
-10. **สถานะแคมเปญ**: สร้างเป็น `draft` → admin เปลี่ยนเป็น `active` เอง (ไม่มี auto-activate; ช่วงใช้ส่วนลดจริงยังคุมด้วย
-    `starts_at` ของ Medusa campaign) → `ended` เมื่อ admin สั่ง หรือ job (GB-4) เมื่อ `ends_at` ของ Medusa campaign ผ่านไป
-    `ended` เป็นสถานะสุดท้าย ห้ามย้อนกลับ สร้างกลุ่ม/เข้าร่วมได้เฉพาะ `active`; กลุ่ม `open` ที่ค้างอยู่เมื่อแคมเปญ `ended`
+10. **สถานะแคมเปญ**: สร้างเป็น `draft` → admin เปลี่ยนเป็น `active` เอง (ไม่มี auto-activate; ตั้ง `active` ก่อน `starts_at`
+    ได้) → `ended` เมื่อ admin สั่ง หรือ job (GB-4) เมื่อ `ends_at` ของ Medusa campaign ผ่านไป
+    `ended` เป็นสถานะสุดท้าย ห้ามย้อนกลับ สร้างกลุ่ม/เข้าร่วมได้เฉพาะเมื่อ `active` **และ** อยู่ในช่วงเวลาของ Medusa campaign
+    (`starts_at` null หรือ `<= now`, `now < ends_at`) มิฉะนั้น 400 `NOT_ALLOWED` — เพราะนอกช่วงนี้ Medusa ไม่ใช้ `GB-*`
+    กับ cart (`listActivePromotions_`) และจะได้ draft order ราคาเต็ม; กลุ่ม `open` ที่ค้างอยู่เมื่อแคมเปญ `ended`
     ยังถูกตัดสิน succeed/fail ที่ `ends_at` ของกลุ่มตามปกติ คอนฟิกเป้าหมาย/ข้อจำกัด/mode แก้ได้เฉพาะตอน `draft`
 11. **Error mapping** (ตาม error handler ของ Medusa 2.22.1): mode ไม่อนุญาต → `MedusaError.Types.FORBIDDEN` (403);
     สถานะแคมเปญ/transition ไม่ถูกต้อง → `NOT_ALLOWED` (400); ไม่พบ → `NOT_FOUND` (404) ข้อจำกัดที่ spec กำหนดเป็น 409 พร้อม
@@ -228,20 +245,25 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   ด้วย qty 1 → 201; หลัง leave membership แรก เข้าร่วมด้วย qty 1 ได้อีก (นับเฉพาะที่ไม่ใช่ `cancelled`)
 - AC-18 ลูกค้าที่มี membership ในกลุ่ม G1 เข้าร่วม G2 ของแคมเปญเดียวกัน → 409 `GB_ALREADY_IN_OTHER_GROUP`;
   ลูกค้าที่ยังไม่มี membership ยิง join G1 และ G2 พร้อมกัน → สำเร็จพอดี 1 ครั้ง
-- AC-19 (workflow, GB-2) `createGroupWorkflow` บนแคมเปญ `active`: `group_mode=pool` + `kind=team` → error type
+- AC-19 (workflow, GB-2b) `createGroupWorkflow` บนแคมเปญ `active` ที่อยู่ในช่วงเวลา: `group_mode=pool` + `kind=team` → error type
   `forbidden` (403); `group_mode=team` + `kind=pool` → `forbidden`; `group_mode=both` + team (`team_duration_hours=2`,
   campaign ends ใน 10 ชม.) → กลุ่ม `open` มี `join_token` ไม่ซ้ำ, `created_by_customer_id`, `ends_at = created + 2 ชม.`;
   team ที่ campaign ends ใน 1 ชม. → `ends_at = campaign.ends_at`; admin สร้าง pool (`group_mode=pool`) → `ends_at = campaign.ends_at`
   และ `POST /admin/group-buy/campaigns/:id/groups` ได้ 201
-- AC-20 (GB-2) `createGroupBuyCampaignWorkflow` (−30%, scope = product X) สร้าง Medusa campaign + promotion ต้นแบบ
-  `status=draft`, `is_automatic=false` ที่ link กับแคมเปญ; ใส่ code ต้นแบบลง cart ที่มี X → ไม่มี adjustment;
-  สร้างกลุ่มแล้วได้ promotion `GB-<token>` `status=active` ที่ `campaign_id`, `application_method` (type/value/target_rules)
-  และ `rules` ตรงกับต้นแบบ; ใส่ `GB-<token>` ลง cart ที่มี X → adjustment −30% เฉพาะ line X
-- AC-21 (GB-2) สร้างกลุ่มบนแคมเปญ `draft` หรือ `ended` → 400 `not_allowed`; transition `active → draft`, `ended → active`
-  → 400; `draft → active` แล้ว `active → ended` → สำเร็จ; เรียก `active` ซ้ำบนแคมเปญ `active` → no-op 200;
-  แก้ `target_value` ของแคมเปญ `active` → 400
+- AC-20a (GB-2a) `createGroupBuyCampaignWorkflow` (−30%, scope = product X) สร้าง Medusa campaign + promotion ต้นแบบ
+  `status=draft`, `is_automatic=false`, code ขึ้นต้น `GBT-` ที่ link (template) กับแคมเปญ; ใส่ code ต้นแบบลง cart ที่มี X
+  → ไม่มี adjustment; `DELETE` แคมเปญ `draft` → แคมเปญ, ต้นแบบ, Medusa campaign และ link ถูกลบ; `DELETE` แคมเปญ `active` → 400
+- AC-20b (GB-2b) สร้างกลุ่มแล้วได้ promotion `GB-<token>` `status=active` ที่ `campaign_id`, `application_method`
+  (type/value/target_rules) และ `rules` ตรงกับต้นแบบ; ใส่ `GB-<token>` ลง cart ที่มี X → adjustment −30% เฉพาะ line X
+- AC-21a (GB-2a) transition `active → draft`, `ended → active` → 400; `draft → active` แล้ว `active → ended` → สำเร็จ;
+  เรียก `active` ซ้ำบนแคมเปญ `active` → no-op 200; แก้ `target_value` ของแคมเปญ `active` → 400
+- AC-21b (GB-2b) สร้างกลุ่มบนแคมเปญ `draft` หรือ `ended` → 400 `not_allowed`; แคมเปญ `active` ที่ Medusa campaign
+  `starts_at` อยู่ในอนาคต → 400 `not_allowed` และไม่มี promotion `GB-*` ถูกสร้าง
 - AC-22 (GB-4) แคมเปญ `active` ที่ Medusa campaign `ends_at` ผ่านไปแล้ว → หลัง job รอบถัดไปเป็น `ended`;
   สร้างกลุ่มใหม่ได้ 400
+- AC-23 (GB-3) join กลุ่ม `open` ขณะที่ Medusa campaign `starts_at` อยู่ในอนาคต (แก้ `starts_at` หลังสร้างกลุ่ม) → 400
+  `not_allowed`; join กลุ่มที่ promotion `GB-<token>` ถูกตั้งเป็น `inactive` → 400 `GB_DISCOUNT_NOT_APPLIED`; ทั้งสองกรณี
+  ไม่มี draft order, ไม่มี membership, ตัวนับไม่เปลี่ยน และ cart ไม่มี `GB-<token>` ค้าง
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -250,13 +272,14 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - Deadline job ประมวลผล ≤ 50 กลุ่มต่อรอบ; ขั้นตอนต่อสมาชิกอยู่ภายใน workflow พร้อม retry
 
 ## Test plan
-- Unit: การคำนวณ deadline (`computeGroupEndsAt`, AC-19), ตาราง transition สถานะแคมเปญ (AC-21), การ map template → input
-  ของ `createPromotionsWorkflow` (AC-20), การประเมินเป้าหมาย, การตรวจสอบข้อจำกัด, delta ของตัวนับตอน join/leave (AC-7)
+- Unit: การคำนวณ deadline (`computeGroupEndsAt`, AC-19), ตาราง transition สถานะแคมเปญ (AC-21a), การตรวจช่วงเวลาแคมเปญ
+  (AC-21b, AC-23), การ map template → input ของ `createPromotionsWorkflow` (AC-20b), การประเมินเป้าหมาย, การตรวจสอบข้อจำกัด, delta ของตัวนับตอน join/leave (AC-7)
   (logic exclusivity ทดสอบใน PROMO-1)
 - Integration (modules): model ยอมให้ 2 membership `(group_id, customer_id)` เดียวกัน และปฏิเสธ `order_id` ซ้ำ (GB-1);
   การเข้าร่วมพร้อมกัน (AC-8, AC-13 ส่วน concurrent, AC-18 ส่วน concurrent), idempotency (AC-9)
-- Integration (modules/workflow): AC-19, AC-20 (รวมการใส่ code ลง cart จริงผ่าน `updateCartPromotionsWorkflow`)
-- Integration (http): AC-1, AC-3..AC-7, AC-10..AC-15, AC-17, AC-18, AC-19 (ส่วน admin pool), AC-21, AC-22
+- Integration (modules/workflow): AC-19, AC-20a, AC-20b (รวมการใส่ code ลง cart จริงผ่าน `updateCartPromotionsWorkflow`)
+- Integration (http): AC-1, AC-3..AC-7, AC-10..AC-15, AC-17, AC-18, AC-19 (ส่วน admin pool), AC-20a (DELETE), AC-21a,
+  AC-21b, AC-22, AC-23
   โดย mock payment provider
 - e2e: AC-2, AC-16 กับ Stripe test mode
 
@@ -264,13 +287,14 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | ID | Task | Depends |
 |----|------|---------|
 | GB-1 | models/service/links/migrations ของ module + unit tests — membership มี `campaign_id`, ไม่มี unique `(group_id, customer_id)`, `order_id` unique + read-only link ไป order, index ตาม Non-functional (ADR-009) | CORE-2 |
-| GB-2 | link template (ADR-011) + `createGroupBuyCampaignWorkflow` / `updateGroupBuyCampaignWorkflow` / `setGroupBuyCampaignStatusWorkflow` / `createGroupWorkflow` (pool + team ระดับ workflow, `computeGroupEndsAt`) + admin API: campaigns CRUD, `.../status`, `POST/GET .../campaigns/:id/groups` (AC-19, AC-20, AC-21) — **ไม่รวม** `POST /store/group-buy/groups` และ admin succeed/fail ถ้าเกิน ~400 LOC แยกเป็น GB-2a (แคมเปญ + status) → GB-2b (กลุ่ม) | GB-1, ADR-011 accepted |
-| GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2), join, leave + การแปลง 409 ตามกฎข้อ 11 + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง | GB-2, PROMO-1 |
+| GB-2a | link template (ADR-011) + `createGroupBuyCampaignWorkflow` / `updateGroupBuyCampaignWorkflow` / `deleteGroupBuyCampaignWorkflow` / `setGroupBuyCampaignStatusWorkflow` + admin API: campaigns CRUD, `.../status` (AC-20a, AC-21a) | GB-1, ADR-011 accepted |
+| GB-2b | `computeGroupEndsAt` + `createGroupWorkflow` (pool + team ระดับ workflow, ตรวจช่วงเวลาแคมเปญ) + admin `POST/GET /admin/group-buy/campaigns/:id/groups` (AC-19, AC-20b, AC-21b) — **ไม่รวม** `POST /store/group-buy/groups` | GB-2a |
+| GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009, ตรวจช่วงเวลา + ตรวจว่ามี adjustment ของ `GB-<token>`) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2b), join, leave + การแปลง 409 ตามกฎข้อ 11 + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18, AC-23); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง | GB-2b, PROMO-1 |
 | GB-4 | `succeedGroupWorkflow` / `failGroupWorkflow` + deadline job (รวมตั้งแคมเปญ `ended`) + admin succeed/fail + อีเมล (AC-1, AC-3, AC-9, AC-11, AC-12, AC-22) | GB-3 |
 | GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) | GB-4, PAY-3 |
-| GB-6 | หน้า route ของ Admin UI | GB-2 |
+| GB-6 | หน้า route ของ Admin UI | GB-2b |
 | GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + e2e (AC-2, AC-16) | GB-5 |
-GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7)
+GB-1 → GB-2a → GB-2b → (GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7))
 
 ## Open questions
 - Q1 หากสมาชิกบางคนไม่ชำระเงินเลยหลังกลุ่มสำเร็จ กลุ่มควรยังนับว่า fulfilled สำหรับคนอื่นหรือไม่?
