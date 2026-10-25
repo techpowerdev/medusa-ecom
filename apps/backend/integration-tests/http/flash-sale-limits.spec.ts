@@ -40,7 +40,10 @@ medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let container: MedusaContainer
     let flashSale: FlashSaleModuleService
-    let storeHeaders: { headers: Record<string, string> }
+    let publishableKey: string
+    // CORE-12 (ADR-013): complete ได้เฉพาะเจ้าของ cart — ใช้ token ของลูกค้าเจ้าของ cart แต่ละใบ
+    const headersOfCustomer = new Map<string, { headers: Record<string, string> }>()
+    const headersOfCart = new Map<string, { headers: Record<string, string> }>()
     let regionId: string
     let flashVariantId: string
     let shippingOptionId: string
@@ -54,10 +57,7 @@ medusaIntegrationTestRunner({
       await seedThailand({ container, args: [] })
       flashSale = container.resolve(FLASH_SALE_MODULE)
 
-      const token = await getPublishableKey(container)
-      // CORE-6: cart route ต้องมี customer ที่ล็อกอิน (complete ใช้ token เดียว — cart ของแต่ละ test ผูก customer เอง)
-      const buyer = await registerCustomer(api, token, "fs3-buyer@example.com", "fs3-buyer-password")
-      storeHeaders = storeHeadersFor(token, buyer.token)
+      publishableKey = await getPublishableKey(container)
 
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
       const { data: regions } = await query.graph({ entity: "region", fields: ["id"] })
@@ -131,13 +131,11 @@ medusaIntegrationTestRunner({
 
     const createCustomer = async () => {
       seq += 1
-      const customerModule = container.resolve(Modules.CUSTOMER)
-      // ลูกค้าที่มีบัญชี (ไม่มี guest, spec 01) — cart ใช้ email ของลูกค้าเอง
-      const customer = await customerModule.createCustomers({
-        email: `fs3-${seq}@example.com`,
-        has_account: true,
-      })
-      return customer.id
+      // ลูกค้าที่มีบัญชีและล็อกอินได้ (ไม่มี guest, spec 01) — CORE-12: complete ด้วย token ของลูกค้าคนนี้
+      const email = `fs3-${seq}@example.com`
+      const customer = await registerCustomer(api, publishableKey, email, "fs3-buyer-password")
+      headersOfCustomer.set(customer.customerId, storeHeadersFor(publishableKey, customer.token))
+      return customer.customerId
     }
 
     // cart ของลูกค้าที่ล็อกอินพร้อม shipping + payment session (pp_system_default) — พร้อม complete
@@ -166,11 +164,12 @@ medusaIntegrationTestRunner({
       await createPaymentSessionsWorkflow(container).run({
         input: { payment_collection_id: collection.id, provider_id: "pp_system_default" },
       })
+      headersOfCart.set(cart.id, headersOfCustomer.get(customerId)!)
       return cart.id
     }
 
     const complete = async (cartId: string): Promise<CompleteResult> =>
-      api.post(`/store/carts/${cartId}/complete`, {}, storeHeaders).then(
+      api.post(`/store/carts/${cartId}/complete`, {}, headersOfCart.get(cartId)).then(
         ({ data }) =>
           data.type === "order"
             ? { ok: true as const, orderId: data.order.id }
@@ -207,7 +206,7 @@ medusaIntegrationTestRunner({
       await setupFlashSale({})
       const customer = await createCustomer()
       const cartId = await createReadyCart(customer, 1)
-      const { data } = await api.get(`/store/carts/${cartId}?fields=*items.adjustments`, storeHeaders)
+      const { data } = await api.get(`/store/carts/${cartId}?fields=*items.adjustments`, headersOfCart.get(cartId))
       expect(data.cart.items[0].adjustments).toHaveLength(1)
     })
 
