@@ -8,19 +8,23 @@ const Hero = () => {
           <Heading
             level="h1"
             className="text-3xl leading-10 text-ui-fg-base font-normal"
+            data-testid="hero-title"
           >
-            Ecommerce Starter Template
+            ร้านค้าออนไลน์ตัวอย่าง
           </Heading>
           <Heading
             level="h2"
             className="text-3xl leading-10 text-ui-fg-subtle font-normal"
+            data-testid="hero-subtitle"
           >
-            Powered by Medusa and Next.js
+            {/* eslint-disable-next-line no-restricted-syntax -- ชื่อแบรนด์ (ADR-014 ข้อ 4) */}
+            {"ขับเคลื่อนโดย Medusa และ Next.js"}
           </Heading>
         </span>
         <a href="https://github.com/medusajs/dtc-starter" target="_blank">
           <Button variant="secondary">
-            View on GitHub <Github />
+            {/* eslint-disable-next-line no-restricted-syntax -- ชื่อแบรนด์ (ADR-014 ข้อ 4) */}
+            {"ดูบน GitHub"} <Github />
           </Button>
         </a>
       </div>
