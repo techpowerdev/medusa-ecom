@@ -50,3 +50,12 @@ Tests:       17 passed, 17 total
 
 == Admin UI ==
 ยังไม่มี screenshot — ให้ agent qa ตรวจและเก็บไว้ที่ docs/evidence/evoucher/EV-6/
+
+== รอบแก้ตาม review (REQUEST CHANGES) — rebase บน origin/develop e873a42 ==
+Red: ✕ has an index on evoucher_code.order_id (order widget must not seq scan) — 1 failed, 4 passed
+แก้: index (order_id) ใน model evoucher_code + Migration20261025130149 + snapshot
+Green:
+  pnpm typecheck → Done (backend + admin + storefront); pnpm lint → backend no issues, storefront 0 errors
+  test:unit → Test Suites: 18 passed; Tests: 136 passed
+  build → Backend/Frontend build completed successfully
+  evoucher-admin-ui.spec.ts (5) + evoucher-admin.spec.ts (13) → Tests: 18 passed, 18 total

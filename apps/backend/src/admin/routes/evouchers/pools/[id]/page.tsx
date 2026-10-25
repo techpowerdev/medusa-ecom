@@ -1,6 +1,6 @@
 import { Badge, Container, Heading, Text } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
-import { Link, useParams } from "react-router-dom"
+import { Link, LoaderFunctionArgs, UIMatch, useParams } from "react-router-dom"
 import { CodesTable } from "../../../../components/evoucher/codes-table"
 import { ImportCodes } from "../../../../components/evoucher/import-codes"
 import { CODE_STATUSES, evoucherApi, evoucherKeys, STATUS_COLOR } from "../../../../lib/evoucher"
@@ -69,6 +69,16 @@ const PoolPage = () => {
       <CodesTable poolId={poolId} />
     </div>
   )
+}
+
+type PoolLoaderData = Awaited<ReturnType<typeof evoucherApi.retrievePool>>
+
+// breadcrumb แสดงชื่อ pool (loader โหลดตอนเข้า route)
+export const loader = async ({ params }: LoaderFunctionArgs) =>
+  evoucherApi.retrievePool(params.id!)
+
+export const handle = {
+  breadcrumb: ({ loaderData }: UIMatch<PoolLoaderData>) => loaderData?.pool.name ?? "Pool",
 }
 
 export default PoolPage

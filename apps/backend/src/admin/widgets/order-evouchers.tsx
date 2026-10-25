@@ -7,13 +7,13 @@ import { evoucherApi, evoucherKeys, formatDate, STATUS_COLOR } from "../lib/evou
 // EV-6: ส่วน "E-vouchers" บนหน้า order — code ของ order แบบ masked
 // (Medusa admin ไม่มี tab บนหน้า order จึงใช้ widget; ปุ่มส่งซ้ำรอ API resend ของ EV-5)
 const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.AdminOrder>) => {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: evoucherKeys.orderCodes(order.id),
     queryFn: () => evoucherApi.listOrderCodes(order.id),
   })
 
-  // order ที่ไม่มี voucher ไม่ต้องแสดงอะไร
-  if (!isLoading && !data?.codes.length) {
+  // order ที่ไม่มี voucher ไม่ต้องแสดงอะไร (แต่ API ล้มต้องแสดง error ไม่ใช่ซ่อนเงียบ)
+  if (!isLoading && !isError && !data?.codes.length) {
     return null
   }
 
@@ -25,6 +25,10 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
       {isLoading ? (
         <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
           Loading…
+        </Text>
+      ) : isError ? (
+        <Text size="small" leading="compact" className="text-ui-fg-error px-6 py-4">
+          Could not load e-vouchers: {error.message}
         </Text>
       ) : (
         <Table>

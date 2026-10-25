@@ -120,5 +120,6 @@ export const evoucherApi = {
     sdk.client.fetch<{ codes: MaskedCode[] }>(`${BASE}/orders/${orderId}/codes`),
 }
 
+// วันหมดอายุตามเวลาไทย (สิ้นวัน 23:59:59 ICT = 16:59:59Z) ไม่ขึ้นกับ timezone ของ browser
 export const formatDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString() : "-"
+  value ? new Date(value).toLocaleDateString(undefined, { timeZone: "Asia/Bangkok" }) : "-"

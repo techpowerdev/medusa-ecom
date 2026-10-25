@@ -44,7 +44,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: evoucherKeys.poolByVariant(variant.id),
     queryFn: () => evoucherApi.listPools({ variant_id: variant.id, limit: 1, offset: 0 }),
   })
@@ -107,7 +107,8 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
             <Link to={`/evouchers/pools/${pool.id}`}>Manage codes</Link>
           </Button>
         ) : (
-          !isLoading && (
+          !isLoading &&
+          !isError && (
             <Button size="small" variant="secondary" onClick={() => setOpen(true)}>
               Create pool
             </Button>
@@ -118,6 +119,10 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
         {isLoading ? (
           <Text size="small" leading="compact" className="text-ui-fg-subtle">
             Loading…
+          </Text>
+        ) : isError ? (
+          <Text size="small" leading="compact" className="text-ui-fg-error">
+            Could not load voucher pool: {error.message}
           </Text>
         ) : !pool ? (
           <Text size="small" leading="compact" className="text-ui-fg-subtle">

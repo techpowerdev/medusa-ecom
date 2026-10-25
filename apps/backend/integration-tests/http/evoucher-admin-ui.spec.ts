@@ -210,6 +210,16 @@ medusaIntegrationTestRunner({
       expect(empty.data.codes).toEqual([])
     })
 
+    it("has an index on evoucher_code.order_id (order widget must not seq scan)", async () => {
+      const pg = getContainer().resolve(ContainerRegistrationKeys.PG_CONNECTION)
+      const { rows } = await pg.raw(
+        `SELECT indexdef FROM pg_indexes WHERE tablename = 'evoucher_code'`
+      )
+      expect(
+        rows.some((r: { indexdef: string }) => /\(order_id\)/.test(r.indexdef))
+      ).toBe(true)
+    })
+
     it("requires an authenticated admin for order codes", async () => {
       const res = await api
         .get("/admin/evoucher/orders/order_A/codes")
