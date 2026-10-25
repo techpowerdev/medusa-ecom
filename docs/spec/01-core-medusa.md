@@ -153,10 +153,10 @@ fixture ของ Playwright (CORE-5) ต้องมี helper ตั้ง coo
 | CORE-4d | แปล checkout, account, order, policies, shipping nudge, common components + เพิ่ม `data-testid` ที่ขาด | AC-18 (path 4d), AC-19 (4d) | CORE-4b |
 CORE-4c และ CORE-4d ทำขนานกันได้หลัง CORE-4b (ทั้งคู่แก้ `messages/*.json` คนละ namespace — merge ทีหลังต้อง rebase)
 
-### Open questions (CORE-4)
-1. ยืนยันว่าเนื้อหาสินค้าต้นฉบับใน admin กรอกเป็นภาษาไทย และภาษาอังกฤษมาจาก Translation module (กฎข้อ 6)
-2. CORE-7 ใช้ Translation module ที่ยังเป็น experimental — ต้องมี ADR แยกหรือถือว่าครอบคลุมโดย ADR-008 ข้อ 1
-3. ข้อความ `metadata` (title/description) ของหน้า แปลด้วย next-intl ด้วยหรือไม่ (เสนอ: ใช่ ใน task ของหน้านั้น)
+### ข้อตัดสินของ owner (CORE-4, 2026-10-25)
+1. เนื้อหาสินค้าต้นฉบับใน admin กรอกเป็นภาษาไทย ภาษาอังกฤษมาจาก Translation module (กฎข้อ 6)
+2. ADR-008 ข้อ 1 ครอบคลุมการใช้ Translation module ที่ยังเป็น experimental ใน CORE-7 แล้ว ไม่ต้องมี ADR แยก
+3. ข้อความ `metadata` (title/description) ของหน้าแปลด้วย next-intl ใน task ของหน้านั้น
 
 ## Tasks
 | ID | Task | Depends |

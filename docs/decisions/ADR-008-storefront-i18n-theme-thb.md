@@ -1,6 +1,6 @@
 # ADR-008 Storefront i18n (next-intl + cookie `_medusa_locale`), theme placeholder และรูปแบบ THB
 
-สถานะ: proposed (การตัดสินใจหลักมาจาก owner แล้ว รอ owner อนุมัติเอกสาร)
+สถานะ: accepted (owner อนุมัติ 2026-10-25: แตก CORE-4 เป็น 4a–4d + CORE-7, เนื้อหาต้นฉบับใน admin เป็นภาษาไทย, ADR นี้ครอบคลุมการใช้ Translation module ที่ยังเป็น experimental, แปล page metadata ใน task ของหน้านั้น)
 
 ## บริบท
 CORE-4 (spec 01) ต้องส่งมอบ storefront ภาษาไทย + อังกฤษ, การจัดรูปแบบ THB และ brand theme
