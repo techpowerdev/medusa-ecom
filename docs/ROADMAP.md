@@ -15,7 +15,7 @@
 | CORE-2 | Seed: ประเทศไทย/THB/VAT/การจัดส่ง/สินค้า/admin | ☑ #6 |
 | CORE-3 | Resend notifications + templates | ☑ #8 |
 | CORE-4a | THB format + theme tokens + Noto Sans Thai + Vitest (ADR-008) | ☑ #19 |
-| CORE-5b ∥ CORE-8 ∥ CORE-9 | เครื่องมือ evidence e2e ∥ ฟอนต์ ui-preset → Noto Sans Thai ∥ ราคา THB หน้า store | ☑ #40 ∥ ◐ #41 ∥ ◐ |
+| CORE-5b ∥ CORE-8 ∥ CORE-9 | เครื่องมือ evidence e2e ∥ ฟอนต์ ui-preset → Noto Sans Thai ∥ ราคา THB หน้า store | ☑ #40 ∥ ◐ #41 ∥ ◐ #45 |
 | CORE-4b | next-intl infra + locale cookie + language-select + layout shell | ☐ (← 4a, CORE-5, 5b, 8) |
 | CORE-4c ∥ 4d | แปล UI: home/PLP/PDP/cart ∥ checkout/account/order | ☐ (4c ← 4b, CORE-9; 4d ← 4b) |
 | CORE-5 | Playwright + convention การเก็บ evidence | ☑ #7 |
@@ -55,7 +55,7 @@ GB-1 ☑ #17 · ADR-011 ☑ #33 · GB-2a ◐ #42 (critical path) → GB-2b → G
 AF-1 ☑ #11 · AF-2 ☐ · AF-5 ☑ #35 → AF-3 → (AF-4 ∥ AF-7) → AF-8 ; AF-5 → AF-6 ∥ AF-9 (ยกเลิก payout draft)
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
-OPS-2 ☑ #27 · OPS-3 ☐ · OPS-5 ☐ · OPS-6 ◐ · OPS-7 ☐ · OPS-8 ☐ (← OPS-2) ; OPS-4 ☐ (← FS-6, GB-7)
+OPS-2 ☑ #27 · OPS-3 ☐ · OPS-5 ☐ · OPS-6 ◐ #47 · OPS-7 ☐ · OPS-8 ☐ (← OPS-2) ; OPS-4 ☐ (← FS-6, GB-7)
 
 ## Backlog follow-up (แปลงเป็น task แล้ว 2026-10-25 — รายละเอียด/AC อยู่ใน spec)
 - ฟอนต์ ui-preset → CORE-8 · เครื่องมือ evidence e2e → CORE-5b (dependency ของ CORE-4b) · ราคา THB หน้า store → CORE-9 (dependency ของ CORE-4c)
