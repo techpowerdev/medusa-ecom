@@ -25,7 +25,8 @@ module.exports = defineConfig({
       options: { providers: buildNotificationProviders(process.env) },
     },
     {
-      resolve: './src/modules/flash_sale',
+      resolve: './src/modules/evoucher',
+      options: { encryptionKey: process.env.EVOUCHER_ENCRYPTION_KEY },
     },
   ],
 })

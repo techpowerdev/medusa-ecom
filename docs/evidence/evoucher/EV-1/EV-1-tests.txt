@@ -1,0 +1,41 @@
+# EV-1 test evidence — 2026-10-25 16:36 +0700
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+### pnpm lint
+apps/backend lint: info:    Linting project...
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)
+exit=0
+### pnpm typecheck
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+exit=0
+### pnpm --filter backend test:unit
+PASS src/__tests__/medusa-config.unit.spec.ts
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+Test Suites: 5 passed, 5 total
+Tests:       33 passed, 33 total
+exit=0
+### pnpm --filter backend test:integration:modules
+PASS src/modules/evoucher/__tests__/evoucher-module.spec.ts
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+Test Suites: 4 passed, 4 total
+Tests:       33 passed, 33 total
+exit=0
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/order-notifications.spec.ts (20.309 s)
+PASS integration-tests/http/seed.spec.ts (43.451 s)
+PASS integration-tests/http/health.spec.ts (42.267 s)
+PASS integration-tests/http/evoucher-links.spec.ts (25.568 s)
+Test Suites: 4 passed, 4 total
+Tests:       14 passed, 14 total
+exit=0
+### Red (ก่อนเขียนโค้ด)
+# unit + modules: FAIL — Cannot find module '../utils/crypto' / '..' (ยังไม่มี module evoucher)
+# http evoucher-links.spec.ts (ลบ src/links/* ชั่วคราว): ✕ queries the variant from a pool, ✕ queries the pool from a variant — Received: undefined
+### Migration
+# npx medusa db:generate evoucher → Migration20261025090947.ts; npx medusa db:migrate บน DB medusa_ev1 (สร้างแล้ว drop) → evoucher_partner, evoucher_pool, evoucher_code
