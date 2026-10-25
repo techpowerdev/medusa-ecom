@@ -33,4 +33,20 @@ describe("medusa-config modules", () => {
 
     expect(missing).toEqual([])
   })
+
+  // EV-3: ตั้งค่า fulfillment module เองแล้ว default `manual` จะหายถ้าไม่ระบุ (seed ใช้ manual_manual)
+  it("registers fulfillment providers manual and digital", () => {
+    let config: LoadedConfig | undefined
+    jest.isolateModules(() => {
+      config = require("../../medusa-config")
+    })
+    const fulfillment = Object.values(config?.modules ?? {}).find(
+      (m) => typeof m === "object" && m.resolve === "@medusajs/medusa/fulfillment"
+    ) as { options?: { providers?: { resolve: string; id: string }[] } } | undefined
+
+    expect(fulfillment?.options?.providers).toEqual([
+      expect.objectContaining({ resolve: "@medusajs/medusa/fulfillment-manual", id: "manual" }),
+      expect.objectContaining({ resolve: "./src/modules/digital_fulfillment", id: "digital" }),
+    ])
+  })
 })

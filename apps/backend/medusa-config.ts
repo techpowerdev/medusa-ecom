@@ -42,6 +42,16 @@ module.exports = defineConfig({
     },
     { resolve: './src/modules/affiliate' },
     {
+      // EV-3 (ADR-006): manual (Standard) + digital (Digital delivery → digital_digital)
+      resolve: '@medusajs/medusa/fulfillment',
+      options: {
+        providers: [
+          { resolve: '@medusajs/medusa/fulfillment-manual', id: 'manual' },
+          { resolve: './src/modules/digital_fulfillment', id: 'digital' },
+        ],
+      },
+    },
+    {
       // spec 06 / ADR-007: Stripe provider ทางการ → pp_stripe_stripe (บัตร) + pp_stripe-promptpay_stripe
       // webhook: /hooks/payment/stripe_stripe และ /hooks/payment/stripe-promptpay_stripe
       resolve: '@medusajs/medusa/payment',

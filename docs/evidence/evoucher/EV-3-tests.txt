@@ -1,0 +1,37 @@
+# EV-3 — fulfillment provider `digital` + seed shipping option Digital delivery (2026-10-25)
+# Red (ก่อนเขียนโค้ด): seed.spec.ts ล้ม 3 ข้อ (Expected "digital_digital" / Received "manual_manual"),
+#   service.unit.spec.ts ล้มเพราะยังไม่มี ../service, medusa-config-modules ล้มเพราะยังไม่มี fulfillment providers
+
+## Unit: src/modules/digital_fulfillment + src/__tests__/medusa-config-modules
+PASS src/__tests__/medusa-config-modules.unit.spec.ts
+    ✓ registers every custom module that has data models
+    ✓ registers fulfillment providers manual and digital
+PASS src/modules/digital_fulfillment/__tests__/service.unit.spec.ts
+    ✓ has identifier `digital` (provider id digital_digital when registered with id `digital`)
+    ✓ offers a single non-return option digital-delivery
+    ✓ accepts option and fulfillment data as-is
+    ✓ uses flat price only (free option configured in seed)
+    ✓ creates a fulfillment instantly without shipping labels
+    ✓ allows cancelling a fulfillment (workflow compensation)
+    ✓ rejects return fulfillments — delivered codes cannot be recalled (business rule 6)
+Tests:       9 passed, 9 total
+
+## Unit ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 16 passed, 16 total
+Tests:       126 passed, 126 total
+
+## Integration http: integration-tests/http/seed.spec.ts
+PASS integration-tests/http/seed.spec.ts
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata
+    ✓ sets store default currency to THB (tax-inclusive)
+    ✓ creates tax region th with VAT 7%
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free)
+    ✓ enables fulfillment provider digital at the seeded stock location (EV-3)
+    ✓ upgrades an already-seeded store: Digital delivery moves from manual to digital (EV-3)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key
+    ✓ stocks every sample variant at the seeded location
+    ✓ is idempotent: running seed again does not duplicate data
+Tests:       9 passed, 9 total
+
+## pnpm lint && pnpm typecheck && pnpm --filter backend build: ผ่าน (backend: No lint issues found)
+## integration ชุดเต็ม (modules + http): รันใน CI
