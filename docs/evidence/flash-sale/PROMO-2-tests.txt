@@ -1,0 +1,65 @@
+# PROMO-2 — ผล test (Node v22.23.3, Medusa 2.22.1, 2026-10-25)
+# ฐาน: origin/develop c9195bd
+# ในเครื่องรันเฉพาะ: unit ของ error handler, test:unit ทั้งชุด (25 suites / 204 tests ผ่าน), integration:http
+# promotion-exclusivity + flash-sale-limits, integration:modules flash_sale reservation (14/14 ผ่าน), build, lint, typecheck
+# integration เต็มชุดรันใน CI
+# Red: error-handler.unit.spec ล้มเพราะยังไม่มี src/api/error-handler.ts; promotion-exclusivity ล้ม 5 test
+#      (ได้ 400 แทน 409 สำหรับ PROMOTION_NOT_COMBINABLE) ก่อนใส่ override
+# AC-12 (c) integration: test 404/400 ผ่านทั้งบน errorHandler เดิมของ Medusa (ปิด override ชั่วคราว) และหลังใส่ override
+#      → status/type/message เหมือนเดิม; CONFLICT ที่ไม่ใช่ของเรา/serialized/zod/http-errors เทียบกับ errorHandler() ของ Medusa ใน unit
+
+PASS src/api/__tests__/error-handler.unit.spec.ts
+  businessErrorHandler
+    ✓ covers our codes from spec 03 (PROMOTION_NOT_COMBINABLE, FLASH_*)
+    ✓ answers PROMOTION_NOT_COMBINABLE as 409 conflict with our code and message
+    ✓ answers FLASH_LIMIT_EXCEEDED as 409 conflict with our code and message
+    ✓ answers FLASH_SOLD_OUT as 409 conflict with our code and message
+    ✓ decides by our code, not by the error type
+    ✓ keeps the code after the workflow engine serialized the error (plain object, not MedusaError)
+    errors that are not ours → same response as Medusa's errorHandler (AC-12 c)
+      ✓ CONFLICT without code
+      ✓ CONFLICT with a code that is not ours
+      ✓ serialized CONFLICT without code
+      ✓ NOT_FOUND
+      ✓ INVALID_DATA
+      ✓ NOT_ALLOWED with a code
+      ✓ UNAUTHORIZED
+      ✓ plain Error
+      ✓ zod issues
+      ✓ http-errors
+Tests:       16 passed, 16 total
+
+PASS integration-tests/http/flash-sale-limits.spec.ts (35.771 s)
+    ✓ cart line gets the flash adjustment from the campaign promotion (816 ms)
+    ✓ AC-3 total_cap=10 and 10 units sold → the 11th checkout fails FLASH_SOLD_OUT (3568 ms)
+    ✓ AC-9 a failure after the hook reserved → usage, units_sold and the reservation are rolled back (1547 ms)
+    ✓ AC-10 completing an already completed cart returns the same order without booking again (1006 ms)
+    ✓ AC-11 (b) units_sold=10 with total_cap lowered to 5 → a 1-unit checkout fails FLASH_SOLD_OUT (586 ms)
+    ✓ a cart without flash sale config (plain campaign) completes without booking (1031 ms)
+      ✓ (c) a new customer completing 2 units succeeds; usage and units_sold are booked immediately (1271 ms)
+      ✓ (a) a customer who already bought 2 units cannot complete 1 more (FLASH_LIMIT_EXCEEDED) (1345 ms)
+      ✓ (b) counts the full line quantity (3) even when the promotion discounts max_quantity=1 (813 ms)
+      ✓ (a) 50 concurrent checkouts of different customers under total_cap=20 → exactly 20 succeed (13415 ms)
+      ✓ (b) one customer, 2 carts × 2 units, per_customer_limit=2, completed concurrently → 1 succeeds (1471 ms)
+PASS integration-tests/http/promotion-exclusivity.spec.ts (18.488 s)
+    ✓ accepts the exclusivity rule (custom attribute, operator ne) via admin API (196 ms)
+      ✓ 404 not_found for an unknown cart (399 ms)
+      ✓ 400 invalid_data for an invalid body (707 ms)
+      ✓ 400 for a promo code that does not exist (Medusa's own invalid_data) (383 ms)
+      ✓ (d) cart without a code gets F as usual (332 ms)
+      ✓ (d) adding a flash item to a code-free cart applies F (798 ms)
+      ✓ (a) applying SAVE10 to a cart with F → 200, SAVE10 kept, F dropped (580 ms)
+      ✓ (b) adding a flash item to a cart with SAVE10 keeps SAVE10 and no F (881 ms)
+      ✓ (a) via POST /store/carts/:id promo_codes: SAVE10 kept, F dropped (548 ms)
+      ✓ (c) removing SAVE10 brings F back (697 ms)
+      ✓ (e) SAVE10 stacks with N (automatic without the rule) (485 ms)
+      ✓ rejects GB-* on a cart that already has another code (435 ms)
+      ✓ rejects another code on a cart that has GB-* (433 ms)
+      ✓ rejects GB-* and another code applied together (358 ms)
+      ✓ GB-* wins over F (flash dropped) (466 ms)
+      ✓ GB-* stacks with N; adding items to a GB cart still works (550 ms)
+      ✓ (f) F + SAVE10 on the same cart → complete fails PROMOTION_NOT_COMBINABLE (487 ms)
+      ✓ GB-* + another code on the same cart → complete fails PROMOTION_NOT_COMBINABLE (539 ms)
+      ✓ refresh (add-to-cart) on a cart already holding GB-* + another code does not error (538 ms)
+      ✓ a valid cart (SAVE10 + N) completes into an order (1237 ms)
+Tests:       31 passed, 31 total

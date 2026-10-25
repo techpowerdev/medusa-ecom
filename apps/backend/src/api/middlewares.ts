@@ -9,10 +9,12 @@ import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
 import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
+import { businessErrorHandler } from './error-handler'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
 // the route narrows it to published products in the key's sales channels.
 export default defineMiddlewares({
+  errorHandler: businessErrorHandler, // PROMO-2 (spec 03 กฎข้อ 13)
   routes: [
     {
       method: ['POST'],

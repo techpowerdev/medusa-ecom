@@ -168,9 +168,47 @@ medusaIntegrationTestRunner({
         () => ({ response: undefined }),
         (e: { response?: { status: number; data: unknown } }) => e
       )
-      expect(error.response?.status).toEqual(400)
-      expect(error.response?.data).toMatchObject({ code: PROMOTION_NOT_COMBINABLE })
+      // PROMO-2 (AC-12 a, b): 409 + code ของเราในฟิลด์ `code` เท่านั้น
+      expect(error.response?.status).toEqual(409)
+      expect(error.response?.data).toEqual({
+        type: "conflict",
+        code: PROMOTION_NOT_COMBINABLE,
+        message: expect.stringMatching(/\S/),
+      })
     }
+
+    // PROMO-2 AC-12 (c): error อื่นของ Medusa ตอบเหมือนเดิม (status, type, code, message)
+    describe("spec 03 AC-12 (c) Medusa errors that are not ours stay unchanged", () => {
+      const failure = (request: Promise<unknown>) =>
+        request.then(
+          () => ({ status: 200, data: undefined }),
+          (e: { response?: { status: number; data: unknown } }) => ({
+            status: e.response?.status,
+            data: e.response?.data,
+          })
+        )
+
+      it("404 not_found for an unknown cart", async () => {
+        expect(await failure(api.get("/store/carts/cart_missing_promo2", storeHeaders))).toEqual({
+          status: 404,
+          data: { type: "not_found", message: "Cart with id 'cart_missing_promo2' not found" },
+        })
+      })
+
+      it("400 invalid_data for an invalid body", async () => {
+        const cart = await createCart([regularVariantId])
+        const res = await failure(addCodes(cart.id, "SAVE10" as unknown as string[]))
+        expect(res?.status).toEqual(400)
+        expect(res?.data).toEqual({ type: "invalid_data", message: expect.stringMatching(/promo_codes/) })
+      })
+
+      it("400 for a promo code that does not exist (Medusa's own invalid_data)", async () => {
+        const cart = await createCart([regularVariantId])
+        const res = await failure(addCodes(cart.id, ["NO_SUCH_CODE_PROMO2"]))
+        expect(res?.status).toEqual(400)
+        expect(res?.data).toEqual({ type: "invalid_data", message: expect.stringMatching(/NO_SUCH_CODE_PROMO2/) })
+      })
+    })
 
     it("accepts the exclusivity rule (custom attribute, operator ne) via admin API", async () => {
       const { data } = await api.get(

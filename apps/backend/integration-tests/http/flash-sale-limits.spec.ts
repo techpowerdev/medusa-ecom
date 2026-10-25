@@ -34,7 +34,18 @@ hooks.orderCreated(async ({ cart_id }) => {
   return new StepResponse(undefined)
 })
 
-type CompleteResult = { ok: true; orderId: string } | { ok: false; status?: number; code?: string }
+type CompleteResult =
+  | { ok: true; orderId: string }
+  | { ok: false; status?: number; type?: string; code?: string; message?: string }
+
+// PROMO-2 (spec 03 กฎข้อ 13, AC-12 b): code ของเราถึง client เป็น 409 { type: "conflict", code, message }
+const conflict = (code: string) => ({
+  ok: false,
+  status: 409,
+  type: "conflict",
+  code,
+  message: expect.stringMatching(/\S/),
+})
 
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
@@ -175,10 +186,10 @@ medusaIntegrationTestRunner({
           data.type === "order"
             ? { ok: true as const, orderId: data.order.id }
             : { ok: false as const, status: 200, code: data.error?.type },
-        (e: { response?: { status: number; data?: { code?: string } } }) => ({
+        (e: { response?: { status: number; data?: { type?: string; code?: string; message?: string } } }) => ({
           ok: false as const,
           status: e.response?.status,
-          code: e.response?.data?.code,
+          ...e.response?.data,
         })
       )
 
@@ -235,7 +246,7 @@ medusaIntegrationTestRunner({
         const cartId = await createReadyCart(customer, 1)
         const result = await complete(cartId)
 
-        expect(result).toEqual({ ok: false, status: 400, code: FLASH_LIMIT_EXCEEDED })
+        expect(result).toEqual(conflict(FLASH_LIMIT_EXCEEDED))
         expect(await state(campaignId, [customer])).toEqual({ units_sold: 2, usage_total: 2, usage: [2] })
         expect(await orderOfCart(cartId)).toBeNull()
       })
@@ -247,7 +258,7 @@ medusaIntegrationTestRunner({
 
         const result = await complete(cartId)
 
-        expect(result).toEqual({ ok: false, status: 400, code: FLASH_LIMIT_EXCEEDED })
+        expect(result).toEqual(conflict(FLASH_LIMIT_EXCEEDED))
         expect(await state(campaignId, [customer])).toEqual({ units_sold: 0, usage_total: 0, usage: [0] })
       })
     })
@@ -263,7 +274,7 @@ medusaIntegrationTestRunner({
       const cartId = await createReadyCart(customer, 1)
       const result = await complete(cartId)
 
-      expect(result).toEqual({ ok: false, status: 400, code: FLASH_SOLD_OUT })
+      expect(result).toEqual(conflict(FLASH_SOLD_OUT))
       expect(await state(campaignId, [customer])).toEqual({ units_sold: 10, usage_total: 10, usage: [0] })
     })
 
@@ -337,7 +348,7 @@ medusaIntegrationTestRunner({
 
       const result = await complete(await createReadyCart(customer, 1))
 
-      expect(result).toEqual({ ok: false, status: 400, code: FLASH_SOLD_OUT })
+      expect(result).toEqual(conflict(FLASH_SOLD_OUT))
       expect(await state(campaignId, [customer])).toEqual({ units_sold: 10, usage_total: 0, usage: [0] })
     })
 
