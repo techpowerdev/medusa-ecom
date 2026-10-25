@@ -3,6 +3,11 @@ import { createFindParams } from "@medusajs/medusa/api/utils/validators"
 
 export const AdminListEvoucherParams = createFindParams()
 
+// EV-6: variant widget หา pool ของ variant ด้วย ?variant_id=
+export const AdminListEvoucherPoolParams = createFindParams().extend({
+  variant_id: z.string().optional(),
+})
+
 export const AdminCreateEvoucherPartner = z.object({
   name: z.string().min(1),
   logo_url: z.url().nullish(),

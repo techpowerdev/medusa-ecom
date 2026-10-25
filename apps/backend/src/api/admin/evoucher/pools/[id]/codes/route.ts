@@ -2,7 +2,7 @@ import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { EVOUCHER_MODULE } from "../../../../../../modules/evoucher"
 import EvoucherModuleService from "../../../../../../modules/evoucher/service"
-import { maskSecret } from "../../../../../../modules/evoucher/utils/mask"
+import { maskCodes } from "../../../helpers"
 import { AdminListEvoucherCodesParams } from "../../../validators"
 
 // AC-8: คืน code แบบ masked เท่านั้น; ค่าจริงดูได้ที่ GET /admin/evoucher/codes/:id/reveal (มี audit)
@@ -35,12 +35,6 @@ export async function GET(
     pagination: { take: limit, skip: offset, order: { created_at: "ASC" } },
   })
 
-  const codes = await Promise.all(
-    data.map(async ({ code, pin, ...rest }) => ({
-      ...rest,
-      code: maskSecret(await service.decryptSecret(code)),
-      has_pin: !!pin,
-    }))
-  )
+  const codes = await maskCodes(service, data)
   res.json({ codes, count: metadata?.count, limit, offset })
 }
