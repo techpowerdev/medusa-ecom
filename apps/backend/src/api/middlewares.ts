@@ -5,6 +5,7 @@ import {
   validateAndTransformBody,
 } from '@medusajs/framework/http'
 import { PostAffiliateRegisterSchema } from './affiliate/validators'
+import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
 
@@ -38,5 +39,6 @@ export default defineMiddlewares({
     },
     ...adminEvoucherMiddlewares,
     ...storeFlashSaleMiddlewares,
+    ...adminAffiliateMiddlewares,
   ],
 })
