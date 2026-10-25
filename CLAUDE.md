@@ -56,7 +56,7 @@ API แทนการเดา `learn-medusa` (tutorial) และ `medusa-clou
 - `context7` — docs ล่าสุดของ Medusa v2, Next.js, Stripe, Playwright, Tailwind ฯลฯ ใช้ก่อนเดา API
 - `playwright` — headless browser สำหรับ agent `qa` ใช้ควบคุม storefront และเก็บ evidence
 - `stripe` — เครื่องมือ Stripe test mode (customers, payment intents, webhooks) อ่าน `STRIPE_SECRET_KEY` จาก shell ของคุณ ใช้ **test** key เท่านั้น
-- `postgres` (dbhub) — อ่าน/query DB ของ Medusa ในเครื่อง อ่าน `DATABASE_URL` ค่าเริ่มต้นคือ Postgres จาก Docker Compose จะแสดง "failed" จนกว่า DB container จะทำงาน — ซึ่งเป็นเรื่องปกติ
+- `postgres` (dbhub) — อ่าน/query DB ของ Medusa ในเครื่อง ต่อ Postgres จาก Docker Compose ของโปรเจกต์นี้ (`postgres://medusa:medusa@localhost:5432/medusa` ระบุตรงใน `.mcp.json` ไม่อ่าน `DATABASE_URL` จาก shell) จะแสดง "failed" จนกว่า DB container จะทำงาน — ซึ่งเป็นเรื่องปกติ
 GitHub ใช้งานผ่าน `gh` CLI ไม่ใช่ MCP server
 
 ## Stack
