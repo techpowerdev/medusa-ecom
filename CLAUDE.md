@@ -31,14 +31,23 @@ Production e-commerce store built **on top of Medusa v2** (backend + admin) with
 Official Medusa skills are installed as Claude Code plugins from the `medusa` marketplace:
 ```bash
 claude plugin marketplace add medusajs/medusa-agent-skills
-claude plugin install medusa-dev@medusa            # building-with-medusa, admin customizations, storefronts, db-generate, db-migrate, new-user + MedusaDocs MCP
+claude plugin install medusa-dev@medusa            # building-with-medusa, admin customizations, storefronts, db-generate, db-migrate, new-user
 claude plugin install ecommerce-storefront@medusa  # storefront-best-practices (UI/UX, SEO, mobile)
 ```
 Builder/planner must load `building-with-medusa` before any backend work,
 `building-admin-dashboard-customizations` for `src/admin/`, and `building-storefronts` +
-`storefront-best-practices` for `apps/storefront`. Use the MedusaDocs MCP to verify APIs instead of
-guessing. `learn-medusa` (tutorial) and `medusa-cloud` (Medusa Cloud CLI) are intentionally not
-installed; we self-host per `docs/spec/07-scaling-ops.md`.
+`storefront-best-practices` for `apps/storefront`. Use `context7` (or docs.medusajs.com) to verify
+APIs instead of guessing. `learn-medusa` (tutorial) and `medusa-cloud` (Medusa Cloud CLI) are
+intentionally not installed; we self-host per `docs/spec/07-scaling-ops.md`. The plugin's bundled
+`MedusaDocs` MCP requires a Medusa Cloud login, so it is disabled for this project
+(`disabledMcpServers` in `~/.claude.json`; toggle it off via `/mcp` on a new machine).
+
+## MCP servers (shared via `.mcp.json`, approve once per machine on first `claude` start)
+- `context7` — up-to-date docs for Medusa v2, Next.js, Stripe, Playwright, Tailwind, etc. Use before guessing an API.
+- `playwright` — headless browser for the `qa` agent to drive the storefront and capture evidence.
+- `stripe` — Stripe test-mode tooling (customers, payment intents, webhooks). Reads `STRIPE_SECRET_KEY` from your shell; use a **test** key only.
+- `postgres` (dbhub) — read/query the local Medusa DB. Reads `DATABASE_URL`, defaults to the Docker Compose Postgres. Shows "failed" until the DB container is up — that is expected.
+GitHub is handled with the `gh` CLI, not an MCP server.
 
 ## Stack
 - Node.js 22+, TypeScript strict, pnpm workspaces (`apps/backend`, `apps/storefront`)
