@@ -1,0 +1,46 @@
+# AF-5 test evidence — 2026-10-25 +0700
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose
+### Red (ก่อนเขียนโค้ด)
+payout.unit.spec.ts → FAIL: Cannot find module '../payout'
+affiliate-admin.spec.ts → Tests: 8 failed, 1 passed, 9 total (Request failed with status code 404 — ยังไม่มี route /admin/affiliate/*;
+  test 401 ผ่านอยู่แล้วเพราะ Medusa บังคับ auth ของ /admin/* เอง)
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)   # warning เดิมของ storefront ไม่เกี่ยวกับ AF-5
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit
+Test Suites: 16 passed, 16 total
+Tests:       124 passed, 124 total
+# เฉพาะ affiliate:
+PASS src/modules/affiliate/utils/__tests__/payout.unit.spec.ts
+  buildPayout
+    ✓ sums approved entries (AC-7)
+    ✓ nets reversed entries against approved ones
+    ✓ ignores pending and paid entries
+    ✓ returns null when the net is zero or negative (carried over)
+    ✓ avoids floating point drift
+    ✓ rejects entries in more than one currency
+PASS src/modules/affiliate/utils/__tests__/commission.unit.spec.ts (11 tests, ของ AF-1)
+### integration (http) — เฉพาะไฟล์ของ affiliate (ชุดเต็มรันบน CI)
+PASS integration-tests/http/affiliate-admin.spec.ts
+    ✓ requires an admin user
+    programs CRUD
+      ✓ creates a draft program, lists, publishes and ends it
+      ✓ rejects an invalid window or rate
+      ✓ deletes only draft programs
+    affiliates
+      ✓ lists by status, approves, suspends and sets payout_info
+    ledger, payouts and summary (AC-7)
+      ✓ lists ledger entries filtered by affiliate and status
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid
+      ✓ serializes concurrent payout creation so entries are paid out once
+      ✓ does not create a payout when the net is zero or negative (Q8)
+      ✓ summarizes the ledger per affiliate and status
+Tests:       10 passed, 10 total
+PASS integration-tests/http/affiliate-auth.spec.ts (8 tests, ของ AF-1 — regression)
+Test Suites: 2 passed, 2 total
+Tests:       18 passed, 18 total
