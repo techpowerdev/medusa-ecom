@@ -7,7 +7,7 @@ group buying, affiliate และ Stripe (บัตรเครดิต + Promp
 บันทึกการตัดสินใจ: `docs/decisions/` evidence ของแต่ละ PR: `docs/evidence/`
 
 ## เริ่มพัฒนาในเครื่อง
-ต้องมี Node.js 22+, Docker และ pnpm (เปิดด้วย `corepack enable` — เวอร์ชันมาจาก `packageManager` ใน `package.json`)
+ต้องมี Node.js ตาม `.nvmrc` (22.23.4), Docker และ pnpm (เปิดด้วย `corepack enable` — เวอร์ชันมาจาก `packageManager` ใน `package.json`)
 ```bash
 pnpm install
 docker compose up -d                                   # Postgres 16 + Redis 7

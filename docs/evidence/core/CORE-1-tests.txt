@@ -1,16 +1,16 @@
-# CORE-1 test evidence — 2026-10-25 08:29 +07
-# node v22.23.3, pnpm 10.34.8, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+# CORE-1 test evidence — 2026-10-25 08:49 +07
+# node v22.23.4, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
 
 ### pnpm install --frozen-lockfile
-Done in 709ms using pnpm v10.34.8
+Done in 76ms using pnpm v12.15.0
 exit=0
 ### pnpm lint
 apps/backend lint: info:    No lint issues found.
 apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)
 exit=0
 ### pnpm typecheck
-apps/storefront typecheck: Done
 apps/backend typecheck: Done
+apps/storefront typecheck: Done
 exit=0
 ### pnpm --filter backend test:unit
 No tests found, exiting with code 0
@@ -19,14 +19,16 @@ exit=0
 No tests found, exiting with code 0
 exit=0
 ### pnpm --filter backend test:integration:http
-PASS integration-tests/http/health.spec.ts (6.623 s)
-      ✓ returns 200 when the app has booted (581 ms)
+PASS integration-tests/http/health.spec.ts (5.808 s)
+      ✓ returns 200 when the app has booted (149 ms)
 Test Suites: 1 passed, 1 total
 Tests:       1 passed, 1 total
 exit=0
 ### pnpm --filter storefront test:e2e (placeholder → CORE-5)
 [CORE-1] ยังไม่มี Playwright e2e — จะตั้งค่าใน CORE-5
 exit=0
+# lockfile สร้างใหม่ด้วย pnpm 12.15.0 (resolve ใหม่ทั้งหมด) เพราะ lockfile เดิมจาก pnpm 10 มี node-schedule@2.1.2 และ tabbable@6.5.1
+# ที่ publish ไม่ถึง minimumReleaseAge (24 ชม., default ของ pnpm 12) — resolve ใหม่ได้ 2.1.1 / 6.5.0; ไม่ได้ผ่อน policy
 
 ### Red (ก่อน green) — test:integration:http ตอนยังไม่มี Postgres (docker compose ยังไม่ up)
 FAIL integration-tests/http/health.spec.ts
@@ -35,7 +37,7 @@ FAIL integration-tests/http/health.spec.ts
 Tests:       1 failed, 1 total
 หมายเหตุ: /health เป็น route ที่ Medusa มีให้อยู่แล้ว test นี้จึงยืนยันว่าแอป + DB บูตได้ ไม่ได้ทดสอบโค้ดที่เราเขียน
 
-### Smoke ด้วยมือ (pnpm --filter backend db:migrate แล้ว pnpm --filter backend dev)
+### Smoke ด้วยมือ (node 22.23.4 + pnpm 12.15.0: pnpm --filter backend db:migrate แล้ว pnpm --filter backend dev)
 db:migrate: Migration scripts completed
 GET http://localhost:9000/health → 200
 GET http://localhost:9000/app/   → 200 (admin dashboard)
