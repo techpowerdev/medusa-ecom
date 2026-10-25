@@ -19,6 +19,7 @@ coupon code จากพาร์ทเนอร์ล่วงหน้า แ�
 | Trigger หลังชำระเงิน | event `payment.captured` + subscriber | subscriber |
 | Admin product UI | Admin widget บนหน้า product/variant | widget |
 | Admin import UI | Admin route page + file upload (File module) | custom page |
+| สินค้าที่ไม่ต้องจัดส่ง | `requires_shipping` ของ inventory item (override ระดับ variant) → line item `requires_shipping` | ใช้ตามที่มี; ตั้งค่าตอนสร้าง pool (EV-8) |
 
 ## Data model (module `evoucher`)
 ```
@@ -34,6 +35,7 @@ EvoucherCode                      // imported from partner; one row per code
   id, pool_id, code: string (encrypted at rest; unique per pool), pin?: string (encrypted),
   expires_at?: timestamptz (from partner file), batch_ref: string (import batch),
   status: "available" | "allocated" | "delivered" | "void",
+  void_reason?: text,             // EV-5: ตั้งเมื่อ status → void ("expiring" จาก job หรือข้อความจาก admin)
   order_id?, order_line_item_id?, customer_id?, allocated_at?, delivered_at?, delivered_to_email?
   // index (pool_id, status); unique (pool_id, code)
 ```
@@ -108,6 +110,16 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-8 API รายการ code คืน code แบบ masked; endpoint reveal คืนค่าจริงและเขียน
   แถว audit (ใคร, เมื่อไร, code id)
 - AC-9 จำนวน available ต่ำกว่า threshold → อีเมล low-stock 1 ฉบับต่อวันต่อ pool
+- AC-10 `POST /admin/evoucher/codes/:id/void` ด้วย `{ reason: "partner recalled" }` บน code `available` → `status=void`,
+  `void_reason="partner recalled"`, inventory ของ variant −1; ไม่ส่ง `reason` หรือส่งค่าว่าง → 400 และ code ไม่เปลี่ยน;
+  code ที่ไม่ใช่ `available` → 409; job รายวันตั้ง `void_reason="expiring"`
+- AC-11 สร้าง pool ให้ variant ที่ `manage_inventory=true` → inventory item ของ variant มี `requires_shipping=false` และ line item ของ
+  variant นั้นใน cart มี `requires_shipping=false`; variant ที่ `manage_inventory=false` → 400 และไม่มี pool ถูกสร้าง;
+  ถ้าขั้นสร้าง pool ล้มหลังปรับ inventory item → `requires_shipping` กลับเป็นค่าเดิม (compensation)
+- AC-12 import CSV ที่ `expires_at` เป็นวันที่ล้วน `2026-12-31` → เก็บเป็นสิ้นวันเวลาไทย `2026-12-31T16:59:59.999Z`
+  (= 23:59:59.999+07:00; ค่า default รอ owner ยืนยัน Q4); ค่า ISO ที่มี offset เก็บตามจริง; ค่าที่ parse ไม่ได้ → พฤติกรรมเดิมของ EV-2
+- AC-13 import ที่ขั้นปรับ inventory ล้ม **และ** compensation ลบ batch ก็ล้มด้วย → response/error ที่ผู้เรียกได้รับเป็น error เดิมของขั้นที่ล้ม
+  (ไม่ใช่ error ของการลบ) และ error ของ compensation ถูก log พร้อม `batch_ref`
 
 ## Non-functional
 - การ allocate รันใน subscriber (worker) ไม่ใช่ใน request ของ checkout
@@ -117,7 +129,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 ## แผนการทดสอบ
 - Unit: CSV parser, masking, expiry filter, encryption round-trip
 - Integration (modules): การ allocate พร้อมกัน (AC-4), idempotency (AC-7)
-- Integration (http): AC-1, AC-2, AC-5, AC-8, AC-9 โดย mock notification provider
+- Unit: AC-12 (parser วันที่)
+- Integration (http): AC-1, AC-2, AC-5, AC-8, AC-9, AC-10, AC-11, AC-13 โดย mock notification provider
 - e2e: AC-3, AC-6
 
 ## Tasks
@@ -127,12 +140,17 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-2 | Import workflow + ปรับ inventory + admin API สำหรับ partner/pool/import (AC-1, AC-8) | EV-1 |
 | EV-3 | Fulfillment provider `digital` + seed shipping option digital-delivery | EV-1 |
 | EV-4 | Allocate & deliver workflow + subscriber + email template (AC-2, AC-4, AC-7) | EV-2, EV-3, CORE-3 |
-| EV-5 | Job รายวันสำหรับ expiry/void + low-stock; admin API สำหรับ void & resend (AC-5, AC-9) | EV-2 |
+| EV-5 | Job รายวันสำหรับ expiry/void + low-stock; admin API สำหรับ void & resend; field `void_reason` + migration (AC-5, AC-9, AC-10) | EV-2 |
 | EV-6 | Admin UI: route page (partner, pool, import, code แบบ masked/reveal) + variant widget + order tab | EV-2 |
 | EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only, My vouchers + e2e (AC-3, AC-6) | EV-4 |
-EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2
+| EV-8 | Hardening จาก review EV-2: บังคับกฎข้อ 1 ตอนสร้าง pool (`requires_shipping=false` ที่ inventory item ผ่าน `updateInventoryItemsWorkflow` + compensation, ปฏิเสธ `manage_inventory=false`), `expires_at` แบบวันที่ล้วน, error เดิมไม่ถูกกลบเมื่อ compensation ล้ม (AC-11, AC-12, AC-13) | EV-2, EV-3 |
+EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
+ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 
 ## คำถามที่ยังเปิดอยู่
 - Q1 พาร์ทเนอร์ให้ PIN มาพร้อม code หรือให้ code อย่างเดียว? (model รองรับทั้งสองแบบ)
 - Q2 วันหมดอายุ: ต่อ code (ใน CSV) หรือต่อ batch? (ค่าเริ่มต้น: คอลัมน์ต่อ code, optional)
 - Q3 admin ควรนำ code จาก order ที่คืนเงินแล้วกลับมาขายใหม่ได้หรือไม่? (ค่าเริ่มต้น: ไม่ได้)
+- Q4 `expires_at` ที่พาร์ทเนอร์ให้เป็นวันที่ล้วน หมายถึง "ใช้ได้ถึงสิ้นวันนั้นตามเวลาไทย" ใช่หรือไม่? (ค่าเริ่มต้นใน AC-12: ใช่)
+- Q5 (เทคนิค, ตอบหลัง EV-3) กฎข้อ 1 `requires_shipping=false` กับ AC-3 "shipping method Digital delivery ถูกใช้อัตโนมัติ" —
+  Medusa ไม่บังคับ shipping method เมื่อไม่มี item ที่ต้องส่ง ต้องยืนยันว่ากลไกของ EV-3 ใช้แบบใด แล้วปรับ AC-3/AC-11 ให้ตรงกัน

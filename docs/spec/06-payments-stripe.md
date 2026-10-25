@@ -39,6 +39,10 @@
 2. order จะถูกสร้างก็ต่อเมื่อ payment session ถูก authorized/captured แล้วเท่านั้น (ค่าเริ่มต้นของ Medusa)
 3. Webhook event เป็น source of truth สำหรับการชำระ PromptPay สำเร็จ
 4. Refund ทำผ่าน `refundPaymentWorkflow` เท่านั้น; ห้ามเรียก Stripe API โดยตรงนอก provider
+5. PaymentIntent ของ provider บัตร (`pp_stripe_stripe`) มี `payment_method_types: ["card"]` เท่านั้น (ไม่เปิด method อื่นโดยปริยาย)
+   ส่งผ่านช่องทางที่ Medusa Stripe provider รองรับ (เช่น `data` ของ payment session) — ถ้าทำไม่ได้โดยไม่เขียน provider เอง ให้หยุดและเขียน ADR
+6. production ห้ามมี `pp_system_default` (manual) ใน region — กลไกตาม ADR-010 (proposed) ส่งมอบใน OPS-7 (spec 07)
+   ขึ้นกับคำตอบของ owner (Q2)
 
 ## Acceptance criteria
 - AC-1 บัตร `4242…` → สร้าง order สำเร็จ, `payment_status=captured`
@@ -50,19 +54,27 @@
 - AC-6 Admin refund ฿100 บน order ที่ captured แล้ว → มี Stripe refund เกิดขึ้น; order แสดงสถานะ refunded
 - AC-7 ชำระ draft order ผ่าน `/account/orders/:id/pay` ด้วย PromptPay → captured
 - AC-8 การส่ง webhook ซ้ำต้องไม่ทำให้ capture/refund ซ้ำ
+- AC-9 สร้าง payment session บัตรจาก checkout → PaymentIntent ใน Stripe test mode (อ่านผ่าน Stripe API/MCP ด้วย id ใน session `data`)
+  มี `payment_method_types` เท่ากับ `["card"]`; session PromptPay มี `["promptpay"]`
+- AC-10 ใน CI job `storefront-e2e` webhook ของ Stripe CLI ถึงทั้ง `/hooks/payment/stripe_stripe` และ
+  `/hooks/payment/stripe-promptpay_stripe` (Stripe CLI รับ `--forward-to` ได้ปลายทางเดียวต่อ process — ใช้ listener แยกต่อ endpoint
+  หรือวิธีที่ตรวจกับ docs แล้ว) วัดผลด้วย: AC-1 และ AC-4 ผ่านใน CI และ log ของ backend มี request เข้าทั้งสอง path
 
 ## Test plan
 - Integration (http): AC-8 โดย mock provider
 - e2e: AC-1..AC-7 กับ Stripe test mode; CI รัน `stripe listen --forward-to` เพื่อให้
   webhook จริงส่งถึง runner; จำลอง PromptPay สำเร็จด้วยการ confirm PaymentIntent ใน test mode
+- e2e: AC-9 (อ่าน PaymentIntent จาก Stripe test mode ระหว่าง AC-1/AC-4); CI: AC-10
 
 ## Tasks
 | ID | Task | Depends |
 |----|------|---------|
 | PAY-1 | ตั้งค่า Stripe provider, เปิดใช้ใน region, env, ตรวจสอบ webhook route ในเครื่องด้วย Stripe CLI (AC-8) | CORE-2 |
-| PAY-2 | Storefront: ขั้นตอนชำระเงินด้วยบัตร + PromptPay, polling, error + e2e (AC-1..AC-5) | PAY-1, CORE-5 |
+| PAY-2 | Storefront: ขั้นตอนชำระเงินด้วยบัตร + PromptPay, polling, error + e2e (AC-1..AC-5); `payment_method_types: ["card"]` ของ session บัตร (กฎข้อ 5, AC-9); แก้ขั้น `stripe listen` ใน `ci.yml` ที่ใส่ `--forward-to` ซ้ำ (AC-10) | PAY-1, CORE-5 |
 | PAY-3 | หน้าชำระเงินของ order `/account/orders/:id/pay` + e2e (AC-7) | PAY-2 |
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
 
 ## Open questions
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
+- Q2 production ต้องไม่มี manual payment (`pp_system_default`) เลยใช่หรือไม่ หรือต้องการเก็บไว้ให้ admin ใช้ (เช่น โอนเงิน/เก็บเงินปลายทาง)?
+  และต้องบังคับระดับใด — ดูทางเลือกใน ADR-010
