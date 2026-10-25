@@ -135,5 +135,6 @@ PROMO-1 ∥ FS-1; FS-2 ∥ FS-3 ∥ FS-4 หลัง FS-1; FS-5 หลัง FS
 
 ## คำถามที่ยังเปิดอยู่
 - คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน
-- Q1 flash promotion ที่สร้างผ่าน admin แต่ยังไม่ได้บันทึก flash config (FS-5) จะไม่มี exclusivity rule และซ้อนกับ code ได้
-  — ยอมรับได้หรือไม่? (ค่าเริ่มต้น: ยอมรับ; widget เตือน)
+- ~~Q1~~ ตัดสินแล้ว (owner, 2026-10-25): flash promotion ที่ยังไม่ได้บันทึก flash config (FS-5) ไม่มี exclusivity rule
+  และซ้อนกับ code ได้ — ยอมรับ โดย widget ของ FS-5 ต้องเตือน promotion ที่ยังไม่มี rule
+- ตัดสินแล้ว (owner, 2026-10-25): AC-8 "code ชนะ flash หลุด" ทุกลำดับการกระทำ
