@@ -40,5 +40,9 @@ export default defineConfig([
     "*.config.js",
     "check-env-variables.js",
     "next-sitemap.js",
+    // [CORE-5] output ของ Playwright (CI artifact ไม่ใช่ source)
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
   ]),
 ])
