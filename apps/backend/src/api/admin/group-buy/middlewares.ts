@@ -5,8 +5,11 @@ import {
 } from "@medusajs/framework/http"
 import {
   AdminCreateGroupBuyCampaign,
+  AdminCreateGroupBuyGroup,
   AdminGetGroupBuyCampaignParams,
+  AdminGetGroupBuyGroupParams,
   AdminListGroupBuyCampaigns,
+  AdminListGroupBuyGroups,
   AdminSetGroupBuyCampaignStatus,
   AdminUpdateGroupBuyCampaign,
 } from "./validators"
@@ -30,6 +33,29 @@ const CAMPAIGN_FIELDS = [
   "campaign.id",
   "campaign.starts_at",
   "campaign.ends_at",
+  "promotion.id",
+  "promotion.code",
+  "promotion.status",
+]
+
+// promotion.* = promotion ของกลุ่ม GB-<token> (link group ↔ promotion)
+const GROUP_FIELDS = [
+  "id",
+  "campaign_id",
+  "kind",
+  "name",
+  "created_by_customer_id",
+  "join_token",
+  "starts_at",
+  "ends_at",
+  "status",
+  "succeeded_at",
+  "pay_deadline_at",
+  "progress_orders",
+  "progress_units",
+  "progress_people",
+  "created_at",
+  "updated_at",
   "promotion.id",
   "promotion.code",
   "promotion.status",
@@ -71,5 +97,27 @@ export const adminGroupBuyMiddlewares: MiddlewareRoute[] = [
     method: ["POST"],
     matcher: "/admin/group-buy/campaigns/:id/status",
     middlewares: [validateAndTransformBody(AdminSetGroupBuyCampaignStatus), retrieve],
+  },
+  {
+    method: ["GET"],
+    matcher: "/admin/group-buy/campaigns/:id/groups",
+    middlewares: [
+      validateAndTransformQuery(AdminListGroupBuyGroups, {
+        defaults: GROUP_FIELDS,
+        isList: true,
+        defaultLimit: 50,
+      }),
+    ],
+  },
+  {
+    method: ["POST"],
+    matcher: "/admin/group-buy/campaigns/:id/groups",
+    middlewares: [
+      validateAndTransformBody(AdminCreateGroupBuyGroup),
+      validateAndTransformQuery(AdminGetGroupBuyGroupParams, {
+        defaults: GROUP_FIELDS,
+        isList: false,
+      }),
+    ],
   },
 ]
