@@ -1,0 +1,81 @@
+# GB-3 test evidence — 2026-10-26 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose
+# หลัง merge origin/develop (ef1a739) — integration ในเครื่องรันเฉพาะไฟล์ group-buy (ชุดเต็มให้ CI รัน)
+# ขอบเขต PR นี้: joinGroupWorkflow + POST /store/group-buy/groups (team) + join; leave แยกไป GB-3b (PR เกิน ~400 LOC)
+### Red (ก่อนเขียนโค้ด)
+join.unit.spec.ts           → FAIL: Cannot find module '../errors' / '../utils/join'
+error-handler.unit.spec.ts  → FAIL: covers our 409 codes (ยังไม่มี GB_* ใน BUSINESS_CONFLICT_CODES)
+group-buy-join.spec.ts      → รอบแรก 15/21 fail (500): query.graph จาก group_buy_group ไม่คืน relation `campaign`
+                              → เปลี่ยนเป็น query group_buy_campaign แยก
+รอบสอง 2/21 fail: draft order ไม่มี adjustment ของ GB-<token> — createOrderWorkflow 2.22.1 คำนวณ promotion ใหม่
+จาก order ที่ไม่มี items.product (target rule items.product.id ไม่ตรง) → เพิ่ม freezeDraftOrderAdjustmentsStep
+คัดลอก adjustment ที่ Medusa คำนวณบน cart (raw_amount) ลง draft order (กฎข้อ 5) + unit test cartAdjustmentsForOrder
+### pnpm --filter backend lint
+No lint issues found (storefront มี warning เดิม 38 รายการ 0 error ไม่เกี่ยวกับ GB-3)
+### pnpm typecheck
+apps/backend: Done / apps/storefront: Done
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit
+Test Suites: 33 passed, 33 total
+Tests:       290 passed, 290 total
+# เฉพาะไฟล์ที่เกี่ยวกับ GB-3:
+PASS src/modules/group_buy/__tests__/join.unit.spec.ts
+  assertJoinAllowed
+    ✓ accepts the first join and reports a new person
+    ✓ rejects a draft campaign with NOT_ALLOWED
+    ✓ rejects a ended campaign with NOT_ALLOWED
+    ✓ rejects when the Medusa campaign starts_at is in the future (AC-23)
+    ✓ rejects when the Medusa campaign has ended
+    ✓ rejects a group that is not open or whose deadline passed (NOT_ALLOWED)
+    ✓ rejects a cart with another promotion code (AC-14)
+    ✓ rejects a member of another group in the same campaign (AC-18)
+    ✓ max_people_per_group counts distinct customers; an existing member may order again (AC-4)
+    ✓ max_total_orders counts all memberships of the campaign (AC-13)
+    ✓ max_units_per_person sums existing units + the cart (AC-5, AC-17)
+    ✓ rejects a cart with items outside the campaign scope
+    ✓ rejects an empty cart (INVALID_DATA)
+  itemMatchesTargetRules
+    ✓ matches every rule (AND) with in / eq / ne / nin on item paths, including arrays
+    ✓ does not match an unsupported operator
+  cartAdjustmentsForOrder
+    ✓ maps each cart line's adjustments onto the order item with the same variant (one-to-one)
+    ✓ throws when an order item for a cart line is missing
+  joinProgress
+    ✓ join adds an order and units; people only for a new person
+PASS src/api/__tests__/error-handler.unit.spec.ts
+    ✓ covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void; spec 04 GB_*)
+    ✓ answers GB_ALREADY_IN_OTHER_GROUP as 409 conflict with our code and message
+    ✓ answers GB_GROUP_FULL as 409 conflict with our code and message
+    ✓ answers GB_MAX_TOTAL_ORDERS_REACHED as 409 conflict with our code and message
+    ✓ answers GB_UNITS_LIMIT_EXCEEDED as 409 conflict with our code and message
+    ✓ answers GB_ITEMS_NOT_ELIGIBLE as 409 conflict with our code and message
+PASS src/modules/group_buy/__tests__/group-creation.unit.spec.ts (refactor assertCampaignInWindow — ผ่านเท่าเดิม)
+### test:integration:http — integration-tests/http/group-buy-join.spec.ts
+PASS integration-tests/http/group-buy-join.spec.ts
+  POST /store/group-buy/groups (AC-6, AC-15)
+    ✓ group_mode=pool → 403
+    ✓ group_mode=both → 201 team group owned by the caller with its own join_token and ends_at
+    ✓ does not accept kind from the body → 400
+    ✓ create / join without auth → 401
+  POST /store/group-buy/groups/:token/join
+    ✓ creates a draft order with the GB- discount, a membership and counters
+    ✓ unknown token → 404
+    ✓ cart with items outside the campaign → 409 GB_ITEMS_NOT_ELIGIBLE
+    ✓ AC-4: max_people_per_group=2 → 3rd person 409; 2nd order of A 201 and progress_people stays 2
+    ✓ AC-5: max_units_per_person=1 and qty 2 → 409
+    ✓ AC-17: max_units_per_person=2 counts non-cancelled memberships only
+    ✓ AC-13: max_total_orders=5 across 2 groups → 6th join (repeat order too) 409
+    ✓ AC-18: a member of G1 joining G2 of the same campaign → 409 GB_ALREADY_IN_OTHER_GROUP
+    ✓ AC-14: SAVE10 on the cart → 409; SAVE10 after joining → 409; flash cart joins with GB- only
+    ✓ AC-23: Medusa campaign starts_at moved to the future → 400 not_allowed, nothing left behind
+    ✓ AC-23: GB- promotion inactive → 400 GB_DISCOUNT_NOT_APPLIED and the code does not stay on the cart
+    ✓ a failure after the draft order is created rolls back: order canceled, code removed, locks released
+    ✓ AC-24: customer B joining with A's cart → 404 and nothing changes
+  concurrency (ADR-009 lock scope)
+    ✓ AC-8: 20 concurrent joins, max_people_per_group=5 → exactly 5 people
+    ✓ AC-13: 8 concurrent joins across 2 groups, max_total_orders=5 → exactly 5
+    ✓ AC-18: one customer joining G1 and G2 at the same time → exactly one succeeds
+Tests:       20 passed, 20 total
+### test:integration:http — integration-tests/http/group-buy-groups.spec.ts (GB-2b/2c, กันถดถอยจาก refactor)
+Tests:       18 passed, 18 total
