@@ -1,0 +1,39 @@
+# FS-4 — GET /store/flash-sales/active (spec 03 "API", AC-4 ส่วน API)
+# วันที่: 2026-10-25, base: origin/develop 32a21fa
+
+## Red (ก่อนเขียนโค้ด)
+- unit: Cannot find module '../flash-sale-preview' (ยังไม่มี lib)
+- integration: ทั้ง 3 test ล้มด้วย 404 (ยังไม่มี route)
+- mutation check: ลบ exclusivity.code_applied="false" ออกจาก context ของ computeActions
+  → "returns flash_price ..." ล้ม (F ถูก prefilter ของ Medusa ตัดทิ้ง, กฎข้อ 6g) แล้วคืนโค้ด
+
+## Green: unit — pnpm --filter backend test:unit (เฉพาะไฟล์)
+PASS src/lib/__tests__/flash-sale-preview.unit.spec.ts
+    ✓ always sends exclusivity.code_applied = "false" so exclusive flash promotions survive the prefilter (rule 6g)
+    ✓ builds one synthetic discountable line of quantity 1 at the calculated price
+    ✓ returns null when no flash promotion adjusts the line
+    ✓ subtracts the amounts of flash item adjustments only (BigNumber or number)
+    ✓ never goes below zero
+    ✓ is true inside [starts_at, ends_at) and for open-ended bounds
+    ✓ is false before starts_at or from ends_at on (matches Medusa listActivePromotions)
+    ✓ is limit - used for a usage budget
+    ✓ never goes below zero (sold out = 0, rule 4)
+    ✓ is null without a usage budget or limit
+Tests:       10 passed, 10 total
+
+## Green: integration http — integration-tests/http/flash-sale-active.spec.ts
+PASS integration-tests/http/flash-sale-active.spec.ts
+    ✓ lists only running flash campaigns with countdown data, publicly (no customer auth)
+    ✓ returns flash_price from the Promotion module for exclusive flash promotions only
+    ✓ rejects variant_ids without region_id
+Tests:       3 passed, 3 total
+
+## test:unit ทั้งชุด
+Test Suites: 16 passed, 16 total
+Tests:       128 passed, 128 total
+
+## lint / typecheck / build
+pnpm lint:      backend "No lint issues found" (storefront 0 errors, warning เดิม)
+pnpm typecheck: backend + storefront ผ่าน
+pnpm --filter backend build: Backend build completed successfully
+integration ชุดเต็มรันบน CI
