@@ -1,9 +1,12 @@
 import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
+import { EVOUCHER_MODULE } from "../../../../../modules/evoucher"
+import EvoucherModuleService from "../../../../../modules/evoucher/service"
 import {
   deleteEvoucherPoolWorkflow,
   updateEvoucherPoolWorkflow,
 } from "../../../../../workflows/evoucher/evoucher-pool"
+import { withCodeCounts } from "../../helpers"
 import { AdminUpdateEvoucherPool } from "../../validators"
 
 export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
@@ -16,7 +19,9 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
   if (!data[0]) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "Evoucher pool not found")
   }
-  res.json({ pool: data[0] })
+  const service: EvoucherModuleService = req.scope.resolve(EVOUCHER_MODULE)
+  const [pool] = await withCodeCounts(service, data)
+  res.json({ pool })
 }
 
 export async function POST(

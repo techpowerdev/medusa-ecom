@@ -870,6 +870,15 @@
           "expression": "CREATE INDEX IF NOT EXISTS \"IDX_evoucher_code_pool_id_status\" ON \"evoucher_code\" (\"pool_id\", \"status\") WHERE deleted_at IS NULL"
         },
         {
+          "keyName": "IDX_evoucher_code_order_id",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_evoucher_code_order_id\" ON \"evoucher_code\" (\"order_id\") WHERE deleted_at IS NULL"
+        },
+        {
           "keyName": "evoucher_code_pkey",
           "columnNames": [
             "id"

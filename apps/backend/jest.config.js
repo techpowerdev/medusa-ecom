@@ -22,6 +22,8 @@ if (process.env.TEST_TYPE === "integration:http") {
   module.exports.testMatch = ["**/integration-tests/http/*.spec.[jt]s"];
 } else if (process.env.TEST_TYPE === "integration:modules") {
   module.exports.testMatch = ["**/src/modules/*/__tests__/**/*.[jt]s"];
+  // OPS-6 (AC-8): *.unit.spec.* ถูกรันใน test:unit แล้ว — ไม่จับซ้ำ
+  module.exports.testPathIgnorePatterns = ["/node_modules/", "\\.unit\\.spec\\.[jt]s$"];
 } else if (process.env.TEST_TYPE === "unit") {
   module.exports.testMatch = ["**/src/**/__tests__/**/*.unit.spec.[jt]s"];
 }

@@ -17,7 +17,7 @@
     "start": "medusa start",
     "dev": "medusa develop",
     "lint": "medusa lint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/admin/tsconfig.json",
     "db:migrate": "medusa db:migrate",
     "seed": "medusa exec ./src/scripts/seed.ts",
     "print-publishable-key": "LOG_LEVEL=error medusa exec ./src/scripts/print-publishable-key.ts",

@@ -1,0 +1,40 @@
+# CORE-8 — ผลทดสอบ (spec 01 "Follow-up จาก review/qa", กฎข้อ 14, AC-24, AC-25)
+# 2026-10-25, Node v22.23.3
+
+## Red (ก่อนแก้ apps/storefront/tailwind.config.js)
+- Vitest AC-24: FAIL
+  .txt-compact-small: expected 'Inter, ui-sans-serif, system-ui, -app…' to match /^var\(--font-noto-sans-thai\)/
+- e2e AC-25: FAIL (build storefront จากโค้ดก่อนแก้)
+  content-container txt-xsmall-plus ... : Inter, ui-sans-serif, system-ui, -apple-system, ... (ไม่มี Noto Sans Thai)
+
+## Green: pnpm --filter storefront test:unit (vitest run --reporter=verbose)
+ ✓ src/styles/ui-preset-font.test.ts > ui-preset typography ใช้ Noto Sans Thai (AC-24) > ทุก rule ของ class txt-*/h*-webs ที่กำหนด font-family เริ่มด้วย var(--font-noto-sans-thai)
+ ✓ src/styles/ui-preset-font.test.ts > ui-preset typography ใช้ Noto Sans Thai (AC-24) > ไม่แตะ class code-* (monospace)
+ ✓ src/styles/ui-preset-font.test.ts > withThaiUiPreset — fail fast เมื่อโครงสร้าง preset เปลี่ยน > throw เมื่อไม่มี plugin ที่ห่อได้ (plugins ว่าง)
+ ✓ src/styles/ui-preset-font.test.ts > withThaiUiPreset — fail fast เมื่อโครงสร้าง preset เปลี่ยน > throw เมื่อ plugin ไม่ใช่รูป { handler } (เช่น plugin แบบ function ล้วน)
+ ✓ src/styles/ui-preset-font.test.ts > withThaiUiPreset — fail fast เมื่อโครงสร้าง preset เปลี่ยน > ห่อ plugin ของ preset จริงได้
+ ✓ src/styles/tailwind-config.test.ts > tailwind.config.js — brand theme (AC-9) > มีสีกลุ่ม brand ครบ DEFAULT และ 50..900
+ ✓ src/styles/tailwind-config.test.ts > tailwind.config.js — brand theme (AC-9) > fontFamily.sans ตัวแรกคือ Noto Sans Thai (CSS variable จาก next/font)
+ ✓ src/lib/util/money.test.ts (20 tests, AC-7/AC-8)
+ Test Files  3 passed (3)
+      Tests  27 passed (27)
+# (AC-24 ตรวจ class: txt-compact-small, txt-medium, h1-webs, h2-webs, h2-core, h1-docs)
+
+## Green: playwright test --project=chromium e2e/ui-preset-font.spec.ts
+# storefront `next build` + `next start -p 8111`, backend `medusa develop` :9111,
+# DB medusa_core8_e2e (db:migrate + seed) — ไม่ตั้ง E2E_SAVE_EVIDENCE เพราะ CORE-5b ยังไม่ merge (spec 01 follow-up)
+Running 1 test using 1 worker
+
+  ✓  1 [chromium] › e2e/ui-preset-font.spec.ts:8:5 › class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter (1.5s)
+
+  1 passed (2.1s)
+
+## pnpm lint && pnpm typecheck
+ผ่าน (apps/storefront + apps/backend)
+
+## pnpm --filter storefront test:e2e:unit (หลัง rebase บน develop ที่มี CORE-5b #40)
+  19 passed
+
+## รอบแก้ nit จาก review (fail fast + TODO Tailwind v4 + h2-core/h1-docs)
+- ไม่รัน e2e เต็มซ้ำ (qa เป็นผู้รัน) — `next build` ผ่าน และ `tailwindcss -c tailwind.config.js` ให้
+  `.txt-compact-small { font-family: var(--font-noto-sans-thai), Inter, ... }`
