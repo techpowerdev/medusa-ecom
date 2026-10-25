@@ -1,0 +1,25 @@
+name: Release gate
+
+# main is the released branch. Only develop may be merged into it
+# (see CLAUDE.md → Branching & PRs). This check is required on main.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  release-source-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require PR source branch to be develop
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error::PRs to main must come from this repository, not a fork ($HEAD_REPO)."; exit 1
+          fi
+          if [ "$HEAD_REF" != "develop" ]; then
+            echo "::error::PRs to main are only accepted from 'develop' (got '$HEAD_REF')."; exit 1
+          fi
+          echo "OK: develop -> main"
