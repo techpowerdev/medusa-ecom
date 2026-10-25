@@ -124,7 +124,9 @@ Link: `flash_sale_config ↔ promotion_campaign`
    (`computeAdjustmentsForPreviewWorkflow`) ส่ง code จาก `order.promotions` ตรงจึงยังได้ F
 7. ทุก automatic promotion ของ flash campaign ต้องมี exclusivity rule; การบันทึก config ใน FS-5 ใส่ให้อัตโนมัติ
    (idempotent: step ของเราเรียก `addPromotionRules` ของ Promotion module ทีละ promotion ที่ยังไม่มี rule, compensation เรียก
-   `removePromotionRules` กับ rule ที่เพิ่งเพิ่ม — Medusa 2.22.1 ไม่มี `addPromotionRulesWorkflow`) เพราะฟอร์ม promotion ของ Medusa
+   `removePromotionRules` กับ rule ที่เพิ่งเพิ่ม — Medusa 2.22.1 ไม่มี `addPromotionRulesWorkflow`; core-flows มี
+   `addRulesToPromotionsStep`/`createPromotionRulesWorkflow` แต่รับ **ครั้งละ promotion เดียว** ขณะที่จำนวน promotion ใน campaign
+   ไม่แน่นอน จึงต้องเขียน step เองที่วนหลาย promotion ใน step เดียว) เพราะฟอร์ม promotion ของ Medusa
    admin ไม่มี attribute นี้; promotion ที่เพิ่มเข้า campaign **หลัง** บันทึก config ยังไม่มี rule จนกว่าจะบันทึก config ซ้ำ
    (widget เตือนตาม Q1) — การใส่อัตโนมัติเป็น follow-up ทางเลือก FS-9
 8. **hook ของ Medusa หนึ่งตัวมี handler ได้ตัวเดียว** (`createHook` ใน 2.22.1 โยน
@@ -202,6 +204,8 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (b) `POST /store/carts/:id/complete` ที่ล้มด้วย `PROMOTION_NOT_COMBINABLE`, `FLASH_LIMIT_EXCEEDED`, `FLASH_SOLD_OUT` → status 409
   และ body `{ type: "conflict", code: <code นั้น>, message }` (ฟิลด์ `code` เท่านั้น ไม่ใช่ใน `message` หรือ `error` ของ `type: "cart"`)
   (c) error อื่นของ Medusa ที่ไม่ใช่ของเรา (เช่น `CONFLICT` ที่ Medusa throw เอง) → status, `type`, `code`, `message` เหมือนก่อนแก้
+  (d) (owner Q-C) route ของเราที่เคยตอบ 409 เอง (เช่น `POST /admin/evoucher/codes/:id/void` บน code ที่ไม่ใช่ `available`) → ยังได้ 409
+  body `{ type: "conflict", code: <code เดิมของ route>, message }` และไฟล์ route ไม่มี `res.status(409)` (ตรวจด้วย test + grep ใน CI/review)
 - AC-13 (FS-7, remaining อิงหน่วย, กฎข้อ 4) config `total_cap=10`, `show_remaining=true`
   (a) `units_sold=7` จาก order เดียว qty 3 + 4 order qty 1 (campaign budget usage ของ Medusa = 5) → `GET /store/flash-sales/active`
   คืน `remaining_units=3`, `sold_out=false` และ response ไม่มี key `remaining_usage`
@@ -242,7 +246,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-4 | Store endpoint `/store/flash-sales/active` พร้อม promotion price preview (AC-4 API); preview ที่เรียก `computeActions` เองต้องส่ง context `exclusivity.code_applied: "false"` ไม่เช่นนั้น F ถูก prefilter ตัดทิ้ง (กฎข้อ 6g) | FS-1 |
 | FS-5 | Admin campaign widget + `POST /admin/flash-sales/:campaign_id/config` ใส่ exclusivity rule ให้ทุก automatic promotion ของ campaign (idempotent, ใช้ helper PROMO-1) และ widget เตือน promotion ที่ไม่มี rule (กฎข้อ 7); รับ `total_cap` ต่ำกว่า `units_sold` ได้ (AC-11 a) | FS-1, PROMO-1 |
 | FS-6 | Storefront banner/countdown/ราคาบน PDP + "Sold out"/"เหลือ N ชิ้น" จาก `sold_out`/`remaining_units` (กฎข้อ 4) + ข้อความ AC-8 (g) + e2e (AC-1, AC-3, AC-4, AC-8 g, AC-13 e) | FS-4, FS-7, PROMO-1 |
-| PROMO-2 | follow-up PROMO-1/FS-3: override `errorHandler` ให้ code ของเราถึง client เป็น 409 `{ type: "conflict", code, message }` ตามกฎข้อ 13 + integration test (AC-12) | PROMO-1, FS-3 |
+| PROMO-2 | follow-up PROMO-1/FS-3: override `errorHandler` ให้ code ของเราถึง client เป็น 409 `{ type: "conflict", code, message }` ตามกฎข้อ 13 + integration test (AC-12) + ย้าย route ของเราที่ตอบ 409 เอง และ merge แล้ว ณ ตอนทำ PROMO-2 (เช่น `POST /admin/evoucher/codes/:id/void` ของ EV-5) มาใช้กลไกนี้: throw `MedusaError(CONFLICT, message, "<CODE>")` และลบ try/catch/`res.status(409)` ใน route (AC-12 d) — route ที่ merge หลัง PROMO-2 ใช้กลไกนี้เอง (owner Q-C) | PROMO-1, FS-3 |
 | FS-8 | follow-up FS-2 (เล็ก): การคืนโควตาต้องไม่หายเมื่อ subscriber ล้ม — ใช้กลไก retry ที่ Medusa มีให้ (เช่น option retry ของ workflow/step หรือ event bus) ก่อน ถ้าไม่มีให้ใช้ scheduled job กวาด order ที่เข้าเกณฑ์กฎข้อ 10 แต่ reservation ยังไม่ `released_at` (idempotent เดิม); AC-14 | FS-2 |
 | FS-9 | (ทางเลือก, รอ owner สั่ง) follow-up FS-5: subscriber `promotion.created`/`promotion.updated` ใส่ exclusivity rule ให้ automatic promotion ใหม่ใน campaign ที่มี `FlashSaleConfig` อัตโนมัติ (ใช้ step เดียวกับ FS-5); AC-15 | FS-5 |
 | FS-7 | follow-up FS-4 (backend เล็ก): `GET /store/flash-sales/active` เอา `remaining_usage` ออก เพิ่ม `sold_out` + `remaining_units` จาก `FlashSaleConfig` (pure function + unit test) และระบุข้อจำกัดของ preview (กฎข้อ 14) ใน JSDoc ของ route (AC-13 a–d) | FS-4 |

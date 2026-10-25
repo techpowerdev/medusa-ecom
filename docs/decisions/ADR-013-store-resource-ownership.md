@@ -31,5 +31,11 @@ D. **คงเดิม** ถือว่า cart id เดาไม่ได้
 ## ผลที่ตามมา
 + ใช้กลไกทางการ ไม่แตะ core; test ได้ด้วย integration http ทีละ route
 + ปิดช่อง PII ของ cart/order
-− ต้องรักษารายการ matcher ให้ครบเมื่อ Medusa เพิ่ม store route ที่รับ cart/order id ใหม่ (ตรวจทุกครั้งที่ bump เวอร์ชัน — ใส่ใน checklist ของ ADR bump)
+− ต้องรักษารายการ matcher ให้ครบเมื่อ Medusa เพิ่ม store route ที่รับ cart/order id ใหม่ — ADR ที่ bump `@medusajs/*` ต้องตรวจ
+  รายการนี้ (spec 07 หัวข้อ "Checklist ตอน bump `@medusajs/*`" ข้อ 2)
+
+## อ้างอิง
+- Medusa guide ทางการ (comment ใน source route 2.22.1 อ้างถึง และแนะนำ middleware แบบทางเลือก A สำหรับร้านที่ไม่มี guest checkout):
+  - [Secure Order Retrieval](https://docs.medusajs.com/resources/commerce-modules/order/secure-order-retrieval) — `GET /store/orders/:id`
+  - [Restrict Return Creation](https://docs.medusajs.com/resources/commerce-modules/order/secure-return-creation) — `POST /store/returns`
 − เพิ่ม 1 query ต่อ request ของ cart (PK lookup — ยอมรับได้)

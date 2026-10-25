@@ -55,11 +55,12 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   (compensation: ยกเลิก) → ส่งอีเมล `evoucher.delivered` พร้อม code, PIN, วิธีใช้ของ
   พาร์ทเนอร์, วันหมดอายุ → mark เป็น `delivered` Idempotent: ข้าม line item ที่ allocate ไปแล้ว
   หากไม่มี code ว่าง (stock คลาดเคลื่อน): mark line item เป็น `backordered` ใน metadata, ส่งอีเมลหา
-  admin, ไม่ทำให้ order ล้มเหลว
+  mailbox admin (กฎข้อ 9), ไม่ทำให้ order ล้มเหลว
 - Scheduled job รายวัน: code `available` ที่ `expires_at < now + 7 days` → `void`
-  (reason `expiring`) และลด inventory; ส่งอีเมลสรุปหา admin อีเมล low-stock เมื่อ
+  (reason `expiring`) และลด inventory; ส่งอีเมลสรุปหา mailbox admin (กฎข้อ 9) อีเมล low-stock เมื่อ
   `available < low_stock_threshold`
-- Admin `resendEvoucherEmailWorkflow(order_id)`
+- Admin `resendEvoucherEmailWorkflow(order_id)` (EV-5b): ส่งอีเมล `evoucher.delivered` ซ้ำไปที่อีเมลของ order ด้วย code ที่
+  `delivered` แล้วของ order นั้น — ไม่ allocate ใหม่ ไม่เปลี่ยนสถานะ code; order ที่ไม่มี code `delivered` → 400 `NOT_ALLOWED`
 - Admin `voidCodeWorkflow(code_id, reason)` สำหรับ code สถานะ `available` เท่านั้น (ปรับ inventory ด้วย)
 
 ## API
@@ -95,6 +96,14 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
    address ไม่ถูกกรองด้วย geo zone) → ห้ามเลือก option ตัวแรกของรายการ: storefront (EV-7) เลือก option Digital delivery ด้วย
    `type.code === "digital-delivery"` (หรือ `shipping_profile.type === "digital"` ถ้า store API คืน field นี้) และโค้ด backend/seed
    ที่ต้องหา option นี้ใช้ `type.code` ไม่ใช้ชื่อ (`name` แก้ได้ใน admin)
+9. (owner Q-A, 2026-10-25) อีเมลแจ้ง admin ของ e-voucher ทุกชนิด (low-stock, สรุป expiry รายวัน, backordered ของ EV-4) ส่งหา
+   **mailbox เดียว** จาก env `EVOUCHER_ADMIN_EMAIL` ไม่ใช่ admin user ทุกคน; env ไม่ได้ตั้ง → log warning และไม่ส่ง (ไม่ throw)
+   — EV-5 (PR #43) ที่ส่งหา admin user ทุกคนต้องปรับ, EV-4 ใช้ env เดียวกัน; เพิ่มบรรทัด `EVOUCHER_ADMIN_EMAIL=` ใน
+   `apps/backend/.env.example`
+10. route ของเราที่ตอบ 409 (เช่น void code ที่ไม่ใช่ `available`) ใช้กลไก 409 กลางของ PROMO-2 (spec 03 กฎข้อ 13): throw
+    `MedusaError(CONFLICT, message, "<CODE>")` ไม่ `res.status(409)` เองใน route
+11. ฟอร์ม admin (partner/pool): ปุ่ม submit ถูก disable ระหว่างส่ง (กัน double-submit สร้างซ้ำ) และทุก `Label` ผูก `htmlFor` กับ `id`
+    ของ input
 
 ## Acceptance criteria
 - AC-1 Admin import CSV จำนวน 100 code (ซ้ำ 2 รายการ) → 98 `available`, inventory ของ variant +98,
@@ -105,8 +114,6 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-3 เมื่อ cart มีเฉพาะสินค้า voucher การ checkout ไม่ต้องกรอกที่อยู่; shipping method
   "Digital delivery" ฟรีถูกใช้อัตโนมัติ; ยอดรวมมีค่าจัดส่ง ฿0 — แม้ `GET /store/shipping-options?cart_id=` คืน Standard มาก่อน
   Digital delivery ในรายการ cart ก็ต้องมี shipping method ที่ `type.code = "digital-delivery"` และไม่มี Standard (กฎข้อ 8)
-- AC-14 (EV-8) รัน seed บน DB ที่ option Digital delivery ถูกเปลี่ยนชื่อใน admin (เช่น "E-mail delivery") และยังผูก `manual_manual`
-  → option นั้น (หาด้วย `type.code = "digital-delivery"`) ถูกย้ายไป provider `digital` และไม่มี option ใหม่ถูกสร้าง
 - AC-4 เมื่อมี code `available` 1 รายการ และ order qty 1 สองรายการถูก capture พร้อมกัน → มีเพียง
   order เดียวที่ได้ code; อีก order ถูก flag เป็น backordered และ admin ได้รับอีเมล
 - AC-5 code ที่จะหมดอายุภายใน < 7 วันจะไม่ถูก allocate; job รายวัน void code เหล่านั้นและ
@@ -119,7 +126,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-9 จำนวน available ต่ำกว่า threshold → อีเมล low-stock 1 ฉบับต่อวันต่อ pool
 - AC-10 `POST /admin/evoucher/codes/:id/void` ด้วย `{ reason: "partner recalled" }` บน code `available` → `status=void`,
   `void_reason="partner recalled"`, inventory ของ variant −1; ไม่ส่ง `reason` หรือส่งค่าว่าง → 400 และ code ไม่เปลี่ยน;
-  code ที่ไม่ใช่ `available` → 409; job รายวันตั้ง `void_reason="expiring"`
+  code ที่ไม่ใช่ `available` → 409 body `{ type: "conflict", code: <code ของเรา>, message }` (กฎข้อ 10 — ย้ายมาใช้กลไกกลางใน PROMO-2);
+  job รายวันตั้ง `void_reason="expiring"`
 - AC-11 สร้าง pool ให้ variant ที่ `manage_inventory=true` → inventory item ของ variant มี `requires_shipping=false` และ line item ของ
   variant นั้นใน cart มี `requires_shipping=false`; variant ที่ `manage_inventory=false` → 400 และไม่มี pool ถูกสร้าง;
   ถ้าขั้นสร้าง pool ล้มหลังปรับ inventory item → `requires_shipping` กลับเป็นค่าเดิม (compensation)
@@ -127,6 +135,23 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   (= 23:59:59.999+07:00; owner ยืนยัน Q4 แล้ว); ค่า ISO ที่มี offset เก็บตามจริง; ค่าที่ parse ไม่ได้ → พฤติกรรมเดิมของ EV-2
 - AC-13 import ที่ขั้นปรับ inventory ล้ม **และ** compensation ลบ batch ก็ล้มด้วย → response/error ที่ผู้เรียกได้รับเป็น error เดิมของขั้นที่ล้ม
   (ไม่ใช่ error ของการลบ) และ error ของ compensation ถูก log พร้อม `batch_ref`
+- AC-14 (EV-8) รัน seed บน DB ที่ option Digital delivery ถูกเปลี่ยนชื่อใน admin (เช่น "E-mail delivery") และยังผูก `manual_manual`
+  → option นั้น (หาด้วย `type.code = "digital-delivery"`) ถูกย้ายไป provider `digital` และไม่มี option ใหม่ถูกสร้าง
+- AC-15 (EV-9) pool ที่ `low_stock_threshold=20` มี code `available` 5 รายการ → `GET /admin/evoucher/pools?fields=id,name` และ
+  `GET /admin/evoucher/pools/:id?fields=id` คืน `low_stock=true` (route select `low_stock_threshold` เองเสมอแม้ client ไม่ขอ);
+  มี `available` 25 → `low_stock=false`
+- AC-16 (EV-9) code ที่ allocate ให้ order O แล้ว → `query.graph({ entity: "order", fields: ["evoucher_codes.id"], filters: { id: O } })`
+  คืน code นั้น (link `evoucher_code ↔ order` ตาม Data model) และ code ของ order อื่นไม่ปรากฏ
+- AC-17 (กฎข้อ 9; EV-5 สำหรับ low-stock/expiry, EV-4 สำหรับ backordered) Given มี admin user 3 คน และ `EVOUCHER_ADMIN_EMAIL=ops@x.test`
+  When เกิดอีเมล low-stock / สรุป expiry / backordered Then notification แต่ละชนิดถูกสร้าง 1 รายการ `to = "ops@x.test"` และไม่มีรายการถึง
+  admin user; Given ไม่ตั้ง env Then ไม่มี notification และมี log warning (integration, mock provider)
+- AC-18 (EV-5b) Given order ที่มี code `delivered` 2 รายการ When admin `POST /admin/evoucher/orders/:id/resend` Then 200, notification
+  `evoucher.delivered` 1 รายการถึงอีเมลของ order ที่มี code ทั้ง 2 เดิม, สถานะ/จำนวน code ไม่เปลี่ยน; order ที่ไม่มี code `delivered` → 400;
+  ไม่มี token admin → 401
+- AC-19 (EV-5b) Given order ใน AC-18 When admin กดปุ่ม resend (`data-testid="evoucher-resend"`) บน order widget ของ EV-6 Then เห็นข้อความ
+  สำเร็จและมี notification ใหม่ 1 รายการ (e2e admin, screenshot)
+- AC-20 (EV-9, กฎข้อ 11) Given ฟอร์ม Create partner When คลิก submit สองครั้งติดกัน Then มี `POST /admin/evoucher/partners` 1 ครั้งและ
+  partner ใหม่ 1 แถว; ปุ่มถูก disable จน response กลับ; ทุก input ในฟอร์ม partner/pool หาได้ด้วย `getByLabel(<ข้อความ label>)` (e2e admin)
 
 ## Non-functional
 - การ allocate รันใน subscriber (worker) ไม่ใช่ใน request ของ checkout
@@ -138,6 +163,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - Integration (modules): การ allocate พร้อมกัน (AC-4), idempotency (AC-7)
 - Integration (http): AC-1, AC-2, AC-5, AC-8, AC-9, AC-10, AC-11, AC-13 โดย mock notification provider
 - Integration (seed script): AC-14
+- Integration (http/modules): AC-15, AC-16, AC-17, AC-18
+- e2e admin: AC-19, AC-20
 - e2e: AC-3, AC-6
 
 ## Tasks
@@ -146,12 +173,15 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-1 | Module model (partner, pool, code) + encryption + link ไปยัง variant + migration + unit test | CORE-2 |
 | EV-2 | Import workflow + ปรับ inventory + admin API สำหรับ partner/pool/import (AC-1, AC-8) | EV-1 |
 | EV-3 | Fulfillment provider `digital` + seed shipping option digital-delivery | EV-1 |
-| EV-4 | Allocate & deliver workflow + subscriber + email template (AC-2, AC-4, AC-7) | EV-2, EV-3, CORE-3 |
-| EV-5 | Job รายวันสำหรับ expiry/void + low-stock; admin API สำหรับ void & resend; field `void_reason` + migration (AC-5, AC-9, AC-10) | EV-2 |
+| EV-4 | Allocate & deliver workflow + subscriber + email template; อีเมล backordered ส่งหา `EVOUCHER_ADMIN_EMAIL` (กฎข้อ 9) (AC-2, AC-4, AC-7, AC-17 ส่วน backordered) | EV-2, EV-3, CORE-3 |
+| EV-5 | Job รายวันสำหรับ expiry/void + low-stock (ส่งหา `EVOUCHER_ADMIN_EMAIL` ตามกฎข้อ 9 — PR #43 ต้องปรับ); admin API สำหรับ void; field `void_reason` + migration (AC-5, AC-9, AC-10, AC-17 ส่วน low-stock/expiry) — resend ย้ายไป EV-5b (owner Q-B) | EV-2 |
+| EV-5b | `resendEvoucherEmailWorkflow` + `POST /admin/evoucher/orders/:id/resend` + ปุ่ม resend บน order widget ของ EV-6 (AC-18, AC-19) | EV-4, EV-6 |
 | EV-6 | Admin UI: route page (partner, pool, import, code แบบ masked/reveal) + variant widget + order tab | EV-2 |
 | EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only (เลือก option ด้วย `type.code` ไม่ใช่ตัวแรก, กฎข้อ 8), My vouchers + e2e (AC-3, AC-6) | EV-4 |
 | EV-8 | Hardening จาก review EV-2: บังคับกฎข้อ 1 ตอนสร้าง pool (`requires_shipping=false` ที่ inventory item ผ่าน `updateInventoryItemsWorkflow` + compensation, ปฏิเสธ `manage_inventory=false`), `expires_at` แบบวันที่ล้วน, error เดิมไม่ถูกกลบเมื่อ compensation ล้ม; seed (`upgradeDigitalDelivery`) หา option Digital delivery ด้วย `type.code` แทนชื่อ (กฎข้อ 8) (AC-11, AC-12, AC-13, AC-14) | EV-2, EV-3 |
-EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
+| EV-9 | follow-up review/QA (เล็ก): route pool list/detail select `low_stock_threshold` เสมอ (คำนวณ `low_stock` ถูกแม้ client ส่ง `fields` เอง) + module link `evoucher_code ↔ order` (`src/links/`) ที่ order tab (EV-6) และ resend (EV-5b) ใช้ + ฟอร์ม admin กัน double-submit และ `Label` ผูก `htmlFor`/`id` (กฎข้อ 11) (AC-15, AC-16, AC-20) | EV-2, EV-6 |
+EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-9 หลัง EV-6 (แก้ฟอร์มของ EV-6; ถ้า EV-6 ต้องใช้ link ก่อน ให้รวม link เข้า PR นั้นแทน); EV-5b หลัง EV-4 และ EV-6;
+EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 
 ## คำถามที่ยังเปิดอยู่
