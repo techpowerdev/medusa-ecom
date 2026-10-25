@@ -6,6 +6,9 @@ export const EmailTemplates = {
   ORDER_SHIPPED: "order-shipped",
   EVOUCHER_LOW_STOCK: "evoucher-low-stock",
   EVOUCHER_EXPIRY_SUMMARY: "evoucher-expiry-summary",
+  // spec 02: ชื่อ notification ตาม spec (EV-5b resend ใช้ชื่อเดียวกัน)
+  EVOUCHER_DELIVERED: "evoucher.delivered",
+  EVOUCHER_BACKORDERED: "evoucher-backordered",
 } as const
 
 export type RenderedEmail = { subject: string; html: string }
@@ -181,11 +184,99 @@ const renderEvoucherExpirySummary = (data: Record<string, unknown>): RenderedEma
   return { subject, html: layout(subject, body) }
 }
 
+// EV-4: อีเมลส่งมอบ code ถึงลูกค้า + แจ้ง admin เมื่อ code ไม่พอ (ข้อมูลจาก allocate-and-deliver-evouchers.ts)
+type EvoucherDeliveredCode = { code?: string; pin?: string | null; expires_at?: string | null }
+
+type EvoucherDeliveredVoucher = {
+  title?: string | null
+  partner?: { name?: string | null; logo_url?: string | null } | null
+  how_to_use?: string | null
+  validity_note?: string | null
+  codes?: (EvoucherDeliveredCode | null)[] | null
+}
+
+// วันหมดอายุแสดงเป็นวันที่ตามปฏิทินไทย (YYYY-MM-DD)
+const bangkokDate = (iso?: string | null) =>
+  iso
+    ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date(iso))
+    : "ไม่มีวันหมดอายุ / No expiry"
+
+const renderVoucher = (voucher: EvoucherDeliveredVoucher) => {
+  const logo = isHttpUrl(voucher.partner?.logo_url)
+    ? `<img src="${escapeHtml(voucher.partner!.logo_url)}" alt="${escapeHtml(voucher.partner?.name)}" style="max-height:48px">`
+    : ""
+  const codes = (voucher.codes ?? [])
+    .filter((c): c is EvoucherDeliveredCode => !!c)
+    .map(
+      (c) =>
+        `<tr><td style="padding:6px 0;font-family:monospace;font-size:16px"><b>${escapeHtml(c.code)}</b></td>` +
+        `<td style="padding:6px 0">${c.pin ? `PIN: <b>${escapeHtml(c.pin)}</b>` : ""}</td>` +
+        `<td style="padding:6px 0;text-align:right">หมดอายุ / Expires: ${escapeHtml(bangkokDate(c.expires_at))}</td></tr>`
+    )
+    .join("")
+
+  return (
+    `<div style="border:1px solid #e4e4e7;border-radius:8px;padding:16px;margin:16px 0">` +
+    logo +
+    `<h2 style="font-size:16px">${escapeHtml(voucher.title)} — ${escapeHtml(voucher.partner?.name)}</h2>` +
+    `<table style="width:100%;border-collapse:collapse">${codes}</table>` +
+    `<p><b>วิธีใช้ / How to use</b><br>${escapeHtml(voucher.how_to_use)}</p>` +
+    (voucher.validity_note ? `<p>${escapeHtml(voucher.validity_note)}</p>` : "") +
+    `</div>`
+  )
+}
+
+const renderEvoucherDelivered = (data: Record<string, unknown>): RenderedEmail => {
+  const order = (data.order ?? {}) as EmailOrder
+  const vouchers = (data.vouchers ?? []) as (EvoucherDeliveredVoucher | null)[]
+  const orderNo = `#${escapeHtml(order.display_id)}`
+  const subject = `บัตรกำนัลของคุณจากคำสั่งซื้อ ${orderNo} / Your e-vouchers for order ${orderNo}`
+
+  const body =
+    `<h1 style="font-size:20px">บัตรกำนัลของคุณ / Your e-vouchers</h1>` +
+    `<p>ใช้ code ด้านล่างที่ร้านของพาร์ทเนอร์ตามวิธีใช้ — เราไม่สามารถเรียกคืนหรือเปลี่ยน code ที่ส่งแล้วได้<br>` +
+    `Redeem the codes below at the partner as described. Delivered codes cannot be returned.</p>` +
+    vouchers.filter((v): v is EvoucherDeliveredVoucher => !!v).map(renderVoucher).join("")
+
+  return { subject, html: layout(subject, body) }
+}
+
+type EvoucherBackordered = {
+  order?: { id?: string; display_id?: number | null; email?: string | null }
+  items?: ({ title?: string | null; quantity?: number; pool_name?: string | null } | null)[]
+}
+
+const renderEvoucherBackordered = (data: Record<string, unknown>): RenderedEmail => {
+  const { order = {}, items = [] } = data as EvoucherBackordered
+  const orderNo = `#${escapeHtml(order.display_id)}`
+  const subject = `[E-voucher] code ไม่พอสำหรับคำสั่งซื้อ ${orderNo} / Backordered`
+
+  const rows = items
+    .filter((item) => !!item)
+    .map(
+      (item) =>
+        `<tr><td style="padding:4px 0">${escapeHtml(item!.title)} × ${escapeHtml(item!.quantity)}</td>` +
+        `<td style="padding:4px 0;text-align:right">${escapeHtml(item!.pool_name)}</td></tr>`
+    )
+    .join("")
+
+  const body =
+    `<h1 style="font-size:20px">E-voucher code ไม่พอ / Backordered</h1>` +
+    `<p>คำสั่งซื้อ ${orderNo} (${escapeHtml(order.id)}, ${escapeHtml(order.email)}) ชำระเงินแล้วแต่ไม่มี code ว่างพอ ` +
+    `รายการด้านล่างถูก mark เป็น backordered — กรุณา import code แล้วส่งมอบให้ลูกค้า<br>` +
+    `The paid order could not be fulfilled because the pool ran out of codes.</p>` +
+    `<table style="width:100%;border-collapse:collapse">${rows}</table>`
+
+  return { subject, html: layout(subject, body) }
+}
+
 const renderers: Record<string, (data: Record<string, unknown>) => RenderedEmail> = {
   [EmailTemplates.ORDER_PLACED]: renderOrderPlaced,
   [EmailTemplates.ORDER_SHIPPED]: renderOrderShipped,
   [EmailTemplates.EVOUCHER_LOW_STOCK]: renderEvoucherLowStock,
   [EmailTemplates.EVOUCHER_EXPIRY_SUMMARY]: renderEvoucherExpirySummary,
+  [EmailTemplates.EVOUCHER_DELIVERED]: renderEvoucherDelivered,
+  [EmailTemplates.EVOUCHER_BACKORDERED]: renderEvoucherBackordered,
 }
 
 export const renderEmailTemplate = (

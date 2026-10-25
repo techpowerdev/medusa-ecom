@@ -122,6 +122,87 @@ class EvoucherModuleService extends MedusaService({
       params
     )
   }
+  /**
+   * EV-4: claim code ให้ voucher line item ของ order แบบ atomic (spec 02 Workflows, AC-4, AC-7)
+   * - advisory lock ต่อ order: event ซ้ำที่รันพร้อมกันจะไม่ allocate line item เดียวกันสองครั้ง
+   * - line item ที่มี code แล้ว (allocated/delivered) → skipped
+   * - เลือก code `available` ที่ expires_at > expires_after (หรือไม่มีวันหมดอายุ) ตามวันหมดอายุก่อน
+   *   ด้วย FOR UPDATE SKIP LOCKED: order อื่นที่ claim พร้อมกันข้ามแถวที่ล็อกอยู่ และ void ของ EV-5
+   *   (conditional UPDATE) รอแล้วไม่ทับแถวที่ถูก allocate ไปแล้ว
+   * - code ไม่พอสำหรับ quantity ของ line item → backordered ทั้ง line item (ไม่ claim บางส่วน)
+   */
+  @InjectManager()
+  async claimCodesForOrder(
+    input: ClaimCodesForOrderInput,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<ClaimCodesForOrderResult> {
+    return await this.claimCodesForOrder_(input, sharedContext)
+  }
+
+  @InjectTransactionManager()
+  protected async claimCodesForOrder_(
+    input: ClaimCodesForOrderInput,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<ClaimCodesForOrderResult> {
+    const result: ClaimCodesForOrderResult = { allocated: [], backordered: [], skipped: [] }
+    if (!input.items.length) {
+      return result
+    }
+    const manager = sharedContext.transactionManager!
+    await manager.execute(`SELECT pg_advisory_xact_lock(hashtext(?))`, [
+      `evoucher-claim:${input.order_id}`,
+    ])
+    const existing = await manager.execute<{ order_line_item_id: string }[]>(
+      `SELECT DISTINCT order_line_item_id FROM evoucher_code
+       WHERE order_id = ? AND deleted_at IS NULL AND status IN ('allocated', 'delivered')`,
+      [input.order_id]
+    )
+    const done = new Set(existing.map((row) => row.order_line_item_id))
+
+    for (const item of input.items) {
+      if (done.has(item.line_item_id)) {
+        result.skipped.push(item.line_item_id)
+        continue
+      }
+      const rows = await manager.execute<{ id: string }[]>(
+        `SELECT id FROM evoucher_code
+         WHERE pool_id = ? AND status = 'available' AND deleted_at IS NULL
+           AND (expires_at IS NULL OR expires_at > ?)
+         ORDER BY expires_at ASC NULLS LAST, id
+         LIMIT ?
+         FOR UPDATE SKIP LOCKED`,
+        [item.pool_id, input.expires_after, item.quantity]
+      )
+      if (rows.length < item.quantity) {
+        result.backordered.push(item.line_item_id)
+        continue
+      }
+      const claimed = await manager.execute<{ id: string }[]>(
+        `UPDATE evoucher_code
+         SET status = 'allocated', order_id = ?, order_line_item_id = ?, customer_id = ?,
+             allocated_at = now(), updated_at = now()
+         WHERE id IN (?)
+         RETURNING id`,
+        [input.order_id, item.line_item_id, input.customer_id ?? null, rows.map((row) => row.id)]
+      )
+      result.allocated.push({ line_item_id: item.line_item_id, code_ids: claimed.map((row) => row.id) })
+    }
+    return result
+  }
+}
+
+export type ClaimCodesForOrderInput = {
+  order_id: string
+  customer_id?: string | null
+  items: { line_item_id: string; pool_id: string; quantity: number }[]
+  /** ไม่เลือก code ที่หมดอายุก่อนเวลานี้ (กฎข้อ 2: now + 7 วัน) */
+  expires_after: Date
+}
+
+export type ClaimCodesForOrderResult = {
+  allocated: { line_item_id: string; code_ids: string[] }[]
+  backordered: string[]
+  skipped: string[]
 }
 
 export type VoidAvailableCodesFilter = {
