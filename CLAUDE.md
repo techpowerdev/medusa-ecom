@@ -7,8 +7,9 @@
   และเอกสารทั้งหมดใน `docs/` (spec, ADR, design, ROADMAP) รวมถึง `.claude/agents/*.md`
 - คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
-- UI label ที่ test/screenshot อ้างถึง (เช่น "Add to cart", "Sold out") คงเป็นอังกฤษใน spec จนกว่าจะตัดสินใจเรื่อง
-  i18n ของ storefront
+- ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
+  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
+  regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
 
 ## โปรเจกต์นี้คืออะไร
 ร้านค้า e-commerce ระดับ production ที่สร้าง **บน Medusa v2** (backend + admin) ร่วมกับ
@@ -33,8 +34,8 @@ storefront จาก **Medusa Next.js Starter** เราขยายควา�
    (รวมถึง cart) ต้องมี customer ที่ authenticate แล้ว store route ใหม่ต้องใช้ middleware
    `authenticate("customer", ...)` ของ Medusa route ของ affiliate portal ใช้ actor type
    `affiliate` แยกต่างหาก (`authenticate("affiliate", ...)`); affiliate ไม่ใช่ customer reviewer จะ block ทุก write route ที่ไม่มีการ authenticate
-6. **ไม่มี evidence เท่ากับไม่เคยเกิดขึ้น** ทุก PR ต้องลิงก์ไปยัง spec และแสดงผลลัพธ์ของ test QA เขียน
-   `docs/evidence/<feature>/<task-id>/REPORT.md` (ตาราง AC + screenshot สำคัญ ≤ 5 รูป, PNG ≤ 300KB);
+6. **ไม่มี evidence เท่ากับไม่เคยเกิดขึ้น** ทุก PR ต้องลิงก์ไปยัง spec และแสดงผลลัพธ์ของ test QA จัดทำเนื้อหา
+   `docs/evidence/<feature>/<task-id>/REPORT.md` (session หลักเป็นผู้ commit ลง branch ของ PR — ดูบทเรียนด้านล่าง) (ตาราง AC + screenshot สำคัญ ≤ 5 รูป, PNG ≤ 300KB);
    Playwright report และ trace ฉบับเต็มเก็บเป็น CI artifact (14 วัน) ไม่เก็บใน git
 
 ## Medusa agent skills (ติดตั้งครั้งเดียวต่อเครื่อง)
@@ -95,6 +96,39 @@ pnpm --filter storefront build && pnpm --filter storefront start
   CI ของ `develop` เขียว) ถ้า PR นั้นยังไม่ merge เข้า `develop` → **ห้ามเริ่ม** ให้แจ้ง owner ว่าต้อง merge PR ไหน
   แล้วรอจนกว่าจะ merge จริง (เช็กด้วย `gh pr view <n> --json state`) ห้ามแตก branch จาก PR ที่ยังไม่ merge
   และห้ามอ่าน spec จาก branch ที่ยังไม่ merge แทน
+
+## บทเรียนที่ต้องไม่ทำผิดซ้ำ (จากรอบ 2026-10-25/26)
+**การ merge และ CI (session หลัก)**
+- ก่อน merge ต้องเห็น `SUCCESS` ครบ **ทุก** job (`gh pr checks <n> --watch`) แม้เป็น PR เอกสาร — conclusion ว่างใน
+  `statusCheckRollup` คือยังรันอยู่ ไม่ใช่ผ่าน
+- merge ทีละตัว และ **รอ CI ของ `develop` จบและเขียวก่อน merge ตัวถัดไป** — merge ติดกันทำให้ run ก่อนหน้าถูก cancel
+  จนไม่รู้ว่าตัวไหนทำพัง
+- PR สองตัวที่เขียวแยกกันอาจพังเมื่อรวมกัน (เช่น test สร้าง cart แบบ guest × PR ที่บังคับ login) → หลัง merge ตัวหนึ่ง
+  ให้ merge `origin/develop` เข้า PR ถัดไปแล้วรอ CI ใหม่บน base ล่าสุด โดยเฉพาะเมื่อ PR ที่เพิ่ง merge เปลี่ยนกติกากลาง
+  (auth, middleware, error handler, hook) — `gh pr merge` ไม่ re-run CI ให้
+- `develop` แดง → หยุด merge ทุกอย่างแล้วทำ hotfix ก่อน อ่าน log จริงก่อนโทษ PR (เช่น `heap out of memory`/exit 134 คือ
+  jest หน่วยความจำเต็ม ไม่ใช่ test ล้ม)
+- conflict ที่ `medusa-config.ts` / `src/api/middlewares.ts` ให้เก็บทั้งสองฝั่ง แล้วรัน `test:unit` + `build` + `typecheck`
+  ก่อน push (เคย resolve ผิดจน module หลุด)
+
+**การสั่ง agent**
+- reviewer/qa ต้องตรวจใน worktree ของตัวเอง (`git worktree add` ใน scratchpad) **ห้าม checkout ใน repo หลัก**
+- builder รันในเครื่องเฉพาะ test ของตัวเอง + unit + build (เครื่องรับ integration พร้อมกันได้น้อย) ชุดเต็มให้ CI รัน
+  และ merge/rebase `origin/develop` ครั้งเดียวก่อน push ห้ามไล่ develop
+- ไฟล์ชั่วคราวใน scratchpad ต้องมี task id ในชื่อ (`pr-body-<TASK>.md`) — เคยเขียนทับกัน
+- port / DB / Redis db ของแต่ละ agent ต้องไม่ซ้ำกัน และปิด server + drop DB เมื่อเสร็จ
+- planner หลายตัวพร้อมกัน → ระบุไฟล์/เลข ADR ที่แต่ละตัวใช้ให้ชัด (เคยได้ ADR เลขเดียวกันสองฉบับ)
+- qa เขียน `REPORT.md` ไม่ได้ (harness) → qa ส่งเนื้อหากลับ session หลัก commit ลง branch ของ PR
+- PR ที่แก้หลัง APPROVE (หรือหลัง REQUEST CHANGES) ต้อง re-review สั้นๆ ก่อน merge; หลัง rebase ใช้ `git range-diff`
+
+**โค้ดและ test**
+- key ของ `MedusaService({...})` ต้องตรงกับชื่อ model (Query ตั้งชื่อ method จากชื่อ entity) และมี test `query.graph`
+- จำนวนเงินคำนวณด้วย `MathBN`/`raw_amount` เสมอ ห้ามใช้ `Number` float (refund 100.10 + 200.20 ≠ 300.30)
+- `createHook` ของ Medusa มี handler ได้ตัวเดียว task ที่ใช้ hook เดียวกันต้องรวม handler
+- หลัง CORE-6/CORE-12 test ที่สร้างหรือแก้ cart ต้องใช้ token ของ customer ที่เป็นเจ้าของ cart
+  (`integration-tests/helpers/customer.ts`)
+- ฟอร์ม/ปุ่ม admin และ API ที่สร้างข้อมูลต้องกันกดซ้ำ/ยิงพร้อมกัน (disable ระหว่างส่ง + lock หรือ idempotent ฝั่ง backend)
+- Stripe ต้องตั้ง secret `STRIPE_TEST_API_KEY` และ `STRIPE_TEST_PUBLISHABLE_KEY` ของบัญชีเดียวกันพร้อมกัน (test mode เท่านั้น)
 
 ## Agents (`.claude/agents/`)
 - `planner` — แปลงเป้าหมายเป็น/อัปเดต spec + task list + ADR ไม่เขียนโค้ด

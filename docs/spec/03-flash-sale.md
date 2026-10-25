@@ -29,7 +29,7 @@
    การใช้งานโดย key เป็น `(campaign_id, customer_id)` และมี workflow hook สำหรับตรวจสอบ cart
 2. **Countdown บน storefront + การแสดง "flash price"** บน PLP/PDP — ต้องมี store endpoint
    ที่คืน flash campaign ที่กำลังทำงานอยู่ และราคาหลังส่วนลดที่จะเป็นของ variant นั้น
-3. **การแสดง flash stock** ("เหลือ 12 ชิ้น" / "Sold out") — optional; อิงจาก `total_cap − units_sold` ของ
+3. **การแสดง flash stock** ("เหลือ 12 ชิ้น" / "สินค้าหมด") — optional; อิงจาก `total_cap − units_sold` ของ
    `FlashSaleConfig` (ตัวเดียวกับที่ FS-3 ใช้ตัดสิน `FLASH_SOLD_OUT`) **ไม่ใช่** campaign budget `usage` เพราะ Medusa นับ
    `usage` เป็นจำนวนครั้งที่ promotion ถูกใช้ต่อ order ไม่ใช่จำนวนหน่วย (order เดียว 3 ชิ้น = usage 1) — กฎข้อ 4
 
@@ -79,7 +79,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 
 ## API
 - Store: `GET /store/flash-sales/active?region_id=&variant_ids[]=` → campaign
-  (id, name, starts_at, ends_at, banner_text, remaining_usage?) และ `flash_price`
+  (id, name, starts_at, ends_at, banner_text, `sold_out`, `remaining_units` — สองฟิลด์หลังมาจาก FS-7 แทน `remaining_usage` เดิม) และ `flash_price`
   ต่อ variant ที่คำนวณผ่าน compute API ของ Promotion module บน cart line สังเคราะห์ (FS-4; ข้อจำกัดของ preview ดูกฎข้อ 14)
   - FS-7 แก้ response นี้: เอา `remaining_usage` ออก แล้วเพิ่มต่อ campaign
     `sold_out: boolean` (= `total_cap` ไม่ใช่ null และ `units_sold >= total_cap`; ไม่ขึ้นกับ `show_remaining`) และ
@@ -98,8 +98,9 @@ Link: `flash_sale_config ↔ promotion_campaign`
 2. Medusa เป็นผู้ใช้ส่วนลดที่ระดับ cart; โค้ดของเราไม่คำนวณจำนวนส่วนลดเองเด็ดขาด
 3. per-customer limit นับหน่วยที่ **complete cart สำเร็จแล้ว** (จองตอน complete ไม่ใช่ที่อยู่ใน cart) ลบด้วยหน่วยที่
    คืนแล้ว (กฎข้อ 10) โดย key เป็น `customer_id` (ต้องล็อกอินทั่วทั้งร้าน, spec 01)
-4. ตัวนับที่แสดงบน storefront คือตัวนับเดียวกับที่ FS-3 ใช้ตัดสิน "ขายได้ N พอดี": storefront แสดง "Sold out" เมื่อ
-   `sold_out=true` (`units_sold >= total_cap`) และแสดง "เหลือ N ชิ้น" จาก `remaining_units` (FS-7) ห้ามใช้ campaign budget
+4. ตัวนับที่แสดงบน storefront คือตัวนับเดียวกับที่ FS-3 ใช้ตัดสิน "ขายได้ N พอดี": storefront แสดง "สินค้าหมด"
+   (`data-testid="flash-sold-out"`) เมื่อ `sold_out=true` (`units_sold >= total_cap`) และแสดง "เหลือ N ชิ้น" (`flash-remaining`) จาก
+   `remaining_units` (FS-7) — ข้อความไทยตรงในโค้ด (ADR-014) ห้ามใช้ campaign budget
    `usage` เพื่อแสดงผล เพราะนับต่อ order ไม่ใช่ต่อหน่วย; campaign budget เป็นเพียง backstop (ถ้าหมดก่อน Medusa หยุดใช้
    promotion เอง)
 5. เวลาที่กรอกใน admin เป็นเวลา Bangkok จัดเก็บเป็น UTC
@@ -156,6 +157,9 @@ Link: `flash_sale_config ↔ promotion_campaign`
     (promotion แบบ `order`/`shipping_methods` ในแคมเปญไม่สะท้อนใน `flash_price` แม้มีผลใน cart); promotion `type = "fixed"`
     ใน region ราคารวมภาษี (THB VAT 7%) ค่า preview อาจต่างจากยอดใน cart จริง — ยอดใน cart (คำนวณโดย Medusa) เป็นค่าที่ถูกต้อง
     เสมอ; percentage ไม่ได้รับผลกระทบ (owner ยอมรับใน v1, Q4)
+15. (FS-10, QA FS-5 D-1r) widget "Flash sale options" ส่ง `POST .../config` ได้ครั้งเดียวต่อการกด Save จนกว่า response กลับ — กันด้วย
+    in-flight flag แบบ `useRef` (ตั้งก่อน `await` แบบ synchronous) ไม่พึ่ง state ของ React เพียงอย่างเดียว เพราะคลิกซ้ำใน tick เดียว
+    เห็น state เดิม (ข้อมูลไม่เสียอยู่แล้วเพราะ lock แต่ไม่ควรมี request ซ้ำ)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญที่ทำงานอยู่ (−20% สำหรับ collection X, automatic) และลูกค้าเพิ่มสินค้า X
@@ -205,18 +209,21 @@ Link: `flash_sale_config ↔ promotion_campaign`
   และ body `{ type: "conflict", code: <code นั้น>, message }` (ฟิลด์ `code` เท่านั้น ไม่ใช่ใน `message` หรือ `error` ของ `type: "cart"`)
   (c) error อื่นของ Medusa ที่ไม่ใช่ของเรา (เช่น `CONFLICT` ที่ Medusa throw เอง) → status, `type`, `code`, `message` เหมือนก่อนแก้
   (d) (owner Q-C) route ของเราที่เคยตอบ 409 เอง (เช่น `POST /admin/evoucher/codes/:id/void` บน code ที่ไม่ใช่ `available`) → ยังได้ 409
-  body `{ type: "conflict", code: <code เดิมของ route>, message }` และไฟล์ route ไม่มี `res.status(409)` (ตรวจด้วย test + grep ใน CI/review)
+  body `{ type: "conflict", code: "EVOUCHER_CODE_NOT_AVAILABLE", message }` (code ที่ PROMO-2 ตั้ง; ตรงกับ spec 02 AC-10) และไฟล์ route ไม่มี `res.status(409)` (ตรวจด้วย test + grep ใน CI/review)
 - AC-13 (FS-7, remaining อิงหน่วย, กฎข้อ 4) config `total_cap=10`, `show_remaining=true`
   (a) `units_sold=7` จาก order เดียว qty 3 + 4 order qty 1 (campaign budget usage ของ Medusa = 5) → `GET /store/flash-sales/active`
   คืน `remaining_units=3`, `sold_out=false` และ response ไม่มี key `remaining_usage`
   (b) `units_sold=10` → `remaining_units=0`, `sold_out=true` (ตรงกับ AC-3: checkout ถัดไปล้ม `FLASH_SOLD_OUT`)
   (c) `units_sold=10`, `total_cap=5` (AC-11) → `remaining_units=0`, `sold_out=true`
   (d) `show_remaining=false`, `units_sold=10` → `remaining_units=null`, `sold_out=true`; `total_cap=null` → `remaining_units=null`, `sold_out=false`
-  (e) storefront: PDP ของสินค้าในแคมเปญที่ `sold_out=true` แสดง "Sold out" (screenshot, FS-6)
+  (e) storefront: PDP ของสินค้าในแคมเปญที่ `sold_out=true` มี `flash-sold-out` ที่มองเห็นได้และมีอักษรไทย (screenshot, FS-6)
 - AC-14 (FS-8) ทำให้การคืนค่าครั้งแรกของ `order.canceled` ล้ม (test inject error ครั้งเดียว) → ภายในรอบ retry/job ถัดไป usage และ
   `units_sold` ถูกคืนครบครั้งเดียว และ reservation มี `released_at`
 - AC-15 (FS-9) campaign ที่มี config แล้ว เพิ่ม automatic promotion ใหม่ผ่าน admin API → promotion นั้นมี exclusivity rule
   (กฎข้อ 6a) โดยไม่ต้องบันทึก config ซ้ำ; promotion ใน campaign ที่ไม่มี config → ไม่ถูกใส่ rule
+- AC-16 (FS-10, กฎข้อ 15) Given หน้า Campaign detail ที่มี widget "Flash sale options" When `dblclick` ปุ่ม Save (สองคลิกใน tick เดียว)
+  Then มี `POST /admin/flash-sales/:campaign_id/config` 1 ครั้ง (นับด้วย `page.on("request")`) และปุ่ม disabled จน response กลับ;
+  When Save อีกครั้งหลัง response กลับ Then ส่งได้ตามปกติ (e2e admin หรือ component test ที่ mock `fetch`)
 
 ## Non-functional
 - การจอง usage + `units_sold` อยู่ใน request path ของ complete cart (ข้อตัดสิน owner) ภายใต้ lock ต่อ
@@ -234,6 +241,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - Unit (FS-2): เกณฑ์ refund เต็มจำนวนด้วย BigNumber (กฎข้อ 10)
 - Unit (FS-7): การคำนวณ `sold_out` / `remaining_units` จาก config (AC-13 a–d รวม clamp ที่ 0)
 - e2e: AC-8 (g), AC-13 (e)
+- e2e admin / component test: AC-16
 - e2e: AC-4 (screenshot PLP/PDP/cart ที่ T-1min และ T+1min โดยใช้ clock control)
 
 ## Tasks
@@ -245,12 +253,14 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-2 | Subscriber คืนค่า `order.canceled` + refund เต็มจำนวน (เกณฑ์กฎข้อ 10: refund รวม ≥ capture รวม > 0, รวม refund จาก return; AC-5 a) → คืน usage และ `units_sold` ตาม reservation แบบ idempotent (`released_at`) ไม่มี subscriber `order.placed` (AC-5, AC-6) | FS-3 |
 | FS-4 | Store endpoint `/store/flash-sales/active` พร้อม promotion price preview (AC-4 API); preview ที่เรียก `computeActions` เองต้องส่ง context `exclusivity.code_applied: "false"` ไม่เช่นนั้น F ถูก prefilter ตัดทิ้ง (กฎข้อ 6g) | FS-1 |
 | FS-5 | Admin campaign widget + `POST /admin/flash-sales/:campaign_id/config` ใส่ exclusivity rule ให้ทุก automatic promotion ของ campaign (idempotent, ใช้ helper PROMO-1) และ widget เตือน promotion ที่ไม่มี rule (กฎข้อ 7); รับ `total_cap` ต่ำกว่า `units_sold` ได้ (AC-11 a) | FS-1, PROMO-1 |
-| FS-6 | Storefront banner/countdown/ราคาบน PDP + "Sold out"/"เหลือ N ชิ้น" จาก `sold_out`/`remaining_units` (กฎข้อ 4) + ข้อความ AC-8 (g) + e2e (AC-1, AC-3, AC-4, AC-8 g, AC-13 e) | FS-4, FS-7, PROMO-1 |
+| FS-6 | Storefront banner/countdown/ราคาบน PDP + "สินค้าหมด"/"เหลือ N ชิ้น" จาก `sold_out`/`remaining_units` (กฎข้อ 4) + ข้อความ AC-8 (g) + e2e (AC-1, AC-3, AC-4, AC-8 g, AC-13 e); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | FS-4, FS-7, PROMO-1, CORE-4b (แตะ PDP เดียวกัน) |
 | PROMO-2 | follow-up PROMO-1/FS-3: override `errorHandler` ให้ code ของเราถึง client เป็น 409 `{ type: "conflict", code, message }` ตามกฎข้อ 13 + integration test (AC-12) + ย้าย route ของเราที่ตอบ 409 เอง และ merge แล้ว ณ ตอนทำ PROMO-2 (เช่น `POST /admin/evoucher/codes/:id/void` ของ EV-5) มาใช้กลไกนี้: throw `MedusaError(CONFLICT, message, "<CODE>")` และลบ try/catch/`res.status(409)` ใน route (AC-12 d) — route ที่ merge หลัง PROMO-2 ใช้กลไกนี้เอง (owner Q-C) | PROMO-1, FS-3 |
 | FS-8 | follow-up FS-2 (เล็ก): การคืนโควตาต้องไม่หายเมื่อ subscriber ล้ม — ใช้กลไก retry ที่ Medusa มีให้ (เช่น option retry ของ workflow/step หรือ event bus) ก่อน ถ้าไม่มีให้ใช้ scheduled job กวาด order ที่เข้าเกณฑ์กฎข้อ 10 แต่ reservation ยังไม่ `released_at` (idempotent เดิม); AC-14 | FS-2 |
 | FS-9 | (ทางเลือก, รอ owner สั่ง) follow-up FS-5: subscriber `promotion.created`/`promotion.updated` ใส่ exclusivity rule ให้ automatic promotion ใหม่ใน campaign ที่มี `FlashSaleConfig` อัตโนมัติ (ใช้ step เดียวกับ FS-5); AC-15 | FS-5 |
 | FS-7 | follow-up FS-4 (backend เล็ก): `GET /store/flash-sales/active` เอา `remaining_usage` ออก เพิ่ม `sold_out` + `remaining_units` จาก `FlashSaleConfig` (pure function + unit test) และระบุข้อจำกัดของ preview (กฎข้อ 14) ใน JSDoc ของ route (AC-13 a–d) | FS-4 |
-PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 หลัง FS-5 (ทางเลือก)
+| FS-10 | follow-up QA FS-5 D-1r (เล็ก, frontend เท่านั้น): in-flight flag `useRef` ในปุ่ม Save ของ widget "Flash sale options" (กฎข้อ 15); AC-16 | FS-5 |
+PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 หลัง FS-5 (ทางเลือก);
+FS-10 หลัง FS-5 (แยกจาก FS-9 เพราะ FS-9 เป็นทางเลือกที่รอ owner สั่ง; FS-10 ∥ FS-9 ไม่แตะไฟล์เดียวกัน — FS-9 เป็น subscriber backend)
 PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวกับ FS-3 แต่ FS-3 merge แล้ว); ต้อง merge ก่อน GB-3 (dependency) และควรก่อน FS-6
 
 ## คำถามที่ยังเปิดอยู่
