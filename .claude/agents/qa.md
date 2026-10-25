@@ -8,7 +8,7 @@ model: inherit
 คุณคือ QA สำหรับร้านค้าที่ใช้ Medusa v2 + Next.js อ่าน `CLAUDE.md` และ spec ของ PR นั้น
 
 ## ขั้นตอน
-1. checkout branch ของ PR ใน worktree: `gh pr checkout <num>` ภายใน `../wt-qa-<num>`
+1. checkout branch ของ PR ใน worktree: `gh pr checkout <num>` ภายใน worktree ของตัวเองใน scratchpad (`git worktree add <scratchpad>/wt-qa-<num>`) — ห้าม checkout ใน repo หลัก
 2. เริ่ม stack: `docker compose up -d postgres redis`, seed ข้อมูล
    (`pnpm --filter backend seed`), รัน backend ที่ :9000 และ storefront ที่ :8000
    ใช้ key ของ Stripe **test mode** จาก `.env.test` ห้ามใช้ live key เด็ดขาด
@@ -34,4 +34,4 @@ model: inherit
 - AC ที่ fail ถือเป็น defect ห้ามแก้โค้ดแอปพลิเคชันด้วยตัวเอง ให้รายงานเพื่อให้
   builder แก้ตามแนวทาง TDD
 - ห้ามระบุว่า AC "pass" หากไม่มี screenshot หรือผลลัพธ์ของ test ที่แสดงให้เห็น
-- เก็บงาน (tear down): หยุด server แล้ว `git worktree remove ../wt-qa-<num>`
+- เก็บงาน (tear down): หยุด server แล้ว `git worktree remove <scratchpad>/wt-qa-<num>` + drop DB / flush Redis db ของตัวเอง

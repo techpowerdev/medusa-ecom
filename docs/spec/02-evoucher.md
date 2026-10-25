@@ -77,7 +77,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   (masked), reveal พร้อม audit log
 - Admin widget บนหน้า variant: "Voucher pool" (พาร์ทเนอร์, face value, stock จาก pool)
 - Tab บนหน้า order ใน admin: code ที่ส่งมอบแล้ว (masked) + ส่งซ้ำ
-- Storefront: PDP แสดงพาร์ทเนอร์, วิธีใช้, "ส่งมอบทางอีเมล"; หน้า account "My vouchers"
+- Storefront (ข้อความไทยตรงในโค้ด ADR-014; e2e หาด้วย test id): PDP แสดงพาร์ทเนอร์, วิธีใช้, "ส่งมอบทางอีเมล"; หน้า account
+  "บัตรกำนัลของฉัน" (เมนู `vouchers-link`, การ์ด `voucher-card`, ปุ่มคัดลอก `voucher-copy-button`)
   แสดง code + PIN (ปุ่ม copy), โลโก้พาร์ทเนอร์, วันหมดอายุ; checkout แบบ digital-only ตามเดิม
 
 ## Business rules
@@ -118,7 +119,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   order เดียวที่ได้ code; อีก order ถูก flag เป็น backordered และ admin ได้รับอีเมล
 - AC-5 code ที่จะหมดอายุภายใน < 7 วันจะไม่ถูก allocate; job รายวัน void code เหล่านั้นและ
   ลด inventory
-- AC-6 หน้า "My vouchers" ของลูกค้าแสดงเฉพาะ code ของตนเอง พร้อมปุ่ม copy; ลูกค้าคนอื่นได้ 404
+- AC-6 หน้าบัตรกำนัลของฉัน (`vouchers-link`) ของลูกค้าแสดงเฉพาะ code ของตนเอง (`voucher-card`) พร้อมปุ่มคัดลอก (`voucher-copy-button`);
+  ลูกค้าคนอื่นได้ 404; heading ของหน้ามีอักษรไทย (ADR-014)
 - AC-7 การรัน allocation workflow ซ้ำสำหรับ order เดิมจะไม่ allocate code เพิ่มและ
   ไม่ส่งอีเมลเพิ่ม
 - AC-8 API รายการ code คืน code แบบ masked; endpoint reveal คืนค่าจริงและเขียน
@@ -126,7 +128,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-9 จำนวน available ต่ำกว่า threshold → อีเมล low-stock 1 ฉบับต่อวันต่อ pool
 - AC-10 `POST /admin/evoucher/codes/:id/void` ด้วย `{ reason: "partner recalled" }` บน code `available` → `status=void`,
   `void_reason="partner recalled"`, inventory ของ variant −1; ไม่ส่ง `reason` หรือส่งค่าว่าง → 400 และ code ไม่เปลี่ยน;
-  code ที่ไม่ใช่ `available` → 409 body `{ type: "conflict", code: <code ของเรา>, message }` (กฎข้อ 10 — ย้ายมาใช้กลไกกลางใน PROMO-2);
+  code ที่ไม่ใช่ `available` → 409 body `{ type: "conflict", code: "EVOUCHER_CODE_NOT_AVAILABLE", message }` (กฎข้อ 10 — code นี้
+  PROMO-2 ตั้งตอนย้ายมาใช้กลไกกลาง; ตรงกับ spec 03 AC-12 d);
   job รายวันตั้ง `void_reason="expiring"`
 - AC-11 สร้าง pool ให้ variant ที่ `manage_inventory=true` → inventory item ของ variant มี `requires_shipping=false` และ line item ของ
   variant นั้นใน cart มี `requires_shipping=false`; variant ที่ `manage_inventory=false` → 400 และไม่มี pool ถูกสร้าง;
@@ -177,7 +180,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-5 | Job รายวันสำหรับ expiry/void + low-stock (ส่งหา `EVOUCHER_ADMIN_EMAIL` ตามกฎข้อ 9 — PR #43 ต้องปรับ); admin API สำหรับ void; field `void_reason` + migration (AC-5, AC-9, AC-10, AC-17 ส่วน low-stock/expiry) — resend ย้ายไป EV-5b (owner Q-B) | EV-2 |
 | EV-5b | `resendEvoucherEmailWorkflow` + `POST /admin/evoucher/orders/:id/resend` + ปุ่ม resend บน order widget ของ EV-6 (AC-18, AC-19) | EV-4, EV-6 |
 | EV-6 | Admin UI: route page (partner, pool, import, code แบบ masked/reveal) + variant widget + order tab | EV-2 |
-| EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only (เลือก option ด้วย `type.code` ไม่ใช่ตัวแรก, กฎข้อ 8), My vouchers + e2e (AC-3, AC-6) | EV-4 |
+| EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only (เลือก option ด้วย `type.code` ไม่ใช่ตัวแรก, กฎข้อ 8), หน้าบัตรกำนัลของฉัน + e2e (AC-3, AC-6); ข้อความไทยตรงในโค้ดและเพิ่ม path ใน ESLint rule ของ spec 01 กฎ CORE-4 ข้อ 4 (ADR-014) | EV-4 |
 | EV-8 | Hardening จาก review EV-2: บังคับกฎข้อ 1 ตอนสร้าง pool (`requires_shipping=false` ที่ inventory item ผ่าน `updateInventoryItemsWorkflow` + compensation, ปฏิเสธ `manage_inventory=false`), `expires_at` แบบวันที่ล้วน, error เดิมไม่ถูกกลบเมื่อ compensation ล้ม; seed (`upgradeDigitalDelivery`) หา option Digital delivery ด้วย `type.code` แทนชื่อ (กฎข้อ 8) (AC-11, AC-12, AC-13, AC-14) | EV-2, EV-3 |
 | EV-9 | follow-up review/QA (เล็ก): route pool list/detail select `low_stock_threshold` เสมอ (คำนวณ `low_stock` ถูกแม้ client ส่ง `fields` เอง) + module link `evoucher_code ↔ order` (`src/links/`) ที่ order tab (EV-6) และ resend (EV-5b) ใช้ + ฟอร์ม admin กัน double-submit และ `Label` ผูก `htmlFor`/`id` (กฎข้อ 11) (AC-15, AC-16, AC-20) | EV-2, EV-6 |
 EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-9 หลัง EV-6 (แก้ฟอร์มของ EV-6; ถ้า EV-6 ต้องใช้ link ก่อน ให้รวม link เข้า PR นั้นแทน); EV-5b หลัง EV-4 และ EV-6;
