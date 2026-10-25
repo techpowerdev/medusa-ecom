@@ -1,5 +1,6 @@
 import { sdk } from "@lib/config"
-import { getCartId } from "@lib/data/cookies"
+import { getAuthHeaders, getCartId } from "@lib/data/cookies"
+import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
 import { getRegion } from "@lib/data/regions"
 import { HttpTypes } from "@medusajs/types"
 import { activateCart, MAX_LINE_ITEM_QUANTITY } from "@lib/util/server-cart"
@@ -40,11 +41,18 @@ const addLineItem = async (
   cartId: string | undefined,
   regionId: string,
   variantId: string,
-  quantity: number
+  quantity: number,
+  headers: Awaited<ReturnType<typeof getAuthHeaders>>
 ) => {
   const id =
-    cartId ?? (await sdk.store.cart.create({ region_id: regionId })).cart.id
-  await sdk.store.cart.createLineItem(id, { variant_id: variantId, quantity })
+    cartId ??
+    (await sdk.store.cart.create({ region_id: regionId }, {}, headers)).cart.id
+  await sdk.store.cart.createLineItem(
+    id,
+    { variant_id: variantId, quantity },
+    {},
+    headers
+  )
   return id
 }
 
@@ -78,17 +86,38 @@ export async function POST(
     return new NextResponse("Select a valid product variant", { status: 400 })
   }
 
+  // CORE-6: ไม่มี guest — ยังไม่ล็อกอินให้ไปหน้า login พร้อม variant ที่ค้างไว้
+  const headers = await getAuthHeaders()
+  if (!("authorization" in headers)) {
+    return NextResponse.redirect(
+      `${getRequestOrigin(request)}${loginPathForAddToCart(countryCode, variantId)}`,
+      303
+    )
+  }
+
   const existingCartId = await getCartId()
   let cartId: string
   try {
-    cartId = await addLineItem(existingCartId, region.id, variantId, quantity)
+    cartId = await addLineItem(
+      existingCartId,
+      region.id,
+      variantId,
+      quantity,
+      headers
+    )
   } catch (error) {
     if (!existingCartId) {
       return new NextResponse(errorMessage(error), { status: 400 })
     }
     // The stored cart may be completed or belong to another region.
     try {
-      cartId = await addLineItem(undefined, region.id, variantId, quantity)
+      cartId = await addLineItem(
+        undefined,
+        region.id,
+        variantId,
+        quantity,
+        headers
+      )
     } catch (retryError) {
       return new NextResponse(errorMessage(retryError), { status: 400 })
     }

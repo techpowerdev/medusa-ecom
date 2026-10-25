@@ -81,9 +81,6 @@ jobs:
       - run: tools/ops/smoke-worker-mode.sh
 
   storefront-e2e:
-    # ปิดไว้จนกว่าจะมี seed + print-publishable-key (CORE-2) และ Playwright (CORE-5);
-    # CORE-6 เป็นผู้ลบเงื่อนไขนี้เมื่อ e2e พร้อม
-    if: ${{ false }}
     runs-on: ubuntu-latest
     needs: backend-tests
     services:
@@ -104,6 +101,12 @@ jobs:
       NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
       JWT_SECRET: test
       COOKIE_SECRET: test
+      STORE_CORS: http://localhost:8000
+      ADMIN_CORS: http://localhost:9000
+      AUTH_CORS: http://localhost:9000,http://localhost:8000
+      NEXT_PUBLIC_DEFAULT_REGION: th
+      # CORE-6: admin ที่ seed สร้างให้ e2e ใช้ผ่าน admin API (รหัสผ่านสุ่มต่อ run ใน step ด้านล่าง)
+      SEED_ADMIN_EMAIL: e2e-admin@example.com
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -112,6 +115,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Random admin password for e2e
+        run: |
+          p=$(openssl rand -hex 16)
+          echo "::add-mask::$p"
+          echo "SEED_ADMIN_PASSWORD=$p" >> "$GITHUB_ENV"
       - run: pnpm --filter storefront exec playwright install --with-deps chromium
       - name: Install Stripe CLI
         run: |
@@ -132,11 +140,16 @@ jobs:
       - name: Start backend and capture publishable key
         run: |
           pnpm --filter backend build
-          (pnpm --filter backend start &)
-          npx wait-on http://localhost:9000/health
+          # medusa start ต้องรันจาก build output (.medusa/server) เพื่อเสิร์ฟ admin ที่ build แล้ว
+          ln -s ../../node_modules apps/backend/.medusa/server/node_modules
+          (cd apps/backend/.medusa/server && npx medusa start > /tmp/backend.log 2>&1 &)
+          npx wait-on -t 120000 http://localhost:9000/health
           echo "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=$(pnpm --filter backend --silent print-publishable-key)" >> "$GITHUB_ENV"
       - run: pnpm --filter storefront build && (pnpm --filter storefront start &) && npx wait-on http://localhost:8000
-      - run: pnpm --filter storefront test:e2e
+      # project "unit" (กฎ evidence) ไม่ต้องใช้ server — แยกไปเปิดใน CI ตาม backlog (มี *-tests.txt เดิมผิด convention)
+      - run: pnpm --filter storefront test:e2e --project=chromium
+      - if: failure()
+        run: tail -n 200 /tmp/backend.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

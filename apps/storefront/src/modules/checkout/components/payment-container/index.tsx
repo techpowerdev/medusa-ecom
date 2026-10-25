@@ -32,6 +32,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
       key={paymentProviderId}
       value={paymentProviderId}
       disabled={disabled}
+      data-testid={`payment-option-${paymentProviderId}`}
       className={clx(
         "flex flex-col gap-y-2 text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
         {

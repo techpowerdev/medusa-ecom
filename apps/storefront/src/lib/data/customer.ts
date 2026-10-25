@@ -18,6 +18,8 @@ import {
   setAuthToken,
   setPendingCustomer,
 } from "./cookies"
+import { addToCart } from "./cart"
+import { readPendingAddToCart } from "@lib/util/pending-add-to-cart"
 
 export type CustomerAuthState =
   | { state: "error"; error: string }
@@ -121,7 +123,10 @@ export async function signup(
 
   // Continue by logging in. The login response tells us whether the backend
   // requires email verification — we don't need a storefront-side flag.
-  return completeLogin(customerForm.email, password)
+  return resumePendingAddToCart(
+    formData,
+    await completeLogin(customerForm.email, password)
+  )
 }
 
 export async function login(
@@ -131,7 +136,27 @@ export async function login(
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
-  return completeLogin(email, password)
+  return resumePendingAddToCart(formData, await completeLogin(email, password))
+}
+
+// CORE-6 (spec 01 AC-6): guest ที่กด "Add to cart" ถูกส่งมาล็อกอินพร้อม variant ที่ค้างไว้
+// ล็อกอินสำเร็จ → เพิ่มลง cart แล้วไปหน้า cart
+async function resumePendingAddToCart(
+  formData: FormData,
+  result: CustomerAuthState
+): Promise<CustomerAuthState> {
+  const pending = readPendingAddToCart(formData)
+  if (result?.state !== "success" || !pending) {
+    return result
+  }
+
+  try {
+    await addToCart({ ...pending, quantity: 1 })
+  } catch (error) {
+    return { state: "error", error: String(error) }
+  }
+
+  redirect(`/${pending.countryCode}/cart`)
 }
 
 // Logs the customer in and reconciles the customer record. The behavior is
