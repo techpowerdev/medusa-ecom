@@ -10,7 +10,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # cancel เฉพาะ run ของ PR ที่ push ซ้ำ — release ไป main ห้ามถูก cancel
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # เวอร์ชัน Node อ่านจาก .nvmrc และ pnpm อ่านจาก "packageManager" ใน package.json ที่ root
 
