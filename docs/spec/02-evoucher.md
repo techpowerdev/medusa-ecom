@@ -91,6 +91,10 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
    admin อาจคืนเงินด้วยตนเองได้ โดย code ยังคงสถานะ `delivered` code ที่ allocate แล้วแต่ยังไม่ส่งมอบ
    บน order ที่ถูกยกเลิกจะถูกปล่อยกลับเป็น `available`
 7. วันหมดอายุเป็นของพาร์ทเนอร์; เราแสดงให้เห็นและหยุดขาย code ก่อนหมดอายุ 7 วัน
+8. cart ที่มีแต่สินค้า digital จะได้ shipping option **Standard** มาด้วย (อยู่ service zone `country=th` เดียวกัน และ cart ที่ไม่มี
+   address ไม่ถูกกรองด้วย geo zone) → ห้ามเลือก option ตัวแรกของรายการ: storefront (EV-7) เลือก option Digital delivery ด้วย
+   `type.code === "digital-delivery"` (หรือ `shipping_profile.type === "digital"` ถ้า store API คืน field นี้) และโค้ด backend/seed
+   ที่ต้องหา option นี้ใช้ `type.code` ไม่ใช้ชื่อ (`name` แก้ได้ใน admin)
 
 ## Acceptance criteria
 - AC-1 Admin import CSV จำนวน 100 code (ซ้ำ 2 รายการ) → 98 `available`, inventory ของ variant +98,
@@ -99,7 +103,10 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   `delivered` พร้อม order id และลูกค้าได้รับอีเมล 1 ฉบับที่มีทั้ง 2 code, PIN,
   วิธีใช้ของพาร์ทเนอร์ และวันหมดอายุ
 - AC-3 เมื่อ cart มีเฉพาะสินค้า voucher การ checkout ไม่ต้องกรอกที่อยู่; shipping method
-  "Digital delivery" ฟรีถูกใช้อัตโนมัติ; ยอดรวมมีค่าจัดส่ง ฿0
+  "Digital delivery" ฟรีถูกใช้อัตโนมัติ; ยอดรวมมีค่าจัดส่ง ฿0 — แม้ `GET /store/shipping-options?cart_id=` คืน Standard มาก่อน
+  Digital delivery ในรายการ cart ก็ต้องมี shipping method ที่ `type.code = "digital-delivery"` และไม่มี Standard (กฎข้อ 8)
+- AC-14 (EV-8) รัน seed บน DB ที่ option Digital delivery ถูกเปลี่ยนชื่อใน admin (เช่น "E-mail delivery") และยังผูก `manual_manual`
+  → option นั้น (หาด้วย `type.code = "digital-delivery"`) ถูกย้ายไป provider `digital` และไม่มี option ใหม่ถูกสร้าง
 - AC-4 เมื่อมี code `available` 1 รายการ และ order qty 1 สองรายการถูก capture พร้อมกัน → มีเพียง
   order เดียวที่ได้ code; อีก order ถูก flag เป็น backordered และ admin ได้รับอีเมล
 - AC-5 code ที่จะหมดอายุภายใน < 7 วันจะไม่ถูก allocate; job รายวัน void code เหล่านั้นและ
@@ -130,6 +137,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - Unit: CSV parser (รวม AC-12 วันที่ล้วน), masking, expiry filter, encryption round-trip
 - Integration (modules): การ allocate พร้อมกัน (AC-4), idempotency (AC-7)
 - Integration (http): AC-1, AC-2, AC-5, AC-8, AC-9, AC-10, AC-11, AC-13 โดย mock notification provider
+- Integration (seed script): AC-14
 - e2e: AC-3, AC-6
 
 ## Tasks
@@ -141,8 +149,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-4 | Allocate & deliver workflow + subscriber + email template (AC-2, AC-4, AC-7) | EV-2, EV-3, CORE-3 |
 | EV-5 | Job รายวันสำหรับ expiry/void + low-stock; admin API สำหรับ void & resend; field `void_reason` + migration (AC-5, AC-9, AC-10) | EV-2 |
 | EV-6 | Admin UI: route page (partner, pool, import, code แบบ masked/reveal) + variant widget + order tab | EV-2 |
-| EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only, My vouchers + e2e (AC-3, AC-6) | EV-4 |
-| EV-8 | Hardening จาก review EV-2: บังคับกฎข้อ 1 ตอนสร้าง pool (`requires_shipping=false` ที่ inventory item ผ่าน `updateInventoryItemsWorkflow` + compensation, ปฏิเสธ `manage_inventory=false`), `expires_at` แบบวันที่ล้วน, error เดิมไม่ถูกกลบเมื่อ compensation ล้ม (AC-11, AC-12, AC-13) | EV-2, EV-3 |
+| EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only (เลือก option ด้วย `type.code` ไม่ใช่ตัวแรก, กฎข้อ 8), My vouchers + e2e (AC-3, AC-6) | EV-4 |
+| EV-8 | Hardening จาก review EV-2: บังคับกฎข้อ 1 ตอนสร้าง pool (`requires_shipping=false` ที่ inventory item ผ่าน `updateInventoryItemsWorkflow` + compensation, ปฏิเสธ `manage_inventory=false`), `expires_at` แบบวันที่ล้วน, error เดิมไม่ถูกกลบเมื่อ compensation ล้ม; seed (`upgradeDigitalDelivery`) หา option Digital delivery ด้วย `type.code` แทนชื่อ (กฎข้อ 8) (AC-11, AC-12, AC-13, AC-14) | EV-2, EV-3 |
 EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 

@@ -79,8 +79,10 @@ Payout
 - Subscriber เมื่อ refund/cancel/return: insert entry แบบ `reversed` สำหรับยอดที่ได้รับผลกระทบ
   (ไม่แก้ไข entry เดิม; ledger เป็น append-only)
 - Scheduled job รายวัน: entry `pending` ที่ `matures_at <= now` และไม่มี reversal → `approved`
-- `createPayoutWorkflow(affiliate, period)` admin: รวม `approved` ที่ยังไม่จ่าย → Payout draft;
-  `markPayoutPaid` → entry เป็น `paid`
+- `createPayoutWorkflow(affiliate, period)` admin: เลือก entry ตามกฎ 19 → Payout draft;
+  `markPayoutPaid` → entry เป็น `paid` (compensation คืน `paid → approved`, กฎ 21)
+- `cancelPayoutWorkflow(payout_id)` admin (AF-9): เฉพาะ payout `draft` → ลบ payout (soft-delete) entry ใน `entry_ids` กลับไปเลือกได้
+  ในรอบถัดไป (สถานะ entry ไม่เปลี่ยน เพราะ draft ไม่แตะ entry); payout `paid` → 400 `NOT_ALLOWED`
 
 ## API
 - Store (public): `GET /store/affiliate/r/:code?to=/path` → ตั้ง cookie, 302 ไปยัง path
@@ -140,7 +142,7 @@ Payout
 15. Idempotency ของ attribution (AC-10) อิงจาก unique `order_id` ของ `AffiliateAttribution`: workflow ตรวจ/สร้าง
     attribution ก่อนสร้าง entry และหยุดถ้ามีอยู่แล้ว (unique ของ entry ที่ `status='pending'` ไม่พอ
     เพราะ Postgres ถือว่า `line_item_id` NULL ไม่ซ้ำกัน) การสร้าง attribution + entries ต้องอยู่ใน workflow เดียว
-    มี compensation ลบ attribution/entries ของรอบที่ล้มเหลว (เป็นข้อยกเว้นเดียวของกฎ 5 — ยังไม่ commit)
+    มี compensation ลบ attribution/entries ของรอบที่ล้มเหลว (เป็นข้อยกเว้นหนึ่งของกฎ 5 — ยังไม่ commit; อีกข้อคือกฎ 21)
 16. ขอบเขต (scope) = union ของ `variant_ids` ∪ `collection_ids` ∪ `category_ids`; `all = true` คลุมทุกสินค้า
     การนับ category ลูก ดู Q2; AF-3 (คำนวณ) และ AF-7 (`/affiliate/products`) ต้องใช้กฎเดียวกัน
 17. Portal ใน storefront เรียก `/affiliate/*` จาก **server side ของ Next** (server component/route handler
@@ -148,6 +150,15 @@ Payout
 18. ทุก route ใต้ `/affiliate/*` ต้องผ่าน `authenticate("affiliate", ["session","bearer"])` ยกเว้น `/affiliate/register`
     ที่ใช้ `allowUnregistered: true` (ระวัง: middleware ของ matcher ที่ซ้อนกันทำงานทั้งคู่ — ห้ามใช้ `/affiliate/*`
     แบบไม่มี allowUnregistered คลุม register) สิทธิ์ตามสถานะ affiliate ดู Q6 (ตอนนี้ `/affiliate/me` เปิดทุกสถานะ)
+19. (AF-5) การเลือก entry ของ payout: entry ของ affiliate นั้นที่ `status ∈ {approved, reversed}` (Q8), `created_at < period_to`
+    และยังไม่อยู่ใน `entry_ids` ของ payout ใด — **ไม่** ตัดด้วย `period_from` (`period_from` เป็นเพียงป้ายของรอบ) เพื่อให้ยอดที่
+    ยกมาจากรอบก่อนตาม Q8 ถูกรวมในรอบถัดไป
+20. (AF-5, ตามโค้ด PR #35) สถานะโปรแกรมเรียงเป็น `draft < published < ended` และเปลี่ยนได้เฉพาะไปข้างหน้าหรือคงเดิม:
+    `draft → published`, `published → ended` และ **`draft → ended` ตรงได้** (ข้ามขั้น); ย้อนกลับ (เช่น `ended → published`,
+    `published → draft`) → 400 `NOT_ALLOWED`; ตั้งค่าเดิมซ้ำไม่ error; ตอนสร้างตั้งได้แค่ `draft`/`published` (`ended` ได้ผ่าน update เท่านั้น)
+    ลบ (soft-delete) โปรแกรมได้เฉพาะ `draft` มิฉะนั้น 400 `NOT_ALLOWED`
+21. (AF-5) compensation ของ `markPayoutPaid` ที่คืนสถานะ entry `paid → approved` เมื่อ workflow ล้ม (ยังไม่ commit)
+    เป็นข้อยกเว้นของกฎ 5 (เช่นเดียวกับ compensation ของกฎ 15)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -177,6 +188,10 @@ Payout
 - AC-17 เมื่อโปรแกรม P มี `status = ended` แต่เวลาสั่งซื้ออยู่ใน `[starts_at, ends_at)` → attribution `program_id = null`
   และไม่มี entry; สั่งซื้อที่ `t = ends_at` พอดีของโปรแกรม published → ไม่มี entry
 - AC-18 ทุก route ใต้ `/affiliate/*` ยกเว้น `/affiliate/register` ตอบ 401 เมื่อไม่มี token หรือใช้ token ของ customer
+- AC-19 (AF-9) ยกเลิก payout `draft` ของ Ann → payout ไม่อยู่ในรายการ, entry ใน `entry_ids` ยังเป็น `approved`; สร้าง payout ใหม่
+  ช่วงเดียวกัน → ได้ entry ชุดเดิมและยอดเท่าเดิม; ยกเลิก payout `paid` → 400 และ payout/entry ไม่เปลี่ยน
+- AC-20 (AF-9, กฎ 19) entry `approved` ที่ `created_at` อยู่ก่อน `period_from` และยังไม่อยู่ใน payout ใด ถูกรวมใน payout รอบ
+  `[period_from, period_to)`; entry ที่ `created_at >= period_to` ไม่ถูกรวม; entry ที่อยู่ใน payout อื่นแล้วไม่ถูกรวม
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -186,7 +201,7 @@ Payout
 
 ## Test plan
 - Unit: การคำนวณค่าคอมมิชชัน (ขอบเขต, cap, ฐานคำนวณ, ปัดเศษ), การตรวจสอบช่วงเวลา `[starts_at, ends_at)` และ `ended` (AC-17 ส่วน logic)
-- Integration (http): AC-1..AC-8, AC-10, AC-11, AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18
+- Integration (http): AC-1..AC-8, AC-10, AC-11, AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20
 - e2e: AC-9 + AC-1 แบบ end-to-end พร้อม cookie
 
 ## Tasks
@@ -200,7 +215,8 @@ Payout
 | AF-6 | หน้า Admin UI | AF-5 |
 | AF-7 | Portal APIs รวม `/affiliate/products` (แปลงขอบเขต → สินค้า ตามกฎ 16, paging) (AC-13, AC-14, AC-18) — หมายเหตุ: ปรับ middleware matcher ให้คลุมทุก `/affiliate/*` ยกเว้น register (กฎ 18) และสิทธิ์ตามสถานะ (Q6) | AF-3 |
 | AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts, Profile (Q5) + e2e (AC-9) | AF-7, AF-4 |
-AF-5/AF-6 ∥ AF-3/AF-4; AF-7 ∥ AF-4
+| AF-9 | follow-up AF-5 (เล็ก): `cancelPayoutWorkflow` + admin route ยกเลิก payout `draft` (คืน entry ให้เลือกได้อีก) และย้ายการกรอง entry ของ `createPayoutWorkflow` ไปทำใน DB (filter ตามกฎ 19 แทนโหลด entry ทั้งหมดแล้วกรองในแอป) (AC-19, AC-20; AC-7 ต้องยังผ่าน) | AF-5 |
+AF-5/AF-6 ∥ AF-3/AF-4; AF-7 ∥ AF-4; AF-9 ∥ AF-6 หลัง AF-5
 
 ## ข้อตัดสินของ owner (2026-10-25)
 - Q1 สมัครเองได้: register → `pending` → admin อนุมัติ
@@ -215,3 +231,5 @@ AF-5/AF-6 ∥ AF-3/AF-4; AF-7 ∥ AF-4
   attribution เก็บ `program_id` ของโปรแกรมที่ให้ค่าคอมรวมมากที่สุด
 - Q8 maturity job อนุมัติ entry ที่ยอดสุทธิของ line (รวม reversal) > 0; payout = Σ `approved` + Σ `reversed`
   ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
+- Q9 (2026-10-25, AF-9) ยกเลิก payout `draft` = soft-delete (ไม่เพิ่มสถานะ `cancelled`)
+- กฎ 20 ให้ตรงกับโค้ดของ PR #35 (`draft → ended` ตรงได้)

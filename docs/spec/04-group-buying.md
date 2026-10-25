@@ -117,6 +117,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   1. acquire lock ตามลำดับ (ADR-009): `group_buy:campaign:<id>` (เฉพาะเมื่อตั้ง `max_total_orders`) →
      `group_buy:group:<id>` → `group_buy:customer:<campaign_id>:<customer_id>`
      แล้วตรวจ (นับเฉพาะ membership ที่ไม่ใช่ `cancelled`):
+     cart ต้องเป็นของผู้เรียก (`cart.customer_id = customer_id`) มิฉะนั้น 404 (spec 01 กฎ 23, ADR-013; ใช้ helper ของ CORE-12 ถ้า merge แล้ว);
      แคมเปญ `active` และอยู่ในช่วงเวลาของ Medusa campaign (`starts_at` null หรือ `<= now`, `now < ends_at`)
      มิฉะนั้น 400 `NOT_ALLOWED`; กลุ่ม `open` และยังไม่หมดเวลา; ลูกค้าไม่มี membership ใน **กลุ่มอื่น** ของแคมเปญนี้
      (409 `GB_ALREADY_IN_OTHER_GROUP`); หากลูกค้ายังไม่มี membership ในกลุ่มนี้ → `progress_people < max_people_per_group`;
@@ -124,9 +125,11 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
      ≤ `max_units_per_person`; cart มีเฉพาะสินค้าในขอบเขตแคมเปญ (อ่าน `target_rules` จาก promotion ของกลุ่ม); cart ไม่มี promotion code อื่น (กฎข้อ 7)
      ข้อจำกัดที่ไม่ผ่าน → 409 พร้อม code ของข้อนั้น
   2. ใส่ `GB-<token>` ให้ cart (`updateCartPromotionsWorkflow`) — ส่วนลด flash ที่มีอยู่หลุดเองผ่าน hook ของ PROMO-1;
-     จากนั้นอ่าน cart ใหม่ ถ้า **ไม่มี** adjustment ที่ `code = GB-<token>` อย่างน้อยหนึ่ง line → throw 400 `NOT_ALLOWED`
-     code `GB_DISCOUNT_NOT_APPLIED` ให้ workflow ล้มทั้งชุด (ไม่สร้าง draft order ราคาเต็ม; กฎข้อ 5) — compensation ของขั้นนี้:
-     เอา `GB-<token>` ออกจาก cart (`updateCartPromotionsWorkflow` action `remove`)
+     compensation ของขั้นนี้: เอา `GB-<token>` ออกจาก cart (`updateCartPromotionsWorkflow` action `remove`)
+  2b. **step แยกจากขั้น 2**: อ่าน cart ใหม่ ถ้า **ไม่มี** adjustment ที่ `code = GB-<token>` อย่างน้อยหนึ่ง line → throw 400
+     `NOT_ALLOWED` code `GB_DISCOUNT_NOT_APPLIED` ให้ workflow ล้มทั้งชุด (ไม่สร้าง draft order ราคาเต็ม; กฎข้อ 5)
+     — ต้องแยก step เพราะ step ที่ throw ไม่รัน compensation ของตัวเอง ถ้ารวม "ใส่ code" กับ "ตรวจ adjustment" ไว้ step เดียว
+     `GB-<token>` จะค้างใน cart (ขัด AC-23)
   3. สร้าง draft order จาก cart (`createOrderWorkflow`, `is_draft_order: true`,
      metadata `{group_buy_group_id, group_buy_membership_id}`) — compensation: ยกเลิก order นั้น;
   4. สร้าง membership (`joined`, `campaign_id` จากกลุ่ม, `order_id`) + ปรับตัวนับ: `progress_orders +1`,
@@ -205,8 +208,10 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     ยังถูกตัดสิน succeed/fail ที่ `ends_at` ของกลุ่มตามปกติ คอนฟิกเป้าหมาย/ข้อจำกัด/mode แก้ได้เฉพาะตอน `draft`
 11. **Error mapping** (ตาม error handler ของ Medusa 2.22.1): mode ไม่อนุญาต → `MedusaError.Types.FORBIDDEN` (403);
     สถานะแคมเปญ/transition ไม่ถูกต้อง → `NOT_ALLOWED` (400); ไม่พบ → `NOT_FOUND` (404) ข้อจำกัดที่ spec กำหนดเป็น 409 พร้อม
-    code ของเรา (`GB_*`, `PROMOTION_NOT_COMBINABLE`) **ห้าม** throw `MedusaError.Types.CONFLICT` ตรงๆ เพราะ handler เขียนทับ
-    `code`/`message` — route ต้องแปลงเป็น `res.status(409).json({ type: "conflict", code, message })` (ทำครั้งเดียวใน GB-3)
+    code ของเรา (`GB_*`, `PROMOTION_NOT_COMBINABLE`) ตอบเป็น `409 { type: "conflict", code, message }` (code อยู่ในฟิลด์ `code` เสมอ)
+    ผ่าน **กลไกเดียวกับ PROMO-2** (spec 03 กฎข้อ 13: `errorHandler` ที่ override ใน `defineMiddlewares` แปลง error ที่มี code ของเรา)
+    — handler เดิมของ Medusa เขียนทับ `code`/`message` ของ `CONFLICT` จึงต้องพึ่งกลไกนี้; GB-3 throw error ตามรูปแบบที่ PROMO-2
+    บันทึกไว้ และ **ไม่** เขียนการแปลง 409 ของตัวเองใน route (ถ้า PROMO-2 ใช้ allow-list ของ code ให้ GB-3 เพิ่ม `GB_*` ในนั้น)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -289,12 +294,12 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-1 | models/service/links/migrations ของ module + unit tests — membership มี `campaign_id`, ไม่มี unique `(group_id, customer_id)`, `order_id` unique + read-only link ไป order, index ตาม Non-functional (ADR-009) | CORE-2 |
 | GB-2a | link template (ADR-011) + `createGroupBuyCampaignWorkflow` / `updateGroupBuyCampaignWorkflow` / `deleteGroupBuyCampaignWorkflow` / `setGroupBuyCampaignStatusWorkflow` + admin API: campaigns CRUD, `.../status` (AC-20a, AC-21a) | GB-1, ADR-011 accepted |
 | GB-2b | `computeGroupEndsAt` + `createGroupWorkflow` (pool + team ระดับ workflow, ตรวจช่วงเวลาแคมเปญ) + admin `POST/GET /admin/group-buy/campaigns/:id/groups` (AC-19, AC-20b, AC-21b) — **ไม่รวม** `POST /store/group-buy/groups` | GB-2a |
-| GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009, ตรวจช่วงเวลา + ตรวจว่ามี adjustment ของ `GB-<token>`) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2b), join, leave + การแปลง 409 ตามกฎข้อ 11 + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18, AC-23); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง | GB-2b, PROMO-1 |
+| GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009, ตรวจช่วงเวลา + ตรวจว่ามี adjustment ของ `GB-<token>`) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2b), join, leave + 409 ผ่านกลไกของ PROMO-2 ตามกฎข้อ 11 (ไม่แปลงเอง) + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18, AC-23); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง | GB-2b, PROMO-1, PROMO-2 (AC-14 ส่วนที่สอง: ใส่ `SAVE10` ผ่าน route ของ Medusa ต้องได้ code ของเรา) |
 | GB-4 | `succeedGroupWorkflow` / `failGroupWorkflow` + deadline job (รวมตั้งแคมเปญ `ended`) + admin succeed/fail + อีเมล (AC-1, AC-3, AC-9, AC-11, AC-12, AC-22) | GB-3 |
 | GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) | GB-4, PAY-3 |
 | GB-6 | หน้า route ของ Admin UI | GB-2b |
 | GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + e2e (AC-2, AC-16) | GB-5 |
-GB-1 → GB-2a → GB-2b → (GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7))
+GB-1 → GB-2a → GB-2b → (GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-3 ต้องรอ PROMO-2 (spec 03) merge ด้วย
 
 ## Open questions
 - Q1 หากสมาชิกบางคนไม่ชำระเงินเลยหลังกลุ่มสำเร็จ กลุ่มควรยังนับว่า fulfilled สำหรับคนอื่นหรือไม่?
