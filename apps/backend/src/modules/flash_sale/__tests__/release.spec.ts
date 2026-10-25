@@ -93,6 +93,45 @@ moduleIntegrationTestRunner<FlashSaleModuleService>({
       })
     })
 
+    // ปรับตัวนับเรียงตาม campaign_id เสมอ → cart ที่มีหลาย campaign ในลำดับต่างกันไม่ deadlock กัน
+    describe("lock order across campaigns", () => {
+      const pairs = 15
+      const campaignsFor = (i: number) =>
+        i % 2 === 0
+          ? [
+              { campaign_id: "camp_a", units: 1 },
+              { campaign_id: "camp_b", units: 1 },
+            ]
+          : [
+              { campaign_id: "camp_b", units: 1 },
+              { campaign_id: "camp_a", units: 1 },
+            ]
+
+      beforeEach(async () => {
+        await service.createFlashSaleConfigs([{ campaign_id: "camp_a" }, { campaign_id: "camp_b" }])
+      })
+
+      it("concurrent reservations listing campaigns in opposite order do not deadlock", async () => {
+        await Promise.all(
+          Array.from({ length: pairs * 2 }, (_, i) => reserve(`cart_${i}`, `cus_${i}`, campaignsFor(i)))
+        )
+
+        expect(await unitsSold("camp_a")).toEqual(pairs * 2)
+        expect(await unitsSold("camp_b")).toEqual(pairs * 2)
+      })
+
+      it("concurrent releases of multi-campaign carts do not deadlock", async () => {
+        for (let i = 0; i < pairs * 2; i++) {
+          await reserve(`cart_${i}`, `cus_${i}`, campaignsFor(i))
+        }
+
+        await Promise.all(Array.from({ length: pairs * 2 }, (_, i) => service.releaseReservationsOfCart(`cart_${i}`)))
+
+        expect(await unitsSold("camp_a")).toEqual(0)
+        expect(await unitsSold("camp_b")).toEqual(0)
+      })
+    })
+
     describe("restoreReleasedReservations (compensation)", () => {
       it("clears released_at and books usage + units_sold again; idempotent", async () => {
         await service.createFlashSaleConfigs({ campaign_id: "camp_a" })

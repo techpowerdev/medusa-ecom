@@ -1,7 +1,10 @@
 import { createWorkflow, transform, when, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
 import { useQueryGraphStep } from "@medusajs/medusa/core-flows"
 import { isOrderFullyRefunded } from "../lib/flash-sale-release"
-import { releaseFlashSaleReservationsStep } from "./steps/release-flash-sale-reservations"
+import {
+  releaseFlashSaleReservationsStep,
+  type ReleaseFlashSaleReservationsStepInput,
+} from "./steps/release-flash-sale-reservations"
 
 export type ReleaseFlashSaleForOrderInput = {
   order_id: string
@@ -18,23 +21,24 @@ export const releaseFlashSaleForOrderWorkflow = createWorkflow(
       fields: [
         "id",
         "cart.id",
-        "payment_collections.payments.captures.amount",
-        "payment_collections.payments.refunds.amount",
+        "payment_collections.payments.captures.raw_amount",
+        "payment_collections.payments.refunds.raw_amount",
       ],
       filters: { id: input.order_id },
       options: { throwIfKeyNotFound: true },
     })
 
-    const cartId = transform({ orders, input }, ({ orders, input }): string | null => {
+    // cart_id ว่าง = ไม่ต้องคืน (ไม่มี cart หรือ refund ยังไม่เต็มจำนวน)
+    const release = transform({ orders, input }, ({ orders, input }): ReleaseFlashSaleReservationsStepInput => {
       const order = orders[0]
       if (input.reason === "refunded" && !isOrderFullyRefunded(order)) {
-        return null
+        return { cart_id: "" }
       }
-      return order.cart?.id ?? null
+      return { cart_id: order.cart?.id ?? "" }
     })
 
-    const released = when({ cartId }, ({ cartId }) => !!cartId).then(() =>
-      releaseFlashSaleReservationsStep({ cart_id: cartId as unknown as string })
+    const released = when({ release }, ({ release }) => !!release.cart_id).then(() =>
+      releaseFlashSaleReservationsStep(release)
     )
 
     return new WorkflowResponse({ released })

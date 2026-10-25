@@ -23,6 +23,11 @@ export type ReleasedReservation = { id: string; campaign_id: string; customer_id
 
 type Row = Record<string, unknown>
 
+// ปรับตัวนับ (usage/config) เรียงตาม campaign_id เสมอ — ลำดับ row lock เดียวกันทุก transaction กัน deadlock
+// เมื่อ cart มีหลาย campaign (ไม่พึ่งลำดับจากผู้เรียกหรือจาก RETURNING)
+const byCampaign = <T extends { campaign_id?: unknown }>(rows: T[]): T[] =>
+  [...rows].sort((a, b) => String(a.campaign_id).localeCompare(String(b.campaign_id)))
+
 const limitExceeded = () =>
   new MedusaError(
     MedusaError.Types.NOT_ALLOWED,
@@ -56,7 +61,7 @@ class FlashSaleModuleService extends MedusaService({
     const manager = sharedContext.transactionManager!
     const reserved: { campaign_id: string; units: number }[] = []
 
-    for (const { campaign_id, units } of input.campaigns) {
+    for (const { campaign_id, units } of byCampaign(input.campaigns)) {
       if (units <= 0) {
         continue
       }
@@ -134,7 +139,7 @@ class FlashSaleModuleService extends MedusaService({
       [cartId]
     )
 
-    for (const row of rows.filter((r) => r.released_at === null)) {
+    for (const row of byCampaign(rows.filter((r) => r.released_at === null))) {
       await this.adjustCounters_(manager, row, -1)
     }
   }
@@ -164,7 +169,7 @@ class FlashSaleModuleService extends MedusaService({
        RETURNING id, campaign_id, customer_id, units`,
       [cartId]
     )
-    for (const row of rows) {
+    for (const row of byCampaign(rows)) {
       await this.adjustCounters_(manager, row, -1)
     }
     return rows
@@ -194,7 +199,7 @@ class FlashSaleModuleService extends MedusaService({
        RETURNING id, campaign_id, customer_id, units`,
       ids
     )
-    for (const row of rows) {
+    for (const row of byCampaign(rows)) {
       await this.adjustCounters_(manager, row, 1)
     }
   }
