@@ -9,7 +9,9 @@ export type EvidenceTarget = { feature: string; taskId: string }
 export type EvidenceFile = { name: string; bytes: number }
 
 const FEATURE_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
-const TASK_ID_RE = /^[A-Z]+-\d+$/
+// CORE-5b: รับ suffix ตัวเล็กหนึ่งตัว เช่น CORE-4a, CORE-5b
+const TASK_ID_RE = /^[A-Z]+-\d+[a-z]?$/
+const TESTS_TXT_RE = /^[A-Z]+-\d+[a-z]?-tests\.txt$/
 const ALLOWED_NON_PNG = new Set(["REPORT.md"])
 
 export function evidenceDir(repoRoot: string, target: EvidenceTarget): string {
@@ -18,7 +20,7 @@ export function evidenceDir(repoRoot: string, target: EvidenceTarget): string {
   }
   if (!TASK_ID_RE.test(target.taskId)) {
     throw new Error(
-      `task id ต้องอยู่ในรูป XX-n เช่น CORE-5: "${target.taskId}"`
+      `task id ต้องอยู่ในรูป XX-n หรือ XX-na เช่น CORE-5, CORE-4a: "${target.taskId}"`
     )
   }
   return path.join(repoRoot, "docs", "evidence", target.feature, target.taskId)
@@ -47,9 +49,46 @@ export function checkEvidenceBudget(files: EvidenceFile[]): string[] {
           `${f.name} ขนาด ${f.bytes} bytes เกิน ${EVIDENCE_MAX_BYTES} bytes`
         )
       }
+    } else if (TESTS_TXT_RE.test(f.name)) {
+      violations.push(
+        `${f.name} ต้องย้ายขึ้นไปไว้ที่ระดับ feature (docs/evidence/<feature>/${f.name})`
+      )
     } else if (!ALLOWED_NON_PNG.has(f.name)) {
       violations.push(
         `${f.name} ไม่อนุญาตใน git (เก็บได้เฉพาะ REPORT.md และ PNG; report/trace เป็น CI artifact)`
+      )
+    }
+  }
+  return violations
+}
+
+/**
+ * ตรวจงบกับชุดไฟล์ที่จะเกิดขึ้นหลังเขียน `incoming` ลงโฟลเดอร์ที่มี `existing` อยู่แล้ว
+ * (เขียนทับชื่อเดิม = แทนที่ ไม่นับเป็นรูปใหม่) เรียกก่อนเขียนไฟล์จริงเสมอ
+ */
+export function planEvidenceWrite(
+  existing: EvidenceFile[],
+  incoming: EvidenceFile
+): string[] {
+  return checkEvidenceBudget([
+    ...existing.filter((f) => f.name !== incoming.name),
+    incoming,
+  ])
+}
+
+export type EvidenceEntry = { name: string; isDirectory: boolean }
+
+/** ระดับ docs/evidence/<feature>/ อนุญาตเฉพาะ <TASK-ID>-tests.txt และโฟลเดอร์ <TASK-ID>/ */
+export function checkFeatureEntries(entries: EvidenceEntry[]): string[] {
+  const violations: string[] = []
+  for (const e of entries) {
+    if (e.isDirectory) {
+      if (!TASK_ID_RE.test(e.name)) {
+        violations.push(`${e.name}/ ไม่ใช่โฟลเดอร์ <TASK-ID>/ (เช่น CORE-5/)`)
+      }
+    } else if (!TESTS_TXT_RE.test(e.name)) {
+      violations.push(
+        `${e.name} ไม่อนุญาตที่ระดับ feature (เก็บได้เฉพาะ <TASK-ID>-tests.txt)`
       )
     }
   }
