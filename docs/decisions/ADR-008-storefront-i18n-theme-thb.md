@@ -1,6 +1,10 @@
 # ADR-008 Storefront i18n (next-intl + cookie `_medusa_locale`), theme placeholder และรูปแบบ THB
 
 สถานะ: accepted (owner อนุมัติ 2026-10-25: แตก CORE-4 เป็น 4a–4d + CORE-7, เนื้อหาต้นฉบับใน admin เป็นภาษาไทย, ADR นี้ครอบคลุมการใช้ Translation module ที่ยังเป็น experimental, แปล page metadata ใน task ของหน้านั้น)
+— **ส่วน i18n ถูกแทนที่ (superseded) โดย [ADR-014](ADR-014-storefront-thai-only-defer-i18n.md) (owner, 2026-10-26)**: การตัดสินใจข้อ 1
+(next-intl + `messages/*.json`; ส่วน Translation module คงไว้ที่ backend แต่ storefront ไม่ใช้), ข้อ 2 (locale จาก cookie), ส่วน cookie ของข้อ 3,
+หัวข้อ "การแทนที่กฎใน CLAUDE.md" และตาราง "AC / ข้อกำหนดใน spec อื่น" **ไม่ใช้แล้ว** — ดู ADR-014
+ข้อที่ยังมีผล: ข้อ 3 (e2e หาด้วย `data-testid` ไม่ match ด้วยข้อความ), ข้อ 4 (brand tokens + Noto Sans Thai), ข้อ 5 (THB), ข้อ 6 (Vitest)
 
 ## บริบท
 CORE-4 (spec 01) ต้องส่งมอบ storefront ภาษาไทย + อังกฤษ, การจัดรูปแบบ THB และ brand theme

@@ -104,9 +104,10 @@ Payout
 - Admin: route page "Affiliate" → Programs (รายการพร้อมวันที่), Affiliates, Ledger, Payouts
 - Storefront: portal `/affiliate/*` ที่มี login/register ของตัวเอง (affiliate session แยกจาก
   customer session):
-  - **Products** (หน้าแรก): สองแท็บ "Earning now" / "Coming soon"; แต่ละการ์ดแสดงรูป,
-    ชื่อ, ราคา, % ค่าคอมมิชชัน และยอดประมาณการเป็น ฿ ที่ราคาปัจจุบัน, วันที่ของโปรแกรม (นับถอยหลังถึง
-    วันเริ่มสำหรับ upcoming) และปุ่ม **Share** (คัดลอกลิงก์; ใช้ Web Share เมื่อ browser รองรับ
+  (ข้อความไทยตรงในโค้ด ADR-014; e2e หาด้วย test id)
+  - **Products** (หน้าแรก): สองแท็บ "ได้ค่าคอมมิชชันตอนนี้" (`affiliate-tab-earning`) / "เร็วๆ นี้" (`affiliate-tab-upcoming`);
+    แต่ละการ์ดแสดงรูป, ชื่อ, ราคา, % ค่าคอมมิชชัน และยอดประมาณการเป็น ฿ ที่ราคาปัจจุบัน, วันที่ของโปรแกรม (นับถอยหลังถึง
+    วันเริ่มสำหรับ upcoming) และปุ่ม **แชร์** (`affiliate-share-button`) (คัดลอกลิงก์; ใช้ Web Share เมื่อ browser รองรับ
     โดยมีการคัดลอกเป็น fallback) สินค้า upcoming แชร์ล่วงหน้าได้ — ลิงก์ใช้งานได้
     ทันทีและเริ่มได้ค่าคอมมิชชันเมื่อช่วงเวลาเปิด
   - Programs, Earnings (pending/approved/paid), Payouts, Profile (code, ลิงก์เริ่มต้น)
@@ -172,8 +173,8 @@ Payout
 - AC-8 order ที่อีเมลลูกค้าตรงกับอีเมลของ affiliate (ต่างกันแค่ตัวพิมพ์/ช่องว่าง) → ไม่มี entry
 - AC-12 affiliate สามารถ register และ login ที่ `/auth/affiliate/emailpass` ได้โดยไม่ต้องมี
   customer account; customer session ไม่สามารถเข้าถึง `/affiliate/me` ได้ (401)
-- AC-9 Affiliate portal แสดงหน้า Products พร้อมแท็บ "Earning now" และ "Coming soon" แต่ละการ์ด
-  มี % ค่าคอมมิชชันและวันที่ และปุ่ม Share คัดลอกลิงก์รายสินค้าได้ (screenshots)
+- AC-9 Affiliate portal แสดงหน้า Products พร้อมแท็บ `affiliate-tab-earning` และ `affiliate-tab-upcoming` (ข้อความมีอักษรไทย) แต่ละการ์ด
+  มี % ค่าคอมมิชชันและวันที่ และปุ่ม `affiliate-share-button` คัดลอกลิงก์รายสินค้าได้ (screenshots)
 - AC-13 เมื่อโปรแกรม P2 ถูก published โดย `starts_at` เป็นวันพรุ่งนี้ (ขอบเขต: collection C) แล้ว
   `GET /affiliate/products?status=upcoming` ต้องแสดงสินค้าใน C พร้อมอัตราและวันเริ่มของ P2
   และ `status=active` ต้องไม่แสดง; สินค้าของโปรแกรม draft ต้องไม่แสดงในทั้งสองแบบ
@@ -214,7 +215,7 @@ Payout
 | AF-5 | Admin APIs + payout workflows (AC-7) (ตามข้อตัดสิน Q8) | AF-1 |
 | AF-6 | หน้า Admin UI | AF-5 |
 | AF-7 | Portal APIs รวม `/affiliate/products` (แปลงขอบเขต → สินค้า ตามกฎ 16, paging) (AC-13, AC-14, AC-18) — หมายเหตุ: ปรับ middleware matcher ให้คลุมทุก `/affiliate/*` ยกเว้น register (กฎ 18) และสิทธิ์ตามสถานะ (Q6) | AF-3 |
-| AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts, Profile (Q5) + e2e (AC-9) | AF-7, AF-4 |
+| AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts, Profile (Q5) + e2e (AC-9); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | AF-7, AF-4 |
 | AF-9 | follow-up AF-5 (เล็ก): `cancelPayoutWorkflow` + admin route ยกเลิก payout `draft` (คืน entry ให้เลือกได้อีก) และย้ายการกรอง entry ของ `createPayoutWorkflow` ไปทำใน DB (filter ตามกฎ 19 แทนโหลด entry ทั้งหมดแล้วกรองในแอป) (AC-19, AC-20; AC-7 ต้องยังผ่าน) | AF-5 |
 AF-5/AF-6 ∥ AF-3/AF-4; AF-7 ∥ AF-4; AF-9 ∥ AF-6 หลัง AF-5
 
