@@ -1,0 +1,67 @@
+EV-5 — job รายวัน expiry/void + low-stock; admin API void; field void_reason + migration (AC-5, AC-9, AC-10)
+Spec: docs/spec/02-evoucher.md, ADR-006
+Branch: feat/EV-5-expiry-job-void (บน origin/develop e873a42)
+วันที่รัน: 2026-10-25, Node v22.23.3, Postgres 16 / Redis 7 (docker compose local), DB สุ่มของ medusa-test-utils
+หมายเหตุ: resendEvoucherEmailWorkflow / POST /admin/evoucher/orders/:id/resend ยังไม่ทำ (ต้องใช้ template + delivery ของ EV-4)
+
+== Red (ก่อนเขียนโค้ด) ==
+test:unit expiry.unit.spec.ts → Cannot find module '../utils/expiry'
+test:unit templates.unit.spec.ts (EV-5) → renderEmailTemplate คืน null (ยังไม่มี template)
+test:integration:http evoucher-void-expiry.spec.ts → Cannot find module '../../src/jobs/evoucher-daily'
+รอบแรกหลังเขียนโค้ด: AC-5 ล้มเพราะ test เรียงแถวด้วย created_at ที่เท่ากันทั้ง batch → แก้ test ให้เทียบตามค่า code ที่ถอดรหัส
+
+== pnpm lint ==
+apps/backend: medusa lint → No lint issues found. (storefront: 0 errors, warnings เดิมที่ไม่เกี่ยวกับ task นี้)
+
+== pnpm typecheck ==
+apps/backend: tsc --noEmit → Done
+apps/storefront: tsc --noEmit → Done
+
+== pnpm --filter backend build ==
+Backend build completed successfully / Frontend build completed successfully
+
+== pnpm --filter backend test:unit ==
+Test Suites: 18 passed, 18 total
+Tests:       137 passed, 137 total
+
+-- evoucher + resend --
+PASS src/modules/evoucher/__tests__/csv.unit.spec.ts
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+PASS src/modules/evoucher/__tests__/mask.unit.spec.ts
+PASS src/modules/evoucher/__tests__/expiry.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+Test Suites: 6 passed, 6 total
+Tests:       50 passed, 50 total
+
+== test:integration:modules src/modules/evoucher ==
+Test Suites: 5 passed, 5 total
+Tests:       42 passed, 42 total
+
+== test:integration:http evoucher-void-expiry.spec.ts (verbose) ==
+PASS integration-tests/http/evoucher-void-expiry.spec.ts (9.776 s)
+    POST /admin/evoucher/codes/:id/void (AC-10)
+      ✓ requires an authenticated admin (292 ms)
+      ✓ voids an available code with the reason and decrements variant inventory by 1 (454 ms)
+      ✓ rejects a missing reason with 400 and leaves the code untouched (213 ms)
+      ✓ rejects a empty reason with 400 and leaves the code untouched (259 ms)
+      ✓ rejects a blank reason with 400 and leaves the code untouched (192 ms)
+      ✓ returns 409 for a allocated code and changes nothing (341 ms)
+      ✓ returns 409 for a delivered code and changes nothing (206 ms)
+      ✓ returns 409 for a void code and changes nothing (233 ms)
+      ✓ returns 404 for an unknown code (107 ms)
+      ✓ restores the code to available when the inventory adjustment fails (compensation) (190 ms)
+    daily job (AC-5, AC-9, AC-10)
+      ✓ is scheduled once a day (96 ms)
+      ✓ AC-5 voids available codes expiring within 7 days with reason 'expiring' and decrements inventory (213 ms)
+      ✓ sends no expiry summary when nothing was voided (204 ms)
+      ✓ keeps other pools going when one pool fails (291 ms)
+      ✓ AC-9 sends one low-stock email per pool per day when available < threshold (302 ms)
+Test Suites: 1 passed, 1 total
+Tests:       15 passed, 15 total
+
+== test:integration:http evoucher-admin.spec.ts (EV-2, regression) + evoucher-void-expiry.spec.ts ==
+Test Suites: 2 passed, 2 total
+Tests:       28 passed, 28 total
+
+integration ชุดเต็มรันใน CI

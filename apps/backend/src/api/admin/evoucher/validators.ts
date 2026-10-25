@@ -38,3 +38,9 @@ export const AdminListEvoucherCodesParams = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 })
 export type AdminListEvoucherCodesParams = z.infer<typeof AdminListEvoucherCodesParams>
+
+// AC-10: reason บังคับ (ค่าว่าง/ช่องว่างล้วน → 400)
+export const AdminVoidEvoucherCode = z.object({
+  reason: z.string().trim().min(1),
+})
+export type AdminVoidEvoucherCode = z.infer<typeof AdminVoidEvoucherCode>
