@@ -1,0 +1,215 @@
+# FS-2 — ผล test (Node v22.23.3, Medusa 2.22.1, 2026-10-25)
+# ฐาน: origin/develop 2b9bb68
+# ในเครื่องรันเฉพาะ: test:unit ทั้งชุด, integration:modules ของ flash_sale, integration:http flash-sale-release (FS-2) + flash-sale-limits (FS-3 regression) — integration เต็มชุดรันใน CI
+# Red: unit/module test ล้มก่อนเขียนโค้ด (module not found / releaseReservationsOfCart is not a function); mutation check: ลบ 'released_at IS NULL' → test idempotent (ลำดับ/พร้อมกัน) ล้ม 2
+
+## unit
+PASS src/modules/digital_fulfillment/__tests__/service.unit.spec.ts
+    ✓ has identifier `digital` (provider id digital_digital when registered with id `digital`) (2 ms)
+    ✓ offers a single non-return option digital-delivery
+    ✓ accepts option and fulfillment data as-is (1 ms)
+    ✓ uses flat price only (free option configured in seed)
+    ✓ creates a fulfillment instantly without shipping labels (1 ms)
+    ✓ allows cancelling a fulfillment (workflow compensation)
+    ✓ rejects return fulfillments — delivered codes cannot be recalled (business rule 6)
+PASS src/__tests__/medusa-config.infra.unit.spec.ts
+    ✓ uses Medusa's Redis modules in production when REDIS_URL is set (387 ms)
+    ✓ keeps Medusa's in-memory defaults for dev (medusa develop) (270 ms)
+    ✓ keeps Medusa's in-memory defaults for jest / medusa-test-utils (294 ms)
+    ✓ keeps Medusa's in-memory defaults for production without REDIS_URL (294 ms)
+    ✓ refuses to boot MEDUSA_WORKER_MODE=server in production without REDIS_URL (in-memory event bus cannot cross processes) (237 ms)
+    ✓ refuses to boot MEDUSA_WORKER_MODE=worker in production without REDIS_URL (in-memory event bus cannot cross processes) (241 ms)
+    ✓ sets the pg pool size from DATABASE_POOL_MIN/MAX (270 ms)
+    ✓ leaves Medusa's default pool when DATABASE_POOL_* is unset (283 ms)
+    ✓ uses the S3 file provider when S3_BUCKET is set (263 ms)
+    ✓ keeps Medusa's local file provider when S3 env is missing (dev/CI) (287 ms)
+PASS src/__tests__/medusa-config.unit.spec.ts
+    ✓ boots as server with admin when MEDUSA_WORKER_MODE=server (323 ms)
+    ✓ boots as worker without admin when MEDUSA_WORKER_MODE=worker (255 ms)
+    ✓ defaults to shared with admin for local dev when env is unset (295 ms)
+PASS src/__tests__/medusa-config.translation.unit.spec.ts
+    ✓ enables the translation feature flag (346 ms)
+    ✓ registers the Translation module and does not disable it (260 ms)
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+      ✓ accepts a 64-char hex key (32 bytes) (1 ms)
+      ✓ rejects missing or malformed key undefined (1 ms)
+      ✓ rejects missing or malformed key ""
+      ✓ rejects missing or malformed key "abc"
+      ✓ rejects missing or malformed key "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      ✓ rejects missing or malformed key "041bfdbd57fba11cdee4ac8816e3c932a98e787918db1b36b2c9941810b5c6"
+      ✓ decrypts what it encrypts (random iv) (1 ms)
+      ✓ decrypts what it encrypts (deterministic iv)
+      ✓ random iv produces a different ciphertext each time
+      ✓ deterministic iv produces the same ciphertext for the same plaintext (unique per pool) (1 ms)
+      ✓ fails on a tampered ciphertext (5 ms)
+      ✓ fails with a different key (1 ms)
+      ✓ rejects an unknown format version
+    ✓ accepts values produced by encryptSecret
+    ✓ rejects non-ciphertext "LOTUS-0001" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v1" so plaintext never reaches the DB (1 ms)
+    ✓ rejects non-ciphertext "v1:" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v2:abc" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v1:not base64!" so plaintext never reaches the DB
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+    ✓ uses the notification-resend identifier (1 ms)
+      ✓ requires api_key (1 ms)
+      ✓ requires from (3 ms)
+      ✓ accepts valid options
+      ✓ sends the rendered template through the Resend client and returns its id (12 ms)
+      ✓ prefers notification.from over the default sender (1 ms)
+      ✓ throws for an unknown template without calling Resend
+      ✓ throws when Resend returns an error so the notification is marked failed (1 ms)
+PASS src/modules/affiliate/utils/__tests__/commission.unit.spec.ts
+    ✓ pays the percentage of every line when the scope is all products (AC-1 base) (1 ms)
+    ✓ uses the paid amount after discount, excluding tax and shipping (rule 3)
+    ✓ only pays lines inside the collection scope (AC-4) (1 ms)
+    ✓ matches lines by variant or category scope
+    ✓ pays nothing when the scope is empty
+    ✓ enforces the cap per order across lines (rule 4)
+    ✓ rounds each line to 2 decimals, half up
+    ✓ skips lines whose paid amount is zero
+    ✓ is active inside the window of a published program
+    ✓ is not active before start or from the end (1 ms)
+    ✓ is never active for draft or ended programs (rule 9)
+PASS src/__tests__/medusa-config-modules.unit.spec.ts
+    ✓ registers every custom module that has data models (380 ms)
+    ✓ registers fulfillment providers manual and digital (402 ms)
+PASS src/modules/evoucher/__tests__/csv.unit.spec.ts
+    ✓ parses code,pin,expires_at with a header row (1 ms)
+    ✓ accepts a code-only file without a header, CRLF, BOM and blank lines
+    ✓ maps header columns by name in any order
+    ✓ trims cells and supports quoted fields
+    ✓ keeps duplicates (deduplication is the workflow's job) (1 ms)
+    ✓ rejects rows with an empty code or invalid expires_at, citing line numbers
+    ✓ rejects a header without a code column
+    ✓ rejects a file without any code (1 ms)
+    ✓ trims surrounding whitespace but keeps case and inner characters
+PASS src/lib/__tests__/promotion-exclusivity.unit.spec.ts
+    ✓ exposes the context attribute and error code from ADR-009 (1 ms)
+      ✓ returns the 'ne true' rule on the exclusivity attribute
+      ✓ returns a fresh object each call
+      ✓ is true for an automatic promotion with the rule (query shape)
+      ✓ is true for an automatic promotion with the rule (helper shape) (1 ms)
+      ✓ is true when the rule sits among other rules
+      ✓ is false for an automatic promotion without the rule
+      ✓ is false for a code promotion even with the rule
+      ✓ is false when the rule uses another operator or value
+      ✓ matches the GB- prefix only
+      ✓ add: unions existing and input codes without duplicates (1 ms)
+      ✓ defaults to add
+      ✓ remove: drops input codes from existing
+      ✓ replace: keeps only input codes
+      ✓ sets the attribute to 'true' when a code is applied
+      ✓ sets the attribute to 'false' (never empty) when no code is applied
+      ✓ rejects adding another code to a GB cart
+      ✓ rejects adding a GB code to a cart with another code
+      ✓ rejects two GB codes
+      ✓ allows a GB code alone or with automatic promotions only
+      ✓ allows non-GB codes together (Medusa default stacking)
+      ✓ does not reject a refresh that introduces no new code (1 ms)
+      ✓ flags an exclusive automatic promotion together with any code
+      ✓ flags GB together with another code
+      ✓ allows valid combinations
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (1 ms)
+    ✓ treats an empty RESEND_API_KEY as missing
+    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+    ✓ returns null for an unknown template
+      ✓ renders subject with display id and an html body with items and THB totals (1 ms)
+      ✓ escapes html in user-controlled values (1 ms)
+      ✓ renders subject with display id and lists tracking numbers
+      ✓ renders without tracking labels
+      ✓ drops non-http tracking urls (1 ms)
+PASS src/lib/__tests__/flash-sale-units.unit.spec.ts
+    ✓ returns nothing for a cart without adjustments (1 ms)
+    ✓ counts the full line quantity, not the discounted max_quantity
+    ✓ sums lines per campaign and sorts by campaign_id (1 ms)
+    ✓ counts a line once per campaign even with several adjustments of that campaign
+    ✓ ignores adjustments of promotions outside any known campaign and null entries
+    ✓ accepts BigNumber-like quantities (1 ms)
+    ✓ namespaces the lock per (campaign_id, customer_id)
+PASS src/modules/group_buy/__tests__/target.unit.spec.ts
+    ✓ target_type=orders target_value=4 → true
+    ✓ target_type=orders target_value=5 → false
+    ✓ target_type=units target_value=9 → true (1 ms)
+    ✓ target_type=units target_value=10 → false
+    ✓ target_type=people target_value=2 → true
+    ✓ target_type=people target_value=3 → false
+    ✓ counts progress above the target as reached
+PASS src/lib/__tests__/flash-sale-release.unit.spec.ts
+    ✓ is true when every captured amount was refunded (1 ms)
+    ✓ sums several refunds and several payments
+    ✓ is false for a partial refund
+    ✓ is false when nothing was captured
+    ✓ accepts BigNumber-like amounts
+PASS src/modules/evoucher/__tests__/mask.unit.spec.ts
+    ✓ shows only the last 4 characters of long codes (1 ms)
+    ✓ fully masks short codes so most of the code is never exposed
+    ✓ never returns the plaintext
+PASS src/modules/group_buy/__tests__/group-deadline.unit.spec.ts
+    ✓ uses the campaign ends_at for a pool group (1 ms)
+    ✓ uses created + team_duration_hours for a team when that is earlier
+    ✓ caps a team deadline at the campaign ends_at
+    ✓ falls back to the campaign ends_at when team_duration_hours is not set
+Tests:       131 passed, 131 total
+
+## integration:modules (flash_sale)
+PASS src/modules/flash_sale/__tests__/release.spec.ts
+      ✓ sets released_at and returns usage + units_sold of the cart's reservations (255 ms)
+      ✓ releases only once when called again (sequential) (69 ms)
+      ✓ releases only once under concurrent calls (78 ms)
+      ✓ does nothing for a cart without reservations (56 ms)
+      ✓ FS-3 compensation does not return units of a released reservation again (59 ms)
+      ✓ clears released_at and books usage + units_sold again; idempotent (58 ms)
+      ✓ does nothing for an empty list (48 ms)
+PASS src/modules/flash_sale/__tests__/reservation.spec.ts
+      ✓ reserves usage, units_sold and a reservation row (174 ms)
+      ✓ accumulates usage of the same customer across carts (82 ms)
+      ✓ counts units_sold even when total_cap and per_customer_limit are null (61 ms)
+      ✓ ignores campaigns without a flash sale config (63 ms)
+      ✓ fails FLASH_LIMIT_EXCEEDED when usage + units > per_customer_limit, changing nothing (74 ms)
+      ✓ fails FLASH_LIMIT_EXCEEDED for a new customer whose cart alone exceeds the limit (72 ms)
+      ✓ fails FLASH_SOLD_OUT when units_sold + units > total_cap and rolls back the usage (82 ms)
+      ✓ fails FLASH_SOLD_OUT when total_cap was lowered below units_sold (rule 12) (74 ms)
+      ✓ rolls back every campaign when a later campaign fails (62 ms)
+      ✓ sells exactly total_cap units under concurrent reservations (102 ms)
+      ✓ returns usage + units_sold and deletes the reservations of the cart; idempotent (88 ms)
+      ✓ does not return units of a reservation that was already released (58 ms)
+      ✓ does nothing for a cart without reservations (46 ms)
+      ✓ allows only one reservation per (cart_id, campaign_id) (71 ms)
+PASS src/modules/flash_sale/__tests__/service.spec.ts
+      ✓ creates a config with defaults (units_sold=0, flags off, nullable limits) (129 ms)
+      ✓ stores the flash options set by admin (57 ms)
+      ✓ allows only one config per campaign (55 ms)
+      ✓ rejects invalid units_sold at the database level (43 ms)
+      ✓ rejects invalid per_customer_limit at the database level (60 ms)
+      ✓ rejects invalid total_cap at the database level (38 ms)
+      ✓ creates a usage row with units defaulting to 0 (38 ms)
+      ✓ allows only one usage row per (campaign_id, customer_id) (40 ms)
+      ✓ allows the same customer in other campaigns and other customers in the same campaign (44 ms)
+      ✓ rejects negative units at the database level (36 ms)
+Tests:       31 passed, 31 total
+
+## integration:http
+PASS integration-tests/http/flash-sale-limits.spec.ts (38.215 s)
+    ✓ cart line gets the flash adjustment from the campaign promotion (794 ms)
+    ✓ AC-3 total_cap=10 and 10 units sold → the 11th checkout fails FLASH_SOLD_OUT (3895 ms)
+    ✓ AC-9 a failure after the hook reserved → usage, units_sold and the reservation are rolled back (1574 ms)
+    ✓ AC-10 completing an already completed cart returns the same order without booking again (811 ms)
+    ✓ AC-11 (b) units_sold=10 with total_cap lowered to 5 → a 1-unit checkout fails FLASH_SOLD_OUT (675 ms)
+    ✓ a cart without flash sale config (plain campaign) completes without booking (626 ms)
+      ✓ (c) a new customer completing 2 units succeeds; usage and units_sold are booked immediately (994 ms)
+      ✓ (a) a customer who already bought 2 units cannot complete 1 more (FLASH_LIMIT_EXCEEDED) (1164 ms)
+      ✓ (b) counts the full line quantity (3) even when the promotion discounts max_quantity=1 (581 ms)
+      ✓ (a) 50 concurrent checkouts of different customers under total_cap=20 → exactly 20 succeed (18926 ms)
+      ✓ (b) one customer, 2 carts × 2 units, per_customer_limit=2, completed concurrently → 1 succeeds (1430 ms)
+PASS integration-tests/http/flash-sale-release.spec.ts (14.417 s)
+    ✓ canceling an order without flash units is a no-op (996 ms)
+      ✓ order.canceled of an order with 2 flash units returns usage and units_sold by 2 (972 ms)
+      ✓ a full refund of the order gives the same result (965 ms)
+      ✓ a partial refund does not return anything (rule 10) (870 ms)
+      ✓ order.canceled delivered twice in sequence (1339 ms)
+      ✓ order.canceled delivered twice concurrently (1206 ms)
+      ✓ full refund followed by cancel (1652 ms)
+Tests:       18 passed, 18 total
