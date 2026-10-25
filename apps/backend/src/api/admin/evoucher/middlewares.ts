@@ -12,6 +12,7 @@ import {
   AdminListEvoucherPoolParams,
   AdminUpdateEvoucherPartner,
   AdminUpdateEvoucherPool,
+  AdminVoidEvoucherCode,
 } from "./validators"
 
 // /admin/* ถูก Medusa บังคับ auth ของ admin user อยู่แล้ว
@@ -104,5 +105,10 @@ export const adminEvoucherMiddlewares: MiddlewareRoute[] = [
     method: ["GET"],
     matcher: "/admin/evoucher/pools/:id/codes",
     middlewares: [validateAndTransformQuery(AdminListEvoucherCodesParams, {})],
+  },
+  {
+    method: ["POST"],
+    matcher: "/admin/evoucher/codes/:id/void",
+    middlewares: [validateAndTransformBody(AdminVoidEvoucherCode)],
   },
 ]

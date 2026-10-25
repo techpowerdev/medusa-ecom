@@ -4,6 +4,8 @@
 export const EmailTemplates = {
   ORDER_PLACED: "order-placed",
   ORDER_SHIPPED: "order-shipped",
+  EVOUCHER_LOW_STOCK: "evoucher-low-stock",
+  EVOUCHER_EXPIRY_SUMMARY: "evoucher-expiry-summary",
 } as const
 
 export type RenderedEmail = { subject: string; html: string }
@@ -131,9 +133,59 @@ const renderOrderShipped = (data: Record<string, unknown>): RenderedEmail => {
   return { subject, html: layout(subject, body) }
 }
 
+// EV-5: อีเมลถึง admin จาก job รายวันของ e-voucher (ข้อมูลมาจาก src/workflows/evoucher/send-evoucher-stock-alerts.ts)
+type EvoucherPoolStock = {
+  name?: string | null
+  available?: number | null
+  low_stock_threshold?: number | null
+}
+
+const renderEvoucherLowStock = (data: Record<string, unknown>): RenderedEmail => {
+  const pool = (data.pool ?? {}) as EvoucherPoolStock
+  const subject = `[E-voucher] code ใกล้หมด: ${pool.name ?? ""} / Low stock`
+
+  const body =
+    `<h1 style="font-size:20px">E-voucher code ใกล้หมด / Low stock</h1>` +
+    `<p>Pool <b>${escapeHtml(pool.name)}</b> เหลือ code ที่ขายได้ <b>${escapeHtml(pool.available)}</b> ` +
+    `(เกณฑ์แจ้งเตือน <b>${escapeHtml(pool.low_stock_threshold)}</b>) — กรุณา import code เพิ่มจากพาร์ทเนอร์<br>` +
+    `Available codes are below the threshold. Please import more codes from the partner.</p>`
+
+  return { subject, html: layout(subject, body) }
+}
+
+type EvoucherExpirySummary = {
+  date?: string
+  total_voided?: number
+  pools?: ({ name?: string | null; voided?: number } | null)[]
+}
+
+const renderEvoucherExpirySummary = (data: Record<string, unknown>): RenderedEmail => {
+  const summary = data as EvoucherExpirySummary
+  const subject = `[E-voucher] สรุป code ใกล้หมดอายุที่ถูก void ${summary.date ?? ""} / Expiry summary`
+
+  const rows = (summary.pools ?? [])
+    .filter((pool) => !!pool)
+    .map(
+      (pool) =>
+        `<tr><td style="padding:4px 0">${escapeHtml(pool!.name)}</td>` +
+        `<td style="padding:4px 0;text-align:right">${escapeHtml(pool!.voided)}</td></tr>`
+    )
+    .join("")
+
+  const body =
+    `<h1 style="font-size:20px">สรุป code ที่ถูก void (ใกล้หมดอายุ) / Expiring codes voided</h1>` +
+    `<p>code ที่จะหมดอายุภายใน 7 วันถูกหยุดขาย รวม <b>${escapeHtml(summary.total_voided)}</b> code<br>` +
+    `Codes expiring within 7 days were voided and removed from stock.</p>` +
+    `<table style="width:100%;border-collapse:collapse">${rows}</table>`
+
+  return { subject, html: layout(subject, body) }
+}
+
 const renderers: Record<string, (data: Record<string, unknown>) => RenderedEmail> = {
   [EmailTemplates.ORDER_PLACED]: renderOrderPlaced,
   [EmailTemplates.ORDER_SHIPPED]: renderOrderShipped,
+  [EmailTemplates.EVOUCHER_LOW_STOCK]: renderEvoucherLowStock,
+  [EmailTemplates.EVOUCHER_EXPIRY_SUMMARY]: renderEvoucherExpirySummary,
 }
 
 export const renderEmailTemplate = (
