@@ -1,3 +1,4 @@
+// CHORE-CI: ทดลอง ห้าม merge
 const checkEnvVariables = require("./check-env-variables")
 
 checkEnvVariables()
