@@ -1,0 +1,200 @@
+# FS-5 — ผล test (Node v22.23.3, Medusa 2.22.1, 2026-10-25T12:46Z)
+# ฐาน: origin/develop 2b9bb68
+# ในเครื่องรันเฉพาะ: test:unit ทั้งชุด + integration:http flash-sale-admin-config.spec.ts — integration เต็มชุดรันใน CI
+# Red: ก่อนเขียน route/workflow flash-sale-admin-config.spec.ts ล้ม 5/7 (404 ไม่มี route); unit flash-sale-exclusivity ล้ม (ไม่มี module)
+# lint: No lint issues found | tsc --noEmit (backend และ src/admin) ผ่าน | medusa build ผ่าน (backend + admin)
+
+## integration:http — integration-tests/http/flash-sale-admin-config.spec.ts
+PASS integration-tests/http/flash-sale-admin-config.spec.ts (7.442 s)
+    ✓ GET before any config returns null config and warns about automatic promotions without the rule (309 ms)
+    ✓ POST creates the config and adds the exclusivity rule to every automatic promotion of the campaign (321 ms)
+    ✓ POST is idempotent: saving again updates the same config and never duplicates the rule (187 ms)
+    ✓ AC-11 (a): POST total_cap=5 while units_sold=10 → 200 and units_sold stays 10 (171 ms)
+    ✓ rejects units_sold and invalid limits in the body (400) (112 ms)
+    ✓ returns 404 for an unknown campaign and does not create a config (153 ms)
+    ✓ requires an authenticated admin user (401) (125 ms)
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+
+## test:unit
+PASS src/modules/digital_fulfillment/__tests__/service.unit.spec.ts
+  DigitalFulfillmentProviderService
+    ✓ has identifier `digital` (provider id digital_digital when registered with id `digital`) (2 ms)
+    ✓ offers a single non-return option digital-delivery (1 ms)
+    ✓ accepts option and fulfillment data as-is
+    ✓ uses flat price only (free option configured in seed) (1 ms)
+    ✓ creates a fulfillment instantly without shipping labels
+    ✓ allows cancelling a fulfillment (workflow compensation)
+    ✓ rejects return fulfillments — delivered codes cannot be recalled (business rule 6)
+PASS src/__tests__/medusa-config.infra.unit.spec.ts
+  medusa-config infra modules (OPS-2)
+    ✓ uses Medusa's Redis modules in production when REDIS_URL is set (376 ms)
+    ✓ keeps Medusa's in-memory defaults for dev (medusa develop) (232 ms)
+    ✓ keeps Medusa's in-memory defaults for jest / medusa-test-utils (261 ms)
+    ✓ keeps Medusa's in-memory defaults for production without REDIS_URL (263 ms)
+    ✓ refuses to boot MEDUSA_WORKER_MODE=server in production without REDIS_URL (in-memory event bus cannot cross processes) (211 ms)
+    ✓ refuses to boot MEDUSA_WORKER_MODE=worker in production without REDIS_URL (in-memory event bus cannot cross processes) (248 ms)
+    ✓ sets the pg pool size from DATABASE_POOL_MIN/MAX (226 ms)
+    ✓ leaves Medusa's default pool when DATABASE_POOL_* is unset (233 ms)
+    ✓ uses the S3 file provider when S3_BUCKET is set (229 ms)
+    ✓ keeps Medusa's local file provider when S3 env is missing (dev/CI) (228 ms)
+PASS src/__tests__/medusa-config.unit.spec.ts
+  medusa-config worker mode
+    ✓ boots as server with admin when MEDUSA_WORKER_MODE=server (289 ms)
+    ✓ boots as worker without admin when MEDUSA_WORKER_MODE=worker (245 ms)
+    ✓ defaults to shared with admin for local dev when env is unset (267 ms)
+PASS src/__tests__/medusa-config.translation.unit.spec.ts
+  medusa-config translation
+    ✓ enables the translation feature flag (300 ms)
+    ✓ registers the Translation module and does not disable it (235 ms)
+PASS src/__tests__/medusa-config-modules.unit.spec.ts
+  medusa-config modules
+    ✓ registers every custom module that has data models (294 ms)
+    ✓ registers fulfillment providers manual and digital (245 ms)
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+  evoucher crypto
+    parseEncryptionKey
+      ✓ accepts a 64-char hex key (32 bytes) (1 ms)
+      ✓ rejects missing or malformed key undefined (1 ms)
+      ✓ rejects missing or malformed key ""
+      ✓ rejects missing or malformed key "abc"
+      ✓ rejects missing or malformed key "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      ✓ rejects missing or malformed key "f98e5bfafb21397edd05a5910f11ad8bff7629b83387a2171c9efbaf8f5fb4"
+    round-trip
+      ✓ decrypts what it encrypts (random iv)
+      ✓ decrypts what it encrypts (deterministic iv) (1 ms)
+      ✓ random iv produces a different ciphertext each time
+      ✓ deterministic iv produces the same ciphertext for the same plaintext (unique per pool)
+      ✓ fails on a tampered ciphertext (3 ms)
+      ✓ fails with a different key
+      ✓ rejects an unknown format version
+  assertCiphertext
+    ✓ accepts values produced by encryptSecret
+    ✓ rejects non-ciphertext "LOTUS-0001" so plaintext never reaches the DB (1 ms)
+    ✓ rejects non-ciphertext "v1" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v1:" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v2:abc" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v1:not base64!" so plaintext never reaches the DB
+PASS src/modules/affiliate/utils/__tests__/commission.unit.spec.ts
+  calculateCommission
+    ✓ pays the percentage of every line when the scope is all products (AC-1 base) (2 ms)
+    ✓ uses the paid amount after discount, excluding tax and shipping (rule 3)
+    ✓ only pays lines inside the collection scope (AC-4)
+    ✓ matches lines by variant or category scope (1 ms)
+    ✓ pays nothing when the scope is empty
+    ✓ enforces the cap per order across lines (rule 4)
+    ✓ rounds each line to 2 decimals, half up
+    ✓ skips lines whose paid amount is zero
+  isProgramActiveAt
+    ✓ is active inside the window of a published program (1 ms)
+    ✓ is not active before start or from the end
+    ✓ is never active for draft or ended programs (rule 9)
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+  ResendNotificationProviderService
+    ✓ uses the notification-resend identifier (1 ms)
+    validateOptions
+      ✓ requires api_key (1 ms)
+      ✓ requires from
+      ✓ accepts valid options
+    send
+      ✓ sends the rendered template through the Resend client and returns its id (10 ms)
+      ✓ prefers notification.from over the default sender
+      ✓ throws for an unknown template without calling Resend
+      ✓ throws when Resend returns an error so the notification is marked failed (1 ms)
+PASS src/modules/evoucher/__tests__/csv.unit.spec.ts
+  parseEvoucherCsv
+    ✓ parses code,pin,expires_at with a header row (1 ms)
+    ✓ accepts a code-only file without a header, CRLF, BOM and blank lines
+    ✓ maps header columns by name in any order (1 ms)
+    ✓ trims cells and supports quoted fields
+    ✓ keeps duplicates (deduplication is the workflow's job)
+    ✓ rejects rows with an empty code or invalid expires_at, citing line numbers
+    ✓ rejects a header without a code column (1 ms)
+    ✓ rejects a file without any code
+  normalizeCode
+    ✓ trims surrounding whitespace but keeps case and inner characters
+PASS src/lib/__tests__/promotion-exclusivity.unit.spec.ts
+  promotion exclusivity helpers
+    ✓ exposes the context attribute and error code from ADR-009 (1 ms)
+    exclusiveAutomaticRule
+      ✓ returns the 'ne true' rule on the exclusivity attribute
+      ✓ returns a fresh object each call (1 ms)
+    isExclusiveAutomatic
+      ✓ is true for an automatic promotion with the rule (query shape)
+      ✓ is true for an automatic promotion with the rule (helper shape)
+      ✓ is true when the rule sits among other rules
+      ✓ is false for an automatic promotion without the rule
+      ✓ is false for a code promotion even with the rule
+      ✓ is false when the rule uses another operator or value
+    isGroupBuyCode
+      ✓ matches the GB- prefix only
+    resolvePromoCodes
+      ✓ add: unions existing and input codes without duplicates
+      ✓ defaults to add
+      ✓ remove: drops input codes from existing
+      ✓ replace: keeps only input codes
+    exclusivityPromotionContext
+      ✓ sets the attribute to 'true' when a code is applied
+      ✓ sets the attribute to 'false' (never empty) when no code is applied
+    introducesGroupBuyConflict
+      ✓ rejects adding another code to a GB cart (1 ms)
+      ✓ rejects adding a GB code to a cart with another code
+      ✓ rejects two GB codes
+      ✓ allows a GB code alone or with automatic promotions only
+      ✓ allows non-GB codes together (Medusa default stacking)
+      ✓ does not reject a refresh that introduces no new code
+    hasCompletionConflict
+      ✓ flags an exclusive automatic promotion together with any code
+      ✓ flags GB together with another code
+      ✓ allows valid combinations
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+  renderEmailTemplate
+    ✓ returns null for an unknown template
+    order-placed
+      ✓ renders subject with display id and an html body with items and THB totals (1 ms)
+      ✓ escapes html in user-controlled values
+    order-shipped
+      ✓ renders subject with display id and lists tracking numbers (1 ms)
+      ✓ renders without tracking labels
+      ✓ drops non-http tracking urls
+PASS src/modules/group_buy/__tests__/group-deadline.unit.spec.ts
+  computeGroupEndsAt
+    ✓ uses the campaign ends_at for a pool group (1 ms)
+    ✓ uses created + team_duration_hours for a team when that is earlier
+    ✓ caps a team deadline at the campaign ends_at
+    ✓ falls back to the campaign ends_at when team_duration_hours is not set
+PASS src/modules/group_buy/__tests__/target.unit.spec.ts
+  isTargetReached
+    ✓ target_type=orders target_value=4 → true (1 ms)
+    ✓ target_type=orders target_value=5 → false
+    ✓ target_type=units target_value=9 → true
+    ✓ target_type=units target_value=10 → false
+    ✓ target_type=people target_value=2 → true
+    ✓ target_type=people target_value=3 → false
+    ✓ counts progress above the target as reached
+PASS src/lib/__tests__/flash-sale-exclusivity.unit.spec.ts
+  promotionsMissingExclusivityRule
+    ✓ returns automatic promotions without the exclusivity rule only (1 ms)
+    ✓ treats missing rules as no rule and tolerates null/undefined lists (1 ms)
+PASS src/modules/evoucher/__tests__/mask.unit.spec.ts
+  maskSecret
+    ✓ shows only the last 4 characters of long codes
+    ✓ fully masks short codes so most of the code is never exposed
+    ✓ never returns the plaintext (1 ms)
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+  buildNotificationProviders
+    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (1 ms)
+    ✓ treats an empty RESEND_API_KEY as missing
+    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set
+PASS src/lib/__tests__/flash-sale-units.unit.spec.ts
+  campaignUnitsInCart
+    ✓ returns nothing for a cart without adjustments (1 ms)
+    ✓ counts the full line quantity, not the discounted max_quantity
+    ✓ sums lines per campaign and sorts by campaign_id (1 ms)
+    ✓ counts a line once per campaign even with several adjustments of that campaign
+    ✓ ignores adjustments of promotions outside any known campaign and null entries
+    ✓ accepts BigNumber-like quantities
+  flashSaleLockKey
+    ✓ namespaces the lock per (campaign_id, customer_id)
+Test Suites: 17 passed, 17 total
+Tests:       128 passed, 128 total
