@@ -1,0 +1,92 @@
+EV-2 — Import workflow + ปรับ inventory + admin API partner/pool/import (AC-1, AC-8)
+Spec: docs/spec/02-evoucher.md, ADR-006
+Branch: feat/EV-2-evoucher-import (rebase บน origin/develop ae8e9fa)
+วันที่รัน: 2026-10-25, Node v24.12.0, Postgres 16 / Redis 7 (docker compose local), DB สุ่มของ medusa-test-utils
+
+== pnpm lint ==
+apps/backend: medusa lint → No lint issues found. (storefront: 0 errors, warnings เดิมที่ไม่เกี่ยวกับ task นี้)
+
+== pnpm typecheck ==
+apps/backend: tsc --noEmit → Done
+apps/storefront: tsc --noEmit → Done
+
+== pnpm --filter backend build ==
+Backend build completed successfully / Frontend build completed successfully
+
+== pnpm --filter backend test:unit ==
+Test Suites: 9 passed, 9 total
+Tests:       77 passed, 77 total
+
+-- evoucher (verbose) --
+PASS src/modules/evoucher/__tests__/csv.unit.spec.ts
+    ✓ parses code,pin,expires_at with a header row
+    ✓ accepts a code-only file without a header, CRLF, BOM and blank lines
+    ✓ maps header columns by name in any order
+    ✓ trims cells and supports quoted fields
+    ✓ keeps duplicates (deduplication is the workflow's job)
+    ✓ rejects rows with an empty code or invalid expires_at, citing line numbers
+    ✓ rejects a header without a code column
+    ✓ rejects a file without any code
+    ✓ trims surrounding whitespace but keeps case and inner characters
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+    ✓ (EV-1) parseEncryptionKey / round-trip / tamper / wrong key / version — 13 tests
+    ✓ accepts values produced by encryptSecret
+    ✓ rejects non-ciphertext "LOTUS-0001" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v1" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v1:" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v2:abc" so plaintext never reaches the DB
+    ✓ rejects non-ciphertext "v1:not base64!" so plaintext never reaches the DB
+PASS src/modules/evoucher/__tests__/mask.unit.spec.ts
+    ✓ shows only the last 4 characters of long codes
+    ✓ fully masks short codes so most of the code is never exposed
+    ✓ never returns the plaintext
+Test Suites: 3 passed, 3 total
+Tests:       31 passed, 31 total
+
+== pnpm --filter backend test:integration:modules ==
+Test Suites: 7 passed, 7 total
+Tests:       63 passed, 63 total
+
+-- evoucher-module.spec.ts (verbose) --
+    ✓ creates partner and pool with spec defaults
+    ✓ allows only one pool per variant
+    ✓ stores code/pin encrypted and defaults status to available
+    ✓ rejects the same code twice in a pool but allows it in another pool
+    ✓ accepts the configured encryption key
+    ✓ records who revealed which code and when (AC-8 audit)
+    ✓ lists codes by pool and status
+    ✓ throws a clear error when the encryption key is not configured
+Tests:       8 passed, 8 total
+
+== pnpm --filter backend test:integration:http ==
+PASS integration-tests/http/promotion-exclusivity.spec.ts
+PASS integration-tests/http/order-notifications.spec.ts
+PASS integration-tests/http/seed.spec.ts
+PASS integration-tests/http/evoucher-links.spec.ts
+PASS integration-tests/http/flash-sale-module.spec.ts
+PASS integration-tests/http/health.spec.ts
+PASS integration-tests/http/evoucher-admin.spec.ts
+Test Suites: 7 passed, 7 total
+Tests:       43 passed, 43 total
+
+-- evoucher-admin.spec.ts (verbose) --
+    ✓ requires an authenticated admin
+    ✓ creates, updates, lists and deletes partners
+    ✓ creates a pool for an existing variant and rejects unknown variants
+    ✓ AC-1 imports 100 codes with 2 duplicates → 98 available, inventory +98
+    ✓ skips codes that already exist in the pool on re-import
+    ✓ stores only v1: ciphertext (never plaintext) for code and pin
+    ✓ rejects an invalid CSV without inserting anything
+    ✓ rolls back the inserted batch when the inventory adjustment fails
+    ✓ refuses to delete a pool that has codes
+    ✓ checks EVOUCHER_ENCRYPTION_KEY before touching data
+    ✓ AC-8 lists codes masked and reveals the real value with an audit row
+    ✓ returns 404 when revealing an unknown code and writes no audit
+Tests:       12 passed, 12 total
+
+== Non-functional: import 50k แถว (รันครั้งเดียวในเครื่อง ไม่ commit test) ==
+POST /admin/evoucher/pools/:id/import ไฟล์ 50,000 แถว (code,pin,expires_at) → inserted 50000 ใน 25.5 วินาที (< 60 วินาที)
+
+== Red (ก่อนเขียนโค้ด) ==
+unit: csv/mask "Cannot find module", crypto "assertCiphertext is not a function" (6 failed)
+http: 9/10 failed (route ยังไม่มี → 404); "requires an authenticated admin" ผ่านตั้งแต่ต้นเพราะ Medusa บังคับ auth บน /admin/* อยู่แล้ว

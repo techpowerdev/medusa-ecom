@@ -2,6 +2,7 @@ import { MedusaService } from "@medusajs/framework/utils"
 import EvoucherPartner from "./models/evoucher-partner"
 import EvoucherPool from "./models/evoucher-pool"
 import EvoucherCode from "./models/evoucher-code"
+import EvoucherCodeReveal from "./models/evoucher-code-reveal"
 import {
   decryptSecret,
   encryptSecret,
@@ -18,6 +19,7 @@ class EvoucherModuleService extends MedusaService({
   EvoucherPartner,
   EvoucherPool,
   EvoucherCode,
+  EvoucherCodeReveal,
 }) {
   protected readonly options_: EvoucherModuleOptions
 
@@ -29,6 +31,11 @@ class EvoucherModuleService extends MedusaService({
   // ตรวจ key ตอนใช้งาน (ไม่ใช่ตอน boot) เพื่อไม่ให้ app/test ที่ไม่ได้ใช้ e-voucher boot ไม่ขึ้น
   private key(): EncryptionKey {
     return parseEncryptionKey(this.options_.encryptionKey)
+  }
+
+  /** เรียกตั้งแต่ต้น workflow เพื่อล้มก่อนแตะข้อมูลถ้า EVOUCHER_ENCRYPTION_KEY ไม่ถูกต้อง */
+  async assertEncryptionKey(): Promise<void> {
+    this.key()
   }
 
   /** deterministic: code เดียวกันได้ ciphertext เดียวกัน → unique (pool_id, code) ที่ DB */
