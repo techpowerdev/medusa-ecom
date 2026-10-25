@@ -130,6 +130,11 @@ Link: `flash_sale_config ↔ promotion_campaign`
 11. hook validate ข้ามทุก check เมื่อ `cart.completed_at` มีค่า (การ retry complete คืน order เดิม ไม่จองซ้ำ)
 12. ไม่มี DB check `units_sold <= total_cap` — ใช้ `WHERE` แบบมีเงื่อนไขตอนจองแทน เพื่อให้ FS-5 ลด `total_cap`
     ต่ำกว่า `units_sold` ได้; เมื่อ `units_sold >= total_cap` ทุก complete ถัดไปที่มี units > 0 ล้มด้วย `FLASH_SOLD_OUT`
+13. (PROMO-2) code ธุรกิจของเรา (`PROMOTION_NOT_COMBINABLE`, `FLASH_*`, และ code `GB_*` ของ spec 04) ต้องถึง client ผ่าน route ของ
+    Medusa ได้: ตรวจก่อนว่า hook ของ PROMO-1/FS-3 throw `MedusaError` type อะไร ถ้าเป็น `CONFLICT` (ถูกเขียนทับ) ให้เปลี่ยนเป็น type
+    ที่คง message ไว้ หรือ override `errorHandler` ใน `defineMiddlewares` (กลไกทางการของ Medusa) ให้คืน code ของเราเฉพาะ error ที่มี
+    code ของเรา — ห้ามห่อ route ของ Medusa ใหม่ ถ้าต้องทำมากกว่านี้ให้หยุดและเขียน ADR; route ของเราเอง (เช่น GB join) คืน
+    `{ code, message }` เองได้ตรง ๆ
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญที่ทำงานอยู่ (−20% สำหรับ collection X, automatic) และลูกค้าเพิ่มสินค้า X
@@ -169,6 +174,13 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (a) `POST /admin/flash-sales/:campaign_id/config` ตั้ง `total_cap=5` ขณะ `units_sold=10` → 200, `units_sold` ยังเป็น 10
   (b) config ที่มี `units_sold=10`, `total_cap=5` (ตั้งตรงผ่าน module ใน test) → complete cart ที่มี flash 1 หน่วย
   ล้มเหลว `FLASH_SOLD_OUT`
+- AC-12 (PROMO-2, error code ถึง client) error handler ของ Medusa เขียนทับ `code`/`message` ของ `MedusaError.Types.CONFLICT` เป็น
+  `invalid_state_error` + ข้อความกลาง ทำให้ client ไม่เห็น code ของเรา
+  (a) `POST /store/carts/:id/promotions` ที่ถูก hook ปฏิเสธ (`GB-*` + `SAVE10`) → status 4xx (ไม่ใช่ 5xx) และ response JSON มี string
+  `PROMOTION_NOT_COMBINABLE` ในฟิลด์ที่ระบุแน่นอน (`code` หรือ `message` — builder เลือกและบันทึกลงกฎข้อ 13)
+  (b) `POST /store/carts/:id/complete` ที่ล้มด้วย `PROMOTION_NOT_COMBINABLE`, `FLASH_LIMIT_EXCEEDED`, `FLASH_SOLD_OUT` → response
+  มี code นั้นในฟิลด์เดียวกับ (a) (หรือใน `error` ของ response แบบ `type: "cart"` ถ้า Medusa ตอบรูปแบบนั้นสำหรับ complete ที่ล้ม)
+  (c) error อื่นของ Medusa ที่ไม่ใช่ของเรา (เช่น `CONFLICT` ที่ Medusa throw เอง) → status, `type`, `code`, `message` เหมือนก่อนแก้
 
 ## Non-functional
 - การจอง usage + `units_sold` อยู่ใน request path ของ complete cart (ข้อตัดสิน owner) ภายใต้ lock ต่อ
@@ -182,7 +194,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - Unit: การคำนวณ units ต่อ campaign จาก cart lines (กฎข้อ 9), helper สำหรับช่วงเวลา, `exclusiveAutomaticRule` /
   `isExclusiveAutomatic` / การคำนวณชุด code ผลลัพธ์และค่า flag ตาม `action` (PROMO-1)
 - Integration (modules): service method จอง/คืน/compensate ของ `flash_sale` (rollback ทั้ง transaction, `released_at`)
-- Integration (http): AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-8 (a)–(f), AC-9, AC-10, AC-11
+- Integration (http): AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-8 (a)–(f), AC-9, AC-10, AC-11, AC-12
 - e2e: AC-8 (g)
 - e2e: AC-4 (screenshot PLP/PDP/cart ที่ T-1min และ T+1min โดยใช้ clock control)
 
@@ -196,7 +208,9 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-4 | Store endpoint `/store/flash-sales/active` พร้อม promotion price preview (AC-4 API); preview ที่เรียก `computeActions` เองต้องส่ง context `exclusivity.code_applied: "false"` ไม่เช่นนั้น F ถูก prefilter ตัดทิ้ง (กฎข้อ 6g) | FS-1 |
 | FS-5 | Admin campaign widget + `POST /admin/flash-sales/:campaign_id/config` ใส่ exclusivity rule ให้ทุก automatic promotion ของ campaign (idempotent, ใช้ helper PROMO-1) และ widget เตือน promotion ที่ไม่มี rule (กฎข้อ 7); รับ `total_cap` ต่ำกว่า `units_sold` ได้ (AC-11 a) | FS-1, PROMO-1 |
 | FS-6 | Storefront banner/countdown/ราคาบน PDP + ข้อความ AC-8 (g) + e2e (AC-1, AC-3, AC-4, AC-8 g) | FS-4, PROMO-1 |
+| PROMO-2 | follow-up PROMO-1/FS-3: ตรวจ error type ที่ hook throw และทำให้ code ของเราถึง client ตามกฎข้อ 13 + integration test (AC-12) | PROMO-1, FS-3 |
 PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-6 หลัง FS-4
+PROMO-2 ∥ FS-2/FS-4/FS-5 (แตะ hook ไฟล์เดียวกับ FS-3 แต่ FS-3 merge แล้ว); ควร merge ก่อน FS-6 และ GB-3 เพราะทั้งสองแสดง/ทดสอบ code นี้
 
 ## คำถามที่ยังเปิดอยู่
 - คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน
