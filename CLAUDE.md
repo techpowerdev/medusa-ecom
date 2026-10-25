@@ -88,6 +88,11 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - body ของ PR ทำตาม `.github/pull_request_template.md` ห้าม merge PR ของตัวเอง —
   owner เป็นผู้ merge
 - Release = PR `develop → main` ติด tag `vX.Y.Z` changelog มาจากชื่อ PR
+- **ก่อนเปิด branch ใหม่หรือเริ่ม task ใหม่ ต้องเช็ก dependency ก่อนเสมอ**: ดูคอลัมน์ Depends ในตาราง task ของ spec
+  และ PR ที่เปิดอยู่ (`gh pr list`) ว่างานนี้ต้องใช้ PR ไหน (รวม PR เอกสาร/ADR/spec ที่งานนี้อ้างถึง และ hotfix ที่ทำให้
+  CI ของ `develop` เขียว) ถ้า PR นั้นยังไม่ merge เข้า `develop` → **ห้ามเริ่ม** ให้แจ้ง owner ว่าต้อง merge PR ไหน
+  แล้วรอจนกว่าจะ merge จริง (เช็กด้วย `gh pr view <n> --json state`) ห้ามแตก branch จาก PR ที่ยังไม่ merge
+  และห้ามอ่าน spec จาก branch ที่ยังไม่ merge แทน
 
 ## Agents (`.claude/agents/`)
 - `planner` — แปลงเป้าหมายเป็น/อัปเดต spec + task list + ADR ไม่เขียนโค้ด
