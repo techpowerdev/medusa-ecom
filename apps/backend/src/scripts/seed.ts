@@ -35,6 +35,10 @@ const DIGITAL_OPTION_NAME = "Digital delivery"
 // spec 02 กฎข้อ 8: หา option นี้ด้วย type.code เสมอ — name แก้ได้ใน admin
 const DIGITAL_OPTION_TYPE_CODE = "digital-delivery"
 // CORE-7 (ADR-008): th-TH = ภาษาต้นฉบับของเนื้อหาใน admin, en-US มาจาก Translation module
+const STANDARD_OPTION_TYPE_CODE = "standard"
+// CORE-16: return shipping option ของลูกค้า (POST /store/returns) — หาด้วย type.code เพราะ name แก้ได้ใน admin
+export const RETURN_OPTION_TYPE_CODE = "standard-return"
+const RETURN_OPTION_NAME = "Standard return"
 export const STORE_LOCALES = ["th-TH", "en-US"]
 export const STOREFRONT_KEY_TITLE = "Storefront"
 
@@ -79,6 +83,7 @@ export default async function seedThailand({ container }: ExecArgs) {
   if (existing.length) {
     logger.info(`Region "${REGION_NAME}" มีอยู่แล้ว — ข้ามการ seed ข้อมูลร้าน`)
     await upgradeDigitalDelivery(container)
+    await seedReturnShippingOption(container)
     return
   }
 
@@ -207,7 +212,7 @@ export default async function seedThailand({ container }: ExecArgs) {
     input: [
       shippingOption(
         "Standard",
-        "standard",
+        STANDARD_OPTION_TYPE_CODE,
         defaultProfileId,
         DEFAULT_REGION_STORE_POLICIES.shipping_rate,
         "manual_manual"
@@ -215,6 +220,7 @@ export default async function seedThailand({ container }: ExecArgs) {
       shippingOption(DIGITAL_OPTION_NAME, DIGITAL_OPTION_TYPE_CODE, digitalProfile.id, 0, DIGITAL_PROVIDER_ID),
     ],
   })
+  await seedReturnShippingOption(container)
 
   const { result: apiKeys } = await createApiKeysWorkflow(container).run({
     input: { api_keys: [{ title: STOREFRONT_KEY_TITLE, type: "publishable", created_by: "" }] },
@@ -300,6 +306,64 @@ async function upgradeDigitalDelivery(container: ExecArgs["container"]) {
   container
     .resolve(ContainerRegistrationKeys.LOGGER)
     .info(`ย้าย shipping option "${option.name}" (${DIGITAL_OPTION_TYPE_CODE}) ไปใช้ ${DIGITAL_PROVIDER_ID} แล้ว`)
+}
+
+/**
+ * CORE-16: return shipping option ที่ลูกค้าใช้กับ POST /store/returns (store ระบุราคา/location/receive_now เองไม่ได้)
+ * ใช้ service zone, shipping profile และ provider เดียวกับ "Standard" (หาด้วย type.code) จึงส่งคืนไปที่ stock location ของ
+ * fulfillment set นั้น ราคา = 0 ถ้า free_returns ไม่เช่นนั้น = shipping_rate (DEFAULT_REGION_STORE_POLICIES)
+ * รันซ้ำได้: ถ้ามี option ด้วย type.code นี้แล้วจะไม่ทำอะไร (รวม DB ที่ seed ก่อน CORE-16)
+ */
+async function seedReturnShippingOption(container: ExecArgs["container"]) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+  const { data: existing } = await query.graph({
+    entity: "shipping_option",
+    fields: ["id"],
+    filters: { type: { code: RETURN_OPTION_TYPE_CODE } },
+  })
+  if (existing.length) {
+    return
+  }
+
+  const { data: standard } = await query.graph({
+    entity: "shipping_option",
+    fields: ["service_zone_id", "shipping_profile_id", "provider_id"],
+    filters: { type: { code: STANDARD_OPTION_TYPE_CODE } },
+  })
+  const { data: regions } = await query.graph({
+    entity: "region",
+    fields: ["id"],
+    filters: { name: REGION_NAME },
+  })
+  if (!standard[0] || !regions[0]) {
+    logger.warn(`ไม่พบ shipping option "${STANDARD_OPTION_TYPE_CODE}" หรือ region "${REGION_NAME}" — ข้ามการสร้าง return option`)
+    return
+  }
+
+  const { free_returns, shipping_rate } = DEFAULT_REGION_STORE_POLICIES
+  const amount = free_returns ? 0 : shipping_rate
+  await createShippingOptionsWorkflow(container).run({
+    input: [
+      {
+        name: RETURN_OPTION_NAME,
+        price_type: "flat",
+        provider_id: standard[0].provider_id,
+        service_zone_id: standard[0].service_zone_id,
+        shipping_profile_id: standard[0].shipping_profile_id,
+        type: { label: RETURN_OPTION_NAME, description: RETURN_OPTION_NAME, code: RETURN_OPTION_TYPE_CODE },
+        prices: [
+          { currency_code: CURRENCY, amount },
+          { region_id: regions[0].id, amount },
+        ],
+        rules: [
+          { attribute: "enabled_in_store", value: "true", operator: "eq" },
+          { attribute: "is_return", value: "true", operator: "eq" },
+        ],
+      },
+    ],
+  })
+  logger.info(`สร้าง return shipping option "${RETURN_OPTION_NAME}" แล้ว`)
 }
 
 /**
