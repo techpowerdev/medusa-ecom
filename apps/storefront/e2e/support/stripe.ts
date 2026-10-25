@@ -1,4 +1,4 @@
-import { APIRequestContext, BrowserContext, FrameLocator, Page, expect } from "@playwright/test"
+import { APIRequestContext, BrowserContext, Frame, Page, expect } from "@playwright/test"
 
 import { BACKEND_URL } from "./fixtures"
 import { Customer, shippingOptionId } from "./medusa"
@@ -111,14 +111,46 @@ export async function checkoutToPayment(
   await expect(page.getByTestId(`payment-option-${CARD_PROVIDER}`)).toBeVisible()
 }
 
-/** iframe ของ Stripe Payment Element (field ของบัตร) */
-export function paymentElement(page: Page): FrameLocator {
-  return page.frameLocator('iframe[title="Secure payment input frame"]')
+/**
+ * frame ของ Stripe Payment Element ที่มีช่องเลขบัตร — Stripe.js สร้าง iframe "Secure payment input frame"
+ * หลายตัว (ตัวเก่าค้างระหว่าง remount) จึงหา frame จากเนื้อหาแทน title
+ */
+async function cardFrame(page: Page): Promise<Frame> {
+  let found: Frame | undefined
+  await expect
+    .poll(
+      async () => {
+        for (const frame of page.frames()) {
+          if (!frame.url().startsWith("https://js.stripe.com/")) continue
+          if ((await frame.locator('[name="number"]').count().catch(() => 0)) > 0) {
+            found = frame
+            return true
+          }
+        }
+        return false
+      },
+      { message: "Stripe Payment Element (ช่องเลขบัตร)", timeout: 30_000 }
+    )
+    .toBe(true)
+  return found!
 }
 
 export async function fillCard(page: Page, number: string) {
-  const frame = paymentElement(page)
+  const frame = await cardFrame(page)
   await frame.locator('[name="number"]').fill(number)
   await frame.locator('[name="expiry"]').fill("12 / 34")
   await frame.locator('[name="cvc"]').fill("123")
+}
+
+/**
+ * กด "Continue to review" จนขั้น review แสดง — บางครั้ง router.push ของ starter ถูก refresh จาก server action
+ * (revalidate ของ initiatePaymentSession) ทับจนค้างที่ขั้น payment (พบ ~1/6 รอบในเครื่อง) จึงกดซ้ำได้
+ */
+export async function continueToReview(page: Page) {
+  await expect(async () => {
+    if (await page.getByTestId("submit-payment-button").isVisible()) {
+      await page.getByTestId("submit-payment-button").click({ timeout: 5_000 })
+    }
+    await expect(page.getByTestId("submit-order-button")).toBeVisible({ timeout: 5_000 })
+  }).toPass({ timeout: 45_000 })
 }

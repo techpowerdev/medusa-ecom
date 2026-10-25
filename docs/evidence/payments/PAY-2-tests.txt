@@ -94,3 +94,38 @@ spec ชั่วคราว (ไม่ commit): ไม่มี NEXT_PUBLIC_ST
 
 ## lint / typecheck / build
 lint: 0 errors (ไฟล์ที่แก้ไม่มี warning) · typecheck: backend + storefront Done · storefront build สำเร็จ
+
+# ── รอบรัน Stripe test จริง (2026-10-26, บัญชี TH เดียวกัน sk_test_ + pk_test_, Stripe CLI 1.55.1 แบบเดียวกับ CI) ──
+
+## สาเหตุที่ CI ล้ม exit 124 (run 40219369816)
+Stripe CLI รุ่นใหม่ (1.55.1 ที่ apt ติดตั้ง) จบทันทีถ้าไม่ระบุ event:
+  must specify events to forward using --events, --all-snapshot, or --all-thin
+→ ใส่ --events (payment_intent.* ทีละชื่อ) แล้วทั้งสอง process ขึ้น "Ready!" และใช้ secret เดียวกับ --print-secret
+  (จำลองใน HOME ว่าง ไม่มี config, STRIPE_API_KEY จาก env, stdin=/dev/null)
+step จะพิมพ์ tail ของ log listen เมื่อ timeout และ tail /tmp/backend.log ไม่ล้มซ้ำเมื่อยังไม่มีไฟล์
+
+## playwright test e2e/payments.spec.ts --project=chromium (E2E_SAVE_EVIDENCE=1) — backend :9119, storefront build+start :8119
+  ✓  AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay'] (7.8s)
+  ✓  AC-1: บัตร 4242 → order สำเร็จ payment_status=captured (10.5s)
+  ✓  AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ (23.0s)
+  ✓  AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่ (9.0s)
+  ✓  AC-4: แสดง QR → authorize test payment → webhook → order captured (24.8s)
+  ✓  AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้ (10.0s)
+  6 passed (1.4m)
+screenshot: docs/evidence/payments/PAY-2/01..05 (5 รูป, ≤ 62KB ต่อรูป)
+ทั้ง suite chromium (core-store + payments + smoke ฯลฯ): 13 passed
+
+## tools/ci/check-stripe-webhooks.sh กับ log ของ Stripe CLI 1.55.1 หลังรันข้างบน
+ok: payment_intent.succeeded (evt_…) → http://localhost:9119/hooks/payment/stripe_stripe ตอบ 2xx
+ok: payment_intent.succeeded (evt_…) → http://localhost:9119/hooks/payment/stripe-promptpay_stripe ตอบ 2xx
+
+## ปัญหาที่เจอระหว่างรันจริงและแก้แล้ว
+- เลือกวิธีชำระแล้วกด Continue เร็ว → handleSubmit สร้าง session ซ้ำ PaymentIntent ตัวแรกถูก cancel
+  → Stripe ตอบ "A processing error occurred" (PromptPay) — แก้: ล็อกปุ่มระหว่าง initiatePaymentSession
+- Stripe.js สร้าง iframe "Secure payment input frame" หลายตัว → e2e หา frame จากช่องเลขบัตรแทน title
+- ปิดหน้า test payment ของ PromptPay ทันทีหลังคลิก → การ authorize ไม่ถูกบันทึก → รอ PI succeeded ก่อนปิด
+- ปุ่ม COMPLETE ของ 3DS รับคลิกหลัง animation → คลิกซ้ำจน modal ปิด
+- router.push ไป review ของ starter ค้างที่ขั้น payment ~1/6 รอบ → e2e กด Continue ซ้ำจนเห็นขั้น review (continueToReview)
+
+## unit / lint / typecheck
+storefront test:unit 51 passed · test:e2e:unit 24 passed · lint 0 errors · typecheck backend+storefront Done

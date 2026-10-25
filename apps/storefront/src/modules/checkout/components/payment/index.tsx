@@ -49,9 +49,18 @@ const Payment = ({
     setSelectedPaymentMethod(method)
     // PAY-2: PromptPay สร้าง session ทันทีที่เลือกเหมือนบัตร (QR พร้อมในขั้น review)
     if (isStripeLike(method) || isPromptPay(method)) {
-      await initiatePaymentSession(cart, {
-        provider_id: method,
-      })
+      // ล็อกปุ่ม Continue จนสร้าง session เสร็จ — ไม่งั้น handleSubmit สร้างซ้ำ แล้ว PaymentIntent
+      // ตัวแรก (ที่หน้าอาจถืออยู่) ถูก cancel → Stripe ตอบ "A processing error occurred"
+      setIsLoading(true)
+      try {
+        await initiatePaymentSession(cart, {
+          provider_id: method,
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setIsLoading(false)
+      }
     }
   }
 

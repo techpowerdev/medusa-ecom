@@ -17,6 +17,7 @@ import {
   cartPaymentState,
   checkoutToPayment,
   fillCard,
+  continueToReview,
   retrievePaymentIntent,
   sessionIntentId,
 } from "./support/stripe"
@@ -83,7 +84,7 @@ test.describe("บัตร (Stripe Elements)", () => {
   async function payByCard(page: import("@playwright/test").Page, number: string) {
     await page.getByTestId(`payment-option-${CARD_PROVIDER}`).click()
     await fillCard(page, number)
-    await page.getByTestId("submit-payment-button").click()
+    await continueToReview(page)
     await page.getByTestId("submit-order-button").click()
   }
 
@@ -118,7 +119,11 @@ test.describe("บัตร (Stripe Elements)", () => {
         .frameLocator("#challengeFrame")
       await expect(challenge.locator("#test-source-authorize-3ds")).toBeVisible({ timeout: 30_000 })
       await evidence("02-card-3ds-modal")
-      await challenge.locator("#test-source-authorize-3ds").click()
+      // ปุ่มใน modal รับคลิกหลัง animation จบ — คลิกซ้ำจน modal ปิด
+      await expect(async () => {
+        await challenge.locator("#test-source-authorize-3ds").click({ timeout: 5_000 })
+        await expect(challenge.locator("#test-source-authorize-3ds")).toBeHidden({ timeout: 5_000 })
+      }).toPass({ timeout: 45_000 })
       await expect(page.getByTestId("order-complete-container")).toBeVisible({ timeout: 60_000 })
     })
 
@@ -175,13 +180,19 @@ test.describe("PromptPay (QR + polling)", () => {
     await checkoutToPayment(page, context, request, pk, customer, CC, PRODUCT)
     const cartId = await cartIdOf(context)
     let qrPayload = ""
+    let intentId = ""
 
     await step("เลือก PromptPay → review → แสดง QR", async () => {
       await page.getByTestId(`payment-option-${PROMPTPAY_PROVIDER}`).click()
-      await page.getByTestId("submit-payment-button").click()
+      await continueToReview(page)
       await page.getByTestId("submit-order-button").click()
       await expect(page.getByTestId("promptpay-qr")).toBeVisible({ timeout: 30_000 })
       await expect(page.getByTestId("promptpay-countdown")).toHaveText(/^\d+:\d{2}$/)
+      // รูป QR โหลดจาก qr.stripe.com จริง (naturalWidth > 0) แล้วเลื่อนทั้ง panel เข้าจอก่อนถ่าย
+      await expect
+        .poll(() => page.getByTestId("promptpay-qr").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+        .toBeGreaterThan(0)
+      await page.getByTestId("promptpay-countdown").scrollIntoViewIfNeeded()
       await evidence("04-promptpay-qr")
 
       const intent = await retrievePaymentIntent(
@@ -190,12 +201,17 @@ test.describe("PromptPay (QR + polling)", () => {
       )
       expect(intent.status).toBe("requires_action")
       qrPayload = intent.next_action!.promptpay_display_qr_code!.data
+      intentId = intent.id
     })
 
     await step("confirm PaymentIntent ใน test mode (หน้า test payment ของ Stripe)", async () => {
       const bank = await context.newPage()
       await bank.goto(qrPayload)
       await bank.getByRole("button", { name: /authorize test payment/i }).click()
+      // ปิดหน้าก่อน Stripe บันทึกผลจะยกเลิก request — รอจน PaymentIntent succeeded ก่อน
+      await expect
+        .poll(async () => (await retrievePaymentIntent(request, intentId)).status, { timeout: 60_000 })
+        .toBe("succeeded")
       await bank.close()
     })
 
@@ -224,7 +240,7 @@ test.describe("PromptPay (QR + polling)", () => {
 
     await step("แสดง QR ของ PromptPay", async () => {
       await page.getByTestId(`payment-option-${PROMPTPAY_PROVIDER}`).click()
-      await page.getByTestId("submit-payment-button").click()
+      await continueToReview(page)
       await page.getByTestId("submit-order-button").click()
       await expect(page.getByTestId("promptpay-qr")).toBeVisible({ timeout: 30_000 })
       firstIntentId = await sessionIntentId(request, pk, customer, cartId, PROMPTPAY_PROVIDER)
