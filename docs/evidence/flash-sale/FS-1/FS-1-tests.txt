@@ -54,3 +54,30 @@ PASS integration-tests/http/health.spec.ts
 Test Suites: 3 passed, 3 total
 Tests:       9 passed, 9 total
 exit=0
+
+## หลัง rebase บน origin/develop (da39ddf — มี CORE-3, CORE-5, OPS-1)
+### pnpm lint / pnpm typecheck
+apps/backend lint: info:    No lint issues found.   (storefront: 0 errors, 38 warnings เดิม)
+apps/backend typecheck: Done / apps/storefront typecheck: Done
+### pnpm --filter backend test:integration:modules
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+PASS src/modules/flash_sale/__tests__/service.spec.ts
+Test Suites: 3 passed, 3 total
+Tests:       24 passed, 24 total
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/order-notifications.spec.ts
+PASS integration-tests/http/seed.spec.ts
+PASS integration-tests/http/flash-sale-module.spec.ts
+PASS integration-tests/http/health.spec.ts
+Test Suites: 4 passed, 4 total
+Tests:       13 passed, 13 total
+### pnpm --filter backend test:unit
+FAIL src/__tests__/medusa-config.unit.spec.ts   (3 failed — admin.disable เป็น undefined)
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+Tests:       3 failed, 17 passed, 20 total
+# ความล้มเหลวนี้มีอยู่แล้วบน develop (CI run 40179530742 ของ develop ล้มด้วย test เดียวกัน):
+# merge c1a1315 ทำ block `admin: { disable: ... }` ของ OPS-1 ใน medusa-config.ts หายไป — ไม่เกี่ยวกับ FS-1
+# (FS-1 เพิ่มเฉพาะ entry `./src/modules/flash_sale` ใน modules)
