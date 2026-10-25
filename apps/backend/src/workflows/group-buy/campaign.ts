@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto"
 import {
   createStep,
   createWorkflow,
@@ -167,7 +168,8 @@ export const createGroupBuyCampaignWorkflow = createWorkflow(
         config,
         campaign: {
           name: input.name,
-          campaign_identifier: code,
+          // ไม่ใช้ code ต้นแบบซ้ำ — campaign_identifier แสดงในหน้า campaign ของ Medusa admin
+          campaign_identifier: `group-buy-${randomUUID()}`,
           starts_at: starts_at ? new Date(starts_at) : null,
           ends_at: new Date(ends_at),
         },

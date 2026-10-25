@@ -12,9 +12,9 @@ apps/backend typecheck: Done
 apps/storefront typecheck: Done
 ### pnpm --filter backend build
 Backend build completed successfully / Frontend build completed successfully
-### pnpm --filter backend test:unit
-Test Suites: 19 passed, 19 total
-Tests:       156 passed, 156 total
+### pnpm --filter backend test:unit (หลัง merge origin/develop: #32, #36, #40)
+Test Suites: 21 passed, 21 total
+Tests:       173 passed, 173 total
 # เฉพาะ GB-2a:
 PASS src/modules/group_buy/__tests__/campaign-status.unit.spec.ts
   resolveCampaignStatusTransition
@@ -52,6 +52,8 @@ PASS integration-tests/http/group-buy-campaigns.spec.ts
       ✓ creates a Medusa campaign + draft GBT- template promotion linked to the campaign
       ✓ template code on a cart with X gives no adjustment; once active it would give X only
       ✓ rolls back the Medusa campaign and template when the group buy campaign cannot be created
+    deleteGroupBuyCampaignWorkflow rollback
+      ✓ restores the campaign, template, links and Medusa campaign when a later step fails
     admin API
       ✓ requires an admin user
       ✓ creates (returning template_promotion_id), lists, retrieves and updates a draft campaign
@@ -68,4 +70,4 @@ PASS integration-tests/http/group-buy-links.spec.ts   # GB-1 (regression — ม
     ✓ links a group buy campaign to a Medusa promotion campaign
     ✓ links a group to its Medusa promotion (code GB-<token>)
     ✓ reads the draft order of a membership through the read-only order_id link
-Tests:       16 passed, 16 total
+Tests:       17 passed, 17 total

@@ -2,6 +2,7 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { Modules } from "@medusajs/framework/utils"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
+import { registerCustomer, storeHeadersFor } from "../helpers/customer"
 import {
   EXCLUSIVITY_CODE_APPLIED_ATTRIBUTE,
   PROMOTION_NOT_COMBINABLE,
@@ -73,7 +74,9 @@ medusaIntegrationTestRunner({
       await login()
 
       const token = await getPublishableKey(getContainer())
-      storeHeaders = { headers: { "x-publishable-api-key": token! } }
+      // CORE-6: cart route ต้องมี customer ที่ล็อกอิน
+      const customer = await registerCustomer(api, token, "promo-buyer@example.com", "promo-buyer-password")
+      storeHeaders = storeHeadersFor(token, customer.token)
 
       const { data: regions } = await api.get("/store/regions", storeHeaders)
       regionId = regions.regions[0].id

@@ -6,6 +6,7 @@ import { GROUP_BUY_MODULE } from "../../src/modules/group_buy"
 import type GroupBuyModuleService from "../../src/modules/group_buy/service"
 import {
   createGroupBuyCampaignWorkflow,
+  deleteGroupBuyCampaignWorkflow,
   type CreateGroupBuyCampaignInput,
 } from "../../src/workflows/group-buy/campaign"
 
@@ -14,6 +15,32 @@ jest.setTimeout(180 * 1000)
 const ADMIN_EMAIL = "gb-admin@example.com"
 const ADMIN_PASSWORD = "gb-test-password"
 const HOUR = 60 * 60 * 1000
+
+// รูปที่ test ใช้ (Query typing ให้ทุก relation เป็น nullable — assert ผ่าน must())
+type GraphCampaign = {
+  id: string
+  status: string
+  campaign: { id: string; campaign_identifier: string; ends_at: string | Date | null }
+  promotion: {
+    id: string
+    code: string
+    status: string
+    is_automatic: boolean
+    campaign_id: string
+    application_method: {
+      type: string
+      value: number
+      target_rules: { attribute: string; values: { value: string }[] }[]
+    }
+  }
+}
+
+function must<T>(value: T | null | undefined, label: string): T {
+  if (value === null || value === undefined) {
+    throw new Error(`expected ${label} to be present`)
+  }
+  return value
+}
 
 // GB-2a: link template (ADR-011) + workflow ของแคมเปญ + admin API (spec 04 AC-20a, AC-21a)
 medusaIntegrationTestRunner({
@@ -38,9 +65,14 @@ medusaIntegrationTestRunner({
         fields: ["id", "handle", "variants.id", "variants.title"],
       })
       const byHandle = Object.fromEntries(products.map((p) => [p.handle, p]))
-      productXId = byHandle["t-shirt"].id
-      variantXId = byHandle["t-shirt"].variants.find((v) => v.title === "S").id
-      variantYId = byHandle["sweatshirt"].variants.find((v) => v.title === "M").id
+      const variant = (handle: string, title: string) =>
+        must(
+          must(byHandle[handle], handle).variants.find((v) => v?.title === title),
+          `${handle} ${title}`
+        ).id
+      productXId = must(byHandle["t-shirt"], "t-shirt").id
+      variantXId = variant("t-shirt", "S")
+      variantYId = variant("sweatshirt", "M")
     })
 
     beforeEach(async () => {
@@ -85,7 +117,7 @@ medusaIntegrationTestRunner({
         .post(`/admin/group-buy/campaigns/${id}/status`, { status }, headers)
         .catch((e) => e.response)
 
-    const graphCampaign = async (id: string) => {
+    const graphCampaign = async (id: string): Promise<GraphCampaign> => {
       const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
       const { data } = await query.graph({
         entity: "group_buy_campaign",
@@ -93,6 +125,7 @@ medusaIntegrationTestRunner({
           "id",
           "status",
           "campaign.id",
+          "campaign.campaign_identifier",
           "campaign.ends_at",
           "promotion.id",
           "promotion.code",
@@ -106,15 +139,23 @@ medusaIntegrationTestRunner({
         ],
         filters: { id },
       })
-      return data[0]
+      const row = must(data[0], `group_buy_campaign ${id}`)
+      must(row.campaign, "campaign link")
+      must(row.promotion, "template link")
+      return row as unknown as GraphCampaign
     }
 
     const cartAdjustments = async (codes: string[]) => {
       const container = getContainer()
+      // CORE-6: cart ต้องมี customer ที่มีบัญชี
+      const customer = await container.resolve(Modules.CUSTOMER).createCustomers({
+        email: `somchai+${Date.now()}@example.com`,
+        has_account: true,
+      })
       const { result: cart } = await createCartWorkflow(container).run({
         input: {
           region_id: regionId,
-          email: "somchai@example.com",
+          customer_id: customer.id,
           items: [
             { variant_id: variantXId, quantity: 1 },
             { variant_id: variantYId, quantity: 1 },
@@ -130,8 +171,9 @@ medusaIntegrationTestRunner({
         fields: ["items.variant_id", "items.adjustments.code"],
         filters: { id: cart.id },
       })
+      const items = must(data[0], "cart").items ?? []
       return Object.fromEntries(
-        data[0].items.map((i) => [i.variant_id, (i.adjustments ?? []).map((a) => a.code)])
+        items.map((i) => [i?.variant_id, (i?.adjustments ?? []).map((a) => a?.code)])
       )
     }
 
@@ -153,6 +195,8 @@ medusaIntegrationTestRunner({
             application_method: expect.objectContaining({ type: "percentage", value: 30 }),
           })
         )
+        // code ต้นแบบต้องไม่โผล่ใน campaign_identifier ของ Medusa campaign
+        expect(campaign.campaign.campaign_identifier).not.toContain(campaign.promotion.code)
         expect(campaign.promotion.application_method.target_rules).toEqual([
           expect.objectContaining({
             attribute: "items.product.id",
@@ -202,6 +246,38 @@ medusaIntegrationTestRunner({
         expect(await promotionModule.listCampaigns({}, { select: ["id"] })).toHaveLength(
           campaignsBefore.length
         )
+      })
+    })
+
+    describe("deleteGroupBuyCampaignWorkflow rollback", () => {
+      it("restores the campaign, template, links and Medusa campaign when a later step fails", async () => {
+        const container = getContainer()
+        const { result } = await createGroupBuyCampaignWorkflow(container).run({
+          input: campaignInput(),
+        })
+        const before = await graphCampaign(result.id)
+
+        // ขั้นสุดท้าย (deleteCampaignsWorkflow) ล้ม → step ก่อนหน้าทั้งหมดต้อง compensate
+        const promotionModule = container.resolve(Modules.PROMOTION)
+        const spy = jest
+          .spyOn(promotionModule, "softDeleteCampaigns")
+          .mockRejectedValueOnce(new Error("boom"))
+        try {
+          await expect(
+            deleteGroupBuyCampaignWorkflow(container).run({ input: { id: result.id } })
+          ).rejects.toBeTruthy()
+        } finally {
+          spy.mockRestore()
+        }
+
+        const after = await graphCampaign(result.id)
+        expect(after.status).toEqual("draft")
+        expect(after.campaign.id).toEqual(before.campaign.id)
+        expect(after.promotion.id).toEqual(before.promotion.id)
+        expect(after.promotion.code).toEqual(before.promotion.code)
+        expect(
+          await promotionModule.listCampaigns({ id: [before.campaign.id] }, { select: ["id"] })
+        ).toHaveLength(1)
       })
     })
 
@@ -291,7 +367,7 @@ medusaIntegrationTestRunner({
         const promotionModule = container.resolve(Modules.PROMOTION)
         expect(await groupBuy.listGroupBuyCampaigns({ id: created.id })).toHaveLength(0)
         expect(await promotionModule.listPromotions({ id: promotion.id })).toHaveLength(0)
-        expect(await promotionModule.listCampaigns({ id: campaign.id })).toHaveLength(0)
+        expect(await promotionModule.listCampaigns({ id: [campaign.id] })).toHaveLength(0)
 
         expect(await links()).toHaveLength(0)
       })
