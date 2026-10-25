@@ -34,5 +34,6 @@ module.exports = defineConfig({
     {
       resolve: './src/modules/group_buy',
     },
+    { resolve: './src/modules/affiliate' },
   ],
 })

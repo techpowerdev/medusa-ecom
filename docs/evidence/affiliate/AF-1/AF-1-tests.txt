@@ -1,0 +1,57 @@
+# AF-1 test evidence — 2026-10-25 16:01 +0700
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+### Red (ก่อนเขียนโค้ด)
+test:unit → FAIL: Cannot find module '../commission' จาก commission.unit.spec.ts
+affiliate-auth.spec.ts → Tests: 8 failed, 8 total (เช่น Expected: 401, Received: 404 — ยังไม่มี route /affiliate/*)
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)   # warning เดิมของ storefront ไม่เกี่ยวกับ AF-1
+exit=0
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+exit=0
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit
+PASS src/modules/affiliate/utils/__tests__/commission.unit.spec.ts
+  calculateCommission
+    ✓ pays the percentage of every line when the scope is all products (AC-1 base)
+    ✓ uses the paid amount after discount, excluding tax and shipping (rule 3)
+    ✓ only pays lines inside the collection scope (AC-4)
+    ✓ matches lines by variant or category scope
+    ✓ pays nothing when the scope is empty
+    ✓ enforces the cap per order across lines (rule 4)
+    ✓ rounds each line to 2 decimals, half up
+    ✓ skips lines whose paid amount is zero
+  isProgramActiveAt
+    ✓ is active inside the window of a published program
+    ✓ is not active before start or from the end
+    ✓ is never active for draft or ended programs (rule 9)
+Test Suites: 1 passed, 1 total
+Tests:       11 passed, 11 total
+exit=0
+### pnpm --filter backend test:integration:modules
+No tests found, exiting with code 0
+exit=0
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/seed.spec.ts (8.295 s)
+PASS integration-tests/http/health.spec.ts (5.177 s)
+PASS integration-tests/http/affiliate-auth.spec.ts (6.121 s)
+    affiliate register + login (AC-12)
+      ✓ registers an affiliate as pending without creating a customer (331 ms)
+      ✓ logs in at /auth/affiliate/emailpass and reads /affiliate/me (390 ms)
+      ✓ rejects registering twice with the same auth identity (218 ms)
+      ✓ rejects a duplicate affiliate code (217 ms)
+      ✓ requires authentication to register an affiliate (77 ms)
+    actor isolation (AC-12)
+      ✓ returns 401 on /affiliate/me without a token (62 ms)
+      ✓ returns 401 on /affiliate/me for a customer token (261 ms)
+      ✓ does not let a customer token register as an affiliate (240 ms)
+Test Suites: 3 passed, 3 total
+Tests:       16 passed, 16 total
+exit=0
+# log "Connection Error: Connection ended unexpectedly" ตอน teardown มาจาก medusa-test-utils drop DB สุ่ม (มีใน suite เดิมด้วย)
+### migration
+npx medusa db:generate affiliate → src/modules/affiliate/migrations/Migration20261025085824.ts (+ .snapshot-affiliate.json)
+สร้างบน DB ชั่วคราว medusa_af1 แล้ว drop ทิ้ง
