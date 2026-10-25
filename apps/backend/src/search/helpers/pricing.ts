@@ -5,9 +5,11 @@ import { QueryContext, search } from "@medusajs/framework/utils";
  * The currencies the index holds prices in. Each gets its own set of price
  * fields, so filtering and sorting work per currency. Adding one is a schema
  * change: the module reindexes on the next boot. Keep in sync with the
- * storefront's `SEARCH_PRICE_CURRENCIES`.
+ * storefront's `SEARCH_PRICE_CURRENCIES` (spec 01 rule 15: THB only, the
+ * single Thailand region; `src/lib/__tests__/search-pricing.unit.spec.ts`
+ * checks both).
  */
-export const PRICE_CURRENCIES = ["eur", "usd"] as const;
+export const PRICE_CURRENCIES = ["thb"] as const;
 
 export type PriceCurrency = (typeof PRICE_CURRENCIES)[number];
 
