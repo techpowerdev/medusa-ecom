@@ -25,7 +25,7 @@
       "command": "npx",
       "args": ["-y", "@bytebase/dbhub", "--transport", "stdio"],
       "env": {
-        "DSN": "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/medusa-ecom}"
+        "DSN": "postgres://medusa:medusa@localhost:5432/medusa"
       }
     }
   }
