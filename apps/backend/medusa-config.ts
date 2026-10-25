@@ -6,6 +6,8 @@ loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    // OPS-1: image เดียวกันบูตเป็น server/worker ตาม env (docs/spec/07-scaling-ops.md)
+    workerMode: (process.env.MEDUSA_WORKER_MODE ?? 'shared') as 'shared' | 'worker' | 'server',
     http: {
       storeCors: process.env.STORE_CORS!,
       adminCors: process.env.ADMIN_CORS!,
