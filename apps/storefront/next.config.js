@@ -13,6 +13,10 @@ const S3_PATHNAME = process.env.MEDUSA_CLOUD_S3_PATHNAME
  */
 const nextConfig = {
   reactStrictMode: true,
+  // OPS-6: image ของ storefront ใช้ .next/standalone (ไม่ต้องก๊อป node_modules ทั้งก้อน)
+  output: "standalone",
+  // OPS-6: ไม่ให้ `next dev` สร้าง AGENTS.md/CLAUDE.md เมื่อตรวจพบ AI agent (เช่น CLAUDECODE=1)
+  agentRules: false,
   async headers() {
     return [
       {

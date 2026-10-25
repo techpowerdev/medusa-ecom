@@ -20,14 +20,16 @@ ARG NEXT_PUBLIC_STRIPE_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @dtc/storefront build
 
+# OPS-6: ใช้ output: "standalone" (next.config.js) — ก๊อปเฉพาะไฟล์ที่ next trace ไว้ใน .next/standalone
+# (root ของ trace คือ workspace root → server.js อยู่ที่ apps/storefront/) ส่วน static/public ต้องก๊อปเอง
+# NEXT_PUBLIC_* ถูกฝังใน bundle ตอน build แล้ว และ server.js ไม่โหลด next.config.js ซ้ำ → ไม่ต้องตั้ง env ตอน run
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
-# next.config.js ตรวจ NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ตอน start ด้วย
-ARG NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
-ENV NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}
-WORKDIR /repo
-COPY --from=build --chown=node:node /repo ./
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=8000 HOSTNAME=0.0.0.0
+WORKDIR /app
+COPY --from=build --chown=node:node /repo/apps/storefront/.next/standalone ./
+COPY --from=build --chown=node:node /repo/apps/storefront/.next/static ./apps/storefront/.next/static
+COPY --from=build --chown=node:node /repo/apps/storefront/public ./apps/storefront/public
 USER node
-WORKDIR /repo/apps/storefront
+WORKDIR /app/apps/storefront
 EXPOSE 8000
-CMD ["node_modules/.bin/next", "start", "-p", "8000"]
+CMD ["node", "server.js"]
