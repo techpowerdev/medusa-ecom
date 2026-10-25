@@ -2,10 +2,11 @@ import {
   createStep,
   createWorkflow,
   StepResponse,
+  transform,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import { MedusaError } from "@medusajs/framework/utils"
-import { useQueryGraphStep } from "@medusajs/medusa/core-flows"
+import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
+import { updateInventoryItemsWorkflow } from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
 import EvoucherModuleService from "../../modules/evoucher/service"
 
@@ -33,6 +34,34 @@ const FIELDS = [
   "validity_note",
   "low_stock_threshold",
 ]
+
+// กฎข้อ 1: voucher variant ต้อง manage_inventory=true (inventory = จำนวน code available)
+// 404 ถ้า variant ไม่มีอยู่จริง (link pool → variant เป็น read-only ไม่มี FK)
+export const validateEvoucherVariantStep = createStep(
+  "validate-evoucher-variant",
+  async (input: { variant_id: string }, { container }) => {
+    const query = container.resolve(ContainerRegistrationKeys.QUERY)
+    const { data } = await query.graph({
+      entity: "product_variant",
+      fields: ["id", "manage_inventory", "inventory_items.inventory_item_id"],
+      filters: { id: input.variant_id },
+    })
+    if (!data[0]) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `Product variant ${input.variant_id} not found`
+      )
+    }
+    const itemIds = (data[0].inventory_items ?? []).map((i) => i!.inventory_item_id)
+    if (!data[0].manage_inventory || !itemIds.length) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Voucher variant must have manage_inventory=true with an inventory item"
+      )
+    }
+    return new StepResponse(itemIds)
+  }
+)
 
 export const createEvoucherPoolStep = createStep(
   "create-evoucher-pool",
@@ -111,13 +140,13 @@ export const deleteEvoucherPoolStep = createStep(
 export const createEvoucherPoolWorkflow = createWorkflow(
   "create-evoucher-pool",
   function (input: CreateEvoucherPoolInput) {
-    // 404 ถ้า variant ไม่มีอยู่จริง (link pool → variant เป็น read-only ไม่มี FK)
-    useQueryGraphStep({
-      entity: "product_variant",
-      fields: ["id"],
-      filters: { id: input.variant_id },
-      options: { throwIfKeyNotFound: true },
-    })
+    const itemIds = validateEvoucherVariantStep({ variant_id: input.variant_id })
+    // กฎข้อ 1: voucher ไม่ต้องจัดส่ง → line item ได้ requires_shipping=false จาก inventory item
+    // (compensation ของ updateInventoryItemsWorkflow คืนค่าเดิมถ้าขั้นสร้าง pool ล้ม)
+    const updates = transform({ itemIds }, ({ itemIds }) =>
+      itemIds.map((id) => ({ id, requires_shipping: false }))
+    )
+    updateInventoryItemsWorkflow.runAsStep({ input: { updates } })
     return new WorkflowResponse(createEvoucherPoolStep(input))
   }
 )
