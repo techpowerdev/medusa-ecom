@@ -1,6 +1,6 @@
-# Data model (custom modules)
+# Data model (module ที่สร้างเอง)
 
-Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Payment, Customer) are used as-is and not redefined here. Amounts are Medusa major units (`bigNumber`).
+entity หลักของ Medusa (Product, Variant, Cart, Order, Promotion, Campaign, Payment, Customer) ใช้ตามเดิมและไม่นิยามซ้ำในเอกสารนี้ จำนวนเงินเป็นหน่วยหลักตามแบบ Medusa (`bigNumber`)
 
 
 ## module `evoucher`
@@ -9,7 +9,7 @@ Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Paymen
 ### EvoucherPartner
 เจ้าของ voucher เช่น Lotus, Big C, ห้าง, ร้านกาแฟ
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `name` | string |  |
@@ -20,7 +20,7 @@ Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Paymen
 ### EvoucherPool
 คลังโค้ดของ partner 1 คลังต่อ 1 variant — จำนวน available = สต็อกใน Medusa inventory
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `partner_id` | fk |  |
@@ -34,12 +34,12 @@ Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Paymen
 ### EvoucherCode
 โค้ดที่ import จาก partner 1 แถวต่อ 1 โค้ด — เราไม่แลกเอง
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `pool_id` | fk | index (pool_id, status) |
-| `code` | string | encrypted, unique per pool |
-| `pin` | string? | encrypted |
+| `code` | string | เข้ารหัส, unique ต่อ pool |
+| `pin` | string? | เข้ารหัส |
 | `expires_at` | timestamptz? | จาก partner |
 | `batch_ref` | string | รอบ import |
 | `status` | enum available | allocated | delivered | void |  |
@@ -53,20 +53,20 @@ Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Paymen
 ### FlashSaleConfig
 ตัวเลือกเพิ่มของ Medusa Campaign ที่เป็น flash sale
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `campaign_id` | link → promotion_campaign | unique |
 | `per_customer_limit` | int? | ชิ้นต่อคนทั้งแคมเปญ |
 | `total_cap` | int? | จำนวนชิ้นรวม |
-| `units_sold` | int | atomic counter |
+| `units_sold` | int | counter แบบ atomic |
 | `show_countdown / show_remaining` | bool |  |
 | `banner_text` | text? |  |
 
 ### FlashSaleUsage
 นับชิ้นที่ลูกค้าซื้อไปแล้วต่อแคมเปญ
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `campaign_id` | fk |  |
@@ -80,7 +80,7 @@ Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Paymen
 ### GroupBuyCampaign
 แคมเปญรวมกลุ่ม — ส่วนลด/ช่วงเวลา/สินค้า อยู่ที่ Medusa campaign+promotion ที่ลิงก์ไว้
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `name` | string |  |
@@ -98,14 +98,14 @@ Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Paymen
 ### GroupBuyGroup
 กลุ่ม 1 กลุ่ม = โค้ดส่วนลด 1 โค้ด (GB-token)
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `campaign_id` | fk |  |
 | `kind` | enum pool | team |  |
 | `created_by_customer_id` | fk? | team เท่านั้น |
 | `name` | string? |  |
-| `join_token` | string | unique, share link |
+| `join_token` | string | unique, ลิงก์แชร์ |
 | `promotion_id` | link → promotion |  |
 | `starts_at / ends_at` | timestamptz | index (status, ends_at) |
 | `status` | enum open | succeeded | failed |  |
@@ -115,7 +115,7 @@ Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Paymen
 ### GroupBuyMembership
 การเข้าร่วม 1 ครั้ง = draft order 1 ใบ
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `group_id` | fk |  |
@@ -132,12 +132,12 @@ Medusa core entities (Product, Variant, Cart, Order, Promotion, Campaign, Paymen
 ### Affiliate
 actor type แยก (Auth module) — ไม่ใช่ customer
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `email` | string | unique |
 | `name` | string |  |
-| `code` | string | unique slug, index |
+| `code` | string | slug ที่ unique, index |
 | `status` | enum pending | active | suspended |  |
 | `payout_info` | json | masked ใน API |
 | `auth_identity.app_metadata.affiliate_id` | (Auth module) | ลิงก์ login |
@@ -145,7 +145,7 @@ actor type แยก (Auth module) — ไม่ใช่ customer
 ### AffiliateProgram
 ช่วงเวลาที่เปิดค่าคอม
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `name` | string |  |
@@ -162,7 +162,7 @@ actor type แยก (Auth module) — ไม่ใช่ customer
 ### AffiliateAttribution
 order ไหน ให้เครดิตใคร ภายใต้โปรแกรมไหน (last click)
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `order_id` | fk → order | unique |
@@ -173,7 +173,7 @@ order ไหน ให้เครดิตใคร ภายใต้โปร
 ### CommissionEntry
 ledger แบบ append-only; reversal = แถวใหม่ติดลบ
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `affiliate_id / program_id / order_id` | fk | index (affiliate_id, status, created_at) |
@@ -187,7 +187,7 @@ ledger แบบ append-only; reversal = แถวใหม่ติดลบ
 ### Payout
 รอบจ่ายเงินที่แอดมินสร้างและมาร์คว่าจ่ายแล้ว
 
-| field | type | note |
+| ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `affiliate_id` | fk |  |

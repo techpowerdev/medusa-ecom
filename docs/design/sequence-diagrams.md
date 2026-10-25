@@ -1,13 +1,13 @@
 # Sequence diagrams
 
-Participants named 'module' are our custom modules; everything else is Medusa or Stripe.
+participant ที่ชื่อลงท้ายด้วย 'module' คือ module ที่เราสร้างเอง ส่วนที่เหลือเป็นของ Medusa หรือ Stripe
 
 ## E-voucher: import โค้ด partner → ซื้อ → จัดสรร → ส่งอีเมล
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor C as Customer
+  actor C as ลูกค้า
   participant SF as Storefront
   participant API as Medusa API
   participant PAY as Stripe provider
@@ -15,21 +15,21 @@ sequenceDiagram
   participant NT as Notification
 
   actor AD as Admin
-  AD->>EV: import partner CSV (codes, pins, expiry)
-  EV->>API: adjust inventory level +N (Medusa Inventory)
-  C->>SF: add voucher variant, checkout (logged in)
-  SF->>API: complete cart (digital shipping auto-selected, stock reserved by Medusa)
-  API->>PAY: create + confirm PaymentIntent
-  PAY-->>API: payment captured (webhook)
+  AD->>EV: import CSV จาก partner (โค้ด, PIN, วันหมดอายุ)
+  EV->>API: ปรับ inventory level +N (Medusa Inventory)
+  C->>SF: เพิ่ม voucher variant, checkout (ล็อกอินแล้ว)
+  SF->>API: complete cart (เลือก digital shipping อัตโนมัติ, Medusa จองสต็อก)
+  API->>PAY: สร้าง + confirm PaymentIntent
+  PAY-->>API: payment ถูก capture (webhook)
   API-->>EV: event payment.captured (subscriber, worker)
-  EV->>EV: claim 1 available code per unit (FOR UPDATE SKIP LOCKED, oldest expiry first)
+  EV->>EV: claim โค้ด available 1 โค้ดต่อหน่วย (FOR UPDATE SKIP LOCKED, หมดอายุเร็วสุดก่อน)
   EV->>API: createOrderFulfillmentWorkflow (provider digital)
-  EV->>NT: send evoucher.delivered (codes, pins, partner how-to-use, expiry)
+  EV->>NT: ส่ง evoucher.delivered (โค้ด, PIN, วิธีใช้ของ partner, วันหมดอายุ)
   EV->>EV: codes = delivered
-  NT-->>C: email with codes
-  C->>SF: My vouchers
+  NT-->>C: อีเมลพร้อมโค้ด
+  C->>SF: voucher ของฉัน
   SF->>API: GET /store/customers/me/evouchers
-  API-->>SF: own codes + status
+  API-->>SF: โค้ดของตัวเอง + สถานะ
 ```
 
 ## Flash sale: checkout ภายใต้ limit
@@ -37,7 +37,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   autonumber
-  actor C as Customer
+  actor C as ลูกค้า
   participant SF as Storefront
   participant API as Medusa API
   participant PR as Promotion module
@@ -45,20 +45,20 @@ sequenceDiagram
   participant DB as Postgres
 
   SF->>API: GET /store/flash-sales/active
-  API->>PR: compute promotion for variants
+  API->>PR: คำนวณ promotion สำหรับ variant
   API-->>SF: countdown, flash_price, remaining
-  C->>SF: add item, checkout
+  C->>SF: เพิ่มสินค้า, checkout
   SF->>API: POST /store/carts/:id/complete
   API->>FS: completeCartWorkflow.validate hook
-  FS->>DB: check FlashSaleUsage(customer) + per_customer_limit
+  FS->>DB: ตรวจ FlashSaleUsage(customer) + per_customer_limit
   FS->>DB: UPDATE units_sold = units_sold + n WHERE units_sold + n <= total_cap
-  alt no row updated
+  alt ไม่มีแถวถูกอัปเดต
     FS-->>API: throw FLASH_SOLD_OUT
     API-->>SF: 400 FLASH_SOLD_OUT
-  else ok
-    API->>PR: register promotion usage
-    API-->>SF: order created
-    API-->>FS: order.placed → upsert FlashSaleUsage (idempotent by order_id)
+  else ผ่าน
+    API->>PR: บันทึก promotion usage
+    API-->>SF: สร้าง order แล้ว
+    API-->>FS: order.placed → upsert FlashSaleUsage (idempotent ด้วย order_id)
   end
 ```
 
@@ -67,21 +67,21 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   autonumber
-  actor A as Customer
+  actor A as ลูกค้า
   participant SF as Storefront
   participant GB as group_buy module
   participant M as Medusa core
-  A->>SF: Join group (logged in)
-  SF->>GB: POST join with cart id
-  GB->>GB: lock group row, check limits and no other promo code
-  GB->>M: apply promotion code of the group to cart
-  GB->>M: createOrderWorkflow as draft order (no payment)
-  GB->>GB: create membership joined, increase counters
-  GB-->>SF: 201 membership and draft order
-  SF-->>A: waiting for group to reach target
+  A->>SF: เข้าร่วมกลุ่ม (ล็อกอินแล้ว)
+  SF->>GB: POST join พร้อม cart id
+  GB->>GB: lock แถวกลุ่ม, ตรวจ limit และต้องไม่มี promo code อื่น
+  GB->>M: ใช้ promotion code ของกลุ่มกับ cart
+  GB->>M: createOrderWorkflow เป็น draft order (ยังไม่ชำระเงิน)
+  GB->>GB: สร้าง membership joined, เพิ่ม counter
+  GB-->>SF: 201 membership และ draft order
+  SF-->>A: รอให้กลุ่มถึงเป้า
 ```
 
-## Group buy 2/2: target reached, pay
+## Group buy 2/2: ถึงเป้า, ชำระเงิน
 
 ```mermaid
 sequenceDiagram
@@ -89,22 +89,22 @@ sequenceDiagram
   participant GB as group_buy module
   participant M as Medusa core
   participant NT as Notification
-  actor A as Customer
+  actor A as ลูกค้า
   participant SF as Storefront
   participant ST as Stripe
   participant JOB as Scheduled job
-  GB->>GB: target reached, succeedGroupWorkflow (idempotent)
-  GB->>M: create payment collection on each draft order
-  GB->>NT: email group succeeded with pay deadline
-  NT-->>A: email with pay link
-  A->>SF: open pay page, choose PromptPay
-  SF->>M: payment session on the order payment collection
+  GB->>GB: ถึงเป้า, succeedGroupWorkflow (idempotent)
+  GB->>M: สร้าง payment collection บน draft order แต่ละใบ
+  GB->>NT: อีเมลแจ้งกลุ่มสำเร็จพร้อม deadline ชำระเงิน
+  NT-->>A: อีเมลพร้อม pay link
+  A->>SF: เปิดหน้าชำระเงิน, เลือก PromptPay
+  SF->>M: payment session บน payment collection ของ order
   M->>ST: PaymentIntent promptpay
   ST-->>M: webhook payment succeeded
   M-->>GB: event payment captured
   GB->>M: convertDraftOrderWorkflow
   GB->>GB: membership paid
-  JOB->>GB: every minute, unpaid after deadline then cancel order and email
+  JOB->>GB: ทุก 1 นาที, ยังไม่ชำระหลัง deadline ให้ยกเลิก order และส่งอีเมล
 ```
 
 ## Group buy: ไม่ถึงเป้า
@@ -112,24 +112,24 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   autonumber
-  participant JOB as Scheduled job (1 min)
+  participant JOB as Scheduled job (1 นาที)
   participant GB as group_buy module
   participant API as Medusa Order
   participant NT as Notification
-  actor M as Members
+  actor M as สมาชิก
 
-  JOB->>GB: groups open with ends_at <= now
-  GB->>GB: evaluate target (orders | units | people)
-  alt target met
+  JOB->>GB: กลุ่มที่ open และ ends_at <= now
+  GB->>GB: ประเมินเป้า (orders | units | people)
+  alt ถึงเป้า
     GB->>GB: succeedGroupWorkflow
-  else not met
+  else ไม่ถึงเป้า
     GB->>GB: failGroupWorkflow (idempotent)
-    loop each membership(joined)
+    loop แต่ละ membership(joined)
       GB->>API: cancelOrderWorkflow(draft order)
       GB->>GB: membership = cancelled
     end
-    GB->>NT: email "group failed, nothing charged"
-    NT-->>M: notification
+    GB->>NT: อีเมล "กลุ่มไม่สำเร็จ, ไม่มีการเรียกเก็บเงิน"
+    NT-->>M: การแจ้งเตือน
   end
 ```
 
@@ -139,38 +139,38 @@ sequenceDiagram
 sequenceDiagram
   autonumber
   actor AF as Affiliate
-  actor B as Buyer (customer)
+  actor B as ผู้ซื้อ (customer)
   participant SF as Storefront
   participant AM as affiliate module
   participant API as Medusa Order
   participant JOB as Daily job
   actor AD as Admin
 
-  AF->>SF: /affiliate portal → Products (Earning now / Coming soon)
+  AF->>SF: /affiliate portal → สินค้า (ได้ค่าคอมตอนนี้ / เร็ว ๆ นี้)
   SF->>AM: GET /affiliate/products?status=upcoming
-  AM->>API: resolve program scope → products, prices, images
-  AM-->>SF: cards with commission %, dates, share_url
-  AF->>SF: Share product x (copy link / Web Share)
+  AM->>API: resolve scope ของโปรแกรม → สินค้า, ราคา, รูปภาพ
+  AM-->>SF: การ์ดพร้อม % ค่าคอม, วันที่, share_url
+  AF->>SF: แชร์สินค้า x (คัดลอกลิงก์ / Web Share)
   AF-->>B: /r/ann?to=/products/x
-  B->>SF: click link
+  B->>SF: คลิกลิงก์
   SF->>AM: GET /store/affiliate/r/ann
-  AM-->>B: set signed cookie aff=HMAC token, 302 to /products/x
-  B->>SF: add to cart (logged in)
-  SF->>API: cart.metadata.affiliate_token = cookie value
-  B->>SF: checkout + pay
+  AM-->>B: ตั้ง signed cookie aff=HMAC token, 302 ไป /products/x
+  B->>SF: เพิ่มลง cart (ล็อกอินแล้ว)
+  SF->>API: cart.metadata.affiliate_token = ค่าจาก cookie
+  B->>SF: checkout + ชำระเงิน
   API-->>AM: order.placed (subscriber)
-  AM->>AM: verify token signature, click age <= window, program active, affiliate active, email != buyer
-  alt valid
-    AM->>AM: create Attribution (unique order_id)
-    AM->>AM: CommissionEntry pending per eligible line item, matures_at = now + hold_days
-  else invalid / no program
-    AM->>AM: log, no entry
+  AM->>AM: ตรวจลายเซ็น token, อายุคลิก <= window, โปรแกรม active, affiliate active, email != ผู้ซื้อ
+  alt ถูกต้อง
+    AM->>AM: สร้าง Attribution (order_id ไม่ซ้ำ)
+    AM->>AM: CommissionEntry pending ต่อ line item ที่เข้าเกณฑ์, matures_at = now + hold_days
+  else ไม่ถูกต้อง / ไม่มีโปรแกรม
+    AM->>AM: log, ไม่สร้าง entry
   end
-  API-->>AM: refund/cancel → CommissionEntry reversed (negative)
-  JOB->>AM: pending with matures_at <= now and no reversal → approved
-  AD->>AM: create payout for period → sum approved
-  AD->>AM: mark paid (reference) → entries paid
-  AF->>SF: /affiliate portal (own login) shows earnings
+  API-->>AM: refund/cancel → CommissionEntry reversed (ติดลบ)
+  JOB->>AM: pending ที่ matures_at <= now และไม่มี reversal → approved
+  AD->>AM: สร้าง payout สำหรับรอบ → รวมยอด approved
+  AD->>AM: มาร์คว่าจ่ายแล้ว (reference) → entries paid
+  AF->>SF: /affiliate portal (ล็อกอินของตัวเอง) แสดงรายได้
 ```
 
 ## Payment: PromptPay ผ่าน Stripe + webhook
@@ -178,23 +178,23 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   autonumber
-  actor C as Customer
+  actor C as ลูกค้า
   participant SF as Storefront
   participant API as Medusa API
   participant ST as Stripe
   participant WH as /hooks/payment/stripe-promptpay_stripe
 
-  C->>SF: choose PromptPay
-  SF->>API: initiate payment session (pp_stripe-promptpay_stripe)
-  API->>ST: create PaymentIntent (promptpay, THB)
+  C->>SF: เลือก PromptPay
+  SF->>API: เริ่ม payment session (pp_stripe-promptpay_stripe)
+  API->>ST: สร้าง PaymentIntent (promptpay, THB)
   ST-->>API: client_secret
   API-->>SF: session + client_secret
-  SF->>ST: confirm → QR code displayed
-  C->>C: scan & pay in banking app
+  SF->>ST: confirm → แสดง QR code
+  C->>C: สแกนและจ่ายในแอปธนาคาร
   ST-->>WH: payment_intent.succeeded (signed)
-  WH->>API: authorize + capture session (idempotent per event)
+  WH->>API: authorize + capture session (idempotent ต่อ event)
   API->>API: complete cart → order (payment_status captured)
-  SF->>API: poll session status
-  API-->>SF: captured → order confirmation
-  Note over SF,ST: not paid in 10 min → cancel session, cart intact
+  SF->>API: poll สถานะ session
+  API-->>SF: captured → ยืนยัน order
+  Note over SF,ST: ไม่ชำระภายใน 10 นาที → ยกเลิก session, cart ยังคงอยู่
 ```

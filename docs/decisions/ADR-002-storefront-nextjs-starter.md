@@ -1,21 +1,21 @@
-# ADR-002 Storefront = Medusa Next.js Starter (themed), not a custom Ant Design app
+# ADR-002 Storefront = Medusa Next.js Starter (ปรับธีม) ไม่ใช่แอป Ant Design ที่สร้างเอง
 
-Status: accepted (owner, 2026-10-25)
+สถานะ: อนุมัติแล้ว (เจ้าของโปรเจกต์, 2026-10-25)
 
-## Context
-Owner earlier considered a custom Ant Design storefront. Goal "don't rebuild what Medusa has"
-applies to the storefront too: the starter already implements PLP/PDP/cart/checkout
-(incl. Stripe Elements)/account/orders with Medusa's JS SDK and caching conventions.
+## บริบท
+ก่อนหน้านี้เจ้าของโปรเจกต์เคยพิจารณาทำ storefront ด้วย Ant Design เอง แต่เป้าหมาย "ไม่สร้างสิ่งที่ Medusa มีอยู่แล้ว"
+ใช้กับ storefront ด้วย: starter มี PLP/PDP/cart/checkout
+(รวม Stripe Elements)/account/orders ครบแล้ว โดยใช้ JS SDK ของ Medusa และ convention เรื่อง caching
 
-## Options
-1. Medusa Next.js Starter, re-themed (Tailwind tokens), extended with new pages.
-2. New Next.js app with Ant Design, re-implementing all commerce pages.
+## ทางเลือก
+1. Medusa Next.js Starter ปรับธีมใหม่ (Tailwind tokens) และต่อยอดด้วยหน้าใหม่
+2. สร้างแอป Next.js ใหม่ด้วย Ant Design และเขียนหน้า commerce ทั้งหมดใหม่
 
-## Decision
-Option 1. New feature pages (flash banner, group page, affiliate dashboard, my vouchers)
-are added as routes inside the starter, using its data-fetching helpers.
+## การตัดสินใจ
+เลือกทางเลือกที่ 1 หน้าฟีเจอร์ใหม่ (flash banner, หน้ากลุ่ม, affiliate dashboard, voucher ของฉัน)
+เพิ่มเป็น route ภายใน starter โดยใช้ data-fetching helper ของ starter เอง
 
-## Consequences
-+ Weeks saved; checkout edge cases (3DS, address, regions) already handled.
-− Visual identity is constrained to Tailwind theming; Ant Design is not used.
-− Starter upgrades require merging upstream changes occasionally.
+## ผลที่ตามมา
++ ประหยัดเวลาหลายสัปดาห์; edge case ของ checkout (3DS, ที่อยู่, regions) ถูกจัดการไว้แล้ว
+− อัตลักษณ์ด้านภาพถูกจำกัดอยู่กับการทำธีมด้วย Tailwind; ไม่ใช้ Ant Design
+− การอัปเกรด starter ต้อง merge การเปลี่ยนแปลงจาก upstream เป็นครั้งคราว

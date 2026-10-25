@@ -1,39 +1,39 @@
 # ERD
 
-UPPERCASE boxes without a module prefix are Medusa core entities. Links to core entities use `defineLink`.
+กล่องตัวพิมพ์ใหญ่ที่ไม่มี prefix ของ module คือ entity หลักของ Medusa การเชื่อมไปยัง entity หลักใช้ `defineLink`
 
 ```mermaid
 erDiagram
-  CUSTOMER ||--o{ CART : owns
-  CUSTOMER ||--o{ ORDER : places
-  CART ||--o| ORDER : becomes
-  ORDER ||--o{ ORDER_LINE_ITEM : has
-  PRODUCT_VARIANT ||--o{ ORDER_LINE_ITEM : "sold as"
-  PROMOTION_CAMPAIGN ||--o{ PROMOTION : groups
-  CART }o--o{ PROMOTION : "applied code"
-  ORDER ||--o{ PAYMENT_COLLECTION : "paid via"
+  CUSTOMER ||--o{ CART : "เป็นเจ้าของ"
+  CUSTOMER ||--o{ ORDER : "สั่งซื้อ"
+  CART ||--o| ORDER : "กลายเป็น"
+  ORDER ||--o{ ORDER_LINE_ITEM : "มี"
+  PRODUCT_VARIANT ||--o{ ORDER_LINE_ITEM : "ขายในรูป"
+  PROMOTION_CAMPAIGN ||--o{ PROMOTION : "จัดกลุ่ม"
+  CART }o--o{ PROMOTION : "โค้ดที่ใช้"
+  ORDER ||--o{ PAYMENT_COLLECTION : "ชำระผ่าน"
 
-  EVOUCHER_PARTNER ||--o{ EVOUCHER_POOL : supplies
-  PRODUCT_VARIANT ||--o| EVOUCHER_POOL : "is voucher"
-  EVOUCHER_POOL ||--o{ EVOUCHER_CODE : "imported codes"
-  ORDER_LINE_ITEM ||--o{ EVOUCHER_CODE : "allocated 1 per unit"
-  EVOUCHER_POOL ||--|| INVENTORY_LEVEL : "available = stock"
+  EVOUCHER_PARTNER ||--o{ EVOUCHER_POOL : "จัดหา"
+  PRODUCT_VARIANT ||--o| EVOUCHER_POOL : "เป็น voucher"
+  EVOUCHER_POOL ||--o{ EVOUCHER_CODE : "โค้ดที่ import"
+  ORDER_LINE_ITEM ||--o{ EVOUCHER_CODE : "จัดสรร 1 โค้ดต่อหน่วย"
+  EVOUCHER_POOL ||--|| INVENTORY_LEVEL : "available = สต็อก"
 
-  PROMOTION_CAMPAIGN ||--o| FLASH_SALE_CONFIG : "flash options"
-  FLASH_SALE_CONFIG ||--o{ FLASH_SALE_USAGE : "per customer"
-  CUSTOMER ||--o{ FLASH_SALE_USAGE : counts
+  PROMOTION_CAMPAIGN ||--o| FLASH_SALE_CONFIG : "ตัวเลือก flash"
+  FLASH_SALE_CONFIG ||--o{ FLASH_SALE_USAGE : "ต่อลูกค้า"
+  CUSTOMER ||--o{ FLASH_SALE_USAGE : "นับ"
 
-  PROMOTION_CAMPAIGN ||--o| GROUP_BUY_CAMPAIGN : "time window"
-  GROUP_BUY_CAMPAIGN ||--o{ GROUP_BUY_GROUP : "pool or team"
-  GROUP_BUY_GROUP ||--|| PROMOTION : "code GB-token"
-  GROUP_BUY_GROUP ||--o{ GROUP_BUY_MEMBERSHIP : members
-  CUSTOMER ||--o{ GROUP_BUY_MEMBERSHIP : joins
+  PROMOTION_CAMPAIGN ||--o| GROUP_BUY_CAMPAIGN : "ช่วงเวลา"
+  GROUP_BUY_CAMPAIGN ||--o{ GROUP_BUY_GROUP : "pool หรือ team"
+  GROUP_BUY_GROUP ||--|| PROMOTION : "โค้ด GB-token"
+  GROUP_BUY_GROUP ||--o{ GROUP_BUY_MEMBERSHIP : "สมาชิก"
+  CUSTOMER ||--o{ GROUP_BUY_MEMBERSHIP : "เข้าร่วม"
   GROUP_BUY_MEMBERSHIP ||--|| ORDER : "draft order"
 
-  AFFILIATE ||--o{ AFFILIATE_ATTRIBUTION : earns
+  AFFILIATE ||--o{ AFFILIATE_ATTRIBUTION : "ได้รับ"
   ORDER ||--o| AFFILIATE_ATTRIBUTION : "last click"
-  AFFILIATE_PROGRAM ||--o{ AFFILIATE_ATTRIBUTION : "in window"
-  AFFILIATE_ATTRIBUTION ||--o{ COMMISSION_ENTRY : "ledger rows"
-  AFFILIATE ||--o{ PAYOUT : receives
-  PAYOUT ||--o{ COMMISSION_ENTRY : settles
+  AFFILIATE_PROGRAM ||--o{ AFFILIATE_ATTRIBUTION : "ในช่วงเวลา"
+  AFFILIATE_ATTRIBUTION ||--o{ COMMISSION_ENTRY : "แถว ledger"
+  AFFILIATE ||--o{ PAYOUT : "รับ"
+  PAYOUT ||--o{ COMMISSION_ENTRY : "ชำระ"
 ```
