@@ -127,15 +127,25 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee /etc/apt/sources.list.d/stripe.list
           sudo apt-get update -qq && sudo apt-get install -y -qq stripe
       - name: Forward Stripe webhooks to backend (cards + PromptPay)
+        # PAY-2 (spec 06 AC-10): `stripe listen` รับ --forward-to ได้ปลายทางเดียวต่อ process และ --print-secret
+        # พิมพ์ secret แล้วจบ (ไม่ listen) → ดึง secret ครั้งเดียว แล้วเปิด listener แยกต่อ endpoint (secret เดียวกัน)
         env:
           STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
         run: |
-          stripe listen \
-            --forward-to localhost:9000/hooks/payment/stripe_stripe \
-            --forward-to localhost:9000/hooks/payment/stripe-promptpay_stripe \
-            --print-secret > /tmp/whsec.txt 2>/dev/null &
-          sleep 5
-          echo "STRIPE_WEBHOOK_SECRET=$(head -n1 /tmp/whsec.txt)" >> "$GITHUB_ENV"
+          if [ -z "$STRIPE_API_KEY" ]; then
+            echo "::warning::ไม่มี secret STRIPE_TEST_API_KEY — e2e ของ Stripe (spec 06) จะถูก skip"
+            exit 0
+          fi
+          whsec=$(stripe listen --print-secret)
+          echo "::add-mask::$whsec"
+          echo "STRIPE_WEBHOOK_SECRET=$whsec" >> "$GITHUB_ENV"
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            nohup stripe listen --skip-update --forward-to "localhost:9000/hooks/payment/$path" \
+              > "/tmp/stripe-listen-$path.log" 2>&1 &
+          done
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            timeout 60 sh -c "until grep -q Ready /tmp/stripe-listen-$path.log; do sleep 1; done"
+          done
       - run: pnpm --filter backend db:migrate && pnpm --filter backend seed
       - name: Start backend and capture publishable key
         run: |
@@ -148,8 +158,18 @@ jobs:
       - run: pnpm --filter storefront build && (pnpm --filter storefront start &) && npx wait-on http://localhost:8000
       # project "unit" (กฎ evidence) ไม่ต้องใช้ server — แยกไปเปิดใน CI ตาม backlog (มี *-tests.txt เดิมผิด convention)
       - run: pnpm --filter storefront test:e2e --project=chromium
+      # PAY-2 (AC-10): webhook ต้องถึงทั้งสอง path และ backend ตอบ 2xx
+      - name: Stripe webhooks reached both endpoints
+        if: env.STRIPE_API_KEY != ''
+        run: |
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            grep -E "<--  \[2[0-9]{2}\] POST http://localhost:9000/hooks/payment/$path " "/tmp/stripe-listen-$path.log" \
+              || { echo "::error::ไม่มี webhook ถึง /hooks/payment/$path"; exit 1; }
+          done
       - if: failure()
-        run: tail -n 200 /tmp/backend.log
+        run: |
+          tail -n 200 /tmp/backend.log
+          tail -n 50 /tmp/stripe-listen-*.log 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

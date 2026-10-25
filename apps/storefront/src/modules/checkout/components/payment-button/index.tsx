@@ -2,12 +2,14 @@
 
 import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
+import { isPromptPay } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import { useParams } from "next/navigation"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
+import PromptPayPaymentButton from "../promptpay-payment"
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -31,6 +33,14 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     case isStripeLike(paymentSession?.provider_id):
       return (
         <StripePaymentButton
+          notReady={notReady}
+          cart={cart}
+          data-testid={dataTestId}
+        />
+      )
+    case isPromptPay(paymentSession?.provider_id):
+      return (
+        <PromptPayPaymentButton
           notReady={notReady}
           cart={cart}
           data-testid={dataTestId}
