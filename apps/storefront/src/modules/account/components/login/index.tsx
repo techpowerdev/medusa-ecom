@@ -1,6 +1,7 @@
 import { login } from "@lib/data/customer"
 import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
+import PendingAddToCartFields from "@modules/account/components/pending-add-to-cart-fields"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
 import { useActionState } from "react"
@@ -31,6 +32,7 @@ const Login = ({ setCurrentView }: Props) => {
         </div>
       )}
       <form className="w-full" action={formAction}>
+        <PendingAddToCartFields />
         <div className="flex flex-col w-full gap-y-2">
           <Input
             label="Email"

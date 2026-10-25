@@ -4,6 +4,7 @@ import { useActionState } from "react"
 import Input from "@modules/common/components/input"
 import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
+import PendingAddToCartFields from "@modules/account/components/pending-add-to-cart-fields"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { signup } from "@lib/data/customer"
@@ -37,6 +38,7 @@ const Register = ({ setCurrentView }: Props) => {
         </div>
       )}
       <form className="w-full flex flex-col" action={formAction}>
+        <PendingAddToCartFields />
         <div className="flex flex-col w-full gap-y-2">
           <Input
             label="First name"

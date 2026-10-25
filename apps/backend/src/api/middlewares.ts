@@ -36,5 +36,14 @@ export default defineMiddlewares({
       middlewares: [authenticate('affiliate', ['session', 'bearer'])],
     },
     ...adminEvoucherMiddlewares,
+    // CORE-6 (spec 01 "ไม่มี guest"): cart + checkout ต้องมี customer ที่ล็อกอิน (AC-6)
+    {
+      matcher: '/store/carts*',
+      middlewares: [authenticate('customer', ['session', 'bearer'])],
+    },
+    {
+      matcher: '/store/payment-collections*',
+      middlewares: [authenticate('customer', ['session', 'bearer'])],
+    },
   ],
 })
