@@ -1,0 +1,44 @@
+# hotfix fix/ci-jest-integration-oom — ผลทดสอบในเครื่อง (Node v22.23.3, jest 29.7.0, 2026-10-26)
+# ตั้งค่าใหม่: maxWorkers=1 + workerIdleMemoryLimit=1024MB (ไม่ใช้ --runInBand) รันด้วย --logHeapUsage
+# heap ที่แสดง = heap ของ worker หลังจบ suite; เมื่อเกิน 1024MB worker ถูก recycle ก่อน suite ถัดไป
+# (heap กลับมาเริ่มที่ ~370-580MB) — ก่อนแก้ CI run 40202689427 heap สะสมถึง ~3.7GB แล้วตาย (exit 134)
+
+## test:unit (รวม src/__tests__/jest-config.unit.spec.ts)
+Test Suites: 28 passed, 28 total
+Tests:       218 passed, 218 total
+
+## test:integration:modules --logHeapUsage (exit 0)
+PASS src/modules/flash_sale/__tests__/reservation.spec.ts (144 MB heap size)
+PASS src/modules/group_buy/__tests__/service.spec.ts (211 MB heap size)
+PASS src/modules/flash_sale/__tests__/release.spec.ts (250 MB heap size)
+PASS src/modules/evoucher/__tests__/evoucher-module.spec.ts (348 MB heap size)
+PASS src/modules/flash_sale/__tests__/service.spec.ts (436 MB heap size)
+Test Suites: 5 passed, 5 total
+Tests:       60 passed, 60 total
+Time:        10.453 s
+
+## test:integration:http --logHeapUsage (exit 0)
+PASS integration-tests/http/group-buy-groups.spec.ts (26.486 s, 381 MB heap size)
+PASS integration-tests/http/group-buy-campaigns.spec.ts (14.163 s, 799 MB heap size)
+PASS integration-tests/http/evoucher-void-expiry.spec.ts (16.918 s, 1223 MB heap size)
+PASS integration-tests/http/flash-sale-limits.spec.ts (34.021 s, 1823 MB heap size)
+PASS integration-tests/http/promotion-exclusivity.spec.ts (23.501 s, 558 MB heap size)
+PASS integration-tests/http/affiliate-admin.spec.ts (9.566 s, 623 MB heap size)
+PASS integration-tests/http/flash-sale-active.spec.ts (11.608 s, 890 MB heap size)
+PASS integration-tests/http/evoucher-admin.spec.ts (15.215 s, 1313 MB heap size)
+PASS integration-tests/http/flash-sale-release.spec.ts (19.049 s, 539 MB heap size)
+PASS integration-tests/http/stripe-webhook.spec.ts (53.821 s, 633 MB heap size)
+PASS integration-tests/http/customer-only-store.spec.ts (11.515 s, 909 MB heap size)
+PASS integration-tests/http/evoucher-admin-ui.spec.ts (8.502 s, 1294 MB heap size)
+PASS integration-tests/http/seed.spec.ts (8.757 s, 467 MB heap size)
+PASS integration-tests/http/order-notifications.spec.ts (6.65 s, 584 MB heap size)
+PASS integration-tests/http/affiliate-auth.spec.ts (8.857 s, 954 MB heap size)
+PASS integration-tests/http/store-locales.spec.ts (8.631 s, 1338 MB heap size)
+PASS integration-tests/http/group-buy-links.spec.ts (7.543 s, 382 MB heap size)
+PASS integration-tests/http/search-thb.spec.ts (7.747 s, 572 MB heap size)
+PASS integration-tests/http/evoucher-links.spec.ts (9.436 s, 939 MB heap size)
+PASS integration-tests/http/flash-sale-module.spec.ts (6.091 s, 1302 MB heap size)
+PASS integration-tests/http/health.spec.ts (7.633 s, 371 MB heap size)
+Test Suites: 21 passed, 21 total
+Tests:       169 passed, 169 total
+Time:        324.414 s
