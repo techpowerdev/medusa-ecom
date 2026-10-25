@@ -19,6 +19,8 @@ export type ReserveForCartInput = {
   campaigns: { campaign_id: string; units: number }[]
 }
 
+export type ReleasedReservation = { id: string; campaign_id: string; customer_id: string; units: number }
+
 type Row = Record<string, unknown>
 
 const limitExceeded = () =>
@@ -133,17 +135,83 @@ class FlashSaleModuleService extends MedusaService({
     )
 
     for (const row of rows.filter((r) => r.released_at === null)) {
-      await manager.execute(
-        `UPDATE flash_sale_usage SET units = units - ?, updated_at = now()
-         WHERE campaign_id = ? AND customer_id = ? AND deleted_at IS NULL`,
-        [row.units, row.campaign_id, row.customer_id]
-      )
-      await manager.execute(
-        `UPDATE flash_sale_config SET units_sold = units_sold - ?, updated_at = now()
-         WHERE campaign_id = ? AND deleted_at IS NULL`,
-        [row.units, row.campaign_id]
-      )
+      await this.adjustCounters_(manager, row, -1)
     }
+  }
+
+  /**
+   * FS-2: คืนสิทธิ์ของ order ที่ยกเลิก/refund เต็มจำนวน (spec 03 "FS-2 คืนค่า", กฎข้อ 10) — transaction เดียว
+   * idempotent ทั้ง event ซ้ำและพร้อมกัน: UPDATE ... WHERE released_at IS NULL RETURNING คืนแต่ละแถวครั้งเดียว
+   * (row lock ทำให้ transaction ที่สองเห็น released_at แล้วไม่ได้แถวกลับ) คืนแถวที่ release ในครั้งนี้
+   */
+  @InjectManager()
+  async releaseReservationsOfCart(
+    cartId: string,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<ReleasedReservation[]> {
+    return await this.releaseReservationsOfCart_(cartId, sharedContext)
+  }
+
+  @InjectTransactionManager()
+  protected async releaseReservationsOfCart_(
+    cartId: string,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<ReleasedReservation[]> {
+    const manager = sharedContext.transactionManager!
+    const rows = await manager.execute<ReleasedReservation[]>(
+      `UPDATE flash_sale_reservation SET released_at = now(), updated_at = now()
+       WHERE cart_id = ? AND released_at IS NULL AND deleted_at IS NULL
+       RETURNING id, campaign_id, customer_id, units`,
+      [cartId]
+    )
+    for (const row of rows) {
+      await this.adjustCounters_(manager, row, -1)
+    }
+    return rows
+  }
+
+  /** compensation ของ FS-2: ยกเลิก release ของแถวที่ระบุแล้วจอง usage + units_sold กลับ (idempotent) */
+  @InjectManager()
+  async restoreReleasedReservations(
+    ids: string[],
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<void> {
+    if (!ids.length) {
+      return
+    }
+    await this.restoreReleasedReservations_(ids, sharedContext)
+  }
+
+  @InjectTransactionManager()
+  protected async restoreReleasedReservations_(
+    ids: string[],
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<void> {
+    const manager = sharedContext.transactionManager!
+    const rows = await manager.execute<ReleasedReservation[]>(
+      `UPDATE flash_sale_reservation SET released_at = NULL, updated_at = now()
+       WHERE id IN (${ids.map(() => "?").join(", ")}) AND released_at IS NOT NULL AND deleted_at IS NULL
+       RETURNING id, campaign_id, customer_id, units`,
+      ids
+    )
+    for (const row of rows) {
+      await this.adjustCounters_(manager, row, 1)
+    }
+  }
+
+  /** ปรับ usage ของลูกค้า + units_sold ของ campaign ตาม units ของ reservation (sign = +1 จอง, -1 คืน) */
+  private async adjustCounters_(manager: SqlEntityManager, row: Row, sign: 1 | -1): Promise<void> {
+    const delta = sign * Number(row.units)
+    await manager.execute(
+      `UPDATE flash_sale_usage SET units = units + ?, updated_at = now()
+       WHERE campaign_id = ? AND customer_id = ? AND deleted_at IS NULL`,
+      [delta, row.campaign_id, row.customer_id]
+    )
+    await manager.execute(
+      `UPDATE flash_sale_config SET units_sold = units_sold + ?, updated_at = now()
+       WHERE campaign_id = ? AND deleted_at IS NULL`,
+      [delta, row.campaign_id]
+    )
   }
 }
 
