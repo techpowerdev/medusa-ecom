@@ -1,4 +1,5 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { DEFAULT_REGION_STORE_POLICIES } from "../../src/lib/region-store-policies"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
@@ -7,6 +8,7 @@ jest.setTimeout(120 * 1000)
 
 const ADMIN_EMAIL = "seed-admin@example.com"
 const ADMIN_PASSWORD = "seed-test-password"
+const DIGITAL_PROVIDER_ID = "digital_digital"
 
 // CORE-2: seed ร้าน Thailand (THB, VAT 7% รวมในราคา, Standard + Digital delivery, สินค้าตัวอย่าง, admin user)
 medusaIntegrationTestRunner({
@@ -95,6 +97,47 @@ medusaIntegrationTestRunner({
       expect(thb(byName["Digital delivery"])).toEqual(0)
       expect(byName["Digital delivery"].shipping_profile.type).toEqual("digital")
       expect(byName.Standard.shipping_profile.type).toEqual("default")
+      // EV-3 (ADR-006): Digital delivery ใช้ fulfillment provider `digital`
+      expect(byName["Digital delivery"].provider_id).toEqual(DIGITAL_PROVIDER_ID)
+      expect(byName.Standard.provider_id).toEqual("manual_manual")
+    })
+
+    it("enables fulfillment provider digital at the seeded stock location (EV-3)", async () => {
+      const { data: locations } = await api.get("/admin/stock-locations?fields=id", adminHeaders)
+      const { data } = await api.get(
+        `/admin/fulfillment-providers?stock_location_id=${locations.stock_locations[0].id}`,
+        adminHeaders
+      )
+      expect(data.fulfillment_providers.map((p) => p.id).sort()).toEqual([
+        DIGITAL_PROVIDER_ID,
+        "manual_manual",
+      ])
+    })
+
+    it("upgrades an already-seeded store: Digital delivery moves from manual to digital (EV-3)", async () => {
+      const container = getContainer()
+      const fulfillment = container.resolve(Modules.FULFILLMENT)
+      const [option] = await fulfillment.listShippingOptions({ name: "Digital delivery" })
+      const { data: locations } = await api.get("/admin/stock-locations?fields=id", adminHeaders)
+      const locationId = locations.stock_locations[0].id
+      // จำลอง DB ที่ seed ก่อน EV-3: Digital delivery ผูก manual_manual และ location ยังไม่เปิด provider digital
+      await fulfillment.updateShippingOptions(option.id, { provider_id: "manual_manual" })
+      await container.resolve(ContainerRegistrationKeys.LINK).dismiss({
+        [Modules.STOCK_LOCATION]: { stock_location_id: locationId },
+        [Modules.FULFILLMENT]: { fulfillment_provider_id: DIGITAL_PROVIDER_ID },
+      })
+
+      await seedThailand({ container, args: [] })
+      await seedThailand({ container, args: [] })
+
+      const options = await fulfillment.listShippingOptions({ name: "Digital delivery" })
+      expect(options).toHaveLength(1)
+      expect(options[0]).toMatchObject({ id: option.id, provider_id: DIGITAL_PROVIDER_ID })
+      const { data } = await api.get(
+        `/admin/fulfillment-providers?stock_location_id=${locationId}`,
+        adminHeaders
+      )
+      expect(data.fulfillment_providers.map((p) => p.id)).toContain(DIGITAL_PROVIDER_ID)
     })
 
     it("exposes sample products in THB (tax-inclusive) to the storefront publishable key", async () => {
