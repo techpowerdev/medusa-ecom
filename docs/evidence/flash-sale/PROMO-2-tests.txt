@@ -81,3 +81,13 @@ PASS integration-tests/http/evoucher-void-expiry.spec.ts (13.037 s) — 17 passe
 PASS integration-tests/http/flash-sale-limits.spec.ts (34.571 s) — 11 passed
 PASS integration-tests/http/promotion-exclusivity.spec.ts (19.24 s) — 20 passed
 Tests:       48 passed, 48 total
+
+# ---- รอบ 3: หลัง merge CORE-12 (#51) เข้า branch (5132cb7) ----
+# ownership middleware ของ CORE-12 ตอบ 404 "Not found" ให้ /store/carts/:id ก่อนถึง handler ของ Medusa →
+# เปลี่ยนกรณี 404 ของ AC-12 (c) เป็น GET /store/products/prod_missing_promo2 (route สาธารณะ, Medusa throw NOT_FOUND เอง)
+# AC-12 (c) 3 test ผ่านทั้งตอนปิด override ชั่วคราว (handler เดิมของ Medusa) และตอนเปิด → body ตรงตัวเหมือนเดิม
+PASS integration-tests/http/promotion-exclusivity.spec.ts — 20 passed
+      ✓ 404 not_found from Medusa for an unknown product
+PASS integration-tests/http/store-ownership.spec.ts — 8 passed
+Tests:       28 passed, 28 total
+# test:unit 30 suites / 251 tests ผ่าน; lint, typecheck ผ่าน

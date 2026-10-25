@@ -188,10 +188,11 @@ medusaIntegrationTestRunner({
           })
         )
 
-      it("404 not_found for an unknown cart", async () => {
-        expect(await failure(api.get("/store/carts/cart_missing_promo2", storeHeaders))).toEqual({
+      // route สาธารณะ (ไม่ผ่าน ownership middleware ของ CORE-12) ที่ Medusa throw NOT_FOUND เอง
+      it("404 not_found from Medusa for an unknown product", async () => {
+        expect(await failure(api.get("/store/products/prod_missing_promo2", storeHeaders))).toEqual({
           status: 404,
-          data: { type: "not_found", message: "Cart with id 'cart_missing_promo2' not found" },
+          data: { type: "not_found", message: "Product with id: prod_missing_promo2 was not found" },
         })
       })
 
