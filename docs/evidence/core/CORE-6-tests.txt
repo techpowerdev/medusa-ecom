@@ -1,0 +1,59 @@
+# CORE-6 — ผล test (รันในเครื่อง 2026-10-25, Node 22.23.3, Postgres 16 + Redis 7 จาก docker compose)
+
+## backend: pnpm --filter backend test:unit (verbose)
+PASS src/lib/__tests__/customer-only.unit.spec.ts
+  assertCartCustomer
+    ✓ rejects a cart without a customer (1 ms)
+    ✓ rejects a guest customer (created from email only, has_account=false)
+    ✓ accepts a registered customer
+Test Suites: 16 passed, 16 total
+Tests:       121 passed, 121 total
+
+## backend: pnpm --filter backend test:integration:http -- customer-only-store promotion-exclusivity flash-sale-limits stripe-webhook
+PASS integration-tests/http/stripe-webhook.spec.ts (57.657 s)
+PASS integration-tests/http/customer-only-store.spec.ts (11.933 s)
+PASS integration-tests/http/promotion-exclusivity.spec.ts (18.964 s)
+PASS integration-tests/http/flash-sale-limits.spec.ts (36.194 s)
+Test Suites: 4 passed, 4 total
+Tests:       44 passed, 44 total
+
+### customer-only-store.spec.ts (รันเดี่ยว)
+      ✓ GET /store/products and /store/regions work without a customer session
+      ✓ POST /store/carts without a session → 401
+      ✓ POST /store/carts with an email but no session → 401 (no guest checkout)
+      ✓ POST /store/carts/:id/line-items without a session → 401
+      ✓ GET/POST /store/carts/:id and POST /store/payment-collections without a session → 401
+      ✓ an admin token is not a customer session → 401
+      ✓ with a customer session the cart is created for that customer and items can be added
+      ✓ rejects a cart without customer_id
+      ✓ rejects a cart for an email-only guest customer
+      ✓ accepts a registered customer
+      ✓ order is authorized after checkout and captured after admin capture
+Tests:       11 passed, 11 total
+(ก่อนเพิ่ม middleware + hook: 7 failed, 4 passed — red ตามคาด)
+
+## storefront: pnpm --filter storefront test:unit (Vitest)
+ Test Files  3 passed (3)
+      Tests  27 passed (27)
+
+## storefront: pnpm --filter storefront test:e2e --project=chromium
+## ลำดับเดียวกับ CI: backend build + medusa start จาก .medusa/server (production + Redis modules), storefront next build + start
+  ✓  1 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (4.7s)
+  ✓  2 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (7.5s)
+  ✓  3 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (629ms)
+  ✓  4 [chromium] › e2e/smoke.spec.ts:7:5 › storefront เสิร์ฟ robots.txt ได้ (139ms)
+  ✓  5 [chromium] › e2e/smoke.spec.ts:19:5 › backend /health ตอบ 200 และหน้า login ของ admin แสดงผล (658ms)
+  5 passed (14.4s)
+
+## pnpm lint && pnpm typecheck
+lint: 0 errors (warning 38 รายการเป็นของเดิมใน starter ไม่อยู่ในบรรทัดที่ task นี้เพิ่ม)
+typecheck: apps/backend Done, apps/storefront Done
+
+## build
+pnpm --filter backend build: Backend build completed successfully / Frontend build completed successfully
+pnpm --filter storefront build: exit 0
+
+## หลัง rebase บน origin/develop (2b9bb68 — มี EV-3 เปลี่ยน seed)
+backend test:unit: Tests 129 passed
+test:integration:http -- customer-only-store seed: 2 suites, 20 passed
+e2e (DB ใหม่ + migrate + seed + build ตามลำดับ CI): 5 passed
