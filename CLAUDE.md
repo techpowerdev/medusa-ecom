@@ -34,8 +34,8 @@ storefront จาก **Medusa Next.js Starter** เราขยายควา�
    (รวมถึง cart) ต้องมี customer ที่ authenticate แล้ว store route ใหม่ต้องใช้ middleware
    `authenticate("customer", ...)` ของ Medusa route ของ affiliate portal ใช้ actor type
    `affiliate` แยกต่างหาก (`authenticate("affiliate", ...)`); affiliate ไม่ใช่ customer reviewer จะ block ทุก write route ที่ไม่มีการ authenticate
-6. **ไม่มี evidence เท่ากับไม่เคยเกิดขึ้น** ทุก PR ต้องลิงก์ไปยัง spec และแสดงผลลัพธ์ของ test QA เขียน
-   `docs/evidence/<feature>/<task-id>/REPORT.md` (ตาราง AC + screenshot สำคัญ ≤ 5 รูป, PNG ≤ 300KB);
+6. **ไม่มี evidence เท่ากับไม่เคยเกิดขึ้น** ทุก PR ต้องลิงก์ไปยัง spec และแสดงผลลัพธ์ของ test QA จัดทำเนื้อหา
+   `docs/evidence/<feature>/<task-id>/REPORT.md` (session หลักเป็นผู้ commit ลง branch ของ PR — ดูบทเรียนด้านล่าง) (ตาราง AC + screenshot สำคัญ ≤ 5 รูป, PNG ≤ 300KB);
    Playwright report และ trace ฉบับเต็มเก็บเป็น CI artifact (14 วัน) ไม่เก็บใน git
 
 ## Medusa agent skills (ติดตั้งครั้งเดียวต่อเครื่อง)
