@@ -76,6 +76,9 @@
   Stripe test API แล้ว**ทันที**เรียกขั้นหมดอายุแบบเดียวกับ storefront (`POST /store/payment-collections/:id/payment-sessions` ด้วย provider
   PromptPay เดิม) Then ภายใน 60 วินาที cart ถูก complete เป็น order ที่ `payment_status=captured` และไม่มี payment ที่ captured ค้างโดยไม่มี
   order (ตรวจ PI ใน Stripe: `status=succeeded` ↔ มี order อ้าง PI นั้น) (integration กับ Stripe test mode หรือ e2e)
+  — AC นี้ผ่านได้เฉพาะกรณี (a) ของกฎข้อ 7; ถ้า test พบว่าเป็นกรณี (b) (Medusa ลบ session/ทิ้ง payment แม้ PI ชำระแล้ว) **ผลที่ยอมรับได้ของ
+  PAY-5 คือ** test AC-11 ที่ fail เพื่อยืนยันปัญหา (ทำเครื่องหมาย `skip`/`todo` พร้อมอ้าง ADR) + ADR ใหม่สถานะ `proposed` แล้วหยุด —
+  ไม่ต้องทำ AC-11/AC-12 ให้ผ่านใน PAY-5 และห้ามเขียน reconciliation เอง
 - AC-12 (PAY-5) Given ขั้นสร้าง session ใหม่ตอนหมดอายุล้มเพราะ PI ชำระแล้ว When storefront ได้ error Then แสดง
   `data-testid="promptpay-awaiting-order"` และ poll ต่อจนไปหน้า order confirmed — ไม่แสดง `promptpay-expired` (e2e, mock response ของ
   route ได้)

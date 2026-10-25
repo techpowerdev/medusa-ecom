@@ -79,7 +79,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 
 ## API
 - Store: `GET /store/flash-sales/active?region_id=&variant_ids[]=` → campaign
-  (id, name, starts_at, ends_at, banner_text, remaining_usage?) และ `flash_price`
+  (id, name, starts_at, ends_at, banner_text, `sold_out`, `remaining_units` — สองฟิลด์หลังมาจาก FS-7 แทน `remaining_usage` เดิม) และ `flash_price`
   ต่อ variant ที่คำนวณผ่าน compute API ของ Promotion module บน cart line สังเคราะห์ (FS-4; ข้อจำกัดของ preview ดูกฎข้อ 14)
   - FS-7 แก้ response นี้: เอา `remaining_usage` ออก แล้วเพิ่มต่อ campaign
     `sold_out: boolean` (= `total_cap` ไม่ใช่ null และ `units_sold >= total_cap`; ไม่ขึ้นกับ `show_remaining`) และ

@@ -44,7 +44,7 @@
 **Release v0.2.0** — ชำระเงินจริงใน test mode; checklist go-live สำหรับ live keys
 
 ## M3 E-voucher — **v0.3.0**
-EV-1 ☑ #15 · EV-2 ☑ #25 · EV-3 ☑ #31 · EV-4 ☐ (← EV-2, EV-3, CORE-3) · EV-5 ☑ #43 (ไม่รวม resend) · EV-5b ☐ (← EV-4, EV-6: resend) · EV-6 ☑ #39 · EV-7 ☐ (← EV-4) · EV-8 ◐ · EV-9 ☐ (← EV-2, EV-6: `low_stock_threshold`, link code↔order, ฟอร์ม admin)
+EV-1 ☑ #15 · EV-2 ☑ #25 · EV-3 ☑ #31 · EV-4 ☐ (← EV-2, EV-3, CORE-3) · EV-5 ☑ #43 (ไม่รวม resend) · EV-5b ☐ (← EV-4, EV-6: resend) · EV-6 ☑ #39 · EV-7 ☐ (← EV-4) · EV-8 ◐ #54 · EV-9 ☐ (← EV-2, EV-6: `low_stock_threshold`, link code↔order, ฟอร์ม admin)
 
 ## M4 Flash sale — **v0.4.0**
 PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ◐ #38 · FS-10 ☐ (← FS-5: กันกดซ้ำด้วย useRef) · FS-7 ◐ #53 · FS-6 ☐ (← FS-4, FS-7, PROMO-1, CORE-4b) · FS-8 ☐ (← FS-2: retry การคืนโควตา) · FS-9 ☐ (ทางเลือก รอ owner สั่ง, ← FS-5) · PROMO-2 ◐ #50
