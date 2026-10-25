@@ -27,6 +27,19 @@ Production e-commerce store built **on top of Medusa v2** (backend + admin) with
    `docs/evidence/<feature>/<task-id>/REPORT.md` (AC table + key screenshots ≤ 5, PNG ≤ 300KB);
    full Playwright report and traces live as CI artifacts (14 days), not in git.
 
+## Medusa agent skills (install once per machine)
+Official Medusa skills are installed as Claude Code plugins from the `medusa` marketplace:
+```bash
+claude plugin marketplace add medusajs/medusa-agent-skills
+claude plugin install medusa-dev@medusa            # building-with-medusa, admin customizations, storefronts, db-generate, db-migrate, new-user + MedusaDocs MCP
+claude plugin install ecommerce-storefront@medusa  # storefront-best-practices (UI/UX, SEO, mobile)
+```
+Builder/planner must load `building-with-medusa` before any backend work,
+`building-admin-dashboard-customizations` for `src/admin/`, and `building-storefronts` +
+`storefront-best-practices` for `apps/storefront`. Use the MedusaDocs MCP to verify APIs instead of
+guessing. `learn-medusa` (tutorial) and `medusa-cloud` (Medusa Cloud CLI) are intentionally not
+installed; we self-host per `docs/spec/07-scaling-ops.md`.
+
 ## Stack
 - Node.js 22+, TypeScript strict, pnpm workspaces (`apps/backend`, `apps/storefront`)
 - Medusa v2 (pin exact `@medusajs/*` version in root `package.json`; bump only via ADR)
