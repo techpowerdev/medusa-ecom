@@ -24,5 +24,8 @@ module.exports = defineConfig({
       resolve: '@medusajs/medusa/notification',
       options: { providers: buildNotificationProviders(process.env) },
     },
+    {
+      resolve: './src/modules/flash_sale',
+    },
   ],
 })
