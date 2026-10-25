@@ -56,7 +56,7 @@ const manualCodes = async (container: MedusaContainer, codes: string[]) =>
 
 const notCombinable = () =>
   new MedusaError(
-    MedusaError.Types.NOT_ALLOWED,
+    MedusaError.Types.CONFLICT,
     "This promotion can't be combined with the promotions already on the cart",
     PROMOTION_NOT_COMBINABLE
   )

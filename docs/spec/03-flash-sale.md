@@ -153,6 +153,14 @@ Link: `flash_sale_config ↔ promotion_campaign`
     ให้แปลงเฉพาะ error ที่มี code ของเรา (เช่น `MedusaError(CONFLICT, message, code)`; builder ตรวจว่า `code` รอดผ่าน workflow
     engine/hook จริงแล้วบันทึกวิธีที่ใช้ลงกฎนี้) error อื่นส่งต่อให้ `errorHandler` เดิมของ Medusa — ห้ามห่อ route ของ Medusa ใหม่
     ถ้าต้องทำมากกว่านี้ให้หยุดและเขียน ADR; route ของเราเอง (เช่น GB join ใน GB-3) ใช้กลไกเดียวกันนี้ ไม่แปลงเอง
+    **วิธีที่ใช้จริง (PROMO-2):** `apps/backend/src/api/error-handler.ts` (`businessErrorHandler`) มี allow-list
+    `BUSINESS_CONFLICT_CODES` — error ที่ `code` อยู่ใน list → 409 `{ type: "conflict", code, message }` (ตัดสินจาก `code`
+    ไม่ดู `type`) ที่เหลือส่งให้ `errorHandler()` ของ Medusa ตามเดิม; วิธี throw: `new MedusaError(MedusaError.Types.CONFLICT,
+    message, "<CODE>")` แล้ว **เพิ่ม code ลง allow-list** (GB-3 เพิ่ม `GB_*` ที่เป็น 409; code ที่ spec กำหนดเป็น 400 เช่น
+    `GB_DISCOUNT_NOT_APPLIED` ไม่ใส่ — handler ของ Medusa คง `code` ของ `NOT_ALLOWED` อยู่แล้ว) `code` รอดผ่าน workflow engine
+    เพราะ orchestrator ส่ง error ผ่าน `serializeError` ซึ่งคง own property (`type`, `code`, `message`) เป็น object ธรรมดา
+    (ไม่ใช่ instance ของ `MedusaError`) handler จึงอ่าน property ตรงๆ ไม่ใช้ `instanceof` (ยืนยันด้วย test ผ่าน hook ของ
+    `updateCartPromotionsWorkflow`/`completeCartWorkflow` จริงใน AC-12)
 14. **ข้อจำกัดของ price preview (FS-4)**: `flash_price` คิดเฉพาะ promotion ที่ `application_method.target_type = "items"`
     (promotion แบบ `order`/`shipping_methods` ในแคมเปญไม่สะท้อนใน `flash_price` แม้มีผลใน cart); promotion `type = "fixed"`
     ใน region ราคารวมภาษี (THB VAT 7%) ค่า preview อาจต่างจากยอดใน cart จริง — ยอดใน cart (คำนวณโดย Medusa) เป็นค่าที่ถูกต้อง
@@ -198,18 +206,20 @@ Link: `flash_sale_config ↔ promotion_campaign`
   payment authorization ล้ม) → complete ล้มเหลว, usage และ `units_sold` กลับเป็นค่าก่อน complete, ไม่มี reservation ของ cart นั้น
 - AC-10 (retry) เรียก complete ซ้ำกับ cart ที่ complete สำเร็จแล้ว → ได้ order เดิม, usage และ `units_sold` ไม่เปลี่ยน
 - AC-11 (ลด cap, กฎข้อ 12)
-  (a) `POST /admin/flash-sales/:campaign_id/config` ตั้ง `total_cap=5` ขณะ `units_sold=10` → 200, `units_sold` ยังเป็น 10
+  (a) `POST /admin/flash-sales/:campaign_id/config` ตั้ง `total_cap=5` ขณะ `units_sold=10` → 200, `units_sold` ยังเป็น 10 ✓ FS-5 (#38)
   (b) config ที่มี `units_sold=10`, `total_cap=5` (ตั้งตรงผ่าน module ใน test) → complete cart ที่มี flash 1 หน่วย
   ล้มเหลว `FLASH_SOLD_OUT`
 - AC-12 (PROMO-2, error code ถึง client) error handler ของ Medusa เขียนทับ `code`/`message` ของ `MedusaError.Types.CONFLICT` เป็น
   `invalid_state_error` + ข้อความกลาง ทำให้ client ไม่เห็น code ของเรา
   (a) `POST /store/carts/:id/promotions` ที่ถูก hook ปฏิเสธ (`GB-*` + `SAVE10`) → status 409 และ body
-  `{ type: "conflict", code: "PROMOTION_NOT_COMBINABLE", message: <string ไม่ว่าง> }`
+  `{ type: "conflict", code: "PROMOTION_NOT_COMBINABLE", message: <string ไม่ว่าง> }` ✓ PROMO-2
   (b) `POST /store/carts/:id/complete` ที่ล้มด้วย `PROMOTION_NOT_COMBINABLE`, `FLASH_LIMIT_EXCEEDED`, `FLASH_SOLD_OUT` → status 409
-  และ body `{ type: "conflict", code: <code นั้น>, message }` (ฟิลด์ `code` เท่านั้น ไม่ใช่ใน `message` หรือ `error` ของ `type: "cart"`)
-  (c) error อื่นของ Medusa ที่ไม่ใช่ของเรา (เช่น `CONFLICT` ที่ Medusa throw เอง) → status, `type`, `code`, `message` เหมือนก่อนแก้
+  และ body `{ type: "conflict", code: <code นั้น>, message }` (ฟิลด์ `code` เท่านั้น ไม่ใช่ใน `message` หรือ `error` ของ `type: "cart"`) ✓ PROMO-2
+  (c) error อื่นของ Medusa ที่ไม่ใช่ของเรา (เช่น `CONFLICT` ที่ Medusa throw เอง) → status, `type`, `code`, `message` เหมือนก่อนแก้ ✓ PROMO-2
   (d) (owner Q-C) route ของเราที่เคยตอบ 409 เอง (เช่น `POST /admin/evoucher/codes/:id/void` บน code ที่ไม่ใช่ `available`) → ยังได้ 409
   body `{ type: "conflict", code: "EVOUCHER_CODE_NOT_AVAILABLE", message }` (code ที่ PROMO-2 ตั้ง; ตรงกับ spec 02 AC-10) และไฟล์ route ไม่มี `res.status(409)` (ตรวจด้วย test + grep ใน CI/review)
+  ✓ PROMO-2 — `POST /admin/evoucher/codes/:id/void` (EV-5 #43) ย้ายมาแล้ว: route เดิมไม่มี code จึงตั้ง code ใหม่
+  `EVOUCHER_CODE_NOT_AVAILABLE` (spec 02 AC-10 ระบุแค่ `<code ของเรา>`); unit test สแกน `src/api/**/route.ts` ว่าไม่มี `status(409)`
 - AC-13 (FS-7, remaining อิงหน่วย, กฎข้อ 4) config `total_cap=10`, `show_remaining=true`
   (a) `units_sold=7` จาก order เดียว qty 3 + 4 order qty 1 (campaign budget usage ของ Medusa = 5) → `GET /store/flash-sales/active`
   คืน `remaining_units=3`, `sold_out=false` และ response ไม่มี key `remaining_usage`

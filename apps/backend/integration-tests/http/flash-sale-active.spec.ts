@@ -11,6 +11,7 @@ import type FlashSaleModuleService from "../../src/modules/flash_sale/service"
 jest.setTimeout(300 * 1000)
 
 // FS-4: spec 03 "API" + AC-4 (ส่วน API) — GET /store/flash-sales/active
+// FS-7: AC-13 (a)–(d) — sold_out / remaining_units อิงหน่วยใน FlashSaleConfig (กฎข้อ 4)
 // F = flash promotion (automatic + exclusivity rule, กฎข้อ 6g), N = automatic ที่ campaign ไม่มี FlashSaleConfig
 
 const DAY = 24 * 60 * 60 * 1000
@@ -23,7 +24,8 @@ type FlashSale = {
   banner_text: string | null
   show_countdown: boolean
   show_remaining: boolean
-  remaining_usage: number | null
+  sold_out: boolean
+  remaining_units: number | null
 }
 type VariantPreview = {
   variant_id: string
@@ -196,7 +198,8 @@ medusaIntegrationTestRunner({
         banner_text: "Flash sale!",
         show_countdown: true,
         show_remaining: true,
-        remaining_usage: 10,
+        sold_out: false,
+        remaining_units: null, // ยังไม่ตั้ง total_cap
       })
       expect(new Date(sale.ends_at!).getTime()).toBeGreaterThan(Date.now())
       expect(data.variants).toEqual([])
@@ -324,6 +327,57 @@ medusaIntegrationTestRunner({
       const data = await preview(flashVariantId, { headers: { "x-publishable-api-key": key.token } })
       expect(data.flash_sales.map((f) => f.id)).toEqual([activeCampaignId])
       expect(data.variants).toEqual([])
+    })
+
+    describe("AC-13: sold_out / remaining_units from FlashSaleConfig units (FS-7)", () => {
+      const setConfig = async (data: { total_cap: number | null; units_sold: number; show_remaining: boolean }) => {
+        const flashSale: FlashSaleModuleService = container.resolve(FLASH_SALE_MODULE)
+        const [config] = await flashSale.listFlashSaleConfigs({ campaign_id: activeCampaignId }, { select: ["id"] })
+        await flashSale.updateFlashSaleConfigs({ id: config.id, ...data })
+      }
+      const activeSale = async () => {
+        const { status, data } = await api.get("/store/flash-sales/active", storeHeaders)
+        expect(status).toBe(200)
+        return (data.flash_sales as FlashSale[]).find((f) => f.id === activeCampaignId)!
+      }
+
+      afterEach(async () => {
+        await setConfig({ total_cap: null, units_sold: 0, show_remaining: true })
+        const promotionModule = container.resolve(Modules.PROMOTION)
+        await promotionModule.updateCampaigns({ id: activeCampaignId, budget: { used: 0 } })
+      })
+
+      it("(a) counts units, not orders: units_sold=7 vs budget usage 5 → remaining_units=3, no remaining_usage", async () => {
+        // order qty 3 + 4 order qty 1 → units_sold 7 แต่ campaign budget ของ Medusa นับ 5 (ต่อ order)
+        const promotionModule = container.resolve(Modules.PROMOTION)
+        await promotionModule.updateCampaigns({ id: activeCampaignId, budget: { used: 5 } })
+        await setConfig({ total_cap: 10, units_sold: 7, show_remaining: true })
+
+        const sale = await activeSale()
+        expect(sale.remaining_units).toBe(3)
+        expect(sale.sold_out).toBe(false)
+        expect(sale).not.toHaveProperty("remaining_usage")
+      })
+
+      it("(b) units_sold reaches total_cap → remaining_units=0, sold_out=true", async () => {
+        await setConfig({ total_cap: 10, units_sold: 10, show_remaining: true })
+
+        expect(await activeSale()).toMatchObject({ remaining_units: 0, sold_out: true })
+      })
+
+      it("(c) total_cap lowered below units_sold → remaining_units clamps at 0, sold_out=true", async () => {
+        await setConfig({ total_cap: 5, units_sold: 10, show_remaining: true })
+
+        expect(await activeSale()).toMatchObject({ remaining_units: 0, sold_out: true })
+      })
+
+      it("(d) show_remaining=false hides remaining_units but keeps sold_out; no total_cap → never sold out", async () => {
+        await setConfig({ total_cap: 10, units_sold: 10, show_remaining: false })
+        expect(await activeSale()).toMatchObject({ remaining_units: null, sold_out: true })
+
+        await setConfig({ total_cap: null, units_sold: 10, show_remaining: true })
+        expect(await activeSale()).toMatchObject({ remaining_units: null, sold_out: false })
+      })
     })
 
     it("rejects variant_ids without region_id", async () => {

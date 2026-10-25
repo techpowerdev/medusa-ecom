@@ -12,6 +12,7 @@ import {
 } from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../src/modules/evoucher"
 import EvoucherModuleService from "../../src/modules/evoucher/service"
+import { EVOUCHER_CODE_NOT_AVAILABLE } from "../../src/modules/evoucher/errors"
 import evoucherDailyJob, { config as jobConfig } from "../../src/jobs/evoucher-daily"
 
 jest.setTimeout(120 * 1000)
@@ -193,7 +194,12 @@ medusaIntegrationTestRunner({
             .catch((e) => e.response)
 
           expect(res.status).toBe(409)
-          expect(res.data.message).toMatch(/available/)
+          // PROMO-2 (spec 03 กฎข้อ 13, spec 02 กฎข้อ 10): 409 ผ่าน errorHandler กลาง พร้อม code ของเรา
+          expect(res.data).toEqual({
+            type: "conflict",
+            code: EVOUCHER_CODE_NOT_AVAILABLE,
+            message: expect.stringMatching(/available/),
+          })
           const row = await service.retrieveEvoucherCode(code.id)
           expect(row).toMatchObject({ status, void_reason: null })
           expect(await stockedQuantity(inventoryItemId)).toBe(1)
