@@ -81,3 +81,18 @@ Tests:       3 failed, 17 passed, 20 total
 # ความล้มเหลวนี้มีอยู่แล้วบน develop (CI run 40179530742 ของ develop ล้มด้วย test เดียวกัน):
 # merge c1a1315 ทำ block `admin: { disable: ... }` ของ OPS-1 ใน medusa-config.ts หายไป — ไม่เกี่ยวกับ FS-1
 # (FS-1 เพิ่มเฉพาะ entry `./src/modules/flash_sale` ใน modules)
+
+## หลัง rebase บน origin/develop (94aac09 — มี hotfix #18 คืน block admin)
+### pnpm --filter backend test:unit
+Test Suites: 4 passed, 4 total
+Tests:       20 passed, 20 total   (medusa-config.unit.spec.ts ผ่านแล้ว)
+### pnpm --filter backend test:integration:modules
+Test Suites: 3 passed, 3 total
+Tests:       24 passed, 24 total
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/order-notifications.spec.ts
+PASS integration-tests/http/seed.spec.ts
+PASS integration-tests/http/health.spec.ts
+PASS integration-tests/http/flash-sale-module.spec.ts
+Test Suites: 4 passed, 4 total
+Tests:       13 passed, 13 total
