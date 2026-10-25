@@ -1,0 +1,52 @@
+EV-6 — Admin UI: route page (partner, pool, import, code masked/reveal) + variant widget + order widget
+Spec: docs/spec/02-evoucher.md, ADR-006
+Branch: feat/EV-6-admin-ui (rebase บน origin/develop 2b9bb68 แล้วรันซ้ำ)
+วันที่รัน: 2026-10-25, Node v22.23.3, Postgres 16 / Redis 7 (docker compose local), DB สุ่มของ medusa-test-utils
+
+== Red (ก่อนเขียนโค้ด) ==
+stats.unit.spec.ts → Cannot find module '../utils/stats' (FAIL)
+evoucher-admin-ui.spec.ts → 3 failed, 1 passed
+  ✕ returns code counts per status and a low-stock flag for each pool   (ไม่มี code_counts/low_stock)
+  ✕ filters pools by variant_id for the variant widget                  (400: variant_id ไม่ถูกรับ)
+  ✕ lists an order's codes masked with their pool for the order widget  (404: ไม่มี route)
+  ✓ requires an authenticated admin for order codes
+
+== pnpm lint ==
+apps/backend: medusa lint → No lint issues found. (storefront: 0 errors, warnings เดิมที่ไม่เกี่ยวกับ task นี้)
+
+== pnpm typecheck ==
+apps/backend: tsc --noEmit && tsc --noEmit -p src/admin/tsconfig.json → Done
+apps/storefront: tsc --noEmit → Done
+
+== pnpm --filter backend build ==
+Backend build completed successfully / Frontend build completed successfully (admin extensions bundle)
+
+== pnpm --filter backend test:unit ==
+Test Suites: 17 passed, 17 total
+Tests:       130 passed, 130 total
+
+-- evoucher --
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+PASS src/modules/evoucher/__tests__/csv.unit.spec.ts
+PASS src/modules/evoucher/__tests__/stats.unit.spec.ts
+    ✓ toStatusCounts groups count rows per pool and fills missing statuses with 0
+    ✓ toStatusCounts ignores rows of pools that were not requested
+    ✓ isLowStock is low when available is below the threshold (spec AC-9)
+    ✓ isLowStock is not low at or above the threshold
+PASS src/modules/evoucher/__tests__/mask.unit.spec.ts
+Test Suites: 4 passed, 4 total
+Tests:       35 passed, 35 total
+
+== test:integration:http (เฉพาะไฟล์ e-voucher admin; ชุดเต็มรันใน CI) ==
+PASS integration-tests/http/evoucher-admin-ui.spec.ts
+    ✓ returns code counts per status and a low-stock flag for each pool
+    ✓ filters pools by variant_id for the variant widget
+    ✓ lists an order's codes masked with their pool for the order widget
+    ✓ requires an authenticated admin for order codes
+PASS integration-tests/http/evoucher-admin.spec.ts (EV-2 regression หลัง refactor maskCodes)
+    13 passed
+Test Suites: 2 passed, 2 total
+Tests:       17 passed, 17 total
+
+== Admin UI ==
+ยังไม่มี screenshot — ให้ agent qa ตรวจและเก็บไว้ที่ docs/evidence/evoucher/EV-6/
