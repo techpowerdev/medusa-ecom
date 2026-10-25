@@ -1,43 +1,73 @@
-# PROMO-1 — ผล test (Node v24.12.0, Medusa 2.22.1, 2026-10-25T09:43Z)
-# ฐาน: origin/develop 94aac09
+# PROMO-1 — ผล test (Node v24.12.0, Medusa 2.22.1, 2026-10-25T10:33Z)
+# ฐาน: origin/develop ae8e9fa (หลัง #12, #22)
 
 ## pnpm --filter backend test:unit (--verbose)
-PASS src/__tests__/medusa-config.unit.spec.ts
-  medusa-config worker mode
-    ✓ boots as server with admin when MEDUSA_WORKER_MODE=server (1809 ms)
-    ✓ boots as worker without admin when MEDUSA_WORKER_MODE=worker (389 ms)
-    ✓ defaults to shared with admin for local dev when env is unset (404 ms)
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+  evoucher crypto
+    parseEncryptionKey
+      ✓ accepts a 64-char hex key (32 bytes) (2 ms)
+      ✓ rejects missing or malformed key undefined (1 ms)
+      ✓ rejects missing or malformed key "" (1 ms)
+      ✓ rejects missing or malformed key "abc"
+      ✓ rejects missing or malformed key "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      ✓ rejects missing or malformed key "8e992c9429d131892c291c2c7775bcefe84ec37b446abe96f2d0987437ad0f" (1 ms)
+    round-trip
+      ✓ decrypts what it encrypts (random iv) (6 ms)
+      ✓ decrypts what it encrypts (deterministic iv) (7 ms)
+      ✓ random iv produces a different ciphertext each time (1 ms)
+      ✓ deterministic iv produces the same ciphertext for the same plaintext (unique per pool) (1 ms)
+      ✓ fails on a tampered ciphertext (6 ms)
+      ✓ fails with a different key (2 ms)
+      ✓ rejects an unknown format version (8 ms)
+PASS src/__tests__/medusa-config-modules.unit.spec.ts
+  medusa-config modules
+    ✓ registers every custom module that has data models (1018 ms)
 PASS src/modules/resend/__tests__/service.unit.spec.ts
   ResendNotificationProviderService
-    ✓ uses the notification-resend identifier (2 ms)
+    ✓ uses the notification-resend identifier (3 ms)
     validateOptions
       ✓ requires api_key (1 ms)
       ✓ requires from
       ✓ accepts valid options
     send
-      ✓ sends the rendered template through the Resend client and returns its id (19 ms)
-      ✓ prefers notification.from over the default sender (1 ms)
-      ✓ throws for an unknown template without calling Resend (2 ms)
+      ✓ sends the rendered template through the Resend client and returns its id (13 ms)
+      ✓ prefers notification.from over the default sender
+      ✓ throws for an unknown template without calling Resend (1 ms)
       ✓ throws when Resend returns an error so the notification is marked failed (1 ms)
+PASS src/__tests__/medusa-config.unit.spec.ts
+  medusa-config worker mode
+    ✓ boots as server with admin when MEDUSA_WORKER_MODE=server (773 ms)
+    ✓ boots as worker without admin when MEDUSA_WORKER_MODE=worker (561 ms)
+    ✓ defaults to shared with admin for local dev when env is unset (912 ms)
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+  renderEmailTemplate
+    ✓ returns null for an unknown template (1 ms)
+    order-placed
+      ✓ renders subject with display id and an html body with items and THB totals (2 ms)
+      ✓ escapes html in user-controlled values (1 ms)
+    order-shipped
+      ✓ renders subject with display id and lists tracking numbers
+      ✓ renders without tracking labels (1 ms)
+      ✓ drops non-http tracking urls
 PASS src/lib/__tests__/promotion-exclusivity.unit.spec.ts
   promotion exclusivity helpers
     ✓ exposes the context attribute and error code from ADR-009 (1 ms)
     exclusiveAutomaticRule
       ✓ returns the 'ne true' rule on the exclusivity attribute
-      ✓ returns a fresh object each call
+      ✓ returns a fresh object each call (1 ms)
     isExclusiveAutomatic
-      ✓ is true for an automatic promotion with the rule (query shape) (1 ms)
+      ✓ is true for an automatic promotion with the rule (query shape)
       ✓ is true for an automatic promotion with the rule (helper shape)
       ✓ is true when the rule sits among other rules
-      ✓ is false for an automatic promotion without the rule (1 ms)
-      ✓ is false for a code promotion even with the rule (1 ms)
-      ✓ is false when the rule uses another operator or value (1 ms)
+      ✓ is false for an automatic promotion without the rule
+      ✓ is false for a code promotion even with the rule
+      ✓ is false when the rule uses another operator or value (2 ms)
     isGroupBuyCode
-      ✓ matches the GB- prefix only
+      ✓ matches the GB- prefix only (1 ms)
     resolvePromoCodes
       ✓ add: unions existing and input codes without duplicates (1 ms)
       ✓ defaults to add
-      ✓ remove: drops input codes from existing
+      ✓ remove: drops input codes from existing (1 ms)
       ✓ replace: keeps only input codes
     exclusivityPromotionContext
       ✓ sets the attribute to 'true' when a code is applied
@@ -45,71 +75,70 @@ PASS src/lib/__tests__/promotion-exclusivity.unit.spec.ts
     introducesGroupBuyConflict
       ✓ rejects adding another code to a GB cart
       ✓ rejects adding a GB code to a cart with another code
-      ✓ rejects two GB codes (1 ms)
+      ✓ rejects two GB codes
       ✓ allows a GB code alone or with automatic promotions only
       ✓ allows non-GB codes together (Medusa default stacking)
       ✓ does not reject a refresh that introduces no new code (1 ms)
     hasCompletionConflict
-      ✓ flags an exclusive automatic promotion together with any code
-      ✓ flags GB together with another code
-      ✓ allows valid combinations (20 ms)
+      ✓ flags an exclusive automatic promotion together with any code (1 ms)
+      ✓ flags GB together with another code (1 ms)
+      ✓ allows valid combinations
 PASS src/lib/__tests__/notification-providers.unit.spec.ts
   buildNotificationProviders
-    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (1 ms)
+    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (2 ms)
     ✓ treats an empty RESEND_API_KEY as missing
-    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set (1 ms)
-PASS src/modules/resend/__tests__/templates.unit.spec.ts
-  renderEmailTemplate
-    ✓ returns null for an unknown template
-    order-placed
-      ✓ renders subject with display id and an html body with items and THB totals (2 ms)
-      ✓ escapes html in user-controlled values
-    order-shipped
-      ✓ renders subject with display id and lists tracking numbers (1 ms)
-      ✓ renders without tracking labels
-      ✓ drops non-http tracking urls
-Test Suites: 5 passed, 5 total
-Tests:       45 passed, 45 total
+    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set
+Test Suites: 7 passed, 7 total
+Tests:       59 passed, 59 total
 
 ## pnpm --filter backend test:integration:http (--verbose)
-PASS integration-tests/http/promotion-exclusivity.spec.ts (27.412 s)
-    ✓ accepts the exclusivity rule (custom attribute, operator ne) via admin API (319 ms)
-      ✓ (d) cart without a code gets F as usual (845 ms)
-      ✓ (d) adding a flash item to a code-free cart applies F (633 ms)
-      ✓ (a) applying SAVE10 to a cart with F → 200, SAVE10 kept, F dropped (568 ms)
-      ✓ (b) adding a flash item to a cart with SAVE10 keeps SAVE10 and no F (791 ms)
-      ✓ (c) removing SAVE10 brings F back (801 ms)
-      ✓ (e) SAVE10 stacks with N (automatic without the rule) (505 ms)
-      ✓ rejects GB-* on a cart that already has another code (604 ms)
-      ✓ rejects another code on a cart that has GB-* (482 ms)
-      ✓ rejects GB-* and another code applied together (345 ms)
-      ✓ GB-* wins over F (flash dropped) (522 ms)
-      ✓ GB-* stacks with N; adding items to a GB cart still works (943 ms)
-      ✓ (f) F + SAVE10 on the same cart → complete fails PROMOTION_NOT_COMBINABLE (782 ms)
-      ✓ GB-* + another code on the same cart → complete fails PROMOTION_NOT_COMBINABLE (905 ms)
-      ✓ refresh (add-to-cart) on a cart already holding GB-* + another code does not error (469 ms)
-      ✓ a valid cart (SAVE10 + N) completes into an order (912 ms)
-PASS integration-tests/http/order-notifications.spec.ts (27.083 s)
-        ✓ sends an order-placed email to the order's email with the order data (1315 ms)
-        ✓ does not send the same order-placed email twice (5857 ms)
-        ✓ sends an order-shipped email with tracking labels (AC-2) (1618 ms)
-        ✓ skips the email when the shipment was created with no_notification (1190 ms)
-PASS integration-tests/http/seed.spec.ts (47.036 s)
-    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (1373 ms)
-    ✓ sets store default currency to THB (tax-inclusive) (1848 ms)
-    ✓ creates tax region th with VAT 7% (2153 ms)
-    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (1980 ms)
-    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (3308 ms)
-    ✓ stocks every sample variant at the seeded location (853 ms)
-    ✓ is idempotent: running seed again does not duplicate data (591 ms)
-PASS integration-tests/http/health.spec.ts (33.401 s)
-      ✓ returns 200 when the app has booted (1437 ms)
-Test Suites: 4 passed, 4 total
-Tests:       28 passed, 28 total
+PASS integration-tests/http/evoucher-links.spec.ts (26.621 s)
+    ✓ queries the variant from a pool (4401 ms)
+    ✓ queries the pool from a variant (4685 ms)
+PASS integration-tests/http/flash-sale-module.spec.ts (23.068 s)
+    ✓ resolves flash_sale_config together with its Medusa campaign via query.graph (872 ms)
+PASS integration-tests/http/promotion-exclusivity.spec.ts (65.02 s)
+    ✓ accepts the exclusivity rule (custom attribute, operator ne) via admin API (792 ms)
+      ✓ (d) cart without a code gets F as usual (1214 ms)
+      ✓ (d) adding a flash item to a code-free cart applies F (2057 ms)
+      ✓ (a) applying SAVE10 to a cart with F → 200, SAVE10 kept, F dropped (3844 ms)
+      ✓ (b) adding a flash item to a cart with SAVE10 keeps SAVE10 and no F (3441 ms)
+      ✓ (a) via POST /store/carts/:id promo_codes: SAVE10 kept, F dropped (3869 ms)
+      ✓ (c) removing SAVE10 brings F back (6567 ms)
+      ✓ (e) SAVE10 stacks with N (automatic without the rule) (2356 ms)
+      ✓ rejects GB-* on a cart that already has another code (2055 ms)
+      ✓ rejects another code on a cart that has GB-* (1439 ms)
+      ✓ rejects GB-* and another code applied together (2332 ms)
+      ✓ GB-* wins over F (flash dropped) (2509 ms)
+      ✓ GB-* stacks with N; adding items to a GB cart still works (1869 ms)
+      ✓ (f) F + SAVE10 on the same cart → complete fails PROMOTION_NOT_COMBINABLE (2772 ms)
+      ✓ GB-* + another code on the same cart → complete fails PROMOTION_NOT_COMBINABLE (2652 ms)
+      ✓ refresh (add-to-cart) on a cart already holding GB-* + another code does not error (3825 ms)
+      ✓ a valid cart (SAVE10 + N) completes into an order (6480 ms)
+PASS integration-tests/http/seed.spec.ts (31.627 s)
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (1037 ms)
+    ✓ sets store default currency to THB (tax-inclusive) (1504 ms)
+    ✓ creates tax region th with VAT 7% (568 ms)
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (617 ms)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (1234 ms)
+    ✓ stocks every sample variant at the seeded location (937 ms)
+    ✓ is idempotent: running seed again does not duplicate data (1442 ms)
+PASS integration-tests/http/health.spec.ts (16.766 s)
+      ✓ returns 200 when the app has booted (1632 ms)
+PASS integration-tests/http/order-notifications.spec.ts (17.427 s)
+        ✓ sends an order-placed email to the order's email with the order data (1135 ms)
+        ✓ does not send the same order-placed email twice (741 ms)
+        ✓ sends an order-shipped email with tracking labels (AC-2) (385 ms)
+        ✓ skips the email when the shipment was created with no_notification (434 ms)
+Test Suites: 6 passed, 6 total
+Tests:       32 passed, 32 total
 
 ## pnpm --filter backend test:integration:modules
-Tests:       14 passed, 14 total
+ไม่มี test suite (passWithNoTests) — exit 0
+
+## pnpm --filter backend build
+Backend build completed successfully
+Frontend build completed successfully
 
 ## pnpm lint && pnpm typecheck
-lint: exit 0 (0 errors; storefront มี warning เดิม)
-typecheck: exit 0 (backend + storefront)
+lint: exit 0 (0 errors); typecheck: exit 0 (backend + storefront)
