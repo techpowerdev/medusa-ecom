@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "analyze": "ANALYZE=true next build",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "echo \"[CORE-1] ยังไม่มี Playwright e2e — จะตั้งค่าใน CORE-5\""
+    "test:e2e": "playwright test",
+    "test:e2e:unit": "playwright test --project=unit"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.5",
     "@medusajs/types": "2.22.1",
+    "@playwright/test": "1.64.1",
     "@types/lodash": "^4.14.195",
     "@types/node": "17.0.21",
     "@types/pg": "^8.11.0",
