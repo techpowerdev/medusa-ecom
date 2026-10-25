@@ -17,6 +17,12 @@ docs/evidence/
   (ให้วางที่ระดับ `<feature>/`)
 - `e2e/evidence-budget.unit.spec.ts` ตรวจกฎทั้งหมดนี้ทุกโฟลเดอร์ และ CI รันใน job `lint-typecheck`
 
+### hotfix / chore ที่ไม่มี task id ใน spec (2026-10-26, spec 01 กฎข้อ 27)
+- ค่าเริ่มต้น: ผล test ใส่ใน **body ของ PR** เท่านั้น ไม่สร้างไฟล์ใน `docs/evidence/`
+- ถ้าต้องเก็บไฟล์ (เช่น QA ต้องมี screenshot หรือผล test ยาวเกิน body) ใช้ feature `ops` และ id `HOTFIX-<เลข PR>` เช่น
+  `docs/evidence/ops/HOTFIX-52-tests.txt`, `docs/evidence/ops/HOTFIX-52/REPORT.md` — ตรง `^[A-Z]+-\d+[a-z]?$` อยู่แล้ว จึงไม่ต้องแก้
+  `TASK_ID_RE` หรือ budget test (เปิด PR ก่อนเพื่อได้เลข แล้ว push evidence ตาม); ห้ามยืม task id ของ task อื่น
+
 ## อะไรอยู่ใน git / อะไรอยู่ใน CI
 | สิ่งที่เก็บ | ที่อยู่ | อายุ |
 |-----------|--------|------|

@@ -34,6 +34,11 @@ D. **คงเดิม** ถือว่า cart id เดาไม่ได้
 − ต้องรักษารายการ matcher ให้ครบเมื่อ Medusa เพิ่ม store route ที่รับ cart/order id ใหม่ — ADR ที่ bump `@medusajs/*` ต้องตรวจ
   รายการนี้ (spec 07 หัวข้อ "Checklist ตอน bump `@medusajs/*`" ข้อ 2)
 − เพิ่ม 1 query ต่อ request ของ cart (PK lookup — ยอมรับได้)
+− (เพิ่ม 2026-10-26, owner) ช่องที่ CORE-12 ยังไม่ครอบ: `GET /store/products*` และ `/store/product-variants*` รับ `cart_id` ใน query แล้ว
+  ใช้ region/ที่อยู่ของ cart นั้นคำนวณราคา/ภาษี → cart ของคนอื่นได้ 200 (รั่วว่า cart มีอยู่ + ข้อมูลภาษีจากที่อยู่) ปิดด้วย **CORE-12b**
+  (spec 01 กฎข้อ 28, AC-51..53): middleware เดียวกันตรวจ `query.cart_id` **เฉพาะเมื่อมี key นี้** (ไม่มี token → 401, ไม่ใช่เจ้าของ → 404)
+  ไม่มี `cart_id` → ไม่บังคับ auth เพื่อให้การเรียกดูยังเป็นสาธารณะ — รายการ matcher ที่ต้องรักษาจึงรวม "route ที่อ่าน `cart_id` จาก query"
+  ด้วย (checklist bump ใน spec 07 ข้อ 2)
 
 ## อ้างอิง
 - Medusa guide ทางการ (comment ใน source route 2.22.1 อ้างถึง และแนะนำ middleware แบบทางเลือก A สำหรับร้านที่ไม่มี guest checkout):

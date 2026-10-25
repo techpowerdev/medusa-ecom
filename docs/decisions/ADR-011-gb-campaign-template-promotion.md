@@ -61,3 +61,10 @@ C. ใช้ promotion ของกลุ่มแรกเป็นต้นแ
 − การ clone ต้อง map field ให้ครบ (`application_method.type/target_type/allocation/value/currency_code/max_quantity/
   target_rules`, `rules`, `is_tax_inclusive`); ถ้า Medusa เพิ่ม field ในอนาคตต้องตามแก้ — ครอบด้วย integration test
   (spec 04 AC-20b)
+
+## หมายเหตุเพิ่มเติม (owner, 2026-10-26) — ไม่เปลี่ยนการตัดสินใจข้างบน
+- ค่าเริ่มต้นของ Medusa สำหรับ `Promotion.is_tax_inclusive` คือ `false` แต่ราคา THB ของร้านรวม VAT แล้ว ส่วนลด `fixed` ของต้นแบบที่สร้างด้วย
+  ค่าเริ่มต้นนั้นจะลดยอดที่ลูกค้าจ่ายมากกว่าตัวเลขที่ admin กรอก (≈ ×1.07)
+- จึงให้ `createGroupBuyCampaignWorkflow` และ validator ของ `POST /admin/group-buy/campaigns` ใช้ `is_tax_inclusive: true` เมื่อไม่ได้ส่งมา
+  admin ส่ง `false` หรือแก้ที่หน้า promotion ของ Medusa admin ได้ (ข้อ 3: มีผลเฉพาะกลุ่มที่สร้างหลังจากนั้น); การ clone ไป `GB-<token>`
+  คัดลอก `is_tax_inclusive` ตามเดิม (ข้อ 2) — ส่งมอบใน spec 04 GB-2c (กฎข้อ 12, AC-20c)

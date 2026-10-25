@@ -22,9 +22,9 @@
 | Notifications (email providers) | Notification module | Resend/SendGrid provider |
 | Tax | Tax module | VAT ไทย 7% แบบรวมในราคา |
 | Admin dashboard | `@medusajs/dashboard` | เปลี่ยน theme/logo เท่านั้น |
-| Storefront: PLP, PDP, cart, checkout, account, orders | Next.js Starter | Theme + i18n ภาษาไทย (ADR-008) |
-| Locale ของเนื้อหา (สินค้า/หมวดหมู่/collection) | Translation module (experimental, feature flag) + Store locales + starter: cookie `_medusa_locale`, header `x-medusa-locale`, `language-select` | ใช้ตามเดิม; เปิดที่ backend ใน CORE-7 |
-| ข้อความ UI ของ storefront | ไม่มี (starter hard-code อังกฤษ) | next-intl (ADR-008) |
+| Storefront: PLP, PDP, cart, checkout, account, orders | Next.js Starter | Theme + ข้อความภาษาไทย (ADR-008 theme/THB, ADR-014) |
+| Locale ของเนื้อหา (สินค้า/หมวดหมู่/collection) | Translation module (experimental, feature flag) + Store locales + starter: cookie `_medusa_locale`, header `x-medusa-locale`, `language-select` | backend เปิดแล้วใน CORE-7 (คงไว้); storefront **ไม่ใช้** ในระยะแรก — ลบ `language-select` (ADR-014) |
+| ข้อความ UI ของ storefront | ไม่มี (starter hard-code อังกฤษ) | แทนด้วยภาษาไทยตรงในโค้ด ไม่มี i18n library (ADR-014) |
 | File storage | File module (S3 provider) | S3-compatible bucket |
 | Search | Product `q` filter (v1); `@medusajs/search-postgres` หากจำเป็นในภายหลัง | Default |
 | Scheduled jobs, subscribers, workflow engine | Framework | ใช้ Redis ใน prod |
@@ -36,8 +36,8 @@
 - Notification provider: อีเมล (Resend) สำหรับ order placed / shipped / การส่ง voucher
 - File provider: S3-compatible
 - Admin: ชื่อร้าน, โลโก้, สกุลเงินเริ่มต้น
-- Storefront: locale ไทย + อังกฤษ, การจัดรูปแบบ THB, brand theme (Tailwind tokens) — รายละเอียดใน
-  "CORE-4 Storefront i18n / theme / THB" ด้านล่าง
+- Storefront: ภาษาไทยอย่างเดียว (ADR-014), การจัดรูปแบบ THB, brand theme (Tailwind tokens) — รายละเอียดใน
+  "CORE-4 Storefront ภาษาไทย / theme / THB" ด้านล่าง
 - **ไม่มี guest** (เจ้าของระบบ): เฉพาะการเรียกดู (PLP/PDP/search/หน้าแคมเปญ/affiliate landing)
   เท่านั้นที่เป็นสาธารณะ การกระทำอื่นทุกอย่างในร้าน — สร้าง/แก้ไข cart, เพิ่มลง cart, checkout, orders,
   vouchers, group buy — ต้องเป็น **customer** ที่ล็อกอินแล้ว (affiliate portal ใช้ actor type
@@ -60,18 +60,22 @@
   และ `POST /store/carts/:id/line-items` โดยไม่มี customer session จะได้ 401 หลังล็อกอิน
   สินค้าจะถูกเพิ่มลง cart
 - AC-5 `GET /health` ตอบ 200; แอปบูตได้ทั้งใน mode `server` และ `worker` แยกกัน
+(label อังกฤษในเครื่องหมายคำพูดใน spec นี้ เช่น "Add to cart", "My orders" = ชื่อเรียก element; ข้อความจริงเป็นภาษาไทยและ test หาด้วย
+test id ตามตารางใน ADR-014)
 
 ## แผนการทดสอบ
 - Integration (http): smoke test การตั้งค่า region/tax; flow cart→order ด้วย manual payment
 - e2e: AC-1, AC-3, AC-4 ผ่าน Playwright พร้อม screenshot
 - CORE-4: ดู "แผนการทดสอบ CORE-4" ด้านล่าง
 
-## CORE-4 Storefront i18n / theme / THB (ADR-008)
-Out of scope: การเปิด Translation module และ store locales ที่ backend (CORE-7), การแปลเนื้อหาสินค้า,
-locale prefix ใน URL, การแปล admin dashboard, ค่า brand จริง (owner เปลี่ยน token เอง), หน้าของ spec 02–06
+## CORE-4 Storefront ภาษาไทย / theme / THB (ADR-008 ส่วน theme/THB, ADR-014)
+ปรับ 2026-10-26 ตาม ADR-014 (owner): storefront **ภาษาไทยอย่างเดียว** — แทนข้อความอังกฤษของ starter ด้วยภาษาไทยตรงในโค้ด
+ไม่มี next-intl, ไม่มี locale cookie, ไม่มี language-select (i18n เลื่อนไป ดู "เลื่อนไป (ADR-014)" ท้ายหัวข้อนี้)
+Out of scope: i18n ทุกแบบ, การแปลเนื้อหาสินค้า (ข้อมูลจาก backend), แก้ `force-static`/`revalidate` ของ starter, admin dashboard /
+`src/admin/`, ค่า brand จริง (owner เปลี่ยน token เอง), หน้าใหม่ของ spec 02–06 (task ของ spec นั้นเขียนข้อความไทยเองตั้งแต่แรก)
 
 ### Data model / Workflows / API routes
-none (storefront เท่านั้น ไม่มี route ใหม่ ใช้ `GET /store/locales` และ header `x-medusa-locale` ของ Medusa)
+none (storefront เท่านั้น)
 
 ### Business rules
 1. รูปแบบเงิน: `convertToLocale` เมื่อ `currency_code` เป็น THB (ไม่สนตัวพิมพ์) ใช้ `Intl.NumberFormat` แบบ
@@ -83,19 +87,19 @@ none (storefront เท่านั้น ไม่มี route ใหม่ ใ
 3. Theme: `tailwind.config.js` มีสีกลุ่ม `brand` (`50`–`900` + `DEFAULT`) ค่า placeholder เป็นโทนเทากลาง และ
    `fontFamily.sans` ตัวแรกคือ `var(--font-noto-sans-thai)` ฟอนต์โหลดผ่าน `next/font/google` (`Noto_Sans_Thai`,
    subsets `thai` + `latin`, `display: "swap"`) ใน root layout ไม่มี `<link>` ไป Google Fonts ตอน runtime
-4. locale ที่รองรับ: `th` (default), `en` ฟังก์ชัน pure `resolveLocale(cookieValue)` → `"en"` เมื่อ language subtag
-   เป็น `en` (ไม่สนตัวพิมพ์) มิฉะนั้น → `"th"` (รวม undefined, ค่าว่าง, `fr-FR`, ค่าเสีย)
-5. ที่มาของ locale มีที่เดียวคือ cookie `_medusa_locale` (next-intl `getRequestConfig` เรียก `resolveLocale`)
-   ไม่มี locale prefix ใน URL; `<html lang>` = locale ที่ resolve แล้ว
-6. header `x-medusa-locale` คงพฤติกรรม starter: ส่งค่า cookie ตามจริง ไม่ส่งเมื่อไม่มี cookie (เนื้อหาต้นฉบับใน admin
-   ถือเป็นภาษาไทย จึงได้ภาษาไทยโดยไม่ต้องส่ง header)
-7. `language-select` แสดงเฉพาะ `th-TH` และ `en-US`: ใช้ผลจาก `GET /store/locales` ที่ตรงกับ locale ที่รองรับ
-   ถ้า endpoint ไม่ตอบ/404 หรือไม่มีตัวที่ตรง ให้ใช้รายการคงที่ `th-TH`, `en-US` ตัด option "Default" ของ starter ออก
-   ชื่อภาษาแสดงด้วย `Intl.DisplayNames` ของ locale ปัจจุบัน; ตัวเลือกปัจจุบันเมื่อไม่มี cookie คือ `th-TH`
-8. ข้อความ UI ทั้งหมดอยู่ใน `apps/storefront/messages/th.json` และ `en.json` ทั้งสองไฟล์มี key ชุดเดียวกัน และไม่มีค่าว่าง
-   ข้อความ en ใช้ข้อความเดิมของ starter
-9. ทุก element ที่ e2e ต้องหา ต้องมี `data-testid` (ใช้ของ starter ถ้ามี) e2e ไม่ match ด้วยข้อความ
-10. directory ที่แปลแล้วต้องผ่าน ESLint rule `react/jsx-no-literals` (เปิดเฉพาะ path ที่แปลแล้ว เพิ่มทีละ task)
+4. **ESLint กันข้อความอังกฤษ** (CORE-4b ตั้ง, 4c/4d เพิ่ม path ของตัวเอง): `no-restricted-syntax` ใน config ของ storefront เปิดเฉพาะ
+   path ที่แปลแล้ว (ตาราง AC-49) ห้าม (a) `JSXText` ที่มีตัวอักษรละติน ≥ 2 ตัวติดกัน (`/[A-Za-z]{2,}/`), (b) string literal/template ที่เป็นค่า
+   ของ prop `placeholder`, `title`, `alt`, `aria-label`, `label` ที่มีละติน ≥ 2 ตัว; ข้อยกเว้นตาม ADR-014 ข้อ 4 (ชื่อแบรนด์ เช่น "PromptPay")
+   ใช้ `// eslint-disable-next-line no-restricted-syntax -- <เหตุผล>` ทีละบรรทัดเท่านั้น (ห้าม disable ทั้งไฟล์)
+5. ข้อความที่ storefront สร้างเองและผู้ใช้เห็นเป็นภาษาไทยทั้งหมด: label, ปุ่ม, heading, ข้อความว่าง/loading/error, `metadata` (title,
+   description) ของหน้า, ข้อความใน server action ที่ส่งกลับไปแสดง — ข้อมูลจาก backend (ชื่อสินค้า, option, ที่อยู่, error ของ Medusa API)
+   แสดงตามที่ได้รับ ไม่แปล
+6. ไม่มีตัวเลือกภาษา: ลบ component `language-select` และจุดที่ render (nav/side menu); storefront ไม่เขียน cookie `_medusa_locale`;
+   ไม่แก้ `lib/util/get-locale-header.ts` (ไม่มี cookie → ไม่ส่ง `x-medusa-locale` → ได้เนื้อหาต้นฉบับภาษาไทย); `<html lang="th">` คงที่
+7. ทุก element ที่ e2e ต้องหา ต้องมี `data-testid` (ใช้ของ starter ถ้ามี) e2e ไม่ match ด้วยข้อความ; การตรวจ "เป็นภาษาไทย" ใช้ regex อักษรไทย
+   `/[฀-๿]/` ไม่ hard-code ประโยค (ADR-014 ข้อ 3)
+(กฎเดิมข้อ 4–8 และ 10 ของ ADR-008 — `resolveLocale`, cookie, `x-medusa-locale` ตาม cookie, `language-select` 2 ภาษา, `messages/*.json`,
+`react/jsx-no-literals` — ย้ายไป "เลื่อนไป (ADR-014)")
 
 ### Acceptance criteria (CORE-4)
 - AC-7 Given `amount=1000`, `currency_code="thb"` When เรียก `convertToLocale` ด้วย locale `th-TH`, `en-US` และไม่ระบุ locale
@@ -109,54 +113,72 @@ none (storefront เท่านั้น ไม่มี route ใหม่ ใ
   `Noto Sans Thai` และไม่มี request ไป `fonts.googleapis.com`
 - AC-11 Given repo When รัน `pnpm --filter storefront test:unit` Then Vitest รัน test ของ AC-7/8/9 ผ่าน และ job CI
   ของ storefront รันคำสั่งนี้
-- AC-12 Given `resolveLocale` When input = `"th-TH"`, `"en-US"`, `"EN"`, `"en-GB"`, `undefined`, `""`, `"fr-FR"`, `"xx_!!"`
-  Then ได้ `th, en, en, en, th, th, th, th`
-- AC-13 Given `messages/th.json` และ `messages/en.json` When unit test เทียบ key แบบ flatten Then key ตรงกันทุกตัว
-  และไม่มีค่าเป็น string ว่าง
-- AC-14 Given ไม่มี cookie `_medusa_locale` When เปิด `/th` Then `<html lang="th">` และข้อความใน
-  `getByTestId("nav-account-link")` เท่ากับค่าของ key นั้นใน `th.json`
-- AC-15 Given cookie `_medusa_locale=en-US` When เปิด `/th` Then `<html lang="en">` และข้อความ `nav-account-link`
-  เท่ากับค่าใน `en.json`; Given cookie `fr-FR` Then ผลเหมือน AC-14
-- AC-16 Given ไม่มี cookie และ `GET /store/locales` ตอบ 404 When เปิด language-select (`data-testid="language-select"`)
-  Then มีตัวเลือกพอดี 2 รายการ (`th-TH`, `en-US`) และไม่มี "Default"; When เลือก `en-US` Then cookie `_medusa_locale=en-US`
-  และหลัง refresh `<html lang="en">`
-- AC-17 Given cookie `_medusa_locale=en-US` When storefront เรียก Medusa API Then request มี header
-  `x-medusa-locale: en-US`; Given ไม่มี cookie Then ไม่มี header นี้ (unit test ของ `getLocaleHeader` ด้วย cookie mock)
-- AC-18 Given path ที่ task นั้นแปล When รัน `pnpm --filter storefront lint` Then ไม่มี error `react/jsx-no-literals`
-  (ขอบเขต path: 4b = `src/modules/layout`, `src/app/**/layout.tsx`, `not-found`; 4c = `src/modules/{home,store,categories,collections,products,cart}`;
-  4d = `src/modules/{checkout,account,order,policies,shipping,common}`)
-- AC-19 Given cookie `th-TH` และ `en-US` When e2e เปิดหน้าใน path ของ task (4c: home, store, PDP, cart; 4d: checkout,
-  account overview, orders, order detail) Then element หลักอย่างน้อย 1 ตัวต่อหน้า (ผ่าน test id) แสดงข้อความตรงกับ
-  `messages/<locale>.json` และเก็บ screenshot ไว้เป็น evidence (≤ 5 รูป)
+- AC-12..AC-19 เดิม (`resolveLocale`, `messages/*.json`, cookie → `<html lang>`, `language-select`, `x-medusa-locale` ตาม cookie,
+  `react/jsx-no-literals`, ข้อความตาม `messages/<locale>.json`) **ยกเลิก** — ย้ายไป "เลื่อนไป (ADR-014)" แทนด้วย AC-46..AC-50
+- AC-46 (CORE-4b, กฎข้อ 6) Given ไม่มี cookie When e2e เปิด `/th` และเปิด side menu Then `<html lang="th">`, ไม่มี element
+  `data-testid="language-select"`, `document.cookie` ไม่มี `_medusa_locale` และ `document.title` มีอักษรไทย; Given
+  `apps/storefront/package.json` Then ไม่มี dependency `next-intl` และไม่มีโฟลเดอร์ `apps/storefront/messages/` (unit/อ่านไฟล์)
+- AC-47 (CORE-4b, กฎข้อ 4) Given fixture ใน path ที่เปิด rule When รัน ESLint (Node API ใน Vitest) กับ `<p>Hello</p>`,
+  `<input placeholder="Search" />`, `<p>สวัสดี</p>`, `<p>{price} ฿</p>`, และบรรทัด `PromptPay` ที่มี
+  `eslint-disable-next-line no-restricted-syntax -- brand` Then สองตัวแรกมี error `no-restricted-syntax`, ที่เหลือไม่มี error
+- AC-48 (CORE-4b/4c/4d, กฎข้อ 5, 7) Given storefront + backend ที่ seed แล้ว ไม่มี cookie locale When e2e เปิดหน้าใน path ของ task
+  (4b: home, store, `/search`, category, collection, PDP ของสินค้า seed, not-found ของ `(main)`; 4c: cart, account overview, profile,
+  addresses, login, orders, order detail, order confirmed, หน้า policy ทั้ง 5 (`/contact`, `/terms`, `/privacy`, `/returns`, `/shipping`);
+  4d: ทุกขั้นของ checkout)
+  Then element หลักอย่างน้อย 2 ตัวต่อหน้า (หาด้วย test id — builder ระบุรายการใน `REPORT.md`) มี textContent ตรง `/[฀-๿]/`
+  และไม่มีคำละติน ≥ 2 ตัวนอกข้อยกเว้นของ ADR-014 ข้อ 4; เก็บ screenshot ≤ 5 รูปต่อ task
+- AC-49 (กฎข้อ 4) Given develop หลัง task merge When `pnpm --filter storefront lint` Then ไม่มี error และ config เปิด rule ครบ path ของ task
+  ตามตาราง "เจ้าของ path" ด้านล่าง (ทุกไฟล์ใต้ `apps/storefront/src` ที่มี UI หรือข้อความที่ผู้ใช้เห็นอยู่ใน task เดียวพอดี ไม่ทับกัน; glob ของแต่ละ task ต้อง
+  ไม่จับไฟล์ของ task อื่น — ใช้ path เต็มของ route group แทน glob กว้างแบบ `src/app/**/page.tsx`) (CI ตรวจผ่าน job lint เดิม)
+
+  | Task | path ใต้ `apps/storefront/src/` (ไล่จากไฟล์จริง 2026-10-26) |
+  |------|------|
+  | 4b | `app/layout.tsx`, `app/not-found.tsx`; `app/[countryCode]/(main)/{layout,page,not-found}.tsx`; `app/[countryCode]/(main)/{store,search,categories,collections,products}/**`; `modules/{layout,home,store,search,categories,collections,products}/**`; `app/buy/**` (ข้อความตอบกลับที่ผู้ใช้เห็น — ถ้า CORE-14 merge ก่อนให้ CORE-14 แปลแทน) |
+  | 4c | `app/[countryCode]/(main)/{account,cart,order,verify-account}/**`; หน้า policy **ทั้งไฟล์** `app/[countryCode]/(main)/{contact,terms,privacy,returns,shipping}/page.tsx`; `modules/{account,cart,order,policies,common,skeletons}/**`; ข้อความ error ที่ผู้ใช้เห็นใน `lib/data/{customer,orders}.ts` |
+  | 4d | route group `app/[countryCode]/(checkout)/**` (รวม `(checkout)/layout.tsx`, `(checkout)/not-found.tsx`, `checkout/page.tsx`); `modules/{checkout,shipping}/**`; `lib/constants.tsx` (ชื่อวิธีชำระเงินที่แสดงใน checkout); ข้อความ error ที่ผู้ใช้เห็นใน `lib/data/cart.ts` |
+  ไฟล์ใหม่ที่เกิดหลังวันนี้: task ที่สร้างไฟล์เป็นผู้เพิ่ม path (กฎข้อ 4); `modules/layout/components/language-select/` ถูกลบใน 4b;
+  หน้า order transfer (`(main)/order/[id]/transfer/**`) อยู่ใน 4c — ถ้า CORE-13/14 ลบก่อนก็ไม่ต้องแปล
+  ข้อความใน `lib/` และ route handler (`app/**/route.ts`) ESLint rule ไม่ครอบ → ตรวจด้วย unit test หรือ grep ข้อความที่ส่งออก
+  (`throw new Error(...)`, `new Response(...)`) ในไฟล์ของ task; ยกเว้น `lib/util/product-markdown.ts` (`llms.txt` สำหรับเครื่อง)
+- AC-50 (CORE-4b) AC-10 (ฟอนต์บนหน้าแรก) ผ่านด้วย e2e ใน CORE-4b (ยกมาจากเดิม)
 
 ### Non-functional
-- ไม่เพิ่ม infra; dependency ใหม่: `next-intl`, `vitest` (dev) ต้องเข้ากับ Next.js 16 / React 19 ที่ pin อยู่
-  ให้ builder ตรวจกับ docs ผ่าน context7 ก่อนติดตั้ง
-- ห้ามโหลดไฟล์ข้อความทั้งหมดไป client: ส่งเฉพาะ namespace ที่ client component ใช้ผ่าน `NextIntlClientProvider`
-- cache: การเปลี่ยน locale ต้อง revalidate ตามที่ `updateLocale` ของ starter ทำอยู่ ไม่เพิ่มกลไกใหม่
+- ไม่เพิ่ม infra และไม่เพิ่ม dependency (ESLint rule เป็น core rule `no-restricted-syntax`)
+- ไม่เปลี่ยนโหมด render ของหน้าใด (`force-static`/`revalidate` ของ starter คงเดิม)
 
 ### แผนการทดสอบ CORE-4
 | ระดับ | AC |
 |------|----|
-| unit (Vitest) | AC-7, AC-8, AC-9, AC-12, AC-13, AC-17 |
-| CI / lint | AC-11, AC-18 |
-| e2e (Playwright, ตั้ง cookie ใน context, หาด้วย `getByTestId`) | AC-10, AC-14, AC-15, AC-16, AC-19 |
-CORE-4a ไม่มี e2e (ทำได้ก่อน CORE-5) AC-10 ซึ่งเป็นผลของ CORE-4a ตรวจด้วย e2e ใน CORE-4b หลัง CORE-5 merge แล้ว
-fixture ของ Playwright (CORE-5) ต้องมี helper ตั้ง cookie `_medusa_locale` ต่อ test (default ไม่ตั้ง = th)
+| unit (Vitest) | AC-7, AC-8, AC-9, AC-46 (ส่วนอ่านไฟล์), AC-47 |
+| CI / lint | AC-11, AC-49 |
+| e2e (Playwright, หาด้วย `getByTestId`) | AC-10/AC-50, AC-46, AC-48 |
+fixture ตั้ง cookie `_medusa_locale` ของ CORE-5 คงไว้แต่ test ใหม่ไม่ใช้ (ADR-014)
 
-### Tasks (CORE-4 แตกเป็น 4 PR เพราะการแปล UI ทั้ง starter ~150 component เกิน ~400 LOC ต่อ PR)
+### Tasks (ข้อความไทยตรงในโค้ด — diff แบบแทนบรรทัด แตกตามกลุ่มหน้าให้ ≤ ~400 LOC)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
-| CORE-4a | Vitest (dev dep, `test:unit`, ขั้นตอนใน CI) + THB format ใน `convertToLocale` + Tailwind `brand` tokens + Noto Sans Thai ผ่าน `next/font` + `<html lang="th">` | AC-7, 8, 9, 11 | CORE-1 |
-| CORE-4b | next-intl infra (plugin ใน `next.config`, `src/i18n/request.ts`, `resolveLocale`), `messages/{th,en}.json`, `<html lang>` ตาม locale, `NextIntlClientProvider`, ปรับ `language-select` (กฎข้อ 7), แปล layout shell (nav, footer, side menu, cart dropdown, not-found), test `getLocaleHeader`, lint rule สำหรับ path ของ 4b | AC-10, 12, 13, 14, 15, 16, 17, 18 (path 4b) | CORE-4a, CORE-5, CORE-5b, CORE-8 |
-| CORE-4c | แปล home, store/PLP, categories, collections, PDP, cart + เพิ่ม `data-testid` ที่ขาด | AC-18 (path 4c), AC-19 (4c) | CORE-4b, CORE-9 |
-| CORE-4d | แปล checkout, account, order, policies, shipping nudge, common components + เพิ่ม `data-testid` ที่ขาด | AC-18 (path 4d), AC-19 (4d) | CORE-4b |
-CORE-4c และ CORE-4d ทำขนานกันได้หลัง CORE-4b (ทั้งคู่แก้ `messages/*.json` คนละ namespace — merge ทีหลังต้อง rebase)
+| CORE-4a | Vitest (dev dep, `test:unit`, ขั้นตอนใน CI) + THB format ใน `convertToLocale` + Tailwind `brand` tokens + Noto Sans Thai ผ่าน `next/font` + `<html lang="th">` | AC-7, 8, 9, 11 | CORE-1 (☑) |
+| CORE-4b | ESLint rule (กฎข้อ 4) + ลบ `language-select` (กฎข้อ 6) + ข้อความไทยตาม path 4b ในตาราง AC-49: layout shell (nav, footer, side menu, cart dropdown, not-found, metadata ของ root/main layout), home, store/PLP, search, categories, collections, PDP + เพิ่ม `data-testid` ที่ขาด | AC-10/50, 46, 47, 48 (4b), 49 (4b) | CORE-4a, CORE-5b, CORE-8 (merge แล้วทั้งหมด) — ไม่รอ CORE-9 |
+| CORE-4c | ข้อความไทยตาม path 4c ในตาราง AC-49: cart, account (overview, profile, addresses, login/register, verify-account), orders/order detail/confirmed, หน้า policy ทั้ง 5 (ทั้งไฟล์ `page.tsx`), common, skeletons + `data-testid` ที่ขาด | AC-48 (4c), 49 (4c) | CORE-4b (ใช้ rule/config ของ 4b) |
+| CORE-4d | ข้อความไทยตาม path 4d ในตาราง AC-49: route group `(checkout)` ทั้งหมด (layout, not-found, checkout ทุกขั้น), shipping nudge, `lib/constants.tsx` **รวมข้อความ UI ที่ PAY-2 (#48) เพิ่ม** (เช่น ปุ่ม/ข้อความ PromptPay) + `data-testid` ที่ขาด | AC-48 (4d), 49 (4d) | CORE-4b, **PAY-2** (ห้ามแตะไฟล์ checkout ก่อน #48 merge) |
+CORE-4c ∥ CORE-4d หลัง CORE-4b (คนละ path; ทั้งคู่แก้ ESLint config บรรทัด path — ตัวที่ merge ทีหลัง rebase)
+CORE-4b แตะ `src/modules/store/components/store-hits/` เดียวกับ CORE-15 — ตัวที่ merge ทีหลัง rebase (ข้อความ error ของ CORE-15 เขียนไทยอยู่แล้ว)
+ถ้า CORE-4b เกิน ~400 LOC ให้แยก CORE-4b1 (rule + layout shell + home + `language-select`; AC-46, 47, 50) และ CORE-4b2 (store/PLP,
+search, categories, collections, PDP; AC-48/49 ส่วนนั้น) — 4b2 depends 4b1
+PAY-3, PAY-5, CORE-15, EV-7, FS-6, GB-7, AF-8 (UI storefront ใหม่) เขียนข้อความไทยตั้งแต่แรกและเพิ่ม path ของตัวเองใน rule (กฎข้อ 4) ถ้า
+CORE-4b merge แล้ว
 
-### ข้อตัดสินของ owner (CORE-4, 2026-10-25)
-1. เนื้อหาสินค้าต้นฉบับใน admin กรอกเป็นภาษาไทย ภาษาอังกฤษมาจาก Translation module (กฎข้อ 6)
-2. ADR-008 ข้อ 1 ครอบคลุมการใช้ Translation module ที่ยังเป็น experimental ใน CORE-7 แล้ว ไม่ต้องมี ADR แยก
-3. ข้อความ `metadata` (title/description) ของหน้าแปลด้วย next-intl ใน task ของหน้านั้น
+### ข้อตัดสินของ owner (CORE-4)
+1. (2026-10-25) เนื้อหาสินค้าต้นฉบับใน admin กรอกเป็นภาษาไทย — ยังมีผล; ส่วน "ภาษาอังกฤษมาจาก Translation module" เลื่อนไป (ADR-014)
+2. (2026-10-25) ADR-008 ข้อ 1 ครอบคลุมการใช้ Translation module ที่ยังเป็น experimental ใน CORE-7 แล้ว — CORE-7 (merge แล้ว #26) **คงไว้ที่
+   backend ไม่ถอด** แต่ storefront ยังไม่ใช้ (ไม่มี cookie → ไม่ส่ง `x-medusa-locale`) (ADR-014 ข้อ 5)
+3. (2026-10-26, แทนข้อเดิม) `metadata` (title/description) ของหน้าเขียนเป็นภาษาไทยตรงใน task ของหน้านั้น
+4. (2026-10-26) ADR-014 accepted: ภาษาไทยอย่างเดียวในระยะแรก ไม่ทำ i18n
+
+### เลื่อนไป (ADR-014)
+กลับมาทำได้เมื่อมี ADR ใหม่ (dynamic SSR หรือ locale ใน URL) เท่านั้น: `resolveLocale` + cookie `_medusa_locale` เป็นที่มาของ locale,
+`<html lang>` ตาม cookie, `language-select` 2 ภาษา + fallback เมื่อ `GET /store/locales` ไม่ตอบ, `x-medusa-locale` ตาม cookie ในฐานะ
+ฟีเจอร์, `messages/{th,en}.json` + next-intl + `react/jsx-no-literals`, AC-12..AC-19 เดิม (ดูประวัติใน git ของไฟล์นี้ก่อน 2026-10-26)
 
 ## Tasks
 | ID | Task | Depends |
@@ -164,22 +186,22 @@ CORE-4c และ CORE-4d ทำขนานกันได้หลัง CORE-
 | CORE-1 | `create-medusa-app` ลงใน `apps/backend` + starter ลงใน `apps/storefront`; pnpm workspace; Docker Compose (pg, redis); `.env.example`; CI ผ่านด้วย test ว่าง | — |
 | CORE-2 | Seed script: region Thailand, THB, VAT 7%, shipping option (Standard + Digital delivery), สินค้าตัวอย่าง, admin user; script `print-publishable-key` ที่ CI ใช้ | CORE-1 |
 | CORE-3 | Notification provider (Resend) + template order placed/shipped | CORE-1 |
-| CORE-4a | THB format + theme tokens + Noto Sans Thai + Vitest (ดู "CORE-4 Storefront i18n / theme / THB") | CORE-1 |
-| CORE-4b | next-intl infra + locale จาก cookie + language-select + แปล layout shell | CORE-4a, CORE-5, CORE-5b, CORE-8 |
-| CORE-4c | แปล UI: home, PLP, PDP, cart | CORE-4b, CORE-9 |
-| CORE-4d | แปล UI: checkout, account, order และ component กลาง | CORE-4b |
-| CORE-5 | ตั้งค่า Playwright แบบ screenshot ทุก step + convention ของโฟลเดอร์ evidence + helper ตั้ง cookie `_medusa_locale` (ADR-008) | CORE-1 |
+| CORE-4a | THB format + theme tokens + Noto Sans Thai + Vitest (ดู "CORE-4 Storefront ภาษาไทย / theme / THB") | CORE-1 |
+| CORE-4b | ESLint กันข้อความอังกฤษ + ลบ `language-select` + ข้อความไทย: layout shell, home, PLP, categories, collections, PDP (ADR-014) | CORE-4a, CORE-5b, CORE-8 |
+| CORE-4c | ข้อความไทย: cart, account, order, policies, common | CORE-4b |
+| CORE-4d | ข้อความไทย: checkout + shipping nudge (รวมข้อความของ PAY-2) | CORE-4b, PAY-2 |
+| CORE-5 | ตั้งค่า Playwright แบบ screenshot ทุก step + convention ของโฟลเดอร์ evidence + helper ตั้ง cookie `_medusa_locale` (ADR-008; ไม่ถูกใช้หลัง ADR-014) | CORE-1 |
 | CORE-6 | Store route เฉพาะลูกค้า (middleware + cart hook + storefront redirect) + e2e สำหรับ AC-1..AC-4, AC-6 ด้วย manual payment provider (หา element ด้วย `data-testid` ตาม ADR-008) | CORE-2,4a,5 |
-| CORE-7 | Backend: เปิด Translation module (feature flag + `medusa-config.ts`) และตั้ง store locales `th-TH`, `en-US` ใน seed เพื่อให้ `GET /store/locales` และ `x-medusa-locale` ใช้งานได้ (ไม่อยู่ใน CORE-4 ตาม ADR-008) | CORE-2 |
+| CORE-7 | Backend: เปิด Translation module (feature flag + `medusa-config.ts`) และตั้ง store locales `th-TH`, `en-US` ใน seed เพื่อให้ `GET /store/locales` และ `x-medusa-locale` ใช้งานได้ (ไม่อยู่ใน CORE-4 ตาม ADR-008) — merge แล้ว คงไว้ แต่ storefront ยังไม่ใช้ (ADR-014) | CORE-2 |
 | CORE-5b | แก้เครื่องมือ evidence ของ e2e (ดู "Follow-up จาก review/qa") | CORE-5 |
 | CORE-8 | ฟอนต์ของ class `txt-*`/`h*-webs` จาก `@medusajs/ui-preset` ใช้ Noto Sans Thai | CORE-4a, CORE-5 |
 | CORE-9 | search index เก็บราคา THB → หน้า store แสดงราคา ฿ | CORE-2 |
 | CORE-10 | Seed: ชื่อสินค้าไทย, idempotency ต่อขั้น, `.env.example` | CORE-2 (แนะนำ merge หลัง CORE-6) |
 | CORE-11 | Notification: อีเมล shipped แสดงเฉพาะ item ที่ส่ง, order placed เคารพ `no_notification` | CORE-3 |
-CORE-3, CORE-4a และ CORE-5 ทำขนานกันได้หลังจาก CORE-1; CORE-4c ∥ CORE-4d หลัง CORE-4b; CORE-7 ขนานกับ CORE-4b..4d ได้
-(storefront ทำงานได้โดยไม่มี CORE-7 ตามกฎข้อ 6–7 ของ CORE-4)
+CORE-3, CORE-4a และ CORE-5 ทำขนานกันได้หลังจาก CORE-1; CORE-4c ∥ CORE-4d หลัง CORE-4b (4d รอ PAY-2 ด้วย)
+(storefront ไม่ใช้ CORE-7 ตาม ADR-014)
 CORE-5b ∥ CORE-8 ∥ CORE-9 ∥ CORE-10 ∥ CORE-11 (ไม่แตะไฟล์เดียวกัน) — CORE-5b, CORE-8 อยู่บน critical path ของ CORE-4b;
-CORE-9 เป็น dependency ของ CORE-4c (PLP/PDP)
+(2026-10-26: CORE-9 ไม่เป็น dependency ของ CORE-4 task ใดแล้ว — ADR-014)
 
 ## Follow-up จาก review/qa (2026-10-25)
 ที่มา: หัวข้อ Backlog ใน `docs/ROADMAP.md` และ `docs/evidence/core/CORE-4a/REPORT.md` (defect 1–4)
@@ -207,7 +229,11 @@ none
 14. ทุก element ที่ได้ font-family จาก class ของ `@medusajs/ui-preset` (`txt-*`, `h1-webs`…`h3-webs` และกลุ่ม `*-webs` อื่น)
     ต้องได้ `var(--font-noto-sans-thai)` เป็นตัวแรก โดยไม่ fork/patch package
 15. สกุลเงินของ search index = `["thb"]` เท่านั้น (ร้านมี region เดียวคือ Thailand/THB) ทั้ง backend `PRICE_CURRENCIES`
-    และ storefront `SEARCH_PRICE_CURRENCIES` ต้องมีค่าเท่ากัน; เพิ่มสกุลเงินในอนาคต = แก้ทั้งสองที่ (index reindex ตอนบูต)
+    และ storefront `SEARCH_PRICE_CURRENCIES` ต้องมีค่าเท่ากัน; เพิ่มสกุลเงินในอนาคต = แก้ทั้งสองที่
+    **ลำดับ release เมื่อ schema/field ของ search index เปลี่ยน** (แก้ 2026-10-26): `medusa db:migrate` → รีสตาร์ต backend (server + worker;
+    index ถูก reindex ตอนบูต) → รอ reindex เสร็จ → ค่อยปล่อย storefront ที่อ่าน field ใหม่ — ถ้าปล่อย storefront ก่อน หน้า `/store` จะ query field
+    ที่ยังไม่มีใน index; compose prod บังคับ `migrate` ก่อน server และ storefront รอ server healthy อยู่แล้ว (`docker-compose.prod.yml`)
+    รายละเอียดอยู่ใน runbook `docs/ops/production.md` หัวข้อ "ลำดับ release" (spec 07)
 16. ชื่อสินค้าตัวอย่างใน seed เป็นภาษาไทย (ADR-008, ข้อตัดสินของ owner ข้อ 1) `handle` คงเดิม (URL/e2e ไม่เปลี่ยน)
 17. seed ตรวจการมีอยู่ **ทีละ resource** (region, tax region, stock location, fulfillment set, shipping option ตาม `type.code`,
     publishable key ตาม title, category ตามชื่อ, product ตาม handle, inventory level) และสร้างเฉพาะที่ขาด — ไม่ใช้ region
@@ -267,7 +293,7 @@ none
 | CORE-9 | `PRICE_CURRENCIES`/`SEARCH_PRICE_CURRENCIES` = `["thb"]` + unit/integration + e2e หน้า store | AC-26..28 | CORE-2 |
 | CORE-10 | seed: ชื่อสินค้าไทย, เช็กการมีอยู่ทีละ resource, `.env.example` ว่าง (ค่าส่ง Standard คงเดิม กฎข้อ 19) | AC-29..31 | CORE-2 (แนะนำ — ไม่บังคับ — ให้ merge หลัง CORE-6 เพราะ e2e ของ CORE-6 ใช้ seed) |
 | CORE-11 | อีเมล shipped เฉพาะ item ใน fulfillment, `order.placed` เคารพ `no_notification` | AC-32, AC-33 | CORE-3 |
-CORE-5b, CORE-8, CORE-9 ทำขนานกันได้; CORE-5b + CORE-8 เป็น dependency ของ CORE-4b, CORE-9 เป็น dependency ของ CORE-4c;
+CORE-5b, CORE-8, CORE-9 ทำขนานกันได้; CORE-5b + CORE-8 เป็น dependency ของ CORE-4b (CORE-9 ไม่เป็น dependency ของ CORE-4 แล้ว — ADR-014);
 CORE-10 ∥ CORE-11 นอก critical path และไม่บล็อก release v0.1.0
 evidence ของ CORE-8/CORE-9 (e2e) บันทึกได้หลัง CORE-5b merge (ถ้ายังไม่ merge ให้รัน e2e โดยไม่ตั้ง `E2E_SAVE_EVIDENCE`)
 fail-fast เมื่อ prod ไม่มี `RESEND_API_KEY` อยู่ใน OPS-7 (spec 07, ADR-010) ไม่อยู่ใน CORE-11
@@ -326,7 +352,9 @@ none (middleware + storefront เท่านั้น)
   Then ทุกตัวได้ 404 และ CA ไม่เปลี่ยน (items, promotions, shipping methods, `email`, `completed_at`); When A เรียกชุดเดียวกัน Then ได้ผลเหมือนก่อน CORE-12
 - AC-35 Given CA มี payment collection PC When B เรียก `POST /store/payment-collections {cart_id: CA}`,
   `POST /store/payment-collections/PC/payment-sessions`, `GET /store/shipping-options?cart_id=CA`,
-  `POST /store/shipping-options/:id/calculate {cart_id: CA}` Then 404 และไม่มี payment session ใหม่; A → 200
+  `POST /store/shipping-options/:id/calculate {cart_id: CA}` Then 404 และไม่มี payment session ใหม่; A → 200 ยกเว้น `calculate`:
+  A ผ่าน auth + ownership ไปถึง handler ของ Medusa (status **ไม่ใช่** 401/404) — option ใน seed เป็นราคา flat ของ provider manual
+  ซึ่งคำนวณไม่ได้ handler จึงตอบ error ของตัวเอง (เช่น 500/400) ซึ่งไม่ใช่สิ่งที่ AC นี้ทดสอบ (แก้ถ้อยคำ 2026-10-26 ตามผล review CORE-12)
 - AC-36 Given ไม่มี token When `GET /store/carts/CA` หรือ `GET /store/orders/:id` Then 401
 - AC-37 Given order OA ของ A When B `GET /store/orders/OA` Then 404; A → 200
 - AC-38 Given cart ที่ `customer_id` เป็น null (สร้างตรงผ่าน module ใน test) When customer ใดเรียก `GET /store/carts/:id` Then 404
@@ -368,6 +396,66 @@ CORE-14 ถ้า diff เกิน ~400 LOC ให้แยก CORE-14a (`/buy`
 - ADR-013 accepted
 - ~~Q-F2~~ `/buy/[items]` เก็บไว้แต่บังคับล็อกอิน; ปิด UCP (`/ucp/*`, `lib/ucp/*`, `cart/resume`) ทั้งชุดใน v1 (เปิดภายหลังต้องมี ADR)
 - ~~Q-F3~~ ปิด order transfer ทั้งชุด (request/accept/decline/cancel)
+
+## Follow-up รอบ 4 จาก review/qa + ข้อตัดสินของ owner (2026-10-26)
+ไม่เปลี่ยนนิยามของ CORE-12 (#51) — AC-35 แก้เฉพาะถ้อยคำของ `calculate` (ดูใน AC-35); กฎข้อ 15 เพิ่มลำดับ release (runbook ใน
+`docs/ops/production.md`) ไม่มี task โค้ด
+Out of scope: rate limit ของ `/store/search` (OPS-3), ข้อความ UI อื่นของหน้า `/store` (CORE-4b)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa มีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| คำนวณราคา/ภาษีของสินค้าตาม cart | `GET /store/products*`, `/store/product-variants*` รับ `cart_id` ใน query แล้วใช้ region/ที่อยู่ของ cart นั้น — **ไม่ตรวจเจ้าของ cart** (QA พบ: cart ของคนอื่นได้ 200) | ขยาย: middleware ของ CORE-12 (ADR-013) ตรวจ `query.cart_id` (CORE-12b) |
+| auth แบบไม่บังคับ | `authenticate("customer", ["session","bearer"], { allowUnauthenticated: true })` | ใช้ตามเดิม (เฉพาะเมื่อมี `cart_id`) |
+| ค้นหาสินค้าบนหน้า store | `/store/search` + `@medusajs/instantsearch-adapter` ของ starter | ใช้ตามเดิม; แก้ฝั่ง storefront เมื่อ error (CORE-15) |
+| ที่วาง evidence ของ hotfix | ไม่มี (convention ของเรา, CORE-5b) | กำหนด convention (กฎข้อ 27) ไม่แก้โค้ด |
+
+### Data model / Workflows
+none
+
+### API routes (CORE-12b)
+ไม่มี route ใหม่ เพิ่ม middleware ใน `src/api/store/ownership/` บน `GET /store/products`, `GET /store/products/:id`,
+`GET /store/product-variants`, `GET /store/product-variants/:id` และ store route อื่นของ Medusa 2.22.1 ที่อ่าน `cart_id` จาก query
+(builder ค้น source ของ `@medusajs/medusa` `api/store/**` แล้วระบุรายการครบใน PR) — ทำงาน**เฉพาะเมื่อ query มี key `cart_id`**:
+ไม่มี token → 401; มี token แต่ cart ไม่ใช่ของผู้เรียก/ไม่พบ/ค่าไม่ใช่ string เดี่ยว → 404 (helper `cartOwner`/`assertOwner` ของ CORE-12);
+ไม่มี `cart_id` → ผ่านโดยไม่ต้อง auth (การเรียกดูยังเป็นสาธารณะ)
+
+### Business rules
+27. (evidence ของ hotfix/chore ที่ไม่มี task id) ผล test ใส่ใน body ของ PR เท่านั้นเป็นค่าเริ่มต้น; ถ้าต้องเก็บไฟล์ใช้
+    `docs/evidence/ops/HOTFIX-<เลข PR>[-tests.txt|/]` ซึ่งตรง `TASK_ID_RE` (`^[A-Z]+-\d+[a-z]?$`) อยู่แล้ว — ไม่แก้ regex/budget test
+    (`docs/evidence/README.md`)
+28. (CORE-12b, ADR-013) store route ของ Medusa ที่ใช้ `cart_id` ใน query เพื่อคำนวณราคา/ภาษี ต้องผ่านกฎ 22 **เมื่อมี `cart_id`** เท่านั้น
+29. (CORE-15) เมื่อ `/store/search` ตอบ error หน้า `/store` ต้อง**หยุดยิง request** (ไม่มี retry อัตโนมัติวนไม่จบ; เปลี่ยน filter/หน้า/ค้นหาใหม่
+    โดยผู้ใช้ = request ใหม่ได้ตามปกติ) และแสดง `data-testid="products-error"` เป็นข้อความภาษาไทย (ADR-014) แทนรายการสินค้า
+
+### Acceptance criteria (follow-up รอบ 4)
+- AC-51 (CORE-12b) Given customer A มี cart CA (region Thailand) และ B ล็อกอิน When B เรียก `GET /store/products?cart_id=CA`,
+  `GET /store/products/:id?cart_id=CA`, `GET /store/product-variants?cart_id=CA`, `GET /store/product-variants/:id?cart_id=CA` Then ทุกตัว 404;
+  When A เรียกชุดเดียวกัน Then 200 และ `calculated_price` เท่ากับก่อนเพิ่ม middleware (integration http)
+- AC-52 (CORE-12b) Given ไม่มี token When เรียก 4 route ใน AC-51 พร้อม `cart_id=CA` Then 401; When ไม่มี `cart_id` (มี `region_id`) Then 200
+  ทั้ง 4 route (การเรียกดูสาธารณะไม่เปลี่ยน)
+- AC-53 (CORE-12b) Given A ล็อกอิน When `cart_id=` (ว่าง), `cart_id=cart_ไม่มีจริง`, หรือ `cart_id=CA&cart_id=CA` (array) Then ไม่ใช่ 200
+  (404 จาก middleware หรือ 400 จาก validator ของ Medusa) และไม่มี 5xx
+- AC-54 (CORE-15, กฎข้อ 29) Given storefront + backend ที่ seed แล้ว และ Playwright `page.route("**/store/search**")` ตอบ 500 ทุกครั้ง
+  When เปิด `/th/store` แล้วรอ 6 วินาที Then จำนวน request ไป `/store/search` ≤ 3 (นับด้วย `page.on("request")`), `products-error` มองเห็นได้
+  และ textContent มีอักษรไทย, ไม่มี `pageerror` (e2e, screenshot)
+- AC-55 (CORE-15) Given สถานะของ AC-54 When ยกเลิก route mock แล้ว reload Then เห็นการ์ดสินค้า (test id ของการ์ดใน store-hits) และ
+  ไม่มี `products-error` (e2e)
+
+### แผนการทดสอบ (follow-up รอบ 4)
+| ระดับ | AC |
+|------|----|
+| unit (Jest) | resolver `cart_id` จาก query: ไม่มี key → ข้าม, string → ตรวจ, array/ว่าง → 404 |
+| integration http | AC-51, AC-52, AC-53 |
+| e2e | AC-54, AC-55 |
+
+### Tasks (follow-up รอบ 4)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-12b | **ความปลอดภัย (เล็ก)**: ขยาย ownership middleware ของ CORE-12 (`src/api/store/ownership/`) ให้ตรวจ `query.cart_id` บน products/product-variants (+ store route อื่นที่อ่าน `cart_id` จาก query ตามที่ตรวจ source) ตามกฎข้อ 28 + integration test | AC-51..53 | CORE-12 |
+| CORE-15 | storefront: หน้า `/store` หยุดยิง `/store/search` ซ้ำเมื่อ error และแสดง `products-error` ภาษาไทย (กฎข้อ 29) + e2e | AC-54, AC-55 | CORE-9 |
+CORE-12b ∥ CORE-15 ∥ CORE-13 (CORE-12b แตะ `src/api/store/ownership/` — ถ้า CORE-13 แตะไฟล์เดียวกันให้ตัวที่ merge ทีหลัง rebase);
+CORE-12b ควร merge ก่อน release แรกที่เปิดให้ลูกค้าจริงใช้ (เหมือน CORE-12); CORE-15 กับ CORE-4b แตะ `store-hits` เดียวกัน — ตัวที่ merge ทีหลัง rebase
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

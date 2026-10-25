@@ -80,10 +80,10 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 ## Workflows
 - `createGroupBuyCampaignWorkflow(input)` (admin) — input: ค่าคอนฟิกของ `GroupBuyCampaign` + `starts_at`, `ends_at`
   (บังคับ) + `application_method` (type, value, currency_code?, target_type `items`, allocation, `target_rules` = scope
-  สินค้า) + `rules?`:
+  สินค้า) + `rules?` + `is_tax_inclusive?` (ค่าเริ่มต้น `true` — กฎข้อ 12, GB-2c):
   1. สร้าง Medusa campaign (`createCampaignsWorkflow`) — compensation: ลบ
   2. สร้าง promotion ต้นแบบ (`createPromotionsWorkflow`): `status: "draft"`, `is_automatic: false`,
-     `campaign_id`, `code: "GBT-<random 12>"` (ห้ามขึ้นต้น `GB-`) — compensation: ลบ
+     `campaign_id`, `code: "GBT-<random 12>"` (ห้ามขึ้นต้น `GB-`), `is_tax_inclusive` (ไม่ส่งมา = `true`) — compensation: ลบ
   3. สร้าง `GroupBuyCampaign` (`status: "draft"`) — compensation: ลบ
   4. สร้าง link ไป promotion_campaign และ template — compensation: dismiss
 - `updateGroupBuyCampaignWorkflow(id, patch)` (admin): แก้คอนฟิกได้เฉพาะเมื่อ `draft`; เมื่อ `active` แก้ได้เฉพาะ
@@ -170,9 +170,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 ## Admin UI / Storefront
 - Admin: route page "Group buying" → แคมเปญ, กลุ่มพร้อมความคืบหน้าและ status, membership
   พร้อม order + สถานะการชำระเงิน, succeed/fail แบบ manual
-- Storefront: หน้าแคมเปญ; หน้ากลุ่ม (progress bar, นับถอยหลัง, จำนวนสมาชิก, ปุ่ม "Join",
-  ปุ่ม "Create team" เมื่ออนุญาต → ลิงก์แชร์ `/g/<token>`); รายการ order ในหน้า account แสดง draft
-  order ของกลุ่มพร้อมสถานะ (รอกลุ่ม / ชำระเงินภายใน <deadline> / ชำระแล้ว / ยกเลิก);
+- Storefront (ข้อความไทยตรงในโค้ด ADR-014; e2e หาด้วย test id): หน้าแคมเปญ; หน้ากลุ่ม (progress bar, นับถอยหลัง, จำนวนสมาชิก,
+  ปุ่ม "เข้าร่วมกลุ่ม" `group-join-button`, ปุ่ม "สร้างทีม" `group-create-team-button` เมื่ออนุญาต → ลิงก์แชร์ `/g/<token>`); รายการ order
+  ในหน้า account แสดง draft order ของกลุ่มพร้อมสถานะ (รอกลุ่ม / ชำระเงินภายใน <deadline> `group-pay-deadline` / ชำระแล้ว / ยกเลิก);
   หน้าชำระเงิน `/account/orders/:id/pay` (บัตร + PromptPay, spec 06)
 
 ## Business rules
@@ -212,6 +212,10 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     ผ่าน **กลไกเดียวกับ PROMO-2** (spec 03 กฎข้อ 13: `errorHandler` ที่ override ใน `defineMiddlewares` แปลง error ที่มี code ของเรา)
     — handler เดิมของ Medusa เขียนทับ `code`/`message` ของ `CONFLICT` จึงต้องพึ่งกลไกนี้; GB-3 throw error ตามรูปแบบที่ PROMO-2
     บันทึกไว้ และ **ไม่** เขียนการแปลง 409 ของตัวเองใน route (ถ้า PROMO-2 ใช้ allow-list ของ code ให้ GB-3 เพิ่ม `GB_*` ในนั้น)
+12. (owner 2026-10-26, ADR-011 หมายเหตุ) promotion ต้นแบบมี `is_tax_inclusive: true` เป็นค่าเริ่มต้น เพราะราคา THB ของร้านรวม VAT แล้ว
+    (region/currency `is_tax_inclusive: true` ใน seed) — ส่วนลดแบบ `fixed` ฿X จึงลดยอดที่ลูกค้าจ่ายพอดี ฿X; admin ส่ง `false` ได้ทั้งใน
+    `POST /admin/group-buy/campaigns` และแก้ภายหลังที่หน้า promotion ของ Medusa admin (มีผลเฉพาะกลุ่มที่สร้างหลังจากนั้น ตาม ADR-011 ข้อ 3)
+    ไม่ย้อนแก้ต้นแบบของแคมเปญที่สร้างก่อน GB-2c (ค่าเดิมของ Medusa คือ `false`)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -271,6 +275,13 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   ไม่มี draft order, ไม่มี membership, ตัวนับไม่เปลี่ยน และ cart ไม่มี `GB-<token>` ค้าง
 - AC-24 (GB-3, ADR-013) customer B ล็อกอินแล้ว `POST /store/group-buy/groups/:token/join` ด้วย `cart_id` ของ customer A → 404;
   ไม่มี membership, ไม่มี draft order, ตัวนับของกลุ่มไม่เปลี่ยน และ cart ของ A ไม่มี `GB-<token>` (promotions/adjustments เหมือนก่อนเรียก)
+- AC-20c (GB-2c, กฎข้อ 12) `POST /admin/group-buy/campaigns` ที่ไม่ส่ง `is_tax_inclusive` → promotion ต้นแบบ `is_tax_inclusive=true`; ส่ง
+  `false` → `false`; ไม่ใช่ boolean → 400; แคมเปญ (ค่าเริ่มต้น) ส่วนลด `fixed` ฿100 THB scope = product X ที่ราคา ฿1,070 (รวม VAT) → สร้างกลุ่ม
+  แล้วใส่ `GB-<token>` ลง cart ที่มี X qty 1 → `cart.total` ลดลงพอดี 100; control: ต้นแบบ `is_tax_inclusive=false` → ลดลงไม่เท่ากับ 100
+  (≈ 107 ตามการคำนวณของ Medusa — ยืนยันว่า test แยกสองกรณีออกจากกันได้)
+- AC-20d (GB-2c, ปิดช่องว่าง test ของ GB-2b) `createGroupWorkflow` ที่ทำให้ขั้นสร้าง link `group ↔ promotion` ล้ม (test inject error ครั้งเดียว
+  เช่น mock `link.create` ให้ throw) → workflow ล้ม, ไม่มี promotion `GB-*` ใหม่, ไม่มี `GroupBuyGroup` ใหม่ (นับก่อน/หลังเท่ากัน) และ error
+  ที่ผู้เรียกได้รับเป็น error ของขั้น link; เรียกซ้ำโดยไม่ inject → สำเร็จ
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -284,7 +295,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   (logic exclusivity ทดสอบใน PROMO-1)
 - Integration (modules): model ยอมให้ 2 membership `(group_id, customer_id)` เดียวกัน และปฏิเสธ `order_id` ซ้ำ (GB-1);
   การเข้าร่วมพร้อมกัน (AC-8, AC-13 ส่วน concurrent, AC-18 ส่วน concurrent), idempotency (AC-9)
-- Integration (modules/workflow): AC-19, AC-20a, AC-20b (รวมการใส่ code ลง cart จริงผ่าน `updateCartPromotionsWorkflow`)
+- Integration (modules/workflow): AC-19, AC-20a, AC-20b (รวมการใส่ code ลง cart จริงผ่าน `updateCartPromotionsWorkflow`), AC-20c (ส่วน cart),
+  AC-20d
+- Unit/integration (http): AC-20c (validator + ค่าเริ่มต้น)
 - Integration (http): AC-1, AC-3..AC-7, AC-10..AC-15, AC-17, AC-18, AC-19 (ส่วน admin pool), AC-20a (DELETE), AC-21a,
   AC-21b, AC-22, AC-23, AC-24
   โดย mock payment provider
@@ -296,12 +309,14 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-1 | models/service/links/migrations ของ module + unit tests — membership มี `campaign_id`, ไม่มี unique `(group_id, customer_id)`, `order_id` unique + read-only link ไป order, index ตาม Non-functional (ADR-009) | CORE-2 |
 | GB-2a | link template (ADR-011) + `createGroupBuyCampaignWorkflow` / `updateGroupBuyCampaignWorkflow` / `deleteGroupBuyCampaignWorkflow` / `setGroupBuyCampaignStatusWorkflow` + admin API: campaigns CRUD, `.../status` (AC-20a, AC-21a) | GB-1, ADR-011 accepted |
 | GB-2b | `computeGroupEndsAt` + `createGroupWorkflow` (pool + team ระดับ workflow, ตรวจช่วงเวลาแคมเปญ) + admin `POST/GET /admin/group-buy/campaigns/:id/groups` (AC-19, AC-20b, AC-21b) — **ไม่รวม** `POST /store/group-buy/groups` | GB-2a |
+| GB-2c | follow-up owner/review (เล็ก): ค่าเริ่มต้น `is_tax_inclusive: true` ของต้นแบบใน validator ของ `POST /admin/group-buy/campaigns` และ `createGroupBuyCampaignWorkflow` (กฎข้อ 12) + test rollback เมื่อขั้น link ของ `createGroupWorkflow` ล้ม (AC-20c, AC-20d) — ไม่แตะ store route | GB-2b |
 | GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009, ตรวจช่วงเวลา + ตรวจว่ามี adjustment ของ `GB-<token>`) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2b), join, leave + 409 ผ่านกลไกของ PROMO-2 ตามกฎข้อ 11 (ไม่แปลงเอง) + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18, AC-23, AC-24); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง; ตรวจเจ้าของ cart ด้วย helper ของ CORE-12 | GB-2b, PROMO-1, PROMO-2 (AC-14 ส่วนที่สอง: ใส่ `SAVE10` ผ่าน route ของ Medusa ต้องได้ code ของเรา), CORE-12 (AC-24) |
 | GB-4 | `succeedGroupWorkflow` / `failGroupWorkflow` + deadline job (รวมตั้งแคมเปญ `ended`) + admin succeed/fail + อีเมล (AC-1, AC-3, AC-9, AC-11, AC-12, AC-22) | GB-3 |
 | GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) | GB-4, PAY-3 |
 | GB-6 | หน้า route ของ Admin UI | GB-2b |
-| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + e2e (AC-2, AC-16) | GB-5 |
-GB-1 → GB-2a → GB-2b → (GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
+| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + e2e (AC-2, AC-16); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | GB-5 |
+GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
+GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/test ของ `create-group` ไม่ใช่ไฟล์ join) แต่ควร merge ก่อน release v0.5.0
 
 ## Open questions
 - Q1 หากสมาชิกบางคนไม่ชำระเงินเลยหลังกลุ่มสำเร็จ กลุ่มควรยังนับว่า fulfilled สำหรับคนอื่นหรือไม่?
@@ -315,3 +330,4 @@ GB-1 → GB-2a → GB-2b → (GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-3 
 - ~~Q6~~ ตัดสินแล้ว (owner, 2026-10-25): admin สั่ง `ended` ก่อนเวลา → ปิดการสร้าง/เข้าร่วม กลุ่ม `open` ยังรอตัดสินที่ `ends_at` ของตัวเอง
 - ~~Q7~~ ตัดสินแล้ว (owner, 2026-10-25): ไม่จำกัดจำนวน team ต่อลูกค้าใน v1 และยอมรับความเสี่ยงที่ต้นแบบ `GBT-*`
   มองเห็นในหน้า promotion ของ Medusa admin (บรรเทาด้วย code สุ่มที่เดาไม่ได้ + คำเตือนใน GB-6)
+- ~~Q8~~ ตัดสินแล้ว (owner, 2026-10-26): ต้นแบบ `is_tax_inclusive: true` เป็นค่าเริ่มต้น (ราคา THB รวม VAT) admin เปลี่ยนเองได้ — กฎข้อ 12, GB-2c
