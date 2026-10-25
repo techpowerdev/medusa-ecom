@@ -1,0 +1,50 @@
+PAY-5 (spec 06 กฎข้อ 7, AC-11) — race ระหว่าง QR PromptPay หมดอายุกับการชำระสำเร็จ
+วันที่: 2026-10-26  เครื่อง: local (Node 22.23.3), Medusa 2.22.1 + @medusajs/payment-stripe 2.22.1
+Stripe: test mode จริง (sk_test_), webhook ผ่าน `stripe listen --events payment_intent.* --forward-to localhost:9135/hooks/payment/<provider>`
+แยก listener ต่อ endpoint ตาม ci.yml; backend `medusa develop -p 9135`, DB medusa_pay5 (migrate + seed)
+
+ผล: กรณี (b) ของกฎข้อ 7 → ADR-015 (proposed); test AC-11 เป็น test.fixme (รันยืนยันได้ด้วย E2E_RUN_KNOWN_ISSUES=1)
+
+== 1) AC-11 แบบ opt-in (ยืนยันปัญหา) — fail ด้วยสาเหตุที่ถูกต้อง, ทำซ้ำได้ 2/2 รอบ ==
+$ E2E_RUN_KNOWN_ISSUES=1 pnpm --filter storefront exec playwright test --project=chromium payments-promptpay-race --reporter=list
+
+Running 1 test using 1 worker
+
+[PAY-5] create new session after PI succeeded → HTTP 200
+  ✘  1 [chromium] › e2e/payments-promptpay-race.spec.ts:95:5 › AC-11: ชำระ PromptPay สำเร็จแล้วทันทีสร้าง session ใหม่ (หมดอายุ) → ยังได้ order captured ที่อ้าง PI นั้น (1.1m)
+
+  1) ... › Then ภายใน 60 วินาที มี order captured ที่อ้าง PI ที่ succeeded (ไม่มีเงินค้างโดยไม่มี order)
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: "captured"
+    Received: "no-order"
+    Call Log:
+    - Timeout 60000ms exceeded while waiting on the predicate
+
+  1 failed
+
+(step ก่อนหน้าใน test ผ่าน: PI `requires_action` → authorize test payment → PI `succeeded` และยังเป็น `succeeded` ตอนตรวจ Then)
+
+== 2) log ของ backend ระหว่างรอบเดียวกัน (ตัดเฉพาะบรรทัดที่เกี่ยวข้อง) ==
+http:    POST /store/payment-collections/pay_col_…/payment-sessions ← - (200)      # ขั้นหมดอายุ หลัง PI succeeded → สำเร็จ
+http:    POST /hooks/payment/stripe-promptpay_stripe ← - (200)                       # webhook payment_intent.succeeded ถึง backend
+error:   Error was thrown trying to authorize payment session - payses_01M5TN603CF95GJTNRWWC3NR88 - Error: PaymentSession with id: payses_01M5TN603CF95GJTNRWWC3NR88 was not found
+error:   An error occurred while processing payment.webhook_received:
+error:   PaymentSession with id: payses_01M5TN603CF95GJTNRWWC3NR88 was not found
+(Stripe ได้ HTTP 200 จึงไม่ส่ง webhook ซ้ำ — ไม่มีการแก้ไขอัตโนมัติ)
+
+== 3) สถานะ DB หลัง test (medusa_pay5) ==
+select … from payment_session where id in (<session เดิมของทั้งสองรอบ>)  → 0 rows (ถูกลบจริง)
+select count(*) from payment where payment_session_id in (…)            → 0
+select count(*) from "order"                                             → 0
+
+== 4) โหมดปกติ / CI (ไม่ตั้ง E2E_RUN_KNOWN_ISSUES) ==
+$ pnpm --filter storefront exec playwright test --project=chromium payments-promptpay-race
+  -  1 [chromium] › e2e/payments-promptpay-race.spec.ts:95:5 › AC-11: …
+  1 skipped
+
+== 5) lint / typecheck / evidence unit ==
+$ pnpm lint        → 0 errors (warning เดิมของ storefront 38 รายการ ไม่เกี่ยวกับ PAY-5); eslint ไฟล์ใหม่ผ่านไม่มี warning
+$ pnpm typecheck   → storefront Done, backend Done
+$ pnpm --filter storefront exec playwright test --project=unit → 24 passed
+
+AC-12: ไม่ทำใน PAY-5 (กรณี b — spec 06 AC-11 ระบุว่าไม่ต้องทำ AC-11/AC-12 ให้ผ่าน และไม่แก้ storefront)
