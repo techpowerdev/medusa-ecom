@@ -1,0 +1,83 @@
+# GB-2b test evidence — 2026-10-25 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose
+# integration ในเครื่องรันเฉพาะไฟล์ group-buy (ชุดเต็มให้ CI รัน)
+### Red (ก่อนเขียนโค้ด)
+group-creation.unit.spec.ts  → FAIL: Cannot find module '../utils/group-creation'
+group-promotion.unit.spec.ts → FAIL: Cannot find module '../utils/group-promotion'
+group-buy-groups.spec.ts     → FAIL: Cannot find module '../../src/workflows/group-buy/create-group'
+รอบแรกหลังเขียน workflow: 14/15 ผ่าน — test adjustment คาด 30% ของราคารวม VAT (354) แต่ได้ 330.84
+(= 30% ของยอดก่อน VAT 7% เพราะต้นแบบ is_tax_inclusive=false) → แก้ test ให้คำนวณฐานจาก tax_lines ของ line (Medusa ทำถูก)
+### pnpm lint
+apps/backend: No lint issues found (storefront มี warning เดิม 38 รายการ ไม่เกี่ยวกับ GB-2b)
+### pnpm --filter backend typecheck
+ผ่าน ไม่มี error
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit
+Test Suites: 26 passed, 26 total
+Tests:       206 passed, 206 total
+# เฉพาะไฟล์ที่เกี่ยวกับ GB-2b (computeGroupEndsAt มาจาก GB-1; template-code ถูก refactor ให้ใช้ randomCode ร่วม):
+PASS src/modules/group_buy/__tests__/group-creation.unit.spec.ts
+  assertGroupCreatable
+    ✓ accepts an active campaign inside its time window
+    ✓ rejects a draft campaign with NOT_ALLOWED
+    ✓ rejects a ended campaign with NOT_ALLOWED
+    ✓ rejects when the Medusa campaign starts_at is in the future (NOT_ALLOWED)
+    ✓ rejects when the Medusa campaign ends_at is now, in the past or missing (NOT_ALLOWED)
+    ✓ group_mode=pool + kind=team → FORBIDDEN
+    ✓ group_mode=team + kind=pool → FORBIDDEN
+    ✓ group_mode=pool allows kind=pool
+    ✓ group_mode=both allows kind=pool
+    ✓ group_mode=team allows kind=team
+    ✓ group_mode=both allows kind=team
+    ✓ requires customer_id for a team (INVALID_DATA)
+    ✓ checks status/time before mode (inactive campaign → NOT_ALLOWED even if mode mismatches)
+PASS src/modules/group_buy/__tests__/group-promotion.unit.spec.ts
+  buildGroupPromotionInput
+    ✓ clones the template as an active, code-based GB-<token> promotion in the same campaign
+    ✓ keeps currency_code for a fixed discount and copies empty rule lists
+    ✓ never reuses the template code or status
+  generateJoinToken
+    ✓ is URL-safe upper-case alphanumerics of length 12
+    ✓ is random across calls
+PASS src/modules/group_buy/__tests__/template-code.unit.spec.ts
+  generateTemplateCode
+    ✓ returns GBT- followed by 12 upper-case alphanumerics
+    ✓ never starts with the group code prefix GB-
+    ✓ is random across calls
+PASS src/modules/group_buy/__tests__/group-deadline.unit.spec.ts
+  computeGroupEndsAt
+    ✓ uses the campaign ends_at for a pool group
+    ✓ uses created + team_duration_hours for a team when that is earlier
+    ✓ caps a team deadline at the campaign ends_at
+    ✓ falls back to the campaign ends_at when team_duration_hours is not set
+Test Suites: 4 passed, 4 total
+Tests:       25 passed, 25 total
+### test:integration:http — group-buy-groups.spec.ts (GB-2b) + group-buy-campaigns.spec.ts (regression GB-2a)
+PASS integration-tests/http/group-buy-groups.spec.ts
+    createGroupWorkflow — mode (AC-19)
+      ✓ group_mode=pool + kind=team → forbidden; no GB- promotion is created
+      ✓ group_mode=team + kind=pool → forbidden
+      ✓ group_mode=both + team (2h, campaign ends in 10h) → open group, unique token, owner, ends_at = created + 2h
+      ✓ team when the campaign ends in 1h → ends_at = campaign.ends_at
+    createGroupWorkflow — promotion clone (AC-20b)
+      ✓ creates an active GB-<token> promotion that matches the template
+      ✓ GB-<token> on a cart with X and Y → −30% adjustment on line X only
+      ✓ rolls back the GB- promotion when the group cannot be created
+    admin API /admin/group-buy/campaigns/:id/groups
+      ✓ requires an admin user
+      ✓ POST creates a pool group (201, ends_at = campaign.ends_at) and GET lists it (AC-19)
+      ✓ POST on a team-only campaign → 403 forbidden
+      ✓ does not accept kind from the body (pool only) → 400
+      ✓ POST on an unknown campaign → 404
+    campaign status/time window (AC-21b)
+      ✓ creating a group on a draft campaign → 400 not_allowed
+      ✓ creating a group on a ended campaign → 400 not_allowed
+      ✓ active campaign whose Medusa campaign starts_at is in the future → 400 not_allowed, no GB- promotion
+PASS integration-tests/http/group-buy-campaigns.spec.ts
+    createGroupBuyCampaignWorkflow (AC-20a)   (3 tests ✓)
+    deleteGroupBuyCampaignWorkflow rollback   (1 test ✓)
+    admin API                                 (6 tests ✓)
+    status transitions (AC-21a)               (4 tests ✓)
+Test Suites: 2 passed, 2 total
+Tests:       29 passed, 29 total
