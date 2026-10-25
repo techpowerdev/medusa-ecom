@@ -102,13 +102,15 @@ audit การเปิดดูโค้ดจริงผ่าน `GET /admi
 
 
 ### GroupBuyCampaign
-แคมเปญรวมกลุ่ม — ส่วนลด/ช่วงเวลา/สินค้า อยู่ที่ Medusa campaign+promotion ที่ลิงก์ไว้
+แคมเปญรวมกลุ่ม — ช่วงเวลาอยู่ที่ Medusa campaign; ส่วนลด/scope สินค้าอยู่ที่ promotion ต้นแบบ (`status=draft`)
+ใน campaign นั้น (ADR-011) ไม่ทำซ้ำในตารางนี้
 
 | ฟิลด์ | ชนิด | หมายเหตุ |
 |---|---|---|
 | `id` | id |  |
 | `name` | string |  |
 | `promotion_campaign_id` | link → promotion_campaign |  |
+| (template) | link → promotion | one-to-one; ต้นแบบ `draft`, `is_automatic=false`, code `GBT-*`; `createGroupWorkflow` clone เป็น `GB-<token>` `active` |
 | `target_type` | enum orders | units | people |  |
 | `target_value` | int |  |
 | `max_total_orders` | int? | ทั้งแคมเปญ |
@@ -117,7 +119,7 @@ audit การเปิดดูโค้ดจริงผ่าน `GET /admi
 | `group_mode` | enum pool | team | both | ใครสร้างกลุ่มได้ |
 | `team_duration_hours` | int? |  |
 | `pay_within_hours` | int | default 24 |
-| `status` | enum draft | active | ended |  |
+| `status` | enum draft | active | ended | default draft; draft→active (admin), active→ended (admin/job); spec 04 กฎข้อ 10 |
 
 ### GroupBuyGroup
 กลุ่ม 1 กลุ่ม = โค้ดส่วนลด 1 โค้ด (GB-token)
