@@ -1,0 +1,34 @@
+# CORE-5 ผล test (Playwright 1.64.1, Node 24.12.0)
+# storefront: next dev :8102, backend: medusa develop :9102, DB medusa_core5 (migrate แล้ว ไม่มี seed)
+
+## Red (ก่อนเขียนโค้ด) — pnpm --filter storefront test:e2e
+Error: Cannot find module './support/evidence-rules'
+Error: Cannot find module './evidence-rules'
+Error: Cannot find module './support/fixtures'
+Error: No tests found
+
+## Green — E2E_BASE_URL=http://localhost:8102 E2E_BACKEND_URL=http://localhost:9102 E2E_SAVE_EVIDENCE=1 pnpm --filter storefront test:e2e
+Running 9 tests using 3 workers
+
+  ✓  1 [unit] › e2e/evidence-budget.unit.spec.ts:9:5 › โฟลเดอร์ evidence ทุก task อยู่ในงบ (≤5 PNG, ≤300KB, ไม่มี trace/report เต็ม) (2ms)
+  ✓  2 [unit] › e2e/support/evidence-rules.unit.spec.ts:13:7 › evidence-rules › evidenceDir ชี้ไปที่ docs/evidence/<feature>/<task-id> (4ms)
+  ✓  4 [unit] › e2e/support/evidence-rules.unit.spec.ts:19:7 › evidence-rules › evidenceDir ปฏิเสธ feature/task-id ที่ผิดรูปแบบ (1ms)
+  ✓  5 [unit] › e2e/support/evidence-rules.unit.spec.ts:31:7 › evidence-rules › evidenceFileName รับเฉพาะ kebab-case และเติมนามสกุล .png (1ms)
+  ✓  6 [unit] › e2e/support/evidence-rules.unit.spec.ts:38:7 › evidence-rules › checkEvidenceBudget ผ่านเมื่ออยู่ในงบ (0ms)
+  ✓  7 [unit] › e2e/support/evidence-rules.unit.spec.ts:47:7 › evidence-rules › checkEvidenceBudget แจ้งเมื่อ PNG เกินจำนวน (0ms)
+  ✓  8 [unit] › e2e/support/evidence-rules.unit.spec.ts:57:7 › evidence-rules › checkEvidenceBudget แจ้งเมื่อไฟล์ใหญ่เกิน 300KB หรือไม่ใช่ไฟล์ที่อนุญาต (0ms)
+  ✓  3 [chromium] › e2e/smoke.spec.ts:7:5 › storefront เสิร์ฟ robots.txt ได้ (2.0s)
+  ✓  9 [chromium] › e2e/smoke.spec.ts:19:5 › backend /health ตอบ 200 และหน้า login ของ admin แสดงผล (5.7s)
+
+  9 passed (11.4s)
+
+## Attachment ต่อ test (--reporter=json) — ยืนยัน screenshot ทุก step
+storefront เสิร์ฟ robots.txt ได้ => step-01 เปิด /robots.txt | evidence 01-storefront-robots.png | step-02 มีกฎ disallow หน้า checkout | screenshot | trace
+backend /health ตอบ 200 และหน้า login ของ admin แสดงผล => evidence 02-admin-login.png | step-02 เปิดหน้า login ของ admin | screenshot | trace
+(step-01 "GET /health" เป็น API ล้วน ยังไม่เปิดหน้า → ข้าม screenshot ตามที่ออกแบบ)
+
+## Evidence ที่บันทึก (≤300KB)
+docs/evidence/core/CORE-5/01-storefront-robots.png  20715 bytes
+docs/evidence/core/CORE-5/02-admin-login.png        22628 bytes
+
+## pnpm lint && pnpm typecheck — ผ่าน (storefront lint: 0 errors, warnings เดิมจาก starter)

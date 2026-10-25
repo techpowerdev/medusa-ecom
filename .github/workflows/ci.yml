@@ -68,6 +68,14 @@ jobs:
           path: apps/backend/test-results/
           if-no-files-found: ignore
 
+  # OPS-1 AC-1: build backend image แล้วบูตเป็น server + worker จาก image เดียวกัน
+  docker-worker-mode:
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - run: tools/ops/smoke-worker-mode.sh
+
   storefront-e2e:
     # ปิดไว้จนกว่าจะมี seed + print-publishable-key (CORE-2) และ Playwright (CORE-5);
     # CORE-6 เป็นผู้ลบเงื่อนไขนี้เมื่อ e2e พร้อม

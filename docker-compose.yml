@@ -1,10 +1,13 @@
 # Local dev infra เท่านั้น (Postgres + Redis) — แอปรันบน host ด้วย `pnpm --filter backend dev`
-# Docker image ของแอปและ worker mode เป็นของ OPS-1
+# stack แบบ prod-like (backend image + server/worker mode) อยู่ใน docker-compose.prod.yml (OPS-1)
 name: medusa-ecom
 
 services:
   postgres:
     image: postgres:16
+    # integration test ของ medusa-test-utils สร้าง DB + pool ต่อ test file และ builder หลายตัวรันพร้อมกัน
+    # ค่า default 100 ไม่พอ (เจอ "too many clients")
+    command: ["postgres", "-c", "max_connections=300"]
     environment:
       POSTGRES_USER: medusa
       POSTGRES_PASSWORD: medusa

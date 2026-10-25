@@ -1,0 +1,116 @@
+# OPS-1: stack แบบ prod-like (docs/spec/07-scaling-ops.md) — backend image เดียว รันเป็น server + worker
+# ต่างจาก docker-compose.yml (infra สำหรับ dev เท่านั้น) — ไฟล์นี้ build และรันแอปใน container
+#
+#   export POSTGRES_PASSWORD=... JWT_SECRET=... COOKIE_SECRET=...   # `openssl rand -hex 32`
+#   docker compose -f docker-compose.prod.yml up -d --build --wait
+#   docker compose -f docker-compose.prod.yml --profile storefront up -d   # ต้องมี publishable key (CORE-2)
+#
+# prod จริง: Postgres/Redis เป็น managed service (ตั้ง DATABASE_URL/REDIS_URL), server ≥ 2 replicas
+# หลัง load balancer, worker 1 ตัว (scale ตามต้องการ) — Redis modules/S3 อยู่ใน OPS-2
+name: medusa-ecom-prod
+
+x-backend: &backend
+  image: medusa-ecom-backend:${IMAGE_TAG:-local}
+  build:
+    context: .
+    dockerfile: apps/backend/Dockerfile
+  restart: unless-stopped
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://localhost:9000/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 30s
+
+x-backend-env: &backend-env
+  DATABASE_URL: ${DATABASE_URL:-postgres://medusa:${POSTGRES_PASSWORD}@postgres:5432/medusa?sslmode=disable}  # postgres ใน compose ไม่มี SSL
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  JWT_SECRET: ${JWT_SECRET:?ต้องตั้ง JWT_SECRET}
+  COOKIE_SECRET: ${COOKIE_SECRET:?ต้องตั้ง COOKIE_SECRET}
+  STORE_CORS: ${STORE_CORS:-http://localhost:8000}
+  ADMIN_CORS: ${ADMIN_CORS:-http://localhost:9000}
+  AUTH_CORS: ${AUTH_CORS:-http://localhost:9000,http://localhost:8000}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: medusa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ต้องตั้ง POSTGRES_PASSWORD}
+      POSTGRES_DB: medusa
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medusa"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # รัน migrations ครั้งเดียวก่อน server/worker เริ่ม
+  migrate:
+    <<: *backend
+    command: ["db:migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    environment:
+      <<: *backend-env
+
+  server:
+    <<: *backend
+    environment:
+      <<: *backend-env
+      MEDUSA_WORKER_MODE: server
+      DISABLE_MEDUSA_ADMIN: "false"
+    ports:
+      - "${SERVER_PORT:-9000}:9000"
+
+  # ไม่รับ HTTP traffic (Medusa ไม่โหลด API routes/admin ใน worker mode) — /health ใช้กับ healthcheck เท่านั้น
+  worker:
+    <<: *backend
+    environment:
+      <<: *backend-env
+      MEDUSA_WORKER_MODE: worker
+      DISABLE_MEDUSA_ADMIN: "true"
+
+  storefront:
+    profiles: ["storefront"]
+    image: medusa-ecom-storefront:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: apps/storefront/Dockerfile
+      args:
+        # NEXT_PUBLIC_* ถูกฝังตอน build และ starter ใช้ค่าเดียวกันทั้งฝั่ง SSR และ browser
+        # → ต้องเป็น URL ที่ทั้ง container และ browser เข้าถึงได้ (prod: โดเมนจริงของ API)
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${NEXT_PUBLIC_MEDUSA_BACKEND_URL:-http://localhost:9000}
+        # จำเป็น — check-env-variables.js ของ starter ทำให้ build ล้มถ้าว่าง
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:8000}
+        NEXT_PUBLIC_DEFAULT_REGION: ${NEXT_PUBLIC_DEFAULT_REGION:-dk}
+        NEXT_PUBLIC_STRIPE_KEY: ${NEXT_PUBLIC_STRIPE_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "${STOREFRONT_PORT:-8000}:8000"
+
+volumes:
+  pg-data:

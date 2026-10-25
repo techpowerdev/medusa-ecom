@@ -17,3 +17,13 @@ pnpm --filter backend db:migrate
 pnpm --filter backend dev                              # Medusa + admin ที่ :9000
 ```
 storefront ต้องใช้ publishable key และ region จาก seed (CORE-2) ก่อน `pnpm --filter storefront dev`
+
+## รันแบบ prod-like ด้วย Docker (OPS-1)
+backend image เดียวรันได้ทั้ง `server` และ `worker` ตาม worker mode ของ Medusa
+(`MEDUSA_WORKER_MODE=server|worker`, `DISABLE_MEDUSA_ADMIN=true` บน worker); scheduled jobs รันเฉพาะบน worker
+```bash
+export POSTGRES_PASSWORD=$(openssl rand -hex 16) JWT_SECRET=$(openssl rand -hex 32) COOKIE_SECRET=$(openssl rand -hex 32)
+docker compose -f docker-compose.prod.yml up -d --build --wait   # postgres, redis, migrate, server (:9000), worker
+tools/ops/smoke-worker-mode.sh                                   # ตรวจ AC-1 ใน project แยก `ops1test` (server ที่ :9104)
+```
+รายละเอียดและข้อจำกัด: `docker-compose.prod.yml`, `apps/backend/Dockerfile`, `apps/storefront/Dockerfile`
