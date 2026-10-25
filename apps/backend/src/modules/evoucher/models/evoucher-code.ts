@@ -13,6 +13,8 @@ const EvoucherCode = model
     status: model
       .enum(["available", "allocated", "delivered", "void"])
       .default("available"),
+    // EV-5: ตั้งเมื่อ status → void ("expiring" จาก job รายวัน หรือข้อความจาก admin)
+    void_reason: model.text().nullable(),
     order_id: model.text().nullable(),
     order_line_item_id: model.text().nullable(),
     customer_id: model.text().nullable(),
