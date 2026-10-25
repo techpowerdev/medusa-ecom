@@ -28,6 +28,8 @@ const CURRENCY = "thb"
 const COUNTRY = "th"
 const VAT_RATE = 7
 const STOCK_QUANTITY = 100
+// CORE-7 (ADR-008): th-TH = ภาษาต้นฉบับของเนื้อหาใน admin, en-US มาจาก Translation module
+export const STORE_LOCALES = ["th-TH", "en-US"]
 export const STOREFRONT_KEY_TITLE = "Storefront"
 
 const IMG = "https://medusa-public-images.s3.eu-west-1.amazonaws.com"
@@ -61,6 +63,7 @@ export default async function seedThailand({ container }: ExecArgs) {
   const link = container.resolve(ContainerRegistrationKeys.LINK)
 
   await seedAdminUser(container)
+  await seedStoreLocales(container)
 
   const { data: existing } = await query.graph({
     entity: "region",
@@ -243,6 +246,36 @@ export default async function seedThailand({ container }: ExecArgs) {
   })
 
   logger.info(`Seed ร้าน "${REGION_NAME}" เสร็จแล้ว`)
+}
+
+/**
+ * ตั้ง store locales (CORE-7) แยกจากการ seed ข้อมูลร้าน จึงทำงานทั้งบน DB ใหม่และ DB ที่ seed ไปแล้ว
+ * เพิ่มเฉพาะ locale ที่ยังขาด และคง locale ที่ admin เพิ่มเองไว้ (รันซ้ำไม่ซ้ำซ้อน)
+ */
+async function seedStoreLocales(container: ExecArgs["container"]) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data: stores } = await query.graph({
+    entity: "store",
+    fields: ["id", "supported_locales.locale_code"],
+  })
+  const store = stores[0]
+  const current = (store.supported_locales ?? []).map((l) => l!.locale_code)
+  const missing = STORE_LOCALES.filter((code) => !current.includes(code))
+  if (!missing.length) {
+    return
+  }
+
+  await updateStoresWorkflow(container).run({
+    input: {
+      selector: { id: store.id },
+      update: {
+        supported_locales: [...current, ...missing].map((locale_code) => ({ locale_code })),
+      },
+    },
+  })
+  container
+    .resolve(ContainerRegistrationKeys.LOGGER)
+    .info(`เพิ่ม store locales ${missing.join(", ")} แล้ว`)
 }
 
 /** สร้าง admin user จาก SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD (ไม่มีค่า default — ห้าม hard-code secret) */
