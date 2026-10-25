@@ -1,0 +1,56 @@
+# FS-1 test evidence — 2026-10-25 +0700
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+# DB ของ test: medusa-test-utils สร้าง DB สุ่มต่อ suite; db:generate รันกับ DB ชั่วคราว medusa_fs1 (drop แล้ว)
+
+## Red (ก่อนเขียนโค้ด)
+### pnpm --filter backend test:integration:modules
+FAIL src/modules/flash_sale/__tests__/service.spec.ts
+  Cannot find module '..' from 'src/modules/flash_sale/__tests__/service.spec.ts'
+### pnpm --filter backend test:integration:http -- flash-sale-module (ไม่มีไฟล์ src/links/flash-sale-config-campaign.ts)
+FAIL integration-tests/http/flash-sale-module.spec.ts
+  ✕ resolves flash_sale_config together with its Medusa campaign via query.graph
+  -     "campaign": ObjectContaining {   (ไม่มี campaign ในผล query.graph)
+
+## Green
+### npx medusa db:generate flash_sale
+MODULE: flash_sale
+Generated successfully (Migration20261025091100.ts).
+
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)   (warning เดิมของ storefront ไม่เกี่ยวกับ task นี้)
+exit=0
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+exit=0
+### pnpm --filter backend build
+Backend build completed successfully
+Frontend build completed successfully
+### pnpm --filter backend test:unit
+No tests found, exiting with code 0
+exit=0
+### pnpm --filter backend test:integration:modules
+PASS src/modules/flash_sale/__tests__/service.spec.ts
+    FlashSaleConfig
+      ✓ creates a config with defaults (units_sold=0, flags off, nullable limits)
+      ✓ stores the flash options set by admin
+      ✓ allows only one config per campaign
+      ✓ rejects invalid units_sold at the database level
+      ✓ rejects invalid per_customer_limit at the database level
+      ✓ rejects invalid total_cap at the database level
+    FlashSaleUsage
+      ✓ creates a usage row with units defaulting to 0
+      ✓ allows only one usage row per (campaign_id, customer_id)
+      ✓ allows the same customer in other campaigns and other customers in the same campaign
+      ✓ rejects negative units at the database level
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+exit=0
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/flash-sale-module.spec.ts
+PASS integration-tests/http/seed.spec.ts
+PASS integration-tests/http/health.spec.ts
+Test Suites: 3 passed, 3 total
+Tests:       9 passed, 9 total
+exit=0
