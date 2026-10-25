@@ -1,5 +1,6 @@
 import {
   InjectManager,
+  InjectTransactionManager,
   MedusaContext,
   MedusaError,
   MedusaService,
@@ -68,6 +69,16 @@ class EvoucherModuleService extends MedusaService({
     reason: string,
     @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
   ): Promise<{ id: string; pool_id: string }[]> {
+    return await this.voidAvailableCodes_(filter, reason, sharedContext)
+  }
+
+  // mutation อยู่ใน transaction (convention ของ Medusa; สอดคล้องกับ allocate ของ EV-4)
+  @InjectTransactionManager()
+  protected async voidAvailableCodes_(
+    filter: VoidAvailableCodesFilter,
+    reason: string,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<{ id: string; pool_id: string }[]> {
     const conditions = [`deleted_at IS NULL`, `status = 'available'`]
     const params: unknown[] = [reason]
     if (filter.id) {
@@ -85,7 +96,7 @@ class EvoucherModuleService extends MedusaService({
     if (params.length === 1) {
       throw new MedusaError(MedusaError.Types.INVALID_ARGUMENT, "voidAvailableCodes requires a filter")
     }
-    return await sharedContext.manager!.execute<{ id: string; pool_id: string }[]>(
+    return await sharedContext.transactionManager!.execute<{ id: string; pool_id: string }[]>(
       `UPDATE evoucher_code SET status = 'void', void_reason = ?, updated_at = now()
        WHERE ${conditions.join(" AND ")}
        RETURNING id, pool_id`,

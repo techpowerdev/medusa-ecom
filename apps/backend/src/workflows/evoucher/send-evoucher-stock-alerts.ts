@@ -13,6 +13,8 @@ import EvoucherModuleService from "../../modules/evoucher/service"
 import { EmailTemplates } from "../../modules/resend/templates"
 
 export type SendEvoucherStockAlertsInput = {
+  /** mailbox เดียวของทีม (env `EVOUCHER_ADMIN_EMAIL`, owner ตัดสิน Q-A) — job ข้ามการส่งถ้าไม่ได้ตั้ง */
+  to: string
   /** วันที่ตามปฏิทินไทย (YYYY-MM-DD) — ส่วนหนึ่งของ idempotency key: 1 ฉบับต่อวันต่อ pool (AC-9) */
   date: string
   /** ผลการ void ของ job วันนี้ (เฉพาะ pool ที่ void > 0) */
@@ -21,18 +23,11 @@ export type SendEvoucherStockAlertsInput = {
 
 const TRIGGER = "evoucher.daily"
 
-// ผู้รับ = admin user ทุกคนของ Medusa (User module); ไม่มี config ผู้รับแยกใน spec
 export const buildEvoucherStockAlertsStep = createStep(
   "build-evoucher-stock-alerts",
   async (input: SendEvoucherStockAlertsInput, { container }) => {
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
     const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
-
-    const { data: users } = await query.graph({ entity: "user", fields: ["email"] })
-    const recipients = [...new Set(users.map((u) => u.email).filter(Boolean))]
-    if (!recipients.length) {
-      return new StepResponse([] as CreateNotificationDTO[])
-    }
 
     const { data: pools } = await query.graph({
       entity: "evoucher_pool",
@@ -48,49 +43,49 @@ export const buildEvoucherStockAlertsStep = createStep(
       if (available >= pool.low_stock_threshold) {
         continue
       }
-      for (const to of recipients) {
-        notifications.push({
-          to,
-          channel: "email",
-          template: EmailTemplates.EVOUCHER_LOW_STOCK,
-          data: {
-            pool: {
-              id: pool.id,
-              name: pool.name,
-              available,
-              low_stock_threshold: pool.low_stock_threshold,
-            },
+      notifications.push({
+        to: input.to,
+        channel: "email",
+        template: EmailTemplates.EVOUCHER_LOW_STOCK,
+        data: {
+          pool: {
+            id: pool.id,
+            name: pool.name,
+            available,
+            low_stock_threshold: pool.low_stock_threshold,
           },
-          trigger_type: TRIGGER,
-          resource_id: pool.id,
-          resource_type: "evoucher_pool",
-          idempotency_key: `evoucher-low-stock-${pool.id}-${input.date}-${to}`,
-        })
-      }
+        },
+        trigger_type: TRIGGER,
+        resource_id: pool.id,
+        resource_type: "evoucher_pool",
+        // AC-9: 1 ฉบับต่อวัน (เวลาไทย) ต่อ pool
+        idempotency_key: `evoucher-low-stock-${pool.id}-${input.date}`,
+      })
     }
 
     const names = new Map(pools.map((p) => [p.id, p.name]))
     const voided = input.voided.filter((v) => v.voided > 0)
     const total = voided.reduce((sum, v) => sum + v.voided, 0)
     if (total > 0) {
-      for (const to of recipients) {
-        notifications.push({
-          to,
-          channel: "email",
-          template: EmailTemplates.EVOUCHER_EXPIRY_SUMMARY,
-          data: {
-            date: input.date,
-            total_voided: total,
-            pools: voided.map((v) => ({
-              id: v.pool_id,
-              name: names.get(v.pool_id) ?? v.pool_id,
-              voided: v.voided,
-            })),
-          },
-          trigger_type: TRIGGER,
-          idempotency_key: `evoucher-expiry-summary-${input.date}-${to}`,
-        })
-      }
+      notifications.push({
+        to: input.to,
+        channel: "email",
+        template: EmailTemplates.EVOUCHER_EXPIRY_SUMMARY,
+        data: {
+          date: input.date,
+          total_voided: total,
+          pools: voided.map((v) => ({
+            id: v.pool_id,
+            name: names.get(v.pool_id) ?? v.pool_id,
+            voided: v.voided,
+          })),
+        },
+        trigger_type: TRIGGER,
+        // สรุปรายวัน: key ต่อวัน (เวลาไทย) → ส่งได้ฉบับเดียวต่อวัน ถ้ารัน job ซ้ำวันเดียวกันแล้วมี code
+        // ถูก void เพิ่ม (เช่น import ระหว่างวันแล้ว trigger เอง) จะไม่มีอีเมลสรุปรอบที่สอง — ตั้งใจ
+        // (Notification module ส่งซ้ำได้เฉพาะเมื่อฉบับเดิม status=failure)
+        idempotency_key: `evoucher-expiry-summary-${input.date}`,
+      })
     }
 
     return new StepResponse(notifications)

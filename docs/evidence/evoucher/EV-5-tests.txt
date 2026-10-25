@@ -65,3 +65,30 @@ Test Suites: 2 passed, 2 total
 Tests:       28 passed, 28 total
 
 integration ชุดเต็มรันใน CI
+
+== รอบแก้ตาม review (owner ตัดสิน Q-A: ผู้รับ = mailbox เดียวจาก EVOUCHER_ADMIN_EMAIL) ==
+Red: 4 failed / 13 passed (ผู้รับยังเป็น admin user ทุกคน; ยังไม่ warning/ข้ามเมื่อไม่ตั้ง env)
+Green: pnpm lint (No lint issues found), typecheck, build, test:unit 137 passed, modules evoucher 42 passed
+
+PASS integration-tests/http/evoucher-void-expiry.spec.ts (12.363 s)
+    POST /admin/evoucher/codes/:id/void (AC-10)
+      ✓ requires an authenticated admin (410 ms)
+      ✓ voids an available code with the reason and decrements variant inventory by 1 (568 ms)
+      ✓ rejects a missing reason with 400 and leaves the code untouched (243 ms)
+      ✓ rejects a empty reason with 400 and leaves the code untouched (232 ms)
+      ✓ rejects a blank reason with 400 and leaves the code untouched (237 ms)
+      ✓ returns 409 for a allocated code and changes nothing (338 ms)
+      ✓ returns 409 for a delivered code and changes nothing (395 ms)
+      ✓ returns 409 for a void code and changes nothing (311 ms)
+      ✓ returns 404 for an unknown code (156 ms)
+      ✓ restores the code to available when the inventory adjustment fails (compensation) (333 ms)
+    daily job (AC-5, AC-9, AC-10)
+      ✓ sends admin alerts only to EVOUCHER_ADMIN_EMAIL, not to every admin user (285 ms)
+      ✓ logs a warning and skips admin emails when EVOUCHER_ADMIN_EMAIL is not set (job still voids) (384 ms)
+      ✓ is scheduled once a day (166 ms)
+      ✓ AC-5 voids available codes expiring within 7 days with reason 'expiring' and decrements inventory (281 ms)
+      ✓ sends no expiry summary when nothing was voided (305 ms)
+      ✓ keeps other pools going when one pool fails (328 ms)
+      ✓ AC-9 sends one low-stock email per pool per day when available < threshold (341 ms)
+Test Suites: 1 passed, 1 total
+Tests:       17 passed, 17 total

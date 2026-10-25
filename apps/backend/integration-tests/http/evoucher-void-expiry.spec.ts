@@ -20,6 +20,8 @@ jest.setTimeout(120 * 1000)
 process.env.EVOUCHER_ENCRYPTION_KEY = randomBytes(32).toString("hex")
 
 const ADMIN_EMAIL = "admin@example.com"
+// owner ตัดสิน Q-A: อีเมลแจ้ง admin ส่งหา mailbox เดียวจาก env (ไม่ใช่ admin user ทุกคน)
+const OPS_EMAIL = "evoucher-ops@example.com"
 const DAY = 24 * 60 * 60 * 1000
 const inDays = (days: number) => new Date(Date.now() + days * DAY).toISOString()
 
@@ -228,6 +230,47 @@ medusaIntegrationTestRunner({
     })
 
     describe("daily job (AC-5, AC-9, AC-10)", () => {
+      beforeEach(() => {
+        process.env.EVOUCHER_ADMIN_EMAIL = OPS_EMAIL
+      })
+
+      afterEach(() => {
+        delete process.env.EVOUCHER_ADMIN_EMAIL
+      })
+
+      it("sends admin alerts only to EVOUCHER_ADMIN_EMAIL, not to every admin user", async () => {
+        const { poolId } = await createPool("Lotus 500", { low_stock_threshold: 5 })
+        await importCsv(poolId, `code,pin,expires_at\nSOON-1,,${inDays(1)}\n`)
+
+        await evoucherDailyJob(getContainer())
+
+        const emails = [
+          ...(await listEmails("evoucher-expiry-summary")),
+          ...(await listEmails("evoucher-low-stock")),
+        ]
+        expect(emails).toHaveLength(2)
+        expect(emails.map((e) => e.to)).toEqual([OPS_EMAIL, OPS_EMAIL])
+      })
+
+      it("logs a warning and skips admin emails when EVOUCHER_ADMIN_EMAIL is not set (job still voids)", async () => {
+        delete process.env.EVOUCHER_ADMIN_EMAIL
+        const { poolId, inventoryItemId } = await createPool("Lotus 500", { low_stock_threshold: 5 })
+        await importCsv(poolId, `code,pin,expires_at\nSOON-1,,${inDays(1)}\n`)
+        const logger = getContainer().resolve(ContainerRegistrationKeys.LOGGER)
+        const warn = jest.spyOn(logger, "warn")
+        try {
+          await expect(evoucherDailyJob(getContainer())).resolves.toBeUndefined()
+          expect(warn).toHaveBeenCalledWith(expect.stringContaining("EVOUCHER_ADMIN_EMAIL"))
+        } finally {
+          warn.mockRestore()
+        }
+
+        expect((await codesOf(poolId))[0]).toMatchObject({ status: "void", void_reason: "expiring" })
+        expect(await stockedQuantity(inventoryItemId)).toBe(0)
+        expect(await listEmails("evoucher-expiry-summary")).toHaveLength(0)
+        expect(await listEmails("evoucher-low-stock")).toHaveLength(0)
+      })
+
       it("is scheduled once a day", () => {
         expect(jobConfig.name).toBe("evoucher-daily")
         expect(jobConfig.schedule.split(" ")).toHaveLength(5)
@@ -279,7 +322,7 @@ medusaIntegrationTestRunner({
         const summaries = await listEmails("evoucher-expiry-summary")
         expect(summaries).toHaveLength(1)
         expect(summaries[0]).toMatchObject({
-          to: ADMIN_EMAIL,
+          to: OPS_EMAIL,
           status: "success",
           data: expect.objectContaining({
             total_voided: 2,
@@ -340,7 +383,7 @@ medusaIntegrationTestRunner({
         const alerts = await listEmails("evoucher-low-stock")
         expect(alerts).toHaveLength(1)
         expect(alerts[0]).toMatchObject({
-          to: ADMIN_EMAIL,
+          to: OPS_EMAIL,
           status: "success",
           resource_id: low.poolId,
           resource_type: "evoucher_pool",

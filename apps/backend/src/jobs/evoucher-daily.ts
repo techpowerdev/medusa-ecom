@@ -31,8 +31,15 @@ export default async function evoucherDailyJob(container: MedusaContainer) {
     }
   }
 
+  // owner ตัดสิน Q-A: อีเมลแจ้ง admin ส่งหา mailbox เดียวจาก env; ไม่ได้ตั้ง → เตือนแล้วข้าม (void ด้านบนทำไปแล้ว)
+  const to = process.env.EVOUCHER_ADMIN_EMAIL?.trim()
+  if (!to) {
+    logger.warn("evoucher-daily: EVOUCHER_ADMIN_EMAIL is not set — skipping low-stock/expiry admin emails")
+    return
+  }
+
   await sendEvoucherStockAlertsWorkflow(container).run({
-    input: { date: bangkokDateKey(now), voided },
+    input: { to, date: bangkokDateKey(now), voided },
   })
 }
 
