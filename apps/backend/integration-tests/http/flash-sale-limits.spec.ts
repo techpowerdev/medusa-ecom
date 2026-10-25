@@ -11,6 +11,7 @@ import {
 import { StepResponse } from "@medusajs/framework/workflows-sdk"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
+import { registerCustomer, storeHeadersFor } from "../helpers/customer"
 import { FLASH_SALE_MODULE } from "../../src/modules/flash_sale"
 import { FLASH_LIMIT_EXCEEDED, FLASH_SOLD_OUT } from "../../src/modules/flash_sale/errors"
 import FlashSaleModuleService from "../../src/modules/flash_sale/service"
@@ -54,7 +55,9 @@ medusaIntegrationTestRunner({
       flashSale = container.resolve(FLASH_SALE_MODULE)
 
       const token = await getPublishableKey(container)
-      storeHeaders = { headers: { "x-publishable-api-key": token } }
+      // CORE-6: cart route ต้องมี customer ที่ล็อกอิน (complete ใช้ token เดียว — cart ของแต่ละ test ผูก customer เอง)
+      const buyer = await registerCustomer(api, token, "fs3-buyer@example.com", "fs3-buyer-password")
+      storeHeaders = storeHeadersFor(token, buyer.token)
 
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
       const { data: regions } = await query.graph({ entity: "region", fields: ["id"] })
