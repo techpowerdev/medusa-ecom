@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto"
 import {
+  assertCiphertext,
   decryptSecret,
   encryptSecret,
   parseEncryptionKey,
@@ -66,4 +67,19 @@ describe("evoucher crypto", () => {
       expect(() => decryptSecret("v9:AAAA", key)).toThrow(/version/)
     })
   })
+})
+
+describe("assertCiphertext", () => {
+  const key = parseEncryptionKey(KEY_HEX)
+
+  it("accepts values produced by encryptSecret", () => {
+    expect(() => assertCiphertext(encryptSecret("A", key))).not.toThrow()
+  })
+
+  it.each(["LOTUS-0001", "v1", "v1:", "v2:abc", "v1:not base64!"])(
+    "rejects non-ciphertext %p so plaintext never reaches the DB",
+    (value) => {
+      expect(() => assertCiphertext(value)).toThrow(/ciphertext/)
+    }
+  )
 })

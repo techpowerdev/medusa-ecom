@@ -1,0 +1,152 @@
+# CORE-7 test evidence — 2026-10-25 17:36 +0700
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose (DB สุ่มของ medusa-test-utils)
+
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)
+exit=0
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+exit=0
+### pnpm --filter backend test:unit
+PASS src/__tests__/medusa-config.translation.unit.spec.ts
+    ✓ enables the translation feature flag (669 ms)
+    ✓ registers the Translation module and does not disable it (229 ms)
+PASS src/__tests__/medusa-config.unit.spec.ts
+    ✓ boots as server with admin when MEDUSA_WORKER_MODE=server (282 ms)
+    ✓ boots as worker without admin when MEDUSA_WORKER_MODE=worker (243 ms)
+    ✓ defaults to shared with admin for local dev when env is unset (222 ms)
+PASS src/__tests__/medusa-config-modules.unit.spec.ts
+    ✓ registers every custom module that has data models (283 ms)
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+    ✓ uses the notification-resend identifier (1 ms)
+      ✓ requires api_key (1 ms)
+      ✓ requires from
+      ✓ accepts valid options
+      ✓ sends the rendered template through the Resend client and returns its id (10 ms)
+      ✓ prefers notification.from over the default sender
+      ✓ throws for an unknown template without calling Resend
+      ✓ throws when Resend returns an error so the notification is marked failed
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+      ✓ accepts a 64-char hex key (32 bytes) (1 ms)
+      ✓ rejects missing or malformed key undefined (1 ms)
+      ✓ rejects missing or malformed key ""
+      ✓ rejects missing or malformed key "abc"
+      ✓ rejects missing or malformed key "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      ✓ rejects missing or malformed key "e744581baf79d534a6e36a95f63f496965d8445b2d0c80130a56ff54db559d" (1 ms)
+      ✓ decrypts what it encrypts (random iv)
+      ✓ decrypts what it encrypts (deterministic iv) (1 ms)
+      ✓ random iv produces a different ciphertext each time
+      ✓ deterministic iv produces the same ciphertext for the same plaintext (unique per pool)
+      ✓ fails on a tampered ciphertext (3 ms)
+      ✓ fails with a different key
+      ✓ rejects an unknown format version
+PASS src/lib/__tests__/promotion-exclusivity.unit.spec.ts
+    ✓ exposes the context attribute and error code from ADR-009 (1 ms)
+      ✓ returns the 'ne true' rule on the exclusivity attribute
+      ✓ returns a fresh object each call
+      ✓ is true for an automatic promotion with the rule (query shape)
+      ✓ is true for an automatic promotion with the rule (helper shape)
+      ✓ is true when the rule sits among other rules
+      ✓ is false for an automatic promotion without the rule
+      ✓ is false for a code promotion even with the rule (1 ms)
+      ✓ is false when the rule uses another operator or value
+      ✓ matches the GB- prefix only
+      ✓ add: unions existing and input codes without duplicates
+      ✓ defaults to add
+      ✓ remove: drops input codes from existing
+      ✓ replace: keeps only input codes
+      ✓ sets the attribute to 'true' when a code is applied (1 ms)
+      ✓ sets the attribute to 'false' (never empty) when no code is applied
+      ✓ rejects adding another code to a GB cart
+      ✓ rejects adding a GB code to a cart with another code
+      ✓ rejects two GB codes
+      ✓ allows a GB code alone or with automatic promotions only
+      ✓ allows non-GB codes together (Medusa default stacking)
+      ✓ does not reject a refresh that introduces no new code
+      ✓ flags an exclusive automatic promotion together with any code
+      ✓ flags GB together with another code
+      ✓ allows valid combinations
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+    ✓ returns null for an unknown template
+      ✓ renders subject with display id and an html body with items and THB totals (1 ms)
+      ✓ escapes html in user-controlled values
+      ✓ renders subject with display id and lists tracking numbers (1 ms)
+      ✓ renders without tracking labels
+      ✓ drops non-http tracking urls
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (1 ms)
+    ✓ treats an empty RESEND_API_KEY as missing
+    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set
+Test Suites: 8 passed, 8 total
+Tests:       61 passed, 61 total
+### pnpm --filter backend test:integration:modules
+PASS src/modules/flash_sale/__tests__/service.spec.ts
+PASS src/modules/evoucher/__tests__/evoucher-module.spec.ts
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+Test Suites: 5 passed, 5 total
+Tests:       43 passed, 43 total
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/promotion-exclusivity.spec.ts (14.363 s)
+    ✓ accepts the exclusivity rule (custom attribute, operator ne) via admin API (449 ms)
+      ✓ (d) cart without a code gets F as usual (701 ms)
+      ✓ (d) adding a flash item to a code-free cart applies F (400 ms)
+      ✓ (a) applying SAVE10 to a cart with F → 200, SAVE10 kept, F dropped (359 ms)
+      ✓ (b) adding a flash item to a cart with SAVE10 keeps SAVE10 and no F (444 ms)
+      ✓ (c) removing SAVE10 brings F back (617 ms)
+      ✓ (e) SAVE10 stacks with N (automatic without the rule) (531 ms)
+      ✓ rejects GB-* on a cart that already has another code (458 ms)
+      ✓ rejects another code on a cart that has GB-* (356 ms)
+      ✓ rejects GB-* and another code applied together (265 ms)
+      ✓ GB-* wins over F (flash dropped) (384 ms)
+      ✓ GB-* stacks with N; adding items to a GB cart still works (449 ms)
+      ✓ (f) F + SAVE10 on the same cart → complete fails PROMOTION_NOT_COMBINABLE (517 ms)
+      ✓ GB-* + another code on the same cart → complete fails PROMOTION_NOT_COMBINABLE (435 ms)
+      ✓ refresh (add-to-cart) on a cart already holding GB-* + another code does not error (477 ms)
+      ✓ a valid cart (SAVE10 + N) completes into an order (1025 ms)
+PASS integration-tests/http/seed.spec.ts (7.955 s)
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (446 ms)
+    ✓ sets store default currency to THB (tax-inclusive) (404 ms)
+    ✓ creates tax region th with VAT 7% (166 ms)
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (173 ms)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (187 ms)
+    ✓ stocks every sample variant at the seeded location (168 ms)
+    ✓ is idempotent: running seed again does not duplicate data (163 ms)
+PASS integration-tests/http/flash-sale-module.spec.ts (5.433 s)
+    ✓ resolves flash_sale_config together with its Medusa campaign via query.graph (390 ms)
+PASS integration-tests/http/order-notifications.spec.ts (6.175 s)
+        ✓ sends an order-placed email to the order's email with the order data (315 ms)
+        ✓ does not send the same order-placed email twice (419 ms)
+        ✓ sends an order-shipped email with tracking labels (AC-2) (208 ms)
+        ✓ skips the email when the shipment was created with no_notification (132 ms)
+PASS integration-tests/http/evoucher-links.spec.ts (6.788 s)
+    ✓ queries the variant from a pool (319 ms)
+    ✓ queries the pool from a variant (354 ms)
+PASS integration-tests/http/store-locales.spec.ts (7.642 s)
+    ✓ GET /store/locales returns th-TH and en-US on a freshly seeded DB (486 ms)
+    ✓ adds missing locales on a DB seeded before CORE-7 (region Thailand exists) (472 ms)
+    ✓ keeps locales added by admin and does not duplicate on re-run (223 ms)
+    ✓ serves Thai source content by default and English from the Translation module via x-medusa-locale (391 ms)
+PASS integration-tests/http/health.spec.ts (6.015 s)
+      ✓ returns 200 when the app has booted (393 ms)
+Test Suites: 7 passed, 7 total
+Tests:       35 passed, 35 total
+
+### manual: medusa develop :9119 บน DB medusa_core7 (สร้างแล้ว drop) หลัง db:migrate + seed
+# POST /admin/products/:id (title ไทย) -> POST /admin/translations/batch (en-US) -> GET /store/products/:id ไม่มี header / th-TH / en-US
+product=prod_01M5S71E5J05S7NPXYT91Q0M5G
+update=200
+translate=200
+{"product":{"title":"เสื้อยืด Medusa","id":"prod_01M5S71E5J05S7NPXYT91Q0M5G","categories":[{"is_internal":false}]}} <- []
+{"product":{"title":"เสื้อยืด Medusa","id":"prod_01M5S71E5J05S7NPXYT91Q0M5G","categories":[{"is_internal":false}]}} <- [th-TH]
+{"product":{"title":"Medusa T-Shirt","id":"prod_01M5S71E5J05S7NPXYT91Q0M5G","categories":[{"is_internal":false}]}} <- [en-US]
+# GET /store/locales
+{"locales":[{"code":"th-TH","name":"Thai (Thailand)"},{"code":"en-US","name":"English (United States)"}]}
+# รันซ้ำครั้งที่ 2: translate=400 (มี translation en-US ของสินค้านี้อยู่แล้ว) ผลอ่านทั้ง 3 แบบเหมือนเดิม
+{"locales":[{"code":"th-TH","name":"Thai (Thailand)"},{"code":"en-US","name":"English (United States)"}]}
+### pnpm --filter backend build
+info:    Backend build completed successfully (13.03s)
+info:    Frontend build completed successfully (35.19s)

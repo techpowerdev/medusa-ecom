@@ -47,6 +47,17 @@ entity หลักของ Medusa (Product, Variant, Cart, Order, Promotion, C
 | `allocated_at / delivered_at` | timestamptz? |  |
 | `delivered_to_email` | string? |  |
 
+### EvoucherCodeReveal
+audit การเปิดดูโค้ดจริงผ่าน `GET /admin/evoucher/codes/:id/reveal` (AC-8) — 1 แถวต่อ 1 ครั้งที่ reveal
+
+| ฟิลด์ | ชนิด | หมายเหตุ |
+|---|---|---|
+| `id` | id |  |
+| `code_id` | string | index; id ของ EvoucherCode |
+| `actor_type` | string | เช่น `user` (admin) |
+| `actor_id` | string | ผู้เปิดดู |
+| `created_at` | timestamptz | เวลาที่เปิดดู |
+
 ## module `flash_sale`
 
 

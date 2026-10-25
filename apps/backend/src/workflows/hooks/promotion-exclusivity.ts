@@ -1,4 +1,4 @@
-import { completeCartWorkflow, updateCartPromotionsWorkflow } from "@medusajs/medusa/core-flows"
+import { updateCartPromotionsWorkflow } from "@medusajs/medusa/core-flows"
 import { StepResponse } from "@medusajs/framework/workflows-sdk"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
@@ -16,7 +16,7 @@ import {
 // hook เหล่านี้ไม่เขียนข้อมูล (เติม context / ปฏิเสธเท่านั้น) จึงไม่มี compensation
 
 type WithAdjustments = { adjustments?: ({ code?: string | null } | null)[] | null } | null
-type CartLike = {
+export type CartLike = {
   items?: WithAdjustments[] | null
   shipping_methods?: WithAdjustments[] | null
   promotions?: ({ code?: string | null } | null)[] | null
@@ -89,8 +89,9 @@ updateCartPromotionsWorkflow.hooks.validate(async ({ input, cart }, { container 
 })
 
 // ด่านสำรอง: cart ที่หลุดมาถึง checkout พร้อมชุด promotion ที่ห้ามซ้อน
-completeCartWorkflow.hooks.validate(async ({ cart }, { container }) => {
-  const promotions = await listPromotions(container, cartCodes(cart as CartLike), [
+// ลงทะเบียนใน handler รวม `complete-cart-validate.ts` (spec 03 กฎข้อ 8 — hook หนึ่งตัวมี handler ได้ตัวเดียว)
+export async function assertCompletionCombinable(container: MedusaContainer, cart: CartLike) {
+  const promotions = await listPromotions(container, cartCodes(cart), [
     "code",
     "is_automatic",
     "rules.attribute",
@@ -101,4 +102,4 @@ completeCartWorkflow.hooks.validate(async ({ cart }, { container }) => {
   if (hasCompletionConflict(promotions)) {
     throw notCombinable()
   }
-})
+}
