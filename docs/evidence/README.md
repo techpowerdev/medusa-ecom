@@ -47,3 +47,4 @@ E2E_SAVE_EVIDENCE=1 pnpm --filter storefront test:e2e   # บันทึก scr
 ```
 เปลี่ยน URL ได้ด้วย `E2E_BASE_URL` (storefront) และ `E2E_BACKEND_URL`
 (ค่า default คือ `NEXT_PUBLIC_MEDUSA_BACKEND_URL` หรือ `http://localhost:9000`)
+
