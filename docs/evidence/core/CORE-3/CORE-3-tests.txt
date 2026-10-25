@@ -1,0 +1,57 @@
+# CORE-3 test evidence — 2026-10-25 15:17 +0700
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+# ไม่มี RESEND_API_KEY → channel email ใช้ provider local ของ Medusa; unit test mock Resend SDK (ไม่เรียก API จริง)
+
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)
+exit=0
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+exit=0
+### pnpm --filter backend test:unit
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+    ✓ uses the notification-resend identifier (1 ms)
+      ✓ requires api_key (1 ms)
+      ✓ requires from
+      ✓ accepts valid options
+      ✓ sends the rendered template through the Resend client and returns its id (10 ms)
+      ✓ prefers notification.from over the default sender
+      ✓ throws for an unknown template without calling Resend
+      ✓ throws when Resend returns an error so the notification is marked failed (1 ms)
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (1 ms)
+    ✓ treats an empty RESEND_API_KEY as missing
+    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+    ✓ returns null for an unknown template
+      ✓ renders subject with display id and an html body with items and THB totals (3 ms)
+      ✓ escapes html in user-controlled values
+      ✓ renders subject with display id and lists tracking numbers (1 ms)
+      ✓ renders without tracking labels
+      ✓ drops non-http tracking urls
+Test Suites: 3 passed, 3 total
+Tests:       17 passed, 17 total
+exit=0
+### pnpm --filter backend test:integration:modules
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+Test Suites: 2 passed, 2 total
+Tests:       14 passed, 14 total
+exit=0
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/health.spec.ts (5.093 s)
+      ✓ returns 200 when the app has booted (106 ms)
+PASS integration-tests/http/order-notifications.spec.ts
+        ✓ sends an order-placed email to the order's email with the order data (217 ms)
+        ✓ does not send the same order-placed email twice (177 ms)
+        ✓ sends an order-shipped email with tracking labels (AC-2) (123 ms)
+        ✓ skips the email when the shipment was created with no_notification (91 ms)
+Test Suites: 2 passed, 2 total
+Tests:       5 passed, 5 total
+exit=0
+# หมายเหตุ
+# - test:integration:modules จับ unit spec ใต้ src/modules/resend/__tests__/ ด้วย (testMatch ของ jest.config.js) จึงรันซ้ำ — ไม่มีผลต่อผล test
+# - ตรวจด้วยมือ: boot แอป (health.spec) โดยตั้ง RESEND_API_KEY=re_dummy + RESEND_FROM_EMAIL → PASS (provider resend ถูกโหลด)
+#   และตั้ง RESEND_API_KEY โดยไม่มี RESEND_FROM_EMAIL → Notification loader fail: "Option `from` is required" (fail-fast ตามที่ตั้งใจ)

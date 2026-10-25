@@ -1,4 +1,5 @@
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
+import { buildNotificationProviders } from './src/lib/notification-providers'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
@@ -12,5 +13,11 @@ module.exports = defineConfig({
       jwtSecret: process.env.JWT_SECRET,
       cookieSecret: process.env.COOKIE_SECRET,
     }
-  }
+  },
+  modules: [
+    {
+      resolve: '@medusajs/medusa/notification',
+      options: { providers: buildNotificationProviders(process.env) },
+    },
+  ],
 })
