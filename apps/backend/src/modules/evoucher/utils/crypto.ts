@@ -50,6 +50,20 @@ export function encryptSecret(
   return `${VERSION}:${out.toString("base64url")}`
 }
 
+const CIPHERTEXT_PATTERN = new RegExp(
+  `^${VERSION}:[A-Za-z0-9_-]{${Math.ceil(((IV_LENGTH + TAG_LENGTH) * 4) / 3)},}$`
+)
+
+/** กัน plaintext หลุดลง DB: ค่า code/pin ที่จะบันทึกต้องอยู่ในรูป `v1:<base64url>` เสมอ */
+export function assertCiphertext(value: string): void {
+  if (!CIPHERTEXT_PATTERN.test(value)) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "Refusing to store an evoucher secret that is not v1 ciphertext"
+    )
+  }
+}
+
 export function decryptSecret(value: string, key: EncryptionKey): string {
   const [version, payload] = value.split(":", 2)
   if (version !== VERSION || !payload) {

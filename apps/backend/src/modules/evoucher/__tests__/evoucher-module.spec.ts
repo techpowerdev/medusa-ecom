@@ -4,6 +4,7 @@ import { EVOUCHER_MODULE } from ".."
 import EvoucherPartner from "../models/evoucher-partner"
 import EvoucherPool from "../models/evoucher-pool"
 import EvoucherCode from "../models/evoucher-code"
+import EvoucherCodeReveal from "../models/evoucher-code-reveal"
 import EvoucherModuleService from "../service"
 
 jest.setTimeout(60 * 1000)
@@ -12,7 +13,7 @@ const ENCRYPTION_KEY = randomBytes(32).toString("hex")
 
 moduleIntegrationTestRunner<EvoucherModuleService>({
   moduleName: EVOUCHER_MODULE,
-  moduleModels: [EvoucherPartner, EvoucherPool, EvoucherCode],
+  moduleModels: [EvoucherPartner, EvoucherPool, EvoucherCode, EvoucherCodeReveal],
   moduleOptions: { encryptionKey: ENCRYPTION_KEY },
   resolve: "./src/modules/evoucher",
   testSuite: ({ service }) => {
@@ -75,6 +76,24 @@ moduleIntegrationTestRunner<EvoucherModuleService>({
       await expect(service.createEvoucherCodes(await row(poolB.id))).resolves.toBeTruthy()
     })
 
+    it("accepts the configured encryption key", async () => {
+      await expect(service.assertEncryptionKey()).resolves.toBeUndefined()
+    })
+
+    it("records who revealed which code and when (AC-8 audit)", async () => {
+      await service.createEvoucherCodeReveals({
+        code_id: "evcode_1",
+        actor_type: "user",
+        actor_id: "user_1",
+      })
+      const [audit] = await service.listEvoucherCodeReveals({ code_id: "evcode_1" })
+      expect(audit).toMatchObject({
+        actor_type: "user",
+        actor_id: "user_1",
+        created_at: expect.any(Date),
+      })
+    })
+
     it("lists codes by pool and status", async () => {
       const pool = await createPool("variant_3")
       await service.createEvoucherCodes([
@@ -100,12 +119,15 @@ moduleIntegrationTestRunner<EvoucherModuleService>({
 
 moduleIntegrationTestRunner<EvoucherModuleService>({
   moduleName: EVOUCHER_MODULE,
-  moduleModels: [EvoucherPartner, EvoucherPool, EvoucherCode],
+  moduleModels: [EvoucherPartner, EvoucherPool, EvoucherCode, EvoucherCodeReveal],
   moduleOptions: {},
   resolve: "./src/modules/evoucher",
   testSuite: ({ service }) => {
     it("throws a clear error when the encryption key is not configured", async () => {
       await expect(service.encryptCode("X")).rejects.toThrow(
+        /EVOUCHER_ENCRYPTION_KEY/
+      )
+      await expect(service.assertEncryptionKey()).rejects.toThrow(
         /EVOUCHER_ENCRYPTION_KEY/
       )
     })
