@@ -17,6 +17,16 @@ describe("storeReturnOverrides", () => {
     expect(storeReturnOverrides(undefined)).toEqual([])
   })
 
+  it("does not throw for a body or return_shipping that is not an object (core validator answers 400)", () => {
+    for (const body of [null, "x", 1, true, []]) {
+      expect(storeReturnOverrides(body)).toEqual([])
+    }
+    for (const return_shipping of [null, "so_1", 0, false]) {
+      expect(storeReturnOverrides({ order_id: "order_1", return_shipping })).toEqual([])
+    }
+    expect(storeReturnOverrides({ return_shipping: "so_1", receive_now: true })).toEqual(["receive_now"])
+  })
+
   it("lists return_shipping.price, receive_now and location_id whenever they are present (any value)", () => {
     expect(storeReturnOverrides({ return_shipping: { option_id: "so", price: 0 } })).toEqual(["return_shipping.price"])
     expect(storeReturnOverrides({ receive_now: false })).toEqual(["receive_now"])
@@ -56,9 +66,19 @@ describe("rejectStoreReturnOverrides", () => {
     expect(next).toHaveBeenCalledTimes(1)
   })
 
-  it("is registered on POST /store/returns after the CORE-13 auth + owner check", () => {
+  it("calls next for a body that is not an object (no 500 from the middleware)", () => {
+    for (const body of [undefined, null, "x"]) {
+      const { call, next } = run(body)
+      expect(call).not.toThrow()
+      expect(next).toHaveBeenCalledTimes(1)
+    }
+  })
+
+  it("is the last middleware of the CORE-13 POST /store/returns entry (after auth + owner check)", () => {
     const routes = storeOwnershipMiddlewares.filter((r) => r.matcher === "/store/returns")
-    expect(routes.map((r) => r.method)).toEqual([["POST"], ["POST"]])
-    expect(routes[1].middlewares).toEqual([rejectStoreReturnOverrides])
+    expect(routes).toHaveLength(1)
+    expect(routes[0].method).toEqual(["POST"])
+    expect(routes[0].middlewares).toHaveLength(3)
+    expect(routes[0].middlewares![2]).toBe(rejectStoreReturnOverrides)
   })
 })

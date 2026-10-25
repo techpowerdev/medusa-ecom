@@ -23,8 +23,11 @@ medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let owner: Headers
     let returnOptionId: string
+    let standardOptionId: string
     let locationId: string
-    let order: { id: string; itemId: string }
+    let regionId: string
+    let variantId: string
+    type Order = { id: string; itemId: string }
 
     const query = () => getContainer().resolve(ContainerRegistrationKeys.QUERY)
 
@@ -38,16 +41,19 @@ medusaIntegrationTestRunner({
       owner = storeHeadersFor(pk, a.token)
 
       const { data: regions } = await query().graph({ entity: "region", fields: ["id"] })
+      regionId = regions[0].id
       const { data: products } = await query().graph({
         entity: "product",
         fields: ["variants.id"],
         filters: { handle: "t-shirt" },
       })
+      variantId = products[0].variants[0].id
       const { data: standard } = await query().graph({
         entity: "shipping_option",
         fields: ["id"],
         filters: { name: "Standard" },
       })
+      standardOptionId = standard[0].id
       const { data: returnOptions } = await query().graph({
         entity: "shipping_option",
         fields: ["id"],
@@ -56,11 +62,14 @@ medusaIntegrationTestRunner({
       returnOptionId = returnOptions[0]?.id
       const { data: locations } = await query().graph({ entity: "stock_location", fields: ["id"] })
       locationId = locations[0].id
+    })
 
+    // แต่ละ case ใช้ order ของตัวเอง (2 ชิ้น fulfill แล้ว) — case หนึ่งล้มไม่ทำให้ case อื่นล้มตาม
+    const placeOrder = async (): Promise<Order> => {
       const { data } = await api.post(
         "/store/carts",
         {
-          region_id: regions[0].id,
+          region_id: regionId,
           shipping_address: {
             first_name: "Somchai",
             last_name: "Jaidee",
@@ -69,12 +78,12 @@ medusaIntegrationTestRunner({
             postal_code: "10110",
             country_code: "th",
           },
-          items: [{ variant_id: products[0].variants[0].id, quantity: 2 }],
+          items: [{ variant_id: variantId, quantity: 2 }],
         },
         owner
       )
       const cartId: string = data.cart.id
-      await api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: standard[0].id }, owner)
+      await api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: standardOptionId }, owner)
       const { data: pc } = await api.post("/store/payment-collections", { cart_id: cartId }, owner)
       await api.post(
         `/store/payment-collections/${pc.payment_collection.id}/payment-sessions`,
@@ -82,13 +91,14 @@ medusaIntegrationTestRunner({
         owner
       )
       const { data: completed } = await api.post(`/store/carts/${cartId}/complete`, {}, owner)
-      order = { id: completed.order.id, itemId: completed.order.items[0].id }
-      await createOrderFulfillmentWorkflow(container).run({
+      const order = { id: completed.order.id, itemId: completed.order.items[0].id }
+      await createOrderFulfillmentWorkflow(getContainer()).run({
         input: { order_id: order.id, items: [{ id: order.itemId, quantity: 2 }] },
       })
-    })
+      return order
+    }
 
-    const returnsOf = async () => {
+    const returnsOf = async (order: Order) => {
       const { data } = await query().graph({
         entity: "return",
         fields: ["id", "status", "received_at", "location_id", "shipping_methods.amount", "shipping_methods.shipping_option_id"],
@@ -97,11 +107,10 @@ medusaIntegrationTestRunner({
       return data
     }
 
-    const body = (extra: Record<string, unknown> = {}, shipping: Record<string, unknown> = {}) => ({
+    const body = (order: Order, quantity = 1) => ({
       order_id: order.id,
-      items: [{ id: order.itemId, quantity: 1 }],
-      return_shipping: { option_id: returnOptionId, ...shipping },
-      ...extra,
+      items: [{ id: order.itemId, quantity }],
+      return_shipping: { option_id: returnOptionId } as Record<string, unknown>,
     })
 
     it("seed has a return shipping option (is_return) that customers can use", () => {
@@ -109,27 +118,35 @@ medusaIntegrationTestRunner({
     })
 
     it.each([
-      ["return_shipping.price", () => body({}, { price: 0 })],
-      ["receive_now", () => body({ receive_now: true })],
-      ["receive_now (false)", () => body({ receive_now: false })],
-      ["location_id", () => body({ location_id: "sloc_attacker" })],
+      ["return_shipping.price", (o: Order) => {
+        const b = body(o)
+        return { ...b, return_shipping: { ...b.return_shipping, price: 0 } }
+      }],
+      // คืนครบ 2 ชิ้น: ถ้าไปถึง workflow ของ Medusa จะได้ 200 และ return ถูกบันทึกว่ารับแล้ว
+      ["receive_now (true, full quantity)", (o: Order) => ({ ...body(o, 2), receive_now: true })],
+      ["receive_now (false)", (o: Order) => ({ ...body(o), receive_now: false })],
+      ["location_id", (o: Order) => ({ ...body(o), location_id: locationId })],
     ])("owner sending %s → 400 invalid_data and no return is created", async (_field, payload) => {
-      const { status, data } = await responseOf(api.post("/store/returns", payload(), owner))
+      const order = await placeOrder()
+      const { status, data } = await responseOf(api.post("/store/returns", payload(order), owner))
       expect({ status, type: data?.type }).toEqual({ status: 400, type: "invalid_data" })
-      expect(await returnsOf()).toEqual([])
+      expect(await returnsOf(order)).toEqual([])
     })
 
     it("owner creates a return with the seeded option: price from the option, not received, location from the option", async () => {
-      const { status, data } = await api.post("/store/returns", body(), owner)
+      const order = await placeOrder()
+      const { status, data } = await api.post("/store/returns", body(order), owner)
       expect(status).toEqual(200)
 
-      const returns = await returnsOf()
+      const returns = await returnsOf(order)
       expect(returns.map((r) => r.id)).toEqual([data.return.id])
       const [created] = returns
       expect(created.status).toEqual("requested")
       expect(created.received_at).toBeNull()
       const expectedPrice = DEFAULT_REGION_STORE_POLICIES.free_returns ? 0 : DEFAULT_REGION_STORE_POLICIES.shipping_rate
-      expect(created.shipping_methods?.map((m) => [m?.shipping_option_id, Number(m?.amount)])).toEqual([[returnOptionId, expectedPrice]])
+      // Query คืน shipping method ของ return เป็น OrderShippingMethod (type ที่ generate ประกาศเป็น OrderShipping)
+      const methods = created.shipping_methods as unknown as { shipping_option_id: string; amount: number }[]
+      expect(methods.map((m) => [m.shipping_option_id, Number(m.amount)])).toEqual([[returnOptionId, expectedPrice]])
 
       // fulfillment ของ return ไปที่ stock location ของ option (Bangkok Warehouse) ไม่ใช่ค่าจาก store
       const { data: links } = await query().graph({

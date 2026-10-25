@@ -4,15 +4,19 @@ import { MedusaError } from "@medusajs/framework/utils"
 // CORE-16 (owner 2026-10-26): StorePostReturnsReqSchema ของ Medusa 2.22.1 รับฟิลด์เหล่านี้แล้ว
 // createAndCompleteReturnOrderWorkflow ใช้ตรงๆ — `return_shipping.price` แทนราคาของ option, `receive_now` รับของคืนทันที,
 // `location_id` แทน stock location ของ option → store ห้ามส่ง (ราคา/location มาจาก return option, admin เป็นผู้รับของ)
-type Body = Record<string, unknown>
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
 
+// body/return_shipping ที่ไม่ใช่ object (string, number, null) → ไม่มีฟิลด์ต้องห้าม; ให้ validator ของ core ตอบ 400 เอง
+// (ไม่ใช้ `in` กับค่าที่ไม่ใช่ object ซึ่งจะ throw TypeError → 500 ไม่ว่าลำดับ middleware เป็นอย่างไร)
 export function storeReturnOverrides(body: unknown): string[] {
-  const b = (body ?? {}) as Body
-  const shipping = (b.return_shipping ?? {}) as Body
+  if (!isObject(body)) {
+    return []
+  }
+  const shipping = body.return_shipping
   return [
-    ["return_shipping.price", "price" in shipping],
-    ["receive_now", "receive_now" in b],
-    ["location_id", "location_id" in b],
+    ["return_shipping.price", isObject(shipping) && "price" in shipping],
+    ["receive_now", "receive_now" in body],
+    ["location_id", "location_id" in body],
   ]
     .filter(([, present]) => present)
     .map(([field]) => field as string)

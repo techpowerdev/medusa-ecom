@@ -117,7 +117,9 @@ medusaIntegrationTestRunner({
       expect(rule("is_return")).toEqual("true")
       expect(rule("enabled_in_store")).toEqual("true")
       const expected = DEFAULT_REGION_STORE_POLICIES.free_returns ? 0 : DEFAULT_REGION_STORE_POLICIES.shipping_rate
-      expect(option.prices?.find((p) => p?.currency_code === "thb")?.amount).toEqual(expected)
+      // `prices` มาจาก link shipping_option ↔ price_set ซึ่ง type ที่ Medusa generate (.medusa/types) ไม่ได้ประกาศ
+      const { prices } = option as unknown as { prices?: { currency_code: string; amount: number }[] }
+      expect(prices?.find((p) => p.currency_code === "thb")?.amount).toEqual(expected)
       expect(option.service_zone?.fulfillment_set?.location?.id).toEqual(expect.any(String))
     })
 

@@ -60,3 +60,24 @@ Tests:       29 passed, 29 total
 pnpm lint: 0 errors (warning เดิมของ storefront)
 pnpm typecheck: backend Done, storefront Done
 pnpm --filter backend build: Backend + Frontend build completed successfully
+
+## รอบแก้ nit หลัง review (2026-10-26)
+- return-overrides.ts: เช็ก `typeof === "object" && !== null` ก่อนใช้ `in` (body และ return_shipping) — ไม่ throw 500
+- middlewares.ts: rejectStoreReturnOverrides เป็นตัวที่ 3 ของ entry CORE-13 (auth → owner → overrides) ไม่แยก entry
+- store-returns-overrides.spec.ts: แต่ละ case สร้าง order ของตัวเอง; `receive_now: true` คืนครบ 2 ชิ้น; `location_id` = stock location จริง
+- seed: doc ระบุว่าถ้า admin ลบ "Standard return" seed ครั้งถัดไปจะสร้างกลับ
+
+Red (เอา middleware ออกชั่วคราว, order แยกต่อ case): 4 failed — price 0, receive_now true (คืนครบ), receive_now false,
+location_id → ทั้งหมดได้ **200** จาก Medusa (ค่าไปถึง workflow จริง)
+
+Green:
+PASS integration-tests/http/store-returns-overrides.spec.ts
+    ✓ seed has a return shipping option (is_return) that customers can use
+    ✓ owner sending return_shipping.price → 400 invalid_data and no return is created
+    ✓ owner sending receive_now (true, full quantity) → 400 invalid_data and no return is created
+    ✓ owner sending receive_now (false) → 400 invalid_data and no return is created
+    ✓ owner sending location_id → 400 invalid_data and no return is created
+    ✓ owner creates a return with the seeded option: price from the option, not received, location from the option
+PASS store-ownership.spec.ts, store-returns-transfer.spec.ts, seed.spec.ts — Tests: 29 passed, 29 total
+unit: pnpm --filter backend test:unit — 32 suites, 268 passed (ใหม่: non-object body, ลำดับใน entry CORE-13)
+pnpm lint: 0 errors; pnpm typecheck: backend Done, storefront Done (ทั้งก่อนและหลังมี .medusa/types ที่ generate)

@@ -313,6 +313,8 @@ async function upgradeDigitalDelivery(container: ExecArgs["container"]) {
  * ใช้ service zone, shipping profile และ provider เดียวกับ "Standard" (หาด้วย type.code) จึงส่งคืนไปที่ stock location ของ
  * fulfillment set นั้น ราคา = 0 ถ้า free_returns ไม่เช่นนั้น = shipping_rate (DEFAULT_REGION_STORE_POLICIES)
  * รันซ้ำได้: ถ้ามี option ด้วย type.code นี้แล้วจะไม่ทำอะไร (รวม DB ที่ seed ก่อน CORE-16)
+ * หมายเหตุ: ถ้า admin ลบ "Standard return" (หรือ option ที่มี type.code นี้) seed ครั้งถัดไปจะสร้างกลับ — จะเลิกใช้ให้
+ * ปิดด้วย rule `enabled_in_store` หรือแก้ราคาใน admin แทนการลบ (แก้ name ได้ เพราะหาด้วย type.code)
  */
 async function seedReturnShippingOption(container: ExecArgs["container"]) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
