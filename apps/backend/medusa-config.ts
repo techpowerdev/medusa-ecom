@@ -28,5 +28,8 @@ module.exports = defineConfig({
       resolve: './src/modules/evoucher',
       options: { encryptionKey: process.env.EVOUCHER_ENCRYPTION_KEY },
     },
+    {
+      resolve: './src/modules/flash_sale',
+    },
   ],
 })
