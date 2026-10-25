@@ -18,12 +18,6 @@ export type ComputedActionLike = {
   is_tax_inclusive?: boolean
 }
 
-export type CampaignBudgetLike = {
-  type?: string | null
-  limit?: BigNumberInput | null
-  used?: BigNumberInput | null
-} | null
-
 /**
  * context ของ `computeActions` สำหรับ variant หนึ่งตัว: line สังเคราะห์ quantity 1 แบบเดียวกับ cart line
  * (`subtotal` = ราคาไม่รวมภาษี, `original_total` = ราคารวมภาษี) เพื่อให้ promotion แบบ fixed ที่ไม่ tax-inclusive ตรงกับ cart
@@ -114,10 +108,31 @@ export async function mapWithConcurrency<T, R>(
   return results
 }
 
-/** หน่วยที่เหลือของ campaign budget แบบ `usage` (spec 03 กฎข้อ 4); null เมื่อไม่มี budget usage หรือไม่ตั้ง limit */
-export function remainingUsage(budget: CampaignBudgetLike): number | null {
-  if (budget?.type !== "usage" || budget.limit == null) {
-    return null
+export type FlashSaleAvailability = {
+  sold_out: boolean
+  remaining_units: number | null
+}
+
+/**
+ * FS-7 (spec 03 กฎข้อ 4, AC-13): สถานะคงเหลือจากตัวนับหน่วยเดียวกับที่ FS-3 ใช้ตัดสิน total cap
+ * ห้ามใช้ campaign budget `usage` ของ Medusa เพราะนับต่อ order ไม่ใช่ต่อหน่วย
+ * - `sold_out` = มี `total_cap` และ `units_sold >= total_cap` (ไม่ขึ้นกับ `show_remaining`)
+ * - `remaining_units` = `max(0, total_cap - units_sold)` เมื่อ `show_remaining` และมี `total_cap`, มิฉะนั้น null
+ */
+export function flashSaleAvailability({
+  total_cap,
+  units_sold,
+  show_remaining,
+}: {
+  total_cap: number | null
+  units_sold: number
+  show_remaining: boolean
+}): FlashSaleAvailability {
+  if (total_cap == null) {
+    return { sold_out: false, remaining_units: null }
   }
-  return MathBN.max(MathBN.sub(budget.limit, budget.used ?? 0), 0).toNumber()
+  return {
+    sold_out: units_sold >= total_cap,
+    remaining_units: show_remaining ? Math.max(0, total_cap - units_sold) : null,
+  }
 }

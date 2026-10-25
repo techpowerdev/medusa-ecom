@@ -1,0 +1,52 @@
+# FS-7 — GET /store/flash-sales/active: sold_out + remaining_units อิงหน่วย (spec 03 กฎข้อ 4, AC-13 a–d)
+# วันที่: 2026-10-26, commit 55959e5 บน origin/develop (4c994d0, รวม CORE-12 แล้ว), Node 22.23.3
+
+## Red (ก่อนเขียนโค้ด)
+- unit: 5 test ของ flashSaleAvailability ล้มด้วย TypeError: flashSaleAvailability is not a function
+- integration: 5 test ล้ม — FS-4 "lists only running ..." ยังได้ remaining_usage แทน sold_out/remaining_units;
+  AC-13 (a) Expected 3, Received undefined; (b)–(d) ไม่มี key sold_out/remaining_units — 7 test เดิมของ FS-4 ผ่าน
+
+## Green: unit — src/lib/__tests__/flash-sale-preview.unit.spec.ts
+PASS src/lib/__tests__/flash-sale-preview.unit.spec.ts
+    ✓ always sends exclusivity.code_applied = "false" so exclusive flash promotions survive the prefilter (rule 6g) (1 ms)
+    ✓ builds one synthetic discountable line of quantity 1 with tax-exclusive subtotal and tax-inclusive original_total (like a cart line)
+    ✓ returns null when no flash promotion adjusts the line
+    ✓ subtracts the amounts of flash item adjustments only (BigNumber or number)
+    ✓ converts tax-exclusive adjustment amounts to the price basis (tax-inclusive price: 100 excl. VAT 7% = 107)
+    ✓ does not add tax twice for tax-inclusive promotions (amount already on the original_total basis)
+    ✓ converts each adjustment by its own basis when tax-inclusive and tax-exclusive promotions mix
+    ✓ keeps a tax-exclusive price basis when the price itself excludes tax
+    ✓ never goes below zero
+    ✓ keeps input order and never runs more than `limit` tasks at once (18 ms)
+    ✓ runs sequentially when limit is 1 and handles empty input (3 ms)
+    ✓ is total_cap - units_sold while units remain (AC-13 a)
+    ✓ is sold out with 0 remaining when units_sold reaches total_cap (AC-13 b)
+    ✓ clamps remaining_units at 0 when total_cap was lowered below units_sold (AC-13 c)
+    ✓ hides remaining_units but still reports sold_out when show_remaining=false (AC-13 d)
+    ✓ is never sold out and has no remaining_units without total_cap (AC-13 d)
+Tests:       16 passed, 16 total
+
+## Green: integration (http) — integration-tests/http/flash-sale-active.spec.ts
+PASS integration-tests/http/flash-sale-active.spec.ts (12.703 s)
+    ✓ lists only running flash campaigns with countdown data, publicly (no customer auth) (762 ms)
+    ✓ returns flash_price from the Promotion module for exclusive flash promotions only (764 ms)
+    ✓ matches the real cart line total on tax-inclusive THB (fixed 100 excl. VAT = 107 off) (570 ms)
+    ✓ matches the real cart line total for a tax-inclusive promotion (no double VAT) (616 ms)
+    ✓ ignores order-level flash promotions in flash_price (only target_type items) (298 ms)
+    ✓ only prices variants sold in the publishable key's sales channels (355 ms)
+    ✓ rejects variant_ids without region_id (206 ms)
+    ✓ rejects more than 24 variant_ids (bounded computeActions per request) (297 ms)
+      ✓ (a) counts units, not orders: units_sold=7 vs budget usage 5 → remaining_units=3, no remaining_usage (262 ms)
+      ✓ (b) units_sold reaches total_cap → remaining_units=0, sold_out=true (239 ms)
+      ✓ (c) total_cap lowered below units_sold → remaining_units clamps at 0, sold_out=true (213 ms)
+      ✓ (d) show_remaining=false hides remaining_units but keeps sold_out; no total_cap → never sold out (266 ms)
+Tests:       12 passed, 12 total
+
+## pnpm --filter backend test:unit
+Test Suites: 29 passed, 29 total
+Tests:       235 passed, 235 total
+
+## pnpm lint / pnpm typecheck / pnpm --filter backend build
+- backend lint: No lint issues found (storefront: 0 errors, มีแต่ warning เดิม)
+- typecheck: ผ่านทั้ง backend และ storefront
+- build: Backend + Frontend build completed successfully

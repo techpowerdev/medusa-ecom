@@ -1,7 +1,13 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules, PromotionActions } from "@medusajs/framework/utils"
-import { createCartWorkflow, updateCartPromotionsWorkflow } from "@medusajs/medusa/core-flows"
+import {
+  createCartWorkflow,
+  createProductsWorkflow,
+  updateCartPromotionsWorkflow,
+} from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
+import { getPublishableKey } from "../../src/scripts/print-publishable-key"
+import { registerCustomer, storeHeadersFor } from "../helpers/customer"
 import { GROUP_BUY_MODULE } from "../../src/modules/group_buy"
 import type GroupBuyModuleService from "../../src/modules/group_buy/service"
 import {
@@ -16,6 +22,14 @@ jest.setTimeout(180 * 1000)
 const ADMIN_EMAIL = "gb-groups-admin@example.com"
 const ADMIN_PASSWORD = "gb-test-password"
 const HOUR = 60 * 60 * 1000
+const SHIPPING_ADDRESS = {
+  first_name: "Somchai",
+  last_name: "Jaidee",
+  address_1: "1 Sukhumvit Rd",
+  city: "Bangkok",
+  postal_code: "10110",
+  country_code: "th",
+}
 
 type GraphRule = { attribute: string; operator: string; values: { value: string }[] }
 type GraphPromotion = {
@@ -341,7 +355,8 @@ medusaIntegrationTestRunner({
 
       it("GB-<token> on a cart with X and Y → −30% adjustment on line X only", async () => {
         const container = getContainer()
-        const campaign = await createCampaign()
+        // GB-2c: ค่าเริ่มต้นเปลี่ยนเป็น true — test นี้ตรวจกรณี false (control ของ AC-20c อยู่ด้านล่าง)
+        const campaign = await createCampaign({ is_tax_inclusive: false })
         const { result } = await runCreateGroup({ campaign_id: campaign.id, kind: "pool" })
         const code = `GB-${result.join_token}`
 
@@ -406,6 +421,149 @@ medusaIntegrationTestRunner({
 
         expect(await promotionsInCampaign(medusaCampaign.id)).toHaveLength(1) // ต้นแบบเท่านั้น
         expect(await groupBuy.listGroupBuyGroups({ campaign_id: campaign.id })).toHaveLength(0)
+      })
+    })
+
+    // GB-2c (กฎข้อ 12): ส่วนลด fixed ฿100 บนสินค้าราคา ฿1,070 (รวม VAT 7%) ต้องลดยอดจ่ายพอดี ฿100 เมื่อต้นแบบ is_tax_inclusive=true
+    describe("tax-inclusive template (AC-20c)", () => {
+      let pk: string
+      let productX2Id: string
+      let variantX2Id: string
+
+      beforeAll(async () => {
+        pk = await getPublishableKey(getContainer())
+      })
+
+      // runner คืน DB เป็น snapshot ก่อนทุก test — สร้างสินค้า X2 (฿1,070 รวม VAT) ใหม่ในแต่ละ test
+      beforeEach(async () => {
+        const container = getContainer()
+        const query = container.resolve(ContainerRegistrationKeys.QUERY)
+        const { data: channels } = await query.graph({ entity: "sales_channel", fields: ["id"] })
+        const { result } = await createProductsWorkflow(container).run({
+          input: {
+            products: [
+              {
+                title: "GB-2c Tee 1070",
+                handle: "gb-2c-tee-1070",
+                status: "published",
+                options: [{ title: "Size", values: ["One"] }],
+                variants: [
+                  {
+                    title: "One",
+                    manage_inventory: false,
+                    options: { Size: "One" },
+                    prices: [{ currency_code: "thb", amount: 1070 }],
+                  },
+                ],
+                sales_channels: channels.map((c) => ({ id: c.id })),
+              },
+            ],
+          },
+        })
+        productX2Id = result[0].id
+        variantX2Id = must(result[0].variants?.[0], "variant X2").id
+      })
+
+      const fixed100 = (is_tax_inclusive?: boolean) =>
+        createCampaign({
+          application_method: {
+            type: "fixed",
+            target_type: "items",
+            allocation: "each",
+            max_quantity: 1,
+            value: 100,
+            currency_code: "thb",
+            target_rules: [{ attribute: "items.product.id", operator: "in", values: [productX2Id] }],
+          },
+          ...(is_tax_inclusive === undefined ? {} : { is_tax_inclusive }),
+        })
+
+      // ยอดที่ลดลงของ cart (X2 qty 1) เมื่อใส่ GB-<token> — cart สร้างและแก้ด้วย token ของ customer เจ้าของ cart
+      const discountOnCart = (campaignId: string) =>
+        cartDiscount(campaignId).catch((e) => {
+          // error ของ axios มี req/res วนกัน — jest worker serialize ไม่ได้
+          throw new Error(`store call failed: ${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+        })
+      const cartDiscount = async (campaignId: string) => {
+        const { result } = await runCreateGroup({ campaign_id: campaignId, kind: "pool" })
+        const code = `GB-${result.join_token}`
+        const email = `gb2c+${Date.now()}${Math.random()}@example.com`
+        const { token } = await registerCustomer(api, pk, email, "gb2c-password")
+        const config = storeHeadersFor(pk, token)
+
+        const { data: created } = await api.post(
+          "/store/carts",
+          {
+            region_id: regionId,
+            shipping_address: SHIPPING_ADDRESS,
+            items: [{ variant_id: variantX2Id, quantity: 1 }],
+          },
+          config
+        )
+        const before = Number(created.cart.total)
+        const { data: applied } = await api.post(
+          `/store/carts/${created.cart.id}/promotions`,
+          { promo_codes: [code] },
+          config
+        )
+        expect(applied.cart.promotions.map((p: { code: string }) => p.code)).toEqual([code])
+        return before - Number(applied.cart.total)
+      }
+
+      it("default template (is_tax_inclusive=true) → cart.total drops by exactly 100", async () => {
+        const campaign = await fixed100()
+        expect((await graphCampaign(campaign.id)).template.is_tax_inclusive).toBe(true)
+
+        const discount = await discountOnCart(campaign.id)
+        expect(discount).toBeCloseTo(100, 2)
+      })
+
+      it("control: template is_tax_inclusive=false → cart.total drops by ≈107, not 100", async () => {
+        const campaign = await fixed100(false)
+        const { result } = await runCreateGroup({ campaign_id: campaign.id, kind: "pool" })
+        expect((await graphGroup(result.id)).promotion.is_tax_inclusive).toBe(false)
+
+        const discount = await discountOnCart(campaign.id)
+        expect(discount).not.toBeCloseTo(100, 2)
+        expect(discount).toBeCloseTo(107, 2)
+      })
+    })
+
+    // GB-2c (AC-20d): ขั้นสร้าง link group ↔ promotion ล้ม → compensation ลบทั้ง GB- promotion และกลุ่ม
+    describe("createGroupWorkflow — link step failure (AC-20d)", () => {
+      it("rolls back the GB- promotion and the group, surfaces the link error, and succeeds on retry", async () => {
+        const container = getContainer()
+        const campaign = await createCampaign()
+        const { campaign: medusaCampaign } = await graphCampaign(campaign.id)
+        const groupBuy: GroupBuyModuleService = container.resolve(GROUP_BUY_MODULE)
+        const promotionsBefore = (await promotionsInCampaign(medusaCampaign.id)).length
+        const groupsBefore = (await groupBuy.listGroupBuyGroups({ campaign_id: campaign.id })).length
+
+        const link = container.resolve(ContainerRegistrationKeys.LINK)
+        const spy = jest.spyOn(link, "create").mockRejectedValueOnce(new Error("GB-2c link boom"))
+        let errors: { action: string; error: { message: string } }[]
+        try {
+          ;({ errors } = await createGroupWorkflow(container).run({
+            input: { campaign_id: campaign.id, kind: "pool" },
+            throwOnError: false,
+          }))
+        } finally {
+          spy.mockRestore()
+        }
+
+        expect(errors).toEqual([
+          expect.objectContaining({
+            action: "create-remote-links",
+            error: expect.objectContaining({ message: "GB-2c link boom" }),
+          }),
+        ])
+        expect(await promotionsInCampaign(medusaCampaign.id)).toHaveLength(promotionsBefore)
+        expect(await groupBuy.listGroupBuyGroups({ campaign_id: campaign.id })).toHaveLength(
+          groupsBefore
+        )
+
+        const { result } = await runCreateGroup({ campaign_id: campaign.id, kind: "pool" })
+        expect((await graphGroup(result.id)).promotion.code).toEqual(`GB-${result.join_token}`)
       })
     })
 

@@ -32,6 +32,8 @@ const STOCK_QUANTITY = 100
 // EV-3 (ADR-006): provider `digital` (src/modules/digital_fulfillment) ลงทะเบียนด้วย id `digital`
 const DIGITAL_PROVIDER_ID = "digital_digital"
 const DIGITAL_OPTION_NAME = "Digital delivery"
+// spec 02 กฎข้อ 8: หา option นี้ด้วย type.code เสมอ — name แก้ได้ใน admin
+const DIGITAL_OPTION_TYPE_CODE = "digital-delivery"
 // CORE-7 (ADR-008): th-TH = ภาษาต้นฉบับของเนื้อหาใน admin, en-US มาจาก Translation module
 export const STORE_LOCALES = ["th-TH", "en-US"]
 export const STOREFRONT_KEY_TITLE = "Storefront"
@@ -210,7 +212,7 @@ export default async function seedThailand({ container }: ExecArgs) {
         DEFAULT_REGION_STORE_POLICIES.shipping_rate,
         "manual_manual"
       ),
-      shippingOption(DIGITAL_OPTION_NAME, "digital-delivery", digitalProfile.id, 0, DIGITAL_PROVIDER_ID),
+      shippingOption(DIGITAL_OPTION_NAME, DIGITAL_OPTION_TYPE_CODE, digitalProfile.id, 0, DIGITAL_PROVIDER_ID),
     ],
   })
 
@@ -263,15 +265,15 @@ export default async function seedThailand({ container }: ExecArgs) {
 }
 
 /**
- * EV-3: DB ที่ seed ก่อน EV-3 มี Digital delivery ผูกกับ manual_manual → เปิด provider digital ที่ stock location
+ * EV-3: DB ที่ seed ก่อน EV-3 มี Digital delivery (หาด้วย type.code — EV-8) ผูกกับ manual_manual → เปิด provider digital ที่ stock location
  * ของ option นั้นแล้วย้าย option ไปใช้ digital_digital (คง id/ราคาเดิม) รันซ้ำได้: ถ้าย้ายแล้วจะไม่ทำอะไร
  */
 async function upgradeDigitalDelivery(container: ExecArgs["container"]) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data: options } = await query.graph({
     entity: "shipping_option",
-    fields: ["id", "provider_id", "service_zone.fulfillment_set.location.id"],
-    filters: { name: DIGITAL_OPTION_NAME },
+    fields: ["id", "name", "provider_id", "service_zone.fulfillment_set.location.id"],
+    filters: { type: { code: DIGITAL_OPTION_TYPE_CODE } },
   })
   const option = options[0]
   const locationId = option?.service_zone?.fulfillment_set?.location?.id
@@ -297,7 +299,7 @@ async function upgradeDigitalDelivery(container: ExecArgs["container"]) {
   })
   container
     .resolve(ContainerRegistrationKeys.LOGGER)
-    .info(`ย้าย shipping option "${DIGITAL_OPTION_NAME}" ไปใช้ ${DIGITAL_PROVIDER_ID} แล้ว`)
+    .info(`ย้าย shipping option "${option.name}" (${DIGITAL_OPTION_TYPE_CODE}) ไปใช้ ${DIGITAL_PROVIDER_ID} แล้ว`)
 }
 
 /**

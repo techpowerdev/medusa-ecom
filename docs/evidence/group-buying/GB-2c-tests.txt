@@ -1,0 +1,63 @@
+# GB-2c test evidence — 2026-10-26 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+# integration ในเครื่องรันเฉพาะ group-buy-campaigns / group-buy-groups (ชุดเต็มให้ CI รัน)
+### Red (ก่อนเขียนโค้ด)
+validators.unit.spec.ts     → FAIL: defaults to true when not sent — Expected: true, Received: undefined
+group-buy-campaigns.spec.ts → FAIL (AC-20c): promotion.is_tax_inclusive Expected: true, Received: false
+group-buy-groups.spec.ts    → FAIL (AC-20c ค่าเริ่มต้น): template.is_tax_inclusive Expected: true, Received: false
+AC-20d (rollback ขั้น link) ผ่านตั้งแต่ก่อนแก้โค้ด — เป็นการปิดช่องว่าง test ของ GB-2b; compensation ของ createGroupWorkflow ถูกอยู่แล้ว
+หมายเหตุ: medusaIntegrationTestRunner คืน DB เป็น snapshot ก่อนทุก test → สินค้า ฿1,070 ของ AC-20c สร้างใน beforeEach
+### pnpm lint
+apps/backend: ไม่มี issue (storefront มี warning เดิม 38 รายการ ไม่เกี่ยวกับ GB-2c)
+### pnpm typecheck
+ผ่าน ไม่มี error (backend + admin + storefront)
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit
+PASS src/api/admin/group-buy/__tests__/validators.unit.spec.ts
+  AdminCreateGroupBuyCampaign — is_tax_inclusive
+    ✓ defaults to true when not sent
+    ✓ keeps an explicit true
+    ✓ keeps an explicit false
+    ✓ rejects a non-boolean ("true")
+    ✓ rejects a non-boolean (1)
+    ✓ rejects a non-boolean (null)
+Test Suites: 31 passed, 31 total
+Tests:       241 passed, 241 total
+### integration-tests/http/group-buy-campaigns.spec.ts
+      ✓ creates a Medusa campaign + draft GBT- template promotion linked to the campaign
+      ✓ template code on a cart with X gives no adjustment; once active it would give X only
+      ✓ rolls back the Medusa campaign and template when the group buy campaign cannot be created
+      ✓ restores the campaign, template, links and Medusa campaign when a later step fails
+      ✓ requires an admin user
+      ✓ creates (returning template_promotion_id), lists, retrieves and updates a draft campaign
+      ✓ rejects an invalid body with 400
+      ✓ template is_tax_inclusive defaults to true, keeps false, and rejects a non-boolean (AC-20c)
+      ✓ returns 404 for an unknown campaign
+      ✓ DELETE on a draft campaign removes the campaign, template, Medusa campaign and links (AC-20a)
+      ✓ DELETE on an active campaign → 400 and nothing is removed (AC-20a)
+      ✓ draft → active → ended succeed; active again on active is a no-op 200
+      ✓ rejects active → draft and ended → active with 400
+      ✓ rejects draft → active when the Medusa campaign ends_at has passed
+      ✓ editing target_value of an active campaign → 400; name and pay_within_hours are still editable
+Tests:       15 passed, 15 total
+### integration-tests/http/group-buy-groups.spec.ts
+      ✓ group_mode=pool + kind=team → forbidden; no GB- promotion is created
+      ✓ group_mode=team + kind=pool → forbidden
+      ✓ group_mode=both + team (2h, campaign ends in 10h) → open group, unique token, owner, ends_at = created + 2h
+      ✓ team when the campaign ends in 1h → ends_at = campaign.ends_at
+      ✓ creates an active GB-<token> promotion that matches the template
+      ✓ GB-<token> on a cart with X and Y → −30% adjustment on line X only   (ระบุ is_tax_inclusive=false ตรงๆ แล้ว)
+      ✓ rolls back the GB- promotion when the group cannot be created
+      ✓ default template (is_tax_inclusive=true) → cart.total drops by exactly 100        (AC-20c)
+      ✓ control: template is_tax_inclusive=false → cart.total drops by ≈107, not 100      (AC-20c)
+      ✓ rolls back the GB- promotion and the group, surfaces the link error, and succeeds on retry (AC-20d)
+      ✓ requires an admin user
+      ✓ POST creates a pool group (201, ends_at = campaign.ends_at) and GET lists it (AC-19)
+      ✓ POST on a team-only campaign → 403 forbidden
+      ✓ does not accept kind from the body (pool only) → 400
+      ✓ POST on an unknown campaign → 404
+      ✓ creating a group on a draft campaign → 400 not_allowed
+      ✓ creating a group on a ended campaign → 400 not_allowed
+      ✓ active campaign whose Medusa campaign starts_at is in the future → 400 not_allowed, no GB- promotion
+Tests:       18 passed, 18 total

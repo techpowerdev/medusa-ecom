@@ -11,6 +11,7 @@ import {
   generateEntityId,
   MedusaError,
 } from "@medusajs/framework/utils"
+import type { MedusaContainer } from "@medusajs/framework/types"
 import { adjustInventoryLevelsStep } from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
 import EvoucherModuleService from "../../modules/evoucher/service"
@@ -117,6 +118,24 @@ export const prepareEvoucherCodesStep = createStep(
   }
 )
 
+// ลบ batch ตอน rollback — ถ้าลบไม่สำเร็จ log พร้อม batch_ref (code ค้างใน DB ต้องลบเอง) แล้ว throw error ของการลบ
+// ผู้เรียกยังได้ error เดิมของขั้นที่ล้ม: workflow engine โยนเฉพาะ error ของ invoke ไม่ใช่ของ compensation (AC-13)
+async function deleteBatch(container: MedusaContainer, batch_ref: string) {
+  const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
+  try {
+    await service.deleteEvoucherCodes({ batch_ref })
+  } catch (error) {
+    container
+      .resolve(ContainerRegistrationKeys.LOGGER)
+      .error(
+        `evoucher import rollback failed: batch_ref=${batch_ref} must be deleted manually: ${
+          (error as Error)?.message ?? error
+        }`
+      )
+    throw error
+  }
+}
+
 export const insertEvoucherCodesStep = createStep(
   "insert-evoucher-codes",
   async (input: { batch_ref: string; rows: CodeRow[] }, { container }) => {
@@ -134,7 +153,8 @@ export const insertEvoucherCodesStep = createStep(
         await service.createEvoucherCodes(part)
       }
     } catch (error) {
-      await service.deleteEvoucherCodes({ batch_ref: input.batch_ref })
+      // error ของการลบถูก log ใน deleteBatch แล้ว — โยน error เดิมของ chunk ที่ล้ม (AC-13)
+      await deleteBatch(container, input.batch_ref).catch(() => undefined)
       throw error
     }
     return new StepResponse(input.rows.length, input.batch_ref)
@@ -143,8 +163,7 @@ export const insertEvoucherCodesStep = createStep(
     if (!batch_ref) {
       return
     }
-    const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
-    await service.deleteEvoucherCodes({ batch_ref })
+    await deleteBatch(container, batch_ref)
   }
 )
 
