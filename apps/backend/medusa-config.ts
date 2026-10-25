@@ -1,11 +1,17 @@
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 import { buildNotificationProviders } from './src/lib/notification-providers'
+import { buildDatabaseDriverOptions, buildInfraModules, getRedisModulesUrl } from './src/lib/infra-modules'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
+
+// OPS-2: Redis modules เฉพาะ production ที่ตั้ง REDIS_URL (src/lib/infra-modules.ts)
+const redisUrl = getRedisModulesUrl(process.env)
 
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    databaseDriverOptions: buildDatabaseDriverOptions(process.env),
+    redisUrl,
     // OPS-1: image เดียวกันบูตเป็น server/worker ตาม env (docs/spec/07-scaling-ops.md)
     workerMode: (process.env.MEDUSA_WORKER_MODE ?? 'shared') as 'shared' | 'worker' | 'server',
     http: {
@@ -56,6 +62,7 @@ module.exports = defineConfig({
     },
     // CORE-7 (ADR-008): เนื้อหาสินค้าหลายภาษา — experimental ต้องเปิดคู่กับ featureFlags.translation
     { resolve: '@medusajs/medusa/translation' },
+    ...buildInfraModules(process.env, redisUrl),
   ],
   featureFlags: {
     translation: true,

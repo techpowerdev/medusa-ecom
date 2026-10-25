@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # OPS-1 smoke test ของ AC-1 (docs/spec/07-scaling-ops.md):
 # backend image เดียวกันบูตเป็น server และ worker ได้; scheduled jobs ถูกโหลดเฉพาะบน worker
+# OPS-2: event ที่ server emit ต้องถึง subscriber บน worker ผ่าน Redis event bus
 # รันจาก root ของ repo: tools/ops/smoke-worker-mode.sh (ต้องมี docker compose v2)
 set -euo pipefail
 
@@ -38,6 +39,30 @@ check "server runs with MEDUSA_WORKER_MODE=server" server "$(compose exec -T ser
 check "worker runs with MEDUSA_WORKER_MODE=worker" worker "$(compose exec -T worker printenv MEDUSA_WORKER_MODE)"
 check "worker loads scheduled jobs" 1 "$(compose logs worker | grep -c 'Jobs registered' || true)"
 check "server does not load scheduled jobs" 0 "$(compose logs server | grep -c 'Jobs registered' || true)"
+
+# OPS-2: admin สร้าง product บน server → product.created → subscriber search-ingestion ของ Medusa รันบน worker
+# (event-bus-redis log "Processing <event> ..." เฉพาะ process ที่รัน BullMQ worker)
+ADMIN_EMAIL="smoke-$(openssl rand -hex 4)@example.com"
+ADMIN_PASSWORD="$(openssl rand -hex 16)"
+compose exec -T server /app/node_modules/.bin/medusa user -e "$ADMIN_EMAIL" -p "$ADMIN_PASSWORD" >/dev/null
+create_product() {
+  compose exec -T -e ADMIN_EMAIL="$ADMIN_EMAIL" -e ADMIN_PASSWORD="$ADMIN_PASSWORD" server node -e "
+    const base = 'http://localhost:9000'
+    const json = { 'content-type': 'application/json' }
+    fetch(base + '/auth/user/emailpass', { method: 'POST', headers: json,
+      body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD }) })
+      .then((r) => r.json())
+      .then(({ token }) => fetch(base + '/admin/products', { method: 'POST',
+        headers: { ...json, authorization: 'Bearer ' + token },
+        body: JSON.stringify({ title: 'OPS-2 smoke', options: [{ title: 'Size', values: ['M'] }] }) }))
+      .then((r) => console.log(r.status), () => console.log('ERR'))"
+}
+check "server creates product via admin API" 200 "$(create_product)"
+# event-bus-redis: "Processing product.created (priority: N) which has ..."; event-bus-local ไม่มี priority
+processed_on() { compose logs "$1" | grep -c 'Processing product.created ' || true; }
+for _ in $(seq 1 30); do [ "$(processed_on worker)" -ge 1 ] && break; sleep 1; done
+check "worker processes product.created emitted by server" 1 "$(processed_on worker)"
+check "server does not process events itself" 0 "$(processed_on server)"
 
 if [ "$failures" -ne 0 ]; then
   echo "smoke-worker-mode: $failures check(s) failed"

@@ -27,3 +27,4 @@ docker compose -f docker-compose.prod.yml up -d --build --wait   # postgres, red
 tools/ops/smoke-worker-mode.sh                                   # ตรวจ AC-1 ใน project แยก `ops1test` (server ที่ :9104)
 ```
 รายละเอียดและข้อจำกัด: `docker-compose.prod.yml`, `apps/backend/Dockerfile`, `apps/storefront/Dockerfile`
+Redis modules, pool size, S3 และ CDN (OPS-2): `docs/ops/production.md`

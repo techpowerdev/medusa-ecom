@@ -7,7 +7,10 @@
 #   docker compose -f docker-compose.prod.yml --profile storefront up -d   # ต้องมี publishable key (CORE-2)
 #
 # prod จริง: Postgres/Redis เป็น managed service (ตั้ง DATABASE_URL/REDIS_URL), server ≥ 2 replicas
-# หลัง load balancer, worker 1 ตัว (scale ตามต้องการ) — Redis modules/S3 อยู่ใน OPS-2
+# หลัง load balancer, worker 1 ตัว (scale ตามต้องการ)
+# OPS-2: image ตั้ง NODE_ENV=production → REDIS_URL เปิด Redis event bus/workflow engine/caching/locking
+# + session store ของ Medusa (event จาก server ถึง subscriber บน worker); ตั้ง S3_* เพื่อใช้ S3 แทน
+# file-local (ไฟล์ใน container ไม่ถูกแชร์ระหว่าง replica) — ดู docs/ops/production.md
 name: medusa-ecom-prod
 
 x-backend: &backend
@@ -38,6 +41,15 @@ x-backend-env: &backend-env
   # PAY-1: Stripe provider ต้องมี key ตอนบูต (spec 06)
   STRIPE_API_KEY: ${STRIPE_API_KEY:?ต้องตั้ง STRIPE_API_KEY}
   STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?ต้องตั้ง STRIPE_WEBHOOK_SECRET}
+  # OPS-2: ว่าง = default ของ Medusa (pool ของ knex, file-local)
+  DATABASE_POOL_MIN: ${DATABASE_POOL_MIN:-}
+  DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-}
+  S3_FILE_URL: ${S3_FILE_URL:-}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+  S3_REGION: ${S3_REGION:-}
+  S3_BUCKET: ${S3_BUCKET:-}
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
 
 services:
   postgres:
