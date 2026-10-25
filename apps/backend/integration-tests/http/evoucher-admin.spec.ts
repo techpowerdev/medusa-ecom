@@ -272,6 +272,31 @@ medusaIntegrationTestRunner({
       expect(deleted.data).toMatchObject({ id: poolId, deleted: true })
     })
 
+    it("removes earlier chunks when a later insert chunk fails (no orphan rows)", async () => {
+      const poolId = await createPool()
+      const original = service.createEvoucherCodes.bind(service)
+      let calls = 0
+      const spy = jest
+        .spyOn(service, "createEvoucherCodes")
+        .mockImplementation((async (...args: Parameters<typeof original>) => {
+          calls++
+          if (calls === 2) {
+            throw new Error("db down on chunk 2")
+          }
+          return original(...args)
+        }) as typeof original)
+      try {
+        const csv = Array.from({ length: 1500 }, (_, i) => `CH-${10000 + i}`).join("\n")
+        const res = await importCsv(poolId, csv).catch((e) => e.response)
+        expect(res.status).toBeGreaterThanOrEqual(400)
+        expect(calls).toBe(2)
+      } finally {
+        spy.mockRestore()
+      }
+      expect(await service.listEvoucherCodes({ pool_id: poolId })).toHaveLength(0)
+      expect(await stockedQuantity()).toBe(0)
+    })
+
     it("refuses to delete a pool that has codes", async () => {
       const poolId = await createPool()
       await importCsv(poolId, "P-1\n")

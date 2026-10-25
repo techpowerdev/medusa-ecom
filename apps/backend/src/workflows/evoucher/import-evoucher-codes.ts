@@ -127,8 +127,15 @@ export const insertEvoucherCodesStep = createStep(
         assertCiphertext(row.pin)
       }
     })
-    for (const part of chunks(input.rows)) {
-      await service.createEvoucherCodes(part)
+    // แต่ละ chunk เป็น transaction แยก: ถ้า chunk หลังล้ม compensation ของ step นี้จะไม่ถูกเรียก
+    // (step ยังไม่คืน StepResponse) จึงต้องลบ chunk ก่อนหน้าเองก่อน rethrow — กฎข้อ 1
+    try {
+      for (const part of chunks(input.rows)) {
+        await service.createEvoucherCodes(part)
+      }
+    } catch (error) {
+      await service.deleteEvoucherCodes({ batch_ref: input.batch_ref })
+      throw error
     }
     return new StepResponse(input.rows.length, input.batch_ref)
   },
