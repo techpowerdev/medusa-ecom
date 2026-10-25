@@ -24,5 +24,9 @@ module.exports = defineConfig({
       resolve: '@medusajs/medusa/notification',
       options: { providers: buildNotificationProviders(process.env) },
     },
+    {
+      resolve: './src/modules/evoucher',
+      options: { encryptionKey: process.env.EVOUCHER_ENCRYPTION_KEY },
+    },
   ],
 })
