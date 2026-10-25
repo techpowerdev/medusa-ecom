@@ -2,6 +2,7 @@
 # ต่างจาก docker-compose.yml (infra สำหรับ dev เท่านั้น) — ไฟล์นี้ build และรันแอปใน container
 #
 #   export POSTGRES_PASSWORD=... JWT_SECRET=... COOKIE_SECRET=...   # `openssl rand -hex 32`
+#   export STRIPE_API_KEY=... STRIPE_WEBHOOK_SECRET=...              # PAY-1 (spec 06)
 #   docker compose -f docker-compose.prod.yml up -d --build --wait
 #   docker compose -f docker-compose.prod.yml --profile storefront up -d   # ต้องมี publishable key (CORE-2)
 #
@@ -34,6 +35,9 @@ x-backend-env: &backend-env
   ADMIN_CORS: ${ADMIN_CORS:-http://localhost:9000}
   AUTH_CORS: ${AUTH_CORS:-http://localhost:9000,http://localhost:8000}
   LOG_LEVEL: ${LOG_LEVEL:-info}
+  # PAY-1: Stripe provider ต้องมี key ตอนบูต (spec 06)
+  STRIPE_API_KEY: ${STRIPE_API_KEY:?ต้องตั้ง STRIPE_API_KEY}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
 
 services:
   postgres:

@@ -1,0 +1,66 @@
+# PAY-1 test evidence — 2026-10-25 16:25 +0700 (หลัง rebase บน develop da39ddf)
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose, Stripe CLI 1.26.1
+# integration test ใช้ STRIPE_API_KEY=sk_test_dummy / STRIPE_WEBHOOK_SECRET=whsec_dummy (เหมือน CI) — mock Stripe SDK, ไม่ออก network
+### Red (ก่อนตั้งค่า provider)
+seed.spec: region.payment_providers = ["pp_system_default"] ≠ arrayContaining [pp_stripe_stripe, pp_stripe-promptpay_stripe]
+stripe-webhook.spec: 3 failed (provider ไม่อยู่ใน region / สร้าง payment session ไม่ได้ → 404)
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: 0 errors (warning เดิมของ starter)
+exit=0
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+exit=0
+### pnpm --filter backend test:unit
+Tests: 3 failed, 17 passed, 20 total
+FAIL src/__tests__/medusa-config.unit.spec.ts (OPS-1: config.admin.disable/path = undefined)
+# ล้มบน develop da39ddf อยู่แล้ว (CI ของ develop fail) — merge c1a1315 (CORE-3) ทำ block `admin` ของ OPS-1
+# ใน medusa-config.ts หาย ไม่เกี่ยวกับ PAY-1 และไม่ได้แก้ใน PR นี้ (เสนอเป็น task แยก)
+### pnpm --filter backend test:integration:modules
+No tests found, exiting with code 0
+### pnpm --filter backend test:integration:http --verbose
+PASS integration-tests/http/order-notifications.spec.ts (6.31 s)
+        ✓ sends an order-placed email to the order's email with the order data (286 ms)
+        ✓ does not send the same order-placed email twice (248 ms)
+        ✓ sends an order-shipped email with tracking labels (AC-2) (114 ms)
+        ✓ skips the email when the shipment was created with no_notification (123 ms)
+PASS integration-tests/http/stripe-webhook.spec.ts (52.258 s)
+    ✓ registers Stripe card and PromptPay providers and enables both in region Thailand (434 ms)
+  POST /hooks/payment/stripe_stripe (AC-8)
+      ✓ creates exactly one order with one capture when the same succeeded event is delivered repeatedly (14378 ms)
+      ✓ ignores events with an invalid signature (8797 ms)
+  POST /hooks/payment/stripe-promptpay_stripe (AC-8)
+      ✓ creates exactly one order with one capture when the same succeeded event is delivered repeatedly (14465 ms)
+      ✓ ignores events with an invalid signature (8887 ms)
+PASS integration-tests/http/seed.spec.ts (7.064 s)
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (375 ms)
+    ✓ sets store default currency to THB (tax-inclusive) (315 ms)
+    ✓ creates tax region th with VAT 7% (152 ms)
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (196 ms)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (174 ms)
+    ✓ stocks every sample variant at the seeded location (138 ms)
+    ✓ is idempotent: running seed again does not duplicate data (135 ms)
+PASS integration-tests/http/health.spec.ts (6.11 s)
+      ✓ returns 200 when the app has booted (399 ms)
+Test Suites: 4 passed, 4 total
+Tests:       17 passed, 17 total
+exit=0
+
+
+### ตรวจในเครื่องกับ Stripe test mode จริง + Stripe CLI (AC-8) — DB medusa_pay1 (drop แล้ว), backend :9112
+# key/whsec มาจาก shell และ `stripe listen --print-secret` — ไม่บันทึกค่าไว้ที่นี่
+stripe listen --forward-to localhost:9112/hooks/payment/stripe_stripe
+stripe listen --forward-to localhost:9112/hooks/payment/stripe-promptpay_stripe
+1) บัตร: customer login → cart (฿1000) → payment session pp_stripe_stripe
+   → PaymentIntent pi_3UUNN5H0INmbkQuh1kyDb8Ci: amount 100000 (สตางค์), currency thb, capture_method automatic
+   payment_intent.created   → [200] POST /hooks/payment/stripe_stripe
+   stripe payment_intents confirm … --payment-method pm_card_visa --return-url … → status succeeded
+   payment_intent.succeeded [evt_3UUNN5H0INmbkQuh1iwLHvvk] → [200] → order #1 สร้างจาก webhook
+2) ส่ง event เดิมซ้ำ: stripe events resend evt_3UUNN5H0INmbkQuh1iwLHvvk ×2 → [200] ×2
+   ผล DB: order=1, payment=1, capture=1, refund=0, payment_collection.status=completed
+   ผล Stripe: charge=1, refund=0 → ไม่มี capture/refund ซ้ำ (AC-8)
+3) PromptPay: payment session pp_stripe-promptpay_stripe → PaymentIntent payment_method_types=[promptpay], capture automatic
+   payment_intent.created / payment_intent.requires_action → [200] POST /hooks/payment/stripe-promptpay_stripe
+   confirm ด้วย payment_method_data[type]=promptpay → status requires_action, next_action=promptpay_display_qr_code
+   (การกดจ่าย QR ใน test mode เป็นส่วนของ PAY-2 / AC-4 — ไม่ได้ทำใน PAY-1); order ไม่ถูกสร้าง (order=1 เท่าเดิม)
