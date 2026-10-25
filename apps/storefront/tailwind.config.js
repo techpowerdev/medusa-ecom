@@ -1,44 +1,11 @@
 const path = require("path")
-const uiPreset = require("@medusajs/ui-preset")
+const { withThaiUiPreset } = require("./src/styles/thai-ui-preset")
 
-// [CORE-8] spec 01 กฎข้อ 14: class typography ของ ui-preset (txt-*, h*-webs, h*-core, h*-docs)
-// fix font-family เป็น "Inter, ..." ผ่าน addComponents → ห่อ handler ของ plugin ใน preset ให้เติม
-// Noto Sans Thai ไว้หน้า Inter ก่อนส่งให้ Tailwind (ไม่ patch node_modules; code-* ที่เป็น Roboto Mono ไม่แตะ)
-const THAI_FONT = "var(--font-noto-sans-thai)"
-
-const withThaiFont = (styles) =>
-  Array.isArray(styles)
-    ? styles.map(withThaiFont)
-    : Object.fromEntries(
-        Object.entries(styles).map(([selector, decls]) => [
-          selector,
-          typeof decls?.fontFamily === "string" &&
-          decls.fontFamily.startsWith("Inter")
-            ? { ...decls, fontFamily: `${THAI_FONT}, ${decls.fontFamily}` }
-            : decls,
-        ])
-      )
-
-const thaiUiPreset = {
-  ...uiPreset,
-  plugins: uiPreset.plugins.map((plugin) =>
-    typeof plugin?.handler !== "function"
-      ? plugin
-      : {
-          ...plugin,
-          handler: (api) =>
-            plugin.handler({
-              ...api,
-              addComponents: (styles, options) =>
-                api.addComponents(withThaiFont(styles), options),
-            }),
-        }
-  ),
-}
-
+// [CORE-8] ui-preset fix ฟอนต์ Inter ใน class txt-*/h*-webs → ห่อให้ใช้ Noto Sans Thai ก่อน
+// (throw ตอนโหลด config ถ้าห่อไม่ได้; ต้องทบทวนเมื่อ preset ไป Tailwind v4 — ดู TODO ใน thai-ui-preset.js)
 module.exports = {
   darkMode: "class",
-  presets: [thaiUiPreset],
+  presets: [withThaiUiPreset(require("@medusajs/ui-preset"))],
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx}",
     "./src/pages/**/*.{js,ts,jsx,tsx}",
