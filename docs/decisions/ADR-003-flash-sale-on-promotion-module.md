@@ -1,25 +1,25 @@
-# ADR-003 Flash sale = Medusa Campaign + automatic Promotion; thin `flash_sale` module for gaps
+# ADR-003 Flash sale = Medusa Campaign + Promotion แบบอัตโนมัติ; module `flash_sale` แบบบางสำหรับส่วนที่ขาด
 
-Status: accepted (owner, 2026-10-25)
+สถานะ: อนุมัติแล้ว (เจ้าของโปรเจกต์, 2026-10-25)
 
-## Context
-Medusa Promotion module already has campaigns with start/end, budgets (spend/usage),
-automatic application, target rules and per-cart max quantity.
+## บริบท
+Promotion module ของ Medusa มี campaign พร้อมเวลาเริ่ม/สิ้นสุด, budget (spend/usage),
+การใช้ส่วนลดอัตโนมัติ, target rules และจำนวนสูงสุดต่อ cart อยู่แล้ว
 
-## Options
-1. Use Campaign/Promotion for the discount; add a thin module for per-customer cap and
-   storefront countdown/price preview.
-2. Medusa **Price List** `type: sale` with `starts_at/ends_at` — zero code, starter already
-   shows strikethrough. Lacks budget ("first N"), per-customer cap, and order-level discount lines.
-3. Separate "flash sale" pricing engine that mutates prices on schedule.
+## ทางเลือก
+1. ใช้ Campaign/Promotion สำหรับส่วนลด แล้วเพิ่ม module แบบบางสำหรับ limit ต่อลูกค้า
+   และ countdown/price preview บน storefront
+2. Medusa **Price List** `type: sale` พร้อม `starts_at/ends_at` — ไม่ต้องเขียนโค้ดเลย starter แสดงราคาขีดฆ่าให้อยู่แล้ว
+   แต่ไม่มี budget ("N ชิ้นแรก"), ไม่มี limit ต่อลูกค้า และไม่มีบรรทัดส่วนลดระดับ order
+3. ทำ pricing engine "flash sale" แยกที่ไปแก้ราคาตามตารางเวลา
 
-## Decision
-Option 1, because budget and per-customer cap are required. Campaigns that need neither
-(simple timed markdown) should use a sale Price List and no code. Our code never computes discount amounts; it only validates limits and exposes
-read-only campaign data to the storefront.
+## การตัดสินใจ
+เลือกทางเลือกที่ 1 เพราะต้องมี budget และ limit ต่อลูกค้า แคมเปญที่ไม่ต้องใช้ทั้งสองอย่าง
+(ลดราคาตามช่วงเวลาแบบง่าย) ให้ใช้ sale Price List โดยไม่ต้องเขียนโค้ด โค้ดของเราไม่คำนวณจำนวนส่วนลดเองเลย
+ทำเพียง validate limit และเปิดข้อมูลแคมเปญแบบอ่านอย่างเดียวให้ storefront
 
-## Consequences
-+ Admin uses Medusa's promotion UI; stacking/exclusivity rules are Medusa's.
-+ Discount totals in cart/order are consistent with Medusa reports.
-− Per-customer limit requires our own counter and a cart-completion validation hook.
-− "Flash price" preview needs a store endpoint calling Promotion compute on a synthetic line.
+## ผลที่ตามมา
++ Admin ใช้ UI promotion ของ Medusa; กฎการซ้อน/exclusivity เป็นของ Medusa
++ ยอดส่วนลดใน cart/order สอดคล้องกับรายงานของ Medusa
+− limit ต่อลูกค้าต้องมี counter ของเราเองและ validation hook ตอน cart completion
+− preview "ราคา flash" ต้องมี store endpoint ที่เรียก Promotion compute บน line สังเคราะห์

@@ -1,21 +1,21 @@
-# ADR-005 Affiliate = custom module with append-only commission ledger and time-boxed programs
+# ADR-005 Affiliate = module ที่สร้างเอง พร้อม commission ledger แบบ append-only และโปรแกรมที่มีช่วงเวลากำหนด
 
-Status: proposed
+สถานะ: เสนอ
 
-## Context
-Owner wants affiliate commissions only during defined windows (programs), last-click
-attribution, holds for refunds, manual payouts. Medusa has no affiliate concept.
+## บริบท
+เจ้าของโปรเจกต์ต้องการให้ค่าคอมมิชชัน affiliate เกิดขึ้นเฉพาะในช่วงเวลาที่กำหนด (โปรแกรม), attribution แบบ last-click,
+การ hold ยอดเผื่อ refund และการจ่ายเงินแบบ manual Medusa ไม่มีคอนเซ็ปต์ affiliate
 
-## Options
-1. Custom module: Affiliate, Program (window), Attribution, CommissionEntry (ledger), Payout.
-2. Third-party affiliate SaaS integrated by webhook.
-3. Model commissions as Medusa promotions (wrong fit: promotions discount buyers).
+## ทางเลือก
+1. module ที่สร้างเอง: Affiliate, Program (ช่วงเวลา), Attribution, CommissionEntry (ledger), Payout
+2. affiliate SaaS ภายนอก เชื่อมต่อผ่าน webhook
+3. จำลองค่าคอมมิชชันเป็น Medusa promotion (ไม่เหมาะ: promotion ให้ส่วนลดฝั่งผู้ซื้อ)
 
-## Decision
-Option 1. Affiliates are a **separate actor type** in Medusa's Auth module (not customers);
-they log in to their own portal. An affiliate may also hold a customer account under the same
-email; the two are independent. Ledger is append-only (reversals are new rows). Payout execution is manual.
+## การตัดสินใจ
+เลือกทางเลือกที่ 1 Affiliate เป็น **actor type แยก** ใน Auth module ของ Medusa (ไม่ใช่ customer);
+ล็อกอินเข้า portal ของตัวเอง affiliate อาจมีบัญชี customer ภายใต้อีเมลเดียวกันได้ด้วย
+แต่ทั้งสองเป็นอิสระจากกัน ledger เป็นแบบ append-only (การ reverse คือแถวใหม่) การจ่ายเงินทำแบบ manual
 
-## Consequences
-+ Full control over windows, scope and reporting; no vendor cost.
-− We own fraud/edge handling (self-purchase, cookie overwrite, refunds) — covered by ACs.
+## ผลที่ตามมา
++ ควบคุมช่วงเวลา, scope และรายงานได้เต็มที่; ไม่มีค่าใช้จ่าย vendor
+− เราต้องดูแลเรื่อง fraud/edge case เอง (ซื้อให้ตัวเอง, cookie ถูกเขียนทับ, refund) — ครอบคลุมใน AC แล้ว
