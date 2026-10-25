@@ -1,0 +1,49 @@
+# CORE-11 test evidence — 2026-10-26 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+# ไม่มี RESEND_API_KEY → channel email ใช้ provider local ของ Medusa (mock) และเก็บ notification ที่ส่งไว้
+
+### Red (ก่อนแก้ src) — integration
+order-notifications.spec.ts › respects order.no_notification (AC-33): Expected length 0, Received length 1
+order-shipped-items.spec.ts › AC-32: ได้ item [A qty 2, B qty 1] แทน [A qty 1]
+Tests: 2 failed, 4 passed, 6 total
+### Red — unit
+Cannot find module '../shipped-items'; templates › lists shipped items without prices: failed
+Tests: 1 failed, 8 passed, 9 total
+
+### Green — pnpm --filter backend test:integration:http (เฉพาะไฟล์ของ task)
+PASS integration-tests/http/order-notifications.spec.ts
+  ✓ order.placed › sends an order-placed email ...
+  ✓ order.placed › respects order.no_notification (AC-33)
+  ✓ order.placed › does not send the same order-placed email twice
+  ✓ shipment.created › sends an order-shipped email with tracking labels (AC-2)
+  ✓ shipment.created › skips the email when the shipment was created with no_notification
+PASS integration-tests/http/order-shipped-items.spec.ts
+  ✓ AC-32: shipped email lists only item A × 1 when admin ships a fulfillment of A qty 1
+Test Suites: 2 passed, 2 total
+Tests:       6 passed, 6 total
+
+### Green — unit ของ task
+PASS src/lib/__tests__/shipped-items.unit.spec.ts
+    ✓ keeps only the line items in the fulfillment with the fulfilled quantity
+    ✓ does not carry the order line totals (they cover the full order quantity)
+    ✓ sums fulfillment items of the same line and keeps the order's item order
+    ✓ returns nothing for a fulfillment without items or with unknown lines
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+    ✓ lists shipped items with quantity but without prices (CORE-11)
+    (+ 8 test เดิมผ่าน)
+Tests:       13 passed, 13 total
+
+### pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 33 passed, 33 total
+Tests:       272 passed, 272 total
+
+### pnpm lint
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)  (warning เดิม ไม่เกี่ยวกับ task)
+exit=0
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+exit=0
+### pnpm --filter backend build
+Backend build completed successfully
+Frontend build completed successfully

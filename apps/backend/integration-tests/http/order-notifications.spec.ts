@@ -90,6 +90,22 @@ medusaIntegrationTestRunner({
           expect(email!.html).toContain("฿500.00")
         })
 
+        it("respects order.no_notification (AC-33)", async () => {
+          const container = getContainer()
+          const orderModule = container.resolve(Modules.ORDER)
+          const silent = await createOrder(container)
+          await orderModule.updateOrders(silent.id, { no_notification: true })
+          const loud = await createOrder(container)
+          await orderModule.updateOrders(loud.id, { no_notification: false })
+
+          await emitAndWait(container, "order.placed", { id: silent.id })
+          await emitAndWait(container, "order.placed", { id: loud.id })
+
+          const notificationModule = container.resolve(Modules.NOTIFICATION)
+          expect(await notificationModule.listNotifications({ resource_id: silent.id })).toHaveLength(0)
+          expect(await listEmails(container, "order-placed", loud.id)).toHaveLength(1)
+        })
+
         it("does not send the same order-placed email twice", async () => {
           const container = getContainer()
           const order = await createOrder(container)

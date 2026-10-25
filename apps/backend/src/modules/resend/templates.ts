@@ -63,14 +63,18 @@ const layout = (title: string, body: string) =>
   body +
   `</body></html>`
 
-const itemsTable = (order: EmailOrder) => {
+// CORE-11: อีเมล shipped ส่ง withPrices=false — item เป็นจำนวนที่ส่งรอบนี้ ไม่ใช่ยอดของทั้ง line
+const itemsTable = (order: EmailOrder, withPrices = true) => {
   const rows = (order.items ?? [])
     .filter((item): item is EmailOrderItem => !!item)
     .map((item) => {
       const name = [item.product_title || item.title, item.variant_title].filter(Boolean).join(" — ")
       return (
         `<tr><td style="padding:8px 0">${escapeHtml(name)} × ${escapeHtml(item.quantity)}</td>` +
-        `<td style="padding:8px 0;text-align:right">${formatMoney(item.total, order.currency_code)}</td></tr>`
+        (withPrices
+          ? `<td style="padding:8px 0;text-align:right">${formatMoney(item.total, order.currency_code)}</td>`
+          : "") +
+        `</tr>`
       )
     })
     .join("")
@@ -128,7 +132,7 @@ const renderOrderShipped = (data: Record<string, unknown>): RenderedEmail => {
     `<h1 style="font-size:20px">คำสั่งซื้อ ${orderNo} จัดส่งแล้ว ${escapeHtml(greetingName(order))}</h1>` +
     `<p>Your order ${orderNo} is on its way.</p>` +
     (tracking ? `<p>เลขพัสดุ / Tracking number:</p><ul>${tracking}</ul>` : "") +
-    itemsTable(order)
+    itemsTable(order, false)
 
   return { subject, html: layout(subject, body) }
 }
