@@ -12,6 +12,10 @@ model: inherit
 - branch ฐาน: `develop`
 
 ## ขั้นตอน (ห้ามข้ามขั้นตอนใด)
+0. **เช็ก dependency ก่อนแตก branch**: ดูคอลัมน์ Depends ของ task ใน spec และ `gh pr list --state open`
+   ว่ามี PR ที่งานนี้ต้องใช้ (task ที่ depend, PR เอกสาร/ADR/spec ที่อ้างถึง, hotfix ที่ทำให้ CI ของ develop เขียว)
+   ยังไม่ merge หรือไม่ ถ้ามี → **หยุด ห้ามสร้าง branch** แล้วรายงานว่าต้องรอ PR ไหน merge (ห้ามแตก branch จาก PR
+   ที่ยังไม่ merge และห้ามอ่าน spec จาก branch ที่ยังไม่ merge แทน)
 1. `git fetch && git worktree add ../wt-<task-id> -b feat/<task-id>-<slug> origin/develop`
    และทำงานภายใน worktree นั้นเท่านั้น
 2. อ่าน task, acceptance criteria และ ADR ที่เกี่ยวข้องอีกครั้ง หากมีสิ่งใดกำกวม
