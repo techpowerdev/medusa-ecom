@@ -1,0 +1,37 @@
+# CORE-5b — ผล test (spec 01 AC-20..23), Node v22.23.3, รันในเครื่อง 2026-10-25
+
+## Red (ก่อนแก้) — ล้มด้วยสาเหตุที่ถูกต้อง
+- AC-20: evidenceDir throw "task id ต้องอยู่ในรูป XX-n เช่น CORE-5: \"CORE-4a\""
+- AC-21/22: planEvidenceWrite / checkFeatureEntries is not a function, Cannot find module './evidence-scan'
+- AC-23: evidence-budget.unit.spec.ts ล้มด้วย 11 violation "<feature>/<TASK-ID>/<TASK-ID>-tests.txt ต้องย้ายขึ้นไปไว้ที่ระดับ feature"
+  (AF-1, CORE-2, CORE-3, CORE-7, EV-1, FS-1, PROMO-1, GB-1, OPS-1, OPS-2, PAY-1)
+
+## Green — pnpm --filter storefront test:e2e:unit
+$ playwright test --project=unit
+
+Running 19 tests using 3 workers
+
+  ✓   1 [unit] › e2e/evidence-budget.unit.spec.ts:9:5 › โฟลเดอร์ evidence ทุก feature/task อยู่ตาม convention และอยู่ในงบ (4ms)
+  ✓   3 [unit] › e2e/support/evidence-rules.unit.spec.ts:15:7 › evidence-rules › evidenceDir ชี้ไปที่ docs/evidence/<feature>/<task-id> (3ms)
+  ✓   2 [unit] › e2e/support/evidence-scan.unit.spec.ts:26:7 › collectEvidenceViolations › ผ่านเมื่อทุกไฟล์อยู่ตาม convention (16ms)
+  ✓   4 [unit] › e2e/support/evidence-rules.unit.spec.ts:21:7 › evidence-rules › evidenceDir ปฏิเสธ feature/task-id ที่ผิดรูปแบบ (2ms)
+  ✓   5 [unit] › e2e/support/evidence-scan.unit.spec.ts:37:7 › collectEvidenceViolations › แจ้งไฟล์ระดับ feature ที่ไม่ตรง convention พร้อม path (AC-22) (2ms)
+  ✓   6 [unit] › e2e/support/evidence-rules.unit.spec.ts:33:7 › evidence-rules › evidenceFileName รับเฉพาะ kebab-case และเติมนามสกุล .png (1ms)
+  ✓   8 [unit] › e2e/support/evidence-rules.unit.spec.ts:40:7 › evidence-rules › checkEvidenceBudget ผ่านเมื่ออยู่ในงบ (1ms)
+  ✓   7 [unit] › e2e/support/evidence-scan.unit.spec.ts:45:7 › collectEvidenceViolations › แจ้ง *-tests.txt ที่อยู่ในโฟลเดอร์ <TASK-ID>/ พร้อม path (AC-22) (1ms)
+  ✓   9 [unit] › e2e/support/evidence-rules.unit.spec.ts:49:7 › evidence-rules › checkEvidenceBudget แจ้งเมื่อ PNG เกินจำนวน (0ms)
+  ✓  10 [unit] › e2e/support/evidence-rules.unit.spec.ts:59:7 › evidence-rules › checkEvidenceBudget แจ้งเมื่อไฟล์ใหญ่เกิน 300KB หรือไม่ใช่ไฟล์ที่อนุญาต (0ms)
+  ✓  11 [unit] › e2e/support/evidence-rules.unit.spec.ts:74:7 › evidence-rules › evidenceDir รับ task id ที่มี suffix ตัวเล็ก (AC-20) (0ms)
+  ✓  12 [unit] › e2e/support/evidence-rules.unit.spec.ts:82:7 › evidence-rules › evidenceDir ปฏิเสธ task id ผิดรูปแบบ (AC-20) (1ms)
+  ✓  13 [unit] › e2e/support/evidence-rules.unit.spec.ts:94:7 › evidence-rules › planEvidenceWrite ปฏิเสธรูปที่ 6 (AC-21) (0ms)
+  ✓  14 [unit] › e2e/support/evidence-rules.unit.spec.ts:100:7 › evidence-rules › planEvidenceWrite ให้เขียนทับชื่อเดิมได้โดยไม่นับเป็นรูปใหม่ (AC-21) (0ms)
+  ✓  15 [unit] › e2e/support/evidence-rules.unit.spec.ts:106:7 › evidence-rules › planEvidenceWrite ปฏิเสธ PNG ใหม่ที่เกิน 300KB (AC-21) (0ms)
+  ✓  16 [unit] › e2e/support/evidence-rules.unit.spec.ts:112:7 › evidence-rules › planEvidenceWrite ใช้ขนาดใหม่เมื่อเขียนทับไฟล์ชื่อเดิม (AC-21) (0ms)
+  ✓  17 [unit] › e2e/support/evidence-rules.unit.spec.ts:122:7 › evidence-rules › checkFeatureEntries ผ่านเมื่อมีเฉพาะ <TASK-ID>-tests.txt และโฟลเดอร์ <TASK-ID>/ (AC-22) (0ms)
+  ✓  18 [unit] › e2e/support/evidence-rules.unit.spec.ts:133:7 › evidence-rules › checkFeatureEntries แจ้งไฟล์/โฟลเดอร์ที่ไม่ตรง convention (AC-22) (0ms)
+  ✓  19 [unit] › e2e/support/evidence-rules.unit.spec.ts:149:7 › evidence-rules › checkEvidenceBudget แนะนำให้ย้าย *-tests.txt ที่อยู่ในโฟลเดอร์ task (AC-22) (0ms)
+
+  19 passed (528ms)
+
+## pnpm lint — exit 0 (0 errors; warning เดิมของ storefront ไม่มีใน e2e/)
+## pnpm typecheck — exit 0

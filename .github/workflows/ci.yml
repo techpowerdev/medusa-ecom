@@ -27,6 +27,8 @@ jobs:
       - run: pnpm typecheck
       # CORE-4a (spec 01 AC-11): unit test ของ storefront (Vitest) ไม่ต้องใช้ DB/server
       - run: pnpm --filter storefront test:unit
+      # CORE-5b (spec 01 AC-23): กฎ evidence + convention ของ docs/evidence/ (Playwright project `unit` ไม่ต้องใช้ browser)
+      - run: pnpm --filter storefront test:e2e:unit
 
   backend-tests:
     runs-on: ubuntu-latest
