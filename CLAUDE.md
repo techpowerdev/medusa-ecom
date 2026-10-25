@@ -1,5 +1,14 @@
 # CLAUDE.md — Project rules (read first, every session)
 
+## Language (ภาษา)
+- **ตอบและสนทนากับ owner เป็นภาษาไทยเสมอ** ทุก agent (planner, builder, qa, reviewer) ด้วย
+- เขียน **เป็นภาษาไทย**: ชื่อและเนื้อหา PR, commit message (คง prefix แบบ Conventional Commits เป็นอังกฤษ
+  เช่น `feat:`, `fix:`, `chore:` แล้วตามด้วยคำอธิบายภาษาไทย), review comment, evidence `REPORT.md`,
+  ADR และ spec ที่สร้างใหม่
+- คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
+  ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
+- ไฟล์เดิมที่เป็นอังกฤษไม่ต้องแปลย้อนหลัง แก้เฉพาะส่วนที่แตะ
+
 ## What this is
 Production e-commerce store built **on top of Medusa v2** (backend + admin) with the
 **Medusa Next.js Starter** storefront. We extend Medusa; we do not replace it.
@@ -26,6 +35,28 @@ Production e-commerce store built **on top of Medusa v2** (backend + admin) with
 6. **Evidence or it didn't happen.** Every PR links its spec and shows test output. QA writes
    `docs/evidence/<feature>/<task-id>/REPORT.md` (AC table + key screenshots ≤ 5, PNG ≤ 300KB);
    full Playwright report and traces live as CI artifacts (14 days), not in git.
+
+## Medusa agent skills (install once per machine)
+Official Medusa skills are installed as Claude Code plugins from the `medusa` marketplace:
+```bash
+claude plugin marketplace add medusajs/medusa-agent-skills
+claude plugin install medusa-dev@medusa            # building-with-medusa, admin customizations, storefronts, db-generate, db-migrate, new-user
+claude plugin install ecommerce-storefront@medusa  # storefront-best-practices (UI/UX, SEO, mobile)
+```
+Builder/planner must load `building-with-medusa` before any backend work,
+`building-admin-dashboard-customizations` for `src/admin/`, and `building-storefronts` +
+`storefront-best-practices` for `apps/storefront`. Use `context7` (or docs.medusajs.com) to verify
+APIs instead of guessing. `learn-medusa` (tutorial) and `medusa-cloud` (Medusa Cloud CLI) are
+intentionally not installed; we self-host per `docs/spec/07-scaling-ops.md`. The plugin's bundled
+`MedusaDocs` MCP requires a Medusa Cloud login, so it is disabled for this project
+(`disabledMcpServers` in `~/.claude.json`; toggle it off via `/mcp` on a new machine).
+
+## MCP servers (shared via `.mcp.json`, approve once per machine on first `claude` start)
+- `context7` — up-to-date docs for Medusa v2, Next.js, Stripe, Playwright, Tailwind, etc. Use before guessing an API.
+- `playwright` — headless browser for the `qa` agent to drive the storefront and capture evidence.
+- `stripe` — Stripe test-mode tooling (customers, payment intents, webhooks). Reads `STRIPE_SECRET_KEY` from your shell; use a **test** key only.
+- `postgres` (dbhub) — read/query the local Medusa DB. Reads `DATABASE_URL`, defaults to the Docker Compose Postgres. Shows "failed" until the DB container is up — that is expected.
+GitHub is handled with the `gh` CLI, not an MCP server.
 
 ## Stack
 - Node.js 22+, TypeScript strict, pnpm workspaces (`apps/backend`, `apps/storefront`)
