@@ -85,8 +85,10 @@ pnpm --filter storefront build && pnpm --filter storefront start
 ## Branching และ PR
 - `main` = released แล้ว `develop` = integration feature branch ใช้ชื่อ `feat/<task-id>-<slug>` (เช่น `feat/GB-3-join-workflow`)
 - หนึ่ง PR ต่อหนึ่ง task ใน task list ของ spec ขนาดเล็ก (diff < ~400 LOC) CI ต้องผ่าน (green)
-- body ของ PR ทำตาม `.github/pull_request_template.md` ห้าม merge PR ของตัวเอง —
-  owner เป็นผู้ merge
+- body ของ PR ทำตาม `.github/pull_request_template.md` agent ที่เปิด PR (builder/planner/qa/reviewer) ห้าม merge เอง
+- **การ merge เข้า `develop`**: session หลักเป็นผู้ merge (owner อนุญาต 2026-10-25) เฉพาะเมื่อครบทุกข้อ: reviewer ให้
+  APPROVE ไม่มี blocker, CI เขียวทุก job, task ที่มี UI ผ่าน qa (มี `REPORT.md`), dependency merge ครบ และ PR ไม่ CONFLICTING
+  merge ทีละตัวตามลำดับ critical path แล้วแจ้ง owner ทุกครั้ง **การ merge เข้า `main` (release) owner เป็นผู้ทำเท่านั้น**
 - Release = PR `develop → main` ติด tag `vX.Y.Z` changelog มาจากชื่อ PR
 - **ก่อนเปิด branch ใหม่หรือเริ่ม task ใหม่ ต้องเช็ก dependency ก่อนเสมอ**: ดูคอลัมน์ Depends ในตาราง task ของ spec
   และ PR ที่เปิดอยู่ (`gh pr list`) ว่างานนี้ต้องใช้ PR ไหน (รวม PR เอกสาร/ADR/spec ที่งานนี้อ้างถึง และ hotfix ที่ทำให้

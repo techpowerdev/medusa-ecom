@@ -34,5 +34,25 @@ module.exports = defineConfig({
     {
       resolve: './src/modules/group_buy',
     },
+    { resolve: './src/modules/affiliate' },
+    {
+      // spec 06 / ADR-007: Stripe provider ทางการ → pp_stripe_stripe (บัตร) + pp_stripe-promptpay_stripe
+      // webhook: /hooks/payment/stripe_stripe และ /hooks/payment/stripe-promptpay_stripe
+      resolve: '@medusajs/medusa/payment',
+      options: {
+        providers: [
+          {
+            resolve: '@medusajs/medusa/payment-stripe',
+            id: 'stripe',
+            options: {
+              apiKey: process.env.STRIPE_API_KEY,
+              webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+              capture: true,
+              automaticPaymentMethods: false,
+            },
+          },
+        ],
+      },
+    },
   ],
 })

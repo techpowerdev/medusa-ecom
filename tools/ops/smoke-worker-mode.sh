@@ -12,6 +12,8 @@ export LOG_LEVEL=debug # JobLoader ของ Medusa log "Jobs registered." ท�
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$(openssl rand -hex 16)}"
 export JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 export COOKIE_SECRET="${COOKIE_SECRET:-$(openssl rand -hex 32)}"
+export STRIPE_API_KEY="${STRIPE_API_KEY:-sk_test_dummy}" # smoke ไม่เรียก Stripe; provider ต้องการ key ตอนบูตเท่านั้น
+export STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-whsec_dummy}"
 
 compose() { docker compose -p "$PROJECT" -f docker-compose.prod.yml "$@"; }
 cleanup() { [ -n "${KEEP_UP:-}" ] || compose down -v --remove-orphans >/dev/null 2>&1 || true; }

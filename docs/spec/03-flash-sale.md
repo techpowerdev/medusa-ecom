@@ -150,12 +150,12 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - AC-6 การประมวลผล event คืนค่าของ order เดิมซ้ำ (ส่ง `order.canceled` สองครั้งตามลำดับ, สองครั้งพร้อมกัน
   และ refund ตามด้วย cancel) คืน usage และ `units_sold` เพียงครั้งเดียว
 - AC-8 (code ชนะ, ADR-009) ให้ F = automatic promotion ที่มี exclusivity rule, N = automatic promotion ไม่มี rule
-  (a) cart มีส่วนลด F อยู่ เมื่อใส่ code `SAVE10` → 200, `cart.promotions` มี `SAVE10` ไม่มี F, ไม่มี adjustment จาก F
-  (b) cart มี `SAVE10` แล้วเพิ่มสินค้า flash → ยังมี `SAVE10`, ไม่มี adjustment จาก F
-  (c) จาก (b) ลบ `SAVE10` → adjustment จาก F กลับมา
-  (d) cart ไม่มี code → F ถูกใส่ตามปกติ (context เป็น `"false"` ไม่ใช่ว่าง)
-  (e) cart มี `SAVE10` + สินค้าใน N → ได้ทั้ง `SAVE10` และ N
-  (f) cart ที่ถูกตั้งให้มี F + `SAVE10` พร้อมกัน (สร้างตรงผ่าน module ใน test) → complete cart ล้มเหลว `PROMOTION_NOT_COMBINABLE`
+  (a) cart มีส่วนลด F อยู่ เมื่อใส่ code `SAVE10` → 200, `cart.promotions` มี `SAVE10` ไม่มี F, ไม่มี adjustment จาก F ✓ PROMO-1 (#21)
+  (b) cart มี `SAVE10` แล้วเพิ่มสินค้า flash → ยังมี `SAVE10`, ไม่มี adjustment จาก F ✓ PROMO-1 (#21)
+  (c) จาก (b) ลบ `SAVE10` → adjustment จาก F กลับมา ✓ PROMO-1 (#21)
+  (d) cart ไม่มี code → F ถูกใส่ตามปกติ (context เป็น `"false"` ไม่ใช่ว่าง) ✓ PROMO-1 (#21)
+  (e) cart มี `SAVE10` + สินค้าใน N → ได้ทั้ง `SAVE10` และ N ✓ PROMO-1 (#21)
+  (f) cart ที่ถูกตั้งให้มี F + `SAVE10` พร้อมกัน (สร้างตรงผ่าน module ใน test) → complete cart ล้มเหลว `PROMOTION_NOT_COMBINABLE` ✓ PROMO-1 (#21)
   (g) storefront: cart ที่มี code และสินค้า flash แสดงข้อความ "Flash sale price can't be combined with promotion codes" (screenshot)
 - AC-7 (integration concurrency test)
   (a) complete พร้อมกัน 50 cart จากลูกค้าต่างคน คนละ 1 หน่วย ภายใต้ `total_cap=20` → สำเร็จ 20 รายการพอดี,

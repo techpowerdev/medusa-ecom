@@ -41,7 +41,10 @@ medusaIntegrationTestRunner({
         metadata: expect.objectContaining(DEFAULT_REGION_STORE_POLICIES),
       })
       expect(region.countries.map((c) => c.iso_2)).toEqual(["th"])
-      expect(region.payment_providers.map((p) => p.id)).toContain("pp_system_default")
+      // PAY-1: Stripe บัตร + PromptPay (spec 06)
+      expect(region.payment_providers.map((p) => p.id)).toEqual(
+        expect.arrayContaining(["pp_stripe_stripe", "pp_stripe-promptpay_stripe"])
+      )
 
       const { data: prefs } = await api.get(
         `/admin/price-preferences?attribute=region_id&value=${region.id}`,
