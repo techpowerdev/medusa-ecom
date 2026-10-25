@@ -1,0 +1,46 @@
+# CORE-1 test evidence — 2026-10-25 08:29 +07
+# node v22.23.3, pnpm 10.34.8, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+
+### pnpm install --frozen-lockfile
+Done in 709ms using pnpm v10.34.8
+exit=0
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)
+exit=0
+### pnpm typecheck
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+exit=0
+### pnpm --filter backend test:unit
+No tests found, exiting with code 0
+exit=0
+### pnpm --filter backend test:integration:modules
+No tests found, exiting with code 0
+exit=0
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/health.spec.ts (6.623 s)
+      ✓ returns 200 when the app has booted (581 ms)
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+exit=0
+### pnpm --filter storefront test:e2e (placeholder → CORE-5)
+[CORE-1] ยังไม่มี Playwright e2e — จะตั้งค่าใน CORE-5
+exit=0
+
+### Red (ก่อน green) — test:integration:http ตอนยังไม่มี Postgres (docker compose ยังไม่ up)
+FAIL integration-tests/http/health.spec.ts
+      ✕ returns 200 when the app has booted
+    AggregateError: (connect ECONNREFUSED — "Error creating database")
+Tests:       1 failed, 1 total
+หมายเหตุ: /health เป็น route ที่ Medusa มีให้อยู่แล้ว test นี้จึงยืนยันว่าแอป + DB บูตได้ ไม่ได้ทดสอบโค้ดที่เราเขียน
+
+### Smoke ด้วยมือ (pnpm --filter backend db:migrate แล้ว pnpm --filter backend dev)
+db:migrate: Migration scripts completed
+GET http://localhost:9000/health → 200
+GET http://localhost:9000/app/   → 200 (admin dashboard)
+
+### หมายเหตุ log
+ระหว่าง teardown ของ integration test มี log error "[Search] Failed to seed "product": Transaction query already complete"
+จาก @medusajs/search (index catch-up ยังทำงานตอน test runner drop DB) ไม่ทำให้ test fail
+storefront lint มี 38 warning ทั้งหมดมาจากโค้ด starter (upstream) ไม่ใช่โค้ดที่เขียนเอง

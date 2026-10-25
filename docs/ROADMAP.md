@@ -6,10 +6,10 @@
 ## M0 Scaffold (PR นี้)
 | PR | Task | สถานะ |
 |----|------|--------|
-| 1 | เอกสาร, agents, CI, PR template (ไม่มีโค้ดแอป) | ◐ |
+| 1 | เอกสาร, agents, CI, PR template (ไม่มีโค้ดแอป) | ☑ |
 
 ## M1 ร้านค้าหลัก (ชำระเงิน manual, ข้อมูลทดสอบ)
-| CORE-1 | Monorepo + แอป Medusa + starter + compose + CI | ☐ |
+| CORE-1 | Monorepo + แอป Medusa + starter + compose + CI | ◐ |
 | CORE-2 | Seed: ประเทศไทย/THB/VAT/การจัดส่ง/สินค้า/admin | ☐ |
 | CORE-3 ∥ | Resend notifications + templates | ☐ |
 | CORE-4 ∥ | ธีม storefront + i18n ภาษาไทย | ☐ |
