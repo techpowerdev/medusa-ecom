@@ -1,11 +1,12 @@
 packages:
-  - "apps/**"
-  - "!apps/backend/.medusa/**"
+  - "apps/*"
 
-# pnpm 11+
-allowBuilds:
-  "@medusajs/telemetry": true
+overrides:
+  "@types/react": "19.0.5"
+  "@types/react-dom": "19.0.5"
+  "tsconfig-paths": "^4.2.0"
 
-# pnpm 10.x
 onlyBuiltDependencies:
   - "@medusajs/telemetry"
+  - "@swc/core"
+  - "esbuild"

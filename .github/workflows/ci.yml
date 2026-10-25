@@ -12,7 +12,7 @@ concurrency:
 
 env:
   NODE_VERSION: 22
-  PNPM_VERSION: 9
+  # เวอร์ชัน pnpm อ่านจาก "packageManager" ใน package.json ที่ root
 
 jobs:
   lint-typecheck:
@@ -20,7 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: ${{ env.PNPM_VERSION }} }
       - uses: actions/setup-node@v4
         with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
       - run: pnpm install --frozen-lockfile
@@ -54,7 +53,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: ${{ env.PNPM_VERSION }} }
       - uses: actions/setup-node@v4
         with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
       - run: pnpm install --frozen-lockfile
@@ -69,6 +67,9 @@ jobs:
           if-no-files-found: ignore
 
   storefront-e2e:
+    # ปิดไว้จนกว่าจะมี seed + print-publishable-key (CORE-2) และ Playwright (CORE-5);
+    # CORE-6 เป็นผู้ลบเงื่อนไขนี้เมื่อ e2e พร้อม
+    if: ${{ false }}
     runs-on: ubuntu-latest
     needs: backend-tests
     services:
@@ -92,7 +93,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: ${{ env.PNPM_VERSION }} }
       - uses: actions/setup-node@v4
         with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
       - run: pnpm install --frozen-lockfile

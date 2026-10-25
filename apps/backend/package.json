@@ -17,9 +17,12 @@
     "start": "medusa start",
     "dev": "medusa develop",
     "lint": "medusa lint",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "medusa db:migrate",
+    "seed": "echo \"[CORE-1] ยังไม่มี seed script — จะเพิ่มใน CORE-2\"",
     "test:integration:http": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
-    "test:integration:modules": "TEST_TYPE=integration:modules NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
-    "test:unit": "TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest --silent --runInBand --forceExit"
+    "test:integration:modules": "TEST_TYPE=integration:modules NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit --passWithNoTests",
+    "test:unit": "TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest --silent --runInBand --forceExit --passWithNoTests"
   },
   "dependencies": {
     "@medusajs/admin-sdk": "2.22.1",
@@ -55,6 +58,5 @@
   },
   "engines": {
     "node": ">=22.23.4"
-  },
-  "packageManager": "pnpm@12.15.0"
+  }
 }

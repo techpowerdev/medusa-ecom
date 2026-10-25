@@ -19,6 +19,19 @@ export default defineConfig([
       ],
     },
   },
+  // [CORE-1] lint error ที่ติดมากับ Medusa Next.js Starter (upstream) ลดเป็น warning เฉพาะไฟล์เหล่านี้
+  // เพื่อไม่แก้โค้ด starter (ADR-002: merge จาก upstream ได้ง่าย) แก้จริงเมื่อมี task แตะไฟล์นั้น
+  {
+    files: [
+      "src/lib/data/cart.ts",
+      "src/modules/layout/components/language-select/index.tsx",
+    ],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/ban-ts-comment": "warn",
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

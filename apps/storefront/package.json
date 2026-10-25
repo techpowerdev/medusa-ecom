@@ -12,7 +12,9 @@
     "build": "next build",
     "start": "next start -p 8000",
     "lint": "eslint .",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "echo \"[CORE-1] ยังไม่มี Playwright e2e — จะตั้งค่าใน CORE-5\""
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
@@ -55,6 +57,5 @@
     "prettier": "^2.8.8",
     "tailwindcss": "^3.0.23",
     "typescript": "^5.3.2"
-  },
-  "packageManager": "pnpm@12.15.0"
+  }
 }
