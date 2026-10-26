@@ -130,7 +130,7 @@ Payout
 5. Entry เป็น append-only: ห้ามลบ (ห้ามใช้ `deleteCommissionEntries`/`softDeleteCommissionEntries` ใน workflow ใด)
    และห้ามแก้ `amount`/`order_id`/`line_item_id`/`program_id`; เปลี่ยนได้เฉพาะ `status` ไปข้างหน้า
    `pending → approved → paid` การกลับรายการ (reversal) เป็น entry ติดลบแยกต่างหาก status `reversed`
-6. `hold_days` ป้องกันช่วงเวลาที่อาจมี refund; จ่ายได้เฉพาะ entry ที่ `approved`
+6. `hold_days` ป้องกันช่วงเวลาที่อาจมี refund; entry บวกที่จ่ายได้มีเฉพาะ `approved` (entry `reversed` ถูกหักใน payout ตามกฎ 19)
 7. Affiliate ต้องเป็น `active` ทั้งตอน click และตอนสั่งซื้อ
 8. PII: `payout_info` **ไม่ถูกส่งออก** ใน portal API เลย (AF-1 ใช้ allow-list field); ค่าเต็มดูได้เฉพาะ admin
    (การแสดงแบบ mask ในหน้า Profile ดู Q5)
@@ -186,13 +186,14 @@ Payout
     restore payout หลังจาก create หยิบ entry ไปแล้ว; workflow อื่นที่ถือทั้งสอง key ต้องใช้ลำดับเดียวกัน
 26. (Q3, AF-4 — review AF-3) ก่อนแจก cap ต่อ order (กฎ 4) เรียง `order.items` ตาม `created_at` จากน้อยไปมาก เสมอกันใช้ `id` — ไม่พึ่งลำดับที่
     `query.graph` คืน (ไม่รับประกันลำดับ) ใช้ลำดับเดียวกันทุกครั้งที่คำนวณ (สร้าง entry และ reversal)
-27. (owner 2026-10-26, AF-4) attribution **ไม่สร้าง entry** ให้ order ที่ถูกยกเลิกแล้ว: workflow attribution อ่าน `order.status` (`canceled`) **หลัง**ถือ lock
+27. (owner 2026-10-26; ฝั่ง attribution = AF-4b #91, ฝั่ง reversal จาก cancel = AF-4 #90) attribution **ไม่สร้าง entry** ให้ order ที่ถูกยกเลิกแล้ว: workflow attribution อ่าน `order.status` (`canceled`) **หลัง**ถือ lock
     `affiliate-attribution:<order_id>` (Locking module) — ยกเลิกแล้ว → ไม่สร้างทั้ง `AffiliateAttribution` และ entry (log info `order_canceled`; Q13 — ตามที่ #91 ทำ); reversal ที่มาจาก cancel ต้องถือ lock key เดียวกัน เพื่อให้ลำดับเป็น
     "attribution ก่อน → reversal เห็น entry" หรือ "cancel ก่อน → attribution เห็น `canceled`" เสมอ (ไม่มี entry pending ค้างของ order ที่ยกเลิก)
 28. (การตีความของ AF-4 #90 ที่ **owner ยืนยัน 2026-10-26** — แทนข้อตัดสิน Q3 ส่วน partial refund) เหตุที่ทำให้เกิด reversal มีเพียง cancel, refund เต็ม และการคืนของ:
     (a) **cancel** order → reverse ยอดสุทธิที่เหลือของทุก line
     (b) **refund เต็มจำนวน** — เกณฑ์คือ `isOrderFullyRefunded` (helper ของ #90: ยอด refund สะสมของ order ≥ ยอดที่ชำระ, เทียบด้วย `MathBN`) → reverse ยอดสุทธิที่เหลือของทุก line
-    (c) **return** → ต่อ line: จำนวนคืน = จำนวน **received + dismissed** (dismissed = รับคืนแบบชำรุด) ของ return item ของ line นั้น;
+    (c) **return** → ต่อ line: จำนวนคืน = จำนวน **received + dismissed** (dismissed = รับคืนแบบชำรุด) ของ return item ของ line นั้น
+        (#90 ที่ head a8daf1d นับ `return_received_quantity` + `return_dismissed_quantity` แล้ว);
         reversal = `−entry.amount × จำนวนคืน / line.quantity` (ปัด 2 ตำแหน่ง half-up, `MathBN`) และรวม reversal ของ line ไม่เกิน `entry.amount`
     (d) **refund บางส่วนที่ไม่ได้มาจาก return** (เช่น admin คืนเงินบางส่วนเพื่อชดเชย) → **ไม่** reverse; ถ้าจำเป็น admin ปรับค่าคอมเองนอกระบบ
         (v1 ไม่มี route/UI ปรับ entry ด้วยมือ — ถ้าต้องการต้องเป็น task ใหม่)
@@ -308,8 +309,8 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
   `/affiliate/products` และ programs เฉพาะ `active` อื่น ๆ → 403
 - Q7 หลายโปรแกรม active ครอบ line เดียวกัน: ต่อ line เลือกอัตราสูงสุด เสมอกันเลือก `starts_at` ล่าสุด;
   attribution เก็บ `program_id` ของโปรแกรมที่ให้ค่าคอมรวมมากที่สุด
-- Q8 maturity job อนุมัติ entry ที่ยอดสุทธิของ line (รวม reversal) > 0; payout = Σ `approved` + Σ `reversed`
-  ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
+- Q8 maturity job อนุมัติ entry ที่ยอดสุทธิของ line (รวม reversal) > 0; payout = Σ `approved` + Σ `reversed` **ที่ผ่านกฎ 19** (ต้นทางของ line
+  approved/paid แล้ว — แก้ 2026-10-26, AC-28) ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
 - Q9 (2026-10-25, AF-9) ยกเลิก payout `draft` = soft-delete (ไม่เพิ่มสถานะ `cancelled`)
 - กฎ 20 ให้ตรงกับโค้ดของ PR #35 (`draft → ended` ตรงได้)
 
@@ -318,5 +319,5 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 - ~~Q11~~ ตัดสินแล้ว (owner 2026-10-26, รอบ 7): payout เลือก reversed เฉพาะที่ต้นทาง approved/paid (กฎ 19, AC-28); order ที่ยกเลิกแล้วไม่ได้ entry (กฎ 27, AC-29);
   ยอมรับการตีความของ #90: refund บางส่วนที่ไม่ได้มาจากการคืนของไม่หักค่าคอม, การคืนนับ received + dismissed / quantity, admin ปรับเองถ้าจำเป็น (กฎ 28, AC-30, AC-31)
 - ~~Q12~~ ปิดแล้ว (2026-10-26): #91 = AF-4b (เรียง line, log info, test AC-10/23/24, กฎ 27 ฝั่ง attribution); filter payout กฎ 19 อยู่ใน AF-4 #90
-- ~~Q13~~ ใช้ค่าเริ่มต้น (session หลักเลือก 2026-10-26, **รอ owner ยืนยัน**): order ที่ยกเลิกก่อน attribution ไม่บันทึกทั้ง `AffiliateAttribution` และ entry (ตามที่ AF-4b #91 ทำ — order ที่ยกเลิกแล้ว
+- Q13 — ค่าเริ่มต้นที่ใช้ (session หลักเลือก 2026-10-26, **รอ owner ยืนยัน**): order ที่ยกเลิกก่อน attribution ไม่บันทึกทั้ง `AffiliateAttribution` และ entry (ตามที่ AF-4b #91 ทำ — order ที่ยกเลิกแล้ว
   ไม่มีอะไรให้ idempotency ต้องกัน; redeliver ซ้ำได้ผลเดิม) — กฎ 27

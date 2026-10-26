@@ -3,7 +3,7 @@
 สัญลักษณ์: ☐ ยังไม่ทำ · ◐ อยู่ใน PR · ☑ merge เข้า develop แล้ว · 🚀 release แล้ว
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 สถานะล่าสุดตาม PR #1–#92 (2026-10-26, รอบ 7 — ข้อมูลจาก session หลัก): merge แล้วถึง #84 (#73, #84 = เอกสาร); กำลัง merge #85 (EV-10), #86 (CORE-21), #87
-(#87 = regex evidence รับ task id แบบ `GB-6b1`); เปิดอยู่ #88 EV-11, #89 GB-4, #90 AF-4, #91 AF-4b, #92 CORE-4c1
+(#87 = GB-6b1 + OPS-11: หน้า `/group-buying/:id`, helper e2e admin, regex evidence รับ task id แบบ `GB-6b1`); เปิดอยู่ #88 EV-11, #89 GB-4, #90 AF-4, #91 AF-4b, #92 CORE-4c1
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -74,8 +74,8 @@ FS-9 ☐ (ทางเลือก รอ owner สั่ง, ← FS-5)
 ## M5 Group buying — **v0.5.0**
 GB-1 ☑ #17 · ADR-011 ☑ #33 · GB-2a ☑ #42 → GB-2b ☑ #49 → GB-2c ☑ #58 ·
 GB-3 ☑ #68 → (GB-3b ☐ leave + nit #68 ∥ GB-3c ☐ summary ของ draft order หลัง freeze adjustment (บั๊ก GB-3, รอบ 7) ∥ GB-4 ◐ #89) → GB-5 ☐ (← PAY-3, GB-3c หรือรวม GB-3c) → GB-7 ☐ (← GB-3b; ล้าง cart หลัง join) ;
-GB-6a ☑ #75 → GB-6b ☐ (หน้ารายละเอียด `/group-buying/:id`: สถานะ/ลบ draft/ตารางกลุ่ม/สร้าง pool + ฟอร์ม: product picker, `max_quantity ≥ max_units_per_person`, เตือน `ends_at` อดีต; แยก 6b1/6b2 ได้ — regex evidence รองรับแล้วใน #87) →
-GB-6c ☐ (← GB-6b, GB-3, GB-4: route membership ของ admin + ตาราง membership + succeed/fail manual)
+GB-6a ☑ #75 → (GB-6b1 ◐ #87 หน้ารายละเอียด `/group-buying/:id`: สถานะ/ลบ draft/ตารางกลุ่ม/สร้าง pool (AC-30, 31) + OPS-11 ∥ GB-6b2 ☐ ฟอร์ม: product picker, `max_quantity ≥ max_units_per_person`, เตือน `ends_at` อดีต (AC-32, 33)) →
+GB-6c ☐ (← GB-6b1, GB-3, GB-4: route membership ของ admin + ตาราง membership + succeed/fail manual)
 
 ## M6 Affiliate — **v0.6.0**
 AF-1 ☑ #11 · AF-2 ☑ #66 · AF-5 ☑ #35 → AF-3 ☑ #77 → (AF-3b ☐ storefront sync cookie ∥ AF-4 ◐ #90 (reversal ตามกฎ 28 + lock กับ attribution, maturity job, payout เลือก reversed เฉพาะต้นทาง approved/paid) ∥ AF-4b ◐ #91 (เรียง line ก่อนแจก cap, log info, test AC-10/23/24, ข้าม order ที่ยกเลิก) ∥ AF-7) → AF-8 ;
@@ -84,7 +84,7 @@ AF-5 → AF-9 ☑ #79 → (AF-6 ☐ + ปุ่มยกเลิก payout ∥ 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
 OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☐ · OPS-5 ☐ · OPS-7 ☐ (← OPS-2, PAY-1, CORE-3, AF-2 ☑; รอบ 7 + fail-fast `STOREFRONT_URL` หลัง GB-4) · OPS-8 ☐ (← OPS-2) · OPS-9 ☑ #72 (typecheck group-buy test กับ `.medusa/types` — แก้ไปแล้วใน GB-2a, PR มีแค่ evidence) ·
 OPS-10 ☐ (← PAY-2: test ของ `classify-changes.sh` ใน CI + รายการ event ของ Stripe webhooks ตรงกับ `stripe listen`) ; OPS-4 ☐ (← FS-6, GB-7) ·
-OPS-11 ☐ (← FS-10: helper login admin + `x-forwarded-proto` ร่วม + test id widget flash sale — ทำเมื่อมี e2e admin ตัวที่สอง หรือรวมใน PR ของตัวนั้น)
+OPS-11 ◐ #87 (รวมใน GB-6b1: helper login admin + `x-forwarded-proto` ร่วม + test id widget flash sale)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 

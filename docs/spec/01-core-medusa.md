@@ -138,7 +138,9 @@ none (storefront เท่านั้น)
   | 4c2 (แยกรอบ 7) | `app/[countryCode]/(main)/{cart,order}/**`; หน้า policy **ทั้งไฟล์** `app/[countryCode]/(main)/{contact,terms,privacy,returns,shipping}/page.tsx`; `modules/{cart,order,policies,common,skeletons}/**` (รวม placeholder "Select..." ของ `NativeSelect` ใน `modules/common`); ข้อความ error ที่ผู้ใช้เห็นใน `lib/data/orders.ts` |
   | 4d | route group `app/[countryCode]/(checkout)/**` (รวม `(checkout)/layout.tsx`, `(checkout)/not-found.tsx`, `checkout/page.tsx`); `modules/{checkout,shipping}/**`; `lib/constants.tsx` (ชื่อวิธีชำระเงินที่แสดงใน checkout); ข้อความ error ที่ผู้ใช้เห็นใน `lib/data/cart.ts` |
   ไฟล์ใหม่ที่เกิดหลังวันนี้: task ที่สร้างไฟล์เป็นผู้เพิ่ม path (กฎข้อ 4); `modules/layout/components/language-select/` ถูกลบใน 4b;
-  หน้า order transfer (`(main)/order/[id]/transfer/**`) อยู่ใน 4c — ถ้า CORE-13/14 ลบก่อนก็ไม่ต้องแปล
+  หน้า order transfer ถูกลบแล้วใน CORE-14a (#81) ไม่ต้องแปล
+  evidence (รอบ 7): #92 เก็บที่ `docs/evidence/core/CORE-4c-tests.txt` และ `CORE-4c/` — ยอมรับเป็นโฟลเดอร์ของ CORE-4c1 (งบ 5 รูปเต็มแล้ว ไม่ rename);
+  CORE-4c2 ใช้ `CORE-4c2-tests.txt` และ `CORE-4c2/` ของตัวเอง (regex ใหม่ของ #87 รับ)
   ข้อความใน `lib/` และ route handler (`app/**/route.ts`) ESLint rule ไม่ครอบ → ตรวจด้วย unit test หรือ grep ข้อความที่ส่งออก
   (`throw new Error(...)`, `new Response(...)`) ในไฟล์ของ task; ยกเว้น `lib/util/product-markdown.ts` (`llms.txt` สำหรับเครื่อง)
 - AC-50 (CORE-4b) AC-10 (ฟอนต์บนหน้าแรก) ผ่านด้วย e2e ใน CORE-4b (ยกมาจากเดิม)
