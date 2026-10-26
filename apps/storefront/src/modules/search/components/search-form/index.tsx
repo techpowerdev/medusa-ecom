@@ -19,21 +19,23 @@ const SearchForm = ({ countryCode, defaultValue, className }: SearchFormProps) =
     }}
   >
     <label htmlFor="search-q" className="sr-only">
-      Search products
+      ค้นหาสินค้า
     </label>
     <input
       id="search-q"
       type="search"
       name="q"
       defaultValue={defaultValue}
-      placeholder="Search products"
+      placeholder="ค้นหาสินค้า"
+      data-testid="search-query-input"
       className="flex-1 h-10 px-4 border rounded-md border-ui-border-base bg-ui-bg-field txt-compact-medium"
     />
     <button
       type="submit"
       className="h-10 px-4 rounded-md bg-black text-white hover:bg-gray-800"
+      data-testid="search-submit"
     >
-      Search
+      ค้นหา
     </button>
   </form>
 )

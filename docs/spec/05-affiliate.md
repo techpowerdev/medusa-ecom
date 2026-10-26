@@ -160,6 +160,13 @@ Payout
     ลบ (soft-delete) โปรแกรมได้เฉพาะ `draft` มิฉะนั้น 400 `NOT_ALLOWED`
 21. (AF-5) compensation ของ `markPayoutPaid` ที่คืนสถานะ entry `paid → approved` เมื่อ workflow ล้ม (ยังไม่ commit)
     เป็นข้อยกเว้นของกฎ 5 (เช่นเดียวกับ compensation ของกฎ 15)
+22. (review AF-2 #66) `AFFILIATE_TOKEN_SECRET` ต้องมีใน production: backend ที่ `NODE_ENV=production` และไม่มีค่านี้ต้อง **throw ตอนบูต** (แบบเดียวกับ
+    guard ใน `src/lib/infra-modules.ts`, ADR-010) ไม่ใช่ log warning ทุก click แล้ว attribution หายเงียบ; นอก production เตือน**ครั้งเดียว**ตอนบูต —
+    ส่งมอบใน OPS-7 (spec 07 AC-13)
+23. (review AF-2 #66, last click ตามกฎ 2) cookie `aff` ถูกคัดลอกลง cart ตอน add to cart เท่านั้น (AF-2) → ถ้าลูกค้า click affiliate B **หลัง** เพิ่มของ
+    จากลิงก์ A แล้ว checkout เลย cart ยังเป็นของ A: storefront ต้อง sync cookie ลง `cart.metadata.affiliate_token` อีกครั้ง**ก่อน** `placeOrder`
+    (complete cart) เมื่อค่าใน cookie ต่างจากใน cart — ครอบ cart ทุกทางที่สร้าง รวม `/buy/[items]` (CORE-14 AC-41 บังคับ login + customer แล้ว)
+    การ sync ใช้ `metadata` จาก cart ที่ storefront อ่านอยู่แล้ว (`retrieveCart`) ไม่ยิง `GET /store/carts/:id` เพิ่ม
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -193,6 +200,11 @@ Payout
   ช่วงเดียวกัน → ได้ entry ชุดเดิมและยอดเท่าเดิม; ยกเลิก payout `paid` → 400 และ payout/entry ไม่เปลี่ยน
 - AC-20 (AF-9, กฎ 19) entry `approved` ที่ `created_at` อยู่ก่อน `period_from` และยังไม่อยู่ใน payout ใด ถูกรวมใน payout รอบ
   `[period_from, period_to)`; entry ที่ `created_at >= period_to` ไม่ถูกรวม; entry ที่อยู่ใน payout อื่นแล้วไม่ถูกรวม
+- AC-21 (AF-3, กฎ 23) Given โปรแกรม active และลูกค้า click `/r/ann` แล้ว add to cart When click `/r/bob` (cookie เปลี่ยน) แล้ว checkout ทันทีโดยไม่ add
+  เพิ่ม Then `cart.metadata.affiliate_token` ตอน complete เป็นของ Bob และ attribution ของ order เป็นของ Bob; Given cookie ไม่เปลี่ยน Then ไม่มี
+  `POST /store/carts/:id` เพื่อ sync (e2e นับ request)
+- AC-22 (AF-3, กฎ 23) Given unit test ของ action add-to-cart ใน `lib/data/cart.ts` (mock SDK) When เพิ่มสินค้าโดยมี cookie `aff` Then จำนวนครั้งที่เรียก
+  retrieve cart เท่ากับก่อน AF-2 (ไม่มี round-trip `GET /store/carts/:id` เพิ่ม) และ metadata ถูกตั้งเมื่อค่าต่าง (unit Vitest)
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -203,14 +215,14 @@ Payout
 ## Test plan
 - Unit: การคำนวณค่าคอมมิชชัน (ขอบเขต, cap, ฐานคำนวณ, ปัดเศษ), การตรวจสอบช่วงเวลา `[starts_at, ends_at)` และ `ended` (AC-17 ส่วน logic)
 - Integration (http): AC-1..AC-8, AC-10, AC-11, AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20
-- e2e: AC-9 + AC-1 แบบ end-to-end พร้อม cookie
+- e2e: AC-9 + AC-1 แบบ end-to-end พร้อม cookie, AC-21; unit (Vitest storefront): AC-22
 
 ## Tasks
 | ID | Task | Depends |
 |----|------|---------|
 | AF-1 | models/service/migrations ของ module + auth ของ actor type `affiliate` (register/login) + unit tests สำหรับการคำนวณค่าคอมมิชชัน (AC-12, AC-15, AC-16) — PR #11 | CORE-2 |
 | AF-2 | Tracking redirect + cookie + cart metadata hook ใน storefront (เตรียมสำหรับ AC-3) | AF-1 |
-| AF-3 | Subscriber `order.placed` สำหรับ attribution + สร้าง entry (AC-1,2,3,4,8,10,11,17) (ตามข้อตัดสิน Q2, Q3, Q7) | AF-2 |
+| AF-3 | Subscriber `order.placed` สำหรับ attribution + สร้าง entry (AC-1,2,3,4,8,10,11,17) (ตามข้อตัดสิน Q2, Q3, Q7) + storefront sync cookie `aff` ลง cart ก่อน `placeOrder` และเลิก round-trip `GET /store/carts/:id` ที่ AF-2 เพิ่มใน add to cart (กฎ 23; AC-21, AC-22) | AF-2 |
 | AF-4 | Subscriber สำหรับ reversal + maturity job + migration index `(status, matures_at)` (AC-5, AC-6) — ห้ามลบ entry; ตามข้อตัดสิน Q3, Q8 | AF-3 |
 | AF-5 | Admin APIs + payout workflows (AC-7) (ตามข้อตัดสิน Q8) | AF-1 |
 | AF-6 | หน้า Admin UI | AF-5 |
@@ -218,6 +230,8 @@ Payout
 | AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts, Profile (Q5) + e2e (AC-9); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | AF-7, AF-4 |
 | AF-9 | follow-up AF-5 (เล็ก): `cancelPayoutWorkflow` + admin route ยกเลิก payout `draft` (คืน entry ให้เลือกได้อีก) และย้ายการกรอง entry ของ `createPayoutWorkflow` ไปทำใน DB (filter ตามกฎ 19 แทนโหลด entry ทั้งหมดแล้วกรองในแอป) (AC-19, AC-20; AC-7 ต้องยังผ่าน) | AF-5 |
 AF-5/AF-6 ∥ AF-3/AF-4; AF-7 ∥ AF-4; AF-9 ∥ AF-6 หลัง AF-5
+follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใน production (กฎ 22) ผนวกเข้า **OPS-7** (spec 07 AC-13) ไม่ใช่ task ของ spec นี้;
+`/buy/[items]` ที่สร้าง cart โดยไม่มี token อยู่ใน CORE-14 (spec 01 AC-41) แล้ว — AF-3 แตะ `lib/data/cart.ts` เดียวกับ CORE-14/CORE-4d ตัวที่ merge ทีหลัง rebase
 
 ## ข้อตัดสินของ owner (2026-10-25)
 - Q1 สมัครเองได้: register → `pending` → admin อนุมัติ

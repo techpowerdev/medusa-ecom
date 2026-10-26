@@ -5,6 +5,7 @@ import Hero from "@modules/home/components/hero"
 import { listCollections } from "@lib/data/collections"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { toJsonLd } from "@lib/util/product-structured-data"
+import { hreflangAlternates } from "@lib/util/hreflang"
 import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
 import { buildRegionsReturnPolicies } from "@lib/util/store-policies"
 
@@ -23,12 +24,7 @@ export async function generateMetadata(props: {
     alternates: {
       canonical: `${origin}/${countryCode}`,
       languages: {
-        ...Object.fromEntries(
-          listCountryCodes(regions).map((code) => [
-            `en-${code.toUpperCase()}`,
-            `${origin}/${code}`,
-          ])
-        ),
+        ...hreflangAlternates(origin, listCountryCodes(regions)),
         "x-default": origin,
       },
     },
