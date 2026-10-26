@@ -42,8 +42,6 @@ export const ACTIVE_MEMBERSHIP_STATUSES = ["joined", "awaiting_payment", "paid"]
 export const LOCK_TIMEOUT = 30
 export const LOCK_TTL = 60
 
-// owner 2026-10-26: cart ที่ใช้ join แล้วถูกทำเครื่องหมายใน metadata และ join ซ้ำไม่ได้ (GB_CART_ALREADY_JOINED)
-export const CART_MEMBERSHIP_KEY = "group_buy_membership_id"
 
 export type JoinGroupInput ={ join_token: string; cart_id: string; customer_id: string }
 
@@ -97,7 +95,6 @@ type CampaignForJoin = {
 type CartForJoin = {
   items?: ({ quantity: number } & Record<string, unknown>)[] | null
   promotions?: ({ code?: string | null; is_automatic?: boolean | null } | null)[] | null
-  metadata?: Record<string, unknown> | null
 }
 
 // ขั้น 1 (ภายใต้ lock, อ่านอย่างเดียว): เจ้าของ cart (CORE-12) → แคมเปญ/กลุ่ม → ข้อจำกัด (spec 04, ADR-009)
@@ -152,7 +149,6 @@ export const validateJoinStep = createStep(
         ...rules.map((r) => r.attribute),
         "promotions.code",
         "promotions.is_automatic",
-        "metadata",
       ],
       filters: { id: input.cart_id },
     })
@@ -186,13 +182,11 @@ export const validateJoinStep = createStep(
         ends_at: toDate(campaign.campaign?.ends_at),
       },
       group: { ...group, ends_at: new Date(group.ends_at) },
-      groupCode: group.promotion.code,
       cartUnits,
       cartManualCodes: (cart.promotions ?? [])
         .filter((p) => p?.is_automatic !== true)
         .map((p) => p?.code ?? ""),
       itemsEligible: items.every((item) => itemMatchesTargetRules(item, rules)),
-      cartAlreadyJoined: !!cart.metadata?.[CART_MEMBERSHIP_KEY],
       customerMemberships: customerMemberships.map((m) => ({ group_id: m.group_id, units: m.units })),
       campaignMembershipCount,
     })
@@ -415,26 +409,6 @@ export const createGroupMembershipStep = createStep(
   }
 )
 
-// ทำเครื่องหมาย cart ว่าใช้ join แล้ว (owner 2026-10-26) — compensation คืน metadata เดิม
-export const markCartJoinedStep = createStep(
-  "mark-cart-joined",
-  async (input: { cart_id: string; membership_id: string }, { container }) => {
-    const cartModule = container.resolve(Modules.CART)
-    const { metadata } = await cartModule.retrieveCart(input.cart_id, { select: ["metadata"] })
-    await cartModule.updateCarts(input.cart_id, {
-      metadata: { ...(metadata ?? {}), [CART_MEMBERSHIP_KEY]: input.membership_id },
-    })
-    return new StepResponse(undefined, { cart_id: input.cart_id, metadata: metadata ?? {} })
-  },
-  async (undo, { container }) => {
-    if (!undo) {
-      return
-    }
-    // cart module 2.22.1 แทนที่ metadata ทั้งก้อน (ไม่ merge) — คืนค่าเดิมตรงๆ
-    await container.resolve(Modules.CART).updateCarts(undo.cart_id, { metadata: undo.metadata })
-  }
-)
-
 // spec 04 joinGroupWorkflow — lock ตามลำดับ ADR-009: campaign (เมื่อตั้ง max_total_orders) → group → customer
 // ขั้น 1–4 อยู่ภายใต้ lock ชุดเดียวกัน; step ที่ล้มทำให้ compensation ของ step ก่อนหน้ารัน (รวม release lock)
 export const joinGroupWorkflow = createWorkflow("join-group", function (input: JoinGroupInput) {
@@ -481,12 +455,6 @@ export const joinGroupWorkflow = createWorkflow("join-group", function (input: J
       order_id: order.id,
       units: checked.units,
       isNewPerson: checked.isNewPerson,
-    }))
-  )
-  markCartJoinedStep(
-    transform({ input, checked }, ({ input, checked }) => ({
-      cart_id: input.cart_id,
-      membership_id: checked.membership_id,
     }))
   )
 

@@ -92,5 +92,16 @@ group-buy-join.spec.ts + promotion-exclusivity.spec.ts (ก่อน merge devel
   ✓ AC-8 / AC-13 / AC-18 concurrent ยังผ่าน
 หลัง merge origin/develop (586a609) + แยก @InjectManager/@InjectTransactionManager:
   group-buy-join.spec.ts Tests: 22 passed, 22 total; tsc ผ่าน; backend lint No lint issues found; build สำเร็จ
+### รอบปรับให้ตรง spec 04 กฎข้อ 14 / AC-26 / AC-27 (PR #73)
+# (a) complete cart ที่มี GB-* → 400 not_allowed GB_CART_NOT_COMPLETABLE (ถอดออกจาก allow-list 409; แทน GB_CART_CHECKOUT_NOT_ALLOWED)
+# (b) join ซ้ำ = cart มี code GB-* อยู่แล้วตอนขั้น 1 → 409 GB_CART_ALREADY_JOINED ตรวจก่อน PROMOTION_NOT_COMBINABLE (ตัด metadata marker ออก)
+Red: join.unit "rejects a cart that already holds a GB- code…" FAIL ก่อนแก้ assertJoinAllowed
+group-buy-join.spec.ts: Tests: 23 passed, 23 total
+  ✓ AC-27: joining again with the same cart (same or other group) → 409 GB_CART_ALREADY_JOINED; a new cart → 201
+  ✓ AC-26 after joining → 400 not_allowed GB_CART_NOT_COMPLETABLE, cart not completed
+  ✓ AC-26 GB-<token> added through Medusa's promotions route without joining → 400 as well
+error-handler + join unit: Tests: 43 passed; backend lint: No lint issues found; tsc ผ่าน
+promotion-exclusivity.spec.ts: Tests: 20 passed (backstop PROMOTION_NOT_COMBINABLE และ cart ที่ไม่มี GB-* complete ได้ตามเดิม)
+test:unit: Test Suites: 37 passed / Tests: 333 passed; build: Backend/Frontend build completed successfully
 ### test:integration:http — integration-tests/http/group-buy-groups.spec.ts (GB-2b/2c, กันถดถอยจาก refactor)
 Tests:       18 passed, 18 total

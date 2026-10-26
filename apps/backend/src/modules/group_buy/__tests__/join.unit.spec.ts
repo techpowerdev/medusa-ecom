@@ -29,11 +29,9 @@ const check = (data: Partial<JoinCheck> = {}): JoinCheck => ({
     max_people_per_group: null,
   },
   group: { id: "gbgrp_1", status: "open", ends_at: new Date(now.getTime() + HOUR), progress_people: 0 },
-  groupCode: "GB-AAA",
   cartUnits: 1,
   cartManualCodes: [],
   itemsEligible: true,
-  cartAlreadyJoined: false,
   customerMemberships: [],
   campaignMembershipCount: 0,
   ...data,
@@ -77,8 +75,6 @@ describe("assertJoinAllowed", () => {
     expect(() => assertJoinAllowed(check({ cartManualCodes: ["SAVE10"] }))).toThrow(
       conflict("PROMOTION_NOT_COMBINABLE")
     )
-    // code ของกลุ่มเองอยู่ใน cart แล้ว (ออเดอร์ซ้ำจาก cart เดิม) ไม่ใช่ code อื่น
-    expect(() => assertJoinAllowed(check({ cartManualCodes: ["GB-AAA"] }))).not.toThrow()
   })
 
   it("rejects a member of another group in the same campaign (AC-18)", () => {
@@ -126,10 +122,12 @@ describe("assertJoinAllowed", () => {
     )
   })
 
-  it("rejects a cart that was already used to join (owner 2026-10-26)", () => {
-    expect(() => assertJoinAllowed(check({ cartAlreadyJoined: true }))).toThrow(
-      conflict(GB_CART_ALREADY_JOINED)
-    )
+  it("rejects a cart that already holds a GB- code, before PROMOTION_NOT_COMBINABLE (กฎข้อ 14b, AC-27)", () => {
+    for (const codes of [["GB-AAA"], ["GB-BBB"], ["SAVE10", "GB-AAA"]]) {
+      expect(() => assertJoinAllowed(check({ cartManualCodes: codes }))).toThrow(
+        conflict(GB_CART_ALREADY_JOINED)
+      )
+    }
   })
 
   it("rejects an empty cart (INVALID_DATA)", () => {

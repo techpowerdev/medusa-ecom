@@ -543,55 +543,101 @@ medusaIntegrationTestRunner({
         expect((await join(group.join_token, cartId, s)).status).toEqual(201)
       })
 
-      // owner 2026-10-26: cart หนึ่งใบ join ได้ครั้งเดียว
-      it("joining again with the same cart → 409 GB_CART_ALREADY_JOINED, nothing new", async () => {
+      it("AC-27: joining again with the same cart (same or other group) → 409 GB_CART_ALREADY_JOINED; a new cart → 201", async () => {
         const campaign = await createCampaign()
-        const group = await poolGroup(campaign.id)
+        const [g1, g2] = [await poolGroup(campaign.id), await poolGroup(campaign.id)]
         const s = await shopper()
         const cartId = await cartFor(s)
-        expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+        expect((await join(g1.join_token, cartId, s)).status).toEqual(201)
 
-        expectConflict(await join(group.join_token, cartId, s), "GB_CART_ALREADY_JOINED")
-        expect(await memberships({ group_id: group.id })).toHaveLength(1)
+        expectConflict(await join(g1.join_token, cartId, s), "GB_CART_ALREADY_JOINED")
+        expectConflict(await join(g2.join_token, cartId, s), "GB_CART_ALREADY_JOINED")
+        expect(await memberships({ campaign_id: campaign.id })).toHaveLength(1)
         expect(await ordersOf(s.customerId)).toHaveLength(1)
-        expect(await progress(group.id)).toEqual([1, 1, 1])
+        expect(await progress(g1.id)).toEqual([1, 1, 1])
+        expect(await progress(g2.id)).toEqual([0, 0, 0])
+
+        expect((await joinWithNewCart(g1.join_token, s)).status).toEqual(201)
       })
 
-      // owner 2026-10-26: ส่วนลดกลุ่มใช้ผ่าน draft order เท่านั้น — cart ที่มี GB-* complete ไม่ได้
-      it("completing a cart that holds GB-* → 409 GB_CART_CHECKOUT_NOT_ALLOWED", async () => {
-        const campaign = await createCampaign()
-        const group = await poolGroup(campaign.id)
-        const s = await shopper()
-        const cartId = await cartFor(s)
-        expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+      describe("AC-26: a cart holding GB-* cannot be completed", () => {
+        const readyToComplete = async (s: Shopper, cartId: string) => {
+          const ok = (r: Res) => {
+            if (r.status !== 200) {
+              throw new Error(`prepare checkout: ${r.status} ${JSON.stringify(r.data)}`)
+            }
+            return r.data
+          }
+          ok(
+            await settle(
+              api.post(
+                `/store/carts/${cartId}`,
+                {
+                  email: "gb3-checkout@example.com",
+                  shipping_address: {
+                    first_name: "Somchai",
+                    last_name: "Jaidee",
+                    address_1: "1 Sukhumvit Rd",
+                    city: "Bangkok",
+                    postal_code: "10110",
+                    country_code: "th",
+                  },
+                },
+                s.headers
+              )
+            )
+          )
+          const { payment_collection } = ok(
+            await settle(api.post("/store/payment-collections", { cart_id: cartId }, s.headers))
+          )
+          ok(
+            await settle(
+              api.post(
+                `/store/payment-collections/${payment_collection.id}/payment-sessions`,
+                { provider_id: "pp_system_default" },
+                s.headers
+              )
+            )
+          )
+        }
 
-        await api.post(
-          `/store/carts/${cartId}`,
-          {
-            email: "gb3-checkout@example.com",
-            shipping_address: {
-              first_name: "Somchai",
-              last_name: "Jaidee",
-              address_1: "1 Sukhumvit Rd",
-              city: "Bangkok",
-              postal_code: "10110",
-              country_code: "th",
-            },
-          },
-          s.headers
-        )
-        const { data } = await api.post("/store/payment-collections", { cart_id: cartId }, s.headers)
-        await api.post(
-          `/store/payment-collections/${data.payment_collection.id}/payment-sessions`,
-          { provider_id: "pp_system_default" },
-          s.headers
-        )
+        const expectNotCompletable = async (s: Shopper, cartId: string) => {
+          const res = await settle(api.post(`/store/carts/${cartId}/complete`, {}, s.headers))
+          expect(res.status).toEqual(400)
+          expect(res.data).toEqual(
+            expect.objectContaining({ type: "not_allowed", code: "GB_CART_NOT_COMPLETABLE" })
+          )
+          const { data } = await getContainer()
+            .resolve(ContainerRegistrationKeys.QUERY)
+            .graph({ entity: "cart", fields: ["completed_at"], filters: { id: cartId } })
+          expect(data[0].completed_at).toBeNull()
+          expect((await ordersOf(s.customerId)).filter((o) => !o.is_draft_order)).toEqual([])
+        }
 
-        expectConflict(
-          await settle(api.post(`/store/carts/${cartId}/complete`, {}, s.headers)),
-          "GB_CART_CHECKOUT_NOT_ALLOWED"
-        )
-        expect((await ordersOf(s.customerId)).map((o) => o.is_draft_order)).toEqual([true])
+        it("after joining → 400 not_allowed GB_CART_NOT_COMPLETABLE, cart not completed", async () => {
+          const campaign = await createCampaign()
+          const group = await poolGroup(campaign.id)
+          const s = await shopper()
+          const cartId = await cartFor(s)
+          expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+
+          await readyToComplete(s, cartId)
+          await expectNotCompletable(s, cartId)
+        })
+
+        it("GB-<token> added through Medusa's promotions route without joining → 400 as well", async () => {
+          const campaign = await createCampaign()
+          const group = await poolGroup(campaign.id)
+          const s = await shopper()
+          const cartId = await cartFor(s)
+          const added = await settle(
+            api.post(`/store/carts/${cartId}/promotions`, { promo_codes: [`GB-${group.join_token}`] }, s.headers)
+          )
+          expect(added.status).toEqual(200)
+
+          await readyToComplete(s, cartId)
+          await expectNotCompletable(s, cartId)
+        })
       })
 
       it("AC-24: customer B joining with A's cart → 404 and nothing changes", async () => {
