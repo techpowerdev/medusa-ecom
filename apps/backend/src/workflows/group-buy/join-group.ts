@@ -43,8 +43,7 @@ export const ACTIVE_MEMBERSHIP_STATUSES = ["joined", "awaiting_payment", "paid"]
 export const LOCK_TIMEOUT = 30
 export const LOCK_TTL = 60
 
-
-export type JoinGroupInput ={ join_token: string; cart_id: string; customer_id: string }
+export type JoinGroupInput = { join_token: string; cart_id: string; customer_id: string }
 
 const toDate = (value?: string | Date | null) => (value ? new Date(value) : null)
 
@@ -121,7 +120,10 @@ export const validateJoinStep = createStep(
       ],
       filters: { id: input.group_id },
     })
-    const group = groups[0] as unknown as GroupForJoin
+    const group = groups[0] as unknown as GroupForJoin | undefined
+    if (!group) {
+      throw new MedusaError(MedusaError.Types.NOT_FOUND, "Group not found")
+    }
     if (!group.promotion?.code) {
       throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "The group has no promotion")
     }
@@ -140,7 +142,10 @@ export const validateJoinStep = createStep(
       ],
       filters: { id: group.campaign_id },
     })
-    const campaign = campaigns[0] as unknown as CampaignForJoin
+    const campaign = campaigns[0] as unknown as CampaignForJoin | undefined
+    if (!campaign) {
+      throw new MedusaError(MedusaError.Types.NOT_FOUND, "Group buy campaign not found")
+    }
 
     const { data: carts } = await query.graph({
       entity: "cart",
