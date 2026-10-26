@@ -212,6 +212,27 @@ describe("renderEmailTemplate", () => {
     })
   })
 
+  // PAY-6b (spec 06 กฎข้อ 7D, ADR-015 D): อีเมลถึง OPS_ALERT_EMAIL เมื่อ webhook ชำระแล้วแต่หา session ไม่เจอ
+  describe("payment-webhook-orphan", () => {
+    it("renders the PI id, session id, amount and the runbook title (escaped)", () => {
+      const email = renderEmailTemplate(EmailTemplates.PAYMENT_WEBHOOK_ORPHAN, {
+        provider: "stripe-promptpay_stripe",
+        session_id: "payses_<x>",
+        payment_intent: "pi_123",
+        amount: 500,
+      })
+
+      expect(email).not.toBeNull()
+      expect(email!.subject).toContain("PAYMENT_WEBHOOK_SESSION_NOT_FOUND")
+      expect(email!.subject).toContain("pi_123")
+      expect(email!.html).toContain("pi_123")
+      expect(email!.html).toContain("payses_&lt;x&gt;")
+      expect(email!.html).toContain("stripe-promptpay_stripe")
+      expect(email!.html).toContain("500")
+      expect(email!.html).toContain("เงินถูกตัดแต่ไม่มี order (ADR-015)")
+    })
+  })
+
   // GB-4 (spec 04 กฎข้อ 9): อีเมลถึงสมาชิกกลุ่ม — ข้อความไทย (ADR-014)
   describe("group buy emails (GB-4)", () => {
     const data = {
