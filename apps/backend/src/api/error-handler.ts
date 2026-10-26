@@ -1,7 +1,7 @@
 import { errorHandler, type MedusaErrorHandlerFunction } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { PROMOTION_NOT_COMBINABLE } from "../lib/promotion-exclusivity"
-import { EVOUCHER_CODE_NOT_AVAILABLE } from "../modules/evoucher/errors"
+import { EVOUCHER_CODE_NOT_AVAILABLE, EVOUCHER_CODE_RESERVED } from "../modules/evoucher/errors"
 import { FLASH_LIMIT_EXCEEDED, FLASH_SOLD_OUT } from "../modules/flash_sale/errors"
 
 // PROMO-2 (spec 03 กฎข้อ 13): errorHandler ของ Medusa 2.22.1 เขียนทับ code/message ของ CONFLICT เป็น
@@ -13,6 +13,7 @@ export const BUSINESS_CONFLICT_CODES: ReadonlySet<string> = new Set([
   FLASH_LIMIT_EXCEEDED,
   FLASH_SOLD_OUT,
   EVOUCHER_CODE_NOT_AVAILABLE,
+  EVOUCHER_CODE_RESERVED,
 ])
 
 const medusaErrorHandler = errorHandler()

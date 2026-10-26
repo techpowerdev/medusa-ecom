@@ -20,6 +20,15 @@ const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
 const parseExpiresAt = (value: string) =>
   DATE_ONLY.test(value) ? new Date(`${value}T23:59:59.999+07:00`) : new Date(value)
 
+// กฎข้อ 13: `Date` เลื่อนวันที่ไม่มีจริงให้ (2026-02-30 → 2 มี.ค.) → ตรวจ round-trip ว่าปี/เดือน/วันในข้อความเป็นวันที่มีจริง
+const isRealCalendarDate = (value: string) => {
+  const [y, m, d] = value.slice(0, 10).split("-").map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  return (
+    date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
+  )
+}
+
 // แยก 1 บรรทัด CSV (รองรับ "quoted", "" escape); ไม่รองรับ newline ภายใน quote
 function splitLine(line: string): string[] {
   const cells: string[] = []
@@ -93,7 +102,10 @@ export function parseEvoucherCsv(content: string): ParsedEvoucherRow[] {
       row.pin = pin
     }
     if (expires) {
-      const date = /^\d{4}-\d{2}-\d{2}/.test(expires) ? parseExpiresAt(expires) : null
+      const date =
+        /^\d{4}-\d{2}-\d{2}/.test(expires) && isRealCalendarDate(expires)
+          ? parseExpiresAt(expires)
+          : null
       if (!date || isNaN(date.getTime())) {
         errors.push(`line ${lineNo}: expires_at must be ISO 8601 (YYYY-MM-DD)`)
         continue

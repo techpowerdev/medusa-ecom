@@ -3,6 +3,7 @@ import {
   createWorkflow,
   StepResponse,
   transform,
+  when,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
@@ -36,6 +37,7 @@ const FIELDS = [
 ]
 
 // กฎข้อ 1: voucher variant ต้อง manage_inventory=true (inventory = จำนวน code available)
+// กฎข้อ 14: inventory item เดียว (required_quantity=1) ที่ไม่มี variant อื่นใช้ร่วม — ไม่งั้น requires_shipping/stock กระทบ variant อื่น
 // 404 ถ้า variant ไม่มีอยู่จริง (link pool → variant เป็น read-only ไม่มี FK)
 export const validateEvoucherVariantStep = createStep(
   "validate-evoucher-variant",
@@ -43,23 +45,35 @@ export const validateEvoucherVariantStep = createStep(
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
     const { data } = await query.graph({
       entity: "product_variant",
-      fields: ["id", "manage_inventory", "inventory_items.inventory_item_id"],
+      fields: [
+        "id",
+        "manage_inventory",
+        "inventory_items.inventory_item_id",
+        "inventory_items.required_quantity",
+        "inventory_items.inventory.variants.id",
+      ],
       filters: { id: input.variant_id },
     })
-    if (!data[0]) {
+    const variant = data[0]
+    if (!variant) {
       throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
         `Product variant ${input.variant_id} not found`
       )
     }
-    const itemIds = (data[0].inventory_items ?? []).map((i) => i!.inventory_item_id)
-    if (!data[0].manage_inventory || !itemIds.length) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Voucher variant must have manage_inventory=true with an inventory item"
+    const invalid = (message: string) => new MedusaError(MedusaError.Types.INVALID_DATA, message)
+    const items = variant.inventory_items ?? []
+    if (!variant.manage_inventory || !items.length) {
+      throw invalid("Voucher variant must have manage_inventory=true with an inventory item")
+    }
+    const [item] = items
+    const sharedWith = (item?.inventory?.variants ?? []).filter((v) => v?.id !== variant.id)
+    if (items.length !== 1 || Number(item!.required_quantity) !== 1 || sharedWith.length) {
+      throw invalid(
+        "Voucher variant must have exactly one inventory item (required_quantity=1) that is not shared with another variant"
       )
     }
-    return new StepResponse(itemIds)
+    return new StepResponse([item!.inventory_item_id])
   }
 )
 
@@ -158,9 +172,42 @@ export const updateEvoucherPoolWorkflow = createWorkflow(
   }
 )
 
+// กฎข้อ 15: inventory item ของ variant ใน pool (ว่างถ้า pool/variant ไม่มีแล้ว — ให้ขั้นลบตัดสิน 404 เอง)
+export const resolveEvoucherPoolInventoryItemsStep = createStep(
+  "resolve-evoucher-pool-inventory-items",
+  async (input: { id: string }, { container }) => {
+    const query = container.resolve(ContainerRegistrationKeys.QUERY)
+    const { data: pools } = await query.graph({
+      entity: "evoucher_pool",
+      fields: ["variant_id"],
+      filters: { id: input.id },
+    })
+    if (!pools[0]) {
+      return new StepResponse([] as string[])
+    }
+    const { data: variants } = await query.graph({
+      entity: "product_variant",
+      fields: ["inventory_items.inventory_item_id"],
+      filters: { id: pools[0].variant_id },
+    })
+    return new StepResponse(
+      (variants[0]?.inventory_items ?? []).map((i) => i!.inventory_item_id)
+    )
+  }
+)
+
 export const deleteEvoucherPoolWorkflow = createWorkflow(
   "delete-evoucher-pool",
   function (input: { id: string }) {
-    return new WorkflowResponse(deleteEvoucherPoolStep(input))
+    const itemIds = resolveEvoucherPoolInventoryItemsStep(input)
+    const deleted = deleteEvoucherPoolStep(input)
+    // กฎข้อ 15 (Q7 ค่าเริ่มต้น): คืน requires_shipping=true (ค่าเริ่มต้นของ Medusa); ถ้าล้ม ขั้นลบ restore pool
+    when({ itemIds }, ({ itemIds }) => itemIds.length > 0).then(() => {
+      const updates = transform({ itemIds }, ({ itemIds }) =>
+        itemIds.map((id) => ({ id, requires_shipping: true }))
+      )
+      updateInventoryItemsWorkflow.runAsStep({ input: { updates } })
+    })
+    return new WorkflowResponse(deleted)
   }
 )

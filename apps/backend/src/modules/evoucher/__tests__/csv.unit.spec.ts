@@ -58,6 +58,21 @@ describe("parseEvoucherCsv", () => {
     ).toThrow(/line 2.*line 3/s)
   })
 
+  it.each(["2026-02-30", "2026-04-31", "2026-13-01", "2026-02-30T10:00:00+07:00", "2026-00-10"])(
+    "AC-22 rejects a non-existent calendar date %s instead of rolling it over",
+    (value) => {
+      expect(() => parseEvoucherCsv(`code,expires_at\nOK-1,2027-01-01\nBAD-1,${value}\n`)).toThrow(
+        /line 3/
+      )
+    }
+  )
+
+  it("AC-22 accepts a real leap day", () => {
+    expect(parseEvoucherCsv("LEAP-1,,2028-02-29\n")[0].expires_at?.toISOString()).toBe(
+      "2028-02-29T16:59:59.999Z"
+    )
+  })
+
   it("rejects a header without a code column", () => {
     expect(() => parseEvoucherCsv("pin,expires_at\n1,2027-01-01\n")).toThrow(
       /code/

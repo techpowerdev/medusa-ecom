@@ -1,0 +1,62 @@
+EV-10 — ผลทดสอบ (2026-10-26, Node 22, Medusa 2.22.1, base origin/develop b219d04)
+
+== integration:http evoucher-pool-guards.spec.ts (AC-21, AC-22, AC-23, AC-24) ==
+      ✓ rejects a variant whose inventory item is shared with another variant
+      ✓ rejects a variant with two inventory items
+      ✓ rejects a variant whose inventory item has required_quantity > 1
+      ✓ returns 409 EVOUCHER_CODE_RESERVED when all stock is reserved, then voids once a unit is free
+      ✓ fails the whole file with the line number and inserts nothing
+      ✓ sets requires_shipping=true when an empty pool is deleted
+      ✓ backfills pools created before EV-8 to requires_shipping=false, idempotently, leaving other items alone
+Tests:       7 passed, 7 total
+
+== integration:http evoucher-hardening.spec.ts (regression) ==
+      ✓ sets requires_shipping=false on the inventory item and on the cart line item
+      ✓ rejects a variant with manage_inventory=false with 400 and creates no pool
+      ✓ restores requires_shipping when creating the pool fails afterwards (compensation)
+      ✓ returns the inventory error (not the delete error) and logs the compensation error with batch_ref
+      ✓ returns the chunk insert error when its inline cleanup also fails
+Tests:       5 passed, 5 total
+
+== integration:http evoucher-void-expiry.spec.ts (regression) ==
+      ✓ requires an authenticated admin
+      ✓ voids an available code with the reason and decrements variant inventory by 1
+      ✓ rejects a missing reason with 400 and leaves the code untouched
+      ✓ rejects a empty reason with 400 and leaves the code untouched
+      ✓ rejects a blank reason with 400 and leaves the code untouched
+      ✓ returns 409 for a allocated code and changes nothing
+      ✓ returns 409 for a delivered code and changes nothing
+      ✓ returns 409 for a void code and changes nothing
+      ✓ returns 404 for an unknown code
+      ✓ restores the code to available when the inventory adjustment fails (compensation)
+      ✓ sends admin alerts only to EVOUCHER_ADMIN_EMAIL, not to every admin user
+      ✓ logs a warning and skips admin emails when EVOUCHER_ADMIN_EMAIL is not set (job still voids)
+      ✓ is scheduled once a day
+      ✓ AC-5 voids available codes expiring within 7 days with reason 'expiring' and decrements inventory
+      ✓ sends no expiry summary when nothing was voided
+      ✓ keeps other pools going when one pool fails
+      ✓ AC-9 sends one low-stock email per pool per day when available < threshold
+Tests:       17 passed, 17 total
+
+== integration:http evoucher-admin.spec.ts (regression) ==
+    ✓ requires an authenticated admin
+    ✓ creates, updates, lists and deletes partners
+    ✓ creates a pool for an existing variant and rejects unknown variants
+    ✓ AC-1 imports 100 codes with 2 duplicates → 98 available, inventory +98
+    ✓ skips codes that already exist in the pool on re-import
+    ✓ stores only v1: ciphertext (never plaintext) for code and pin
+    ✓ rejects an invalid CSV without inserting anything
+    ✓ rolls back the inserted batch when the inventory adjustment fails
+    ✓ removes earlier chunks when a later insert chunk fails (no orphan rows)
+    ✓ refuses to delete a pool that has codes
+    ✓ checks EVOUCHER_ENCRYPTION_KEY before touching data
+    ✓ AC-8 lists codes masked and reveals the real value with an audit row
+    ✓ returns 404 when revealing an unknown code and writes no audit
+Tests:       13 passed, 13 total
+
+== test:unit (รวม csv.unit.spec.ts AC-22, error-handler.unit.spec.ts) ==
+Test Suites: 37 passed, 37 total
+Tests:       319 passed, 319 total
+
+== pnpm lint && pnpm typecheck: exit 0 ==
+== pnpm --filter backend build: exit 0 ==
