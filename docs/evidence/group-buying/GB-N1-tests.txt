@@ -31,7 +31,7 @@ pnpm test:integration:http group-buy-join group-buy-outcome
 pnpm test:integration:http group-buy-draft-order-summary payment-session-guard
   PASS ทั้งสองไฟล์ — Tests: 15 passed, 15 total
 pnpm --filter backend test:unit — Test Suites: 47 passed; Tests: 477 passed
-pnpm --filter storefront exec playwright test --project unit — 29 passed
+pnpm --filter storefront test:e2e:unit — 29 passed (รอบแรกรายงาน 29 passed ก่อนเพิ่มไฟล์ evidence นี้ — ไม่ถูกต้อง ดู "แก้ตาม review #106")
 pnpm lint && pnpm typecheck — ผ่าน (0 errors; warning 34 รายการของ storefront มีอยู่เดิม ไม่ใช่ไฟล์ที่แตะ)
 pnpm --filter backend build — Backend + Frontend build completed successfully
 
@@ -51,3 +51,24 @@ e2e/payments-refund.spec.ts (Stripe test mode) — 1 passed
 - ตัด as any ใน cancelGroupMembershipStep — typecheck ผ่าน
 - comment provider_id: ยืนยันจาก source @medusajs/order 2.22.1 utils/apply-order-changes.js (lineItemAdjustmentsToCreate ไม่มี provider_id)
 - CORE-12b: src/api/store/ownership/middlewares.ts บน develop เหลือ comment allowUnauthenticated ที่เดียวแล้ว (ไม่ต้องแก้)
+
+### แก้ตาม review #106 (2026-10-27)
+Red — pnpm --filter storefront test:e2e:unit (เพิ่มเคส GB-N1 ใน evidence-rules.unit.spec.ts):
+  ✘ evidence-budget.unit.spec.ts › โฟลเดอร์ evidence ทุก feature/task อยู่ตาม convention และอยู่ในงบ
+    (group-buying/GB-N1-tests.txt ไม่อนุญาตที่ระดับ feature — ตัวเดียวกับที่ CI lint-typecheck ล้ม)
+  ✘ evidence-rules › evidenceDir รับ task id ที่มี suffix ตัวเล็ก (AC-20)   (GB-N1, GB-N12)
+  ✘ evidence-rules › checkFeatureEntries ผ่านเมื่อมีเฉพาะ <TASK-ID>-tests.txt และโฟลเดอร์ <TASK-ID>/ (AC-22)
+  3 failed, 26 passed
+Green — TASK_ID_RE / TESTS_TXT_RE รับ `[A-Z]+-(\d+([a-z]\d?)?|N\d+)`: 29 passed
+  เคสที่ต้องไม่ผ่านเพิ่ม: GB-N, GB-n1, GB-NN1, GB-N1a, GB-1N, GB-N-tests.txt
+
+Red — integration group-buy-join.spec.ts -t "GB-N1"
+  ✕ GB-N1 (GB-3c): declining the order change fails too → the confirm error is surfaced and the decline failure is logged
+    Expected: "GB-3c confirm boom"  Received: "GB-3c decline boom"
+Red — integration group-buy-outcome.spec.ts -t "GB-N1" (job ย้อนเป็น logger.error ชั่วคราวเพื่อยืนยันว่า test จับได้)
+  ✕ GB-N1: deadline job logs an at_deadline outcome mismatch as warn, not error
+Green:
+  ✓ declining fails too → error เดิมของ confirm ถูกโยน และ logger.error มีข้อความ decline
+  ✓ deadline job: snapshot นอก lock เห็น progress 2 (เลือก fail), ใต้ lock อ่านได้ 3 → logger.warn มี group id, logger.error ไม่มี, กลุ่มยัง open
+Regression: group-buy-join + group-buy-outcome — Tests: 43 passed, 43 total
+pnpm --filter backend test:unit — 477 passed; pnpm lint && pnpm typecheck ผ่าน; pnpm --filter backend build ผ่าน

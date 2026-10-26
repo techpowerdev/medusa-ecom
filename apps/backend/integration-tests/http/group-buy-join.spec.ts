@@ -582,6 +582,35 @@ medusaIntegrationTestRunner({
         expect(await progress(group.id)).toEqual([0, 0, 0])
       })
 
+      it("GB-N1 (GB-3c): declining the order change fails too → the confirm error is surfaced and the decline failure is logged", async () => {
+        const container = getContainer()
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await workflowShopper()
+        const orderModule = container.resolve(Modules.ORDER)
+        const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+
+        const confirm = jest
+          .spyOn(orderModule, "confirmOrderChange")
+          .mockRejectedValueOnce(new Error("GB-3c confirm boom"))
+        const decline = jest
+          .spyOn(orderModule, "declineOrderChange")
+          .mockRejectedValueOnce(new Error("GB-3c decline boom"))
+        const logError = jest.spyOn(logger, "error")
+        try {
+          const { errors } = await joinGroupWorkflow(container).run({
+            input: { join_token: group.join_token, cart_id: s.cartId, customer_id: s.customerId },
+            throwOnError: false,
+          })
+          expect(errors[0]?.error?.message).toEqual("GB-3c confirm boom")
+          expect(logError).toHaveBeenCalledWith(expect.stringContaining("GB-3c decline boom"))
+        } finally {
+          confirm.mockRestore()
+          decline.mockRestore()
+          logError.mockRestore()
+        }
+      })
+
       it("AC-27: joining again with the same cart (same or other group) → 409 GB_CART_ALREADY_JOINED; a new cart → 201", async () => {
         const campaign = await createCampaign()
         const [g1, g2] = [await poolGroup(campaign.id), await poolGroup(campaign.id)]

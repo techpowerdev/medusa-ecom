@@ -403,8 +403,16 @@ export const freezeDraftOrderAdjustmentsStep = createStep(
       await orderModule.confirmOrderChange(change.id)
     } catch (error) {
       // GB-N1: order change ที่ค้าง pending ทำให้ cancelOrderWorkflow ใน compensation ยกเลิก draft order ไม่ได้
-      // → decline ด้วยกลไกของ Medusa ก่อนโยน error ให้ compensation ของขั้นก่อนหน้ารัน
-      await orderModule.declineOrderChange(change.id)
+      // → decline ด้วยกลไกของ Medusa ก่อนโยน error ให้ compensation ของขั้นก่อนหน้ารัน; decline ล้ม → log แล้วโยน error เดิม
+      try {
+        await orderModule.declineOrderChange(change.id)
+      } catch (declineError) {
+        container
+          .resolve(ContainerRegistrationKeys.LOGGER)
+          .error(
+            `group-buy: failed to decline order change ${change.id} of order ${input.order_id}: ${(declineError as Error).message}`
+          )
+      }
       throw error
     }
     return new StepResponse(undefined)
