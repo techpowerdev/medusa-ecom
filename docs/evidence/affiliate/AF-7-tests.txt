@@ -34,3 +34,14 @@ Tests:       16 skipped, 1 passed, 17 total
 Tests:       74 passed, 74 total
 ### pnpm --filter backend test:unit: Test Suites: 49 passed; Tests: 494 passed
 ### pnpm lint (0 errors) && pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
+
+## รอบแก้ review #110 — 2026-10-27 (หลัง merge origin/develop)
+### Red: test ใหม่ล้มก่อนแก้
+      ✕ returns 401 without a token when the path differs only in case (861 ms)
+      ✕ pages programs and payouts with limit/offset (327 ms)
+Tests:       2 failed, 11 passed, 13 total
+  สาเหตุ: GET /AFFILIATE/me โดยไม่มี token → 500 (regex ไม่มี flag i จึงข้าม authenticate); /affiliate/me/programs ไม่มี count/limit/offset
+### Green: affiliate-auth.spec.ts + affiliate-portal.spec.ts
+Tests:       21 passed, 21 total
+### pnpm --filter backend test:unit: Test Suites: 49 passed; Tests: 499 passed
+### pnpm lint (0 errors), pnpm typecheck, pnpm --filter backend build: ผ่าน
