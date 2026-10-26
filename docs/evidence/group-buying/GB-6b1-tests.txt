@@ -1,0 +1,39 @@
+# GB-6b1 test evidence — 2026-10-26 +0700 (รวม OPS-11 ตาม spec 07)
+# Spec: docs/spec/04-group-buying.md (GB-6b → แยก GB-6b1: หน้ารายละเอียดแคมเปญ, AC-30, AC-31, กฎข้อ 17), docs/spec/07-scaling-ops.md (OPS-11, AC-16)
+# node v22.23.3, @medusajs/* 2.22.1, @medusajs/ui 4.2.6; backend `medusa start` จาก build (.medusa/server) port 9095, DB medusa_gb6b, Redis db 13
+### Red (ก่อนเขียนโค้ด)
+src/admin/lib/__tests__/group-buy-campaign.unit.spec.ts → FAIL: Cannot find module '../group-buy-campaign'
+e2e/group-buy-admin-detail.spec.ts → 3 failed: getByTestId('gb-campaign-status') element(s) not found (ยังไม่มีหน้า /app/group-buying/:id)
+e2e/flash-sale-admin-save.spec.ts (ย้ายไปใช้ e2e/support/admin.ts + data-testid="flash-sale-options") → passed
+### Green — unit
+PASS src/admin/lib/__tests__/group-buy-campaign.unit.spec.ts
+  campaignActions
+    ✓ draft + both (1 ms)
+    ✓ active + both
+    ✓ active + pool (1 ms)
+    ✓ active + team
+    ✓ ended + pool
+  groupProgress
+    ✓ reads progress_* of target type orders
+    ✓ reads progress_* of target type units
+    ✓ reads progress_* of target type people
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        0.22 s, estimated 1 s
+Ran all test suites matching /src\/admin\/lib\/__tests__\/group-buy-campaign/i.
+### Green — e2e (chromium, admin UI จริง)
+Running 6 tests using 1 worker
+  ✓  1 [chromium] › e2e/flash-sale-admin-save.spec.ts:10:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (3.0s)
+  ✓  2 [chromium] › e2e/group-buy-admin-detail.spec.ts:62:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (2.0s)
+  ✓  3 [chromium] › e2e/group-buy-admin-detail.spec.ts:103:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (2.2s)
+  ✓  4 [chromium] › e2e/group-buy-admin-detail.spec.ts:135:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (2.7s)
+  ✓  5 [chromium] › e2e/smoke.spec.ts:8:5 › storefront เสิร์ฟ robots.txt ได้ (177ms)
+  ✓  6 [chromium] › e2e/smoke.spec.ts:20:5 › backend /health ตอบ 200 และหน้า login ของ admin แสดงผล (644ms)
+  6 passed (11.7s)
+### AC-16 (OPS-11) grep: x-forwarded-proto / /app/login / .last() ใน apps/storefront/e2e/*.spec.ts
+(ไม่พบ — grep exit 1)
+### อื่นๆ
+pnpm --filter backend test:unit → Test Suites: 44 passed, Tests: 396 passed
+pnpm --filter storefront test:e2e:unit → 29 passed
+pnpm lint → 0 errors (warning เดิมของ storefront); pnpm typecheck → ผ่าน
