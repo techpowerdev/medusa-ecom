@@ -12,6 +12,7 @@ import { isEqual } from "lodash"
 import { useParams, usePathname } from "next/navigation"
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
+import FlashSale from "../flash-sale"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
 
@@ -35,6 +36,7 @@ const getDefaultVariant = (product: HttpTypes.StoreProduct) =>
 
 export default function ProductActions({
   product,
+  region,
   disabled,
 }: ProductActionsProps) {
   const router = useRouter()
@@ -180,6 +182,12 @@ export default function ProductActions({
           </div>
 
           <ProductPrice product={product} variant={selectedVariant} />
+
+          <FlashSale
+            product={product}
+            region={region}
+            variant={isValidVariant ? selectedVariant : undefined}
+          />
 
           {selectedVariant && isValidVariant && (
             <p
