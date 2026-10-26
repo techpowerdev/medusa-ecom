@@ -107,3 +107,12 @@ exit 0 — apps/storefront lint: 0 errors, 34 warnings (warning เดิมข�
       Tests  23 passed (23)
 ### ทั้งหมด
  unit storefront: Test Files 18 passed, Tests 160 passed; pnpm lint && pnpm typecheck exit 0 (0 errors); storefront build ผ่าน
+
+## หลัง #99 (CORE-22) merge: sync origin/develop + profile-phone (AC-81 ครบ) + nit ADD_FAILED หลัง import
+### Red (ลบ PENDING ออกจาก test)
+       × ไฟล์ใน src ใช้ errorMessage หรือ .message 72ms
+  ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+  +   "modules/account/components/profile-phone/index.tsx:30 return { success: false, error: String(error) }",
+        Tests  1 failed | 14 passed (15)
+### Green
+ unit storefront: Test Files 18 passed, Tests 159 passed; pnpm lint && pnpm typecheck exit 0 (0 errors); storefront build ผ่าน

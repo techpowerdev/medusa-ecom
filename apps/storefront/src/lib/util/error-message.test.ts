@@ -97,8 +97,6 @@ describe("action ของ lib/data/customer.ts ห่อ error โดยไม�
 const SRC = path.resolve(__dirname, "../..")
 const HELPER = path.resolve(__dirname, "error-message.ts")
 const STRINGIFY_ERROR = /String\((e|err|error)\)|\b(e|err|error)\.toString\(\)/
-// CORE-22 แก้ไฟล์นี้อยู่ (คำสั่งของ session หลัก: 4c2 ห้ามแตะ) — แก้ใน CORE-22 หรือ PR ที่ merge ทีหลัง แล้วลบออกจากรายการ
-const PENDING = ["modules/account/components/profile-phone/index.tsx"]
 
 const sourceFiles = (dir: string): string[] =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -118,12 +116,8 @@ const offendingLines = (file: string) =>
 describe("ไม่มี String(error) ในข้อความ error (AC-81 grep)", () => {
   it("ไฟล์ใน src ใช้ errorMessage หรือ .message", () => {
     const offenders = sourceFiles(SRC)
-      .filter((file) => file !== HELPER && !PENDING.includes(path.relative(SRC, file)))
+      .filter((file) => file !== HELPER)
       .flatMap(offendingLines)
     expect(offenders).toEqual([])
-  })
-
-  it.each(PENDING)("%s ยังค้างอยู่จริง (แก้แล้วให้ลบออกจาก PENDING)", (file) => {
-    expect(offendingLines(path.join(SRC, file))).not.toEqual([])
   })
 })

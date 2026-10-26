@@ -7,12 +7,12 @@ import { HttpTypes } from "@medusajs/types"
 import { activateCart, MAX_LINE_ITEM_QUANTITY } from "@lib/util/server-cart"
 import { getRequestOrigin } from "@lib/util/site"
 import { friendlyErrorMessage } from "@lib/util/error-message"
+import { isEqual } from "lodash"
+import { NextRequest, NextResponse } from "next/server"
 
 // qa CORE-4c2 D-1: ไม่ส่งข้อความดิบของ Medusa (เช่น "Variants … do not exist") — log ไว้ฝั่ง server แทน
 const ADD_FAILED =
   "เพิ่มสินค้าลงตะกร้าไม่สำเร็จ สินค้าหรือตัวเลือกที่เลือกอาจไม่มีอยู่หรือหมดแล้ว"
-import { isEqual } from "lodash"
-import { NextRequest, NextResponse } from "next/server"
 
 const resolveVariantId = async (form: FormData, regionId: string) => {
   const productId = form.get("product_id")?.toString()
