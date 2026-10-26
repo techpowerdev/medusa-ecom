@@ -1,5 +1,6 @@
 import { MedusaError } from "@medusajs/framework/utils"
 import { PROMOTION_NOT_COMBINABLE, isGroupBuyCode } from "../../../lib/promotion-exclusivity"
+import { STORE_RESOURCE_NOT_FOUND } from "../../../lib/store-ownership"
 import {
   GB_ALREADY_IN_OTHER_GROUP,
   GB_CART_ALREADY_JOINED,
@@ -167,3 +168,35 @@ export const joinProgress = (
   progress_units: p.progress_units + units,
   progress_people: p.progress_people + (isNewPerson ? 1 : 0),
 })
+
+// leaveGroupWorkflow (AC-7): progress_people −1 เฉพาะเมื่อไม่เหลือ membership อื่นที่ไม่ใช่ cancelled ของลูกค้าในกลุ่ม
+export const leaveProgress = (
+  p: GroupBuyProgress,
+  units: number,
+  isLastMembership: boolean
+): GroupBuyProgress => ({
+  progress_orders: p.progress_orders - 1,
+  progress_units: p.progress_units - units,
+  progress_people: p.progress_people - (isLastMembership ? 1 : 0),
+})
+
+// spec 04 กฎข้อ 13 (AC-25): ของคนอื่น/ไม่พบ → 404 ข้อความเดียวกัน (ADR-013); ออกได้เฉพาะ membership `joined` ในกลุ่ม `open`
+// ที่ยังไม่หมดเวลา — `ends_at <= now` (job ยังไม่ตัดสิน) ออกไม่ได้เหมือน join เพื่อไม่ให้เปลี่ยนผลของ deadline job
+// (ตีความกฎข้อ 13 โดย session หลัก 2026-10-26)
+export const assertLeaveAllowed = (input: {
+  now: Date
+  membership: { customer_id: string; status: string } | null | undefined
+  group: { status: string; ends_at: Date }
+  customer_id: string
+}) => {
+  if (!input.membership || input.membership.customer_id !== input.customer_id) {
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, STORE_RESOURCE_NOT_FOUND)
+  }
+  if (
+    input.membership.status !== "joined" ||
+    input.group.status !== "open" ||
+    input.group.ends_at.getTime() <= input.now.getTime()
+  ) {
+    throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "This membership can no longer leave the group")
+  }
+}
