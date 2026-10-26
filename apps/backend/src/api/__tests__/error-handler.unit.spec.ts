@@ -41,6 +41,8 @@ describe("businessErrorHandler", () => {
         "GB_MAX_TOTAL_ORDERS_REACHED",
         "GB_UNITS_LIMIT_EXCEEDED",
         "GB_ITEMS_NOT_ELIGIBLE",
+        "GB_CART_ALREADY_JOINED",
+        "GB_CART_CHECKOUT_NOT_ALLOWED",
       ].sort()
     )
     // spec 04 กฎข้อ 5: GB_DISCOUNT_NOT_APPLIED เป็น 400 not_allowed ไม่ใช่ 409

@@ -1,6 +1,6 @@
 import { completeCartWorkflow } from "@medusajs/medusa/core-flows"
 import { StepResponse } from "@medusajs/framework/workflows-sdk"
-import { type CartLike, assertCompletionCombinable } from "./promotion-exclusivity"
+import { type CartLike, assertCompletionCombinable, assertNoGroupBuyCode } from "./promotion-exclusivity"
 import {
   type FlashSaleCartLike,
   type FlashSaleReservationRef,
@@ -19,6 +19,8 @@ completeCartWorkflow.hooks.validate<FlashSaleReservationRef | undefined>(
 
     // 1. PROMO-1: exclusivity ด่านสำรอง (กฎข้อ 6e) — อ่านอย่างเดียว
     await assertCompletionCombinable(container, cart as CartLike)
+    // 1b. GB-3 (owner 2026-10-26): cart ที่มี GB-* complete ไม่ได้ — หลัง 1 เพื่อให้ GB-* + code อื่น ยังได้ PROMOTION_NOT_COMBINABLE
+    assertNoGroupBuyCode(cart as CartLike)
 
     // 2. FS-3: per-customer limit + total cap ภายใต้ lock, transaction เดียว
     const reservation = await reserveFlashSaleForCart(container, cart as FlashSaleCartLike)

@@ -1,6 +1,7 @@
 import { MedusaError } from "@medusajs/framework/utils"
 import {
   GB_ALREADY_IN_OTHER_GROUP,
+  GB_CART_ALREADY_JOINED,
   GB_GROUP_FULL,
   GB_ITEMS_NOT_ELIGIBLE,
   GB_MAX_TOTAL_ORDERS_REACHED,
@@ -32,6 +33,7 @@ const check = (data: Partial<JoinCheck> = {}): JoinCheck => ({
   cartUnits: 1,
   cartManualCodes: [],
   itemsEligible: true,
+  cartAlreadyJoined: false,
   customerMemberships: [],
   campaignMembershipCount: 0,
   ...data,
@@ -121,6 +123,12 @@ describe("assertJoinAllowed", () => {
   it("rejects a cart with items outside the campaign scope", () => {
     expect(() => assertJoinAllowed(check({ itemsEligible: false }))).toThrow(
       conflict(GB_ITEMS_NOT_ELIGIBLE)
+    )
+  })
+
+  it("rejects a cart that was already used to join (owner 2026-10-26)", () => {
+    expect(() => assertJoinAllowed(check({ cartAlreadyJoined: true }))).toThrow(
+      conflict(GB_CART_ALREADY_JOINED)
     )
   })
 

@@ -2,6 +2,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 import { PROMOTION_NOT_COMBINABLE } from "../../../lib/promotion-exclusivity"
 import {
   GB_ALREADY_IN_OTHER_GROUP,
+  GB_CART_ALREADY_JOINED,
   GB_GROUP_FULL,
   GB_ITEMS_NOT_ELIGIBLE,
   GB_MAX_TOTAL_ORDERS_REACHED,
@@ -27,6 +28,8 @@ export type JoinCheck = {
   // code ของ promotion ที่ is_automatic=false บน cart
   cartManualCodes: string[]
   itemsEligible: boolean
+  // cart นี้เคยใช้ join แล้ว (metadata.group_buy_membership_id)
+  cartAlreadyJoined: boolean
   // membership ของลูกค้าในแคมเปญนี้ที่ไม่ใช่ cancelled
   customerMemberships: { group_id: string; units: number }[]
   // membership ทั้งแคมเปญที่ไม่ใช่ cancelled (ใช้เมื่อตั้ง max_total_orders)
@@ -49,6 +52,9 @@ export function assertJoinAllowed(c: JoinCheck): { isNewPerson: boolean } {
   }
   if (c.cartUnits <= 0) {
     throw new MedusaError(MedusaError.Types.INVALID_DATA, "The cart has no items")
+  }
+  if (c.cartAlreadyJoined) {
+    throw conflict(GB_CART_ALREADY_JOINED, "This cart was already used to join a group")
   }
   if (c.cartManualCodes.some((code) => code !== c.groupCode)) {
     throw conflict(

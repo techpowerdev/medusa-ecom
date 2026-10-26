@@ -515,7 +515,7 @@ medusaIntegrationTestRunner({
         expect(await cartPromotions(cartId)).toEqual({ promotions: [], adjustments: [] })
       })
 
-      it("a failure after the draft order is created rolls back: order canceled, code removed, locks released", async () => {
+      it("counter update fails after the membership insert → transaction rolls back (no membership), order canceled, code removed, locks released", async () => {
         const container = getContainer()
         const campaign = await createCampaign({ max_total_orders: 10 })
         const group = await poolGroup(campaign.id)
@@ -524,8 +524,8 @@ medusaIntegrationTestRunner({
         const groupBuy: GroupBuyModuleService = container.resolve(GROUP_BUY_MODULE)
 
         const spy = jest
-          .spyOn(groupBuy, "createGroupBuyMemberships")
-          .mockRejectedValueOnce(new Error("GB-3 membership boom"))
+          .spyOn(groupBuy, "updateGroupBuyGroups")
+          .mockRejectedValueOnce(new Error("GB-3 counter boom"))
         let res: Res
         try {
           res = await join(group.join_token, cartId, s)
@@ -541,6 +541,57 @@ medusaIntegrationTestRunner({
 
         // lock ทั้งสามถูกปล่อยโดย compensation — join ซ้ำได้ทันที
         expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+      })
+
+      // owner 2026-10-26: cart หนึ่งใบ join ได้ครั้งเดียว
+      it("joining again with the same cart → 409 GB_CART_ALREADY_JOINED, nothing new", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await shopper()
+        const cartId = await cartFor(s)
+        expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+
+        expectConflict(await join(group.join_token, cartId, s), "GB_CART_ALREADY_JOINED")
+        expect(await memberships({ group_id: group.id })).toHaveLength(1)
+        expect(await ordersOf(s.customerId)).toHaveLength(1)
+        expect(await progress(group.id)).toEqual([1, 1, 1])
+      })
+
+      // owner 2026-10-26: ส่วนลดกลุ่มใช้ผ่าน draft order เท่านั้น — cart ที่มี GB-* complete ไม่ได้
+      it("completing a cart that holds GB-* → 409 GB_CART_CHECKOUT_NOT_ALLOWED", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await shopper()
+        const cartId = await cartFor(s)
+        expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+
+        await api.post(
+          `/store/carts/${cartId}`,
+          {
+            email: "gb3-checkout@example.com",
+            shipping_address: {
+              first_name: "Somchai",
+              last_name: "Jaidee",
+              address_1: "1 Sukhumvit Rd",
+              city: "Bangkok",
+              postal_code: "10110",
+              country_code: "th",
+            },
+          },
+          s.headers
+        )
+        const { data } = await api.post("/store/payment-collections", { cart_id: cartId }, s.headers)
+        await api.post(
+          `/store/payment-collections/${data.payment_collection.id}/payment-sessions`,
+          { provider_id: "pp_system_default" },
+          s.headers
+        )
+
+        expectConflict(
+          await settle(api.post(`/store/carts/${cartId}/complete`, {}, s.headers)),
+          "GB_CART_CHECKOUT_NOT_ALLOWED"
+        )
+        expect((await ordersOf(s.customerId)).map((o) => o.is_draft_order)).toEqual([true])
       })
 
       it("AC-24: customer B joining with A's cart → 404 and nothing changes", async () => {

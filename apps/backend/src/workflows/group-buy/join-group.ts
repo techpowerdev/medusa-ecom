@@ -26,15 +26,15 @@ import { assertCartOwner } from "../../lib/store-ownership"
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import { GB_DISCOUNT_NOT_APPLIED } from "../../modules/group_buy/errors"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
+import type { AddGroupMembershipInput } from "../../modules/group_buy/service"
 import type { GroupBuyCampaignStatus } from "../../modules/group_buy/utils/campaign-status"
 import {
   assertJoinAllowed,
   cartAdjustmentsForOrder,
   itemMatchesTargetRules,
-  joinProgress,
   type TargetRule,
 } from "../../modules/group_buy/utils/join"
-import { isTargetReached, type GroupBuyTargetType } from "../../modules/group_buy/utils/target"
+import { isTargetReached } from "../../modules/group_buy/utils/target"
 
 export const GROUP_BUY_GROUP_SUCCEEDED = "group_buy.group.succeeded"
 export const ACTIVE_MEMBERSHIP_STATUSES = ["joined", "awaiting_payment", "paid"]
@@ -42,7 +42,10 @@ export const ACTIVE_MEMBERSHIP_STATUSES = ["joined", "awaiting_payment", "paid"]
 export const LOCK_TIMEOUT = 30
 export const LOCK_TTL = 60
 
-export type JoinGroupInput = { join_token: string; cart_id: string; customer_id: string }
+// owner 2026-10-26: cart ที่ใช้ join แล้วถูกทำเครื่องหมายใน metadata และ join ซ้ำไม่ได้ (GB_CART_ALREADY_JOINED)
+export const CART_MEMBERSHIP_KEY = "group_buy_membership_id"
+
+export type JoinGroupInput ={ join_token: string; cart_id: string; customer_id: string }
 
 const toDate = (value?: string | Date | null) => (value ? new Date(value) : null)
 
@@ -94,6 +97,7 @@ type CampaignForJoin = {
 type CartForJoin = {
   items?: ({ quantity: number } & Record<string, unknown>)[] | null
   promotions?: ({ code?: string | null; is_automatic?: boolean | null } | null)[] | null
+  metadata?: Record<string, unknown> | null
 }
 
 // ขั้น 1 (ภายใต้ lock, อ่านอย่างเดียว): เจ้าของ cart (CORE-12) → แคมเปญ/กลุ่ม → ข้อจำกัด (spec 04, ADR-009)
@@ -148,6 +152,7 @@ export const validateJoinStep = createStep(
         ...rules.map((r) => r.attribute),
         "promotions.code",
         "promotions.is_automatic",
+        "metadata",
       ],
       filters: { id: input.cart_id },
     })
@@ -187,6 +192,7 @@ export const validateJoinStep = createStep(
         .filter((p) => p?.is_automatic !== true)
         .map((p) => p?.code ?? ""),
       itemsEligible: items.every((item) => itemMatchesTargetRules(item, rules)),
+      cartAlreadyJoined: !!cart.metadata?.[CART_MEMBERSHIP_KEY],
       customerMemberships: customerMemberships.map((m) => ({ group_id: m.group_id, units: m.units })),
       campaignMembershipCount,
     })
@@ -385,56 +391,18 @@ export const freezeDraftOrderAdjustmentsStep = createStep(
   }
 )
 
-type GroupProgressRow = {
-  id: string
-  progress_orders: number
-  progress_units: number
-  progress_people: number
-  campaign: { target_type: GroupBuyTargetType; target_value: number }
-}
-
-const PROGRESS_FIELDS = ["id", "progress_orders", "progress_units", "progress_people"] as const
-
-// ขั้น 4 (ภายใต้ lock ของกลุ่ม): membership + ตัวนับ — compensation: ลบ membership และคืนตัวนับเดิม
+// ขั้น 4 (ภายใต้ lock ของกลุ่ม): membership + ตัวนับใน transaction เดียว (service) — compensation: ลบ membership
+// และคืนตัวนับเดิมใน transaction เดียว
 export const createGroupMembershipStep = createStep(
   "create-group-membership",
-  async (
-    input: {
-      id: string
-      group_id: string
-      campaign_id: string
-      customer_id: string
-      order_id: string
-      units: number
-      isNewPerson: boolean
-    },
-    { container }
-  ) => {
+  async (input: AddGroupMembershipInput, { container }) => {
     const service: GroupBuyModuleService = container.resolve(GROUP_BUY_MODULE)
-    const group = (await service.retrieveGroupBuyGroup(input.group_id, {
-      select: [...PROGRESS_FIELDS],
-      relations: ["campaign"],
-    })) as unknown as GroupProgressRow
-    const before = {
-      progress_orders: group.progress_orders,
-      progress_units: group.progress_units,
-      progress_people: group.progress_people,
-    }
-
-    const membership = await service.createGroupBuyMemberships({
-      id: input.id,
-      group_id: input.group_id,
-      campaign_id: input.campaign_id,
-      customer_id: input.customer_id,
-      order_id: input.order_id,
-      units: input.units,
-      joined_at: new Date(),
+    const { membership, before, progress } = await service.addGroupMembership(input)
+    const campaign = await service.retrieveGroupBuyCampaign(input.campaign_id, {
+      select: ["target_type", "target_value"],
     })
-    const after = joinProgress(before, input.units, input.isNewPerson)
-    await service.updateGroupBuyGroups({ id: input.group_id, ...after })
-
     return new StepResponse(
-      { membership, reached: isTargetReached(group.campaign, after) },
+      { membership, reached: isTargetReached(campaign, progress) },
       { membership_id: membership.id, group_id: input.group_id, before }
     )
   },
@@ -443,8 +411,27 @@ export const createGroupMembershipStep = createStep(
       return
     }
     const service: GroupBuyModuleService = container.resolve(GROUP_BUY_MODULE)
-    await service.deleteGroupBuyMemberships(undo.membership_id)
-    await service.updateGroupBuyGroups({ id: undo.group_id, ...undo.before })
+    await service.revertGroupMembership(undo)
+  }
+)
+
+// ทำเครื่องหมาย cart ว่าใช้ join แล้ว (owner 2026-10-26) — compensation คืน metadata เดิม
+export const markCartJoinedStep = createStep(
+  "mark-cart-joined",
+  async (input: { cart_id: string; membership_id: string }, { container }) => {
+    const cartModule = container.resolve(Modules.CART)
+    const { metadata } = await cartModule.retrieveCart(input.cart_id, { select: ["metadata"] })
+    await cartModule.updateCarts(input.cart_id, {
+      metadata: { ...(metadata ?? {}), [CART_MEMBERSHIP_KEY]: input.membership_id },
+    })
+    return new StepResponse(undefined, { cart_id: input.cart_id, metadata: metadata ?? {} })
+  },
+  async (undo, { container }) => {
+    if (!undo) {
+      return
+    }
+    // cart module 2.22.1 แทนที่ metadata ทั้งก้อน (ไม่ merge) — คืนค่าเดิมตรงๆ
+    await container.resolve(Modules.CART).updateCarts(undo.cart_id, { metadata: undo.metadata })
   }
 )
 
@@ -494,6 +481,12 @@ export const joinGroupWorkflow = createWorkflow("join-group", function (input: J
       order_id: order.id,
       units: checked.units,
       isNewPerson: checked.isNewPerson,
+    }))
+  )
+  markCartJoinedStep(
+    transform({ input, checked }, ({ input, checked }) => ({
+      cart_id: input.cart_id,
+      membership_id: checked.membership_id,
     }))
   )
 
