@@ -1,0 +1,37 @@
+# GB-6a test evidence — 2026-10-26 +0700
+# Spec: docs/spec/04-group-buying.md (GB-6 ส่วนแรก: หน้า "Group buying" รายการแคมเปญ + สร้างแคมเปญ), ADR-011
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, @medusajs/ui 4.2.6
+### Red (ก่อนเขียนโค้ด)
+src/admin/lib/__tests__/group-buy-form.unit.spec.ts → FAIL: Cannot find module '../group-buy-form'
+### Green — group-buy-form.unit.spec.ts (body ของฟอร์มตรวจกับ validator AdminCreateGroupBuyCampaign ของ GB-2a/GB-2c)
+PASS src/admin/lib/__tests__/group-buy-form.unit.spec.ts
+    ✓ builds a body that the admin create validator accepts
+    ✓ maps percentage discount and product scope onto an items application method
+    ✓ omits target rules when no product is given and sets THB for a fixed discount
+    ✓ reads date-time inputs as Thai time (ICT, UTC+7)
+    ✓ sends null start and optional limits as null/omitted when left blank
+    ✓ keeps the tax-inclusive default (spec 04 rule 12) and lets the admin turn it off
+    ✓ rejects an invalid name with a message instead of calling the API
+    ✓ rejects an invalid target value with a message instead of calling the API
+    ✓ rejects an invalid end date with a message instead of calling the API
+    ✓ rejects an invalid end after start with a message instead of calling the API
+    ✓ rejects an invalid discount value with a message instead of calling the API
+    ✓ rejects an invalid percentage above 100 with a message instead of calling the API
+    ✓ rejects an invalid team duration for team mode with a message instead of calling the API
+    ✓ rejects an invalid whole-number limits with a message instead of calling the API
+Tests:       14 passed, 14 total
+### pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 36 passed, 36 total
+Tests:       314 passed, 314 total
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 35 problems (0 errors, 35 warnings)   # warning เดิมของ storefront ไม่เกี่ยวกับ GB-6a
+### pnpm typecheck
+apps/backend typecheck: Done   (tsc --noEmit && tsc --noEmit -p src/admin/tsconfig.json)
+apps/storefront typecheck: Done
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully (admin extensions bundle)
+### integration
+ไม่เพิ่ม/แก้ API (ใช้ admin API ของ GB-2a) — ชุดเต็มรันใน CI
+### Admin UI
+ยังไม่มี screenshot — ให้ agent qa ตรวจและเก็บไว้ที่ docs/evidence/group-buying/GB-6a/
