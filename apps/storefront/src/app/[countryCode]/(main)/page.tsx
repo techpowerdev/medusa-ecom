@@ -6,7 +6,8 @@ import { listCollections } from "@lib/data/collections"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { toJsonLd } from "@lib/util/product-structured-data"
 import { hreflangAlternates } from "@lib/util/hreflang"
-import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
+import { STORE_CONTENT, STORE_NAME } from "@lib/store-content"
+import { getSiteOrigin, listCountryCodes } from "@lib/util/site"
 import { buildRegionsReturnPolicies } from "@lib/util/store-policies"
 
 export const dynamic = "force-static"
@@ -20,7 +21,7 @@ export async function generateMetadata(props: {
 
   return {
     title: `${STORE_NAME} | ร้านค้าออนไลน์`,
-    description: "เลือกซื้อสินค้าออนไลน์ ชำระเงินสะดวก จัดส่งทั่วประเทศไทย",
+    description: STORE_CONTENT.description,
     alternates: {
       canonical: `${origin}/${countryCode}`,
       languages: {

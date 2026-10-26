@@ -5,9 +5,8 @@ import { Customer, Headers, adminHeaders, createCustomer, publishableKey, varian
 import { HAS_STRIPE_SECRET, PROMPTPAY_PROVIDER, STRIPE_SECRET, retrievePaymentIntent } from "./support/stripe"
 
 // PAY-5: spec 06 กฎข้อ 7 / AC-11 — race ระหว่าง QR PromptPay หมดอายุกับการชำระสำเร็จ (Stripe test mode จริง + webhook)
-// ผลที่พบ: กรณี (b) — Medusa 2.22.1 ลบ session ได้แม้ PI `succeeded` (provider `deletePayment` ข้าม error ของ PI ที่ succeeded)
-// แล้ว webhook หา session ไม่เจอ → เงินถูกตัดแต่ไม่มี order → ADR-015 (accepted: A + D) แก้ใน PAY-6; ระหว่างนี้ test เป็น fixme
-// รันยืนยันปัญหาในเครื่องได้ด้วย E2E_RUN_KNOWN_ISSUES=1 (จะ fail จนกว่า PAY-6 merge)
+// PAY-5 พบกรณี (b) — Medusa 2.22.1 ลบ session ได้แม้ PI `succeeded` → ADR-015 (A + D)
+// PAY-6: guard บน POST /store/payment-collections/:id/payment-sessions ตอบ 409 PAYMENT_ALREADY_COMPLETED และไม่ลบ session เดิม
 
 const PRODUCT = "t-shirt"
 
@@ -98,10 +97,6 @@ test("AC-11: ชำระ PromptPay สำเร็จแล้วทันท�
   step,
 }) => {
   test.skip(!HAS_STRIPE_SECRET, "ต้องตั้ง STRIPE_API_KEY (sk_test_)")
-  test.fixme(
-    process.env.E2E_RUN_KNOWN_ISSUES !== "1",
-    "กรณี (b) ของกฎข้อ 7 — Medusa ลบ session แม้ PI succeeded; แก้ใน PAY-6 (guard + alert) ตาม ADR-015 (docs/decisions/ADR-015-promptpay-paid-session-deleted.md)"
-  )
   test.setTimeout(180_000)
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
@@ -125,8 +120,13 @@ test("AC-11: ชำระ PromptPay สำเร็จแล้วทันท�
       })
       .toBe("succeeded")
     const res = await newPromptPaySession(request, ctx.headers, ctx.collectionId)
-    // PAY-6: เมื่อมี guard ตาม ADR-015 แล้ว ให้เปลี่ยนเป็น expect(res.status()).toBe(409) + code PAYMENT_ALREADY_COMPLETED แทน console.log
-    console.log(`[PAY-5] create new session after PI succeeded → HTTP ${res.status()}`)
+    expect(res.status(), "guard ของ PAY-6 ไม่ให้แทน session ที่ชำระแล้ว").toBe(409)
+    expect((await res.json()).code).toBe("PAYMENT_ALREADY_COMPLETED")
+    const pc = await request.get(`${BACKEND_URL}/store/carts/${ctx.cartId}?fields=*payment_collection.payment_sessions`, {
+      headers: ctx.headers,
+    })
+    const sessions = (await pc.json()).cart.payment_collection.payment_sessions as { data: { id: string } }[]
+    expect(sessions.map((s) => s.data.id), "session เดิมยังอยู่").toEqual([ctx.intentId])
   })
 
   await step("Then ภายใน 60 วินาที มี order captured ที่อ้าง PI ที่ succeeded (ไม่มีเงินค้างโดยไม่มี order)", async () => {

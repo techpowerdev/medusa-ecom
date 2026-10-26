@@ -31,3 +31,11 @@ test:unit: Tests:       388 passed, 388 total
 pnpm lint && pnpm typecheck: ผ่าน (exit 0)
 pnpm --filter backend build: Backend/Frontend build completed successfully
 ชุด integration เต็มให้ CI รัน
+
+== หลัง merge origin/develop f36b811 (รวม #85 EV-10) — resolve conflict hunk test warn เลือกฝั่ง EV-11, นอก hunk คงของ #85 ==
+PASS integration-tests/http/evoucher-pool-guards.spec.ts (9.762 s)
+PASS integration-tests/http/evoucher-allocate.spec.ts (18.744 s)
+Test Suites: 2 passed, 2 total
+Tests:       26 passed, 26 total
+test:unit: Tests:       409 passed, 409 total
+pnpm lint && pnpm typecheck && build: ผ่าน
