@@ -36,7 +36,7 @@ export const resolveLeaveTargetStep = createStep(
   }
 )
 
-// ขั้น 1 (ภายใต้ lock ของกลุ่ม): ตรวจกฎข้อ 13 แล้ว membership → cancelled + ตัวนับใน transaction เดียว (service)
+// ขั้น 1 (ภายใต้ lock ของกลุ่ม): ตรวจกฎข้อ 13 (รวม ends_at <= now) แล้ว membership → cancelled + ตัวนับใน transaction เดียว (service)
 // compensation: membership กลับเป็น joined และคืนตัวนับเดิมใน transaction เดียว
 export const cancelGroupMembershipStep = createStep(
   "cancel-group-membership",
@@ -46,8 +46,13 @@ export const cancelGroupMembershipStep = createStep(
       { id: input.membership_id },
       { select: ["id", "customer_id", "status"] }
     )
-    const group = await service.retrieveGroupBuyGroup(input.group_id, { select: ["status"] })
-    assertLeaveAllowed({ membership, group, customer_id: input.customer_id })
+    const group = await service.retrieveGroupBuyGroup(input.group_id, { select: ["status", "ends_at"] })
+    assertLeaveAllowed({
+      now: new Date(),
+      membership,
+      group: { status: group.status, ends_at: new Date(group.ends_at) },
+      customer_id: input.customer_id,
+    })
 
     const active = await service.listGroupBuyMemberships(
       { group_id: input.group_id, customer_id: input.customer_id, status: ACTIVE_MEMBERSHIP_STATUSES } as any,

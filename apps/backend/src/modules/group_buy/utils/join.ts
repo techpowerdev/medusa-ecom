@@ -181,15 +181,22 @@ export const leaveProgress = (
 })
 
 // spec 04 กฎข้อ 13 (AC-25): ของคนอื่น/ไม่พบ → 404 ข้อความเดียวกัน (ADR-013); ออกได้เฉพาะ membership `joined` ในกลุ่ม `open`
+// ที่ยังไม่หมดเวลา — `ends_at <= now` (job ยังไม่ตัดสิน) ออกไม่ได้เหมือน join เพื่อไม่ให้เปลี่ยนผลของ deadline job
+// (ตีความกฎข้อ 13 โดย session หลัก 2026-10-26)
 export const assertLeaveAllowed = (input: {
+  now: Date
   membership: { customer_id: string; status: string } | null | undefined
-  group: { status: string }
+  group: { status: string; ends_at: Date }
   customer_id: string
 }) => {
   if (!input.membership || input.membership.customer_id !== input.customer_id) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, STORE_RESOURCE_NOT_FOUND)
   }
-  if (input.membership.status !== "joined" || input.group.status !== "open") {
+  if (
+    input.membership.status !== "joined" ||
+    input.group.status !== "open" ||
+    input.group.ends_at.getTime() <= input.now.getTime()
+  ) {
     throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "This membership can no longer leave the group")
   }
 }

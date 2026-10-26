@@ -759,6 +759,22 @@ medusaIntegrationTestRunner({
         expect(await progress(group.id)).toEqual([1, 1, 1])
       })
 
+      it("open group whose ends_at has passed (deadline job not run yet) → 400 and nothing changes", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const a = await shopper()
+        const m = (await joinWithNewCart(group.join_token, a)).data.membership
+        const groupBuy: GroupBuyModuleService = getContainer().resolve(GROUP_BUY_MODULE)
+        await groupBuy.updateGroupBuyGroups({ id: group.id, ends_at: new Date(Date.now() - 1000) })
+
+        const res = await leave(m.id, a)
+        expect(res.status).toEqual(400)
+        expect(res.data).toEqual(expect.objectContaining({ type: "not_allowed" }))
+        expect(await statusOf(m.id)).toEqual("joined")
+        expect(await orderStatus(a.customerId, m.order_id)).not.toEqual("canceled")
+        expect(await progress(group.id)).toEqual([1, 1, 1])
+      })
+
       it("AC-25: cancelling the draft order fails → membership back to joined, counters restored, lock released", async () => {
         const container = getContainer()
         const campaign = await createCampaign()

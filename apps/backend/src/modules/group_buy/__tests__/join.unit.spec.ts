@@ -251,7 +251,7 @@ describe("leaveProgress", () => {
 // spec 04 กฎข้อ 13 (AC-25): ของคนอื่น/ไม่พบ → 404; cancelled แล้วหรือกลุ่มไม่ open → 400
 describe("assertLeaveAllowed", () => {
   const membership = { customer_id: "cus_a", status: "joined" }
-  const group = { status: "open" }
+  const group = { status: "open", ends_at: new Date(now.getTime() + HOUR) }
   const errorOf = (fn: () => void) => {
     try {
       fn()
@@ -262,14 +262,14 @@ describe("assertLeaveAllowed", () => {
   }
 
   it("allows the owner of a joined membership in an open group", () => {
-    expect(() => assertLeaveAllowed({ membership, group, customer_id: "cus_a" })).not.toThrow()
+    expect(() => assertLeaveAllowed({ now, membership, group, customer_id: "cus_a" })).not.toThrow()
   })
 
   it("missing or someone else's membership → not_found", () => {
     expect(
-      errorOf(() => assertLeaveAllowed({ membership: undefined, group, customer_id: "cus_a" })).type
+      errorOf(() => assertLeaveAllowed({ now, membership: undefined, group, customer_id: "cus_a" })).type
     ).toEqual(MedusaError.Types.NOT_FOUND)
-    expect(errorOf(() => assertLeaveAllowed({ membership, group, customer_id: "cus_b" })).type).toEqual(
+    expect(errorOf(() => assertLeaveAllowed({ now, membership, group, customer_id: "cus_b" })).type).toEqual(
       MedusaError.Types.NOT_FOUND
     )
   })
@@ -277,10 +277,12 @@ describe("assertLeaveAllowed", () => {
   it.each([
     ["cancelled membership", { ...membership, status: "cancelled" }, group],
     ["awaiting_payment membership", { ...membership, status: "awaiting_payment" }, group],
-    ["succeeded group", membership, { status: "succeeded" }],
-    ["failed group", membership, { status: "failed" }],
+    ["succeeded group", membership, { ...group, status: "succeeded" }],
+    ["failed group", membership, { ...group, status: "failed" }],
+    // session หลัก 2026-10-26: ตีความกฎข้อ 13 — กลุ่ม open ที่หมดเวลาแล้ว (job ยังไม่ตัดสิน) ออกไม่ได้ เหมือน join
+    ["open group past its ends_at", membership, { ...group, ends_at: now }],
   ])("%s → not_allowed", (_, m, g) => {
-    expect(errorOf(() => assertLeaveAllowed({ membership: m, group: g, customer_id: "cus_a" })).type).toEqual(
+    expect(errorOf(() => assertLeaveAllowed({ now, membership: m, group: g, customer_id: "cus_a" })).type).toEqual(
       MedusaError.Types.NOT_ALLOWED
     )
   })
