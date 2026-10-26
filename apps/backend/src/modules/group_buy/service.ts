@@ -1,4 +1,9 @@
-import { InjectTransactionManager, MedusaContext, MedusaService } from "@medusajs/framework/utils"
+import {
+  InjectManager,
+  InjectTransactionManager,
+  MedusaContext,
+  MedusaService,
+} from "@medusajs/framework/utils"
 import type { Context } from "@medusajs/framework/types"
 import GroupBuyCampaign from "./models/group-buy-campaign"
 import GroupBuyGroup from "./models/group-buy-group"
@@ -29,8 +34,25 @@ class GroupBuyModuleService extends MedusaService({
   GroupBuyMembership,
 }) {
   // spec 04 joinGroupWorkflow ขั้น 4: membership + ตัวนับของกลุ่มใน transaction เดียว (ล้มกลางทาง → ไม่มีอะไรค้าง)
-  @InjectTransactionManager()
+  @InjectManager()
   async addGroupMembership(
+    input: AddGroupMembershipInput,
+    @MedusaContext() sharedContext: Context = {}
+  ) {
+    return await this.addGroupMembership_(input, sharedContext)
+  }
+
+  // compensation ของ addGroupMembership — ลบ membership และคืนตัวนับเดิมใน transaction เดียว
+  @InjectManager()
+  async revertGroupMembership(
+    input: { membership_id: string; group_id: string; before: GroupBuyProgress },
+    @MedusaContext() sharedContext: Context = {}
+  ) {
+    await this.revertGroupMembership_(input, sharedContext)
+  }
+
+  @InjectTransactionManager()
+  protected async addGroupMembership_(
     input: AddGroupMembershipInput,
     @MedusaContext() sharedContext: Context = {}
   ) {
@@ -46,9 +68,8 @@ class GroupBuyModuleService extends MedusaService({
     return { membership, before, progress }
   }
 
-  // compensation ของ addGroupMembership — ลบ membership และคืนตัวนับเดิมใน transaction เดียว
   @InjectTransactionManager()
-  async revertGroupMembership(
+  protected async revertGroupMembership_(
     input: { membership_id: string; group_id: string; before: GroupBuyProgress },
     @MedusaContext() sharedContext: Context = {}
   ) {

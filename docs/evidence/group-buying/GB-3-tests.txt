@@ -77,5 +77,20 @@ PASS integration-tests/http/group-buy-join.spec.ts
     ✓ AC-13: 8 concurrent joins across 2 groups, max_total_orders=5 → exactly 5
     ✓ AC-18: one customer joining G1 and G2 at the same time → exactly one succeeds
 Tests:       20 passed, 20 total
+### รอบแก้ตาม review/owner (2026-10-26)
+# 1) membership + ตัวนับใน transaction เดียว (addGroupMembership: @InjectManager → @InjectTransactionManager)
+# 2) completeCartWorkflow ปฏิเสธ cart ที่มี GB-* → 409 GB_CART_CHECKOUT_NOT_ALLOWED
+# 3) cart ที่ใช้ join แล้ว → 409 GB_CART_ALREADY_JOINED
+Red: join.unit "rejects a cart that was already used to join" FAIL ก่อนเพิ่ม cartAlreadyJoined
+     integration "creates a draft order…" FAIL ครั้งแรกหลังย้ายเข้า transaction (create ใน transaction ไม่คืน status default) → ตั้ง status "joined" ตรงๆ
+test:unit (หลังแก้): Test Suites: 33 passed / Tests: 293 passed
+group-buy-join.spec.ts + promotion-exclusivity.spec.ts (ก่อน merge develop): Tests: 42 passed, 42 total
+  ✓ counter update fails after the membership insert → transaction rolls back (no membership), order canceled, code removed, locks released
+  ✓ joining again with the same cart → 409 GB_CART_ALREADY_JOINED, nothing new
+  ✓ completing a cart that holds GB-* → 409 GB_CART_CHECKOUT_NOT_ALLOWED
+  (promotion-exclusivity: "GB-* + another code → complete fails PROMOTION_NOT_COMBINABLE" ยังผ่าน — ตรวจ GB-* หลัง exclusivity)
+  ✓ AC-8 / AC-13 / AC-18 concurrent ยังผ่าน
+หลัง merge origin/develop (586a609) + แยก @InjectManager/@InjectTransactionManager:
+  group-buy-join.spec.ts Tests: 22 passed, 22 total; tsc ผ่าน; backend lint No lint issues found; build สำเร็จ
 ### test:integration:http — integration-tests/http/group-buy-groups.spec.ts (GB-2b/2c, กันถดถอยจาก refactor)
 Tests:       18 passed, 18 total
