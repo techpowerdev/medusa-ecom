@@ -9,9 +9,11 @@ import {
 } from "../errors"
 import {
   assertJoinAllowed,
+  assertLeaveAllowed,
   cartAdjustmentsForOrder,
   itemMatchesTargetRules,
   joinProgress,
+  leaveProgress,
   type JoinCheck,
 } from "../utils/join"
 
@@ -225,5 +227,61 @@ describe("joinProgress", () => {
       progress_units: 4,
       progress_people: 1,
     })
+  })
+})
+
+// spec 04 leaveGroupWorkflow (AC-7): ลบออเดอร์และ units; people −1 เฉพาะ membership สุดท้ายของลูกค้าในกลุ่ม
+describe("leaveProgress", () => {
+  const progress = { progress_orders: 2, progress_units: 3, progress_people: 1 }
+
+  it("leave removes an order and its units; people only for the last membership", () => {
+    expect(leaveProgress(progress, 2, false)).toEqual({
+      progress_orders: 1,
+      progress_units: 1,
+      progress_people: 1,
+    })
+    expect(leaveProgress(progress, 1, true)).toEqual({
+      progress_orders: 1,
+      progress_units: 2,
+      progress_people: 0,
+    })
+  })
+})
+
+// spec 04 กฎข้อ 13 (AC-25): ของคนอื่น/ไม่พบ → 404; cancelled แล้วหรือกลุ่มไม่ open → 400
+describe("assertLeaveAllowed", () => {
+  const membership = { customer_id: "cus_a", status: "joined" }
+  const group = { status: "open" }
+  const errorOf = (fn: () => void) => {
+    try {
+      fn()
+    } catch (e) {
+      return e as MedusaError
+    }
+    throw new Error("expected an error")
+  }
+
+  it("allows the owner of a joined membership in an open group", () => {
+    expect(() => assertLeaveAllowed({ membership, group, customer_id: "cus_a" })).not.toThrow()
+  })
+
+  it("missing or someone else's membership → not_found", () => {
+    expect(
+      errorOf(() => assertLeaveAllowed({ membership: undefined, group, customer_id: "cus_a" })).type
+    ).toEqual(MedusaError.Types.NOT_FOUND)
+    expect(errorOf(() => assertLeaveAllowed({ membership, group, customer_id: "cus_b" })).type).toEqual(
+      MedusaError.Types.NOT_FOUND
+    )
+  })
+
+  it.each([
+    ["cancelled membership", { ...membership, status: "cancelled" }, group],
+    ["awaiting_payment membership", { ...membership, status: "awaiting_payment" }, group],
+    ["succeeded group", membership, { status: "succeeded" }],
+    ["failed group", membership, { status: "failed" }],
+  ])("%s → not_allowed", (_, m, g) => {
+    expect(errorOf(() => assertLeaveAllowed({ membership: m, group: g, customer_id: "cus_a" })).type).toEqual(
+      MedusaError.Types.NOT_ALLOWED
+    )
   })
 })

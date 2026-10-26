@@ -15,4 +15,9 @@ export const storeGroupBuyMiddlewares: MiddlewareRoute[] = [
     matcher: "/store/group-buy/groups/:token/join",
     middlewares: [customerAuth, validateAndTransformBody(StoreJoinGroupBuyGroup)],
   },
+  {
+    method: ["POST"],
+    matcher: "/store/group-buy/memberships/:id/leave",
+    middlewares: [customerAuth],
+  },
 ]

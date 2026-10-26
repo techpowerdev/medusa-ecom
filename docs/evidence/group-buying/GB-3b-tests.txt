@@ -1,0 +1,68 @@
+# GB-3b test evidence — 2026-10-26 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose
+# base: origin/develop (f2e3f08 หลัง GB-4 #89) — integration ในเครื่องรันเฉพาะ group-buy-join.spec.ts (ชุดเต็มให้ CI รัน)
+# ขอบเขต: leaveGroupWorkflow + POST /store/group-buy/memberships/:id/leave (กฎข้อ 13; AC-7, AC-15 ส่วน leave, AC-17 หลัง leave, AC-25)
+#         + nit review #68: prettier join-group.ts บรรทัด 45-46, guard groups[0]/campaigns[0] → NOT_FOUND
+### Red (ก่อนเขียนโค้ด)
+join.unit.spec.ts      → 7 failed (leaveProgress / assertLeaveAllowed ยังไม่มี)
+group-buy-join.spec.ts -t 'GB-3b|without auth|AC-17' → 7 failed: route leave ยังไม่มี (Expected 200/401, Received 404)
+      ✕ create / join / leave without auth → 401 (265 ms)
+      ✕ AC-17: max_units_per_person=2 counts non-cancelled memberships only (1420 ms)
+      ✕ AC-7: leaving one of two memberships keeps people; the last one decrements people; then join again (888 ms)
+      ✕ AC-7: after leaving every membership the customer can join another group of the campaign (763 ms)
+      ✕ AC-25: someone else's / unknown membership → 404; leaving twice → 400 without double decrement (744 ms)
+      ✕ AC-25: group no longer open → 400 and nothing changes (624 ms)
+      ✕ AC-25: cancelling the draft order fails → membership back to joined, counters restored, lock released (653 ms)
+guard (stash เฉพาะ join-group.ts) → campaign row gone ... Expected: 404, Received: 500 (อ่าน property ของ undefined)
+### pnpm lint
+backend: No lint issues; storefront: 0 errors, 34 warnings เดิม (ไม่เกี่ยวกับ GB-3b)
+### pnpm typecheck
+apps/backend: Done / apps/storefront: Done
+### pnpm --filter backend build
+info:    Backend build completed successfully (5.74s)
+info:    Frontend build completed successfully (16.12s)
+### pnpm --filter backend test:unit
+Test Suites: 46 passed, 46 total
+Tests:       446 passed, 446 total
+# เฉพาะส่วนที่ GB-3b เพิ่มใน src/modules/group_buy/__tests__/join.unit.spec.ts:
+  leaveProgress
+    ✓ leave removes an order and its units; people only for the last membership
+  assertLeaveAllowed
+    ✓ allows the owner of a joined membership in an open group
+    ✓ missing or someone else's membership → not_found
+    ✓ cancelled membership → not_allowed
+    ✓ awaiting_payment membership → not_allowed
+    ✓ succeeded group → not_allowed
+    ✓ failed group → not_allowed
+### TEST_TYPE=integration:http jest integration-tests/http/group-buy-join.spec.ts
+      ✓ group_mode=pool → 403 (375 ms)
+      ✓ group_mode=both → 201 team group owned by the caller with its own join_token and ends_at (373 ms)
+      ✓ does not accept kind from the body → 400 (262 ms)
+      ✓ create / join / leave without auth → 401 (162 ms)
+      ✓ creates a draft order with the GB- discount, a membership and counters (656 ms)
+      ✓ unknown token → 404 (392 ms)
+      ✓ cart with items outside the campaign → 409 GB_ITEMS_NOT_ELIGIBLE (489 ms)
+      ✓ AC-4: max_people_per_group=2 → 3rd person 409; 2nd order of A 201 and progress_people stays 2 (1710 ms)
+      ✓ AC-5: max_units_per_person=1 and qty 2 → 409 (508 ms)
+      ✓ AC-17: max_units_per_person=2 counts non-cancelled memberships only (1860 ms)
+      ✓ AC-13: max_total_orders=5 across 2 groups → 6th join (repeat order too) 409 (2521 ms)
+      ✓ AC-18: a member of G1 joining G2 of the same campaign → 409 GB_ALREADY_IN_OTHER_GROUP (901 ms)
+      ✓ AC-14: SAVE10 on the cart → 409; SAVE10 after joining → 409; flash cart joins with GB- only (1150 ms)
+      ✓ AC-23: Medusa campaign starts_at moved to the future → 400 not_allowed, nothing left behind (614 ms)
+      ✓ AC-23: GB- promotion inactive → 400 GB_DISCOUNT_NOT_APPLIED and the code does not stay on the cart (724 ms)
+      ✓ counter update fails after the membership insert → transaction rolls back (no membership), order canceled, code removed, locks released (830 ms)
+      ✓ AC-27: joining again with the same cart (same or other group) → 409 GB_CART_ALREADY_JOINED; a new cart → 201 (1015 ms)
+      ✓ campaign row gone while the group remains → 404 instead of a crash (review #68) (439 ms)
+      ✓ AC-24: customer B joining with A's cart → 404 and nothing changes (693 ms)
+        ✓ after joining → 400 not_allowed GB_CART_NOT_COMPLETABLE, cart not completed (1042 ms)
+        ✓ GB-<token> added through Medusa's promotions route without joining → 400 as well (893 ms)
+      ✓ AC-7: leaving one of two memberships keeps people; the last one decrements people; then join again (1420 ms)
+      ✓ AC-7: after leaving every membership the customer can join another group of the campaign (1224 ms)
+      ✓ AC-25: someone else's / unknown membership → 404; leaving twice → 400 without double decrement (1229 ms)
+      ✓ AC-25: group no longer open → 400 and nothing changes (770 ms)
+      ✓ AC-25: cancelling the draft order fails → membership back to joined, counters restored, lock released (941 ms)
+      ✓ AC-8: 20 concurrent joins, max_people_per_group=5 → exactly 5 people (7037 ms)
+      ✓ AC-13: 8 concurrent joins across 2 groups, max_total_orders=5 → exactly 5 (2928 ms)
+      ✓ AC-18: one customer joining G1 and G2 at the same time → exactly one succeeds (785 ms)
+Tests:       29 passed, 29 total
+Time:        40.606 s

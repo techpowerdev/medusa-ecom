@@ -42,7 +42,7 @@ const settle = (request: Promise<{ status: number; data: any }>): Promise<Res> =
     }
   )
 
-// GB-3: joinGroupWorkflow + store POST /store/group-buy/groups และ join (spec 04) — leave อยู่ใน GB-3b
+// GB-3: joinGroupWorkflow + store POST /store/group-buy/groups และ join; GB-3b: leave (spec 04)
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let pk: string
@@ -208,6 +208,15 @@ medusaIntegrationTestRunner({
     const joinWithNewCart = async (token: string, s: Shopper, items?: Item[]) =>
       join(token, await cartFor(s, items), s)
 
+    const leave = (membershipId: string, s?: Shopper) =>
+      settle(
+        api.post(
+          `/store/group-buy/memberships/${membershipId}/leave`,
+          {},
+          s ? s.headers : storeHeadersFor(pk)
+        )
+      )
+
     const expectConflict = (res: Res, code: string) => {
       expect(res.status).toEqual(409)
       expect(res.data).toEqual({ type: "conflict", code, message: expect.stringMatching(/\S/) })
@@ -273,7 +282,7 @@ medusaIntegrationTestRunner({
         expect(res.status).toEqual(400)
       })
 
-      it("create / join without auth → 401", async () => {
+      it("create / join / leave without auth → 401", async () => {
         const campaign = await createCampaign()
         const group = await poolGroup(campaign.id)
         const anon = storeHeadersFor(pk)
@@ -281,6 +290,7 @@ medusaIntegrationTestRunner({
           (await settle(api.post("/store/group-buy/groups", { campaign_id: campaign.id }, anon))).status
         ).toEqual(401)
         expect((await join(group.join_token, "cart_x")).status).toEqual(401)
+        expect((await leave("gbmem_x")).status).toEqual(401)
       })
     })
 
@@ -385,9 +395,8 @@ medusaIntegrationTestRunner({
         expect((await joinWithNewCart(group.join_token, s)).status).toEqual(201)
         expectConflict(await joinWithNewCart(group.join_token, s), "GB_UNITS_LIMIT_EXCEEDED")
 
-        // membership ที่ cancelled ไม่นับ (route leave มาใน GB-3b — ตั้งสถานะผ่าน module แทน)
-        const groupBuy: GroupBuyModuleService = getContainer().resolve(GROUP_BUY_MODULE)
-        await groupBuy.updateGroupBuyMemberships([{ id: first.data.membership.id, status: "cancelled" }])
+        // หลัง leave membership แรก (GB-3b) units ของ membership ที่ cancelled ไม่นับ
+        expect((await leave(first.data.membership.id, s)).status).toEqual(200)
         expect((await joinWithNewCart(group.join_token, s)).status).toEqual(201)
       })
 
@@ -640,6 +649,20 @@ medusaIntegrationTestRunner({
         })
       })
 
+      it("campaign row gone while the group remains → 404 instead of a crash (review #68)", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await shopper()
+        const cartId = await cartFor(s)
+        const groupBuy: GroupBuyModuleService = getContainer().resolve(GROUP_BUY_MODULE)
+        await groupBuy.softDeleteGroupBuyCampaigns(campaign.id)
+
+        const res = await join(group.join_token, cartId, s)
+        expect(res.status).toEqual(404)
+        expect(await ordersOf(s.customerId)).toEqual([])
+        expect(await cartPromotions(cartId)).toEqual({ promotions: [], adjustments: [] })
+      })
+
       it("AC-24: customer B joining with A's cart → 404 and nothing changes", async () => {
         const campaign = await createCampaign()
         const group = await poolGroup(campaign.id)
@@ -654,6 +677,111 @@ medusaIntegrationTestRunner({
         expect(await ordersOf(b.customerId)).toEqual([])
         expect(await progress(group.id)).toEqual([0, 0, 0])
         expect(await cartPromotions(cartA)).toEqual(before)
+      })
+    })
+
+    describe("POST /store/group-buy/memberships/:id/leave (GB-3b)", () => {
+      const orderStatus = async (customerId: string, orderId: string) =>
+        (await ordersOf(customerId)).find((o) => o.id === orderId)?.status
+      const statusOf = async (id: string) => (await memberships({ id }))[0]?.status
+
+      it("AC-7: leaving one of two memberships keeps people; the last one decrements people; then join again", async () => {
+        const campaign = await createCampaign()
+        const g1 = await poolGroup(campaign.id)
+        const a = await shopper()
+        const m1 = (await joinWithNewCart(g1.join_token, a)).data.membership
+        const m2 = (await joinWithNewCart(g1.join_token, a)).data.membership
+        expect(await progress(g1.id)).toEqual([2, 2, 1])
+
+        const res = await leave(m1.id, a)
+        expect(res.status).toEqual(200)
+        expect(res.data.membership).toEqual(expect.objectContaining({ id: m1.id, status: "cancelled" }))
+        expect(await progress(g1.id)).toEqual([1, 1, 1])
+        expect(await orderStatus(a.customerId, m1.order_id)).toEqual("canceled")
+        expect(await orderStatus(a.customerId, m2.order_id)).not.toEqual("canceled")
+
+        expect((await leave(m2.id, a)).status).toEqual(200)
+        expect(await progress(g1.id)).toEqual([0, 0, 0])
+
+        expect((await joinWithNewCart(g1.join_token, a)).status).toEqual(201)
+        expect(await progress(g1.id)).toEqual([1, 1, 1])
+      })
+
+      it("AC-7: after leaving every membership the customer can join another group of the campaign", async () => {
+        const campaign = await createCampaign()
+        const [g1, g2] = [await poolGroup(campaign.id), await poolGroup(campaign.id)]
+        const a = await shopper()
+        const m = (await joinWithNewCart(g1.join_token, a)).data.membership
+        expectConflict(await joinWithNewCart(g2.join_token, a), "GB_ALREADY_IN_OTHER_GROUP")
+
+        expect((await leave(m.id, a)).status).toEqual(200)
+        expect((await joinWithNewCart(g2.join_token, a)).status).toEqual(201)
+        expect(await progress(g2.id)).toEqual([1, 1, 1])
+      })
+
+      it("AC-25: someone else's / unknown membership → 404; leaving twice → 400 without double decrement", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const [a, b] = [await shopper(), await shopper()]
+        const m = (await joinWithNewCart(group.join_token, a)).data.membership
+
+        expect((await leave(m.id, b)).status).toEqual(404)
+        expect((await leave("gbmem_missing", a)).status).toEqual(404)
+        expect(await statusOf(m.id)).toEqual("joined")
+        expect(await orderStatus(a.customerId, m.order_id)).not.toEqual("canceled")
+        expect(await progress(group.id)).toEqual([1, 1, 1])
+
+        const res = await leave(m.id, a)
+        expect(res.status).toEqual(200)
+        expect(await statusOf(m.id)).toEqual("cancelled")
+        expect(await orderStatus(a.customerId, m.order_id)).toEqual("canceled")
+        expect(await progress(group.id)).toEqual([0, 0, 0])
+
+        const again = await leave(m.id, a)
+        expect(again.status).toEqual(400)
+        expect(again.data).toEqual(expect.objectContaining({ type: "not_allowed" }))
+        expect(await progress(group.id)).toEqual([0, 0, 0])
+      })
+
+      it("AC-25: group no longer open → 400 and nothing changes", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const a = await shopper()
+        const m = (await joinWithNewCart(group.join_token, a)).data.membership
+        const groupBuy: GroupBuyModuleService = getContainer().resolve(GROUP_BUY_MODULE)
+        await groupBuy.updateGroupBuyGroups({ id: group.id, status: "succeeded" })
+
+        const res = await leave(m.id, a)
+        expect(res.status).toEqual(400)
+        expect(res.data).toEqual(expect.objectContaining({ type: "not_allowed" }))
+        expect(await statusOf(m.id)).toEqual("joined")
+        expect(await orderStatus(a.customerId, m.order_id)).not.toEqual("canceled")
+        expect(await progress(group.id)).toEqual([1, 1, 1])
+      })
+
+      it("AC-25: cancelling the draft order fails → membership back to joined, counters restored, lock released", async () => {
+        const container = getContainer()
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const a = await shopper()
+        const m = (await joinWithNewCart(group.join_token, a)).data.membership
+        const orderModule = container.resolve(Modules.ORDER)
+
+        const spy = jest.spyOn(orderModule, "cancel").mockRejectedValueOnce(new Error("GB-3b cancel boom"))
+        let res: Res
+        try {
+          res = await leave(m.id, a)
+        } finally {
+          spy.mockRestore()
+        }
+        expect(res.status).toEqual(500)
+        expect(await statusOf(m.id)).toEqual("joined")
+        expect(await orderStatus(a.customerId, m.order_id)).not.toEqual("canceled")
+        expect(await progress(group.id)).toEqual([1, 1, 1])
+
+        // compensation ปล่อย lock ของกลุ่มแล้ว — leave ซ้ำได้ทันที
+        expect((await leave(m.id, a)).status).toEqual(200)
+        expect(await progress(group.id)).toEqual([0, 0, 0])
       })
     })
 
