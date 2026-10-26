@@ -1,5 +1,11 @@
 import { expect, test } from "./support/fixtures"
-import { STOREFRONT_COUNTRY as CC } from "./support/medusa"
+import {
+  STOREFRONT_COUNTRY as CC,
+  adminHeaders,
+  createCustomer,
+  publishableKey,
+  signInAs,
+} from "./support/medusa"
 import { THAI } from "./support/thai-text"
 
 // CORE-18: spec 01 กฎข้อ 33, AC-61 (+ AC-67 ส่วน PDP แสดงปกติ)
@@ -76,5 +82,39 @@ test("AC-61, AC-67: ไม่มีข้อความ/ลิงก์ขอ�
     await page.getByTestId("hero-cta").click()
     await expect(page).toHaveURL(new RegExp(`/${CC}/store`))
     await expect(page.getByTestId("products-list")).toBeVisible()
+  })
+})
+
+test("AC-61, AC-74: title/description ของหน้า login และ profile ใช้ชื่อร้าน ไม่มีชื่อ starter", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  const head = async () => ({
+    title: await page.title(),
+    description:
+      (await page.locator('meta[name="description"]').first().getAttribute("content")) ?? "",
+  })
+
+  await step("login (ไม่ล็อกอิน)", async () => {
+    await page.goto(`/${CC}/account`)
+    await expect(page.getByTestId("login-page")).toBeVisible()
+    const storeName = ((await page.getByTestId("nav-store-link").textContent()) ?? "").trim()
+    const { title, description } = await head()
+    expect(`${title} ${description}`).not.toMatch(STARTER_TEXT)
+    expect(description).toContain(storeName)
+  })
+
+  await step("profile (ล็อกอินแล้ว)", async () => {
+    const pk = await publishableKey(request, await adminHeaders(request))
+    await signInAs(context, baseURL!, await createCustomer(request, pk))
+    await page.goto(`/${CC}/account/profile`)
+    await expect(page.getByTestId("profile-page-wrapper")).toBeVisible()
+    const storeName = ((await page.getByTestId("nav-store-link").textContent()) ?? "").trim()
+    const { title, description } = await head()
+    expect(`${title} ${description}`).not.toMatch(STARTER_TEXT)
+    expect(description).toContain(storeName)
   })
 })

@@ -12,22 +12,23 @@
 ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
       Tests  7 failed (7)
 
-## Green: vitest (pnpm --filter storefront test:unit)
+## Green: vitest (pnpm --filter storefront test:unit) — รวม AC-74
  Test Files  12 passed (12)
-      Tests  115 passed (115)
+      Tests  120 passed (120)
 
 ## Playwright project unit
 
   27 passed (539ms)
 
-## e2e (chromium, backend seed ในเครื่อง; หลังแก้ตาม review #80: เพิ่ม step หน้าสมัครสมาชิก + footer-copyright)
-  ✓  1 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (3.4s)
-  ✓  2 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (3.8s)
-  ✓  4 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (920ms)
-  ✓  5 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (1.1s)
-  ✓  6 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (2.3s)
-  ✓  3 [chromium] › e2e/store-content.spec.ts:40:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (7.6s)
-  6 passed (9.2s)
+## e2e (chromium, backend seed ในเครื่อง; รวมแก้ตาม review #80 + AC-74: หน้าสมัคร, footer-copyright, title/description login/profile)
+  ✓  2 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (3.3s)
+  ✓  4 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (550ms)
+  ✓  1 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (4.2s)
+  ✓  5 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (571ms)
+  ✓  3 [chromium] › e2e/store-content.spec.ts:46:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (5.3s)
+  ✓  6 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (741ms)
+  ✓  7 [chromium] › e2e/store-content.spec.ts:88:5 › AC-61, AC-74: title/description ของหน้า login และ profile ใช้ชื่อร้าน ไม่มีชื่อ starter (880ms)
+  7 passed (7.1s)
 
 ## lint / typecheck / build
 apps/storefront lint: ✖ 35 problems (0 errors, 35 warnings)

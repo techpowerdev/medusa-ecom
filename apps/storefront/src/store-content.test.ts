@@ -50,6 +50,23 @@ describe("ไม่มีข้อความ/ลิงก์โฆษณาข
   })
 })
 
+describe("ชื่อร้านในหน้า account และ site.ts มาจาก store-content (AC-74)", () => {
+  it.each([
+    "modules/account/components/register/index.tsx",
+    "app/[countryCode]/(main)/account/@login/page.tsx",
+    "app/[countryCode]/(main)/account/@dashboard/profile/page.tsx",
+    "lib/util/site.ts",
+  ])("%s ไม่มี Medusa Store", (file) => {
+    expect(fs.readFileSync(path.join(SRC, file), "utf8")).not.toContain("Medusa Store")
+  })
+
+  it("site.ts export STORE_NAME จาก store-content", () => {
+    expect(fs.readFileSync(path.join(SRC, "lib/util/site.ts"), "utf8")).toMatch(
+      /export \{ STORE_NAME \} from "@lib\/store-content"/
+    )
+  })
+})
+
 describe("เนื้อหาร้านรวมไว้ที่ src/lib/store-content.ts (AC-61)", () => {
   it("มี TODO(owner-content) ให้ owner แก้", () => {
     const content = fs.readFileSync(path.join(SRC, "lib/store-content.ts"), "utf8")
