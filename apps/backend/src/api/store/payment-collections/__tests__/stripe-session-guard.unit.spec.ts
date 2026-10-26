@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
-import { PAYMENT_ALREADY_COMPLETED, guardPaidStripeSession } from "../stripe-session-guard"
+import { PAYMENT_ALREADY_COMPLETED } from "../errors"
+import { guardPaidStripeSession } from "../stripe-session-guard"
 
 // PAY-6 (spec 06 กฎข้อ 7A, AC-13 a–f, ADR-015 A + ภาคผนวก): guard ด้วย mock payment module
 type Session = {

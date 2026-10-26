@@ -302,6 +302,8 @@ medusaIntegrationTestRunner({
         piStatus = "succeeded"
 
         const [guard] = await Promise.allSettled([newSession(collectionId, PROMPTPAY), captured(session)])
+        // spec 06 หมายเหตุ (รอบ 6): ฝั่งที่แพ้ race อาจได้ 409 หรือ 5xx (unique violation ของ
+        // IDX_payment_payment_session_id_unique) — ถือว่าผ่านทั้งคู่ ขอแค่ไม่ใช่ 2xx และมี payment แถวเดียว
         expect(guard.status).toEqual("rejected")
         await captured(session).catch(() => undefined)
 
