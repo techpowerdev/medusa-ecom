@@ -14,6 +14,7 @@ import {
   setCartId,
 } from "./cookies"
 import { getRegion } from "./regions"
+import { syncCartAffiliateToken } from "./affiliate"
 import { getLocale } from "./locale-actions"
 import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
 import {
@@ -91,6 +92,9 @@ export async function getOrSetCart(countryCode: string) {
     const cartCacheTag = await getCacheTag("carts")
     revalidateTag(cartCacheTag, { expire: 0 })
   }
+
+  // AF-2: cookie `aff` → cart metadata.affiliate_token
+  await syncCartAffiliateToken(cart.id, headers)
 
   return cart
 }
