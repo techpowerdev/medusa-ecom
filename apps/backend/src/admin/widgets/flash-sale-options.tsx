@@ -13,7 +13,7 @@ import {
   toast,
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { sdk } from "../lib/client"
 
 // FS-5 (spec 03): "Flash sale options" บนหน้า Campaign detail
@@ -76,6 +76,8 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
   const queryKey = ["flash-sale-config", campaign.id]
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<FormState>(toForm(null))
+  // FS-10 (กฎข้อ 15): คลิกซ้ำใน tick เดียวยังเห็น isPending เดิม จึงกันด้วย ref ที่ตั้งแบบ synchronous ก่อน mutate
+  const inFlight = useRef(false)
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -99,6 +101,9 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
     onError: (error: Error) => {
       toast.error(error.message || "Failed to save flash sale options")
     },
+    onSettled: () => {
+      inFlight.current = false
+    },
   })
 
   const perCustomerLimit = parseLimit(form.per_customer_limit)
@@ -113,9 +118,10 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
   }
 
   const handleSave = () => {
-    if (invalid || save.isPending) {
+    if (invalid || inFlight.current) {
       return
     }
+    inFlight.current = true
     save.mutate({
       per_customer_limit: perCustomerLimit,
       total_cap: totalCap,
