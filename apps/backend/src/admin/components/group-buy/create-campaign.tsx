@@ -2,7 +2,8 @@ import { Button, FocusModal, Heading, Input, Label, Select, Switch, Text, toast 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useRef, useState } from "react"
 import { groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
-import { CampaignForm, emptyCampaignForm, toCampaignBody } from "../../lib/group-buy-form"
+import { CampaignForm, emptyCampaignForm, isEndsAtPast, toCampaignBody } from "../../lib/group-buy-form"
+import { ProductPicker } from "./product-picker"
 
 type TextKey = {
   [K in keyof CampaignForm]: CampaignForm[K] extends string ? K : never
@@ -20,17 +21,17 @@ const INPUTS: { key: TextKey; label: string; type?: string; hint?: string }[] = 
   { key: "starts_at", label: "Starts at (ICT)", type: "datetime-local" },
   { key: "ends_at", label: "Ends at (ICT) *", type: "datetime-local" },
   { key: "discount_value", label: "Discount value *", type: "number", hint: "Percent, or THB for fixed" },
-  { key: "max_quantity", label: "Max discounted quantity per order *", type: "number" },
+  {
+    key: "max_quantity",
+    label: "Max discounted quantity per order *",
+    type: "number",
+    hint: "Must be at least max units per person, or members join with units the discount does not cover",
+  },
   { key: "team_duration_hours", label: "Team duration (hours)", type: "number", hint: "Required for team/both" },
   { key: "max_total_orders", label: "Max total orders", type: "number" },
   { key: "max_units_per_person", label: "Max units per person", type: "number" },
   { key: "max_people_per_group", label: "Max people per group", type: "number" },
   { key: "pay_within_hours", label: "Pay within (hours) *", type: "number" },
-  {
-    key: "product_ids",
-    label: "Product IDs (comma separated)",
-    hint: "Empty = all products. Scope can be refined later on the template promotion.",
-  },
 ]
 
 // GB-6a: สร้างแคมเปญ (status draft) — ส่วนลด/scope ไปอยู่ที่ promotion ต้นแบบ (ADR-011)
@@ -38,9 +39,14 @@ export const CreateCampaign = () => {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyCampaignForm())
+  // GB-6b2 กฎข้อ 15: error ผูกกับช่อง max_quantity (ล้างเมื่อแก้ฟอร์ม)
+  const [maxQuantityError, setMaxQuantityError] = useState<string | null>(null)
   // GB-6a D1: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างคลิกใน task เดียว
   const inFlight = useRef(false)
-  const set = (patch: Partial<CampaignForm>) => setForm((f) => ({ ...f, ...patch }))
+  const set = (patch: Partial<CampaignForm>) => {
+    setMaxQuantityError(null)
+    setForm((f) => ({ ...f, ...patch }))
+  }
 
   const create = useMutation({
     mutationFn: groupBuyApi.createCampaign,
@@ -62,7 +68,11 @@ export const CreateCampaign = () => {
     }
     const result = toCampaignBody(form)
     if ("error" in result) {
-      toast.error(result.error)
+      if (result.field === "max_quantity") {
+        setMaxQuantityError(result.error)
+      } else {
+        toast.error(result.error)
+      }
       return
     }
     inFlight.current = true
@@ -71,19 +81,26 @@ export const CreateCampaign = () => {
 
   const openModal = () => {
     setForm(emptyCampaignForm())
+    setMaxQuantityError(null)
     setOpen(true)
   }
 
   return (
     <>
-      <Button size="small" variant="secondary" onClick={openModal}>
+      <Button size="small" variant="secondary" onClick={openModal} data-testid="gb-campaign-create">
         Create campaign
       </Button>
       <FocusModal open={open} onOpenChange={(o) => !inFlight.current && setOpen(o)}>
         <FocusModal.Content>
           <FocusModal.Header>
             <div className="flex items-center justify-end gap-x-2">
-              <Button size="small" onClick={submit} isLoading={create.isPending} disabled={create.isPending}>
+              <Button
+                size="small"
+                onClick={submit}
+                isLoading={create.isPending}
+                disabled={create.isPending}
+                data-testid="gb-campaign-create-submit"
+              >
                 Create
               </Button>
             </div>
@@ -119,14 +136,29 @@ export const CreateCampaign = () => {
                     type={type ?? "text"}
                     value={form[key]}
                     onChange={(e) => set({ [key]: e.target.value })}
+                    aria-invalid={key === "max_quantity" && !!maxQuantityError}
+                    data-testid={`gb-field-${key}`}
                   />
                   {hint && (
                     <Text size="xsmall" className="text-ui-fg-subtle">
                       {hint}
                     </Text>
                   )}
+                  {key === "max_quantity" && maxQuantityError && (
+                    <Text size="xsmall" className="text-ui-fg-error" data-testid="gb-max-quantity-error">
+                      {maxQuantityError}
+                    </Text>
+                  )}
+                  {/* กฎข้อ 16: เตือนแต่ยังส่งได้ — activate จะถูก backend ปฏิเสธจนกว่าจะแก้ ends_at */}
+                  {key === "ends_at" && isEndsAtPast(form.ends_at) && (
+                    <Text size="xsmall" className="text-ui-fg-error" data-testid="gb-ends-at-warning">
+                      This end time has already passed. The campaign will be created as draft but cannot be
+                      activated until the end time is in the future.
+                    </Text>
+                  )}
                 </div>
               ))}
+              <ProductPicker value={form.product_ids} onChange={(product_ids) => set({ product_ids })} />
               <div className="flex items-center gap-x-2">
                 <Switch
                   id="gb-tax-inclusive"
