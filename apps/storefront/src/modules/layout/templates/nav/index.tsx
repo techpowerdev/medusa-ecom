@@ -17,7 +17,7 @@ export default async function Nav() {
         <nav className="content-container txt-xsmall-plus text-ui-fg-subtle flex items-center justify-between w-full h-full text-small-regular">
           <div className="flex-1 basis-0 h-full flex items-center">
             <div className="h-full">
-              <SideMenu regions={regions} />
+              <SideMenu regions={regions} storeName={STORE_NAME} />
             </div>
           </div>
 

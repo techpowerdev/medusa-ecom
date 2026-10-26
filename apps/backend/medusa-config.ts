@@ -40,7 +40,11 @@ module.exports = defineConfig({
     {
       resolve: './src/modules/group_buy',
     },
-    { resolve: './src/modules/affiliate' },
+    {
+      resolve: './src/modules/affiliate',
+      // AF-2: secret ของ cookie `aff` / cart metadata.affiliate_token (spec 05 "Cart hook")
+      options: { tokenSecret: process.env.AFFILIATE_TOKEN_SECRET },
+    },
     {
       // EV-3 (ADR-006): manual (Standard) + digital (Digital delivery → digital_digital)
       resolve: '@medusajs/medusa/fulfillment',
