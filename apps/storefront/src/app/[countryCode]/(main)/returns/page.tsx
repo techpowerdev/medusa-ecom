@@ -7,8 +7,8 @@ export const dynamic = "force-static"
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: "Return policy",
-  description: "How to return items and get a refund.",
+  title: "นโยบายการคืนสินค้า",
+  description: "วิธีคืนสินค้าและขอคืนเงิน",
 }
 
 export default async function ReturnsPage(props: {
@@ -18,17 +18,17 @@ export default async function ReturnsPage(props: {
   const { current } = await getStorePolicies(countryCode)
 
   return (
-    <PolicyPage title="Return policy">
+    <PolicyPage title="นโยบายการคืนสินค้า">
       {current ? (
         <>
           <p>
-            You can return items within {current.returnWindowDays} days of
-            delivery. Items are returned by mail.
+            คุณสามารถคืนสินค้าได้ภายใน {current.returnWindowDays} วัน
+            หลังได้รับสินค้า โดยส่งคืนทางไปรษณีย์
           </p>
           <p>
             {current.freeReturns
-              ? "Return shipping is free."
-              : "Return shipping costs are paid by the customer."}
+              ? "ไม่มีค่าจัดส่งสำหรับการคืนสินค้า"
+              : "ลูกค้าเป็นผู้ชำระค่าจัดส่งสำหรับการคืนสินค้า"}
           </p>
         </>
       ) : (

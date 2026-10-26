@@ -85,15 +85,17 @@ const Register = ({ setCurrentView }: Props) => {
         <span className="text-center text-ui-fg-base text-small-regular mt-6">
           การสร้างบัญชีกับ {STORE_NAME} ถือว่าคุณยอมรับ{" "}
           <LocalizedClientLink
-            href="/content/privacy-policy"
+            href="/privacy"
             className="underline"
+            data-testid="register-privacy-link"
           >
             นโยบายความเป็นส่วนตัว
           </LocalizedClientLink>{" "}
           และ{" "}
           <LocalizedClientLink
-            href="/content/terms-of-use"
+            href="/terms"
             className="underline"
+            data-testid="register-terms-link"
           >
             ข้อกำหนดการใช้งาน
           </LocalizedClientLink>

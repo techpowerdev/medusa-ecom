@@ -7,22 +7,21 @@ export const dynamic = "force-static"
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: "Privacy policy",
-  description: `How ${STORE_NAME} collects and uses personal data.`,
+  title: "นโยบายความเป็นส่วนตัว",
+  description: `วิธีที่ ${STORE_NAME} เก็บและใช้ข้อมูลส่วนบุคคล`,
 }
 
 export default function PrivacyPage() {
   return (
-    <PolicyPage title="Privacy policy">
+    <PolicyPage title="นโยบายความเป็นส่วนตัว">
       <PlaceholderNotice />
       <p>
-        {STORE_NAME} collects the information you provide at checkout, such as
-        your name, email address and shipping address, to process and deliver
-        your order.
+        {STORE_NAME} เก็บข้อมูลที่คุณกรอกในขั้นตอนชำระเงิน เช่น ชื่อ อีเมล
+        และที่อยู่จัดส่ง เพื่อดำเนินการและจัดส่งคำสั่งซื้อของคุณ
       </p>
       <p>
-        Payment details are handled by our payment provider and are not stored
-        by the store. Cookies are used to keep your cart and sign-in session.
+        ข้อมูลการชำระเงินดำเนินการโดยผู้ให้บริการชำระเงิน ร้านไม่ได้จัดเก็บไว้
+        และเราใช้คุกกี้เพื่อจดจำตะกร้าสินค้าและการเข้าสู่ระบบของคุณ
       </p>
     </PolicyPage>
   )

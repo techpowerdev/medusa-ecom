@@ -46,3 +46,18 @@
 pnpm --filter storefront test:unit → Tests 139 passed (139) (customer-messages-thai: ข้อความไทยของ customer.ts 3 → 5 จุด)
 pnpm --filter storefront test:e2e:unit → 29 passed
 pnpm lint → exit 0 (warning เดิม ไม่มี error) ; pnpm typecheck → exit 0 ; next build → exit 0
+
+## หลัง merge origin/develop (#103 CORE-4c2) — 2026-10-27
+resolve: ลบ customer-messages-thai.test.ts (แทนด้วย test ของ #103), updateCustomer ใช้ friendlyErrorMessage(error, "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
+(401/403 → "กรุณาเข้าสู่ระบบอีกครั้ง" ข้อความเดียวกับ #103), profile-phone/name/email ใช้ของ CORE-23
+  ✓  1 [chromium] › e2e/core-23-profile-order.spec.ts:42:5 › AC-85: ล้างช่องเบอร์แล้วบันทึก → phone ว่าง และแสดง ยังไม่ได้ระบุ (1.4s)
+  ✓  3 [chromium] › e2e/core-23-profile-order.spec.ts:74:5 › AC-86, AC-89: อีเมลอ่านอย่างเดียว และ ยังไม่ได้ระบุ ชิดแนวเดียวกับค่าชื่อ (614ms)
+  ✓  2 [chromium] › e2e/core-22-account-fixes.spec.ts:18:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (2.9s)
+  ✓  5 [chromium] › e2e/core-22-account-fixes.spec.ts:67:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (835ms)
+  ✓  6 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (379ms)
+  ✓  4 [chromium] › e2e/core-23-profile-order.spec.ts:106:5 › AC-87: order ที่ไม่มีอยู่ และ order ของ customer อื่น ตอบ HTTP 404 (2.2s)
+  ✓  7 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (970ms)
+  ✓  8 [chromium] › e2e/core-23-profile-order.spec.ts:128:5 › AC-88: token หายระหว่างบันทึกเบอร์ → ไม่มี error ดิบของ React, ข้อความไทยหรือหน้า login (1.0s)
+  ✓  9 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (213ms)
+  9 passed (6.1s)
+pnpm --filter storefront test:unit → Tests 180 passed (180) ; test:e2e:unit → 29 passed ; pnpm lint → exit 0 ; pnpm typecheck → exit 0 ; next build → exit 0

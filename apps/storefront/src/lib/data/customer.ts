@@ -1,6 +1,7 @@
 "use server"
 
 import { sdk } from "@lib/config"
+import { errorMessage, friendlyErrorMessage } from "@lib/util/error-message"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
@@ -72,7 +73,7 @@ export const retrieveCustomer =
   }
 
 // CORE-23 (spec 01 กฎข้อ 52): server action ที่ throw ข้าม boundary กลายเป็น "Minified React error #441" ใน prod
-// (ข้อความจริงถูกตัดทิ้ง) → คืนผลเป็นข้อความไทยแทนการ throw; 401/403 (token หมดอายุ/ถูกลบ) ให้เข้าสู่ระบบใหม่
+// (ข้อความจริงถูกตัดทิ้ง) → คืนผลเป็นข้อความไทยแทนการ throw; 401/403 (token หมดอายุ/ถูกลบ) → friendlyErrorMessage ให้เข้าสู่ระบบใหม่
 export const updateCustomer = async (
   body: HttpTypes.StoreUpdateCustomer
 ): Promise<{ success: boolean; error: string | null }> => {
@@ -83,10 +84,10 @@ export const updateCustomer = async (
   try {
     await sdk.store.customer.update(body, {}, headers)
   } catch (error) {
-    const status = (error as FetchError).status
-    return status === 401 || status === 403
-      ? { success: false, error: "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง" }
-      : { success: false, error: "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }
+    return {
+      success: false,
+      error: friendlyErrorMessage(error, "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
+    }
   }
 
   const cacheTag = await getCacheTag("customers")
@@ -121,7 +122,7 @@ export async function signup(
       fetchError.statusText !== "Unauthorized" ||
       fetchError.message !== "Identity with email already exists"
     ) {
-      return { state: "error", error: String(error) }
+      return { state: "error", error: errorMessage(error) }
     }
   }
 
@@ -177,7 +178,7 @@ async function continueAfterAuth(
   try {
     await addToCart({ ...pending, quantity: 1 })
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   redirect(`/${pending.countryCode}/cart`)
@@ -195,7 +196,7 @@ async function completeLogin(
   try {
     result = await sdk.auth.login("customer", "emailpass", { email, password })
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   // A `location` is returned by third-party auth providers, which this flow
@@ -261,7 +262,7 @@ async function completeLogin(
         password,
       })) as string
     } catch (error) {
-      return { state: "error", error: String(error) }
+      return { state: "error", error: errorMessage(error) }
     }
 
     await removePendingCustomer()
@@ -275,7 +276,7 @@ async function completeLogin(
   try {
     await transferCart()
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   return { state: "success" }
@@ -292,7 +293,7 @@ export async function confirmEmailVerification(
     await sdk.auth.verification.confirm({ code: token })
     return { success: true }
   } catch (error) {
-    return { success: false, error: String(error) }
+    return { success: false, error: errorMessage(error) }
   }
 }
 
@@ -361,7 +362,8 @@ export const addCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }
 
@@ -380,7 +382,8 @@ export const deleteCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }
 
@@ -425,6 +428,7 @@ export const updateCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }

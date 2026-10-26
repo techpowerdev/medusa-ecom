@@ -3,6 +3,7 @@ import { Container } from "@modules/common/components/ui"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
+import { formatDate } from "@lib/util/date"
 import { HttpTypes } from "@medusajs/types"
 
 type OverviewProps = {
@@ -97,7 +98,7 @@ const Overview = ({ customer, orders }: OverviewProps) => {
                                 ยอดรวม
                               </span>
                               <span data-testid="order-created-date">
-                                {new Date(order.created_at).toLocaleDateString("th-TH")}
+                                {formatDate(order.created_at)}
                               </span>
                               <span
                                 data-testid="order-id"
