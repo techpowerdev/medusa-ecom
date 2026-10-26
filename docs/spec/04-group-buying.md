@@ -212,10 +212,32 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     ผ่าน **กลไกเดียวกับ PROMO-2** (spec 03 กฎข้อ 13: `errorHandler` ที่ override ใน `defineMiddlewares` แปลง error ที่มี code ของเรา)
     — handler เดิมของ Medusa เขียนทับ `code`/`message` ของ `CONFLICT` จึงต้องพึ่งกลไกนี้; GB-3 throw error ตามรูปแบบที่ PROMO-2
     บันทึกไว้ และ **ไม่** เขียนการแปลง 409 ของตัวเองใน route (ถ้า PROMO-2 ใช้ allow-list ของ code ให้ GB-3 เพิ่ม `GB_*` ในนั้น)
+    **code ที่ GB-3 (#68) ใช้จริง** (`src/modules/group_buy/errors.ts`; 409 ทั้งหมดอยู่ใน `BUSINESS_CONFLICT_CODES`):
+    | สถานการณ์ใน `joinGroupWorkflow` ขั้น 1 | ผล |
+    |------|------|
+    | มี membership ในกลุ่มอื่นของแคมเปญ | 409 `GB_ALREADY_IN_OTHER_GROUP` |
+    | ลูกค้าใหม่ของกลุ่มแต่ `progress_people >= max_people_per_group` | 409 `GB_GROUP_FULL` |
+    | membership ทั้งแคมเปญ `>= max_total_orders` | 409 `GB_MAX_TOTAL_ORDERS_REACHED` |
+    | units ของลูกค้าในแคมเปญ + units ใน cart `> max_units_per_person` | 409 `GB_UNITS_LIMIT_EXCEEDED` |
+    | cart มีสินค้านอก `target_rules` ของ promotion กลุ่ม | 409 `GB_ITEMS_NOT_ELIGIBLE` |
+    | cart มี promotion code อื่น | 409 `PROMOTION_NOT_COMBINABLE` |
+    | cart มี promotion code ขึ้นต้น `GB-` อยู่แล้ว (join ซ้ำด้วย cart เดิม — กฎข้อ 14; ตรวจก่อนแถว `PROMOTION_NOT_COMBINABLE`) | 409 `GB_CART_ALREADY_JOINED` |
+    | กลุ่มไม่ `open` หรือหมดเวลาแล้ว (`ends_at <= now`) | 400 `not_allowed` (เทียบกับสถานะแคมเปญตามกฎข้อ 10) |
+    | ขั้น 2b ไม่มี adjustment ของ `GB-<token>` | 400 `not_allowed` code `GB_DISCOUNT_NOT_APPLIED` (ไม่อยู่ใน allow-list) |
 12. (owner 2026-10-26, ADR-011 หมายเหตุ) promotion ต้นแบบมี `is_tax_inclusive: true` เป็นค่าเริ่มต้น เพราะราคา THB ของร้านรวม VAT แล้ว
     (region/currency `is_tax_inclusive: true` ใน seed) — ส่วนลดแบบ `fixed` ฿X จึงลดยอดที่ลูกค้าจ่ายพอดี ฿X; admin ส่ง `false` ได้ทั้งใน
     `POST /admin/group-buy/campaigns` และแก้ภายหลังที่หน้า promotion ของ Medusa admin (มีผลเฉพาะกลุ่มที่สร้างหลังจากนั้น ตาม ADR-011 ข้อ 3)
     ไม่ย้อนแก้ต้นแบบของแคมเปญที่สร้างก่อน GB-2c (ค่าเดิมของ Medusa คือ `false`)
+13. (GB-3b) **leave** (`POST /store/group-buy/memberships/:id/leave`, `authenticate("customer")`): เฉพาะเจ้าของ membership — ของคนอื่นหรือไม่มีอยู่
+    → 404; membership ที่ `cancelled` แล้ว (leave ซ้ำ) หรือกลุ่มไม่ `open` → 400 `not_allowed`; ภายใต้ lock `group_buy:group:<id>` ปรับ membership →
+    `cancelled` + ตัวนับ (ตาม `leaveGroupWorkflow`) ก่อน แล้ว `cancelOrderWorkflow` เป็นขั้นสุดท้าย (compensation คืนสถานะ/ตัวนับถ้ายกเลิก order ล้ม)
+14. (owner 2026-10-26, ปิด Q9; ทำใน GB-3) cart หลัง join ยังมี `GB-<token>` — กันสองชั้นฝั่ง backend:
+    (a) **ห้าม complete cart ที่มี promotion code ขึ้นต้น `GB-` ทุกกรณี** (ราคาลดของกลุ่มได้ผ่าน draft order ของ membership เท่านั้น): handler ของ
+    `completeCartWorkflow.hooks.validate` throw 400 `NOT_ALLOWED` code `GB_CART_NOT_COMPLETABLE` — hook นี้มี handler เดียว (`createHook`) ที่ PROMO-1/FS-3
+    ใช้อยู่แล้ว ต้อง**รวมเข้า handler เดิม** ไม่ลงทะเบียนใหม่
+    (b) **join ซ้ำด้วย cart เดิม** (cart มี code `GB-*` อยู่แล้วตอนเริ่ม `joinGroupWorkflow` ขั้น 1) → 409 `GB_CART_ALREADY_JOINED` (เพิ่มใน allow-list ของ
+    PROMO-2) ไม่สร้าง draft order/membership — ตรวจก่อนการตรวจ `PROMOTION_NOT_COMBINABLE`
+    (c) storefront ล้าง cart (cookie `_medusa_cart_id`) หลัง join สำเร็จ แล้วเริ่ม cart ใหม่ตอนเพิ่มสินค้าครั้งถัดไป — ทำใน GB-7
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -282,6 +304,18 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - AC-20d (GB-2c, ปิดช่องว่าง test ของ GB-2b) `createGroupWorkflow` ที่ทำให้ขั้นสร้าง link `group ↔ promotion` ล้ม (test inject error ครั้งเดียว
   เช่น mock `link.create` ให้ throw) → workflow ล้ม, ไม่มี promotion `GB-*` ใหม่, ไม่มี `GroupBuyGroup` ใหม่ (นับก่อน/หลังเท่ากัน) และ error
   ที่ผู้เรียกได้รับเป็น error ของขั้น link; เรียกซ้ำโดยไม่ inject → สำเร็จ
+- AC-25 (GB-3b, กฎข้อ 13) Given membership M ของ A ในกลุ่ม `open` When B leave M Then 404 และ M, draft order, ตัวนับไม่เปลี่ยน; When A leave M
+  Then 200, M `cancelled`, draft order `canceled`; When A leave M ซ้ำ Then 400 `not_allowed` และตัวนับไม่ลดซ้ำ; Given กลุ่ม `succeeded` (ตั้งผ่าน module)
+  When A leave membership ในกลุ่มนั้น Then 400 และไม่มีอะไรเปลี่ยน; Given ขั้น `cancelOrderWorkflow` ล้ม (inject ครั้งเดียว) Then M กลับเป็น `joined`
+  และตัวนับเท่าก่อนเรียก (integration http)
+- AC-26 (GB-3, กฎข้อ 14a) Given A join กลุ่ม G ด้วย cart C สำเร็จ (C มี `GB-<token>`) When A `POST /store/carts/C/complete` Then 400 `type=not_allowed`
+  code `GB_CART_NOT_COMPLETABLE`, `C.completed_at` ยัง null และไม่มี order ใหม่ที่ไม่ใช่ draft; Given cart ที่ใส่ `GB-<token>` ผ่าน
+  `POST /store/carts/:id/promotions` โดยไม่ join Then complete ได้ 400 เหมือนกัน; Given cart ที่ไม่มี `GB-*` (มีส่วนลด flash) Then complete สำเร็จตามเดิม
+  (test ของ PROMO-1/FS-3 ยังผ่าน) (integration http)
+- AC-27 (GB-3, กฎข้อ 14b) Given A join G ด้วย cart C สำเร็จ When A join G (หรือกลุ่มอื่นของแคมเปญเดียวกัน) ด้วย C อีกครั้ง Then 409
+  `{ type: "conflict", code: "GB_CART_ALREADY_JOINED" }`, membership/draft order/ตัวนับไม่เปลี่ยน; When A join G ด้วย cart ใหม่ C2 Then 201 (integration http)
+- AC-28 (GB-7, กฎข้อ 14c) Given A join สำเร็จใน storefront When กลับไปหน้าร้านแล้วเปิด cart Then cart ว่าง (ไม่มี line เดิม, ไม่มี `GB-*`) และการเพิ่มสินค้าสร้าง
+  cart ใหม่ที่ id ต่างจาก C (e2e)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -299,9 +333,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   AC-20d
 - Unit/integration (http): AC-20c (validator + ค่าเริ่มต้น)
 - Integration (http): AC-1, AC-3..AC-7, AC-10..AC-15, AC-17, AC-18, AC-19 (ส่วน admin pool), AC-20a (DELETE), AC-21a,
-  AC-21b, AC-22, AC-23, AC-24
+  AC-21b, AC-22, AC-23, AC-24, AC-25, AC-26, AC-27
   โดย mock payment provider
-- e2e: AC-2, AC-16 กับ Stripe test mode
+- e2e: AC-2, AC-16 กับ Stripe test mode; AC-28
 
 ## Tasks
 | ID | Task | Depends |
@@ -310,12 +344,15 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-2a | link template (ADR-011) + `createGroupBuyCampaignWorkflow` / `updateGroupBuyCampaignWorkflow` / `deleteGroupBuyCampaignWorkflow` / `setGroupBuyCampaignStatusWorkflow` + admin API: campaigns CRUD, `.../status` (AC-20a, AC-21a) | GB-1, ADR-011 accepted |
 | GB-2b | `computeGroupEndsAt` + `createGroupWorkflow` (pool + team ระดับ workflow, ตรวจช่วงเวลาแคมเปญ) + admin `POST/GET /admin/group-buy/campaigns/:id/groups` (AC-19, AC-20b, AC-21b) — **ไม่รวม** `POST /store/group-buy/groups` | GB-2a |
 | GB-2c | follow-up owner/review (เล็ก): ค่าเริ่มต้น `is_tax_inclusive: true` ของต้นแบบใน validator ของ `POST /admin/group-buy/campaigns` และ `createGroupBuyCampaignWorkflow` (กฎข้อ 12) + test rollback เมื่อขั้น link ของ `createGroupWorkflow` ล้ม (AC-20c, AC-20d) — ไม่แตะ store route | GB-2b |
-| GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009, ตรวจช่วงเวลา + ตรวจว่ามี adjustment ของ `GB-<token>`) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2b), join, leave + 409 ผ่านกลไกของ PROMO-2 ตามกฎข้อ 11 (ไม่แปลงเอง) + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18, AC-23, AC-24); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง; ตรวจเจ้าของ cart ด้วย helper ของ CORE-12 | GB-2b, PROMO-1, PROMO-2 (AC-14 ส่วนที่สอง: ใส่ `SAVE10` ผ่าน route ของ Medusa ต้องได้ code ของเรา), CORE-12 (AC-24) |
+| GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009, ตรวจช่วงเวลา + ตรวจว่ามี adjustment ของ `GB-<token>`) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2b), join, leave + 409 ผ่านกลไกของ PROMO-2 ตามกฎข้อ 11 (ไม่แปลงเอง) + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18, AC-23, AC-24); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง; ตรวจเจ้าของ cart ด้วย helper ของ CORE-12; **เพิ่ม 2026-10-26 (owner, Q9)**: ห้าม complete cart ที่มี `GB-*` (รวมเข้า handler `completeCartWorkflow.hooks.validate` เดิม) + 409 `GB_CART_ALREADY_JOINED` (กฎข้อ 14a/b, AC-26, AC-27) | GB-2b, PROMO-1, PROMO-2 (AC-14 ส่วนที่สอง: ใส่ `SAVE10` ผ่าน route ของ Medusa ต้องได้ code ของเรา), CORE-12 (AC-24) |
+| GB-3b | (แยกจาก GB-3 ตาม PR #68, owner 2026-10-26) `leaveGroupWorkflow` + `POST /store/group-buy/memberships/:id/leave` ตามกฎข้อ 13 (AC-7, AC-15 ส่วน leave, AC-17 ส่วน "หลัง leave", AC-25) — GB-3 (#68) ส่งมอบ join + สร้างทีม ส่วน AC อื่นในแถว GB-3 คงเดิม | GB-3 |
 | GB-4 | `succeedGroupWorkflow` / `failGroupWorkflow` + deadline job (รวมตั้งแคมเปญ `ended`) + admin succeed/fail + อีเมล (AC-1, AC-3, AC-9, AC-11, AC-12, AC-22) | GB-3 |
 | GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) | GB-4, PAY-3 |
 | GB-6 | หน้า route ของ Admin UI | GB-2b |
-| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + e2e (AC-2, AC-16); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | GB-5 |
+| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | GB-5 |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
+GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
+GB-7 ต้องรอ GB-3b ด้วย (ปุ่มออกจากกลุ่มในหน้า account)
 GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/test ของ `create-group` ไม่ใช่ไฟล์ join) แต่ควร merge ก่อน release v0.5.0
 
 ## Open questions
@@ -330,4 +367,6 @@ GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/tes
 - ~~Q6~~ ตัดสินแล้ว (owner, 2026-10-25): admin สั่ง `ended` ก่อนเวลา → ปิดการสร้าง/เข้าร่วม กลุ่ม `open` ยังรอตัดสินที่ `ends_at` ของตัวเอง
 - ~~Q7~~ ตัดสินแล้ว (owner, 2026-10-25): ไม่จำกัดจำนวน team ต่อลูกค้าใน v1 และยอมรับความเสี่ยงที่ต้นแบบ `GBT-*`
   มองเห็นในหน้า promotion ของ Medusa admin (บรรเทาด้วย code สุ่มที่เดาไม่ได้ + คำเตือนใน GB-6)
+- ~~Q9~~ ตัดสินแล้ว (owner 2026-10-26): backend ห้าม complete cart ที่มี `GB-*` ทุกกรณี และปฏิเสธ join ซ้ำด้วย cart เดิม (409) — ทำใน GB-3;
+  storefront ล้าง cart หลัง join — ทำใน GB-7 (กฎข้อ 14, AC-26..28)
 - ~~Q8~~ ตัดสินแล้ว (owner, 2026-10-26): ต้นแบบ `is_tax_inclusive: true` เป็นค่าเริ่มต้น (ราคา THB รวม VAT) admin เปลี่ยนเองได้ — กฎข้อ 12, GB-2c
