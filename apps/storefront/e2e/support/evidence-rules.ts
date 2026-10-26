@@ -9,9 +9,9 @@ export type EvidenceTarget = { feature: string; taskId: string }
 export type EvidenceFile = { name: string; bytes: number }
 
 const FEATURE_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
-// CORE-5b: รับ suffix ตัวเล็กหนึ่งตัว เช่น CORE-4a, CORE-5b
-const TASK_ID_RE = /^[A-Z]+-\d+[a-z]?$/
-const TESTS_TXT_RE = /^[A-Z]+-\d+[a-z]?-tests\.txt$/
+// CORE-5b: รับ suffix ตัวเล็กหนึ่งตัว เช่น CORE-4a, CORE-5b; GB-6b1: ตามด้วยตัวเลขได้อีกหนึ่งหลัก (task ที่ spec แยกย่อย)
+const TASK_ID_RE = /^[A-Z]+-\d+([a-z]\d?)?$/
+const TESTS_TXT_RE = /^[A-Z]+-\d+([a-z]\d?)?-tests\.txt$/
 const ALLOWED_NON_PNG = new Set(["REPORT.md"])
 
 export function evidenceDir(repoRoot: string, target: EvidenceTarget): string {
@@ -20,7 +20,7 @@ export function evidenceDir(repoRoot: string, target: EvidenceTarget): string {
   }
   if (!TASK_ID_RE.test(target.taskId)) {
     throw new Error(
-      `task id ต้องอยู่ในรูป XX-n หรือ XX-na เช่น CORE-5, CORE-4a: "${target.taskId}"`
+      `task id ต้องอยู่ในรูป XX-n, XX-na หรือ XX-nan เช่น CORE-5, CORE-4a, GB-6b1: "${target.taskId}"`
     )
   }
   return path.join(repoRoot, "docs", "evidence", target.feature, target.taskId)
