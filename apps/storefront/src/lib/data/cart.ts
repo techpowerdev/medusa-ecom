@@ -1,6 +1,6 @@
 "use server"
 
-import { sdk } from "@lib/config"
+import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
@@ -21,6 +21,7 @@ import {
   PromptPayPollState,
   paymentSessionData,
   promptPayPollState,
+  promptPayRenewalOutcome,
 } from "@lib/util/payment-session"
 
 /**
@@ -274,6 +275,47 @@ export async function initiatePaymentSession(
       return resp
     })
     .catch(medusaError)
+}
+
+/**
+ * PAY-6b (spec 06 กฎข้อ 7A, AC-12): สร้าง session PromptPay ใหม่ตอน QR หมดอายุ — คืนผลแทนการ throw เพราะต้องอ่าน `code` ของ 409
+ * (FetchError ของ js-sdk เก็บแค่ message และ error ของ server action ถูกซ่อนข้อความใน production)
+ */
+export async function renewPromptPaySession(
+  cart: HttpTypes.StoreCart,
+  providerId: string
+): Promise<{ status: "renewed" | "already-paid" } | { status: "error"; message: string }> {
+  const collectionId = cart.payment_collection?.id
+  if (!collectionId) {
+    return { status: "error", message: "ไม่พบข้อมูลการชำระเงินของตะกร้านี้ กรุณาลองอีกครั้ง" }
+  }
+
+  const res = await fetch(
+    `${MEDUSA_BACKEND_URL}/store/payment-collections/${collectionId}/payment-sessions`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
+        ...(await getAuthHeaders()),
+      },
+      body: JSON.stringify({ provider_id: providerId, data: paymentSessionData(providerId) }),
+      cache: "no-store",
+    }
+  ).catch(() => null)
+
+  if (res?.ok) {
+    revalidateTag(await getCacheTag("carts"), { expire: 0 })
+    return { status: "renewed" }
+  }
+  const body = res ? await res.json().catch(() => null) : null
+  if (res && promptPayRenewalOutcome(res.status, body) === "already-paid") {
+    return { status: "already-paid" }
+  }
+  return {
+    status: "error",
+    message: (body as { message?: string } | null)?.message ?? "สร้าง QR PromptPay ใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง",
+  }
 }
 
 /**

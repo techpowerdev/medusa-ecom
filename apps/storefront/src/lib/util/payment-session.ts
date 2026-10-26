@@ -69,3 +69,39 @@ export function promptPayPollState(cart: PollableCart): PromptPayPollState {
   if (sessions.some((s) => s.status === "canceled" || s.status === "error")) return "failed"
   return "pending"
 }
+
+/** code ของ guard ฝั่ง backend (spec 06 กฎข้อ 7A): session เดิมชำระแล้ว ไม่ถูกลบ */
+export const PAYMENT_ALREADY_COMPLETED = "PAYMENT_ALREADY_COMPLETED"
+
+/**
+ * ผลของการสร้าง session ใหม่ตอน QR หมดอายุที่ไม่สำเร็จ: 409 + code `PAYMENT_ALREADY_COMPLETED` = ชำระแล้ว → poll ต่อและ complete cart
+ * เป็นทางสำรอง (AC-12, AC-12b); error อื่น → พฤติกรรมเดิม
+ */
+export function promptPayRenewalOutcome(status: number, body: unknown): "already-paid" | "error" {
+  const code = typeof body === "object" && body !== null ? (body as { code?: unknown }).code : undefined
+  return status === 409 && code === PAYMENT_ALREADY_COMPLETED ? "already-paid" : "error"
+}
+
+/**
+ * session PromptPay ที่ใช้ในขั้น review: `pending` (ยังไม่ชำระ) หรือ `authorized` (guard/webhook authorize แล้วแต่ cart ยังไม่ complete
+ * — กดชำระอีกครั้งเพื่อ complete cart ตาม runbook ADR-015)
+ */
+export function promptPaySession<T extends { status: string; provider_id: string }>(
+  sessions: T[] | null | undefined
+): T | undefined {
+  // review #98: เฉพาะ session ของ PromptPay — ไม่ไป complete cart ด้วย payment ของ provider อื่น
+  const own = sessions?.filter((s) => isPromptPay(s.provider_id))
+  return own?.find((s) => s.status === "pending") ?? own?.find((s) => s.status === "authorized")
+}
+
+/**
+ * ทุกรอบ poll ระหว่างรอ order: cart complete แล้ว → complete (ได้ order เดิม); ยัง pending และอยู่ในโหมดทางสำรองหลัง 409
+ * (`completeFallback`) → ลอง complete cart ซ้ำ (AC-12b: complete รอบก่อนล้ม/webhook ไม่มา); session ล้ม → fail
+ */
+export function promptPayPollAction(
+  state: PromptPayPollState,
+  completeFallback: boolean
+): "complete" | "fail" | "wait" {
+  if (state === "failed") return "fail"
+  return state === "paid" || completeFallback ? "complete" : "wait"
+}

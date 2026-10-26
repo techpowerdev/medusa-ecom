@@ -7,7 +7,6 @@ import Input from "@modules/common/components/input"
 import AccountInfo from "../account-info"
 import { HttpTypes } from "@medusajs/types"
 import { updateCustomer } from "@lib/data/customer"
-import { friendlyErrorMessage } from "@lib/util/error-message"
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
@@ -20,15 +19,14 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
     _currentState: Record<string, unknown>,
     formData: FormData
   ) => {
-    const customer = {
-      phone: formData.get("phone") as string,
-    }
+    // CORE-23 (กฎข้อ 49): ช่องว่าง = ลบเบอร์ (validator ของ POST /store/customers/me รับ phone เป็น null ได้)
+    const phone = ((formData.get("phone") as string | null) ?? "").trim()
 
     try {
-      await updateCustomer(customer)
-      return { success: true, error: null }
-    } catch (error) {
-      return { success: false, error: friendlyErrorMessage(error) }
+      return await updateCustomer({ phone: phone || null })
+    } catch {
+      // network ล้ม/server action error ที่ข้อความถูกตัดใน prod — ไม่แสดง error ดิบของ React (กฎข้อ 52)
+      return { success: false, error: "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }
     }
   }
 
@@ -62,7 +60,6 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
             name="phone"
             type="phone"
             autoComplete="phone"
-            required
             defaultValue={customer.phone ?? ""}
             data-testid="phone-input"
           />
