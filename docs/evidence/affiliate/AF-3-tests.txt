@@ -1,10 +1,10 @@
-# AF-3 — subscriber order.placed → attribution + commission entry (spec 05) — ผล test ในเครื่อง 2026-10-26 (Node 22.23.3)
+# AF-3 — subscriber order.placed → attribution + commission entry (spec 05) — ผล test ในเครื่อง 2026-10-26 (Node 22.23.3) — รันซ้ำหลัง merge origin/develop
 
 ## Red (ก่อนเขียนโค้ด)
 - unit: Cannot find module '../attribution' (1 suite fail)
 - integration (subscriber เปล่า): 7 failed, 2 passed (AC-3 และ 'ไม่มี token' ผ่านโดยธรรมชาติ)
 
-## Unit — `pnpm --filter backend test:unit` ทั้งชุด: 36 suites, 317 passed
+## Unit — `pnpm --filter backend test:unit` ทั้งชุด (หลัง merge develop): 37 suites, 325 passed
 PASS src/modules/affiliate/utils/__tests__/attribution.unit.spec.ts
     ✓ creates a pending entry of 10% for an active program (AC-1) (2 ms)
     ✓ records the attribution without a program or entry when no program is active (AC-2) (1 ms)
@@ -26,17 +26,18 @@ PASS src/modules/affiliate/utils/__tests__/attribution.unit.spec.ts
 Tests:       17 passed, 17 total
 
 ## Integration (http) — integration-tests/http/affiliate-attribution.spec.ts
-PASS integration-tests/http/affiliate-attribution.spec.ts (39.352 s)
-    ✓ AC-1: an order of ฿1,000 within an active 10% program creates a pending ฿100 entry (8408 ms)
-    ✓ AC-2: without an active program the attribution has program_id null and no entry (2499 ms)
-    ✓ AC-3: a click 10 days ago with attribution_window_days=7 is not attributed (1643 ms)
-    ✓ AC-4: a collection-scoped program pays only the line in the collection (฿500 → ฿50) (2081 ms)
-    ✓ AC-8: an order whose email matches the affiliate (case/spaces differ) gets no entry (892 ms)
-    ✓ AC-10: redelivering order.placed (twice concurrently, then again) keeps one attribution and one entry set (1217 ms)
-    ✓ AC-11: a forged/tampered affiliate_token creates nothing and is logged (2221 ms)
-    ✓ AC-17: an ended program inside its window gives attribution with program_id null and no entry (613 ms)
-    ✓ an order without affiliate_token is ignored (545 ms)
-Tests:       9 passed, 9 total
+PASS integration-tests/http/affiliate-attribution.spec.ts (19.736 s)
+    ✓ AC-1: an order of ฿1,000 within an active 10% program creates a pending ฿100 entry (899 ms)
+    ✓ AC-2: without an active program the attribution has program_id null and no entry (1179 ms)
+    ✓ AC-3: a click 10 days ago with attribution_window_days=7 is not attributed (535 ms)
+    ✓ AC-4: a collection-scoped program pays only the line in the collection (฿500 → ฿50) (545 ms)
+    ✓ AC-8: an order whose email matches the affiliate (case/spaces differ) gets no entry (638 ms)
+    ✓ AC-10: redelivering order.placed (twice concurrently, then again) keeps one attribution and one entry set (1134 ms)
+    ✓ rule 15: when creating entries fails, compensation removes the attribution so a retry can attribute (660 ms)
+    ✓ AC-11: a forged/tampered affiliate_token creates nothing and is logged (1591 ms)
+    ✓ AC-17: an ended program inside its window gives attribution with program_id null and no entry (908 ms)
+    ✓ an order without affiliate_token is ignored (508 ms)
+Tests:       10 passed, 10 total
 
 ## lint / typecheck / build
 - pnpm --filter backend lint: ผ่าน

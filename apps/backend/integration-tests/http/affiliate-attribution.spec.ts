@@ -25,7 +25,7 @@ const DAY = 24 * 60 * 60 * 1000
 // complete cart ผ่าน completeCartWorkflow ตรง (ทดสอบ attribution ไม่ใช่ auth ของ store route)
 // ราคา THB รวม VAT 7% (seed) → 1,070 = ฿1,000 ไม่รวมภาษี, 535 = ฿500
 medusaIntegrationTestRunner({
-  testSuite: ({ getContainer }) => {
+  testSuite: ({ getContainer, dbConnection }) => {
     let container: MedusaContainer
     let affiliates: AffiliateModuleService
     let regionId: string
@@ -283,6 +283,40 @@ medusaIntegrationTestRunner({
       expect(await attributionsOf(orderId)).toHaveLength(1)
       const entries = await entriesOf(orderId)
       expect(entries.map((e) => e.amount)).toEqual([100])
+    })
+
+    it("rule 15: when creating entries fails, compensation removes the attribution so a retry can attribute", async () => {
+      const ann = await createAffiliate("ann")
+      await createProgram()
+      const { orderId, cartId } = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }] })
+      await container
+        .resolve(Modules.CART)
+        .updateCarts(cartId, { metadata: { affiliate_token: await tokenFor(ann.id) } })
+      // บังคับให้ insert entry ล้มที่ DB จริง (trigger หายเมื่อ runner restore DB ก่อน test ถัดไป)
+      await dbConnection.raw(`
+        CREATE FUNCTION af3_fail_entry() RETURNS trigger AS $$
+        BEGIN RAISE EXCEPTION 'AF-3 forced entry failure'; END $$ LANGUAGE plpgsql;
+        CREATE TRIGGER af3_fail_entry BEFORE INSERT ON affiliate_commission_entry
+          FOR EACH ROW EXECUTE FUNCTION af3_fail_entry();
+      `)
+
+      try {
+        // workflow โยน error เป็น plain object ({ message, ... }) ไม่ใช่ Error
+        await expect(redeliver(orderId)).rejects.toEqual(
+          expect.objectContaining({ message: expect.stringContaining("AF-3 forced entry failure") })
+        )
+      } finally {
+        await dbConnection.raw(`
+          DROP TRIGGER af3_fail_entry ON affiliate_commission_entry;
+          DROP FUNCTION af3_fail_entry();
+        `)
+      }
+      expect(await attributionsOf(orderId)).toEqual([])
+      expect(await entriesOf(orderId)).toEqual([])
+
+      await redeliver(orderId)
+      expect(await attributionsOf(orderId)).toHaveLength(1)
+      expect((await entriesOf(orderId)).map((e) => e.amount)).toEqual([100])
     })
 
     it("AC-11: a forged/tampered affiliate_token creates nothing and is logged", async () => {
