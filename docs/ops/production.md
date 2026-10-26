@@ -45,6 +45,33 @@ CDN หน้า storefront: วาง CDN หน้า Next.js โดยเค�
 ตามค่าเริ่มต้นของ starter) ห้าม cache path ที่มี cookie ของ customer (`/account`, `/cart`, `/checkout`)
 storefront ตั้ง `images.unoptimized: true` อยู่แล้ว จึงโหลดรูปจากโดเมน CDN ได้โดยไม่ต้องเพิ่ม `remotePatterns`
 
+## Redis ของ event bus ขาด (OPS-8, ADR-012)
+smoke test: `tools/ops/smoke-redis-outage.sh` (AC-5 ของ spec 07) — บูต compose prod แบบแยก project, `docker pause`
+Redis 30 วินาทีแล้ว unpause จากนั้นตรวจว่า event ที่ server emit หลัง unpause ถูก subscriber บน worker ประมวลผลภายใน
+60 วินาที (หรือ worker จบ process แล้วถูก restart แล้วประมวลผลได้) — ถ้า worker ค้างทั้งที่ `/health` ตอบ 200 script จะ fail
+```bash
+tools/ops/smoke-redis-outage.sh                                  # postgres/redis ภายใน project (default ops8test)
+SMOKE_PROJECT=medusa-ops8 SMOKE_DATABASE_URL="postgres://medusa:medusa@host.docker.internal:5432/medusa_ops8?sslmode=disable" \
+  tools/ops/smoke-redis-outage.sh                                # ใช้ DB ที่สร้างไว้แล้วบน postgres ของ dev แทน
+```
+- `SMOKE_DATABASE_URL` ต้องชี้ไป DB ที่สร้างไว้สำหรับ smoke โดยเฉพาะ (เช่น `medusa_ops8`) **ห้ามชี้ไป DB `medusa` ของ dev**
+  (script รัน migration และสร้าง admin/product ลงไป) และ `host.docker.internal` ใช้ได้เฉพาะ Docker Desktop
+  (Linux/CI ต้องใช้ IP ของ host หรือไม่ตั้งตัวแปรนี้)
+- `SMOKE_PROJECT` ห้ามขึ้นต้นด้วย `medusa-ecom` (script ปฏิเสธ) เพราะ cleanup รัน `down -v` ซึ่งจะลบ volume ของ dev
+- `KEEP_UP=1` เก็บ container ไว้ดูหลังรัน; รันซ้ำบน container เดิมได้เพราะ script นับ log เป็นส่วนต่าง
+  เก็บกวาดเองด้วย `docker compose -p <project> -f docker-compose.prod.yml down -v` (ทั้ง `smoke-redis-outage.sh` และ `smoke-worker-mode.sh`)
+ผลบน Medusa 2.22.1 / bullmq 5.13.0: ผ่านโดยไม่ต้องตั้ง `redisOptions`/`workerOptions` เพิ่ม — Redis ที่ถูก pause ยังรับ TCP
+handshake (kernel ตอบแทน) คำสั่งจึงแค่ค้างแล้วทำงานต่อหลัง unpause ไม่เกิด `ETIMEDOUT`
+(ผลทดลองทั้งหมด: `docs/evidence/ops/OPS-8-tests.txt`)
+
+**ความเสี่ยงที่เหลือ** (ทำซ้ำในเครื่องไม่ได้ เคยเห็นครั้งเดียวตอนเครื่องโหลดหนัก — PR #27): ถ้า connection แรกของ BullMQ worker
+ของ event bus ต่อ Redis ไม่สำเร็จตอนบูต (เช่น event loop ค้างเกิน connectTimeout 10 วินาที → `ETIMEDOUT`) worker จะหยุดถาวร
+พร้อม log `Error running event bus worker: Connection is closed.` ขณะที่ `GET /health` ยังตอบ 200 → orchestrator ไม่ restart ให้
+และ event (order placed, payment captured ฯลฯ) ค้างใน queue
+- ต้องตั้ง **alert จาก log `Error running event bus worker`** บน process worker (งานของ OPS-3)
+- เมื่อ alert ดังให้ restart worker (orchestrator/on-call) — job ที่ค้างอยู่ใน Redis จะถูกประมวลผลหลัง restart
+- เราไม่แตะ internal ของ module event bus ของ Medusa และไม่เพิ่ม health route (ADR-012 ข้อ 3–4)
+
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
 1. `medusa db:migrate` (compose prod: service `migrate` รันก่อน server/worker ด้วย `service_completed_successfully`)
@@ -56,3 +83,4 @@ storefront ตั้ง `images.unoptimized: true` อยู่แล้ว จ�
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
 - `tools/ops/smoke-worker-mode.sh` — product ที่สร้างบน server ต้องถูกประมวลผลโดย subscriber บน worker
+- `tools/ops/smoke-redis-outage.sh` — worker กลับมาประมวลผล event หลัง Redis ถูก pause 30 วินาที (OPS-8)

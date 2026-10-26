@@ -1,0 +1,39 @@
+# OPS-8 — ผลทดลอง Redis ของ event bus ขาด (docs/spec/07-scaling-ops.md AC-5, ADR-012)
+# เครื่อง: macOS + Docker Desktop, backend image node:22.23.4-bookworm-slim, @medusajs/* 2.22.1, bullmq 5.13.0
+# compose: docker-compose.prod.yml project medusa-ops8 (server + worker + redis), DB medusa_ops8 บน postgres ของ dev
+# ไม่ได้ตั้ง redisOptions/workerOptions (infra-modules.ts เท่ากับ develop)
+
+## แบบที่ 1 — tools/ops/smoke-redis-outage.sh (AC-5: docker pause redis 30s แล้ว unpause) บนโค้ด develop
+PASS server creates product before outage
+PASS worker processes product.created before outage
+pausing redis for 30s
+redis unpaused
+worker log lines mentioning ETIMEDOUT during outage: 0
+PASS server creates product after unpause
+PASS worker processes product.created emitted after unpause within 60s (restarts: 0)
+smoke-redis-outage: all checks passed
+# หมายเหตุ: รันรอบแรก FAIL เพราะ script ตั้ง title ของ product ซ้ำ (handle ซ้ำ → 400) ไม่ใช่ปัญหาของ worker — แก้เป็น title ไม่ซ้ำแล้ว
+# ทำไม pause ไม่ทำให้เกิด ETIMEDOUT: จาก worker container ต่อ TCP ไป redis ที่ถูก pause → "connected 4" (ms) แล้ว PING ค้างจน timeout
+#   = kernel ยังตอบ TCP handshake ให้ container ที่ถูก freeze; ioredis connectTimeout ไม่ทำงาน คำสั่งแค่ค้างแล้วทำงานต่อหลัง unpause
+
+## แบบที่ 2 — docker pause redis → docker restart worker (บูตระหว่าง pause) → unpause หลัง 30s
+worker log: "Redis cache connection test failed: Command timed out, but continuing with lazy connection" (caching-redis)
+worker log: "Connection to Redis in module 'event-bus-redis' established" หลัง unpause, "Server is ready" (boot 30010ms)
+สถานะหลัง 75s: running, RestartCount 0, healthy — ไม่มี "Error running event bus worker"
+
+## แบบที่ 3 — docker stop redis → docker restart worker → docker start redis หลัง 30s
+worker log: "[ioredis] Unhandled error event: Error: getaddrinfo ENOTFOUND redis" หลายครั้ง แล้ว reconnect สำเร็จ
+สถานะหลัง 90s: running, RestartCount 0, healthy — ไม่มี "Error running event bus worker"
+สร้าง product บน server → create 200, worker "Processing product.created" เพิ่มจาก 2 เป็น 3 (worker ทำงานต่อได้)
+
+## แบบที่ 4 — บูต worker ด้วย CPU จำกัด (จำลองเครื่องโหลดหนักตาม PR #27)
+--cpus 0.05: บูตไม่เสร็จภายใน 400s (ช้าเกินกว่าจะทดสอบได้)
+--cpus 0.2 : บูต 171s, "Connection to Redis in module 'event-bus-redis' established", ไม่มี ETIMEDOUT / "Error running event bus worker"
+
+## สรุป
+- AC-5 ตามถ้อยคำปัจจุบัน (docker pause 30s) ผ่านบน develop โดยไม่ต้องแก้ config → script ใช้เป็น regression test
+- ADR-012 ขั้นที่ 1 ("script fail บน develop ก่อน") ทำไม่ได้ด้วย docker pause — planner ต้องปรับถ้อยคำ AC-5/ADR-012
+- ความเสี่ยงที่เหลือ (จากการอ่านโค้ด bullmq 5.13.0 + log ใน PR #27, ทำซ้ำในเครื่องไม่ได้): Worker สร้าง connection แบบ blocking
+  ด้วย duplicate() ของ client ที่ lazyConnect: true; ถ้าการต่อครั้งแรกล้ม (ETIMEDOUT ตอน event loop ค้างขณะบูต) run() reject
+  → Medusa log "Error running event bus worker: Connection is closed." และไม่เรียก run() ใหม่ ขณะ /health ยัง 200
+  → จัดการด้วย alert จาก log (OPS-3) + restart worker (docs/ops/production.md)

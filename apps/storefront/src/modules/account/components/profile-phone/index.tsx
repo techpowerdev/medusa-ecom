@@ -48,7 +48,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
     <form action={formAction} className="w-full">
       <AccountInfo
         label="เบอร์โทรศัพท์"
-        currentInfo={`${customer.phone}`}
+        currentInfo={customer.phone || "ยังไม่ได้ระบุ"}
         isSuccess={successState}
         isError={!!state.error}
         errorMessage={state.error || undefined}

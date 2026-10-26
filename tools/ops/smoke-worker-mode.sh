@@ -6,6 +6,8 @@
 set -euo pipefail
 
 PROJECT="${SMOKE_PROJECT:-ops1test}"
+# cleanup รัน `down -v` → ห้ามใช้ชื่อ project ของ dev (จะลบ volume pg-data ของ medusa-ecom)
+case "$PROJECT" in medusa-ecom*) echo "SMOKE_PROJECT=$PROJECT ใช้ไม่ได้ (ชนกับ project ของ dev)" >&2; exit 2 ;; esac
 # ใช้ postgres/redis ภายใน project นี้เสมอ — ไม่ให้ DATABASE_URL/REDIS_URL ของ shell (dev) รั่วเข้ามา
 unset DATABASE_URL REDIS_URL
 export SERVER_PORT="${SERVER_PORT:-9104}"
@@ -54,12 +56,16 @@ create_product() {
       .then((r) => r.json())
       .then(({ token }) => fetch(base + '/admin/products', { method: 'POST',
         headers: { ...json, authorization: 'Bearer ' + token },
-        body: JSON.stringify({ title: 'OPS-2 smoke', options: [{ title: 'Size', values: ['M'] }] }) }))
+        body: JSON.stringify({ title: 'OPS-2 smoke ' + Date.now(), options: [{ title: 'Size', values: ['M'] }] }) }))
       .then((r) => console.log(r.status), () => console.log('ERR'))"
 }
+# นับเป็นส่วนต่างจากก่อนสร้าง product — KEEP_UP=1 แล้วรันซ้ำ container เดิมยังมี log ของรอบก่อน
+processed_total() { compose logs "$1" | grep -c 'Processing product.created ' || true; }
+base_worker="$(processed_total worker)"
+base_server="$(processed_total server)"
+processed_on() { local base="base_$1"; echo $(( $(processed_total "$1") - ${!base} )); }
 check "server creates product via admin API" 200 "$(create_product)"
 # event-bus-redis: "Processing product.created (priority: N) which has ..."; event-bus-local ไม่มี priority
-processed_on() { compose logs "$1" | grep -c 'Processing product.created ' || true; }
 for _ in $(seq 1 30); do [ "$(processed_on worker)" -ge 1 ] && break; sleep 1; done
 check "worker processes product.created emitted by server" 1 "$(processed_on worker)"
 check "server does not process events itself" 0 "$(processed_on server)"
