@@ -119,3 +119,11 @@ lock ในข้อ 5 ไม่ครอบช่วงนี้เพราะ
 - จนกว่า PAY-6 merge: test AC-11 เป็น `test.fixme` อ้าง PAY-6 + ADR นี้ (รันยืนยันปัญหาในเครื่องได้ด้วย `E2E_RUN_KNOWN_ISSUES=1`)
 - การสร้าง session ใหม่ที่มี session Stripe เดิมช้าขึ้น 1 Stripe retrieve
 - ถ้า Medusa แก้ต้นทาง (E) ภายหลัง ให้ทบทวน guard ใน ADR ใหม่ตอน bump เวอร์ชัน
+
+## ภาคผนวก (owner 2026-10-26): payment collection ที่ไม่มี cart
+- payment collection ของ **order** (หน้า `/account/orders/:id/pay` เช่น group buy — PAY-3/GB-5) ไม่มี `cart_id` → guard ใช้ lock key =
+  `payment_collection_id` แทน (collection ที่มี cart ยังใช้ `cart_id` ตามข้อ 5 เพื่อให้ตรงกับ `processPaymentWorkflow`)
+- หน้า order pay ไม่ใช้ทางสำรอง complete cart (spec 06 AC-12b) — เมื่อได้ `PAYMENT_ALREADY_COMPLETED` ให้ poll สถานะ order ต่ออย่างเดียว
+- key นี้ไม่ตรงกับ lock ของ `processPaymentWorkflow` (ซึ่งใช้ `cart_id`) → PAY-3/PAY-6 ต้องมี integration test ยืนยันว่า guard กับ webhook
+  ไม่สร้าง payment ซ้อนบน collection ของ order; ถ้าซ้อนได้ให้หยุดและรายงาน planner
+- ไม่เปลี่ยนส่วนอื่นของ A + D (spec 06 Q6)
