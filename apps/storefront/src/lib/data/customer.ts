@@ -20,6 +20,8 @@ import {
 } from "./cookies"
 import { addToCart } from "./cart"
 import { readPendingAddToCart } from "@lib/util/pending-add-to-cart"
+import { readReturnTo } from "@lib/util/login-return"
+import { buyFromPermalink } from "@lib/util/server-cart"
 
 export type CustomerAuthState =
   | { state: "error"; error: string }
@@ -123,7 +125,7 @@ export async function signup(
 
   // Continue by logging in. The login response tells us whether the backend
   // requires email verification — we don't need a storefront-side flag.
-  return resumePendingAddToCart(
+  return continueAfterAuth(
     formData,
     await completeLogin(customerForm.email, password)
   )
@@ -136,15 +138,30 @@ export async function login(
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
-  return resumePendingAddToCart(formData, await completeLogin(email, password))
+  return continueAfterAuth(formData, await completeLogin(email, password))
 }
 
 // CORE-6 (spec 01 AC-6): guest ที่กด "Add to cart" ถูกส่งมาล็อกอินพร้อม variant ที่ค้างไว้
 // ล็อกอินสำเร็จ → เพิ่มลง cart แล้วไปหน้า cart
-async function resumePendingAddToCart(
+// CORE-14 (AC-41): มาจาก /buy/... → ล็อกอินสำเร็จแล้วสร้าง cart จากลิงก์เดิมแล้วไป checkout
+// (ไม่ redirect ไป route handler `/buy` จาก server action เพราะ client router ตาม redirect แบบ RSC ไม่ได้)
+async function continueAfterAuth(
   formData: FormData,
   result: CustomerAuthState
 ): Promise<CustomerAuthState> {
+  const returnTo = readReturnTo(formData)
+  if (result?.state === "success" && returnTo) {
+    const url = new URL(returnTo, "http://storefront.invalid")
+    const bought = await buyFromPermalink(
+      url.pathname.slice("/buy/".length),
+      url.searchParams.get("context/address_country")
+    )
+    if ("error" in bought || bought.next === "login") {
+      return { state: "error", error: "error" in bought ? bought.error : "กรุณาเข้าสู่ระบบอีกครั้ง" }
+    }
+    redirect(`/${bought.countryCode}/checkout`)
+  }
+
   const pending = readPendingAddToCart(formData)
   if (result?.state !== "success" || !pending) {
     return result

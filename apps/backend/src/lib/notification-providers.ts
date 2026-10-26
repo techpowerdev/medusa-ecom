@@ -29,6 +29,8 @@ export const buildNotificationProviders = (env: Env) => {
         channels: ["email"],
         api_key: env.RESEND_API_KEY,
         from: env.RESEND_FROM_EMAIL,
+        // EV-4: ถอด code/PIN ของ e-voucher ตอน render อีเมล (notification.data เก็บ ciphertext)
+        evoucher_encryption_key: env.EVOUCHER_ENCRYPTION_KEY,
       },
     },
   ]

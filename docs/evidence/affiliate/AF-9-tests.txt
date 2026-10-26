@@ -1,0 +1,50 @@
+# AF-9 test evidence — 2026-10-26 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose
+# รันในเครื่องเฉพาะ affiliate-admin.spec.ts แบบ in-process (เครื่องโหลดสูงจึงยืด hook timeout ในสำเนาชั่วคราวที่ไม่ commit); ชุดเต็มให้ CI รัน
+### Red (ก่อนเขียนโค้ด) affiliate-admin.spec.ts
+    ✓ requires an admin user
+      ✓ creates a draft program, lists, publishes and ends it
+      ✓ rejects an invalid window or rate
+      ✓ deletes only draft programs
+      ✓ lists by status, approves, suspends and sets payout_info
+      ✓ lists ledger entries filtered by affiliate and status
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid
+      ✓ rolls entries back to approved when marking the payout paid fails
+      ✓ exposes ledger and payouts through Query
+      ✓ serializes concurrent payout creation so entries are paid out once
+      ✓ does not create a payout when the net is zero or negative (Q8)
+      ✕ cancels a draft payout and returns its entries to the pool (AC-19)
+      ✕ refuses to cancel a paid payout and leaves it unchanged (AC-19)
+      ✓ selects entries by rule 19 across payout rounds (AC-20)
+      ✕ filters payable entries in the database (rule 19)
+      ✓ summarizes the ledger per affiliate and status
+Tests:       3 failed, 13 passed, 16 total
+  สาเหตุ: DELETE /admin/affiliate/payouts/:id → 404 (ยังไม่มี route); service.listPayableCommissionEntries is not a function
+  AC-20 ผ่านอยู่แล้วตั้งแต่ Red เพราะพฤติกรรมเดิมถูก — AF-9 ย้ายการกรองไป DB โดยพฤติกรรมไม่เปลี่ยน
+### Green affiliate-admin.spec.ts
+    ✓ requires an admin user
+      ✓ creates a draft program, lists, publishes and ends it
+      ✓ rejects an invalid window or rate
+      ✓ deletes only draft programs
+      ✓ lists by status, approves, suspends and sets payout_info
+      ✓ lists ledger entries filtered by affiliate and status
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid
+      ✓ rolls entries back to approved when marking the payout paid fails
+      ✓ exposes ledger and payouts through Query
+      ✓ serializes concurrent payout creation so entries are paid out once
+      ✓ does not create a payout when the net is zero or negative (Q8)
+      ✓ cancels a draft payout and returns its entries to the pool (AC-19)
+      ✓ refuses to cancel a paid payout and leaves it unchanged (AC-19)
+      ✓ selects entries by rule 19 across payout rounds (AC-20)
+      ✓ filters payable entries in the database (rule 19)
+      ✓ summarizes the ledger per affiliate and status
+Tests:       16 passed, 16 total
+### pnpm --filter backend test:unit
+Test Suites: 35 passed, 35 total
+Tests:       300 passed, 300 total
+### pnpm lint
+apps/backend lint: ไม่มี error; apps/storefront: 0 errors (warning เดิมของ storefront)
+### pnpm typecheck
+apps/backend typecheck: Done / apps/storefront typecheck: Done
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully

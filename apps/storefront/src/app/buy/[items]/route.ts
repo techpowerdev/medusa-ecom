@@ -1,72 +1,35 @@
-import {
-  activateCart,
-  createCartWithItems,
-  findMissingVariantIds,
-  MAX_LINE_ITEM_QUANTITY,
-  resolveRegion,
-} from "@lib/util/server-cart"
+import { loginPathForReturn } from "@lib/util/login-return"
+import { buyFromPermalink } from "@lib/util/server-cart"
 import { getRequestOrigin } from "@lib/util/site"
 import { NextResponse } from "next/server"
 
-const ITEM_PATTERN = /^([A-Za-z0-9._-]+|~[A-Za-z0-9_-]+):([1-9][0-9]*)$/
 const NO_STORE = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" }
 
-const decodeItemId = (token: string) =>
-  token.startsWith("~")
-    ? Buffer.from(token.slice(1), "base64url").toString("utf8")
-    : token
-
-const parseItems = (raw: string) => {
-  const items: { variant_id: string; quantity: number }[] = []
-  for (const pair of decodeURIComponent(raw).split(",")) {
-    const match = pair.match(ITEM_PATTERN)
-    if (!match) {
-      return null
-    }
-    const quantity = Number(match[2])
-    if (quantity > MAX_LINE_ITEM_QUANTITY) {
-      return null
-    }
-    items.push({ variant_id: decodeItemId(match[1]), quantity })
-  }
-  return items.length ? items : null
-}
-
-const textResponse = (body: string, status: number) =>
-  new NextResponse(body, { status, headers: NO_STORE })
-
-/** UCP cart permalink: /buy/{variant_id}:{quantity},... builds a cart and opens checkout. */
+/**
+ * Cart permalink: /buy/{variant_id}:{quantity},... builds a cart and opens checkout.
+ * CORE-14 (spec 01 AC-41, กฎ 25): ไม่มี guest — ยังไม่ล็อกอินให้ไปหน้า login แล้วกลับมาที่ลิงก์เดิม
+ */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ items: string }> }
 ) {
-  const items = parseItems((await params).items)
-  if (!items) {
-    return textResponse("ลิงก์ไม่ถูกต้อง รูปแบบที่ใช้ได้คือ /buy/{variant_id}:{quantity},...", 400)
-  }
-
-  const country = new URL(request.url).searchParams.get("context/address_country")
-  const resolved = await resolveRegion(country ?? undefined)
-  if (!resolved) {
-    return textResponse("ร้านนี้ไม่จัดส่งไปยังประเทศที่ระบุ", 400)
-  }
-
-  const missing = await findMissingVariantIds(items.map((item) => item.variant_id))
-  if (missing.length) {
-    return textResponse(`ไม่พบสินค้า: ${missing.join(", ")}`, 404)
-  }
-
-  let cartId: string
-  try {
-    cartId = await createCartWithItems(resolved.region.id, items)
-  } catch {
-    return textResponse("มีสินค้าบางรายการในลิงก์นี้ที่ซื้อไม่ได้", 400)
-  }
-
-  await activateCart(cartId)
-
-  return NextResponse.redirect(
-    `${getRequestOrigin(request)}/${resolved.countryCode}/checkout`,
-    { status: 303, headers: NO_STORE }
+  const url = new URL(request.url)
+  const result = await buyFromPermalink(
+    (await params).items,
+    url.searchParams.get("context/address_country")
   )
+
+  if ("error" in result) {
+    return new NextResponse(result.error, { status: result.status, headers: NO_STORE })
+  }
+
+  const path =
+    result.next === "login"
+      ? loginPathForReturn(result.countryCode, `${url.pathname}${url.search}`)
+      : `/${result.countryCode}/checkout`
+
+  return NextResponse.redirect(`${getRequestOrigin(request)}${path}`, {
+    status: 303,
+    headers: NO_STORE,
+  })
 }

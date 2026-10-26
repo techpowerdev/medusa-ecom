@@ -9,7 +9,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 import { acquireLockStep, releaseLockStep } from "@medusajs/medusa/core-flows"
 import { AFFILIATE_MODULE } from "../../modules/affiliate"
 import AffiliateModuleService from "../../modules/affiliate/service"
-import { buildPayout, PayoutCandidateEntry } from "../../modules/affiliate/utils/payout"
+import { buildPayout } from "../../modules/affiliate/utils/payout"
 
 export type CreateAffiliatePayoutInput = {
   affiliate_id: string
@@ -17,14 +17,16 @@ export type CreateAffiliatePayoutInput = {
   period_to: Date
 }
 
+export type CancelAffiliatePayoutInput = { id: string }
+
 export type MarkAffiliatePayoutPaidInput = {
   id: string
   reference?: string | null
 }
 
 /**
- * Q8: approved + reversed entries created before period_to that are not in any payout yet.
- * Entries left over from an earlier round (net ≤ 0) are picked up here — that is the carry-over.
+ * Q8 / rule 19: approved + reversed entries created before period_to that are not in any payout yet
+ * (filtered in the DB). Entries left over from an earlier round (net ≤ 0) are picked up here — that is the carry-over.
  */
 export const prepareAffiliatePayoutStep = createStep(
   "prepare-affiliate-payout",
@@ -32,23 +34,12 @@ export const prepareAffiliatePayoutStep = createStep(
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
     await service.retrieveAffiliate(input.affiliate_id, { select: ["id"] })
 
-    const payouts = await service.listAffiliatePayouts(
-      { affiliate_id: input.affiliate_id },
-      { select: ["entry_ids"] }
-    )
-    const taken = new Set(payouts.flatMap((p) => p.entry_ids as string[]))
-    const entries = await service.listAffiliateCommissionEntries(
-      {
-        affiliate_id: input.affiliate_id,
-        status: ["approved", "reversed"],
-        created_at: { $lt: input.period_to },
-      },
-      { select: ["id", "amount", "currency", "status"] }
-    )
+    const entries = await service.listPayableCommissionEntries({
+      affiliate_id: input.affiliate_id,
+      period_to: input.period_to,
+    })
 
-    const draft = buildPayout(
-      entries.filter((e) => !taken.has(e.id)) as unknown as PayoutCandidateEntry[]
-    )
+    const draft = buildPayout(entries)
     if (!draft) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
@@ -136,6 +127,27 @@ export const setAffiliatePayoutPaidStep = createStep(
   }
 )
 
+// Q9: cancelling a draft = soft-delete; entries are untouched (a draft never changes them) so rule 19 frees them
+export const cancelAffiliatePayoutStep = createStep(
+  "cancel-affiliate-payout",
+  async (input: CancelAffiliatePayoutInput, { container }) => {
+    const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
+    const payout = await service.retrieveAffiliatePayout(input.id, { select: ["id", "status"] })
+    if (payout.status !== "draft") {
+      throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Only draft payouts can be cancelled")
+    }
+    await service.softDeleteAffiliatePayouts(input.id)
+    return new StepResponse(input.id, input.id)
+  },
+  async (id, { container }) => {
+    if (!id) {
+      return
+    }
+    const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
+    await service.restoreAffiliatePayouts(id)
+  }
+)
+
 export const createAffiliatePayoutWorkflow = createWorkflow(
   "create-affiliate-payout",
   function (input: CreateAffiliatePayoutInput) {
@@ -162,5 +174,19 @@ export const markAffiliatePayoutPaidWorkflow = createWorkflow(
 
     releaseLockStep({ key })
     return new WorkflowResponse(payout)
+  }
+)
+
+export const cancelAffiliatePayoutWorkflow = createWorkflow(
+  "cancel-affiliate-payout",
+  function (input: CancelAffiliatePayoutInput) {
+    // Same key as mark-paid so a payout cannot be cancelled while it is being paid
+    const key = transform({ input }, ({ input }) => `affiliate-payout-paid:${input.id}`)
+    acquireLockStep({ key, timeout: 5, ttl: 30 })
+
+    const id = cancelAffiliatePayoutStep(input)
+
+    releaseLockStep({ key })
+    return new WorkflowResponse(id)
   }
 )
