@@ -1,5 +1,6 @@
 import { Button } from "@modules/common/components/ui"
 import { useMemo } from "react"
+import { orderPreview } from "@lib/util/order-preview"
 
 import Thumbnail from "@modules/products/components/thumbnail"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -20,9 +21,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
     )
   }, [order])
 
-  const numberOfProducts = useMemo(() => {
-    return order.items?.length ?? 0
-  }, [order])
+  const { shown, moreCount } = orderPreview(order.items)
 
   return (
     <div className="bg-white flex flex-col" data-testid="order-card">
@@ -42,7 +41,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
         <span className="pl-2">{`${numberOfLines} ชิ้น`}</span>
       </div>
       <div className="grid grid-cols-2 small:grid-cols-4 gap-4 my-4">
-        {order.items?.slice(0, 3).map((i) => {
+        {shown.map((i) => {
           return (
             <div
               key={i.id}
@@ -63,10 +62,10 @@ const OrderCard = ({ order }: OrderCardProps) => {
             </div>
           )
         })}
-        {numberOfProducts > 4 && (
+        {moreCount > 0 && (
           <div className="w-full h-full flex flex-col items-center justify-center">
             <span className="text-small-regular text-ui-fg-base">
-              + {numberOfLines - 4}
+              + <span data-testid="order-card-more-count">{moreCount}</span>
             </span>
             <span className="text-small-regular text-ui-fg-base">รายการ</span>
           </div>
