@@ -1,0 +1,38 @@
+# AF-4 (spec 05) — reversal + maturity job + index (status, matures_at)
+# วันที่: 2026-10-26 21:13 +07, branch feat/AF-4-reversal-maturity, Node v22.23.3
+
+## Unit: src/modules/affiliate/utils/__tests__/reversal.unit.spec.ts
+  affectedFractions
+    ✓ affects every line fully when the order is canceled (1 ms)
+    ✓ affects every line fully when refunds cover all captures (AC-5)
+    ✓ uses the received return quantity of each line otherwise (Q3) (1 ms)
+  planReversals
+    ✓ reverses the full entry as a negative reversed entry (AC-5)
+    ✓ reverses entry.amount × fraction for a partial return, rounded half-up to 2 decimals (Q3)
+    ✓ reverses approved and paid entries too (1 ms)
+    ✓ is idempotent: existing reversals count toward the target (redelivered/repeated events)
+    ✓ only adds the difference when a later event affects more of the line
+    ✓ never reverses more than earned and ignores unaffected lines (1 ms)
+  selectMaturedEntryIds
+    ✓ approves pending entries whose line net (including reversals) is positive (Q8) (1 ms)
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+
+## Integration (http): integration-tests/http/affiliate-reversal.spec.ts
+    AC-5 reversal
+      ✓ a full refund appends a reversed −฿100 entry with matures_at null; net is 0 and the entry is untouched (971 ms)
+      ✓ a partial refund without a return does not reverse anything (1012 ms)
+      ✓ order.canceled reverses the whole commission (1030 ms)
+      ✓ a received return of 1 of 2 units reverses half of the line (Q3) (1103 ms)
+    AC-6 maturity
+      ✓ hold_days=14: the entry stays pending before 14 days and becomes approved only after (905 ms)
+      ✓ a matured entry whose line is fully reversed is not approved (Q8) (716 ms)
+      ✓ the daily job approves entries that matured by now (613 ms)
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+
+## Unit suite ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 44 passed, 44 total
+Tests:       398 passed, 398 total
+
+## pnpm lint && pnpm typecheck: ผ่าน (0 errors)

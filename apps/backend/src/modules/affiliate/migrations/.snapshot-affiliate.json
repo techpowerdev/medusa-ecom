@@ -630,6 +630,15 @@
           "expression": "CREATE INDEX IF NOT EXISTS \"IDX_affiliate_commission_entry_affiliate_id_status_created_at\" ON \"affiliate_commission_entry\" (\"affiliate_id\", \"status\", \"created_at\") WHERE deleted_at IS NULL"
         },
         {
+          "keyName": "IDX_affiliate_commission_entry_status_matures_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_affiliate_commission_entry_status_matures_at\" ON \"affiliate_commission_entry\" (\"status\", \"matures_at\") WHERE deleted_at IS NULL"
+        },
+        {
           "keyName": "IDX_affiliate_commission_entry_order_id_line_item_id_unique",
           "columnNames": [],
           "composite": false,
