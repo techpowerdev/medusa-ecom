@@ -15,6 +15,7 @@ import seedThailand from "../../src/scripts/seed"
 import { FLASH_SALE_MODULE } from "../../src/modules/flash_sale"
 import FlashSaleModuleService from "../../src/modules/flash_sale/service"
 import flashSaleReleaseHandler from "../../src/subscribers/flash-sale-release"
+import { releaseFlashSaleForOrderWorkflow } from "../../src/workflows/release-flash-sale-for-order"
 
 jest.setTimeout(300 * 1000)
 
@@ -316,6 +317,19 @@ medusaIntegrationTestRunner({
         expect(await releasedAt(cartId)).toEqual([expect.any(Date)])
         expect(paymentLookups).toBe(2)
       })
+    })
+
+    // FS-11: payment ที่ไม่ผูกกับ order (หรือไม่มีอยู่จริง) → ไม่ throw และไม่คืนอะไร
+    it("a refunded payment without an order is a no-op", async () => {
+      const campaignId = await setupFlashSale()
+      const { customerId } = await placeFlashOrder(2)
+
+      const { result } = await releaseFlashSaleForOrderWorkflow(container).run({
+        input: { payment_id: "pay_does_not_exist", reason: "refunded" },
+      })
+
+      expect(result.released ?? []).toEqual([])
+      expect(await state(campaignId, customerId)).toEqual({ units_sold: 2, usage: 2 })
     })
 
     it("canceling an order without flash units is a no-op", async () => {

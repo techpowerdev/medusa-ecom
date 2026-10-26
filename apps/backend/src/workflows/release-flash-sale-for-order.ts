@@ -23,7 +23,9 @@ export const releaseFlashSaleForOrderWorkflow = createWorkflow(
   (input: ReleaseFlashSaleForOrderInput) => {
     const paymentId = transform({ input }, ({ input }) => ("payment_id" in input ? input.payment_id : ""))
 
-    const payments = when({ paymentId }, ({ paymentId }) => !!paymentId).then(() => {
+    // when ที่ .then() คืนค่าต้องมีชื่อคงที่ — ไม่เช่นนั้น step สังเคราะห์ได้ชื่อสุ่มต่อการโหลด module และ retry ข้าม process
+    // (worker mode/restart) จะหา step ใน transaction ที่เก็บไว้ไม่เจอ
+    const payments = when("find-order-of-refunded-payment-when", { paymentId }, ({ paymentId }) => !!paymentId).then(() => {
       const { data } = useQueryGraphStep({
         entity: "payment",
         fields: ["id", "payment_collection.order.id"],
@@ -41,7 +43,7 @@ export const releaseFlashSaleForOrderWorkflow = createWorkflow(
       "order_id" in input ? input.order_id : (payments?.[0]?.payment_collection?.order?.id ?? "")
     )
 
-    const orders = when({ orderId }, ({ orderId }) => !!orderId).then(() => {
+    const orders = when("query-order-for-release-when", { orderId }, ({ orderId }) => !!orderId).then(() => {
       const { data } = useQueryGraphStep({
         entity: "order",
         fields: [

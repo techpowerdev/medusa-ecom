@@ -11,10 +11,11 @@ unit
     container.resolve ของ subscriber ถูก mock ให้ throw → subscriber ไม่ resolve query/service (AC-17 ส่วน "ไม่มี query.graph")
   ทั้งชุด                                                       314 passed
 integration:http
-  integration-tests/http/flash-sale-release.spec.ts   10 passed (ใหม่ 1)
+  integration-tests/http/flash-sale-release.spec.ts   11 passed (ใหม่ 2)
     AC-17 capture order 2 หน่วย แล้ว inject error ครั้งแรกของ query.graph({ entity: "payment" }) (jest.spyOn) แล้ว refund เต็มจำนวน
       → ทันทีหลัง subscriber: ยังไม่คืน (units_sold 3, usage 2)
       → retry รอบถัดไป (~10 วินาที): units_sold 1, usage 0, released_at มีค่า, การหา payment ถูกเรียก 2 ครั้ง (คืนครั้งเดียว)
+    payment_id ที่ไม่ผูก order (ไม่มีอยู่จริง) → ไม่ throw, released ว่าง, usage/units_sold ไม่เปลี่ยน
     regression AC-5 (a) / AC-6 / AC-14 9 passed
 lint / typecheck / build            ผ่าน (lint มีเฉพาะ warning เดิมของ storefront)
 
@@ -22,3 +23,7 @@ Red: ก่อนย้ายการหา order เข้า workflow test AC
      (error ใน subscriber ไม่ถูก retry — reservation ไม่ถูก release) และ unit test ล้มด้วย
      "subscriber must not resolve anything from the container"
      (รอบ red นี้เผลอรัน integration:http ทุก suite ในเครื่อง: 28 suites อื่นผ่าน 232 tests ล้มเฉพาะ AC-17 ที่ตั้งใจ)
+
+แก้ตาม review #83: ตั้งชื่อคงที่ให้ when สองบล็อก ("find-order-of-refunded-payment-when", "query-order-for-release-when")
+  — กัน step สังเคราะห์ชื่อสุ่ม (when-then-<ulid>) ที่ทำให้ retry ข้าม process หา step ไม่เจอ; lint ไม่มี warning
+  @medusajs/when-block-must-have-name แล้ว
