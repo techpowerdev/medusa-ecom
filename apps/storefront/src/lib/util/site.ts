@@ -1,7 +1,8 @@
 import "server-only"
 import { headers } from "next/headers"
 
-export const STORE_NAME = "Medusa Store"
+// CORE-18: ชื่อร้านอยู่ใน src/lib/store-content.ts (export ต่อเพื่อให้ import เดิมใช้ได้)
+export { STORE_NAME } from "@lib/store-content"
 
 export const DEFAULT_COUNTRY_CODE = (
   process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"

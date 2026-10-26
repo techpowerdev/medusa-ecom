@@ -2,7 +2,9 @@ import { expect, type Page } from "@playwright/test"
 
 // CORE-4b (ADR-014 ข้อ 4): ชื่อแบรนด์/ชื่อเฉพาะที่คงเป็นตัวอักษรละตินได้ในข้อความไทย
 // (ข้อมูลจาก backend เช่น ชื่อสินค้า ไม่ควรถูกส่งเข้ามาตรวจ — เลือก element ที่เป็นข้อความของ storefront เท่านั้น)
-const ALLOWED = ["Medusa Store", "Medusa", "Next.js", "GitHub"]
+// CORE-18 (กฎข้อ 33): ชื่อ starter (Medusa, Next.js, GitHub) ไม่ได้รับยกเว้นแล้ว — ผู้ใช้ต้องไม่เห็น
+// รายการว่างไว้ก่อน แต่คงกลไกไว้ให้ task อื่น (เช่น CORE-4c/4d) เพิ่มชื่อเฉพาะที่คงเป็นละตินได้ เช่น PromptPay
+const ALLOWED: string[] = []
 
 export const THAI = /[฀-๿]/
 
