@@ -20,14 +20,14 @@
 
   27 passed (539ms)
 
-## e2e (chromium, backend seed ในเครื่อง)
-  ✓  2 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (1.8s)
-  ✓  4 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (370ms)
-  ✓  3 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (3.5s)
-  ✓  5 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (424ms)
-  ✓  1 [chromium] › e2e/store-content.spec.ts:40:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (4.0s)
-  ✓  6 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (595ms)
-  6 passed (5.3s)
+## e2e (chromium, backend seed ในเครื่อง; หลังแก้ตาม review #80: เพิ่ม step หน้าสมัครสมาชิก + footer-copyright)
+  ✓  1 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (3.4s)
+  ✓  2 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (3.8s)
+  ✓  4 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (920ms)
+  ✓  5 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (1.1s)
+  ✓  6 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (2.3s)
+  ✓  3 [chromium] › e2e/store-content.spec.ts:40:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (7.6s)
+  6 passed (9.2s)
 
 ## lint / typecheck / build
 apps/storefront lint: ✖ 35 problems (0 errors, 35 warnings)

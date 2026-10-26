@@ -44,19 +44,8 @@ describe("ไม่มีข้อความ/ลิงก์โฆษณาข
     expect(filesMatching(/https?:\/\/[\w.]*(github\.com|medusajs\.com|nextjs\.org)/)).toEqual([])
   })
 
-  // ไฟล์ account เป็นขอบเขตของ CORE-14 (กำลังทำ) — ห้ามแตะใน CORE-18; CORE-14 ต้องใช้ STORE_NAME แล้วลบรายการนี้
-  const ACCOUNT_FILES_OWNED_BY_CORE_14 = [
-    "app/[countryCode]/(main)/account/@dashboard/profile/page.tsx",
-    "app/[countryCode]/(main)/account/@login/page.tsx",
-    "modules/account/components/register/index.tsx",
-  ]
-
-  it("ไม่มีชื่อร้าน Medusa Store และ component medusa-cta (ยกเว้นไฟล์ account ของ CORE-14)", () => {
-    expect(
-      filesMatching(/Medusa Store|medusa-cta/).filter(
-        (file) => !ACCOUNT_FILES_OWNED_BY_CORE_14.includes(file)
-      )
-    ).toEqual([])
+  it("ไม่มีชื่อร้าน Medusa Store และ component medusa-cta", () => {
+    expect(filesMatching(/Medusa Store|medusa-cta/)).toEqual([])
     expect(fs.existsSync(path.join(SRC, "modules/layout/components/medusa-cta"))).toBe(false)
   })
 })

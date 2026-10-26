@@ -52,9 +52,18 @@ test("AC-61, AC-67: ไม่มีข้อความ/ลิงก์ขอ�
     })
   }
 
+  await step("account: หน้าสมัครสมาชิกไม่มีข้อความของ starter", async () => {
+    await page.goto(`/${CC}/account`)
+    await page.getByTestId("register-button").click()
+    await expect(page.getByTestId("register-page")).toBeVisible()
+    const text = await page.evaluate(storefrontText, BACKEND_DATA_TEST_IDS)
+    expect(text).not.toMatch(STARTER_TEXT)
+    await expect(page.locator(STARTER_LINKS)).toHaveCount(0)
+  })
+
   await step("home: hero และ footer มีอักษรไทย", async () => {
     await page.goto(`/${CC}`)
-    for (const id of ["hero-title", "hero-subtitle", "hero-cta", "footer-store-name", "footer-tagline"]) {
+    for (const id of ["hero-title", "hero-subtitle", "hero-cta", "footer-store-name", "footer-tagline", "footer-copyright"]) {
       await expect(page.getByTestId(id), id).toBeVisible()
       expect((await page.getByTestId(id).textContent()) ?? "", id).toMatch(THAI)
     }
