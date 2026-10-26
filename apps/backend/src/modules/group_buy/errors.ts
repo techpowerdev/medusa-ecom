@@ -10,6 +10,8 @@ export const GB_CART_ALREADY_JOINED = "GB_CART_ALREADY_JOINED"
 export const GB_CART_NOT_COMPLETABLE = "GB_CART_NOT_COMPLETABLE"
 // 400 NOT_ALLOWED (กฎข้อ 5, AC-23) — ไม่ใช่ 409 จึงห้ามอยู่ใน BUSINESS_CONFLICT_CODES
 export const GB_DISCOUNT_NOT_APPLIED = "GB_DISCOUNT_NOT_APPLIED"
+// ภายใน (ไม่ใช่ HTTP): deadline job เลือกผลจาก snapshot นอก lock แต่ใต้ lock ผลเปลี่ยนแล้ว (review #89) — job log เป็น warn
+export const GB_DEADLINE_OUTCOME_CHANGED = "GB_DEADLINE_OUTCOME_CHANGED"
 
 export const GB_CONFLICT_CODES = [
   GB_ALREADY_IN_OTHER_GROUP,

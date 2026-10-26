@@ -109,7 +109,11 @@ test("AC-32: max_quantity < max_units_per_person ไม่ส่ง, ends_at อ
     await expect(page.getByTestId("gb-max-quantity-error")).toHaveCount(0)
     await expect(page.getByTestId("gb-ends-at-warning")).toHaveCount(0)
     await page.getByTestId("gb-field-ends_at").fill(ictLocal(-1))
-    await expect(page.getByTestId("gb-ends-at-warning")).toBeVisible()
+    const warning = page.getByTestId("gb-ends-at-warning")
+    await expect(warning).toBeVisible()
+    // GB-N1: เป็นคำเตือน (ยังส่งได้) จึงใช้สีเตือน ไม่ใช่สี error ของ gb-max-quantity-error
+    await expect(warning).not.toHaveClass(/text-ui-fg-error/)
+    await expect(warning).toHaveClass(/text-ui-tag-orange-text/)
     await evidence("02-ends-at-warning")
   })
 
@@ -178,5 +182,58 @@ test("AC-33: เลือกสินค้า 2 ตัวผ่าน gb-produc
     expect(rules).toHaveLength(1)
     expect(rules[0]).toEqual({ attribute: "items.product.id", operator: "in", values: expect.any(Array) })
     expect([...rules[0].values].sort()).toEqual([...ids].sort())
+  })
+})
+
+test("AC-33: selection ของ gb-product-picker คงอยู่ข้ามหน้า → target_rules มีสินค้าจากทั้งสองหน้า", async ({
+  page,
+  request,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const admin = await adminHeaders(request)
+  const token = `GB6b2page${Date.now()}`
+  // picker แสดงหน้าละ 5 แถว — 6 ตัวทำให้มีหน้าที่สอง
+  const products: Record<string, string> = {}
+  for (const n of [1, 2, 3, 4, 5, 6]) {
+    const title = `${token} P${n}`
+    products[title] = await createProduct(request, admin, title)
+  }
+  const posts = campaignPosts(page)
+  const picker = page.getByTestId("gb-product-picker")
+  const rows = picker.locator("tbody tr")
+  const picked: string[] = []
+
+  await step("หน้า 1 เลือก 1 ตัว → หน้า 2 เลือก 1 ตัว → กลับหน้า 1 ยังติ๊กอยู่", async () => {
+    await openCreateForm(page)
+    await fillValidForm(page, `GB-6b2 paging ${token}`)
+    await picker.getByRole("searchbox").fill(token)
+    // รอผลค้นหา (debounce) ก่อน — หน้าแรกแบบไม่กรองก็มี 5 แถวเหมือนกัน
+    await expect(rows.filter({ hasText: token })).toHaveCount(5)
+    const first = rows.first()
+    picked.push((await first.locator("td").nth(1).innerText()).trim())
+    await first.getByRole("checkbox").click()
+
+    await picker.getByRole("button", { name: "Next" }).click()
+    await expect(rows).toHaveCount(1)
+    picked.push((await rows.first().locator("td").nth(1).innerText()).trim())
+    await rows.first().getByRole("checkbox").click()
+    await expect(page.getByTestId("gb-product-picker-count")).toContainText("2")
+
+    await picker.getByRole("button", { name: "Prev" }).click()
+    await expect(rows).toHaveCount(5)
+    await expect(rows.filter({ hasText: picked[0] }).getByRole("checkbox")).toBeChecked()
+    await expect(page.getByTestId("gb-product-picker-count")).toContainText("2")
+  })
+
+  await step("submit → target_rules มี id ของทั้งสองตัว", async () => {
+    const response = page.waitForResponse(
+      (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
+    )
+    await page.getByTestId("gb-campaign-create-submit").click()
+    expect((await response).status()).toBe(200)
+    const rules = posts[0].application_method.target_rules ?? []
+    expect(rules).toHaveLength(1)
+    expect([...rules[0].values].sort()).toEqual(picked.map((title) => products[title]).sort())
   })
 })

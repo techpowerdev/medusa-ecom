@@ -151,7 +151,7 @@ export const CreateCampaign = () => {
                   )}
                   {/* กฎข้อ 16: เตือนแต่ยังส่งได้ — activate จะถูก backend ปฏิเสธจนกว่าจะแก้ ends_at */}
                   {key === "ends_at" && isEndsAtPast(form.ends_at) && (
-                    <Text size="xsmall" className="text-ui-fg-error" data-testid="gb-ends-at-warning">
+                    <Text size="xsmall" className="text-ui-tag-orange-text" data-testid="gb-ends-at-warning">
                       This end time has already passed. The campaign will be created as draft but cannot be
                       activated until the end time is in the future.
                     </Text>
