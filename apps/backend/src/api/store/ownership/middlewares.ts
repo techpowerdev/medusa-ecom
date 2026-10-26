@@ -15,6 +15,7 @@ import {
   paymentCollectionOwner,
 } from "../../../lib/store-ownership"
 import { rejectStoreReturnOverrides } from "./return-overrides"
+import { validateStoreReturnShippingOption } from "./return-shipping-option"
 
 // CORE-12 (spec 01 "API routes" + กฎ 22, ADR-013 ทางเลือก A): ตรวจเจ้าของ resource บน route ของ Medusa
 // ด้วย defineMiddlewares — ไม่ห่อ route และไม่ใช้ workflow hook
@@ -31,6 +32,32 @@ export function ensureStoreOwnership(resolveOwner: OwnerResolver) {
 const customerAuth = authenticate("customer", ["session", "bearer"])
 const body = (req: AuthenticatedMedusaRequest) => (req.body ?? {}) as Record<string, unknown>
 
+// CORE-12b (กฎ 28): GET products/product-variants ใช้ query.cart_id คำนวณราคา/ภาษี — ตรวจเฉพาะเมื่อมี key
+// (ไม่มี cart_id = การเรียกดูสาธารณะ) ต้องวางหลัง authenticate แบบ allowUnauthenticated
+export async function ensureQueryCartOwnership(
+  req: AuthenticatedMedusaRequest,
+  _res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  if (!Object.prototype.hasOwnProperty.call(req.query ?? {}, "cart_id")) {
+    return next()
+  }
+  if (!req.auth_context?.actor_id) {
+    throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "Unauthorized")
+  }
+  const query = req.scope.resolve<RemoteQueryFunction>(ContainerRegistrationKeys.QUERY)
+  assertOwner(await cartOwner(query, req.query.cart_id), req.auth_context.actor_id)
+  next()
+}
+
+const optionalCustomerAuth = authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true })
+const productCartRoutes: MiddlewareRoute[] = [
+  "/store/products",
+  "/store/products/:id",
+  "/store/product-variants",
+  "/store/product-variants/:id",
+].map((matcher) => ({ method: ["GET"], matcher, middlewares: [optionalCustomerAuth, ensureQueryCartOwnership] }))
+
 const cartFromPath = ensureStoreOwnership((req, query) => cartOwner(query, req.params.id))
 const cartFromBody = ensureStoreOwnership((req, query) => cartOwner(query, body(req).cart_id))
 
@@ -45,6 +72,7 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
     middlewares: [ensureStoreOwnership((req, query) => paymentCollectionOwner(query, req.params.id))],
   },
   { matcher: "/store/shipping-options*", middlewares: [customerAuth] },
+  ...productCartRoutes,
   {
     method: ["GET"],
     matcher: "/store/shipping-options",
@@ -59,6 +87,7 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
   },
   // CORE-13 (กฎ 24, AC-39): ตาม guide "Restrict Return Creation" ของ Medusa — core ไม่มี auth บน route นี้
   // CORE-16: ต่อจาก auth + owner check — ห้าม store ส่ง return_shipping.price / receive_now / location_id (400)
+  // CORE-17: option ต้องเป็น return option ที่เปิดใน store และครอบที่อยู่จัดส่งของ order (400)
   {
     method: ["POST"],
     matcher: "/store/returns",
@@ -66,6 +95,7 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
       customerAuth,
       ensureStoreOwnership((req, query) => orderOwner(query, body(req).order_id)),
       rejectStoreReturnOverrides,
+      validateStoreReturnShippingOption,
     ],
   },
   // CORE-13 (owner Q-F3, AC-40): ปิด order transfer ทั้งชุด (request/accept/decline/cancel) — ไม่ระบุ method

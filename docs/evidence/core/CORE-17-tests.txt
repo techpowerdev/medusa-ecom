@@ -1,0 +1,47 @@
+# CORE-17 — ผล test (รันในเครื่อง 2026-10-26, Node 22.23.3, Postgres 16 + Redis 7 จาก docker compose)
+
+## ตรวจ source Medusa 2.22.1 (node_modules)
+- `@medusajs/medusa/dist/api/store/returns/route.js` ส่ง body เข้า `createAndCompleteReturnOrderWorkflow` โดยไม่ตรวจว่า
+  `return_shipping.option_id` เป็น option คืนของ, เปิดใน store หรือครอบที่อยู่ของ order
+- rule ที่ Medusa ใช้จริง: dashboard `order-create-return` คัด return option ด้วย
+  `rules.find(r => r.attribute === "is_return" && r.value === "true")`; store flow (`listShippingOptionsForCartWorkflow`)
+  ส่ง context `is_return` / `enabled_in_store = "true"` และ filter `address` → `listShippingOptionsForContext` ของ
+  fulfillment module กรอง service_zone.geo_zones จากที่อยู่ (ไม่มี country_code = ไม่กรองเลย จึงปฏิเสธเอง)
+- `isContextValid` ของ Medusa ปล่อย option ที่ไม่มี rule ผ่าน → middleware ของเราต้องการ rule ชัดเจน (eq "true") ทั้งสองข้อ
+
+## Red (ก่อนเพิ่ม middleware) — integration-tests/http/store-returns-option.spec.ts: 4 failed, 1 passed
+- option ขาออก `Standard` (is_return=false) → **200** สร้าง return ได้ (ควร 400)
+- return option ที่ enabled_in_store=false → **200**
+- return option ของ zone อื่น (geo zone ประเทศ `la`) กับ order ที่ส่งไทย → **200**
+- option id ที่ไม่มีอยู่ → **500 unknown_error**
+- option คืนของจาก seed `Standard return` → 200 (ผ่านอยู่แล้ว)
+
+## Green — integration (store-returns-option + store-returns-overrides + store-returns-transfer + store-ownership)
+PASS integration-tests/http/store-ownership.spec.ts (42.567 s)
+PASS integration-tests/http/store-returns-overrides.spec.ts (33.58 s)
+PASS integration-tests/http/store-returns-transfer.spec.ts (28.173 s)
+PASS integration-tests/http/store-returns-option.spec.ts (15.27 s)
+    ✓ owner using an outbound option (Standard, is_return=false) → 400 invalid_data and no return is created
+    ✓ owner using a return option disabled in store → 400 invalid_data and no return is created
+    ✓ owner using a return option of a service zone that does not cover the order address → 400 invalid_data and no return is created
+    ✓ owner using an option id that does not exist → 400 invalid_data and no return is created
+    ✓ owner using the seeded return option (Standard return) → 200 and the return is created
+Tests:       22 passed, 22 total
+
+## unit — src/api/store/ownership/__tests__ + src/lib/__tests__/store-ownership.unit.spec.ts
+PASS src/api/store/ownership/__tests__/return-shipping-option.unit.spec.ts
+  storeReturnOptionRuleError
+    ✓ accepts an option whose rules mark it as a return option enabled in store
+    ✓ rejects an outbound option or an option without the is_return rule
+    ✓ rejects a return option that is disabled in store or has no enabled_in_store rule
+  POST /store/returns middleware order
+    ✓ runs the option check after the CORE-16 override check
+PASS src/api/store/ownership/__tests__/return-overrides.unit.spec.ts (7 tests)
+PASS src/lib/__tests__/store-ownership.unit.spec.ts (19 tests)
+Tests:       30 passed, 30 total
+
+## ชุดเต็มในเครื่อง
+- `pnpm --filter backend test:unit`: Tests: 278 passed, 278 total
+- `pnpm --filter backend typecheck`: ผ่าน
+- `pnpm --filter backend lint`: No lint issues found.
+- `pnpm --filter backend build`: Backend + Frontend build completed successfully
