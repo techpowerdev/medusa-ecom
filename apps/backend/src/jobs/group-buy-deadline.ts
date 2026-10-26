@@ -2,7 +2,11 @@ import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { GROUP_BUY_MODULE } from "../modules/group_buy"
 import type GroupBuyModuleService from "../modules/group_buy/service"
-import { expiredGroupOutcome, isCampaignExpired } from "../modules/group_buy/utils/group-outcome"
+import {
+  deadlineBatchSkip,
+  expiredGroupOutcome,
+  isCampaignExpired,
+} from "../modules/group_buy/utils/group-outcome"
 import { setGroupBuyCampaignStatusWorkflow } from "../workflows/group-buy/campaign-status"
 import { failGroupWorkflow, succeedGroupWorkflow } from "../workflows/group-buy/group-outcome"
 
@@ -17,25 +21,41 @@ export default async function groupBuyDeadlineJob(container: MedusaContainer) {
   const service: GroupBuyModuleService = container.resolve(GROUP_BUY_MODULE)
   const now = new Date()
 
-  const groups = await service.listGroupBuyGroups(
-    { status: "open", ends_at: { $lte: now } },
-    { relations: ["campaign"], take: BATCH, order: { ends_at: "ASC" } }
-  )
+  const filters = { status: "open" as const, ends_at: { $lte: now } }
+  const tick = Math.floor(now.getTime() / 60_000)
+  const [, groupCount] = await service.listAndCountGroupBuyGroups(filters, { select: ["id"], take: 1 })
+  const groups = await service.listGroupBuyGroups(filters, {
+    relations: ["campaign"],
+    take: BATCH,
+    skip: deadlineBatchSkip(groupCount, BATCH, tick),
+    order: { ends_at: "ASC" },
+  })
   // แยก workflow ต่อกลุ่ม: กลุ่มที่ล้มไม่ทำให้กลุ่มอื่นค้าง (รอบถัดไปลองใหม่)
+  // ผลที่เลือกจาก snapshot นี้ถูกตรวจซ้ำใต้ lock ของกลุ่ม (at_deadline) — ไม่ตรงแล้ว workflow ไม่ทำอะไร
   for (const group of groups) {
     const workflow =
       expiredGroupOutcome(group.campaign, group) === "succeeded" ? succeedGroupWorkflow : failGroupWorkflow
     try {
-      await workflow(container).run({ input: { group_id: group.id } })
+      await workflow(container).run({ input: { group_id: group.id, at_deadline: true } })
     } catch (error) {
       logger.error(`group-buy-deadline: failed to settle group ${group.id}: ${(error as Error).message}`)
     }
   }
 
+  // ends_at อยู่ที่ Medusa campaign (link) กรองใน query ไม่ได้ — หมุนหน้าต่าง batch แบบเดียวกับกลุ่ม
+  const [, campaignCount] = await service.listAndCountGroupBuyCampaigns(
+    { status: "active" },
+    { select: ["id"], take: 1 }
+  )
   const { data: campaigns } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
     entity: "group_buy_campaign",
     fields: ["id", "campaign.ends_at"],
     filters: { status: "active" },
+    pagination: {
+      take: BATCH,
+      skip: deadlineBatchSkip(campaignCount, BATCH, tick),
+      order: { created_at: "ASC" },
+    },
   })
   for (const campaign of campaigns.filter((c) => isCampaignExpired(c.campaign?.ends_at, now))) {
     try {

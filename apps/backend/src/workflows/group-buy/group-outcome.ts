@@ -18,6 +18,7 @@ import {
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
 import {
+  expiredGroupOutcome,
   type GroupOutcome,
   payDeadlineAt,
   resolveGroupOutcomeTransition,
@@ -25,7 +26,8 @@ import {
 import { EmailTemplates } from "../../modules/resend/templates"
 import { LOCK_TIMEOUT, LOCK_TTL } from "./join-group"
 
-export type GroupOutcomeInput = { group_id: string }
+// at_deadline: ส่งจาก deadline job เท่านั้น — ตรวจเป้าหมายซ้ำใต้ lock (admin override ไม่ส่ง)
+export type GroupOutcomeInput = { group_id: string; at_deadline?: boolean }
 type Member = { id: string; order_id: string }
 type MembershipStatus = "joined" | "awaiting_payment" | "cancelled"
 
@@ -64,6 +66,14 @@ export const setGroupOutcomeStep = createStep(
     if (resolveGroupOutcomeTransition(group.status, input.outcome) === "noop") {
       return new StepResponse({ members, pay_deadline_at: group.pay_deadline_at }, null)
     }
+    // review #89: job เลือกผลจาก progress ที่อ่านนอก lock — join/leave ที่ commit ระหว่างรอ lock อาจเปลี่ยนผล
+    // ตัดสินใหม่จากแถวที่อ่านใต้ lock; ไม่ตรง → ไม่ทำอะไร (compensation release lock) job รอบถัดไปเลือกผลที่ถูก
+    if (input.at_deadline && expiredGroupOutcome(group.campaign, group) !== input.outcome) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_ALLOWED,
+        `Group buy group ${group.id} no longer matches the ${input.outcome} outcome at its deadline`
+      )
+    }
     const previous = {
       id: group.id,
       status: group.status,
@@ -87,6 +97,10 @@ export const setGroupOutcomeStep = createStep(
 
 // payment collection บน draft order — ยอด = `total` ของ draft order ที่ Medusa คำนวณ (หลังส่วนลด GB-* ที่ freeze ตอน join)
 // ไม่ใช้ summary.current_order_total (review #68) และไม่คำนวณยอดเอง; order ที่มี collection แล้วข้าม (AC-9)
+// ถ้าล้มกลาง loop collection ที่สร้างแล้วใน step นี้ไม่ถูก compensate (Medusa ไม่รัน compensation ของ step ที่ throw)
+// แต่รันซ้ำได้เพราะข้าม order ที่มี collection แล้ว
+// ข้อจำกัด: ทุก membership ประมวลผลใน workflow เดียวใต้ lock (TTL 60s) — pool หลายร้อยคนอาจเกิน TTL
+// (join ถูกปฏิเสธอยู่แล้วเพราะกลุ่มไม่ open)
 export const createMemberPaymentCollectionsStep = createStep(
   "create-member-payment-collections",
   async (members: Member[], { container }) => {
@@ -136,7 +150,8 @@ export const setMembershipsStatusStep = createStep(
   }
 )
 
-// ขั้นสุดท้ายที่เปลี่ยนข้อมูลของ fail (ยกเลิก order ย้อนกลับไม่ได้) — order ที่ canceled แล้วข้าม (รันซ้ำได้)
+// ยกเลิก order (ย้อนกลับไม่ได้ จึงไม่มี compensation) — ถ้า step หลังจากนี้ (ส่งอีเมล) ล้ม กลุ่มกลับเป็น open
+// และ membership กลับเป็น joined ขณะที่ order ถูกยกเลิกแล้ว: job รอบถัดไป fail ซ้ำได้เพราะ step นี้ข้าม order ที่ canceled แล้ว
 export const cancelMemberOrdersStep = createStep(
   "cancel-member-orders",
   async (members: Member[], { container }) => {

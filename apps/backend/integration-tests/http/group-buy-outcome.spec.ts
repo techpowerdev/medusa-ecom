@@ -292,6 +292,34 @@ medusaIntegrationTestRunner({
         expect(renderEmailTemplate("group-buy-failed", sent[0].data!)?.subject).toMatch(/[฀-๿]/)
       })
 
+      it("review #89: at_deadline fail re-checks the target under the group lock — a group that reached it is not failed", async () => {
+        const campaign = await createCampaign({ target_value: 3 })
+        const group = await poolGroup(campaign.id)
+        await joinAs(group.join_token, (await customer()).id)
+        await joinAs(group.join_token, (await customer()).id)
+        await expireGroup(group.id)
+        // job อ่าน progress (2) นอก lock แล้วเลือก fail — ระหว่างรอ lock join คนสุดท้ายทำให้ถึงเป้า
+        await groupBuy().updateGroupBuyGroups({ id: group.id, progress_orders: 3 })
+
+        const { errors } = await failGroupWorkflow(getContainer()).run({
+          input: { group_id: group.id, at_deadline: true },
+          throwOnError: false,
+        })
+        expect(errors[0]?.error?.type).toEqual("not_allowed")
+        expect((await groupOf(group.id)).status).toEqual("open")
+        const members = await membershipsOf(group.id)
+        expect(members.map((m) => m.status)).toEqual(["joined", "joined"])
+        expect((await ordersOf(members.map((m) => m.order_id))).map((o) => o.status)).toEqual([
+          "pending",
+          "pending",
+        ])
+        expect(await emails("group-buy-failed")).toHaveLength(0)
+
+        // รอบถัดไปของ job ตัดสินจากตัวนับล่าสุด
+        await groupBuyDeadlineJob(getContainer())
+        expect((await groupOf(group.id)).status).toEqual("succeeded")
+      })
+
       it("AC-9: fail twice (admin route + workflow) → no duplicate cancellation or emails; succeed after fail → 400", async () => {
         const campaign = await createCampaign({ target_value: 3 })
         const group = await poolGroup(campaign.id)

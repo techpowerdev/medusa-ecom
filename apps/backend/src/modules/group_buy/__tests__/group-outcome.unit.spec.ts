@@ -3,6 +3,7 @@ import {
   expiredGroupOutcome,
   isCampaignExpired,
   payDeadlineAt,
+  deadlineBatchSkip,
   resolveGroupOutcomeTransition,
 } from "../utils/group-outcome"
 
@@ -57,5 +58,17 @@ describe("isCampaignExpired", () => {
     [null, false],
   ] as const)("ends_at %s → %s", (endsAt, expected) => {
     expect(isCampaignExpired(endsAt, now)).toBe(expected)
+  })
+})
+
+// review #89: กลุ่มที่ล้มซ้ำต้องไม่บังกลุ่มอื่นที่หัวคิว — แต่ละรอบเลื่อนหน้าต่าง BATCH ไปเรื่อยๆ
+describe("deadlineBatchSkip", () => {
+  it("starts at 0 when everything fits in one batch", () => {
+    expect(deadlineBatchSkip(50, 50, 7)).toEqual(0)
+    expect(deadlineBatchSkip(0, 50, 7)).toEqual(0)
+  })
+
+  it("rotates the window over every group across ticks", () => {
+    expect([0, 1, 2, 3].map((tick) => deadlineBatchSkip(120, 50, tick))).toEqual([0, 50, 100, 30])
   })
 })

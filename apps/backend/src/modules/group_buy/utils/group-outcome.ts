@@ -27,3 +27,7 @@ export const expiredGroupOutcome = (target: GroupBuyTarget, progress: GroupBuyPr
 // กฎข้อ 10: แคมเปญ active ที่ Medusa campaign ends_at ผ่านไปแล้ว → ended (AC-22)
 export const isCampaignExpired = (endsAt: string | Date | null | undefined, now: Date) =>
   !!endsAt && new Date(endsAt).getTime() <= now.getTime()
+
+// deadline job (review #89): หน้าต่าง batch หมุนตามรอบ — กลุ่มที่ล้มซ้ำไม่บังกลุ่มอื่นที่หัวคิวตลอดไป
+export const deadlineBatchSkip = (count: number, batch: number, tick: number) =>
+  count <= batch ? 0 : (tick * batch) % count
