@@ -109,13 +109,17 @@ const AccountInfo = ({
       <Disclosure>
         <Disclosure.Panel
           static
+          // CORE-22 (กฎข้อ 48): panel ที่ปิดต้องไม่รับ click/focus — ไม่งั้นปุ่มบันทึกที่มองไม่เห็นบัง editor ถัดไป
+          inert={!state}
           className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-visible",
+            "transition-[max-height,opacity] duration-300 ease-in-out",
             {
-              "max-h-[1000px] opacity-100": state,
-              "max-h-0 opacity-0": !state,
+              "max-h-[1000px] opacity-100 overflow-visible": state,
+              "max-h-0 opacity-0 overflow-hidden pointer-events-none": !state,
             }
           )}
+          data-testid="edit-panel"
+          data-open={state}
         >
           <div className="flex flex-col gap-y-2 py-4">
             <div>{children}</div>
