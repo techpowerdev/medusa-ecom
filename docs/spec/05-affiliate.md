@@ -187,7 +187,7 @@ Payout
 26. (Q3, AF-4 — review AF-3) ก่อนแจก cap ต่อ order (กฎ 4) เรียง `order.items` ตาม `created_at` จากน้อยไปมาก เสมอกันใช้ `id` — ไม่พึ่งลำดับที่
     `query.graph` คืน (ไม่รับประกันลำดับ) ใช้ลำดับเดียวกันทุกครั้งที่คำนวณ (สร้าง entry และ reversal)
 27. (owner 2026-10-26, AF-4) attribution **ไม่สร้าง entry** ให้ order ที่ถูกยกเลิกแล้ว: workflow attribution อ่าน `order.status` (`canceled`) **หลัง**ถือ lock
-    `affiliate-attribution:<order_id>` (Locking module) — ยกเลิกแล้ว → บันทึก `AffiliateAttribution` ตามปกติแต่ไม่มี entry (log info; Q13); reversal ที่มาจาก cancel ต้องถือ lock key เดียวกัน เพื่อให้ลำดับเป็น
+    `affiliate-attribution:<order_id>` (Locking module) — ยกเลิกแล้ว → ไม่สร้างทั้ง `AffiliateAttribution` และ entry (log info `order_canceled`; Q13 — ตามที่ #91 ทำ); reversal ที่มาจาก cancel ต้องถือ lock key เดียวกัน เพื่อให้ลำดับเป็น
     "attribution ก่อน → reversal เห็น entry" หรือ "cancel ก่อน → attribution เห็น `canceled`" เสมอ (ไม่มี entry pending ค้างของ order ที่ยกเลิก)
 28. (การตีความของ AF-4 #90 ที่ **owner ยืนยัน 2026-10-26** — แทนข้อตัดสิน Q3 ส่วน partial refund) เหตุที่ทำให้เกิด reversal มีเพียง cancel, refund เต็ม และการคืนของ:
     (a) **cancel** order → reverse ยอดสุทธิที่เหลือของทุก line
@@ -254,7 +254,7 @@ Payout
   reversed R3 −฿40 When สร้าง payout ก่อน E3 ครบ hold Then ไม่มี E3/R3; When maturity job approve E3 แล้วสร้าง payout รอบถัดไป Then มี E3 และ R3 (฿60);
   Given ต้นทาง `paid` แล้วมี reversed ใหม่ Then reversed นั้นเข้า payout ถัดไป (integration http)
 - AC-29 (กฎ 27) Given order O ที่มี `affiliate_token` ถูกต้องและโปรแกรม active When order O ถูก cancel **ก่อน** subscriber `order.placed` ประมวลผล (ควบคุมลำดับใน test)
-  Then มี attribution ของ O 1 แถวแต่ไม่มี entry ของ O; Given ยิง attribution กับ cancel ของ O พร้อมกัน Then ผลรวม entry + reversal ของ O = 0 และไม่มี entry `pending` ของ O ที่ไม่มี reversal;
+  Then ไม่มี attribution และไม่มี entry ของ O; Given ยิง attribution กับ cancel ของ O พร้อมกัน Then ผลรวม entry + reversal ของ O = 0 และไม่มี entry `pending` ของ O ที่ไม่มี reversal;
   unit/spy ยืนยันว่าทั้งสองทางขอ lock `affiliate-attribution:<order_id>` (integration)
 - AC-30 (กฎ 28c) Given entry ของ line L (qty 4) ฿100 When return รับของคืน 1 ชิ้น Then reversal −฿25; When รับคืนอีก 3 ชิ้น Then reversal −฿75 และยอดสุทธิของ L = 0;
   Given entry ฿100, qty 3, รับคืน 1 Then −฿33.33 (half-up); Given entry ฿100, qty 4 When return มี received 1 + dismissed 1 Then reversal −฿50
@@ -318,5 +318,5 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 - ~~Q11~~ ตัดสินแล้ว (owner 2026-10-26, รอบ 7): payout เลือก reversed เฉพาะที่ต้นทาง approved/paid (กฎ 19, AC-28); order ที่ยกเลิกแล้วไม่ได้ entry (กฎ 27, AC-29);
   ยอมรับการตีความของ #90: refund บางส่วนที่ไม่ได้มาจากการคืนของไม่หักค่าคอม, การคืนนับ received + dismissed / quantity, admin ปรับเองถ้าจำเป็น (กฎ 28, AC-30, AC-31)
 - ~~Q12~~ ปิดแล้ว (2026-10-26): #91 = AF-4b (เรียง line, log info, test AC-10/23/24, กฎ 27 ฝั่ง attribution); filter payout กฎ 19 อยู่ใน AF-4 #90
-- ~~Q13~~ ใช้ค่าเริ่มต้น (session หลักเลือก 2026-10-26, **รอ owner ยืนยัน**): order ที่ยกเลิกก่อน attribution ยังบันทึก `AffiliateAttribution` (คง idempotency ของกฎ 15
-  และใช้ในรายงาน) แต่ไม่สร้าง entry — กฎ 27
+- ~~Q13~~ ใช้ค่าเริ่มต้น (session หลักเลือก 2026-10-26, **รอ owner ยืนยัน**): order ที่ยกเลิกก่อน attribution ไม่บันทึกทั้ง `AffiliateAttribution` และ entry (ตามที่ AF-4b #91 ทำ — order ที่ยกเลิกแล้ว
+  ไม่มีอะไรให้ idempotency ต้องกัน; redeliver ซ้ำได้ผลเดิม) — กฎ 27
