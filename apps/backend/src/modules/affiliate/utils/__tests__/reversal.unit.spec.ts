@@ -68,6 +68,19 @@ describe("planReversals", () => {
     expect(planReversals([entry({ amount: 100 })], third).map((r) => r.amount)).toEqual([-33.33])
   })
 
+  it("AC-30: qty 4 returned 1 then 3 more reverses −25 then −75; received 1 + dismissed 1 reverses −50", () => {
+    const returned = (received: number, dismissed = 0) =>
+      affectedFractions({
+        status: "pending",
+        items: [{ id: "li_1", quantity: 4, detail: { return_received_quantity: received, return_dismissed_quantity: dismissed } }],
+      })
+    const first = planReversals([entry()], returned(1))
+    expect(first.map((r) => r.amount)).toEqual([-25])
+    const reversed = entry({ id: "affcom_r1", amount: -25, status: "reversed" })
+    expect(planReversals([entry(), reversed], returned(4)).map((r) => r.amount)).toEqual([-75])
+    expect(planReversals([entry()], returned(1, 1)).map((r) => r.amount)).toEqual([-50])
+  })
+
   it("reverses approved and paid entries too", () => {
     const entries = [entry({ status: "paid" }), entry({ id: "affcom_2", line_item_id: "li_2", status: "approved" })]
     expect(planReversals(entries, { li_1: 1, li_2: 1 }).map((r) => [r.line_item_id, r.amount])).toEqual([

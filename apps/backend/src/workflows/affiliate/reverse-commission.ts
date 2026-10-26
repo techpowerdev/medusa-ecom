@@ -23,8 +23,12 @@ export type ReverseAffiliateCommissionInput =
   | { order_id: string; reason: Exclude<ReversalReason, "refunded"> }
   | { payment_id: string; reason: "refunded" }
 
-// DB ล้มชั่วคราว → engine ลอง step ใหม่ทุก 10 วินาที สูงสุด 30 ครั้ง (แบบ FS-8/FS-11) — workflow idempotent อยู่แล้ว
+// DB ล้มชั่วคราว → engine ลอง step ใหม่ (แบบ FS-8/FS-11) — workflow idempotent อยู่แล้ว
+// หา order (นอก lock): ทุก 10 วินาที สูงสุด 30 ครั้ง
 export const REVERSAL_RETRY = { maxRetries: 30, retryInterval: 10 }
+// step ใต้ lock: retry รวม (4 × 10 วินาที) ต้องจบก่อน lock หมดอายุ (REVERSAL_LOCK_TTL) ไม่ให้อีก run เข้ามาคำนวณซ้อน
+export const REVERSAL_LOCKED_RETRY = { maxRetries: 4, retryInterval: 10 }
+export const REVERSAL_LOCK_TTL = 60
 
 // payment.refunded ส่งแค่ payment id → payment_collection_id → link order_payment_collection แบบเดียวกับ
 // refundPaymentWorkflow ของ Medusa ("" = ไม่ผูกกับ order)
@@ -49,17 +53,15 @@ export const resolveReversalOrderStep = createStep(
   }
 )
 
-// อ่านอย่างเดียว: entry ของ order + สถานะปัจจุบันของ order → reversal ที่ยังขาด (planReversals นับของเดิมแล้ว)
-export const prepareAffiliateReversalStep = createStep(
-  "prepare-affiliate-reversal",
-  async (input: { order_id: string }, { container }) => {
-    if (!input.order_id) {
-      return new StepResponse<PlannedReversal[]>([])
-    }
+// กฎ 5 + 28: อ่าน entry + สถานะปัจจุบันของ order → คำนวณส่วนต่าง → insert entry `reversed` ใน step เดียว
+// (retry คำนวณใหม่จาก ledger ล่าสุด จึงไม่ insert ซ้ำแม้รอบก่อน commit แล้วแต่รายงานล้ม); ไม่มี compensation ที่ลบ entry
+export const reverseAffiliateCommissionEntriesStep = createStep(
+  "reverse-affiliate-commission-entries",
+  async (input: { order_id: string; reason: ReversalReason }, { container }) => {
     const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
     const entries = await service.listAffiliateCommissionEntries({ order_id: input.order_id })
     if (!entries.length) {
-      return new StepResponse<PlannedReversal[]>([])
+      return new StepResponse([])
     }
     const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
       entity: "order",
@@ -75,30 +77,14 @@ export const prepareAffiliateReversalStep = createStep(
       ],
       filters: { id: input.order_id },
     })
-    if (!data[0]) {
-      return new StepResponse<PlannedReversal[]>([])
-    }
-    return new StepResponse(
-      planReversals(entries as unknown as LedgerEntry[], affectedFractions(data[0] as unknown as OrderForReversal))
-    )
-  }
-)
-
-// insert อย่างเดียว (กฎ 5: ไม่แก้/ลบ entry เดิม) — step เขียนเดียวของ workflow จึงไม่มี compensation ที่ลบ entry
-export const createAffiliateReversalEntriesStep = createStep(
-  "create-affiliate-reversal-entries",
-  async (input: { reversals: PlannedReversal[]; reason: ReversalReason }, { container }) => {
-    if (!input.reversals.length) {
+    const reversals: PlannedReversal[] = data[0]
+      ? planReversals(entries as unknown as LedgerEntry[], affectedFractions(data[0] as unknown as OrderForReversal))
+      : []
+    if (!reversals.length) {
       return new StepResponse([])
     }
-    const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
     const created = await service.createAffiliateCommissionEntries(
-      input.reversals.map((r) => ({
-        ...r,
-        status: "reversed" as const,
-        reason: input.reason,
-        matures_at: null,
-      }))
+      reversals.map((r) => ({ ...r, status: "reversed" as const, reason: input.reason, matures_at: null }))
     )
     return new StepResponse(created)
   }
@@ -116,14 +102,11 @@ export const reverseAffiliateCommissionWorkflow = createWorkflow(
     // payment ที่ไม่ผูกกับ order → ไม่ขอ lock/ไม่ทำอะไร; when ที่ .then() คืนค่าต้องมีชื่อคงที่ (บทเรียน FS-11)
     const created = when("affiliate-reversal-has-order", { orderId }, ({ orderId }) => !!orderId).then(() => {
       const key = transform({ orderId }, ({ orderId }) => `affiliate-attribution:${orderId}`)
-      acquireLockStep({ key, timeout: 30, ttl: 60 })
+      acquireLockStep({ key, timeout: 30, ttl: REVERSAL_LOCK_TTL })
 
-      const reversals = prepareAffiliateReversalStep(
-        transform({ orderId }, ({ orderId }) => ({ order_id: orderId }))
-      ).config(REVERSAL_RETRY)
-      const entries = createAffiliateReversalEntriesStep(
-        transform({ reversals, input }, ({ reversals, input }) => ({ reversals, reason: input.reason }))
-      ).config(REVERSAL_RETRY)
+      const entries = reverseAffiliateCommissionEntriesStep(
+        transform({ orderId, input }, ({ orderId, input }) => ({ order_id: orderId, reason: input.reason }))
+      ).config(REVERSAL_LOCKED_RETRY)
 
       releaseLockStep({ key })
       return entries
