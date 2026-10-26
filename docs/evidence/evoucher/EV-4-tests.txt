@@ -1,6 +1,6 @@
 EV-4 — allocate & deliver workflow + subscriber payment.captured + email template; อีเมล backordered ถึง EVOUCHER_ADMIN_EMAIL (AC-2, AC-4, AC-7, AC-17 ส่วน backordered)
 Spec: docs/spec/02-evoucher.md, ADR-006
-Branch: feat/EV-4-allocate-deliver (เริ่มบน origin/develop e5c09ac; รอบแก้ review merge origin/develop d3ea48e)
+Branch: feat/EV-4-allocate-deliver (เริ่มบน origin/develop e5c09ac; รอบแก้ review merge origin/develop d3ea48e; re-review รอบ 2 merge origin/develop ล่าสุด)
 วันที่รัน: 2026-10-26, Node v22.23.3, Postgres 16 / Redis 7 (docker compose local), DB สุ่มของ medusa-test-utils
 
 == Red (ก่อนเขียนโค้ด) ==
@@ -19,6 +19,11 @@ test:unit resend + notification-providers → 6 failed (template ยังไม
 test:integration:http evoucher-allocate.spec.ts รอบแรกหลังแก้ → "clears the backordered flag" ล้ม: Order module merge metadata
   (การไม่ส่ง key ไม่ลบ key) → ล้าง flag ด้วยค่า "" แทน
 
+== re-review รอบ 2 ==
+AC-26: provider (local) throw ตอนส่ง evoucher.delivered → เดิม code เป็น delivered (ผิดกฎข้อ 17) → ย้าย mark delivered เข้า send step
+  (ขั้นสุดท้าย ไม่ throw) หลังส่งสำเร็จเท่านั้น; test assert allocated + notification failure เก็บ ciphertext + อีเมล ops 1 ฉบับ
+AC-27: test ใหม่ (pool 1 code, line qty 2 → backordered, available = 1, ไม่มี evoucher.delivered, admin ได้อีเมล backordered)
+
 == test:unit (templates.unit.spec.ts + resend service.unit.spec.ts + notification-providers.unit.spec.ts) ==
   ✓ renders every code with PIN, expiry (Thai date), partner logo and how-to-use block  (ciphertext → decrypt ตอน render)
   ✓ refuses to render codes without a decrypt function
@@ -29,7 +34,7 @@ test:integration:http evoucher-allocate.spec.ts รอบแรกหลัง�
   ✓ fails (notification marked failed) when the evoucher key is not configured
   ✓ uses the Resend provider ... (option evoucher_encryption_key จาก env)
 Tests: 26 passed, 26 total
-pnpm --filter backend test:unit (หลัง merge develop d3ea48e) → Test Suites: 35 passed; Tests: 307 passed
+pnpm --filter backend test:unit (หลัง merge develop รอบ re-review 2) → Test Suites: 36 passed; Tests: 315 passed
 
 == test:integration:modules src/modules/evoucher/__tests__/claim-codes.spec.ts ==
   ✓ claims the earliest-expiring usable codes and records order, line item and customer
@@ -49,14 +54,15 @@ Tests: 7 passed, 7 total
     ✓ does nothing for an order without voucher items
   AC-7 idempotent
     ✓ re-running for the same order allocates no more codes and sends no more emails
-    ✓ keeps the codes with the order and alerts EVOUCHER_ADMIN_EMAIL when the customer email fails
+    ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails
+    ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available
     ✓ uses a new idempotency key per claim and clears the backordered flag once delivered
   AC-4 backordered when no code is left
     ✓ gives the last code to only one of two concurrently captured orders and flags the other
   AC-17 backordered admin email goes to EVOUCHER_ADMIN_EMAIL only
     ✓ sends one notification to the mailbox and none to the 3 admin users
     ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged)
-Tests: 10 passed, 10 total
+Tests: 11 passed, 11 total
 
 == pnpm lint ==
 apps/backend: medusa lint → ไม่มี issue (storefront: 0 errors, warnings เดิมที่ไม่เกี่ยวกับ task นี้)
