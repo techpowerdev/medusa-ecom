@@ -1,4 +1,4 @@
-EV-10 — ผลทดสอบ (2026-10-26, Node 22, Medusa 2.22.1, base origin/develop a0ca69c) — รอบ 3: product ของ voucher ต้องไม่มี shipping profile
+EV-10 — ผลทดสอบ (2026-10-26, Node 22, Medusa 2.22.1, base origin/develop d91ec78 หลัง merge #67 EV-4) — รอบ 4
 
 == integration:http evoucher-pool-guards.spec.ts (AC-11 shipping profile, AC-21 รวม void พร้อมกัน, AC-22, AC-23, AC-24) ==
       ✓ rejects a product in the digital shipping profile with 400, no pool and an untouched inventory item
@@ -14,9 +14,24 @@ EV-10 — ผลทดสอบ (2026-10-26, Node 22, Medusa 2.22.1, base origin
       ✓ sets requires_shipping=true when an empty pool is deleted
       ✓ backfills pools created before EV-8 to requires_shipping=false, idempotently, leaving other items alone
 Tests:       12 passed, 12 total
-(red ยืนยัน: ปิดการตรวจ shipping profile → 3 กรณี AC-11 ล้ม)
+(red ยืนยันแล้วในรอบก่อน: ปิดการตรวจ shipping profile → 3 กรณี AC-11 ล้ม; void พร้อมกันก่อนใส่ lock → 200 ทั้งคู่)
 
-== integration:http evoucher-hardening.spec.ts (regression; hardening = AC-11 line item requires_shipping=false ของ product ไม่มี profile) ==
+== integration:http evoucher-allocate.spec.ts (EV-4 ปรับตามกฎ EV-10: voucher ไม่มี shipping profile, stock หายแบบ job รายวันแทน admin void) ==
+      ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry
+      ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method
+      ✓ warns (but still delivers) when a voucher product is not in the Digital shipping profile
+      ✓ does nothing for an order without voucher items
+      ✓ re-running for the same order allocates no more codes and sends no more emails
+      ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails
+      ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available
+      ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails
+      ✓ uses a new idempotency key per claim and clears the backordered flag once delivered
+      ✓ gives the last code to only one of two concurrently captured orders and flags the other
+      ✓ sends one notification to the mailbox and none to the 3 admin users
+      ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged)
+Tests:       12 passed, 12 total
+
+== integration:http evoucher-hardening.spec.ts (regression) ==
       ✓ sets requires_shipping=false on the inventory item and on the cart line item
       ✓ rejects a variant with manage_inventory=false with 400 and creates no pool
       ✓ restores requires_shipping when creating the pool fails afterwards (compensation)
@@ -24,7 +39,7 @@ Tests:       12 passed, 12 total
       ✓ returns the chunk insert error when its inline cleanup also fails
 Tests:       5 passed, 5 total
 
-== integration:http evoucher-void-expiry.spec.ts (regression; hardening = AC-11 line item requires_shipping=false ของ product ไม่มี profile) ==
+== integration:http evoucher-void-expiry.spec.ts (regression) ==
       ✓ requires an authenticated admin
       ✓ voids an available code with the reason and decrements variant inventory by 1
       ✓ rejects a missing reason with 400 and leaves the code untouched
@@ -44,7 +59,7 @@ Tests:       5 passed, 5 total
       ✓ AC-9 sends one low-stock email per pool per day when available < threshold
 Tests:       17 passed, 17 total
 
-== integration:http evoucher-admin.spec.ts (regression; hardening = AC-11 line item requires_shipping=false ของ product ไม่มี profile) ==
+== integration:http evoucher-admin.spec.ts (regression) ==
     ✓ requires an authenticated admin
     ✓ creates, updates, lists and deletes partners
     ✓ creates a pool for an existing variant and rejects unknown variants
@@ -60,7 +75,7 @@ Tests:       17 passed, 17 total
     ✓ returns 404 when revealing an unknown code and writes no audit
 Tests:       13 passed, 13 total
 
-== integration:http evoucher-admin-ui.spec.ts (regression; hardening = AC-11 line item requires_shipping=false ของ product ไม่มี profile) ==
+== integration:http evoucher-admin-ui.spec.ts (regression) ==
     ✓ returns code counts per status and a low-stock flag for each pool
     ✓ filters pools by variant_id for the variant widget
     ✓ lists an order's codes masked with their pool for the order widget
@@ -70,7 +85,7 @@ Tests:       5 passed, 5 total
 
 == test:unit ==
 Test Suites: 40 passed, 40 total
-Tests:       356 passed, 356 total
+Tests:       363 passed, 363 total
 
 == pnpm lint && pnpm typecheck: exit 0 ==
 == pnpm --filter backend build: exit 0 ==
