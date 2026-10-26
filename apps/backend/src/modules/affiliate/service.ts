@@ -6,6 +6,12 @@ import AffiliateAttribution from "./models/affiliate-attribution"
 import AffiliateProgram from "./models/affiliate-program"
 import CommissionEntry from "./models/commission-entry"
 import Payout from "./models/payout"
+import { signAffiliateToken } from "./utils/token"
+
+export type AffiliateModuleOptions = {
+  /** secret ของ token ใน cookie `aff` จาก env `AFFILIATE_TOKEN_SECRET` (spec 05 "Cart hook") */
+  tokenSecret?: string
+}
 
 export type CommissionSummaryFilters = {
   affiliate_id?: string
@@ -28,6 +34,22 @@ class AffiliateModuleService extends MedusaService({
   AffiliateCommissionEntry: CommissionEntry,
   AffiliatePayout: Payout,
 }) {
+  protected readonly options_: AffiliateModuleOptions
+
+  constructor(container: Record<string, unknown>, options: AffiliateModuleOptions = {}) {
+    super(...arguments)
+    this.options_ = options
+  }
+
+  /** false = ไม่ได้ตั้ง AFFILIATE_TOKEN_SECRET → ลิงก์ affiliate redirect ได้แต่ไม่ตั้ง cookie (AF-2) */
+  async hasClickTokenSecret(): Promise<boolean> {
+    return !!this.options_.tokenSecret
+  }
+
+  async signClickToken(affiliateId: string, clickedAt: Date): Promise<string> {
+    return signAffiliateToken(affiliateId, clickedAt, this.options_.tokenSecret ?? "")
+  }
+
   // Ledger totals per affiliate/currency/status aggregated in SQL (spec 05 non-functional); window is [from, to)
   @InjectManager()
   async summarizeCommissionEntries(
