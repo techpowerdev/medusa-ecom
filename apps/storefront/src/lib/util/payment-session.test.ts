@@ -9,6 +9,8 @@ import {
   promptPayExpiryAction,
   promptPayPollState,
   promptPayQrImage,
+  promptPayRenewalOutcome,
+  promptPaySession,
   secondsLeft,
 } from "./payment-session"
 
@@ -121,5 +123,39 @@ describe("promptPayExpiryAction", () => {
 describe("promptPayDeadline", () => {
   it("= created + 10 นาที (ms)", () => {
     expect(promptPayDeadline(1_800_000_000)).toBe(1_800_000_000_000 + PROMPTPAY_TIMEOUT_MS)
+  })
+})
+
+// PAY-6b (spec 06 กฎข้อ 7A, AC-12/AC-12b): guard ของ backend ตอบ 409 PAYMENT_ALREADY_COMPLETED แทนการลบ session ที่ชำระแล้ว
+describe("promptPayRenewalOutcome", () => {
+  it("409 + code PAYMENT_ALREADY_COMPLETED → already-paid (poll ต่อ + complete cart ทางสำรอง)", () => {
+    expect(
+      promptPayRenewalOutcome(409, { type: "conflict", code: "PAYMENT_ALREADY_COMPLETED", message: "x" })
+    ).toBe("already-paid")
+  })
+
+  it("error อื่น → error (พฤติกรรมเดิม: แสดงหมดอายุ + ข้อความ error)", () => {
+    expect(promptPayRenewalOutcome(409, { type: "conflict", code: "PROMOTION_EXCLUSIVE_CONFLICT" })).toBe("error")
+    expect(promptPayRenewalOutcome(409, { message: "conflict" })).toBe("error")
+    expect(promptPayRenewalOutcome(500, { code: "PAYMENT_ALREADY_COMPLETED" })).toBe("error")
+    expect(promptPayRenewalOutcome(409, null)).toBe("error")
+    expect(promptPayRenewalOutcome(409, "PAYMENT_ALREADY_COMPLETED")).toBe("error")
+  })
+})
+
+describe("promptPaySession", () => {
+  it("ใช้ session pending (ยังไม่ชำระ)", () => {
+    const pending = { id: "a", status: "pending" }
+    expect(promptPaySession([{ id: "x", status: "canceled" }, pending])).toBe(pending)
+  })
+
+  it("session authorized (guard authorize แล้วแต่ cart ยังไม่ complete) → ใช้ session นั้นเพื่อ complete cart ต่อ", () => {
+    const authorized = { id: "b", status: "authorized" }
+    expect(promptPaySession([authorized])).toBe(authorized)
+  })
+
+  it("ไม่มี session ที่ใช้ได้ → undefined", () => {
+    expect(promptPaySession([{ id: "c", status: "canceled" }])).toBeUndefined()
+    expect(promptPaySession(undefined)).toBeUndefined()
   })
 })

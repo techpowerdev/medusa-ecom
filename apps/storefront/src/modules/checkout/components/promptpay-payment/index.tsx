@@ -1,12 +1,13 @@
 "use client"
 
-import { getPromptPayState, initiatePaymentSession, placeOrder } from "@lib/data/cart"
+import { getPromptPayState, placeOrder, renewPromptPaySession } from "@lib/data/cart"
 import {
   PROMPTPAY_POLL_MS,
   formatCountdown,
   promptPayDeadline,
   promptPayExpiryAction,
   promptPayQrImage,
+  promptPaySession,
   secondsLeft,
 } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
@@ -59,8 +60,10 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   const [error, setError] = useState<string | null>(null)
   const finishing = useRef(false)
 
-  const session = cart.payment_collection?.payment_sessions?.find((s) => s.status === "pending")
+  const session = promptPaySession(cart.payment_collection?.payment_sessions)
   const clientSecret = session?.data?.client_secret as string | undefined
+  // PAY-6b: session ถูก authorize แล้ว (guard/webhook) แต่ cart ยังไม่ complete → ชำระแล้ว ไม่ต้องแสดง QR
+  const alreadyAuthorized = session?.status === "authorized"
   const polling = !!qr || awaitingOrder
 
   const finish = useCallback(async () => {
@@ -77,6 +80,13 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     }
   }, [cart.id])
 
+  // PAY-6b (spec 06 กฎข้อ 7A, AC-12b): ชำระแล้วแต่ยังไม่มี order → poll ต่อ และเรียก complete cart ของ Medusa เป็นทางสำรอง
+  // (กรณี webhook ไม่มาหรือ complete จาก webhook ล้ม) complete ล้ม → finish แสดงข้อความแล้ว poll รอบถัดไปลองใหม่เมื่อ cart complete
+  const awaitOrder = useCallback(() => {
+    setAwaitingOrder(true)
+    finish()
+  }, [finish])
+
   const expire = useCallback(async () => {
     setQr(null)
     // review PR #48: เช็กสถานะ PI ก่อน — ถ้าชำระแล้วห้ามลบ session (เงินถูกตัดแต่ไม่มี order)
@@ -85,14 +95,26 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       setAwaitingOrder(true)
       return
     }
-    setExpired(true)
     // สร้าง session ใหม่ = Medusa ลบ session เดิม → Stripe provider cancel PaymentIntent เดิม (cart ยังอยู่)
-    await initiatePaymentSession(cart, { provider_id: session!.provider_id }).catch((err) =>
-      setError(err instanceof Error ? err.message : String(err))
-    )
-  }, [stripe, clientSecret, cart, session])
+    // PAY-6b: guard ของ backend ตอบ 409 PAYMENT_ALREADY_COMPLETED ถ้าชำระไปแล้ว (race) → ไม่แสดงหมดอายุ
+    setSubmitting(true) // ระหว่างรอผลห้ามกดปุ่มซ้ำ
+    const renewed = await renewPromptPaySession(cart, session!.provider_id)
+    setSubmitting(false)
+    if (renewed.status === "already-paid") {
+      awaitOrder()
+      return
+    }
+    setExpired(true)
+    if (renewed.status === "error") {
+      setError(renewed.message)
+    }
+  }, [stripe, clientSecret, cart, session, awaitOrder])
 
   const showQr = async () => {
+    if (alreadyAuthorized) {
+      setError(null)
+      return awaitOrder()
+    }
     if (!stripe || !clientSecret) return
     setSubmitting(true)
     setError(null)
@@ -210,7 +232,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
         </Text>
       )}
       <Button
-        disabled={notReady || !stripe || !clientSecret}
+        disabled={notReady || (!alreadyAuthorized && (!stripe || !clientSecret))}
         onClick={showQr}
         size="large"
         isLoading={submitting}

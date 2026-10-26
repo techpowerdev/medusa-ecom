@@ -1,0 +1,25 @@
+PAY-6b1 — storefront: QR PromptPay หมดอายุแต่ชำระแล้ว → 409 PAYMENT_ALREADY_COMPLETED → รอสร้าง order + complete cart ทางสำรอง (spec 06 กฎข้อ 7A, AC-12, AC-12b ส่วน storefront)
+วันที่ 2026-10-26, Node 22.23.3
+
+== Red (ก่อนเขียนโค้ด) ==
+vitest payment-session.test.ts: 5 failed | 14 passed (promptPayRenewalOutcome / promptPaySession ยังไม่มี)
+
+== Green: vitest src/lib/util/payment-session.test.ts ==
+ ✓ src/lib/util/payment-session.test.ts > promptPayRenewalOutcome > 409 + code PAYMENT_ALREADY_COMPLETED → already-paid (poll ต่อ + complete cart ทางสำรอง) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayRenewalOutcome > error อื่น → error (พฤติกรรมเดิม: แสดงหมดอายุ + ข้อความ error) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > ใช้ session pending (ยังไม่ชำระ) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > session authorized (guard authorize แล้วแต่ cart ยังไม่ complete) → ใช้ session นั้นเพื่อ complete cart ต่อ 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > ไม่มี session ที่ใช้ได้ → undefined 0ms
+      Tests  19 passed (19)
+
+== pnpm --filter storefront test:unit (ทั้งชุด) ==
+Tests  142 passed (142)
+== pnpm --filter storefront test:e2e:unit ==
+29 passed
+
+== e2e/payments-promptpay-already-paid.spec.ts (Stripe test mode จริง) ==
+ในเครื่อง: 1 skipped — เครื่อง builder ไม่มี NEXT_PUBLIC_STRIPE_KEY (pk_test_) จึงรันขั้น UI ของ PromptPay ไม่ได้
+ผลจริงดูจาก CI job storefront-e2e ของ PR (มี secret STRIPE_TEST_API_KEY + STRIPE_TEST_PUBLISHABLE_KEY และ stripe listen)
+
+== pnpm lint && pnpm typecheck && pnpm --filter storefront build ==
+lint: 0 errors (warnings เดิม 34); typecheck: backend + storefront Done; storefront build: สำเร็จ (backend :9101)
