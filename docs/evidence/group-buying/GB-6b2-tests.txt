@@ -52,3 +52,6 @@ Running 6 tests using 2 workers
 pnpm --filter backend test:unit → Test Suites: 45 passed, 45 total; Tests: 426 passed, 426 total
 pnpm typecheck → ผ่าน; pnpm lint → 0 errors (storefront 34 warnings เดิมของ develop)
 pnpm --filter backend build → Backend + Frontend build completed successfully
+### หลัง merge origin/develop (8f01948)
+pnpm --filter backend test:unit → Tests: 448 passed, 448 total; typecheck/lint/build ผ่าน
+e2e group-buy-admin-form + group-buy-admin-detail (หลัง db:migrate + start ใหม่) → 6 passed (9.6s)
