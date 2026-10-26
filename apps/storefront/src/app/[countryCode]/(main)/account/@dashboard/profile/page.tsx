@@ -27,7 +27,7 @@ export default async function Profile() {
       <div className="mb-8 flex flex-col gap-y-4" data-testid="account-page-header">
         <h1 className="text-2xl-semi">โปรไฟล์</h1>
         <p className="text-base-regular">
-          ดูและแก้ไขข้อมูลโปรไฟล์ ได้แก่ ชื่อ อีเมล และเบอร์โทรศัพท์ รวมถึงที่อยู่สำหรับออกใบเสร็จ
+          ดูข้อมูลโปรไฟล์และแก้ไขชื่อ เบอร์โทรศัพท์ รวมถึงที่อยู่สำหรับออกใบเสร็จ
         </p>
       </div>
       <div className="flex flex-col gap-y-8 w-full">
