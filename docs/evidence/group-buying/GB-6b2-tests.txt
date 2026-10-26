@@ -1,0 +1,54 @@
+# GB-6b2 test evidence — 2026-10-26 +0700
+# Spec: docs/spec/04-group-buying.md (GB-6b → แยก GB-6b2: ฟอร์มสร้างแคมเปญ, AC-32, AC-33, กฎข้อ 15–17)
+# node v22.23.3; backend `medusa start` จาก build (.medusa/server) port 9102, DB medusa_gb6b2, Redis db 2
+### Red (ก่อนเขียนโค้ด)
+src/admin/lib/__tests__/group-buy-form.unit.spec.ts → 7 failed / 23: isEndsAtPast is not a function (5),
+  max_quantity=1 < max_units_per_person=2 ได้ body แทน { error, field: "max_quantity" } (1), product_ids เป็น array → .split is not a function (1)
+e2e/group-buy-admin-form.spec.ts เขียนก่อน UI (ใช้ test id gb-campaign-create, gb-field-*, gb-max-quantity-error, gb-ends-at-warning,
+  gb-product-picker ที่ยังไม่มีใน develop) — ไม่ได้รันกับ build ของ develop (build admin ใช้เวลานาน) รันครั้งแรกหลังเขียน UI:
+  AC-32 ผ่าน, AC-33 fail เพราะ locator ช่องค้นหาเป็น role searchbox ไม่ใช่ textbox (แก้ test แล้วผ่าน)
+### Green — unit
+  PASS src/admin/lib/__tests__/group-buy-form.unit.spec.ts
+    toCampaignBody
+      ✓ builds a body that the admin create validator accepts (4 ms)
+      ✓ maps percentage discount and product scope onto an items application method (1 ms)
+      ✓ omits target rules when no product is given and sets THB for a fixed discount (1 ms)
+      ✓ reads date-time inputs as Thai time (ICT, UTC+7)
+      ✓ sends null start and optional limits as null/omitted when left blank
+      ✓ keeps the tax-inclusive default (spec 04 rule 12) and lets the admin turn it off (1 ms)
+      ✓ rejects an invalid name with a message instead of calling the API
+      ✓ rejects an invalid target value with a message instead of calling the API
+      ✓ rejects an invalid end date with a message instead of calling the API
+      ✓ rejects an invalid end after start with a message instead of calling the API
+      ✓ rejects an invalid discount value with a message instead of calling the API
+      ✓ rejects an invalid percentage above 100 with a message instead of calling the API (1 ms)
+      ✓ rejects an invalid team duration for team mode with a message instead of calling the API
+      ✓ rejects an invalid whole-number limits with a message instead of calling the API
+      ✓ rejects max_quantity below max_units_per_person with a max_quantity field error
+      ✓ accepts max_quantity vs max_units_per_person when equal
+      ✓ accepts max_quantity vs max_units_per_person when per-person limit left blank
+    isEndsAtPast
+      ✓ ends_at 2026-11-11T11:59 → true
+      ✓ ends_at 2026-11-11T12:00 → true
+      ✓ ends_at 2026-11-11T12:01 → false
+      ✓ ends_at  → false
+      ✓ ends_at not-a-date → false
+      ✓ still lets a past end date through to the API (draft campaign)
+  Test Suites: 1 passed, 1 total
+  Tests:       23 passed, 23 total
+  Snapshots:   0 total
+  Time:        0.954 s, estimated 1 s
+  Ran all test suites matching /src\/admin\/lib\/__tests__\/group-buy-form/i.
+### Green — e2e (chromium, admin UI จริง; รวม regression ของ GB-6b1)
+Running 6 tests using 2 workers
+  ✓  2 [chromium] › e2e/group-buy-admin-detail.spec.ts:62:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (2.7s)
+  ✓  1 [chromium] › e2e/group-buy-admin-form.spec.ts:75:5 › AC-32: max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (2.9s)
+  ✓  3 [chromium] › e2e/group-buy-admin-detail.spec.ts:103:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (2.6s)
+  ✓  5 [chromium] › e2e/group-buy-admin-detail.spec.ts:144:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading (1.3s)
+  ✓  4 [chromium] › e2e/group-buy-admin-form.spec.ts:136:5 › AC-33: เลือกสินค้า 2 ตัวผ่าน gb-product-picker (ค้นหาด้วยชื่อ) → target_rules ใน body (3.9s)
+  ✓  6 [chromium] › e2e/group-buy-admin-detail.spec.ts:154:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (2.7s)
+  6 passed (10.2s)
+### อื่นๆ
+pnpm --filter backend test:unit → Test Suites: 45 passed, 45 total; Tests: 426 passed, 426 total
+pnpm typecheck → ผ่าน; pnpm lint → 0 errors (storefront 34 warnings เดิมของ develop)
+pnpm --filter backend build → Backend + Frontend build completed successfully
