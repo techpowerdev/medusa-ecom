@@ -1,0 +1,49 @@
+# CORE-10 — ผล test (spec 01 กฎข้อ 16–19, AC-29..31, AC-68), Node v22.23.3, รันในเครื่อง 2026-10-26
+
+## Red (ก่อนแก้ seed/.env.example) — ล้มด้วยสาเหตุที่ถูกต้อง
+- AC-31 unit (src/scripts/__tests__/env-example.unit.spec.ts): ได้ ["SEED_ADMIN_PASSWORD=change-me"]
+- AC-29 (seed.spec.ts): Expected /[฀-๿]/ Received "Medusa Sweatshirt"
+- AC-30 (seed-partial.spec.ts, DB ที่มีเพียง region "Thailand"): seed ข้ามทั้งหมด → ไม่มี stock location/fulfillment set/
+  shipping option/publishable key/สินค้า (Received length: 0) และ checkout ทำไม่ได้
+- AC-68 เพิ่มตาม spec PR #73 พร้อมการเปลี่ยนชื่อ option (test เขียนคู่กับโค้ด ไม่ได้รันแยกให้เห็น red)
+
+## Green
+
+### integration http (seed.spec.ts, seed-partial.spec.ts, store-locales.spec.ts)
+PASS integration-tests/http/seed-partial.spec.ts (16.581 s)
+    ✓ AC-31 skips the admin user when SEED_ADMIN_PASSWORD is not set (804 ms)
+    ✓ AC-30 keeps the existing region and creates every other resource (639 ms)
+    ✓ AC-30 a customer can check out (AC-1 flow) on the completed store (1245 ms)
+PASS integration-tests/http/seed.spec.ts (11.633 s)
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (460 ms)
+    ✓ sets store default currency to THB (tax-inclusive) (459 ms)
+    ✓ creates tax region th with VAT 7% (183 ms)
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (196 ms)
+    ✓ creates return option Standard return (is_return, flat THB, manual, at the seeded location) (189 ms)
+    ✓ adds Standard return to a store seeded before CORE-16, once (285 ms)
+    ✓ enables fulfillment provider digital at the seeded stock location (EV-3) (176 ms)
+    ✓ upgrades an already-seeded store: Digital delivery moves from manual to digital (EV-3) (292 ms)
+    ✓ AC-14 upgrades Digital delivery renamed in admin, found by type.code, without creating a new option (259 ms)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (202 ms)
+    ✓ stocks every sample variant at the seeded location (159 ms)
+    ✓ AC-29 names every sample product in Thai and keeps the handles (150 ms)
+    ✓ AC-68 names every option of the sample products in Thai (147 ms)
+    ✓ AC-30 is idempotent: running seed again does not change resource counts (229 ms)
+PASS integration-tests/http/store-locales.spec.ts (8.837 s)
+    ✓ GET /store/locales returns th-TH and en-US on a freshly seeded DB (399 ms)
+    ✓ adds missing locales on a DB seeded before CORE-7 (region Thailand exists) (473 ms)
+    ✓ keeps locales added by admin and does not duplicate on re-run (374 ms)
+    ✓ serves Thai source content by default and English from the Translation module via x-medusa-locale (406 ms)
+Tests:       21 passed, 21 total
+
+### unit (src/scripts/__tests__/env-example.unit.spec.ts)
+PASS src/scripts/__tests__/env-example.unit.spec.ts
+    ✓ AC-31 has SEED_ADMIN_PASSWORD= with no value (1 ms)
+Tests:       1 passed, 1 total
+
+### อื่นๆ
+- pnpm --filter backend test:unit: Test Suites 36 passed, Tests 301 passed
+- integration-tests/http/customer-only-store.spec.ts (AC-1 ระดับ API บน seed ใหม่): 11 passed
+- pnpm lint: 0 errors (storefront warnings เดิม), backend "No lint issues found"
+- pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
+- ชุด integration เต็มให้ CI รัน
