@@ -49,8 +49,8 @@ const StoreSearchBox = () => {
           setInputValue(event.target.value)
           refine(event.target.value)
         }}
-        placeholder="Search products"
-        aria-label="Search products"
+        placeholder="ค้นหาสินค้า"
+        aria-label="ค้นหาสินค้า"
         className="txt-medium w-full bg-transparent py-3 text-ui-fg-base outline-none placeholder:text-ui-fg-muted [&::-webkit-search-cancel-button]:hidden"
         data-testid="store-search-input"
       />
@@ -58,7 +58,7 @@ const StoreSearchBox = () => {
         <button
           type="button"
           onClick={clear}
-          aria-label="Clear search"
+          aria-label="ล้างคำค้นหา"
           className="shrink-0 text-ui-fg-muted hover:text-ui-fg-base"
           data-testid="store-search-clear"
         >

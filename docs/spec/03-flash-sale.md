@@ -168,6 +168,9 @@ Link: `flash_sale_config ↔ promotion_campaign`
 15. (FS-10, QA FS-5 D-1r) widget "Flash sale options" ส่ง `POST .../config` ได้ครั้งเดียวต่อการกด Save จนกว่า response กลับ — กันด้วย
     in-flight flag แบบ `useRef` (ตั้งก่อน `await` แบบ synchronous) ไม่พึ่ง state ของ React เพียงอย่างเดียว เพราะคลิกซ้ำใน tick เดียว
     เห็น state เดิม (ข้อมูลไม่เสียอยู่แล้วเพราะ lock แต่ไม่ควรมี request ซ้ำ)
+16. (FS-11, review FS-8 #69) เส้นทาง `payment.refunded` ต้องได้กลไก retry เดียวกับ `order.canceled` ของ FS-8: การหา order/`cart_id` จาก payment และเกณฑ์
+    refund เต็มจำนวน (กฎข้อ 10) ต้องอยู่**ใน** workflow (step) ไม่ใช่ใน subscriber ก่อนเรียก workflow — subscriber เหลือเพียงส่ง id จาก event เข้า workflow
+    เพื่อให้ error ชั่วคราวระหว่างหา order ถูก retry/กวาดซ้ำได้
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญที่ทำงานอยู่ (−20% สำหรับ collection X, automatic) และลูกค้าเพิ่มสินค้า X
@@ -234,6 +237,9 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - AC-16 (FS-10, กฎข้อ 15) Given หน้า Campaign detail ที่มี widget "Flash sale options" When `dblclick` ปุ่ม Save (สองคลิกใน tick เดียว)
   Then มี `POST /admin/flash-sales/:campaign_id/config` 1 ครั้ง (นับด้วย `page.on("request")`) และปุ่ม disabled จน response กลับ;
   When Save อีกครั้งหลัง response กลับ Then ส่งได้ตามปกติ (e2e admin หรือ component test ที่ mock `fetch`)
+- AC-17 (FS-11, กฎข้อ 16) Given order ที่มี flash 2 หน่วย capture ฿1,000 When refund เต็มจำนวน (`payment.refunded`) และขั้นหา order จาก payment ล้มครั้งแรก
+  (test inject error ครั้งเดียว) Then ภายในรอบ retry/job ถัดไป usage และ `units_sold` ถูกคืนครบครั้งเดียว และ reservation มี `released_at`; AC-5 (a) และ
+  AC-6 ยังผ่าน; ไฟล์ subscriber `payment.refunded` ไม่มีการเรียก `query.graph`/service (ตรวจด้วย unit test หรือ grep) (integration http)
 
 ## Non-functional
 - การจอง usage + `units_sold` อยู่ใน request path ของ complete cart (ข้อตัดสิน owner) ภายใต้ lock ต่อ
@@ -247,7 +253,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - Unit: การคำนวณ units ต่อ campaign จาก cart lines (กฎข้อ 9), helper สำหรับช่วงเวลา, `exclusiveAutomaticRule` /
   `isExclusiveAutomatic` / การคำนวณชุด code ผลลัพธ์และค่า flag ตาม `action` (PROMO-1)
 - Integration (modules): service method จอง/คืน/compensate ของ `flash_sale` (rollback ทั้ง transaction, `released_at`)
-- Integration (http): AC-1, AC-2, AC-3, AC-5 (รวม a), AC-6, AC-7, AC-8 (a)–(f), AC-9, AC-10, AC-11, AC-12, AC-13 (a)–(d), AC-14, AC-15
+- Integration (http): AC-1, AC-2, AC-3, AC-5 (รวม a), AC-6, AC-7, AC-8 (a)–(f), AC-9, AC-10, AC-11, AC-12, AC-13 (a)–(d), AC-14, AC-15, AC-17
 - Unit (FS-2): เกณฑ์ refund เต็มจำนวนด้วย BigNumber (กฎข้อ 10)
 - Unit (FS-7): การคำนวณ `sold_out` / `remaining_units` จาก config (AC-13 a–d รวม clamp ที่ 0)
 - e2e: AC-8 (g), AC-13 (e)
@@ -269,6 +275,8 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-9 | (ทางเลือก, รอ owner สั่ง) follow-up FS-5: subscriber `promotion.created`/`promotion.updated` ใส่ exclusivity rule ให้ automatic promotion ใหม่ใน campaign ที่มี `FlashSaleConfig` อัตโนมัติ (ใช้ step เดียวกับ FS-5); AC-15 | FS-5 |
 | FS-7 | follow-up FS-4 (backend เล็ก): `GET /store/flash-sales/active` เอา `remaining_usage` ออก เพิ่ม `sold_out` + `remaining_units` จาก `FlashSaleConfig` (pure function + unit test) และระบุข้อจำกัดของ preview (กฎข้อ 14) ใน JSDoc ของ route (AC-13 a–d) | FS-4 |
 | FS-10 | follow-up QA FS-5 D-1r (เล็ก, frontend เท่านั้น): in-flight flag `useRef` ในปุ่ม Save ของ widget "Flash sale options" (กฎข้อ 15); AC-16 | FS-5 |
+| FS-11 | follow-up review FS-8 #69 (เล็ก, backend): ย้ายการหา order/`cart_id` + เกณฑ์ refund เต็มจำนวนของเส้นทาง `payment.refunded` เข้า workflow ให้ใช้ retry ของ FS-8 (กฎข้อ 16); AC-17 | FS-8 |
+FS-11 หลัง FS-8 (แตะ subscriber/workflow คืนโควตาไฟล์เดียวกัน); FS-10 ยังไม่ทำ (สถานะ 2026-10-26) ไม่เปลี่ยนนิยาม
 PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 หลัง FS-5 (ทางเลือก);
 FS-10 หลัง FS-5 (แยกจาก FS-9 เพราะ FS-9 เป็นทางเลือกที่รอ owner สั่ง; FS-10 ∥ FS-9 ไม่แตะไฟล์เดียวกัน — FS-9 เป็น subscriber backend)
 PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวกับ FS-3 แต่ FS-3 merge แล้ว); ต้อง merge ก่อน GB-3 (dependency) และควรก่อน FS-6
