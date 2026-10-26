@@ -1,0 +1,68 @@
+# OPS-9 — evidence ของ AC-12 (spec 07) — typecheck กับ .medusa/types ที่ generate ใหม่
+# base: origin/develop d3ea48e, @medusajs/* 2.22.1, Node v24.12.0
+# วิธีสร้าง .medusa/types: DB ใหม่ (medusa_ops9) -> pnpm --filter backend db:migrate -> pnpm --filter backend dev จนบูตเสร็จ แล้วหยุด
+
+## ไฟล์ที่ generate (apps/backend/.medusa/types, ไม่ commit — อยู่ใน .gitignore)
+      30 .medusa/types/augmentation-refs.d.ts
+       0 .medusa/types/index.d.ts
+      66 .medusa/types/modules-bindings.d.ts
+    3146 .medusa/types/query-entry-points.d.ts
+    3242 total
+
+## type ของ GroupBuyCampaign ที่ generate (link campaign/promotion เป็น Maybe<...>)
+export type GroupBuyCampaign = {
+  __typename?: 'GroupBuyCampaign';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  target_type: GroupBuyCampaignTargetTypeEnum;
+  target_value: Scalars['Int']['output'];
+  max_total_orders: Maybe<Scalars['Int']['output']>;
+  max_units_per_person: Maybe<Scalars['Int']['output']>;
+  max_people_per_group: Maybe<Scalars['Int']['output']>;
+  group_mode: GroupBuyCampaignGroupModeEnum;
+  team_duration_hours: Maybe<Scalars['Int']['output']>;
+  pay_within_hours: Scalars['Int']['output'];
+  status: GroupBuyCampaignStatusEnum;
+  groups: Array<Maybe<GroupBuyGroup>>;
+  memberships: Array<Maybe<GroupBuyMembership>>;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+  campaign_link: Maybe<LinkGroupBuyGroupBuyCampaignPromotionCampaign>;
+  campaign: Maybe<Campaign>;
+  promotion_link: Maybe<LinkGroupBuyGroupBuyCampaignPromotionPromotion>;
+  promotion: Maybe<Promotion>;
+};
+
+## กรณี 1: มี .medusa/types -> pnpm typecheck
+$ pnpm -r typecheck
+apps/backend typecheck$ tsc --noEmit && tsc --noEmit -p src/admin/tsconfig.json
+apps/storefront typecheck$ tsc --noEmit
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+exit code: 0
+
+## กรณี 2: ลบ .medusa/types -> pnpm typecheck
+$ pnpm -r typecheck
+apps/backend typecheck$ tsc --noEmit && tsc --noEmit -p src/admin/tsconfig.json
+apps/storefront typecheck$ tsc --noEmit
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+exit code: 0
+
+## control: group-buy-campaigns.spec.ts เวอร์ชันแรกของ GB-2a (98f07e0) + .medusa/types -> tsc --noEmit (ยืนยันว่า types จับปัญหาได้จริง)
+integration-tests/http/group-buy-campaigns.spec.ts(42,20): error TS2532: Object is possibly 'undefined'.
+integration-tests/http/group-buy-campaigns.spec.ts(43,20): error TS2532: Object is possibly 'undefined'.
+integration-tests/http/group-buy-campaigns.spec.ts(134,35): error TS18047: 'i' is possibly 'null'.
+integration-tests/http/group-buy-campaigns.spec.ts(134,50): error TS18047: 'i' is possibly 'null'.
+integration-tests/http/group-buy-campaigns.spec.ts(134,82): error TS18047: 'a' is possibly 'null'.
+integration-tests/http/group-buy-campaigns.spec.ts(146,16): error TS18047: 'campaign.campaign' is possibly 'null'.
+integration-tests/http/group-buy-campaigns.spec.ts(152,26): error TS18047: 'campaign.campaign' is possibly 'null'.
+integration-tests/http/group-buy-campaigns.spec.ts(156,16): error TS18047: 'campaign.promotion' is possibly 'null'.
+... (ตัดเหลือ 8 บรรทัดแรก)
+
+## ข้อสรุป
+เวอร์ชันปัจจุบันของ test ผ่านทั้งสองกรณีแล้ว เพราะ commit d1f0a6f (merge ของ GB-2a, 2026-10-25 20:31) ได้แก้ test ให้ใช้
+must() + type GraphCampaign ไปก่อนที่ OPS-9 จะถูกเขียนลง spec (fcb5a7f, 2026-10-26 01:37) — OPS-9 จึงไม่ต้องแก้โค้ด
+ไม่มี @ts-ignore/@ts-expect-error ในไฟล์: 0 จุด
+tsconfig ไม่ได้ exclude .medusa/types (include: ".medusa/types/*")

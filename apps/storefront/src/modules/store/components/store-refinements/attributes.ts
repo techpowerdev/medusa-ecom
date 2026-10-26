@@ -9,20 +9,20 @@ export const getSortOptions = (currencyCode: string) => {
   const minPrice = priceAttribute("min_price", currencyCode)
 
   return [
-    { value: PRODUCT_INDEX_NAME, label: "Relevance" },
+    { value: PRODUCT_INDEX_NAME, label: "เกี่ยวข้องที่สุด" },
     {
       value: `${PRODUCT_INDEX_NAME}/sort/created_at:desc`,
-      label: "Latest Arrivals",
+      label: "สินค้ามาใหม่",
     },
     {
       value: `${PRODUCT_INDEX_NAME}/sort/${minPrice}:asc`,
-      label: "Price: Low -> High",
+      label: "ราคา: ต่ำ → สูง",
     },
     {
       value: `${PRODUCT_INDEX_NAME}/sort/${minPrice}:desc`,
-      label: "Price: High -> Low",
+      label: "ราคา: สูง → ต่ำ",
     },
-    { value: `${PRODUCT_INDEX_NAME}/sort/title:asc`, label: "Title: A -> Z" },
-    { value: `${PRODUCT_INDEX_NAME}/sort/title:desc`, label: "Title: Z -> A" },
+    { value: `${PRODUCT_INDEX_NAME}/sort/title:asc`, label: "ชื่อ: ก → ฮ" },
+    { value: `${PRODUCT_INDEX_NAME}/sort/title:desc`, label: "ชื่อ: ฮ → ก" },
   ]
 }

@@ -174,6 +174,8 @@ CORE-4b merge แล้ว
    backend ไม่ถอด** แต่ storefront ยังไม่ใช้ (ไม่มี cookie → ไม่ส่ง `x-medusa-locale`) (ADR-014 ข้อ 5)
 3. (2026-10-26, แทนข้อเดิม) `metadata` (title/description) ของหน้าเขียนเป็นภาษาไทยตรงใน task ของหน้านั้น
 4. (2026-10-26) ADR-014 accepted: ภาษาไทยอย่างเดียวในระยะแรก ไม่ทำ i18n
+5. (2026-10-26, review #70) `hreflang` ของ alternate link ที่ starter สร้าง เปลี่ยนจาก `en-<CC>` เป็น `th-<CC>` (เช่น `th-TH`) ให้ตรงกับ
+   `<html lang="th">` — ทำใน CORE-4b2 (#70)
 
 ### เลื่อนไป (ADR-014)
 กลับมาทำได้เมื่อมี ADR ใหม่ (dynamic SSR หรือ locale ใน URL) เท่านั้น: `resolveLocale` + cookie `_medusa_locale` เป็นที่มาของ locale,
@@ -273,6 +275,7 @@ none
   ข้ามการสร้าง admin (พฤติกรรมเดิม)
 - AC-32 Given order ที่มี 2 item (A qty 2, B qty 1) When admin สร้าง fulfillment เฉพาะ A qty 1 แล้ว mark shipped Then อีเมล shipped
   (notification ที่ provider ได้รับ) มีเฉพาะ A จำนวน 1 และไม่มี B (integration http, mock provider)
+  (owner 2026-10-26: อีเมล shipped ไม่แสดงราคา — แสดงเฉพาะชื่อสินค้าและจำนวนที่ส่ง ราคาดูได้จากอีเมลยืนยัน order/หน้า order)
 - AC-33 Given order ที่ `no_notification=true` When เกิด `order.placed` Then ไม่มี notification ถูกสร้าง; Given `no_notification=false`
   Then มี 1 รายการ (integration)
 
@@ -291,7 +294,7 @@ none
 | CORE-5b | `TASK_ID_RE` รับ suffix ตัวเล็ก, `evidence()` ตรวจงบก่อนเขียน, budget test ตรวจระดับ feature, ย้าย `*-tests.txt` ที่ผิดที่, CI รัน `test:e2e:unit`, อัปเดต `docs/evidence/README.md` | AC-20..23 | CORE-5 |
 | CORE-8 | override font-family ของ class `txt-*`/`*-webs` ให้ใช้ `var(--font-noto-sans-thai)` (plugin/`@layer` ใน storefront) + Vitest + e2e | AC-24, AC-25 | CORE-4a, CORE-5 |
 | CORE-9 | `PRICE_CURRENCIES`/`SEARCH_PRICE_CURRENCIES` = `["thb"]` + unit/integration + e2e หน้า store | AC-26..28 | CORE-2 |
-| CORE-10 | seed: ชื่อสินค้าไทย, เช็กการมีอยู่ทีละ resource, `.env.example` ว่าง (ค่าส่ง Standard คงเดิม กฎข้อ 19) | AC-29..31 | CORE-2 (แนะนำ — ไม่บังคับ — ให้ merge หลัง CORE-6 เพราะ e2e ของ CORE-6 ใช้ seed) |
+| CORE-10 | seed: ชื่อสินค้าไทย + ชื่อ option (เช่น Size) เป็นไทย (review #70, AC-68), เช็กการมีอยู่ทีละ resource, `.env.example` ว่าง (ค่าส่ง Standard คงเดิม กฎข้อ 19) | AC-29..31, AC-68 | CORE-2 (แนะนำ — ไม่บังคับ — ให้ merge หลัง CORE-6 เพราะ e2e ของ CORE-6 ใช้ seed) |
 | CORE-11 | อีเมล shipped เฉพาะ item ใน fulfillment, `order.placed` เคารพ `no_notification` | AC-32, AC-33 | CORE-3 |
 CORE-5b, CORE-8, CORE-9 ทำขนานกันได้; CORE-5b + CORE-8 เป็น dependency ของ CORE-4b (CORE-9 ไม่เป็น dependency ของ CORE-4 แล้ว — ADR-014);
 CORE-10 ∥ CORE-11 นอก critical path และไม่บล็อก release v0.1.0
@@ -387,7 +390,7 @@ none (middleware + storefront เท่านั้น)
 |----|------|----|---------|
 | CORE-12 | **ความปลอดภัย**: middleware `ensureStoreOwnership` ตาม ADR-013 + matcher ทั้งหมดของ CORE-12 ใน "API routes" + เพิ่ม `authenticate("customer")` ที่ `/store/shipping-options*` และ `GET /store/orders/:id` + integration test | AC-34..38 | CORE-6 |
 | CORE-13 | auth + ownership ของ order สำหรับ `POST /store/returns` (ใช้ helper จาก CORE-12) + ปิด order transfer ทั้งชุด (404) | AC-39, AC-40 | CORE-12 (แก้ `src/api/middlewares.ts` ไฟล์เดียวกัน) |
-| CORE-14 | storefront: `/buy/[items]` บังคับล็อกอินแล้วสร้าง cart พร้อม customer; ปิด `/ucp/*`, `lib/ucp/*`, `cart/resume` (ลบ route); จัดการ cookie cart ค้างเมื่อไม่มี session; แก้ flow no-JS ของ `/account?add_variant=` (กฎ 26, QA CORE-6 D-1) | AC-41..45 | CORE-6 |
+| CORE-14 | storefront: `/buy/[items]` บังคับล็อกอินแล้วสร้าง cart พร้อม customer; ปิด `/ucp/*`, `lib/ucp/*`, `cart/resume` (ลบ route); จัดการ cookie cart ค้างเมื่อไม่มี session; แก้ flow no-JS ของ `/account?add_variant=` (กฎ 26, QA CORE-6 D-1); ลบหน้า order transfer (เพิ่ม 2026-10-26, AC-56) | AC-41..45, 56 | CORE-6 |
 CORE-12 ∥ CORE-14; CORE-13 หลัง CORE-12; CORE-12 ควร merge ก่อน release แรกที่เปิดให้ลูกค้าจริงใช้
 CORE-14 ถ้า diff เกิน ~400 LOC ให้แยก CORE-14a (`/buy` บังคับล็อกอิน + ปิด UCP + cookie cart ค้าง; AC-41..43) และ CORE-14b
 (no-JS login + error ของ `add_variant`; AC-44, AC-45) — ทั้งสอง Depends CORE-6 และทำขนานกันได้
@@ -441,21 +444,147 @@ none
   และ textContent มีอักษรไทย, ไม่มี `pageerror` (e2e, screenshot)
 - AC-55 (CORE-15) Given สถานะของ AC-54 When ยกเลิก route mock แล้ว reload Then เห็นการ์ดสินค้า (test id ของการ์ดใน store-hits) และ
   ไม่มี `products-error` (e2e)
+- AC-69 (CORE-15, D-1 จาก qa CORE-4b2) Given Playwright context locale `en-US` When เปิด `/th/store` Then ป้ายช่วงราคาใต้ slider ตัวกรองราคา
+  แสดงสกุลเงินแบบ `฿` (ผ่าน `convertToLocale`) ไม่มีสตริง `THB`
 
 ### แผนการทดสอบ (follow-up รอบ 4)
 | ระดับ | AC |
 |------|----|
 | unit (Jest) | resolver `cart_id` จาก query: ไม่มี key → ข้าม, string → ตรวจ, array/ว่าง → 404 |
 | integration http | AC-51, AC-52, AC-53 |
-| e2e | AC-54, AC-55 |
+| e2e | AC-54, AC-55, AC-69 |
 
 ### Tasks (follow-up รอบ 4)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
 | CORE-12b | **ความปลอดภัย (เล็ก)**: ขยาย ownership middleware ของ CORE-12 (`src/api/store/ownership/`) ให้ตรวจ `query.cart_id` บน products/product-variants (+ store route อื่นที่อ่าน `cart_id` จาก query ตามที่ตรวจ source) ตามกฎข้อ 28 + integration test | AC-51..53 | CORE-12 |
-| CORE-15 | storefront: หน้า `/store` หยุดยิง `/store/search` ซ้ำเมื่อ error และแสดง `products-error` ภาษาไทย (กฎข้อ 29) + e2e | AC-54, AC-55 | CORE-9 |
+| CORE-15 | storefront: หน้า `/store` หยุดยิง `/store/search` ซ้ำเมื่อ error และแสดง `products-error` ภาษาไทย (กฎข้อ 29) + e2e; รวม defect D-1 จาก qa CORE-4b2: ป้ายช่วงราคาใต้ slider (`store-refinements/price-range.tsx` `formatAmount`) ใช้ `convertToLocale` แสดง `฿590` ไม่ใช่ `THB 590` เมื่อ browser เป็น en-US (AC-69) | AC-54, AC-55, AC-69 | CORE-9 |
 CORE-12b ∥ CORE-15 ∥ CORE-13 (CORE-12b แตะ `src/api/store/ownership/` — ถ้า CORE-13 แตะไฟล์เดียวกันให้ตัวที่ merge ทีหลัง rebase);
 CORE-12b ควร merge ก่อน release แรกที่เปิดให้ลูกค้าจริงใช้ (เหมือน CORE-12); CORE-15 กับ CORE-4b แตะ `store-hits` เดียวกัน — ตัวที่ merge ทีหลัง rebase
+
+## Follow-up รอบ 5 + ข้อตัดสินของ owner (2026-10-26)
+บันทึก CORE-16 (merge แล้ว #63) ตามที่ทำจริง, CORE-17 (#71 — AC-60a..f ตรงกับ AC-a..f ใน body ของ PR ตามที่ reviewer ขอ
+และระบุว่า rule รับเฉพาะ operator `eq` ตามที่ #71 ทำ (rule แบบ `in` ถูกปฏิเสธโดยการออกแบบ ไม่บังคับ test แยก); ส่วนที่เพิ่มจาก review
+แยกเป็น CORE-21) และ follow-up จาก qa/review
+ไม่เปลี่ยนนิยามของ CORE-11 (#64), CORE-4b2 (#70); CORE-14 (ยังไม่เริ่ม) ได้ขอบเขตเพิ่ม 1 ข้อ (ลบหน้า order transfer, AC-56); CORE-10 (ยังไม่เริ่ม)
+ได้ขอบเขตเพิ่ม 1 ข้อ (ชื่อ option ไทย, AC-68); CORE-18 เพิ่มการลบ `product-onboarding-cta` (AC-67)
+Out of scope: นโยบายคืนสินค้า/ค่าส่งคืนจริง (Q-F1 ยังเป็น placeholder), การรับของคืน/refund ฝั่ง admin (ใช้หน้า order ของ Medusa admin ตามเดิม)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa มีให้ (2.22.1) | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| ลูกค้าขอคืนสินค้า | `POST /store/returns` → `createAndCompleteReturnOrderWorkflow` | ใช้ตามเดิม + middleware ปิดฟิลด์ที่ store ไม่ควรกำหนด (CORE-16) และตรวจ option (CORE-17) |
+| return shipping option | shipping option ที่มี rule `is_return=true` (+ `enabled_in_store`) ใน service zone | ใช้ตามเดิม: seed สร้าง "Standard return" (CORE-16) |
+| stock location ↔ sales channel | link `sales_channel ↔ stock_location` ของ Medusa (อ่านด้วย `query.graph`) | ใช้ตามเดิมใน CORE-21 |
+| เหตุผลการคืน | Return reasons (`GET /store/return-reasons`, admin) | ใช้ตามเดิม (CORE-20) |
+| รับของคืน / refund | admin order page (receive return, refund) | ใช้ตามเดิม — store ห้าม `receive_now` |
+| หน้าขอคืนสินค้าใน storefront | ไม่มีใน starter | custom page (CORE-20) |
+| ตัวนับ cart / search drawer / ปุ่ม "Continue to review" | starter (มี bug เดิม) | แก้ใน storefront (CORE-19a/b) |
+| เนื้อหาหน้าร้าน (hero, footer) | starter มีข้อความโฆษณา Medusa/Next.js/GitHub | แทนด้วยเนื้อหาร้าน (CORE-18) |
+
+### Data model / Workflows
+none (CORE-16/17 เป็น middleware บน route ของ Medusa; seed เพิ่ม shipping option)
+
+### API routes
+ไม่มี route ใหม่ — middleware บน `POST /store/returns` ต่อจาก auth + ownership ของ CORE-13 (`src/api/store/ownership/`):
+- CORE-16 (`rejectStoreReturnOverrides`, อ่าน `req.body` ดิบ): body มี key `return_shipping.price`, `receive_now` หรือ `location_id`
+  (ค่าใดก็ได้ รวม `0`/`false`) → 400 `invalid_data` ข้อความระบุชื่อฟิลด์; body/`return_shipping` ที่ไม่ใช่ object → ปล่อยให้ validator ของ core ตอบ
+- CORE-17: `return_shipping.option_id` ต้องเป็น shipping option ที่ (1) มี rule `is_return` = `"true"`, (2) มี rule `enabled_in_store` = `"true"`,
+  (3) อยู่ใน service zone ที่ครอบที่อยู่จัดส่งของ order (geo zone ตาม `order.shipping_address.country_code`) — ไม่ผ่านข้อใด หรือ id ไม่มีจริง → 400 `invalid_data`
+  rule ข้อ (1)/(2) นับว่าผ่าน**เฉพาะ operator `eq`** กับค่า `"true"` — rule ที่ใช้ operator อื่น (เช่น `in` แม้ค่าเป็น `["true"]`) ถือว่าไม่ผ่าน (ตามที่ #71 ทำ
+  และ reviewer ยอมรับ 2026-10-26); ทำงานหลัง auth + ownership ของ CORE-13 (ADR-013)
+- CORE-21 (follow-up review #71): นอกจากข้างบน stock location ของ return option (location ของ fulfillment set ที่ service zone ของ option สังกัด)
+  ต้องผูกกับ sales channel ของ order (`order.sales_channel_id`) — ไม่ผูก → 400 `invalid_data`
+
+### Business rules
+30. (CORE-16) store กำหนดราคาส่งคืน, stock location ที่รับคืน และการรับของคืนทันทีเองไม่ได้ — ราคา/location มาจาก return option,
+    admin เป็นผู้รับของคืน
+31. (CORE-16) seed มี return option "Standard return" หาด้วย `type.code = "standard-return"` (ไม่ใช่ชื่อ): flat, provider/service zone/
+    shipping profile เดียวกับ "Standard", rules `is_return=true` + `enabled_in_store=true`, ราคา THB = 0 ถ้า `free_returns` ไม่เช่นนั้น =
+    `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`, ตอนนี้ 10 THB placeholder ตาม Q-F1); seed สร้างเฉพาะเมื่อยังไม่มี (รันซ้ำได้) — admin ที่จะ
+    เลิกใช้ให้ปิด `enabled_in_store` แทนการลบ (ลบแล้ว seed ครั้งถัดไปสร้างกลับ)
+32. (CORE-17) return option ที่ลูกค้าเลือกต้องผ่านเงื่อนไข 3 ข้อใน "API routes" — **ต้อง merge ก่อน release แรกที่เปิดให้ลูกค้าจริงใช้**
+33. (CORE-18, owner) storefront ห้ามมีข้อความ/ลิงก์โฆษณาของ starter (Medusa, Next.js, GitHub, `medusajs.com`, `github.com`) ที่ผู้ใช้เห็น
+    ใช้เนื้อหาร้านภาษาไทย — จนกว่า owner ส่งเนื้อหาจริงใช้ placeholder ไทยที่มีคอมเมนต์ `TODO(owner-content)` — ต้องเสร็จก่อน release แรก
+    (owner 2026-10-26: placeholder ไทยไปก่อน รวมเป็นค่าคงที่ที่แก้ได้ง่าย) และไม่มี component ของ starter ที่ลิงก์ไป `localhost:7001`
+    (`product-onboarding-cta`)
+34. (CORE-19a) การลบ item ใน cart dropdown ต้องอัปเดตตัวนับใน nav โดยไม่ต้อง reload (starter เดิมไม่อัปเดต)
+
+### Acceptance criteria (follow-up รอบ 5)
+- AC-56 (CORE-14) Given storefront When `GET /th/order/<id>/transfer/<token>`, `.../accept`, `.../decline` Then 404; และไม่มีไฟล์ใต้
+  `apps/storefront/src/app/[countryCode]/(main)/order/[id]/transfer/` และไม่มีการเรียก `/store/orders/*/transfer` ใน `apps/storefront/src` (grep ใน test)
+- AC-57 (CORE-16 ✓ #63) Given order OA ของ A (2 ชิ้น fulfill แล้ว) When A `POST /store/returns` พร้อม `return_shipping.price: 0`,
+  `receive_now: true` (คืนครบ), `receive_now: false`, หรือ `location_id: <stock location จริง>` (ทีละกรณี) Then 400 `type=invalid_data`
+  และ OA ไม่มี return (integration http `store-returns-overrides.spec.ts`; unit `return-overrides.unit.spec.ts`)
+- AC-58 (CORE-16 ✓ #63) Given seed When A `POST /store/returns` ด้วย `return_shipping: { option_id: <Standard return> }` ไม่มีฟิลด์ต้องห้าม
+  Then 200, return `status=requested`, `received_at=null`, shipping method มี `shipping_option_id` = option นั้นและ `amount` = ราคาตามกฎข้อ 31,
+  fulfillment ของ return ไปที่ stock location ของ option
+- AC-59 (CORE-16 ✓ #63) Given DB ว่าง When seed Then มี option `type.code="standard-return"` 1 รายการตามกฎข้อ 31 (name "Standard return",
+  `price_type=flat`, `provider_id=manual_manual`, มี location); Given DB ที่ seed ก่อน CORE-16 (ลบ option ออก) When seed 2 ครั้ง Then มี 1 รายการ
+  (integration `seed.spec.ts`)
+- AC-60 (CORE-17, ตรงกับ AC-a..AC-f ใน body ของ PR #71) Given order OA ของ A (fulfill แล้ว, ที่อยู่ประเทศ TH) When A `POST /store/returns` ด้วย
+  `return_shipping.option_id` = … Then:
+  - AC-60a option ที่ไม่ใช่ return (เช่น "Standard" ขาออก, `is_return` ≠ `"true"`) → 400 `invalid_data` ข้อความ `Shipping option is not a return option`
+    และ OA ไม่มี return
+  - AC-60b return option ที่ `enabled_in_store` ≠ `"true"` (rule ที่ใช้ operator อื่นที่ไม่ใช่ `eq` เช่น `in` ถือว่าไม่ผ่านเช่นกัน) → 400 ข้อความ
+    `Return shipping option is not available in store` และ OA ไม่มี return
+  - AC-60c return option ใน service zone ที่ไม่ครอบที่อยู่ของ order (zone ประเทศอื่น สร้างใน test) หรือ order ไม่มี `country_code` → 400 `invalid_data` ข้อความ
+    `Return shipping option does not serve the order's shipping address` และ OA ไม่มี return
+  - AC-60d id ที่ไม่มีจริง → 400 `invalid_data` (ไม่ใช่ 500) และ OA ไม่มี return
+  - AC-60e "Standard return" จาก seed → 200 (AC-58 ยังผ่าน)
+  - AC-60f ตรวจ option หลัง customer auth + owner check (CORE-13) และ override check (CORE-16): ไม่มี token → 401; customer B → 404
+    (test 401/404 ของ CORE-13 ใช้ยืนยันได้) — ไม่ห่อ route ของ Medusa (ADR-013)
+  (integration http `store-returns-*.spec.ts`; unit ของตัวตรวจ rule ถ้าแยกเป็น pure function)
+- AC-66 (CORE-21) Given return option R ที่ผ่าน AC-60 ทุกข้อ แต่ stock location ของ fulfillment set ของ R ไม่ผูกกับ sales channel ของ OA (สร้างใน test)
+  When A `POST /store/returns` ด้วย R Then 400 `invalid_data` และ OA ไม่มี return; "Standard return" จาก seed → 200 (integration http)
+- AC-67 (CORE-18) Given `apps/storefront/src` Then ไม่มีโฟลเดอร์/การ import `product-onboarding-cta` และไม่มีสตริง `localhost:7001` (grep ใน test);
+  PDP ของสินค้า seed ยังแสดงปกติ (e2e ของ AC-61)
+- AC-68 (CORE-10, review #70) Given DB ว่าง When รัน seed Then `title` ของทุก product option ของสินค้าตัวอย่าง (เดิม `Size`, `Color`) มีอักษรไทย
+  (`/[฀-๿]/`); ค่า option ที่เป็นรหัสสากล (เช่น `S`, `M`, `L`, `XL`) คงเดิมได้, ค่าที่เป็นคำ (เช่น `Black`, `White`) เป็นไทย; `handle` ของสินค้าเท่าเดิม
+  (integration seed)
+- AC-61 (CORE-18, กฎข้อ 33) Given storefront + backend ที่ seed แล้ว When e2e เปิด `/th` (home), `/th/store`, PDP ของสินค้า seed และ
+  `/th/account` (ไม่ล็อกอิน) Then `document.body.innerText` ไม่ตรง `/Medusa|Next\.js|GitHub/i` และไม่มี `a[href*="github.com"]`,
+  `a[href*="medusajs.com"]`, `a[href*="nextjs.org"]`; hero และ footer มีอักษรไทย (screenshot home)
+- AC-62 (CORE-19a, กฎข้อ 34) Given ลูกค้าล็อกอินมี cart 2 line (qty 1, 1) When เปิด cart dropdown แล้วกดลบ line หนึ่ง Then ตัวนับใน nav
+  (หาด้วย test id) เป็น 1 ภายใน 5 วินาทีโดยไม่ reload (e2e)
+- AC-63 (CORE-19a) Given viewport 375×812 When เปิด search drawer แล้วพิมพ์ข้อความ 200 ตัวอักษรไม่มีช่องว่าง Then
+  `document.documentElement.scrollWidth <= 375` และ input/ผลลัพธ์ไม่ล้นออกนอก drawer (`scrollWidth <= clientWidth` ของ container) (e2e, screenshot)
+- AC-64 (CORE-19b) Given checkout ที่กรอกที่อยู่/shipping/payment ครบ When กด "Continue to review" **ครั้งเดียว** วนซ้ำ 20 รอบ (cart ใหม่ทุกรอบ หรือ
+  ย้อนกลับขั้น payment) Then ทุกรอบ URL มี `step=review` ภายใน 10 วินาที; และ helper `continueToReview` ใน `e2e/support/stripe.ts` ไม่มีการกดซ้ำ
+  (retry click) แล้ว (e2e + grep)
+- AC-65 (CORE-20) Given order ของ A ที่ fulfill แล้ว When A เปิดหน้า order detail แล้วกดขอคืนสินค้า (`data-testid="order-return-button"`) เลือก item,
+  จำนวน, เหตุผล (จาก return reasons ของ Medusa) แล้วยืนยัน Then มี return `requested` ของ order นั้นใน DB ที่ใช้ option "Standard return" และหน้าแสดง
+  ข้อความสำเร็จภาษาไทย (`order-return-success`); request ที่ storefront ส่งไม่มีฟิลด์ต้องห้ามของกฎข้อ 30; order ที่ยังไม่ fulfill ไม่มีปุ่ม (e2e, screenshot)
+
+### แผนการทดสอบ (follow-up รอบ 5)
+| ระดับ | AC |
+|------|----|
+| unit (Jest) | AC-57 (`storeReturnOverrides`), AC-60a..b (ตัวตรวจ rule `eq`/`in` ถ้าแยกเป็น pure function) |
+| unit (Vitest/grep storefront) | AC-67 |
+| integration http | AC-57, AC-58, AC-59, AC-60a..f, AC-66 |
+| integration (seed) | AC-68 |
+| e2e / route test ของ storefront | AC-56, AC-61, AC-62, AC-63, AC-64, AC-65 |
+
+### Tasks (follow-up รอบ 5)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-16 | ✓ #63 — middleware ปฏิเสธ `return_shipping.price`/`receive_now`/`location_id` บน `POST /store/returns` + seed "Standard return" | AC-57..59 | CORE-13 |
+| CORE-17 | **ความปลอดภัย**: ตรวจ `return_shipping.option_id` ตามกฎข้อ 32 (`is_return`, `enabled_in_store` แบบ operator `eq` เท่านั้น, service zone ของ order) + integration test — ปิดก่อน release แรก | AC-60a..f | CORE-16 |
+| CORE-18 | storefront: แทนข้อความ/ลิงก์โฆษณาของ starter (hero, footer, nav, metadata) ด้วยเนื้อหาร้านภาษาไทย placeholder (owner 2026-10-26: ใช้ placeholder ไปก่อน รวมไว้เป็นค่าคงที่ในไฟล์เดียว เช่น `src/lib/store-content.ts` (ไม่สร้างโฟลเดอร์ `lib/constants/` ชนกับ `lib/constants.tsx`) ที่มี `TODO(owner-content)` ให้แก้ง่าย) + ลบ component `product-onboarding-cta` ของ starter (ลิงก์ไป `localhost:7001`, review #70) — ก่อน release แรก | AC-61, AC-67 | CORE-4b2 (#70; แตะ layout/home/PDP ที่ 4b2 แปลแล้ว) |
+| CORE-21 | (เล็ก, follow-up review #71) `POST /store/returns`: stock location ของ return option ต้องผูกกับ sales channel ของ order (ต่อจาก middleware ของ CORE-17) — เขียน test AC-66 ก่อน ถ้า `createAndCompleteReturnOrderWorkflow` ของ Medusa ปฏิเสธให้อยู่แล้ว (test ผ่านโดยไม่แก้) PR มีแค่ test | AC-66 | CORE-17 (#71; แตะ middleware เดียวกัน) |
+| CORE-19a | storefront: ตัวนับ cart ใน nav อัปเดตหลังลบใน dropdown + search drawer ไม่ล้นที่ 375px | AC-62, AC-63 | CORE-4b2 (แตะ `modules/layout`, `modules/search`) |
+| CORE-19b | storefront: ปุ่ม "Continue to review" ไม่ค้าง (`router.push` ของ starter ใน `modules/checkout`) + ลบการกดซ้ำใน `continueToReview` ของ e2e | AC-64 | CORE-4d (แตะไฟล์ checkout เดียวกัน) |
+| CORE-20 | storefront: หน้าขอคืนสินค้าจาก order detail (เลือก item/จำนวน/เหตุผล → `POST /store/returns` ด้วย return option ของร้าน) ข้อความไทย + path ใหม่ใน ESLint rule (กฎ CORE-4 ข้อ 4) | AC-65 | CORE-17, CORE-4c (แตะ `modules/order`) |
+CORE-17 ∥ CORE-18 ∥ CORE-19a; CORE-19b หลัง CORE-4d; CORE-20 หลัง CORE-17 และ CORE-4c; CORE-21 หลัง CORE-17 (∥ CORE-20) — CORE-17, CORE-18
+อยู่บนเงื่อนไข release แรก (CORE-21 แนะนำก่อน release แรก ไม่บังคับ: ร้านมี sales channel/stock location เดียว)
+CORE-14 เพิ่มขอบเขต: ลบหน้า order transfer `(main)/order/[id]/transfer/**` และโค้ดที่เรียก transfer ใน `lib/data` (AC-56; backend ปิด route แล้วใน CORE-13)
+— ถ้า CORE-14 เกิน ~400 LOC ส่วนนี้ไปอยู่ CORE-14a
+
+### Open questions (รอบ 5)
+- ~~Q-F4~~ ตัดสินแล้ว (owner 2026-10-26): CORE-18 ใช้เนื้อหา placeholder ภาษาไทยไปก่อน เก็บเป็นค่าคงที่ที่แก้ได้ง่าย (กฎข้อ 33) owner ส่งเนื้อหาจริง
+  ภายหลัง = แก้ค่าคงที่ ไม่ต้องมี task ใหม่
+- ~~Q-F5~~ (CORE-20) **owner ตัดสิน 2026-10-26**: ปุ่มขอคืนแสดงเฉพาะภายใน N วันหลังได้รับของ (นับจาก `delivered_at` ของ fulfillment ถ้าไม่มีใช้ `shipped_at`; ใช้ `return_window_days` ใน region metadata ที่
+  storefront อ่านอยู่แล้ว; backend ไม่บังคับใน v1) และซ่อนสำหรับ e-voucher/item ที่ไม่ต้องจัดส่ง (spec 02 กฎข้อ 6)
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

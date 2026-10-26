@@ -34,7 +34,7 @@ function refinementLabel(refinement: Refinement, currencyCode: string) {
   }
 
   if (attribute === priceAttribute("on_sale", currencyCode)) {
-    return "On sale"
+    return "ลดราคา"
   }
 
   if (attribute === priceAttribute("min_price", currencyCode)) {
@@ -45,16 +45,16 @@ function refinementLabel(refinement: Refinement, currencyCode: string) {
     })
 
     return operator === "<=" || operator === "<"
-      ? `Up to ${amount}`
-      : `From ${amount}`
+      ? `ไม่เกิน ${amount}`
+      : `ตั้งแต่ ${amount}`
   }
 
   if (attribute === CATEGORY_ATTRIBUTE) {
-    return `Category: ${label}`
+    return `หมวดหมู่: ${label}`
   }
 
   if (attribute === LABELS_ATTRIBUTE) {
-    return `Label: ${label}`
+    return `ป้ายกำกับ: ${label}`
   }
 
   return label
@@ -79,7 +79,7 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
     <div className="flex flex-col gap-y-3" data-testid="current-refinements">
       <div className="flex items-center justify-between gap-x-2 pr-6">
         <span className="txt-compact-small-plus text-ui-fg-subtle">
-          Applied filters
+          ตัวกรองที่เลือก
         </span>
         {canClearAll && (
           <button
@@ -87,7 +87,7 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
             className="txt-compact-small-plus text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
             data-testid="clear-refinements"
           >
-            Clear all
+            ล้างทั้งหมด
           </button>
         )}
       </div>
@@ -104,7 +104,7 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
             >
               <button
                 onClick={() => refine(refinement)}
-                aria-label={`Remove filter ${label}`}
+                aria-label={`ลบตัวกรอง ${label}`}
                 className="border-ui-border-interactive text-ui-fg-base border text-small-regular h-8 rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-ui-bg-base-hover"
                 data-testid="remove-refinement"
               >
