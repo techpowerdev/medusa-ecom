@@ -1,0 +1,47 @@
+# CORE-4b1 — ผล test (spec 01 หัวข้อ CORE-4, ADR-014) 2026-10-26, Node 22.23.3
+# เครื่อง local: backend :9125 (DB medusa_core4b, seed แล้ว), storefront `next build` + `next start -p 8125`
+
+## Red (ก่อนแก้โค้ด) — vitest run src/thai-ui-rule.test.ts
+Tests  12 failed | 8 passed (20)   (ยังไม่มี rule no-restricted-syntax, language-select ยังอยู่)
+
+## Green — vitest run src/thai-ui-rule.test.ts (AC-46 ส่วนไฟล์, AC-47, path ของ 4b1 ในตาราง AC-49)
+✓ ESLint rule ข้อความไทย (AC-47) > <p>Hello</p> → error
+✓ ESLint rule ข้อความไทย (AC-47) > <input placeholder="Search" /> → error
+✓ ESLint rule ข้อความไทย (AC-47) > <p>{`Cart (${price})`}</p> → error
+✓ ESLint rule ข้อความไทย (AC-47) > <button aria-label={"Close menu"} /> → error
+✓ ESLint rule ข้อความไทย (AC-47) > <p>สวัสดี</p> → ไม่มี error
+✓ ESLint rule ข้อความไทย (AC-47) > <p>{price} ฿</p> → ไม่มี error
+✓ ESLint rule ข้อความไทย (AC-47) > PromptPay + eslint-disable-next-line no-restricted-syntax -- brand → ไม่มี error
+✓ ESLint rule ข้อความไทย (AC-47) > <input placeholder="ค้นหาสินค้า" … /> → ไม่มี error
+✓ เปิด rule กับ src/app/layout.tsx, src/app/not-found.tsx, src/app/[countryCode]/(main)/{layout,page,not-found}.tsx,
+  src/modules/layout/**, src/modules/home/** (7 กรณี)
+✓ ไม่เปิด rule กับ (checkout)/layout.tsx, modules/checkout, modules/cart (3 กรณี)
+✓ ไม่มี i18n ในระยะแรก (AC-46) > ไม่มี dependency next-intl และไม่มีโฟลเดอร์ messages/
+✓ ไม่มี i18n ในระยะแรก (AC-46) > ลบ component language-select แล้ว
+Tests  20 passed (20)
+
+## pnpm --filter storefront test:unit (ทั้งชุด)
+Test Files  7 passed (7)
+Tests  57 passed (57)
+
+## playwright --project=unit e2e/support/thai-text.unit.spec.ts
+✓ latinWordsOutsideAllowList › ข้อความไทยล้วน ตัวเลข และสัญลักษณ์ → ไม่มีคำละติน
+✓ latinWordsOutsideAllowList › ชื่อแบรนด์ที่ยกเว้นไม่นับ
+✓ latinWordsOutsideAllowList › คำอังกฤษอื่นถูกรายงาน
+3 passed
+
+## playwright --project=chromium (e2e ทุกไฟล์บน develop)
+✓ smoke.spec.ts › storefront เสิร์ฟ robots.txt ได้
+✓ store-thb-price.spec.ts › AC-28: การ์ดสินค้าทุกใบบน /th/store แสดงราคาเป็น ฿
+✓ ui-preset-font.spec.ts › class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter
+✓ thai-ui-shell.spec.ts › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai
+✓ thai-ui-shell.spec.ts › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย
+✓ smoke.spec.ts › backend /health ตอบ 200 และหน้า login ของ admin แสดงผล
+✓ core-store.spec.ts › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart
+✓ core-store.spec.ts › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders
+✓ core-store.spec.ts › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที
+9 passed
+
+## pnpm --filter storefront lint → 0 errors (35 warnings เดิมของ starter)
+## pnpm --filter storefront typecheck → ผ่าน
+## pnpm --filter storefront build → ผ่าน
