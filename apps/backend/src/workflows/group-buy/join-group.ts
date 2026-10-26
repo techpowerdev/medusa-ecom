@@ -7,6 +7,7 @@ import {
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
 import {
+  ChangeActionType,
   ContainerRegistrationKeys,
   generateEntityId,
   MedusaError,
@@ -350,6 +351,8 @@ export const createGroupDraftOrderStep = createStep(
 // createOrderWorkflow 2.22.1 คำนวณ promotion ใหม่จาก order ที่ไม่มี items.product จึงไม่เข้า target rule ของ
 // GB-<token> (ส่วนลดหาย) — แทนด้วย adjustment ของ cart ทั้งชุด ไม่คำนวณส่วนลดเอง; ไม่มี compensation
 // เพราะ order ถูกยกเลิกโดย compensation ของขั้นก่อนหน้า
+// GB-3c (กฎข้อ 18): ใส่ adjustment ผ่าน order change (ITEM_ADJUSTMENTS_REPLACE) แล้ว confirm — Order module คำนวณ
+// summary (current_order_total/pending_difference) ใหม่จากยอดหลังส่วนลดเอง ไม่เขียนตัวเลข summary เอง
 export const freezeDraftOrderAdjustmentsStep = createStep(
   "freeze-draft-order-adjustments",
   async (input: { cart_id: string; order_id: string }, { container }) => {
@@ -370,22 +373,31 @@ export const freezeDraftOrderAdjustmentsStep = createStep(
       }),
       query.graph({
         entity: "order",
-        fields: ["items.id", "items.variant_id", "items.adjustments.id"],
+        fields: ["items.id", "items.variant_id"],
         filters: { id: input.order_id },
       }),
     ])
     const orderItems = (orders[0]?.items ?? []) as any[]
+    const adjustments = cartAdjustmentsForOrder((carts[0]?.items ?? []) as any[], orderItems)
     const orderModule = container.resolve(Modules.ORDER)
-    const stale = orderItems.flatMap((i) => (i.adjustments ?? []).map((a: { id: string }) => a.id))
-    if (stale.length) {
-      await orderModule.deleteOrderLineItemAdjustments(stale)
-    }
-    await orderModule.createOrderLineItemAdjustments(
-      cartAdjustmentsForOrder((carts[0]?.items ?? []) as any[], orderItems).map((a) => ({
-        ...a,
+    const change = await orderModule.createOrderChange({
+      order_id: input.order_id,
+      change_type: "edit",
+      description: "group-buy: freeze GB- adjustments",
+    })
+    // replace ทุก item (รวม item ที่ไม่มีส่วนลด → []) แทน adjustment ที่ createOrderWorkflow คำนวณไว้
+    await orderModule.addOrderAction(
+      orderItems.map((item) => ({
+        order_change_id: change.id,
         order_id: input.order_id,
+        action: ChangeActionType.ITEM_ADJUSTMENTS_REPLACE,
+        details: {
+          reference_id: item.id,
+          adjustments: adjustments.filter((a) => a.item_id === item.id),
+        },
       })) as any
     )
+    await orderModule.confirmOrderChange(change.id)
     return new StepResponse(undefined)
   }
 )
