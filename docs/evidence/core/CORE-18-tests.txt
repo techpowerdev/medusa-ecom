@@ -1,0 +1,35 @@
+# CORE-18 — ผล test (spec 01 กฎข้อ 33, AC-61 ฉบับปรับรอบ 6, AC-67)
+# วันที่ 2026-10-26 branch feat/CORE-18-store-content
+
+## Red (ก่อนแก้โค้ด: store-content.ts เป็น skeleton)
+     × ไม่มีโฟลเดอร์ product-onboarding-cta 3ms
+     × ไม่มีการ import product-onboarding-cta 19ms
+     × ไม่มีสตริง localhost:7001 11ms
+     × ไม่มีลิงก์ไป github.com, medusajs.com, nextjs.org 8ms
+     × ไม่มีชื่อร้าน Medusa Store และ component medusa-cta 8ms
+     × มี TODO(owner-content) ให้ owner แก้ 1ms
+     × ชื่อร้าน, hero, footer และ metadata เป็นภาษาไทย ไม่มีชื่อ starter 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  7 failed (7)
+
+## Green: vitest (pnpm --filter storefront test:unit)
+ Test Files  12 passed (12)
+      Tests  115 passed (115)
+
+## Playwright project unit
+
+  27 passed (539ms)
+
+## e2e (chromium, backend seed ในเครื่อง)
+  ✓  2 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (1.8s)
+  ✓  4 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (370ms)
+  ✓  3 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (3.5s)
+  ✓  5 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (424ms)
+  ✓  1 [chromium] › e2e/store-content.spec.ts:40:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (4.0s)
+  ✓  6 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (595ms)
+  6 passed (5.3s)
+
+## lint / typecheck / build
+apps/storefront lint: ✖ 35 problems (0 errors, 35 warnings)
+typecheck: ผ่าน
+build storefront: ผ่าน (next build)
