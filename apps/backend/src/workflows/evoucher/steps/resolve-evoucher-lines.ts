@@ -2,8 +2,6 @@ import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { EvoucherLine, EvoucherOrder, EvoucherOrderItem } from "./evoucher-order"
 
-const DIGITAL_PROFILE_TYPE = "digital"
-
 // line item ของ order ที่ variant มี EvoucherPool (กฎข้อ 1)
 export const resolveEvoucherLinesStep = createStep(
   "resolve-evoucher-lines",
@@ -26,12 +24,13 @@ export const resolveEvoucherLinesStep = createStep(
       if (!pool) {
         continue
       }
-      // owner: voucher product ต้องอยู่ profile Digital เสมอ — ไม่บังคับที่นี่ (EV-7) แต่ห้ามเงียบ
-      const profileType = item.variant?.product?.shipping_profile?.type
-      if (profileType !== DIGITAL_PROFILE_TYPE) {
+      // กฎข้อ 1 (EV-11): voucher product ต้องไม่มี shipping profile — ไม่บังคับที่นี่ (ไม่ทำให้ order ล้ม) แต่ห้ามเงียบ
+      const product = item.variant?.product
+      if (product?.shipping_profile?.id) {
         logger.warn(
-          `evoucher: order ${input.order.id} line item ${item.id} (pool ${pool.id}) is a voucher whose product ` +
-            `shipping profile is "${profileType ?? "none"}", expected "${DIGITAL_PROFILE_TYPE}"`
+          `evoucher: order ${input.order.id} line item ${item.id} (pool ${pool.id}, product ${product.id}, ` +
+            `variant ${item.variant_id}) is a voucher whose product has shipping profile ` +
+            `${product.shipping_profile.id}, expected none`
         )
       }
       lines.push({
