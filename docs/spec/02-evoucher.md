@@ -19,7 +19,8 @@ coupon code จากพาร์ทเนอร์ล่วงหน้า แ�
 | Trigger หลังชำระเงิน | event `payment.captured` + subscriber | subscriber |
 | Admin product UI | Admin widget บนหน้า product/variant | widget |
 | Admin import UI | Admin route page + file upload (File module) | custom page |
-| สินค้าที่ไม่ต้องจัดส่ง | `requires_shipping` ของ inventory item (override ระดับ variant) → line item `requires_shipping` | ใช้ตามที่มี; ตั้งค่าตอนสร้าง pool (EV-8) |
+| สินค้าที่ไม่ต้องจัดส่ง | `requires_shipping` ของ inventory item (override ระดับ variant) → line item `requires_shipping` | ใช้ตามที่มี; ตั้งค่าตอนสร้าง pool (EV-8) — **อย่างเดียว** (กฎข้อ 1) |
+| shipping profile | product ที่มี shipping profile **ใดก็ตาม** (Default, Digital หรืออื่น) → line item `requires_shipping=true` เสมอ (`core-flows` 2.22.1 `cart/utils/prepare-line-item-data.js:23-29`: `hasShippingProfile \|\| someInventoryRequiresShipping`) และ `validate-shipping.js:48-57` บังคับ shipping method ตาม profile ของ line ที่ต้องจัดส่ง | product ของ voucher ต้อง**ไม่มี shipping profile เลย** (กฎข้อ 1) |
 
 ## Data model (module `evoucher`)
 ```
@@ -62,7 +63,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   `available < low_stock_threshold`
 - Admin `resendEvoucherEmailWorkflow(order_id)` (EV-5b): ส่งอีเมล `evoucher.delivered` ซ้ำไปที่อีเมลของ order ด้วย code ที่
   `delivered` หรือ `allocated` (ส่งอีเมลล้มตามกฎข้อ 17) ของ order นั้น — ไม่ allocate ใหม่; ส่งสำเร็จ → code `allocated` เป็น `delivered`;
-  order ที่ไม่มี code `delivered`/`allocated` → 400 `NOT_ALLOWED`
+  order ที่ไม่มี code `delivered`/`allocated` → 400 `NOT_ALLOWED`; **ทุกครั้งที่ resend สร้าง notification ด้วย `idempotency_key` ใหม่**
+  (กฎข้อ 19) ไม่ใช้ key ของการส่งครั้งก่อน
 - Admin `voidCodeWorkflow(code_id, reason)` สำหรับ code สถานะ `available` เท่านั้น (ปรับ inventory ด้วย)
 
 ## API
@@ -85,9 +87,12 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 
 ## Business rules
 1. variant จะเป็น voucher ก็ต่อเมื่อมี `EvoucherPool`; `requires_shipping=false`,
-   `manage_inventory=true` โดย inventory ต้องเท่ากับจำนวน code ที่ `available` เสมอ; (owner 2026-10-26, ปิด Q5) product ของ voucher ต้องอยู่ใน
-   shipping profile **Digital** (`shipping_profile.type = "digital"` ที่ EV-3 seed) เสมอ — สร้าง pool ให้ variant ที่ product อยู่ profile อื่น → 400 (EV-10)
-   และ cart ที่มี voucher ต้องได้ shipping method Digital delivery (`type.code = "digital-delivery"`) เท่านั้น (EV-7 ตรวจ/บังคับ, AC-3)
+   `manage_inventory=true` โดย inventory ต้องเท่ากับจำนวน code ที่ `available` เสมอ; (owner 2026-10-26, รอบ 6 — **ยกเลิก**ข้อตัดสิน Q5 เดิมเรื่อง profile Digital)
+   line item ของ voucher มี `requires_shipping=false` ได้ก็ต่อเมื่อ**ทั้งสองข้อ**: (a) inventory item `requires_shipping=false` (EV-8) และ (b) product ของ voucher
+   **ไม่มี shipping profile เลย** — ใน Medusa 2.22.1 profile ใดก็ตาม (รวม Default ที่ seed/admin ใส่ให้ product ส่วนใหญ่) ทำให้ line item `requires_shipping=true`
+   (`prepare-line-item-data`: `hasShippingProfile || inventory`) และ `validate-shipping` จะบังคับ method ของ profile นั้น (Standard) — ตรงกับที่ EV-10 (#85) ทำ;
+   การสร้าง pool ให้ variant ที่ product มี shipping profile → **400** ไม่มี pool (owner ตัดสิน Q9 2026-10-26); การเลือก shipping option ของ cart voucher
+   (ถ้า storefront ใส่) ทำตามกฎข้อ 8
 2. จะ allocate code หลังจากชำระเงิน **captured** แล้วเท่านั้น โดยเลือก code ที่หมดอายุเร็วที่สุดก่อน
    และไม่เลือก code ที่จะหมดอายุภายใน 7 วัน
 3. 1 code ต่อ 1 หน่วย; qty 3 → 3 code ในอีเมลเดียว
@@ -111,8 +116,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
     ของ input
 12. (EV-10) void ที่ลด inventory ต้องไม่ทำให้ order ที่จองไว้แล้วกลายเป็น backordered: admin void (`voidEvoucherCodeWorkflow`) ตรวจ inventory level
     ของ pool ก่อน — ถ้า `stocked_quantity − reserved_quantity < 1` (stock ที่เหลือถูก order จองหมดแล้ว) → 409 code `EVOUCHER_CODE_RESERVED`
-    (กลไก PROMO-2) และไม่เปลี่ยนอะไร; job รายวันยัง void code ที่ใกล้หมดอายุทั้งหมด (ขายไม่ได้แล้ว) แต่ถ้าหลังลดแล้ว `stocked < reserved` ให้ระบุ
-    pool นั้นในอีเมลสรุป expiry (กฎข้อ 9) — ดู Q6
+    (กลไก PROMO-2) และไม่เปลี่ยนอะไร
+12b. (**EV-12**, แยกจากกฎข้อ 12 รอบ 6 — รอ Q6) job รายวันยัง void code ที่ใกล้หมดอายุทั้งหมด (ขายไม่ได้แล้ว) แต่ถ้าหลังลดแล้ว `stocked < reserved` ให้ระบุ
+    pool นั้นในอีเมลสรุป expiry (กฎข้อ 9) — ถ้า owner ตอบ Q6 เป็นทางเลือกอื่น ให้แก้กฎข้อนี้ก่อนเริ่ม EV-12
 13. (EV-10) `expires_at` ต้องเป็นวันที่มีจริง: ค่าที่ `Date` เลื่อนเดือน/ปีให้ (เช่น `2026-02-30`, `2026-04-31`, `2026-13-01`, รวมรูปแบบที่มีเวลา) ถือเป็น
     ค่าที่ parse ไม่ได้ (ทั้งไฟล์ล้มพร้อมเลขบรรทัด ตามพฤติกรรมเดิมของ EV-2) — ตรวจแบบ round-trip: ปี/เดือน/วันที่ parse ได้ต้องตรงกับข้อความ
 14. (EV-10) voucher variant ต้องมี inventory item เดียว (`required_quantity = 1`) ที่ไม่มี variant อื่นใช้ร่วม — ไม่เช่นนั้นสร้าง pool ไม่ได้ (400) เพราะการตั้ง
@@ -127,6 +133,11 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
     รัน allocation ซ้ำ (AC-7) ไม่ allocate code ใหม่ให้ line ที่มี code `allocated` แล้ว
 18. (EV-4, owner 2026-10-26 — ยืนยันว่าระดับ line item) **backordered ทั้งรายการ**: ถ้า code ที่ claim ได้ไม่ครบ quantity ของ line item → ปล่อย code ที่ claim แล้วของ line นั้นกลับเป็น
     `available` และ mark line ทั้ง line เป็น backordered (ไม่ส่งมอบบางส่วน) — line อื่นของ order ที่ครบยังส่งมอบตามปกติ
+19. (EV-5b, follow-up review รอบ 6) resend ต้องสร้าง notification ด้วย `idempotency_key` **ใหม่ทุกครั้ง** (เช่น
+    `evoucher-resend:<order_id>:<uuid>`) — ห้ามใช้ key เดิมของการส่งที่ `status=failure`: `NotificationModuleService` จะเข้า retry path ของแถวเดิม
+    แล้ว throw `NOT_FOUND` ทำให้ resend ล้มตลอด
+20. (EV-4, ตามโค้ด #67 — owner ยืนยัน Q8 2026-10-26) อีเมล `evoucher.delivered` ส่ง**เสมอ**แม้ order ตั้ง `no_notification=true` เพราะอีเมลนี้คือการส่งมอบสินค้า
+    (ไม่ใช่อีเมลแจ้งสถานะ) — ต่างจากอีเมล shipped ของ CORE-11 ที่เคารพ `no_notification`
 
 ## Acceptance criteria
 - AC-1 Admin import CSV จำนวน 100 code (ซ้ำ 2 รายการ) → 98 `available`, inventory ของ variant +98,
@@ -134,12 +145,10 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-2 เมื่อมี voucher variant qty 2 ใน cart และชำระเงิน captured แล้ว 2 code จะกลายเป็น
   `delivered` พร้อม order id และลูกค้าได้รับอีเมล 1 ฉบับที่มีทั้ง 2 code, PIN,
   วิธีใช้ของพาร์ทเนอร์ และวันหมดอายุ
-- AC-3 เมื่อ cart มีเฉพาะสินค้า voucher การ checkout ไม่ต้องกรอกที่อยู่; shipping method
-  "Digital delivery" ฟรีถูกใช้อัตโนมัติ; ยอดรวมมีค่าจัดส่ง ฿0 — แม้ `GET /store/shipping-options?cart_id=` คืน Standard มาก่อน
-  Digital delivery ในรายการ cart ก็ต้องมี shipping method ที่ `type.code = "digital-delivery"` และไม่มี Standard (กฎข้อ 8); (EV-7, กฎข้อ 1) order ที่ได้มี
-  shipping method เดียวคือ digital-delivery; `POST /store/carts/:id/shipping-methods` ด้วย option Standard บน cart ที่มีแต่ voucher → ไม่ใช่ 2xx หรือถ้า Medusa
-  รับ → complete cart ไม่ผ่าน — builder ยืนยันกลไกของ Medusa (shipping profile ↔ option) ด้วย integration test ถ้าไม่มีกลไกใดกัน ให้หยุดและรายงาน (ไม่เขียน hook เอง
-  โดยไม่มี ADR)
+- AC-3 เมื่อ cart มีเฉพาะสินค้า voucher (product ไม่มี shipping profile, กฎข้อ 1) ทุก line มี `requires_shipping=false`, การ checkout ไม่ต้องกรอกที่อยู่
+  และ complete cart ได้โดย `validate-shipping` ของ Medusa ไม่บังคับ shipping method (integration: complete cart ที่ไม่มี shipping method → order สำเร็จ);
+  ยอดรวมมีค่าจัดส่ง ฿0; ถ้า storefront ใส่ method ต้องเป็น `type.code = "digital-delivery"` ไม่ใช่ Standard แม้ `GET /store/shipping-options?cart_id=`
+  คืน Standard มาก่อน (กฎข้อ 8, e2e) — ไม่มีการบังคับฝั่ง backend ว่า voucher ได้เฉพาะ Digital method (ถ้าต้องการต้องเขียน ADR ก่อน)
 - AC-25 (EV-4, กฎข้อ 16) Given order ที่ได้รับ code แล้ว When อ่านแถว `notification` ของ `evoucher.delivered` จาก DB Then `data` ไม่มีค่า plaintext ของ code/PIN
   (เทียบกับค่าที่ถอดรหัสแล้ว) และ mock provider ได้รับ code/PIN ที่ถอดแล้วถูกต้อง (integration)
 - AC-26 (EV-4, กฎข้อ 17) Given notification provider throw ตอนส่ง `evoucher.delivered` When allocation workflow ทำงาน Then code ของ order เป็น `allocated` (ไม่ใช่
@@ -149,6 +158,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   `available` (นับ `available` = 1 เท่าเดิม), ลูกค้าไม่ได้อีเมล `evoucher.delivered` ของ line นั้น และ admin ได้อีเมล backordered (integration)
 - AC-28 (EV-5b, กฎข้อ 17) Given order ที่ code เป็น `allocated` เพราะส่งอีเมลล้ม When admin `POST /admin/evoucher/orders/:id/resend` แล้วส่งสำเร็จ Then 200 และ
   code เป็น `delivered` พร้อม `delivered_at` (integration http)
+- AC-29 (EV-5b, กฎข้อ 19) Given order ที่ notification `evoucher.delivered` ครั้งก่อนมี `status=failure` (mock provider throw ครั้งแรก) When admin resend
+  สองครั้งติดกัน (provider ใช้ได้แล้ว) Then ทั้งสองครั้งได้ 200, มี notification ใหม่ 2 แถวที่ `idempotency_key` ต่างกันและต่างจากแถวที่ล้ม, ไม่มี error `NOT_FOUND`
+  (integration http, mock provider)
 - AC-4 เมื่อมี code `available` 1 รายการ และ order qty 1 สองรายการถูก capture พร้อมกัน → มีเพียง
   order เดียวที่ได้ code; อีก order ถูก flag เป็น backordered และ admin ได้รับอีเมล
 - AC-5 code ที่จะหมดอายุภายใน < 7 วันจะไม่ถูก allocate; job รายวัน void code เหล่านั้นและ
@@ -167,8 +179,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   job รายวันตั้ง `void_reason="expiring"`
 - AC-11 สร้าง pool ให้ variant ที่ `manage_inventory=true` → inventory item ของ variant มี `requires_shipping=false` และ line item ของ
   variant นั้นใน cart มี `requires_shipping=false`; variant ที่ `manage_inventory=false` → 400 และไม่มี pool ถูกสร้าง;
-  ถ้าขั้นสร้าง pool ล้มหลังปรับ inventory item → `requires_shipping` กลับเป็นค่าเดิม (compensation); (EV-10, กฎข้อ 1 owner 2026-10-26) variant ที่ product
-  อยู่ใน shipping profile ที่ไม่ใช่ `type=digital` → 400, ไม่มี pool และ inventory item ไม่เปลี่ยน; product ใน profile Digital → 201
+  ถ้าขั้นสร้าง pool ล้มหลังปรับ inventory item → `requires_shipping` กลับเป็นค่าเดิม (compensation); (รอบ 6, กฎข้อ 1) variant ที่ product **ไม่มี** shipping
+  profile → สร้าง pool ตอบ **200** (route เดิมของ EV-2) และ line item ใน cart `requires_shipping=false`; variant ที่ product มี shipping profile ใดๆ (Default หรือ Digital)
+  → 400, ไม่มี pool และ inventory item ไม่เปลี่ยน (owner ตัดสิน Q9 2026-10-26)
 - AC-12 import CSV ที่ `expires_at` เป็นวันที่ล้วน `2026-12-31` → เก็บเป็นสิ้นวันเวลาไทย `2026-12-31T16:59:59.999Z`
   (= 23:59:59.999+07:00; owner ยืนยัน Q4 แล้ว); ค่า ISO ที่มี offset เก็บตามจริง; ค่าที่ parse ไม่ได้ → พฤติกรรมเดิมของ EV-2
 - AC-13 import ที่ขั้นปรับ inventory ล้ม **และ** compensation ลบ batch ก็ล้มด้วย → response/error ที่ผู้เรียกได้รับเป็น error เดิมของขั้นที่ล้ม
@@ -193,6 +206,12 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-21 (EV-10, กฎข้อ 12) Given pool มี code `available` 2 รายการ, inventory `stocked=2` และ order ที่ยังไม่ allocate จองไว้ 2 (`reserved=2`) When admin void code
   หนึ่ง Then 409 `{ type: "conflict", code: "EVOUCHER_CODE_RESERVED", message }`, code ยัง `available`, `stocked` ยัง 2; Given `reserved=1` Then void สำเร็จ
   และ `stocked=1` (integration http)
+- AC-30 (EV-12, กฎข้อ 12b — หลัง owner ตอบ Q6) Given pool P มี code ใกล้หมดอายุ 2 รายการ, `stocked=2`, `reserved=2` และ pool Q ที่ `reserved=0` When job รายวันรัน
+  Then code ทั้งหมดของ P/Q ที่ใกล้หมดอายุเป็น `void`, อีเมลสรุป expiry 1 ฉบับถึง `EVOUCHER_ADMIN_EMAIL` ที่ระบุ P (id หรือชื่อ) ว่า `stocked < reserved` และไม่ระบุ Q
+  (integration, mock provider)
+- AC-31 (EV-11, กฎข้อ 1) Given voucher ที่ product **ไม่มี** shipping profile When allocation workflow ของ EV-4 ทำงาน Then ไม่มี log warning เรื่อง shipping profile
+  และส่งมอบ code ตามปกติ; Given product ที่มี shipping profile ใดๆ (Default หรือ Digital — ตั้งใน test ผ่าน module) Then มี log warning 1 ครั้งที่ระบุ product/variant
+  และยังส่งมอบ code (ไม่ทำให้ order ล้ม) (integration, spy logger)
 - AC-22 (EV-10, กฎข้อ 13) Given CSV ที่ `expires_at` = `2026-02-30`, `2026-04-31`, `2026-13-01`, `2026-02-30T10:00:00+07:00` (ทีละไฟล์) When import Then ล้ม
   ทั้งไฟล์พร้อมเลขบรรทัด และไม่มี code ถูก insert; `2028-02-29` → สำเร็จ (unit parser + integration 1 กรณี)
 - AC-23 (EV-10, กฎข้อ 14) Given variant V1 ที่ inventory item ถูก variant V2 ใช้ร่วม หรือ V1 มี inventory item 2 ตัว When สร้าง pool ให้ V1 Then 400, ไม่มี pool
@@ -214,8 +233,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - Integration (http/modules): AC-15, AC-16, AC-17, AC-18
 - e2e admin: AC-19, AC-20
 - e2e: AC-3, AC-6
-- Unit: round-trip ของ `expires_at` (AC-22); Integration (http/migration script): AC-21, AC-22 (1 กรณี), AC-23, AC-24, AC-11 (ส่วน shipping profile)
-- Integration: AC-25, AC-26, AC-27 (EV-4), AC-28 (EV-5b), AC-3 (ส่วน backend ของ EV-7)
+- Unit: round-trip ของ `expires_at` (AC-22); Integration (http/migration script): AC-21, AC-22 (1 กรณี), AC-23, AC-24
+- Integration: AC-25, AC-26, AC-27 (EV-4), AC-28, AC-29 (EV-5b), AC-30 (EV-12), AC-31 (EV-11), AC-3 (ส่วน `requires_shipping` ของ EV-7)
 
 ## Tasks
 | ID | Task | Depends |
@@ -225,14 +244,16 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-3 | Fulfillment provider `digital` + seed shipping option digital-delivery | EV-1 |
 | EV-4 | Allocate & deliver workflow + subscriber + email template; อีเมล backordered ส่งหา `EVOUCHER_ADMIN_EMAIL` (กฎข้อ 9); **เพิ่ม 2026-10-26 (owner, review #67)**: ciphertext ใน `notification.data` (กฎข้อ 16), ส่งล้มคง `allocated` + แจ้ง admin (กฎข้อ 17), backordered ทั้ง line (กฎข้อ 18) (AC-2, AC-4, AC-7, AC-17 ส่วน backordered, AC-25..27) | EV-2, EV-3, CORE-3 |
 | EV-5 | Job รายวันสำหรับ expiry/void + low-stock (ส่งหา `EVOUCHER_ADMIN_EMAIL` ตามกฎข้อ 9 — PR #43 ต้องปรับ); admin API สำหรับ void; field `void_reason` + migration (AC-5, AC-9, AC-10, AC-17 ส่วน low-stock/expiry) — resend ย้ายไป EV-5b (owner Q-B) | EV-2 |
-| EV-5b | `resendEvoucherEmailWorkflow` + `POST /admin/evoucher/orders/:id/resend` + ปุ่ม resend บน order widget ของ EV-6 — รวม code `allocated` ที่ส่งอีเมลล้ม (กฎข้อ 17) (AC-18, AC-19, AC-28) | EV-4, EV-6 |
+| EV-5b | `resendEvoucherEmailWorkflow` + `POST /admin/evoucher/orders/:id/resend` + ปุ่ม resend บน order widget ของ EV-6 — รวม code `allocated` ที่ส่งอีเมลล้ม (กฎข้อ 17); `idempotency_key` ใหม่ทุกครั้ง (กฎข้อ 19) (AC-18, AC-19, AC-28, AC-29) | EV-4, EV-6 |
 | EV-6 | Admin UI: route page (partner, pool, import, code แบบ masked/reveal) + variant widget + order tab | EV-2 |
-| EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only (เลือก option ด้วย `type.code` ไม่ใช่ตัวแรก, กฎข้อ 8; ตรวจ/บังคับว่า voucher ได้เฉพาะ Digital method ตามกฎข้อ 1 + integration test ส่วน backend ของ AC-3), หน้าบัตรกำนัลของฉัน + e2e (AC-3, AC-6); ข้อความไทยตรงในโค้ดและเพิ่ม path ใน ESLint rule ของ spec 01 กฎ CORE-4 ข้อ 4 (ADR-014) | EV-4 |
+| EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only (เลือก option ด้วย `type.code` ไม่ใช่ตัวแรก, กฎข้อ 8; ไม่บังคับ Digital method ฝั่ง backend — รอบ 6), หน้าบัตรกำนัลของฉัน + e2e (AC-3, AC-6); ข้อความไทยตรงในโค้ดและเพิ่ม path ใน ESLint rule ของ spec 01 กฎ CORE-4 ข้อ 4 (ADR-014) | EV-4 |
 | EV-8 | Hardening จาก review EV-2: บังคับกฎข้อ 1 ตอนสร้าง pool (`requires_shipping=false` ที่ inventory item ผ่าน `updateInventoryItemsWorkflow` + compensation, ปฏิเสธ `manage_inventory=false`), `expires_at` แบบวันที่ล้วน, error เดิมไม่ถูกกลบเมื่อ compensation ล้ม; seed (`upgradeDigitalDelivery`) หา option Digital delivery ด้วย `type.code` แทนชื่อ (กฎข้อ 8) (AC-11, AC-12, AC-13, AC-14) | EV-2, EV-3 |
 | EV-9 | follow-up review/QA (เล็ก): route pool list/detail select `low_stock_threshold` เสมอ (คำนวณ `low_stock` ถูกแม้ client ส่ง `fields` เอง) + module link `evoucher_code ↔ order` (`src/links/`) ที่ order tab (EV-6) และ resend (EV-5b) ใช้ + ฟอร์ม admin กัน double-submit และ `Label` ผูก `htmlFor`/`id` (กฎข้อ 11) (AC-15, AC-16, AC-20) | EV-2, EV-6 |
-| EV-10 | follow-up review/QA รอบ 5 (เล็ก, backend): admin void ตรวจ reservation (กฎข้อ 12), `expires_at` วันที่มีจริงแบบ round-trip (กฎข้อ 13), ปฏิเสธ variant ที่ใช้ inventory item ร่วม/หลายตัว (กฎข้อ 14), ลบ pool คืน `requires_shipping` + migration script backfill pool ก่อน EV-8 (กฎข้อ 15); สร้าง pool ได้เฉพาะ product ใน shipping profile Digital (กฎข้อ 1, owner 2026-10-26) (AC-21..24, AC-11 ส่วน shipping profile) | EV-5, EV-8 |
+| EV-10 | follow-up review/QA รอบ 5 (เล็ก, backend): admin void ตรวจ reservation (กฎข้อ 12 — เฉพาะส่วน admin void), `expires_at` วันที่มีจริงแบบ round-trip (กฎข้อ 13), ปฏิเสธ variant ที่ใช้ inventory item ร่วม/หลายตัว (กฎข้อ 14), ลบ pool คืน `requires_shipping` + migration script backfill pool ก่อน EV-8 (กฎข้อ 15) (AC-21..24) — **รอบ 6 (#85)**: เปลี่ยนจาก "ต้องอยู่ profile Digital" เป็น "product ต้องไม่มี shipping profile" (กฎข้อ 1; 400 ตาม Q9 ที่ owner ตัดสินแล้ว, AC-11) และย้ายส่วน job รายวันไป EV-12 | EV-5, EV-8 |
+| EV-11 | (เล็ก, follow-up รอบ 6) เปลี่ยนเงื่อนไข `logger.warn` ใน EV-4 จาก "product ไม่อยู่ใน profile `digital`" เป็น "product มี shipping profile ใดๆ" (กฎข้อ 1) — ไม่ลบ warn (AC-31) | EV-4 |
+| EV-12 | (เล็ก, แยกจาก EV-10 รอบ 6) job รายวันระบุ pool ที่ `stocked < reserved` หลัง void ในอีเมลสรุป expiry (กฎข้อ 12b) (AC-30) — **เริ่มหลัง owner ตอบ Q6** | EV-5, EV-10 |
 EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-10 ∥ EV-4/EV-9 (EV-10 แตะ `void-evoucher-codes.ts`, `evoucher-pool.ts`, `utils/csv.ts`, migration script — ถ้า EV-9 แตะ
-`evoucher-pool.ts` ร่วม ตัวที่ merge ทีหลัง rebase) และต้อง merge ก่อน release ที่มี EV-7 (backfill); EV-9 หลัง EV-6 (แก้ฟอร์มของ EV-6; ถ้า EV-6 ต้องใช้ link ก่อน ให้รวม link เข้า PR นั้นแทน); EV-5b หลัง EV-4 และ EV-6;
+`evoucher-pool.ts` ร่วม ตัวที่ merge ทีหลัง rebase) และต้อง merge ก่อน release ที่มี EV-7 (backfill); EV-9 หลัง EV-6 (แก้ฟอร์มของ EV-6; ถ้า EV-6 ต้องใช้ link ก่อน ให้รวม link เข้า PR นั้นแทน); EV-5b หลัง EV-4 และ EV-6; EV-11 หลัง EV-4 (∥ EV-5b; แตะไฟล์ allocation เดียวกันได้ — ตัวที่ merge ทีหลัง rebase); EV-12 หลัง EV-10 และคำตอบ Q6;
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 
@@ -241,8 +262,12 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
 - Q2 วันหมดอายุ: ต่อ code (ใน CSV) หรือต่อ batch? (ค่าเริ่มต้น: คอลัมน์ต่อ code, optional)
 - Q3 admin ควรนำ code จาก order ที่คืนเงินแล้วกลับมาขายใหม่ได้หรือไม่? (ค่าเริ่มต้น: ไม่ได้)
 - ~~Q4~~ ตัดสินแล้ว (owner, 2026-10-25): `expires_at` ที่เป็นวันที่ล้วน = ใช้ได้ถึงสิ้นวันนั้นตามเวลาไทย (AC-12)
-- ~~Q5~~ ตัดสินแล้ว (owner 2026-10-26): voucher product ใช้ shipping profile Digital เสมอ (+ `requires_shipping=false`); EV-10 บังคับตอนสร้าง pool (AC-11)
-  และ EV-7 ตรวจ/บังคับว่า cart ของ voucher ได้เฉพาะ Digital delivery method (AC-3) — กฎข้อ 1
-- Q6 (EV-10, กฎข้อ 12) job รายวันที่ void code ใกล้หมดอายุซึ่งอาจเป็น stock ที่ order จองไว้: คงพฤติกรรม "void ทั้งหมด + แจ้งในอีเมลสรุป" (ค่าเริ่มต้น —
+- ~~Q5~~ ตัดสินแล้ว (owner 2026-10-26) แล้ว**กลับคำตัดสิน**ในวันเดียวกัน (รอบ 6): ~~voucher product ใช้ shipping profile Digital เสมอ~~ → ใช้
+  `requires_shipping=false` ที่ inventory item + product **ไม่มี shipping profile เลย** และไม่บังคับ Digital method ฝั่ง backend เพราะ profile ใดก็ตามทำให้ line item
+  `requires_shipping=true` เสมอใน Medusa 2.22.1 (ขัด AC-11) — กฎข้อ 1, AC-3, AC-11, EV-7, EV-10, EV-11
+- ~~Q9~~ ตัดสินแล้ว (owner 2026-10-26): สร้าง pool ให้ variant ที่ product มี shipping profile ใดๆ → **400** ไม่มี pool (admin ต้องเอา profile ออกจาก product ก่อน)
+  — กฎข้อ 1, AC-11
+- Q6 (EV-12, กฎข้อ 12b) job รายวันที่ void code ใกล้หมดอายุซึ่งอาจเป็น stock ที่ order จองไว้: คงพฤติกรรม "void ทั้งหมด + แจ้งในอีเมลสรุป" (ค่าเริ่มต้น —
   order นั้นจะได้ backordered + อีเมลตาม EV-4) หรือให้ job เว้น code ไว้เท่าจำนวนที่ถูกจอง (ขายของที่จะหมดอายุภายใน 7 วัน ขัดกฎข้อ 7)?
 - Q7 (EV-10, กฎข้อ 15) ลบ pool แล้วตั้ง `requires_shipping=true` เสมอ (ค่าเริ่มต้น) หรือต้องจำค่าเดิมก่อนสร้าง pool (ต้องเพิ่ม field ใน model)?
+- ~~Q8~~ ตัดสินแล้ว (owner 2026-10-26): อีเมล `evoucher.delivered` ส่ง**เสมอ**แม้ order ตั้ง `no_notification=true` (เป็นการส่งมอบสินค้า) — กฎข้อ 20

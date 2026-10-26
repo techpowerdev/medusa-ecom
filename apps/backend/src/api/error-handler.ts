@@ -4,6 +4,7 @@ import { PROMOTION_NOT_COMBINABLE } from "../lib/promotion-exclusivity"
 import { EVOUCHER_CODE_NOT_AVAILABLE, EVOUCHER_CODE_RESERVED } from "../modules/evoucher/errors"
 import { FLASH_LIMIT_EXCEEDED, FLASH_SOLD_OUT } from "../modules/flash_sale/errors"
 import { GB_CONFLICT_CODES } from "../modules/group_buy/errors"
+import { PAYMENT_ALREADY_COMPLETED } from "./store/payment-collections/stripe-session-guard"
 
 // PROMO-2 (spec 03 กฎข้อ 13): errorHandler ของ Medusa 2.22.1 เขียนทับ code/message ของ CONFLICT เป็น
 // `invalid_state_error` + ข้อความกลาง → error ที่มี code ใน allow-list นี้ตอบ 409 { type: "conflict", code, message } เอง
@@ -16,6 +17,7 @@ export const BUSINESS_CONFLICT_CODES: ReadonlySet<string> = new Set([
   EVOUCHER_CODE_NOT_AVAILABLE,
   EVOUCHER_CODE_RESERVED,
   ...GB_CONFLICT_CODES,
+  PAYMENT_ALREADY_COMPLETED, // PAY-6 (spec 06 กฎข้อ 7A)
 ])
 
 const medusaErrorHandler = errorHandler()

@@ -20,10 +20,6 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
-        headers: [{ key: "Link", value: '</.well-known/ucp>; rel="ucp"' }],
-      },
-      {
         source: "/:countryCode/products/:handle",
         headers: [{ key: "Vary", value: "Accept" }],
       },

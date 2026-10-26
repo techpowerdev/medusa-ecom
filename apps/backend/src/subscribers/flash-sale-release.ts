@@ -1,34 +1,20 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { releaseFlashSaleForOrderWorkflow } from "../workflows/release-flash-sale-for-order"
 
 // FS-2 (spec 03 กฎข้อ 10): order.canceled หรือ refund เต็มจำนวน → คืนสิทธิ์ flash ตาม reservation ของ order
 // ไม่มี subscriber บน order.placed — การนับเกิดตอน complete cart แล้ว (FS-3)
-// payment.refunded ของ Medusa ส่ง { id: payment_id } → หา order ผ่าน link payment_collection ↔ order
+// FS-11 (กฎข้อ 16): ส่งแค่ id จาก event เข้า workflow — payment.refunded ส่ง { id: payment_id } การหา order จาก
+// payment และเกณฑ์ refund เต็มจำนวนอยู่ใน step ของ workflow จึงได้ retry ของ FS-8
 export default async function flashSaleReleaseHandler({
   event: { name, data },
   container,
 }: SubscriberArgs<{ id: string }>) {
-  if (name === "order.canceled") {
-    await releaseFlashSaleForOrderWorkflow(container).run({
-      input: { order_id: data.id, reason: "canceled" },
-    })
-    return
-  }
+  const input =
+    name === "order.canceled"
+      ? { order_id: data.id, reason: "canceled" as const }
+      : { payment_id: data.id, reason: "refunded" as const }
 
-  const query = container.resolve(ContainerRegistrationKeys.QUERY)
-  const { data: payments } = await query.graph({
-    entity: "payment",
-    fields: ["id", "payment_collection.order.id"],
-    filters: { id: data.id },
-  })
-  const orderId = payments[0]?.payment_collection?.order?.id
-  if (!orderId) {
-    return
-  }
-  await releaseFlashSaleForOrderWorkflow(container).run({
-    input: { order_id: orderId, reason: "refunded" },
-  })
+  await releaseFlashSaleForOrderWorkflow(container).run({ input })
 }
 
 export const config: SubscriberConfig = {
