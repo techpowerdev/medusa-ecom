@@ -54,9 +54,13 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
     expect(noAlert).toContain("cancelOrderWorkflow")
   })
 
-  it("กรณีไม่มี alert: ตรวจก่อน refund แล้ว refund ผ่าน script refund-orphan-payment ไม่ใช่ Stripe dashboard (ADR-015 ภาคผนวก 2)", () => {
+  it("AC-16b กรณีไม่มี alert: ตรวจก่อน refund แล้ว refund ผ่าน script refund-orphan-payment ไม่ใช่ Stripe dashboard (ADR-015 ภาคผนวก 2)", () => {
     const noAlert = body!.slice(body!.search(/### .*ไม่มี alert/), body!.search(/### .*fail closed/))
+    expect(noAlert).toMatch(/### .*payment captured แต่ collection ไม่ผูก order/)
     expect(noAlert).toContain("ตรวจก่อน refund")
+    expect(noAlert).toContain("refund-orphan-payment")
+    // note ของ refund ที่ compensatePaymentIfNeededStep สร้าง
+    expect(noAlert).toContain("Refunded due to cart completion failure")
     // completeCartWorkflow refund เองเมื่อ complete ล้มหลัง capture → ต้องดู refunds ก่อน
     expect(noAlert).toContain("compensatePaymentIfNeededStep")
     expect(noAlert).toContain("GET /admin/payments/")

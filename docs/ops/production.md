@@ -74,7 +74,7 @@ subscriber `apps/backend/src/subscribers/payment-webhook-orphan.ts` เขีย
 4. แจ้งลูกค้า (อีเมลจากข้อ 1): การชำระไม่สำเร็จเป็นคำสั่งซื้อ คืนเงินเต็มจำนวนแล้ว cart ยังอยู่ สั่งซื้อใหม่ได้
 5. บันทึก incident: PI, `session_id`, จำนวนเงิน, อีเมลลูกค้า, เวลาใน alert, เวลา refund และผู้ทำ
 
-### ไม่มี alert แต่ลูกค้าแจ้งว่าถูกตัดเงินแล้วไม่มี order
+### ไม่มี alert: payment captured แต่ collection ไม่ผูก order (ลูกค้าแจ้งว่าถูกตัดเงินแล้วไม่มี order)
 กรณีที่ guard ตอบ `PAYMENT_ALREADY_COMPLETED` แล้ว (Medusa มี payment captured บน payment collection ของ cart ที่ยังไม่ complete) แต่ webhook
 ไม่มาหรือ complete cart ล้ม และลูกค้าปิดหน้าไปก่อน — session ยังอยู่จึงไม่มี alert
 1. ค้นหา PI ใน Stripe dashboard ด้วยอีเมลลูกค้า (`succeeded`) แล้ว `GET /admin/payments?payment_session_id=<metadata.session_id ของ PI>` ต้องพบ
@@ -83,12 +83,14 @@ subscriber `apps/backend/src/subscribers/payment-webhook-orphan.ts` เขีย
    storefront เรียก `POST /store/carts/:id/complete` ของ Medusa เป็นทางสำรอง (spec 06 AC-12b) ได้ order แล้วไปหน้า order confirmed
    (ห้ามให้ลูกค้าเปลี่ยนวิธีชำระหรือสแกน QR ใหม่)
 3. complete ไม่ได้ (กดแล้วยังค้างที่หน้ารอสร้าง order) → **ตรวจก่อน refund**: `completeCartWorkflow` ของ Medusa 2.22.1 มี
-   `compensatePaymentIfNeededStep` ที่ refund payment ที่ captured ให้อัตโนมัติเมื่อ complete ล้มหลัง capture — ดู `refunds` จาก
-   `GET /admin/payments/:id` (id จากข้อ 1) และส่วน Refunds ของ PI ใน Stripe dashboard (ดูอย่างเดียว) ถ้า refund ครบจำนวนแล้ว ข้ามข้อ 4
+   `compensatePaymentIfNeededStep` ที่ refund payment ที่ captured ให้อัตโนมัติเมื่อ complete ล้มหลัง capture (refund มี note
+   "Refunded due to cart completion failure") — ดู `refunds` จาก `GET /admin/payments/:id` (id จากข้อ 1) และส่วน Refunds ของ PI
+   ใน Stripe dashboard (ดูอย่างเดียว) ถ้า refund ครบจำนวนแล้ว ข้ามข้อ 4
 4. ยังไม่ refund → รันบน container ของ server หรือ worker (env เดียวกับ production):
    `npx medusa exec ./src/scripts/refund-orphan-payment.ts <payment_id>` — refund ส่วนที่เหลือผ่าน `refundPaymentsWorkflow` ของ Medusa
    (provider เรียก Stripe ให้ และบันทึก refund ใน Medusa) รันซ้ำได้ (refund ครบแล้วจะข้าม); script ปฏิเสธ payment ที่ยังไม่ captured และ
-   payment ที่ผูก order แล้ว (ใช้ refund ใน admin ของ order แทน); ถ้า script แจ้งว่า refund ไม่สำเร็จ ดู log ของ provider แล้วรันใหม่
+   payment ที่ผูก order แล้ว (ใช้ refund ใน admin ของ order แทน) ด้วย exit ≠ 0; ถ้า script แจ้งว่า refund ไม่สำเร็จ ดู log ของ provider
+   และ `refunds` อีกครั้ง (อาจชนกับ refund อัตโนมัติที่เกิดพร้อมกัน — Medusa กันไม่ให้ refund เกินยอดที่ capture) แล้วรันใหม่
    — `POST /admin/payments/:id/refund` ใช้ไม่ได้ เพราะ `refundPaymentWorkflow` ต้องมี order ผูกกับ payment collection ห้าม refund ใน Stripe dashboard
    (Medusa จะไม่รู้ว่า refund แล้ว: Stripe provider 2.22.1 ไม่รับรู้ `charge.refunded`)
 5. ปิดทางที่ cart เดิมจะถูก complete ทีหลังด้วย payment ที่ refund แล้ว:

@@ -49,6 +49,14 @@ export async function refundOrphanPayment(
     return { status: "already-refunded", amount: "0" }
   }
 
+  // ไม่ lock: ถ้า compensation ของ completeCartWorkflow (compensatePaymentIfNeededStep) refund payment นี้พร้อมกัน
+  // validatePaymentsRefundStep ของ Medusa กันไม่ให้ refund เกินยอดที่ capture — ฝั่งที่มาทีหลังจะล้ม แล้วรันใหม่จะได้ "refund แล้ว"
+  container
+    .resolve(ContainerRegistrationKeys.LOGGER)
+    .warn(
+      `refund-orphan-payment: กำลัง refund ${before.remaining.toString()} ของ payment ${paymentId} — ถ้าล้มเพราะเกินยอดที่ capture ` +
+        `อาจชนกับ refund อัตโนมัติ (Refunded due to cart completion failure) ให้ตรวจ refunds แล้วรันใหม่`
+    )
   await refundPaymentsWorkflow(container).run({
     input: [{ payment_id: paymentId, amount: before.remaining, note: "ADR-015: payment ที่ไม่มี order" }],
   })
@@ -72,5 +80,9 @@ export default async function refundOrphanPaymentScript({ container, args }: Exe
   const result = await refundOrphanPayment(container, paymentId)
   container
     .resolve(ContainerRegistrationKeys.LOGGER)
-    .info(`refund-orphan-payment: ${paymentId} ${result.status} amount=${result.amount}`)
+    .info(
+      result.status === "refunded"
+        ? `refund-orphan-payment: refund สำเร็จ payment ${paymentId} amount=${result.amount}`
+        : `refund-orphan-payment: payment ${paymentId} refund แล้ว (ครบยอดที่ capture) — ไม่ refund ซ้ำ`
+    )
 }

@@ -53,3 +53,23 @@ Tests:       8 passed, 8 total
 unit src/__tests__/ops-runbook.unit.spec.ts (ย้ายจาก src/scripts/__tests__): 8 passed
 pnpm --filter backend test:unit: Test Suites 47 passed, Tests 448 passed
 typecheck ok, lint: No lint issues found, build: backend + admin completed successfully
+
+== รอบ 8: ADR-015 ภาคผนวก 2 (owner 2026-10-26) — script refund-orphan-payment + runbook "ตรวจก่อน refund" (AC-16b, AC-16c) ==
+Red: integration refund-orphan-payment.spec.ts → Cannot find module '../../src/scripts/refund-orphan-payment';
+     unit ops-runbook → 1 failed (ไม่มี "ตรวจก่อน refund"/script/"Refunded due to cart completion failure"/หัวข้อ payment captured แต่ collection ไม่ผูก order)
+Green: integration (http) refund-orphan-payment.spec.ts + payment-webhook-orphan.spec.ts
+PASS integration-tests/http/payment-webhook-orphan.spec.ts (9.533 s)
+PASS integration-tests/http/refund-orphan-payment.spec.ts (9.8 s)
+Tests:       14 passed, 14 total
+unit src/__tests__/ops-runbook.unit.spec.ts
+    ✓ มีหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" (1 ms)
+    ✓ อ้าง alert และ code ของ guard
+    ✓ ระบุขั้นตอน: ค้น PI ใน Stripe dashboard, ยืนยันไม่มี order, refund เต็มจำนวน, แจ้งลูกค้า, บันทึก incident (1 ms)
+    ✓ มีกรณีไม่มี alert: ให้ลูกค้าเปิดหน้า checkout อีกครั้ง (storefront เรียก complete ตาม AC-12b)
+    ✓ กรณีไม่มี alert ที่ refund ใน Stripe: ปิดทางที่ cart จะถูก complete ทีหลัง (review #97)
+    ✓ AC-16b กรณีไม่มี alert: ตรวจก่อน refund แล้ว refund ผ่าน script refund-orphan-payment ไม่ใช่ Stripe dashboard (ADR-015 ภาคผนวก 2) (1 ms)
+    ✓ มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้)
+    ✓ ไม่แนะนำแก้ DB ด้วย SQL ตรง
+    ✓ มีบรรทัด OPS_ALERT_EMAIL= (1 ms)
+Tests:       9 passed, 9 total
+pnpm --filter backend test:unit: Tests 466 passed; typecheck ok; lint: No lint issues found
