@@ -2,7 +2,7 @@
 
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
-import { errorMessage } from "@lib/util/error-message"
+import { errorMessage, friendlyErrorMessage } from "@lib/util/error-message"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
@@ -355,7 +355,8 @@ export const addCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: errorMessage(err) }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }
 
@@ -374,7 +375,8 @@ export const deleteCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: errorMessage(err) }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }
 
@@ -419,6 +421,7 @@ export const updateCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: errorMessage(err) }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }

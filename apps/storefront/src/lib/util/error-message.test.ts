@@ -1,8 +1,12 @@
 import fs from "node:fs"
 import path from "node:path"
+import { FetchError } from "@medusajs/js-sdk"
 import { describe, expect, it, vi } from "vitest"
 
-import { errorMessage } from "./error-message"
+import { errorMessage, friendlyErrorMessage } from "./error-message"
+
+const THAI = /[฀-๿]/
+const isThaiOnly = (text: string) => THAI.test(text) && !/[A-Za-z]{2,}/.test(text)
 
 // spec 01 กฎข้อ 45 / AC-81: ข้อความ error ที่ผู้ใช้เห็นไม่มีคำนำหน้า "Error:" (มาจาก String(error) / error.toString())
 describe("errorMessage (AC-81)", () => {
@@ -15,13 +19,45 @@ describe("errorMessage (AC-81)", () => {
   })
 })
 
+// qa CORE-4c2 D-1/D-3: error ดิบภาษาอังกฤษจาก Medusa (เช่น "Unauthorized", "Variants … do not exist") ไม่ส่งถึงผู้ใช้ตรงๆ
+describe("friendlyErrorMessage (qa D-1, D-3)", () => {
+  it.each([401, 403])("FetchError %i → ให้เข้าสู่ระบบใหม่ (ไทย)", (status) => {
+    const message = friendlyErrorMessage(new FetchError("Unauthorized", "Unauthorized", status))
+    expect(isThaiOnly(message)).toBe(true)
+    expect(message).toMatch(/เข้าสู่ระบบ/)
+  })
+
+  it.each([
+    new FetchError("Variants variant_bogus do not exist", "Bad Request", 400),
+    new FetchError("Internal error", "Internal Server Error", 500),
+    new Error("x"),
+    "x",
+  ])("%s → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ", (error) => {
+    const message = friendlyErrorMessage(error)
+    expect(isThaiOnly(message)).toBe(true)
+    expect(message).not.toMatch(/login|เข้าสู่ระบบ/)
+  })
+
+  it("ใช้ข้อความ fallback ของผู้เรียก (ไม่ใช่ 401/403)", () => {
+    expect(friendlyErrorMessage(new Error("x"), "เพิ่มไม่สำเร็จ")).toBe("เพิ่มไม่สำเร็จ")
+  })
+
+  it("401 ไม่ถูกแทนด้วย fallback ของผู้เรียก", () => {
+    const message = friendlyErrorMessage(new FetchError("Unauthorized", "Unauthorized", 401), "เพิ่มไม่สำเร็จ")
+    expect(message).not.toBe("เพิ่มไม่สำเร็จ")
+  })
+})
+
+const createAddress = vi.fn()
+const updateAddress = vi.fn()
+
 vi.mock("@lib/config", () => ({
   sdk: {
     auth: { verification: { confirm: vi.fn().mockRejectedValue(new Error("x")) } },
     store: {
       customer: {
-        createAddress: vi.fn().mockRejectedValue(new Error("x")),
-        updateAddress: vi.fn().mockRejectedValue(new Error("x")),
+        createAddress: (...args: unknown[]) => createAddress(...args),
+        updateAddress: (...args: unknown[]) => updateAddress(...args),
       },
     },
   },
@@ -36,13 +72,24 @@ describe("action ของ lib/data/customer.ts ห่อ error โดยไม�
   const form = new FormData()
   form.set("addressId", "addr_1")
 
+  it("confirmEmailVerification → error = x", async () => {
+    const { confirmEmailVerification } = await import("@lib/data/customer")
+    expect((await confirmEmailVerification("t")).error).toBe("x")
+  })
+
+  // qa D-3: address-error เคยแสดง "Unauthorized" ดิบ
   it.each([
-    ["confirmEmailVerification", async (m: typeof import("@lib/data/customer")) => m.confirmEmailVerification("t")],
-    ["addCustomerAddress", async (m: typeof import("@lib/data/customer")) => m.addCustomerAddress({}, form)],
-    ["updateCustomerAddress", async (m: typeof import("@lib/data/customer")) => m.updateCustomerAddress({}, form)],
-  ])("%s → error = x", async (_name, call) => {
-    const result = await call(await import("@lib/data/customer"))
-    expect(result.error).toBe("x")
+    ["addCustomerAddress", createAddress, (m: typeof import("@lib/data/customer")) => m.addCustomerAddress({}, form)],
+    ["updateCustomerAddress", updateAddress, (m: typeof import("@lib/data/customer")) => m.updateCustomerAddress({}, form)],
+  ] as const)("%s → error ภาษาไทย (401 ให้เข้าสู่ระบบใหม่, อื่นๆ ข้อความทั่วไป)", async (_name, mock, call) => {
+    const customer = await import("@lib/data/customer")
+    mock.mockRejectedValueOnce(new FetchError("Unauthorized", "Unauthorized", 401))
+    const unauthorized = (await call(customer)).error ?? ""
+    mock.mockRejectedValueOnce(new Error("x"))
+    const other = (await call(customer)).error ?? ""
+    expect([unauthorized, other].every(isThaiOnly)).toBe(true)
+    expect(unauthorized).toMatch(/เข้าสู่ระบบ/)
+    expect(other).not.toBe(unauthorized)
   })
 })
 

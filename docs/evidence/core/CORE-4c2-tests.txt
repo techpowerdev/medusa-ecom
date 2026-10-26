@@ -58,3 +58,52 @@ exit 0 — apps/storefront lint: 0 errors, 34 warnings (warning เดิมข�
   ✓  6 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (963ms)
   6 passed (8.0s)
   core-store AC-1..3 ไม่ได้รันในเครื่อง (ขั้น payment ของ checkout ต้องใช้ NEXT_PUBLIC_STRIPE_KEY) — CI รันชุดเต็ม
+
+## แก้ defect จาก qa (D-1 route cart/add, D-3 address-error) — หลัง merge origin/develop
+### Red
+       × variant ไม่มีอยู่ (400) → 400 ข้อความไทย ไม่ส่งข้อความดิบของ backend 30ms
+       × error อื่น → 400 ข้อความไทย ไม่ส่งข้อความดิบของ backend 1ms
+       × FetchError 401 → ให้เข้าสู่ระบบใหม่ (ไทย) 2ms
+       × FetchError 403 → ให้เข้าสู่ระบบใหม่ (ไทย) 0ms
+       × Error: Variants variant_bogus do not exist → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ 0ms
+       × Error: Internal error → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ 0ms
+       × Error: x → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ 0ms
+       × x → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ 0ms
+       × ใช้ข้อความ fallback ของผู้เรียก (ไม่ใช่ 401/403) 0ms
+       × 401 ไม่ถูกแทนด้วย fallback ของผู้เรียก 0ms
+       × addCustomerAddress → error ภาษาไทย (401 ให้เข้าสู่ระบบใหม่, อื่นๆ ข้อความทั่วไป) 2ms
+       × updateCustomerAddress → error ภาษาไทย (401 ให้เข้าสู่ระบบใหม่, อื่นๆ ข้อความทั่วไป) 0ms
+  ⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+        Tests  12 failed | 6 passed (18)
+### positive control: const ADD_FAILED เป็นอังกฤษชั่วคราว → user-messages-thai ล้ม (+ "Could not add item" ×2) แล้วคืนไฟล์
+### Green
+    at collectTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/15778cd3-33ea-4c2c-8eb7-21f4a2e9873a/scratchpad/wt-CORE-4c2b/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_vite@7.3.7_@types+node@17.0._ecad91b451177bc145f4702c50d129ab/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:3441:3)
+    at startTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/15778cd3-33ea-4c2c-8eb7-21f4a2e9873a/scratchpad/wt-CORE-4c2b/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_vite@7.3.7_@types+node@17.0._ecad91b451177bc145f4702c50d129ab/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:4190:17)
+    at collectTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/15778cd3-33ea-4c2c-8eb7-21f4a2e9873a/scratchpad/wt-CORE-4c2b/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_vite@7.3.7_@types+node@17.0._ecad91b451177bc145f4702c50d129ab/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:3441:3)
+    at startTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/15778cd3-33ea-4c2c-8eb7-21f4a2e9873a/scratchpad/wt-CORE-4c2b/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_vite@7.3.7_@types+node@17.0._ecad91b451177bc145f4702c50d129ab/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:4190:17)
+ ✓ src/cart-add-route.test.ts > POST /[countryCode]/cart/add เมื่อเพิ่มสินค้าไม่สำเร็จ (qa D-1) > variant ไม่มีอยู่ (400) → 400 ข้อความไทย ไม่ส่งข้อความดิบของ backend 27ms
+ ✓ src/cart-add-route.test.ts > POST /[countryCode]/cart/add เมื่อเพิ่มสินค้าไม่สำเร็จ (qa D-1) > error อื่น → 400 ข้อความไทย ไม่ส่งข้อความดิบของ backend 1ms
+ ✓ src/lib/util/error-message.test.ts > errorMessage (AC-81) > Error: x → x 1ms
+ ✓ src/lib/util/error-message.test.ts > errorMessage (AC-81) > TypeError: y → y 0ms
+ ✓ src/lib/util/error-message.test.ts > errorMessage (AC-81) > z → z 0ms
+ ✓ src/lib/util/error-message.test.ts > friendlyErrorMessage (qa D-1, D-3) > FetchError 401 → ให้เข้าสู่ระบบใหม่ (ไทย) 0ms
+ ✓ src/lib/util/error-message.test.ts > friendlyErrorMessage (qa D-1, D-3) > FetchError 403 → ให้เข้าสู่ระบบใหม่ (ไทย) 0ms
+ ✓ src/lib/util/error-message.test.ts > friendlyErrorMessage (qa D-1, D-3) > Error: Variants variant_bogus do not exist → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ 0ms
+ ✓ src/lib/util/error-message.test.ts > friendlyErrorMessage (qa D-1, D-3) > Error: Internal error → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ 0ms
+ ✓ src/lib/util/error-message.test.ts > friendlyErrorMessage (qa D-1, D-3) > Error: x → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ 0ms
+ ✓ src/lib/util/error-message.test.ts > friendlyErrorMessage (qa D-1, D-3) > x → ข้อความทั่วไปภาษาไทย ไม่ส่งข้อความดิบ 0ms
+ ✓ src/lib/util/error-message.test.ts > friendlyErrorMessage (qa D-1, D-3) > ใช้ข้อความ fallback ของผู้เรียก (ไม่ใช่ 401/403) 0ms
+ ✓ src/lib/util/error-message.test.ts > friendlyErrorMessage (qa D-1, D-3) > 401 ไม่ถูกแทนด้วย fallback ของผู้เรียก 0ms
+ ✓ src/lib/util/error-message.test.ts > action ของ lib/data/customer.ts ห่อ error โดยไม่มี Error: (AC-81) > confirmEmailVerification → error = x 5ms
+ ✓ src/lib/util/error-message.test.ts > action ของ lib/data/customer.ts ห่อ error โดยไม่มี Error: (AC-81) > addCustomerAddress → error ภาษาไทย (401 ให้เข้าสู่ระบบใหม่, อื่นๆ ข้อความทั่วไป) 2ms
+ ✓ src/lib/util/error-message.test.ts > action ของ lib/data/customer.ts ห่อ error โดยไม่มี Error: (AC-81) > updateCustomerAddress → error ภาษาไทย (401 ให้เข้าสู่ระบบใหม่, อื่นๆ ข้อความทั่วไป) 1ms
+ ✓ src/lib/util/error-message.test.ts > ไม่มี String(error) ในข้อความ error (AC-81 grep) > ไฟล์ใน src ใช้ errorMessage หรือ .message 66ms
+ ✓ src/lib/util/error-message.test.ts > ไม่มี String(error) ในข้อความ error (AC-81 grep) > modules/account/components/profile-phone/index.tsx ยังค้างอยู่จริง (แก้แล้วให้ลบออกจาก PENDING) 0ms
+ ✓ src/user-messages-thai.test.ts > ตัวอ่านข้อความจาก source (กฎข้อ 44) > พบข้อความทุกรูปแบบที่ส่งออก 5ms
+ ✓ src/user-messages-thai.test.ts > ตัวอ่านข้อความจาก source (กฎข้อ 44) > ไม่นับ error ของ Medusa API ที่ส่งต่อ 0ms
+ ✓ src/user-messages-thai.test.ts > ข้อความ error ของ lib/data/customer.ts เป็นภาษาไทย (AC-49, AC-80) > ทุกข้อความมีอักษรไทยและไม่มีคำละติน 8ms
+ ✓ src/user-messages-thai.test.ts > ข้อความ error ของ lib/data/orders.ts เป็นภาษาไทย (AC-49, AC-80) > ทุกข้อความมีอักษรไทยและไม่มีคำละติน 1ms
+ ✓ src/user-messages-thai.test.ts > ข้อความ error ของ app/[countryCode]/(main)/cart/add/route.ts เป็นภาษาไทย (AC-49, AC-80) > ทุกข้อความมีอักษรไทยและไม่มีคำละติน 2ms
+      Tests  23 passed (23)
+### ทั้งหมด
+ unit storefront: Test Files 18 passed, Tests 160 passed; pnpm lint && pnpm typecheck exit 0 (0 errors); storefront build ผ่าน

@@ -6,7 +6,11 @@ import { getRegion } from "@lib/data/regions"
 import { HttpTypes } from "@medusajs/types"
 import { activateCart, MAX_LINE_ITEM_QUANTITY } from "@lib/util/server-cart"
 import { getRequestOrigin } from "@lib/util/site"
-import { errorMessage } from "@lib/util/error-message"
+import { friendlyErrorMessage } from "@lib/util/error-message"
+
+// qa CORE-4c2 D-1: ไม่ส่งข้อความดิบของ Medusa (เช่น "Variants … do not exist") — log ไว้ฝั่ง server แทน
+const ADD_FAILED =
+  "เพิ่มสินค้าลงตะกร้าไม่สำเร็จ สินค้าหรือตัวเลือกที่เลือกอาจไม่มีอยู่หรือหมดแล้ว"
 import { isEqual } from "lodash"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -106,7 +110,10 @@ export async function POST(
     )
   } catch (error) {
     if (!existingCartId) {
-      return new NextResponse(errorMessage(error), { status: 400 })
+      console.error(error)
+      return new NextResponse(friendlyErrorMessage(error, ADD_FAILED), {
+        status: 400,
+      })
     }
     // The stored cart may be completed or belong to another region.
     try {
@@ -118,7 +125,10 @@ export async function POST(
         headers
       )
     } catch (retryError) {
-      return new NextResponse(errorMessage(retryError), { status: 400 })
+      console.error(retryError)
+      return new NextResponse(friendlyErrorMessage(retryError, ADD_FAILED), {
+        status: 400,
+      })
     }
   }
 
