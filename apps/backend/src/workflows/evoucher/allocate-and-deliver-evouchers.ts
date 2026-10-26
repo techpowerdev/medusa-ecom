@@ -10,7 +10,6 @@ import { claimEvoucherCodesStep } from "./steps/claim-evoucher-codes"
 import { updateEvoucherBackorderedFlagsStep } from "./steps/update-evoucher-backordered-flags"
 import { buildEvoucherBackorderedNotificationsStep } from "./steps/build-evoucher-backordered-notifications"
 import { resolveDigitalShippingOptionStep } from "./steps/resolve-digital-shipping-option"
-import { markEvoucherCodesDeliveredStep } from "./steps/mark-evoucher-codes-delivered"
 import { buildEvoucherDeliveredNotificationStep } from "./steps/build-evoucher-delivered-notification"
 import { sendEvoucherDeliveredNotificationStep } from "./steps/send-evoucher-delivered-notification"
 
@@ -25,7 +24,8 @@ export type AllocateAndDeliverEvouchersInput = {
 /**
  * EV-4 (spec 02, ADR-006): หลัง payment.captured → claim code ต่อ voucher line item × quantity →
  * flag backordered (ทั้ง line item; ล้าง flag เมื่อส่งมอบได้) + อีเมล admin (กฎข้อ 9) →
- * fulfillment ผ่าน provider digital → mark delivered → อีเมล `evoucher.delivered` (ciphertext; ล้มแล้วแจ้ง admin ไม่คืน code)
+ * fulfillment ผ่าน provider digital → อีเมล `evoucher.delivered` (ciphertext, กฎข้อ 16) → สำเร็จจึง mark `delivered`;
+ * ส่งล้ม → code คง `allocated` กับ order + แจ้ง admin ให้ resend (กฎข้อ 17)
  * Idempotent (AC-7): line item ที่มี code แล้วถูกข้าม; key อีเมลต่อการ claim
  */
 export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
@@ -83,14 +83,18 @@ export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
       createOrderFulfillmentWorkflow.runAsStep({ input: fulfillmentInput })
 
       const codeIds = transform({ claim }, ({ claim }) => claim.allocated.flatMap((a) => a.code_ids))
-      markEvoucherCodesDeliveredStep({ code_ids: codeIds, email: order.email })
-
       const notification = buildEvoucherDeliveredNotificationStep({
         order,
         lines,
         allocated: claim.allocated,
       })
-      sendEvoucherDeliveredNotificationStep({ order, notification, admin_email: input.admin_email })
+      // ขั้นสุดท้ายและไม่ throw: mark `delivered` เฉพาะเมื่อส่งสำเร็จ; ล้ม → คง `allocated` + แจ้ง admin (กฎข้อ 17)
+      sendEvoucherDeliveredNotificationStep({
+        order,
+        notification,
+        code_ids: codeIds,
+        admin_email: input.admin_email,
+      })
     })
 
     return new WorkflowResponse(claim)

@@ -15,6 +15,9 @@ export default async function evoucherPaymentCapturedHandler({
   })
   const orderId = payments[0]?.payment_collection?.order?.id
   if (!orderId) {
+    container
+      .resolve(ContainerRegistrationKeys.LOGGER)
+      .warn(`evoucher: payment ${data.id} captured but no order found — skipping e-voucher allocation`)
     return
   }
 

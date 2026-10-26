@@ -6,7 +6,7 @@ import { expiryCutoff } from "../../../modules/evoucher/utils/expiry"
 import { EvoucherLine, EvoucherOrder } from "./evoucher-order"
 
 // claim แบบ atomic + idempotent (service.claimCodesForOrder); compensation ปล่อย code ที่ claim รอบนี้กลับเป็น available
-// (compensation เกิดได้เฉพาะก่อนส่งอีเมลลูกค้า — ขั้นส่งอีเมลไม่ throw จึงไม่มีการคืน code ที่ลูกค้าอาจได้รับแล้ว)
+// (compensation เกิดได้เฉพาะก่อนส่งอีเมลลูกค้า — ขั้นส่งอีเมลเป็นขั้นสุดท้ายและไม่ throw จึงไม่คืน code ที่ลูกค้าอาจได้รับแล้ว)
 export const claimEvoucherCodesStep = createStep(
   "claim-evoucher-codes",
   async (input: { order: EvoucherOrder; lines: EvoucherLine[] }, { container }) => {
@@ -25,12 +25,12 @@ export const claimEvoucherCodesStep = createStep(
       expires_after: expiryCutoff(new Date()),
     })
     if (result.stuck.length) {
-      // รอบก่อน claim แล้วแต่ไม่ถึง delivered (process ตายกลางทาง) — ไม่ claim ซ้ำ ให้ admin ตรวจ/ส่งมอบเอง
+      // code `allocated` แต่ยังไม่ส่งมอบ (อีเมลล้ม หรือ process ตายกลางทาง) — ไม่ claim ซ้ำ (กฎข้อ 17) ให้ admin ใช้ resend
       container
         .resolve(ContainerRegistrationKeys.LOGGER)
         .warn(
-          `evoucher: order ${input.order.id} has codes stuck in "allocated" for line items ` +
-            `${result.stuck.join(", ")} — check the fulfillment and deliver manually`
+          `evoucher: order ${input.order.id} has codes allocated but not delivered for line items ` +
+            `${result.stuck.join(", ")} — use resend (EV-5b) to deliver them`
         )
     }
     return new StepResponse(

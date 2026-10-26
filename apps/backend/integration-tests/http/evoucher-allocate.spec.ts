@@ -17,6 +17,9 @@ import { EVOUCHER_MODULE } from "../../src/modules/evoucher"
 import EvoucherModuleService from "../../src/modules/evoucher/service"
 import { allocateAndDeliverEvouchersWorkflow } from "../../src/workflows/evoucher/allocate-and-deliver-evouchers"
 
+// provider ของ Notification module ใน test (AC-26: ให้ provider เป็นตัว throw)
+import localNotificationProvider from "@medusajs/medusa/notification-local"
+
 jest.setTimeout(300 * 1000)
 
 // ต้องตั้งก่อน runner โหลด medusa-config (module evoucher อ่าน key จาก env)
@@ -379,43 +382,69 @@ medusaIntegrationTestRunner({
         expect((await orderOf(orderId)).fulfillments).toHaveLength(1)
       })
 
-      it("keeps the codes with the order and alerts EVOUCHER_ADMIN_EMAIL when the customer email fails", async () => {
+      it("AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails", async () => {
         const { variantId, inventoryItemId, poolId } = await createVoucher("B-1\nB-2\n")
-        const { orderId, email } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
-        // ล้มเฉพาะอีเมล e-voucher ถึงลูกค้า (subscriber order.placed ส่งอีเมลของตัวเองแบบ async อยู่ด้วย)
-        const notifications = container.resolve(Modules.NOTIFICATION)
-        const original = notifications.createNotifications.bind(notifications)
-        jest.spyOn(notifications, "createNotifications").mockImplementation((async (
-          data: Parameters<typeof original>[0]
-        ) => {
-          if (JSON.stringify(data).includes("evoucher.delivered")) {
-            throw new Error("resend down")
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        // provider (local) throw เฉพาะ evoucher.delivered — Notification module บันทึก failure ตามจริง
+        const LocalProvider = localNotificationProvider.services[0]
+        const originalSend = LocalProvider.prototype.send
+        jest.spyOn(LocalProvider.prototype, "send").mockImplementation(async function (
+          this: unknown,
+          notification: { template: string }
+        ) {
+          if (notification.template === "evoucher.delivered") {
+            throw new Error("smtp down")
           }
-          return original(data)
-        }) as typeof original)
+          return originalSend.call(this, notification)
+        })
         const warn = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "warn")
 
         await allocateAndDeliverEvouchersWorkflow(container).run({
           input: { order_id: orderId, admin_email: OPS_EMAIL },
         })
 
-        // ห้ามคืน code เข้า pool (ห้าม resale): code อยู่กับ order และ fulfillment คงอยู่
-        const codes = await service.listEvoucherCodes({ pool_id: poolId }, { order: { status: "ASC" } })
-        expect(codes.filter((c) => c.order_id === orderId)).toEqual([
-          expect.objectContaining({ status: "delivered", delivered_to_email: email }),
+        // กฎข้อ 17: code คง `allocated` กับ order (ไม่ใช่ available/delivered), fulfillment คงอยู่, inventory ตามหลัง allocate
+        const mine = await service.listEvoucherCodes({ order_id: orderId })
+        expect(mine).toEqual([
+          expect.objectContaining({ status: "allocated", delivered_at: null, delivered_to_email: null }),
         ])
-        expect(codes.filter((c) => c.status === "available")).toHaveLength(1)
+        expect(await service.listEvoucherCodes({ pool_id: poolId, status: "available" })).toHaveLength(1)
         expect((await orderOf(orderId)).fulfillments).toHaveLength(1)
         expect(await stockedQuantity(inventoryItemId)).toBe(1)
 
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining("resend down"))
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("smtp down"))
+        const failed = await listEmails({ template: "evoucher.delivered" })
+        expect(failed).toEqual([expect.objectContaining({ status: "failure", resource_id: orderId })])
+        expect(JSON.stringify(failed[0].data)).not.toContain("B-1")
         const alerts = await listEmails({ template: "evoucher-delivery-failed" })
         expect(alerts).toHaveLength(1)
         expect(alerts[0]).toMatchObject({ to: OPS_EMAIL, resource_id: orderId })
+        expect(JSON.stringify(alerts[0].data)).toContain(orderId)
 
-        // รันซ้ำ → ไม่ allocate code ใหม่ให้ order เดิม
+        // รันซ้ำ → ไม่ allocate code ใหม่ให้ line ที่มี code `allocated` แล้ว และเตือนให้ใช้ resend
         await allocateAndDeliverEvouchersWorkflow(container).run({ input: { order_id: orderId } })
         expect(await service.listEvoucherCodes({ order_id: orderId })).toHaveLength(1)
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("resend (EV-5b)"))
+        expect(await stockedQuantity(inventoryItemId)).toBe(1)
+      })
+
+      it("AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available", async () => {
+        const { variantId, poolId } = await createVoucher("ONE-1\nONE-2\n")
+        const { orderId, email } = await placeOrder([{ variant_id: variantId, quantity: 2 }])
+        await voidCode(poolId)
+        process.env.EVOUCHER_ADMIN_EMAIL = OPS_EMAIL
+
+        await captureAndWait(orderId)
+
+        const order = await orderOf(orderId)
+        expect(order.items![0]!.metadata).toMatchObject({ evoucher_backordered: true })
+        expect(order.fulfillments).toEqual([])
+        expect(await service.listEvoucherCodes({ pool_id: poolId, status: "available" })).toHaveLength(1)
+        expect(await service.listEvoucherCodes({ order_id: orderId })).toHaveLength(0)
+        const delivered = await listEmails({ template: "evoucher.delivered" })
+        expect(delivered.filter((e) => e.to === email)).toHaveLength(0)
+        const alerts = await listEmails({ template: "evoucher-backordered" })
+        expect(alerts).toEqual([expect.objectContaining({ to: OPS_EMAIL, resource_id: orderId })])
       })
 
       it("uses a new idempotency key per claim and clears the backordered flag once delivered", async () => {
