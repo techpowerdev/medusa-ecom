@@ -54,6 +54,12 @@ tools/ops/smoke-redis-outage.sh                                  # postgres/redi
 SMOKE_PROJECT=medusa-ops8 SMOKE_DATABASE_URL="postgres://medusa:medusa@host.docker.internal:5432/medusa_ops8?sslmode=disable" \
   tools/ops/smoke-redis-outage.sh                                # ใช้ DB ที่สร้างไว้แล้วบน postgres ของ dev แทน
 ```
+- `SMOKE_DATABASE_URL` ต้องชี้ไป DB ที่สร้างไว้สำหรับ smoke โดยเฉพาะ (เช่น `medusa_ops8`) **ห้ามชี้ไป DB `medusa` ของ dev**
+  (script รัน migration และสร้าง admin/product ลงไป) และ `host.docker.internal` ใช้ได้เฉพาะ Docker Desktop
+  (Linux/CI ต้องใช้ IP ของ host หรือไม่ตั้งตัวแปรนี้)
+- `SMOKE_PROJECT` ห้ามขึ้นต้นด้วย `medusa-ecom` (script ปฏิเสธ) เพราะ cleanup รัน `down -v` ซึ่งจะลบ volume ของ dev
+- `KEEP_UP=1` เก็บ container ไว้ดูหลังรัน; รันซ้ำบน container เดิมได้เพราะ script นับ log เป็นส่วนต่าง
+  เก็บกวาดเองด้วย `docker compose -p <project> -f docker-compose.prod.yml down -v` (ทั้ง `smoke-redis-outage.sh` และ `smoke-worker-mode.sh`)
 ผลบน Medusa 2.22.1 / bullmq 5.13.0: ผ่านโดยไม่ต้องตั้ง `redisOptions`/`workerOptions` เพิ่ม — Redis ที่ถูก pause ยังรับ TCP
 handshake (kernel ตอบแทน) คำสั่งจึงแค่ค้างแล้วทำงานต่อหลัง unpause ไม่เกิด `ETIMEDOUT`
 (ผลทดลองทั้งหมด: `docs/evidence/ops/OPS-8-tests.txt`)

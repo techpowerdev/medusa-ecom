@@ -5,9 +5,12 @@
 # ห้ามเกิดกรณี worker ค้างไม่ประมวลผลขณะที่ /health ยังตอบ 200
 # รันจาก root ของ repo: tools/ops/smoke-redis-outage.sh (ต้องมี docker compose v2)
 #   SMOKE_DATABASE_URL=postgres://...  ใช้ DB ที่มีอยู่แล้ว (ต้องสร้าง DB ไว้ก่อน) แทน postgres ภายใน project
+#     ห้ามชี้ไป DB `medusa` ของ dev; host.docker.internal ใช้ได้เฉพาะ Docker Desktop (docs/ops/production.md)
 set -euo pipefail
 
 PROJECT="${SMOKE_PROJECT:-ops8test}"
+# cleanup รัน `down -v` → ห้ามใช้ชื่อ project ของ dev (จะลบ volume pg-data ของ medusa-ecom)
+case "$PROJECT" in medusa-ecom*) echo "SMOKE_PROJECT=$PROJECT ใช้ไม่ได้ (ชนกับ project ของ dev)" >&2; exit 2 ;; esac
 PAUSE_SECONDS="${PAUSE_SECONDS:-30}"
 DEADLINE_SECONDS=60
 # ใช้ redis (และ postgres ถ้าไม่ได้ตั้ง SMOKE_DATABASE_URL) ภายใน project นี้เสมอ — ไม่ให้ค่าของ shell (dev) รั่วเข้ามา
@@ -60,7 +63,9 @@ create_product() {
       .then((r) => console.log(r.status), () => console.log('ERR'))"
 }
 # event-bus-redis log "Processing product.created (priority: N) ..." เฉพาะ process ที่รัน BullMQ worker
-processed() { compose logs worker 2>/dev/null | grep -c 'Processing product.created ' || true; }
+# นับเป็นส่วนต่างจากตอนเริ่ม — KEEP_UP=1 แล้วรันซ้ำ container เดิมยังมี log ของรอบก่อน
+processed_total() { compose logs worker 2>/dev/null | grep -c 'Processing product.created ' || true; }
+processed() { echo $(( $(processed_total) - processed_base )); }
 restarts() { docker inspect -f '{{.RestartCount}}' "$(compose ps -a -q worker)"; }
 worker_health() {
   compose exec -T worker node -e "fetch('http://localhost:9000/health').then(r=>console.log(r.status)).catch(()=>console.log('ERR'))" 2>/dev/null || echo DOWN
@@ -70,6 +75,7 @@ wait_processed() { # wait_processed <count> <seconds> → 0 เมื่อ work
   return 1
 }
 
+processed_base="$(processed_total)"
 # baseline: ก่อน Redis ขาด event ถึง worker
 check "server creates product before outage" 200 "$(create_product)"
 wait_processed 1 30 || true
