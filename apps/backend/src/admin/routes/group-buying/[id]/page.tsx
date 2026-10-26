@@ -21,7 +21,7 @@ const PROMPTS: Record<Action, { title: string; description: string; confirmText:
   },
   remove: {
     title: "Delete draft campaign?",
-    description: "The campaign and its template promotion are deleted.",
+    description: "The campaign, its template promotion and its Medusa campaign are deleted.",
     confirmText: "Delete",
   },
 }
@@ -46,7 +46,9 @@ const GroupBuyCampaignPage = () => {
         ? groupBuyApi.deleteCampaign(id)
         : groupBuyApi.setStatus(id, action === "activate" ? "active" : "ended"),
     onSuccess: (result, action) => {
-      // รายการแคมเปญ refetch; แคมเปญนี้ใช้ค่าจาก response (ลบแล้ว refetch จะได้ 404)
+      // key รายการ = ["group-buy","campaigns",limit,offset]; key แคมเปญนี้ = [...,id] (และ groups = [...,id,"groups"])
+      // predicate ข้ามทุก key ที่ตำแหน่ง [2] เป็น id นี้ → refetch เฉพาะรายการ; แคมเปญนี้ใช้ค่าจาก response
+      // (ถ้า refetch หลังลบจะได้ 404)
       queryClient.invalidateQueries({ queryKey: groupBuyKeys.campaigns, predicate: (q) => q.queryKey[2] !== id })
       if (action === "remove") {
         queryClient.removeQueries({ queryKey: groupBuyKeys.campaign(id) })

@@ -35,5 +35,5 @@ Running 6 tests using 1 worker
 (ไม่พบ — grep exit 1)
 ### อื่นๆ
 pnpm --filter backend test:unit → Test Suites: 44 passed, Tests: 396 passed
-pnpm --filter storefront test:e2e:unit → 29 passed
+pnpm --filter storefront test:e2e:unit → 29 passed (หลังขยาย TASK_ID_RE/TESTS_TXT_RE ให้รับ GB-6b1; ก่อนแก้ 3 failed: evidence-budget + 2 เคสใหม่ใน evidence-rules)
 pnpm lint → 0 errors (warning เดิมของ storefront); pnpm typecheck → ผ่าน
