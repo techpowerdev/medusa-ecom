@@ -35,3 +35,10 @@ export const buildNotificationProviders = (env: Env) => {
     },
   ]
 }
+
+// GB-4 (review #89): ลิงก์ชำระเงินในอีเมล group buy = STOREFRONT_URL + path — client อีเมลไม่มี base URL
+// ยังไม่มี fail-fast ของ OPS-7 จึงเตือนตอนโหลด config ใน production
+export const storefrontUrlWarning = (env: Env): string | null =>
+  env.NODE_ENV === "production" && !/^https?:\/\//i.test(env.STOREFRONT_URL ?? "")
+    ? "STOREFRONT_URL is not set to an http(s) URL — group buy payment links in emails will not work"
+    : null
