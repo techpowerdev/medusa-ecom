@@ -21,7 +21,7 @@ export type PlanAttributionInput = {
   affiliate: { id: string; email: string; status: string }
   order: { email?: string | null; placed_at: Date }
   programs: AttributionProgram[]
-  items: (CommissionLineItem & { created_at?: Date | string | null })[]
+  items: (CommissionLineItem & { created_at: Date | string })[]
 }
 
 export type PlannedEntry = { program_id: string; line_item_id: string; amount: number; hold_days: number }
@@ -43,7 +43,7 @@ export const attributionRejection = (
 }
 
 // กฎ 26: ลำดับ line สำหรับแจก cap = created_at จากน้อยไปมาก เสมอกันใช้ id (ไม่พึ่งลำดับที่ query.graph คืน)
-const time = (value?: Date | string | null) => (value ? new Date(value).getTime() : 0)
+const time = (value: Date | string) => new Date(value).getTime()
 const byLineOrder = (a: PlanAttributionInput["items"][number], b: PlanAttributionInput["items"][number]) =>
   time(a.created_at) - time(b.created_at) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 

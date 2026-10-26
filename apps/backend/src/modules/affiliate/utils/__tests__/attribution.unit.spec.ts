@@ -22,7 +22,7 @@ const input = (overrides: Partial<PlanAttributionInput> = {}): PlanAttributionIn
   affiliate: { id: "aff_ann", email: "ann@example.com", status: "active" },
   order: { email: "buyer@example.com", placed_at: placedAt },
   programs: [program()],
-  items: [{ id: "li_1", variant_id: "variant_1", subtotal: 1000, discount_subtotal: 0 }],
+  items: [{ id: "li_1", created_at: placedAt, variant_id: "variant_1", subtotal: 1000, discount_subtotal: 0 }],
   ...overrides,
 })
 
@@ -74,8 +74,8 @@ describe("planAttribution", () => {
       input({
         programs: [program({ scope: { collection_ids: ["pcol_c"] } })],
         items: [
-          { id: "li_in", product_collection_id: "pcol_c", subtotal: 500 },
-          { id: "li_out", product_collection_id: "pcol_x", subtotal: 1000 },
+          { id: "li_in", created_at: placedAt, product_collection_id: "pcol_c", subtotal: 500 },
+          { id: "li_out", created_at: placedAt, product_collection_id: "pcol_x", subtotal: 1000 },
         ],
       })
     )
@@ -86,7 +86,7 @@ describe("planAttribution", () => {
     const plan = planAttribution(
       input({
         programs: [program({ scope: { category_ids: ["pcat_parent"] } })],
-        items: [{ id: "li_child", product_category_ids: ["pcat_child"], subtotal: 500 }],
+        items: [{ id: "li_child", created_at: placedAt, product_category_ids: ["pcat_child"], subtotal: 500 }],
       })
     )
     expect(plan).toEqual({ affiliate_id: "aff_ann", program_id: "affprog_p", entries: [] })
@@ -145,8 +145,8 @@ describe("planAttribution", () => {
           program({ id: "affprog_old", commission_value: 5, starts_at: new Date(placedAt.getTime() - 2 * DAY) }),
         ],
         items: [
-          { id: "li_c", product_collection_id: "pcol_c", subtotal: 100 },
-          { id: "li_other", subtotal: 1000 },
+          { id: "li_c", created_at: placedAt, product_collection_id: "pcol_c", subtotal: 100 },
+          { id: "li_other", created_at: placedAt, subtotal: 1000 },
         ],
       })
     )
@@ -163,9 +163,9 @@ describe("planAttribution", () => {
       input({
         programs: [program({ cap_per_order: 120 })],
         items: [
-          { id: "li_1", subtotal: 1000.05 },
-          { id: "li_2", subtotal: 500 },
-          { id: "li_3", subtotal: 300 },
+          { id: "li_1", created_at: placedAt, subtotal: 1000.05 },
+          { id: "li_2", created_at: placedAt, subtotal: 500 },
+          { id: "li_3", created_at: placedAt, subtotal: 300 },
         ],
       })
     )

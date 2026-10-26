@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, Modules, ProductStatus } from "@medusajs/fra
 import type { MedusaContainer } from "@medusajs/framework/types"
 import {
   addShippingMethodToCartWorkflow,
+  cancelOrderWorkflow,
   completeCartWorkflow,
   createCartWorkflow,
   createPaymentCollectionForCartWorkflow,
@@ -436,6 +437,22 @@ medusaIntegrationTestRunner({
       } finally {
         info.mockRestore()
       }
+    })
+
+    // owner 2026-10-26: order ที่ถูกยกเลิกแล้วไม่ถูก attribute (ตรวจใต้ lock affiliate-attribution:<order_id>)
+    it("an order canceled before order.placed is processed gets no attribution and no entry", async () => {
+      const ann = await createAffiliate("ann")
+      await createProgram()
+      const { orderId, cartId } = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }] })
+      await cancelOrderWorkflow(container).run({ input: { order_id: orderId } })
+      await container
+        .resolve(Modules.CART)
+        .updateCarts(cartId, { metadata: { affiliate_token: await tokenFor(ann.id) } })
+
+      await redeliver(orderId)
+
+      expect(await attributionsOf(orderId)).toEqual([])
+      expect(await entriesOf(orderId)).toEqual([])
     })
   },
 })

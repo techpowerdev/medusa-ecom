@@ -48,6 +48,7 @@ export const prepareAffiliateAttributionStep = createStep(
       fields: [
         "id",
         "email",
+        "status",
         "currency_code",
         "created_at",
         // field ยอดรวมระดับ order ทำให้ Order module คำนวณ totals ของ item (subtotal/discount_subtotal) ให้ด้วย
@@ -73,6 +74,13 @@ export const prepareAffiliateAttributionStep = createStep(
       : []
     if (!click || !affiliate) {
       logger.warn(`Affiliate attribution rejected for order ${input.order_id}: invalid affiliate_token`)
+      return new StepResponse<PreparedAttribution>(null)
+    }
+
+    // owner 2026-10-26: order ที่ถูกยกเลิกแล้ว (ก่อน subscriber นี้ได้ lock) ไม่มี attribution/entry — step นี้อยู่ใต้ lock
+    // affiliate-attribution:<order_id> เดียวกับ reversal (AF-4) จึงไม่เหลือ entry ที่ไม่มีใคร reverse
+    if (order.status === "canceled") {
+      logger.info(`Affiliate attribution skipped for order ${input.order_id}: order_canceled`)
       return new StepResponse<PreparedAttribution>(null)
     }
 
