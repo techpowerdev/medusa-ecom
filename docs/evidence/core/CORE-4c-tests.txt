@@ -17,3 +17,8 @@ core-14-buy-login + core-store + thai-ui-shell: 8 passed
 ## lint (eslint .) / typecheck (tsc --noEmit)
 eslint: ✖ 34 problems (0 errors, 34 warnings)
 tsc: 0 errors
+
+## หลัง merge origin/develop (รวม #80 CORE-18 — conflict ที่ register, @login, profile: เก็บ STORE_NAME ไว้ในประโยคไทย)
+vitest: Test Files 15 passed (15), Tests 137 passed (137)
+playwright: thai-ui-account (3) + store-content (2, ของ CORE-18 รวม AC-74 ชื่อร้านในหน้า login/profile) + core-14-buy-login (3) = 8 passed
+eslint: 0 errors (34 warnings เดิม); tsc: 0 errors; next build: ผ่าน

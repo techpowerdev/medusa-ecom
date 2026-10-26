@@ -7,10 +7,11 @@ import ProfileName from "@modules/account/components/profile-name"
 import { notFound } from "next/navigation"
 import { listRegions } from "@lib/data/regions"
 import { retrieveCustomer } from "@lib/data/customer"
+import { STORE_NAME } from "@lib/store-content"
 
 export const metadata: Metadata = {
   title: "โปรไฟล์",
-  description: "ดูและแก้ไขโปรไฟล์ของคุณ",
+  description: `ดูและแก้ไขโปรไฟล์ของคุณที่ ${STORE_NAME}`,
 }
 
 export default async function Profile() {

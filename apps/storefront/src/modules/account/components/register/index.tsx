@@ -8,6 +8,7 @@ import PendingAddToCartFields from "@modules/account/components/pending-add-to-c
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { signup } from "@lib/data/customer"
+import { STORE_NAME } from "@lib/store-content"
 
 type Props = {
   setCurrentView: (view: LOGIN_VIEW) => void
@@ -22,10 +23,10 @@ const Register = ({ setCurrentView }: Props) => {
       data-testid="register-page"
     >
       <h1 className="text-large-semi uppercase mb-6">
-        สมัครสมาชิก
+        สมัครสมาชิก {STORE_NAME}
       </h1>
       <p className="text-center text-base-regular text-ui-fg-base mb-4">
-        สร้างบัญชีสมาชิกเพื่อรับประสบการณ์การช้อปปิ้งที่ดียิ่งขึ้น
+        สร้างบัญชีสมาชิก {STORE_NAME} เพื่อรับประสบการณ์การช้อปปิ้งที่ดียิ่งขึ้น
       </p>
       {message?.state === "verification_required" && (
         <div
@@ -82,7 +83,7 @@ const Register = ({ setCurrentView }: Props) => {
           data-testid="register-error"
         />
         <span className="text-center text-ui-fg-base text-small-regular mt-6">
-          การสร้างบัญชีถือว่าคุณยอมรับ{" "}
+          การสร้างบัญชีกับ {STORE_NAME} ถือว่าคุณยอมรับ{" "}
           <LocalizedClientLink
             href="/content/privacy-policy"
             className="underline"
