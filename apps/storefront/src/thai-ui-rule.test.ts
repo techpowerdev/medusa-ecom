@@ -65,6 +65,21 @@ describe("ESLint rule ข้อความไทย (AC-47)", () => {
     "src/app/[countryCode]/(main)/verify-account/page.tsx",
     "src/modules/account/components/register/index.tsx",
     "src/modules/account/templates/account-layout.tsx",
+    // CORE-4c2 (cart, order, policies, common, skeletons)
+    "src/app/[countryCode]/(main)/cart/page.tsx",
+    "src/app/[countryCode]/(main)/cart/not-found.tsx",
+    "src/app/[countryCode]/(main)/order/[id]/confirmed/page.tsx",
+    "src/app/[countryCode]/(main)/contact/page.tsx",
+    "src/app/[countryCode]/(main)/terms/page.tsx",
+    "src/app/[countryCode]/(main)/privacy/page.tsx",
+    "src/app/[countryCode]/(main)/returns/page.tsx",
+    "src/app/[countryCode]/(main)/shipping/page.tsx",
+    "src/modules/cart/templates/index.tsx",
+    "src/modules/order/templates/order-details-template.tsx",
+    "src/modules/policies/templates/index.tsx",
+    "src/modules/common/components/native-select/index.tsx",
+    "src/modules/common/components/filter-radio-group/index.tsx",
+    "src/modules/skeletons/templates/skeleton-cart-page/index.tsx",
   ])("เปิด rule กับ %s (path ในตาราง AC-49)", async (file) => {
     const config = await eslint.calculateConfigForFile(path.join(ROOT, file))
     expect(config.rules["no-restricted-syntax"]?.[0]).toBe(2)
@@ -73,10 +88,7 @@ describe("ESLint rule ข้อความไทย (AC-47)", () => {
   it.each([
     "src/app/[countryCode]/(checkout)/layout.tsx",
     "src/modules/checkout/components/payment/index.tsx",
-    "src/modules/cart/templates/index.tsx",
-    "src/app/[countryCode]/(main)/cart/page.tsx",
-    "src/modules/order/templates/order-details-template.tsx",
-    "src/modules/common/components/filter-radio-group/index.tsx",
+    "src/modules/shipping/components/free-shipping-price-nudge/index.tsx",
   ])("ไม่เปิด rule กับ %s (path ของ task อื่น)", async (file) => {
     const config = await eslint.calculateConfigForFile(path.join(ROOT, file))
     expect(config.rules["no-restricted-syntax"]).toBeUndefined()

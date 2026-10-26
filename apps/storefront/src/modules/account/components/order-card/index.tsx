@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import Thumbnail from "@modules/products/components/thumbnail"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
+import { formatDate } from "@lib/util/date"
 import { HttpTypes } from "@medusajs/types"
 
 type OrderCardProps = {
@@ -30,7 +31,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
       </div>
       <div className="flex items-center divide-x divide-gray-200 text-small-regular text-ui-fg-base">
         <span className="pr-2" data-testid="order-created-at">
-          {new Date(order.created_at).toLocaleDateString("th-TH")}
+          {formatDate(order.created_at)}
         </span>
         <span className="px-2" data-testid="order-amount">
           {convertToLocale({
