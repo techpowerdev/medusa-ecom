@@ -27,7 +27,7 @@ type StoreHitsProps = {
 
 const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
   const { items } = useHits<ProductHit>()
-  const { status, error, indexUiState } = useInstantSearch()
+  const { status, indexUiState } = useInstantSearch()
   const { isSearching, hasNoResultsYet } = useSearchSettled()
 
   const { page, ...refinements } = indexUiState
@@ -54,8 +54,7 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
         className="py-16 text-center text-ui-fg-error"
         data-testid="products-error"
       >
-        Couldn&apos;t load products
-        {error?.message ? `: ${error.message}` : "."}
+        โหลดรายการสินค้าไม่สำเร็จ
       </Text>
     )
   }
@@ -69,7 +68,7 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
           className="py-16 text-center text-ui-fg-subtle"
           data-testid="no-products"
         >
-          No products matched these filters.
+          ไม่พบสินค้าที่ตรงกับตัวกรองนี้
         </Text>
       ) : (
         <ul

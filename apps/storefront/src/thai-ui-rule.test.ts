@@ -1,0 +1,91 @@
+import { ESLint } from "eslint"
+import fs from "node:fs"
+import path from "node:path"
+import { describe, expect, it } from "vitest"
+
+// spec 01 CORE-4 (ADR-014): storefront ภาษาไทยอย่างเดียว
+const ROOT = path.resolve(__dirname, "..")
+
+// AC-47 (กฎข้อ 4): ESLint `no-restricted-syntax` กันข้อความละตินใน path ที่เขียนไทยแล้ว
+describe("ESLint rule ข้อความไทย (AC-47)", () => {
+  const eslint = new ESLint({ cwd: ROOT })
+  const FIXTURE = path.join(ROOT, "src/modules/layout/components/__fixture__.tsx")
+
+  const errorsOf = async (jsx: string) => {
+    const code = `export const F = ({ price }: { price: number }) => (\n${jsx}\n)\n`
+    const [result] = await eslint.lintText(code, { filePath: FIXTURE })
+    return result.messages.filter((m) => m.ruleId === "no-restricted-syntax")
+  }
+
+  it.each([
+    ["<p>Hello</p>"],
+    ['<input placeholder="Search" />'],
+    ["<p>{`Cart (${price})`}</p>"],
+    ['<button aria-label={"Close menu"} />'],
+  ])("%s → error", async (jsx) => {
+    expect(await errorsOf(jsx)).toHaveLength(1)
+  })
+
+  it.each([
+    ["<p>สวัสดี</p>"],
+    ["<p>{price} ฿</p>"],
+    [
+      "<p>\n{/* eslint-disable-next-line no-restricted-syntax -- brand */}\n<span>PromptPay</span>\n</p>",
+    ],
+    ['<input placeholder="ค้นหาสินค้า" className="txt-medium" data-testid="search-input" />'],
+  ])("%s → ไม่มี error", async (jsx) => {
+    expect(await errorsOf(jsx)).toHaveLength(0)
+  })
+
+  it.each([
+    "src/app/layout.tsx",
+    "src/app/not-found.tsx",
+    "src/app/[countryCode]/(main)/layout.tsx",
+    "src/app/[countryCode]/(main)/page.tsx",
+    "src/app/[countryCode]/(main)/not-found.tsx",
+    "src/modules/layout/templates/nav/index.tsx",
+    "src/modules/home/components/hero/index.tsx",
+    // CORE-4b2
+    "src/app/[countryCode]/(main)/store/page.tsx",
+    "src/app/[countryCode]/(main)/search/page.tsx",
+    "src/app/[countryCode]/(main)/categories/[...category]/page.tsx",
+    "src/app/[countryCode]/(main)/collections/[handle]/page.tsx",
+    "src/app/[countryCode]/(main)/products/[handle]/page.tsx",
+    "src/modules/store/templates/index.tsx",
+    "src/modules/search/components/search-form/index.tsx",
+    "src/modules/categories/templates/index.tsx",
+    "src/modules/collections/templates/index.tsx",
+    "src/modules/products/components/product-actions/index.tsx",
+    "src/app/buy/[items]/route.ts",
+  ])("เปิด rule กับ %s (path ของ CORE-4b ในตาราง AC-49)", async (file) => {
+    const config = await eslint.calculateConfigForFile(path.join(ROOT, file))
+    expect(config.rules["no-restricted-syntax"]?.[0]).toBe(2)
+  })
+
+  it.each([
+    "src/app/[countryCode]/(checkout)/layout.tsx",
+    "src/modules/checkout/components/payment/index.tsx",
+    "src/modules/cart/templates/index.tsx",
+    "src/app/[countryCode]/(main)/account/layout.tsx",
+    "src/app/[countryCode]/(main)/cart/page.tsx",
+    "src/modules/common/components/filter-radio-group/index.tsx",
+  ])("ไม่เปิด rule กับ %s (path ของ task อื่น)", async (file) => {
+    const config = await eslint.calculateConfigForFile(path.join(ROOT, file))
+    expect(config.rules["no-restricted-syntax"]).toBeUndefined()
+  })
+}, 60_000)
+
+// AC-46 (กฎข้อ 6) ส่วนอ่านไฟล์: ไม่มี i18n library / ไฟล์ข้อความ / ตัวเลือกภาษา
+describe("ไม่มี i18n ในระยะแรก (AC-46)", () => {
+  it("ไม่มี dependency next-intl และไม่มีโฟลเดอร์ messages/", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"))
+    expect({ ...pkg.dependencies, ...pkg.devDependencies }).not.toHaveProperty("next-intl")
+    expect(fs.existsSync(path.join(ROOT, "messages"))).toBe(false)
+  })
+
+  it("ลบ component language-select แล้ว", () => {
+    expect(
+      fs.existsSync(path.join(ROOT, "src/modules/layout/components/language-select"))
+    ).toBe(false)
+  })
+})

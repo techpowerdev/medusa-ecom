@@ -5,6 +5,7 @@ import Hero from "@modules/home/components/hero"
 import { listCollections } from "@lib/data/collections"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { toJsonLd } from "@lib/util/product-structured-data"
+import { hreflangAlternates } from "@lib/util/hreflang"
 import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
 import { buildRegionsReturnPolicies } from "@lib/util/store-policies"
 
@@ -18,18 +19,12 @@ export async function generateMetadata(props: {
   const [origin, regions] = await Promise.all([getSiteOrigin(), listRegions()])
 
   return {
-    title: "Medusa Next.js Starter Template",
-    description:
-      "A performant frontend ecommerce starter template with Next.js 16 and Medusa.",
+    title: `${STORE_NAME} | ร้านค้าออนไลน์`,
+    description: "เลือกซื้อสินค้าออนไลน์ ชำระเงินสะดวก จัดส่งทั่วประเทศไทย",
     alternates: {
       canonical: `${origin}/${countryCode}`,
       languages: {
-        ...Object.fromEntries(
-          listCountryCodes(regions).map((code) => [
-            `en-${code.toUpperCase()}`,
-            `${origin}/${code}`,
-          ])
-        ),
+        ...hreflangAlternates(origin, listCountryCodes(regions)),
         "x-default": origin,
       },
     },

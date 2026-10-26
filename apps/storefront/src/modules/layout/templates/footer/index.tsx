@@ -1,5 +1,6 @@
 import { listCategories } from "@lib/data/categories";
 import { listCollections } from "@lib/data/collections";
+import { STORE_NAME } from "@lib/util/site";
 import { Text, clx } from "@modules/common/components/ui";
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
@@ -23,14 +24,14 @@ export default async function Footer() {
               href="/"
               className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
             >
-              Medusa Store
+              {STORE_NAME}
             </LocalizedClientLink>
           </div>
           <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
             {productCategories && productCategories?.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base">
-                  Categories
+                  หมวดหมู่
                 </span>
                 <ul
                   className="grid grid-cols-1 gap-2"
@@ -88,7 +89,7 @@ export default async function Footer() {
             {collections && collections.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base">
-                  Collections
+                  คอลเลกชัน
                 </span>
                 <ul
                   className={clx(
@@ -112,8 +113,11 @@ export default async function Footer() {
               </div>
             )}
             <div className="flex flex-col gap-y-2">
-              <span className="txt-small-plus txt-ui-fg-base">
-                Customer service
+              <span
+                className="txt-small-plus txt-ui-fg-base"
+                data-testid="footer-customer-service"
+              >
+                บริการลูกค้า
               </span>
               <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
                 <li>
@@ -121,7 +125,7 @@ export default async function Footer() {
                     className="hover:text-ui-fg-base"
                     href="/shipping"
                   >
-                    Shipping information
+                    ข้อมูลการจัดส่ง
                   </LocalizedClientLink>
                 </li>
                 <li>
@@ -129,7 +133,7 @@ export default async function Footer() {
                     className="hover:text-ui-fg-base"
                     href="/returns"
                   >
-                    Return policy
+                    นโยบายการคืนสินค้า
                   </LocalizedClientLink>
                 </li>
                 <li>
@@ -137,7 +141,7 @@ export default async function Footer() {
                     className="hover:text-ui-fg-base"
                     href="/terms"
                   >
-                    Terms of service
+                    ข้อกำหนดการให้บริการ
                   </LocalizedClientLink>
                 </li>
                 <li>
@@ -145,7 +149,7 @@ export default async function Footer() {
                     className="hover:text-ui-fg-base"
                     href="/privacy"
                   >
-                    Privacy policy
+                    นโยบายความเป็นส่วนตัว
                   </LocalizedClientLink>
                 </li>
                 <li>
@@ -153,7 +157,7 @@ export default async function Footer() {
                     className="hover:text-ui-fg-base"
                     href="/contact"
                   >
-                    Contact
+                    ติดต่อเรา
                   </LocalizedClientLink>
                 </li>
                 <li>
@@ -161,12 +165,13 @@ export default async function Footer() {
                     className="hover:text-ui-fg-base"
                     href="/search"
                   >
-                    Search
+                    ค้นหา
                   </LocalizedClientLink>
                 </li>
               </ul>
             </div>
             <div className="flex flex-col gap-y-2">
+              {/* eslint-disable-next-line no-restricted-syntax -- ชื่อแบรนด์ (ADR-014 ข้อ 4) */}
               <span className="txt-small-plus txt-ui-fg-base">Medusa</span>
               <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
                 <li>
@@ -176,7 +181,8 @@ export default async function Footer() {
                     rel="noreferrer"
                     className="hover:text-ui-fg-base"
                   >
-                    GitHub
+                    {/* eslint-disable-next-line no-restricted-syntax -- ชื่อแบรนด์ (ADR-014 ข้อ 4) */}
+                    {"GitHub"}
                   </a>
                 </li>
                 <li>
@@ -186,7 +192,7 @@ export default async function Footer() {
                     rel="noreferrer"
                     className="hover:text-ui-fg-base"
                   >
-                    Documentation
+                    เอกสาร
                   </a>
                 </li>
                 <li>
@@ -196,7 +202,7 @@ export default async function Footer() {
                     rel="noreferrer"
                     className="hover:text-ui-fg-base"
                   >
-                    Source code
+                    ซอร์สโค้ด
                   </a>
                 </li>
               </ul>
@@ -205,7 +211,7 @@ export default async function Footer() {
         </div>
         <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
           <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
+            © {new Date().getFullYear()} {STORE_NAME} สงวนลิขสิทธิ์
           </Text>
           <MedusaCTA />
         </div>
