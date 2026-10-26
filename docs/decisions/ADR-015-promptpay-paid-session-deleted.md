@@ -93,7 +93,7 @@ planner ห้ามเขียนการ complete cart เอง
   (`authorizePaymentSession`) และ (2) subscriber อ่านอย่างเดียวของ D ทั้งสองไม่เรียก Stripe ตรง ไม่เปลี่ยน provider/config capture ไม่สร้าง/
   refund payment นอก method ของ Medusa — ข้ออื่นของ ADR-007 คงเดิม ยังห้าม custom provider, reconciliation, refund อัตโนมัติ
 - **spec 06 กฎข้อ 4**: "refund ผ่าน `refundPaymentWorkflow` เท่านั้น" ยกเว้นเฉพาะการ refund **ด้วยมือโดย ops ใน Stripe dashboard ตาม runbook**
-  สำหรับ PI ที่ไม่มี payment ใน Medusa (จึง refund ผ่าน workflow ไม่ได้) ไม่มีโค้ดใดเรียก refund ของ Stripe ส่วน "ห้ามเรียก Stripe API ตรง
+  สำหรับ PI ที่ไม่มี payment ใน Medusa (จึง refund ผ่าน workflow ไม่ได้) — ขยายรอบ 8 ให้ครอบ payment captured ที่ collection ไม่ผูก order (ภาคผนวก 2) ไม่มีโค้ดใดเรียก refund ของ Stripe ส่วน "ห้ามเรียก Stripe API ตรง
   นอก provider" คงเดิม (guard เรียกผ่าน provider)
 - spec 06 กฎข้อ 7 ต้องปรับถ้อยคำให้สอดคล้อง A + D (ผลที่ยอมรับ: guard ปิดช่องจาก storefront, กรณีที่หลุด = alert + refund ด้วยมือ ไม่ใช่
   แก้อัตโนมัติ) — เป็นงานของ planner ใน spec 06
@@ -127,3 +127,18 @@ lock ในข้อ 5 ไม่ครอบช่วงนี้เพราะ
 - key นี้ไม่ตรงกับ lock ของ `processPaymentWorkflow` (ซึ่งใช้ `cart_id`) → PAY-3/PAY-6 ต้องมี integration test ยืนยันว่า guard กับ webhook
   ไม่สร้าง payment ซ้อนบน collection ของ order; ถ้าซ้อนได้ให้หยุดและรายงาน planner
 - ไม่เปลี่ยนส่วนอื่นของ A + D (spec 06 Q6)
+
+## ภาคผนวก 2 (รอบ 8, review #97): refund ด้วยมือเมื่อ payment collection ไม่ผูก order — **accepted (owner 2026-10-26, ปิด spec 06 Q7)**
+บริบท: runbook ของ PAY-6b (#97) ให้ refund ใน Stripe dashboard รวมกรณีที่ Medusa **มี** payment captured บน collection ของ cart ที่ complete ไม่ได้
+(collection ไม่ผูก order) — `refundPaymentWorkflow` ของ Medusa 2.22.1 ล้มในกรณีนี้ จึง refund ผ่าน workflow ไม่ได้ ซึ่งกว้างกว่าข้อยกเว้น
+"PI ที่ไม่มี payment ใน Medusa" ในหัวข้อ "การยกเว้น ADR-007 และ spec 06 กฎข้อ 4"
+ทางเลือก: (1) ขยายข้อยกเว้นให้ครอบกรณีนี้ (2) คงข้อยกเว้นเดิม — runbook กรณีนี้ให้ลูกค้า complete cart อย่างเดียว (refund ทำหลังมี order ผ่าน
+`refundPaymentWorkflow`) ถ้า complete ไม่ได้ต้องเขียนโค้ด/ADR ใหม่
+การตัดสิน (owner 2026-10-26): **(1) ขยายข้อยกเว้นกฎข้อ 4** ให้ครอบการ refund ด้วยมือใน Stripe dashboard เมื่อ Medusa มี payment captured แต่ collection
+ไม่ผูก order (`refundPaymentWorkflow` 2.22.1 throw) — ยังไม่มีโค้ดใดเรียก refund ของ Stripe; runbook ใน `docs/ops/production.md` ต้องมีขั้นตามลำดับ:
+1. ลองให้ cart complete ก่อน (ลูกค้าเปิดหน้า checkout ของ cart นั้น — spec 06 AC-12b) ถ้าได้ order → refund ผ่าน admin ตามปกติ ไม่ใช้ข้อยกเว้นนี้
+2. complete ไม่ได้ → refund เต็มจำนวนใน Stripe dashboard แล้วให้ลูกค้า logout เพื่อทิ้ง cart เดิม (เริ่ม cart ใหม่)
+3. ops เฝ้าหน้า Orders ของ admin จนพ้นช่วงที่ Stripe retry webhook (สูงสุด 3 วันใน live mode) — ถ้ามี order ของ cart/PI นี้โผล่: **ห้าม fulfill และห้าม cancel**
+   (`cancelOrderWorkflow` จะ refund ซ้ำ) ให้บันทึกใน incident
+4. บันทึก payment id ของ Medusa + PI + ลูกค้า + เวลาใน incident
+ผลที่ตามมา (ยอมรับ): payment ใน Medusa ยังแสดง `captured` ไม่ตรงกับ Stripe (refunded) เพราะไม่มี order อ้างอิง
