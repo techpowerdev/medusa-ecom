@@ -2,7 +2,7 @@ import { readFileSync } from "fs"
 import path from "path"
 
 // PAY-6b: spec 06 AC-16 (ADR-015 D) — runbook "เงินถูกตัดแต่ไม่มี order" และ env OPS_ALERT_EMAIL
-const repoRoot = path.resolve(__dirname, "../../../../..")
+const repoRoot = path.resolve(__dirname, "../../../..")
 const RUNBOOK_TITLE = "เงินถูกตัดแต่ไม่มี order (ADR-015)"
 
 /** เนื้อหาของหัวข้อ `## <title>` จนถึงหัวข้อระดับ 2 ถัดไป */
@@ -40,6 +40,18 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
     expect(body).toMatch(/### .*ไม่มี alert/)
     expect(body).toContain("checkout")
     expect(body).toContain("AC-12b")
+  })
+
+  it("กรณีไม่มี alert ที่ refund ใน Stripe: ปิดทางที่ cart จะถูก complete ทีหลัง (review #97)", () => {
+    const noAlert = body!.slice(body!.search(/### .*ไม่มี alert/), body!.search(/### .*fail closed/))
+    // ลูกค้าทิ้ง cart เดิม (logout ลบ cookie) ไม่ให้กดชำระแล้ว complete ด้วย payment ที่ refund แล้ว
+    expect(noAlert).toContain("logout")
+    // webhook ที่ Stripe retry ภายหลังอาจ complete cart → เฝ้า Orders จนพ้นช่วง retry
+    expect(noAlert).toContain("retry")
+    expect(noAlert).toContain("ห้าม fulfill")
+    // cancelOrderWorkflow refund ผ่าน provider ซ้ำกับ PI ที่ refund แล้ว
+    expect(noAlert).toContain("ห้าม cancel")
+    expect(noAlert).toContain("cancelOrderWorkflow")
   })
 
   it("มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้)", () => {

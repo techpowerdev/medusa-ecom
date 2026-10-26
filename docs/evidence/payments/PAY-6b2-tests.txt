@@ -35,3 +35,21 @@ Tests:       447 passed, 447 total
 backend lint: No lint issues found (storefront: 0 errors, warnings เดิม)
 typecheck: backend + storefront Done
 build: Backend build completed successfully / Frontend build completed successfully
+
+== รอบแก้ตาม review #97 ==
+Red: unit ops-runbook 1 failed (ไม่มี logout/retry/ห้าม fulfill/ห้าม cancel/cancelOrderWorkflow ในกรณีไม่มี alert);
+     integration "invalid signature" 1 failed (subscriber throw)
+Green:
+integration (http) payment-webhook-orphan.spec.ts:
+      ✓ listens to payment.webhook_received with its own subscriberId (638 ms)
+      ✓ session not found (payment_intent.succeeded) → error log + one email to OPS_ALERT_EMAIL with the PI id (1519 ms)
+      ✓ session not found (payment_intent.amount_capturable_updated) → error log + one email to OPS_ALERT_EMAIL with the PI id (234 ms)
+      ✓ session exists → no log and no email (280 ms)
+      ✓ not a captured/authorized action → no log and no email (284 ms)
+      ✓ invalid signature → subscriber does not throw, logs a warning, no alert (507 ms)
+      ✓ OPS_ALERT_EMAIL not set → error log, warn log, no notification (478 ms)
+      ✓ notification provider throws → subscriber does not throw and logs an error (298 ms)
+Tests:       8 passed, 8 total
+unit src/__tests__/ops-runbook.unit.spec.ts (ย้ายจาก src/scripts/__tests__): 8 passed
+pnpm --filter backend test:unit: Test Suites 47 passed, Tests 448 passed
+typecheck ok, lint: No lint issues found, build: backend + admin completed successfully

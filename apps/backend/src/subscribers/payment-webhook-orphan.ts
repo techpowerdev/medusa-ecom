@@ -29,7 +29,14 @@ export default async function paymentWebhookOrphanHandler({
       ? { ...data, payload: { ...data.payload, rawData: Buffer.from((rawData as SerializedBuffer).data) } }
       : data
 
-  const processed = await payment.getWebhookActionAndData(input)
+  let processed: Awaited<ReturnType<typeof payment.getWebhookActionAndData>>
+  try {
+    processed = await payment.getWebhookActionAndData(input)
+  } catch (error) {
+    // signature เสีย / provider อ่าน event ไม่ได้ — subscriber ของ Medusa จัดการ/retry เอง ไม่ต้องให้ตัวนี้ throw ซ้ำ
+    logger.warn(`payment-webhook-orphan: skipped ${input.provider} event: ${errorMessage(error)}`)
+    return
+  }
   const sessionId = processed.data?.session_id
   if (!sessionId || !PAID_ACTIONS.includes(processed.action)) {
     return

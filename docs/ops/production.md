@@ -80,9 +80,15 @@ subscriber `apps/backend/src/subscribers/payment-webhook-orphan.ts` เขีย
 2. ให้ลูกค้า login แล้วเปิดหน้า checkout ของ cart นั้นอีกครั้งที่ขั้น review (`/<country>/checkout?step=review`) แล้วกดปุ่มชำระ PromptPay —
    storefront เรียก `POST /store/carts/:id/complete` ของ Medusa เป็นทางสำรอง (spec 06 AC-12b) ได้ order แล้วไปหน้า order confirmed
    (ห้ามให้ลูกค้าเปลี่ยนวิธีชำระหรือสแกน QR ใหม่)
-3. complete ไม่ได้ → refund เต็มจำนวนใน Stripe dashboard ตามขั้น 3–5 ของหัวข้อก่อน (spec 06 AC-16) และบันทึกใน incident ว่า payment
-   ของ Medusa ยังเป็น captured บน cart ที่ไม่ complete — `POST /admin/payments/:id/refund` ใช้ไม่ได้ เพราะ `refundPaymentWorkflow` ของ
-   Medusa 2.22.1 ต้องมี order ผูกกับ payment collection
+3. complete ไม่ได้ (กดแล้วยังค้างที่หน้ารอสร้าง order) → refund เต็มจำนวนใน Stripe dashboard ตามขั้น 3–5 ของหัวข้อก่อน (spec 06 AC-16)
+   — `POST /admin/payments/:id/refund` ใช้ไม่ได้ เพราะ `refundPaymentWorkflow` ของ Medusa 2.22.1 ต้องมี order ผูกกับ payment collection
+   และ Stripe provider 2.22.1 ไม่รับรู้ `charge.refunded` → payment ใน Medusa ยังเป็น captured บน cart เดิม ต้องปิดทางที่ cart นี้จะถูก complete ทีหลัง:
+   - ให้ลูกค้า logout ก่อน (storefront ลบ cookie ของ cart เดิม) แล้วค่อย login เริ่ม cart ใหม่ — ห้ามกลับไปกดชำระบน cart เดิม
+     (storefront จะเรียก complete กับ session ที่ authorized ตาม AC-12b ได้ order ทั้งที่เงินถูกคืนแล้ว)
+   - Stripe retry webhook ที่ส่งไม่สำเร็จได้นานถึง 3 วัน (live mode) → `payment_intent.succeeded` ที่มาช้าจะ complete cart นี้ได้ ops เฝ้า
+     admin → Orders (อีเมลลูกค้า / PI นี้) ทุกวันจนพ้นช่วง retry ถ้ามี order อ้าง PI ที่ refund แล้ว: **ห้าม fulfill**, ติด note ใน order แล้ว
+     escalate ให้ owner — **ห้าม cancel** order ใน admin เพราะ `cancelOrderWorkflow` จะ refund payment ที่ captured ผ่าน provider ซ้ำกับ PI ที่ refund แล้ว
+   - บันทึกใน incident ว่า payment ของ Medusa ยังเป็น captured บน cart ที่ไม่ complete และวันที่พ้นช่วง retry
 4. แจ้งลูกค้าและบันทึก incident เหมือนหัวข้อก่อน
 
 ### guard fail closed ถาวร (retrieve PI ไม่ได้)
@@ -100,5 +106,5 @@ provider ตอนอ่าน PI เดิม — guard ไม่ลบ session
 
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
-- `pnpm --filter backend test:unit` — `src/scripts/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015 และ `OPS_ALERT_EMAIL`)
+- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015 และ `OPS_ALERT_EMAIL`)
 - `tools/ops/smoke-worker-mode.sh` — product ที่สร้างบน server ต้องถูกประมวลผลโดย subscriber บน worker

@@ -158,6 +158,18 @@ medusaIntegrationTestRunner({
         expect(await opsEmails()).toHaveLength(0)
       })
 
+      it("invalid signature → subscriber does not throw, logs a warning, no alert", async () => {
+        const event = webhookEvent("payment_intent.succeeded", "payses_missing")
+        const headers = event.payload.headers as Record<string, string>
+        headers["stripe-signature"] = "t=1,v1=invalid"
+
+        await expect(run(getContainer(), event)).resolves.toBeUndefined()
+
+        expect(orphanLogs()).toHaveLength(0)
+        expect(warnLog.mock.calls.some(([msg]) => String(msg).startsWith("payment-webhook-orphan:"))).toBe(true)
+        expect(await opsEmails()).toHaveLength(0)
+      })
+
       it("OPS_ALERT_EMAIL not set → error log, warn log, no notification", async () => {
         delete process.env.OPS_ALERT_EMAIL
 
