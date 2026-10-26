@@ -24,6 +24,7 @@ describe("buildNotificationProviders", () => {
     const providers = buildNotificationProviders({
       RESEND_API_KEY: "re_from_env",
       RESEND_FROM_EMAIL: "Shop <shop@example.com>",
+      EVOUCHER_ENCRYPTION_KEY: "ab".repeat(32),
     })
 
     expect(providers).toEqual([
@@ -39,6 +40,8 @@ describe("buildNotificationProviders", () => {
           channels: ["email"],
           api_key: "re_from_env",
           from: "Shop <shop@example.com>",
+          // EV-4: ถอด code/PIN ของ e-voucher ตอน render อีเมล (notification.data เก็บ ciphertext)
+          evoucher_encryption_key: "ab".repeat(32),
         },
       },
     ])

@@ -388,6 +388,108 @@ medusaIntegrationTestRunner({
         expect(await service.listAffiliatePayouts({ affiliate_id: carol })).toHaveLength(0)
       })
 
+      // AF-9 (AC-19, Q9): ยกเลิก payout draft = soft-delete; entry ไม่เปลี่ยนสถานะและกลับไปเลือกได้อีก
+      it("cancels a draft payout and returns its entries to the pool (AC-19)", async () => {
+        const created = await api.post("/admin/affiliate/payouts", period(), { headers })
+        const payout = created.data.payout
+        const before = await service.listAffiliateCommissionEntries({ id: payout.entry_ids })
+
+        const cancelled = await api.delete(`/admin/affiliate/payouts/${payout.id}`, { headers })
+        expect(cancelled.status).toEqual(200)
+        expect(cancelled.data).toEqual({ id: payout.id, object: "affiliate_payout", deleted: true })
+
+        const list = await api.get(`/admin/affiliate/payouts?affiliate_id=${annId}`, { headers })
+        expect(list.data.payouts).toEqual([])
+        const gone = await api
+          .get(`/admin/affiliate/payouts/${payout.id}`, { headers })
+          .catch((e) => e.response)
+        expect(gone.status).toEqual(404)
+
+        const after = await service.listAffiliateCommissionEntries({ id: payout.entry_ids })
+        const statusById = (rows: { id: string; status: string }[]) =>
+          Object.fromEntries(rows.map((e) => [e.id, e.status]))
+        expect(statusById(after)).toEqual(statusById(before))
+
+        const recreated = await api.post("/admin/affiliate/payouts", period(), { headers })
+        expect(recreated.status).toEqual(200)
+        expect(recreated.data.payout.amount).toEqual(payout.amount)
+        expect([...recreated.data.payout.entry_ids].sort()).toEqual([...payout.entry_ids].sort())
+      })
+
+      it("refuses to cancel a paid payout and leaves it unchanged (AC-19)", async () => {
+        const created = await api.post("/admin/affiliate/payouts", period(), { headers })
+        const payout = created.data.payout
+        await api.post(`/admin/affiliate/payouts/${payout.id}/mark-paid`, {}, { headers })
+
+        const refused = await api
+          .delete(`/admin/affiliate/payouts/${payout.id}`, { headers })
+          .catch((e) => e.response)
+        expect(refused.status).toEqual(400)
+
+        const still = await api.get(`/admin/affiliate/payouts/${payout.id}`, { headers })
+        expect(still.data.payout).toEqual(
+          expect.objectContaining({ status: "paid", amount: payout.amount })
+        )
+        const entries = await service.listAffiliateCommissionEntries({ id: payout.entry_ids })
+        expect(entries.filter((e) => e.status === "paid")).toHaveLength(3)
+
+        const missing = await api
+          .delete("/admin/affiliate/payouts/affpay_missing", { headers })
+          .catch((e) => e.response)
+        expect(missing.status).toEqual(404)
+      })
+
+      // AF-9 (AC-20, กฎ 19): ไม่ตัดด้วย period_from, ตัดด้วย period_to และ entry_ids ของ payout อื่น
+      it("selects entries by rule 19 across payout rounds (AC-20)", async () => {
+        const earlier = await api.post(
+          "/admin/affiliate/payouts",
+          {
+            affiliate_id: annId,
+            period_from: new Date(lastMonthFrom.getTime() - 30 * DAY).toISOString(),
+            period_to: lastMonthFrom.toISOString(),
+          },
+          { headers }
+        )
+        expect(earlier.data.payout.amount).toEqual(5)
+        expect(earlier.data.payout.entry_ids).toHaveLength(1)
+
+        const current = await api.post("/admin/affiliate/payouts", period(), { headers })
+        expect(current.data.payout.amount).toEqual(120)
+        expect(current.data.payout.entry_ids).toHaveLength(3)
+        expect(current.data.payout.entry_ids).not.toContain(earlier.data.payout.entry_ids[0])
+      })
+
+      it("filters payable entries in the database (rule 19)", async () => {
+        const [o1] = await service.listAffiliateCommissionEntries({ order_id: "o1" })
+        const [o0] = await service.listAffiliateCommissionEntries({ order_id: "o0" })
+        const base = {
+          affiliate_id: annId,
+          currency: "thb",
+          period_from: lastMonthFrom,
+          period_to: thisMonthFrom,
+        }
+        await service.createAffiliatePayouts({ ...base, amount: 100, entry_ids: [o1.id] })
+        const cancelled = await service.createAffiliatePayouts({
+          ...base,
+          amount: 5,
+          entry_ids: [o0.id],
+        })
+        await service.softDeleteAffiliatePayouts(cancelled.id)
+
+        const payable = await service.listPayableCommissionEntries({
+          affiliate_id: annId,
+          period_to: thisMonthFrom,
+        })
+        expect(payable.map((e) => [Number(e.amount), e.status]).sort()).toEqual(
+          [
+            [5, "approved"],
+            [50, "approved"],
+            [-30, "reversed"],
+          ].sort()
+        )
+        expect(payable.every((e) => e.currency === "thb")).toBe(true)
+      })
+
       it("summarizes the ledger per affiliate and status", async () => {
         const response = await api.get(
           `/admin/affiliate/reports/summary?from=${lastMonthFrom.toISOString()}&to=${thisMonthFrom.toISOString()}`,

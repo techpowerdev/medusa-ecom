@@ -104,16 +104,16 @@
   Stripe test API แล้ว**ทันที**เรียกขั้นหมดอายุแบบเดียวกับ storefront (`POST /store/payment-collections/:id/payment-sessions` ด้วย provider
   PromptPay เดิม) Then ภายใน 60 วินาที cart ถูก complete เป็น order ที่ `payment_status=captured` และไม่มี payment ที่ captured ค้างโดยไม่มี
   order (ตรวจ PI ใน Stripe: `status=succeeded` ↔ มี order อ้าง PI นั้น) (integration กับ Stripe test mode หรือ e2e)
-  — PAY-5 ยืนยันว่าเป็นกรณี (b) (ADR-015): test อยู่ในสถานะ `test.fixme` ใน `e2e/payments-promptpay-race.spec.ts` **PAY-6 เปิด test นี้และต้องผ่าน**
+  — PAY-5 ยืนยันว่าเป็นกรณี (b) (ADR-015): test อยู่ในสถานะ `test.fixme` ใน `e2e/payments-promptpay-race.spec.ts` **PAY-6a เปิด test นี้และต้องผ่าน**
   โดยเพิ่มเงื่อนไข: request สร้าง session ใหม่นั้นได้ 409 code `PAYMENT_ALREADY_COMPLETED` และ session เดิมยังอยู่
-- AC-12 (PAY-6, เดิม PAY-5) Given ขั้นสร้าง session ใหม่ตอนหมดอายุได้ 409 `PAYMENT_ALREADY_COMPLETED` When storefront ได้ response นี้ Then แสดง
+- AC-12 (PAY-6b, เดิม PAY-5) Given ขั้นสร้าง session ใหม่ตอนหมดอายุได้ 409 `PAYMENT_ALREADY_COMPLETED` When storefront ได้ response นี้ Then แสดง
   `data-testid="promptpay-awaiting-order"` และ poll ต่อจนไปหน้า order confirmed — ไม่แสดง `promptpay-expired`; error อื่น → พฤติกรรมเดิม
   (e2e, mock response ของ route ได้)
-- AC-12b (PAY-6, กฎข้อ 7A ทางสำรอง) Given ได้ 409 `PAYMENT_ALREADY_COMPLETED` และ webhook **ไม่มา** (CI: ไม่ส่ง event / mock) When storefront ได้ response นี้
+- AC-12b (PAY-6a ส่วน backend/integration, PAY-6b ส่วน storefront/e2e; กฎข้อ 7A ทางสำรอง) Given ได้ 409 `PAYMENT_ALREADY_COMPLETED` และ webhook **ไม่มา** (CI: ไม่ส่ง event / mock) When storefront ได้ response นี้
   Then storefront เรียก `POST /store/carts/:id/complete` (ผ่าน data function เดิมของ starter) อย่างน้อย 1 ครั้ง และเมื่อได้ `type: "order"` redirect ไปหน้า
   order confirmed ของ order นั้น; complete ตอบ error → แสดง `promptpay-awaiting-order` และ poll ต่อ (ไม่แสดง `promptpay-expired`); webhook มาพร้อมกัน → ได้
   order เดียว (lock `cart_id` ของ `completeCartWorkflow`) (e2e + integration: complete cart ที่ guard authorize แล้วได้ order `payment_status=captured` 1 รายการ)
-- AC-13 (PAY-6, กฎข้อ 7A) Given collection ที่มี session Stripe 1 รายการ (`pp_stripe_stripe` หรือ `pp_stripe-promptpay_stripe`) When customer เจ้าของ
+- AC-13 (PAY-6a, กฎข้อ 7A) Given collection ที่มี session Stripe 1 รายการ (`pp_stripe_stripe` หรือ `pp_stripe-promptpay_stripe`) When customer เจ้าของ
   `POST /store/payment-collections/:id/payment-sessions` Then:
   (a) `authorizePaymentSession` คืน payment (PI `succeeded`/`requires_capture`) หรือคืน `null` (PI `processing`) → 409 body
   `{ type: "conflict", code: "PAYMENT_ALREADY_COMPLETED", message }` session เดิมยังอยู่และไม่มี session ใหม่;
@@ -125,18 +125,19 @@
   (g) ลำดับ middleware (ADR-013): ไม่มี token → 401; customer B ที่ไม่ใช่เจ้าของ collection (ของ cart หรือ order) → 404 **และ**
   `authorizePaymentSession` ไม่ถูกเรียก (spy), ไม่มี payment ใหม่บน collection, session ของ A ยังอยู่ — customer อื่น trigger การ authorize ไม่ได้
   (unit ของ guard ด้วย mock payment module + integration http)
-- AC-14 (PAY-6, กฎข้อ 7A) Given guard ตอบ 409 แล้ว (session ถูก authorize เป็น payment) When รัน `processPaymentWorkflow` ด้วย action `captured` ของ session นั้น
+- AC-14 (PAY-6a, กฎข้อ 7A) Given guard ตอบ 409 แล้ว (session ถูก authorize เป็น payment) When รัน `processPaymentWorkflow` ด้วย action `captured` ของ session นั้น
   Then cart ถูก complete เป็น order `payment_status=captured` มี payment 1 รายการ; รันซ้ำ → ไม่มี capture/order เพิ่ม (integration)
-- AC-15 (PAY-6, กฎข้อ 7D) Given event `payment.webhook_received` ที่ `getWebhookActionAndData` คืน action `captured` (หรือ `authorized`) กับ `session_id`
+- AC-15 (PAY-6b, กฎข้อ 7D) Given event `payment.webhook_received` ที่ `getWebhookActionAndData` คืน action `captured` (หรือ `authorized`) กับ `session_id`
   ที่ไม่มีใน DB และตั้ง `OPS_ALERT_EMAIL=ops@x.test` When subscriber `payment-webhook-orphan` ทำงาน Then มี notification 1 รายการ `to="ops@x.test"` ที่มี
   PI id และมี log ระดับ error ขึ้นต้นด้วย `PAYMENT_WEBHOOK_SESSION_NOT_FOUND`; Given `session_id` มีอยู่ Then ไม่มี log/notification; Given ไม่ตั้ง env
   Then ไม่มี notification และมี log warn; Given notification provider throw Then subscriber ไม่ throw และมี log error; ไม่มี payment/order/refund ถูกสร้าง
   โดย subscriber ทุกกรณี (integration, mock notification provider + mock payload)
-- AC-16 (PAY-6) Given `docs/ops/production.md` Then มีหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" ที่ระบุ: ค้นหา PI ใน Stripe dashboard (จาก alert
+- AC-16 (PAY-6b) Given `docs/ops/production.md` Then มีหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" ที่ระบุ: ค้นหา PI ใน Stripe dashboard (จาก alert
   `PAYMENT_WEBHOOK_SESSION_NOT_FOUND`), ยืนยันว่าไม่มี order อ้าง PI, refund เต็มจำนวนใน Stripe dashboard, แจ้งลูกค้า, บันทึก incident; **และ**
   กรณีไม่มี alert (ลูกค้าแจ้ง/พบ PI `succeeded` ที่ไม่มี order แต่ Medusa มี payment captured บน payment collection ของ cart ที่ยังไม่ complete): ให้ลูกค้า
   เปิดหน้า checkout ของ cart นั้นอีกครั้ง (storefront เรียก complete ตาม AC-12b) หรือ refund ตามขั้นเดิมถ้า complete ไม่ได้ — หัวข้อมีคำว่า
-  `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` และ `PAYMENT_ALREADY_COMPLETED`; และมีบรรทัด `OPS_ALERT_EMAIL=` ใน `apps/backend/.env.example` (unit test อ่านไฟล์)
+  `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` และ `PAYMENT_ALREADY_COMPLETED`; (รอบ 6) มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้ → cart สร้าง session
+  ใหม่ไม่ได้) พร้อมขั้นแก้; และมีบรรทัด `OPS_ALERT_EMAIL=` ใน `apps/backend/.env.example` (unit test อ่านไฟล์)
 
 ## Test plan
 - Integration (http): AC-8 โดย mock provider
@@ -154,9 +155,23 @@
 | PAY-3 | หน้าชำระเงินของ order `/account/orders/:id/pay` + e2e (AC-7) | PAY-2 |
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
 | PAY-5 | follow-up review PR #48 (เล็ก): race ระหว่าง QR หมดอายุกับการชำระสำเร็จ — test AC-11 ก่อนเพื่อยืนยันพฤติกรรมของ Medusa/Stripe provider เมื่อลบ session ที่ PI `succeeded` แล้ว; ถ้าเป็นกรณี (a) ของกฎข้อ 7 แก้เฉพาะ storefront ให้ poll ต่อเมื่อสร้าง session ใหม่ล้ม (AC-12); ถ้าเป็นกรณี (b) หยุดแล้วเขียน ADR (ไม่เขียน reconciliation เอง) | PAY-2 |
-| PAY-6 | ADR-015 (A + D): guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + storefront poll ต่อเมื่อได้ code นี้ และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b) + guard หลัง ownership ของ CORE-12 (AC-13g) + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-14) + subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D) (AC-11..16) — ถ้าเกิน ~400 LOC แยก PAY-6a (guard + storefront; AC-11..14 รวม AC-12b) และ PAY-6b (alert + runbook; AC-15, 16) ทำขนานกันได้ | PAY-5 (#65), PROMO-2 |
+| PAY-6a | (◐ #82, แยกรอบ 6) ADR-015 A ฝั่ง backend: guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`/`payment_collection_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + guard หลัง ownership ของ CORE-12 + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-11, AC-13 a–g, AC-14, AC-12b ส่วน backend = integration complete cart หลัง guard) + integration race ตาม "หมายเหตุ (รอบ 6)" ด้านล่าง — **ไม่รวม** storefront (AC-12 และ AC-12b ส่วน storefront อยู่ใน PAY-6b) | PAY-5 (#65), PROMO-2 |
+| PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้ | PAY-6a |
 PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment` เดียวกับที่ PAY-3 นำไปใช้ซ้ำ — merge PAY-5 ก่อน PAY-3 ถ้าทำพร้อมกัน ให้ rebase)
-PAY-6 หลัง PAY-5; PAY-6 แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; PAY-6 ควร merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
+PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
+ต้อง merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
+หมายเหตุ (รอบ 6, จาก #82): ข้อกังวลในภาคผนวก ADR-015 ("lock key `payment_collection_id` ของ collection ที่ไม่มี cart ไม่ตรงกับ lock ของ `processPaymentWorkflow`
+→ guard กับ webhook อาจสร้าง payment ซ้อน") **ไม่เกิดจริง**: Medusa 2.22.1 มี unique index แบบ partial `IDX_payment_payment_session_id_unique`
+(`payment_session_id` WHERE `deleted_at IS NULL`) จึงสร้าง payment ที่สองของ session เดียวกันไม่ได้ ไม่ต้องเพิ่ม lock/โค้ด ADR-015 ไม่เปลี่ยน
+ฝั่งที่**แพ้ race** ได้ unique violation: guard อาจตอบ 5xx (ไม่ใช่ 409) และ webhook ตอบ non-2xx แล้ว Stripe retry — integration test ที่ภาคผนวกกำหนด (PAY-6a สำหรับ collection ของ cart; PAY-3 สำหรับ collection ของ order)
+ต้อง assert ผลที่คาดนี้: ยิง guard กับ `processPaymentWorkflow` ของ session เดียวกันพร้อมกัน → มี payment ที่ `deleted_at IS NULL` ของ session นั้น **1 แถว**, ฝั่งที่แพ้
+ได้ 409 หรือ error ใดก็ได้ที่ไม่ใช่ 2xx (5xx ยอมรับ) และ session เดิมไม่ถูกลบ; รัน `processPaymentWorkflow` ซ้ำ (จำลอง Stripe retry) → order `payment_status=captured`
+ไม่มี capture/order ซ้ำ
+ความเสี่ยงที่ยอมรับเพิ่ม (บันทึกรอบ 6, review #82 — ไม่มี task โค้ด):
+- PI ของ**บัตร**ที่อยู่สถานะ `processing` → provider คืน `PENDING` → `authorizePaymentSession` โยน `NOT_ALLOWED` → guard `next()` → session อาจถูกลบได้
+  (ตรงกับกรณี `processing` ใน "ความเสี่ยงที่เหลือ" ของ ADR-015) — ถ้า PI สำเร็จภายหลัง ตาข่าย D (PAY-6b) จับได้ (alert + refund ด้วยมือ)
+- guard แบบ fail closed: ถ้า retrieve PI ล้มถาวร (เช่น PI ถูกลบ/บัญชี Stripe ผิด) cart นั้นสร้าง session ใหม่ไม่ได้เลย → runbook ของ PAY-6b ต้องมีหัวข้อวิธีแก้
+  (ตรวจ PI ใน Stripe dashboard แล้วให้ลูกค้าเริ่ม cart ใหม่ หรือ ops ลบ session ที่ค้างผ่าน admin/API ของ Medusa) และ AC-16 ตรวจว่ามีหัวข้อนี้
 
 ## Open questions
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)

@@ -29,10 +29,25 @@ const run = (handler: (...args: any[]) => unknown, error: unknown): Sent => {
 const medusa = medusaErrorHandler()
 
 describe("businessErrorHandler", () => {
-  it("covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void)", () => {
+  it("covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void; spec 04 GB_*; spec 06 PAY-6)", () => {
     expect([...BUSINESS_CONFLICT_CODES].sort()).toEqual(
-      ["EVOUCHER_CODE_NOT_AVAILABLE", "FLASH_LIMIT_EXCEEDED", "FLASH_SOLD_OUT", "PROMOTION_NOT_COMBINABLE"].sort()
+      [
+        "EVOUCHER_CODE_NOT_AVAILABLE",
+        "FLASH_LIMIT_EXCEEDED",
+        "FLASH_SOLD_OUT",
+        "PAYMENT_ALREADY_COMPLETED",
+        "PROMOTION_NOT_COMBINABLE",
+        "GB_ALREADY_IN_OTHER_GROUP",
+        "GB_GROUP_FULL",
+        "GB_MAX_TOTAL_ORDERS_REACHED",
+        "GB_UNITS_LIMIT_EXCEEDED",
+        "GB_ITEMS_NOT_ELIGIBLE",
+        "GB_CART_ALREADY_JOINED",
+      ].sort()
     )
+    // spec 04 กฎข้อ 5: GB_DISCOUNT_NOT_APPLIED เป็น 400 not_allowed ไม่ใช่ 409
+    expect(BUSINESS_CONFLICT_CODES.has("GB_DISCOUNT_NOT_APPLIED")).toBe(false)
+    expect(BUSINESS_CONFLICT_CODES.has("GB_CART_NOT_COMPLETABLE")).toBe(false) // กฎข้อ 14a: 400
   })
 
   // AC-12 (d): route ของเราไม่ตอบ 409 เอง — ใช้ errorHandler กลางเท่านั้น
