@@ -16,17 +16,17 @@ import { ACTIVE_MEMBERSHIP_STATUSES, LOCK_TIMEOUT, LOCK_TTL } from "./join-group
 
 export type LeaveGroupInput = { membership_id: string; customer_id: string }
 
-// ขั้น 0 (อ่านอย่างเดียว): หา group ของ membership เพื่อรู้ scope ของ lock — ไม่พบ → 404 (ADR-013)
-// เจ้าของและสถานะตรวจซ้ำใต้ lock ในขั้นถัดไป
+// ขั้น 0 (อ่านอย่างเดียว): หา group ของ membership เพื่อรู้ scope ของ lock — ไม่พบหรือไม่ใช่เจ้าของ → 404 (ADR-013)
+// ก่อนขอ lock (GB-N1: คำขอของคนอื่นไม่แย่ง lock ของกลุ่ม) เจ้าของและสถานะตรวจซ้ำใต้ lock ในขั้นถัดไป
 export const resolveLeaveTargetStep = createStep(
   "resolve-leave-target",
   async (input: LeaveGroupInput, { container }) => {
     const service: GroupBuyModuleService = container.resolve(GROUP_BUY_MODULE)
     const [membership] = await service.listGroupBuyMemberships(
       { id: input.membership_id },
-      { select: ["id", "group_id"] }
+      { select: ["id", "group_id", "customer_id"] }
     )
-    if (!membership) {
+    if (!membership || membership.customer_id !== input.customer_id) {
       throw new MedusaError(MedusaError.Types.NOT_FOUND, STORE_RESOURCE_NOT_FOUND)
     }
     return new StepResponse({
@@ -55,7 +55,7 @@ export const cancelGroupMembershipStep = createStep(
     })
 
     const active = await service.listGroupBuyMemberships(
-      { group_id: input.group_id, customer_id: input.customer_id, status: ACTIVE_MEMBERSHIP_STATUSES } as any,
+      { group_id: input.group_id, customer_id: input.customer_id, status: ACTIVE_MEMBERSHIP_STATUSES },
       { select: ["id"] }
     )
     const { membership: cancelled, before } = await service.cancelGroupMembership({
@@ -89,7 +89,10 @@ export const leaveGroupWorkflow = createWorkflow("leave-group", function (input:
     transform({ input, target }, ({ input, target }) => ({ ...input, group_id: target.group_id }))
   )
   cancelOrderWorkflow.runAsStep({
-    input: transform({ membership }, ({ membership }) => ({ order_id: membership.order_id })),
+    input: transform({ membership, input }, ({ membership, input }) => ({
+      order_id: membership.order_id,
+      canceled_by: input.customer_id,
+    })),
   })
 
   releaseLockStep({ key: target.lock })

@@ -72,8 +72,8 @@ test.describe("evidence-rules", () => {
 
   // CORE-5b AC-20: task id มี suffix ตัวเล็กได้หนึ่งตัว
   test("evidenceDir รับ task id ที่มี suffix ตัวเล็ก (AC-20)", () => {
-    // GB-6b1: task ที่ spec แยกย่อย (suffix ตัวเล็ก + ตัวเลขหนึ่งหลัก)
-    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2"]) {
+    // GB-6b1: task ที่ spec แยกย่อย (suffix ตัวเล็ก + ตัวเลขหนึ่งหลัก); GB-N1: งานเล็กรวม nit (N นำหน้าตัวเลข)
+    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2", "GB-N1", "GB-N12"]) {
       expect(evidenceDir("/repo", { feature: "core", taskId })).toBe(
         path.join("/repo", "docs", "evidence", "core", taskId)
       )
@@ -91,6 +91,11 @@ test.describe("evidence-rules", () => {
       "GB-6b1a",
       "GB-6B1",
       "GB-61-",
+      "GB-N",
+      "GB-n1",
+      "GB-NN1",
+      "GB-N1a",
+      "GB-1N",
     ]) {
       expect(() => evidenceDir("/repo", { feature: "core", taskId })).toThrow()
     }
@@ -136,9 +141,11 @@ test.describe("evidence-rules", () => {
         { name: "CORE-5-tests.txt", isDirectory: false },
         { name: "CORE-4a-tests.txt", isDirectory: false },
         { name: "GB-6b1-tests.txt", isDirectory: false },
+        { name: "GB-N1-tests.txt", isDirectory: false },
         { name: "CORE-5", isDirectory: true },
         { name: "CORE-4a", isDirectory: true },
         { name: "GB-6b1", isDirectory: true },
+        { name: "GB-N1", isDirectory: true },
       ])
     ).toEqual([])
   })
@@ -149,12 +156,14 @@ test.describe("evidence-rules", () => {
         { name: "x.png", isDirectory: false },
         { name: "CORE-5.txt", isDirectory: false },
         { name: "core-5-tests.txt", isDirectory: false },
+        { name: "GB-N-tests.txt", isDirectory: false },
         { name: "screens", isDirectory: true },
       ])
     ).toEqual([
       expect.stringContaining("x.png"),
       expect.stringContaining("CORE-5.txt"),
       expect.stringContaining("core-5-tests.txt"),
+      expect.stringContaining("GB-N-tests.txt"),
       expect.stringContaining("screens/"),
     ])
   })
