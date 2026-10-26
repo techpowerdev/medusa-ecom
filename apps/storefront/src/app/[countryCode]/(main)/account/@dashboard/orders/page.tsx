@@ -5,8 +5,8 @@ import { notFound } from "next/navigation"
 import { listOrders } from "@lib/data/orders"
 
 export const metadata: Metadata = {
-  title: "Orders",
-  description: "Overview of your previous orders.",
+  title: "คำสั่งซื้อ",
+  description: "ภาพรวมคำสั่งซื้อที่ผ่านมาของคุณ",
 }
 
 export default async function Orders() {
@@ -18,11 +18,10 @@ export default async function Orders() {
 
   return (
     <div className="w-full" data-testid="orders-page-wrapper">
-      <div className="mb-8 flex flex-col gap-y-4">
-        <h1 className="text-2xl-semi">Orders</h1>
+      <div className="mb-8 flex flex-col gap-y-4" data-testid="account-page-header">
+        <h1 className="text-2xl-semi">คำสั่งซื้อ</h1>
         <p className="text-base-regular">
-          View your previous orders and their status. You can also create
-          returns or exchanges for your orders if needed.
+          ดูคำสั่งซื้อที่ผ่านมาและสถานะ รวมถึงขอคืนหรือเปลี่ยนสินค้าได้หากต้องการ
         </p>
       </div>
       <div>

@@ -1,0 +1,19 @@
+# CORE-4c1 (spec 01 CORE-4, ADR-014) — ผล test ในเครื่อง 2026-10-26
+
+## Red (ก่อนแก้): e2e/thai-ui-account.spec.ts — 3 failed (login-page, account-nav, verify-account-page ไม่มีอักษรไทย); vitest — 10 failed (rule ไม่เปิดกับ path account, ข้อความ error ใน lib/data/customer.ts เป็นอังกฤษ)
+
+## Green: pnpm --filter storefront test:unit (Vitest)
+ Test Files  14 passed (14)
+      Tests  125 passed (125)
+(เฉพาะ thai-ui-rule.test.ts + customer-messages-thai.test.ts: Tests  45 passed (45))
+
+## Green: Playwright e2e/thai-ui-account.spec.ts (+ ชุดที่แตะหน้า account: core-14-buy-login, core-store, thai-ui-shell)
+  ✓  1 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (816ms)
+  ✓  2 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (2.4s)
+  ✓  3 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (714ms)
+  3 passed (4.6s)
+core-14-buy-login + core-store + thai-ui-shell: 8 passed
+
+## lint (eslint .) / typecheck (tsc --noEmit)
+eslint: ✖ 34 problems (0 errors, 34 warnings)
+tsc: 0 errors

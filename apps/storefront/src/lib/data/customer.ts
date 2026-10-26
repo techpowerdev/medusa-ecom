@@ -196,7 +196,7 @@ async function completeLogin(
   if (typeof result === "object" && "location" in result) {
     return {
       state: "error",
-      error: "This login method isn't supported by the storefront.",
+      error: "ร้านไม่รองรับวิธีเข้าสู่ระบบนี้",
     }
   }
 
@@ -218,7 +218,7 @@ async function completeLogin(
   if (typeof result !== "string") {
     return {
       state: "error",
-      error: "Authentication requires additional steps that aren't supported.",
+      error: "การยืนยันตัวตนต้องใช้ขั้นตอนเพิ่มเติมที่ร้านยังไม่รองรับ",
     }
   }
 
@@ -385,7 +385,7 @@ export const updateCustomerAddress = async (
     (currentState.addressId as string) || (formData.get("addressId") as string)
 
   if (!addressId) {
-    return { success: false, error: "Address ID is required" }
+    return { success: false, error: "ไม่พบที่อยู่ที่ต้องการแก้ไข" }
   }
 
   const address = {
