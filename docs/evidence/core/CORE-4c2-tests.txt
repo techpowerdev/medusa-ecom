@@ -1,0 +1,118 @@
+# CORE-4c2 (PR 1/2) — ข้อความไทย cart, order, policy ทั้ง 5, common, skeletons + วันที่เขตเวลาไทย (กฎข้อ 42)
+# spec: docs/spec/01-core-medusa.md (CORE-4, AC-48/AC-49 ส่วน 4c2; follow-up รอบ 7 AC-78) — ADR-014
+# รันในเครื่อง 2026-10-26, Node 22.23.3, backend :9107 (DB medusa_core4c2), storefront next start :8107
+
+## Red (ก่อนแก้)
+- src/thai-ui-rule.test.ts: 14 failed | 38 passed — 'เปิด rule กับ <path ของ 4c2>' ล้มทุกตัวเพราะ config ยังไม่เปิด rule
+- src/lib/util/date.test.ts: ล้มที่ grep (Cannot find module './date' ก่อนมี helper; หลังมี helper พบ 4 จุดที่จัดรูปแบบวันที่เอง:
+  order-card:33, overview:100 (toLocaleDateString("th-TH")), order-details:31 (toDateString()), payment-details:50 (toLocaleString()))
+
+## Green — unit (Vitest) ไฟล์ของ task
+ ✓ src/lib/util/date.test.ts > formatDate / formatDateTime (AC-78) > TZ=UTC → วันที่ 26 ต.ค. ตามเวลาไทย 2ms
+ ✓ src/lib/util/date.test.ts > formatDate / formatDateTime (AC-78) > TZ=America/New_York → วันที่ 26 ต.ค. ตามเวลาไทย 1ms
+ ✓ src/lib/util/date.test.ts > formatDate / formatDateTime (AC-78) > ได้ข้อความเดียวกันทุก TZ 1ms
+ ✓ src/lib/util/date.test.ts > ไม่มีการจัดรูปแบบวันที่นอก helper (AC-78 grep) > helper ระบุ timeZone Asia/Bangkok 0ms
+ ✓ src/lib/util/date.test.ts > ไม่มีการจัดรูปแบบวันที่นอก helper (AC-78 grep) > ไฟล์อื่นใน src ไม่เรียก toLocale*String / toDateString / Intl.DateTimeFormat เอง 78ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>Hello</p> → error 1235ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <input placeholder="Search" /> → error 12ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>{`Cart (${price})`}</p> → error 14ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <button aria-label={"Close menu"} /> → error 7ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>สวัสดี</p> → ไม่มี error 9ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>{price} ฿</p> → ไม่มี error 6ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <input placeholder="ค้นหาสินค้า" className="txt-medium" data-testid="search-input" /> → ไม่มี error 6ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/layout.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/not-found.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/layout/templates/nav/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/home/components/hero/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/store/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/search/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/categories/[...category]/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/collections/[handle]/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/products/[handle]/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/store/templates/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/search/components/search-form/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/categories/templates/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/collections/templates/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/products/components/product-actions/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/buy/[items]/route.ts (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/layout.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/@login/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/@dashboard/profile/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/@dashboard/orders/details/[id]/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/verify-account/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/account/components/register/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/account/templates/account-layout.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/cart/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/cart/not-found.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/order/[id]/confirmed/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/contact/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/terms/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/privacy/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/returns/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/shipping/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/cart/templates/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/order/templates/order-details-template.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/policies/templates/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/common/components/native-select/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/common/components/filter-radio-group/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/skeletons/templates/skeleton-cart-page/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > ไม่เปิด rule กับ src/app/[countryCode]/(checkout)/layout.tsx (path ของ task อื่น) 6ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > ไม่เปิด rule กับ src/modules/checkout/components/payment/index.tsx (path ของ task อื่น) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > ไม่เปิด rule กับ src/modules/shipping/components/free-shipping-price-nudge/index.tsx (path ของ task อื่น) 0ms
+ ✓ src/thai-ui-rule.test.ts > ไม่มี i18n ในระยะแรก (AC-46) > ไม่มี dependency next-intl และไม่มีโฟลเดอร์ messages/ 0ms
+ ✓ src/thai-ui-rule.test.ts > ไม่มี i18n ในระยะแรก (AC-46) > ลบ component language-select แล้ว 0ms
+ Test Files  2 passed (2)
+      Tests  57 passed (57)
+
+## unit ทั้งหมดของ storefront (pnpm --filter storefront test:unit)
+ Test Files  16 passed (16)
+      Tests  153 passed (153)
+
+## pnpm lint && pnpm typecheck (root)
+exit 0 — apps/storefront lint: 0 errors, 34 warnings (warning เดิมของ starter ไม่เพิ่ม)
+
+## e2e (Playwright chromium, E2E_SAVE_EVIDENCE=1) — e2e/thai-ui-cart-order.spec.ts
+  ✓  1 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (697ms)
+  ✓  2 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (5.2s)
+  2 passed (6.5s)
+  test id ที่ตรวจ (AC-48): policy-title, policy-content (5 หน้า); cart-title, cart-items-header, cart-summary-title, cart-totals,
+  checkout-button; order-complete-heading, order-complete-summary-heading, cart-totals, shipping-details-heading,
+  payment-details-heading, order-help; order-details-heading, back-to-overview-button, order-status, order-payment-status,
+  order-summary, order-help, order-date; AC-78: browser timezone America/New_York, หน้า orders ไม่มี console error hydration
+
+## regression e2e ที่เกี่ยวข้อง (thai-ui-account, thai-ui-shell, core-store, store-content)
+  ✓   2 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (1.8s)
+  ✓   1 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (2.5s)
+  ✓   6 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (337ms)
+  ✓   5 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (1.3s)
+  ✓   7 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (196ms)
+  ✓   4 [chromium] › e2e/store-content.spec.ts:46:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (5.1s)
+  ✓   8 [chromium] › e2e/store-content.spec.ts:88:5 › AC-61, AC-74: title/description ของหน้า login และ profile ใช้ชื่อร้าน ไม่มีชื่อ starter (656ms)
+  ✓   3 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (5.9s)
+  ✘   9 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (2.0m)
+  ✓  10 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (704ms)
+    test-results/core-store-AC-1-AC-2-AC-3--9ddbd-→-shipped-email-→-My-orders-chromium/test-failed-1.png
+  1 failed
+  9 passed (2.1m)
+  หมายเหตุ: core-store AC-1..3 ล้มในเครื่องเพราะไม่มี NEXT_PUBLIC_STRIPE_KEY (ขั้น payment ของ checkout ต้องใช้ Stripe key —
+  PR นี้ไม่แตะ checkout) — CI มี secret และรันชุดเต็ม
+
+## แก้ตาม review #102 (หลัง merge origin/develop)
+### Red
+- thai-ui-rule.test.ts: 3 failed — fixture string ใน ternary/&&/template ของลูก JSX ("Loading...", "Out of stock", `Only ${price}`) ไม่ถูก rule จับ
+- หลังเพิ่ม selector: pnpm lint error 1 จุด src/modules/common/components/ui/index.tsx:97 no-restricted-syntax ("Loading...")
+### Green
+- unit storefront: Test Files 16 passed, Tests 158 passed; pnpm lint && pnpm typecheck exit 0 (0 errors); storefront build ผ่าน
+- e2e (chromium):
+  ✓  3 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (1.0s)
+  ✓  2 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (1.4s)
+  ✓  4 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (1.3s)
+  ✓  6 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (204ms)
+  ✓  1 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (5.0s)
+  ✓  7 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (378ms)
+  ✓  8 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (464ms)
+  ✓  5 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (5.6s)
+  8 passed (7.7s)
+  thai-ui-cart-order ตรวจ href ของ order-help-contact-link (/th/contact) และ order-help-returns-link (/th/returns) เพิ่ม
