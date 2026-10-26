@@ -1,7 +1,7 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { DEFAULT_REGION_STORE_POLICIES } from "../../src/lib/region-store-policies"
-import seedThailand, { RETURN_OPTION_TYPE_CODE } from "../../src/scripts/seed"
+import seedThailand, { RETURN_OPTION_TYPE_CODE, STOREFRONT_KEY_TITLE } from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 
 jest.setTimeout(120 * 1000)
@@ -236,14 +236,51 @@ medusaIntegrationTestRunner({
       }
     })
 
-    it("is idempotent: running seed again does not duplicate data", async () => {
-      const before = await api.get("/admin/products?fields=id", adminHeaders)
+    // CORE-10 AC-29 (spec 01 กฎข้อ 16): ชื่อสินค้าตัวอย่างเป็นภาษาไทย handle คงเดิม
+    it("AC-29 names every sample product in Thai and keeps the handles", async () => {
+      const { data } = await query().graph({ entity: "product", fields: ["title", "handle"] })
+      expect(data.map((p) => p.handle).sort()).toEqual(["sweatshirt", "t-shirt"])
+      for (const product of data) {
+        expect(product.title).toMatch(/[\u0E00-\u0E7F]/)
+      }
+    })
+
+    // CORE-10 AC-68 (review #70): ชื่อ option ของสินค้าตัวอย่าง (เดิม "Size") เป็นภาษาไทย
+    it("AC-68 names every option of the sample products in Thai", async () => {
+      const { data } = await query().graph({ entity: "product", fields: ["handle", "options.title"] })
+      const titles = data.flatMap((p) => (p.options ?? []).map((o) => o?.title))
+      expect(titles.length).toBeGreaterThan(0)
+      for (const title of titles) {
+        expect(title).toMatch(/[\u0E00-\u0E7F]/)
+      }
+    })
+
+    // CORE-10 AC-30 (spec 01 กฎข้อ 17): รันซ้ำบน DB ที่ seed ครบแล้วไม่สร้างอะไรเพิ่ม
+    it("AC-30 is idempotent: running seed again does not change resource counts", async () => {
+      const count = async (entity: string, filters?: Record<string, unknown>) =>
+        (await query().graph({ entity, fields: ["id"], filters })).data.length
+      const ENTITIES = [
+        "region",
+        "tax_region",
+        "stock_location",
+        "fulfillment_set",
+        "shipping_option",
+        "api_key",
+        "product_category",
+        "product",
+        "inventory_level",
+      ]
+      const snapshot = async () => ({
+        ...Object.fromEntries(await Promise.all(ENTITIES.map(async (e) => [e, await count(e)] as const))),
+        publishable_key: await count("api_key", { type: "publishable", title: STOREFRONT_KEY_TITLE }),
+      })
+
+      const before = await snapshot()
+      await seedThailand({ container: getContainer(), args: [] })
       await seedThailand({ container: getContainer(), args: [] })
 
-      const { data: regions } = await api.get("/admin/regions", adminHeaders)
-      const after = await api.get("/admin/products?fields=id", adminHeaders)
-      expect(regions.regions).toHaveLength(1)
-      expect(after.data.count).toEqual(before.data.count)
+      expect(await snapshot()).toEqual(before)
+      expect(before).toMatchObject({ region: 1, publishable_key: 1, product_category: 2, product: 2 })
     })
   },
 })
