@@ -1,0 +1,30 @@
+# GB-4 test evidence — 2026-10-26 21:14 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose; base origin/develop c7a676a
+# integration ในเครื่องรันเฉพาะไฟล์ของ task นี้ (ชุดเต็มให้ CI รัน)
+### Red (ก่อนเขียนโค้ด)
+group-outcome.unit.spec.ts  → FAIL: Cannot find module '../utils/group-outcome'
+templates.unit.spec.ts      → 3 failed (group buy emails: ยังไม่มี template group-buy-succeeded/failed), 14 passed
+group-buy-outcome.spec.ts   → FAIL: Cannot find module '../../src/jobs/group-buy-deadline' / workflows/group-buy/group-outcome
+### ตรวจ summary ของ draft order (review #68)
+draft order ตอน join: total=413 (หลังส่วนลด GB-*), summary.current_order_total=590 (ยอดเต็ม, ไม่อัปเดตหลัง freeze adjustment)
+→ payment collection ใช้ order.total (Medusa คำนวณ) ไม่ใช้ summary; test AC-1 assert amount = total < subtotal
+### pnpm lint (backend)
+No lint issues found (storefront มี warning เดิม 0 error ไม่เกี่ยวกับ GB-4)
+### pnpm typecheck
+apps/backend: Done / apps/storefront: Done
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit
+Test Suites: 44 passed, 44 total
+Tests:       406 passed, 406 total
+### integration-tests/http/group-buy-outcome.spec.ts
+      ✓ AC-1: 3 logged-in customers join pool P → succeeded, payment collection = discounted draft total, email with pay link (1942 ms)
+      ✓ AC-9: succeed twice (workflow + admin route) → no duplicate payment collections or emails (929 ms)
+      ✓ AC-3: 2 members at ends_at → job fails the group, cancels draft orders, emails both, no payment collection (1124 ms)
+      ✓ AC-9: fail twice (admin route + workflow) → no duplicate cancellation or emails; succeed after fail → 400 (669 ms)
+      ✓ admin succeed/fail: unknown group → 404, no admin token → 401 (131 ms)
+      ✓ AC-11: target_type=units 10 — 10 units → succeeded; 9 units → failed (1640 ms)
+      ✓ AC-12: target_type=people 3 — 3 customers (one with 2 orders) → succeeded; 2 customers with 4 orders → failed (3003 ms)
+      ✓ AC-22: active campaign past Medusa campaign ends_at → ended after the job; creating a group → 400 (220 ms)
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
