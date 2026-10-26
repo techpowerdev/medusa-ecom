@@ -139,6 +139,8 @@ pnpm --filter storefront build && pnpm --filter storefront start
   (`integration-tests/helpers/customer.ts`)
 - ฟอร์ม/ปุ่ม admin และ API ที่สร้างข้อมูลต้องกันกดซ้ำ/ยิงพร้อมกัน (disable ระหว่างส่ง + lock หรือ idempotent ฝั่ง backend)
 - Stripe ต้องตั้ง secret `STRIPE_TEST_API_KEY` และ `STRIPE_TEST_PUBLISHABLE_KEY` ของบัญชีเดียวกันพร้อมกัน (test mode เท่านั้น)
+- `when(...)` ใน workflow ที่ `.then()` คืนค่า ต้องตั้งชื่อคงที่ `when("<ชื่อ>", ...)` (lint `@medusajs/when-block-must-have-name`)
+  ไม่งั้น Medusa สร้าง step ชื่อสุ่ม `when-then-<ulid>` ทุกครั้งที่โหลด module → workflow async/retry ข้าม process (worker, restart) หา step ไม่เจอ
 - `medusaIntegrationTestRunner` reset DB ก่อนทุก test → ข้อมูลที่สร้างใน `beforeAll` ของ `describe` ซ้อนจะหายหลัง test แรก
   ให้สร้างข้อมูลที่ test ต้องใช้ใน `beforeEach` (หรือสร้างใน test นั้นเอง)
 - อย่าปล่อย error ของ axios หลุดออกจาก test (object มี circular reference → serialize เป็น JSON ไม่ได้ ทำให้ jest worker crash)
