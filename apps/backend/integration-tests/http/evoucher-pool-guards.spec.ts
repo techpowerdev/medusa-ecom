@@ -28,13 +28,14 @@ const csvForm = (content: string) => {
 
 type VariantSpec = { inventory_items?: { inventory_item_id: string; required_quantity: number }[] }
 
-// EV-10: กฎข้อ 12 (void กับ reservation), 13 (วันที่มีจริง), 14 (inventory item เดียว), 15 (ลบ pool + backfill)
+// EV-10: กฎข้อ 1 (ไม่มี shipping profile), 12 (void กับ reservation), 13 (วันที่มีจริง), 14 (inventory item เดียว), 15 (ลบ pool + backfill)
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let container: MedusaContainer
     let service: EvoucherModuleService
     let adminHeaders: { headers: Record<string, string> }
     let locationId: string
+    let profileIds: { digital: string; default: string }
     let partnerId: string
     let seq = 0
 
@@ -47,6 +48,15 @@ medusaIntegrationTestRunner({
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
       const { data: locations } = await query.graph({ entity: "stock_location", fields: ["id"] })
       locationId = locations[0].id
+      const { data: profiles } = await query.graph({
+        entity: "shipping_profile",
+        fields: ["id", "type"],
+        filters: { type: ["digital", "default"] },
+      })
+      profileIds = {
+        digital: profiles.find((p) => p.type === "digital")!.id,
+        default: profiles.find((p) => p.type === "default")!.id,
+      }
     })
 
     beforeEach(async () => {
@@ -72,13 +82,15 @@ medusaIntegrationTestRunner({
       return (data[0].inventory_items ?? []).map((i) => i!.inventory_item_id)
     }
 
-    const createProduct = async (variants: VariantSpec[]) => {
+    // shipping_profile_id ไม่ส่ง → product ไม่มี shipping profile (แบบที่ voucher ต้องเป็น — กฎข้อ 1)
+    const createProduct = async (variants: VariantSpec[], shipping_profile_id?: string) => {
       const values = variants.map((_, i) => `v${i}`)
       const { result } = await createProductsWorkflow(container).run({
         input: {
           products: [
             {
               title: `EV-10 voucher ${++seq}`,
+              ...(shipping_profile_id ? { shipping_profile_id } : {}),
               options: [{ title: "Value", values }],
               variants: variants.map((v, i) => ({
                 title: values[i],
@@ -93,8 +105,8 @@ medusaIntegrationTestRunner({
       return result[0].variants.map((v) => v.id)
     }
 
-    const createVoucherVariant = async () => {
-      const [variantId] = await createProduct([{}])
+    const createVoucherVariant = async (shipping_profile_id?: string) => {
+      const [variantId] = await createProduct([{}], shipping_profile_id)
       const [inventoryItemId] = await inventoryItemsOf(variantId)
       await createInventoryLevelsWorkflow(container).run({
         input: {
@@ -142,6 +154,55 @@ medusaIntegrationTestRunner({
     }
 
     const poolsOf = (variantId: string) => service.listEvoucherPools({ variant_id: variantId })
+
+    describe("AC-11 voucher product must not have any shipping profile (rule 1)", () => {
+      it.each(["digital", "default"] as const)(
+        "rejects a product in the %s shipping profile with 400, no pool and an untouched inventory item",
+        async (type) => {
+          const { variantId, inventoryItemId } = await createVoucherVariant(profileIds[type])
+
+          const res = await postPool(variantId)
+
+          expect(res.status).toBe(400)
+          expect(res.data.message).toMatch(/shipping profile/i)
+          expect(await poolsOf(variantId)).toHaveLength(0)
+          expect(await requiresShipping(inventoryItemId)).toBe(true)
+        }
+      )
+
+      it("accepts the product after the admin clears its shipping profile as the error message says", async () => {
+        const { variantId, inventoryItemId } = await createVoucherVariant(profileIds.digital)
+        const rejected = await postPool(variantId)
+        expect(rejected.data.message).toMatch(/shipping_profile_id: null/)
+        const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+          entity: "product_variant",
+          fields: ["product_id"],
+          filters: { id: variantId },
+        })
+
+        const cleared = await api.post(
+          `/admin/products/${data[0].product_id}?fields=*shipping_profile`,
+          { shipping_profile_id: null },
+          adminHeaders
+        )
+        expect(cleared.data.product.shipping_profile ?? null).toBeNull()
+        const res = await postPool(variantId)
+
+        expect(res.status).toBe(200)
+        expect(await requiresShipping(inventoryItemId)).toBe(false)
+      })
+
+      // ส่วน line item requires_shipping=false ของ product ที่ไม่มี profile: evoucher-hardening.spec.ts (AC-11 EV-8)
+      it("creates the pool (200) for a product without a shipping profile", async () => {
+        const { variantId, inventoryItemId } = await createVoucherVariant()
+
+        const res = await postPool(variantId)
+
+        expect(res.status).toBe(200)
+        expect(await poolsOf(variantId)).toHaveLength(1)
+        expect(await requiresShipping(inventoryItemId)).toBe(false)
+      })
+    })
 
     describe("AC-23 voucher variant needs exactly one unshared inventory item (rule 14)", () => {
       it("rejects a variant whose inventory item is shared with another variant", async () => {

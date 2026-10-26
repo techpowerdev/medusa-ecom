@@ -36,7 +36,8 @@ const FIELDS = [
   "low_stock_threshold",
 ]
 
-// กฎข้อ 1: voucher variant ต้อง manage_inventory=true (inventory = จำนวน code available)
+// กฎข้อ 1: voucher variant ต้อง manage_inventory=true (inventory = จำนวน code available) และ product ต้องไม่มี shipping profile
+// (Medusa 2.22.1 ตั้ง line item requires_shipping=true ทุกครั้งที่ product มี shipping profile ใดๆ — prepare-line-item-data)
 // กฎข้อ 14: inventory item เดียว (required_quantity=1) ที่ไม่มี variant อื่นใช้ร่วม — ไม่งั้น requires_shipping/stock กระทบ variant อื่น
 // 404 ถ้า variant ไม่มีอยู่จริง (link pool → variant เป็น read-only ไม่มี FK)
 export const validateEvoucherVariantStep = createStep(
@@ -48,6 +49,7 @@ export const validateEvoucherVariantStep = createStep(
       fields: [
         "id",
         "manage_inventory",
+        "product.shipping_profile.id",
         "inventory_items.inventory_item_id",
         "inventory_items.required_quantity",
         "inventory_items.inventory.variants.id",
@@ -65,6 +67,12 @@ export const validateEvoucherVariantStep = createStep(
     const items = variant.inventory_items ?? []
     if (!variant.manage_inventory || !items.length) {
       throw invalid("Voucher variant must have manage_inventory=true with an inventory item")
+    }
+    if (variant.product?.shipping_profile?.id) {
+      throw invalid(
+        "Voucher product must not have a shipping profile (Medusa requires shipping for line items of any product with one). " +
+          "Clear it on the product page (Shipping profile section) or via POST /admin/products/:id with { shipping_profile_id: null }, then try again"
+      )
     }
     const [item] = items
     const sharedWith = (item?.inventory?.variants ?? []).filter((v) => v?.id !== variant.id)
