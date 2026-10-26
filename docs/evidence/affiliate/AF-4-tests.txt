@@ -1,66 +1,63 @@
-# AF-4 (spec 05) — reversal + maturity job + index (status, matures_at) + payout ไม่หัก reversal ของ entry ที่ยัง pending (owner 2026-10-26) + แก้ตาม review #90
-# วันที่: 2026-10-26 21:58 +07, branch feat/AF-4-reversal-maturity (merge origin/develop แล้ว), Node v22.23.3
+# AF-4 (spec 05 รอบ 7) — reversal (กฎ 27, 28) + maturity job (Q8) + index (status, matures_at) + payout กฎ 19
+# วันที่: 2026-10-27 01:37 +07, branch feat/AF-4-reversal-maturity (merge origin/develop หลัง #91 แล้ว), Node v22.23.3
 
 ## Unit: src/modules/affiliate/utils/__tests__/reversal.unit.spec.ts
   affectedFractions
     ✓ affects every line fully when the order is canceled (1 ms)
     ✓ affects every line fully when refunds cover all captures (AC-5)
     ✓ uses the received return quantity of each line otherwise (Q3)
-    ✓ counts items received as damaged (dismissed) as returned too
+    ✓ counts items received as damaged (dismissed) as returned too (1 ms)
   planReversals
     ✓ reverses the full entry as a negative reversed entry (AC-5)
     ✓ reverses entry.amount × fraction for a partial return, rounded half-up to 2 decimals (Q3)
     ✓ keeps a fraction such as 1/3 exact until rounding the money (1 ms)
+    ✓ AC-30: qty 4 returned 1 then 3 more reverses −25 then −75; received 1 + dismissed 1 reverses −50
     ✓ reverses approved and paid entries too
     ✓ is idempotent: existing reversals count toward the target (redelivered/repeated events)
-    ✓ only adds the difference when a later event affects more of the line (1 ms)
+    ✓ only adds the difference when a later event affects more of the line
     ✓ never reverses more than earned and ignores unaffected lines
   selectMaturedEntryIds
     ✓ approves pending entries whose line net (including reversals) is positive (Q8)
 Test Suites: 1 passed, 1 total
-Tests:       12 passed, 12 total
+Tests:       13 passed, 13 total
 
 ## Integration (http): integration-tests/http/affiliate-reversal.spec.ts
-# Red ที่ยืนยันแล้ว: payout ก่อนแก้ listPayableCommissionEntries ได้ reversed -100 เพิ่ม; damaged ก่อนดึง return_dismissed_quantity ไม่มี reversal
+# Red ที่ยืนยันแล้วระหว่างทำ: payout ก่อนแก้ listPayableCommissionEntries ได้ reversed -100 เพิ่ม; damaged ก่อนดึง return_dismissed_quantity ไม่มี reversal; ก่อนสร้าง subscriber/workflow ทั้งไฟล์ล้ม (module not found)
+    ✓ AC-29: attribution racing a cancel of the same order nets 0 and leaves no unreversed pending entry (3783 ms)
     AC-5 reversal
-      ✓ a full refund appends a reversed −฿100 entry with matures_at null; net is 0 and the entry is untouched (1097 ms)
-      ✓ a partial refund without a return does not reverse anything (837 ms)
-      ✓ a refunded payment without an order is a no-op (no lock, no entry) (119 ms)
-      ✓ order.canceled reverses the whole commission (727 ms)
-      ✓ a return of 1 of 2 units received reverses half of the line (Q3) (937 ms)
-      ✓ a return of 1 of 2 units received as damaged (dismissed) reverses half of the line (Q3) (944 ms)
+      ✓ a full refund appends a reversed −฿100 entry with matures_at null; net is 0 and the entry is untouched (1919 ms)
+      ✓ AC-31: a partial refund reverses nothing; refunding the rest reverses every line to net 0; redelivery adds nothing (2241 ms)
+      ✓ a refunded payment without an order is a no-op (no lock, no entry) (365 ms)
+      ✓ order.canceled reverses the whole commission (937 ms)
+      ✓ AC-30: returning 1 of 4 reverses −฿25, returning the other 3 reverses −฿75 and the line nets 0 (3073 ms)
+      ✓ AC-30: one return with 1 received + 1 dismissed (damaged) of 4 reverses −฿50 (2025 ms)
+      ✓ AC-29: the reversal of a cancel reads the order only while holding affiliate-attribution:<order_id> (1040 ms)
     AC-6 maturity
-      ✓ hold_days=14: the entry stays pending before 14 days and becomes approved only after (708 ms)
-      ✓ a matured entry whose line is fully reversed is not approved (Q8) (703 ms)
-      ✓ approves matured entries in batches (914 ms)
-      ✓ the daily job approves entries that matured by now (503 ms)
+      ✓ hold_days=14: the entry stays pending before 14 days and becomes approved only after (1414 ms)
+      ✓ a matured entry whose line is fully reversed is not approved (Q8) (1587 ms)
+      ✓ approves matured entries in batches (1549 ms)
+      ✓ the daily job approves entries that matured by now (747 ms)
     payout with reversals
-      ✓ a full reversal before the hold ends does not reduce the payout (1154 ms)
-      ✓ a reversal after approval is deducted from the payout (800 ms)
+      ✓ a full reversal before the hold ends does not reduce the payout (1875 ms)
+      ✓ a reversal after approval is deducted from the payout (2206 ms)
+      ✓ AC-28: payouts pick a reversal only once its source line is approved or paid (entry_ids asserted) (369 ms)
 Test Suites: 1 passed, 1 total
-Tests:       12 passed, 12 total
+Tests:       15 passed, 15 total
 
-## Integration (http): affiliate-admin.spec.ts (payout AF-5/AF-9)
+## Integration (http): affiliate-admin.spec.ts
 Test Suites: 1 passed, 1 total
 Tests:       16 passed, 16 total
 
-## Integration (http): flash-sale-release.spec.ts (FS-11 ที่ CI ล้ม — resolveReversalOrderStep ไม่ query entity payment แล้ว)
-    ✓ a refunded payment without an order is a no-op (903 ms)
-    ✓ canceling an order without flash units is a no-op (687 ms)
-      ✓ order.canceled of an order with 2 flash units returns usage and units_sold by 2 (895 ms)
-      ✓ a full refund of the order gives the same result (839 ms)
-      ✓ a refund 0.01 short of the captured amount does not return anything (rule 10) (857 ms)
-      ✓ refunds in two parts (60% then the rest) return once, after the second part (905 ms)
-      ✓ order.canceled delivered twice in sequence (1821 ms)
-      ✓ order.canceled delivered twice concurrently (1295 ms)
-      ✓ full refund followed by cancel (1804 ms)
-      ✓ the first release of order.canceled fails once, the retry returns usage and units_sold once (11550 ms)
-      ✓ finding the order of a refunded payment fails once, the retry returns usage and units_sold once (11652 ms)
+## Integration (http): affiliate-attribution.spec.ts
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+
+## Integration (http): flash-sale-release.spec.ts
 Test Suites: 1 passed, 1 total
 Tests:       11 passed, 11 total
 
 ## Unit suite ทั้งหมด
-Test Suites: 45 passed, 45 total
-Tests:       413 passed, 413 total
+Test Suites: 47 passed, 47 total
+Tests:       474 passed, 474 total
 
-## pnpm lint && pnpm typecheck: ผ่าน (0 errors)
+## pnpm lint && pnpm typecheck && build: ผ่าน (0 errors)

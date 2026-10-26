@@ -23,6 +23,7 @@ import {
 import seedThailand from "../../src/scripts/seed"
 import { AFFILIATE_MODULE } from "../../src/modules/affiliate"
 import type AffiliateModuleService from "../../src/modules/affiliate/service"
+import affiliateAttributionHandler from "../../src/subscribers/affiliate-attribution"
 import affiliateReversalHandler from "../../src/subscribers/affiliate-reversal"
 import affiliateMaturityJob, { config as maturityJobConfig } from "../../src/jobs/affiliate-maturity"
 import { approveMaturedCommissionEntriesWorkflow } from "../../src/workflows/affiliate/approve-matured-entries"
@@ -116,6 +117,7 @@ medusaIntegrationTestRunner({
         affiliate_id?: string
         commission_value?: number
         second_line?: boolean
+        without_token?: boolean
       } = {}
     ) => {
       seq += 1
@@ -145,7 +147,9 @@ medusaIntegrationTestRunner({
           region_id: regionId,
           customer_id: customer.id,
           email,
-          metadata: { affiliate_token: await affiliates.signClickToken(ann.id, new Date(Date.now() - 60 * 1000)) },
+          metadata: opts.without_token
+            ? undefined
+            : { affiliate_token: await affiliates.signClickToken(ann.id, new Date(Date.now() - 60 * 1000)) },
           shipping_address: {
             first_name: "Somchai",
             last_name: "Jaidee",
@@ -172,12 +176,15 @@ medusaIntegrationTestRunner({
       const { result: order } = await andWait("order.placed", () =>
         completeCartWorkflow(container).run({ input: { id: cart.id } })
       )
+      if (opts.without_token) {
+        return { orderId: order.id, cartId: cart.id, affiliateId: ann.id, entry: undefined as never }
+      }
       const entries = await entriesOf(order.id)
       expect(entries).toHaveLength(opts.second_line ? 2 : 1)
       expect(entries.every((e) => e.status === "pending")).toBe(true)
       const entry = entries.find((e) => Number(e.amount) === 10 * (opts.commission_value ?? 10) * (opts.quantity ?? 1))!
       expect(entry).toBeDefined()
-      return { orderId: order.id, entry }
+      return { orderId: order.id, cartId: cart.id, affiliateId: ann.id, entry }
     }
 
     const entriesOf = (orderId: string) =>
@@ -402,6 +409,30 @@ medusaIntegrationTestRunner({
         ])
         expect(await netOf(orderId)).toBe(0)
       })
+    })
+
+    // AC-29 (กฎ 27): attribution กับ cancel ของ order เดียวกันพร้อมกัน — ไม่ว่าลำดับใดผลรวมต้องเป็น 0 และไม่มี pending ค้าง
+    it("AC-29: attribution racing a cancel of the same order nets 0 and leaves no unreversed pending entry", async () => {
+      for (let round = 0; round < 3; round++) {
+        const { orderId, cartId, affiliateId } = await placeAttributedOrder({ without_token: true })
+        await container.resolve(Modules.CART).updateCarts(cartId, {
+          metadata: { affiliate_token: await affiliates.signClickToken(affiliateId, new Date(Date.now() - 60 * 1000)) },
+        })
+
+        const results = await Promise.allSettled([
+          affiliateAttributionHandler({
+            event: { name: "order.placed", data: { id: orderId } },
+            container,
+          } as Parameters<typeof affiliateAttributionHandler>[0]),
+          andWait("order.canceled", () => cancelOrderWorkflow(container).run({ input: { order_id: orderId } })),
+        ])
+        expect(results.map((r) => r.status)).toEqual(["fulfilled", "fulfilled"])
+
+        const entries = await entriesOf(orderId)
+        expect(await netOf(orderId)).toBe(0)
+        const reversedLines = new Set(entries.filter((e) => e.status === "reversed").map((e) => e.line_item_id))
+        expect(entries.filter((e) => e.status === "pending" && !reversedLines.has(e.line_item_id))).toEqual([])
+      }
     })
 
     describe("AC-6 maturity", () => {
