@@ -47,3 +47,22 @@ exit=0
 ### pnpm --filter backend build
 Backend build completed successfully
 Frontend build completed successfully
+
+## รอบแก้ตาม review (REQUEST CHANGES) — 2026-10-26, หลัง merge origin/develop
+### Red — unit (ก่อนแก้ toShippedItems)
+✕ counts a kit of 2 inventory items shipped once as 1 unit
+✕ divides by required_quantity (variant needs 2 of an inventory item, 3 units shipped → row quantity 6)
+✕ sums rows of the same inventory item of a line
+Tests: 3 failed, 4 passed, 7 total
+### Green — unit ของ task
+PASS src/lib/__tests__/shipped-items.unit.spec.ts — Tests: 7 passed, 7 total
+### Green — integration http (เฉพาะไฟล์ของ task; เพิ่ม "skips the email when no fulfillment item matches the order")
+PASS integration-tests/http/order-shipped-items.spec.ts
+PASS integration-tests/http/order-notifications.spec.ts
+Tests:       7 passed, 7 total
+### pnpm --filter backend test:unit
+Test Suites: 34 passed, 34 total
+Tests:       282 passed, 282 total
+### pnpm lint / pnpm typecheck
+apps/backend lint: No lint issues found; apps/storefront: 0 errors (35 warnings เดิม)
+apps/backend typecheck: Done; apps/storefront typecheck: Done
