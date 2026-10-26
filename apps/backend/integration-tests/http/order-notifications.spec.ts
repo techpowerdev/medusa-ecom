@@ -119,7 +119,23 @@ medusaIntegrationTestRunner({
       })
 
       describe("shipment.created", () => {
-        const createShippedFulfillment = async (container: MedusaContainer, orderId: string) => {
+        // CORE-11: อีเมล shipped มีเฉพาะ item ของ fulfillment → fixture ต้องมี fulfillment item ที่ชี้ line ของ order
+        type Order = Awaited<ReturnType<typeof createOrder>>
+        const shippedItemsOf = (order: Order) =>
+          order.items!.map((item) => ({
+            line_item_id: item.id,
+            quantity: 2,
+            title: item.title,
+            sku: "",
+            barcode: "",
+          }))
+
+        const createShippedFulfillment = async (
+          container: MedusaContainer,
+          order: Order,
+          items: ReturnType<typeof shippedItemsOf> = shippedItemsOf(order)
+        ) => {
+          const orderId = order.id
           const fulfillmentModule = container.resolve(Modules.FULFILLMENT)
           const link = container.resolve(ContainerRegistrationKeys.LINK)
 
@@ -128,7 +144,7 @@ medusaIntegrationTestRunner({
             provider_id: "manual_manual",
             shipped_at: new Date(),
             delivery_address: { first_name: "Somchai", country_code: "th" },
-            items: [],
+            items,
             labels: [
               {
                 tracking_number: "TH123456789",
@@ -150,7 +166,7 @@ medusaIntegrationTestRunner({
         it("sends an order-shipped email with tracking labels (AC-2)", async () => {
           const container = getContainer()
           const order = await createOrder(container)
-          const fulfillment = await createShippedFulfillment(container, order.id)
+          const fulfillment = await createShippedFulfillment(container, order)
 
           await emitAndWait(container, "shipment.created", {
             id: fulfillment.id,
@@ -182,10 +198,23 @@ medusaIntegrationTestRunner({
           expect(email!.html).toContain("TH123456789")
         })
 
+        it("skips the email when no fulfillment item matches the order (CORE-11)", async () => {
+          const container = getContainer()
+          const order = await createOrder(container)
+          const fulfillment = await createShippedFulfillment(container, order, [])
+
+          await emitAndWait(container, "shipment.created", {
+            id: fulfillment.id,
+            no_notification: false,
+          })
+
+          expect(await listEmails(container, "order-shipped", fulfillment.id)).toHaveLength(0)
+        })
+
         it("skips the email when the shipment was created with no_notification", async () => {
           const container = getContainer()
           const order = await createOrder(container)
-          const fulfillment = await createShippedFulfillment(container, order.id)
+          const fulfillment = await createShippedFulfillment(container, order)
 
           await emitAndWait(container, "shipment.created", {
             id: fulfillment.id,
