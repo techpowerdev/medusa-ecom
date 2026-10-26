@@ -1,4 +1,6 @@
+import { randomBytes } from "node:crypto"
 import ResendNotificationProviderService from "../service"
+import { encryptSecret, parseEncryptionKey } from "../../evoucher/utils/crypto"
 
 const mockSend = jest.fn()
 
@@ -123,6 +125,46 @@ describe("ResendNotificationProviderService", () => {
           data: { order },
         } as any)
       ).rejects.toThrow(/Invalid `to` field/)
+    })
+    describe("evoucher.delivered (EV-4: ciphertext ใน notification.data)", () => {
+      const keyHex = randomBytes(32).toString("hex")
+      const key = parseEncryptionKey(keyHex)
+      const notification = {
+        to: "somchai@example.com",
+        channel: "email",
+        template: "evoucher.delivered",
+        data: {
+          order: { id: "order_01", display_id: 7 },
+          vouchers: [
+            {
+              title: "Lotus 500",
+              partner: { name: "Lotus" },
+              how_to_use: "แสดง code",
+              codes: [{ code: encryptSecret("LOTUS-0001", key), pin: encryptSecret("9876", key), expires_at: null }],
+            },
+          ],
+        },
+      } as any
+
+      it("decrypts code and PIN only when rendering the email", async () => {
+        mockSend.mockResolvedValue({ data: { id: "email_ev" }, error: null })
+        const service = new ResendNotificationProviderService(
+          { logger },
+          { api_key: "re_test_dummy", from: "Shop <shop@example.com>", evoucher_encryption_key: keyHex }
+        )
+
+        await service.send(notification)
+
+        const html = mockSend.mock.calls[0][0].html
+        expect(html).toContain("LOTUS-0001")
+        expect(html).toContain("9876")
+        expect(JSON.stringify(notification.data)).not.toContain("LOTUS-0001")
+      })
+
+      it("fails (notification marked failed) when the evoucher key is not configured", async () => {
+        await expect(buildService().send(notification)).rejects.toThrow(/EVOUCHER_ENCRYPTION_KEY/)
+        expect(mockSend).not.toHaveBeenCalled()
+      })
     })
   })
 })

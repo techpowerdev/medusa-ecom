@@ -9,8 +9,10 @@ import {
   exclusivityPromotionContext,
   hasCompletionConflict,
   introducesGroupBuyConflict,
+  isGroupBuyCode,
   resolvePromoCodes,
 } from "../../lib/promotion-exclusivity"
+import { GB_CART_NOT_COMPLETABLE } from "../../modules/group_buy/errors"
 
 // PROMO-1 (spec 03 กฎข้อ 6, spec 04 กฎข้อ 7, ADR-009)
 // hook เหล่านี้ไม่เขียนข้อมูล (เติม context / ปฏิเสธเท่านั้น) จึงไม่มี compensation
@@ -87,6 +89,17 @@ updateCartPromotionsWorkflow.hooks.validate(async ({ input, cart }, { container 
     throw notCombinable()
   }
 })
+
+// spec 04 กฎข้อ 14a (AC-26): ส่วนลดกลุ่มใช้ผ่าน draft order ของ joinGroupWorkflow เท่านั้น — cart ที่มี GB-* complete ไม่ได้ (400)
+export function assertNoGroupBuyCode(cart: CartLike) {
+  if (cartCodes(cart).some(isGroupBuyCode)) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      "A cart with a group buy code can't be checked out — the group discount is paid through the group's order",
+      GB_CART_NOT_COMPLETABLE
+    )
+  }
+}
 
 // ด่านสำรอง: cart ที่หลุดมาถึง checkout พร้อมชุด promotion ที่ห้ามซ้อน
 // ลงทะเบียนใน handler รวม `complete-cart-validate.ts` (spec 03 กฎข้อ 8 — hook หนึ่งตัวมี handler ได้ตัวเดียว)
