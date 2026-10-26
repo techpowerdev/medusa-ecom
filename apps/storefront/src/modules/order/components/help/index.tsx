@@ -4,16 +4,18 @@ import React from "react"
 
 const Help = () => {
   return (
-    <div className="mt-6">
-      <Heading className="text-base-semi">Need help?</Heading>
+    <div className="mt-6" data-testid="order-help">
+      <Heading className="text-base-semi">ต้องการความช่วยเหลือ?</Heading>
       <div className="text-base-regular my-2">
         <ul className="gap-y-2 flex flex-col">
           <li>
-            <LocalizedClientLink href="/contact">Contact</LocalizedClientLink>
+            <LocalizedClientLink href="/contact" data-testid="order-help-contact-link">
+              ติดต่อเรา
+            </LocalizedClientLink>
           </li>
           <li>
-            <LocalizedClientLink href="/contact">
-              Returns & Exchanges
+            <LocalizedClientLink href="/returns" data-testid="order-help-returns-link">
+              การคืนและเปลี่ยนสินค้า
             </LocalizedClientLink>
           </li>
         </ul>

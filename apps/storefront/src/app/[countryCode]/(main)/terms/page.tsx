@@ -7,22 +7,22 @@ export const dynamic = "force-static"
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: "Terms of service",
-  description: `Terms that apply to purchases from ${STORE_NAME}.`,
+  title: "ข้อกำหนดการใช้งาน",
+  description: `ข้อกำหนดสำหรับการสั่งซื้อสินค้าจาก ${STORE_NAME}`,
 }
 
 export default function TermsPage() {
   return (
-    <PolicyPage title="Terms of service">
+    <PolicyPage title="ข้อกำหนดการใช้งาน">
       <PlaceholderNotice />
       <p>
-        By placing an order with {STORE_NAME} you agree to these terms. Prices,
-        product availability and shipping options are shown on the product
-        pages and at checkout, and may change without notice.
+        การสั่งซื้อสินค้ากับ {STORE_NAME} ถือว่าคุณยอมรับข้อกำหนดเหล่านี้ ราคา
+        สินค้าคงเหลือ และตัวเลือกการจัดส่งแสดงอยู่ในหน้าสินค้าและขั้นตอนชำระเงิน
+        และอาจเปลี่ยนแปลงได้โดยไม่ต้องแจ้งล่วงหน้า
       </p>
       <p>
-        Orders are confirmed by email once payment is received. Returns and
-        refunds are handled according to our return policy.
+        เราจะยืนยันคำสั่งซื้อทางอีเมลเมื่อได้รับชำระเงิน การคืนสินค้าและการคืนเงิน
+        เป็นไปตามนโยบายการคืนสินค้าของร้าน
       </p>
     </PolicyPage>
   )
