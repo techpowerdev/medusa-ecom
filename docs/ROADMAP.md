@@ -2,7 +2,7 @@
 
 สัญลักษณ์: ☐ ยังไม่ทำ · ◐ อยู่ใน PR · ☑ merge เข้า develop แล้ว · 🚀 release แล้ว
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
-สถานะล่าสุดตาม PR #1–#71 (2026-10-26): PR ที่เปิดอยู่ = #64, #65, #67, #68, #69, #70, #71
+สถานะล่าสุดตาม PR #1–#74 (2026-10-26): PR ที่เปิดอยู่ = #67, #68, #71, #73, #74
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -18,7 +18,7 @@
 | CORE-4a | THB format + theme tokens + Noto Sans Thai + Vitest (ADR-008) | ☑ #19 |
 | CORE-5b ∥ CORE-8 ∥ CORE-9 | เครื่องมือ evidence e2e ∥ ฟอนต์ ui-preset → Noto Sans Thai ∥ ราคา THB หน้า store | ☑ #40 ∥ ☑ #41 ∥ ☑ #45 |
 | CORE-4b (4b1) | ESLint กันข้อความละติน, ลบ language-select, layout shell/home (ADR-014) | ☑ #57 |
-| CORE-4b2 | ข้อความไทย store/PLP, search, categories, collections, PDP, `/buy` + hreflang `th-<CC>` (owner 2026-10-26) | ◐ #70 |
+| CORE-4b2 | ข้อความไทย store/PLP, search, categories, collections, PDP, `/buy` + hreflang `th-<CC>` (owner 2026-10-26) | ☑ #70 |
 | CORE-4c ∥ 4d | ข้อความไทย: cart/account/order/policies ∥ checkout (รวมข้อความของ PAY-2) | ☐ (4c ← 4b2; 4d ← 4b2, PAY-2 ☑) |
 | CORE-5 | Playwright + convention การเก็บ evidence | ☑ #7 |
 | CORE-6 | store route เฉพาะ customer + e2e AC-1..4, AC-6 | ☑ #36 |
@@ -35,7 +35,7 @@
 | Task | งาน | สถานะ |
 |------|-----|--------|
 | CORE-10 | seed follow-up (ชื่อสินค้า + ชื่อ option ไทย, idempotency; ค่าส่งคง placeholder) | ☐ (← CORE-2; แนะนำหลัง CORE-6) |
-| CORE-11 | อีเมล shipped เฉพาะ item ใน fulfillment / `no_notification` | ◐ #64 |
+| CORE-11 | อีเมล shipped เฉพาะ item ใน fulfillment / `no_notification` | ☑ #64 |
 | CORE-12b | **ความปลอดภัย** ownership ของ `cart_id` ใน query products/variants (ควรก่อน release แรกที่เปิดจริง) | ☐ (← CORE-12) |
 | CORE-14 | storefront `/buy` บังคับล็อกอิน, ปิด UCP/`cart/resume`, no-JS login, ลบหน้า order transfer; เกิน ~400 LOC แยก 14a/14b | ☐ (← CORE-6) |
 | CORE-15 | หน้า `/store` หยุดยิงซ้ำเมื่อ search error | ☐ (← CORE-9) |
@@ -50,8 +50,8 @@
 | PAY-2 | UI checkout บัตร + PromptPay + e2e | ☑ #48 |
 | PAY-3 | หน้าชำระเงิน order (สำหรับ group buy) | ☐ (← PAY-2; merge หลัง PAY-5 ถ้าทำพร้อมกัน) |
 | PAY-4 | Refund e2e | ☐ (← PAY-2) |
-| PAY-5 | race QR หมดอายุ × จ่ายสำเร็จ — ยืนยันกรณี (b) + ADR-015 | ◐ #65 |
-| PAY-6 | ADR-015 A + D: guard `authorizePaymentSession` + 409 `PAYMENT_ALREADY_COMPLETED` + complete cart ทางสำรอง + alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + runbook (แยก 6a/6b ได้) | ☐ (← PAY-5 #65) — ต้อง merge ก่อน release ที่เปิด PromptPay จริง |
+| PAY-5 | race QR หมดอายุ × จ่ายสำเร็จ — ยืนยันกรณี (b) + ADR-015 | ☑ #65 |
+| PAY-6 | ADR-015 A + D: guard `authorizePaymentSession` + 409 `PAYMENT_ALREADY_COMPLETED` + complete cart ทางสำรอง + alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + runbook (แยก 6a/6b ได้) | ☐ (← PAY-5 ☑ #65) — ต้อง merge ก่อน release ที่เปิด PromptPay จริง |
 **Release v0.2.0** — ชำระเงินจริงใน test mode; checklist go-live สำหรับ live keys
 
 ## M3 E-voucher — **v0.3.0**
@@ -61,7 +61,7 @@ EV-9 ☐ (← EV-2, EV-6) · EV-10 ☐ (← EV-5, EV-8: reservation ตอน vo
 
 ## M4 Flash sale — **v0.4.0**
 PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ☑ #38 · FS-7 ☑ #53 · PROMO-2 ☑ #50 ·
-FS-10 ☐ (← FS-5: กันกดซ้ำด้วย useRef) · FS-6 ☐ (← FS-4, FS-7, PROMO-1, CORE-4b2) · FS-8 ◐ #69 (retry การคืนโควตา) · FS-11 ☐ (← FS-8: เส้นทาง `payment.refunded` เข้า workflow) ·
+FS-10 ◐ #74 (← FS-5: กันกดซ้ำด้วย useRef) · FS-6 ☐ (← FS-4, FS-7, PROMO-1, CORE-4b2) · FS-8 ☑ #69 (retry การคืนโควตา) · FS-11 ☐ (← FS-8: เส้นทาง `payment.refunded` เข้า workflow) ·
 FS-9 ☐ (ทางเลือก รอ owner สั่ง, ← FS-5)
 (FS-2 คืนโควตาเมื่อ cancel หรือ refund เต็มจำนวน ไม่ว่ามาจาก return — owner 2026-10-25)
 
@@ -74,7 +74,7 @@ GB-6 ☐ (← GB-2b)
 AF-1 ☑ #11 · AF-2 ☑ #66 · AF-5 ☑ #35 → AF-3 ☐ (← AF-2) → (AF-4 ∥ AF-7) → AF-8 ; AF-5 → AF-6 ∥ AF-9 ☐ (ยกเลิก payout draft)
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
-OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☐ · OPS-5 ☐ · OPS-7 ☐ (← OPS-2, PAY-1, CORE-3, AF-2 ☑) · OPS-8 ☐ (← OPS-2) · OPS-9 ◐ #72 (typecheck group-buy test กับ `.medusa/types` — แก้ไปแล้วใน GB-2a, PR มีแค่ evidence) ·
+OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☐ · OPS-5 ☐ · OPS-7 ☐ (← OPS-2, PAY-1, CORE-3, AF-2 ☑) · OPS-8 ☐ (← OPS-2) · OPS-9 ☑ #72 (typecheck group-buy test กับ `.medusa/types` — แก้ไปแล้วใน GB-2a, PR มีแค่ evidence) ·
 OPS-10 ☐ (← PAY-2: test ของ `classify-changes.sh` ใน CI + รายการ event ของ Stripe webhooks ตรงกับ `stripe listen`) ; OPS-4 ☐ (← FS-6, GB-7)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)

@@ -583,7 +583,7 @@ CORE-14 เพิ่มขอบเขต: ลบหน้า order transfer `(m
 ### Open questions (รอบ 5)
 - ~~Q-F4~~ ตัดสินแล้ว (owner 2026-10-26): CORE-18 ใช้เนื้อหา placeholder ภาษาไทยไปก่อน เก็บเป็นค่าคงที่ที่แก้ได้ง่าย (กฎข้อ 33) owner ส่งเนื้อหาจริง
   ภายหลัง = แก้ค่าคงที่ ไม่ต้องมี task ใหม่
-- ~~Q-F5~~ (CORE-20) **owner ตัดสิน 2026-10-26**: ปุ่มขอคืนแสดงเฉพาะภายใน N วันหลังได้รับของ (ใช้ `return_window_days` ใน region metadata ที่
+- ~~Q-F5~~ (CORE-20) **owner ตัดสิน 2026-10-26**: ปุ่มขอคืนแสดงเฉพาะภายใน N วันหลังได้รับของ (นับจาก `delivered_at` ของ fulfillment ถ้าไม่มีใช้ `shipped_at`; ใช้ `return_window_days` ใน region metadata ที่
   storefront อ่านอยู่แล้ว; backend ไม่บังคับใน v1) และซ่อนสำหรับ e-voucher/item ที่ไม่ต้องจัดส่ง (spec 02 กฎข้อ 6)
 
 หมายเหตุจาก CORE-1:

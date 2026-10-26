@@ -124,4 +124,6 @@ lock ในข้อ 5 ไม่ครอบช่วงนี้เพราะ
 - payment collection ของ **order** (หน้า `/account/orders/:id/pay` เช่น group buy — PAY-3/GB-5) ไม่มี `cart_id` → guard ใช้ lock key =
   `payment_collection_id` แทน (collection ที่มี cart ยังใช้ `cart_id` ตามข้อ 5 เพื่อให้ตรงกับ `processPaymentWorkflow`)
 - หน้า order pay ไม่ใช้ทางสำรอง complete cart (spec 06 AC-12b) — เมื่อได้ `PAYMENT_ALREADY_COMPLETED` ให้ poll สถานะ order ต่ออย่างเดียว
+- key นี้ไม่ตรงกับ lock ของ `processPaymentWorkflow` (ซึ่งใช้ `cart_id`) → PAY-3/PAY-6 ต้องมี integration test ยืนยันว่า guard กับ webhook
+  ไม่สร้าง payment ซ้อนบน collection ของ order; ถ้าซ้อนได้ให้หยุดและรายงาน planner
 - ไม่เปลี่ยนส่วนอื่นของ A + D (spec 06 Q6)
