@@ -12,6 +12,11 @@ export type ReleaseFlashSaleForOrderInput = {
   reason: "canceled" | "refunded"
 }
 
+// FS-8 (AC-14): step ที่ล้ม (เช่น DB ขาดชั่วคราว) ถูก workflow engine ของ Medusa ลองใหม่ทุก 10 วินาที สูงสุด 30 ครั้ง
+// (~5 นาที) — retryInterval ทำให้ workflow ถูกเก็บ (store) และ engine Redis ของ prod ตั้งเวลา retry ผ่าน queue จึงไม่หาย
+// แม้ process ที่รัน subscriber ล้ม; การคืนยัง idempotent ด้วย released_at (retry หลังสำเร็จไม่คืนซ้ำ)
+export const RELEASE_RETRY = { maxRetries: 30, retryInterval: 10 }
+
 // FS-2 (spec 03 "FS-2 คืนค่า"): หา cart ของ order ผ่าน link order.cart แล้วคืน usage + units_sold ตาม reservation
 export const releaseFlashSaleForOrderWorkflow = createWorkflow(
   "release-flash-sale-for-order",
@@ -26,7 +31,7 @@ export const releaseFlashSaleForOrderWorkflow = createWorkflow(
       ],
       filters: { id: input.order_id },
       options: { throwIfKeyNotFound: true },
-    })
+    }).config(RELEASE_RETRY)
 
     // cart_id ว่าง = ไม่ต้องคืน (ไม่มี cart หรือ refund ยังไม่เต็มจำนวน)
     const release = transform({ orders, input }, ({ orders, input }): ReleaseFlashSaleReservationsStepInput => {
@@ -38,7 +43,7 @@ export const releaseFlashSaleForOrderWorkflow = createWorkflow(
     })
 
     const released = when({ release }, ({ release }) => !!release.cart_id).then(() =>
-      releaseFlashSaleReservationsStep(release)
+      releaseFlashSaleReservationsStep(release).config(RELEASE_RETRY)
     )
 
     return new WorkflowResponse({ released })
