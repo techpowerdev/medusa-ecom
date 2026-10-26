@@ -1,0 +1,18 @@
+# CORE-20 — หน้าขอคืนสินค้า (AC-65) — ผลการทดสอบ 2026-10-26T20:45Z
+
+## Red (ก่อนแก้)
+- vitest src/lib/util/return-request.test.ts: Failed to load ./return-request (ยังไม่มี module) แล้ว buildReturnRequest is not a function
+- e2e core-20-return-request.spec.ts: order-return-button not found หลัง admin ส่งของ (retrieveOrder ของ starter ใช้ force-cache → order ค้างค่าก่อน fulfill)
+
+## pnpm --filter storefront test:unit (vitest)
+ Test Files  20 passed (20)
+      Tests  204 passed (204)
+
+## e2e (chromium, backend :9127 seed ใหม่, storefront next build/start :8127)
+รันร่วม: e2e/core-20-return-request.spec.ts, e2e/thai-ui-cart-order.spec.ts, e2e/core-23-profile-order.spec.ts → 7 passed
+  ✓  1 [chromium] › e2e/core-20-return-request.spec.ts:39:5 › AC-65: ลูกค้าขอคืนสินค้าจาก order ที่ส่งแล้ว → return requested ใช้ Standard return; order ที่ยังไม่ fulfill ไม่มีปุ่ม (3.4s)
+  1 passed (4.0s)
+
+## pnpm lint && pnpm typecheck
+lint: 0 errors (33 warnings เดิมของ starter ไม่มีในไฟล์ของ task)
+typecheck: backend + storefront ผ่าน
