@@ -1,4 +1,5 @@
 import { sdk } from "@lib/config"
+import { syncCartAffiliateToken } from "@lib/data/affiliate"
 import { getAuthHeaders, getCartId } from "@lib/data/cookies"
 import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
 import { getRegion } from "@lib/data/regions"
@@ -123,6 +124,8 @@ export async function POST(
     }
   }
 
+  // AF-2: cookie `aff` → cart metadata.affiliate_token
+  await syncCartAffiliateToken(cartId, headers)
   await activateCart(cartId)
 
   return NextResponse.redirect(
