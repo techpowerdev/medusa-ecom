@@ -336,17 +336,69 @@ medusaIntegrationTestRunner({
         expect(await service.listEvoucherCodes({ order_id: orderId, status: "delivered" })).toHaveLength(1)
       })
 
-      it("warns (but still delivers) when a voucher product is not in the Digital shipping profile", async () => {
-        // EV-10: voucher ไม่มี shipping profile เสมอ — เงื่อนไข warn จะปรับใน EV-11
+      // AC-31 (EV-11, กฎข้อ 1): warn เมื่อ product มี shipping profile ใดๆ — ตั้ง/ถอด profile ผ่าน link module หลังวาง order
+      // (ไม่ให้ validate-shipping ของ cart บังคับ method ของ profile นั้น)
+      const setShippingProfile = async (variantId: string, profileType: "default" | "digital" | null) => {
+        const query = container.resolve(ContainerRegistrationKeys.QUERY)
+        const link = container.resolve(ContainerRegistrationKeys.LINK)
+        const { data } = await query.graph({
+          entity: "product_variant",
+          fields: ["product.id", "product.shipping_profile.id"],
+          filters: { id: variantId },
+        })
+        const product = data[0].product!
+        if (product.shipping_profile?.id) {
+          await link.dismiss({
+            [Modules.PRODUCT]: { product_id: product.id },
+            [Modules.FULFILLMENT]: { shipping_profile_id: product.shipping_profile.id },
+          })
+        }
+        if (profileType) {
+          const { data: profiles } = await query.graph({
+            entity: "shipping_profile",
+            fields: ["id"],
+            filters: { type: profileType },
+          })
+          await link.create({
+            [Modules.PRODUCT]: { product_id: product.id },
+            [Modules.FULFILLMENT]: { shipping_profile_id: profiles[0].id },
+          })
+        }
+        return product.id
+      }
+      const profileWarnings = (warn: jest.SpyInstance) =>
+        warn.mock.calls.filter(([msg]) => typeof msg === "string" && /shipping profile/i.test(msg))
+
+      it("does not warn about shipping profile when the voucher product has none (AC-31)", async () => {
         const { variantId } = await createVoucher("NOPROF-1\n")
+        await setShippingProfile(variantId, null)
         const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
         const warn = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "warn")
 
         await captureAndWait(orderId)
 
-        expect(warn).toHaveBeenCalledWith(expect.stringMatching(/shipping profile/i))
+        expect(profileWarnings(warn)).toHaveLength(0)
         expect(await service.listEvoucherCodes({ order_id: orderId, status: "delivered" })).toHaveLength(1)
       })
+
+      it.each(["default", "digital"] as const)(
+        "warns once (but still delivers) when the voucher product has the %s shipping profile (AC-31)",
+        async (profileType) => {
+          const { variantId } = await createVoucher(`PROF-${profileType}-1\n`)
+          await setShippingProfile(variantId, null)
+          const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+          const productId = await setShippingProfile(variantId, profileType)
+          const warn = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "warn")
+
+          await captureAndWait(orderId)
+
+          const calls = profileWarnings(warn)
+          expect(calls).toHaveLength(1)
+          expect(calls[0][0]).toContain(productId)
+          expect(calls[0][0]).toContain(variantId)
+          expect(await service.listEvoucherCodes({ order_id: orderId, status: "delivered" })).toHaveLength(1)
+        }
+      )
 
       it("does nothing for an order without voucher items", async () => {
         const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({

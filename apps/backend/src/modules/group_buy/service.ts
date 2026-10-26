@@ -8,7 +8,7 @@ import type { Context } from "@medusajs/framework/types"
 import GroupBuyCampaign from "./models/group-buy-campaign"
 import GroupBuyGroup from "./models/group-buy-group"
 import GroupBuyMembership from "./models/group-buy-membership"
-import { joinProgress } from "./utils/join"
+import { joinProgress, leaveProgress } from "./utils/join"
 import type { GroupBuyProgress } from "./utils/target"
 
 export type AddGroupMembershipInput = {
@@ -19,6 +19,18 @@ export type AddGroupMembershipInput = {
   order_id: string
   units: number
   isNewPerson: boolean
+}
+
+export type CancelGroupMembershipInput = {
+  membership_id: string
+  group_id: string
+  isLastMembership: boolean
+}
+
+export type RestoreGroupMembershipInput = {
+  membership_id: string
+  group_id: string
+  before: GroupBuyProgress
 }
 
 const progressOf = (g: GroupBuyProgress): GroupBuyProgress => ({
@@ -51,6 +63,24 @@ class GroupBuyModuleService extends MedusaService({
     await this.revertGroupMembership_(input, sharedContext)
   }
 
+  // spec 04 leaveGroupWorkflow: membership → cancelled + ตัวนับของกลุ่มใน transaction เดียว
+  @InjectManager()
+  async cancelGroupMembership(
+    input: CancelGroupMembershipInput,
+    @MedusaContext() sharedContext: Context = {}
+  ) {
+    return await this.cancelGroupMembership_(input, sharedContext)
+  }
+
+  // compensation ของ cancelGroupMembership — membership กลับเป็น joined และคืนตัวนับเดิมใน transaction เดียว
+  @InjectManager()
+  async restoreGroupMembership(
+    input: RestoreGroupMembershipInput,
+    @MedusaContext() sharedContext: Context = {}
+  ) {
+    await this.restoreGroupMembership_(input, sharedContext)
+  }
+
   @InjectTransactionManager()
   protected async addGroupMembership_(
     input: AddGroupMembershipInput,
@@ -74,6 +104,35 @@ class GroupBuyModuleService extends MedusaService({
     @MedusaContext() sharedContext: Context = {}
   ) {
     await this.deleteGroupBuyMemberships(input.membership_id, sharedContext)
+    await this.updateGroupBuyGroups({ id: input.group_id, ...input.before }, sharedContext)
+  }
+
+  @InjectTransactionManager()
+  protected async cancelGroupMembership_(
+    input: CancelGroupMembershipInput,
+    @MedusaContext() sharedContext: Context = {}
+  ) {
+    const membership = await this.retrieveGroupBuyMembership(input.membership_id, {}, sharedContext)
+    const group = await this.retrieveGroupBuyGroup(input.group_id, {}, sharedContext)
+    const before = progressOf(group)
+    const [cancelled] = await this.updateGroupBuyMemberships(
+      [{ id: membership.id, status: "cancelled" as const }],
+      sharedContext
+    )
+    const progress = leaveProgress(before, membership.units, input.isLastMembership)
+    await this.updateGroupBuyGroups({ id: input.group_id, ...progress }, sharedContext)
+    return { membership: cancelled, before }
+  }
+
+  @InjectTransactionManager()
+  protected async restoreGroupMembership_(
+    input: RestoreGroupMembershipInput,
+    @MedusaContext() sharedContext: Context = {}
+  ) {
+    await this.updateGroupBuyMemberships(
+      [{ id: input.membership_id, status: "joined" as const }],
+      sharedContext
+    )
     await this.updateGroupBuyGroups({ id: input.group_id, ...input.before }, sharedContext)
   }
 }
