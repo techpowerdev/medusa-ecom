@@ -1,0 +1,36 @@
+# AF-7 test evidence — 2026-10-27 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose (DB medusa_af7)
+# รันในเครื่องเฉพาะ test ของ task นี้ (runInBand); ชุดเต็มให้ CI รัน
+### Red (ก่อนเขียนโค้ด)
+portal.unit.spec.ts: Cannot find module '../portal' (ยังไม่มี utils)
+affiliate-portal.spec.ts: Tests: 11 failed, 11 total — route ใหม่ตอบ 404 แทน 401/403/200 (ยังไม่มี route และ matcher เดิม /affiliate/me* ไม่คลุม /affiliate/products)
+### Green affiliate-portal.spec.ts (AC-13, AC-18, กฎ 16, Q2, Q6)
+      ✓ returns 401 without a token (355 ms)
+      ✓ returns 401 for a customer token (469 ms)
+      ✓ pending reaches only /affiliate/me (244 ms)
+      ✓ suspended reads me, earnings and payouts but not programs or products (310 ms)
+      ✓ active reaches every portal route (271 ms)
+      ✓ AC-13: an upcoming program lists its collection's products; draft programs never show (270 ms)
+      ✓ rule 16 / Q2: active scope is the union of variants, collections and direct categories (302 ms)
+      ✓ pages through programs ordered by starts_at (277 ms)
+      ✓ rejects an unknown status (218 ms)
+      ✓ lists published programs that are active or upcoming with their state (238 ms)
+      ✓ returns only the caller's earnings totals by status within [from, to) and own payouts (416 ms)
+Tests:       11 passed, 11 total
+### affiliate-auth.spec.ts (register/me เดิมยังผ่านหลังเปลี่ยน matcher)
+      ✓ registers an affiliate as pending without creating a customer (413 ms)
+      ✓ logs in at /auth/affiliate/emailpass and reads /affiliate/me (601 ms)
+      ✓ rejects registering twice with the same auth identity (259 ms)
+      ✓ rejects a duplicate affiliate code (290 ms)
+      ✓ requires authentication to register an affiliate (136 ms)
+      ✓ returns 401 on /affiliate/me without a token (100 ms)
+      ✓ returns 401 on /affiliate/me for a customer token (265 ms)
+      ✓ does not let a customer token register as an affiliate (301 ms)
+Tests:       8 passed, 8 total
+### affiliate-attribution.spec.ts -t AC-14 (ยืนยัน logic ของ AF-3: ผ่านตั้งแต่ Red ไม่ต้องแก้โค้ด)
+      ✓ AC-14: a share link clicked while the program is upcoming earns for an order after starts_at, not before (1175 ms)
+Tests:       16 skipped, 1 passed, 17 total
+### unit: src/modules/affiliate (รวม portal.unit.spec.ts)
+Tests:       74 passed, 74 total
+### pnpm --filter backend test:unit: Test Suites: 49 passed; Tests: 494 passed
+### pnpm lint (0 errors) && pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
