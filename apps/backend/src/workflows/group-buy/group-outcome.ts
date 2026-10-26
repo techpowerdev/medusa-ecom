@@ -16,6 +16,7 @@ import {
   sendNotificationsStep,
 } from "@medusajs/medusa/core-flows"
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
+import { GB_DEADLINE_OUTCOME_CHANGED } from "../../modules/group_buy/errors"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
 import {
   expiredGroupOutcome,
@@ -82,7 +83,8 @@ export const setGroupOutcomeStep = createStep(
     if (input.at_deadline && expiredGroupOutcome(group.campaign, group) !== input.outcome) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
-        `Group buy group ${group.id} no longer matches the ${input.outcome} outcome at its deadline`
+        `Group buy group ${group.id} no longer matches the ${input.outcome} outcome at its deadline`,
+        GB_DEADLINE_OUTCOME_CHANGED
       )
     }
     const previous = {

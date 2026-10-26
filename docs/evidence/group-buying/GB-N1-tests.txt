@@ -1,0 +1,53 @@
+# GB-N1 test evidence — 2026-10-27 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose
+# base: origin/develop 4552717 (รวม GB-3c #100, PAY-6b #97/#98) — integration ในเครื่องรันเฉพาะไฟล์ที่ task แตะ (ชุดเต็มให้ CI รัน)
+# ขอบเขต: spec 04 แถว GB-N1 (nit รวมรอบ 8) + spec 06 AC-6 (credit line) + spec 06 หมายเหตุรอบ 6 + spec 01 nit CORE-12b/CORE-18
+
+### Red (ก่อนแก้โค้ด)
+unit src/modules/group_buy/__tests__/group-outcome.unit.spec.ts
+  ✕ deadlineSettleLogLevel › at_deadline outcome mismatch → warn
+    TypeError: (0 , _groupoutcome.deadlineSettleLogLevel) is not a function   (5 failed, 17 passed)
+unit src/api/store/payment-collections/__tests__/stripe-session-guard.unit.spec.ts
+    Cannot find module '../errors'  (constant ยังอยู่ใน stripe-session-guard.ts)
+integration-tests/http/group-buy-join.spec.ts -t "GB-N1"
+  ✕ GB-N1 (GB-3c): confirming the freeze order change fails → order change declined, no adjustment left on the draft order
+    Expected: "canceled"  Received: "pending"
+    (order change ที่ค้าง pending ทำให้ cancelOrderWorkflow ใน compensation ยกเลิก draft order ไม่ได้)
+  ✕ GB-N1: someone else's membership → 404 without taking the group lock
+    expect(jest.fn()).not.toHaveBeenCalled() — Received 1 call: "group_buy:group:gbgrp_…"
+
+### Green
+integration-tests/http/group-buy-join.spec.ts -t "GB-N1"
+  ✓ GB-N1 (GB-3c): confirming the freeze order change fails → order change declined, no adjustment left on the draft order
+    - order change type edit = ["declined"], draft order = canceled, items.adjustments = [], ไม่มี membership, ตัวนับ [0,0,0]
+  ✓ GB-N1: someone else's membership → 404 without taking the group lock
+unit group-outcome.unit.spec.ts: Tests 22 passed (deadlineSettleLogLevel: GB_DEADLINE_OUTCOME_CHANGED → warn ทั้ง MedusaError
+  และ object ที่ผ่าน serializeError; อย่างอื่น → error)
+integration group-buy-outcome.spec.ts (review #89): errors[0].error.code = GB_DEADLINE_OUTCOME_CHANGED
+
+### Regression (ไฟล์ที่ task แตะ)
+pnpm test:integration:http group-buy-join group-buy-outcome
+  PASS group-buy-outcome.spec.ts, PASS group-buy-join.spec.ts — Tests: 41 passed, 41 total
+pnpm test:integration:http group-buy-draft-order-summary payment-session-guard
+  PASS ทั้งสองไฟล์ — Tests: 15 passed, 15 total
+pnpm --filter backend test:unit — Test Suites: 47 passed; Tests: 477 passed
+pnpm --filter storefront exec playwright test --project unit — 29 passed
+pnpm lint && pnpm typecheck — ผ่าน (0 errors; warning 34 รายการของ storefront มีอยู่เดิม ไม่ใช่ไฟล์ที่แตะ)
+pnpm --filter backend build — Backend + Frontend build completed successfully
+
+### e2e ในเครื่อง (backend medusa develop :9110, DB medusa_gbn1 แยก, ลบแล้ว)
+e2e/group-buy-admin-form.spec.ts — 3 passed
+  ✓ AC-32 … gb-ends-at-warning: ไม่มี class text-ui-fg-error, มี text-ui-tag-orange-text
+    (computed color rgb(154, 52, 18) สีส้ม เทียบสี error rgb(225, 29, 72))
+  ✓ AC-33 ค้นหาด้วยชื่อ (เดิม)
+  ✓ AC-33 selection คงอยู่ข้ามหน้า: สินค้า 6 ตัว หน้าละ 5 → เลือกหน้า 1 + หน้า 2 → กลับหน้า 1 ยังติ๊ก, count 2, target_rules = id ทั้งสอง
+    (ครั้งแรก test ล้มเพราะคลิกก่อนผลค้นหา debounce มาถึง — แก้ test ให้รอแถวที่ตรงคำค้นก่อน ไม่ใช่บั๊กของ picker)
+e2e/payments-refund.spec.ts (Stripe test mode) — 1 passed
+  ✓ AC-6 … partially_refunded และมี credit line ฿100 (GET /admin/orders/:id fields *credit_lines → 1 รายการ |amount| = 100)
+
+### ไม่มี test อัตโนมัติ (ตรวจด้วย typecheck/อ่านโค้ด)
+- canceled_by: customer_id ที่ส่งให้ cancelOrderWorkflow — Medusa 2.22.1 ใช้แค่เป็น created_by ของ refundCapturedPaymentsWorkflow
+  (draft order ไม่มี payment ที่ capture) จึงไม่มีผลที่ assert ได้จากภายนอก
+- ตัด as any ใน cancelGroupMembershipStep — typecheck ผ่าน
+- comment provider_id: ยืนยันจาก source @medusajs/order 2.22.1 utils/apply-order-changes.js (lineItemAdjustmentsToCreate ไม่มี provider_id)
+- CORE-12b: src/api/store/ownership/middlewares.ts บน develop เหลือ comment allowUnauthenticated ที่เดียวแล้ว (ไม่ต้องแก้)

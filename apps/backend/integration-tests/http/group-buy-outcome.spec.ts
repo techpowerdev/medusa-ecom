@@ -15,6 +15,7 @@ import { failGroupWorkflow, succeedGroupWorkflow } from "../../src/workflows/gro
 import groupBuyDeadlineJob from "../../src/jobs/group-buy-deadline"
 import { renderEmailTemplate } from "../../src/modules/resend/templates"
 import { GROUP_BUY_MODULE } from "../../src/modules/group_buy"
+import { GB_DEADLINE_OUTCOME_CHANGED } from "../../src/modules/group_buy/errors"
 import type GroupBuyModuleService from "../../src/modules/group_buy/service"
 
 jest.setTimeout(240 * 1000)
@@ -306,6 +307,8 @@ medusaIntegrationTestRunner({
           throwOnError: false,
         })
         expect(errors[0]?.error?.type).toEqual("not_allowed")
+        // GB-N1: code นี้ทำให้ deadline job log เป็น warn (deadlineSettleLogLevel)
+        expect(errors[0]?.error?.code).toEqual(GB_DEADLINE_OUTCOME_CHANGED)
         expect((await groupOf(group.id)).status).toEqual("open")
         const members = await membershipsOf(group.id)
         expect(members.map((m) => m.status)).toEqual(["joined", "joined"])

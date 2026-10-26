@@ -353,6 +353,8 @@ export const createGroupDraftOrderStep = createStep(
 // เพราะ order ถูกยกเลิกโดย compensation ของขั้นก่อนหน้า
 // GB-3c (กฎข้อ 18): ใส่ adjustment ผ่าน order change (ITEM_ADJUSTMENTS_REPLACE) แล้ว confirm — Order module คำนวณ
 // summary (current_order_total/pending_difference) ใหม่จากยอดหลังส่วนลดเอง ไม่เขียนตัวเลข summary เอง
+// หมายเหตุ (GB-N1): `provider_id` ของ adjustment ที่ส่งใน action ไม่ถูกเก็บ — `applyOrderChanges` ของ Medusa 2.22.1
+// สร้าง adjustment ใหม่โดยไม่คง `provider_id` ไว้ (ไม่กระทบยอด เพราะส่วนลดอ้าง code/promotion_id)
 export const freezeDraftOrderAdjustmentsStep = createStep(
   "freeze-draft-order-adjustments",
   async (input: { cart_id: string; order_id: string }, { container }) => {
@@ -397,7 +399,14 @@ export const freezeDraftOrderAdjustmentsStep = createStep(
         },
       })) as any
     )
-    await orderModule.confirmOrderChange(change.id)
+    try {
+      await orderModule.confirmOrderChange(change.id)
+    } catch (error) {
+      // GB-N1: order change ที่ค้าง pending ทำให้ cancelOrderWorkflow ใน compensation ยกเลิก draft order ไม่ได้
+      // → decline ด้วยกลไกของ Medusa ก่อนโยน error ให้ compensation ของขั้นก่อนหน้ารัน
+      await orderModule.declineOrderChange(change.id)
+      throw error
+    }
     return new StepResponse(undefined)
   }
 )
