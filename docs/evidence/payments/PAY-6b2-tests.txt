@@ -73,3 +73,22 @@ unit src/__tests__/ops-runbook.unit.spec.ts
     ✓ มีบรรทัด OPS_ALERT_EMAIL= (1 ms)
 Tests:       9 passed, 9 total
 pnpm --filter backend test:unit: Tests 466 passed; typecheck ok; lint: No lint issues found
+
+== รอบ review r3 (#97): runbook หัวข้อมี alert (Refunds ของ PI, payments ไม่ว่าง → script) + script รายงาน refunded-elsewhere ==
+Red: unit ops-runbook 1 failed; integration refund-orphan-payment "refunded-elsewhere" 1 failed
+Green: integration (http) refund-orphan-payment.spec.ts + payment-webhook-orphan.spec.ts
+PASS integration-tests/http/refund-orphan-payment.spec.ts (8.203 s)
+PASS integration-tests/http/payment-webhook-orphan.spec.ts (6.42 s)
+Tests:       16 passed, 16 total
+unit src/__tests__/ops-runbook.unit.spec.ts
+    ✓ มีหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" (1 ms)
+    ✓ อ้าง alert และ code ของ guard
+    ✓ ระบุขั้นตอน: ค้น PI ใน Stripe dashboard, ยืนยันไม่มี order, refund เต็มจำนวน, แจ้งลูกค้า, บันทึก incident
+    ✓ มีกรณีไม่มี alert: ให้ลูกค้าเปิดหน้า checkout อีกครั้ง (storefront เรียก complete ตาม AC-12b) (1 ms)
+    ✓ กรณีไม่มี alert ที่ refund ใน Stripe: ปิดทางที่ cart จะถูก complete ทีหลัง (review #97)
+    ✓ กรณีมี alert: ตรวจ Refunds ของ PI ก่อน และถ้าพบ payment ใน Medusa ให้ใช้ script ห้ามใช้ dashboard (review #97 r3)
+    ✓ AC-16b กรณีไม่มี alert: ตรวจก่อน refund แล้ว refund ผ่าน script refund-orphan-payment ไม่ใช่ Stripe dashboard (ADR-015 ภาคผนวก 2)
+    ✓ มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้) (1 ms)
+    ✓ ไม่แนะนำแก้ DB ด้วย SQL ตรง
+    ✓ มีบรรทัด OPS_ALERT_EMAIL= (1 ms)
+Tests:       10 passed, 10 total

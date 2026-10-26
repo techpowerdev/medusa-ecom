@@ -75,6 +75,32 @@ medusaIntegrationTestRunner({
         expect(await refundsOf(container, paymentId)).toHaveLength(1)
       })
 
+      it("reports a refund made concurrently by someone else (e.g. completeCartWorkflow compensation) as refunded-elsewhere", async () => {
+        const container = getContainer()
+        const { paymentId } = await capturedPayment(container)
+        const payment = container.resolve(Modules.PAYMENT)
+        const original = payment.refundPayment.bind(payment)
+        // refund ของอีกฝั่งสำเร็จก่อน → refund ของ script ล้ม (Stripe ปฏิเสธเกินยอด) และ refundPaymentsStep กลืน error
+        jest.spyOn(payment, "refundPayment").mockImplementationOnce(async (input: any) => {
+          await original({ ...input, note: "Refunded due to cart completion failure" })
+          throw new Error("amount exceeds charge")
+        })
+
+        const result = await refundOrphanPayment(container, paymentId)
+
+        expect(result).toEqual({ status: "refunded-elsewhere", amount: "0" })
+        expect(await refundsOf(container, paymentId)).toHaveLength(1)
+      })
+
+      it("throws when the provider refund fails and nothing was refunded", async () => {
+        const container = getContainer()
+        const { paymentId } = await capturedPayment(container)
+        jest.spyOn(container.resolve(Modules.PAYMENT), "refundPayment").mockRejectedValueOnce(new Error("stripe down"))
+
+        await expect(refundOrphanPayment(container, paymentId)).rejects.toThrow(/ไม่สำเร็จ/)
+        expect(await refundsOf(container, paymentId)).toHaveLength(0)
+      })
+
       it("refuses a payment whose collection belongs to an order (use the admin refund instead)", async () => {
         const container = getContainer()
         const { paymentId, collectionId } = await capturedPayment(container)

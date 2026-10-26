@@ -34,7 +34,7 @@ async function refundable(container: MedusaContainer, paymentId: string) {
 export async function refundOrphanPayment(
   container: MedusaContainer,
   paymentId: string
-): Promise<{ status: "refunded" | "already-refunded"; amount: string }> {
+): Promise<{ status: "refunded" | "already-refunded" | "refunded-elsewhere"; amount: string }> {
   const before = await refundable(container, paymentId)
   if (before.orderId) {
     throw new MedusaError(
@@ -49,25 +49,38 @@ export async function refundOrphanPayment(
     return { status: "already-refunded", amount: "0" }
   }
 
-  // ไม่ lock: ถ้า compensation ของ completeCartWorkflow (compensatePaymentIfNeededStep) refund payment นี้พร้อมกัน
-  // validatePaymentsRefundStep ของ Medusa กันไม่ให้ refund เกินยอดที่ capture — ฝั่งที่มาทีหลังจะล้ม แล้วรันใหม่จะได้ "refund แล้ว"
+  // ไม่ lock: compensation ของ completeCartWorkflow (compensatePaymentIfNeededStep) อาจ refund payment นี้พร้อมกัน
+  // validatePaymentsRefundStep อ่านยอดก่อน refund จึงไม่กันกรณีพร้อมกันจริง — สิ่งที่กัน refund เกินคือ Stripe ปฏิเสธ refund เกินยอดของ charge
+  // ฝั่งที่มาทีหลังจึงล้ม แล้ว script รายงานตามจริงว่าใครเป็นผู้ refund (refunded / refunded-elsewhere)
   container
     .resolve(ContainerRegistrationKeys.LOGGER)
     .warn(
-      `refund-orphan-payment: กำลัง refund ${before.remaining.toString()} ของ payment ${paymentId} — ถ้าล้มเพราะเกินยอดที่ capture ` +
-        `อาจชนกับ refund อัตโนมัติ (Refunded due to cart completion failure) ให้ตรวจ refunds แล้วรันใหม่`
+      `refund-orphan-payment: กำลัง refund ${before.remaining.toString()} ของ payment ${paymentId} — อาจชนกับ refund อัตโนมัติ ` +
+        `(Refunded due to cart completion failure) ถ้าเกิดขึ้น script จะรายงานผลตาม refunds จริง`
     )
-  await refundPaymentsWorkflow(container).run({
-    input: [{ payment_id: paymentId, amount: before.remaining, note: "ADR-015: payment ที่ไม่มี order" }],
-  })
+  let refundedByScript = false
+  try {
+    const { result } = await refundPaymentsWorkflow(container).run({
+      input: [{ payment_id: paymentId, amount: before.remaining, note: "ADR-015: payment ที่ไม่มี order" }],
+    })
+    // refundPaymentsStep ของ Medusa log error แทนการ throw เมื่อ provider ล้ม → payment ที่ refund สำเร็จเท่านั้นอยู่ใน result
+    refundedByScript = (result ?? []).some((payment) => payment.id === paymentId)
+  } catch (error) {
+    // เช่น validatePaymentsRefundStep เห็น refund ของอีกฝั่งแล้ว → ตัดสินจาก refunds จริงด้านล่าง
+    container
+      .resolve(ContainerRegistrationKeys.LOGGER)
+      .warn(`refund-orphan-payment: refundPaymentsWorkflow ล้ม: ${error instanceof Error ? error.message : String(error)}`)
+  }
 
-  // refundPaymentsStep ของ Medusa log error แทนการ throw เมื่อ provider ล้ม → ตรวจผลจริงจาก refunds
   const after = await refundable(container, paymentId)
   if (MathBN.gt(after.remaining, 0)) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      `refund payment ${paymentId} ไม่สำเร็จ (ยังเหลือ ${after.remaining.toString()}) — ดู log ของ provider แล้วรันใหม่`
+      `refund payment ${paymentId} ไม่สำเร็จ (ยังเหลือ ${after.remaining.toString()}) — ดู log ของ provider และ refunds แล้วรันใหม่`
     )
+  }
+  if (!refundedByScript) {
+    return { status: "refunded-elsewhere", amount: "0" }
   }
   return { status: "refunded", amount: before.remaining.toString() }
 }
@@ -83,6 +96,8 @@ export default async function refundOrphanPaymentScript({ container, args }: Exe
     .info(
       result.status === "refunded"
         ? `refund-orphan-payment: refund สำเร็จ payment ${paymentId} amount=${result.amount}`
-        : `refund-orphan-payment: payment ${paymentId} refund แล้ว (ครบยอดที่ capture) — ไม่ refund ซ้ำ`
+        : result.status === "refunded-elsewhere"
+          ? `refund-orphan-payment: payment ${paymentId} ถูก refund ครบโดยอีกฝั่งระหว่างรัน (เช่น compensation ของ completeCartWorkflow) — script ไม่ได้ refund`
+          : `refund-orphan-payment: payment ${paymentId} refund แล้ว (ครบยอดที่ capture) — ไม่ refund ซ้ำ`
     )
 }

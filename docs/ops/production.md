@@ -66,10 +66,13 @@ subscriber `apps/backend/src/subscribers/payment-webhook-orphan.ts` เขีย
 (ไม่ตั้ง env = มีแต่ log พร้อม warning — ตั้งค่าใน env ของ server และ worker) Medusa ลบ session แบบ hard delete จึงไม่มี
 `payment_collection_id`/`cart_id` ใน alert — ใช้อีเมลลูกค้าใน Stripe แทน
 1. ค้นหา PI ใน Stripe dashboard ด้วยค่า `payment_intent` จาก alert (account และ mode ให้ตรงกับ environment) ตรวจว่า `succeeded`,
-   จำนวนเงิน และ `metadata.session_id` ตรงกับ alert จดอีเมลลูกค้าจาก billing details
+   จำนวนเงิน และ `metadata.session_id` ตรงกับ alert จดอีเมลลูกค้าจาก billing details — ดู Refunds ของ PI ก่อนเสมอ (PI ยังแสดง `succeeded`
+   แม้ refund ครบแล้ว) ถ้า refund ครบแล้ว ข้ามข้อ 3 ไปแจ้งลูกค้าและบันทึก incident
 2. ยืนยันว่าไม่มี order อ้าง PI นี้: `GET /admin/payments?payment_session_id=<session_id>` ต้องได้ `payments: []` (ไม่มี payment ใน Medusa
    = ไม่มี order) และใน admin → Orders ค้นด้วยอีเมลลูกค้าช่วงเวลาเดียวกัน ไม่พบ order ที่ payment อ้าง PI นี้ — ถ้าพบ order **หยุด** ไม่ต้อง refund
-3. refund เต็มจำนวนใน Stripe dashboard (หน้า PI → Refund) — ใช้ได้เฉพาะกรณีนี้ที่ PI ไม่มี payment ใน Medusa (session ถูกลบ script จึงหา payment
+   ถ้าได้ payments ไม่ว่าง (เช่น compensation ของ `completeCartWorkflow` ลบ session เดิมแล้วสร้าง session ใหม่ทั้งที่ refund ล้มเงียบ → payment captured
+   ค้างอยู่ใน Medusa) → ทำตามหัวข้อ "ไม่มี alert" ข้อ 3–4 (ตรวจก่อน refund + script `refund-orphan-payment`) **ห้ามใช้ Stripe dashboard**
+3. refund เต็มจำนวนใน Stripe dashboard (หน้า PI → Refund) — ใช้ได้เฉพาะเมื่อข้อ 2 ได้ `payments: []` (PI ไม่มี payment ใน Medusa — session ถูกลบ script จึงหา payment
    ไม่ได้) ตามข้อยกเว้นของ spec 06 กฎข้อ 4 ใน ADR-015
 4. แจ้งลูกค้า (อีเมลจากข้อ 1): การชำระไม่สำเร็จเป็นคำสั่งซื้อ คืนเงินเต็มจำนวนแล้ว cart ยังอยู่ สั่งซื้อใหม่ได้
 5. บันทึก incident: PI, `session_id`, จำนวนเงิน, อีเมลลูกค้า, เวลาใน alert, เวลา refund และผู้ทำ

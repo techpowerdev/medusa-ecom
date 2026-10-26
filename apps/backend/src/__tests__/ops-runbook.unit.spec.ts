@@ -54,6 +54,16 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
     expect(noAlert).toContain("cancelOrderWorkflow")
   })
 
+  it("กรณีมี alert: ตรวจ Refunds ของ PI ก่อน และถ้าพบ payment ใน Medusa ให้ใช้ script ห้ามใช้ dashboard (review #97 r3)", () => {
+    const alert = body!.slice(body!.search(/### มี alert/), body!.search(/### .*ไม่มี alert/))
+    // PI ยังแสดง succeeded แม้ refund ครบแล้ว → ต้องดู Refunds ของ PI ก่อน
+    expect(alert).toContain("Refunds ของ PI")
+    // compensation ของ completeCartWorkflow อาจทิ้ง payment captured ไว้ (refund ล้มเงียบ) แล้วสร้าง session ใหม่
+    expect(alert).toContain("payments ไม่ว่าง")
+    expect(alert).toContain("ข้อ 3–4")
+    expect(alert).toContain("ห้ามใช้ Stripe dashboard")
+  })
+
   it("AC-16b กรณีไม่มี alert: ตรวจก่อน refund แล้ว refund ผ่าน script refund-orphan-payment ไม่ใช่ Stripe dashboard (ADR-015 ภาคผนวก 2)", () => {
     const noAlert = body!.slice(body!.search(/### .*ไม่มี alert/), body!.search(/### .*fail closed/))
     expect(noAlert).toMatch(/### .*payment captured แต่ collection ไม่ผูก order/)
