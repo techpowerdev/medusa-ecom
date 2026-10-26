@@ -1,5 +1,7 @@
 import { MedusaError } from "@medusajs/framework/utils"
+import { GB_DEADLINE_OUTCOME_CHANGED } from "../errors"
 import {
+  deadlineSettleLogLevel,
   expiredGroupOutcome,
   isCampaignExpired,
   payDeadlineAt,
@@ -71,4 +73,21 @@ describe("deadlineBatchSkip", () => {
   it("rotates the window over every group across ticks", () => {
     expect([0, 1, 2, 3].map((tick) => deadlineBatchSkip(120, 50, tick))).toEqual([0, 50, 100, 30])
   })
+})
+
+// GB-N1 (review #89): ผลของกลุ่มเปลี่ยนระหว่างรอ lock เป็นเรื่องปกติ (job รอบถัดไปตัดสินใหม่) → warn ไม่ใช่ error
+describe("deadlineSettleLogLevel", () => {
+  it("at_deadline outcome mismatch → warn", () => {
+    const error = new MedusaError(MedusaError.Types.NOT_ALLOWED, "changed", GB_DEADLINE_OUTCOME_CHANGED)
+    expect(deadlineSettleLogLevel(error)).toEqual("warn")
+    // workflow engine ส่ง error ที่ผ่าน serializeError (object ธรรมดาที่คง code)
+    expect(deadlineSettleLogLevel({ code: GB_DEADLINE_OUTCOME_CHANGED, message: "changed" })).toEqual("warn")
+  })
+
+  it.each([new Error("boom"), new MedusaError(MedusaError.Types.NOT_ALLOWED, "x"), undefined, "boom"])(
+    "anything else → error (%#)",
+    (error) => {
+      expect(deadlineSettleLogLevel(error)).toEqual("error")
+    }
+  )
 })
