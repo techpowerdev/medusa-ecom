@@ -2,7 +2,8 @@
 
 สถานะ: draft (ปรับดีไซน์ 2026-10-25 ตามความต้องการของเจ้าของ: ใช้ flow แบบ draft order เหมือนตัวอย่าง Quotes ของ Medusa;
 ปรับ membership หลายออเดอร์ต่อคน + exclusivity ตาม ADR-009; 2026-10-25 แก้ความกำกวมที่ GB-2 พบ:
-ส่วนลดระดับแคมเปญเก็บใน promotion ต้นแบบตาม ADR-011, สถานะแคมเปญ, error mapping, แบ่ง GB-2 เป็น GB-2a/GB-2b และแบ่ง scope กับ GB-3)
+ส่วนลดระดับแคมเปญเก็บใน promotion ต้นแบบตาม ADR-011, สถานะแคมเปญ, error mapping, แบ่ง GB-2 เป็น GB-2a/GB-2b และแบ่ง scope กับ GB-3;
+2026-10-26 รอบ 6: แยก GB-6 เป็น GB-6a/6b/6c + route membership ของ admin, nit review #68/#75 — กฎข้อ 14d–17, AC-29..35)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -27,7 +28,9 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | ตัวตนลูกค้า, auth | Customer + Auth modules | ใช้ตามเดิม (ต้อง login) |
 | อีเมล | Notification module | templates |
 | หน้า admin | Admin UI routes | custom page |
-| อ่าน draft order จาก membership | read-only module link (`defineLink(..., { readOnly: true })`, field `order_id`) | ใช้ตามเดิม (ADR-009) |
+| อ่าน draft order จาก membership | read-only module link (`defineLink(..., { readOnly: true })`, field `order_id`) | ใช้ตามเดิม (ADR-009) — GB-6c อ่าน `order.status`/`payment_status`/`total` ผ่าน `query.graph` |
+| เลือกสินค้าใน admin extension | `sdk.admin.product.list` (JS SDK) + `DataTable`/`Checkbox` ของ `@medusajs/ui`; dashboard **ไม่ export** product picker ภายในให้ extension ใช้ | ขยาย: picker เล็กในหน้า Group buying (GB-6b) — builder ตรวจ docs admin customization ก่อน ถ้ามี component ของ Medusa ให้ใช้ ใช้ตัวนั้น |
+| กล่องยืนยัน / toast ใน admin | `usePrompt`, `toast` ของ `@medusajs/ui` | ใช้ตามเดิม (GB-6b, GB-6c) |
 | lock ข้าม request/step | Locking module (Redis, spec 07) + `acquireLockStep` / `releaseLockStep` | ใช้ตามเดิม (ADR-009) |
 | exclusivity ของ promotion | ไม่มี native (ตรวจ 2.22.1); มี hook `validate` / `setPromotionContext` บน `updateCartPromotionsWorkflow` | ขยาย — ทำครั้งเดียวใน PROMO-1 (ADR-009) |
 
@@ -159,7 +162,12 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   `template_promotion_id` ให้ admin ไปแก้ใน Medusa admin ได้; `DELETE` = `deleteGroupBuyCampaignWorkflow` เฉพาะ `draft`
   มิฉะนั้น 400 `NOT_ALLOWED`),
   `POST /admin/group-buy/campaigns/:id/status` `{status: "active"|"ended"}`, `POST /admin/group-buy/campaigns/:id/groups`
-  (pool), `GET .../groups`, `POST /admin/group-buy/groups/:id/succeed|fail` (override แบบ manual, GB-4)
+  (pool), `GET .../groups`, `POST /admin/group-buy/groups/:id/succeed|fail` (override แบบ manual, GB-4),
+  `GET /admin/group-buy/groups/:id/memberships` (GB-6c, อ่านอย่างเดียว; `limit`/`offset` ค่าเริ่มต้น 50) → 200
+  `{ memberships: [{ id, customer_id, customer: { email }, units, status, joined_at, order_id, order: { status, is_draft_order, payment_status, total } }], count }`
+  (อ่าน order ผ่าน read-only link ด้วย `query.graph`; อีเมลลูกค้าอ่านจาก Customer module ใน route ด้วย `query.graph` — ไม่มี link ใหม่; ถ้า Query ต่อ
+  membership → customer ไม่ได้ ให้ query ลูกค้าแยกด้วย `customer_id` ชุดเดียว ไม่ยิงต่อแถว)
+  กลุ่มไม่มีจริง → 404; ไม่มี token admin → 401
 - Store: `GET /store/group-buy/campaigns/active`, `GET /store/group-buy/groups/:token`
   (ความคืบหน้า, deadline, จำนวนสมาชิก), `POST /store/group-buy/groups` `{campaign_id, name?}` (team, GB-3;
   201 `{group: {id, join_token, ends_at, ...}}`),
@@ -168,8 +176,16 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   (เหมือนตัวอย่าง Quotes); ไม่มี custom payment route
 
 ## Admin UI / Storefront
-- Admin: route page "Group buying" → แคมเปญ, กลุ่มพร้อมความคืบหน้าและ status, membership
-  พร้อม order + สถานะการชำระเงิน, succeed/fail แบบ manual
+- Admin (ข้อความอังกฤษ, `src/admin/`; แยกเป็น 3 PR):
+  - GB-6a (#75): route page "Group buying" = ตารางแคมเปญ + ฟอร์มสร้างแคมเปญ
+  - GB-6b: หน้ารายละเอียดแคมเปญ `/group-buy/:id` — badge สถานะ + ปุ่มเปลี่ยนสถานะ (`gb-campaign-activate` เมื่อ `draft`,
+    `gb-campaign-end` เมื่อ `active`, ยืนยันด้วย `usePrompt`), ปุ่มลบ (`gb-campaign-delete`, เฉพาะ `draft`), ตารางกลุ่ม (`gb-groups-table`:
+    kind, status, ความคืบหน้าเทียบ `target_value`, `ends_at`, `join_token`), ปุ่มสร้าง pool group (`gb-create-pool-group`, แสดงเฉพาะแคมเปญ `active`
+    ที่ `group_mode ∈ {pool, both}`); ปรับฟอร์มสร้างของ GB-6a: product picker (`gb-product-picker`) แทนช่องกรอก product ID, ตรวจ
+    `max_quantity ≥ max_units_per_person` (กฎข้อ 15), เตือน `ends_at` ในอดีต (กฎข้อ 16), กันกดซ้ำ (กฎข้อ 17) และคำเตือนว่าต้นแบบ `GBT-*` มองเห็นในหน้า
+    promotion ของ Medusa (Q7)
+  - GB-6c: แถวกลุ่มเปิดรายการ membership (`gb-memberships-table`: อีเมลลูกค้า, units, สถานะ membership, ลิงก์ไปหน้า order ของ Medusa admin,
+    `payment_status`) + ปุ่ม succeed/fail แบบ manual (`gb-group-succeed`, `gb-group-fail`, เฉพาะกลุ่ม `open`, ยืนยันก่อนส่ง)
 - Storefront (ข้อความไทยตรงในโค้ด ADR-014; e2e หาด้วย test id): หน้าแคมเปญ; หน้ากลุ่ม (progress bar, นับถอยหลัง, จำนวนสมาชิก,
   ปุ่ม "เข้าร่วมกลุ่ม" `group-join-button`, ปุ่ม "สร้างทีม" `group-create-team-button` เมื่ออนุญาต → ลิงก์แชร์ `/g/<token>`); รายการ order
   ในหน้า account แสดง draft order ของกลุ่มพร้อมสถานะ (รอกลุ่ม / ชำระเงินภายใน <deadline> `group-pay-deadline` / ชำระแล้ว / ยกเลิก);
@@ -238,6 +254,17 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     (b) **join ซ้ำด้วย cart เดิม** (cart มี code `GB-*` อยู่แล้วตอนเริ่ม `joinGroupWorkflow` ขั้น 1) → 409 `GB_CART_ALREADY_JOINED` (เพิ่มใน allow-list ของ
     PROMO-2) ไม่สร้าง draft order/membership — ตรวจก่อนการตรวจ `PROMOTION_NOT_COMBINABLE`
     (c) storefront ล้าง cart (cookie `_medusa_cart_id`) หลัง join สำเร็จ แล้วเริ่ม cart ใหม่ตอนเพิ่มสินค้าครั้งถัดไป — ทำใน GB-7
+    (d) (review #68, ยอมรับตามการออกแบบ) ถ้าลูกค้าเอา `GB-<token>` ออกจาก cart เดิมเอง (`DELETE /store/carts/:id/promotions`) cart นั้นไม่มี `GB-*` แล้ว
+    จึง join ใหม่ได้ตามปกติ (ได้ membership/draft order ใหม่ ข้อจำกัดของกฎข้อ 4 ยังคุม) — ไม่ใช่ช่องโหว่ GB-7 ไม่ต้องกันกรณีนี้ แต่ต้องไม่พึ่ง "cart เดิม join ไม่ได้"
+    เป็นเงื่อนไขของ UI
+15. (GB-6b, review #75) ในฟอร์มสร้างแคมเปญ ถ้ากรอกทั้ง `application_method.max_quantity` และ `max_units_per_person` ต้อง `max_quantity ≥ max_units_per_person`
+    (ไม่เช่นนั้นสมาชิกจะ join ด้วยจำนวนชิ้นที่ส่วนลดไม่ครอบ) — ฟอร์มแสดง hint ข้างช่องเสมอ และแสดง error `gb-max-quantity-error` + ไม่ส่ง request เมื่อผิด;
+    บังคับเฉพาะในฟอร์ม (ต้นแบบแก้ภายหลังได้ที่หน้า promotion ของ Medusa จึงบังคับฝั่ง backend ตอนสร้างได้ไม่ครบ — ดู Q10)
+16. (GB-6b, qa #75) ฟอร์มสร้างแคมเปญที่ `ends_at <= now` แสดงคำเตือน `gb-ends-at-warning` (ยังส่งได้ เพราะแคมเปญเป็น `draft` และ `draft → active`
+    ถูกปฏิเสธโดย backend อยู่แล้วเมื่อ `ends_at <= now`)
+17. (GB-6b, review #75) `POST /admin/group-buy/campaigns` ไม่ idempotent → ทุกปุ่มที่สร้างข้อมูลในหน้า Group buying (สร้างแคมเปญ, สร้าง pool group,
+    succeed/fail) กันกดซ้ำด้วย in-flight flag (`useRef`) + `disabled` ระหว่างส่ง (แบบเดียวกับ FS-10, spec 03 กฎข้อ 15) — succeed/fail idempotent ฝั่ง
+    backend อยู่แล้ว (กฎข้อ 8); การสร้างแคมเปญซ้ำโดยไม่ตั้งใจลบได้เพราะเป็น `draft`
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -316,6 +343,30 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   `{ type: "conflict", code: "GB_CART_ALREADY_JOINED" }`, membership/draft order/ตัวนับไม่เปลี่ยน; When A join G ด้วย cart ใหม่ C2 Then 201 (integration http)
 - AC-28 (GB-7, กฎข้อ 14c) Given A join สำเร็จใน storefront When กลับไปหน้าร้านแล้วเปิด cart Then cart ว่าง (ไม่มี line เดิม, ไม่มี `GB-*`) และการเพิ่มสินค้าสร้าง
   cart ใหม่ที่ id ต่างจาก C (e2e)
+- AC-29 (GB-6a, #75) Given admin ล็อกอิน When เปิด route "Group buying" Then ตารางแสดงแคมเปญจาก `GET /admin/group-buy/campaigns` (ชื่อ + สถานะ);
+  When กรอกฟอร์มสร้างครบแล้ว submit Then มี `POST /admin/group-buy/campaigns` 1 ครั้ง และแคมเปญใหม่สถานะ `draft` ปรากฏในตารางโดยไม่ reload
+  (e2e admin หรือ component test ที่ mock `fetch` ตามที่ #75 ใช้)
+- AC-30 (GB-6b) Given แคมเปญ `draft` When เปิดหน้ารายละเอียด Then เห็น `gb-campaign-activate` และ `gb-campaign-delete` ไม่เห็น `gb-campaign-end`;
+  When กด activate แล้วยืนยัน Then `POST .../status {status:"active"}` 1 ครั้ง, badge เป็น `active`, `gb-campaign-delete` หายไป และเห็น `gb-campaign-end`;
+  Given แคมเปญ `ended` Then ไม่มีปุ่มเปลี่ยนสถานะ/ลบ; Given แคมเปญ `draft` When กดลบแล้วยืนยัน Then `DELETE /admin/group-buy/campaigns/:id` 1 ครั้ง
+  และกลับไปหน้ารายการที่ไม่มีแคมเปญนั้น; When กดลบแล้ว**ยกเลิก**ในกล่องยืนยัน Then ไม่มี request (e2e admin)
+- AC-31 (GB-6b) Given แคมเปญ `active` `group_mode=both` ที่มีกลุ่ม 2 กลุ่ม Then `gb-groups-table` มี 2 แถว แต่ละแถวแสดง kind, status, ความคืบหน้า
+  (`progress_*` ตาม `target_type` / `target_value`), `ends_at`; When `dblclick` `gb-create-pool-group` Then `POST .../groups` **1** ครั้ง และตารางมี 3 แถว;
+  Given แคมเปญ `draft` หรือ `group_mode=team` Then ไม่มี `gb-create-pool-group` (e2e admin)
+- AC-32 (GB-6b, กฎข้อ 15–17) Given ฟอร์มสร้างแคมเปญ When `max_quantity=1`, `max_units_per_person=2` แล้ว submit Then เห็น `gb-max-quantity-error`
+  และไม่มี `POST /admin/group-buy/campaigns`; When `max_quantity=2` (หรือเว้นว่างช่องใดช่องหนึ่ง) Then ส่งได้; When `ends_at` เป็นเวลาที่ผ่านไปแล้ว Then
+  เห็น `gb-ends-at-warning` และยังส่งได้ (แคมเปญ `draft`); When `dblclick` ปุ่ม submit ของฟอร์มที่ถูกต้อง Then มี `POST` **1** ครั้งและแคมเปญใหม่ 1 แถว
+  (component test ที่ mock `fetch` หรือ e2e admin)
+- AC-33 (GB-6b) Given ฟอร์มสร้างแคมเปญ When เลือกสินค้า 2 ตัวผ่าน `gb-product-picker` (ค้นหาด้วยชื่อ) แล้ว submit Then body ของ `POST` มี
+  `application_method.target_rules = [{ attribute: "items.product.id", operator: "in", values: [<id1>, <id2>] }]`; และในฟอร์มไม่มีช่องกรอก product ID
+  แบบข้อความอิสระ (component test ตรวจ body ที่ส่ง)
+- AC-34 (GB-6c) Given กลุ่ม G ที่มี membership 2 รายการ (`joined` 1, `cancelled` 1) When admin `GET /admin/group-buy/groups/G/memberships` Then 200
+  `count=2` และแต่ละรายการมี `order_id`, `order.status`, `order.payment_status`, `customer.email` ตรงกับ DB; กลุ่มไม่มีจริง → 404; ไม่มี token → 401
+  (integration http)
+- AC-35 (GB-6c) Given กลุ่ม `open` ที่มีสมาชิก When admin เปิดแถวกลุ่มใน `gb-groups-table` Then `gb-memberships-table` แสดงสมาชิกครบพร้อมลิงก์ไป
+  หน้า order ของ Medusa admin (`/draft-orders/<order_id>` เมื่อ order ยังเป็น draft, `/orders/<order_id>` เมื่อแปลงแล้ว — builder ยืนยัน path ของ dashboard
+  2.22.1); When กด `gb-group-succeed` แล้วยืนยัน Then `POST /admin/group-buy/groups/G/succeed` 1 ครั้ง (ซ้ำด้วย `dblclick` ก็ 1 ครั้ง), status ของกลุ่มเป็น
+  `succeeded` และปุ่ม succeed/fail หายไป; Given กลุ่มที่ไม่ใช่ `open` Then ไม่มีปุ่ม succeed/fail (e2e admin)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -336,6 +387,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   AC-21b, AC-22, AC-23, AC-24, AC-25, AC-26, AC-27
   โดย mock payment provider
 - e2e: AC-2, AC-16 กับ Stripe test mode; AC-28
+- Integration (http): AC-34 (GB-6c)
+- e2e admin / component test (mock `fetch`): AC-29 (GB-6a), AC-30..AC-33 (GB-6b), AC-35 (GB-6c) — ใช้ helper login admin ร่วมของ OPS-11 (spec 07)
+  ถ้าเป็น e2e admin ตัวที่สองของโปรเจกต์
 
 ## Tasks
 | ID | Task | Depends |
@@ -345,12 +399,15 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-2b | `computeGroupEndsAt` + `createGroupWorkflow` (pool + team ระดับ workflow, ตรวจช่วงเวลาแคมเปญ) + admin `POST/GET /admin/group-buy/campaigns/:id/groups` (AC-19, AC-20b, AC-21b) — **ไม่รวม** `POST /store/group-buy/groups` | GB-2a |
 | GB-2c | follow-up owner/review (เล็ก): ค่าเริ่มต้น `is_tax_inclusive: true` ของต้นแบบใน validator ของ `POST /admin/group-buy/campaigns` และ `createGroupBuyCampaignWorkflow` (กฎข้อ 12) + test rollback เมื่อขั้น link ของ `createGroupWorkflow` ล้ม (AC-20c, AC-20d) — ไม่แตะ store route | GB-2b |
 | GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009, ตรวจช่วงเวลา + ตรวจว่ามี adjustment ของ `GB-<token>`) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2b), join, leave + 409 ผ่านกลไกของ PROMO-2 ตามกฎข้อ 11 (ไม่แปลงเอง) + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18, AC-23, AC-24); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง; ตรวจเจ้าของ cart ด้วย helper ของ CORE-12; **เพิ่ม 2026-10-26 (owner, Q9)**: ห้าม complete cart ที่มี `GB-*` (รวมเข้า handler `completeCartWorkflow.hooks.validate` เดิม) + 409 `GB_CART_ALREADY_JOINED` (กฎข้อ 14a/b, AC-26, AC-27) | GB-2b, PROMO-1, PROMO-2 (AC-14 ส่วนที่สอง: ใส่ `SAVE10` ผ่าน route ของ Medusa ต้องได้ code ของเรา), CORE-12 (AC-24) |
-| GB-3b | (แยกจาก GB-3 ตาม PR #68, owner 2026-10-26) `leaveGroupWorkflow` + `POST /store/group-buy/memberships/:id/leave` ตามกฎข้อ 13 (AC-7, AC-15 ส่วน leave, AC-17 ส่วน "หลัง leave", AC-25) — GB-3 (#68) ส่งมอบ join + สร้างทีม ส่วน AC อื่นในแถว GB-3 คงเดิม | GB-3 |
-| GB-4 | `succeedGroupWorkflow` / `failGroupWorkflow` + deadline job (รวมตั้งแคมเปญ `ended`) + admin succeed/fail + อีเมล (AC-1, AC-3, AC-9, AC-11, AC-12, AC-22) | GB-3 |
+| GB-3b | (แยกจาก GB-3 ตาม PR #68, owner 2026-10-26) `leaveGroupWorkflow` + `POST /store/group-buy/memberships/:id/leave` ตามกฎข้อ 13 (AC-7, AC-15 ส่วน leave, AC-17 ส่วน "หลัง leave", AC-25) — GB-3 (#68) ส่งมอบ join + สร้างทีม ส่วน AC อื่นในแถว GB-3 คงเดิม; **รวม nit review #68**: prettier `workflows/group-buy/join-group.ts` บรรทัด 45-46 และ guard ผลของ `query.graph` ที่อ่าน `groups[0]`/`campaigns[0]` (ไม่พบ → `MedusaError NOT_FOUND` แทนอ่าน property ของ `undefined`) | GB-3 |
+| GB-4 | `succeedGroupWorkflow` / `failGroupWorkflow` + deadline job (รวมตั้งแคมเปญ `ended`) + admin succeed/fail + อีเมล (AC-1, AC-3, AC-9, AC-11, AC-12, AC-22) — **ข้อควรระวังจาก review #68**: ยอดของ payment collection ต้องมาจากยอดของ draft order ที่ Medusa คำนวณ (ระวัง `summary.current_order_total` ของ draft order ที่สร้างตอน join — ตรวจว่าตรงกับ `total` หลังส่วนลด `GB-*`) ไม่คำนวณยอดเอง; test AC-1 assert `payment_collection.amount` = ยอดหลังส่วนลดของ draft order | GB-3 |
 | GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) | GB-4, PAY-3 |
-| GB-6 | หน้า route ของ Admin UI | GB-2b |
-| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | GB-5 |
-GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6 ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
+| GB-6a | ◐ #75 — route page "Group buying": ตารางแคมเปญ + ฟอร์มสร้างแคมเปญ (AC-29) | GB-2b |
+| GB-6b | หน้ารายละเอียดแคมเปญ: เปลี่ยนสถานะ, ลบ `draft`, ตารางกลุ่ม, สร้าง pool group; ปรับฟอร์มสร้าง: product picker แทนกรอก ID, ตรวจ `max_quantity ≥ max_units_per_person`, เตือน `ends_at` อดีต, กันกดซ้ำ, คำเตือน `GBT-*` (กฎข้อ 15–17; AC-30..33) — frontend ล้วน ใช้ API ของ GB-2a/GB-2b; ถ้าเกิน ~400 LOC แยก GB-6b1 (หน้ารายละเอียด, AC-30, AC-31) และ GB-6b2 (ฟอร์ม, AC-32, AC-33) ทำขนานกันได้ | GB-6a |
+| GB-6c | membership + succeed/fail manual: route `GET /admin/group-buy/groups/:id/memberships` + integration test (AC-34) + ตาราง membership และปุ่ม succeed/fail ในหน้ารายละเอียด (AC-35); ถ้าเกิน ~400 LOC แยก route (GB-6c1) กับ UI (GB-6c2) | GB-6b (GB-6b1 ถ้าแยก), GB-3, GB-4 (route succeed/fail) |
+| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | GB-5 |
+GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
+GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
 GB-7 ต้องรอ GB-3b ด้วย (ปุ่มออกจากกลุ่มในหน้า account)
 GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/test ของ `create-group` ไม่ใช่ไฟล์ join) แต่ควร merge ก่อน release v0.5.0
@@ -370,3 +427,6 @@ GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/tes
 - ~~Q9~~ ตัดสินแล้ว (owner 2026-10-26): backend ห้าม complete cart ที่มี `GB-*` ทุกกรณี และปฏิเสธ join ซ้ำด้วย cart เดิม (409) — ทำใน GB-3;
   storefront ล้าง cart หลัง join — ทำใน GB-7 (กฎข้อ 14, AC-26..28)
 - ~~Q8~~ ตัดสินแล้ว (owner, 2026-10-26): ต้นแบบ `is_tax_inclusive: true` เป็นค่าเริ่มต้น (ราคา THB รวม VAT) admin เปลี่ยนเองได้ — กฎข้อ 12, GB-2c
+- Q10 (GB-6b, กฎข้อ 15, 17) ต้องบังคับ `max_quantity ≥ max_units_per_person` ใน validator ของ `POST /admin/group-buy/campaigns` ด้วยหรือไม่ และต้องทำ
+  `POST /admin/group-buy/campaigns` ให้ idempotent ฝั่ง backend (เช่น header idempotency key + lock) หรือไม่? (ค่าเริ่มต้น: ไม่ — บังคับในฟอร์ม + กันกดซ้ำฝั่ง UI
+  เพราะเป็น route ของ admin เท่านั้น แคมเปญที่ซ้ำเป็น `draft` ลบได้ และต้นแบบยังแก้ได้ที่หน้า promotion ของ Medusa)

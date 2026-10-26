@@ -21,6 +21,8 @@ cart metadata การจ่ายเงิน (โอนธนาคาร) �
 | หน้า admin | Admin UI routes/widgets | custom page |
 | ส่วนลดเฉพาะ affiliate สำหรับผู้ซื้อ (ไม่บังคับ) | Promotion module (code) | link แบบไม่บังคับ |
 | แปลงขอบเขตโปรแกรม → รายการสินค้าพร้อมราคา/รูป | Product module + Query (`useQueryGraphStep`) | ใช้ตามเดิม |
+| lock ข้าม request ของ payout | Locking module (Redis) + `acquireLockStep`/`releaseLockStep` | ใช้ตามเดิม: key `affiliate-payout:<affiliate_id>` ทั้ง create และ cancel (กฎ 25) |
+| ปุ่มยืนยันใน admin | `usePrompt` ของ `@medusajs/ui` | ใช้ตามเดิม (AF-6) |
 | CORS | Medusa ใส่ให้เฉพาะ `/store`, `/admin`, `/auth` | ไม่ใช้สำหรับ `/affiliate/*` — portal เรียกจาก server side (กฎ 17) |
 
 ## Data model (module `affiliate`)
@@ -71,18 +73,19 @@ Payout
   ด้วย secret ฝั่ง server; storefront เพียงคัดลอกค่า cookie ไม่เคยสร้างเอง)
   Cart metadata เขียนได้จากฝั่ง client ผ่าน Store API ดังนั้น token เป็น input เดียวที่เชื่อถือได้
 - Subscriber `order.placed` → workflow attribution: ตรวจสอบลายเซ็นของ `affiliate_token` (ปฏิเสธหากไม่ถูกต้อง/หมดอายุ)
-  และ `now - clicked_at ≤ attribution_window` และ affiliate ยัง active → ถ้ามี attribution ของ order นี้อยู่แล้ว **หยุด** (กฎ 15)
-  → หาโปรแกรมที่ active ณ เวลาสั่งซื้อ → สร้าง `AffiliateAttribution` (`program_id` = โปรแกรมนั้น หรือ null)
+  และ attribution window ตามกฎ 24 (เวลาอ้างอิง = `order.created_at` ไม่ใช่เวลาที่ subscriber รัน) และ affiliate ยัง active → ถ้ามี attribution ของ
+  order นี้อยู่แล้ว **หยุด** (กฎ 15) → หาโปรแกรมที่ active ณ `order.created_at` → สร้าง `AffiliateAttribution` (`program_id` = โปรแกรมนั้น หรือ null)
   → ถ้ามีโปรแกรมและไม่ใช่การซื้อเอง (กฎ 12) คำนวณ entry ต่อ line item ที่เข้าเกณฑ์
-  (ขอบเขตโปรแกรม ∩ รายการสินค้าใน order) → insert `CommissionEntry` status `pending`,
-  `matures_at = now + hold_days`
+  (ขอบเขตโปรแกรม ∩ รายการสินค้าใน order; เรียง `order.items` ตามกฎ 26 ก่อนแจก cap) → insert `CommissionEntry` status `pending`,
+  `matures_at = now + hold_days`; token ไม่ถูกต้อง/หมดอายุ หรือ affiliate ไม่ active → ไม่สร้างอะไรและ log ระดับ info (ลายเซ็นผิด = warn ตาม AC-11)
 - Subscriber เมื่อ refund/cancel/return: insert entry แบบ `reversed` สำหรับยอดที่ได้รับผลกระทบ
   (ไม่แก้ไข entry เดิม; ledger เป็น append-only)
 - Scheduled job รายวัน: entry `pending` ที่ `matures_at <= now` และไม่มี reversal → `approved`
 - `createPayoutWorkflow(affiliate, period)` admin: เลือก entry ตามกฎ 19 → Payout draft;
   `markPayoutPaid` → entry เป็น `paid` (compensation คืน `paid → approved`, กฎ 21)
 - `cancelPayoutWorkflow(payout_id)` admin (AF-9): เฉพาะ payout `draft` → ลบ payout (soft-delete) entry ใน `entry_ids` กลับไปเลือกได้
-  ในรอบถัดไป (สถานะ entry ไม่เปลี่ยน เพราะ draft ไม่แตะ entry); payout `paid` → 400 `NOT_ALLOWED`
+  ในรอบถัดไป (สถานะ entry ไม่เปลี่ยน เพราะ draft ไม่แตะ entry); payout `paid` → 400 `NOT_ALLOWED`;
+  (AF-9b, กฎ 25) ถือ lock `affiliate-payout:<affiliate_id>` ตัวเดียวกับ `createPayoutWorkflow` ตลอด workflow (`acquireLockStep`/`releaseLockStep`)
 
 ## API
 - Store (public): `GET /store/affiliate/r/:code?to=/path` → ตั้ง cookie, 302 ไปยัง path
@@ -101,7 +104,8 @@ Payout
   สร้าง payout/ทำเครื่องหมายว่าจ่ายแล้ว; `GET /admin/affiliate/reports/summary`
 
 ## Admin UI / Storefront
-- Admin: route page "Affiliate" → Programs (รายการพร้อมวันที่), Affiliates, Ledger, Payouts
+- Admin: route page "Affiliate" → Programs (รายการพร้อมวันที่), Affiliates, Ledger, Payouts — แถว payout `draft` มีปุ่มยกเลิก
+  (`affiliate-payout-cancel`, ยืนยันด้วย `usePrompt` ของ `@medusajs/ui`, กันกดซ้ำ) เรียก route ยกเลิกของ AF-9; payout `paid` ไม่มีปุ่ม (AF-6)
 - Storefront: portal `/affiliate/*` ที่มี login/register ของตัวเอง (affiliate session แยกจาก
   customer session):
   (ข้อความไทยตรงในโค้ด ADR-014; e2e หาด้วย test id)
@@ -166,7 +170,16 @@ Payout
 23. (review AF-2 #66, last click ตามกฎ 2) cookie `aff` ถูกคัดลอกลง cart ตอน add to cart เท่านั้น (AF-2) → ถ้าลูกค้า click affiliate B **หลัง** เพิ่มของ
     จากลิงก์ A แล้ว checkout เลย cart ยังเป็นของ A: storefront ต้อง sync cookie ลง `cart.metadata.affiliate_token` อีกครั้ง**ก่อน** `placeOrder`
     (complete cart) เมื่อค่าใน cookie ต่างจากใน cart — ครอบ cart ทุกทางที่สร้าง รวม `/buy/[items]` (CORE-14 AC-41 บังคับ login + customer แล้ว)
-    การ sync ใช้ `metadata` จาก cart ที่ storefront อ่านอยู่แล้ว (`retrieveCart`) ไม่ยิง `GET /store/carts/:id` เพิ่ม
+    การ sync ใช้ `metadata` จาก cart ที่ storefront อ่านอยู่แล้ว (`retrieveCart`) ไม่ยิง `GET /store/carts/:id` เพิ่ม — ส่งมอบใน **AF-3b**
+24. (การตีความ attribution window ตามที่ AF-3 ทำ, บันทึก 2026-10-26) เวลาอ้างอิงทั้งหมดคือ `t = order.created_at` (subscriber ที่รันช้า/retry ให้ผลเท่าเดิม):
+    (a) มีโปรแกรม active ณ `t` อย่างน้อยหนึ่งตัว → attribution ผ่านเมื่อมีโปรแกรม active **อย่างน้อย 1 ตัว** ที่ `t − clicked_at ≤ attribution_window_days`
+    ของโปรแกรมนั้น; โปรแกรมที่นำมาคิดค่าคอม (รวม Q7) คือเฉพาะโปรแกรมที่ window คลุม click; ไม่มีตัวใดคลุม → ไม่มี attribution (AC-3)
+    (b) ไม่มีโปรแกรม active ณ `t` → ใช้อายุ token (30 วัน) เป็น window: `t − clicked_at ≤ 30 วัน` → attribution `program_id = null` ไม่มี entry (AC-2);
+    เกิน → ไม่มี attribution
+25. (AF-9b, review AF-9) `cancelPayoutWorkflow` ถือ lock `affiliate-payout:<affiliate_id>` เดียวกับ `createPayoutWorkflow` — กัน payout draft ซ้อนกัน
+    (entry เดียวอยู่ใน 2 payout) เมื่อ create กับ cancel/compensation ของ affiliate เดียวกันทำงานพร้อมกัน
+26. (Q3, AF-4 — review AF-3) ก่อนแจก cap ต่อ order (กฎ 4) เรียง `order.items` ตาม `created_at` จากน้อยไปมาก เสมอกันใช้ `id` — ไม่พึ่งลำดับที่
+    `query.graph` คืน (ไม่รับประกันลำดับ) ใช้ลำดับเดียวกันทุกครั้งที่คำนวณ (สร้าง entry และ reversal)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -200,43 +213,61 @@ Payout
   ช่วงเดียวกัน → ได้ entry ชุดเดิมและยอดเท่าเดิม; ยกเลิก payout `paid` → 400 และ payout/entry ไม่เปลี่ยน
 - AC-20 (AF-9, กฎ 19) entry `approved` ที่ `created_at` อยู่ก่อน `period_from` และยังไม่อยู่ใน payout ใด ถูกรวมใน payout รอบ
   `[period_from, period_to)`; entry ที่ `created_at >= period_to` ไม่ถูกรวม; entry ที่อยู่ใน payout อื่นแล้วไม่ถูกรวม
-- AC-21 (AF-3, กฎ 23) Given โปรแกรม active และลูกค้า click `/r/ann` แล้ว add to cart When click `/r/bob` (cookie เปลี่ยน) แล้ว checkout ทันทีโดยไม่ add
+- AC-21 (AF-3b, กฎ 23) Given โปรแกรม active และลูกค้า click `/r/ann` แล้ว add to cart When click `/r/bob` (cookie เปลี่ยน) แล้ว checkout ทันทีโดยไม่ add
   เพิ่ม Then `cart.metadata.affiliate_token` ตอน complete เป็นของ Bob และ attribution ของ order เป็นของ Bob; Given cookie ไม่เปลี่ยน Then ไม่มี
   `POST /store/carts/:id` เพื่อ sync (e2e นับ request)
-- AC-22 (AF-3, กฎ 23) Given unit test ของ action add-to-cart ใน `lib/data/cart.ts` (mock SDK) When เพิ่มสินค้าโดยมี cookie `aff` Then จำนวนครั้งที่เรียก
+- AC-22 (AF-3b, กฎ 23) Given unit test ของ action add-to-cart ใน `lib/data/cart.ts` (mock SDK) When เพิ่มสินค้าโดยมี cookie `aff` Then จำนวนครั้งที่เรียก
   retrieve cart เท่ากับก่อน AF-2 (ไม่มี round-trip `GET /store/carts/:id` เพิ่ม) และ metadata ถูกตั้งเมื่อค่าต่าง (unit Vitest)
+- AC-23 (AF-3, กฎ 24) Given โปรแกรม P1 active (15%, `attribution_window_days=7`) และ P2 active (10%, `attribution_window_days=14`) ครอบสินค้าเดียวกัน, click เมื่อ
+  10 วันก่อน `order.created_at` Then มี attribution `program_id = P2` และ entry คิดที่ 10% (P1 ไม่นับเพราะ window ไม่คลุม click — ถ้า AF-3 ที่ merge คิดจากทุกโปรแกรม
+  active ส่วนนี้ย้ายไปแก้ใน AF-4, ดู Q10); Given ไม่มีโปรแกรม active, click 20 วันก่อน Then attribution
+  `program_id = null` ไม่มี entry; click 31 วันก่อน Then ไม่มี attribution (integration)
+- AC-24 (AF-3, กฎ 24) Given click 6 วันก่อน `order.created_at` (`attribution_window_days=7`) When subscriber ประมวลผล event ช้าไป 3 วัน (ควบคุมเวลาใน test)
+  Then ยังมี attribution และ entry (ใช้ `order.created_at` ไม่ใช่เวลาประมวลผล) (integration)
+- AC-25 (AF-4, กฎ 26) Given `cap_per_order=฿60`, อัตรา 10%, order มี line L1 (`created_at` ก่อน, ฐาน ฿500) และ L2 (ฐาน ฿500) โดย input ส่ง L2 มาก่อน L1
+  Then entry ของ L1 = ฿50 และ L2 = ฿10; สลับลำดับ input อีกแบบ ได้ผลเหมือนเดิม; `created_at` เท่ากัน → ตัดสินด้วย `id` (unit ของฟังก์ชันเรียง/วางแผน)
+- AC-26 (AF-6) Given payout `draft` และ payout `paid` ของ Ann When admin เปิดแท็บ Payouts Then เฉพาะแถว `draft` มี `affiliate-payout-cancel`; When กด
+  (หรือ `dblclick`) แล้วยืนยัน Then มี request ยกเลิก 1 ครั้งและแถวหายไปโดยไม่ reload; When กดแล้วยกเลิกกล่องยืนยัน Then ไม่มี request (e2e admin)
+- AC-27 (AF-9b, กฎ 25) Given Ann มี entry `approved` 3 รายการและ payout `draft` D When ยิง cancel D กับ create payout ช่วงเดียวกันพร้อมกัน 10 รอบ
+  Then ไม่มี entry ใดอยู่ใน `entry_ids` ของ payout ที่ยังไม่ถูกลบมากกว่า 1 ตัว; When `DELETE` route ยกเลิก payout โดยไม่มี token admin Then 401 และ payout ไม่เปลี่ยน
+  (integration http)
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
 - Query ของ ledger มี index บน `(affiliate_id, status, created_at)`; รายงานรวมยอดด้วย SQL
 - Maturity job ใช้ index `(status, matures_at)` (เพิ่มใน AF-4)
-- Attribution ทนต่อ event ซ้ำ/พร้อมกันด้วย unique `order_id` (กฎ 15)
+- Attribution ทนต่อ event ซ้ำ/พร้อมกันด้วย unique `order_id` (กฎ 15); test AC-10 แบบพร้อมกันต้อง assert ว่า**ทั้งสอง** promise เป็น `fulfilled`
+  (ตัวที่แพ้ race หยุดเงียบตามกฎ 15 ไม่ throw) — แก้ใน AF-4 (review AF-3)
+- payout เลือก entry ด้วย filter ใน DB (AF-9); ยังไม่เพิ่ม GIN index บน `payout.entry_ids` จนกว่าจำนวน payout ทำให้ query ช้าจริง (วัดก่อน — ไม่มี task)
 
 ## Test plan
-- Unit: การคำนวณค่าคอมมิชชัน (ขอบเขต, cap, ฐานคำนวณ, ปัดเศษ), การตรวจสอบช่วงเวลา `[starts_at, ends_at)` และ `ended` (AC-17 ส่วน logic)
-- Integration (http): AC-1..AC-8, AC-10, AC-11, AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20
-- e2e: AC-9 + AC-1 แบบ end-to-end พร้อม cookie, AC-21; unit (Vitest storefront): AC-22
+- Unit: การคำนวณค่าคอมมิชชัน (ขอบเขต, cap, ฐานคำนวณ, ปัดเศษ), การตรวจสอบช่วงเวลา `[starts_at, ends_at)` และ `ended` (AC-17 ส่วน logic), การเรียง line (AC-25)
+- Integration (http): AC-1..AC-8, AC-10, AC-11, AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-23, AC-24, AC-27
+- e2e: AC-9 + AC-1 แบบ end-to-end พร้อม cookie, AC-21 (AF-3b); unit (Vitest storefront): AC-22 (AF-3b); e2e admin: AC-26 (AF-6, ใช้ helper ของ OPS-11)
 
 ## Tasks
 | ID | Task | Depends |
 |----|------|---------|
 | AF-1 | models/service/migrations ของ module + auth ของ actor type `affiliate` (register/login) + unit tests สำหรับการคำนวณค่าคอมมิชชัน (AC-12, AC-15, AC-16) — PR #11 | CORE-2 |
 | AF-2 | Tracking redirect + cookie + cart metadata hook ใน storefront (เตรียมสำหรับ AC-3) | AF-1 |
-| AF-3 | Subscriber `order.placed` สำหรับ attribution + สร้าง entry (AC-1,2,3,4,8,10,11,17) (ตามข้อตัดสิน Q2, Q3, Q7) + storefront sync cookie `aff` ลง cart ก่อน `placeOrder` และเลิก round-trip `GET /store/carts/:id` ที่ AF-2 เพิ่มใน add to cart (กฎ 23; AC-21, AC-22) | AF-2 |
-| AF-4 | Subscriber สำหรับ reversal + maturity job + migration index `(status, matures_at)` (AC-5, AC-6) — ห้ามลบ entry; ตามข้อตัดสิน Q3, Q8 | AF-3 |
+| AF-3 | Subscriber `order.placed` สำหรับ attribution + สร้าง entry (AC-1,2,3,4,8,10,11,17, AC-23, AC-24) (ตามข้อตัดสิน Q2, Q3, Q7 และกฎ 24) — backend เท่านั้น; ส่วน storefront ย้ายไป AF-3b | AF-2 |
+| AF-3b | (แยกจาก AF-3, 2026-10-26) storefront: sync cookie `aff` ลง `cart.metadata.affiliate_token` ก่อน `placeOrder` เมื่อค่าต่าง และเลิก round-trip `GET /store/carts/:id` ที่ AF-2 เพิ่มใน add to cart (กฎ 23; AC-21, AC-22) — แตะ `lib/data/cart.ts` | AF-3 |
+| AF-4 | Subscriber สำหรับ reversal + maturity job + migration index `(status, matures_at)` (AC-5, AC-6) — ห้ามลบ entry; ตามข้อตัดสิน Q3, Q8; **รวม nit review AF-3**: เรียง `order.items` ตาม `created_at`/`id` ก่อน `planAttribution` (กฎ 26, AC-25), test AC-10 assert ทั้งสอง promise `fulfilled`, log info เมื่อ token หมดอายุ/affiliate ไม่ active | AF-3 |
 | AF-5 | Admin APIs + payout workflows (AC-7) (ตามข้อตัดสิน Q8) | AF-1 |
-| AF-6 | หน้า Admin UI | AF-5 |
+| AF-6 | หน้า Admin UI รวมปุ่มยกเลิก payout `draft` (AC-26) | AF-5, AF-9 (route ยกเลิก) |
 | AF-7 | Portal APIs รวม `/affiliate/products` (แปลงขอบเขต → สินค้า ตามกฎ 16, paging) (AC-13, AC-14, AC-18) — หมายเหตุ: ปรับ middleware matcher ให้คลุมทุก `/affiliate/*` ยกเว้น register (กฎ 18) และสิทธิ์ตามสถานะ (Q6) | AF-3 |
 | AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts, Profile (Q5) + e2e (AC-9); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | AF-7, AF-4 |
 | AF-9 | follow-up AF-5 (เล็ก): `cancelPayoutWorkflow` + admin route ยกเลิก payout `draft` (คืน entry ให้เลือกได้อีก) และย้ายการกรอง entry ของ `createPayoutWorkflow` ไปทำใน DB (filter ตามกฎ 19 แทนโหลด entry ทั้งหมดแล้วกรองในแอป) (AC-19, AC-20; AC-7 ต้องยังผ่าน) | AF-5 |
-AF-5/AF-6 ∥ AF-3/AF-4; AF-7 ∥ AF-4; AF-9 ∥ AF-6 หลัง AF-5
+| AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` ถือ lock `affiliate-payout:<affiliate_id>` (กฎ 25) + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
+AF-5 → AF-9 → (AF-6 ∥ AF-9b) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-7); AF-8 หลัง AF-7, AF-4 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0)
+AF-3b แตะ `lib/data/cart.ts` เดียวกับ CORE-14/CORE-4d — ตัวที่ merge ทีหลัง rebase
 follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใน production (กฎ 22) ผนวกเข้า **OPS-7** (spec 07 AC-13) ไม่ใช่ task ของ spec นี้;
-`/buy/[items]` ที่สร้าง cart โดยไม่มี token อยู่ใน CORE-14 (spec 01 AC-41) แล้ว — AF-3 แตะ `lib/data/cart.ts` เดียวกับ CORE-14/CORE-4d ตัวที่ merge ทีหลัง rebase
+`/buy/[items]` ที่สร้าง cart โดยไม่มี token อยู่ใน CORE-14 (spec 01 AC-41) แล้ว
 
 ## ข้อตัดสินของ owner (2026-10-25)
 - Q1 สมัครเองได้: register → `pending` → admin อนุมัติ
 - Q2 ขอบเขต `category_ids` **ไม่นับ** category ลูกใน v1 (admin เลือก category ลูกเองใน UI) ใช้กฎเดียวกันทั้ง AF-3 และ AF-7
-- Q3 cap ต่อ order แจกให้ line **ตามลำดับ line item** (แบบที่ AF-1 ทำ ไม่ต้องแก้ `utils/commission.ts`);
+- Q3 cap ต่อ order แจกให้ line **ตามลำดับ line item** (แบบที่ AF-1 ทำ ไม่ต้องแก้ `utils/commission.ts`; "ลำดับ" = `created_at` แล้ว `id` ตามกฎ 26);
   partial refund ของ line → reversal = `−entry.amount × ยอดที่คืน / base ของ line` (คิดจาก entry ของ line นั้นเอง)
 - Q4 affiliate เปลี่ยน `code` เองไม่ได้ใน v1; คำสงวน `admin, affiliate, store, auth, api, app, www, support, shop, r`
 - Q5 portal ไม่ส่ง `payout_info` ออกเลย แสดงเพียง boolean `has_payout_info`; admin เป็นผู้กรอก
@@ -248,3 +279,8 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
   ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
 - Q9 (2026-10-25, AF-9) ยกเลิก payout `draft` = soft-delete (ไม่เพิ่มสถานะ `cancelled`)
 - กฎ 20 ให้ตรงกับโค้ดของ PR #35 (`draft → ended` ตรงได้)
+
+## Open questions (รอบ 6)
+- Q10 (กฎ 24a) เมื่อหลายโปรแกรม active แต่ window ของบางตัวไม่คลุม click: นับค่าคอมเฉพาะโปรแกรมที่ window คลุม click (ค่าเริ่มต้นใน spec — window เป็นของ
+  โปรแกรม จึงใช้กับโปรแกรมนั้นเท่านั้น) หรือ "ผ่านด่านด้วยโปรแกรมใดก็ได้แล้วเลือกอัตราสูงสุดจากทุกโปรแกรม active" (ง่ายกว่าแต่ให้ค่าคอมของโปรแกรมที่ window
+  สั้นกว่าระยะ click)?
