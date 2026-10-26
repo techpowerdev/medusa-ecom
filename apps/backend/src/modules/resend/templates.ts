@@ -1,3 +1,5 @@
+import { MedusaError } from "@medusajs/framework/utils"
+
 // Email template แบบ HTML string (ไม่ใช้ react-email เพื่อไม่เพิ่ม dependency — spec/ADR ไม่ได้ระบุ)
 // ข้อมูลที่ได้รับมาจาก workflow ใน src/workflows/ (query.graph ของ order / fulfillment)
 
@@ -9,7 +11,11 @@ export const EmailTemplates = {
   // spec 02: ชื่อ notification ตาม spec (EV-5b resend ใช้ชื่อเดียวกัน)
   EVOUCHER_DELIVERED: "evoucher.delivered",
   EVOUCHER_BACKORDERED: "evoucher-backordered",
+  EVOUCHER_DELIVERY_FAILED: "evoucher-delivery-failed",
 } as const
+
+/** EV-4: code/PIN ใน notification.data เป็น ciphertext — provider ส่งฟังก์ชันถอดรหัสมาตอน render */
+export type RenderContext = { decrypt?: (ciphertext: string) => string }
 
 export type RenderedEmail = { subject: string; html: string }
 
@@ -201,7 +207,7 @@ const bangkokDate = (iso?: string | null) =>
     ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date(iso))
     : "ไม่มีวันหมดอายุ / No expiry"
 
-const renderVoucher = (voucher: EvoucherDeliveredVoucher) => {
+const renderVoucher = (voucher: EvoucherDeliveredVoucher, decrypt: (value: string) => string) => {
   const logo = isHttpUrl(voucher.partner?.logo_url)
     ? `<img src="${escapeHtml(voucher.partner!.logo_url)}" alt="${escapeHtml(voucher.partner?.name)}" style="max-height:48px">`
     : ""
@@ -209,8 +215,8 @@ const renderVoucher = (voucher: EvoucherDeliveredVoucher) => {
     .filter((c): c is EvoucherDeliveredCode => !!c)
     .map(
       (c) =>
-        `<tr><td style="padding:6px 0;font-family:monospace;font-size:16px"><b>${escapeHtml(c.code)}</b></td>` +
-        `<td style="padding:6px 0">${c.pin ? `PIN: <b>${escapeHtml(c.pin)}</b>` : ""}</td>` +
+        `<tr><td style="padding:6px 0;font-family:monospace;font-size:16px"><b>${escapeHtml(decrypt(c.code ?? ""))}</b></td>` +
+        `<td style="padding:6px 0">${c.pin ? `PIN: <b>${escapeHtml(decrypt(c.pin))}</b>` : ""}</td>` +
         `<td style="padding:6px 0;text-align:right">หมดอายุ / Expires: ${escapeHtml(bangkokDate(c.expires_at))}</td></tr>`
     )
     .join("")
@@ -226,7 +232,14 @@ const renderVoucher = (voucher: EvoucherDeliveredVoucher) => {
   )
 }
 
-const renderEvoucherDelivered = (data: Record<string, unknown>): RenderedEmail => {
+const renderEvoucherDelivered = (data: Record<string, unknown>, ctx: RenderContext = {}): RenderedEmail => {
+  const decrypt = ctx.decrypt
+  if (!decrypt) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      `Template "${EmailTemplates.EVOUCHER_DELIVERED}" requires a decrypt function`
+    )
+  }
   const order = (data.order ?? {}) as EmailOrder
   const vouchers = (data.vouchers ?? []) as (EvoucherDeliveredVoucher | null)[]
   const orderNo = `#${escapeHtml(order.display_id)}`
@@ -236,7 +249,10 @@ const renderEvoucherDelivered = (data: Record<string, unknown>): RenderedEmail =
     `<h1 style="font-size:20px">บัตรกำนัลของคุณ / Your e-vouchers</h1>` +
     `<p>ใช้ code ด้านล่างที่ร้านของพาร์ทเนอร์ตามวิธีใช้ — เราไม่สามารถเรียกคืนหรือเปลี่ยน code ที่ส่งแล้วได้<br>` +
     `Redeem the codes below at the partner as described. Delivered codes cannot be returned.</p>` +
-    vouchers.filter((v): v is EvoucherDeliveredVoucher => !!v).map(renderVoucher).join("")
+    vouchers
+      .filter((v): v is EvoucherDeliveredVoucher => !!v)
+      .map((v) => renderVoucher(v, decrypt))
+      .join("")
 
   return { subject, html: layout(subject, body) }
 }
@@ -270,19 +286,36 @@ const renderEvoucherBackordered = (data: Record<string, unknown>): RenderedEmail
   return { subject, html: layout(subject, body) }
 }
 
-const renderers: Record<string, (data: Record<string, unknown>) => RenderedEmail> = {
+const renderEvoucherDeliveryFailed = (data: Record<string, unknown>): RenderedEmail => {
+  const { order = {}, error } = data as EvoucherBackordered & { error?: string }
+  const orderNo = `#${escapeHtml(order.display_id)}`
+  const subject = `[E-voucher] ส่งอีเมล code ไม่สำเร็จ ${orderNo} / Delivery email failed`
+
+  const body =
+    `<h1 style="font-size:20px">ส่งอีเมล e-voucher ไม่สำเร็จ / Delivery email failed</h1>` +
+    `<p>คำสั่งซื้อ ${orderNo} (${escapeHtml(order.id)}, ${escapeHtml(order.email)}) ได้ code แล้วแต่อีเมลถึงลูกค้าส่งไม่สำเร็จ ` +
+    `code ยังผูกกับคำสั่งซื้อนี้ — กรุณาส่งอีเมลซ้ำจากหน้า order<br>` +
+    `Codes stay assigned to the order. Please resend the e-voucher email from the order page.</p>` +
+    (error ? `<p>Error: ${escapeHtml(error)}</p>` : "")
+
+  return { subject, html: layout(subject, body) }
+}
+
+const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderContext) => RenderedEmail> = {
   [EmailTemplates.ORDER_PLACED]: renderOrderPlaced,
   [EmailTemplates.ORDER_SHIPPED]: renderOrderShipped,
   [EmailTemplates.EVOUCHER_LOW_STOCK]: renderEvoucherLowStock,
   [EmailTemplates.EVOUCHER_EXPIRY_SUMMARY]: renderEvoucherExpirySummary,
   [EmailTemplates.EVOUCHER_DELIVERED]: renderEvoucherDelivered,
   [EmailTemplates.EVOUCHER_BACKORDERED]: renderEvoucherBackordered,
+  [EmailTemplates.EVOUCHER_DELIVERY_FAILED]: renderEvoucherDeliveryFailed,
 }
 
 export const renderEmailTemplate = (
   template: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  ctx: RenderContext = {}
 ): RenderedEmail | null => {
   const render = renderers[template]
-  return render ? render(data) : null
+  return render ? render(data, ctx) : null
 }

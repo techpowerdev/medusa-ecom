@@ -130,16 +130,19 @@ describe("renderEmailTemplate", () => {
           partner: { name: "Lotus", logo_url: "https://cdn.example.com/lotus.png" },
           how_to_use: "แสดง code ที่แคชเชียร์ <ทุกสาขา>",
           validity_note: "ใช้ได้ทุกสาขา",
+          // code/PIN ใน notification.data เป็น ciphertext เสมอ — ถอดตอน render เท่านั้น
           codes: [
-            { code: "LOTUS-0001", pin: "1111", expires_at: "2026-12-31T16:59:59.999Z" },
-            { code: "LOTUS-0002", pin: null, expires_at: null },
+            { code: "enc:LOTUS-0001", pin: "enc:1111", expires_at: "2026-12-31T16:59:59.999Z" },
+            { code: "enc:LOTUS-0002", pin: null, expires_at: null },
           ],
         },
       ],
     }
 
+    const decrypt = (value: string) => value.replace(/^enc:/, "")
+
     it("renders every code with PIN, expiry (Thai date), partner logo and how-to-use block", () => {
-      const email = renderEmailTemplate(EmailTemplates.EVOUCHER_DELIVERED, delivered)
+      const email = renderEmailTemplate(EmailTemplates.EVOUCHER_DELIVERED, delivered, { decrypt })
 
       expect(email).not.toBeNull()
       expect(email!.subject).toContain("#1042")
@@ -152,13 +155,30 @@ describe("renderEmailTemplate", () => {
       expect(email!.html).toContain("แสดง code ที่แคชเชียร์ &lt;ทุกสาขา&gt;")
       expect(email!.html).toContain("Lotus Gift Voucher &lt;500&gt;")
       expect(email!.html).toContain("ใช้ได้ทุกสาขา")
+      expect(email!.html).not.toContain("enc:")
+    })
+
+    it("refuses to render codes without a decrypt function", () => {
+      expect(() => renderEmailTemplate(EmailTemplates.EVOUCHER_DELIVERED, delivered)).toThrow(/decrypt/)
+    })
+
+    it("renders the delivery-failed admin alert with the order id", () => {
+      const email = renderEmailTemplate(EmailTemplates.EVOUCHER_DELIVERY_FAILED, {
+        order: { id: "order_01", display_id: 1042, email: "somchai@example.com" },
+        error: "resend down <x>",
+      })
+
+      expect(email!.subject).toContain("#1042")
+      expect(email!.html).toContain("order_01")
+      expect(email!.html).toContain("somchai@example.com")
+      expect(email!.html).toContain("resend down &lt;x&gt;")
     })
 
     it("drops a non-http partner logo url", () => {
       const email = renderEmailTemplate(EmailTemplates.EVOUCHER_DELIVERED, {
         ...delivered,
         vouchers: [{ ...delivered.vouchers[0], partner: { name: "Lotus", logo_url: "javascript:alert(1)" } }],
-      })
+      }, { decrypt })
 
       expect(email!.html).not.toContain("javascript:")
     })

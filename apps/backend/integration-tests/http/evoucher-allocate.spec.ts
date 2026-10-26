@@ -159,7 +159,10 @@ medusaIntegrationTestRunner({
       return { variantId, inventoryItemId, poolId }
     }
 
-    const placeOrder = async (items: { variant_id: string; quantity: number }[], optionId = digitalOptionId) => {
+    const placeOrder = async (
+      items: { variant_id: string; quantity: number }[],
+      optionIds: string[] = [digitalOptionId]
+    ) => {
       seq += 1
       const email = `ev4-buyer-${seq}@example.com`
       const customer = await container
@@ -183,7 +186,7 @@ medusaIntegrationTestRunner({
         },
       })
       await addShippingMethodToCartWorkflow(container).run({
-        input: { cart_id: cart.id, options: [{ id: optionId }] },
+        input: { cart_id: cart.id, options: optionIds.map((id) => ({ id })) },
       })
       const { result: collection } = await createPaymentCollectionForCartWorkflow(container).run({
         input: { cart_id: cart.id },
@@ -202,6 +205,7 @@ medusaIntegrationTestRunner({
           "id",
           "items.id",
           "items.metadata",
+          "items.variant_id",
           "fulfillments.id",
           "fulfillments.provider_id",
           "payment_collections.payments.id",
@@ -245,6 +249,7 @@ medusaIntegrationTestRunner({
           `code,pin,expires_at\nLOTUS-0001,1111,${expires}\nLOTUS-0002,2222,\nLOTUS-0003,3333,\n`
         )
         const { orderId, email, customerId } = await placeOrder([{ variant_id: variantId, quantity: 2 }])
+        const info = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "info")
         // ยังไม่ capture → ยังไม่ allocate (กฎข้อ 2)
         expect(await service.listEvoucherCodes({ order_id: orderId })).toHaveLength(0)
 
@@ -280,19 +285,29 @@ medusaIntegrationTestRunner({
           how_to_use: "แสดง code ที่แคชเชียร์",
           partner: expect.objectContaining({ logo_url: "https://cdn.example.com/lotus.png" }),
         })
+        // owner: code/PIN ใน notification.data เป็น ciphertext เท่านั้น — provider ถอดตอน render
+        expect(JSON.stringify(emails[0].data)).not.toMatch(/LOTUS-000|1111|2222/)
         expect(voucher.codes).toHaveLength(2)
-        expect(voucher.codes).toEqual(
+        const decrypted = await Promise.all(
+          voucher.codes.map(async (c: { code: string; pin: string; expires_at: string | null }) => ({
+            code: await service.decryptSecret(c.code),
+            pin: await service.decryptSecret(c.pin),
+            expires_at: c.expires_at,
+          }))
+        )
+        expect(decrypted).toEqual(
           expect.arrayContaining([
             { code: "LOTUS-0001", pin: "1111", expires_at: expect.stringContaining(expires.slice(0, 10)) },
             expect.objectContaining({ code: plain.find((p) => p !== "LOTUS-0001"), pin: expect.any(String) }),
           ])
         )
+        // local provider log data → ต้องไม่มี plaintext
+        expect(JSON.stringify(info.mock.calls)).not.toMatch(/LOTUS-000/)
       })
 
       it("fulfils vouchers via Digital delivery even when a mixed order only has the Standard method", async () => {
-        // ไม่มี shipping profile → line item requires_shipping=false (AC-11) จึง complete ได้ด้วย Standard อย่างเดียว
-        // (ถ้า product มี profile Digital Medusa ตั้ง requires_shipping=true และบังคับให้มี method Digital ด้วย)
-        const { variantId } = await createVoucher("MIX-1\nMIX-2\n", { digitalProfile: false })
+        // owner: voucher อยู่ profile Digital เสมอ → cart ผสมต้องมีทั้ง Standard และ Digital
+        const { variantId } = await createVoucher("MIX-1\nMIX-2\n")
         const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
           entity: "product",
           fields: ["variants.id"],
@@ -305,7 +320,7 @@ medusaIntegrationTestRunner({
             { variant_id: tshirt, quantity: 1 },
             { variant_id: variantId, quantity: 1 },
           ],
-          standardOptionId
+          [standardOptionId, digitalOptionId]
         )
 
         await captureAndWait(orderId)
@@ -315,13 +330,24 @@ medusaIntegrationTestRunner({
         expect(await service.listEvoucherCodes({ order_id: orderId, status: "delivered" })).toHaveLength(1)
       })
 
+      it("warns (but still delivers) when a voucher product is not in the Digital shipping profile", async () => {
+        const { variantId } = await createVoucher("NOPROF-1\n", { digitalProfile: false })
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        const warn = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "warn")
+
+        await captureAndWait(orderId)
+
+        expect(warn).toHaveBeenCalledWith(expect.stringMatching(/shipping profile/i))
+        expect(await service.listEvoucherCodes({ order_id: orderId, status: "delivered" })).toHaveLength(1)
+      })
+
       it("does nothing for an order without voucher items", async () => {
         const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
           entity: "product",
           fields: ["variants.id"],
           filters: { handle: "t-shirt" },
         })
-        const { orderId } = await placeOrder([{ variant_id: data[0].variants[0].id, quantity: 1 }], standardOptionId)
+        const { orderId } = await placeOrder([{ variant_id: data[0].variants[0].id, quantity: 1 }], [standardOptionId])
 
         await captureAndWait(orderId)
 
@@ -353,13 +379,13 @@ medusaIntegrationTestRunner({
         expect((await orderOf(orderId)).fulfillments).toHaveLength(1)
       })
 
-      it("releases claimed codes and cancels nothing half-done when the customer email fails", async () => {
+      it("keeps the codes with the order and alerts EVOUCHER_ADMIN_EMAIL when the customer email fails", async () => {
         const { variantId, inventoryItemId, poolId } = await createVoucher("B-1\nB-2\n")
-        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
-        // ล้มเฉพาะอีเมล e-voucher (subscriber order.placed ส่งอีเมลของตัวเองแบบ async อยู่ด้วย)
+        const { orderId, email } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        // ล้มเฉพาะอีเมล e-voucher ถึงลูกค้า (subscriber order.placed ส่งอีเมลของตัวเองแบบ async อยู่ด้วย)
         const notifications = container.resolve(Modules.NOTIFICATION)
         const original = notifications.createNotifications.bind(notifications)
-        const spy = jest.spyOn(notifications, "createNotifications").mockImplementation((async (
+        jest.spyOn(notifications, "createNotifications").mockImplementation((async (
           data: Parameters<typeof original>[0]
         ) => {
           if (JSON.stringify(data).includes("evoucher.delivered")) {
@@ -367,31 +393,58 @@ medusaIntegrationTestRunner({
           }
           return original(data)
         }) as typeof original)
+        const warn = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "warn")
 
-        const { errors } = await allocateAndDeliverEvouchersWorkflow(container).run({
-          input: { order_id: orderId },
-          throwOnError: false,
+        await allocateAndDeliverEvouchersWorkflow(container).run({
+          input: { order_id: orderId, admin_email: OPS_EMAIL },
         })
-        expect(errors.map((e) => e.error.message).join()).toContain("resend down")
 
-        const codes = await service.listEvoucherCodes({ pool_id: poolId })
-        expect(codes.map((c) => [c.status, c.order_id])).toEqual([
-          ["available", null],
-          ["available", null],
+        // ห้ามคืน code เข้า pool (ห้าม resale): code อยู่กับ order และ fulfillment คงอยู่
+        const codes = await service.listEvoucherCodes({ pool_id: poolId }, { order: { status: "ASC" } })
+        expect(codes.filter((c) => c.order_id === orderId)).toEqual([
+          expect.objectContaining({ status: "delivered", delivered_to_email: email }),
         ])
-        const fulfillments = (await orderOf(orderId)).fulfillments ?? []
-        const active = await Promise.all(
-          fulfillments.map((f) =>
-            container.resolve(Modules.FULFILLMENT).retrieveFulfillment(f!.id, { select: ["canceled_at"] })
-          )
-        )
-        expect(active.filter((f) => !f.canceled_at)).toHaveLength(0)
-        expect(await stockedQuantity(inventoryItemId)).toBe(2)
+        expect(codes.filter((c) => c.status === "available")).toHaveLength(1)
+        expect((await orderOf(orderId)).fulfillments).toHaveLength(1)
+        expect(await stockedQuantity(inventoryItemId)).toBe(1)
 
-        // รันใหม่หลัง email กลับมาได้ → ส่งมอบตามปกติ
-        spy.mockRestore()
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("resend down"))
+        const alerts = await listEmails({ template: "evoucher-delivery-failed" })
+        expect(alerts).toHaveLength(1)
+        expect(alerts[0]).toMatchObject({ to: OPS_EMAIL, resource_id: orderId })
+
+        // รันซ้ำ → ไม่ allocate code ใหม่ให้ order เดิม
         await allocateAndDeliverEvouchersWorkflow(container).run({ input: { order_id: orderId } })
-        expect(await service.listEvoucherCodes({ order_id: orderId, status: "delivered" })).toHaveLength(1)
+        expect(await service.listEvoucherCodes({ order_id: orderId })).toHaveLength(1)
+      })
+
+      it("uses a new idempotency key per claim and clears the backordered flag once delivered", async () => {
+        const a = await createVoucher("PA-1\n")
+        const b = await createVoucher("PB-1\n")
+        const { orderId } = await placeOrder([
+          { variant_id: a.variantId, quantity: 1 },
+          { variant_id: b.variantId, quantity: 1 },
+        ])
+        await voidCode(b.poolId)
+
+        await allocateAndDeliverEvouchersWorkflow(container).run({
+          input: { order_id: orderId, admin_email: OPS_EMAIL },
+        })
+        const lineB = (await orderOf(orderId)).items!.find((i) => i!.variant_id === b.variantId)!
+        expect(lineB.metadata).toMatchObject({ evoucher_backordered: true })
+
+        // admin import code เพิ่ม แล้ว trigger ใหม่ → line B ส่งมอบได้ (claim ใหม่ = key ใหม่)
+        await api.post(`/admin/evoucher/pools/${b.poolId}/import`, csvForm("PB-2\n"), adminHeaders)
+        await allocateAndDeliverEvouchersWorkflow(container).run({
+          input: { order_id: orderId, admin_email: OPS_EMAIL },
+        })
+
+        const emails = await listEmails({ template: "evoucher.delivered" })
+        expect(emails).toHaveLength(2)
+        expect(new Set(emails.map((e) => (e as { idempotency_key?: string }).idempotency_key)).size).toBe(2)
+        expect(await service.listEvoucherCodes({ order_id: orderId, status: "delivered" })).toHaveLength(2)
+        const after = (await orderOf(orderId)).items!.find((i) => i!.variant_id === b.variantId)!
+        expect(after.metadata?.evoucher_backordered).toBeFalsy()
       })
     })
 

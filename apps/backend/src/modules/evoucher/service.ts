@@ -125,7 +125,7 @@ class EvoucherModuleService extends MedusaService({
   /**
    * EV-4: claim code ให้ voucher line item ของ order แบบ atomic (spec 02 Workflows, AC-4, AC-7)
    * - advisory lock ต่อ order: event ซ้ำที่รันพร้อมกันจะไม่ allocate line item เดียวกันสองครั้ง
-   * - line item ที่มี code แล้ว (allocated/delivered) → skipped
+   * - line item ที่มี code แล้ว (allocated/delivered) → skipped (ถ้ายังแค่ allocated → stuck ด้วย)
    * - เลือก code `available` ที่ expires_at > expires_after (หรือไม่มีวันหมดอายุ) ตามวันหมดอายุก่อน
    *   ด้วย FOR UPDATE SKIP LOCKED: order อื่นที่ claim พร้อมกันข้ามแถวที่ล็อกอยู่ และ void ของ EV-5
    *   (conditional UPDATE) รอแล้วไม่ทับแถวที่ถูก allocate ไปแล้ว
@@ -144,7 +144,7 @@ class EvoucherModuleService extends MedusaService({
     input: ClaimCodesForOrderInput,
     @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
   ): Promise<ClaimCodesForOrderResult> {
-    const result: ClaimCodesForOrderResult = { allocated: [], backordered: [], skipped: [] }
+    const result: ClaimCodesForOrderResult = { allocated: [], backordered: [], skipped: [], stuck: [] }
     if (!input.items.length) {
       return result
     }
@@ -152,16 +152,23 @@ class EvoucherModuleService extends MedusaService({
     await manager.execute(`SELECT pg_advisory_xact_lock(hashtext(?))`, [
       `evoucher-claim:${input.order_id}`,
     ])
-    const existing = await manager.execute<{ order_line_item_id: string }[]>(
-      `SELECT DISTINCT order_line_item_id FROM evoucher_code
+    const existing = await manager.execute<{ order_line_item_id: string; status: string }[]>(
+      `SELECT DISTINCT order_line_item_id, status FROM evoucher_code
        WHERE order_id = ? AND deleted_at IS NULL AND status IN ('allocated', 'delivered')`,
       [input.order_id]
     )
     const done = new Set(existing.map((row) => row.order_line_item_id))
+    // allocated แต่ไม่ delivered ในรอบก่อน (process ตายกลางทาง) → ไม่ claim ใหม่ แต่รายงานให้ผู้เรียกแจ้งเตือน
+    const stuck = new Set(
+      existing.filter((row) => row.status === "allocated").map((row) => row.order_line_item_id)
+    )
 
     for (const item of input.items) {
       if (done.has(item.line_item_id)) {
         result.skipped.push(item.line_item_id)
+        if (stuck.has(item.line_item_id)) {
+          result.stuck.push(item.line_item_id)
+        }
         continue
       }
       const rows = await manager.execute<{ id: string }[]>(
@@ -203,6 +210,8 @@ export type ClaimCodesForOrderResult = {
   allocated: { line_item_id: string; code_ids: string[] }[]
   backordered: string[]
   skipped: string[]
+  /** line item ใน skipped ที่ code ยัง `allocated` (ไม่ถึง delivered) — ต้องตรวจ/ส่งมอบด้วยมือ */
+  stuck: string[]
 }
 
 export type VoidAvailableCodesFilter = {

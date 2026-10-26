@@ -94,7 +94,7 @@ moduleIntegrationTestRunner<EvoucherModuleService>({
 
       const result = await claim("order_1", 2)
 
-      expect(result).toEqual({ allocated: [], backordered: ["order_1_line"], skipped: [] })
+      expect(result).toEqual({ allocated: [], backordered: ["order_1_line"], skipped: [], stuck: [] })
       const rows = await service.listEvoucherCodes({ pool_id: poolId })
       expect(rows.map((r) => r.status)).toEqual(["available", "available"])
     })
@@ -105,8 +105,18 @@ moduleIntegrationTestRunner<EvoucherModuleService>({
 
       const again = await claim("order_1", 1)
 
-      expect(again).toEqual({ allocated: [], backordered: [], skipped: ["order_1_line"] })
+      expect(again).toEqual({ allocated: [], backordered: [], skipped: ["order_1_line"], stuck: ["order_1_line"] })
       expect(await service.listEvoucherCodes({ order_id: "order_1" })).toHaveLength(1)
+    })
+
+    it("reports skipped line items whose codes are still only allocated (stuck) but not delivered ones", async () => {
+      await addCodes([{ code: "A" }, { code: "B" }])
+      const first = await claim("order_1", 1)
+      await service.updateEvoucherCodes({ id: first.allocated[0].code_ids[0], status: "delivered" })
+
+      const again = await claim("order_1", 1)
+
+      expect(again).toEqual({ allocated: [], backordered: [], skipped: ["order_1_line"], stuck: [] })
     })
 
     it("AC-4 gives each code to exactly one order when many orders claim concurrently", async () => {
