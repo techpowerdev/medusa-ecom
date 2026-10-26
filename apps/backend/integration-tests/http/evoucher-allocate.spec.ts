@@ -47,7 +47,6 @@ medusaIntegrationTestRunner({
     let regionId: string
     let salesChannelId: string
     let locationId: string
-    let digitalProfileId: string
     let digitalOptionId: string
     let standardOptionId: string
     let seq = 0
@@ -69,12 +68,6 @@ medusaIntegrationTestRunner({
       salesChannelId = channels[0].id
       const { data: locations } = await query.graph({ entity: "stock_location", fields: ["id"] })
       locationId = locations[0].id
-      const { data: profiles } = await query.graph({
-        entity: "shipping_profile",
-        fields: ["id"],
-        filters: { type: "digital" },
-      })
-      digitalProfileId = profiles[0].id
       const { data: digital } = await query.graph({
         entity: "shipping_option",
         fields: ["id"],
@@ -104,8 +97,8 @@ medusaIntegrationTestRunner({
       delete process.env.EVOUCHER_ADMIN_EMAIL
     })
 
-    // voucher variant (profile Digital) + pool + import CSV ผ่าน admin API (inventory = จำนวน code)
-    const createVoucher = async (csv: string, { digitalProfile = true } = {}) => {
+    // voucher variant (ไม่มี shipping profile — EV-10 กฎข้อ 1) + pool + import CSV ผ่าน admin API (inventory = จำนวน code)
+    const createVoucher = async (csv: string) => {
       seq += 1
       const { result } = await createProductsWorkflow(container).run({
         input: {
@@ -113,7 +106,6 @@ medusaIntegrationTestRunner({
             {
               title: `Lotus voucher ${seq}`,
               status: "published",
-              ...(digitalProfile ? { shipping_profile_id: digitalProfileId } : {}),
               sales_channels: [{ id: salesChannelId }],
               options: [{ title: "Value", values: ["500"] }],
               variants: [
@@ -240,9 +232,20 @@ medusaIntegrationTestRunner({
       return levels.reduce((sum, l) => sum + Number(l.stocked_quantity), 0)
     }
 
+    // stock หายหลัง order จองแล้ว: EV-10 กฎข้อ 12 ห้าม admin void ตัด stock ที่ถูกจอง (409) → จำลองแบบ job รายวัน
+    // (void แม้ถูกจอง) ด้วย void code + ลด inventory ตรงๆ
     const voidCode = async (poolId: string) => {
       const [code] = await service.listEvoucherCodes({ pool_id: poolId, status: "available" })
-      await api.post(`/admin/evoucher/codes/${code.id}/void`, { reason: "partner recalled" }, adminHeaders)
+      await service.voidAvailableCodes({ id: code.id }, "expiring")
+      const { variant_id } = await service.retrieveEvoucherPool(poolId, { select: ["variant_id"] })
+      const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+        entity: "product_variant",
+        fields: ["inventory_items.inventory_item_id"],
+        filters: { id: variant_id },
+      })
+      await container
+        .resolve(Modules.INVENTORY)
+        .adjustInventory(data[0].inventory_items![0]!.inventory_item_id, locationId, -1)
     }
 
     describe("AC-2 deliver after payment.captured", () => {
@@ -334,7 +337,8 @@ medusaIntegrationTestRunner({
       })
 
       it("warns (but still delivers) when a voucher product is not in the Digital shipping profile", async () => {
-        const { variantId } = await createVoucher("NOPROF-1\n", { digitalProfile: false })
+        // EV-10: voucher ไม่มี shipping profile เสมอ — เงื่อนไข warn จะปรับใน EV-11
+        const { variantId } = await createVoucher("NOPROF-1\n")
         const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
         const warn = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "warn")
 
@@ -527,7 +531,7 @@ medusaIntegrationTestRunner({
         const { variantId, inventoryItemId, poolId } = await createVoucher("LAST-1\nLAST-2\n")
         const a = await placeOrder([{ variant_id: variantId, quantity: 1 }])
         const b = await placeOrder([{ variant_id: variantId, quantity: 1 }])
-        // void ลด stocked_quantity โดยไม่ดู reservation → สอง order ที่ยังไม่ capture เหลือ code ให้เพียงหนึ่ง
+        // void (แบบ job รายวัน) ลด stocked_quantity โดยไม่ดู reservation → สอง order ที่ยังไม่ capture เหลือ code ให้เพียงหนึ่ง
         // (เรียก workflow ตรงแทน capture เพื่อควบคุมให้รันพร้อมกัน)
         await voidCode(poolId)
         expect(await stockedQuantity(inventoryItemId)).toBe(1)

@@ -6,10 +6,13 @@ import {
   when,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import { MedusaError } from "@medusajs/framework/utils"
+import { MathBN, MedusaError, Modules } from "@medusajs/framework/utils"
 import { adjustInventoryLevelsStep, useQueryGraphStep } from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
-import { EVOUCHER_CODE_NOT_AVAILABLE } from "../../modules/evoucher/errors"
+import {
+  EVOUCHER_CODE_NOT_AVAILABLE,
+  EVOUCHER_CODE_RESERVED,
+} from "../../modules/evoucher/errors"
 import EvoucherModuleService from "../../modules/evoucher/service"
 import { resolveEvoucherPoolInventoryStep } from "./import-evoucher-codes"
 
@@ -58,6 +61,50 @@ export const voidAvailableEvoucherCodesStep = createStep(
   }
 )
 
+type EvoucherStockLevel = { inventory_item_id: string; location_id: string }
+
+// กฎข้อ 12: admin void ต้องเหลือ stock ที่ไม่ถูกจองอย่างน้อย 1 — ไม่งั้น order ที่จองไว้กลายเป็น backordered
+// ตรวจและลด stock ภายใต้ lock key เดียวกับ reserveInventoryStep/adjustInventoryLevelsStep ของ Medusa (inventory_item_id)
+// จึง serialize กับ void พร้อมกันและ checkout ที่จองระหว่างนั้น (ห้ามครอบ adjustInventoryLevelsStep ด้วย lock เดียวกัน — deadlock)
+export const voidEvoucherStockStep = createStep(
+  "void-evoucher-stock",
+  async (input: EvoucherStockLevel & { code_id: string }, { container }) => {
+    const inventory = container.resolve(Modules.INVENTORY)
+    const locking = container.resolve(Modules.LOCKING)
+    await locking.execute([input.inventory_item_id], async () => {
+      const [level] = await inventory.listInventoryLevels({
+        inventory_item_id: input.inventory_item_id,
+        location_id: input.location_id,
+      })
+      const free = MathBN.sub(level?.stocked_quantity ?? 0, level?.reserved_quantity ?? 0)
+      if (MathBN.lt(free, 1)) {
+        throw new MedusaError(
+          MedusaError.Types.CONFLICT,
+          `Evoucher code ${input.code_id} cannot be voided: the remaining stock is reserved by orders`,
+          EVOUCHER_CODE_RESERVED
+        )
+      }
+      await inventory.adjustInventory(input.inventory_item_id, input.location_id, -1)
+    })
+    const level: EvoucherStockLevel = {
+      inventory_item_id: input.inventory_item_id,
+      location_id: input.location_id,
+    }
+    return new StepResponse(level, level)
+  },
+  async (level, { container }) => {
+    if (!level) {
+      return
+    }
+    const inventory = container.resolve(Modules.INVENTORY)
+    await container
+      .resolve(Modules.LOCKING)
+      .execute([level.inventory_item_id], () =>
+        inventory.adjustInventory(level.inventory_item_id, level.location_id, 1)
+      )
+  }
+)
+
 export type VoidEvoucherCodeInput = {
   code_id: string
   reason: string
@@ -76,10 +123,11 @@ export const voidEvoucherCodeWorkflow = createWorkflow(
     const poolId = transform({ codes }, ({ codes }) => codes[0].pool_id as string)
     const level = resolveEvoucherPoolInventoryStep({ pool_id: poolId })
 
+    // ลำดับ: void code ก่อน (409 NOT_AVAILABLE) แล้วตรวจ+ลด stock ใต้ lock — ถ้า RESERVED compensation คืน code เป็น available
     voidAvailableEvoucherCodesStep({ code_id: input.code_id, reason: input.reason })
 
-    const adjustments = transform({ level }, ({ level }) => [{ ...level, adjustment: -1 }])
-    adjustInventoryLevelsStep(adjustments)
+    const stock = transform({ level, input }, ({ level, input }) => ({ ...level, code_id: input.code_id }))
+    voidEvoucherStockStep(stock)
 
     return new WorkflowResponse({ id: input.code_id })
   }
