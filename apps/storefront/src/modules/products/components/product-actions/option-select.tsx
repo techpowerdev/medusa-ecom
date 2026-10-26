@@ -25,7 +25,7 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
 
   return (
     <fieldset className="flex flex-col gap-y-3" disabled={disabled}>
-      <legend className="text-sm mb-3">Select {title}</legend>
+      <legend className="text-sm mb-3">เลือก {title}</legend>
       <div
         className="flex flex-wrap justify-between gap-2"
         data-testid={dataTestId}

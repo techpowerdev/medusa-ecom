@@ -45,3 +45,50 @@ Tests  57 passed (57)
 ## pnpm --filter storefront lint → 0 errors (35 warnings เดิมของ starter)
 ## pnpm --filter storefront typecheck → ผ่าน
 ## pnpm --filter storefront build → ผ่าน
+
+# ======================================================================
+# CORE-4b2 — ผล test 2026-10-26, Node 22.23.3
+# เครื่อง local: backend :9125 (DB medusa_core4b, seed ใหม่), storefront `next build` + `next start -p 8125`
+
+## Red (ก่อนแก้โค้ด) — vitest run src/thai-ui-rule.test.ts src/buy-route-thai.test.ts src/lib/util/hreflang.test.ts
+hreflang.test.ts: Cannot find module './hreflang'
+buy-route-thai.test.ts: 4 failed (ข้อความ /buy เป็นอังกฤษ)
+thai-ui-rule.test.ts: 1 failed (rule ยังไม่เปิดกับ src/app/buy/[items]/route.ts)
+(path ของ store/search/categories/collections/products เพิ่มใน ESLint config ก่อนเขียน test จึงไม่ได้เห็น fail ของกรณีนั้น)
+
+## Green — vitest (ไฟล์ของ CORE-4b) 42 passed
+✓ buy-route-thai: พบข้อความตอบกลับครบ 4 จุด + ทั้ง 4 ข้อความเป็นภาษาไทย (AC-49 route handler)
+✓ hreflang: หน้าแรก th-<CC> → /<cc>, PDP ต่อ path สินค้า, ไม่มี key en-*  (owner 2026-10-26)
+✓ thai-ui-rule: rule เปิดกับ path ของ 4b ทั้งหมด (4b1 + store/search/categories/collections/products + app/buy)
+✓ thai-ui-rule: rule ไม่เปิดกับ (checkout), modules/checkout, modules/cart, (main)/account, (main)/cart, modules/common
+✓ thai-ui-rule: fixture AC-47 และ AC-46 (เหมือน 4b1)
+
+## pnpm --filter storefront test:unit (ทั้งชุด)
+Test Files  10 passed (10)
+Tests  93 passed (93)
+
+## playwright --project=unit e2e/support/thai-text.unit.spec.ts → 3 passed (เพิ่มกรณี "Nextxjs" ยืนยันว่าจุดในชื่อแบรนด์ถูก escape)
+
+## playwright --project=chromium (ทุก spec บน develop + spec ใหม่)
+✓ thai-ui-pages.spec.ts › AC-48: หน้า store และ PDP เป็นภาษาไทย
+✓ thai-ui-pages.spec.ts › AC-48: หน้า /search เป็นภาษาไทย
+✓ thai-ui-pages.spec.ts › AC-48: หน้า category และ collection เป็นภาษาไทย
+✓ thai-ui-shell.spec.ts › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai
+✓ thai-ui-shell.spec.ts › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย
+✓ smoke.spec.ts › storefront เสิร์ฟ robots.txt ได้
+✓ smoke.spec.ts › backend /health ตอบ 200 และหน้า login ของ admin แสดงผล
+✓ store-thb-price.spec.ts › AC-28: การ์ดสินค้าทุกใบบน /th/store แสดงราคาเป็น ฿
+✓ ui-preset-font.spec.ts › class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter
+✓ core-store.spec.ts › AC-6, AC-1/2/3, AC-4 (3 test)
+- payments.spec.ts 6 skipped (เครื่อง local ไม่มี Stripe test key — CI รัน)
+12 passed, 6 skipped
+
+## element ที่ตรวจ (AC-48 ส่วน 4b2, หาด้วย test id)
+store: store-page-title, sort-by-container, refinement-title-category, placeholder ของ store-search-input, document.title
+PDP: add-product-button, product-tab-information, product-tab-shipping
+/search: search-result-count, search-submit, placeholder ของ search-query-input, search-no-results
+category: sort-by-container, nav-account-link, meta description
+collection (สร้างผ่าน admin API): sort-by-container, nav-account-link, meta description
+
+## hreflang (curl หลัง build): /th → hrefLang="th-TH" + x-default; /th/products/t-shirt → hrefLang="th-TH"
+## pnpm lint → 0 errors (35 warnings เดิม); pnpm typecheck → ผ่าน; storefront build → ผ่าน

@@ -65,6 +65,19 @@ describe("renderEmailTemplate", () => {
       expect(email!.html).toContain("500g")
     })
 
+    it("lists shipped items with quantity but without prices (CORE-11)", () => {
+      const email = renderEmailTemplate(EmailTemplates.ORDER_SHIPPED, {
+        order: {
+          ...order,
+          items: [{ id: "ordli_01", product_title: "Thai Tea", variant_title: "500g", quantity: 1 }],
+        },
+        fulfillment: { labels: [] },
+      })
+
+      expect(email!.html).toContain("Thai Tea — 500g × 1")
+      expect(email!.html).not.toContain("฿")
+    })
+
     it("renders without tracking labels", () => {
       const email = renderEmailTemplate(EmailTemplates.ORDER_SHIPPED, {
         order,

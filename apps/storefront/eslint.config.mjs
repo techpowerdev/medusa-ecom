@@ -27,6 +27,10 @@ const THAI_UI_FILES = [
   "src/app/[[]countryCode]/(main)/not-found.tsx",
   "src/modules/layout/**",
   "src/modules/home/**",
+  // CORE-4b2
+  "src/app/[[]countryCode]/(main)/{store,search,categories,collections,products}/**",
+  "src/modules/{store,search,categories,collections,products}/**",
+  "src/app/buy/**",
 ]
 
 export default defineConfig([

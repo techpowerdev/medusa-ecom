@@ -21,7 +21,10 @@ const RefinementGroup = ({ attribute, title }: RefinementGroupProps) => {
 
   return (
     <div className="flex flex-col gap-y-3">
-      <span className="txt-compact-small-plus text-ui-fg-subtle">
+      <span
+        className="txt-compact-small-plus text-ui-fg-subtle"
+        data-testid={`refinement-title-${attribute}`}
+      >
         {title}
       </span>
       <ul className="flex flex-col gap-y-2 pr-6">
