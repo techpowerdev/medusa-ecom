@@ -14,6 +14,7 @@ import {
   orderOwner,
   paymentCollectionOwner,
 } from "../../../lib/store-ownership"
+import { rejectStoreReturnOverrides } from "./return-overrides"
 
 // CORE-12 (spec 01 "API routes" + กฎ 22, ADR-013 ทางเลือก A): ตรวจเจ้าของ resource บน route ของ Medusa
 // ด้วย defineMiddlewares — ไม่ห่อ route และไม่ใช้ workflow hook
@@ -57,10 +58,15 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
     middlewares: [customerAuth, ensureStoreOwnership((req, query) => orderOwner(query, req.params.id))],
   },
   // CORE-13 (กฎ 24, AC-39): ตาม guide "Restrict Return Creation" ของ Medusa — core ไม่มี auth บน route นี้
+  // CORE-16: ต่อจาก auth + owner check — ห้าม store ส่ง return_shipping.price / receive_now / location_id (400)
   {
     method: ["POST"],
     matcher: "/store/returns",
-    middlewares: [customerAuth, ensureStoreOwnership((req, query) => orderOwner(query, body(req).order_id))],
+    middlewares: [
+      customerAuth,
+      ensureStoreOwnership((req, query) => orderOwner(query, body(req).order_id)),
+      rejectStoreReturnOverrides,
+    ],
   },
   // CORE-13 (owner Q-F3, AC-40): ปิด order transfer ทั้งชุด (request/accept/decline/cancel) — ไม่ระบุ method
   // จึงอยู่ใน bucket global ของ routes-sorter และทำงานก่อน authenticate แบบระบุ method ของ core (ไม่มี token ก็ได้ 404)

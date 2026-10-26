@@ -3,16 +3,46 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
+  # ไม่รันบน push ไป develop: ทุก PR sync กับ develop ล่าสุดและผ่าน CI ก่อน merge ทีละตัว
+  # run หลัง merge จึงทดสอบ tree เดียวกันซ้ำ; push ไป main (release) ยังรันครบทุก job
   push:
-    branches: [develop, main]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # cancel เฉพาะ run ของ PR ที่ push ซ้ำ — release ไป main ห้ามถูก cancel
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # เวอร์ชัน Node อ่านจาก .nvmrc และ pnpm อ่านจาก "packageManager" ใน package.json ที่ root
 
 jobs:
+  # จัดกลุ่มไฟล์ที่ PR เปลี่ยน (กติกาอยู่ใน tools/ci/classify-changes.sh):
+  # - code=false (เฉพาะ docs/** และ *.md ทุกที่) → ข้าม backend-tests, docker-worker-mode, storefront-e2e
+  # - backend=false (โค้ดอยู่ใน apps/storefront/** เท่านั้น) → ข้าม backend-tests, docker-worker-mode แต่ยังรัน storefront-e2e
+  # lint-typecheck รันเสมอ (มี test:e2e:unit ตรวจ evidence); push ไป main → ทั้งสองเป็น true เสมอ (รันครบ)
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+      backend: ${{ steps.classify.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: classify
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            printf 'code=true\nbackend=true\n' | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # script คำนวณรายชื่อไฟล์เองด้วย git diff --no-renames (rename นับทั้ง path เดิมและใหม่) และพิมพ์รายชื่อลง log
+          tools/ci/classify-changes.sh "$BASE_SHA...$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
+
   lint-typecheck:
     runs-on: ubuntu-latest
     steps:
@@ -32,7 +62,8 @@ jobs:
 
   backend-tests:
     runs-on: ubuntu-latest
-    needs: lint-typecheck
+    needs: [lint-typecheck, changes]
+    if: needs.changes.outputs.backend == 'true'
     services:
       postgres:
         image: postgres:16
@@ -75,14 +106,22 @@ jobs:
   # OPS-1 AC-1: build backend image แล้วบูตเป็น server + worker จาก image เดียวกัน
   docker-worker-mode:
     runs-on: ubuntu-latest
-    needs: lint-typecheck
+    needs: [lint-typecheck, changes]
+    if: needs.changes.outputs.backend == 'true'
     steps:
       - uses: actions/checkout@v4
       - run: tools/ops/smoke-worker-mode.sh
 
   storefront-e2e:
     runs-on: ubuntu-latest
-    needs: backend-tests
+    # ยังรอ backend-tests เมื่อรัน แต่ไม่ถูกข้ามตามเมื่อ backend-tests ถูกข้าม (PR แก้แค่ storefront)
+    # always() ต้องเช็ก lint-typecheck เองด้วย เพราะ always() ปิดการข้ามอัตโนมัติเมื่อ job ก่อนหน้าล้ม/ถูก cancel
+    needs: [lint-typecheck, backend-tests, changes]
+    if: >-
+      always() && !cancelled()
+      && needs.changes.result == 'success' && needs.changes.outputs.code == 'true'
+      && needs.lint-typecheck.result == 'success'
+      && (needs.backend-tests.result == 'success' || needs.backend-tests.result == 'skipped')
     services:
       postgres:
         image: postgres:16
@@ -101,6 +140,8 @@ jobs:
       NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
       JWT_SECRET: test
       COOKIE_SECRET: test
+      # AF-2: secret ของ cookie `aff` (spec 05) — ไม่ตั้ง = ลิงก์ affiliate redirect ได้แต่ไม่มี cookie
+      AFFILIATE_TOKEN_SECRET: test
       STORE_CORS: http://localhost:8000
       ADMIN_CORS: http://localhost:9000
       AUTH_CORS: http://localhost:9000,http://localhost:8000
