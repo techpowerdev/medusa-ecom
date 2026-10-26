@@ -24,8 +24,13 @@ const parseExpiresAt = (value: string) =>
 const isRealCalendarDate = (value: string) => {
   const [y, m, d] = value.slice(0, 10).split("-").map(Number)
   const date = new Date(Date.UTC(y, m - 1, d))
+  // `T24:00` ก็ถูกเลื่อนเป็นวันถัดไปเช่นกัน → ชั่วโมงต้อง 00–23
+  const hour = /^.{10}T(\d{2})/.exec(value)?.[1]
   return (
-    date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() === m - 1 &&
+    date.getUTCDate() === d &&
+    (hour === undefined || Number(hour) < 24)
   )
 }
 

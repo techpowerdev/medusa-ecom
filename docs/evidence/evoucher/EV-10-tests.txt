@@ -1,14 +1,16 @@
-EV-10 — ผลทดสอบ (2026-10-26, Node 22, Medusa 2.22.1, base origin/develop b219d04)
+EV-10 — ผลทดสอบ (2026-10-26, Node 22, Medusa 2.22.1, base origin/develop 3b58e36) — รอบแก้ review #85
 
-== integration:http evoucher-pool-guards.spec.ts (AC-21, AC-22, AC-23, AC-24) ==
+== integration:http evoucher-pool-guards.spec.ts (AC-21 รวม void พร้อมกัน, AC-22, AC-23, AC-24) ==
       ✓ rejects a variant whose inventory item is shared with another variant
       ✓ rejects a variant with two inventory items
       ✓ rejects a variant whose inventory item has required_quantity > 1
       ✓ returns 409 EVOUCHER_CODE_RESERVED when all stock is reserved, then voids once a unit is free
+      ✓ lets only one of two concurrent voids through when a single unit is free
       ✓ fails the whole file with the line number and inserts nothing
       ✓ sets requires_shipping=true when an empty pool is deleted
       ✓ backfills pools created before EV-8 to requires_shipping=false, idempotently, leaving other items alone
-Tests:       7 passed, 7 total
+Tests:       8 passed, 8 total
+(รันกลุ่ม AC-21 ซ้ำอีก 2 รอบ: ผ่านทุกรอบ)
 
 == integration:http evoucher-hardening.spec.ts (regression) ==
       ✓ sets requires_shipping=false on the inventory item and on the cart line item
@@ -54,9 +56,9 @@ Tests:       17 passed, 17 total
     ✓ returns 404 when revealing an unknown code and writes no audit
 Tests:       13 passed, 13 total
 
-== test:unit (รวม csv.unit.spec.ts AC-22, error-handler.unit.spec.ts) ==
-Test Suites: 37 passed, 37 total
-Tests:       319 passed, 319 total
+== test:unit (รวม csv.unit.spec.ts AC-22 + T24:00, error-handler.unit.spec.ts) ==
+Test Suites: 38 passed, 38 total
+Tests:       321 passed, 321 total
 
 == pnpm lint && pnpm typecheck: exit 0 ==
 == pnpm --filter backend build: exit 0 ==

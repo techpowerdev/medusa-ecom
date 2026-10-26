@@ -58,7 +58,7 @@ describe("parseEvoucherCsv", () => {
     ).toThrow(/line 2.*line 3/s)
   })
 
-  it.each(["2026-02-30", "2026-04-31", "2026-13-01", "2026-02-30T10:00:00+07:00", "2026-00-10"])(
+  it.each(["2026-02-30", "2026-04-31", "2026-13-01", "2026-02-30T10:00:00+07:00", "2026-00-10", "2026-02-28T24:00:00Z"])(
     "AC-22 rejects a non-existent calendar date %s instead of rolling it over",
     (value) => {
       expect(() => parseEvoucherCsv(`code,expires_at\nOK-1,2027-01-01\nBAD-1,${value}\n`)).toThrow(

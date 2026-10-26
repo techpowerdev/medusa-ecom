@@ -189,6 +189,7 @@ medusaIntegrationTestRunner({
 
         expect(res.status).toBe(400)
         expect(await poolsOf(v1)).toHaveLength(0)
+        expect(await requiresShipping(itemId)).toBe(true)
       })
     })
 
@@ -225,6 +226,32 @@ medusaIntegrationTestRunner({
         expect(ok.status).toBe(200)
         expect((await service.retrieveEvoucherCode(code.id)).status).toBe("void")
         expect(await level(inventoryItemId)).toEqual({ stocked: 1, reserved: 1 })
+      })
+      it("lets only one of two concurrent voids through when a single unit is free", async () => {
+        const { variantId, inventoryItemId } = await createVoucherVariant()
+        const pool = await postPool(variantId)
+        const poolId = pool.data.pool.id
+        await importCsv(poolId, "RACE-1\nRACE-2\n")
+        await container
+          .resolve(Modules.INVENTORY)
+          .createReservationItems([
+            { inventory_item_id: inventoryItemId, location_id: locationId, quantity: 1 },
+          ])
+        const codes = await service.listEvoucherCodes({ pool_id: poolId })
+
+        const results = await Promise.all(
+          codes.map((c) =>
+            api
+              .post(`/admin/evoucher/codes/${c.id}/void`, { reason: "partner recalled" }, adminHeaders)
+              .catch((e) => e.response)
+          )
+        )
+
+        expect(results.map((r) => r.status).sort()).toEqual([200, 409])
+        expect(results.find((r) => r.status === 409)!.data.code).toBe("EVOUCHER_CODE_RESERVED")
+        expect(await level(inventoryItemId)).toEqual({ stocked: 1, reserved: 1 })
+        const statuses = (await service.listEvoucherCodes({ pool_id: poolId })).map((c) => c.status)
+        expect(statuses.sort()).toEqual(["available", "void"])
       })
     })
 
