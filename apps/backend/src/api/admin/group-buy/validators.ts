@@ -73,3 +73,9 @@ export const AdminListGroupBuyGroups = createFindParams({
 })
 
 export const AdminGetGroupBuyGroupParams = createSelectParams()
+
+// GB-6c (spec 04 API): อ่านอย่างเดียว ไม่รับ fields/order — limit 1..100 ค่าเริ่มต้น 50, offset ≥ 0
+export const AdminListGroupBuyMemberships = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+})
