@@ -19,5 +19,7 @@ test.describe("latinWordsOutsideAllowList", () => {
     expect(latinWordsOutsideAllowList("Cart (0)")).toEqual(["Cart"])
     expect(latinWordsOutsideAllowList("บัญชี Account")).toEqual(["Account"])
     expect(latinWordsOutsideAllowList("Medusa Storefront")).toEqual(["Storefront"])
+    // จุดในชื่อแบรนด์ต้องตรงตัว ไม่ใช่ wildcard ของ regex
+    expect(latinWordsOutsideAllowList("Nextxjs")).toEqual(["Nextxjs"])
   })
 })

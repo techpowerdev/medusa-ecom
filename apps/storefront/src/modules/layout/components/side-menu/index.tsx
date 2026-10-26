@@ -19,9 +19,10 @@ const SideMenuItems = [
 
 type SideMenuProps = {
   regions: HttpTypes.StoreRegion[] | null
+  storeName: string
 }
 
-const SideMenu = ({ regions }: SideMenuProps) => {
+const SideMenu = ({ regions, storeName }: SideMenuProps) => {
   const countryToggleState = useToggleState()
 
   return (
@@ -107,8 +108,7 @@ const SideMenu = ({ regions }: SideMenuProps) => {
                         />
                       </div>
                       <Text className="flex justify-between txt-compact-small">
-                        {/* eslint-disable-next-line no-restricted-syntax -- ชื่อร้าน (ADR-014 ข้อ 4) */}
-                        © {new Date().getFullYear()} Medusa Store สงวนลิขสิทธิ์
+                        © {new Date().getFullYear()} {storeName} สงวนลิขสิทธิ์
                       </Text>
                     </div>
                   </div>

@@ -186,7 +186,7 @@ export default function ProductActions({
               className="text-small-regular text-ui-fg-subtle"
               data-testid="product-availability"
             >
-              {inStock ? "In stock" : "Out of stock"}
+              {inStock ? "มีสินค้า" : "สินค้าหมด"}
             </p>
           )}
 
@@ -205,10 +205,10 @@ export default function ProductActions({
             data-testid="add-product-button"
           >
             {!selectedVariant
-              ? "Select variant"
+              ? "เลือกตัวเลือกสินค้า"
               : !inStock || !isValidVariant
-              ? "Out of stock"
-              : "Add to cart"}
+              ? "สินค้าหมด"
+              : "เพิ่มลงตะกร้า"}
           </Button>
         </form>
         <MobileActions
