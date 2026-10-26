@@ -18,12 +18,18 @@ export const emptyCampaignForm = () => ({
   discount_type: "percentage" as "percentage" | "fixed",
   discount_value: "",
   max_quantity: "10",
-  product_ids: "", // คั่นด้วย comma; ว่าง = ทุกสินค้า (แก้ scope ภายหลังที่หน้า promotion ของ Medusa ได้)
+  product_ids: [] as string[], // GB-6b2: จาก product picker; ว่าง = ทุกสินค้า (แก้ scope ภายหลังที่หน้า promotion ของ Medusa ได้)
   is_tax_inclusive: true, // spec 04 กฎข้อ 12
 })
 export type CampaignForm = ReturnType<typeof emptyCampaignForm>
 
-class FormError extends Error {}
+type FormField = "max_quantity"
+
+class FormError extends Error {
+  constructor(message: string, readonly field?: FormField) {
+    super(message)
+  }
+}
 
 const intOrNull = (value: string, label: string) => {
   if (!value.trim()) {
@@ -55,6 +61,16 @@ const ictToIso = (value: string) => {
   return date.toISOString()
 }
 
+// GB-6b2 กฎข้อ 16: ends_at ที่ไม่อยู่ในอนาคตแค่เตือน (แคมเปญเป็น draft; backend ปฏิเสธ activate เอง)
+export const isEndsAtPast = (endsAt: string, now = Date.now()) => {
+  try {
+    const iso = ictToIso(endsAt)
+    return iso !== null && Date.parse(iso) <= now
+  } catch {
+    return false
+  }
+}
+
 const buildBody = (form: CampaignForm) => {
   const name = form.name.trim()
   if (!name) {
@@ -77,9 +93,12 @@ const buildBody = (form: CampaignForm) => {
     throw new FormError("Percentage discount cannot exceed 100")
   }
   const productIds = form.product_ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean)
+  const max_units_per_person = intOrNull(form.max_units_per_person, "Max units per person")
+  const max_quantity = required(intOrNull(form.max_quantity, "Max quantity"), "Max quantity")
+  // กฎข้อ 15: ไม่เช่นนั้นสมาชิก join ด้วยจำนวนชิ้นที่ส่วนลดไม่ครอบ (ตรวจในฟอร์มเท่านั้น — Q10)
+  if (max_units_per_person !== null && max_quantity < max_units_per_person) {
+    throw new FormError("Max discounted quantity must be at least max units per person", "max_quantity")
+  }
 
   return {
     name,
@@ -88,7 +107,7 @@ const buildBody = (form: CampaignForm) => {
     group_mode: form.group_mode,
     team_duration_hours,
     max_total_orders: intOrNull(form.max_total_orders, "Max total orders"),
-    max_units_per_person: intOrNull(form.max_units_per_person, "Max units per person"),
+    max_units_per_person,
     max_people_per_group: intOrNull(form.max_people_per_group, "Max people per group"),
     pay_within_hours: required(intOrNull(form.pay_within_hours, "Pay within"), "Pay within"),
     starts_at,
@@ -98,7 +117,7 @@ const buildBody = (form: CampaignForm) => {
       type: form.discount_type,
       target_type: "items" as const,
       allocation: "each" as const,
-      max_quantity: required(intOrNull(form.max_quantity, "Max quantity"), "Max quantity"),
+      max_quantity,
       value,
       // ราคาร้านเป็น THB; ส่วนลด fixed ของ Medusa ต้องมี currency_code
       ...(form.discount_type === "fixed" ? { currency_code: "thb" } : {}),
@@ -110,12 +129,14 @@ const buildBody = (form: CampaignForm) => {
 }
 export type CampaignBody = ReturnType<typeof buildBody>
 
-export const toCampaignBody = (form: CampaignForm): { body: CampaignBody } | { error: string } => {
+export const toCampaignBody = (
+  form: CampaignForm
+): { body: CampaignBody } | { error: string; field?: FormField } => {
   try {
     return { body: buildBody(form) }
   } catch (e) {
     if (e instanceof FormError) {
-      return { error: e.message }
+      return e.field ? { error: e.message, field: e.field } : { error: e.message }
     }
     throw e
   }

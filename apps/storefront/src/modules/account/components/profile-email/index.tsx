@@ -7,6 +7,7 @@ import Input from "@modules/common/components/input"
 import AccountInfo from "../account-info"
 import { HttpTypes } from "@medusajs/types"
 // import { updateCustomer } from "@lib/data/customer"
+import { errorMessage } from "@lib/util/error-message"
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
@@ -24,7 +25,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
       // email: formData.get("email") as string
       return { success: true, error: null }
     } catch (error) {
-      return { success: false, error: String(error) }
+      return { success: false, error: errorMessage(error) }
     }
   }
 
@@ -44,7 +45,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
   return (
     <form action={formAction} className="w-full">
       <AccountInfo
-        label="Email"
+        label="อีเมล"
         currentInfo={`${customer.email}`}
         isSuccess={successState}
         isError={!!state.error}
@@ -54,7 +55,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
       >
         <div className="grid grid-cols-1 gap-y-2">
           <Input
-            label="Email"
+            label="อีเมล"
             name="email"
             type="email"
             autoComplete="email"

@@ -18,3 +18,12 @@ export const refetchGroupBuyCampaign = async (req: AuthenticatedMedusaRequest, i
       options: { throwIfKeyNotFound: true },
     })
   )
+
+export const refetchGroupBuyGroup = (req: AuthenticatedMedusaRequest, id: string) =>
+  refetchEntity({
+    entity: "group_buy_group",
+    idOrFilter: id,
+    scope: req.scope,
+    fields: req.queryConfig.fields,
+    options: { throwIfKeyNotFound: true },
+  })

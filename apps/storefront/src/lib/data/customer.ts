@@ -2,6 +2,7 @@
 
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
+import { errorMessage, friendlyErrorMessage } from "@lib/util/error-message"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
@@ -114,7 +115,7 @@ export async function signup(
       fetchError.statusText !== "Unauthorized" ||
       fetchError.message !== "Identity with email already exists"
     ) {
-      return { state: "error", error: String(error) }
+      return { state: "error", error: errorMessage(error) }
     }
   }
 
@@ -170,7 +171,7 @@ async function continueAfterAuth(
   try {
     await addToCart({ ...pending, quantity: 1 })
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   redirect(`/${pending.countryCode}/cart`)
@@ -188,7 +189,7 @@ async function completeLogin(
   try {
     result = await sdk.auth.login("customer", "emailpass", { email, password })
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   // A `location` is returned by third-party auth providers, which this flow
@@ -196,7 +197,7 @@ async function completeLogin(
   if (typeof result === "object" && "location" in result) {
     return {
       state: "error",
-      error: "This login method isn't supported by the storefront.",
+      error: "ร้านไม่รองรับวิธีเข้าสู่ระบบนี้",
     }
   }
 
@@ -218,7 +219,7 @@ async function completeLogin(
   if (typeof result !== "string") {
     return {
       state: "error",
-      error: "Authentication requires additional steps that aren't supported.",
+      error: "การยืนยันตัวตนต้องใช้ขั้นตอนเพิ่มเติมที่ร้านยังไม่รองรับ",
     }
   }
 
@@ -254,7 +255,7 @@ async function completeLogin(
         password,
       })) as string
     } catch (error) {
-      return { state: "error", error: String(error) }
+      return { state: "error", error: errorMessage(error) }
     }
 
     await removePendingCustomer()
@@ -268,7 +269,7 @@ async function completeLogin(
   try {
     await transferCart()
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   return { state: "success" }
@@ -285,7 +286,7 @@ export async function confirmEmailVerification(
     await sdk.auth.verification.confirm({ code: token })
     return { success: true }
   } catch (error) {
-    return { success: false, error: String(error) }
+    return { success: false, error: errorMessage(error) }
   }
 }
 
@@ -354,7 +355,8 @@ export const addCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }
 
@@ -373,7 +375,8 @@ export const deleteCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }
 
@@ -385,7 +388,7 @@ export const updateCustomerAddress = async (
     (currentState.addressId as string) || (formData.get("addressId") as string)
 
   if (!addressId) {
-    return { success: false, error: "Address ID is required" }
+    return { success: false, error: "ไม่พบที่อยู่ที่ต้องการแก้ไข" }
   }
 
   const address = {
@@ -418,6 +421,7 @@ export const updateCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }

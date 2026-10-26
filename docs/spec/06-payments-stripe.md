@@ -23,6 +23,7 @@
 | lock ข้าม request | Locking module (`Modules.LOCKING`) key `cart_id` (key เดียวกับ `processPaymentWorkflow`) | ใช้ตามเดิมใน guard ของ PAY-6 |
 | อ่าน/ตรวจ webhook ของ provider | `paymentModule.getWebhookActionAndData(input)` (ที่ core subscriber ของ `payment.webhook_received` ใช้) | ใช้ตามเดิมใน subscriber alert ของ PAY-6 |
 | ส่งอีเมล alert | Notification module + Resend provider ที่มีอยู่ | ใช้ตามเดิม |
+| refund payment ที่ collection ไม่ผูก order | `refundPaymentsWorkflow` (core-flows 2.22.1) — Medusa ใช้เองใน `compensatePaymentIfNeededStep` ของ `completeCartWorkflow` | ใช้ตามเดิมผ่าน script `medusa exec` (ADR-015 ภาคผนวก 2, AC-16c) |
 | error 409 พร้อม code ของเรา | `businessErrorHandler` ของ PROMO-2 (spec 03 กฎข้อ 13) | ใช้ตามเดิม: เพิ่ม `PAYMENT_ALREADY_COMPLETED` ใน allow-list |
 
 ## การตั้งค่า
@@ -51,7 +52,8 @@
 1. ยอดเงินทั้งหมดเป็น THB ในหน่วยหลัก (major units) ของ Medusa; Stripe provider แปลงเป็นสตางค์เอง
 2. order จะถูกสร้างก็ต่อเมื่อ payment session ถูก authorized/captured แล้วเท่านั้น (ค่าเริ่มต้นของ Medusa)
 3. Webhook event เป็น source of truth สำหรับการชำระ PromptPay สำเร็จ
-4. Refund ทำผ่าน `refundPaymentWorkflow` เท่านั้น; ห้ามเรียก Stripe API โดยตรงนอก provider
+4. Refund ทำผ่าน `refundPaymentWorkflow` เท่านั้น; ห้ามเรียก Stripe API โดยตรงนอก provider — ข้อยกเว้นตาม ADR-015: PI ที่ไม่มี payment ใน Medusa
+   (refund ด้วยมือใน Stripe dashboard) และ payment captured ที่ collection ไม่ผูก order (`refundPaymentsWorkflow` ผ่าน script `refund-orphan-payment.ts`, รอบ 8)
 5. PaymentIntent ของ provider บัตร (`pp_stripe_stripe`) มี `payment_method_types: ["card"]` เท่านั้น (ไม่เปิด method อื่นโดยปริยาย)
    ส่งผ่านช่องทางที่ Medusa Stripe provider รองรับ (เช่น `data` ของ payment session) — ถ้าทำไม่ได้โดยไม่เขียน provider เอง ให้หยุดและเขียน ADR
 6. production ห้ามมี `pp_system_default` (manual) ใน region — ADR-010 (accepted) ระดับ D1: seed ไม่ใส่ให้ใน production และ
@@ -83,7 +85,10 @@
    `payment_collection_id`/`cart_id` ถ้าหาได้ **และ** ส่งอีเมลหา `OPS_ALERT_EMAIL` ผ่าน Notification module ทันที (owner ตัดสิน 2026-10-26; env แยกจาก
    `EVOUCHER_ADMIN_EMAIL`; ไม่ตั้ง → log warn ข้ามการส่ง; ส่งล้ม → log error subscriber ไม่ล้ม) — ไม่สร้าง order/payment/refund เอง (ไม่ทำ reconciliation
    ทางเลือก B) ops refund ตาม runbook **"เงินถูกตัดแต่ไม่มี order (ADR-015)"** ใน `docs/ops/production.md` (refund ด้วยมือใน Stripe dashboard ได้เฉพาะ
-   PI ที่ไม่มี payment ใน Medusa — ข้อยกเว้นของกฎข้อ 4 ตาม ADR-015; ไม่มีโค้ดใดเรียก refund ของ Stripe)
+   PI ที่ไม่มี payment ใน Medusa; ถ้า Medusa **มี** payment captured แต่ collection ไม่ผูก order → **ตรวจก่อน refund** แล้วใช้ script
+   `apps/backend/src/scripts/refund-orphan-payment.ts` ที่เรียก `refundPaymentsWorkflow` (รอบ 8, ADR-015 ภาคผนวก 2) — ข้อยกเว้นของกฎข้อ 4; โค้ดของเราไม่เรียก
+   refund ของ Stripe ตรง และไม่ refund อัตโนมัติ — แต่ Medusa refund อัตโนมัติได้เองใน `compensatePaymentIfNeededStep` ของ `completeCartWorkflow`
+   เมื่อ complete ล้มหลัง capture (note "Refunded due to cart completion failure"))
 
 ## Acceptance criteria
 - AC-1 บัตร `4242…` → สร้าง order สำเร็จ, `payment_status=captured`
@@ -92,7 +97,10 @@
 - AC-4 PromptPay: แสดง QR; เมื่อ confirm PaymentIntent ใน test mode → webhook → สร้าง order
   พร้อม `payment_status=captured`
 - AC-5 PromptPay ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
-- AC-6 Admin refund ฿100 บน order ที่ captured แล้ว → มี Stripe refund เกิดขึ้น; order แสดงสถานะ refunded
+- AC-6 (ปรับรอบ 8 ตาม PAY-4 #94) Admin refund ฿100 บน order ที่ captured แล้วยอด ฿600 (refund บางส่วน) → มี Stripe refund ฿100 เกิดขึ้น;
+  order มี `payment_status=partially_refunded` (refund เต็มยอด → `refunded`) และ Medusa 2.22.1 สร้าง credit line ของ order จากการ refund
+  (พฤติกรรมของ `refundPaymentWorkflow` → `createOrderRefundCreditLinesWorkflow` ใช้ตามเดิม) — **e2e ของ #94 ยังไม่ assert credit line**: เพิ่ม assertion
+  (`GET /admin/orders/:id` มี `credit_lines` 1 รายการที่ยอดสัมบูรณ์ = 100) ใน task ถัดไปที่แตะ e2e refund (GB-N1)
 - AC-7 ชำระ draft order ผ่าน `/account/orders/:id/pay` ด้วย PromptPay → captured
 - AC-8 การส่ง webhook ซ้ำต้องไม่ทำให้ capture/refund ซ้ำ
 - AC-9 สร้าง payment session บัตรจาก checkout → PaymentIntent ใน Stripe test mode (อ่านผ่าน Stripe API/MCP ด้วย id ใน session `data`)
@@ -138,6 +146,15 @@
   เปิดหน้า checkout ของ cart นั้นอีกครั้ง (storefront เรียก complete ตาม AC-12b) หรือ refund ตามขั้นเดิมถ้า complete ไม่ได้ — หัวข้อมีคำว่า
   `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` และ `PAYMENT_ALREADY_COMPLETED`; (รอบ 6) มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้ → cart สร้าง session
   ใหม่ไม่ได้) พร้อมขั้นแก้; และมีบรรทัด `OPS_ALERT_EMAIL=` ใน `apps/backend/.env.example` (unit test อ่านไฟล์)
+- AC-16b (PAY-6b2 #97, รอบ 8, ADR-015 ภาคผนวก 2) Given หัวข้อ runbook ของ AC-16 Then มีหัวข้อย่อยกรณี "payment captured แต่ collection ไม่ผูก order" ที่มีขั้นตามลำดับ:
+  ลอง complete cart ก่อน → "ตรวจก่อน refund" (`refunds` จาก `GET /admin/payments/:id` + PI ใน Stripe; อ้างข้อความ "Refunded due to cart completion failure")
+  → รัน `refund-orphan-payment.ts` ด้วย `medusa exec` เมื่อยังไม่ refund → ลูกค้า logout ทิ้ง cart เดิม → เฝ้า Orders จนพ้นช่วง Stripe retry webhook พร้อมข้อความ
+  "ห้าม fulfill" และ "ห้าม cancel" (เหตุผล `cancelOrderWorkflow` refund ซ้ำ) → บันทึก incident; และไม่มีขั้นที่สั่ง refund payment นี้ใน Stripe dashboard
+  (unit test อ่านไฟล์ grep คำสำคัญ: "ตรวจก่อน refund", `refund-orphan-payment`, "Refunded due to cart completion failure", "ห้าม fulfill", "ห้าม cancel")
+- AC-16c (PAY-6b2 #97, รอบ 8) Given payment captured บน collection ของ cart ที่ไม่มี order (สร้างผ่าน mock provider) When รัน script `refund-orphan-payment.ts`
+  ด้วย payment id Then payment มี refund 1 รายการเท่ายอดที่ capture (ผ่าน `refundPaymentsWorkflow` — provider ถูกเรียก refund 1 ครั้ง); When รันซ้ำ Then ไม่มี refund
+  เพิ่มและจบด้วยข้อความว่า refund แล้ว; Given payment ที่ collection ผูก order หรือยังไม่ captured Then script ไม่ refund และ exit ≠ 0 พร้อมเหตุผล; source ของ
+  script ไม่ import `stripe` (integration modules/http + grep)
 
 ## Test plan
 - Integration (http): AC-8 โดย mock provider
@@ -145,7 +162,7 @@
   webhook จริงส่งถึง runner; จำลอง PromptPay สำเร็จด้วยการ confirm PaymentIntent ใน test mode
 - e2e: AC-9 (อ่าน PaymentIntent จาก Stripe test mode ระหว่าง AC-1/AC-4); CI: AC-10
 - integration/e2e กับ Stripe test mode: AC-11; e2e: AC-12, AC-12b (ส่วน storefront); integration: AC-12b (complete cart หลัง guard)
-- unit: guard (AC-13 a–g ด้วย mock payment module), การตรวจ runbook/env (AC-16); integration http: AC-13; integration: AC-14, AC-15
+- unit: guard (AC-13 a–g ด้วย mock payment module), การตรวจ runbook/env (AC-16, AC-16b); integration http: AC-13; integration: AC-14, AC-15, AC-16c
 
 ## Tasks
 | ID | Task | Depends |
@@ -156,7 +173,7 @@
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
 | PAY-5 | follow-up review PR #48 (เล็ก): race ระหว่าง QR หมดอายุกับการชำระสำเร็จ — test AC-11 ก่อนเพื่อยืนยันพฤติกรรมของ Medusa/Stripe provider เมื่อลบ session ที่ PI `succeeded` แล้ว; ถ้าเป็นกรณี (a) ของกฎข้อ 7 แก้เฉพาะ storefront ให้ poll ต่อเมื่อสร้าง session ใหม่ล้ม (AC-12); ถ้าเป็นกรณี (b) หยุดแล้วเขียน ADR (ไม่เขียน reconciliation เอง) | PAY-2 |
 | PAY-6a | (◐ #82, แยกรอบ 6) ADR-015 A ฝั่ง backend: guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`/`payment_collection_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + guard หลัง ownership ของ CORE-12 + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-11, AC-13 a–g, AC-14, AC-12b ส่วน backend = integration complete cart หลัง guard) + integration race ตาม "หมายเหตุ (รอบ 6)" ด้านล่าง — **ไม่รวม** storefront (AC-12 และ AC-12b ส่วน storefront อยู่ใน PAY-6b) | PAY-5 (#65), PROMO-2 |
-| PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้ | PAY-6a |
+| PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D; หัวข้อ fail closed ต้องใช้วิธีที่ตรวจแล้วว่ามีจริง — ดู "ความเสี่ยงที่ยอมรับเพิ่ม" รอบ 7) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้; **รอบ 8**: PAY-6b2 (#97) รวม AC-16b (runbook ใหม่) และ script `apps/backend/src/scripts/refund-orphan-payment.ts` + integration test (AC-16c) | PAY-6a |
 PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment` เดียวกับที่ PAY-3 นำไปใช้ซ้ำ — merge PAY-5 ก่อน PAY-3 ถ้าทำพร้อมกัน ให้ rebase)
 PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
 ต้อง merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
@@ -171,7 +188,15 @@ PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก gu
 - PI ของ**บัตร**ที่อยู่สถานะ `processing` → provider คืน `PENDING` → `authorizePaymentSession` โยน `NOT_ALLOWED` → guard `next()` → session อาจถูกลบได้
   (ตรงกับกรณี `processing` ใน "ความเสี่ยงที่เหลือ" ของ ADR-015) — ถ้า PI สำเร็จภายหลัง ตาข่าย D (PAY-6b) จับได้ (alert + refund ด้วยมือ)
 - guard แบบ fail closed: ถ้า retrieve PI ล้มถาวร (เช่น PI ถูกลบ/บัญชี Stripe ผิด) cart นั้นสร้าง session ใหม่ไม่ได้เลย → runbook ของ PAY-6b ต้องมีหัวข้อวิธีแก้
-  (ตรวจ PI ใน Stripe dashboard แล้วให้ลูกค้าเริ่ม cart ใหม่ หรือ ops ลบ session ที่ค้างผ่าน admin/API ของ Medusa) และ AC-16 ตรวจว่ามีหัวข้อนี้
+  (ตรวจ PI ใน Stripe dashboard แล้วให้ลูกค้าเริ่ม cart ใหม่ หรือ ops ล้าง session ที่ค้าง) และ AC-16 ตรวจว่ามีหัวข้อนี้
+  **(รอบ 7)** Medusa 2.22.1 **ไม่มี admin route ลบ payment session** — builder PAY-6b ต้องตรวจวิธีที่ทำได้จริงจาก source/docs ก่อนเขียนขั้นใน runbook (เช่น ลูกค้าเริ่ม
+  cart ใหม่, หรือ script `medusa exec` ที่เรียก method ของ Payment module ที่มีอยู่จริง) และทดลองบน DB ทดสอบ; ห้ามเขียนขั้นที่อ้าง route ที่ไม่มี และห้ามแนะนำแก้ DB
+  ด้วย SQL ตรง; ถ้าไม่มีวิธีที่ไม่ต้องเขียนโค้ดใหม่ ให้ runbook ใช้ "ลูกค้าเริ่ม cart ใหม่" อย่างเดียวและรายงานใน PR
+- **(รอบ 8, review #97/#104 — owner ตัดสินใหม่ 2026-10-26, ADR-015 ภาคผนวก 2 accepted)** payment captured บน collection ของ cart ที่ complete ไม่ได้
+  (collection ไม่ผูก order → `refundPaymentWorkflow` throw) refund ผ่าน `refundPaymentsWorkflow` ของ Medusa ด้วย script `refund-orphan-payment.ts` (`medusa exec`)
+  หลังขั้น "ตรวจก่อน refund" — เพราะ `completeCartWorkflow` อาจ refund ให้เองแล้ว (`compensatePaymentIfNeededStep`) สถานะใน Medusa จึงตรงกับ Stripe (AC-16b, AC-16c)
+- (รอบ 8) nit review #82 ของ PAY-6a (ย้าย constant `PAYMENT_ALREADY_COMPLETED` ไปไฟล์ errors, comment ใน test guard × webhook ว่าฝั่งที่แพ้ได้ 409/5xx ถือว่าผ่าน)
+  รวมในงานเล็ก GB-N1 (spec 04)
 
 ## Open questions
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
@@ -186,3 +211,5 @@ PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก gu
 - ~~Q6~~ (PAY-6 × PAY-3) payment collection ของ **order** (หน้า `/account/orders/:id/pay` ของ group buy) ไม่มี `cart_id` — ADR-015 กำหนด lock key = `cart_id`
   เท่านั้น ค่าเริ่มต้นที่เสนอ: collection ที่ไม่มี cart ใช้ key = `payment_collection_id` และ AC-12b (complete cart) ไม่ใช้กับหน้า order pay (poll ต่ออย่างเดียว)
   — **owner ยืนยัน 2026-10-26** (บันทึกเป็นภาคผนวกใน ADR-015)
+- ~~Q7~~ ตัดสินแล้ว (owner 2026-10-26, ตัดสินใหม่หลัง review #104): payment captured ที่ collection ไม่ผูก order → refund ด้วย script ที่เรียก
+  `refundPaymentsWorkflow` (ไม่ใช่ Stripe dashboard) หลังตรวจว่า Medusa ยังไม่ refund เอง — ADR-015 ภาคผนวก 2 (accepted), AC-16b, AC-16c

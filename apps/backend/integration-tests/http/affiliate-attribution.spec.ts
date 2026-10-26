@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, Modules, ProductStatus } from "@medusajs/fra
 import type { MedusaContainer } from "@medusajs/framework/types"
 import {
   addShippingMethodToCartWorkflow,
+  cancelOrderWorkflow,
   completeCartWorkflow,
   createCartWorkflow,
   createPaymentCollectionForCartWorkflow,
@@ -277,7 +278,9 @@ medusaIntegrationTestRunner({
         .resolve(Modules.CART)
         .updateCarts(cartId, { metadata: { affiliate_token: await tokenFor(ann.id) } })
 
-      await Promise.allSettled([redeliver(orderId), redeliver(orderId)])
+      // ตัวที่แพ้ race รอ lock แล้วเห็น attribution จึงหยุดเงียบ (กฎ 15) — ต้องไม่ throw
+      const concurrent = await Promise.allSettled([redeliver(orderId), redeliver(orderId)])
+      expect(concurrent.map((r) => r.status)).toEqual(["fulfilled", "fulfilled"])
       await redeliver(orderId)
 
       expect(await attributionsOf(orderId)).toHaveLength(1)
@@ -359,6 +362,147 @@ medusaIntegrationTestRunner({
       await createProgram()
       const { orderId } = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }] })
       expect(await attributionsOf(orderId)).toEqual([])
+    })
+
+    // กฎ 24: เวลาอ้างอิงคือ order.created_at
+    describe("attribution window by order.created_at (rule 24)", () => {
+      it("AC-23: with P1 (15%, 7 days) and P2 (10%, 14 days) active, a click 10 days ago is attributed to P2 at 10%", async () => {
+        const ann = await createAffiliate("ann")
+        await createProgram({ name: "P1", commission_value: 15, attribution_window_days: 7 })
+        const p2 = await createProgram({ name: "P2", commission_value: 10, attribution_window_days: 14 })
+
+        const { orderId } = await placeOrder({
+          items: [{ variant_id: variant1000, quantity: 1 }],
+          token: await tokenFor(ann.id, 10 * DAY),
+        })
+
+        expect(await attributionsOf(orderId)).toEqual([expect.objectContaining({ program_id: p2.id })])
+        expect((await entriesOf(orderId)).map((e) => [e.program_id, e.amount])).toEqual([[p2.id, 100]])
+      })
+
+      it("AC-23: without an active program, a click 20 days ago is attributed with program_id null; 31 days ago is not", async () => {
+        const ann = await createAffiliate("ann")
+
+        const recent = await placeOrder({
+          items: [{ variant_id: variant1000, quantity: 1 }],
+          token: await tokenFor(ann.id, 20 * DAY),
+        })
+        expect(await attributionsOf(recent.orderId)).toEqual([expect.objectContaining({ program_id: null })])
+        expect(await entriesOf(recent.orderId)).toEqual([])
+
+        const expired = await placeOrder({
+          items: [{ variant_id: variant1000, quantity: 1 }],
+          token: await tokenFor(ann.id, 31 * DAY),
+        })
+        expect(await attributionsOf(expired.orderId)).toEqual([])
+      })
+
+      it("AC-24: a click 6 days before order.created_at is attributed even when the event is processed 3 days late", async () => {
+        const ann = await createAffiliate("ann")
+        const program = await createProgram({ starts_at: new Date(Date.now() - 4 * DAY) })
+        const { orderId, cartId } = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }] })
+        // order ถูกสั่งเมื่อ 3 วันก่อน (ย้อน created_at) และ click 6 วันก่อนหน้านั้น = 9 วันก่อนเวลาประมวลผล > window 7 วัน
+        await dbConnection.raw(`UPDATE "order" SET created_at = now() - interval '3 days' WHERE id = ?`, [orderId])
+        await container
+          .resolve(Modules.CART)
+          .updateCarts(cartId, { metadata: { affiliate_token: await tokenFor(ann.id, 9 * DAY) } })
+
+        await redeliver(orderId)
+
+        expect(await attributionsOf(orderId)).toEqual([expect.objectContaining({ program_id: program.id })])
+        expect((await entriesOf(orderId)).map((e) => e.amount)).toEqual([100])
+      })
+    })
+
+    it("an expired token or an affiliate that is not active creates nothing and is logged at info level", async () => {
+      const ann = await createAffiliate("ann")
+      const suspended = await affiliates.createAffiliates({
+        email: "sue@example.com",
+        name: "sue",
+        code: "sue",
+        status: "suspended",
+      })
+      await createProgram()
+      const info = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "info")
+
+      try {
+        for (const [token, reason] of [
+          [await tokenFor(ann.id, 31 * DAY), "token_expired"],
+          [await tokenFor(suspended.id), "affiliate_not_active"],
+        ]) {
+          const { orderId } = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }], token })
+          expect(await attributionsOf(orderId)).toEqual([])
+          expect(info).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`${orderId}.*${reason}`)))
+        }
+      } finally {
+        info.mockRestore()
+      }
+    })
+
+    // owner 2026-10-26: order ที่ถูกยกเลิกแล้วไม่ถูก attribute (ตรวจใต้ lock affiliate-attribution:<order_id>)
+    it("an order canceled before order.placed is processed gets no attribution and no entry", async () => {
+      const ann = await createAffiliate("ann")
+      await createProgram()
+      const { orderId, cartId } = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }] })
+      await cancelOrderWorkflow(container).run({ input: { order_id: orderId } })
+      await container
+        .resolve(Modules.CART)
+        .updateCarts(cartId, { metadata: { affiliate_token: await tokenFor(ann.id) } })
+
+      await redeliver(orderId)
+
+      expect(await attributionsOf(orderId)).toEqual([])
+      expect(await entriesOf(orderId)).toEqual([])
+    })
+
+    // AC-29 (กฎ 27): ตรวจ order.status หลังถือ lock affiliate-attribution:<order_id> แล้วปล่อยเมื่อจบ
+    it("AC-29: attribution reads the order status only while holding affiliate-attribution:<order_id>", async () => {
+      const ann = await createAffiliate("ann")
+      await createProgram()
+      const { orderId, cartId } = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }] })
+      await container
+        .resolve(Modules.CART)
+        .updateCarts(cartId, { metadata: { affiliate_token: await tokenFor(ann.id) } })
+
+      const locking = container.resolve(Modules.LOCKING)
+      const query = container.resolve(ContainerRegistrationKeys.QUERY)
+      const calls: string[] = []
+      const realAcquire = locking.acquire.bind(locking)
+      const realRelease = locking.release.bind(locking)
+      const realGraph = query.graph.bind(query) as (...args: unknown[]) => Promise<unknown>
+      const acquire = jest.spyOn(locking, "acquire").mockImplementation((async (keys, ...rest) => {
+        calls.push(`acquire ${[keys].flat().join(",")}`)
+        return realAcquire(keys, ...rest)
+      }) as typeof locking.acquire)
+      const release = jest.spyOn(locking, "release").mockImplementation((async (keys, ...rest) => {
+        calls.push(`release ${[keys].flat().join(",")}`)
+        return realRelease(keys, ...rest)
+      }) as typeof locking.release)
+      const graph = jest.spyOn(query, "graph").mockImplementation((async (
+        config: { entity: string; fields: string[] },
+        ...rest: unknown[]
+      ) => {
+        if (config.entity === "order" && config.fields.includes("status")) {
+          calls.push("read order.status")
+        }
+        return realGraph(config, ...rest)
+      }) as unknown as typeof query.graph)
+
+      try {
+        await redeliver(orderId)
+      } finally {
+        acquire.mockRestore()
+        release.mockRestore()
+        graph.mockRestore()
+      }
+
+      const key = `affiliate-attribution:${orderId}`
+      expect(calls.filter((c) => c.endsWith(key) || c === "read order.status")).toEqual([
+        `acquire ${key}`,
+        "read order.status",
+        `release ${key}`,
+      ])
+      expect(await attributionsOf(orderId)).toHaveLength(1)
     })
   },
 })

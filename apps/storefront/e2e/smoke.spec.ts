@@ -1,3 +1,4 @@
+import { ADMIN_LOGIN_URL } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 
 // CORE-5: smoke ที่ไม่ต้องใช้ข้อมูลสินค้า (seed มาใน CORE-2) — ยืนยันว่า Playwright,
@@ -28,7 +29,7 @@ test("backend /health ตอบ 200 และหน้า login ของ admin 
   })
 
   await step("เปิดหน้า login ของ admin", async () => {
-    await page.goto(`${BACKEND_URL}/app/login`)
+    await page.goto(ADMIN_LOGIN_URL)
     await expect(page.locator('input[name="email"]')).toBeVisible()
     await evidence("02-admin-login")
   })

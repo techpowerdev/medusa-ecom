@@ -12,6 +12,9 @@ const THAI_UI_RESTRICTED_SYNTAX = [
   `JSXText[value=${LATIN_WORD}]`,
   `JSXElement > JSXExpressionContainer > Literal[value=${LATIN_WORD}]`,
   `JSXElement > JSXExpressionContainer > TemplateLiteral > TemplateElement[value.raw=${LATIN_WORD}]`,
+  // review #102: กิ่งของ ternary / && / || ในลูก JSX เช่น {isLoading ? "Loading..." : children}
+  `JSXElement > JSXExpressionContainer > :matches(ConditionalExpression, LogicalExpression) > Literal[value=${LATIN_WORD}]`,
+  `JSXElement > JSXExpressionContainer > :matches(ConditionalExpression, LogicalExpression) > TemplateLiteral > TemplateElement[value.raw=${LATIN_WORD}]`,
   // (b) prop ข้อความ (placeholder, title, alt, aria-label, label)
   `JSXAttribute[name.name=${TEXT_PROPS}] > Literal[value=${LATIN_WORD}]`,
   `JSXAttribute[name.name=${TEXT_PROPS}] > JSXExpressionContainer > Literal[value=${LATIN_WORD}]`,
@@ -31,6 +34,13 @@ const THAI_UI_FILES = [
   "src/app/[[]countryCode]/(main)/{store,search,categories,collections,products}/**",
   "src/modules/{store,search,categories,collections,products}/**",
   "src/app/buy/**",
+  // CORE-4c1 (account, login/register, verify-account)
+  "src/app/[[]countryCode]/(main)/{account,verify-account}/**",
+  "src/modules/account/**",
+  // CORE-4c2 (cart, order, policies ทั้ง 5 หน้า, common, skeletons)
+  "src/app/[[]countryCode]/(main)/{cart,order}/**",
+  "src/app/[[]countryCode]/(main)/{contact,terms,privacy,returns,shipping}/page.tsx",
+  "src/modules/{cart,order,policies,common,skeletons}/**",
 ]
 
 export default defineConfig([
