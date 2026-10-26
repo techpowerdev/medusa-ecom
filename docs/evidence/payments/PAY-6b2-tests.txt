@@ -28,8 +28,8 @@ Tests:       7 passed, 7 total
 Tests:       14 skipped, 8 passed, 22 total
 
 == pnpm --filter backend test:unit (ทั้งชุด) ==
-Test Suites: 46 passed, 46 total
-Tests:       425 passed, 425 total
+Test Suites: 47 passed, 47 total (หลัง merge origin/develop)
+Tests:       447 passed, 447 total
 
 == pnpm lint && pnpm typecheck && pnpm --filter backend build ==
 backend lint: No lint issues found (storefront: 0 errors, warnings เดิม)

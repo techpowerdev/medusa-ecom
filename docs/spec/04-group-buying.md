@@ -3,7 +3,8 @@
 สถานะ: draft (ปรับดีไซน์ 2026-10-25 ตามความต้องการของเจ้าของ: ใช้ flow แบบ draft order เหมือนตัวอย่าง Quotes ของ Medusa;
 ปรับ membership หลายออเดอร์ต่อคน + exclusivity ตาม ADR-009; 2026-10-25 แก้ความกำกวมที่ GB-2 พบ:
 ส่วนลดระดับแคมเปญเก็บใน promotion ต้นแบบตาม ADR-011, สถานะแคมเปญ, error mapping, แบ่ง GB-2 เป็น GB-2a/GB-2b และแบ่ง scope กับ GB-3;
-2026-10-26 รอบ 6: แยก GB-6 เป็น GB-6a/6b/6c + route membership ของ admin, nit review #68/#75 — กฎข้อ 14d–17, AC-29..35)
+2026-10-26 รอบ 6: แยก GB-6 เป็น GB-6a/6b/6c + route membership ของ admin, nit review #68/#75 — กฎข้อ 14d–17, AC-29..35;
+รอบ 7: path `/group-buying/:id`, บั๊ก summary ของ draft order → GB-3c, ข้อจำกัด lock TTL ของ GB-4 — กฎข้อ 18–19, AC-36)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -25,6 +26,8 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | สร้าง draft order จาก cart แล้วแปลงและชำระเงินภายหลัง | draft order ของ Order module (`createOrderWorkflow` พร้อม `is_draft_order`, `convertDraftOrderWorkflow`) + payment collection บน order — เป็น pattern เดียวกับตัวอย่าง **Quotes** ของ Medusa | ใช้ตามเดิม |
 | Payment collection สำหรับ order ที่มีอยู่แล้ว | `createOrderPaymentCollectionWorkflow` + payment sessions | ใช้ตามเดิม |
 | ยกเลิก draft order | `cancelOrderWorkflow` | ใช้ตามเดิม |
+| ยอดรวม/summary ของ order (`current_order_total`, `pending_difference`) | Order module คำนวณ summary เมื่อ order เปลี่ยนผ่านกลไกของตัวเอง | ใช้ตามเดิม — step ที่แก้ adjustment ต้องให้ Medusa คำนวณ summary ใหม่ (กฎข้อ 18, GB-3c) |
+| URL ของ storefront ในอีเมลชำระเงิน | ไม่มี config ของ Medusa | env `STOREFRONT_URL` (spec 07 Deliverables ข้อ 9, GB-4) |
 | ตัวตนลูกค้า, auth | Customer + Auth modules | ใช้ตามเดิม (ต้อง login) |
 | อีเมล | Notification module | templates |
 | หน้า admin | Admin UI routes | custom page |
@@ -179,7 +182,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 ## Admin UI / Storefront
 - Admin (ข้อความอังกฤษ, `src/admin/`; แยกเป็น 3 PR):
   - GB-6a (#75): route page "Group buying" = ตารางแคมเปญ + ฟอร์มสร้างแคมเปญ
-  - GB-6b: หน้ารายละเอียดแคมเปญ `/group-buy/:id` — badge สถานะ + ปุ่มเปลี่ยนสถานะ (`gb-campaign-activate` เมื่อ `draft`,
+  - GB-6b: หน้ารายละเอียดแคมเปญ `/group-buying/:id` (admin route ใต้ route page "Group buying" ของ GB-6a — แก้รอบ 7 ไม่ใช่ `/group-buy/:id`) — badge สถานะ + ปุ่มเปลี่ยนสถานะ (`gb-campaign-activate` เมื่อ `draft`,
     `gb-campaign-end` เมื่อ `active`, ยืนยันด้วย `usePrompt`), ปุ่มลบ (`gb-campaign-delete`, เฉพาะ `draft`), ตารางกลุ่ม (`gb-groups-table`:
     kind, status, ความคืบหน้าเทียบ `target_value`, `ends_at`, `join_token`), ปุ่มสร้าง pool group (`gb-create-pool-group`, แสดงเฉพาะแคมเปญ `active`
     ที่ `group_mode ∈ {pool, both}`); ปรับฟอร์มสร้างของ GB-6a: product picker (`gb-product-picker`) แทนช่องกรอก product ID, ตรวจ
@@ -266,6 +269,15 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 17. (GB-6b, review #75) `POST /admin/group-buy/campaigns` ไม่ idempotent → ทุกปุ่มที่สร้างข้อมูลในหน้า Group buying (สร้างแคมเปญ, สร้าง pool group,
     succeed/fail) กันกดซ้ำด้วย in-flight flag (`useRef`) + `disabled` ระหว่างส่ง (แบบเดียวกับ FS-10, spec 03 กฎข้อ 15) — succeed/fail idempotent ฝั่ง
     backend อยู่แล้ว (กฎข้อ 8); การสร้างแคมเปญซ้ำโดยไม่ตั้งใจลบได้เพราะเป็น `draft`
+18. (รอบ 7, บั๊กของ GB-3 จาก review) หลัง `joinGroupWorkflow` สร้าง draft order, step `freezeDraftOrderAdjustmentsStep` ใส่ adjustment ของ `GB-<token>` แต่**ไม่คำนวณ
+    order summary ใหม่** → `summary.current_order_total`/`pending_difference` ค้างที่ยอดเต็ม (ก่อนส่วนลด) กระทบหน้า order ของ admin, ยอด payment collection,
+    refund และ claim ต้องแก้ให้ summary ของ draft order ตรงกับ `order.total` หลังส่วนลดทันทีหลัง join: ใช้กลไกของ Medusa ที่คำนวณ summary ใหม่ (builder ตรวจ
+    source 2.22.1 ของ Order module/core-flows ว่ามี method/workflow ใด เช่นการ apply ผ่าน order change แล้ว confirm) — **ห้ามเขียนตัวเลข summary ที่คำนวณเอง
+    จากราคา line**; ถ้าไม่มีกลไกให้หยุดและรายงาน (อาจต้อง ADR) draft order ที่สร้างก่อนแก้ (dev/staging) ไม่ backfill
+19. (รอบ 7, ข้อจำกัดของ GB-4 ที่ยอมรับใน v1) `succeedGroupWorkflow`/`failGroupWorkflow` ถือ lock ของกลุ่มด้วย TTL 60 วินาที (ค่าที่ GB-4 ใช้) — pool ขนาดใหญ่ที่ประมวลผล
+    ทุก membership (สร้าง payment collection + อีเมล) ใน lock เดียวอาจเกิน TTL แล้ว lock หลุดระหว่างทาง ทำให้ job/admin override รอบอื่นเข้ามาซ้อน
+    ความถูกต้องพึ่ง idempotency ต่อ membership (กฎข้อ 8: ข้าม `awaiting_payment`/`paid`/`cancelled`) — ยังเสี่ยง payment collection ซ้ำถ้าสองรอบทำ membership
+    เดียวกันพร้อมกันพอดี — **ยอมรับใน v1** (Q11 ทาง (ก)) ไม่มี task; AC-1/AC-9 ทดสอบกับกลุ่มเล็ก
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -369,6 +381,10 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   หน้า order ของ Medusa admin (`/draft-orders/<order_id>` เมื่อ order ยังเป็น draft, `/orders/<order_id>` เมื่อแปลงแล้ว — builder ยืนยัน path ของ dashboard
   2.22.1); When กด `gb-group-succeed` แล้วยืนยัน Then `POST /admin/group-buy/groups/G/succeed` 1 ครั้ง (ซ้ำด้วย `dblclick` ก็ 1 ครั้ง), status ของกลุ่มเป็น
   `succeeded` และปุ่ม succeed/fail หายไป; Given กลุ่มที่ไม่ใช่ `open` Then ไม่มีปุ่ม succeed/fail (e2e admin)
+- AC-36 (GB-3c, กฎข้อ 18) Given แคมเปญ −30% scope = product X ราคา ฿1,000 When A join ด้วย cart ที่มี X qty 1 Then draft order มี `total` = 700 และ
+  `summary.current_order_total` = 700, `summary.pending_difference` = 700 (ยังไม่มี payment; เทียบด้วย `MathBN`/raw ไม่ใช่ float); `GET /admin/orders/:id`
+  (หรือ `/admin/draft-orders/:id`) คืน summary เท่ากัน; When `createOrderPaymentCollectionWorkflow` ของ draft order นั้นโดยไม่ระบุ amount Then `amount` = 700
+  (integration http)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -386,7 +402,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   AC-20d
 - Unit/integration (http): AC-20c (validator + ค่าเริ่มต้น)
 - Integration (http): AC-1, AC-3..AC-7, AC-10..AC-15, AC-17, AC-18, AC-19 (ส่วน admin pool), AC-20a (DELETE), AC-21a,
-  AC-21b, AC-22, AC-23, AC-24, AC-25, AC-26, AC-27
+  AC-21b, AC-22, AC-23, AC-24, AC-25, AC-26, AC-27, AC-36
   โดย mock payment provider
 - e2e: AC-2, AC-16 กับ Stripe test mode; AC-28
 - Integration (http): AC-34 (GB-6c)
@@ -403,15 +419,17 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-3 | `joinGroupWorkflow` (draft order, lock scope ADR-009, ตรวจช่วงเวลา + ตรวจว่ามี adjustment ของ `GB-<token>`) + store endpoint `POST /store/group-buy/groups` (team, เรียก `createGroupWorkflow` จาก GB-2b), join, leave + 409 ผ่านกลไกของ PROMO-2 ตามกฎข้อ 11 (ไม่แปลงเอง) + concurrency tests (AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-14, AC-15, AC-17, AC-18, AC-23, AC-24); ใช้ hook exclusivity จาก PROMO-1 ไม่เขียนเอง; ตรวจเจ้าของ cart ด้วย helper ของ CORE-12; **เพิ่ม 2026-10-26 (owner, Q9)**: ห้าม complete cart ที่มี `GB-*` (รวมเข้า handler `completeCartWorkflow.hooks.validate` เดิม) + 409 `GB_CART_ALREADY_JOINED` (กฎข้อ 14a/b, AC-26, AC-27) | GB-2b, PROMO-1, PROMO-2 (AC-14 ส่วนที่สอง: ใส่ `SAVE10` ผ่าน route ของ Medusa ต้องได้ code ของเรา), CORE-12 (AC-24) |
 | GB-3b | (แยกจาก GB-3 ตาม PR #68, owner 2026-10-26) `leaveGroupWorkflow` + `POST /store/group-buy/memberships/:id/leave` ตามกฎข้อ 13 (AC-7, AC-15 ส่วน leave, AC-17 ส่วน "หลัง leave", AC-25) — GB-3 (#68) ส่งมอบ join + สร้างทีม ส่วน AC อื่นในแถว GB-3 คงเดิม; **รวม nit review #68**: prettier `workflows/group-buy/join-group.ts` บรรทัด 45-46 และ guard ผลของ `query.graph` ที่อ่าน `groups[0]`/`campaigns[0]` (ไม่พบ → `MedusaError NOT_FOUND` แทนอ่าน property ของ `undefined`) | GB-3 |
 | GB-4 | `succeedGroupWorkflow` / `failGroupWorkflow` + deadline job (รวมตั้งแคมเปญ `ended`) + admin succeed/fail + อีเมล (AC-1, AC-3, AC-9, AC-11, AC-12, AC-22) — **ข้อควรระวังจาก review #68**: ยอดของ payment collection ต้องมาจากยอดของ draft order ที่ Medusa คำนวณ (ระวัง `summary.current_order_total` ของ draft order ที่สร้างตอน join — ตรวจว่าตรงกับ `total` หลังส่วนลด `GB-*`) ไม่คำนวณยอดเอง; test AC-1 assert `payment_collection.amount` = ยอดหลังส่วนลดของ draft order | GB-3 |
-| GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) | GB-4, PAY-3 |
-| GB-6a | ◐ #75 — route page "Group buying": ตารางแคมเปญ + ฟอร์มสร้างแคมเปญ (AC-29) | GB-2b |
-| GB-6b | หน้ารายละเอียดแคมเปญ: เปลี่ยนสถานะ, ลบ `draft`, ตารางกลุ่ม, สร้าง pool group; ปรับฟอร์มสร้าง: product picker แทนกรอก ID, ตรวจ `max_quantity ≥ max_units_per_person`, เตือน `ends_at` อดีต, กันกดซ้ำ, คำเตือน `GBT-*` (กฎข้อ 15–17; AC-30..33) — frontend ล้วน ใช้ API ของ GB-2a/GB-2b; ถ้าเกิน ~400 LOC แยก GB-6b1 (หน้ารายละเอียด, AC-30, AC-31) และ GB-6b2 (ฟอร์ม, AC-32, AC-33) ทำขนานกันได้ | GB-6a |
+| GB-3c | (เล็ก, รอบ 7, บั๊ก GB-3) `freezeDraftOrderAdjustmentsStep` คำนวณ summary ของ draft order ใหม่หลังใส่ adjustment ด้วยกลไกของ Medusa (กฎข้อ 18, AC-36) — GB-4 (#89) สร้าง payment collection จาก `order.total` (ไม่ใช่ summary) จึงไม่ได้รับผลจากบั๊กนี้ แต่หน้า admin/refund/claim ยังได้รับผล | GB-3 (∥ GB-3b, GB-4) |
+| GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) — **ต้องมี GB-3c merge ก่อน** หรือรวม GB-3c ไว้ใน PR นี้ (ทั้ง task + AC-36) | GB-4, PAY-3, GB-3c |
+| GB-6a | ☑ #75 — route page "Group buying": ตารางแคมเปญ + ฟอร์มสร้างแคมเปญ (AC-29) | GB-2b |
+| GB-6b | หน้ารายละเอียดแคมเปญ: เปลี่ยนสถานะ, ลบ `draft`, ตารางกลุ่ม, สร้าง pool group; ปรับฟอร์มสร้าง: product picker แทนกรอก ID, ตรวจ `max_quantity ≥ max_units_per_person`, เตือน `ends_at` อดีต, กันกดซ้ำ, คำเตือน `GBT-*` (กฎข้อ 15–17; AC-30..33) — frontend ล้วน ใช้ API ของ GB-2a/GB-2b; แยกแล้ว: **GB-6b1 = ◐ #87** (หน้ารายละเอียด `/group-buying/:id`, AC-30, AC-31 + รวม OPS-11 `e2e/support/admin.ts` AC-16 และ regex evidence) และ GB-6b2 ☐ (ฟอร์ม, AC-32, AC-33) ทำขนานกันได้ | GB-6a |
 | GB-6c | membership + succeed/fail manual: route `GET /admin/group-buy/groups/:id/memberships` + integration test (AC-34) + ตาราง membership และปุ่ม succeed/fail ในหน้ารายละเอียด (AC-35); ถ้าเกิน ~400 LOC แยก route (GB-6c1) กับ UI (GB-6c2) | GB-6b (GB-6b1 ถ้าแยก), GB-3, GB-4 (route succeed/fail) |
 | GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | GB-5 |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
 GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
 GB-7 ต้องรอ GB-3b ด้วย (ปุ่มออกจากกลุ่มในหน้า account)
+GB-3c ∥ GB-3b ∥ GB-4 หลัง GB-3 (แตะ step freeze ใน workflow join — ไฟล์ร่วมกับ GB-3b ตัวที่ merge ทีหลัง rebase); GB-5 ต้องรอ GB-3c (หรือรวมไว้)
 GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/test ของ `create-group` ไม่ใช่ไฟล์ join) แต่ควร merge ก่อน release v0.5.0
 
 ## Open questions
@@ -431,3 +449,5 @@ GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/tes
 - ~~Q8~~ ตัดสินแล้ว (owner, 2026-10-26): ต้นแบบ `is_tax_inclusive: true` เป็นค่าเริ่มต้น (ราคา THB รวม VAT) admin เปลี่ยนเองได้ — กฎข้อ 12, GB-2c
 - ~~Q10~~ ตัดสินแล้ว (owner 2026-10-26): ตรวจ `max_quantity ≥ max_units_per_person` ในฟอร์ม admin + กันกดซ้ำฝั่ง UI พอ — **ไม่**เพิ่ม backend validator
   และไม่ทำ `POST /admin/group-buy/campaigns` ให้ idempotent (route ของ admin เท่านั้น แคมเปญที่ซ้ำเป็น `draft` ลบได้) — กฎข้อ 15, 17
+- Q11 — ค่าเริ่มต้นที่ใช้: (ก) (session หลักเลือก 2026-10-26, **รอ owner ยืนยัน**) (รอบ 7, กฎข้อ 19) lock TTL 60s ของ succeed/fail เมื่อ pool ใหญ่: (ก) ยอมรับใน v1 (ค่าเริ่มต้น — pool จริงช่วงแรกเล็ก และ idempotent ต่อ membership)
+  (ข) ประมวลผล membership เป็นชุด ≤ 50 ต่อการถือ lock หนึ่งครั้ง ที่เหลือทำใน tick ถัดไปของ job (ไม่เพิ่ม infra) หรือ (ค) เพิ่ม TTL — ถ้าเลือก (ข)/(ค) จะเป็น task ต่อจาก GB-4

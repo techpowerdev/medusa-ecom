@@ -232,4 +232,32 @@ describe("renderEmailTemplate", () => {
       expect(email!.html).toContain("เงินถูกตัดแต่ไม่มี order (ADR-015)")
     })
   })
+
+  // GB-4 (spec 04 กฎข้อ 9): อีเมลถึงสมาชิกกลุ่ม — ข้อความไทย (ADR-014)
+  describe("group buy emails (GB-4)", () => {
+    const data = {
+      order: { id: "order_01", display_id: 1042, currency_code: "thb", total: 350 },
+      pay_url: "https://shop.example/account/orders/order_01/pay",
+      pay_deadline_at: "2026-10-27T10:00:00.000Z",
+    }
+
+    it("renders the succeeded email with the pay link, Bangkok deadline and discounted total", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_SUCCEEDED, data)
+      expect(email!.subject).toMatch(/[\u0E00-\u0E7F]/)
+      expect(email!.html).toContain('href="https://shop.example/account/orders/order_01/pay"')
+      expect(email!.html).toContain("฿350.00")
+      expect(email!.html).toContain("17:00")
+    })
+
+    it("drops a non-http pay url", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_SUCCEEDED, { ...data, pay_url: "javascript:x" })
+      expect(email!.html).not.toContain("javascript:")
+    })
+
+    it("renders the failed email in Thai with the order number", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_FAILED, { order: data.order })
+      expect(email!.subject).toMatch(/[\u0E00-\u0E7F]/)
+      expect(email!.html).toContain("#1042")
+    })
+  })
 })

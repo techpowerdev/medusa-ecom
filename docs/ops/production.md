@@ -94,8 +94,8 @@ provider ตอนอ่าน PI เดิม — guard ไม่ลบ session
 3. PI อ่านไม่ได้จริง (เช่น account เดิมเลิกใช้): ตรวจใน Stripe dashboard ของ account เดิม (ถ้าเข้าได้) ว่าไม่มี PI ที่ `succeeded` ของลูกค้า
    (ถ้ามี → ทำตามหัวข้อ "มี alert" ข้อ 3–5) แล้วให้ลูกค้าเริ่ม cart ใหม่: logout (storefront ลบ cookie ของ cart เดิม) → login → เพิ่มสินค้า
    แล้ว checkout ใหม่ cart เดิมค้างไว้โดยไม่มีผล
-- Medusa 2.22.1 ไม่มี route ลบ payment session; `POST /admin/payment-collections/:id/payment-sessions` ก็ลบ session เดิมผ่าน provider
-  (cancel PI เดิม) จึงล้มด้วยสาเหตุเดียวกัน — และห้ามใช้ route นี้กับ session ที่ PI `succeeded` (ลบ session ที่ชำระแล้ว = ปัญหาเดิมของ
+- Medusa 2.22.1 ไม่มี route ลบ payment session; `POST /admin/payment-collections/:id/payment-sessions` และ `paymentModule.deletePaymentSession`
+  (เช่นผ่าน script `medusa exec`) ก็ cancel PI เดิมผ่าน provider ก่อนลบ จึงล้มด้วยสาเหตุเดียวกัน — วิธีที่ใช้ได้โดยไม่เขียนโค้ดใหม่คือให้ลูกค้าเริ่ม cart ใหม่ (ข้อ 3) — และห้ามใช้ route นี้กับ session ที่ PI `succeeded` (ลบ session ที่ชำระแล้ว = ปัญหาเดิมของ
   ADR-015) ห้ามแก้ตาราง payment ใน DB ตรง
 
 ## ตรวจสอบ
