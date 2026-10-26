@@ -66,6 +66,11 @@ const retrieve = validateAndTransformQuery(AdminGetGroupBuyCampaignParams, {
   isList: false,
 })
 
+const retrieveGroup = validateAndTransformQuery(AdminGetGroupBuyGroupParams, {
+  defaults: GROUP_FIELDS,
+  isList: false,
+})
+
 export const adminGroupBuyMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
@@ -114,10 +119,13 @@ export const adminGroupBuyMiddlewares: MiddlewareRoute[] = [
     matcher: "/admin/group-buy/campaigns/:id/groups",
     middlewares: [
       validateAndTransformBody(AdminCreateGroupBuyGroup),
-      validateAndTransformQuery(AdminGetGroupBuyGroupParams, {
-        defaults: GROUP_FIELDS,
-        isList: false,
-      }),
+      retrieveGroup,
     ],
   },
+  // GB-4: override แบบ manual
+  ...["succeed", "fail"].map((action) => ({
+    method: ["POST" as const],
+    matcher: `/admin/group-buy/groups/:id/${action}`,
+    middlewares: [retrieveGroup],
+  })),
 ]

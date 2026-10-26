@@ -11,7 +11,7 @@ import {
 } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
 import {
   Campaign,
@@ -60,6 +60,7 @@ const columns = [
 
 // GB-6a: หน้า "Group buying" — รายการแคมเปญ + สร้างแคมเปญ
 const GroupBuyingPage = () => {
+  const navigate = useNavigate()
   const [pagination, setPagination] = useState<DataTablePaginationState>({
     pageIndex: 0,
     pageSize: 20,
@@ -80,6 +81,7 @@ const GroupBuyingPage = () => {
     rowCount: data?.count ?? 0,
     isLoading,
     pagination: { state: pagination, onPaginationChange: setPagination },
+    onRowClick: (_, campaign) => navigate(`/group-buying/${campaign.id}`),
   })
 
   return (

@@ -5,8 +5,8 @@ import { STORE_NAME } from "@lib/store-content"
 import LoginTemplate from "@modules/account/templates/login-template"
 
 export const metadata: Metadata = {
-  title: "Sign in",
-  description: `Sign in to your ${STORE_NAME} account.`,
+  title: "เข้าสู่ระบบ",
+  description: `เข้าสู่ระบบบัญชี ${STORE_NAME} ของคุณ`,
 }
 
 export default function Login() {
