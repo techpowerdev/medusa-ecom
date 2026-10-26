@@ -1,70 +1,22 @@
-"use client"
-
-import React, { useEffect, useActionState } from "react";
-
-import Input from "@modules/common/components/input"
-
-import AccountInfo from "../account-info"
 import { HttpTypes } from "@medusajs/types"
-// import { updateCustomer } from "@lib/data/customer"
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
 }
 
-const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
-  const [successState, setSuccessState] = React.useState(false)
-
-  // TODO: It seems we don't support updating emails now?
-  const updateCustomerEmail = (
-    _currentState: Record<string, unknown>,
-    _formData: FormData
-  ) => {
-    try {
-      // email: formData.get("email") as string
-      return { success: true, error: null }
-    } catch (error) {
-      return { success: false, error: String(error) }
-    }
-  }
-
-  const [state, formAction] = useActionState(updateCustomerEmail, {
-    error: null as string | null,
-    success: false,
-  })
-
-  const clearState = () => {
-    setSuccessState(false)
-  }
-
-  useEffect(() => {
-    setSuccessState(state.success)
-  }, [state])
-
+// CORE-23 (spec 01 กฎข้อ 50): editor อีเมลของ starter เป็น TODO ที่แสดง success โดยไม่บันทึก และ
+// POST /store/customers/me ไม่รับ email (อีเมลผูกกับ auth identity) → แสดงแบบอ่านอย่างเดียว
+// โครงเดียวกับ AccountInfo เพื่อให้ค่าชิดแนวเดียวกับช่องอื่น (กฎข้อ 53)
+const ProfileEmail = ({ customer }: MyInformationProps) => {
   return (
-    <form action={formAction} className="w-full">
-      <AccountInfo
-        label="อีเมล"
-        currentInfo={`${customer.email}`}
-        isSuccess={successState}
-        isError={!!state.error}
-        errorMessage={state.error || undefined}
-        clearState={clearState}
-        data-testid="account-email-editor"
-      >
-        <div className="grid grid-cols-1 gap-y-2">
-          <Input
-            label="อีเมล"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            defaultValue={customer.email}
-            data-testid="email-input"
-          />
-        </div>
-      </AccountInfo>
-    </form>
+    <div className="text-small-regular w-full" data-testid="account-email">
+      <div className="flex flex-col">
+        <span className="uppercase text-ui-fg-base">อีเมล</span>
+        <span className="font-semibold" data-testid="current-info">
+          {customer.email}
+        </span>
+      </div>
+    </div>
   )
 }
 

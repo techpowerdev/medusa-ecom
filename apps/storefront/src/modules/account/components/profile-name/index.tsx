@@ -25,10 +25,10 @@ const ProfileName: React.FC<MyInformationProps> = ({ customer }) => {
     }
 
     try {
-      await updateCustomer(customer)
-      return { success: true, error: null }
-    } catch (error) {
-      return { success: false, error: String(error) }
+      return await updateCustomer(customer)
+    } catch {
+      // ไม่แสดง error ดิบของ React ที่ข้อความถูกตัดใน prod (กฎข้อ 52)
+      return { success: false, error: "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }
     }
   }
 
@@ -52,6 +52,7 @@ const ProfileName: React.FC<MyInformationProps> = ({ customer }) => {
         currentInfo={`${customer.first_name} ${customer.last_name}`}
         isSuccess={successState}
         isError={!!state?.error}
+        errorMessage={state?.error || undefined}
         clearState={clearState}
         data-testid="account-name-editor"
       >

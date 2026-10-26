@@ -14,8 +14,9 @@ const messages = () =>
   )
 
 describe("ข้อความ error ของ lib/data/customer.ts (AC-49)", () => {
-  it("พบข้อความครบ 3 จุด", () => {
-    expect(messages()).toHaveLength(3)
+  it("พบข้อความครบ 5 จุด", () => {
+    // CORE-23: +2 ข้อความของ updateCustomer (token หมดอายุ / บันทึกไม่สำเร็จ)
+    expect(messages()).toHaveLength(5)
   })
 
   it.each(messages())("%s → เป็นภาษาไทย", (message) => {

@@ -1,7 +1,6 @@
 "use server"
 
 import { sdk } from "@lib/config"
-import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
@@ -72,20 +71,28 @@ export const retrieveCustomer =
       .catch(() => null)
   }
 
-export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
+// CORE-23 (spec 01 กฎข้อ 52): server action ที่ throw ข้าม boundary กลายเป็น "Minified React error #441" ใน prod
+// (ข้อความจริงถูกตัดทิ้ง) → คืนผลเป็นข้อความไทยแทนการ throw; 401/403 (token หมดอายุ/ถูกลบ) ให้เข้าสู่ระบบใหม่
+export const updateCustomer = async (
+  body: HttpTypes.StoreUpdateCustomer
+): Promise<{ success: boolean; error: string | null }> => {
   const headers = {
     ...(await getAuthHeaders()),
   }
 
-  const updateRes = await sdk.store.customer
-    .update(body, {}, headers)
-    .then(({ customer }) => customer)
-    .catch(medusaError)
+  try {
+    await sdk.store.customer.update(body, {}, headers)
+  } catch (error) {
+    const status = (error as FetchError).status
+    return status === 401 || status === 403
+      ? { success: false, error: "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง" }
+      : { success: false, error: "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }
+  }
 
   const cacheTag = await getCacheTag("customers")
   revalidateTag(cacheTag, { expire: 0 })
 
-  return updateRes
+  return { success: true, error: null }
 }
 
 export async function signup(

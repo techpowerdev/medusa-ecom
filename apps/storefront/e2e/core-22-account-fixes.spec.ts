@@ -1,14 +1,11 @@
-import { APIRequestContext, APIResponse } from "@playwright/test"
-
-import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { expect, test } from "./support/fixtures"
 import {
   STOREFRONT_COUNTRY as CC,
-  Customer,
   adminHeaders,
   createCustomer,
+  placeOrder,
   publishableKey,
   signInAs,
-  variantOf,
 } from "./support/medusa"
 import { THAI } from "./support/thai-text"
 
@@ -17,85 +14,6 @@ import { THAI } from "./support/thai-text"
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-22" } })
 
 const LOGIN_TITLE = "เข้าสู่ระบบ"
-
-/** วาง order ผ่าน store API ด้วย token ของ customer (manual payment ของ seed) คืน id + display_id */
-async function placeOrder(
-  request: APIRequestContext,
-  pk: string,
-  customer: Customer
-): Promise<{ id: string; displayId: number }> {
-  const headers = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ store API ใน e2e
-  const ok = async (res: APIResponse, what: string): Promise<any> => {
-    expect(res.status(), `${what}: ${await res.text()}`).toBe(200)
-    return res.json()
-  }
-
-  const { regions } = await ok(await request.get(`${BACKEND_URL}/store/regions`, { headers }), "regions")
-  const region = regions.find((r: { countries: { iso_2: string }[] }) =>
-    r.countries.some((c) => c.iso_2 === CC)
-  )
-  const { variantId } = await variantOf(request, pk, "t-shirt")
-
-  const { cart } = await ok(
-    await request.post(`${BACKEND_URL}/store/carts`, { headers, data: { region_id: region.id } }),
-    "create cart"
-  )
-  await ok(
-    await request.post(`${BACKEND_URL}/store/carts/${cart.id}/line-items`, {
-      headers,
-      data: { variant_id: variantId, quantity: 1 },
-    }),
-    "add line item"
-  )
-  const address = {
-    first_name: "Somchai",
-    last_name: "Jaidee",
-    address_1: "1 Sukhumvit Rd",
-    city: "Bangkok",
-    postal_code: "10110",
-    country_code: CC,
-  }
-  await ok(
-    await request.post(`${BACKEND_URL}/store/carts/${cart.id}`, {
-      headers,
-      data: { email: customer.email, shipping_address: address, billing_address: address },
-    }),
-    "update cart"
-  )
-  const { shipping_options } = await ok(
-    await request.get(`${BACKEND_URL}/store/shipping-options?cart_id=${cart.id}`, { headers }),
-    "shipping options"
-  )
-  const standard = shipping_options.find((o: { name: string }) => o.name === "Standard")
-  await ok(
-    await request.post(`${BACKEND_URL}/store/carts/${cart.id}/shipping-methods`, {
-      headers,
-      data: { option_id: standard.id },
-    }),
-    "shipping method"
-  )
-  const { payment_collection } = await ok(
-    await request.post(`${BACKEND_URL}/store/payment-collections`, {
-      headers,
-      data: { cart_id: cart.id },
-    }),
-    "payment collection"
-  )
-  await ok(
-    await request.post(
-      `${BACKEND_URL}/store/payment-collections/${payment_collection.id}/payment-sessions`,
-      { headers, data: { provider_id: "pp_system_default" } }
-    ),
-    "payment session"
-  )
-  const completed = await ok(
-    await request.post(`${BACKEND_URL}/store/carts/${cart.id}/complete`, { headers }),
-    "complete cart"
-  )
-  expect(completed.type, JSON.stringify(completed)).toBe("order")
-  return { id: completed.order.id, displayId: completed.order.display_id }
-}
 
 test("AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ", async ({
   page,
@@ -146,7 +64,7 @@ test("AC-82: title ของหน้า account ที่ล็อกอิน�
   })
 })
 
-test("AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อีเมลที่ปิดอยู่", async ({
+test("AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่", async ({
   page,
   context,
   request,
@@ -159,13 +77,13 @@ test("AC-83, AC-84: profile เบอร์ว่างไม่แสดง nul
   await signInAs(context, baseURL!, await createCustomer(request, pk))
 
   const editors = [
+    // CORE-23 (กฎข้อ 50): editor อีเมลถูกเอาออก อีเมลแสดงแบบอ่านอย่างเดียว
     "account-name-editor",
-    "account-email-editor",
     "account-phone-editor",
     "account-billing-address-editor",
   ]
   const phone = page.getByTestId("account-phone-editor")
-  const email = page.getByTestId("account-email-editor")
+  const name = page.getByTestId("account-name-editor")
 
   await step("AC-83: บล็อกเบอร์โทรไม่มี null/undefined", async () => {
     await page.goto(`/${CC}/account/profile`)
@@ -175,17 +93,17 @@ test("AC-83, AC-84: profile เบอร์ว่างไม่แสดง nul
     expect(text).toMatch(THAI)
   })
 
-  await step("AC-84: คลิก แก้ไข เบอร์โทร → editor เบอร์เปิด, editor อีเมลปิด, ไม่มี request update", async () => {
+  await step("AC-84: คลิก แก้ไข เบอร์โทร → editor เบอร์เปิด, editor ชื่อปิด, ไม่มี request update", async () => {
     const actions: string[] = []
     page.on("request", (req) => {
       if (req.method() === "POST" && req.headers()["next-action"]) actions.push(req.url())
     })
-    // starter: panel ที่ปิดของ editor อีเมลยัง overflow-visible → ปุ่มบันทึกที่มองไม่เห็นบัง "แก้ไข" ของเบอร์โทร
+    // starter: panel ที่ปิดของ editor ด้านบนยัง overflow-visible → ปุ่มบันทึกที่มองไม่เห็นบัง "แก้ไข" ของเบอร์โทร
     await phone.getByTestId("edit-button").click({ timeout: 10_000 })
     await expect(phone.getByTestId("edit-button")).toHaveAttribute("data-active", "true")
     await expect(phone.getByTestId("edit-panel")).toHaveAttribute("data-open", "true")
     await expect(phone.getByTestId("phone-input")).toBeVisible()
-    await expect(email.getByTestId("edit-panel")).toHaveAttribute("data-open", "false")
+    await expect(name.getByTestId("edit-panel")).toHaveAttribute("data-open", "false")
     expect(actions).toEqual([])
     await evidence("02-profile-phone-editor-open")
   })
