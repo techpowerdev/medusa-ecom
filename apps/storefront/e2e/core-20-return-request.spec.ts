@@ -121,3 +121,52 @@ test("AC-65: ลูกค้าขอคืนสินค้าจาก order 
     await expect(page.getByTestId("order-return-button")).toHaveCount(0)
   })
 })
+
+// QA #112 D1: admin แก้ metadata.return_window_days ของ region → ปุ่มเปลี่ยนตามทันที (ไม่ค้าง cache ของ storefront)
+// และอ่านจาก region ของ order (order.region_id) ไม่ใช่ countryCode ใน URL (review #112 nit 1)
+test("AC-65 / Q-F5: admin ตั้ง return_window_days=0 หลังลูกค้าเปิดหน้าแล้ว → ไม่มีปุ่ม และหน้า return ไม่ให้ขอคืน", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(180_000)
+  const admin = await adminHeaders(request)
+  const pk = await publishableKey(request, admin)
+  const customer = await createCustomer(request, pk)
+  const order = await placeOrder(request, pk, customer)
+  await fulfillAndShip(request, admin, order.id)
+  await signInAs(context, baseURL!, customer)
+
+  const { order: adminOrder } = await (
+    await request.get(`${BACKEND_URL}/admin/orders/${order.id}?fields=id,region_id`, { headers: admin })
+  ).json()
+  const regionUrl = `${BACKEND_URL}/admin/regions/${adminOrder.region_id}`
+  const { region } = await (await request.get(`${regionUrl}?fields=id,metadata`, { headers: admin })).json()
+  const setMetadata = async (metadata: Record<string, unknown>) => {
+    const res = await request.post(regionUrl, { headers: admin, data: { metadata } })
+    expect(res.status(), await res.text()).toBe(200)
+  }
+
+  try {
+    await step("เปิดหน้า order detail ครั้งแรก → มีปุ่ม (ตาม return_window_days เดิม)", async () => {
+      await page.goto(`/${CC}/account/orders/details/${order.id}`)
+      await expect(page.getByTestId("order-return-button")).toBeVisible()
+      await page.goto(`/${CC}/account/orders/details/${order.id}/return`)
+      await expect(page.getByTestId("return-item").first()).toBeVisible()
+    })
+
+    await setMetadata({ ...region.metadata, return_window_days: 0 })
+
+    await step("admin ตั้ง return_window_days=0 → ไม่มีปุ่ม และหน้า return แสดง return-not-available", async () => {
+      await page.goto(`/${CC}/account/orders/details/${order.id}`)
+      await expect(page.getByTestId("order-details-container")).toBeVisible()
+      await expect(page.getByTestId("order-return-button")).toHaveCount(0)
+      await page.goto(`/${CC}/account/orders/details/${order.id}/return`)
+      await expect(page.getByTestId("return-not-available")).toBeVisible()
+    })
+  } finally {
+    await setMetadata(region.metadata)
+  }
+})

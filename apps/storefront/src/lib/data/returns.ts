@@ -2,7 +2,8 @@
 
 import { sdk } from "@lib/config"
 import { friendlyErrorMessage } from "@lib/util/error-message"
-import { buildReturnRequest, returnableItems } from "@lib/util/return-request"
+import { buildReturnRequest, canRequestReturn, returnableItems } from "@lib/util/return-request"
+import { getRegionPolicies } from "@lib/util/store-policies"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { getAuthHeaders, getCacheTag } from "./cookies"
@@ -11,6 +12,25 @@ import { retrieveOrder } from "./orders"
 // spec 01 CORE-20 (AC-65): ลูกค้าขอคืนสินค้าผ่าน route ของ Medusa — เหตุผลจาก GET /store/return-reasons,
 // return option จาก GET /store/shipping-options?is_return=true (cart ของ order; core กรอง enabled_in_store ให้)
 // แล้ว POST /store/returns (backend ตรวจ option/ownership/ฟิลด์ต้องห้ามตาม CORE-13/16/17)
+
+/**
+ * return_window_days ของ region ของ order — ไม่ cache (QA #112 D1: admin แก้ metadata ของ region แล้ว storefront
+ * ไม่ถูก revalidate) และใช้ `order.region_id` ไม่ใช่ countryCode ใน URL (review #112) — ไม่มีค่า = null (ไม่แสดงปุ่ม)
+ */
+export const retrieveReturnWindowDays = async (regionId: string | null | undefined) => {
+  if (!regionId) return null
+  return sdk.client
+    .fetch<HttpTypes.StoreRegionResponse>(`/store/regions/${regionId}`, {
+      method: "GET",
+      cache: "no-store",
+    })
+    .then(({ region }) => getRegionPolicies(region)?.returnWindowDays ?? null)
+    .catch(() => null)
+}
+
+/** order นี้ขอคืนได้ตอนนี้หรือไม่ (ใช้ทั้งปุ่ม, หน้า return และ server action — กติกาเดียวกัน) */
+export const isOrderReturnable = async (order: HttpTypes.StoreOrder) =>
+  canRequestReturn(order, await retrieveReturnWindowDays(order.region_id))
 
 export const listReturnReasons = async (): Promise<HttpTypes.StoreReturnReason[]> =>
   sdk.client
@@ -46,6 +66,10 @@ export async function requestReturn(
   const order = await retrieveOrder(orderId).catch(() => null)
   if (!order) {
     return { success: false, error: "ไม่พบคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง" }
+  }
+  // review #112 nit 2: ตรวจกติกาเดียวกับ UI ซ้ำ (เลยหน้าต่าง N วัน / ยังไม่ส่ง / ไม่มี line ที่คืนได้)
+  if (!(await isOrderReturnable(order))) {
+    return { success: false, error: "คำสั่งซื้อนี้ไม่สามารถขอคืนสินค้าได้แล้ว" }
   }
 
   const lines = returnableItems(order.items).map(({ item }) => ({

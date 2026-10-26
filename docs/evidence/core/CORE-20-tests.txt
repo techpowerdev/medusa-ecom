@@ -16,3 +16,17 @@
 ## pnpm lint && pnpm typecheck
 lint: 0 errors (33 warnings เดิมของ starter ไม่มีในไฟล์ของ task)
 typecheck: backend + storefront ผ่าน
+
+## รอบแก้ QA #112 D1 + review nit 1, 2 (2026-10-26T21:07Z)
+Red: e2e 'admin ตั้ง return_window_days=0 หลังลูกค้าเปิดหน้าแล้ว' ล้ม — order-return-button Expected: 0 Received: 1 (listRegions ใช้ force-cache)
+Green (chromium, backend :9127 seed ใหม่, storefront next build/start :8127):
+  ✓  3 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (1.2s)
+  ✓  2 [chromium] › e2e/core-23-profile-order.spec.ts:42:5 › AC-85: ล้างช่องเบอร์แล้วบันทึก → phone ว่าง และแสดง ยังไม่ได้ระบุ (2.0s)
+  ✓  5 [chromium] › e2e/core-23-profile-order.spec.ts:74:5 › AC-86, AC-89: อีเมลอ่านอย่างเดียว และ ยังไม่ได้ระบุ ชิดแนวเดียวกับค่าชื่อ (850ms)
+  ✓  1 [chromium] › e2e/core-20-return-request.spec.ts:39:5 › AC-65: ลูกค้าขอคืนสินค้าจาก order ที่ส่งแล้ว → return requested ใช้ Standard return; order ที่ยังไม่ fulfill ไม่มีปุ่ม (6.6s)
+  ✓  6 [chromium] › e2e/core-23-profile-order.spec.ts:106:5 › AC-87: order ที่ไม่มีอยู่ และ order ของ customer อื่น ตอบ HTTP 404 (4.2s)
+  ✓  8 [chromium] › e2e/core-23-profile-order.spec.ts:128:5 › AC-88: token หายระหว่างบันทึกเบอร์ → ไม่มี error ดิบของ React, ข้อความไทยหรือหน้า login (1.0s)
+  ✓  4 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (7.7s)
+  ✓  7 [chromium] › e2e/core-20-return-request.spec.ts:127:5 › AC-65 / Q-F5: admin ตั้ง return_window_days=0 หลังลูกค้าเปิดหน้าแล้ว → ไม่มีปุ่ม และหน้า return ไม่ให้ขอคืน (2.4s)
+  8 passed (10.0s)
+vitest: 204 passed; lint 0 error; typecheck ผ่าน
