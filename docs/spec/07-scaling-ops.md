@@ -13,8 +13,8 @@
 | DB pooling | `databaseDriverOptions` | ตั้งค่า pool size |
 | Static assets | File module S3 provider + CDN | S3 + CDN |
 | Caching ของ storefront | Next.js ISR/`revalidateTag` + Medusa publishable key | ค่าเริ่มต้นของ starter |
-| การเชื่อมต่อ Redis ของ event bus | option `redisOptions` (ioredis), `workerOptions` (BullMQ) ของ Redis Event Bus module | ตั้งค่า (ADR-012) |
-| Liveness | `GET /health` ของ Medusa (ไม่ตรวจ Redis/BullMQ worker) | ใช้ตามเดิม; ช่องว่างแก้ตาม ADR-012 |
+| Liveness | `GET /health` ของ Medusa (ไม่ตรวจ Redis/BullMQ worker) | ใช้ตามเดิม; ช่องว่าง (worker ตายตอนบูต) ครอบด้วย alert จาก log ตาม ADR-012 ภาคผนวก (AC-18) |
+| การเชื่อมต่อ Redis ของ event bus | option `redisOptions` (ioredis), `workerOptions` (BullMQ) ของ Redis Event Bus module; loader ตั้ง `maxRetriesPerRequest: null` เป็นค่า default แล้ว (OPS-8 #101) | ใช้ตามเดิม **ไม่ตั้ง** `redisOptions`/`workerOptions` (ADR-012 ภาคผนวก) |
 | Image ของ Next.js ขนาดเล็ก | `output: "standalone"` ของ Next.js | ใช้ตามเดิม (OPS-6) |
 
 ## เป้าหมาย (v1.0)
@@ -74,10 +74,13 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   พอดี 100 รายการ, p95 < 300ms, 0 5xx
 - AC-3 k6 group-buy join: การเข้าร่วมพร้อมกัน 200 ครั้งกับกลุ่มขนาด 10 คน → มีสมาชิกพอดี 10 คน
 - AC-4 ซ้อม restore จาก backup สำเร็จและร้าน boot ได้ (runbook)
-- AC-5 (ADR-012) Given compose แบบ prod (1 server + 1 worker + Redis, `NODE_ENV=production`) When Redis ถูก `docker pause` นาน 30 วินาที
-  (worker เจอ `ETIMEDOUT`) แล้ว unpause Then event ที่ emit จาก server หลัง unpause ถูก subscriber บน worker ประมวลผลภายใน 60 วินาที —
-  หรือ worker process จบด้วย exit code ≠ 0 ภายใน 60 วินาที แล้วถูก restart (restart policy) และประมวลผล event ได้; ไม่มีกรณีที่ worker
-  ค้างโดยไม่ประมวลผลขณะที่ health ยังตอบ 200 (script `tools/ops/smoke-redis-outage.sh`)
+- AC-5 (ADR-012, ปรับรอบ 8 ตามผลทดลอง OPS-8 #101 และการตัดสินของ owner 2026-10-26) Given compose แบบ prod (1 server + 1 worker + Redis,
+  `NODE_ENV=production`) When Redis ถูก `docker pause` นาน 30 วินาทีระหว่างที่ worker ทำงานอยู่ แล้ว unpause Then event ที่ emit จาก server
+  หลัง unpause ถูก subscriber บน worker ประมวลผลภายใน 60 วินาที — หรือ worker process จบด้วย exit code ≠ 0 แล้วถูก restart (restart policy)
+  และประมวลผล event ได้ (script `tools/ops/smoke-redis-outage.sh` เป็น **regression test** ที่ผ่านบน develop ตั้งแต่แรก — `docker pause`
+  ไม่ทำให้เกิด `ETIMEDOUT` เพราะ kernel ยังรับ TCP handshake แทน container ที่ถูก pause จึงไม่มีขั้น "fail ก่อนแก้") ความเสี่ยงที่เหลือ
+  (worker ตายตอนบูตเมื่อเครื่องโหลดหนัก: log `Error running event bus worker` ขณะ `/health` ยัง 200) ทำซ้ำในเครื่องไม่ได้ จึง**ไม่**อยู่ใน AC-5
+  แต่ครอบด้วย alert ใน AC-18 (OPS-3)
 - AC-6 Given `apps/storefront/next.config.js` Then `output === "standalone"` และ `agentRules === false`; Given image `storefront`
   ที่ build ใหม่ When เทียบ `docker image inspect --format '{{.Size}}'` กับขนาดก่อนแก้ (บันทึกใน evidence) Then เล็กลง และ container
   ตอบ `GET /` เป็น 200
@@ -115,23 +118,32 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-17 (OPS-7, รอบ 7) Given `NODE_ENV=production` ไม่มี `STOREFRONT_URL` (หรือค่าไม่ใช่ URL `http(s)://` ที่ parse ได้) When โหลด config/บูต backend Then throw พร้อมชื่อตัวแปร
   (unit แบบ AC-13) — แทน `storefrontUrlWarning` ของ GB-4 ใน production; Given ไม่ใช่ production และไม่มีค่า Then ลิงก์เป็น path อย่างเดียวตามเดิมของ GB-4 และ log warning 1 ครั้งตอนบูต; Given `ci.yml` Then ทุก job ที่บูต backend ด้วย
   `NODE_ENV=production` ตั้ง `STOREFRONT_URL` (unit อ่าน YAML); `apps/backend/.env.example` มีบรรทัด `STOREFRONT_URL=` (unit อ่านไฟล์)
+- AC-18 (OPS-3, ADR-012 ภาคผนวก, รอบ 8) Given `docs/ops/production.md` หัวข้อ "Alerts" Then มีกฎ alert ที่ match สตริง
+  `Error running event bus worker` บน log ของ process `worker` พร้อมขั้นตอนตอบสนอง (restart worker) (unit/script grep); Given log ของ worker ในรูป
+  JSON ของ OPS-3 When Medusa log ข้อความนี้ (จำลองด้วยการเรียก logger ใน unit) Then บรรทัด log มี level `error` และ field `worker_mode: "worker"`
+  (field ที่กฎ alert ใช้กรอง) — logger ของ Medusa ไม่ใส่ field นี้เอง: OPS-3 เพิ่มใน formatter/transport ของ JSON log ที่ OPS-3 ตั้งเอง โดยอ่านค่าจาก env
+  `MEDUSA_WORKER_MODE` (ทางเลือกที่ยอมรับเท่ากัน: ตั้ง label ระดับ container ใน log shipper ตาม env เดียวกัน) — ไม่ hook/patch internal ของ event bus module หรือ logger ของ Medusa
+- AC-19 (OPS-12, รอบ 8) Given `.github/workflows/ci.yml` Then job `docker-worker-mode` มีขั้นรัน `tools/ops/smoke-redis-outage.sh` หลัง
+  `smoke-worker-mode.sh` (unit อ่าน YAML); Given PR ที่ทำให้ script ล้ม (positive control ใน evidence เช่น ตั้ง subscriber ไม่ให้รัน) Then job ล้ม
 
 ## Tasks
 | ID | Task | Depends |
 |----|------|---------|
 | OPS-1 | Dockerfiles + compose + env ของ worker mode + health (AC-1) | CORE-1 |
 | OPS-2 | Prod config: Redis modules, pool size, S3, เอกสาร CDN | OPS-1 |
-| OPS-3 | Logging/Sentry + rate limiting | OPS-1 |
+| OPS-3 | Logging/Sentry + rate limiting + alert log `Error running event bus worker` ของ worker (รอบ 8, AC-18) | OPS-1, OPS-8 (#101, เฉพาะ AC-18 — หัวข้อใน `production.md`) |
 | OPS-4 | k6 scripts + nightly CI job + evidence (AC-2, AC-3) | FS-6, GB-7 |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
 | OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13); fail-fast `STOREFRONT_URL` (รอบ 7, AC-17 — ถ้า GB-4 ยังไม่ merge ตอนเริ่ม OPS-7 ให้ทำส่วนนี้เมื่อ GB-4 merge แล้ว ไม่แตะโค้ดอีเมลของ GB-4) | OPS-2, PAY-1, CORE-3, AF-2 (#66), GB-4 (#89, เฉพาะ AC-17) |
 | OPS-10 | (เล็ก, CI) commit test ของ `tools/ci/classify-changes.sh` (30 เคส) ให้รันใน `lint-typecheck` (AC-14) + หัวข้อ "Stripe webhooks" ใน `docs/ops/production.md` และ `--events` ของ `stripe listen` ใน `ci.yml` ตรงกัน พร้อม check อัตโนมัติ (AC-15) | PAY-2 |
-| OPS-8 | Worker ฟื้นตัว/จบ process เมื่อ Redis ของ event bus ขาด ตาม ADR-012 (accepted): `tools/ops/smoke-redis-outage.sh` (fail ก่อนแก้) + ตั้ง `redisOptions`/`workerOptions` ใน `infra-modules.ts` (AC-5) | OPS-2 |
+| OPS-8 | (#101) Worker กับ Redis ของ event bus ขาด ตาม ADR-012 ภาคผนวก (owner ตัดสิน 2026-10-26): `tools/ops/smoke-redis-outage.sh` เป็น regression test (AC-5) + เอกสารความเสี่ยงที่เหลือใน `docs/ops/production.md`; **ไม่**แก้ `infra-modules.ts` และไม่แตะ internal ของ module | OPS-2 |
+| OPS-12 | (เล็ก, CI, รอบ 8) รัน `smoke-redis-outage.sh` ใน job `docker-worker-mode` ของ `ci.yml` (AC-19) | OPS-8 (#101), OPS-7 (แตะ job เดียวกันใน `ci.yml` — เริ่มหลัง OPS-7 merge) |
 | OPS-9 | (เล็ก) typecheck ในเครื่องล้มที่ `group-buy-campaigns.spec.ts` เมื่อมี `.medusa/types` (typed `query.graph` ของ link) — แก้ที่ test ให้ type ตรงกับ type ของ link ที่ Medusa generate (เช่น อ่านผ่าน type ของ entity/cast ให้ตรง) **ไม่** exclude `.medusa/types` จาก tsconfig (ทำให้ typed query ทั้งโปรเจกต์หายและ CI กับเครื่อง dev typecheck ต่างกันมากขึ้น); ถ้าแก้ที่ test ไม่ได้ให้หยุดและรายงาน (AC-12) | GB-2a |
 | OPS-11 | (เล็ก, e2e tooling, รอบ 6) ย้าย login admin + header `x-forwarded-proto` จาก e2e admin ของ FS-10 ไปเป็น helper ร่วม `e2e/support/admin.ts` + `data-testid` ที่ `Container` ของ widget "Flash sale options" แทน locator `div.last()` (AC-16) — **ทำเมื่อมี e2e admin ตัวที่สอง** (ตัวแรกที่จะเริ่มจาก EV-5b, EV-9, GB-6b, GB-6c, AF-6): ถ้า OPS-11 ยังไม่ merge ตอน task นั้นเริ่ม ให้รวม OPS-11 ไว้ใน PR ของ task นั้น (ไม่สร้าง helper ก่อนมีผู้ใช้สองที่) | FS-10 (#74) |
 OPS-3 ∥ OPS-6 ∥ OPS-7 ∥ OPS-8 ∥ OPS-9 (OPS-9 แตะเฉพาะ `integration-tests/http/group-buy-campaigns.spec.ts`; OPS-6 แตะ `next.config.js`/Dockerfile/jest config; OPS-7 แตะ `notification-providers.ts`/seed/`ci.yml`;
-OPS-8 แตะ `infra-modules.ts`/`tools/ops/` — ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)
+OPS-8 แตะ `tools/ops/`/`docs/ops/production.md` — ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)
+OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น
 OPS-11 ∥ งานอื่น แต่แตะ e2e ของ FS-10 + `src/admin/widgets/flash-sale-options.tsx` — ทำเมื่อมี e2e admin ตัวที่สองเท่านั้น (ดูแถว OPS-11)
 OPS-10 ∥ งานอื่น (แตะ `ci.yml` ขั้น `lint-typecheck`/`stripe listen`, `tools/ci/`, `docs/ops/production.md`) — PAY-6 แตะ `production.md` หัวข้อ runbook
 คนละหัวข้อ ตัวที่ merge ทีหลัง rebase; OPS-7 แตะ `ci.yml` job `docker-worker-mode` คนละขั้นกับ OPS-10

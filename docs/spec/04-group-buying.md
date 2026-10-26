@@ -4,7 +4,8 @@
 ปรับ membership หลายออเดอร์ต่อคน + exclusivity ตาม ADR-009; 2026-10-25 แก้ความกำกวมที่ GB-2 พบ:
 ส่วนลดระดับแคมเปญเก็บใน promotion ต้นแบบตาม ADR-011, สถานะแคมเปญ, error mapping, แบ่ง GB-2 เป็น GB-2a/GB-2b และแบ่ง scope กับ GB-3;
 2026-10-26 รอบ 6: แยก GB-6 เป็น GB-6a/6b/6c + route membership ของ admin, nit review #68/#75 — กฎข้อ 14d–17, AC-29..35;
-รอบ 7: path `/group-buying/:id`, บั๊ก summary ของ draft order → GB-3c, ข้อจำกัด lock TTL ของ GB-4 — กฎข้อ 18–19, AC-36)
+รอบ 7: path `/group-buying/:id`, บั๊ก summary ของ draft order → GB-3c, ข้อจำกัด lock TTL ของ GB-4 — กฎข้อ 18–19, AC-36;
+รอบ 8: leave หลังหมดเวลา (กฎข้อ 13), ถ้อยคำ AC-32/AC-36, ปัดยอด 2 ตำแหน่ง (กฎข้อ 20, AC-37), รวม nit เป็น GB-N1)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -24,7 +25,7 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | ช่วงเวลา | Campaign (`starts_at`/`ends_at` คุมช่วงที่ promotion ใช้ได้) | 1 campaign ต่อหนึ่งแคมเปญ group-buy; ต้องมี `ends_at` |
 | HTTP status จาก error | error handler ของ Medusa: `FORBIDDEN`→403, `NOT_ALLOWED`/`INVALID_DATA`→400, `NOT_FOUND`→404, `CONFLICT`→409 (แต่ **เขียนทับ** `code`/`message` เป็น `invalid_state_error`) | ใช้ตามเดิม ยกเว้น 409 ที่ต้องมี code ของเรา (กฎข้อ 11) |
 | สร้าง draft order จาก cart แล้วแปลงและชำระเงินภายหลัง | draft order ของ Order module (`createOrderWorkflow` พร้อม `is_draft_order`, `convertDraftOrderWorkflow`) + payment collection บน order — เป็น pattern เดียวกับตัวอย่าง **Quotes** ของ Medusa | ใช้ตามเดิม |
-| Payment collection สำหรับ order ที่มีอยู่แล้ว | `createOrderPaymentCollectionWorkflow` + payment sessions | ใช้ตามเดิม |
+| Payment collection สำหรับ order ที่มีอยู่แล้ว | `createOrderPaymentCollectionWorkflow` (รับ amount ที่ส่งเข้าไป ไม่อ่าน summary) / `createOrUpdateOrderPaymentCollectionWorkflow` (คิดจาก `summary.pending_difference`) + payment sessions | ใช้ตามเดิม; ยอดที่ส่งปัด 2 ตำแหน่ง (กฎข้อ 20) |
 | ยกเลิก draft order | `cancelOrderWorkflow` | ใช้ตามเดิม |
 | ยอดรวม/summary ของ order (`current_order_total`, `pending_difference`) | Order module คำนวณ summary เมื่อ order เปลี่ยนผ่านกลไกของตัวเอง | ใช้ตามเดิม — step ที่แก้ adjustment ต้องให้ Medusa คำนวณ summary ใหม่ (กฎข้อ 18, GB-3c) |
 | URL ของ storefront ในอีเมลชำระเงิน | ไม่มี config ของ Medusa | env `STOREFRONT_URL` (spec 07 Deliverables ข้อ 9, GB-4) |
@@ -249,7 +250,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     `POST /admin/group-buy/campaigns` และแก้ภายหลังที่หน้า promotion ของ Medusa admin (มีผลเฉพาะกลุ่มที่สร้างหลังจากนั้น ตาม ADR-011 ข้อ 3)
     ไม่ย้อนแก้ต้นแบบของแคมเปญที่สร้างก่อน GB-2c (ค่าเดิมของ Medusa คือ `false`)
 13. (GB-3b) **leave** (`POST /store/group-buy/memberships/:id/leave`, `authenticate("customer")`): เฉพาะเจ้าของ membership — ของคนอื่นหรือไม่มีอยู่
-    → 404; membership ที่ `cancelled` แล้ว (leave ซ้ำ) หรือกลุ่มไม่ `open` → 400 `not_allowed`; ภายใต้ lock `group_buy:group:<id>` ปรับ membership →
+    → 404; membership ที่ `cancelled` แล้ว (leave ซ้ำ) หรือกลุ่มไม่ `open` หรือกลุ่ม**หมดเวลาแล้ว** (`ends_at <= now` แม้ status ยัง `open` เพราะ job
+    ยังไม่ตัดสิน — session หลักเลือก, ส่งมอบใน GB-3b #95; ตรงกับแถว "หมดเวลาแล้ว" ของ join) → 400 `not_allowed`; ภายใต้ lock `group_buy:group:<id>` ปรับ membership →
     `cancelled` + ตัวนับ (ตาม `leaveGroupWorkflow`) ก่อน แล้ว `cancelOrderWorkflow` เป็นขั้นสุดท้าย (compensation คืนสถานะ/ตัวนับถ้ายกเลิก order ล้ม)
 14. (owner 2026-10-26, ปิด Q9; ทำใน GB-3) cart หลัง join ยังมี `GB-<token>` — กันสองชั้นฝั่ง backend:
     (a) **ห้าม complete cart ที่มี promotion code ขึ้นต้น `GB-` ทุกกรณี** (ราคาลดของกลุ่มได้ผ่าน draft order ของ membership เท่านั้น): handler ของ
@@ -278,6 +280,10 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     ทุก membership (สร้าง payment collection + อีเมล) ใน lock เดียวอาจเกิน TTL แล้ว lock หลุดระหว่างทาง ทำให้ job/admin override รอบอื่นเข้ามาซ้อน
     ความถูกต้องพึ่ง idempotency ต่อ membership (กฎข้อ 8: ข้าม `awaiting_payment`/`paid`/`cancelled`) — ยังเสี่ยง payment collection ซ้ำถ้าสองรอบทำ membership
     เดียวกันพร้อมกันพอดี — **ยอมรับใน v1** (Q11 ทาง (ก)) ไม่มี task; AC-1/AC-9 ทดสอบกับกลุ่มเล็ก
+20. (รอบ 8, review #100) ส่วนลด % ทำให้ `order.total` ของ draft order มีทศนิยมไม่จำกัด (เช่น 699.99…) แต่ Stripe รับหน่วยสตางค์ — ยอดของ payment collection
+    ของ membership = `order.total` **ปัด 2 ตำแหน่งแบบ half-up ด้วย `MathBN`** ตอนสร้าง collection ใน `succeedGroupWorkflow` (ปัจจุบัน `group-outcome.ts` ราวบรรทัด 126
+    ของ GB-4 ส่ง raw) — ทำใน GB-5 (AC-37) ไม่คำนวณยอดจากราคา line เอง (กฎข้อ 18 ยังใช้); ส่วนต่างเศษสตางค์ (< 0.005) ที่เหลือใน `summary.pending_difference`
+    หลัง capture ต้องไม่ทำให้ `convertDraftOrderWorkflow`/`payment_status` ผิด — builder ยืนยันใน test AC-37 ถ้าผิดให้หยุดและรายงาน
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -346,7 +352,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   ที่ผู้เรียกได้รับเป็น error ของขั้น link; เรียกซ้ำโดยไม่ inject → สำเร็จ
 - AC-25 (GB-3b, กฎข้อ 13) Given membership M ของ A ในกลุ่ม `open` When B leave M Then 404 และ M, draft order, ตัวนับไม่เปลี่ยน; When A leave M
   Then 200, M `cancelled`, draft order `canceled`; When A leave M ซ้ำ Then 400 `not_allowed` และตัวนับไม่ลดซ้ำ; Given กลุ่ม `succeeded` (ตั้งผ่าน module)
-  When A leave membership ในกลุ่มนั้น Then 400 และไม่มีอะไรเปลี่ยน; Given ขั้น `cancelOrderWorkflow` ล้ม (inject ครั้งเดียว) Then M กลับเป็น `joined`
+  When A leave membership ในกลุ่มนั้น Then 400 และไม่มีอะไรเปลี่ยน; Given กลุ่ม `open` ที่ `ends_at <= now` (รอบ 8, กฎข้อ 13) When A leave Then 400
+  `not_allowed` และไม่มีอะไรเปลี่ยน; Given ขั้น `cancelOrderWorkflow` ล้ม (inject ครั้งเดียว) Then M กลับเป็น `joined`
   และตัวนับเท่าก่อนเรียก (integration http)
 - AC-26 (GB-3, กฎข้อ 14a) Given A join กลุ่ม G ด้วย cart C สำเร็จ (C มี `GB-<token>`) When A `POST /store/carts/C/complete` Then 400 `type=not_allowed`
   code `GB_CART_NOT_COMPLETABLE`, `C.completed_at` ยัง null และไม่มี order ใหม่ที่ไม่ใช่ draft; Given cart ที่ใส่ `GB-<token>` ผ่าน
@@ -367,7 +374,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   (`progress_*` ตาม `target_type` / `target_value`), `ends_at`; When `dblclick` `gb-create-pool-group` Then `POST .../groups` **1** ครั้ง และตารางมี 3 แถว;
   Given แคมเปญ `draft` หรือ `group_mode=team` Then ไม่มี `gb-create-pool-group` (e2e admin)
 - AC-32 (GB-6b, กฎข้อ 15–17) Given ฟอร์มสร้างแคมเปญ When `max_quantity=1`, `max_units_per_person=2` แล้ว submit Then เห็น `gb-max-quantity-error`
-  และไม่มี `POST /admin/group-buy/campaigns`; When `max_quantity=2` (หรือเว้นว่างช่องใดช่องหนึ่ง) Then ส่งได้; When `ends_at` เป็นเวลาที่ผ่านไปแล้ว Then
+  และไม่มี `POST /admin/group-buy/campaigns`; When `max_quantity=2` (หรือเว้นว่าง `max_units_per_person` — ช่อง `max_quantity` บังคับกรอกในฟอร์ม
+  จึงเว้นว่างไม่ได้; แก้ถ้อยคำรอบ 8 ตาม review #96) Then ส่งได้; When `ends_at` เป็นเวลาที่ผ่านไปแล้ว Then
   เห็น `gb-ends-at-warning` และยังส่งได้ (แคมเปญ `draft`); When `dblclick` ปุ่ม submit ของฟอร์มที่ถูกต้อง Then มี `POST` **1** ครั้งและแคมเปญใหม่ 1 แถว
   (component test ที่ mock `fetch` หรือ e2e admin)
 - AC-33 (GB-6b) Given ฟอร์มสร้างแคมเปญ When เลือกสินค้า 2 ตัวผ่าน `gb-product-picker` (ค้นหาด้วยชื่อ) แล้ว submit Then body ของ `POST` มี
@@ -383,8 +391,15 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   `succeeded` และปุ่ม succeed/fail หายไป; Given กลุ่มที่ไม่ใช่ `open` Then ไม่มีปุ่ม succeed/fail (e2e admin)
 - AC-36 (GB-3c, กฎข้อ 18) Given แคมเปญ −30% scope = product X ราคา ฿1,000 When A join ด้วย cart ที่มี X qty 1 Then draft order มี `total` = 700 และ
   `summary.current_order_total` = 700, `summary.pending_difference` = 700 (ยังไม่มี payment; เทียบด้วย `MathBN`/raw ไม่ใช่ float); `GET /admin/orders/:id`
-  (หรือ `/admin/draft-orders/:id`) คืน summary เท่ากัน; When `createOrderPaymentCollectionWorkflow` ของ draft order นั้นโดยไม่ระบุ amount Then `amount` = 700
+  (หรือ `/admin/draft-orders/:id`) คืน summary เท่ากัน; When `createOrUpdateOrderPaymentCollectionWorkflow` ของ draft order นั้นโดยไม่ระบุ amount Then
+  `amount` = 700 (แก้รอบ 8 ตาม review #100: workflow นี้คิดยอดจาก `summary.pending_difference` — `createOrderPaymentCollectionWorkflow` ไม่อ่าน summary
+  จึงพิสูจน์บั๊กไม่ได้); หลัง GB-3c draft order มี `version` = 2 (ผลของ order change ที่ confirm — test ที่อ่าน item/adjustment ต้องไม่ยึด version 1)
   (integration http)
+- AC-37 (GB-5, รอบ 8, review #100) Given แคมเปญส่วนลด % ที่ทำให้ `order.total` ของ draft order มีทศนิยมเกิน 2 ตำแหน่ง (เช่น 699.99…; builder ใช้ fixture
+  ราคา/ส่วนลดที่ #100 พบ) When กลุ่มสำเร็จ (GB-4) Then `payment_collection.amount` มีทศนิยม ≤ 2 ตำแหน่ง = `order.total` ปัด 2 ตำแหน่งแบบ half-up ด้วย
+  `MathBN` (ไม่ใช้ `Number`); When สมาชิกชำระและ capture ยอดนั้นผ่าน provider (mock หรือ Stripe test mode) Then `payment_collection.status` = `completed`
+  (ไม่ใช่ `partially_captured`/`authorized`), draft order ถูกแปลงเป็น order ปกติ (`convertDraftOrderWorkflow` สำเร็จ), order `payment_status=captured`
+  และ membership `paid` (integration http, กฎข้อ 20)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -402,7 +417,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   AC-20d
 - Unit/integration (http): AC-20c (validator + ค่าเริ่มต้น)
 - Integration (http): AC-1, AC-3..AC-7, AC-10..AC-15, AC-17, AC-18, AC-19 (ส่วน admin pool), AC-20a (DELETE), AC-21a,
-  AC-21b, AC-22, AC-23, AC-24, AC-25, AC-26, AC-27, AC-36
+  AC-21b, AC-22, AC-23, AC-24, AC-25, AC-26, AC-27, AC-36, AC-37
   โดย mock payment provider
 - e2e: AC-2, AC-16 กับ Stripe test mode; AC-28
 - Integration (http): AC-34 (GB-6c)
@@ -420,7 +435,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-3b | (แยกจาก GB-3 ตาม PR #68, owner 2026-10-26) `leaveGroupWorkflow` + `POST /store/group-buy/memberships/:id/leave` ตามกฎข้อ 13 (AC-7, AC-15 ส่วน leave, AC-17 ส่วน "หลัง leave", AC-25) — GB-3 (#68) ส่งมอบ join + สร้างทีม ส่วน AC อื่นในแถว GB-3 คงเดิม; **รวม nit review #68**: prettier `workflows/group-buy/join-group.ts` บรรทัด 45-46 และ guard ผลของ `query.graph` ที่อ่าน `groups[0]`/`campaigns[0]` (ไม่พบ → `MedusaError NOT_FOUND` แทนอ่าน property ของ `undefined`) | GB-3 |
 | GB-4 | `succeedGroupWorkflow` / `failGroupWorkflow` + deadline job (รวมตั้งแคมเปญ `ended`) + admin succeed/fail + อีเมล (AC-1, AC-3, AC-9, AC-11, AC-12, AC-22) — **ข้อควรระวังจาก review #68**: ยอดของ payment collection ต้องมาจากยอดของ draft order ที่ Medusa คำนวณ (ระวัง `summary.current_order_total` ของ draft order ที่สร้างตอน join — ตรวจว่าตรงกับ `total` หลังส่วนลด `GB-*`) ไม่คำนวณยอดเอง; test AC-1 assert `payment_collection.amount` = ยอดหลังส่วนลดของ draft order | GB-3 |
 | GB-3c | (เล็ก, รอบ 7, บั๊ก GB-3) `freezeDraftOrderAdjustmentsStep` คำนวณ summary ของ draft order ใหม่หลังใส่ adjustment ด้วยกลไกของ Medusa (กฎข้อ 18, AC-36) — GB-4 (#89) สร้าง payment collection จาก `order.total` (ไม่ใช่ summary) จึงไม่ได้รับผลจากบั๊กนี้ แต่หน้า admin/refund/claim ยังได้รับผล | GB-3 (∥ GB-3b, GB-4) |
-| GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) — **ต้องมี GB-3c merge ก่อน** หรือรวม GB-3c ไว้ใน PR นี้ (ทั้ง task + AC-36) | GB-4, PAY-3, GB-3c |
+| GB-5 | Subscriber payment captured → แปลง draft order; หมดเวลาชำระเงิน (AC-2 API, AC-10) + **รอบ 8**: ปัดยอด payment collection 2 ตำแหน่งใน `succeedGroupWorkflow` (แก้ `group-outcome.ts` ของ GB-4) และ test สถานะ `completed` หลัง capture (กฎข้อ 20, AC-37) — **ต้องมี GB-3c merge ก่อน** หรือรวม GB-3c ไว้ใน PR นี้ (ทั้ง task + AC-36) | GB-4, PAY-3, GB-3c (#100) |
+| GB-N1 | (เล็ก, รอบ 8, รวม nit ที่สะสม — test เดิมต้องผ่าน; test ใหม่ที่ต้องมี: integration inject ให้ขั้น confirm order change ของ GB-3c ล้ม → order change เป็น `declined` และ draft order ไม่มี adjustment ค้าง; assertion credit line ใน e2e refund ของ PAY-4 ตาม spec 06 AC-6) **GB-3b (#95)**: `leaveGroupWorkflow` ตรวจเจ้าของ membership (select `customer_id` ขั้น 0) **ก่อน**ขอ lock, ใส่ `canceled_by: customer_id` ตอนยกเลิก order, ตัด `as any` ใน `cancelGroupMembershipStep`; **GB-4 (#89)**: log กรณี `at_deadline` ไม่ตรงเป็น `warn` แทน `error`; **GB-6b2 (#96)**: `gb-ends-at-warning` ใช้สีเตือน (ไม่ใช่สี error) และ test ของ product picker ครอบ selection ข้ามหน้า; **GB-3c (#100 merged แล้ว)**: comment ว่า `provider_id` ของ adjustment หายหลัง `applyOrderChanges`, เรียก `declineOrderChange` (ของ Medusa) เมื่อขั้น confirm ล้ม; **CORE-12b**: comment `allowUnauthenticated` ซ้ำใน `src/api/store/ownership/middlewares.ts` (spec 01); **CORE-18**: comment "onboarding status" ล้าสมัยใน storefront `src/middleware.ts` ราวบรรทัด 88; **PAY-6a (#82)**: ย้าย constant `PAYMENT_ALREADY_COMPLETED` ไปไฟล์ errors และ comment ใน test guard × webhook ว่า 409/5xx ของฝั่งที่แพ้ถือว่าผ่าน (spec 06 หมายเหตุรอบ 6) — ถ้าเกิน ~400 LOC แยก backend/storefront | GB-3c (#100), PAY-6b (#97/#98 — แตะไฟล์ guard/errors ใกล้กัน) |
 | GB-6a | ☑ #75 — route page "Group buying": ตารางแคมเปญ + ฟอร์มสร้างแคมเปญ (AC-29) | GB-2b |
 | GB-6b | หน้ารายละเอียดแคมเปญ: เปลี่ยนสถานะ, ลบ `draft`, ตารางกลุ่ม, สร้าง pool group; ปรับฟอร์มสร้าง: product picker แทนกรอก ID, ตรวจ `max_quantity ≥ max_units_per_person`, เตือน `ends_at` อดีต, กันกดซ้ำ, คำเตือน `GBT-*` (กฎข้อ 15–17; AC-30..33) — frontend ล้วน ใช้ API ของ GB-2a/GB-2b; แยกแล้ว: **GB-6b1 = ◐ #87** (หน้ารายละเอียด `/group-buying/:id`, AC-30, AC-31 + รวม OPS-11 `e2e/support/admin.ts` AC-16 และ regex evidence) และ GB-6b2 ☐ (ฟอร์ม, AC-32, AC-33) ทำขนานกันได้ | GB-6a |
 | GB-6c | membership + succeed/fail manual: route `GET /admin/group-buy/groups/:id/memberships` + integration test (AC-34) + ตาราง membership และปุ่ม succeed/fail ในหน้ารายละเอียด (AC-35); ถ้าเกิน ~400 LOC แยก route (GB-6c1) กับ UI (GB-6c2) | GB-6b (GB-6b1 ถ้าแยก), GB-3, GB-4 (route succeed/fail) |
@@ -430,6 +446,8 @@ GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
 GB-7 ต้องรอ GB-3b ด้วย (ปุ่มออกจากกลุ่มในหน้า account)
 GB-3c ∥ GB-3b ∥ GB-4 หลัง GB-3 (แตะ step freeze ใน workflow join — ไฟล์ร่วมกับ GB-3b ตัวที่ merge ทีหลัง rebase); GB-5 ต้องรอ GB-3c (หรือรวมไว้)
+GB-N1 หลัง GB-3c (#100) และ PAY-6b (#97/#98) merge; ∥ GB-5 (GB-5 แตะ `group-outcome.ts` ส่วนสร้าง collection, GB-N1 แตะ log `at_deadline` ไฟล์เดียวกันได้ — ตัวที่ merge
+ทีหลัง rebase) ไม่บล็อก release
 GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/test ของ `create-group` ไม่ใช่ไฟล์ join) แต่ควร merge ก่อน release v0.5.0
 
 ## Open questions
