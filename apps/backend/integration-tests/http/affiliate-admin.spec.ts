@@ -439,6 +439,100 @@ medusaIntegrationTestRunner({
         expect(missing.status).toEqual(404)
       })
 
+      // AF-9b (AC-27, กฎ 25): cancel ถือ lock affiliate → payout-paid จนจบ compensation
+      it("holds the affiliate payout lock through cancel compensation (AC-27)", async () => {
+        const created = await api.post("/admin/affiliate/payouts", period(), { headers })
+        const draft = created.data.payout
+        const affiliateKey = `affiliate-payout:${annId}`
+        const paidKey = `affiliate-payout-paid:${draft.id}`
+
+        const locking = getContainer().resolve(Modules.LOCKING)
+        const acquired: string[][] = []
+        const originalAcquire = locking.acquire.bind(locking)
+        const originalRelease = locking.release.bind(locking)
+
+        let openGate!: () => void
+        const gate = new Promise<void>((resolve) => (openGate = resolve))
+        let cancelHolding!: () => void
+        const holding = new Promise<void>((resolve) => (cancelHolding = resolve))
+        let createWaiting!: () => void
+        const waiting = new Promise<void>((resolve) => (createWaiting = resolve))
+        let injected = false
+
+        const acquireSpy = jest
+          .spyOn(locking, "acquire")
+          .mockImplementation(async (keys: string | string[], args?: any) => {
+            const list = Array.isArray(keys) ? keys : [keys]
+            acquired.push(list)
+            if (injected && list.includes(affiliateKey)) {
+              createWaiting()
+            }
+            return originalAcquire(keys, args)
+          })
+        // inject: the release step runs after the soft-delete → fail it while create is waiting
+        const releaseSpy = jest
+          .spyOn(locking, "release")
+          .mockImplementation(async (keys: string | string[], args?: any) => {
+            const list = Array.isArray(keys) ? keys : [keys]
+            if (!injected && list.includes(paidKey)) {
+              injected = true
+              cancelHolding()
+              await gate
+              throw new Error("injected failure after soft-delete")
+            }
+            return originalRelease(keys, args)
+          })
+
+        try {
+          const cancel = api
+            .delete(`/admin/affiliate/payouts/${draft.id}`, { headers })
+            .catch((e) => e.response)
+          await holding
+          expect(await service.listAffiliatePayouts({ id: draft.id })).toHaveLength(0)
+
+          const create = api
+            .post("/admin/affiliate/payouts", period(), { headers })
+            .catch((e) => e.response)
+          await waiting
+          // give an unblocked create time to finish while D is still soft-deleted
+          await Promise.race([create, new Promise((r) => setTimeout(r, 1000))])
+          openGate()
+
+          const [cancelled, recreated] = await Promise.all([cancel, create])
+          expect(cancelled.status).toBeGreaterThanOrEqual(400)
+          expect(recreated.status).toEqual(400)
+        } finally {
+          acquireSpy.mockRestore()
+          releaseSpy.mockRestore()
+          openGate()
+        }
+
+        // cancel asks affiliate key first, then payout-paid key (rule 25)
+        const cancelKeys = acquired
+          .flat()
+          .filter((k) => k === affiliateKey || k === paidKey)
+        expect(cancelKeys.slice(0, 2)).toEqual([affiliateKey, paidKey])
+
+        const restored = await service.retrieveAffiliatePayout(draft.id)
+        expect(restored.status).toEqual("draft")
+        const live = await service.listAffiliatePayouts({ affiliate_id: annId })
+        const ids = live.flatMap((p) => p.entry_ids as string[])
+        expect(new Set(ids).size).toEqual(ids.length)
+      })
+
+      it("rejects cancelling a payout without an admin token (AC-27)", async () => {
+        const created = await api.post("/admin/affiliate/payouts", period(), { headers })
+        const payout = created.data.payout
+
+        const response = await api
+          .delete(`/admin/affiliate/payouts/${payout.id}`)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(401)
+
+        const still = await service.retrieveAffiliatePayout(payout.id)
+        expect(still).toEqual(expect.objectContaining({ status: "draft", amount: payout.amount }))
+      })
+
       // AF-9 (AC-20, กฎ 19): ไม่ตัดด้วย period_from, ตัดด้วย period_to และ entry_ids ของ payout อื่น
       it("selects entries by rule 19 across payout rounds (AC-20)", async () => {
         const earlier = await api.post(

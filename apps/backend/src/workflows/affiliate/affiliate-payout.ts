@@ -128,6 +128,16 @@ export const setAffiliatePayoutPaidStep = createStep(
   }
 )
 
+// Rule 25: read affiliate_id before taking any lock so cancel can lock the same key as create
+export const getAffiliatePayoutAffiliateStep = createStep(
+  "get-affiliate-payout-affiliate",
+  async (input: CancelAffiliatePayoutInput, { container }) => {
+    const service: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
+    const payout = await service.retrieveAffiliatePayout(input.id, { select: ["id", "affiliate_id"] })
+    return new StepResponse(payout.affiliate_id)
+  }
+)
+
 // Q9: cancelling a draft = soft-delete; entries are untouched (a draft never changes them) so rule 19 frees them
 export const cancelAffiliatePayoutStep = createStep(
   "cancel-affiliate-payout",
@@ -181,13 +191,19 @@ export const markAffiliatePayoutPaidWorkflow = createWorkflow(
 export const cancelAffiliatePayoutWorkflow = createWorkflow(
   "cancel-affiliate-payout",
   function (input: CancelAffiliatePayoutInput) {
-    // Same key as mark-paid so a payout cannot be cancelled while it is being paid
-    const key = transform({ input }, ({ input }) => `affiliate-payout-paid:${input.id}`)
-    acquireLockStep({ key, timeout: 5, ttl: 30 })
+    // Rule 25: fixed order affiliate → payout-paid, held until the end (incl. compensation).
+    // affiliate key = create's key so a restored draft cannot overlap a new one;
+    // payout-paid key = mark-paid's key so a payout cannot be cancelled while it is being paid
+    const affiliateId = getAffiliatePayoutAffiliateStep(input)
+    const affiliateKey = transform({ affiliateId }, ({ affiliateId }) => `affiliate-payout:${affiliateId}`)
+    const paidKey = transform({ input }, ({ input }) => `affiliate-payout-paid:${input.id}`)
+    acquireLockStep({ key: affiliateKey, timeout: 5, ttl: 30 }).config({ name: "acquire-affiliate-payout-lock" })
+    acquireLockStep({ key: paidKey, timeout: 5, ttl: 30 }).config({ name: "acquire-affiliate-payout-paid-lock" })
 
     const id = cancelAffiliatePayoutStep(input)
 
-    releaseLockStep({ key })
+    const keys = transform({ affiliateKey, paidKey }, ({ affiliateKey, paidKey }) => [paidKey, affiliateKey])
+    releaseLockStep({ key: keys })
     return new WorkflowResponse(id)
   }
 )
