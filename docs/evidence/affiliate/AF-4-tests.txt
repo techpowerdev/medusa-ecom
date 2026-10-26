@@ -1,38 +1,46 @@
-# AF-4 (spec 05) — reversal + maturity job + index (status, matures_at)
-# วันที่: 2026-10-26 21:13 +07, branch feat/AF-4-reversal-maturity, Node v22.23.3
+# AF-4 (spec 05) — reversal + maturity job + index (status, matures_at) + payout ไม่หัก reversal ของ entry ที่ยัง pending (owner 2026-10-26)
+# วันที่: 2026-10-26 21:47 +07, branch feat/AF-4-reversal-maturity (merge origin/develop แล้ว), Node v22.23.3
 
 ## Unit: src/modules/affiliate/utils/__tests__/reversal.unit.spec.ts
   affectedFractions
     ✓ affects every line fully when the order is canceled (1 ms)
-    ✓ affects every line fully when refunds cover all captures (AC-5)
-    ✓ uses the received return quantity of each line otherwise (Q3) (1 ms)
+    ✓ affects every line fully when refunds cover all captures (AC-5) (1 ms)
+    ✓ uses the received return quantity of each line otherwise (Q3)
   planReversals
-    ✓ reverses the full entry as a negative reversed entry (AC-5)
+    ✓ reverses the full entry as a negative reversed entry (AC-5) (1 ms)
     ✓ reverses entry.amount × fraction for a partial return, rounded half-up to 2 decimals (Q3)
-    ✓ reverses approved and paid entries too (1 ms)
+    ✓ reverses approved and paid entries too
     ✓ is idempotent: existing reversals count toward the target (redelivered/repeated events)
-    ✓ only adds the difference when a later event affects more of the line
-    ✓ never reverses more than earned and ignores unaffected lines (1 ms)
+    ✓ only adds the difference when a later event affects more of the line (1 ms)
+    ✓ never reverses more than earned and ignores unaffected lines
   selectMaturedEntryIds
-    ✓ approves pending entries whose line net (including reversals) is positive (Q8) (1 ms)
+    ✓ approves pending entries whose line net (including reversals) is positive (Q8)
 Test Suites: 1 passed, 1 total
 Tests:       10 passed, 10 total
 
 ## Integration (http): integration-tests/http/affiliate-reversal.spec.ts
+# (ก่อนแก้ listPayableCommissionEntries: 'a full reversal before the hold ends does not reduce the payout' ล้ม — ได้ reversed -100 เพิ่ม)
     AC-5 reversal
-      ✓ a full refund appends a reversed −฿100 entry with matures_at null; net is 0 and the entry is untouched (971 ms)
-      ✓ a partial refund without a return does not reverse anything (1012 ms)
-      ✓ order.canceled reverses the whole commission (1030 ms)
-      ✓ a received return of 1 of 2 units reverses half of the line (Q3) (1103 ms)
+      ✓ a full refund appends a reversed −฿100 entry with matures_at null; net is 0 and the entry is untouched (1577 ms)
+      ✓ a partial refund without a return does not reverse anything (929 ms)
+      ✓ order.canceled reverses the whole commission (1182 ms)
+      ✓ a received return of 1 of 2 units reverses half of the line (Q3) (1067 ms)
     AC-6 maturity
-      ✓ hold_days=14: the entry stays pending before 14 days and becomes approved only after (905 ms)
-      ✓ a matured entry whose line is fully reversed is not approved (Q8) (716 ms)
-      ✓ the daily job approves entries that matured by now (613 ms)
+      ✓ hold_days=14: the entry stays pending before 14 days and becomes approved only after (753 ms)
+      ✓ a matured entry whose line is fully reversed is not approved (Q8) (629 ms)
+      ✓ the daily job approves entries that matured by now (580 ms)
+    payout with reversals
+      ✓ a full reversal before the hold ends does not reduce the payout (1243 ms)
+      ✓ a reversal after approval is deducted from the payout (667 ms)
 Test Suites: 1 passed, 1 total
-Tests:       7 passed, 7 total
+Tests:       9 passed, 9 total
 
-## Unit suite ทั้งหมด (pnpm --filter backend test:unit)
-Test Suites: 44 passed, 44 total
-Tests:       398 passed, 398 total
+## Integration (http): integration-tests/http/affiliate-admin.spec.ts (payout ของ AF-5/AF-9 ยังผ่าน)
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+
+## Unit suite ทั้งหมด
+Test Suites: 45 passed, 45 total
+Tests:       411 passed, 411 total
 
 ## pnpm lint && pnpm typecheck: ผ่าน (0 errors)

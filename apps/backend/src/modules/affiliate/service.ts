@@ -64,6 +64,8 @@ class AffiliateModuleService extends MedusaService({
 
   // Rule 19: approved/reversed entries created before period_to that are not in any live payout
   // (a cancelled payout is soft-deleted, so its entries count as free again). Not cut by period_from.
+  // owner 2026-10-26 (AF-4): a reversed entry is payable only once the source entry of the same order/line is
+  // approved or paid — a reversal of a still-pending entry offsets it and never reaches a payout.
   @InjectManager()
   async listPayableCommissionEntries(
     filters: PayableEntryFilters,
@@ -76,6 +78,11 @@ class AffiliateModuleService extends MedusaService({
          AND e.affiliate_id = ?
          AND e.status IN ('approved', 'reversed')
          AND e.created_at < ?
+         AND (e.status = 'approved' OR EXISTS (
+           SELECT 1 FROM affiliate_commission_entry src
+           WHERE src.deleted_at IS NULL AND src.status IN ('approved', 'paid')
+             AND src.order_id = e.order_id AND src.line_item_id IS NOT DISTINCT FROM e.line_item_id
+         ))
          AND NOT EXISTS (
            SELECT 1 FROM affiliate_payout p
            WHERE p.deleted_at IS NULL AND p.affiliate_id = e.affiliate_id AND e.id = ANY (p.entry_ids)

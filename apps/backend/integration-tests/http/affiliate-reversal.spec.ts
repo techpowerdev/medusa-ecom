@@ -25,6 +25,7 @@ import type AffiliateModuleService from "../../src/modules/affiliate/service"
 import affiliateReversalHandler from "../../src/subscribers/affiliate-reversal"
 import affiliateMaturityJob, { config as maturityJobConfig } from "../../src/jobs/affiliate-maturity"
 import { approveMaturedCommissionEntriesWorkflow } from "../../src/workflows/affiliate/approve-matured-entries"
+import { createAffiliatePayoutWorkflow } from "../../src/workflows/affiliate/affiliate-payout"
 
 process.env.AFFILIATE_TOKEN_SECRET = "af4-integration-secret"
 
@@ -104,14 +105,18 @@ medusaIntegrationTestRunner({
     }
 
     // order ฿1,000 × quantity ที่ attribute ให้ Ann ในโปรแกรม 10% → entry pending ฿100 ต่อชิ้น
-    const placeAttributedOrder = async (opts: { quantity?: number; hold_days?: number } = {}) => {
+    const placeAttributedOrder = async (
+      opts: { quantity?: number; hold_days?: number; affiliate_id?: string } = {}
+    ) => {
       seq += 1
-      const ann = await affiliates.createAffiliates({
-        email: `ann-${seq}@example.com`,
-        name: "Ann",
-        code: `ann-${seq}`,
-        status: "active",
-      })
+      const ann = opts.affiliate_id
+        ? { id: opts.affiliate_id }
+        : await affiliates.createAffiliates({
+            email: `ann-${seq}@example.com`,
+            name: "Ann",
+            code: `ann-${seq}`,
+            status: "active",
+          })
       await affiliates.createAffiliatePrograms({
         name: `P${seq}`,
         status: "published",
@@ -291,6 +296,48 @@ medusaIntegrationTestRunner({
 
         expect((await entriesOf(orderId))[0].status).toBe("approved")
         expect(maturityJobConfig).toEqual(expect.objectContaining({ name: "affiliate-maturity", schedule: expect.any(String) }))
+      })
+    })
+
+    // owner 2026-10-26: payout เลือก entry `reversed` เฉพาะเมื่อ entry ต้นทางของ line เดียวกันเป็น approved/paid แล้ว
+    describe("payout with reversals", () => {
+      const payableOf = async (affiliate_id: string) =>
+        (await affiliates.listPayableCommissionEntries({ affiliate_id, period_to: new Date(Date.now() + 30 * DAY) }))
+          .map((e) => [e.status, Number(e.amount)])
+          .sort()
+
+      it("a full reversal before the hold ends does not reduce the payout", async () => {
+        const { entry: kept } = await placeAttributedOrder({ hold_days: 14 })
+        const { orderId: canceledOrder } = await placeAttributedOrder({ hold_days: 14, affiliate_id: kept.affiliate_id })
+        await andWait("order.canceled", () =>
+          cancelOrderWorkflow(container).run({ input: { order_id: canceledOrder } })
+        )
+        await approveMaturedCommissionEntriesWorkflow(container).run({
+          input: { now: new Date(Date.now() + 15 * DAY).toISOString() },
+        })
+
+        expect(await payableOf(kept.affiliate_id)).toEqual([["approved", 100]])
+        const { result: payout } = await createAffiliatePayoutWorkflow(container).run({
+          input: {
+            affiliate_id: kept.affiliate_id,
+            period_from: new Date(Date.now() - DAY),
+            period_to: new Date(Date.now() + 30 * DAY),
+          },
+        })
+        expect(Number(payout.amount)).toBe(100)
+      })
+
+      it("a reversal after approval is deducted from the payout", async () => {
+        const { orderId, entry } = await placeAttributedOrder({ hold_days: 14 })
+        await approveMaturedCommissionEntriesWorkflow(container).run({
+          input: { now: new Date(Date.now() + 15 * DAY).toISOString() },
+        })
+        await andWait("order.canceled", () => cancelOrderWorkflow(container).run({ input: { order_id: orderId } }))
+
+        expect(await payableOf(entry.affiliate_id)).toEqual([
+          ["approved", 100],
+          ["reversed", -100],
+        ])
       })
     })
   },
