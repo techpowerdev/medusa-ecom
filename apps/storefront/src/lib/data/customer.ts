@@ -2,6 +2,7 @@
 
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
+import { errorMessage, friendlyErrorMessage } from "@lib/util/error-message"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
@@ -114,7 +115,7 @@ export async function signup(
       fetchError.statusText !== "Unauthorized" ||
       fetchError.message !== "Identity with email already exists"
     ) {
-      return { state: "error", error: String(error) }
+      return { state: "error", error: errorMessage(error) }
     }
   }
 
@@ -170,7 +171,7 @@ async function continueAfterAuth(
   try {
     await addToCart({ ...pending, quantity: 1 })
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   redirect(`/${pending.countryCode}/cart`)
@@ -188,7 +189,7 @@ async function completeLogin(
   try {
     result = await sdk.auth.login("customer", "emailpass", { email, password })
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   // A `location` is returned by third-party auth providers, which this flow
@@ -254,7 +255,7 @@ async function completeLogin(
         password,
       })) as string
     } catch (error) {
-      return { state: "error", error: String(error) }
+      return { state: "error", error: errorMessage(error) }
     }
 
     await removePendingCustomer()
@@ -268,7 +269,7 @@ async function completeLogin(
   try {
     await transferCart()
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: errorMessage(error) }
   }
 
   return { state: "success" }
@@ -285,7 +286,7 @@ export async function confirmEmailVerification(
     await sdk.auth.verification.confirm({ code: token })
     return { success: true }
   } catch (error) {
-    return { success: false, error: String(error) }
+    return { success: false, error: errorMessage(error) }
   }
 }
 
@@ -354,7 +355,8 @@ export const addCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }
 
@@ -373,7 +375,8 @@ export const deleteCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }
 
@@ -418,6 +421,7 @@ export const updateCustomerAddress = async (
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      console.error(err)
+      return { success: false, error: friendlyErrorMessage(err) }
     })
 }

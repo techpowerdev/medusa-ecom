@@ -12,6 +12,8 @@ export const EmailTemplates = {
   EVOUCHER_DELIVERED: "evoucher.delivered",
   EVOUCHER_BACKORDERED: "evoucher-backordered",
   EVOUCHER_DELIVERY_FAILED: "evoucher-delivery-failed",
+  // PAY-6b (spec 06 กฎข้อ 7D): อีเมลถึง OPS_ALERT_EMAIL
+  PAYMENT_WEBHOOK_ORPHAN: "payment-webhook-orphan",
   GROUP_BUY_SUCCEEDED: "group-buy-succeeded",
   GROUP_BUY_FAILED: "group-buy-failed",
 } as const
@@ -307,6 +309,25 @@ const renderEvoucherDeliveryFailed = (data: Record<string, unknown>): RenderedEm
   return { subject, html: layout(subject, body) }
 }
 
+// PAY-6b (spec 06 กฎข้อ 7D, ADR-015 D): ข้อมูลจาก src/subscribers/payment-webhook-orphan.ts
+const renderPaymentWebhookOrphan = (data: Record<string, unknown>): RenderedEmail => {
+  const subject = `[ด่วน] PAYMENT_WEBHOOK_SESSION_NOT_FOUND: เงินถูกตัดแต่ไม่มี order ${String(data.payment_intent ?? "")}`
+  const row = (label: string, value: unknown) => `<li>${label}: <b>${escapeHtml(value)}</b></li>`
+
+  const body =
+    `<h1 style="font-size:20px">เงินถูกตัดแต่ไม่มี order</h1>` +
+    `<p>Stripe แจ้งว่าชำระสำเร็จแต่ไม่พบ payment session ใน Medusa จึงไม่มี order สำหรับการชำระนี้</p>` +
+    `<ul>` +
+    row("PaymentIntent", data.payment_intent) +
+    row("Provider", data.provider) +
+    row("Session", data.session_id) +
+    row("Amount (THB)", data.amount) +
+    `</ul>` +
+    `<p>ทำตาม runbook "เงินถูกตัดแต่ไม่มี order (ADR-015)" ใน docs/ops/production.md</p>`
+
+  return { subject, html: layout(subject, body) }
+}
+
 // GB-4 (spec 04 กฎข้อ 9): อีเมลถึงสมาชิกกลุ่ม — ข้อมูลจาก src/workflows/group-buy/group-outcome.ts
 type GroupBuyEmail = { order?: EmailOrder; pay_url?: string; pay_deadline_at?: string }
 
@@ -351,6 +372,7 @@ const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderCont
   [EmailTemplates.EVOUCHER_DELIVERED]: renderEvoucherDelivered,
   [EmailTemplates.EVOUCHER_BACKORDERED]: renderEvoucherBackordered,
   [EmailTemplates.EVOUCHER_DELIVERY_FAILED]: renderEvoucherDeliveryFailed,
+  [EmailTemplates.PAYMENT_WEBHOOK_ORPHAN]: renderPaymentWebhookOrphan,
   [EmailTemplates.GROUP_BUY_SUCCEEDED]: renderGroupBuySucceeded,
   [EmailTemplates.GROUP_BUY_FAILED]: renderGroupBuyFailed,
 }

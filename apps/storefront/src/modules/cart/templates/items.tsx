@@ -14,19 +14,27 @@ const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
   return (
     <div>
       <div className="pb-3 flex items-center">
-        <Heading className="text-[2rem] leading-[2.75rem]">Cart</Heading>
+        <Heading
+          className="text-[2rem] leading-[2.75rem]"
+          data-testid="cart-title"
+        >
+          ตะกร้าสินค้า
+        </Heading>
       </div>
       <Table>
         <Table.Header className="border-t-0">
-          <Table.Row className="text-ui-fg-subtle txt-medium-plus">
-            <Table.HeaderCell className="!pl-0">Item</Table.HeaderCell>
+          <Table.Row
+            className="text-ui-fg-subtle txt-medium-plus"
+            data-testid="cart-items-header"
+          >
+            <Table.HeaderCell className="!pl-0">สินค้า</Table.HeaderCell>
             <Table.HeaderCell></Table.HeaderCell>
-            <Table.HeaderCell>Quantity</Table.HeaderCell>
+            <Table.HeaderCell>จำนวน</Table.HeaderCell>
             <Table.HeaderCell className="hidden small:table-cell">
-              Price
+              ราคา
             </Table.HeaderCell>
             <Table.HeaderCell className="!pr-0 text-right">
-              Total
+              รวม
             </Table.HeaderCell>
           </Table.Row>
         </Table.Header>
