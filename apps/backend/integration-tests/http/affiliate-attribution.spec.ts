@@ -454,5 +454,55 @@ medusaIntegrationTestRunner({
       expect(await attributionsOf(orderId)).toEqual([])
       expect(await entriesOf(orderId)).toEqual([])
     })
+
+    // AC-29 (กฎ 27): ตรวจ order.status หลังถือ lock affiliate-attribution:<order_id> แล้วปล่อยเมื่อจบ
+    it("AC-29: attribution reads the order status only while holding affiliate-attribution:<order_id>", async () => {
+      const ann = await createAffiliate("ann")
+      await createProgram()
+      const { orderId, cartId } = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }] })
+      await container
+        .resolve(Modules.CART)
+        .updateCarts(cartId, { metadata: { affiliate_token: await tokenFor(ann.id) } })
+
+      const locking = container.resolve(Modules.LOCKING)
+      const query = container.resolve(ContainerRegistrationKeys.QUERY)
+      const calls: string[] = []
+      const realAcquire = locking.acquire.bind(locking)
+      const realRelease = locking.release.bind(locking)
+      const realGraph = query.graph.bind(query) as (...args: unknown[]) => Promise<unknown>
+      const acquire = jest.spyOn(locking, "acquire").mockImplementation((async (keys, ...rest) => {
+        calls.push(`acquire ${[keys].flat().join(",")}`)
+        return realAcquire(keys, ...rest)
+      }) as typeof locking.acquire)
+      const release = jest.spyOn(locking, "release").mockImplementation((async (keys, ...rest) => {
+        calls.push(`release ${[keys].flat().join(",")}`)
+        return realRelease(keys, ...rest)
+      }) as typeof locking.release)
+      const graph = jest.spyOn(query, "graph").mockImplementation((async (
+        config: { entity: string; fields: string[] },
+        ...rest: unknown[]
+      ) => {
+        if (config.entity === "order" && config.fields.includes("status")) {
+          calls.push("read order.status")
+        }
+        return realGraph(config, ...rest)
+      }) as unknown as typeof query.graph)
+
+      try {
+        await redeliver(orderId)
+      } finally {
+        acquire.mockRestore()
+        release.mockRestore()
+        graph.mockRestore()
+      }
+
+      const key = `affiliate-attribution:${orderId}`
+      expect(calls.filter((c) => c.endsWith(key) || c === "read order.status")).toEqual([
+        `acquire ${key}`,
+        "read order.status",
+        `release ${key}`,
+      ])
+      expect(await attributionsOf(orderId)).toHaveLength(1)
+    })
   },
 })
