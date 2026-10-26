@@ -16,6 +16,8 @@ const CommissionEntry = model
   })
   .indexes([
     { on: ["affiliate_id", "status", "created_at"] },
+    // maturity job (AF-4): status = 'pending' AND matures_at <= now
+    { on: ["status", "matures_at"] },
     { on: ["order_id", "line_item_id"], unique: true, where: { status: "pending" } },
   ])
 

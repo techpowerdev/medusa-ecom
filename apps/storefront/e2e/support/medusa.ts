@@ -1,4 +1,4 @@
-import { APIRequestContext, BrowserContext, expect } from "@playwright/test"
+import { APIRequestContext, APIResponse, BrowserContext, expect } from "@playwright/test"
 import crypto from "node:crypto"
 
 import { BACKEND_URL } from "./fixtures"
@@ -92,4 +92,83 @@ export async function shippingOptionId(
   const option = (await res.json()).shipping_options.find((o: { name: string }) => o.name === name)
   expect(option, `shipping option ${name}`).toBeTruthy()
   return option.id
+}
+
+/** วาง order ผ่าน store API ด้วย token ของ customer (manual payment ของ seed) คืน id + display_id */
+export async function placeOrder(
+  request: APIRequestContext,
+  pk: string,
+  customer: Customer
+): Promise<{ id: string; displayId: number }> {
+  const headers = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ store API ใน e2e
+  const ok = async (res: APIResponse, what: string): Promise<any> => {
+    expect(res.status(), `${what}: ${await res.text()}`).toBe(200)
+    return res.json()
+  }
+
+  const { regions } = await ok(await request.get(`${BACKEND_URL}/store/regions`, { headers }), "regions")
+  const region = regions.find((r: { countries: { iso_2: string }[] }) =>
+    r.countries.some((c) => c.iso_2 === STOREFRONT_COUNTRY)
+  )
+  const { variantId } = await variantOf(request, pk, "t-shirt")
+
+  const { cart } = await ok(
+    await request.post(`${BACKEND_URL}/store/carts`, { headers, data: { region_id: region.id } }),
+    "create cart"
+  )
+  await ok(
+    await request.post(`${BACKEND_URL}/store/carts/${cart.id}/line-items`, {
+      headers,
+      data: { variant_id: variantId, quantity: 1 },
+    }),
+    "add line item"
+  )
+  const address = {
+    first_name: "Somchai",
+    last_name: "Jaidee",
+    address_1: "1 Sukhumvit Rd",
+    city: "Bangkok",
+    postal_code: "10110",
+    country_code: STOREFRONT_COUNTRY,
+  }
+  await ok(
+    await request.post(`${BACKEND_URL}/store/carts/${cart.id}`, {
+      headers,
+      data: { email: customer.email, shipping_address: address, billing_address: address },
+    }),
+    "update cart"
+  )
+  const { shipping_options } = await ok(
+    await request.get(`${BACKEND_URL}/store/shipping-options?cart_id=${cart.id}`, { headers }),
+    "shipping options"
+  )
+  const standard = shipping_options.find((o: { name: string }) => o.name === "Standard")
+  await ok(
+    await request.post(`${BACKEND_URL}/store/carts/${cart.id}/shipping-methods`, {
+      headers,
+      data: { option_id: standard.id },
+    }),
+    "shipping method"
+  )
+  const { payment_collection } = await ok(
+    await request.post(`${BACKEND_URL}/store/payment-collections`, {
+      headers,
+      data: { cart_id: cart.id },
+    }),
+    "payment collection"
+  )
+  await ok(
+    await request.post(
+      `${BACKEND_URL}/store/payment-collections/${payment_collection.id}/payment-sessions`,
+      { headers, data: { provider_id: "pp_system_default" } }
+    ),
+    "payment session"
+  )
+  const completed = await ok(
+    await request.post(`${BACKEND_URL}/store/carts/${cart.id}/complete`, { headers }),
+    "complete cart"
+  )
+  expect(completed.type, JSON.stringify(completed)).toBe("order")
+  return { id: completed.order.id, displayId: completed.order.display_id }
 }
