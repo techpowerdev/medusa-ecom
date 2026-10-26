@@ -1,6 +1,9 @@
 # ADR-015 PromptPay: Medusa ลบ payment session ได้แม้ PaymentIntent ชำระแล้ว (race ตอน QR หมดอายุ)
 
-สถานะ: proposed (builder PAY-5, 2026-10-26) — รอ owner ตัดสินใจ ห้ามเขียน reconciliation/guard ใดๆ ก่อน ADR นี้ accepted
+สถานะ: **accepted** (owner 2026-10-26) — เลือก **A + D**: (A) guard ที่ backend — middleware บน `POST /store/payment-collections/:id/payment-sessions`
+ตรวจสถานะ PaymentIntent ของ session เดิมกับ Stripe ก่อน ถ้า `succeeded`/`processing` ปฏิเสธ (409 ผ่านกลไก PROMO-2) และไม่ลบ session;
+(D) alert เมื่อ webhook หา session ไม่เจอ + runbook ให้ ops refund เป็นตาข่ายสำรอง — ไม่ทำ reconciliation (B) ตาม ADR-007
+(เสนอโดย builder PAY-5 ในสถานะ proposed)
 เกี่ยวข้อง: ADR-007 (ไม่มี custom payment code), spec 06 กฎข้อ 3, 4, 7, AC-11, AC-12, task PAY-5
 
 ## บริบท
