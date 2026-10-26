@@ -1,0 +1,32 @@
+# FS-10 — in-flight flag useRef ในปุ่ม Save ของ widget "Flash sale options" (spec 03 กฎข้อ 15, AC-16)
+# วันที่: 2026-10-26, base origin/develop (98524a5), Node 22.23.3
+# วิธีรัน (local): backend จาก build (.medusa/server, medusa start) port 9110, DB medusa_fs10, seed แล้ว
+#   E2E_BACKEND_URL=http://localhost:9110 pnpm --filter storefront exec playwright test e2e/flash-sale-admin-save.spec.ts --project=chromium
+
+## Red (widget เดิม กันด้วย save.isPending อย่างเดียว)
+
+Running 1 test using 1 worker
+
+  ✘  1 [chromium] › e2e/flash-sale-admin-save.spec.ts:20:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (3.9s)
+
+
+  1) [chromium] › e2e/flash-sale-admin-save.spec.ts:20:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ › dblclick Save → POST 1 ครั้ง และปุ่ม disabled ระหว่างรอ response 
+
+    Error: expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 2
+    Received array:  ["http://localhost:9110/admin/flash-sales/procamp_01M5V4PDJSWDAR8Q92V19CS4S2/config", "http://localhost:9110/admin/flash-sales/procamp_01M5V4PDJSWDAR8Q92V19CS4S2/config"]
+
+## Green (useRef in-flight flag) — รันซ้ำ 3 รอบ เริ่มจาก backend ที่เพิ่ง start (cold)
+
+Running 3 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/flash-sale-admin-save.spec.ts:20:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (14.3s)
+  ✓  2 [chromium] › e2e/flash-sale-admin-save.spec.ts:20:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (6.4s)
+  ✓  3 [chromium] › e2e/flash-sale-admin-save.spec.ts:20:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (6.7s)
+
+  3 passed (33.3s)
+
+## lint + typecheck
+pnpm lint && pnpm typecheck → ผ่าน (exit 0)

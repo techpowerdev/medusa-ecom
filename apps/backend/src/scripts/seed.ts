@@ -43,67 +43,95 @@ export const STORE_LOCALES = ["th-TH", "en-US"]
 export const STOREFRONT_KEY_TITLE = "Storefront"
 
 const IMG = "https://medusa-public-images.s3.eu-west-1.amazonaws.com"
+// CORE-10 (spec 01 กฎข้อ 16, AC-68): ชื่อสินค้าและชื่อ option ภาษาไทย handle คงเดิม (URL/e2e ไม่เปลี่ยน)
 const SAMPLE_PRODUCTS = [
   {
-    title: "Medusa T-Shirt",
+    title: "เสื้อยืด Medusa",
     handle: "t-shirt",
     category: "Shirts",
     image: `${IMG}/tee-black-front.png`,
-    option: { title: "Size", values: ["S", "M", "L"] },
+    option: { title: "ขนาด", values: ["S", "M", "L"] },
     price: 590,
   },
   {
-    title: "Medusa Sweatshirt",
+    title: "เสื้อสเวตเตอร์ Medusa",
     handle: "sweatshirt",
     category: "Sweatshirts",
     image: `${IMG}/sweatshirt-vintage-front.png`,
-    option: { title: "Size", values: ["M", "L"] },
+    option: { title: "ขนาด", values: ["M", "L"] },
     price: 990,
   },
 ]
+const SAMPLE_SKUS = SAMPLE_PRODUCTS.flatMap((p) => p.option.values.map((value) => sku(p.handle, value)))
+const STOCK_LOCATION_NAME = "Bangkok Warehouse"
+const FULFILLMENT_SET_NAME = "Thailand delivery"
+
+function sku(handle: string, value: string) {
+  return `${handle}-${value}`.toUpperCase()
+}
+
+type Container = ExecArgs["container"]
 
 /**
  * Seed ร้าน Thailand (CORE-2): region THB แบบราคารวม VAT 7%, shipping "Standard" + "Digital delivery",
  * stock location, publishable key ของ storefront, สินค้าตัวอย่าง และ admin user (จาก env)
- * รันซ้ำได้: ถ้ามี region Thailand แล้วจะข้ามข้อมูลร้าน และสร้าง admin เฉพาะเมื่อยังไม่มี
+ * รันซ้ำได้ (CORE-10, spec 01 กฎข้อ 17): เช็กการมีอยู่ทีละ resource แล้วสร้างเฉพาะที่ขาด — ไม่แก้ resource ที่มีอยู่แล้ว
  */
 export default async function seedThailand({ container }: ExecArgs) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const query = container.resolve(ContainerRegistrationKeys.QUERY)
-  const link = container.resolve(ContainerRegistrationKeys.LINK)
 
   await seedAdminUser(container)
   await seedStoreLocales(container)
 
-  const { data: existing } = await query.graph({
-    entity: "region",
-    fields: ["id"],
-    filters: { name: REGION_NAME },
-  })
-  if (existing.length) {
-    logger.info(`Region "${REGION_NAME}" มีอยู่แล้ว — ข้ามการ seed ข้อมูลร้าน`)
-    await upgradeDigitalDelivery(container)
-    await seedReturnShippingOption(container)
-    return
-  }
+  const salesChannelId = await ensureSalesChannel(container)
+  await ensureStoreCurrency(container, salesChannelId)
+  const regionId = await ensureRegion(container)
+  await ensureTaxRegion(container)
+  const locationId = await ensureStockLocation(container, salesChannelId)
+  const serviceZoneId = await ensureFulfillmentSet(container, locationId)
+  const defaultProfileId = await ensureShippingProfile(container, "default", "Default")
+  const digitalProfileId = await ensureShippingProfile(container, "digital", "Digital")
+  await ensureShippingOptions(container, { regionId, serviceZoneId, defaultProfileId, digitalProfileId })
+  await upgradeDigitalDelivery(container)
+  await seedReturnShippingOption(container)
+  await ensurePublishableKey(container, salesChannelId)
+  const categoryIds = await ensureCategories(container)
+  await ensureProducts(container, { salesChannelId, defaultProfileId, categoryIds })
+  await ensureInventoryLevels(container, locationId)
 
-  const { data: stores } = await query.graph({ entity: "store", fields: ["id"] })
-  const { data: channels } = await query.graph({
+  logger.info(`Seed ร้าน "${REGION_NAME}" เสร็จแล้ว`)
+}
+
+async function ensureSalesChannel(container: Container): Promise<string> {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({
     entity: "sales_channel",
     fields: ["id"],
     filters: { name: "Default Sales Channel" },
   })
-  let salesChannelId = channels[0]?.id
-  if (!salesChannelId) {
-    const { result } = await createSalesChannelsWorkflow(container).run({
-      input: { salesChannelsData: [{ name: "Default Sales Channel" }] },
-    })
-    salesChannelId = result[0].id
+  if (data[0]) {
+    return data[0].id
   }
+  const { result } = await createSalesChannelsWorkflow(container).run({
+    input: { salesChannelsData: [{ name: "Default Sales Channel" }] },
+  })
+  return result[0].id
+}
 
+/** ตั้ง THB (รวม VAT) เป็นสกุลเงินหลักเฉพาะเมื่อ store ยังไม่มี THB — ไม่ทับค่าที่ admin ตั้งไว้ */
+async function ensureStoreCurrency(container: Container, salesChannelId: string) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data: stores } = await query.graph({
+    entity: "store",
+    fields: ["id", "supported_currencies.currency_code"],
+  })
+  const store = stores[0]
+  if ((store.supported_currencies ?? []).some((c) => c?.currency_code === CURRENCY)) {
+    return
+  }
   await updateStoresWorkflow(container).run({
     input: {
-      selector: { id: stores[0].id },
+      selector: { id: store.id },
       update: {
         // is_tax_inclusive สร้าง price preference ระดับ currency → ราคาสินค้า THB รวม VAT แล้ว
         supported_currencies: [{ currency_code: CURRENCY, is_default: true, is_tax_inclusive: true }],
@@ -111,8 +139,15 @@ export default async function seedThailand({ container }: ExecArgs) {
       },
     },
   })
+}
 
-  const { result: regions } = await createRegionsWorkflow(container).run({
+async function ensureRegion(container: Container): Promise<string> {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({ entity: "region", fields: ["id"], filters: { name: REGION_NAME } })
+  if (data[0]) {
+    return data[0].id
+  }
+  const { result } = await createRegionsWorkflow(container).run({
     input: {
       regions: [
         {
@@ -128,8 +163,14 @@ export default async function seedThailand({ container }: ExecArgs) {
       ],
     },
   })
-  const region = regions[0]
+  return result[0].id
+}
 
+async function ensureTaxRegion(container: Container) {
+  const existing = await container.resolve(Modules.TAX).listTaxRegions({ country_code: COUNTRY })
+  if (existing.some((r) => !r.province_code)) {
+    return
+  }
   await createTaxRegionsWorkflow(container).run({
     input: [
       {
@@ -139,52 +180,92 @@ export default async function seedThailand({ container }: ExecArgs) {
       },
     ],
   })
+}
 
-  const { result: locations } = await createStockLocationsWorkflow(container).run({
-    input: {
-      locations: [
-        { name: "Bangkok Warehouse", address: { city: "Bangkok", country_code: COUNTRY, address_1: "" } },
-      ],
-    },
+/** stock location + link ที่ต้องมี (fulfillment provider manual/digital, sales channel) — เพิ่มเฉพาะที่ขาด */
+async function ensureStockLocation(container: Container, salesChannelId: string): Promise<string> {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({
+    entity: "stock_location",
+    fields: ["id", "fulfillment_providers.id", "sales_channels.id"],
+    filters: { name: STOCK_LOCATION_NAME },
   })
-  const location = locations[0]
-  await link.create(
-    ["manual_manual", DIGITAL_PROVIDER_ID].map((fulfillment_provider_id) => ({
-      [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
-      [Modules.FULFILLMENT]: { fulfillment_provider_id },
+  let locationId = data[0]?.id
+  if (!locationId) {
+    const { result } = await createStockLocationsWorkflow(container).run({
+      input: {
+        locations: [{ name: STOCK_LOCATION_NAME, address: { city: "Bangkok", country_code: COUNTRY, address_1: "" } }],
+      },
+    })
+    locationId = result[0].id
+  }
+
+  const providers = (data[0]?.fulfillment_providers ?? []).map((p) => p?.id)
+  const missingProviders = ["manual_manual", DIGITAL_PROVIDER_ID].filter((id) => !providers.includes(id))
+  if (missingProviders.length) {
+    await container.resolve(ContainerRegistrationKeys.LINK).create(
+      missingProviders.map((fulfillment_provider_id) => ({
+        [Modules.STOCK_LOCATION]: { stock_location_id: locationId },
+        [Modules.FULFILLMENT]: { fulfillment_provider_id },
+      }))
+    )
+  }
+  if (!(data[0]?.sales_channels ?? []).some((c) => c?.id === salesChannelId)) {
+    await linkSalesChannelsToStockLocationWorkflow(container).run({
+      input: { id: locationId, add: [salesChannelId] },
+    })
+  }
+  return locationId
+}
+
+/** fulfillment set ตามชื่อ (ผูกกับ stock location) คืน id ของ service zone แรก */
+async function ensureFulfillmentSet(container: Container, locationId: string): Promise<string> {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({
+    entity: "fulfillment_set",
+    fields: ["id", "service_zones.id", "location.id"],
+    filters: { name: FULFILLMENT_SET_NAME },
+  })
+  const set =
+    data[0] ??
+    (await container.resolve(Modules.FULFILLMENT).createFulfillmentSets({
+      name: FULFILLMENT_SET_NAME,
+      type: "shipping",
+      service_zones: [{ name: REGION_NAME, geo_zones: [{ type: "country", country_code: COUNTRY }] }],
     }))
-  )
-  await linkSalesChannelsToStockLocationWorkflow(container).run({
-    input: { id: location.id, add: [salesChannelId] },
-  })
+  if (!data[0]?.location) {
+    await container.resolve(ContainerRegistrationKeys.LINK).create({
+      [Modules.STOCK_LOCATION]: { stock_location_id: locationId },
+      [Modules.FULFILLMENT]: { fulfillment_set_id: set.id },
+    })
+  }
+  return set.service_zones[0]!.id
+}
 
-  const fulfillment = container.resolve(Modules.FULFILLMENT)
-  const fulfillmentSet = await fulfillment.createFulfillmentSets({
-    name: "Thailand delivery",
-    type: "shipping",
-    service_zones: [{ name: REGION_NAME, geo_zones: [{ type: "country", country_code: COUNTRY }] }],
+async function ensureShippingProfile(container: Container, type: string, name: string): Promise<string> {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({ entity: "shipping_profile", fields: ["id"], filters: { type } })
+  if (data[0]) {
+    return data[0].id
+  }
+  const { result } = await createShippingProfilesWorkflow(container).run({
+    input: { data: [{ name, type }] },
   })
-  await link.create({
-    [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
-    [Modules.FULFILLMENT]: { fulfillment_set_id: fulfillmentSet.id },
-  })
+  return result[0].id
+}
 
-  const { data: defaultProfiles } = await query.graph({
-    entity: "shipping_profile",
-    fields: ["id"],
-    filters: { type: "default" },
+/** "Standard" และ "Digital delivery" หาด้วย type.code (name แก้ได้ใน admin) สร้างเฉพาะตัวที่ขาด */
+async function ensureShippingOptions(
+  container: Container,
+  ids: { regionId: string; serviceZoneId: string; defaultProfileId: string; digitalProfileId: string }
+) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({
+    entity: "shipping_option",
+    fields: ["type.code"],
+    filters: { type: { code: [STANDARD_OPTION_TYPE_CODE, DIGITAL_OPTION_TYPE_CODE] } },
   })
-  const { result: createdProfiles } = await createShippingProfilesWorkflow(container).run({
-    input: {
-      data: [
-        { name: "Digital", type: "digital" },
-        ...(defaultProfiles.length ? [] : [{ name: "Default", type: "default" }]),
-      ],
-    },
-  })
-  const digitalProfile = createdProfiles.find((p) => p.type === "digital")!
-  const defaultProfileId =
-    defaultProfiles[0]?.id ?? createdProfiles.find((p) => p.type === "default")!.id
+  const existing = data.map((o) => o.type?.code)
 
   const shippingOption = (
     name: string,
@@ -196,85 +277,137 @@ export default async function seedThailand({ container }: ExecArgs) {
     name,
     price_type: "flat" as const,
     provider_id: providerId,
-    service_zone_id: fulfillmentSet.service_zones[0].id,
+    service_zone_id: ids.serviceZoneId,
     shipping_profile_id: shippingProfileId,
     type: { label: name, description: name, code },
     prices: [
       { currency_code: CURRENCY, amount },
-      { region_id: region.id, amount },
+      { region_id: ids.regionId, amount },
     ],
     rules: [
       { attribute: "enabled_in_store", value: "true", operator: "eq" as const },
       { attribute: "is_return", value: "false", operator: "eq" as const },
     ],
   })
-  await createShippingOptionsWorkflow(container).run({
-    input: [
-      shippingOption(
-        "Standard",
-        STANDARD_OPTION_TYPE_CODE,
-        defaultProfileId,
-        DEFAULT_REGION_STORE_POLICIES.shipping_rate,
-        "manual_manual"
-      ),
-      shippingOption(DIGITAL_OPTION_NAME, DIGITAL_OPTION_TYPE_CODE, digitalProfile.id, 0, DIGITAL_PROVIDER_ID),
-    ],
-  })
-  await seedReturnShippingOption(container)
+  const missing = [
+    // กฎข้อ 19: Standard คง shipping_rate เดิม (placeholder จนกว่า owner ตัดสิน Q-F1)
+    shippingOption(
+      "Standard",
+      STANDARD_OPTION_TYPE_CODE,
+      ids.defaultProfileId,
+      DEFAULT_REGION_STORE_POLICIES.shipping_rate,
+      "manual_manual"
+    ),
+    shippingOption(DIGITAL_OPTION_NAME, DIGITAL_OPTION_TYPE_CODE, ids.digitalProfileId, 0, DIGITAL_PROVIDER_ID),
+  ].filter((option) => !existing.includes(option.type.code))
+  if (missing.length) {
+    await createShippingOptionsWorkflow(container).run({ input: missing })
+  }
+}
 
-  const { result: apiKeys } = await createApiKeysWorkflow(container).run({
+/** publishable key ตาม title (ไม่นับ key ที่ถูก revoke) */
+async function ensurePublishableKey(container: Container, salesChannelId: string) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({
+    entity: "api_key",
+    fields: ["id", "revoked_at"],
+    filters: { type: "publishable", title: STOREFRONT_KEY_TITLE },
+  })
+  if (data.some((k) => !k.revoked_at)) {
+    return
+  }
+  const { result } = await createApiKeysWorkflow(container).run({
     input: { api_keys: [{ title: STOREFRONT_KEY_TITLE, type: "publishable", created_by: "" }] },
   })
   await linkSalesChannelsToApiKeyWorkflow(container).run({
-    input: { id: apiKeys[0].id, add: [salesChannelId] },
+    input: { id: result[0].id, add: [salesChannelId] },
   })
+}
 
-  const { result: categories } = await createProductCategoriesWorkflow(container).run({
-    input: {
-      product_categories: SAMPLE_PRODUCTS.map((p) => ({ name: p.category, is_active: true })),
-    },
+/** category ตามชื่อ คืน map ชื่อ → id */
+async function ensureCategories(container: Container): Promise<Record<string, string>> {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const names = [...new Set(SAMPLE_PRODUCTS.map((p) => p.category))]
+  const { data } = await query.graph({ entity: "product_category", fields: ["id", "name"], filters: { name: names } })
+  const ids: Record<string, string> = Object.fromEntries(data.map((c) => [c.name, c.id]))
+  const missing = names.filter((name) => !ids[name])
+  if (missing.length) {
+    const { result } = await createProductCategoriesWorkflow(container).run({
+      input: { product_categories: missing.map((name) => ({ name, is_active: true })) },
+    })
+    result.forEach((c) => (ids[c.name] = c.id))
+  }
+  return ids
+}
+
+/** สินค้าตัวอย่างตาม handle */
+async function ensureProducts(
+  container: Container,
+  ids: { salesChannelId: string; defaultProfileId: string; categoryIds: Record<string, string> }
+) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({
+    entity: "product",
+    fields: ["handle"],
+    filters: { handle: SAMPLE_PRODUCTS.map((p) => p.handle) },
   })
-
+  const existing = data.map((p) => p.handle)
+  const missing = SAMPLE_PRODUCTS.filter((p) => !existing.includes(p.handle))
+  if (!missing.length) {
+    return
+  }
   await createProductsWorkflow(container).run({
     input: {
-      products: SAMPLE_PRODUCTS.map((p) => ({
+      products: missing.map((p) => ({
         title: p.title,
         handle: p.handle,
         status: ProductStatus.PUBLISHED,
-        shipping_profile_id: defaultProfileId,
-        category_ids: [categories.find((c) => c.name === p.category)!.id],
+        shipping_profile_id: ids.defaultProfileId,
+        category_ids: [ids.categoryIds[p.category]],
         images: [{ url: p.image }],
         options: [p.option],
         variants: p.option.values.map((value) => ({
           title: value,
-          sku: `${p.handle}-${value}`.toUpperCase(),
+          sku: sku(p.handle, value),
           options: { [p.option.title]: value },
           prices: [{ currency_code: CURRENCY, amount: p.price }],
         })),
-        sales_channels: [{ id: salesChannelId }],
+        sales_channels: [{ id: ids.salesChannelId }],
       })),
     },
   })
+}
 
-  const { data: inventoryItems } = await query.graph({ entity: "inventory_item", fields: ["id"] })
+/** inventory level ของ variant ตัวอย่าง (หาด้วย SKU) ที่ stock location — สร้างเฉพาะ item ที่ยังไม่มี level ที่ location นี้ */
+async function ensureInventoryLevels(container: Container, locationId: string) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data: items } = await query.graph({
+    entity: "inventory_item",
+    fields: ["id", "location_levels.location_id"],
+    filters: { sku: SAMPLE_SKUS },
+  })
+  const missing = items.filter(
+    (item) => !(item.location_levels ?? []).some((level) => level?.location_id === locationId)
+  )
+  if (!missing.length) {
+    return
+  }
   await createInventoryLevelsWorkflow(container).run({
     input: {
-      inventory_levels: inventoryItems.map((item) => ({
-        location_id: location.id,
+      inventory_levels: missing.map((item) => ({
+        location_id: locationId,
         stocked_quantity: STOCK_QUANTITY,
         inventory_item_id: item.id,
       })),
     },
   })
-
-  logger.info(`Seed ร้าน "${REGION_NAME}" เสร็จแล้ว`)
 }
 
 /**
  * EV-3: DB ที่ seed ก่อน EV-3 มี Digital delivery (หาด้วย type.code — EV-8) ผูกกับ manual_manual → เปิด provider digital ที่ stock location
  * ของ option นั้นแล้วย้าย option ไปใช้ digital_digital (คง id/ราคาเดิม) รันซ้ำได้: ถ้าย้ายแล้วจะไม่ทำอะไร
  */
-async function upgradeDigitalDelivery(container: ExecArgs["container"]) {
+async function upgradeDigitalDelivery(container: Container) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data: options } = await query.graph({
     entity: "shipping_option",
@@ -316,7 +449,7 @@ async function upgradeDigitalDelivery(container: ExecArgs["container"]) {
  * หมายเหตุ: ถ้า admin ลบ "Standard return" (หรือ option ที่มี type.code นี้) seed ครั้งถัดไปจะสร้างกลับ — จะเลิกใช้ให้
  * ปิดด้วย rule `enabled_in_store` หรือแก้ราคาใน admin แทนการลบ (แก้ name ได้ เพราะหาด้วย type.code)
  */
-async function seedReturnShippingOption(container: ExecArgs["container"]) {
+async function seedReturnShippingOption(container: Container) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const { data: existing } = await query.graph({

@@ -10,6 +10,7 @@ import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
 import { adminFlashSaleMiddlewares } from './admin/flash-sales/middlewares'
 import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
+import { storeGroupBuyMiddlewares } from './store/group-buy/middlewares'
 import { businessErrorHandler } from './error-handler'
 import { storeOwnershipMiddlewares } from './store/ownership/middlewares'
 
@@ -47,6 +48,7 @@ export default defineMiddlewares({
     ...storeFlashSaleMiddlewares,
     ...adminAffiliateMiddlewares,
     ...adminGroupBuyMiddlewares,
+    ...storeGroupBuyMiddlewares,
     // CORE-6 (spec 01 "ไม่มี guest"): cart + checkout ต้องมี customer ที่ล็อกอิน (AC-6)
     {
       matcher: '/store/carts*',
