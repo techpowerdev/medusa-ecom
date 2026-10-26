@@ -98,3 +98,21 @@ exit 0 — apps/storefront lint: 0 errors, 34 warnings (warning เดิมข�
   9 passed (2.1m)
   หมายเหตุ: core-store AC-1..3 ล้มในเครื่องเพราะไม่มี NEXT_PUBLIC_STRIPE_KEY (ขั้น payment ของ checkout ต้องใช้ Stripe key —
   PR นี้ไม่แตะ checkout) — CI มี secret และรันชุดเต็ม
+
+## แก้ตาม review #102 (หลัง merge origin/develop)
+### Red
+- thai-ui-rule.test.ts: 3 failed — fixture string ใน ternary/&&/template ของลูก JSX ("Loading...", "Out of stock", `Only ${price}`) ไม่ถูก rule จับ
+- หลังเพิ่ม selector: pnpm lint error 1 จุด src/modules/common/components/ui/index.tsx:97 no-restricted-syntax ("Loading...")
+### Green
+- unit storefront: Test Files 16 passed, Tests 158 passed; pnpm lint && pnpm typecheck exit 0 (0 errors); storefront build ผ่าน
+- e2e (chromium):
+  ✓  3 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (1.0s)
+  ✓  2 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (1.4s)
+  ✓  4 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (1.3s)
+  ✓  6 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (204ms)
+  ✓  1 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (5.0s)
+  ✓  7 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (378ms)
+  ✓  8 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (464ms)
+  ✓  5 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (5.6s)
+  8 passed (7.7s)
+  thai-ui-cart-order ตรวจ href ของ order-help-contact-link (/th/contact) และ order-help-returns-link (/th/returns) เพิ่ม

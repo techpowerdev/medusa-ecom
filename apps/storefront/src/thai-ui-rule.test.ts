@@ -22,6 +22,10 @@ describe("ESLint rule ข้อความไทย (AC-47)", () => {
     ['<input placeholder="Search" />'],
     ["<p>{`Cart (${price})`}</p>"],
     ['<button aria-label={"Close menu"} />'],
+    // review #102: string ใน expression ของลูก JSX (ternary / && / ||) ก็เป็นข้อความที่ผู้ใช้เห็น
+    ['<button>{price ? "Loading..." : "ซื้อ"}</button>'],
+    ['<p>{price && "Out of stock"}</p>'],
+    ["<p>{price ? `Only ${price}` : null}</p>"],
   ])("%s → error", async (jsx) => {
     expect(await errorsOf(jsx)).toHaveLength(1)
   })
@@ -33,6 +37,8 @@ describe("ESLint rule ข้อความไทย (AC-47)", () => {
       "<p>\n{/* eslint-disable-next-line no-restricted-syntax -- brand */}\n<span>PromptPay</span>\n</p>",
     ],
     ['<input placeholder="ค้นหาสินค้า" className="txt-medium" data-testid="search-input" />'],
+    ['<button>{price ? "กำลังดำเนินการ..." : "ซื้อ"}</button>'],
+    ['<p className={price ? "text-red-500" : "text-ui-fg-base"}>สวัสดี</p>'],
   ])("%s → ไม่มี error", async (jsx) => {
     expect(await errorsOf(jsx)).toHaveLength(0)
   })

@@ -12,6 +12,9 @@ const THAI_UI_RESTRICTED_SYNTAX = [
   `JSXText[value=${LATIN_WORD}]`,
   `JSXElement > JSXExpressionContainer > Literal[value=${LATIN_WORD}]`,
   `JSXElement > JSXExpressionContainer > TemplateLiteral > TemplateElement[value.raw=${LATIN_WORD}]`,
+  // review #102: กิ่งของ ternary / && / || ในลูก JSX เช่น {isLoading ? "Loading..." : children}
+  `JSXElement > JSXExpressionContainer > :matches(ConditionalExpression, LogicalExpression) > Literal[value=${LATIN_WORD}]`,
+  `JSXElement > JSXExpressionContainer > :matches(ConditionalExpression, LogicalExpression) > TemplateLiteral > TemplateElement[value.raw=${LATIN_WORD}]`,
   // (b) prop ข้อความ (placeholder, title, alt, aria-label, label)
   `JSXAttribute[name.name=${TEXT_PROPS}] > Literal[value=${LATIN_WORD}]`,
   `JSXAttribute[name.name=${TEXT_PROPS}] > JSXExpressionContainer > Literal[value=${LATIN_WORD}]`,

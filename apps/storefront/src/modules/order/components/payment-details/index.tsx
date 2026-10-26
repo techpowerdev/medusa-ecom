@@ -50,7 +50,12 @@ const PaymentDetails = ({ order }: PaymentDetailsProps) => {
                     : `${convertToLocale({
                         amount: payment.amount,
                         currency_code: order.currency_code,
-                      })} ชำระเมื่อ ${formatDateTime(payment.created_at ?? "")}`}
+                      })}${
+                        // review #102: ไม่มี created_at → ไม่แสดงเวลา (Intl.DateTimeFormat throw RangeError กับวันที่ไม่ถูกต้อง)
+                        payment.created_at
+                          ? ` ชำระเมื่อ ${formatDateTime(payment.created_at)}`
+                          : ""
+                      }`}
                 </Text>
               </div>
             </div>

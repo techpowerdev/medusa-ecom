@@ -146,6 +146,9 @@ test("AC-48, AC-78: cart, order confirmed, order detail และรายกา
       "order-help",
     ])
     await expect(page.getByTestId("order-date")).toHaveText(THAI)
+    // review #102: ลิงก์ help ชี้หน้าที่มีจริง
+    await expect(page.getByTestId("order-help-contact-link")).toHaveAttribute("href", new RegExp(`/${CC}/contact$`))
+    await expect(page.getByTestId("order-help-returns-link")).toHaveAttribute("href", new RegExp(`/${CC}/returns$`))
     await evidence("4c2-04-order-detail-th")
   })
 
