@@ -1,3 +1,4 @@
+import { MathBN } from "@medusajs/framework/utils"
 import { affectedFractions, LedgerEntry, planReversals, selectMaturedEntryIds } from "../reversal"
 
 const entry = (overrides: Partial<LedgerEntry> = {}): LedgerEntry => ({
@@ -12,6 +13,10 @@ const entry = (overrides: Partial<LedgerEntry> = {}): LedgerEntry => ({
   ...overrides,
 })
 
+// สัดส่วนเป็น BigNumber (ไม่แปลงเป็น float ก่อนคูณเงิน) — แปลงเฉพาะตอนเทียบผล
+const asNumbers = (fractions: ReturnType<typeof affectedFractions>) =>
+  Object.fromEntries(Object.entries(fractions).map(([id, f]) => [id, MathBN.convert(f).toNumber()]))
+
 describe("affectedFractions", () => {
   const items = [
     { id: "li_1", quantity: 2, detail: { return_received_quantity: 0 } },
@@ -19,19 +24,24 @@ describe("affectedFractions", () => {
   ]
 
   it("affects every line fully when the order is canceled", () => {
-    expect(affectedFractions({ status: "canceled", items })).toEqual({ li_1: 1, li_2: 1 })
+    expect(asNumbers(affectedFractions({ status: "canceled", items }))).toEqual({ li_1: 1, li_2: 1 })
   })
 
   it("affects every line fully when refunds cover all captures (AC-5)", () => {
     const payment_collections = [
       { payments: [{ captures: [{ raw_amount: 1070 }], refunds: [{ raw_amount: 1070 }] }] },
     ]
-    expect(affectedFractions({ status: "pending", items, payment_collections })).toEqual({ li_1: 1, li_2: 1 })
+    expect(asNumbers(affectedFractions({ status: "pending", items, payment_collections }))).toEqual({ li_1: 1, li_2: 1 })
   })
 
   it("uses the received return quantity of each line otherwise (Q3)", () => {
     const payment_collections = [{ payments: [{ captures: [{ raw_amount: 1070 }], refunds: [{ raw_amount: 300 }] }] }]
-    expect(affectedFractions({ status: "pending", items, payment_collections })).toEqual({ li_1: 0, li_2: 0.25 })
+    expect(asNumbers(affectedFractions({ status: "pending", items, payment_collections }))).toEqual({ li_1: 0, li_2: 0.25 })
+  })
+
+  it("counts items received as damaged (dismissed) as returned too", () => {
+    const damaged = [{ id: "li_1", quantity: 4, detail: { return_received_quantity: 1, return_dismissed_quantity: 2 } }]
+    expect(asNumbers(affectedFractions({ status: "pending", items: damaged }))).toEqual({ li_1: 0.75 })
   })
 })
 
@@ -51,6 +61,11 @@ describe("planReversals", () => {
 
   it("reverses entry.amount × fraction for a partial return, rounded half-up to 2 decimals (Q3)", () => {
     expect(planReversals([entry({ amount: 33.35 })], { li_1: 0.5 }).map((r) => r.amount)).toEqual([-16.68])
+  })
+
+  it("keeps a fraction such as 1/3 exact until rounding the money", () => {
+    const third = affectedFractions({ status: "pending", items: [{ id: "li_1", quantity: 3, detail: { return_received_quantity: 1 } }] })
+    expect(planReversals([entry({ amount: 100 })], third).map((r) => r.amount)).toEqual([-33.33])
   })
 
   it("reverses approved and paid entries too", () => {

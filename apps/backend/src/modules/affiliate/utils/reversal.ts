@@ -20,24 +20,39 @@ export type PlannedReversal = Pick<LedgerEntry, "affiliate_id" | "program_id" | 
 
 export type OrderForReversal = OrderPaymentsLike & {
   status?: string | null
-  items?: ({ id: string; quantity: BigNumberInput; detail?: { return_received_quantity?: BigNumberInput | null } | null } | null)[] | null
+  items?:
+    | ({
+        id: string
+        quantity: BigNumberInput
+        detail?: {
+          return_received_quantity?: BigNumberInput | null
+          return_dismissed_quantity?: BigNumberInput | null
+        } | null
+      } | null)[]
+    | null
 }
+
+// สัดส่วนเก็บเป็น BigNumber จนถึงตอนปัดเงิน (ไม่แปลงเป็น float)
+export type LineFractions = Record<string, BigNumberInput>
 
 /**
  * ส่วนของแต่ละ line ที่ได้รับผลกระทบ (0..1) จากสถานะปัจจุบันของ order (spec 05 subscriber refund/cancel/return):
  * cancel หรือ refund เต็มจำนวน (เกณฑ์เดียวกับ FS-2: refund รวม >= capture รวม) → ทุก line = 1;
- * มิฉะนั้น = จำนวนที่รับคืนแล้ว / จำนวนของ line (Q3 — ยอดที่คืน / base ของ line เมื่อส่วนลดกระจายตามจำนวน)
+ * มิฉะนั้น = จำนวนที่รับคืนแล้ว (ปกติ + damaged/dismissed) / จำนวนของ line (Q3 — ยอดที่คืน / base ของ line
+ * เมื่อส่วนลดกระจายตามจำนวน); refund บางส่วนที่ไม่ได้มาจาก return ไม่หักค่าคอม (owner 2026-10-26)
  */
-export const affectedFractions = (order: OrderForReversal): Record<string, number> => {
+export const affectedFractions = (order: OrderForReversal): LineFractions => {
   const all = order.status === "canceled" || isOrderFullyRefunded(order)
-  const fractions: Record<string, number> = {}
+  const fractions: LineFractions = {}
   for (const item of order.items ?? []) {
     if (!item) {
       continue
     }
-    fractions[item.id] = all
-      ? 1
-      : MathBN.div(item.detail?.return_received_quantity ?? 0, item.quantity).toNumber()
+    const returned = MathBN.add(
+      item.detail?.return_received_quantity ?? 0,
+      item.detail?.return_dismissed_quantity ?? 0
+    )
+    fractions[item.id] = all ? 1 : MathBN.div(returned, item.quantity)
   }
   return fractions
 }
@@ -61,11 +76,11 @@ const sum = (entries: LedgerEntry[]) => MathBN.sum(0, ...entries.map((e) => e.am
  * กฎ 5 + Q3: reversal = −(ยอดที่ได้ของ line × ส่วนที่ได้รับผลกระทบ) ปัด 2 ตำแหน่ง half-up ไม่เกินยอดที่ได้
  * นับ reversal ที่มีอยู่แล้ว → สร้างเฉพาะส่วนต่าง (event ซ้ำ/หลายครั้งไม่ reverse ซ้ำ)
  */
-export const planReversals = (entries: LedgerEntry[], fractions: Record<string, number>): PlannedReversal[] => {
+export const planReversals = (entries: LedgerEntry[], fractions: LineFractions): PlannedReversal[] => {
   const planned: PlannedReversal[] = []
   for (const [lineId, { earned, reversed }] of byLine(entries)) {
-    const fraction = Math.min(1, fractions[lineId] ?? 0)
-    if (!earned.length || fraction <= 0) {
+    const fraction = MathBN.min(1, fractions[lineId] ?? 0)
+    if (!earned.length || MathBN.lte(fraction, 0)) {
       continue
     }
     const target = MathBN.mult(MathBN.convert(MathBN.mult(sum(earned), fraction), 2), -1)

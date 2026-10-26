@@ -15,6 +15,7 @@ import {
   createPaymentCollectionForCartWorkflow,
   createPaymentSessionsWorkflow,
   createProductsWorkflow,
+  dismissItemReturnRequestWorkflow,
   receiveItemReturnRequestWorkflow,
   refundPaymentWorkflow,
   requestItemReturnWorkflow,
@@ -26,6 +27,7 @@ import affiliateReversalHandler from "../../src/subscribers/affiliate-reversal"
 import affiliateMaturityJob, { config as maturityJobConfig } from "../../src/jobs/affiliate-maturity"
 import { approveMaturedCommissionEntriesWorkflow } from "../../src/workflows/affiliate/approve-matured-entries"
 import { createAffiliatePayoutWorkflow } from "../../src/workflows/affiliate/affiliate-payout"
+import { reverseAffiliateCommissionWorkflow } from "../../src/workflows/affiliate/reverse-commission"
 
 process.env.AFFILIATE_TOKEN_SECRET = "af4-integration-secret"
 
@@ -225,6 +227,13 @@ medusaIntegrationTestRunner({
         expect(await entriesOf(orderId)).toHaveLength(1)
       })
 
+      it("a refunded payment without an order is a no-op (no lock, no entry)", async () => {
+        const { result } = await reverseAffiliateCommissionWorkflow(container).run({
+          input: { payment_id: "pay_does_not_exist", reason: "refunded" },
+        })
+        expect(result).toEqual([])
+      })
+
       it("order.canceled reverses the whole commission", async () => {
         const { orderId } = await placeAttributedOrder()
 
@@ -236,14 +245,12 @@ medusaIntegrationTestRunner({
         ])
       })
 
-      it("a received return of 1 of 2 units reverses half of the line (Q3)", async () => {
-        const { orderId, entry } = await placeAttributedOrder({ quantity: 2 })
+      // flow คืนของของ admin: ขอคืน → ยืนยัน → รับของ (ปกติหรือ damaged) → ยืนยันรับ (emit order.return_received)
+      const returnOne = async (orderId: string, lineItemId: string, damaged: boolean) => {
         await createOrderFulfillmentWorkflow(container).run({
-          input: { order_id: orderId, items: [{ id: entry.line_item_id!, quantity: 2 }] },
+          input: { order_id: orderId, items: [{ id: lineItemId, quantity: 2 }] },
         })
-
-        // flow คืนของของ admin: ขอคืน 1 ชิ้น → ยืนยัน → รับของ → ยืนยันรับ (emit order.return_received)
-        const items = [{ id: entry.line_item_id!, quantity: 1 }]
+        const items = [{ id: lineItemId, quantity: 1 }]
         const { result: begun } = await beginReturnOrderWorkflow(container).run({
           input: { order_id: orderId, location_id: locationId },
         })
@@ -251,10 +258,21 @@ medusaIntegrationTestRunner({
         await requestItemReturnWorkflow(container).run({ input: { return_id, items } })
         await confirmReturnRequestWorkflow(container).run({ input: { return_id } })
         await beginReceiveReturnWorkflow(container).run({ input: { return_id } })
-        await receiveItemReturnRequestWorkflow(container).run({ input: { return_id, items } })
+        await (damaged ? dismissItemReturnRequestWorkflow : receiveItemReturnRequestWorkflow)(container).run({
+          input: { return_id, items },
+        })
         await andWait("order.return_received", () =>
           confirmReturnReceiveWorkflow(container).run({ input: { return_id } })
         )
+      }
+
+      it.each([
+        ["received", false],
+        ["received as damaged (dismissed)", true],
+      ])("a return of 1 of 2 units %s reverses half of the line (Q3)", async (_label, damaged) => {
+        const { orderId, entry } = await placeAttributedOrder({ quantity: 2 })
+
+        await returnOne(orderId, entry.line_item_id!, damaged)
 
         expect((await entriesOf(orderId)).map((e) => [e.status, e.amount, e.reason])).toEqual([
           ["pending", 200, null],
@@ -287,6 +305,20 @@ medusaIntegrationTestRunner({
         await approveAt(new Date(Date.now() + 15 * DAY))
 
         expect((await entriesOf(orderId)).map((e) => e.status)).toEqual(["pending", "reversed"])
+      })
+
+      it("approves matured entries in batches", async () => {
+        const { orderId: first } = await placeAttributedOrder({ hold_days: 0 })
+        const { orderId: second } = await placeAttributedOrder({ hold_days: 0 })
+
+        await approveMaturedCommissionEntriesWorkflow(container).run({
+          input: { now: new Date().toISOString(), batch_size: 1 },
+        })
+
+        expect([...(await entriesOf(first)), ...(await entriesOf(second))].map((e) => e.status)).toEqual([
+          "approved",
+          "approved",
+        ])
       })
 
       it("the daily job approves entries that matured by now", async () => {
