@@ -36,7 +36,7 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const { query, refine } = useSearchBox({ queryHook })
   const { items } = useHits<ProductHit>()
-  const { status, error } = useInstantSearch()
+  const { status } = useInstantSearch()
   const { isSettled } = useSearchSettled()
 
   const [inputValue, setInputValue] = useState(query)
@@ -80,7 +80,6 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
             data-testid="search-error"
           >
             ค้นหาสินค้าไม่สำเร็จ
-            {error?.message ? `: ${error.message}` : ""}
           </Text>
         ) : !isSettled ? (
           <Text

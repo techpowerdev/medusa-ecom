@@ -14,11 +14,13 @@ type ProductTabsProps = {
 const ProductTabs = ({ product }: ProductTabsProps) => {
   const tabs = [
     {
-      label: "Product Information",
+      key: "information",
+      label: "ข้อมูลสินค้า",
       component: <ProductInfoTab product={product} />,
     },
     {
-      label: "Shipping & Returns",
+      key: "shipping",
+      label: "การจัดส่งและการคืนสินค้า",
       component: <ShippingInfoTab />,
     },
   ]
@@ -26,12 +28,13 @@ const ProductTabs = ({ product }: ProductTabsProps) => {
   return (
     <div className="w-full">
       <Accordion type="multiple">
-        {tabs.map((tab, i) => (
+        {tabs.map((tab) => (
           <Accordion.Item
-            key={i}
+            key={tab.key}
             title={tab.label}
             headingSize="medium"
-            value={tab.label}
+            value={tab.key}
+            data-testid={`product-tab-${tab.key}`}
           >
             {tab.component}
           </Accordion.Item>
@@ -47,28 +50,28 @@ const ProductInfoTab = ({ product }: ProductTabsProps) => {
       <div className="grid grid-cols-2 gap-x-8">
         <div className="flex flex-col gap-y-4">
           <div>
-            <span className="font-semibold">Material</span>
+            <span className="font-semibold">วัสดุ</span>
             <p>{product.material ? product.material : "-"}</p>
           </div>
           <div>
-            <span className="font-semibold">Country of origin</span>
+            <span className="font-semibold">ประเทศผู้ผลิต</span>
             <p>{product.origin_country ? product.origin_country : "-"}</p>
           </div>
           <div>
-            <span className="font-semibold">Type</span>
+            <span className="font-semibold">ประเภท</span>
             <p>{product.type ? product.type.value : "-"}</p>
           </div>
         </div>
         <div className="flex flex-col gap-y-4">
           <div>
-            <span className="font-semibold">Weight</span>
-            <p>{product.weight ? `${product.weight} g` : "-"}</p>
+            <span className="font-semibold">น้ำหนัก</span>
+            <p>{product.weight ? `${product.weight} กรัม` : "-"}</p>
           </div>
           <div>
-            <span className="font-semibold">Dimensions</span>
+            <span className="font-semibold">ขนาด</span>
             <p>
               {product.length && product.width && product.height
-                ? `${product.length}L x ${product.width}W x ${product.height}H`
+                ? `ยาว ${product.length} × กว้าง ${product.width} × สูง ${product.height}`
                 : "-"}
             </p>
           </div>
@@ -85,31 +88,28 @@ const ShippingInfoTab = () => {
         <div className="flex items-start gap-x-2">
           <FastDelivery />
           <div>
-            <span className="font-semibold">Fast delivery</span>
+            <span className="font-semibold">จัดส่งรวดเร็ว</span>
             <p className="max-w-sm">
-              Your package will arrive in 3-5 business days at your pick up
-              location or in the comfort of your home.
+              พัสดุจะถึงจุดรับสินค้าหรือที่บ้านของคุณภายใน 3-5 วันทำการ
             </p>
           </div>
         </div>
         <div className="flex items-start gap-x-2">
           <Refresh />
           <div>
-            <span className="font-semibold">Simple exchanges</span>
+            <span className="font-semibold">เปลี่ยนสินค้าง่าย</span>
             <p className="max-w-sm">
-              Is the fit not quite right? No worries - we&apos;ll exchange your
-              product for a new one.
+              ขนาดไม่พอดีใช่ไหม ไม่ต้องกังวล เราเปลี่ยนสินค้าชิ้นใหม่ให้
             </p>
           </div>
         </div>
         <div className="flex items-start gap-x-2">
           <Back />
           <div>
-            <span className="font-semibold">Easy returns</span>
+            <span className="font-semibold">คืนสินค้าสะดวก</span>
             <p className="max-w-sm">
-              Just return your product and we&apos;ll refund your money. No
-              questions asked – we&apos;ll do our best to make sure your return
-              is hassle-free.
+              ส่งสินค้าคืนแล้วเราจะคืนเงินให้ ไม่ต้องให้เหตุผล
+              เราจะดูแลให้การคืนสินค้าราบรื่นที่สุด
             </p>
           </div>
         </div>
