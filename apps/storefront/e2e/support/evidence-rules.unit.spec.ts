@@ -72,7 +72,8 @@ test.describe("evidence-rules", () => {
 
   // CORE-5b AC-20: task id มี suffix ตัวเล็กได้หนึ่งตัว
   test("evidenceDir รับ task id ที่มี suffix ตัวเล็ก (AC-20)", () => {
-    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12"]) {
+    // GB-6b1: task ที่ spec แยกย่อย (suffix ตัวเล็ก + ตัวเลขหนึ่งหลัก)
+    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2"]) {
       expect(evidenceDir("/repo", { feature: "core", taskId })).toBe(
         path.join("/repo", "docs", "evidence", "core", taskId)
       )
@@ -80,7 +81,17 @@ test.describe("evidence-rules", () => {
   })
 
   test("evidenceDir ปฏิเสธ task id ผิดรูปแบบ (AC-20)", () => {
-    for (const taskId of ["core-4a", "CORE4", "CORE-4ab", "CORE-", "CORE-4A"]) {
+    for (const taskId of [
+      "core-4a",
+      "CORE4",
+      "CORE-4ab",
+      "CORE-",
+      "CORE-4A",
+      "GB-6b12",
+      "GB-6b1a",
+      "GB-6B1",
+      "GB-61-",
+    ]) {
       expect(() => evidenceDir("/repo", { feature: "core", taskId })).toThrow()
     }
   })
@@ -124,8 +135,10 @@ test.describe("evidence-rules", () => {
       checkFeatureEntries([
         { name: "CORE-5-tests.txt", isDirectory: false },
         { name: "CORE-4a-tests.txt", isDirectory: false },
+        { name: "GB-6b1-tests.txt", isDirectory: false },
         { name: "CORE-5", isDirectory: true },
         { name: "CORE-4a", isDirectory: true },
+        { name: "GB-6b1", isDirectory: true },
       ])
     ).toEqual([])
   })
