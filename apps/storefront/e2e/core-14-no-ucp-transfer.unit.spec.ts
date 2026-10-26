@@ -24,6 +24,8 @@ test("AC-42: ไม่มี route ของ UCP, cart/resume และ lib/ucp"
   }
   const usages = walk(SRC).filter((file) => /@lib\/ucp|\/ucp\/|cart\/resume/.test(fs.readFileSync(file, "utf8")))
   expect(usages).toEqual([])
+  // header `Link: </.well-known/ucp>; rel="ucp"` ใน next.config.js ต้องไม่อยู่แล้ว
+  expect(fs.readFileSync(path.resolve(SRC, "..", "next.config.js"), "utf8")).not.toMatch(/ucp/i)
 })
 
 test("AC-56: ไม่มีหน้า order transfer และไม่มีการเรียก /store/orders/*/transfer", () => {

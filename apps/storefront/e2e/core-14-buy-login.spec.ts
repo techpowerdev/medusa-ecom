@@ -27,7 +27,13 @@ async function dbRow<T extends object>(sql: string, values: unknown[] = []): Pro
   }
 }
 
-const cartCount = async () => Number((await dbRow<{ n: string }>("select count(*) as n from cart")).n)
+/** นับเฉพาะ cart ที่เกี่ยวกับ test นี้ (กัน flaky เมื่อรันหลาย worker): cart ไม่มีเจ้าของที่สร้างหลัง `since` หรือ cart ของ customer */
+const guestCartsSince = async (since: Date) =>
+  Number(
+    (await dbRow<{ n: string }>("select count(*) as n from cart where customer_id is null and created_at >= $1", [since])).n
+  )
+const customerCartCount = async (customerId: string) =>
+  Number((await dbRow<{ n: string }>("select count(*) as n from cart where customer_id = $1", [customerId])).n)
 
 test("AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า", async ({
   page,
@@ -41,7 +47,9 @@ test("AC-41: /buy ไม่มี session → login พร้อม return URL �
   const customer = await createCustomer(request, pk)
   const { variantId } = await variantOf(request, pk, PRODUCT)
   const buyPath = `/buy/${variantId}:2`
-  const before = await cartCount()
+  const auth = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
+  const me = await (await request.get(`${BACKEND_URL}/store/customers/me`, { headers: auth })).json()
+  const since = new Date()
 
   await step("GET /buy/<variant>:2 โดยไม่มี session → redirect ไปหน้า login ที่มี return URL", async () => {
     const res = await request.get(buyPath, { maxRedirects: 0 })
@@ -53,7 +61,8 @@ test("AC-41: /buy ไม่มี session → login พร้อม return URL �
     await page.goto(buyPath)
     await expect(page).toHaveURL(new RegExp(`/${CC}/account\\?return_to=`))
     await expect(page.getByTestId("login-page")).toBeVisible()
-    expect(await cartCount()).toBe(before)
+    expect(await guestCartsSince(since)).toBe(0)
+    expect(await customerCartCount(me.customer.id)).toBe(0)
     await evidence("01-buy-guest-login")
   })
 
@@ -65,8 +74,6 @@ test("AC-41: /buy ไม่มี session → login พร้อม return URL �
 
     const cartId = (await context.cookies()).find((c) => c.name === "_medusa_cart_id")?.value
     expect(cartId, "cart cookie").toBeTruthy()
-    const auth = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
-    const me = await (await request.get(`${BACKEND_URL}/store/customers/me`, { headers: auth })).json()
     const owner = await dbRow<{ customer_id: string }>("select customer_id from cart where id = $1", [cartId])
     expect(owner.customer_id).toBe(me.customer.id)
     const res = await request.get(`${BACKEND_URL}/store/carts/${cartId}?fields=id,*items`, { headers: auth })
@@ -75,7 +82,8 @@ test("AC-41: /buy ไม่มี session → login พร้อม return URL �
     expect(cart.items.map((i: { variant_id: string; quantity: number }) => [i.variant_id, i.quantity])).toEqual([
       [variantId, 2],
     ])
-    expect(await cartCount()).toBe(before + 1)
+    expect(await customerCartCount(me.customer.id)).toBe(1)
+    expect(await guestCartsSince(since)).toBe(0)
     await evidence("02-buy-checkout-after-login")
   })
 
@@ -87,9 +95,12 @@ test("AC-41: /buy ไม่มี session → login พร้อม return URL �
 })
 
 test("AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404", async ({ request, step }) => {
-  await step("UCP + cart/resume → 404", async () => {
-    expect((await request.get("/ucp/v1", { maxRedirects: 0 })).status()).toBe(404)
-    expect((await request.post("/ucp/v1/cart", { data: {}, maxRedirects: 0 })).status()).toBe(404)
+  await step("UCP + cart/resume → 404 และไม่มี header Link rel=ucp", async () => {
+    // /ucp ไม่ถูกยกเว้นจาก middleware แล้ว → อาจ redirect ไป /th/ucp/... ก่อน ปลายทางต้องเป็น 404
+    expect((await request.get("/ucp/v1")).status()).toBe(404)
+    expect((await request.post("/ucp/v1/cart", { data: {} })).status()).toBe(404)
+    const home = await request.get(`/${CC}`)
+    expect(home.headers()["link"] ?? "").not.toMatch(/ucp/i)
     expect((await request.get("/.well-known/ucp", { maxRedirects: 0 })).status()).toBe(404)
     expect((await request.get(`/${CC}/cart/resume/cart_any`, { maxRedirects: 0 })).status()).toBe(404)
   })

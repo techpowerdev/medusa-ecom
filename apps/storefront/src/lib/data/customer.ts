@@ -125,7 +125,7 @@ export async function signup(
 
   // Continue by logging in. The login response tells us whether the backend
   // requires email verification — we don't need a storefront-side flag.
-  return resumePendingAddToCart(
+  return continueAfterAuth(
     formData,
     await completeLogin(customerForm.email, password)
   )
@@ -138,14 +138,14 @@ export async function login(
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
-  return resumePendingAddToCart(formData, await completeLogin(email, password))
+  return continueAfterAuth(formData, await completeLogin(email, password))
 }
 
 // CORE-6 (spec 01 AC-6): guest ที่กด "Add to cart" ถูกส่งมาล็อกอินพร้อม variant ที่ค้างไว้
 // ล็อกอินสำเร็จ → เพิ่มลง cart แล้วไปหน้า cart
 // CORE-14 (AC-41): มาจาก /buy/... → ล็อกอินสำเร็จแล้วสร้าง cart จากลิงก์เดิมแล้วไป checkout
 // (ไม่ redirect ไป route handler `/buy` จาก server action เพราะ client router ตาม redirect แบบ RSC ไม่ได้)
-async function resumePendingAddToCart(
+async function continueAfterAuth(
   formData: FormData,
   result: CustomerAuthState
 ): Promise<CustomerAuthState> {
