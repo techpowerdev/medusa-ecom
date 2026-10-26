@@ -1,3 +1,4 @@
+import { STORE_CONTENT } from "@lib/store-content"
 import { convertToLocale } from "@lib/util/money"
 import { formatDayRange, StorePolicies } from "@lib/util/store-policies"
 
@@ -44,7 +45,6 @@ export const ShippingSummary = ({
 
 export const PlaceholderNotice = () => (
   <p className="text-ui-fg-subtle" data-testid="policy-placeholder">
-    This is placeholder content from the Medusa starter. Replace it with your
-    store&apos;s own text before launch.
+    {STORE_CONTENT.policyPlaceholderNotice}
   </p>
 )
