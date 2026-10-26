@@ -1,4 +1,5 @@
 import { MedusaError } from "@medusajs/framework/utils"
+import { GB_DEADLINE_OUTCOME_CHANGED } from "../errors"
 import { type GroupBuyProgress, type GroupBuyTarget, isTargetReached } from "./target"
 
 export type GroupOutcome = "succeeded" | "failed"
@@ -31,3 +32,8 @@ export const isCampaignExpired = (endsAt: string | Date | null | undefined, now:
 // deadline job (review #89): หน้าต่าง batch หมุนตามรอบ — กลุ่มที่ล้มซ้ำไม่บังกลุ่มอื่นที่หัวคิวตลอดไป
 export const deadlineBatchSkip = (count: number, batch: number, tick: number) =>
   count <= batch ? 0 : (tick * batch) % count
+
+// GB-N1 (review #89): ผลเปลี่ยนระหว่างรอ lock เป็นเรื่องปกติ (job รอบถัดไปตัดสินใหม่) → warn; อย่างอื่นยังเป็น error
+// อ่าน code จาก property ตรงๆ เพราะ workflow engine ส่ง error ที่ผ่าน serializeError
+export const deadlineSettleLogLevel = (error: unknown): "warn" | "error" =>
+  (error as { code?: unknown } | null | undefined)?.code === GB_DEADLINE_OUTCOME_CHANGED ? "warn" : "error"

@@ -1,11 +1,11 @@
 import type { MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import type { ILockingModule, IPaymentModuleService, RemoteQueryFunction } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
+import { PAYMENT_ALREADY_COMPLETED } from "./errors"
 
 // PAY-6 (spec 06 กฎข้อ 7A, ADR-015 A): Medusa 2.22.1 ลบ session เดิมตอนสร้าง session ใหม่ได้แม้ PI `succeeded` แล้ว
 // → ก่อนให้ route ของ Medusa ลบ ตรวจ session Stripe เดิมผ่าน `authorizePaymentSession` ของ payment module (ไม่เรียก Stripe ตรง)
 // ถ้าชำระแล้วหรือกำลังชำระ → 409 ผ่าน businessErrorHandler (PROMO-2) และ session เดิมยังอยู่ให้ webhook complete cart
-export const PAYMENT_ALREADY_COMPLETED = "PAYMENT_ALREADY_COMPLETED"
 
 const LOCK_TIMEOUT_SECONDS = 30 // เท่ากับ lock ของ processPaymentWorkflow
 

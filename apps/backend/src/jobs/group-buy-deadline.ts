@@ -4,6 +4,7 @@ import { GROUP_BUY_MODULE } from "../modules/group_buy"
 import type GroupBuyModuleService from "../modules/group_buy/service"
 import {
   deadlineBatchSkip,
+  deadlineSettleLogLevel,
   expiredGroupOutcome,
   isCampaignExpired,
 } from "../modules/group_buy/utils/group-outcome"
@@ -38,7 +39,9 @@ export default async function groupBuyDeadlineJob(container: MedusaContainer) {
     try {
       await workflow(container).run({ input: { group_id: group.id, at_deadline: true } })
     } catch (error) {
-      logger.error(`group-buy-deadline: failed to settle group ${group.id}: ${(error as Error).message}`)
+      logger[deadlineSettleLogLevel(error)](
+        `group-buy-deadline: failed to settle group ${group.id}: ${(error as Error).message}`
+      )
     }
   }
 
