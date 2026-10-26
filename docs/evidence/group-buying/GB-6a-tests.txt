@@ -49,3 +49,10 @@ Tests:       16 passed, 16 total
 pnpm --filter backend typecheck → Done (backend + admin); pnpm --filter backend lint → No lint issues found
 pnpm --filter backend build → Backend/Frontend build completed successfully
 หมายเหตุ: idempotency ฝั่ง backend ของ POST /admin/group-buy/campaigns อยู่นอก PR นี้ (session หลักจดเป็นงานต่อแล้ว)
+
+== รอบแก้ re-review: inline guard ตาม FS-10 (helper มีที่ใช้ที่เดียว ขัดกฎ abstraction) ==
+ลบ src/admin/lib/in-flight.ts + in-flight.unit.spec.ts; submit() ตั้ง inFlight.current = true (useRef) ก่อน create.mutate ปลดใน onSettled
+พฤติกรรมกันกดซ้ำในหน้า UI → ให้ qa ทดสอบ D1 ซ้ำใน browser (for(i=0;i<5;i++) btn.click() ต้องได้ 1 แคมเปญ)
+PASS src/admin/lib/__tests__/group-buy-form.unit.spec.ts — Tests: 14 passed, 14 total
+pnpm --filter backend typecheck → Done (backend + admin); pnpm --filter backend lint → No lint issues found
+pnpm --filter backend build → Backend/Frontend build completed successfully

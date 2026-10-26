@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useRef, useState } from "react"
 import { groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
 import { CampaignForm, emptyCampaignForm, toCampaignBody } from "../../lib/group-buy-form"
-import { runOnce } from "../../lib/in-flight"
 
 type TextKey = {
   [K in keyof CampaignForm]: CampaignForm[K] extends string ? K : never
@@ -66,7 +65,8 @@ export const CreateCampaign = () => {
       toast.error(result.error)
       return
     }
-    runOnce(inFlight, () => create.mutate(result.body))
+    inFlight.current = true
+    create.mutate(result.body)
   }
 
   const openModal = () => {
