@@ -7,7 +7,7 @@ import { EmailTemplates } from "../../../modules/resend/templates"
 import { EVOUCHER_NOTIFICATION_TRIGGER, EvoucherOrder } from "./evoucher-order"
 
 // ข้อความ error ในอีเมล admin/log: เฉพาะ message (ไม่ใส่ data ของ notification) ยุบบรรทัดและตัดไม่เกิน 200 ตัวอักษร
-const shortError = (error: unknown) =>
+export const shortError = (error: unknown) =>
   String((error as Error)?.message ?? error)
     .replace(/\s+/g, " ")
     .trim()

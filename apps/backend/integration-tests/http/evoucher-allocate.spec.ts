@@ -447,6 +447,51 @@ medusaIntegrationTestRunner({
         expect(alerts).toEqual([expect.objectContaining({ to: OPS_EMAIL, resource_id: orderId })])
       })
 
+      it("still delivers the complete line and keeps the backordered flag when the admin backordered email fails", async () => {
+        const a = await createVoucher("OK-1\n")
+        const b = await createVoucher("GONE-1\n")
+        const { orderId, email } = await placeOrder([
+          { variant_id: a.variantId, quantity: 1 },
+          { variant_id: b.variantId, quantity: 1 },
+        ])
+        await voidCode(b.poolId)
+        const LocalProvider = localNotificationProvider.services[0]
+        const originalSend = LocalProvider.prototype.send
+        jest.spyOn(LocalProvider.prototype, "send").mockImplementation(async function (
+          this: unknown,
+          notification: { template: string }
+        ) {
+          if (notification.template === "evoucher-backordered") {
+            throw new Error("smtp down")
+          }
+          return originalSend.call(this, notification)
+        })
+        const error = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "error")
+
+        const first = await allocateAndDeliverEvouchersWorkflow(container).run({
+          input: { order_id: orderId, admin_email: OPS_EMAIL },
+          throwOnError: false,
+        })
+        // รันซ้ำ (event retry) — key เดิมสถานะ failure ต้องไม่ทำให้ workflow ล้ม
+        const again = await allocateAndDeliverEvouchersWorkflow(container).run({
+          input: { order_id: orderId, admin_email: OPS_EMAIL },
+          throwOnError: false,
+        })
+
+        expect(first.errors).toEqual([])
+        expect(again.errors).toEqual([])
+        expect(error).toHaveBeenCalledWith(expect.stringContaining("smtp down"))
+        const order = await orderOf(orderId)
+        const lineA = order.items!.find((i) => i!.variant_id === a.variantId)!
+        const lineB = order.items!.find((i) => i!.variant_id === b.variantId)!
+        expect(await service.listEvoucherCodes({ order_line_item_id: lineA.id })).toEqual([
+          expect.objectContaining({ status: "delivered" }),
+        ])
+        expect(lineB.metadata).toMatchObject({ evoucher_backordered: true })
+        const delivered = await listEmails({ template: "evoucher.delivered" })
+        expect(delivered).toEqual([expect.objectContaining({ to: email, status: "success" })])
+      })
+
       it("uses a new idempotency key per claim and clears the backordered flag once delivered", async () => {
         const a = await createVoucher("PA-1\n")
         const b = await createVoucher("PB-1\n")

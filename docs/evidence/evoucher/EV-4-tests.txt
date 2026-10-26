@@ -24,6 +24,10 @@ AC-26: provider (local) throw ตอนส่ง evoucher.delivered → เด�
   (ขั้นสุดท้าย ไม่ throw) หลังส่งสำเร็จเท่านั้น; test assert allocated + notification failure เก็บ ciphertext + อีเมล ops 1 ฉบับ
 AC-27: test ใหม่ (pool 1 code, line qty 2 → backordered, available = 1, ไม่มี evoucher.delivered, admin ได้อีเมล backordered)
 
+== re-review รอบ 3 ==
+red: provider throw เฉพาะ evoucher-backordered → workflow ล้ม (sendNotificationsStep ของ core throw) compensate claim ของ line ที่ครบ
+green: ส่งอีเมล admin ด้วย step ที่ไม่ throw (try/catch + logger.error) → line A delivered, line B flag backordered, รันซ้ำไม่ error
+
 == test:unit (templates.unit.spec.ts + resend service.unit.spec.ts + notification-providers.unit.spec.ts) ==
   ✓ renders every code with PIN, expiry (Thai date), partner logo and how-to-use block  (ciphertext → decrypt ตอน render)
   ✓ refuses to render codes without a decrypt function
@@ -56,13 +60,14 @@ Tests: 7 passed, 7 total
     ✓ re-running for the same order allocates no more codes and sends no more emails
     ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails
     ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available
+    ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails
     ✓ uses a new idempotency key per claim and clears the backordered flag once delivered
   AC-4 backordered when no code is left
     ✓ gives the last code to only one of two concurrently captured orders and flags the other
   AC-17 backordered admin email goes to EVOUCHER_ADMIN_EMAIL only
     ✓ sends one notification to the mailbox and none to the 3 admin users
     ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged)
-Tests: 11 passed, 11 total
+Tests: 12 passed, 12 total
 
 == pnpm lint ==
 apps/backend: medusa lint → ไม่มี issue (storefront: 0 errors, warnings เดิมที่ไม่เกี่ยวกับ task นี้)

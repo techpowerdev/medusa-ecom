@@ -1,14 +1,11 @@
 import { createWorkflow, transform, when, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
-import {
-  createOrderFulfillmentWorkflow,
-  sendNotificationsStep,
-  useQueryGraphStep,
-} from "@medusajs/medusa/core-flows"
+import { createOrderFulfillmentWorkflow, useQueryGraphStep } from "@medusajs/medusa/core-flows"
 import { EvoucherOrder } from "./steps/evoucher-order"
 import { resolveEvoucherLinesStep } from "./steps/resolve-evoucher-lines"
 import { claimEvoucherCodesStep } from "./steps/claim-evoucher-codes"
 import { updateEvoucherBackorderedFlagsStep } from "./steps/update-evoucher-backordered-flags"
 import { buildEvoucherBackorderedNotificationsStep } from "./steps/build-evoucher-backordered-notifications"
+import { sendEvoucherAdminNotificationsStep } from "./steps/send-evoucher-admin-notifications"
 import { resolveDigitalShippingOptionStep } from "./steps/resolve-digital-shipping-option"
 import { buildEvoucherDeliveredNotificationStep } from "./steps/build-evoucher-delivered-notification"
 import { sendEvoucherDeliveredNotificationStep } from "./steps/send-evoucher-delivered-notification"
@@ -66,9 +63,8 @@ export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
       backordered: flags.backordered,
       admin_email: input.admin_email,
     })
-    when({ adminNotifications }, ({ adminNotifications }) => adminNotifications.length > 0).then(() => {
-      sendNotificationsStep(adminNotifications).config({ name: "send-evoucher-backordered-notifications" })
-    })
+    // ไม่ throw: อีเมล admin ล้มต้องไม่ compensate claim ของ line ที่ครบ (spec 02 "backordered ไม่ทำให้ order ล้มเหลว")
+    sendEvoucherAdminNotificationsStep(adminNotifications)
 
     when({ claim }, ({ claim }) => claim.allocated.length > 0).then(() => {
       const shippingOptionId = resolveDigitalShippingOptionStep({ order })
