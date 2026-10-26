@@ -7,17 +7,17 @@ export const dynamic = "force-static"
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: "Contact",
-  description: `How to contact ${STORE_NAME}.`,
+  title: "ติดต่อเรา",
+  description: `ช่องทางติดต่อ ${STORE_NAME}`,
 }
 
 export default function ContactPage() {
   return (
-    <PolicyPage title="Contact">
+    <PolicyPage title="ติดต่อเรา">
       <PlaceholderNotice />
       <p>
-        Questions about an order, shipping or returns? Contact {STORE_NAME}{" "}
-        customer service and include your order number.
+        มีคำถามเกี่ยวกับคำสั่งซื้อ การจัดส่ง หรือการคืนสินค้า? ติดต่อฝ่ายบริการลูกค้าของ{" "}
+        {STORE_NAME} พร้อมแจ้งเลขที่คำสั่งซื้อ
       </p>
     </PolicyPage>
   )
