@@ -265,9 +265,9 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
 - ~~Q5~~ ตัดสินแล้ว (owner 2026-10-26) แล้ว**กลับคำตัดสิน**ในวันเดียวกัน (รอบ 6): ~~voucher product ใช้ shipping profile Digital เสมอ~~ → ใช้
   `requires_shipping=false` ที่ inventory item + product **ไม่มี shipping profile เลย** และไม่บังคับ Digital method ฝั่ง backend เพราะ profile ใดก็ตามทำให้ line item
   `requires_shipping=true` เสมอใน Medusa 2.22.1 (ขัด AC-11) — กฎข้อ 1, AC-3, AC-11, EV-7, EV-10, EV-11
-- ~~Q9~~ ตัดสินแล้ว (owner 2026-10-26): สร้าง pool ให้ variant ที่ product มี shipping profile ใดๆ → **400** ไม่มี pool (admin ต้องเอา profile ออกจาก product ก่อน)
-  — กฎข้อ 1, AC-11
 - Q6 (EV-12, กฎข้อ 12b) job รายวันที่ void code ใกล้หมดอายุซึ่งอาจเป็น stock ที่ order จองไว้: คงพฤติกรรม "void ทั้งหมด + แจ้งในอีเมลสรุป" (ค่าเริ่มต้น —
   order นั้นจะได้ backordered + อีเมลตาม EV-4) หรือให้ job เว้น code ไว้เท่าจำนวนที่ถูกจอง (ขายของที่จะหมดอายุภายใน 7 วัน ขัดกฎข้อ 7)?
 - Q7 (EV-10, กฎข้อ 15) ลบ pool แล้วตั้ง `requires_shipping=true` เสมอ (ค่าเริ่มต้น) หรือต้องจำค่าเดิมก่อนสร้าง pool (ต้องเพิ่ม field ใน model)?
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-10-26): อีเมล `evoucher.delivered` ส่ง**เสมอ**แม้ order ตั้ง `no_notification=true` (เป็นการส่งมอบสินค้า) — กฎข้อ 20
+- ~~Q9~~ ตัดสินแล้ว (owner 2026-10-26): สร้าง pool ให้ variant ที่ product มี shipping profile ใดๆ → **400** ไม่มี pool (admin ต้องเอา profile ออกจาก product ก่อน)
+  — กฎข้อ 1, AC-11
