@@ -1,0 +1,31 @@
+# CORE-14a — ผลทดสอบ (spec 01 AC-41, AC-42, AC-43, AC-56)
+# รันในเครื่อง 2026-10-26: backend :9082 (DB medusa_core14, seed), storefront next dev :8082, Node 22
+
+## Red (ก่อนแก้โค้ด)
+- vitest login-return.test.ts, stale-cart-cookie.test.ts → fail: ไม่มี module ./login-return, ./stale-cart-cookie
+- playwright unit core-14-no-ucp-transfer.unit.spec.ts → 2 failed (ไฟล์ UCP/transfer ยังอยู่: Expected false, Received true)
+- e2e AC-41 → fail: GET /buy/<variant>:2 ได้ 400 (สร้าง cart แบบไม่มี session ไม่ได้) ไม่ใช่ redirect ไป login
+- e2e AC-42/AC-56 → fail: GET /ucp/v1 ได้ 200
+- e2e AC-43 → fail: cookie _medusa_cart_id ยังอยู่หลังเปิด /th/cart
+
+## Green — e2e (chromium, workers=1; รวม core-store.spec.ts ของ CORE-6 เพื่อยืนยันว่า flow cart/login เดิมไม่พัง)
+Running 6 tests using 1 worker
+  ✓  1 [chromium] › e2e/core-14-buy-login.spec.ts:32:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (3.8s)
+  ✓  2 [chromium] › e2e/core-14-buy-login.spec.ts:89:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (219ms)
+  ✓  3 [chromium] › e2e/core-14-buy-login.spec.ts:105:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (1.1s)
+  ✓  4 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (4.6s)
+  ✓  5 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (13.1s)
+  ✓  6 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (1.5s)
+  6 passed (26.5s)
+
+## Green — unit (playwright --project=unit + vitest ทั้งชุดของ storefront)
+  ✓   3 [unit] › e2e/core-14-no-ucp-transfer.unit.spec.ts:16:5 › AC-42: ไม่มี route ของ UCP, cart/resume และ lib/ucp (37ms)
+  ✓  12 [unit] › e2e/core-14-no-ucp-transfer.unit.spec.ts:29:5 › AC-56: ไม่มีหน้า order transfer และไม่มีการเรียก /store/orders/*/transfer (21ms)
+  29 passed (500ms)
+ Test Files  13 passed (13)
+      Tests  114 passed (114)
+
+## อื่นๆ
+- pnpm lint: 0 errors (34 warnings เดิมของ develop ไม่มีในไฟล์ที่แก้)
+- pnpm --filter storefront typecheck / pnpm --filter backend typecheck: ผ่าน
+- pnpm --filter storefront build: ผ่าน (route /buy/[items] ยังอยู่; ไม่มี /ucp/*, cart/resume, order/[id]/transfer)

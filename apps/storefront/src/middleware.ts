@@ -1,4 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
+import { clearStaleCartCookie } from "@lib/util/stale-cart-cookie"
 import { NextRequest, NextResponse } from "next/server"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
@@ -114,7 +115,7 @@ export async function middleware(request: NextRequest) {
         maxAge: 60 * 60 * 24,
       })
     }
-    return response
+    return clearStaleCartCookie(request, response)
   }
 
   // if the url doesn't have the country, redirect to it
@@ -123,7 +124,7 @@ export async function middleware(request: NextRequest) {
   const queryString = request.nextUrl.search || ""
   const redirectUrl = `${request.nextUrl.origin}/${country}${redirectPath}${queryString}`
 
-  return NextResponse.redirect(redirectUrl, 307)
+  return clearStaleCartCookie(request, NextResponse.redirect(redirectUrl, 307))
 }
 
 export const config = {
