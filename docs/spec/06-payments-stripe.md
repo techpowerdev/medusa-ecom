@@ -156,7 +156,7 @@
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
 | PAY-5 | follow-up review PR #48 (เล็ก): race ระหว่าง QR หมดอายุกับการชำระสำเร็จ — test AC-11 ก่อนเพื่อยืนยันพฤติกรรมของ Medusa/Stripe provider เมื่อลบ session ที่ PI `succeeded` แล้ว; ถ้าเป็นกรณี (a) ของกฎข้อ 7 แก้เฉพาะ storefront ให้ poll ต่อเมื่อสร้าง session ใหม่ล้ม (AC-12); ถ้าเป็นกรณี (b) หยุดแล้วเขียน ADR (ไม่เขียน reconciliation เอง) | PAY-2 |
 | PAY-6a | (◐ #82, แยกรอบ 6) ADR-015 A ฝั่ง backend: guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`/`payment_collection_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + guard หลัง ownership ของ CORE-12 + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-11, AC-13 a–g, AC-14, AC-12b ส่วน backend = integration complete cart หลัง guard) + integration race ตาม "หมายเหตุ (รอบ 6)" ด้านล่าง — **ไม่รวม** storefront (AC-12 และ AC-12b ส่วน storefront อยู่ใน PAY-6b) | PAY-5 (#65), PROMO-2 |
-| PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้ | PAY-6a |
+| PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D; หัวข้อ fail closed ต้องใช้วิธีที่ตรวจแล้วว่ามีจริง — ดู "ความเสี่ยงที่ยอมรับเพิ่ม" รอบ 7) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้ | PAY-6a |
 PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment` เดียวกับที่ PAY-3 นำไปใช้ซ้ำ — merge PAY-5 ก่อน PAY-3 ถ้าทำพร้อมกัน ให้ rebase)
 PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
 ต้อง merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
@@ -171,7 +171,10 @@ PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก gu
 - PI ของ**บัตร**ที่อยู่สถานะ `processing` → provider คืน `PENDING` → `authorizePaymentSession` โยน `NOT_ALLOWED` → guard `next()` → session อาจถูกลบได้
   (ตรงกับกรณี `processing` ใน "ความเสี่ยงที่เหลือ" ของ ADR-015) — ถ้า PI สำเร็จภายหลัง ตาข่าย D (PAY-6b) จับได้ (alert + refund ด้วยมือ)
 - guard แบบ fail closed: ถ้า retrieve PI ล้มถาวร (เช่น PI ถูกลบ/บัญชี Stripe ผิด) cart นั้นสร้าง session ใหม่ไม่ได้เลย → runbook ของ PAY-6b ต้องมีหัวข้อวิธีแก้
-  (ตรวจ PI ใน Stripe dashboard แล้วให้ลูกค้าเริ่ม cart ใหม่ หรือ ops ลบ session ที่ค้างผ่าน admin/API ของ Medusa) และ AC-16 ตรวจว่ามีหัวข้อนี้
+  (ตรวจ PI ใน Stripe dashboard แล้วให้ลูกค้าเริ่ม cart ใหม่ หรือ ops ล้าง session ที่ค้าง) และ AC-16 ตรวจว่ามีหัวข้อนี้
+  **(รอบ 7)** Medusa 2.22.1 **ไม่มี admin route ลบ payment session** — builder PAY-6b ต้องตรวจวิธีที่ทำได้จริงจาก source/docs ก่อนเขียนขั้นใน runbook (เช่น ลูกค้าเริ่ม
+  cart ใหม่, หรือ script `medusa exec` ที่เรียก method ของ Payment module ที่มีอยู่จริง) และทดลองบน DB ทดสอบ; ห้ามเขียนขั้นที่อ้าง route ที่ไม่มี และห้ามแนะนำแก้ DB
+  ด้วย SQL ตรง; ถ้าไม่มีวิธีที่ไม่ต้องเขียนโค้ดใหม่ ให้ runbook ใช้ "ลูกค้าเริ่ม cart ใหม่" อย่างเดียวและรายงานใน PR
 
 ## Open questions
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)

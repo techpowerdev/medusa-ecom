@@ -42,6 +42,9 @@
      (00:00 Asia/Bangkok = `0 17 * * *` UTC)
    - `EVOUCHER_ADMIN_EMAIL` — mailbox เดียวที่รับอีเมลแจ้ง admin ของ e-voucher (spec 02 กฎข้อ 9)
    - `AFFILIATE_TOKEN_SECRET` — secret ของ cookie `aff` (spec 05 กฎ 22; production ขาด = บูตไม่ขึ้น, OPS-7)
+   - `STOREFRONT_URL` — origin ของ storefront (เช่น `https://shop.example.com` ไม่มี `/` ท้าย) ที่ backend ใช้สร้างลิงก์ชำระเงิน `/account/orders/:id/pay` ในอีเมล
+     "กลุ่มสำเร็จ" ของ GB-4 (spec 04) — ไม่ตั้ง = GB-4 (#89) ใส่ลิงก์เป็น path อย่างเดียว (ลูกค้ากดจากอีเมลไม่ได้) และ production มีเพียง
+     `storefrontUrlWarning` → fail-fast ใน OPS-7 (AC-17)
    - `OPS_ALERT_EMAIL` — mailbox รับ alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` (ADR-015, spec 06 กฎข้อ 7D, PAY-6; แยกจาก `EVOUCHER_ADMIN_EMAIL`)
    - Stripe webhook endpoint ทั้งสองต้องสมัคร event ตามรายการใน `docs/ops/production.md` หัวข้อ "Stripe webhooks" (OPS-10)
 10. Runbook ลำดับ release: migrate → รีสตาร์ต backend (server + worker, reindex search ตอนบูต) → ตรวจ index → ปล่อย storefront
@@ -109,6 +112,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-16 (OPS-11, follow-up review FS-10 #74) Given `apps/storefront/e2e` Then การ login admin และการตั้ง header `x-forwarded-proto` อยู่ใน helper เดียว
   `e2e/support/admin.ts` (grep: สตริง `x-forwarded-proto` และ path login ของ admin ไม่ปรากฏในไฟล์ `*.spec.ts` ใด); e2e admin ของ FS-10 และ e2e admin ตัวที่สอง
   ใช้ helper นี้และผ่าน; widget "Flash sale options" มี `data-testid="flash-sale-options"` ที่ `Container` และ e2e ของ FS-10 ไม่ใช้ locator `div` + `.last()` (grep)
+- AC-17 (OPS-7, รอบ 7) Given `NODE_ENV=production` ไม่มี `STOREFRONT_URL` (หรือค่าไม่ใช่ URL `http(s)://` ที่ parse ได้) When โหลด config/บูต backend Then throw พร้อมชื่อตัวแปร
+  (unit แบบ AC-13) — แทน `storefrontUrlWarning` ของ GB-4 ใน production; Given ไม่ใช่ production และไม่มีค่า Then ลิงก์เป็น path อย่างเดียวตามเดิมของ GB-4 และ log warning 1 ครั้งตอนบูต; Given `ci.yml` Then ทุก job ที่บูต backend ด้วย
+  `NODE_ENV=production` ตั้ง `STOREFRONT_URL` (unit อ่าน YAML); `apps/backend/.env.example` มีบรรทัด `STOREFRONT_URL=` (unit อ่านไฟล์)
 
 ## Tasks
 | ID | Task | Depends |
@@ -119,7 +125,7 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-4 | k6 scripts + nightly CI job + evidence (AC-2, AC-3) | FS-6, GB-7 |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
-| OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13) | OPS-2, PAY-1, CORE-3, AF-2 (#66) |
+| OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13); fail-fast `STOREFRONT_URL` (รอบ 7, AC-17 — ถ้า GB-4 ยังไม่ merge ตอนเริ่ม OPS-7 ให้ทำส่วนนี้เมื่อ GB-4 merge แล้ว ไม่แตะโค้ดอีเมลของ GB-4) | OPS-2, PAY-1, CORE-3, AF-2 (#66), GB-4 (#89, เฉพาะ AC-17) |
 | OPS-10 | (เล็ก, CI) commit test ของ `tools/ci/classify-changes.sh` (30 เคส) ให้รันใน `lint-typecheck` (AC-14) + หัวข้อ "Stripe webhooks" ใน `docs/ops/production.md` และ `--events` ของ `stripe listen` ใน `ci.yml` ตรงกัน พร้อม check อัตโนมัติ (AC-15) | PAY-2 |
 | OPS-8 | Worker ฟื้นตัว/จบ process เมื่อ Redis ของ event bus ขาด ตาม ADR-012 (accepted): `tools/ops/smoke-redis-outage.sh` (fail ก่อนแก้) + ตั้ง `redisOptions`/`workerOptions` ใน `infra-modules.ts` (AC-5) | OPS-2 |
 | OPS-9 | (เล็ก) typecheck ในเครื่องล้มที่ `group-buy-campaigns.spec.ts` เมื่อมี `.medusa/types` (typed `query.graph` ของ link) — แก้ที่ test ให้ type ตรงกับ type ของ link ที่ Medusa generate (เช่น อ่านผ่าน type ของ entity/cast ให้ตรง) **ไม่** exclude `.medusa/types` จาก tsconfig (ทำให้ typed query ทั้งโปรเจกต์หายและ CI กับเครื่อง dev typecheck ต่างกันมากขึ้น); ถ้าแก้ที่ test ไม่ได้ให้หยุดและรายงาน (AC-12) | GB-2a |
