@@ -57,7 +57,7 @@
 | PAY-4 | Refund e2e (refund บางส่วน → `partially_refunded` + credit line; AC-6 ปรับรอบ 8) | ☑ #94 |
 | PAY-5 | race QR หมดอายุ × จ่ายสำเร็จ — ยืนยันกรณี (b) + ADR-015 | ☑ #65 |
 | PAY-6a | ADR-015 A ฝั่ง backend: guard `authorizePaymentSession` + 409 `PAYMENT_ALREADY_COMPLETED` (AC-11, 13 a–g, 14, 12b ส่วน backend) | ☑ #82 |
-| PAY-6b | storefront poll + complete cart ทางสำรอง (AC-12, 12b) + alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND`/`OPS_ALERT_EMAIL` + runbook (AC-15, 16; รอบ 7: Medusa ไม่มี admin route ลบ payment session — ตรวจวิธีจริงก่อนเขียน runbook; รอบ 8: runbook กรณี payment captured แต่ collection ไม่ผูก order ตาม ADR-015 ภาคผนวก 2 accepted, AC-16b) | ◐ #97 ∥ #98 — 6a และ 6b ต้อง merge ก่อน release ที่เปิด PromptPay จริง |
+| PAY-6b | storefront poll + complete cart ทางสำรอง (AC-12, 12b) + alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND`/`OPS_ALERT_EMAIL` + runbook (AC-15, 16; รอบ 7: Medusa ไม่มี admin route ลบ payment session — ตรวจวิธีจริงก่อนเขียน runbook; รอบ 8: 6b2 (#97) เพิ่ม runbook "ตรวจก่อน refund" + script `refund-orphan-payment.ts` เรียก `refundPaymentsWorkflow` ตาม ADR-015 ภาคผนวก 2, AC-16b/16c) | ◐ #97 ∥ #98 — 6a และ 6b ต้อง merge ก่อน release ที่เปิด PromptPay จริง |
 **Release v0.2.0** — ชำระเงินจริงใน test mode; checklist go-live สำหรับ live keys
 
 ## M3 E-voucher — **v0.3.0**
@@ -107,7 +107,7 @@ hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (�
   summary ของ draft order → GB-3c · lock TTL 60s ของ GB-4 → spec 04 Q11 · `STOREFRONT_URL` → OPS-7 (spec 07 AC-17) · payout/reversal → AF-4 (#90) · order ยกเลิก (attribution) → AF-4b (#91) ·
   runbook ลบ payment session → PAY-6b
 - รอบ 8 (2026-10-26): OPS-8 ปิดด้วย smoke + alert (ADR-012 ภาคผนวก) → alert → OPS-3 (AC-18), smoke ใน CI → OPS-12 · AC-6 refund บางส่วน → spec 06 (PAY-4 #94) ·
-  refund ด้วยมือเมื่อ collection ไม่ผูก order → ADR-015 ภาคผนวก 2 (accepted) + spec 06 AC-16b (PAY-6b) · defect starter หน้า profile/order (qa #99) → CORE-23 · leave หลังหมดเวลา, ถ้อยคำ AC-32/AC-36 → spec 04 ·
+  refund payment ที่ collection ไม่ผูก order → script `refundPaymentsWorkflow` ตาม ADR-015 ภาคผนวก 2 (accepted) + spec 06 AC-16b/16c (PAY-6b2 #97) · defect starter หน้า profile/order (qa #99) → CORE-23 · leave หลังหมดเวลา, ถ้อยคำ AC-32/AC-36 → spec 04 ·
   ปัดยอด 2 ตำแหน่ง → GB-5 (AC-37) · nit สะสม → GB-N1
 
 ## ข้อตกลงการทำงานต่อ PR

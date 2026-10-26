@@ -13,9 +13,8 @@
 | DB pooling | `databaseDriverOptions` | ตั้งค่า pool size |
 | Static assets | File module S3 provider + CDN | S3 + CDN |
 | Caching ของ storefront | Next.js ISR/`revalidateTag` + Medusa publishable key | ค่าเริ่มต้นของ starter |
-| การเชื่อมต่อ Redis ของ event bus | option `redisOptions` (ioredis), `workerOptions` (BullMQ) ของ Redis Event Bus module | ตั้งค่า (ADR-012) |
 | Liveness | `GET /health` ของ Medusa (ไม่ตรวจ Redis/BullMQ worker) | ใช้ตามเดิม; ช่องว่าง (worker ตายตอนบูต) ครอบด้วย alert จาก log ตาม ADR-012 ภาคผนวก (AC-18) |
-| Redis reconnect ของ event bus | loader ของ `event-bus-redis` ตั้ง `maxRetriesPerRequest: null` เป็นค่า default แล้ว (OPS-8 #101) | ใช้ตามเดิม ไม่ตั้ง `redisOptions` เพิ่ม |
+| การเชื่อมต่อ Redis ของ event bus | option `redisOptions` (ioredis), `workerOptions` (BullMQ) ของ Redis Event Bus module; loader ตั้ง `maxRetriesPerRequest: null` เป็นค่า default แล้ว (OPS-8 #101) | ใช้ตามเดิม **ไม่ตั้ง** `redisOptions`/`workerOptions` (ADR-012 ภาคผนวก) |
 | Image ของ Next.js ขนาดเล็ก | `output: "standalone"` ของ Next.js | ใช้ตามเดิม (OPS-6) |
 
 ## เป้าหมาย (v1.0)
@@ -121,8 +120,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   `NODE_ENV=production` ตั้ง `STOREFRONT_URL` (unit อ่าน YAML); `apps/backend/.env.example` มีบรรทัด `STOREFRONT_URL=` (unit อ่านไฟล์)
 - AC-18 (OPS-3, ADR-012 ภาคผนวก, รอบ 8) Given `docs/ops/production.md` หัวข้อ "Alerts" Then มีกฎ alert ที่ match สตริง
   `Error running event bus worker` บน log ของ process `worker` พร้อมขั้นตอนตอบสนอง (restart worker) (unit/script grep); Given log ของ worker ในรูป
-  JSON ของ OPS-3 When Medusa log ข้อความนี้ (จำลองด้วยการเรียก logger ใน unit) Then บรรทัด log มี level `error` และระบุโหมด `worker`
-  (field ที่กฎ alert ใช้กรอง) — ไม่ hook/patch internal ของ event bus module
+  JSON ของ OPS-3 When Medusa log ข้อความนี้ (จำลองด้วยการเรียก logger ใน unit) Then บรรทัด log มี level `error` และ field `worker_mode: "worker"`
+  (field ที่กฎ alert ใช้กรอง) — logger ของ Medusa ไม่ใส่ field นี้เอง: OPS-3 เพิ่มใน formatter/transport ของ JSON log ที่ OPS-3 ตั้งเอง โดยอ่านค่าจาก env
+  `MEDUSA_WORKER_MODE` (ทางเลือกที่ยอมรับเท่ากัน: ตั้ง label ระดับ container ใน log shipper ตาม env เดียวกัน) — ไม่ hook/patch internal ของ event bus module หรือ logger ของ Medusa
 - AC-19 (OPS-12, รอบ 8) Given `.github/workflows/ci.yml` Then job `docker-worker-mode` มีขั้นรัน `tools/ops/smoke-redis-outage.sh` หลัง
   `smoke-worker-mode.sh` (unit อ่าน YAML); Given PR ที่ทำให้ script ล้ม (positive control ใน evidence เช่น ตั้ง subscriber ไม่ให้รัน) Then job ล้ม
 
