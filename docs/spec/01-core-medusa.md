@@ -92,8 +92,8 @@ none (storefront เท่านั้น)
    ของ prop `placeholder`, `title`, `alt`, `aria-label`, `label` ที่มีละติน ≥ 2 ตัว; ข้อยกเว้นตาม ADR-014 ข้อ 4 (ชื่อแบรนด์ เช่น "PromptPay")
    ใช้ `// eslint-disable-next-line no-restricted-syntax -- <เหตุผล>` ทีละบรรทัดเท่านั้น (ห้าม disable ทั้งไฟล์)
 5. ข้อความที่ storefront สร้างเองและผู้ใช้เห็นเป็นภาษาไทยทั้งหมด: label, ปุ่ม, heading, ข้อความว่าง/loading/error, `metadata` (title,
-   description) ของหน้า, ข้อความใน server action ที่ส่งกลับไปแสดง — ข้อมูลจาก backend (ชื่อสินค้า, option, ที่อยู่, error ของ Medusa API)
-   แสดงตามที่ได้รับ ไม่แปล
+   description) ของหน้า, ข้อความใน server action ที่ส่งกลับไปแสดง — ข้อมูลจาก backend (ชื่อสินค้า, option, ที่อยู่) แสดงตามที่ได้รับ ไม่แปล;
+   error ของ Medusa API แสดงตามที่ได้รับ **หรือ** แปลงเป็นข้อความไทยทั่วไปได้ (แก้ถ้อยคำรอบ 8 ตาม #103) — 401/403 → ข้อความไทยให้เข้าสู่ระบบใหม่
 6. ไม่มีตัวเลือกภาษา: ลบ component `language-select` และจุดที่ render (nav/side menu); storefront ไม่เขียน cookie `_medusa_locale`;
    ไม่แก้ `lib/util/get-locale-header.ts` (ไม่มี cookie → ไม่ส่ง `x-medusa-locale` → ได้เนื้อหาต้นฉบับภาษาไทย); `<html lang="th">` คงที่
 7. ทุก element ที่ e2e ต้องหา ต้องมี `data-testid` (ใช้ของ starter ถ้ามี) e2e ไม่ match ด้วยข้อความ; การตรวจ "เป็นภาษาไทย" ใช้ regex อักษรไทย
@@ -670,6 +670,7 @@ none
 ตาราง "Tasks (follow-up)"), CORE-21 (AC-70, AC-71; ตาราง "Tasks (follow-up รอบ 5)"), CORE-18 (AC-61 แก้ถ้อยคำ + AC-74, กฎข้อ 38) และ CORE-4d (AC-75; ตาราง Tasks ของ CORE-4)
 - nit review CORE-12b: comment ที่อธิบาย `authenticate(..., { allowUnauthenticated: true })` ซ้ำกันใน `src/api/store/ownership/middlewares.ts` บรรทัด 52-58
   → เหลือที่เดียว (แก้ใน PR ของ CORE-12b ก่อน merge ถ้ายังไม่ merge มิฉะนั้นแก้ใน PR ถัดไปที่แตะไฟล์นี้ เช่น CORE-21 — ไม่เปิด PR แยก)
+  **(รอบ 8)** ยังไม่ได้แก้ → ย้ายไปรวมในงานเล็ก GB-N1 (spec 04) พร้อม nit CORE-18: comment "onboarding status" ล้าสมัยใน `apps/storefront/src/middleware.ts` ราวบรรทัด 88
 
 ## Follow-up รอบ 7 จาก review/qa (2026-10-26)
 แยก CORE-4c เป็น CORE-4c1 (#92) / CORE-4c2 (ตาราง AC-49 + ตาราง Tasks ของ CORE-4); follow-up review #92 และ qa รวมเข้า CORE-4c2; nit review CORE-14a รวมเข้า CORE-14c
@@ -735,6 +736,41 @@ CORE-14c รับ nit AC-41
 | ID | Task | AC | Depends |
 |----|------|----|---------|
 | CORE-22 | (storefront เล็ก, qa #92 — defect ของ starter) title ของหน้า account ที่ล็อกอินแล้วตรงหน้า (D-1, กฎข้อ 46), เบอร์โทรว่างไม่แสดง `null` (D-2, กฎข้อ 47), panel แก้ไขที่ปิดไม่รับ click (D-3, กฎข้อ 48) + e2e | AC-82, AC-83, AC-84 | CORE-4c1 (#92) (∥ CORE-4c2; แตะ `modules/account`/`(main)/account` ที่ 4c2 แตะเฉพาะลิงก์ register/order card — ตัวที่ merge ทีหลัง rebase) |
+
+## Follow-up รอบ 8 จาก qa CORE-22 (#99) — defect ของ starter (2026-10-26)
+Out of scope: เปลี่ยนอีเมลของลูกค้า (ต้องเปลี่ยน auth identity — ไม่ทำใน v1)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa มีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| แก้เบอร์โทร | `POST /store/customers/me` (field `phone`) | ใช้ตามเดิม — builder ตรวจ validator 2.22.1 ว่าล้างค่าได้ด้วย `""` หรือ `null` ถ้าไม่ได้ทั้งคู่ให้หยุดและรายงาน |
+| เปลี่ยนอีเมล | `POST /store/customers/me` ไม่ใช่ช่องทางเปลี่ยนอีเมลที่ login ได้ (ผูกกับ auth identity) — builder ยืนยันจาก validator | ไม่ทำ: ซ่อน editor อีเมล แสดงอย่างเดียว |
+| หน้า 404 | `notFound()` ของ Next.js ตอบ HTTP 404 | ใช้ตามเดิม |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+49. (CORE-23, qa #99) ลูกค้าลบเบอร์โทรได้: บันทึกช่องว่าง → `phone` ของ customer ว่าง/null และหน้า profile แสดงข้อความ "ยังไม่ได้ระบุ" ตามกฎข้อ 47
+50. (CORE-23) editor อีเมลของ starter (TODO ที่แสดง success โดยไม่บันทึก) ถูกเอาออก — แสดงอีเมลแบบอ่านอย่างเดียว ไม่มีปุ่ม "แก้ไข" ของอีเมล
+51. (CORE-23) หน้า order detail ของ account ที่หา order ไม่พบ (id ไม่มีอยู่/ไม่ใช่ของลูกค้า) ตอบ HTTP **404** ผ่าน `notFound()` (ไม่ใช่ soft 404 ที่ตอบ 200)
+52. (CORE-23) เมื่อ token หมดอายุระหว่างบันทึก profile (เช่นเบอร์โทร) ต้องแสดงข้อความ error ภาษาไทย (หรือพาไปหน้า login) — ห้ามแสดง error ดิบของ React
+    (เช่น "Minified React error #441") หรือข้อความอังกฤษ
+53. (CORE-23) ข้อความ "ยังไม่ได้ระบุ" ของช่องที่ว่างใน profile จัดชิดแนวเดียวกับค่าของช่องอื่น (ไม่เยื้องขวา)
+
+### Acceptance criteria (follow-up รอบ 8)
+- AC-85 (กฎข้อ 49) Given customer ที่มีเบอร์ `0812345678` When ล้างช่องเบอร์ใน editor แล้วบันทึก Then `GET /store/customers/me` คืน `phone` ว่างหรือ null
+  และบล็อกเบอร์โทรแสดง "ยังไม่ได้ระบุ" (e2e)
+- AC-86 (กฎข้อ 50) Given หน้า profile Then ไม่มีปุ่มแก้ไขของอีเมล (test id ของ editor อีเมลไม่อยู่ใน DOM) และอีเมลของลูกค้าแสดงอยู่ (e2e) — e2e ของ AC-84 ส่วน "editor อีเมลยังปิด" ปรับใน CORE-23 ให้ตรวจ editor อื่นที่ยังมีแทน
+- AC-87 (กฎข้อ 51) Given customer ล็อกอิน When `GET /th/account/orders/details/order_doesnotexist` (และ order id ของ customer อื่น) Then HTTP status = 404 (e2e `page.goto` response)
+- AC-88 (กฎข้อ 52) Given customer อยู่หน้า profile แล้ว token ถูกลบ/หมดอายุ (ลบ cookie `_medusa_jwt` ใน test) When บันทึกเบอร์โทร Then หน้าไม่มีข้อความ `Minified React error`
+  และไม่มี error ดิบ; ข้อความ error ที่แสดง (ถ้ามี) มีอักษรไทย หรือ URL เป็นหน้า login (e2e)
+- AC-89 (กฎข้อ 53) Given customer ที่ `phone` null When เปิด profile Then `boundingBox().x` ของข้อความ "ยังไม่ได้ระบุ" (test id) เท่ากับ x ของค่าในบล็อกชื่อ (±2px) (e2e)
+
+### Tasks (follow-up รอบ 8)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-23 | (storefront เล็ก, qa #99 — defect ของ starter) ลบเบอร์โทรได้, เอา editor อีเมลออก, order ไม่พบตอบ 404, error token หมดเป็นไทย, จัดแนว "ยังไม่ได้ระบุ" (กฎข้อ 49–53) + e2e | AC-85..89 | CORE-22 (#99) (แตะ `modules/account` profile เดียวกัน); ∥ CORE-4c2 (#102/#103 — แตะ order detail ร่วมได้ ตัวที่ merge ทีหลัง rebase) |
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
