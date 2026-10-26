@@ -9,17 +9,13 @@ test.describe("latinWordsOutsideAllowList", () => {
     expect(latinWordsOutsideAllowList("฿1,000 · 5 x")).toEqual([])
   })
 
-  test("ชื่อแบรนด์ที่ยกเว้นไม่นับ", () => {
-    expect(latinWordsOutsideAllowList("© 2026 Medusa Store สงวนลิขสิทธิ์")).toEqual([])
-    expect(latinWordsOutsideAllowList("ขับเคลื่อนโดย Medusa และ Next.js")).toEqual([])
-    expect(latinWordsOutsideAllowList("ดูบน GitHub")).toEqual([])
+  test("CORE-18: ชื่อ starter ไม่ได้รับยกเว้น", () => {
+    expect(latinWordsOutsideAllowList("© 2026 Medusa Store สงวนลิขสิทธิ์")).toEqual(["Medusa", "Store"])
+    expect(latinWordsOutsideAllowList("ดูบน GitHub")).toEqual(["GitHub"])
   })
 
   test("คำอังกฤษอื่นถูกรายงาน", () => {
     expect(latinWordsOutsideAllowList("Cart (0)")).toEqual(["Cart"])
     expect(latinWordsOutsideAllowList("บัญชี Account")).toEqual(["Account"])
-    expect(latinWordsOutsideAllowList("Medusa Storefront")).toEqual(["Storefront"])
-    // จุดในชื่อแบรนด์ต้องตรงตัว ไม่ใช่ wildcard ของ regex
-    expect(latinWordsOutsideAllowList("Nextxjs")).toEqual(["Nextxjs"])
   })
 })
