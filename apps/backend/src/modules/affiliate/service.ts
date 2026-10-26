@@ -19,6 +19,18 @@ export type CommissionSummaryFilters = {
   to?: Date
 }
 
+export type PayableEntryFilters = {
+  affiliate_id: string
+  period_to: Date
+}
+
+export type PayableEntry = {
+  id: string
+  amount: string
+  currency: string
+  status: "approved" | "reversed"
+}
+
 export type CommissionSummaryRow = {
   affiliate_id: string
   currency: string
@@ -48,6 +60,29 @@ class AffiliateModuleService extends MedusaService({
 
   async signClickToken(affiliateId: string, clickedAt: Date): Promise<string> {
     return signAffiliateToken(affiliateId, clickedAt, this.options_.tokenSecret ?? "")
+  }
+
+  // Rule 19: approved/reversed entries created before period_to that are not in any live payout
+  // (a cancelled payout is soft-deleted, so its entries count as free again). Not cut by period_from.
+  @InjectManager()
+  async listPayableCommissionEntries(
+    filters: PayableEntryFilters,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<PayableEntry[]> {
+    return await sharedContext.manager!.execute<PayableEntry[]>(
+      `SELECT e.id, e.raw_amount->>'value' AS amount, e.currency, e.status
+       FROM affiliate_commission_entry e
+       WHERE e.deleted_at IS NULL
+         AND e.affiliate_id = ?
+         AND e.status IN ('approved', 'reversed')
+         AND e.created_at < ?
+         AND NOT EXISTS (
+           SELECT 1 FROM affiliate_payout p
+           WHERE p.deleted_at IS NULL AND p.affiliate_id = e.affiliate_id AND e.id = ANY (p.entry_ids)
+         )
+       ORDER BY e.created_at, e.id`,
+      [filters.affiliate_id, filters.period_to]
+    )
   }
 
   // Ledger totals per affiliate/currency/status aggregated in SQL (spec 05 non-functional); window is [from, to)
