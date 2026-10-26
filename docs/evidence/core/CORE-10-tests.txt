@@ -42,7 +42,7 @@ PASS src/scripts/__tests__/env-example.unit.spec.ts
 Tests:       1 passed, 1 total
 
 ### อื่นๆ
-- pnpm --filter backend test:unit: Test Suites 36 passed, Tests 301 passed
+- pnpm --filter backend test:unit (หลัง merge origin/develop): Test Suites 37 passed, Tests 309 passed
 - integration-tests/http/customer-only-store.spec.ts (AC-1 ระดับ API บน seed ใหม่): 11 passed
 - pnpm lint: 0 errors (storefront warnings เดิม), backend "No lint issues found"
 - pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
