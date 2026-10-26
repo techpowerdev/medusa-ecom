@@ -18,7 +18,8 @@ storefront จาก **Medusa Next.js Starter** เราขยายควา�
 ## ข้อห้ามที่ต่อรองไม่ได้ (จากเป้าหมายของ owner)
 1. **ห้ามสร้างสิ่งที่ Medusa ทำได้ดีอยู่แล้วขึ้นมาใหม่** ก่อนเขียน module, service,
    workflow, API route หรือหน้า admin ให้ตรวจสอบ `docs/spec/01-core-medusa.md` และ
-   Medusa docs ก่อน หาก Medusa มีให้แล้ว → ใช้/ขยายต่อ หากคิดว่าของ Medusa
+   Medusa docs ก่อน รวมถึง plugin/integration ของ Medusa, partner และ community ที่
+   https://medusajs.com/integrations (ต้องรองรับ Medusa v2 เวอร์ชันที่ pin และเพิ่ม dependency ผ่าน spec/ADR) หาก Medusa มีให้แล้ว → ใช้/ขยายต่อ หากคิดว่าของ Medusa
    ไม่เพียงพอ → เขียน ADR ใน `docs/decisions/` ก่อน และต้องได้รับการอนุมัติ
 2. **ทำตาม convention ของ Medusa**: module อยู่ใน `src/modules/`, workflow อยู่ใน
    `src/workflows/`, API route อยู่ใน `src/api/`, subscriber อยู่ใน `src/subscribers/`,
@@ -138,6 +139,10 @@ pnpm --filter storefront build && pnpm --filter storefront start
   (`integration-tests/helpers/customer.ts`)
 - ฟอร์ม/ปุ่ม admin และ API ที่สร้างข้อมูลต้องกันกดซ้ำ/ยิงพร้อมกัน (disable ระหว่างส่ง + lock หรือ idempotent ฝั่ง backend)
 - Stripe ต้องตั้ง secret `STRIPE_TEST_API_KEY` และ `STRIPE_TEST_PUBLISHABLE_KEY` ของบัญชีเดียวกันพร้อมกัน (test mode เท่านั้น)
+- `medusaIntegrationTestRunner` reset DB ก่อนทุก test → ข้อมูลที่สร้างใน `beforeAll` ของ `describe` ซ้อนจะหายหลัง test แรก
+  ให้สร้างข้อมูลที่ test ต้องใช้ใน `beforeEach` (หรือสร้างใน test นั้นเอง)
+- อย่าปล่อย error ของ axios หลุดออกจาก test (object มี circular reference → serialize เป็น JSON ไม่ได้ ทำให้ jest worker crash)
+  ให้ catch แล้วห่อเป็น `Error` ธรรมดาที่มีเฉพาะ status/body เช่น `` new Error(`${status} ${JSON.stringify(data)}`) ``
 
 ## Agents (`.claude/agents/`)
 - `planner` — แปลงเป้าหมายเป็น/อัปเดต spec + task list + ADR ไม่เขียนโค้ด

@@ -2,6 +2,7 @@
 
 สัญลักษณ์: ☐ ยังไม่ทำ · ◐ อยู่ใน PR · ☑ merge เข้า develop แล้ว · 🚀 release แล้ว
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
+สถานะล่าสุดตาม PR #1–#71 (2026-10-26): PR ที่เปิดอยู่ = #64, #65, #67, #68, #69, #70, #71
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -16,60 +17,78 @@
 | CORE-3 | Resend notifications + templates | ☑ #8 |
 | CORE-4a | THB format + theme tokens + Noto Sans Thai + Vitest (ADR-008) | ☑ #19 |
 | CORE-5b ∥ CORE-8 ∥ CORE-9 | เครื่องมือ evidence e2e ∥ ฟอนต์ ui-preset → Noto Sans Thai ∥ ราคา THB หน้า store | ☑ #40 ∥ ☑ #41 ∥ ☑ #45 |
-| CORE-4b | ข้อความ UI ไทยตรงในโค้ด (ADR-014): ESLint กันข้อความละติน, ลบ language-select, layout/home/PLP/PDP | ☐ (← 4a, 5b, 8 พร้อมแล้ว) |
-| CORE-4c ∥ 4d | ข้อความไทย: cart/account/order/policies ∥ checkout (รวมข้อความของ PAY-2) | ☐ (4c ← 4b; 4d ← 4b, PAY-2) |
+| CORE-4b (4b1) | ESLint กันข้อความละติน, ลบ language-select, layout shell/home (ADR-014) | ☑ #57 |
+| CORE-4b2 | ข้อความไทย store/PLP, search, categories, collections, PDP, `/buy` + hreflang `th-<CC>` (owner 2026-10-26) | ◐ #70 |
+| CORE-4c ∥ 4d | ข้อความไทย: cart/account/order/policies ∥ checkout (รวมข้อความของ PAY-2) | ☐ (4c ← 4b2; 4d ← 4b2, PAY-2 ☑) |
 | CORE-5 | Playwright + convention การเก็บ evidence | ☑ #7 |
 | CORE-6 | store route เฉพาะ customer + e2e AC-1..4, AC-6 | ☑ #36 |
 | CORE-12 | ownership middleware: cart/payment-collection/order ต้องเป็นของ customer ที่ล็อกอิน (ADR-013) | ☑ #51 |
+| CORE-13 | `POST /store/returns` ต้องเป็นเจ้าของ order + ปิด order transfer ทั้งชุด | ☑ #56 |
+| CORE-16 | ปิด `return_shipping.price`/`receive_now`/`location_id` บน `POST /store/returns` + seed "Standard return" | ☑ #63 |
+| CORE-17 | **ความปลอดภัย** return option ต้อง `is_return`/`enabled_in_store` (`eq` เท่านั้น) + service zone ของ order | ◐ #71 (รอ spec AC-60a..f merge) |
+| CORE-18 | เนื้อหาร้านไทย placeholder แทนโฆษณา starter + ลบ `product-onboarding-cta` | ☐ (← CORE-4b2) |
 | CORE-7 | Translation module + store locales | ☑ #26 |
 | OPS-1 | Dockerfiles, worker mode, health | ☑ #9 (+ hotfix #18) |
-**Release v0.1.0** — ร้านค้าที่เข้าชมได้, ชำระเงิน manual
+**Release v0.1.0** — ร้านค้าที่เข้าชมได้, ชำระเงิน manual (เงื่อนไข release แรกที่เปิดให้ลูกค้าจริง: CORE-12 ☑, CORE-12b, CORE-17, CORE-18)
 
 ไม่บล็อก release v0.1.0:
 | Task | งาน | สถานะ |
 |------|-----|--------|
-| CORE-10 ∥ CORE-11 | seed follow-up (ชื่อไทย, idempotency; ค่าส่งคง placeholder) ∥ อีเมล shipped / `no_notification` | ☐ (← CORE-2 / CORE-3; CORE-10 แนะนำหลัง CORE-6) |
-| CORE-13 | `POST /store/returns` ต้องเป็นเจ้าของ order + ปิด order transfer ทั้งชุด | ☐ (← CORE-12) |
-| CORE-14 | storefront `/buy` บังคับล็อกอิน, ปิด UCP/`cart/resume`, no-JS login (QA D-1); เกิน ~400 LOC แยก 14a/14b | ☐ (← CORE-6) |
-| CORE-12b ∥ CORE-15 | ownership ของ `cart_id` ใน query products/variants ∥ หน้า `/store` หยุดยิงซ้ำเมื่อ search error | ☐ (← CORE-12 / CORE-9) |
+| CORE-10 | seed follow-up (ชื่อสินค้า + ชื่อ option ไทย, idempotency; ค่าส่งคง placeholder) | ☐ (← CORE-2; แนะนำหลัง CORE-6) |
+| CORE-11 | อีเมล shipped เฉพาะ item ใน fulfillment / `no_notification` | ◐ #64 |
+| CORE-12b | **ความปลอดภัย** ownership ของ `cart_id` ใน query products/variants (ควรก่อน release แรกที่เปิดจริง) | ☐ (← CORE-12) |
+| CORE-14 | storefront `/buy` บังคับล็อกอิน, ปิด UCP/`cart/resume`, no-JS login, ลบหน้า order transfer; เกิน ~400 LOC แยก 14a/14b | ☐ (← CORE-6) |
+| CORE-15 | หน้า `/store` หยุดยิงซ้ำเมื่อ search error | ☐ (← CORE-9) |
+| CORE-19a ∥ CORE-19b | ตัวนับ cart + search drawer 375px ∥ ปุ่ม "Continue to review" ไม่ค้าง | ☐ (19a ← CORE-4b2; 19b ← CORE-4d) |
+| CORE-20 | หน้าขอคืนสินค้าจาก order detail | ☐ (← CORE-17, CORE-4c) |
+| CORE-21 | return option: stock location ต้องอยู่ใน sales channel ของ order (follow-up #71) | ☐ (← CORE-17) |
 
 ## M2 การชำระเงิน
 | Task | งาน | สถานะ |
 |------|-----|--------|
 | PAY-1 | Stripe provider + webhooks | ☑ #13 |
-| PAY-2 | UI checkout บัตร + PromptPay + e2e | ◐ #48 |
-| PAY-3 | หน้าชำระเงิน order (สำหรับ group buy) | ☐ (← PAY-2) |
+| PAY-2 | UI checkout บัตร + PromptPay + e2e | ☑ #48 |
+| PAY-3 | หน้าชำระเงิน order (สำหรับ group buy) | ☐ (← PAY-2; merge หลัง PAY-5 ถ้าทำพร้อมกัน) |
 | PAY-4 | Refund e2e | ☐ (← PAY-2) |
-| PAY-5 | race QR หมดอายุ × จ่ายสำเร็จ (reconciliation) | ☐ (← PAY-2; แนะนำก่อน PAY-3) |
+| PAY-5 | race QR หมดอายุ × จ่ายสำเร็จ — ยืนยันกรณี (b) + ADR-015 | ◐ #65 |
+| PAY-6 | ADR-015 A + D: guard `authorizePaymentSession` + 409 `PAYMENT_ALREADY_COMPLETED` + complete cart ทางสำรอง + alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + runbook (แยก 6a/6b ได้) | ☐ (← PAY-5 #65) — ต้อง merge ก่อน release ที่เปิด PromptPay จริง |
 **Release v0.2.0** — ชำระเงินจริงใน test mode; checklist go-live สำหรับ live keys
 
 ## M3 E-voucher — **v0.3.0**
-EV-1 ☑ #15 · EV-2 ☑ #25 · EV-3 ☑ #31 · EV-4 ☐ (← EV-2, EV-3, CORE-3) · EV-5 ☑ #43 (ไม่รวม resend) · EV-5b ☐ (← EV-4, EV-6: resend) · EV-6 ☑ #39 · EV-7 ☐ (← EV-4) · EV-8 ◐ #54 · EV-9 ☐ (← EV-2, EV-6: `low_stock_threshold`, link code↔order, ฟอร์ม admin)
+EV-1 ☑ #15 · EV-2 ☑ #25 · EV-3 ☑ #31 · EV-4 ◐ #67 (+ ciphertext ใน notification, ส่งล้มคง `allocated`, backordered ทั้ง line — owner 2026-10-26) ·
+EV-5 ☑ #43 · EV-5b ☐ (← EV-4, EV-6: resend รวม `allocated`) · EV-6 ☑ #39 · EV-7 ☐ (← EV-4; บังคับ Digital method) · EV-8 ☑ #54 ·
+EV-9 ☐ (← EV-2, EV-6) · EV-10 ☐ (← EV-5, EV-8: reservation ตอน void, วันที่จริง, inventory item ร่วม, คืน `requires_shipping`, shipping profile Digital — ก่อน release ที่มี EV-7)
 
 ## M4 Flash sale — **v0.4.0**
-PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ◐ #38 · FS-10 ☐ (← FS-5: กันกดซ้ำด้วย useRef) · FS-7 ◐ #53 · FS-6 ☐ (← FS-4, FS-7, PROMO-1, CORE-4b) · FS-8 ☐ (← FS-2: retry การคืนโควตา) · FS-9 ☐ (ทางเลือก รอ owner สั่ง, ← FS-5) · PROMO-2 ◐ #50
+PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ☑ #38 · FS-7 ☑ #53 · PROMO-2 ☑ #50 ·
+FS-10 ☐ (← FS-5: กันกดซ้ำด้วย useRef) · FS-6 ☐ (← FS-4, FS-7, PROMO-1, CORE-4b2) · FS-8 ◐ #69 (retry การคืนโควตา) · FS-11 ☐ (← FS-8: เส้นทาง `payment.refunded` เข้า workflow) ·
+FS-9 ☐ (ทางเลือก รอ owner สั่ง, ← FS-5)
 (FS-2 คืนโควตาเมื่อ cancel หรือ refund เต็มจำนวน ไม่ว่ามาจาก return — owner 2026-10-25)
 
 ## M5 Group buying — **v0.5.0**
-GB-1 ☑ #17 · ADR-011 ☑ #33 · GB-2a ☑ #42 → GB-2b ☑ #49 → GB-3 (← GB-2b, PROMO-1, PROMO-2, CORE-12) → GB-4 → GB-5 (← PAY-3) → GB-7 ; GB-6 (← GB-2b) · GB-2c ☐ (← GB-2b: default `is_tax_inclusive=true`)
+GB-1 ☑ #17 · ADR-011 ☑ #33 · GB-2a ☑ #42 → GB-2b ☑ #49 → GB-2c ☑ #58 ·
+GB-3 ◐ #68 (+ ห้าม complete cart ที่มี `GB-*`, 409 `GB_CART_ALREADY_JOINED` — owner 2026-10-26) → (GB-3b ☐ leave ∥ GB-4 ☐) → GB-5 ☐ (← PAY-3) → GB-7 ☐ (← GB-3b; ล้าง cart หลัง join) ;
+GB-6 ☐ (← GB-2b)
 
 ## M6 Affiliate — **v0.6.0**
-AF-1 ☑ #11 · AF-2 ☐ · AF-5 ☑ #35 → AF-3 → (AF-4 ∥ AF-7) → AF-8 ; AF-5 → AF-6 ∥ AF-9 (ยกเลิก payout draft)
+AF-1 ☑ #11 · AF-2 ☑ #66 · AF-5 ☑ #35 → AF-3 ☐ (← AF-2) → (AF-4 ∥ AF-7) → AF-8 ; AF-5 → AF-6 ∥ AF-9 ☐ (ยกเลิก payout draft)
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
-OPS-2 ☑ #27 · OPS-3 ☐ · OPS-5 ☐ · OPS-6 ☑ #47 · OPS-9 ☐ (typecheck group-buy test กับ `.medusa/types`) · OPS-7 ☐ · OPS-8 ☐ (← OPS-2) ; OPS-4 ☐ (← FS-6, GB-7)
+OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☐ · OPS-5 ☐ · OPS-7 ☐ (← OPS-2, PAY-1, CORE-3, AF-2 ☑) · OPS-8 ☐ (← OPS-2) · OPS-9 ☐ (typecheck group-buy test กับ `.medusa/types`) ·
+OPS-10 ☐ (← PAY-2: test ของ `classify-changes.sh` ใน CI + รายการ event ของ Stripe webhooks ตรงกับ `stripe listen`) ; OPS-4 ☐ (← FS-6, GB-7)
 
-hotfix: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM)
+hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
-## Backlog follow-up (แปลงเป็น task แล้ว 2026-10-25 — รายละเอียด/AC อยู่ใน spec)
-- ฟอนต์ ui-preset → CORE-8 · เครื่องมือ evidence e2e → CORE-5b (dependency ของ CORE-4b) · ราคา THB หน้า store → CORE-9 (dependency ของ CORE-4c)
-- seed (ชื่อไทย, idempotency, `.env.example`; ค่าส่ง Standard คง placeholder จนกว่า owner ตัดสิน Q-F1) → CORE-10 · อีเมล shipped / `no_notification` → CORE-11
-- `pp_system_default` ใน prod (D1) + fail-fast `RESEND_API_KEY` + checklist go-live → OPS-7 (ADR-010 accepted)
-- `payment_method_types: ["card"]` + `stripe listen --forward-to` ซ้ำ → PAY-2
-- `void_reason` → EV-5 · `requires_shipping=false`, `expires_at` วันที่ล้วน, error ถูกกลบตอน compensation → EV-8
+## Backlog follow-up (แปลงเป็น task แล้ว — รายละเอียด/AC อยู่ใน spec)
+- ฟอนต์ ui-preset → CORE-8 · เครื่องมือ evidence e2e → CORE-5b · ราคา THB หน้า store → CORE-9
+- seed (ชื่อไทย + ชื่อ option ไทย, idempotency, `.env.example`; ค่าส่ง Standard คง placeholder จนกว่า owner ตัดสิน Q-F1) → CORE-10 · อีเมล shipped / `no_notification` → CORE-11
+- `pp_system_default` ใน prod (D1) + fail-fast `RESEND_API_KEY`/`AFFILIATE_TOKEN_SECRET` + checklist go-live → OPS-7 (ADR-010 accepted)
+- race PromptPay หมดอายุ × จ่ายสำเร็จ → PAY-5 (ยืนยัน) → PAY-6 (ADR-015 accepted A + D)
+- `void_reason` → EV-5 · `requires_shipping=false`, `expires_at` วันที่ล้วน → EV-8 · reservation/วันที่จริง/inventory item ร่วม/shipping profile Digital → EV-10
 - worker ตายหลัง `ETIMEDOUT` → OPS-8 (ADR-012 accepted) · standalone / `agentRules` / `testMatch` → OPS-6
-- error 409 ของ Medusa (`CONFLICT`) เขียนทับ `code`/`message` เป็น `invalid_state_error` → PROMO-2 (spec 03 กฎข้อ 13, AC-12)
-- cart route ไม่บังคับ `authenticate("customer")` + test PROMO-1/FS-3 ที่ไม่มี token → อยู่ใน CORE-6 (เงื่อนไข CI เขียว ไม่แก้นิยาม task)
+- error 409 ของ Medusa (`CONFLICT`) เขียนทับ `code`/`message` → PROMO-2 ☑ (spec 03 กฎข้อ 13)
+- returns: ownership → CORE-13 ☑ · ฟิลด์ต้องห้าม → CORE-16 ☑ · ตรวจ option → CORE-17 · sales channel ของ location → CORE-21 · หน้า storefront → CORE-20
+- cart หลัง join group buy → GB-3 (backend) + GB-7 (storefront) · leave → GB-3b
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →
