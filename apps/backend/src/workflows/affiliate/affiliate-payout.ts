@@ -25,7 +25,8 @@ export type MarkAffiliatePayoutPaidInput = {
 }
 
 /**
- * Q8 / rule 19: approved + reversed entries created before period_to that are not in any payout yet
+ * Q8 / rule 19: approved + reversed entries (reversed only when its source line is approved/paid — owner 2026-10-26)
+ * created before period_to that are not in any payout yet
  * (filtered in the DB). Entries left over from an earlier round (net ≤ 0) are picked up here — that is the carry-over.
  */
 export const prepareAffiliatePayoutStep = createStep(

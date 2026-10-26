@@ -1,0 +1,63 @@
+# AF-4 (spec 05 รอบ 7) — reversal (กฎ 27, 28) + maturity job (Q8) + index (status, matures_at) + payout กฎ 19
+# วันที่: 2026-10-27 01:37 +07, branch feat/AF-4-reversal-maturity (merge origin/develop หลัง #91 แล้ว), Node v22.23.3
+
+## Unit: src/modules/affiliate/utils/__tests__/reversal.unit.spec.ts
+  affectedFractions
+    ✓ affects every line fully when the order is canceled (1 ms)
+    ✓ affects every line fully when refunds cover all captures (AC-5)
+    ✓ uses the received return quantity of each line otherwise (Q3)
+    ✓ counts items received as damaged (dismissed) as returned too (1 ms)
+  planReversals
+    ✓ reverses the full entry as a negative reversed entry (AC-5)
+    ✓ reverses entry.amount × fraction for a partial return, rounded half-up to 2 decimals (Q3)
+    ✓ keeps a fraction such as 1/3 exact until rounding the money (1 ms)
+    ✓ AC-30: qty 4 returned 1 then 3 more reverses −25 then −75; received 1 + dismissed 1 reverses −50
+    ✓ reverses approved and paid entries too
+    ✓ is idempotent: existing reversals count toward the target (redelivered/repeated events)
+    ✓ only adds the difference when a later event affects more of the line
+    ✓ never reverses more than earned and ignores unaffected lines
+  selectMaturedEntryIds
+    ✓ approves pending entries whose line net (including reversals) is positive (Q8)
+Test Suites: 1 passed, 1 total
+Tests:       13 passed, 13 total
+
+## Integration (http): integration-tests/http/affiliate-reversal.spec.ts
+# Red ที่ยืนยันแล้วระหว่างทำ: payout ก่อนแก้ listPayableCommissionEntries ได้ reversed -100 เพิ่ม; damaged ก่อนดึง return_dismissed_quantity ไม่มี reversal; ก่อนสร้าง subscriber/workflow ทั้งไฟล์ล้ม (module not found)
+    ✓ AC-29: attribution racing a cancel of the same order nets 0 and leaves no unreversed pending entry (3783 ms)
+    AC-5 reversal
+      ✓ a full refund appends a reversed −฿100 entry with matures_at null; net is 0 and the entry is untouched (1919 ms)
+      ✓ AC-31: a partial refund reverses nothing; refunding the rest reverses every line to net 0; redelivery adds nothing (2241 ms)
+      ✓ a refunded payment without an order is a no-op (no lock, no entry) (365 ms)
+      ✓ order.canceled reverses the whole commission (937 ms)
+      ✓ AC-30: returning 1 of 4 reverses −฿25, returning the other 3 reverses −฿75 and the line nets 0 (3073 ms)
+      ✓ AC-30: one return with 1 received + 1 dismissed (damaged) of 4 reverses −฿50 (2025 ms)
+      ✓ AC-29: the reversal of a cancel reads the order only while holding affiliate-attribution:<order_id> (1040 ms)
+    AC-6 maturity
+      ✓ hold_days=14: the entry stays pending before 14 days and becomes approved only after (1414 ms)
+      ✓ a matured entry whose line is fully reversed is not approved (Q8) (1587 ms)
+      ✓ approves matured entries in batches (1549 ms)
+      ✓ the daily job approves entries that matured by now (747 ms)
+    payout with reversals
+      ✓ a full reversal before the hold ends does not reduce the payout (1875 ms)
+      ✓ a reversal after approval is deducted from the payout (2206 ms)
+      ✓ AC-28: payouts pick a reversal only once its source line is approved or paid (entry_ids asserted) (369 ms)
+Test Suites: 1 passed, 1 total
+Tests:       15 passed, 15 total
+
+## Integration (http): affiliate-admin.spec.ts
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+
+## Integration (http): affiliate-attribution.spec.ts
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+
+## Integration (http): flash-sale-release.spec.ts
+Test Suites: 1 passed, 1 total
+Tests:       11 passed, 11 total
+
+## Unit suite ทั้งหมด
+Test Suites: 47 passed, 47 total
+Tests:       474 passed, 474 total
+
+## pnpm lint && pnpm typecheck && build: ผ่าน (0 errors)
