@@ -85,11 +85,12 @@ type AdminOrder = {
   payment_status: string
   total: number
   payment_collections: { payments: { id: string; amount: number; refunds: { amount: number }[] }[] }[]
+  credit_lines: { amount: number }[]
 }
 
 async function adminOrder(request: APIRequestContext, admin: Headers, orderId: string): Promise<AdminOrder> {
   const res = await request.get(
-    `${BACKEND_URL}/admin/orders/${orderId}?fields=id,payment_status,total,*payment_collections.payments,*payment_collections.payments.refunds`,
+    `${BACKEND_URL}/admin/orders/${orderId}?fields=id,payment_status,total,*payment_collections.payments,*payment_collections.payments.refunds,*credit_lines`,
     { headers: admin }
   )
   expect(res.status()).toBe(200)
@@ -106,7 +107,7 @@ async function stripeRefunds(request: APIRequestContext, intentId: string): Prom
   return (await res.json()).data
 }
 
-test("AC-6: admin refund ฿100 บน order บัตรที่ captured → Stripe refund 10000 สตางค์, order แสดงสถานะ refund (partially_refunded)", async ({
+test("AC-6: admin refund ฿100 บน order บัตรที่ captured → Stripe refund 10000 สตางค์, order แสดงสถานะ refund (partially_refunded) และมี credit line ฿100", async ({
   page,
   request,
   step,
@@ -147,7 +148,7 @@ test("AC-6: admin refund ฿100 บน order บัตรที่ captured → 
     await expect(drawer).toBeHidden({ timeout: 30_000 })
   })
 
-  await step("Medusa: refund ฿100 บน payment, order เป็น partially_refunded และ admin แสดงสถานะ", async () => {
+  await step("Medusa: refund ฿100 บน payment, order เป็น partially_refunded มี credit line ฿100 และ admin แสดงสถานะ", async () => {
     await expect
       .poll(async () => {
         const order = await adminOrder(request, admin, paid.orderId)
@@ -155,7 +156,11 @@ test("AC-6: admin refund ฿100 บน order บัตรที่ captured → 
       })
       .toEqual([REFUND_THB])
     // ฿100 น้อยกว่ายอด order → Medusa คำนวณเป็น partially_refunded (refund เต็มยอดจึงเป็น refunded)
-    expect((await adminOrder(request, admin, paid.orderId)).payment_status).toBe("partially_refunded")
+    const refunded = await adminOrder(request, admin, paid.orderId)
+    expect(refunded.payment_status).toBe("partially_refunded")
+    // spec 06 AC-6 (GB-N1): refundPaymentWorkflow ของ Medusa 2.22.1 สร้าง credit line ของ order 1 รายการ ยอดสัมบูรณ์ = ยอด refund
+    expect(refunded.credit_lines).toHaveLength(1)
+    expect(Math.abs(Number(refunded.credit_lines[0].amount))).toBe(REFUND_THB)
     await page.reload()
     await expect(page.getByText("Partially refunded").first()).toBeVisible()
     await evidence("02-admin-order-refunded")

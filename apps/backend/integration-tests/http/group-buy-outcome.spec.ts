@@ -15,6 +15,7 @@ import { failGroupWorkflow, succeedGroupWorkflow } from "../../src/workflows/gro
 import groupBuyDeadlineJob from "../../src/jobs/group-buy-deadline"
 import { renderEmailTemplate } from "../../src/modules/resend/templates"
 import { GROUP_BUY_MODULE } from "../../src/modules/group_buy"
+import { GB_DEADLINE_OUTCOME_CHANGED } from "../../src/modules/group_buy/errors"
 import type GroupBuyModuleService from "../../src/modules/group_buy/service"
 
 jest.setTimeout(240 * 1000)
@@ -306,6 +307,8 @@ medusaIntegrationTestRunner({
           throwOnError: false,
         })
         expect(errors[0]?.error?.type).toEqual("not_allowed")
+        // GB-N1: code นี้ทำให้ deadline job log เป็น warn (deadlineSettleLogLevel)
+        expect(errors[0]?.error?.code).toEqual(GB_DEADLINE_OUTCOME_CHANGED)
         expect((await groupOf(group.id)).status).toEqual("open")
         const members = await membershipsOf(group.id)
         expect(members.map((m) => m.status)).toEqual(["joined", "joined"])
@@ -318,6 +321,37 @@ medusaIntegrationTestRunner({
         // รอบถัดไปของ job ตัดสินจากตัวนับล่าสุด
         await groupBuyDeadlineJob(getContainer())
         expect((await groupOf(group.id)).status).toEqual("succeeded")
+      })
+
+      it("GB-N1: deadline job logs an at_deadline outcome mismatch as warn, not error", async () => {
+        const campaign = await createCampaign({ target_value: 3 })
+        const group = await poolGroup(campaign.id)
+        await joinAs(group.join_token, (await customer()).id)
+        await joinAs(group.join_token, (await customer()).id)
+        await expireGroup(group.id)
+        // แบบเดียวกับ review #89: join คนสุดท้าย commit ระหว่างที่ job รอ lock
+        await groupBuy().updateGroupBuyGroups({ id: group.id, progress_orders: 3 })
+        const service = groupBuy()
+        const logger = getContainer().resolve(ContainerRegistrationKeys.LOGGER)
+        // snapshot ของ job (นอก lock) เห็น progress เก่า 2 → เลือก fail; ใต้ lock อ่านได้ 3 → ผลไม่ตรง
+        const original = service.listGroupBuyGroups.bind(service)
+        const list = jest
+          .spyOn(service, "listGroupBuyGroups")
+          .mockImplementationOnce(async (...args: Parameters<typeof original>) =>
+            (await original(...args)).map((g) => (g.id === group.id ? { ...g, progress_orders: 2 } : g))
+          )
+        const warn = jest.spyOn(logger, "warn")
+        const error = jest.spyOn(logger, "error")
+        try {
+          await groupBuyDeadlineJob(getContainer())
+          expect(warn).toHaveBeenCalledWith(expect.stringContaining(group.id))
+          expect(error).not.toHaveBeenCalledWith(expect.stringContaining(group.id))
+        } finally {
+          list.mockRestore()
+          warn.mockRestore()
+          error.mockRestore()
+        }
+        expect((await groupOf(group.id)).status).toEqual("open")
       })
 
       it("AC-9: fail twice (admin route + workflow) → no duplicate cancellation or emails; succeed after fail → 400", async () => {
