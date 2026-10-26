@@ -8,6 +8,7 @@ import {
   promptPayDeadline,
   promptPayExpiryAction,
   promptPayPollState,
+  promptPayPollAction,
   promptPayQrImage,
   promptPayRenewalOutcome,
   promptPaySession,
@@ -143,19 +144,46 @@ describe("promptPayRenewalOutcome", () => {
   })
 })
 
+const PP = "pp_stripe-promptpay_stripe"
+
 describe("promptPaySession", () => {
   it("ใช้ session pending (ยังไม่ชำระ)", () => {
-    const pending = { id: "a", status: "pending" }
-    expect(promptPaySession([{ id: "x", status: "canceled" }, pending])).toBe(pending)
+    const pending = { id: "a", status: "pending", provider_id: PP }
+    expect(promptPaySession([{ id: "x", status: "canceled", provider_id: PP }, pending])).toBe(pending)
   })
 
   it("session authorized (guard authorize แล้วแต่ cart ยังไม่ complete) → ใช้ session นั้นเพื่อ complete cart ต่อ", () => {
-    const authorized = { id: "b", status: "authorized" }
+    const authorized = { id: "b", status: "authorized", provider_id: PP }
     expect(promptPaySession([authorized])).toBe(authorized)
   })
 
+  it("ไม่ใช้ session ของ provider อื่น (เช่นบัตรที่ authorized) — review #98", () => {
+    const card = { id: "card", status: "authorized", provider_id: "pp_stripe_stripe" }
+    expect(promptPaySession([card])).toBeUndefined()
+    const pp = { id: "pp", status: "pending", provider_id: PP }
+    expect(promptPaySession([card, pp])).toBe(pp)
+  })
+
   it("ไม่มี session ที่ใช้ได้ → undefined", () => {
-    expect(promptPaySession([{ id: "c", status: "canceled" }])).toBeUndefined()
+    expect(promptPaySession([{ id: "c", status: "canceled", provider_id: PP }])).toBeUndefined()
     expect(promptPaySession(undefined)).toBeUndefined()
+  })
+})
+
+// AC-12b: ระหว่างรอ order หลังได้ 409 (completeFallback) poll ที่ยัง pending ต้องลอง complete cart ซ้ำ (complete รอบก่อนล้ม/webhook ไม่มา)
+describe("promptPayPollAction", () => {
+  it("cart complete แล้ว → complete (ได้ order เดิมแล้ว redirect)", () => {
+    expect(promptPayPollAction("paid", false)).toBe("complete")
+    expect(promptPayPollAction("paid", true)).toBe("complete")
+  })
+
+  it("ยัง pending: โหมดทางสำรอง → ลอง complete ซ้ำ; ปกติ → รอ webhook", () => {
+    expect(promptPayPollAction("pending", true)).toBe("complete")
+    expect(promptPayPollAction("pending", false)).toBe("wait")
+  })
+
+  it("session ล้ม → fail", () => {
+    expect(promptPayPollAction("failed", false)).toBe("fail")
+    expect(promptPayPollAction("failed", true)).toBe("fail")
   })
 })

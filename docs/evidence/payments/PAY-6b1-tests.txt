@@ -23,3 +23,24 @@ Tests  142 passed (142)
 
 == pnpm lint && pnpm typecheck && pnpm --filter storefront build ==
 lint: 0 errors (warnings เดิม 34); typecheck: backend + storefront Done; storefront build: สำเร็จ (backend :9101)
+
+== รอบแก้ตาม review #98 ==
+e2e ใหม่: ลบ metadata.session_id ของ PI ผ่าน Stripe test API ก่อนชำระ → Stripe provider 2.22.1 คืน NOT_SUPPORTED และ subscriber
+payment-webhook-handler ของ Medusa ข้าม event (ไม่มี session_id) = webhook ไม่มาแน่นอน; guard ยังอ่าน PI ผ่าน data.id ของ session
+- test 1: 409 → awaiting → complete cart ของ storefront → order captured เดียว (ถ้าไม่มี finish() ใน awaitOrder จะค้างที่ awaiting = fail)
+- test 2: server action placeOrder/getPromptPayState ถูก abort หลัง 409 → awaiting + error message + poll ต่อ ไม่แสดง expired
+  → เลิก abort → poll ลอง complete ซ้ำ (promptPayPollAction) → order captured เดียว
+ในเครื่องรันไม่ได้ (ไม่มี NEXT_PUBLIC_STRIPE_KEY) → ผลจริงดู CI storefront-e2e
+Red: vitest 4 failed | 19 passed (promptPayPollAction ยังไม่มี, promptPaySession ไม่กรอง provider)
+Green: vitest payment-session.test.ts
+ ✓ src/lib/util/payment-session.test.ts > promptPayRenewalOutcome > 409 + code PAYMENT_ALREADY_COMPLETED → already-paid (poll ต่อ + complete cart ทางสำรอง) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayRenewalOutcome > error อื่น → error (พฤติกรรมเดิม: แสดงหมดอายุ + ข้อความ error) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > ใช้ session pending (ยังไม่ชำระ) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > session authorized (guard authorize แล้วแต่ cart ยังไม่ complete) → ใช้ session นั้นเพื่อ complete cart ต่อ 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > ไม่ใช้ session ของ provider อื่น (เช่นบัตรที่ authorized) — review #98 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > ไม่มี session ที่ใช้ได้ → undefined 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollAction > cart complete แล้ว → complete (ได้ order เดิมแล้ว redirect) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollAction > ยัง pending: โหมดทางสำรอง → ลอง complete ซ้ำ; ปกติ → รอ webhook 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollAction > session ล้ม → fail 0ms
+      Tests  23 passed (23)
+storefront test:unit 146 passed, test:e2e:unit 29 passed, typecheck ok, lint 0 errors

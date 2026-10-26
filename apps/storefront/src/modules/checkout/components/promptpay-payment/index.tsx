@@ -6,6 +6,7 @@ import {
   formatCountdown,
   promptPayDeadline,
   promptPayExpiryAction,
+  promptPayPollAction,
   promptPayQrImage,
   promptPaySession,
   secondsLeft,
@@ -59,6 +60,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const finishing = useRef(false)
+  // AC-12b: ชำระแล้วแต่ยังไม่มี order (409 / session authorized) → ทุกรอบ poll ลอง complete cart ซ้ำจนได้ order
+  const completeFallback = useRef(false)
 
   const session = promptPaySession(cart.payment_collection?.payment_sessions)
   const clientSecret = session?.data?.client_secret as string | undefined
@@ -83,6 +86,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   // PAY-6b (spec 06 กฎข้อ 7A, AC-12b): ชำระแล้วแต่ยังไม่มี order → poll ต่อ และเรียก complete cart ของ Medusa เป็นทางสำรอง
   // (กรณี webhook ไม่มาหรือ complete จาก webhook ล้ม) complete ล้ม → finish แสดงข้อความแล้ว poll รอบถัดไปลองใหม่เมื่อ cart complete
   const awaitOrder = useCallback(() => {
+    completeFallback.current = true
     setAwaitingOrder(true)
     finish()
   }, [finish])
@@ -174,10 +178,12 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   useEffect(() => {
     if (!polling) return
     const timer = setInterval(async () => {
-      const state = await getPromptPayState(cart.id)
-      if (state === "paid") {
+      // อ่านสถานะล้ม (network) = ยังไม่รู้ → ถือเป็น pending แล้วรอบถัดไปลองใหม่
+      const state = await getPromptPayState(cart.id).catch(() => "pending" as const)
+      const action = promptPayPollAction(state, completeFallback.current)
+      if (action === "complete") {
         finish()
-      } else if (state === "failed") {
+      } else if (action === "fail") {
         clearInterval(timer)
         setQr(null)
         setAwaitingOrder(false)
