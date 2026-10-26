@@ -25,3 +25,12 @@ export const GetAffiliateEarningsSchema = z
   .object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() })
   .strict()
 export type GetAffiliateEarningsSchemaType = z.infer<typeof GetAffiliateEarningsSchema>
+
+// รายการของ portal (programs, payouts): limit/offset แบบ Medusa จำกัด limit ไม่เกิน 100
+export const GetAffiliateListSchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
+  })
+  .strict()
+export type GetAffiliateListSchemaType = z.infer<typeof GetAffiliateListSchema>

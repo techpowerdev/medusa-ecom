@@ -2,7 +2,7 @@ import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/
 import { ContainerRegistrationKeys, QueryContext } from "@medusajs/framework/utils"
 import type { ProgramScope } from "../../../modules/affiliate/utils/commission"
 import { productFiltersForScope, shareUrl, variantsInScope } from "../../../modules/affiliate/utils/portal"
-import { PORTAL_PROGRAM_FIELDS, refetchAffiliate } from "../helpers"
+import { affiliateOf, PORTAL_PROGRAM_FIELDS } from "../helpers"
 import { GetAffiliateProductsSchemaType } from "../validators"
 
 const PRODUCT_FIELDS = [
@@ -28,7 +28,7 @@ export async function GET(
   const { status, page, limit } = req.validatedQuery
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const now = new Date()
-  const affiliate = await refetchAffiliate(req.auth_context.actor_id, req.scope)
+  const affiliate = await affiliateOf(req)
 
   const { data: programs } = await query.graph({
     entity: "affiliate_program",
@@ -52,16 +52,18 @@ export async function GET(
     if (!filters) {
       continue
     }
+    // หน้าเต็มแล้ว → ต้องการแค่ count ของโปรแกรมที่เหลือ
+    const full = products.length >= limit
     const { data, metadata } = await query.graph({
       entity: "product",
-      fields: PRODUCT_FIELDS,
+      fields: full ? ["id"] : PRODUCT_FIELDS,
       filters,
       pagination: {
         skip: Math.max(offset - count, 0),
         take: Math.max(limit - products.length, 1),
         order: { id: "ASC" },
       },
-      ...(currency_code && { context: { variants: { calculated_price: QueryContext({ currency_code }) } } }),
+      ...(currency_code && !full && { context: { variants: { calculated_price: QueryContext({ currency_code }) } } }),
     })
     count += metadata?.count ?? 0
     for (const { collection_id, categories, ...product } of data.slice(0, limit - products.length)) {

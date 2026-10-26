@@ -18,12 +18,22 @@ export const refetchAffiliate = async (id: string, scope: MedusaContainer) => {
 }
 
 type AffiliateStatus = "pending" | "active" | "suspended"
+type PortalAffiliate = Awaited<ReturnType<typeof refetchAffiliate>>
+
+// อ่าน affiliate ของ token ครั้งเดียวต่อ request (middleware สถานะ + route ใช้ร่วมกัน) — review #110
+const affiliateByRequest = new WeakMap<object, Promise<PortalAffiliate>>()
+export const affiliateOf = (req: AuthenticatedMedusaRequest): Promise<PortalAffiliate> => {
+  if (!affiliateByRequest.has(req)) {
+    affiliateByRequest.set(req, refetchAffiliate(req.auth_context.actor_id, req.scope))
+  }
+  return affiliateByRequest.get(req)!
+}
 
 /** Q6: สิทธิ์ตามสถานะ affiliate — รันหลัง authenticate("affiliate") สถานะอื่น → 403 */
 export const requireAffiliateStatus =
   (...allowed: AffiliateStatus[]) =>
   async (req: AuthenticatedMedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) => {
-    const { status } = await refetchAffiliate(req.auth_context.actor_id, req.scope)
+    const { status } = await affiliateOf(req)
     if (!allowed.includes(status)) {
       return next(new MedusaError(MedusaError.Types.FORBIDDEN, `Affiliate status "${status}" cannot access this route`))
     }

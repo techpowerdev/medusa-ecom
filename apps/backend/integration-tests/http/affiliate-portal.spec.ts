@@ -131,6 +131,13 @@ medusaIntegrationTestRunner({
         }
       })
 
+      // review #110: Express จับ route แบบไม่สนตัวพิมพ์ — matcher ของ auth ต้องไม่สนตัวพิมพ์ด้วย
+      it("returns 401 without a token when the path differs only in case", async () => {
+        for (const url of ["/AFFILIATE/me", "/Affiliate/me/payouts", "/affiliate/PRODUCTS"]) {
+          expect([url, await statusOf(url)]).toEqual([url, 401])
+        }
+      })
+
       it("returns 401 for a customer token", async () => {
         const customer = { email: "af7-cust@example.com", password: "cust-password" }
         const { authIdentity } = await container.resolve(Modules.AUTH).register("emailpass", { body: customer })
@@ -266,6 +273,33 @@ medusaIntegrationTestRunner({
         expect(data.programs[0]).toEqual(
           expect.objectContaining({ announce_text: "เปิดแล้ว", commission_value: 10, hold_days: 14 })
         )
+      })
+
+      it("pages programs and payouts with limit/offset", async () => {
+        const { token, id } = await loginAffiliate("hal", "active")
+        const first = await createProgram({ name: "first", starts_at: new Date(Date.now() - 2 * DAY) })
+        const second = await createProgram({ name: "second" })
+        await affiliates.createAffiliatePayouts(
+          [1, 2, 3].map((amount) => ({
+            affiliate_id: id,
+            amount,
+            currency: "thb",
+            period_from: new Date(Date.now() - 30 * DAY),
+            period_to: new Date(),
+            entry_ids: [],
+          }))
+        )
+
+        const programs = await api.get("/affiliate/me/programs?limit=1&offset=1", bearer(token))
+        expect(programs.data).toEqual(
+          expect.objectContaining({ count: 2, limit: 1, offset: 1, programs: [expect.objectContaining({ id: second.id })] })
+        )
+        expect((await api.get("/affiliate/me/programs?limit=1", bearer(token))).data.programs[0].id).toEqual(first.id)
+
+        const payouts = await api.get("/affiliate/me/payouts?limit=2", bearer(token))
+        expect(payouts.data).toEqual(expect.objectContaining({ count: 3, limit: 2, offset: 0 }))
+        expect(payouts.data.payouts).toHaveLength(2)
+        expect(await statusOf("/affiliate/me/payouts?limit=1000", token)).toEqual(400)
       })
 
       it("returns only the caller's earnings totals by status within [from, to) and own payouts", async () => {

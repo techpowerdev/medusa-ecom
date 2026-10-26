@@ -5,11 +5,17 @@ import {
   validateAndTransformQuery,
 } from "@medusajs/framework/http"
 import { requireAffiliateStatus } from "./helpers"
-import { GetAffiliateEarningsSchema, GetAffiliateProductsSchema, PostAffiliateRegisterSchema } from "./validators"
+import {
+  GetAffiliateEarningsSchema,
+  GetAffiliateListSchema,
+  GetAffiliateProductsSchema,
+  PostAffiliateRegisterSchema,
+} from "./validators"
 
 // กฎ 18: ทุก route ใต้ /affiliate/* ยกเว้น register — regex เพราะ matcher ซ้อนกันทำงานทั้งคู่
 // (`/affiliate/*` จะครอบ register ที่ต้องใช้ allowUnregistered); regex ถูกเรียงก่อน matcher แบบ static ของ Medusa
-export const AFFILIATE_PORTAL_MATCHER = /^\/affiliate\/(?!register\/?$).+/
+// flag i: Express จับ route แบบไม่สนตัวพิมพ์ (`/AFFILIATE/me` ถึง route เดียวกัน) — review #110
+export const AFFILIATE_PORTAL_MATCHER = /^\/affiliate\/(?!register\/?$).+/i
 
 const query = (schema: Parameters<typeof validateAndTransformQuery>[0]) =>
   validateAndTransformQuery(schema, { isList: false })
@@ -31,7 +37,7 @@ export const affiliatePortalMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
     matcher: "/affiliate/me/programs",
-    middlewares: [requireAffiliateStatus("active")],
+    middlewares: [requireAffiliateStatus("active"), query(GetAffiliateListSchema)],
   },
   {
     method: ["GET"],
@@ -41,7 +47,7 @@ export const affiliatePortalMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
     matcher: "/affiliate/me/payouts",
-    middlewares: [requireAffiliateStatus("active", "suspended")],
+    middlewares: [requireAffiliateStatus("active", "suspended"), query(GetAffiliateListSchema)],
   },
   {
     method: ["GET"],
