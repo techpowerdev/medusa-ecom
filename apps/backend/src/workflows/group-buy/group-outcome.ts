@@ -48,7 +48,18 @@ export const setGroupOutcomeStep = createStep(
     const service = groupBuy(container)
     const [group] = await service.listGroupBuyGroups(
       { id: input.group_id },
-      { select: ["id", "status", "succeeded_at", "pay_deadline_at"], relations: ["campaign"] }
+      {
+        select: [
+          "id",
+          "status",
+          "succeeded_at",
+          "pay_deadline_at",
+          "progress_orders",
+          "progress_units",
+          "progress_people",
+        ],
+        relations: ["campaign"],
+      }
     )
     if (!group) {
       throw new MedusaError(
