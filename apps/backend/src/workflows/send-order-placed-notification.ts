@@ -9,6 +9,7 @@ export const ORDER_EMAIL_FIELDS = [
   "id",
   "display_id",
   "email",
+  "no_notification",
   "currency_code",
   "total",
   "subtotal",
@@ -29,7 +30,11 @@ export const sendOrderPlacedNotificationWorkflow = createWorkflow(
       options: { throwIfKeyNotFound: true },
     })
 
-    const notification = when({ orders }, ({ orders }) => !!orders[0]?.email).then(() => {
+    // CORE-11 (กฎข้อ 21): order ที่ตั้ง no_notification (Order module) ไม่ส่งอีเมล
+    const notification = when(
+      { orders },
+      ({ orders }) => !!orders[0]?.email && !orders[0]?.no_notification
+    ).then(() => {
       const notifications = transform({ orders }, ({ orders }) => [
         {
           to: orders[0].email!,
