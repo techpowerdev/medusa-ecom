@@ -44,3 +44,10 @@ Green: vitest payment-session.test.ts
  ✓ src/lib/util/payment-session.test.ts > promptPayPollAction > session ล้ม → fail 0ms
       Tests  23 passed (23)
 storefront test:unit 146 passed, test:e2e:unit 29 passed, typecheck ok, lint 0 errors
+
+== flaky CI run 40368956907 (test 1 ล้มที่ expect promptpay-awaiting-order toBeVisible) ==
+สาเหตุจาก trace: โค้ดทำงานถูก — server action หลัง fastForward: poll 72.47s → renew (409) 72.67s → placeOrder 72.95s → redirect หน้า
+order confirmed 73.24s; screencast frame 72.96s แสดง "Payment received. Creating your order…" (promptpay-awaiting-order) อยู่ ~300ms
+เพราะ webhook ถูกตัดและ complete cart ของ storefront เร็ว toBeVisible ที่ poll เป็นช่วงจึงพลาด element ชั่วคราวแล้ว element หายไปถาวร
+แก้: test 1 ไม่ assert สถานะชั่วคราวด้วย toBeVisible — รอหน้า confirmed แล้วตรวจ test id ที่ MutationObserver บันทึก
+(ต้องมี promptpay-awaiting-order และไม่มี promptpay-expired) ไม่เพิ่ม timeout; test 2 คงเดิม (placeOrder ถูก abort จึงค้างที่ awaiting)

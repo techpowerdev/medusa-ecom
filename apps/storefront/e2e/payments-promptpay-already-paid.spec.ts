@@ -123,12 +123,15 @@ test.describe("PromptPay ชำระแล้วตอน QR หมดอาย
 
     await step("When QR ครบ 10 นาที → guard ตอบ 409 PAYMENT_ALREADY_COMPLETED", async () => {
       await page.clock.fastForward("10:01")
-      await expect(page.getByTestId("promptpay-awaiting-order")).toBeVisible({ timeout: 30_000 })
     })
 
     await step("Then storefront complete cart เอง → หน้า order confirmed, order เดียว captured, ไม่เคยแสดงหมดอายุ", async () => {
       await expect(page.getByTestId("order-complete-container")).toBeVisible({ timeout: 60_000 })
-      expect(Array.from(ctx.seen), "AC-12: แสดงรอสร้าง order และไม่แสดงหมดอายุ").toEqual(["promptpay-awaiting-order"])
+      // promptpay-awaiting-order แสดงแค่ช่วง complete cart (~300ms ใน CI run 40368956907) — ห้าม assert ด้วย toBeVisible
+      // ที่ poll เป็นช่วงจนอาจพลาด ใช้ MutationObserver (trackTestIds) ที่บันทึกทุกครั้งที่ element ปรากฏแทน
+      await expect
+        .poll(() => Array.from(ctx.seen), { message: "AC-12: แสดงรอสร้าง order และไม่แสดงหมดอายุ", timeout: 5_000 })
+        .toEqual(["promptpay-awaiting-order"])
       await expectSingleCapturedOrder(page, request, ctx)
       await evidence("01-promptpay-already-paid-order-confirmed")
     })
