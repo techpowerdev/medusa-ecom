@@ -10,6 +10,7 @@ import {
   getPricedVariants,
   toJsonLd,
 } from "@lib/util/product-structured-data"
+import { hreflangAlternates } from "@lib/util/hreflang"
 import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
 
 type Props = {
@@ -47,12 +48,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     description,
     alternates: {
       canonical: productUrl,
-      languages: Object.fromEntries(
-        listCountryCodes(regions).map((code) => [
-          `en-${code.toUpperCase()}`,
-          `${origin}/${code}${path}`,
-        ])
-      ),
+      languages: hreflangAlternates(origin, listCountryCodes(regions), path),
       types: { "text/markdown": `${productUrl}.md` },
     },
     openGraph: {

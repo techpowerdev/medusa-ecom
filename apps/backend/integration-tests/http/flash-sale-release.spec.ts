@@ -257,6 +257,40 @@ medusaIntegrationTestRunner({
       })
     })
 
+    // FS-8: การคืนครั้งแรกล้ม (เช่น DB ขาดชั่วคราว) ต้องไม่หายเงียบ — step retry ของ workflow (Medusa) ลองใหม่เอง
+    describe("AC-14 retries a failed release", () => {
+      const waitFor = async (check: () => Promise<boolean>, timeoutMs: number) => {
+        const deadline = Date.now() + timeoutMs
+        while (!(await check())) {
+          if (Date.now() > deadline) {
+            throw new Error("FS-8: timed out waiting for the release retry")
+          }
+          await new Promise((resolve) => setTimeout(resolve, 250))
+        }
+      }
+
+      afterEach(() => jest.restoreAllMocks())
+
+      it("the first release of order.canceled fails once, the retry returns usage and units_sold once", async () => {
+        const campaignId = await setupFlashSale()
+        await placeFlashOrder(1)
+        const { orderId, cartId, customerId } = await placeFlashOrder(2)
+        const release = jest
+          .spyOn(flashSale, "releaseReservationsOfCart")
+          .mockRejectedValueOnce(new Error("FS-8 injected: database unavailable"))
+
+        await cancel(orderId)
+        expect(release).toHaveBeenCalledTimes(1)
+        expect(await state(campaignId, customerId)).toEqual({ units_sold: 3, usage: 2 })
+
+        await waitFor(async () => (await releasedAt(cartId))[0] !== null, 60 * 1000)
+
+        expect(await state(campaignId, customerId)).toEqual({ units_sold: 1, usage: 0 })
+        expect(await releasedAt(cartId)).toEqual([expect.any(Date)])
+        expect(release).toHaveBeenCalledTimes(2)
+      })
+    })
+
     it("canceling an order without flash units is a no-op", async () => {
       const { orderId, cartId } = await placeFlashOrder(1)
 
