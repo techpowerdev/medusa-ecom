@@ -125,6 +125,11 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   `MEDUSA_WORKER_MODE` (ทางเลือกที่ยอมรับเท่ากัน: ตั้ง label ระดับ container ใน log shipper ตาม env เดียวกัน) — ไม่ hook/patch internal ของ event bus module หรือ logger ของ Medusa
 - AC-19 (OPS-12, รอบ 8) Given `.github/workflows/ci.yml` Then job `docker-worker-mode` มีขั้นรัน `tools/ops/smoke-redis-outage.sh` หลัง
   `smoke-worker-mode.sh` (unit อ่าน YAML); Given PR ที่ทำให้ script ล้ม (positive control ใน evidence เช่น ตั้ง subscriber ไม่ให้รัน) Then job ล้ม
+- AC-20 (OPS-13, รอบ 9 — nit review #108, ADR-010 ภาคผนวก) Given `NODE_ENV=production` และ `ALLOW_TEST_PROVIDERS=true` When โหลด config/บูต backend Then log ระดับ
+  warn **1 ครั้ง** ที่มีสตริง `ALLOW_TEST_PROVIDERS` (และยังบูตได้ — CI ต้องใช้); Given ไม่ใช่ production หรือไม่ตั้งตัวแปร Then ไม่มี warn นี้ (unit แบบ AC-9 ด้วย spy logger)
+- AC-21 (OPS-13, Q-F1 spec 01) Given `docs/ops/production.md` หัวข้อ checklist go-live Then มีข้อที่อ้าง `Q-F1` และ `shipping_rate` (ค่าส่ง "Standard" และราคา
+  "Standard return" ยังเป็น placeholder 10 THB — owner ตัดสินค่าและแก้ใน admin ก่อนเปิดร้าน) และข้อที่เคยกล่าวถึง "ค่าว่าง" (ข้อ 3 เดิมของ #108) ระบุชัดว่าตัวแปรที่
+  "ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" ถูกนับเหมือนกัน (ตามที่โค้ดของ OPS-7 ทำ — builder ยืนยันจากโค้ดแล้วเขียนตามจริง) (unit grep ไฟล์)
 
 ## Tasks
 | ID | Task | Depends |
@@ -137,13 +142,14 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
 | OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13); fail-fast `STOREFRONT_URL` (รอบ 7, AC-17 — ถ้า GB-4 ยังไม่ merge ตอนเริ่ม OPS-7 ให้ทำส่วนนี้เมื่อ GB-4 merge แล้ว ไม่แตะโค้ดอีเมลของ GB-4) | OPS-2, PAY-1, CORE-3, AF-2 (#66), GB-4 (#89, เฉพาะ AC-17) |
 | OPS-10 | (เล็ก, CI) commit test ของ `tools/ci/classify-changes.sh` (30 เคส) ให้รันใน `lint-typecheck` (AC-14) + หัวข้อ "Stripe webhooks" ใน `docs/ops/production.md` และ `--events` ของ `stripe listen` ใน `ci.yml` ตรงกัน พร้อม check อัตโนมัติ (AC-15) | PAY-2 |
-| OPS-8 | (#101) Worker กับ Redis ของ event bus ขาด ตาม ADR-012 ภาคผนวก (owner ตัดสิน 2026-10-26): `tools/ops/smoke-redis-outage.sh` เป็น regression test (AC-5) + เอกสารความเสี่ยงที่เหลือใน `docs/ops/production.md`; **ไม่**แก้ `infra-modules.ts` และไม่แตะ internal ของ module | OPS-2 |
-| OPS-12 | (เล็ก, CI, รอบ 8) รัน `smoke-redis-outage.sh` ใน job `docker-worker-mode` ของ `ci.yml` (AC-19) | OPS-8 (#101), OPS-7 (แตะ job เดียวกันใน `ci.yml` — เริ่มหลัง OPS-7 merge) |
+| OPS-8 | (☑ #101) Worker กับ Redis ของ event bus ขาด ตาม ADR-012 ภาคผนวก (owner ตัดสิน 2026-10-26): `tools/ops/smoke-redis-outage.sh` เป็น regression test (AC-5) + เอกสารความเสี่ยงที่เหลือใน `docs/ops/production.md`; **ไม่**แก้ `infra-modules.ts` และไม่แตะ internal ของ module | OPS-2 |
+| OPS-12 | (เล็ก, CI, รอบ 8) รัน `smoke-redis-outage.sh` ใน job `docker-worker-mode` ของ `ci.yml` (AC-19) | OPS-8 ☑ #101, OPS-7 (◐ #108 — แตะ job เดียวกันใน `ci.yml`; **เริ่มหลัง #108 merge**) |
+| OPS-13 | (เล็ก, รอบ 9, follow-up review #108) warn ตอนบูตเมื่อ production ตั้ง `ALLOW_TEST_PROVIDERS=true` (AC-20) + `docs/ops/production.md`: ถ้อยคำ checklist go-live ข้อ 3 เรื่องค่าว่าง และข้อ Q-F1 ค่าส่ง placeholder (AC-21) | OPS-7 (#108) (∥ OPS-12 — คนละไฟล์: OPS-13 แตะ config/guard + `production.md`, OPS-12 แตะ `ci.yml`) |
 | OPS-9 | (เล็ก) typecheck ในเครื่องล้มที่ `group-buy-campaigns.spec.ts` เมื่อมี `.medusa/types` (typed `query.graph` ของ link) — แก้ที่ test ให้ type ตรงกับ type ของ link ที่ Medusa generate (เช่น อ่านผ่าน type ของ entity/cast ให้ตรง) **ไม่** exclude `.medusa/types` จาก tsconfig (ทำให้ typed query ทั้งโปรเจกต์หายและ CI กับเครื่อง dev typecheck ต่างกันมากขึ้น); ถ้าแก้ที่ test ไม่ได้ให้หยุดและรายงาน (AC-12) | GB-2a |
 | OPS-11 | (เล็ก, e2e tooling, รอบ 6) ย้าย login admin + header `x-forwarded-proto` จาก e2e admin ของ FS-10 ไปเป็น helper ร่วม `e2e/support/admin.ts` + `data-testid` ที่ `Container` ของ widget "Flash sale options" แทน locator `div.last()` (AC-16) — **ทำเมื่อมี e2e admin ตัวที่สอง** (ตัวแรกที่จะเริ่มจาก EV-5b, EV-9, GB-6b, GB-6c, AF-6): ถ้า OPS-11 ยังไม่ merge ตอน task นั้นเริ่ม ให้รวม OPS-11 ไว้ใน PR ของ task นั้น (ไม่สร้าง helper ก่อนมีผู้ใช้สองที่) | FS-10 (#74) |
 OPS-3 ∥ OPS-6 ∥ OPS-7 ∥ OPS-8 ∥ OPS-9 (OPS-9 แตะเฉพาะ `integration-tests/http/group-buy-campaigns.spec.ts`; OPS-6 แตะ `next.config.js`/Dockerfile/jest config; OPS-7 แตะ `notification-providers.ts`/seed/`ci.yml`;
 OPS-8 แตะ `tools/ops/`/`docs/ops/production.md` — ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)
-OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น
+OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น; OPS-13 หลัง OPS-7 (#108) ∥ OPS-12
 OPS-11 ∥ งานอื่น แต่แตะ e2e ของ FS-10 + `src/admin/widgets/flash-sale-options.tsx` — ทำเมื่อมี e2e admin ตัวที่สองเท่านั้น (ดูแถว OPS-11)
 OPS-10 ∥ งานอื่น (แตะ `ci.yml` ขั้น `lint-typecheck`/`stripe listen`, `tools/ci/`, `docs/ops/production.md`) — PAY-6 แตะ `production.md` หัวข้อ runbook
 คนละหัวข้อ ตัวที่ merge ทีหลัง rebase; OPS-7 แตะ `ci.yml` job `docker-worker-mode` คนละขั้นกับ OPS-10

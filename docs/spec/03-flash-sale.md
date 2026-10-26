@@ -129,7 +129,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
    `addRulesToPromotionsStep`/`createPromotionRulesWorkflow` แต่รับ **ครั้งละ promotion เดียว** ขณะที่จำนวน promotion ใน campaign
    ไม่แน่นอน จึงต้องเขียน step เองที่วนหลาย promotion ใน step เดียว) เพราะฟอร์ม promotion ของ Medusa
    admin ไม่มี attribute นี้; promotion ที่เพิ่มเข้า campaign **หลัง** บันทึก config ยังไม่มี rule จนกว่าจะบันทึก config ซ้ำ
-   (widget เตือนตาม Q1) — การใส่อัตโนมัติเป็น follow-up ทางเลือก FS-9
+   (widget เตือนตาม Q1) — การใส่อัตโนมัติ (FS-9) **owner ตัดสินไม่ทำ 2026-10-27**: admin บันทึก config ซ้ำเองตามคำเตือนของ widget
 8. **hook ของ Medusa หนึ่งตัวมี handler ได้ตัวเดียว** (`createHook` ใน 2.22.1 โยน
    "Cannot define multiple hook handlers for the validate hook") — ใช้กับทุก spec: task ที่ใช้ hook เดียวกันต้องรวม
    handler ไว้ไฟล์เดียว แต่ละ task ส่งมอบ check เป็น function ที่ export แล้วให้ handler รวมเรียกตามลำดับ
@@ -232,8 +232,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (e) storefront: PDP ของสินค้าในแคมเปญที่ `sold_out=true` มี `flash-sold-out` ที่มองเห็นได้และมีอักษรไทย (screenshot, FS-6)
 - AC-14 (FS-8) ทำให้การคืนค่าครั้งแรกของ `order.canceled` ล้ม (test inject error ครั้งเดียว) → ภายในรอบ retry/job ถัดไป usage และ
   `units_sold` ถูกคืนครบครั้งเดียว และ reservation มี `released_at`
-- AC-15 (FS-9) campaign ที่มี config แล้ว เพิ่ม automatic promotion ใหม่ผ่าน admin API → promotion นั้นมี exclusivity rule
-  (กฎข้อ 6a) โดยไม่ต้องบันทึก config ซ้ำ; promotion ใน campaign ที่ไม่มี config → ไม่ถูกใส่ rule
+- ~~AC-15~~ (FS-9) ยกเลิก — owner ตัดสินไม่ทำ FS-9 (2026-10-27); ไม่มี test
 - AC-16 (FS-10, กฎข้อ 15) Given หน้า Campaign detail ที่มี widget "Flash sale options" When `dblclick` ปุ่ม Save (สองคลิกใน tick เดียว)
   Then มี `POST /admin/flash-sales/:campaign_id/config` 1 ครั้ง (นับด้วย `page.on("request")`) และปุ่ม disabled จน response กลับ;
   When Save อีกครั้งหลัง response กลับ Then ส่งได้ตามปกติ (e2e admin หรือ component test ที่ mock `fetch`)
@@ -253,7 +252,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - Unit: การคำนวณ units ต่อ campaign จาก cart lines (กฎข้อ 9), helper สำหรับช่วงเวลา, `exclusiveAutomaticRule` /
   `isExclusiveAutomatic` / การคำนวณชุด code ผลลัพธ์และค่า flag ตาม `action` (PROMO-1)
 - Integration (modules): service method จอง/คืน/compensate ของ `flash_sale` (rollback ทั้ง transaction, `released_at`)
-- Integration (http): AC-1, AC-2, AC-3, AC-5 (รวม a), AC-6, AC-7, AC-8 (a)–(f), AC-9, AC-10, AC-11, AC-12, AC-13 (a)–(d), AC-14, AC-15, AC-17
+- Integration (http): AC-1, AC-2, AC-3, AC-5 (รวม a), AC-6, AC-7, AC-8 (a)–(f), AC-9, AC-10, AC-11, AC-12, AC-13 (a)–(d), AC-14, AC-17
 - Unit (FS-2): เกณฑ์ refund เต็มจำนวนด้วย BigNumber (กฎข้อ 10)
 - Unit (FS-7): การคำนวณ `sold_out` / `remaining_units` จาก config (AC-13 a–d รวม clamp ที่ 0)
 - e2e: AC-8 (g), AC-13 (e)
@@ -272,13 +271,13 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-6 | Storefront banner/countdown/ราคาบน PDP + "สินค้าหมด"/"เหลือ N ชิ้น" จาก `sold_out`/`remaining_units` (กฎข้อ 4) + ข้อความ AC-8 (g) + e2e (AC-1, AC-3, AC-4, AC-8 g, AC-13 e); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | FS-4, FS-7, PROMO-1, CORE-4b (แตะ PDP เดียวกัน) |
 | PROMO-2 | follow-up PROMO-1/FS-3: override `errorHandler` ให้ code ของเราถึง client เป็น 409 `{ type: "conflict", code, message }` ตามกฎข้อ 13 + integration test (AC-12) + ย้าย route ของเราที่ตอบ 409 เอง และ merge แล้ว ณ ตอนทำ PROMO-2 (เช่น `POST /admin/evoucher/codes/:id/void` ของ EV-5) มาใช้กลไกนี้: throw `MedusaError(CONFLICT, message, "<CODE>")` และลบ try/catch/`res.status(409)` ใน route (AC-12 d) — route ที่ merge หลัง PROMO-2 ใช้กลไกนี้เอง (owner Q-C) | PROMO-1, FS-3 |
 | FS-8 | follow-up FS-2 (เล็ก): การคืนโควตาต้องไม่หายเมื่อ subscriber ล้ม — ใช้กลไก retry ที่ Medusa มีให้ (เช่น option retry ของ workflow/step หรือ event bus) ก่อน ถ้าไม่มีให้ใช้ scheduled job กวาด order ที่เข้าเกณฑ์กฎข้อ 10 แต่ reservation ยังไม่ `released_at` (idempotent เดิม); AC-14 | FS-2 |
-| FS-9 | (ทางเลือก, รอ owner สั่ง) follow-up FS-5: subscriber `promotion.created`/`promotion.updated` ใส่ exclusivity rule ให้ automatic promotion ใหม่ใน campaign ที่มี `FlashSaleConfig` อัตโนมัติ (ใช้ step เดียวกับ FS-5); AC-15 | FS-5 |
+| FS-9 | **ปิด — owner ตัดสินไม่ทำ (2026-10-27)**; เดิม: follow-up FS-5: subscriber `promotion.created`/`promotion.updated` ใส่ exclusivity rule ให้ automatic promotion ใหม่ใน campaign ที่มี `FlashSaleConfig` อัตโนมัติ (ใช้ step เดียวกับ FS-5); AC-15 | FS-5 |
 | FS-7 | follow-up FS-4 (backend เล็ก): `GET /store/flash-sales/active` เอา `remaining_usage` ออก เพิ่ม `sold_out` + `remaining_units` จาก `FlashSaleConfig` (pure function + unit test) และระบุข้อจำกัดของ preview (กฎข้อ 14) ใน JSDoc ของ route (AC-13 a–d) | FS-4 |
 | FS-10 | follow-up QA FS-5 D-1r (เล็ก, frontend เท่านั้น): in-flight flag `useRef` ในปุ่ม Save ของ widget "Flash sale options" (กฎข้อ 15); AC-16 | FS-5 |
 | FS-11 | follow-up review FS-8 #69 (เล็ก, backend): ย้ายการหา order/`cart_id` + เกณฑ์ refund เต็มจำนวนของเส้นทาง `payment.refunded` เข้า workflow ให้ใช้ retry ของ FS-8 (กฎข้อ 16); AC-17 | FS-8 |
 FS-11 หลัง FS-8 (แตะ subscriber/workflow คืนโควตาไฟล์เดียวกัน); FS-10 ยังไม่ทำ (สถานะ 2026-10-26) ไม่เปลี่ยนนิยาม
-PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 หลัง FS-5 (ทางเลือก);
-FS-10 หลัง FS-5 (แยกจาก FS-9 เพราะ FS-9 เป็นทางเลือกที่รอ owner สั่ง; FS-10 ∥ FS-9 ไม่แตะไฟล์เดียวกัน — FS-9 เป็น subscriber backend)
+PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 ปิด (owner ไม่ทำ 2026-10-27);
+FS-10 หลัง FS-5
 PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวกับ FS-3 แต่ FS-3 merge แล้ว); ต้อง merge ก่อน GB-3 (dependency) และควรก่อน FS-6
 
 ## คำถามที่ยังเปิดอยู่
