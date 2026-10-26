@@ -5,7 +5,7 @@ export type EvoucherOrderItem = {
   variant_id?: string | null
   quantity: number
   metadata?: Record<string, unknown> | null
-  variant?: { product?: { shipping_profile?: { type?: string | null } | null } | null } | null
+  variant?: { product?: { id: string; shipping_profile?: { id: string } | null } | null } | null
 }
 
 export type EvoucherOrder = {

@@ -1,0 +1,33 @@
+EV-11 — เปลี่ยนเงื่อนไข logger.warn ของ EV-4 เป็น "product มี shipping profile ใดๆ" (AC-31, กฎข้อ 1)
+Spec: docs/spec/02-evoucher.md
+Branch: feat/EV-11-shipping-profile-warn (เริ่มบน origin/develop c7a676a)
+วันที่รัน: 2026-10-26, Node v22.23.3, Postgres 16 (docker compose local), DB ของ medusa-test-utils
+
+== Red (ก่อนแก้โค้ด) ==
+test:integration:http evoucher-allocate.spec.ts (AC-31) → 3 failed:
+- "does not warn ... has none": Expected length 0, Received 1 (warn 'shipping profile is "none", expected "digital"')
+- "warns once ... default": ข้อความ warn ไม่มี product id
+- "warns once ... digital": Expected length 1, Received 0 (โค้ดเดิมไม่ warn เมื่อ profile = digital)
+
+== Green ==
+      ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry
+      ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method
+      ✓ does not warn about shipping profile when the voucher product has none (AC-31)
+      ✓ warns once (but still delivers) when the voucher product has the default shipping profile (AC-31)
+      ✓ warns once (but still delivers) when the voucher product has the digital shipping profile (AC-31)
+      ✓ does nothing for an order without voucher items
+      ✓ re-running for the same order allocates no more codes and sends no more emails
+      ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails
+      ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available
+      ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails
+      ✓ uses a new idempotency key per claim and clears the backordered flag once delivered
+      ✓ gives the last code to only one of two concurrently captured orders and flags the other
+      ✓ sends one notification to the mailbox and none to the 3 admin users
+      ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged)
+Test Suites: 1 passed, 1 total
+Tests:       14 passed, 14 total
+
+test:unit: Tests:       388 passed, 388 total
+pnpm lint && pnpm typecheck: ผ่าน (exit 0)
+pnpm --filter backend build: Backend/Frontend build completed successfully
+ชุด integration เต็มให้ CI รัน
