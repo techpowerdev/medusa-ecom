@@ -1,8 +1,9 @@
 import { Button, FocusModal, Heading, Input, Label, Select, Switch, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
 import { CampaignForm, emptyCampaignForm, toCampaignBody } from "../../lib/group-buy-form"
+import { runOnce } from "../../lib/in-flight"
 
 type TextKey = {
   [K in keyof CampaignForm]: CampaignForm[K] extends string ? K : never
@@ -38,6 +39,8 @@ export const CreateCampaign = () => {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyCampaignForm())
+  // GB-6a D1: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างคลิกใน task เดียว
+  const inFlight = useRef(false)
   const set = (patch: Partial<CampaignForm>) => setForm((f) => ({ ...f, ...patch }))
 
   const create = useMutation({
@@ -48,11 +51,14 @@ export const CreateCampaign = () => {
       setOpen(false)
     },
     onError: (e: Error) => toast.error(e.message),
+    onSettled: () => {
+      inFlight.current = false
+    },
   })
 
   const submit = () => {
-    // กันกดซ้ำ: ปุ่ม disabled ระหว่างส่ง และไม่ยิงซ้ำถ้ายังมี request ค้าง
-    if (create.isPending) {
+    // กันกดซ้ำ: ไม่ยิงซ้ำถ้ายังมี request ค้าง (ref) + ปุ่ม disabled ระหว่างส่ง
+    if (inFlight.current) {
       return
     }
     const result = toCampaignBody(form)
@@ -60,7 +66,7 @@ export const CreateCampaign = () => {
       toast.error(result.error)
       return
     }
-    create.mutate(result.body)
+    runOnce(inFlight, () => create.mutate(result.body))
   }
 
   const openModal = () => {
@@ -73,7 +79,7 @@ export const CreateCampaign = () => {
       <Button size="small" variant="secondary" onClick={openModal}>
         Create campaign
       </Button>
-      <FocusModal open={open} onOpenChange={(o) => !create.isPending && setOpen(o)}>
+      <FocusModal open={open} onOpenChange={(o) => !inFlight.current && setOpen(o)}>
         <FocusModal.Content>
           <FocusModal.Header>
             <div className="flex items-center justify-end gap-x-2">

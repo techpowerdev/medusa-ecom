@@ -35,3 +35,17 @@ Backend build completed successfully / Frontend build completed successfully (ad
 ไม่เพิ่ม/แก้ API (ใช้ admin API ของ GB-2a) — ชุดเต็มรันใน CI
 ### Admin UI
 ยังไม่มี screenshot — ให้ agent qa ตรวจและเก็บไว้ที่ docs/evidence/group-buying/GB-6a/
+
+== รอบแก้ตาม qa D1 (กด Create 5 ครั้งใน JS task เดียวได้ 5 แคมเปญ) ==
+สาเหตุ: guard ใน submit() พึ่ง create.isPending ซึ่งยังไม่ re-render ระหว่างคลิกใน task เดียว
+แก้: in-flight guard แบบ synchronous (useRef + runOnce ใน src/admin/lib/in-flight.ts) ปลดใน onSettled — pattern เดียวกับ FS-10
+Red: in-flight.unit.spec.ts → FAIL: Cannot find module '../in-flight'
+Green:
+PASS src/admin/lib/__tests__/in-flight.unit.spec.ts
+    ✓ runs once for repeated synchronous calls while in flight
+    ✓ runs again after the flag is released (onSettled)
+PASS src/admin/lib/__tests__/group-buy-form.unit.spec.ts
+Tests:       16 passed, 16 total
+pnpm --filter backend typecheck → Done (backend + admin); pnpm --filter backend lint → No lint issues found
+pnpm --filter backend build → Backend/Frontend build completed successfully
+หมายเหตุ: idempotency ฝั่ง backend ของ POST /admin/group-buy/campaigns อยู่นอก PR นี้ (session หลักจดเป็นงานต่อแล้ว)
