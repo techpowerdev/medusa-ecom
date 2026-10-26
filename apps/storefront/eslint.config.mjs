@@ -31,6 +31,9 @@ const THAI_UI_FILES = [
   "src/app/[[]countryCode]/(main)/{store,search,categories,collections,products}/**",
   "src/modules/{store,search,categories,collections,products}/**",
   "src/app/buy/**",
+  // CORE-4c1 (account, login/register, verify-account) — cart/order/policies/common/skeletons อยู่ใน CORE-4c2
+  "src/app/[[]countryCode]/(main)/{account,verify-account}/**",
+  "src/modules/account/**",
 ]
 
 export default defineConfig([

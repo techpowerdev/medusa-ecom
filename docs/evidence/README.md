@@ -11,7 +11,7 @@ docs/evidence/
       REPORT.md                 # QA: ตาราง AC + อ้างอิง screenshot
       01-<ชื่อ-kebab>.png        # screenshot สำคัญ ≤ 5 รูป, PNG เท่านั้น, ≤ 300KB ต่อรูป
 ```
-- `<TASK-ID>` มีรูปแบบ `^[A-Z]+-\d+[a-z]?$` (เช่น `CORE-5`, `GB-12`, `CORE-4a`, `CORE-5b`)
+- `<TASK-ID>` มีรูปแบบ `^[A-Z]+-\d+([a-z]\d?)?$` (เช่น `CORE-5`, `GB-12`, `CORE-4a`, `CORE-5b`, `GB-6b1`)
 - ระดับ `<feature>/` อนุญาตเฉพาะไฟล์ `<TASK-ID>-tests.txt` และโฟลเดอร์ `<TASK-ID>/` เท่านั้น
 - ในโฟลเดอร์ `<TASK-ID>/` อนุญาตเฉพาะ `REPORT.md` และ `*.png` เท่านั้น — **ห้ามวาง `<TASK-ID>-tests.txt` ในนี้**
   (ให้วางที่ระดับ `<feature>/`)

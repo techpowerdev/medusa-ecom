@@ -42,11 +42,19 @@ export async function validateStoreReturnShippingOption(
   const query = req.scope.resolve<RemoteQueryFunction>(ContainerRegistrationKeys.QUERY)
   const { data: options } = await query.graph({
     entity: "shipping_option",
-    fields: ["id", "rules.attribute", "rules.operator", "rules.value"],
+    fields: [
+      "id",
+      "rules.attribute",
+      "rules.operator",
+      "rules.value",
+      // CORE-21: location ของ fulfillment set ที่ service zone ของ option สังกัด
+      "service_zone.fulfillment_set.location.sales_channels.id",
+    ],
     filters: { id: optionId },
   })
   if (!options[0]) {
-    throw invalid(`Return shipping option ${optionId} was not found`)
+    // กฎข้อ 37 (CORE-21): ข้อความคงที่ ไม่ต่อ option_id จาก input
+    throw invalid("Return shipping option was not found")
   }
   const ruleError = storeReturnOptionRuleError((options[0].rules ?? []) as Rule[])
   if (ruleError) {
@@ -56,7 +64,9 @@ export async function validateStoreReturnShippingOption(
   // order มีอยู่และเป็นของลูกค้าแล้ว (ownership check ก่อนหน้า)
   const { data: orders } = await query.graph({
     entity: "order",
-    fields: ["shipping_address.country_code", "shipping_address.province", "shipping_address.city", "shipping_address.postal_code"],
+    fields: [
+      "sales_channel_id",
+      "shipping_address.country_code", "shipping_address.province", "shipping_address.city", "shipping_address.postal_code"],
     filters: { id: body.order_id as string },
   })
   const address = orders[0]?.shipping_address
@@ -77,6 +87,13 @@ export async function validateStoreReturnShippingOption(
     ).length > 0
   if (!covered) {
     throw invalid("Return shipping option does not serve the order's shipping address")
+  }
+
+  // CORE-21: createAndCompleteReturnOrderWorkflow ของ Medusa 2.22.1 ไม่ตรวจว่า stock location ของ option
+  // อยู่ใน sales channel ของ order → ปฏิเสธเอง
+  const channels = options[0].service_zone?.fulfillment_set?.location?.sales_channels ?? []
+  if (!channels.some((c) => c?.id === orders[0]?.sales_channel_id)) {
+    throw invalid("Return shipping option is not available for the order's sales channel")
   }
   next()
 }
