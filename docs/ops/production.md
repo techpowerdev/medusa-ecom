@@ -56,7 +56,8 @@ storefront ตั้ง `images.unoptimized: true` อยู่แล้ว จ�
 ## เงินถูกตัดแต่ไม่มี order (ADR-015)
 ที่มา: Medusa 2.22.1 ลบ payment session ได้แม้ PaymentIntent (PI) `succeeded` แล้ว (ADR-015, spec 06 กฎข้อ 7) guard บน
 `POST /store/payment-collections/:id/payment-sessions` ตอบ 409 `PAYMENT_ALREADY_COMPLETED` แทนการลบ แต่ยังเหลือ race สั้นๆ ที่ owner ยอมรับ
-ไม่มีโค้ดใดสร้าง order หรือ refund อัตโนมัติ — ops ทำตามหัวข้อนี้ด้วยมือ
+ops ทำตามหัวข้อนี้ด้วยมือ — payment ที่มีอยู่ใน Medusa refund ด้วย script `refund-orphan-payment` ซึ่งเรียก `refundPaymentsWorkflow` ของ Medusa
+(ADR-015 ภาคผนวก 2) ระวัง: Medusa เองอาจ refund ให้แล้วเมื่อ complete cart ล้มหลัง capture (ดูหัวข้อ "ไม่มี alert" ข้อ 3)
 ใช้ Stripe account แยกต่อ environment (test/staging/prod) ไม่เช่นนั้น webhook ของ environment อื่นทำให้ alert ผิด
 
 ### มี alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND`
@@ -68,7 +69,8 @@ subscriber `apps/backend/src/subscribers/payment-webhook-orphan.ts` เขีย
    จำนวนเงิน และ `metadata.session_id` ตรงกับ alert จดอีเมลลูกค้าจาก billing details
 2. ยืนยันว่าไม่มี order อ้าง PI นี้: `GET /admin/payments?payment_session_id=<session_id>` ต้องได้ `payments: []` (ไม่มี payment ใน Medusa
    = ไม่มี order) และใน admin → Orders ค้นด้วยอีเมลลูกค้าช่วงเวลาเดียวกัน ไม่พบ order ที่ payment อ้าง PI นี้ — ถ้าพบ order **หยุด** ไม่ต้อง refund
-3. refund เต็มจำนวนใน Stripe dashboard (หน้า PI → Refund) — ข้อยกเว้นของ spec 06 กฎข้อ 4 เฉพาะ PI ที่ไม่มี payment ใน Medusa (ADR-015)
+3. refund เต็มจำนวนใน Stripe dashboard (หน้า PI → Refund) — ใช้ได้เฉพาะกรณีนี้ที่ PI ไม่มี payment ใน Medusa (session ถูกลบ script จึงหา payment
+   ไม่ได้) ตามข้อยกเว้นของ spec 06 กฎข้อ 4 ใน ADR-015
 4. แจ้งลูกค้า (อีเมลจากข้อ 1): การชำระไม่สำเร็จเป็นคำสั่งซื้อ คืนเงินเต็มจำนวนแล้ว cart ยังอยู่ สั่งซื้อใหม่ได้
 5. บันทึก incident: PI, `session_id`, จำนวนเงิน, อีเมลลูกค้า, เวลาใน alert, เวลา refund และผู้ทำ
 
@@ -80,16 +82,22 @@ subscriber `apps/backend/src/subscribers/payment-webhook-orphan.ts` เขีย
 2. ให้ลูกค้า login แล้วเปิดหน้า checkout ของ cart นั้นอีกครั้งที่ขั้น review (`/<country>/checkout?step=review`) แล้วกดปุ่มชำระ PromptPay —
    storefront เรียก `POST /store/carts/:id/complete` ของ Medusa เป็นทางสำรอง (spec 06 AC-12b) ได้ order แล้วไปหน้า order confirmed
    (ห้ามให้ลูกค้าเปลี่ยนวิธีชำระหรือสแกน QR ใหม่)
-3. complete ไม่ได้ (กดแล้วยังค้างที่หน้ารอสร้าง order) → refund เต็มจำนวนใน Stripe dashboard ตามขั้น 3–5 ของหัวข้อก่อน (spec 06 AC-16)
-   — `POST /admin/payments/:id/refund` ใช้ไม่ได้ เพราะ `refundPaymentWorkflow` ของ Medusa 2.22.1 ต้องมี order ผูกกับ payment collection
-   และ Stripe provider 2.22.1 ไม่รับรู้ `charge.refunded` → payment ใน Medusa ยังเป็น captured บน cart เดิม ต้องปิดทางที่ cart นี้จะถูก complete ทีหลัง:
+3. complete ไม่ได้ (กดแล้วยังค้างที่หน้ารอสร้าง order) → **ตรวจก่อน refund**: `completeCartWorkflow` ของ Medusa 2.22.1 มี
+   `compensatePaymentIfNeededStep` ที่ refund payment ที่ captured ให้อัตโนมัติเมื่อ complete ล้มหลัง capture — ดู `refunds` จาก
+   `GET /admin/payments/:id` (id จากข้อ 1) และส่วน Refunds ของ PI ใน Stripe dashboard (ดูอย่างเดียว) ถ้า refund ครบจำนวนแล้ว ข้ามข้อ 4
+4. ยังไม่ refund → รันบน container ของ server หรือ worker (env เดียวกับ production):
+   `npx medusa exec ./src/scripts/refund-orphan-payment.ts <payment_id>` — refund ส่วนที่เหลือผ่าน `refundPaymentsWorkflow` ของ Medusa
+   (provider เรียก Stripe ให้ และบันทึก refund ใน Medusa) รันซ้ำได้ (refund ครบแล้วจะข้าม); script ปฏิเสธ payment ที่ยังไม่ captured และ
+   payment ที่ผูก order แล้ว (ใช้ refund ใน admin ของ order แทน); ถ้า script แจ้งว่า refund ไม่สำเร็จ ดู log ของ provider แล้วรันใหม่
+   — `POST /admin/payments/:id/refund` ใช้ไม่ได้ เพราะ `refundPaymentWorkflow` ต้องมี order ผูกกับ payment collection ห้าม refund ใน Stripe dashboard
+   (Medusa จะไม่รู้ว่า refund แล้ว: Stripe provider 2.22.1 ไม่รับรู้ `charge.refunded`)
+5. ปิดทางที่ cart เดิมจะถูก complete ทีหลังด้วย payment ที่ refund แล้ว:
    - ให้ลูกค้า logout ก่อน (storefront ลบ cookie ของ cart เดิม) แล้วค่อย login เริ่ม cart ใหม่ — ห้ามกลับไปกดชำระบน cart เดิม
-     (storefront จะเรียก complete กับ session ที่ authorized ตาม AC-12b ได้ order ทั้งที่เงินถูกคืนแล้ว)
+     (storefront จะเรียก complete กับ session ที่ authorized ตาม AC-12b)
    - Stripe retry webhook ที่ส่งไม่สำเร็จได้นานถึง 3 วัน (live mode) → `payment_intent.succeeded` ที่มาช้าจะ complete cart นี้ได้ ops เฝ้า
      admin → Orders (อีเมลลูกค้า / PI นี้) ทุกวันจนพ้นช่วง retry ถ้ามี order อ้าง PI ที่ refund แล้ว: **ห้าม fulfill**, ติด note ใน order แล้ว
-     escalate ให้ owner — **ห้าม cancel** order ใน admin เพราะ `cancelOrderWorkflow` จะ refund payment ที่ captured ผ่าน provider ซ้ำกับ PI ที่ refund แล้ว
-   - บันทึกใน incident ว่า payment ของ Medusa ยังเป็น captured บน cart ที่ไม่ complete และวันที่พ้นช่วง retry
-4. แจ้งลูกค้าและบันทึก incident เหมือนหัวข้อก่อน
+     escalate ให้ owner — **ห้าม cancel** order ใน admin เพราะ `cancelOrderWorkflow` จะ refund payment ผ่าน provider อีกรอบ
+6. แจ้งลูกค้าและบันทึก incident เหมือนหัวข้อก่อน (เพิ่ม payment id, ผลของข้อ 3–4 และวันที่พ้นช่วง retry)
 
 ### guard fail closed ถาวร (retrieve PI ไม่ได้)
 อาการ: ลูกค้าที่ cart มี session Stripe เดิมสร้าง session ใหม่ไม่ได้ทุกครั้ง (ไม่ใช่ 409 แต่เป็น error 5xx) และ log ของ backend มี error ของ Stripe
