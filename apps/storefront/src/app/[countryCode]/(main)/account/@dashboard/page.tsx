@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 
+import AddVariantError from "@modules/account/components/add-variant-error"
 import Overview from "@modules/account/components/overview"
 import { notFound } from "next/navigation"
 import { retrieveCustomer } from "@lib/data/customer"
@@ -10,7 +11,16 @@ export const metadata: Metadata = {
   description: "ภาพรวมกิจกรรมในบัญชีของคุณ",
 }
 
-export default async function OverviewTemplate() {
+type Props = {
+  params: Promise<{ countryCode: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default async function OverviewTemplate({
+  params,
+  searchParams,
+}: Props) {
+  const { countryCode } = await params
   const customer = await retrieveCustomer().catch(() => null)
   const orders = (await listOrders().catch(() => null)) || null
 
@@ -18,5 +28,13 @@ export default async function OverviewTemplate() {
     notFound()
   }
 
-  return <Overview customer={customer} orders={orders} />
+  return (
+    <>
+      <AddVariantError
+        countryCode={countryCode}
+        searchParams={await searchParams}
+      />
+      <Overview customer={customer} orders={orders} />
+    </>
+  )
 }
