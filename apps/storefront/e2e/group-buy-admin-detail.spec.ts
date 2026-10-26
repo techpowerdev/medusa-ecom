@@ -110,6 +110,9 @@ test("AC-30: ลบ draft — ยกเลิกไม่มี request, ยื�
   const name = `GB-6b delete ${Date.now()}`
   const id = await createCampaign(request, admin, "pool", "draft", name)
   const deletes = countRequests(page, "DELETE", `/admin/group-buy/campaigns/${id}`)
+  const gets = countRequests(page, "GET", `/admin/group-buy/campaigns/${id}`)
+  const errors: string[] = []
+  page.on("console", (msg) => msg.type() === "error" && errors.push(msg.text()))
 
   await step("กดลบแล้วยกเลิก → ไม่มี DELETE", async () => {
     await loginAdmin(page)
@@ -122,13 +125,29 @@ test("AC-30: ลบ draft — ยกเลิกไม่มี request, ยื�
 
   await step("กดลบแล้วยืนยัน → DELETE 1 ครั้ง และกลับหน้ารายการที่ไม่มีแคมเปญนั้น", async () => {
     await page.getByTestId("gb-campaign-delete").click()
+    const getsBeforeDelete = gets.length
+    const errorsBeforeDelete = errors.length
     await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click()
     await page.waitForURL((url) => url.pathname === "/app/group-buying")
     await expect(page.getByRole("heading", { name: "Group-buy campaigns" })).toBeVisible()
     await expect(page.getByText(name)).toHaveCount(0)
     expect(deletes).toHaveLength(1)
+    // qa D-1: หลังลบต้องไม่ refetch แคมเปญที่ลบแล้ว (404 + error ใน console)
+    await page.waitForLoadState("networkidle")
+    expect(gets.length - getsBeforeDelete).toBe(0)
+    expect(errors.slice(errorsBeforeDelete)).toEqual([])
     const res = await request.get(`${BASE}/campaigns/${id}`, { headers: admin })
     expect(res.status()).toBe(404)
+  })
+})
+
+test("qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading", async ({ page, step }) => {
+  test.setTimeout(90_000)
+  await step("เปิด /app/group-buying/<id ที่ไม่มี> → gb-campaign-not-found", async () => {
+    await loginAdmin(page)
+    await page.goto(`${BACKEND_URL}/app/group-buying/gbcamp_does_not_exist`)
+    await expect(page.getByTestId("gb-campaign-not-found")).toBeVisible()
+    await expect(page.getByTestId("gb-campaign-status")).toHaveCount(0)
   })
 })
 

@@ -1,5 +1,6 @@
 import { Badge, Button, Container, Heading, Text, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import type { FetchError } from "@medusajs/js-sdk"
 import { useRef } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { GroupsSection } from "../../../components/group-buy/groups-section"
@@ -33,9 +34,11 @@ const GroupBuyCampaignPage = () => {
   const queryClient = useQueryClient()
   const prompt = usePrompt()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: groupBuyKeys.campaign(id),
     queryFn: () => groupBuyApi.getCampaign(id),
+    // 404 (ไม่มี/ลบแล้ว) ไม่ retry — แสดงผลทันที (qa D-2)
+    retry: (count, e) => (e as FetchError).status !== 404 && count < 2,
   })
 
   // กันกดซ้ำ (กฎข้อ 17): ref ตั้งทันทีก่อน await — สองคลิกใน task เดียวไม่ยิงซ้ำ
@@ -49,9 +52,10 @@ const GroupBuyCampaignPage = () => {
       // key รายการ = ["group-buy","campaigns",limit,offset]; key แคมเปญนี้ = [...,id] (และ groups = [...,id,"groups"])
       // predicate ข้ามทุก key ที่ตำแหน่ง [2] เป็น id นี้ → refetch เฉพาะรายการ; แคมเปญนี้ใช้ค่าจาก response
       // (ถ้า refetch หลังลบจะได้ 404)
+      // ไม่ removeQueries แคมเปญที่ลบ: ระหว่างที่หน้านี้ยัง mount observer จะ refetch ทันที → 404 (qa D-1)
+      // cache ที่ค้างหมดอายุเองตาม gcTime; ถ้าเปิด id นี้อีกจะ refetch ได้ 404 แล้วแสดง not found
       queryClient.invalidateQueries({ queryKey: groupBuyKeys.campaigns, predicate: (q) => q.queryKey[2] !== id })
       if (action === "remove") {
-        queryClient.removeQueries({ queryKey: groupBuyKeys.campaign(id) })
         toast.success("Campaign deleted")
         navigate("/group-buying")
       } else {
@@ -75,6 +79,25 @@ const GroupBuyCampaignPage = () => {
       return
     }
     run.mutate(action)
+  }
+
+  if (error) {
+    const notFound = (error as FetchError).status === 404
+    return (
+      <Container className="flex flex-col gap-y-2 px-6 py-4" data-testid={notFound ? "gb-campaign-not-found" : undefined}>
+        <Text size="small" weight="plus">
+          {notFound ? "Campaign not found" : "Could not load the campaign"}
+        </Text>
+        <Text size="small" className="text-ui-fg-subtle">
+          {notFound ? "It may have been deleted." : error.message}
+        </Text>
+        <Link to="/group-buying">
+          <Text size="small" className="text-ui-fg-interactive">
+            Back to group-buy campaigns
+          </Text>
+        </Link>
+      </Container>
+    )
   }
 
   if (isLoading || !data) {

@@ -23,14 +23,19 @@ Snapshots:   0 total
 Time:        0.22 s, estimated 1 s
 Ran all test suites matching /src\/admin\/lib\/__tests__\/group-buy-campaign/i.
 ### Green — e2e (chromium, admin UI จริง)
-Running 6 tests using 1 worker
-  ✓  1 [chromium] › e2e/flash-sale-admin-save.spec.ts:10:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (3.0s)
-  ✓  2 [chromium] › e2e/group-buy-admin-detail.spec.ts:62:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (2.0s)
-  ✓  3 [chromium] › e2e/group-buy-admin-detail.spec.ts:103:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (2.2s)
-  ✓  4 [chromium] › e2e/group-buy-admin-detail.spec.ts:135:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (2.7s)
-  ✓  5 [chromium] › e2e/smoke.spec.ts:8:5 › storefront เสิร์ฟ robots.txt ได้ (177ms)
-  ✓  6 [chromium] › e2e/smoke.spec.ts:20:5 › backend /health ตอบ 200 และหน้า login ของ admin แสดงผล (644ms)
-  6 passed (11.7s)
+Running 7 tests using 1 worker
+  ✓  1 [chromium] › e2e/flash-sale-admin-save.spec.ts:10:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (3.1s)
+  ✓  2 [chromium] › e2e/group-buy-admin-detail.spec.ts:62:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (1.9s)
+  ✓  3 [chromium] › e2e/group-buy-admin-detail.spec.ts:103:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (1.9s)
+  ✓  4 [chromium] › e2e/group-buy-admin-detail.spec.ts:144:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading (1.0s)
+  ✓  5 [chromium] › e2e/group-buy-admin-detail.spec.ts:154:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (2.2s)
+  ✓  6 [chromium] › e2e/smoke.spec.ts:8:5 › storefront เสิร์ฟ robots.txt ได้ (185ms)
+  ✓  7 [chromium] › e2e/smoke.spec.ts:20:5 › backend /health ตอบ 200 และหน้า login ของ admin แสดงผล (617ms)
+  7 passed (11.9s)
+### แก้ตาม qa (D-1, D-2) — Red ก่อนแก้
+qa D-1 (ลบ draft แล้ว GET .../campaigns/:id ซ้ำ) → FAIL: expect(gets after DELETE).toBe(0) Received: 1
+qa D-2 (id ที่ไม่มีจริง) → FAIL: getByTestId('gb-campaign-not-found') element(s) not found (ค้าง Loading...)
+หลังแก้: ทั้งสองผ่าน (ด้านบน)
 ### AC-16 (OPS-11) grep: x-forwarded-proto / /app/login / .last() ใน apps/storefront/e2e/*.spec.ts
 (ไม่พบ — grep exit 1)
 ### อื่นๆ
