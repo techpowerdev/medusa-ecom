@@ -1,0 +1,37 @@
+PAY-6b2 — ADR-015 D: subscriber payment-webhook-orphan (AC-15) + runbook/env (AC-16) — spec 06 กฎข้อ 7D
+วันที่ 2026-10-26, Node 22.23.3, Medusa 2.22.1
+
+== Red (ก่อนเขียนโค้ด) ==
+integration: Cannot find module '../../src/subscribers/payment-webhook-orphan'
+unit: 8 failed (ไม่มีหัวข้อ runbook / OPS_ALERT_EMAIL / template payment-webhook-orphan)
+
+== integration (http): TEST_TYPE=integration:http jest integration-tests/http/payment-webhook-orphan.spec.ts ==
+PASS integration-tests/http/payment-webhook-orphan.spec.ts (8.166 s)
+      ✓ listens to payment.webhook_received with its own subscriberId (167 ms)
+      ✓ session not found (payment_intent.succeeded) → error log + one email to OPS_ALERT_EMAIL with the PI id (247 ms)
+      ✓ session not found (payment_intent.amount_capturable_updated) → error log + one email to OPS_ALERT_EMAIL with the PI id (168 ms)
+      ✓ session exists → no log and no email (349 ms)
+      ✓ not a captured/authorized action → no log and no email (92 ms)
+      ✓ OPS_ALERT_EMAIL not set → error log, warn log, no notification (113 ms)
+      ✓ notification provider throws → subscriber does not throw and logs an error (112 ms)
+Tests:       7 passed, 7 total
+
+== unit: ops-runbook.unit.spec.ts + templates.unit.spec.ts (เฉพาะ case ของ task) ==
+      ✓ renders the PI id, session id, amount and the runbook title (escaped) (4 ms)
+    ✓ มีหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" (1 ms)
+    ✓ อ้าง alert และ code ของ guard
+    ✓ ระบุขั้นตอน: ค้น PI ใน Stripe dashboard, ยืนยันไม่มี order, refund เต็มจำนวน, แจ้งลูกค้า, บันทึก incident (1 ms)
+    ✓ มีกรณีไม่มี alert: ให้ลูกค้าเปิดหน้า checkout อีกครั้ง (storefront เรียก complete ตาม AC-12b)
+    ✓ มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้)
+    ✓ ไม่แนะนำแก้ DB ด้วย SQL ตรง
+    ✓ มีบรรทัด OPS_ALERT_EMAIL=
+Tests:       14 skipped, 8 passed, 22 total
+
+== pnpm --filter backend test:unit (ทั้งชุด) ==
+Test Suites: 46 passed, 46 total
+Tests:       425 passed, 425 total
+
+== pnpm lint && pnpm typecheck && pnpm --filter backend build ==
+backend lint: No lint issues found (storefront: 0 errors, warnings เดิม)
+typecheck: backend + storefront Done
+build: Backend build completed successfully / Frontend build completed successfully
