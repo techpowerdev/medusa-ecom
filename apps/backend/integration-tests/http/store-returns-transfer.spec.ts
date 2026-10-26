@@ -1,7 +1,7 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createOrderFulfillmentWorkflow } from "@medusajs/medusa/core-flows"
-import seedThailand from "../../src/scripts/seed"
+import seedThailand, { RETURN_OPTION_TYPE_CODE } from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 import { registerCustomer, storeHeadersFor } from "../helpers/customer"
 
@@ -24,6 +24,7 @@ medusaIntegrationTestRunner({
     let customerB: { id: string; config: Headers }
     let guestHeaders: Headers
     let standardOptionId: string
+    let returnOptionId: string
     let order: { id: string; itemId: string }
 
     beforeAll(async () => {
@@ -52,6 +53,12 @@ medusaIntegrationTestRunner({
         filters: { name: "Standard" },
       })
       standardOptionId = options[0].id
+      const { data: returnOptions } = await query.graph({
+        entity: "shipping_option",
+        fields: ["id"],
+        filters: { type: { code: RETURN_OPTION_TYPE_CODE } },
+      })
+      returnOptionId = returnOptions[0].id
 
       // order OA ของ A ผ่าน checkout ของ Medusa (pp_system_default)
       const config = customerA.config
@@ -98,8 +105,8 @@ medusaIntegrationTestRunner({
       const body = () => ({
         order_id: order.id,
         items: [{ id: order.itemId, quantity: 1 }],
-        // ค่าส่งคืนระบุเอง: "Standard" เป็น flat ของ manual provider
-        return_shipping: { option_id: standardOptionId, price: 0 },
+        // CORE-16: ใช้ return option จาก seed — store ระบุ price เองไม่ได้แล้ว
+        return_shipping: { option_id: returnOptionId },
       })
 
       it("401 without token, 404 for customer B (no return created), 200 for owner A", async () => {
