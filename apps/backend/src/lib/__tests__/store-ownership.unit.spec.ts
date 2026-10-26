@@ -9,6 +9,7 @@ import {
   paymentCollectionOwner,
 } from "../store-ownership"
 import { ensureStoreOwnership, storeOwnershipMiddlewares } from "../../api/store/ownership/middlewares"
+import { rejectStoreReturnOverrides } from "../../api/store/ownership/return-overrides"
 
 // CORE-12 (spec 01 กฎ 22-23, ADR-013): resolver ของ owner ต่อ matcher + middleware 404 เมื่อไม่ใช่เจ้าของ
 type GraphCall = { entity: string; fields: string[]; filters: Record<string, unknown> }
@@ -119,7 +120,9 @@ describe("storeOwnershipMiddlewares: which id each matcher checks", () => {
       throw new Error(`no ownership middleware for ${method ?? "ALL"} ${matcher}`)
     }
     // middleware ตัวสุดท้ายของแต่ละ matcher คือตัวตรวจ owner (ตัวก่อนหน้าเป็น authenticate ถ้ามี)
-    return route.middlewares![route.middlewares!.length - 1]
+    // ยกเว้น POST /store/returns ที่ต่อท้ายด้วย rejectStoreReturnOverrides ของ CORE-16
+    const checks = route.middlewares!.filter((m) => m !== rejectStoreReturnOverrides)
+    return checks[checks.length - 1]
   }
 
   const rows = {
@@ -171,7 +174,8 @@ describe("CORE-13: returns need a customer session; order transfer is disabled",
   it("adds authenticate(customer) before the order owner check on POST /store/returns", () => {
     const returns = storeOwnershipMiddlewares.find((r) => r.matcher === "/store/returns")
     expect(returns?.method).toEqual(["POST"])
-    expect(returns?.middlewares).toHaveLength(2)
+    // [authenticate, owner check, CORE-16 rejectStoreReturnOverrides]
+    expect(returns?.middlewares).toHaveLength(3)
   })
 
   it("registers the transfer block without a method so it runs before core authenticate (global bucket)", () => {

@@ -1,0 +1,56 @@
+# AF-2 — tracking redirect + cookie `aff` + cart metadata hook (spec 05) — ผล test ในเครื่อง 2026-10-26 (Node 22.23.3)
+
+## Red (ก่อนเขียนโค้ด)
+- unit backend: Cannot find module '../token' / '../affiliate-redirect' (2 suites fail)
+- unit storefront: Failed to resolve import './affiliate' (1 file fail)
+- integration: GET /store/affiliate/r/:code → 404 (9 failed, 1 passed)
+
+## Unit backend (jest) — `pnpm --filter backend test:unit` ทั้งชุด: 34 suites, 293 passed
+PASS src/modules/affiliate/utils/__tests__/token.unit.spec.ts
+    ✓ round-trips affiliate_id and clicked_at
+    ✓ signs `affiliate_id|clicked_at` with HMAC-SHA256
+    ✓ rejects a token signed with another secret
+    ✓ rejects a tampered affiliate id or clicked_at
+    ✓ rejects malformed token undefined / null / 42 / "" / "a.b" / "a.b.c.d" / "aff_1.notanumber.sig" / "aff_1.1.%%%"
+    ✓ never verifies with an empty secret and refuses to sign with one
+PASS src/lib/__tests__/affiliate-redirect.unit.spec.ts
+    ✓ keeps an internal path "/products/t-shirt" / "/products/t-shirt?variant=1#top" / "/"
+    ✓ falls back to / for undefined / "" / "products/t-shirt" / "https://evil.example" / "//evil.example/x"
+      / "/\\evil.example" / "/\t/evil.example" / "javascript:alert(1)" / ["/a", "/b"] / 42
+Tests:       26 passed, 26 total
+
+## Unit storefront (vitest) — `pnpm --filter storefront test:unit` ทั้งชุด: 8 files, 66 passed
+ ✓ src/lib/util/affiliate.test.ts > safeRedirectPath > keeps internal paths
+ ✓ src/lib/util/affiliate.test.ts > safeRedirectPath > falls back to / for %p (8 กรณี)
+ ✓ src/lib/util/affiliate.test.ts > affiliateLandingPath > prefixes the country code
+ ✓ src/lib/util/affiliate.test.ts > affiliateCookieFromSetCookie > returns the aff value from the backend Set-Cookie headers
+ ✓ src/lib/util/affiliate.test.ts > affiliateCookieFromSetCookie > returns null when the backend set no aff cookie
+ ✓ src/lib/util/affiliate.test.ts > affiliateMetadataUpdate > adds the token while keeping other metadata
+ ✓ src/lib/util/affiliate.test.ts > affiliateMetadataUpdate > overwrites an older token (last click wins, rule 2)
+ ✓ src/lib/util/affiliate.test.ts > affiliateMetadataUpdate > returns null when nothing changes
+      Tests  15 passed (15)
+
+## Integration http — integration-tests/http/affiliate-tracking.spec.ts
+      ✓ sets a signed aff cookie for an active affiliate and 302s to the path (no customer login)
+      ✓ matches the code case-insensitively
+      ✓ redirects without a cookie when the affiliate is pending (rule 7)
+      ✓ redirects without a cookie when the affiliate is suspended (rule 7)
+      ✓ redirects without a cookie for an unknown code
+      ✓ redirects to / instead of an external or missing target "https://evil.example"
+      ✓ redirects to / instead of an external or missing target "//evil.example"
+      ✓ redirects to / instead of an external or missing target undefined
+      ✓ does not write to the database (non-functional: redirect is read-only)
+      ✓ is written by the cart owner through the Medusa store API; other customers get 404
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+
+## e2e (Playwright chromium; backend :9136 dev + storefront `next build` :8136, DB medusa_af2)
+  ✓  1 [chromium] › e2e/affiliate-tracking.spec.ts › AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ่มสินค้าลง cart → metadata.affiliate_token = ค่า cookie (4.3s)
+  1 passed (4.9s)
+
+## Static checks
+- pnpm --filter backend lint: No lint issues found
+- pnpm --filter backend typecheck: ผ่าน
+- pnpm --filter storefront lint: 0 errors (warning เดิมของ starter เท่านั้น ไม่มีในไฟล์ของ AF-2)
+- pnpm --filter storefront typecheck: ผ่าน
+- pnpm --filter backend build / pnpm --filter storefront build: สำเร็จ

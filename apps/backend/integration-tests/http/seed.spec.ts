@@ -1,7 +1,7 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { DEFAULT_REGION_STORE_POLICIES } from "../../src/lib/region-store-policies"
-import seedThailand from "../../src/scripts/seed"
+import seedThailand, { RETURN_OPTION_TYPE_CODE } from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 
 jest.setTimeout(120 * 1000)
@@ -14,6 +14,7 @@ const DIGITAL_PROVIDER_ID = "digital_digital"
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let adminHeaders: { headers: Record<string, string> }
+    const query = () => getContainer().resolve(ContainerRegistrationKeys.QUERY)
 
     beforeAll(async () => {
       process.env.SEED_ADMIN_EMAIL = ADMIN_EMAIL
@@ -89,7 +90,7 @@ medusaIntegrationTestRunner({
         adminHeaders
       )
       const byName = Object.fromEntries(data.shipping_options.map((o) => [o.name, o]))
-      expect(Object.keys(byName).sort()).toEqual(["Digital delivery", "Standard"])
+      expect(Object.keys(byName).sort()).toEqual(["Digital delivery", "Standard", "Standard return"])
 
       const thb = (o) => o.prices.find((p) => p.currency_code === "thb")?.amount
       expect(byName.Standard.price_type).toEqual("flat")
@@ -100,6 +101,46 @@ medusaIntegrationTestRunner({
       // EV-3 (ADR-006): Digital delivery ใช้ fulfillment provider `digital`
       expect(byName["Digital delivery"].provider_id).toEqual(DIGITAL_PROVIDER_ID)
       expect(byName.Standard.provider_id).toEqual("manual_manual")
+    })
+
+    // CORE-16: ลูกค้าคืนสินค้าด้วย option นี้ (store ระบุราคาเองไม่ได้) — ราคาตาม free_returns/shipping_rate ของ region
+    it("creates return option Standard return (is_return, flat THB, manual, at the seeded location)", async () => {
+      const { data } = await query().graph({
+        entity: "shipping_option",
+        fields: ["name", "price_type", "provider_id", "prices.*", "rules.*", "service_zone.fulfillment_set.location.id"],
+        filters: { type: { code: RETURN_OPTION_TYPE_CODE } },
+      })
+      expect(data).toHaveLength(1)
+      const [option] = data
+      expect(option).toMatchObject({ name: "Standard return", price_type: "flat", provider_id: "manual_manual" })
+      const rule = (attribute: string) => option.rules?.find((r) => r?.attribute === attribute)?.value
+      expect(rule("is_return")).toEqual("true")
+      expect(rule("enabled_in_store")).toEqual("true")
+      const expected = DEFAULT_REGION_STORE_POLICIES.free_returns ? 0 : DEFAULT_REGION_STORE_POLICIES.shipping_rate
+      // `prices` มาจาก link shipping_option ↔ price_set ซึ่ง type ที่ Medusa generate (.medusa/types) ไม่ได้ประกาศ
+      const { prices } = option as unknown as { prices?: { currency_code: string; amount: number }[] }
+      expect(prices?.find((p) => p.currency_code === "thb")?.amount).toEqual(expected)
+      expect(option.service_zone?.fulfillment_set?.location?.id).toEqual(expect.any(String))
+    })
+
+    it("adds Standard return to a store seeded before CORE-16, once", async () => {
+      const fulfillment = getContainer().resolve(Modules.FULFILLMENT)
+      const returnOptions = async () =>
+        (
+          await query().graph({
+            entity: "shipping_option",
+            fields: ["id"],
+            filters: { type: { code: RETURN_OPTION_TYPE_CODE } },
+          })
+        ).data
+      // จำลอง DB ที่ seed ก่อน CORE-16: ยังไม่มี return option
+      await fulfillment.deleteShippingOptions((await returnOptions()).map((o) => o.id))
+      expect(await returnOptions()).toEqual([])
+
+      await seedThailand({ container: getContainer(), args: [] })
+      await seedThailand({ container: getContainer(), args: [] })
+
+      expect(await returnOptions()).toHaveLength(1)
     })
 
     it("enables fulfillment provider digital at the seeded stock location (EV-3)", async () => {
