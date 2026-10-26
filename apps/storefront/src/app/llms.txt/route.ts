@@ -1,7 +1,6 @@
 import { listCategories } from "@lib/data/categories"
 import { listCollections } from "@lib/data/collections"
 import { listRegions } from "@lib/data/regions"
-import { UCP_MCP_PATH, UCP_REST_BASE_PATH } from "@lib/ucp/ucp"
 import {
   getDefaultCountryCode,
   getRequestOrigin,
@@ -46,7 +45,7 @@ ${links.join("\n")}
 - Product pages contain an add-to-cart form that posts \`variant_id\` and \`quantity\` to ${base}/cart/add.
 - Preselect a variant with \`?v_id={variant_id}\` on a product URL.
 - Append \`.md\` to a product URL (or send \`Accept: text/markdown\`) for a Markdown version with variant IDs, prices and stock.
-- Checkout link: ${origin}/buy/{variant_id}:{quantity},{variant_id}:{quantity}
+- Checkout link (requires a signed-in customer): ${origin}/buy/{variant_id}:{quantity},{variant_id}:{quantity}
 - [Cart](${base}/cart)
 
 ## Policies
@@ -58,9 +57,6 @@ ${links.join("\n")}
 
 ## For agents
 - [Sitemap](${origin}/sitemap.xml)
-- [UCP profile](${origin}/.well-known/ucp)
-- UCP MCP endpoint: ${origin}${UCP_MCP_PATH}
-- UCP REST endpoint: ${origin}${UCP_REST_BASE_PATH}
 `
 
   return new Response(body, {

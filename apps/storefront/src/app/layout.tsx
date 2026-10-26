@@ -18,9 +18,6 @@ export const metadata: Metadata = {
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html lang="th" data-mode="light" className={notoSansThai.variable}>
-      <head>
-        <link rel="ucp" href="/.well-known/ucp" />
-      </head>
       <body>
         <main className="relative">{props.children}</main>
       </body>

@@ -15,6 +15,7 @@ import seedThailand from "../../src/scripts/seed"
 import { FLASH_SALE_MODULE } from "../../src/modules/flash_sale"
 import FlashSaleModuleService from "../../src/modules/flash_sale/service"
 import flashSaleReleaseHandler from "../../src/subscribers/flash-sale-release"
+import { releaseFlashSaleForOrderWorkflow } from "../../src/workflows/release-flash-sale-for-order"
 
 jest.setTimeout(300 * 1000)
 
@@ -289,6 +290,46 @@ medusaIntegrationTestRunner({
         expect(await releasedAt(cartId)).toEqual([expect.any(Date)])
         expect(release).toHaveBeenCalledTimes(2)
       })
+
+      // FS-11 (AC-17, กฎข้อ 16): การหา order จาก payment ของ payment.refunded อยู่ใน workflow จึงได้ retry เดียวกัน
+      it("finding the order of a refunded payment fails once, the retry returns usage and units_sold once", async () => {
+        const campaignId = await setupFlashSale()
+        await placeFlashOrder(1)
+        const { orderId, cartId, customerId } = await placeFlashOrder(2)
+        const payment = await capture(orderId)
+        const query = container.resolve(ContainerRegistrationKeys.QUERY)
+        const graph = query.graph.bind(query) as (...args: unknown[]) => Promise<unknown>
+        let paymentLookups = 0
+        jest.spyOn(query, "graph").mockImplementation((async (config: { entity: string }, ...rest: unknown[]) => {
+          if (config.entity === "payment" && ++paymentLookups === 1) {
+            throw new Error("FS-11 injected: database unavailable")
+          }
+          return graph(config, ...rest)
+        }) as unknown as typeof query.graph)
+
+        await refund(payment.id)
+        expect(paymentLookups).toBe(1)
+        expect(await state(campaignId, customerId)).toEqual({ units_sold: 3, usage: 2 })
+
+        await waitFor(async () => (await releasedAt(cartId))[0] !== null, 60 * 1000)
+
+        expect(await state(campaignId, customerId)).toEqual({ units_sold: 1, usage: 0 })
+        expect(await releasedAt(cartId)).toEqual([expect.any(Date)])
+        expect(paymentLookups).toBe(2)
+      })
+    })
+
+    // FS-11: payment ที่ไม่ผูกกับ order (หรือไม่มีอยู่จริง) → ไม่ throw และไม่คืนอะไร
+    it("a refunded payment without an order is a no-op", async () => {
+      const campaignId = await setupFlashSale()
+      const { customerId } = await placeFlashOrder(2)
+
+      const { result } = await releaseFlashSaleForOrderWorkflow(container).run({
+        input: { payment_id: "pay_does_not_exist", reason: "refunded" },
+      })
+
+      expect(result.released ?? []).toEqual([])
+      expect(await state(campaignId, customerId)).toEqual({ units_sold: 2, usage: 2 })
     })
 
     it("canceling an order without flash units is a no-op", async () => {

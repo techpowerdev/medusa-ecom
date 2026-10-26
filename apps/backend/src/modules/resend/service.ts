@@ -6,6 +6,7 @@ import type {
 } from "@medusajs/framework/types"
 import { Resend } from "resend"
 import { renderEmailTemplate } from "./templates"
+import { decryptSecret, parseEncryptionKey } from "../evoucher/utils/crypto"
 
 // Notification Module Provider สำหรับ Resend ตาม guide ทางการของ Medusa
 // https://docs.medusajs.com/resources/integrations/guides/resend
@@ -17,6 +18,8 @@ type InjectedDependencies = {
 export type ResendOptions = {
   api_key: string
   from: string
+  /** EV-4: key เดียวกับ module evoucher (env `EVOUCHER_ENCRYPTION_KEY`) ใช้ถอด code/PIN ตอน render เท่านั้น */
+  evoucher_encryption_key?: string
 }
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
@@ -49,7 +52,10 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
   }
 
   async send(notification: ProviderSendNotificationDTO): Promise<ProviderSendNotificationResultsDTO> {
-    const email = renderEmailTemplate(notification.template, notification.data ?? {})
+    // ตรวจ key เมื่อใช้งานจริงเท่านั้น (parseEncryptionKey throw ข้อความที่อ้าง EVOUCHER_ENCRYPTION_KEY)
+    const decrypt = (ciphertext: string) =>
+      decryptSecret(ciphertext, parseEncryptionKey(this.options_.evoucher_encryption_key))
+    const email = renderEmailTemplate(notification.template, notification.data ?? {}, { decrypt })
 
     // throw แทนการ return {} เพื่อให้ Notification Module บันทึก status=failure (ส่งซ้ำได้ด้วย idempotency_key เดิม)
     if (!email) {
