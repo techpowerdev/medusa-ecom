@@ -168,6 +168,6 @@ PAY-6 หลัง PAY-5; PAY-6 แตะ `promptpay-payment` เดียวก
   **ไม่มี fallback `paymentIntents.retrieve`** ไม่เรียก Stripe SDK ในโค้ดของเรา — กฎข้อ 7A
 - ~~Q5~~ ตัดสินแล้ว (owner 2026-10-26): alert = `logger.error` `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมลหา `OPS_ALERT_EMAIL` ทันที
   (env แยกจาก `EVOUCHER_ADMIN_EMAIL` ตั้งค่าเดียวกันได้) — กฎข้อ 7D
-- Q6 (PAY-6 × PAY-3) payment collection ของ **order** (หน้า `/account/orders/:id/pay` ของ group buy) ไม่มี `cart_id` — ADR-015 กำหนด lock key = `cart_id`
+- ~~Q6~~ (PAY-6 × PAY-3) payment collection ของ **order** (หน้า `/account/orders/:id/pay` ของ group buy) ไม่มี `cart_id` — ADR-015 กำหนด lock key = `cart_id`
   เท่านั้น ค่าเริ่มต้นที่เสนอ: collection ที่ไม่มี cart ใช้ key = `payment_collection_id` และ AC-12b (complete cart) ไม่ใช้กับหน้า order pay (poll ต่ออย่างเดียว)
-  — owner ยืนยัน? (ไม่บล็อก PAY-6 ส่วน cart)
+  — **owner ยืนยัน 2026-10-26** (บันทึกเป็นภาคผนวกใน ADR-015)

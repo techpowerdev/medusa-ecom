@@ -125,7 +125,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 17. (EV-4, owner 2026-10-26) ส่งอีเมล `evoucher.delivered` ล้ม → **คง code ไว้กับ order** (สถานะ `allocated`, ไม่คืน pool, ไม่ void) และส่งอีเมลแจ้ง
     `EVOUCHER_ADMIN_EMAIL` (กฎข้อ 9) ให้ admin ส่งซ้ำผ่าน resend (EV-5b) — resend ที่สำเร็จเปลี่ยน code `allocated` ของ order นั้นเป็น `delivered`;
     รัน allocation ซ้ำ (AC-7) ไม่ allocate code ใหม่ให้ line ที่มี code `allocated` แล้ว
-18. (EV-4, owner 2026-10-26) **backordered ทั้งรายการ**: ถ้า code ที่ claim ได้ไม่ครบ quantity ของ line item → ปล่อย code ที่ claim แล้วของ line นั้นกลับเป็น
+18. (EV-4, owner 2026-10-26 — ยืนยันว่าระดับ line item) **backordered ทั้งรายการ**: ถ้า code ที่ claim ได้ไม่ครบ quantity ของ line item → ปล่อย code ที่ claim แล้วของ line นั้นกลับเป็น
     `available` และ mark line ทั้ง line เป็น backordered (ไม่ส่งมอบบางส่วน) — line อื่นของ order ที่ครบยังส่งมอบตามปกติ
 
 ## Acceptance criteria

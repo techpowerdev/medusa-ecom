@@ -275,6 +275,7 @@ none
   ข้ามการสร้าง admin (พฤติกรรมเดิม)
 - AC-32 Given order ที่มี 2 item (A qty 2, B qty 1) When admin สร้าง fulfillment เฉพาะ A qty 1 แล้ว mark shipped Then อีเมล shipped
   (notification ที่ provider ได้รับ) มีเฉพาะ A จำนวน 1 และไม่มี B (integration http, mock provider)
+  (owner 2026-10-26: อีเมล shipped ไม่แสดงราคา — แสดงเฉพาะชื่อสินค้าและจำนวนที่ส่ง ราคาดูได้จากอีเมลยืนยัน order/หน้า order)
 - AC-33 Given order ที่ `no_notification=true` When เกิด `order.placed` Then ไม่มี notification ถูกสร้าง; Given `no_notification=false`
   Then มี 1 รายการ (integration)
 
@@ -527,11 +528,12 @@ none (CORE-16/17 เป็น middleware บน route ของ Medusa; seed เ
     และ OA ไม่มี return
   - AC-60b return option ที่ `enabled_in_store` ≠ `"true"` (rule ที่ใช้ operator อื่นที่ไม่ใช่ `eq` เช่น `in` ถือว่าไม่ผ่านเช่นกัน) → 400 ข้อความ
     `Return shipping option is not available in store` และ OA ไม่มี return
-  - AC-60c return option ใน service zone ที่ไม่ครอบที่อยู่ของ order (zone ประเทศอื่น สร้างใน test) → 400 ข้อความ
+  - AC-60c return option ใน service zone ที่ไม่ครอบที่อยู่ของ order (zone ประเทศอื่น สร้างใน test) หรือ order ไม่มี `country_code` → 400 `invalid_data` ข้อความ
     `Return shipping option does not serve the order's shipping address` และ OA ไม่มี return
-  - AC-60d id ที่ไม่มีจริง → 400 (ไม่ใช่ 500) และ OA ไม่มี return
+  - AC-60d id ที่ไม่มีจริง → 400 `invalid_data` (ไม่ใช่ 500) และ OA ไม่มี return
   - AC-60e "Standard return" จาก seed → 200 (AC-58 ยังผ่าน)
-  - AC-60f ไม่มี token → 401; customer B → 404 — ก่อนตรวจ option (ลำดับ middleware ตาม ADR-013)
+  - AC-60f ตรวจ option หลัง customer auth + owner check (CORE-13) และ override check (CORE-16): ไม่มี token → 401; customer B → 404
+    (test 401/404 ของ CORE-13 ใช้ยืนยันได้) — ไม่ห่อ route ของ Medusa (ADR-013)
   (integration http `store-returns-*.spec.ts`; unit ของตัวตรวจ rule ถ้าแยกเป็น pure function)
 - AC-66 (CORE-21) Given return option R ที่ผ่าน AC-60 ทุกข้อ แต่ stock location ของ fulfillment set ของ R ไม่ผูกกับ sales channel ของ OA (สร้างใน test)
   When A `POST /store/returns` ด้วย R Then 400 `invalid_data` และ OA ไม่มี return; "Standard return" จาก seed → 200 (integration http)
@@ -581,8 +583,8 @@ CORE-14 เพิ่มขอบเขต: ลบหน้า order transfer `(m
 ### Open questions (รอบ 5)
 - ~~Q-F4~~ ตัดสินแล้ว (owner 2026-10-26): CORE-18 ใช้เนื้อหา placeholder ภาษาไทยไปก่อน เก็บเป็นค่าคงที่ที่แก้ได้ง่าย (กฎข้อ 33) owner ส่งเนื้อหาจริง
   ภายหลัง = แก้ค่าคงที่ ไม่ต้องมี task ใหม่
-- Q-F5 (CORE-20) ช่วงเวลาที่ขอคืนได้ใช้ `return_window_days` ใน region metadata ที่ storefront อ่านอยู่แล้วหรือไม่ (ค่าเริ่มต้น: ใช่ ซ่อนปุ่มเมื่อเกิน;
-  backend ไม่บังคับใน v1) และ e-voucher (spec 02 กฎข้อ 6) ต้องซ่อนปุ่มคืนหรือไม่ (ค่าเริ่มต้น: ซ่อนสำหรับ item ที่ไม่ต้องจัดส่ง)
+- ~~Q-F5~~ (CORE-20) **owner ตัดสิน 2026-10-26**: ปุ่มขอคืนแสดงเฉพาะภายใน N วันหลังได้รับของ (ใช้ `return_window_days` ใน region metadata ที่
+  storefront อ่านอยู่แล้ว; backend ไม่บังคับใน v1) และซ่อนสำหรับ e-voucher/item ที่ไม่ต้องจัดส่ง (spec 02 กฎข้อ 6)
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

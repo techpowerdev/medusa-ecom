@@ -74,7 +74,7 @@ GB-6 ☐ (← GB-2b)
 AF-1 ☑ #11 · AF-2 ☑ #66 · AF-5 ☑ #35 → AF-3 ☐ (← AF-2) → (AF-4 ∥ AF-7) → AF-8 ; AF-5 → AF-6 ∥ AF-9 ☐ (ยกเลิก payout draft)
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
-OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☐ · OPS-5 ☐ · OPS-7 ☐ (← OPS-2, PAY-1, CORE-3, AF-2 ☑) · OPS-8 ☐ (← OPS-2) · OPS-9 ☐ (typecheck group-buy test กับ `.medusa/types`) ·
+OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☐ · OPS-5 ☐ · OPS-7 ☐ (← OPS-2, PAY-1, CORE-3, AF-2 ☑) · OPS-8 ☐ (← OPS-2) · OPS-9 ◐ #72 (typecheck group-buy test กับ `.medusa/types` — แก้ไปแล้วใน GB-2a, PR มีแค่ evidence) ·
 OPS-10 ☐ (← PAY-2: test ของ `classify-changes.sh` ใน CI + รายการ event ของ Stripe webhooks ตรงกับ `stripe listen`) ; OPS-4 ☐ (← FS-6, GB-7)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
