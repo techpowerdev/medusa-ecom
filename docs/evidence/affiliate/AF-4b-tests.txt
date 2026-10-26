@@ -1,0 +1,56 @@
+# AF-4b (spec 05) — follow-up review AF-3 ที่ spec รวมใน AF-4: เรียง line (กฎ 26, AC-25), integration กฎ 24 (AC-23, AC-24), AC-10 ทั้งสอง promise fulfilled, log info
+# วันที่: 2026-10-26 21:19 +07, branch feat/AF-4b-attribution-followups, Node v22.23.3
+
+## Unit: src/modules/affiliate/utils/__tests__/attribution.unit.spec.ts
+  planAttribution
+    ✓ creates a pending entry of 10% for an active program (AC-1) (2 ms)
+    ✓ records the attribution without a program or entry when no program is active (AC-2)
+    ✓ does not attribute a click older than the attribution window (AC-3) (1 ms)
+    ✓ attributes a click exactly at the window edge (now - clicked_at <= window)
+    ✓ rejects a token older than the 30-day cookie even without an active program
+    ✓ rejects a click time after the order time
+    ✓ does not attribute when the affiliate is pending (rule 7)
+    ✓ does not attribute when the affiliate is suspended (rule 7) (1 ms)
+    ✓ only pays lines in the collection scope (AC-4)
+    ✓ matches only the direct categories of a product (Q2)
+    ✓ keeps the attribution but creates no entry for a self purchase, ignoring case and spaces (AC-8) (1 ms)
+    ✓ treats an ended program as inactive inside its window (AC-17)
+    ✓ does not pay an order placed exactly at ends_at (AC-17, [starts_at, ends_at))
+    ✓ ignores draft programs
+    ✓ applies the window of each program: only programs whose window covers the click count
+    ✓ picks the highest rate per line and the latest starts_at on a tie (Q7) (2 ms)
+    ✓ applies cap_per_order per program in line item order after rounding (Q3, rule 11)
+      ✓ allocates the cap by created_at regardless of input order (1 ms)
+      ✓ breaks a created_at tie by id
+  attributionRejection (logged at info level)
+    ✓ accepts an active affiliate with a token inside 30 days
+    ✓ reports an expired or future-dated token
+    ✓ reports an affiliate that is not active (rule 7)
+Test Suites: 1 passed, 1 total
+Tests:       22 passed, 22 total
+
+## Integration (http): integration-tests/http/affiliate-attribution.spec.ts
+# (ก่อนแก้ attribute-order.ts: test log info ล้ม 1 ตัว — AC-23/24/AC-10 เป็น regression test ของ logic จาก #77 จึงผ่านอยู่แล้ว)
+    ✓ AC-1: an order of ฿1,000 within an active 10% program creates a pending ฿100 entry (772 ms)
+    ✓ AC-2: without an active program the attribution has program_id null and no entry (947 ms)
+    ✓ AC-3: a click 10 days ago with attribution_window_days=7 is not attributed (677 ms)
+    ✓ AC-4: a collection-scoped program pays only the line in the collection (฿500 → ฿50) (546 ms)
+    ✓ AC-8: an order whose email matches the affiliate (case/spaces differ) gets no entry (581 ms)
+    ✓ AC-10: redelivering order.placed (twice concurrently, then again) keeps one attribution and one entry set (1012 ms)
+    ✓ rule 15: when creating entries fails, compensation removes the attribution so a retry can attribute (742 ms)
+    ✓ AC-11: a forged/tampered affiliate_token creates nothing and is logged (2497 ms)
+    ✓ AC-17: an ended program inside its window gives attribution with program_id null and no entry (691 ms)
+    ✓ an order without affiliate_token is ignored (808 ms)
+    ✓ an expired token or an affiliate that is not active creates nothing and is logged at info level (1669 ms)
+    attribution window by order.created_at (rule 24)
+      ✓ AC-23: with P1 (15%, 7 days) and P2 (10%, 14 days) active, a click 10 days ago is attributed to P2 at 10% (781 ms)
+      ✓ AC-23: without an active program, a click 20 days ago is attributed with program_id null; 31 days ago is not (1281 ms)
+      ✓ AC-24: a click 6 days before order.created_at is attributed even when the event is processed 3 days late (680 ms)
+Test Suites: 1 passed, 1 total
+Tests:       14 passed, 14 total
+
+## Unit suite ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 43 passed, 43 total
+Tests:       393 passed, 393 total
+
+## pnpm lint && pnpm typecheck: ผ่าน (0 errors)

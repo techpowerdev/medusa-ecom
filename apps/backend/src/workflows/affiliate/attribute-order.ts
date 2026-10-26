@@ -12,6 +12,7 @@ import AffiliateModuleService from "../../modules/affiliate/service"
 import {
   AttributionPlan,
   AttributionProgram,
+  attributionRejection,
   planAttribution,
 } from "../../modules/affiliate/utils/attribution"
 
@@ -53,6 +54,7 @@ export const prepareAffiliateAttributionStep = createStep(
         "subtotal",
         "cart.metadata",
         "items.id",
+        "items.created_at",
         "items.variant_id",
         "items.product_id",
         "items.subtotal",
@@ -75,6 +77,11 @@ export const prepareAffiliateAttributionStep = createStep(
     }
 
     const placedAt = new Date(order.created_at as string | Date)
+    const rejection = attributionRejection(click, affiliate, placedAt)
+    if (rejection) {
+      logger.info(`Affiliate attribution skipped for order ${input.order_id}: ${rejection}`)
+      return new StepResponse<PreparedAttribution>(null)
+    }
     const programs = await service.listAffiliatePrograms({
       status: "published",
       starts_at: { $lte: placedAt },
@@ -108,6 +115,7 @@ export const prepareAffiliateAttributionStep = createStep(
         const totals = item as unknown as ItemTotals
         return {
           id: item.id,
+          created_at: item.created_at as Date | string,
           variant_id: item.variant_id,
           product_collection_id: product?.collection_id ?? null,
           product_category_ids: (product?.categories ?? []).flatMap((c) => (c ? [c.id] : [])),

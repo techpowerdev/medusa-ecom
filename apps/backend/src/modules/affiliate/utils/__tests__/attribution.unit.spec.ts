@@ -1,4 +1,4 @@
-import { AttributionProgram, planAttribution, PlanAttributionInput } from "../attribution"
+import { AttributionProgram, attributionRejection, planAttribution, PlanAttributionInput } from "../attribution"
 
 const DAY = 24 * 60 * 60 * 1000
 const placedAt = new Date("2026-10-20T10:00:00.000Z")
@@ -173,5 +173,51 @@ describe("planAttribution", () => {
       ["li_1", 100.01],
       ["li_2", 19.99],
     ])
+  })
+
+  describe("line order before allocating the cap (rule 26, AC-25)", () => {
+    const l1 = { id: "li_b", created_at: new Date("2026-10-20T09:00:00.000Z"), subtotal: 500 }
+    const l2 = { id: "li_a", created_at: new Date("2026-10-20T09:00:01.000Z"), subtotal: 500 }
+    const capped = (items: PlanAttributionInput["items"]) =>
+      planAttribution(input({ programs: [program({ cap_per_order: 60 })], items }))?.entries.map((e) => [
+        e.line_item_id,
+        e.amount,
+      ])
+
+    it("allocates the cap by created_at regardless of input order", () => {
+      expect(capped([l2, l1])).toEqual([
+        ["li_b", 50],
+        ["li_a", 10],
+      ])
+      expect(capped([l1, l2])).toEqual(capped([l2, l1]))
+    })
+
+    it("breaks a created_at tie by id", () => {
+      const tie = l1.created_at
+      expect(capped([{ ...l1, created_at: tie }, { ...l2, created_at: tie }])).toEqual([
+        ["li_a", 50],
+        ["li_b", 10],
+      ])
+    })
+  })
+})
+
+describe("attributionRejection (logged at info level)", () => {
+  const click = { affiliate_id: "aff_ann", clicked_at: new Date(placedAt.getTime() - DAY) }
+  const affiliate = { id: "aff_ann", email: "ann@example.com", status: "active" }
+
+  it("accepts an active affiliate with a token inside 30 days", () => {
+    expect(attributionRejection(click, affiliate, placedAt)).toBeNull()
+  })
+
+  it("reports an expired or future-dated token", () => {
+    const old = { ...click, clicked_at: new Date(placedAt.getTime() - 31 * DAY) }
+    const future = { ...click, clicked_at: new Date(placedAt.getTime() + 1000) }
+    expect(attributionRejection(old, affiliate, placedAt)).toBe("token_expired")
+    expect(attributionRejection(future, affiliate, placedAt)).toBe("token_expired")
+  })
+
+  it("reports an affiliate that is not active (rule 7)", () => {
+    expect(attributionRejection(click, { ...affiliate, status: "suspended" }, placedAt)).toBe("affiliate_not_active")
   })
 })

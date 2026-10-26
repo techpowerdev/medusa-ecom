@@ -21,11 +21,31 @@ export type PlanAttributionInput = {
   affiliate: { id: string; email: string; status: string }
   order: { email?: string | null; placed_at: Date }
   programs: AttributionProgram[]
-  items: CommissionLineItem[]
+  items: (CommissionLineItem & { created_at?: Date | string | null })[]
 }
 
 export type PlannedEntry = { program_id: string; line_item_id: string; amount: number; hold_days: number }
 export type AttributionPlan = { affiliate_id: string; program_id: string | null; entries: PlannedEntry[] }
+
+export type AttributionRejection = "token_expired" | "affiliate_not_active"
+
+/** เหตุที่ไม่ attribute ก่อนดูโปรแกรม (กฎ 7 + อายุ token 30 วัน) — subscriber log ระดับ info */
+export const attributionRejection = (
+  click: AffiliateTokenPayload,
+  affiliate: PlanAttributionInput["affiliate"],
+  placedAt: Date
+): AttributionRejection | null => {
+  const age = placedAt.getTime() - click.clicked_at.getTime()
+  if (age < 0 || age > AFFILIATE_TOKEN_MAX_AGE_DAYS * DAY_MS) {
+    return "token_expired"
+  }
+  return affiliate.status === "active" ? null : "affiliate_not_active"
+}
+
+// กฎ 26: ลำดับ line สำหรับแจก cap = created_at จากน้อยไปมาก เสมอกันใช้ id (ไม่พึ่งลำดับที่ query.graph คืน)
+const time = (value?: Date | string | null) => (value ? new Date(value).getTime() : 0)
+const byLineOrder = (a: PlanAttributionInput["items"][number], b: PlanAttributionInput["items"][number]) =>
+  time(a.created_at) - time(b.created_at) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 
 const normalizeEmail = (email?: string | null) => (email ?? "").trim().toLowerCase()
 
@@ -40,10 +60,11 @@ const byPreference = (a: AttributionProgram, b: AttributionProgram) =>
  */
 export const planAttribution = (input: PlanAttributionInput): AttributionPlan | null => {
   const { click, affiliate, order } = input
-  const age = order.placed_at.getTime() - click.clicked_at.getTime()
-  if (affiliate.status !== "active" || age < 0 || age > AFFILIATE_TOKEN_MAX_AGE_DAYS * DAY_MS) {
+  if (attributionRejection(click, affiliate, order.placed_at)) {
     return null
   }
+  const age = order.placed_at.getTime() - click.clicked_at.getTime()
+  const items = [...input.items].sort(byLineOrder)
 
   const active = input.programs.filter((p) => isProgramActiveAt(p, order.placed_at))
   const eligible = active.filter((p) => age <= p.attribution_window_days * DAY_MS).sort(byPreference)
@@ -57,7 +78,7 @@ export const planAttribution = (input: PlanAttributionInput): AttributionPlan | 
 
   // ต่อ line เลือกโปรแกรมแรกตาม byPreference ที่คลุม line นั้น แล้วคำนวณ (รวม cap) ต่อโปรแกรมตามลำดับ line
   const linesByProgram = new Map<string, CommissionLineItem[]>()
-  for (const item of input.items) {
+  for (const item of items) {
     const program = eligible.find((p) => isLineItemInScope(p.scope, item))
     if (program) {
       linesByProgram.set(program.id, [...(linesByProgram.get(program.id) ?? []), item])
@@ -80,7 +101,7 @@ export const planAttribution = (input: PlanAttributionInput): AttributionPlan | 
   const selfPurchase = normalizeEmail(order.email) === normalizeEmail(affiliate.email)
   const entries = selfPurchase
     ? []
-    : input.items.flatMap((item) => (amounts.has(item.id) ? [amounts.get(item.id)!] : []))
+    : items.flatMap((item) => (amounts.has(item.id) ? [amounts.get(item.id)!] : []))
 
   return { affiliate_id: affiliate.id, program_id: top.id, entries }
 }
