@@ -12,6 +12,8 @@ export const EmailTemplates = {
   EVOUCHER_DELIVERED: "evoucher.delivered",
   EVOUCHER_BACKORDERED: "evoucher-backordered",
   EVOUCHER_DELIVERY_FAILED: "evoucher-delivery-failed",
+  GROUP_BUY_SUCCEEDED: "group-buy-succeeded",
+  GROUP_BUY_FAILED: "group-buy-failed",
 } as const
 
 /** EV-4: code/PIN ใน notification.data เป็น ciphertext — provider ส่งฟังก์ชันถอดรหัสมาตอน render */
@@ -305,6 +307,42 @@ const renderEvoucherDeliveryFailed = (data: Record<string, unknown>): RenderedEm
   return { subject, html: layout(subject, body) }
 }
 
+// GB-4 (spec 04 กฎข้อ 9): อีเมลถึงสมาชิกกลุ่ม — ข้อมูลจาก src/workflows/group-buy/group-outcome.ts
+type GroupBuyEmail = { order?: EmailOrder; pay_url?: string; pay_deadline_at?: string }
+
+// ลิงก์ชำระเงินเป็น URL เต็ม (ตั้ง STOREFRONT_URL) หรือ path ของ storefront
+const isSafeLink = (url?: string): url is string => isHttpUrl(url) || /^\/(?!\/)/.test(url ?? "")
+
+const bangkokDateTime = (iso?: string) =>
+  iso
+    ? new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" }).format(
+        new Date(iso)
+      )
+    : ""
+
+const renderGroupBuySucceeded = (data: Record<string, unknown>): RenderedEmail => {
+  const { order = {}, pay_url, pay_deadline_at } = data as GroupBuyEmail
+  const orderNo = `#${escapeHtml(order.display_id)}`
+  const subject = `กลุ่มสำเร็จแล้ว ชำระเงินคำสั่งซื้อ ${orderNo} ได้เลย`
+  const body =
+    `<h1 style="font-size:20px">กลุ่มของคุณถึงเป้าหมายแล้ว</h1>` +
+    `<p>ยอดชำระหลังส่วนลดกลุ่ม <b>${formatMoney(order.total, order.currency_code)}</b> ` +
+    `กรุณาชำระเงินภายใน <b>${escapeHtml(bangkokDateTime(pay_deadline_at))}</b> (เวลาประเทศไทย) ` +
+    `หากเลยกำหนด คำสั่งซื้อจะถูกยกเลิก</p>` +
+    (isSafeLink(pay_url) ? `<p><a href="${escapeHtml(pay_url)}">ชำระเงินคำสั่งซื้อ ${orderNo}</a></p>` : "")
+  return { subject, html: layout(subject, body) }
+}
+
+const renderGroupBuyFailed = (data: Record<string, unknown>): RenderedEmail => {
+  const { order = {} } = data as GroupBuyEmail
+  const orderNo = `#${escapeHtml(order.display_id)}`
+  const subject = `กลุ่มไม่สำเร็จ คำสั่งซื้อ ${orderNo} ถูกยกเลิก`
+  const body =
+    `<h1 style="font-size:20px">กลุ่มไม่ถึงเป้าหมายภายในเวลาที่กำหนด</h1>` +
+    `<p>คำสั่งซื้อ ${orderNo} ถูกยกเลิกแล้ว คุณยังไม่ได้ชำระเงินจึงไม่มีการเรียกเก็บเงินใดๆ</p>`
+  return { subject, html: layout(subject, body) }
+}
+
 const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderContext) => RenderedEmail> = {
   [EmailTemplates.ORDER_PLACED]: renderOrderPlaced,
   [EmailTemplates.ORDER_SHIPPED]: renderOrderShipped,
@@ -313,6 +351,8 @@ const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderCont
   [EmailTemplates.EVOUCHER_DELIVERED]: renderEvoucherDelivered,
   [EmailTemplates.EVOUCHER_BACKORDERED]: renderEvoucherBackordered,
   [EmailTemplates.EVOUCHER_DELIVERY_FAILED]: renderEvoucherDeliveryFailed,
+  [EmailTemplates.GROUP_BUY_SUCCEEDED]: renderGroupBuySucceeded,
+  [EmailTemplates.GROUP_BUY_FAILED]: renderGroupBuyFailed,
 }
 
 export const renderEmailTemplate = (
