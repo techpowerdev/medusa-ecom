@@ -10,8 +10,10 @@ export type EvidenceFile = { name: string; bytes: number }
 
 const FEATURE_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
 // CORE-5b: รับ suffix ตัวเล็กหนึ่งตัว เช่น CORE-4a, CORE-5b; GB-6b1: ตามด้วยตัวเลขได้อีกหนึ่งหลัก (task ที่ spec แยกย่อย)
-const TASK_ID_RE = /^[A-Z]+-\d+([a-z]\d?)?$/
-const TESTS_TXT_RE = /^[A-Z]+-\d+([a-z]\d?)?-tests\.txt$/
+// GB-N1: งานเล็กรวม nit ใช้ N นำหน้าตัวเลข (ไม่มี suffix)
+const TASK_ID = String.raw`[A-Z]+-(?:\d+(?:[a-z]\d?)?|N\d+)`
+const TASK_ID_RE = new RegExp(`^${TASK_ID}$`)
+const TESTS_TXT_RE = new RegExp(`^${TASK_ID}-tests\\.txt$`)
 const ALLOWED_NON_PNG = new Set(["REPORT.md"])
 
 export function evidenceDir(repoRoot: string, target: EvidenceTarget): string {
