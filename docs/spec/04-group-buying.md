@@ -163,7 +163,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   มิฉะนั้น 400 `NOT_ALLOWED`),
   `POST /admin/group-buy/campaigns/:id/status` `{status: "active"|"ended"}`, `POST /admin/group-buy/campaigns/:id/groups`
   (pool), `GET .../groups`, `POST /admin/group-buy/groups/:id/succeed|fail` (override แบบ manual, GB-4),
-  `GET /admin/group-buy/groups/:id/memberships` (GB-6c, อ่านอย่างเดียว; `limit`/`offset` ค่าเริ่มต้น 50) → 200
+  `GET /admin/group-buy/groups/:id/memberships` (GB-6c, อ่านอย่างเดียว; query ตรวจด้วย zod validator ผ่าน `validateAndTransformQuery` ของ Medusa:
+  `limit` int 1..100 ค่าเริ่มต้น 50, `offset` int ≥ 0 ค่าเริ่มต้น 0 — นอกช่วง/ไม่ใช่ตัวเลข → 400 `invalid_data`) → 200
   `{ memberships: [{ id, customer_id, customer: { email }, units, status, joined_at, order_id, order: { status, is_draft_order, payment_status, total } }], count }`
   (อ่าน order ผ่าน read-only link ด้วย `query.graph`; อีเมลลูกค้าอ่านจาก Customer module ใน route ด้วย `query.graph` — ไม่มี link ใหม่; ถ้า Query ต่อ
   membership → customer ไม่ได้ ให้ query ลูกค้าแยกด้วย `customer_id` ชุดเดียว ไม่ยิงต่อแถว)
@@ -259,7 +260,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     เป็นเงื่อนไขของ UI
 15. (GB-6b, review #75) ในฟอร์มสร้างแคมเปญ ถ้ากรอกทั้ง `application_method.max_quantity` และ `max_units_per_person` ต้อง `max_quantity ≥ max_units_per_person`
     (ไม่เช่นนั้นสมาชิกจะ join ด้วยจำนวนชิ้นที่ส่วนลดไม่ครอบ) — ฟอร์มแสดง hint ข้างช่องเสมอ และแสดง error `gb-max-quantity-error` + ไม่ส่ง request เมื่อผิด;
-    บังคับเฉพาะในฟอร์ม (ต้นแบบแก้ภายหลังได้ที่หน้า promotion ของ Medusa จึงบังคับฝั่ง backend ตอนสร้างได้ไม่ครบ — ดู Q10)
+    บังคับเฉพาะในฟอร์ม (ต้นแบบแก้ภายหลังได้ที่หน้า promotion ของ Medusa จึงบังคับฝั่ง backend ตอนสร้างได้ไม่ครบ — owner ตัดสิน Q10 2026-10-26: ไม่ทำ backend validator)
 16. (GB-6b, qa #75) ฟอร์มสร้างแคมเปญที่ `ends_at <= now` แสดงคำเตือน `gb-ends-at-warning` (ยังส่งได้ เพราะแคมเปญเป็น `draft` และ `draft → active`
     ถูกปฏิเสธโดย backend อยู่แล้วเมื่อ `ends_at <= now`)
 17. (GB-6b, review #75) `POST /admin/group-buy/campaigns` ไม่ idempotent → ทุกปุ่มที่สร้างข้อมูลในหน้า Group buying (สร้างแคมเปญ, สร้าง pool group,
@@ -361,7 +362,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   `application_method.target_rules = [{ attribute: "items.product.id", operator: "in", values: [<id1>, <id2>] }]`; และในฟอร์มไม่มีช่องกรอก product ID
   แบบข้อความอิสระ (component test ตรวจ body ที่ส่ง)
 - AC-34 (GB-6c) Given กลุ่ม G ที่มี membership 2 รายการ (`joined` 1, `cancelled` 1) When admin `GET /admin/group-buy/groups/G/memberships` Then 200
-  `count=2` และแต่ละรายการมี `order_id`, `order.status`, `order.payment_status`, `customer.email` ตรงกับ DB; กลุ่มไม่มีจริง → 404; ไม่มี token → 401
+  `count=2` และแต่ละรายการมี `order_id`, `order.status`, `order.payment_status`, `customer.email` ตรงกับ DB; `limit=1&offset=1` → 1 รายการ `count=2`;
+  `limit=101`, `limit=0`, `offset=-1`, `limit=abc` → 400; กลุ่มไม่มีจริง → 404; ไม่มี token → 401
   (integration http)
 - AC-35 (GB-6c) Given กลุ่ม `open` ที่มีสมาชิก When admin เปิดแถวกลุ่มใน `gb-groups-table` Then `gb-memberships-table` แสดงสมาชิกครบพร้อมลิงก์ไป
   หน้า order ของ Medusa admin (`/draft-orders/<order_id>` เมื่อ order ยังเป็น draft, `/orders/<order_id>` เมื่อแปลงแล้ว — builder ยืนยัน path ของ dashboard
@@ -427,6 +429,5 @@ GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/tes
 - ~~Q9~~ ตัดสินแล้ว (owner 2026-10-26): backend ห้าม complete cart ที่มี `GB-*` ทุกกรณี และปฏิเสธ join ซ้ำด้วย cart เดิม (409) — ทำใน GB-3;
   storefront ล้าง cart หลัง join — ทำใน GB-7 (กฎข้อ 14, AC-26..28)
 - ~~Q8~~ ตัดสินแล้ว (owner, 2026-10-26): ต้นแบบ `is_tax_inclusive: true` เป็นค่าเริ่มต้น (ราคา THB รวม VAT) admin เปลี่ยนเองได้ — กฎข้อ 12, GB-2c
-- Q10 (GB-6b, กฎข้อ 15, 17) ต้องบังคับ `max_quantity ≥ max_units_per_person` ใน validator ของ `POST /admin/group-buy/campaigns` ด้วยหรือไม่ และต้องทำ
-  `POST /admin/group-buy/campaigns` ให้ idempotent ฝั่ง backend (เช่น header idempotency key + lock) หรือไม่? (ค่าเริ่มต้น: ไม่ — บังคับในฟอร์ม + กันกดซ้ำฝั่ง UI
-  เพราะเป็น route ของ admin เท่านั้น แคมเปญที่ซ้ำเป็น `draft` ลบได้ และต้นแบบยังแก้ได้ที่หน้า promotion ของ Medusa)
+- ~~Q10~~ ตัดสินแล้ว (owner 2026-10-26): ตรวจ `max_quantity ≥ max_units_per_person` ในฟอร์ม admin + กันกดซ้ำฝั่ง UI พอ — **ไม่**เพิ่ม backend validator
+  และไม่ทำ `POST /admin/group-buy/campaigns` ให้ idempotent (route ของ admin เท่านั้น แคมเปญที่ซ้ำเป็น `draft` ลบได้) — กฎข้อ 15, 17

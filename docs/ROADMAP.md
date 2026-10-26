@@ -60,7 +60,7 @@
 EV-1 ☑ #15 · EV-2 ☑ #25 · EV-3 ☑ #31 · EV-4 ◐ #67 (+ ciphertext ใน notification, ส่งล้มคง `allocated`, backordered ทั้ง line — owner 2026-10-26) ·
 EV-5 ☑ #43 · EV-5b ☐ (← EV-4, EV-6: resend รวม `allocated`, `idempotency_key` ใหม่ทุกครั้ง) · EV-6 ☑ #39 · EV-7 ☐ (← EV-4; บังคับ Digital method) · EV-8 ☑ #54 ·
 EV-9 ☐ (← EV-2, EV-6) · EV-10 ☐ (← EV-5, EV-8: reservation ตอน admin void, วันที่จริง, inventory item ร่วม, คืน `requires_shipping` — ก่อน release ที่มี EV-7;
-รอบ 6 owner **ยกเลิก**การบังคับ shipping profile Digital) · EV-11 ☐ (← EV-4: ลบ warn เรื่อง profile) · EV-12 ☐ (← EV-10 + คำตอบ Q6: job ระบุ pool `stocked < reserved`)
+รอบ 6 owner **ยกเลิก**การบังคับ profile Digital → product ของ voucher ต้องไม่มี shipping profile, #85) · EV-11 ☐ (← EV-4: warn เมื่อ product มี profile ใดๆ) · EV-12 ☐ (← EV-10 + คำตอบ Q6: job ระบุ pool `stocked < reserved`)
 
 ## M4 Flash sale — **v0.4.0**
 PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ☑ #38 · FS-7 ☑ #53 · PROMO-2 ☑ #50 ·
@@ -97,7 +97,7 @@ hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (�
 - cart หลัง join group buy → GB-3 (backend) + GB-7 (storefront) · leave → GB-3b
 - รอบ 6 (2026-10-26): admin group buy → GB-6a/6b/6c · cookie `aff` ก่อน placeOrder → AF-3b · เรียง line ก่อนแจก cap → AF-4 · lock ตอน cancel payout → AF-9b ·
   ปุ่มยกเลิก payout → AF-6 · resend e-voucher `idempotency_key` → EV-5b · helper e2e admin → OPS-11 · "Medusa Store" → CORE-18 (account)/CORE-4d (checkout) ·
-  AC-61 ไม่นับข้อมูล backend → CORE-18 · แยก CORE-14 → 14a/14b + 14c (transferCart 404) · แยก PAY-6 → 6a/6b · ยกเลิก profile Digital → EV-10/EV-11, job → EV-12
+  AC-61 ไม่นับข้อมูล backend → CORE-18 · แยก CORE-14 → 14a/14b + 14c (transferCart 404) · แยก PAY-6 → 6a/6b · voucher ไม่มี shipping profile → EV-10/EV-11, job → EV-12
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →

@@ -160,7 +160,7 @@ fixture ตั้ง cookie `_medusa_locale` ของ CORE-5 คงไว้แ
 | CORE-4a | Vitest (dev dep, `test:unit`, ขั้นตอนใน CI) + THB format ใน `convertToLocale` + Tailwind `brand` tokens + Noto Sans Thai ผ่าน `next/font` + `<html lang="th">` | AC-7, 8, 9, 11 | CORE-1 (☑) |
 | CORE-4b | ESLint rule (กฎข้อ 4) + ลบ `language-select` (กฎข้อ 6) + ข้อความไทยตาม path 4b ในตาราง AC-49: layout shell (nav, footer, side menu, cart dropdown, not-found, metadata ของ root/main layout), home, store/PLP, search, categories, collections, PDP + เพิ่ม `data-testid` ที่ขาด | AC-10/50, 46, 47, 48 (4b), 49 (4b) | CORE-4a, CORE-5b, CORE-8 (merge แล้วทั้งหมด) — ไม่รอ CORE-9 |
 | CORE-4c | ข้อความไทยตาม path 4c ในตาราง AC-49: cart, account (overview, profile, addresses, login/register, verify-account), orders/order detail/confirmed, หน้า policy ทั้ง 5 (ทั้งไฟล์ `page.tsx`), common, skeletons + `data-testid` ที่ขาด | AC-48 (4c), 49 (4c) | CORE-4b (ใช้ rule/config ของ 4b) |
-| CORE-4d | ข้อความไทยตาม path 4d ในตาราง AC-49: route group `(checkout)` ทั้งหมด (layout, not-found, checkout ทุกขั้น), shipping nudge, `lib/constants.tsx` **รวมข้อความ UI ที่ PAY-2 (#48) เพิ่ม** (เช่น ปุ่ม/ข้อความ PromptPay) + ประโยคยอมรับเงื่อนไขในขั้น review และชื่อร้านใน `(checkout)/layout.tsx` (ยืนยันรอบ 6, กฎข้อ 39) + `data-testid` ที่ขาด | AC-48 (4d), 49 (4d), 75 | CORE-4b, **PAY-2** (ห้ามแตะไฟล์ checkout ก่อน #48 merge) |
+| CORE-4d | ข้อความไทยตาม path 4d ในตาราง AC-49: route group `(checkout)` ทั้งหมด (layout, not-found, checkout ทุกขั้น), shipping nudge, `lib/constants.tsx` **รวมข้อความ UI ที่ PAY-2 (#48) เพิ่ม** (เช่น ปุ่ม/ข้อความ PromptPay) + แปลไทยประโยคยอมรับเงื่อนไขในขั้น review และข้อความใน `(checkout)/layout.tsx` (ชื่อร้าน → `STORE_NAME` ทำแล้วใน #80; ยืนยันรอบ 6, กฎข้อ 39) + `data-testid` ที่ขาด | AC-48 (4d), 49 (4d), 75 | CORE-4b, **PAY-2** (ห้ามแตะไฟล์ checkout ก่อน #48 merge) |
 CORE-4c ∥ CORE-4d หลัง CORE-4b (คนละ path; ทั้งคู่แก้ ESLint config บรรทัด path — ตัวที่ merge ทีหลัง rebase)
 CORE-4b แตะ `src/modules/store/components/store-hits/` เดียวกับ CORE-15 — ตัวที่ merge ทีหลัง rebase (ข้อความ error ของ CORE-15 เขียนไทยอยู่แล้ว)
 ถ้า CORE-4b เกิน ~400 LOC ให้แยก CORE-4b1 (rule + layout shell + home + `language-select`; AC-46, 47, 50) และ CORE-4b2 (store/PLP,
@@ -621,12 +621,14 @@ none
 38. (**CORE-18 #80**, รอบ 6 ตาม review — ไม่ใช่ CORE-14) แทนคำ "Medusa Store" ที่ storefront เขียนเองใน `modules/account/components/register/index.tsx`
     (heading, คำอธิบาย, ข้อความยอมรับเงื่อนไข) และ `metadata.description` ของ `app/[countryCode]/(main)/account/@login/page.tsx` และ `.../@dashboard/profile/page.tsx`
     ด้วย `STORE_NAME` (`lib/util/site.ts`; ค่าเป็นเนื้อหาร้าน placeholder ตามกฎข้อ 33 ไม่ใช่ "Medusa Store") — ข้อความรอบ ๆ ยังเป็นอังกฤษได้จนกว่า CORE-4c แปล
-    (ไฟล์อยู่ใน path ของ 4c; ตัวที่ merge ทีหลัง rebase) ตรวจด้วย AC-61; `app/[countryCode]/(checkout)/layout.tsx` อยู่ใน CORE-4d (กฎข้อ 39)
+    (ไฟล์อยู่ใน path ของ 4c; ตัวที่ merge ทีหลัง rebase) ตรวจด้วย AC-61; **#80 แทนชื่อร้านใน checkout ไปแล้วด้วย** (`(checkout)/layout.tsx` และ
+    `checkout/components/review/index.tsx`: "Medusa Store" → `STORE_NAME`, ลบ `MedusaCTA`) — CORE-4d และ reviewer ห้าม revert ส่วนนี้ (กฎข้อ 39)
+39. (CORE-4d, ยืนยันรอบ 6) การแทนชื่อร้าน/ลบ `MedusaCTA` ใน checkout ทำแล้วใน CORE-18 (#80, กฎข้อ 38); CORE-4d เหลือเพียง**แปลเป็นไทย** ประโยคยอมรับเงื่อนไข
+    ในขั้น review (`modules/checkout/components/review/index.tsx` "By clicking the Place Order button…") และข้อความอื่นใน `(checkout)/layout.tsx` โดยคง `STORE_NAME`
+    ไว้ — อยู่ใน path 4d ของตาราง AC-49 อยู่แล้ว ไม่ใช่ task ใหม่ (AC-75)
 40. (CORE-14c, review #81) login ขณะมี cookie `_medusa_cart_id` ที่ชี้ไป cart ของ customer อื่น (เช่น เครื่องที่ใช้ร่วมกัน): `transferCart()` ได้ 404 จาก ownership
     middleware ของ CORE-12 (ADR-013) → login ต้อง**สำเร็จ**ตามปกติ, ล้าง cookie cart นั้น (ไม่แสดง error ของ cart ให้ผู้ใช้) — 404 จาก transfer เท่านั้นที่ถูกกลืน
     error อื่น (5xx/network) ยังส่งต่อตามเดิม; ห้ามแก้ backend ให้โอน cart ของคนอื่น (ADR-013)
-39. (CORE-4d, ยืนยันรอบ 6) ขอบเขต CORE-4d รวมประโยคยอมรับเงื่อนไขในขั้น review (`modules/checkout/components/review/index.tsx` "By clicking the Place Order
-    button…" ที่อ้าง "Medusa") และชื่อร้านใน `(checkout)/layout.tsx` — อยู่ใน path 4d ของตาราง AC-49 อยู่แล้ว ไม่ใช่ task ใหม่
 
 ### Acceptance criteria (follow-up รอบ 6)
 - AC-70 (CORE-21, AC-60c ส่วน "order ไม่มี `country_code`") Given order OA ของ A ที่ `shipping_address.country_code` เป็น null (หรือไม่มี shipping address —

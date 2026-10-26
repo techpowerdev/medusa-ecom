@@ -20,7 +20,7 @@ coupon code จากพาร์ทเนอร์ล่วงหน้า แ�
 | Admin product UI | Admin widget บนหน้า product/variant | widget |
 | Admin import UI | Admin route page + file upload (File module) | custom page |
 | สินค้าที่ไม่ต้องจัดส่ง | `requires_shipping` ของ inventory item (override ระดับ variant) → line item `requires_shipping` | ใช้ตามที่มี; ตั้งค่าตอนสร้าง pool (EV-8) — **อย่างเดียว** (กฎข้อ 1) |
-| shipping profile | product ที่มี shipping profile ใดก็ตาม (รวม `type=digital`) → line item `requires_shipping=true` เสมอ (`prepare-line-item-data` ของ 2.22.1: `hasShippingProfile \|\| inventory`) | **ไม่ใช้** บังคับ voucher (owner 2026-10-26 ยกเลิก — ขัด AC-11) |
+| shipping profile | product ที่มี shipping profile **ใดก็ตาม** (Default, Digital หรืออื่น) → line item `requires_shipping=true` เสมอ (`core-flows` 2.22.1 `cart/utils/prepare-line-item-data.js:23-29`: `hasShippingProfile \|\| someInventoryRequiresShipping`) และ `validate-shipping.js:48-57` บังคับ shipping method ตาม profile ของ line ที่ต้องจัดส่ง | product ของ voucher ต้อง**ไม่มี shipping profile เลย** (กฎข้อ 1) |
 
 ## Data model (module `evoucher`)
 ```
@@ -87,10 +87,12 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 
 ## Business rules
 1. variant จะเป็น voucher ก็ต่อเมื่อมี `EvoucherPool`; `requires_shipping=false`,
-   `manage_inventory=true` โดย inventory ต้องเท่ากับจำนวน code ที่ `available` เสมอ; "ไม่ต้องจัดส่ง" มาจาก `requires_shipping=false` ที่ inventory item
-   **อย่างเดียว** (EV-8) — (owner 2026-10-26, รอบ 6 — **ยกเลิก**ข้อตัดสิน Q5 เดิม) **ไม่บังคับ** shipping profile Digital ให้ product ของ voucher และไม่ปฏิเสธ
-   การสร้าง pool ตาม profile เพราะใน Medusa 2.22.1 product ที่มี shipping profile ใดก็ตามทำให้ line item `requires_shipping=true` เสมอ (`prepare-line-item-data`:
-   `hasShippingProfile || inventory`) ซึ่งขัด AC-11; การเลือก shipping option ของ cart voucher ทำตามกฎข้อ 8
+   `manage_inventory=true` โดย inventory ต้องเท่ากับจำนวน code ที่ `available` เสมอ; (owner 2026-10-26, รอบ 6 — **ยกเลิก**ข้อตัดสิน Q5 เดิมเรื่อง profile Digital)
+   line item ของ voucher มี `requires_shipping=false` ได้ก็ต่อเมื่อ**ทั้งสองข้อ**: (a) inventory item `requires_shipping=false` (EV-8) และ (b) product ของ voucher
+   **ไม่มี shipping profile เลย** — ใน Medusa 2.22.1 profile ใดก็ตาม (รวม Default ที่ seed/admin ใส่ให้ product ส่วนใหญ่) ทำให้ line item `requires_shipping=true`
+   (`prepare-line-item-data`: `hasShippingProfile || inventory`) และ `validate-shipping` จะบังคับ method ของ profile นั้น (Standard) — ตรงกับที่ EV-10 (#85) ทำ;
+   การสร้าง pool ให้ variant ที่ product มี shipping profile → **400** ไม่มี pool (owner ตัดสิน Q9 2026-10-26); การเลือก shipping option ของ cart voucher
+   (ถ้า storefront ใส่) ทำตามกฎข้อ 8
 2. จะ allocate code หลังจากชำระเงิน **captured** แล้วเท่านั้น โดยเลือก code ที่หมดอายุเร็วที่สุดก่อน
    และไม่เลือก code ที่จะหมดอายุภายใน 7 วัน
 3. 1 code ต่อ 1 หน่วย; qty 3 → 3 code ในอีเมลเดียว
@@ -134,7 +136,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 19. (EV-5b, follow-up review รอบ 6) resend ต้องสร้าง notification ด้วย `idempotency_key` **ใหม่ทุกครั้ง** (เช่น
     `evoucher-resend:<order_id>:<uuid>`) — ห้ามใช้ key เดิมของการส่งที่ `status=failure`: `NotificationModuleService` จะเข้า retry path ของแถวเดิม
     แล้ว throw `NOT_FOUND` ทำให้ resend ล้มตลอด
-20. (EV-4, ตามโค้ด #67 — รอ owner รับทราบ Q8) อีเมล `evoucher.delivered` ส่ง**เสมอ**แม้ order ตั้ง `no_notification=true` เพราะอีเมลนี้คือการส่งมอบสินค้า
+20. (EV-4, ตามโค้ด #67 — owner ยืนยัน Q8 2026-10-26) อีเมล `evoucher.delivered` ส่ง**เสมอ**แม้ order ตั้ง `no_notification=true` เพราะอีเมลนี้คือการส่งมอบสินค้า
     (ไม่ใช่อีเมลแจ้งสถานะ) — ต่างจากอีเมล shipped ของ CORE-11 ที่เคารพ `no_notification`
 
 ## Acceptance criteria
@@ -143,11 +145,10 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-2 เมื่อมี voucher variant qty 2 ใน cart และชำระเงิน captured แล้ว 2 code จะกลายเป็น
   `delivered` พร้อม order id และลูกค้าได้รับอีเมล 1 ฉบับที่มีทั้ง 2 code, PIN,
   วิธีใช้ของพาร์ทเนอร์ และวันหมดอายุ
-- AC-3 เมื่อ cart มีเฉพาะสินค้า voucher การ checkout ไม่ต้องกรอกที่อยู่; shipping method
-  "Digital delivery" ฟรีถูกใช้อัตโนมัติ; ยอดรวมมีค่าจัดส่ง ฿0 — แม้ `GET /store/shipping-options?cart_id=` คืน Standard มาก่อน
-  Digital delivery ในรายการ cart ก็ต้องมี shipping method ที่ `type.code = "digital-delivery"` และไม่มี Standard (กฎข้อ 8) และทุก line ของ voucher
-  มี `requires_shipping=false` (กฎข้อ 1) — (รอบ 6, owner ยกเลิกการบังคับ profile Digital) **ไม่**มีการบังคับฝั่ง backend ว่า voucher ได้เฉพาะ Digital method;
-  ถ้าต้องการกันลูกค้าเลือก Standard ผ่าน API ตรง ต้องเขียน ADR ก่อน
+- AC-3 เมื่อ cart มีเฉพาะสินค้า voucher (product ไม่มี shipping profile, กฎข้อ 1) ทุก line มี `requires_shipping=false`, การ checkout ไม่ต้องกรอกที่อยู่
+  และ complete cart ได้โดย `validate-shipping` ของ Medusa ไม่บังคับ shipping method (integration: complete cart ที่ไม่มี shipping method → order สำเร็จ);
+  ยอดรวมมีค่าจัดส่ง ฿0; ถ้า storefront ใส่ method ต้องเป็น `type.code = "digital-delivery"` ไม่ใช่ Standard แม้ `GET /store/shipping-options?cart_id=`
+  คืน Standard มาก่อน (กฎข้อ 8, e2e) — ไม่มีการบังคับฝั่ง backend ว่า voucher ได้เฉพาะ Digital method (ถ้าต้องการต้องเขียน ADR ก่อน)
 - AC-25 (EV-4, กฎข้อ 16) Given order ที่ได้รับ code แล้ว When อ่านแถว `notification` ของ `evoucher.delivered` จาก DB Then `data` ไม่มีค่า plaintext ของ code/PIN
   (เทียบกับค่าที่ถอดรหัสแล้ว) และ mock provider ได้รับ code/PIN ที่ถอดแล้วถูกต้อง (integration)
 - AC-26 (EV-4, กฎข้อ 17) Given notification provider throw ตอนส่ง `evoucher.delivered` When allocation workflow ทำงาน Then code ของ order เป็น `allocated` (ไม่ใช่
@@ -178,8 +179,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   job รายวันตั้ง `void_reason="expiring"`
 - AC-11 สร้าง pool ให้ variant ที่ `manage_inventory=true` → inventory item ของ variant มี `requires_shipping=false` และ line item ของ
   variant นั้นใน cart มี `requires_shipping=false`; variant ที่ `manage_inventory=false` → 400 และไม่มี pool ถูกสร้าง;
-  ถ้าขั้นสร้าง pool ล้มหลังปรับ inventory item → `requires_shipping` กลับเป็นค่าเดิม (compensation); สร้าง pool สำเร็จตอบ **200** (route เดิมของ EV-2)
-  โดย**ไม่ตรวจ** shipping profile ของ product (รอบ 6, owner ยกเลิกการบังคับ profile Digital — กฎข้อ 1)
+  ถ้าขั้นสร้าง pool ล้มหลังปรับ inventory item → `requires_shipping` กลับเป็นค่าเดิม (compensation); (รอบ 6, กฎข้อ 1) variant ที่ product **ไม่มี** shipping
+  profile → สร้าง pool ตอบ **200** (route เดิมของ EV-2) และ line item ใน cart `requires_shipping=false`; variant ที่ product มี shipping profile ใดๆ (Default หรือ Digital)
+  → 400, ไม่มี pool และ inventory item ไม่เปลี่ยน (owner ตัดสิน Q9 2026-10-26)
 - AC-12 import CSV ที่ `expires_at` เป็นวันที่ล้วน `2026-12-31` → เก็บเป็นสิ้นวันเวลาไทย `2026-12-31T16:59:59.999Z`
   (= 23:59:59.999+07:00; owner ยืนยัน Q4 แล้ว); ค่า ISO ที่มี offset เก็บตามจริง; ค่าที่ parse ไม่ได้ → พฤติกรรมเดิมของ EV-2
 - AC-13 import ที่ขั้นปรับ inventory ล้ม **และ** compensation ลบ batch ก็ล้มด้วย → response/error ที่ผู้เรียกได้รับเป็น error เดิมของขั้นที่ล้ม
@@ -207,8 +209,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-30 (EV-12, กฎข้อ 12b — หลัง owner ตอบ Q6) Given pool P มี code ใกล้หมดอายุ 2 รายการ, `stocked=2`, `reserved=2` และ pool Q ที่ `reserved=0` When job รายวันรัน
   Then code ทั้งหมดของ P/Q ที่ใกล้หมดอายุเป็น `void`, อีเมลสรุป expiry 1 ฉบับถึง `EVOUCHER_ADMIN_EMAIL` ที่ระบุ P (id หรือชื่อ) ว่า `stocked < reserved` และไม่ระบุ Q
   (integration, mock provider)
-- AC-31 (EV-11) Given สินค้า voucher ที่ product ไม่อยู่ใน shipping profile `type=digital` When allocation workflow ของ EV-4 ทำงาน Then ไม่มี log warning เรื่อง
-  shipping profile และส่งมอบ code ตามปกติ (integration, spy logger)
+- AC-31 (EV-11, กฎข้อ 1) Given voucher ที่ product **ไม่มี** shipping profile When allocation workflow ของ EV-4 ทำงาน Then ไม่มี log warning เรื่อง shipping profile
+  และส่งมอบ code ตามปกติ; Given product ที่มี shipping profile ใดๆ (Default หรือ Digital — ตั้งใน test ผ่าน module) Then มี log warning 1 ครั้งที่ระบุ product/variant
+  และยังส่งมอบ code (ไม่ทำให้ order ล้ม) (integration, spy logger)
 - AC-22 (EV-10, กฎข้อ 13) Given CSV ที่ `expires_at` = `2026-02-30`, `2026-04-31`, `2026-13-01`, `2026-02-30T10:00:00+07:00` (ทีละไฟล์) When import Then ล้ม
   ทั้งไฟล์พร้อมเลขบรรทัด และไม่มี code ถูก insert; `2028-02-29` → สำเร็จ (unit parser + integration 1 กรณี)
 - AC-23 (EV-10, กฎข้อ 14) Given variant V1 ที่ inventory item ถูก variant V2 ใช้ร่วม หรือ V1 มี inventory item 2 ตัว When สร้าง pool ให้ V1 Then 400, ไม่มี pool
@@ -246,8 +249,8 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-7 | Storefront: บล็อกพาร์ทเนอร์บน PDP, checkout แบบ digital-only (เลือก option ด้วย `type.code` ไม่ใช่ตัวแรก, กฎข้อ 8; ไม่บังคับ Digital method ฝั่ง backend — รอบ 6), หน้าบัตรกำนัลของฉัน + e2e (AC-3, AC-6); ข้อความไทยตรงในโค้ดและเพิ่ม path ใน ESLint rule ของ spec 01 กฎ CORE-4 ข้อ 4 (ADR-014) | EV-4 |
 | EV-8 | Hardening จาก review EV-2: บังคับกฎข้อ 1 ตอนสร้าง pool (`requires_shipping=false` ที่ inventory item ผ่าน `updateInventoryItemsWorkflow` + compensation, ปฏิเสธ `manage_inventory=false`), `expires_at` แบบวันที่ล้วน, error เดิมไม่ถูกกลบเมื่อ compensation ล้ม; seed (`upgradeDigitalDelivery`) หา option Digital delivery ด้วย `type.code` แทนชื่อ (กฎข้อ 8) (AC-11, AC-12, AC-13, AC-14) | EV-2, EV-3 |
 | EV-9 | follow-up review/QA (เล็ก): route pool list/detail select `low_stock_threshold` เสมอ (คำนวณ `low_stock` ถูกแม้ client ส่ง `fields` เอง) + module link `evoucher_code ↔ order` (`src/links/`) ที่ order tab (EV-6) และ resend (EV-5b) ใช้ + ฟอร์ม admin กัน double-submit และ `Label` ผูก `htmlFor`/`id` (กฎข้อ 11) (AC-15, AC-16, AC-20) | EV-2, EV-6 |
-| EV-10 | follow-up review/QA รอบ 5 (เล็ก, backend): admin void ตรวจ reservation (กฎข้อ 12 — เฉพาะส่วน admin void), `expires_at` วันที่มีจริงแบบ round-trip (กฎข้อ 13), ปฏิเสธ variant ที่ใช้ inventory item ร่วม/หลายตัว (กฎข้อ 14), ลบ pool คืน `requires_shipping` + migration script backfill pool ก่อน EV-8 (กฎข้อ 15) (AC-21..24) — **รอบ 6: ตัดการบังคับ shipping profile Digital ออก** (owner ยกเลิก, กฎข้อ 1) และย้ายส่วน job รายวันไป EV-12 | EV-5, EV-8 |
-| EV-11 | (เล็ก, follow-up รอบ 6) ลบ `logger.warn` ใน EV-4 ที่เตือนเมื่อ product ของ voucher ไม่อยู่ใน shipping profile `digital` (กฎข้อ 1 ไม่บังคับ profile แล้ว) (AC-31) | EV-4 |
+| EV-10 | follow-up review/QA รอบ 5 (เล็ก, backend): admin void ตรวจ reservation (กฎข้อ 12 — เฉพาะส่วน admin void), `expires_at` วันที่มีจริงแบบ round-trip (กฎข้อ 13), ปฏิเสธ variant ที่ใช้ inventory item ร่วม/หลายตัว (กฎข้อ 14), ลบ pool คืน `requires_shipping` + migration script backfill pool ก่อน EV-8 (กฎข้อ 15) (AC-21..24) — **รอบ 6 (#85)**: เปลี่ยนจาก "ต้องอยู่ profile Digital" เป็น "product ต้องไม่มี shipping profile" (กฎข้อ 1; 400 ตาม Q9 ที่ owner ตัดสินแล้ว, AC-11) และย้ายส่วน job รายวันไป EV-12 | EV-5, EV-8 |
+| EV-11 | (เล็ก, follow-up รอบ 6) เปลี่ยนเงื่อนไข `logger.warn` ใน EV-4 จาก "product ไม่อยู่ใน profile `digital`" เป็น "product มี shipping profile ใดๆ" (กฎข้อ 1) — ไม่ลบ warn (AC-31) | EV-4 |
 | EV-12 | (เล็ก, แยกจาก EV-10 รอบ 6) job รายวันระบุ pool ที่ `stocked < reserved` หลัง void ในอีเมลสรุป expiry (กฎข้อ 12b) (AC-30) — **เริ่มหลัง owner ตอบ Q6** | EV-5, EV-10 |
 EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-10 ∥ EV-4/EV-9 (EV-10 แตะ `void-evoucher-codes.ts`, `evoucher-pool.ts`, `utils/csv.ts`, migration script — ถ้า EV-9 แตะ
 `evoucher-pool.ts` ร่วม ตัวที่ merge ทีหลัง rebase) และต้อง merge ก่อน release ที่มี EV-7 (backfill); EV-9 หลัง EV-6 (แก้ฟอร์มของ EV-6; ถ้า EV-6 ต้องใช้ link ก่อน ให้รวม link เข้า PR นั้นแทน); EV-5b หลัง EV-4 และ EV-6; EV-11 หลัง EV-4 (∥ EV-5b; แตะไฟล์ allocation เดียวกันได้ — ตัวที่ merge ทีหลัง rebase); EV-12 หลัง EV-10 และคำตอบ Q6;
@@ -260,10 +263,11 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
 - Q3 admin ควรนำ code จาก order ที่คืนเงินแล้วกลับมาขายใหม่ได้หรือไม่? (ค่าเริ่มต้น: ไม่ได้)
 - ~~Q4~~ ตัดสินแล้ว (owner, 2026-10-25): `expires_at` ที่เป็นวันที่ล้วน = ใช้ได้ถึงสิ้นวันนั้นตามเวลาไทย (AC-12)
 - ~~Q5~~ ตัดสินแล้ว (owner 2026-10-26) แล้ว**กลับคำตัดสิน**ในวันเดียวกัน (รอบ 6): ~~voucher product ใช้ shipping profile Digital เสมอ~~ → ใช้
-  `requires_shipping=false` ที่ inventory item อย่างเดียว ไม่บังคับ profile และไม่บังคับ Digital method ฝั่ง backend เพราะ profile ทำให้ line item
+  `requires_shipping=false` ที่ inventory item + product **ไม่มี shipping profile เลย** และไม่บังคับ Digital method ฝั่ง backend เพราะ profile ใดก็ตามทำให้ line item
   `requires_shipping=true` เสมอใน Medusa 2.22.1 (ขัด AC-11) — กฎข้อ 1, AC-3, AC-11, EV-7, EV-10, EV-11
+- ~~Q9~~ ตัดสินแล้ว (owner 2026-10-26): สร้าง pool ให้ variant ที่ product มี shipping profile ใดๆ → **400** ไม่มี pool (admin ต้องเอา profile ออกจาก product ก่อน)
+  — กฎข้อ 1, AC-11
 - Q6 (EV-12, กฎข้อ 12b) job รายวันที่ void code ใกล้หมดอายุซึ่งอาจเป็น stock ที่ order จองไว้: คงพฤติกรรม "void ทั้งหมด + แจ้งในอีเมลสรุป" (ค่าเริ่มต้น —
   order นั้นจะได้ backordered + อีเมลตาม EV-4) หรือให้ job เว้น code ไว้เท่าจำนวนที่ถูกจอง (ขายของที่จะหมดอายุภายใน 7 วัน ขัดกฎข้อ 7)?
 - Q7 (EV-10, กฎข้อ 15) ลบ pool แล้วตั้ง `requires_shipping=true` เสมอ (ค่าเริ่มต้น) หรือต้องจำค่าเดิมก่อนสร้าง pool (ต้องเพิ่ม field ใน model)?
-- Q8 (EV-4, กฎข้อ 20) ยืนยันว่าอีเมล `evoucher.delivered` ไม่สนใจ `no_notification` (ค่าเริ่มต้น: ใช่ — เป็นช่องทางส่งมอบ code ทางเดียว; ลูกค้ายังเห็น code
-  ในหน้า "บัตรกำนัลของฉัน") ถ้า owner ต้องการให้เคารพ `no_notification` → เพิ่ม task แยก
+- ~~Q8~~ ตัดสินแล้ว (owner 2026-10-26): อีเมล `evoucher.delivered` ส่ง**เสมอ**แม้ order ตั้ง `no_notification=true` (เป็นการส่งมอบสินค้า) — กฎข้อ 20
