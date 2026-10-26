@@ -1,0 +1,21 @@
+# FS-8 — สรุปผล test (Node v22.23.3, Medusa 2.22.1, 2026-10-26)
+# ฐาน: origin/develop ef1a739 — log เต็มอยู่ใน CI artifact; integration ชุดเต็มรันใน CI
+
+ตรวจกลไก retry ของ Medusa 2.22.1 (node_modules)
+  - event bus Redis: retry subscriber ได้เมื่อ job มี attempts > 1 (default 1, ตั้งได้ทั้ง module ผ่าน jobOptions)
+    → มีผลกับทุก event และใช้ไม่ได้กับ local event bus (dev/test) จึงไม่เลือก
+  - workflow step: config maxRetries + retryInterval → step ที่ล้มอยู่ในสถานะ temporary failure แล้ว engine ตั้งเวลา
+    retry เอง (in-memory: timer, Redis: BullMQ delayed job — อยู่รอดแม้ process ล้ม) และ workflow ถูก store อัตโนมัติ
+    → เลือกอันนี้ (ไม่ต้องใช้ scheduled job)
+
+integration:http
+  integration-tests/http/flash-sale-release.spec.ts   9 passed (ใหม่ 1)
+    AC-14 inject error ครั้งแรกของ releaseReservationsOfCart (jest.spyOn mockRejectedValueOnce) แล้ว cancel order 2 หน่วย
+      → ทันทีหลัง subscriber: ยังไม่คืน (units_sold 3, usage 2)
+      → retry รอบถัดไป (~10 วินาที): units_sold 1, usage 0, released_at มีค่า, service ถูกเรียก 2 ครั้ง (คืนครั้งเดียว)
+    regression AC-5 / AC-6 (FS-2) 8 passed — idempotent ด้วย released_at เหมือนเดิม
+unit (ทั้งชุด)                      267 passed
+lint / typecheck / build            ผ่าน (lint มีเฉพาะ warning เดิมของ storefront)
+
+Red: ก่อนเพิ่ม retry config test AC-14 ล้มด้วย "FS-8: timed out waiting for the release retry" (รอ 60 วินาที
+     reservation ไม่ถูก release — การคืนหายเงียบ)

@@ -1,25 +1,11 @@
-import type { Locator, Page } from "@playwright/test"
-
 import { expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC } from "./support/medusa"
-import { latinWordsOutsideAllowList } from "./support/thai-text"
+import { THAI, expectThai } from "./support/thai-text"
 
 // CORE-4b1: spec 01 CORE-4 (ADR-014) AC-46, AC-48 (layout shell + home + not-found), AC-50 (= AC-10)
 // หา element ด้วย data-testid เท่านั้น ตรวจ "เป็นภาษาไทย" ด้วยอักษรไทย ไม่ hard-code ประโยค
 // evidence ใช้โฟลเดอร์ CORE-4b (รูปแบบ task id ของ evidence ไม่รับ "4b1") — 4b1 ใช้ 3 รูป เหลือให้ 4b2
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-4b" } })
-
-const THAI = /[฀-๿]/
-
-async function expectThai(page: Page, testIds: string[]) {
-  for (const id of testIds) {
-    const el: Locator = page.getByTestId(id).first()
-    await expect(el, id).toBeVisible()
-    const text = (await el.textContent()) ?? ""
-    expect(text, id).toMatch(THAI)
-    expect(latinWordsOutsideAllowList(text), `${id}: "${text}"`).toEqual([])
-  }
-}
 
 test("AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai", async ({
   page,
