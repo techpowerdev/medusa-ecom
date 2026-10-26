@@ -28,6 +28,7 @@ medusaIntegrationTestRunner({
     let returnOptionId: string
     let disabledReturnOptionId: string
     let otherZoneReturnOptionId: string
+    let otherChannelReturnOptionId: string
     type Order = { id: string; itemId: string }
 
     const query = () => getContainer().resolve(ContainerRegistrationKeys.QUERY)
@@ -87,12 +88,34 @@ medusaIntegrationTestRunner({
           { attribute: "is_return", value: "true", operator: "eq" as const },
         ],
       })
+      // CORE-21 (AC-66): option คืนของที่ผ่านทุกข้อของ CORE-17 (zone ไทย) แต่ fulfillment set อยู่ใน stock location
+      // ที่ไม่ผูกกับ sales channel ใดเลย (รวม sales channel ของ order)
+      const unlinkedLocation = await container
+        .resolve(Modules.STOCK_LOCATION)
+        .createStockLocations({ name: "CORE-21 unlinked warehouse" })
+      const unlinkedSet = await fulfillment.createFulfillmentSets({
+        name: "CORE-21 unlinked delivery",
+        type: "shipping",
+        service_zones: [{ name: "CORE-21 Thailand", geo_zones: [{ type: "country", country_code: "th" }] }],
+      })
+      await container.resolve(ContainerRegistrationKeys.LINK).create([
+        {
+          [Modules.STOCK_LOCATION]: { stock_location_id: unlinkedLocation.id },
+          [Modules.FULFILLMENT]: { fulfillment_set_id: unlinkedSet.id },
+        },
+        {
+          [Modules.STOCK_LOCATION]: { stock_location_id: unlinkedLocation.id },
+          [Modules.FULFILLMENT]: { fulfillment_provider_id: standard[0].provider_id! },
+        },
+      ])
       const { result: created } = await createShippingOptionsWorkflow(container).run({
         input: [
           returnOption("CORE-17 disabled return", standard[0].service_zone_id, "false"),
           returnOption("CORE-17 other zone return", otherSet.service_zones[0].id, "true"),
+          returnOption("CORE-21 other channel return", unlinkedSet.service_zones[0].id, "true"),
         ],
       })
+      otherChannelReturnOptionId = created.find((o) => o.name === "CORE-21 other channel return")!.id
       disabledReturnOptionId = created.find((o) => o.name === "CORE-17 disabled return")!.id
       otherZoneReturnOptionId = created.find((o) => o.name === "CORE-17 other zone return")!.id
     })
@@ -160,6 +183,48 @@ medusaIntegrationTestRunner({
       const { status, data } = await api.post("/store/returns", body(order, returnOptionId), owner)
       expect(status).toEqual(200)
       expect((await returnsOf(order)).map((r) => r.id)).toEqual([data.return.id])
+    })
+
+    // CORE-21 AC-66: stock location ของ return option ต้องผูกกับ sales channel ของ order
+    it("owner using a return option whose stock location is not in the order's sales channel → 400 invalid_data", async () => {
+      const order = await placeOrder()
+      const { status, data } = await responseOf(
+        api.post("/store/returns", body(order, otherChannelReturnOptionId), owner)
+      )
+      expect({ status, type: data?.type }).toEqual({ status: 400, type: "invalid_data" })
+      expect(data?.message).toMatch(/sales channel/i)
+      expect(await returnsOf(order)).toEqual([])
+    })
+
+    // CORE-21 AC-70 (AC-60c): order ที่ไม่มี country_code → Medusa ไม่กรอง geo zone จึงต้องปฏิเสธเอง (ไม่ใช่ 5xx)
+    it("owner whose order has no shipping country_code → 400 invalid_data and no return is created", async () => {
+      const order = await placeOrder()
+      const { data: orders } = await query().graph({
+        entity: "order",
+        fields: ["shipping_address.id"],
+        filters: { id: order.id },
+      })
+      await getContainer()
+        .resolve(Modules.ORDER)
+        .updateOrderAddresses({ id: orders[0].shipping_address!.id, country_code: null })
+      const { status, data } = await responseOf(api.post("/store/returns", body(order, returnOptionId), owner))
+      expect({ status, type: data?.type }).toEqual({ status: 400, type: "invalid_data" })
+      expect(data?.message).toEqual("Return shipping option does not serve the order's shipping address")
+      expect(await returnsOf(order)).toEqual([])
+    })
+
+    // CORE-21 AC-71 (กฎข้อ 37): ข้อความ error คงที่ ไม่สะท้อน option_id จาก input
+    it("owner using a missing option id → message does not echo the input and is the same for any id", async () => {
+      const order = await placeOrder()
+      const injected = "so_<script>x</script>"
+      const first = await responseOf(api.post("/store/returns", body(order, injected), owner))
+      const second = await responseOf(api.post("/store/returns", body(order, "so_core21_other_missing"), owner))
+      expect({ status: first.status, type: first.data?.type }).toEqual({ status: 400, type: "invalid_data" })
+      expect(first.data?.message).not.toContain("so_<script>")
+      expect(first.data?.message).not.toContain(injected)
+      expect(second.data?.message).not.toContain("so_core21_other_missing")
+      expect(first.data?.message).toEqual(second.data?.message)
+      expect(await returnsOf(order)).toEqual([])
     })
   },
 })

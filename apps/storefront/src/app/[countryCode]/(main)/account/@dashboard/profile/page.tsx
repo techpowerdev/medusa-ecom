@@ -10,8 +10,8 @@ import { retrieveCustomer } from "@lib/data/customer"
 import { STORE_NAME } from "@lib/store-content"
 
 export const metadata: Metadata = {
-  title: "Profile",
-  description: `View and edit your ${STORE_NAME} profile.`,
+  title: "โปรไฟล์",
+  description: `ดูและแก้ไขโปรไฟล์ของคุณที่ ${STORE_NAME}`,
 }
 
 export default async function Profile() {
@@ -24,12 +24,10 @@ export default async function Profile() {
 
   return (
     <div className="w-full" data-testid="profile-page-wrapper">
-      <div className="mb-8 flex flex-col gap-y-4">
-        <h1 className="text-2xl-semi">Profile</h1>
+      <div className="mb-8 flex flex-col gap-y-4" data-testid="account-page-header">
+        <h1 className="text-2xl-semi">โปรไฟล์</h1>
         <p className="text-base-regular">
-          View and update your profile information, including your name, email,
-          and phone number. You can also update your billing address, or change
-          your password.
+          ดูและแก้ไขข้อมูลโปรไฟล์ ได้แก่ ชื่อ อีเมล และเบอร์โทรศัพท์ รวมถึงที่อยู่สำหรับออกใบเสร็จ
         </p>
       </div>
       <div className="flex flex-col gap-y-8 w-full">

@@ -92,8 +92,8 @@ none (storefront เท่านั้น)
    ของ prop `placeholder`, `title`, `alt`, `aria-label`, `label` ที่มีละติน ≥ 2 ตัว; ข้อยกเว้นตาม ADR-014 ข้อ 4 (ชื่อแบรนด์ เช่น "PromptPay")
    ใช้ `// eslint-disable-next-line no-restricted-syntax -- <เหตุผล>` ทีละบรรทัดเท่านั้น (ห้าม disable ทั้งไฟล์)
 5. ข้อความที่ storefront สร้างเองและผู้ใช้เห็นเป็นภาษาไทยทั้งหมด: label, ปุ่ม, heading, ข้อความว่าง/loading/error, `metadata` (title,
-   description) ของหน้า, ข้อความใน server action ที่ส่งกลับไปแสดง — ข้อมูลจาก backend (ชื่อสินค้า, option, ที่อยู่, error ของ Medusa API)
-   แสดงตามที่ได้รับ ไม่แปล
+   description) ของหน้า, ข้อความใน server action ที่ส่งกลับไปแสดง — ข้อมูลจาก backend (ชื่อสินค้า, option, ที่อยู่) แสดงตามที่ได้รับ ไม่แปล;
+   error ของ Medusa API แสดงตามที่ได้รับ **หรือ** แปลงเป็นข้อความไทยทั่วไปได้ (แก้ถ้อยคำรอบ 8 ตาม #103) — 401/403 → ข้อความไทยให้เข้าสู่ระบบใหม่
 6. ไม่มีตัวเลือกภาษา: ลบ component `language-select` และจุดที่ render (nav/side menu); storefront ไม่เขียน cookie `_medusa_locale`;
    ไม่แก้ `lib/util/get-locale-header.ts` (ไม่มี cookie → ไม่ส่ง `x-medusa-locale` → ได้เนื้อหาต้นฉบับภาษาไทย); `<html lang="th">` คงที่
 7. ทุก element ที่ e2e ต้องหา ต้องมี `data-testid` (ใช้ของ starter ถ้ามี) e2e ไม่ match ด้วยข้อความ; การตรวจ "เป็นภาษาไทย" ใช้ regex อักษรไทย
@@ -122,8 +122,8 @@ none (storefront เท่านั้น)
   `<input placeholder="Search" />`, `<p>สวัสดี</p>`, `<p>{price} ฿</p>`, และบรรทัด `PromptPay` ที่มี
   `eslint-disable-next-line no-restricted-syntax -- brand` Then สองตัวแรกมี error `no-restricted-syntax`, ที่เหลือไม่มี error
 - AC-48 (CORE-4b/4c/4d, กฎข้อ 5, 7) Given storefront + backend ที่ seed แล้ว ไม่มี cookie locale When e2e เปิดหน้าใน path ของ task
-  (4b: home, store, `/search`, category, collection, PDP ของสินค้า seed, not-found ของ `(main)`; 4c: cart, account overview, profile,
-  addresses, login, orders, order detail, order confirmed, หน้า policy ทั้ง 5 (`/contact`, `/terms`, `/privacy`, `/returns`, `/shipping`);
+  (4b: home, store, `/search`, category, collection, PDP ของสินค้า seed, not-found ของ `(main)`; 4c1: account overview, profile,
+  addresses, login/register, orders (รายการ), verify-account; 4c2: cart, order detail, order confirmed, หน้า policy ทั้ง 5 (`/contact`, `/terms`, `/privacy`, `/returns`, `/shipping`);
   4d: ทุกขั้นของ checkout)
   Then element หลักอย่างน้อย 2 ตัวต่อหน้า (หาด้วย test id — builder ระบุรายการใน `REPORT.md`) มี textContent ตรง `/[฀-๿]/`
   และไม่มีคำละติน ≥ 2 ตัวนอกข้อยกเว้นของ ADR-014 ข้อ 4; เก็บ screenshot ≤ 5 รูปต่อ task
@@ -134,10 +134,13 @@ none (storefront เท่านั้น)
   | Task | path ใต้ `apps/storefront/src/` (ไล่จากไฟล์จริง 2026-10-26) |
   |------|------|
   | 4b | `app/layout.tsx`, `app/not-found.tsx`; `app/[countryCode]/(main)/{layout,page,not-found}.tsx`; `app/[countryCode]/(main)/{store,search,categories,collections,products}/**`; `modules/{layout,home,store,search,categories,collections,products}/**`; `app/buy/**` (ข้อความตอบกลับที่ผู้ใช้เห็น — ถ้า CORE-14 merge ก่อนให้ CORE-14 แปลแทน) |
-  | 4c | `app/[countryCode]/(main)/{account,cart,order,verify-account}/**`; หน้า policy **ทั้งไฟล์** `app/[countryCode]/(main)/{contact,terms,privacy,returns,shipping}/page.tsx`; `modules/{account,cart,order,policies,common,skeletons}/**`; ข้อความ error ที่ผู้ใช้เห็นใน `lib/data/{customer,orders}.ts` |
+  | 4c1 (#92, แยกรอบ 7) | `app/[countryCode]/(main)/{account,verify-account}/**`; `modules/account/**`; ข้อความ error ที่ผู้ใช้เห็นใน `lib/data/customer.ts` |
+  | 4c2 (แยกรอบ 7) | `app/[countryCode]/(main)/{cart,order}/**`; หน้า policy **ทั้งไฟล์** `app/[countryCode]/(main)/{contact,terms,privacy,returns,shipping}/page.tsx`; `modules/{cart,order,policies,common,skeletons}/**` (รวม placeholder "Select..." ของ `NativeSelect` ใน `modules/common`); ข้อความ error ที่ผู้ใช้เห็นใน `lib/data/orders.ts` |
   | 4d | route group `app/[countryCode]/(checkout)/**` (รวม `(checkout)/layout.tsx`, `(checkout)/not-found.tsx`, `checkout/page.tsx`); `modules/{checkout,shipping}/**`; `lib/constants.tsx` (ชื่อวิธีชำระเงินที่แสดงใน checkout); ข้อความ error ที่ผู้ใช้เห็นใน `lib/data/cart.ts` |
   ไฟล์ใหม่ที่เกิดหลังวันนี้: task ที่สร้างไฟล์เป็นผู้เพิ่ม path (กฎข้อ 4); `modules/layout/components/language-select/` ถูกลบใน 4b;
-  หน้า order transfer (`(main)/order/[id]/transfer/**`) อยู่ใน 4c — ถ้า CORE-13/14 ลบก่อนก็ไม่ต้องแปล
+  หน้า order transfer ถูกลบแล้วใน CORE-14a (#81) ไม่ต้องแปล
+  evidence (รอบ 7): #92 เก็บที่ `docs/evidence/core/CORE-4c-tests.txt` และ `CORE-4c/` — ยอมรับเป็นโฟลเดอร์ของ CORE-4c1 (งบ 5 รูปเต็มแล้ว ไม่ rename);
+  CORE-4c2 ใช้ `CORE-4c2-tests.txt` และ `CORE-4c2/` ของตัวเอง (regex ใหม่ของ #87 รับ)
   ข้อความใน `lib/` และ route handler (`app/**/route.ts`) ESLint rule ไม่ครอบ → ตรวจด้วย unit test หรือ grep ข้อความที่ส่งออก
   (`throw new Error(...)`, `new Response(...)`) ในไฟล์ของ task; ยกเว้น `lib/util/product-markdown.ts` (`llms.txt` สำหรับเครื่อง)
 - AC-50 (CORE-4b) AC-10 (ฟอนต์บนหน้าแรก) ผ่านด้วย e2e ใน CORE-4b (ยกมาจากเดิม)
@@ -159,9 +162,10 @@ fixture ตั้ง cookie `_medusa_locale` ของ CORE-5 คงไว้แ
 |----|------|----|---------|
 | CORE-4a | Vitest (dev dep, `test:unit`, ขั้นตอนใน CI) + THB format ใน `convertToLocale` + Tailwind `brand` tokens + Noto Sans Thai ผ่าน `next/font` + `<html lang="th">` | AC-7, 8, 9, 11 | CORE-1 (☑) |
 | CORE-4b | ESLint rule (กฎข้อ 4) + ลบ `language-select` (กฎข้อ 6) + ข้อความไทยตาม path 4b ในตาราง AC-49: layout shell (nav, footer, side menu, cart dropdown, not-found, metadata ของ root/main layout), home, store/PLP, search, categories, collections, PDP + เพิ่ม `data-testid` ที่ขาด | AC-10/50, 46, 47, 48 (4b), 49 (4b) | CORE-4a, CORE-5b, CORE-8 (merge แล้วทั้งหมด) — ไม่รอ CORE-9 |
-| CORE-4c | ข้อความไทยตาม path 4c ในตาราง AC-49: cart, account (overview, profile, addresses, login/register, verify-account), orders/order detail/confirmed, หน้า policy ทั้ง 5 (ทั้งไฟล์ `page.tsx`), common, skeletons + `data-testid` ที่ขาด | AC-48 (4c), 49 (4c) | CORE-4b (ใช้ rule/config ของ 4b) |
+| CORE-4c1 | (◐ #92, แยกรอบ 7) ข้อความไทยตาม path 4c1 ในตาราง AC-49: account (overview, profile, addresses, login/register, รายการ orders), verify-account, error ใน `lib/data/customer.ts` + `data-testid` ที่ขาด | AC-48 (4c1), 49 (4c1) | CORE-4b (ใช้ rule/config ของ 4b) |
+| CORE-4c2 | (แยกรอบ 7) ข้อความไทยตาม path 4c2 ในตาราง AC-49: cart, order detail/confirmed, หน้า policy ทั้ง 5 (ทั้งไฟล์ `page.tsx`), `modules/common` (รวม `NativeSelect` "Select..."), `modules/skeletons`, error ใน `lib/data/orders.ts` + `data-testid` ที่ขาด; **รวม follow-up รอบ 7** (กฎข้อ 41–44): ลิงก์นโยบาย/ข้อกำหนดในฟอร์มสมัคร, `timeZone: "Asia/Bangkok"` ทุกจุดที่แสดงวันที่, "+ N รายการ" ของ order card, test ข้อความไทยของ `lib/data/*` ไม่ hard-code จำนวน, error ไม่มีคำนำหน้า `Error:` (กฎข้อ 45) (แตะไฟล์ใน path 4c1 ได้เฉพาะจุดเหล่านี้) | AC-48 (4c2), 49 (4c2), 77..81 | CORE-4c1 (#92) |
 | CORE-4d | ข้อความไทยตาม path 4d ในตาราง AC-49: route group `(checkout)` ทั้งหมด (layout, not-found, checkout ทุกขั้น), shipping nudge, `lib/constants.tsx` **รวมข้อความ UI ที่ PAY-2 (#48) เพิ่ม** (เช่น ปุ่ม/ข้อความ PromptPay) + แปลไทยประโยคยอมรับเงื่อนไขในขั้น review และข้อความใน `(checkout)/layout.tsx` (ชื่อร้าน → `STORE_NAME` ทำแล้วใน #80; ยืนยันรอบ 6, กฎข้อ 39) + `data-testid` ที่ขาด | AC-48 (4d), 49 (4d), 75 | CORE-4b, **PAY-2** (ห้ามแตะไฟล์ checkout ก่อน #48 merge) |
-CORE-4c ∥ CORE-4d หลัง CORE-4b (คนละ path; ทั้งคู่แก้ ESLint config บรรทัด path — ตัวที่ merge ทีหลัง rebase)
+CORE-4c1 ∥ CORE-4d หลัง CORE-4b (คนละ path; ทั้งคู่แก้ ESLint config บรรทัด path — ตัวที่ merge ทีหลัง rebase); CORE-4c2 หลัง CORE-4c1 (∥ CORE-4d)
 CORE-4b แตะ `src/modules/store/components/store-hits/` เดียวกับ CORE-15 — ตัวที่ merge ทีหลัง rebase (ข้อความ error ของ CORE-15 เขียนไทยอยู่แล้ว)
 ถ้า CORE-4b เกิน ~400 LOC ให้แยก CORE-4b1 (rule + layout shell + home + `language-select`; AC-46, 47, 50) และ CORE-4b2 (store/PLP,
 search, categories, collections, PDP; AC-48/49 ส่วนนั้น) — 4b2 depends 4b1
@@ -190,7 +194,8 @@ CORE-4b merge แล้ว
 | CORE-3 | Notification provider (Resend) + template order placed/shipped | CORE-1 |
 | CORE-4a | THB format + theme tokens + Noto Sans Thai + Vitest (ดู "CORE-4 Storefront ภาษาไทย / theme / THB") | CORE-1 |
 | CORE-4b | ESLint กันข้อความอังกฤษ + ลบ `language-select` + ข้อความไทย: layout shell, home, PLP, categories, collections, PDP (ADR-014) | CORE-4a, CORE-5b, CORE-8 |
-| CORE-4c | ข้อความไทย: cart, account, order, policies, common | CORE-4b |
+| CORE-4c1 | ข้อความไทย: account, login/register, verify-account (#92) | CORE-4b |
+| CORE-4c2 | ข้อความไทย: cart, order, policies, common, skeletons + follow-up รอบ 7 | CORE-4c1 |
 | CORE-4d | ข้อความไทย: checkout + shipping nudge (รวมข้อความของ PAY-2) | CORE-4b, PAY-2 |
 | CORE-5 | ตั้งค่า Playwright แบบ screenshot ทุก step + convention ของโฟลเดอร์ evidence + helper ตั้ง cookie `_medusa_locale` (ADR-008; ไม่ถูกใช้หลัง ADR-014) | CORE-1 |
 | CORE-6 | Store route เฉพาะลูกค้า (middleware + cart hook + storefront redirect) + e2e สำหรับ AC-1..AC-4, AC-6 ด้วย manual payment provider (หา element ด้วย `data-testid` ตาม ADR-008) | CORE-2,4a,5 |
@@ -200,7 +205,7 @@ CORE-4b merge แล้ว
 | CORE-9 | search index เก็บราคา THB → หน้า store แสดงราคา ฿ | CORE-2 |
 | CORE-10 | Seed: ชื่อสินค้าไทย, idempotency ต่อขั้น, `.env.example` | CORE-2 (แนะนำ merge หลัง CORE-6) |
 | CORE-11 | Notification: อีเมล shipped แสดงเฉพาะ item ที่ส่ง, order placed เคารพ `no_notification` | CORE-3 |
-CORE-3, CORE-4a และ CORE-5 ทำขนานกันได้หลังจาก CORE-1; CORE-4c ∥ CORE-4d หลัง CORE-4b (4d รอ PAY-2 ด้วย)
+CORE-3, CORE-4a และ CORE-5 ทำขนานกันได้หลังจาก CORE-1; CORE-4c1 ∥ CORE-4d หลัง CORE-4b (4d รอ PAY-2 ด้วย); CORE-4c2 หลัง CORE-4c1
 (storefront ไม่ใช้ CORE-7 ตาม ADR-014)
 CORE-5b ∥ CORE-8 ∥ CORE-9 ∥ CORE-10 ∥ CORE-11 (ไม่แตะไฟล์เดียวกัน) — CORE-5b, CORE-8 อยู่บน critical path ของ CORE-4b;
 (2026-10-26: CORE-9 ไม่เป็น dependency ของ CORE-4 task ใดแล้ว — ADR-014)
@@ -223,7 +228,8 @@ Out of scope: เปลี่ยนนิยามของ CORE-6 (เรื่
 none
 
 ### Business rules
-11. task id ของ evidence มีรูปแบบ `^[A-Z]+-\d+[a-z]?$` (รับ `CORE-4a`, `CORE-5b`)
+11. task id ของ evidence มีรูปแบบ `^[A-Z]+-\d+[a-z]?$` (รับ `CORE-4a`, `CORE-5b`) — **รอบ 7: #87 ขยายให้รับ task id ที่แยกซ้อนแบบ `GB-6b1`, `CORE-4c1`
+    แล้ว** regex ที่ใช้จริงคือ `TASK_ID_RE`/`TESTS_TXT_RE` ใน `apps/storefront/e2e/support/evidence-rules.ts` (source of truth; spec ไม่ copy regex ซ้ำ)
 12. `evidence()` ตรวจงบ (≤ 5 PNG, ≤ 300KB) กับ **ชุดไฟล์ที่จะเกิดขึ้นหลังเขียน** ก่อนเขียนไฟล์จริง ถ้าเกินงบ → throw และไม่เขียนไฟล์
     การเขียนทับไฟล์ชื่อเดิมไม่นับเป็นรูปใหม่
 13. ใน `docs/evidence/<feature>/` (ระดับ feature) อนุญาตเฉพาะไฟล์ `<TASK-ID>-tests.txt` และโฟลเดอร์ `<TASK-ID>/`
@@ -368,7 +374,8 @@ none (middleware + storefront เท่านั้น)
   ถูกสร้าง และ `OA.customer_id` ยังเป็น A (middleware ปิด route ไม่ระบุ method — ดู "API routes")
 - AC-41 (CORE-14a) Given ไม่มี customer session When `GET /buy/<variant_id>:1` Then redirect ไปหน้า login
   ที่มี return URL กลับ `/buy/...` และจำนวน cart ใน DB ไม่เปลี่ยน; Given ล็อกอินแล้ว Then 303 ไป `/<cc>/checkout` และ cart ใหม่มี
-  `customer_id` ของผู้ล็อกอิน
+  `customer_id` ของผู้ล็อกอิน; (nit review CORE-14a, รอบ 7 — ทำใน CORE-14c) e2e กรณีไม่มี session ต้องยิงด้วย `maxRedirects: 0` แล้ว assert status ∈ {307, 308}
+  และ header `location` ชี้หน้า login **ก่อน**ตาม redirect (ไม่ assert เพียงหน้าปลายทาง)
 - AC-42 (CORE-14a) `GET /ucp/v1`, `POST /ucp/v1/cart`, `GET /<cc>/cart/resume/<id>` → 404
 - AC-43 (CORE-14a) Given ไม่มี session แต่มี cookie `_medusa_cart_id` ค้าง When เปิด `/<cc>/cart` Then แสดงหน้า cart ว่างหรือ redirect login
   (ไม่มี 5xx) และ cookie cart ถูกล้าง (e2e)
@@ -392,9 +399,9 @@ none (middleware + storefront เท่านั้น)
 | CORE-13 | auth + ownership ของ order สำหรับ `POST /store/returns` (ใช้ helper จาก CORE-12) + ปิด order transfer ทั้งชุด (404) | AC-39, AC-40 | CORE-12 (แก้ `src/api/middlewares.ts` ไฟล์เดียวกัน) |
 | CORE-14a | (◐ #81, แยกรอบ 6) storefront: `/buy/[items]` บังคับล็อกอินแล้วสร้าง cart พร้อม customer; ปิด `/ucp/*`, `lib/ucp/*`, `cart/resume` (ลบ route); จัดการ cookie cart ค้างเมื่อไม่มี session; ลบหน้า order transfer | AC-41, 42, 43, 56 | CORE-6 |
 | CORE-14b | (แยกรอบ 6) แก้ flow no-JS ของ `/account?add_variant=` (กฎ 26, QA CORE-6 D-1) + error ของ `add_variant` | AC-44, 45 | CORE-6 (∥ CORE-14a; แตะ `account` คนละไฟล์ — ถ้าชนตัวที่ merge ทีหลัง rebase) |
-| CORE-14c | (เล็ก, follow-up review #81 รอบ 6) login ขณะมี cookie `_medusa_cart_id` ค้างที่เป็น cart ของ**คนอื่น** (มี jwt แล้ว) → `transferCart()` ได้ 404 จาก ownership ของ CORE-12 → ต้องไม่ทำให้ login ล้ม (กฎข้อ 40, AC-76) | AC-76 | CORE-14a |
+| CORE-14c | (เล็ก, follow-up review #81 รอบ 6) login ขณะมี cookie `_medusa_cart_id` ค้างที่เป็น cart ของ**คนอื่น** (มี jwt แล้ว) → `transferCart()` ได้ 404 จาก ownership ของ CORE-12 → ต้องไม่ทำให้ login ล้ม (กฎข้อ 40, AC-76); **รวม nit review CORE-14a (รอบ 7)**: e2e AC-41 กรณีไม่มี session assert 307/308 + `location` ก่อนตาม redirect | AC-76, AC-41 (nit) | CORE-14a |
 CORE-12 ∥ CORE-14a ∥ CORE-14b; CORE-13 หลัง CORE-12; CORE-12 ควร merge ก่อน release แรกที่เปิดให้ลูกค้าจริงใช้; CORE-14c หลัง CORE-14a (แตะ `lib/data/customer.ts`
-เดียวกับ CORE-4c — ตัวที่ merge ทีหลัง rebase)
+เดียวกับ CORE-4c1 — ตัวที่ merge ทีหลัง rebase)
 การแทน "Medusa Store" ในหน้า account (register, metadata `@login`/`profile`) **ไม่ใช่**ขอบเขตของ CORE-14 — อยู่ใน CORE-18 (#80, AC-61, กฎข้อ 38)
 
 ### ข้อตัดสินของ owner (follow-up CORE-6, 2026-10-25)
@@ -427,7 +434,7 @@ none
 
 ### Business rules
 27. (evidence ของ hotfix/chore ที่ไม่มี task id) ผล test ใส่ใน body ของ PR เท่านั้นเป็นค่าเริ่มต้น; ถ้าต้องเก็บไฟล์ใช้
-    `docs/evidence/ops/HOTFIX-<เลข PR>[-tests.txt|/]` ซึ่งตรง `TASK_ID_RE` (`^[A-Z]+-\d+[a-z]?$`) อยู่แล้ว — ไม่แก้ regex/budget test
+    `docs/evidence/ops/HOTFIX-<เลข PR>[-tests.txt|/]` ซึ่งตรง `TASK_ID_RE` (ดูกฎข้อ 11) อยู่แล้ว — ไม่แก้ regex/budget test
     (`docs/evidence/README.md`)
 28. (CORE-12b, ADR-013) store route ของ Medusa ที่ใช้ `cart_id` ใน query เพื่อคำนวณราคา/ภาษี ต้องผ่านกฎ 22 **เมื่อมี `cart_id`** เท่านั้น
 29. (CORE-15) เมื่อ `/store/search` ตอบ error หน้า `/store` ต้อง**หยุดยิง request** (ไม่มี retry อัตโนมัติวนไม่จบ; เปลี่ยน filter/หน้า/ค้นหาใหม่
@@ -582,8 +589,8 @@ none (CORE-16/17 เป็น middleware บน route ของ Medusa; seed เ
 | CORE-21 | (เล็ก, follow-up review #71) `POST /store/returns`: stock location ของ return option ต้องผูกกับ sales channel ของ order (ต่อจาก middleware ของ CORE-17) — เขียน test AC-66 ก่อน ถ้า `createAndCompleteReturnOrderWorkflow` ของ Medusa ปฏิเสธให้อยู่แล้ว (test ผ่านโดยไม่แก้) PR มีแค่ test; **เพิ่มรอบ 6**: test AC-60c กรณี order ไม่มี `country_code` (AC-70) + error "ไม่พบ option" ไม่สะท้อน `option_id` จาก input (AC-71) | AC-66, AC-70, AC-71 | CORE-17 (#71; แตะ middleware เดียวกัน) |
 | CORE-19a | storefront: ตัวนับ cart ใน nav อัปเดตหลังลบใน dropdown + search drawer ไม่ล้นที่ 375px | AC-62, AC-63 | CORE-4b2 (แตะ `modules/layout`, `modules/search`) |
 | CORE-19b | storefront: ปุ่ม "Continue to review" ไม่ค้าง (`router.push` ของ starter ใน `modules/checkout`) + ลบการกดซ้ำใน `continueToReview` ของ e2e | AC-64 | CORE-4d (แตะไฟล์ checkout เดียวกัน) |
-| CORE-20 | storefront: หน้าขอคืนสินค้าจาก order detail (เลือก item/จำนวน/เหตุผล → `POST /store/returns` ด้วย return option ของร้าน) ข้อความไทย + path ใหม่ใน ESLint rule (กฎ CORE-4 ข้อ 4) | AC-65 | CORE-17, CORE-4c (แตะ `modules/order`) |
-CORE-17 ∥ CORE-18 ∥ CORE-19a; CORE-19b หลัง CORE-4d; CORE-20 หลัง CORE-17 และ CORE-4c; CORE-21 หลัง CORE-17 (∥ CORE-20) — CORE-17, CORE-18
+| CORE-20 | storefront: หน้าขอคืนสินค้าจาก order detail (เลือก item/จำนวน/เหตุผล → `POST /store/returns` ด้วย return option ของร้าน) ข้อความไทย + path ใหม่ใน ESLint rule (กฎ CORE-4 ข้อ 4) | AC-65 | CORE-17, CORE-4c2 (แตะ `modules/order`) |
+CORE-17 ∥ CORE-18 ∥ CORE-19a; CORE-19b หลัง CORE-4d; CORE-20 หลัง CORE-17 และ CORE-4c2; CORE-21 หลัง CORE-17 (∥ CORE-20) — CORE-17, CORE-18
 อยู่บนเงื่อนไข release แรก (CORE-21 แนะนำก่อน release แรก ไม่บังคับ: ร้านมี sales channel/stock location เดียว)
 CORE-14 เพิ่มขอบเขต: ลบหน้า order transfer `(main)/order/[id]/transfer/**` และโค้ดที่เรียก transfer ใน `lib/data` (AC-56; backend ปิด route แล้วใน CORE-13)
 — ส่วนนี้อยู่ใน CORE-14a (#81) ตามการแยกรอบ 6
@@ -620,8 +627,8 @@ none
     (ไม่สะท้อน input ของผู้ใช้กลับ)
 38. (**CORE-18 #80**, รอบ 6 ตาม review — ไม่ใช่ CORE-14) แทนคำ "Medusa Store" ที่ storefront เขียนเองใน `modules/account/components/register/index.tsx`
     (heading, คำอธิบาย, ข้อความยอมรับเงื่อนไข) และ `metadata.description` ของ `app/[countryCode]/(main)/account/@login/page.tsx` และ `.../@dashboard/profile/page.tsx`
-    ด้วย `STORE_NAME` (`lib/util/site.ts`; ค่าเป็นเนื้อหาร้าน placeholder ตามกฎข้อ 33 ไม่ใช่ "Medusa Store") — ข้อความรอบ ๆ ยังเป็นอังกฤษได้จนกว่า CORE-4c แปล
-    (ไฟล์อยู่ใน path ของ 4c; ตัวที่ merge ทีหลัง rebase) ตรวจด้วย AC-61; **#80 แทนชื่อร้านใน checkout ไปแล้วด้วย** (`(checkout)/layout.tsx` และ
+    ด้วย `STORE_NAME` (`lib/util/site.ts`; ค่าเป็นเนื้อหาร้าน placeholder ตามกฎข้อ 33 ไม่ใช่ "Medusa Store") — ข้อความรอบ ๆ ยังเป็นอังกฤษได้จนกว่า CORE-4c1 แปล
+    (ไฟล์อยู่ใน path ของ 4c1; ตัวที่ merge ทีหลัง rebase) ตรวจด้วย AC-61; **#80 แทนชื่อร้านใน checkout ไปแล้วด้วย** (`(checkout)/layout.tsx` และ
     `checkout/components/review/index.tsx`: "Medusa Store" → `STORE_NAME`, ลบ `MedusaCTA`) — CORE-4d และ reviewer ห้าม revert ส่วนนี้ (กฎข้อ 39)
 39. (CORE-4d, ยืนยันรอบ 6) การแทนชื่อร้าน/ลบ `MedusaCTA` ใน checkout ทำแล้วใน CORE-18 (#80, กฎข้อ 38); CORE-4d เหลือเพียง**แปลเป็นไทย** ประโยคยอมรับเงื่อนไข
     ในขั้น review (`modules/checkout/components/review/index.tsx` "By clicking the Place Order button…") และข้อความอื่นใน `(checkout)/layout.tsx` โดยคง `STORE_NAME`
@@ -663,6 +670,107 @@ none
 ตาราง "Tasks (follow-up)"), CORE-21 (AC-70, AC-71; ตาราง "Tasks (follow-up รอบ 5)"), CORE-18 (AC-61 แก้ถ้อยคำ + AC-74, กฎข้อ 38) และ CORE-4d (AC-75; ตาราง Tasks ของ CORE-4)
 - nit review CORE-12b: comment ที่อธิบาย `authenticate(..., { allowUnauthenticated: true })` ซ้ำกันใน `src/api/store/ownership/middlewares.ts` บรรทัด 52-58
   → เหลือที่เดียว (แก้ใน PR ของ CORE-12b ก่อน merge ถ้ายังไม่ merge มิฉะนั้นแก้ใน PR ถัดไปที่แตะไฟล์นี้ เช่น CORE-21 — ไม่เปิด PR แยก)
+  **(รอบ 8)** ยังไม่ได้แก้ → ย้ายไปรวมในงานเล็ก GB-N1 (spec 04) พร้อม nit CORE-18: comment "onboarding status" ล้าสมัยใน `apps/storefront/src/middleware.ts` ราวบรรทัด 88
+
+## Follow-up รอบ 7 จาก review/qa (2026-10-26)
+แยก CORE-4c เป็น CORE-4c1 (#92) / CORE-4c2 (ตาราง AC-49 + ตาราง Tasks ของ CORE-4); follow-up review #92 และ qa รวมเข้า CORE-4c2; nit review CORE-14a รวมเข้า CORE-14c
+(AC-41); กฎข้อ 11 อ้าง regex ของ #87
+Out of scope: i18n (ADR-014), หน้า `/content/*` (ไม่สร้าง — ใช้หน้า policy ที่มีอยู่)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa มีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| หน้า policy | ไม่มีใน Medusa — storefront มี `(main)/{privacy,terms,...}/page.tsx` ของเราแล้ว | ใช้ตามเดิม (ลิงก์ให้ถูก) |
+| แสดงวันที่ตามเขตเวลา | ไม่ใช่งานของ Medusa — `Intl.DateTimeFormat` option `timeZone` | ใช้ตามเดิม |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+41. (CORE-4c2, qa #92) ลิงก์ "นโยบายความเป็นส่วนตัว" และ "ข้อกำหนดการใช้งาน" ในฟอร์มสมัคร (`modules/account/components/register/index.tsx`) ชี้ `/<cc>/privacy` และ
+    `/<cc>/terms` (หน้าที่มีจริง) — ไม่ใช่ `/content/privacy-policy`, `/content/terms-of-use` ของ starter ซึ่งเป็น 404
+42. (CORE-4c2, review #92) ทุกจุดใน storefront ที่แสดงวันที่/เวลา (`toLocaleDateString`, `toLocaleString`, `Intl.DateTimeFormat` — เช่น order card, overview, order detail)
+    ระบุ `timeZone: "Asia/Bangkok"` เสมอ — server (UTC) กับ browser จึงได้ข้อความเดียวกัน (ไม่มี hydration mismatch) และวันไม่เพี้ยนช่วง 00:00–07:00 เวลาไทย;
+    มีหลายจุดแล้วจึงรวมเป็น helper เดียวใน `lib/util/` ได้
+43. (CORE-4c2, review #92) order card แสดงสินค้าสูงสุด 3 line และแสดง "+ N รายการ" เมื่อมีมากกว่า 3 line โดย N = จำนวน line ที่**ไม่ได้แสดง** (`items.length − 3`)
+    — แก้ logic ของ starter ที่แสดง 3 แต่ลบ 4 และนับจาก `quantity`; ≤ 3 line ไม่แสดงตัวนับ
+44. (CORE-4c1/4c2, review #92) test ที่ตรวจว่าข้อความที่ผู้ใช้เห็นใน `lib/data/*.ts` เป็นไทย ต้องหาข้อความจาก source ทุกรูปแบบที่ส่งออก (`throw new Error(…)`, string ที่ return
+    เป็น error, template literal) แล้วตรวจทีละตัว — ห้าม hard-code จำนวนข้อความที่คาด (เช่น `toHaveLength(7)`) เพื่อให้ข้อความใหม่ถูกตรวจอัตโนมัติ
+45. (CORE-4c2, qa #92) ข้อความ error ที่ storefront สร้างจาก `String(error)` (หรือ `error.toString()`) ต้องไม่มีคำนำหน้า `Error:` — ใช้ `error.message` (หรือข้อความไทยของเรา)
+46. (CORE-22, qa #92 D-1 — defect ของ starter) `document.title` ของหน้า account เมื่อล็อกอินแล้วต้องตรงกับหน้า: overview "บัญชีของฉัน", profile "โปรไฟล์", addresses "ที่อยู่",
+    orders "คำสั่งซื้อ", order detail "คำสั่งซื้อ #<display_id>" (ตามด้วยชื่อร้านได้) — ปัจจุบัน metadata ของ parallel route `@login` ทับ `@dashboard` ทุกหน้าเป็น "เข้าสู่ระบบ";
+    หน้า login (ไม่ล็อกอิน) ยังเป็น "เข้าสู่ระบบ" builder ตรวจกลไก metadata ของ parallel route ใน Next เวอร์ชันที่ใช้จริงก่อนแก้
+47. (CORE-22, D-2) profile ของลูกค้าที่ไม่มีเบอร์โทร (`phone` null/ว่าง) ต้องไม่แสดงสตริง `null`/`undefined` — แสดงข้อความไทยว่ายังไม่ได้ระบุ (หรือว่าง)
+48. (CORE-22, D-3) panel แก้ไขของ account (Disclosure ของ starter) ที่**ปิดอยู่**ต้องไม่รับ click/focus — ปัจจุบันซ่อนด้วย `max-h-0 opacity-0` แต่ `overflow-visible`
+    ทำให้ที่ 1280px การกด "แก้ไข" เบอร์โทรไปโดนปุ่มบันทึกที่ซ่อนของ editor อีเมล; panel ที่ปิดต้อง `overflow-hidden` + `pointer-events-none` (หรือ `inert`/ไม่ render)
+
+### Acceptance criteria (follow-up รอบ 7)
+- AC-77 (CORE-4c2, กฎข้อ 41) Given ไม่ล็อกอิน When e2e เปิด `/th/account` แล้วสลับไปฟอร์มสมัคร Then ลิงก์ `register-privacy-link` และ `register-terms-link` (test id ที่ 4c2
+  เพิ่มถ้ายังไม่มี) มี `href` ลงท้าย `/th/privacy` และ `/th/terms`, ไม่มี `a[href*="/content/"]` ในหน้า และ `GET` ของทั้งสอง href ตอบ 200 (e2e)
+- AC-78 (CORE-4c2, กฎข้อ 42) Given `2026-10-25T18:30:00Z` When จัดรูปแบบวันที่ด้วยโค้ดของ order card/overview ภายใต้ `TZ=UTC` และ `TZ=America/New_York` Then ได้วันที่ 26
+  ต.ค. เหมือนกันทั้งสองกรณี (unit Vitest); Given `apps/storefront/src` Then ทุกการเรียก `toLocaleDateString(`/`toLocaleString(`/`new Intl.DateTimeFormat(` ระบุ
+  `timeZone: "Asia/Bangkok"` หรือผ่าน helper ที่ระบุ (unit grep); Given e2e เปิดหน้า orders ของ account Then console ไม่มีข้อความ hydration mismatch
+- AC-79 (CORE-4c2, กฎข้อ 43) Given order 5 line (qty 2 ทุก line) Then order card แสดงสินค้า 3 รายการ และตัวเลขใน `order-card-more-count` (test id) = 2; order 4 line qty 1 → 1;
+  order 3 line qty 5 → ไม่มี `order-card-more-count` (unit/component Vitest)
+- AC-80 (CORE-4c1/4c2, กฎข้อ 44) Given test ข้อความไทยของ `lib/data/*` When เพิ่ม `throw new Error("Something failed")` ชั่วคราวใน `lib/data/orders.ts` (หรือ `customer.ts`)
+  Then test ล้มโดยไม่ต้องแก้ test (positive control บันทึกใน evidence); source ของ test ไม่มีการ assert จำนวนข้อความแบบตัวเลขตายตัว (review)
+- AC-81 (CORE-4c2, กฎข้อ 45) Given action/data function ที่ห่อ error เป็นข้อความ When dependency throw `new Error("x")` (mock) Then ข้อความที่คืนไม่ขึ้นต้นด้วย `Error:`;
+  Given `apps/storefront/src` Then ไม่มี `String(error)`/`String(err)`/`.toString()` ของ error ในข้อความที่ส่งให้ผู้ใช้ (unit Vitest + grep)
+- AC-82 (CORE-22, กฎข้อ 46) Given customer ล็อกอิน When e2e เปิด `/th/account`, `/th/account/profile`, `/th/account/addresses`, `/th/account/orders`,
+  `/th/account/orders/details/<id>` Then `document.title` (ค่าจริงใน browser) ของแต่ละหน้าต่างกันทั้ง 5, มีอักษรไทย, ไม่มีคำ "เข้าสู่ระบบ" และหน้า order detail มี `display_id`
+  ของ order; Given ไม่ล็อกอิน When เปิด `/th/account` Then title มี "เข้าสู่ระบบ" (e2e)
+- AC-83 (CORE-22, กฎข้อ 47) Given customer ที่ `phone` เป็น null When เปิด profile Then textContent ของบล็อกเบอร์โทร (test id ของ starter/เพิ่มใหม่) ไม่มี `null`/`undefined`
+  (e2e หรือ component Vitest)
+- AC-84 (CORE-22, กฎข้อ 48) Given viewport 1280×800 และ profile ที่ editor ทุกตัวปิด When คลิกปุ่ม "แก้ไข" ของเบอร์โทร (test id) Then editor เบอร์โทรเปิด, editor อีเมลยังปิด
+  และไม่มี request update customer; Given editor ใดปิด Then panel ของ editor นั้นมี computed `pointer-events: none` (หรือ `inert`/ไม่อยู่ใน DOM) (e2e)
+
+### แผนการทดสอบ (follow-up รอบ 7)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-78 (format + grep), AC-79, AC-80, AC-81, AC-83 (ถ้าเป็น component test) |
+| e2e | AC-77, AC-78 (hydration), AC-41 nit (CORE-14c), AC-82, AC-83, AC-84 |
+
+### Tasks (follow-up รอบ 7)
+แยก CORE-4c → CORE-4c1 (#92) / CORE-4c2 ในตาราง Tasks ของ CORE-4 (AC-77..81 อยู่ใน CORE-4c2; AC-80 ส่วน `customer.ts` ทำใน #92 ถ้ายังไม่ merge มิฉะนั้นใน 4c2);
+CORE-14c รับ nit AC-41
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-22 | (storefront เล็ก, qa #92 — defect ของ starter) title ของหน้า account ที่ล็อกอินแล้วตรงหน้า (D-1, กฎข้อ 46), เบอร์โทรว่างไม่แสดง `null` (D-2, กฎข้อ 47), panel แก้ไขที่ปิดไม่รับ click (D-3, กฎข้อ 48) + e2e | AC-82, AC-83, AC-84 | CORE-4c1 (#92) (∥ CORE-4c2; แตะ `modules/account`/`(main)/account` ที่ 4c2 แตะเฉพาะลิงก์ register/order card — ตัวที่ merge ทีหลัง rebase) |
+
+## Follow-up รอบ 8 จาก qa CORE-22 (#99) — defect ของ starter (2026-10-26)
+Out of scope: เปลี่ยนอีเมลของลูกค้า (ต้องเปลี่ยน auth identity — ไม่ทำใน v1)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa มีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| แก้เบอร์โทร | `POST /store/customers/me` (field `phone`) | ใช้ตามเดิม — builder ตรวจ validator 2.22.1 ว่าล้างค่าได้ด้วย `""` หรือ `null` ถ้าไม่ได้ทั้งคู่ให้หยุดและรายงาน |
+| เปลี่ยนอีเมล | `POST /store/customers/me` ไม่ใช่ช่องทางเปลี่ยนอีเมลที่ login ได้ (ผูกกับ auth identity) — builder ยืนยันจาก validator | ไม่ทำ: ซ่อน editor อีเมล แสดงอย่างเดียว |
+| หน้า 404 | `notFound()` ของ Next.js ตอบ HTTP 404 | ใช้ตามเดิม |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+49. (CORE-23, qa #99) ลูกค้าลบเบอร์โทรได้: บันทึกช่องว่าง → `phone` ของ customer ว่าง/null และหน้า profile แสดงข้อความ "ยังไม่ได้ระบุ" ตามกฎข้อ 47
+50. (CORE-23) editor อีเมลของ starter (TODO ที่แสดง success โดยไม่บันทึก) ถูกเอาออก — แสดงอีเมลแบบอ่านอย่างเดียว ไม่มีปุ่ม "แก้ไข" ของอีเมล
+51. (CORE-23) หน้า order detail ของ account ที่หา order ไม่พบ (id ไม่มีอยู่/ไม่ใช่ของลูกค้า) ตอบ HTTP **404** ผ่าน `notFound()` (ไม่ใช่ soft 404 ที่ตอบ 200)
+52. (CORE-23) เมื่อ token หมดอายุระหว่างบันทึก profile (เช่นเบอร์โทร) ต้องแสดงข้อความ error ภาษาไทย (หรือพาไปหน้า login) — ห้ามแสดง error ดิบของ React
+    (เช่น "Minified React error #441") หรือข้อความอังกฤษ
+53. (CORE-23) ข้อความ "ยังไม่ได้ระบุ" ของช่องที่ว่างใน profile จัดชิดแนวเดียวกับค่าของช่องอื่น (ไม่เยื้องขวา)
+
+### Acceptance criteria (follow-up รอบ 8)
+- AC-85 (กฎข้อ 49) Given customer ที่มีเบอร์ `0812345678` When ล้างช่องเบอร์ใน editor แล้วบันทึก Then `GET /store/customers/me` คืน `phone` ว่างหรือ null
+  และบล็อกเบอร์โทรแสดง "ยังไม่ได้ระบุ" (e2e)
+- AC-86 (กฎข้อ 50) Given หน้า profile Then ไม่มีปุ่มแก้ไขของอีเมล (test id ของ editor อีเมลไม่อยู่ใน DOM) และอีเมลของลูกค้าแสดงอยู่ (e2e) — e2e ของ AC-84 ส่วน "editor อีเมลยังปิด" ปรับใน CORE-23 ให้ตรวจ editor อื่นที่ยังมีแทน
+- AC-87 (กฎข้อ 51) Given customer ล็อกอิน When `GET /th/account/orders/details/order_doesnotexist` (และ order id ของ customer อื่น) Then HTTP status = 404 (e2e `page.goto` response)
+- AC-88 (กฎข้อ 52) Given customer อยู่หน้า profile แล้ว token ถูกลบ/หมดอายุ (ลบ cookie `_medusa_jwt` ใน test) When บันทึกเบอร์โทร Then หน้าไม่มีข้อความ `Minified React error`
+  และไม่มี error ดิบ; ข้อความ error ที่แสดง (ถ้ามี) มีอักษรไทย หรือ URL เป็นหน้า login (e2e)
+- AC-89 (กฎข้อ 53) Given customer ที่ `phone` null When เปิด profile Then `boundingBox().x` ของข้อความ "ยังไม่ได้ระบุ" (test id) เท่ากับ x ของค่าในบล็อกชื่อ (±2px) (e2e)
+
+### Tasks (follow-up รอบ 8)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-23 | (storefront เล็ก, qa #99 — defect ของ starter) ลบเบอร์โทรได้, เอา editor อีเมลออก, order ไม่พบตอบ 404, error token หมดเป็นไทย, จัดแนว "ยังไม่ได้ระบุ" (กฎข้อ 49–53) + e2e | AC-85..89 | CORE-22 (#99) (แตะ `modules/account` profile เดียวกัน); ∥ CORE-4c2 (#102/#103 — แตะ order detail ร่วมได้ ตัวที่ merge ทีหลัง rebase) |
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

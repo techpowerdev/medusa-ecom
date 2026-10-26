@@ -22,7 +22,7 @@ const AccountInfo = ({
   isSuccess,
   isError,
   clearState,
-  errorMessage = "An error occurred, please try again",
+  errorMessage = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
   children,
   'data-testid': dataTestid
 }: AccountInfoProps) => {
@@ -63,7 +63,7 @@ const AccountInfo = ({
             data-testid="edit-button"
             data-active={state}
           >
-            {state ? "Cancel" : "Edit"}
+            {state ? "ยกเลิก" : "แก้ไข"}
           </Button>
         </div>
       </div>
@@ -82,7 +82,7 @@ const AccountInfo = ({
           data-testid="success-message"
         >
           <Badge className="p-2 my-4" color="green">
-            <span>{label} updated succesfully</span>
+            <span>อัปเดต{label}เรียบร้อยแล้ว</span>
           </Badge>
         </Disclosure.Panel>
       </Disclosure>
@@ -109,13 +109,17 @@ const AccountInfo = ({
       <Disclosure>
         <Disclosure.Panel
           static
+          // CORE-22 (กฎข้อ 48): panel ที่ปิดต้องไม่รับ click/focus — ไม่งั้นปุ่มบันทึกที่มองไม่เห็นบัง editor ถัดไป
+          inert={!state}
           className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-visible",
+            "transition-[max-height,opacity] duration-300 ease-in-out",
             {
-              "max-h-[1000px] opacity-100": state,
-              "max-h-0 opacity-0": !state,
+              "max-h-[1000px] opacity-100 overflow-visible": state,
+              "max-h-0 opacity-0 overflow-hidden pointer-events-none": !state,
             }
           )}
+          data-testid="edit-panel"
+          data-open={state}
         >
           <div className="flex flex-col gap-y-2 py-4">
             <div>{children}</div>
@@ -126,7 +130,7 @@ const AccountInfo = ({
                 type="submit"
                 data-testid="save-button"
               >
-                Save changes
+                บันทึกการเปลี่ยนแปลง
               </Button>
             </div>
           </div>

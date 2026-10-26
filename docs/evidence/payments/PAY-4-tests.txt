@@ -1,0 +1,27 @@
+# PAY-4 — ผล test (รันในเครื่อง 2026-10-26, Node 22.23.3, Postgres 16 จาก docker compose, DB แยก medusa_pay4, Redis db 3)
+# backend :9103 (`medusa build` + `medusa start` จาก .medusa/server แบบเดียวกับ CI) + Stripe test mode (sk_test_ จาก shell)
+# test นี้ไม่ใช้ storefront (order สร้างผ่าน store API + confirm PaymentIntent ด้วย pm_card_visa) และไม่ต้องใช้ webhook
+# (capture: true → completeCart authorize แล้วได้ captured ทันที)
+
+## Red — e2e ล้มด้วยสาเหตุที่ถูกต้องเมื่อไม่ได้ refund จริง (mutation: กด Cancel แทน Save ในฟอร์ม refund ของ admin)
+  ✘  1 [chromium] › e2e/payments-refund.spec.ts › AC-6 … › Medusa: refund ฿100 บน payment, order เป็น partially_refunded และ admin แสดงสถานะ
+    - Expected  - 3
+    + Received  + 1
+    (refunds ของ payment = [] แทน [100])
+  1 failed
+
+## Red (รอบแรก) — session บัตรที่ไม่ส่ง data.payment_method_types → Stripe ปฏิเสธการ confirm (ต้องมี return_url)
+  ตรงกับกฎข้อ 5 / PAY-2 — test ส่ง data: { payment_method_types: ["card"] } แบบเดียวกับ storefront
+
+## Green — pnpm --filter storefront exec playwright test e2e/payments-refund.spec.ts --project=chromium (E2E_SAVE_EVIDENCE=1)
+Running 1 test using 1 worker
+  ✓  1 [chromium] › e2e/payments-refund.spec.ts:109:5 › AC-6: admin refund ฿100 บน order บัตรที่ captured → Stripe refund 10000 สตางค์, order แสดงสถานะ refund (partially_refunded) (8.8s)
+  1 passed (9.3s)
+  ตรวจใน test: Medusa payment.refunds = [100], order.payment_status = partially_refunded, admin แสดง badge "Partially refunded",
+  Stripe GET /v1/refunds?payment_intent=<pi> → 1 รายการ amount=10000 currency=thb status=succeeded
+
+## pnpm --filter storefront test:e2e:unit (กฎ evidence)
+  29 passed
+
+## pnpm lint && pnpm typecheck
+  ผ่าน (exit 0)

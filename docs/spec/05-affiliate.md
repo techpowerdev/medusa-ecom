@@ -1,6 +1,6 @@
 # 05 Affiliate — ค่าคอมมิชชันแบบมีช่วงเวลากำหนด
 
-สถานะ: in-progress (AF-1 = PR #11)
+สถานะ: in-progress (AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -21,7 +21,8 @@ cart metadata การจ่ายเงิน (โอนธนาคาร) �
 | หน้า admin | Admin UI routes/widgets | custom page |
 | ส่วนลดเฉพาะ affiliate สำหรับผู้ซื้อ (ไม่บังคับ) | Promotion module (code) | link แบบไม่บังคับ |
 | แปลงขอบเขตโปรแกรม → รายการสินค้าพร้อมราคา/รูป | Product module + Query (`useQueryGraphStep`) | ใช้ตามเดิม |
-| lock ข้าม request ของ payout | Locking module (Redis) + `acquireLockStep`/`releaseLockStep` | ใช้ตามเดิม: key `affiliate-payout:<affiliate_id>` ทั้ง create และ cancel (กฎ 25) |
+| lock ข้าม request ของ payout | Locking module (Redis) + `acquireLockStep`/`releaseLockStep` | ใช้ตามเดิม: key `affiliate-payout:<affiliate_id>` ทั้ง create และ cancel (กฎ 25); key `affiliate-attribution:<order_id>` ระหว่าง attribution กับ reversal จาก cancel (กฎ 27) |
+| สถานะ order / ยอด refund | Order module (`order.status`, payment collection ของ order) | ใช้ตามเดิม อ่านด้วย `query.graph` (กฎ 27, 28) |
 | ปุ่มยืนยันใน admin | `usePrompt` ของ `@medusajs/ui` | ใช้ตามเดิม (AF-6) |
 | CORS | Medusa ใส่ให้เฉพาะ `/store`, `/admin`, `/auth` | ไม่ใช้สำหรับ `/affiliate/*` — portal เรียกจาก server side (กฎ 17) |
 
@@ -78,8 +79,8 @@ Payout
   → ถ้ามีโปรแกรมและไม่ใช่การซื้อเอง (กฎ 12) คำนวณ entry ต่อ line item ที่เข้าเกณฑ์
   (ขอบเขตโปรแกรม ∩ รายการสินค้าใน order; เรียง `order.items` ตามกฎ 26 ก่อนแจก cap) → insert `CommissionEntry` status `pending`,
   `matures_at = now + hold_days`; token ไม่ถูกต้อง/หมดอายุ หรือ affiliate ไม่ active → ไม่สร้างอะไรและ log ระดับ info (ลายเซ็นผิด = warn ตาม AC-11)
-- Subscriber เมื่อ refund/cancel/return: insert entry แบบ `reversed` สำหรับยอดที่ได้รับผลกระทบ
-  (ไม่แก้ไข entry เดิม; ledger เป็น append-only)
+- Subscriber เมื่อ refund/cancel/return: insert entry แบบ `reversed` สำหรับยอดที่ได้รับผลกระทบตามกฎ 28
+  (ไม่แก้ไข entry เดิม; ledger เป็น append-only); reversal จาก cancel ถือ lock `affiliate-attribution:<order_id>` เดียวกับ attribution (กฎ 27)
 - Scheduled job รายวัน: entry `pending` ที่ `matures_at <= now` และไม่มี reversal → `approved`
 - `createPayoutWorkflow(affiliate, period)` admin: เลือก entry ตามกฎ 19 → Payout draft;
   `markPayoutPaid` → entry เป็น `paid` (compensation คืน `paid → approved`, กฎ 21)
@@ -129,7 +130,7 @@ Payout
 5. Entry เป็น append-only: ห้ามลบ (ห้ามใช้ `deleteCommissionEntries`/`softDeleteCommissionEntries` ใน workflow ใด)
    และห้ามแก้ `amount`/`order_id`/`line_item_id`/`program_id`; เปลี่ยนได้เฉพาะ `status` ไปข้างหน้า
    `pending → approved → paid` การกลับรายการ (reversal) เป็น entry ติดลบแยกต่างหาก status `reversed`
-6. `hold_days` ป้องกันช่วงเวลาที่อาจมี refund; จ่ายได้เฉพาะ entry ที่ `approved`
+6. `hold_days` ป้องกันช่วงเวลาที่อาจมี refund; entry บวกที่จ่ายได้มีเฉพาะ `approved` (entry `reversed` ถูกหักใน payout ตามกฎ 19)
 7. Affiliate ต้องเป็น `active` ทั้งตอน click และตอนสั่งซื้อ
 8. PII: `payout_info` **ไม่ถูกส่งออก** ใน portal API เลย (AF-1 ใช้ allow-list field); ค่าเต็มดูได้เฉพาะ admin
    (การแสดงแบบ mask ในหน้า Profile ดู Q5)
@@ -156,9 +157,11 @@ Payout
 18. ทุก route ใต้ `/affiliate/*` ต้องผ่าน `authenticate("affiliate", ["session","bearer"])` ยกเว้น `/affiliate/register`
     ที่ใช้ `allowUnregistered: true` (ระวัง: middleware ของ matcher ที่ซ้อนกันทำงานทั้งคู่ — ห้ามใช้ `/affiliate/*`
     แบบไม่มี allowUnregistered คลุม register) สิทธิ์ตามสถานะ affiliate ดู Q6 (ตอนนี้ `/affiliate/me` เปิดทุกสถานะ)
-19. (AF-5) การเลือก entry ของ payout: entry ของ affiliate นั้นที่ `status ∈ {approved, reversed}` (Q8), `created_at < period_to`
-    และยังไม่อยู่ใน `entry_ids` ของ payout ใด — **ไม่** ตัดด้วย `period_from` (`period_from` เป็นเพียงป้ายของรอบ) เพื่อให้ยอดที่
-    ยกมาจากรอบก่อนตาม Q8 ถูกรวมในรอบถัดไป
+19. (AF-5, แก้ 2026-10-26 owner) การเลือก entry ของ payout: entry ของ affiliate นั้นที่ `created_at < period_to`
+    และยังไม่อยู่ใน `entry_ids` ของ payout ใด และเป็น (a) `status = approved` หรือ (b) `status = reversed` **เฉพาะเมื่อ entry ต้นทางของ line เดียวกัน**
+    (`order_id` + `line_item_id` เดียวกัน, status ไม่ใช่ `reversed`) เป็น `approved` หรือ `paid` แล้ว — reversed ที่ต้นทางยัง `pending` **ไม่เข้า payout**
+    (หักล้างกับ pending ของตัวเอง; ถ้าต้นทางถูก approve ภายหลังตาม Q8 reversed นั้นจึงเข้า payout รอบถัดไป) — **ไม่** ตัดด้วย `period_from`
+    (`period_from` เป็นเพียงป้ายของรอบ) เพื่อให้ยอดที่ยกมาจากรอบก่อนตาม Q8 ถูกรวมในรอบถัดไป; filter ทำใน DB (AF-9) และ `created_at < period_to` ใช้กับ reversed ด้วย
 20. (AF-5, ตามโค้ด PR #35) สถานะโปรแกรมเรียงเป็น `draft < published < ended` และเปลี่ยนได้เฉพาะไปข้างหน้าหรือคงเดิม:
     `draft → published`, `published → ended` และ **`draft → ended` ตรงได้** (ข้ามขั้น); ย้อนกลับ (เช่น `ended → published`,
     `published → draft`) → 400 `NOT_ALLOWED`; ตั้งค่าเดิมซ้ำไม่ error; ตอนสร้างตั้งได้แค่ `draft`/`published` (`ended` ได้ผ่าน update เท่านั้น)
@@ -183,6 +186,17 @@ Payout
     restore payout หลังจาก create หยิบ entry ไปแล้ว; workflow อื่นที่ถือทั้งสอง key ต้องใช้ลำดับเดียวกัน
 26. (Q3, AF-4 — review AF-3) ก่อนแจก cap ต่อ order (กฎ 4) เรียง `order.items` ตาม `created_at` จากน้อยไปมาก เสมอกันใช้ `id` — ไม่พึ่งลำดับที่
     `query.graph` คืน (ไม่รับประกันลำดับ) ใช้ลำดับเดียวกันทุกครั้งที่คำนวณ (สร้าง entry และ reversal)
+27. (owner 2026-10-26; ฝั่ง attribution = AF-4b #91, ฝั่ง reversal จาก cancel = AF-4 #90) attribution **ไม่สร้าง entry** ให้ order ที่ถูกยกเลิกแล้ว: workflow attribution อ่าน `order.status` (`canceled`) **หลัง**ถือ lock
+    `affiliate-attribution:<order_id>` (Locking module) — ยกเลิกแล้ว → ไม่สร้างทั้ง `AffiliateAttribution` และ entry (log info `order_canceled`; Q13 — ตามที่ #91 ทำ); reversal ที่มาจาก cancel ต้องถือ lock key เดียวกัน เพื่อให้ลำดับเป็น
+    "attribution ก่อน → reversal เห็น entry" หรือ "cancel ก่อน → attribution เห็น `canceled`" เสมอ (ไม่มี entry pending ค้างของ order ที่ยกเลิก)
+28. (การตีความของ AF-4 #90 ที่ **owner ยืนยัน 2026-10-26** — แทนข้อตัดสิน Q3 ส่วน partial refund) เหตุที่ทำให้เกิด reversal มีเพียง cancel, refund เต็ม และการคืนของ:
+    (a) **cancel** order → reverse ยอดสุทธิที่เหลือของทุก line
+    (b) **refund เต็มจำนวน** — เกณฑ์คือ `isOrderFullyRefunded` (helper ของ #90: ยอด refund สะสมของ order ≥ ยอดที่ชำระ, เทียบด้วย `MathBN`) → reverse ยอดสุทธิที่เหลือของทุก line
+    (c) **return** → ต่อ line: จำนวนคืน = จำนวน **received + dismissed** (dismissed = รับคืนแบบชำรุด) ของ return item ของ line นั้น
+        (#90 ที่ head a8daf1d นับ `return_received_quantity` + `return_dismissed_quantity` แล้ว);
+        reversal = `−entry.amount × จำนวนคืน / line.quantity` (ปัด 2 ตำแหน่ง half-up, `MathBN`) และรวม reversal ของ line ไม่เกิน `entry.amount`
+    (d) **refund บางส่วนที่ไม่ได้มาจาก return** (เช่น admin คืนเงินบางส่วนเพื่อชดเชย) → **ไม่** reverse; ถ้าจำเป็น admin ปรับค่าคอมเองนอกระบบ
+        (v1 ไม่มี route/UI ปรับ entry ด้วยมือ — ถ้าต้องการต้องเป็น task ใหม่)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -236,6 +250,18 @@ Payout
   และ create ได้ 400/ไม่มี payout ใหม่ หรือได้ payout ที่ไม่มี entry ซ้ำกับ D — **ไม่มี entry ใดอยู่ใน `entry_ids` ของ payout ที่ยังไม่ถูกลบมากกว่า 1 ตัว**; และ unit/spy
   ยืนยันว่า cancel ขอ lock key `affiliate-payout:<affiliate_id>` และ `affiliate-payout-paid:<payout_id>` ตามลำดับของกฎ 25; When `DELETE` route ยกเลิก payout โดยไม่มี
   token admin Then 401 และ payout ไม่เปลี่ยน (integration http)
+- AC-28 (กฎ 19 แก้ 2026-10-26) Given Ann มี line L1: entry E1 `pending` ฿100 + reversed R1 −฿100 (refund เต็มก่อนครบ hold) และ line L2: entry E2 `approved` ฿50
+  + reversed R2 −฿20 (ทั้งหมด `created_at < period_to`) When สร้าง payout Then `entry_ids` = {E2, R2}, ยอด ฿30 และ**ไม่มี** R1; Given line L3: E3 `pending` ฿100 +
+  reversed R3 −฿40 When สร้าง payout ก่อน E3 ครบ hold Then ไม่มี E3/R3; When maturity job approve E3 แล้วสร้าง payout รอบถัดไป Then มี E3 และ R3 (฿60);
+  Given ต้นทาง `paid` แล้วมี reversed ใหม่ Then reversed นั้นเข้า payout ถัดไป (integration http)
+- AC-29 (กฎ 27) Given order O ที่มี `affiliate_token` ถูกต้องและโปรแกรม active When order O ถูก cancel **ก่อน** subscriber `order.placed` ประมวลผล (ควบคุมลำดับใน test)
+  Then ไม่มี attribution และไม่มี entry ของ O; Given ยิง attribution กับ cancel ของ O พร้อมกัน Then ผลรวม entry + reversal ของ O = 0 และไม่มี entry `pending` ของ O ที่ไม่มี reversal;
+  unit/spy ยืนยันว่าทั้งสองทางขอ lock `affiliate-attribution:<order_id>` (integration)
+- AC-30 (กฎ 28c) Given entry ของ line L (qty 4) ฿100 When return รับของคืน 1 ชิ้น Then reversal −฿25; When รับคืนอีก 3 ชิ้น Then reversal −฿75 และยอดสุทธิของ L = 0;
+  Given entry ฿100, qty 3, รับคืน 1 Then −฿33.33 (half-up); Given entry ฿100, qty 4 When return มี received 1 + dismissed 1 Then reversal −฿50
+  (integration + unit ของฟังก์ชันคำนวณ)
+- AC-31 (กฎ 28b, 28d) Given order ที่มี entry When admin refund บางส่วน (ไม่สร้าง return) Then ไม่มี reversal; When refund ส่วนที่เหลือจนครบ (`isOrderFullyRefunded` = true)
+  Then มี reversal ของยอดสุทธิที่เหลือทุก line และยอดสุทธิของ order = 0; refund ซ้ำ/event ซ้ำ Then ไม่มี reversal เพิ่ม (integration)
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -247,7 +273,8 @@ Payout
 
 ## Test plan
 - Unit: การคำนวณค่าคอมมิชชัน (ขอบเขต, cap, ฐานคำนวณ, ปัดเศษ), การตรวจสอบช่วงเวลา `[starts_at, ends_at)` และ `ended` (AC-17 ส่วน logic), การเรียง line (AC-25)
-- Integration (http): AC-1..AC-8, AC-10, AC-11, AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-23, AC-24, AC-27
+- Integration (http): AC-1..AC-8, AC-10, AC-11, AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-23, AC-24, AC-27, AC-28, AC-29, AC-30, AC-31
+- Unit: สัดส่วน reversal ของ return (AC-30)
 - e2e: AC-9 + AC-1 แบบ end-to-end พร้อม cookie, AC-21 (AF-3b); unit (Vitest storefront): AC-22 (AF-3b); e2e admin: AC-26 (AF-6, ใช้ helper ของ OPS-11)
 
 ## Tasks
@@ -257,14 +284,15 @@ Payout
 | AF-2 | Tracking redirect + cookie + cart metadata hook ใน storefront (เตรียมสำหรับ AC-3) | AF-1 |
 | AF-3 | Subscriber `order.placed` สำหรับ attribution + สร้าง entry (AC-1,2,3,4,8,10,11,17) (ตามข้อตัดสิน Q2, Q3, Q7 และกฎ 24 — #77 กรองตาม window ของแต่ละโปรแกรมและใช้ `order.created_at` แล้ว มี unit test) — backend เท่านั้น; ส่วน storefront ย้ายไป AF-3b | AF-2 |
 | AF-3b | (แยกจาก AF-3, 2026-10-26) storefront: sync cookie `aff` ลง `cart.metadata.affiliate_token` ก่อน `placeOrder` เมื่อค่าต่าง และเลิก round-trip `GET /store/carts/:id` ที่ AF-2 เพิ่มใน add to cart (กฎ 23; AC-21, AC-22) — แตะ `lib/data/cart.ts` | AF-3 |
-| AF-4 | Subscriber สำหรับ reversal + maturity job + migration index `(status, matures_at)` (AC-5, AC-6) — ห้ามลบ entry; ตามข้อตัดสิน Q3, Q8; **รวม nit review AF-3**: เรียง `order.items` ตาม `created_at`/`id` ก่อน `planAttribution` (กฎ 26, AC-25), integration test ของกฎ 24 (AC-23, AC-24), test AC-10 assert ทั้งสอง promise `fulfilled`, log info เมื่อ token หมดอายุ/affiliate ไม่ active | AF-3 |
+| AF-4 | Subscriber สำหรับ reversal + maturity job + migration index `(status, matures_at)` (AC-5, AC-6) — ห้ามลบ entry; ตามข้อตัดสิน Q8; **เพิ่ม 2026-10-26 (owner, review #90)**: เหตุของ reversal ตามกฎ 28 (AC-30, AC-31), reversal จาก cancel ถือ lock `affiliate-attribution:<order_id>` (กฎ 27, AC-29 ส่วน reversal — #90 ทำแล้ว), payout เลือก reversed เฉพาะที่ต้นทาง approved/paid (กฎ 19, AC-28 — แก้ filter ของ `createPayoutWorkflow`) — ◐ #90 (nit review AF-3 ย้ายไป AF-4b) | AF-3 |
+| AF-4b | (แยกจาก AF-4, ◐ #91) nit review AF-3 ฝั่ง attribution: เรียง `order.items` ตาม `created_at`/`id` ก่อน `planAttribution` (กฎ 26, AC-25), log info เมื่อ token หมดอายุ/affiliate ไม่ active, integration test ของกฎ 24 (AC-23, AC-24), test AC-10 assert ทั้งสอง promise `fulfilled` + attribution ข้าม order ที่ยกเลิกแล้วใต้ lock `affiliate-attribution:<order_id>` (กฎ 27, AC-29 ส่วน attribution) | AF-3 (∥ AF-4; แตะ workflow attribution — ถ้าชนกับ #90 ที่ lock ตัวที่ merge ทีหลัง rebase) |
 | AF-5 | Admin APIs + payout workflows (AC-7) (ตามข้อตัดสิน Q8) | AF-1 |
 | AF-6 | หน้า Admin UI รวมปุ่มยกเลิก payout `draft` (AC-26) | AF-5, AF-9 (route ยกเลิก) |
 | AF-7 | Portal APIs รวม `/affiliate/products` (แปลงขอบเขต → สินค้า ตามกฎ 16, paging) (AC-13, AC-14, AC-18) — หมายเหตุ: ปรับ middleware matcher ให้คลุมทุก `/affiliate/*` ยกเว้น register (กฎ 18) และสิทธิ์ตามสถานะ (Q6) | AF-3 |
 | AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts, Profile (Q5) + e2e (AC-9); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | AF-7, AF-4 |
 | AF-9 | follow-up AF-5 (เล็ก): `cancelPayoutWorkflow` + admin route ยกเลิก payout `draft` (คืน entry ให้เลือกได้อีก) และย้ายการกรอง entry ของ `createPayoutWorkflow` ไปทำใน DB (filter ตามกฎ 19 แทนโหลด entry ทั้งหมดแล้วกรองในแอป) (AC-19, AC-20; AC-7 ต้องยังผ่าน) | AF-5 |
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
-AF-5 → AF-9 → (AF-6 ∥ AF-9b) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-7); AF-8 หลัง AF-7, AF-4 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0)
+AF-5 → AF-9 → (AF-6 ∥ AF-9b) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-8 หลัง AF-7, AF-4 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0)
 AF-3b แตะ `lib/data/cart.ts` เดียวกับ CORE-14/CORE-4d — ตัวที่ merge ทีหลัง rebase
 follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใน production (กฎ 22) ผนวกเข้า **OPS-7** (spec 07 AC-13) ไม่ใช่ task ของ spec นี้;
 `/buy/[items]` ที่สร้าง cart โดยไม่มี token อยู่ใน CORE-14 (spec 01 AC-41) แล้ว
@@ -273,17 +301,23 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 - Q1 สมัครเองได้: register → `pending` → admin อนุมัติ
 - Q2 ขอบเขต `category_ids` **ไม่นับ** category ลูกใน v1 (admin เลือก category ลูกเองใน UI) ใช้กฎเดียวกันทั้ง AF-3 และ AF-7
 - Q3 cap ต่อ order แจกให้ line **ตามลำดับ line item** (แบบที่ AF-1 ทำ ไม่ต้องแก้ `utils/commission.ts`; "ลำดับ" = `created_at` แล้ว `id` ตามกฎ 26);
-  partial refund ของ line → reversal = `−entry.amount × ยอดที่คืน / base ของ line` (คิดจาก entry ของ line นั้นเอง)
+  ~~partial refund ของ line → reversal = `−entry.amount × ยอดที่คืน / base ของ line`~~ (แทนด้วยกฎ 28 ตามที่ #90 ทำ, 2026-10-26: refund บางส่วนที่ไม่ใช่ return
+  ไม่ reverse; return ใช้สัดส่วนจำนวนชิ้น)
 - Q4 affiliate เปลี่ยน `code` เองไม่ได้ใน v1; คำสงวน `admin, affiliate, store, auth, api, app, www, support, shop, r`
 - Q5 portal ไม่ส่ง `payout_info` ออกเลย แสดงเพียง boolean `has_payout_info`; admin เป็นผู้กรอก
 - Q6 `pending` เข้าได้เฉพาะ `/affiliate/me`; `suspended` เข้า `/affiliate/me`, earnings, payouts แบบอ่านอย่างเดียว;
   `/affiliate/products` และ programs เฉพาะ `active` อื่น ๆ → 403
 - Q7 หลายโปรแกรม active ครอบ line เดียวกัน: ต่อ line เลือกอัตราสูงสุด เสมอกันเลือก `starts_at` ล่าสุด;
   attribution เก็บ `program_id` ของโปรแกรมที่ให้ค่าคอมรวมมากที่สุด
-- Q8 maturity job อนุมัติ entry ที่ยอดสุทธิของ line (รวม reversal) > 0; payout = Σ `approved` + Σ `reversed`
-  ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
+- Q8 maturity job อนุมัติ entry ที่ยอดสุทธิของ line (รวม reversal) > 0; payout = Σ `approved` + Σ `reversed` **ที่ผ่านกฎ 19** (ต้นทางของ line
+  approved/paid แล้ว — แก้ 2026-10-26, AC-28) ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
 - Q9 (2026-10-25, AF-9) ยกเลิก payout `draft` = soft-delete (ไม่เพิ่มสถานะ `cancelled`)
 - กฎ 20 ให้ตรงกับโค้ดของ PR #35 (`draft → ended` ตรงได้)
 
-## Open questions (รอบ 6)
+## Open questions (รอบ 6–7)
 - ~~Q10~~ ตัดสินแล้ว (owner 2026-10-26): เมื่อหลายโปรแกรม active นับค่าคอม**เฉพาะโปรแกรมที่ window คลุมวันคลิก** (ตามที่ #77 ทำ) — กฎ 24a, AC-23
+- ~~Q11~~ ตัดสินแล้ว (owner 2026-10-26, รอบ 7): payout เลือก reversed เฉพาะที่ต้นทาง approved/paid (กฎ 19, AC-28); order ที่ยกเลิกแล้วไม่ได้ entry (กฎ 27, AC-29);
+  ยอมรับการตีความของ #90: refund บางส่วนที่ไม่ได้มาจากการคืนของไม่หักค่าคอม, การคืนนับ received + dismissed / quantity, admin ปรับเองถ้าจำเป็น (กฎ 28, AC-30, AC-31)
+- ~~Q12~~ ปิดแล้ว (2026-10-26): #91 = AF-4b (เรียง line, log info, test AC-10/23/24, กฎ 27 ฝั่ง attribution); filter payout กฎ 19 อยู่ใน AF-4 #90
+- Q13 — ค่าเริ่มต้นที่ใช้ (session หลักเลือก 2026-10-26, **รอ owner ยืนยัน**): order ที่ยกเลิกก่อน attribution ไม่บันทึกทั้ง `AffiliateAttribution` และ entry (ตามที่ AF-4b #91 ทำ — order ที่ยกเลิกแล้ว
+  ไม่มีอะไรให้ idempotency ต้องกัน; redeliver ซ้ำได้ผลเดิม) — กฎ 27

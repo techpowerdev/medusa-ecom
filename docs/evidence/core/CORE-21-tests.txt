@@ -1,0 +1,29 @@
+# CORE-21 — ผล test (รันในเครื่อง 2026-10-26, Node 22.23.3, Postgres 16 จาก docker compose, DB medusa_core21)
+
+## Red (ก่อนแก้ middleware) — integration-tests/http/store-returns-option.spec.ts: 2 failed, 6 passed
+- AC-66 return option ที่ผ่าน CORE-17 ทุกข้อ แต่ stock location ไม่ผูกกับ sales channel ใดเลย → **200** สร้าง return ได้
+  (ยืนยันว่า `createAndCompleteReturnOrderWorkflow` ของ Medusa 2.22.1 ไม่กันให้ → ต้องแก้ middleware)
+- AC-70 order ที่ `shipping_address.country_code = null` → 400 ข้อความ "does not serve the order's shipping address" (ผ่านอยู่แล้ว
+  จากโค้ด CORE-17 — PR นี้เพิ่มเฉพาะ test)
+- AC-71 option_id `so_<script>x</script>` → ข้อความเดิม `Return shipping option so_<script>x</script> was not found` สะท้อน input (fail)
+
+## Green
+PASS integration-tests/http/store-returns-option.spec.ts (14.567 s)
+    ✓ owner using an outbound option (Standard, is_return=false) → 400 invalid_data and no return is created (879 ms)
+    ✓ owner using a return option disabled in store → 400 invalid_data and no return is created (1006 ms)
+    ✓ owner using a return option of a service zone that does not cover the order address → 400 invalid_data and no return is created (707 ms)
+    ✓ owner using an option id that does not exist → 400 invalid_data and no return is created (740 ms)
+    ✓ owner using the seeded return option (Standard return) → 200 and the return is created (989 ms)
+    ✓ owner using a return option whose stock location is not in the order's sales channel → 400 invalid_data (877 ms)
+    ✓ owner whose order has no shipping country_code → 400 invalid_data and no return is created (961 ms)
+    ✓ owner using a missing option id → message does not echo the input and is the same for any id (754 ms)
+Tests:       8 passed, 8 total
+PASS integration-tests/http/store-returns-overrides.spec.ts (11.67 s)
+PASS integration-tests/http/store-returns-transfer.spec.ts (8.57 s)
+Tests:       9 passed, 9 total
+
+## unit (pnpm --filter backend test:unit)
+Test Suites: 43 passed, 43 total
+Tests:       388 passed, 388 total
+
+## pnpm lint && pnpm typecheck → exit 0; pnpm --filter backend build → exit 0
