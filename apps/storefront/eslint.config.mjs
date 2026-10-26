@@ -41,6 +41,8 @@ const THAI_UI_FILES = [
   "src/app/[[]countryCode]/(main)/{cart,order}/**",
   "src/app/[[]countryCode]/(main)/{contact,terms,privacy,returns,shipping}/page.tsx",
   "src/modules/{cart,order,policies,common,skeletons}/**",
+  // CORE-20 (หน้าขอคืนสินค้า; page อยู่ใต้ glob account ของ 4c1 แล้ว)
+  "src/modules/returns/**",
 ]
 
 export default defineConfig([

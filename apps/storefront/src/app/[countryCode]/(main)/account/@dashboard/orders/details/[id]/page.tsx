@@ -1,4 +1,5 @@
 import { retrieveOrder } from "@lib/data/orders"
+import { isOrderReturnable } from "@lib/data/returns"
 import OrderDetailsTemplate from "@modules/order/templates/order-details-template"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
@@ -29,5 +30,8 @@ export default async function OrderDetailPage(props: Props) {
     notFound()
   }
 
-  return <OrderDetailsTemplate order={order} />
+  // CORE-20: ปุ่มขอคืนสินค้าเฉพาะ order ที่ส่งแล้วและยังอยู่ใน return_window_days ของ region ของ order
+  const canReturn = await isOrderReturnable(order)
+
+  return <OrderDetailsTemplate order={order} canReturn={canReturn} />
 }
