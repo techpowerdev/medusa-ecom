@@ -30,3 +30,24 @@
 
 ## lint / typecheck
 pnpm lint → 0 errors; pnpm typecheck (backend + storefront) → ผ่าน
+
+## รอบแก้ review #119 (merge develop หลัง #109 แล้ว)
+Unit ใหม่ — src/checkout-affiliate-sync.test.ts (red ก่อนสร้าง helper: Cannot find module) + revalidate หลัง sync (red ก่อนแก้ 1 failed):
+ ✓ src/checkout-affiliate-sync.test.ts > syncAffiliateBefore > Stripe card: sync ก่อน confirmPayment แล้วคืนผลของ step 3ms
+ ✓ src/checkout-affiliate-sync.test.ts > syncAffiliateBefore > PromptPay (PI requires_action): sync ก่อน retrievePaymentIntent 0ms
+ ✓ src/checkout-affiliate-sync.test.ts > syncAffiliateBefore > PromptPay (PI requires_payment_method): sync ก่อน retrievePaymentIntent 0ms
+ ✓ src/checkout-affiliate-sync.test.ts > syncAffiliateBefore > cart ไม่มี metadata → ส่ง null (ยัง sync เมื่อมี cookie) 0ms
+ Test Files  24 passed (24)
+      Tests  269 passed (269)
+e2e (backend :9153 + storefront :8153):
+  ✓  1 [chromium] › e2e/affiliate-tracking.spec.ts:17:5 › AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ่มสินค้าลง cart → metadata.affiliate_token = ค่า cookie (5.1s)
+  ✓  3 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (5.3s)
+  ✓  4 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (5.8s)
+  ✓  6 [chromium] › e2e/core-14b-add-variant.spec.ts:97:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (1.8s)
+  ✓  8 [chromium] › e2e/core-14b-add-variant.spec.ts:97:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (1.0s)
+  ✓  2 [chromium] › e2e/affiliate-last-click.spec.ts:21:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21) (10.0s)
+  ✓  5 [chromium] › e2e/thai-ui-checkout.spec.ts:21:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (6.9s)
+  ✓  7 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (8.1s)
+  ✓  9 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (590ms)
+  9 passed (16.0s)
+pnpm lint → 0 errors; typecheck backend + storefront ผ่าน; storefront/backend build ผ่าน
