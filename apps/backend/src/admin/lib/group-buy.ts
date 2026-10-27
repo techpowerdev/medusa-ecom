@@ -41,7 +41,7 @@ export type Membership = {
   status: "joined" | "awaiting_payment" | "paid" | "cancelled"
   joined_at: string
   order_id: string
-  order: { status: string; is_draft_order: boolean; payment_status: string; total: number } | null
+  order: { status: string; is_draft_order: boolean; payment_status: string } | null
 }
 
 export const groupBuyKeys = {

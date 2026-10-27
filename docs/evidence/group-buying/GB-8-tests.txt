@@ -1,0 +1,49 @@
+# GB-8 test evidence — 2026-10-27 17:28 +0700
+# node v22.23.3, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose; base origin/develop c389cf1 (merge แล้ว)
+# integration ในเครื่องรันเฉพาะไฟล์ของ task นี้ (ชุดเต็มให้ CI รัน)
+### Red (ก่อนเขียนโค้ด)
+my-memberships-validator.unit.spec.ts → 8 failed: StoreListMyGroupBuyMemberships ยังไม่มี
+group-buy-store-memberships.spec.ts (ยังไม่มี route/index) →
+    ✕ AC-39: migration adds a (customer_id, joined_at) index on group_buy_membership (167 ms)
+      ✕ AC-38: lists only the caller's memberships (joined + cancelled), newest first (1880 ms)
+      ✕ AC-38: limit=1&offset=1 → 1 membership, count=2 (4440 ms)
+      ✕ AC-38: limit=101 → 400 (850 ms)
+      ✕ AC-38: limit=0 → 400 (289 ms)
+      ✕ AC-38: offset=-1 → 400 (249 ms)
+      ✓ AC-38: no token → 401 (283 ms)
+      ✕ AC-39: returns the caller's draft order with items, payment collection and group deadline (327 ms)
+      ✕ AC-39: another customer's order, unknown order and a non group-buy order → 404 not_found (297 ms)
+      ✓ AC-39: no token → 401 (172 ms)
+      ✕ AC-39: payment session data exposes only id, client_secret, status (556 ms)
+      ✕ AC-40: still readable after the draft order is converted to a regular order (676 ms)
+Tests:       10 failed, 2 passed, 12 total
+(401 ผ่านตั้งแต่ red เพราะ middleware /store/customers/me* ของ Medusa บังคับ authenticate("customer") ให้ path ใหม่แล้ว — ยืนยัน ADR-016 ข้อ 1)
+### integration-tests/http/group-buy-store-memberships.spec.ts (หลัง merge origin/develop)
+    ✓ AC-39: migration adds a (customer_id, joined_at) index on group_buy_membership (395 ms)
+      ✓ AC-38: lists only the caller's memberships (joined + cancelled), newest first (2096 ms)
+      ✓ AC-38: limit=1&offset=1 → 1 membership, count=2 (1962 ms)
+      ✓ AC-38: limit=101 → 400 (416 ms)
+      ✓ AC-38: limit=0 → 400 (794 ms)
+      ✓ AC-38: offset=-1 → 400 (843 ms)
+      ✓ AC-38: no token → 401 (1076 ms)
+      ✓ AC-39: returns the caller's draft order with items, payment collection and group deadline (1029 ms)
+      ✓ AC-39: another customer's order, unknown order and a non group-buy order → 404 not_found (799 ms)
+      ✓ AC-39: no token → 401 (307 ms)
+      ✓ AC-39: payment session data exposes only id, client_secret, status (371 ms)
+      ✓ AC-40: still readable after the draft order is converted to a regular order (632 ms)
+Test Suites: 1 passed, 1 total
+Tests:       12 passed, 12 total
+### integration modules: src/modules/group_buy/__tests__/service.spec.ts
+      ✓ has a (customer_id, joined_at) index on group_buy_membership (128 ms)
+Test Suites: 1 passed, 1 total
+Tests:       20 passed, 20 total
+### unit: src/api/store/group-buy
+PASS src/api/store/group-buy/__tests__/my-memberships-validator.unit.spec.ts
+Tests:       8 passed, 8 total
+### pnpm --filter backend test:unit
+Test Suites: 57 passed, 57 total
+Tests:       595 passed, 595 total
+### pnpm lint && pnpm typecheck
+0 error (backend 1 warning เดิม, storefront warning เดิม); typecheck apps/backend: Done / apps/storefront: Done
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
