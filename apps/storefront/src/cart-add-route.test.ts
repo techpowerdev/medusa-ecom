@@ -21,7 +21,7 @@ vi.mock("@lib/data/cookies", () => ({
   getCartId: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock("@lib/data/regions", () => ({ getRegion: vi.fn().mockResolvedValue({ id: "reg_1" }) }))
-vi.mock("@lib/util/server-cart", () => ({ activateCart: vi.fn(), MAX_LINE_ITEM_QUANTITY: 10 }))
+vi.mock("@lib/util/server-cart", () => ({ activateCart: vi.fn() }))
 vi.mock("@lib/util/site", () => ({ getRequestOrigin: () => "http://localhost:8000" }))
 
 const post = async () => {

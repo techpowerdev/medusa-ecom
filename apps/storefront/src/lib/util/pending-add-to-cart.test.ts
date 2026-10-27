@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  MAX_LINE_ITEM_QUANTITY,
   PENDING_ADD_PARAM,
+  PENDING_QUANTITY_PARAM,
+  clampLineItemQuantity,
   loginPathForAddToCart,
   readPendingAddToCart,
+  readPendingAddQuery,
 } from "./pending-add-to-cart"
 
 // CORE-6 (spec 01 AC-6): guest กด "Add to cart" → ไปหน้า login พร้อม variant ที่ค้างไว้ → ล็อกอินแล้วเพิ่มลง cart
@@ -33,7 +37,7 @@ describe("readPendingAddToCart", () => {
       readPendingAddToCart(
         form({ [PENDING_ADD_PARAM]: "variant_01", country_code: "th" })
       )
-    ).toEqual({ variantId: "variant_01", countryCode: "th" })
+    ).toEqual({ variantId: "variant_01", countryCode: "th", quantity: 1 })
   })
 
   it("returns null when nothing is pending", () => {
@@ -52,5 +56,55 @@ describe("readPendingAddToCart", () => {
         form({ [PENDING_ADD_PARAM]: "variant_01", country_code: "../x" })
       )
     ).toBeNull()
+  })
+})
+
+// CORE-14b (กฎ 26, AC-44): คง quantity ที่ผู้ใช้เลือกไว้ข้าม login
+describe("clampLineItemQuantity", () => {
+  it.each([
+    [undefined, 1],
+    [null, 1],
+    ["", 1],
+    ["abc", 1],
+    ["0", 1],
+    ["-2", 1],
+    ["3", 3],
+    [String(MAX_LINE_ITEM_QUANTITY + 1), MAX_LINE_ITEM_QUANTITY],
+  ])("%s → %s", (raw, expected) => {
+    expect(clampLineItemQuantity(raw)).toBe(expected)
+  })
+})
+
+describe("quantity ที่ค้างไว้ข้าม login (CORE-14b)", () => {
+  it("loginPathForAddToCart ใส่ quantity เมื่อมากกว่า 1", () => {
+    expect(loginPathForAddToCart("th", "variant_01", 3)).toBe(
+      `/th/account?${PENDING_ADD_PARAM}=variant_01&${PENDING_QUANTITY_PARAM}=3`
+    )
+    expect(loginPathForAddToCart("th", "variant_01", 1)).toBe(
+      `/th/account?${PENDING_ADD_PARAM}=variant_01`
+    )
+  })
+
+  it("readPendingAddToCart อ่าน quantity จากฟอร์มและจำกัดช่วง", () => {
+    const pending = (q: string) =>
+      readPendingAddToCart(
+        form({ [PENDING_ADD_PARAM]: "variant_01", country_code: "th", [PENDING_QUANTITY_PARAM]: q })
+      )?.quantity
+    expect(pending("3")).toBe(3)
+    expect(pending("x")).toBe(1)
+    expect(pending("100000")).toBe(MAX_LINE_ITEM_QUANTITY)
+  })
+
+  it("readPendingAddQuery อ่าน variant และ quantity จาก searchParams ของหน้า", () => {
+    expect(
+      readPendingAddQuery({ [PENDING_ADD_PARAM]: "variant_01", [PENDING_QUANTITY_PARAM]: "3" })
+    ).toEqual({ variantId: "variant_01", quantity: 3 })
+    expect(readPendingAddQuery({ [PENDING_ADD_PARAM]: "variant_01" })).toEqual({
+      variantId: "variant_01",
+      quantity: 1,
+    })
+    expect(readPendingAddQuery({})).toBeNull()
+    expect(readPendingAddQuery(undefined)).toBeNull()
+    expect(readPendingAddQuery({ [PENDING_ADD_PARAM]: ["a", "b"] })).toBeNull()
   })
 })
