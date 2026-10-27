@@ -1,0 +1,32 @@
+CORE-10b — spec 01 กฎข้อ 70, AC-106 (2026-10-27)
+
+## Red (ก่อนแก้ seed.ts)
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (466 ms)
+    ✓ sets store default currency to THB (tax-inclusive) (433 ms)
+    ✓ creates tax region th with VAT 7% (185 ms)
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (269 ms)
+    ✓ creates return option Standard return (is_return, flat THB, manual, at the seeded location) (209 ms)
+    ✓ adds Standard return to a store seeded before CORE-16, once (337 ms)
+    ✓ enables fulfillment provider digital at the seeded stock location (EV-3) (296 ms)
+    ✓ upgrades an already-seeded store: Digital delivery moves from manual to digital (EV-3) (329 ms)
+    ✓ AC-14 upgrades Digital delivery renamed in admin, found by type.code, without creating a new option (296 ms)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (396 ms)
+    ✓ stocks every sample variant at the seeded location (253 ms)
+    ✓ AC-29 names every sample product in Thai and keeps the handles (261 ms)
+    ✓ AC-68 names every option of the sample products in Thai (239 ms)
+    ✓ AC-30 is idempotent: running seed again does not change resource counts (357 ms)
+    ✕ AC-106 seeds one Thai-named `featured` collection with sample products, idempotent and keeps admin edits (334 ms)
+  ●  › AC-106 seeds one Thai-named `featured` collection with sample products, idempotent and keeps admin edits
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+Tests:       1 failed, 14 passed, 15 total
+
+## Green
+PASS integration-tests/http/seed.spec.ts (35.16 s)
+PASS integration-tests/http/seed-partial.spec.ts (24.505 s)
+Tests:       18 passed, 18 total (seed.spec.ts 15 รวม AC-106 + seed-partial.spec.ts 3)
+PASS integration-tests/http/affiliate-attribution.spec.ts — Tests: 17 passed (ใช้ seed + collection ของตัวเอง)
+
+unit (pnpm --filter backend test:unit): Test Suites: 62 passed; Tests: 612 passed
+pnpm lint: 0 errors; pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
