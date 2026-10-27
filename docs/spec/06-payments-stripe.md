@@ -100,8 +100,13 @@
    `now < group.pay_deadline_at` และมี payment collection สถานะยังไม่ `completed` — กรณีอื่นแสดงสถานะภาษาไทยแทนฟอร์ม: ชำระแล้ว (`order-pay-paid`), หมดเวลา/ยกเลิก (`order-pay-closed`),
    รอกลุ่ม (`order-pay-waiting`); (c) เลือกบัตร/พร้อมเพย์แล้วสร้าง session ด้วย `POST /store/payment-collections/:id/payment-sessions` ของ Medusa (ใช้ component บัตร/พร้อมเพย์เดิมของ
    checkout ไม่ copy) — ไม่มี custom payment route; (d) ได้ 409 `PAYMENT_ALREADY_COMPLETED` → **poll route ของ GB-8 อย่างเดียว** (ไม่เรียก complete cart — ภาคผนวก ADR-015) จน
-   `payment_status`/สถานะ membership เปลี่ยน แล้วแสดง `order-pay-paid`; poll มีเพดานแบบเดียวกับกฎข้อ 8 (10 ครั้ง แล้วแสดง `promptpay-order-delayed`); (e) ข้อความไทยตรงในโค้ด +
-   path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4)
+   `payment_status`/สถานะ membership เปลี่ยน แล้วแสดง `order-pay-paid`; poll มีเพดานแบบเดียวกับกฎข้อ 8 (10 ครั้ง แล้วแสดง `promptpay-order-delayed`);
+   (d2) (รอบ 12, review #157) ได้ **400 ใดก็ได้** จากการสร้าง session → อ่าน route ของ GB-8 **1 ครั้ง** แล้วตัดสินจาก**สถานะ** ไม่ใช่ข้อความ error: ถ้าสถานะบอกว่ามีการชำระแล้ว
+   (`payment_status` ของ order ∈ `authorized`/`partially_captured`/`captured` หรือ payment collection สถานะ `authorized`/`completed`) → เข้าทางเดียวกับ (d) (poll GB-8 อย่างเดียว
+   เพดานเดิม นับรวมการอ่านครั้งแรกนี้, ไม่แสดง error) — ครอบกรณี guard แพ้ race กับ webhook ที่ Medusa ตอบ 400 `invalid_data` "Payment with payment_session_id ... already exists"
+   (หมายเหตุรอบ 6/12); ถ้าไม่ใช่ → แสดง error ภาษาไทย `order-pay-error` พร้อมฟอร์มเดิมให้ลองใหม่ ไม่ poll ต่อ; เงื่อนไข "มีการชำระแล้ว" เป็น pure function ตัวเดียวที่ใช้ทั้ง (d)
+   และ (d2) (unit Vitest) — เหตุผลที่ไม่ match ข้อความ: ข้อความมาจาก MikroORM/Medusa และเปลี่ยนได้เมื่อ bump เวอร์ชัน ส่วนสถานะใน GB-8 เป็นสัญญาของเราเอง;
+   (e) ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4)
 
 ## Acceptance criteria
 - AC-1 บัตร `4242…` → สร้าง order สำเร็จ, `payment_status=captured`
@@ -180,7 +185,12 @@
 - AC-19 (PAY-3b, กฎข้อ 9) Given กลุ่มของ A สำเร็จแล้ว (seed ผ่าน API) When A เปิด `/th/account/orders/<DA>/pay` แล้วชำระด้วยบัตร `4242…` (Stripe test mode) Then เห็น `order-pay-paid`
   ภายใน 60 วินาทีและ payment ของ PC `captured`; ทำซ้ำด้วยพร้อมเพย์ (confirm PI ใน test mode) → `order-pay-paid` (= AC-7); When B เปิด URL เดียวกัน Then HTTP 404; Given membership
   `joined` (กลุ่มยังไม่สำเร็จ) / `cancelled` / เลย `pay_deadline_at` Then ไม่มี `order-pay-form` และเห็น `order-pay-waiting` / `order-pay-closed` ตามลำดับ (มีอักษรไทย); Given route mock
-  ให้สร้าง session ได้ 409 `PAYMENT_ALREADY_COMPLETED` Then ไม่มี request `POST /store/carts/*/complete` และมี request GET route ของ GB-8 ซ้ำ ≤ 10 ครั้ง (e2e, screenshot ≤ 3)
+  ให้สร้าง session ได้ 409 `PAYMENT_ALREADY_COMPLETED` Then ไม่มี request `POST /store/carts/*/complete` และมี request GET route ของ GB-8 ซ้ำ ≤ 10 ครั้ง;
+  (รอบ 12, กฎข้อ 9 d2) Given route mock ให้สร้าง session ได้ 400 `{ type: "invalid_data", message: "Payment with payment_session_id ... already exists" }` และ GB-8 (mock) ตอบ
+  `payment_status=authorized` ในครั้งแรกแล้ว `captured` ในครั้งถัดไป Then เห็น `order-pay-paid`, **ไม่เห็น** `order-pay-error`, ไม่มี request `POST /store/carts/*/complete` และ request GET
+  ของ GB-8 หลังได้ 400 รวม ≤ 10 ครั้ง; Given route mock ให้ได้ 400 `invalid_data` (ข้อความใดก็ได้) และ GB-8 ตอบสถานะยังไม่ชำระ (`payment_status=not_paid`, collection
+  `not_paid`) Then เห็น `order-pay-error` ที่มีอักษรไทย และ `order-pay-form`, request GET ของ GB-8 หลังได้ 400 = 1 ครั้ง (ไม่ poll ต่อ) (e2e, screenshot ≤ 3; unit Vitest ของ
+  predicate "มีการชำระแล้ว")
 
 ## Test plan
 - Integration (http): AC-8 โดย mock provider
@@ -190,7 +200,7 @@
 - integration/e2e กับ Stripe test mode: AC-11; e2e: AC-12, AC-12b (ส่วน storefront); integration: AC-12b (complete cart หลัง guard)
 - unit: guard (AC-13 a–g ด้วย mock payment module), การตรวจ runbook/env (AC-16, AC-16b); integration http: AC-13; integration: AC-14, AC-15, AC-16c
 - e2e + unit (Vitest): AC-17 (PAY-6c)
-- integration (http/modules): AC-18 (PAY-3a); e2e กับ Stripe test mode: AC-7, AC-19 (PAY-3b)
+- integration (http/modules): AC-18 (PAY-3a); e2e กับ Stripe test mode: AC-7, AC-19 (PAY-3b) — กรณี 409/400 ของ AC-19 ใช้ route mock; unit Vitest: predicate "มีการชำระแล้ว" (AC-19)
 
 ## Tasks
 | ID | Task | Depends |
@@ -198,8 +208,8 @@
 | PAY-1 | ตั้งค่า Stripe provider, เปิดใช้ใน region, env, ตรวจสอบ webhook route ในเครื่องด้วย Stripe CLI (AC-8) | CORE-2 |
 | PAY-2 | Storefront: ขั้นตอนชำระเงินด้วยบัตร + PromptPay, polling, error + e2e (AC-1..AC-5); `payment_method_types: ["card"]` ของ session บัตร (กฎข้อ 5, AC-9); แก้ขั้น `stripe listen` ใน `ci.yml` ที่ใส่ `--forward-to` ซ้ำ (AC-10) | PAY-1, CORE-5 |
 | PAY-3 | **แยกรอบ 10** (builder หยุด: Store API อ่าน draft order ไม่ได้) → PAY-3a + PAY-3b ด้านล่าง; route อ่านข้อมูลเป็น GB-8 (spec 04, ADR-016) | — |
-| PAY-3a | (เล็ก, backend test-only) integration: ownership ของ `POST /store/payment-collections/:id/payment-sessions` บน collection ของ draft order + guard × webhook พร้อมกันบน collection ของ order ตามภาคผนวก ADR-015 (กฎข้อ 9c, AC-18) — ไม่แก้โค้ด production ถ้า test ผ่าน | PAY-6a ☑, GB-4 ☑ (เริ่มได้ทันที) |
-| PAY-3b | storefront หน้า `/account/orders/:id/pay` ตามกฎข้อ 9 (อ่านจาก GB-8, component บัตร/พร้อมเพย์เดิม, 409 → poll GB-8 อย่างเดียวมีเพดาน) + e2e (AC-7, AC-19) | GB-8 (ADR-016 ☑ accepted), PAY-3a, PAY-6c (◐ #136) (แตะ `promptpay-payment`/ตัวนับเพดานเดียวกัน — ใช้ตัวนับของ PAY-6c ไม่เขียนซ้ำ) |
+| PAY-3a | (เล็ก, backend test-only) integration: ownership ของ `POST /store/payment-collections/:id/payment-sessions` บน collection ของ draft order + guard × webhook พร้อมกันบน collection ของ order ตามภาคผนวก ADR-015 (กฎข้อ 9c, AC-18) — ไม่แก้โค้ด production ถ้า test ผ่าน — ☑ #157 | PAY-6a ☑, GB-4 ☑ |
+| PAY-3b | storefront หน้า `/account/orders/:id/pay` ตามกฎข้อ 9 (อ่านจาก GB-8, component บัตร/พร้อมเพย์เดิม, 409 → poll GB-8 อย่างเดียวมีเพดาน, 400 → ตรวจสถานะ GB-8 1 ครั้งตามกฎข้อ 9 d2) + e2e (AC-7, AC-19) | GB-8 ☑ #145, PAY-3a ☑ #157, PAY-6c ☑ #136 (ใช้ตัวนับเพดานของ PAY-6c ไม่เขียนซ้ำ) — **เริ่มได้หลัง PR spec รอบ 12 (`docs/PAY-3b-spec-race-400`) merge** |
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
 | PAY-5 | follow-up review PR #48 (เล็ก): race ระหว่าง QR หมดอายุกับการชำระสำเร็จ — test AC-11 ก่อนเพื่อยืนยันพฤติกรรมของ Medusa/Stripe provider เมื่อลบ session ที่ PI `succeeded` แล้ว; ถ้าเป็นกรณี (a) ของกฎข้อ 7 แก้เฉพาะ storefront ให้ poll ต่อเมื่อสร้าง session ใหม่ล้ม (AC-12); ถ้าเป็นกรณี (b) หยุดแล้วเขียน ADR (ไม่เขียน reconciliation เอง) | PAY-2 |
 | PAY-6a | (◐ #82, แยกรอบ 6) ADR-015 A ฝั่ง backend: guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`/`payment_collection_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + guard หลัง ownership ของ CORE-12 + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-11, AC-13 a–g, AC-14, AC-12b ส่วน backend = integration complete cart หลัง guard) + integration race ตาม "หมายเหตุ (รอบ 6)" ด้านล่าง — **ไม่รวม** storefront (AC-12 และ AC-12b ส่วน storefront อยู่ใน PAY-6b) | PAY-5 (#65), PROMO-2 |
@@ -210,15 +220,20 @@ PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment
 (รอบ 11) สถานะ: PAY-6c ☑ #136, GB-8 ☑ #145 → PAY-3b เหลือรอ PAY-3a; ข้อสังเกตจาก review/qa #136
 (เพดานนับต่อการ mount ไม่ใช่ต่อ cart — reload ได้อีกชุด, refund แล้วสร้าง session ใหม่ไม่สำเร็จได้เพดานใหม่เมื่อเริ่มใหม่, unit จำลอง loop เอง, สัญญาณคืนเงินยังไม่มี integration
 ผ่าน Store API จริง) — **ยอมรับใน v1** เพราะเพดานมีไว้กันลูปไม่รู้จบในหน้าเดียว (แต่ละครั้งเป็น request complete ที่ idempotent) ไม่มี task; ถ้า PAY-3b ใช้ตัวนับเดิมให้คงพฤติกรรมนี้
+(รอบ 12, review #157) สถานะ: PAY-3a ☑ #157 → dependency ของ PAY-3b ครบ (GB-8 ☑ #145, PAY-3a ☑ #157, PAY-6c ☑ #136); PAY-3b เริ่มได้หลัง PR spec นี้ merge (กฎข้อ 9 d2, AC-19 ที่ปรับ)
 PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6c หลัง CORE-4e (∥ CORE-19b ถ้าไม่แตะไฟล์เดียวกัน — ตัวที่ merge ทีหลัง rebase); PAY-6c ควร merge ก่อน release ที่เปิดพร้อมเพย์จริง; PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
 ต้อง merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
 หมายเหตุ (รอบ 6, จาก #82): ข้อกังวลในภาคผนวก ADR-015 ("lock key `payment_collection_id` ของ collection ที่ไม่มี cart ไม่ตรงกับ lock ของ `processPaymentWorkflow`
 → guard กับ webhook อาจสร้าง payment ซ้อน") **ไม่เกิดจริง**: Medusa 2.22.1 มี unique index แบบ partial `IDX_payment_payment_session_id_unique`
 (`payment_session_id` WHERE `deleted_at IS NULL`) จึงสร้าง payment ที่สองของ session เดียวกันไม่ได้ ไม่ต้องเพิ่ม lock/โค้ด ADR-015 ไม่เปลี่ยน
-ฝั่งที่**แพ้ race** ได้ unique violation: guard อาจตอบ 5xx (ไม่ใช่ 409) และ webhook ตอบ non-2xx แล้ว Stripe retry — integration test ที่ภาคผนวกกำหนด (PAY-6a สำหรับ collection ของ cart; PAY-3 สำหรับ collection ของ order)
+ฝั่งที่**แพ้ race** ได้ unique violation: (แก้รอบ 12 ตามผลจริงของ PAY-3a, review #157) guard ตอบ **400** `{ type: "invalid_data", message: "Payment with payment_session_id ... already exists" }`
+(Medusa แปลง unique violation เป็น `invalid_data` — ไม่ใช่ 5xx และไม่ใช่ 409) และ webhook ตอบ non-2xx แล้ว Stripe retry — storefront รับ 400 นี้ตามกฎข้อ 9 d2 — integration test ที่ภาคผนวกกำหนด (PAY-6a สำหรับ collection ของ cart; PAY-3a สำหรับ collection ของ order)
 ต้อง assert ผลที่คาดนี้: ยิง guard กับ `processPaymentWorkflow` ของ session เดียวกันพร้อมกัน → มี payment ที่ `deleted_at IS NULL` ของ session นั้น **1 แถว**, ฝั่งที่แพ้
-ได้ 409 หรือ error ใดก็ได้ที่ไม่ใช่ 2xx (5xx ยอมรับ) และ session เดิมไม่ถูกลบ; รัน `processPaymentWorkflow` ซ้ำ (จำลอง Stripe retry) → order `payment_status=captured`
+ได้ 409 หรือ error ใดก็ได้ที่ไม่ใช่ 2xx (ที่พบจริงคือ 400 `invalid_data`) และ session เดิมไม่ถูกลบ; รัน `processPaymentWorkflow` ซ้ำ (จำลอง Stripe retry) → order `payment_status=captured`
 ไม่มี capture/order ซ้ำ
+(รอบ 12, review #157) lock ของ guard บน collection ของ order (key = `PC.id`) **ไม่กันร่วม**กับ lock ของ `processPaymentWorkflow` จาก webhook — ทั้งสองเข้า
+`authorizePaymentSession` พร้อมกันได้ ความถูกต้องมาจาก unique index ด้านบนเท่านั้น (ยอมรับ ไม่เพิ่ม lock/โค้ด); ฝั่ง guard ที่แพ้ Medusa จะเรียก `cancelPayment` ของ provider
+บน PI ที่ `succeeded` แล้ว ซึ่ง Stripe ปฏิเสธ (PI ที่ succeeded ยกเลิกไม่ได้) จึงไม่กระทบเงิน — ปลอดภัยเฉพาะ automatic capture (ค่าปัจจุบัน) ดู Q8
 ความเสี่ยงที่ยอมรับเพิ่ม (บันทึกรอบ 6, review #82 — ไม่มี task โค้ด):
 - PI ของ**บัตร**ที่อยู่สถานะ `processing` → provider คืน `PENDING` → `authorizePaymentSession` โยน `NOT_ALLOWED` → guard `next()` → session อาจถูกลบได้
   (ตรงกับกรณี `processing` ใน "ความเสี่ยงที่เหลือ" ของ ADR-015) — ถ้า PI สำเร็จภายหลัง ตาข่าย D (PAY-6b) จับได้ (alert + refund ด้วยมือ)
@@ -230,7 +245,7 @@ PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก gu
 - **(รอบ 8, review #97/#104 — owner ตัดสินใหม่ 2026-10-26, ADR-015 ภาคผนวก 2 accepted)** payment captured บน collection ของ cart ที่ complete ไม่ได้
   (collection ไม่ผูก order → `refundPaymentWorkflow` throw) refund ผ่าน `refundPaymentsWorkflow` ของ Medusa ด้วย script `refund-orphan-payment.ts` (`medusa exec`)
   หลังขั้น "ตรวจก่อน refund" — เพราะ `completeCartWorkflow` อาจ refund ให้เองแล้ว (`compensatePaymentIfNeededStep`) สถานะใน Medusa จึงตรงกับ Stripe (AC-16b, AC-16c)
-- (รอบ 8) nit review #82 ของ PAY-6a (ย้าย constant `PAYMENT_ALREADY_COMPLETED` ไปไฟล์ errors, comment ใน test guard × webhook ว่าฝั่งที่แพ้ได้ 409/5xx ถือว่าผ่าน)
+- (รอบ 8) nit review #82 ของ PAY-6a (ย้าย constant `PAYMENT_ALREADY_COMPLETED` ไปไฟล์ errors, comment ใน test guard × webhook ว่าฝั่งที่แพ้ได้ 409/non-2xx ถือว่าผ่าน — รอบ 12: ที่พบจริงคือ 400 `invalid_data`)
   รวมในงานเล็ก GB-N1 (spec 04)
 
 ## Open questions
@@ -248,3 +263,6 @@ PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก gu
   — **owner ยืนยัน 2026-10-26** (บันทึกเป็นภาคผนวกใน ADR-015)
 - ~~Q7~~ ตัดสินแล้ว (owner 2026-10-26, ตัดสินใหม่หลัง review #104): payment captured ที่ collection ไม่ผูก order → refund ด้วย script ที่เรียก
   `refundPaymentsWorkflow` (ไม่ใช่ Stripe dashboard) หลังตรวจว่า Medusa ยังไม่ refund เอง — ADR-015 ภาคผนวก 2 (accepted), AC-16b, AC-16c
+- Q8 (รอบ 12, review #157 — ยังไม่ต้องตัดสิน ไม่มี task) ถ้าวันหนึ่งเปิด **manual capture** (`capture: false` ของ Stripe provider): guard ที่แพ้ race (หมายเหตุรอบ 6/12)
+  ทำให้ Medusa เรียก `cancelPayment` บน PI ที่ `requires_capture` ซึ่ง Stripe **ยกเลิกได้จริง** → payment ของฝั่งที่ชนะอ้าง PI ที่ถูกยกเลิก (capture ไม่ได้) — ต้องทบทวน guard/ADR-015
+  ก่อนเปิด manual capture; ตอนนี้ใช้ automatic capture จึงไม่กระทบ
