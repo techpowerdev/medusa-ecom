@@ -8,7 +8,7 @@
 - คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
 - ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
-  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
+  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น menuitem ของ `ActionMenu` ใน admin — ADR-018) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
   regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
 
 ## โปรเจกต์นี้คืออะไร

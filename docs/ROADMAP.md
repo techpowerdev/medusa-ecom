@@ -123,17 +123,20 @@ OPS-4 ☐ **เริ่มได้** (owner Q-O3 2026-10-27 ตามข้อ
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
-## Admin UI ใช้ component ของ Medusa (ADR-018 proposed, spec 08) — ไม่บล็อก release ใด
+## Admin UI ใช้ component ของ Medusa (ADR-018 accepted, spec 08) — ไม่บล็อก release ใด
 owner 2026-10-28: ให้ admin ใช้ component/hook/utility ของ Medusa เป็นฐาน (`@medusajs/dashboard/{components,hooks,lib}` ตั้งแต่ v2.21.0 → `@medusajs/ui` → custom guide → สร้างเอง)
-**รอ owner ตัดสิน** spec 08 Q1–Q6 (ทางเลือก A/B/C, bump `@medusajs/ui` 4.2.6 → 4.2.8, ActionMenu × testid, DatePicker, route modal, pagination ใน URL) ก่อนเริ่ม ADM-1
+owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9, bump `@medusajs/ui` 4.2.8, ปุ่มต่อแถวใช้ `ActionMenu`, วันเวลาใช้ `DatePicker`/`useDate` ตาม timezone เครื่อง (เลิก `lib/ict.ts` ใน admin),
+เงินใช้ `getLocaleAmount`, ฟอร์มแบบ state, pagination ใน URL — **ADM-1 เริ่มได้หลัง PR ของ ADR-018/spec 08 merge**
 | Task | งาน | สถานะ |
 |------|-----|--------|
-| ADM-1 | dependency ตรงกับ dashboard (`@medusajs/ui` 4.2.8, `react-hook-form`, `@hookform/resolvers`, `@medusajs/icons`) + test + `icon` ของ route (AC-1, 2) | ☐ (← ADR-018 accepted + Q2) |
-| ADM-2 | ของกลาง: Header/Container (guide), `lib/ict.ts`, `createSingleFlight` แทน `useRef`, `SectionRow` ใน widget (AC-3..5) | ☐ (← ADM-1) |
-| ADM-3 ∥ ADM-4 ∥ ADM-6 | pilot ฟอร์ม widget (`Form` + zod, AC-6) ∥ หน้า e-voucher (`LayoutComposer`, `DataTable` dashboard, AC-7) ∥ หน้า group buy (AC-9; ← GB-N3 ถ้ายังเปิดอยู่) | ☐ ∥ ☐ ∥ ☐ (← ADM-2) |
-| ADM-5 ∥ ADM-7 | partners ตาราง + ฟอร์ม (AC-8) ∥ ฟอร์มสร้างแคมเปญ + `useProducts` (AC-10) | ☐ ∥ ☐ (← ADM-3) |
-| ADM-8 | affiliate ตาราง (`DataTable` dashboard, `getLocaleAmount`, `lib/ict.ts`, icon; AC-11) | ☐ (← ADM-2, **#176 AF-12c**, **AF-14**) |
-| ADM-9 | affiliate ฟอร์ม (`Form`, `Combobox` scope, ฟอร์มของ AF-12c; AC-12) | ☐ (← ADM-3, ADM-8) |
+| ADM-1 | dependency ตรงกับ dashboard (`@medusajs/ui` 4.2.8, `react-hook-form`, `@hookform/resolvers`, `@medusajs/icons`) + jest โหลด `@medusajs/dashboard/lib` ได้ + `icon` ของ route (AC-1, 2) | ☐ |
+| ADM-2a | Header/Container (guide) + Header/`SectionRow` ใน 3 widget + static test (AC-5) | ☐ (← ADM-1) |
+| ADM-2b | `createSingleFlight` แทน `useRef`, วันที่ผ่าน `useDate`, Playwright admin `locale`/`timezoneId` (AC-3, AC-4) | ☐ (← ADM-2a) |
+| ADM-3 ∥ ADM-4 ∥ ADM-6 | pilot ฟอร์ม widget (`Form` + zod, AC-6) ∥ หน้า e-voucher (`LayoutComposer`, `DataTable` dashboard, `ActionMenu` Reveal, AC-7) ∥ หน้า group buy (AC-9; ← GB-N3 ถ้ายังเปิดอยู่) | ☐ ∥ ☐ ∥ ☐ (← ADM-2b) |
+| ADM-5 ∥ ADM-7 | partners ตาราง + ฟอร์ม + `ActionMenu` (AC-8) ∥ ฟอร์มสร้างแคมเปญ + `DatePicker` + `useProducts` (AC-10) | ☐ ∥ ☐ (← ADM-3) |
+| ADM-8a | affiliate ตาราง (`DataTable` dashboard, `getLocaleAmount`, `useDate`, icon; AC-2, AC-11) | ☐ (← ADM-2b, **#176 AF-12c**, **AF-14**) |
+| ADM-8b | affiliate ปุ่มต่อแถวเป็น `ActionMenu` + แก้ locator e2e (AC-13) | ☐ (← ADM-8a) |
+| ADM-9 | affiliate ฟอร์ม (`Form`, `DatePicker`, `Combobox` scope, ฟอร์มของ AF-12c; AC-12) | ☐ (← ADM-3, ADM-7, ADM-8b) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
