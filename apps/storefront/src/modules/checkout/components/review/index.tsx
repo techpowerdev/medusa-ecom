@@ -32,19 +32,22 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
               "opacity-50 pointer-events-none select-none": !isOpen,
             }
           )}
+          data-testid="review-heading"
         >
-          Review
+          ตรวจสอบคำสั่งซื้อ
         </Heading>
       </div>
       {isOpen && previousStepsCompleted && (
         <>
           <div className="flex items-start gap-x-1 w-full mb-6">
             <div className="w-full">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                By clicking the Place Order button, you confirm that you have
-                read, understand and accept our Terms of Use, Terms of Sale and
-                Returns Policy and acknowledge that you have read{" "}
-                {STORE_NAME}&apos;s Privacy Policy.
+              <Text
+                className="txt-medium-plus text-ui-fg-base mb-1"
+                data-testid="review-terms"
+              >
+                เมื่อกดปุ่มยืนยันคำสั่งซื้อ คุณยืนยันว่าได้อ่าน เข้าใจ และยอมรับข้อกำหนดการใช้งาน
+                เงื่อนไขการขาย และนโยบายการคืนสินค้า รวมถึงรับทราบนโยบายความเป็นส่วนตัวของ{" "}
+                {STORE_NAME}แล้ว
               </Text>
             </div>
           </div>

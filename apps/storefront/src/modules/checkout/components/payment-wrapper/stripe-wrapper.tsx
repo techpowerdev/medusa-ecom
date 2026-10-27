@@ -24,22 +24,17 @@ const StripeWrapper: React.FC<StripeWrapperProps> = ({
     clientSecret: paymentSession!.data?.client_secret as string | undefined,
   }
 
+  // CORE-4d: ข้อความถึงผู้ใช้เป็นไทย (ADR-014) — สาเหตุ: ไม่ได้ตั้ง NEXT_PUBLIC_STRIPE_KEY
   if (!stripeKey) {
-    throw new Error(
-      "Stripe key is missing. Set NEXT_PUBLIC_STRIPE_KEY environment variable."
-    )
+    throw new Error("ระบบชำระเงินยังไม่พร้อม (ไม่พบคีย์ของระบบชำระเงิน)")
   }
 
   if (!stripePromise) {
-    throw new Error(
-      "Stripe promise is missing. Make sure you have provided a valid Stripe key."
-    )
+    throw new Error("ระบบชำระเงินยังไม่พร้อม (โหลดระบบชำระเงินไม่สำเร็จ)")
   }
 
   if (!paymentSession?.data?.client_secret) {
-    throw new Error(
-      "Stripe client secret is missing. Cannot initialize Stripe."
-    )
+    throw new Error("ระบบชำระเงินยังไม่พร้อม (ไม่พบข้อมูลการชำระเงิน)")
   }
 
   return (

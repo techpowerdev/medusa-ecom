@@ -1,5 +1,6 @@
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
-import { buildNotificationProviders, storefrontUrlWarning } from './src/lib/notification-providers'
+import { buildNotificationProviders } from './src/lib/notification-providers'
+import { checkBootEnv } from './src/lib/prod-guards'
 import { buildDatabaseDriverOptions, buildInfraModules, getRedisModulesUrl } from './src/lib/infra-modules'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
@@ -7,9 +8,9 @@ loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 // OPS-2: Redis modules เฉพาะ production ที่ตั้ง REDIS_URL (src/lib/infra-modules.ts)
 const redisUrl = getRedisModulesUrl(process.env)
 
-const storefrontWarning = storefrontUrlWarning(process.env)
-if (storefrontWarning) {
-  console.warn(`[medusa-config] ${storefrontWarning}`)
+// OPS-7 (AC-13, AC-17): production ขาด AFFILIATE_TOKEN_SECRET / STOREFRONT_URL → throw; นอก prod เตือนครั้งเดียวตอนบูต
+for (const warning of checkBootEnv(process.env)) {
+  console.warn(`[medusa-config] ${warning}`)
 }
 
 module.exports = defineConfig({

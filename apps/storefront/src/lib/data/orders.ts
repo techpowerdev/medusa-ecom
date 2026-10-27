@@ -10,20 +10,19 @@ export const retrieveOrder = async (id: string) => {
     ...(await getAuthHeaders()),
   }
 
-  const next = {
-    ...(await getCacheOptions("orders")),
-  }
-
+  // CORE-20: ไม่ cache — fulfillment/การส่ง/return เปลี่ยนจากฝั่ง admin ซึ่งไม่ revalidate tag ของ storefront
+  // (force-cache ของ starter ทำให้ปุ่มขอคืนสินค้าไม่ขึ้นหลัง admin ส่งของ และสถานะ order ค้างค่าเดิม)
   return sdk.client
     .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
       method: "GET",
       query: {
         fields:
-          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
+          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product" +
+          // CORE-20: เงื่อนไขขอคืนสินค้า (requires_shipping, วันที่ส่ง/ได้รับ) และ cart ของ order สำหรับ return option
+          ",+items.requires_shipping,*fulfillments,+cart.id",
       },
       headers,
-      next,
-      cache: "force-cache",
+      cache: "no-store",
     })
     .then(({ order }) => order)
     .catch((err) => medusaError(err))
