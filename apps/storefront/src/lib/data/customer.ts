@@ -27,7 +27,8 @@ import { readReturnTo } from "@lib/util/login-return"
 import { buyFromPermalink } from "@lib/util/server-cart"
 
 export type CustomerAuthState =
-  | { state: "error"; error: string }
+  // CORE-4f (กฎข้อ 62): `email` = อีเมลที่กรอกไว้ ฟอร์ม login/register ใช้เป็น defaultValue ไม่ให้หายเมื่อล้ม
+  | { state: "error"; error: string; email?: string }
   | { state: "verification_required"; email: string }
   | { state: "success" }
   | null
@@ -46,6 +47,15 @@ async function requestVerificationEmail(email: string, token: string) {
     }
   )
 }
+
+// CORE-4f (กฎข้อ 62): ข้อความ error ของหน้า login/register เป็นไทยเสมอ ไม่ส่งข้อความอังกฤษของ auth provider
+const INVALID_CREDENTIALS_MESSAGE = "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+const LOGIN_FAILED_MESSAGE = "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+const SIGNUP_FAILED_MESSAGE = "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+const EMAIL_TAKEN_MESSAGE = "อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบหรือใช้อีเมลอื่น"
+
+const withEmail = (result: CustomerAuthState, email: string): CustomerAuthState =>
+  result?.state === "error" ? { ...result, email } : result
 
 export const retrieveCustomer =
   async (): Promise<HttpTypes.StoreCustomer | null> => {
@@ -111,6 +121,7 @@ export async function signup(
     phone: formData.get("phone") as string,
   }
 
+  let identityExists = false
   try {
     await sdk.auth.register("customer", "emailpass", {
       email: customerForm.email,
@@ -125,8 +136,13 @@ export async function signup(
       fetchError.statusText !== "Unauthorized" ||
       fetchError.message !== "Identity with email already exists"
     ) {
-      return { state: "error", error: errorMessage(error) }
+      return {
+        state: "error",
+        error: friendlyErrorMessage(error, SIGNUP_FAILED_MESSAGE),
+        email: customerForm.email,
+      }
     }
+    identityExists = true
   }
 
   // Persist the extra signup fields. The customer record is created during
@@ -136,10 +152,17 @@ export async function signup(
 
   // Continue by logging in. The login response tells us whether the backend
   // requires email verification — we don't need a storefront-side flag.
-  return continueAfterAuth(
-    formData,
-    await completeLogin(customerForm.email, password)
-  )
+  const result = await completeLogin(customerForm.email, password)
+  // อีเมลมีบัญชีอยู่แล้วและรหัสผ่านไม่ตรง → บอกว่าอีเมลถูกใช้แล้ว แทน "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+  if (
+    identityExists &&
+    result?.state === "error" &&
+    result.error === INVALID_CREDENTIALS_MESSAGE
+  ) {
+    return { state: "error", error: EMAIL_TAKEN_MESSAGE, email: customerForm.email }
+  }
+
+  return withEmail(await continueAfterAuth(formData, result), customerForm.email)
 }
 
 export async function login(
@@ -149,7 +172,10 @@ export async function login(
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
-  return continueAfterAuth(formData, await completeLogin(email, password))
+  return withEmail(
+    await continueAfterAuth(formData, await completeLogin(email, password)),
+    email
+  )
 }
 
 // CORE-6 (spec 01 AC-6): guest ที่กด "Add to cart" ถูกส่งมาล็อกอินพร้อม variant ที่ค้างไว้
@@ -235,8 +261,8 @@ async function completeLogin(
       state: "error",
       error:
         status === 401
-          ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
-          : friendlyErrorMessage(error, "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
+          ? INVALID_CREDENTIALS_MESSAGE
+          : friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE),
     }
   }
 
@@ -304,7 +330,7 @@ async function completeLogin(
         password,
       })) as string
     } catch (error) {
-      return { state: "error", error: errorMessage(error) }
+      return { state: "error", error: friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE) }
     }
 
     await removePendingCustomer()
@@ -318,7 +344,7 @@ async function completeLogin(
   try {
     await transferCart()
   } catch (error) {
-    return { state: "error", error: errorMessage(error) }
+    return { state: "error", error: friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE) }
   }
 
   return { state: "success" }
