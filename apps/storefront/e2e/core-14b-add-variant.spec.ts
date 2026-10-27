@@ -52,10 +52,8 @@ test.describe("ปิด JavaScript", () => {
 
     await step("PDP (ไม่มี JS) เลือก quantity 3 แล้วกด Add to cart → ไปหน้า login ที่คง variant และ quantity", async () => {
       await page.goto(`/${CC}/products/${PRODUCT}`)
-      // PDP ยังไม่มีตัวเลือกจำนวน — ตั้งค่าช่อง quantity ของฟอร์ม no-JS (เทียบเท่าผู้ใช้เลือก 3)
-      await page.locator('form[action$="/cart/add"] input[name="quantity"]').evaluate((el) => {
-        ;(el as HTMLInputElement).value = "3"
-      })
+      // CORE-24: เลือกจำนวนจากตัวเลือกจำนวนของ PDP
+      await page.getByTestId("product-quantity-select").selectOption("3")
       await page.getByTestId("add-product-button").click()
       await expect(page).toHaveURL(new RegExp(`/${CC}/account\\?add_variant=.+&add_quantity=3`))
       await expect(page.getByTestId("login-page")).toBeVisible()
