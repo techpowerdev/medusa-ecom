@@ -65,6 +65,35 @@ describe("buildJsonLogger (OPS-3, AC-18)", () => {
   })
 })
 
+describe("ลำดับเดียวกับ `medusa start` ที่ไม่ตั้ง NODE_ENV (review #120)", () => {
+  const original = { ...process.env }
+
+  afterEach(() => {
+    process.env = { ...original }
+  })
+
+  it("reporter ถูก require ตอน NODE_ENV ว่าง (IS_DEV) แล้ว config เห็น production → activity/progress/success/failure ไม่ throw", () => {
+    const { stream } = capture()
+    let logger: ReturnType<typeof buildJsonLogger>
+    jest.isolateModules(() => {
+      // create-cli.js require reporter ก่อนเลือก command → IS_DEV คำนวณตอนนี้
+      process.env.NODE_ENV = ""
+      require("@medusajs/cli/dist/reporter")
+      // handler ของ start ตั้ง NODE_ENV ||= "production" แล้วจึงโหลด medusa-config
+      process.env.NODE_ENV = "production"
+      const { buildJsonLogger: build } = require("../json-logger")
+      logger = build(process.env, stream)
+    })
+
+    expect(() => {
+      const id = logger!.activity("Creating server")
+      logger!.progress(id, "half")
+      logger!.success(id, "done")
+      logger!.failure(logger!.activity("again"), "failed")
+    }).not.toThrow()
+  })
+})
+
 describe("medusa-config ส่ง logger ของ OPS-3 ให้ Medusa (top-level `logger` ของ defineConfig)", () => {
   const original = { ...process.env }
 

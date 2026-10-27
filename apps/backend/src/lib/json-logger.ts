@@ -1,5 +1,6 @@
 import type { Logger } from "@medusajs/framework/types"
 import { Reporter } from "@medusajs/cli/dist/reporter"
+import { createRequire } from "module"
 import type { Writable } from "stream"
 import winston from "winston"
 
@@ -39,6 +40,8 @@ export function buildJsonLogger(env: Env, stream?: Writable): Logger | undefined
     transports,
   })
 
-  // activityLogger (ora) ใช้เฉพาะ development ซึ่งไม่ถึงตรงนี้
-  return new Reporter({ logger: instance, activityLogger: undefined }) as unknown as Logger
+  // Reporter เลือกทาง spinner จาก NODE_ENV ตอนที่ CLI require ครั้งแรก (`medusa start` ที่ไม่ตั้ง NODE_ENV = dev แล้วค่อยตั้ง
+  // production ก่อนโหลด config) จึงต้องส่ง ora ตัวเดียวกับ logger default เสมอ — resolve จาก @medusajs/cli ไม่เพิ่ม dependency
+  const ora = createRequire(require.resolve("@medusajs/cli/package.json"))("ora")
+  return new Reporter({ logger: instance, activityLogger: ora }) as unknown as Logger
 }
