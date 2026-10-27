@@ -125,12 +125,18 @@ let fixture: { regionId: string; country: string; fulfillmentSetId: string; zone
 test.afterAll(async ({ request }) => {
   if (!fixture) return
   const admin = await adminHeaders(request)
-  await request.delete(`${BACKEND_URL}/admin/shipping-options/${fixture.optionId}`, { headers: admin })
-  await request.delete(`${BACKEND_URL}/admin/fulfillment-sets/${fixture.fulfillmentSetId}/service-zones/${fixture.zoneId}`, {
-    headers: admin,
-  })
-  await request.delete(`${BACKEND_URL}/admin/regions/${fixture.regionId}`, { headers: admin })
+  const { optionId, fulfillmentSetId, zoneId, regionId } = fixture
   fixture = null
+  // CORE-20d (กฎข้อ 66e): ตรวจผลการลบทุกตัว — ลบ region ของ test ไม่สำเร็จต้องไม่เงียบ (ประเทศค้างอยู่ใน region เก่า)
+  const urls = [
+    optionId && `${BACKEND_URL}/admin/shipping-options/${optionId}`,
+    zoneId && `${BACKEND_URL}/admin/fulfillment-sets/${fulfillmentSetId}/service-zones/${zoneId}`,
+    `${BACKEND_URL}/admin/regions/${regionId}`,
+  ].filter((url): url is string => !!url)
+  for (const url of urls) {
+    const res = await request.delete(url, { headers: admin })
+    expect(res.ok(), `cleanup DELETE ${url}: ${res.status()} ${await res.text()}`).toBe(true)
+  }
 })
 
 async function createTestRegion(request: APIRequestContext, admin: Headers, returnWindowDays: number) {

@@ -103,3 +103,11 @@ export const createPayout = (body: { affiliate_id: string; period_from: string; 
 
 export const markPayoutPaid = (id: string, body: { reference?: string }) =>
   sdk.client.fetch<{ payout: Payout }>(`/admin/affiliate/payouts/${id}/mark-paid`, { method: "POST", body })
+
+// AF-12b (กฎ 37b): อนุมัติ/ระงับ affiliate และแก้ข้อมูลรับเงินผ่าน POST /admin/affiliate/affiliates/:id (AF-5)
+export type AdminAffiliate = Affiliate & { payout_info: Record<string, unknown> | null }
+
+export const updateAffiliate = (
+  id: string,
+  body: { status?: Affiliate["status"]; payout_info?: Record<string, string> | null },
+) => sdk.client.fetch<{ affiliate: AdminAffiliate }>(`/admin/affiliate/affiliates/${id}`, { method: "POST", body })

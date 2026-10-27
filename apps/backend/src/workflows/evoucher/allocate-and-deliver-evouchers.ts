@@ -1,6 +1,11 @@
 import { createWorkflow, transform, when, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
-import { createOrderFulfillmentWorkflow, useQueryGraphStep } from "@medusajs/medusa/core-flows"
-import { EvoucherOrder } from "./steps/evoucher-order"
+import {
+  acquireLockStep,
+  createOrderFulfillmentWorkflow,
+  releaseLockStep,
+  useQueryGraphStep,
+} from "@medusajs/medusa/core-flows"
+import { EvoucherOrder, evoucherOrderLockKey } from "./steps/evoucher-order"
 import { resolveEvoucherLinesStep } from "./steps/resolve-evoucher-lines"
 import { claimEvoucherCodesStep } from "./steps/claim-evoucher-codes"
 import { updateEvoucherBackorderedFlagsStep } from "./steps/update-evoucher-backordered-flags"
@@ -11,6 +16,10 @@ import { buildEvoucherDeliveredNotificationStep } from "./steps/build-evoucher-d
 import { sendEvoucherDeliveredNotificationStep } from "./steps/send-evoucher-delivered-notification"
 
 export { EVOUCHER_BACKORDERED_METADATA_KEY } from "./steps/evoucher-order"
+
+// EV-5c (กฎข้อ 21): รอ resend ที่ถืออยู่ได้ (ส่งอีเมลไม่กี่วินาที); ถือตลอด claim → ส่งอีเมล → mark delivered
+const ORDER_LOCK_TIMEOUT = 30
+const ORDER_LOCK_TTL = 120
 
 export type AllocateAndDeliverEvouchersInput = {
   order_id: string
@@ -28,6 +37,9 @@ export type AllocateAndDeliverEvouchersInput = {
 export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
   "allocate-and-deliver-evouchers",
   function (input: AllocateAndDeliverEvouchersInput) {
+    const lockKey = transform({ input }, ({ input }) => evoucherOrderLockKey(input.order_id))
+    acquireLockStep({ key: lockKey, timeout: ORDER_LOCK_TIMEOUT, ttl: ORDER_LOCK_TTL })
+
     const { data: orders } = useQueryGraphStep({
       entity: "order",
       fields: [
@@ -94,6 +106,7 @@ export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
       })
     })
 
+    releaseLockStep({ key: lockKey })
     return new WorkflowResponse(claim)
   }
 )

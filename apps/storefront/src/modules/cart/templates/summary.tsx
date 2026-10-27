@@ -7,23 +7,14 @@ import Divider from "@modules/common/components/divider"
 import DiscountCode from "@modules/checkout/components/discount-code"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
+import { checkoutStep } from "@lib/util/digital-checkout"
 
 type SummaryProps = {
   cart: HttpTypes.StoreCart
 }
 
-function getCheckoutStep(cart: HttpTypes.StoreCart) {
-  if (!cart?.shipping_address?.address_1 || !cart.email) {
-    return "address"
-  } else if (cart?.shipping_methods?.length === 0) {
-    return "delivery"
-  } else {
-    return "payment"
-  }
-}
-
 const Summary = ({ cart }: SummaryProps) => {
-  const step = getCheckoutStep(cart)
+  const step = checkoutStep(cart)
 
   return (
     <div className="flex flex-col gap-y-4">

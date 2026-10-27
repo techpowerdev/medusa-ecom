@@ -18,6 +18,14 @@ pnpm --filter backend dev                              # Medusa + admin ที�
 ```
 storefront ต้องใช้ publishable key และ region จาก seed (CORE-2) ก่อน `pnpm --filter storefront dev`
 
+### อีเมลตอน seed/dev (EV-13)
+ถ้าไม่ตั้ง `RESEND_API_KEY` ใน `apps/backend/.env` channel `email` ใช้ local provider ของ Medusa: ไม่มีอีเมลออกจริง
+(เช่น อีเมลส่งมอบ e-voucher และปุ่ม Resend email ในหน้า order) มีแค่ log `Attempting to send a notification ...` ใน console ของ backend
+- อยากได้อีเมลจริง: ตั้ง `RESEND_API_KEY` เป็น key ของบัญชี Resend สำหรับทดสอบ คู่กับ `RESEND_FROM_EMAIL=onboarding@resend.dev`
+  (ส่งได้เฉพาะอีเมลเจ้าของบัญชีจนกว่าจะ verify domain) แล้ว restart backend
+- ดูสถานะการส่งใน DB: `select template, "to", status, created_at from notification order by created_at desc limit 20;`
+  (`status` = `pending` / `success` / `failure`; id `noti_…` ของรายการที่ล้มอยู่ใน log ของ backend ไม่แสดงใน toast ของ admin)
+
 ## รันแบบ prod-like ด้วย Docker (OPS-1)
 backend image เดียวรันได้ทั้ง `server` และ `worker` ตาม worker mode ของ Medusa
 (`MEDUSA_WORKER_MODE=server|worker`, `DISABLE_MEDUSA_ADMIN=true` บน worker); scheduled jobs รันเฉพาะบน worker

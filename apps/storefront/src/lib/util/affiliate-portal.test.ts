@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { cardPrice, daysUntil, estimateCommission, portalPage, portalTab } from "./affiliate-portal"
+import { cardPrice, daysUntil, earningsByStatus, estimateCommission, portalPage, portalTab } from "./affiliate-portal"
 
 // AF-8a (spec 05 กฎ 29d): ยอดประมาณการบนการ์ด = ราคาปัจจุบัน × อัตรา ปัด 2 ตำแหน่ง half-up (กฎ 11) ไม่รวม cap
 describe("estimateCommission", () => {
@@ -71,5 +71,37 @@ describe("portalPage", () => {
     [["2", "3"], 1],
   ] as const)("%j → %s", (value, page) => {
     expect(portalPage(value as string | string[] | undefined)).toBe(page)
+  })
+})
+
+// AF-8b (spec 05 กฎ 33): ยอดต่อสถานะตามแถวของ `GET /affiliate/me/earnings` ทีละสถานะ — storefront ไม่หักลบ/รวมยอดเอง
+describe("earningsByStatus", () => {
+  const row = (status: string, amount: number, currency = "thb") => ({ status, amount, currency, count: 1 })
+
+  it("แต่ละสถานะใช้ค่าของแถวนั้นตรงๆ — reversed ติดลบแยก ไม่หักจาก approved (AC-40)", () => {
+    expect(
+      earningsByStatus([row("approved", 50), row("paid", 100), row("pending", 30), row("reversed", -20)])
+    ).toEqual({
+      pending: [{ amount: 30, currency_code: "thb" }],
+      approved: [{ amount: 50, currency_code: "thb" }],
+      paid: [{ amount: 100, currency_code: "thb" }],
+      reversed: [{ amount: -20, currency_code: "thb" }],
+    })
+  })
+
+  it("สถานะที่ API ไม่คืนแถว → ฿0", () => {
+    expect(earningsByStatus([row("approved", 50)])).toEqual({
+      pending: [{ amount: 0, currency_code: "thb" }],
+      approved: [{ amount: 50, currency_code: "thb" }],
+      paid: [{ amount: 0, currency_code: "thb" }],
+      reversed: [{ amount: 0, currency_code: "thb" }],
+    })
+  })
+
+  it("หลายสกุลเงินแสดงแยกแถว ไม่รวมข้ามสกุล", () => {
+    expect(earningsByStatus([row("paid", 100), row("paid", 5, "usd")]).paid).toEqual([
+      { amount: 100, currency_code: "thb" },
+      { amount: 5, currency_code: "usd" },
+    ])
   })
 })
