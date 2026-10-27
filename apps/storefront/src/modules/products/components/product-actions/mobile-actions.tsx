@@ -25,6 +25,8 @@ type MobileActionsProps = {
   optionsDisabled: boolean
   /** FS-13 (กฎข้อ 18): ราคา flash ของ variant ที่เลือก — แสดงแทนราคาปกติเมื่อแคมเปญยังไม่ sold out */
   flashOffer?: FlashOffer | null
+  /** qa #134 D-1: ข้อความเมื่อเพิ่มลง cart ไม่สำเร็จ (handler เดียวกับฟอร์มหลัก) */
+  error?: string | null
 }
 
 const MobileActions: React.FC<MobileActionsProps> = ({
@@ -38,6 +40,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   show,
   optionsDisabled,
   flashOffer,
+  error,
 }) => {
   const { state, open, close } = useToggleState()
 
@@ -139,6 +142,15 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   : "เพิ่มลงตะกร้า"}
               </Button>
             </div>
+            {error && (
+              <p
+                className="text-small-regular text-ui-fg-error"
+                role="alert"
+                data-testid="mobile-add-to-cart-error"
+              >
+                {error}
+              </p>
+            )}
           </div>
         </Transition>
       </div>

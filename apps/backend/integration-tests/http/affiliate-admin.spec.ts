@@ -11,6 +11,19 @@ jest.setTimeout(120 * 1000)
 
 const DAY = 24 * 60 * 60 * 1000
 
+// fail fast with a readable reason instead of hanging until the suite timeout
+const within = async <T>(promise: Promise<T>, ms: number, reason: string): Promise<T> => {
+  let timer: NodeJS.Timeout | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms: ${reason}`)), ms)
+  })
+  try {
+    return await Promise.race([promise, timeout])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // AF-5: admin API ของ affiliate + payout workflows (AC-7, Q8)
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
@@ -487,19 +500,27 @@ medusaIntegrationTestRunner({
           const cancel = api
             .delete(`/admin/affiliate/payouts/${draft.id}`, { headers })
             .catch((e) => e.response)
-          await holding
+          await within(
+            holding,
+            30_000,
+            `cancel never reached the release of ${paidKey} (lock order or step changed?)`
+          )
           expect(await service.listAffiliatePayouts({ id: draft.id })).toHaveLength(0)
 
           const create = api
             .post("/admin/affiliate/payouts", period(), { headers })
             .catch((e) => e.response)
-          await waiting
+          await within(
+            waiting,
+            30_000,
+            `create never asked for ${affiliateKey} while cancel held it`
+          )
           // give an unblocked create time to finish while D is still soft-deleted
           await Promise.race([create, new Promise((r) => setTimeout(r, 1000))])
           openGate()
 
           const [cancelled, recreated] = await Promise.all([cancel, create])
-          expect(cancelled.status).toBeGreaterThanOrEqual(400)
+          expect(cancelled.status).toEqual(500)
           expect(recreated.status).toEqual(400)
         } finally {
           acquireSpy.mockRestore()

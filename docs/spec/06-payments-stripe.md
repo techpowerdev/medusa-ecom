@@ -16,6 +16,7 @@
 | Payment sessions, authorize, capture, refund | Payment module + core flows | ใช้ตามเดิม |
 | จัดการ webhook + idempotency | `/hooks/payment/*` | ใช้ตามเดิม |
 | ชำระเงินสำหรับ (draft) order ที่มีอยู่แล้ว | Order payment collection + store payment routes | ใช้ตามเดิม (group buy, spec 04) |
+| storefront อ่าน draft order + payment collection/session ของ order | **ไม่มี** ใน Store API 2.22.1 (`GET /store/orders*` กรอง draft, ไม่มี GET payment collection) | route อ่านอย่างเดียวของ GB-8 (spec 04 กฎข้อ 21, **ADR-016 accepted** owner 2026-10-27) — PAY-3b ใช้ |
 | Checkout ด้วย Stripe Elements ใน storefront | Next.js starter | ขยายเพื่อรองรับ PromptPay + หน้าชำระเงินของ order |
 | Admin: เปิดใช้ provider ต่อ region, refund | Admin | ตั้งค่า |
 | ยกเลิก PaymentIntent เดิมเมื่อเปลี่ยน session | สร้าง session ใหม่ → Medusa ลบ session เดิม → Stripe provider cancel PI — **แต่ลบ session ได้แม้ PI `succeeded`** (PAY-5, ADR-015) | ขยาย: guard ก่อนสร้าง session ใหม่ (PAY-6, กฎข้อ 7) |
@@ -41,7 +42,7 @@
   `created` ของ PaymentIntent** (สร้างตอนเลือก PromptPay ไม่ใช่ตอนแสดง QR — ดู Q3) — ครบกำหนดแล้วเช็กสถานะ PI ก่อน ถ้ายังไม่ชำระจึงสร้าง
   session ใหม่ (Medusa ลบ session เดิม → provider cancel PI เดิม))
 - `/account/orders/:id/pay`: ใช้ payment component เดียวกัน ผูกกับ payment collection ของ order
-  (ใช้โดย group buying)
+  (ใช้โดย group buying) — (รอบ 10) อ่านข้อมูลจาก `GET /store/customers/me/group-buy/orders/:order_id` (GB-8) สร้าง/ต่อ session ด้วย route ของ Medusa (กฎข้อ 9)
 - Error states: บัตรถูกปฏิเสธ, 3DS ล้มเหลว, PromptPay หมดอายุ → ลองใหม่ได้; cart/order ยังคงอยู่
 - ต้อง login ก่อน checkout (กฎทั้งร้าน, spec 01)
 - ภาษา (ADR-014, 2026-10-26): ข้อความ UI เป็นภาษาไทยตรงในโค้ด และ e2e หาด้วย test id — PAY-2 (#48) ทำไปด้วยข้อความอังกฤษแล้ว **ไม่แก้ใน #48**
@@ -94,6 +95,13 @@
    ถ้าระหว่างนั้น storefront อ่านได้ว่าเงินถูกคืนแล้ว (Medusa `compensatePaymentIfNeededStep` refund เมื่อ complete ล้ม) แสดง `promptpay-refunded` (ข้อความไทย: ชำระไม่สำเร็จ
    เงินจะคืนตามรอบของธนาคาร) และให้เริ่มชำระใหม่ได้ — สัญญาณ "คืนแล้ว" ต้องมาจาก field ที่ Store API คืนจริง (builder ตรวจ 2.22.1 เช่น สถานะ payment collection/payment
    sessions ของ cart ที่อ่านผ่าน data function เดิม) ห้ามเพิ่ม store route ใหม่; ถ้า Store API ไม่มีสัญญาณนี้ ให้ใช้ `promptpay-order-delayed` อย่างเดียวและรายงานใน PR
+9. (รอบ 10, PAY-3a/PAY-3b — builder PAY-3 หยุดเพราะ Store API อ่าน draft order ไม่ได้) หน้า `/<cc>/account/orders/:id/pay` (ต้อง login; `:id` = order id ตามลิงก์อีเมลของ GB-4):
+   (a) อ่านข้อมูลจาก route ของ GB-8 เท่านั้น (404 → หน้า not-found ของ Next ตอบ HTTP 404); (b) แสดงฟอร์มชำระเงิน (`order-pay-form`) เฉพาะเมื่อ `membership.status = "awaiting_payment"`,
+   `now < group.pay_deadline_at` และมี payment collection สถานะยังไม่ `completed` — กรณีอื่นแสดงสถานะภาษาไทยแทนฟอร์ม: ชำระแล้ว (`order-pay-paid`), หมดเวลา/ยกเลิก (`order-pay-closed`),
+   รอกลุ่ม (`order-pay-waiting`); (c) เลือกบัตร/พร้อมเพย์แล้วสร้าง session ด้วย `POST /store/payment-collections/:id/payment-sessions` ของ Medusa (ใช้ component บัตร/พร้อมเพย์เดิมของ
+   checkout ไม่ copy) — ไม่มี custom payment route; (d) ได้ 409 `PAYMENT_ALREADY_COMPLETED` → **poll route ของ GB-8 อย่างเดียว** (ไม่เรียก complete cart — ภาคผนวก ADR-015) จน
+   `payment_status`/สถานะ membership เปลี่ยน แล้วแสดง `order-pay-paid`; poll มีเพดานแบบเดียวกับกฎข้อ 8 (10 ครั้ง แล้วแสดง `promptpay-order-delayed`); (e) ข้อความไทยตรงในโค้ด +
+   path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4)
 
 ## Acceptance criteria
 - AC-1 บัตร `4242…` → สร้าง order สำเร็จ, `payment_status=captured`
@@ -163,6 +171,16 @@
 - AC-17 (PAY-6c, กฎข้อ 8) Given storefront ได้ 409 `PAYMENT_ALREADY_COMPLETED` และ `POST /store/carts/:id/complete` ตอบ error ทุกครั้ง (route mock ใน e2e) When รอ Then จำนวน request
   complete + poll รวม ≤ 10, หลังครบเห็น `promptpay-order-delayed` ที่มีอักษรไทยและลิงก์ `/contact`, และไม่มี request complete เพิ่มใน 30 วินาทีถัดไป; ไม่แสดง `promptpay-awaiting-order` แล้ว;
   Given สัญญาณ "คืนเงินแล้ว" ตามกฎข้อ 8 (mock response) Then เห็น `promptpay-refunded` และปุ่มเริ่มชำระใหม่ (e2e; unit Vitest ของตัวนับเพดาน)
+- AC-18 (PAY-3a, กฎข้อ 9c, spec 04 กฎข้อ 22, ภาคผนวก ADR-015) Given draft order DA ของ A ที่มี payment collection PC (สร้างผ่าน `succeedGroupWorkflow` หรือ
+  `createOrUpdateOrderPaymentCollectionWorkflow` ใน test) When ไม่มี token `POST /store/payment-collections/PC/payment-sessions` Then 401; B → 404 และไม่มี session ใหม่;
+  A (provider `pp_system_default` หรือ mock Stripe) → 200 มี session; Given session Stripe ของ PC ที่ PI ชำระแล้ว When ยิง guard (`POST .../payment-sessions` ของ A) **พร้อมกับ**
+  `processPaymentWorkflow` action `captured` ของ session เดียวกัน Then มี payment ของ session นั้นที่ `deleted_at IS NULL` **1 แถว**, ฝั่งที่แพ้ได้ 409 หรือ non-2xx ใดก็ได้, session
+  เดิมไม่ถูกลบ; รัน `processPaymentWorkflow` ซ้ำ Then ไม่มี capture เพิ่ม; spy ยืนยันว่า guard ขอ lock key = `PC.id` (integration http/modules; ไม่แก้โค้ด production ถ้าผ่าน —
+  ถ้าไม่ผ่านให้หยุดและรายงาน)
+- AC-19 (PAY-3b, กฎข้อ 9) Given กลุ่มของ A สำเร็จแล้ว (seed ผ่าน API) When A เปิด `/th/account/orders/<DA>/pay` แล้วชำระด้วยบัตร `4242…` (Stripe test mode) Then เห็น `order-pay-paid`
+  ภายใน 60 วินาทีและ payment ของ PC `captured`; ทำซ้ำด้วยพร้อมเพย์ (confirm PI ใน test mode) → `order-pay-paid` (= AC-7); When B เปิด URL เดียวกัน Then HTTP 404; Given membership
+  `joined` (กลุ่มยังไม่สำเร็จ) / `cancelled` / เลย `pay_deadline_at` Then ไม่มี `order-pay-form` และเห็น `order-pay-waiting` / `order-pay-closed` ตามลำดับ (มีอักษรไทย); Given route mock
+  ให้สร้าง session ได้ 409 `PAYMENT_ALREADY_COMPLETED` Then ไม่มี request `POST /store/carts/*/complete` และมี request GET route ของ GB-8 ซ้ำ ≤ 10 ครั้ง (e2e, screenshot ≤ 3)
 
 ## Test plan
 - Integration (http): AC-8 โดย mock provider
@@ -172,19 +190,23 @@
 - integration/e2e กับ Stripe test mode: AC-11; e2e: AC-12, AC-12b (ส่วน storefront); integration: AC-12b (complete cart หลัง guard)
 - unit: guard (AC-13 a–g ด้วย mock payment module), การตรวจ runbook/env (AC-16, AC-16b); integration http: AC-13; integration: AC-14, AC-15, AC-16c
 - e2e + unit (Vitest): AC-17 (PAY-6c)
+- integration (http/modules): AC-18 (PAY-3a); e2e กับ Stripe test mode: AC-7, AC-19 (PAY-3b)
 
 ## Tasks
 | ID | Task | Depends |
 |----|------|---------|
 | PAY-1 | ตั้งค่า Stripe provider, เปิดใช้ใน region, env, ตรวจสอบ webhook route ในเครื่องด้วย Stripe CLI (AC-8) | CORE-2 |
 | PAY-2 | Storefront: ขั้นตอนชำระเงินด้วยบัตร + PromptPay, polling, error + e2e (AC-1..AC-5); `payment_method_types: ["card"]` ของ session บัตร (กฎข้อ 5, AC-9); แก้ขั้น `stripe listen` ใน `ci.yml` ที่ใส่ `--forward-to` ซ้ำ (AC-10) | PAY-1, CORE-5 |
-| PAY-3 | หน้าชำระเงินของ order `/account/orders/:id/pay` + e2e (AC-7) | PAY-2 |
+| PAY-3 | **แยกรอบ 10** (builder หยุด: Store API อ่าน draft order ไม่ได้) → PAY-3a + PAY-3b ด้านล่าง; route อ่านข้อมูลเป็น GB-8 (spec 04, ADR-016) | — |
+| PAY-3a | (เล็ก, backend test-only) integration: ownership ของ `POST /store/payment-collections/:id/payment-sessions` บน collection ของ draft order + guard × webhook พร้อมกันบน collection ของ order ตามภาคผนวก ADR-015 (กฎข้อ 9c, AC-18) — ไม่แก้โค้ด production ถ้า test ผ่าน | PAY-6a ☑, GB-4 ☑ (เริ่มได้ทันที) |
+| PAY-3b | storefront หน้า `/account/orders/:id/pay` ตามกฎข้อ 9 (อ่านจาก GB-8, component บัตร/พร้อมเพย์เดิม, 409 → poll GB-8 อย่างเดียวมีเพดาน) + e2e (AC-7, AC-19) | GB-8 (ADR-016 ☑ accepted), PAY-3a, PAY-6c (◐ #136) (แตะ `promptpay-payment`/ตัวนับเพดานเดียวกัน — ใช้ตัวนับของ PAY-6c ไม่เขียนซ้ำ) |
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
 | PAY-5 | follow-up review PR #48 (เล็ก): race ระหว่าง QR หมดอายุกับการชำระสำเร็จ — test AC-11 ก่อนเพื่อยืนยันพฤติกรรมของ Medusa/Stripe provider เมื่อลบ session ที่ PI `succeeded` แล้ว; ถ้าเป็นกรณี (a) ของกฎข้อ 7 แก้เฉพาะ storefront ให้ poll ต่อเมื่อสร้าง session ใหม่ล้ม (AC-12); ถ้าเป็นกรณี (b) หยุดแล้วเขียน ADR (ไม่เขียน reconciliation เอง) | PAY-2 |
 | PAY-6a | (◐ #82, แยกรอบ 6) ADR-015 A ฝั่ง backend: guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`/`payment_collection_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + guard หลัง ownership ของ CORE-12 + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-11, AC-13 a–g, AC-14, AC-12b ส่วน backend = integration complete cart หลัง guard) + integration race ตาม "หมายเหตุ (รอบ 6)" ด้านล่าง — **ไม่รวม** storefront (AC-12 และ AC-12b ส่วน storefront อยู่ใน PAY-6b) | PAY-5 (#65), PROMO-2 |
 | PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D; หัวข้อ fail closed ต้องใช้วิธีที่ตรวจแล้วว่ามีจริง — ดู "ความเสี่ยงที่ยอมรับเพิ่ม" รอบ 7) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้; **รอบ 8**: PAY-6b2 (#97) รวม AC-16b (runbook ใหม่) และ script `apps/backend/src/scripts/refund-orphan-payment.ts` + integration test (AC-16c) — ☑ #97 (6b2), #98 (6b1) | PAY-6a |
 | PAY-6c | (storefront เล็ก, รอบ 9, review #98) เพดานการลองซ้ำของทางสำรอง + UI กรณีเงินถูกคืนโดย `compensatePaymentIfNeededStep` (กฎข้อ 8, AC-17) — ข้อความไทยตรงในโค้ด | PAY-6b ☑ (#97/#98), CORE-4e (spec 01 — แตะ `promptpay-payment`/`renewPromptPaySession` เดียวกัน; CORE-4e ← CORE-4d #109) |
 PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment` เดียวกับที่ PAY-3 นำไปใช้ซ้ำ — merge PAY-5 ก่อน PAY-3 ถ้าทำพร้อมกัน ให้ rebase)
+(รอบ 10) PAY-3a เริ่มได้ทันที (∥ GB-8, PAY-6c); PAY-3b หลัง GB-8 + PAY-3a + PAY-6c; GB-5 (spec 04) พึ่ง PAY-3a ไม่ใช่ PAY-3b
 PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6c หลัง CORE-4e (∥ CORE-19b ถ้าไม่แตะไฟล์เดียวกัน — ตัวที่ merge ทีหลัง rebase); PAY-6c ควร merge ก่อน release ที่เปิดพร้อมเพย์จริง; PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
 ต้อง merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
 หมายเหตุ (รอบ 6, จาก #82): ข้อกังวลในภาคผนวก ADR-015 ("lock key `payment_collection_id` ของ collection ที่ไม่มี cart ไม่ตรงกับ lock ของ `processPaymentWorkflow`
