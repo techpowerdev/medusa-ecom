@@ -2,7 +2,8 @@ import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { Badge, Container, createDataTableColumnHelper, Heading, Tabs } from "@medusajs/ui"
 import { AffiliateListTable } from "../../components/affiliate/list-table"
 import { PayoutsTable } from "../../components/affiliate/payouts-table"
-import { Affiliate, CommissionEntry, formatDate, Program } from "../../lib/affiliate"
+import { Affiliate, CommissionEntry, Program } from "../../lib/affiliate"
+import { formatAmount, formatDate } from "../../lib/affiliate-format"
 
 // AF-6 (spec 05 "Admin UI"): หน้า Affiliate → Programs, Affiliates, Ledger, Payouts (อ่านจาก admin API ของ AF-5)
 const program = createDataTableColumnHelper<Program>()
@@ -50,7 +51,7 @@ const entryColumns = [
   }),
   entry.accessor("affiliate_id", { header: "Affiliate" }),
   entry.accessor("order_id", { header: "Order" }),
-  entry.accessor((row) => `${row.amount} ${row.currency.toUpperCase()}`, {
+  entry.accessor((row) => formatAmount(row.amount, row.currency), {
     id: "amount",
     header: "Amount",
   }),

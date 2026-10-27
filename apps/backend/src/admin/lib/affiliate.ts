@@ -60,11 +60,3 @@ export const listAffiliateResource = <K extends string, T>(
 // AF-9: route ยกเลิก payout draft (soft-delete, Q9)
 export const cancelPayout = (id: string) =>
   sdk.client.fetch(`/admin/affiliate/payouts/${id}`, { method: "DELETE" })
-
-export const formatDate = (value: string | null, withTime = true) =>
-  value
-    ? new Date(value).toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: withTime ? "short" : undefined,
-      })
-    : "-"

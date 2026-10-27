@@ -1,8 +1,9 @@
 import { Badge, Button, createDataTableColumnHelper, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useMemo } from "react"
-import { affiliateKeys, cancelPayout, formatDate, Payout } from "../../lib/affiliate"
-import { canCancelPayout, singleFlight } from "../../lib/affiliate-payout"
+import { useMemo, useRef } from "react"
+import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
+import { formatAmount, formatDate } from "../../lib/affiliate-format"
+import { canCancelPayout } from "../../lib/affiliate-payout"
 import { AffiliateListTable } from "./list-table"
 
 const columnHelper = createDataTableColumnHelper<Payout>()
@@ -11,50 +12,47 @@ const columnHelper = createDataTableColumnHelper<Payout>()
 export const PayoutsTable = () => {
   const prompt = usePrompt()
   const queryClient = useQueryClient()
+  // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → คลิกซ้ำ (dblclick) ถูกเพิกเฉย (ค่าคงอยู่ข้าม render)
+  const inFlight = useRef(false)
+
+  const refetchPayouts = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
 
   const cancel = useMutation({
     mutationFn: cancelPayout,
     onSuccess: () => {
       toast.success("Payout cancelled")
-      return queryClient.invalidateQueries({
-        queryKey: affiliateKeys.list("payouts"),
-      })
+      return refetchPayouts()
     },
-    onError: (e: Error) => toast.error(e.message),
+    // รอบ 10: ยกเลิกไม่สำเร็จ (เช่น ถูก mark paid ไปแล้ว) → โหลดรายการใหม่ให้ตารางแสดงสถานะจริง
+    onError: (e: Error) => {
+      toast.error(e.message)
+      return refetchPayouts()
+    },
   })
 
-  // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → คลิกซ้ำ (dblclick) ถูกเพิกเฉย
-  const confirmCancel = useMemo(
-    () =>
-      singleFlight(async (id: string) => {
-        const ok = await prompt({
-          title: "Cancel this draft payout?",
-          description: "The payout is removed and its entries can be picked up by the next payout.",
-          confirmText: "Cancel payout",
-          cancelText: "Keep payout",
-        })
-        if (ok) {
-          await cancel.mutateAsync(id).catch(() => undefined)
-        }
-      }),
-    [prompt, cancel.mutateAsync],
-  )
+  const confirmCancel = async (id: string) => {
+    if (inFlight.current) {
+      return
+    }
+    inFlight.current = true
+    try {
+      const ok = await prompt({
+        title: "Cancel this draft payout?",
+        description: "The payout is removed and its entries can be picked up by the next payout.",
+        confirmText: "Cancel payout",
+        cancelText: "Keep payout",
+      })
+      if (ok) {
+        await cancel.mutateAsync(id).catch(() => undefined)
+      }
+    } finally {
+      inFlight.current = false
+    }
+  }
 
+  // คอลัมน์สถานะ (sticky) และปุ่มอยู่ซ้ายสุด เพื่อให้ปุ่มอยู่ในจอที่ 1280px โดยไม่ต้องเลื่อนตาราง (รอบ 10)
   const columns = useMemo(
     () => [
-      columnHelper.accessor("id", { header: "Payout" }),
-      columnHelper.accessor("affiliate_id", { header: "Affiliate" }),
-      columnHelper.accessor(
-        (row) => `${formatDate(row.period_from, false)} – ${formatDate(row.period_to, false)}`,
-        {
-          id: "period",
-          header: "Period",
-        },
-      ),
-      columnHelper.accessor((row) => `${row.amount} ${row.currency.toUpperCase()}`, {
-        id: "amount",
-        header: "Amount",
-      }),
       columnHelper.accessor("status", {
         header: "Status",
         cell: ({ getValue }) => (
@@ -62,10 +60,6 @@ export const PayoutsTable = () => {
             {getValue()}
           </Badge>
         ),
-      }),
-      columnHelper.accessor("paid_at", {
-        header: "Paid at",
-        cell: ({ getValue }) => formatDate(getValue()),
       }),
       columnHelper.display({
         id: "actions",
@@ -82,8 +76,20 @@ export const PayoutsTable = () => {
             </Button>
           ) : null,
       }),
+      columnHelper.accessor((row) => formatAmount(row.amount, row.currency), {
+        id: "amount",
+        header: "Amount",
+      }),
+      columnHelper.accessor(
+        (row) => `${formatDate(row.period_from, false)} – ${formatDate(row.period_to, false)}`,
+        { id: "period", header: "Period" },
+      ),
+      columnHelper.accessor("paid_at", { header: "Paid at", cell: ({ getValue }) => formatDate(getValue()) }),
+      columnHelper.accessor("id", { header: "Payout" }),
+      columnHelper.accessor("affiliate_id", { header: "Affiliate" }),
     ],
-    [cancel.isPending, confirmCancel],
+    // confirmCancel ใช้แค่ ref, prompt และ mutateAsync ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending เปลี่ยน
+    [cancel.isPending],
   )
 
   return <AffiliateListTable resource="payouts" columns={columns} empty="No payouts yet" />
