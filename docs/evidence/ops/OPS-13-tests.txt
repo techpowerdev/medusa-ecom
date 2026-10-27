@@ -55,9 +55,9 @@ PASS src/__tests__/prod-guards.unit.spec.ts (7.655 s)
     ✓ package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec (1 ms)
 Tests:       34 passed, 34 total
 
-## pnpm --filter backend test:unit (ทั้งชุด)
-Test Suites: 52 passed, 52 total
-Tests:       542 passed, 542 total
+## pnpm --filter backend test:unit (ทั้งชุด, หลัง merge origin/develop ที่มี OPS-3 #120)
+Test Suites: 53 passed, 53 total
+Tests:       552 passed, 552 total
 
 ## pnpm lint && pnpm typecheck && pnpm --filter backend build
 lint: 0 errors (warning เดิมของ storefront), typecheck: ผ่าน, build: ผ่าน
