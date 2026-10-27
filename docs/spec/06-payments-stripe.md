@@ -89,6 +89,11 @@
    `apps/backend/src/scripts/refund-orphan-payment.ts` ที่เรียก `refundPaymentsWorkflow` (รอบ 8, ADR-015 ภาคผนวก 2) — ข้อยกเว้นของกฎข้อ 4; โค้ดของเราไม่เรียก
    refund ของ Stripe ตรง และไม่ refund อัตโนมัติ — แต่ Medusa refund อัตโนมัติได้เองใน `compensatePaymentIfNeededStep` ของ `completeCartWorkflow`
    เมื่อ complete ล้มหลัง capture (note "Refunded due to cart completion failure"))
+8. (รอบ 9, PAY-6c — review #98) ทางสำรองของ storefront (กฎข้อ 7A, AC-12b) ต้องมี**เพดาน**: เรียก complete cart + poll รวมไม่เกิน **10 ครั้ง** (ตาม interval เดิมของ PAY-6b1)
+   แล้วหยุดยิง request และแสดง `promptpay-order-delayed` (ข้อความไทย: ได้รับเงินแล้ว ระบบกำลังตรวจสอบ ให้ติดต่อร้านพร้อมลิงก์หน้า `/contact`) แทนข้อความรอ;
+   ถ้าระหว่างนั้น storefront อ่านได้ว่าเงินถูกคืนแล้ว (Medusa `compensatePaymentIfNeededStep` refund เมื่อ complete ล้ม) แสดง `promptpay-refunded` (ข้อความไทย: ชำระไม่สำเร็จ
+   เงินจะคืนตามรอบของธนาคาร) และให้เริ่มชำระใหม่ได้ — สัญญาณ "คืนแล้ว" ต้องมาจาก field ที่ Store API คืนจริง (builder ตรวจ 2.22.1 เช่น สถานะ payment collection/payment
+   sessions ของ cart ที่อ่านผ่าน data function เดิม) ห้ามเพิ่ม store route ใหม่; ถ้า Store API ไม่มีสัญญาณนี้ ให้ใช้ `promptpay-order-delayed` อย่างเดียวและรายงานใน PR
 
 ## Acceptance criteria
 - AC-1 บัตร `4242…` → สร้าง order สำเร็จ, `payment_status=captured`
@@ -155,6 +160,9 @@
   ด้วย payment id Then payment มี refund 1 รายการเท่ายอดที่ capture (ผ่าน `refundPaymentsWorkflow` — provider ถูกเรียก refund 1 ครั้ง); When รันซ้ำ Then ไม่มี refund
   เพิ่มและจบด้วยข้อความว่า refund แล้ว; Given payment ที่ collection ผูก order หรือยังไม่ captured Then script ไม่ refund และ exit ≠ 0 พร้อมเหตุผล; source ของ
   script ไม่ import `stripe` (integration modules/http + grep)
+- AC-17 (PAY-6c, กฎข้อ 8) Given storefront ได้ 409 `PAYMENT_ALREADY_COMPLETED` และ `POST /store/carts/:id/complete` ตอบ error ทุกครั้ง (route mock ใน e2e) When รอ Then จำนวน request
+  complete + poll รวม ≤ 10, หลังครบเห็น `promptpay-order-delayed` ที่มีอักษรไทยและลิงก์ `/contact`, และไม่มี request complete เพิ่มใน 30 วินาทีถัดไป; ไม่แสดง `promptpay-awaiting-order` แล้ว;
+  Given สัญญาณ "คืนเงินแล้ว" ตามกฎข้อ 8 (mock response) Then เห็น `promptpay-refunded` และปุ่มเริ่มชำระใหม่ (e2e; unit Vitest ของตัวนับเพดาน)
 
 ## Test plan
 - Integration (http): AC-8 โดย mock provider
@@ -163,6 +171,7 @@
 - e2e: AC-9 (อ่าน PaymentIntent จาก Stripe test mode ระหว่าง AC-1/AC-4); CI: AC-10
 - integration/e2e กับ Stripe test mode: AC-11; e2e: AC-12, AC-12b (ส่วน storefront); integration: AC-12b (complete cart หลัง guard)
 - unit: guard (AC-13 a–g ด้วย mock payment module), การตรวจ runbook/env (AC-16, AC-16b); integration http: AC-13; integration: AC-14, AC-15, AC-16c
+- e2e + unit (Vitest): AC-17 (PAY-6c)
 
 ## Tasks
 | ID | Task | Depends |
@@ -173,9 +182,10 @@
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
 | PAY-5 | follow-up review PR #48 (เล็ก): race ระหว่าง QR หมดอายุกับการชำระสำเร็จ — test AC-11 ก่อนเพื่อยืนยันพฤติกรรมของ Medusa/Stripe provider เมื่อลบ session ที่ PI `succeeded` แล้ว; ถ้าเป็นกรณี (a) ของกฎข้อ 7 แก้เฉพาะ storefront ให้ poll ต่อเมื่อสร้าง session ใหม่ล้ม (AC-12); ถ้าเป็นกรณี (b) หยุดแล้วเขียน ADR (ไม่เขียน reconciliation เอง) | PAY-2 |
 | PAY-6a | (◐ #82, แยกรอบ 6) ADR-015 A ฝั่ง backend: guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`/`payment_collection_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + guard หลัง ownership ของ CORE-12 + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-11, AC-13 a–g, AC-14, AC-12b ส่วน backend = integration complete cart หลัง guard) + integration race ตาม "หมายเหตุ (รอบ 6)" ด้านล่าง — **ไม่รวม** storefront (AC-12 และ AC-12b ส่วน storefront อยู่ใน PAY-6b) | PAY-5 (#65), PROMO-2 |
-| PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D; หัวข้อ fail closed ต้องใช้วิธีที่ตรวจแล้วว่ามีจริง — ดู "ความเสี่ยงที่ยอมรับเพิ่ม" รอบ 7) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้; **รอบ 8**: PAY-6b2 (#97) รวม AC-16b (runbook ใหม่) และ script `apps/backend/src/scripts/refund-orphan-payment.ts` + integration test (AC-16c) | PAY-6a |
+| PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D; หัวข้อ fail closed ต้องใช้วิธีที่ตรวจแล้วว่ามีจริง — ดู "ความเสี่ยงที่ยอมรับเพิ่ม" รอบ 7) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้; **รอบ 8**: PAY-6b2 (#97) รวม AC-16b (runbook ใหม่) และ script `apps/backend/src/scripts/refund-orphan-payment.ts` + integration test (AC-16c) — ☑ #97 (6b2), #98 (6b1) | PAY-6a |
+| PAY-6c | (storefront เล็ก, รอบ 9, review #98) เพดานการลองซ้ำของทางสำรอง + UI กรณีเงินถูกคืนโดย `compensatePaymentIfNeededStep` (กฎข้อ 8, AC-17) — ข้อความไทยตรงในโค้ด | PAY-6b ☑ (#97/#98), CORE-4e (spec 01 — แตะ `promptpay-payment`/`renewPromptPaySession` เดียวกัน; CORE-4e ← CORE-4d #109) |
 PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment` เดียวกับที่ PAY-3 นำไปใช้ซ้ำ — merge PAY-5 ก่อน PAY-3 ถ้าทำพร้อมกัน ให้ rebase)
-PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
+PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6c หลัง CORE-4e (∥ CORE-19b ถ้าไม่แตะไฟล์เดียวกัน — ตัวที่ merge ทีหลัง rebase); PAY-6c ควร merge ก่อน release ที่เปิดพร้อมเพย์จริง; PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
 ต้อง merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
 หมายเหตุ (รอบ 6, จาก #82): ข้อกังวลในภาคผนวก ADR-015 ("lock key `payment_collection_id` ของ collection ที่ไม่มี cart ไม่ตรงกับ lock ของ `processPaymentWorkflow`
 → guard กับ webhook อาจสร้าง payment ซ้อน") **ไม่เกิดจริง**: Medusa 2.22.1 มี unique index แบบ partial `IDX_payment_payment_session_id_unique`

@@ -170,6 +170,12 @@ jobs:
           p=$(openssl rand -hex 16)
           echo "::add-mask::$p"
           echo "SEED_ADMIN_PASSWORD=$p" >> "$GITHUB_ENV"
+      - name: Random e-voucher encryption key for e2e
+        # EV-5b (AC-19): e2e admin import code + ส่งมอบ e-voucher ต้องมี key (64 hex) — สุ่มต่อ run ไม่ใช่ secret
+        run: |
+          k=$(openssl rand -hex 32)
+          echo "::add-mask::$k"
+          echo "EVOUCHER_ENCRYPTION_KEY=$k" >> "$GITHUB_ENV"
       - run: pnpm --filter storefront exec playwright install --with-deps chromium
       - name: Install Stripe CLI
         run: |
