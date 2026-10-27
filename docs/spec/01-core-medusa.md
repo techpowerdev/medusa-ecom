@@ -591,7 +591,7 @@ none (CORE-16/17 เป็น middleware บน route ของ Medusa; seed เ
 | CORE-18 | storefront: แทนข้อความ/ลิงก์โฆษณาของ starter (hero, footer, nav, metadata) ด้วยเนื้อหาร้านภาษาไทย placeholder (owner 2026-10-26: ใช้ placeholder ไปก่อน รวมไว้เป็นค่าคงที่ในไฟล์เดียว เช่น `src/lib/store-content.ts` (ไม่สร้างโฟลเดอร์ `lib/constants/` ชนกับ `lib/constants.tsx`) ที่มี `TODO(owner-content)` ให้แก้ง่าย) + ลบ component `product-onboarding-cta` ของ starter (ลิงก์ไป `localhost:7001`, review #70) + แทน "Medusa Store" ในหน้า account ด้วย `STORE_NAME` (รอบ 6, review #80, กฎข้อ 38) — ก่อน release แรก | AC-61, AC-67, AC-74 | CORE-4b2 (#70; แตะ layout/home/PDP ที่ 4b2 แปลแล้ว) |
 | CORE-21 | (เล็ก, follow-up review #71) `POST /store/returns`: stock location ของ return option ต้องผูกกับ sales channel ของ order (ต่อจาก middleware ของ CORE-17) — เขียน test AC-66 ก่อน ถ้า `createAndCompleteReturnOrderWorkflow` ของ Medusa ปฏิเสธให้อยู่แล้ว (test ผ่านโดยไม่แก้) PR มีแค่ test; **เพิ่มรอบ 6**: test AC-60c กรณี order ไม่มี `country_code` (AC-70) + error "ไม่พบ option" ไม่สะท้อน `option_id` จาก input (AC-71) | AC-66, AC-70, AC-71 | CORE-17 (#71; แตะ middleware เดียวกัน) |
 | CORE-19a | storefront: ตัวนับ cart ใน nav อัปเดตหลังลบใน dropdown + search drawer ไม่ล้นที่ 375px | AC-62, AC-63 | CORE-4b2 (แตะ `modules/layout`, `modules/search`) |
-| CORE-19b | storefront: ปุ่ม "Continue to review" ไม่ค้าง (`router.push` ของ starter ใน `modules/checkout`) + ลบการกดซ้ำใน `continueToReview` ของ e2e | AC-64 | CORE-4d (แตะไฟล์ checkout เดียวกัน) |
+| CORE-19b | storefront: ปุ่ม "Continue to review" ไม่ค้าง + ลบการกดซ้ำใน `continueToReview` ของ e2e — (แก้ถ้อยคำรอบ 11 ตาม review #151) ต้นเหตุจริงคือ **race**: server action ที่สร้าง payment session คืนผลก่อน cart ใหม่เข้า props ของ component → กด Continue แล้วสร้าง session ซ้ำ; แก้โดยล็อกปุ่มจน cart มี session ของ provider ที่เลือก (ไม่ใช่ `router.push` ของ starter ตามที่เขียนเดิม) — ◐ #151; กรณี RSC refresh ไม่มาถึงแล้วปุ่มล็อกค้าง → CORE-19e | AC-64 | CORE-4d (แตะไฟล์ checkout เดียวกัน) |
 | CORE-20 | (◐ #112) storefront: หน้าขอคืนสินค้าจาก order detail (เลือก item/จำนวน/เหตุผล → `POST /store/returns` ด้วย return option ของร้าน) ข้อความไทย + path ใหม่ใน ESLint rule (กฎ CORE-4 ข้อ 4) | AC-65 | CORE-17, CORE-4c2 (แตะ `modules/order`) |
 CORE-17 ∥ CORE-18 ∥ CORE-19a; CORE-19b หลัง CORE-4d; CORE-20 หลัง CORE-17 และ CORE-4c2; CORE-21 หลัง CORE-17 (∥ CORE-20) — CORE-17, CORE-18
 อยู่บนเงื่อนไข release แรก (CORE-21 แนะนำก่อน release แรก ไม่บังคับ: ร้านมี sales channel/stock location เดียว)
@@ -933,8 +933,10 @@ none (storefront + e2e tooling)
   `compareAddresses({…, company: null}, {…, company: ""})` = true; e2e: ใส่โค้ดของ promotion ที่ campaign หมดอายุ (สร้างผ่าน admin API) Then เห็น `promotion-error` มีอักษรไทย และ
   `cart.promotions` ไม่มี code นั้น; เลือกที่อยู่ที่บันทึกไว้ที่มี field ว่างแล้ว dropdown ไม่แสดงข้อความ placeholder; หลัง `document.fonts.ready` ความสูงของ `CountrySelect` ต่างจาก `Input`
   ข้างเคียง ≤ 1px; e2e ที่สร้าง/ลบข้อมูลตรวจ `response.ok()` ของ `request.delete` ใน `finally` (grep) (unit Vitest + e2e)
-- AC-100 (CORE-19c, กฎข้อ 64) Given cart 2 line When เปิด `/th/cart` และ cart dropdown Then ทุก line มี `cart-item-remove-button` ใน DOM; Given route mock ให้ `DELETE` line ตอบ 500
-  When กดลบ Then เห็น `cart-item-remove-error` มีอักษรไทย, spinner หายภายใน 5 วินาที และ line ยังอยู่ (e2e)
+- AC-100 (CORE-19c, กฎข้อ 64) Given cart 2 line When เปิด `/th/cart` และ cart dropdown Then ทุก line มี `cart-item-remove-button` ใน DOM; Given route mock ให้ request ของ
+  server action ที่ลบ line (browser ส่งเป็น `POST` ไปที่หน้าเดิมพร้อม header `next-action` — `DELETE /store/carts/:id/line-items/:id` ยิงจาก Next server จึง mock จาก browser ไม่ได้)
+  ตอบ 500 When กดลบ Then เห็น `cart-item-remove-error` มีอักษรไทย, spinner หายภายใน 5 วินาที และ line ยังอยู่ (e2e)
+  (แก้ถ้อยคำรอบ 11 ตาม review #142 — ตรงกับที่ #142 ทดสอบ)
 - AC-101 (CORE-14f, กฎข้อ 65) Given ลูกค้าล็อกอินและ cart มี variant V qty 2 When เปิด `/th/account?add_variant=V&add_quantity=1` Then การ์ด `add-variant-pending` มี
   `add-variant-in-cart-qty` = 2 และ textContent ไม่มี "ยังไม่ได้อยู่ในตะกร้า"; When เปิด `/zz/account?add_variant=V` หรือส่งฟอร์ม `add-variant-confirm` ที่แก้ `countryCode` เป็น `zz`
   Then HTTP status < 500 และเห็นข้อความไทย (`add-variant-error`) หรือ URL ปลายทางขึ้นต้น `/th/` (e2e ทั้ง JS on/off สำหรับข้อแรก, no-JS สำหรับฟอร์ม)
@@ -965,6 +967,61 @@ none (storefront + e2e tooling)
 CORE-19c ∥ CORE-5c ∥ CORE-4g ∥ CORE-4f ∥ CORE-14f เริ่มได้ทันที (CORE-14d ☑ #128; CORE-4f กับ CORE-14f แตะ `lib/data/customer.ts`/account ร่วมกัน — ตัวที่ merge ทีหลัง rebase);
 CORE-20d หลัง CORE-20c (◐ #130 คิว merge)
 CORE-15, CORE-19b, CORE-23b (รอบเดิม) ยังไม่เริ่ม — นิยามไม่เปลี่ยน; CORE-19b และ CORE-4g ← CORE-4e ☑ เริ่มได้แล้ว
+(รอบ 11 สถานะ) CORE-19c ☑ #142 · CORE-4f ☑ #144 · CORE-14f ◐ #150 · CORE-20c ☑ #130 (CORE-20d เริ่มได้) · CORE-24 ☑ #134 · CORE-19b ◐ #151 · CORE-4g, CORE-5c, CORE-15, CORE-23b ☐
+
+## Follow-up รอบ 11 จาก review/qa (2026-10-27)
+ที่มา: review/qa ของ #142 (CORE-19c), #144 (CORE-4f), #151 (CORE-19b), builder CORE-4f และคำตัดสิน owner spec 03 Q6 (CORE-10b)
+แก้ถ้อยคำในที่เดิม: AC-100 (mock request ของ server action ไม่ใช่ `DELETE` — review #142), แถว CORE-19b (ต้นเหตุคือ race ไม่ใช่ `router.push` — review #151)
+Out of scope: nonce กันส่งซ้ำของฟอร์ม no-JS (CORE-14e หลัง v1.0) — กฎข้อ 69 กันเฉพาะการกดซ้ำตอน JS ทำงาน
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| status ของ error จาก Store API ใน server action | `FetchError.status` ของ `@medusajs/js-sdk` (ฝั่ง Next server) | ใช้ตามเดิม แต่ Next ใน production **ซ่อน** message/property ของ error ที่ throw จาก server action → ต้อง**คืนค่า** แทน throw (กฎข้อ 68) |
+| สถานะ pending ของฟอร์ม | `useFormStatus`/`useActionState` ของ React 19 | ใช้ตามเดิม (กฎข้อ 69) |
+| สร้าง collection และผูกสินค้าใน seed | `createCollectionsWorkflow` / workflow ของ product ใน `@medusajs/medusa/core-flows` | ใช้ตามเดิม (กฎข้อ 70) |
+
+### Data model / Workflows / API routes
+none (storefront)
+
+### Business rules
+68. (CORE-19d — review/qa #142) server action `deleteLineItem` คืนผลแบบมีโครงสร้าง `{ error: "unauthorized" | "failed" } | { ok: true }` แทนการ throw — status 401/403 ของ
+    `FetchError` → `"unauthorized"`, อื่นๆ → `"failed"`; `DeleteButton` แสดง `cart-item-remove-error` ข้อความไทย "เข้าสู่ระบบใหม่" สำหรับ `unauthorized` (ต่างจากข้อความ fallback)
+    — ไม่สร้าง helper กลางจนกว่าจะมี action ที่สองต้องใช้ (CLAUDE.md ข้อ 3)
+69. (CORE-4h — review/qa #144, builder CORE-4f) ต่อจากกฎข้อ 62: (a) `completeLogin`/action login คืน `reason: "invalid_credentials"` (จาก status 401 ของ auth) และ UI ตัดสินจาก `reason`
+    ไม่เทียบข้อความอังกฤษ; register 401 ที่ไม่ใช่อีเมลซ้ำ → ข้อความไทยทั่วไปของการสมัคร (ไม่บอกว่า "มีบัญชีอยู่แล้ว"); (b) ฟอร์มสมัครที่ล้มคงชื่อ/นามสกุล/เบอร์/อีเมล (รหัสผ่านล้างได้);
+    (c) ปุ่ม login/register disabled ระหว่างส่ง (`dblclick` = action 1 ครั้ง); (d) หน้า verify-account (`confirmEmailVerification`) แสดง error เป็นข้อความไทยผ่าน `friendlyErrorMessage`
+    ไม่แสดง `errorMessage` ดิบ
+70. (CORE-10b — owner ตัดสิน spec 03 Q6, 2026-10-27) seed สร้าง product collection ตัวอย่าง handle คงที่ `featured` ชื่อไทย (เช่น "สินค้าแนะนำ") ใส่สินค้าที่ seed สร้าง 2–4 รายการ
+    ด้วย workflow ของ Medusa (`createCollectionsWorkflow` + การผูกสินค้าผ่าน workflow ของ product) เพื่อให้หน้าแรกของ dev/staging มี rail สินค้า; idempotent แบบ CORE-10 (เช็กด้วย handle
+    ก่อนสร้าง; มีอยู่แล้ว → ไม่สร้าง/ไม่แก้); e2e ของ FS-17 **ไม่**พึ่ง collection นี้ (สร้างข้อมูลเอง)
+71. (CORE-19e — review #151 CORE-19b) ปุ่ม Continue ของขั้นชำระเงินที่ CORE-19b ล็อกไว้จน cart (props) มี session ของ provider ที่เลือก ต้อง**ไม่ค้างถาวร**เมื่อ RSC refresh ไม่มาถึง:
+    ล็อกเกิน 5 วินาที → เรียก `router.refresh()` 1 ครั้ง; เกิน 10 วินาทีนับจากเริ่มล็อก → ปลดล็อกปุ่มและแสดง `payment-session-pending-error` ข้อความไทย (ให้ลองอีกครั้ง) — cart ได้ session
+    เมื่อใดก็ปลดล็อกทันทีและยกเลิก timer (ไม่ refresh)
+
+### Acceptance criteria (follow-up รอบ 11)
+- AC-104 (CORE-19d, กฎข้อ 68) unit (Vitest, mock SDK): `deleteLineItem` เมื่อ SDK throw `FetchError` 401 → คืน `{ error: "unauthorized" }`, 500/network → `{ error: "failed" }`, สำเร็จ → `{ ok: true }`
+  และไม่ throw; unit ของ `DeleteButton`: `unauthorized` กับ `failed` แสดงข้อความไทยต่างกันใน `cart-item-remove-error`; e2e: AC-100 ยังผ่าน (unit Vitest + e2e)
+- AC-105 (CORE-4h, กฎข้อ 69) Given ลูกค้ามีบัญชี When `dblclick` ปุ่ม login ด้วยรหัสผ่านผิด Then มี request ของ action login 1 ครั้ง (นับ `POST` ที่มี header `next-action`) และ
+  `login-error-message` มีอักษรไทย; When สมัครด้วยอีเมลที่มีบัญชีแล้ว Then input ชื่อ/นามสกุล/เบอร์/อีเมลยังมีค่าเดิมและ error มีอักษรไทย; Given token ยืนยันอีเมลไม่ถูกต้อง
+  When เปิดหน้า verify-account Then ข้อความ error มีอักษรไทยและไม่ตรง `/[A-Za-z]{4,}/`; unit ของ action login (mock 401) คืน `reason: "invalid_credentials"`; unit ของ component login:
+  action คืน `{ reason: "invalid_credentials", message: "<ข้อความใดก็ได้ที่ไม่ใช่ของ auth provider>" }` Then แสดงข้อความไทยเฉพาะของรหัสผ่านผิด (ตัดสินจาก `reason` ไม่ใช่ข้อความ);
+  unit ของ action register (mock 401 ที่ไม่ใช่อีเมลซ้ำ) Then ข้อความไม่มี "มีบัญชีอยู่แล้ว" (แก้รอบ 11 ตาม review #152 — grep `"Invalid"` เดิมผ่านอยู่แล้วหลัง #144 จึงตัดออก) (e2e + unit Vitest)
+- AC-106 (CORE-10b, กฎข้อ 70) Given DB ว่าง When รัน seed **สองครั้ง** Then มี product collection handle `featured` **1 รายการ** ชื่อมีอักษรไทย มีสินค้า seed ≥ 2 รายการ และจำนวนสินค้าใน
+  collection เท่าเดิมหลังรันครั้งที่สอง; `GET /store/collections?handle[]=featured` (publishable key ของ seed) คืน collection นั้น; Given admin แก้ชื่อ collection `featured` (handle เดิม)
+  When รัน seed อีกครั้ง Then ชื่อที่ admin แก้ยังอยู่และไม่มี collection ใหม่ (integration — test seed แบบเดียวกับ CORE-10)
+- AC-107 (CORE-19e, กฎข้อ 71) unit (Vitest + fake timers) ของ component ขั้นชำระเงิน: Given กด Continue แล้ว action สร้าง session สำเร็จแต่ prop `cart` ยังไม่มี session ของ provider นั้น
+  When เวลาผ่าน 5 วินาที Then `router.refresh` (mock) ถูกเรียก 1 ครั้งและปุ่มยัง disabled; When ผ่าน 10 วินาที Then ปุ่มกดได้และเห็น `payment-session-pending-error` มีอักษรไทย;
+  Given prop `cart` ได้ session ที่ 2 วินาที Then ปุ่มปลดล็อก, ไม่มีการเรียก `router.refresh` และไม่มี error หลังเวลาผ่าน 10 วินาที; e2e AC-64 ยังผ่าน (unit Vitest + e2e)
+
+### Tasks (follow-up รอบ 11)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-19d | (storefront เล็ก, review/qa #142) `deleteLineItem` คืนผลแบบมีโครงสร้าง + `DeleteButton` แยก unauthorized (กฎข้อ 68) — ไฟล์: `lib/data/cart.ts`, `modules/common/components/delete-button` | AC-104 | CORE-19c ☑ (#142) — เริ่มได้; ชน `lib/data/cart.ts` กับ CORE-4g ตัวที่ merge ทีหลัง rebase |
+| CORE-4h | (storefront เล็ก, review/qa #144) `reason` ของ login, ฟอร์มสมัครคงค่า, กันกดซ้ำ login/register, error ไทยหน้า verify-account (กฎข้อ 69) — ไฟล์: `lib/data/customer.ts`, `modules/account/components/{login,register}`, หน้า verify-account | AC-105 | CORE-4f ☑ (#144) — เริ่มได้; ชน `lib/data/customer.ts` กับ CORE-14f (◐ #150) ตัวที่ merge ทีหลัง rebase |
+| CORE-10b | (backend seed เล็ก, owner Q6 spec 03) collection ตัวอย่าง `featured` ใน seed (กฎข้อ 70) — ไฟล์: `apps/backend/src/scripts/seed.ts` (+ test ของ seed) | AC-106 | CORE-10 ☑ (#76) — เริ่มได้ |
+| CORE-19e | (storefront เล็ก, review #151) ปุ่ม Continue ที่ล็อกรอ session ไม่ค้าง: `router.refresh()` ที่ 5s, ปลดล็อก + error ไทยที่ 10s (กฎข้อ 71) — ไฟล์: component ขั้นชำระเงินใน `modules/checkout` ที่ CORE-19b แก้ | AC-107 | CORE-19b (#151 merge) — ชนไฟล์ checkout กับ CORE-4g/EV-7c ตัวที่ merge ทีหลัง rebase |
+CORE-19d ∥ CORE-4h ∥ CORE-10b (คนละไฟล์); CORE-19e หลัง #151
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
