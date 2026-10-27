@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { evoucherApi, evoucherKeys } from "../lib/evoucher"
+import { createSingleFlight } from "../lib/single-flight"
 
 const EMPTY = {
   partner_id: "",
@@ -43,6 +44,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY)
+  const [submitOnce] = useState(createSingleFlight)
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: evoucherKeys.poolByVariant(variant.id),
@@ -83,13 +85,17 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
       toast.error("Partner, name and how to use are required")
       return
     }
-    create.mutate()
+    // กฎข้อ 11: กันคลิกซ้อนก่อน isPending เป็น true; error แสดงผ่าน onError แล้ว
+    submitOnce(() => create.mutateAsync().catch(() => undefined))
   }
 
   const field = (key: keyof typeof EMPTY, label: string, type = "text") => (
     <div className="flex flex-col gap-y-2">
-      <Label size="small">{label}</Label>
+      <Label size="small" htmlFor={`evoucher-pool-${key}`}>
+        {label}
+      </Label>
       <Input
+        id={`evoucher-pool-${key}`}
         size="small"
         type={type}
         value={form[key]}
@@ -154,7 +160,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
         <FocusModal.Content>
           <FocusModal.Header>
             <div className="flex items-center justify-end gap-x-2">
-              <Button size="small" onClick={submit} isLoading={create.isPending}>
+              <Button size="small" onClick={submit} disabled={create.isPending} isLoading={create.isPending}>
                 Save
               </Button>
             </div>
@@ -163,13 +169,15 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
             <div className="flex w-full max-w-lg flex-col gap-y-4">
               <Heading>Create voucher pool for {variant.title}</Heading>
               <div className="flex flex-col gap-y-2">
-                <Label size="small">Partner *</Label>
+                <Label size="small" htmlFor="evoucher-pool-partner_id">
+                  Partner *
+                </Label>
                 <Select
                   size="small"
                   value={form.partner_id}
                   onValueChange={(partner_id) => setForm({ ...form, partner_id })}
                 >
-                  <Select.Trigger>
+                  <Select.Trigger id="evoucher-pool-partner_id">
                     <Select.Value placeholder="Select partner" />
                   </Select.Trigger>
                   <Select.Content>
@@ -183,8 +191,11 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
               </div>
               {field("name", "Name *")}
               <div className="flex flex-col gap-y-2">
-                <Label size="small">How to use * (shown in the delivery email)</Label>
+                <Label size="small" htmlFor="evoucher-pool-how_to_use">
+                  How to use * (shown in the delivery email)
+                </Label>
                 <Textarea
+                  id="evoucher-pool-how_to_use"
                   value={form.how_to_use}
                   onChange={(e) => setForm({ ...form, how_to_use: e.target.value })}
                 />

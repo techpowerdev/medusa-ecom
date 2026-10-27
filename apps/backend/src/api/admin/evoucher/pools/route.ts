@@ -3,7 +3,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { EVOUCHER_MODULE } from "../../../../modules/evoucher"
 import EvoucherModuleService from "../../../../modules/evoucher/service"
 import { createEvoucherPoolWorkflow } from "../../../../workflows/evoucher/evoucher-pool"
-import { withCodeCounts } from "../helpers"
+import { withCodeCounts, withPoolCountFields } from "../helpers"
 import { AdminCreateEvoucherPool } from "../validators"
 
 export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
@@ -13,6 +13,7 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
     entity: "evoucher_pool",
     filters: req.filterableFields,
     ...req.queryConfig,
+    fields: withPoolCountFields(req.queryConfig.fields),
   })
   res.json({
     pools: await withCodeCounts(service, data),
