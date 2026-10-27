@@ -12,6 +12,7 @@ import {
 } from "@lib/util/product-structured-data"
 import { hreflangAlternates } from "@lib/util/hreflang"
 import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
+import { EVOUCHER_POOL_FIELDS } from "@lib/util/evoucher"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -110,6 +111,8 @@ export default async function ProductPage(props: Props) {
   const pricedProduct = await listProducts({
     countryCode: params.countryCode,
     queryParams: { handle: params.handle },
+    // EV-7b (spec 02 กฎข้อ 23): ข้อมูลพาร์ทเนอร์ของ voucher variant สำหรับ evoucher-partner-block
+    extraFields: EVOUCHER_POOL_FIELDS,
   }).then(({ response }) => response.products[0])
 
   if (!pricedProduct) {

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 
-import { cardPrice, daysUntil, estimateCommission, portalPage, portalTab } from "./affiliate-portal"
+import {
+  cardPrice,
+  countdownText,
+  earningsByStatus,
+  estimateCommission,
+  portalPage,
+  portalTab,
+  priceVaries,
+} from "./affiliate-portal"
 
 // AF-8a (spec 05 กฎ 29d): ยอดประมาณการบนการ์ด = ราคาปัจจุบัน × อัตรา ปัด 2 ตำแหน่ง half-up (กฎ 11) ไม่รวม cap
 describe("estimateCommission", () => {
@@ -31,16 +39,53 @@ describe("cardPrice", () => {
   })
 })
 
-describe("daysUntil", () => {
+// AF-8c (spec 05 กฎ 36a, AC-41): ≥ 24 ชม. → วัน (ปัดลง); < 24 ชม. → ชั่วโมง (ปัดขึ้น); < 1 ชม. → "ไม่ถึง 1 ชั่วโมง"
+describe("countdownText", () => {
   const now = new Date("2026-10-27T10:00:00Z")
+  const after = (ms: number) => new Date(now.getTime() + ms).toISOString()
+  const H = 60 * 60 * 1000
+
+  it("เหลือ 3 ชั่วโมง → ชั่วโมง ไม่มีวัน", () => {
+    const text = countdownText(after(3 * H), now)
+    expect(text).toBe("เริ่มในอีก 3 ชั่วโมง")
+    expect(text).not.toContain("วัน")
+  })
+
+  it("เหลือ 30 นาที → ไม่ถึง 1 ชั่วโมง", () => {
+    expect(countdownText(after(H / 2), now)).toContain("ไม่ถึง 1 ชั่วโมง")
+  })
 
   it.each([
-    ["2026-10-28T10:00:00Z", 1],
-    ["2026-10-28T09:00:00Z", 1], // เหลือไม่ถึงวัน → 1 วัน
-    ["2026-10-29T10:00:01Z", 3],
-    ["2026-10-27T09:00:00Z", 0],
-  ])("%s → %s วัน", (startsAt, days) => {
-    expect(daysUntil(startsAt, now)).toBe(days)
+    [49 * H, "เริ่มในอีก 2 วัน"],
+    [24 * H, "เริ่มในอีก 1 วัน"],
+    [47.9 * H, "เริ่มในอีก 1 วัน"], // ปัดลง
+    [23.5 * H, "เริ่มในอีก 24 ชั่วโมง"], // ชั่วโมงปัดขึ้น
+    [H, "เริ่มในอีก 1 ชั่วโมง"],
+    [H - 1, "เริ่มในอีกไม่ถึง 1 ชั่วโมง"],
+    [1, "เริ่มในอีกไม่ถึง 1 ชั่วโมง"],
+    [0, "เริ่มแล้ว"],
+    [-H, "เริ่มแล้ว"],
+  ])("เหลือ %s ms → %s", (ms, text) => {
+    expect(countdownText(after(ms), now)).toBe(text)
+  })
+
+  it("ค่าเริ่มต้นของ now คือเวลาปัจจุบัน", () => {
+    expect(countdownText(new Date(Date.now() + 3 * H + 60_000))).toBe("เริ่มในอีก 4 ชั่วโมง")
+  })
+})
+
+// AF-8c (กฎ 35a): variant มีราคาต่างกัน → ยอดประมาณการขึ้นต้น "ตั้งแต่"
+describe("priceVaries", () => {
+  const v = (amount: number | null) => ({ calculated_price: { calculated_amount: amount, currency_code: "thb" } })
+
+  it.each([
+    [[v(100), v(200)], true],
+    [[v(100), v(100)], false],
+    [[v(100), v(null)], false],
+    [[v(100)], false],
+    [[], false],
+  ])("%j → %s", (variants, expected) => {
+    expect(priceVaries(variants)).toBe(expected)
   })
 })
 
@@ -71,5 +116,37 @@ describe("portalPage", () => {
     [["2", "3"], 1],
   ] as const)("%j → %s", (value, page) => {
     expect(portalPage(value as string | string[] | undefined)).toBe(page)
+  })
+})
+
+// AF-8b (spec 05 กฎ 33): ยอดต่อสถานะตามแถวของ `GET /affiliate/me/earnings` ทีละสถานะ — storefront ไม่หักลบ/รวมยอดเอง
+describe("earningsByStatus", () => {
+  const row = (status: string, amount: number, currency = "thb") => ({ status, amount, currency, count: 1 })
+
+  it("แต่ละสถานะใช้ค่าของแถวนั้นตรงๆ — reversed ติดลบแยก ไม่หักจาก approved (AC-40)", () => {
+    expect(
+      earningsByStatus([row("approved", 50), row("paid", 100), row("pending", 30), row("reversed", -20)])
+    ).toEqual({
+      pending: [{ amount: 30, currency_code: "thb" }],
+      approved: [{ amount: 50, currency_code: "thb" }],
+      paid: [{ amount: 100, currency_code: "thb" }],
+      reversed: [{ amount: -20, currency_code: "thb" }],
+    })
+  })
+
+  it("สถานะที่ API ไม่คืนแถว → ฿0", () => {
+    expect(earningsByStatus([row("approved", 50)])).toEqual({
+      pending: [{ amount: 0, currency_code: "thb" }],
+      approved: [{ amount: 50, currency_code: "thb" }],
+      paid: [{ amount: 0, currency_code: "thb" }],
+      reversed: [{ amount: 0, currency_code: "thb" }],
+    })
+  })
+
+  it("หลายสกุลเงินแสดงแยกแถว ไม่รวมข้ามสกุล", () => {
+    expect(earningsByStatus([row("paid", 100), row("paid", 5, "usd")]).paid).toEqual([
+      { amount: 100, currency_code: "thb" },
+      { amount: 5, currency_code: "usd" },
+    ])
   })
 })

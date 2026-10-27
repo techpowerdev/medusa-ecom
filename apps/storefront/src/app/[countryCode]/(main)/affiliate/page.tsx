@@ -2,10 +2,12 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
-import { affiliateLogout, getAffiliate, listAffiliateProducts } from "@lib/data/affiliate-portal"
+import { getAffiliate, listAffiliateProducts } from "@lib/data/affiliate-portal"
 import { portalPage, portalTab } from "@lib/util/affiliate-portal"
 import { clx } from "@modules/common/components/ui"
 import AffiliateProductCard from "@modules/affiliate/components/product-card"
+import PortalError from "@modules/affiliate/components/portal-error"
+import StatusNotice from "@modules/affiliate/components/status-notice"
 
 export const metadata: Metadata = {
   title: "แอฟฟิลิเอต",
@@ -32,30 +34,23 @@ export default async function AffiliatePortalPage({ params, searchParams }: Prop
   }
   const tab = portalTab(query.tab)
   const page = portalPage(query.page)
-  // Q6: products เฉพาะ active — สถานะอื่นไม่เรียก API (จะได้ 403)
-  const result = affiliate.status === "active" ? await listAffiliateProducts(tab, page) : null
+  // Q6: products เฉพาะ active — สถานะอื่นไม่เรียก API (จะได้ 403) แสดง affiliate-status-notice (AF-8b กฎ 33)
+  // AF-8c กฎ 36b: backend ไม่ตอบ/5xx → affiliate-portal-error
+  const result =
+    affiliate.status === "active"
+      ? await listAffiliateProducts(tab, page).catch((error: unknown) => {
+          console.error("[affiliate-portal] /affiliate/products ล้ม", error)
+          return undefined
+        })
+      : null
+  if (result === undefined) {
+    return <PortalError />
+  }
   const base = `/${countryCode}/affiliate?tab=${tab}`
 
   return (
     <div className="content-container py-12 flex flex-col gap-y-6" data-testid="affiliate-portal-page">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <p>
-          {affiliate.name} · รหัสแนะนำ <span data-testid="affiliate-code">{affiliate.code}</span>
-        </p>
-        <form action={affiliateLogout}>
-          <input type="hidden" name="countryCode" value={countryCode} />
-          <button type="submit" className="underline" data-testid="affiliate-logout">
-            ออกจากระบบ
-          </button>
-        </form>
-      </div>
-
-      {affiliate.status === "pending" && (
-        <p data-testid="affiliate-pending-message">บัญชีของคุณอยู่ระหว่างรอผู้ดูแลอนุมัติ เมื่ออนุมัติแล้วจะเห็นสินค้าที่แชร์ได้ที่นี่</p>
-      )}
-      {affiliate.status === "suspended" && (
-        <p data-testid="affiliate-suspended-message">บัญชีของคุณถูกระงับชั่วคราว ไม่สามารถแชร์สินค้าได้</p>
-      )}
+      {!result && <StatusNotice status={affiliate.status} />}
 
       {result && (
         <>

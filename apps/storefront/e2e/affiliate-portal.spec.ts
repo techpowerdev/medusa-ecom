@@ -95,13 +95,13 @@ test("AF-8a: login → แท็บได้ค่าคอมตอนนี้
     await expect(card.getByTestId("affiliate-estimate")).not.toContainText("สูงสุด")
   })
 
-  await step("AC-35: Y (variant ได้อัตราต่างกัน) การ์ดเดียว แสดง 'สูงสุด 15%' และ 'สูงสุด' หน้ายอดประมาณการ", async () => {
+  await step("AC-35: Y (variant ได้อัตราต่างกัน) การ์ดเดียว แสดง 'สูงสุด 15%' และไม่มียอดประมาณการ (กฎ 35(b))", async () => {
     const card = page.locator(`[data-testid="affiliate-product-card"][data-handle="${Y}"]`)
     await expect(card).toHaveCount(1)
     await expect(card.getByTestId("affiliate-rate")).toContainText("15%")
     await expectThai(page, ["affiliate-rate-varies"])
     await expect(card.getByTestId("affiliate-rate-varies")).toContainText("สูงสุด")
-    await expect(card.getByTestId("affiliate-estimate")).toContainText("สูงสุด")
+    await expect(card.getByTestId("affiliate-estimate")).toHaveCount(0)
     await evidence("01-earning-tab")
   })
 
@@ -151,7 +151,7 @@ test("AF-8a: สมัคร affiliate ผ่าน portal → สถานะ�
 
   await step("เข้า portal ได้ แต่แสดงข้อความรออนุมัติ (Q6: pending → products 403)", async () => {
     await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate(\\?|$)`))
-    await expectThai(page, ["affiliate-pending-message"])
+    await expectThai(page, ["affiliate-status-notice"])
     await expect(page.getByTestId("affiliate-product-card")).toHaveCount(0)
     await expect(page.getByTestId("affiliate-code")).toHaveText(code)
     await evidence("03-pending")
@@ -201,7 +201,7 @@ test("AF-8a: affiliate ที่ถูกระงับ → ข้อควา�
     await page.getByTestId("affiliate-login-password").fill(ann.password)
     await page.getByTestId("affiliate-login-submit").click()
     await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate(\\?|$)`))
-    await expectThai(page, ["affiliate-suspended-message"])
+    await expectThai(page, ["affiliate-status-notice"])
     await expect(page.getByTestId("affiliate-tab-earning")).toHaveCount(0)
     await expect(page.getByTestId("affiliate-product-card")).toHaveCount(0)
   })

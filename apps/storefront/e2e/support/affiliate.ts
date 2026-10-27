@@ -1,5 +1,6 @@
 import { APIRequestContext } from "@playwright/test"
 import crypto from "node:crypto"
+import { Client } from "pg"
 
 import { BACKEND_URL, expect } from "./fixtures"
 import { Headers } from "./medusa"
@@ -30,4 +31,29 @@ export async function createActiveAffiliate(
   })
   expect(approved.status(), "admin approve affiliate").toBe(200)
   return { id: affiliate.id, code, email, password }
+}
+
+/**
+ * entry `approved` ของ affiliate ใส่ตรงใน DB (CI ตั้ง DATABASE_URL ให้ job e2e): การได้ entry approved ผ่าน flow จริง
+ * ต้องรอ maturity job รายวัน (AF-4) ซึ่ง e2e สั่งรันไม่ได้ — payout สร้าง/จ่าย/ยกเลิกผ่าน admin API และ UI จริง
+ */
+export async function insertApprovedEntry(affiliateId: string, programId: string, orderId: string, createdAt: Date) {
+  const db = new Client({ connectionString: process.env.DATABASE_URL })
+  await db.connect()
+  try {
+    await db.query(
+      `insert into affiliate_commission_entry
+         (id, affiliate_id, program_id, order_id, amount, raw_amount, currency, status, created_at, updated_at)
+       values ($1, $2, $3, $4, 100, '{"value":"100","precision":20}', 'thb', 'approved', $5, $5)`,
+      [
+        `affcom_e2e${crypto.randomBytes(6).toString("hex")}`,
+        affiliateId,
+        programId,
+        orderId,
+        createdAt,
+      ],
+    )
+  } finally {
+    await db.end()
+  }
 }

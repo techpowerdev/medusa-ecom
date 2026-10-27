@@ -8,7 +8,7 @@
 - คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
 - ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
-  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
+  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น menuitem ของ `ActionMenu` ใน admin — ADR-018) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
   regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
 
 ## โปรเจกต์นี้คืออะไร
@@ -21,6 +21,25 @@ storefront จาก **Medusa Next.js Starter** เราขยายควา�
    Medusa docs ก่อน รวมถึง plugin/integration ของ Medusa, partner และ community ที่
    https://medusajs.com/integrations (ต้องรองรับ Medusa v2 เวอร์ชันที่ pin และเพิ่ม dependency ผ่าน spec/ADR) หาก Medusa มีให้แล้ว → ใช้/ขยายต่อ หากคิดว่าของ Medusa
    ไม่เพียงพอ → เขียน ADR ใน `docs/decisions/` ก่อน และต้องได้รับการอนุมัติ
+   **หน้า admin (`src/admin/`) — ใช้ของ Medusa ตามลำดับนี้ก่อนเขียนเอง** (อ้างอิง https://docs.medusajs.com/resources/admin-components)
+   1) `@medusajs/dashboard` (export ตั้งแต่ v2.21.0; เรา pin 2.22.1): `@medusajs/dashboard/components` (เช่น `ActionMenu`,
+      `SectionRow`, `JsonViewSection`, `DisplayId`, empty states, `Listicle`, `Thumbnail`, `Form`, `KeyboundForm`, `Combobox`,
+      `CountrySelect`, `RouteDrawer`, `RouteFocusModal`, `StackedDrawer`, `StackedFocusModal`, `ConfigurableDataTable`,
+      `DataGrid`, `LayoutComposer`), `@medusajs/dashboard/hooks` (hook ของ resource Medusa + query key factory,
+      `useQueryParams`, `useDate`, `useDebouncedSearch`, `useComboboxData`, data-table helpers) และ `@medusajs/dashboard/lib`
+      (เงิน/สกุลเงินเช่น `getStylizedAmount`, ที่อยู่, form validation, table utilities, `defineSearchEntity`)
+   2) primitive ของ `@medusajs/ui` (เช่น `DataTable`/`useDataTable`/`createDataTableColumnHelper`, `usePrompt`, `toast`,
+      `FocusModal`, `Drawer`, `Container`, `Heading`, `StatusBadge`)
+   3) ของที่ dashboard ไม่ export (เช่น Header) → ทำตาม "Custom Component Guides" ของหน้าเดียวกัน; **ห้าม copy โค้ดจากหน้า
+      archive** (ถูกแทนด้วย export แล้ว)
+   ดึงข้อมูล: resource ของ Medusa ใช้ hook ของ dashboard; route ของเราเองใช้ JS SDK + Tanstack Query (query key + invalidate)
+   ฟอร์ม: `Form` ของ dashboard + react-hook-form + zod (สร้าง = `FocusModal`, แก้ = `Drawer` แบบ state — ADR-018 Q5)
+   ปุ่มต่อแถวใช้ `ActionMenu` (testid ที่ trigger; e2e หา menuitem ด้วย role + ชื่อ — ข้อยกเว้นของการหาด้วย `data-testid`);
+   วันเวลาใช้ `DatePicker` (`granularity="minute"`) + `useDate` ตาม timezone ของเครื่องแบบ Medusa (เครื่องแอดมินตั้งเวลาไทย);
+   เงินใช้ `getLocaleAmount` — ดู ADR-018
+   ห้ามเขียน component/hook/helper ซ้ำกับข้างบน (ตาราง, แบ่งหน้า, prompt, toast, client API, formatter เงิน/วันที่, form field)
+   สร้างเองได้เฉพาะเมื่อไม่มีจริง พร้อมเหตุผลใน PR; shared component เก็บที่ `src/admin/components/common/` เมื่อมีผู้ใช้จริง ≥ 2 ที่;
+   ของจาก Medusa ก็ยังต้องกันกดซ้ำตามกฎด้านล่าง — แผนปรับโค้ดเดิมดู ADR-018
 2. **ทำตาม convention ของ Medusa**: module อยู่ใน `src/modules/`, workflow อยู่ใน
    `src/workflows/`, API route อยู่ใน `src/api/`, subscriber อยู่ใน `src/subscribers/`,
    scheduled job อยู่ใน `src/jobs/`, admin extension อยู่ใน `src/admin/`, link อยู่ใน

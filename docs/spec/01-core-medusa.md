@@ -22,6 +22,7 @@
 | Notifications (email providers) | Notification module | Resend/SendGrid provider |
 | Tax | Tax module | VAT ไทย 7% แบบรวมในราคา |
 | Admin dashboard | `@medusajs/dashboard` | เปลี่ยน theme/logo เท่านั้น |
+| UI ของ admin extension (component, hook, utility) | `@medusajs/dashboard/{components,hooks,lib}` (ตั้งแต่ v2.21.0) + `@medusajs/ui` + custom guide (Header) | ใช้เป็นฐานก่อนสร้างเอง — ADR-018 (proposed), spec 08 (ADM-1..9) |
 | Storefront: PLP, PDP, cart, checkout, account, orders | Next.js Starter | Theme + ข้อความภาษาไทย (ADR-008 theme/THB, ADR-014) |
 | Locale ของเนื้อหา (สินค้า/หมวดหมู่/collection) | Translation module (experimental, feature flag) + Store locales + starter: cookie `_medusa_locale`, header `x-medusa-locale`, `language-select` | backend เปิดแล้วใน CORE-7 (คงไว้); storefront **ไม่ใช้** ในระยะแรก — ลบ `language-select` (ADR-014) |
 | ข้อความ UI ของ storefront | ไม่มี (starter hard-code อังกฤษ) | แทนด้วยภาษาไทยตรงในโค้ด ไม่มี i18n library (ADR-014) |
