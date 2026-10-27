@@ -1,13 +1,7 @@
-import {
-  AuthenticatedMedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http";
-import type { OrderDetailDTO } from "@medusajs/framework/types";
-import {
-  ContainerRegistrationKeys,
-  MedusaError,
-} from "@medusajs/framework/utils";
-import { getLastPaymentStatus } from "@medusajs/medusa/core-flows";
+import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import type { OrderDetailDTO } from "@medusajs/framework/types"
+import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
+import { getLastPaymentStatus } from "@medusajs/medusa/core-flows"
 
 const FIELDS = [
   "id",
@@ -44,49 +38,46 @@ const FIELDS = [
   "order.payment_collections.payment_sessions.status",
   "order.payment_collections.payment_sessions.amount",
   "order.payment_collections.payment_sessions.data",
-];
+]
 
 type Session = {
-  id: string;
-  provider_id: string;
-  status: string;
-  amount: unknown;
-  data?: Record<string, unknown> | null;
-};
+  id: string
+  provider_id: string
+  status: string
+  amount: unknown
+  data?: Record<string, unknown> | null
+}
 type Collection = {
-  id: string;
-  amount: unknown;
-  status: string;
-  payment_sessions?: (Session | null)[];
-};
+  id: string
+  amount: unknown
+  status: string
+  payment_sessions?: (Session | null)[]
+}
 type Item = {
-  id: string;
-  title: string;
-  variant_title: string | null;
-  thumbnail: string | null;
-  quantity: unknown;
-  unit_price: unknown;
-  total: unknown;
-};
+  id: string
+  title: string
+  variant_title: string | null
+  thumbnail: string | null
+  quantity: unknown
+  unit_price: unknown
+  total: unknown
+}
 type Row = {
-  id: string;
-  status: string;
-  units: number;
-  group: Record<string, unknown>;
+  id: string
+  status: string
+  units: number
+  group: Record<string, unknown>
   order?:
     | (Record<string, unknown> & {
-        items?: (Item | null)[];
-        payment_collections?: (Collection | null)[];
+        items?: (Item | null)[]
+        payment_collections?: (Collection | null)[]
       })
-    | null;
-};
+    | null
+}
 
 // GB-8 (spec 04 API รอบ 10, กฎข้อ 21, ADR-016): draft order (หรือ order ที่แปลงแล้ว) ผ่าน membership ของผู้เรียกเท่านั้น
-export async function GET(
-  req: AuthenticatedMedusaRequest,
-  res: MedusaResponse,
-) {
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   // ADR-013 ข้อ 2: กรอง customer_id ใน query เดียวกับการหา — ของคนอื่น/ไม่มี/ไม่ใช่ group buy → 404
   const { data } = await query.graph({
     entity: "group_buy_membership",
@@ -95,20 +86,15 @@ export async function GET(
       order_id: req.params.order_id,
       customer_id: req.auth_context.actor_id,
     },
-  });
-  const row = data[0] as Row | undefined;
-  const order = row?.order;
+  })
+  const row = data[0] as Row | undefined
+  const order = row?.order
   if (!row || !order) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_FOUND,
-      `Group buy order with id: ${req.params.order_id} was not found`,
-    );
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, `Group buy order with id: ${req.params.order_id} was not found`)
   }
 
-  const collections = (order.payment_collections ?? []).filter(
-    (c): c is Collection => !!c,
-  );
-  res.set("Cache-Control", "private, no-store");
+  const collections = (order.payment_collections ?? []).filter((c): c is Collection => !!c)
+  res.set("Cache-Control", "private, no-store")
   res.json({
     membership: { id: row.id, status: row.status, units: row.units },
     group: {
@@ -159,5 +145,5 @@ export async function GET(
           })),
       })),
     },
-  });
+  })
 }
