@@ -1,0 +1,37 @@
+# CORE-24 (spec 01 AC-94, กฎข้อ 59) — ผล test ในเครื่อง 2026-10-27
+# backend :9191 (medusa develop, DB medusa_core24), storefront :8191 (next dev)
+
+## e2e: core-24-pdp-quantity.spec.ts + core-14b-add-variant.spec.ts (regression ของ no-JS add_quantity)
+Running 2 tests using 1 worker
+  ✓  1 [chromium] › e2e/core-24-pdp-quantity.spec.ts:32:5 › AC-94: (JS) เลือก 3 ใน product-quantity-select แล้วกดเพิ่มลง cart → cart มี line qty 3 (3.2s)
+  ✓  2 [chromium] › e2e/core-24-pdp-quantity.spec.ts:69:7 › ปิด JavaScript › AC-94: (no-JS, ไม่ล็อกอิน) เลือก 2 แล้ว submit และ login → cart มี qty 2 (3.7s)
+  2 passed (7.7s)
+Running 3 tests using 1 worker
+  ✓  1 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (4.1s)
+  ✓  2 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (1.0s)
+  ✓  3 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (855ms)
+  3 passed (6.4s)
+
+## unit: src/lib/util/pending-add-to-cart.test.ts
+ ✓ src/lib/util/pending-add-to-cart.test.ts > loginPathForAddToCart > points to the account (login) page of the country with the pending variant 1ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > loginPathForAddToCart > encodes the variant id 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > readPendingAddToCart > returns the pending variant and country from the login form 8ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > readPendingAddToCart > returns null when nothing is pending 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > readPendingAddToCart > returns null for a missing or malformed country code 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > clampLineItemQuantity > undefined → 1 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > clampLineItemQuantity > null → 1 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > clampLineItemQuantity >  → 1 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > clampLineItemQuantity > abc → 1 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > clampLineItemQuantity > 0 → 1 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > clampLineItemQuantity > -2 → 1 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > clampLineItemQuantity > 3 → 3 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > clampLineItemQuantity > 101 → 100 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > quantity ที่ค้างไว้ข้าม login (CORE-14b) > loginPathForAddToCart ใส่ quantity เมื่อมากกว่า 1 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > quantity ที่ค้างไว้ข้าม login (CORE-14b) > readPendingAddToCart อ่าน quantity จากฟอร์มและจำกัดช่วง 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > quantity ที่ค้างไว้ข้าม login (CORE-14b) > readPendingAddQuery อ่าน variant และ quantity จาก searchParams ของหน้า 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > PDP_QUANTITY_OPTIONS > is 1..10 0ms
+ ✓ src/lib/util/pending-add-to-cart.test.ts > PDP_QUANTITY_OPTIONS > is within the line item clamp so the server keeps the chosen quantity 0ms
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+
+## storefront ทั้งหมด: vitest 289 passed; pnpm lint 0 errors; pnpm typecheck ผ่าน; pnpm --filter storefront build ผ่าน

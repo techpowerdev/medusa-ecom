@@ -6,6 +6,12 @@ export const PENDING_QUANTITY_PARAM = "add_quantity"
 
 export const MAX_LINE_ITEM_QUANTITY = 100
 
+// CORE-24 (กฎข้อ 59): ตัวเลือกจำนวนบน PDP 1..10 (อยู่ในช่วง clamp ของ MAX_LINE_ITEM_QUANTITY)
+export const PDP_QUANTITY_OPTIONS = Array.from(
+  { length: Math.min(10, MAX_LINE_ITEM_QUANTITY) },
+  (_, i) => i + 1
+)
+
 const COUNTRY_CODE_RE = /^[a-z]{2}$/
 
 export const clampLineItemQuantity = (raw: string | null | undefined) =>
