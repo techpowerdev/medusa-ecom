@@ -16,7 +16,15 @@ moduleIntegrationTestRunner<EvoucherModuleService>({
   moduleModels: [EvoucherPartner, EvoucherPool, EvoucherCode, EvoucherCodeReveal],
   moduleOptions: { encryptionKey: ENCRYPTION_KEY },
   resolve: "./src/modules/evoucher",
-  testSuite: ({ service }) => {
+  testSuite: ({ service, MikroOrmWrapper }) => {
+    // EV-7a (spec 02 กฎข้อ 22, AC-34): รายการ code ของลูกค้าค้นด้วย customer_id + status — index ต้องครอบสองคอลัมน์นี้
+    it("has a (customer_id, status) index on evoucher_code", async () => {
+      const rows: { indexdef: string }[] = await MikroOrmWrapper.getManager()
+        .getConnection()
+        .execute(`SELECT indexdef FROM pg_indexes WHERE tablename = 'evoucher_code'`)
+      expect(rows.some((r) => /\(customer_id, status\)/.test(r.indexdef))).toBe(true)
+    })
+
     const createPool = async (variant_id: string) => {
       const partner = await service.createEvoucherPartners({ name: "Lotus" })
       return service.createEvoucherPools({
