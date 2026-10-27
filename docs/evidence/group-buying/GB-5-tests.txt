@@ -1,0 +1,30 @@
+# GB-5 — ผล test (2026-10-28, worktree feat/GB-5-payment-captured-convert จาก origin/develop d33322f)
+
+## Red (ก่อนแก้)
+- unit: Cannot find module '../utils/membership-payment'; template GROUP_BUY_PAYMENT_EXPIRED ไม่มี (1 failed)
+- integration group-buy-payment.spec.ts: 3 failed (is_draft_order ยัง true, membership ยัง awaiting_payment, job ไม่ยกเลิก)
+- AC-37 ฿1,000.07 เมื่อถอดการปัดออก: Expected <= 2, Received 3 (raw_amount ของ collection มี 3 ตำแหน่ง)
+
+## Green — integration:http group-buy-payment.spec.ts
+    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1208 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1000 ms)
+    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (865 ms)
+    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (1512 ms)
+Tests:       4 passed, 4 total
+
+## Regression — integration:http ที่เกี่ยวข้อง
+group-buy-outcome.spec.ts:
+Tests:       10 passed, 10 total
+payment-session-draft-order.spec.ts:
+Tests:       4 passed, 4 total
+group-buy-store-memberships.spec.ts:
+Tests:       12 passed, 12 total
+
+## unit (pnpm --filter backend test:unit)
+Test Suites: 69 passed, 69 total
+Tests:       680 passed, 680 total
+
+## typecheck (ก่อน build, ไม่มี .medusa/) / lint / build
+pnpm typecheck: exit 0
+pnpm lint: 0 errors (warning เดิม 1 ตัวใน src/lib/json-logger.ts ไม่ใช่ของ task นี้)
+pnpm --filter backend build: Backend + Frontend build completed successfully

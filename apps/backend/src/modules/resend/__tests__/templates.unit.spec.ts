@@ -279,5 +279,12 @@ describe("renderEmailTemplate", () => {
       expect(email!.subject).toMatch(/[\u0E00-\u0E7F]/)
       expect(email!.html).toContain("#1042")
     })
+
+    // GB-5 (AC-10): อีเมล "หมดเวลาชำระเงิน"
+    it("renders the payment-expired email in Thai with the order number", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAYMENT_EXPIRED, { order: data.order })
+      expect(email!.subject).toMatch(/[฀-๿]/)
+      expect(email!.html).toContain("#1042")
+    })
   })
 })

@@ -24,6 +24,7 @@ import {
   payDeadlineAt,
   resolveGroupOutcomeTransition,
 } from "../../modules/group_buy/utils/group-outcome"
+import { memberPaymentAmount } from "../../modules/group_buy/utils/membership-payment"
 import { EmailTemplates } from "../../modules/resend/templates"
 import { LOCK_TIMEOUT, LOCK_TTL } from "./join-group"
 
@@ -109,7 +110,8 @@ export const setGroupOutcomeStep = createStep(
 )
 
 // payment collection บน draft order — ยอด = `total` ของ draft order ที่ Medusa คำนวณ (หลังส่วนลด GB-* ที่ freeze ตอน join)
-// ไม่ใช้ summary.current_order_total (review #68) และไม่คำนวณยอดเอง; order ที่มี collection แล้วข้าม (AC-9)
+// ปัด 2 ตำแหน่ง (กฎข้อ 20, AC-37) ไม่ใช้ summary.current_order_total (review #68) และไม่คำนวณยอดเอง;
+// order ที่มี collection แล้วข้าม (AC-9)
 // ถ้าล้มกลาง loop collection ที่สร้างแล้วใน step นี้ไม่ถูก compensate (Medusa ไม่รัน compensation ของ step ที่ throw)
 // แต่รันซ้ำได้เพราะข้าม order ที่มี collection แล้ว
 // ข้อจำกัด: ทุก membership ประมวลผลใน workflow เดียวใต้ lock (TTL 60s) — pool หลายร้อยคนอาจเกิน TTL
@@ -125,7 +127,7 @@ export const createMemberPaymentCollectionsStep = createStep(
     const created: { id: string; order_id: string }[] = []
     for (const order of orders.filter((o) => !o.payment_collections?.length)) {
       const { result } = await createOrderPaymentCollectionWorkflow(container).run({
-        input: { order_id: order.id, amount: order.total },
+        input: { order_id: order.id, amount: memberPaymentAmount(order.total).toNumber() },
       })
       created.push({ id: result[0].id, order_id: order.id })
     }
