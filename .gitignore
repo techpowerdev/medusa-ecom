@@ -32,3 +32,4 @@ blob-report/
 .idea/
 *.swp
 *.tsbuildinfo
+tools/load/out/
