@@ -27,3 +27,6 @@ export type EvoucherLine = {
 
 export const EVOUCHER_BACKORDERED_METADATA_KEY = "evoucher_backordered"
 export const EVOUCHER_NOTIFICATION_TRIGGER = "payment.captured"
+
+/** EV-5c (กฎข้อ 21): lock key ต่อ order ที่ allocation (EV-4) และ resend (EV-5b) ถือร่วมกัน — กันอีเมลซ้ำ 2 ฉบับ */
+export const evoucherOrderLockKey = (orderId: string) => `evoucher-order:${orderId}`
