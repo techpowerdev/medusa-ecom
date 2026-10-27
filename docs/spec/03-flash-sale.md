@@ -206,7 +206,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
     (รวม `listProductsWithSort` ที่เรียกต่อ) ใน `lib/data/{collections,products}.ts` และ `listVariantIdsByProduct` ของ FS-14 ใช้ `cache: "force-cache"` + tag จาก cookie
     `_medusa_cache_id` — ตอน render หน้า static/ISR ไม่มี cookie จึงไม่มี tag และไม่มี `revalidate` → fetch ถูก cache ไม่มีกำหนด (collection/สินค้าใหม่ไม่ขึ้นหน้าแรกจน build ใหม่)
     แก้เป็น: fetch เหล่านี้ตั้ง `next.revalidate = 60` (วินาที) **เสมอ** และคง tag เดิมเมื่อมี cookie (การ revalidate ตาม tag หลัง action ของ starter ยังทำงาน) — ใช้กลไก Data Cache/ISR
-    ของ Next ไม่เพิ่ม infra (ADR-017 ทางเลือก A, proposed); ข้อมูลใหม่ปรากฏบนหน้าแรก, `/store`, `/search`, collection ภายใน ≤ 90 วินาที (สอดคล้อง spec 01 กฎข้อ 66f); `listRegions`/อื่นๆ นอก 4 ฟังก์ชันนี้ไม่อยู่ในขอบเขต;
+    ของ Next ไม่เพิ่ม infra (ADR-017 ทางเลือก A, accepted owner 2026-10-27); ข้อมูลใหม่ปรากฏบนหน้าแรก, `/store`, `/search`, collection ภายใน ≤ 90 วินาที (สอดคล้อง spec 01 กฎข้อ 66f); `listRegions`/อื่นๆ นอก 4 ฟังก์ชันนี้ไม่อยู่ในขอบเขต;
     nit #148: data function ของ `/store` ไม่ยิง `GET /store/products` เมื่อชุด hit ว่าง (short-circuit)
 
 ## Acceptance criteria
@@ -339,7 +339,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-12 | **✕ ปิดรอบ 10 (ไม่ต้องทำ)** — QA #115 พิสูจน์ preview = cart ทั้ง 5 แบบ target rule (กฎข้อ 17); เดิม: context ของ item ใน price preview ตรงกับของ cart; AC-18 | — |
 | FS-13 | ☑ #129 — (เล็ก, storefront, รอบ 9 — qa #115) disable ปุ่มเพิ่มลง cart เมื่อ `sold_out` + ราคา flash บนการ์ด PLP และแถบล่าง PDP มือถือ (กฎข้อ 18); AC-19 | FS-6 ☑ (#115) |
 | FS-14 | ◐ #148 — (เล็ก, storefront, รอบ 10 — scope ที่ FS-13 #129 ไม่ครอบ) ราคา flash บนการ์ดของ `/store`, `/search`, rail หน้าแรก โดยหา variant id ผ่าน `GET /store/products` หนึ่ง request ต่อหน้า ไม่แตะ search index (กฎข้อ 19); AC-20 — **ถือว่า ☑ เต็มเมื่อ FS-17 merge แล้วเท่านั้น** (test หน้าแรกของ AC-20 เป็น `test.fixme` ใน #148 จน FS-17 แก้ cache) | FS-13 ☑ (#129) |
-| FS-17 | (เล็ก, storefront, รอบ 11 — เงื่อนไข review #148) `next.revalidate = 60` ใน fetch ของ collections/products/`listVariantIdsByProduct` (คง tag เมื่อมี cookie), short-circuit ชุด hit ว่าง, e2e สร้าง collection + สินค้า flash เองผ่าน admin API แล้วเปลี่ยน test หน้าแรกของ AC-20 จาก `test.fixme` เป็น `test` (กฎข้อ 22); AC-24, AC-20 (หน้าแรก) — ไฟล์: `lib/data/{collections,products}.ts`, data function ของ FS-14, e2e ของ FS-14 | FS-14 (#148 merged), ADR-017 accepted (owner) — ชน `lib/data/products.ts`/การ์ดกับ FS-16 ตัวที่ merge ทีหลัง rebase |
+| FS-17 | (เล็ก, storefront, รอบ 11 — เงื่อนไข review #148) `next.revalidate = 60` ใน fetch ของ collections/products/`listVariantIdsByProduct` (คง tag เมื่อมี cookie), short-circuit ชุด hit ว่าง, e2e สร้าง collection + สินค้า flash เองผ่าน admin API แล้วเปลี่ยน test หน้าแรกของ AC-20 จาก `test.fixme` เป็น `test` (กฎข้อ 22); AC-24, AC-20 (หน้าแรก) — ไฟล์: `lib/data/{collections,products}.ts`, data function ของ FS-14, e2e ของ FS-14 | FS-14 (#148 merged) — ชน `lib/data/products.ts`/การ์ดกับ FS-16 ตัวที่ merge ทีหลัง rebase |
 | FS-15 | (storefront, รอบ 10 — qa FS-6 O-1, CORE-24 #134) เตือน/disable เมื่อจำนวนเกิน `remaining_units` บน PDP + เตือนใน cart + ข้อความไทยของ `FLASH_*`/`PROMOTION_NOT_COMBINABLE` ตอน complete (กฎข้อ 20); AC-21, AC-22 | CORE-24 (#134 — ใช้ `product-quantity-select`), FS-13 ☑ |
 | FS-16 | (เล็ก, storefront, รอบ 10 — qa FS-13 O-A/O-B/O-C) ปุ่มรอระหว่างโหลดข้อมูล flash, ราคา `product-price` ขีดฆ่าเมื่อมีราคา flash, ป้าย sold out บนการ์ด (กฎข้อ 21); AC-23 | FS-15 (แตะ PDP ไฟล์เดียวกัน), FS-14 (แตะการ์ดเดียวกัน) |
 FS-11 หลัง FS-8 (แตะ subscriber/workflow คืนโควตาไฟล์เดียวกัน); FS-10 ยังไม่ทำ (สถานะ 2026-10-26) ไม่เปลี่ยนนิยาม
@@ -348,7 +348,7 @@ FS-10 หลัง FS-5; FS-12 ∥ FS-13 (FS-12 backend เริ่มได้
 (รอบ 10) FS-14 เริ่มได้ทันที ∥ FS-15 (หลัง CORE-24 #134 merge); FS-16 หลังทั้งสอง (แตะ PDP/การ์ดเดียวกัน); review nit #115 ที่เหลือ (server action ทำงานทีละตัวต่อ client — พฤติกรรมของ Next,
 ไม่มี task; `slice(0,24)` แก้แล้วเป็นการแบ่งชุดใน FS-13) ไม่มี task
 (รอบ 11) FS-14 ◐ #148 → FS-17 (หลัง #148 merge; FS-14 ☑ เต็มเมื่อ FS-17 ☑) ∥ FS-15 (CORE-24 ☑ #134 — เริ่มได้); FS-16 หลัง FS-14 + FS-15;
-seed **ไม่**เพิ่ม collection สำหรับ e2e — test สร้างข้อมูลของตัวเอง (พิสูจน์กฎข้อ 22 ได้ในตัว และไม่ผูก seed ของ production กับ test; collection ตัวอย่างสำหรับ dev ดู Q6)
+seed **ไม่**เพิ่ม collection สำหรับ e2e — test สร้างข้อมูลของตัวเอง (พิสูจน์กฎข้อ 22 ได้ในตัว และไม่ผูก seed ของ production กับ test; collection ตัวอย่างสำหรับ dev → CORE-10b ตาม Q6 ที่ owner ตัดสิน)
 PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวกับ FS-3 แต่ FS-3 merge แล้ว); ต้อง merge ก่อน GB-3 (dependency) และควรก่อน FS-6
 
 ## คำถามที่ยังเปิดอยู่
@@ -364,5 +364,5 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
   ตามเกณฑ์กฎข้อ 10 (refund รวม ≥ capture รวม และ capture > 0) ไม่ว่าจะมาจาก cancel หรือ return; refund บางส่วนไม่คืน
 - ~~Q4~~ ตัดสินแล้ว (owner, 2026-10-25): ยอมรับข้อจำกัดของ preview ตามกฎข้อ 14 ใน v1
 - ~~Q5~~ ตัดสินแล้ว (owner, 2026-10-25): FS-7 เอา `remaining_usage` ออก ใช้ `sold_out` + `remaining_units` แทน
-- Q6 (รอบ 11, FS-17) seed ไม่มี collection เลย → หน้าแรกของ dev/staging ไม่มี rail สินค้า ควรเพิ่ม collection ตัวอย่าง (เช่น "สินค้าแนะนำ" handle คงที่ ใส่สินค้า seed 2–4 ชิ้น,
-  idempotent ตาม CORE-10) ไหม — **ข้อเสนอ: เพิ่ม** เป็น task เล็กของ seed แยกจาก FS-17 (e2e ของ FS-17 ไม่พึ่ง seed นี้); ถ้าไม่ต้องการ หน้าแรกจะว่างจน admin สร้าง collection เอง
+- ~~Q6~~ ตัดสินแล้ว (owner 2026-10-27): **เพิ่ม collection ตัวอย่างใน seed** → task CORE-10b (spec 01 กฎข้อ 70, AC-106); e2e ของ FS-17 ยังสร้างข้อมูลเองไม่พึ่ง seed นี้;
+  คำถามเดิม (รอบ 11): seed ไม่มี collection เลย → หน้าแรกของ dev/staging ไม่มี rail สินค้า

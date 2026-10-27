@@ -187,7 +187,8 @@ OPS-8 แตะ `tools/ops/`/`docs/ops/production.md` — ถ้า CORE-10 merg
 OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น; OPS-13 หลัง OPS-7 (#108) ∥ OPS-12; OPS-3b ∥ OPS-3c หลัง OPS-3 และคำตอบ Q-O1/Q-O2
 (รอบ 10) สถานะ: OPS-3 ☑ #120, OPS-7 ☑ #108, OPS-13 ☑ #127; OPS-3b/OPS-3c ⏸ หลัง v1.0; OPS-12 ∥ OPS-13b ∥ OPS-10 เริ่มได้ (OPS-12/OPS-10 แตะ `ci.yml` ร่วมกับ OPS-14 #133 —
 เริ่มหลัง #133 merge เพื่อลด conflict); OPS-15 หลัง OPS-14; OPS-4 เริ่มได้ (Q-O3 ตัดสินแล้ว; workflow ไฟล์แยกจึงไม่ชน `ci.yml` ของ #133)
-(รอบ 11) สถานะ: OPS-10 ☑ #141, OPS-14 ☑ #133, OPS-13b ◐ #147 (คิว merge — nit review #147: เพิ่ม "→ service zone" ในเส้นทางเมนู shipping option ของ `production.md` ข้อ 5 แก้ใน #147);
+(รอบ 11) สถานะ: OPS-10 ☑ #141, OPS-14 ☑ #133, OPS-13b ☑ #147 (nit review #147 — เพิ่ม "→ service zone" ในเส้นทางเมนู shipping option ของ `production.md` ข้อ 5 —
+#147 ไม่ได้แก้ จึงแก้ใน PR เอกสารรอบ 11 (#152) หลัง merge develop);
 OPS-12, OPS-15, OPS-16 เริ่มได้ (แตะ `ci.yml` ร่วมกัน — ทีละตัว ลำดับแนะนำ OPS-15 → OPS-12 → OPS-16); OPS-4, OPS-5 ☐; e2e รันแม้ backend test ล้ม (ผลของการรันขนานใน OPS-14) — ยอมรับ ไม่มี task
 
 ## Open questions (รอบ 10)
