@@ -19,11 +19,12 @@
 
   input:focus ~ label,
   input:not(:placeholder-shown) ~ label {
-    @apply -translate-y-2 text-xsmall-regular;
+    @apply -translate-y-3 text-xsmall-regular;
   }
 
+  /* CORE-4e (qa #109): animate เฉพาะตอน focus — ค่าที่เติมจากโค้ดทำให้ label ลอยทันที ไม่ทับข้อความระหว่าง transition */
   input:focus ~ label {
-    @apply left-0;
+    @apply left-0 transition-all duration-300;
   }
 
   input:-webkit-autofill,
