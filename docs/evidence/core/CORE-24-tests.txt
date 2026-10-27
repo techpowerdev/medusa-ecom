@@ -35,3 +35,22 @@ Running 3 tests using 1 worker
       Tests  18 passed (18)
 
 ## storefront ทั้งหมด: vitest 289 passed; pnpm lint 0 errors; pnpm typecheck ผ่าน; pnpm --filter storefront build ผ่าน
+
+# แก้ตาม qa #134 D-1 (2026-10-27) — รันกับ storefront production build (next build && next start :8191)
+## red ก่อนแก้ (next dev): qa D-1 ล้มที่ getByTestId('add-to-cart-error') — element(s) not found
+## green หลังแก้:
+  ✓  1 [chromium] › e2e/core-24-pdp-quantity.spec.ts:32:5 › AC-94: (JS) เลือก 3 ใน product-quantity-select แล้วกดเพิ่มลง cart → cart มี line qty 3 (4.1s)
+  ✓  2 [chromium] › e2e/core-24-pdp-quantity.spec.ts:69:7 › ปิด JavaScript › AC-94: (no-JS, ไม่ล็อกอิน) เลือก 2 แล้ว submit และ login → cart มี qty 2 (3.9s)
+  ✓  3 [chromium] › e2e/core-24-pdp-quantity.spec.ts:100:5 › qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-cart-error ภาษาไทย ปุ่มและตัวเลือกจำนวนใช้ต่อได้ (1.6s)
+  3 passed (10.3s)
+  ✓  2 [chromium] › e2e/core-14-buy-login.spec.ts:38:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (3.0s)
+  ✓  3 [chromium] › e2e/core-14-buy-login.spec.ts:98:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (185ms)
+  ✓  4 [chromium] › e2e/core-14-buy-login.spec.ts:121:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (806ms)
+  ✓  1 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (4.0s)
+  ✓  5 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (718ms)
+  ✓  6 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (783ms)
+  6 passed (6.3s)
+  ✓  1 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (4.7s)
+  1 passed (5.5s)
+
+## storefront vitest 289 passed; pnpm lint 0 errors; pnpm typecheck ผ่าน; next build ผ่าน

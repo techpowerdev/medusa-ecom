@@ -94,3 +94,92 @@ test.describe("ปิด JavaScript", () => {
     })
   })
 })
+
+// qa #134 D-1: เลือกจำนวนเกิน stock แล้ว addToCart ล้ม → ต้องเห็นข้อความไทยและปุ่ม/ตัวเลือกจำนวนกลับมาใช้ได้ (ไม่ค้าง isAdding)
+// ข้อสังเกตเพิ่ม: variant ที่หมด → ตัวเลือกจำนวน disable พร้อมปุ่ม
+test("qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-cart-error ภาษาไทย ปุ่มและตัวเลือกจำนวนใช้ต่อได้", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+  evidence,
+}) => {
+  test.setTimeout(60_000) // สร้างสินค้าใหม่ + render PDP ครั้งแรก
+  const admin = await adminHeaders(request)
+  const pk = await publishableKey(request, admin)
+  const customer = await createCustomer(request, pk)
+  const handle = `e2e-core24-${Date.now()}`
+  let inStockVariantId = ""
+
+  await step("admin สร้างสินค้า: S มี stock 2, M stock 0", async () => {
+    const get = async (path: string) => (await request.get(`${BACKEND_URL}${path}`, { headers: admin })).json()
+    const { sales_channels } = await get("/admin/sales-channels?limit=1")
+    const { shipping_profiles } = await get("/admin/shipping-profiles?type=default")
+    const { stock_locations } = await get("/admin/stock-locations?limit=1")
+    const res = await request.post(`${BACKEND_URL}/admin/products?fields=id,*variants,*variants.inventory_items`, {
+      headers: admin,
+      data: {
+        title: `E2E CORE-24 ${handle}`,
+        handle,
+        status: "published",
+        shipping_profile_id: shipping_profiles[0].id,
+        sales_channels: [{ id: sales_channels[0].id }],
+        options: [{ title: "Size", values: ["S", "M"] }],
+        variants: ["S", "M"].map((size) => ({
+          title: size,
+          sku: `${handle}-${size}`.toUpperCase(),
+          options: { Size: size },
+          manage_inventory: true,
+          prices: [{ currency_code: "thb", amount: 590 }],
+        })),
+      },
+    })
+    expect(res.status()).toBe(200)
+    const { product } = await res.json()
+    for (const variant of product.variants as { title: string; id: string; inventory_items: { inventory_item_id: string }[] }[]) {
+      const level = await request.post(
+        `${BACKEND_URL}/admin/inventory-items/${variant.inventory_items[0].inventory_item_id}/location-levels`,
+        { headers: admin, data: { location_id: stock_locations[0].id, stocked_quantity: variant.title === "S" ? 2 : 0 } }
+      )
+      expect(level.status()).toBe(200)
+      if (variant.title === "S") inStockVariantId = variant.id
+    }
+  })
+
+  await signInAs(context, baseURL!, customer)
+
+  await step("เลือก 5 (เกิน stock 2) แล้วกดเพิ่ม → เห็น add-to-cart-error ภาษาไทย ปุ่มและตัวเลือกจำนวนใช้ได้", async () => {
+    await expect(async () => {
+      await page.goto(`/${CC}/products/${handle}`)
+      await expect(page.getByTestId("add-product-button")).toBeEnabled({ timeout: 2_000 })
+    }).toPass({ timeout: 15_000 })
+    await page.getByTestId("product-quantity-select").selectOption("5")
+    await page.getByTestId("add-product-button").click()
+    const error = page.getByTestId("add-to-cart-error")
+    await expect(error).toBeVisible()
+    await expect(error).toHaveText(/[฀-๿]/)
+    await expect(error).not.toContainText("inventory")
+    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await expect(page.getByTestId("product-quantity-select")).toBeEnabled()
+    await evidence("03-js-over-stock-error")
+  })
+
+  await step("เลือก M (หมด) → ปุ่มและตัวเลือกจำนวน disable", async () => {
+    await page.getByTestId("product-options").getByTestId("option-button").filter({ hasText: "M" }).click()
+    await expect(page.getByTestId("add-product-button")).toBeDisabled()
+    await expect(page.getByTestId("product-quantity-select")).toBeDisabled()
+  })
+
+  await step("กลับไปเลือก S เลือก 2 แล้วกดเพิ่ม → ข้อความหาย และ cart มี qty 2", async () => {
+    await page.getByTestId("product-options").getByTestId("option-button").filter({ hasText: "S" }).click()
+    await page.getByTestId("product-quantity-select").selectOption("2")
+    const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
+    await page.getByTestId("add-product-button").click()
+    await done
+    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await expect(page.getByTestId("add-to-cart-error")).toHaveCount(0)
+    expect(await cartLines(page, customer, pk)).toEqual([{ variant_id: inStockVariantId, quantity: 2 }])
+  })
+
+})
