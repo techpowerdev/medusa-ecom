@@ -1,4 +1,10 @@
-import { bangkokDateKey, EXPIRY_GUARD_DAYS, expiryCutoff, planExpiringCodes } from "../utils/expiry"
+import {
+  bangkokDateKey,
+  EXPIRY_GUARD_DAYS,
+  expiryCutoff,
+  planExpiringCodes,
+  toExpiryCandidates,
+} from "../utils/expiry"
 
 describe("expiry guard (กฎข้อ 2, 7)", () => {
   it("stops selling codes 7 days before they expire", () => {
@@ -69,5 +75,31 @@ describe("planExpiringCodes (กฎข้อ 12b)", () => {
       reserved: 1,
     })
     expect(plan.keep_ids).toEqual(["a"])
+  })
+})
+
+// EV-N1 (AC-38): แถวเดียวจาก query `count(*) FILTER` ต่อ pool → near/long ที่ planExpiringCodes ใช้
+describe("toExpiryCandidates (กฎข้อ 12b a)", () => {
+  it("parses the long count (pg returns bigint as string) and near codes as ISO strings", () => {
+    expect(
+      toExpiryCandidates({
+        long: "2",
+        near: [
+          { id: "a", expires_at: "2026-11-03T01:00:00.123+00:00" },
+          { id: "b", expires_at: "2026-10-26T08:00:00+07:00" },
+        ],
+      })
+    ).toEqual({
+      long: 2,
+      near: [
+        { id: "a", expires_at: "2026-11-03T01:00:00.123Z" },
+        { id: "b", expires_at: "2026-10-26T01:00:00.000Z" },
+      ],
+    })
+  })
+
+  it("treats a pool without available codes (no row / null aggregates) as empty", () => {
+    expect(toExpiryCandidates(undefined)).toEqual({ long: 0, near: [] })
+    expect(toExpiryCandidates({ long: 0, near: null })).toEqual({ long: 0, near: [] })
   })
 })

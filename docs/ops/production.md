@@ -105,20 +105,38 @@ seed (`pnpm --filter backend seed`) ใน production เปิดเฉพา�
 ค่าอื่นนอกจาก `true` ไม่ปิด guard; ไม่ปิด guard ของ `AFFILIATE_TOKEN_SECRET`/`STOREFRONT_URL`
 backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDERS=true` จะ log warn หนึ่งครั้งตอนบูต (`[medusa-config] ALLOW_TEST_PROVIDERS=true in production ...`, OPS-13)
 
+## Stripe webhooks
+สร้าง webhook endpoint ใน Stripe Dashboard สองตัว (ต่อ environment) — หนึ่งตัวต่อ provider ของ Medusa:
+`https://<backend>/hooks/payment/stripe_stripe` (บัตร) และ `https://<backend>/hooks/payment/stripe-promptpay_stripe` (PromptPay)
+ทั้งสองสมัคร event ชุดเดียวกันตามรายการด้านล่าง = event ที่ `getWebhookActionAndData` ของ `@medusajs/payment-stripe` 2.22.1 จัดการ
+(event อื่นได้ `not_supported` — สมัครเกินไม่พังแต่เปลือง request) ทุก event ต้องมี `metadata.session_id` ที่ Medusa ใส่ตอนสร้าง PaymentIntent
+ไม่งั้นถูกนับเป็น `not_supported`
+- `payment_intent.created` — pending (หรือ pending authorization เมื่อเป็น async payment method)
+- `payment_intent.processing` — เหมือน `created`
+- `payment_intent.requires_action` — requires more (เช่น รอสแกน QR PromptPay / 3DS)
+- `payment_intent.partially_funded` — requires more
+- `payment_intent.amount_capturable_updated` — authorized
+- `payment_intent.succeeded` — successful (complete cart / capture)
+- `payment_intent.payment_failed` — failed
+- `payment_intent.canceled` — canceled
+
+รายการนี้ต้องเท่ากับ `events=` ของขั้น `stripe listen` ใน `.github/workflows/ci.yml` (ตรวจใน job `lint-typecheck` ด้วย
+`tools/ci/check-stripe-events.sh`, OPS-10) — bump `@medusajs/*` ให้ตรวจ `getWebhookActionAndData` ใหม่แล้วแก้ทั้งสองที่
+
 ## Go-live checklist
 ทำครบทุกข้อก่อนเปิดร้านจริง และรันข้อ 4 ซ้ำหลังแก้ตั้งค่า payment ใน admin ทุกครั้ง (D1 ไม่กัน admin เปิด manual payment เองภายหลัง)
 1. env ของ server และ worker ครบตามหัวข้อ "Prod guards" และ `docs/spec/07-scaling-ops.md` ข้อ 9 (`TZ=UTC`, `EVOUCHER_ADMIN_EMAIL`, `OPS_ALERT_EMAIL` ฯลฯ)
-2. `STRIPE_API_KEY` เป็น live key และ `STRIPE_WEBHOOK_SECRET` มาจาก webhook endpoint ของ live mode
+2. `STRIPE_API_KEY` เป็น live key และ `STRIPE_WEBHOOK_SECRET` มาจาก webhook endpoint ของ live mode (สมัคร event ตามหัวข้อ "Stripe webhooks")
 3. `ALLOW_TEST_PROVIDERS` ต้องไม่มีค่า — "ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" (`ALLOW_TEST_PROVIDERS=`) นับเหมือนกัน (ผ่าน); ค่าใด ๆ ที่ไม่ว่าง
    (รวม `false`, `0`) `check:go-live` นับว่าไม่ผ่าน
 4. รันบน container ของ server หรือ worker (env เดียวกับ production):
    ```bash
    pnpm --filter backend check:go-live      # ใน image: npx medusa exec ./src/scripts/check-go-live.ts
    ```
-   ตรวจ `NODE_ENV=production`, ไม่ได้ตั้ง `ALLOW_TEST_PROVIDERS`, `STRIPE_API_KEY` ไม่ว่างและไม่ขึ้นต้นด้วย `sk_test_`/`rk_test_`,
+   ตรวจ `NODE_ENV=production`, `ALLOW_TEST_PROVIDERS` ไม่มีค่า ("ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" นับเหมือนกัน ตามข้อ 3), `STRIPE_API_KEY` ไม่ว่างและไม่ขึ้นต้นด้วย `sk_test_`/`rk_test_`,
    และไม่มี region ใดเปิด `pp_system_default` — ไม่ผ่านข้อใดพิมพ์ `check:go-live FAIL ...` ทีละข้อและ exit code ≠ 0; ผ่านครบ exit 0
    (region ที่ seed สร้างก่อน OPS-7 หรือ admin เปิดเองยังมี `pp_system_default` → ปิดใน admin → Settings → Regions แล้วรันใหม่)
-5. ค่าส่ง placeholder (Q-F1 ใน `docs/spec/01-core-medusa.md` ยังไม่ตัดสิน): seed ตั้งราคา shipping option "Standard" และ return option "Standard return" จาก `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`) = 10 THB placeholder — owner ตัดสินค่าจริงแล้วแก้ใน admin ก่อนเปิดร้าน (ราคาของ "Standard" และ "Standard return" ใน Settings → Locations & Shipping และ `shipping_rate` ใน metadata ของ region ที่หน้า storefront แสดง)
+5. ค่าส่ง placeholder (Q-F1 ใน `docs/spec/01-core-medusa.md` ยังไม่ตัดสิน): seed ตั้งราคา shipping option "Standard" และ return option "Standard return" จาก `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`) = 10 THB placeholder — owner ตัดสินค่าจริงแล้วแก้ใน admin ก่อนเปิดร้าน (ราคาของ shipping option "Standard" และ "Standard return" แก้ที่ Settings → Locations & Shipping → location → service zone → shipping option นั้น → Edit prices; `shipping_rate` ที่หน้า storefront แสดงแก้ที่ Settings → Regions → region นั้น → Metadata — แก้ทั้งสองที่ให้ตรงกัน)
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):

@@ -307,6 +307,10 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 23. (รอบ 10, GB-6d — qa/review #121) หน้ารายละเอียดแคมเปญ admin: กด succeed/fail แล้ว**ล้ม** (เช่น 400/409 เพราะกลุ่มเปลี่ยนสถานะไปแล้ว) ต้อง invalidate query ของตารางกลุ่ม
     (`groupBuyKeys.groups`) ด้วย ไม่ใช่เฉพาะตอนสำเร็จ — สถานะในตารางตรง DB โดยไม่ต้อง reload; แถวกลุ่มที่เลือกอยู่มี highlight และปุ่มปิด `gb-memberships-close`;
     เปลี่ยนหน้าของตารางกลุ่มแล้วแถวที่เลือกยังคงอยู่ถ้ายังอยู่ในหน้าใหม่ มิฉะนั้นปิด `gb-memberships-table` (ไม่ค้างตารางของกลุ่มที่มองไม่เห็น); ตัด field ที่ไม่ใช้ (`Membership.order.total`)
+24. (รอบ 11, GB-N3 — qa #143, review #145) (a) highlight ของแถวกลุ่มที่เลือก (กฎข้อ 23) ต้องครอบ**ทุก** cell รวม `td` แรกที่เป็น sticky (`bg-ui-bg-base` ทับสีของแถว) — ใส่สีที่ระดับ `td`;
+    (b) (แก้ถ้อยคำตาม review #152 — route ปัจจุบันคำนวณถูกแล้วในกรณีปกติ) route รายตัวของ GB-8 (`orders/[order_id]/route.ts`) กรอง `null` ออกจาก `order.payment_collections` เป็น `collections`
+    อยู่แล้วแต่ส่ง `order` ดิบเข้า `getLastPaymentStatus` — ให้ส่ง `{ ...order, payment_collections: collections }` (ชุดเดียวกับที่ใช้ส่วนอื่นของ response) เพื่อให้ `null` ใน array ไม่ทำให้
+    เกิด TypeError (500) และสถานะคำนวณจากชุด collection เดียวกันทั้ง response
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -439,6 +443,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   และปุ่ม succeed/fail หายไป; Given เลือกแถวกลุ่มอยู่ When กด `gb-memberships-close`
   Then `gb-memberships-table` หายไป; When เปลี่ยนหน้าของตารางกลุ่มไปหน้าที่ไม่มีแถวที่เลือก Then ไม่มี `gb-memberships-table`; grep: type `Membership` ใน
   `src/admin/` ไม่มี `order.total` (e2e admin หรือ component test ที่ mock `fetch`)
+- AC-42 (GB-N3, กฎข้อ 24) Given เลือกแถวกลุ่มใน `gb-groups-table` Then computed `background-color` ของ `td` แรกของแถวนั้นเท่ากับของ `td` ที่สองและต่างจากแถวที่ไม่ถูกเลือก (e2e admin);
+  unit ของ handler `GET` ของ route รายตัว GB-8 (mock `query.graph` คืน order ที่ `payment_collections: [null, c]` โดย `c.status = "authorized"`) Then ไม่ throw และ `payment_status` =
+  ค่าที่ `getLastPaymentStatus` ให้กับ order ที่มีเฉพาะ `c` — test นี้**ล้มก่อนแก้** (TypeError); integration เดิมของ AC-38..40 ยังผ่าน (unit jest + integration http)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -483,6 +490,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-N2 | (เล็ก, test-only, รอบ 9 — CI flaky ใน #111 รอบแรก) `integration-tests/http/group-buy-join.spec.ts` กรณี concurrency ล้มด้วย hook timeout 240s: หาสาเหตุจาก log จริงก่อน (lock รอ TTL, DB pool, หรือ setup หนัก) แล้วแก้ที่ test (ลดจำนวน request พร้อมกันให้พอพิสูจน์ AC-8/AC-13, แยก setup ไป `beforeAll`, ตั้ง timeout ของ hook ให้สอดคล้อง) — ห้ามแก้ด้วยการเพิ่ม timeout อย่างเดียว; AC-8/AC-13/AC-18 ต้องยังพิสูจน์ได้ และ suite ผ่าน 5 รอบติดใน CI (ระบุ run id ใน PR) — ◐ #126; **nit review #126 (รอบ 10)**: helper `trackSubscribers` ต้องคัดลอก `subscriberId` ของ subscriber เดิม (แก้ใน #126 ก่อน merge); การพึ่ง `eventEmitter_` ภายในของ local event bus บันทึกใน checklist bump ของ spec 07 ข้อ 6 | GB-3 ☑ |
 | GB-8 | (เล็ก, backend, รอบ 10 — builder PAY-3 หยุดเพราะ Store API อ่าน draft order ไม่ได้) store route อ่านอย่างเดียว `GET /store/customers/me/group-buy/memberships` + `GET /store/customers/me/group-buy/orders/:order_id` ตาม "API" รอบ 10 (กฎข้อ 21; ADR-016) + index `(customer_id, joined_at)` บน `group_buy_membership` + migration + integration test (AC-38..40) — ใช้ร่วมโดย PAY-3b (หน้าชำระเงิน + poll) และ GB-7 (รายการใน account) | ADR-016 ☑ accepted (owner 2026-10-27), GB-4 ☑, GB-3b ☑ — **เริ่มได้** |
 | GB-6d | (เล็ก, admin UI, รอบ 10 — qa/review #121) invalidate ตารางกลุ่มเมื่อ succeed/fail ล้ม, highlight + ปุ่มปิดของแถวที่เลือก, selection ข้ามหน้า, ตัด `Membership.order.total` ที่ไม่ใช้ (กฎข้อ 23) (AC-41) | GB-6c2 ☑ (#121) |
+| GB-N3 | (เล็ก, รอบ 11 — qa #143, nit review #145) highlight `td` แรก (admin) + ส่ง collection ที่กรอง `null` แล้วเข้า `getLastPaymentStatus` ใน route รายตัว GB-8 (กฎข้อ 24) (AC-42) — ไฟล์: ตารางกลุ่มใน `src/admin/routes/group-buying/[id]/`, `orders/[order_id]/route.ts` ของ GB-8 | GB-6d ☑ (#143), GB-8 ☑ (#145) — เริ่มได้; ไม่บล็อก PAY-3b |
 | GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); (รอบ 10) รายการ draft order ของกลุ่มในหน้า account อ่านจาก route ของ GB-8 และลิงก์ไปหน้าชำระเงินของ PAY-3b (ไม่สร้างหน้าชำระเงินซ้ำ) | GB-5, GB-8, PAY-3b (spec 06), GB-3b ☑ |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
 GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
@@ -494,6 +502,7 @@ GB-N1 หลัง GB-3c (#100) และ PAY-6b (#97/#98) merge; ∥ GB-5 (GB-5
 GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/test ของ `create-group` ไม่ใช่ไฟล์ join) แต่ควร merge ก่อน release v0.5.0
 (รอบ 10) ลำดับใหม่ของ critical path ชำระเงิน: PAY-3a (เริ่มได้ทันที) ∥ GB-8 (เริ่มได้ — ADR-016 accepted) → GB-5 (← PAY-3a) ∥ PAY-3b (← GB-8) → GB-7 (← GB-5, GB-8, PAY-3b);
 GB-6d ∥ ทุกตัว (admin UI ล้วน); GB-8 กับ PAY-3a คนละไฟล์ (route ใหม่ใต้ `src/api/store/customers/me/group-buy/` vs test ของ payment collection) ขนานได้
+(รอบ 11) สถานะ: GB-6d ☑ #143, GB-8 ☑ #145 → PAY-3b เริ่มได้เมื่อ PAY-3a ☑ ด้วย (ดู spec 06); GB-N3 เริ่มได้ทันที (ไม่บล็อกงานอื่น); PAY-3a, GB-5, GB-7 ☐
 
 ## Open questions
 - ~~Q12~~ ตัดสินแล้ว (owner 2026-10-27): **อนุมัติ ADR-016 ทางเลือก A** → GB-8 เริ่มได้; คำถามเดิม (รอบ 10): อนุมัติ store route อ่านอย่างเดียวของ draft order ผ่าน membership

@@ -1,0 +1,47 @@
+AF-N2 — หลักฐาน test (spec 05 กฎ 32, AC-38) 2026-10-27
+
+## Red (ก่อนแก้โค้ด)
+- integration AC-38: lock test ล้ม (job ใช้ 30330 ms > 10000 — รอ lock 30s ใน workflow reversal), noop test ล้ม (ไม่มี log affiliate_cancel_reconcile_noop)
+- unit: logCancelReconcile is not a function; products/route.ts ยังมี Record<string, unknown>
+
+## Green: integration-tests/http/affiliate-reversal.spec.ts
+PASS integration-tests/http/affiliate-reversal.spec.ts (35.737 s)
+    ✓ AC-29: attribution racing a cancel of the same order nets 0 and leaves no unreversed pending entry (1765 ms)
+      ✓ a full refund appends a reversed −฿100 entry with matures_at null; net is 0 and the entry is untouched (1384 ms)
+      ✓ AC-31: a partial refund reverses nothing; refunding the rest reverses every line to net 0; redelivery adds nothing (1258 ms)
+      ✓ a refunded payment without an order is a no-op (no lock, no entry) (149 ms)
+      ✓ order.canceled reverses the whole commission (724 ms)
+      ✓ AC-30: returning 1 of 4 reverses −฿25, returning the other 3 reverses −฿75 and the line nets 0 (1274 ms)
+      ✓ AC-30: one return with 1 received + 1 dismissed (damaged) of 4 reverses −฿50 (1048 ms)
+      ✓ AC-29: the reversal of a cancel reads the order only while holding affiliate-attribution:<order_id> (773 ms)
+      ✓ hold_days=14: the entry stays pending before 14 days and becomes approved only after (629 ms)
+      ✓ a matured entry whose line is fully reversed is not approved (Q8) (672 ms)
+      ✓ approves matured entries in batches (1321 ms)
+      ✓ the daily job approves entries that matured by now (669 ms)
+      ✓ AC-36: a canceled order whose reversal was lost is reversed instead of approved, once; others still approve (1406 ms)
+      ✓ skips an order whose affiliate-attribution lock is held (warn, < 10s), then approves it once released (5762 ms)
+      ✓ a locked canceled order (lost event) is not reversed while locked, then reversed and the lock released (6125 ms)
+      ✓ a canceled order already at net 0 logs info affiliate_cancel_reconcile_noop and adds no reversal (1050 ms)
+      ✓ a full reversal before the hold ends does not reduce the payout (1131 ms)
+      ✓ a reversal after approval is deducted from the payout (681 ms)
+      ✓ AC-28: payouts pick a reversal only once its source line is approved or paid (entry_ids asserted) (234 ms)
+Test Suites: 1 passed, 1 total
+Tests:       19 passed, 19 total
+
+## Green: unit (AF-N2)
+PASS src/api/affiliate/__tests__/products-route-type.unit.spec.ts
+    ✓ does not widen Program with Record<string, unknown> (2 ms)
+PASS src/workflows/affiliate/__tests__/approve-matured-entries.unit.spec.ts
+    ✓ does not log 'failed' at error level while the reversal workflow is still retrying (2 ms)
+    ✓ still treats a retrying run as not completed even when errors of the attempt are reported (1 ms)
+    ✓ logs an error with 'failed' once the workflow has really failed
+    ✓ warns affiliate_cancel_reconciled when reversals were created
+    ✓ logs info affiliate_cancel_reconcile_noop when the net is already <= 0
+Test Suites: 2 passed, 2 total
+Tests:       6 passed, 6 total
+
+## ชุด unit ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 58 passed, 58 total
+Tests:       593 passed, 593 total
+
+## pnpm lint && pnpm typecheck: ผ่าน (0 errors); pnpm --filter backend build: ผ่าน

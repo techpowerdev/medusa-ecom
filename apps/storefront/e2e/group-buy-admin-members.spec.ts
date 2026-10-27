@@ -173,3 +173,113 @@ test("AC-35: กลุ่มที่ไม่ใช่ open ไม่มีป�
     await expect(page.getByTestId("gb-group-fail")).toHaveCount(0)
   })
 })
+
+// GB-6d (spec 04 กฎข้อ 23, AC-41): succeed/fail ล้มแล้วตารางกลุ่ม refetch, highlight + ปุ่มปิด, selection ข้ามหน้า
+test.describe("GB-6d", () => {
+  test.use({ evidenceTarget: { feature: "group-buying", taskId: "GB-6d" } })
+
+  test("AC-41: fail ล้มเพราะกลุ่ม succeeded ไปแล้ว → GET กลุ่มใหม่ แถวเป็น succeeded ปุ่มหาย ไม่ต้อง reload", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const pk = await publishableKey(request, admin)
+    const { productId, variantId } = await variantOf(request, pk, "t-shirt")
+    const { campaignId, group } = await activePoolGroup(request, admin, productId)
+    await join(request, pk, variantId, group.join_token)
+    const groupRows = page.getByTestId("gb-groups-table").locator("tbody tr")
+
+    await step("หน้าแสดงกลุ่ม open + ปุ่ม fail แล้วตั้งกลุ่มเป็น succeeded ทาง API", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/group-buying/${campaignId}`)
+      await groupRows.first().click()
+      await expect(groupRows.first()).toContainText("open")
+      await expect(page.getByTestId("gb-group-fail")).toBeVisible()
+      await ok(
+        await request.post(`${BASE}/groups/${group.id}/succeed`, {
+          headers: admin,
+        }),
+        "succeed group"
+      )
+    })
+
+    await step("กด fail + ยืนยัน → 4xx แล้ว GET กลุ่มใหม่ status succeeded ภายใน 5 วินาที ปุ่มหาย", async () => {
+      const groupGets = countRequests(page, "GET", `/admin/group-buy/campaigns/${campaignId}/groups`)
+      const failRes = page.waitForResponse(
+        (r) =>
+          r.request().method() === "POST" && new URL(r.url()).pathname === `/admin/group-buy/groups/${group.id}/fail`
+      )
+      await page.getByTestId("gb-group-fail").click()
+      await page.getByRole("alertdialog").getByRole("button", { name: "Fail" }).click()
+      const status = (await failRes).status()
+      expect(status).toBeGreaterThanOrEqual(400)
+      expect(status).toBeLessThan(500)
+      await expect(groupRows.first()).toContainText("succeeded", {
+        timeout: 5_000,
+      })
+      expect(groupGets.length).toBeGreaterThan(0)
+      await expect(page.getByTestId("gb-group-succeed")).toHaveCount(0)
+      await expect(page.getByTestId("gb-group-fail")).toHaveCount(0)
+      await evidence("01-fail-rejected-refetched")
+    })
+  })
+
+  test("AC-41: แถวที่เลือกมี highlight + ปุ่มปิด; เปลี่ยนหน้าไปหน้าที่ไม่มีแถวที่เลือก → ปิดตาราง membership", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const pk = await publishableKey(request, admin)
+    const { productId } = await variantOf(request, pk, "t-shirt")
+    const { campaignId } = await activePoolGroup(request, admin, productId)
+    // ขนาดหน้าของตารางกลุ่ม = 20 → 21 กลุ่มให้มีหน้าที่สอง
+    for (let i = 0; i < 20; i++) {
+      await ok(
+        await request.post(`${BASE}/campaigns/${campaignId}/groups`, {
+          headers: admin,
+          data: { name: `Pool ${i}` },
+        }),
+        "create pool group",
+        201
+      )
+    }
+    const groupsTable = page.getByTestId("gb-groups-table")
+    const groupRows = groupsTable.locator("tbody tr")
+    const selectedRows = groupsTable.locator("tbody tr:has([data-testid=gb-group-selected])")
+    const membersTable = page.getByTestId("gb-memberships-table")
+    const bg = (row: typeof groupRows) => row.evaluate((el) => getComputedStyle(el).backgroundColor)
+
+    await step("คลิกแถว → แถวนั้นมี highlight ต่างจากแถวอื่น; กดปุ่มปิด → ตาราง membership หาย", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/group-buying/${campaignId}`)
+      await expect(groupRows).toHaveCount(20)
+      await groupRows.nth(1).click()
+      await expect(membersTable).toBeVisible()
+      await expect(selectedRows).toHaveCount(1)
+      await page.mouse.move(0, 0)
+      await expect.poll(() => bg(groupRows.nth(1))).not.toBe(await bg(groupRows.nth(2)))
+      await evidence("02-selected-row-highlight")
+      await page.getByTestId("gb-memberships-close").click()
+      await expect(membersTable).toHaveCount(0)
+      await expect(selectedRows).toHaveCount(0)
+    })
+
+    await step("เลือกแถวในหน้า 1 แล้วไปหน้า 2 → ไม่มีตาราง membership; กลับหน้า 1 ก็ไม่เปิดค้าง", async () => {
+      await groupRows.first().click()
+      await expect(membersTable).toBeVisible()
+      await groupsTable.getByRole("button", { name: "Next", exact: true }).click()
+      await expect(groupRows).toHaveCount(1)
+      await expect(membersTable).toHaveCount(0)
+      await groupsTable.getByRole("button", { name: "Prev", exact: true }).click()
+      await expect(groupRows).toHaveCount(20)
+      await expect(membersTable).toHaveCount(0)
+      await expect(selectedRows).toHaveCount(0)
+    })
+  })
+})

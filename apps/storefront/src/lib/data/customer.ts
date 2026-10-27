@@ -19,7 +19,11 @@ import {
   setPendingCustomer,
 } from "./cookies"
 import { addToCart } from "./cart"
+import { getRegion } from "./regions"
 import {
+  PENDING_ADD_PARAM,
+  PENDING_QUANTITY_PARAM,
+  clampLineItemQuantity,
   loginPathForAddToCart,
   readPendingAddToCart,
 } from "@lib/util/pending-add-to-cart"
@@ -27,7 +31,8 @@ import { readReturnTo } from "@lib/util/login-return"
 import { buyFromPermalink } from "@lib/util/server-cart"
 
 export type CustomerAuthState =
-  | { state: "error"; error: string }
+  // CORE-4f (กฎข้อ 62): `email` = อีเมลที่กรอกไว้ ฟอร์ม login/register ใช้เป็น defaultValue ไม่ให้หายเมื่อล้ม
+  | { state: "error"; error: string; email?: string }
   | { state: "verification_required"; email: string }
   | { state: "success" }
   | null
@@ -46,6 +51,15 @@ async function requestVerificationEmail(email: string, token: string) {
     }
   )
 }
+
+// CORE-4f (กฎข้อ 62): ข้อความ error ของหน้า login/register เป็นไทยเสมอ ไม่ส่งข้อความอังกฤษของ auth provider
+const INVALID_CREDENTIALS_MESSAGE = "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+const LOGIN_FAILED_MESSAGE = "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+const SIGNUP_FAILED_MESSAGE = "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+const EMAIL_TAKEN_MESSAGE = "อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบหรือใช้อีเมลอื่น"
+
+const withEmail = (result: CustomerAuthState, email: string): CustomerAuthState =>
+  result?.state === "error" ? { ...result, email } : result
 
 export const retrieveCustomer =
   async (): Promise<HttpTypes.StoreCustomer | null> => {
@@ -111,6 +125,7 @@ export async function signup(
     phone: formData.get("phone") as string,
   }
 
+  let identityExists = false
   try {
     await sdk.auth.register("customer", "emailpass", {
       email: customerForm.email,
@@ -125,8 +140,13 @@ export async function signup(
       fetchError.statusText !== "Unauthorized" ||
       fetchError.message !== "Identity with email already exists"
     ) {
-      return { state: "error", error: errorMessage(error) }
+      return {
+        state: "error",
+        error: friendlyErrorMessage(error, SIGNUP_FAILED_MESSAGE),
+        email: customerForm.email,
+      }
     }
+    identityExists = true
   }
 
   // Persist the extra signup fields. The customer record is created during
@@ -136,10 +156,17 @@ export async function signup(
 
   // Continue by logging in. The login response tells us whether the backend
   // requires email verification — we don't need a storefront-side flag.
-  return continueAfterAuth(
-    formData,
-    await completeLogin(customerForm.email, password)
-  )
+  const result = await completeLogin(customerForm.email, password)
+  // อีเมลมีบัญชีอยู่แล้วและรหัสผ่านไม่ตรง → บอกว่าอีเมลถูกใช้แล้ว แทน "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+  if (
+    identityExists &&
+    result?.state === "error" &&
+    result.error === INVALID_CREDENTIALS_MESSAGE
+  ) {
+    return { state: "error", error: EMAIL_TAKEN_MESSAGE, email: customerForm.email }
+  }
+
+  return withEmail(await continueAfterAuth(formData, result), customerForm.email)
 }
 
 export async function login(
@@ -149,7 +176,10 @@ export async function login(
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
-  return continueAfterAuth(formData, await completeLogin(email, password))
+  return withEmail(
+    await continueAfterAuth(formData, await completeLogin(email, password)),
+    email
+  )
 }
 
 // CORE-6 (spec 01 AC-6): guest ที่กด "Add to cart" ถูกส่งมาล็อกอินพร้อม variant ที่ค้างไว้
@@ -184,10 +214,22 @@ async function continueAfterAuth(
 // CORE-14d (กฎ 58, owner 2026-10-27): ลูกค้าที่ล็อกอินอยู่แล้วเปิดลิงก์ `/account?add_variant=…` ไม่ถูกเพิ่มลง cart เอง
 // (กด Back หลัง login แล้วเพิ่มซ้ำ / ลิงก์จากเว็บอื่น) — ต้องกดปุ่มยืนยัน (ฟอร์ม POST ใช้ได้แม้ปิด JS) ซึ่งเรียก action นี้
 // readPendingAddToCart ตรวจรหัสประเทศ (กัน redirect ออกนอกร้าน) และ clamp quantity 1..100 ให้แล้ว
+// CORE-14f (กฎ 65): ฟอร์มที่ถูกแก้ (country_code ผิดรูป/ไม่มี add_variant) → redirect ไป `/account` ของประเทศหลัก
+// พร้อม add_error ให้แสดง add-variant-error แทนการ throw (= HTTP 500)
 export async function confirmPendingAdd(formData: FormData): Promise<void> {
   const pending = readPendingAddToCart(formData)
   if (!pending) {
-    throw new Error("ข้อมูลสินค้าที่จะเพิ่มลงตะกร้าไม่ถูกต้อง")
+    const variantId = formData.get(PENDING_ADD_PARAM)?.toString()
+    redirect(
+      variantId
+        ? loginPathForAddToCart(
+            null,
+            variantId,
+            clampLineItemQuantity(formData.get(PENDING_QUANTITY_PARAM)?.toString()),
+            { failed: true }
+          )
+        : "/account"
+    )
   }
   await addPendingToCart(pending)
 }
@@ -208,12 +250,16 @@ async function addPendingToCart(
     added = false
   }
 
+  if (added) {
+    redirect(`/${pending.countryCode}/cart`)
+  }
+
+  // CORE-14f (กฎ 65): countryCode ที่ไม่ใช่ประเทศของ region ใด (เช่น `zz`) → `/account` ของประเทศหลัก ไม่ใช่ `/zz/…` (404)
+  const region = await getRegion(pending.countryCode).catch(() => null)
   redirect(
-    added
-      ? `/${pending.countryCode}/cart`
-      : loginPathForAddToCart(pending.countryCode, pending.variantId, pending.quantity, {
-          failed: true,
-        })
+    loginPathForAddToCart(region ? pending.countryCode : null, pending.variantId, pending.quantity, {
+      failed: true,
+    })
   )
 }
 
@@ -235,8 +281,8 @@ async function completeLogin(
       state: "error",
       error:
         status === 401
-          ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
-          : friendlyErrorMessage(error, "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
+          ? INVALID_CREDENTIALS_MESSAGE
+          : friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE),
     }
   }
 
@@ -304,7 +350,7 @@ async function completeLogin(
         password,
       })) as string
     } catch (error) {
-      return { state: "error", error: errorMessage(error) }
+      return { state: "error", error: friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE) }
     }
 
     await removePendingCustomer()
@@ -318,7 +364,7 @@ async function completeLogin(
   try {
     await transferCart()
   } catch (error) {
-    return { state: "error", error: errorMessage(error) }
+    return { state: "error", error: friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE) }
   }
 
   return { state: "success" }
