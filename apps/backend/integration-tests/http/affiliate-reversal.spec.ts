@@ -526,6 +526,85 @@ medusaIntegrationTestRunner({
       })
     })
 
+    // AF-N2 (กฎ 32, AC-38): job ข้าม order ที่ขอ lock ไม่ได้ภายใน ≤ 5 วินาที, log noop และ log ระหว่าง retry
+    describe("AC-38 maturity nits", () => {
+      const cancelLosingEvent = async (orderId: string) => {
+        const eventBus = container.resolve(Modules.EVENT_BUS)
+        const emit = eventBus.emit.bind(eventBus)
+        const dropCanceled = jest.spyOn(eventBus, "emit").mockImplementation((async (data, options) =>
+          emit(
+            (Array.isArray(data) ? data : [data]).filter((m) => m.name !== "order.canceled"),
+            options
+          )) as typeof eventBus.emit)
+        try {
+          await cancelOrderWorkflow(container).run({ input: { order_id: orderId } })
+        } finally {
+          dropCanceled.mockRestore()
+        }
+      }
+
+      // ถือ lock ของ order ไว้ระหว่างรัน job → job ต้องข้าม order นั้น (warn) ภายใน 10 วินาที แล้วรอบหลังปล่อย lock ประมวลผลได้
+      const runJobWhileLocked = async (orderId: string) => {
+        const locking = container.resolve(Modules.LOCKING)
+        const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+        const key = `affiliate-attribution:${orderId}`
+        await locking.acquire(key, { ownerId: "ac-38-holder", expire: 120 })
+        const warn = jest.spyOn(logger, "warn")
+        try {
+          const started = Date.now()
+          await affiliateMaturityJob(container)
+          expect(Date.now() - started).toBeLessThan(10 * 1000)
+          expect((await entriesOf(orderId)).map((e) => e.status)).toEqual(["pending"])
+          expect(warn).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`affiliate_maturity_lock_skipped.*${orderId}`)))
+        } finally {
+          warn.mockRestore()
+          await locking.release(key, { ownerId: "ac-38-holder" })
+        }
+        await affiliateMaturityJob(container)
+      }
+
+      it("skips an order whose affiliate-attribution lock is held (warn, < 10s), then approves it once released", async () => {
+        const { orderId } = await placeAttributedOrder({ hold_days: 0 })
+
+        await runJobWhileLocked(orderId)
+
+        expect((await entriesOf(orderId)).map((e) => e.status)).toEqual(["approved"])
+      })
+
+      it("a locked canceled order (lost event) is not reversed while locked, then reversed and the lock released", async () => {
+        const locking = container.resolve(Modules.LOCKING)
+        const { orderId } = await placeAttributedOrder({ hold_days: 0 })
+        await cancelLosingEvent(orderId)
+
+        await runJobWhileLocked(orderId)
+
+        expect((await entriesOf(orderId)).map((e) => e.status)).toEqual(["pending", "reversed"])
+        // job ส่ง lock ต่อให้ workflow reversal แล้วถูกปล่อยครบ — owner อื่นขอ lock ได้ทันที
+        const key = `affiliate-attribution:${orderId}`
+        await locking.acquire(key, { ownerId: "ac-38-after", expire: 5 })
+        await locking.release(key, { ownerId: "ac-38-after" })
+      })
+
+      it("a canceled order already at net 0 logs info affiliate_cancel_reconcile_noop and adds no reversal", async () => {
+        const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+        const { orderId } = await placeAttributedOrder({ hold_days: 0 })
+        await andWait("order.canceled", () => cancelOrderWorkflow(container).run({ input: { order_id: orderId } }))
+        expect((await entriesOf(orderId)).map((e) => e.status)).toEqual(["pending", "reversed"])
+
+        const info = jest.spyOn(logger, "info")
+        const error = jest.spyOn(logger, "error")
+        try {
+          await affiliateMaturityJob(container)
+          expect(info).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`affiliate_cancel_reconcile_noop.*${orderId}`)))
+          expect(error).not.toHaveBeenCalled()
+          expect((await entriesOf(orderId)).map((e) => e.status)).toEqual(["pending", "reversed"])
+        } finally {
+          info.mockRestore()
+          error.mockRestore()
+        }
+      })
+    })
+
     // owner 2026-10-26: payout เลือก entry `reversed` เฉพาะเมื่อ entry ต้นทางของ line เดียวกันเป็น approved/paid แล้ว
     describe("payout with reversals", () => {
       const payableOf = async (affiliate_id: string) =>
