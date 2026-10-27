@@ -1,9 +1,10 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import { createOrderFulfillmentWorkflow, createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
+import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 import seedThailand, { RETURN_OPTION_TYPE_CODE } from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 import { registerCustomer, storeHeadersFor } from "../helpers/customer"
+import { shipOrderItems } from "../helpers/ship-order"
 
 jest.setTimeout(240 * 1000)
 
@@ -120,7 +121,7 @@ medusaIntegrationTestRunner({
       otherZoneReturnOptionId = created.find((o) => o.name === "CORE-17 other zone return")!.id
     })
 
-    // แต่ละ case ใช้ order ของตัวเอง (fulfill แล้ว) — case หนึ่งล้มไม่ทำให้ case อื่นล้มตาม
+    // แต่ละ case ใช้ order ของตัวเอง (fulfill + ship แล้ว) — case หนึ่งล้มไม่ทำให้ case อื่นล้มตาม
     const placeOrder = async (): Promise<Order> => {
       const { data } = await api.post(
         "/store/carts",
@@ -148,9 +149,7 @@ medusaIntegrationTestRunner({
       )
       const { data: completed } = await api.post(`/store/carts/${cartId}/complete`, {}, owner)
       const order = { id: completed.order.id, itemId: completed.order.items[0].id }
-      await createOrderFulfillmentWorkflow(getContainer()).run({
-        input: { order_id: order.id, items: [{ id: order.itemId, quantity: 1 }] },
-      })
+      await shipOrderItems(getContainer(), order.id, [{ id: order.itemId, quantity: 1 }])
       return order
     }
 

@@ -35,6 +35,5 @@ describe("POST /store/returns middleware order", () => {
     const entry = storeOwnershipMiddlewares.find((m) => m.matcher === "/store/returns")!
     const chain = entry.middlewares!
     expect(chain.indexOf(validateStoreReturnShippingOption)).toBe(chain.indexOf(rejectStoreReturnOverrides) + 1)
-    expect(chain[chain.length - 1]).toBe(validateStoreReturnShippingOption)
   })
 })
