@@ -283,3 +283,51 @@ test.describe("GB-6d", () => {
     })
   })
 })
+
+// GB-N3 (spec 04 กฎข้อ 24a, AC-42): highlight ครอบทุก cell ของแถวที่เลือก รวม td แรกที่เป็น sticky
+test.describe("GB-N3", () => {
+  test.use({ evidenceTarget: { feature: "group-buying", taskId: "GB-N3" } })
+
+  test("AC-42: td แรกของแถวที่เลือกสีเดียวกับ td ที่สองและต่างจากแถวที่ไม่ถูกเลือก", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const pk = await publishableKey(request, admin)
+    const { productId } = await variantOf(request, pk, "t-shirt")
+    const { campaignId } = await activePoolGroup(request, admin, productId)
+    await ok(
+      await request.post(`${BASE}/campaigns/${campaignId}/groups`, { headers: admin, data: { name: "Pool N3" } }),
+      "create pool group",
+      201
+    )
+    const groupRows = page.getByTestId("gb-groups-table").locator("tbody tr")
+    const cellBg = (row: number, cell: number) =>
+      groupRows
+        .nth(row)
+        .locator("td")
+        .nth(cell)
+        .evaluate((el) => getComputedStyle(el).backgroundColor)
+
+    await step("คลิกแถวที่สอง → td แรก = td ที่สอง และ ≠ td แรกของแถวที่ไม่ถูกเลือก", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/group-buying/${campaignId}`)
+      await expect(groupRows).toHaveCount(2)
+      await groupRows.nth(1).click()
+      await expect(page.getByTestId("gb-memberships-table")).toBeVisible()
+      await page.mouse.move(0, 0)
+      // td แรกมี transition-fg — รอให้สีนิ่งก่อนเทียบ
+      await expect.poll(() => cellBg(1, 0)).toBe(await cellBg(1, 1))
+      await expect.poll(() => cellBg(1, 0)).not.toBe(await cellBg(0, 0))
+      await evidence("01-selected-row-first-cell-highlight")
+    })
+
+    await step("hover แถวที่เลือก → td แรกยังเป็นสี highlight เดียวกับ td ที่สอง", async () => {
+      await groupRows.nth(1).locator("td").nth(1).hover()
+      await expect.poll(() => cellBg(1, 0)).toBe(await cellBg(1, 1))
+    })
+  })
+})

@@ -4,13 +4,14 @@ import NativeSelect, {
   NativeSelectProps,
 } from "@modules/common/components/native-select"
 import { HttpTypes } from "@medusajs/types"
+import { clx } from "@modules/common/components/ui"
 
 const CountrySelect = forwardRef<
   HTMLSelectElement,
   NativeSelectProps & {
     region?: HttpTypes.StoreRegion
   }
->(({ placeholder = "เลือกประเทศ", region, defaultValue, ...props }, ref) => {
+>(({ placeholder = "เลือกประเทศ", region, defaultValue, className, ...props }, ref) => {
   const innerRef = useRef<HTMLSelectElement>(null)
 
   useImperativeHandle<HTMLSelectElement | null, HTMLSelectElement | null>(
@@ -34,6 +35,8 @@ const CountrySelect = forwardRef<
       ref={innerRef}
       placeholder={placeholder}
       defaultValue={defaultValue}
+      // CORE-4g (กฎข้อ 63d): สูงเท่า Input (h-12) ในแถวเดียวกัน
+      className={clx("h-12", className)}
       {...props}
     >
       {countryOptions?.map(({ value, label }, index) => (
