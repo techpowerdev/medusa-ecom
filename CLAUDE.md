@@ -21,6 +21,13 @@ storefront จาก **Medusa Next.js Starter** เราขยายควา�
    Medusa docs ก่อน รวมถึง plugin/integration ของ Medusa, partner และ community ที่
    https://medusajs.com/integrations (ต้องรองรับ Medusa v2 เวอร์ชันที่ pin และเพิ่ม dependency ผ่าน spec/ADR) หาก Medusa มีให้แล้ว → ใช้/ขยายต่อ หากคิดว่าของ Medusa
    ไม่เพียงพอ → เขียน ADR ใน `docs/decisions/` ก่อน และต้องได้รับการอนุมัติ
+   **หน้า admin (`src/admin/`)**: ใช้ของที่ Medusa ให้เป็นฐานก่อนเสมอ — layout/component และ pattern จาก
+   https://docs.medusajs.com/resources/admin-components (Container, Header, Section Row, JSON View, Action Menu,
+   Data Table, Forms/Drawer/Focus Modal ฯลฯ), component/hook ของ `@medusajs/ui` (เช่น `DataTable`/`useDataTable`,
+   `usePrompt`, `toast`, `FocusModal`, `Drawer`, `StatusBadge`) และ JS SDK + Tanstack Query ตามแบบของ docs
+   ห้ามเขียน component/hook/helper ซ้ำกับที่มีอยู่ (ตาราง, การแบ่งหน้า, prompt, toast, client เรียก API, formatter)
+   สร้างเองได้เฉพาะเมื่อไม่มีให้ใช้จริง และต้องเขียนเหตุผลใน PR (shared component เก็บที่ `src/admin/components/common/`
+   เมื่อมีผู้ใช้จริง ≥ 2 ที่) — แผนปรับของเดิมอยู่ใน ADR-018 (กำลังร่าง)
 2. **ทำตาม convention ของ Medusa**: module อยู่ใน `src/modules/`, workflow อยู่ใน
    `src/workflows/`, API route อยู่ใน `src/api/`, subscriber อยู่ใน `src/subscribers/`,
    scheduled job อยู่ใน `src/jobs/`, admin extension อยู่ใน `src/admin/`, link อยู่ใน
