@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   MAX_LINE_ITEM_QUANTITY,
+  PDP_QUANTITY_OPTIONS,
   PENDING_ADD_PARAM,
   PENDING_ERROR_PARAM,
   PENDING_QUANTITY_PARAM,
@@ -108,6 +109,19 @@ describe("quantity ที่ค้างไว้ข้าม login (CORE-14b)",
     expect(readPendingAddQuery({})).toBeNull()
     expect(readPendingAddQuery(undefined)).toBeNull()
     expect(readPendingAddQuery({ [PENDING_ADD_PARAM]: ["a", "b"] })).toBeNull()
+  })
+})
+
+// CORE-24 (กฎข้อ 59, AC-94): ตัวเลือกจำนวนบน PDP 1..10
+describe("PDP_QUANTITY_OPTIONS", () => {
+  it("is 1..10", () => {
+    expect(PDP_QUANTITY_OPTIONS).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  })
+
+  it("is within the line item clamp so the server keeps the chosen quantity", () => {
+    for (const q of PDP_QUANTITY_OPTIONS) {
+      expect(clampLineItemQuantity(String(q))).toBe(q)
+    }
   })
 })
 

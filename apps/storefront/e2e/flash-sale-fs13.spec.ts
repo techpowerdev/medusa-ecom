@@ -152,7 +152,7 @@ test("AC-19: แคมเปญ sold out → add-product-button disabled แล�
   step,
 }) => {
   await step("complete order flash 1 ชิ้นใต้ total_cap=1 (units_sold = 1 → sold_out)", async () => {
-    await placeOrder(request, pk, await createCustomer(request, pk), variantId)
+    await placeOrder(request, pk, await createCustomer(request, pk), { variant: variantId })
   })
 
   await step("PDP: flash-sold-out มองเห็นได้ ปุ่มเพิ่มลงตะกร้า disabled และไม่มีราคา flash", async () => {
