@@ -2,6 +2,7 @@ import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 import { buildNotificationProviders } from './src/lib/notification-providers'
 import { checkBootEnv } from './src/lib/prod-guards'
 import { buildDatabaseDriverOptions, buildInfraModules, getRedisModulesUrl } from './src/lib/infra-modules'
+import { buildJsonLogger } from './src/lib/json-logger'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
@@ -87,4 +88,6 @@ module.exports = defineConfig({
   featureFlags: {
     translation: true,
   },
+  // OPS-3 (spec 07 AC-18): log JSON มี field worker_mode สำหรับ alert ของ worker (src/lib/json-logger.ts)
+  logger: buildJsonLogger(process.env),
 })
