@@ -8,7 +8,11 @@ import {
   orderOwner,
   paymentCollectionOwner,
 } from "../store-ownership"
-import { ensureStoreOwnership, storeOwnershipMiddlewares } from "../../api/store/ownership/middlewares"
+import {
+  allowOrderFulfillmentLineItems,
+  ensureStoreOwnership,
+  storeOwnershipMiddlewares,
+} from "../../api/store/ownership/middlewares"
 import { rejectStoreReturnOverrides } from "../../api/store/ownership/return-overrides"
 import { validateStoreReturnShippingOption } from "../../api/store/ownership/return-shipping-option"
 import { validateStoreReturnWindow } from "../../api/store/ownership/return-window"
@@ -171,6 +175,18 @@ describe("storeOwnershipMiddlewares: which id each matcher checks", () => {
     const order = storeOwnershipMiddlewares.find((r) => r.matcher === "/store/orders/:id")
     expect(order?.method).toEqual(["GET"])
     expect(order?.middlewares).toHaveLength(2)
+  })
+
+  // CORE-20d (spec 01 กฎข้อ 66b): เปิด fulfillments.items.line_item_id ของ GET /store/orders/:id ผ่าน req.allowed — entry ไม่ระบุ method
+  // เพื่อให้ทำงานก่อน validateAndTransformQuery ของ core
+  it("allows fulfillments.items.line_item_id on /store/orders/:id before core query validation", () => {
+    const entry = storeOwnershipMiddlewares.find((r) => r.matcher === "/store/orders/:id" && !r.method)
+    expect(entry?.middlewares).toHaveLength(1)
+    const req = { allowed: ["items"] } as unknown as Parameters<typeof allowOrderFulfillmentLineItems>[0]
+    const next = jest.fn()
+    allowOrderFulfillmentLineItems(req, {} as never, next)
+    expect(req.allowed).toEqual(["items", "fulfillments.items.line_item_id"])
+    expect(next).toHaveBeenCalled()
   })
 })
 

@@ -11,6 +11,7 @@ import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { getAuthHeaders, getCacheTag } from "./cookies"
 import { retrieveOrder } from "./orders"
+import { retrieveRegionUncached } from "./regions"
 
 // spec 01 CORE-20 (AC-65): ลูกค้าขอคืนสินค้าผ่าน route ของ Medusa — เหตุผลจาก GET /store/return-reasons,
 // return option จาก GET /store/shipping-options?is_return=true (cart ของ order; core กรอง enabled_in_store ให้)
@@ -23,12 +24,8 @@ import { retrieveOrder } from "./orders"
  */
 export const retrieveReturnWindowDays = async (regionId: string | null | undefined) => {
   if (!regionId) return null
-  return sdk.client
-    .fetch<HttpTypes.StoreRegionResponse>(`/store/regions/${regionId}`, {
-      method: "GET",
-      cache: "no-store",
-    })
-    .then(({ region }) => returnWindowDaysOf(region?.metadata))
+  return retrieveRegionUncached(regionId)
+    .then((region) => returnWindowDaysOf(region?.metadata))
     .catch(() => null)
 }
 
@@ -60,21 +57,34 @@ const retrieveReturnOptionId = async (cartId: string | undefined) => {
     .catch(() => null)
 }
 
-export type ReturnRequestState = { success: boolean; error: string | null }
+// CORE-20d (กฎข้อ 66e): ส่งล้ม → คืนค่าที่เลือก (quantity:*/reason:*) ให้ฟอร์มแสดงค่าเดิม (React 19 reset ฟอร์มหลัง action)
+export type ReturnRequestState = {
+  success: boolean
+  error: string | null
+  values?: Record<string, string>
+}
+
+const selectedValues = (formData: FormData) =>
+  Object.fromEntries(
+    Array.from(formData.entries()).flatMap(([key, value]) =>
+      /^(quantity|reason):/.test(key) && typeof value === "string" ? [[key, value]] : []
+    )
+  )
 
 export async function requestReturn(
   _state: ReturnRequestState,
   formData: FormData
 ): Promise<ReturnRequestState> {
   const orderId = String(formData.get("order_id") ?? "")
+  const values = selectedValues(formData)
   const order = await retrieveOrder(orderId).catch(() => null)
   if (!order) {
-    return { success: false, error: "ไม่พบคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง" }
+    return { success: false, error: "ไม่พบคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง", values }
   }
   // review #112 nit 2: ตรวจกติกาเดียวกับ UI ซ้ำ (เลยหน้าต่าง N วัน / ยังไม่ส่ง / ไม่มี line ที่คืนได้)
   const returnable = await retrieveReturnableItems(order)
   if (!returnable.length) {
-    return { success: false, error: "คำสั่งซื้อนี้ไม่สามารถขอคืนสินค้าได้แล้ว" }
+    return { success: false, error: "คำสั่งซื้อนี้ไม่สามารถขอคืนสินค้าได้แล้ว", values }
   }
 
   const lines = returnable.map(({ item }) => ({
@@ -83,14 +93,14 @@ export async function requestReturn(
     reasonId: String(formData.get(`reason:${item.id}`) ?? ""),
   }))
   if (!lines.some((line) => line.quantity > 0)) {
-    return { success: false, error: "กรุณาเลือกจำนวนสินค้าที่ต้องการคืนอย่างน้อย 1 ชิ้น" }
+    return { success: false, error: "กรุณาเลือกจำนวนสินค้าที่ต้องการคืนอย่างน้อย 1 ชิ้น", values }
   }
 
   const optionId = await retrieveReturnOptionId(
     (order as HttpTypes.StoreOrder & { cart?: { id?: string } }).cart?.id
   )
   if (!optionId) {
-    return { success: false, error: "ขณะนี้ยังขอคืนสินค้าออนไลน์ไม่ได้ กรุณาติดต่อร้าน" }
+    return { success: false, error: "ขณะนี้ยังขอคืนสินค้าออนไลน์ไม่ได้ กรุณาติดต่อร้าน", values }
   }
 
   try {
@@ -103,6 +113,7 @@ export async function requestReturn(
     return {
       success: false,
       error: returnErrorMessage(error, "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
+      values,
     }
   }
 

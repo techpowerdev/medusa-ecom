@@ -1,48 +1,15 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { Badge, Container, createDataTableColumnHelper, Heading, Tabs } from "@medusajs/ui"
+import { AffiliatesTable } from "../../components/affiliate/affiliates-table"
 import { AffiliateListTable } from "../../components/affiliate/list-table"
 import { PayoutsTable } from "../../components/affiliate/payouts-table"
-import { Affiliate, CommissionEntry, Program } from "../../lib/affiliate"
+import { ProgramsTable } from "../../components/affiliate/programs-table"
+import { CommissionEntry } from "../../lib/affiliate"
 import { formatAmount, formatDate } from "../../lib/affiliate-format"
 
 // AF-6 (spec 05 "Admin UI"): หน้า Affiliate → Programs, Affiliates, Ledger, Payouts (อ่านจาก admin API ของ AF-5)
-const program = createDataTableColumnHelper<Program>()
-const programColumns = [
-  program.accessor("name", { header: "Program" }),
-  program.accessor("status", {
-    header: "Status",
-    cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
-  }),
-  program.accessor("starts_at", {
-    header: "Starts",
-    cell: ({ getValue }) => formatDate(getValue()),
-  }),
-  program.accessor("ends_at", {
-    header: "Ends",
-    cell: ({ getValue }) => formatDate(getValue()),
-  }),
-  program.accessor((row) => `${row.commission_value}%`, {
-    id: "rate",
-    header: "Commission",
-  }),
-  program.accessor("hold_days", { header: "Hold days" }),
-]
-
-const affiliate = createDataTableColumnHelper<Affiliate>()
-const affiliateColumns = [
-  affiliate.accessor("name", { header: "Name" }),
-  affiliate.accessor("email", { header: "Email" }),
-  affiliate.accessor("code", { header: "Code" }),
-  affiliate.accessor("status", {
-    header: "Status",
-    cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
-  }),
-  affiliate.accessor("created_at", {
-    header: "Joined",
-    cell: ({ getValue }) => formatDate(getValue()),
-  }),
-]
-
+// AF-12a: แท็บ Programs (สร้าง/แก้/ลบ) อยู่ที่ components/affiliate/programs-table.tsx
+// AF-12b: แท็บ Affiliates (approve/suspend/reactivate + payout info) อยู่ที่ components/affiliate/affiliates-table.tsx
 const entry = createDataTableColumnHelper<CommissionEntry>()
 const entryColumns = [
   entry.accessor("created_at", {
@@ -62,17 +29,11 @@ const entryColumns = [
 ]
 
 const TABS = [
-  {
-    value: "programs",
-    label: "Programs",
-    content: <AffiliateListTable resource="programs" columns={programColumns} empty="No programs yet" />,
-  },
+  { value: "programs", label: "Programs", content: <ProgramsTable /> },
   {
     value: "affiliates",
     label: "Affiliates",
-    content: (
-      <AffiliateListTable resource="affiliates" columns={affiliateColumns} empty="No affiliates yet" />
-    ),
+    content: <AffiliatesTable />,
   },
   {
     value: "ledger",

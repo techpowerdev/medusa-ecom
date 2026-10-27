@@ -1,13 +1,7 @@
 import { test as base, expect } from "@playwright/test"
-import fs from "node:fs"
-import path from "node:path"
 
-import {
-  EvidenceTarget,
-  evidenceDir,
-  evidenceFileName,
-  planEvidenceWrite,
-} from "./evidence-rules"
+import { EvidenceTarget, evidenceFileName } from "./evidence-rules"
+import { saveEvidencePng } from "./evidence-save"
 import { REPO_ROOT } from "./paths"
 
 export const BACKEND_URL =
@@ -15,14 +9,12 @@ export const BACKEND_URL =
   process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
   "http://localhost:9000"
 
-const SAVE_EVIDENCE = process.env.E2E_SAVE_EVIDENCE === "1"
-
 type Fixtures = {
-  /** test.step ที่แนบ screenshot ของ page หลังจบ step เสมอ (รวมกรณี fail) ลงใน HTML report */
+  /** test.step ที่แนบ screenshot ของ page หลังจบ step เสมอ (รวมกรณี fail) ลงใน HTML report เท่านั้น ไม่เขียนลง docs/evidence */
   step: (title: string, body: () => Promise<void>) => Promise<void>
   /**
    * screenshot สำคัญ: แนบใน report เสมอ และเขียนลง docs/evidence/<feature>/<task-id>/<name>.png
-   * เมื่อรันด้วย E2E_SAVE_EVIDENCE=1 (ตรวจงบ ≤5 รูป, ≤300KB)
+   * เมื่อรันด้วย E2E_SAVE_EVIDENCE=1 และ spec ตั้ง evidenceTarget (ตรวจงบ ≤5 รูป, ≤300KB)
    */
   evidence: (name: string) => Promise<void>
 }
@@ -59,32 +51,14 @@ export const test = base.extend<Fixtures & Options>({
         body: png,
         contentType: "image/png",
       })
-      if (!SAVE_EVIDENCE) return
-
-      if (!evidenceTarget) {
-        throw new Error(
-          "ต้องตั้ง test.use({ evidenceTarget: { feature, taskId } }) ก่อนบันทึก evidence"
-        )
-      }
-      // CORE-5b: ตรวจงบกับชุดไฟล์หลังเขียนก่อน แล้วจึงเขียนจริง (เกินงบ → ไม่มีไฟล์ถูกเขียน)
-      const dir = evidenceDir(REPO_ROOT, evidenceTarget)
-      const existing = fs.existsSync(dir)
-        ? fs.readdirSync(dir).map((f) => ({
-            name: f,
-            bytes: fs.statSync(path.join(dir, f)).size,
-          }))
-        : []
-      const violations = planEvidenceWrite(existing, {
-        name: fileName,
-        bytes: png.byteLength,
+      // CORE-5c: อ่าน env ตอนเรียก และเขียนได้เฉพาะโฟลเดอร์ของ evidenceTarget (ไม่ตั้ง → ไม่เขียน)
+      saveEvidencePng({
+        save: process.env.E2E_SAVE_EVIDENCE === "1",
+        target: evidenceTarget,
+        repoRoot: REPO_ROOT,
+        name,
+        png,
       })
-      if (violations.length) {
-        throw new Error(
-          `evidence เกินงบใน ${dir}: ${violations.join("; ")} — ใช้ locator.screenshot() หรือ clip ให้เล็กลง หรือลดจำนวนรูป`
-        )
-      }
-      fs.mkdirSync(dir, { recursive: true })
-      fs.writeFileSync(path.join(dir, fileName), new Uint8Array(png))
     })
   },
 })

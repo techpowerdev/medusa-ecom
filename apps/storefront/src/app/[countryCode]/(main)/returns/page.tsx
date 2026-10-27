@@ -15,18 +15,22 @@ export default async function ReturnsPage(props: {
   params: Promise<{ countryCode: string }>
 }) {
   const { countryCode } = await props.params
-  const { current } = await getStorePolicies(countryCode)
+  const { returns } = await getStorePolicies(countryCode)
 
   return (
     <PolicyPage title="นโยบายการคืนสินค้า">
-      {current ? (
+      {returns ? (
         <>
-          <p>
-            คุณสามารถคืนสินค้าได้ภายใน {current.returnWindowDays} วัน
+          <p
+            data-testid="returns-policy-window"
+            data-return-window-days={returns.returnWindowDays}
+            data-free-returns={String(returns.freeReturns)}
+          >
+            คุณสามารถคืนสินค้าได้ภายใน {returns.returnWindowDays} วัน
             หลังได้รับสินค้า โดยส่งคืนทางไปรษณีย์
           </p>
           <p>
-            {current.freeReturns
+            {returns.freeReturns
               ? "ไม่มีค่าจัดส่งสำหรับการคืนสินค้า"
               : "ลูกค้าเป็นผู้ชำระค่าจัดส่งสำหรับการคืนสินค้า"}
           </p>

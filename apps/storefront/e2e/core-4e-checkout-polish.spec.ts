@@ -140,10 +140,12 @@ test("AC-91: ขั้นที่อยู่ของ checkout — placeholder
   try {
     await checkoutAddressStep()
   } finally {
-    await request.delete(
+    // CORE-4g (AC-99): cleanup ที่ล้มต้องไม่เงียบ
+    const removed = await request.delete(
       `${BACKEND_URL}/admin/shipping-options/${nudgeOptionId}`,
       { headers: admin }
     )
+    expect(removed.ok(), `ลบ nudge option ของ test: ${removed.status()}`).toBe(true)
   }
 
   async function checkoutAddressStep() {
@@ -214,6 +216,8 @@ test("AC-91: ขั้นที่อยู่ของ checkout — placeholder
           "สมชาย"
         )
         // วัดทันที (ไม่รอ transition) — label ต้องอยู่ตำแหน่งลอยแล้วตั้งแต่ค่าถูกเติม
+        // CORE-4g: รอฟอนต์โหลดครบก่อน (ไม่รอ transition) — วัดด้วย fallback font ให้ผลต่างจากที่ผู้ใช้เห็น
+        await page.evaluate(() => document.fonts.ready)
         const boxes = await page.evaluate(labelAndValueBoxes, ADDRESS_INPUTS)
         for (const { id, label, value } of boxes) {
           expect(

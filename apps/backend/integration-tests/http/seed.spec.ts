@@ -267,6 +267,7 @@ medusaIntegrationTestRunner({
         "shipping_option",
         "api_key",
         "product_category",
+        "product_collection",
         "product",
         "inventory_level",
       ]
@@ -281,6 +282,44 @@ medusaIntegrationTestRunner({
 
       expect(await snapshot()).toEqual(before)
       expect(before).toMatchObject({ region: 1, publishable_key: 1, product_category: 2, product: 2 })
+    })
+
+    // CORE-10b AC-106 (spec 01 กฎข้อ 70): collection ตัวอย่าง `featured` ชื่อไทย ให้หน้าแรกมี rail — หาด้วย handle, มีอยู่แล้วไม่แก้
+    it("AC-106 seeds one Thai-named `featured` collection with sample products, idempotent and keeps admin edits", async () => {
+      const featured = async () =>
+        (
+          await query().graph({
+            entity: "product_collection",
+            fields: ["id", "title", "handle", "products.id"],
+            filters: { handle: "featured" },
+          })
+        ).data
+
+      await seedThailand({ container: getContainer(), args: [] })
+      const [first] = await featured()
+      await seedThailand({ container: getContainer(), args: [] })
+
+      const after = await featured()
+      expect(after).toHaveLength(1)
+      expect(after[0].id).toEqual(first.id)
+      expect(after[0].title).toMatch(/[\u0E00-\u0E7F]/)
+      expect(after[0].products?.length).toBeGreaterThanOrEqual(2)
+      expect(after[0].products).toHaveLength(first.products!.length)
+
+      const token = await getPublishableKey(getContainer())
+      const { data } = await api.get("/store/collections?handle[]=featured", {
+        headers: { "x-publishable-api-key": token },
+      })
+      expect(data.collections.map((c) => c.id)).toEqual([first.id])
+
+      await api.post(`/admin/collections/${first.id}`, { title: "คัดสรรโดยแอดมิน" }, adminHeaders)
+      await seedThailand({ container: getContainer(), args: [] })
+
+      const edited = await featured()
+      expect(edited).toHaveLength(1)
+      expect(edited[0]).toMatchObject({ id: first.id, title: "คัดสรรโดยแอดมิน" })
+      const { data: all } = await query().graph({ entity: "product_collection", fields: ["id"] })
+      expect(all).toHaveLength(1)
     })
   },
 })
