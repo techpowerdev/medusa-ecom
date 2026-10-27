@@ -8,7 +8,8 @@ import { isStripeLike } from "@lib/constants"
 import { isPromptPay } from "@lib/util/payment-session"
 
 type PaymentWrapperProps = {
-  cart: HttpTypes.StoreCart
+  // PAY-3b: รับ session ตรง (ไม่ผูกกับ cart) — ใช้ร่วมกับหน้าชำระเงินของ order (payment collection ของ draft order)
+  paymentSessions?: HttpTypes.StorePaymentSession[] | null
   children: React.ReactNode
 }
 
@@ -24,8 +25,8 @@ const stripePromise = stripeKey
     )
   : null
 
-const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ cart, children }) => {
-  const paymentSession = cart.payment_collection?.payment_sessions?.find(
+const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ paymentSessions, children }) => {
+  const paymentSession = paymentSessions?.find(
     (s) => s.status === "pending"
   )
 
