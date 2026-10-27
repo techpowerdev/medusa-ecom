@@ -21,7 +21,15 @@ vi.mock("@lib/data/cookies", () => ({
 vi.mock("@lib/data/cart", () => ({ addToCart: (...a: unknown[]) => addToCart(...a) }))
 vi.mock("@lib/util/server-cart", () => ({}))
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }))
-vi.mock("next/navigation", () => ({ redirect: (url: string) => redirect(url) }))
+// unstable_rethrow ของจริงดู digest ของ error ที่ Next สร้าง — mock ให้ re-throw error ของ redirect mock ด้านบน
+vi.mock("next/navigation", () => ({
+  redirect: (url: string) => redirect(url),
+  unstable_rethrow: (error: unknown) => {
+    if (error instanceof Error && error.message.startsWith("REDIRECT ")) {
+      throw error
+    }
+  },
+}))
 
 const loginWith = async (entries: Record<string, string>) => {
   const { login } = await import("@lib/data/customer")
@@ -45,10 +53,27 @@ describe("login พร้อม add_variant ที่ค้างไว้ (CORE
     expect(addToCart).toHaveBeenCalledWith({ variantId: "variant_01", countryCode: "th", quantity: 3 })
   })
 
-  it("เพิ่มไม่สำเร็จ → ไปหน้าบัญชีพร้อม add_variant เพื่อแสดง add-variant-error", async () => {
+  it("เพิ่มไม่สำเร็จ → ไปหน้าบัญชีพร้อม add_variant + add_error เพื่อแสดง add-variant-error (CORE-14d)", async () => {
     addToCart.mockRejectedValueOnce(new Error("Variant does not exist"))
     await expect(
       loginWith({ add_variant: "variant_x", add_quantity: "2", country_code: "th" })
-    ).rejects.toThrow("REDIRECT /th/account?add_variant=variant_x&add_quantity=2")
+    ).rejects.toThrow("REDIRECT /th/account?add_variant=variant_x&add_quantity=2&add_error=1")
+  })
+
+  it("redirect/notFound ที่ addToCart throw ถูกส่งต่อด้วย unstable_rethrow ไม่กลายเป็น add_error (CORE-14d)", async () => {
+    addToCart.mockRejectedValueOnce(new Error("REDIRECT /th/account?add_variant=variant_01"))
+    await expect(
+      loginWith({ add_variant: "variant_01", country_code: "th" })
+    ).rejects.toThrow(/^REDIRECT \/th\/account\?add_variant=variant_01$/)
+    expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it("addPendingToCart ปฏิเสธ countryCode ที่ไม่ใช่รหัสประเทศ (กัน open redirect เพราะเป็น server action)", async () => {
+    const { addPendingToCart } = await import("@lib/data/customer")
+    await expect(
+      addPendingToCart({ variantId: "v", quantity: 1, countryCode: "/evil.example" })
+    ).rejects.toThrow(/[฀-๿]/)
+    expect(addToCart).not.toHaveBeenCalled()
+    expect(redirect).not.toHaveBeenCalled()
   })
 })

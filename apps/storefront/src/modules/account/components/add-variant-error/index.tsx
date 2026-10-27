@@ -15,8 +15,14 @@ const AddVariantError = async ({ countryCode, searchParams }: Props) => {
     return null
   }
 
-  const variant = await retrieveVariant(pending.variantId, countryCode)
-  if (canPurchaseVariant(variant, pending.quantity)) {
+  // CORE-14d (กฎ 57): add_error = เพิ่มลง cart หลัง login ล้มไปแล้ว (เช่น variant ถูกลบระหว่างทาง) → แสดง error เสมอ
+  if (
+    !pending.failed &&
+    canPurchaseVariant(
+      await retrieveVariant(pending.variantId, countryCode),
+      pending.quantity
+    )
+  ) {
     return null
   }
 

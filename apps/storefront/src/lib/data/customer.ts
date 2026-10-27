@@ -5,7 +5,7 @@ import { errorMessage, friendlyErrorMessage } from "@lib/util/error-message"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
-import { redirect } from "next/navigation"
+import { redirect, unstable_rethrow } from "next/navigation"
 import {
   getAuthHeaders,
   getCacheOptions,
@@ -20,6 +20,7 @@ import {
 } from "./cookies"
 import { addToCart } from "./cart"
 import {
+  isCountryCode,
   loginPathForAddToCart,
   readPendingAddToCart,
 } from "@lib/util/pending-add-to-cart"
@@ -178,19 +179,36 @@ async function continueAfterAuth(
     return result
   }
 
-  // CORE-14b (กฎ 26): เพิ่มไม่สำเร็จ (variant ไม่มีอยู่/ขายไม่ได้) → ล็อกอินแล้วจึงไปหน้าบัญชีพร้อม add_variant
-  // ให้หน้า dashboard แสดง `add-variant-error` (คืน state error ตรงนี้จะหายไปเมื่อ layout สลับเป็น dashboard)
+  return addPendingToCart(pending)
+}
+
+// CORE-14b (กฎ 26) / CORE-14d (กฎ 57–58): เพิ่ม variant ที่ค้างไว้ลง cart แล้วไปหน้า cart — ใช้ทั้งหลัง login และตอนที่ล็อกอินอยู่แล้ว
+// (route `cart/pending-add`) เพิ่มไม่สำเร็จ (variant ไม่มีอยู่/ขายไม่ได้/ถูกลบระหว่างทาง) → หน้าบัญชีพร้อม add_error
+// ให้แสดง `add-variant-error` (คืน state error ตรงนี้จะหายไปเมื่อ layout สลับเป็น dashboard); redirect/notFound ส่งต่อด้วย unstable_rethrow
+export async function addPendingToCart(pending: {
+  variantId: string
+  countryCode: string
+  quantity: number
+}): Promise<never> {
+  // export จากไฟล์ "use server" = server action ที่ client เรียกได้ → กัน countryCode ที่ทำให้ redirect ออกนอกร้าน (`//evil`)
+  if (!isCountryCode(pending.countryCode)) {
+    throw new Error("รหัสประเทศไม่ถูกต้อง")
+  }
   let added = true
   try {
     await addToCart(pending)
-  } catch {
+  } catch (error) {
+    unstable_rethrow(error)
+    console.error(error)
     added = false
   }
 
   redirect(
     added
       ? `/${pending.countryCode}/cart`
-      : loginPathForAddToCart(pending.countryCode, pending.variantId, pending.quantity)
+      : loginPathForAddToCart(pending.countryCode, pending.variantId, pending.quantity, {
+          failed: true,
+        })
   )
 }
 
@@ -227,8 +245,9 @@ async function completeLogin(
   ) {
     try {
       await requestVerificationEmail(email, result.token)
-    } catch {
-      // Ignore: the customer can resend from the verification page.
+    } catch (error) {
+      // The customer can resend from the verification page.
+      console.error(error)
     }
     return { state: "verification_required", email }
   }
