@@ -1,9 +1,12 @@
 "use server"
 
 import { sdk } from "@lib/config"
-import { friendlyErrorMessage } from "@lib/util/error-message"
-import { buildReturnRequest, canRequestReturn, returnableItems } from "@lib/util/return-request"
-import { getRegionPolicies } from "@lib/util/store-policies"
+import {
+  buildReturnRequest,
+  returnableItemsNow,
+  returnErrorMessage,
+  returnWindowDaysOf,
+} from "@lib/util/return-request"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { getAuthHeaders, getCacheTag } from "./cookies"
@@ -15,7 +18,8 @@ import { retrieveOrder } from "./orders"
 
 /**
  * return_window_days ของ region ของ order — ไม่ cache (QA #112 D1: admin แก้ metadata ของ region แล้ว storefront
- * ไม่ถูก revalidate) และใช้ `order.region_id` ไม่ใช่ countryCode ใน URL (review #112) — ไม่มีค่า = null (ไม่แสดงปุ่ม)
+ * ไม่ถูก revalidate) และใช้ `order.region_id` ไม่ใช่ countryCode ใน URL (review #112, กฎข้อ 60)
+ * region ไม่ตั้งค่า → ค่าเริ่มต้นเดียวกับ backend (CORE-20c); อ่าน region ไม่ได้ = null (ไม่แสดงปุ่ม)
  */
 export const retrieveReturnWindowDays = async (regionId: string | null | undefined) => {
   if (!regionId) return null
@@ -24,13 +28,13 @@ export const retrieveReturnWindowDays = async (regionId: string | null | undefin
       method: "GET",
       cache: "no-store",
     })
-    .then(({ region }) => getRegionPolicies(region)?.returnWindowDays ?? null)
+    .then(({ region }) => returnWindowDaysOf(region?.metadata))
     .catch(() => null)
 }
 
-/** order นี้ขอคืนได้ตอนนี้หรือไม่ (ใช้ทั้งปุ่ม, หน้า return และ server action — กติกาเดียวกัน) */
-export const isOrderReturnable = async (order: HttpTypes.StoreOrder) =>
-  canRequestReturn(order, await retrieveReturnWindowDays(order.region_id))
+/** line ที่ขอคืนได้ตอนนี้ (ปุ่ม, หน้า return และ server action ใช้กติกาเดียวกัน ตรวจครั้งเดียวต่อ request) */
+export const retrieveReturnableItems = async (order: HttpTypes.StoreOrder) =>
+  returnableItemsNow(order, await retrieveReturnWindowDays(order.region_id))
 
 export const listReturnReasons = async (): Promise<HttpTypes.StoreReturnReason[]> =>
   sdk.client
@@ -68,11 +72,12 @@ export async function requestReturn(
     return { success: false, error: "ไม่พบคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง" }
   }
   // review #112 nit 2: ตรวจกติกาเดียวกับ UI ซ้ำ (เลยหน้าต่าง N วัน / ยังไม่ส่ง / ไม่มี line ที่คืนได้)
-  if (!(await isOrderReturnable(order))) {
+  const returnable = await retrieveReturnableItems(order)
+  if (!returnable.length) {
     return { success: false, error: "คำสั่งซื้อนี้ไม่สามารถขอคืนสินค้าได้แล้ว" }
   }
 
-  const lines = returnableItems(order.items).map(({ item }) => ({
+  const lines = returnable.map(({ item }) => ({
     id: item.id,
     quantity: Number(formData.get(`quantity:${item.id}`) ?? 0) || 0,
     reasonId: String(formData.get(`reason:${item.id}`) ?? ""),
@@ -97,7 +102,7 @@ export async function requestReturn(
   } catch (error) {
     return {
       success: false,
-      error: friendlyErrorMessage(error, "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
+      error: returnErrorMessage(error, "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
     }
   }
 
