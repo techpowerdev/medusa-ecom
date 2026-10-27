@@ -29,3 +29,22 @@ Tests:       680 passed, 680 total
 pnpm typecheck: exit 0
 pnpm lint: 0 errors (warning เดิม 1 ตัวใน src/lib/json-logger.ts ไม่ใช่ของ task นี้)
 pnpm --filter backend build: Backend + Frontend build completed successfully
+
+## รอบแก้ review #185 (2026-10-28, หลัง merge origin/develop e5b8e92)
+Red: integration "out of stock at convert" และ "orphan" ล้ม — Expected length 1, Received 0 (ไม่มี notification group-buy-paid-without-order ถึง OPS_ALERT_EMAIL);
+unit template GROUP_BUY_PAID_WITHOUT_ORDER และ runbook หัวข้อ "group buy: เงินเข้าแต่ไม่มี order" ล้ม (2 failed)
+
+Green — integration:http group-buy-payment.spec.ts
+    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1278 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1055 ms)
+    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (877 ms)
+    ✓ out of stock at convert: convertDraftOrderWorkflow fails → membership compensated back to awaiting_payment, order stays draft (1097 ms)
+    ✓ orphan: payment captured after the membership was cancelled → ops alert once, membership stays cancelled (838 ms)
+    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (1305 ms)
+Tests:       6 passed, 6 total
+log ที่พบ (event ซ้ำ → log 2 ครั้งแต่อีเมล 1 ฉบับต่อ membership): GROUP_BUY_PAID_WITHOUT_ORDER reason=convert_failed, GROUP_BUY_PAID_WITHOUT_ORDER reason=membership_cancelled
+
+unit (pnpm --filter backend test:unit)
+Test Suites: 69 passed, 69 total
+Tests:       682 passed, 682 total
+pnpm typecheck (ก่อน build, ไม่มี .medusa/): exit 0 / pnpm lint: exit 0 (0 error) / pnpm --filter backend build: exit 0
