@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto"
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import { MedusaError, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import type { CreateNotificationDTO } from "@medusajs/framework/types"
 import { EVOUCHER_MODULE } from "../../../modules/evoucher"
 import { EVOUCHER_RESEND_IN_PROGRESS } from "../../../modules/evoucher/errors"
 import EvoucherModuleService, { ClaimCodesForOrderResult } from "../../../modules/evoucher/service"
-import { EvoucherLine, EvoucherOrder } from "./evoucher-order"
+import { EvoucherLine, EvoucherOrder, evoucherOrderLockKey } from "./evoucher-order"
 import { shortError } from "./send-evoucher-delivered-notification"
 
 // lock หมดอายุเองถ้า process ตายกลางทาง (ส่งอีเมลหนึ่งฉบับใช้เวลาไม่กี่วินาที)
@@ -13,16 +13,26 @@ const RESEND_LOCK_TTL = 60
 
 type ResendLock = { key: string; owner_id: string }
 
-/** lock ต่อ order แบบไม่รอ: resend ที่ยิงซ้อนกันได้ 409 แทนการส่งอีเมลซ้ำ; ล้มภายหลัง → compensation ปล่อย lock */
+// ข้อความที่ provider ของ Locking module (in-memory และ redis) throw เมื่อ key มีเจ้าของอื่นถืออยู่
+const isLockHeldError = (error: unknown, key: string) =>
+  error instanceof Error && error.message === `Failed to acquire lock for key "${key}"`
+
+/**
+ * lock ต่อ order แบบไม่รอ (key เดียวกับ allocation — กฎข้อ 21): resend ที่ซ้อนกับ resend/allocation ได้ 409 แทนการส่งอีเมลซ้ำ;
+ * error อื่นของ Redis/Locking throw ต่อ (ไม่ใช่ 409); ล้มภายหลัง → compensation ปล่อย lock
+ */
 export const acquireEvoucherResendLockStep = createStep(
   "acquire-evoucher-resend-lock",
   async (input: { order_id: string }, { container }) => {
-    const lock: ResendLock = { key: `evoucher-resend:${input.order_id}`, owner_id: randomUUID() }
+    const lock: ResendLock = { key: evoucherOrderLockKey(input.order_id), owner_id: randomUUID() }
     try {
       await container
         .resolve(Modules.LOCKING)
         .acquire(lock.key, { ownerId: lock.owner_id, expire: RESEND_LOCK_TTL })
-    } catch {
+    } catch (error) {
+      if (!isLockHeldError(error, lock.key)) {
+        throw error
+      }
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
         "An e-voucher email resend for this order is already in progress",
@@ -103,6 +113,7 @@ export const resolveEvoucherResendCodesStep = createStep(
 /**
  * ส่งอีเมลซ้ำด้วย idempotency_key ใหม่ทุกครั้ง (กฎข้อ 19 — key เดิมที่ status=failure ทำให้ Notification module throw NOT_FOUND)
  * ส่งล้ม → throw (admin เห็น error, code คง `allocated`); สำเร็จ → code `allocated` ของ order เป็น `delivered` (กฎข้อ 17)
+ * — update ล้ม → log + สำเร็จ (กฎข้อ 21)
  */
 export const sendEvoucherResendNotificationStep = createStep(
   "send-evoucher-resend-notification",
@@ -120,11 +131,20 @@ export const sendEvoucherResendNotificationStep = createStep(
         `Could not send the e-voucher email: ${shortError(error)}`
       )
     }
-    const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
-    await service.updateEvoucherCodes({
-      selector: { id: input.code_ids, status: "allocated" },
-      data: { status: "delivered", delivered_at: new Date(), delivered_to_email: input.order.email ?? null },
-    })
+    // กฎข้อ 21: อีเมลถึงลูกค้าแล้ว — update ล้มต้องไม่ตอบ 500 (admin จะกดซ้ำ) code ที่ยัง allocated เปลี่ยนใน resend ครั้งถัดไป
+    try {
+      const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
+      await service.updateEvoucherCodes({
+        selector: { id: input.code_ids, status: "allocated" },
+        data: { status: "delivered", delivered_at: new Date(), delivered_to_email: input.order.email ?? null },
+      })
+    } catch (error) {
+      container
+        .resolve(ContainerRegistrationKeys.LOGGER)
+        .error(
+          `evoucher: resend email for order ${input.order.id} was sent but marking codes delivered failed: ${shortError(error)}`
+        )
+    }
     return new StepResponse({ code_count: input.code_ids.length })
   }
 )
