@@ -933,8 +933,10 @@ none (storefront + e2e tooling)
   `compareAddresses({…, company: null}, {…, company: ""})` = true; e2e: ใส่โค้ดของ promotion ที่ campaign หมดอายุ (สร้างผ่าน admin API) Then เห็น `promotion-error` มีอักษรไทย และ
   `cart.promotions` ไม่มี code นั้น; เลือกที่อยู่ที่บันทึกไว้ที่มี field ว่างแล้ว dropdown ไม่แสดงข้อความ placeholder; หลัง `document.fonts.ready` ความสูงของ `CountrySelect` ต่างจาก `Input`
   ข้างเคียง ≤ 1px; e2e ที่สร้าง/ลบข้อมูลตรวจ `response.ok()` ของ `request.delete` ใน `finally` (grep) (unit Vitest + e2e)
-- AC-100 (CORE-19c, กฎข้อ 64) Given cart 2 line When เปิด `/th/cart` และ cart dropdown Then ทุก line มี `cart-item-remove-button` ใน DOM; Given route mock ให้ `DELETE` line ตอบ 500
-  When กดลบ Then เห็น `cart-item-remove-error` มีอักษรไทย, spinner หายภายใน 5 วินาที และ line ยังอยู่ (e2e)
+- AC-100 (CORE-19c, กฎข้อ 64) Given cart 2 line When เปิด `/th/cart` และ cart dropdown Then ทุก line มี `cart-item-remove-button` ใน DOM; Given route mock ให้ request ของ
+  server action ที่ลบ line (browser ส่งเป็น `POST` ไปที่หน้าเดิมพร้อม header `next-action` — `DELETE /store/carts/:id/line-items/:id` ยิงจาก Next server จึง mock จาก browser ไม่ได้)
+  ตอบ 500 When กดลบ Then เห็น `cart-item-remove-error` มีอักษรไทย, spinner หายภายใน 5 วินาที และ line ยังอยู่ (e2e)
+  (แก้ถ้อยคำรอบ 11 ตาม review #142 — ตรงกับที่ #142 ทดสอบ)
 - AC-101 (CORE-14f, กฎข้อ 65) Given ลูกค้าล็อกอินและ cart มี variant V qty 2 When เปิด `/th/account?add_variant=V&add_quantity=1` Then การ์ด `add-variant-pending` มี
   `add-variant-in-cart-qty` = 2 และ textContent ไม่มี "ยังไม่ได้อยู่ในตะกร้า"; When เปิด `/zz/account?add_variant=V` หรือส่งฟอร์ม `add-variant-confirm` ที่แก้ `countryCode` เป็น `zz`
   Then HTTP status < 500 และเห็นข้อความไทย (`add-variant-error`) หรือ URL ปลายทางขึ้นต้น `/th/` (e2e ทั้ง JS on/off สำหรับข้อแรก, no-JS สำหรับฟอร์ม)
@@ -965,6 +967,45 @@ none (storefront + e2e tooling)
 CORE-19c ∥ CORE-5c ∥ CORE-4g ∥ CORE-4f ∥ CORE-14f เริ่มได้ทันที (CORE-14d ☑ #128; CORE-4f กับ CORE-14f แตะ `lib/data/customer.ts`/account ร่วมกัน — ตัวที่ merge ทีหลัง rebase);
 CORE-20d หลัง CORE-20c (◐ #130 คิว merge)
 CORE-15, CORE-19b, CORE-23b (รอบเดิม) ยังไม่เริ่ม — นิยามไม่เปลี่ยน; CORE-19b และ CORE-4g ← CORE-4e ☑ เริ่มได้แล้ว
+(รอบ 11 สถานะ) CORE-19c ☑ #142 · CORE-4f ☑ #144 · CORE-14f ◐ #150 · CORE-20c ☑ #130 (CORE-20d เริ่มได้) · CORE-24 ☑ #134 · CORE-4g, CORE-5c, CORE-15, CORE-19b, CORE-23b ☐
+
+## Follow-up รอบ 11 จาก review/qa (2026-10-27)
+ที่มา: review/qa ของ #142 (CORE-19c), #144 (CORE-4f) และ builder CORE-4f
+แก้ถ้อยคำในที่เดิม: AC-100 (mock request ของ server action ไม่ใช่ `DELETE` — review #142)
+Out of scope: nonce กันส่งซ้ำของฟอร์ม no-JS (CORE-14e หลัง v1.0) — กฎข้อ 69 กันเฉพาะการกดซ้ำตอน JS ทำงาน
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| status ของ error จาก Store API ใน server action | `FetchError.status` ของ `@medusajs/js-sdk` (ฝั่ง Next server) | ใช้ตามเดิม แต่ Next ใน production **ซ่อน** message/property ของ error ที่ throw จาก server action → ต้อง**คืนค่า** แทน throw (กฎข้อ 68) |
+| สถานะ pending ของฟอร์ม | `useFormStatus`/`useActionState` ของ React 19 | ใช้ตามเดิม (กฎข้อ 69) |
+
+### Data model / Workflows / API routes
+none (storefront)
+
+### Business rules
+68. (CORE-19d — review/qa #142) server action `deleteLineItem` คืนผลแบบมีโครงสร้าง `{ error: "unauthorized" | "failed" } | { ok: true }` แทนการ throw — status 401/403 ของ
+    `FetchError` → `"unauthorized"`, อื่นๆ → `"failed"`; `DeleteButton` แสดง `cart-item-remove-error` ข้อความไทย "เข้าสู่ระบบใหม่" สำหรับ `unauthorized` (ต่างจากข้อความ fallback)
+    — ไม่สร้าง helper กลางจนกว่าจะมี action ที่สองต้องใช้ (CLAUDE.md ข้อ 3)
+69. (CORE-4h — review/qa #144, builder CORE-4f) ต่อจากกฎข้อ 62: (a) `completeLogin`/action login คืน `reason: "invalid_credentials"` (จาก status 401 ของ auth) และ UI ตัดสินจาก `reason`
+    ไม่เทียบข้อความอังกฤษ; register 401 ที่ไม่ใช่อีเมลซ้ำ → ข้อความไทยทั่วไปของการสมัคร (ไม่บอกว่า "มีบัญชีอยู่แล้ว"); (b) ฟอร์มสมัครที่ล้มคงชื่อ/นามสกุล/เบอร์/อีเมล (รหัสผ่านล้างได้);
+    (c) ปุ่ม login/register disabled ระหว่างส่ง (`dblclick` = action 1 ครั้ง); (d) หน้า verify-account (`confirmEmailVerification`) แสดง error เป็นข้อความไทยผ่าน `friendlyErrorMessage`
+    ไม่แสดง `errorMessage` ดิบ
+
+### Acceptance criteria (follow-up รอบ 11)
+- AC-104 (CORE-19d, กฎข้อ 68) unit (Vitest, mock SDK): `deleteLineItem` เมื่อ SDK throw `FetchError` 401 → คืน `{ error: "unauthorized" }`, 500/network → `{ error: "failed" }`, สำเร็จ → `{ ok: true }`
+  และไม่ throw; unit ของ `DeleteButton`: `unauthorized` กับ `failed` แสดงข้อความไทยต่างกันใน `cart-item-remove-error`; e2e: AC-100 ยังผ่าน (unit Vitest + e2e)
+- AC-105 (CORE-4h, กฎข้อ 69) Given ลูกค้ามีบัญชี When `dblclick` ปุ่ม login ด้วยรหัสผ่านผิด Then มี request ของ action login 1 ครั้ง (นับ `POST` ที่มี header `next-action`) และ
+  `login-error-message` มีอักษรไทย; When สมัครด้วยอีเมลที่มีบัญชีแล้ว Then input ชื่อ/นามสกุล/เบอร์/อีเมลยังมีค่าเดิมและ error มีอักษรไทย; Given token ยืนยันอีเมลไม่ถูกต้อง
+  When เปิดหน้า verify-account Then ข้อความ error มีอักษรไทยและไม่ตรง `/[A-Za-z]{4,}/`; unit ของ action login (mock 401) คืน `reason: "invalid_credentials"` และ grep: โค้ด UI
+  ของ login ไม่มีการเทียบ string `"Invalid"` (e2e + unit Vitest)
+
+### Tasks (follow-up รอบ 11)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-19d | (storefront เล็ก, review/qa #142) `deleteLineItem` คืนผลแบบมีโครงสร้าง + `DeleteButton` แยก unauthorized (กฎข้อ 68) — ไฟล์: `lib/data/cart.ts`, `modules/common/components/delete-button` | AC-104 | CORE-19c ☑ (#142) — เริ่มได้; ชน `lib/data/cart.ts` กับ CORE-4g ตัวที่ merge ทีหลัง rebase |
+| CORE-4h | (storefront เล็ก, review/qa #144) `reason` ของ login, ฟอร์มสมัครคงค่า, กันกดซ้ำ login/register, error ไทยหน้า verify-account (กฎข้อ 69) — ไฟล์: `lib/data/customer.ts`, `modules/account/components/{login,register}`, หน้า verify-account | AC-105 | CORE-4f ☑ (#144) — เริ่มได้; ชน `lib/data/customer.ts` กับ CORE-14f (◐ #150) ตัวที่ merge ทีหลัง rebase |
+CORE-19d ∥ CORE-4h (คนละไฟล์)
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

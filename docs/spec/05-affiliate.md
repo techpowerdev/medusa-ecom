@@ -1,6 +1,7 @@
 # 05 Affiliate — ค่าคอมมิชชันแบบมีช่วงเวลากำหนด
 
-สถานะ: in-progress (AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31; รอบ 9 2026-10-27: payouts/paging ของ portal, กฎ 29–30, AC-32..36, AF-7b/AF-10/AF-N1)
+สถานะ: in-progress (AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31; รอบ 9 2026-10-27: payouts/paging ของ portal, กฎ 29–30, AC-32..36, AF-7b/AF-10/AF-N1;
+รอบ 11 2026-10-27: admin UI แบบเขียนได้ AF-12a/b/c (owner), นิยาม AF-8a/8b/8c, `has_payout_info` AF-13, กฎ 33–37, AC-39..44)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -24,6 +25,8 @@ cart metadata การจ่ายเงิน (โอนธนาคาร) �
 | lock ข้าม request ของ payout | Locking module (Redis) + `acquireLockStep`/`releaseLockStep` | ใช้ตามเดิม: key `affiliate-payout:<affiliate_id>` ทั้ง create และ cancel (กฎ 25); key `affiliate-attribution:<order_id>` ระหว่าง attribution กับ reversal จาก cancel (กฎ 27) |
 | สถานะ order / ยอด refund | Order module (`order.status`, payment collection ของ order) | ใช้ตามเดิม อ่านด้วย `query.graph` (กฎ 27, 28) |
 | ปุ่มยืนยันใน admin | `usePrompt` ของ `@medusajs/ui` | ใช้ตามเดิม (AF-6) |
+| ฟอร์ม/ตาราง/แจ้งเตือนใน admin | `FocusModal`, `Drawer`, `Select`, `DatePicker`, `toast` ของ `@medusajs/ui` + `sdk`/react-query ที่ admin extension ใช้ | ใช้ตามเดิม (AF-12a/b/c) |
+| รายการ collection/category ให้เลือกใน scope | `GET /admin/collections`, `GET /admin/product-categories` ของ Medusa | ใช้ตามเดิม (AF-12a) ไม่สร้าง route ใหม่ |
 | CORS | Medusa ใส่ให้เฉพาะ `/store`, `/admin`, `/auth` | ไม่ใช้สำหรับ `/affiliate/*` — portal เรียกจาก server side (กฎ 17) |
 
 ## Data model (module `affiliate`)
@@ -106,13 +109,16 @@ Payout
   `share_url` = `{storefront}/r/{code}?to=/products/{handle}`) เรียงตาม starts_at
   Login ผ่าน `/auth/affiliate/emailpass`
   route `/store/*` ของ customer ไม่ถูกแก้ไข; ไม่จำเป็นต้องเป็น customer
-  Response ของ portal ใช้ field ของ affiliate: `id, email, name, code, status, created_at` (ไม่มี `payout_info`)
+  Response ของ portal ใช้ field ของ affiliate: `id, email, name, code, status, created_at` (ไม่มี `payout_info`); (รอบ 11, AF-13) `GET /affiliate/me` เพิ่ม
+  `has_payout_info: boolean` ตาม Q5 (กฎ 34)
 - Admin: CRUD โปรแกรม; รายการ affiliate/อนุมัติ/ระงับ; `GET /admin/affiliate/entries`;
   สร้าง payout/ทำเครื่องหมายว่าจ่ายแล้ว; `GET /admin/affiliate/reports/summary`
 
 ## Admin UI / Storefront
 - Admin: route page "Affiliate" → Programs (รายการพร้อมวันที่), Affiliates, Ledger, Payouts — แถว payout `draft` มีปุ่มยกเลิก
   (`affiliate-payout-cancel`, ยืนยันด้วย `usePrompt` ของ `@medusajs/ui`, กันกดซ้ำ) เรียก route ยกเลิกของ AF-9; payout `paid` ไม่มีปุ่ม (AF-6)
+  — (รอบ 11, owner 2026-10-27: **admin UI แบบเขียนได้อยู่ใน v1**) สร้าง/แก้/ลบโปรแกรม (AF-12a), อนุมัติ/ระงับ affiliate + ข้อมูลรับเงิน (AF-12b), สร้าง payout + mark paid (AF-12c)
+  ผ่าน admin API ของ AF-5 เดิม ไม่แก้ backend (กฎ 37)
 - Storefront: portal `/affiliate/*` ที่มี login/register ของตัวเอง (affiliate session แยกจาก
   customer session):
   (ข้อความไทยตรงในโค้ด ADR-014; e2e หาด้วย test id)
@@ -121,7 +127,7 @@ Payout
     วันเริ่มสำหรับ upcoming) และปุ่ม **แชร์** (`affiliate-share-button`) (คัดลอกลิงก์; ใช้ Web Share เมื่อ browser รองรับ
     โดยมีการคัดลอกเป็น fallback) สินค้า upcoming แชร์ล่วงหน้าได้ — ลิงก์ใช้งานได้
     ทันทีและเริ่มได้ค่าคอมมิชชันเมื่อช่วงเวลาเปิด
-  - Programs, Earnings (pending/approved/paid), Payouts, Profile (code, ลิงก์เริ่มต้น)
+  - Programs, Earnings (pending/approved/paid), Payouts, Profile (code, ลิงก์เริ่มต้น) — (รอบ 11) ส่งมอบใน AF-8b ตามกฎ 33
   หน้า landing สาธารณะผ่าน `/r/<code>`
 
 ## Business rules
@@ -224,6 +230,35 @@ Payout
     (คง `pending` ไม่ approve) log warn `affiliate_maturity_lock_skipped` พร้อม `order_id` แล้วไปรอบถัดไป (ไม่รอ 30 วินาทีต่อ order); (b) log ตอนสั่ง reversal ที่ workflow ยัง retry แบบ async
     ไม่ใช้คำว่า "failed"/ระดับ error จนกว่า workflow จะล้มจริง; (c) order `canceled` ที่ไม่สร้าง reversal เพราะยอดสุทธิ ≤ 0 อยู่แล้ว log info `affiliate_cancel_reconcile_noop`;
     (d) type `Program` ใน `src/api/affiliate/products/route.ts` ระบุ field ตาม `PORTAL_PROGRAM_FIELDS` + `scope` (ไม่ใช้ `Record<string, unknown>`) — ก่อน AF-8
+33. (รอบ 11 — นิยาม AF-8a/AF-8b ที่ค้างจากรอบ 10) AF-8 แตกเป็น: **AF-8a** (☑ #135) = login/register ของ portal + หน้า Products (สองแท็บ, การ์ดเดียวต่อสินค้าตามกฎ 29, ปุ่มแชร์;
+    AC-9, AC-35); **AF-8b** = แถบนำทางของ portal (`affiliate-nav-products|programs|earnings|payouts|profile`) + หน้า Programs (`/affiliate/programs`: แถว `affiliate-program-row`
+    จาก `GET /affiliate/me/programs` แสดงชื่อ, อัตรา, วันที่, ป้าย active/upcoming, `announce_text`), Earnings (`/affiliate/earnings`: ยอดรวมต่อสถานะจาก `GET /affiliate/me/earnings`
+    ใน `affiliate-earnings-pending|approved|paid` เป็น ฿ — reversed หักในยอดของสถานะตามที่ API รวมให้ ไม่คำนวณใหม่ที่ storefront), Payouts (`/affiliate/payouts`: แถว `affiliate-payout-row`
+    จาก `GET /affiliate/me/payouts` แสดงงวด, ยอด, สถานะ, `paid_at` — ไม่มี `reference` ตาม Q14), Profile (`/affiliate/profile`: ชื่อ, อีเมล, code, `affiliate-default-link` =
+    `{storefront}/r/{code}` พร้อมปุ่มคัดลอก, `affiliate-payout-info-status` จาก `has_payout_info` ตามกฎ 34); สิทธิ์ตาม Q6: route ที่ API ตอบ 403 (เช่น `suspended` เปิด Products/Programs,
+    `pending` เปิดหน้าใดนอกจาก Profile) → แสดง `affiliate-status-notice` ข้อความไทยตามสถานะ ไม่ใช่หน้า error; ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (ADR-014)
+34. (รอบ 11, AF-13 — Q5) `GET /affiliate/me` คืน `has_payout_info = true` เมื่อ `payout_info` ไม่เป็น null และเป็น object ที่มีอย่างน้อย 1 key ไม่เช่นนั้น `false`; ยังไม่คืน key
+    `payout_info` (กฎ 8) — คำนวณใน route/helper ของ portal ไม่เพิ่ม column
+35. (รอบ 11 — planner ตัดสินกฎ 29d ตาม review #135) ยอดประมาณการบนการ์ด: (a) `rate_varies=false` → ราคาของ variant ที่ถูกที่สุด × อัตรา (กฎ 29d) และขึ้นต้น "ตั้งแต่" เมื่อ
+    variant ของสินค้ามีราคาต่างกัน; (b) `rate_varies=true` → **ไม่แสดงตัวเลขยอดประมาณการ** (ไม่มี `affiliate-estimate`) แสดงเพียง "สูงสุด X%" (`affiliate-rate-varies`) — เพราะ API ไม่ส่ง
+    อัตราต่อ variant ผลคูณราคาต่ำสุด × อัตราสูงสุดอาจไม่ตรงกับ variant ใดเลย (ตัวเลขที่ affiliate ได้ไม่จริง)
+36. (รอบ 11, AF-8c — qa/review #135) (a) นับถอยหลังของ upcoming: เหลือ ≥ 24 ชั่วโมง → "เริ่มในอีก N วัน" โดย N = **ปัดลง** ของจำนวนวัน; < 24 ชั่วโมง → "เริ่มในอีก N ชั่วโมง"
+    (N = ปัดขึ้นของชั่วโมง); < 1 ชั่วโมง → "เริ่มในอีกไม่ถึง 1 ชั่วโมง" (เดิมปัดขึ้นทั้งหมด เริ่มในไม่กี่ชั่วโมงแสดง "1 วัน"); (b) backend ไม่ตอบ/5xx ตอนโหลดหน้า portal → แสดง
+    `affiliate-portal-error` ข้อความไทยพร้อมลิงก์ลองใหม่ ไม่ใช่หน้า error ของ Next (401 → redirect ไป login ของ portal ตามเดิม); (c) logout ลบ cookie token อย่างเดียว — ยอมรับใน v1
+    (token เป็น JWT แบบ stateless Medusa ไม่มี revoke) ไม่มี task
+37. (รอบ 11, AF-12a/b/c — owner 2026-10-27: admin UI ทำใน v1) หน้า admin "Affiliate" (ภาษาอังกฤษ, `src/admin/`) เขียนข้อมูลผ่าน admin API ของ AF-5/AF-9 เท่านั้น **ไม่แก้ backend**:
+    ทุกปุ่ม submit/ยืนยัน disabled ระหว่างส่ง + in-flight guard (`useRef`) — `dblclick` = 1 request (บทเรียน CLAUDE.md); สำเร็จ → invalidate query แล้วแถวเปลี่ยนโดยไม่ reload; ล้ม →
+    toast error (ข้อความจาก API) และ refetch รายการ
+    (a) **Programs** (AF-12a): ปุ่ม `affiliate-program-create` และ `affiliate-program-edit` ต่อแถว เปิดฟอร์ม (`FocusModal`) field ตาม `AdminCreateAffiliateProgram`: name, starts_at, ends_at,
+    commission_value (%), attribution_window_days (ค่าเริ่มต้น 7), hold_days (14), cap_per_order (ว่างได้), announce_text, status; scope = สวิตช์ `all` **หรือ** เลือก collection/category
+    หลายตัวจาก admin API ของ Medusa (`GET /admin/collections`, `GET /admin/product-categories`); `variant_ids` แก้ใน UI ไม่ได้ใน v1 (แสดงจำนวน และคงค่าเดิมเมื่อแก้ไข — ดู Q16);
+    ตัวเลือก status แสดงเฉพาะที่กฎ 20 อนุญาตจากสถานะปัจจุบัน; ฟอร์มตรวจ `ends_at > starts_at` ก่อนส่ง; `affiliate-program-delete` (ยืนยันด้วย `usePrompt`) มีเฉพาะแถว `draft`
+    (b) **Affiliates** (AF-12b): ปุ่มตามสถานะ — `pending` → `affiliate-approve` (status `active`); `active` → `affiliate-suspend` (ยืนยันด้วย `usePrompt`); `suspended` → `affiliate-reactivate`;
+    `affiliate-payout-info-edit` เปิด drawer ฟอร์มข้อมูลรับเงิน `bank_name`, `account_name`, `account_number` (เก็บเป็น `payout_info` JSON; ปุ่ม Clear ส่ง `null`) — ค่าเต็มเห็นเฉพาะ admin (กฎ 8)
+    (c) **Payouts** (AF-12c): `affiliate-payout-create` เปิดฟอร์ม: เลือก affiliate (จาก `GET /admin/affiliate/affiliates` สถานะ `active`/`suspended`), `period_from`/`period_to` ค่าเริ่มต้น =
+    เดือนก่อนหน้าตามเวลาไทย `[วันที่ 1 00:00, วันที่ 1 ของเดือนนี้ 00:00)` Asia/Bangkok ส่งเป็น ISO; 400 (เช่นไม่มี entry/ยอดสุทธิ ≤ 0 ตาม Q8) → toast ไม่มีแถวใหม่; แถว `draft` มี
+    `affiliate-payout-mark-paid` → `usePrompt` พร้อม input `reference` (ไม่บังคับ) → `POST /admin/affiliate/payouts/:id/mark-paid`; แถว `paid` แสดง `paid_at`, `reference` และไม่มีทั้งปุ่ม mark paid/cancel;
+    ส่วนเพิ่มของ AC-26 จาก qa #138 (ปุ่มในจอที่ 1280px, ยกเลิกล้ม → refetch + toast) ถ้า #138 ยังไม่ครอบ ทำใน AF-12c
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -310,6 +345,26 @@ Payout
   มี log warn `affiliate_maturity_lock_skipped` ที่มี O; When ปล่อย lock แล้วรัน job อีกครั้ง Then entry ถูกประมวลผลตามกฎ 30/Q8; Given order canceled ที่ยอดสุทธิ = 0 Then log info
   `affiliate_cancel_reconcile_noop` และไม่มี reversal ใหม่; spy logger: ไม่มีบรรทัดระดับ error ที่มีคำว่า `failed` ระหว่าง workflow reversal ยัง retry; `pnpm typecheck` ผ่านและ
   `src/api/affiliate/products/route.ts` ไม่มี `Record<string, unknown>` (grep) (integration + unit)
+- AC-39 (AF-13, กฎ 34) Given Ann มี `payout_info = { bank_name: "x" }` When `GET /affiliate/me` Then `has_payout_info = true` และไม่มี key `payout_info`; Given `payout_info = null` หรือ `{}`
+  Then `has_payout_info = false`; AC-16 ยังผ่าน (integration http)
+- AC-40 (AF-8b, กฎ 33) Given Ann (`active`) มีโปรแกรม published active 1 + upcoming 1, entry pending/approved/paid อย่างละ 1 และ payout `paid` ที่มี `reference = "TRX-AC40"` When เปิด
+  แต่ละหน้าผ่าน `affiliate-nav-*` Then Programs มี `affiliate-program-row` 2 แถว; Earnings แสดงยอดใน `affiliate-earnings-pending|approved|paid` ตรงกับ `GET /affiliate/me/earnings` (รูปแบบ ฿);
+  Payouts มี `affiliate-payout-row` 1 แถวและ textContent ของหน้าไม่มี `TRX-AC40`; Profile มี `affiliate-default-link` ลงท้าย `/r/<code ของ Ann>` และ `affiliate-payout-info-status` มีอักษรไทย;
+  ทุกหน้ามีอักษรไทย; Given Bob `suspended` When เปิด `/th/affiliate` และ Programs Then เห็น `affiliate-status-notice` มีอักษรไทยและ HTTP status < 500; Earnings/Payouts ของ Bob เปิดได้ (e2e)
+- AC-41 (AF-8c, กฎ 35, 36) unit (Vitest) ของฟังก์ชันนับถอยหลัง (ควบคุม `now`): เหลือ 3 ชั่วโมง → มี "ชั่วโมง" ไม่มี "วัน"; 30 นาที → "ไม่ถึง 1 ชั่วโมง"; 49 ชั่วโมง → "2 วัน"; การ์ดที่ `rate_varies=true`
+  → ไม่มี `affiliate-estimate` แต่มี `affiliate-rate-varies`; `rate_varies=false` ที่ variant ราคา 100/200 อัตรา 10% → `affiliate-estimate` แสดง ฿10 และมี "ตั้งแต่"; data function ของ portal เมื่อ
+  fetch ล้มแบบ network/5xx → หน้า render `affiliate-portal-error` (unit ของ component/หน้า ด้วย mock) (unit Vitest)
+- AC-42 (AF-12a, กฎ 37a) e2e admin (helper ของ OPS-11): When กรอกฟอร์มจาก `affiliate-program-create` แล้ว `dblclick` Save Then มี `POST /admin/affiliate/programs` **1 ครั้ง** และแถวใหม่สถานะ
+  `draft` ปรากฏโดยไม่ reload; When แก้ `commission_value` ผ่าน `affiliate-program-edit` Then `GET /admin/affiliate/programs/:id` ได้ค่าใหม่และ `scope.variant_ids` เดิมไม่เปลี่ยน (ตั้งผ่าน API ใน setup);
+  Given โปรแกรม `published` Then ตัวเลือก status ไม่มี `draft` และแถวไม่มี `affiliate-program-delete`; Given `draft` When กด `affiliate-program-delete` แล้วยกเลิก prompt Then ไม่มี `DELETE`;
+  ยืนยัน Then แถวหาย; When `ends_at` ก่อน `starts_at` Then ปุ่ม Save ส่งไม่ได้หรือเห็น error และไม่มี `POST` (e2e admin)
+- AC-43 (AF-12b, กฎ 37b) Given affiliate `pending` When `dblclick` `affiliate-approve` Then มี `POST /admin/affiliate/affiliates/:id` 1 ครั้งด้วย `status: "active"` และ badge เป็น `active` โดยไม่ reload;
+  When `affiliate-suspend` แล้วยกเลิก prompt Then ไม่มี request; ยืนยัน Then `suspended` และมี `affiliate-reactivate`; When บันทึกข้อมูลรับเงิน 3 field Then `GET /admin/affiliate/affiliates/:id`
+  มี `payout_info` ตรงกัน; When Clear Then `payout_info = null` (e2e admin)
+- AC-44 (AF-12c, กฎ 37c) Given Ann มี entry `approved` ใน "เดือนก่อน" (ตั้ง `created_at` ใน setup) When เปิดฟอร์ม `affiliate-payout-create` Then ช่วงวันที่ค่าเริ่มต้นคือเดือนก่อนตามเวลาไทย;
+  When เลือก Ann แล้ว `dblclick` Create Then `POST /admin/affiliate/payouts` 1 ครั้งและแถว `draft` ใหม่แสดงยอดรวม; Given affiliate ที่ไม่มี entry Then เห็น toast error และไม่มีแถวใหม่;
+  When `affiliate-payout-mark-paid` ใส่ reference `TRX-AC44` แล้วยืนยัน Then แถวเป็น `paid` แสดง `TRX-AC44`, ไม่มี `affiliate-payout-mark-paid`/`affiliate-payout-cancel` และ `GET /admin/affiliate/entries?status=paid`
+  มี entry ของ payout นั้นครบ; When ยกเลิก prompt mark paid Then ไม่มี request; AC-26 ยังผ่าน (e2e admin)
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -326,6 +381,7 @@ Payout
 - e2e: AC-9 + AC-1 แบบ end-to-end พร้อม cookie, AC-21 (AF-3b); unit (Vitest storefront): AC-22 (AF-3b); e2e admin: AC-26 (AF-6, ใช้ helper ของ OPS-11)
 - Integration (http): AC-32 (AF-7; ส่วน `reference` ใน AF-7b), AC-33 (AF-7), AC-34 (AF-7b) + unit ของฟังก์ชันเลือกโปรแกรมต่อสินค้า (กฎ 29); integration: AC-36 (AF-10); e2e: AC-35 (AF-8)
 - unit Vitest (static): AC-37 (AF-3c); integration + unit: AC-38 (AF-N2)
+- (รอบ 11) integration http: AC-39 (AF-13); e2e: AC-40 (AF-8b); unit Vitest: AC-41 (AF-8c); e2e admin: AC-42 (AF-12a), AC-43 (AF-12b), AC-44 (AF-12c)
 
 ## Tasks
 | ID | Task | Depends |
@@ -340,7 +396,14 @@ Payout
 | AF-6 | หน้า Admin UI รวมปุ่มยกเลิก payout `draft` (AC-26) | AF-5, AF-9 (route ยกเลิก) |
 | AF-7 | Portal APIs รวม `/affiliate/products` (แปลงขอบเขต → สินค้า ตามกฎ 16, paging) (AC-13, AC-14, AC-18) — หมายเหตุ: ปรับ middleware matcher ให้คลุมทุก `/affiliate/*` ยกเว้น register (กฎ 18) และสิทธิ์ตามสถานะ (Q6); (รอบ 9, owner 2026-10-27) รวม `GET /affiliate/me/payouts` ที่ #110 ทำไว้ + paging ของ programs/payouts (AC-32 ยกเว้นส่วน `reference`, AC-33) — ◐ #110 | AF-3 |
 | AF-7b | (เล็ก, backend, follow-up #110 — **PR แยก เริ่มหลัง #110 merge เท่านั้น**) `/affiliate/products` หนึ่งรายการต่อสินค้าด้วยอัตราที่ได้จริงตามกฎ 29 (dedupe ก่อน paging, `rate_varies`; ปรับ test เดิมของ #110 ที่ยึดคู่โปรแกรม–สินค้า) (AC-34) + ตัด `reference` ออกจาก response ของ `GET /affiliate/me/payouts` พร้อม test (AC-32 ส่วน `reference`) | AF-7 (#110 merged) |
-| AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts (`/affiliate/me/payouts`), Profile (Q5) + e2e (AC-9, AC-35 การ์ดเดียวต่อสินค้าตามกฎ 29); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); แท็บ upcoming ตามกฎ 29(b) รอบ 10 | AF-7 ☑, AF-7b ☑, AF-4 ☑, AF-N2 (รอบ 10) |
+| AF-8 | **แตกรอบ 11 → AF-8a / AF-8b / AF-8c (กฎ 33)** — เดิม: หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts (`/affiliate/me/payouts`), Profile (Q5) + e2e (AC-9, AC-35 การ์ดเดียวต่อสินค้าตามกฎ 29); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); แท็บ upcoming ตามกฎ 29(b) รอบ 10 | — |
+| AF-8a | ☑ #135 — login/register ของ portal + หน้า Products (แท็บ, การ์ดเดียวต่อสินค้า, แชร์) (AC-9, AC-35) | AF-7 ☑, AF-7b ☑, AF-4 ☑ |
+| AF-8b | (storefront) แถบนำทาง + หน้า Programs, Earnings, Payouts, Profile และ `affiliate-status-notice` ตามสิทธิ์ Q6 (กฎ 33) (AC-40) — ไฟล์: `app/[countryCode]/(main)/affiliate/{programs,earnings,payouts,profile}/`, layout ของ portal, data function ของ portal, config ESLint (path ใหม่) | AF-8a ☑ (#135), AF-13 (Profile ใช้ `has_payout_info`) |
+| AF-8c | (storefront เล็ก, qa/review #135) นับถอยหลังเป็นชั่วโมงเมื่อ < 24 ชม., การ์ด `rate_varies` ไม่แสดงยอดประมาณการ, `affiliate-portal-error` เมื่อ backend ล่ม (กฎ 35, 36) (AC-41) — ไฟล์: การ์ด/หน้า Products ของ AF-8a, data function ของ portal | AF-8b (แตะ layout/data function เดียวกัน — ทำหลัง AF-8b เพื่อไม่ชน) |
+| AF-13 | (backend เล็ก, Q5) `has_payout_info` ใน `GET /affiliate/me` (กฎ 34) + integration test (AC-39) — ไฟล์: `src/api/affiliate/me/route.ts`, `src/api/affiliate/helpers.ts` | AF-1 ☑ — เริ่มได้ทันที (∥ ทุกตัว) |
+| AF-12a | (admin UI) Programs: สร้าง/แก้/ลบ draft + เปลี่ยนสถานะตามกฎ 20, scope all/collections/categories (กฎ 37a) (AC-42) — ไฟล์: `src/admin/routes/affiliate/page.tsx`, `src/admin/components/affiliate/` (ฟอร์มใหม่), `src/admin/lib/affiliate.ts` | AF-6 ☑ (#138), AF-5 ☑ |
+| AF-12b | (admin UI เล็ก) Affiliates: approve/suspend/reactivate + ข้อมูลรับเงิน (กฎ 37b) (AC-43) — ไฟล์เดียวกับ AF-12a (`page.tsx` คอลัมน์ action, `lib/affiliate.ts`) | AF-6 ☑ (#138) — ∥ AF-12a/12c (ชน `page.tsx`/`lib/affiliate.ts` ตัวที่ merge ทีหลัง rebase) |
+| AF-12c | (admin UI เล็ก) Payouts: สร้าง payout + mark paid (+ ส่วนเพิ่ม AC-26 จาก qa #138 ถ้ายังไม่ครอบ) (กฎ 37c) (AC-44) — ไฟล์: `src/admin/components/affiliate/payouts-table.tsx`, `page.tsx`, `lib/affiliate.ts` | AF-6 ☑ (#138), AF-9 ☑ — ∥ AF-12a/12b (ชนไฟล์เดียวกัน ตัวที่ merge ทีหลัง rebase) |
 | AF-10 | (เล็ก, backend, follow-up review #90) maturity job reconcile order ที่ยกเลิกแต่ไม่มี reversal ก่อน approve (กฎ 30) (AC-36) | AF-4 ☑ |
 | AF-N1 | (เล็ก, test-only, nit review #107) test lock ของ AF-9b: `await` holding/waiting ต้องมี timeout (ไม่ค้างทั้ง suite เมื่อ lock ผิด), เปลี่ยน `toBeGreaterThanOrEqual(400)` เป็น status ที่คาดแน่นอน — AC-27 ต้องยังผ่าน | AF-9b (#107) |
 | AF-9 | follow-up AF-5 (เล็ก): `cancelPayoutWorkflow` + admin route ยกเลิก payout `draft` (คืน entry ให้เลือกได้อีก) และย้ายการกรอง entry ของ `createPayoutWorkflow` ไปทำใน DB (filter ตามกฎ 19 แทนโหลด entry ทั้งหมดแล้วกรองในแอป) (AC-19, AC-20; AC-7 ต้องยังผ่าน) | AF-5 |
@@ -350,6 +413,11 @@ Payout
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
 (รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
+(รอบ 11) สถานะ: AF-8a ☑ #135, AF-6 ☑ #138, AF-N1 ☑ #137, AF-N2 ◐ #146 (คิว merge), AF-3c ☐ เริ่มได้; ลำดับใหม่: AF-13 ∥ AF-12a ∥ AF-12b ∥ AF-12c เริ่มได้ทันที →
+AF-8b (← AF-13) → AF-8c; AF-8b/8c ไม่ต้องรอ AF-N2 (AF-N2 แตะ backend `products/route.ts` เท่านั้น); release v0.6.0 ต้องมี AF-8b, AF-12a/b/c
+(รอบ 11, review #146 AF-N2) nit `tryAcquire` ที่ `catch {}` กลืน error ทุกชนิด (ต้องข้ามเฉพาะ lock conflict) และ `.run()` ที่ throw แบบ sync ต้อง release lock — แก้ใน #146 ก่อน merge
+(ไม่สร้าง task); ข้อสังเกต: entry `pending` ของ order ที่ยกเลิกและยอดสุทธิ = 0 ค้าง `pending` ถาวร (กฎ 5 ห้ามแก้ status ย้อน/ข้าม) และถูกสแกนทุกวันพร้อม log `affiliate_cancel_reconcile_noop`
+— ยอมรับใน v1 (ปริมาณน้อย; ไม่ใช่ยอดที่จ่ายได้) → backlog หลัง v1.0 พร้อม AF-11
 backlog หลัง v1.0 (ไม่มี AC): dedupe ของ `/affiliate/products` ทำใน SQL เมื่อแคตตาล็อกใหญ่ (v1 dedupe ในแอปมีเพดานจำนวนสินค้าตามที่ AF-7b ทำ — review #122);
 AF-11 reconcile entry ที่ **approve ไปแล้ว** ของ order ที่ถูกยกเลิกแต่ไม่มี reversal (review #125) — ⏸ หลัง v1.0 (owner Q15 2026-10-27)
 (รอบ 10 — qa #138 AF-6, ทำใน #138 ถ้ายังไม่ merge มิฉะนั้นเป็น PR ถัดไปที่แตะหน้า Affiliates) AC-26 เพิ่ม: ที่ viewport 1280×800 ปุ่ม `affiliate-payout-cancel` อยู่ในจอ
@@ -384,8 +452,16 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 - ~~Q13~~ ตัดสินแล้ว (owner ยืนยัน 2026-10-27): order ที่ยกเลิกก่อน attribution ไม่บันทึกทั้ง `AffiliateAttribution` และ entry (ตามที่ AF-4b #91 ทำ) — กฎ 27
 - ~~Q14~~ ตัดสินแล้ว (owner 2026-10-27): เก็บ `GET /affiliate/me/payouts` ที่ #110 ทำไว้ (อ่านอย่างเดียว ไม่ส่ง `entry_ids`, paging ≤ 100 ค่าเริ่มต้น 50) และ
   **ไม่แสดง `reference`** ให้ affiliate (ตัดออกใน AF-7b) — API, AC-32
-- (รอบ 10, qa #138 AF-6 — **session หลักกำลังยืนยันกับ owner; ยังไม่สร้าง task**) admin UI ของ affiliate ตอนนี้**ดูรายการได้อย่างเดียว** — สร้าง/แก้โปรแกรม, อนุมัติ/ระงับ affiliate,
-  สร้าง payout และ mark paid ต้องทำผ่าน API; ต้องมี task UI สำหรับงานเหล่านี้ไหม (และให้ API ส่งชื่อ/อีเมลของ affiliate ใน Ledger/Payouts แทน `affiliate_id` อย่างเดียว)
+- ~~(รอบ 10, qa #138 AF-6) admin UI อ่านอย่างเดียว~~ ตัดสินแล้ว (owner 2026-10-27 รอบ 6): **ทำ admin UI แบบเขียนได้ใน v1** ใช้ API ของ AF-5 ไม่แก้ backend → AF-12a/12b/12c (กฎ 37);
+  ส่วน "แสดงชื่อ/อีเมล affiliate ใน Ledger/Payouts" แยกเป็น Q17
+- Q16 (รอบ 11, AF-12a) scope แบบ `variant_ids` แก้ใน admin UI ไม่ได้ใน v1 (คงค่าเดิม; ตั้งผ่าน API ได้) เพราะ product picker ของ GB-6b2 เลือกระดับ product ไม่ใช่ variant — ทางเลือก:
+  (ก) **[แนะนำ]** คงไว้แบบนี้ใน v1: แคมเปญส่วนใหญ่ใช้ collection/category หรือทั้งร้าน และไม่เพิ่ม component; (ข) task เพิ่ม: picker ระดับ product แล้วแปลงเป็น variant ทั้งหมดของ product
+  (ใช้ picker ของ GB-6b2 ซ้ำ — การใช้งานที่สองจึงย้ายเป็น component กลางได้) ~200 LOC
+- Q17 (รอบ 11, จาก qa #138) Ledger/Payouts ของ admin แสดงแค่ `affiliate_id` เพราะ API ของ AF-5 ไม่ส่งชื่อ/อีเมล และ model ไม่มี relation — ทางเลือก: (ก) **[แนะนำ]** task backend เล็ก (AF-14):
+  `GET /admin/affiliate/affiliates` รับ filter `id[]` แล้ว UI ดึงชื่อของ id ในหน้าปัจจุบันครั้งเดียวต่อหน้า (ไม่แก้ model); (ข) คง `affiliate_id` ใน v1 — admin กรองด้วย affiliate ได้อยู่แล้ว;
+  (ค) เพิ่ม relation `belongsTo` ใน model + migration (ใหญ่กว่า ไม่จำเป็น)
+- Q18 (รอบ 11, AF-12b) รูปแบบ `payout_info` ที่ admin กรอก: ข้อเสนอ `{ bank_name, account_name, account_number }` (โอนธนาคารตาม ADR-005) — ต้องมีพร้อมเพย์ (`promptpay_id`) ด้วยไหม;
+  **ข้อเสนอ: 3 field ก่อน** เพิ่มภายหลังได้โดยไม่ต้อง migrate (เป็น JSON)
 - ~~Q15~~ ตัดสินแล้ว (owner 2026-10-27): **เลื่อนหลัง v1.0** (AF-11 backlog); คำถามเดิม (รอบ 10, review #125) entry ที่ maturity job **approve ไปแล้ว** ก่อน order ถูกยกเลิก และ event `order.canceled` หาย (reversal ของ AF-4 retry ~40s ไม่สำเร็จ เช่น DB ล่มนาน) จะค้างเป็น
   ค่าคอมที่จ่ายได้ — AF-10 (กฎ 30) ครอบเฉพาะ entry ที่ยัง `pending` ทางเลือก: (ก) **[แนะนำ] เลื่อนหลัง v1.0** (ไม่มี task ตอนนี้) — ต้องเกิดสองเหตุพร้อมกัน (cancel หลังพ้น `hold_days`
   + DB ล่มเกิน 40s ตอนนั้น) และ admin ตรวจ/ยกเลิก payout `draft` ได้ก่อน mark paid; (ข) AF-11: maturity job สแกน entry `approved` ที่ยังไม่อยู่ใน payout `paid` ของ order ที่ถูกยกเลิก
