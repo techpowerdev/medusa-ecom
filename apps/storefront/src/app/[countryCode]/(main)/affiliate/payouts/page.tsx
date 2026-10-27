@@ -6,6 +6,7 @@ import { portalPage } from "@lib/util/affiliate-portal"
 import { formatDate } from "@lib/util/date"
 import { convertToLocale } from "@lib/util/money"
 import Pager from "@modules/affiliate/components/pager"
+import PortalError from "@modules/affiliate/components/portal-error"
 import StatusNotice from "@modules/affiliate/components/status-notice"
 
 export const metadata: Metadata = { title: "การจ่ายเงินแอฟฟิลิเอต", robots: { index: false } }
@@ -25,7 +26,11 @@ export default async function AffiliatePayoutsPage({ params, searchParams }: Pro
     redirect(`/${countryCode}/affiliate/login`)
   }
   const page = portalPage((await searchParams).page)
-  const result = await listAffiliatePayouts(page)
+  // AF-8c กฎ 36b: backend ไม่ตอบ/5xx → affiliate-portal-error (null = 403 ตามสถานะ → status notice)
+  const result = await listAffiliatePayouts(page).catch(() => undefined)
+  if (result === undefined) {
+    return <PortalError />
+  }
 
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-payouts-page">

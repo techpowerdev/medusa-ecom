@@ -1,4 +1,5 @@
 import { affiliateLogout, getAffiliate } from "@lib/data/affiliate-portal"
+import PortalError from "@modules/affiliate/components/portal-error"
 import PortalNav from "@modules/affiliate/components/portal-nav"
 
 // AF-8b (spec 05 กฎ 33): layout ของ portal — หัว (ชื่อ, รหัสแนะนำ, ออกจากระบบ) + แถบนำทาง เมื่อ login แล้ว
@@ -11,7 +12,14 @@ export default async function AffiliatePortalLayout({
   params: Promise<{ countryCode: string }>
 }) {
   const { countryCode } = await params
-  const affiliate = await getAffiliate()
+  // AF-8c กฎ 36b: backend ไม่ตอบ/5xx ที่ `/affiliate/me` → render affiliate-portal-error จาก server แทนเนื้อหา
+  // (401 → getAffiliate คืน null แล้วหน้า redirect ไป login ตามเดิม)
+  let affiliate: Awaited<ReturnType<typeof getAffiliate>>
+  try {
+    affiliate = await getAffiliate()
+  } catch {
+    return <PortalError />
+  }
   if (!affiliate) {
     return children
   }

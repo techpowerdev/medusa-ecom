@@ -1,0 +1,71 @@
+
+ RUN  v5.0.5 /private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/15778cd3-33ea-4c2c-8eb7-21f4a2e9873a/scratchpad/wt-AF-8c/apps/storefront
+
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 990 × อัตรา 15 = 148.5 1ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 590 × อัตรา 10 = 59 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 0.1 × อัตรา 5 = 0.01 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 333.33 × อัตรา 12.5 = 41.67 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 100.1 × อัตรา 3 = 3 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 1.15 × อัตรา 50 = 0.58 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > cardPrice > ราคาต่ำสุดของ variant ที่อยู่ในโปรแกรม 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > cardPrice > ไม่มีราคา → null 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 3 ชั่วโมง → ชั่วโมง ไม่มีวัน 1ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 30 นาที → ไม่ถึง 1 ชั่วโมง 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 176400000 ms → เริ่มในอีก 2 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 86400000 ms → เริ่มในอีก 1 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 172440000 ms → เริ่มในอีก 1 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 84600000 ms → เริ่มในอีก 24 ชั่วโมง 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 3600000 ms → เริ่มในอีก 1 ชั่วโมง 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 3599999 ms → เริ่มในอีกไม่ถึง 1 ชั่วโมง 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 1 ms → เริ่มในอีกไม่ถึง 1 ชั่วโมง 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 0 ms → เริ่มแล้ว 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ -3600000 ms → เริ่มแล้ว 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > ค่าเริ่มต้นของ now คือเวลาปัจจุบัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}},{"calculated_price":{"calculated_amount":200,"currency_code":"thb"}}] → true 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}},{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}}] → false 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}},{"calculated_price":{"calculated_amount":null,"currency_code":"thb"}}] → false 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}}] → false 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [] → false 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "upcoming" → upcoming 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "active" → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > undefined → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "x" → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > ["upcoming","active"] → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > undefined → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "abc" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "0" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "-3" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1.5" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "2.9" → 2 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "3" → 3 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1e400" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1e20" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > ["2","3"] → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > แต่ละสถานะใช้ค่าของแถวนั้นตรงๆ — reversed ติดลบแยก ไม่หักจาก approved (AC-40) 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > สถานะที่ API ไม่คืนแถว → ฿0 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > หลายสกุลเงินแสดงแยกแถว ไม่รวมข้ามสกุล 0ms
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=true → ไม่มี affiliate-estimate แต่มี affiliate-rate-varies 37ms
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=false variant 100/200 อัตรา 10% → affiliate-estimate ฿10 ขึ้นต้น ตั้งแต่ 1ms
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=false ราคาเดียว → ไม่มี ตั้งแต่ 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > data function: network → reject (ไม่กลืนเป็น null แบบ 401) 2ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > data function: 5xx → reject (ไม่กลืนเป็น null แบบ 401) 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 401 → null (redirect ไป login ตามเดิม) 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > layout: /affiliate/me ล้มแบบ network → render affiliate-portal-error แทนเนื้อหา 15ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > layout: /affiliate/me ล้มแบบ 5xx → render affiliate-portal-error แทนเนื้อหา 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Products: API ของหน้าล้ม → render affiliate-portal-error 2ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Programs: API ของหน้าล้ม → render affiliate-portal-error 2ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Earnings: API ของหน้าล้ม → render affiliate-portal-error 1ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Payouts: API ของหน้าล้ม → render affiliate-portal-error 1ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Products: API ของหน้าล้ม → render affiliate-portal-error 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Programs: API ของหน้าล้ม → render affiliate-portal-error 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Earnings: API ของหน้าล้ม → render affiliate-portal-error 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Payouts: API ของหน้าล้ม → render affiliate-portal-error 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 403 ตามสถานะยังแสดง affiliate-status-notice ไม่ใช่ affiliate-portal-error 0ms
+
+ Test Files  2 passed (2)
+      Tests  60 passed (60)
+   Start at  03:02:37
+   Duration  157ms (tests 62%, import 27%, transform 7%, worker 4%)
+
+ Test Files  45 passed (45)
+      Tests  483 passed (483)

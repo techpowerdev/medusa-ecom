@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { getAffiliate, getAffiliateEarnings } from "@lib/data/affiliate-portal"
 import { EARNING_STATUSES, earningsByStatus } from "@lib/util/affiliate-portal"
 import { convertToLocale } from "@lib/util/money"
+import PortalError from "@modules/affiliate/components/portal-error"
 import StatusNotice from "@modules/affiliate/components/status-notice"
 
 export const metadata: Metadata = { title: "รายได้แอฟฟิลิเอต", robots: { index: false } }
@@ -22,7 +23,11 @@ export default async function AffiliateEarningsPage({ params }: { params: Promis
   if (!affiliate) {
     redirect(`/${countryCode}/affiliate/login`)
   }
-  const result = await getAffiliateEarnings()
+  // AF-8c กฎ 36b: backend ไม่ตอบ/5xx → affiliate-portal-error (null = 403 ตามสถานะ → status notice)
+  const result = await getAffiliateEarnings().catch(() => undefined)
+  if (result === undefined) {
+    return <PortalError />
+  }
   const byStatus = result && earningsByStatus(result.totals)
 
   return (
