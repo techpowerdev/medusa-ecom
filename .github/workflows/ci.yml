@@ -110,11 +110,12 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # OPS-15: เก็บ log ของ test ไว้ให้ขั้นถัดไปนับ — pipefail คง exit code ของ jest แม้ผ่าน tee
-      - env:
+      # OPS-15: เก็บ log ของ test ไว้ให้ขั้นถัดไปนับ — `shell: bash` ระบุชัดให้ Actions รันด้วย
+      # `bash --noprofile --norc -eo pipefail` (exit code ของ jest ไม่หายเพราะ tee)
+      - shell: bash
+        env:
           TEST_LOG: ${{ runner.temp }}/backend-test.log
         run: |
-          set -o pipefail
           # { ...; } ครอบทั้งคำสั่ง (unit-modules มี &&) ให้ log ของทุกคำสั่งเข้าไฟล์
           { ${{ matrix.run }}; } 2>&1 | tee "$TEST_LOG"
       # OPS-15 (spec 07 AC-26): connection ใน pool ของ app ต้องไม่ถูก DB ปิดใต้เท้า (เคย ~1,400 บรรทัดต่อ run)

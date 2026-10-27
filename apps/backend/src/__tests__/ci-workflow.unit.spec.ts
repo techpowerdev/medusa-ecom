@@ -86,8 +86,8 @@ describe("OPS-15 ci.yml นับ log connection ของ knex", () => {
   const countStep = /- name: [^\n]*OPS-15[^\n]*\n([\s\S]*?)(?=\n {6}- |\n*$)/.exec(body)?.[1] ?? ""
   const pattern = /grep -c "([^"]+)"/.exec(countStep)?.[1]
 
-  it("ขั้นรัน test เขียน log ลงไฟล์ (pipefail คง exit code ของ jest)", () => {
-    expect(body).toMatch(/set -o pipefail/)
+  it("ขั้นรัน test เขียน log ลงไฟล์ (shell: bash = -eo pipefail คง exit code ของ jest)", () => {
+    expect(body).toMatch(/- shell: bash\n\s+env:\n\s+TEST_LOG:/)
     expect(body).toMatch(/\{ \$\{\{ matrix\.run \}\}; \} 2>&1 \| tee "?\$TEST_LOG"?/)
   })
 

@@ -11,6 +11,9 @@ medusaIntegrationTestRunner (@medusajs/test-utils 2.22.1) snapshot/restore DB �
 integration-tests/setup-after-env.ts (setupFilesAfterEnv ของ integration:http): beforeEach ระดับบนสุดรันก่อน
 beforeEach ของ runner → releaseIdlePgConnections(): knex.destroy() (รอ connection ที่ใช้อยู่คืน) แล้ว
 knex.initialize() pool ใหม่บน instance เดิม — ไม่มี connection เหลือใน pool ตอน DB ถูก terminate
+รอบแก้ตาม review (REQUEST CHANGES #156): ก่อน destroy() รอจน pool ว่าง (numUsed/numPendingAcquires/
+numPendingCreates = 0) ต่อเนื่อง 50ms (timeout 5s → ไม่ destroy) เพราะ subscriber เบื้องหลัง (search ingestion
+ของ product.created) ยังใช้ pool อยู่หลัง test จบ และ tarn Pool.destroy() abort acquire ที่รออยู่ของมัน
 
 == Red
 ci-workflow.unit.spec.ts + pg-pool-reset.unit.spec.ts ก่อนเขียนโค้ด:
@@ -26,10 +29,29 @@ CI ก่อนแก้ (run 40504356517, PR AF-N2): http 1/3 = 461, http 2/3 =
 หลังแก้: flash-sale-module + evoucher-links            → 0    (Tests: 4 passed)
 หลังแก้: group-buy-outcome + order-notifications       → 0    (Tests: 16 passed; ไม่มี "Connection Error"/"Unable to acquire")
 
+== รอบแก้ตาม review — Red (unit) ก่อนเพิ่มการรอ pool ว่าง
+  ✕ รอจน pool ว่าง (numUsed = 0) ก่อน destroy — ไม่ abort query ของ subscriber ที่ยังรันเบื้องหลัง
+  ✕ รอจน pool ว่าง (numPendingAcquires = 0) ก่อน destroy — ...
+  ✕ รอจน pool ว่าง (numPendingCreates = 0) ก่อน destroy — ...
+  ✕ pool ต้องว่างต่อเนื่องตลอด quietMs (subscriber ที่หยุดระหว่าง query ยังไม่จบ)
+  ✕ pool ไม่ว่างจนหมดเวลา → ไม่ destroy (ไม่ abort งานค้าง; ...)
+Tests:       5 failed, 3 passed, 8 total   → หลังแก้ 8 passed
+
+== รอบแก้ตาม review — ในเครื่อง group-buy-outcome + flash-sale-limits (21 tests ผ่านทุกรอบ)
+                                   "message":"aborted"   Connection ended unexpectedly   "level":"error"
+ไม่ปล่อย pool (develop)                    0                     111                          5
+destroy ทันที (commit แรกของ PR)           13                      0                         27
+รอ pool ว่างก่อน destroy (รอบนี้)            0                      0                          1 (FS-3 forced failure ที่ test ตั้งใจ)
+CI ก่อนหน้า (review): aborted ต่อ shard http 1/2/3 = 2/0/0 (run 40504356517) → 37/56/22 (run 40509270855)
+
 == Green
 pnpm --filter backend test:unit
 Test Suites: 63 passed, 63 total
 Tests:       616 passed, 616 total
 pnpm lint && pnpm typecheck: ผ่าน (exit 0); pnpm --filter backend build: ผ่าน
+รอบแก้ตาม review (หลัง merge origin/develop): pnpm --filter backend test:unit
+Test Suites: 63 passed, 63 total
+Tests:       623 passed, 623 total
+pnpm lint && pnpm typecheck: ผ่าน (exit 0)
 
 == CI (AC-26: ผ่าน 3 run ติดกัน) — run id บันทึกใน body ของ PR
