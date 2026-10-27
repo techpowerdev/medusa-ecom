@@ -16,6 +16,7 @@ import seedThailand from "../../src/scripts/seed"
 import { EVOUCHER_MODULE } from "../../src/modules/evoucher"
 import EvoucherModuleService from "../../src/modules/evoucher/service"
 import { allocateAndDeliverEvouchersWorkflow } from "../../src/workflows/evoucher/allocate-and-deliver-evouchers"
+import evoucherDailyJob from "../../src/jobs/evoucher-daily"
 
 // provider ของ Notification module ใน test (AC-26: ให้ provider เป็นตัว throw)
 import localNotificationProvider from "@medusajs/medusa/notification-local"
@@ -575,6 +576,41 @@ medusaIntegrationTestRunner({
         expect(await service.listEvoucherCodes({ order_id: orderId, status: "delivered" })).toHaveLength(2)
         const after = (await orderOf(orderId)).items!.find((i) => i!.variant_id === b.variantId)!
         expect(after.metadata?.evoucher_backordered).toBeFalsy()
+      })
+    })
+
+    // EV-12 (กฎข้อ 2 ข้อยกเว้น): code ที่ job รายวันเว้นไว้ให้ order ที่จองแล้วถูกส่งมอบได้ ไกลสุดก่อน
+    describe("AC-30b near-expiry codes kept for reserved orders", () => {
+      const plainCodes = async (orderId: string) => {
+        const rows = await service.listEvoucherCodes({ order_id: orderId })
+        return Promise.all(rows.map(async (r) => [await service.decryptSecret(r.code), r.status]))
+      }
+
+      it("delivers the farthest kept code to a reserved order after the daily job ran", async () => {
+        const { variantId, poolId } = await createVoucher(
+          `code,pin,expires_at\nNEAR-2,,${inDays(2)}\nNEAR-4,,${inDays(4)}\nNEAR-5,,${inDays(5)}\n`
+        )
+        const first = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        await evoucherDailyJob(container)
+        expect(await service.listEvoucherCodes({ pool_id: poolId, status: "available" })).toHaveLength(2)
+
+        await captureAndWait(first.orderId)
+
+        expect(await plainCodes(first.orderId)).toEqual([["NEAR-5", "delivered"]])
+        const order = await orderOf(first.orderId)
+        expect(order.items![0]!.metadata?.evoucher_backordered).toBeFalsy()
+      })
+
+      it("still prefers a long-lived code over a near-expiry one", async () => {
+        const { variantId } = await createVoucher(
+          `code,pin,expires_at\nNEAR-5,,${inDays(5)}\nLONG-30,,${inDays(30)}\n`
+        )
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+
+        await captureAndWait(orderId)
+
+        expect(await plainCodes(orderId)).toEqual([["LONG-30", "delivered"]])
       })
     })
 

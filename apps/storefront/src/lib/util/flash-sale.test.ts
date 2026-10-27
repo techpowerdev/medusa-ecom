@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest"
 import {
   type ActiveFlashSales,
   type FlashSale,
+  cardFlashOffer,
   countdownLabel,
   flashOfferForVariant,
   hasFlashCodeConflict,
+  mergeActiveFlashSales,
 } from "./flash-sale"
 
 // FS-6 (spec 03 กฎข้อ 4, AC-4, AC-8 g, AC-13 e): logic ของ UI flash sale บน PDP/cart — pure
@@ -123,5 +125,69 @@ describe("hasFlashCodeConflict (AC-8 g)", () => {
   it("มี code แต่ไม่มีสินค้า flash ใน cart → false", () => {
     expect(hasFlashCodeConflict([code], active(sale(), null))).toBe(false)
     expect(hasFlashCodeConflict([code], null)).toBe(false)
+  })
+})
+
+// FS-13 (spec 03 กฎข้อ 18, AC-19): ราคา flash บนการ์ด PLP + รวมผลของ request ที่แบ่งตามเพดาน 24 variant
+describe("cardFlashOffer (FS-13)", () => {
+  const price = (
+    variant_id: string,
+    flash_price: number | null,
+    campaign_id: string | null = "camp_1"
+  ) => ({
+    variant_id,
+    currency_code: "thb",
+    original_price: 590,
+    flash_price,
+    campaign_id,
+  })
+
+  it("เลือก variant ที่ราคา flash ต่ำสุดของสินค้า", () => {
+    const data: ActiveFlashSales = {
+      flash_sales: [sale()],
+      variants: [price("var_1", 500), price("var_2", 450), price("var_9", 100)],
+    }
+    expect(
+      cardFlashOffer(data, ["var_1", "var_2"], NOW)?.price.flash_price
+    ).toBe(450)
+  })
+
+  it("แคมเปญ sold_out / เลย ends_at / ไม่มี variant ในแคมเปญ → null (การ์ดแสดงราคาปกติ)", () => {
+    expect(
+      cardFlashOffer(active(sale({ sold_out: true })), ["var_1"], NOW)
+    ).toBeNull()
+    expect(
+      cardFlashOffer(
+        active(sale({ ends_at: "2026-10-27T10:00:00Z" })),
+        ["var_1"],
+        NOW
+      )
+    ).toBeNull()
+    expect(cardFlashOffer(active(), ["var_2"], NOW)).toBeNull()
+    expect(cardFlashOffer(null, ["var_1"], NOW)).toBeNull()
+  })
+})
+
+describe("mergeActiveFlashSales (FS-13)", () => {
+  it("รวม variants ทุกชุดและแคมเปญไม่ซ้ำ id; ชุดที่ล้ม (null) ถูกข้าม", () => {
+    const a = active()
+    const b: ActiveFlashSales = {
+      flash_sales: [sale(), sale({ id: "camp_2" })],
+      variants: [
+        { ...a.variants[0], variant_id: "var_3", campaign_id: "camp_2" },
+      ],
+    }
+    const merged = mergeActiveFlashSales([a, null, b])
+    expect(merged?.flash_sales.map((s) => s.id)).toEqual(["camp_1", "camp_2"])
+    expect(merged?.variants.map((v) => v.variant_id)).toEqual([
+      "var_1",
+      "var_2",
+      "var_3",
+    ])
+  })
+
+  it("ทุกชุดล้มหรือไม่มีชุด → null", () => {
+    expect(mergeActiveFlashSales([null, null])).toBeNull()
+    expect(mergeActiveFlashSales([])).toBeNull()
   })
 })

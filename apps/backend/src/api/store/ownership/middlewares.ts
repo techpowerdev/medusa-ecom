@@ -16,6 +16,7 @@ import {
 } from "../../../lib/store-ownership"
 import { rejectStoreReturnOverrides } from "./return-overrides"
 import { validateStoreReturnShippingOption } from "./return-shipping-option"
+import { validateStoreReturnWindow } from "./return-window"
 
 // CORE-12 (spec 01 "API routes" + กฎ 22, ADR-013 ทางเลือก A): ตรวจเจ้าของ resource บน route ของ Medusa
 // ด้วย defineMiddlewares — ไม่ห่อ route และไม่ใช้ workflow hook
@@ -88,6 +89,7 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
   // CORE-13 (กฎ 24, AC-39): ตาม guide "Restrict Return Creation" ของ Medusa — core ไม่มี auth บน route นี้
   // CORE-16: ต่อจาก auth + owner check — ห้าม store ส่ง return_shipping.price / receive_now / location_id (400)
   // CORE-17: option ต้องเป็น return option ที่เปิดใน store และครอบที่อยู่จัดส่งของ order (400)
+  // CORE-20b: ทุก item ต้องเป็น line ที่ต้องจัดส่ง ส่งแล้ว และอยู่ในช่วง return_window_days ของ region (400)
   {
     method: ["POST"],
     matcher: "/store/returns",
@@ -96,6 +98,7 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
       ensureStoreOwnership((req, query) => orderOwner(query, body(req).order_id)),
       rejectStoreReturnOverrides,
       validateStoreReturnShippingOption,
+      validateStoreReturnWindow,
     ],
   },
   // CORE-13 (owner Q-F3, AC-40): ปิด order transfer ทั้งชุด (request/accept/decline/cancel) — ไม่ระบุ method

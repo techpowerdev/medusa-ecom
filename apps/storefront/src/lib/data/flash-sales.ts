@@ -1,7 +1,10 @@
 "use server"
 
 import { sdk } from "@lib/config"
-import type { ActiveFlashSales } from "@lib/util/flash-sale"
+import {
+  type ActiveFlashSales,
+  mergeActiveFlashSales,
+} from "@lib/util/flash-sale"
 
 // FS-6: endpoint ของ FS-4/FS-7 รับ variant_ids ได้ไม่เกิน 24 ตัวต่อครั้ง
 const MAX_VARIANTS = 24
@@ -15,16 +18,27 @@ export async function getActiveFlashSales(
   regionId: string,
   variantIds: string[]
 ): Promise<ActiveFlashSales | null> {
-  const variant_ids = Array.from(new Set(variantIds)).slice(0, MAX_VARIANTS)
-  if (!variant_ids.length) {
+  const ids = Array.from(new Set(variantIds))
+  if (!ids.length) {
     return null
   }
 
-  return sdk.client
-    .fetch<ActiveFlashSales>("/store/flash-sales/active", {
-      method: "GET",
-      query: { region_id: regionId, variant_ids },
-      cache: "no-store",
-    })
-    .catch(() => null)
+  // FS-13: PLP มีหลายสินค้า → แบ่ง request ละไม่เกิน MAX_VARIANTS แล้วรวมผล (ยิงพร้อมกัน)
+  const chunks: string[][] = []
+  for (let i = 0; i < ids.length; i += MAX_VARIANTS) {
+    chunks.push(ids.slice(i, i + MAX_VARIANTS))
+  }
+
+  const parts = await Promise.all(
+    chunks.map((variant_ids) =>
+      sdk.client
+        .fetch<ActiveFlashSales>("/store/flash-sales/active", {
+          method: "GET",
+          query: { region_id: regionId, variant_ids },
+          cache: "no-store",
+        })
+        .catch(() => null)
+    )
+  )
+  return mergeActiveFlashSales(parts)
 }
