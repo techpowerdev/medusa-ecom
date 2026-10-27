@@ -9,7 +9,9 @@
       Tests  225 passed (225)
 
 ## Green — e2e (chromium, backend :9151 / storefront next dev :8151)
-core-14-buy-login.spec.ts, core-14b-add-variant.spec.ts, core-14c-login-foreign-cart.spec.ts: 7 passed (16.8s)
+core-14-buy-login.spec.ts, core-14b-add-variant.spec.ts, core-14c-login-foreign-cart.spec.ts: 7 passed (11.2s)
+- AC-41 (nit #81): /buy ไม่มี session → maxRedirects:0 ได้ 303 + location /th/account?return_to=... ก่อนตาม redirect
+- AC-42 (nit #81 ต้นทาง): /ucp/v1 → maxRedirects:0 ได้ 307/308 + location /th/ucp/v1 ก่อน แล้วปลายทาง 404
 
 ## lint + typecheck + storefront build
 pnpm lint && pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน
