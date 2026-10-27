@@ -72,6 +72,33 @@ handshake (kernel ตอบแทน) คำสั่งจึงแค่ค้
 - เมื่อ alert ดังให้ restart worker (orchestrator/on-call) — job ที่ค้างอยู่ใน Redis จะถูกประมวลผลหลัง restart
 - เราไม่แตะ internal ของ module event bus ของ Medusa และไม่เพิ่ม health route (ADR-012 ข้อ 3–4)
 
+## Prod guards (OPS-7, ADR-010)
+backend ที่ `NODE_ENV=production` (image ตั้งให้แล้ว และ `medusa start` ตั้งเป็นค่า default) **บูตไม่ขึ้น** เมื่อ:
+- ขาด `RESEND_API_KEY` หรือ `RESEND_FROM_EMAIL` (ไม่งั้นอีเมลลูกค้าตกไปที่ provider `local` แบบเงียบ ๆ) — ยกเว้นตั้ง `ALLOW_TEST_PROVIDERS=true`
+- ขาด `AFFILIATE_TOKEN_SECRET` (secret ของ cookie `aff`, spec 05 กฎ 22)
+- `STOREFRONT_URL` ไม่ใช่ URL `http(s)://` ที่ parse ได้ (ลิงก์ชำระเงินในอีเมล group buy ของ GB-4)
+
+นอก production ตัวแปรสองตัวหลังที่ว่างจะ log warning ครั้งเดียวตอนบูต (ไม่ log ต่อ request)
+seed (`pnpm --filter backend seed`) ใน production เปิดเฉพาะ `pp_stripe_stripe` และ `pp_stripe-promptpay_stripe` ให้ region Thailand
+(ไม่เปิด `pp_system_default` = manual payment ที่สั่งซื้อได้โดยไม่จ่ายเงินจริง)
+
+`ALLOW_TEST_PROVIDERS=true` ปิด guard ของ provider ทดสอบ (อีเมล + seed) — ใช้กับ CI/smoke/staging เท่านั้น **ห้ามตั้งใน prod**
+(job `storefront-e2e` และ `docker-worker-mode` ใน `ci.yml` ตั้งไว้เพราะรันโหมด production โดยไม่มี Resend key และ e2e ใช้ manual payment)
+ค่าอื่นนอกจาก `true` ไม่ปิด guard; ไม่ปิด guard ของ `AFFILIATE_TOKEN_SECRET`/`STOREFRONT_URL`
+
+## Go-live checklist
+ทำครบทุกข้อก่อนเปิดร้านจริง และรันข้อ 4 ซ้ำหลังแก้ตั้งค่า payment ใน admin ทุกครั้ง (D1 ไม่กัน admin เปิด manual payment เองภายหลัง)
+1. env ของ server และ worker ครบตามหัวข้อ "Prod guards" และ `docs/spec/07-scaling-ops.md` ข้อ 9 (`TZ=UTC`, `EVOUCHER_ADMIN_EMAIL`, `OPS_ALERT_EMAIL` ฯลฯ)
+2. `STRIPE_API_KEY` เป็น live key และ `STRIPE_WEBHOOK_SECRET` มาจาก webhook endpoint ของ live mode
+3. ไม่ได้ตั้ง `ALLOW_TEST_PROVIDERS` (ทั้งค่าว่างหรือค่าใด ๆ)
+4. รันบน container ของ server หรือ worker (env เดียวกับ production):
+   ```bash
+   pnpm --filter backend check:go-live      # ใน image: npx medusa exec ./src/scripts/check-go-live.ts
+   ```
+   ตรวจ `NODE_ENV=production`, ไม่ได้ตั้ง `ALLOW_TEST_PROVIDERS`, `STRIPE_API_KEY` ไม่ว่างและไม่ขึ้นต้นด้วย `sk_test_`/`rk_test_`,
+   และไม่มี region ใดเปิด `pp_system_default` — ไม่ผ่านข้อใดพิมพ์ `check:go-live FAIL ...` ทีละข้อและ exit code ≠ 0; ผ่านครบ exit 0
+   (region ที่ seed สร้างก่อน OPS-7 หรือ admin เปิดเองยังมี `pp_system_default` → ปิดใน admin → Settings → Regions แล้วรันใหม่)
+
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
 1. `medusa db:migrate` (compose prod: service `migrate` รันก่อน server/worker ด้วย `service_completed_successfully`)
@@ -147,5 +174,7 @@ provider ตอนอ่าน PI เดิม — guard ไม่ลบ session
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
 - `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015 และ `OPS_ALERT_EMAIL`)
+- `pnpm --filter backend test:unit` — `src/__tests__/prod-guards.unit.spec.ts` (OPS-7 guards, env ใน `ci.yml`, หัวข้อ Go-live checklist)
+- `pnpm --filter backend check:go-live` — checklist ก่อนเปิดร้าน (OPS-7)
 - `tools/ops/smoke-worker-mode.sh` — product ที่สร้างบน server ต้องถูกประมวลผลโดย subscriber บน worker
 - `tools/ops/smoke-redis-outage.sh` — worker กลับมาประมวลผล event หลัง Redis ถูก pause 30 วินาที (OPS-8)

@@ -26,12 +26,19 @@ const ENV_KEYS = [
 
 type Env = Partial<Record<(typeof ENV_KEYS)[number], string>>
 
+const PROD_GUARD_ENV = {
+  ALLOW_TEST_PROVIDERS: "true",
+  AFFILIATE_TOKEN_SECRET: "secret-from-env",
+  STOREFRONT_URL: "https://shop.example.com",
+}
+
 function loadConfig(env: Env) {
   // ตั้งเป็น "" แทนการลบ — loadEnv() ใน medusa-config จะไม่เอาค่าจาก .env ในเครื่องมาทับ
   for (const key of ENV_KEYS) {
     process.env[key] = ""
   }
-  Object.assign(process.env, env)
+  // OPS-7: env ที่ prod guards บังคับ — test นี้ดูเฉพาะ infra modules
+  Object.assign(process.env, PROD_GUARD_ENV, env)
 
   let config: LoadedConfig | undefined
   jest.isolateModules(() => {

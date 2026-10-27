@@ -37,3 +37,9 @@ D. ไม่บังคับในโค้ด ใช้ checklist go-live อ
 + ไม่มี infra ใหม่ ไม่มี custom module; ใช้ seed/`medusa exec` ที่มีอยู่
 − เพิ่ม env หนึ่งตัวที่ "อันตรายถ้าตั้งใน prod" — บรรเทาด้วย `check:go-live` ที่ตรวจตัวแปรนี้
 − admin ยังเปิด `pp_system_default` ผ่าน dashboard ได้หลัง go-live (D1 ไม่กัน) — `check:go-live` จับได้เมื่อรันซ้ำเท่านั้น
+
+## ภาคผนวก (2026-10-27, planner รอบ 9 — ที่มา: review OPS-7 #108; หมายเหตุชี้แจง ไม่เปลี่ยนการตัดสินใจ)
+ข้อ 1 "ปิด guard ทั้งหมด" กว้างเกินจริง ความหมายที่ใช้ (ตามที่ OPS-7 ทำและ spec 07 AC-13/AC-17 กำหนดให้ CI ตั้งตัวแปรเอง):
+`ALLOW_TEST_PROVIDERS=true` ปิด**เฉพาะ guard ของ provider ทดสอบ** — notification fallback `local` (ข้อ 2) และการที่ seed ใส่ `pp_system_default` (ข้อ 3 ส่วน seed)
+**ไม่ปิด**: `check:go-live` (ยังรายงานว่าตั้งตัวแปรนี้ = ไม่ผ่าน), guard env ที่ไม่ใช่ provider ทดสอบ (`REDIS_URL` ของ worker mode — OPS-2,
+`AFFILIATE_TOKEN_SECRET`, `STOREFRONT_URL` — OPS-7) และ (เมื่อ OPS-13 merge) production ที่ตั้งตัวแปรนี้จะ log warn ตอนบูต (spec 07 AC-20)

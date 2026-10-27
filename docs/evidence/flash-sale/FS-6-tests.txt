@@ -1,0 +1,31 @@
+# FS-6 — storefront flash sale (spec 03) — ผลการทดสอบ 2026-10-27
+
+## Red (ก่อนเขียนโค้ด)
+vitest src/lib/util/flash-sale.test.ts → FAIL: Cannot find module ./flash-sale (Test Files 1 failed, Tests: no tests)
+
+## Unit (Vitest) — pnpm --filter storefront exec vitest run src/lib/util/flash-sale.test.ts --reporter=verbose
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > คืน campaign + ราคาของ variant ที่อยู่ในแคมเปญ 1ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > variant ที่ไม่อยู่ในแคมเปญ / ไม่มีข้อมูล / ไม่ได้เลือก variant → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > เลย ends_at แล้ว (นาฬิกาฝั่ง browser) → null — หน้าเลิกแสดงราคา flash โดยไม่ต้องโหลดใหม่ 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > sold_out ยังคืน offer เพื่อให้หน้าแสดง 'สินค้าหมด' (กฎข้อ 4) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > เหลือน้อยกว่าวัน → HH:MM:SS 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > เกินหนึ่งวัน → N วัน HH:MM:SS (ภาษาไทย) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > หมดเวลาแล้วหรือไม่มี ends_at → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > cart มี code + สินค้า flash → true 0ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > ไม่มี code (มีแต่ automatic) → false 0ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > มี code แต่ไม่มีสินค้า flash ใน cart → false 0ms
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+
+## Unit ทั้งชุด storefront: Test Files 20 passed (20), Tests 199 passed (199)
+
+## e2e (Playwright, storefront next build + start :8141, backend medusa develop :9141, DB medusa_fs6)
+pnpm --filter storefront exec playwright test e2e/flash-sale-storefront.spec.ts --project=chromium
+  ✓  1 [chromium] › e2e/flash-sale-storefront.spec.ts:183:5 › AC-4, AC-13: PDP แสดง banner, countdown, ราคา flash + ราคาขีดฆ่า, เหลือ N ชิ้น และหายเมื่อเลย ends_at (T−1min / T+1min) (874ms)
+  ✓  2 [chromium] › e2e/flash-sale-storefront.spec.ts:212:5 › AC-1, AC-8 (g): cart ได้ส่วนลด flash; ใส่ code แล้วแสดงข้อความว่าใช้ร่วมกันไม่ได้ (1.4s)
+  ✓  3 [chromium] › e2e/flash-sale-storefront.spec.ts:245:5 › AC-13 (e): units_sold ถึง total_cap → PDP แสดง 'สินค้าหมด' (1.4s)
+  ✓  4 [chromium] › e2e/flash-sale-storefront.spec.ts:285:5 › AC-1: หลัง ends_at cart ใหม่แสดงราคาเต็ม (1.1s)
+  4 passed (5.9s)
+
+## lint / typecheck
+pnpm lint → 0 errors (33 warnings เดิมของ starter); pnpm typecheck → ผ่าน
