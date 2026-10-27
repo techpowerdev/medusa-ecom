@@ -42,7 +42,11 @@ export const formatCountdown = (seconds: number) =>
 
 type PollableCart = {
   completed_at?: string | Date | null
-  payment_collection?: { payment_sessions?: { status: string }[] | null } | null
+  payment_collection?: {
+    captured_amount?: number | null
+    refunded_amount?: number | null
+    payment_sessions?: { status: string }[] | null
+  } | null
 } | null
 
 type IntentWithNextAction = {
@@ -60,11 +64,18 @@ export function promptPayQrImage(intent: IntentWithNextAction | undefined): stri
   return qr?.image_url_svg ?? qr?.image_url_png ?? null
 }
 
-export type PromptPayPollState = "paid" | "failed" | "pending"
+export type PromptPayPollState = "paid" | "refunded" | "failed" | "pending"
 
-/** webhook เป็น source of truth (กฎข้อ 3): cart ถูก complete โดย webhook = ชำระแล้ว */
+/**
+ * webhook เป็น source of truth (กฎข้อ 3): cart ถูก complete โดย webhook = ชำระแล้ว
+ * PAY-6c (กฎข้อ 8): cart ยังไม่ complete แต่ยอดที่ refund ครอบยอดที่ capture = เงินถูกคืนแล้ว (Medusa `compensatePaymentIfNeededStep`
+ * refund เมื่อ complete ล้มหลัง capture) — อ่านจาก `payment_collection` ของ Store API (refund ไม่ลบ capture ออกจาก captured_amount)
+ */
 export function promptPayPollState(cart: PollableCart): PromptPayPollState {
   if (cart?.completed_at) return "paid"
+  const captured = cart?.payment_collection?.captured_amount ?? 0
+  const refunded = cart?.payment_collection?.refunded_amount ?? 0
+  if (captured > 0 && refunded >= captured) return "refunded"
   const sessions = cart?.payment_collection?.payment_sessions ?? []
   if (sessions.some((s) => s.status === "canceled" || s.status === "error")) return "failed"
   return "pending"
@@ -97,11 +108,26 @@ export function promptPaySession<T extends { status: string; provider_id: string
 /**
  * ทุกรอบ poll ระหว่างรอ order: cart complete แล้ว → complete (ได้ order เดิม); ยัง pending และอยู่ในโหมดทางสำรองหลัง 409
  * (`completeFallback`) → ลอง complete cart ซ้ำ (AC-12b: complete รอบก่อนล้ม/webhook ไม่มา); session ล้ม → fail
+ * PAY-6c: เงินถูกคืนระหว่างทางสำรอง → refunded (หยุดและให้เริ่มชำระใหม่) — นอกโหมดทางสำรองไม่ใช้สัญญาณนี้ (QR รอบใหม่หลังคืนเงิน)
  */
 export function promptPayPollAction(
   state: PromptPayPollState,
   completeFallback: boolean
-): "complete" | "fail" | "wait" {
+): "complete" | "refunded" | "fail" | "wait" {
   if (state === "failed") return "fail"
-  return state === "paid" || completeFallback ? "complete" : "wait"
+  if (state === "paid") return "complete"
+  if (!completeFallback) return "wait"
+  return state === "refunded" ? "refunded" : "complete"
 }
+
+/** PAY-6c (กฎข้อ 8): ทางสำรองเรียก complete cart + poll รวมได้ไม่เกินเท่านี้ แล้วแสดง `promptpay-order-delayed` */
+export const PROMPTPAY_FALLBACK_MAX_REQUESTS = 10
+
+/** ยิง request ของทางสำรองได้อีกไหม (`used` = จำนวนที่ยิงไปแล้วตั้งแต่ได้ 409) */
+export const promptPayFallbackAllowed = (used: number) => used < PROMPTPAY_FALLBACK_MAX_REQUESTS
+
+/**
+ * poll ของทางสำรองได้เฉพาะเมื่อเหลือ ≥ 2 slot — เว้น slot สุดท้ายให้ complete cart เสมอ (review #136): poll ครั้งสุดท้ายเห็น `paid`
+ * (webhook complete แล้ว) ต้องยัง complete ได้ order เดิมแล้วไปหน้า confirmed ไม่ค้างที่ `promptpay-order-delayed`
+ */
+export const promptPayFallbackCanPoll = (used: number) => promptPayFallbackAllowed(used + 1)
