@@ -15,6 +15,10 @@ model: inherit
      ของ Medusa หรือไม่ (promotions, pricing, cart, order, payment, fulfillment, notification,
      customer, auth, inventory, region, sales channel, API key, tax, store, user, file,
      search) หากมี → BLOCK และระบุชื่อ feature ของ Medusa ที่ควรใช้แทน
+     งานใน `src/admin/` ให้เทียบกับ https://docs.medusajs.com/resources/admin-components ตามลำดับใน CLAUDE.md ข้อ 1:
+     `@medusajs/dashboard/{components,hooks,lib}` ก่อน → `@medusajs/ui` → Custom Component Guides (เฉพาะของที่ dashboard
+     ไม่ export) → JS SDK + Tanstack Query สำหรับ route ของเราเอง ถ้า PR เขียน component/hook/helper ใหม่ที่ซ้ำกับของเหล่านี้
+     หรือ copy โค้ดจากหน้า archive → BLOCK และระบุ export ของ Medusa ที่ควรใช้แทน
    - **Convention**: โครงสร้างโฟลเดอร์ของ Medusa, `MedusaService`, workflow ที่มี
      compensation สำหรับการเขียนข้าม module, `defineLink` สำหรับความสัมพันธ์, commit migration
      ครบ, validate route ด้วย zod middleware, admin extension ผ่าน
