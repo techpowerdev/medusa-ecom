@@ -6,7 +6,7 @@ import {
   deleteEvoucherPoolWorkflow,
   updateEvoucherPoolWorkflow,
 } from "../../../../../workflows/evoucher/evoucher-pool"
-import { withCodeCounts } from "../../helpers"
+import { withCodeCounts, withPoolCountFields } from "../../helpers"
 import { AdminUpdateEvoucherPool } from "../../validators"
 
 export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
@@ -15,6 +15,7 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
     entity: "evoucher_pool",
     filters: { id: req.params.id },
     ...req.queryConfig,
+    fields: withPoolCountFields(req.queryConfig.fields),
   })
   if (!data[0]) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "Evoucher pool not found")
