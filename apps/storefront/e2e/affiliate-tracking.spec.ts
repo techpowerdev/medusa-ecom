@@ -1,10 +1,7 @@
-import { APIRequestContext } from "@playwright/test"
-import crypto from "node:crypto"
-
+import { createActiveAffiliate } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import {
   STOREFRONT_COUNTRY as CC,
-  Headers,
   adminHeaders,
   createCustomer,
   publishableKey,
@@ -17,28 +14,6 @@ test.use({ evidenceTarget: { feature: "affiliate", taskId: "AF-2" } })
 
 const PRODUCT = "t-shirt"
 
-/** สมัคร affiliate (actor `affiliate`) แล้วให้ admin อนุมัติเป็น active (กฎ 7) */
-async function createActiveAffiliate(request: APIRequestContext, admin: Headers) {
-  const suffix = `${Date.now().toString(36)}${crypto.randomInt(1e6)}`
-  const code = `e2e-af2-${suffix}`
-  const reg = await request.post(`${BACKEND_URL}/auth/affiliate/emailpass/register`, {
-    data: { email: `${code}@example.com`, password: crypto.randomBytes(12).toString("hex") },
-  })
-  expect(reg.status(), "affiliate auth register").toBe(200)
-  const created = await request.post(`${BACKEND_URL}/affiliate/register`, {
-    headers: { authorization: `Bearer ${(await reg.json()).token}` },
-    data: { name: "E2E AF-2", code },
-  })
-  expect(created.status(), "affiliate register").toBe(200)
-  const { affiliate } = await created.json()
-  const approved = await request.post(`${BACKEND_URL}/admin/affiliate/affiliates/${affiliate.id}`, {
-    headers: admin,
-    data: { status: "active" },
-  })
-  expect(approved.status(), "admin approve affiliate").toBe(200)
-  return code
-}
-
 test("AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ่มสินค้าลง cart → metadata.affiliate_token = ค่า cookie", async ({
   page,
   context,
@@ -48,7 +23,7 @@ test("AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ�
 }) => {
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
-  const code = await createActiveAffiliate(request, admin)
+  const { code } = await createActiveAffiliate(request, admin)
   const customer = await createCustomer(request, pk)
   let token = ""
 

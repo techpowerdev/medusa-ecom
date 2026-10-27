@@ -1,0 +1,53 @@
+# AF-3b — ผล test (2026-10-27, Node v22.23.3)
+
+## Unit (Vitest) — pnpm --filter storefront test:unit
+ ✓ src/cart-affiliate-sync.test.ts > addToCart กับ cookie aff (AC-22) > cart มี token ของคนอื่น → อ่าน cart ครั้งเดียวเท่าก่อน AF-2 และตั้ง metadata เป็นค่า cookie 23ms
+ ✓ src/cart-affiliate-sync.test.ts > addToCart กับ cookie aff (AC-22) > token ใน cart เท่ากับ cookie → ไม่ POST metadata 0ms
+ ✓ src/cart-affiliate-sync.test.ts > addToCart กับ cookie aff (AC-22) > ยังไม่มี cart → สร้างใหม่แล้วใช้ metadata จากผลการสร้าง ไม่อ่าน cart ซ้ำ 0ms
+ ✓ src/cart-affiliate-sync.test.ts > addToCart กับ cookie aff (AC-22) > ไม่มี cookie aff → ไม่แตะ metadata 0ms
+ ✓ src/cart-affiliate-sync.test.ts > placeOrder sync cookie aff ก่อน complete (กฎ 23, AC-21) > cookie เปลี่ยนเป็น Bob หลัง add (cart ยังเป็น Ann) → POST metadata ก่อน complete โดยไม่อ่าน cart เพิ่ม 0ms
+ ✓ src/cart-affiliate-sync.test.ts > placeOrder sync cookie aff ก่อน complete (กฎ 23, AC-21) > cookie ไม่เปลี่ยน → ไม่มี POST /store/carts/:id เพื่อ sync 0ms
+ ✓ src/cart-affiliate-sync.test.ts > placeOrder sync cookie aff ก่อน complete (กฎ 23, AC-21) > sync ล้มต้องไม่ทำให้การสั่งซื้อล้ม 0ms
+ ✓ src/cart-affiliate-sync.test.ts > placeOrder sync cookie aff ก่อน complete (กฎ 23, AC-21) > ผู้เรียกไม่ส่ง metadata (cart ถูก complete โดย webhook แล้ว เช่น PromptPay) → ไม่ sync 0ms
+ ✓ src/cart-add-route.test.ts > POST /[countryCode]/cart/add เมื่อเพิ่มสินค้าไม่สำเร็จ (qa D-1) > variant ไม่มีอยู่ (400) → 400 ข้อความไทย ไม่ส่งข้อความดิบของ backend 26ms
+ ✓ src/cart-add-route.test.ts > POST /[countryCode]/cart/add เมื่อเพิ่มสินค้าไม่สำเร็จ (qa D-1) > error อื่น → 400 ข้อความไทย ไม่ส่งข้อความดิบของ backend 1ms
+ ✓ src/cart-add-route.test.ts > POST /[countryCode]/cart/add เมื่อเพิ่มสำเร็จ (AF-3b) > ส่ง metadata ของ cart จากผลการเพิ่มสินค้าให้ sync cookie aff 1ms
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+ Test Files  23 passed (23)
+      Tests  230 passed (230)
+
+## e2e (Playwright, chromium) — backend :9153 + storefront :8153 (DB แยก)
+ก่อนแก้ (red): AF-3b ล้ม — order.metadata.affiliate_token เป็นของ Ann แทน Bob
+หลังแก้ (green):
+  ✓  1 [chromium] › e2e/affiliate-tracking.spec.ts:17:5 › AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ่มสินค้าลง cart → metadata.affiliate_token = ค่า cookie (6.8s)
+  ✓  3 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (6.8s)
+  ✓  2 [chromium] › e2e/affiliate-last-click.spec.ts:21:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21) (9.1s)
+  ✓  4 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (5.6s)
+  ✓  5 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (454ms)
+  5 passed (13.7s)
+  ✓ e2e/core-14b-add-variant.spec.ts — 3 passed (no-JS cart/add)
+
+## lint / typecheck
+pnpm lint → 0 errors; pnpm typecheck (backend + storefront) → ผ่าน
+
+## รอบแก้ review #119 (merge develop หลัง #109 แล้ว)
+Unit ใหม่ — src/checkout-affiliate-sync.test.ts (red ก่อนสร้าง helper: Cannot find module) + revalidate หลัง sync (red ก่อนแก้ 1 failed):
+ ✓ src/checkout-affiliate-sync.test.ts > syncAffiliateBefore > Stripe card: sync ก่อน confirmPayment แล้วคืนผลของ step 3ms
+ ✓ src/checkout-affiliate-sync.test.ts > syncAffiliateBefore > PromptPay (PI requires_action): sync ก่อน retrievePaymentIntent 0ms
+ ✓ src/checkout-affiliate-sync.test.ts > syncAffiliateBefore > PromptPay (PI requires_payment_method): sync ก่อน retrievePaymentIntent 0ms
+ ✓ src/checkout-affiliate-sync.test.ts > syncAffiliateBefore > cart ไม่มี metadata → ส่ง null (ยัง sync เมื่อมี cookie) 0ms
+ Test Files  24 passed (24)
+      Tests  269 passed (269)
+e2e (backend :9153 + storefront :8153):
+  ✓  1 [chromium] › e2e/affiliate-tracking.spec.ts:17:5 › AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ่มสินค้าลง cart → metadata.affiliate_token = ค่า cookie (5.1s)
+  ✓  3 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (5.3s)
+  ✓  4 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (5.8s)
+  ✓  6 [chromium] › e2e/core-14b-add-variant.spec.ts:97:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (1.8s)
+  ✓  8 [chromium] › e2e/core-14b-add-variant.spec.ts:97:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (1.0s)
+  ✓  2 [chromium] › e2e/affiliate-last-click.spec.ts:21:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21) (10.0s)
+  ✓  5 [chromium] › e2e/thai-ui-checkout.spec.ts:21:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (6.9s)
+  ✓  7 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (8.1s)
+  ✓  9 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (590ms)
+  9 passed (16.0s)
+pnpm lint → 0 errors; typecheck backend + storefront ผ่าน; storefront/backend build ผ่าน

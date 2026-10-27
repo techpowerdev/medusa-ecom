@@ -13,6 +13,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useMemo, useRef, useState } from "react"
 import { campaignActions, groupProgress } from "../../lib/group-buy-campaign"
 import { Campaign, formatDateTime, Group, groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
+import { GroupMembers } from "./group-members"
 
 const GROUP_STATUS_COLOR = { open: "blue", succeeded: "green", failed: "red" } as const
 const columnHelper = createDataTableColumnHelper<Group>()
@@ -29,6 +30,9 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
     queryFn: () => groupBuyApi.listGroups(campaign.id, { limit, offset }),
     placeholderData: keepPreviousData,
   })
+  // GB-6c (AC-35): คลิกแถวกลุ่มเพื่อเปิดรายการ membership — อ่านกลุ่มจาก data ล่าสุดให้ status อัปเดตหลัง succeed/fail
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = data?.groups.find((g) => g.id === selectedId)
 
   // กฎข้อ 17: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างสองคลิกใน task เดียว
   const inFlight = useRef(false)
@@ -77,6 +81,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
     rowCount: data?.count ?? 0,
     isLoading,
     pagination: { state: pagination, onPaginationChange: setPagination },
+    onRowClick: (_, g) => setSelectedId(g.id),
   })
 
   return (
@@ -106,6 +111,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
           <DataTable.Pagination />
         </DataTable>
       </div>
+      {selected && <GroupMembers key={selected.id} group={selected} campaignId={campaign.id} />}
     </Container>
   )
 }
