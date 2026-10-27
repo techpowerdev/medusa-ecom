@@ -1,0 +1,39 @@
+AF-14 — filter id[] ใน GET /admin/affiliate/affiliates + ชื่อ/อีเมล affiliate ใน Ledger/Payouts (spec 05 กฎ 38, AC-45)
+วันที่: 2026-10-28  branch: feat/AF-14-affiliate-names  ฐาน: origin/develop
+
+== Red (integration AC-45) ก่อนแก้ validator ==
+pnpm test:integration:http integration-tests/http/affiliate-admin.spec.ts -t "AC-45"
+{"level":"info","message":"Invalid request: Unrecognized fields: 'id'"}  → 400 (AdminListAffiliates ยังไม่รับ id)
+FAIL integration-tests/http/affiliate-admin.spec.ts
+
+== Red (unit) ก่อนเขียน helper ==
+src/admin/lib/__tests__/affiliate-names.unit.spec.ts — Cannot find module '../affiliate-names'
+
+== Green: integration-tests/http/affiliate-admin.spec.ts (ทั้งไฟล์) ==
+      ✓ filters by id or id[] (AC-45)  — id[]=A&id[]=B → count 2 (fields=id,name,email), id[0]=…&id[1]=… (qs ของ JS SDK) → 2, id=A → A, ไม่มี token → 401
+Test Suites: 1 passed, 1 total
+Tests:       19 passed, 19 total
+
+== Green: pnpm --filter backend test:unit (ทั้งชุด) ==
+PASS src/admin/lib/__tests__/affiliate-names.unit.spec.ts (4 tests)
+Test Suites: 69 passed, 69 total
+Tests:       675 passed, 675 total
+
+== Green: playwright --project=chromium (backend medusa start จาก build, :9267, DB medusa_af14, Redis db 8) ==
+e2e/affiliate-admin-names.spec.ts          AC-45  ✓  (Ledger: ชื่อ+อีเมลของ Ann, affiliate ที่หาไม่เจอแสดง affiliate_id, GET affiliates?id[] 1 ครั้ง;
+                                                     Payouts: ชื่อ+อีเมลของ Bob, 1 ครั้ง) — รันซ้ำบน DB เดิม 2 รอบ ผ่านทุกรอบ
+e2e/affiliate-admin-payouts.spec.ts        AC-26  ✓  (ปุ่มยังอยู่ใน viewport 1280×800 หลังย้ายคอลัมน์ Affiliate มาถัดจากปุ่ม)
+e2e/affiliate-admin-payout-create.spec.ts  AC-44  ✓
+หมายเหตุ: e2e AC-45 เขียนหลัง UI (red ของ task นี้อยู่ที่ integration + unit)
+
+== pnpm --filter storefront test:e2e:unit ==
+37 passed
+
+== pnpm typecheck (ไม่มี apps/backend/.medusa ค้าง) ==
+apps/backend typecheck: Done / apps/storefront typecheck: Done
+
+== pnpm lint ==
+0 errors (warning เดิมของ develop: backend 1, storefront 31)
+
+== pnpm --filter backend build ==
+Backend build completed successfully / Frontend build completed successfully

@@ -34,6 +34,8 @@ export type Affiliate = {
 }
 
 export type CommissionEntry = {
+  /** AF-14: ชื่อ/อีเมลที่ UI แนบหลังดึงทีละหน้า (ไม่มาจาก API ของ entries/payouts) */
+  affiliate?: Pick<Affiliate, "name" | "email">
   id: string
   affiliate_id: string
   order_id: string
@@ -44,6 +46,8 @@ export type CommissionEntry = {
 }
 
 export type Payout = {
+  /** AF-14: ชื่อ/อีเมลที่ UI แนบหลังดึงทีละหน้า (ไม่มาจาก API ของ entries/payouts) */
+  affiliate?: Pick<Affiliate, "name" | "email">
   id: string
   affiliate_id: string
   amount: number
@@ -111,3 +115,10 @@ export const updateAffiliate = (
   id: string,
   body: { status?: Affiliate["status"]; payout_info?: Record<string, string> | null },
 ) => sdk.client.fetch<{ affiliate: AdminAffiliate }>(`/admin/affiliate/affiliates/${id}`, { method: "POST", body })
+
+// AF-14 (กฎ 38): ชื่อ/อีเมลของ affiliate ตาม id[] ของแถวในหน้า (query จาก affiliateNamesQuery)
+export const listAffiliateNames = (query: { id: string[]; limit: number; offset: number; fields: string }) =>
+  sdk.client.fetch<ListResponse<"affiliates", Pick<Affiliate, "id" | "name" | "email">>>(
+    "/admin/affiliate/affiliates",
+    { query },
+  )

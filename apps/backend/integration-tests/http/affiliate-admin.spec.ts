@@ -209,6 +209,42 @@ medusaIntegrationTestRunner({
           .catch((e) => e.response)
         expect(badBody.status).toEqual(400)
       })
+
+      // AF-14 (กฎ 38): admin UI ดึงชื่อ/อีเมลของ affiliate ในหน้าปัจจุบันด้วย id[] ครั้งเดียวต่อหน้า
+      it("filters by id or id[] (AC-45)", async () => {
+        const a = await createAffiliate("ann")
+        const b = await createAffiliate("bob")
+        await createAffiliate("cat")
+
+        const many = await api.get(
+          `/admin/affiliate/affiliates?id[]=${a.id}&id[]=${b.id}&fields=id,name,email&limit=2`,
+          { headers }
+        )
+        expect(many.data.count).toEqual(2)
+        expect(many.data.affiliates).toEqual(
+          expect.arrayContaining([
+            { id: a.id, name: "ann", email: "ann@example.com" },
+            { id: b.id, name: "bob", email: "bob@example.com" },
+          ])
+        )
+        expect(many.data.affiliates).toHaveLength(2)
+
+        // รูปแบบ qs ของ JS SDK (id[0]=…&id[1]=…)
+        const indexed = await api.get(
+          `/admin/affiliate/affiliates?id[0]=${a.id}&id[1]=${b.id}`,
+          { headers }
+        )
+        expect(indexed.data.count).toEqual(2)
+
+        const one = await api.get(`/admin/affiliate/affiliates?id=${a.id}`, { headers })
+        expect(one.data.affiliates.map((x) => x.id)).toEqual([a.id])
+        expect(one.data.count).toEqual(1)
+
+        const anonymous = await api
+          .get(`/admin/affiliate/affiliates?id[]=${a.id}`)
+          .catch((e) => e.response)
+        expect(anonymous.status).toEqual(401)
+      })
     })
 
     describe("ledger, payouts and summary (AC-7)", () => {

@@ -1,7 +1,7 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { Badge, Container, createDataTableColumnHelper, Heading, Tabs } from "@medusajs/ui"
 import { AffiliatesTable } from "../../components/affiliate/affiliates-table"
-import { AffiliateListTable } from "../../components/affiliate/list-table"
+import { AffiliateCell, AffiliateListTable } from "../../components/affiliate/list-table"
 import { PayoutsTable } from "../../components/affiliate/payouts-table"
 import { ProgramsTable } from "../../components/affiliate/programs-table"
 import { CommissionEntry } from "../../lib/affiliate"
@@ -9,6 +9,7 @@ import { formatAmount, formatDate } from "../../lib/affiliate-format"
 
 // AF-6 (spec 05 "Admin UI"): หน้า Affiliate → Programs, Affiliates, Ledger, Payouts (อ่านจาก admin API ของ AF-5)
 // AF-12a: แท็บ Programs (สร้าง/แก้/ลบ) อยู่ที่ components/affiliate/programs-table.tsx
+// AF-14: คอลัมน์ Affiliate ของ Ledger/Payouts แสดงชื่อ + อีเมล (กฎ 38)
 // AF-12b: แท็บ Affiliates (approve/suspend/reactivate + payout info) อยู่ที่ components/affiliate/affiliates-table.tsx
 const entry = createDataTableColumnHelper<CommissionEntry>()
 const entryColumns = [
@@ -16,7 +17,10 @@ const entryColumns = [
     header: "Created",
     cell: ({ getValue }) => formatDate(getValue()),
   }),
-  entry.accessor("affiliate_id", { header: "Affiliate" }),
+  entry.accessor("affiliate_id", {
+    header: "Affiliate",
+    cell: ({ row }) => <AffiliateCell row={row.original} />,
+  }),
   entry.accessor("order_id", { header: "Order" }),
   entry.accessor((row) => formatAmount(row.amount, row.currency), {
     id: "amount",
@@ -39,7 +43,12 @@ const TABS = [
     value: "ledger",
     label: "Ledger",
     content: (
-      <AffiliateListTable resource="entries" columns={entryColumns} empty="No commission entries yet" />
+      <AffiliateListTable
+        resource="entries"
+        columns={entryColumns}
+        empty="No commission entries yet"
+        affiliateNames
+      />
     ),
   },
   { value: "payouts", label: "Payouts", content: <PayoutsTable /> },
