@@ -374,6 +374,84 @@ medusaIntegrationTestRunner({
         expect(await stockedQuantity(healthy.inventoryItemId)).toBe(0)
       })
 
+      // EV-12 (กฎข้อ 12b, owner Q6): เว้น code ใกล้หมดอายุไว้เท่าที่ order ที่จองแล้วต้องใช้
+      it("AC-30 keeps near-expiry codes for reserved orders (farthest first) and reports kept/shortfall per pool", async () => {
+        const inventory = getContainer().resolve(Modules.INVENTORY)
+        // order ที่จองแล้วแต่ยังไม่ capture — ตั้ง reserved ผ่าน Inventory module (allow_backorder: S จองเกิน stock)
+        const reserve = async (inventoryItemId: string, quantity: number) => {
+          const [level] = await inventory.listInventoryLevels({ inventory_item_id: inventoryItemId })
+          await inventory.createReservationItems({
+            inventory_item_id: inventoryItemId,
+            location_id: level.location_id,
+            quantity,
+            allow_backorder: true,
+          })
+        }
+        const statusByCode = async (poolId: string) => {
+          const rows = await codesOf(poolId)
+          const entries = await Promise.all(
+            rows.map(async (r) => [await service.decryptSecret(r.code), r.status] as const)
+          )
+          return Object.fromEntries(entries)
+        }
+        const csv = (rows: [string, number][]) =>
+          ["code,pin,expires_at", ...rows.map(([code, days]) => `${code},,${inDays(days)}`)].join("\n")
+
+        const P = await createPool("P", { low_stock_threshold: 0 })
+        await importCsv(P.poolId, csv([["P-2", 2], ["P-4", 4], ["P-5", 5]]))
+        await reserve(P.inventoryItemId, 2)
+        const Q = await createPool("Q", { low_stock_threshold: 0 })
+        await importCsv(Q.poolId, csv([["Q-1", 1], ["Q-3", 3]]))
+        const R = await createPool("R", { low_stock_threshold: 0 })
+        await importCsv(R.poolId, csv([["R-LONG", 30], ["R-1", 1], ["R-3", 3]]))
+        await reserve(R.inventoryItemId, 1)
+        const S = await createPool("S", { low_stock_threshold: 0 })
+        await importCsv(S.poolId, csv([["S-3", 3]]))
+        await reserve(S.inventoryItemId, 3)
+        const T = await createPool("T", { low_stock_threshold: 0 })
+        await importCsv(T.poolId, csv([["T-PAST", -1]]))
+        await reserve(T.inventoryItemId, 1)
+
+        await evoucherDailyJob(getContainer())
+
+        // (a) P: เว้น 4 และ 5 วัน, void 2 วัน
+        expect(await statusByCode(P.poolId)).toEqual({ "P-2": "void", "P-4": "available", "P-5": "available" })
+        expect((await codesOf(P.poolId)).find((c) => c.status === "void")).toMatchObject({ void_reason: "expiring" })
+        expect(await stockedQuantity(P.inventoryItemId)).toBe(2)
+        // (b) Q: reserved=0 → void ทั้งหมด
+        expect(await statusByCode(Q.poolId)).toEqual({ "Q-1": "void", "Q-3": "void" })
+        expect(await stockedQuantity(Q.inventoryItemId)).toBe(0)
+        // (c) R: long=1 ครอบ reserved=1
+        expect(await statusByCode(R.poolId)).toEqual({ "R-LONG": "available", "R-1": "void", "R-3": "void" })
+        expect(await stockedQuantity(R.inventoryItemId)).toBe(1)
+        // (d) S: keep=min(1, 3)
+        expect(await statusByCode(S.poolId)).toEqual({ "S-3": "available" })
+        expect(await stockedQuantity(S.inventoryItemId)).toBe(1)
+        // (f) T: code ที่หมดอายุแล้วไม่ถูกเว้น
+        expect(await statusByCode(T.poolId)).toEqual({ "T-PAST": "void" })
+
+        // (e) อีเมลสรุป 1 ฉบับ — assert จาก notification.data
+        const summaries = await listEmails("evoucher-expiry-summary")
+        expect(summaries).toHaveLength(1)
+        expect(summaries[0].to).toBe(OPS_EMAIL)
+        const pools = Object.fromEntries(
+          (summaries[0].data!.pools as { name: string }[]).map((p) => [p.name, p])
+        )
+        const [p4] = (await codesOf(P.poolId)).filter((c) => c.status === "available").sort(
+          (a, b) => new Date(a.expires_at!).getTime() - new Date(b.expires_at!).getTime()
+        )
+        expect(pools.P).toMatchObject({
+          voided: 1,
+          kept: 2,
+          kept_earliest_expires_at: new Date(p4.expires_at!).toISOString(),
+          shortfall: 0,
+        })
+        expect(pools.Q).toMatchObject({ voided: 2, kept: 0, kept_earliest_expires_at: null, shortfall: 0 })
+        expect(pools.R).toMatchObject({ voided: 2, kept: 0, kept_earliest_expires_at: null, shortfall: 0 })
+        expect(pools.S).toMatchObject({ voided: 0, kept: 1, shortfall: 2 })
+        expect(summaries[0].data).toMatchObject({ total_voided: 6 })
+      })
+
       it("AC-9 sends one low-stock email per pool per day when available < threshold", async () => {
         const low = await createPool("Low pool", { low_stock_threshold: 5 })
         const ok = await createPool("OK pool", { low_stock_threshold: 2 })
