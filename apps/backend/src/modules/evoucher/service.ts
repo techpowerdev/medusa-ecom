@@ -18,6 +18,7 @@ import {
   parseEncryptionKey,
 } from "./utils/crypto"
 import { EvoucherCodeCounts, StatusCountRow, toStatusCounts } from "./utils/stats"
+import { ExpiryCandidatesRow, toExpiryCandidates } from "./utils/expiry"
 
 export type EvoucherModuleOptions = {
   /** 64 hex chars จาก env `EVOUCHER_ENCRYPTION_KEY` */
@@ -76,6 +77,26 @@ class EvoucherModuleService extends MedusaService({
       [poolIds]
     )
     return toStatusCounts(poolIds, rows)
+  }
+
+  /**
+   * EV-N1 (กฎข้อ 12b a, AC-38): code `available` ของ pool ใน query เดียว — `near` = expires_at < cutoff (รายการ),
+   * `long` = expires_at IS NULL หรือ >= cutoff (จำนวน) จึงไม่คลาดเคลื่อนระหว่างสอง query
+   */
+  @InjectManager()
+  async listExpiryCandidates(
+    poolId: string,
+    cutoff: Date,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<{ long: number; near: { id: string; expires_at: string }[] }> {
+    const [row] = await sharedContext.manager!.execute<ExpiryCandidatesRow[]>(
+      `SELECT count(*) FILTER (WHERE expires_at IS NULL OR expires_at >= ?) AS long,
+              json_agg(json_build_object('id', id, 'expires_at', expires_at)) FILTER (WHERE expires_at < ?) AS near
+       FROM evoucher_code
+       WHERE pool_id = ? AND status = 'available' AND deleted_at IS NULL`,
+      [cutoff, cutoff, poolId]
+    )
+    return toExpiryCandidates(row)
   }
 
   /**
