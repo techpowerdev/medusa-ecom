@@ -25,6 +25,8 @@ const INTEGRATION_WORKER = { maxWorkers: 1, workerIdleMemoryLimit: "1024MB" };
 
 if (process.env.TEST_TYPE === "integration:http") {
   module.exports.testMatch = ["**/integration-tests/http/*.spec.[jt]s"];
+  // OPS-15: ปล่อย pool ของ app ก่อน runner restore DB (ดู integration-tests/pg-pool.ts)
+  module.exports.setupFilesAfterEnv = ["./integration-tests/setup-after-env.ts"];
   Object.assign(module.exports, INTEGRATION_WORKER);
 } else if (process.env.TEST_TYPE === "integration:modules") {
   module.exports.testMatch = ["**/src/modules/*/__tests__/**/*.[jt]s"];
