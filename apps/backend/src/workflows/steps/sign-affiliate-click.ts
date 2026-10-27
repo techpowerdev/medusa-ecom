@@ -1,4 +1,3 @@
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import { AFFILIATE_MODULE } from "../../modules/affiliate"
 import AffiliateModuleService from "../../modules/affiliate/service"
@@ -12,10 +11,8 @@ export const signAffiliateClickStep = createStep(
   async (input: { code: string }, { container }) => {
     const affiliateModule: AffiliateModuleService = container.resolve(AFFILIATE_MODULE)
 
+    // ไม่มี secret: medusa-config เตือนครั้งเดียวตอนบูต (production บูตไม่ขึ้น — OPS-7 AC-13) ไม่ log ต่อ request
     if (!(await affiliateModule.hasClickTokenSecret())) {
-      container
-        .resolve(ContainerRegistrationKeys.LOGGER)
-        .warn("AFFILIATE_TOKEN_SECRET is not set — affiliate links redirect without attribution cookie")
       return new StepResponse<SignAffiliateClickStepOutput>({ token: null })
     }
 

@@ -1,0 +1,84 @@
+# OPS-7 prod guards — ผลการทดสอบ (2026-10-27, Node 22.23.3, Medusa 2.22.1)
+spec: docs/spec/07-scaling-ops.md (AC-9, AC-10, AC-11, AC-13, AC-17), ADR-010 (C + D1)
+
+## Red (ก่อนแก้)
+unit src/__tests__/prod-guards.unit.spec.ts กับ stub: Tests: 17 failed, 8 passed, 25 total
+  (throw ของ RESEND/AFFILIATE/STOREFRONT ไม่เกิด, seed ยังเปิด pp_system_default, ci.yml ยังไม่มี env)
+integration integration-tests/http/prod-guards.spec.ts กับ seed.ts + sign-affiliate-click.ts เดิม (positive control):
+    ✕ AC-10 production seed on an empty DB enables only the Stripe providers (316 ms)
+    ✕ AC-11 check:go-live passes when every item is satisfied (351 ms)
+    ✓ AC-11 check:go-live fails on sk_test_ key, ALLOW_TEST_PROVIDERS and pp_system_default (155 ms)
+    ✕ AC-11 check:go-live fails when not run with NODE_ENV=production or without STRIPE_API_KEY (88 ms)
+    ✕ AC-13 GET /store/affiliate/r/:code without a secret redirects without per-request warnings (118 ms)
+    ✓ AC-10 production seed with ALLOW_TEST_PROVIDERS=true also enables pp_system_default (160 ms)
+Tests:       4 failed, 2 passed, 6 total
+
+## Green — unit (pnpm --filter backend test:unit, ไฟล์ที่เกี่ยวข้อง)
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+  buildNotificationProviders
+    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (6 ms)
+    ✓ treats an empty RESEND_API_KEY as missing (1 ms)
+    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set (1 ms)
+PASS src/__tests__/medusa-config.infra.unit.spec.ts (13.139 s)
+  medusa-config infra modules (OPS-2)
+    ✓ uses Medusa's Redis modules in production when REDIS_URL is set (2137 ms)
+    ✓ keeps Medusa's in-memory defaults for dev (medusa develop) (826 ms)
+    ✓ keeps Medusa's in-memory defaults for jest / medusa-test-utils (1111 ms)
+    ✓ keeps Medusa's in-memory defaults for production without REDIS_URL (1342 ms)
+    ✓ refuses to boot MEDUSA_WORKER_MODE=server in production without REDIS_URL (in-memory event bus cannot cross processes) (1225 ms)
+    ✓ refuses to boot MEDUSA_WORKER_MODE=worker in production without REDIS_URL (in-memory event bus cannot cross processes) (1318 ms)
+    ✓ sets the pg pool size from DATABASE_POOL_MIN/MAX (1394 ms)
+    ✓ leaves Medusa's default pool when DATABASE_POOL_* is unset (1021 ms)
+    ✓ uses the S3 file provider when S3_BUCKET is set (999 ms)
+    ✓ keeps Medusa's local file provider when S3 env is missing (dev/CI) (1049 ms)
+PASS src/__tests__/prod-guards.unit.spec.ts (14.599 s)
+  AC-9 buildNotificationProviders ใน production (ADR-010)
+    ✓ throws naming RESEND_API_KEY when missing (7 ms)
+    ✓ throws naming RESEND_FROM_EMAIL when missing (1 ms)
+    ✓ throws naming RESEND_API_KEY, RESEND_FROM_EMAIL when missing
+    ✓ ALLOW_TEST_PROVIDERS=true keeps the local provider for email (2 ms)
+    ✓ other values of ALLOW_TEST_PROVIDERS do not disable the guard (1 ms)
+    ✓ outside production keeps the local fallback
+    ✓ production with both values uses Resend (1 ms)
+  AC-10 payment providers ที่ seed เปิดให้ region Thailand
+    ✓ production without ALLOW_TEST_PROVIDERS → Stripe only
+    ✓ production with ALLOW_TEST_PROVIDERS=true and non-production → includes pp_system_default (1 ms)
+  AC-13 / AC-17 boot guards ใน medusa-config
+    ✓ boots in production when everything is set (893 ms)
+    ✓ AC-13 production without AFFILIATE_TOKEN_SECRET throws with the variable name (1032 ms)
+    ✓ AC-17 production with STOREFRONT_URL="" throws with the variable name (1415 ms)
+    ✓ AC-17 production with STOREFRONT_URL="shop.example.com" throws with the variable name (968 ms)
+    ✓ AC-17 production with STOREFRONT_URL="ftp://shop.example.com" throws with the variable name (1121 ms)
+    ✓ AC-17 production with STOREFRONT_URL="https://" throws with the variable name (1299 ms)
+    ✓ AC-17 production with STOREFRONT_URL="http://exa mple.com" throws with the variable name (1228 ms)
+    ✓ ALLOW_TEST_PROVIDERS does not disable the AFFILIATE_TOKEN_SECRET / STOREFRONT_URL guards (2069 ms)
+    ✓ outside production with both set does not warn (945 ms)
+  AC-13 / AC-17 ci.yml และ .env.example
+    ✓ finds the production-mode jobs (1 ms)
+    ✓ every production-mode job sets AFFILIATE_TOKEN_SECRET (2 ms)
+    ✓ every production-mode job sets STOREFRONT_URL (1 ms)
+    ✓ every production-mode job sets ALLOW_TEST_PROVIDERS=true (ADR-010 ข้อ 4)
+    ✓ STOREFRONT_URL in CI is an http(s) URL (3 ms)
+    ✓ apps/backend/.env.example has a STOREFRONT_URL= line (3 ms)
+  AC-11 Go-live checklist ใน docs/ops/production.md
+    ✓ มีหัวข้อและอ้างคำสั่ง check:go-live (1 ms)
+    ✓ package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec (1 ms)
+Tests:       40 passed, 40 total
+
+unit ทั้งหมด:
+Test Suites: 49 passed, 49 total
+Tests:       510 passed, 510 total
+
+## Green — integration (TEST_TYPE=integration:http jest integration-tests/http/prod-guards.spec.ts)
+    ✓ AC-10 production seed on an empty DB enables only the Stripe providers (262 ms)
+    ✓ AC-11 check:go-live passes when every item is satisfied (344 ms)
+    ✓ AC-11 check:go-live fails on sk_test_ key, ALLOW_TEST_PROVIDERS and pp_system_default (152 ms)
+    ✓ AC-11 check:go-live fails when not run with NODE_ENV=production or without STRIPE_API_KEY (126 ms)
+    ✓ AC-13 GET /store/affiliate/r/:code without a secret redirects without per-request warnings (152 ms)
+    ✓ AC-10 production seed with ALLOW_TEST_PROVIDERS=true also enables pp_system_default (208 ms)
+Tests:       6 passed, 6 total
+
+## อื่น ๆ
+pnpm lint: ผ่าน (0 errors), pnpm typecheck: ผ่าน, pnpm --filter backend build: ผ่าน
+docker compose -f docker-compose.prod.yml config: ส่ง ALLOW_TEST_PROVIDERS/AFFILIATE_TOKEN_SECRET/RESEND_*/STOREFRONT_URL ให้ migrate/server/worker
+smoke-worker-mode.sh (job docker-worker-mode) ไม่ได้รันในเครื่อง — ให้ CI รัน

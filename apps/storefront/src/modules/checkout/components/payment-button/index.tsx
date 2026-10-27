@@ -3,6 +3,7 @@
 import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
+import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isPromptPay } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
@@ -56,7 +57,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
         />
       )
     default:
-      return <Button disabled>Select a payment method</Button>
+      return <Button disabled>กรุณาเลือกวิธีชำระเงิน</Button>
   }
 }
 
@@ -75,7 +76,7 @@ const StripePaymentButton = ({
   const onPaymentCompleted = async () => {
     await placeOrder()
       .catch((err) => {
-        setErrorMessage(err.message)
+        setErrorMessage(friendlyErrorMessage(err, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       })
       .finally(() => {
         setSubmitting(false)
@@ -162,7 +163,7 @@ const StripePaymentButton = ({
         isLoading={submitting}
         data-testid={dataTestId}
       >
-        Place order
+        ยืนยันคำสั่งซื้อ
       </Button>
       <ErrorMessage
         error={errorMessage}
@@ -186,7 +187,7 @@ const ManualTestPaymentButton = ({
     // AF-3b (กฎ 23): ส่ง metadata ของ cart ที่อ่านไว้ → placeOrder sync cookie `aff` ก่อน complete
     await placeOrder(cart.id, cart.metadata ?? null)
       .catch((err) => {
-        setErrorMessage(err.message)
+        setErrorMessage(friendlyErrorMessage(err, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       })
       .finally(() => {
         setSubmitting(false)
@@ -208,7 +209,7 @@ const ManualTestPaymentButton = ({
         size="large"
         data-testid="submit-order-button"
       >
-        Place order
+        ยืนยันคำสั่งซื้อ
       </Button>
       <ErrorMessage
         error={errorMessage}

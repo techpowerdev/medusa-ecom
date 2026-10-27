@@ -118,6 +118,10 @@ export const evoucherApi = {
     sdk.client.fetch<{ code: RevealedCode }>(`${BASE}/codes/${id}/reveal`),
   listOrderCodes: (orderId: string) =>
     sdk.client.fetch<{ codes: MaskedCode[] }>(`${BASE}/orders/${orderId}/codes`),
+  resendOrderEmail: (orderId: string) =>
+    sdk.client.fetch<{ order_id: string; code_count: number }>(`${BASE}/orders/${orderId}/resend`, {
+      method: "POST",
+    }),
 }
 
 // วันหมดอายุตามเวลาไทย (สิ้นวัน 23:59:59 ICT = 16:59:59Z) ไม่ขึ้นกับ timezone ของ browser

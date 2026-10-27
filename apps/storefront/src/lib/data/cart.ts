@@ -1,6 +1,7 @@
 "use server"
 
 import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
+import { friendlyErrorMessage } from "@lib/util/error-message"
 import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
@@ -64,7 +65,7 @@ export async function getOrSetCart(countryCode: string) {
   const region = await getRegion(countryCode)
 
   if (!region) {
-    throw new Error(`Region not found for country code: ${countryCode}`)
+    throw new Error(`ไม่พบภูมิภาคสำหรับประเทศ ${countryCode}`)
   }
 
   let cart = await retrieveCart(undefined, "id,region_id,metadata")
@@ -105,7 +106,7 @@ export async function updateCart(data: HttpTypes.StoreUpdateCart) {
   const cartId = await getCartId()
 
   if (!cartId) {
-    throw new Error("No existing cart found, please create one before updating")
+    throw new Error("ไม่พบตะกร้าสินค้า กรุณาเพิ่มสินค้าลงตะกร้าก่อน")
   }
 
   const headers = {
@@ -136,7 +137,7 @@ export async function addToCart({
   countryCode: string
 }) {
   if (!variantId) {
-    throw new Error("Missing variant ID when adding to cart")
+    throw new Error("ไม่พบตัวเลือกสินค้าที่จะเพิ่มลงตะกร้า")
   }
 
   const headers = {
@@ -151,7 +152,7 @@ export async function addToCart({
   const cart = await getOrSetCart(countryCode)
 
   if (!cart) {
-    throw new Error("Error retrieving or creating cart")
+    throw new Error("ไม่สามารถสร้างหรือเรียกดูตะกร้าสินค้าได้ กรุณาลองใหม่อีกครั้ง")
   }
 
   await sdk.store.cart
@@ -182,13 +183,13 @@ export async function updateLineItem({
   quantity: number
 }) {
   if (!lineId) {
-    throw new Error("Missing lineItem ID when updating line item")
+    throw new Error("ไม่พบรายการสินค้าที่จะแก้ไข")
   }
 
   const cartId = await getCartId()
 
   if (!cartId) {
-    throw new Error("Missing cart ID when updating line item")
+    throw new Error("ไม่พบตะกร้าสินค้าที่จะแก้ไข")
   }
 
   const headers = {
@@ -209,13 +210,13 @@ export async function updateLineItem({
 
 export async function deleteLineItem(lineId: string) {
   if (!lineId) {
-    throw new Error("Missing lineItem ID when deleting line item")
+    throw new Error("ไม่พบรายการสินค้าที่จะลบ")
   }
 
   const cartId = await getCartId()
 
   if (!cartId) {
-    throw new Error("Missing cart ID when deleting line item")
+    throw new Error("ไม่พบตะกร้าสินค้าที่จะลบรายการ")
   }
 
   const headers = {
@@ -315,7 +316,8 @@ export async function renewPromptPaySession(
   }
   return {
     status: "error",
-    message: (body as { message?: string } | null)?.message ?? "สร้าง QR PromptPay ใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง",
+    // CORE-4d: message ของ backend เป็นอังกฤษ — แสดงข้อความไทย (401/403 → ให้เข้าสู่ระบบใหม่)
+    message: friendlyErrorMessage(res, "สร้างคิวอาร์โค้ดพร้อมเพย์ใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง"),
   }
 }
 
@@ -347,7 +349,7 @@ export async function applyPromotions(codes: string[]) {
   const cartId = await getCartId()
 
   if (!cartId) {
-    throw new Error("No existing cart found")
+    throw new Error("ไม่พบตะกร้าสินค้า")
   }
 
   const headers = {
@@ -425,11 +427,11 @@ export async function submitPromotionForm(
 export async function setAddresses(currentState: unknown, formData: FormData) {
   try {
     if (!formData) {
-      throw new Error("No form data found when setting addresses")
+      throw new Error("ไม่พบข้อมูลที่อยู่ กรุณากรอกใหม่อีกครั้ง")
     }
     const cartId = getCartId()
     if (!cartId) {
-      throw new Error("No existing cart found when setting addresses")
+      throw new Error("ไม่พบตะกร้าสินค้า กรุณาเพิ่มสินค้าลงตะกร้าก่อน")
     }
 
     const data = {
@@ -501,7 +503,7 @@ export async function placeOrder(
   const id = cartId || (await getCartId())
 
   if (!id) {
-    throw new Error("No existing cart found when placing an order")
+    throw new Error("ไม่พบตะกร้าสินค้าสำหรับยืนยันคำสั่งซื้อ")
   }
 
   const headers = {
@@ -545,7 +547,7 @@ export async function updateRegion(countryCode: string, currentPath: string) {
   const region = await getRegion(countryCode)
 
   if (!region) {
-    throw new Error(`Region not found for country code: ${countryCode}`)
+    throw new Error(`ไม่พบภูมิภาคสำหรับประเทศ ${countryCode}`)
   }
 
   if (cartId) {
