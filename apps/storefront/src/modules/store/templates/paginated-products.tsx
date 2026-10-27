@@ -1,3 +1,4 @@
+import { getCardFlashPrices } from "@lib/data/flash-card-prices"
 import { listProductsWithSort } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
 import { OptionValueIds } from "@lib/util/product-option-filters"
@@ -70,6 +71,9 @@ export default async function PaginatedProducts({
 
   const totalPages = Math.ceil(count / PRODUCT_LIMIT)
 
+  // FS-13 (spec 03 กฎข้อ 18): ราคา flash บนการ์ด — ดึงครั้งเดียวต่อหน้า (หน้า PLP เป็น dynamic อยู่แล้ว)
+  const flashPrices = await getCardFlashPrices(region.id, products)
+
   return (
     <>
       <ul
@@ -79,7 +83,11 @@ export default async function PaginatedProducts({
         {products.map((p) => {
           return (
             <li key={p.id}>
-              <ProductPreview product={p} region={region} />
+              <ProductPreview
+                product={p}
+                region={region}
+                flashPrice={flashPrices[p.id]}
+              />
             </li>
           )
         })}

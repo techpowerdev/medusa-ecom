@@ -2,8 +2,10 @@ import { readFileSync } from "fs"
 import path from "path"
 import { buildNotificationProviders } from "../lib/notification-providers"
 import { seedPaymentProviders } from "../lib/prod-guards"
+import { goLiveFailures } from "../scripts/check-go-live"
+import type { MedusaContainer } from "@medusajs/framework/types"
 
-// OPS-7 (docs/spec/07-scaling-ops.md AC-9, AC-10, AC-13, AC-17; ADR-010 C + D1)
+// OPS-7 (docs/spec/07-scaling-ops.md AC-9, AC-10, AC-13, AC-17; ADR-010 C + D1); OPS-13 (AC-20, AC-21)
 const repoRoot = path.resolve(__dirname, "../../../..")
 
 const ENV_KEYS = [
@@ -137,6 +139,22 @@ describe("AC-13 / AC-17 boot guards ใน medusa-config", () => {
     loadConfig({ NODE_ENV: "development", AFFILIATE_TOKEN_SECRET: "x", STOREFRONT_URL: "http://localhost:8000" })
     expect(warn).not.toHaveBeenCalled()
   })
+  const testProviderWarnings = () =>
+    warn.mock.calls.map((call) => String(call[0])).filter((m) => m.includes("ALLOW_TEST_PROVIDERS"))
+
+  it("AC-20 production with ALLOW_TEST_PROVIDERS=true still boots and warns exactly once", () => {
+    expect(() => loadConfig({ ...PROD, ALLOW_TEST_PROVIDERS: "true" })).not.toThrow()
+    expect(testProviderWarnings()).toHaveLength(1)
+  })
+
+  it.each([
+    ["production without the variable", { ...PROD }],
+    ["production with an empty value", { ...PROD, ALLOW_TEST_PROVIDERS: "" }],
+    ["development with ALLOW_TEST_PROVIDERS=true", { NODE_ENV: "development", ALLOW_TEST_PROVIDERS: "true" }],
+  ])("AC-20 %s does not warn about ALLOW_TEST_PROVIDERS", (_label, env) => {
+    loadConfig(env)
+    expect(testProviderWarnings()).toHaveLength(0)
+  })
 })
 
 /** env ระดับ job (บรรทัดย่อหน้า 6 ช่องใต้ `    env:`) ของแต่ละ job ใน ci.yml */
@@ -215,6 +233,30 @@ describe("AC-11 Go-live checklist ใน docs/ops/production.md", () => {
     expect(body).toContain("pnpm --filter backend check:go-live")
     expect(body).toContain("ALLOW_TEST_PROVIDERS")
     expect(body).toContain("pp_system_default")
+  })
+
+  it("AC-21 มีข้อ Q-F1: ค่าส่ง Standard / Standard return ยังเป็น placeholder shipping_rate", () => {
+    const item = body.split("\n").find((line) => line.includes("Q-F1")) ?? ""
+    expect(item).toContain("shipping_rate")
+    expect(item).toContain("Standard return")
+  })
+
+  it("AC-21 ข้อที่พูดถึงค่าว่างของ ALLOW_TEST_PROVIDERS ระบุว่าไม่ตั้งกับตั้งเป็นค่าว่างนับเหมือนกัน", () => {
+    const item = body.split("\n").find((line) => line.includes("ALLOW_TEST_PROVIDERS") && line.includes("ค่าว่าง")) ?? ""
+    expect(item).toContain("ไม่ตั้ง")
+    expect(item).toContain("เหมือนกัน")
+  })
+
+  it("AC-21 check:go-live นับ ALLOW_TEST_PROVIDERS ที่ไม่ตั้งกับค่าว่างเหมือนกัน แต่ค่าอื่นทุกค่าไม่ผ่าน", async () => {
+    const container = { resolve: () => ({ graph: async () => ({ data: [] }) }) } as unknown as MedusaContainer
+    const env = { NODE_ENV: "production", STRIPE_API_KEY: "sk_live_from_env" }
+    const flagged = async (value?: string) =>
+      (await goLiveFailures(container, { ...env, ALLOW_TEST_PROVIDERS: value })).some((f) => f.includes("ALLOW_TEST_PROVIDERS"))
+
+    expect(await flagged(undefined)).toBe(false)
+    expect(await flagged("")).toBe(false)
+    expect(await flagged("true")).toBe(true)
+    expect(await flagged("false")).toBe(true)
   })
 
   it("package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec", () => {

@@ -1,5 +1,6 @@
 import { MathBN } from "@medusajs/framework/utils"
 import {
+  byCommissionPreference,
   calculateCommission,
   CommissionLineItem,
   CommissionProgram,
@@ -49,11 +50,6 @@ const byLineOrder = (a: PlanAttributionInput["items"][number], b: PlanAttributio
 
 const normalizeEmail = (email?: string | null) => (email ?? "").trim().toLowerCase()
 
-// Q7: อัตราสูงสุดก่อน เสมอกันเลือก starts_at ล่าสุด
-const byPreference = (a: AttributionProgram, b: AttributionProgram) =>
-  MathBN.convert(b.commission_value).comparedTo(MathBN.convert(a.commission_value)) ||
-  b.starts_at.getTime() - a.starts_at.getTime()
-
 /**
  * spec 05 subscriber `order.placed` (กฎ 1, 7, 10-12, 16; Q2, Q3, Q7)
  * null = ไม่มี attribution; program_id null = attribute แต่ไม่มีโปรแกรม active (AC-2)
@@ -67,7 +63,7 @@ export const planAttribution = (input: PlanAttributionInput): AttributionPlan | 
   const items = [...input.items].sort(byLineOrder)
 
   const active = input.programs.filter((p) => isProgramActiveAt(p, order.placed_at))
-  const eligible = active.filter((p) => age <= p.attribution_window_days * DAY_MS).sort(byPreference)
+  const eligible = active.filter((p) => age <= p.attribution_window_days * DAY_MS).sort(byCommissionPreference)
   if (active.length && !eligible.length) {
     // AC-3: click เก่ากว่า attribution window ของทุกโปรแกรมที่ active
     return null
@@ -76,7 +72,7 @@ export const planAttribution = (input: PlanAttributionInput): AttributionPlan | 
     return { affiliate_id: affiliate.id, program_id: null, entries: [] }
   }
 
-  // ต่อ line เลือกโปรแกรมแรกตาม byPreference ที่คลุม line นั้น แล้วคำนวณ (รวม cap) ต่อโปรแกรมตามลำดับ line
+  // ต่อ line เลือกโปรแกรมแรกตาม byCommissionPreference ที่คลุม line นั้น แล้วคำนวณ (รวม cap) ต่อโปรแกรมตามลำดับ line
   const linesByProgram = new Map<string, CommissionLineItem[]>()
   for (const item of items) {
     const program = eligible.find((p) => isLineItemInScope(p.scope, item))
@@ -94,7 +90,7 @@ export const planAttribution = (input: PlanAttributionInput): AttributionPlan | 
     }
   }
 
-  // attribution เก็บโปรแกรมที่ให้ค่าคอมรวมมากที่สุด (Q7) เสมอกัน/ไม่มีค่าคอม → ตามลำดับ byPreference
+  // attribution เก็บโปรแกรมที่ให้ค่าคอมรวมมากที่สุด (Q7) เสมอกัน/ไม่มีค่าคอม → ตามลำดับ byCommissionPreference
   const top = eligible.reduce((best, p) =>
     MathBN.gt(totals.get(p.id) ?? 0, totals.get(best.id) ?? 0) ? p : best
   )

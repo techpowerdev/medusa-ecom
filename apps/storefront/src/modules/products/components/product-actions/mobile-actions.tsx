@@ -10,6 +10,8 @@ import { getProductPrice } from "@lib/util/get-product-price"
 import OptionSelect from "./option-select"
 import { HttpTypes } from "@medusajs/types"
 import { isSimpleProduct } from "@lib/util/product"
+import type { FlashOffer } from "@lib/util/flash-sale"
+import { FlashPrice } from "../flash-sale"
 
 type MobileActionsProps = {
   product: HttpTypes.StoreProduct
@@ -21,6 +23,8 @@ type MobileActionsProps = {
   isAdding?: boolean
   show: boolean
   optionsDisabled: boolean
+  /** FS-13 (กฎข้อ 18): ราคา flash ของ variant ที่เลือก — แสดงแทนราคาปกติเมื่อแคมเปญยังไม่ sold out */
+  flashOffer?: FlashOffer | null
 }
 
 const MobileActions: React.FC<MobileActionsProps> = ({
@@ -33,6 +37,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   isAdding,
   show,
   optionsDisabled,
+  flashOffer,
 }) => {
   const { state, open, close } = useToggleState()
 
@@ -76,7 +81,9 @@ const MobileActions: React.FC<MobileActionsProps> = ({
             <div className="flex items-center gap-x-2">
               <span data-testid="mobile-title">{product.title}</span>
               <span>—</span>
-              {selectedPrice ? (
+              {flashOffer && !flashOffer.sale.sold_out ? (
+                <FlashPrice price={flashOffer.price} />
+              ) : selectedPrice ? (
                 <div className="flex items-end gap-x-2 text-ui-fg-base">
                   {selectedPrice.price_type === "sale" && (
                     <p>
