@@ -35,3 +35,20 @@ e2e (next build + next start, backend medusa develop, --project=chromium):
   10 passed (8.2s)
 
 pnpm lint && pnpm typecheck: ผ่าน (exit 0)
+
+## รอบแก้ตาม review #162 — test ของ useSubmitOnce (src/use-submit-once.test.ts)
+Red (แก้ hook/ฟอร์มชั่วคราวแล้วรัน ก่อนคืนค่าเดิม):
+     × submit แรกผ่าน, submit ที่สองก่อน/ระหว่าง action ทำงานถูก preventDefault 15ms
+     × action จบ (isPending → false) แล้ว submit ถัดไปผ่าน — ref ไม่ค้าง 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed (2)
+     × action จบ (isPending → false) แล้ว submit ถัดไปผ่าน — ref ไม่ค้าง 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 1 passed (2)
+     × login ผูก onSubmit ของ useSubmitOnce(isPending) กับ <form> 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 3 passed (4)
+
+Green (vitest ทั้ง storefront):
+ Test Files  36 passed (36)
+      Tests  395 passed (395)
