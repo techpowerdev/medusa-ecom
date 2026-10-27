@@ -25,6 +25,8 @@ type MobileActionsProps = {
   optionsDisabled: boolean
   /** FS-13 (กฎข้อ 18): ราคา flash ของ variant ที่เลือก — แสดงแทนราคาปกติเมื่อแคมเปญยังไม่ sold out */
   flashOffer?: FlashOffer | null
+  /** FS-15 (กฎข้อ 20a): จำนวนที่เลือกเกิน remaining_units ของแคมเปญ flash — disable ปุ่มเหมือนฟอร์มหลัก */
+  qtyExceeded?: boolean
   /** qa #134 D-1: ข้อความเมื่อเพิ่มลง cart ไม่สำเร็จ (handler เดียวกับฟอร์มหลัก) */
   error?: string | null
 }
@@ -40,6 +42,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   show,
   optionsDisabled,
   flashOffer,
+  qtyExceeded,
   error,
 }) => {
   const { state, open, close } = useToggleState()
@@ -130,7 +133,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
               <Button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={!inStock || !variant}
+                disabled={!inStock || !variant || qtyExceeded}
                 className="w-full"
                 isLoading={isAdding}
                 data-testid="mobile-cart-button"
