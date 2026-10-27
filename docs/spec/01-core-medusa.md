@@ -806,8 +806,12 @@ none
     ที่อยู่ที่บันทึกไว้
 57. (CORE-14d, #113) หลัง login แบบ no-JS ที่มี `add_variant` หน้า `/th/cart` ต้องแสดง cart (ไม่ค้าง skeleton) โดยไม่ต้องใช้ JavaScript; error ระหว่างเพิ่มลง cart หลัง login
     ไม่ถูกกลืน (`catch {}` ใน `lib/data/customer.ts`): ส่งต่อเป็น flag `add_error` ให้หน้าแสดง `add-variant-error` และ re-throw redirect/notFound ด้วย `unstable_rethrow`
-58. (CORE-14d, planner ตัดสิน) ลูกค้าที่**ล็อกอินอยู่แล้ว**เปิด `/account?add_variant=<id>&quantity=<n>` → เพิ่มลง cart แล้ว redirect `/cart` เหมือน flow หลัง login (ไม่เงียบ);
-    variant ขายไม่ได้ → `add-variant-error` ตามกฎข้อ 26
+58. (CORE-14d — owner ตัดสิน 2026-10-27 จาก QA #128 D-1 และ review #128; แทนข้อที่ planner ตัดสินเดิม "เพิ่มอัตโนมัติแล้ว redirect")
+    (a) ลูกค้าที่**ล็อกอินอยู่แล้ว**เปิด `/account?add_variant=<id>&add_quantity=<n>` → **ไม่เพิ่มลง cart อัตโนมัติ**: หน้าแสดงการ์ดยืนยัน (ตัวเลือกของ variant, จำนวน, ราคา)
+    พร้อมปุ่ม `add-variant-confirm` ซึ่งเป็นฟอร์ม `POST` (server action — ใช้ได้แม้ปิด JavaScript) กดแล้วเพิ่ม variant ตามจำนวนลง cart และ redirect `/cart`
+    (b) request `GET` ของหน้านี้**ไม่แก้ cart** — storefront ไม่มี route `GET` ใดที่แก้ cart (กัน CSRF ผ่านลิงก์ `GET` และการกด Back แล้วเพิ่มซ้ำ)
+    (c) ลูกค้าที่**ยังไม่ล็อกอิน** → login ผ่านฟอร์ม (`POST`) แล้วเพิ่มลง cart อัตโนมัติและ redirect `/cart` เหมือนเดิม (CORE-14b, กฎข้อ 26/57) — การเพิ่มเกิดใน `POST` ของ login
+    (d) variant ขายไม่ได้ (ไม่มีอยู่/ไม่อยู่ใน sales channel/ไม่มี stock) → แสดง `add-variant-error` และ**ไม่มี**ปุ่ม `add-variant-confirm` (กฎข้อ 26)
 59. (CORE-24, #113) PDP มีตัวเลือกจำนวน (`product-quantity-select`, 1..10 ค่าเริ่มต้น 1) ทั้งโหมด JS และฟอร์ม no-JS (แทน `<input type="hidden" name="quantity" value="1">`)
     — จำนวนที่เลือกถูกส่งต่อข้าม login ตาม CORE-14b
 60. (CORE-20c, #112) storefront คำนวณสิทธิ์คืนจาก `return_window_days` ของ region ของ order (`order.region_id`) ไม่ใช่ `countryCode` ใน URL; จำนวนที่คืนได้ต่อ line =
@@ -824,11 +828,17 @@ none
   ที่ mock SDK throw `new Error("Cart not found")` Then ข้อความที่คืนมีอักษรไทยและไม่มี `Cart not found` (Vitest); test ของ `renewPromptPaySession` ไม่ตัด source ด้วย `indexOf`
 - AC-91 (CORE-4e, กฎข้อ 55–56) Given checkout ขั้นที่อยู่ When e2e เปิด `CountrySelect` Then placeholder มีอักษรไทย; popup ทักทาย/nudge หาได้ด้วย test id และปุ่ม X มี `aria-label`
   ที่มีอักษรไทย; เลือกที่อยู่ที่บันทึกไว้แล้ว `boundingBox` ของ label ไม่ทับกับข้อความค่าใน input; textContent รอบ `STORE_NAME` ไม่มีรูป `<STORE_NAME>แล้ว` ติดกัน (e2e, screenshot 1)
-- AC-92 (CORE-14d, กฎข้อ 57) Given Playwright `javaScriptEnabled: false` และลูกค้าไม่ล็อกอิน When เปิด `/th/account?add_variant=<ขายได้>&quantity=2` แล้ว login Then ไปหน้า
-  `/th/cart` ที่มี `cart-item` และไม่มี skeleton (`data-testid` ของ skeleton cart ไม่อยู่ใน DOM) ภายใน 10 วินาที; Given SDK เพิ่มลง cart ล้ม (variant ที่ลบระหว่างทาง) Then เห็น
+- AC-92 (CORE-14d, กฎข้อ 57) Given Playwright `javaScriptEnabled: false` และลูกค้าไม่ล็อกอิน When เปิด `/th/account?add_variant=<ขายได้>&add_quantity=2` แล้ว login Then ไปหน้า
+  `/th/cart` ที่มี `product-row` ของ variant นั้น qty 2 และไม่มี skeleton (`data-testid` ของ skeleton cart ไม่อยู่ใน DOM) ภายใน 10 วินาที; Given SDK เพิ่มลง cart ล้ม (variant ที่ลบระหว่างทาง) Then เห็น
   `add-variant-error` (e2e) และ unit ยืนยันว่า error ถูกส่งต่อ (ไม่มี `catch {}` ว่างใน `lib/data/customer.ts` — grep)
-- AC-93 (CORE-14d, กฎข้อ 58) Given ลูกค้าล็อกอินแล้ว When เปิด `/th/account?add_variant=<ขายได้>&quantity=1` Then ถูก redirect ไป `/th/cart` และ cart มี variant นั้น; variant ขายไม่ได้ →
-  เห็น `add-variant-error` (e2e)
+- AC-93 (CORE-14d, กฎข้อ 58) Given ลูกค้าล็อกอินแล้วและ cart ว่าง (หรือจำนวน line/qty ที่บันทึกไว้ก่อน) — ทำทั้ง `javaScriptEnabled: true` และ `false`:
+  (a) When เปิด `/th/account?add_variant=<ขายได้>&add_quantity=2` (GET) Then ยังอยู่หน้า account, เห็นการ์ดยืนยันที่มีราคา/จำนวน 2 และปุ่ม `add-variant-confirm`, และ cart
+  **ไม่เปลี่ยน** (อ่าน `GET /store/carts/:id` หรือนับ `product-row` ที่ `/th/cart` เทียบกับก่อนเปิด); เปิด URL เดิมซ้ำ (reload) cart ก็ยังไม่เปลี่ยน
+  (b) When กด `add-variant-confirm` Then redirect ไป `/th/cart` และมี `product-row` ของ variant นั้น qty 2 (เพิ่มจากเดิม 2)
+  (c) Given flow ไม่ล็อกอิน → login ด้วย `add_variant`/`add_quantity=1` สำเร็จแล้วอยู่ `/th/cart` When กด Back ของ browser (กลับไปหน้า account ที่มี query เดิม) Then qty ของ variant
+  นั้นใน cart ยังเป็น 1 (ไม่เพิ่มซ้ำ)
+  (d) variant ขายไม่ได้ → เห็น `add-variant-error` และไม่มี `add-variant-confirm` ใน DOM
+  (e) grep/unit: ไม่มี route handler `GET` หรือ page render ใต้ `apps/storefront/src` ที่เรียก action เพิ่มลง cart (`addToCart`/`createLineItem`) ระหว่าง render (e2e + grep)
 - AC-94 (CORE-24, กฎข้อ 59) Given PDP ของสินค้า seed When เลือก 3 ใน `product-quantity-select` แล้วกดเพิ่มลง cart Then cart มี line qty 3; Given `javaScriptEnabled: false` และไม่ล็อกอิน
   When เลือก 2 แล้ว submit และ login Then cart มี qty 2 (e2e)
 - AC-95 (CORE-20b, owner ตัดสิน Q-F6) Given order OA ของ A ที่ ship แล้วเมื่อ `return_window_days + 1` วันก่อน (ตั้ง `shipped_at`/`delivered_at` ใน test) When A `POST /store/returns`
@@ -846,7 +856,8 @@ none
 | ID | Task | AC | Depends |
 |----|------|----|---------|
 | CORE-4e | (storefront เล็ก, nit/qa #109 + qa #98) Stripe Elements `locale: "th"`, `friendlyErrorMessage` ใน `setAddresses`/`submitPromotionForm`/`renewPromptPaySession` + ข้อความรอสร้าง order ของพร้อมเพย์ (ถ้า #109 ยังไม่ครอบ), "พร้อมเพย์" แบบเดียว, `{STORE_NAME} แล้ว`, placeholder "เลือกประเทศ", test id/aria-label ของ popup ที่อยู่ + nudge, floating label ซ้อน, test `renewPromptPaySession` ไม่ใช้ `indexOf` (กฎข้อ 54–56) | AC-90, AC-91 | CORE-4d (#109) |
-| CORE-14d | (storefront เล็ก, nit/qa #113) `/cart` ไม่ค้าง skeleton หลัง login no-JS, `add_error` + `unstable_rethrow` แทน `catch {}`, `/account?add_variant=` ตอนล็อกอินแล้ว (กฎข้อ 57–58) | AC-92, AC-93 | CORE-14b (#113) |
+| CORE-14d | (storefront เล็ก, nit/qa #113; ◐ #128) `/cart` ไม่ค้าง skeleton หลัง login no-JS, `add_error` + `unstable_rethrow` แทน `catch {}`, `/account?add_variant=&add_quantity=` ตอนล็อกอินแล้ว = การ์ดยืนยัน + ปุ่ม `add-variant-confirm` (ฟอร์ม POST) ไม่เพิ่มอัตโนมัติ, GET ไม่แก้ cart (กฎข้อ 57–58, owner 2026-10-27) | AC-92, AC-93 | CORE-14b (#113) |
+| CORE-14e | (storefront เล็ก, follow-up QA/review #128 — ไม่บล็อก CORE-14d) กันกดปุ่มเพิ่มลง cart แบบ no-JS ซ้ำเร็วๆ (PDP + `add-variant-confirm`) แล้วได้ qty สองเท่า — **รอ owner ตอบ Q-F7** ขอบเขต/AC กำหนดหลังได้คำตอบ | — | CORE-14d (#128), CORE-24, Q-F7 |
 | CORE-24 | (storefront เล็ก, qa #113) ตัวเลือกจำนวนบน PDP ทั้ง JS/no-JS (กฎข้อ 59) | AC-94 | CORE-14b (#113) (∥ CORE-14d: CORE-24 แตะ `modules/products`, CORE-14d แตะ `lib/data/customer.ts`/account/cart) |
 | CORE-20b | (backend เล็ก, review #112; owner ตัดสิน Q-F6 2026-10-27 — เริ่มได้): middleware บังคับช่วงคืน N วัน + กัน line ที่ไม่ต้องจัดส่งบน `POST /store/returns` (ADR-013 ทางเลือก A, ต่อ chain ของ CORE-17/21) | AC-95 | CORE-21 ☑ (#86) — เริ่มได้ทันที; ∥ CORE-20c |
 | CORE-20c | (storefront เล็ก, nit review/re-review #112) `return_window_days` จาก region ของ order, `returnableItems` นับ `shipped_quantity`, ตัด `canRequestReturn` ซ้ำ, `listOrders`/`listRegions` ของ `/returns` + structured data ไม่ `force-cache`, e2e region แยก/serial (กฎข้อ 60) | AC-96 | CORE-20 (#112) |
@@ -857,6 +868,11 @@ CORE-15 (AC-69 ป้ายราคา ฿) ยังไม่เริ่ม �
 ### Open questions (รอบ 9)
 - ~~Q-F6~~ ตัดสินแล้ว (owner 2026-10-27): backend บังคับช่วงคืน N วันและกัน line ที่ไม่ต้องจัดส่งบน `POST /store/returns` (CORE-20b, AC-95) — แทน Q-F5 ส่วน "backend ไม่บังคับใน v1"
 - ~~ชื่อพร้อมเพย์~~ ตัดสินแล้ว (owner 2026-10-27): ใช้ "พร้อมเพย์" (กฎข้อ 54)
+- ~~Q-F8~~ ตัดสินแล้ว (owner 2026-10-27, QA #128 D-1 / review #128): ลูกค้าที่ล็อกอินแล้วเปิด `/account?add_variant=` → การ์ดยืนยัน + ปุ่ม POST ไม่เพิ่มอัตโนมัติ; GET ไม่แก้ cart (กฎข้อ 58, AC-93)
+- Q-F7 (CORE-14e, QA/review #128) ฟอร์ม no-JS (ปุ่มเพิ่มลง cart บน PDP และ `add-variant-confirm`) กดซ้ำเร็วๆ ส่ง `POST` 2 ครั้ง → line ได้ qty สองเท่า (โหมด JS กันด้วย disable ระหว่างส่งอยู่แล้ว)
+  ถ้าจะกันจริงต้องทำฝั่ง server แบบ idempotent: ฟอร์มฝัง nonce ครั้งเดียว (สุ่มตอน render เก็บใน cookie httpOnly หรือ metadata ของ cart) แล้ว server action ปฏิเสธ nonce ที่ใช้แล้ว
+  **ข้อเสนอ: ยังไม่ทำใน v1** (ไม่บล็อก) — เกิดเฉพาะผู้ใช้ที่ปิด JavaScript และกดซ้ำ, แก้ได้เองในหน้า cart, การทำ nonce เพิ่ม state ฝั่ง server ที่ยังมีผู้ใช้ที่เดียว; ถ้า owner ต้องการกัน
+  → CORE-14e ทำ nonce ครั้งเดียวต่อฟอร์ม (cookie httpOnly อายุสั้น, ไม่เพิ่ม infra) พร้อม AC: ส่ง `POST` เดิมซ้ำ 2 ครั้งด้วย nonce เดียว → qty เพิ่มครั้งเดียว
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
