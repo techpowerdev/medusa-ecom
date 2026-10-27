@@ -1,9 +1,9 @@
 import { createWorkflow, transform, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
 import { useQueryGraphStep } from "@medusajs/medusa/core-flows"
-import { EvoucherOrder } from "./steps/evoucher-order"
 import { buildEvoucherDeliveredNotificationStep } from "./steps/build-evoucher-delivered-notification"
 import {
   acquireEvoucherResendLockStep,
+  EvoucherResendOrder,
   releaseEvoucherResendLockStep,
   resolveEvoucherResendCodesStep,
   sendEvoucherResendNotificationStep,
@@ -23,11 +23,24 @@ export const resendEvoucherEmailWorkflow = createWorkflow(
 
     const { data: orders } = useQueryGraphStep({
       entity: "order",
-      fields: ["id", "display_id", "email", "items.id", "items.title"],
+      // EV-9: code ของ order มาจาก link order ↔ evoucher_code (src/links/order-evoucher-code.ts)
+      fields: [
+        "id",
+        "display_id",
+        "email",
+        "items.id",
+        "items.title",
+        "evoucher_codes.id",
+        "evoucher_codes.status",
+        "evoucher_codes.order_line_item_id",
+        "evoucher_codes.created_at",
+        "evoucher_codes.pool.id",
+        "evoucher_codes.pool.name",
+      ],
       filters: { id: input.order_id },
       options: { throwIfKeyNotFound: true },
     })
-    const order = transform({ orders }, ({ orders }) => orders[0] as unknown as EvoucherOrder)
+    const order = transform({ orders }, ({ orders }) => orders[0] as unknown as EvoucherResendOrder)
 
     const resend = resolveEvoucherResendCodesStep({ order })
     const notification = buildEvoucherDeliveredNotificationStep({

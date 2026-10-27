@@ -342,7 +342,8 @@ export async function getPromptPayState(
   const cart = await sdk.client
     .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, {
       method: "GET",
-      query: { fields: "id,completed_at,*payment_collection.payment_sessions" },
+      // PAY-6c: `*payment_collection` (อยู่ใน defaults ของ store cart 2.22.1) ให้ captured_amount/refunded_amount เป็นสัญญาณ "คืนเงินแล้ว"
+      query: { fields: "id,completed_at,*payment_collection,*payment_collection.payment_sessions" },
       headers,
       cache: "no-store",
     })
