@@ -18,8 +18,18 @@ export type SendEvoucherStockAlertsInput = {
   to: string
   /** วันที่ตามปฏิทินไทย (YYYY-MM-DD) — ส่วนหนึ่งของ idempotency key: 1 ฉบับต่อวันต่อ pool (AC-9) */
   date: string
-  /** ผลการ void ของ job วันนี้ (เฉพาะ pool ที่ void > 0) */
-  voided: { pool_id: string; voided: number }[]
+  /** ผลของ job วันนี้ (เฉพาะ pool ที่ void หรือเว้น > 0) */
+  pools: EvoucherExpiryPoolResult[]
+}
+
+/** EV-12 (กฎข้อ 12b d): ผลต่อ pool ของ job รายวัน */
+export type EvoucherExpiryPoolResult = {
+  pool_id: string
+  voided: number
+  kept: number
+  kept_earliest_expires_at: string | null
+  /** reserved − stocked หลังรัน (0 = พอ) */
+  shortfall: number
 }
 
 const TRIGGER = "evoucher.daily"
@@ -64,9 +74,9 @@ export const buildEvoucherStockAlertsStep = createStep(
     }
 
     const names = new Map(pools.map((p) => [p.id, p.name]))
-    const voided = input.voided.filter((v) => v.voided > 0)
-    const total = voided.reduce((sum, v) => sum + v.voided, 0)
-    if (total > 0) {
+    const results = input.pools.filter((p) => p.voided > 0 || p.kept > 0)
+    const total = results.reduce((sum, p) => sum + p.voided, 0)
+    if (results.length > 0) {
       notifications.push({
         to: input.to,
         channel: "email",
@@ -74,10 +84,13 @@ export const buildEvoucherStockAlertsStep = createStep(
         data: {
           date: input.date,
           total_voided: total,
-          pools: voided.map((v) => ({
-            id: v.pool_id,
-            name: names.get(v.pool_id) ?? v.pool_id,
-            voided: v.voided,
+          pools: results.map((p) => ({
+            id: p.pool_id,
+            name: names.get(p.pool_id) ?? p.pool_id,
+            voided: p.voided,
+            kept: p.kept,
+            kept_earliest_expires_at: p.kept_earliest_expires_at,
+            shortfall: p.shortfall,
           })),
         },
         trigger_type: TRIGGER,

@@ -1,0 +1,37 @@
+# GB-6c2 test evidence — 2026-10-27 11:05 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 (docker compose); base origin/develop e1ea8f6 (รวม #114 GB-6c1)
+# integration/e2e ในเครื่องรันเฉพาะไฟล์ของ task นี้ (ชุดเต็มให้ CI รัน); backend medusa start :9124 DB medusa_gb6c Redis db 4
+### Red
+group-buy-membership.unit.spec.ts → orderAdminPath/canSetGroupOutcome/customerLabel is not a function (ก่อนเขียน helper)
+e2e group-buy-admin-members.spec.ts (admin build ไม่มีการต่อ GroupMembers ใน groups-section) →
+  ✘  1 [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย (7.7s)
+  ✘  2 [chromium] › e2e/group-buy-admin-members.spec.ts:146:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request (2.0m)
+    Error: expect(locator).toHaveCount(expected) failed
+  2 failed
+integration: test ใหม่จาก review #114 (payment_status authorized/captured, 404 type not_found) เป็น regression ของ route GB-6c1 ที่มีอยู่แล้ว — ผ่านทันที (ไม่มี red); ระหว่างเขียนพบว่า "awaiting" เกิดเฉพาะเมื่อ provider ตอบ pending_authorization จึงทดสอบ authorized/captured แทน
+### pnpm lint
+backend: No lint issues found / storefront: 0 errors (33 warnings เดิม)
+### pnpm typecheck
+apps/backend: 0 error / apps/storefront: 0 error
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit
+Test Suites: 53 passed, 53 total
+Tests:       542 passed, 542 total
+### storefront playwright --project=unit
+29 passed
+### integration-tests/http/group-buy-memberships.spec.ts
+    ✓ AC-34: lists memberships with order + customer email matching the DB (367 ms)
+    ✓ AC-34: payment_status follows the payment collection — authorized, then captured (547 ms)
+    ✓ AC-34: limit=1&offset=1 → 1 membership, count=2 (192 ms)
+    ✓ AC-34: limit=101 → 400 (165 ms)
+    ✓ AC-34: limit=0 → 400 (154 ms)
+    ✓ AC-34: offset=-1 → 400 (168 ms)
+    ✓ AC-34: limit=abc → 400 (253 ms)
+    ✓ AC-34: unknown group → 404 (164 ms)
+    ✓ AC-34: no admin token → 401 (174 ms)
+Tests:       9 passed, 9 total
+### e2e group-buy-admin-members.spec.ts (chromium, E2E_SAVE_EVIDENCE=1)
+  ✓  1 [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย (3.8s)
+  ✓  2 [chromium] › e2e/group-buy-admin-members.spec.ts:148:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request (2.3s)
+  2 passed (6.8s)

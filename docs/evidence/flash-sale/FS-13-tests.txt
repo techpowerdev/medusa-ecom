@@ -1,0 +1,48 @@
+# FS-13 — PDP ปุ่ม disable เมื่อ sold_out + ราคา flash บนการ์ด PLP และแถบล่าง PDP มือถือ (spec 03 กฎข้อ 18, AC-19) — ผลการทดสอบ 2026-10-27
+
+## Red (ก่อนเขียนโค้ด)
+- vitest src/lib/util/flash-sale.test.ts → 4 failed (cardFlashOffer / mergeActiveFlashSales is not a function)
+- e2e/flash-sale-fs13.spec.ts บน build ของ develop (โค้ดเดิม) — แต่ละ test fail ด้วยสาเหตุที่ถูกต้อง:
+  - PLP card: flash-price → element(s) not found
+  - PDP 375×812: mobile-actions › flash-price → element(s) not found
+  - sold out: add-product-button → Expected: disabled, Received: enabled
+
+## Unit (Vitest) — pnpm --filter storefront exec vitest run src/lib/util/flash-sale.test.ts --reporter=verbose
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > คืน campaign + ราคาของ variant ที่อยู่ในแคมเปญ 1ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > variant ที่ไม่อยู่ในแคมเปญ / ไม่มีข้อมูล / ไม่ได้เลือก variant → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > เลย ends_at แล้ว (นาฬิกาฝั่ง browser) → null — หน้าเลิกแสดงราคา flash โดยไม่ต้องโหลดใหม่ 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > sold_out ยังคืน offer เพื่อให้หน้าแสดง 'สินค้าหมด' (กฎข้อ 4) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > เหลือน้อยกว่าวัน → HH:MM:SS 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > เกินหนึ่งวัน → N วัน HH:MM:SS (ภาษาไทย) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > หมดเวลาแล้วหรือไม่มี ends_at → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > cart มี code + สินค้า flash → true 0ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > ไม่มี code (มีแต่ automatic) → false 0ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > มี code แต่ไม่มีสินค้า flash ใน cart → false 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashOffer (FS-13) > เลือก variant ที่ราคา flash ต่ำสุดของสินค้า 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashOffer (FS-13) > แคมเปญ sold_out / เลย ends_at / ไม่มี variant ในแคมเปญ → null (การ์ดแสดงราคาปกติ) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > mergeActiveFlashSales (FS-13) > รวม variants ทุกชุดและแคมเปญไม่ซ้ำ id; ชุดที่ล้ม (null) ถูกข้าม 0ms
+ ✓ src/lib/util/flash-sale.test.ts > mergeActiveFlashSales (FS-13) > ทุกชุดล้มหรือไม่มีชุด → null 0ms
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+
+## Unit ทั้งชุด storefront (pnpm --filter storefront test:unit): Test Files 24 passed (24), Tests 274 passed (274)
+## pnpm --filter storefront test:e2e:unit: 29 passed (745ms)
+
+## e2e (Playwright, chromium) — backend medusa develop :9172 (DB medusa_fs13) + storefront next build/start :8172
+## npx playwright test e2e/flash-sale-fs13.spec.ts e2e/flash-sale-storefront.spec.ts (FS-6 รันซ้ำเป็น regression)
+  ✓  1 [chromium] › e2e/flash-sale-fs13.spec.ts:121:5 › AC-19: การ์ดสินค้าบน PLP (desktop) แสดงราคา flash + ราคาขีดฆ่า (723ms)
+  ✓  2 [chromium] › e2e/flash-sale-fs13.spec.ts:133:5 › AC-19: PDP ที่ 375×812 แถบล่างแสดงราคา flash (1.9s)
+  ✓  3 [chromium] › e2e/flash-sale-fs13.spec.ts:149:5 › AC-19: แคมเปญ sold out → add-product-button disabled และเห็น flash-sold-out (2.9s)
+  ✓  4 [chromium] › e2e/flash-sale-storefront.spec.ts:183:5 › AC-4, AC-13: PDP แสดง banner, countdown, ราคา flash + ราคาขีดฆ่า, เหลือ N ชิ้น และหายเมื่อเลย ends_at (T−1min / T+1min) (457ms)
+  ✓  5 [chromium] › e2e/flash-sale-storefront.spec.ts:212:5 › AC-1, AC-8 (g): cart ได้ส่วนลด flash; ใส่ code แล้วแสดงข้อความว่าใช้ร่วมกันไม่ได้ (1.3s)
+  ✓  6 [chromium] › e2e/flash-sale-storefront.spec.ts:245:5 › AC-13 (e): units_sold ถึง total_cap → PDP แสดง 'สินค้าหมด' (1.3s)
+  ✓  7 [chromium] › e2e/flash-sale-storefront.spec.ts:285:5 › AC-1: หลัง ends_at cart ใหม่แสดงราคาเต็ม (1.2s)
+  7 passed (10.9s)
+- flash-sale-fs13.spec.ts รันซ้ำ 6 รอบติด: 3 passed ทุกรอบ
+
+## pnpm lint && pnpm typecheck: ผ่าน (0 error)
+## screenshot: docs/evidence/flash-sale/FS-13/01-plp-card-flash-price.png, 02-pdp-mobile-bar-flash-price.png
+
+## หลังแก้ตาม review (ย้าย getCardFlashPrices ออกจากไฟล์ "use server", revert การแก้ AC-19 ใน spec)
+- pnpm lint && pnpm typecheck: ผ่าน; storefront unit: 287 passed (หลัง merge develop)
+- e2e flash-sale-fs13 + flash-sale-storefront: 7 passed

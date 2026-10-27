@@ -96,13 +96,18 @@ export async function shippingOptionId(
 
 /**
  * วาง order ผ่าน store API ด้วย token ของ customer (manual payment ของ seed) คืน id + display_id
- * CORE-20c: `quantity` ของ t-shirt และ `country` ของ region/ที่อยู่ (ค่าเริ่มต้น 1 และ STOREFRONT_COUNTRY)
+ * CORE-20c: `quantity` และ `country` ของ region/ที่อยู่ (ค่าเริ่มต้น 1 และ STOREFRONT_COUNTRY)
+ * FS-13: `variant` (ไม่ระบุ = t-shirt ของ seed)
  */
 export async function placeOrder(
   request: APIRequestContext,
   pk: string,
   customer: Customer,
-  { quantity = 1, country = STOREFRONT_COUNTRY }: { quantity?: number; country?: string } = {}
+  {
+    quantity = 1,
+    country = STOREFRONT_COUNTRY,
+    variant,
+  }: { quantity?: number; country?: string; variant?: string } = {}
 ): Promise<{ id: string; displayId: number }> {
   const headers = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ store API ใน e2e
@@ -115,7 +120,7 @@ export async function placeOrder(
   const region = regions.find((r: { countries: { iso_2: string }[] }) =>
     r.countries.some((c) => c.iso_2 === country)
   )
-  const { variantId } = await variantOf(request, pk, "t-shirt")
+  const variantId = variant ?? (await variantOf(request, pk, "t-shirt")).variantId
 
   const { cart } = await ok(
     await request.post(`${BACKEND_URL}/store/carts`, { headers, data: { region_id: region.id } }),

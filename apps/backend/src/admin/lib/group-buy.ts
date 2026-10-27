@@ -33,10 +33,22 @@ export type Group = {
   progress_people: number
 }
 
+export type Membership = {
+  id: string
+  customer_id: string
+  customer: { email: string } | null
+  units: number
+  status: "joined" | "awaiting_payment" | "paid" | "cancelled"
+  joined_at: string
+  order_id: string
+  order: { status: string; is_draft_order: boolean; payment_status: string; total: number } | null
+}
+
 export const groupBuyKeys = {
   campaigns: ["group-buy", "campaigns"] as const,
   campaign: (id: string) => ["group-buy", "campaigns", id] as const,
   groups: (id: string) => ["group-buy", "campaigns", id, "groups"] as const,
+  memberships: (groupId: string) => ["group-buy", "groups", groupId, "memberships"] as const,
 }
 
 const BASE = "/admin/group-buy"
@@ -58,6 +70,12 @@ export const groupBuyApi = {
     sdk.client.fetch<{ groups: Group[]; count: number }>(`${BASE}/campaigns/${id}/groups`, { query }),
   createPoolGroup: (id: string) =>
     sdk.client.fetch<{ group: Group }>(`${BASE}/campaigns/${id}/groups`, { method: "POST", body: {} }),
+  listMemberships: (groupId: string, query: { limit: number; offset: number }) =>
+    sdk.client.fetch<{ memberships: Membership[]; count: number }>(`${BASE}/groups/${groupId}/memberships`, {
+      query,
+    }),
+  setOutcome: (groupId: string, outcome: "succeed" | "fail") =>
+    sdk.client.fetch<{ group: Group }>(`${BASE}/groups/${groupId}/${outcome}`, { method: "POST" }),
 }
 
 // แสดงเวลาไทยเสมอ (ฟอร์มก็ตีความเป็น ICT) ไม่ขึ้นกับ timezone ของ browser
