@@ -1,10 +1,13 @@
 import { sdk } from "@lib/config"
 import { syncCartAffiliateToken } from "@lib/data/affiliate"
 import { getAuthHeaders, getCartId } from "@lib/data/cookies"
-import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
+import {
+  clampLineItemQuantity,
+  loginPathForAddToCart,
+} from "@lib/util/pending-add-to-cart"
 import { getRegion } from "@lib/data/regions"
 import { HttpTypes } from "@medusajs/types"
-import { activateCart, MAX_LINE_ITEM_QUANTITY } from "@lib/util/server-cart"
+import { activateCart } from "@lib/util/server-cart"
 import { getRequestOrigin } from "@lib/util/site"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isEqual } from "lodash"
@@ -74,10 +77,7 @@ export async function POST(
   }
 
   const form = await request.formData()
-  const quantity = Math.min(
-    Math.max(parseInt(form.get("quantity")?.toString() ?? "1", 10) || 1, 1),
-    MAX_LINE_ITEM_QUANTITY
-  )
+  const quantity = clampLineItemQuantity(form.get("quantity")?.toString())
 
   let variantId: string | undefined
   try {
@@ -93,7 +93,7 @@ export async function POST(
   const headers = await getAuthHeaders()
   if (!("authorization" in headers)) {
     return NextResponse.redirect(
-      `${getRequestOrigin(request)}${loginPathForAddToCart(countryCode, variantId)}`,
+      `${getRequestOrigin(request)}${loginPathForAddToCart(countryCode, variantId, quantity)}`,
       303
     )
   }
