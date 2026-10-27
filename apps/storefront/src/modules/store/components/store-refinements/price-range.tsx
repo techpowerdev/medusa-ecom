@@ -5,19 +5,7 @@ import { useEffect, useState } from "react"
 import { useRange } from "react-instantsearch"
 
 import { indexedCurrency, priceAttribute } from "@lib/search-client"
-
-function formatAmount(amount: number, currency: string) {
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: currency.toUpperCase(),
-        maximumFractionDigits: 0,
-      }).format(amount)
-    } catch {
-      // An unrecognised currency code shouldn't take the sidebar down.
-      return `${Math.round(amount)} ${currency.toUpperCase()}`
-    }
-}
+import { convertToLocale } from "@lib/util/money"
 
 /**
  * Price filter over the region currency's `min_price_*` field, which is
@@ -29,7 +17,10 @@ const PriceRange = ({ currencyCode }: { currencyCode: string }) => {
     attribute: priceAttribute("min_price", currencyCode),
   })
   const currency = indexedCurrency(currencyCode)
-  const format = (amount: number) => formatAmount(amount, currency)
+  // CORE-15 (AC-69): ใช้ convertToLocale (th-TH, ฿) เหมือนราคาบนการ์ด — ไม่ขึ้นกับ locale ของ browser
+  // ปัดเป็นบาทเต็มก่อน → ไม่มีสตางค์ในป้าย (เช่น ฿590)
+  const format = (amount: number) =>
+    convertToLocale({ amount: Math.round(amount), currency_code: currency })
 
   const min = Math.floor(range.min ?? 0)
   const max = Math.ceil(range.max ?? 0)
@@ -83,10 +74,16 @@ const PriceRange = ({ currencyCode }: { currencyCode: string }) => {
         </Slider.Root>
 
         <div className="flex items-center justify-between">
-          <span className="text-small-regular text-ui-fg-subtle">
+          <span
+            className="text-small-regular text-ui-fg-subtle"
+            data-testid="price-range-min"
+          >
             {format(value[0])}
           </span>
-          <span className="text-small-regular text-ui-fg-subtle">
+          <span
+            className="text-small-regular text-ui-fg-subtle"
+            data-testid="price-range-max"
+          >
             {format(value[1])}
           </span>
         </div>

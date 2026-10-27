@@ -1,0 +1,12 @@
+# CORE-15 — e2e (next build/start :8256, backend medusa develop :9256 seed แล้ว), 2026-10-28 01:32
+# Red (ก่อนแก้, next dev): AC-54 ยิง /store/search 530 ครั้งใน ~6 วินาที (ต้อง ≤ 3); AC-69 ไม่มี price-range-min (ป้ายเดิม Intl locale browser → THB 590)
+# Green:
+  ✓  2 [chromium] › e2e/store-thb-price.spec.ts:9:5 › AC-28: การ์ดสินค้าทุกใบบน /th/store แสดงราคาเป็น ฿ (1.0s)
+  ✓  1 [chromium] › e2e/core-15-store-search-error.spec.ts:11:5 › AC-54, AC-55: /store/search ตอบ 500 → หยุดยิงซ้ำ แสดง products-error ไทย และกลับมาปกติเมื่อ search ใช้ได้ (7.4s)
+  ✓  3 [chromium] › e2e/core-15-store-search-error.spec.ts:62:7 › AC-69: browser locale en-US › ป้ายช่วงราคาใต้ slider แสดง ฿ ไม่มี THB ทั้งก่อนและหลังลาก (710ms)
+  3 passed (9.0s)
+
+# storefront test:unit (vitest)
+ Test Files  44 passed (44)
+      Tests  450 passed (450)
+# pnpm typecheck: ผ่าน; pnpm lint: 0 errors (warning เดิมใน store-hits/price-range ไม่ได้เกิดจาก task นี้)
