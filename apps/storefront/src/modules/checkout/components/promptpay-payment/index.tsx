@@ -26,6 +26,8 @@ type Props = {
 
 type Qr = { image: string; deadline: number }
 
+const PAY_WITH_PROMPTPAY = "ชำระด้วยพร้อมเพย์"
+
 /**
  * PAY-2 (spec 06): PromptPay — แสดง QR เอง (confirmPromptPayPayment แบบ handleActions: false),
  * poll cart จน webhook สร้าง order (กฎข้อ 3) และหมดอายุ 10 นาทีนับจากสร้าง PaymentIntent
@@ -38,10 +40,10 @@ const PromptPayPaymentButton = (props: Props) => {
     return (
       <>
         <Button disabled size="large" data-testid={props["data-testid"]}>
-          Pay with PromptPay
+          {PAY_WITH_PROMPTPAY}
         </Button>
         <ErrorMessage
-          error="PromptPay is currently unavailable. Please choose another payment method."
+          error="ขณะนี้ชำระด้วยพร้อมเพย์ไม่ได้ กรุณาเลือกวิธีชำระเงินอื่น"
           data-testid="promptpay-payment-error-message"
         />
       </>
@@ -77,7 +79,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       await placeOrder(cart.id)
     } catch {
       // เช่นรอ lock ของ completeCartWorkflow ไม่ทัน — poll รอบถัดไปจะลองใหม่ (order มีอยู่แล้ว)
-      setError("Payment received. We are still finalising your order — please wait…")
+      setError("ได้รับชำระเงินแล้ว ระบบกำลังสร้างคำสั่งซื้อของคุณ กรุณารอสักครู่…")
     } finally {
       finishing.current = false
     }
@@ -143,7 +145,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
         { handleActions: false }
       )
       if (confirmed.error) {
-        setError(confirmed.error.message ?? "PromptPay payment failed")
+        setError(confirmed.error.message ?? "ชำระด้วยพร้อมเพย์ไม่สำเร็จ")
         setSubmitting(false)
         return
       }
@@ -153,7 +155,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
 
     const image = promptPayQrImage(intent)
     if (!intent || !image) {
-      setError("Could not create the PromptPay QR code. Please try again.")
+      setError("สร้างคิวอาร์โค้ดพร้อมเพย์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
       return
     }
     setNow(Date.now())
@@ -187,7 +189,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
         clearInterval(timer)
         setQr(null)
         setAwaitingOrder(false)
-        setError("PromptPay payment failed. Please try again.")
+        setError("ชำระด้วยพร้อมเพย์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
       }
     }, PROMPTPAY_POLL_MS)
     return () => clearInterval(timer)
@@ -197,7 +199,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     return (
       <div className="flex flex-col items-start gap-y-2" data-testid="promptpay-awaiting-order">
         <Text className="txt-medium-plus text-ui-fg-base" aria-live="polite">
-          Payment received. Creating your order…
+          ได้รับชำระเงินแล้ว กำลังสร้างคำสั่งซื้อ…
         </Text>
         <ErrorMessage error={error} data-testid="promptpay-payment-error-message" />
       </div>
@@ -208,22 +210,22 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     return (
       <div className="flex flex-col items-start gap-y-3" data-testid="promptpay-panel">
         <Text className="txt-medium-plus text-ui-fg-base">
-          Scan the QR code with your banking app to pay
+          สแกนคิวอาร์โค้ดด้วยแอปธนาคารเพื่อชำระเงิน
         </Text>
         {/* eslint-disable-next-line @next/next/no-img-element -- รูป QR จาก Stripe (URL ภายนอกที่เปลี่ยนต่อ payment) */}
         <img
           src={qr.image}
-          alt="PromptPay QR code"
+          alt="คิวอาร์โค้ดพร้อมเพย์"
           width={240}
           height={240}
           className="border border-ui-border-base rounded-rounded"
           data-testid="promptpay-qr"
         />
         <Text className="txt-small text-ui-fg-subtle" aria-live="polite">
-          Expires in <span data-testid="promptpay-countdown">{formatCountdown(secondsLeft(qr.deadline, now))}</span>
+          หมดอายุใน <span data-testid="promptpay-countdown">{formatCountdown(secondsLeft(qr.deadline, now))}</span>
         </Text>
         <Text className="txt-small text-ui-fg-subtle">
-          Waiting for payment confirmation… this page updates automatically.
+          กำลังรอยืนยันการชำระเงิน… หน้านี้จะอัปเดตอัตโนมัติ
         </Text>
         <ErrorMessage error={error} data-testid="promptpay-payment-error-message" />
       </div>
@@ -234,7 +236,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     <>
       {expired && (
         <Text className="txt-medium text-ui-fg-subtle mb-2" data-testid="promptpay-expired">
-          The PromptPay QR code has expired. Your cart is still saved — try again to get a new code.
+          คิวอาร์โค้ดพร้อมเพย์หมดอายุแล้ว ตะกร้าของคุณยังอยู่ กดลองอีกครั้งเพื่อรับคิวอาร์โค้ดใหม่
         </Text>
       )}
       <Button
@@ -244,7 +246,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
         isLoading={submitting}
         data-testid={expired ? "promptpay-retry-button" : dataTestId}
       >
-        {expired ? "Try again" : "Pay with PromptPay"}
+        {expired ? "ลองอีกครั้ง" : PAY_WITH_PROMPTPAY}
       </Button>
       <ErrorMessage error={error} data-testid="promptpay-payment-error-message" />
     </>

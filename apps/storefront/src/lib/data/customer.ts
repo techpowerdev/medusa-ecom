@@ -19,7 +19,10 @@ import {
   setPendingCustomer,
 } from "./cookies"
 import { addToCart } from "./cart"
-import { readPendingAddToCart } from "@lib/util/pending-add-to-cart"
+import {
+  loginPathForAddToCart,
+  readPendingAddToCart,
+} from "@lib/util/pending-add-to-cart"
 import { readReturnTo } from "@lib/util/login-return"
 import { buyFromPermalink } from "@lib/util/server-cart"
 
@@ -175,13 +178,20 @@ async function continueAfterAuth(
     return result
   }
 
+  // CORE-14b (กฎ 26): เพิ่มไม่สำเร็จ (variant ไม่มีอยู่/ขายไม่ได้) → ล็อกอินแล้วจึงไปหน้าบัญชีพร้อม add_variant
+  // ให้หน้า dashboard แสดง `add-variant-error` (คืน state error ตรงนี้จะหายไปเมื่อ layout สลับเป็น dashboard)
+  let added = true
   try {
-    await addToCart({ ...pending, quantity: 1 })
-  } catch (error) {
-    return { state: "error", error: errorMessage(error) }
+    await addToCart(pending)
+  } catch {
+    added = false
   }
 
-  redirect(`/${pending.countryCode}/cart`)
+  redirect(
+    added
+      ? `/${pending.countryCode}/cart`
+      : loginPathForAddToCart(pending.countryCode, pending.variantId, pending.quantity)
+  )
 }
 
 // Logs the customer in and reconciles the customer record. The behavior is

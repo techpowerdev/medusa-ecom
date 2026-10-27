@@ -150,10 +150,10 @@ function FreeShippingInline({
               <div className="flex items-center gap-1.5">
                 {" "}
                 <CheckCircleSolid className="text-green-500 inline-block" />{" "}
-                Free Shipping unlocked!
+                ได้รับสิทธิ์ส่งฟรีแล้ว!
               </div>
             ) : (
-              `Unlock Free Shipping`
+              `ซื้อเพิ่มเพื่อรับสิทธิ์ส่งฟรี`
             )}
           </div>
 
@@ -162,14 +162,14 @@ function FreeShippingInline({
               "opacity-0 invisible": price.target_reached,
             })}
           >
-            Only{" "}
+            อีก{" "}
             <span className="text-neutral-950">
               {convertToLocale({
                 amount: price.target_remaining,
                 currency_code: cart.currency_code,
               })}
             </span>{" "}
-            away
+            จะได้ส่งฟรี
           </div>
         </div>
         <div className="flex justify-between gap-1">
@@ -226,10 +226,10 @@ function FreeShippingPopup({
                 {price.target_reached ? (
                   <div className="flex items-center gap-1.5">
                     <CheckCircleSolid className="text-green-500 inline-block" />{" "}
-                    Free Shipping unlocked!
+                    ได้รับสิทธิ์ส่งฟรีแล้ว!
                   </div>
                 ) : (
-                  `Unlock Free Shipping`
+                  `ซื้อเพิ่มเพื่อรับสิทธิ์ส่งฟรี`
                 )}
               </div>
 
@@ -238,14 +238,14 @@ function FreeShippingPopup({
                   "opacity-0 invisible": price.target_reached,
                 })}
               >
-                Only{" "}
+                อีก{" "}
                 <span className="text-white">
                   {convertToLocale({
                     amount: price.target_remaining,
                     currency_code: cart.currency_code,
                   })}
                 </span>{" "}
-                away
+                จะได้ส่งฟรี
               </div>
             </div>
             <div className="flex justify-between gap-1">
@@ -268,14 +268,14 @@ function FreeShippingPopup({
             className="rounded-2xl bg-transparent shadow-none outline-none border-[1px] border-white text-[15px] py-2.5 px-4"
             href="/cart"
           >
-            View cart
+            ดูตะกร้าสินค้า
           </LocalizedClientLink>
 
           <LocalizedClientLink
             className="flex-grow rounded-2xl bg-white text-neutral-950 shadow-none outline-none border-[1px] border-white text-[15px] py-2.5 px-4 text-center"
             href="/store"
           >
-            View products
+            ดูสินค้า
           </LocalizedClientLink>
         </div>
       </div>

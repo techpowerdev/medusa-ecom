@@ -89,3 +89,15 @@ describe("เนื้อหาร้านรวมไว้ที่ src/lib/s
     }
   })
 })
+
+// CORE-4d (กฎข้อ 39, AC-75 ส่วน grep): checkout ยังใช้ STORE_NAME ที่ #80 แทนไว้ — แปลไทยต้องไม่ revert
+describe("ชื่อร้านใน checkout มาจาก store-content (AC-75)", () => {
+  it.each([
+    "app/[countryCode]/(checkout)/layout.tsx",
+    "modules/checkout/components/review/index.tsx",
+  ])("%s ใช้ STORE_NAME และไม่มี Medusa Store", (file) => {
+    const source = fs.readFileSync(path.join(SRC, file), "utf8")
+    expect(source).not.toContain("Medusa Store")
+    expect(source).toContain("STORE_NAME")
+  })
+})

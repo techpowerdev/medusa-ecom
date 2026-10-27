@@ -5,9 +5,8 @@ import { listRegions } from "@lib/data/regions"
 import { FetchError } from "@medusajs/js-sdk"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
+import { MAX_LINE_ITEM_QUANTITY } from "./pending-add-to-cart"
 import { getDefaultCountryCode } from "./site"
-
-export const MAX_LINE_ITEM_QUANTITY = 100
 
 /** Stores the cart in the shopper's cookie and clears cached cart reads. */
 export const activateCart = async (cartId: string) => {
