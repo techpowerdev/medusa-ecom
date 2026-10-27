@@ -174,7 +174,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญที่ทำงานอยู่ (−20% สำหรับ collection X, automatic) และลูกค้าเพิ่มสินค้า X
-  ลง cart แสดงยอดรวมหลังส่วนลด; หลัง `ends_at` cart ใหม่แสดงราคาเต็ม
+  ลง cart แสดงยอดรวมหลังส่วนลด; หลัง `ends_at` cart ใหม่แสดงราคาเต็ม ✓ FS-6 (e2e)
 - AC-2 ให้ `per_customer_limit=2`
   (a) ลูกค้าที่ complete cart สำเร็จไปแล้ว 2 หน่วย (usage = 2) complete cart ที่มีเพิ่มอีก 1 หน่วย → ล้มเหลว
   `FLASH_LIMIT_EXCEEDED`, usage ยังเป็น 2, `units_sold` ไม่เปลี่ยน, ไม่มี order ใหม่
@@ -185,7 +185,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - AC-3 เมื่อ `total_cap=10` และ complete สำเร็จครบ 10 หน่วยแล้ว (`units_sold=10`) checkout ครั้งที่ 11 → ล้มเหลว
   `FLASH_SOLD_OUT`, `units_sold` ยังเป็น 10, usage ของลูกค้าคนนั้นไม่เปลี่ยน
 - AC-4 `GET /store/flash-sales/active` คืนข้อมูล countdown และ `flash_price` สำหรับ variant
-  ในแคมเปญ; PDP แสดง countdown และราคาขีดฆ่า (screenshot)
+  ในแคมเปญ; PDP แสดง countdown และราคาขีดฆ่า (screenshot) ✓ FS-4 (API), FS-6 (PDP e2e)
 - AC-5 เมื่อ order ที่มี flash unit 2 หน่วยถูกยกเลิก (`order.canceled`) usage ของลูกค้าลดลง 2 **และ** `units_sold`
   ลดลง 2 และ reservation มี `released_at`; refund เต็มจำนวนของ order ลักษณะเดียวกันให้ผลเดียวกัน
   (a) (กฎข้อ 10) order capture ฿1,000: refund ผ่าน return ครบ ฿1,000 → คืน 2 หน่วย; refund ฿999.99 → ไม่คืน; refund ฿600 แล้ว
@@ -199,7 +199,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (d) cart ไม่มี code → F ถูกใส่ตามปกติ (context เป็น `"false"` ไม่ใช่ว่าง) ✓ PROMO-1 (#21)
   (e) cart มี `SAVE10` + สินค้าใน N → ได้ทั้ง `SAVE10` และ N ✓ PROMO-1 (#21)
   (f) cart ที่ถูกตั้งให้มี F + `SAVE10` พร้อมกัน (สร้างตรงผ่าน module ใน test) → complete cart ล้มเหลว `PROMOTION_NOT_COMBINABLE` ✓ PROMO-1 (#21)
-  (g) storefront: cart ที่มี code และสินค้า flash แสดงข้อความ "Flash sale price can't be combined with promotion codes" (screenshot)
+  (g) storefront: cart ที่มี code และสินค้า flash แสดงข้อความ "Flash sale price can't be combined with promotion codes" (screenshot) ✓ FS-6 (ข้อความไทย `flash-not-combinable`)
 - AC-7 (integration concurrency test)
   (a) complete พร้อมกัน 50 cart จากลูกค้าต่างคน คนละ 1 หน่วย ภายใต้ `total_cap=20` → สำเร็จ 20 รายการพอดี,
   `units_sold=20`, ผลรวม usage = 20, ที่เหลือ 30 ล้มด้วย `FLASH_SOLD_OUT`
@@ -229,7 +229,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (b) `units_sold=10` → `remaining_units=0`, `sold_out=true` (ตรงกับ AC-3: checkout ถัดไปล้ม `FLASH_SOLD_OUT`)
   (c) `units_sold=10`, `total_cap=5` (AC-11) → `remaining_units=0`, `sold_out=true`
   (d) `show_remaining=false`, `units_sold=10` → `remaining_units=null`, `sold_out=true`; `total_cap=null` → `remaining_units=null`, `sold_out=false`
-  (e) storefront: PDP ของสินค้าในแคมเปญที่ `sold_out=true` มี `flash-sold-out` ที่มองเห็นได้และมีอักษรไทย (screenshot, FS-6)
+  (e) storefront: PDP ของสินค้าในแคมเปญที่ `sold_out=true` มี `flash-sold-out` ที่มองเห็นได้และมีอักษรไทย (screenshot, FS-6) ✓ FS-6
 - AC-14 (FS-8) ทำให้การคืนค่าครั้งแรกของ `order.canceled` ล้ม (test inject error ครั้งเดียว) → ภายในรอบ retry/job ถัดไป usage และ
   `units_sold` ถูกคืนครบครั้งเดียว และ reservation มี `released_at`
 - AC-15 (FS-9) campaign ที่มี config แล้ว เพิ่ม automatic promotion ใหม่ผ่าน admin API → promotion นั้นมี exclusivity rule
