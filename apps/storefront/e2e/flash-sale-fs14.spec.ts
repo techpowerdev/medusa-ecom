@@ -27,6 +27,11 @@ let titleX: string
 let handleX: string
 let handleY: string
 let collectionHandle: string
+let collectionId: string
+const productIds: string[] = []
+// FS-17 (spec 03 กฎข้อ 22, AC-24): เวลาที่สร้างข้อมูลเสร็จ — หน้าแรกต้องแสดงภายใน 90 วินาทีนับจากนี้
+let createdAt = 0
+const FRESH_WITHIN_MS = 90_000
 
 const card = (page: Page, handle: string): Locator =>
   page
@@ -60,6 +65,9 @@ test.beforeAll(async ({ request }) => {
     )
   const run = `${Date.now()}`
 
+  // FS-17 (AC-24): ให้หน้าแรกถูก render/cache ก่อนสร้างข้อมูล — พิสูจน์ว่าข้อมูลใหม่ขึ้นด้วย revalidate ไม่ใช่เพราะเพิ่ง render ครั้งแรก
+  expect((await request.get(`/${CC}`)).ok(), "warm หน้าแรก").toBe(true)
+
   const { sales_channels } = await get("/admin/sales-channels?limit=1")
   const { shipping_profiles } = await get(
     "/admin/shipping-profiles?type=default"
@@ -69,6 +77,7 @@ test.beforeAll(async ({ request }) => {
     handle: `e2e-fs14-${run}`,
   })
   collectionHandle = collection.handle
+  collectionId = collection.id
 
   const createProduct = async (title: string, handle: string, sku: string) => {
     const { product } = await post("/admin/products", {
@@ -89,6 +98,7 @@ test.beforeAll(async ({ request }) => {
         },
       ],
     })
+    productIds.push(product.id)
     return product
   }
 
@@ -127,6 +137,7 @@ test.beforeAll(async ({ request }) => {
     show_countdown: true,
     show_remaining: false,
   })
+  createdAt = Date.now()
 })
 
 test.afterAll(async ({ request }) => {
@@ -138,6 +149,20 @@ test.afterAll(async ({ request }) => {
       }),
       "end campaign"
     )
+  }
+  // FS-17 (AC-24): ลบสินค้าและ collection ที่ test สร้าง (ไม่ให้ rail ค้างบนหน้าแรกของ run ถัดไป)
+  for (const id of productIds) {
+    const res = await request.delete(`${BACKEND_URL}/admin/products/${id}`, {
+      headers: admin,
+    })
+    expect(res.ok(), `delete product ${id}: ${await res.text()}`).toBe(true)
+  }
+  if (collectionId) {
+    const res = await request.delete(
+      `${BACKEND_URL}/admin/collections/${collectionId}`,
+      { headers: admin }
+    )
+    expect(res.ok(), `delete collection: ${await res.text()}`).toBe(true)
   }
 })
 
@@ -225,21 +250,36 @@ test("AC-20: 375×812 ราคา flash อยู่ในกรอบการ
   })
 })
 
-// fixme: บน build production หน้าแรก (force-static) อ่าน `/store/collections` และสินค้าของ rail ด้วย fetch `force-cache` ที่ไม่มี tag/revalidate
-// (fetch cache อายุ 1 ปี) → collection ที่ test สร้างหลัง build ไม่ขึ้นบนหน้าแรกจนกว่าจะ build ใหม่ (พฤติกรรมเดิมนอก scope FS-14 — เสนอเป็น task แยก)
-// test นี้ผ่านในเครื่องเมื่อ build storefront ใหม่หลังสร้างข้อมูล (หลักฐาน 03-home-rail-flash-price.png); เปิดใช้เมื่อหน้าแรก revalidate ข้อมูลได้
-test.fixme(
-  "AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง",
-  async ({ page, step, evidence }) => {
-    await step("เปิดหน้าแรก: เห็น rail ของ collection ใหม่", async () => {
-      await page.goto(`/${CC}`)
-      await expect(card(page, handleX)).toHaveCount(1)
-    })
+// FS-17 (spec 03 กฎข้อ 22, AC-24): fetch ของ collection/สินค้าตั้ง revalidate 60 วินาที → บน `next build && next start`
+// rail ของ collection ที่ test สร้างหลัง storefront เริ่มทำงานต้องขึ้นหน้าแรกภายใน 90 วินาทีนับจากสร้างข้อมูล (reload ซ้ำ)
+test("AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง", async ({
+  page,
+  step,
+  evidence,
+}) => {
+  test.setTimeout(FRESH_WITHIN_MS + 60_000)
 
-    await step("การ์ด X: ฿800 + ฿1,000 ขีดฆ่า; การ์ด Y: ราคาปกติ", async () => {
-      await card(page, handleX).scrollIntoViewIfNeeded()
-      await expectFlashOnXOnly(page)
-      await evidence("03-home-rail-flash-price")
-    })
-  }
-)
+  await step(
+    "เปิดหน้าแรกซ้ำจนเห็น rail ของ collection ใหม่ (≤ 90 วินาทีนับจากสร้างข้อมูล)",
+    async () => {
+      await expect(async () => {
+        await page.goto(`/${CC}`)
+        await expect(card(page, handleX)).toHaveCount(1, { timeout: 2_000 })
+      }).toPass({
+        intervals: [5_000],
+        timeout: Math.max(createdAt + FRESH_WITHIN_MS - Date.now(), 5_000),
+      })
+      await expect(
+        page.getByTestId("product-rail-view-all").and(
+          page.locator(`a[href="/${CC}/collections/${collectionHandle}"]`)
+        )
+      ).toHaveCount(1)
+    }
+  )
+
+  await step("การ์ด X: ฿800 + ฿1,000 ขีดฆ่า; การ์ด Y: ราคาปกติ", async () => {
+    await card(page, handleX).scrollIntoViewIfNeeded()
+    await expectFlashOnXOnly(page)
+    await evidence("03-home-rail-flash-price")
+  })
+})

@@ -5,8 +5,24 @@ import { clx } from "@modules/common/components/ui"
 import { useState } from "react"
 
 // CORE-19c (spec 01 กฎข้อ 64): ลบล้มต้องบอกผู้ใช้ ไม่กลืน error เงียบ
-// ใช้ข้อความกลางข้อความเดียว: error จาก server action ใน prod ถูก Next ซ่อนรายละเอียด (ไม่มี status ให้แยกกรณี)
+// CORE-19d (กฎข้อ 68): action คืน `{ error }` แทนการ throw จึงแยก unauthorized ได้; action ที่ reject
+// (เช่น request ของ action ล้มเอง) ไม่มีรายละเอียดใน prod → ใช้ข้อความ fallback
 const REMOVE_FAILED_MESSAGE = "ลบสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+const REMOVE_UNAUTHORIZED_MESSAGE = "ลบสินค้าไม่สำเร็จ กรุณาเข้าสู่ระบบใหม่"
+
+/** ลบ line แล้วคืนข้อความ error ที่จะแสดง (null = ลบสำเร็จ) */
+export const removeLineItem = async (id: string): Promise<string | null> => {
+  const result = await deleteLineItem(id).catch(
+    () => ({ error: "failed" }) as const
+  )
+  if ("error" in result) {
+    return result.error === "unauthorized"
+      ? REMOVE_UNAUTHORIZED_MESSAGE
+      : REMOVE_FAILED_MESSAGE
+  }
+  notifyCartUpdated()
+  return null
+}
 
 const DeleteButton = ({
   id,
@@ -25,12 +41,11 @@ const DeleteButton = ({
   const handleDelete = async (id: string) => {
     setIsDeleting(true)
     setError(null)
-    await deleteLineItem(id)
-      .then(notifyCartUpdated)
-      .catch(() => {
-        setError(REMOVE_FAILED_MESSAGE)
-        setIsDeleting(false)
-      })
+    const message = await removeLineItem(id)
+    if (message) {
+      setError(message)
+      setIsDeleting(false)
+    }
   }
 
   return (

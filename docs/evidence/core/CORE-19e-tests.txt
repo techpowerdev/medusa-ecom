@@ -1,0 +1,20 @@
+CORE-19e (spec 01 กฎข้อ 71, AC-107) — ผลทดสอบในเครื่อง 2026-10-27
+
+## Red (ก่อนแก้ component)
+src/payment-session-lock-timeout.test.ts: 1 failed | 1 passed — AssertionError: expected router.refresh to be called 1 times, but got 0 times (เทสต์ที่สองคือพฤติกรรมเดิมของ CORE-19b ที่ต้องคงไว้)
+
+## Green: vitest เฉพาะไฟล์
+ ✓ src/payment-session-lock-timeout.test.ts > CORE-19e: ปุ่ม Continue ที่ล็อกรอ session ไม่ค้างถาวร (กฎข้อ 71) > 5 วินาที → router.refresh 1 ครั้งและปุ่มยัง disabled; 10 วินาที → ปุ่มกดได้และเห็น error ไทย 53ms
+ ✓ src/payment-session-lock-timeout.test.ts > CORE-19e: ปุ่ม Continue ที่ล็อกรอ session ไม่ค้างถาวร (กฎข้อ 71) > cart ได้ session ที่ 2 วินาที → ปลดล็อกทันที ไม่ refresh และไม่มี error หลัง 10 วินาที 5ms
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+
+## unit storefront ทั้งชุด
+ Test Files  35 passed (35)
+      Tests  386 passed (386)
+
+## pnpm lint && pnpm typecheck
+lint: ผ่าน (0 errors; warning เดิมใน payment/index.tsx บรรทัด setError ใน effect มีมาก่อน)
+typecheck: ผ่าน (backend + storefront)
+
+## e2e AC-64 (core-19b) — ต้องใช้ Stripe test key จริง ตรวจใน CI
