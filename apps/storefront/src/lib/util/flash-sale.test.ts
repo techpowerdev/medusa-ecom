@@ -4,6 +4,7 @@ import {
   type ActiveFlashSales,
   type FlashSale,
   cardFlashOffer,
+  cardFlashPrices,
   countdownLabel,
   flashOfferForVariant,
   hasFlashCodeConflict,
@@ -189,5 +190,24 @@ describe("mergeActiveFlashSales (FS-13)", () => {
   it("ทุกชุดล้มหรือไม่มีชุด → null", () => {
     expect(mergeActiveFlashSales([null, null])).toBeNull()
     expect(mergeActiveFlashSales([])).toBeNull()
+  })
+})
+
+describe("cardFlashPrices (FS-14)", () => {
+  it("map ราคา flash ต่อสินค้า เฉพาะสินค้าที่มี variant ในแคมเปญ", () => {
+    const prices = cardFlashPrices(
+      active(),
+      { prod_x: ["var_2", "var_1"], prod_y: ["var_2"], prod_z: [] },
+      NOW
+    )
+    expect(Object.keys(prices)).toEqual(["prod_x"])
+    expect(prices.prod_x).toMatchObject({
+      variant_id: "var_1",
+      flash_price: 472,
+    })
+  })
+
+  it("ไม่มีข้อมูล flash → {}", () => {
+    expect(cardFlashPrices(null, { prod_x: ["var_1"] }, NOW)).toEqual({})
   })
 })
