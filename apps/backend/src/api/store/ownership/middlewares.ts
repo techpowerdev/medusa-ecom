@@ -31,6 +31,15 @@ export function ensureStoreOwnership(resolveOwner: OwnerResolver) {
 }
 
 const customerAuth = authenticate("customer", ["session", "bearer"])
+
+// CORE-20d (spec 01 กฎข้อ 66b): storefront คิดช่วงคืนต่อ line แบบเดียวกับ CORE-20b — ต้องรู้ว่า fulfillment ไหนมี line ใด
+// core จำกัด field ของ GET /store/orders/:id (ไม่มี fulfillments.items) → เปิดเฉพาะ line_item_id ผ่าน `req.allowed` ของ Medusa
+// (validateAndTransformQuery ของ core รวมค่านี้เข้ากับ allowed เดิม) — entry ไม่ระบุ method จึงทำงานก่อน middleware ของ core;
+// การตรวจ auth + ownership ของ GET ด้านล่างยังทำงานก่อน handler (ไม่ใช่เจ้าของ = 404 ไม่มีข้อมูล)
+export function allowOrderFulfillmentLineItems(req: AuthenticatedMedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) {
+  req.allowed = [...(req.allowed ?? []), "fulfillments.items.line_item_id"]
+  next()
+}
 const body = (req: AuthenticatedMedusaRequest) => (req.body ?? {}) as Record<string, unknown>
 
 // CORE-12b (กฎ 28): GET products/product-variants ใช้ query.cart_id คำนวณราคา/ภาษี — ตรวจเฉพาะเมื่อมี key
@@ -86,6 +95,7 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
     matcher: "/store/orders/:id",
     middlewares: [customerAuth, ensureStoreOwnership((req, query) => orderOwner(query, req.params.id))],
   },
+  { matcher: "/store/orders/:id", middlewares: [allowOrderFulfillmentLineItems] },
   // CORE-13 (กฎ 24, AC-39): ตาม guide "Restrict Return Creation" ของ Medusa — core ไม่มี auth บน route นี้
   // CORE-16: ต่อจาก auth + owner check — ห้าม store ส่ง return_shipping.price / receive_now / location_id (400)
   // CORE-17: option ต้องเป็น return option ที่เปิดใน store และครอบที่อยู่จัดส่งของ order (400)
