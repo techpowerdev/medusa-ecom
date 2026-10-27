@@ -58,7 +58,10 @@ const VerifyAccount = () => {
 
       {state === "error" && (
         <>
-          <p className="text-base-regular text-ui-fg-base">
+          <p
+            className="text-base-regular text-ui-fg-base"
+            data-testid="verify-account-error"
+          >
             ลิงก์ยืนยันนี้ไม่ถูกต้องหรือหมดอายุแล้ว เข้าสู่ระบบเพื่อรับอีเมลยืนยันใหม่
           </p>
           <LocalizedClientLink href="/account">

@@ -1,7 +1,10 @@
 "use server"
 
 import { sdk } from "@lib/config"
-import { errorMessage, friendlyErrorMessage } from "@lib/util/error-message"
+import {
+  INVALID_CREDENTIALS_MESSAGE,
+  friendlyErrorMessage,
+} from "@lib/util/error-message"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
@@ -32,7 +35,15 @@ import { buyFromPermalink } from "@lib/util/server-cart"
 
 export type CustomerAuthState =
   // CORE-4f (กฎข้อ 62): `email` = อีเมลที่กรอกไว้ ฟอร์ม login/register ใช้เป็น defaultValue ไม่ให้หายเมื่อล้ม
-  | { state: "error"; error: string; email?: string }
+  // CORE-4h (กฎข้อ 69): `reason` = discriminator ที่ไม่แสดงผล (UI/สมัครตัดสินจากค่านี้ ไม่เทียบข้อความ);
+  // `fields` = ชื่อ/นามสกุล/เบอร์ที่กรอกในฟอร์มสมัคร ให้ฟอร์มใช้เป็น defaultValue เมื่อสมัครล้ม
+  | {
+      state: "error"
+      error: string
+      email?: string
+      reason?: "invalid_credentials"
+      fields?: { first_name: string; last_name: string; phone: string }
+    }
   | { state: "verification_required"; email: string }
   | { state: "success" }
   | null
@@ -53,13 +64,17 @@ async function requestVerificationEmail(email: string, token: string) {
 }
 
 // CORE-4f (กฎข้อ 62): ข้อความ error ของหน้า login/register เป็นไทยเสมอ ไม่ส่งข้อความอังกฤษของ auth provider
-const INVALID_CREDENTIALS_MESSAGE = "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
 const LOGIN_FAILED_MESSAGE = "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
 const SIGNUP_FAILED_MESSAGE = "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
 const EMAIL_TAKEN_MESSAGE = "อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบหรือใช้อีเมลอื่น"
+const VERIFY_FAILED_MESSAGE = "ลิงก์ยืนยันนี้ไม่ถูกต้องหรือหมดอายุแล้ว เข้าสู่ระบบเพื่อรับอีเมลยืนยันใหม่"
 
-const withEmail = (result: CustomerAuthState, email: string): CustomerAuthState =>
-  result?.state === "error" ? { ...result, email } : result
+const withEmail = (
+  result: CustomerAuthState,
+  email: string,
+  fields?: { first_name: string; last_name: string; phone: string }
+): CustomerAuthState =>
+  result?.state === "error" ? { ...result, email, ...(fields && { fields }) } : result
 
 export const retrieveCustomer =
   async (): Promise<HttpTypes.StoreCustomer | null> => {
@@ -124,6 +139,11 @@ export async function signup(
     last_name: formData.get("last_name") as string,
     phone: formData.get("phone") as string,
   }
+  const fields = {
+    first_name: customerForm.first_name ?? "",
+    last_name: customerForm.last_name ?? "",
+    phone: customerForm.phone ?? "",
+  }
 
   let identityExists = false
   try {
@@ -140,11 +160,12 @@ export async function signup(
       fetchError.statusText !== "Unauthorized" ||
       fetchError.message !== "Identity with email already exists"
     ) {
-      return {
-        state: "error",
-        error: friendlyErrorMessage(error, SIGNUP_FAILED_MESSAGE),
-        email: customerForm.email,
-      }
+      // CORE-4h (กฎข้อ 69a): 401 ของ register ไม่ได้แปลว่าต้องเข้าสู่ระบบใหม่ → ข้อความทั่วไปของการสมัคร
+      return withEmail(
+        { state: "error", error: SIGNUP_FAILED_MESSAGE },
+        customerForm.email,
+        fields
+      )
     }
     identityExists = true
   }
@@ -161,12 +182,20 @@ export async function signup(
   if (
     identityExists &&
     result?.state === "error" &&
-    result.error === INVALID_CREDENTIALS_MESSAGE
+    result.reason === "invalid_credentials"
   ) {
-    return { state: "error", error: EMAIL_TAKEN_MESSAGE, email: customerForm.email }
+    return withEmail(
+      { state: "error", error: EMAIL_TAKEN_MESSAGE },
+      customerForm.email,
+      fields
+    )
   }
 
-  return withEmail(await continueAfterAuth(formData, result), customerForm.email)
+  return withEmail(
+    await continueAfterAuth(formData, result),
+    customerForm.email,
+    fields
+  )
 }
 
 export async function login(
@@ -277,13 +306,10 @@ async function completeLogin(
   } catch (error) {
     // CORE-4e: 401 ของ emailpass = "Invalid email or password" (อังกฤษ) → ข้อความไทย
     const status = (error as { status?: unknown } | null)?.status
-    return {
-      state: "error",
-      error:
-        status === 401
-          ? INVALID_CREDENTIALS_MESSAGE
-          : friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE),
-    }
+    // CORE-4h (กฎข้อ 69a): คืน `reason` จาก status ให้ผู้เรียกตัดสิน แทนการเทียบข้อความที่แสดงผล
+    return status === 401
+      ? { state: "error", error: INVALID_CREDENTIALS_MESSAGE, reason: "invalid_credentials" }
+      : { state: "error", error: friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE) }
   }
 
   // A `location` is returned by third-party auth providers, which this flow
@@ -381,7 +407,8 @@ export async function confirmEmailVerification(
     await sdk.auth.verification.confirm({ code: token })
     return { success: true }
   } catch (error) {
-    return { success: false, error: errorMessage(error) }
+    // CORE-4h (กฎข้อ 69d): ไม่ส่งข้อความดิบของ auth provider ("Invalid token") ให้หน้า verify-account
+    return { success: false, error: friendlyErrorMessage(error, VERIFY_FAILED_MESSAGE) }
   }
 }
 
