@@ -117,6 +117,14 @@ test("AF-8a: login → แท็บได้ค่าคอมตอนนี้
     expect(copied).toMatch(new RegExp(`/r/${ann.code}\\?to=/products/${X}$`))
   })
 
+  await step("qa #135 D2: ?page= ทศนิยม/ไม่ใช่ตัวเลข ไม่ทำให้หน้าล้ม (ปัดลง/กลับหน้า 1)", async () => {
+    for (const page_ of ["1.5", "abc"]) {
+      const res = await page.goto(`/${CC}/affiliate?tab=active&page=${page_}`)
+      expect(res?.status(), `page=${page_}`).toBe(200)
+      await expect(page.locator(`[data-testid="affiliate-product-card"][data-handle="${X}"]`)).toHaveCount(1)
+    }
+  })
+
   await step("AC-9: แท็บเร็วๆ นี้ — X การ์ดเดียวของ U1 (5%) พร้อมนับถอยหลังถึงวันเริ่ม", async () => {
     await page.getByTestId("affiliate-tab-upcoming").click()
     await expect(page).toHaveURL(/tab=upcoming/)

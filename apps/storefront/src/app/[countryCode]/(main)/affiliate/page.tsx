@@ -3,7 +3,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { affiliateLogout, getAffiliate, listAffiliateProducts } from "@lib/data/affiliate-portal"
-import { portalTab } from "@lib/util/affiliate-portal"
+import { portalPage, portalTab } from "@lib/util/affiliate-portal"
 import { clx } from "@modules/common/components/ui"
 import AffiliateProductCard from "@modules/affiliate/components/product-card"
 
@@ -31,7 +31,7 @@ export default async function AffiliatePortalPage({ params, searchParams }: Prop
     redirect(`/${countryCode}/affiliate/login`)
   }
   const tab = portalTab(query.tab)
-  const page = Math.max(1, Number(query.page) || 1)
+  const page = portalPage(query.page)
   // Q6: products เฉพาะ active — สถานะอื่นไม่เรียก API (จะได้ 403)
   const result = affiliate.status === "active" ? await listAffiliateProducts(tab, page) : null
   const base = `/${countryCode}/affiliate?tab=${tab}`

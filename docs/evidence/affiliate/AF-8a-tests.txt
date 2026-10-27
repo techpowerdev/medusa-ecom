@@ -78,3 +78,26 @@ vitest src/lib/util/affiliate-portal.test.ts src/thai-ui-rule.test.ts → Test F
   4 passed (12.1s)
 vitest storefront: Test Files 30 passed, Tests 324 passed
 pnpm lint && pnpm typecheck → exit 0; next build → exit 0
+
+## แก้ตาม qa #135 D2 (?page=1.5 → 500) — 2026-10-27
+### Red: vitest affiliate-portal.test.ts → portalPage 10 failed (TypeError: portalPage is not a function)
+### Green
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > undefined → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "abc" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "0" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "-3" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1.5" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "2.9" → 2 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "3" → 3 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1e400" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1e20" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > ["2","3"] → 1 0ms
+      Tests  27 passed (27)
+vitest storefront: Test Files 30 passed, Tests 334 passed
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.2s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:140:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (659ms)
+  ✓  3 [chromium] › e2e/affiliate-portal.spec.ts:166:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (653ms)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:189:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (705ms)
+  4 passed (5.5s)
+(e2e test 1 มี step ใหม่: ?page=1.5 และ ?page=abc → 200 พร้อมการ์ด)
+pnpm lint && pnpm typecheck → exit 0; next build → exit 0

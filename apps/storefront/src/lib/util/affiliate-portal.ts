@@ -10,6 +10,12 @@ type VariantPrice = {
 export const portalTab = (value: string | string[] | undefined): PortalTab =>
   value === "upcoming" ? "upcoming" : "active"
 
+/** `?page=` → เลขหน้าจำนวนเต็ม ≥ 1 (API รับเฉพาะ int; ทศนิยมปัดลง ค่าอื่น/ใหญ่เกินกลับหน้า 1 — qa #135 D2) */
+export const portalPage = (value: string | string[] | undefined): number => {
+  const page = Math.floor(Number(value))
+  return Number.isSafeInteger(page) && page >= 1 ? page : 1
+}
+
 /**
  * กฎ 29d: ราคาปัจจุบัน × อัตรา% ปัด 2 ตำแหน่งแบบ half-up (กฎ 11) ไม่รวม cap
  * คิดเป็นจำนวนเต็ม (สตางค์ × อัตราคูณ 10^4) เพื่อไม่ให้ float ปัดผิด เช่น 1.15 × 50% = 0.575 → 0.58
