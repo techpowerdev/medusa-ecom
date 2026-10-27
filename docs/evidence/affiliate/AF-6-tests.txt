@@ -1,0 +1,21 @@
+# AF-6 — หน้า Admin Affiliate + ปุ่มยกเลิก payout draft (spec 05 AC-26)
+# รันในเครื่อง 2026-10-27 (Node 22, backend medusa start :9198, DB medusa_af6, Redis db 8)
+
+## unit (jest): src/admin/lib/__tests__/affiliate-payout.unit.spec.ts
+  canCancelPayout
+    ✓ is true only for draft payouts (2 ms)
+  singleFlight
+    ✓ ignores calls while the previous call is still running (2 ms)
+    ✓ allows another call after the previous one rejects (3 ms)
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+
+## pnpm --filter backend test:unit (ชุดเต็ม)
+Test Suites: 56 passed, 56 total
+Tests:       586 passed, 586 total
+
+## e2e admin (Playwright chromium): apps/storefront/e2e/affiliate-admin-payouts.spec.ts
+  ✓  1 [chromium] › e2e/affiliate-admin-payouts.spec.ts:54:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว (3.8s)
+  1 passed (5.0s)
+
+## pnpm lint && pnpm typecheck: ผ่าน (0 error)
