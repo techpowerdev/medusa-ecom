@@ -10,7 +10,13 @@ import StoreSearchBox from "@modules/store/components/store-search-box"
 
 const PRODUCT_LIMIT = 12
 
-const StoreTemplate = ({ currencyCode }: { currencyCode: string }) => {
+const StoreTemplate = ({
+  currencyCode,
+  regionId,
+}: {
+  currencyCode: string
+  regionId: string
+}) => {
   return (
     <div className="py-6 content-container" data-testid="category-container">
       <div className="mb-8 text-2xl-semi">
@@ -31,6 +37,7 @@ const StoreTemplate = ({ currencyCode }: { currencyCode: string }) => {
             <StoreHits
               hitsPerPage={PRODUCT_LIMIT}
               currencyCode={currencyCode}
+              regionId={regionId}
             />
           </div>
         </InstantSearch>

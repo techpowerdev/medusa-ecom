@@ -93,6 +93,34 @@ export const listProducts = async ({
 }
 
 /**
+ * FS-14 (spec 03 กฎข้อ 19): variant id ต่อสินค้า (key = product id) สำหรับการ์ดที่มาจาก search hit (hit ไม่มี variant id)
+ * `GET /store/products` ของ Medusa หนึ่ง request ต่อชุด hit ของหน้า — limit เท่าจำนวน id (default ของ Medusa คือ 20)
+ * ล้มเหลว → {} (การ์ดแสดงราคาปกติ)
+ */
+export const listVariantIdsByProduct = async (
+  productIds: string[]
+): Promise<Record<string, string[]>> => {
+  const ids = Array.from(new Set(productIds))
+  if (!ids.length) {
+    return {}
+  }
+
+  return sdk.client
+    .fetch<{ products: HttpTypes.StoreProduct[] }>(`/store/products`, {
+      method: "GET",
+      query: { id: ids, fields: "id,variants.id", limit: ids.length },
+      next: { ...(await getCacheOptions("products")) },
+      cache: "force-cache",
+    })
+    .then(({ products }) =>
+      Object.fromEntries(
+        products.map((p) => [p.id, (p.variants ?? []).map((v) => v.id)])
+      )
+    )
+    .catch(() => ({}))
+}
+
+/**
  * CORE-14b (กฎ 26): variant ตาม id ผ่าน `GET /store/product-variants/:id` ของ Medusa
  * (กรอง sales channel + สินค้า published, ราคาของ region และ stock) — ไม่พบคืน null
  */
