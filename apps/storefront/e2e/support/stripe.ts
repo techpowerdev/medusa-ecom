@@ -151,15 +151,9 @@ export async function fillCard(page: Page, number: string) {
   }
 }
 
-/**
- * กด "Continue to review" จนขั้น review แสดง — บางครั้ง router.push ของ starter ถูก refresh จาก server action
- * (revalidate ของ initiatePaymentSession) ทับจนค้างที่ขั้น payment (พบ ~1/6 รอบในเครื่อง) จึงกดซ้ำได้
- */
+/** กด "Continue to review" ครั้งเดียวแล้วรอขั้น review (CORE-19b, spec 01 AC-64: ไม่มีการกดซ้ำ) */
 export async function continueToReview(page: Page) {
-  await expect(async () => {
-    if (await page.getByTestId("submit-payment-button").isVisible()) {
-      await page.getByTestId("submit-payment-button").click({ timeout: 5_000 })
-    }
-    await expect(page.getByTestId("submit-order-button")).toBeVisible({ timeout: 5_000 })
-  }).toPass({ timeout: 45_000 })
+  await page.getByTestId("submit-payment-button").click()
+  await expect(page).toHaveURL(/[?&]step=review(&|$)/, { timeout: 10_000 })
+  await expect(page.getByTestId("submit-order-button")).toBeVisible({ timeout: 10_000 })
 }

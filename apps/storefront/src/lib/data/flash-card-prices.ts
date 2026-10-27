@@ -1,7 +1,7 @@
 import "server-only"
 
 import { getActiveFlashSales } from "@lib/data/flash-sales"
-import { type FlashVariantPrice, cardFlashOffer } from "@lib/util/flash-sale"
+import { type FlashVariantPrice, cardFlashPrices } from "@lib/util/flash-sale"
 import type { HttpTypes } from "@medusajs/types"
 
 /**
@@ -13,19 +13,12 @@ export async function getCardFlashPrices(
   regionId: string,
   products: HttpTypes.StoreProduct[]
 ): Promise<Record<string, FlashVariantPrice>> {
-  const variantIds = (p: HttpTypes.StoreProduct) =>
-    (p.variants ?? []).map((v) => v.id)
+  const variantIdsByProduct = Object.fromEntries(
+    products.map((p) => [p.id, (p.variants ?? []).map((v) => v.id)])
+  )
   const flash = await getActiveFlashSales(
     regionId,
-    products.flatMap(variantIds)
+    Object.values(variantIdsByProduct).flat()
   )
-  const now = Date.now()
-  const prices: Record<string, FlashVariantPrice> = {}
-  for (const p of products) {
-    const offer = cardFlashOffer(flash, variantIds(p), now)
-    if (offer) {
-      prices[p.id] = offer.price
-    }
-  }
-  return prices
+  return cardFlashPrices(flash, variantIdsByProduct, Date.now())
 }
