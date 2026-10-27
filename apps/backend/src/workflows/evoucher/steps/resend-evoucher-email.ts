@@ -63,10 +63,13 @@ export type EvoucherResendOrder = EvoucherOrder & {
 export const resolveEvoucherResendCodesStep = createStep(
   "resolve-evoucher-resend-codes",
   async (input: { order: EvoucherResendOrder }) => {
-    // EV-9: code มาจาก link (ไม่ filter order_id ผ่าน service) — กรองสถานะและเรียง created_at ASC เอง
+    // EV-9: code มาจาก link (ไม่ filter order_id ผ่าน service) — กรองสถานะและเรียง created_at ASC (id เมื่อเวลาเท่ากัน) เอง
     const codes = (input.order.evoucher_codes ?? [])
       .filter((code): code is NonNullable<typeof code> => !!code && RESENDABLE.includes(code.status))
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime() || a.id.localeCompare(b.id)
+      )
     if (!codes.length) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,

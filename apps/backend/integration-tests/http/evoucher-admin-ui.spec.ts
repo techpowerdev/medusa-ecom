@@ -203,12 +203,10 @@ medusaIntegrationTestRunner({
         { order: { created_at: "ASC" } }
       )
       // EV-9: route หา code ผ่าน link order ↔ evoucher_code จึงต้องเป็น order จริง
-      const [orderA, orderB] = await getContainer()
-        .resolve(Modules.ORDER)
-        .createOrders([
-          { currency_code: "thb", email: "a@example.com" },
-          { currency_code: "thb", email: "b@example.com" },
-        ])
+      // สร้างทีละตัว: createOrders แบบ array ไม่รับประกันลำดับผลตาม input
+      const orderModule = getContainer().resolve(Modules.ORDER)
+      const orderA = await orderModule.createOrders({ currency_code: "thb", email: "a@example.com" })
+      const orderB = await orderModule.createOrders({ currency_code: "thb", email: "b@example.com" })
       await service.updateEvoucherCodes([
         { id: codes[0].id, status: "delivered", order_id: orderA.id, delivered_to_email: "a@example.com" },
         { id: codes[1].id, status: "allocated", order_id: orderA.id },

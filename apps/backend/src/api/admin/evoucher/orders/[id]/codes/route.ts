@@ -31,9 +31,10 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
     filters: { id: req.params.id },
   })
 
-  // link ไม่รับ order ของ relation ฝั่ง evoucher_code จึงเรียงเอง (เดิม created_at ASC)
+  // link ไม่รับ order ของ relation ฝั่ง evoucher_code จึงเรียงเอง (created_at ASC, id เมื่อเวลาเท่ากัน)
   const codes = (data[0]?.evoucher_codes ?? []).filter((code) => code != null).sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime() || a.id.localeCompare(b.id)
   )
   res.json({ codes: await maskCodes(service, codes) })
 }

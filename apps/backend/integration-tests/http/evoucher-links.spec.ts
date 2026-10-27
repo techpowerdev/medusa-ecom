@@ -66,16 +66,16 @@ medusaIntegrationTestRunner({
     it("AC-16: queries an order's allocated codes and the order from a code", async () => {
       const container = getContainer()
       const evoucherService: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
-      const [orderA, orderB] = await container
-        .resolve(Modules.ORDER)
-        .createOrders([
-          { currency_code: "thb", email: "a@example.com" },
-          { currency_code: "thb", email: "b@example.com" },
-        ])
-      const [codeA, codeB] = await evoucherService.createEvoucherCodes([
-        { pool_id: poolId, code: "enc-a", batch_ref: "b1", status: "allocated", order_id: orderA.id },
-        { pool_id: poolId, code: "enc-b", batch_ref: "b1", status: "delivered", order_id: orderB.id },
-      ])
+      // สร้างทีละตัว: createOrders/createEvoucherCodes แบบ array ไม่รับประกันลำดับผลตาม input
+      const orderModule = container.resolve(Modules.ORDER)
+      const orderA = await orderModule.createOrders({ currency_code: "thb", email: "a@example.com" })
+      const orderB = await orderModule.createOrders({ currency_code: "thb", email: "b@example.com" })
+      const codeA = await evoucherService.createEvoucherCodes({
+        pool_id: poolId, code: "enc-a", batch_ref: "b1", status: "allocated", order_id: orderA.id,
+      })
+      const codeB = await evoucherService.createEvoucherCodes({
+        pool_id: poolId, code: "enc-b", batch_ref: "b1", status: "delivered", order_id: orderB.id,
+      })
 
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
       const { data } = await query.graph({

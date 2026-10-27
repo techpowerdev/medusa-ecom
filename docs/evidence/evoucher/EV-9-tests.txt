@@ -33,3 +33,19 @@ Tests:       585 passed, 585 total
 pnpm lint: 0 errors (warning เดิมของ develop เท่านั้น)
 pnpm typecheck: ผ่าน (ทั้งมีและไม่มี .medusa/types ที่ build สร้าง)
 pnpm --filter backend build: ผ่าน
+
+== แก้ flaky ตาม QA (#139): AC-16 ล้ม 3/8 รอบ — createOrders/createEvoucherCodes แบบ array ไม่รับประกันลำดับผล ==
+แก้: สร้าง order/code ทีละตัว (evoucher-links + evoucher-admin-ui) และเรียง code ด้วย created_at แล้ว id (route codes + resend)
+รัน evoucher-links.spec.ts ซ้ำ 10 รอบ (ไฟล์เดียว):
+run 1: Tests:       3 passed, 3 total
+run 2: Tests:       3 passed, 3 total
+run 3: Tests:       3 passed, 3 total
+run 4: Tests:       3 passed, 3 total
+run 5: Tests:       3 passed, 3 total
+run 6: Tests:       3 passed, 3 total
+run 7: Tests:       3 passed, 3 total
+run 8: Tests:       3 passed, 3 total
+run 9: Tests:       3 passed, 3 total
+run 10: Tests:       3 passed, 3 total
+evoucher-admin-ui + evoucher-resend: Tests: 12 passed, 12 total
+typecheck ผ่าน (มีและไม่มี .medusa/types), backend build ผ่าน, lint 0 errors
