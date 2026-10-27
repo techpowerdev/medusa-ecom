@@ -26,6 +26,7 @@ const isHttpUrl = (value: string | undefined) => {
 /**
  * ตรวจ env ที่ production ขาดไม่ได้ตอนโหลด medusa-config (ไม่ขึ้นกับ ALLOW_TEST_PROVIDERS — CI ตั้งค่าทดสอบให้เอง)
  * production → throw; นอก production → คืนข้อความ warning (medusa-config log ครั้งเดียวตอนบูต)
+ * production ที่ตั้ง ALLOW_TEST_PROVIDERS=true → คืน warning หนึ่งข้อ (OPS-13, AC-20)
  */
 export const checkBootEnv = (env: Env): string[] => {
   const problems: [string, string][] = []
@@ -47,7 +48,14 @@ export const checkBootEnv = (env: Env): string[] => {
       "AFFILIATE_TOKEN_SECRET = secret ของ cookie `aff`, STOREFRONT_URL = URL http(s) ของ storefront สำหรับลิงก์ในอีเมล"
     )
   }
-  return problems.map(([, warning]) => warning)
+  const warnings = problems.map(([, warning]) => warning)
+  // AC-20 (ADR-010 ภาคผนวก): production ที่ปิด guard ของ provider ทดสอบยังบูตได้ (CI ต้องใช้) แต่ต้องเห็นใน log
+  if (isProduction(env) && testProvidersAllowed(env)) {
+    warnings.push(
+      "ALLOW_TEST_PROVIDERS=true in production — test provider guards are off (local email, pp_system_default in seed); CI/staging only"
+    )
+  }
+  return warnings
 }
 
 const STRIPE_PROVIDERS = ["pp_stripe_stripe", "pp_stripe-promptpay_stripe"]

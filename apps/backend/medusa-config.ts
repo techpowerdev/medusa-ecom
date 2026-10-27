@@ -10,6 +10,7 @@ loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 const redisUrl = getRedisModulesUrl(process.env)
 
 // OPS-7 (AC-13, AC-17): production ขาด AFFILIATE_TOKEN_SECRET / STOREFRONT_URL → throw; นอก prod เตือนครั้งเดียวตอนบูต
+// OPS-13 (AC-20): production ที่ตั้ง ALLOW_TEST_PROVIDERS=true เตือนครั้งเดียวตอนบูต (ยังบูตได้ — CI ใช้)
 for (const warning of checkBootEnv(process.env)) {
   console.warn(`[medusa-config] ${warning}`)
 }
