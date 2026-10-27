@@ -1,0 +1,63 @@
+# OPS-13 (docs/spec/07-scaling-ops.md AC-20, AC-21) — 2026-10-27
+
+## Red (ก่อนแก้โค้ด/เอกสาร): pnpm --filter backend test:unit -- src/__tests__/prod-guards.unit.spec.ts
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+    Expected substring: "shipping_rate"
+    Received string:    ""
+    Expected substring: "ไม่ตั้ง"
+    Received string:    "3. ไม่ได้ตั้ง `ALLOW_TEST_PROVIDERS` (ทั้งค่าว่างหรือค่าใด ๆ)"
+Tests:       3 failed, 31 passed, 34 total
+(ล้ม 3 ข้อ: AC-20 warn, AC-21 ข้อ Q-F1, AC-21 ถ้อยคำข้อ 3 — test พฤติกรรมของ check:go-live ผ่านตั้งแต่ red เพราะยืนยันโค้ดเดิมของ OPS-7:
+ `if (env.ALLOW_TEST_PROVIDERS)` นับ "" เท่ากับไม่ตั้ง เอกสารข้อ 3 จึงเขียนตามโค้ดนี้)
+
+## Green: pnpm --filter backend test:unit -- src/__tests__/prod-guards.unit.spec.ts
+PASS src/__tests__/prod-guards.unit.spec.ts (7.655 s)
+  AC-9 buildNotificationProviders ใน production (ADR-010)
+    ✓ throws naming RESEND_API_KEY when missing (5 ms)
+    ✓ throws naming RESEND_FROM_EMAIL when missing (1 ms)
+    ✓ throws naming RESEND_API_KEY, RESEND_FROM_EMAIL when missing
+    ✓ ALLOW_TEST_PROVIDERS=true keeps the local provider for email (1 ms)
+    ✓ other values of ALLOW_TEST_PROVIDERS do not disable the guard
+    ✓ outside production keeps the local fallback (1 ms)
+    ✓ production with both values uses Resend
+  AC-10 payment providers ที่ seed เปิดให้ region Thailand
+    ✓ production without ALLOW_TEST_PROVIDERS → Stripe only
+    ✓ production with ALLOW_TEST_PROVIDERS=true and non-production → includes pp_system_default (1 ms)
+  AC-13 / AC-17 boot guards ใน medusa-config
+    ✓ boots in production when everything is set (316 ms)
+    ✓ AC-13 production without AFFILIATE_TOKEN_SECRET throws with the variable name (362 ms)
+    ✓ AC-17 production with STOREFRONT_URL="" throws with the variable name (350 ms)
+    ✓ AC-17 production with STOREFRONT_URL="shop.example.com" throws with the variable name (337 ms)
+    ✓ AC-17 production with STOREFRONT_URL="ftp://shop.example.com" throws with the variable name (340 ms)
+    ✓ AC-17 production with STOREFRONT_URL="https://" throws with the variable name (267 ms)
+    ✓ AC-17 production with STOREFRONT_URL="http://exa mple.com" throws with the variable name (455 ms)
+    ✓ ALLOW_TEST_PROVIDERS does not disable the AFFILIATE_TOKEN_SECRET / STOREFRONT_URL guards (838 ms)
+    ✓ outside production warns once per missing variable at boot (600 ms)
+    ✓ outside production with both set does not warn (524 ms)
+    ✓ AC-20 production with ALLOW_TEST_PROVIDERS=true still boots and warns exactly once (377 ms)
+    ✓ AC-20 production without the variable does not warn about ALLOW_TEST_PROVIDERS (445 ms)
+    ✓ AC-20 production with an empty value does not warn about ALLOW_TEST_PROVIDERS (478 ms)
+    ✓ AC-20 development with ALLOW_TEST_PROVIDERS=true does not warn about ALLOW_TEST_PROVIDERS (491 ms)
+  AC-13 / AC-17 ci.yml และ .env.example
+    ✓ finds the production-mode jobs (1 ms)
+    ✓ every production-mode job sets AFFILIATE_TOKEN_SECRET (1 ms)
+    ✓ every production-mode job sets STOREFRONT_URL
+    ✓ every production-mode job sets ALLOW_TEST_PROVIDERS=true (ADR-010 ข้อ 4)
+    ✓ STOREFRONT_URL in CI is an http(s) URL (14 ms)
+    ✓ apps/backend/.env.example has a STOREFRONT_URL= line (2 ms)
+  AC-11 Go-live checklist ใน docs/ops/production.md
+    ✓ มีหัวข้อและอ้างคำสั่ง check:go-live
+    ✓ AC-21 มีข้อ Q-F1: ค่าส่ง Standard / Standard return ยังเป็น placeholder shipping_rate
+    ✓ AC-21 ข้อที่พูดถึงค่าว่างของ ALLOW_TEST_PROVIDERS ระบุว่าไม่ตั้งกับตั้งเป็นค่าว่างนับเหมือนกัน
+    ✓ AC-21 check:go-live นับ ALLOW_TEST_PROVIDERS ที่ไม่ตั้งกับค่าว่างเหมือนกัน แต่ค่าอื่นทุกค่าไม่ผ่าน (1 ms)
+    ✓ package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec (1 ms)
+Tests:       34 passed, 34 total
+
+## pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 52 passed, 52 total
+Tests:       542 passed, 542 total
+
+## pnpm lint && pnpm typecheck && pnpm --filter backend build
+lint: 0 errors (warning เดิมของ storefront), typecheck: ผ่าน, build: ผ่าน
