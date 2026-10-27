@@ -1,0 +1,65 @@
+OPS-14 — ลดเวลา CI ต่อ PR (ที่มา: owner อนุมัติ 2026-10-27 ลด CI ต่อ PR)
+
+== Red (ก่อนแก้ ci.yml) — src/__tests__/ci-workflow.unit.spec.ts
+  ✕ storefront-e2e ไม่รอ job ของ backend tests (รันขนาน)
+  ✕ integration:http แบ่ง shard ใน matrix และ shard รวมกันครบทุกไฟล์ไม่ซ้ำ
+  ✓ ยังรัน test:unit และ test:integration:modules ใน CI
+  ✕ job backend-tests เป็นตัวรวมผลที่รอทุก shard และ fail เมื่อ shard ไม่ success
+Tests:       3 failed, 1 passed, 4 total
+
+== Green (ในเครื่อง, Node 22) pnpm --filter backend test:unit
+Test Suites: 56 passed, 56 total
+Tests:       587 passed, 587 total
+  (เดิม 55 suites / 583 tests + ci-workflow.unit.spec.ts 1 suite / 4 tests)
+pnpm lint && pnpm typecheck: ผ่าน (exit 0)
+
+== การแบ่ง shard ของ integration:http (jest --listTests --shard=i/3)
+shard 1/3:
+  affiliate-reversal.spec.ts
+  customer-only-store.spec.ts
+  evoucher-admin-ui.spec.ts
+  evoucher-allocate.spec.ts
+  evoucher-links.spec.ts
+  evoucher-pool-guards.spec.ts
+  flash-sale-module.spec.ts
+  group-buy-campaigns.spec.ts
+  group-buy-draft-order-summary.spec.ts
+  group-buy-groups.spec.ts
+  group-buy-links.spec.ts
+  health.spec.ts
+  refund-orphan-payment.spec.ts
+  seed.spec.ts
+  store-product-cart-ownership.spec.ts
+  stripe-webhook.spec.ts
+shard 2/3:
+  affiliate-admin.spec.ts
+  affiliate-attribution.spec.ts
+  affiliate-tracking.spec.ts
+  evoucher-admin.spec.ts
+  evoucher-resend.spec.ts
+  evoucher-void-expiry.spec.ts
+  flash-sale-limits.spec.ts
+  flash-sale-release.spec.ts
+  group-buy-join.spec.ts
+  payment-session-guard.spec.ts
+  search-thb.spec.ts
+  seed-partial.spec.ts
+  store-locales.spec.ts
+  store-returns-transfer.spec.ts
+  store-returns-window.spec.ts
+shard 3/3:
+  affiliate-auth.spec.ts
+  affiliate-portal.spec.ts
+  evoucher-hardening.spec.ts
+  flash-sale-active.spec.ts
+  flash-sale-admin-config.spec.ts
+  group-buy-memberships.spec.ts
+  group-buy-outcome.spec.ts
+  order-notifications.spec.ts
+  order-shipped-items.spec.ts
+  payment-webhook-orphan.spec.ts
+  prod-guards.spec.ts
+  promotion-exclusivity.spec.ts
+  store-ownership.spec.ts
+  store-returns-option.spec.ts
+  store-returns-overrides.spec.ts
