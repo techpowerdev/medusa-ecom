@@ -15,7 +15,10 @@ vi.mock("@lib/config", () => ({
     },
   },
 }))
-vi.mock("@lib/data/affiliate", () => ({ syncCartAffiliateToken: vi.fn() }))
+const syncCartAffiliateToken = vi.fn()
+vi.mock("@lib/data/affiliate", () => ({
+  syncCartAffiliateToken: (...args: unknown[]) => syncCartAffiliateToken(...args),
+}))
 vi.mock("@lib/data/cookies", () => ({
   getAuthHeaders: vi.fn().mockResolvedValue({ authorization: "Bearer t" }),
   getCartId: vi.fn().mockResolvedValue(undefined),
@@ -43,5 +46,19 @@ describe("POST /[countryCode]/cart/add เมื่อเพิ่มสิน�
     expect(res.status).toBe(400)
     expect(text).toMatch(/[฀-๿]/)
     expect(text).not.toMatch(/[A-Za-z]{2,}/)
+  })
+})
+
+// AF-3b (กฎ 23): sync cookie `aff` ด้วย metadata จากผลของ createLineItem — ไม่อ่าน cart (`GET /store/carts/:id`) เพิ่ม
+describe("POST /[countryCode]/cart/add เมื่อเพิ่มสำเร็จ (AF-3b)", () => {
+  it("ส่ง metadata ของ cart จากผลการเพิ่มสินค้าให้ sync cookie aff", async () => {
+    createLineItem.mockResolvedValueOnce({ cart: { id: "cart_1", metadata: { affiliate_token: "tok_ann" } } })
+    const res = await post()
+    expect(res.status).toBe(303)
+    expect(syncCartAffiliateToken).toHaveBeenCalledWith(
+      "cart_1",
+      { affiliate_token: "tok_ann" },
+      { authorization: "Bearer t" }
+    )
   })
 })

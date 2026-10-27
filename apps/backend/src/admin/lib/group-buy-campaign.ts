@@ -17,3 +17,14 @@ export const groupProgress = (
   g: Progress,
   c: { target_type: TargetType; target_value: number }
 ) => `${g[`progress_${c.target_type}`]} / ${c.target_value} ${c.target_type}`
+
+// GB-6c (AC-35): succeed/fail แบบ manual เฉพาะกลุ่ม open
+export const canSetGroupOutcome = (g: { status: "open" | "succeeded" | "failed" }) => g.status === "open"
+
+// AC-35: draft order อยู่ที่ /draft-orders/:id (plugin @medusajs/draft-order ของ dashboard 2.22.1) แปลงแล้วอยู่ที่ /orders/:id
+export const orderAdminPath = (m: { order_id: string; order: { is_draft_order: boolean } | null }) =>
+  m.order?.is_draft_order === false ? `/orders/${m.order_id}` : `/draft-orders/${m.order_id}`
+
+// review #114: customer เป็น null เมื่อไม่พบลูกค้าใน Customer module (เช่นถูกลบ)
+export const customerLabel = (m: { customer_id: string; customer: { email: string } | null }) =>
+  m.customer?.email ?? `${m.customer_id} (deleted)`
