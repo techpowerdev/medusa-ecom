@@ -3,7 +3,7 @@ import { Metadata } from "next"
 import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
 import { listCollections } from "@lib/data/collections"
-import { getRegion, listRegions } from "@lib/data/regions"
+import { getRegion, listRegions, listRegionsUncached } from "@lib/data/regions"
 import { toJsonLd } from "@lib/util/product-structured-data"
 import { hreflangAlternates } from "@lib/util/hreflang"
 import { STORE_CONTENT, STORE_NAME } from "@lib/store-content"
@@ -49,9 +49,10 @@ export default async function Home(props: {
     return null
   }
 
-  const [origin, regions] = await Promise.all([getSiteOrigin(), listRegions()])
+  const origin = await getSiteOrigin()
   const homeUrl = `${origin}/${countryCode}`
-  const returnPolicies = buildRegionsReturnPolicies(regions)
+  // CORE-20c (กฎข้อ 60): policy ใน structured data อ่าน region แบบไม่ cache
+  const returnPolicies = buildRegionsReturnPolicies(await listRegionsUncached())
   const structuredData = [
     {
       "@context": "https://schema.org",

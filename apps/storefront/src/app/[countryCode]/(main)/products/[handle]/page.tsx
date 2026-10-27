@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { listProducts } from "@lib/data/products"
-import { getRegion, listRegions } from "@lib/data/regions"
+import { getRegion, listRegions, listRegionsUncached } from "@lib/data/regions"
 import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
 import { isVariantInStock } from "@lib/util/inventory"
@@ -117,9 +117,12 @@ export default async function ProductPage(props: Props) {
   }
 
   const origin = await getSiteOrigin()
+  // CORE-20c (กฎข้อ 60): policy ใน structured data อ่าน region แบบไม่ cache (getRegion ใช้ force-cache)
+  const policyRegion =
+    (await listRegionsUncached()).find((r) => r.id === region.id) ?? region
   const structuredData = buildProductStructuredData({
     product: pricedProduct,
-    region,
+    region: policyRegion,
     countryCode: params.countryCode,
     productUrl: `${origin}/${params.countryCode}/products/${pricedProduct.handle}`,
   })

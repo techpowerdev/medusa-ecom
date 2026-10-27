@@ -1,6 +1,5 @@
 import { retrieveOrder } from "@lib/data/orders"
-import { isOrderReturnable, listReturnReasons } from "@lib/data/returns"
-import { returnableItems } from "@lib/util/return-request"
+import { listReturnReasons, retrieveReturnableItems } from "@lib/data/returns"
 import ReturnRequestForm from "@modules/returns/components/return-request-form"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
@@ -23,15 +22,13 @@ export default async function OrderReturnPage(props: Props) {
     notFound()
   }
 
-  const [returnable, reasons] = await Promise.all([isOrderReturnable(order), listReturnReasons()])
-  const lines = returnable
-    ? returnableItems(order.items).map(({ item, quantity }) => ({
-        id: item.id,
-        title: item.product_title ?? item.title,
-        variantTitle: item.variant_title,
-        maxQuantity: quantity,
-      }))
-    : []
+  const [returnable, reasons] = await Promise.all([retrieveReturnableItems(order), listReturnReasons()])
+  const lines = returnable.map(({ item, quantity }) => ({
+    id: item.id,
+    title: item.product_title ?? item.title,
+    variantTitle: item.variant_title,
+    maxQuantity: quantity,
+  }))
 
   return (
     <ReturnRequestForm
