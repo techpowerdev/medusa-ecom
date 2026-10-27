@@ -11,8 +11,9 @@ import {
   usePrompt,
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useId, useState } from "react"
 import { evoucherApi, evoucherKeys, Partner, PartnerInput } from "../../lib/evoucher"
+import { createSingleFlight } from "../../lib/single-flight"
 
 const FIELDS: { key: keyof PartnerInput; label: string }[] = [
   { key: "name", label: "Name *" },
@@ -42,20 +43,27 @@ const PartnerFields = ({
 }: {
   form: Record<keyof PartnerInput, string>
   onChange: (form: Record<keyof PartnerInput, string>) => void
-}) => (
-  <div className="flex flex-col gap-y-4">
-    {FIELDS.map(({ key, label }) => (
-      <div key={key} className="flex flex-col gap-y-2">
-        <Label size="small">{label}</Label>
-        <Input
-          size="small"
-          value={form[key]}
-          onChange={(e) => onChange({ ...form, [key]: e.target.value })}
-        />
-      </div>
-    ))}
-  </div>
-)
+}) => {
+  // กฎข้อ 11: Label ผูก htmlFor กับ id ของ input (useId กัน id ซ้ำระหว่าง modal สร้างกับ drawer แก้ไข)
+  const prefix = useId()
+  return (
+    <div className="flex flex-col gap-y-4">
+      {FIELDS.map(({ key, label }) => (
+        <div key={key} className="flex flex-col gap-y-2">
+          <Label size="small" htmlFor={`${prefix}-${key}`}>
+            {label}
+          </Label>
+          <Input
+            id={`${prefix}-${key}`}
+            size="small"
+            value={form[key]}
+            onChange={(e) => onChange({ ...form, [key]: e.target.value })}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export const PartnersSection = () => {
   const queryClient = useQueryClient()
@@ -63,6 +71,7 @@ export const PartnersSection = () => {
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Partner | null>(null)
   const [form, setForm] = useState(toForm())
+  const [submitOnce] = useState(createSingleFlight)
 
   const { data, isLoading } = useQuery({
     queryKey: evoucherKeys.partners,
@@ -116,11 +125,12 @@ export const PartnersSection = () => {
       toast.error("Name is required")
       return
     }
-    save.mutate()
+    // กฎข้อ 11: กันคลิกซ้อนก่อน isPending เป็น true; error แสดงผ่าน onError แล้ว
+    submitOnce(() => save.mutateAsync().catch(() => undefined))
   }
 
   const saveButton = (
-    <Button size="small" onClick={submit} isLoading={save.isPending}>
+    <Button size="small" onClick={submit} disabled={save.isPending} isLoading={save.isPending}>
       Save
     </Button>
   )
