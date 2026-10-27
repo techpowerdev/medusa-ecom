@@ -43,3 +43,19 @@ export const planExpiringCodes = (input: {
     kept_earliest_expires_at: kept.length ? new Date(time(kept[kept.length - 1])).toISOString() : null,
   }
 }
+
+export type ExpiryCandidatesRow = {
+  long: number | string | null
+  near: { id: string; expires_at: string }[] | null
+}
+
+/** EV-N1 (AC-38): แปลงแถวเดียวจาก query `count(*) FILTER` ต่อ pool เป็น near/long (bigint ของ pg มาเป็น string) */
+export const toExpiryCandidates = (
+  row: ExpiryCandidatesRow | undefined
+): { long: number; near: { id: string; expires_at: string }[] } => ({
+  long: Number(row?.long ?? 0),
+  near: (row?.near ?? []).map((code) => ({
+    id: code.id,
+    expires_at: new Date(code.expires_at).toISOString(),
+  })),
+})

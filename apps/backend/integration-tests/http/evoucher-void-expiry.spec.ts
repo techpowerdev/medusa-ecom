@@ -14,6 +14,8 @@ import { EVOUCHER_MODULE } from "../../src/modules/evoucher"
 import EvoucherModuleService from "../../src/modules/evoucher/service"
 import { EVOUCHER_CODE_NOT_AVAILABLE } from "../../src/modules/evoucher/errors"
 import evoucherDailyJob, { config as jobConfig } from "../../src/jobs/evoucher-daily"
+import { expiryCutoff } from "../../src/modules/evoucher/utils/expiry"
+import { voidExpiringEvoucherCodesWorkflow } from "../../src/workflows/evoucher/void-evoucher-codes"
 
 jest.setTimeout(120 * 1000)
 
@@ -450,6 +452,53 @@ medusaIntegrationTestRunner({
         expect(pools.R).toMatchObject({ voided: 2, kept: 0, kept_earliest_expires_at: null, shortfall: 0 })
         expect(pools.S).toMatchObject({ voided: 0, kept: 1, shortfall: 2 })
         expect(summaries[0].data).toMatchObject({ total_voided: 6 })
+      })
+
+      // EV-N1 (AC-38, กฎข้อ 12b a): `long` = expires_at >= now + 7 วัน (ขอบรวม), `near` = < now + 7 วัน
+      // ควบคุมเวลา: รัน workflow ของ job ด้วย now/expires_before ที่ตั้งเอง (job ส่งค่าเดียวกันจาก new Date())
+      it("AC-38 counts a code expiring exactly at now + 7 days as long and one 1ms earlier as near, in one query per pool", async () => {
+        const { poolId, inventoryItemId } = await createPool("Edge pool", { low_stock_threshold: 0 })
+        const now = new Date(Date.now() + 60 * 1000)
+        const cutoff = expiryCutoff(now)
+        await importCsv(
+          poolId,
+          [
+            "code,pin,expires_at",
+            `AT-CUTOFF,,${cutoff.toISOString()}`,
+            `BEFORE-CUTOFF,,${new Date(cutoff.getTime() - 1).toISOString()}`,
+          ].join("\n")
+        )
+        // reserved = 1 → keep = max(0, 1 − long): ถ้า AT-CUTOFF นับเป็น long จะไม่เว้น BEFORE-CUTOFF
+        const inventory = getContainer().resolve(Modules.INVENTORY)
+        const [level] = await inventory.listInventoryLevels({ inventory_item_id: inventoryItemId })
+        await inventory.createReservationItems({
+          inventory_item_id: inventoryItemId,
+          location_id: level.location_id,
+          quantity: 1,
+        })
+        const candidates = jest.spyOn(service, "listExpiryCandidates")
+        const list = jest.spyOn(service, "listEvoucherCodes")
+        const count = jest.spyOn(service, "countCodesByStatus")
+        try {
+          const { result } = await voidExpiringEvoucherCodesWorkflow(getContainer()).run({
+            input: { pool_id: poolId, now: now.toISOString(), expires_before: cutoff.toISOString() },
+          })
+          expect(result).toMatchObject({ voided: 1, kept: 0, shortfall: 0 })
+          expect(candidates).toHaveBeenCalledTimes(1)
+          expect(list).not.toHaveBeenCalled()
+          expect(count).not.toHaveBeenCalled()
+        } finally {
+          candidates.mockRestore()
+          list.mockRestore()
+          count.mockRestore()
+        }
+
+        const rows = await codesOf(poolId)
+        const status = Object.fromEntries(
+          await Promise.all(rows.map(async (r) => [await service.decryptSecret(r.code), r.status] as const))
+        )
+        expect(status).toEqual({ "AT-CUTOFF": "available", "BEFORE-CUTOFF": "void" })
+        expect(await stockedQuantity(inventoryItemId)).toBe(1)
       })
 
       it("AC-9 sends one low-stock email per pool per day when available < threshold", async () => {
