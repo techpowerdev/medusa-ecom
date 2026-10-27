@@ -1,0 +1,32 @@
+# CORE-19a — ผลการทดสอบ (spec 01 AC-62, AC-63) 2026-10-27
+# สภาพแวดล้อม: backend build+start (.medusa/server) :9152, DB medusa_core19a seed ใหม่, storefront next build+start :8152, Node 22.23.3, Chromium
+
+## Red (ก่อนแก้): AC-63 fail — drawer กว้าง 415px ที่ viewport 375; AC-62 ผ่านอยู่แล้วบน develop ปัจจุบัน
+  ✓  1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (2.1s)
+  ✓  2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.5s)
+  ✓  3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (10.6s)
+  ✘  4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:97:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (689ms)
+    Error: drawer อยู่ในจอ
+    Expected: <= 375
+    Received:    415
+    test-results/core-19a-nav-cart-search-v-ee9ef-ว่าง-ไม่ล้นจอ-ไม่ล้น-drawer-chromium/test-failed-1.png
+  1 failed
+  3 passed (15.7s)
+
+## AC-62 ตรวจซ้ำบน develop (ก่อนแก้): 6 หน้า (/th, /th/store, PDP, /th/account, /th/contact, /th/search) x 4 รอบ = 24 passed; flow เพิ่มสินค้าผ่าน UI บน PDP แล้วลบใน dropdown ที่ /th, /th/store, /th/cart, PDP = 4 passed
+
+## Green (หลังแก้) e2e/core-19a-nav-cart-search.spec.ts
+  ✓  1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (1.4s)
+  ✓  2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.5s)
+  ✓  3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (4.2s)
+  ✓  4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:97:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (674ms)
+  4 passed (8.3s)
+
+## storefront vitest
+ Test Files  22 passed (22)
+      Tests  221 passed (221)
+
+## playwright unit project
+  29 passed (826ms)
+
+## pnpm lint: 0 errors (33 warnings เดิม); pnpm typecheck: ผ่าน; storefront build: ผ่าน

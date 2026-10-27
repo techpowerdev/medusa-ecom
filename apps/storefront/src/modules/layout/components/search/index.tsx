@@ -103,7 +103,7 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
           </Text>
         ) : (
           <Text
-            className="px-4 py-6 text-center text-ui-fg-subtle"
+            className="px-4 py-6 text-center text-ui-fg-subtle [overflow-wrap:anywhere]"
             data-testid="search-no-results"
           >
             ไม่พบสินค้าสำหรับ &quot;{query}&quot;
