@@ -8,6 +8,7 @@ import NativeSelect from "@modules/common/components/native-select"
 import { addCustomerAddress, updateCustomerAddress } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
 import AccountInfo from "../account-info"
+import { submitWithoutReset } from "@lib/util/submit-without-reset"
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
@@ -48,10 +49,11 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
     initialState.addressId = billingAddress.id
   }
 
-  const [state, formAction] = useActionState(
+  const [state, formAction, isPending] = useActionState(
     billingAddress ? updateCustomerAddress : addCustomerAddress,
     initialState
   )
+  const onSubmit = submitWithoutReset(formAction)
 
   const clearState = () => {
     setSuccessState(false)
@@ -90,7 +92,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
   }, [billingAddress, regionOptions])
 
   return (
-    <form action={formAction} onReset={() => clearState()} className="w-full">
+    <form onSubmit={onSubmit} onReset={() => clearState()} className="w-full">
       <input type="hidden" name="addressId" value={billingAddress?.id} />
       <AccountInfo
         label="ที่อยู่สำหรับออกใบเสร็จ"
@@ -98,6 +100,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
         isSuccess={successState}
         isError={!!state.error}
         clearState={clearState}
+        isPending={isPending}
         data-testid="account-billing-address-editor"
       >
         <div className="grid grid-cols-1 gap-y-2">

@@ -125,7 +125,7 @@ test("AC-87: order ที่ไม่มีอยู่ และ order ขอ�
   }
 })
 
-test("AC-88: token หายระหว่างบันทึกเบอร์ → ไม่มี error ดิบของ React, ข้อความไทยหรือหน้า login", async ({
+test("AC-88: token หายระหว่างบันทึกเบอร์ → ไม่มี error ดิบของ React และแสดงข้อความไทย", async ({
   page,
   context,
   request,
@@ -146,21 +146,18 @@ test("AC-88: token หายระหว่างบันทึกเบอร�
     await context.clearCookies({ name: "_medusa_jwt" })
   })
 
-  await step("บันทึก → ข้อความไทย หรือไปหน้า login", async () => {
+  await step("บันทึก → ข้อความไทยใน editor (ไม่มีหน้า login แทรก)", async () => {
     await phone.getByTestId("save-button").click()
+    // CORE-23b (AC-97): ผลลัพธ์แน่นอน — server action คืน error 401 เป็นข้อความไทย ไม่ redirect ไปหน้า login
     const error = phone.getByTestId("error-message")
-    const login = page.getByTestId("login-page")
-    await expect(error.or(login)).toBeVisible()
+    await expect(error).toBeVisible()
+    await expect(page.getByTestId("login-page")).toHaveCount(0)
+    const text = (await error.innerText()).trim()
+    expect(text).toMatch(THAI)
+    expect(text).not.toMatch(/[A-Za-z]{3,}/)
     const body = (await page.locator("body").innerText()) ?? ""
     expect(body).not.toContain("Minified React error")
     expect(body).not.toMatch(/Application error|server-side exception|Unauthorized/i)
-    if (await login.isVisible()) {
-      await expect(login).toBeVisible()
-    } else {
-      const text = (await error.innerText()).trim()
-      expect(text).toMatch(THAI)
-      expect(text).not.toMatch(/[A-Za-z]{3,}/)
-    }
     await evidence("03-token-expired-save")
   })
 })
