@@ -1,0 +1,33 @@
+# CORE-4d — ข้อความไทย checkout ทุกขั้น, shipping nudge, lib/constants.tsx (รวมข้อความ PAY-2), error ใน lib/data/cart.ts + เปิด ESLint rule path 4d
+# spec: docs/spec/01-core-medusa.md (CORE-4, AC-48/AC-49 ส่วน 4d, กฎข้อ 39, AC-75) — ADR-014
+# รันในเครื่อง 2026-10-27, Node 22.23.3, backend medusa develop :9121 (DB medusa_core4d), storefront next start :8121 (production build)
+# ไม่มี Stripe key ในเครื่อง → e2e ของ Stripe/PromptPay พึ่ง CI; ข้อความ PromptPay/บัตรตรวจด้วย unit (user-messages-thai.test.ts)
+
+## Red (ก่อนแก้โค้ด)
+- src/thai-ui-rule.test.ts: 8 failed — 'เปิด rule กับ <path ของ 4d>' ล้มเพราะ config ยังไม่เปิด rule
+- src/user-messages-thai.test.ts: 9 failed — lib/data/cart.ts (throw new Error อังกฤษทุกจุด), (checkout)/checkout/page.tsx (title "Checkout"),
+  (checkout)/not-found.tsx (metadata), discount-code, payment-container, payment-wrapper/stripe-wrapper, promptpay-payment (setError/ErrorMessage อังกฤษ),
+  lib/constants.tsx ("Credit card", "Manual Payment"), renewPromptPaySession ส่ง body.message ของ backend
+- รวม: Test Files 2 failed (2), Tests 17 failed | 78 passed (95)
+
+## Green — unit (Vitest) ไฟล์ของ task
+ Test Files  3 passed (3)
+      Tests  109 passed (109)
+
+## Green — unit ทั้งหมดของ storefront (pnpm --filter storefront test:unit)
+ Test Files  19 passed (19)
+      Tests  224 passed (224)
+
+## Green — e2e (Playwright) e2e/thai-ui-checkout.spec.ts (AC-48 4d, AC-75)
+  ✓  1 [chromium] › e2e/thai-ui-checkout.spec.ts:21:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (5.1s)
+  1 passed (5.7s)
+test id ที่ตรวจ: not-found-title/description/home-link ((checkout)/not-found), back-to-cart-link, addresses-heading, submit-address-button,
+checkout-summary-heading, add-discount-button, delivery-heading, delivery-method-title, edit-address-button, submit-delivery-option-button,
+payment-heading, payment-option-pp_system_default, submit-payment-button, review-heading, review-terms (ไม่ตรง /Medusa/i), submit-order-button,
+payment-method-summary, edit-payment-button, edit-delivery-button + document.title มีอักษรไทย
+screenshot: docs/evidence/core/CORE-4d/4d-01..04 (4 รูป)
+
+## lint / typecheck
+- pnpm lint: 0 errors (warning เดิมของ starter)
+- pnpm typecheck: ผ่าน (backend + storefront)
+- pnpm --filter storefront test:e2e:unit: 29 passed (งบ evidence)

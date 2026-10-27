@@ -2,6 +2,7 @@
 import { RadioGroup } from "@headlessui/react"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
+import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isPromptPay } from "@lib/util/payment-session"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -57,7 +58,7 @@ const Payment = ({
           provider_id: method,
         })
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err))
+        setError(friendlyErrorMessage(err, "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       } finally {
         setIsLoading(false)
       }
@@ -111,7 +112,7 @@ const Payment = ({
         )
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(friendlyErrorMessage(err, "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
     } finally {
       setIsLoading(false)
     }
@@ -133,8 +134,9 @@ const Payment = ({
                 !isOpen && !paymentReady,
             }
           )}
+          data-testid="payment-heading"
         >
-          Payment
+          การชำระเงิน
           {!isOpen && paymentReady && <CheckCircleSolid />}
         </Heading>
         {!isOpen && paymentReady && (
@@ -144,7 +146,7 @@ const Payment = ({
               className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
               data-testid="edit-payment-button"
             >
-              Edit
+              แก้ไข
             </button>
           </Text>
         )}
@@ -183,13 +185,13 @@ const Payment = ({
           {paidByGiftcard && (
             <div className="flex flex-col w-1/3">
               <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                Payment method
+                วิธีชำระเงิน
               </Text>
               <Text
                 className="txt-medium text-ui-fg-subtle"
                 data-testid="payment-method-summary"
               >
-                Gift card
+                บัตรของขวัญ
               </Text>
             </div>
           )}
@@ -211,8 +213,8 @@ const Payment = ({
             data-testid="submit-payment-button"
           >
             {!activeSession && isStripeLike(selectedPaymentMethod)
-              ? "Enter payment details"
-              : "Continue to review"}
+              ? "กรอกข้อมูลการชำระเงิน"
+              : "ไปขั้นตอนตรวจสอบคำสั่งซื้อ"}
           </Button>
         </div>
 
@@ -221,7 +223,7 @@ const Payment = ({
             <div className="flex items-start gap-x-1 w-full">
               <div className="flex flex-col w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                  Payment method
+                  วิธีชำระเงิน
                 </Text>
                 <Text
                   className="txt-medium text-ui-fg-subtle"
@@ -233,7 +235,7 @@ const Payment = ({
               </div>
               <div className="flex flex-col w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                  Payment details
+                  รายละเอียดการชำระเงิน
                 </Text>
                 <div
                   className="flex gap-2 txt-medium text-ui-fg-subtle items-center"
@@ -244,20 +246,20 @@ const Payment = ({
                       <CreditCard />
                     )}
                   </Container>
-                  <Text>Another step will appear</Text>
+                  <Text>จะมีขั้นตอนเพิ่มเติมปรากฏขึ้น</Text>
                 </div>
               </div>
             </div>
           ) : paidByGiftcard ? (
             <div className="flex flex-col w-1/3">
               <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                Payment method
+                วิธีชำระเงิน
               </Text>
               <Text
                 className="txt-medium text-ui-fg-subtle"
                 data-testid="payment-method-summary"
               >
-                Gift card
+                บัตรของขวัญ
               </Text>
             </div>
           ) : null}
