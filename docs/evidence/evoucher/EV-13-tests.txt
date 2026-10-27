@@ -1,0 +1,30 @@
+# EV-13 (spec 02 AC-32) — ผลการทดสอบ 2026-10-27 21:25 +07
+
+## Red (ก่อนแก้)
+- unit admin/lib/evoucher-resend: 3 failed (resendErrorMessage is not a function)
+- integration evoucher-resend (-t 'still fails'): failed — message มี noti_ id:
+Received string:      "Could not send the e-voucher email: Failed to send notification with id noti_01M5YVNNZEJVX54QFJGZMYG6NC: smtp down"
+- e2e AC-32 (widget เดิม + เพิ่มเฉพาะ data-testid): failed — Error: {"scroll":636,"client":580} (ตารางล้น container ที่ 1280px)
+
+## Green
+### pnpm --filter backend test:unit
+Test Suites: 62 passed, 62 total
+Tests:       615 passed, 615 total
+
+### integration-tests/http/evoucher-resend.spec.ts
+PASS integration-tests/http/evoucher-resend.spec.ts (15.282 s)
+      ✓ sends one new email with the same 2 codes to the order email and leaves the codes unchanged (1367 ms)
+      ✓ returns 400 for an order without delivered or allocated codes (1108 ms)
+      ✓ returns 401 without an admin token (825 ms)
+      ✓ marks allocated codes delivered and uses a new idempotency key on every resend (848 ms)
+      ✓ keeps the codes allocated, answers an error and can be retried when the provider still fails (852 ms)
+      ✓ sends only one email when two resends of the same order arrive together (2288 ms)
+Tests:       6 passed, 6 total
+
+### e2e apps/storefront/e2e/evoucher-admin-resend.spec.ts (backend medusa develop :9241)
+  ✓  1 [chromium] › e2e/evoucher-admin-resend.spec.ts:116:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (3.0s)
+  2 passed (6.0s)
+  ✓  1 [chromium] › e2e/evoucher-admin-resend.spec.ts:178:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (3.3s)
+  1 passed (3.9s)
+
+### pnpm lint && pnpm typecheck: ผ่าน (0 errors; warning เดิมของ storefront ไม่เกี่ยวกับไฟล์ที่แก้), pnpm --filter backend build: ผ่าน

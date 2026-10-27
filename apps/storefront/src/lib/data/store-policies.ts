@@ -1,6 +1,6 @@
 "use server"
 
-import { getRegionPolicies, StorePolicies } from "@lib/util/store-policies"
+import { getRegionPolicies, getReturnPolicy, StorePolicies } from "@lib/util/store-policies"
 import { listRegionsUncached } from "./regions"
 
 export const getStorePolicies = async (countryCode: string) => {
@@ -11,6 +11,8 @@ export const getStorePolicies = async (countryCode: string) => {
 
   return {
     current: getRegionPolicies(current),
+    // CORE-20d (กฎข้อ 66a): นโยบายคืนใช้ค่าเริ่มต้นของ backend เมื่อไม่ตั้ง return_window_days (ไม่ขึ้นกับค่าจัดส่ง)
+    returns: getReturnPolicy(current),
     currencyCode: current?.currency_code ?? "",
     regions: regions.flatMap((region) => {
       const policies = getRegionPolicies(region)

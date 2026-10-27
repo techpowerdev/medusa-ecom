@@ -42,7 +42,7 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
           onFocus={() => innerRef.current?.focus()}
           onBlur={() => innerRef.current?.blur()}
           className={clx(
-            "relative flex items-center text-base-regular border border-ui-border-base bg-ui-bg-subtle rounded-md hover:bg-ui-bg-field-hover",
+            "relative flex items-center text-base-regular",
             className,
             {
               "text-ui-fg-muted": isPlaceholder,
@@ -53,7 +53,9 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
             ref={innerRef}
             defaultValue={defaultValue}
             {...props}
-            className="appearance-none flex-1 bg-transparent border-none px-4 py-2.5 transition-colors duration-150 outline-none "
+            // CORE-4g (กฎข้อ 63d): กรอบอยู่ที่ <select> และยืดเต็มความสูงของ wrapper — ผู้เรียกกำหนดความสูงผ่าน className
+            // (เช่น CountrySelect ใช้ h-12 เท่า Input) แล้วกล่องของ element ที่มี data-testid สูงเท่ากัน
+            className="appearance-none flex-1 self-stretch min-w-0 border border-ui-border-base bg-ui-bg-subtle rounded-md hover:bg-ui-bg-field-hover px-4 py-2.5 transition-colors duration-150 outline-none"
           >
             <option disabled value="">
               {placeholder}

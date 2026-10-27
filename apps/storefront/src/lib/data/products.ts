@@ -5,6 +5,7 @@ import { OptionValueIds } from "@lib/util/product-option-filters"
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
+import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
 
@@ -57,6 +58,7 @@ export const listProducts = async ({
   }
 
   const next = {
+    revalidate: CATALOG_REVALIDATE_SECONDS,
     ...(await getCacheOptions("products")),
   }
 
@@ -109,7 +111,10 @@ export const listVariantIdsByProduct = async (
     .fetch<{ products: HttpTypes.StoreProduct[] }>(`/store/products`, {
       method: "GET",
       query: { id: ids, fields: "id,variants.id", limit: ids.length },
-      next: { ...(await getCacheOptions("products")) },
+      next: {
+        revalidate: CATALOG_REVALIDATE_SECONDS,
+        ...(await getCacheOptions("products")),
+      },
       cache: "force-cache",
     })
     .then(({ products }) =>

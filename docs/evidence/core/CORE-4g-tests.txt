@@ -1,0 +1,55 @@
+# CORE-4g — ผล test (spec 01 กฎข้อ 63, AC-99) — 2026-10-27 22:11 +07, base origin/develop 8a8253a
+
+## RED (ก่อนแก้โค้ด)
+### Vitest src/core-4g-checkout-polish.test.ts: 9 failed | 1 passed — status ของ medusaError = undefined, setAddresses 401 ได้ข้อความ fallback, applyPromotions คืน undefined, compareAddresses null/"" = false
+### e2e core-4g (โค้ดเดิม ทีละส่วน):
+    Error: expect(locator).toHaveText(expected) failed
+    Expected: "99 ถนนสุขุมวิท"
+    Received: "เลือกที่อยู่"
+    Error: country 44 city 48
+    Received:    4
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+### Playwright unit core-4g-e2e-hygiene: 2 failed — core-4e ไม่ตรวจ .ok() ของ request.delete ใน finally และไม่รอ document.fonts.ready
+
+## GREEN
+### pnpm --filter storefront test:unit (Vitest ทั้งชุด)
+ Test Files  36 passed (36)
+      Tests  402 passed (402)
+### Vitest src/core-4g-checkout-polish.test.ts -v
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 401 → friendlyErrorMessage ให้เข้าสู่ระบบใหม่ 1ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 403 → friendlyErrorMessage ให้เข้าสู่ระบบใหม่ 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 500 → ข้อความ fallback (ต่างจาก 401) 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > setAddresses: SDK 401 → ข้อความให้เข้าสู่ระบบใหม่ (ผ่าน medusaError ของ updateCart) 22ms
+ ✓ src/core-4g-checkout-polish.test.ts > applyPromotions คืน code ที่อยู่ใน cart จริง (กฎข้อ 63b) > Medusa ตอบ 200 แต่ไม่มี code ที่ส่งไป → ไม่อยู่ในผลลัพธ์ 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company null เท่ากับ  0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company undefined เท่ากับ  0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company null เท่ากับ undefined 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > ไม่มี key เลยเท่ากับค่าว่าง 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > ค่าต่างกันจริงยังไม่เท่ากัน 0ms
+      Tests  10 passed (10)
+### playwright --project=unit
+  ✓   2 [unit] › e2e/core-4g-e2e-hygiene.unit.spec.ts:30:5 › AC-99: request.delete ใน finally ตรวจ .ok() ทุกครั้ง (16ms)
+  ✓   6 [unit] › e2e/core-4g-e2e-hygiene.unit.spec.ts:43:5 › AC-99: e2e ที่วัด layout ของฟอร์ม checkout รอ document.fonts.ready (1ms)
+  33 passed (451ms)
+### e2e chromium (storefront next build + start, backend medusa develop, DB แยก)
+  ✓  1 [chromium] › e2e/core-4g-checkout-polish.spec.ts:66:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect (4.6s)
+  ✓  2 [chromium] › e2e/core-4e-checkout-polish.spec.ts:127:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (6.9s)
+  2 passed (7.7s)
+### e2e regression ที่แตะ checkout/NativeSelect (storefront next dev)
+  ✓  1 [chromium] › e2e/core-20-return-request.spec.ts:39:5 › AC-65: ลูกค้าขอคืนสินค้าจาก order ที่ส่งแล้ว → return requested ใช้ Standard return; order ที่ยังไม่ fulfill ไม่มีปุ่ม (8.7s)
+  ✓  2 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (6.9s)
+  ✓  3 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (12.8s)
+  ✓  4 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (814ms)
+  ✓  5 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (546ms)
+  ✓  6 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (2.4s)
+  ✓  7 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (789ms)
+  ✓  8 [chromium] › e2e/thai-ui-checkout.spec.ts:21:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (7.7s)
+  8 passed (42.0s)
+### pnpm lint && pnpm typecheck (worktree ไม่มี .medusa/ ค้าง, รอบแรก)
+apps/backend lint: Done
+apps/storefront lint: > 26 |       setState("error")
+apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+apps/storefront lint: Done
+apps/storefront typecheck: Done
+apps/backend typecheck: Done

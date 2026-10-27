@@ -5,6 +5,7 @@ import {
   buildReturnPolicy,
   buildShippingDetails,
   getRegionPolicies,
+  getReturnPolicy,
 } from "./store-policies"
 
 const SCHEMA_IN_STOCK = "https://schema.org/InStock"
@@ -36,6 +37,8 @@ export const buildProductStructuredData = ({
   const description = product.description || product.title
   const brand = { "@type": "Brand", name: STORE_NAME }
   const policies = getRegionPolicies(region)
+  // CORE-20d (กฎข้อ 66a): นโยบายคืนไม่ขึ้นกับค่าจัดส่ง — return_window_days ที่ไม่ตั้งใช้ค่าเริ่มต้นของ backend
+  const returnPolicy = getReturnPolicy(region)!
   const optionTitles = new Map(
     (product.options ?? []).map((option) => [option.id, option.title])
   )
@@ -51,11 +54,9 @@ export const buildProductStructuredData = ({
       : SCHEMA_OUT_OF_STOCK,
     itemCondition: "https://schema.org/NewCondition",
     ...(policies
-      ? {
-          shippingDetails: buildShippingDetails(policies, countryCode, currency),
-          hasMerchantReturnPolicy: buildReturnPolicy(policies, countryCode),
-        }
+      ? { shippingDetails: buildShippingDetails(policies, countryCode, currency) }
       : {}),
+    hasMerchantReturnPolicy: buildReturnPolicy(returnPolicy, countryCode),
   })
 
   const variants = getPricedVariants(product)

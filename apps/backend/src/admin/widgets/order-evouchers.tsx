@@ -4,7 +4,7 @@ import { Badge, Button, Container, Heading, Table, Text, toast } from "@medusajs
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRef } from "react"
 import { evoucherApi, evoucherKeys, formatDate, STATUS_COLOR } from "../lib/evoucher"
-import { canResendEvouchers } from "../lib/evoucher-resend"
+import { canResendEvouchers, resendErrorMessage } from "../lib/evoucher-resend"
 
 // EV-6: ส่วน "E-vouchers" บนหน้า order — code ของ order แบบ masked
 // (Medusa admin ไม่มี tab บนหน้า order จึงใช้ widget) + ปุ่มส่งอีเมลซ้ำ (EV-5b)
@@ -24,7 +24,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
       queryClient.invalidateQueries({ queryKey: evoucherKeys.orderCodes(order.id) })
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Failed to resend the e-voucher email")
+      toast.error(resendErrorMessage(err))
     },
     onSettled: () => {
       inFlight.current = false
@@ -44,7 +44,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
   }
 
   return (
-    <Container className="divide-y p-0">
+    <Container className="divide-y p-0" data-testid="evoucher-order-widget">
       <div className="flex items-center justify-between px-6 py-4">
         <Heading level="h2">E-vouchers</Heading>
         {data && canResendEvouchers(data.codes) && (
@@ -69,32 +69,35 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
           Could not load e-vouchers: {error.message}
         </Text>
       ) : (
-        <Table>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell>Pool</Table.HeaderCell>
-              <Table.HeaderCell>Code</Table.HeaderCell>
-              <Table.HeaderCell>Status</Table.HeaderCell>
-              <Table.HeaderCell>Delivered to</Table.HeaderCell>
-              <Table.HeaderCell>Expires</Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {data!.codes.map((code) => (
-              <Table.Row key={code.id}>
-                <Table.Cell>{code.pool?.name ?? "-"}</Table.Cell>
-                <Table.Cell className="font-mono">{code.code}</Table.Cell>
-                <Table.Cell>
-                  <Badge size="2xsmall" color={STATUS_COLOR[code.status]}>
-                    {code.status}
-                  </Badge>
-                </Table.Cell>
-                <Table.Cell>{code.delivered_to_email ?? "-"}</Table.Cell>
-                <Table.Cell>{formatDate(code.expires_at)}</Table.Cell>
+        // EV-13 (AC-32): ตารางกว้างกว่าคอลัมน์ของหน้า → เลื่อนแนวนอนภายใน widget แทนการล้นขอบ
+        <div className="overflow-x-auto">
+          <Table>
+            <Table.Header>
+              <Table.Row>
+                <Table.HeaderCell>Pool</Table.HeaderCell>
+                <Table.HeaderCell>Code</Table.HeaderCell>
+                <Table.HeaderCell>Status</Table.HeaderCell>
+                <Table.HeaderCell>Delivered to</Table.HeaderCell>
+                <Table.HeaderCell>Expires</Table.HeaderCell>
               </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
+            </Table.Header>
+            <Table.Body>
+              {data!.codes.map((code) => (
+                <Table.Row key={code.id}>
+                  <Table.Cell>{code.pool?.name ?? "-"}</Table.Cell>
+                  <Table.Cell className="font-mono">{code.code}</Table.Cell>
+                  <Table.Cell>
+                    <Badge size="2xsmall" color={STATUS_COLOR[code.status]}>
+                      {code.status}
+                    </Badge>
+                  </Table.Cell>
+                  <Table.Cell>{code.delivered_to_email ?? "-"}</Table.Cell>
+                  <Table.Cell>{formatDate(code.expires_at)}</Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table>
+        </div>
       )}
     </Container>
   )

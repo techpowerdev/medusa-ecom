@@ -19,7 +19,9 @@ export const retrieveOrder = async (id: string) => {
         fields:
           "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product" +
           // CORE-20: เงื่อนไขขอคืนสินค้า (requires_shipping, วันที่ส่ง/ได้รับ) และ cart ของ order สำหรับ return option
-          ",+items.requires_shipping,*fulfillments,+cart.id",
+          ",+items.requires_shipping,*fulfillments,+cart.id" +
+          // CORE-20d (กฎข้อ 66b): ช่วงคืนคิดต่อ line — ต้องรู้ว่า fulfillment ไหนมี line ใด
+          ",+fulfillments.items.line_item_id",
       },
       headers,
       cache: "no-store",
