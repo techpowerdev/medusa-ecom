@@ -42,3 +42,7 @@
 
 ## pnpm lint && pnpm typecheck: ผ่าน (0 error)
 ## screenshot: docs/evidence/flash-sale/FS-13/01-plp-card-flash-price.png, 02-pdp-mobile-bar-flash-price.png
+
+## หลังแก้ตาม review (ย้าย getCardFlashPrices ออกจากไฟล์ "use server", revert การแก้ AC-19 ใน spec)
+- pnpm lint && pnpm typecheck: ผ่าน; storefront unit: 287 passed (หลัง merge develop)
+- e2e flash-sale-fs13 + flash-sale-storefront: 7 passed

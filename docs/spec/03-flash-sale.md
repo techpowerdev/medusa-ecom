@@ -249,7 +249,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
   เช่น `items.product_id` in [Y]) When `GET /store/flash-sales/active` และเพิ่ม X, Y ลง cart ของลูกค้า Then สำหรับแต่ละสินค้า "มี `flash_price` ใน preview" ⇔ "line ใน cart มี
   adjustment ของ promotion นั้น" และ `flash_price` ของ X เท่ากับราคาต่อหน่วยหลังส่วนลดของ line X ใน cart (promotion แบบ percentage) (integration http)
 - AC-19 (FS-13, กฎข้อ 18) Given สินค้าในแคมเปญที่ `sold_out=true` When เปิด PDP Then `add-product-button` เป็น `disabled` และเห็น `flash-sold-out`; Given แคมเปญที่ไม่ sold out
-  When เปิด PLP (desktop) และ PDP ที่ viewport 375×812 Then การ์ดสินค้าและแถบล่างของ PDP แสดงราคา flash (test id ราคา flash เดียวกับ PDP ของ FS-6) (e2e, screenshot ≤ 2) ✓ FS-13 (PLP = การ์ดหน้า collection/category)
+  When เปิด PLP (desktop) และ PDP ที่ viewport 375×812 Then การ์ดสินค้าและแถบล่างของ PDP แสดงราคา flash (test id ราคา flash เดียวกับ PDP ของ FS-6) (e2e, screenshot ≤ 2)
 
 ## Non-functional
 - การจอง usage + `units_sold` อยู่ใน request path ของ complete cart (ข้อตัดสิน owner) ภายใต้ lock ต่อ

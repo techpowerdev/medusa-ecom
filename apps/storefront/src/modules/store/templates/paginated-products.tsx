@@ -1,4 +1,4 @@
-import { getCardFlashPrices } from "@lib/data/flash-sales"
+import { getCardFlashPrices } from "@lib/data/flash-card-prices"
 import { listProductsWithSort } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
 import { OptionValueIds } from "@lib/util/product-option-filters"
