@@ -47,6 +47,9 @@ const THAI_UI_FILES = [
   "src/lib/constants.tsx",
   // CORE-20 (หน้าขอคืนสินค้า; page อยู่ใต้ glob account ของ 4c1 แล้ว)
   "src/modules/returns/**",
+  // AF-8a (portal affiliate)
+  "src/app/[[]countryCode]/(main)/affiliate/**",
+  "src/modules/affiliate/**",
 ]
 
 export default defineConfig([
