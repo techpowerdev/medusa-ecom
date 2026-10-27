@@ -21,6 +21,8 @@ const GroupBuyMembership = model
   .indexes([
     { on: ["campaign_id", "customer_id"], where: "deleted_at IS NULL" },
     { on: ["group_id", "status"], where: "deleted_at IS NULL" },
+    // GB-8 (spec 04 กฎข้อ 21): store route หา membership ของผู้เรียกเรียง joined_at
+    { on: ["customer_id", "joined_at"], where: "deleted_at IS NULL" },
   ])
   .checks([
     {
