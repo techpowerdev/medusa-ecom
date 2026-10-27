@@ -1,0 +1,54 @@
+# AF-8a — portal affiliate ใน storefront: login/register + หน้า Products (spec 05 AC-9, AC-35, กฎ 17, 29)
+# วันที่ 2026-10-27 · Node 22.23.3 · backend :9193 (DB medusa_af8, Redis db 3) · storefront next start :8193
+
+## Red (ก่อนเขียนโค้ด)
+vitest src/lib/util/affiliate-portal.test.ts src/thai-ui-rule.test.ts → Test Files 2 failed, Tests 4 failed | 66 passed
+  - affiliate-portal.test.ts: ไม่พบ module ./affiliate-portal (ยังไม่มีฟังก์ชัน)
+  - thai-ui-rule.test.ts: 'เปิด rule กับ src/.../affiliate/**' expected undefined to be 2 (ยังไม่เพิ่ม path ใน ESLint)
+
+## Green — unit (vitest) ของ task นี้
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 990 × อัตรา 15 = 148.5 1ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 590 × อัตรา 10 = 59 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 0.1 × อัตรา 5 = 0.01 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 333.33 × อัตรา 12.5 = 41.67 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 100.1 × อัตรา 3 = 3 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 1.15 × อัตรา 50 = 0.58 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > cardPrice > ราคาต่ำสุดของ variant ที่อยู่ในโปรแกรม 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > cardPrice > ไม่มีราคา → null 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > daysUntil > 2026-10-28T10:00:00Z → 1 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > daysUntil > 2026-10-28T09:00:00Z → 1 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > daysUntil > 2026-10-29T10:00:01Z → 3 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > daysUntil > 2026-10-27T09:00:00Z → 0 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "upcoming" → upcoming 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "active" → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > undefined → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "x" → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > ["upcoming","active"] → active 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/affiliate/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/affiliate/login/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/affiliate/components/product-card/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/affiliate/components/share-button/index.tsx (path ในตาราง AC-49) 0ms
+ Test Files  2 passed (2)
+      Tests  87 passed (87)
+
+## unit storefront ทั้งหมด (vitest)
+ Test Files  29 passed (29)
+      Tests  317 passed (317)
+
+## e2e (Playwright chromium) — e2e/affiliate-portal.spec.ts
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.8s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:130:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (848ms)
+  2 passed (4.4s)
+
+## e2e affiliate เดิมรันร่วม (โปรแกรมของ AF-8a ไม่กระทบ AF-2/AF-3b)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.9s)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:130:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (897ms)
+  ✓  1 [chromium] › e2e/affiliate-tracking.spec.ts:17:5 › AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ่มสินค้าลง cart → metadata.affiliate_token = ค่า cookie (6.0s)
+  ✓  3 [chromium] › e2e/affiliate-last-click.spec.ts:21:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21) (12.3s)
+  4 passed (13.5s)
+
+## Playwright project unit
+  29 passed (855ms)
+
+## pnpm lint && pnpm typecheck → exit 0 (0 errors; warning เดิมของ repo ไม่มีในไฟล์ของ task นี้)
+## next build (storefront) → exit 0: ƒ /[countryCode]/affiliate, ƒ /[countryCode]/affiliate/login
