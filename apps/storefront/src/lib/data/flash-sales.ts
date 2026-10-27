@@ -3,8 +3,10 @@
 import { sdk } from "@lib/config"
 import {
   type ActiveFlashSales,
+  cartFlashExceeded,
   mergeActiveFlashSales,
 } from "@lib/util/flash-sale"
+import { HttpTypes } from "@medusajs/types"
 
 // FS-6: endpoint ของ FS-4/FS-7 รับ variant_ids ได้ไม่เกิน 24 ตัวต่อครั้ง
 const MAX_VARIANTS = 24
@@ -41,4 +43,20 @@ export async function getActiveFlashSales(
     )
   )
   return mergeActiveFlashSales(parts)
+}
+
+/**
+ * FS-15 (spec 03 กฎข้อ 20b): line ของ cart ที่ได้ราคา flash แต่จำนวนเกิน `remaining_units` → { line id: remaining_units }
+ * ไม่มี line ในแคมเปญ หรือ request ล้ม → {} (ไม่เตือน)
+ */
+export async function getCartFlashExceeded(
+  cart: HttpTypes.StoreCart
+): Promise<Record<string, number>> {
+  const items = cart.items ?? []
+  const variantIds = items.flatMap((i) => (i.variant_id ? [i.variant_id] : []))
+  if (!cart.region_id || !variantIds.length) {
+    return {}
+  }
+  const data = await getActiveFlashSales(cart.region_id, variantIds)
+  return cartFlashExceeded(items, cart.promotions, data, Date.now())
 }

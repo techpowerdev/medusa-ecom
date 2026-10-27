@@ -1,9 +1,7 @@
 import { APIRequestContext } from "@playwright/test"
-import crypto from "node:crypto"
-import { Client } from "pg"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
-import { createActiveAffiliate } from "./support/affiliate"
+import { createActiveAffiliate, insertApprovedEntry } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
 
@@ -18,31 +16,6 @@ test.use({
 })
 
 const DAY = 24 * 60 * 60 * 1000
-
-/**
- * entry `approved` ของ affiliate ใส่ตรงใน DB (CI ตั้ง DATABASE_URL ให้ job e2e): การได้ entry approved ผ่าน flow จริง
- * ต้องรอ maturity job รายวัน (AF-4) ซึ่ง e2e สั่งรันไม่ได้ — payout สร้าง/จ่าย/ยกเลิกผ่าน admin API และ UI จริง
- */
-async function insertApprovedEntry(affiliateId: string, programId: string, createdAt: Date) {
-  const db = new Client({ connectionString: process.env.DATABASE_URL })
-  await db.connect()
-  try {
-    await db.query(
-      `insert into affiliate_commission_entry
-         (id, affiliate_id, program_id, order_id, amount, raw_amount, currency, status, created_at, updated_at)
-       values ($1, $2, $3, $4, 100, '{"value":"100","precision":20}', 'thb', 'approved', $5, $5)`,
-      [
-        `affcom_e2eaf6${crypto.randomBytes(6).toString("hex")}`,
-        affiliateId,
-        programId,
-        "order_e2e_af6",
-        createdAt,
-      ],
-    )
-  } finally {
-    await db.end()
-  }
-}
 
 async function post(request: APIRequestContext, admin: Headers, path: string, data: Record<string, unknown>) {
   const res = await request.post(`${BACKEND_URL}${path}`, {
@@ -77,16 +50,16 @@ test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, 
     period_to: new Date(Date.now() - to * DAY).toISOString(),
   })
 
-  await insertApprovedEntry(ann.id, program.id, new Date(Date.now() - 5 * DAY))
+  await insertApprovedEntry(ann.id, program.id, "order_e2e_af6", new Date(Date.now() - 5 * DAY))
   const { payout: paid } = await post(request, admin, "/admin/affiliate/payouts", period(10, 3))
   await post(request, admin, `/admin/affiliate/payouts/${paid.id}/mark-paid`, {
     reference: "E2E-AF6",
   })
-  await insertApprovedEntry(ann.id, program.id, new Date(Date.now() - DAY))
+  await insertApprovedEntry(ann.id, program.id, "order_e2e_af6", new Date(Date.now() - DAY))
   const { payout: draft } = await post(request, admin, "/admin/affiliate/payouts", period(3, 0))
   expect(draft.status).toBe("draft")
   // draft ที่จะถูก mark paid ระหว่างที่หน้าเปิดอยู่ (ข้อมูลในตารางเก่า) → ยกเลิกไม่สำเร็จ
-  await insertApprovedEntry(ann.id, program.id, new Date(Date.now() - DAY / 2))
+  await insertApprovedEntry(ann.id, program.id, "order_e2e_af6", new Date(Date.now() - DAY / 2))
   const { payout: stale } = await post(request, admin, "/admin/affiliate/payouts", period(3, -1))
   expect(stale.status).toBe("draft")
 

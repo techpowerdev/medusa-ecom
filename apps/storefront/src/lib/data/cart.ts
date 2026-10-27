@@ -2,6 +2,7 @@
 
 import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
 import { friendlyErrorMessage } from "@lib/util/error-message"
+import { checkoutConflictMessage } from "@lib/util/checkout-error"
 import { safeCountryCode } from "@lib/util/digital-checkout"
 import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
@@ -570,7 +571,17 @@ export async function placeOrder(
       revalidateTag(cartCacheTag, { expire: 0 })
       return cartRes
     })
-    .catch(medusaError)
+    .catch((error) => {
+      // FS-15 (spec 03 กฎข้อ 20c): 409 ที่รู้จักคืนเป็นค่า — error ที่ throw จาก server action ถูกซ่อนข้อความใน production
+      const conflict = checkoutConflictMessage(error)
+      return conflict
+        ? ({ type: "conflict", error: conflict } as const)
+        : medusaError(error)
+    })
+
+  if (cartRes.type === "conflict") {
+    return { error: cartRes.error }
+  }
 
   if (cartRes?.type === "order") {
     const orderCountry =

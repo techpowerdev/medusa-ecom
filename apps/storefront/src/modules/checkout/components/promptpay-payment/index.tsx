@@ -113,7 +113,9 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     finishing.current = true
     try {
       // cart ถูก complete โดย webhook แล้ว — complete ซ้ำได้ order เดิมแล้ว redirect ไปหน้า confirmed
-      await placeOrder(cart.id)
+      const res = await placeOrder(cart.id)
+      // FS-15: 409 ที่ placeOrder คืนเป็นค่า → จัดการเหมือน error เดิมของทางสำรองนี้ (poll ต่อ)
+      if (res && "error" in res) throw new Error(res.error)
     } catch {
       // เช่นรอ lock ของ completeCartWorkflow ไม่ทัน — poll รอบถัดไปจะลองใหม่ (order มีอยู่แล้ว)
       setError("ได้รับชำระเงินแล้ว ระบบกำลังสร้างคำสั่งซื้อของคุณ กรุณารอสักครู่…")

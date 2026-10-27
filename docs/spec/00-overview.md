@@ -31,6 +31,7 @@
 | 5 | Affiliate | `05-affiliate.md` | custom module `affiliate` (actor type ของตัวเอง); attribution ผ่าน signed link; product showcase แบบ now/soon; ledger |
 | 6 | Payments | `06-payments-stripe.md` | Medusa Stripe provider (`pp_stripe_stripe`, `pp_stripe-promptpay_stripe`), auto capture |
 | 7 | Scale & ops | `07-scaling-ops.md` | Worker mode, Redis modules, DB indexes, CDN, observability |
+| 8 | Admin UI ใช้ของ Medusa | `08-admin-ui-medusa-components.md` | ปรับหน้า/widget ใน `src/admin/` ให้ใช้ export ของ `@medusajs/dashboard` + `@medusajs/ui` เป็นฐาน (ADR-018) |
 
 ## Milestones (ดู `docs/ROADMAP.md`)
 M0 Scaffold → M1 ร้านค้าหลักใช้งานได้ (test mode) → M2 Payments (Stripe cards + PromptPay) →
@@ -47,7 +48,8 @@ M3 E-voucher → M4 Flash sale → M5 Group buying → M6 Affiliate → M7 Scale
 - เงิน: ตาม Medusa v2 — จำนวนเงินเป็น **ทศนิยมหน่วยหลัก** (฿100 = `100`) เก็บด้วย
   `model.bigNumber()` / `BigNumber` ใน custom module ห้ามใช้หน่วยสตางค์ในโค้ดของเรา; Stripe
   provider จะแปลงเป็นหน่วยย่อยภายในเอง
-- เวลา: เก็บเป็น UTC; เวลาแคมเปญกรอกใน admin เป็น `Asia/Bangkok` และแปลงตอนบันทึก
+- เวลา: เก็บเป็น UTC; admin แสดงและกรอกเวลาตาม timezone ของเครื่องแอดมินแบบเดียวกับหน้า campaign/promotion ของ Medusa
+  (`DatePicker`/`useDate` — ADR-018) เครื่องแอดมินจึงต้องตั้งเวลาเป็นไทย (`Asia/Bangkok`); storefront แสดงเวลาไทยเสมอ (spec 01 กฎ 42)
 - Idempotency: webhook, scheduled job และขั้นตอน settlement ทั้งหมดต้องรันซ้ำได้อย่างปลอดภัย
 - Concurrency: ตัวนับ "จำนวนจำกัด / slot จำกัด" ทุกตัวต้องบังคับใช้ที่ระดับ DB
   (atomic update หรือ row lock) ไม่ใช่ใน memory ของแอปพลิเคชัน
