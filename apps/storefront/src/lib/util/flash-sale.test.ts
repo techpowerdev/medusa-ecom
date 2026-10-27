@@ -5,7 +5,9 @@ import {
   type FlashSale,
   cardFlashOffer,
   cardFlashPrices,
+  cartFlashExceeded,
   countdownLabel,
+  flashQtyExceeded,
   flashOfferForVariant,
   hasFlashCodeConflict,
   mergeActiveFlashSales,
@@ -209,5 +211,84 @@ describe("cardFlashPrices (FS-14)", () => {
 
   it("ไม่มีข้อมูล flash → {}", () => {
     expect(cardFlashPrices(null, { prod_x: ["var_1"] }, NOW)).toEqual({})
+  })
+})
+
+describe("flashQtyExceeded (FS-15 กฎข้อ 20a)", () => {
+  const offer = (s: FlashSale) => flashOfferForVariant(active(s), "var_1", NOW)
+
+  it("จำนวน > remaining_units → คืนจำนวนที่เหลือ; เท่ากับหรือน้อยกว่า → null", () => {
+    const o = offer(sale({ remaining_units: 2 }))
+    expect(flashQtyExceeded(o, 3)).toBe(2)
+    expect(flashQtyExceeded(o, 2)).toBeNull()
+    expect(flashQtyExceeded(o, 1)).toBeNull()
+  })
+
+  it("remaining_units = null (show_remaining=false หรือไม่มี total_cap) → ไม่เตือน", () => {
+    expect(flashQtyExceeded(offer(sale({ remaining_units: null })), 10)).toBeNull()
+  })
+
+  it("ไม่มี offer หรือแคมเปญ sold out (FS-13 แสดง flash-sold-out แทน) → null", () => {
+    expect(flashQtyExceeded(null, 10)).toBeNull()
+    expect(
+      flashQtyExceeded(offer(sale({ sold_out: true, remaining_units: 0 })), 1)
+    ).toBeNull()
+  })
+})
+
+describe("cartFlashExceeded (FS-15 กฎข้อ 20b)", () => {
+  const promotions = [
+    { id: "promo_flash", is_automatic: true },
+    { id: "promo_code", is_automatic: false },
+  ]
+  const line = (over: object = {}) => ({
+    id: "li_1",
+    variant_id: "var_1",
+    quantity: 3,
+    adjustments: [{ promotion_id: "promo_flash" }],
+    ...over,
+  })
+  const data = active(sale({ remaining_units: 2 }))
+
+  it("line ที่มี adjustment ของ automatic promotion และ quantity > remaining_units → map line id → remaining", () => {
+    expect(cartFlashExceeded([line()], promotions, data, NOW)).toEqual({
+      li_1: 2,
+    })
+  })
+
+  it("quantity ≤ remaining_units → ไม่เตือน", () => {
+    expect(cartFlashExceeded([line({ quantity: 2 })], promotions, data, NOW)).toEqual({})
+  })
+
+  it("line ไม่มี adjustment ของ flash (ไม่มี หรือมีแต่ของ code — code ชนะ ADR-009) → ไม่เตือน", () => {
+    expect(cartFlashExceeded([line({ adjustments: [] })], promotions, data, NOW)).toEqual({})
+    expect(cartFlashExceeded([line({ adjustments: null })], promotions, data, NOW)).toEqual({})
+    expect(
+      cartFlashExceeded(
+        [line({ adjustments: [{ promotion_id: "promo_code" }] })],
+        promotions,
+        data,
+        NOW
+      )
+    ).toEqual({})
+  })
+
+  it("variant นอกแคมเปญ / remaining_units = null / ไม่มีข้อมูล flash → ไม่เตือน", () => {
+    expect(cartFlashExceeded([line({ variant_id: "var_2" })], promotions, data, NOW)).toEqual({})
+    expect(
+      cartFlashExceeded([line()], promotions, active(sale({ remaining_units: null })), NOW)
+    ).toEqual({})
+    expect(cartFlashExceeded([line()], promotions, null, NOW)).toEqual({})
+  })
+
+  it("แคมเปญ sold out (remaining 0) → เตือน line นั้น (complete จะล้ม FLASH_SOLD_OUT)", () => {
+    expect(
+      cartFlashExceeded(
+        [line({ quantity: 1 })],
+        promotions,
+        active(sale({ sold_out: true, remaining_units: 0 })),
+        NOW
+      )
+    ).toEqual({ li_1: 0 })
   })
 })

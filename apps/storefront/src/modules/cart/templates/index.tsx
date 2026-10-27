@@ -9,9 +9,12 @@ import { HttpTypes } from "@medusajs/types"
 const CartTemplate = ({
   cart,
   customer,
+  flashExceeded,
 }: {
   cart: HttpTypes.StoreCart | null
   customer: HttpTypes.StoreCustomer | null
+  /** FS-15 (กฎข้อ 20b): line id → remaining_units ของ line ที่จำนวนเกินโควตา flash */
+  flashExceeded?: Record<string, number>
 }) => {
   return (
     <div className="py-12">
@@ -25,7 +28,7 @@ const CartTemplate = ({
                   <Divider />
                 </>
               )}
-              <ItemsTemplate cart={cart} />
+              <ItemsTemplate cart={cart} flashExceeded={flashExceeded} />
             </div>
             <div className="relative">
               <div className="flex flex-col gap-y-8 sticky top-12">
