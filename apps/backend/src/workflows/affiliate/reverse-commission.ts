@@ -19,9 +19,11 @@ import {
 } from "../../modules/affiliate/utils/reversal"
 
 export type ReversalReason = "canceled" | "refunded" | "returned"
-export type ReverseAffiliateCommissionInput =
+// lock_owner_id: ผู้เรียกที่ถือ lock ของ order อยู่แล้ว (maturity job กฎ 32a) ส่งต่อให้ workflow ขอซ้ำด้วย owner เดิมแล้วปล่อยเอง
+export type ReverseAffiliateCommissionInput = (
   | { order_id: string; reason: Exclude<ReversalReason, "refunded"> }
   | { payment_id: string; reason: "refunded" }
+) & { lock_owner_id?: string }
 
 // DB ล้มชั่วคราว → engine ลอง step ใหม่ (แบบ FS-8/FS-11) — workflow idempotent อยู่แล้ว
 // หา order (นอก lock): ทุก 10 วินาที สูงสุด 30 ครั้ง
@@ -102,13 +104,14 @@ export const reverseAffiliateCommissionWorkflow = createWorkflow(
     // payment ที่ไม่ผูกกับ order → ไม่ขอ lock/ไม่ทำอะไร; when ที่ .then() คืนค่าต้องมีชื่อคงที่ (บทเรียน FS-11)
     const created = when("affiliate-reversal-has-order", { orderId }, ({ orderId }) => !!orderId).then(() => {
       const key = transform({ orderId }, ({ orderId }) => `affiliate-attribution:${orderId}`)
-      acquireLockStep({ key, timeout: 30, ttl: REVERSAL_LOCK_TTL })
+      const ownerId = transform({ input }, ({ input }) => input.lock_owner_id)
+      acquireLockStep({ key, timeout: 30, ttl: REVERSAL_LOCK_TTL, ownerId })
 
       const entries = reverseAffiliateCommissionEntriesStep(
         transform({ orderId, input }, ({ orderId, input }) => ({ order_id: orderId, reason: input.reason }))
       ).config(REVERSAL_LOCKED_RETRY)
 
-      releaseLockStep({ key })
+      releaseLockStep({ key, ownerId })
       return entries
     })
 
