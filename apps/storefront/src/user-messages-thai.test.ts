@@ -8,12 +8,14 @@ import { describe, expect, it } from "vitest"
 // (`throw new Error(…)`, `new Error(…)`, `new NextResponse(…)`/`new Response(…)`, ค่าของ property `error`) รวมทุกกิ่งของ `?:`, `||`, `??`,
 // argument ของ function ที่เรียก (เช่น fallback ของ `friendlyErrorMessage(error, "…")`) และค่าของ `const` ที่อ้างถึงในไฟล์เดียวกัน
 // ไม่ assert จำนวนข้อความ — ข้อความใหม่ถูกตรวจอัตโนมัติ; error ของ Medusa API (`errorMessage(error)`) แสดงตามที่ได้รับ ไม่นับ
-// ไฟล์ของ task ที่แปลแล้ว (ตาราง "เจ้าของ path" ของ AC-49): customer.ts (CORE-4c1), orders.ts + cart/add (CORE-4c2), cart.ts (CORE-4d)
+// ไฟล์ของ task ที่แปลแล้ว (ตาราง "เจ้าของ path" ของ AC-49): customer.ts (CORE-4c1), orders.ts + cart/add (CORE-4c2), cart.ts (CORE-4d), returns.ts (CORE-20)
 const FILES = [
   "lib/data/customer.ts",
   "lib/data/orders.ts",
   "app/[countryCode]/(main)/cart/add/route.ts",
   "lib/data/cart.ts",
+  // CORE-20
+  "lib/data/returns.ts",
 ]
 // CORE-4d: ข้อความที่ component ของ checkout ตั้งเอง ESLint rule ไม่ครอบ (`setError("…")`, prop `error="…"` ของ ErrorMessage,
 // `metadata` ของหน้า, `title` ของวิธีชำระเงินใน lib/constants.tsx) — ตรวจด้วยตัวอ่านเดียวกัน
