@@ -1,0 +1,37 @@
+# AF-12a — admin UI Programs: สร้าง/แก้/ลบ draft (spec 05 กฎ 37a, AC-42)
+# รันในเครื่อง 2026-10-27 (Node 22, backend medusa start :9226 จาก build, DB medusa_af12a, Redis db 11)
+# red: unit ล้มเพราะยังไม่มี src/admin/lib/affiliate-program-form.ts (Cannot find module)
+# mutation check: เอา createSingleFlight ออกจาก submit แล้ว build ใหม่ → e2e ล้มที่ขั้น "dblclick Save → POST 1 ครั้ง" (เกิด 2 แถว); ใส่คืนแล้วผ่าน
+
+## unit (jest): src/admin/lib/__tests__/affiliate-*.unit.spec.ts
+  toProgramBody
+    ✓ builds a body that the admin create validator accepts, with defaults 7/14 and empty optionals as null
+    ✓ rejects ends_at not after starts_at before sending
+    ✓ rejects missing name, dates and out-of-range numbers
+    ✓ sends selected collections and categories when not all products
+    ✓ keeps existing variant_ids on edit, including when switching to all products (Q16)
+  programToForm / isoToIct
+    ✓ shows stored values in Thai time
+  allowedProgramStatuses (กฎ 20)
+    ✓ offers only forward transitions from the current status
+  canDeleteProgram
+    ✓ is true only for draft programs
+  formatDate
+    ✓ formats in Asia/Bangkok with or without time
+    ✓ returns a dash for empty values
+  formatAmount
+    ✓ formats with Intl currency style
+  canCancelPayout
+    ✓ is true only for draft payouts
+Test Suites: 3 passed, 3 total
+Tests:       12 passed, 12 total
+
+## pnpm --filter backend test:unit (ชุดเต็ม)
+Test Suites: 63 passed, 63 total
+Tests:       620 passed, 620 total
+
+## e2e admin (Playwright chromium): apps/storefront/e2e/affiliate-admin-programs.spec.ts
+  ✓  1 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (6.1s)
+  1 passed (6.9s)
+
+## pnpm lint && pnpm typecheck: ผ่าน (0 error)
