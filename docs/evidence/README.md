@@ -37,13 +37,20 @@ docs/evidence/
 - เรียก `await evidence("01-ชื่อ-kebab")` ณ จุดสำคัญ → แนบใน report เสมอ และเขียน PNG ลง
   `docs/evidence/...` เฉพาะเมื่อรันด้วย `E2E_SAVE_EVIDENCE=1` — ตรวจงบ (≤ 5 PNG, ≤ 300KB) กับชุดไฟล์หลังเขียน
   **ก่อน**เขียนจริง ถ้าเกินงบจะ throw และไม่เขียนไฟล์ใดเลย; เขียนทับชื่อเดิมไม่นับเป็นรูปใหม่
+- CORE-5c (spec 01 กฎข้อ 67): `evidence()` เขียนได้เฉพาะ `docs/evidence/<feature>/<TASK-ID>/` ของ `evidenceTarget` ใน spec นั้น;
+  spec ที่ไม่ตั้ง `evidenceTarget` ไม่เขียนไฟล์ (แนบใน report อย่างเดียว ไม่ throw); screenshot ของ `step()` แนบใน report เท่านั้น
+  ไม่เคยลง `docs/evidence/` จึงไม่กินงบ 5 รูป
 - ทุก test เก็บ trace + screenshot ตอนจบ (`playwright.config.ts`) viewport 1280×720
 
 ## คำสั่ง
 ```bash
 pnpm --filter storefront test:e2e:unit                  # กฎ evidence + ตรวจ convention/งบทุกโฟลเดอร์ (ไม่ต้องมี server, CI รันทุก PR)
 pnpm --filter storefront test:e2e                       # ทั้งหมด (ต้องมี storefront :8000 + backend :9000)
-E2E_SAVE_EVIDENCE=1 pnpm --filter storefront test:e2e   # บันทึก screenshot สำคัญลง docs/evidence/
+# บันทึก screenshot สำคัญลง docs/evidence/ — ระบุเฉพาะ spec ของ task ที่กำลังทำ (CORE-5c)
+E2E_SAVE_EVIDENCE=1 pnpm --filter storefront test:e2e e2e/core-22-account-fixes.spec.ts
 ```
 เปลี่ยน URL ได้ด้วย `E2E_BASE_URL` (storefront) และ `E2E_BACKEND_URL`
 (ค่า default คือ `NEXT_PUBLIC_MEDUSA_BACKEND_URL` หรือ `http://localhost:9000`)
+
+ห้ามรัน `E2E_SAVE_EVIDENCE=1` กับ e2e ทั้งชุด: แต่ละ spec จะเขียนโฟลเดอร์ของ task ตัวเอง จึงเขียนทับ PNG ที่ commit แล้วของ task อื่น
+(ชื่อไฟล์ตรงกับที่ spec เรียก `evidence()`) และ throw ในโฟลเดอร์ที่ QA ใช้งบครบ 5 รูปแล้ว (สาเหตุที่ qa #131 พบ)

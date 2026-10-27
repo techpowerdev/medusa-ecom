@@ -279,10 +279,20 @@ medusaIntegrationTestRunner({
         })
         await allocate(orderId)
 
+        const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+        const logError = jest.spyOn(logger, "error")
+
         const res = await resend(orderId)
 
         expect(res.status).toBe(500)
         expect(res.data.message).toContain("smtp down")
+        // EV-13 (AC-32): ข้อความถึง admin สั้น ไม่มี id `noti_…` — id อยู่ใน log
+        expect(res.data.message).not.toMatch(/noti_[A-Za-z0-9]+/)
+        expect(res.data.message).toMatch(/try again.*log/i)
+        expect(logError.mock.calls.map(([line]) => String(line)).join("\n")).toMatch(
+          new RegExp(`${orderId}.*noti_[A-Za-z0-9]+`)
+        )
+        logError.mockRestore()
         expect((await service.listEvoucherCodes({ order_id: orderId }))[0].status).toBe("allocated")
 
         // lock ต่อ order ถูกปล่อยเมื่อล้ม → ส่งซ้ำได้ทันทีเมื่อ provider กลับมา
@@ -305,6 +315,75 @@ medusaIntegrationTestRunner({
         const conflict = results.find((r) => r.status === 409)
         expect(conflict.data.code).toBe("EVOUCHER_RESEND_IN_PROGRESS")
         expect(await deliveredEmails(orderId)).toHaveLength(2)
+      })
+    })
+
+    // EV-5c (กฎข้อ 21): allocation กับ resend ของ order เดียวกันถือ lock `evoucher-order:<order_id>` ร่วมกัน
+    describe("AC-33 lock ร่วมระหว่าง allocation กับ resend", () => {
+      it("answers 409 while allocation holds the order lock and allocation still sends exactly one email", async () => {
+        const variantId = await createVoucher("L-0001\n")
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        const locking = container.resolve(Modules.LOCKING)
+        const acquire = jest.spyOn(locking, "acquire")
+        // step ส่งอีเมลของ allocation (ใต้ lock) รอ signal ของ test — เฉพาะการส่งครั้งแรก (resend ที่หลุด lock ไม่ค้าง)
+        let entered!: () => void
+        const reached = new Promise<void>((resolve) => (entered = resolve))
+        let proceed!: () => void
+        const signal = new Promise<void>((resolve) => (proceed = resolve))
+        let sends = 0
+        mockDeliveredSend(async () => {
+          if (++sends === 1) {
+            entered()
+            await signal
+          }
+        })
+
+        const allocation = allocate(orderId)
+        await reached
+        const res = await resend(orderId)
+        proceed()
+        await allocation
+
+        expect(res.status).toBe(409)
+        expect(res.data.code).toBe("EVOUCHER_RESEND_IN_PROGRESS")
+        expect(await deliveredEmails(orderId)).toHaveLength(1)
+        // allocation (acquireLockStep) และ resend ขอ lock key เดียวกัน
+        const keys = acquire.mock.calls.map(([key]) => key)
+        expect(keys.filter((key) => key === `evoucher-order:${orderId}`)).toHaveLength(2)
+      })
+
+      it("answers 5xx (not 409) when the locking provider fails for another reason", async () => {
+        const variantId = await createVoucher("E-0001\n")
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        await allocate(orderId)
+        jest.spyOn(container.resolve(Modules.LOCKING), "acquire").mockRejectedValue(new Error("redis down"))
+
+        const res = await resend(orderId)
+
+        expect(res.status).toBeGreaterThanOrEqual(500)
+        expect(res.data.code).not.toBe("EVOUCHER_RESEND_IN_PROGRESS")
+        expect(await deliveredEmails(orderId)).toHaveLength(1)
+      })
+
+      it("answers 200 and logs the order id when the email is sent but the status update fails", async () => {
+        const variantId = await createVoucher("P-0001\n")
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        const failing = mockDeliveredSend(async () => {
+          throw new Error("smtp down")
+        })
+        await allocate(orderId)
+        failing.mockRestore()
+        jest.spyOn(service, "updateEvoucherCodes").mockRejectedValue(new Error("db down"))
+        const logError = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "error")
+
+        const res = await resend(orderId)
+
+        expect(res.status).toBe(200)
+        const emails = await deliveredEmails(orderId)
+        expect(emails.map((e) => e.status)).toEqual(["failure", "success"])
+        expect(logError.mock.calls.some(([message]) => String(message).includes(orderId))).toBe(true)
+        // code ที่ยัง allocated จะถูกเปลี่ยนใน resend ครั้งถัดไป
+        expect((await service.listEvoucherCodes({ order_id: orderId }))[0].status).toBe("allocated")
       })
     })
   },

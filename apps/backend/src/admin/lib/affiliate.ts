@@ -89,3 +89,11 @@ export const updateProgram = (id: string, body: ProgramBody) =>
 
 export const deleteProgram = (id: string) =>
   sdk.client.fetch(`/admin/affiliate/programs/${id}`, { method: "DELETE" })
+
+// AF-12b (กฎ 37b): อนุมัติ/ระงับ affiliate และแก้ข้อมูลรับเงินผ่าน POST /admin/affiliate/affiliates/:id (AF-5)
+export type AdminAffiliate = Affiliate & { payout_info: Record<string, unknown> | null }
+
+export const updateAffiliate = (
+  id: string,
+  body: { status?: Affiliate["status"]; payout_info?: Record<string, string> | null },
+) => sdk.client.fetch<{ affiliate: AdminAffiliate }>(`/admin/affiliate/affiliates/${id}`, { method: "POST", body })

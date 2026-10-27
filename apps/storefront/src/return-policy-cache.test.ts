@@ -26,7 +26,6 @@ describe("ไม่ force-cache ข้อมูลที่ return ขึ้น�
   it.each([
     "lib/data/store-policies.ts",
     "app/[countryCode]/(main)/page.tsx",
-    "app/[countryCode]/(main)/products/[handle]/page.tsx",
   ])("%s อ่าน policy ของ region ผ่าน listRegionsUncached", (file) => {
     expect(read(file)).toContain("listRegionsUncached()")
   })
@@ -42,5 +41,22 @@ describe("ไม่ force-cache ข้อมูลที่ return ขึ้น�
     expect(read("app/[countryCode]/(main)/page.tsx")).toMatch(
       /buildRegionsReturnPolicies\(\s*await listRegionsUncached\(\)\s*\)/
     )
+  })
+
+  // CORE-20d (กฎข้อ 66d, AC-102 grep): PDP อ่าน region เดียวด้วย GET /store/regions/:id แบบไม่ cache — ไม่ list ทุก region แบบไม่ cache
+  it("retrieveRegionUncached ใช้ GET /store/regions/:id และไม่ force-cache", () => {
+    const source = exported(read("lib/data/regions.ts"), "retrieveRegionUncached")
+    expect(source).toContain("/store/regions/${id}")
+    expect(source).not.toContain("force-cache")
+  })
+
+  it("PDP อ่าน policy ของ region ผ่าน retrieveRegionUncached ไม่เรียก listRegionsUncached", () => {
+    const source = read("app/[countryCode]/(main)/products/[handle]/page.tsx")
+    expect(source).toContain("retrieveRegionUncached(region.id)")
+    expect(source).not.toContain("listRegionsUncached")
+  })
+
+  it("ปุ่ม/หน้าขอคืนอ่าน region ของ order ผ่าน retrieveRegionUncached", () => {
+    expect(read("lib/data/returns.ts")).toContain("retrieveRegionUncached(regionId)")
   })
 })
