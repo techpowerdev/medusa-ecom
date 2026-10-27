@@ -25,8 +25,8 @@ async function call(
   return res.json()
 }
 
-/** voucher variant (ไม่มี shipping profile) + pool + import 2 code ผ่าน admin API */
-async function createVoucher(request: APIRequestContext, admin: Headers): Promise<string> {
+/** voucher variant (ไม่มี shipping profile) + pool + import `count` code ผ่าน admin API */
+async function createVoucher(request: APIRequestContext, admin: Headers, count = 2): Promise<string> {
   const tag = `ev5b-${Date.now()}`
   const { sales_channels } = await call(request, admin, "/admin/sales-channels?name=Default%20Sales%20Channel")
   const { stock_locations } = await call(request, admin, "/admin/stock-locations?limit=1")
@@ -64,7 +64,11 @@ async function createVoucher(request: APIRequestContext, admin: Headers): Promis
   const imported = await request.post(`${BACKEND_URL}/admin/evoucher/pools/${pool.id}/import`, {
     headers: admin,
     multipart: {
-      file: { name: "codes.csv", mimeType: "text/csv", buffer: Buffer.from(`${tag}-A,1111\n${tag}-B,2222\n`) },
+      file: {
+        name: "codes.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(Array.from({ length: count }, (_, i) => `${tag}-${i},${1111 * (i + 1)}\n`).join("")),
+      },
     },
   })
   expect(imported.status(), "import codes").toBe(200)
@@ -77,14 +81,15 @@ async function placeCapturedOrder(
   admin: Headers,
   pk: string,
   customer: Customer,
-  variantId: string
+  variantId: string,
+  quantity = 2
 ): Promise<string> {
   const store = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
   const { regions } = await call(request, store, "/store/regions")
   const { cart } = await call(request, store, "/store/carts", {
     region_id: regions[0].id,
     email: customer.email,
-    items: [{ variant_id: variantId, quantity: 2 }],
+    items: [{ variant_id: variantId, quantity }],
   })
   const { payment_collection } = await call(request, store, "/store/payment-collections", { cart_id: cart.id })
   await call(request, store, `/store/payment-collections/${payment_collection.id}/payment-sessions`, {
@@ -152,5 +157,73 @@ test("AC-19: กด Resend email บน widget E-vouchers ของ order → �
     await evidence("01-resend-success")
     expect(posts).toHaveLength(1)
     await expect.poll(() => countDeliveredEmails(request, admin, customer.email)).toBe(2)
+  })
+})
+
+const waitDelivered = (request: APIRequestContext, admin: Headers, orderId: string, count: number) =>
+  expect
+    .poll(
+      async () =>
+        (await call(request, admin, `/admin/evoucher/orders/${orderId}/codes`)).codes.map(
+          (c: { status: string }) => c.status
+        ),
+      { timeout: 30_000 }
+    )
+    .toEqual(Array(count).fill("delivered"))
+
+// EV-13 (spec 02 AC-32): widget ไม่ล้นที่ 1280×800 และ toast error ของ resend ไม่แสดง id `noti_…`
+test.describe("EV-13", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "evoucher", taskId: "EV-13" } })
+
+  test("AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const pk = await publishableKey(request, admin)
+    const customer = await createCustomer(request, pk)
+    const variantId = await createVoucher(request, admin, 3)
+    const orderId = await placeCapturedOrder(request, admin, pk, customer, variantId, 3)
+    await waitDelivered(request, admin, orderId, 3)
+
+    await step("เปิดหน้า order ที่ 1280×800 → widget และหน้าไม่ล้นแนวนอน", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/orders/${orderId}`)
+      const widget = page.getByTestId("evoucher-order-widget")
+      await expect(widget.locator("tbody tr")).toHaveCount(3, { timeout: 30_000 })
+      const widgetSize = await widget.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }))
+      expect(widgetSize.scroll, JSON.stringify(widgetSize)).toBeLessThanOrEqual(widgetSize.client)
+      const pageSize = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        client: document.documentElement.clientWidth,
+      }))
+      expect(pageSize.scroll, JSON.stringify(pageSize)).toBeLessThanOrEqual(pageSize.client)
+    })
+
+    await step("resend ล้ม (error ของ Notification module ที่มี noti_ id) → toast สั้น ไม่มี id", async () => {
+      // e2e ทำให้ provider ของ server จริง throw ไม่ได้ จึงตอบ 500 แทนด้วยข้อความรูปแบบเดิมของ Notification module;
+      // ฝั่ง backend (ตัด id ออก + log) ทดสอบใน integration-tests/http/evoucher-resend.spec.ts
+      await page.route(`**/admin/evoucher/orders/${orderId}/resend`, (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({
+            type: "unexpected_state",
+            message: "Could not send the e-voucher email: Failed to send notification with id noti_01E2EFAKE0013: smtp down",
+          }),
+        })
+      )
+      await page.getByTestId("evoucher-resend").click()
+      const toast = page.locator("[data-sonner-toast]").filter({ hasText: "smtp down" })
+      await expect(toast).toBeVisible()
+      await expect(toast).not.toContainText(/noti_[A-Za-z0-9]+/)
+      await expect(toast).toContainText(/try again/i)
+      // รอ toast เลื่อนเข้าจอจนสุดก่อนเก็บ screenshot
+      await expect.poll(async () => (await toast.boundingBox())?.y ?? -1).toBeGreaterThanOrEqual(0)
+      await evidence("01-widget-and-error-toast")
+    })
   })
 })
