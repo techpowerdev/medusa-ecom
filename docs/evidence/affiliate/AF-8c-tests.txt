@@ -69,3 +69,31 @@
 
  Test Files  45 passed (45)
       Tests  483 passed (483)
+
+## แก้ตาม review/QA #182 (2026-10-28)
+- red: เพิ่ม assert console.error ใน af-8c-portal.test.ts → 10 failed | 7 passed (layout 2 + หน้า 4x2)
+- green:
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=true → ไม่มี affiliate-estimate แต่มี affiliate-rate-varies 67ms
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=false variant 100/200 อัตรา 10% → affiliate-estimate ฿10 ขึ้นต้น ตั้งแต่ 1ms
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=false ราคาเดียว → ไม่มี ตั้งแต่ 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > data function: network → reject (ไม่กลืนเป็น null แบบ 401) 4ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > data function: 5xx → reject (ไม่กลืนเป็น null แบบ 401) 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 401 → null (redirect ไป login ตามเดิม) 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > layout: /affiliate/me ล้มแบบ network → render affiliate-portal-error แทนเนื้อหา 24ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > layout: /affiliate/me ล้มแบบ 5xx → render affiliate-portal-error แทนเนื้อหา 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Products: API ของหน้าล้ม → render affiliate-portal-error 3ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Programs: API ของหน้าล้ม → render affiliate-portal-error 3ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Earnings: API ของหน้าล้ม → render affiliate-portal-error 3ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Payouts: API ของหน้าล้ม → render affiliate-portal-error 2ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Products: API ของหน้าล้ม → render affiliate-portal-error 1ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Programs: API ของหน้าล้ม → render affiliate-portal-error 1ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Earnings: API ของหน้าล้ม → render affiliate-portal-error 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Payouts: API ของหน้าล้ม → render affiliate-portal-error 0ms
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 403 ตามสถานะยังแสดง affiliate-status-notice ไม่ใช่ affiliate-portal-error 0ms
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+- vitest ทั้ง storefront:
+ Test Files  45 passed (45)
+      Tests  483 passed (483)
+- pnpm lint: 0 errors; pnpm typecheck: ผ่าน
+- e2e affiliate-portal.spec.ts step AC-35 Y แก้ตามกฎ 35(b): ไม่ได้รันในเครื่อง (เครื่องโหลดสูง) ให้ CI storefront-e2e ตัดสิน

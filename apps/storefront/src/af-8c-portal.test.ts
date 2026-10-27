@@ -69,8 +69,12 @@ describe("การ์ดสินค้า (กฎ 35)", () => {
 })
 
 describe("backend ล่ม (กฎ 36b)", () => {
+  // review #182: ก่อน render affiliate-portal-error ต้อง log error ฝั่ง server
+  let consoleError: ReturnType<typeof vi.spyOn>
   beforeEach(() => {
     fetchMock.mockReset()
+    consoleError?.mockRestore()
+    consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
   })
 
   const params = Promise.resolve({ countryCode: "th" })
@@ -103,6 +107,7 @@ describe("backend ล่ม (กฎ 36b)", () => {
     const html = renderToStaticMarkup(await Layout({ children: createElement("main", { id: "page" }), params }))
     hasPortalError(html)
     expect(html).not.toContain('id="page"')
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("/affiliate/me"), error)
   })
 
   const ann = { id: "aff_1", email: "ann@x.th", name: "Ann", code: "ANN", status: "active", has_payout_info: true }
@@ -124,6 +129,7 @@ describe("backend ล่ม (กฎ 36b)", () => {
       })
       const { default: Page } = await import(/* @vite-ignore */ path)
       hasPortalError(renderToStaticMarkup(await Page({ params, searchParams: Promise.resolve({}) })))
+      expect(consoleError).toHaveBeenCalledWith(expect.stringContaining(api), error)
     })
   })
 
@@ -138,5 +144,6 @@ describe("backend ล่ม (กฎ 36b)", () => {
     const html = renderToStaticMarkup(await Page({ params, searchParams: Promise.resolve({}) }))
     expect(html).toContain("affiliate-status-notice")
     expect(html).not.toContain("affiliate-portal-error")
+    expect(consoleError).not.toHaveBeenCalled()
   })
 })

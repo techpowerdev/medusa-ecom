@@ -26,7 +26,10 @@ export default async function AffiliateProgramsPage({ params, searchParams }: Pr
   }
   const page = portalPage((await searchParams).page)
   // AF-8c กฎ 36b: backend ไม่ตอบ/5xx → affiliate-portal-error (null = 403 ตามสถานะ → status notice)
-  const result = await listAffiliatePrograms(page).catch(() => undefined)
+  const result = await listAffiliatePrograms(page).catch((error: unknown) => {
+    console.error("[affiliate-portal] /affiliate/me/programs ล้ม", error)
+    return undefined
+  })
   if (result === undefined) {
     return <PortalError />
   }

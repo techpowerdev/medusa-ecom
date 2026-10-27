@@ -17,7 +17,8 @@ export default async function AffiliatePortalLayout({
   let affiliate: Awaited<ReturnType<typeof getAffiliate>>
   try {
     affiliate = await getAffiliate()
-  } catch {
+  } catch (error) {
+    console.error("[affiliate-portal] /affiliate/me ล้ม", error)
     return <PortalError />
   }
   if (!affiliate) {

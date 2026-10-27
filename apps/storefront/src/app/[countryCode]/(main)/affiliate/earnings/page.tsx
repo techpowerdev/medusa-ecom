@@ -24,7 +24,10 @@ export default async function AffiliateEarningsPage({ params }: { params: Promis
     redirect(`/${countryCode}/affiliate/login`)
   }
   // AF-8c กฎ 36b: backend ไม่ตอบ/5xx → affiliate-portal-error (null = 403 ตามสถานะ → status notice)
-  const result = await getAffiliateEarnings().catch(() => undefined)
+  const result = await getAffiliateEarnings().catch((error: unknown) => {
+    console.error("[affiliate-portal] /affiliate/me/earnings ล้ม", error)
+    return undefined
+  })
   if (result === undefined) {
     return <PortalError />
   }
