@@ -2,7 +2,7 @@
 # node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 (docker compose); base origin/develop c389cf1
 # e2e ในเครื่องรันเฉพาะไฟล์ของ task นี้ (ชุดเต็มให้ CI รัน); backend medusa start :9202 DB medusa_gb6d Redis db 10, Stripe key ปลอม
 ### Red
-group-buy-membership.unit.spec.ts → Membership type: expect(block).not.toMatch(/total/) ล้ม (type ยังมี order.total)
+group-buy-membership.unit.spec.ts → Membership type: expect(block).not.toMatch(/\btotal\b/) ล้ม (type ยังมี order.total)
 e2e group-buy-admin-members.spec.ts (admin build ก่อนแก้) →
   AC-41 fail ล้ม: toContainText("succeeded") ล้มภายใน 5 วินาที — แถวยังแสดง open (ไม่ invalidate ตอน error)
   AC-41 highlight/ปิด/ข้ามหน้า: tr:has([data-testid=gb-group-selected]) Expected 1 Received 0
