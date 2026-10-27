@@ -2,6 +2,7 @@
 import { Radio, RadioGroup } from "@headlessui/react"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
+import { friendlyErrorMessage } from "@lib/util/error-message"
 import { convertToLocale } from "@lib/util/money"
 import { CheckCircleSolid, Loader } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
@@ -140,7 +141,7 @@ const Shipping: React.FC<ShippingProps> = ({
       .catch((err) => {
         setShippingMethodId(currentId)
 
-        setError(err.message)
+        setError(friendlyErrorMessage(err, "เลือกวิธีจัดส่งไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       })
       .finally(() => {
         setIsLoading(false)
@@ -163,8 +164,9 @@ const Shipping: React.FC<ShippingProps> = ({
                 !isOpen && cart.shipping_methods?.length === 0,
             }
           )}
+          data-testid="delivery-heading"
         >
-          Delivery
+          การจัดส่ง
           {!isOpen && (cart.shipping_methods?.length ?? 0) > 0 && (
             <CheckCircleSolid />
           )}
@@ -179,7 +181,7 @@ const Shipping: React.FC<ShippingProps> = ({
                 className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
                 data-testid="edit-delivery-button"
               >
-                Edit
+                แก้ไข
               </button>
             </Text>
           )}
@@ -188,11 +190,14 @@ const Shipping: React.FC<ShippingProps> = ({
         <>
           <div className="grid">
             <div className="flex flex-col">
-              <span className="font-medium txt-medium text-ui-fg-base">
-                Shipping method
+              <span
+                className="font-medium txt-medium text-ui-fg-base"
+                data-testid="delivery-method-title"
+              >
+                วิธีจัดส่ง
               </span>
               <span className="mb-4 text-ui-fg-muted txt-medium">
-                How would you like you order delivered
+                เลือกวิธีรับสินค้าที่คุณต้องการ
               </span>
             </div>
             <div data-testid="delivery-options-container">
@@ -226,7 +231,7 @@ const Shipping: React.FC<ShippingProps> = ({
                           checked={showPickupOptions === PICKUP_OPTION_ON}
                         />
                         <span className="text-base-regular">
-                          Pick up your order
+                          รับสินค้าด้วยตนเอง
                         </span>
                       </div>
                       <span className="justify-self-end text-ui-fg-base">
@@ -303,10 +308,10 @@ const Shipping: React.FC<ShippingProps> = ({
             <div className="grid">
               <div className="flex flex-col">
                 <span className="font-medium txt-medium text-ui-fg-base">
-                  Store
+                  สาขา
                 </span>
                 <span className="mb-4 text-ui-fg-muted txt-medium">
-                  Choose a store near you
+                  เลือกสาขาที่ใกล้คุณ
                 </span>
               </div>
               <div data-testid="delivery-options-container">
@@ -380,7 +385,7 @@ const Shipping: React.FC<ShippingProps> = ({
               disabled={!cart.shipping_methods?.[0]}
               data-testid="submit-delivery-option-button"
             >
-              Continue to payment
+              ไปขั้นตอนการชำระเงิน
             </Button>
           </div>
         </>
@@ -390,7 +395,7 @@ const Shipping: React.FC<ShippingProps> = ({
             {cart && (cart.shipping_methods?.length ?? 0) > 0 && (
               <div className="flex flex-col w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                  Method
+                  วิธีจัดส่ง
                 </Text>
                 <Text className="txt-medium text-ui-fg-subtle">
                   {cart.shipping_methods!.at(-1)!.name}{" "}
