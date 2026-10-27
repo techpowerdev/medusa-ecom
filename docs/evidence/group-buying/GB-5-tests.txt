@@ -6,13 +6,14 @@
 - AC-37 ฿1,000.07 เมื่อถอดการปัดออก: Expected <= 2, Received 3 (raw_amount ของ collection มี 3 ตำแหน่ง)
 
 ## Green — integration:http group-buy-payment.spec.ts
-    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1208 ms)
-    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1000 ms)
-    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (865 ms)
-    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (1512 ms)
-Tests:       4 passed, 4 total
+    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1319 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1323 ms)
+    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (933 ms)
+    ✓ out of stock at convert: convertDraftOrderWorkflow fails → membership compensated back to awaiting_payment, order stays draft (1066 ms)
+    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (1565 ms)
+Tests:       5 passed, 5 total
 
-## Regression — integration:http ที่เกี่ยวข้อง
+## Regression — integration:http ที่เกี่ยวข้อง (รันก่อนเพิ่ม test สต็อกหมด; ไม่ได้แตะโค้ดที่เกี่ยวข้องหลังจากนั้น)
 group-buy-outcome.spec.ts:
 Tests:       10 passed, 10 total
 payment-session-draft-order.spec.ts:

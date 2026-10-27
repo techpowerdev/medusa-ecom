@@ -10,6 +10,7 @@ import { setGroupBuyCampaignStatusWorkflow } from "../../src/workflows/group-buy
 import { createGroupWorkflow } from "../../src/workflows/group-buy/create-group"
 import { GROUP_BUY_GROUP_SUCCEEDED } from "../../src/workflows/group-buy/join-group"
 import groupBuyDeadlineJob from "../../src/jobs/group-buy-deadline"
+import { confirmGroupBuyMembershipPaymentWorkflow } from "../../src/workflows/group-buy/membership-payment"
 import { GROUP_BUY_MODULE } from "../../src/modules/group_buy"
 import type GroupBuyModuleService from "../../src/modules/group_buy/service"
 
@@ -27,6 +28,7 @@ medusaIntegrationTestRunner({
     let productXId: string
     let variantX: string
     let variantOdd: string
+    let variantStocked: string
 
     beforeAll(async () => {
       const container = getContainer()
@@ -48,7 +50,7 @@ medusaIntegrationTestRunner({
               title: "GB-5 product X",
               handle: "gb5-product-x",
               status: ProductStatus.PUBLISHED,
-              options: [{ title: "Size", values: ["One", "Odd"] }],
+              options: [{ title: "Size", values: ["One", "Odd", "Stocked"] }],
               variants: [
                 {
                   title: "One",
@@ -62,6 +64,12 @@ medusaIntegrationTestRunner({
                   manage_inventory: false,
                   prices: [{ currency_code: "thb", amount: 1000.07 }],
                 },
+                {
+                  title: "Stocked",
+                  options: { Size: "Stocked" },
+                  manage_inventory: true,
+                  prices: [{ currency_code: "thb", amount: 1000 }],
+                },
               ],
               sales_channels: [{ id: (keys[0] as any).sales_channels[0].id }],
             },
@@ -71,6 +79,7 @@ medusaIntegrationTestRunner({
       productXId = result[0].id
       variantX = result[0].variants.find((v) => v.title === "One")!.id
       variantOdd = result[0].variants.find((v) => v.title === "Odd")!.id
+      variantStocked = result[0].variants.find((v) => v.title === "Stocked")!.id
     })
 
     const query = () => getContainer().resolve(ContainerRegistrationKeys.QUERY)
@@ -143,7 +152,10 @@ medusaIntegrationTestRunner({
     const membershipOf = async (id: string) => (await groupBuy().listGroupBuyMemberships({ id }))[0]
 
     // สมาชิกสร้าง session ผ่าน store route ของ Medusa (spec 04 กฎข้อ 22) แล้ว provider แจ้ง captured (เหมือน webhook)
-    async function pay(member: { headers: { headers: Record<string, string> }; order_id: string }) {
+    async function pay(
+      member: { headers: { headers: Record<string, string> }; order_id: string },
+      events = ["payment.captured", "order.placed"]
+    ) {
       const collection = (await orderOf(member.order_id)).payment_collections[0]
       const { data } = await api.post(
         `/store/payment-collections/${collection.id}/payment-sessions`,
@@ -152,9 +164,7 @@ medusaIntegrationTestRunner({
       )
       const session = data.payment_collection.payment_sessions[0]
       // order.placed มาจาก convertDraftOrderWorkflow ใน subscriber ของ payment.captured
-      const settled = Promise.all(
-        ["payment.captured", "order.placed"].map((e) => TestEventUtils.waitSubscribersExecution(e, eventBus()))
-      )
+      const settled = Promise.allSettled(events.map((e) => TestEventUtils.waitSubscribersExecution(e, eventBus())))
       await processPaymentWorkflow(getContainer()).run({
         input: { action: PaymentActions.SUCCESSFUL, data: { session_id: session.id, amount: session.amount } },
       })
@@ -215,6 +225,39 @@ medusaIntegrationTestRunner({
           .resolve(Modules.NOTIFICATION)
           .listNotifications({ template: "order-placed", resource_id: member.order_id })
       ).toHaveLength(1)
+    })
+
+    it("out of stock at convert: convertDraftOrderWorkflow fails → membership compensated back to awaiting_payment, order stays draft", async () => {
+      const container = getContainer()
+      const { data: variants } = await query().graph({
+        entity: "product_variant",
+        fields: ["inventory_items.inventory_item_id"],
+        filters: { id: variantStocked },
+      })
+      const { data: locations } = await query().graph({ entity: "stock_location", fields: ["id"] })
+      const inventoryItemId = (variants[0] as any).inventory_items[0].inventory_item_id
+      const inventory = container.resolve(Modules.INVENTORY)
+      await inventory.createInventoryLevels(
+        locations.map((l) => ({ inventory_item_id: inventoryItemId, location_id: l.id, stocked_quantity: 1 }))
+      )
+      const { joined } = await succeededGroup(1, {}, variantStocked)
+      const [member] = joined
+      // สต็อกหมดระหว่างรอชำระ (draft order ไม่จอง inventory — กฎข้อ 6)
+      await inventory.updateInventoryLevels(
+        locations.map((l) => ({ inventory_item_id: inventoryItemId, location_id: l.id, stocked_quantity: 0 }))
+      )
+
+      await pay(member, ["payment.captured"])
+      const { errors } = await confirmGroupBuyMembershipPaymentWorkflow(container).run({
+        input: { membership_id: member.membership_id },
+        throwOnError: false,
+      })
+
+      expect(errors[0]?.error?.message).toMatch(/Not enough stock/)
+      expect((await membershipOf(member.membership_id)).status).toEqual("awaiting_payment")
+      const order = await orderOf(member.order_id)
+      expect(order.is_draft_order).toBe(true)
+      expect(order.payment_collections[0].status).toEqual("completed")
     })
 
     it("AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched", async () => {
