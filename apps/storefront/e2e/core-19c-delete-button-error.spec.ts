@@ -175,3 +175,25 @@ for (const viewport of [
     await evidence(viewport.width === 1280 ? "02-cart-page-remove-error" : "03-cart-page-remove-error-375")
   })
 }
+
+// CORE-19d (spec 01 กฎข้อ 68, AC-104; qa #160 D-1): JWT หมดอายุ/ถูกลบระหว่างอยู่หน้า cart → กดลบต้องบอกให้เข้าสู่ระบบใหม่
+// (middleware ล้าง `_medusa_cart_id` เมื่อไม่มี `_medusa_jwt` ก่อนถึง action) ไม่ใช่ข้อความ fallback — ไม่ mock request ใดๆ
+test("AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่", async ({
+  page,
+  context,
+  request,
+  baseURL,
+}) => {
+  const { headers, cartId } = await customerWithTwoLines(request, context, baseURL!)
+  await page.goto(`/${CC}/cart`)
+  await expect(page.getByTestId("product-row")).toHaveCount(2)
+  const first = page.getByTestId("product-row").first()
+
+  await context.clearCookies({ name: "_medusa_jwt" })
+  await first.getByTestId("product-delete-button").click()
+  const error = first.getByTestId("cart-item-remove-error")
+  await expect(error).toBeVisible({ timeout: 5000 })
+  await expect(error).toContainText("เข้าสู่ระบบใหม่")
+  await expect(first.getByTestId("cart-item-remove-spinner")).toHaveCount(0)
+  expect(await backendLineCount(request, cartId, headers)).toBe(2)
+})
