@@ -27,7 +27,15 @@ Tests:       15 passed, 15 total
 ### unit ทั้งหมด
 Test Suites: 52 passed, 52 total
 Tests:       541 passed, 541 total
-### pnpm lint && pnpm typecheck && pnpm --filter backend build
-lint: exit 0 (backend: No lint issues found; storefront: 0 errors)
-typecheck: exit 0
+### รอบแก้ review (REQUEST CHANGES #122) — worktree สะอาด ไม่มี apps/backend/.medusa/
+Red: pnpm typecheck ล้มเหมือน CI run 40449494939
+src/api/affiliate/products/route.ts(43,53): error TS2344: Type 'Omit<any, "scope">' does not satisfy the constraint 'RankedProgram'.
+src/api/affiliate/products/route.ts(57,47): error TS2345: Argument of type 'ProgramCoverage<Omit<any, "scope">>[]' is not assignable to parameter of type 'ProgramCoverage<RankedProgram>[]'.
+src/api/affiliate/products/route.ts(60,39): error TS2344: Type 'Omit<any, "scope">' does not satisfy the constraint 'RankedProgram'.
+(รอบแรกรายงานว่าผ่านผิด — เพราะรันหลัง build ซึ่ง generate .medusa/ แล้ว)
+Green (ไม่มี .medusa/):
+typecheck: apps/backend Done, apps/storefront Done (exit 0)
+lint: exit 0
+unit: Test Suites: 52 passed, Tests: 541 passed; utils/__tests__ ของ affiliate 80 passed (attribution ใช้ byCommissionPreference ร่วม)
+affiliate-portal.spec.ts: Tests: 15 passed, 15 total
 build: Backend build completed successfully; Frontend build completed successfully

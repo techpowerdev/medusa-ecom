@@ -5,6 +5,7 @@ import {
   ProductCard,
   ProgramCoverage,
   productFiltersForScope,
+  RankedProgram,
   selectProductProgram,
   shareUrl,
   variantsInScope,
@@ -30,7 +31,7 @@ export async function GET(
   const now = new Date()
   const affiliate = await affiliateOf(req)
 
-  const { data: programs } = await query.graph({
+  const { data } = await query.graph({
     entity: "affiliate_program",
     fields: [...PORTAL_PROGRAM_FIELDS, "scope"],
     filters:
@@ -38,17 +39,19 @@ export async function GET(
         ? { status: "published", starts_at: { $lte: now }, ends_at: { $gt: now } }
         : { status: "published", starts_at: { $gt: now } },
   })
+  // ระบุ type เอง ไม่พึ่ง type ที่ generate ใน .medusa/ (CI ไม่มี)
+  type Program = RankedProgram & Record<string, unknown>
+  const programs = data as (Program & { scope: ProgramScope })[]
 
-  type Program = Omit<(typeof programs)[number], "scope">
   const coverages = new Map<string, ProgramCoverage<Program>[]>()
   for (const { scope, ...program } of programs) {
-    const filters = productFiltersForScope(scope as ProgramScope)
+    const filters = productFiltersForScope(scope)
     if (!filters) {
       continue
     }
-    const { data } = await query.graph({ entity: "product", fields: SCOPE_FIELDS, filters })
-    for (const product of data) {
-      const variant_ids = variantsInScope(scope as ProgramScope, product).map((v) => v.id)
+    const { data: scoped } = await query.graph({ entity: "product", fields: SCOPE_FIELDS, filters })
+    for (const product of scoped) {
+      const variant_ids = variantsInScope(scope, product).map((v) => v.id)
       coverages.set(product.id, [...(coverages.get(product.id) ?? []), { program, variant_ids }])
     }
   }

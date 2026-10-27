@@ -1,6 +1,5 @@
-import { BigNumberInput } from "@medusajs/framework/types"
 import { MathBN } from "@medusajs/framework/utils"
-import { isLineItemInScope, ProgramScope } from "./commission"
+import { byCommissionPreference, isLineItemInScope, ProgramScope, RankedProgram as CommissionRanked } from "./commission"
 
 type ScopedProduct<V> = {
   collection_id?: string | null
@@ -50,7 +49,7 @@ export const shareUrl = (storefrontUrl: string | undefined, code: string, handle
   `${(storefrontUrl ?? "").replace(/\/+$/, "")}/r/${code}?to=/products/${handle}`
 
 export type PortalTab = "active" | "upcoming"
-type RankedProgram = { id: string; commission_value: BigNumberInput; starts_at: Date | string }
+export type RankedProgram = CommissionRanked & { id: string }
 export type ProgramCoverage<P extends RankedProgram> = { program: P; variant_ids: string[] }
 export type ProductCard<P extends RankedProgram> = { program: P; variant_ids: string[]; rate_varies: boolean }
 
@@ -59,8 +58,8 @@ const startsAt = (p: RankedProgram) => new Date(p.starts_at).getTime()
 const byRate = (a: RankedProgram, b: RankedProgram) => rate(b).comparedTo(rate(a))
 const byId = (a: RankedProgram, b: RankedProgram) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 const PREFERENCE: Record<PortalTab, (a: RankedProgram, b: RankedProgram) => number> = {
-  // กฎ 29a = Q7: อัตราสูงสุดก่อน เสมอกันเลือก starts_at ล่าสุด
-  active: (a, b) => byRate(a, b) || startsAt(b) - startsAt(a) || byId(a, b),
+  // กฎ 29a = Q7 ตัวเดียวกับการคิดเงิน
+  active: (a, b) => byCommissionPreference(a, b) || byId(a, b),
   // กฎ 29b: starts_at เร็วสุดก่อน เสมอกันเลือกอัตราสูงสุด
   upcoming: (a, b) => startsAt(a) - startsAt(b) || byRate(a, b) || byId(a, b),
 }
