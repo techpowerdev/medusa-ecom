@@ -23,6 +23,7 @@ import {
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows"
 import { DEFAULT_REGION_STORE_POLICIES } from "../lib/region-store-policies"
+import { seedPaymentProviders } from "../lib/prod-guards"
 
 const REGION_NAME = "Thailand"
 const CURRENCY = "thb"
@@ -157,7 +158,8 @@ async function ensureRegion(container: Container): Promise<string> {
           automatic_taxes: true,
           is_tax_inclusive: true,
           // spec 06: Stripe บัตร + PromptPay (provider id `stripe` ใน medusa-config.ts)
-          payment_providers: ["pp_system_default", "pp_stripe_stripe", "pp_stripe-promptpay_stripe"],
+          // OPS-7 (ADR-010 D1): pp_system_default เฉพาะนอก production หรือ ALLOW_TEST_PROVIDERS=true
+          payment_providers: seedPaymentProviders(process.env),
           metadata: { ...DEFAULT_REGION_STORE_POLICIES },
         },
       ],

@@ -86,7 +86,7 @@ async function getCountryCode(
 }
 
 /**
- * Middleware to handle region selection and onboarding status.
+ * Middleware: เลือก region จาก URL และล้าง cookie cart ที่ค้าง (CORE-14) — onboarding ของ starter ถูกลบแล้ว (CORE-18)
  */
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.includes(".")) {
