@@ -43,3 +43,22 @@ export const cardPrice = (variants: VariantPrice[]): { amount: number; currency_
 /** จำนวนวันจนถึง `startsAt` ปัดขึ้น (นับถอยหลังของแท็บ upcoming); ถึงแล้ว = 0 */
 export const daysUntil = (startsAt: string | Date, now: Date = new Date()): number =>
   Math.max(0, Math.ceil((new Date(startsAt).getTime() - now.getTime()) / (24 * 60 * 60 * 1000)))
+
+export const EARNING_STATUSES = ["pending", "approved", "paid", "reversed"] as const
+export type EarningStatus = (typeof EARNING_STATUSES)[number]
+type EarningsTotal = { currency: string; status: string; amount: number }
+type Money = { amount: number; currency_code: string }
+
+/**
+ * AF-8b (กฎ 33): จัดแถวของ `GET /affiliate/me/earnings` (GROUP BY currency, status) ตามสถานะ — ใช้ยอดของแถวตรงๆ
+ * ไม่หักลบหรือรวมยอดที่ storefront (reversed เป็นแถวติดลบแยก); สถานะที่ API ไม่คืนแถว → ฿0
+ */
+export const earningsByStatus = (totals: EarningsTotal[]): Record<EarningStatus, Money[]> =>
+  Object.fromEntries(
+    EARNING_STATUSES.map((status) => {
+      const rows = totals
+        .filter((t) => t.status === status)
+        .map((t) => ({ amount: t.amount, currency_code: t.currency }))
+      return [status, rows.length ? rows : [{ amount: 0, currency_code: "thb" }]]
+    })
+  ) as Record<EarningStatus, Money[]>

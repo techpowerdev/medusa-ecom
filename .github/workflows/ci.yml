@@ -165,6 +165,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: tools/ops/smoke-worker-mode.sh
+      # OPS-12 (spec 07 AC-19): Redis ของ event bus ถูก pause 30 วินาที → worker ต้องประมวลผล event ต่อได้ (OPS-8 AC-5)
+      # ใช้ image เดียวกับขั้นก่อน (build cache) แต่ compose project/port แยก (ops8test, 9108)
+      - run: tools/ops/smoke-redis-outage.sh
 
   storefront-e2e:
     runs-on: ubuntu-latest
