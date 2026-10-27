@@ -133,6 +133,26 @@ describe("renderEmailTemplate", () => {
       expect(email!.html).toContain("Big C &lt;100&gt;")
       expect(email!.html).toContain("<b>5</b>")
     })
+
+    // EV-12 (กฎข้อ 12b d): แสดงจำนวนที่เว้น + วันหมดอายุเร็วสุด และเตือนเฉพาะ pool ที่ code ไม่พอสำหรับ order ที่จอง
+    it("renders kept codes with their earliest expiry and a shortfall warning only for short pools", () => {
+      const email = renderEmailTemplate(EmailTemplates.EVOUCHER_EXPIRY_SUMMARY, {
+        date: "2026-10-27",
+        total_voided: 1,
+        pools: [
+          { id: "evpool_p", name: "Pool P", voided: 1, kept: 2, kept_earliest_expires_at: "2026-10-31T01:00:00.000Z", shortfall: 0 },
+          { id: "evpool_s", name: "Pool S", voided: 0, kept: 1, kept_earliest_expires_at: "2026-10-30T01:00:00.000Z", shortfall: 2 },
+          { id: "evpool_q", name: "Pool Q", voided: 2, kept: 0, kept_earliest_expires_at: null, shortfall: 0 },
+        ],
+      })!
+
+      const row = (name: string) => email.html.slice(email.html.indexOf(name)).split("</tr>")[0]
+      expect(row("Pool P")).toContain("2026-10-31")
+      expect(row("Pool P")).not.toContain("code ไม่พอสำหรับ order ที่จอง")
+      expect(row("Pool S")).toContain("code ไม่พอสำหรับ order ที่จอง")
+      expect(row("Pool S")).toMatch(/ขาด\s*<b>2<\/b>/)
+      expect(row("Pool Q")).not.toContain("code ไม่พอสำหรับ order ที่จอง")
+    })
   })
   describe("e-voucher delivery emails (EV-4)", () => {
     const delivered = {

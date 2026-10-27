@@ -9,14 +9,15 @@ export const paymentInfoMap: Record<
   string,
   { title: string; icon: React.JSX.Element }
 > = {
-  // CORE-4d: ชื่อที่แสดงใน checkout เป็นไทย (ADR-014) ยกเว้นชื่อแบรนด์ (PromptPay, iDeal, Bancontact, PayPal)
+  // CORE-4d: ชื่อที่แสดงใน checkout เป็นไทย (ADR-014) ยกเว้นชื่อแบรนด์ (iDeal, Bancontact, PayPal);
+  // CORE-4e (กฎข้อ 54): พร้อมเพย์ใช้ "พร้อมเพย์" แบบเดียว
   pp_stripe_stripe: {
     title: "บัตรเครดิต/เดบิต",
     icon: <CreditCard />,
   },
   // PAY-2 (spec 06): PromptPay ผ่าน Stripe — QR + poll ใน PromptPayPaymentButton
   "pp_stripe-promptpay_stripe": {
-    title: "PromptPay",
+    title: "พร้อมเพย์",
     icon: <Scan />,
   },
   "pp_medusa-payments_default": {

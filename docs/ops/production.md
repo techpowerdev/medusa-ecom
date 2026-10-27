@@ -68,9 +68,27 @@ handshake (kernel ตอบแทน) คำสั่งจึงแค่ค้
 ของ event bus ต่อ Redis ไม่สำเร็จตอนบูต (เช่น event loop ค้างเกิน connectTimeout 10 วินาที → `ETIMEDOUT`) worker จะหยุดถาวร
 พร้อม log `Error running event bus worker: Connection is closed.` ขณะที่ `GET /health` ยังตอบ 200 → orchestrator ไม่ restart ให้
 และ event (order placed, payment captured ฯลฯ) ค้างใน queue
-- ต้องตั้ง **alert จาก log `Error running event bus worker`** บน process worker (งานของ OPS-3)
+- ต้องตั้ง **alert จาก log `Error running event bus worker`** บน process worker — กฎอยู่ในหัวข้อ "Alerts" (OPS-3)
 - เมื่อ alert ดังให้ restart worker (orchestrator/on-call) — job ที่ค้างอยู่ใน Redis จะถูกประมวลผลหลัง restart
 - เราไม่แตะ internal ของ module event bus ของ Medusa และไม่เพิ่ม health route (ADR-012 ข้อ 3–4)
+
+## Alerts
+log ของ backend เป็น JSON บรรทัดละหนึ่ง object (`NODE_ENV` ที่ไม่ใช่ development) ผ่าน logger ใน `apps/backend/src/lib/json-logger.ts`
+(OPS-3, spec 07 AC-18) — format เดียวกับ logger ของ Medusa (`level`, `message`, `timestamp`, `stack` เมื่อมี error) และเพิ่ม field
+`worker_mode` (`server` / `worker` / `shared`) จาก env `MEDUSA_WORKER_MODE` ของ container นั้น `LOG_LEVEL`/`LOG_FILE` ใช้ได้ตามเดิม
+access log ของ HTTP (`request_id`, `status`, `duration` — จาก header `x-request-id` หรือ uuid ที่ Medusa สร้าง) Medusa เขียนเองโดยไม่ผ่าน
+logger นี้ จึงไม่มี `worker_mode` (มีเฉพาะบน server อยู่แล้ว)
+
+| alert | เงื่อนไข (ตั้งใน log shipper / log platform ที่ใช้) | ระดับ | ขั้นตอนตอบสนอง |
+|---|---|---|---|
+| event bus worker หยุด (ADR-012 ภาคผนวก) | `worker_mode == "worker"` และ `level == "error"` และ `message` มีสตริง `Error running event bus worker` — แจ้งทันทีตั้งแต่บรรทัดแรก | critical | restart worker (container/process `MEDUSA_WORKER_MODE=worker`) แล้วตรวจตามด้านล่าง |
+
+ขั้นตอนเมื่อ alert event bus worker ดัง:
+1. restart worker — `GET /health` ยังตอบ 200 orchestrator จึงไม่ restart ให้เอง (ADR-012) เช่น
+   `docker compose -f docker-compose.prod.yml restart worker`
+2. ตรวจ log ของ worker หลัง restart ว่าไม่มี `Error running event bus worker` ซ้ำ และ Redis ตอบ (`redis-cli -u $REDIS_URL ping`)
+3. job ที่ค้างใน Redis ถูกประมวลผลหลัง restart — ตรวจผลปลายทาง เช่น order ล่าสุดได้อีเมล/e-voucher
+4. ถ้าเกิดซ้ำ: บันทึก log จริงแล้วเปิด ADR-012 พิจารณาทางเลือก B ใหม่ (ภาคผนวก "ผลที่ตามมาเพิ่ม")
 
 ## Prod guards (OPS-7, ADR-010)
 backend ที่ `NODE_ENV=production` (image ตั้งให้แล้ว และ `medusa start` ตั้งเป็นค่า default) **บูตไม่ขึ้น** เมื่อ:
@@ -85,12 +103,14 @@ seed (`pnpm --filter backend seed`) ใน production เปิดเฉพา�
 `ALLOW_TEST_PROVIDERS=true` ปิด guard ของ provider ทดสอบ (อีเมล + seed) — ใช้กับ CI/smoke/staging เท่านั้น **ห้ามตั้งใน prod**
 (job `storefront-e2e` และ `docker-worker-mode` ใน `ci.yml` ตั้งไว้เพราะรันโหมด production โดยไม่มี Resend key และ e2e ใช้ manual payment)
 ค่าอื่นนอกจาก `true` ไม่ปิด guard; ไม่ปิด guard ของ `AFFILIATE_TOKEN_SECRET`/`STOREFRONT_URL`
+backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDERS=true` จะ log warn หนึ่งครั้งตอนบูต (`[medusa-config] ALLOW_TEST_PROVIDERS=true in production ...`, OPS-13)
 
 ## Go-live checklist
 ทำครบทุกข้อก่อนเปิดร้านจริง และรันข้อ 4 ซ้ำหลังแก้ตั้งค่า payment ใน admin ทุกครั้ง (D1 ไม่กัน admin เปิด manual payment เองภายหลัง)
 1. env ของ server และ worker ครบตามหัวข้อ "Prod guards" และ `docs/spec/07-scaling-ops.md` ข้อ 9 (`TZ=UTC`, `EVOUCHER_ADMIN_EMAIL`, `OPS_ALERT_EMAIL` ฯลฯ)
 2. `STRIPE_API_KEY` เป็น live key และ `STRIPE_WEBHOOK_SECRET` มาจาก webhook endpoint ของ live mode
-3. ไม่ได้ตั้ง `ALLOW_TEST_PROVIDERS` (ทั้งค่าว่างหรือค่าใด ๆ)
+3. `ALLOW_TEST_PROVIDERS` ต้องไม่มีค่า — "ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" (`ALLOW_TEST_PROVIDERS=`) นับเหมือนกัน (ผ่าน); ค่าใด ๆ ที่ไม่ว่าง
+   (รวม `false`, `0`) `check:go-live` นับว่าไม่ผ่าน
 4. รันบน container ของ server หรือ worker (env เดียวกับ production):
    ```bash
    pnpm --filter backend check:go-live      # ใน image: npx medusa exec ./src/scripts/check-go-live.ts
@@ -98,6 +118,7 @@ seed (`pnpm --filter backend seed`) ใน production เปิดเฉพา�
    ตรวจ `NODE_ENV=production`, ไม่ได้ตั้ง `ALLOW_TEST_PROVIDERS`, `STRIPE_API_KEY` ไม่ว่างและไม่ขึ้นต้นด้วย `sk_test_`/`rk_test_`,
    และไม่มี region ใดเปิด `pp_system_default` — ไม่ผ่านข้อใดพิมพ์ `check:go-live FAIL ...` ทีละข้อและ exit code ≠ 0; ผ่านครบ exit 0
    (region ที่ seed สร้างก่อน OPS-7 หรือ admin เปิดเองยังมี `pp_system_default` → ปิดใน admin → Settings → Regions แล้วรันใหม่)
+5. ค่าส่ง placeholder (Q-F1 ใน `docs/spec/01-core-medusa.md` ยังไม่ตัดสิน): seed ตั้งราคา shipping option "Standard" และ return option "Standard return" จาก `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`) = 10 THB placeholder — owner ตัดสินค่าจริงแล้วแก้ใน admin ก่อนเปิดร้าน (ราคาของ "Standard" และ "Standard return" ใน Settings → Locations & Shipping และ `shipping_rate` ใน metadata ของ region ที่หน้า storefront แสดง)
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
@@ -173,7 +194,8 @@ provider ตอนอ่าน PI เดิม — guard ไม่ลบ session
 
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
-- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015 และ `OPS_ALERT_EMAIL`)
+- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL` และ Alerts)
+- `pnpm --filter backend test:unit` — `src/lib/__tests__/json-logger.unit.spec.ts` (`worker_mode` ใน log JSON)
 - `pnpm --filter backend test:unit` — `src/__tests__/prod-guards.unit.spec.ts` (OPS-7 guards, env ใน `ci.yml`, หัวข้อ Go-live checklist)
 - `pnpm --filter backend check:go-live` — checklist ก่อนเปิดร้าน (OPS-7)
 - `tools/ops/smoke-worker-mode.sh` — product ที่สร้างบน server ต้องถูกประมวลผลโดย subscriber บน worker

@@ -28,9 +28,17 @@ import {
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to retrieve.
+ * @param fresh - skip Next's data cache. Client components re-reading the cart after a
+ * mutation need it: the mutation's `revalidateTag` runs at the end of its action's response
+ * stream, so a read the client starts as soon as the action resolves can still hit the
+ * pre-mutation cache entry (CORE-19a).
  * @returns The cart object if found, or null if not found.
  */
-export async function retrieveCart(cartId?: string, fields?: string) {
+export async function retrieveCart(
+  cartId?: string,
+  fields?: string,
+  { fresh = false }: { fresh?: boolean } = {}
+) {
   const id = cartId || (await getCartId())
   fields ??=
     "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
@@ -54,8 +62,7 @@ export async function retrieveCart(cartId?: string, fields?: string) {
         fields,
       },
       headers,
-      next,
-      cache: "force-cache",
+      ...(fresh ? { cache: "no-store" } : { next, cache: "force-cache" }),
     })
     .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
     .catch(() => null)
@@ -68,7 +75,7 @@ export async function getOrSetCart(countryCode: string) {
     throw new Error(`ไม่พบภูมิภาคสำหรับประเทศ ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id")
+  let cart = await retrieveCart(undefined, "id,region_id,metadata")
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -96,7 +103,8 @@ export async function getOrSetCart(countryCode: string) {
   }
 
   // AF-2: cookie `aff` → cart metadata.affiliate_token
-  await syncCartAffiliateToken(cart.id, headers)
+  // AF-3b (กฎ 23): ใช้ metadata จาก cart ที่อ่าน/สร้างข้างบน ไม่อ่าน cart ซ้ำ
+  await syncCartAffiliateToken(cart.id, cart.metadata, headers)
 
   return cart
 }
@@ -417,21 +425,21 @@ export async function submitPromotionForm(
   const code = formData.get("code") as string
   try {
     await applyPromotions([code])
-  } catch (e: any) {
-    return e.message
+  } catch (e: unknown) {
+    // CORE-4e (กฎข้อ 55): message ของ Medusa เป็นอังกฤษ — แสดงข้อความไทย
+    return friendlyErrorMessage(e, "ใช้โค้ดส่วนลดไม่สำเร็จ กรุณาตรวจสอบโค้ดแล้วลองอีกครั้ง")
   }
 }
 
 // TODO: Pass a POJO instead of a form entity here
 export async function setAddresses(currentState: unknown, formData: FormData) {
+  if (!formData) {
+    return "ไม่พบข้อมูลที่อยู่ กรุณากรอกใหม่อีกครั้ง"
+  }
+  if (!(await getCartId())) {
+    return "ไม่พบตะกร้าสินค้า กรุณาเพิ่มสินค้าลงตะกร้าก่อน"
+  }
   try {
-    if (!formData) {
-      throw new Error("ไม่พบข้อมูลที่อยู่ กรุณากรอกใหม่อีกครั้ง")
-    }
-    const cartId = getCartId()
-    if (!cartId) {
-      throw new Error("ไม่พบตะกร้าสินค้า กรุณาเพิ่มสินค้าลงตะกร้าก่อน")
-    }
 
     const data = {
       shipping_address: {
@@ -466,8 +474,9 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         phone: formData.get("billing_address.phone"),
       }
     await updateCart(data)
-  } catch (e: any) {
-    return e.message
+  } catch (e: unknown) {
+    // CORE-4e (กฎข้อ 55): message ของ Medusa เป็นอังกฤษ — แสดงข้อความไทย
+    return friendlyErrorMessage(e, "บันทึกที่อยู่ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง")
   }
 
   redirect(
@@ -476,11 +485,29 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
 }
 
 /**
+ * AF-3b (spec 05 กฎ 23): sync cookie `aff` ลง cart ก่อนยืนยันการชำระที่ webhook อาจ complete cart เอง (Stripe/PromptPay)
+ * ใช้ `metadata` ของ cart ที่หน้า checkout อ่านไว้แล้ว — POST เฉพาะเมื่อค่าต่าง ไม่อ่าน cart เพิ่ม
+ */
+export async function syncCartAffiliate(
+  cartId: string,
+  cartMetadata: HttpTypes.StoreCart["metadata"]
+) {
+  await syncCartAffiliateToken(cartId, cartMetadata, {
+    ...(await getAuthHeaders()),
+  })
+}
+
+/**
  * Places an order for a cart. If no cart ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to place an order for.
+ * @param cartMetadata - optional - `metadata` ของ cart ที่ผู้เรียกอ่านอยู่แล้ว (AF-3b กฎ 23): ส่งมา → sync cookie `aff`
+ * ลง cart ก่อน complete เมื่อค่าต่าง; ไม่ส่ง (cart ถูก complete โดย webhook แล้ว เช่น PromptPay) → ไม่ sync
  * @returns The cart object if the order was successful, or null if not.
  */
-export async function placeOrder(cartId?: string) {
+export async function placeOrder(
+  cartId?: string,
+  cartMetadata?: HttpTypes.StoreCart["metadata"]
+) {
   const id = cartId || (await getCartId())
 
   if (!id) {
@@ -489,6 +516,10 @@ export async function placeOrder(cartId?: string) {
 
   const headers = {
     ...(await getAuthHeaders()),
+  }
+
+  if (cartMetadata !== undefined) {
+    await syncCartAffiliateToken(id, cartMetadata, headers)
   }
 
   const cartRes = await sdk.store.cart

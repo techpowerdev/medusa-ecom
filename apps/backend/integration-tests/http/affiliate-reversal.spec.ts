@@ -483,6 +483,47 @@ medusaIntegrationTestRunner({
         expect((await entriesOf(orderId))[0].status).toBe("approved")
         expect(maturityJobConfig).toEqual(expect.objectContaining({ name: "affiliate-maturity", schedule: expect.any(String) }))
       })
+
+      // AF-10 (กฎ 30): event order.canceled หาย → job reverse แทนการ approve
+      it("AC-36: a canceled order whose reversal was lost is reversed instead of approved, once; others still approve", async () => {
+        const eventBus = container.resolve(Modules.EVENT_BUS)
+        const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+        const { orderId: lost } = await placeAttributedOrder({ hold_days: 14, second_line: true })
+        const { orderId: kept } = await placeAttributedOrder({ hold_days: 14 })
+
+        // จำลอง event หาย: ตัด order.canceled ออกก่อนถึง subscriber reversal
+        const emit = eventBus.emit.bind(eventBus)
+        const dropCanceled = jest.spyOn(eventBus, "emit").mockImplementation((async (data, options) =>
+          emit(
+            (Array.isArray(data) ? data : [data]).filter((m) => m.name !== "order.canceled"),
+            options
+          )) as typeof eventBus.emit)
+        try {
+          await cancelOrderWorkflow(container).run({ input: { order_id: lost } })
+        } finally {
+          dropCanceled.mockRestore()
+        }
+        expect((await entriesOf(lost)).map((e) => e.status)).toEqual(["pending", "pending"])
+
+        const warn = jest.spyOn(logger, "warn")
+        try {
+          await approveAt(new Date(Date.now() + 15 * DAY))
+          const after = await entriesOf(lost)
+          expect(after.filter((e) => e.status === "approved")).toHaveLength(0)
+          expect(after.filter((e) => e.status === "reversed").map((e) => Number(e.amount)).sort()).toEqual([-100, -100])
+          expect(after.reduce((net, e) => net + Number(e.amount), 0)).toBe(0)
+          expect(warn).toHaveBeenCalledWith(expect.stringContaining("affiliate_cancel_reconciled"))
+          expect(warn.mock.calls.filter(([m]) => String(m).includes(lost))).toHaveLength(1)
+          expect((await entriesOf(kept)).map((e) => e.status)).toEqual(["approved"])
+
+          warn.mockClear()
+          await approveAt(new Date(Date.now() + 16 * DAY))
+          expect(await entriesOf(lost)).toHaveLength(4)
+          expect(warn.mock.calls.filter(([m]) => String(m).includes("affiliate_cancel_reconciled"))).toHaveLength(0)
+        } finally {
+          warn.mockRestore()
+        }
+      })
     })
 
     // owner 2026-10-26: payout เลือก entry `reversed` เฉพาะเมื่อ entry ต้นทางของ line เดียวกันเป็น approved/paid แล้ว

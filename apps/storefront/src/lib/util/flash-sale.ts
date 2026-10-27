@@ -48,6 +48,42 @@ export function flashOfferForVariant(
   return { sale, price }
 }
 
+/**
+ * FS-13 (กฎข้อ 18): ราคา flash บนการ์ดสินค้า PLP — variant ที่ราคา flash ต่ำสุดของสินค้า; null เมื่อไม่มี variant ในแคมเปญที่ยังขายได้
+ * (แคมเปญ sold_out แล้วการ์ดแสดงราคาปกติ ลูกค้าเห็น "สินค้าหมด" บน PDP)
+ */
+export function cardFlashOffer(
+  data: ActiveFlashSales | null,
+  variantIds: string[],
+  now: number
+): FlashOffer | null {
+  return variantIds.reduce<FlashOffer | null>((best, id) => {
+    const offer = flashOfferForVariant(data, id, now)
+    if (!offer || offer.sale.sold_out) {
+      return best
+    }
+    return !best || offer.price.flash_price! < best.price.flash_price!
+      ? offer
+      : best
+  }, null)
+}
+
+/** FS-13: รวมผลของ `GET /store/flash-sales/active` ที่แบ่งยิงตามเพดาน variant ต่อ request; ทุกชุดล้ม → null */
+export function mergeActiveFlashSales(
+  parts: (ActiveFlashSales | null)[]
+): ActiveFlashSales | null {
+  const ok = parts.filter((p): p is ActiveFlashSales => !!p)
+  if (!ok.length) {
+    return null
+  }
+  const sales = new Map<string, FlashSale>()
+  ok.forEach((p) => p.flash_sales.forEach((s) => sales.set(s.id, s)))
+  return {
+    flash_sales: Array.from(sales.values()),
+    variants: ok.flatMap((p) => p.variants),
+  }
+}
+
 const pad = (n: number) => String(n).padStart(2, "0")
 
 /** เวลาที่เหลือก่อน `ends_at` เป็น "HH:MM:SS" หรือ "N วัน HH:MM:SS"; null เมื่อหมดเวลาหรือไม่มี `ends_at` */

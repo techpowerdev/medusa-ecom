@@ -1,0 +1,71 @@
+# CORE-19a — ผลการทดสอบ (spec 01 AC-62, AC-63) 2026-10-27
+# สภาพแวดล้อม: backend build+start (.medusa/server) :9152, DB medusa_core19a seed ใหม่, storefront next build+start :8152, Node 22.23.3, Chromium
+
+## Red (ก่อนแก้): AC-63 fail — drawer กว้าง 415px ที่ viewport 375; AC-62 ผ่านอยู่แล้วบน develop ปัจจุบัน
+  ✓  1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (2.1s)
+  ✓  2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.5s)
+  ✓  3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (10.6s)
+  ✘  4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:97:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (689ms)
+    Error: drawer อยู่ในจอ
+    Expected: <= 375
+    Received:    415
+    test-results/core-19a-nav-cart-search-v-ee9ef-ว่าง-ไม่ล้นจอ-ไม่ล้น-drawer-chromium/test-failed-1.png
+  1 failed
+  3 passed (15.7s)
+
+## AC-62 ตรวจซ้ำบน develop (ก่อนแก้): 6 หน้า (/th, /th/store, PDP, /th/account, /th/contact, /th/search) x 4 รอบ = 24 passed; flow เพิ่มสินค้าผ่าน UI บน PDP แล้วลบใน dropdown ที่ /th, /th/store, /th/cart, PDP = 4 passed
+
+## Green (หลังแก้) e2e/core-19a-nav-cart-search.spec.ts
+  ✓  1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (1.4s)
+  ✓  2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.5s)
+  ✓  3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:20:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (4.2s)
+  ✓  4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:97:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (674ms)
+  4 passed (8.3s)
+
+## storefront vitest
+ Test Files  22 passed (22)
+      Tests  221 passed (221)
+
+## playwright unit project
+  29 passed (826ms)
+
+## pnpm lint: 0 errors (33 warnings เดิม); pnpm typecheck: ผ่าน; storefront build: ผ่าน
+
+# ---- รอบแก้ QA PR #118 (2026-10-27) — D-1 (AC-62 ไม่ผ่านบนหน้า static) และ D-2 (AC-63 flaky) ----
+# หมายเหตุ: ข้อความ "AC-62 ผ่านอยู่แล้วบน develop" ข้างบนไม่ถูก — test รอบแรกสร้าง cart ผ่าน API แล้ว goto ใหม่ จึงเลี่ยงเงื่อนไข;
+# QA ทำซ้ำได้ด้วยการเพิ่มสินค้าบน PDP แล้วลบใน dropdown โดยไม่ navigate (ตัวนับช้าไปหนึ่งครั้งบน /th และ PDP)
+
+## Root cause (วัดจาก network ของ server action บน PDP ด้วย Playwright, ms นับจากกด add)
+93 REQ addToCart | 372 RESP-HDR addToCart | 373 REQ retrieveCart | 375 FINISHED addToCart
+3210 REQ deleteLineItem | 3304 RESP-HDR deleteLineItem | 3313 REQ retrieveCart | 3369 FINISHED deleteLineItem
+-> CartDropdown เรียก retrieveCart (หลัง event medusa:cart-updated) ก่อน response ของ mutation ปิด stream; Next 16 รอ revalidateTag
+   ของ action ผ่าน waitUntil ท้าย stream (action-handler.js executeRevalidates) การอ่านแบบ force-cache จึงแข่งกับการ invalidate
+   ถ้าอ่านก่อนได้ cart ก่อน mutation (เครื่อง QA แพ้ race สม่ำเสมอ เครื่อง builder ชนะ) หน้า dynamic ไม่เป็นเพราะ cart มากับ RSC ของ action
+
+## Red (ก่อนแก้ CartDropdown) — test แบบกำหนดผลได้: เปลี่ยน cart ทาง backend ตรง (ไม่มี revalidateTag) แล้วส่ง event
+  ✘  1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:143:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (6.1s)
+  ✘  2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:143:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (8.2s)
+    Expected: 1
+    Received: 2
+    test-results/core-19a-nav-cart-search-A-9dd87-ใช่-data-cache-ของ-Next-th--chromium/test-failed-1.png
+    Expected: 1
+    Received: 2
+    test-results/core-19a-nav-cart-search-A-3566c-ง-Next-th-products-t-shirt--chromium/test-failed-1.png
+  2 failed
+
+## QA checklist ของ PR #118 (qa-checklist.spec.ts ของ QA) หลังแก้: 18/18 passed (รวม D-1 ทั้งสองแบบ, ลบ line สุดท้าย, กดซ้ำ, แท็บ stale, AC-63 375/320 ไทย/ละติน, desktop)
+
+## Green (หลังแก้) e2e/core-19a-nav-cart-search.spec.ts (--workers=1)
+  ✓  1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:63:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (1.8s)
+  ✓  2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:63:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.4s)
+  ✓  3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:63:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (3.8s)
+  ✓  4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:143:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (995ms)
+  ✓  5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:143:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (3.2s)
+  ✓  6 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:183:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (10.4s)
+  ✓  7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:183:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.9s)
+  ✓  8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:207:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (631ms)
+  8 passed (27.8s)
+repeat-each=3 ทั้งไฟล์: 24 passed; AC-63 repeat-each=10: 10 passed (D-2: รอ animation ของ drawer จบก่อนวัด)
+
+## regression: thai-ui-shell, thai-ui-cart-order, core-14b-add-variant, core-store: 10 passed
+## หลัง merge origin/develop: lint 0 errors (33 warnings เดิม), typecheck ผ่าน, vitest 221 passed, playwright unit 29 passed, storefront build ผ่าน

@@ -91,3 +91,10 @@ export const isProgramActiveAt = (program: ProgramWindow, at: Date): boolean =>
   program.status === "published" &&
   program.starts_at.getTime() <= at.getTime() &&
   at.getTime() < program.ends_at.getTime()
+
+export type RankedProgram = { commission_value: BigNumberInput; starts_at: Date | string }
+
+// Q7 (และกฎ 29a): อัตราสูงสุดก่อน เสมอกันเลือก starts_at ล่าสุด — ใช้ร่วมกันระหว่างการคิดเงิน (AF-3) และ portal (AF-7b)
+export const byCommissionPreference = (a: RankedProgram, b: RankedProgram) =>
+  MathBN.convert(b.commission_value).comparedTo(MathBN.convert(a.commission_value)) ||
+  new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime()
