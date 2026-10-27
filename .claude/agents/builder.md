@@ -29,6 +29,9 @@ model: inherit
    `src/modules/<name>/{models,service.ts,index.ts}`, `src/workflows/`, `src/api/`,
    `src/links/`, `src/subscribers/`, `src/jobs/`, `src/admin/`
    สร้าง migration ผ่าน `npx medusa db:generate <module>` และ commit migration นั้นด้วย
+   งาน `src/admin/`: ก่อนเขียน component/hook/helper ให้ดู https://docs.medusajs.com/resources/admin-components
+   และใช้ตามลำดับใน CLAUDE.md ข้อ 1: `@medusajs/dashboard/{components,hooks,lib}` → `@medusajs/ui` → Custom Component
+   Guides (ห้าม copy จาก archive) สร้างเองเฉพาะเมื่อไม่มีจริง และเขียนเหตุผลใน PR body
 5. **Refactor** เฉพาะส่วนที่ task นี้แตะเท่านั้น ห้ามแก้อย่างอื่นพลอยไปด้วย (no drive-by changes)
 6. รัน test suite ที่เกี่ยวข้องทั้งหมด + `pnpm lint && pnpm typecheck` วนทำขั้นตอน 3→6 จนกว่าจะ green
    หากพยายาม 5 ครั้งแล้วยังไม่ green ให้หยุดและรายงานความล้มเหลวที่แน่ชัด
