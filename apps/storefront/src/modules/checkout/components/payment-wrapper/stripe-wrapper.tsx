@@ -22,6 +22,8 @@ const StripeWrapper: React.FC<StripeWrapperProps> = ({
 }) => {
   const options: StripeElementsOptions = {
     clientSecret: paymentSession!.data?.client_secret as string | undefined,
+    // CORE-4e (กฎข้อ 55): ข้อความใน Stripe Elements เป็นไทย
+    locale: "th",
   }
 
   // CORE-4d: ข้อความถึงผู้ใช้เป็นไทย (ADR-014) — สาเหตุ: ไม่ได้ตั้ง NEXT_PUBLIC_STRIPE_KEY
