@@ -30,9 +30,11 @@ export default async function OverviewTemplate({
 
   return (
     <>
+      {/* CORE-14d (กฎ 58, owner 2026-10-27): ล็อกอินอยู่แล้วเปิดลิงก์ add_variant → ปุ่มยืนยันแทนการเพิ่มเอง */}
       <AddVariantError
         countryCode={countryCode}
         searchParams={await searchParams}
+        confirm
       />
       <Overview customer={customer} orders={orders} />
     </>

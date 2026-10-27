@@ -5,7 +5,7 @@ import { errorMessage, friendlyErrorMessage } from "@lib/util/error-message"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
-import { redirect } from "next/navigation"
+import { redirect, unstable_rethrow } from "next/navigation"
 import {
   getAuthHeaders,
   getCacheOptions,
@@ -178,19 +178,42 @@ async function continueAfterAuth(
     return result
   }
 
-  // CORE-14b (กฎ 26): เพิ่มไม่สำเร็จ (variant ไม่มีอยู่/ขายไม่ได้) → ล็อกอินแล้วจึงไปหน้าบัญชีพร้อม add_variant
-  // ให้หน้า dashboard แสดง `add-variant-error` (คืน state error ตรงนี้จะหายไปเมื่อ layout สลับเป็น dashboard)
+  return addPendingToCart(pending)
+}
+
+// CORE-14d (กฎ 58, owner 2026-10-27): ลูกค้าที่ล็อกอินอยู่แล้วเปิดลิงก์ `/account?add_variant=…` ไม่ถูกเพิ่มลง cart เอง
+// (กด Back หลัง login แล้วเพิ่มซ้ำ / ลิงก์จากเว็บอื่น) — ต้องกดปุ่มยืนยัน (ฟอร์ม POST ใช้ได้แม้ปิด JS) ซึ่งเรียก action นี้
+// readPendingAddToCart ตรวจรหัสประเทศ (กัน redirect ออกนอกร้าน) และ clamp quantity 1..100 ให้แล้ว
+export async function confirmPendingAdd(formData: FormData): Promise<void> {
+  const pending = readPendingAddToCart(formData)
+  if (!pending) {
+    throw new Error("ข้อมูลสินค้าที่จะเพิ่มลงตะกร้าไม่ถูกต้อง")
+  }
+  await addPendingToCart(pending)
+}
+
+// CORE-14b (กฎ 26) / CORE-14d (กฎ 57): เพิ่ม variant ที่ค้างไว้ลง cart แล้วไปหน้า cart (หลัง login หรือกดปุ่มยืนยัน)
+// เพิ่มไม่สำเร็จ (variant ไม่มีอยู่/ขายไม่ได้/ถูกลบระหว่างทาง) → หน้าบัญชีพร้อม add_error ให้แสดง `add-variant-error`
+// (คืน state error ตรงนี้จะหายไปเมื่อ layout สลับเป็น dashboard); redirect/notFound ส่งต่อด้วย unstable_rethrow
+// ไม่ export — ผู้เรียกส่ง pending ที่ผ่าน readPendingAddToCart แล้วเท่านั้น
+async function addPendingToCart(
+  pending: NonNullable<ReturnType<typeof readPendingAddToCart>>
+): Promise<never> {
   let added = true
   try {
     await addToCart(pending)
-  } catch {
+  } catch (error) {
+    unstable_rethrow(error)
+    console.error(error)
     added = false
   }
 
   redirect(
     added
       ? `/${pending.countryCode}/cart`
-      : loginPathForAddToCart(pending.countryCode, pending.variantId, pending.quantity)
+      : loginPathForAddToCart(pending.countryCode, pending.variantId, pending.quantity, {
+          failed: true,
+        })
   )
 }
 
@@ -235,8 +258,9 @@ async function completeLogin(
   ) {
     try {
       await requestVerificationEmail(email, result.token)
-    } catch {
-      // Ignore: the customer can resend from the verification page.
+    } catch (error) {
+      // The customer can resend from the verification page.
+      console.error(error)
     }
     return { state: "verification_required", email }
   }

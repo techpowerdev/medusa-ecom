@@ -113,7 +113,7 @@ export const retrieveVariant = async (
         query: {
           region_id: region.id,
           fields:
-            "id,manage_inventory,allow_backorder,*calculated_price,+inventory_quantity",
+            "id,title,manage_inventory,allow_backorder,*calculated_price,+inventory_quantity",
         },
         headers: { ...(await getAuthHeaders()) },
         cache: "no-store",
