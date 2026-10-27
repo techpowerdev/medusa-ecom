@@ -600,7 +600,7 @@ CORE-14 เพิ่มขอบเขต: ลบหน้า order transfer `(m
 - ~~Q-F4~~ ตัดสินแล้ว (owner 2026-10-26): CORE-18 ใช้เนื้อหา placeholder ภาษาไทยไปก่อน เก็บเป็นค่าคงที่ที่แก้ได้ง่าย (กฎข้อ 33) owner ส่งเนื้อหาจริง
   ภายหลัง = แก้ค่าคงที่ ไม่ต้องมี task ใหม่
 - ~~Q-F5~~ (CORE-20) **owner ตัดสิน 2026-10-26**: ปุ่มขอคืนแสดงเฉพาะภายใน N วันหลังได้รับของ (นับจาก `delivered_at` ของ fulfillment ถ้าไม่มีใช้ `shipped_at`; ใช้ `return_window_days` ใน region metadata ที่
-  storefront อ่านอยู่แล้ว; backend ไม่บังคับใน v1 — **รอบ 9 เสนอให้เปลี่ยน ดู Q-F6 / CORE-20b**) และซ่อนสำหรับ e-voucher/item ที่ไม่ต้องจัดส่ง (spec 02 กฎข้อ 6)
+  storefront อ่านอยู่แล้ว; ~~backend ไม่บังคับใน v1~~ — **owner เปลี่ยนเป็นบังคับ 2026-10-27 (Q-F6, CORE-20b)**) และซ่อนสำหรับ e-voucher/item ที่ไม่ต้องจัดส่ง (spec 02 กฎข้อ 6)
 
 ## Follow-up รอบ 6 จาก review/qa (2026-10-26)
 แยก CORE-14 เป็น 14a (#81)/14b + follow-up 14c (transferCart 404 ตอน login); เพิ่มขอบเขตเล็กให้ CORE-10, CORE-21 และ CORE-18 (#80: "Medusa Store" ในหน้า account
@@ -790,14 +790,14 @@ Out of scope: i18n (ADR-014), เปลี่ยนนโยบายคืน�
 none
 
 ### API routes
-- CORE-20b (**รอ owner ยืนยัน Q-F6** — เปลี่ยนข้อตัดสิน Q-F5 "backend ไม่บังคับใน v1"): middleware ใหม่บน `POST /store/returns` ต่อท้าย chain เดิม (หลัง auth + ownership
+- CORE-20b (owner ตัดสิน Q-F6 2026-10-27 — แทน Q-F5 ส่วน "backend ไม่บังคับใน v1"): middleware ใหม่บน `POST /store/returns` ต่อท้าย chain เดิม (หลัง auth + ownership
   ของ CORE-13, override CORE-16, option CORE-17/21 — ADR-013 ทางเลือก A ไม่ห่อ route ของ Medusa): ทุก item ใน body ต้อง (a) เป็น line ที่ `requires_shipping=true`
   (e-voucher/สินค้าไม่ต้องจัดส่ง → 400 `invalid_data`) และ (b) อยู่ในช่วงคืน: `now ≤ วันอ้างอิง + return_window_days` โดยวันอ้างอิง = `delivered_at` ของ fulfillment ที่มี
   item นั้น ถ้าไม่มีใช้ `shipped_at`; ไม่มีทั้งคู่ (ยังไม่ส่ง) → 400; `return_window_days` อ่านจาก metadata ของ region ของ order (`order.region_id`) ค่าเริ่มต้นตาม
   `region-store-policies.ts`; ข้อความ error ไม่สะท้อนค่าจาก input (แบบ CORE-21 กฎข้อ 37)
 
 ### Business rules
-54. (CORE-4e, #109) ชื่อวิธีชำระเงินพร้อมเพย์ในข้อความที่ storefront เขียนเอง ใช้ **"พร้อมเพย์"** แบบเดียวทั้ง checkout/หน้า pay (ไม่ปน "PromptPay"); "PromptPay" เหลือได้เฉพาะ
+54. (CORE-4e, #109; owner ยืนยัน 2026-10-27) ชื่อวิธีชำระเงินพร้อมเพย์ในข้อความที่ storefront เขียนเอง ใช้ **"พร้อมเพย์"** แบบเดียวทั้ง checkout/หน้า pay (ไม่ปน "PromptPay"); "PromptPay" เหลือได้เฉพาะ
     ที่มาจาก Stripe (โลโก้/ข้อความใน Elements) — ไม่ต้องใช้ข้อยกเว้น ESLint
 55. (CORE-4e) `<Elements>` ของ Stripe ส่ง `locale: "th"`; error ที่มาจาก server action ของ checkout (`setAddresses`, `submitPromotionForm`, `renewPromptPaySession` และ
     ข้อความรอสร้าง order ของพร้อมเพย์) ผ่าน `friendlyErrorMessage` (กฎ CORE-4 ข้อ 5) ไม่ส่ง `e.message`/`body.message` ภาษาอังกฤษของ Medusa ตรง; `STORE_NAME` ตามด้วยคำไทยมีเว้นวรรค
@@ -812,7 +812,9 @@ none
     — จำนวนที่เลือกถูกส่งต่อข้าม login ตาม CORE-14b
 60. (CORE-20c, #112) storefront คำนวณสิทธิ์คืนจาก `return_window_days` ของ region ของ order (`order.region_id`) ไม่ใช่ `countryCode` ใน URL; จำนวนที่คืนได้ต่อ line =
     `shipped_quantity − (return_requested_quantity + return_received_quantity + return_dismissed_quantity)` (ไม่ใช้ `fulfilled_quantity`); ตรวจ `canRequestReturn` ครั้งเดียวต่อ action
-    และ `listOrders` ไม่ใช้ `force-cache` (สถานะ return ต้องเห็นทันทีหลังส่ง)
+    และ `listOrders` ไม่ใช้ `force-cache` (สถานะ return ต้องเห็นทันทีหลังส่ง); (re-review #112) การอ่าน region ของหน้า `/returns` และ structured data ไม่ใช้
+    `listRegions` แบบ `force-cache` (ค่า `return_window_days` ที่ admin แก้ต้องมีผลโดยไม่ต้อง redeploy); e2e ที่แก้ metadata ของ region ต้องไม่กระทบ test อื่น — ใช้ region
+    แยกของ test หรือรันแบบ `serial` แล้วคืนค่าเดิม
 61. (CORE-23b, qa/review #105) เปลี่ยนหน้าใน account แสดง progress indicator (`account-nav-pending`) ระหว่างโหลด; ฟอร์ม profile ที่บันทึก**ล้ม**คงค่าที่ผู้ใช้พิมพ์ไว้
     (ไม่ถูก reset โดย React 19 form action)
 
@@ -829,13 +831,14 @@ none
   เห็น `add-variant-error` (e2e)
 - AC-94 (CORE-24, กฎข้อ 59) Given PDP ของสินค้า seed When เลือก 3 ใน `product-quantity-select` แล้วกดเพิ่มลง cart Then cart มี line qty 3; Given `javaScriptEnabled: false` และไม่ล็อกอิน
   When เลือก 2 แล้ว submit และ login Then cart มี qty 2 (e2e)
-- AC-95 (CORE-20b, หลัง owner ยืนยัน Q-F6) Given order OA ของ A ที่ ship แล้วเมื่อ `return_window_days + 1` วันก่อน (ตั้ง `shipped_at`/`delivered_at` ใน test) When A `POST /store/returns`
+- AC-95 (CORE-20b, owner ตัดสิน Q-F6) Given order OA ของ A ที่ ship แล้วเมื่อ `return_window_days + 1` วันก่อน (ตั้ง `shipped_at`/`delivered_at` ใน test) When A `POST /store/returns`
   ด้วย "Standard return" Then 400 `invalid_data` และ OA ไม่มี return; ship เมื่อ 1 วันก่อน → 200; มี `delivered_at` → ใช้ `delivered_at` แทน `shipped_at`; Given line e-voucher
   (`requires_shipping=false`) Then 400; ยังไม่ ship → 400; ข้อความ error ไม่มีค่า `item.id` จาก input; ลำดับ middleware: ไม่มี token → 401, customer B → 404 (ไม่ถึง middleware นี้)
   (integration http)
 - AC-96 (CORE-20c, กฎข้อ 60) Given order ที่ line L qty 3, `fulfilled_quantity=3`, `shipped_quantity=2` และ return requested 1 When เปิดหน้าขอคืน Then จำนวนสูงสุดที่เลือกได้ของ L = 1;
   Given URL `/th/...` แต่ region ของ order มี `return_window_days=7` (region อื่นใน test) Then ปุ่ม `order-return-button` คิดจาก 7 วัน; unit ของ `returnableItems`/`canRequestReturn`
-  (Vitest) และหลังส่ง return หน้า order detail แสดงสถานะใหม่โดยไม่ต้องรอ cache (e2e)
+  (Vitest) และหลังส่ง return หน้า order detail แสดงสถานะใหม่โดยไม่ต้องรอ cache (e2e); grep: ไม่มี `force-cache` ในการเรียก `listOrders` และ `listRegions` ของหน้า `/returns`/
+  structured data; e2e ที่แก้ region ใช้ region แยกหรือ `test.describe.configure({ mode: "serial" })` พร้อมคืนค่าใน `afterAll`
 - AC-97 (CORE-23b, กฎข้อ 61) Given ลูกค้าอยู่ `/th/account` When คลิกเมนู orders (หน่วงเวลาโหลดด้วย route mock) Then `account-nav-pending` มองเห็นก่อนหน้าใหม่แสดง; Given
   บันทึกเบอร์โทรล้ม (mock 500) Then ค่าใน input ยังเป็นค่าที่พิมพ์; e2e ของ AC-88 ไม่มี `if (await x.isVisible())` ครอบ `expect` (grep) (e2e)
 
@@ -845,17 +848,15 @@ none
 | CORE-4e | (storefront เล็ก, nit/qa #109 + qa #98) Stripe Elements `locale: "th"`, `friendlyErrorMessage` ใน `setAddresses`/`submitPromotionForm`/`renewPromptPaySession` + ข้อความรอสร้าง order ของพร้อมเพย์ (ถ้า #109 ยังไม่ครอบ), "พร้อมเพย์" แบบเดียว, `{STORE_NAME} แล้ว`, placeholder "เลือกประเทศ", test id/aria-label ของ popup ที่อยู่ + nudge, floating label ซ้อน, test `renewPromptPaySession` ไม่ใช้ `indexOf` (กฎข้อ 54–56) | AC-90, AC-91 | CORE-4d (#109) |
 | CORE-14d | (storefront เล็ก, nit/qa #113) `/cart` ไม่ค้าง skeleton หลัง login no-JS, `add_error` + `unstable_rethrow` แทน `catch {}`, `/account?add_variant=` ตอนล็อกอินแล้ว (กฎข้อ 57–58) | AC-92, AC-93 | CORE-14b (#113) |
 | CORE-24 | (storefront เล็ก, qa #113) ตัวเลือกจำนวนบน PDP ทั้ง JS/no-JS (กฎข้อ 59) | AC-94 | CORE-14b (#113) (∥ CORE-14d: CORE-24 แตะ `modules/products`, CORE-14d แตะ `lib/data/customer.ts`/account/cart) |
-| CORE-20b | (backend เล็ก, review #112) **เริ่มหลัง owner ยืนยัน Q-F6**: middleware บังคับช่วงคืน N วัน + กัน line ที่ไม่ต้องจัดส่งบน `POST /store/returns` (ADR-013 ทางเลือก A, ต่อ chain ของ CORE-17/21) | AC-95 | CORE-21 ☑ (#86); ∥ CORE-20c |
-| CORE-20c | (storefront เล็ก, nit review #112) `return_window_days` จาก region ของ order, `returnableItems` นับ `shipped_quantity`, ตัด `canRequestReturn` ซ้ำ, `listOrders` ไม่ `force-cache` (กฎข้อ 60) | AC-96 | CORE-20 (#112) |
+| CORE-20b | (backend เล็ก, review #112; owner ตัดสิน Q-F6 2026-10-27 — เริ่มได้): middleware บังคับช่วงคืน N วัน + กัน line ที่ไม่ต้องจัดส่งบน `POST /store/returns` (ADR-013 ทางเลือก A, ต่อ chain ของ CORE-17/21) | AC-95 | CORE-21 ☑ (#86) — เริ่มได้ทันที; ∥ CORE-20c |
+| CORE-20c | (storefront เล็ก, nit review/re-review #112) `return_window_days` จาก region ของ order, `returnableItems` นับ `shipped_quantity`, ตัด `canRequestReturn` ซ้ำ, `listOrders`/`listRegions` ของ `/returns` + structured data ไม่ `force-cache`, e2e region แยก/serial (กฎข้อ 60) | AC-96 | CORE-20 (#112) |
 | CORE-23b | (storefront เล็ก, qa/review #105) progress ตอนเปลี่ยนหน้า account, ฟอร์มไม่ล้างค่าเมื่อบันทึกล้ม, e2e AC-88 ไม่ใช้ `if(isVisible)` (กฎข้อ 61) | AC-97 | CORE-23 ☑ (#105) |
 CORE-19b (เดิม, AC-64) กับ CORE-4e แตะไฟล์ checkout เดียวกัน — ไม่ขนานกัน ทำ CORE-4e ก่อน แล้ว CORE-19b (ทั้งคู่ ← CORE-4d #109); CORE-14d ∥ CORE-24 ∥ CORE-20c ∥ CORE-23b ∥ CORE-4e (คนละโมดูล — ถ้าชน `lib/data/*` ตัวที่ merge ทีหลัง rebase); CORE-20b เป็น backend ∥ ทุกตัว
 CORE-15 (AC-69 ป้ายราคา ฿) ยังไม่เริ่ม — ไม่เปลี่ยนนิยาม
 
 ### Open questions (รอบ 9)
-- Q-F6 (CORE-20b, review #112) Q-F5 เดิม owner ตัดสินว่า "backend ไม่บังคับช่วงคืนใน v1" แต่ review #112 พบว่าลูกค้ายิง `POST /store/returns` ตรงได้ (ข้ามปุ่มที่ซ่อน) สำหรับ order
-  ที่เกิน N วันหรือ line e-voucher — ผลคือ return `requested` ที่ admin ต้องปฏิเสธเอง (ไม่มี refund อัตโนมัติ) **ข้อเสนอ: ทำ CORE-20b** (middleware เล็ก ตาม pattern เดียวกับ CORE-16/17/21
-  ไม่ต้อง ADR ใหม่) ทางเลือก: คง Q-F5 (ไม่ทำ, admin คัดกรองเอง)
-- (ข้อสังเกต ไม่ต้องตัดสิน) "พร้อมเพย์" (กฎข้อ 54) เป็นค่าที่ planner เลือก — owner เปลี่ยนเป็น "PromptPay" ได้โดยแก้กฎข้อนี้ก่อนเริ่ม CORE-4e
+- ~~Q-F6~~ ตัดสินแล้ว (owner 2026-10-27): backend บังคับช่วงคืน N วันและกัน line ที่ไม่ต้องจัดส่งบน `POST /store/returns` (CORE-20b, AC-95) — แทน Q-F5 ส่วน "backend ไม่บังคับใน v1"
+- ~~ชื่อพร้อมเพย์~~ ตัดสินแล้ว (owner 2026-10-27): ใช้ "พร้อมเพย์" (กฎข้อ 54)
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

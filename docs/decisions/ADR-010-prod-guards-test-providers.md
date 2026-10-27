@@ -42,4 +42,4 @@ D. ไม่บังคับในโค้ด ใช้ checklist go-live อ
 ข้อ 1 "ปิด guard ทั้งหมด" กว้างเกินจริง ความหมายที่ใช้ (ตามที่ OPS-7 ทำและ spec 07 AC-13/AC-17 กำหนดให้ CI ตั้งตัวแปรเอง):
 `ALLOW_TEST_PROVIDERS=true` ปิด**เฉพาะ guard ของ provider ทดสอบ** — notification fallback `local` (ข้อ 2) และการที่ seed ใส่ `pp_system_default` (ข้อ 3 ส่วน seed)
 **ไม่ปิด**: `check:go-live` (ยังรายงานว่าตั้งตัวแปรนี้ = ไม่ผ่าน), guard env ที่ไม่ใช่ provider ทดสอบ (`REDIS_URL` ของ worker mode — OPS-2,
-`AFFILIATE_TOKEN_SECRET`, `STOREFRONT_URL` — OPS-7) และ production ที่ตั้งตัวแปรนี้จะ log warn ตอนบูต (OPS-13, spec 07 AC-20)
+`AFFILIATE_TOKEN_SECRET`, `STOREFRONT_URL` — OPS-7) และ (เมื่อ OPS-13 merge) production ที่ตั้งตัวแปรนี้จะ log warn ตอนบูต (spec 07 AC-20)

@@ -3,7 +3,7 @@
 สัญลักษณ์: ☐ ยังไม่ทำ · ◐ อยู่ใน PR · ☑ merge เข้า develop แล้ว · 🚀 release แล้ว · ✕ ปิด (owner ไม่ทำ)
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 สถานะล่าสุดตาม PR #1–#114 (2026-10-27, รอบ 9 — ข้อมูลจาก session หลัก): merge แล้วถึง #106 (#104 = เอกสาร spec รอบ 8);
-เปิดอยู่ #107 AF-9b, #108 OPS-7, #109 CORE-4d, #110 AF-7, #111 EV-5b, #112 CORE-20, #113 CORE-14b, #114 GB-6c1 (#107/#108/#109/#113 อยู่ในคิว merge)
+เปิดอยู่ #107 AF-9b, #108 OPS-7, #109 CORE-4d, #110 AF-7, #111 EV-5b, #112 CORE-20, #113 CORE-14b, #114 GB-6c1, #115 FS-6, #116 spec รอบ 9 (#107/#108/#109/#113 อยู่ในคิว merge)
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -49,7 +49,7 @@
 | CORE-15 | หน้า `/store` หยุดยิงซ้ำเมื่อ search error + ป้ายราคา ฿ (AC-69) | ☐ (← CORE-9 ☑) |
 | CORE-19a ∥ CORE-19b | ตัวนับ cart + search drawer 375px ∥ ปุ่ม "Continue to review" ไม่ค้าง | ☐ (19a ← CORE-4b2 ☑; 19b ← CORE-4e — ไฟล์ checkout เดียวกัน) |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | ◐ #112 |
-| CORE-20b ∥ CORE-20c | (รอบ 9, review #112) backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง บน `POST /store/returns` (AC-95) **รอ owner ตอบ Q-F6** ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | ☐ (20b ← CORE-21 ☑ + Q-F6) ∥ ☐ (20c ← CORE-20 #112) |
+| CORE-20b ∥ CORE-20c | (รอบ 9, review #112) backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง บน `POST /store/returns` (AC-95; owner ตัดสิน Q-F6 2026-10-27) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache`, e2e region แยก (AC-96) | ☐ (20b ← CORE-21 ☑ — เริ่มได้) ∥ ☐ (20c ← CORE-20 #112) |
 | CORE-21 | return option: stock location ต้องอยู่ใน sales channel ของ order + test order ไม่มี `country_code` + error ไม่สะท้อน `option_id` | ☑ #86 |
 
 ## M2 การชำระเงิน
@@ -70,28 +70,30 @@ EV-1 ☑ #15 · EV-2 ☑ #25 · EV-3 ☑ #31 · EV-4 ☑ #67 ·
 EV-5 ☑ #43 · EV-5b ◐ #111 · EV-6 ☑ #39 · EV-7 ☐ (← EV-4 ☑; checkout digital-only เลือก option Digital delivery ด้วย `type.code` — ไม่บังคับ Digital method ฝั่ง backend) · EV-8 ☑ #54 ·
 EV-9 ☐ (← EV-2, EV-6; ถ้า #111 merge ก่อน ให้ resend ใช้ link `evoucher_code ↔ order`) · EV-10 ☑ #85 · EV-11 ☑ #88 ·
 EV-12 ☐ **เริ่มได้** (owner Q6 2026-10-27: job เว้น code ใกล้หมดอายุเท่าที่ถูกจอง `expires_at` ไกลสุดก่อน + allocation ใช้ code ที่เว้น; AC-30, AC-30b; ← EV-5 ☑, EV-10 ☑) ·
-EV-13 ☐ (รอบ 9, qa #111: widget order ไม่ล้น 1280px + toast ไม่โชว์ `noti_…`; AC-32; ← EV-5b #111)
+EV-13 ☐ (รอบ 9, qa #111: widget order ไม่ล้น 1280px + toast ไม่โชว์ `noti_…`; AC-32; ← EV-5b #111) ∥
+EV-5c ☐ (รอบ 9, nit review #111: lock `evoucher-order:<id>` ร่วม allocation/resend, ไม่กลืน error Redis, ส่งสำเร็จแต่ update ล้ม → 200; AC-33; ← EV-5b #111)
 
 ## M4 Flash sale — **v0.4.0**
 PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ☑ #38 · FS-7 ☑ #53 · PROMO-2 ☑ #50 ·
-FS-10 ☑ #74 · FS-6 ☐ (← FS-4, FS-7, PROMO-1, CORE-4b2 — ทั้งหมด ☑) · FS-8 ☑ #69 · FS-11 ☑ #83 ·
+FS-10 ☑ #74 · FS-6 ◐ #115 · FS-8 ☑ #69 · FS-11 ☑ #83 ·
+FS-12 ☐ (รอบ 9, backend: context ของ item ใน price preview ตรงกับ cart `items.product.id`; AC-18; ← FS-4 ☑ — เริ่มได้) ∥ FS-13 ☐ (storefront: disable ปุ่มเมื่อ sold out + ราคา flash บน PLP/แถบมือถือ; AC-19; ← FS-6 #115) ·
 FS-9 ✕ (owner ตัดสินไม่ทำ 2026-10-27)
 (FS-2 คืนโควตาเมื่อ cancel หรือ refund เต็มจำนวน ไม่ว่ามาจาก return — owner 2026-10-25)
 
 ## M5 Group buying — **v0.5.0**
 GB-1 ☑ #17 · ADR-011 ☑ #33 · GB-2a ☑ #42 → GB-2b ☑ #49 → GB-2c ☑ #58 ·
 GB-3 ☑ #68 → (GB-3b ☑ #95 ∥ GB-3c ☑ #100 ∥ GB-4 ☑ #89) → GB-5 ☐ (← PAY-3; ปัดยอด collection 2 ตำแหน่ง + test `completed` AC-37) → GB-7 ☐ (← GB-5, GB-3b ☑) ;
-GB-6a ☑ #75 → (GB-6b1 ☑ #87 ∥ GB-6b2 ☑ #96) → GB-6c1 ◐ #114 (route membership) → GB-6c2 ☐ (ตาราง membership + succeed/fail manual, AC-35) ;
-GB-N1 ☑ #106 · Q11 owner ยืนยัน (ก) ยอมรับ lock TTL 60s ใน v1 — ไม่มี task
+GB-6a ☑ #75 → (GB-6b1 ☑ #87 ∥ GB-6b2 ☑ #96) → GB-6c1 ◐ #114 (route membership) → GB-6c2 ☐ (ตาราง membership + succeed/fail manual, AC-35 + nit #114: test `payment_status`/404 `not_found`, `customer` null) ;
+GB-N1 ☑ #106 · GB-N2 ☐ (รอบ 9, test-only: แก้ flaky concurrency ของ `group-buy-join.spec.ts` hook timeout 240s; ← GB-3 ☑ — เริ่มได้) · Q11 owner ยืนยัน (ก) ยอมรับ lock TTL 60s ใน v1 — ไม่มี task
 
 ## M6 Affiliate — **v0.6.0**
 AF-1 ☑ #11 · AF-2 ☑ #66 · AF-5 ☑ #35 → AF-3 ☑ #77 → (AF-3b ☐ storefront sync cookie ∥ AF-4 ☑ #90 ∥ AF-4b ☑ #91 ∥ AF-7 ◐ #110 (รวม `GET /affiliate/me/payouts` + paging, AC-32/33 — owner 2026-10-27)) →
-AF-7b ☐ (การ์ดเดียวต่อสินค้าด้วยอัตราจริงตามกฎ 29, AC-34; ← #110 — รวมใน #110 ได้ถ้ายังไม่ merge) → AF-8 ☐ (← AF-7, AF-7b, AF-4 ☑; AC-35) ;
+AF-7b ☐ (PR แยกหลัง #110 merge เท่านั้น: การ์ดเดียวต่อสินค้าด้วยอัตราจริงตามกฎ 29 AC-34 + ตัด `reference` ออกจาก payouts ตามคำตัดสิน owner AC-32) → AF-8 ☐ (← AF-7, AF-7b, AF-4 ☑; AC-35) ;
 AF-5 → AF-9 ☑ #79 → (AF-6 ☐ + ปุ่มยกเลิก payout ∥ AF-9b ◐ #107 → AF-N1 ☐ test nit #107) ;
 AF-10 ☐ (รอบ 9, review #90: maturity job reconcile order ยกเลิกที่ไม่มี reversal, AC-36; ← AF-4 ☑ — เริ่มได้)
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
-OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☐ (รวม alert `Error running event bus worker`, AC-18) · OPS-5 ☐ · OPS-7 ◐ #108 · OPS-8 ☑ #101 →
+OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☐ (JSON logs + alert `Error running event bus worker`, AC-18) → (OPS-3b ☐ rate limiting AC-22 **รอ owner ตอบ Q-O1** ∥ OPS-3c ☐ Sentry AC-23 **รอ owner ตอบ Q-O2**) · OPS-5 ☐ · OPS-7 ◐ #108 · OPS-8 ☑ #101 →
 OPS-12 ☐ (smoke ใน CI job `docker-worker-mode`; เริ่มหลัง #108 merge) ∥ OPS-13 ☐ (รอบ 9, review #108: warn เมื่อ prod ตั้ง `ALLOW_TEST_PROVIDERS`, ถ้อยคำ go-live ข้อ 3, ข้อ Q-F1 ค่าส่ง placeholder ใน checklist go-live; AC-20, 21; ← #108) ·
 OPS-9 ☑ #72 · OPS-10 ☐ (← PAY-2 ☑) ; OPS-4 ☐ (← FS-6, GB-7) · OPS-11 ☑ #87 (รวมใน GB-6b1)
 
@@ -115,8 +117,10 @@ hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (�
 - รอบ 8 (2026-10-26): OPS-8 ปิดด้วย smoke + alert → OPS-3 (AC-18), OPS-12 · AC-6 refund บางส่วน → spec 06 · refund payment ที่ collection ไม่ผูก order → ADR-015 ภาคผนวก 2 ·
   defect starter หน้า profile/order → CORE-23 · ปัดยอด 2 ตำแหน่ง → GB-5 (AC-37) · nit สะสม → GB-N1
 - รอบ 9 (2026-10-27): owner ตัดสิน spec 02 Q6 (เว้น code เท่าที่จอง → EV-12 เริ่มได้) / Q7 (ลบ pool → `requires_shipping=true` เสมอ), spec 05 Q13 + payouts route (AF-7 #110),
-  spec 04 Q11 (ก), FS-9 ✕ · Q-F1 ยังไม่ตัดสิน → checklist go-live ใน OPS-13 · nit/qa #109 → CORE-4e · #112 → CORE-20b (รอ Q-F6)/CORE-20c · #113 → CORE-14d/CORE-24 ·
-  #105 → CORE-23b · #98 → PAY-6c · #111 → EV-13 (+ link ใน EV-9) · #110 การ์ดซ้ำ/อัตราผิด → AF-7b/AF-8 (กฎ 29) · #90 reconcile → AF-10 · #107 → AF-N1 ·
+  spec 04 Q11 (ก), FS-9 ✕, Q-F6 (backend บังคับช่วงคืน → CORE-20b), ชื่อ "พร้อมเพย์", payouts ไม่แสดง `reference` (→ AF-7b) · Q-F1 ยังไม่ตัดสิน → checklist go-live ใน OPS-13 ·
+  nit/qa #109 → CORE-4e · #112 → CORE-20b/CORE-20c · #113 → CORE-14d/CORE-24 · #105 → CORE-23b · #98 → PAY-6c · #111 → EV-13/EV-5c (+ link ใน EV-9) ·
+  #110 การ์ดซ้ำ/อัตราผิด → AF-7b/AF-8 (กฎ 29) · #90 reconcile → AF-10 · #107 → AF-N1 · #114 → GB-6c2 · #115 → FS-12/FS-13 · flaky `group-buy-join` → GB-N2 ·
+  rate limit/Sentry ของ OPS-3 → OPS-3b/OPS-3c (รอ Q-O1/Q-O2) ·
   #108 → OPS-13 + ADR-010 ภาคผนวก · (ตรวจแล้วไม่ใช่ปัญหา: production ใช้ locking-redis ผ่าน `infra-modules.ts`)
 
 ## ข้อตกลงการทำงานต่อ PR
