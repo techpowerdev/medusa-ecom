@@ -5,12 +5,19 @@ import {
   type ActiveFlashSales,
   type FlashOffer,
   type FlashVariantPrice,
+  cardFlashPrices,
   countdownLabel,
   flashOfferForVariant,
 } from "@lib/util/flash-sale"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { useEffect, useState } from "react"
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react"
 
 type FlashOfferState = { offer: FlashOffer | null; now: number }
 
@@ -48,6 +55,65 @@ export function useFlashOffer(
   }, [ticking])
 
   return { offer, now }
+}
+
+/**
+ * FS-14 (กฎข้อ 19): ราคา flash ของการ์ดที่ดึงฝั่ง client (หน้าแรกเป็น static, `/store` มาจาก search hit) — no-store ตามกฎข้อ 4
+ * ยังไม่ได้ข้อมูลหรือ request ล้ม → {} (การ์ดแสดงราคาปกติ ไม่ค้าง skeleton)
+ */
+export function useCardFlashPrices(
+  regionId: string,
+  variantIdsByProduct: Record<string, string[]>
+): Record<string, FlashVariantPrice> {
+  const [prices, setPrices] = useState<Record<string, FlashVariantPrice>>({})
+  const key = JSON.stringify(variantIdsByProduct)
+
+  useEffect(() => {
+    let alive = true
+    const byProduct: Record<string, string[]> = JSON.parse(key)
+    getActiveFlashSales(regionId, Object.values(byProduct).flat()).then(
+      (res) => alive && setPrices(cardFlashPrices(res, byProduct, Date.now()))
+    )
+    return () => {
+      alive = false
+    }
+  }, [regionId, key])
+
+  return prices
+}
+
+const CardFlashPricesContext = createContext<Record<string, FlashVariantPrice>>(
+  {}
+)
+
+/** FS-14: ดึงราคา flash ครั้งเดียวต่อรายการการ์ด (rail หน้าแรก) ให้ `CardFlashPrice` ของแต่ละการ์ดอ่าน */
+export function CardFlashPricesProvider({
+  regionId,
+  variantIdsByProduct,
+  children,
+}: {
+  regionId: string
+  variantIdsByProduct: Record<string, string[]>
+  children: ReactNode
+}) {
+  const prices = useCardFlashPrices(regionId, variantIdsByProduct)
+  return (
+    <CardFlashPricesContext.Provider value={prices}>
+      {children}
+    </CardFlashPricesContext.Provider>
+  )
+}
+
+/** FS-14: ราคา flash ของการ์ดจาก `CardFlashPricesProvider`; ไม่มีราคา flash → `fallback` (ราคาปกติ) */
+export function CardFlashPrice({
+  productId,
+  fallback,
+}: {
+  productId: string
+  fallback: ReactNode
+}) {
+  const price = useContext(CardFlashPricesContext)[productId]
+  return price ? <FlashPrice price={price} /> : <>{fallback}</>
 }
 
 /** ราคา flash + ราคาขีดฆ่า (test id เดียวกันทั้งกล่องบน PDP, แถบล่างบนมือถือ และการ์ด PLP — AC-19) */

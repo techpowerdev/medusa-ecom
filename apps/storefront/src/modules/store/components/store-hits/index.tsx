@@ -1,12 +1,17 @@
 "use client"
 
 import type { Hit } from "instantsearch.js"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useHits, useInstantSearch } from "react-instantsearch"
 
+import { listVariantIdsByProduct } from "@lib/data/products"
 import useSearchSettled from "@lib/hooks/use-search-settled"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Text } from "@modules/common/components/ui"
+import {
+  FlashPrice,
+  useCardFlashPrices,
+} from "@modules/products/components/flash-sale"
 import Thumbnail from "@modules/products/components/thumbnail"
 import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-grid"
 import SearchPagination from "./pagination"
@@ -23,10 +28,15 @@ type ProductHit = Hit<
 type StoreHitsProps = {
   hitsPerPage: number
   currencyCode: string
+  regionId: string
 }
 
-const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
+const StoreHits = ({ hitsPerPage, currencyCode, regionId }: StoreHitsProps) => {
   const { items } = useHits<ProductHit>()
+  const flashPrices = useHitFlashPrices(
+    regionId,
+    items.map((hit) => hit.objectID)
+  )
   const { status, indexUiState } = useInstantSearch()
   const { isSearching, hasNoResultsYet } = useSearchSettled()
 
@@ -91,7 +101,11 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
                       >
                         {hit.title}
                       </Text>
-                      <HitPrice hit={hit} currencyCode={currencyCode} />
+                      {flashPrices[hit.objectID] ? (
+                        <FlashPrice price={flashPrices[hit.objectID]} />
+                      ) : (
+                        <HitPrice hit={hit} currencyCode={currencyCode} />
+                      )}
                     </div>
                   </div>
                 </LocalizedClientLink>
@@ -103,6 +117,29 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
       <SearchPagination />
     </>
   )
+}
+
+/**
+ * FS-14 (spec 03 กฎข้อ 19): hit ของ search index ไม่มี variant id → หา variant id ของการ์ดในหน้าด้วย `GET /store/products`
+ * หนึ่ง request ต่อชุด hit แล้วดึงราคา flash; ระหว่างรอการ์ดแสดงราคาจาก index ตามปกติ
+ */
+function useHitFlashPrices(regionId: string, productIds: string[]) {
+  const [variantIdsByProduct, setVariantIdsByProduct] = useState<
+    Record<string, string[]>
+  >({})
+  const idsKey = productIds.join(",")
+
+  useEffect(() => {
+    let alive = true
+    listVariantIdsByProduct(idsKey ? idsKey.split(",") : []).then(
+      (byProduct) => alive && setVariantIdsByProduct(byProduct)
+    )
+    return () => {
+      alive = false
+    }
+  }, [idsKey])
+
+  return useCardFlashPrices(regionId, variantIdsByProduct)
 }
 
 export default StoreHits
