@@ -17,6 +17,10 @@ export JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 export COOKIE_SECRET="${COOKIE_SECRET:-$(openssl rand -hex 32)}"
 export STRIPE_API_KEY="${STRIPE_API_KEY:-sk_test_dummy}" # smoke ไม่เรียก Stripe; provider ต้องการ key ตอนบูตเท่านั้น
 export STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-whsec_dummy}"
+# OPS-7 prod guards (image = NODE_ENV=production): smoke ไม่ใช่ prod → provider ทดสอบ + ค่าที่ guard บังคับ
+export ALLOW_TEST_PROVIDERS="${ALLOW_TEST_PROVIDERS:-true}"
+export AFFILIATE_TOKEN_SECRET="${AFFILIATE_TOKEN_SECRET:-$(openssl rand -hex 32)}"
+export STOREFRONT_URL="${STOREFRONT_URL:-http://localhost:8000}"
 
 compose() { docker compose -p "$PROJECT" -f docker-compose.prod.yml "$@"; }
 cleanup() { [ -n "${KEEP_UP:-}" ] || compose down -v --remove-orphans >/dev/null 2>&1 || true; }
