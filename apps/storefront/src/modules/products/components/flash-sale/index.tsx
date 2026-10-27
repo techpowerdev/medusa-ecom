@@ -3,6 +3,8 @@
 import { getActiveFlashSales } from "@lib/data/flash-sales"
 import {
   type ActiveFlashSales,
+  type FlashOffer,
+  type FlashVariantPrice,
   countdownLabel,
   flashOfferForVariant,
 } from "@lib/util/flash-sale"
@@ -10,22 +12,17 @@ import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import { useEffect, useState } from "react"
 
-type FlashSaleProps = {
-  product: HttpTypes.StoreProduct
-  region: HttpTypes.StoreRegion
-  variant?: HttpTypes.StoreProductVariant
-}
+type FlashOfferState = { offer: FlashOffer | null; now: number }
 
 /**
- * FS-6 (spec 03, AC-4, AC-13 e, กฎข้อ 4): banner แคมเปญ + countdown "สิ้นสุดใน" + ราคา flash/ราคาขีดฆ่า
- * + "สินค้าหมด"/"เหลือ N ชิ้น" บน PDP — PDP เป็น static (revalidate 60) จึงดึงข้อมูลฝั่ง client ทุกครั้งที่เปิดหน้า
- * ราคามาจาก Promotion module ของ Medusa (FS-4) ยอดจริงคือยอดใน cart (กฎข้อ 14)
+ * FS-6/FS-13: offer flash ของ variant ที่เลือกบน PDP — PDP เป็น static (revalidate 60) จึงดึงข้อมูลฝั่ง client ทุกครั้งที่เปิดหน้า
+ * ใช้ร่วมกันระหว่างกล่อง flash, ปุ่มเพิ่มลง cart (disable เมื่อ sold_out, กฎข้อ 18) และแถบล่างบนมือถือ
  */
-export default function FlashSale({
-  product,
-  region,
-  variant,
-}: FlashSaleProps) {
+export function useFlashOffer(
+  product: HttpTypes.StoreProduct,
+  region: HttpTypes.StoreRegion,
+  variant?: HttpTypes.StoreProductVariant
+): FlashOfferState {
   const [data, setData] = useState<ActiveFlashSales | null>(null)
   const [now, setNow] = useState(() => Date.now())
 
@@ -50,6 +47,43 @@ export default function FlashSale({
     return () => clearInterval(timer)
   }, [ticking])
 
+  return { offer, now }
+}
+
+/** ราคา flash + ราคาขีดฆ่า (test id เดียวกันทั้งกล่องบน PDP, แถบล่างบนมือถือ และการ์ด PLP — AC-19) */
+export function FlashPrice({
+  price,
+  className,
+}: {
+  price: FlashVariantPrice
+  className?: string
+}) {
+  const money = (amount: number) =>
+    convertToLocale({ amount, currency_code: price.currency_code })
+  return (
+    <span className="flex items-baseline gap-x-2">
+      <span
+        className={className ?? "text-ui-fg-interactive"}
+        data-testid="flash-price"
+      >
+        {money(price.flash_price!)}
+      </span>
+      <span
+        className="line-through text-ui-fg-subtle"
+        data-testid="flash-original-price"
+      >
+        {money(price.original_price)}
+      </span>
+    </span>
+  )
+}
+
+/**
+ * FS-6 (spec 03, AC-4, AC-13 e, กฎข้อ 4): banner แคมเปญ + countdown "สิ้นสุดใน" + ราคา flash/ราคาขีดฆ่า
+ * + "สินค้าหมด"/"เหลือ N ชิ้น" บน PDP — ข้อมูลจาก `useFlashOffer`
+ * ราคามาจาก Promotion module ของ Medusa (FS-4) ยอดจริงคือยอดใน cart (กฎข้อ 14)
+ */
+export default function FlashSale({ offer, now }: FlashOfferState) {
   if (!offer) {
     return null
   }
@@ -58,9 +92,6 @@ export default function FlashSale({
   const countdown = sale.show_countdown
     ? countdownLabel(sale.ends_at, now)
     : null
-  const money = (amount: number) =>
-    convertToLocale({ amount, currency_code: price.currency_code })
-
   return (
     <div
       className="flex flex-col gap-y-2 rounded-rounded border border-ui-fg-interactive p-3"
@@ -86,19 +117,11 @@ export default function FlashSale({
         </p>
       ) : (
         <>
-          <p className="flex items-baseline gap-x-2">
-            <span
+          <p>
+            <FlashPrice
+              price={price}
               className="text-xl-semi text-ui-fg-interactive"
-              data-testid="flash-price"
-            >
-              {money(price.flash_price!)}
-            </span>
-            <span
-              className="line-through text-ui-fg-subtle"
-              data-testid="flash-original-price"
-            >
-              {money(price.original_price)}
-            </span>
+            />
           </p>
           {sale.remaining_units != null && (
             <p className="text-small-regular" data-testid="flash-remaining">
