@@ -154,6 +154,11 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-26 (OPS-15, review #122 — log `Connection ended unexpectedly` ของ knex ~1,400 บรรทัดใน CI) Given job integration ของ backend ใน CI When รันจบ Then จำนวนบรรทัดที่มี
   `Connection ended unexpectedly` = 0 — ขั้นท้าย job นับจาก log ของ test แล้ว fail เมื่อ > 0; สาเหตุจริงบันทึกใน body ของ PR (เช่น ปิด connection ของ app ก่อน DB ถูก drop ใน teardown) และ
   ไม่แก้ด้วยการกรอง/ปิด log ข้อความนี้ (grep: ไม่มีสตริงนี้ในโค้ดนอกขั้นนับของ CI); ผ่าน 3 run ติดกัน (run id ใน PR)
+- AC-27 (OPS-16, รอบ 11 — nit review #141 OPS-10, #133 OPS-14) Given `.github/workflows/ci.yml` Then (a) job `lint-typecheck` มี step ที่รัน `tools/ci/check-stripe-events.sh` ตัวจริงกับ
+  `docs/ops/production.md` + `ci.yml` ของ repo (ไม่ใช่แค่ `check-stripe-events.test.sh`) และ test ของ script มีเคสหัวข้อ "Stripe webhooks" ที่มี trailing space → ผ่าน และเคสไม่มีหัวข้อ →
+  exit ≠ 0 พร้อมข้อความบอกว่าหาหัวข้อไม่เจอ; (b) job `storefront-e2e` cache โฟลเดอร์ browser ของ Playwright ด้วย `actions/cache` (key มีเวอร์ชัน `@playwright/test` จาก lockfile) และ
+  cache hit → ไม่ดาวน์โหลด browser ซ้ำ (ติดตั้งเฉพาะ system deps); (c) test ที่อ่าน `ci.yml` (ของ OPS-14) parse ด้วย parser YAML (package ที่อยู่ใน lockfile แล้ว — ถ้าไม่มี ให้ระบุใน PR และคง regex)
+  ไม่ใช้ regex; evidence ใน PR: เวลา step ติดตั้ง Playwright ของ run ที่ cache hit (run id) — ไม่ใช่ gate (unit/script + CI)
 
 ## Tasks
 | ID | Task | Depends |
@@ -174,6 +179,7 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-13b | (เล็ก, docs + test grep, รอบ 10 — nit review #127) `docs/ops/production.md` ถ้อยคำ `ALLOW_TEST_PROVIDERS` ให้ตรงข้อ 3, ตำแหน่งแก้ `shipping_rate`/ราคา option ใน admin (AC-25) — ต้องเป็น PR ที่รัน unit ของ backend (อย่ารวมใน PR เอกสารล้วนเพราะ CI ข้าม test ที่อ่านไฟล์นี้) | OPS-13 ☑ (#127) |
 | OPS-14 | (CI, owner อนุมัติ 2026-10-27 — ◐ #133) `storefront-e2e` รันขนานกับ backend + แบ่ง integration:http เป็น 3 shard + test อ่าน YAML/shard ครบ (AC-24) | — (ไม่มี dependency; OPS-10/OPS-12 แตะ `ci.yml` เดียวกัน → เริ่มหลัง #133 merge) |
 | OPS-15 | (เล็ก, test infra, รอบ 10 — review #122) หาสาเหตุ log knex `Connection ended unexpectedly` ใน integration ของ CI แล้วแก้ที่ต้นเหตุ + ขั้นนับใน CI (AC-26) | OPS-14 (#133 — แตะ job integration เดียวกัน) |
+| OPS-16 | (เล็ก, CI, รอบ 11 — nit review #141/#133, qa OPS-14) รัน `check-stripe-events.sh` ตัวจริงใน `lint-typecheck` + เคส trailing space, cache browser ของ Playwright ใน `storefront-e2e`, test อ่าน `ci.yml` ด้วย parser YAML (AC-27) — ไฟล์: `.github/workflows/ci.yml`, `tools/ci/check-stripe-events*.sh`, test ของ OPS-14 | OPS-10 ☑ (#141), OPS-14 ☑ (#133) — ชน `ci.yml` กับ OPS-12/OPS-15: ทำทีละตัว (ตัวที่เริ่มทีหลังรอตัวก่อน merge) |
 | OPS-9 | (เล็ก) typecheck ในเครื่องล้มที่ `group-buy-campaigns.spec.ts` เมื่อมี `.medusa/types` (typed `query.graph` ของ link) — แก้ที่ test ให้ type ตรงกับ type ของ link ที่ Medusa generate (เช่น อ่านผ่าน type ของ entity/cast ให้ตรง) **ไม่** exclude `.medusa/types` จาก tsconfig (ทำให้ typed query ทั้งโปรเจกต์หายและ CI กับเครื่อง dev typecheck ต่างกันมากขึ้น); ถ้าแก้ที่ test ไม่ได้ให้หยุดและรายงาน (AC-12) | GB-2a |
 | OPS-11 | (เล็ก, e2e tooling, รอบ 6) ย้าย login admin + header `x-forwarded-proto` จาก e2e admin ของ FS-10 ไปเป็น helper ร่วม `e2e/support/admin.ts` + `data-testid` ที่ `Container` ของ widget "Flash sale options" แทน locator `div.last()` (AC-16) — **ทำเมื่อมี e2e admin ตัวที่สอง** (ตัวแรกที่จะเริ่มจาก EV-5b, EV-9, GB-6b, GB-6c, AF-6): ถ้า OPS-11 ยังไม่ merge ตอน task นั้นเริ่ม ให้รวม OPS-11 ไว้ใน PR ของ task นั้น (ไม่สร้าง helper ก่อนมีผู้ใช้สองที่) | FS-10 (#74) |
 OPS-3 ∥ OPS-6 ∥ OPS-7 ∥ OPS-8 ∥ OPS-9 (OPS-9 แตะเฉพาะ `integration-tests/http/group-buy-campaigns.spec.ts`; OPS-6 แตะ `next.config.js`/Dockerfile/jest config; OPS-7 แตะ `notification-providers.ts`/seed/`ci.yml`;
@@ -181,6 +187,9 @@ OPS-8 แตะ `tools/ops/`/`docs/ops/production.md` — ถ้า CORE-10 merg
 OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น; OPS-13 หลัง OPS-7 (#108) ∥ OPS-12; OPS-3b ∥ OPS-3c หลัง OPS-3 และคำตอบ Q-O1/Q-O2
 (รอบ 10) สถานะ: OPS-3 ☑ #120, OPS-7 ☑ #108, OPS-13 ☑ #127; OPS-3b/OPS-3c ⏸ หลัง v1.0; OPS-12 ∥ OPS-13b ∥ OPS-10 เริ่มได้ (OPS-12/OPS-10 แตะ `ci.yml` ร่วมกับ OPS-14 #133 —
 เริ่มหลัง #133 merge เพื่อลด conflict); OPS-15 หลัง OPS-14; OPS-4 เริ่มได้ (Q-O3 ตัดสินแล้ว; workflow ไฟล์แยกจึงไม่ชน `ci.yml` ของ #133)
+(รอบ 11) สถานะ: OPS-10 ☑ #141, OPS-14 ☑ #133, OPS-13b ☑ #147 (nit review #147 — เพิ่ม "→ service zone" ในเส้นทางเมนู shipping option ของ `production.md` ข้อ 5 —
+#147 ไม่ได้แก้ จึงแก้ใน PR เอกสารรอบ 11 (#152) หลัง merge develop);
+OPS-12, OPS-15, OPS-16 เริ่มได้ (แตะ `ci.yml` ร่วมกัน — ทีละตัว ลำดับแนะนำ OPS-15 → OPS-12 → OPS-16); OPS-4, OPS-5 ☐; e2e รันแม้ backend test ล้ม (ผลของการรันขนานใน OPS-14) — ยอมรับ ไม่มี task
 
 ## Open questions (รอบ 10)
 - ~~Q-O3~~ ตัดสินแล้ว (owner 2026-10-27): **รับข้อเสนอทั้งชุด (a)–(e)** ด้านล่าง → OPS-4 เริ่มได้ (Depends FS-3 ☑, GB-3 ☑, OPS-1 ☑); คำถามเดิม (OPS-4 load test) **ข้อเสนอรวม**:

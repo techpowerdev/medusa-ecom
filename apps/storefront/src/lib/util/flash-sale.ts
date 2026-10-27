@@ -68,6 +68,22 @@ export function cardFlashOffer(
   }, null)
 }
 
+/** FS-13/FS-14: ราคา flash ต่อสินค้าของการ์ด (key = product id; ไม่มี key = แสดงราคาปกติ) */
+export function cardFlashPrices(
+  data: ActiveFlashSales | null,
+  variantIdsByProduct: Record<string, string[]>,
+  now: number
+): Record<string, FlashVariantPrice> {
+  const prices: Record<string, FlashVariantPrice> = {}
+  for (const [productId, variantIds] of Object.entries(variantIdsByProduct)) {
+    const offer = cardFlashOffer(data, variantIds, now)
+    if (offer) {
+      prices[productId] = offer.price
+    }
+  }
+  return prices
+}
+
 /** FS-13: รวมผลของ `GET /store/flash-sales/active` ที่แบ่งยิงตามเพดาน variant ต่อ request; ทุกชุดล้ม → null */
 export function mergeActiveFlashSales(
   parts: (ActiveFlashSales | null)[]
