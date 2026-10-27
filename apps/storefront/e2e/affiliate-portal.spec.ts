@@ -151,7 +151,7 @@ test("AF-8a: สมัคร affiliate ผ่าน portal → สถานะ�
 
   await step("เข้า portal ได้ แต่แสดงข้อความรออนุมัติ (Q6: pending → products 403)", async () => {
     await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate(\\?|$)`))
-    await expectThai(page, ["affiliate-pending-message"])
+    await expectThai(page, ["affiliate-status-notice"])
     await expect(page.getByTestId("affiliate-product-card")).toHaveCount(0)
     await expect(page.getByTestId("affiliate-code")).toHaveText(code)
     await evidence("03-pending")
@@ -201,7 +201,7 @@ test("AF-8a: affiliate ที่ถูกระงับ → ข้อควา�
     await page.getByTestId("affiliate-login-password").fill(ann.password)
     await page.getByTestId("affiliate-login-submit").click()
     await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate(\\?|$)`))
-    await expectThai(page, ["affiliate-suspended-message"])
+    await expectThai(page, ["affiliate-status-notice"])
     await expect(page.getByTestId("affiliate-tab-earning")).toHaveCount(0)
     await expect(page.getByTestId("affiliate-product-card")).toHaveCount(0)
   })

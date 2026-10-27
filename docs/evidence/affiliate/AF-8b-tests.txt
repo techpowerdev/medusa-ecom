@@ -1,0 +1,27 @@
+# AF-8b (spec 05 กฎ 33, AC-40) — storefront ในเครื่อง (backend :9250 dev, storefront :8250 dev, DB medusa_af8b)
+# typecheck (storefront, รันก่อน build): pnpm typecheck → exit 0; pnpm lint → 0 errors (31 warnings เดิม ไม่มีในไฟล์ affiliate); next build → exit 0
+
+## Red: e2e AC-40 ก่อนเขียนหน้า (stash โค้ด) → fail ด้วย element not found
+  ✘ AC-40 nav/pages: affiliate-nav-products not found
+  ✘ AC-40 suspended: affiliate-status-notice not found
+  ✘ unit earningsByStatus (ก่อนเขียนฟังก์ชัน): 3 failed | 27 passed
+
+## unit (Vitest) src/lib/util/affiliate-portal.test.ts
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > แต่ละสถานะใช้ค่าของแถวนั้นตรงๆ — reversed ติดลบแยก ไม่หักจาก approved (AC-40) 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > สถานะที่ API ไม่คืนแถว → ฿0 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > หลายสกุลเงินแสดงแยกแถว ไม่รวมข้ามสกุล 0ms
+ Test Files  1 passed (1)
+      Tests  30 passed (30)
+
+## unit (Vitest) ทั้ง storefront
+ Test Files  35 passed (35)
+      Tests  395 passed (395)
+
+## e2e Playwright (chromium) — AF-8b + AF-8a (regression ของ testid ที่ย้าย)
+  ✓  1 [chromium] › e2e/affiliate-portal-pages.spec.ts:68:5 › AC-40: nav ของ portal → Programs, Earnings (reversed แยกติดลบ), Payouts ไม่มี reference, Profile (2.9s)
+  ✓  2 [chromium] › e2e/affiliate-portal-pages.spec.ts:172:5 › AC-40: affiliate ที่ถูกระงับ → Products/Programs แสดง affiliate-status-notice, Earnings/Payouts เปิดได้ (3.3s)
+  ✓  3 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (3.7s)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:140:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (1.3s)
+  ✓  5 [chromium] › e2e/affiliate-portal.spec.ts:166:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (1.3s)
+  ✓  6 [chromium] › e2e/affiliate-portal.spec.ts:189:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (1.5s)
+  6 passed (15.4s)
