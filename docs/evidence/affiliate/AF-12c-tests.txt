@@ -1,0 +1,33 @@
+AF-12c — admin UI Payouts: สร้าง payout + mark paid (spec 05 กฎ 37c, AC-44; AC-26 ยังผ่าน)
+วันที่: 2026-10-28  branch: feat/AF-12c-admin-payouts  ฐาน: origin/develop
+
+== Red (unit) ก่อนเขียน helper ==
+Tests: 10 failed, 1 passed, 11 total  (TypeError: ... is not a function — helper ยังไม่มี)
+
+== Red (e2e AC-44) บน UI เดิมของ develop (payouts-table.tsx ของ origin/develop) ==
+Running 1 test using 1 worker
+  ✘  1 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:31:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (2.0m)
+  1) [chromium] › e2e/affiliate-admin-payout-create.spec.ts:31:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference › เปิดฟอร์ม → ค่าเริ่มต้นเดือนก่อนตามเวลาไทย และตัวเลือกมี active + suspended ไม่มี pending 
+    Test timeout of 120000ms exceeded. (สาเหตุ: ยังไม่มีปุ่ม affiliate-payout-create)
+
+== Green: pnpm --filter backend test:unit -- src/admin/lib/__tests__/affiliate-payout ==
+PASS src/admin/lib/__tests__/affiliate-payout.unit.spec.ts
+Tests:       11 passed, 11 total
+
+== Green: pnpm --filter backend test:unit (ทั้งชุด) ==
+Test Suites: 66 passed, 66 total
+Tests:       650 passed, 650 total
+
+== Green: playwright --project=chromium (backend medusa start จาก build, :9253, DB medusa_af12c) ==
+e2e/affiliate-admin-payout-create.spec.ts  AC-44  ✓
+e2e/affiliate-admin-payouts.spec.ts        AC-26  ✓  (ปุ่ม cancel ยังอยู่ใน viewport 1280×800 หลังเพิ่มปุ่ม Mark paid)
+2 passed — รันซ้ำ 3 รอบติดกัน: 2 passed ทุกรอบ
+
+== pnpm --filter storefront test:e2e:unit ==
+33 passed
+
+== pnpm typecheck (ไม่มี apps/backend/.medusa ค้าง) ==
+apps/backend typecheck: Done / apps/storefront typecheck: Done
+
+== pnpm lint ==
+0 errors (warning เดิมของ develop: backend 1, storefront 31 — ไม่ใช่ไฟล์ของ task นี้)

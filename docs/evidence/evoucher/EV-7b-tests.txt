@@ -1,0 +1,31 @@
+# EV-7b — ผลการทดสอบ (2026-10-28, เครื่อง local: backend :9258, storefront :8258 build+start)
+
+## unit (Vitest) src/lib/util/evoucher.test.ts
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > คืน pool ของ variant ที่เลือกผ่าน v_id 1ms
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > variant ที่เลือกไม่มี pool → null แม้ variant อื่นมี 0ms
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > ไม่มี v_id → ใช้ variant ตั้งต้นแบบเดียวกับ ProductActions (ตัวแรกที่มีของ) 0ms
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > v_id ที่ไม่มีในสินค้า → ใช้ variant ตั้งต้น 0ms
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > สินค้าปกติ (ไม่มี field evoucher_pool) → null 0ms
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > ขอ field ของ pool/partner ทีละ path ตามกฎข้อ 23 เท่านั้น (ไม่ขอ code) 0ms
+ ✓ src/lib/util/evoucher.test.ts > voucherVariantsOf > สินค้าที่ไม่มี variant ใดมี pool → null (ไม่ render บล็อก) 0ms
+ ✓ src/lib/util/evoucher.test.ts > voucherVariantsOf > ส่งเฉพาะ field ที่บล็อกใช้ไปยัง client component 0ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+
+## storefront test:unit ทั้งหมด
+ Test Files  45 passed (45)
+      Tests  458 passed (458)
+
+## e2e chromium: evoucher-storefront.spec.ts (AC-6, AC-36) + evoucher-admin-resend.spec.ts (helper ที่ย้ายไป support/evoucher.ts)
+  ✓  1 [chromium] › e2e/evoucher-storefront.spec.ts:16:5 › AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไทย ส่วนสินค้าปกติไม่มี (6.2s)
+  ✓  2 [chromium] › e2e/evoucher-storefront.spec.ts:40:5 › AC-6 + AC-36: บัตรกำนัลของฉันแสดงเฉพาะ code ของตนเอง พร้อมปุ่มคัดลอก (2.1s)
+  2 passed (8.7s)
+  (รัน --repeat-each=3 อีกรอบ: 6 passed)
+  ✓  1 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.4s)
+  ✓  2 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (2.7s)
+  2 passed (5.6s)
+  (หมายเหตุ: ผลข้างบนคือรอบที่ backend ยังมี admin build; รอบที่จด log ไฟล์นี้ admin ล้ม timeout เพราะลบ apps/backend/.medusa
+   ก่อน typecheck ขณะ server ยังรันจาก build นั้น — ไม่เกี่ยวกับโค้ด ชุดเต็มให้ CI ยืนยัน)
+
+## lint + typecheck (root)
+pnpm lint → exit 0 (warning เดิมเท่านั้น); pnpm typecheck → exit 0 (รันก่อน build ไม่มี .medusa/)
