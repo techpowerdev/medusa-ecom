@@ -49,8 +49,9 @@ const CartDropdown = ({
     }
 
     let isInitialLoad = true
+    // `fresh`: this runs right after a cart mutation, before Next has applied its cache revalidation.
     const load = () =>
-      retrieveCart()
+      retrieveCart(undefined, undefined, { fresh: true })
         .then((cart) => {
           if (isInitialLoad) {
             // Don't auto-open the dropdown for items that were already in the cart.

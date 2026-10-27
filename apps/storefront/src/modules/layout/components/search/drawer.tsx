@@ -38,7 +38,7 @@ const SearchDrawer = ({ isOpen, close, children }: SearchDrawerProps) => {
               leaveTo="translate-x-full"
             >
               <Dialog.Panel
-                className="pointer-events-auto w-screen max-w-md"
+                className="pointer-events-auto w-screen max-w-md min-w-0"
                 data-testid="search-drawer"
               >
                 <div className="flex h-full flex-col border-l border-ui-border-base bg-ui-bg-base shadow-elevation-modal">

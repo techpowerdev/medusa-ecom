@@ -67,6 +67,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 3. hook ที่เราใช้ (`completeCartWorkflow.hooks.validate`, `updateCartPromotionsWorkflow.hooks.*`) ยังมีชื่อ/รูปแบบ input เดิม และ
    `errorHandler` ของ Medusa ยังเขียนทับ `CONFLICT` แบบเดิม (spec 03 กฎข้อ 13)
 4. integration test ทุกชุดผ่านบนเวอร์ชันใหม่
+5. logger ของ OPS-3 (`apps/backend/src/lib/json-logger.ts`): format ของ log JSON (timestamp/errors/splat/json, `LOG_LEVEL`/`LOG_FILE`) ยังตรงกับ
+   logger default ของ Medusa (`@medusajs/cli/dist/reporter`), deep import class `Reporter` และ `ora` ที่ resolve จาก `@medusajs/cli` ยังใช้ได้ และ
+   `medusa start` ที่ไม่ตั้ง `NODE_ENV` ยังบูตได้
 
 ## Acceptance criteria
 - AC-1 Backend boot เป็น `server` และ `worker` ได้จาก image เดียวกัน; scheduled jobs รันเฉพาะบน worker

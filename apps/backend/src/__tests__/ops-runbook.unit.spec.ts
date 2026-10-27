@@ -95,3 +95,23 @@ describe("AC-16 apps/backend/.env.example", () => {
     expect(lines.filter((line) => /^OPS_ALERT_EMAIL=/.test(line))).toEqual(["OPS_ALERT_EMAIL="])
   })
 })
+
+// OPS-3: spec 07 AC-18 (ADR-012 ภาคผนวก) — alert จาก log เมื่อ BullMQ worker ของ event bus ตายตอนบูต
+describe("AC-18 หัวข้อ Alerts ใน docs/ops/production.md", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const body = section(doc, "Alerts")
+
+  it('มีหัวข้อ "Alerts"', () => {
+    expect(body).not.toBeNull()
+  })
+
+  it("มีกฎที่ match สตริง `Error running event bus worker` กรองด้วย level error และ worker_mode worker", () => {
+    expect(body).toContain("Error running event bus worker")
+    expect(body).toContain('level == "error"')
+    expect(body).toContain('worker_mode == "worker"')
+  })
+
+  it("ระบุขั้นตอนตอบสนอง: restart worker", () => {
+    expect(body).toContain("restart worker")
+  })
+})
