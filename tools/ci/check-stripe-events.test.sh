@@ -19,11 +19,12 @@ doc() { # <ไฟล์> <event...> → เอกสารที่มีหั�
 ci() { # <ไฟล์> <ค่า events=>
   printf 'jobs:\n  e2e:\n    steps:\n      - run: |\n          events=%s\n          stripe listen --events "$events"\n' "$2" > "$1"
 }
-expect() { # <ชื่อเคส> <exit ที่คาด 0|1> <doc> <ci>
+expect() { # <ชื่อเคส> <exit ที่คาด 0|1> <doc> <ci> [ข้อความที่ต้องมีใน output]
   local got=0
   "$check_script" "$3" "$4" > "$tmp/out" 2>&1 || got=1
-  if [ "$got" = "$2" ]; then pass=$((pass + 1)); echo "ok   - $1 (exit $got)"
-  else fail=$((fail + 1)); echo "FAIL - $1 (exit $got คาด $2)"; sed 's/^/       /' "$tmp/out"; fi
+  if [ "$got" = "$2" ] && { [ -z "${5:-}" ] || grep -qF -- "$5" "$tmp/out"; }; then
+    pass=$((pass + 1)); echo "ok   - $1 (exit $got)"
+  else fail=$((fail + 1)); echo "FAIL - $1 (exit $got คาด $2${5:+ และข้อความ \"$5\"})"; sed 's/^/       /' "$tmp/out"; fi
 }
 
 doc "$tmp/d1" payment_intent.created payment_intent.succeeded
@@ -38,7 +39,11 @@ expect "ci.yml มี event เกิน" 1 "$tmp/d1" "$tmp/c4"
 ci "$tmp/c5" payment_intent.created,payment_intent.succeeded,charge.refunded
 expect "bullet นอกหัวข้อไม่ถูกนับ" 1 "$tmp/d1" "$tmp/c5"
 printf '# Production\n## อื่น\n- `payment_intent.created`\n' > "$tmp/d2"
-expect "ไม่มีหัวข้อ Stripe webhooks" 1 "$tmp/d2" "$tmp/c1"
+expect "ไม่มีหัวข้อ Stripe webhooks" 1 "$tmp/d2" "$tmp/c1" 'ไม่มีหัวข้อ "## Stripe webhooks"'
+# OPS-16 (AC-27a): หัวข้อที่มี trailing space (เช่นจาก editor) ยังนับเป็นหัวข้อเดียวกัน
+doc "$tmp/d3" payment_intent.created payment_intent.succeeded
+sed -i.bak 's/^## Stripe webhooks$/## Stripe webhooks  /' "$tmp/d3"
+expect "หัวข้อ Stripe webhooks มี trailing space" 0 "$tmp/d3" "$tmp/c1"
 printf 'jobs: {}\n' > "$tmp/c6"
 expect "ci.yml ไม่มี events=" 1 "$tmp/d1" "$tmp/c6"
 expect "ไฟล์จริงของ repo (production.md × ci.yml)" 0 "$root/docs/ops/production.md" "$root/.github/workflows/ci.yml"

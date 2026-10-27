@@ -1,0 +1,53 @@
+# OPS-16 (spec 07 AC-27) — ผล test ในเครื่อง (2026-10-28, node v22.23.3)
+
+## Red (ก่อนแก้ script/ci.yml)
+- check-stripe-events.test.sh: 8/9 — FAIL 'หัวข้อ Stripe webhooks มี trailing space' (exit 1 คาด 0: script หาหัวข้อไม่เจอ)
+- ci-workflow.unit.spec.ts: 4 failed / 13 — ขาด step check-stripe-events.sh ใน lint-typecheck, ไม่มี actions/cache ของ Playwright (3 เคส)
+
+## Mutation (ใส่ชั่วคราวแล้วคืน): 'if: false' ที่ขั้น smoke-redis-outage และ 'continue-on-error: true' ที่ขั้น check-stripe-events.sh
+- ทั้งสองเคส ✕ (2 failed) — test จับการข้าม/กลืนผลได้ (nit review #172)
+
+## Green
+$ tools/ci/check-stripe-events.test.sh
+ok   - เซตเท่ากัน (exit 0)
+ok   - เซตเท่ากันแม้ลำดับต่าง (exit 0)
+ok   - ci.yml ขาด event (exit 1)
+ok   - ci.yml มี event เกิน (exit 1)
+ok   - bullet นอกหัวข้อไม่ถูกนับ (exit 1)
+ok   - ไม่มีหัวข้อ Stripe webhooks (exit 1)
+ok   - หัวข้อ Stripe webhooks มี trailing space (exit 0)
+ok   - ci.yml ไม่มี events= (exit 1)
+ok   - ไฟล์จริงของ repo (production.md × ci.yml) (exit 0)
+check-stripe-events: 9/9 passed
+
+$ tools/ci/check-stripe-events.sh
+ok: Stripe webhook events ตรงกัน (8 event)
+
+$ jest src/__tests__/ci-workflow.unit.spec.ts (TEST_TYPE=unit)
+  OPS-14 ci.yml
+    ✓ storefront-e2e ไม่รอ job ของ backend tests (รันขนาน)
+    ✓ integration:http แบ่ง shard ใน matrix และ shard รวมกันครบทุกไฟล์ไม่ซ้ำ
+    ✓ ยังรัน test:unit และ test:integration:modules ใน CI
+    ✓ job backend-tests เป็นตัวรวมผลที่รอทุก shard และ fail เมื่อ shard ไม่ success
+  OPS-15 ci.yml นับ log connection ของ knex
+    ✓ ขั้นรัน test เขียน log ลงไฟล์ (shell: bash = -eo pipefail คง exit code ของ jest)
+    ✓ มีขั้นนับที่รันแม้ test ล้ม และ exit 1 เมื่อจำนวน > 0
+    ✓ สตริงที่นับไม่อยู่ในโค้ดส่วนอื่น (ไม่แก้ด้วยการกรอง/ปิด log)
+  OPS-12 ci.yml รัน smoke-redis-outage.sh
+    ✓ มีขั้นรัน tools/ops/smoke-redis-outage.sh หลัง tools/ops/smoke-worker-mode.sh
+    ✓ ขั้น smoke-redis-outage ไม่ถูกข้ามหรือกลืนผล (ไม่มี if, continue-on-error หรือ || true)
+  OPS-16 ci.yml ตรวจ Stripe events ตัวจริง
+    ✓ มีขั้นรัน tools/ci/check-stripe-events.sh (ไม่มี argument = docs/ops/production.md × ci.yml)
+  OPS-16 ci.yml cache browser ของ Playwright
+    ✓ cache โฟลเดอร์ ms-playwright ด้วย key ที่มีเวอร์ชันจาก step ที่อ่าน pnpm-lock.yaml
+    ✓ step อ่านเวอร์ชันได้ค่าเดียวกับ @playwright/test ของ storefront
+    ✓ cache miss → install --with-deps; cache hit → install-deps เท่านั้น (หลัง restore cache)
+Tests:       13 passed, 13 total
+
+$ pnpm --filter backend test:unit
+Test Suites: 67 passed, 67 total
+Tests:       654 passed, 654 total
+
+$ pnpm lint && pnpm typecheck  → exit 0 / exit 0 (worktree ไม่มี apps/backend/.medusa)
+
+## หมายเหตุ AC-27b: เวลา step ติดตั้ง Playwright ตอน cache hit ดูได้จาก CI run ที่สอง — ไม่ใช่ gate

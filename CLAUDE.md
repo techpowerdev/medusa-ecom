@@ -8,7 +8,7 @@
 - คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
 - ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
-  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
+  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น menuitem ของ `ActionMenu` ใน admin — ADR-018) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
   regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
 
 ## โปรเจกต์นี้คืออะไร
@@ -33,7 +33,10 @@ storefront จาก **Medusa Next.js Starter** เราขยายควา�
    3) ของที่ dashboard ไม่ export (เช่น Header) → ทำตาม "Custom Component Guides" ของหน้าเดียวกัน; **ห้าม copy โค้ดจากหน้า
       archive** (ถูกแทนด้วย export แล้ว)
    ดึงข้อมูล: resource ของ Medusa ใช้ hook ของ dashboard; route ของเราเองใช้ JS SDK + Tanstack Query (query key + invalidate)
-   ฟอร์ม: `Form` ของ dashboard + react-hook-form + zod (สร้าง = FocusModal/RouteFocusModal, แก้ = Drawer/RouteDrawer)
+   ฟอร์ม: `Form` ของ dashboard + react-hook-form + zod (สร้าง = `FocusModal`, แก้ = `Drawer` แบบ state — ADR-018 Q5)
+   ปุ่มต่อแถวใช้ `ActionMenu` (testid ที่ trigger; e2e หา menuitem ด้วย role + ชื่อ — ข้อยกเว้นของการหาด้วย `data-testid`);
+   วันเวลาใช้ `DatePicker` (`granularity="minute"`) + `useDate` ตาม timezone ของเครื่องแบบ Medusa (เครื่องแอดมินตั้งเวลาไทย);
+   เงินใช้ `getLocaleAmount` — ดู ADR-018
    ห้ามเขียน component/hook/helper ซ้ำกับข้างบน (ตาราง, แบ่งหน้า, prompt, toast, client API, formatter เงิน/วันที่, form field)
    สร้างเองได้เฉพาะเมื่อไม่มีจริง พร้อมเหตุผลใน PR; shared component เก็บที่ `src/admin/components/common/` เมื่อมีผู้ใช้จริง ≥ 2 ที่;
    ของจาก Medusa ก็ยังต้องกันกดซ้ำตามกฎด้านล่าง — แผนปรับโค้ดเดิมดู ADR-018

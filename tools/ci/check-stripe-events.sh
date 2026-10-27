@@ -9,7 +9,8 @@ doc=${1:-$root/docs/ops/production.md}
 ci=${2:-$root/.github/workflows/ci.yml}
 
 # bullet "- `event.name`" ภายในหัวข้อ "## Stripe webhooks" เท่านั้น (จบที่หัวข้อระดับ ## ถัดไป)
-doc_events=$(awk '/^## /{in_sec=($0=="## Stripe webhooks")} in_sec' "$doc" |
+# ตัด whitespace ท้ายหัวข้อก่อนเทียบ (OPS-16: หัวข้อที่มี trailing space ยังเป็นหัวข้อเดียวกัน)
+doc_events=$(awk '/^## /{h=$0; sub(/[[:space:]]+$/, "", h); in_sec=(h=="## Stripe webhooks")} in_sec' "$doc" |
   sed -nE 's/^- `([a-z_]+(\.[a-z_]+)+)`.*/\1/p' | sort -u)
 lines=$(grep -cE '^[[:space:]]*events=' "$ci" || true)
 if [ "$lines" -ne 1 ]; then
