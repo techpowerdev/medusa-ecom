@@ -425,21 +425,21 @@ export async function submitPromotionForm(
   const code = formData.get("code") as string
   try {
     await applyPromotions([code])
-  } catch (e: any) {
-    return e.message
+  } catch (e: unknown) {
+    // CORE-4e (กฎข้อ 55): message ของ Medusa เป็นอังกฤษ — แสดงข้อความไทย
+    return friendlyErrorMessage(e, "ใช้โค้ดส่วนลดไม่สำเร็จ กรุณาตรวจสอบโค้ดแล้วลองอีกครั้ง")
   }
 }
 
 // TODO: Pass a POJO instead of a form entity here
 export async function setAddresses(currentState: unknown, formData: FormData) {
+  if (!formData) {
+    return "ไม่พบข้อมูลที่อยู่ กรุณากรอกใหม่อีกครั้ง"
+  }
+  if (!(await getCartId())) {
+    return "ไม่พบตะกร้าสินค้า กรุณาเพิ่มสินค้าลงตะกร้าก่อน"
+  }
   try {
-    if (!formData) {
-      throw new Error("ไม่พบข้อมูลที่อยู่ กรุณากรอกใหม่อีกครั้ง")
-    }
-    const cartId = getCartId()
-    if (!cartId) {
-      throw new Error("ไม่พบตะกร้าสินค้า กรุณาเพิ่มสินค้าลงตะกร้าก่อน")
-    }
 
     const data = {
       shipping_address: {
@@ -474,8 +474,9 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         phone: formData.get("billing_address.phone"),
       }
     await updateCart(data)
-  } catch (e: any) {
-    return e.message
+  } catch (e: unknown) {
+    // CORE-4e (กฎข้อ 55): message ของ Medusa เป็นอังกฤษ — แสดงข้อความไทย
+    return friendlyErrorMessage(e, "บันทึกที่อยู่ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง")
   }
 
   redirect(

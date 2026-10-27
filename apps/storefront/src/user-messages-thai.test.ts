@@ -20,8 +20,8 @@ const FILES = [
 // CORE-4d: ข้อความที่ component ของ checkout ตั้งเอง ESLint rule ไม่ครอบ (`setError("…")`, prop `error="…"` ของ ErrorMessage,
 // `metadata` ของหน้า, `title` ของวิธีชำระเงินใน lib/constants.tsx) — ตรวจด้วยตัวอ่านเดียวกัน
 const CHECKOUT_DIRS = ["app/[countryCode]/(checkout)", "modules/checkout", "modules/shipping"]
-// ADR-014 ข้อ 4: ชื่อแบรนด์วิธีชำระเงินคงเป็นละตินได้
-const BRANDS = ["PromptPay", "PayPal", "iDeal", "Bancontact"]
+// ADR-014 ข้อ 4: ชื่อแบรนด์วิธีชำระเงินคงเป็นละตินได้ — ยกเว้นพร้อมเพย์ใช้ "พร้อมเพย์" แบบเดียว (CORE-4e กฎข้อ 54)
+const BRANDS = ["PayPal", "iDeal", "Bancontact"]
 const tsxFiles = (dir: string): string[] =>
   fs.readdirSync(path.resolve(__dirname, dir), { withFileTypes: true }).flatMap((entry) => {
     const rel = path.join(dir, entry.name)
@@ -140,14 +140,4 @@ describe.each(CHECKOUT_DIRS.flatMap(tsxFiles).concat("lib/constants.tsx"))(
     })
   }
 )
-
-// CORE-4d: error ตอนสร้าง QR PromptPay ใหม่ไม่ส่ง `message` อังกฤษดิบของ backend ให้ผู้ใช้ — ใช้ friendlyErrorMessage
-describe("renewPromptPaySession (lib/data/cart.ts)", () => {
-  it("ค่า message ไม่อ่านจาก body ของ backend", () => {
-    const source = fs.readFileSync(path.resolve(__dirname, "lib/data/cart.ts"), "utf8")
-    const start = source.indexOf("export async function renewPromptPaySession")
-    const body = source.slice(start, source.indexOf("\n}\n", start))
-    expect(body).not.toMatch(/\.message\s*\?\?/)
-    expect(body).toMatch(/friendlyErrorMessage\(/)
-  })
-})
+// CORE-4e (AC-90): renewPromptPaySession ตรวจด้วยพฤติกรรม (mock fetch) ใน checkout-thai-polish.test.ts แทนการตัด source

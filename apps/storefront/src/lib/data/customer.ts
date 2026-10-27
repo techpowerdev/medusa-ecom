@@ -206,7 +206,15 @@ async function completeLogin(
   try {
     result = await sdk.auth.login("customer", "emailpass", { email, password })
   } catch (error) {
-    return { state: "error", error: errorMessage(error) }
+    // CORE-4e: 401 ของ emailpass = "Invalid email or password" (อังกฤษ) → ข้อความไทย
+    const status = (error as { status?: unknown } | null)?.status
+    return {
+      state: "error",
+      error:
+        status === 401
+          ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+          : friendlyErrorMessage(error, "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
+    }
   }
 
   // A `location` is returned by third-party auth providers, which this flow

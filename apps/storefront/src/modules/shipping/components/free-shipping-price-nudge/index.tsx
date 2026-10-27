@@ -208,11 +208,14 @@ function FreeShippingPopup({
           "opacity-100 visible": !price.target_reached && !isClosed,
         }
       )}
+      data-testid="free-shipping-nudge-popup"
     >
       <div>
         <Button
           className="rounded-full bg-neutral-900 shadow-none outline-none border-none text-[15px] p-2"
           onClick={() => setIsClosed(true)}
+          aria-label="ปิดข้อความส่งฟรี"
+          data-testid="free-shipping-nudge-close"
         >
           <XMark />
         </Button>
