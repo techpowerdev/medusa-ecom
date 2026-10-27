@@ -52,8 +52,9 @@ test("AC-41: /buy ไม่มี session → login พร้อม return URL �
   const since = new Date()
 
   await step("GET /buy/<variant>:2 โดยไม่มี session → redirect ไปหน้า login ที่มี return URL", async () => {
+    // CORE-14c (nit review #81): ตรวจ status + location ของ redirect แรกก่อนตามไปหน้าปลายทาง; route `/buy` ตอบ 303 เสมอ
     const res = await request.get(buyPath, { maxRedirects: 0 })
-    expect([303, 307]).toContain(res.status())
+    expect(res.status()).toBe(303)
     const location = new URL(res.headers()["location"], "http://storefront")
     expect(location.pathname).toBe(`/${CC}/account`)
     expect(location.searchParams.get("return_to")).toBe(buyPath)
@@ -96,7 +97,11 @@ test("AC-41: /buy ไม่มี session → login พร้อม return URL �
 
 test("AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404", async ({ request, step }) => {
   await step("UCP + cart/resume → 404 และไม่มี header Link rel=ucp", async () => {
-    // /ucp ไม่ถูกยกเว้นจาก middleware แล้ว → อาจ redirect ไป /th/ucp/... ก่อน ปลายทางต้องเป็น 404
+    // /ucp ไม่ถูกยกเว้นจาก middleware แล้ว → 307/308 ไป /th/ucp/... ก่อน (ไม่ใช่ 2xx) แล้วปลายทางต้องเป็น 404
+    // CORE-14c (nit review #81): assert redirect แรกก่อนตามไป
+    const first = await request.get("/ucp/v1", { maxRedirects: 0 })
+    expect([307, 308]).toContain(first.status())
+    expect(new URL(first.headers()["location"], "http://storefront").pathname).toBe(`/${CC}/ucp/v1`)
     expect((await request.get("/ucp/v1")).status()).toBe(404)
     expect((await request.post("/ucp/v1/cart", { data: {} })).status()).toBe(404)
     const home = await request.get(`/${CC}`)

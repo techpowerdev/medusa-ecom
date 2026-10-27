@@ -68,9 +68,27 @@ handshake (kernel ตอบแทน) คำสั่งจึงแค่ค้
 ของ event bus ต่อ Redis ไม่สำเร็จตอนบูต (เช่น event loop ค้างเกิน connectTimeout 10 วินาที → `ETIMEDOUT`) worker จะหยุดถาวร
 พร้อม log `Error running event bus worker: Connection is closed.` ขณะที่ `GET /health` ยังตอบ 200 → orchestrator ไม่ restart ให้
 และ event (order placed, payment captured ฯลฯ) ค้างใน queue
-- ต้องตั้ง **alert จาก log `Error running event bus worker`** บน process worker (งานของ OPS-3)
+- ต้องตั้ง **alert จาก log `Error running event bus worker`** บน process worker — กฎอยู่ในหัวข้อ "Alerts" (OPS-3)
 - เมื่อ alert ดังให้ restart worker (orchestrator/on-call) — job ที่ค้างอยู่ใน Redis จะถูกประมวลผลหลัง restart
 - เราไม่แตะ internal ของ module event bus ของ Medusa และไม่เพิ่ม health route (ADR-012 ข้อ 3–4)
+
+## Alerts
+log ของ backend เป็น JSON บรรทัดละหนึ่ง object (`NODE_ENV` ที่ไม่ใช่ development) ผ่าน logger ใน `apps/backend/src/lib/json-logger.ts`
+(OPS-3, spec 07 AC-18) — format เดียวกับ logger ของ Medusa (`level`, `message`, `timestamp`, `stack` เมื่อมี error) และเพิ่ม field
+`worker_mode` (`server` / `worker` / `shared`) จาก env `MEDUSA_WORKER_MODE` ของ container นั้น `LOG_LEVEL`/`LOG_FILE` ใช้ได้ตามเดิม
+access log ของ HTTP (`request_id`, `status`, `duration` — จาก header `x-request-id` หรือ uuid ที่ Medusa สร้าง) Medusa เขียนเองโดยไม่ผ่าน
+logger นี้ จึงไม่มี `worker_mode` (มีเฉพาะบน server อยู่แล้ว)
+
+| alert | เงื่อนไข (ตั้งใน log shipper / log platform ที่ใช้) | ระดับ | ขั้นตอนตอบสนอง |
+|---|---|---|---|
+| event bus worker หยุด (ADR-012 ภาคผนวก) | `worker_mode == "worker"` และ `level == "error"` และ `message` มีสตริง `Error running event bus worker` — แจ้งทันทีตั้งแต่บรรทัดแรก | critical | restart worker (container/process `MEDUSA_WORKER_MODE=worker`) แล้วตรวจตามด้านล่าง |
+
+ขั้นตอนเมื่อ alert event bus worker ดัง:
+1. restart worker — `GET /health` ยังตอบ 200 orchestrator จึงไม่ restart ให้เอง (ADR-012) เช่น
+   `docker compose -f docker-compose.prod.yml restart worker`
+2. ตรวจ log ของ worker หลัง restart ว่าไม่มี `Error running event bus worker` ซ้ำ และ Redis ตอบ (`redis-cli -u $REDIS_URL ping`)
+3. job ที่ค้างใน Redis ถูกประมวลผลหลัง restart — ตรวจผลปลายทาง เช่น order ล่าสุดได้อีเมล/e-voucher
+4. ถ้าเกิดซ้ำ: บันทึก log จริงแล้วเปิด ADR-012 พิจารณาทางเลือก B ใหม่ (ภาคผนวก "ผลที่ตามมาเพิ่ม")
 
 ## Prod guards (OPS-7, ADR-010)
 backend ที่ `NODE_ENV=production` (image ตั้งให้แล้ว และ `medusa start` ตั้งเป็นค่า default) **บูตไม่ขึ้น** เมื่อ:
@@ -176,7 +194,8 @@ provider ตอนอ่าน PI เดิม — guard ไม่ลบ session
 
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
-- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015 และ `OPS_ALERT_EMAIL`)
+- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL` และ Alerts)
+- `pnpm --filter backend test:unit` — `src/lib/__tests__/json-logger.unit.spec.ts` (`worker_mode` ใน log JSON)
 - `pnpm --filter backend test:unit` — `src/__tests__/prod-guards.unit.spec.ts` (OPS-7 guards, env ใน `ci.yml`, หัวข้อ Go-live checklist)
 - `pnpm --filter backend check:go-live` — checklist ก่อนเปิดร้าน (OPS-7)
 - `tools/ops/smoke-worker-mode.sh` — product ที่สร้างบน server ต้องถูกประมวลผลโดย subscriber บน worker
