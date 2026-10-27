@@ -122,10 +122,13 @@ describe("ตัวอ่านข้อความจาก source (กฎข�
   })
 })
 
+// CORE-19d (กฎข้อ 68): `deleteLineItem` คืน `{ error: "unauthorized" | "failed" }` เป็นรหัสให้ client แปลเป็นข้อความไทย ไม่ใช่ข้อความถึงผู้ใช้
+const ERROR_CODES = ["unauthorized", "failed"]
+
 describe.each(FILES)("ข้อความ error ของ %s เป็นภาษาไทย (AC-49, AC-80)", (name) => {
   it("ทุกข้อความมีอักษรไทยและไม่มีคำละติน", () => {
     const source = fs.readFileSync(path.resolve(__dirname, name), "utf8")
-    expect(userMessages(source).filter(notThai)).toEqual([])
+    expect(userMessages(source).filter((m) => !ERROR_CODES.includes(m)).filter(notThai)).toEqual([])
   })
 })
 
