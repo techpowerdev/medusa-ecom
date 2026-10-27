@@ -105,7 +105,8 @@ Link: `flash_sale_config ↔ promotion_campaign`
    `remaining_units` (FS-7) — ข้อความไทยตรงในโค้ด (ADR-014) ห้ามใช้ campaign budget
    `usage` เพื่อแสดงผล เพราะนับต่อ order ไม่ใช่ต่อหน่วย; campaign budget เป็นเพียง backstop (ถ้าหมดก่อน Medusa หยุดใช้
    promotion เอง)
-5. เวลาที่กรอกใน admin เป็นเวลา Bangkok จัดเก็บเป็น UTC
+5. เวลาที่กรอกใน admin (หน้า campaign/promotion ของ Medusa) ตีความตาม timezone ของเครื่องแอดมินตามพฤติกรรมของ Medusa — เครื่องแอดมินต้องตั้งเวลาเป็นไทย
+   (ADR-018, 2026-10-28); จัดเก็บเป็น UTC
 6. **Exclusivity** (เจ้าของระบบ, ADR-009): ส่วนลด flash ไม่ซ้อนกับ promotion code ใดๆ — **code ชนะ**
    (a) exclusive automatic promotion = `is_automatic=true` และมี rule
    `{ attribute: "exclusivity.code_applied", operator: "ne", values: ["true"] }` (ไม่พึ่ง module `flash_sale`)

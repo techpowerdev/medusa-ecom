@@ -263,10 +263,14 @@ Payout
     ปุ่ม Clear ส่ง `null`) — ค่าเต็มเห็นเฉพาะ admin (กฎ 8)
     (c) **Payouts** (AF-12c): `affiliate-payout-create` เปิดฟอร์ม: เลือก affiliate สถานะ `active`/`suspended` — filter `status` ของ `GET /admin/affiliate/affiliates` รับค่าเดียว
     จึงยิง 2 ครั้ง (`?status=active` และ `?status=suspended`, `limit` ≤ 200) แล้วรวมผล ไม่แก้ validator, `period_from`/`period_to` ค่าเริ่มต้น =
-    เดือนก่อนหน้าตามเวลาไทย `[วันที่ 1 00:00, วันที่ 1 ของเดือนนี้ 00:00)` Asia/Bangkok ส่งเป็น ISO; 400 (เช่นไม่มี entry/ยอดสุทธิ ≤ 0 ตาม Q8) → toast ไม่มีแถวใหม่; แถว `draft` มี
+    เดือนก่อนหน้าตามเวลาไทย `[วันที่ 1 00:00, วันที่ 1 ของเดือนนี้ 00:00)` Asia/Bangkok ส่งเป็น ISO (ตั้งแต่ ADM-9: ใช้ `DatePicker` และคำนวณตาม timezone ของเครื่องแอดมิน
+    ซึ่งต้องตั้งเป็นเวลาไทย — ADR-018; e2e admin ตั้ง `timezoneId: "Asia/Bangkok"`); 400 (เช่นไม่มี entry/ยอดสุทธิ ≤ 0 ตาม Q8) → toast ไม่มีแถวใหม่; แถว `draft` มี
     `affiliate-payout-mark-paid` → `usePrompt` พร้อม input `reference` (ไม่บังคับ; trim แล้วว่าง → **ไม่ส่ง key `reference`** เพราะ validator เป็น `min(1).optional()` — ส่ง `""` ได้ 400)
     → `POST /admin/affiliate/payouts/:id/mark-paid`; แถว `paid` แสดง `paid_at`, `reference` และไม่มีทั้งปุ่ม mark paid/cancel;
     ส่วนเพิ่มของ AC-26 จาก qa #138 (ปุ่มในจอที่ 1280px, ยกเลิกล้ม → refetch + toast) ถ้า #138 ยังไม่ครอบ ทำใน AF-12c
+    (d) (ADR-018, owner 2026-10-28) ตั้งแต่ ADM-8 ปุ่มต่อแถว (`affiliate-program-edit`/`-delete`, `affiliate-approve`/`-suspend`/`-reactivate`, `affiliate-payout-info-edit`,
+    `affiliate-payout-mark-paid`/`-cancel`) ย้ายเข้า `ActionMenu` ของ dashboard — e2e ของ AC-26, AC-42..44 หา trigger ด้วย testid ระดับแถว แล้วหา menuitem ด้วย role + ชื่อ
+    ตาม spec 08 กฎ 10; การกันกดซ้ำ (`createSingleFlight`) และ `usePrompt` คงเดิม
 38. (รอบ 11, AF-14 — owner ตัดสิน Q17 2026-10-27) Ledger และ Payouts ของ admin แสดง**ชื่อ + อีเมล** ของ affiliate แทน `affiliate_id`: `GET /admin/affiliate/affiliates` รับ filter `id`
     (ค่าเดียวหรือ array `id[]`) เพิ่มใน `AdminListAffiliates` (route เดิมส่ง `req.filterableFields` ให้ `refetchEntities` อยู่แล้ว — ไม่เพิ่ม route, ไม่แก้ model/relation, ไม่มี migration);
     UI รวบ `affiliate_id` ที่ไม่ซ้ำของแถวในหน้าปัจจุบันแล้วยิง **1 request ต่อหน้า** (`fields=id,name,email`, `limit` = จำนวน id) — ไม่ดึง affiliate ทั้งหมดมาจับคู่; หาไม่เจอ → แสดง `affiliate_id`
@@ -374,7 +378,7 @@ Payout
 - AC-43 (AF-12b, กฎ 37b) Given affiliate `pending` When `dblclick` `affiliate-approve` Then มี `POST /admin/affiliate/affiliates/:id` 1 ครั้งด้วย `status: "active"` และ badge เป็น `active` โดยไม่ reload;
   When `affiliate-suspend` แล้วยกเลิก prompt Then ไม่มี request; ยืนยัน Then `suspended` และมี `affiliate-reactivate`; When บันทึกข้อมูลรับเงิน 3 field Then `GET /admin/affiliate/affiliates/:id`
   มี `payout_info` ตรงกัน; When Clear Then `payout_info = null` (e2e admin)
-- AC-44 (AF-12c, กฎ 37c) Given Ann มี entry `approved` ใน "เดือนก่อน" (ตั้ง `created_at` ใน setup) When เปิดฟอร์ม `affiliate-payout-create` Then ช่วงวันที่ค่าเริ่มต้นคือเดือนก่อนตามเวลาไทย;
+- AC-44 (AF-12c, กฎ 37c) Given Ann มี entry `approved` ใน "เดือนก่อน" (ตั้ง `created_at` ใน setup) When เปิดฟอร์ม `affiliate-payout-create` Then ช่วงวันที่ค่าเริ่มต้นคือเดือนก่อนตามเวลาไทย (browser `timezoneId: "Asia/Bangkok"` — ADR-018);
   When เลือก Ann แล้ว `dblclick` Create Then `POST /admin/affiliate/payouts` 1 ครั้งและแถว `draft` ใหม่แสดงยอดรวม; Given affiliate ที่ไม่มี entry Then เห็น toast error และไม่มีแถวใหม่;
   When `affiliate-payout-mark-paid` ใส่ reference `TRX-AC44` แล้วยืนยัน Then แถวเป็น `paid` แสดง `TRX-AC44`, ไม่มี `affiliate-payout-mark-paid`/`affiliate-payout-cancel` และ `GET /admin/affiliate/entries?status=paid`
   มี entry ของ payout นั้นครบ; When ยกเลิก prompt mark paid Then ไม่มี request; When mark paid โดยเว้น reference ว่าง (หรือมีแต่ช่องว่าง) Then body ของ request ไม่มี key `reference`

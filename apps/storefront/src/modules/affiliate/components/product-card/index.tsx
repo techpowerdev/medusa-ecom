@@ -1,5 +1,5 @@
 import type { PortalProduct } from "@lib/data/affiliate-portal"
-import { cardPrice, daysUntil, estimateCommission, PortalTab } from "@lib/util/affiliate-portal"
+import { cardPrice, countdownText, estimateCommission, PortalTab, priceVaries } from "@lib/util/affiliate-portal"
 import { formatDate } from "@lib/util/date"
 import { convertToLocale } from "@lib/util/money"
 import Thumbnail from "@modules/products/components/thumbnail"
@@ -7,10 +7,10 @@ import Thumbnail from "@modules/products/components/thumbnail"
 import ShareButton from "../share-button"
 
 // spec 05 Storefront + กฎ 29: การ์ดเดียวต่อสินค้า อัตราของโปรแกรมที่เลือก (rate_varies → "สูงสุด X%")
+// AF-8c กฎ 35b: rate_varies ไม่แสดงยอดประมาณการ — API ไม่ส่งอัตราต่อ variant ตัวเลขอาจไม่ตรง variant ใดเลย
 export default function AffiliateProductCard({ item, tab }: { item: PortalProduct; tab: PortalTab }) {
   const { product, program, rate_varies, share_url } = item
   const price = cardPrice(product.variants)
-  const days = daysUntil(program.starts_at)
 
   return (
     <li
@@ -25,9 +25,9 @@ export default function AffiliateProductCard({ item, tab }: { item: PortalProduc
         {rate_varies && <span data-testid="affiliate-rate-varies">สูงสุด </span>}
         {program.commission_value}%
       </p>
-      {price && (
+      {price && !rate_varies && (
         <p className="text-small-regular" data-testid="affiliate-estimate">
-          {rate_varies ? "ได้ประมาณสูงสุด" : "ได้ประมาณ"}{" "}
+          {priceVaries(product.variants) ? "ได้ประมาณตั้งแต่" : "ได้ประมาณ"}{" "}
           {convertToLocale({
             amount: estimateCommission(price.amount, program.commission_value),
             currency_code: price.currency_code,
@@ -43,7 +43,7 @@ export default function AffiliateProductCard({ item, tab }: { item: PortalProduc
       </p>
       {tab === "upcoming" && (
         <p className="text-small-regular" data-testid="affiliate-countdown">
-          {days > 0 ? `เริ่มในอีก ${days} วัน` : "เริ่มวันนี้"}
+          {countdownText(program.starts_at)}
         </p>
       )}
       <ShareButton url={share_url} title={product.title} />
