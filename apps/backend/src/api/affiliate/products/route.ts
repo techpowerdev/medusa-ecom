@@ -1,4 +1,5 @@
 import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import type { BigNumberInput } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, QueryContext } from "@medusajs/framework/utils"
 import type { ProgramScope } from "../../../modules/affiliate/utils/commission"
 import {
@@ -39,8 +40,16 @@ export async function GET(
         ? { status: "published", starts_at: { $lte: now }, ends_at: { $gt: now } }
         : { status: "published", starts_at: { $gt: now } },
   })
-  // ระบุ type เอง ไม่พึ่ง type ที่ generate ใน .medusa/ (CI ไม่มี)
-  type Program = RankedProgram & Record<string, unknown>
+  // ระบุ type เอง ไม่พึ่ง type ที่ generate ใน .medusa/ (CI ไม่มี) — field ตาม PORTAL_PROGRAM_FIELDS (กฎ 32d)
+  type Program = RankedProgram & {
+    name: string
+    ends_at: Date | string
+    announce_text: string | null
+    commission_type: "percentage"
+    attribution_window_days: number
+    cap_per_order: BigNumberInput | null
+    hold_days: number
+  }
   const programs = data as (Program & { scope: ProgramScope })[]
 
   const coverages = new Map<string, ProgramCoverage<Program>[]>()
