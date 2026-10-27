@@ -1,0 +1,51 @@
+PAY-6c (spec 06 กฎข้อ 8, AC-17) — ผลทดสอบในเครื่อง 2026-10-27, Node v22.23.3
+
+## Red (ก่อนเขียนโค้ด): vitest src/lib/util/payment-session.test.ts → 5 failed | 26 passed (promptPayFallbackAllowed/PROMPTPAY_FALLBACK_MAX_REQUESTS ไม่มี, state refunded ไม่มี)
+
+## Green: unit (Vitest) ไฟล์ของ task
+ ✓ src/lib/util/payment-session.test.ts > paymentSessionData > provider บัตร pp_stripe_stripe ส่ง payment_method_types = ['card'] 1ms
+ ✓ src/lib/util/payment-session.test.ts > paymentSessionData > PromptPay และ provider อื่นไม่ส่ง data (provider กำหนดเอง) 0ms
+ ✓ src/lib/util/payment-session.test.ts > isPromptPay > รู้จักเฉพาะ provider PromptPay ของ Stripe 0ms
+ ✓ src/lib/util/payment-session.test.ts > PromptPay countdown (หมดอายุหลัง 10 นาที) > timeout คือ 10 นาที 0ms
+ ✓ src/lib/util/payment-session.test.ts > PromptPay countdown (หมดอายุหลัง 10 นาที) > secondsLeft นับถอยหลังจาก deadline และไม่ติดลบ 0ms
+ ✓ src/lib/util/payment-session.test.ts > PromptPay countdown (หมดอายุหลัง 10 นาที) > formatCountdown แสดง m:ss 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollState > cart ที่ completed แล้ว = paid 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollState > session ถูกยกเลิกหรือ error = failed 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollState > ยังไม่ชำระ = pending 1ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayQrImage > อ่าน URL รูป QR จาก next_action ของ PaymentIntent ที่ requires_action 10ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayQrImage > ไม่มี QR (ยังไม่ confirm หรือสถานะอื่น) = null 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayExpiryAction > PaymentIntent succeeded/processing → poll ต่อจน webhook complete cart 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayExpiryAction > ยังไม่ชำระหรืออ่านสถานะไม่ได้ → ยกเลิก session แล้วให้ลองใหม่ 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayDeadline > = created + 10 นาที (ms) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayRenewalOutcome > 409 + code PAYMENT_ALREADY_COMPLETED → already-paid (poll ต่อ + complete cart ทางสำรอง) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayRenewalOutcome > error อื่น → error (พฤติกรรมเดิม: แสดงหมดอายุ + ข้อความ error) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > ใช้ session pending (ยังไม่ชำระ) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > session authorized (guard authorize แล้วแต่ cart ยังไม่ complete) → ใช้ session นั้นเพื่อ complete cart ต่อ 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > ไม่ใช้ session ของ provider อื่น (เช่นบัตรที่ authorized) — review #98 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPaySession > ไม่มี session ที่ใช้ได้ → undefined 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollAction > cart complete แล้ว → complete (ได้ order เดิมแล้ว redirect) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollAction > ยัง pending: โหมดทางสำรอง → ลอง complete ซ้ำ; ปกติ → รอ webhook 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollAction > session ล้ม → fail 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollState — เงินถูกคืน (PAY-6c) > captured แล้วถูก refund เต็มยอด และ cart ยังไม่ complete = refunded 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollState — เงินถูกคืน (PAY-6c) > cart complete แล้วมาก่อนเสมอ = paid 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollState — เงินถูกคืน (PAY-6c) > ยังไม่ refund / refund ไม่ครบยอดที่ capture (เช่นชำระรอบใหม่หลังคืนเงิน) / ไม่มี capture = ไม่ใช่ refunded 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollAction — เงินถูกคืน (PAY-6c) > โหมดทางสำรอง + refunded → refunded (หยุด complete cart และให้เริ่มชำระใหม่) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayPollAction — เงินถูกคืน (PAY-6c) > ไม่ใช่โหมดทางสำรอง (เช่นกำลังแสดง QR รอบใหม่หลังคืนเงิน) → รอ webhook ต่อ 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayFallbackAllowed (เพดานทางสำรอง) > เพดานคือ 10 request 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayFallbackAllowed (เพดานทางสำรอง) > ใช้ไป 0..9 ครั้ง → ยิงได้อีก; ครบ 10 → หยุด 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayFallbackAllowed (เพดานทางสำรอง) > จำลองรอบทางสำรอง (complete ทันที แล้ว poll+complete ทุกรอบ) ยิงรวมไม่เกิน 10 0ms
+ Test Files  1 passed (1)
+      Tests  31 passed (31)
+
+## unit (Vitest) storefront ทั้งชุด
+ Test Files  28 passed (28)
+      Tests  304 passed (304)
+
+## e2e (Playwright) — ต้องใช้ Stripe test key (HAS_STRIPE_UI) ในเครื่องไม่มี key จึงพิสูจน์ใน CI job storefront-e2e
+  [chromium] › payments-promptpay-already-paid.spec.ts:37:7 › PromptPay ชำระแล้วตอน QR หมดอายุ (AC-12, AC-12b) › 409 → รอสร้าง order → complete cart ทางสำรอง (webhook ไม่มา) → หน้า order confirmed
+  [chromium] › payments-promptpay-already-paid.spec.ts:68:7 › PromptPay ชำระแล้วตอน QR หมดอายุ (AC-12, AC-12b) › complete cart ล้ม → ยังรอสร้าง order และ poll ต่อ → ลองใหม่สำเร็จ
+  [chromium] › payments-promptpay-fallback-cap.spec.ts:46:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › complete cart ล้มทุกครั้ง → ยิงรวม ≤ 10 แล้วแสดง promptpay-order-delayed และหยุดยิง
+  [chromium] › payments-promptpay-fallback-cap.spec.ts:89:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › เงินถูกคืนระหว่างทางสำรอง → แสดง promptpay-refunded และปุ่มเริ่มชำระใหม่
+Total: 4 tests in 2 files
+
+## pnpm lint && pnpm typecheck: 0 errors (warning เดิมของ repo); next build: Compiled successfully (prerender /sitemap.xml ต้องมี backend จริง — CI รัน)
