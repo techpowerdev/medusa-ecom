@@ -1,19 +1,20 @@
+# typecheck (clean, ไม่มี .medusa): pnpm typecheck → exit 0; pnpm lint → exit 0
 PASS src/api/affiliate/__tests__/has-payout-info.unit.spec.ts
   hasPayoutInfo (AF-13, rule 34)
-    ✓ {"bank_name": "x"} → true (1 ms)
+    ✓ {"bank_name": "x"} → true
     ✓ {"account_name": "Ann", "account_number": "123", "bank_name": "x"} → true
     ✓ {} → false
     ✓ null → false
     ✓ undefined → false
     ✓ [] → false
-    ✓ "text" → false
+    ✓ "text" → false (1 ms)
 
 Test Suites: 1 passed, 1 total
 Tests:       7 passed, 7 total
 Snapshots:   0 total
-Time:        1.009 s
+Time:        0.766 s, estimated 3 s
 Ran all test suites matching /src\/api\/affiliate\/__tests__\/has-payout-info/i.
-PASS integration-tests/http/affiliate-auth.spec.ts (13.833 s)
-PASS integration-tests/http/affiliate-portal.spec.ts (16.561 s)
+PASS integration-tests/http/affiliate-portal.spec.ts (10.506 s)
+PASS integration-tests/http/affiliate-auth.spec.ts (8.243 s)
 Test Suites: 2 passed, 2 total
 Tests:       26 passed, 26 total

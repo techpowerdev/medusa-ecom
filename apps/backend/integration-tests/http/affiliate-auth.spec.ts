@@ -2,6 +2,7 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { createCustomerAccountWorkflow } from "@medusajs/medusa/core-flows"
 import { Modules } from "@medusajs/framework/utils"
 import { AFFILIATE_MODULE } from "../../src/modules/affiliate"
+import type AffiliateModuleService from "../../src/modules/affiliate/service"
 
 jest.setTimeout(60 * 1000)
 
@@ -68,7 +69,7 @@ medusaIntegrationTestRunner({
       ])("returns has_payout_info for payout_info %p as %p without payout_info (AC-39)", async (payoutInfo, expected) => {
         const { data } = await registerAffiliate()
         await getContainer()
-          .resolve(AFFILIATE_MODULE)
+          .resolve<AffiliateModuleService>(AFFILIATE_MODULE)
           .updateAffiliates({ id: data.affiliate.id, payout_info: payoutInfo })
         const token = await login("affiliate", AFFILIATE)
 
