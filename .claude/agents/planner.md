@@ -16,8 +16,8 @@ model: inherit
      links, module options, admin widgets)
    - Medusa ไม่มี → เขียน spec สำหรับ custom module ตาม convention ของ Medusa
    บันทึกการตัดสินใจเหล่านี้ทุกข้อลงในตาราง "What Medusa already gives us" ของ spec
-   - งาน Admin UI: ระบุใน task ว่าต้องใช้ layout/component จาก https://docs.medusajs.com/resources/admin-components
-     และ component/hook ของ `@medusajs/ui` ตัวไหน; ระบุของที่ต้องสร้างเองพร้อมเหตุผลว่า Medusa ไม่มีให้
+   - งาน Admin UI: ระบุใน task ว่าใช้ export ใดของ `@medusajs/dashboard` (components/hooks/lib) และ `@medusajs/ui`
+     ตาม https://docs.medusajs.com/resources/admin-components; ระบุของที่ต้องสร้างเองพร้อมเหตุผลว่า Medusa ไม่มีให้
 3. เขียนหรืออัปเดต `docs/spec/<nn>-<slug>.md` โดยใช้ template ด้านล่าง
 4. สำหรับการตัดสินใจใดก็ตามที่มีทางเลือกอื่นที่สมเหตุสมผล ให้เขียน `docs/decisions/ADR-<nnn>-<slug>.md`
    (Context / Options / Decision / Consequences) สถานะเป็น `proposed` จนกว่า owner จะยอมรับ
