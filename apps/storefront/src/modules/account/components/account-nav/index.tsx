@@ -2,6 +2,7 @@
 
 import { ArrowRightOnRectangle } from "@medusajs/icons"
 import { clx } from "@modules/common/components/ui"
+import { useLinkStatus } from "next/link"
 import { useParams, usePathname } from "next/navigation"
 
 import { signout } from "@lib/data/customer"
@@ -55,6 +56,7 @@ const AccountNav = ({
                       <div className="flex items-center gap-x-2">
                         <User size={20} />
                         <span>โปรไฟล์</span>
+                        <NavPending />
                       </div>
                       <ChevronDown className="transform -rotate-90" />
                     </>
@@ -70,6 +72,7 @@ const AccountNav = ({
                       <div className="flex items-center gap-x-2">
                         <MapPin size={20} />
                         <span>ที่อยู่</span>
+                        <NavPending />
                       </div>
                       <ChevronDown className="transform -rotate-90" />
                     </>
@@ -84,6 +87,7 @@ const AccountNav = ({
                     <div className="flex items-center gap-x-2">
                       <Package size={20} />
                       <span>คำสั่งซื้อ</span>
+                      <NavPending />
                     </div>
                     <ChevronDown className="transform -rotate-90" />
                   </LocalizedClientLink>
@@ -192,7 +196,22 @@ const AccountNavLink = ({
       data-testid={dataTestId}
     >
       {children}
+      <NavPending />
     </LocalizedClientLink>
+  )
+}
+
+// CORE-23b (กฎข้อ 61): บอกผู้ใช้ว่ากำลังโหลดหน้าใหม่ — useLinkStatus ต้องอยู่ใต้ <Link> ที่ถูกคลิก
+const NavPending = () => {
+  const { pending } = useLinkStatus()
+  if (!pending) return null
+  return (
+    <span
+      role="status"
+      aria-label="กำลังโหลด"
+      className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-ui-fg-muted border-t-transparent align-middle"
+      data-testid="account-nav-pending"
+    />
   )
 }
 

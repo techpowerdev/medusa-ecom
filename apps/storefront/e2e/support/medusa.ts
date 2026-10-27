@@ -94,27 +94,30 @@ export async function shippingOptionId(
   return option.id
 }
 
+type CartOptions = { quantity?: number; country?: string; variant?: string }
+
+const storeHeaders = (pk: string, customer: Customer): Headers => ({
+  authorization: `Bearer ${customer.token}`,
+  "x-publishable-api-key": pk,
+})
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ store API ใน e2e
+const ok = async (res: APIResponse, what: string): Promise<any> => {
+  expect(res.status(), `${what}: ${await res.text()}`).toBe(200)
+  return res.json()
+}
+
 /**
- * วาง order ผ่าน store API ด้วย token ของ customer (manual payment ของ seed) คืน id + display_id
- * CORE-20c: `quantity` และ `country` ของ region/ที่อยู่ (ค่าเริ่มต้น 1 และ STOREFRONT_COUNTRY)
- * FS-13: `variant` (ไม่ระบุ = t-shirt ของ seed)
+ * CORE-19b: สร้าง cart ใหม่ของ customer ผ่าน store API ที่มีสินค้า ที่อยู่ และ shipping "Standard" ครบ
+ * (พร้อมขั้น payment ยังไม่มี payment session) คืน id ของ cart
  */
-export async function placeOrder(
+export async function cartReadyForPayment(
   request: APIRequestContext,
   pk: string,
   customer: Customer,
-  {
-    quantity = 1,
-    country = STOREFRONT_COUNTRY,
-    variant,
-  }: { quantity?: number; country?: string; variant?: string } = {}
-): Promise<{ id: string; displayId: number }> {
-  const headers = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ store API ใน e2e
-  const ok = async (res: APIResponse, what: string): Promise<any> => {
-    expect(res.status(), `${what}: ${await res.text()}`).toBe(200)
-    return res.json()
-  }
+  { quantity = 1, country = STOREFRONT_COUNTRY, variant }: CartOptions = {}
+): Promise<string> {
+  const headers = storeHeaders(pk, customer)
 
   const { regions } = await ok(await request.get(`${BACKEND_URL}/store/regions`, { headers }), "regions")
   const region = regions.find((r: { countries: { iso_2: string }[] }) =>
@@ -160,10 +163,26 @@ export async function placeOrder(
     }),
     "shipping method"
   )
+  return cart.id
+}
+
+/**
+ * วาง order ผ่าน store API ด้วย token ของ customer (manual payment ของ seed) คืน id + display_id
+ * CORE-20c: `quantity` และ `country` ของ region/ที่อยู่ (ค่าเริ่มต้น 1 และ STOREFRONT_COUNTRY)
+ * FS-13: `variant` (ไม่ระบุ = t-shirt ของ seed)
+ */
+export async function placeOrder(
+  request: APIRequestContext,
+  pk: string,
+  customer: Customer,
+  options: CartOptions = {}
+): Promise<{ id: string; displayId: number }> {
+  const headers = storeHeaders(pk, customer)
+  const cartId = await cartReadyForPayment(request, pk, customer, options)
   const { payment_collection } = await ok(
     await request.post(`${BACKEND_URL}/store/payment-collections`, {
       headers,
-      data: { cart_id: cart.id },
+      data: { cart_id: cartId },
     }),
     "payment collection"
   )
@@ -175,7 +194,7 @@ export async function placeOrder(
     "payment session"
   )
   const completed = await ok(
-    await request.post(`${BACKEND_URL}/store/carts/${cart.id}/complete`, { headers }),
+    await request.post(`${BACKEND_URL}/store/carts/${cartId}/complete`, { headers }),
     "complete cart"
   )
   expect(completed.type, JSON.stringify(completed)).toBe("order")

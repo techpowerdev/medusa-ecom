@@ -38,6 +38,15 @@ const Payment = ({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     activeSession?.provider_id ?? ""
   )
+  // CORE-19b (AC-64): server action สร้าง session คืนผลก่อน router นำ cart ใหม่มาใส่ props — ช่วงนั้นปุ่ม
+  // Continue จะเห็น cart เก่า (ยังไม่มี session) แล้วสร้างซ้ำ (PI แรกถูก cancel) และค้างที่ขั้น payment
+  // จึงล็อกปุ่มต่อจนกว่า cart ใน props มี session ของ provider ที่เพิ่งสร้าง
+  const [awaitingSessionFor, setAwaitingSessionFor] = useState<string | null>(
+    null
+  )
+  const sessionNotInCartYet =
+    awaitingSessionFor !== null &&
+    activeSession?.provider_id !== awaitingSessionFor
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -48,6 +57,7 @@ const Payment = ({
   const setPaymentMethod = async (method: string) => {
     setError(null)
     setSelectedPaymentMethod(method)
+    setAwaitingSessionFor(null)
     // PAY-2: PromptPay สร้าง session ทันทีที่เลือกเหมือนบัตร (QR พร้อมในขั้น review)
     if (isStripeLike(method) || isPromptPay(method)) {
       // ล็อกปุ่ม Continue จนสร้าง session เสร็จ — ไม่งั้น handleSubmit สร้างซ้ำ แล้ว PaymentIntent
@@ -57,6 +67,7 @@ const Payment = ({
         await initiatePaymentSession(cart, {
           provider_id: method,
         })
+        setAwaitingSessionFor(method)
       } catch (err) {
         setError(friendlyErrorMessage(err, "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       } finally {
@@ -205,7 +216,7 @@ const Payment = ({
             size="large"
             className="mt-6"
             onClick={handleSubmit}
-            isLoading={isLoading}
+            isLoading={isLoading || sessionNotInCartYet}
             disabled={
               (isStripeLike(selectedPaymentMethod) && !paymentComplete) ||
               (!selectedPaymentMethod && !paidByGiftcard)
