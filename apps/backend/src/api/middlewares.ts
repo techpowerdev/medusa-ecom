@@ -1,10 +1,5 @@
-import {
-  authenticate,
-  configureStoreSearch,
-  defineMiddlewares,
-  validateAndTransformBody,
-} from '@medusajs/framework/http'
-import { PostAffiliateRegisterSchema } from './affiliate/validators'
+import { authenticate, configureStoreSearch, defineMiddlewares } from '@medusajs/framework/http'
+import { affiliatePortalMiddlewares } from './affiliate/middlewares'
 import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
 import { adminFlashSaleMiddlewares } from './admin/flash-sales/middlewares'
@@ -31,19 +26,8 @@ export default defineMiddlewares({
         }),
       ],
     },
-    // Affiliate portal: separate `affiliate` actor type (spec 05, AC-12)
-    {
-      method: ['POST'],
-      matcher: '/affiliate/register',
-      middlewares: [
-        authenticate('affiliate', ['session', 'bearer'], { allowUnregistered: true }),
-        validateAndTransformBody(PostAffiliateRegisterSchema),
-      ],
-    },
-    {
-      matcher: '/affiliate/me*',
-      middlewares: [authenticate('affiliate', ['session', 'bearer'])],
-    },
+    // Affiliate portal: separate `affiliate` actor type (spec 05, AC-12, AC-18, กฎ 18, Q6)
+    ...affiliatePortalMiddlewares,
     ...adminEvoucherMiddlewares,
     ...adminFlashSaleMiddlewares,
     ...storeFlashSaleMiddlewares,

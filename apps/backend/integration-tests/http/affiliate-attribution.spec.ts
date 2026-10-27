@@ -412,6 +412,33 @@ medusaIntegrationTestRunner({
         expect(await attributionsOf(orderId)).toEqual([expect.objectContaining({ program_id: program.id })])
         expect((await entriesOf(orderId)).map((e) => e.amount)).toEqual([100])
       })
+
+      it("AC-14: a share link clicked while the program is upcoming earns for an order after starts_at, not before", async () => {
+        const ann = await createAffiliate("ann")
+        const program = await createProgram({
+          starts_at: new Date(Date.now() + DAY),
+          ends_at: new Date(Date.now() + 7 * DAY),
+        })
+        const clickedToday = await tokenFor(ann.id)
+
+        const today = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }], token: clickedToday })
+        expect(await attributionsOf(today.orderId)).toEqual([expect.objectContaining({ program_id: null })])
+        expect(await entriesOf(today.orderId)).toEqual([])
+
+        // สั่งพรุ่งนี้หลัง starts_at (ควบคุมเวลาด้วย order.created_at ตามกฎ 24) ด้วย click เดิมของวันนี้
+        const tomorrow = await placeOrder({ items: [{ variant_id: variant1000, quantity: 1 }] })
+        await dbConnection.raw(`UPDATE "order" SET created_at = now() + interval '2 days' WHERE id = ?`, [
+          tomorrow.orderId,
+        ])
+        await container
+          .resolve(Modules.CART)
+          .updateCarts(tomorrow.cartId, { metadata: { affiliate_token: clickedToday } })
+
+        await redeliver(tomorrow.orderId)
+
+        expect(await attributionsOf(tomorrow.orderId)).toEqual([expect.objectContaining({ program_id: program.id })])
+        expect((await entriesOf(tomorrow.orderId)).map((e) => e.amount)).toEqual([100])
+      })
     })
 
     it("an expired token or an affiliate that is not active creates nothing and is logged at info level", async () => {
