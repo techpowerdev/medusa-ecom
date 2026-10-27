@@ -1,0 +1,98 @@
+OPS-10 — test ของ tools/ci/classify-changes.sh (AC-14) และ Stripe webhook events ตรงกัน (AC-15)
+ที่มา: docs/spec/07-scaling-ops.md OPS-10; รันในเครื่อง macOS bash 3.2.57(1)-release (CI รันใน job lint-typecheck บน ubuntu)
+
+== AC-14 Green: tools/ci/classify-changes.test.sh
+ok   - spec ใน docs/ → false/false
+ok   - README.md ที่ root → false/false
+ok   - .claude/agents/*.md → false/false
+ok   - png ใน docs/evidence/ → false/false
+ok   - txt ใน docs/evidence/ → false/false
+ok   - .md ใน apps/backend → false/false
+ok   - เอกสารหลายไฟล์ → false/false
+ok   - .mdx ใน docs/ → false/false
+ok   - storefront ล้วน → true/false
+ok   - storefront + เอกสาร → true/false
+ok   - storefront + backend → true/true
+ok   - backend → true/true
+ok   - backend + เอกสาร → true/true
+ok   - lockfile → true/true
+ok   - package.json ที่ root → true/true
+ok   - pnpm-workspace.yaml → true/true
+ok   - .nvmrc → true/true
+ok   - eslint.config.ts ที่ root → true/true
+ok   - docker-compose.yml → true/true
+ok   - docker-compose.prod.yml → true/true
+ok   - tools/ops → true/true
+ok   - ไฟล์ CI (.github/workflows) → true/true
+ok   - .mdx นอก docs/ (ไม่ใช่ .md) → true/true
+ok   - prefix trap apps/storefront-legacy → true/true
+ok   - diff ว่าง (กันพลาด) → true/true
+ok   - rename backend → docs/ → true/true
+ok   - rename backend → storefront → true/true
+ok   - rename .ts → .md → true/true
+ok   - rename docs → docs → false/false
+ok   - rename storefront → storefront → true/false
+classify-changes: 30/30 passed
+exit=0
+
+== AC-14 positive control: สำเนาของ script ที่แก้กติกา (ไม่แก้เคส) → test ต้องล้ม
+-- no-renames:
+<   files=$(git diff --name-only --no-renames "$1")
+>   files=$(git diff --name-only "$1")
+FAIL - rename backend → docs/ → ได้ false/false คาด true/true
+FAIL - rename backend → storefront → ได้ true/false คาด true/true
+FAIL - rename .ts → .md → ได้ false/false คาด true/true
+classify-changes: 27/30 passed
+exit=1
+-- prefix:
+<     apps/storefront/*) code=true ;;
+>     apps/storefront*) code=true ;;
+FAIL - prefix trap apps/storefront-legacy → ได้ true/false คาด true/true
+classify-changes: 29/30 passed
+exit=1
+-- mdx:
+<     docs/* | *.md) ;;
+>     docs/* | *.md | *.mdx) ;;
+FAIL - .mdx นอก docs/ (ไม่ใช่ .md) → ได้ false/false คาด true/true
+classify-changes: 29/30 passed
+exit=1
+
+== AC-15 Red: check-stripe-events.test.sh ก่อนมี script และหัวข้อในเอกสาร
+FAIL - เซตเท่ากัน (exit 1 คาด 0)
+       tools/ci/check-stripe-events.test.sh: line 24: tools/ci/check-stripe-events.sh: No such file or directory
+FAIL - เซตเท่ากันแม้ลำดับต่าง (exit 1 คาด 0)
+       tools/ci/check-stripe-events.test.sh: line 24: tools/ci/check-stripe-events.sh: No such file or directory
+FAIL - ไฟล์จริงของ repo (production.md × ci.yml) (exit 1 คาด 0)
+       tools/ci/check-stripe-events.test.sh: line 24: tools/ci/check-stripe-events.sh: No such file or directory
+check-stripe-events: 5/8 passed
+exit=1
+
+== AC-15 Green: tools/ci/check-stripe-events.test.sh (7 เคสจำลอง + ไฟล์จริง)
+ok   - เซตเท่ากัน (exit 0)
+ok   - เซตเท่ากันแม้ลำดับต่าง (exit 0)
+ok   - ci.yml ขาด event (exit 1)
+ok   - ci.yml มี event เกิน (exit 1)
+ok   - bullet นอกหัวข้อไม่ถูกนับ (exit 1)
+ok   - ไม่มีหัวข้อ Stripe webhooks (exit 1)
+ok   - ci.yml ไม่มี events= (exit 1)
+ok   - ไฟล์จริงของ repo (production.md × ci.yml) (exit 0)
+check-stripe-events: 8/8 passed
+exit=0
+ok: Stripe webhook events ตรงกัน (8 event)
+exit=0
+
+== AC-15 แหล่งของรายการ event: @medusajs/payment-stripe 2.22.1 dist/core/stripe-base.js getWebhookActionAndData
+  case "payment_intent.created"
+  case "payment_intent.processing"
+  case "payment_intent.canceled"
+  case "payment_intent.payment_failed"
+  case "payment_intent.requires_action"
+  case "payment_intent.amount_capturable_updated"
+  case "payment_intent.partially_funded"
+  case "payment_intent.succeeded"
+  (default → not_supported) = 8 event เท่ากับรายการใน docs/ops/production.md และ events= ใน ci.yml เดิม (PAY-2) จึงไม่ต้องแก้ ci.yml
+
+== อื่นๆ (Node 24 ในเครื่อง)
+pnpm lint: exit 0 (storefront มี warning เดิม 31 รายการ ไม่มี error)
+pnpm typecheck: exit 0
+apps/backend jest src/__tests__/ci-workflow.unit.spec.ts (อ่าน ci.yml ของ OPS-14): 4 passed
