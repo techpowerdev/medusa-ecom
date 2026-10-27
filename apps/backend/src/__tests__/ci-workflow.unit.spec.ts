@@ -109,3 +109,25 @@ describe("OPS-15 ci.yml นับ log connection ของ knex", () => {
     expect(out).toEqual([".github/workflows/ci.yml"])
   })
 })
+
+// OPS-12 (AC-19): job docker-worker-mode รัน smoke ของ Redis event bus ขาด (OPS-8) หลัง smoke worker mode (OPS-1)
+// ขั้นที่ไม่มี `if:` รันเฉพาะเมื่อขั้นก่อนหน้าผ่าน และ script exit ≠ 0 → job ล้ม
+describe("OPS-12 ci.yml รัน smoke-redis-outage.sh", () => {
+  const steps = (jobs["docker-worker-mode"] ?? "").split(/\n {6}- /).slice(1)
+  const indexOf = (script: string) =>
+    steps.findIndex((s) => new RegExp(`(^|\\n)\\s*-?\\s*run: ${script.replace(/[./]/g, "\\$&")}\\s*$`, "m").test(s))
+
+  it("มีขั้นรัน tools/ops/smoke-redis-outage.sh หลัง tools/ops/smoke-worker-mode.sh", () => {
+    const worker = indexOf("tools/ops/smoke-worker-mode.sh")
+    const outage = indexOf("tools/ops/smoke-redis-outage.sh")
+    expect(worker).toBeGreaterThanOrEqual(0)
+    expect(outage).toBeGreaterThan(worker)
+  })
+
+  it("ขั้น smoke-redis-outage ไม่ถูกกลืนผล (ไม่มี continue-on-error หรือ || true)", () => {
+    const step = steps[indexOf("tools/ops/smoke-redis-outage.sh")] ?? ""
+    expect(step).toMatch(/smoke-redis-outage\.sh/)
+    expect(step).not.toMatch(/continue-on-error/)
+    expect(step).not.toMatch(/\|\|\s*true/)
+  })
+})

@@ -11,6 +11,9 @@ import Trash from "@modules/common/icons/trash"
 import ErrorMessage from "../error-message"
 import { SubmitButton } from "../submit-button"
 
+const PROMOTION_NOT_APPLICABLE =
+  "ใช้โค้ดนี้ไม่ได้ โค้ดอาจหมดอายุหรือไม่ตรงเงื่อนไขของตะกร้า"
+
 type DiscountCodeProps = {
   cart: HttpTypes.StoreCart
 }
@@ -44,7 +47,12 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
     codes.push(code.toString())
 
     try {
-      await applyPromotions(codes)
+      const applied = await applyPromotions(codes)
+      // CORE-4g (กฎข้อ 63b): Medusa ตอบ 200 แต่ไม่ใส่ code ที่ใช้ไม่ได้ (หมดอายุ/ไม่ตรงเงื่อนไข) — แจ้งผู้ใช้ ไม่เงียบ
+      const wanted = code.toString().trim().toLowerCase()
+      if (!applied.some((c) => c.toLowerCase() === wanted)) {
+        setErrorMessage(PROMOTION_NOT_APPLICABLE)
+      }
     } catch (e) {
       setErrorMessage(friendlyErrorMessage(e, "ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค้ดอีกครั้ง"))
     }
@@ -94,7 +102,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
 
               <ErrorMessage
                 error={errorMessage}
-                data-testid="discount-error-message"
+                data-testid="promotion-error"
               />
             </>
           )}

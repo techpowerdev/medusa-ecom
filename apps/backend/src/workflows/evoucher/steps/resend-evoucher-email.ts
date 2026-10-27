@@ -126,9 +126,19 @@ export const sendEvoucherResendNotificationStep = createStep(
         { ...input.notification, idempotency_key: `evoucher-resend:${input.order.id}:${randomUUID()}` },
       ])
     } catch (error) {
+      // EV-13 (AC-32): id ของ notification (`noti_…`) อยู่ใน log เท่านั้น — admin เห็นสาเหตุสั้นๆ + ให้ลองใหม่/ดู log
+      const detail = shortError(error)
+      container
+        .resolve(ContainerRegistrationKeys.LOGGER)
+        .error(`evoucher: resend email for order ${input.order.id} failed: ${detail}`)
+      const reason = detail
+        .replace(/Failed to send notification with id \S+:\s*/g, "")
+        .replace(/\s*noti_[A-Za-z0-9]+/g, "")
+        .trim()
+        .slice(0, 100)
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        `Could not send the e-voucher email: ${shortError(error)}`
+        `Could not send the e-voucher email${reason ? ` (${reason})` : ""}. Try again or check the server logs.`
       )
     }
     // กฎข้อ 21: อีเมลถึงลูกค้าแล้ว — update ล้มต้องไม่ตอบ 500 (admin จะกดซ้ำ) code ที่ยัง allocated เปลี่ยนใน resend ครั้งถัดไป

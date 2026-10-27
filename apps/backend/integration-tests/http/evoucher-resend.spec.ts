@@ -279,10 +279,20 @@ medusaIntegrationTestRunner({
         })
         await allocate(orderId)
 
+        const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+        const logError = jest.spyOn(logger, "error")
+
         const res = await resend(orderId)
 
         expect(res.status).toBe(500)
         expect(res.data.message).toContain("smtp down")
+        // EV-13 (AC-32): ข้อความถึง admin สั้น ไม่มี id `noti_…` — id อยู่ใน log
+        expect(res.data.message).not.toMatch(/noti_[A-Za-z0-9]+/)
+        expect(res.data.message).toMatch(/try again.*log/i)
+        expect(logError.mock.calls.map(([line]) => String(line)).join("\n")).toMatch(
+          new RegExp(`${orderId}.*noti_[A-Za-z0-9]+`)
+        )
+        logError.mockRestore()
         expect((await service.listEvoucherCodes({ order_id: orderId }))[0].status).toBe("allocated")
 
         // lock ต่อ order ถูกปล่อยเมื่อล้ม → ส่งซ้ำได้ทันทีเมื่อ provider กลับมา

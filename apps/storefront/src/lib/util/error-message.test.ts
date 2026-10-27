@@ -72,9 +72,12 @@ describe("action ของ lib/data/customer.ts ห่อ error โดยไม�
   const form = new FormData()
   form.set("addressId", "addr_1")
 
-  it("confirmEmailVerification → error = x", async () => {
+  // CORE-4h (กฎข้อ 69d): ไม่ส่งข้อความดิบอีกต่อไป — ได้ข้อความไทยผ่าน friendlyErrorMessage (ไม่มี "Error:")
+  it("confirmEmailVerification → ข้อความไทย ไม่ใช่ข้อความดิบ", async () => {
     const { confirmEmailVerification } = await import("@lib/data/customer")
-    expect((await confirmEmailVerification("t")).error).toBe("x")
+    const error = (await confirmEmailVerification("t")).error
+    expect(error).toMatch(/[฀-๿]/)
+    expect(error).not.toMatch(/Error:|^x$/)
   })
 
   // qa D-3: address-error เคยแสดง "Unauthorized" ดิบ

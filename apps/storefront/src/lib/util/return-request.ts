@@ -19,11 +19,12 @@ type FulfillmentDates = {
   shipped_at?: Dateish
   delivered_at?: Dateish
   canceled_at?: Dateish
+  items?: ({ line_item_id?: string | null } | null)[] | null
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-/** ค่าเริ่มต้นเมื่อ region ไม่ตั้ง `return_window_days` — ต้องเท่ากับ `DEFAULT_REGION_STORE_POLICIES` ของ backend (CORE-20b) */
+/** ค่าเริ่มต้นเมื่อ region ไม่ตั้ง `return_window_days` — ต้องเท่ากับ `DEFAULT_REGION_STORE_POLICIES` ของ backend (CORE-20b; contract test CORE-20d) */
 export const DEFAULT_RETURN_WINDOW_DAYS = 30
 
 /** `return_window_days` จาก metadata ของ region (ตัวเลข ≥ 0 หรือ string ตัวเลข) แบบเดียวกับ backend; ไม่มี/ไม่ถูกต้อง → ค่าเริ่มต้น */
@@ -48,10 +49,13 @@ export const returnableItems = <T extends ReturnableLine>(items: T[] | null | un
     return item.requires_shipping === true && quantity > 0 ? [{ item, quantity }] : []
   })
 
-/** วันที่ได้รับของ: `delivered_at` ถ้าไม่มีใช้ `shipped_at` ของ fulfillment ล่าสุดที่ไม่ถูกยกเลิก */
-export const receivedAt = (fulfillments: FulfillmentDates[] | null | undefined) => {
+/**
+ * วันที่ได้รับของของ line (กฎข้อ 66b — แบบเดียวกับ backend CORE-20b): `delivered_at` ถ้าไม่มีใช้ `shipped_at`
+ * ล่าสุดในบรรดา fulfillment ที่ไม่ถูกยกเลิกและมี line นั้น
+ */
+export const lineReceivedAt = (fulfillments: FulfillmentDates[] | null | undefined, lineId: string) => {
   const times = (fulfillments ?? [])
-    .filter((f) => !f.canceled_at)
+    .filter((f) => !f.canceled_at && f.items?.some((fi) => fi?.line_item_id === lineId))
     .map((f) => f.delivered_at ?? f.shipped_at)
     .filter((at): at is string | Date => !!at)
     .map((at) => new Date(at).getTime())
@@ -59,7 +63,7 @@ export const receivedAt = (fulfillments: FulfillmentDates[] | null | undefined) 
 }
 
 /**
- * line ที่คืนได้ตอนนี้: ว่างเมื่อยังไม่ส่ง, เลย N วันนับจากวันที่ได้รับ หรืออ่านช่วงคืนไม่ได้ (null)
+ * line ที่คืนได้ตอนนี้: เฉพาะ line ที่ส่งแล้วและยังไม่เลย N วันนับจากวันที่ได้รับ**ของ line นั้น**; อ่านช่วงคืนไม่ได้ (null) → ว่าง
  * — ปุ่ม หน้า return และ server action ตรวจผ่านฟังก์ชันนี้ครั้งเดียวต่อ request
  */
 export const returnableItemsNow = <T extends ReturnableLine>(
@@ -67,10 +71,11 @@ export const returnableItemsNow = <T extends ReturnableLine>(
   returnWindowDays: number | null | undefined,
   now: Date = new Date()
 ) => {
-  const received = receivedAt(order.fulfillments)
-  if (returnWindowDays == null || !received) return []
-  if (now.getTime() > received.getTime() + returnWindowDays * DAY_MS) return []
-  return returnableItems(order.items)
+  if (returnWindowDays == null) return []
+  return returnableItems(order.items).filter(({ item }) => {
+    const received = lineReceivedAt(order.fulfillments, item.id)
+    return !!received && now.getTime() <= received.getTime() + returnWindowDays * DAY_MS
+  })
 }
 
 export const canRequestReturn = (
@@ -81,7 +86,8 @@ export const canRequestReturn = (
 
 // error 400 ของ CORE-20b (`apps/backend/src/api/store/ownership/return-window.ts`) — `FetchError` ของ js-sdk เก็บแค่
 // message ไม่มี `code` จึงจับคู่ทั้ง code และ message คงที่ของ backend (กฎข้อ 37: message ไม่มีค่าจาก input)
-const RETURN_ERRORS: { code: string; message: string; text: string }[] = [
+// contract test `src/return-window-contract.test.ts` อ่าน source ของ backend และล้มเมื่อข้อความเปลี่ยนโดยไม่แก้ map นี้ (กฎข้อ 66c)
+export const RETURN_ERRORS: { code: string; message: string; text: string }[] = [
   {
     code: "RETURN_ITEM_NOT_SHIPPABLE",
     message: "Only shipped products of the order can be returned",

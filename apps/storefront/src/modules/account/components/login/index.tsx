@@ -1,4 +1,6 @@
 import { login } from "@lib/data/customer"
+import { useSubmitOnce } from "@lib/hooks/use-submit-once"
+import { INVALID_CREDENTIALS_MESSAGE } from "@lib/util/error-message"
 import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PendingAddToCartFields from "@modules/account/components/pending-add-to-cart-fields"
@@ -11,7 +13,8 @@ type Props = {
 }
 
 const Login = ({ setCurrentView }: Props) => {
-  const [message, formAction] = useActionState(login, null)
+  const [message, formAction, isPending] = useActionState(login, null)
+  const onSubmit = useSubmitOnce(isPending)
 
   return (
     <div
@@ -31,7 +34,7 @@ const Login = ({ setCurrentView }: Props) => {
           กรุณายืนยันอีเมล จากนั้นเข้าสู่ระบบ
         </div>
       )}
-      <form className="w-full" action={formAction}>
+      <form className="w-full" action={formAction} onSubmit={onSubmit}>
         <PendingAddToCartFields />
         <div className="flex flex-col w-full gap-y-2">
           <Input
@@ -55,7 +58,14 @@ const Login = ({ setCurrentView }: Props) => {
           />
         </div>
         <ErrorMessage
-          error={message?.state === "error" ? message.error : null}
+          error={
+            message?.state !== "error"
+              ? null
+              : // CORE-4h (กฎข้อ 69a): ตัดสินจาก reason ไม่เทียบข้อความ
+                message.reason === "invalid_credentials"
+                ? INVALID_CREDENTIALS_MESSAGE
+                : message.error
+          }
           data-testid="login-error-message"
         />
         <SubmitButton data-testid="sign-in-button" className="w-full mt-6">
