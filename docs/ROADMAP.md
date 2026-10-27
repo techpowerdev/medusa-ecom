@@ -2,11 +2,14 @@
 
 สัญลักษณ์: ☐ ยังไม่ทำ · ◐ อยู่ใน PR · ☑ merge เข้า develop แล้ว · 🚀 release แล้ว · ✕ ปิด (owner ไม่ทำ / ไม่ต้องทำ) · ⏸ เลื่อนหลัง v1.0
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
-สถานะล่าสุดตาม PR #1–#152 (2026-10-27, รอบ 11 — ข้อมูลจาก session หลัก, develop = `6975c56`): merge แล้วถึง #147 รวม #130 CORE-20c,
-#133 OPS-14, #134 CORE-24, #135 AF-8a, #136 PAY-6c, #137 AF-N1, #138 AF-6, #139 EV-9, #141 OPS-10, #142 CORE-19c, #143 GB-6d, #144 CORE-4f, #145 GB-8, #146 AF-N2, #147 OPS-13b;
-เปิดอยู่ (◐): #148 FS-14, #149 EV-N1, #150 CORE-14f, #151 CORE-19b, #152 (spec รอบ 11)
+สถานะล่าสุดตาม PR #1–#185 (2026-10-28, **รอบ 12** — ข้อมูลจาก session หลัก): merge แล้วถึง #185 — รอบนี้ #148 FS-14, #149 EV-N1, #150 CORE-14f, #151 CORE-19b, #152 spec รอบ 11,
+#153 AF-3c, #154 CORE-23b, #155 EV-7a, #156 OPS-15, #157 PAY-3a, #158 AF-13, #159 CORE-10b, #160 CORE-19d, #161 GB-N3, #162 CORE-4h, #163 AF-12a, #164 FS-17, #165 AF-12b, #166 CORE-19e,
+#167 EV-13, #168 CORE-20d, #169 CORE-5c, #170 CORE-4g, #171 EV-5c, #172 OPS-12, #173 AF-8b, #174 EV-7c, #175 OPS-4, #176 AF-12c, #177 CORE-15, #178 FS-15, #179 EV-7b, #180 OPS-16,
+#181 (กฎ admin ใช้ของ Medusa), #182 AF-8c, #183 ADR-018/spec 08, #184 spec PAY-3b (race 400), #185 GB-5 (#178/#185 อยู่ในคิว merge ตอนเขียน — นับว่า merge แล้ว);
+กำลังทำ (◐ builder ยังไม่มีเลข PR): ADM-1, AF-14, PAY-3b · PR spec รอบ 12 (`docs/spec-round-12`) ◐
 **owner ตัดสิน 2026-10-27 (รอบ 6)**: admin UI ของ affiliate แบบเขียนได้**อยู่ใน v1** → AF-12a/12b/12c (spec 05 กฎ 37) · **รอบ 11 (2026-10-27)**: ADR-017 accepted A, spec 05 Q16 (ก) คงเดิม,
-Q17 → AF-14, Q18 = 3 ช่อง, spec 03 Q6 → CORE-10b · รอบ 5: ADR-016 accepted A, EV Q10 = (ก), Q-O3 ตามข้อเสนอ, AF Q15 ⏸, EV Q11 คงเดิม · ไม่มีคำถามค้างของรอบ 11
+Q17 → AF-14, Q18 = 3 ช่อง, spec 03 Q6 → CORE-10b · รอบ 5: ADR-016 accepted A, EV Q10 = (ก), Q-O3 ตามข้อเสนอ, AF Q15 ⏸, EV Q11 คงเดิม · **owner 2026-10-28**: ADR-018 accepted + spec 08 Q1–Q6
+**คำถามค้างของรอบ 12 (รอ owner)**: spec 04 Q13 (refund อัตโนมัติ / ลองแปลงใหม่), Q14 (อีเมล "ได้รับชำระแล้ว"), spec 05 Q19 (ค่าคอม affiliate ของ order กลุ่ม), Q20 (รูปแบบเลขบัญชี)
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -26,14 +29,18 @@ Q17 → AF-14, Q18 = 3 ช่อง, spec 03 Q6 → CORE-10b · รอบ 5: ADR
 | CORE-4c1 ∥ 4d | ข้อความไทย: account/login/register/verify-account ∥ checkout (รวมข้อความของ PAY-2 + ประโยคยอมรับเงื่อนไขขั้น review) | ☑ #92 ∥ ☑ #109 |
 | CORE-4c2 | ข้อความไทย: cart, order detail/confirmed, policy 5 หน้า, common/skeletons + follow-up รอบ 7 | ☑ #102 + #103 |
 | CORE-4e | Stripe Elements `locale: "th"`, `friendlyErrorMessage` ใน action ของ checkout, "พร้อมเพย์" แบบเดียว, placeholder "เลือกประเทศ", test id/aria-label popup ที่อยู่ (AC-90, 91) | ☑ #131 |
-| CORE-4f ∥ CORE-14f | (รอบ 10) error login/register เป็นไทย + คงอีเมลเมื่อล้ม (AC-98) ∥ ข้อความการ์ด `add-variant-pending` + `countryCode` ปลอมไม่ 5xx (AC-101) | ☑ #144 ∥ ◐ #150 |
-| CORE-4h | (รอบ 11, review/qa #144) `reason` ของ login, ฟอร์มสมัครคงค่า, กันกดซ้ำ login/register, error ไทยหน้า verify-account (AC-105) | ☐ **เริ่มได้** (← CORE-4f ☑; ชน `customer.ts` กับ #150 ตัวที่ merge ทีหลัง rebase) |
-| CORE-4g | (รอบ 10, review/qa #131) `medusaError` คง status, `promotion-error` เมื่อโค้ดใช้ไม่ได้, `compareAddresses`, ความสูง `CountrySelect` (AC-99) | ☐ **เริ่มได้** (← CORE-4e ☑) |
+| CORE-4f ∥ CORE-14f | (รอบ 10) error login/register เป็นไทย + คงอีเมลเมื่อล้ม (AC-98) ∥ ข้อความการ์ด `add-variant-pending` + `countryCode` ปลอมไม่ 5xx (AC-101) | ☑ #144 ∥ ☑ #150 |
+| CORE-4h | (รอบ 11, review/qa #144) `reason` ของ login, ฟอร์มสมัครคงค่า, กันกดซ้ำ login/register, error ไทยหน้า verify-account (AC-105) | ☑ #162 |
+| CORE-4g | (รอบ 10, review/qa #131) `medusaError` คง status, `promotion-error` เมื่อโค้ดใช้ไม่ได้, `compareAddresses`, ความสูง `CountrySelect` (AC-99) | ☑ #170 |
+| CORE-4i | (รอบ 12) server action ของ `lib/data/cart.ts` คืนผลแบบมีโครงสร้าง + helper กลาง + `SIGN_IN_AGAIN_MESSAGE` เดียว (AC-110) | ☐ **เริ่มได้** (ชน component ชำระเงินกับ PAY-3b ตัวที่ merge ทีหลัง rebase) |
+| CORE-4j | (รอบ 12, #170) trim โค้ดส่วนลด, ฟอร์มที่อยู่ไม่หายเมื่อใส่โค้ด, ความสูง billing select (AC-111) | ☐ (← CORE-4i) |
 | CORE-22 | (qa #92, defect starter) title หน้า account, เบอร์ว่างไม่แสดง `null`, panel แก้ไขที่ปิดไม่รับ click (AC-82..84) | ☑ #99 |
 | CORE-23 | (qa #99, defect starter รอบ 8) ลบเบอร์โทรได้, editor อีเมลออก, order ไม่พบตอบ 404, error token หมดเป็นไทย, จัดแนว "ยังไม่ได้ระบุ" (AC-85..89) | ☑ #105 |
-| CORE-23b | (รอบ 9, qa/review #105) progress ตอนเปลี่ยนหน้า account, ฟอร์มไม่ล้างค่าเมื่อบันทึกล้ม, e2e AC-88 (AC-97) | ☐ เริ่มได้ (← CORE-23 ☑) |
+| CORE-23b | (รอบ 9, qa/review #105) progress ตอนเปลี่ยนหน้า account, ฟอร์มไม่ล้างค่าเมื่อบันทึกล้ม, e2e AC-88 (AC-97) | ☑ #154 |
+| CORE-23c | (รอบ 12, #154/#150/#164) ฟอร์มที่อยู่ใน account คงค่าเมื่อล้ม, ที่อยู่ใบเสร็จไม่ล่มทั้งหน้า, พิมพ์หลังกดแก้ไข, ลิงก์ `/contact` (AC-112) | ☐ **เริ่มได้** |
 | CORE-5 | Playwright + convention การเก็บ evidence | ☑ #7 |
-| CORE-5c | (รอบ 10, e2e tooling) evidence เขียนเฉพาะโฟลเดอร์ของ `evidenceTarget`, `step()` อยู่ในงบ (AC-103) | ☐ **เริ่มได้** (← CORE-5b ☑) |
+| CORE-5c | (รอบ 10, e2e tooling) evidence เขียนเฉพาะโฟลเดอร์ของ `evidenceTarget`, `step()` อยู่ในงบ (AC-103) | ☑ #169 |
+| CORE-5d | (รอบ 12, #169/#173) ชื่อ evidence ใน spec ตรงไฟล์ที่ commit — รัน e2e ทั้งชุดด้วย `E2E_SAVE_EVIDENCE=1` ไม่ล้ม (AC-115) | ☐ **เริ่มได้** |
 | CORE-6 | store route เฉพาะ customer + e2e AC-1..4, AC-6 | ☑ #36 |
 | CORE-12 | ownership middleware: cart/payment-collection/order ต้องเป็นของ customer ที่ล็อกอิน (ADR-013) | ☑ #51 |
 | CORE-13 | `POST /store/returns` ต้องเป็นเจ้าของ order + ปิด order transfer ทั้งชุด | ☑ #56 |
@@ -48,21 +55,26 @@ Q17 → AF-14, Q18 = 3 ช่อง, spec 03 Q6 → CORE-10b · รอบ 5: ADR
 | Task | งาน | สถานะ |
 |------|-----|--------|
 | CORE-10 | seed follow-up (ชื่อไทย, idempotency, หัวข้อ dev ใน README; ค่าส่งคง placeholder) | ☑ #76 |
-| CORE-10b | (รอบ 11, owner Q6 spec 03) seed collection ตัวอย่างให้หน้าแรกของ dev มี rail สินค้า (spec 01 กฎข้อ 70, AC-106) | ☐ **เริ่มได้** |
+| CORE-10b | (รอบ 11, owner Q6 spec 03) seed collection ตัวอย่างให้หน้าแรกของ dev มี rail สินค้า (spec 01 กฎข้อ 70, AC-106) | ☑ #159 |
+| CORE-10c | (รอบ 12, review #159) AC-72 ที่ CORE-10 ยังไม่ได้ทำจริง: category ไทย + handle คงที่, ซ่อม `featured` ที่ว่าง (AC-109) | ☐ **เริ่มได้** |
+| CORE-9b | (รอบ 12, builder FS-17) search ingestion ไม่ throw กับ `product-option.deleted` (AC-108) | ☐ **เริ่มได้** |
 | CORE-11 | อีเมล shipped เฉพาะ item ใน fulfillment / `no_notification` | ☑ #64 |
 | CORE-12b | **ความปลอดภัย** ownership ของ `cart_id` ใน query products/variants | ☑ #78 |
 | CORE-14a | storefront `/buy` บังคับล็อกอิน, ปิด UCP/`cart/resume`, cookie cart ค้าง, ลบหน้า order transfer (AC-41..43, 56) | ☑ #81 |
 | CORE-14b ∥ CORE-14c | no-JS login + error `add_variant` (AC-44, 45) ∥ login ไม่ล้มเมื่อ `transferCart()` ได้ 404 (AC-76) + e2e redirect แรกของ `/buy` (303), `/ucp` (307/308) | ☑ #113 ∥ ☑ #117 |
 | CORE-14d ∥ CORE-24 | `/cart` ไม่ค้าง skeleton หลัง login no-JS, `add_error` + `unstable_rethrow`, `add_variant` ตอนล็อกอินแล้ว = การ์ดยืนยัน (กฎ 58, #132) (AC-92, 93 — รอบ 10: AC-93 (c) ทดสอบ no-JS ครั้งเดียวพอ) ∥ ตัวเลือกจำนวนบน PDP (AC-94) | ☑ #128 ∥ ☑ #134 |
 | CORE-14e | ⏸ หลัง v1.0 (owner Q-F7 2026-10-27): nonce กันฟอร์ม no-JS ส่งซ้ำ (qty สองเท่า — owner ตัดสิน; cart ค้าง 2 ใบ จาก qa #128 O-2 — planner รวมเข้า) — ไม่มี AC | ⏸ |
-| CORE-15 | หน้า `/store` หยุดยิงซ้ำเมื่อ search error + ป้ายราคา ฿ (AC-69) | ☐ เริ่มได้ (← CORE-9 ☑) |
-| CORE-19a ∥ CORE-19b | ตัวนับ cart + search drawer 375px ∥ ปุ่ม "Continue to review" ไม่ค้าง | ☑ #118 ∥ ◐ #151 |
+| CORE-15 | หน้า `/store` หยุดยิงซ้ำเมื่อ search error + ป้ายราคา ฿ (AC-69) | ☑ #177 |
+| CORE-15b | (รอบ 12, review #177) error ของ search drawer ที่ header ไม่เป็น `pageerror` + pin `instantsearch.js` (AC-114) | ☐ **เริ่มได้** |
+| CORE-19a ∥ CORE-19b | ตัวนับ cart + search drawer 375px ∥ ปุ่ม "Continue to review" ไม่ค้าง | ☑ #118 ∥ ☑ #151 |
 | CORE-19c | (รอบ 10, qa #118) `DeleteButton` ส่งต่อ `data-testid` + error เมื่อลบล้ม (AC-100 — ถ้อยคำแก้รอบ 11: mock request ของ server action) | ☑ #142 |
-| CORE-19d | (รอบ 11, review/qa #142) `deleteLineItem` คืนผลแบบมีโครงสร้าง แยก 401 ใน prod (AC-104) | ☐ **เริ่มได้** (← CORE-19c ☑) |
-| CORE-19e | (รอบ 11, review #151) ปุ่ม Continue ที่ CORE-19b ล็อกรอ session ไม่ค้างเมื่อ RSC refresh ไม่มา: `router.refresh()` 5s, ปลดล็อก + error ไทย 10s (AC-107) | ☐ (← CORE-19b #151) |
+| CORE-19d | (รอบ 11, review/qa #142) `deleteLineItem` คืนผลแบบมีโครงสร้าง แยก 401 ใน prod (AC-104) | ☑ #160 |
+| CORE-19e | (รอบ 11, review #151) ปุ่ม Continue ที่ CORE-19b ล็อกรอ session ไม่ค้างเมื่อ RSC refresh ไม่มา: `router.refresh()` 5s, ปลดล็อก + error ไทย 10s (AC-107) | ☑ #166 |
+| CORE-19f | (รอบ 12, qa #166/#151) revalidate cart หลังสร้าง session, Continue หลัง timeout ไม่ข้าม session, e2e สลับวิธีชำระ (AC-113) | ☐ (← PAY-3b, CORE-4i) |
+| CORE-25 | (รอบ 12, **defect qa #178 — ลูกค้าอาจได้ไซซ์ผิด**) option บน PDP ไม่ถูกรีเซ็ตจาก `v_id` + ปิด flaky `core-19a:183` + แถบมือถือ (AC-116) | ☐ **เริ่มได้ — ควรทำก่อน** (ก่อน FS-16) |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | ☑ #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | ☑ #124 ∥ ☑ #130 |
-| CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | ☐ **เริ่มได้** (← CORE-20c ☑ #130) |
+| CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | ☑ #168 |
 | CORE-21 | return option: stock location ต้องอยู่ใน sales channel ของ order + test order ไม่มี `country_code` + error ไม่สะท้อน `option_id` | ☑ #86 |
 
 ## M2 การชำระเงิน
@@ -71,8 +83,8 @@ Q17 → AF-14, Q18 = 3 ช่อง, spec 03 Q6 → CORE-10b · รอบ 5: ADR
 | PAY-1 | Stripe provider + webhooks | ☑ #13 |
 | PAY-2 | UI checkout บัตร + PromptPay + e2e | ☑ #48 |
 | PAY-3 | **แยกรอบ 10** (builder หยุด: Store API อ่าน draft order ไม่ได้) → PAY-3a + GB-8 + PAY-3b | — |
-| PAY-3a | (backend test-only) ownership ของ session route บน collection ของ draft order + guard × webhook บน collection ของ order (AC-18) | ☐ **เริ่มได้** (← PAY-6a ☑, GB-4 ☑) |
-| PAY-3b | หน้า `/account/orders/:id/pay` อ่านจาก GB-8, 409 → poll อย่างเดียวมีเพดาน + e2e (AC-7, AC-19) | ☐ (← PAY-3a; GB-8 ☑ #145, PAY-6c ☑ #136) |
+| PAY-3a | (backend test-only) ownership ของ session route บน collection ของ draft order + guard × webhook บน collection ของ order (AC-18) | ☑ #157 |
+| PAY-3b | หน้า `/account/orders/:id/pay` อ่านจาก GB-8, 409/non-2xx → ตรวจสถานะ GB-8 + poll มีเพดาน + e2e (AC-7, AC-19; กฎข้อ 9 d2 จาก #184) | ◐ builder (nit #184 เรื่องเงื่อนไขหยุด poll ส่งผ่าน session หลัก) |
 | PAY-4 | Refund e2e (refund บางส่วน → `partially_refunded` + credit line) | ☑ #94 |
 | PAY-5 | race QR หมดอายุ × จ่ายสำเร็จ — ยืนยันกรณี (b) + ADR-015 | ☑ #65 |
 | PAY-6a | ADR-015 A ฝั่ง backend: guard + 409 `PAYMENT_ALREADY_COMPLETED` | ☑ #82 |
@@ -82,61 +94,61 @@ Q17 → AF-14, Q18 = 3 ช่อง, spec 03 Q6 → CORE-10b · รอบ 5: ADR
 
 ## M3 E-voucher — **v0.3.0**
 EV-1 ☑ #15 · EV-2 ☑ #25 · EV-3 ☑ #31 · EV-4 ☑ #67 · EV-5 ☑ #43 · EV-5b ☑ #111 · EV-6 ☑ #39 · EV-8 ☑ #54 · EV-10 ☑ #85 · EV-11 ☑ #88 · EV-12 ☑ #123 ·
-EV-7 **แตกรอบ 10** → EV-7a ☐ **เริ่มได้** (backend: `GET /store/customers/me/evouchers` + `allowFields` ข้อมูลพาร์ทเนอร์บน `/store/products*`; AC-34, 35) →
-EV-7b ☐ (PDP `evoucher-partner-block` + หน้า `/account/vouchers`; AC-6 แก้ให้ทดสอบได้, AC-36) ∥ EV-7c ☐ **เริ่มได้** (owner Q10 = (ก) 2026-10-27: ที่อยู่ใบกำกับภาษีเป็น `shipping_address`, ข้ามเฉพาะขั้นเลือกวิธีจัดส่ง; AC-3, AC-37) ·
-EV-9 ☑ #139 · EV-13 ☐ เริ่มได้ (AC-32) ∥ EV-5c ☐ เริ่มได้ (AC-33) ∥ EV-N1 ◐ #149 (nit #123, AC-38; รอบ 11 กฎข้อ 2 แก้ถ้อยคำขอบ cutoff ให้ตรงโค้ด)
+EV-7 **แตกรอบ 10** → EV-7a ☑ #155 → EV-7b ☑ #179 ∥ EV-7c ☑ #174 · EV-9 ☑ #139 · EV-13 ☑ #167 · EV-5c ☑ #171 · EV-N1 ☑ #149 ·
+(รอบ 12) **EV-14 ☐ เริ่มได้ — ความปลอดภัย** (`terms_url`/`logo_url` รับเฉพาะ http(s); AC-40 — ควรก่อน release v0.3.0) ∥ EV-N2 ☐ เริ่มได้ (lock owner/TTL ของ allocation + nit EV-7a; AC-41) ∥
+EV-7e ☐ เริ่มได้ (vouchers แบ่งหน้า, `support_contact`, บล็อก partner บน PDP; AC-43) · EV-7d ☐ (← CORE-4i: cart-totals digital-only, redirect ผ่าน `safeCountryCode`; AC-42)
 
 ## M4 Flash sale — **v0.4.0**
 PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ☑ #38 · FS-7 ☑ #53 · PROMO-2 ☑ #50 ·
 FS-10 ☑ #74 · FS-6 ☑ #115 · FS-8 ☑ #69 · FS-11 ☑ #83 · FS-13 ☑ #129 ·
 FS-12 ✕ (รอบ 10: ปิด — QA #115 พิสูจน์ preview = cart ทั้ง 5 แบบ target rule) · FS-9 ✕ (owner ตัดสินไม่ทำ 2026-10-27) ·
-FS-14 ◐ #148 (ราคา flash บน `/store`, `/search`, rail หน้าแรก; AC-20 — **☑ เต็มเมื่อ FS-17 merge** เพราะ test หน้าแรกยังเป็น `test.fixme`) →
-FS-17 ☐ (รอบ 11, เงื่อนไข review #148: `next.revalidate = 60` ใน fetch ของ collections/products — หน้าแรกไม่ค้าง cache 1 ปี + เปลี่ยน test หน้าแรกของ AC-20 เป็น `test`; AC-24; ← #148 merge; ADR-017 accepted 2026-10-27) ∥
-FS-15 ☐ **เริ่มได้** (← CORE-24 ☑ #134: เตือน/disable จำนวนเกิน `remaining_units` + ข้อความไทยของ `FLASH_*` ตอน complete; AC-21, 22) → FS-16 ☐ (← FS-14, FS-15: ปุ่มรอข้อมูล flash, `product-price` ขีดฆ่า, ป้าย sold out บนการ์ด; AC-23)
+FS-14 ☑ #148 (☑ เต็ม — FS-17 ☑) → FS-17 ☑ #164 ∥ FS-15 ☑ #178 →
+FS-16 ☐ **เริ่มได้** (ปุ่มรอข้อมูล flash, `product-price` ขีดฆ่า, ป้าย sold out บนการ์ด; AC-23 — ชน `product-actions` กับ CORE-25 ตัวที่ merge ทีหลัง rebase) ∥
+FS-18 ☐ **เริ่มได้** (รอบ 12: `revalidate` ให้ fetch ที่เหลือใน `lib/data`, e2e ลบข้อมูลครบ, `/store` ไม่ยิงข้อมูล flash ชุดเก่า; AC-25)
 (FS-2 คืนโควตาเมื่อ cancel หรือ refund เต็มจำนวน ไม่ว่ามาจาก return — owner 2026-10-25)
 
 ## M5 Group buying — **v0.5.0**
 GB-1 ☑ #17 · ADR-011 ☑ #33 · GB-2a ☑ #42 → GB-2b ☑ #49 → GB-2c ☑ #58 ·
 GB-3 ☑ #68 → (GB-3b ☑ #95 ∥ GB-3c ☑ #100 ∥ GB-4 ☑ #89) →
-(รอบ 10) PAY-3a ☐ เริ่มได้ ∥ GB-8 ☑ #145 →
-GB-5 ☐ (← PAY-3a — ไม่ต้องรอ PAY-3b; ปัดยอด collection 2 ตำแหน่ง + test `completed` AC-37) ∥ PAY-3b ☐ (← PAY-3a) → GB-7 ☐ (← GB-5, GB-8 ☑, PAY-3b, GB-3b ☑) ;
-GB-6a ☑ #75 → (GB-6b1 ☑ #87 ∥ GB-6b2 ☑ #96) → GB-6c1 ☑ #114 → GB-6c2 ☑ #121 → GB-6d ☑ #143 → GB-N3 ☐ **เริ่มได้** (รอบ 11: highlight `td` แรก + กัน `null` ใน `getLastPaymentStatus` ของ route GB-8; AC-42; ไม่บล็อกงานอื่น) ;
+(รอบ 10) PAY-3a ☑ #157 ∥ GB-8 ☑ #145 →
+GB-5 ☑ #185 (+ ops alert/runbook เงินค้าง) ∥ PAY-3b ◐ → GB-7 ☐ (← PAY-3b; GB-5 ☑, GB-8 ☑, GB-3b ☑) ;
+(รอบ 12) GB-9 ☐ **เริ่มได้** (alert เงินค้างอ่านสถานะใหม่ + runbook ตรวจ draft ก่อน refund; AC-43) ∥ GB-10 ☐ **เริ่มได้** (membership `paid` เมื่อ ops แปลง draft เอง; AC-44) — ควรก่อน release v0.5.0;
+คำถาม owner Q13 (refund อัตโนมัติ/ลองแปลงใหม่) · Q14 (อีเมล "ได้รับชำระแล้ว") ;
+GB-6a ☑ #75 → (GB-6b1 ☑ #87 ∥ GB-6b2 ☑ #96) → GB-6c1 ☑ #114 → GB-6c2 ☑ #121 → GB-6d ☑ #143 → GB-N3 ☑ #161 ;
 GB-N1 ☑ #106 · GB-N2 ☑ #126 (nit `trackSubscribers` คัดลอก `subscriberId` ถ้ายังไม่แก้ใน #126 → แก้ใน PR ถัดไปที่แตะ `group-buy-join.spec.ts`) · Q11 owner ยืนยัน (ก) ยอมรับ lock TTL 60s ใน v1 — ไม่มี task
 
 ## M6 Affiliate — **v0.6.0**
 AF-1 ☑ #11 · AF-2 ☑ #66 · AF-5 ☑ #35 → AF-3 ☑ #77 → (AF-3b ☑ #119 ∥ AF-4 ☑ #90 ∥ AF-4b ☑ #91 ∥ AF-7 ☑ #110) → AF-7b ☑ #122 →
-AF-N2 ☑ #146 (nit #125/#122; AC-38) · AF-8 แตกรอบ 11: AF-8a ☑ #135 → AF-13 ☐ **เริ่มได้** (backend `has_payout_info`; AC-39) → AF-8b ☐ (nav + Programs/Earnings/Payouts/Profile;
-AC-40; ← AF-13) → AF-8c ☐ (นับถอยหลังเป็นชั่วโมง, การ์ด `rate_varies` ไม่แสดงยอดประมาณการ, หน้า error เมื่อ backend ล่ม; AC-41; ← AF-8b) ;
-AF-5 → AF-9 ☑ #79 → (AF-6 ☑ #138 ∥ AF-9b ☑ #107 → AF-N1 ☑ #137) → **admin UI แบบเขียนได้ (owner 2026-10-27)**: AF-12a ☐ ∥ AF-12b ☐ ∥ AF-12c ☐ **เริ่มได้ทั้งหมด**
-(Programs สร้าง/แก้/ลบ draft AC-42 ∥ Affiliates approve/suspend + ข้อมูลรับเงิน AC-43 ∥ Payouts สร้าง + mark paid AC-44 — ชน `src/admin/routes/affiliate/page.tsx`/`lib/affiliate.ts` ตัวที่ merge ทีหลัง rebase) ;
-AF-10 ☑ #125 · AF-3c ☐ เริ่มได้ (static test จุดเริ่มชำระผ่าน `syncAffiliateBefore`; AC-37) · AF-11 ⏸ หลัง v1.0 (owner Q15 2026-10-27) ·
-AF-14 ☐ **เริ่มได้** (owner Q17: filter `id[]` + ชื่อ/อีเมล affiliate ใน Ledger/Payouts ดึงทีละหน้า; AC-45; ชนไฟล์ admin กับ AF-12a/12c ตัวที่ merge ทีหลัง rebase) ·
-release v0.6.0 ต้องมี AF-8b, AF-12a/b/c, AF-14 (AF-8c, AF-3c ควรมี) · owner รอบ 11: Q16 คง `variant_ids` ผ่าน API, Q18 `payout_info` 3 ช่อง
+AF-N2 ☑ #146 (nit #125/#122; AC-38) · AF-8 แตกรอบ 11: AF-8a ☑ #135 → AF-13 ☑ #158 → AF-8b ☑ #173 → AF-8c ☑ #182 ;
+AF-5 → AF-9 ☑ #79 → (AF-6 ☑ #138 ∥ AF-9b ☑ #107 → AF-N1 ☑ #137) → **admin UI แบบเขียนได้ (owner 2026-10-27)**: AF-12a ☑ #163 ∥ AF-12b ☑ #165 ∥ AF-12c ☑ #176 ;
+AF-10 ☑ #125 · AF-3c ☑ #153 · AF-11 ⏸ หลัง v1.0 (owner Q15 2026-10-27) · AF-14 ◐ builder (AC-45) ·
+(รอบ 12) AF-15 ☐ (← AF-14: `payout_info` 3 ช่องแบบ strict, `expected_status` กันกด approve จากหน้าเก่า, prompt ของ Clear; AC-46) ∥ AF-N3 ☐ **เริ่มได้** (portal: สกุลเงิน, หน้าเกิน, `−`, static test AST; AC-47) ;
+คำถาม owner Q19 (order กลุ่มไม่ได้ค่าคอม affiliate) · Q20 (รูปแบบเลขบัญชี — ถ้าเลือก (ข) รวมใน AF-15) ·
+release v0.6.0 ต้องมี AF-14 (ที่เหลือ ☑ แล้ว; AF-15 ควรมี) · owner รอบ 11: Q16 คง `variant_ids` ผ่าน API, Q18 `payout_info` 3 ช่อง
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
 OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☑ #120 (JSON logs + alert `Error running event bus worker`, AC-18) · OPS-3b ⏸ rate limiting · OPS-3c ⏸ Sentry (owner Q-O1/Q-O2 2026-10-27: เลื่อนหลัง v1.0) ·
-OPS-5 ☐ · OPS-7 ☑ #108 · OPS-8 ☑ #101 · OPS-13 ☑ #127 · OPS-9 ☑ #72 · OPS-11 ☑ #87 (รวมใน GB-6b1) ·
-OPS-14 ☑ #133 · OPS-10 ☑ #141 → OPS-15 ☐ log knex `Connection ended unexpectedly` (AC-26) → OPS-12 ☐ smoke Redis ใน `docker-worker-mode` → OPS-16 ☐ (รอบ 11: รัน `check-stripe-events.sh` จริง,
-cache browser Playwright, test YAML ด้วย parser; AC-27) — ทั้งสามแตะ `ci.yml` จึงทำทีละตัว ·
-OPS-13b ☑ #147 (nit "→ service zone" ใน `production.md` ข้อ 5 แก้ใน #152) ·
-OPS-4 ☐ **เริ่มได้** (owner Q-O3 2026-10-27 ตามข้อเสนอทั้งชุด: `docker-compose.prod.yml` ใน runner, seed ลูกค้า/token ด้วย script, "พอดี 100" = complete checkout ด้วย manual payment, k6 image pin, `load-nightly.yml` แยก; Depends FS-3 ☑ + GB-3 ☑ + OPS-1 ☑)
+OPS-7 ☑ #108 · OPS-8 ☑ #101 · OPS-13 ☑ #127 · OPS-9 ☑ #72 · OPS-11 ☑ #87 (รวมใน GB-6b1) ·
+OPS-14 ☑ #133 · OPS-10 ☑ #141 → OPS-15 ☑ #156 → OPS-12 ☑ #172 → OPS-16 ☑ #180 → (รอบ 12) OPS-17 ☐ **เริ่มได้** (`prod-guards` อ่าน YAML ด้วย parser, `IMAGE_TAG` ของ load test, ตัด cast; AC-28) ·
+OPS-13b ☑ #147 · OPS-4 ☑ #175 (load-nightly run 40590093846 success — `docs/evidence/scale/OPS-4/REPORT.md` รอ session หลัก commit; ติ๊ก AC-2/AC-3 เมื่อมีผลรอบเต็ม) ·
+OPS-5 ☐ (ท้ายสุด)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
 ## Admin UI ใช้ component ของ Medusa (ADR-018 accepted, spec 08) — ไม่บล็อก release ใด
 owner 2026-10-28: ให้ admin ใช้ component/hook/utility ของ Medusa เป็นฐาน (`@medusajs/dashboard/{components,hooks,lib}` ตั้งแต่ v2.21.0 → `@medusajs/ui` → custom guide → สร้างเอง)
 owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9, bump `@medusajs/ui` 4.2.8, ปุ่มต่อแถวใช้ `ActionMenu`, วันเวลาใช้ `DatePicker`/`useDate` ตาม timezone เครื่อง (เลิก `lib/ict.ts` ใน admin),
-เงินใช้ `getLocaleAmount`, ฟอร์มแบบ state, pagination ใน URL — **ADM-1 เริ่มได้หลัง PR ของ ADR-018/spec 08 merge**
+เงินใช้ `getLocaleAmount`, ฟอร์มแบบ state, pagination ใน URL — ADR-018/spec 08 ☑ #183
 | Task | งาน | สถานะ |
 |------|-----|--------|
-| ADM-1 | dependency ตรงกับ dashboard (`@medusajs/ui` 4.2.8, `react-hook-form`, `@hookform/resolvers`, `@medusajs/icons`) + jest โหลด `@medusajs/dashboard/lib` ได้ + `icon` ของ route (AC-1, 2) | ☐ |
-| ADM-2a | Header/Container (guide) + Header/`SectionRow` ใน 3 widget + static test (AC-5) | ☐ (← ADM-1) |
-| ADM-2b | `createSingleFlight` แทน `useRef`, วันที่ผ่าน `useDate`, Playwright admin `locale`/`timezoneId` (AC-3, AC-4) | ☐ (← ADM-2a) |
+| ADM-1 | dependency ตรงกับ dashboard (`@medusajs/ui` 4.2.8, `react-hook-form`, `@hookform/resolvers`, `@medusajs/icons`) + jest โหลด `@medusajs/dashboard/lib` ได้ + `icon` ของ route (AC-1, 2) | ◐ builder |
+| ADM-2a | Header/Container (guide) + Header/`SectionRow` ใน 3 widget + static test (AC-5; รอบ 12 + nit EV-13 #167) | ☐ (← ADM-1) |
+| ADM-2b | `createSingleFlight` แทน `useRef`, วันที่ผ่าน `useDate` (locale จากภาษาของ admin — แก้รอบ 12), Playwright admin `locale`/`timezoneId` (AC-3, AC-4) | ☐ (← ADM-2a) |
 | ADM-3 ∥ ADM-4 ∥ ADM-6 | pilot ฟอร์ม widget (`Form` + zod, AC-6) ∥ หน้า e-voucher (`LayoutComposer`, `DataTable` dashboard, `ActionMenu` Reveal, AC-7) ∥ หน้า group buy (AC-9; ← GB-N3 ถ้ายังเปิดอยู่) | ☐ ∥ ☐ ∥ ☐ (← ADM-2b) |
 | ADM-5 ∥ ADM-7 | partners ตาราง + ฟอร์ม + `ActionMenu` (AC-8) ∥ ฟอร์มสร้างแคมเปญ + `DatePicker` + `useProducts` (AC-10) | ☐ ∥ ☐ (← ADM-3) |
-| ADM-8a | affiliate ตาราง (`DataTable` dashboard, `getLocaleAmount`, `useDate`, icon; AC-2, AC-11) | ☐ (← ADM-2b, **#176 AF-12c**, **AF-14**) |
-| ADM-8b | affiliate ปุ่มต่อแถวเป็น `ActionMenu` + แก้ locator e2e (AC-13) | ☐ (← ADM-8a) |
-| ADM-9 | affiliate ฟอร์ม (`Form`, `DatePicker`, `Combobox` scope, ฟอร์มของ AF-12c; AC-12) | ☐ (← ADM-3, ADM-7, ADM-8b) |
+| ADM-8a | affiliate ตาราง (`DataTable` dashboard, `getLocaleAmount`, `useDate`, icon; AC-2, AC-11) | ☐ (← ADM-2b, #176 ☑, **AF-14**, **AF-15**) |
+| ADM-8b | affiliate ปุ่มต่อแถวเป็น `ActionMenu` + แก้ locator e2e + (รอบ 12) Cancel/Mark paid ของแถวเดียวกันกันกัน (AC-13) | ☐ (← ADM-8a) |
+| ADM-9 | affiliate ฟอร์ม (`Form`, `DatePicker`, `Combobox` scope, ฟอร์มของ AF-12c; รอบ 12: ส่งวันที่เฉพาะที่แก้, scope ว่าง → error, ตัวเลือก affiliate ค้นหาได้; AC-12) | ☐ (← ADM-3, ADM-7, ADM-8b) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -179,6 +191,15 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   #142 → CORE-19d · #144 → CORE-4h · #143/#145 → GB-N3 · #141/#133 → OPS-16 · #147 nit "service zone" → แก้ใน #152 · #136 ข้อสังเกตเพดาน → ยอมรับ (spec 06) ·
   owner ตัดสินคำถามรอบ 11: ADR-017 accepted, Q16 คงเดิม, Q17 → AF-14, Q18 3 ช่อง, Q6 → CORE-10b · review #152: Earnings แสดงแถว reversed แยก (spec 05 กฎ 33), GB-N3 เป็นเรื่องกัน `null` · review #151 → ถ้อยคำ CORE-19b (race) + CORE-19e ·
   qa #148 O-1 (หน้าค้างไม่อัปเดตเมื่อแคมเปญหมด) → ยอมรับ (spec 03 กฎ 19)
+- รอบ 12 (2026-10-28): follow-up สะสมจาก #148–#185 →
+  spec 01: #177 → CORE-15b · #159 (AC-72 ยังไม่ทำ) → CORE-10c · builder FS-17 (search ingestion) → CORE-9b · FS-15/#160/#170 (status ของ error server action) → CORE-4i · #170 → CORE-4j ·
+  #154/#150/#164 O-2 → CORE-23c · #166/#151 → CORE-19f · #169/#173/AF-12c (ชื่อ evidence) → CORE-5d · qa #178 (PDP ไซซ์ผิด) + flaky `core-19a:183` → CORE-25 ·
+  spec 02: qa #179 (`javascript:` ใน `terms_url`) → EV-14 · #171/#155 → EV-N2 · #174 → EV-7d · #179 → EV-7e · nit #167 → ADM-2a ·
+  spec 03: #164/#177/#148 O-3 → FS-18 · spec 04: #185 → GB-9, GB-10, Q13, Q14 · spec 05: #165 → AF-15, Q20 · #173/#153/#174 → AF-N3 · #185 → Q19 ·
+  spec 07: #180/#175 → OPS-17, เช็กลิสต์ bump ข้อ 8 · spec 08: nit #183 (`useDate` locale), #163/#176 → ADM-8b/ADM-9, ADM-8a ← AF-15 ·
+  แก้ถ้อยคำ: spec 01 (ADR-018 accepted, AC-102, AC-107), spec 05 กฎ 37d (ADM-8b), spec 07 path ของ `seed-load.ts`, ADR-008 ข้อ 6 (jsdom ต่อไฟล์) ·
+  ไม่ทำ/ยอมรับ: `DATABASE_POOL_MAX` (gate ผ่าน), `E2E_SAVE_EVIDENCE=<TASK-ID>`, `/zz/account`, field fulfillment ใน Store order API, method ของ ownership middleware region,
+  ปุ่ม `Loading...` (แก้แล้ว), test `if: false` (แก้แล้วใน #180), test convert สต็อกหมด (มีใน #185); แจ้ง owner: หน้าแรกสดช้าสุด 88.4s (เพดาน 90 ตาม ADR-017 — qa #164)
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →

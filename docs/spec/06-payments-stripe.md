@@ -233,6 +233,8 @@ PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment
 (เพดานนับต่อการ mount ไม่ใช่ต่อ cart — reload ได้อีกชุด, refund แล้วสร้าง session ใหม่ไม่สำเร็จได้เพดานใหม่เมื่อเริ่มใหม่, unit จำลอง loop เอง, สัญญาณคืนเงินยังไม่มี integration
 ผ่าน Store API จริง) — **ยอมรับใน v1** เพราะเพดานมีไว้กันลูปไม่รู้จบในหน้าเดียว (แต่ละครั้งเป็น request complete ที่ idempotent) ไม่มี task; ถ้า PAY-3b ใช้ตัวนับเดิมให้คงพฤติกรรมนี้
 (รอบ 12, review #157) สถานะ: PAY-3a ☑ #157 → dependency ของ PAY-3b ครบ (GB-8 ☑ #145, PAY-3a ☑ #157, PAY-6c ☑ #136); PAY-3b เริ่มได้หลัง PR spec นี้ merge (กฎข้อ 9 d2, AC-19 ที่ปรับ)
+(รอบ 12 planner, 2026-10-28) สถานะ: #184 (spec PAY-3b) ☑, PAY-3b ◐ (builder) — planner ไม่แก้กฎข้อ 9 ระหว่าง task ทำงาน; nit review #184 (เงื่อนไขหยุด poll ของข้อ d/d2 = `payment_status=captured`
+หรือ collection `completed` ไม่ใช่เมื่อ predicate "มีการชำระแล้ว" จริงครั้งแรก — กรณี session `authorized` + `not_paid` ของ AC-19) ส่งให้ builder PAY-3b ผ่าน session หลัก; reviewer ของ PAY-3b ตรวจข้อนี้
 PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6c หลัง CORE-4e (∥ CORE-19b ถ้าไม่แตะไฟล์เดียวกัน — ตัวที่ merge ทีหลัง rebase); PAY-6c ควร merge ก่อน release ที่เปิดพร้อมเพย์จริง; PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
 ต้อง merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
 หมายเหตุ (รอบ 6, จาก #82): ข้อกังวลในภาคผนวก ADR-015 ("lock key `payment_collection_id` ของ collection ที่ไม่มี cart ไม่ตรงกับ lock ของ `processPaymentWorkflow`
