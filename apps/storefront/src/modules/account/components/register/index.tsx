@@ -61,6 +61,8 @@ const Register = ({ setCurrentView }: Props) => {
             type="email"
             autoComplete="email"
             data-testid="email-input"
+            // CORE-4f (กฎข้อ 62): ล้มแล้วคงอีเมลเดิม — React 19 reset ฟอร์มกลับเป็น defaultValue หลัง action
+            defaultValue={message?.state === "error" ? message.email : undefined}
           />
           <Input
             label="เบอร์โทรศัพท์"

@@ -12,7 +12,7 @@ moduleIntegrationTestRunner<GroupBuyModuleService>({
   moduleName: GROUP_BUY_MODULE,
   moduleModels: [GroupBuyCampaign, GroupBuyGroup, GroupBuyMembership],
   resolve: "./src/modules/group_buy",
-  testSuite: ({ service }) => {
+  testSuite: ({ service, MikroOrmWrapper }) => {
     const endsAt = new Date("2026-11-11T00:00:00.000Z")
 
     async function createCampaign(data: Record<string, unknown> = {}) {
@@ -142,6 +142,16 @@ moduleIntegrationTestRunner<GroupBuyModuleService>({
     })
 
     describe("GroupBuyMembership", () => {
+      // GB-8 (spec 04 กฎข้อ 21, AC-39): route ของลูกค้าหา membership ด้วย customer_id เรียง joined_at — index ต้องขึ้นต้นด้วย customer_id
+      it("has a (customer_id, joined_at) index on group_buy_membership", async () => {
+        const rows: { indexdef: string }[] = await MikroOrmWrapper.getManager()
+          .getConnection()
+          .execute(`SELECT indexdef FROM pg_indexes WHERE tablename = 'group_buy_membership'`)
+        expect(
+          rows.some((r) => /\(customer_id, joined_at\) WHERE \(deleted_at IS NULL\)/.test(r.indexdef))
+        ).toBe(true)
+      })
+
       it("creates a joined membership linked to its group and campaign", async () => {
         const campaign = await createCampaign()
         const group = await createGroup(campaign.id)
