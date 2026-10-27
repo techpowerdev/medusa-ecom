@@ -12,10 +12,12 @@ import React from "react"
 
 type OrderDetailsTemplateProps = {
   order: HttpTypes.StoreOrder
+  canReturn?: boolean
 }
 
 const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
   order,
+  canReturn = false,
 }) => {
   return (
     <div className="flex flex-col justify-center gap-y-4">
@@ -37,6 +39,15 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
       >
         <OrderDetails order={order} showStatus />
         <Items order={order} />
+        {canReturn && (
+          <LocalizedClientLink
+            href={`/account/orders/details/${order.id}/return`}
+            className="self-start rounded-md border border-ui-border-base px-4 py-2 text-ui-fg-base hover:bg-ui-bg-subtle-hover"
+            data-testid="order-return-button"
+          >
+            ขอคืนสินค้า
+          </LocalizedClientLink>
+        )}
         <ShippingDetails order={order} />
         <OrderSummary order={order} />
         <Help />

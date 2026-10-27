@@ -3,6 +3,7 @@
 #
 #   export POSTGRES_PASSWORD=... JWT_SECRET=... COOKIE_SECRET=...   # `openssl rand -hex 32`
 #   export STRIPE_API_KEY=... STRIPE_WEBHOOK_SECRET=...              # PAY-1 (spec 06)
+#   export RESEND_API_KEY=... RESEND_FROM_EMAIL=... AFFILIATE_TOKEN_SECRET=... STOREFRONT_URL=https://...  # OPS-7
 #   docker compose -f docker-compose.prod.yml up -d --build --wait
 #   docker compose -f docker-compose.prod.yml --profile storefront up -d   # ต้องมี publishable key (CORE-2)
 #
@@ -38,8 +39,16 @@ x-backend-env: &backend-env
   ADMIN_CORS: ${ADMIN_CORS:-http://localhost:9000}
   AUTH_CORS: ${AUTH_CORS:-http://localhost:9000,http://localhost:8000}
   LOG_LEVEL: ${LOG_LEVEL:-info}
-  # GB-4: base URL ของลิงก์ชำระเงินในอีเมล group buy (ไม่ตั้ง = เตือนตอนบูต และลิงก์ในอีเมลใช้ไม่ได้)
+  # OPS-7 prod guards (image = NODE_ENV=production): ขาดตัวใดตัวหนึ่ง → server/worker/migrate บูตไม่ขึ้น
+  # GB-4: URL http(s) ของ storefront สำหรับลิงก์ชำระเงินในอีเมล group buy (AC-17)
   STOREFRONT_URL: ${STOREFRONT_URL:-}
+  # AF-2: secret ของ cookie `aff` (AC-13)
+  AFFILIATE_TOKEN_SECRET: ${AFFILIATE_TOKEN_SECRET:-}
+  # CORE-3: อีเมลผ่าน Resend (AC-9)
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+  # ADR-010: "true" = ยอมให้ใช้ provider ทดสอบ (smoke/CI/staging เท่านั้น) — ห้ามตั้งใน prod
+  ALLOW_TEST_PROVIDERS: ${ALLOW_TEST_PROVIDERS:-}
   # PAY-1: Stripe provider ต้องมี key ตอนบูต (spec 06)
   STRIPE_API_KEY: ${STRIPE_API_KEY:?ต้องตั้ง STRIPE_API_KEY}
   STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?ต้องตั้ง STRIPE_WEBHOOK_SECRET}
