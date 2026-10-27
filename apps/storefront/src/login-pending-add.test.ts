@@ -19,6 +19,9 @@ vi.mock("@lib/data/cookies", () => ({
   setAuthToken: vi.fn(),
 }))
 vi.mock("@lib/data/cart", () => ({ addToCart: (...a: unknown[]) => addToCart(...a) }))
+// CORE-14f: region ที่มีจริงในชุดทดสอบ = th เท่านั้น
+const getRegion = vi.fn(async (cc: string) => (cc === "th" ? { id: "reg_th" } : undefined))
+vi.mock("@lib/data/regions", () => ({ getRegion: (cc: string) => getRegion(cc) }))
 vi.mock("@lib/util/server-cart", () => ({}))
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }))
 // unstable_rethrow ของจริงดู digest ของ error ที่ Next สร้าง — mock ให้ re-throw error ของ redirect mock ด้านบน
@@ -83,11 +86,24 @@ describe("login พร้อม add_variant ที่ค้างไว้ (CORE
     expect(addToCart).toHaveBeenCalledWith({ variantId: "variant_01", countryCode: "th", quantity: 100 })
   })
 
-  it("confirmPendingAdd ปฏิเสธ countryCode ที่ไม่ใช่รหัสประเทศ (server action — กัน open redirect)", async () => {
+  // CORE-14f (กฎ 65, AC-101): countryCode ที่แก้ในฟอร์มต้องไม่ทำให้ 5xx — redirect ไป /account (middleware เลือกประเทศหลัก)
+  // พร้อม add_error ให้แสดง add-variant-error ภาษาไทย; ไม่ออกนอกร้าน (กัน open redirect)
+  it("confirmPendingAdd countryCode ไม่ใช่รหัสประเทศ → /account พร้อม add_error ไม่ throw", async () => {
     await expect(
-      confirmWith({ add_variant: "v", country_code: "/evil.example" })
-    ).rejects.toThrow(/[฀-๿]/)
+      confirmWith({ add_variant: "v", add_quantity: "2", country_code: "/evil.example" })
+    ).rejects.toThrow(/^REDIRECT \/account\?add_variant=v&add_quantity=2&add_error=1$/)
     expect(addToCart).not.toHaveBeenCalled()
-    expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it("confirmPendingAdd ไม่มี add_variant → /account", async () => {
+    await expect(confirmWith({ country_code: "th" })).rejects.toThrow(/^REDIRECT \/account$/)
+    expect(addToCart).not.toHaveBeenCalled()
+  })
+
+  it("confirmPendingAdd countryCode ที่ไม่มี region (zz) → /account พร้อม add_error ไม่ใช่ /zz/…", async () => {
+    addToCart.mockRejectedValueOnce(new Error("ไม่พบภูมิภาคสำหรับประเทศ zz"))
+    await expect(
+      confirmWith({ add_variant: "v", country_code: "zz" })
+    ).rejects.toThrow(/^REDIRECT \/account\?add_variant=v&add_error=1$/)
   })
 })

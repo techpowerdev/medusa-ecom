@@ -1,3 +1,4 @@
+import { retrieveCart } from "@lib/data/cart"
 import { confirmPendingAdd } from "@lib/data/customer"
 import { retrieveVariant } from "@lib/data/products"
 import { canPurchaseVariant } from "@lib/util/inventory"
@@ -5,6 +6,7 @@ import { convertToLocale } from "@lib/util/money"
 import {
   PENDING_ADD_PARAM,
   PENDING_QUANTITY_PARAM,
+  quantityInCart,
   readPendingAddQuery,
 } from "@lib/util/pending-add-to-cart"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
@@ -36,6 +38,11 @@ const AddVariantError = async ({ countryCode, searchParams, confirm }: Props) =>
       return null
     }
     const price = variant.calculated_price
+    // CORE-14f (กฎ 65): บอกสถานะ cart จริง — variant อยู่ใน cart แล้วแสดงจำนวนปัจจุบัน ไม่บอกว่า "ยังไม่ได้อยู่ในตะกร้า"
+    const inCart = quantityInCart(
+      await retrieveCart(undefined, "id,items.variant_id,items.quantity", { fresh: true }),
+      pending.variantId
+    )
     return (
       <form
         action={confirmPendingAdd}
@@ -45,16 +52,28 @@ const AddVariantError = async ({ countryCode, searchParams, confirm }: Props) =>
         <input type="hidden" name={PENDING_ADD_PARAM} value={pending.variantId} />
         <input type="hidden" name={PENDING_QUANTITY_PARAM} value={pending.quantity} />
         <input type="hidden" name="country_code" value={countryCode} />
-        <p className="text-base-regular text-ui-fg-base">
-          สินค้าที่เลือกไว้{variant.title ? ` (ตัวเลือก ${variant.title})` : ""} จำนวน{" "}
-          {pending.quantity} ชิ้น
-          {price?.calculated_amount != null &&
-            ` ราคาชิ้นละ ${convertToLocale({
-              amount: price.calculated_amount,
-              currency_code: price.currency_code ?? "",
-            })}`}{" "}
-          ยังไม่ได้อยู่ในตะกร้า
-        </p>
+        <div className="text-base-regular text-ui-fg-base">
+          <p className="font-semibold">
+            {inCart > 0 ? (
+              <>
+                สินค้านี้อยู่ในตะกร้าแล้ว{" "}
+                <span data-testid="add-variant-in-cart-qty">{inCart}</span> ชิ้น
+                ต้องการเพิ่มอีกหรือไม่?
+              </>
+            ) : (
+              "เพิ่มสินค้านี้ลงตะกร้า?"
+            )}
+          </p>
+          <p>
+            {variant.title ? `ตัวเลือก ${variant.title} · ` : ""}จำนวน{" "}
+            {pending.quantity} ชิ้น
+            {price?.calculated_amount != null &&
+              ` · ราคาชิ้นละ ${convertToLocale({
+                amount: price.calculated_amount,
+                currency_code: price.currency_code ?? "",
+              })}`}
+          </p>
+        </div>
         <SubmitButton data-testid="add-variant-confirm">เพิ่มลงตะกร้า</SubmitButton>
       </form>
     )

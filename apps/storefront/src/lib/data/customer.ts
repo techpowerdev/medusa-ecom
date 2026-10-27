@@ -19,7 +19,11 @@ import {
   setPendingCustomer,
 } from "./cookies"
 import { addToCart } from "./cart"
+import { getRegion } from "./regions"
 import {
+  PENDING_ADD_PARAM,
+  PENDING_QUANTITY_PARAM,
+  clampLineItemQuantity,
   loginPathForAddToCart,
   readPendingAddToCart,
 } from "@lib/util/pending-add-to-cart"
@@ -210,10 +214,22 @@ async function continueAfterAuth(
 // CORE-14d (กฎ 58, owner 2026-10-27): ลูกค้าที่ล็อกอินอยู่แล้วเปิดลิงก์ `/account?add_variant=…` ไม่ถูกเพิ่มลง cart เอง
 // (กด Back หลัง login แล้วเพิ่มซ้ำ / ลิงก์จากเว็บอื่น) — ต้องกดปุ่มยืนยัน (ฟอร์ม POST ใช้ได้แม้ปิด JS) ซึ่งเรียก action นี้
 // readPendingAddToCart ตรวจรหัสประเทศ (กัน redirect ออกนอกร้าน) และ clamp quantity 1..100 ให้แล้ว
+// CORE-14f (กฎ 65): ฟอร์มที่ถูกแก้ (country_code ผิดรูป/ไม่มี add_variant) → redirect ไป `/account` ของประเทศหลัก
+// พร้อม add_error ให้แสดง add-variant-error แทนการ throw (= HTTP 500)
 export async function confirmPendingAdd(formData: FormData): Promise<void> {
   const pending = readPendingAddToCart(formData)
   if (!pending) {
-    throw new Error("ข้อมูลสินค้าที่จะเพิ่มลงตะกร้าไม่ถูกต้อง")
+    const variantId = formData.get(PENDING_ADD_PARAM)?.toString()
+    redirect(
+      variantId
+        ? loginPathForAddToCart(
+            null,
+            variantId,
+            clampLineItemQuantity(formData.get(PENDING_QUANTITY_PARAM)?.toString()),
+            { failed: true }
+          )
+        : "/account"
+    )
   }
   await addPendingToCart(pending)
 }
@@ -234,12 +250,16 @@ async function addPendingToCart(
     added = false
   }
 
+  if (added) {
+    redirect(`/${pending.countryCode}/cart`)
+  }
+
+  // CORE-14f (กฎ 65): countryCode ที่ไม่ใช่ประเทศของ region ใด (เช่น `zz`) → `/account` ของประเทศหลัก ไม่ใช่ `/zz/…` (404)
+  const region = await getRegion(pending.countryCode).catch(() => null)
   redirect(
-    added
-      ? `/${pending.countryCode}/cart`
-      : loginPathForAddToCart(pending.countryCode, pending.variantId, pending.quantity, {
-          failed: true,
-        })
+    loginPathForAddToCart(region ? pending.countryCode : null, pending.variantId, pending.quantity, {
+      failed: true,
+    })
   )
 }
 

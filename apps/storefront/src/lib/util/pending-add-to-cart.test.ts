@@ -8,6 +8,7 @@ import {
   PENDING_QUANTITY_PARAM,
   clampLineItemQuantity,
   loginPathForAddToCart,
+  quantityInCart,
   readPendingAddToCart,
   readPendingAddQuery,
 } from "./pending-add-to-cart"
@@ -137,5 +138,28 @@ describe("add_error (CORE-14d)", () => {
     expect(
       readPendingAddQuery({ [PENDING_ADD_PARAM]: "variant_01", [PENDING_ERROR_PARAM]: "1" })
     ).toEqual({ variantId: "variant_01", quantity: 1, failed: true })
+  })
+})
+
+// CORE-14f (กฎ 65): การ์ด add-variant-pending แสดงจำนวนที่อยู่ใน cart แล้ว; countryCode ที่ไม่มี region → path ไม่มีประเทศ (middleware เลือกประเทศหลักให้)
+describe("CORE-14f", () => {
+  it("quantityInCart รวม quantity ของทุก line ที่เป็น variant นั้น", () => {
+    const cart = {
+      items: [
+        { variant_id: "v1", quantity: 2 },
+        { variant_id: "v2", quantity: 5 },
+        { variant_id: "v1", quantity: 1 },
+      ],
+    }
+    expect(quantityInCart(cart, "v1")).toBe(3)
+    expect(quantityInCart(cart, "v3")).toBe(0)
+    expect(quantityInCart(null, "v1")).toBe(0)
+    expect(quantityInCart({ items: null }, "v1")).toBe(0)
+  })
+
+  it("loginPathForAddToCart ไม่ใส่ประเทศเมื่อ countryCode เป็น null (ไม่เกิด // ที่เป็น protocol-relative)", () => {
+    expect(loginPathForAddToCart(null, "v1", 2, { failed: true })).toBe(
+      `/account?${PENDING_ADD_PARAM}=v1&${PENDING_QUANTITY_PARAM}=2&${PENDING_ERROR_PARAM}=1`
+    )
   })
 })
