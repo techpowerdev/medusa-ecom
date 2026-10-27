@@ -28,6 +28,16 @@ export const listRegionsUncached = async () =>
     })
     .then(({ regions }) => regions)
 
+// CORE-20d (กฎข้อ 66d): region เดียวตาม id (GET /store/regions/:id) แบบไม่ cache — ใช้แทนการ list ทุก region
+// เมื่อหน้ารู้ id อยู่แล้ว (PDP, ปุ่ม/หน้าขอคืนจาก region ของ order)
+export const retrieveRegionUncached = async (id: string) =>
+  sdk.client
+    .fetch<HttpTypes.StoreRegionResponse>(`/store/regions/${id}`, {
+      method: "GET",
+      cache: "no-store",
+    })
+    .then(({ region }) => region)
+
 export const retrieveRegion = async (id: string) => {
   const next = {
     ...(await getCacheOptions(["regions", id].join("-"))),

@@ -1,0 +1,98 @@
+# CORE-20d — ค่าเริ่มต้น window เดียวกับ backend, window ต่อ line, map error code + contract test, GET /store/regions/:id,
+# ฟอร์มคงค่าเมื่อล้ม, e2e cleanup ตรวจผล (AC-102, กฎข้อ 66) — ผลการทดสอบ 2026-10-27T14:40Z
+
+## Red (ก่อนแก้)
+- vitest: lineReceivedAt is not a function; "ช่วงคืนต่อ line" ได้ [[A,1],[B,2]] แทน [[B,2]]; getReturnPolicy is not a function (6 tests);
+  RETURN_ERRORS ไม่ได้ export (contract); requestReturn ไม่คืน values; retrieveRegionUncached ยังไม่มี / PDP ใช้ listRegionsUncached (3 tests)
+- integration store-returns-window.spec.ts "GET /store/orders/:id returns fulfillments.items.line_item_id": ได้ undefined
+  (core จำกัด field ของ store order — ไม่มี fulfillments.items)
+- e2e AC-102 (c, e) บนฟอร์มเดิม: return-item-quantity Expected "2" Received "0" (React 19 reset ฟอร์มหลัง action)
+
+## Positive control ของ contract test (แก้ข้อความ backend ชั่วคราวแล้วคืนค่า)
+- return-window.ts: "The return window for this order has expired" → "The return period for this order has ended"
+- region-store-policies.ts: return_window_days 30 → 14
+     × map ของ storefront มี code และข้อความตรงกับ backend ทุกตัว 4ms
+     × เท่ากับ DEFAULT_REGION_STORE_POLICIES ของ backend 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed | 1 passed (3)
+
+## vitest (ไฟล์ที่เกี่ยวข้อง)
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > listOrders ไม่ใช้ force-cache 1ms
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > listRegionsUncached ไม่ใช้ force-cache 0ms
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > lib/data/store-policies.ts อ่าน policy ของ region ผ่าน listRegionsUncached 0ms
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > app/[countryCode]/(main)/page.tsx อ่าน policy ของ region ผ่าน listRegionsUncached 0ms
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > หน้า /returns อ่าน policy ผ่าน getStorePolicies (ไม่เรียก listRegions แบบ cache เอง) 0ms
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > structured data ของหน้าแรกสร้างจาก region ที่ไม่ cache 0ms
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > retrieveRegionUncached ใช้ GET /store/regions/:id และไม่ force-cache 0ms
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > PDP อ่าน policy ของ region ผ่าน retrieveRegionUncached ไม่เรียก listRegionsUncached 0ms
+ ✓ src/return-policy-cache.test.ts > ไม่ force-cache ข้อมูลที่ return ขึ้นกับ (กฎข้อ 60) > ปุ่ม/หน้าขอคืนอ่าน region ของ order ผ่าน retrieveRegionUncached 1ms
+ ✓ src/return-window-contract.test.ts > contract: error code ของ POST /store/returns (CORE-20b) > อ่านคู่ code/message จาก backend ได้ครบ 3 code 1ms
+ ✓ src/return-window-contract.test.ts > contract: error code ของ POST /store/returns (CORE-20b) > map ของ storefront มี code และข้อความตรงกับ backend ทุกตัว 1ms
+ ✓ src/return-window-contract.test.ts > contract: ค่าเริ่มต้นของ return_window_days > เท่ากับ DEFAULT_REGION_STORE_POLICIES ของ backend 0ms
+ ✓ src/lib/util/return-request.test.ts > returnableItems > จำนวนที่คืนได้ = shipped − (requested + received + dismissed) 1ms
+ ✓ src/lib/util/return-request.test.ts > returnableItems > qty 3, fulfilled 3, shipped 2, requested 1 → คืนได้ 1 0ms
+ ✓ src/lib/util/return-request.test.ts > returnableItems > fulfill แล้วแต่ยังไม่ส่ง (shipped 0) → ไม่แสดง 0ms
+ ✓ src/lib/util/return-request.test.ts > returnableItems > ซ่อน line ที่ไม่ต้องจัดส่ง (e-voucher) หรือไม่ทราบค่า requires_shipping 0ms
+ ✓ src/lib/util/return-request.test.ts > returnableItems > ไม่มี items → ว่าง 0ms
+ ✓ src/lib/util/return-request.test.ts > lineReceivedAt > ใช้ delivered_at ก่อน shipped_at, เลือกล่าสุดเฉพาะ fulfillment ที่มี line นั้น, ไม่นับที่ยกเลิก 1ms
+ ✓ src/lib/util/return-request.test.ts > lineReceivedAt > line ยังไม่ส่ง / ไม่มี fulfillment ของ line → null 0ms
+ ✓ src/lib/util/return-request.test.ts > canRequestReturn > ภายใน N วันนับจากวันที่ได้รับ → ได้ (รวมวันสุดท้ายพอดี) 0ms
+ ✓ src/lib/util/return-request.test.ts > canRequestReturn > เกิน N วัน → ไม่ได้ 0ms
+ ✓ src/lib/util/return-request.test.ts > canRequestReturn > ไม่มี delivered_at ใช้ shipped_at 0ms
+ ✓ src/lib/util/return-request.test.ts > canRequestReturn > ยังไม่ fulfill / ยังไม่ส่ง → ไม่ได้ 0ms
+ ✓ src/lib/util/return-request.test.ts > canRequestReturn > ไม่มี item ที่คืนได้ (เช่น มีแต่ e-voucher) → ไม่ได้ 0ms
+ ✓ src/lib/util/return-request.test.ts > canRequestReturn > อ่าน region ไม่ได้ (return_window_days = null) → ไม่ได้ 0ms
+ ✓ src/lib/util/return-request.test.ts > canRequestReturn > line A พ้นช่วง แต่ line B เพิ่งส่ง → ยังมีปุ่ม (มี line คืนได้ ≥ 1) 0ms
+ ✓ src/lib/util/return-request.test.ts > returnableItemsNow > ภายในช่วงคืน → line ที่คืนได้พร้อมจำนวน 0ms
+ ✓ src/lib/util/return-request.test.ts > returnableItemsNow > เลยช่วงคืน / ยังไม่ส่ง / ไม่ทราบช่วงคืน → ว่าง 0ms
+ ✓ src/lib/util/return-request.test.ts > returnableItemsNow > ช่วงคืนต่อ line: เฉพาะ line ที่ยังอยู่ในช่วง 0ms
+ ✓ src/lib/util/return-request.test.ts > returnableItemsNow > line ที่ส่งหลายรอบใช้วันอ้างอิงล่าสุด (แบบเดียวกับ backend) 0ms
+ ✓ src/lib/util/return-request.test.ts > returnWindowDaysOf > ค่าเริ่มต้น 30 วันเท่ากับ backend 0ms
+ ✓ src/lib/util/return-request.test.ts > returnWindowDaysOf > ตัวเลข ≥ 0 หรือ string ตัวเลข → ใช้ค่านั้น 0ms
+ ✓ src/lib/util/return-request.test.ts > returnWindowDaysOf > ไม่ตั้ง / ค่าไม่ถูกต้อง → ค่าเริ่มต้น 0ms
+ ✓ src/lib/util/return-request.test.ts > returnErrorMessage > RETURN_ITEM_NOT_SHIPPABLE → ข้อความไทยเฉพาะกรณี 0ms
+ ✓ src/lib/util/return-request.test.ts > returnErrorMessage > RETURN_ITEM_NOT_SHIPPED → ข้อความไทยเฉพาะกรณี 0ms
+ ✓ src/lib/util/return-request.test.ts > returnErrorMessage > RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะกรณี 0ms
+ ✓ src/lib/util/return-request.test.ts > returnErrorMessage > แต่ละ code ได้ข้อความต่างกัน 0ms
+ ✓ src/lib/util/return-request.test.ts > returnErrorMessage > 401 → ให้เข้าสู่ระบบใหม่, error อื่น → fallback (ไม่ส่งข้อความอังกฤษของ Medusa) 0ms
+ ✓ src/lib/util/return-request.test.ts > buildReturnRequest > มีเฉพาะ order_id, items และ return_shipping.option_id — ตัด line ที่จำนวน 0 และเหตุผลว่าง 0ms
+ ✓ src/lib/util/store-policies.test.ts > getReturnPolicy > ไม่มี return_window_days / ไม่มี metadata → ค่าเริ่มต้นของ backend, ไม่คืนค่าส่งฟรี 1ms
+ ✓ src/lib/util/store-policies.test.ts > getReturnPolicy > ตั้งค่าไว้ → ใช้ค่านั้น 0ms
+ ✓ src/lib/util/store-policies.test.ts > getReturnPolicy > ไม่มี region → null 0ms
+ ✓ src/lib/util/store-policies.test.ts > getRegionPolicies > มีค่าจัดส่งครบแต่ไม่มี return_window_days → ใช้ค่าเริ่มต้น (ไม่ null) 0ms
+ ✓ src/lib/util/store-policies.test.ts > JSON-LD นโยบายคืนของ region ที่ไม่ตั้ง return_window_days > buildRegionsReturnPolicies มีนโยบายคืนของประเทศใน region พร้อมจำนวนวันค่าเริ่มต้น 0ms
+ ✓ src/lib/util/store-policies.test.ts > JSON-LD นโยบายคืนของ region ที่ไม่ตั้ง return_window_days > structured data ของสินค้ามี hasMerchantReturnPolicy แม้ไม่มีค่าจัดส่ง (shippingDetails ไม่มี) 1ms
+ ✓ src/return-request-action.test.ts > requestReturn เมื่อ backend ปฏิเสธ (CORE-20d) > 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และคืนค่าที่เลือกไว้ 11ms
+ ✓ src/return-request-action.test.ts > requestReturn เมื่อ backend ปฏิเสธ (CORE-20d) > region ไม่ตั้ง return_window_days → ใช้ค่าเริ่มต้นแล้วส่งถึง backend (ไม่ปฏิเสธเอง) 0ms
+ Test Files  5 passed (5)
+      Tests  47 passed (47)
+
+## vitest ทั้งหมดของ storefront
+ Test Files  38 passed (38) / Tests  408 passed (408)
+
+## backend unit (pnpm --filter backend test:unit)
+Test Suites: 62 passed, 62 total / Tests: 613 passed, 613 total
+
+## backend integration (integration-tests/http/store-returns-window.spec.ts)
+    ✓ shipped return_window_days + 1 days ago → 400 RETURN_WINDOW_EXPIRED and no return (1118 ms)
+    ✓ shipped 1 day ago → 200 and the return is created (1083 ms)
+    ✓ delivered_at takes precedence over shipped_at (1500 ms)
+    ✓ a line that does not require shipping (e-voucher) → 400 RETURN_ITEM_NOT_SHIPPABLE (660 ms)
+    ✓ fulfilled but not shipped yet → 400 RETURN_ITEM_NOT_SHIPPED (671 ms)
+    ✓ an item id that is not a line of the order → 400 and the message does not echo the input (758 ms)
+    ✓ GET /store/orders/:id returns fulfillments.items.line_item_id to the owner only (734 ms)
+    ✓ middleware order: no token → 401, customer B → 404 (ownership runs before this check) (687 ms)
+Tests:       8 passed, 8 total
+
+## e2e (next build + next start :8242, backend :9242, workers=1)
+  ✓  1 [chromium] › e2e/core-20-return-request.spec.ts:39:5 › AC-65: ลูกค้าขอคืนสินค้าจาก order ที่ส่งแล้ว → return requested ใช้ Standard return; order ที่ยังไม่ fulfill ไม่มีปุ่ม (3.4s)
+  ✓  2 [chromium] › e2e/core-20c-return-window.spec.ts:58:5 › AC-96: line qty 3 fulfilled 3 shipped 2 และขอคืนไปแล้ว 1 → เลือกคืนได้สูงสุด 1; ส่งแล้วหน้า order detail เห็นสถานะใหม่ทันที (2.3s)
+  ✓  3 [chromium] › e2e/core-20c-return-window.spec.ts:215:5 › AC-96: URL /th แต่ order อยู่ region อื่นที่ return_window_days=7 → ปุ่มคิดจาก region ของ order; admin แก้ค่าแล้วมีผลทันที (1.7s)
+  ✓  4 [chromium] › e2e/core-20d-return-window.spec.ts:147:5 › AC-102 (a): region ไม่ตั้ง return_window_days → ปุ่มขอคืน, หน้า /returns และ JSON-LD ใช้ค่าเริ่มต้นของ backend (1.2m)
+  ✓  5 [chromium] › e2e/core-20d-return-window.spec.ts:224:5 › AC-102 (b): line A ส่งเมื่อ window + 1 วันก่อน, line B ส่งเมื่อวาน → ฟอร์มเลือกได้เฉพาะ B และ backend ตอบ 200 (2.3s)
+  ✓  6 [chromium] › e2e/core-20d-return-window.spec.ts:287:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก (1.4s)
+  6 passed (1.4m)
+
+## lint / typecheck
+pnpm typecheck (ไม่มี .medusa/ และ .next/ ค้าง): ผ่าน — pnpm lint: 0 errors (warning 31 เดิมทั้งหมด ไม่มีในไฟล์ที่แตะ)
+storefront next build: ผ่าน

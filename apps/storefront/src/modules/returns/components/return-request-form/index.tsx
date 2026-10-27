@@ -26,6 +26,9 @@ const INITIAL: ReturnRequestState = { success: false, error: null }
 const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
   const [state, formAction, isPending] = useActionState(requestReturn, INITIAL)
   const backHref = `/account/orders/details/${orderId}`
+  // CORE-20d (กฎข้อ 66e): ส่งล้มแล้วคงจำนวน/เหตุผลที่เลือก — React 19 reset ฟอร์มกลับเป็น defaultValue หลัง action และ <select>
+  // ไม่อัปเดต defaultValue หลัง mount จึง remount ฟอร์มด้วย key จากค่าที่ action คืนมา (ค่าเดิมซ้ำ = reset กลับค่าเดิม)
+  const values = state.values ?? {}
 
   return (
     <div className="flex flex-col gap-y-6" data-testid="return-request-container">
@@ -52,7 +55,7 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
           </LocalizedClientLink>
         </div>
       ) : (
-        <form action={formAction} className="flex flex-col gap-y-4">
+        <form key={JSON.stringify(values)} action={formAction} className="flex flex-col gap-y-4">
           <input type="hidden" name="order_id" value={orderId} />
           <Text className="txt-medium text-ui-fg-subtle" data-testid="return-request-hint">
             เลือกจำนวนสินค้าที่ต้องการคืนและเหตุผล
@@ -63,6 +66,7 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
                 key={line.id}
                 className="flex flex-col small:flex-row small:items-center gap-4 border-b border-ui-border-base pb-4"
                 data-testid="return-item"
+                data-line-id={line.id}
               >
                 <div className="flex-1">
                   <Text className="txt-medium-plus" data-testid="return-item-title">
@@ -76,7 +80,7 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
                   <span>จำนวนที่คืน</span>
                   <NativeSelect
                     name={`quantity:${line.id}`}
-                    defaultValue="0"
+                    defaultValue={values[`quantity:${line.id}`] ?? "0"}
                     placeholder="จำนวน"
                     data-testid="return-item-quantity"
                   >
@@ -92,7 +96,7 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
                     <span>เหตุผล</span>
                     <NativeSelect
                       name={`reason:${line.id}`}
-                      defaultValue=""
+                      defaultValue={values[`reason:${line.id}`] ?? ""}
                       placeholder="เลือกเหตุผล"
                       className="min-w-[12rem]"
                       data-testid="return-item-reason"
