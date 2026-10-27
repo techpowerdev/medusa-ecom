@@ -69,8 +69,11 @@ export function useCardFlashPrices(
   const key = JSON.stringify(variantIdsByProduct)
 
   useEffect(() => {
-    let alive = true
     const byProduct: Record<string, string[]> = JSON.parse(key)
+    if (!Object.keys(byProduct).length) {
+      return
+    }
+    let alive = true
     getActiveFlashSales(regionId, Object.values(byProduct).flat()).then(
       (res) => alive && setPrices(cardFlashPrices(res, byProduct, Date.now()))
     )
@@ -79,8 +82,11 @@ export function useCardFlashPrices(
     }
   }, [regionId, key])
 
-  return prices
+  // ไม่มีสินค้า → ไม่ยิง server action เปล่า และไม่คืนราคาของชุดก่อนหน้า
+  return key === "{}" ? NO_PRICES : prices
 }
+
+const NO_PRICES: Record<string, FlashVariantPrice> = {}
 
 const CardFlashPricesContext = createContext<Record<string, FlashVariantPrice>>(
   {}
@@ -127,7 +133,7 @@ export function FlashPrice({
   const money = (amount: number) =>
     convertToLocale({ amount, currency_code: price.currency_code })
   return (
-    <span className="flex items-baseline gap-x-2">
+    <span className="flex flex-wrap items-baseline gap-x-2">
       <span
         className={className ?? "text-ui-fg-interactive"}
         data-testid="flash-price"

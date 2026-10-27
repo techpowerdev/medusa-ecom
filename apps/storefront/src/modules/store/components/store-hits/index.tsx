@@ -94,9 +94,10 @@ const StoreHits = ({ hitsPerPage, currencyCode, regionId }: StoreHitsProps) => {
                 >
                   <div data-testid="product-wrapper">
                     <Thumbnail thumbnail={hit.thumbnail} size="full" />
-                    <div className="flex txt-compact-medium mt-4 justify-between">
+                    {/* qa D-1 #148: ชื่อยาว/ราคา flash คู่ราคาขีดฆ่าบนจอแคบ → ราคาขึ้นบรรทัดใหม่ ไม่ล้นการ์ด */}
+                    <div className="flex flex-wrap txt-compact-medium mt-4 justify-between gap-x-2">
                       <Text
-                        className="text-ui-fg-subtle"
+                        className="text-ui-fg-subtle min-w-0 break-words"
                         data-testid="product-title"
                       >
                         {hit.title}
@@ -119,6 +120,8 @@ const StoreHits = ({ hitsPerPage, currencyCode, regionId }: StoreHitsProps) => {
   )
 }
 
+const NO_HITS: Record<string, string[]> = {}
+
 /**
  * FS-14 (spec 03 กฎข้อ 19): hit ของ search index ไม่มี variant id → หา variant id ของการ์ดในหน้าด้วย `GET /store/products`
  * หนึ่ง request ต่อชุด hit แล้วดึงราคา flash; ระหว่างรอการ์ดแสดงราคาจาก index ตามปกติ
@@ -130,8 +133,12 @@ function useHitFlashPrices(regionId: string, productIds: string[]) {
   const idsKey = productIds.join(",")
 
   useEffect(() => {
+    // ไม่มี hit → ไม่ยิง server action เปล่า
+    if (!idsKey) {
+      return
+    }
     let alive = true
-    listVariantIdsByProduct(idsKey ? idsKey.split(",") : []).then(
+    listVariantIdsByProduct(idsKey.split(",")).then(
       (byProduct) => alive && setVariantIdsByProduct(byProduct)
     )
     return () => {
@@ -139,7 +146,7 @@ function useHitFlashPrices(regionId: string, productIds: string[]) {
     }
   }, [idsKey])
 
-  return useCardFlashPrices(regionId, variantIdsByProduct)
+  return useCardFlashPrices(regionId, idsKey ? variantIdsByProduct : NO_HITS)
 }
 
 export default StoreHits

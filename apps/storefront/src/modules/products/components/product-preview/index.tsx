@@ -45,8 +45,12 @@ export default async function ProductPreview({
           size="full"
           isFeatured={isFeatured}
         />
-        <div className="flex txt-compact-medium mt-4 justify-between">
-          <Text className="text-ui-fg-subtle" data-testid="product-title">
+        {/* qa D-1 #148: ชื่อยาว/ราคา flash คู่ราคาขีดฆ่าบนจอแคบ → ราคาขึ้นบรรทัดใหม่ ไม่ล้นการ์ด */}
+        <div className="flex flex-wrap txt-compact-medium mt-4 justify-between gap-x-2">
+          <Text
+            className="text-ui-fg-subtle min-w-0 break-words"
+            data-testid="product-title"
+          >
             {product.title}
           </Text>
           <div className="flex items-center gap-x-2">

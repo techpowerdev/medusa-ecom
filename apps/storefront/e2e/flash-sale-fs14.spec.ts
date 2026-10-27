@@ -26,6 +26,7 @@ let campaignId: string
 let titleX: string
 let handleX: string
 let handleY: string
+let collectionHandle: string
 
 const card = (page: Page, handle: string): Locator =>
   page
@@ -67,6 +68,7 @@ test.beforeAll(async ({ request }) => {
     title: `FS-14 ${run}`,
     handle: `e2e-fs14-${run}`,
   })
+  collectionHandle = collection.handle
 
   const createProduct = async (title: string, handle: string, sku: string) => {
     const { product } = await post("/admin/products", {
@@ -91,7 +93,8 @@ test.beforeAll(async ({ request }) => {
   }
 
   // ชื่อ X เป็นส่วนหนึ่งของชื่อ Y → ค้นด้วยชื่อ X แล้วเห็นทั้งสองการ์ด
-  titleX = `E2E FS14 ${run}`
+  // ชื่อยาว ~27 ตัวอักษร (มีตัวเลขยาวที่ตัดคำไม่ได้) เพื่อตรวจ layout ราคาบนการ์ดที่ 375px (qa D-1 #148)
+  titleX = `E2E FS14 Rail ${run}`
   handleX = `e2e-fs14-x-${run}`
   handleY = `e2e-fs14-y-${run}`
   const x = await createProduct(titleX, handleX, `FS14-X-${run}`)
@@ -172,6 +175,53 @@ test("AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราค�
     await expect(card(page, handleY)).toHaveCount(1)
     await expectFlashOnXOnly(page)
     await evidence("02-search-flash-price")
+  })
+})
+
+// qa D-1 (#148): ที่ 375×812 ราคา flash + ราคาขีดฆ่าต้องอยู่ในกรอบการ์ด (เดิมล้นทับการ์ดข้างๆ) — ครอบ /store, /search และ PLP ของ FS-13
+test("AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP", async ({
+  page,
+  step,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+
+  const expectPricesInsideCard = async () => {
+    const x = card(page, handleX)
+    await expect(x.getByTestId("flash-original-price")).toBeVisible({
+      timeout: 15_000,
+    })
+    // วัดการ์ดและราคาในจังหวะเดียวกัน (ผลค้นหาของ /store อาจ render ใหม่และสลับตำแหน่งการ์ดระหว่างวัดแยกครั้ง)
+    // ไม่มี element = ล้มเพราะ toBeVisible ด้านบนแล้ว
+    const overflow = await x.evaluate((el) => {
+      const c = el.getBoundingClientRect()
+      return ["flash-price", "flash-original-price"].flatMap((id) => {
+        const b = el
+          .querySelector(`[data-testid="${id}"]`)!
+          .getBoundingClientRect()
+        return b.left < c.left - 0.5 || b.right > c.right + 0.5
+          ? [`${id} [${b.left}-${b.right}] นอกการ์ด [${c.left}-${c.right}]`]
+          : []
+      })
+    })
+    expect(overflow).toEqual([])
+  }
+
+  await step("/store", async () => {
+    await page.goto(`/${CC}/store`)
+    await page.getByTestId("store-search-input").fill(titleX)
+    await expect(card(page, handleX)).toHaveCount(1, { timeout: 30_000 })
+    await expect(card(page, handleY)).toHaveCount(1, { timeout: 30_000 })
+    await expectPricesInsideCard()
+  })
+
+  await step("/search", async () => {
+    await page.goto(`/${CC}/search?q=${encodeURIComponent(titleX)}`)
+    await expectPricesInsideCard()
+  })
+
+  await step("PLP collection (การ์ดของ FS-13)", async () => {
+    await page.goto(`/${CC}/collections/${collectionHandle}`)
+    await expectPricesInsideCard()
   })
 })
 
