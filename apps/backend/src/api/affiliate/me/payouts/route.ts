@@ -11,7 +11,6 @@ const PAYOUT_FIELDS = [
   "period_to",
   "status",
   "paid_at",
-  "reference",
   "created_at",
 ]
 

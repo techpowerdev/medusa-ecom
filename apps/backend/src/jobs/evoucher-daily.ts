@@ -1,10 +1,14 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { bangkokDateKey, expiryCutoff } from "../modules/evoucher/utils/expiry"
-import { sendEvoucherStockAlertsWorkflow } from "../workflows/evoucher/send-evoucher-stock-alerts"
+import {
+  EvoucherExpiryPoolResult,
+  sendEvoucherStockAlertsWorkflow,
+} from "../workflows/evoucher/send-evoucher-stock-alerts"
 import { voidExpiringEvoucherCodesWorkflow } from "../workflows/evoucher/void-evoucher-codes"
 
-// EV-5 (AC-5, AC-9): void code ใกล้หมดอายุ (< 7 วัน) ทีละ pool + ลด inventory แล้วส่งอีเมลสรุป/low-stock หา admin
+// EV-5 (AC-5, AC-9), EV-12 (AC-30): void code ใกล้หมดอายุ (< 7 วัน) ทีละ pool — เว้นไว้เท่าที่ order ที่จองแล้วต้องใช้ —
+// + ลด inventory แล้วส่งอีเมลสรุป/low-stock หา admin
 // รันซ้ำในวันเดียวกันได้: void เฉพาะ code `available`, อีเมลมี idempotency key รายวัน
 export default async function evoucherDailyJob(container: MedusaContainer) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -13,16 +17,16 @@ export default async function evoucherDailyJob(container: MedusaContainer) {
   const expires_before = expiryCutoff(now).toISOString()
 
   const { data: pools } = await query.graph({ entity: "evoucher_pool", fields: ["id"] })
-  const voided: { pool_id: string; voided: number }[] = []
+  const results: EvoucherExpiryPoolResult[] = []
 
   // แยก workflow ต่อ pool: pool ที่ inventory ตั้งค่าผิดไม่ทำให้ pool อื่นค้าง (compensation คืน code ของ pool นั้น)
   for (const pool of pools) {
     try {
       const { result } = await voidExpiringEvoucherCodesWorkflow(container).run({
-        input: { pool_id: pool.id, expires_before },
+        input: { pool_id: pool.id, now: now.toISOString(), expires_before },
       })
-      if (result.voided > 0) {
-        voided.push(result)
+      if (result.voided > 0 || result.kept > 0) {
+        results.push(result)
       }
     } catch (error) {
       logger.error(
@@ -39,7 +43,7 @@ export default async function evoucherDailyJob(container: MedusaContainer) {
   }
 
   await sendEvoucherStockAlertsWorkflow(container).run({
-    input: { to, date: bangkokDateKey(now), voided },
+    input: { to, date: bangkokDateKey(now), pools: results },
   })
 }
 

@@ -1,6 +1,6 @@
 import { medusaIntegrationTestRunner, TestEventUtils } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import { createCartWorkflow } from "@medusajs/medusa/core-flows"
+import { createCartWorkflow, createPaymentSessionsWorkflow } from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import {
   createGroupBuyCampaignWorkflow,
@@ -10,6 +10,7 @@ import { setGroupBuyCampaignStatusWorkflow } from "../../src/workflows/group-buy
 import { createGroupWorkflow } from "../../src/workflows/group-buy/create-group"
 import { joinGroupWorkflow } from "../../src/workflows/group-buy/join-group"
 import { leaveGroupWorkflow } from "../../src/workflows/group-buy/leave-group"
+import { succeedGroupWorkflow } from "../../src/workflows/group-buy/group-outcome"
 
 jest.setTimeout(240 * 1000)
 
@@ -159,6 +160,35 @@ medusaIntegrationTestRunner({
       expect(byStatus.cancelled.order.status).toEqual("canceled")
     })
 
+    // review #114 nit 1: payment_status ตาม payment collection จริง (helper ของ Medusa) ไม่ใช่แค่ not_paid
+    // "awaiting" ของ Medusa เกิดเฉพาะเมื่อ provider ตอบ pending_authorization (เช่น PromptPay) — pp_system_default อนุมัติทันที
+    it("AC-34: payment_status follows the payment collection — authorized, then captured", async () => {
+      const container = getContainer()
+      await succeedGroupWorkflow(container).run({ input: { group_id: groupId } })
+      const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+        entity: "order",
+        fields: ["payment_collections.id"],
+        filters: { id: joined.order_id },
+      })
+      const collectionId = data[0].payment_collections![0]!.id
+      const paymentStatus = async () => {
+        const res = await get(`/admin/group-buy/groups/${groupId}/memberships`)
+        expect(res.status).toEqual(200)
+        return res.data.memberships.find((m: any) => m.id === joined.id).order.payment_status
+      }
+      expect(await paymentStatus()).toEqual("not_paid")
+
+      const { result: session } = await createPaymentSessionsWorkflow(container).run({
+        input: { payment_collection_id: collectionId, provider_id: "pp_system_default" },
+      })
+      const payments = container.resolve(Modules.PAYMENT)
+      const payment = await payments.authorizePaymentSession(session.id, {})
+      expect(await paymentStatus()).toEqual("authorized")
+
+      await payments.capturePayment({ payment_id: payment!.id })
+      expect(await paymentStatus()).toEqual("captured")
+    })
+
     it("AC-34: limit=1&offset=1 → 1 membership, count=2", async () => {
       const res = await get(`/admin/group-buy/groups/${groupId}/memberships?limit=1&offset=1`)
       expect(res.status).toEqual(200)
@@ -175,6 +205,8 @@ medusaIntegrationTestRunner({
     it("AC-34: unknown group → 404", async () => {
       const res = await get(`/admin/group-buy/groups/gbgrp_missing/memberships`)
       expect(res.status).toEqual(404)
+      // review #114 nit 2: 404 จาก route (query.graph throwIfKeyNotFound) ไม่ใช่ route ไม่มี
+      expect(res.data.type).toEqual("not_found")
     })
 
     it("AC-34: no admin token → 401", async () => {
