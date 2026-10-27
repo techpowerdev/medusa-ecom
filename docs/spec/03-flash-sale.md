@@ -129,7 +129,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
    `addRulesToPromotionsStep`/`createPromotionRulesWorkflow` แต่รับ **ครั้งละ promotion เดียว** ขณะที่จำนวน promotion ใน campaign
    ไม่แน่นอน จึงต้องเขียน step เองที่วนหลาย promotion ใน step เดียว) เพราะฟอร์ม promotion ของ Medusa
    admin ไม่มี attribute นี้; promotion ที่เพิ่มเข้า campaign **หลัง** บันทึก config ยังไม่มี rule จนกว่าจะบันทึก config ซ้ำ
-   (widget เตือนตาม Q1) — การใส่อัตโนมัติเป็น follow-up ทางเลือก FS-9
+   (widget เตือนตาม Q1) — การใส่อัตโนมัติ (FS-9) **owner ตัดสินไม่ทำ 2026-10-27**: admin บันทึก config ซ้ำเองตามคำเตือนของ widget
 8. **hook ของ Medusa หนึ่งตัวมี handler ได้ตัวเดียว** (`createHook` ใน 2.22.1 โยน
    "Cannot define multiple hook handlers for the validate hook") — ใช้กับทุก spec: task ที่ใช้ hook เดียวกันต้องรวม
    handler ไว้ไฟล์เดียว แต่ละ task ส่งมอบ check เป็น function ที่ export แล้วให้ handler รวมเรียกตามลำดับ
@@ -171,6 +171,12 @@ Link: `flash_sale_config ↔ promotion_campaign`
 16. (FS-11, review FS-8 #69) เส้นทาง `payment.refunded` ต้องได้กลไก retry เดียวกับ `order.canceled` ของ FS-8: การหา order/`cart_id` จาก payment และเกณฑ์
     refund เต็มจำนวน (กฎข้อ 10) ต้องอยู่**ใน** workflow (step) ไม่ใช่ใน subscriber ก่อนเรียก workflow — subscriber เหลือเพียงส่ง id จาก event เข้า workflow
     เพื่อให้ error ชั่วคราวระหว่างหา order ถูก retry/กวาดซ้ำได้
+17. (FS-12, รอบ 9 — follow-up qa/review FS-6 #115) context ของ item ที่ preview ส่งให้ `computeActions` (`get-active-flash-sales.ts`) ต้องมีรูปเดียวกับ context ที่
+    Medusa สร้างตอนคำนวณ promotion ของ cart (builder อ่าน core-flows 2.22.1 ว่า cart ส่ง field ใดของ item เช่น `product.id` แบบซ้อน) — promotion ที่มีผลกับสินค้าใน cart ต้อง
+    มี `flash_price` ใน preview และ promotion ที่ไม่มีผลใน cart ต้องไม่มี (ปัจจุบัน preview ส่ง `product_id` แบน ทำให้ rule `items.product.id` กับ preview ไม่ตรงกัน); ข้อจำกัดของ
+    กฎข้อ 14 ยังคงเดิม
+18. (FS-13, รอบ 9 — qa FS-6 #115) storefront: เมื่อ `sold_out=true` ปุ่มเพิ่มลง cart ของสินค้านั้นบน PDP (`add-product-button`) ถูก disable และแสดง `flash-sold-out`
+    (ไม่ให้ลูกค้าไปล้ม `FLASH_SOLD_OUT` ตอน checkout); การ์ดสินค้าใน PLP และแถบล่างของ PDP บนมือถือแสดงราคา flash เหมือน PDP
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญที่ทำงานอยู่ (−20% สำหรับ collection X, automatic) และลูกค้าเพิ่มสินค้า X
@@ -232,14 +238,18 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (e) storefront: PDP ของสินค้าในแคมเปญที่ `sold_out=true` มี `flash-sold-out` ที่มองเห็นได้และมีอักษรไทย (screenshot, FS-6) ✓ FS-6
 - AC-14 (FS-8) ทำให้การคืนค่าครั้งแรกของ `order.canceled` ล้ม (test inject error ครั้งเดียว) → ภายในรอบ retry/job ถัดไป usage และ
   `units_sold` ถูกคืนครบครั้งเดียว และ reservation มี `released_at`
-- AC-15 (FS-9) campaign ที่มี config แล้ว เพิ่ม automatic promotion ใหม่ผ่าน admin API → promotion นั้นมี exclusivity rule
-  (กฎข้อ 6a) โดยไม่ต้องบันทึก config ซ้ำ; promotion ใน campaign ที่ไม่มี config → ไม่ถูกใส่ rule
+- ~~AC-15~~ (FS-9) ยกเลิก — owner ตัดสินไม่ทำ FS-9 (2026-10-27); ไม่มี test
 - AC-16 (FS-10, กฎข้อ 15) Given หน้า Campaign detail ที่มี widget "Flash sale options" When `dblclick` ปุ่ม Save (สองคลิกใน tick เดียว)
   Then มี `POST /admin/flash-sales/:campaign_id/config` 1 ครั้ง (นับด้วย `page.on("request")`) และปุ่ม disabled จน response กลับ;
   When Save อีกครั้งหลัง response กลับ Then ส่งได้ตามปกติ (e2e admin หรือ component test ที่ mock `fetch`)
 - AC-17 (FS-11, กฎข้อ 16) Given order ที่มี flash 2 หน่วย capture ฿1,000 When refund เต็มจำนวน (`payment.refunded`) และขั้นหา order จาก payment ล้มครั้งแรก
   (test inject error ครั้งเดียว) Then ภายในรอบ retry/job ถัดไป usage และ `units_sold` ถูกคืนครบครั้งเดียว และ reservation มี `released_at`; AC-5 (a) และ
   AC-6 ยังผ่าน; ไฟล์ subscriber `payment.refunded` ไม่มีการเรียก `query.graph`/service (ตรวจด้วย unit test หรือ grep) (integration http)
+- AC-18 (FS-12, กฎข้อ 17) Given แคมเปญ flash ที่มี automatic promotion P1 (target rule attribute `items.product.id` in [X]) และ P2 (rule attribute ที่ไม่ตรงกับ context ของ cart
+  เช่น `items.product_id` in [Y]) When `GET /store/flash-sales/active` และเพิ่ม X, Y ลง cart ของลูกค้า Then สำหรับแต่ละสินค้า "มี `flash_price` ใน preview" ⇔ "line ใน cart มี
+  adjustment ของ promotion นั้น" และ `flash_price` ของ X เท่ากับราคาต่อหน่วยหลังส่วนลดของ line X ใน cart (promotion แบบ percentage) (integration http)
+- AC-19 (FS-13, กฎข้อ 18) Given สินค้าในแคมเปญที่ `sold_out=true` When เปิด PDP Then `add-product-button` เป็น `disabled` และเห็น `flash-sold-out`; Given แคมเปญที่ไม่ sold out
+  When เปิด PLP (desktop) และ PDP ที่ viewport 375×812 Then การ์ดสินค้าและแถบล่างของ PDP แสดงราคา flash (test id ราคา flash เดียวกับ PDP ของ FS-6) (e2e, screenshot ≤ 2)
 
 ## Non-functional
 - การจอง usage + `units_sold` อยู่ใน request path ของ complete cart (ข้อตัดสิน owner) ภายใต้ lock ต่อ
@@ -253,11 +263,12 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - Unit: การคำนวณ units ต่อ campaign จาก cart lines (กฎข้อ 9), helper สำหรับช่วงเวลา, `exclusiveAutomaticRule` /
   `isExclusiveAutomatic` / การคำนวณชุด code ผลลัพธ์และค่า flag ตาม `action` (PROMO-1)
 - Integration (modules): service method จอง/คืน/compensate ของ `flash_sale` (rollback ทั้ง transaction, `released_at`)
-- Integration (http): AC-1, AC-2, AC-3, AC-5 (รวม a), AC-6, AC-7, AC-8 (a)–(f), AC-9, AC-10, AC-11, AC-12, AC-13 (a)–(d), AC-14, AC-15, AC-17
+- Integration (http): AC-1, AC-2, AC-3, AC-5 (รวม a), AC-6, AC-7, AC-8 (a)–(f), AC-9, AC-10, AC-11, AC-12, AC-13 (a)–(d), AC-14, AC-17
 - Unit (FS-2): เกณฑ์ refund เต็มจำนวนด้วย BigNumber (กฎข้อ 10)
 - Unit (FS-7): การคำนวณ `sold_out` / `remaining_units` จาก config (AC-13 a–d รวม clamp ที่ 0)
 - e2e: AC-8 (g), AC-13 (e)
 - e2e admin / component test: AC-16
+- Integration (http): AC-18 (FS-12); e2e: AC-19 (FS-13)
 - e2e: AC-4 (screenshot PLP/PDP/cart ที่ T-1min และ T+1min โดยใช้ clock control)
 
 ## Tasks
@@ -272,13 +283,15 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-6 | Storefront banner/countdown/ราคาบน PDP + "สินค้าหมด"/"เหลือ N ชิ้น" จาก `sold_out`/`remaining_units` (กฎข้อ 4) + ข้อความ AC-8 (g) + e2e (AC-1, AC-3, AC-4, AC-8 g, AC-13 e); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | FS-4, FS-7, PROMO-1, CORE-4b (แตะ PDP เดียวกัน) |
 | PROMO-2 | follow-up PROMO-1/FS-3: override `errorHandler` ให้ code ของเราถึง client เป็น 409 `{ type: "conflict", code, message }` ตามกฎข้อ 13 + integration test (AC-12) + ย้าย route ของเราที่ตอบ 409 เอง และ merge แล้ว ณ ตอนทำ PROMO-2 (เช่น `POST /admin/evoucher/codes/:id/void` ของ EV-5) มาใช้กลไกนี้: throw `MedusaError(CONFLICT, message, "<CODE>")` และลบ try/catch/`res.status(409)` ใน route (AC-12 d) — route ที่ merge หลัง PROMO-2 ใช้กลไกนี้เอง (owner Q-C) | PROMO-1, FS-3 |
 | FS-8 | follow-up FS-2 (เล็ก): การคืนโควตาต้องไม่หายเมื่อ subscriber ล้ม — ใช้กลไก retry ที่ Medusa มีให้ (เช่น option retry ของ workflow/step หรือ event bus) ก่อน ถ้าไม่มีให้ใช้ scheduled job กวาด order ที่เข้าเกณฑ์กฎข้อ 10 แต่ reservation ยังไม่ `released_at` (idempotent เดิม); AC-14 | FS-2 |
-| FS-9 | (ทางเลือก, รอ owner สั่ง) follow-up FS-5: subscriber `promotion.created`/`promotion.updated` ใส่ exclusivity rule ให้ automatic promotion ใหม่ใน campaign ที่มี `FlashSaleConfig` อัตโนมัติ (ใช้ step เดียวกับ FS-5); AC-15 | FS-5 |
+| FS-9 | **ปิด — owner ตัดสินไม่ทำ (2026-10-27)**; เดิม: follow-up FS-5: subscriber `promotion.created`/`promotion.updated` ใส่ exclusivity rule ให้ automatic promotion ใหม่ใน campaign ที่มี `FlashSaleConfig` อัตโนมัติ (ใช้ step เดียวกับ FS-5); AC-15 | FS-5 |
 | FS-7 | follow-up FS-4 (backend เล็ก): `GET /store/flash-sales/active` เอา `remaining_usage` ออก เพิ่ม `sold_out` + `remaining_units` จาก `FlashSaleConfig` (pure function + unit test) และระบุข้อจำกัดของ preview (กฎข้อ 14) ใน JSDoc ของ route (AC-13 a–d) | FS-4 |
 | FS-10 | follow-up QA FS-5 D-1r (เล็ก, frontend เท่านั้น): in-flight flag `useRef` ในปุ่ม Save ของ widget "Flash sale options" (กฎข้อ 15); AC-16 | FS-5 |
 | FS-11 | follow-up review FS-8 #69 (เล็ก, backend): ย้ายการหา order/`cart_id` + เกณฑ์ refund เต็มจำนวนของเส้นทาง `payment.refunded` เข้า workflow ให้ใช้ retry ของ FS-8 (กฎข้อ 16); AC-17 | FS-8 |
+| FS-12 | (เล็ก, backend, รอบ 9 — follow-up #115) context ของ item ใน price preview ตรงกับของ cart (กฎข้อ 17); AC-18 | FS-4 ☑ (∥ FS-6 #115 — คนละไฟล์) |
+| FS-13 | (เล็ก, storefront, รอบ 9 — qa #115) disable ปุ่มเพิ่มลง cart เมื่อ `sold_out` + ราคา flash บนการ์ด PLP และแถบล่าง PDP มือถือ (กฎข้อ 18); AC-19 | FS-6 (#115) |
 FS-11 หลัง FS-8 (แตะ subscriber/workflow คืนโควตาไฟล์เดียวกัน); FS-10 ยังไม่ทำ (สถานะ 2026-10-26) ไม่เปลี่ยนนิยาม
-PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 หลัง FS-5 (ทางเลือก);
-FS-10 หลัง FS-5 (แยกจาก FS-9 เพราะ FS-9 เป็นทางเลือกที่รอ owner สั่ง; FS-10 ∥ FS-9 ไม่แตะไฟล์เดียวกัน — FS-9 เป็น subscriber backend)
+PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 ปิด (owner ไม่ทำ 2026-10-27);
+FS-10 หลัง FS-5; FS-12 ∥ FS-13 (FS-12 backend เริ่มได้ทันที; FS-13 หลัง FS-6 #115 merge)
 PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวกับ FS-3 แต่ FS-3 merge แล้ว); ต้อง merge ก่อน GB-3 (dependency) และควรก่อน FS-6
 
 ## คำถามที่ยังเปิดอยู่
