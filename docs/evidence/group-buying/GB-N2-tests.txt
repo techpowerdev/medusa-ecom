@@ -1,0 +1,56 @@
+# GB-N2 test evidence — 2026-10-27 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose
+# base: origin/develop 5d14fc6 (+ merge c7e5479 ก่อน push — ต่างแค่ storefront CORE-14c)
+# ขอบเขต: spec 04 แถว GB-N2 (test-only) — integration-tests/http/group-buy-join.spec.ts
+
+### สาเหตุจาก log จริง (CI run 40397691736 attempt 1, PR #111; ซ้ำใน run 40360630947 attempt 1, PR #100)
+- ทั้งสอง run: assertion ของ test ผ่าน แต่ afterEach ของ medusaIntegrationTestRunner ล้ม
+  "Timeout waiting for workflow executions to finish" + "Exceeded timeout of 240000 ms for a hook"
+  (waitWorkflowExecutions วน poll workflow_execution ที่ state ไม่ใช่ not_started/done/reverted/failed ไม่มีกำหนด)
+- test ก่อนหน้าคือ "AC-25: cancelling the draft order fails …" ซึ่งจบด้วย leave สำเร็จ → order.canceled
+  → log "Processing order.canceled which has 2 subscribers" แล้วตามด้วย
+  "terminating connection due to administrator command" ×2 = beforeEach ของ AC-8 restore DB ขณะ subscriber ยัง query อยู่
+  (run ที่ผ่าน (attempt 2) ไม่มีบรรทัด terminating ตรงนี้)
+- subscriber flash-sale-release → release-flash-sale-for-order: step query-order-for-release ใช้ throwIfKeyNotFound
+  + RELEASE_RETRY (30 ครั้ง × 10 วินาที) → หลัง restore หา order ไม่เจอ → retry ค้าง `invoking` ~5 นาที
+  และ engine in-memory บันทึกลง DB ใหม่ทุกครั้งที่ retry → test ถัดไป (AC-13 หรือ AC-18) ล้มต่อ
+  (เวลาไฟล์ 520–528 วินาที ≈ 2 × 240 วินาที)
+- ไม่ใช่ lock รอ TTL / DB pool / setup หนัก และไม่ใช่บั๊กโค้ด: ใน prod order ยังอยู่ retry จึงไม่เกิด;
+  ต้นเหตุคือ test จบก่อน subscriber async จบ แล้ว test runner restore DB ทับ (แบบเดียวกับที่ GB-6c1 แก้ใน group-buy-memberships.spec.ts)
+
+### Red (ทำซ้ำได้แน่นอน — instrumentation ชั่วคราว ไม่ได้ commit)
+หน่วง listener ของ order.canceled 1.5 วินาที + debug afterEach พิมพ์ execution ที่ค้าง, -t "AC-25: cancelling the draft order fails|AC-8|AC-13"
+  ✓ AC-25: cancelling the draft order fails → membership back to joined, counters restored, lock released
+  ✕ AC-8: 20 concurrent joins … (82137 ms) — thrown: "Exceeded timeout of 60000 ms for a hook."
+  ✕ AC-13: 8 concurrent joins … — Timeout waiting for workflow executions to finish
+  DBG-GBN2 stuck release-flash-sale-for-order auto-01M5XSTKV0Z1KRZMJMSMDCECDG invoking
+    [... "find-order-of-refunded-payment-when.use-query-graph-step:invoking/dormant", "query-order-for-release-when:not_started" ...]
+  (อาการเดียวกับ CI ทุกประการ)
+ทดลองตัด hypothesis lock: LOCK_TIMEOUT=1 วินาที (ชั่วคราว) → join แพ้ lock แต่ไม่มี execution ค้าง (ไม่ใช่สาเหตุ)
+
+### Green
+แก้ที่ test: จับ promise ของ subscriber ทุก listener ของ local event bus (beforeAll หลังบูตแอป)
+และ afterEach ระดับ suite รอให้ subscriber ที่รันอยู่จบก่อน test ถัดไป restore DB (timeout ของ hook 60 วินาที)
+ไม่แตะจำนวน request พร้อมกัน — AC-8 (20 join, max 5), AC-13 (8 join, 2 กลุ่ม, max_total_orders 5),
+AC-18 (ลูกค้าเดียว join G1/G2 พร้อมกัน) พิสูจน์ด้วย assertion เดิมทุกข้อ
+ชุด repro เดิม (หน่วง 1.5 วินาที) หลังแก้:
+  ✓ AC-13: max_total_orders=5 across 2 groups → 6th join (repeat order too) 409
+  ✓ AC-25: cancelling the draft order fails → …
+  ✓ AC-8: 20 concurrent joins, max_people_per_group=5 → exactly 5 people (7052 ms)
+  ✓ AC-13: 8 concurrent joins across 2 groups, max_total_orders=5 → exactly 5 (2828 ms)
+  Tests: 4 passed
+
+### ผ่านซ้ำในเครื่อง 5 รอบติด (ทั้งไฟล์, ไม่มี instrumentation)
+pnpm test:integration:http integration-tests/http/group-buy-join.spec.ts
+  รอบ 1 PASS 43.0 s — 33 passed (AC-8 6733 ms, AC-13 2991 ms, AC-18 792 ms)
+  รอบ 2 PASS 39.5 s — 33 passed (AC-8 6639 ms, AC-13 3040 ms, AC-18 1087 ms)
+  รอบ 3 PASS 50.6 s — 33 passed (AC-8 6796 ms, AC-13 3769 ms, AC-18 1542 ms)
+  รอบ 4 PASS 50.5 s — 33 passed (AC-8 7141 ms, AC-13 3050 ms, AC-18 779 ms)
+  รอบ 5 PASS 38.8 s — 33 passed (AC-8 6643 ms, AC-13 3077 ms, AC-18 655 ms)
+
+### อื่นๆ
+pnpm --filter backend test:unit — Test Suites: 52 passed; Tests: 535 passed
+pnpm lint && pnpm typecheck — 0 errors (warning เดิมของ storefront)
+
+### CI 5 รอบติด (rerun job backend-tests บน commit เดียว ไม่ push ซ้ำ)
+ดู run id/attempt ใน body ของ PR
