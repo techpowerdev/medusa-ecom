@@ -7,7 +7,6 @@ import {
   PENDING_QUANTITY_PARAM,
   clampLineItemQuantity,
   loginPathForAddToCart,
-  pendingAddRedirectPath,
   readPendingAddToCart,
   readPendingAddQuery,
 } from "./pending-add-to-cart"
@@ -113,7 +112,7 @@ describe("quantity ที่ค้างไว้ข้าม login (CORE-14b)",
 })
 
 // CORE-14d (กฎ 57–58): เพิ่มไม่สำเร็จหลัง login → flag add_error ให้หน้าแสดง error และไม่พยายามเพิ่มซ้ำ
-describe("add_error และ redirect ตอนล็อกอินแล้ว (CORE-14d)", () => {
+describe("add_error (CORE-14d)", () => {
   it("loginPathForAddToCart ใส่ add_error เมื่อเพิ่มไม่สำเร็จ", () => {
     expect(loginPathForAddToCart("th", "variant_01", 2, { failed: true })).toBe(
       `/th/account?${PENDING_ADD_PARAM}=variant_01&${PENDING_QUANTITY_PARAM}=2&${PENDING_ERROR_PARAM}=1`
@@ -124,18 +123,5 @@ describe("add_error และ redirect ตอนล็อกอินแล้�
     expect(
       readPendingAddQuery({ [PENDING_ADD_PARAM]: "variant_01", [PENDING_ERROR_PARAM]: "1" })
     ).toEqual({ variantId: "variant_01", quantity: 1, failed: true })
-  })
-
-  it("pendingAddRedirectPath ส่งไป route ที่เพิ่มลง cart พร้อม variant และ quantity", () => {
-    expect(
-      pendingAddRedirectPath("th", { [PENDING_ADD_PARAM]: "a&b", [PENDING_QUANTITY_PARAM]: "2" })
-    ).toBe(`/th/cart/pending-add?${PENDING_ADD_PARAM}=a%26b&${PENDING_QUANTITY_PARAM}=2`)
-  })
-
-  it("pendingAddRedirectPath ไม่ redirect เมื่อไม่มี variant หรือเพิ่มล้มไปแล้ว (กัน loop)", () => {
-    expect(pendingAddRedirectPath("th", {})).toBeNull()
-    expect(
-      pendingAddRedirectPath("th", { [PENDING_ADD_PARAM]: "v", [PENDING_ERROR_PARAM]: "1" })
-    ).toBeNull()
   })
 })

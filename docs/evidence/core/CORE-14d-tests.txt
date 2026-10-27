@@ -1,36 +1,40 @@
-# CORE-14d — ผลทดสอบ (spec 01 AC-92, AC-93, กฎ 57–58)
+# CORE-14d — ผลทดสอบ (spec 01 AC-92, AC-93, กฎ 57–58; กฎ 58 ตามคำตัดสิน owner 2026-10-27)
 # รันในเครื่อง 2026-10-27: backend build+start :9171 (DB medusa_core14d, seed, Redis db 1), storefront next build+start :8171, Node 22
 
-## Red (ก่อนแก้โค้ด)
-- vitest: 11 test fail — ไม่มี route cart/pending-add, cart/loading.tsx ยังอยู่, customer.ts มี catch {} ว่าง, login ที่เพิ่มลง cart ไม่สำเร็จไม่มี add_error,
-  redirect ที่ addToCart throw ถูกกลืนเป็น add_error, ไม่มี pendingAddRedirectPath/PENDING_ERROR_PARAM
-- e2e AC-92 บนโค้ดใหม่แต่คืน cart/loading.tsx (build ใหม่) → skeleton ค้างใน DOM:
-  ✘  1 [chromium] › e2e/core-14d-cart-after-login.spec.ts:69:7 › ปิด JavaScript (AC-92) › ... ไม่ค้าง skeleton (6.2s)
-    Error: expect(locator).toHaveCount(expected) failed
-    Expected: 0
-    Received: 1
+## รอบ 2 (แก้ตาม review/qa #128 + owner กฎ 58)
+### Red
+- e2e บนโค้ดรอบ 1 (เพิ่มอัตโนมัติตอนล็อกอินแล้ว):
+  ✘ AC-92 no-JS: qa D-1 กด Back หลัง login → ไม่มีปุ่มยืนยัน (หน้าเพิ่มลง cart ซ้ำ) — expect(add-variant-confirm).toBeVisible: element(s) not found
+  ✘ AC-93 (JS on/off): ล็อกอินแล้วเปิด /account?add_variant=… → ถูกพาไป /th/cart เอง (Expected /th/account?, Received /th/cart)
+- vitest login-pending-add.test.ts: confirmPendingAdd ยังไม่มี (5 fail)
+### Green — Playwright core-14d --repeat-each=5 (workers=1): 25 passed
+### Green — Playwright (chromium, workers=1) core-14d + flow ที่เกี่ยวข้อง (CORE-6/14/14b/14c, thai-ui-account)
+  ✓   1 [chromium] › e2e/core-14-buy-login.spec.ts:38:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (6.8s)
+  ✓   2 [chromium] › e2e/core-14-buy-login.spec.ts:98:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (328ms)
+  ✓   3 [chromium] › e2e/core-14-buy-login.spec.ts:121:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (2.7s)
+  ✓   4 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (5.2s)
+  ✓   5 [chromium] › e2e/core-14b-add-variant.spec.ts:97:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (2.0s)
+  ✓   6 [chromium] › e2e/core-14b-add-variant.spec.ts:97:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (1.5s)
+  ✓   7 [chromium] › e2e/core-14c-login-foreign-cart.spec.ts:26:5 › AC-76: login ขณะมี cookie cart ของ customer อื่น → login สำเร็จ, cookie ไม่ชี้ cart ของคนอื่น, cart นั้นยังเป็นของเจ้าของเดิม (2.3s)
+  ✓   8 [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton (4.5s)
+  ✓   9 [chromium] › e2e/core-14d-cart-after-login.spec.ts:139:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error) (2.6s)
+  ✓  10 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS on) (3.9s)
+  ✓  11 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS off) (3.1s)
+  ✓  12 [chromium] › e2e/core-14d-cart-after-login.spec.ts:218:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่มีปุ่มยืนยัน (1.4s)
+  ✓  13 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (8.8s)
+  ✓  14 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (21.1s)
+  ✓  15 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (3.4s)
+  ✓  16 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (488ms)
+  ✓  17 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (1.8s)
+  ✓  18 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (375ms)
+  18 passed (1.3m)
+### Green — vitest (pnpm --filter storefront test:unit, หลัง merge origin/develop)
+   Test Files  27 passed (27)
+        Tests  290 passed (290)
+### lint / typecheck: lint 0 errors (warning เดิมของ develop) · typecheck ผ่านทั้ง backend และ storefront
 
-## Green — vitest (pnpm --filter storefront test:unit)
-   Test Files  26 passed (26)
-        Tests  280 passed (280)
-
-## Green — Playwright (chromium, workers=1) CORE-14d + flow ที่เกี่ยวข้อง (CORE-6/14/14b/14c)
-  ✓   1 [chromium] › e2e/core-14-buy-login.spec.ts:38:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (2.6s)
-  ✓   2 [chromium] › e2e/core-14-buy-login.spec.ts:98:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (108ms)
-  ✓   3 [chromium] › e2e/core-14-buy-login.spec.ts:121:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (660ms)
-  ✓   4 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (4.3s)
-  ✓   5 [chromium] › e2e/core-14b-add-variant.spec.ts:97:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (1.2s)
-  ✓   6 [chromium] › e2e/core-14b-add-variant.spec.ts:97:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (1.6s)
-  ✓   7 [chromium] › e2e/core-14c-login-foreign-cart.spec.ts:26:5 › AC-76: login ขณะมี cookie cart ของ customer อื่น → login สำเร็จ, cookie ไม่ชี้ cart ของคนอื่น, cart นั้นยังเป็นของเจ้าของเดิม (1.5s)
-  ✓   8 [chromium] › e2e/core-14d-cart-after-login.spec.ts:69:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton (1.4s)
-  ✓   9 [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error) (1.2s)
-  ✓  10 [chromium] › e2e/core-14d-cart-after-login.spec.ts:137:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายได้> → /cart มี variant นั้น (JS on) (805ms)
-  ✓  11 [chromium] › e2e/core-14d-cart-after-login.spec.ts:137:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายได้> → /cart มี variant นั้น (JS off) (2.7s)
-  ✓  12 [chromium] › e2e/core-14d-cart-after-login.spec.ts:170:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่ redirect วน (1.4s)
-  ✓  13 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (4.2s)
-  ✓  14 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (7.9s)
-  ✓  15 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (584ms)
-  15 passed (33.2s)
-
-## lint / typecheck
-  pnpm lint: 0 errors (warning เดิมของ develop) · pnpm typecheck: ผ่านทั้ง backend และ storefront
+## รอบ 1
+### Red
+- vitest: 11 test fail — cart/loading.tsx ยังอยู่, customer.ts มี catch {} ว่าง, login ที่เพิ่มลง cart ไม่สำเร็จไม่มี add_error,
+  redirect ที่ addToCart throw ถูกกลืนเป็น add_error
+- e2e AC-92 บนโค้ดใหม่แต่คืน cart/loading.tsx (build ใหม่) → skeleton ค้างใน DOM: expect(skeleton-cart-page).toHaveCount(0) Received: 1

@@ -20,7 +20,6 @@ import {
 } from "./cookies"
 import { addToCart } from "./cart"
 import {
-  isCountryCode,
   loginPathForAddToCart,
   readPendingAddToCart,
 } from "@lib/util/pending-add-to-cart"
@@ -182,18 +181,24 @@ async function continueAfterAuth(
   return addPendingToCart(pending)
 }
 
-// CORE-14b (กฎ 26) / CORE-14d (กฎ 57–58): เพิ่ม variant ที่ค้างไว้ลง cart แล้วไปหน้า cart — ใช้ทั้งหลัง login และตอนที่ล็อกอินอยู่แล้ว
-// (route `cart/pending-add`) เพิ่มไม่สำเร็จ (variant ไม่มีอยู่/ขายไม่ได้/ถูกลบระหว่างทาง) → หน้าบัญชีพร้อม add_error
-// ให้แสดง `add-variant-error` (คืน state error ตรงนี้จะหายไปเมื่อ layout สลับเป็น dashboard); redirect/notFound ส่งต่อด้วย unstable_rethrow
-export async function addPendingToCart(pending: {
-  variantId: string
-  countryCode: string
-  quantity: number
-}): Promise<never> {
-  // export จากไฟล์ "use server" = server action ที่ client เรียกได้ → กัน countryCode ที่ทำให้ redirect ออกนอกร้าน (`//evil`)
-  if (!isCountryCode(pending.countryCode)) {
-    throw new Error("รหัสประเทศไม่ถูกต้อง")
+// CORE-14d (กฎ 58, owner 2026-10-27): ลูกค้าที่ล็อกอินอยู่แล้วเปิดลิงก์ `/account?add_variant=…` ไม่ถูกเพิ่มลง cart เอง
+// (กด Back หลัง login แล้วเพิ่มซ้ำ / ลิงก์จากเว็บอื่น) — ต้องกดปุ่มยืนยัน (ฟอร์ม POST ใช้ได้แม้ปิด JS) ซึ่งเรียก action นี้
+// readPendingAddToCart ตรวจรหัสประเทศ (กัน redirect ออกนอกร้าน) และ clamp quantity 1..100 ให้แล้ว
+export async function confirmPendingAdd(formData: FormData): Promise<void> {
+  const pending = readPendingAddToCart(formData)
+  if (!pending) {
+    throw new Error("ข้อมูลสินค้าที่จะเพิ่มลงตะกร้าไม่ถูกต้อง")
   }
+  await addPendingToCart(pending)
+}
+
+// CORE-14b (กฎ 26) / CORE-14d (กฎ 57): เพิ่ม variant ที่ค้างไว้ลง cart แล้วไปหน้า cart (หลัง login หรือกดปุ่มยืนยัน)
+// เพิ่มไม่สำเร็จ (variant ไม่มีอยู่/ขายไม่ได้/ถูกลบระหว่างทาง) → หน้าบัญชีพร้อม add_error ให้แสดง `add-variant-error`
+// (คืน state error ตรงนี้จะหายไปเมื่อ layout สลับเป็น dashboard); redirect/notFound ส่งต่อด้วย unstable_rethrow
+// ไม่ export — ผู้เรียกส่ง pending ที่ผ่าน readPendingAddToCart แล้วเท่านั้น
+async function addPendingToCart(
+  pending: NonNullable<ReturnType<typeof readPendingAddToCart>>
+): Promise<never> {
   let added = true
   try {
     await addToCart(pending)

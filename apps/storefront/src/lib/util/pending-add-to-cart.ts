@@ -16,33 +16,28 @@ export const clampLineItemQuantity = (raw: string | null | undefined) =>
     MAX_LINE_ITEM_QUANTITY
   )
 
-const pendingAddQuery = (variantId: string, quantity: number) =>
-  new URLSearchParams({
-    [PENDING_ADD_PARAM]: variantId,
-    ...(quantity > 1 ? { [PENDING_QUANTITY_PARAM]: String(quantity) } : {}),
-  })
-
 export const loginPathForAddToCart = (
   countryCode: string,
   variantId: string,
   quantity = 1,
   { failed = false }: { failed?: boolean } = {}
 ) => {
-  const query = pendingAddQuery(variantId, quantity)
+  const query = new URLSearchParams({
+    [PENDING_ADD_PARAM]: variantId,
+    ...(quantity > 1 ? { [PENDING_QUANTITY_PARAM]: String(quantity) } : {}),
+  })
   if (failed) {
     query.set(PENDING_ERROR_PARAM, "1")
   }
   return `/${countryCode}/account?${query}`
 }
 
-export const isCountryCode = (value: string) => COUNTRY_CODE_RE.test(value)
-
 export const readPendingAddToCart = (
   form: Pick<FormData, "get">
 ): { variantId: string; countryCode: string; quantity: number } | null => {
   const variantId = form.get(PENDING_ADD_PARAM)?.toString()
   const countryCode = form.get("country_code")?.toString()
-  if (!variantId || !countryCode || !isCountryCode(countryCode)) {
+  if (!variantId || !countryCode || !COUNTRY_CODE_RE.test(countryCode)) {
     return null
   }
   return {
@@ -66,19 +61,4 @@ export const readPendingAddQuery = (
     quantity: clampLineItemQuantity(typeof quantity === "string" ? quantity : null),
     failed: searchParams?.[PENDING_ERROR_PARAM] !== undefined,
   }
-}
-
-/**
- * CORE-14d (กฎ 58): ลูกค้าที่ล็อกอินแล้วเปิด `/account?add_variant=…` → ไป route `cart/pending-add` ที่เพิ่มลง cart
- * (หน้า server component ตั้ง cookie cart เองไม่ได้); คืน null เมื่อไม่มี variant หรือเพิ่มล้มไปแล้ว (add_error) กัน loop
- */
-export const pendingAddRedirectPath = (
-  countryCode: string,
-  searchParams: Record<string, string | string[] | undefined> | undefined
-) => {
-  const pending = readPendingAddQuery(searchParams)
-  if (!pending || pending.failed) {
-    return null
-  }
-  return `/${countryCode}/cart/pending-add?${pendingAddQuery(pending.variantId, pending.quantity)}`
 }

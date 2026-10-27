@@ -68,10 +68,24 @@ describe("login พร้อม add_variant ที่ค้างไว้ (CORE
     expect(redirect).not.toHaveBeenCalled()
   })
 
-  it("addPendingToCart ปฏิเสธ countryCode ที่ไม่ใช่รหัสประเทศ (กัน open redirect เพราะเป็น server action)", async () => {
-    const { addPendingToCart } = await import("@lib/data/customer")
+  // CORE-14d (กฎ 58, owner 2026-10-27): ล็อกอินอยู่แล้ว → ปุ่มยืนยัน (ฟอร์ม POST) เรียก confirmPendingAdd
+  const confirmWith = async (entries: Record<string, string>) => {
+    const { confirmPendingAdd } = await import("@lib/data/customer")
+    const form = new FormData()
+    Object.entries(entries).forEach(([k, v]) => form.set(k, v))
+    return confirmPendingAdd(form)
+  }
+
+  it("confirmPendingAdd เพิ่ม variant (clamp quantity 1..100) แล้วไปหน้า cart", async () => {
     await expect(
-      addPendingToCart({ variantId: "v", quantity: 1, countryCode: "/evil.example" })
+      confirmWith({ add_variant: "variant_01", add_quantity: "1000", country_code: "th" })
+    ).rejects.toThrow("REDIRECT /th/cart")
+    expect(addToCart).toHaveBeenCalledWith({ variantId: "variant_01", countryCode: "th", quantity: 100 })
+  })
+
+  it("confirmPendingAdd ปฏิเสธ countryCode ที่ไม่ใช่รหัสประเทศ (server action — กัน open redirect)", async () => {
+    await expect(
+      confirmWith({ add_variant: "v", country_code: "/evil.example" })
     ).rejects.toThrow(/[฀-๿]/)
     expect(addToCart).not.toHaveBeenCalled()
     expect(redirect).not.toHaveBeenCalled()
