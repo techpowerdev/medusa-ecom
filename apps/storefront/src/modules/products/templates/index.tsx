@@ -1,5 +1,9 @@
 import React, { Suspense } from "react"
 
+import { evoucherPoolOf, voucherVariantsOf } from "@lib/util/evoucher"
+import EvoucherPartnerBlock, {
+  EvoucherPartnerBlockView,
+} from "@modules/evoucher/components/partner-block"
 import VariantImageGallery from "@modules/products/components/image-gallery/variant-image-gallery"
 import ProductActions from "@modules/products/components/product-actions"
 import ProductTabs from "@modules/products/components/product-tabs"
@@ -24,6 +28,9 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
     return notFound()
   }
 
+  // EV-7b (spec 02 AC-36): ส่งเฉพาะ field ที่บล็อกพาร์ทเนอร์ใช้ไปยัง client component
+  const voucherVariants = voucherVariantsOf(product.variants)
+
   return (
     <>
       <div
@@ -32,6 +39,18 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
       >
         <div className="flex flex-col small:sticky small:top-48 small:py-0 small:max-w-[300px] w-full py-8 gap-y-6">
           <ProductInfo product={product} />
+          {voucherVariants && (
+            // หน้าเป็น static: `?v_id=` อ่านได้หลัง hydrate — ระหว่างนั้นแสดงของ variant ตั้งต้น
+            <Suspense
+              fallback={
+                <EvoucherPartnerBlockView
+                  pool={evoucherPoolOf({ variants: voucherVariants }, null)}
+                />
+              }
+            >
+              <EvoucherPartnerBlock variants={voucherVariants} />
+            </Suspense>
+          )}
           <ProductTabs product={product} />
         </div>
         <div className="block w-full relative">

@@ -20,11 +20,14 @@ export const listProducts = async ({
   queryParams,
   countryCode,
   regionId,
+  extraFields = "",
 }: {
   pageParam?: number
   queryParams?: ProductListQueryParams
   countryCode?: string
   regionId?: string
+  /** EV-7b: field เพิ่มเฉพาะบางหน้า (เช่น pool/partner ของ voucher บน PDP) ต่อท้าย field ตั้งต้น */
+  extraFields?: string
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
@@ -72,7 +75,8 @@ export const listProducts = async ({
           offset,
           region_id: region?.id,
           fields:
-            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,*variants.options,+metadata,+tags,",
+            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,*variants.options,+metadata,+tags," +
+            extraFields,
           ...queryParams,
         },
         headers,
