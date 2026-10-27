@@ -3,6 +3,7 @@ import { Metadata } from "next"
 import { retrieveCustomer } from "@lib/data/customer"
 import { STORE_NAME } from "@lib/store-content"
 
+import AddVariantError from "@modules/account/components/add-variant-error"
 import LoginTemplate from "@modules/account/templates/login-template"
 
 // CORE-22 (กฎข้อ 46): Next รวม metadata ของทุก parallel slot และ slot @login ถูก merge หลัง @dashboard
@@ -20,6 +21,24 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default function Login() {
-  return <LoginTemplate />
+type Props = {
+  params: Promise<{ countryCode: string }>
+  // default.tsx (sub-route ของ /account) ไม่ได้รับ searchParams
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default async function Login({ params, searchParams }: Props) {
+  const { countryCode } = await params
+
+  return (
+    <>
+      <div className="px-8 pt-8 empty:hidden">
+        <AddVariantError
+          countryCode={countryCode}
+          searchParams={await searchParams}
+        />
+      </div>
+      <LoginTemplate />
+    </>
+  )
 }

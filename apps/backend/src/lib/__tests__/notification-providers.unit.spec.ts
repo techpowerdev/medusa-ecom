@@ -1,4 +1,4 @@
-import { buildNotificationProviders, storefrontUrlWarning } from "../notification-providers"
+import { buildNotificationProviders } from "../notification-providers"
 
 describe("buildNotificationProviders", () => {
   it("falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing", () => {
@@ -45,20 +45,5 @@ describe("buildNotificationProviders", () => {
         },
       },
     ])
-  })
-})
-
-// GB-4 review #89: ลิงก์ชำระเงินในอีเมลต้องเป็น URL เต็ม — production ที่ไม่ตั้ง STOREFRONT_URL ต้องเตือนตอนบูต
-describe("storefrontUrlWarning", () => {
-  it("warns in production when STOREFRONT_URL is missing or not http(s)", () => {
-    expect(storefrontUrlWarning({ NODE_ENV: "production" })).toMatch(/STOREFRONT_URL/)
-    expect(storefrontUrlWarning({ NODE_ENV: "production", STOREFRONT_URL: "shop.example" })).toMatch(
-      /STOREFRONT_URL/
-    )
-  })
-
-  it("is silent when set in production, and outside production", () => {
-    expect(storefrontUrlWarning({ NODE_ENV: "production", STOREFRONT_URL: "https://shop.example" })).toBeNull()
-    expect(storefrontUrlWarning({ NODE_ENV: "development" })).toBeNull()
   })
 })

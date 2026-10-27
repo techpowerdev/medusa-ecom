@@ -29,3 +29,8 @@ typecheck: exit 0
 {"level":"info","message":"Connection to Redis in module 'event-bus-redis' established","timestamp":"2026-10-27 04:17:16","worker_mode":"worker"}
 {"level":"info","message":"Connection to Redis in \"locking-redis\" provider established","timestamp":"2026-10-27 04:17:16","worker_mode":"worker"}
 บรรทัด JSON ทั้งหมด: 24, มี worker_mode: 24
+
+## 6. หลัง merge origin/develop (รวม #108 OPS-7) — resolve conflict docs/ops/production.md เก็บทั้งสองฝั่ง
+pnpm --filter backend test:unit: Test Suites: 50 passed, 50 total / Tests: 524 passed, 524 total
+pnpm --filter backend build: Backend build completed successfully (warning 1: import-from-framework-not-internal ที่ json-logger.ts — Reporter ไม่มี public entry point)
+pnpm lint: exit 0 (0 errors) / pnpm typecheck: exit 0
