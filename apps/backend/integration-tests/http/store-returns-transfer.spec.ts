@@ -1,9 +1,9 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import { createOrderFulfillmentWorkflow } from "@medusajs/medusa/core-flows"
 import seedThailand, { RETURN_OPTION_TYPE_CODE } from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 import { registerCustomer, storeHeadersFor } from "../helpers/customer"
+import { shipOrderItems } from "../helpers/ship-order"
 
 jest.setTimeout(240 * 1000)
 
@@ -89,10 +89,8 @@ medusaIntegrationTestRunner({
       const { data: completed } = await api.post(`/store/carts/${cartId}/complete`, {}, config)
       expect(completed.type).toEqual("order")
       order = { id: completed.order.id, itemId: completed.order.items[0].id }
-      // Medusa คืนได้เฉพาะ item ที่ fulfill แล้ว — fulfill ผ่าน workflow ของ Medusa (เหมือน admin กด fulfill)
-      await createOrderFulfillmentWorkflow(container).run({
-        input: { order_id: order.id, items: [{ id: order.itemId, quantity: 2 }] },
-      })
+      // Medusa คืนได้เฉพาะ item ที่ fulfill แล้ว และ CORE-20b รับเฉพาะ line ที่ส่งแล้ว — fulfill + ship ผ่าน workflow ของ Medusa
+      await shipOrderItems(container, order.id, [{ id: order.itemId, quantity: 2 }])
     })
 
     const returnsOf = async (orderId: string) => {
