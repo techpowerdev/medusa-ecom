@@ -113,7 +113,8 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
       subtotal: order.subtotal,
       discount_total: order.discount_total,
       tax_total: order.tax_total,
-      payment_status: getLastPaymentStatus(order as unknown as OrderDetailDTO),
+      // กฎข้อ 24b: คำนวณจากชุด collection ที่กรอง null แล้ว (ชุดเดียวกับใน response) — null ใน array ไม่ทำให้ helper โยน TypeError
+      payment_status: getLastPaymentStatus({ ...order, payment_collections: collections } as unknown as OrderDetailDTO),
       items: (order.items ?? [])
         .filter((i): i is Item => !!i)
         .map((i) => ({

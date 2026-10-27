@@ -1,0 +1,18 @@
+# AF-3c (spec 05 กฎ 31, AC-37) — ผลทดสอบ 2026-10-27
+## Red: ปิดการบันทึก violation ชั่วคราว → positive control ทั้ง 5 กรณี + allow-list ล้ม (6 failed | 2 passed)
+## Sabotage source จริง: ถอด cart.metadata จาก placeOrder ของ manual → 31c ล้ม (1 failed | 7 passed) แล้ว revert
+## Green: static test
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > source ใต้ modules/checkout/components ผ่านเงื่อนไข (a)–(c) 63ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > allow-list ไม่มีแถวค้าง และทุกแถวมีเหตุผล 16ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31a stripe.confirmPayment นอก syncAffiliateBefore → ล้ม 1ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31a stripe.confirmPayment ถูกเรียกก่อนแล้วส่งผลลัพธ์ (ไม่ได้ห่อเป็นฟังก์ชัน) → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b ฟังก์ชันที่เรียก confirmPromptPayPayment โดยไม่มี sync ก่อน → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31c placeOrder(cart.id) ที่ไม่ส่ง metadata → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31: retrievePaymentIntent นอก sync และไม่อยู่ใน allow-list → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > รูปแบบที่ถูกต้อง (ตาม #119) → ไม่มี violation 1ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+## storefront unit ทั้งชุด
+ Test Files  34 passed (34)
+      Tests  382 passed (382)
+## pnpm lint: 0 errors (warnings เดิม ไม่มีในไฟล์ใหม่); pnpm typecheck: ผ่าน
