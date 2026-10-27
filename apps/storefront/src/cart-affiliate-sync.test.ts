@@ -34,7 +34,8 @@ vi.mock("@lib/data/cookies", () => ({
 }))
 vi.mock("@lib/data/regions", () => ({ getRegion: vi.fn().mockResolvedValue({ id: "reg_1" }) }))
 vi.mock("@lib/data/locale-actions", () => ({ getLocale: vi.fn().mockResolvedValue(null) }))
-vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }))
+const revalidateTag = vi.fn()
+vi.mock("next/cache", () => ({ revalidateTag: (...a: unknown[]) => revalidateTag(...a) }))
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     throw new Error(`REDIRECT ${url}`)
@@ -115,6 +116,8 @@ describe("placeOrder sync cookie aff ก่อน complete (กฎ 23, AC-21)", 
       ["cart_1", { metadata: { affiliate_token: "tok_bob" } }, {}, { authorization: "Bearer t" }],
     ])
     expect(update.mock.invocationCallOrder[0]).toBeLessThan(complete.mock.invocationCallOrder[0])
+    expect(revalidateTag.mock.invocationCallOrder[0]).toBeGreaterThan(update.mock.invocationCallOrder[0])
+    expect(revalidateTag.mock.invocationCallOrder[0]).toBeLessThan(complete.mock.invocationCallOrder[0])
     expect(cartGets()).toHaveLength(0)
   })
 

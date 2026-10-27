@@ -1,7 +1,8 @@
 "use client"
 
 import { isManual, isStripeLike } from "@lib/constants"
-import { placeOrder, syncCartAffiliate } from "@lib/data/cart"
+import { placeOrder } from "@lib/data/cart"
+import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import { isPromptPay } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
@@ -95,10 +96,8 @@ const StripePaymentButton = ({
     setSubmitting(true)
 
     // AF-3b (กฎ 23): sync cookie `aff` ก่อนยืนยันการชำระ — webhook อาจ complete cart ก่อน placeOrder
-    await syncCartAffiliate(cart.id, cart.metadata ?? null)
-
-    await stripe
-      .confirmPayment({
+    await syncAffiliateBefore(cart, () =>
+      stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/api/payment-return?cart_id=${cart.id}&country_code=${countryCode}`,
@@ -125,33 +124,33 @@ const StripePaymentButton = ({
         // card payments still complete inline.
         redirect: "if_required",
       })
-      .then(({ error, paymentIntent }) => {
-        if (error) {
-          const pi = error.payment_intent
-
-          if (
-            (pi && pi.status === "requires_capture") ||
-            (pi && pi.status === "succeeded")
-          ) {
-            onPaymentCompleted()
-            return
-          }
-
-          setErrorMessage(error.message || null)
-          setSubmitting(false)
-          return
-        }
+    ).then(({ error, paymentIntent }) => {
+      if (error) {
+        const pi = error.payment_intent
 
         if (
-          paymentIntent.status === "requires_capture" ||
-          paymentIntent.status === "succeeded"
+          (pi && pi.status === "requires_capture") ||
+          (pi && pi.status === "succeeded")
         ) {
           onPaymentCompleted()
           return
         }
 
+        setErrorMessage(error.message || null)
         setSubmitting(false)
-      })
+        return
+      }
+
+      if (
+        paymentIntent.status === "requires_capture" ||
+        paymentIntent.status === "succeeded"
+      ) {
+        onPaymentCompleted()
+        return
+      }
+
+      setSubmitting(false)
+    })
   }
 
   return (

@@ -4,8 +4,8 @@ import {
   getPromptPayState,
   placeOrder,
   renewPromptPaySession,
-  syncCartAffiliate,
 } from "@lib/data/cart"
+import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import {
   PROMPTPAY_POLL_MS,
   formatCountdown,
@@ -130,7 +130,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     setExpired(false)
 
     // โหลดหน้าใหม่ระหว่างรอ: PaymentIntent ยังรอสแกนอยู่ → ใช้ QR เดิม ไม่ confirm ซ้ำ
-    const current = await stripe.retrievePaymentIntent(clientSecret)
+    // AF-3b (กฎ 23): order สร้างโดย webhook หลังสแกน → sync cookie `aff` ก่อนทั้ง QR เดิม (requires_action) และการ confirm ใหม่
+    const current = await syncAffiliateBefore(cart, () => stripe.retrievePaymentIntent(clientSecret))
     let intent = current.paymentIntent
     if (intent && promptPayExpiryAction(intent.status) === "keep-polling") {
       setSubmitting(false)
@@ -142,8 +143,6 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       return expire()
     }
     if (intent?.status !== "requires_action") {
-      // AF-3b (กฎ 23): order สร้างโดย webhook หลังสแกน → sync cookie `aff` ลง cart ก่อนสร้าง QR
-      await syncCartAffiliate(cart.id, cart.metadata ?? null)
       const confirmed = await stripe.confirmPromptPayPayment(
         clientSecret,
         { payment_method: { billing_details: { email: cart.email ?? "" } } },

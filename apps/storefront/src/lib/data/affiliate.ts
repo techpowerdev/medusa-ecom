@@ -3,7 +3,8 @@ import { sdk } from "@lib/config"
 import { AFFILIATE_COOKIE, affiliateMetadataUpdate } from "@lib/util/affiliate"
 import { HttpTypes } from "@medusajs/types"
 import { cookies as nextCookies } from "next/headers"
-import { getAuthHeaders } from "./cookies"
+import { revalidateTag } from "next/cache"
+import { getAuthHeaders, getCacheTag } from "./cookies"
 
 /**
  * AF-2 cart hook (spec 05): มี cookie `aff` → คัดลอกลง cart `metadata.affiliate_token` ผ่าน store API ของ Medusa
@@ -24,6 +25,8 @@ export async function syncCartAffiliateToken(
 
   try {
     await sdk.store.cart.update(cartId, { metadata: update }, {}, headers)
+    // cache ของ retrieveCart (force-cache) ต้องไม่ค้าง token เก่า แม้ขั้นถัดไป (เช่น createLineItem) ล้ม
+    revalidateTag(await getCacheTag("carts"), { expire: 0 })
   } catch (error) {
     console.warn("affiliate: could not copy aff cookie to cart metadata", error)
   }
