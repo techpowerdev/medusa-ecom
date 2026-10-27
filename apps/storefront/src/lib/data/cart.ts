@@ -145,7 +145,7 @@ export async function addToCart({
 
   // CORE-6: ไม่มี guest — ยังไม่ล็อกอินให้ไปหน้า login พร้อม variant ที่ค้างไว้
   if (!("authorization" in headers)) {
-    redirect(loginPathForAddToCart(countryCode, variantId))
+    redirect(loginPathForAddToCart(countryCode, variantId, quantity))
   }
 
   const cart = await getOrSetCart(countryCode)
