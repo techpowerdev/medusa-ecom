@@ -5,7 +5,7 @@ import { seedPaymentProviders } from "../lib/prod-guards"
 import { goLiveFailures } from "../scripts/check-go-live"
 import type { MedusaContainer } from "@medusajs/framework/types"
 
-// OPS-7 (docs/spec/07-scaling-ops.md AC-9, AC-10, AC-13, AC-17; ADR-010 C + D1); OPS-13 (AC-20, AC-21)
+// OPS-7 (docs/spec/07-scaling-ops.md AC-9, AC-10, AC-13, AC-17; ADR-010 C + D1); OPS-13 (AC-20, AC-21); OPS-13b (AC-25)
 const repoRoot = path.resolve(__dirname, "../../../..")
 
 const ENV_KEYS = [
@@ -245,6 +245,23 @@ describe("AC-11 Go-live checklist ใน docs/ops/production.md", () => {
     const item = body.split("\n").find((line) => line.includes("ALLOW_TEST_PROVIDERS") && line.includes("ค่าว่าง")) ?? ""
     expect(item).toContain("ไม่ตั้ง")
     expect(item).toContain("เหมือนกัน")
+  })
+
+  it("AC-25 ทุกบรรทัดที่พูดถึง ALLOW_TEST_PROVIDERS ใช้ถ้อยคำเดียวกับข้อ 3 (ไม่ตั้ง / ตั้งเป็นค่าว่าง)", () => {
+    const mentions = body.split("\n").filter((line) => line.includes("ALLOW_TEST_PROVIDERS"))
+    expect(mentions.length).toBeGreaterThanOrEqual(2)
+    for (const line of mentions) {
+      expect(line).toContain("ไม่ตั้ง")
+      expect(line).toContain("ตั้งเป็นค่าว่าง")
+    }
+  })
+
+  it("AC-25 ข้อ Q-F1 บอกตำแหน่งแก้ shipping_rate และราคา shipping option ใน admin", () => {
+    const item = body.split("\n").find((line) => line.includes("Q-F1")) ?? ""
+    expect(item).toMatch(/Settings → Regions → .*Metadata/)
+    expect(item).toMatch(/Settings → Locations & Shipping/)
+    expect(item).toContain('"Standard"')
+    expect(item).toContain('"Standard return"')
   })
 
   it("AC-21 check:go-live นับ ALLOW_TEST_PROVIDERS ที่ไม่ตั้งกับค่าว่างเหมือนกัน แต่ค่าอื่นทุกค่าไม่ผ่าน", async () => {
