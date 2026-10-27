@@ -1,4 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
+import { returnWindowDaysOf } from "./return-request"
 
 export type StorePolicies = {
   returnWindowDays: number
@@ -14,17 +15,35 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(number) && number >= 0 ? number : null
 }
 
+export type ReturnPolicy = Pick<StorePolicies, "returnWindowDays" | "freeReturns">
+
+/**
+ * CORE-20d (spec 01 กฎข้อ 66a): นโยบายคืนของ region — `return_window_days` ที่ไม่ตั้ง/ไม่ถูกต้องใช้ค่าเริ่มต้น
+ * เดียวกับ backend (CORE-20b บังคับค่านี้อยู่แล้ว) ไม่ถือว่า "ไม่มีข้อมูล"; ไม่มี region → null
+ */
+export const getReturnPolicy = (
+  region: Pick<HttpTypes.StoreRegion, "metadata"> | null | undefined
+): ReturnPolicy | null =>
+  region
+    ? {
+        returnWindowDays: returnWindowDaysOf(region.metadata),
+        freeReturns:
+          region.metadata?.free_returns === true ||
+          region.metadata?.free_returns === "true",
+      }
+    : null
+
 /**
  * Reads the store policy keys set on a region's metadata in Medusa Admin.
- * Returns null when any value is missing or invalid, so callers omit policy
- * data instead of publishing guesses.
+ * Returns null when any shipping value is missing or invalid, so callers omit
+ * policy data instead of publishing guesses. `return_window_days` falls back to
+ * the backend default (CORE-20d).
  */
 export const getRegionPolicies = (
   region: Pick<HttpTypes.StoreRegion, "metadata"> | null | undefined
 ): StorePolicies | null => {
   const metadata = region?.metadata ?? {}
   const values = {
-    returnWindowDays: toNumber(metadata.return_window_days),
     shippingRate: toNumber(metadata.shipping_rate),
     handlingMin: toNumber(metadata.handling_days_min),
     handlingMax: toNumber(metadata.handling_days_max),
@@ -36,9 +55,7 @@ export const getRegionPolicies = (
   }
 
   return {
-    returnWindowDays: values.returnWindowDays!,
-    freeReturns:
-      metadata.free_returns === true || metadata.free_returns === "true",
+    ...getReturnPolicy(region)!,
     shippingRate: values.shippingRate!,
     handlingDays: { min: values.handlingMin!, max: values.handlingMax! },
     transitDays: { min: values.transitMin!, max: values.transitMax! },
@@ -75,7 +92,7 @@ export const buildShippingDetails = (
 })
 
 export const buildReturnPolicy = (
-  policies: StorePolicies,
+  policies: ReturnPolicy,
   countryCode: string
 ) => ({
   "@type": "MerchantReturnPolicy",
@@ -90,10 +107,7 @@ export const buildReturnPolicy = (
 
 export const buildRegionsReturnPolicies = (regions: HttpTypes.StoreRegion[]) =>
   regions.flatMap((region) => {
-    const policies = getRegionPolicies(region)
-    if (!policies) {
-      return []
-    }
+    const policies = getReturnPolicy(region)!
     return (region.countries ?? [])
       .filter((country) => country.iso_2)
       .map((country) => buildReturnPolicy(policies, country.iso_2!))

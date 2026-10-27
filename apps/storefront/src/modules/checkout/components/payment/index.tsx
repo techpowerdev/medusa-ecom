@@ -2,6 +2,7 @@
 import { RadioGroup } from "@headlessui/react"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
+import { deliveryStepDone } from "@lib/util/digital-checkout"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isPromptPay } from "@lib/util/payment-session"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
@@ -47,6 +48,8 @@ const Payment = ({
   const sessionNotInCartYet =
     awaitingSessionFor !== null &&
     activeSession?.provider_id !== awaitingSessionFor
+  // CORE-19e (กฎข้อ 71): RSC refresh อาจไม่มาถึง → ปุ่มต้องไม่ล็อกค้างถาวร
+  const [sessionPendingError, setSessionPendingError] = useState(false)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -58,6 +61,7 @@ const Payment = ({
     setError(null)
     setSelectedPaymentMethod(method)
     setAwaitingSessionFor(null)
+    setSessionPendingError(false)
     // PAY-2: PromptPay สร้าง session ทันทีที่เลือกเหมือนบัตร (QR พร้อมในขั้น review)
     if (isStripeLike(method) || isPromptPay(method)) {
       // ล็อกปุ่ม Continue จนสร้าง session เสร็จ — ไม่งั้น handleSubmit สร้างซ้ำ แล้ว PaymentIntent
@@ -81,7 +85,7 @@ const Payment = ({
   )
 
   const paymentReady =
-    (activeSession && (cart?.shipping_methods?.length ?? 0) !== 0) || paidByGiftcard
+    (activeSession && deliveryStepDone(cart)) || paidByGiftcard
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -101,6 +105,7 @@ const Payment = ({
 
   const handleSubmit = async () => {
     setIsLoading(true)
+    setSessionPendingError(false)
     try {
       const shouldInputPaymentDetails =
         isStripeLike(selectedPaymentMethod) && !activeSession
@@ -132,6 +137,23 @@ const Payment = ({
   useEffect(() => {
     setError(null)
   }, [isOpen])
+
+  // CORE-19e (กฎข้อ 71): ล็อกเกิน 5 วินาที → refresh 1 ครั้ง; 10 วินาที → ปลดล็อก + error
+  // cart ได้ session เมื่อใด sessionNotInCartYet เป็น false แล้ว cleanup ยกเลิก timer ทั้งคู่
+  useEffect(() => {
+    if (!sessionNotInCartYet) {
+      return
+    }
+    const refreshTimer = setTimeout(() => router.refresh(), 5_000)
+    const unlockTimer = setTimeout(() => {
+      setAwaitingSessionFor(null)
+      setSessionPendingError(true)
+    }, 10_000)
+    return () => {
+      clearTimeout(refreshTimer)
+      clearTimeout(unlockTimer)
+    }
+  }, [sessionNotInCartYet, router])
 
   return (
     <div className="bg-white">
@@ -210,6 +232,14 @@ const Payment = ({
           <ErrorMessage
             error={error}
             data-testid="payment-method-error-message"
+          />
+          <ErrorMessage
+            error={
+              sessionPendingError
+                ? "ระบบยังเตรียมการชำระเงินไม่เสร็จ กรุณาลองอีกครั้ง"
+                : null
+            }
+            data-testid="payment-session-pending-error"
           />
 
           <Button
