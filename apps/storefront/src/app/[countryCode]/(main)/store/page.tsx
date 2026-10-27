@@ -19,5 +19,7 @@ export default async function StorePage(props: {
     notFound()
   }
 
-  return <StoreTemplate currencyCode={region.currency_code} />
+  return (
+    <StoreTemplate currencyCode={region.currency_code} regionId={region.id} />
+  )
 }
