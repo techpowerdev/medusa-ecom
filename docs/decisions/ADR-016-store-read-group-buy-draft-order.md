@@ -1,6 +1,6 @@
 # ADR-016 store route อ่านอย่างเดียวสำหรับ draft order ของ group buy (membership ของลูกค้า)
 
-สถานะ: proposed (planner รอบ 10, 2026-10-27 — รอ owner อนุมัติ; บล็อก GB-8 → PAY-3b → GB-7)
+สถานะ: **accepted** (owner 2026-10-27 — เลือกทางเลือก A; เสนอโดย planner รอบ 10)
 เกี่ยวข้อง: spec 04 (GB-8, GB-7, กฎข้อ 21–22), spec 06 (PAY-3a/PAY-3b), ADR-004, ADR-009, ADR-013, ADR-015 ภาคผนวก (collection ที่ไม่มี cart)
 
 ## บริบท
@@ -25,13 +25,16 @@ D. **ใส่ข้อมูล order ใน route สาธารณะ `GET /
 E. **ไม่มี route: storefront เก็บ `client_secret` จาก response ของ `POST .../payment-sessions` ไว้ใน cookie/URL** — โหลดหน้าใหม่/เปิดจากอีเมลอีกเครื่องไม่ได้,
    แสดงสถานะ "ชำระแล้ว"/"หมดเวลา" และรายการใน account ไม่ได้ (GB-7 ยังต้องมีรายการอยู่ดี)
 
-## การตัดสินใจ (เสนอ)
+## การตัดสินใจ (owner อนุมัติ 2026-10-27)
 เลือก **A**
 1. สอง route ใต้ `/store/customers/me/group-buy/*` — Medusa ใส่ `authenticate("customer", ["session","bearer"])` ให้ `/store/customers/me*` อยู่แล้ว
    (builder ยืนยันกับ source 2.22.1 ถ้าไม่ครอบให้ใส่เองใน `src/api/middlewares.ts`); route อ่านอย่างเดียว ไม่มี workflow (ไม่มีการเขียน)
 2. ownership ตามกฎ ADR-013: filter `customer_id = actor_id` ใน query เดียวกับการหา → ไม่ใช่ของผู้เรียก/ไม่มี/membership ไม่มี order → **404** `not_found`
-3. response ของรายตัวรวม `payment_collections[].payment_sessions[]` (`id`, `provider_id`, `status`, `amount`, `data`) เพราะ storefront ต้องใช้ `client_secret` ของ
-   Stripe — เท่ากับที่ Medusa คืนใน cart ของ checkout ปกติ (เจ้าของเท่านั้นเห็น); `Cache-Control: private, no-store`
+3. response ของรายตัวรวม `payment_collections[].payment_sessions[]` เฉพาะ field ที่หน้าชำระเงินต้องใช้ (review #140): `id`, `provider_id`, `status`, `amount` และจาก `data`
+   เพียง `data.id` (PaymentIntent id), `data.client_secret`, `data.status` — **ไม่**คืน `data` ทั้งก้อนของ provider (ลดข้อมูลเกินจำเป็น แม้ cart ของ Medusa คืนทั้งก้อน);
+   `Cache-Control: private, no-store`
+4b. index: route รายการหา membership ด้วย `customer_id` เรียง `joined_at` → เพิ่ม index `(customer_id, joined_at)` (`WHERE deleted_at IS NULL`) บน `group_buy_membership` + migration
+   ใน PR ของ GB-8 (index เดิม `(campaign_id, customer_id)`/`(group_id, status)` ไม่ขึ้นต้นด้วย `customer_id`)
 4. การสร้าง/ต่อ payment session ยังใช้ `POST /store/payment-collections/:id/payment-sessions` ของ Medusa + ownership ของ CORE-12 (owner ผ่าน `order.customer_id`) +
    guard ของ PAY-6a (lock `payment_collection_id` ตามภาคผนวก ADR-015) — ไม่มี custom payment route
 5. route ทำงานต่อได้หลัง draft order ถูกแปลงเป็น order ปกติ (GB-5) — อ่านผ่าน membership ไม่ขึ้นกับ `is_draft_order`

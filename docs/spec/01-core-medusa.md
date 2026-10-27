@@ -862,7 +862,7 @@ none
 | ID | Task | AC | Depends |
 |----|------|----|---------|
 | CORE-4e | (storefront เล็ก, nit/qa #109 + qa #98) Stripe Elements `locale: "th"`, `friendlyErrorMessage` ใน `setAddresses`/`submitPromotionForm`/`renewPromptPaySession` + ข้อความรอสร้าง order ของพร้อมเพย์ (ถ้า #109 ยังไม่ครอบ), "พร้อมเพย์" แบบเดียว, `{STORE_NAME} แล้ว`, placeholder "เลือกประเทศ", test id/aria-label ของ popup ที่อยู่ + nudge, floating label ซ้อน, test `renewPromptPaySession` ไม่ใช้ `indexOf` (กฎข้อ 54–56) | AC-90, AC-91 | CORE-4d (#109) |
-| CORE-14d | (storefront เล็ก, nit/qa #113; ◐ #128) `/cart` ไม่ค้าง skeleton หลัง login no-JS, `add_error` + `unstable_rethrow` แทน `catch {}`, `/account?add_variant=&add_quantity=` ตอนล็อกอินแล้ว = การ์ด `add-variant-pending` + ปุ่ม `add-variant-confirm` (ฟอร์ม POST) ไม่เพิ่มอัตโนมัติ, GET ของ path นี้ไม่แก้ cart (ไม่ครอบ `/buy/[items]`) (กฎข้อ 57–58, owner 2026-10-27) | AC-92, AC-93 | CORE-14b (#113) |
+| CORE-14d | (storefront เล็ก, nit/qa #113; ☑ #128) `/cart` ไม่ค้าง skeleton หลัง login no-JS, `add_error` + `unstable_rethrow` แทน `catch {}`, `/account?add_variant=&add_quantity=` ตอนล็อกอินแล้ว = การ์ด `add-variant-pending` + ปุ่ม `add-variant-confirm` (ฟอร์ม POST) ไม่เพิ่มอัตโนมัติ, GET ของ path นี้ไม่แก้ cart (ไม่ครอบ `/buy/[items]`) (กฎข้อ 57–58, owner 2026-10-27) | AC-92, AC-93 | CORE-14b (#113) |
 | CORE-24 | (storefront เล็ก, qa #113) ตัวเลือกจำนวนบน PDP ทั้ง JS/no-JS (กฎข้อ 59) | AC-94 | CORE-14b (#113) (∥ CORE-14d: CORE-24 แตะ `modules/products`, CORE-14d แตะ `lib/data/customer.ts`/account/cart) |
 | CORE-20b | (backend เล็ก, review #112; owner ตัดสิน Q-F6 2026-10-27 — เริ่มได้): middleware บังคับช่วงคืน N วัน + กัน line ที่ไม่ต้องจัดส่งบน `POST /store/returns` (ADR-013 ทางเลือก A, ต่อ chain ของ CORE-17/21) | AC-95 | CORE-21 ☑ (#86) — เริ่มได้ทันที; ∥ CORE-20c |
 | CORE-20c | (storefront เล็ก, nit review/re-review #112) `return_window_days` จาก region ของ order, `returnableItems` นับ `shipped_quantity`, ตัด `canRequestReturn` ซ้ำ, `listOrders`/`listRegions` ของ `/returns` + structured data ไม่ `force-cache`, e2e region แยก/serial (กฎข้อ 60) | AC-96 | CORE-20 (#112) |
@@ -956,13 +956,14 @@ none (storefront + e2e tooling)
 ### Tasks (follow-up รอบ 10)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
-| CORE-4f | (storefront เล็ก, qa #117/#131) error หน้า login/register เป็นไทยผ่าน `friendlyErrorMessage` + คงอีเมลเมื่อ login/register ล้ม (กฎข้อ 62) — path 4c1 (`modules/account`, `lib/data/customer.ts`) | AC-98 | CORE-14d (#128 — แตะ `lib/data/customer.ts` เดียวกัน) |
+| CORE-4f | (storefront เล็ก, qa #117/#131) error หน้า login/register เป็นไทยผ่าน `friendlyErrorMessage` + คงอีเมลเมื่อ login/register ล้ม (กฎข้อ 62) — path 4c1 (`modules/account`, `lib/data/customer.ts`) | AC-98 | CORE-14d ☑ (#128) — เริ่มได้ |
 | CORE-4g | (storefront เล็ก, review/qa #131) `medusaError` คง status, `promotion-error` เมื่อโค้ดใช้ไม่ได้, `compareAddresses` null/"", ความสูง `CountrySelect`, e2e รอ `document.fonts.ready` + ตรวจผลลบใน `finally` (กฎข้อ 63) | AC-99 | CORE-4e ☑ (#131) — ∥ CORE-19b/PAY-6c/EV-7c (แตะ checkout คนละ component; ชน `lib/data/cart.ts` ตัวที่ merge ทีหลัง rebase) |
 | CORE-19c | (storefront เล็ก, qa #118) `DeleteButton` ส่งต่อ `data-testid` + แสดง error เมื่อลบล้ม (กฎข้อ 64) | AC-100 | CORE-19a ☑ (#118) |
-| CORE-14f | (storefront เล็ก, qa #128 r2 O-1/O-3) ข้อความการ์ด `add-variant-pending` ตามสถานะ cart + `countryCode` ที่ไม่มีจริงไม่ทำให้ 5xx (กฎข้อ 65) — O-2 (ส่งซ้ำ → cart 2 ใบ) อยู่ใน CORE-14e หลัง v1.0 | AC-101 | CORE-14d (#128) |
+| CORE-14f | (storefront เล็ก, qa #128 r2 O-1/O-3) ข้อความการ์ด `add-variant-pending` ตามสถานะ cart + `countryCode` ที่ไม่มีจริงไม่ทำให้ 5xx (กฎข้อ 65) — O-2 (ส่งซ้ำ → cart 2 ใบ) อยู่ใน CORE-14e หลัง v1.0 | AC-101 | CORE-14d ☑ (#128) — เริ่มได้ |
 | CORE-20d | (storefront เล็ก, review/qa #124/#130) ค่าเริ่มต้น window เดียวกับ backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id`, ฟอร์มคงค่าเมื่อล้ม, e2e cleanup ตรวจผล (กฎข้อ 66) | AC-102 | CORE-20c (#130 — owner อนุมัติ merge 2026-10-27), CORE-20b ☑ (#124) |
 | CORE-5c | (e2e tooling เล็ก, qa #131) evidence เขียนได้เฉพาะโฟลเดอร์ของ `evidenceTarget`, screenshot ของ `step()` อยู่ในงบ, ไม่เขียนทับ task อื่น (กฎข้อ 67) | AC-103 | CORE-5b ☑ |
-CORE-19c ∥ CORE-5c ∥ CORE-4g เริ่มได้ทันที; CORE-4f ∥ CORE-14f หลัง CORE-14d (#128) (แตะ `lib/data/customer.ts`/account ร่วมกัน — ตัวที่ merge ทีหลัง rebase); CORE-20d หลัง CORE-20c (#130)
+CORE-19c ∥ CORE-5c ∥ CORE-4g ∥ CORE-4f ∥ CORE-14f เริ่มได้ทันที (CORE-14d ☑ #128; CORE-4f กับ CORE-14f แตะ `lib/data/customer.ts`/account ร่วมกัน — ตัวที่ merge ทีหลัง rebase);
+CORE-20d หลัง CORE-20c (◐ #130 คิว merge)
 CORE-15, CORE-19b, CORE-23b (รอบเดิม) ยังไม่เริ่ม — นิยามไม่เปลี่ยน; CORE-19b และ CORE-4g ← CORE-4e ☑ เริ่มได้แล้ว
 
 หมายเหตุจาก CORE-1:

@@ -7,7 +7,7 @@
 รอบ 7: path `/group-buying/:id`, บั๊ก summary ของ draft order → GB-3c, ข้อจำกัด lock TTL ของ GB-4 — กฎข้อ 18–19, AC-36;
 รอบ 8: leave หลังหมดเวลา (กฎข้อ 13), ถ้อยคำ AC-32/AC-36, ปัดยอด 2 ตำแหน่ง (กฎข้อ 20, AC-37), รวม nit เป็น GB-N1;
 รอบ 9 2026-10-27: owner ยืนยัน Q11 (ก), แยก GB-6c → 6c1 (#114)/6c2 + nit #114, GB-N2 test flaky;
-รอบ 10 2026-10-27: store route อ่าน draft order ของ membership (GB-8, ADR-016 proposed) ที่ PAY-3 ต้องใช้, GB-5 พึ่ง PAY-3a แทน PAY-3, GB-6d nit admin — กฎข้อ 21–23, AC-38..41)
+รอบ 10 2026-10-27: store route อ่าน draft order ของ membership (GB-8, ADR-016 accepted โดย owner 2026-10-27) ที่ PAY-3 ต้องใช้, GB-5 พึ่ง PAY-3a แทน PAY-3, GB-6d nit admin — กฎข้อ 21–23, AC-38..41)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -35,7 +35,7 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | อีเมล | Notification module | templates |
 | หน้า admin | Admin UI routes | custom page |
 | อ่าน draft order จาก membership | read-only module link (`defineLink(..., { readOnly: true })`, field `order_id`) | ใช้ตามเดิม (ADR-009) — GB-6c อ่าน `order.status`/`payment_status`/`total` ผ่าน `query.graph` |
-| ลูกค้าอ่าน draft order ของตัวเองผ่าน Store API | **ไม่มี** — `GET /store/orders*` กรอง `is_draft_order: false` ใน handler, ไม่มี store route ของ draft order/อ่าน payment collection (ตรวจ 2.22.1 โดย builder PAY-3) | custom route อ่านอย่างเดียว 2 ตัวใต้ `/store/customers/me/group-buy/*` ตาม pattern Quotes (GB-8, **ADR-016 proposed**) |
+| ลูกค้าอ่าน draft order ของตัวเองผ่าน Store API | **ไม่มี** — `GET /store/orders*` กรอง `is_draft_order: false` ใน handler, ไม่มี store route ของ draft order/อ่าน payment collection (ตรวจ 2.22.1 โดย builder PAY-3) | custom route อ่านอย่างเดียว 2 ตัวใต้ `/store/customers/me/group-buy/*` ตาม pattern Quotes (GB-8, **ADR-016 accepted**) |
 | เลือกสินค้าใน admin extension | `sdk.admin.product.list` (JS SDK) + `DataTable`/`Checkbox` ของ `@medusajs/ui`; dashboard **ไม่ export** product picker ภายในให้ extension ใช้ | ขยาย: picker เล็กในหน้า Group buying (GB-6b) — builder ตรวจ docs admin customization ก่อน ถ้ามี component ของ Medusa ให้ใช้ ใช้ตัวนั้น |
 | กล่องยืนยัน / toast ใน admin | `usePrompt`, `toast` ของ `@medusajs/ui` | ใช้ตามเดิม (GB-6b, GB-6c) |
 | lock ข้าม request/step | Locking module (Redis, spec 07) + `acquireLockStep` / `releaseLockStep` | ใช้ตามเดิม (ADR-009) |
@@ -182,14 +182,15 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   `POST /store/group-buy/groups/:token/join` `{cart_id}`, `POST /store/group-buy/memberships/:id/leave`
 - หน้าชำระเงินใช้ store payment-collection route ที่ Medusa มีอยู่แล้วบน order
   (เหมือนตัวอย่าง Quotes); ไม่มี custom payment route
-- (รอบ 10, GB-8, ADR-016 proposed) Store อ่านอย่างเดียว (ต้อง login; Medusa ใส่ `authenticate("customer")` ให้ `/store/customers/me*` — builder ยืนยัน):
+- (รอบ 10, GB-8, ADR-016 accepted) Store อ่านอย่างเดียว (ต้อง login; Medusa ใส่ `authenticate("customer")` ให้ `/store/customers/me*` — builder ยืนยัน):
   - `GET /store/customers/me/group-buy/memberships?limit=&offset=` (zod ผ่าน `validateAndTransformQuery`: `limit` 1..100 ค่าเริ่มต้น 20, `offset` ≥ 0) → 200
     `{ memberships: [{ id, status, units, joined_at, order_id, group: { id, status, ends_at, pay_deadline_at, join_token }, campaign: { id, name },
     order: { id, display_id, status, is_draft_order, currency_code, total } }], count }` เฉพาะของผู้เรียก เรียง `joined_at` ใหม่สุดก่อน (รวม `cancelled`)
   - `GET /store/customers/me/group-buy/orders/:order_id` → 200 `{ membership: { id, status, units }, group: { id, status, ends_at, pay_deadline_at },
     order: { id, display_id, status, is_draft_order, currency_code, total, subtotal, discount_total, tax_total, payment_status,
     items: [{ id, title, variant_title, thumbnail, quantity, unit_price, total }],
-    payment_collections: [{ id, amount, status, payment_sessions: [{ id, provider_id, status, amount, data }] }] } }`;
+    payment_collections: [{ id, amount, status, payment_sessions: [{ id, provider_id, status, amount, data: { id, client_secret, status } }] }] } }`
+    (`data` เฉพาะ 3 key นี้ของ PaymentIntent — ไม่คืน `data` ทั้งก้อนของ provider; ADR-016 ข้อ 3);
     order ที่ไม่มี membership ของผู้เรียก (ของคนอื่น/ไม่มี/ไม่ใช่ group buy) → 404 `not_found`; header `Cache-Control: private, no-store`
 
 ## Admin UI / Storefront
@@ -296,10 +297,11 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     ของ membership = `order.total` **ปัด 2 ตำแหน่งแบบ half-up ด้วย `MathBN`** ตอนสร้าง collection ใน `succeedGroupWorkflow` (ปัจจุบัน `group-outcome.ts` ราวบรรทัด 126
     ของ GB-4 ส่ง raw) — ทำใน GB-5 (AC-37) ไม่คำนวณยอดจากราคา line เอง (กฎข้อ 18 ยังใช้); ส่วนต่างเศษสตางค์ (< 0.005) ที่เหลือใน `summary.pending_difference`
     หลัง capture ต้องไม่ทำให้ `convertDraftOrderWorkflow`/`payment_status` ผิด — builder ยืนยันใน test AC-37 ถ้าผิดให้หยุดและรายงาน
-21. (รอบ 10, GB-8, ADR-016 proposed) ลูกค้าอ่าน draft order ของกลุ่มได้**เฉพาะผ่าน membership ของตัวเอง** (route ใน "API" รอบ 10): หา membership ด้วย
+21. (รอบ 10, GB-8, ADR-016 accepted) ลูกค้าอ่าน draft order ของกลุ่มได้**เฉพาะผ่าน membership ของตัวเอง** (route ใน "API" รอบ 10): หา membership ด้วย
     `customer_id = auth_context.actor_id` ใน query เดียวกับการหา (ไม่อ่านก่อนแล้วเทียบ) อ่าน order ผ่าน read-only link `group_buy_membership ↔ order` และ
     `order.payment_collections` ด้วย `query.graph`; ไม่ใช่ของผู้เรียก/ไม่พบ → 404 (ADR-013 ข้อ 2); route อ่านอย่างเดียว ไม่เรียก workflow/ไม่เขียนข้อมูล;
-    ทำงานทั้งก่อนและหลัง draft order ถูกแปลง (GB-5) — ไม่กรอง `is_draft_order`
+    ทำงานทั้งก่อนและหลัง draft order ถูกแปลง (GB-5) — ไม่กรอง `is_draft_order`; (review #140) เพิ่ม index `(customer_id, joined_at)` (`WHERE deleted_at IS NULL`) บน
+    `group_buy_membership` + migration ใน PR ของ GB-8 — index เดิม `(campaign_id, customer_id)`, `(group_id, status)` ไม่ขึ้นต้นด้วย `customer_id` (full scan ต่อ request)
 22. (รอบ 10) การสร้าง/ต่อ payment session ของ draft order ใช้ `POST /store/payment-collections/:id/payment-sessions` ของ Medusa เท่านั้น (ownership ของ CORE-12
     ผ่าน `order.customer_id` ของ collection + guard ของ PAY-6a ที่ lock `payment_collection_id` ตามภาคผนวก ADR-015) — PAY-3a พิสูจน์ด้วย integration (spec 06 AC-18)
 23. (รอบ 10, GB-6d — qa/review #121) หน้ารายละเอียดแคมเปญ admin: กด succeed/fail แล้ว**ล้ม** (เช่น 400/409 เพราะกลุ่มเปลี่ยนสถานะไปแล้ว) ต้อง invalidate query ของตารางกลุ่ม
@@ -427,7 +429,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - AC-39 (GB-8, กฎข้อ 21) Given กลุ่มของ M1 สำเร็จแล้ว (GB-4 สร้าง payment collection) When A `GET /store/customers/me/group-buy/orders/<order ของ M1>` Then 200 มี `items`,
   `payment_collections[0].amount` = ยอดของ collection ใน DB, `membership.status = "awaiting_payment"`, `group.pay_deadline_at` และ header `Cache-Control` มี `no-store`;
   When B เรียก path เดียวกัน, A เรียกด้วย `order_xxx` ที่ไม่มีจริง หรือด้วย id ของ order ปกติของ A ที่ไม่ใช่ group buy Then 404 `type = "not_found"`; ไม่มี token → 401;
-  Given A สร้าง session ผ่าน `POST /store/payment-collections/:id/payment-sessions` แล้ว When GET ซ้ำ Then `payment_sessions` มี session นั้นพร้อม `data` (integration http)
+  Given A สร้าง session ผ่าน `POST /store/payment-collections/:id/payment-sessions` แล้ว When GET ซ้ำ Then `payment_sessions` มี session นั้น และ `data` มี key เฉพาะ
+  `id`, `client_secret`, `status` (ไม่มี key อื่นของ provider) (integration http); Given migration ของ GB-8 รันแล้ว Then `pg_indexes` ของ `group_buy_membership` มี index ที่คอลัมน์
+  `(customer_id, joined_at)` (integration modules)
 - AC-40 (GB-8, กฎข้อ 21) Given draft order ของ M1 ถูกแปลงเป็น order ปกติแล้ว (ตั้งผ่าน `convertDraftOrderWorkflow` ใน test) When A GET รายตัว Then 200 `order.is_draft_order=false`
   และ `membership.status` ตาม DB (integration http)
 - AC-41 (GB-6d, กฎข้อ 23) Given กลุ่มที่หน้าแสดงเป็น `open` แต่ใน DB ถูกตั้งเป็น `succeeded` แล้ว (ทาง API ระหว่างที่หน้าเปิดอยู่ หรือ mock `fetch`) When admin กด
@@ -477,7 +481,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-6b | หน้ารายละเอียดแคมเปญ: เปลี่ยนสถานะ, ลบ `draft`, ตารางกลุ่ม, สร้าง pool group; ปรับฟอร์มสร้าง: product picker แทนกรอก ID, ตรวจ `max_quantity ≥ max_units_per_person`, เตือน `ends_at` อดีต, กันกดซ้ำ, คำเตือน `GBT-*` (กฎข้อ 15–17; AC-30..33) — frontend ล้วน ใช้ API ของ GB-2a/GB-2b; แยกแล้ว: **GB-6b1 = ☑ #87** (หน้ารายละเอียด `/group-buying/:id`, AC-30, AC-31 + รวม OPS-11 `e2e/support/admin.ts` AC-16 และ regex evidence) และ **GB-6b2 = ☑ #96** (ฟอร์ม, AC-32, AC-33) | GB-6a |
 | GB-6c | membership + succeed/fail manual: route `GET /admin/group-buy/groups/:id/memberships` + integration test (AC-34) + ตาราง membership และปุ่ม succeed/fail ในหน้ารายละเอียด (AC-35); แยกแล้ว: **GB-6c1 = ☑ #114** (route, AC-34) → **GB-6c2 = ☑ #121** (UI, AC-35; nit/qa ของ #121 → GB-6d) — **GB-6c2 รวม nit review #114**: test `order.payment_status` กรณีกลุ่มมี payment collection แล้ว, test 404 assert `type = "not_found"`, และตาราง membership รองรับ `customer = null` (ลูกค้าถูกลบ → แสดง `customer_id` แทนอีเมล ไม่พัง) | GB-6b (GB-6b1 ถ้าแยก), GB-3, GB-4 (route succeed/fail) |
 | GB-N2 | (เล็ก, test-only, รอบ 9 — CI flaky ใน #111 รอบแรก) `integration-tests/http/group-buy-join.spec.ts` กรณี concurrency ล้มด้วย hook timeout 240s: หาสาเหตุจาก log จริงก่อน (lock รอ TTL, DB pool, หรือ setup หนัก) แล้วแก้ที่ test (ลดจำนวน request พร้อมกันให้พอพิสูจน์ AC-8/AC-13, แยก setup ไป `beforeAll`, ตั้ง timeout ของ hook ให้สอดคล้อง) — ห้ามแก้ด้วยการเพิ่ม timeout อย่างเดียว; AC-8/AC-13/AC-18 ต้องยังพิสูจน์ได้ และ suite ผ่าน 5 รอบติดใน CI (ระบุ run id ใน PR) — ◐ #126; **nit review #126 (รอบ 10)**: helper `trackSubscribers` ต้องคัดลอก `subscriberId` ของ subscriber เดิม (แก้ใน #126 ก่อน merge); การพึ่ง `eventEmitter_` ภายในของ local event bus บันทึกใน checklist bump ของ spec 07 ข้อ 6 | GB-3 ☑ |
-| GB-8 | (เล็ก, backend, รอบ 10 — builder PAY-3 หยุดเพราะ Store API อ่าน draft order ไม่ได้) store route อ่านอย่างเดียว `GET /store/customers/me/group-buy/memberships` + `GET /store/customers/me/group-buy/orders/:order_id` ตาม "API" รอบ 10 (กฎข้อ 21; ADR-016) + integration test — ใช้ร่วมโดย PAY-3b (หน้าชำระเงิน + poll) และ GB-7 (รายการใน account) | **ADR-016 accepted (owner)**, GB-4 ☑, GB-3b ☑ |
+| GB-8 | (เล็ก, backend, รอบ 10 — builder PAY-3 หยุดเพราะ Store API อ่าน draft order ไม่ได้) store route อ่านอย่างเดียว `GET /store/customers/me/group-buy/memberships` + `GET /store/customers/me/group-buy/orders/:order_id` ตาม "API" รอบ 10 (กฎข้อ 21; ADR-016) + index `(customer_id, joined_at)` บน `group_buy_membership` + migration + integration test (AC-38..40) — ใช้ร่วมโดย PAY-3b (หน้าชำระเงิน + poll) และ GB-7 (รายการใน account) | ADR-016 ☑ accepted (owner 2026-10-27), GB-4 ☑, GB-3b ☑ — **เริ่มได้** |
 | GB-6d | (เล็ก, admin UI, รอบ 10 — qa/review #121) invalidate ตารางกลุ่มเมื่อ succeed/fail ล้ม, highlight + ปุ่มปิดของแถวที่เลือก, selection ข้ามหน้า, ตัด `Membership.order.total` ที่ไม่ใช้ (กฎข้อ 23) (AC-41) | GB-6c2 ☑ (#121) |
 | GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); (รอบ 10) รายการ draft order ของกลุ่มในหน้า account อ่านจาก route ของ GB-8 และลิงก์ไปหน้าชำระเงินของ PAY-3b (ไม่สร้างหน้าชำระเงินซ้ำ) | GB-5, GB-8, PAY-3b (spec 06), GB-3b ☑ |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
@@ -488,12 +492,12 @@ GB-3c ∥ GB-3b ∥ GB-4 หลัง GB-3 (แตะ step freeze ใน workflo
 GB-N1 หลัง GB-3c (#100) และ PAY-6b (#97/#98) merge; ∥ GB-5 (GB-5 แตะ `group-outcome.ts` ส่วนสร้าง collection, GB-N1 แตะ log `at_deadline` ไฟล์เดียวกันได้ — ตัวที่ merge
 ทีหลัง rebase) ไม่บล็อก release
 GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/test ของ `create-group` ไม่ใช่ไฟล์ join) แต่ควร merge ก่อน release v0.5.0
-(รอบ 10) ลำดับใหม่ของ critical path ชำระเงิน: PAY-3a (เริ่มได้ทันที) ∥ GB-8 (หลัง owner อนุมัติ ADR-016) → GB-5 (← PAY-3a) ∥ PAY-3b (← GB-8) → GB-7 (← GB-5, GB-8, PAY-3b);
+(รอบ 10) ลำดับใหม่ของ critical path ชำระเงิน: PAY-3a (เริ่มได้ทันที) ∥ GB-8 (เริ่มได้ — ADR-016 accepted) → GB-5 (← PAY-3a) ∥ PAY-3b (← GB-8) → GB-7 (← GB-5, GB-8, PAY-3b);
 GB-6d ∥ ทุกตัว (admin UI ล้วน); GB-8 กับ PAY-3a คนละไฟล์ (route ใหม่ใต้ `src/api/store/customers/me/group-buy/` vs test ของ payment collection) ขนานได้
 
 ## Open questions
-- Q12 (รอบ 10, ADR-016 proposed) อนุมัติ store route อ่านอย่างเดียวของ draft order ผ่าน membership (`/store/customers/me/group-buy/memberships`, `/orders/:order_id`) หรือไม่ —
-  **ข้อเสนอ: อนุมัติทางเลือก A** เหตุผล: Medusa 2.22.1 ไม่มีทางอ่าน draft order ฝั่ง store (กรองใน handler), pattern เดียวกับตัวอย่าง Quotes ของ Medusa, สิทธิ์ผูกกับ membership ของ
+- ~~Q12~~ ตัดสินแล้ว (owner 2026-10-27): **อนุมัติ ADR-016 ทางเลือก A** → GB-8 เริ่มได้; คำถามเดิม (รอบ 10): อนุมัติ store route อ่านอย่างเดียวของ draft order ผ่าน membership
+  (`/store/customers/me/group-buy/memberships`, `/orders/:order_id`) หรือไม่ — ข้อเสนอที่ owner รับ: ทางเลือก A เหตุผล: Medusa 2.22.1 ไม่มีทางอ่าน draft order ฝั่ง store (กรองใน handler), pattern เดียวกับตัวอย่าง Quotes ของ Medusa, สิทธิ์ผูกกับ membership ของ
   module เรา (ไม่เปิด draft order ที่ admin สร้างประเภทอื่น) และใช้ร่วม 2 ที่ (PAY-3b, GB-7); ไม่มี route ชำระเงินใหม่ — ถ้าไม่อนุมัติ PAY-3b และ GB-7 เริ่มไม่ได้
 - Q1 หากสมาชิกบางคนไม่ชำระเงินเลยหลังกลุ่มสำเร็จ กลุ่มควรยังนับว่า fulfilled สำหรับคนอื่นหรือไม่?
   (ค่าเริ่มต้น: ใช่ — สมาชิกที่ชำระแล้วได้รับ fulfillment ไม่ว่าอย่างไร)

@@ -1,6 +1,6 @@
 # 02 E-voucher — ขายต่อ voucher code ของพาร์ทเนอร์ ส่งมอบทางอีเมล
 
-สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, Q10/Q11)
+สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม)
 เป้าหมาย (เจ้าของระบบ): ขาย e-voucher จากพาร์ทเนอร์ (Lotus, Big C, ห้างสรรพสินค้า, คาเฟ่…) เราได้รับ
 coupon code จากพาร์ทเนอร์ล่วงหน้า และส่งมอบ 1 code ต่อ 1 หน่วยที่ขายได้ในรูปแบบดิจิทัล
 (อีเมล) การ redeem เกิดขึ้นที่พาร์ทเนอร์ เราไม่ redeem เอง
@@ -172,17 +172,20 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 22. (รอบ 10, EV-7a) `GET /store/customers/me/evouchers` คืนเฉพาะ code ที่ `customer_id = auth_context.actor_id` และสถานะ `delivered` หรือ `allocated` (code ที่ผูกกับ order
     ของลูกค้าแล้วแต่ส่งอีเมลล้ม — กฎข้อ 17; ลูกค้าเห็นในบัญชีได้ทันที) — ไม่คืน `available`/`void`; filter อยู่ใน query (ไม่อ่านทั้งหมดแล้วกรองในแอป); ถอดรหัส code/PIN
     ด้วย method ของ module `evoucher` (กฎข้อ 4) ตอนสร้าง response เท่านั้น ห้าม log ค่า plaintext; ไม่มี route รายตัว — "ลูกค้าคนอื่นเข้าไม่ได้" พิสูจน์ด้วยรายการของ B ที่ไม่มี
-    code ของ A (AC-6, AC-34)
+    code ของ A (AC-6, AC-34); (review #140) เพิ่ม index `(customer_id, status)` บน `evoucher_code` + migration ใน PR ของ EV-7a — index เดิม `(pool_id, code)`, `(pool_id, status)`,
+    `(order_id)` ไม่ครอบ และตารางนี้โตตามจำนวน code ที่ import ทั้งหมด
 23. (รอบ 10, EV-7a) ข้อมูลพาร์ทเนอร์บน PDP มาจาก `GET /store/products*` ของ Medusa ผ่าน `allowFields(...)` ใน `src/api/middlewares.ts` (global middleware ตาม docs ของ Medusa —
     route-level ใช้ไม่ได้) ระบุ path **ทีละ field** เท่านั้น: ของ pool `name`, `face_value`, `validity_note`, `how_to_use`; ของ partner `name`, `logo_url`, `terms_url` —
     ห้ามระบุ path ที่ขึ้นต้นด้วย relation ของ code หรือ field ใดของ `evoucher_code` (Medusa ตัด field ที่ไม่ได้อนุญาตทิ้งเอง); ถ้า Query ไปถึง partner จาก pool ไม่ได้
     (relation ใน module) ให้หยุดและรายงาน — ทางสำรองคือ store route ของ module เราเอง (`GET /store/evoucher/variants/:id`) ซึ่งไม่ต้องมี ADR แต่ต้องปรับ spec ก่อน
-24. (รอบ 10, EV-7c — **รอ owner ตอบ Q10**; ค่าที่เสนอ = Q10 ทาง (ก)) checkout ของ cart ที่**ทุก** line `requires_shipping=false`:
+24. (รอบ 10, EV-7c — **owner ตัดสิน Q10 = (ก) 2026-10-27**) checkout ของ cart ที่**ทุก** line `requires_shipping=false`:
     (a) ข้ามขั้น delivery (ไม่ใส่ shipping method — AC-3; ถ้าจำเป็นต้องมีให้เลือก `type.code = "digital-delivery"` ตามกฎข้อ 8 ไม่ใช่ตัวแรก)
     (b) ขั้นที่อยู่เก็บ**ที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี** (ฟอร์ม billing เดิมของ starter; ไม่มีคำว่า "ที่อยู่จัดส่ง") แล้วตั้ง `shipping_address` = ที่อยู่เดียวกันเพื่อให้ Tax module
     ของ Medusa คำนวณ VAT 7% เป็น tax line (builder ยืนยันกับ core-flows 2.22.1 ว่าการคำนวณภาษีของ cart อ่าน `shipping_address` — ถ้าอ่าน billing ได้ด้วยไม่ต้องตั้ง shipping)
     (c) หลัง complete redirect ไป `/<countryCode จาก URL ปัจจุบัน>/order/<id>/confirmed` (ไม่อ่าน country จาก shipping address)
     (d) cart ผสม (voucher + สินค้าจัดส่ง) ใช้ flow ปกติ — Medusa บังคับ shipping method ตาม profile ของ line ที่ต้องจัดส่งเอง
+25. (รอบ 10, EV-9 — qa) รายการ code ที่เรียงตาม `created_at` (เช่น `GET /admin/evoucher/pools/:id/codes` และตารางใน admin) ใช้ `id` เป็น key เรียงรองเสมอ (`created_at`, `id`) —
+    code จาก CSV เดียวกันมี `created_at` เท่ากัน ถ้าไม่มี key รอง การแบ่งหน้าอาจซ้ำ/หายระหว่างหน้า
 
 ## Acceptance criteria
 - AC-1 Admin import CSV จำนวน 100 code (ซ้ำ 2 รายการ) → 98 `available`, inventory ของ variant +98,
@@ -280,19 +283,22 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-34 (EV-7a, กฎข้อ 22) Given A มี code `delivered` 2, `allocated` 1 (order ของ A) และ B มี code `delivered` 1; pool มี code `available`/`void` ที่ไม่มีเจ้าของ When A
   `GET /store/customers/me/evouchers` Then 200 `count=3` มีเฉพาะ code ของ A, `code`/`pin` เท่ากับค่าที่ถอดรหัสแล้ว, มี `partner.name` และ `pool.how_to_use`, header `Cache-Control`
   มี `no-store`; When B เรียก Then `count=1` และไม่มี id/code ของ A; `limit=101`/`limit=0`/`offset=-1` → 400; ไม่มี token หรือ token ของ affiliate → 401;
-  `GET /store/customers/me/evouchers/<id ของ code ของ A>` → 404 (ไม่มี route); spy logger: ไม่มีบรรทัด log ที่มีค่า code/PIN plaintext (integration http)
+  `GET /store/customers/me/evouchers/<id ของ code ของ A>` → 404 (ไม่มี route); spy logger: ไม่มีบรรทัด log ที่มีค่า code/PIN plaintext (integration http); Given migration ของ EV-7a
+  รันแล้ว Then `pg_indexes` ของ `evoucher_code` มี index ที่คอลัมน์ `(customer_id, status)` (integration modules)
 - AC-35 (EV-7a, กฎข้อ 23) Given voucher variant V (pool + partner) When `GET /store/products/:id?fields=` พร้อม path ของ pool/partner ตามกฎข้อ 23 Then variant V มี `name`, `how_to_use`
   ของ pool และ `name`, `logo_url` ของ partner; variant ที่ไม่มี pool ไม่ error; When ขอ `fields=*variants.evoucher_pool` หรือ path ของ code (เช่น `+variants.evoucher_pool.codes.code`)
   Then JSON ของ response ไม่มี key `codes`, `code`, `pin`, `batch_ref` ที่ใดเลย (ค้นทั้ง object) และไม่ใช่ 5xx; ไม่มี token → ยัง 200 (การเรียกดูสาธารณะ) (integration http)
 - AC-36 (EV-7b) Given PDP ของ voucher variant When e2e เปิด `/th/products/<handle>` Then เห็น `evoucher-partner-block` ที่มีชื่อพาร์ทเนอร์และอักษรไทย; PDP ของสินค้าปกติไม่มีบล็อกนี้;
   Given A มี code ที่ส่งมอบแล้ว When เปิด `vouchers-link` ใน account Then `voucher-card` แสดง code, ชื่อพาร์ทเนอร์, วันหมดอายุ และกด `voucher-copy-button` แล้วค่าใน clipboard
   เท่ากับ code (Playwright `clipboard-read`) (e2e, screenshot ≤ 3)
-- AC-37 (EV-7c, กฎข้อ 24 — ตามทางที่ owner เลือกใน Q10) Given cart ของ A ที่มีแต่ voucher (product ไม่มี shipping profile) When checkout ด้วย manual payment (CI) Then ไม่มีขั้น delivery
-  (ไม่มี element ของขั้น delivery), ฟอร์มที่อยู่ไม่มีคำว่า "จัดส่ง", order สำเร็จที่ `shipping_methods` ว่าง, URL ปลายทางขึ้นต้น `/th/order/` และ (ทาง ก) `order.tax_total > 0`
-  โดย `|tax_total − total × 7/107| ≤ 0.01` (คำนวณใน test ด้วย `MathBN` เพื่อตรวจเท่านั้น — โค้ดไม่คำนวณภาษีเอง); Given cart ผสม Then flow ปกติมีขั้น delivery (e2e + integration
+- AC-37 (EV-7c, กฎข้อ 24 — owner Q10 = (ก)) Given cart ของ A ที่มีแต่ voucher (product ไม่มี shipping profile) When checkout ด้วย manual payment (CI) Then ไม่มีขั้น delivery
+  (ไม่มี element ของขั้น delivery), ขั้นที่อยู่แสดงฟอร์มที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษีและไม่มีคำว่า "จัดส่ง", order สำเร็จที่ `shipping_methods` ว่าง, `order.shipping_address` เท่ากับที่อยู่
+  ที่กรอก (เทียบ `address_1`, `postal_code`, `country_code`), URL ปลายทางขึ้นต้น `/th/order/` และ `order.tax_total > 0` โดย `|tax_total − total × 7/107| ≤ 0.01` (คำนวณใน test ด้วย `MathBN` เพื่อตรวจเท่านั้น — โค้ดไม่คำนวณภาษีเอง); Given cart ผสม Then flow ปกติมีขั้น delivery (e2e + integration
   ส่วน `tax_total`) — AC-3 ส่วน storefront ปิดใน task นี้
 - AC-38 (EV-N1) Given code ที่ `expires_at = now + 7 วัน` พอดี (ควบคุมเวลาใน test) When job รายวันรัน Then นับเป็น `long` ไม่ถูก void (กฎข้อ 12b(a) `>=`); Given code
   `expires_at = now + 7 วัน − 1ms` Then นับเป็น `near`; job ใช้ query เดียวนับ `near`/`long` ต่อ pool (spy นับจำนวน query ต่อ pool = 1) (integration + unit)
+- AC-39 (EV-9, กฎข้อ 25) Given pool ที่ import CSV 30 code ในครั้งเดียว (`created_at` เท่ากันทุกแถว — ตั้งตรงใน test ถ้าจำเป็น) When admin `GET /admin/evoucher/pools/:id/codes?limit=10`
+  ทีละหน้า offset 0, 10, 20 Then รวมได้ 30 id ไม่ซ้ำ และเรียกซ้ำได้ลำดับเดิม (integration http)
 - AC-22 (EV-10, กฎข้อ 13) Given CSV ที่ `expires_at` = `2026-02-30`, `2026-04-31`, `2026-13-01`, `2026-02-30T10:00:00+07:00` (ทีละไฟล์) When import Then ล้ม
   ทั้งไฟล์พร้อมเลขบรรทัด และไม่มี code ถูก insert; `2028-02-29` → สำเร็จ (unit parser + integration 1 กรณี)
 - AC-23 (EV-10, กฎข้อ 14) Given variant V1 ที่ inventory item ถูก variant V2 ใช้ร่วม หรือ V1 มี inventory item 2 ตัว When สร้าง pool ให้ V1 Then 400, ไม่มี pool
@@ -320,7 +326,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - Integration: AC-25, AC-26, AC-27 (EV-4), AC-28, AC-29 (EV-5b), AC-30, AC-30b (EV-12), AC-31 (EV-11), AC-3 (ส่วน `requires_shipping` ของ EV-7)
 - Unit (EV-12): ฟังก์ชัน pure คำนวณ `keep` และเลือก code ที่เว้น (ไกลสุดก่อน, ไม่เว้น code หมดอายุแล้ว) — ครอบทุกกรณีของ AC-30
 - e2e admin: AC-32 (EV-13); integration http: AC-33 (EV-5c)
-- integration http: AC-34, AC-35 (EV-7a); e2e: AC-6, AC-36 (EV-7b), AC-3 ส่วน storefront + AC-37 (EV-7c); integration + unit: AC-38 (EV-N1)
+- integration http: AC-34, AC-35 (EV-7a); e2e: AC-6, AC-36 (EV-7b), AC-3 ส่วน storefront + AC-37 (EV-7c); integration + unit: AC-38 (EV-N1); integration http: AC-39 (EV-9)
 
 ## Tasks
 | ID | Task | Depends |
@@ -333,12 +339,12 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-5b | `resendEvoucherEmailWorkflow` + `POST /admin/evoucher/orders/:id/resend` + ปุ่ม resend บน order widget ของ EV-6 — รวม code `allocated` ที่ส่งอีเมลล้ม (กฎข้อ 17); `idempotency_key` ใหม่ทุกครั้ง (กฎข้อ 19) (AC-18, AC-19, AC-28, AC-29) | EV-4, EV-6 |
 | EV-6 | Admin UI: route page (partner, pool, import, code แบบ masked/reveal) + variant widget + order tab | EV-2 |
 | EV-7 | **แตกรอบ 10** (builder หยุด: ไม่มี route รายการ code, AC-6 404 ไม่มี resource, ข้อมูลพาร์ทเนอร์บน PDP, billing ของ digital-only) → EV-7a / EV-7b / EV-7c ด้านล่าง | — |
-| EV-7a | (backend) `GET /store/customers/me/evouchers` (กฎข้อ 22) + `allowFields` ของ pool/partner บน `GET /store/products*` (กฎข้อ 23) + integration test (AC-34, AC-35) — แตะ `src/api/middlewares.ts` (conflict: เก็บทั้งสองฝั่ง) | EV-4 ☑ (เริ่มได้ทันที) |
+| EV-7a | (backend) `GET /store/customers/me/evouchers` (กฎข้อ 22) + `allowFields` ของ pool/partner บน `GET /store/products*` (กฎข้อ 23) + index `(customer_id, status)` บน `evoucher_code` + migration + integration test (AC-34, AC-35) — แตะ `src/api/middlewares.ts` (conflict: เก็บทั้งสองฝั่ง) | EV-4 ☑ (เริ่มได้ทันที) |
 | EV-7b | (storefront) บล็อก `evoucher-partner-block` บน PDP + หน้า `/account/vouchers` (`vouchers-link`, `voucher-card`, `voucher-copy-button`) + e2e (AC-6, AC-36); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4) | EV-7a |
-| EV-7c | (storefront) checkout digital-only ตามกฎข้อ 24 + e2e (AC-3 ส่วน storefront, AC-37) | **owner ตอบ Q10**, EV-4 ☑, EV-10 ☑ (backfill), CORE-4e ☑ — แตะไฟล์ checkout เดียวกับ CORE-19b/CORE-4g/PAY-6c: ตัวที่ merge ทีหลัง rebase (∥ EV-7a/7b) |
+| EV-7c | (storefront) checkout digital-only ตามกฎข้อ 24 + e2e (AC-3 ส่วน storefront, AC-37) | owner Q10 ☑ (ก) 2026-10-27, EV-4 ☑, EV-10 ☑ (backfill), CORE-4e ☑ — **เริ่มได้** — แตะไฟล์ checkout เดียวกับ CORE-19b/CORE-4g/PAY-6c: ตัวที่ merge ทีหลัง rebase (∥ EV-7a/7b) |
 | EV-N1 | (เล็ก, backend, nit review #123) job รายวันนับ `near`/`long` ใน query เดียว (`count(*) FILTER`), test ขอบ `expires_at = cutoff`, รวม `readEvoucherStockStep` กับ step ตรวจ reservation (refactor — test เดิมของ AC-30/30b ต้องผ่าน) (AC-38) | EV-12 ☑ (#123) |
 | EV-8 | Hardening จาก review EV-2: บังคับกฎข้อ 1 ตอนสร้าง pool (`requires_shipping=false` ที่ inventory item ผ่าน `updateInventoryItemsWorkflow` + compensation, ปฏิเสธ `manage_inventory=false`), `expires_at` แบบวันที่ล้วน, error เดิมไม่ถูกกลบเมื่อ compensation ล้ม; seed (`upgradeDigitalDelivery`) หา option Digital delivery ด้วย `type.code` แทนชื่อ (กฎข้อ 8) (AC-11, AC-12, AC-13, AC-14) | EV-2, EV-3 |
-| EV-9 | follow-up review/QA (เล็ก): route pool list/detail select `low_stock_threshold` เสมอ (คำนวณ `low_stock` ถูกแม้ client ส่ง `fields` เอง) + module link `evoucher_code ↔ order` (`src/links/`) ที่ order tab (EV-6) และ resend (EV-5b) ใช้ + ฟอร์ม admin กัน double-submit และ `Label` ผูก `htmlFor`/`id` (กฎข้อ 11) (AC-15, AC-16, AC-20); (รอบ 9) ถ้า EV-5b (#111) merge ก่อน ให้เปลี่ยนการหา code ของ resend จาก filter `order_id` เป็น link นี้ใน PR เดียวกัน (test AC-18 เดิมต้องผ่าน) | EV-2, EV-6 |
+| EV-9 | follow-up review/QA (เล็ก): route pool list/detail select `low_stock_threshold` เสมอ (คำนวณ `low_stock` ถูกแม้ client ส่ง `fields` เอง) + module link `evoucher_code ↔ order` (`src/links/`) ที่ order tab (EV-6) และ resend (EV-5b) ใช้ + ฟอร์ม admin กัน double-submit และ `Label` ผูก `htmlFor`/`id` (กฎข้อ 11) (AC-15, AC-16, AC-20); (รอบ 9) ถ้า EV-5b (#111) merge ก่อน ให้เปลี่ยนการหา code ของ resend จาก filter `order_id` เป็น link นี้ใน PR เดียวกัน (test AC-18 เดิมต้องผ่าน); (รอบ 10, qa) เรียง code ด้วย `created_at` + `id` เป็น key รอง (กฎข้อ 25, AC-39) | EV-2, EV-6 |
 | EV-10 | follow-up review/QA รอบ 5 (เล็ก, backend): admin void ตรวจ reservation (กฎข้อ 12 — เฉพาะส่วน admin void), `expires_at` วันที่มีจริงแบบ round-trip (กฎข้อ 13), ปฏิเสธ variant ที่ใช้ inventory item ร่วม/หลายตัว (กฎข้อ 14), ลบ pool คืน `requires_shipping` + migration script backfill pool ก่อน EV-8 (กฎข้อ 15) (AC-21..24) — **รอบ 6 (#85)**: เปลี่ยนจาก "ต้องอยู่ profile Digital" เป็น "product ต้องไม่มี shipping profile" (กฎข้อ 1; 400 ตาม Q9 ที่ owner ตัดสินแล้ว, AC-11) และย้ายส่วน job รายวันไป EV-12 | EV-5, EV-8 |
 | EV-11 | (เล็ก, follow-up รอบ 6) เปลี่ยนเงื่อนไข `logger.warn` ใน EV-4 จาก "product ไม่อยู่ใน profile `digital`" เป็น "product มี shipping profile ใดๆ" (กฎข้อ 1) — ไม่ลบ warn (AC-31) | EV-4 |
 | EV-12 | (owner Q6 2026-10-27 — **เริ่มได้**) job รายวันเว้น code ใกล้หมดอายุไว้เท่าที่ order จอง (`keep`, `expires_at` ไกลสุดก่อน) แล้ว void ส่วนที่เหลือ + อีเมลสรุปแสดง void/เว้น/ขาดต่อ pool (กฎข้อ 12b); allocation claim code ที่เว้นเมื่อ code อายุยาวไม่พอ (กฎข้อ 2 ข้อยกเว้น — เพิ่ม query ส่วนเติม `expires_at DESC` ใน `claimCodesForOrder` ของ `modules/evoucher/service.ts`) (AC-5 ปรับ, AC-30, AC-30b) | EV-5 ☑, EV-10 ☑ |
@@ -347,7 +353,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-10 ∥ EV-4/EV-9 (EV-10 แตะ `void-evoucher-codes.ts`, `evoucher-pool.ts`, `utils/csv.ts`, migration script — ถ้า EV-9 แตะ
 `evoucher-pool.ts` ร่วม ตัวที่ merge ทีหลัง rebase) และต้อง merge ก่อน release ที่มี EV-7 (backfill); EV-9 หลัง EV-6 (แก้ฟอร์มของ EV-6; ถ้า EV-6 ต้องใช้ link ก่อน ให้รวม link เข้า PR นั้นแทน); EV-5b หลัง EV-4 และ EV-6; EV-11 หลัง EV-4 (∥ EV-5b; แตะไฟล์ allocation เดียวกันได้ — ตัวที่ merge ทีหลัง rebase); EV-12 เริ่มได้ทันที (∥ EV-9/EV-13 — EV-12 แตะ job/workflow void + `claimCodesForOrder` ของ service + template สรุป; ไม่แตะ admin UI);
 EV-13 หลัง EV-5b (#111) (∥ EV-12; ถ้า EV-9 แตะ widget order เดียวกัน ตัวที่ merge ทีหลัง rebase);
-(รอบ 10) EV-7a เริ่มได้ทันที → EV-7b; EV-7c รอ Q10 แล้ว ∥ EV-7a/EV-7b (คนละไฟล์: checkout vs PDP/account); EV-N1 ∥ ทุกตัว (แตะ job/workflow expiry ของ EV-12 เท่านั้น);
+(รอบ 10) EV-7a เริ่มได้ทันที → EV-7b; EV-7c เริ่มได้ (Q10 = ก) ∥ EV-7a/EV-7b (คนละไฟล์: checkout vs PDP/account); EV-9 รวมกฎข้อ 25/AC-39 (ถ้า PR ของ EV-9 เปิดอยู่แล้ว แก้ใน PR นั้น); EV-N1 ∥ ทุกตัว (แตะ job/workflow expiry ของ EV-12 เท่านั้น);
 release ที่มี EV-7c ต้องมี backfill ของ EV-10 แล้ว (☑)
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
@@ -365,12 +371,13 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-10-26): อีเมล `evoucher.delivered` ส่ง**เสมอ**แม้ order ตั้ง `no_notification=true` (เป็นการส่งมอบสินค้า) — กฎข้อ 20
 - ~~Q9~~ ตัดสินแล้ว (owner 2026-10-26): สร้าง pool ให้ variant ที่ product มี shipping profile ใดๆ → **400** ไม่มี pool (admin ต้องเอา profile ออกจาก product ก่อน)
   — กฎข้อ 1, AC-11
-- Q10 (รอบ 10, EV-7c) checkout digital-only ข้ามที่อยู่ทั้งหมดด้วยไหม — Medusa คำนวณ tax line ของ cart จากที่อยู่ (`shipping_address`) ถ้า cart ไม่มีที่อยู่เลย order จะไม่มี tax line
+- ~~Q10~~ ตัดสินแล้ว (owner 2026-10-27): **(ก)** เก็บที่อยู่สำหรับใบกำกับภาษีแล้วใช้เป็น `shipping_address` ข้ามเฉพาะขั้นเลือกวิธีจัดส่ง — กฎข้อ 24, AC-37, EV-7c เริ่มได้;
+  คำถามเดิม (รอบ 10, EV-7c): checkout digital-only ข้ามที่อยู่ทั้งหมดด้วยไหม — Medusa คำนวณ tax line ของ cart จากที่อยู่ (`shipping_address`) ถ้า cart ไม่มีที่อยู่เลย order จะไม่มี tax line
   (`tax_total = 0`) แม้ราคารวม VAT แล้ว → กระทบใบเสร็จ/ใบกำกับภาษีและรายงาน VAT ทางเลือก:
   (ก) **[แนะนำ]** เก็บที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี (ฟอร์ม billing เดิม) และใช้เป็น `shipping_address` เพื่อให้ Medusa คำนวณ VAT — ข้ามเฉพาะขั้นเลือกวิธีจัดส่ง;
   เหตุผล: VAT 7% ถูกบันทึกเป็น tax line เหมือนสินค้าอื่น (spec 01), ใช้ฟอร์มที่มีอยู่, ลูกค้าที่ต้องการใบกำกับภาษีเต็มรูปมีที่อยู่ครบ; ข้อเสีย: ลูกค้ากรอกที่อยู่ 1 ครั้งทั้งที่ไม่มีของส่ง
   (ข) ข้ามที่อยู่ทั้งหมด — checkout สั้นที่สุด แต่ order ของ voucher ไม่มี tax line (ต้องแยกคิด VAT นอกระบบ) และออกใบกำกับเต็มรูปไม่ได้
   (ค) เก็บเฉพาะชื่อ + ประเทศ (ไม่ต้องมีที่อยู่เต็ม) แล้วตั้ง `shipping_address.country_code = "th"` — ได้ tax line แต่ออกใบกำกับเต็มรูปไม่ได้
-- Q11 (รอบ 10, แจ้งจาก review #123 EV-12) pool ที่หลังรัน job `stocked < reserved` แต่**ไม่มี** code ถูก void/เว้น (เช่น code อายุยาวทั้งหมด แต่ stock ไม่พอ order ที่จอง) ไม่อยู่ในอีเมลสรุป
+- ~~Q11~~ ตัดสินแล้ว (owner 2026-10-27): **คงเดิม** ไม่มี task; คำถามเดิม (รอบ 10, แจ้งจาก review #123 EV-12) pool ที่หลังรัน job `stocked < reserved` แต่**ไม่มี** code ถูก void/เว้น (เช่น code อายุยาวทั้งหมด แต่ stock ไม่พอ order ที่จอง) ไม่อยู่ในอีเมลสรุป
   expiry (ตรงกับกฎข้อ 12b(d)) — **ข้อเสนอ: คงเดิม** (ไม่มี task) เพราะสถานการณ์นี้ไม่ได้เกิดจาก expiry และ admin ได้อีเมล backordered ตอน capture ตามกฎข้อ 9/18 อยู่แล้ว;
   ถ้า owner ต้องการเตือนล่วงหน้า → task เล็กเพิ่มบรรทัดเตือนใน job เดิม

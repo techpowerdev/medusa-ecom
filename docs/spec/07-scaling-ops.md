@@ -76,8 +76,10 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 ## Acceptance criteria
 - AC-1 Backend boot เป็น `server` และ `worker` ได้จาก image เดียวกัน; scheduled jobs รันเฉพาะบน worker
 - AC-2 k6 flash-sale burst: 500 rps เป็นเวลา 60 วินาที กับ `total_cap=100` → มี order ที่ได้ส่วนลด
-  พอดี 100 รายการ, p95 < 300ms, 0 5xx
-- AC-3 k6 group-buy join: การเข้าร่วมพร้อมกัน 200 ครั้งกับกลุ่มขนาด 10 คน → มีสมาชิกพอดี 10 คน
+  พอดี 100 รายการ, p95 < 300ms, 0 5xx — (รอบ 10, owner Q-O3) บน runner ของ CI: "order ที่ได้ส่วนลด" = order จาก **complete checkout** ด้วย manual payment ที่มี adjustment
+  ของ promotion ในแคมเปญ (นับด้วย query DB หลังจบ) = 100 และ `units_sold = 100`, ที่เหลือได้ 409 `FLASH_SOLD_OUT`, 5xx = 0 → **gate** (workflow ล้มถ้าไม่ผ่าน);
+  p95 < 300ms **รายงานอย่างเดียว** (threshold ของ k6 ไม่ทำให้ล้ม) จนกว่าจะมี staging จริง (ต้องมี ADR)
+- AC-3 k6 group-buy join: การเข้าร่วมพร้อมกัน 200 ครั้งกับกลุ่มขนาด 10 คน → มีสมาชิกพอดี 10 คน (ลูกค้า 200 คนจาก seed script; ตรวจจาก DB หลังจบ; 5xx = 0 — gate)
 - AC-4 ซ้อม restore จาก backup สำเร็จและร้าน boot ได้ (runbook)
 - AC-5 (ADR-012, ปรับรอบ 8 ตามผลทดลอง OPS-8 #101 และการตัดสินของ owner 2026-10-26) Given compose แบบ prod (1 server + 1 worker + Redis,
   `NODE_ENV=production`) When Redis ถูก `docker pause` นาน 30 วินาทีระหว่างที่ worker ทำงานอยู่ แล้ว unpause Then event ที่ emit จาก server
@@ -161,7 +163,7 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-3 | JSON logs + request id + alert log `Error running event bus worker` ของ worker (รอบ 8, AC-18) — รอบ 9 แยก rate limiting → OPS-3b และ Sentry → OPS-3c | OPS-1, OPS-8 ☑ (#101) |
 | OPS-3b | (รอบ 9) rate limiting ตาม Deliverables ข้อ 5 + `/store/search` (AC-22) — **⏸ backlog หลัง v1.0** (owner Q-O1 2026-10-27); ข้อเสนอเดิมใน Q-O1 ใช้ตอนกลับมาทำ | OPS-3 ☑ |
 | OPS-3c | (รอบ 9) error tracking Sentry ตาม Deliverables ข้อ 6 (AC-23) — **⏸ backlog หลัง v1.0** (owner Q-O2 2026-10-27); dependency ใหม่ (`@sentry/*`) ระบุใน PR ตอนกลับมาทำ | OPS-3 ☑ |
-| OPS-4 | k6 scripts + nightly CI job + evidence (AC-2, AC-3) — **รอ owner ตอบ Q-O3** (สภาพแวดล้อม, seed, นิยาม "พอดี 100", k6, workflow) | เดิม: FS-6 ☑, GB-7 — **เสนอ (Q-O3 e)**: FS-3 ☑, GB-3 ☑, OPS-1 ☑, OPS-14 (#133, แตะ CI) |
+| OPS-4 | k6 scripts ใน `tools/load/` + seed script + `.github/workflows/load-nightly.yml` + evidence (AC-2, AC-3) ตาม Q-O3 ที่ owner ตัดสิน 2026-10-27 (a)–(e) — **เริ่มได้** | FS-3 ☑, GB-3 ☑, OPS-1 ☑ |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
 | OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13); fail-fast `STOREFRONT_URL` (รอบ 7, AC-17 — ถ้า GB-4 ยังไม่ merge ตอนเริ่ม OPS-7 ให้ทำส่วนนี้เมื่อ GB-4 merge แล้ว ไม่แตะโค้ดอีเมลของ GB-4) | OPS-2, PAY-1, CORE-3, AF-2 (#66), GB-4 (#89, เฉพาะ AC-17) |
@@ -178,10 +180,10 @@ OPS-3 ∥ OPS-6 ∥ OPS-7 ∥ OPS-8 ∥ OPS-9 (OPS-9 แตะเฉพาะ `i
 OPS-8 แตะ `tools/ops/`/`docs/ops/production.md` — ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)
 OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น; OPS-13 หลัง OPS-7 (#108) ∥ OPS-12; OPS-3b ∥ OPS-3c หลัง OPS-3 และคำตอบ Q-O1/Q-O2
 (รอบ 10) สถานะ: OPS-3 ☑ #120, OPS-7 ☑ #108, OPS-13 ☑ #127; OPS-3b/OPS-3c ⏸ หลัง v1.0; OPS-12 ∥ OPS-13b ∥ OPS-10 เริ่มได้ (OPS-12/OPS-10 แตะ `ci.yml` ร่วมกับ OPS-14 #133 —
-เริ่มหลัง #133 merge เพื่อลด conflict); OPS-15 หลัง OPS-14; OPS-4 รอ Q-O3
+เริ่มหลัง #133 merge เพื่อลด conflict); OPS-15 หลัง OPS-14; OPS-4 เริ่มได้ (Q-O3 ตัดสินแล้ว; workflow ไฟล์แยกจึงไม่ชน `ci.yml` ของ #133)
 
 ## Open questions (รอบ 10)
-- Q-O3 (OPS-4 load test — builder ยังไม่เริ่ม ต้องตัดสินก่อน) **ข้อเสนอรวม**:
+- ~~Q-O3~~ ตัดสินแล้ว (owner 2026-10-27): **รับข้อเสนอทั้งชุด (a)–(e)** ด้านล่าง → OPS-4 เริ่มได้ (Depends FS-3 ☑, GB-3 ☑, OPS-1 ☑); คำถามเดิม (OPS-4 load test) **ข้อเสนอรวม**:
   (a) **สภาพแวดล้อม**: ยังไม่มี staging — เสนอบูต stack แบบ prod ใน GitHub runner ด้วย `docker-compose.prod.yml` ของ OPS-1 (server + worker + Postgres + Redis ใน runner เดียว,
   `NODE_ENV=production`, `ALLOW_TEST_PROVIDERS=true` เพื่อใช้ manual payment) **ไม่สร้าง infra ใหม่**; ข้อจำกัด: runner มาตรฐาน (4 vCPU/16GB) และ k6 อยู่เครื่องเดียวกับระบบ ตัวเลข latency
   จึงไม่แทน production → เสนอให้ AC-2/AC-3 ส่วน **ความถูกต้อง** (พอดี 100 / พอดี 10 / 0 5xx) เป็น gate และ p95 < 300ms **รายงานอย่างเดียว** (ไม่ fail) จนกว่าจะมี staging จริง
@@ -194,8 +196,8 @@ OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `c
   5xx = 0; burst 500 rps เป็น add-to-cart/อ่าน cart ของลูกค้าเดียวกันระหว่างนั้น (ไม่ใช่ 500 order/วินาที)
   (d) **k6**: ใช้ image `grafana/k6` แบบ pin เวอร์ชัน (หรือ action `grafana/setup-k6-action`) — ไม่เพิ่ม dependency ใน `package.json`/pnpm; script เป็น JS ใน `tools/load/`
   (e) **workflow**: ไฟล์แยก `.github/workflows/load-nightly.yml` (`schedule` รายคืน + `workflow_dispatch`) ไม่อยู่ใน `ci.yml` (ไม่กระทบ PR และกติกา merge); ผล k6 (`--summary-export`) เป็น
-  artifact 14 วัน; `docs/evidence/scale/` เก็บ `REPORT.md` ของ PR OPS-4 ครั้งเดียว (nightly ไม่ commit); Depends เปลี่ยนจาก GB-7 เป็น FS-3 ☑ + GB-3 ☑ เพราะ load test ยิง API ล้วน
-  (ไม่ใช้หน้า storefront) → เริ่มได้ทันทีหลัง owner ตอบ
+  artifact 14 วัน; `docs/evidence/scale/` เก็บ `REPORT.md` ของ PR OPS-4 ครั้งเดียว (nightly ไม่ commit); Depends เปลี่ยนจาก FS-6 + GB-7 เป็น FS-3 ☑ + GB-3 ☑ + OPS-1 ☑ เพราะ load test ยิง
+  API ล้วน (ไม่ใช้หน้า storefront) และใช้ compose ของ OPS-1
 - ~~Q-O1~~ ตัดสินแล้ว (owner 2026-10-27): rate limiting **เลื่อนหลัง v1.0** — OPS-3b ย้ายไป backlog (ข้อเสนอด้านล่างเก็บไว้ใช้ตอนกลับมาทำ)
 - ~~Q-O2~~ ตัดสินแล้ว (owner 2026-10-27): Sentry **เลื่อนหลัง v1.0** — OPS-3c ย้ายไป backlog; v1.0 ใช้ alert จาก log (AC-18)
 

@@ -174,7 +174,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
     เพื่อให้ error ชั่วคราวระหว่างหา order ถูก retry/กวาดซ้ำได้
 17. (**ปิดรอบ 10 — ไม่ต้องทำ**: QA #115 `docs/evidence/flash-sale/FS-6/REPORT.md` หัวข้อ "ราคา PDP เทียบกับ cart" ตรวจ target rule 5 แบบ (`items.product.id`,
     `items.product_id`, `items.variant_id`, `items.product.collection_id`, `items.product.categories.id`) + fixed ฿100 + จำนวน 2 แล้ว preview = `cart.total` ทุกกรณี —
-    preview ส่งทั้ง `product_id` และ `product` ของ variant อยู่แล้ว (`lib/flash-sale-preview.ts`) และ cart ของ Medusa ก็รับทั้งสองแบบ ข้อกังวลเดิมไม่เกิดจริง)
+    preview ส่งทั้ง `product_id` และ `product` ของ variant อยู่แล้ว (`apps/backend/src/lib/flash-sale-preview.ts`) และ cart ของ Medusa ก็รับทั้งสองแบบ ข้อกังวลเดิมไม่เกิดจริง)
     ข้อความเดิม: (FS-12, รอบ 9 — follow-up qa/review FS-6 #115) context ของ item ที่ preview ส่งให้ `computeActions` (`get-active-flash-sales.ts`) ต้องมีรูปเดียวกับ context ที่
     Medusa สร้างตอนคำนวณ promotion ของ cart (builder อ่าน core-flows 2.22.1 ว่า cart ส่ง field ใดของ item เช่น `product.id` แบบซ้อน) — promotion ที่มีผลกับสินค้าใน cart ต้อง
     มี `flash_price` ใน preview และ promotion ที่ไม่มีผลใน cart ต้องไม่มี (ปัจจุบัน preview ส่ง `product_id` แบน ทำให้ rule `items.product.id` กับ preview ไม่ตรงกัน); ข้อจำกัดของ

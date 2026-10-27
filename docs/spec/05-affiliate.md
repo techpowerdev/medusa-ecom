@@ -214,7 +214,7 @@ Payout
 30. (รอบ 9, AF-10 — follow-up review #90) ตาข่ายกันพลาดของ reversal จาก cancel: reversal ของ AF-4 retry ใต้ lock ได้ราว 40 วินาที ถ้า DB ล่มนานกว่านั้น event หายและ entry
     `pending` ของ order ที่ยกเลิกจะถูก approve → maturity job รายวัน (AF-4) ก่อน approve ให้อ่าน `order.status` ของ entry ที่ครบกำหนด; order `canceled` และยอดสุทธิของ line > 0
     → สร้าง reversal ตามกฎ 28a (ใต้ lock `affiliate-attribution:<order_id>` ตามกฎ 27, idempotent กับ reversal ที่ subscriber สร้าง) แทนการ approve และ log warn `affiliate_cancel_reconciled`
-    — ไม่เพิ่ม job ใหม่ ไม่ครอบ entry ที่ approve ไปแล้ว (ถ้าต้องการต้องเป็น task ใหม่ — รอบ 10: owner Q15)
+    — ไม่เพิ่ม job ใหม่ ไม่ครอบ entry ที่ approve ไปแล้ว (owner Q15 2026-10-27: เลื่อนหลัง v1.0 → AF-11 backlog)
 31. (รอบ 10, AF-3c — review #119) การ sync cookie `aff` ก่อนชำระ (AF-3b) ต้องครอบ**ทุก**จุดที่ storefront เริ่มการชำระ ใน `modules/checkout/components/**`:
     (a) `stripe.confirmPayment(` (บัตร) อยู่ภายใน argument ของ `syncAffiliateBefore(`; (b) ในฟังก์ชันที่เรียก `confirmPromptPayPayment(` ต้องมี `syncAffiliateBefore(` ก่อนหน้าใน
     ฟังก์ชันเดียวกัน (ตามที่ #119 ทำ: sync ครอบ `retrievePaymentIntent` ตัวแรกแล้วจึง confirm); (c) `placeOrder(` ของ manual ส่ง `cart.metadata` ให้ sync ภายใน; การเรียก
@@ -349,9 +349,12 @@ Payout
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
-(รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125; AF-3c ∥ AF-N2 ∥ AF-6 ∥ AF-N1 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
+(รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 ∥ AF-6 ∥ AF-N1 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
 backlog หลัง v1.0 (ไม่มี AC): dedupe ของ `/affiliate/products` ทำใน SQL เมื่อแคตตาล็อกใหญ่ (v1 dedupe ในแอปมีเพดานจำนวนสินค้าตามที่ AF-7b ทำ — review #122);
-AF-11 reconcile entry ที่ **approve ไปแล้ว** ของ order ที่ถูกยกเลิกแต่ไม่มี reversal (review #125) — รอ owner ตอบ Q15
+AF-11 reconcile entry ที่ **approve ไปแล้ว** ของ order ที่ถูกยกเลิกแต่ไม่มี reversal (review #125) — ⏸ หลัง v1.0 (owner Q15 2026-10-27)
+(รอบ 10 — qa #138 AF-6, ทำใน #138 ถ้ายังไม่ merge มิฉะนั้นเป็น PR ถัดไปที่แตะหน้า Affiliates) AC-26 เพิ่ม: ที่ viewport 1280×800 ปุ่ม `affiliate-payout-cancel` อยู่ในจอ
+(`boundingBox` อยู่ใน viewport หรือ container เลื่อนแนวนอนภายในตัวเองได้) และเมื่อยกเลิก**ไม่สำเร็จ** (route ตอบ 4xx/5xx) ต้อง refetch รายการ payout (มี request GET ใหม่) และแสดง toast error
+— ไม่สร้าง task ใหม่; ข้อสังเกตอื่นของ #138 (Ledger/Payouts แสดงแค่ `affiliate_id`, e2e จับกันกดซ้ำไม่ได้มีแค่ unit) รอคำตอบ owner เรื่อง admin UI อ่านอย่างเดียว (Open questions รอบ 10)
 AF-3b แตะ `lib/data/cart.ts` เดียวกับ CORE-14/CORE-4d — ตัวที่ merge ทีหลัง rebase
 follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใน production (กฎ 22) ผนวกเข้า **OPS-7** (spec 07 AC-13) ไม่ใช่ task ของ spec นี้;
 `/buy/[items]` ที่สร้าง cart โดยไม่มี token อยู่ใน CORE-14 (spec 01 AC-41) แล้ว
@@ -381,7 +384,9 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 - ~~Q13~~ ตัดสินแล้ว (owner ยืนยัน 2026-10-27): order ที่ยกเลิกก่อน attribution ไม่บันทึกทั้ง `AffiliateAttribution` และ entry (ตามที่ AF-4b #91 ทำ) — กฎ 27
 - ~~Q14~~ ตัดสินแล้ว (owner 2026-10-27): เก็บ `GET /affiliate/me/payouts` ที่ #110 ทำไว้ (อ่านอย่างเดียว ไม่ส่ง `entry_ids`, paging ≤ 100 ค่าเริ่มต้น 50) และ
   **ไม่แสดง `reference`** ให้ affiliate (ตัดออกใน AF-7b) — API, AC-32
-- Q15 (รอบ 10, review #125) entry ที่ maturity job **approve ไปแล้ว** ก่อน order ถูกยกเลิก และ event `order.canceled` หาย (reversal ของ AF-4 retry ~40s ไม่สำเร็จ เช่น DB ล่มนาน) จะค้างเป็น
+- (รอบ 10, qa #138 AF-6 — **session หลักกำลังยืนยันกับ owner; ยังไม่สร้าง task**) admin UI ของ affiliate ตอนนี้**ดูรายการได้อย่างเดียว** — สร้าง/แก้โปรแกรม, อนุมัติ/ระงับ affiliate,
+  สร้าง payout และ mark paid ต้องทำผ่าน API; ต้องมี task UI สำหรับงานเหล่านี้ไหม (และให้ API ส่งชื่อ/อีเมลของ affiliate ใน Ledger/Payouts แทน `affiliate_id` อย่างเดียว)
+- ~~Q15~~ ตัดสินแล้ว (owner 2026-10-27): **เลื่อนหลัง v1.0** (AF-11 backlog); คำถามเดิม (รอบ 10, review #125) entry ที่ maturity job **approve ไปแล้ว** ก่อน order ถูกยกเลิก และ event `order.canceled` หาย (reversal ของ AF-4 retry ~40s ไม่สำเร็จ เช่น DB ล่มนาน) จะค้างเป็น
   ค่าคอมที่จ่ายได้ — AF-10 (กฎ 30) ครอบเฉพาะ entry ที่ยัง `pending` ทางเลือก: (ก) **[แนะนำ] เลื่อนหลัง v1.0** (ไม่มี task ตอนนี้) — ต้องเกิดสองเหตุพร้อมกัน (cancel หลังพ้น `hold_days`
   + DB ล่มเกิน 40s ตอนนั้น) และ admin ตรวจ/ยกเลิก payout `draft` ได้ก่อน mark paid; (ข) AF-11: maturity job สแกน entry `approved` ที่ยังไม่อยู่ใน payout `paid` ของ order ที่ถูกยกเลิก
   แล้วสร้าง reversal (กฎ 28a) — เพิ่ม query ข้ามโมดูลทุกวันตามจำนวน entry approved ที่ยังไม่จ่าย
