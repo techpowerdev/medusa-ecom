@@ -4,6 +4,7 @@ import { Badge, Heading, Input, Label, Text } from "@modules/common/components/u
 import React from "react"
 
 import { applyPromotions } from "@lib/data/cart"
+import { friendlyErrorMessage } from "@lib/util/error-message"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import Trash from "@modules/common/icons/trash"
@@ -45,7 +46,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
     try {
       await applyPromotions(codes)
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : String(e))
+      setErrorMessage(friendlyErrorMessage(e, "ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค้ดอีกครั้ง"))
     }
 
     if (input) {
@@ -64,7 +65,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
               className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
               data-testid="add-discount-button"
             >
-              Add Promotion Code(s)
+              เพิ่มโค้ดส่วนลด
             </button>
 
             {/* <Tooltip content="You can add multiple promotion codes">
@@ -87,7 +88,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                   variant="secondary"
                   data-testid="discount-apply-button"
                 >
-                  Apply
+                  ใช้โค้ด
                 </SubmitButton>
               </div>
 
@@ -103,7 +104,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
           <div className="w-full flex items-center">
             <div className="flex flex-col w-full">
               <Heading className="txt-medium mb-2">
-                Promotion(s) applied:
+                โค้ดส่วนลดที่ใช้:
               </Heading>
 
               {promotions.map((promotion) => {
@@ -158,7 +159,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                       >
                         <Trash size={14} />
                         <span className="sr-only">
-                          Remove discount code from order
+                          ลบโค้ดส่วนลดออกจากคำสั่งซื้อ
                         </span>
                       </button>
                     )}
