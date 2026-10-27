@@ -1,0 +1,33 @@
+# AF-7b test evidence — 2026-10-27 +0700
+# node v22.23.3, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose (DB medusa_af7b)
+# รันในเครื่องเฉพาะ test ของ task นี้; ชุดเต็มให้ CI รัน
+### Red (ก่อนเขียนโค้ด)
+portal.unit.spec.ts: Tests: 6 failed, 9 passed — selectProductProgram is not a function
+affiliate-portal.spec.ts: Tests: 4 failed, 11 passed — paging ยังนับคู่โปรแกรม–สินค้า (โปรแกรม lower ทำให้ count และลำดับหน้าไม่ตรง), AC-34 ได้ 3 การ์ด/2 การ์ดแทน 1, payout ยังมี reference = "bank-transfer-0001"
+### Green portal.unit.spec.ts (กฎ 29)
+PASS src/modules/affiliate/utils/__tests__/portal.unit.spec.ts
+Tests:       15 passed, 15 total
+### Green affiliate-portal.spec.ts (AC-13, AC-18, AC-32 reference, AC-34, กฎ 16, 29, Q2, Q6)
+      ✓ returns 401 without a token (194 ms)
+      ✓ returns 401 without a token when the path differs only in case (441 ms)
+      ✓ returns 401 for a customer token (288 ms)
+      ✓ pending reaches only /affiliate/me (274 ms)
+      ✓ suspended reads me, earnings and payouts but not programs or products (371 ms)
+      ✓ active reaches every portal route (449 ms)
+      ✓ AC-13: an upcoming program lists its collection's products; draft programs never show (328 ms)
+      ✓ rule 16 / Q2: active scope is the union of variants, collections and direct categories (276 ms)
+      ✓ pages through unique products ordered by their program's starts_at (297 ms)
+      ✓ AC-34: one card per product with the rate it really earns (rule 29) (296 ms)
+      ✓ AC-34: variants earning different rates show the highest with rate_varies (280 ms)
+      ✓ rejects an unknown status (326 ms)
+      ✓ lists published programs that are active or upcoming with their state (231 ms)
+      ✓ pages programs and payouts with limit/offset (243 ms)
+      ✓ returns only the caller's earnings totals by status within [from, to) and own payouts (370 ms)
+Tests:       15 passed, 15 total
+### unit ทั้งหมด
+Test Suites: 52 passed, 52 total
+Tests:       541 passed, 541 total
+### pnpm lint && pnpm typecheck && pnpm --filter backend build
+lint: exit 0 (backend: No lint issues found; storefront: 0 errors)
+typecheck: exit 0
+build: Backend build completed successfully; Frontend build completed successfully
