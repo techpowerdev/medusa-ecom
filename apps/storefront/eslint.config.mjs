@@ -50,6 +50,8 @@ const THAI_UI_FILES = [
   // AF-8a (portal affiliate)
   "src/app/[[]countryCode]/(main)/affiliate/**",
   "src/modules/affiliate/**",
+  // EV-7b (บล็อกพาร์ทเนอร์บน PDP, บัตรกำนัลของฉัน; page อยู่ใต้ glob account ของ 4c1 แล้ว)
+  "src/modules/evoucher/**",
 ]
 
 export default defineConfig([

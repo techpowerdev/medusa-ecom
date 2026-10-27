@@ -37,7 +37,8 @@ const StoreHits = ({ hitsPerPage, currencyCode, regionId }: StoreHitsProps) => {
     regionId,
     items.map((hit) => hit.objectID)
   )
-  const { status, indexUiState } = useInstantSearch()
+  // catchError: InstantSearch โยน error ของ search ออกเป็น uncaught (pageerror) เมื่อไม่มีใครรับ — ที่นี่แสดง products-error แทน
+  const { status, indexUiState } = useInstantSearch({ catchError: true })
   const { isSearching, hasNoResultsYet } = useSearchSettled()
 
   const { page, ...refinements } = indexUiState
@@ -58,20 +59,18 @@ const StoreHits = ({ hitsPerPage, currencyCode, regionId }: StoreHitsProps) => {
 
   const showSkeleton = hasNoResultsYet || (isSearching && isPagingOnly)
 
-  if (status === "error") {
-    return (
-      <Text
-        className="py-16 text-center text-ui-fg-error"
-        data-testid="products-error"
-      >
-        โหลดรายการสินค้าไม่สำเร็จ
-      </Text>
-    )
-  }
-
+  // CORE-15 (กฎข้อ 29): ห้าม return ก่อน `SearchPagination` — widget ที่ unmount/mount ตาม status ทำให้ InstantSearch
+  // ยิง search ใหม่ทุกครั้ง → error → loading → error วนไม่จบ; search ใหม่เกิดเฉพาะเมื่อผู้ใช้เปลี่ยน query/filter/หน้า
   return (
     <>
-      {showSkeleton ? (
+      {status === "error" ? (
+        <Text
+          className="py-16 text-center text-ui-fg-error"
+          data-testid="products-error"
+        >
+          โหลดรายการสินค้าไม่สำเร็จ
+        </Text>
+      ) : showSkeleton ? (
         <SkeletonProductGrid numberOfProducts={hitsPerPage} />
       ) : !items.length ? (
         <Text

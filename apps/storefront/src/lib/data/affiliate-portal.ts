@@ -4,6 +4,7 @@ import { sdk } from "@lib/config"
 import type { PortalTab } from "@lib/util/affiliate-portal"
 import { cookies as nextCookies } from "next/headers"
 import { redirect } from "next/navigation"
+import { cache } from "react"
 
 // AF-8a (spec 05 กฎ 17): portal เรียก `/affiliate/*` จาก server side ของ Next เท่านั้น
 // token ของ actor `affiliate` อยู่ใน httpOnly cookie แยกจาก `_medusa_jwt` ของ customer (session แยกกัน)
@@ -15,6 +16,8 @@ export type PortalAffiliate = {
   name: string
   code: string
   status: "pending" | "active" | "suspended"
+  /** AF-13 กฎ 34: มีข้อมูลรับเงินหรือไม่ (portal ไม่เห็น payout_info ดิบ) */
+  has_payout_info: boolean
 }
 
 export type PortalProduct = {
@@ -33,6 +36,30 @@ export type PortalProduct = {
   share_url: string
 }
 
+export type PortalProgram = {
+  id: string
+  name: string
+  starts_at: string
+  ends_at: string
+  announce_text: string | null
+  commission_value: number
+  state: "active" | "upcoming"
+}
+
+export type PortalPayout = {
+  id: string
+  amount: number
+  currency: string
+  period_from: string
+  period_to: string
+  status: "draft" | "paid"
+  paid_at: string | null
+}
+
+export type PortalEarningsTotal = { currency: string; status: string; amount: number; count: number }
+
+type PortalList = { count: number; limit: number; offset: number }
+
 export type AffiliateAuthState = { error: string } | null
 
 const statusOf = (error: unknown) => (error as { status?: unknown } | null)?.status
@@ -45,20 +72,22 @@ const authHeaders = async (): Promise<{ authorization: string } | null> => {
 const portalFetch = <T>(path: string, headers: { authorization: string }, query?: Record<string, unknown>) =>
   sdk.client.fetch<T>(path, { headers, query, cache: "no-store" })
 
-/** affiliate ของ session ปัจจุบัน — ไม่มี/หมดอายุ (401) → null */
-export async function getAffiliate(): Promise<PortalAffiliate | null> {
-  const headers = await authHeaders()
-  if (!headers) {
-    return null
-  }
+// AF-8b: layout และหน้าของ portal เรียกใน render เดียวกัน — cache ต่อ request ยิง `/affiliate/me` ครั้งเดียว
+const fetchMe = cache(async (authorization: string): Promise<PortalAffiliate | null> => {
   try {
-    return (await portalFetch<{ affiliate: PortalAffiliate }>("/affiliate/me", headers)).affiliate
+    return (await portalFetch<{ affiliate: PortalAffiliate }>("/affiliate/me", { authorization })).affiliate
   } catch (error) {
     if (statusOf(error) === 401) {
       return null
     }
     throw error
   }
+})
+
+/** affiliate ของ session ปัจจุบัน — ไม่มี/หมดอายุ (401) → null */
+export async function getAffiliate(): Promise<PortalAffiliate | null> {
+  const headers = await authHeaders()
+  return headers ? fetchMe(headers.authorization) : null
 }
 
 /** `GET /affiliate/products` — หนึ่งรายการต่อสินค้าตามกฎ 29 (dedupe/paging ทำที่ API) */
@@ -72,6 +101,45 @@ export async function listAffiliateProducts(status: PortalTab, page: number) {
     headers,
     { status, page }
   )
+}
+
+/** AF-8b: route ของ portal ที่ API ตอบ 403 ตามสถานะ (Q6) → null ให้หน้าแสดง `affiliate-status-notice` */
+const portalGet = async <T>(path: string, query?: Record<string, unknown>): Promise<T | null> => {
+  const headers = await authHeaders()
+  if (!headers) {
+    return null
+  }
+  try {
+    return await portalFetch<T>(path, headers, query)
+  } catch (error) {
+    if (statusOf(error) === 403) {
+      return null
+    }
+    throw error
+  }
+}
+
+const PAGE_SIZE = 50
+
+/** `GET /affiliate/me/programs` — โปรแกรม published ที่ active/upcoming (เฉพาะ affiliate `active`) */
+export async function listAffiliatePrograms(page: number) {
+  return portalGet<PortalList & { programs: PortalProgram[] }>("/affiliate/me/programs", {
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+  })
+}
+
+/** `GET /affiliate/me/earnings` — ยอดรวมต่อ currency/status (คำนวณที่ API) */
+export async function getAffiliateEarnings() {
+  return portalGet<{ totals: PortalEarningsTotal[] }>("/affiliate/me/earnings")
+}
+
+/** `GET /affiliate/me/payouts` — payout ของตัวเอง ใหม่สุดก่อน (ไม่มี reference) */
+export async function listAffiliatePayouts(page: number) {
+  return portalGet<PortalList & { payouts: PortalPayout[] }>("/affiliate/me/payouts", {
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+  })
 }
 
 const login = async (email: string, password: string) =>
