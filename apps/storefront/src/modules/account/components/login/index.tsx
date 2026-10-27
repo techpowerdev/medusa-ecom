@@ -42,6 +42,8 @@ const Login = ({ setCurrentView }: Props) => {
             autoComplete="email"
             required
             data-testid="email-input"
+            // CORE-4f (กฎข้อ 62): ล้มแล้วคงอีเมลเดิม — React 19 reset ฟอร์มกลับเป็น defaultValue หลัง action
+            defaultValue={message?.state === "error" ? message.email : undefined}
           />
           <Input
             label="รหัสผ่าน"

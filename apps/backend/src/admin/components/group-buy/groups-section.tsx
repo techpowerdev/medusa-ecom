@@ -10,7 +10,7 @@ import {
   useDataTable,
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { campaignActions, groupProgress } from "../../lib/group-buy-campaign"
 import { Campaign, formatDateTime, Group, groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
 import { GroupMembers } from "./group-members"
@@ -25,7 +25,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
   const limit = pagination.pageSize
   const offset = pagination.pageIndex * limit
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isPlaceholderData } = useQuery({
     queryKey: [...groupBuyKeys.groups(campaign.id), limit, offset],
     queryFn: () => groupBuyApi.listGroups(campaign.id, { limit, offset }),
     placeholderData: keepPreviousData,
@@ -33,6 +33,12 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
   // GB-6c (AC-35): คลิกแถวกลุ่มเพื่อเปิดรายการ membership — อ่านกลุ่มจาก data ล่าสุดให้ status อัปเดตหลัง succeed/fail
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = data?.groups.find((g) => g.id === selectedId)
+  // GB-6d (กฎข้อ 23): หน้าใหม่โหลดเสร็จแล้วไม่มีแถวที่เลือก → ปิด selection (ไม่เปิดค้างเมื่อกลับหน้าเดิม)
+  useEffect(() => {
+    if (selectedId && data && !isPlaceholderData && !selected) {
+      setSelectedId(null)
+    }
+  }, [selectedId, data, isPlaceholderData, selected])
 
   // กฎข้อ 17: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างสองคลิกใน task เดียว
   const inFlight = useRef(false)
@@ -57,7 +63,20 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("kind", { header: "Kind" }),
+      columnHelper.accessor("kind", {
+        header: "Kind",
+        // marker ของแถวที่เลือก — wrapper ของตารางใช้ :has() ทำ highlight ทั้งแถว (DataTable ไม่รับ className ต่อแถว)
+        cell: ({ getValue, row }) => (
+          <>
+            {getValue()}
+            {row.id === selectedId && (
+              <span data-testid="gb-group-selected" className="sr-only">
+                (selected)
+              </span>
+            )}
+          </>
+        ),
+      }),
       columnHelper.accessor("name", { header: "Name", cell: ({ getValue }) => getValue() ?? "-" }),
       columnHelper.accessor("status", {
         header: "Status",
@@ -71,7 +90,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
       columnHelper.accessor((g) => formatDateTime(g.ends_at), { id: "ends_at", header: "Ends (ICT)" }),
       columnHelper.accessor("join_token", { header: "Join token" }),
     ],
-    [campaign]
+    [campaign, selectedId]
   )
 
   const table = useDataTable({
@@ -101,7 +120,10 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
           </Button>
         )}
       </div>
-      <div data-testid="gb-groups-table">
+      <div
+        data-testid="gb-groups-table"
+        className="[&_tbody_tr:has([data-testid=gb-group-selected])]:bg-ui-bg-highlight"
+      >
         <DataTable instance={table}>
           <DataTable.Table
             emptyState={{
@@ -111,7 +133,9 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
           <DataTable.Pagination />
         </DataTable>
       </div>
-      {selected && <GroupMembers key={selected.id} group={selected} campaignId={campaign.id} />}
+      {selected && (
+        <GroupMembers key={selected.id} group={selected} campaignId={campaign.id} onClose={() => setSelectedId(null)} />
+      )}
     </Container>
   )
 }

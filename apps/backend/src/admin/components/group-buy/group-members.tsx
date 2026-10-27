@@ -53,7 +53,15 @@ const columns = [
 ]
 
 // GB-6c (spec 04 Admin UI, AC-35): membership ของกลุ่มที่เลือก + succeed/fail แบบ manual (route ของ GB-4)
-export const GroupMembers = ({ group, campaignId }: { group: Group; campaignId: string }) => {
+export const GroupMembers = ({
+  group,
+  campaignId,
+  onClose,
+}: {
+  group: Group
+  campaignId: string
+  onClose: () => void
+}) => {
   const queryClient = useQueryClient()
   const prompt = usePrompt()
   const [pagination, setPagination] = useState<DataTablePaginationState>({ pageIndex: 0, pageSize: 20 })
@@ -70,14 +78,13 @@ export const GroupMembers = ({ group, campaignId }: { group: Group; campaignId: 
   const inFlight = useRef(false)
   const outcome = useMutation({
     mutationFn: (action: Outcome) => groupBuyApi.setOutcome(group.id, action),
-    onSuccess: (_, action) => {
-      queryClient.invalidateQueries({ queryKey: groupBuyKeys.groups(campaignId) })
-      queryClient.invalidateQueries({ queryKey: groupBuyKeys.memberships(group.id) })
-      toast.success(action === "succeed" ? "Group succeeded" : "Group failed")
-    },
+    onSuccess: (_, action) => toast.success(action === "succeed" ? "Group succeeded" : "Group failed"),
     onError: (e: Error) => toast.error(e.message),
+    // GB-6d (กฎข้อ 23): refetch ทั้งตอนสำเร็จและล้ม — ล้ม (4xx) มักแปลว่ากลุ่มเปลี่ยนสถานะไปแล้ว ตารางต้องตรง DB
     onSettled: () => {
       inFlight.current = false
+      queryClient.invalidateQueries({ queryKey: groupBuyKeys.groups(campaignId) })
+      queryClient.invalidateQueries({ queryKey: groupBuyKeys.memberships(group.id) })
     },
   })
   const onOutcome = async (action: Outcome) => {
@@ -107,28 +114,33 @@ export const GroupMembers = ({ group, campaignId }: { group: Group; campaignId: 
         <Text size="small" leading="compact" weight="plus">
           Members of {group.name ?? group.join_token}
         </Text>
-        {canSetGroupOutcome(group) && (
-          <div className="flex items-center gap-x-2">
-            <Button
-              size="small"
-              variant="secondary"
-              data-testid="gb-group-succeed"
-              onClick={() => onOutcome("succeed")}
-              disabled={outcome.isPending}
-            >
-              Mark succeeded
-            </Button>
-            <Button
-              size="small"
-              variant="danger"
-              data-testid="gb-group-fail"
-              onClick={() => onOutcome("fail")}
-              disabled={outcome.isPending}
-            >
-              Mark failed
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-x-2">
+          {canSetGroupOutcome(group) && (
+            <>
+              <Button
+                size="small"
+                variant="secondary"
+                data-testid="gb-group-succeed"
+                onClick={() => onOutcome("succeed")}
+                disabled={outcome.isPending}
+              >
+                Mark succeeded
+              </Button>
+              <Button
+                size="small"
+                variant="danger"
+                data-testid="gb-group-fail"
+                onClick={() => onOutcome("fail")}
+                disabled={outcome.isPending}
+              >
+                Mark failed
+              </Button>
+            </>
+          )}
+          <Button size="small" variant="transparent" data-testid="gb-memberships-close" onClick={onClose}>
+            Close
+          </Button>
+        </div>
       </div>
       <div data-testid="gb-memberships-table">
         <DataTable instance={table}>

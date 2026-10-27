@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  PROMPTPAY_FALLBACK_MAX_REQUESTS,
   PROMPTPAY_TIMEOUT_MS,
+  promptPayFallbackAllowed,
+  promptPayFallbackCanPoll,
   formatCountdown,
   isPromptPay,
   paymentSessionData,
@@ -185,5 +188,119 @@ describe("promptPayPollAction", () => {
   it("session ล้ม → fail", () => {
     expect(promptPayPollAction("failed", false)).toBe("fail")
     expect(promptPayPollAction("failed", true)).toBe("fail")
+  })
+})
+
+// PAY-6c (spec 06 กฎข้อ 8, AC-17): Medusa compensatePaymentIfNeededStep refund เมื่อ complete ล้มหลัง capture
+// สัญญาณจาก Store API: payment_collection.refunded_amount ครอบยอดที่ capture แล้ว (cart ยังไม่ complete)
+describe("promptPayPollState — เงินถูกคืน (PAY-6c)", () => {
+  it("captured แล้วถูก refund เต็มยอด และ cart ยังไม่ complete = refunded", () => {
+    expect(
+      promptPayPollState({
+        completed_at: null,
+        payment_collection: {
+          captured_amount: 600,
+          refunded_amount: 600,
+          payment_sessions: [{ status: "pending" }],
+        },
+      })
+    ).toBe("refunded")
+  })
+
+  it("cart complete แล้วมาก่อนเสมอ = paid", () => {
+    expect(
+      promptPayPollState({
+        completed_at: "2026-10-27T00:00:00Z",
+        payment_collection: { captured_amount: 600, refunded_amount: 600 },
+      })
+    ).toBe("paid")
+  })
+
+  it("ยังไม่ refund / refund ไม่ครบยอดที่ capture (เช่นชำระรอบใหม่หลังคืนเงิน) / ไม่มี capture = ไม่ใช่ refunded", () => {
+    const state = (captured_amount?: number | null, refunded_amount?: number | null) =>
+      promptPayPollState({
+        completed_at: null,
+        payment_collection: { captured_amount, refunded_amount, payment_sessions: [{ status: "authorized" }] },
+      })
+    expect(state(600, 0)).toBe("pending")
+    expect(state(1200, 600)).toBe("pending")
+    expect(state(0, 0)).toBe("pending")
+    expect(state(null, null)).toBe("pending")
+    expect(state(undefined, undefined)).toBe("pending")
+  })
+})
+
+describe("promptPayPollAction — เงินถูกคืน (PAY-6c)", () => {
+  it("โหมดทางสำรอง + refunded → refunded (หยุด complete cart และให้เริ่มชำระใหม่)", () => {
+    expect(promptPayPollAction("refunded", true)).toBe("refunded")
+  })
+
+  it("ไม่ใช่โหมดทางสำรอง (เช่นกำลังแสดง QR รอบใหม่หลังคืนเงิน) → รอ webhook ต่อ", () => {
+    expect(promptPayPollAction("refunded", false)).toBe("wait")
+  })
+})
+
+// PAY-6c (spec 06 กฎข้อ 8): complete cart + poll ของทางสำรองรวมไม่เกิน 10 ครั้ง
+describe("promptPayFallbackAllowed (เพดานทางสำรอง)", () => {
+  it("เพดานคือ 10 request", () => {
+    expect(PROMPTPAY_FALLBACK_MAX_REQUESTS).toBe(10)
+  })
+
+  it("ใช้ไป 0..9 ครั้ง → ยิงได้อีก; ครบ 10 → หยุด", () => {
+    for (let used = 0; used < 10; used++) {
+      expect(promptPayFallbackAllowed(used)).toBe(true)
+    }
+    expect(promptPayFallbackAllowed(10)).toBe(false)
+    expect(promptPayFallbackAllowed(11)).toBe(false)
+  })
+
+  // review #136 nit 1: poll ต้องเหลือ slot ให้ complete เสมอ — poll ครั้งสุดท้ายได้ paid แล้วต้อง complete ไปหน้า confirmed ได้
+  it("poll ได้เมื่อยังเหลืออย่างน้อย 2 slot (poll + complete)", () => {
+    for (let used = 0; used <= 8; used++) {
+      expect(promptPayFallbackCanPoll(used)).toBe(true)
+    }
+    expect(promptPayFallbackCanPoll(9)).toBe(false)
+    expect(promptPayFallbackCanPoll(10)).toBe(false)
+  })
+
+  // จำลอง loop ของ component: complete ทันทีหลัง 409 แล้วทุกรอบ poll (ถ้าเหลือ ≥ 2 slot) ตามด้วย complete
+  const simulate = (stateAt: (pollNo: number) => "pending" | "paid") => {
+    let used = 0
+    let polls = 0
+    const completes: number[] = []
+    const complete = () => {
+      if (!promptPayFallbackAllowed(used)) return false
+      used++
+      completes.push(used)
+      return true
+    }
+    complete()
+    for (let pollNo = 1; pollNo < 50; pollNo++) {
+      if (!promptPayFallbackCanPoll(used)) break
+      used++
+      polls++
+      const state = stateAt(pollNo)
+      if (promptPayPollAction(state, true) === "complete" && !complete()) break
+      if (state === "paid") return { used, polls, completes, completedAfterPaid: true }
+    }
+    return { used, polls, completes, completedAfterPaid: false }
+  }
+
+  it("complete ล้มตลอด → ยิงรวมไม่เกิน 10", () => {
+    const run = simulate(() => "pending")
+    // complete 1 + (poll + complete) × 4 = 9 — slot ที่ 10 ใช้ poll ไม่ได้เพราะจะไม่เหลือให้ complete
+    expect(run.used).toBeLessThanOrEqual(10)
+    expect(run.used).toBe(9)
+    expect(run.completes.at(-1)).toBe(run.used)
+  })
+
+  it("poll ครั้งไหนก็ตามที่เห็น paid (รวมครั้งสุดท้ายก่อนเพดาน) → ยัง complete ได้ ไม่ค้างที่ delayed ทั้งที่มี order", () => {
+    const pollsWhenPending = simulate(() => "pending").polls
+    expect(pollsWhenPending).toBeGreaterThan(0)
+    for (let k = 1; k <= pollsWhenPending; k++) {
+      const run = simulate((pollNo) => (pollNo === k ? "paid" : "pending"))
+      expect(run.completedAfterPaid, `paid ที่ poll ลำดับ ${k}`).toBe(true)
+      expect(run.used).toBeLessThanOrEqual(10)
+    }
   })
 })

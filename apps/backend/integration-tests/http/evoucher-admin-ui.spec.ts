@@ -153,6 +153,29 @@ medusaIntegrationTestRunner({
       })
     })
 
+    // AC-15 (EV-9): route select low_stock_threshold เองเสมอ แม้ client ส่ง fields ที่ไม่มี field นี้
+    it("computes low_stock from low_stock_threshold even when the client picks fields", async () => {
+      const poolId = await createPool(variantIds[0], { low_stock_threshold: 20 })
+      const codes = (n: number, from = 0) =>
+        Array.from({ length: n }, (_, i) => `AC15-${String(from + i).padStart(4, "0")}`).join("\n") + "\n"
+      await importCsv(poolId, codes(5))
+
+      const list = await api.get("/admin/evoucher/pools?fields=id,name", { headers })
+      expect(list.data.pools.find((p: { id: string }) => p.id === poolId)).toMatchObject({
+        low_stock: true,
+      })
+      const one = await api.get(`/admin/evoucher/pools/${poolId}?fields=id`, { headers })
+      expect(one.data.pool).toMatchObject({ id: poolId, low_stock: true })
+
+      await importCsv(poolId, codes(20, 5))
+      const after = await api.get("/admin/evoucher/pools?fields=id,name", { headers })
+      expect(after.data.pools.find((p: { id: string }) => p.id === poolId)).toMatchObject({
+        low_stock: false,
+      })
+      const oneAfter = await api.get(`/admin/evoucher/pools/${poolId}?fields=id`, { headers })
+      expect(oneAfter.data.pool).toMatchObject({ low_stock: false })
+    })
+
     it("filters pools by variant_id for the variant widget", async () => {
       const poolId = await createPool(variantIds[1])
       await createPool(variantIds[0])
@@ -179,13 +202,18 @@ medusaIntegrationTestRunner({
         { pool_id: poolId },
         { order: { created_at: "ASC" } }
       )
+      // EV-9: route หา code ผ่าน link order ↔ evoucher_code จึงต้องเป็น order จริง
+      // สร้างทีละตัว: createOrders แบบ array ไม่รับประกันลำดับผลตาม input
+      const orderModule = getContainer().resolve(Modules.ORDER)
+      const orderA = await orderModule.createOrders({ currency_code: "thb", email: "a@example.com" })
+      const orderB = await orderModule.createOrders({ currency_code: "thb", email: "b@example.com" })
       await service.updateEvoucherCodes([
-        { id: codes[0].id, status: "delivered", order_id: "order_A", delivered_to_email: "a@example.com" },
-        { id: codes[1].id, status: "allocated", order_id: "order_A" },
-        { id: codes[2].id, status: "delivered", order_id: "order_B" },
+        { id: codes[0].id, status: "delivered", order_id: orderA.id, delivered_to_email: "a@example.com" },
+        { id: codes[1].id, status: "allocated", order_id: orderA.id },
+        { id: codes[2].id, status: "delivered", order_id: orderB.id },
       ])
 
-      const res = await api.get("/admin/evoucher/orders/order_A/codes", { headers })
+      const res = await api.get(`/admin/evoucher/orders/${orderA.id}/codes`, { headers })
 
       expect(res.data.codes).toHaveLength(2)
       expect(res.data.codes).toEqual(

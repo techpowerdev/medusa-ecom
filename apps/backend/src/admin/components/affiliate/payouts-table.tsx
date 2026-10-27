@@ -1,0 +1,96 @@
+import { Badge, Button, createDataTableColumnHelper, toast, usePrompt } from "@medusajs/ui"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMemo, useRef } from "react"
+import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
+import { formatAmount, formatDate } from "../../lib/affiliate-format"
+import { canCancelPayout } from "../../lib/affiliate-payout"
+import { AffiliateListTable } from "./list-table"
+
+const columnHelper = createDataTableColumnHelper<Payout>()
+
+// AF-6 (spec 05 AC-26): เฉพาะแถว `draft` มีปุ่มยกเลิก (route ของ AF-9) ยืนยันด้วย usePrompt และกันกดซ้ำ
+export const PayoutsTable = () => {
+  const prompt = usePrompt()
+  const queryClient = useQueryClient()
+  // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → คลิกซ้ำ (dblclick) ถูกเพิกเฉย (ค่าคงอยู่ข้าม render)
+  const inFlight = useRef(false)
+
+  const refetchPayouts = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
+
+  const cancel = useMutation({
+    mutationFn: cancelPayout,
+    onSuccess: () => {
+      toast.success("Payout cancelled")
+      return refetchPayouts()
+    },
+    // รอบ 10: ยกเลิกไม่สำเร็จ (เช่น ถูก mark paid ไปแล้ว) → โหลดรายการใหม่ให้ตารางแสดงสถานะจริง
+    onError: (e: Error) => {
+      toast.error(e.message)
+      return refetchPayouts()
+    },
+  })
+
+  const confirmCancel = async (id: string) => {
+    if (inFlight.current) {
+      return
+    }
+    inFlight.current = true
+    try {
+      const ok = await prompt({
+        title: "Cancel this draft payout?",
+        description: "The payout is removed and its entries can be picked up by the next payout.",
+        confirmText: "Cancel payout",
+        cancelText: "Keep payout",
+      })
+      if (ok) {
+        await cancel.mutateAsync(id).catch(() => undefined)
+      }
+    } finally {
+      inFlight.current = false
+    }
+  }
+
+  // คอลัมน์สถานะ (sticky) และปุ่มอยู่ซ้ายสุด เพื่อให้ปุ่มอยู่ในจอที่ 1280px โดยไม่ต้องเลื่อนตาราง (รอบ 10)
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("status", {
+        header: "Status",
+        cell: ({ getValue }) => (
+          <Badge size="2xsmall" color={getValue() === "paid" ? "green" : "orange"}>
+            {getValue()}
+          </Badge>
+        ),
+      }),
+      columnHelper.display({
+        id: "actions",
+        cell: ({ row }) =>
+          canCancelPayout(row.original) ? (
+            <Button
+              size="small"
+              variant="secondary"
+              data-testid="affiliate-payout-cancel"
+              disabled={cancel.isPending}
+              onClick={() => confirmCancel(row.original.id)}
+            >
+              Cancel
+            </Button>
+          ) : null,
+      }),
+      columnHelper.accessor((row) => formatAmount(row.amount, row.currency), {
+        id: "amount",
+        header: "Amount",
+      }),
+      columnHelper.accessor(
+        (row) => `${formatDate(row.period_from, false)} – ${formatDate(row.period_to, false)}`,
+        { id: "period", header: "Period" },
+      ),
+      columnHelper.accessor("paid_at", { header: "Paid at", cell: ({ getValue }) => formatDate(getValue()) }),
+      columnHelper.accessor("id", { header: "Payout" }),
+      columnHelper.accessor("affiliate_id", { header: "Affiliate" }),
+    ],
+    // confirmCancel ใช้แค่ ref, prompt และ mutateAsync ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending เปลี่ยน
+    [cancel.isPending],
+  )
+
+  return <AffiliateListTable resource="payouts" columns={columns} empty="No payouts yet" />
+}

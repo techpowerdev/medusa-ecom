@@ -98,6 +98,11 @@ describe("ESLint rule ข้อความไทย (AC-47)", () => {
     // CORE-20 (หน้าขอคืนสินค้า — page อยู่ใต้ glob account ของ 4c1)
     "src/app/[countryCode]/(main)/account/@dashboard/orders/details/[id]/return/page.tsx",
     "src/modules/returns/components/return-request-form/index.tsx",
+    // AF-8a (portal affiliate: login/register, หน้า Products)
+    "src/app/[countryCode]/(main)/affiliate/page.tsx",
+    "src/app/[countryCode]/(main)/affiliate/login/page.tsx",
+    "src/modules/affiliate/components/product-card/index.tsx",
+    "src/modules/affiliate/components/share-button/index.tsx",
   ])("เปิด rule กับ %s (path ในตาราง AC-49)", async (file) => {
     const config = await eslint.calculateConfigForFile(path.join(ROOT, file))
     expect(config.rules["no-restricted-syntax"]?.[0]).toBe(2)
