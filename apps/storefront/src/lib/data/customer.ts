@@ -332,7 +332,16 @@ export async function transferCart() {
 
   const headers = await getAuthHeaders()
 
-  await sdk.store.cart.transferCart(cartId, {}, headers)
+  // CORE-14c (spec 01 กฎข้อ 40): cookie ชี้ cart ของ customer อื่น → ownership ของ CORE-12 (ADR-013) ตอบ 404
+  // → ทิ้ง cookie นั้นแทนการให้ login ล้ม; error อื่น (5xx/network) ส่งต่อตามเดิม
+  try {
+    await sdk.store.cart.transferCart(cartId, {}, headers)
+  } catch (error) {
+    if (!(error instanceof FetchError) || error.status !== 404) {
+      throw error
+    }
+    await removeCartId()
+  }
 
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag, { expire: 0 })

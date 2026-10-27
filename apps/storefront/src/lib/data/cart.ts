@@ -28,9 +28,17 @@ import {
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to retrieve.
+ * @param fresh - skip Next's data cache. Client components re-reading the cart after a
+ * mutation need it: the mutation's `revalidateTag` runs at the end of its action's response
+ * stream, so a read the client starts as soon as the action resolves can still hit the
+ * pre-mutation cache entry (CORE-19a).
  * @returns The cart object if found, or null if not found.
  */
-export async function retrieveCart(cartId?: string, fields?: string) {
+export async function retrieveCart(
+  cartId?: string,
+  fields?: string,
+  { fresh = false }: { fresh?: boolean } = {}
+) {
   const id = cartId || (await getCartId())
   fields ??=
     "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
@@ -54,8 +62,7 @@ export async function retrieveCart(cartId?: string, fields?: string) {
         fields,
       },
       headers,
-      next,
-      cache: "force-cache",
+      ...(fresh ? { cache: "no-store" } : { next, cache: "force-cache" }),
     })
     .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
     .catch(() => null)
