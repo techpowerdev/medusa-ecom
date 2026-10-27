@@ -93,7 +93,8 @@ none (storefront เท่านั้น)
    ใช้ `// eslint-disable-next-line no-restricted-syntax -- <เหตุผล>` ทีละบรรทัดเท่านั้น (ห้าม disable ทั้งไฟล์)
 5. ข้อความที่ storefront สร้างเองและผู้ใช้เห็นเป็นภาษาไทยทั้งหมด: label, ปุ่ม, heading, ข้อความว่าง/loading/error, `metadata` (title,
    description) ของหน้า, ข้อความใน server action ที่ส่งกลับไปแสดง — ข้อมูลจาก backend (ชื่อสินค้า, option, ที่อยู่) แสดงตามที่ได้รับ ไม่แปล;
-   error ของ Medusa API แสดงตามที่ได้รับ **หรือ** แปลงเป็นข้อความไทยทั่วไปได้ (แก้ถ้อยคำรอบ 8 ตาม #103) — 401/403 → ข้อความไทยให้เข้าสู่ระบบใหม่
+   error ของ Medusa API แสดงตามที่ได้รับ **หรือ** แปลงเป็นข้อความไทยทั่วไปได้ (แก้ถ้อยคำรอบ 8 ตาม #103) — 401/403 → ข้อความไทยให้เข้าสู่ระบบใหม่;
+   (รอบ 10, qa #117/#131) error ของ**หน้า login/register** ต้องเป็นข้อความไทยเสมอ ไม่แสดงข้อความอังกฤษของ auth provider (เช่น "Invalid email or password") — กฎข้อ 62, CORE-4f
 6. ไม่มีตัวเลือกภาษา: ลบ component `language-select` และจุดที่ render (nav/side menu); storefront ไม่เขียน cookie `_medusa_locale`;
    ไม่แก้ `lib/util/get-locale-header.ts` (ไม่มี cookie → ไม่ส่ง `x-medusa-locale` → ได้เนื้อหาต้นฉบับภาษาไทย); `<html lang="th">` คงที่
 7. ทุก element ที่ e2e ต้องหา ต้องมี `data-testid` (ใช้ของ starter ถ้ามี) e2e ไม่ match ด้วยข้อความ; การตรวจ "เป็นภาษาไทย" ใช้ regex อักษรไทย
@@ -375,9 +376,10 @@ none (middleware + storefront เท่านั้น)
   ถูกสร้าง และ `OA.customer_id` ยังเป็น A (middleware ปิด route ไม่ระบุ method — ดู "API routes")
 - AC-41 (CORE-14a) Given ไม่มี customer session When `GET /buy/<variant_id>:1` Then redirect ไปหน้า login
   ที่มี return URL กลับ `/buy/...` และจำนวน cart ใน DB ไม่เปลี่ยน; Given ล็อกอินแล้ว Then 303 ไป `/<cc>/checkout` และ cart ใหม่มี
-  `customer_id` ของผู้ล็อกอิน; (nit review CORE-14a, รอบ 7 — ทำใน CORE-14c) e2e กรณีไม่มี session ต้องยิงด้วย `maxRedirects: 0` แล้ว assert status ∈ {307, 308}
-  และ header `location` ชี้หน้า login **ก่อน**ตาม redirect (ไม่ assert เพียงหน้าปลายทาง)
-- AC-42 (CORE-14a) `GET /ucp/v1`, `POST /ucp/v1/cart`, `GET /<cc>/cart/resume/<id>` → 404
+  `customer_id` ของผู้ล็อกอิน; (nit review CORE-14a, รอบ 7 — ทำใน CORE-14c #117; **แก้ถ้อยคำรอบ 10** ให้ตรงกับ #117: route `/buy` ตอบ **303** เสมอ) e2e กรณีไม่มี session
+  ยิงด้วย `maxRedirects: 0` แล้ว assert status = 303 และ header `location` ชี้หน้า login **ก่อน**ตาม redirect (ไม่ assert เพียงหน้าปลายทาง)
+- AC-42 (CORE-14a) `GET /ucp/v1`, `POST /ucp/v1/cart`, `GET /<cc>/cart/resume/<id>` → 404; (รอบ 10 — ที่มาจริงของ nit 307/308 ใน review #81 r2, ทำใน #117) e2e ของ `/ucp/v1` ยิง
+  `maxRedirects: 0` แล้ว assert redirect แรกเป็น 307/308 ไป `/th/ucp/...` (middleware ของ country code) ก่อนตามถึง 404 — ไม่มี 2xx ระหว่างทาง
 - AC-43 (CORE-14a) Given ไม่มี session แต่มี cookie `_medusa_cart_id` ค้าง When เปิด `/<cc>/cart` Then แสดงหน้า cart ว่างหรือ redirect login
   (ไม่มี 5xx) และ cookie cart ถูกล้าง (e2e)
 - AC-44 (CORE-14b, QA CORE-6 D-1, กฎ 26) Given browser ปิด JavaScript และไม่มี session When กด "Add to cart" บน PDP ที่เลือก quantity 3
@@ -794,7 +796,8 @@ none
   ของ CORE-13, override CORE-16, option CORE-17/21 — ADR-013 ทางเลือก A ไม่ห่อ route ของ Medusa): ทุก item ใน body ต้อง (a) เป็น line ที่ `requires_shipping=true`
   (e-voucher/สินค้าไม่ต้องจัดส่ง → 400 `invalid_data`) และ (b) อยู่ในช่วงคืน: `now ≤ วันอ้างอิง + return_window_days` โดยวันอ้างอิง = `delivered_at` ของ fulfillment ที่มี
   item นั้น ถ้าไม่มีใช้ `shipped_at`; ไม่มีทั้งคู่ (ยังไม่ส่ง) → 400; `return_window_days` อ่านจาก metadata ของ region ของ order (`order.region_id`) ค่าเริ่มต้นตาม
-  `region-store-policies.ts`; ข้อความ error ไม่สะท้อนค่าจาก input (แบบ CORE-21 กฎข้อ 37)
+  `region-store-policies.ts`; ข้อความ error ไม่สะท้อนค่าจาก input (แบบ CORE-21 กฎข้อ 37); (รอบ 10, บันทึกตามที่ #124 ทำ — review) line ที่ถูกส่งหลายรอบ (หลาย fulfillment)
+  ใช้วันอ้างอิง**ล่าสุด**ในบรรดา fulfillment ที่มี item นั้น; nit "อ่าน region รวมใน query เดียวกับ order" ไม่มี task (ประสิทธิภาพเล็กน้อย — แก้เมื่อแตะไฟล์ครั้งถัดไป)
 
 ### Business rules
 54. (CORE-4e, #109; owner ยืนยัน 2026-10-27) ชื่อวิธีชำระเงินพร้อมเพย์ในข้อความที่ storefront เขียนเอง ใช้ **"พร้อมเพย์"** แบบเดียวทั้ง checkout/หน้า pay (ไม่ปน "PromptPay"); "PromptPay" เหลือได้เฉพาะ
@@ -838,7 +841,8 @@ none
   (a) When เปิด `/th/account?add_variant=<ขายได้>&add_quantity=3` (GET) Then ยังอยู่หน้า account เห็นการ์ด `add-variant-pending` และปุ่ม `add-variant-confirm` และไม่ถูก redirect ไป `/cart`
   (ไม่มีการเพิ่มอัตโนมัติ)
   (b) When กด `add-variant-confirm` Then redirect ไป `/th/cart` และมี `product-row` ของ variant นั้น qty 3
-  (c) Given variant ขายไม่ได้ When เปิดลิงก์เดียวกัน Then เห็น `add-variant-error` และไม่มี `add-variant-confirm` ใน DOM
+  (c) Given variant ขายไม่ได้ When เปิดลิงก์เดียวกัน Then เห็น `add-variant-error` และไม่มี `add-variant-confirm` ใน DOM — (รอบ 10, review #128) ข้อ (c) render ฝั่ง server ล้วน
+  จึงทดสอบด้วย `javaScriptEnabled: false` **ครั้งเดียว**พอ (อยู่นอก loop JS on/off ได้); (a)/(b) ยังต้องทำทั้งสองโหมด
   (e2e `apps/storefront/e2e/core-14d-cart-after-login.spec.ts`) — ตรวจเพิ่มโดย qa ด้วย Playwright (รอบ 2 ของ #128, บันทึกใน `REPORT.md`): ลิงก์ `<a>`/`<img>` จากหน้าเว็บอื่นที่ชี้
   `/th/account?add_variant=` ขณะลูกค้าล็อกอินอยู่ไม่ทำให้ cart เปลี่ยน, กด Back หลังกดยืนยันแล้วไม่เพิ่มเอง และการ์ดแสดงตัวเลือก/จำนวน/ราคา
 - AC-94 (CORE-24, กฎข้อ 59) Given PDP ของสินค้า seed When เลือก 3 ใน `product-quantity-select` แล้วกดเพิ่มลง cart Then cart มี line qty 3; Given `javaScriptEnabled: false` และไม่ล็อกอิน
@@ -858,7 +862,7 @@ none
 | ID | Task | AC | Depends |
 |----|------|----|---------|
 | CORE-4e | (storefront เล็ก, nit/qa #109 + qa #98) Stripe Elements `locale: "th"`, `friendlyErrorMessage` ใน `setAddresses`/`submitPromotionForm`/`renewPromptPaySession` + ข้อความรอสร้าง order ของพร้อมเพย์ (ถ้า #109 ยังไม่ครอบ), "พร้อมเพย์" แบบเดียว, `{STORE_NAME} แล้ว`, placeholder "เลือกประเทศ", test id/aria-label ของ popup ที่อยู่ + nudge, floating label ซ้อน, test `renewPromptPaySession` ไม่ใช้ `indexOf` (กฎข้อ 54–56) | AC-90, AC-91 | CORE-4d (#109) |
-| CORE-14d | (storefront เล็ก, nit/qa #113; ◐ #128) `/cart` ไม่ค้าง skeleton หลัง login no-JS, `add_error` + `unstable_rethrow` แทน `catch {}`, `/account?add_variant=&add_quantity=` ตอนล็อกอินแล้ว = การ์ด `add-variant-pending` + ปุ่ม `add-variant-confirm` (ฟอร์ม POST) ไม่เพิ่มอัตโนมัติ, GET ของ path นี้ไม่แก้ cart (ไม่ครอบ `/buy/[items]`) (กฎข้อ 57–58, owner 2026-10-27) | AC-92, AC-93 | CORE-14b (#113) |
+| CORE-14d | (storefront เล็ก, nit/qa #113; ☑ #128) `/cart` ไม่ค้าง skeleton หลัง login no-JS, `add_error` + `unstable_rethrow` แทน `catch {}`, `/account?add_variant=&add_quantity=` ตอนล็อกอินแล้ว = การ์ด `add-variant-pending` + ปุ่ม `add-variant-confirm` (ฟอร์ม POST) ไม่เพิ่มอัตโนมัติ, GET ของ path นี้ไม่แก้ cart (ไม่ครอบ `/buy/[items]`) (กฎข้อ 57–58, owner 2026-10-27) | AC-92, AC-93 | CORE-14b (#113) |
 | CORE-24 | (storefront เล็ก, qa #113) ตัวเลือกจำนวนบน PDP ทั้ง JS/no-JS (กฎข้อ 59) | AC-94 | CORE-14b (#113) (∥ CORE-14d: CORE-24 แตะ `modules/products`, CORE-14d แตะ `lib/data/customer.ts`/account/cart) |
 | CORE-20b | (backend เล็ก, review #112; owner ตัดสิน Q-F6 2026-10-27 — เริ่มได้): middleware บังคับช่วงคืน N วัน + กัน line ที่ไม่ต้องจัดส่งบน `POST /store/returns` (ADR-013 ทางเลือก A, ต่อ chain ของ CORE-17/21) | AC-95 | CORE-21 ☑ (#86) — เริ่มได้ทันที; ∥ CORE-20c |
 | CORE-20c | (storefront เล็ก, nit review/re-review #112) `return_window_days` จาก region ของ order, `returnableItems` นับ `shipped_quantity`, ตัด `canRequestReturn` ซ้ำ, `listOrders`/`listRegions` ของ `/returns` + structured data ไม่ `force-cache`, e2e region แยก/serial (กฎข้อ 60) | AC-96 | CORE-20 (#112) |
@@ -871,9 +875,96 @@ CORE-15 (AC-69 ป้ายราคา ฿) ยังไม่เริ่ม �
 - ~~ชื่อพร้อมเพย์~~ ตัดสินแล้ว (owner 2026-10-27): ใช้ "พร้อมเพย์" (กฎข้อ 54)
 - ~~Q-F7~~ ตัดสินแล้ว (owner 2026-10-27): ฟอร์ม no-JS (ปุ่มเพิ่มลง cart บน PDP และ `add-variant-confirm`) กดซ้ำเร็วๆ ส่ง `POST` 2 ครั้ง → line ได้ qty สองเท่า (โหมด JS กันด้วย disable
   ระหว่างส่งอยู่แล้ว) — **ยังไม่ทำใน v1** (เกิดเฉพาะผู้ใช้ที่ปิด JavaScript และกดซ้ำ, แก้ได้เองในหน้า cart); ย้าย **CORE-14e** (nonce ครั้งเดียวต่อฟอร์มฝั่ง server, cookie httpOnly
-  อายุสั้น ไม่เพิ่ม infra) ไป backlog หลัง v1.0 ไม่มี AC
+  อายุสั้น ไม่เพิ่ม infra) ไป backlog หลัง v1.0 ไม่มี AC — (รอบ 10, qa #128 r2 O-2) ขอบเขตของ CORE-14e รวมกรณี no-JS ส่ง `add-variant-confirm`/ฟอร์ม login ซ้ำพร้อมกันตอน
+  ยังไม่มี cart → ได้ cart ค้าง 2 ใบ (กลไก nonce เดียวกันแก้ได้; planner รวมเข้า — CORE-14e ยังไม่ทำใน v1 ตามคำตัดสิน Q-F7 ของ owner 2026-10-27)
 - ~~Q-F8~~ ตัดสินแล้ว (owner 2026-10-27, QA #128 D-1 / review #128): ลูกค้าที่ล็อกอินแล้วเปิด `/account?add_variant=` → การ์ดยืนยัน + ปุ่ม POST ไม่เพิ่มอัตโนมัติ; GET ของ path นี้ไม่แก้ cart
   (ไม่ครอบ `/buy/[items]` ตาม Q-F2/AC-41) (กฎข้อ 58, AC-92, AC-93)
+
+## Follow-up รอบ 10 จาก review/qa (2026-10-27)
+ที่มา: qa/review ของ #117 (CORE-14c), #118 (CORE-19a), #124 (CORE-20b), #128 (CORE-14d), #130 (CORE-20c), #131 (CORE-4e) และ tooling evidence ของ CORE-22
+แก้ถ้อยคำในที่เดิม: AC-41/AC-42 (303 ของ `/buy` vs 307/308 ของ `/ucp`), กฎข้อ 5 (error หน้า login/register), API ของ CORE-20b (หลาย fulfillment), AC-93 (c), ขอบเขต CORE-14e
+คำตัดสิน owner ที่บันทึกแล้วในรอบ 9 ยังมีผล: Q-F6 (CORE-20b ☑ #124), "พร้อมเพย์", Q-F7 (CORE-14e หลัง v1.0), กฎข้อ 58 (#132); owner อนุมัติ merge #130 (2026-10-27)
+Out of scope: i18n (ADR-014), nonce กันส่งซ้ำของฟอร์ม no-JS (CORE-14e หลัง v1.0), เปลี่ยนนโยบายคืนสินค้า (Q-F1)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| ใส่ promotion code ให้ cart | `POST /store/carts/:id/promotions` — code ที่ใช้ไม่ได้ (เช่น campaign หมดอายุ) ได้ **200** และ cart ไม่มี code นั้น (ไม่ throw) | ใช้ตามเดิม; storefront ตรวจ `cart.promotions` หลังส่ง (กฎข้อ 63) |
+| status ของ error จาก Store API | `FetchError` ของ `@medusajs/js-sdk` มี `status` | ใช้ตามเดิม — อย่าทิ้ง status ใน `medusaError` (กฎข้อ 63) |
+| region ตาม id | `GET /store/regions/:id` (`sdk.store.region.retrieve`) | ใช้ตามเดิมแทนการ list ทุก region (กฎข้อ 66) |
+| ค่าเริ่มต้นของนโยบาย region | `DEFAULT_REGION_STORE_POLICIES` ใน `apps/backend/src/lib/region-store-policies.ts` (ของเรา) | ใช้ค่าเดียวกันทั้ง backend และ storefront (กฎข้อ 66) |
+
+### Data model / Workflows / API routes
+none (storefront + e2e tooling)
+
+### Business rules
+62. (CORE-4f — qa #117 CORE-14c, qa #131 CORE-4e) หน้า login/register: error ทุกกรณี (รหัสผ่านผิด, อีเมลซ้ำ, 5xx, network) แสดงเป็นข้อความไทยผ่าน `friendlyErrorMessage`
+    ใน `login-error-message`/`register-error` (ไม่แสดงข้อความของ auth provider); login/register ที่ล้ม**คงค่าอีเมลที่พิมพ์ไว้** (ไม่ถูก reset โดย React 19 form action — แบบเดียวกับกฎข้อ 61)
+    — รหัสผ่านล้างได้
+63. (CORE-4g — review/qa #131) (a) `medusaError` ใน `lib/data/cart.ts` (และ util ที่ใช้ร่วม) ต้องคง HTTP `status` ของ error เดิม เพื่อให้ `friendlyErrorMessage` แยก 401/403
+    (ข้อความไทยให้เข้าสู่ระบบใหม่) ออกจาก fallback ทั่วไปได้; (b) ใส่โค้ดส่วนลดแล้ว cart ที่ได้กลับ**ไม่มี** code นั้นใน `promotions` (Medusa ตอบ 200) → แสดง `promotion-error`
+    ข้อความไทย "ใช้โค้ดนี้ไม่ได้" (หมดอายุ/ไม่ตรงเงื่อนไข) ไม่เงียบ; (c) `compareAddresses` ถือ `null`/`undefined`/`""` เท่ากัน — เลือกที่อยู่ที่บันทึกไว้แล้ว dropdown แสดงที่อยู่นั้น
+    ไม่ใช่ "เลือกที่อยู่"; (d) `CountrySelect` สูงเท่า `Input` ในแถวเดียวกัน (±1px)
+64. (CORE-19c — qa #118 CORE-19a) `DeleteButton` (`modules/common/components/delete-button`) ส่งต่อ `data-testid` ที่ผู้เรียกส่งมา (เช่น `cart-item-remove-button` ของ starter) ไปที่ `<button>`;
+    ลบล้ม → แสดงข้อความไทย `cart-item-remove-error` ใกล้ปุ่มและหยุด spinner (ไม่กลืน error เงียบ)
+65. (CORE-14f — qa #128 r2) การ์ด `add-variant-pending` (กฎข้อ 58) ห้ามบอกว่าสินค้า "ยังไม่ได้อยู่ในตะกร้า" — ถ้า variant อยู่ใน cart แล้วแสดงจำนวนปัจจุบัน (`add-variant-in-cart-qty`)
+    ไม่เช่นนั้นใช้ข้อความกลาง ("เพิ่มสินค้านี้ลงตะกร้า?"); ค่า `countryCode` (path/ฟอร์ม) ที่ไม่ใช่ประเทศของ region ใดใน flow `add_variant` และ `/account` → ไม่มี 5xx:
+    แสดง `add-variant-error` ข้อความไทย หรือ redirect ไป `/th/...` (ไม่โยน error ดิบ)
+66. (CORE-20d — review/qa #124, #130) ให้ storefront กับ backend (CORE-20b) ตัดสินสิทธิ์คืนแบบเดียวกัน:
+    (a) region ไม่ตั้ง `return_window_days` → ใช้ค่าเริ่มต้นเดียวกับ backend (`DEFAULT_REGION_STORE_POLICIES`, ตอนนี้ 30) ทั้งปุ่ม `order-return-button`, หน้า `/returns` และ JSON-LD
+    (ไม่แสดง `PoliciesUnavailable` เพราะ key หาย)
+    (b) ช่วงคืนคิด**ต่อ line**: วันอ้างอิงของ line = `delivered_at` (ไม่มีใช้ `shipped_at`) **ล่าสุด**ในบรรดา fulfillment ที่มี item นั้น (ตาม API ของ CORE-20b) — line ที่พ้นช่วงเลือกไม่ได้
+    ในฟอร์ม และปุ่มแสดงเมื่อมี line ที่คืนได้ ≥ 1 (ไม่ใช้ fulfillment ล่าสุดของทั้ง order)
+    (c) error code ของ CORE-20b (`RETURN_ITEM_NOT_SHIPPABLE`, `RETURN_ITEM_NOT_SHIPPED`, `RETURN_WINDOW_EXPIRED`) และ code อื่นที่ storefront map → ข้อความไทย: ใช้ `code` ถ้า
+    js-sdk เก็บไว้ ไม่เช่นนั้น map ด้วยข้อความคงที่ของ backend **พร้อม contract test** (Vitest อ่าน source `apps/backend/src/api/store/ownership/return-window.ts`) ที่ล้มเมื่อข้อความ backend
+    เปลี่ยนโดยไม่แก้ map
+    (d) PDP/หน้าที่ต้องใช้ region อ่านด้วย `GET /store/regions/:id` ไม่ list ทุก region แบบไม่ cache
+    (e) ฟอร์มคืนสินค้าที่ส่งล้มคงจำนวน/เหตุผลที่เลือกไว้; e2e cleanup ตรวจผลของ `request.delete` (ไม่เงียบเมื่อลบ region ของ test ไม่สำเร็จ)
+    (f) ค่าที่ admin แก้มีผลกับหน้า `/returns` ภายในรอบ ISR (สังเกต 71–85 วินาทีใน qa #130) — ยอมรับ ≤ 90 วินาที ไม่มี task
+67. (CORE-5c — qa #131 พบตอนรัน e2e ด้วย `E2E_SAVE_EVIDENCE=1`) การเก็บ evidence ของ e2e เขียนได้เฉพาะโฟลเดอร์ของ `evidenceTarget` ใน spec ที่กำลังรัน — spec ที่ไม่ตั้ง
+    `evidenceTarget` ไม่เขียนไฟล์ evidence; screenshot อัตโนมัติของ `step()` นับรวมในงบ ≤ 5 PNG (กฎข้อ 12) — ปัจจุบันรัน e2e ทั้งชุดแล้ว `CORE-22/` เกิน 5 รูปและไฟล์ของ task อื่นถูกเขียนทับ
+    (builder หาสาเหตุใน fixture `e2e/support/` ก่อนแก้)
+
+### Acceptance criteria (follow-up รอบ 10)
+- AC-98 (CORE-4f, กฎข้อ 62) Given ลูกค้ามีบัญชี When login ด้วยรหัสผ่านผิด Then `login-error-message` มีอักษรไทย ไม่ตรง `/Invalid|email|password/i` และ input อีเมลยังมีค่าเดิม;
+  Given สมัครด้วยอีเมลที่มีบัญชีแล้ว Then error ของฟอร์มสมัครมีอักษรไทยและอีเมลยังอยู่; unit ของ action login/register (mock SDK throw 401/500/network) Then ข้อความที่คืนมีอักษรไทยทุกกรณี
+  (e2e + unit Vitest)
+- AC-99 (CORE-4g, กฎข้อ 63) unit: `medusaError` ของ `FetchError` status 401 คืน error ที่ `friendlyErrorMessage` แปลงเป็นข้อความ "เข้าสู่ระบบใหม่" (ต่างจากข้อความ fallback ของ status 500);
+  `compareAddresses({…, company: null}, {…, company: ""})` = true; e2e: ใส่โค้ดของ promotion ที่ campaign หมดอายุ (สร้างผ่าน admin API) Then เห็น `promotion-error` มีอักษรไทย และ
+  `cart.promotions` ไม่มี code นั้น; เลือกที่อยู่ที่บันทึกไว้ที่มี field ว่างแล้ว dropdown ไม่แสดงข้อความ placeholder; หลัง `document.fonts.ready` ความสูงของ `CountrySelect` ต่างจาก `Input`
+  ข้างเคียง ≤ 1px; e2e ที่สร้าง/ลบข้อมูลตรวจ `response.ok()` ของ `request.delete` ใน `finally` (grep) (unit Vitest + e2e)
+- AC-100 (CORE-19c, กฎข้อ 64) Given cart 2 line When เปิด `/th/cart` และ cart dropdown Then ทุก line มี `cart-item-remove-button` ใน DOM; Given route mock ให้ `DELETE` line ตอบ 500
+  When กดลบ Then เห็น `cart-item-remove-error` มีอักษรไทย, spinner หายภายใน 5 วินาที และ line ยังอยู่ (e2e)
+- AC-101 (CORE-14f, กฎข้อ 65) Given ลูกค้าล็อกอินและ cart มี variant V qty 2 When เปิด `/th/account?add_variant=V&add_quantity=1` Then การ์ด `add-variant-pending` มี
+  `add-variant-in-cart-qty` = 2 และ textContent ไม่มี "ยังไม่ได้อยู่ในตะกร้า"; When เปิด `/zz/account?add_variant=V` หรือส่งฟอร์ม `add-variant-confirm` ที่แก้ `countryCode` เป็น `zz`
+  Then HTTP status < 500 และเห็นข้อความไทย (`add-variant-error`) หรือ URL ปลายทางขึ้นต้น `/th/` (e2e ทั้ง JS on/off สำหรับข้อแรก, no-JS สำหรับฟอร์ม)
+- AC-102 (CORE-20d, กฎข้อ 66) Given region R ที่ไม่มี `return_window_days` และ order ที่ ship แล้ว 10 วัน When เปิด order detail และ `/th/returns` Then เห็น `order-return-button`,
+  หน้า `/returns` แสดงจำนวนวันคืน = ค่าเริ่มต้นของ backend (เทียบกับค่าที่อ่านจาก `region-store-policies.ts` ใน test) และ JSON-LD มีนโยบายคืน; Given order 2 line ที่ line A ship เมื่อ
+  `window + 1` วันก่อน และ line B ship เมื่อวาน Then ฟอร์มคืนเลือกได้เฉพาะ B และ backend ตอบ 200 เมื่อส่ง B; Given backend ตอบ 400 `RETURN_WINDOW_EXPIRED` (route mock) Then ข้อความไทย
+  เฉพาะของ code นั้น และจำนวนที่เลือกยังอยู่; contract test ล้มเมื่อแก้ข้อความใน `return-window.ts` (positive control ใน evidence); grep: PDP ไม่เรียก `listRegions` (e2e + unit Vitest)
+- AC-103 (CORE-5c, กฎข้อ 67) Given `E2E_SAVE_EVIDENCE=1` When รันเฉพาะ `core-22-account-fixes.spec.ts` Then `git status --porcelain docs/evidence` แสดงการเปลี่ยนเฉพาะใต้
+  `docs/evidence/core/CORE-22/` และ PNG ในโฟลเดอร์นั้น ≤ 5; When รัน spec อื่น 1 ไฟล์ (เช่น `core-23-*.spec.ts`) Then ไม่มีไฟล์ใต้ `CORE-22/` เปลี่ยน; unit ของ fixture: spec ที่ไม่ตั้ง
+  `evidenceTarget` เรียก `evidence()`/`step()` แล้วไม่เขียนไฟล์ (Playwright project `unit` + e2e)
+
+### แผนการทดสอบ (follow-up รอบ 10)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-98 (action), AC-99 (`medusaError`, `compareAddresses`), AC-102 (contract test, window ต่อ line) |
+| unit (Playwright project `unit`) | AC-103 (fixture) |
+| e2e | AC-98, AC-99, AC-100, AC-101, AC-102, AC-103 |
+
+### Tasks (follow-up รอบ 10)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-4f | (storefront เล็ก, qa #117/#131) error หน้า login/register เป็นไทยผ่าน `friendlyErrorMessage` + คงอีเมลเมื่อ login/register ล้ม (กฎข้อ 62) — path 4c1 (`modules/account`, `lib/data/customer.ts`) | AC-98 | CORE-14d ☑ (#128) — เริ่มได้ |
+| CORE-4g | (storefront เล็ก, review/qa #131) `medusaError` คง status, `promotion-error` เมื่อโค้ดใช้ไม่ได้, `compareAddresses` null/"", ความสูง `CountrySelect`, e2e รอ `document.fonts.ready` + ตรวจผลลบใน `finally` (กฎข้อ 63) | AC-99 | CORE-4e ☑ (#131) — ∥ CORE-19b/PAY-6c/EV-7c (แตะ checkout คนละ component; ชน `lib/data/cart.ts` ตัวที่ merge ทีหลัง rebase) |
+| CORE-19c | (storefront เล็ก, qa #118) `DeleteButton` ส่งต่อ `data-testid` + แสดง error เมื่อลบล้ม (กฎข้อ 64) | AC-100 | CORE-19a ☑ (#118) |
+| CORE-14f | (storefront เล็ก, qa #128 r2 O-1/O-3) ข้อความการ์ด `add-variant-pending` ตามสถานะ cart + `countryCode` ที่ไม่มีจริงไม่ทำให้ 5xx (กฎข้อ 65) — O-2 (ส่งซ้ำ → cart 2 ใบ) อยู่ใน CORE-14e หลัง v1.0 | AC-101 | CORE-14d ☑ (#128) — เริ่มได้ |
+| CORE-20d | (storefront เล็ก, review/qa #124/#130) ค่าเริ่มต้น window เดียวกับ backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id`, ฟอร์มคงค่าเมื่อล้ม, e2e cleanup ตรวจผล (กฎข้อ 66) | AC-102 | CORE-20c (#130 — owner อนุมัติ merge 2026-10-27), CORE-20b ☑ (#124) |
+| CORE-5c | (e2e tooling เล็ก, qa #131) evidence เขียนได้เฉพาะโฟลเดอร์ของ `evidenceTarget`, screenshot ของ `step()` อยู่ในงบ, ไม่เขียนทับ task อื่น (กฎข้อ 67) | AC-103 | CORE-5b ☑ |
+CORE-19c ∥ CORE-5c ∥ CORE-4g ∥ CORE-4f ∥ CORE-14f เริ่มได้ทันที (CORE-14d ☑ #128; CORE-4f กับ CORE-14f แตะ `lib/data/customer.ts`/account ร่วมกัน — ตัวที่ merge ทีหลัง rebase);
+CORE-20d หลัง CORE-20c (◐ #130 คิว merge)
+CORE-15, CORE-19b, CORE-23b (รอบเดิม) ยังไม่เริ่ม — นิยามไม่เปลี่ยน; CORE-19b และ CORE-4g ← CORE-4e ☑ เริ่มได้แล้ว
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

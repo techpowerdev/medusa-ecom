@@ -3,7 +3,12 @@
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { notifyCartUpdated } from "@lib/util/cart-events"
+import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isVariantInStock } from "@lib/util/inventory"
+import {
+  PDP_QUANTITY_OPTIONS,
+  clampLineItemQuantity,
+} from "@lib/util/pending-add-to-cart"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import Divider from "@modules/common/components/divider"
@@ -31,6 +36,9 @@ const optionsAsKeymap = (
   }, {})
 }
 
+const ADD_TO_CART_FAILED =
+  "เพิ่มสินค้าลงตะกร้าไม่สำเร็จ จำนวนที่เลือกอาจเกินสินค้าคงเหลือหรือสินค้าหมดแล้ว"
+
 const getDefaultVariant = (product: HttpTypes.StoreProduct) =>
   product.variants?.find(isVariantInStock) ?? product.variants?.[0]
 
@@ -48,6 +56,10 @@ export default function ProductActions({
   )
   const [isUrlVariantApplied, setIsUrlVariantApplied] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
+  // CORE-24 (กฎข้อ 59): จำนวนที่เลือก — ฟอร์ม no-JS ส่งค่าเดียวกันผ่าน `<select name="quantity">`
+  const [quantity, setQuantity] = useState(1)
+  // qa #134 D-1: addToCart ล้ม (เช่นจำนวนเกิน stock) → แสดงข้อความไทย และปลด isAdding ให้ปุ่ม/ตัวเลือกใช้ต่อได้
+  const [addError, setAddError] = useState<string | null>(null)
   const countryCode = useParams().countryCode as string
 
   const selectedVariant = useMemo(() => {
@@ -129,15 +141,20 @@ export default function ProductActions({
     if (!selectedVariant?.id) return null
 
     setIsAdding(true)
+    setAddError(null)
 
-    await addToCart({
-      variantId: selectedVariant.id,
-      quantity: 1,
-      countryCode,
-    })
-    notifyCartUpdated()
-
-    setIsAdding(false)
+    try {
+      await addToCart({
+        variantId: selectedVariant.id,
+        quantity,
+        countryCode,
+      })
+      notifyCartUpdated()
+    } catch (error) {
+      setAddError(friendlyErrorMessage(error, ADD_TO_CART_FAILED))
+    } finally {
+      setIsAdding(false)
+    }
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -165,7 +182,6 @@ export default function ProductActions({
             name="variant_id"
             value={isValidVariant ? selectedVariant?.id ?? "" : ""}
           />
-          <input type="hidden" name="quantity" value="1" />
           <div>
             {(product.variants?.length ?? 0) > 1 && (
               <div className="flex flex-col gap-y-4">
@@ -192,6 +208,32 @@ export default function ProductActions({
           <ProductPrice product={product} variant={selectedVariant} />
 
           <FlashSale {...flash} />
+
+          <label className="flex items-center gap-x-3 text-small-regular">
+            <span>จำนวน</span>
+            <select
+              name="quantity"
+              value={quantity}
+              onChange={(e) =>
+                setQuantity(clampLineItemQuantity(e.target.value))
+              }
+              disabled={
+                !canBuy ||
+                !selectedVariant ||
+                !isValidVariant ||
+                !!disabled ||
+                isAdding
+              }
+              className="border border-ui-border-base bg-ui-bg-subtle rounded-md px-3 py-1.5"
+              data-testid="product-quantity-select"
+            >
+              {PDP_QUANTITY_OPTIONS.map((q) => (
+                <option key={q} value={q}>
+                  {q}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {selectedVariant && isValidVariant && (
             <p
@@ -222,6 +264,15 @@ export default function ProductActions({
               ? "สินค้าหมด"
               : "เพิ่มลงตะกร้า"}
           </Button>
+          {addError && (
+            <p
+              className="text-small-regular text-ui-fg-error"
+              role="alert"
+              data-testid="add-to-cart-error"
+            >
+              {addError}
+            </p>
+          )}
         </form>
         <MobileActions
           product={product}
@@ -234,6 +285,7 @@ export default function ProductActions({
           isAdding={isAdding}
           show={!inView}
           optionsDisabled={!!disabled || isAdding}
+          error={addError}
         />
       </div>
     </>
