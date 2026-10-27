@@ -907,6 +907,15 @@
           "expression": "CREATE INDEX IF NOT EXISTS \"IDX_group_buy_membership_group_id_status\" ON \"group_buy_membership\" (\"group_id\", \"status\") WHERE deleted_at IS NULL"
         },
         {
+          "keyName": "IDX_group_buy_membership_customer_id_joined_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_group_buy_membership_customer_id_joined_at\" ON \"group_buy_membership\" (\"customer_id\", \"joined_at\") WHERE deleted_at IS NULL"
+        },
+        {
           "keyName": "group_buy_membership_pkey",
           "columnNames": [
             "id"
