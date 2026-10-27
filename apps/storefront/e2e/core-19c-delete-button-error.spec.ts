@@ -76,6 +76,31 @@ async function expectRemoveFailedVisibly(scope: Locator) {
   await expect(scope.getByTestId("cart-item-remove-spinner")).toHaveCount(0, { timeout: 5000 })
 }
 
+type Box = { x: number; y: number; width: number; height: number }
+const overlaps = (a: Box, b: Box) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+
+/**
+ * qa #142 D-2: ข้อความ error อ่านได้ — สูงไม่เกิน 2 บรรทัด, ไม่ทับปุ่ม/element อื่นใน line, หน้าไม่เลื่อนแนวนอน
+ * (ก่อนแก้ในหน้า cart ข้อความถูกบีบใน cell `w-28` กว้าง 29px ตัดเป็น 9 บรรทัด)
+ */
+async function expectReadableError(page: Page, scope: Locator, neighbours: string[]) {
+  const error = scope.getByTestId("cart-item-remove-error")
+  const box = (await error.boundingBox())!
+  const lineHeight = await error.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight))
+  expect(box.height, `ความสูง error (line-height ${lineHeight}px)`).toBeLessThanOrEqual(lineHeight * 2 + 1)
+  for (const id of neighbours) {
+    const el = scope.getByTestId(id)
+    // `<select>` ของ CartItemSelect สูง h-16 ล้นกรอบที่มองเห็น (badge h-10 ของ starter) — วัดกรอบที่มองเห็นแทน
+    const visible = id === "product-select-button" ? el.locator("xpath=..") : el
+    const other = (await visible.boundingBox())!
+    expect(overlaps(box, other), `error ทับ ${id}`).toBe(false)
+  }
+  const viewport = page.viewportSize()!.width
+  expect(box.x + box.width, "error อยู่ในจอ").toBeLessThanOrEqual(viewport)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth), "หน้าไม่เลื่อนแนวนอน").toBeLessThanOrEqual(viewport)
+}
+
 test("AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button", async ({
   page,
   context,
@@ -113,6 +138,7 @@ test("AC-100: ลบใน cart dropdown แล้ว server action ตอบ 50
     await first.getByTestId("cart-item-remove-button").click()
     await expect.poll(failedCount).toBe(1)
     await expectRemoveFailedVisibly(first)
+    await expectReadableError(page, first, ["cart-item-remove-button"])
     await evidence("01-dropdown-remove-error")
   })
 
@@ -122,23 +148,30 @@ test("AC-100: ลบใน cart dropdown แล้ว server action ตอบ 50
   })
 })
 
-test("AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่", async ({
-  page,
-  context,
-  request,
-  baseURL,
-  evidence,
-}) => {
-  const { headers, cartId } = await customerWithTwoLines(request, context, baseURL!)
-  await page.goto(`/${CC}/cart`)
-  await expect(page.getByTestId("product-row")).toHaveCount(2)
-  const first = page.getByTestId("product-row").first()
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 375, height: 812 },
+]) {
+  test(`AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (${viewport.width}px)`, async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    await page.setViewportSize(viewport)
+    const { headers, cartId } = await customerWithTwoLines(request, context, baseURL!)
+    await page.goto(`/${CC}/cart`)
+    await expect(page.getByTestId("product-row")).toHaveCount(2)
+    const first = page.getByTestId("product-row").first()
 
-  const failedCount = await failNextServerAction(page)
-  await first.getByTestId("product-delete-button").click()
-  await expect.poll(failedCount).toBe(1)
-  await expectRemoveFailedVisibly(first)
-  await expect(page.getByTestId("product-row")).toHaveCount(2)
-  expect(await backendLineCount(request, cartId, headers)).toBe(2)
-  await evidence("02-cart-page-remove-error")
-})
+    const failedCount = await failNextServerAction(page)
+    await first.getByTestId("product-delete-button").click()
+    await expect.poll(failedCount).toBe(1)
+    await expectRemoveFailedVisibly(first)
+    await expectReadableError(page, first, ["product-delete-button", "product-select-button"])
+    await expect(page.getByTestId("product-row")).toHaveCount(2)
+    expect(await backendLineCount(request, cartId, headers)).toBe(2)
+    await evidence(viewport.width === 1280 ? "02-cart-page-remove-error" : "03-cart-page-remove-error-375")
+  })
+}

@@ -31,3 +31,41 @@
       Tests  326 passed (326)
 
 ## pnpm lint: 0 errors (warning เดิมของ storefront) / pnpm typecheck: ผ่าน (storefront + backend)
+
+# รอบแก้ตาม qa #142 (D-1, D-2) 2026-10-27 — สภาพแวดล้อมเดิม (backend develop :9203, storefront build+start :8203)
+
+## Red (ก่อนแก้ layout): e2e เพิ่ม assertion ความสูง error ≤ 2 บรรทัด / ไม่ทับปุ่ม-select / ไม่มี scroll แนวนอน + เคส 375px
+  ✓  1 [chromium] › e2e/core-19c-delete-button-error.spec.ts:101:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (2.3s)
+  ✓  2 [chromium] › e2e/core-19c-delete-button-error.spec.ts:119:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (2.1s)
+  ✘  3 [chromium] › e2e/core-19c-delete-button-error.spec.ts:152:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (2.0s)
+  ✘  4 [chromium] › e2e/core-19c-delete-button-error.spec.ts:152:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (893ms)
+    Error: ความสูง error (line-height 20px)
+    Expected: <= 41
+    Received:    180
+    Error: ความสูง error (line-height 20px)
+    Expected: <= 41
+    Received:    180
+  2 failed
+  2 passed (8.5s)
+
+## Green: e2e CORE-19c (4) + regression CORE-19a (8)
+  ✓  1 [chromium] › e2e/core-19c-delete-button-error.spec.ts:104:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (1.1s)
+  ✓  2 [chromium] › e2e/core-19c-delete-button-error.spec.ts:122:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1.3s)
+  ✓  3 [chromium] › e2e/core-19c-delete-button-error.spec.ts:155:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (908ms)
+  ✓  4 [chromium] › e2e/core-19c-delete-button-error.spec.ts:155:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (907ms)
+  4 passed (4.7s)
+  ✓  1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:63:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (1.6s)
+  ✓  2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:63:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.6s)
+  ✓  3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:63:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (4.5s)
+  ✓  4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:143:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (1.1s)
+  ✓  5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:143:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (3.2s)
+  ✓  6 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:183:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (10.3s)
+  ✓  7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:183:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.3s)
+  ✓  8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:207:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (682ms)
+  8 passed (28.1s)
+
+## Green: unit storefront (Vitest)
+ Test Files  31 passed (31)
+      Tests  326 passed (326)
+
+## pnpm lint: 0 errors / storefront typecheck + build: ผ่าน
