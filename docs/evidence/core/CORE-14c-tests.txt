@@ -1,0 +1,15 @@
+# CORE-14c — ผล test (spec 01 AC-76, กฎข้อ 40) วันที่ 2026-10-27
+
+## Red (ก่อนแก้)
+- unit: src/login-foreign-cart.test.ts — 'transfer ได้ 404 → login สำเร็จ' ล้ม: ได้ { state: 'error', error: 'Cart not found' }
+- e2e: core-14c-login-foreign-cart.spec.ts ล้ม: cookie _medusa_cart_id ยังชี้ cart ของ B (backend: POST /store/carts/<CB>/customer → 404)
+
+## Green — unit (vitest run)
+ Test Files  23 passed (23)
+      Tests  225 passed (225)
+
+## Green — e2e (chromium, backend :9151 / storefront next dev :8151)
+core-14-buy-login.spec.ts, core-14b-add-variant.spec.ts, core-14c-login-foreign-cart.spec.ts: 7 passed (16.8s)
+
+## lint + typecheck + storefront build
+pnpm lint && pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน
