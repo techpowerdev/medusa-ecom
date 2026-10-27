@@ -120,9 +120,10 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
           </Button>
         )}
       </div>
+      {/* กฎข้อ 24a: highlight ที่ระดับ td ด้วย — td แรกของ DataTable เป็น sticky มี bg-ui-bg-base (+ group-hover) ทับสีของแถว */}
       <div
         data-testid="gb-groups-table"
-        className="[&_tbody_tr:has([data-testid=gb-group-selected])]:bg-ui-bg-highlight"
+        className="[&_tbody_tr:has([data-testid=gb-group-selected])]:bg-ui-bg-highlight [&_tbody_tr:has([data-testid=gb-group-selected])_td]:!bg-ui-bg-highlight"
       >
         <DataTable instance={table}>
           <DataTable.Table

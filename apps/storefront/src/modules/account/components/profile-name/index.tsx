@@ -5,6 +5,7 @@ import React, { useEffect, useActionState } from "react";
 import Input from "@modules/common/components/input"
 
 import AccountInfo from "../account-info"
+import { submitWithoutReset } from "@lib/util/submit-without-reset"
 import { HttpTypes } from "@medusajs/types"
 import { updateCustomer } from "@lib/data/customer"
 
@@ -32,10 +33,11 @@ const ProfileName: React.FC<MyInformationProps> = ({ customer }) => {
     }
   }
 
-  const [state, formAction] = useActionState(updateCustomerName, {
+  const [state, formAction, isPending] = useActionState(updateCustomerName, {
     error: null as string | null,
     success: false,
   })
+  const onSubmit = submitWithoutReset(formAction)
 
   const clearState = () => {
     setSuccessState(false)
@@ -46,7 +48,7 @@ const ProfileName: React.FC<MyInformationProps> = ({ customer }) => {
   }, [state])
 
   return (
-    <form action={formAction} className="w-full overflow-visible">
+    <form onSubmit={onSubmit} className="w-full overflow-visible">
       <AccountInfo
         label="ชื่อ"
         currentInfo={`${customer.first_name} ${customer.last_name}`}
@@ -54,6 +56,7 @@ const ProfileName: React.FC<MyInformationProps> = ({ customer }) => {
         isError={!!state?.error}
         errorMessage={state?.error || undefined}
         clearState={clearState}
+        isPending={isPending}
         data-testid="account-name-editor"
       >
         <div className="grid grid-cols-2 gap-x-4">

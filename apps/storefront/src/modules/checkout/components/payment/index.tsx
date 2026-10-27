@@ -38,6 +38,17 @@ const Payment = ({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     activeSession?.provider_id ?? ""
   )
+  // CORE-19b (AC-64): server action สร้าง session คืนผลก่อน router นำ cart ใหม่มาใส่ props — ช่วงนั้นปุ่ม
+  // Continue จะเห็น cart เก่า (ยังไม่มี session) แล้วสร้างซ้ำ (PI แรกถูก cancel) และค้างที่ขั้น payment
+  // จึงล็อกปุ่มต่อจนกว่า cart ใน props มี session ของ provider ที่เพิ่งสร้าง
+  const [awaitingSessionFor, setAwaitingSessionFor] = useState<string | null>(
+    null
+  )
+  const sessionNotInCartYet =
+    awaitingSessionFor !== null &&
+    activeSession?.provider_id !== awaitingSessionFor
+  // CORE-19e (กฎข้อ 71): RSC refresh อาจไม่มาถึง → ปุ่มต้องไม่ล็อกค้างถาวร
+  const [sessionPendingError, setSessionPendingError] = useState(false)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -48,6 +59,8 @@ const Payment = ({
   const setPaymentMethod = async (method: string) => {
     setError(null)
     setSelectedPaymentMethod(method)
+    setAwaitingSessionFor(null)
+    setSessionPendingError(false)
     // PAY-2: PromptPay สร้าง session ทันทีที่เลือกเหมือนบัตร (QR พร้อมในขั้น review)
     if (isStripeLike(method) || isPromptPay(method)) {
       // ล็อกปุ่ม Continue จนสร้าง session เสร็จ — ไม่งั้น handleSubmit สร้างซ้ำ แล้ว PaymentIntent
@@ -57,6 +70,7 @@ const Payment = ({
         await initiatePaymentSession(cart, {
           provider_id: method,
         })
+        setAwaitingSessionFor(method)
       } catch (err) {
         setError(friendlyErrorMessage(err, "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       } finally {
@@ -90,6 +104,7 @@ const Payment = ({
 
   const handleSubmit = async () => {
     setIsLoading(true)
+    setSessionPendingError(false)
     try {
       const shouldInputPaymentDetails =
         isStripeLike(selectedPaymentMethod) && !activeSession
@@ -121,6 +136,23 @@ const Payment = ({
   useEffect(() => {
     setError(null)
   }, [isOpen])
+
+  // CORE-19e (กฎข้อ 71): ล็อกเกิน 5 วินาที → refresh 1 ครั้ง; 10 วินาที → ปลดล็อก + error
+  // cart ได้ session เมื่อใด sessionNotInCartYet เป็น false แล้ว cleanup ยกเลิก timer ทั้งคู่
+  useEffect(() => {
+    if (!sessionNotInCartYet) {
+      return
+    }
+    const refreshTimer = setTimeout(() => router.refresh(), 5_000)
+    const unlockTimer = setTimeout(() => {
+      setAwaitingSessionFor(null)
+      setSessionPendingError(true)
+    }, 10_000)
+    return () => {
+      clearTimeout(refreshTimer)
+      clearTimeout(unlockTimer)
+    }
+  }, [sessionNotInCartYet, router])
 
   return (
     <div className="bg-white">
@@ -200,12 +232,20 @@ const Payment = ({
             error={error}
             data-testid="payment-method-error-message"
           />
+          <ErrorMessage
+            error={
+              sessionPendingError
+                ? "ระบบยังเตรียมการชำระเงินไม่เสร็จ กรุณาลองอีกครั้ง"
+                : null
+            }
+            data-testid="payment-session-pending-error"
+          />
 
           <Button
             size="large"
             className="mt-6"
             onClick={handleSubmit}
-            isLoading={isLoading}
+            isLoading={isLoading || sessionNotInCartYet}
             disabled={
               (isStripeLike(selectedPaymentMethod) && !paymentComplete) ||
               (!selectedPaymentMethod && !paidByGiftcard)

@@ -27,6 +27,8 @@ const EvoucherCode = model
     { on: ["pool_id", "status"] },
     // EV-6: widget หน้า order / resend ค้นด้วย order_id
     { on: ["order_id"] },
+    // EV-7a (กฎข้อ 22): รายการ code ของลูกค้า (GET /store/customers/me/evouchers) ค้นด้วย customer_id + status
+    { on: ["customer_id", "status"] },
   ])
 
 export default EvoucherCode
