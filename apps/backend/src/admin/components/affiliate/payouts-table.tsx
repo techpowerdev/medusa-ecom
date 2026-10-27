@@ -1,19 +1,25 @@
 import { Badge, Button, createDataTableColumnHelper, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useMemo, useRef } from "react"
+import { useMemo, useRef, useState } from "react"
 import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
 import { formatAmount, formatDate } from "../../lib/affiliate-format"
-import { canCancelPayout } from "../../lib/affiliate-payout"
+import { canCancelPayout, canMarkPaid } from "../../lib/affiliate-payout"
 import { AffiliateListTable } from "./list-table"
+import { MarkPaidPrompt } from "./mark-paid-prompt"
+import { PayoutFormModal } from "./payout-form"
 
 const columnHelper = createDataTableColumnHelper<Payout>()
 
 // AF-6 (spec 05 AC-26): เฉพาะแถว `draft` มีปุ่มยกเลิก (route ของ AF-9) ยืนยันด้วย usePrompt และกันกดซ้ำ
+// AF-12c (กฎ 37c): ปุ่มสร้าง payout (FocusModal) และ mark paid ต่อแถว `draft` (Prompt พร้อมช่อง reference)
 export const PayoutsTable = () => {
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → คลิกซ้ำ (dblclick) ถูกเพิกเฉย (ค่าคงอยู่ข้าม render)
   const inFlight = useRef(false)
+  // `opened` เป็น key ให้ฟอร์ม/กล่องยืนยัน mount ใหม่ทุกครั้งที่เปิด (ค่าเริ่มต้นสด)
+  const [creating, setCreating] = useState<number>()
+  const [markingPaid, setMarkingPaid] = useState<{ payout: Payout; opened: number }>()
 
   const refetchPayouts = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
 
@@ -63,18 +69,31 @@ export const PayoutsTable = () => {
       }),
       columnHelper.display({
         id: "actions",
-        cell: ({ row }) =>
-          canCancelPayout(row.original) ? (
-            <Button
-              size="small"
-              variant="secondary"
-              data-testid="affiliate-payout-cancel"
-              disabled={cancel.isPending}
-              onClick={() => confirmCancel(row.original.id)}
-            >
-              Cancel
-            </Button>
-          ) : null,
+        cell: ({ row }) => (
+          <div className="flex gap-x-2">
+            {canMarkPaid(row.original) && (
+              <Button
+                size="small"
+                variant="secondary"
+                data-testid="affiliate-payout-mark-paid"
+                onClick={() => setMarkingPaid((m) => m ?? { payout: row.original, opened: Date.now() })}
+              >
+                Mark paid
+              </Button>
+            )}
+            {canCancelPayout(row.original) && (
+              <Button
+                size="small"
+                variant="secondary"
+                data-testid="affiliate-payout-cancel"
+                disabled={cancel.isPending}
+                onClick={() => confirmCancel(row.original.id)}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+        ),
       }),
       columnHelper.accessor((row) => formatAmount(row.amount, row.currency), {
         id: "amount",
@@ -85,12 +104,35 @@ export const PayoutsTable = () => {
         { id: "period", header: "Period" },
       ),
       columnHelper.accessor("paid_at", { header: "Paid at", cell: ({ getValue }) => formatDate(getValue()) }),
+      columnHelper.accessor("reference", { header: "Reference", cell: ({ getValue }) => getValue() ?? "-" }),
       columnHelper.accessor("id", { header: "Payout" }),
       columnHelper.accessor("affiliate_id", { header: "Affiliate" }),
     ],
-    // confirmCancel ใช้แค่ ref, prompt และ mutateAsync ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending เปลี่ยน
+    // confirmCancel ใช้แค่ ref, prompt, mutateAsync และ setter ของ state ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending เปลี่ยน
     [cancel.isPending],
   )
 
-  return <AffiliateListTable resource="payouts" columns={columns} empty="No payouts yet" />
+  return (
+    <>
+      <div className="flex justify-end px-6 py-4">
+        <Button
+          size="small"
+          variant="secondary"
+          data-testid="affiliate-payout-create"
+          onClick={() => setCreating((c) => c ?? Date.now())}
+        >
+          Create payout
+        </Button>
+      </div>
+      <AffiliateListTable resource="payouts" columns={columns} empty="No payouts yet" />
+      {creating && <PayoutFormModal key={creating} onClose={() => setCreating(undefined)} />}
+      {markingPaid && (
+        <MarkPaidPrompt
+          key={markingPaid.opened}
+          payout={markingPaid.payout}
+          onClose={() => setMarkingPaid(undefined)}
+        />
+      )}
+    </>
+  )
 }
