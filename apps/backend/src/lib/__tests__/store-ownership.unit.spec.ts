@@ -11,6 +11,7 @@ import {
 import { ensureStoreOwnership, storeOwnershipMiddlewares } from "../../api/store/ownership/middlewares"
 import { rejectStoreReturnOverrides } from "../../api/store/ownership/return-overrides"
 import { validateStoreReturnShippingOption } from "../../api/store/ownership/return-shipping-option"
+import { validateStoreReturnWindow } from "../../api/store/ownership/return-window"
 
 // CORE-12 (spec 01 กฎ 22-23, ADR-013): resolver ของ owner ต่อ matcher + middleware 404 เมื่อไม่ใช่เจ้าของ
 type GraphCall = { entity: string; fields: string[]; filters: Record<string, unknown> }
@@ -122,8 +123,9 @@ describe("storeOwnershipMiddlewares: which id each matcher checks", () => {
     }
     // middleware ตัวสุดท้ายของแต่ละ matcher คือตัวตรวจ owner (ตัวก่อนหน้าเป็น authenticate ถ้ามี)
     // ยกเว้น POST /store/returns ที่ต่อท้ายด้วย rejectStoreReturnOverrides (CORE-16) + validateStoreReturnShippingOption (CORE-17)
+    // + validateStoreReturnWindow (CORE-20b)
     const checks = route.middlewares!.filter(
-      (m) => m !== rejectStoreReturnOverrides && m !== validateStoreReturnShippingOption
+      (m) => m !== rejectStoreReturnOverrides && m !== validateStoreReturnShippingOption && m !== validateStoreReturnWindow
     )
     return checks[checks.length - 1]
   }
@@ -177,8 +179,9 @@ describe("CORE-13: returns need a customer session; order transfer is disabled",
   it("adds authenticate(customer) before the order owner check on POST /store/returns", () => {
     const returns = storeOwnershipMiddlewares.find((r) => r.matcher === "/store/returns")
     expect(returns?.method).toEqual(["POST"])
-    // [authenticate, owner check, CORE-16 rejectStoreReturnOverrides, CORE-17 validateStoreReturnShippingOption]
-    expect(returns?.middlewares).toHaveLength(4)
+    // [authenticate, owner check, CORE-16 rejectStoreReturnOverrides, CORE-17 validateStoreReturnShippingOption,
+    //  CORE-20b validateStoreReturnWindow]
+    expect(returns?.middlewares).toHaveLength(5)
   })
 
   it("registers the transfer block without a method so it runs before core authenticate (global bucket)", () => {

@@ -1,0 +1,31 @@
+import "server-only"
+
+import { getActiveFlashSales } from "@lib/data/flash-sales"
+import { type FlashVariantPrice, cardFlashOffer } from "@lib/util/flash-sale"
+import type { HttpTypes } from "@medusajs/types"
+
+/**
+ * FS-13 (กฎข้อ 18): ราคา flash ต่อสินค้าสำหรับการ์ด PLP (key = product id; ไม่มี key = แสดงราคาปกติ)
+ * ไม่อยู่ในไฟล์ "use server" เพื่อไม่ให้ถูก expose เป็น server action (เรียกจาก server component ของ PLP เท่านั้น)
+ * เทียบ `ends_at` กับเวลาที่ได้ response; แคมเปญ sold out → ไม่มีราคา flash บนการ์ด
+ */
+export async function getCardFlashPrices(
+  regionId: string,
+  products: HttpTypes.StoreProduct[]
+): Promise<Record<string, FlashVariantPrice>> {
+  const variantIds = (p: HttpTypes.StoreProduct) =>
+    (p.variants ?? []).map((v) => v.id)
+  const flash = await getActiveFlashSales(
+    regionId,
+    products.flatMap(variantIds)
+  )
+  const now = Date.now()
+  const prices: Record<string, FlashVariantPrice> = {}
+  for (const p of products) {
+    const offer = cardFlashOffer(flash, variantIds(p), now)
+    if (offer) {
+      prices[p.id] = offer.price
+    }
+  }
+  return prices
+}

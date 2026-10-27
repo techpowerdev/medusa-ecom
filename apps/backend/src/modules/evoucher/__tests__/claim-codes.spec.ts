@@ -90,13 +90,43 @@ moduleIntegrationTestRunner<EvoucherModuleService>({
     })
 
     it("backorders the whole line item without touching codes when there are not enough", async () => {
-      await addCodes([{ code: "ONLY" }, { code: "SOON", expires_at: inDays(2) }])
+      // code ที่หมดอายุแล้วไม่ถูกเลือกแม้ในส่วนเติม (กฎข้อ 2 ข้อยกเว้น EV-12)
+      await addCodes([{ code: "ONLY" }, { code: "EXPIRED", expires_at: inDays(-1) }])
 
       const result = await claim("order_1", 2)
 
       expect(result).toEqual({ allocated: [], backordered: ["order_1_line"], skipped: [], stuck: [] })
       const rows = await service.listEvoucherCodes({ pool_id: poolId })
       expect(rows.map((r) => r.status)).toEqual(["available", "available"])
+    })
+
+    // EV-12 (กฎข้อ 2 ข้อยกเว้น, AC-30b): code อายุยาวไม่พอ → เติมจาก code < 7 วันที่ยังไม่หมดอายุ ไกลสุดก่อน
+    it("tops up with not-yet-expired near-expiry codes, farthest expiry first, when long-lived codes run short", async () => {
+      await addCodes([
+        { code: "LONG", expires_at: inDays(30) },
+        { code: "NEAR-2", expires_at: inDays(2) },
+        { code: "NEAR-5", expires_at: inDays(5) },
+        { code: "NEAR-4", expires_at: inDays(4) },
+        { code: "EXPIRED", expires_at: inDays(-1) },
+      ])
+
+      const first = await claim("order_1", 2)
+      const second = await claim("order_2", 1)
+
+      expect(first.backordered).toEqual([])
+      expect(await plain(first.allocated[0].code_ids)).toEqual(["LONG", "NEAR-5"])
+      expect(await plain(second.allocated[0].code_ids)).toEqual(["NEAR-4"])
+    })
+
+    it("prefers a long-lived code over a near-expiry one", async () => {
+      await addCodes([
+        { code: "NEAR", expires_at: inDays(5) },
+        { code: "LONG", expires_at: inDays(30) },
+      ])
+
+      const result = await claim("order_1", 1)
+
+      expect(await plain(result.allocated[0].code_ids)).toEqual(["LONG"])
     })
 
     it("skips line items that already have codes (AC-7 idempotent)", async () => {
