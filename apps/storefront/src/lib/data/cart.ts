@@ -220,14 +220,23 @@ export async function updateLineItem({
 export type DeleteLineItemResult = { ok: true } | { error: "unauthorized" | "failed" }
 
 export async function deleteLineItem(lineId: string): Promise<DeleteLineItemResult> {
-  const cartId = await getCartId()
-
-  if (!lineId || !cartId) {
+  if (!lineId) {
     return { error: "failed" }
   }
 
   const headers = {
     ...(await getAuthHeaders()),
+  }
+
+  // qa #160 D-1: ไม่มี JWT (หมดอายุ/ถูกลบ) → middleware ล้าง `_medusa_cart_id` ไปแล้ว จึงต้องเช็กก่อน cart id
+  if (!("authorization" in headers)) {
+    return { error: "unauthorized" }
+  }
+
+  const cartId = await getCartId()
+
+  if (!cartId) {
+    return { error: "failed" }
   }
 
   try {

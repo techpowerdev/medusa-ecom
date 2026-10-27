@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const deleteLineItemSdk = vi.fn()
 const getCartId = vi.fn()
 const revalidateTag = vi.fn()
+const getAuthHeaders = vi.fn()
 
 vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
@@ -13,7 +14,7 @@ vi.mock("@lib/config", () => ({
   sdk: { store: { cart: { deleteLineItem: (...a: unknown[]) => deleteLineItemSdk(...a) } } },
 }))
 vi.mock("@lib/data/cookies", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({ authorization: "Bearer t" }),
+  getAuthHeaders: () => getAuthHeaders(),
   getCacheOptions: vi.fn().mockResolvedValue({}),
   getCacheTag: vi.fn().mockResolvedValue("carts-t"),
   getCartId: () => getCartId(),
@@ -36,6 +37,7 @@ describe("deleteLineItem คืนผลแบบมีโครงสร้า�
   beforeEach(() => {
     vi.clearAllMocks()
     getCartId.mockResolvedValue("cart_1")
+    getAuthHeaders.mockResolvedValue({ authorization: "Bearer t" })
     vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
@@ -64,6 +66,15 @@ describe("deleteLineItem คืนผลแบบมีโครงสร้า�
     await expect(run()).resolves.toEqual({ error: "failed" })
     getCartId.mockResolvedValue("cart_1")
     await expect(run("")).resolves.toEqual({ error: "failed" })
+    expect(deleteLineItemSdk).not.toHaveBeenCalled()
+  })
+
+  // qa #160 D-1: JWT หมดอายุ/ถูกลบ → middleware (clearStaleCartCookie) ล้าง `_medusa_cart_id` ใน request ของ action ด้วย
+  // ต้องตอบ unauthorized ไม่ใช่ failed จากการไม่มี cart id
+  it("ไม่มี JWT (และ cookie cart ถูกล้างแล้ว) → { error: \"unauthorized\" } ไม่เรียก SDK", async () => {
+    getAuthHeaders.mockResolvedValue({})
+    getCartId.mockResolvedValue(undefined)
+    await expect(run()).resolves.toEqual({ error: "unauthorized" })
     expect(deleteLineItemSdk).not.toHaveBeenCalled()
   })
 })
