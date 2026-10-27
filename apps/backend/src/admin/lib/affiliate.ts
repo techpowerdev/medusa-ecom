@@ -60,3 +60,11 @@ export const listAffiliateResource = <K extends string, T>(
 // AF-9: route ยกเลิก payout draft (soft-delete, Q9)
 export const cancelPayout = (id: string) =>
   sdk.client.fetch(`/admin/affiliate/payouts/${id}`, { method: "DELETE" })
+
+// AF-12b (กฎ 37b): อนุมัติ/ระงับ affiliate และแก้ข้อมูลรับเงินผ่าน POST /admin/affiliate/affiliates/:id (AF-5)
+export type AdminAffiliate = Affiliate & { payout_info: Record<string, unknown> | null }
+
+export const updateAffiliate = (
+  id: string,
+  body: { status?: Affiliate["status"]; payout_info?: Record<string, string> | null },
+) => sdk.client.fetch<{ affiliate: AdminAffiliate }>(`/admin/affiliate/affiliates/${id}`, { method: "POST", body })
