@@ -18,6 +18,16 @@ export const listRegions = async () => {
     .then(({ regions }) => regions)
 }
 
+// CORE-20c (กฎข้อ 60): metadata นโยบายของ region (return_window_days ฯลฯ) ที่ admin แก้ต้องมีผลโดยไม่ต้อง redeploy
+// — หน้า /returns, /shipping และ structured data อ่านผ่านตัวนี้ (หน้า force-static ยัง ISR ตาม revalidate ของหน้า)
+export const listRegionsUncached = async () =>
+  sdk.client
+    .fetch<{ regions: HttpTypes.StoreRegion[] }>(`/store/regions`, {
+      method: "GET",
+      cache: "no-store",
+    })
+    .then(({ regions }) => regions)
+
 export const retrieveRegion = async (id: string) => {
   const next = {
     ...(await getCacheOptions(["regions", id].join("-"))),

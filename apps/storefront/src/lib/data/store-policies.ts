@@ -1,10 +1,10 @@
 "use server"
 
 import { getRegionPolicies, StorePolicies } from "@lib/util/store-policies"
-import { listRegions } from "./regions"
+import { listRegionsUncached } from "./regions"
 
 export const getStorePolicies = async (countryCode: string) => {
-  const regions = await listRegions()
+  const regions = await listRegionsUncached()
   const current = regions.find((region) =>
     region.countries?.some((country) => country.iso_2 === countryCode.toLowerCase())
   )
