@@ -4,6 +4,14 @@ import { isLowStock } from "../../../modules/evoucher/utils/stats"
 
 type PoolRow = { id: string; low_stock_threshold: number }
 
+// EV-9 (AC-15): field ที่ withCodeCounts ต้องใช้ — route เติมเองเสมอแม้ client ส่ง `fields` ที่ไม่มี
+const POOL_COUNT_FIELDS = ["id", "low_stock_threshold"]
+
+/** fields ของ query.graph สำหรับ pool: ของ client (หรือ default) + field ที่ใช้คำนวณ `code_counts`/`low_stock` */
+export const withPoolCountFields = (fields: string[] = []) => [
+  ...new Set([...fields, ...POOL_COUNT_FIELDS]),
+]
+
 /** เติม `code_counts` (ต่อสถานะ) และ `low_stock` ให้ pool สำหรับหน้า admin (EV-6) */
 export async function withCodeCounts<T extends PoolRow>(
   service: EvoucherModuleService,
