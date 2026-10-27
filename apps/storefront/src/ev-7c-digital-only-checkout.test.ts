@@ -135,6 +135,20 @@ describe("setAddresses แบบ digital-only (กฎข้อ 24b)", () => {
     expect(redirect).toHaveBeenCalledWith("/th/checkout?step=payment")
   })
 
+  it.each(["/example.org", "//example.org", "https://example.org", "TH", ""])(
+    "checkout_country_code ไม่ใช่รหัสประเทศ (%j) → redirect ภายในร้าน /checkout?step=payment (ไม่ open redirect)",
+    async (cc) => {
+      update.mockResolvedValue({ cart: { id: "cart_1" } })
+      const { setAddresses } = await import("@lib/data/cart")
+      const form = billingForm()
+      form.set("checkout_country_code", cc)
+
+      await setAddresses(null, form)
+
+      expect(redirect).toHaveBeenCalledWith("/checkout?step=payment")
+    }
+  )
+
   it("flow ปกติ (ไม่มี digital_only) ยังไปขั้น delivery", async () => {
     update.mockResolvedValue({ cart: { id: "cart_1" } })
     const { setAddresses } = await import("@lib/data/cart")
@@ -158,6 +172,18 @@ describe("placeOrder redirect ใช้ countryCode จาก URL (กฎข้�
     await placeOrder("cart_1", undefined, "th")
 
     expect(redirect).toHaveBeenCalledWith("/th/order/order_1/confirmed")
+  })
+
+  it("countryCode จาก client ไม่ใช่รหัสประเทศ → ใช้ country ของ shipping_address (ไม่ open redirect)", async () => {
+    complete.mockResolvedValue({
+      type: "order",
+      order: { id: "order_3", shipping_address: { country_code: "th" } },
+    })
+    const { placeOrder } = await import("@lib/data/cart")
+
+    await placeOrder("cart_1", undefined, "/example.org")
+
+    expect(redirect).toHaveBeenCalledWith("/th/order/order_3/confirmed")
   })
 
   it("ไม่ส่ง countryCode → ใช้ country ของ shipping_address แบบเดิม", async () => {

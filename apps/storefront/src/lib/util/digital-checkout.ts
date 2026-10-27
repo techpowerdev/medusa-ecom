@@ -24,3 +24,13 @@ export function checkoutStep(cart: CheckoutCart) {
   }
   return deliveryStepDone(cart) ? "payment" : "delivery"
 }
+
+const COUNTRY_CODE_RE = /^[a-z]{2}$/
+
+/**
+ * รหัสประเทศจาก client (hidden input / URL) ที่ใช้ประกอบ path redirect ได้อย่างปลอดภัย — ไม่ผ่าน `^[a-z]{2}$` → undefined
+ * กัน open redirect เช่น `/example.org` → `//example.org/...` (QA #174)
+ */
+export function safeCountryCode(value: unknown): string | undefined {
+  return typeof value === "string" && COUNTRY_CODE_RE.test(value) ? value : undefined
+}

@@ -2,6 +2,7 @@
 
 import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
 import { friendlyErrorMessage } from "@lib/util/error-message"
+import { safeCountryCode } from "@lib/util/digital-checkout"
 import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
@@ -470,7 +471,9 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
     } catch (e: unknown) {
       return friendlyErrorMessage(e, "บันทึกที่อยู่ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง")
     }
-    return redirect(`/${formData.get("checkout_country_code")}/checkout?step=payment`)
+    // country ไม่ถูกต้อง → path ภายในร้าน ให้ middleware เลือกประเทศ (กัน open redirect)
+    const countryCode = safeCountryCode(formData.get("checkout_country_code"))
+    return redirect(`${countryCode ? `/${countryCode}` : ""}/checkout?step=payment`)
   }
   try {
 
@@ -571,7 +574,8 @@ export async function placeOrder(
 
   if (cartRes?.type === "order") {
     const orderCountry =
-      countryCode ?? cartRes.order.shipping_address?.country_code?.toLowerCase()
+      safeCountryCode(countryCode) ??
+      cartRes.order.shipping_address?.country_code?.toLowerCase()
 
     const orderCacheTag = await getCacheTag("orders")
     revalidateTag(orderCacheTag, { expire: 0 })

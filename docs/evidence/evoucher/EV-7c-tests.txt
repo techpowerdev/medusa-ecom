@@ -55,3 +55,16 @@ pnpm lint: 0 errors (warning เดิมของไฟล์ที่มีอ
 pnpm --filter storefront test:e2e:unit: 33 passed
 pnpm --filter backend test:unit: 65 suites, 632 tests passed
 pnpm --filter storefront build: ผ่าน
+
+## แก้ตาม QA #174 (open redirect ของ checkout_country_code / countryCode ของ placeOrder) — 2026-10-28
+Red: 6 test ใหม่ล้มก่อนแก้ (redirect ไป /example.org/... และ //example.org/...)
+Green: apps/storefront/src/ev-7c-digital-only-checkout.test.ts
+ ✓ src/ev-7c-digital-only-checkout.test.ts > setAddresses แบบ digital-only (กฎข้อ 24b) > checkout_country_code ไม่ใช่รหัสประเทศ ("/example.org") → redirect ภายในร้าน /checkout?step=payment (ไม่ open redirect) 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > setAddresses แบบ digital-only (กฎข้อ 24b) > checkout_country_code ไม่ใช่รหัสประเทศ ("//example.org") → redirect ภายในร้าน /checkout?step=payment (ไม่ open redirect) 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > setAddresses แบบ digital-only (กฎข้อ 24b) > checkout_country_code ไม่ใช่รหัสประเทศ ("https://example.org") → redirect ภายในร้าน /checkout?step=payment (ไม่ open redirect) 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > setAddresses แบบ digital-only (กฎข้อ 24b) > checkout_country_code ไม่ใช่รหัสประเทศ ("TH") → redirect ภายในร้าน /checkout?step=payment (ไม่ open redirect) 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > setAddresses แบบ digital-only (กฎข้อ 24b) > checkout_country_code ไม่ใช่รหัสประเทศ ("") → redirect ภายในร้าน /checkout?step=payment (ไม่ open redirect) 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > placeOrder redirect ใช้ countryCode จาก URL (กฎข้อ 24c) > countryCode จาก client ไม่ใช่รหัสประเทศ → ใช้ country ของ shipping_address (ไม่ open redirect) 0ms
+      Tests  20 passed (20)
+storefront unit ทั้งชุด: 41 files, 452 tests passed; pnpm typecheck ผ่าน (ไม่มี .medusa/); eslint 0 errors
+e2e ไม่ได้รันซ้ำในเครื่อง (path ของ country ที่ถูกต้องไม่เปลี่ยน) — ให้ CI รัน
