@@ -4,6 +4,7 @@ import {
   MAX_LINE_ITEM_QUANTITY,
   PDP_QUANTITY_OPTIONS,
   PENDING_ADD_PARAM,
+  PENDING_ERROR_PARAM,
   PENDING_QUANTITY_PARAM,
   clampLineItemQuantity,
   loginPathForAddToCart,
@@ -99,10 +100,11 @@ describe("quantity ที่ค้างไว้ข้าม login (CORE-14b)",
   it("readPendingAddQuery อ่าน variant และ quantity จาก searchParams ของหน้า", () => {
     expect(
       readPendingAddQuery({ [PENDING_ADD_PARAM]: "variant_01", [PENDING_QUANTITY_PARAM]: "3" })
-    ).toEqual({ variantId: "variant_01", quantity: 3 })
+    ).toEqual({ variantId: "variant_01", quantity: 3, failed: false })
     expect(readPendingAddQuery({ [PENDING_ADD_PARAM]: "variant_01" })).toEqual({
       variantId: "variant_01",
       quantity: 1,
+      failed: false,
     })
     expect(readPendingAddQuery({})).toBeNull()
     expect(readPendingAddQuery(undefined)).toBeNull()
@@ -120,5 +122,20 @@ describe("PDP_QUANTITY_OPTIONS", () => {
     for (const q of PDP_QUANTITY_OPTIONS) {
       expect(clampLineItemQuantity(String(q))).toBe(q)
     }
+  })
+})
+
+// CORE-14d (กฎ 57–58): เพิ่มไม่สำเร็จหลัง login → flag add_error ให้หน้าแสดง error และไม่พยายามเพิ่มซ้ำ
+describe("add_error (CORE-14d)", () => {
+  it("loginPathForAddToCart ใส่ add_error เมื่อเพิ่มไม่สำเร็จ", () => {
+    expect(loginPathForAddToCart("th", "variant_01", 2, { failed: true })).toBe(
+      `/th/account?${PENDING_ADD_PARAM}=variant_01&${PENDING_QUANTITY_PARAM}=2&${PENDING_ERROR_PARAM}=1`
+    )
+  })
+
+  it("readPendingAddQuery อ่าน add_error", () => {
+    expect(
+      readPendingAddQuery({ [PENDING_ADD_PARAM]: "variant_01", [PENDING_ERROR_PARAM]: "1" })
+    ).toEqual({ variantId: "variant_01", quantity: 1, failed: true })
   })
 })
