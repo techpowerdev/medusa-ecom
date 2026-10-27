@@ -173,7 +173,15 @@ const renderEvoucherLowStock = (data: Record<string, unknown>): RenderedEmail =>
 type EvoucherExpirySummary = {
   date?: string
   total_voided?: number
-  pools?: ({ name?: string | null; voided?: number } | null)[]
+  pools?: ({
+    name?: string | null
+    voided?: number
+    /** EV-12: code ที่เว้นไว้ให้ order ที่จองแล้ว + วันหมดอายุเร็วสุดของ code เหล่านั้น */
+    kept?: number
+    kept_earliest_expires_at?: string | null
+    /** EV-12: reserved − stocked หลังรัน (> 0 = code ไม่พอสำหรับ order ที่จอง) */
+    shortfall?: number
+  } | null)[]
 }
 
 const renderEvoucherExpirySummary = (data: Record<string, unknown>): RenderedEmail => {
@@ -185,14 +193,25 @@ const renderEvoucherExpirySummary = (data: Record<string, unknown>): RenderedEma
     .map(
       (pool) =>
         `<tr><td style="padding:4px 0">${escapeHtml(pool!.name)}</td>` +
-        `<td style="padding:4px 0;text-align:right">${escapeHtml(pool!.voided)}</td></tr>`
+        `<td style="padding:4px 0;text-align:right">void ${escapeHtml(pool!.voided)}</td>` +
+        `<td style="padding:4px 0;text-align:right">${
+          pool!.kept
+            ? `เว้น / kept ${escapeHtml(pool!.kept)} (หมดอายุเร็วสุด / earliest ${bangkokDate(pool!.kept_earliest_expires_at)})`
+            : ""
+        }${
+          pool!.shortfall
+            ? `<br><b style="color:#b91c1c">code ไม่พอสำหรับ order ที่จอง ขาด <b>${escapeHtml(pool!.shortfall)}</b> / ` +
+              `not enough codes for reserved orders</b>`
+            : ""
+        }</td></tr>`
     )
     .join("")
 
   const body =
     `<h1 style="font-size:20px">สรุป code ที่ถูก void (ใกล้หมดอายุ) / Expiring codes voided</h1>` +
     `<p>code ที่จะหมดอายุภายใน 7 วันถูกหยุดขาย รวม <b>${escapeHtml(summary.total_voided)}</b> code<br>` +
-    `Codes expiring within 7 days were voided and removed from stock.</p>` +
+    `Codes expiring within 7 days were voided and removed from stock.<br>` +
+    `code ที่ "เว้น" ถูกเก็บไว้ให้ order ที่จอง stock แล้ว / Kept codes are held for orders that already reserved stock.</p>` +
     `<table style="width:100%;border-collapse:collapse">${rows}</table>`
 
   return { subject, html: layout(subject, body) }

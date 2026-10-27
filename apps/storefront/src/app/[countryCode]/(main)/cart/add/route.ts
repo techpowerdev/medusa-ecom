@@ -56,13 +56,13 @@ const addLineItem = async (
   const id =
     cartId ??
     (await sdk.store.cart.create({ region_id: regionId }, {}, headers)).cart.id
-  await sdk.store.cart.createLineItem(
+  const { cart } = await sdk.store.cart.createLineItem(
     id,
     { variant_id: variantId, quantity },
     {},
     headers
   )
-  return id
+  return cart
 }
 
 /** No-JavaScript add-to-cart: the product page form posts here. */
@@ -99,9 +99,9 @@ export async function POST(
   }
 
   const existingCartId = await getCartId()
-  let cartId: string
+  let cart: HttpTypes.StoreCart
   try {
-    cartId = await addLineItem(
+    cart = await addLineItem(
       existingCartId,
       region.id,
       variantId,
@@ -117,7 +117,7 @@ export async function POST(
     }
     // The stored cart may be completed or belong to another region.
     try {
-      cartId = await addLineItem(
+      cart = await addLineItem(
         undefined,
         region.id,
         variantId,
@@ -132,9 +132,9 @@ export async function POST(
     }
   }
 
-  // AF-2: cookie `aff` → cart metadata.affiliate_token
-  await syncCartAffiliateToken(cartId, headers)
-  await activateCart(cartId)
+  // AF-2: cookie `aff` → cart metadata.affiliate_token (AF-3b: ใช้ metadata จากผลการเพิ่ม ไม่อ่าน cart ซ้ำ)
+  await syncCartAffiliateToken(cart.id, cart.metadata, headers)
+  await activateCart(cart.id)
 
   return NextResponse.redirect(
     `${getRequestOrigin(request)}/${countryCode}/cart`,
