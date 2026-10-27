@@ -1,6 +1,8 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { createCustomerAccountWorkflow } from "@medusajs/medusa/core-flows"
 import { Modules } from "@medusajs/framework/utils"
+import { AFFILIATE_MODULE } from "../../src/modules/affiliate"
+import type AffiliateModuleService from "../../src/modules/affiliate/service"
 
 jest.setTimeout(60 * 1000)
 
@@ -57,6 +59,25 @@ medusaIntegrationTestRunner({
           expect.objectContaining({ email: AFFILIATE.email, code: "ann", status: "pending" })
         )
         expect(response.data.affiliate.payout_info).toBeUndefined()
+      })
+
+      // AF-13 / AC-39 (กฎ 34): has_payout_info เป็น boolean และยังไม่ส่ง payout_info (AC-16)
+      it.each([
+        [{ bank_name: "x" }, true],
+        [null, false],
+        [{}, false],
+      ])("returns has_payout_info for payout_info %p as %p without payout_info (AC-39)", async (payoutInfo, expected) => {
+        const { data } = await registerAffiliate()
+        await getContainer()
+          .resolve<AffiliateModuleService>(AFFILIATE_MODULE)
+          .updateAffiliates({ id: data.affiliate.id, payout_info: payoutInfo })
+        const token = await login("affiliate", AFFILIATE)
+
+        const response = await api.get("/affiliate/me", bearer(token))
+
+        expect(response.status).toEqual(200)
+        expect(response.data.affiliate.has_payout_info).toBe(expected)
+        expect(response.data.affiliate).not.toHaveProperty("payout_info")
       })
 
       it("rejects registering twice with the same auth identity", async () => {
