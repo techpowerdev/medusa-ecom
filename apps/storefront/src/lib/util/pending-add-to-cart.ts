@@ -22,8 +22,10 @@ export const clampLineItemQuantity = (raw: string | null | undefined) =>
     MAX_LINE_ITEM_QUANTITY
   )
 
+// CORE-14f (กฎ 65): countryCode = null → `/account?…` ไม่มีประเทศ ให้ middleware เลือกประเทศหลักของร้าน
+// (ใช้เมื่อ countryCode ที่ได้มาไม่ใช่ประเทศของ region ใด — ไม่ redirect ไป `/zz/…` ที่กลายเป็น 404)
 export const loginPathForAddToCart = (
-  countryCode: string,
+  countryCode: string | null,
   variantId: string,
   quantity = 1,
   { failed = false }: { failed?: boolean } = {}
@@ -35,7 +37,7 @@ export const loginPathForAddToCart = (
   if (failed) {
     query.set(PENDING_ERROR_PARAM, "1")
   }
-  return `/${countryCode}/account?${query}`
+  return `${countryCode ? `/${countryCode}` : ""}/account?${query}`
 }
 
 export const readPendingAddToCart = (
@@ -68,3 +70,12 @@ export const readPendingAddQuery = (
     failed: searchParams?.[PENDING_ERROR_PARAM] !== undefined,
   }
 }
+
+// CORE-14f (กฎ 65): จำนวนของ variant ที่อยู่ใน cart แล้ว (รวมทุก line) — การ์ด add-variant-pending ใช้บอกสถานะ cart จริง
+export const quantityInCart = (
+  cart: { items?: { variant_id?: string | null; quantity: number }[] | null } | null | undefined,
+  variantId: string
+) =>
+  (cart?.items ?? [])
+    .filter((item) => item.variant_id === variantId)
+    .reduce((sum, item) => sum + item.quantity, 0)

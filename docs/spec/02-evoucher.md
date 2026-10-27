@@ -1,6 +1,6 @@
 # 02 E-voucher — ขายต่อ voucher code ของพาร์ทเนอร์ ส่งมอบทางอีเมล
 
-สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม)
+สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด)
 เป้าหมาย (เจ้าของระบบ): ขาย e-voucher จากพาร์ทเนอร์ (Lotus, Big C, ห้างสรรพสินค้า, คาเฟ่…) เราได้รับ
 coupon code จากพาร์ทเนอร์ล่วงหน้า และส่งมอบ 1 code ต่อ 1 หน่วยที่ขายได้ในรูปแบบดิจิทัล
 (อีเมล) การ redeem เกิดขึ้นที่พาร์ทเนอร์ เราไม่ redeem เอง
@@ -108,8 +108,11 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 2. จะ allocate code หลังจากชำระเงิน **captured** แล้วเท่านั้น โดยเลือก code ที่หมดอายุเร็วที่สุดก่อน
    และไม่เลือก code ที่จะหมดอายุภายใน 7 วัน — **ข้อยกเว้น (EV-12, owner Q6 2026-10-27)**: ถ้า code ที่หมดอายุเกิน 7 วัน (หรือไม่มีวันหมดอายุ) ไม่พอสำหรับ
    line นั้น ให้ `claimCodesForOrder` (`modules/evoucher/service.ts`) รัน **query ส่วนเติม** หลัง query เดิม (`expires_at ASC NULLS LAST`) claim ส่วนที่ขาดจาก code
-   `available` ที่ยังไม่หมดอายุ (`now() < expires_at < now() + 7 days`) เรียง `expires_at DESC` (ไกลสุดก่อน — code ที่ job เว้นไว้ตามกฎข้อ 12b หรือ code ที่เพิ่งเข้าช่วง 7 วัน
+   `available` ที่ยังไม่หมดอายุ เรียง `expires_at DESC` (ไกลสุดก่อน — code ที่ job เว้นไว้ตามกฎข้อ 12b หรือ code ที่เพิ่งเข้าช่วง 7 วัน
    ระหว่าง job สองรอบ) ก่อนจะ mark backordered (กฎข้อ 18)
+   (รอบ 11 — แก้ถ้อยคำให้ตรงโค้ดของ EV-12 #123 ตามที่ EV-N1 พบ) ขอบเขตของทั้งสอง query ใช้ `cutoff = now() + 7 days` ค่าเดียว: query หลัก = `expires_at IS NULL OR expires_at > cutoff`;
+   query ส่วนเติม = `now() < expires_at <= cutoff` — code ที่ `expires_at = cutoff` พอดีอยู่ใน**ส่วนเติม** (ไม่ตกหล่นระหว่างสอง query และไม่ถูกเลือกซ้ำ);
+   ต่างจากการนับ `long` ของ job (กฎข้อ 12b(a) ใช้ `>=`) เฉพาะ code ที่ตรง cutoff พอดี ซึ่งไม่ทำให้ผลผิด (job ไม่ void code นั้น และ allocation ยังเลือกได้) — ไม่มี task
 3. 1 code ต่อ 1 หน่วย; qty 3 → 3 code ในอีเมลเดียว
 4. Code/PIN ถูกเข้ารหัสขณะจัดเก็บ (ระดับแอป, key จาก env); masked ในรายการ; การ reveal มี audit
 5. **ไม่มีการ redeem ฝั่งเรา**; อีเมลระบุว่าใช้ที่ไหนและอย่างไรที่พาร์ทเนอร์
@@ -184,7 +187,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
     ของ Medusa คำนวณ VAT 7% เป็น tax line เสมอ (ตามคำตัดสิน owner — AC-37 ตรวจ `order.shipping_address` = ที่อยู่ที่กรอก)
     (c) หลัง complete redirect ไป `/<countryCode จาก URL ปัจจุบัน>/order/<id>/confirmed` (ไม่อ่าน country จาก shipping address)
     (d) cart ผสม (voucher + สินค้าจัดส่ง) ใช้ flow ปกติ — Medusa บังคับ shipping method ตาม profile ของ line ที่ต้องจัดส่งเอง
-25. (รอบ 10, EV-9 — qa) รายการ code ที่เรียงตาม `created_at` (เช่น `GET /admin/evoucher/pools/:id/codes` และตารางใน admin) ใช้ `id` เป็น key เรียงรองเสมอ (`created_at`, `id`) —
+25. (รอบ 10, EV-9 — ที่มา: qa ของ EV-9 ระหว่างรอบ 10 (#139); ส่งมอบใน #139 พร้อม AC-39 — ที่มาระบุรอบ 11 ตาม nit #140) รายการ code ที่เรียงตาม `created_at` (เช่น `GET /admin/evoucher/pools/:id/codes` และตารางใน admin) ใช้ `id` เป็น key เรียงรองเสมอ (`created_at`, `id`) —
     code จาก CSV เดียวกันมี `created_at` เท่ากัน ถ้าไม่มี key รอง การแบ่งหน้าอาจซ้ำ/หายระหว่างหน้า
 
 ## Acceptance criteria
@@ -355,6 +358,8 @@ EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-10 ∥ EV-4
 EV-13 หลัง EV-5b (#111) (∥ EV-12; ถ้า EV-9 แตะ widget order เดียวกัน ตัวที่ merge ทีหลัง rebase);
 (รอบ 10) EV-7a เริ่มได้ทันที → EV-7b; EV-7c เริ่มได้ (Q10 = ก) ∥ EV-7a/EV-7b (คนละไฟล์: checkout vs PDP/account); EV-9 รวมกฎข้อ 25/AC-39 (ถ้า PR ของ EV-9 เปิดอยู่แล้ว แก้ใน PR นั้น); EV-N1 ∥ ทุกตัว (แตะ job/workflow expiry ของ EV-12 เท่านั้น);
 release ที่มี EV-7c ต้องมี backfill ของ EV-10 แล้ว (☑)
+(รอบ 11 สถานะ) EV-9 ☑ #139 · EV-N1 ◐ #149 (กฎข้อ 2 แก้ถ้อยคำขอบ cutoff ให้ตรงโค้ด — EV-N1 ไม่ต้องแก้โค้ด `claimCodesForOrder` เพราะเรื่องนี้) · EV-7a/7b/7c, EV-13, EV-5c ยังไม่เริ่ม — นิยามไม่เปลี่ยน;
+nit #139: `evoucher-admin-ui.spec` ยังหา code จากลำดับ `codes[0]` ของ CSV → ให้ PR ถัดไปที่แตะไฟล์นั้น (EV-13) หา code จากค่าแทน (ไม่สร้าง task)
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 
