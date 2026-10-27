@@ -33,32 +33,32 @@ stdin_case() { # <ชื่อเคส> <ผลที่คาด> <ไฟล�
   check "$name" "$want" "$(printf '%s\n' "$@" | result "$classify")"
 }
 
-# --- โหมด stdin (25 เคส) ---
-stdin_case "spec ใน docs/" false/false docs/spec/07-scaling-ops.md
+# --- โหมด stdin (25 เคส ชุดเดิมของ #59) ---
+stdin_case "spec ใน docs/" false/false docs/spec/01-core-medusa.md
 stdin_case "README.md ที่ root" false/false README.md
 stdin_case ".claude/agents/*.md" false/false .claude/agents/builder.md
-stdin_case "png ใน docs/evidence/" false/false docs/evidence/payments/PAY-2/checkout.png
-stdin_case "txt ใน docs/evidence/" false/false docs/evidence/ops/OPS-1-tests.txt
+stdin_case "CLAUDE.md + ROADMAP" false/false CLAUDE.md docs/ROADMAP.md
+stdin_case "png/txt ใน docs/evidence/" false/false docs/evidence/core/CORE-5/01-home.png docs/evidence/core/CORE-5-tests.txt
 stdin_case ".md ใน apps/backend" false/false apps/backend/README.md
-stdin_case "เอกสารหลายไฟล์" false/false docs/ROADMAP.md CLAUDE.md docs/decisions/ADR-001.md
-stdin_case ".mdx ใน docs/" false/false docs/guide.mdx
+stdin_case "backend" true/true apps/backend/src/api/middlewares.ts
+stdin_case "เอกสาร + backend" true/true docs/spec/01.md apps/backend/src/x.ts
 stdin_case "storefront ล้วน" true/false apps/storefront/src/app/page.tsx
-stdin_case "storefront + เอกสาร" true/false apps/storefront/src/lib/x.ts docs/spec/01-core-medusa.md
-stdin_case "storefront + backend" true/true apps/storefront/src/app/page.tsx apps/backend/src/api/middlewares.ts
-stdin_case "backend" true/true apps/backend/src/modules/x/service.ts
-stdin_case "backend + เอกสาร" true/true docs/spec/04-group-buying.md apps/backend/src/workflows/x.ts
+stdin_case "storefront + เอกสาร" true/false docs/spec/01.md apps/storefront/e2e/a.spec.ts README.md
+stdin_case "package.json ของ storefront" true/false apps/storefront/package.json
+stdin_case "storefront + backend" true/true apps/storefront/src/a.tsx apps/backend/src/b.ts
+stdin_case "ไฟล์ CI (.github/workflows)" true/true .github/workflows/ci.yml
+stdin_case "PR template (.md ใน .github)" false/false .github/pull_request_template.md
 stdin_case "lockfile" true/true pnpm-lock.yaml
 stdin_case "package.json ที่ root" true/true package.json
 stdin_case "pnpm-workspace.yaml" true/true pnpm-workspace.yaml
 stdin_case ".nvmrc" true/true .nvmrc
-stdin_case "eslint.config.ts ที่ root" true/true eslint.config.ts
-stdin_case "docker-compose.yml" true/true docker-compose.yml
 stdin_case "docker-compose.prod.yml" true/true docker-compose.prod.yml
 stdin_case "tools/ops" true/true tools/ops/smoke-worker-mode.sh
-stdin_case "ไฟล์ CI (.github/workflows)" true/true .github/workflows/ci.yml
-stdin_case ".mdx นอก docs/ (ไม่ใช่ .md)" true/true guide.mdx
-stdin_case "prefix trap apps/storefront-legacy" true/true apps/storefront-legacy/src/x.ts
+stdin_case "eslint.config.ts ที่ root" true/true eslint.config.ts
+stdin_case ".mdx ไม่ใช่ .md" true/true apps/backend/notes.mdx
+stdin_case "prefix trap apps/storefront-legacy" true/true apps/storefront-legacy/x.ts
 check "diff ว่าง (กันพลาด)" true/true "$(printf '' | result "$classify")"
+stdin_case "path มีช่องว่างใน docs/" false/false "docs/design/a b.md"
 
 # --- โหมด git range กับ rename (5 เคส): --no-renames ต้องนับทั้ง path เดิมและ path ใหม่ ---
 repo=$(mktemp -d "${TMPDIR:-/tmp}/ops10-classify.XXXXXX")

@@ -1,32 +1,32 @@
 OPS-10 — test ของ tools/ci/classify-changes.sh (AC-14) และ Stripe webhook events ตรงกัน (AC-15)
 ที่มา: docs/spec/07-scaling-ops.md OPS-10; รันในเครื่อง macOS bash 3.2.57(1)-release (CI รันใน job lint-typecheck บน ubuntu)
 
-== AC-14 Green: tools/ci/classify-changes.test.sh
+== AC-14 Green: tools/ci/classify-changes.test.sh (30 เคสชุดเดิมของ #59: 25 stdin + 5 rename)
 ok   - spec ใน docs/ → false/false
 ok   - README.md ที่ root → false/false
 ok   - .claude/agents/*.md → false/false
-ok   - png ใน docs/evidence/ → false/false
-ok   - txt ใน docs/evidence/ → false/false
+ok   - CLAUDE.md + ROADMAP → false/false
+ok   - png/txt ใน docs/evidence/ → false/false
 ok   - .md ใน apps/backend → false/false
-ok   - เอกสารหลายไฟล์ → false/false
-ok   - .mdx ใน docs/ → false/false
+ok   - backend → true/true
+ok   - เอกสาร + backend → true/true
 ok   - storefront ล้วน → true/false
 ok   - storefront + เอกสาร → true/false
+ok   - package.json ของ storefront → true/false
 ok   - storefront + backend → true/true
-ok   - backend → true/true
-ok   - backend + เอกสาร → true/true
+ok   - ไฟล์ CI (.github/workflows) → true/true
+ok   - PR template (.md ใน .github) → false/false
 ok   - lockfile → true/true
 ok   - package.json ที่ root → true/true
 ok   - pnpm-workspace.yaml → true/true
 ok   - .nvmrc → true/true
-ok   - eslint.config.ts ที่ root → true/true
-ok   - docker-compose.yml → true/true
 ok   - docker-compose.prod.yml → true/true
 ok   - tools/ops → true/true
-ok   - ไฟล์ CI (.github/workflows) → true/true
-ok   - .mdx นอก docs/ (ไม่ใช่ .md) → true/true
+ok   - eslint.config.ts ที่ root → true/true
+ok   - .mdx ไม่ใช่ .md → true/true
 ok   - prefix trap apps/storefront-legacy → true/true
 ok   - diff ว่าง (กันพลาด) → true/true
+ok   - path มีช่องว่างใน docs/ → false/false
 ok   - rename backend → docs/ → true/true
 ok   - rename backend → storefront → true/true
 ok   - rename .ts → .md → true/true
@@ -53,7 +53,7 @@ exit=1
 -- mdx:
 <     docs/* | *.md) ;;
 >     docs/* | *.md | *.mdx) ;;
-FAIL - .mdx นอก docs/ (ไม่ใช่ .md) → ได้ false/false คาด true/true
+FAIL - .mdx ไม่ใช่ .md → ได้ false/false คาด true/true
 classify-changes: 29/30 passed
 exit=1
 
