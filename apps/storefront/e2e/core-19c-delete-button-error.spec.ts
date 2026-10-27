@@ -1,0 +1,177 @@
+import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test"
+
+import { BACKEND_URL, expect, test } from "./support/fixtures"
+import {
+  STOREFRONT_COUNTRY as CC,
+  adminHeaders,
+  createCustomer,
+  publishableKey,
+  signInAs,
+} from "./support/medusa"
+import { THAI } from "./support/thai-text"
+
+// CORE-19c: spec 01 AC-100 (กฎข้อ 64) — หา element ด้วย data-testid เท่านั้น
+// ข้อมูลตั้งต้นจาก seed (CORE-2): region Thailand, t-shirt (มีหลาย variant)
+test.use({ evidenceTarget: { feature: "core", taskId: "CORE-19c" } })
+
+const PRODUCT = "t-shirt"
+
+/** ลูกค้าใหม่ที่ล็อกอินแล้วและมี cart 2 line (qty 1, 1) — คืน headers + cart id ไว้ตรวจผลทาง backend */
+async function customerWithTwoLines(request: APIRequestContext, context: BrowserContext, baseURL: string) {
+  const pk = await publishableKey(request, await adminHeaders(request))
+  const customer = await createCustomer(request, pk)
+  const headers = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
+  const { regions } = await (await request.get(`${BACKEND_URL}/store/regions`, { headers })).json()
+  const region = regions.find((r: { countries: { iso_2: string }[] }) => r.countries.some((c) => c.iso_2 === CC))
+  const created = await request.post(`${BACKEND_URL}/store/carts`, { headers, data: { region_id: region.id } })
+  expect(created.status(), "create cart").toBe(200)
+  const cartId: string = (await created.json()).cart.id
+  const products = await request.get(`${BACKEND_URL}/store/products?handle=${PRODUCT}&fields=id,*variants`, { headers })
+  const [product] = (await products.json()).products
+  expect(product.variants.length, "seed t-shirt มีอย่างน้อย 2 variant").toBeGreaterThanOrEqual(2)
+  for (const variant of product.variants.slice(0, 2)) {
+    const res = await request.post(`${BACKEND_URL}/store/carts/${cartId}/line-items`, {
+      headers,
+      data: { variant_id: variant.id, quantity: 1 },
+    })
+    expect(res.status(), "add line item").toBe(200)
+  }
+  await signInAs(context, baseURL, customer)
+  await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL }])
+  return { headers, cartId }
+}
+
+const backendLineCount = async (request: APIRequestContext, cartId: string, headers: Record<string, string>) =>
+  ((await (await request.get(`${BACKEND_URL}/store/carts/${cartId}`, { headers })).json()).cart.items ?? []).length
+
+const openDropdown = async (page: Page) => {
+  await page.getByTestId("nav-cart-link").hover()
+  const dropdown = page.getByTestId("nav-cart-dropdown")
+  await expect(dropdown.getByTestId("cart-item")).toHaveCount(2)
+  return dropdown
+}
+
+/**
+ * การลบ line เป็น server action (POST ไปที่หน้าเดิมพร้อม header `next-action`) ซึ่งเรียก `DELETE` ทาง backend ฝั่ง server
+ * browser จึง mock ได้ที่ request ของ action นั้น: ตอบ 500 ครั้งเดียว (เปิด route หลังหน้าโหลด cart เสร็จ ก่อนกดลบ)
+ */
+async function failNextServerAction(page: Page) {
+  let failed = 0
+  await page.route("**/*", async (route) => {
+    const req = route.request()
+    if (failed === 0 && req.method() === "POST" && req.headers()["next-action"] !== undefined) {
+      failed++
+      await route.fulfill({ status: 500, contentType: "text/plain", body: "Internal Server Error" })
+      return
+    }
+    await route.fallback()
+  })
+  return () => failed
+}
+
+async function expectRemoveFailedVisibly(scope: Locator) {
+  const error = scope.getByTestId("cart-item-remove-error")
+  await expect(error).toBeVisible({ timeout: 5000 })
+  expect((await error.textContent()) ?? "").toMatch(THAI)
+  await expect(scope.getByTestId("cart-item-remove-spinner")).toHaveCount(0, { timeout: 5000 })
+}
+
+type Box = { x: number; y: number; width: number; height: number }
+const overlaps = (a: Box, b: Box) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+
+/**
+ * qa #142 D-2: ข้อความ error อ่านได้ — สูงไม่เกิน 2 บรรทัด, ไม่ทับปุ่ม/element อื่นใน line, หน้าไม่เลื่อนแนวนอน
+ * (ก่อนแก้ในหน้า cart ข้อความถูกบีบใน cell `w-28` กว้าง 29px ตัดเป็น 9 บรรทัด)
+ */
+async function expectReadableError(page: Page, scope: Locator, neighbours: string[]) {
+  const error = scope.getByTestId("cart-item-remove-error")
+  const box = (await error.boundingBox())!
+  const lineHeight = await error.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight))
+  expect(box.height, `ความสูง error (line-height ${lineHeight}px)`).toBeLessThanOrEqual(lineHeight * 2 + 1)
+  for (const id of neighbours) {
+    const el = scope.getByTestId(id)
+    // `<select>` ของ CartItemSelect สูง h-16 ล้นกรอบที่มองเห็น (badge h-10 ของ starter) — วัดกรอบที่มองเห็นแทน
+    const visible = id === "product-select-button" ? el.locator("xpath=..") : el
+    const other = (await visible.boundingBox())!
+    expect(overlaps(box, other), `error ทับ ${id}`).toBe(false)
+  }
+  const viewport = page.viewportSize()!.width
+  expect(box.x + box.width, "error อยู่ในจอ").toBeLessThanOrEqual(viewport)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth), "หน้าไม่เลื่อนแนวนอน").toBeLessThanOrEqual(viewport)
+}
+
+test("AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button", async ({
+  page,
+  context,
+  request,
+  baseURL,
+}) => {
+  await customerWithTwoLines(request, context, baseURL!)
+  await page.goto(`/${CC}/cart`)
+  await expect(page.getByTestId("product-row")).toHaveCount(2)
+  for (const row of await page.getByTestId("product-row").all()) {
+    await expect(row.getByTestId("product-delete-button")).toHaveCount(1)
+  }
+  const dropdown = await openDropdown(page)
+  for (const item of await dropdown.getByTestId("cart-item").all()) {
+    await expect(item.getByTestId("cart-item-remove-button")).toHaveCount(1)
+  }
+})
+
+test("AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+  evidence,
+}) => {
+  const { headers, cartId } = await customerWithTwoLines(request, context, baseURL!)
+  await page.goto(`/${CC}`)
+  await expect.poll(async () => (await page.getByTestId("nav-cart-link").textContent()) ?? "").toContain("(2)")
+  const dropdown = await openDropdown(page)
+  const first = dropdown.getByTestId("cart-item").first()
+
+  await step("กดลบ line แรกโดย server action ตอบ 500", async () => {
+    const failedCount = await failNextServerAction(page)
+    await first.getByTestId("cart-item-remove-button").click()
+    await expect.poll(failedCount).toBe(1)
+    await expectRemoveFailedVisibly(first)
+    await expectReadableError(page, first, ["cart-item-remove-button"])
+    await evidence("01-dropdown-remove-error")
+  })
+
+  await step("line ยังอยู่ทั้งใน dropdown และ backend", async () => {
+    await expect(dropdown.getByTestId("cart-item")).toHaveCount(2)
+    expect(await backendLineCount(request, cartId, headers)).toBe(2)
+  })
+})
+
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 375, height: 812 },
+]) {
+  test(`AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (${viewport.width}px)`, async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    await page.setViewportSize(viewport)
+    const { headers, cartId } = await customerWithTwoLines(request, context, baseURL!)
+    await page.goto(`/${CC}/cart`)
+    await expect(page.getByTestId("product-row")).toHaveCount(2)
+    const first = page.getByTestId("product-row").first()
+
+    const failedCount = await failNextServerAction(page)
+    await first.getByTestId("product-delete-button").click()
+    await expect.poll(failedCount).toBe(1)
+    await expectRemoveFailedVisibly(first)
+    await expectReadableError(page, first, ["product-delete-button", "product-select-button"])
+    await expect(page.getByTestId("product-row")).toHaveCount(2)
+    expect(await backendLineCount(request, cartId, headers)).toBe(2)
+    await evidence(viewport.width === 1280 ? "02-cart-page-remove-error" : "03-cart-page-remove-error-375")
+  })
+}

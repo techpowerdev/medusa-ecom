@@ -6,6 +6,7 @@ import EvoucherModuleService from "../../src/modules/evoucher/service"
 jest.setTimeout(120 * 1000)
 
 // EV-1: link evoucher_pool <-> product_variant (read-only ผ่าน evoucher_pool.variant_id)
+// EV-9: link evoucher_code <-> order (read-only ผ่าน evoucher_code.order_id, AC-16)
 medusaIntegrationTestRunner({
   testSuite: ({ getContainer }) => {
     let variantId: string
@@ -60,6 +61,36 @@ medusaIntegrationTestRunner({
         id: poolId,
         partner: { name: "Lotus" },
       })
+    })
+
+    it("AC-16: queries an order's allocated codes and the order from a code", async () => {
+      const container = getContainer()
+      const evoucherService: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
+      // สร้างทีละตัว: createOrders/createEvoucherCodes แบบ array ไม่รับประกันลำดับผลตาม input
+      const orderModule = container.resolve(Modules.ORDER)
+      const orderA = await orderModule.createOrders({ currency_code: "thb", email: "a@example.com" })
+      const orderB = await orderModule.createOrders({ currency_code: "thb", email: "b@example.com" })
+      const codeA = await evoucherService.createEvoucherCodes({
+        pool_id: poolId, code: "enc-a", batch_ref: "b1", status: "allocated", order_id: orderA.id,
+      })
+      const codeB = await evoucherService.createEvoucherCodes({
+        pool_id: poolId, code: "enc-b", batch_ref: "b1", status: "delivered", order_id: orderB.id,
+      })
+
+      const query = container.resolve(ContainerRegistrationKeys.QUERY)
+      const { data } = await query.graph({
+        entity: "order",
+        fields: ["id", "evoucher_codes.id"],
+        filters: { id: orderA.id },
+      })
+      expect(data[0].evoucher_codes?.map((c: { id: string } | null) => c?.id)).toEqual([codeA.id])
+
+      const { data: codes } = await query.graph({
+        entity: "evoucher_code",
+        fields: ["id", "order.id", "order.email"],
+        filters: { id: codeB.id },
+      })
+      expect(codes[0].order).toMatchObject({ id: orderB.id, email: "b@example.com" })
     })
   },
 })

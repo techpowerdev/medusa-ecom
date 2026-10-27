@@ -74,8 +74,13 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
 
       {type === "full" && (
         <Table.Cell>
-          <div className="flex gap-2 items-center w-28">
-            <DeleteButton id={item.id} data-testid="product-delete-button" />
+          {/* qa #142 D-2 (CORE-19c): `!contents` ให้ปุ่มลบและข้อความ error เป็น flex item ของแถวนี้ — error ขึ้นบรรทัดใหม่กว้างเต็ม w-28 */}
+          <div className="flex flex-wrap gap-2 items-center w-28">
+            <DeleteButton
+              id={item.id}
+              className="!contents"
+              data-testid="product-delete-button"
+            />
             <CartItemSelect
               value={item.quantity}
               onChange={(value) => changeQuantity(parseInt(value.target.value))}
