@@ -1,0 +1,65 @@
+EV-12 — ผลทดสอบ (2026-10-27, Node 22.23.3, Medusa 2.22.1, base origin/develop c7e5479)
+
+== Red (ก่อนเขียนโค้ด) ==
+- unit expiry.unit.spec.ts: planExpiringCodes is not a function (7 failed)
+- modules claim-codes.spec.ts: 'tops up with not-yet-expired near-expiry codes…' ล้ม (ไม่มี query ส่วนเติม → backordered)
+- http evoucher-void-expiry.spec.ts AC-30: P-4/P-5 ถูก void (job เดิม void ทั้งหมด)
+- http evoucher-allocate.spec.ts AC-30b: available หลัง job = 0 (คาด 2)
+
+== unit: expiry.unit.spec.ts + templates.unit.spec.ts (รวมใน test:unit ทั้งหมด) ==
+Test Suites: 52 passed, 52 total
+Tests:       543 passed, 543 total
+
+== integration:modules claim-codes.spec.ts (กฎข้อ 2 ข้อยกเว้น) ==
+      ✓ claims the earliest-expiring usable codes and records order, line item and customer
+      ✓ backorders the whole line item without touching codes when there are not enough
+      ✓ tops up with not-yet-expired near-expiry codes, farthest expiry first, when long-lived codes run short
+      ✓ prefers a long-lived code over a near-expiry one
+      ✓ skips line items that already have codes (AC-7 idempotent)
+      ✓ reports skipped line items whose codes are still only allocated (stuck) but not delivered ones
+      ✓ AC-4 gives each code to exactly one order when many orders claim concurrently
+      ✓ does not allocate the same line item twice when the same order is claimed concurrently
+      ✓ never lets a concurrent void (EV-5) and an allocation both take the same code
+Tests:       9 passed, 9 total
+
+== integration:http evoucher-void-expiry.spec.ts (AC-5, AC-9, AC-10, AC-17, AC-30) ==
+      ✓ requires an authenticated admin
+      ✓ voids an available code with the reason and decrements variant inventory by 1
+      ✓ rejects a missing reason with 400 and leaves the code untouched
+      ✓ rejects a empty reason with 400 and leaves the code untouched
+      ✓ rejects a blank reason with 400 and leaves the code untouched
+      ✓ returns 409 for a allocated code and changes nothing
+      ✓ returns 409 for a delivered code and changes nothing
+      ✓ returns 409 for a void code and changes nothing
+      ✓ returns 404 for an unknown code
+      ✓ restores the code to available when the inventory adjustment fails (compensation)
+      ✓ sends admin alerts only to EVOUCHER_ADMIN_EMAIL, not to every admin user
+      ✓ logs a warning and skips admin emails when EVOUCHER_ADMIN_EMAIL is not set (job still voids)
+      ✓ is scheduled once a day
+      ✓ AC-5 voids available codes expiring within 7 days with reason 'expiring' and decrements inventory
+      ✓ sends no expiry summary when nothing was voided
+      ✓ keeps other pools going when one pool fails
+      ✓ AC-30 keeps near-expiry codes for reserved orders (farthest first) and reports kept/shortfall per pool
+      ✓ AC-9 sends one low-stock email per pool per day when available < threshold
+Tests:       18 passed, 18 total
+
+== integration:http evoucher-allocate.spec.ts (EV-4 เดิม + AC-30b) ==
+      ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry
+      ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method
+      ✓ does not warn about shipping profile when the voucher product has none (AC-31)
+      ✓ warns once (but still delivers) when the voucher product has the default shipping profile (AC-31)
+      ✓ warns once (but still delivers) when the voucher product has the digital shipping profile (AC-31)
+      ✓ does nothing for an order without voucher items
+      ✓ re-running for the same order allocates no more codes and sends no more emails
+      ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails
+      ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available
+      ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails
+      ✓ uses a new idempotency key per claim and clears the backordered flag once delivered
+      ✓ delivers the farthest kept code to a reserved order after the daily job ran
+      ✓ still prefers a long-lived code over a near-expiry one
+      ✓ gives the last code to only one of two concurrently captured orders and flags the other
+      ✓ sends one notification to the mailbox and none to the 3 admin users
+      ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged)
+Tests:       16 passed, 16 total
+
+== pnpm lint && pnpm typecheck: ผ่าน (0 errors) | pnpm --filter backend build: ผ่าน ==
