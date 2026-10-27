@@ -51,6 +51,8 @@ jobs:
       - run: tools/ci/classify-changes.test.sh
       # OPS-10 (AC-15): event ใน docs/ops/production.md "Stripe webhooks" = events= ของ stripe listen ด้านล่าง (แบบเซต)
       - run: tools/ci/check-stripe-events.test.sh
+      # OPS-16 (AC-27a): ตรวจไฟล์จริงของ repo (default = docs/ops/production.md × ci.yml นี้) แยกจาก test ของ script
+      - run: tools/ci/check-stripe-events.sh
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -224,7 +226,23 @@ jobs:
           k=$(openssl rand -hex 32)
           echo "::add-mask::$k"
           echo "EVOUCHER_ENCRYPTION_KEY=$k" >> "$GITHUB_ENV"
-      - run: pnpm --filter storefront exec playwright install --with-deps chromium
+      # OPS-16 (AC-27b): cache browser ของ Playwright — key ผูกกับเวอร์ชัน @playwright/test ใน pnpm-lock.yaml
+      # (เปลี่ยนเวอร์ชัน = key ใหม่ = ดาวน์โหลด browser ใหม่) system deps (apt) ไม่อยู่ใน cache จึงติดตั้งทุกครั้ง
+      - name: Playwright version (pnpm-lock.yaml)
+        id: playwright-version
+        run: |
+          v=$(sed -nE "s/^  '@playwright\/test@([0-9][^']*)':$/\1/p" pnpm-lock.yaml | head -n1)
+          [ -n "$v" ] || { echo "::error::ไม่พบ @playwright/test ใน pnpm-lock.yaml"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-chromium
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter storefront exec playwright install --with-deps chromium
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter storefront exec playwright install-deps chromium
       - name: Install Stripe CLI
         run: |
           curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg >/dev/null
