@@ -224,13 +224,21 @@ medusaIntegrationTestRunner({
         expect(variantItem.product.variants.map((v: any) => v.id)).toEqual([products["af7-variant"].variants[1].id])
       })
 
-      it("pages through programs ordered by starts_at", async () => {
+      // AF-7b (กฎ 29c): dedupe ก่อน paging — count นับสินค้าไม่ซ้ำ เรียงตาม starts_at ของโปรแกรมที่เลือก
+      it("pages through unique products ordered by their program's starts_at", async () => {
         const { token } = await loginAffiliate("cat", "active")
         const later = await createProgram({ name: "later", scope: { collection_ids: [collectionC] } })
         const earlier = await createProgram({
           name: "earlier",
           starts_at: new Date(Date.now() - 2 * DAY),
           scope: { category_ids: [childCategory] },
+        })
+        // อัตราต่ำกว่า "later" ที่คลุมสินค้าเดียวกัน → ไม่เพิ่มการ์ด ไม่นับใน count
+        await createProgram({
+          name: "lower",
+          starts_at: new Date(Date.now() - 3 * DAY),
+          commission_value: 5,
+          scope: { collection_ids: [collectionC] },
         })
 
         const pages = await Promise.all(
@@ -248,6 +256,52 @@ medusaIntegrationTestRunner({
         expect(new Set(pages.slice(1, 3).map((p) => p.data.products[0].product.handle))).toEqual(
           new Set(["af7-in-c-1", "af7-in-c-2"])
         )
+      })
+
+      it("AC-34: one card per product with the rate it really earns (rule 29)", async () => {
+        const { token } = await loginAffiliate("ivy", "active")
+        const x = products["af7-variant"]
+        const both = { variant_ids: x.variants.map((v) => v.id) }
+        await createProgram({ name: "P1", commission_value: 10, scope: both })
+        await createProgram({ name: "P2", commission_value: 15, starts_at: new Date(Date.now() - 3 * DAY), scope: both })
+        const p3 = await createProgram({ name: "P3", commission_value: 15, starts_at: new Date(Date.now() - 60 * 1000), scope: both })
+        const u1 = await createProgram({ name: "U1", commission_value: 5, starts_at: new Date(Date.now() + DAY), scope: both })
+        await createProgram({ name: "U2", commission_value: 20, starts_at: new Date(Date.now() + 2 * DAY), scope: both })
+
+        const active = await api.get("/affiliate/products?status=active", bearer(token))
+        expect(active.data.count).toEqual(1)
+        expect(active.data.products).toHaveLength(1)
+        expect(active.data.products[0]).toEqual(
+          expect.objectContaining({
+            program: expect.objectContaining({ id: p3.id, commission_value: 15 }),
+            rate_varies: false,
+          })
+        )
+        expect(active.data.products[0].product.variants).toHaveLength(2)
+
+        const upcoming = await api.get("/affiliate/products?status=upcoming", bearer(token))
+        expect(upcoming.data.count).toEqual(1)
+        expect(upcoming.data.products.map((p: any) => [p.product.id, p.program.id])).toEqual([[x.id, u1.id]])
+      })
+
+      it("AC-34: variants earning different rates show the highest with rate_varies", async () => {
+        const { token } = await loginAffiliate("jon", "active")
+        const [x1, x2] = products["af7-variant"].variants
+        await createProgram({ name: "P1", commission_value: 10, scope: { variant_ids: [x1.id] } })
+        const p2 = await createProgram({
+          name: "P2",
+          commission_value: 15,
+          starts_at: new Date(Date.now() - 3 * DAY),
+          scope: { variant_ids: [x2.id] },
+        })
+
+        const { data } = await api.get("/affiliate/products", bearer(token))
+
+        expect(data.count).toEqual(1)
+        expect(data.products[0]).toEqual(
+          expect.objectContaining({ program: expect.objectContaining({ id: p2.id, commission_value: 15 }), rate_varies: true })
+        )
+        expect(data.products[0].product.variants.map((v: any) => v.id).sort()).toEqual([x1.id, x2.id].sort())
       })
 
       it("rejects an unknown status", async () => {
@@ -328,6 +382,7 @@ medusaIntegrationTestRunner({
             period_from: new Date(Date.now() - 30 * DAY),
             period_to: new Date(),
             entry_ids: [],
+            reference: "bank-transfer-0001",
           },
           {
             affiliate_id: other.id,
@@ -352,6 +407,8 @@ medusaIntegrationTestRunner({
         const payouts = await api.get("/affiliate/me/payouts", bearer(token))
         expect(payouts.data.payouts).toEqual([expect.objectContaining({ affiliate_id: id, amount: 70 })])
         expect(payouts.data.payouts[0].entry_ids).toBeUndefined()
+        // AC-32 (AF-7b, owner 2026-10-27): ไม่ส่ง reference ให้ affiliate
+        expect(payouts.data.payouts[0]).not.toHaveProperty("reference")
       })
     })
   },
