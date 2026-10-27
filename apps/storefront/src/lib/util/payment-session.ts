@@ -125,3 +125,9 @@ export const PROMPTPAY_FALLBACK_MAX_REQUESTS = 10
 
 /** ยิง request ของทางสำรองได้อีกไหม (`used` = จำนวนที่ยิงไปแล้วตั้งแต่ได้ 409) */
 export const promptPayFallbackAllowed = (used: number) => used < PROMPTPAY_FALLBACK_MAX_REQUESTS
+
+/**
+ * poll ของทางสำรองได้เฉพาะเมื่อเหลือ ≥ 2 slot — เว้น slot สุดท้ายให้ complete cart เสมอ (review #136): poll ครั้งสุดท้ายเห็น `paid`
+ * (webhook complete แล้ว) ต้องยัง complete ได้ order เดิมแล้วไปหน้า confirmed ไม่ค้างที่ `promptpay-order-delayed`
+ */
+export const promptPayFallbackCanPoll = (used: number) => promptPayFallbackAllowed(used + 1)

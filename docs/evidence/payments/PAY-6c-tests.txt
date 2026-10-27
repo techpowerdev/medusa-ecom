@@ -49,3 +49,16 @@ PAY-6c (spec 06 กฎข้อ 8, AC-17) — ผลทดสอบในเค�
 Total: 4 tests in 2 files
 
 ## pnpm lint && pnpm typecheck: 0 errors (warning เดิมของ repo); next build: Compiled successfully (prerender /sitemap.xml ต้องมี backend จริง — CI รัน)
+
+## แก้ตาม review #136 nit 1 (2026-10-27): poll เว้น slot สุดท้ายให้ complete (promptPayFallbackCanPoll)
+Red: เทียบกับ logic เดิม (poll ได้ถึง slot ที่ 10) → 3 failed | 30 passed
+Green (หลัง merge origin/develop):
+ ✓ src/lib/util/payment-session.test.ts > promptPayFallbackAllowed (เพดานทางสำรอง) > เพดานคือ 10 request 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayFallbackAllowed (เพดานทางสำรอง) > ใช้ไป 0..9 ครั้ง → ยิงได้อีก; ครบ 10 → หยุด 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayFallbackAllowed (เพดานทางสำรอง) > poll ได้เมื่อยังเหลืออย่างน้อย 2 slot (poll + complete) 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayFallbackAllowed (เพดานทางสำรอง) > complete ล้มตลอด → ยิงรวมไม่เกิน 10 0ms
+ ✓ src/lib/util/payment-session.test.ts > promptPayFallbackAllowed (เพดานทางสำรอง) > poll ครั้งไหนก็ตามที่เห็น paid (รวมครั้งสุดท้ายก่อนเพดาน) → ยัง complete ได้ ไม่ค้างที่ delayed ทั้งที่มี order 0ms
+      Tests  33 passed (33)
+storefront ทั้งชุด: Test Files  29 passed (29)
+storefront ทั้งชุด:      Tests  313 passed (313)
+pnpm lint && pnpm typecheck: 0 errors

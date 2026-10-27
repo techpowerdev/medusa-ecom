@@ -10,6 +10,7 @@ import {
   PROMPTPAY_POLL_MS,
   formatCountdown,
   promptPayFallbackAllowed,
+  promptPayFallbackCanPoll,
   promptPayDeadline,
   promptPayExpiryAction,
   promptPayPollAction,
@@ -91,10 +92,14 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     setDelayed(true)
   }, [])
 
-  /** ทางสำรองยิง request ได้อีกไหม (นับเฉพาะโหมดทางสำรอง) — ครบเพดาน → giveUp */
-  const takeFallbackSlot = useCallback(() => {
+  /**
+   * ทางสำรองยิง request ได้อีกไหม (นับเฉพาะโหมดทางสำรอง) — ครบเพดาน → giveUp
+   * poll ต้องเหลือ slot ให้ complete ต่ออีกหนึ่ง (review #136) จึงหยุด poll เมื่อเหลือ < 2
+   */
+  const takeFallbackSlot = useCallback((kind: "poll" | "complete") => {
     if (!completeFallback.current) return true
-    if (!promptPayFallbackAllowed(fallbackUsed.current)) {
+    const allowed = kind === "poll" ? promptPayFallbackCanPoll : promptPayFallbackAllowed
+    if (!allowed(fallbackUsed.current)) {
       giveUp()
       return false
     }
@@ -104,7 +109,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
 
   const finish = useCallback(async () => {
     if (finishing.current) return
-    if (!takeFallbackSlot()) return
+    if (!takeFallbackSlot("complete")) return
     finishing.current = true
     try {
       // cart ถูก complete โดย webhook แล้ว — complete ซ้ำได้ order เดิมแล้ว redirect ไปหน้า confirmed
@@ -215,7 +220,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   useEffect(() => {
     if (!polling) return
     const timer = setInterval(async () => {
-      if (!takeFallbackSlot()) {
+      if (!takeFallbackSlot("poll")) {
         clearInterval(timer)
         return
       }

@@ -4,6 +4,7 @@ import {
   PROMPTPAY_FALLBACK_MAX_REQUESTS,
   PROMPTPAY_TIMEOUT_MS,
   promptPayFallbackAllowed,
+  promptPayFallbackCanPoll,
   formatCountdown,
   isPromptPay,
   paymentSessionData,
@@ -253,18 +254,53 @@ describe("promptPayFallbackAllowed (เพดานทางสำรอง)", (
     expect(promptPayFallbackAllowed(11)).toBe(false)
   })
 
-  it("จำลองรอบทางสำรอง (complete ทันที แล้ว poll+complete ทุกรอบ) ยิงรวมไม่เกิน 10", () => {
+  // review #136 nit 1: poll ต้องเหลือ slot ให้ complete เสมอ — poll ครั้งสุดท้ายได้ paid แล้วต้อง complete ไปหน้า confirmed ได้
+  it("poll ได้เมื่อยังเหลืออย่างน้อย 2 slot (poll + complete)", () => {
+    for (let used = 0; used <= 8; used++) {
+      expect(promptPayFallbackCanPoll(used)).toBe(true)
+    }
+    expect(promptPayFallbackCanPoll(9)).toBe(false)
+    expect(promptPayFallbackCanPoll(10)).toBe(false)
+  })
+
+  // จำลอง loop ของ component: complete ทันทีหลัง 409 แล้วทุกรอบ poll (ถ้าเหลือ ≥ 2 slot) ตามด้วย complete
+  const simulate = (stateAt: (pollNo: number) => "pending" | "paid") => {
     let used = 0
-    const send = () => {
+    let polls = 0
+    const completes: number[] = []
+    const complete = () => {
       if (!promptPayFallbackAllowed(used)) return false
       used++
+      completes.push(used)
       return true
     }
-    send() // complete ทันทีหลัง 409
-    for (let tick = 0; tick < 50; tick++) {
-      if (!send()) break // poll
-      if (promptPayPollAction("pending", true) === "complete" && !send()) break
+    complete()
+    for (let pollNo = 1; pollNo < 50; pollNo++) {
+      if (!promptPayFallbackCanPoll(used)) break
+      used++
+      polls++
+      const state = stateAt(pollNo)
+      if (promptPayPollAction(state, true) === "complete" && !complete()) break
+      if (state === "paid") return { used, polls, completes, completedAfterPaid: true }
     }
-    expect(used).toBe(10)
+    return { used, polls, completes, completedAfterPaid: false }
+  }
+
+  it("complete ล้มตลอด → ยิงรวมไม่เกิน 10", () => {
+    const run = simulate(() => "pending")
+    // complete 1 + (poll + complete) × 4 = 9 — slot ที่ 10 ใช้ poll ไม่ได้เพราะจะไม่เหลือให้ complete
+    expect(run.used).toBeLessThanOrEqual(10)
+    expect(run.used).toBe(9)
+    expect(run.completes.at(-1)).toBe(run.used)
+  })
+
+  it("poll ครั้งไหนก็ตามที่เห็น paid (รวมครั้งสุดท้ายก่อนเพดาน) → ยัง complete ได้ ไม่ค้างที่ delayed ทั้งที่มี order", () => {
+    const pollsWhenPending = simulate(() => "pending").polls
+    expect(pollsWhenPending).toBeGreaterThan(0)
+    for (let k = 1; k <= pollsWhenPending; k++) {
+      const run = simulate((pollNo) => (pollNo === k ? "paid" : "pending"))
+      expect(run.completedAfterPaid, `paid ที่ poll ลำดับ ${k}`).toBe(true)
+      expect(run.used).toBeLessThanOrEqual(10)
+    }
   })
 })
