@@ -104,6 +104,14 @@ class EvoucherModuleService extends MedusaService({
       conditions.push(`id = ?`)
       params.push(filter.id)
     }
+    if (filter.ids) {
+      // EV-12: job รายวัน void เฉพาะ code ที่ไม่ได้เว้นไว้ — รายการว่าง = ไม่มีอะไรต้อง void
+      if (!filter.ids.length) {
+        return []
+      }
+      conditions.push(`id IN (?)`)
+      params.push(filter.ids)
+    }
     if (filter.pool_id) {
       conditions.push(`pool_id = ?`)
       params.push(filter.pool_id)
@@ -129,6 +137,7 @@ class EvoucherModuleService extends MedusaService({
    * - เลือก code `available` ที่ expires_at > expires_after (หรือไม่มีวันหมดอายุ) ตามวันหมดอายุก่อน
    *   ด้วย FOR UPDATE SKIP LOCKED: order อื่นที่ claim พร้อมกันข้ามแถวที่ล็อกอยู่ และ void ของ EV-5
    *   (conditional UPDATE) รอแล้วไม่ทับแถวที่ถูก allocate ไปแล้ว
+   * - ไม่พอ → query ส่วนเติมจาก code < 7 วันที่ยังไม่หมดอายุ (expires_at DESC — EV-12, กฎข้อ 2 ข้อยกเว้น)
    * - code ไม่พอสำหรับ quantity ของ line item → backordered ทั้ง line item (ไม่ claim บางส่วน)
    */
   @InjectManager()
@@ -180,6 +189,21 @@ class EvoucherModuleService extends MedusaService({
          FOR UPDATE SKIP LOCKED`,
         [item.pool_id, input.expires_after, item.quantity]
       )
+      // EV-12 (กฎข้อ 2 ข้อยกเว้น): code อายุยาวไม่พอ → เติมจาก code ที่ยังไม่หมดอายุแต่เหลือ < 7 วัน ไกลสุดก่อน
+      // (code ที่ job รายวันเว้นไว้ให้ order ที่จองแล้ว — กฎข้อ 12b) ก่อนจะ backordered
+      if (rows.length < item.quantity) {
+        rows.push(
+          ...(await manager.execute<{ id: string }[]>(
+            `SELECT id FROM evoucher_code
+             WHERE pool_id = ? AND status = 'available' AND deleted_at IS NULL
+               AND expires_at > now() AND expires_at <= ?
+             ORDER BY expires_at DESC, id
+             LIMIT ?
+             FOR UPDATE SKIP LOCKED`,
+            [item.pool_id, input.expires_after, item.quantity - rows.length]
+          ))
+        )
+      }
       if (rows.length < item.quantity) {
         result.backordered.push(item.line_item_id)
         continue
@@ -216,6 +240,7 @@ export type ClaimCodesForOrderResult = {
 
 export type VoidAvailableCodesFilter = {
   id?: string
+  ids?: string[]
   pool_id?: string
   expires_before?: Date
 }

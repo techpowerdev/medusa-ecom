@@ -1,0 +1,51 @@
+# CORE-20b — ผล test (รันในเครื่อง 2026-10-27, Node 22.23.3, Postgres 16 จาก docker compose, Redis db 4)
+
+## Red (ก่อนเพิ่ม middleware) — integration-tests/http/store-returns-window.spec.ts: 5 failed, 2 passed
+- ship เมื่อ 8 วันก่อน (ช่วงคืน region = 7), delivered_at เกินช่วง, line requires_shipping=false, fulfill แต่ยังไม่ ship → ได้ **200** สร้าง return ได้
+  (ยืนยันว่า createAndCompleteReturnOrderWorkflow ของ Medusa 2.22.1 ไม่ตรวจช่วงคืน/การจัดส่ง)
+- item id ที่ไม่ใช่ line ของ order → 400 จาก Medusa แต่ไม่มี code ให้ storefront แปล
+- unit return-window.unit.spec.ts: Cannot find module '../return-window'
+
+## Green — integration (รันทีละไฟล์)
+PASS integration-tests/http/store-returns-window.spec.ts (22.102 s)
+    ✓ shipped return_window_days + 1 days ago → 400 RETURN_WINDOW_EXPIRED and no return (1135 ms)
+    ✓ shipped 1 day ago → 200 and the return is created (1286 ms)
+    ✓ delivered_at takes precedence over shipped_at (1888 ms)
+    ✓ a line that does not require shipping (e-voucher) → 400 RETURN_ITEM_NOT_SHIPPABLE (1886 ms)
+    ✓ fulfilled but not shipped yet → 400 RETURN_ITEM_NOT_SHIPPED (1435 ms)
+    ✓ an item id that is not a line of the order → 400 and the message does not echo the input (1639 ms)
+    ✓ middleware order: no token → 401, customer B → 404 (ownership runs before this check) (1200 ms)
+Tests:       7 passed, 7 total
+
+PASS integration-tests/http/store-returns-option.spec.ts (18.903 s)
+    ✓ owner using an outbound option (Standard, is_return=false) → 400 invalid_data and no return is created (965 ms)
+    ✓ owner using a return option disabled in store → 400 invalid_data and no return is created (927 ms)
+    ✓ owner using a return option of a service zone that does not cover the order address → 400 invalid_data and no return is created (842 ms)
+    ✓ owner using an option id that does not exist → 400 invalid_data and no return is created (957 ms)
+    ✓ owner using the seeded return option (Standard return) → 200 and the return is created (1042 ms)
+    ✓ owner using a return option whose stock location is not in the order's sales channel → 400 invalid_data (1060 ms)
+    ✓ owner whose order has no shipping country_code → 400 invalid_data and no return is created (1099 ms)
+    ✓ owner using a missing option id → message does not echo the input and is the same for any id (1095 ms)
+Tests:       8 passed, 8 total
+
+PASS integration-tests/http/store-returns-overrides.spec.ts (23.675 s)
+    ✓ seed has a return shipping option (is_return) that customers can use (497 ms)
+    ✓ owner sending return_shipping.price → 400 invalid_data and no return is created (2470 ms)
+    ✓ owner sending receive_now (true, full quantity) → 400 invalid_data and no return is created (1310 ms)
+    ✓ owner sending receive_now (false) → 400 invalid_data and no return is created (1720 ms)
+    ✓ owner sending location_id → 400 invalid_data and no return is created (1350 ms)
+    ✓ owner creates a return with the seeded option: price from the option, not received, location from the option (2021 ms)
+Tests:       6 passed, 6 total
+
+PASS integration-tests/http/store-returns-transfer.spec.ts (20.518 s)
+      ✓ 401 without token, 404 for customer B (no return created), 200 for owner A (1161 ms)
+      ✓ an order id that does not exist → 404; no order_id → rejected (not 200) (1185 ms)
+      ✓ request/accept/decline/cancel → 404 without token, as B and as A; no transfer change; owner stays A (962 ms)
+Tests:       3 passed, 3 total
+
+## Green — unit (pnpm --filter backend test:unit)
+Test Suites: 53 passed, 53 total
+Tests:       545 passed, 545 total
+
+## lint / typecheck / build
+pnpm lint: 0 errors (warning เดิมของ storefront) — pnpm typecheck: ผ่าน — pnpm --filter backend build: ผ่าน
