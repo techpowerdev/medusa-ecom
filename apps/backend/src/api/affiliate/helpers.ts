@@ -17,6 +17,13 @@ export const refetchAffiliate = async (id: string, scope: MedusaContainer) => {
   return affiliate
 }
 
+// AF-13 กฎ 34 (Q5): portal เห็นแค่ว่ามีข้อมูลรับเงินหรือไม่ — object ที่มีอย่างน้อย 1 key
+export const hasPayoutInfo = (payoutInfo: unknown): boolean =>
+  typeof payoutInfo === "object" &&
+  payoutInfo !== null &&
+  !Array.isArray(payoutInfo) &&
+  Object.keys(payoutInfo).length > 0
+
 type AffiliateStatus = "pending" | "active" | "suspended"
 type PortalAffiliate = Awaited<ReturnType<typeof refetchAffiliate>>
 

@@ -6,7 +6,9 @@ import {
   ProductStatus,
 } from "@medusajs/framework/utils"
 import {
+  batchLinkProductsToCollectionWorkflow,
   createApiKeysWorkflow,
+  createCollectionsWorkflow,
   createInventoryLevelsWorkflow,
   createProductCategoriesWorkflow,
   createProductsWorkflow,
@@ -64,6 +66,8 @@ const SAMPLE_PRODUCTS = [
   },
 ]
 const SAMPLE_SKUS = SAMPLE_PRODUCTS.flatMap((p) => p.option.values.map((value) => sku(p.handle, value)))
+// CORE-10b (spec 01 กฎข้อ 70): collection ตัวอย่างให้หน้าแรกมี rail — หาด้วย handle (ชื่อแก้ได้ใน admin)
+const FEATURED_COLLECTION = { title: "สินค้าแนะนำ", handle: "featured" }
 const STOCK_LOCATION_NAME = "Bangkok Warehouse"
 const FULFILLMENT_SET_NAME = "Thailand delivery"
 
@@ -99,6 +103,7 @@ export default async function seedThailand({ container }: ExecArgs) {
   const categoryIds = await ensureCategories(container)
   await ensureProducts(container, { salesChannelId, defaultProfileId, categoryIds })
   await ensureInventoryLevels(container, locationId)
+  await ensureFeaturedCollection(container)
 
   logger.info(`Seed ร้าน "${REGION_NAME}" เสร็จแล้ว`)
 }
@@ -378,6 +383,34 @@ async function ensureProducts(
       })),
     },
   })
+}
+
+/**
+ * collection `featured` (CORE-10b) ใส่สินค้าตัวอย่างที่ยังไม่อยู่ใน collection ใด — สร้างเฉพาะเมื่อยังไม่มี handle นี้
+ * มีอยู่แล้ว → ไม่สร้าง/ไม่แก้ (คงชื่อและสินค้าที่ admin จัดไว้)
+ */
+async function ensureFeaturedCollection(container: Container) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data: existing } = await query.graph({
+    entity: "product_collection",
+    fields: ["id"],
+    filters: { handle: FEATURED_COLLECTION.handle },
+  })
+  if (existing.length) {
+    return
+  }
+  const { result } = await createCollectionsWorkflow(container).run({
+    input: { collections: [FEATURED_COLLECTION] },
+  })
+  const { data: products } = await query.graph({
+    entity: "product",
+    fields: ["id", "collection_id"],
+    filters: { handle: SAMPLE_PRODUCTS.map((p) => p.handle) },
+  })
+  const add = products.filter((p) => !p.collection_id).map((p) => p.id)
+  if (add.length) {
+    await batchLinkProductsToCollectionWorkflow(container).run({ input: { id: result[0].id, add } })
+  }
 }
 
 /** inventory level ของ variant ตัวอย่าง (หาด้วย SKU) ที่ stock location — สร้างเฉพาะ item ที่ยังไม่มี level ที่ location นี้ */

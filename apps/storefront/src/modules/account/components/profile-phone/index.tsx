@@ -5,6 +5,7 @@ import React, { useEffect, useActionState } from "react";
 import Input from "@modules/common/components/input"
 
 import AccountInfo from "../account-info"
+import { submitWithoutReset } from "@lib/util/submit-without-reset"
 import { HttpTypes } from "@medusajs/types"
 import { updateCustomer } from "@lib/data/customer"
 
@@ -30,10 +31,11 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
     }
   }
 
-  const [state, formAction] = useActionState(updateCustomerPhone, {
+  const [state, formAction, isPending] = useActionState(updateCustomerPhone, {
     error: null as string | null,
     success: false,
   })
+  const onSubmit = submitWithoutReset(formAction)
 
   const clearState = () => {
     setSuccessState(false)
@@ -44,7 +46,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
   }, [state])
 
   return (
-    <form action={formAction} className="w-full">
+    <form onSubmit={onSubmit} className="w-full">
       <AccountInfo
         label="เบอร์โทรศัพท์"
         currentInfo={customer.phone || "ยังไม่ได้ระบุ"}
@@ -52,6 +54,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
         isError={!!state.error}
         errorMessage={state.error || undefined}
         clearState={clearState}
+        isPending={isPending}
         data-testid="account-phone-editor"
       >
         <div className="grid grid-cols-1 gap-y-2">

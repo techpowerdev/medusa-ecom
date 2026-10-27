@@ -1,0 +1,45 @@
+# EV-7a — ผลทดสอบ (2026-10-27, base = origin/develop หลัง merge #149)
+# spec: docs/spec/02-evoucher.md กฎข้อ 22, 23; AC-34, AC-35
+
+## integration http: integration-tests/http/evoucher-store.spec.ts
+      ✓ returns only the caller's delivered/allocated codes decrypted, with pool and partner (216 ms)
+      ✓ B sees only B's code (503 ms)
+      ✓ paginates with limit/offset (130 ms)
+      ✓ rejects limit=101 with 400 (122 ms)
+      ✓ rejects limit=0 with 400 (131 ms)
+      ✓ rejects offset=-1 with 400 (148 ms)
+      ✓ requires a customer: no token or an affiliate token → 401 (124 ms)
+      ✓ has no per-code route → 404 (115 ms)
+      ✓ returns pool and partner fields of the voucher variant (public, no token) (135 ms)
+      ✓ returns pool fields on the product list too (141 ms)
+      ✓ never exposes code data for fields=*variants.evoucher_pool (125 ms)
+      ✓ never exposes code data for fields=+variants.evoucher_pool.codes.code (127 ms)
+      ✓ never exposes code data for fields=+variants.evoucher_pool.codes.pin (151 ms)
+      ✓ never exposes code data for fields=*variants.evoucher_pool.codes (136 ms)
+      ✓ never exposes code data for fields=+variants.evoucher_pool.batch_ref (154 ms)
+      ✓ never exposes code data for fields=+variants.evoucher_pool.* (143 ms)
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+
+## integration modules: src/modules/evoucher/__tests__/evoucher-module.spec.ts
+    ✓ has a (customer_id, status) index on evoucher_code (259 ms)
+    ✓ creates partner and pool with spec defaults (116 ms)
+    ✓ allows only one pool per variant (83 ms)
+    ✓ stores code/pin encrypted and defaults status to available (117 ms)
+    ✓ rejects the same code twice in a pool but allows it in another pool (77 ms)
+    ✓ accepts the configured encryption key (65 ms)
+    ✓ records who revealed which code and when (AC-8 audit) (68 ms)
+    ✓ lists codes by pool and status (78 ms)
+    ✓ throws a clear error when the encryption key is not configured (74 ms)
+Test Suites: 1 passed, 1 total
+Tests:       9 passed, 9 total
+
+## unit (pnpm --filter backend test:unit)
+Test Suites: 62 passed, 62 total
+Tests:       612 passed, 612 total
+
+## pnpm lint && pnpm typecheck: ผ่าน (exit 0); pnpm --filter backend build: ผ่าน
+
+## RED ก่อนเขียนโค้ด (http): route ยังไม่มี → 404, field pool ไม่มีใน product
+Tests:       8 failed, 8 passed, 16 total
+## RED (modules): index (customer_id, status) ไม่มี → 1 failed, 8 passed
