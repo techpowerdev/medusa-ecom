@@ -52,6 +52,7 @@ export type Payout = {
   period_to: string
   status: "draft" | "paid"
   paid_at: string | null
+  reference: string | null
 }
 
 export type ListResponse<K extends string, T> = { [key in K]: T[] } & {
@@ -89,3 +90,16 @@ export const updateProgram = (id: string, body: ProgramBody) =>
 
 export const deleteProgram = (id: string) =>
   sdk.client.fetch(`/admin/affiliate/programs/${id}`, { method: "DELETE" })
+
+// AF-12c (กฎ 37c): สร้าง payout + mark paid ผ่าน admin API ของ AF-5 (ไม่แก้ backend)
+export const listAffiliatesByStatus = (status: "active" | "suspended") =>
+  sdk.client.fetch<ListResponse<"affiliates", Pick<Affiliate, "id" | "name" | "email" | "status">>>(
+    "/admin/affiliate/affiliates",
+    { query: { status, limit: 200, offset: 0, fields: "id,name,email,status" } },
+  )
+
+export const createPayout = (body: { affiliate_id: string; period_from: string; period_to: string }) =>
+  sdk.client.fetch<{ payout: Payout }>("/admin/affiliate/payouts", { method: "POST", body })
+
+export const markPayoutPaid = (id: string, body: { reference?: string }) =>
+  sdk.client.fetch<{ payout: Payout }>(`/admin/affiliate/payouts/${id}/mark-paid`, { method: "POST", body })
