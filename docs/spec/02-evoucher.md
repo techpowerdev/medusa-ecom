@@ -181,7 +181,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 24. (รอบ 10, EV-7c — **owner ตัดสิน Q10 = (ก) 2026-10-27**) checkout ของ cart ที่**ทุก** line `requires_shipping=false`:
     (a) ข้ามขั้น delivery (ไม่ใส่ shipping method — AC-3; ถ้าจำเป็นต้องมีให้เลือก `type.code = "digital-delivery"` ตามกฎข้อ 8 ไม่ใช่ตัวแรก)
     (b) ขั้นที่อยู่เก็บ**ที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี** (ฟอร์ม billing เดิมของ starter; ไม่มีคำว่า "ที่อยู่จัดส่ง") แล้วตั้ง `shipping_address` = ที่อยู่เดียวกันเพื่อให้ Tax module
-    ของ Medusa คำนวณ VAT 7% เป็น tax line (builder ยืนยันกับ core-flows 2.22.1 ว่าการคำนวณภาษีของ cart อ่าน `shipping_address` — ถ้าอ่าน billing ได้ด้วยไม่ต้องตั้ง shipping)
+    ของ Medusa คำนวณ VAT 7% เป็น tax line เสมอ (ตามคำตัดสิน owner — AC-37 ตรวจ `order.shipping_address` = ที่อยู่ที่กรอก)
     (c) หลัง complete redirect ไป `/<countryCode จาก URL ปัจจุบัน>/order/<id>/confirmed` (ไม่อ่าน country จาก shipping address)
     (d) cart ผสม (voucher + สินค้าจัดส่ง) ใช้ flow ปกติ — Medusa บังคับ shipping method ตาม profile ของ line ที่ต้องจัดส่งเอง
 25. (รอบ 10, EV-9 — qa) รายการ code ที่เรียงตาม `created_at` (เช่น `GET /admin/evoucher/pools/:id/codes` และตารางใน admin) ใช้ `id` เป็น key เรียงรองเสมอ (`created_at`, `id`) —

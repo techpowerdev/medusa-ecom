@@ -349,7 +349,7 @@ Payout
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
-(รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 ∥ AF-6 ∥ AF-N1 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
+(รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
 backlog หลัง v1.0 (ไม่มี AC): dedupe ของ `/affiliate/products` ทำใน SQL เมื่อแคตตาล็อกใหญ่ (v1 dedupe ในแอปมีเพดานจำนวนสินค้าตามที่ AF-7b ทำ — review #122);
 AF-11 reconcile entry ที่ **approve ไปแล้ว** ของ order ที่ถูกยกเลิกแต่ไม่มี reversal (review #125) — ⏸ หลัง v1.0 (owner Q15 2026-10-27)
 (รอบ 10 — qa #138 AF-6, ทำใน #138 ถ้ายังไม่ merge มิฉะนั้นเป็น PR ถัดไปที่แตะหน้า Affiliates) AC-26 เพิ่ม: ที่ viewport 1280×800 ปุ่ม `affiliate-payout-cancel` อยู่ในจอ
