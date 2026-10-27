@@ -93,6 +93,37 @@ export const listProducts = async ({
 }
 
 /**
+ * CORE-14b (กฎ 26): variant ตาม id ผ่าน `GET /store/product-variants/:id` ของ Medusa
+ * (กรอง sales channel + สินค้า published, ราคาของ region และ stock) — ไม่พบคืน null
+ */
+export const retrieveVariant = async (
+  variantId: string,
+  countryCode: string
+): Promise<HttpTypes.StoreProductVariant | null> => {
+  const region = await getRegion(countryCode)
+  if (!region) {
+    return null
+  }
+
+  return sdk.client
+    .fetch<{ variant: HttpTypes.StoreProductVariant }>(
+      `/store/product-variants/${encodeURIComponent(variantId)}`,
+      {
+        method: "GET",
+        query: {
+          region_id: region.id,
+          fields:
+            "id,manage_inventory,allow_backorder,*calculated_price,+inventory_quantity",
+        },
+        headers: { ...(await getAuthHeaders()) },
+        cache: "no-store",
+      }
+    )
+    .then(({ variant }) => variant)
+    .catch(() => null)
+}
+
+/**
  * This will fetch 100 products to the Next.js cache and sort them based on the sortBy parameter.
  * It will then return the paginated products based on the page and limit parameters.
  */

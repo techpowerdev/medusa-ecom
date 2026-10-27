@@ -29,11 +29,12 @@ const run = (handler: (...args: any[]) => unknown, error: unknown): Sent => {
 const medusa = medusaErrorHandler()
 
 describe("businessErrorHandler", () => {
-  it("covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void + reserved; spec 04 GB_*; spec 06 PAY-6)", () => {
+  it("covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void + reserved + resend lock; spec 04 GB_*; spec 06 PAY-6)", () => {
     expect([...BUSINESS_CONFLICT_CODES].sort()).toEqual(
       [
         "EVOUCHER_CODE_NOT_AVAILABLE",
         "EVOUCHER_CODE_RESERVED",
+        "EVOUCHER_RESEND_IN_PROGRESS",
         "FLASH_LIMIT_EXCEEDED",
         "FLASH_SOLD_OUT",
         "PAYMENT_ALREADY_COMPLETED",

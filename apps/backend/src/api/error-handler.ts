@@ -1,7 +1,11 @@
 import { errorHandler, type MedusaErrorHandlerFunction } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { PROMOTION_NOT_COMBINABLE } from "../lib/promotion-exclusivity"
-import { EVOUCHER_CODE_NOT_AVAILABLE, EVOUCHER_CODE_RESERVED } from "../modules/evoucher/errors"
+import {
+  EVOUCHER_CODE_NOT_AVAILABLE,
+  EVOUCHER_CODE_RESERVED,
+  EVOUCHER_RESEND_IN_PROGRESS,
+} from "../modules/evoucher/errors"
 import { FLASH_LIMIT_EXCEEDED, FLASH_SOLD_OUT } from "../modules/flash_sale/errors"
 import { GB_CONFLICT_CODES } from "../modules/group_buy/errors"
 import { PAYMENT_ALREADY_COMPLETED } from "./store/payment-collections/errors"
@@ -16,6 +20,7 @@ export const BUSINESS_CONFLICT_CODES: ReadonlySet<string> = new Set([
   FLASH_SOLD_OUT,
   EVOUCHER_CODE_NOT_AVAILABLE,
   EVOUCHER_CODE_RESERVED,
+  EVOUCHER_RESEND_IN_PROGRESS, // EV-5b
   ...GB_CONFLICT_CODES,
   PAYMENT_ALREADY_COMPLETED, // PAY-6 (spec 06 กฎข้อ 7A)
 ])
