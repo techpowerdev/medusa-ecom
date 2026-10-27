@@ -175,6 +175,18 @@ medusaIntegrationTestRunner({
       expect(data?.message).not.toContain("<script>")
     })
 
+    // CORE-20d (spec 01 กฎข้อ 66b): storefront คิดช่วงคืนต่อ line แบบเดียวกับ middleware นี้ — ต้องรู้ว่า fulfillment ไหนมี line ใด
+    // core จำกัด field ของ GET /store/orders/:id ไว้ (ไม่มี fulfillments.items) → เปิดเฉพาะ line_item_id ให้เจ้าของ order
+    it("GET /store/orders/:id returns fulfillments.items.line_item_id to the owner only", async () => {
+      const order = await shippedOrder({ shipped_at: daysAgo(1) })
+      const url = `/store/orders/${order.id}?fields=id,*fulfillments,+fulfillments.items.line_item_id`
+      const { status, data } = await api.get(url, owner)
+      expect(status).toEqual(200)
+      const fulfillments = data.order.fulfillments as { items?: Record<string, unknown>[] }[]
+      expect(fulfillments.map((f) => f.items?.map((i) => i.line_item_id))).toEqual([[order.itemId]])
+      expect((await responseOf(api.get(url, other))).status).toEqual(404)
+    })
+
     it("middleware order: no token → 401, customer B → 404 (ownership runs before this check)", async () => {
       const order = await shippedOrder({ shipped_at: daysAgo(WINDOW_DAYS + 1) })
       expect((await responseOf(api.post("/store/returns", body(order), guest))).status).toEqual(401)

@@ -4,7 +4,7 @@ import {
   buildReturnRequest,
   canRequestReturn,
   DEFAULT_RETURN_WINDOW_DAYS,
-  receivedAt,
+  lineReceivedAt,
   returnableItems,
   returnableItemsNow,
   returnErrorMessage,
@@ -69,19 +69,28 @@ describe("returnableItems", () => {
   })
 })
 
-describe("receivedAt", () => {
-  it("ใช้ delivered_at ก่อน shipped_at และเลือก fulfillment ล่าสุด ไม่นับที่ยกเลิก", () => {
-    const at = receivedAt([
-      { shipped_at: daysAgo(10), delivered_at: daysAgo(8) },
-      { shipped_at: daysAgo(5), delivered_at: null },
-      { shipped_at: daysAgo(1), canceled_at: daysAgo(1) },
-    ])
-    expect(at?.toISOString()).toBe(daysAgo(5))
+// CORE-20d (กฎข้อ 66b): วันอ้างอิงคิดต่อ line = delivered_at (ไม่มีใช้ shipped_at) ล่าสุดของ fulfillment ที่มี line นั้น
+const shipped = (lineIds: string[], dates: Record<string, string | null>) => ({
+  ...dates,
+  items: lineIds.map((line_item_id) => ({ line_item_id })),
+})
+
+describe("lineReceivedAt", () => {
+  it("ใช้ delivered_at ก่อน shipped_at, เลือกล่าสุดเฉพาะ fulfillment ที่มี line นั้น, ไม่นับที่ยกเลิก", () => {
+    const fulfillments = [
+      shipped(["a"], { shipped_at: daysAgo(10), delivered_at: daysAgo(8) }),
+      shipped(["a"], { shipped_at: daysAgo(5), delivered_at: null }),
+      shipped(["a"], { shipped_at: daysAgo(1), canceled_at: daysAgo(1) }),
+      shipped(["b"], { shipped_at: daysAgo(2) }),
+    ]
+    expect(lineReceivedAt(fulfillments, "a")?.toISOString()).toBe(daysAgo(5))
+    expect(lineReceivedAt(fulfillments, "b")?.toISOString()).toBe(daysAgo(2))
   })
 
-  it("ยังไม่ส่ง (ไม่มีทั้ง delivered_at และ shipped_at) → null", () => {
-    expect(receivedAt([{ shipped_at: null, delivered_at: null }])).toBeNull()
-    expect(receivedAt(undefined)).toBeNull()
+  it("line ยังไม่ส่ง / ไม่มี fulfillment ของ line → null", () => {
+    expect(lineReceivedAt([shipped(["a"], { shipped_at: null, delivered_at: null })], "a")).toBeNull()
+    expect(lineReceivedAt([shipped(["b"], { shipped_at: daysAgo(1) })], "a")).toBeNull()
+    expect(lineReceivedAt(undefined, "a")).toBeNull()
   })
 })
 
@@ -92,31 +101,44 @@ describe("canRequestReturn", () => {
   })
 
   it("ภายใน N วันนับจากวันที่ได้รับ → ได้ (รวมวันสุดท้ายพอดี)", () => {
-    expect(canRequestReturn(order([{ delivered_at: daysAgo(29) }]), 30, NOW)).toBe(true)
-    expect(canRequestReturn(order([{ delivered_at: daysAgo(30) }]), 30, NOW)).toBe(true)
+    expect(canRequestReturn(order([shipped(["a"], { delivered_at: daysAgo(29) })]), 30, NOW)).toBe(true)
+    expect(canRequestReturn(order([shipped(["a"], { delivered_at: daysAgo(30) })]), 30, NOW)).toBe(true)
   })
 
   it("เกิน N วัน → ไม่ได้", () => {
-    expect(canRequestReturn(order([{ delivered_at: daysAgo(31) }]), 30, NOW)).toBe(false)
+    expect(canRequestReturn(order([shipped(["a"], { delivered_at: daysAgo(31) })]), 30, NOW)).toBe(false)
   })
 
   it("ไม่มี delivered_at ใช้ shipped_at", () => {
-    expect(canRequestReturn(order([{ shipped_at: daysAgo(3) }]), 7, NOW)).toBe(true)
-    expect(canRequestReturn(order([{ shipped_at: daysAgo(8) }]), 7, NOW)).toBe(false)
+    expect(canRequestReturn(order([shipped(["a"], { shipped_at: daysAgo(3) })]), 7, NOW)).toBe(true)
+    expect(canRequestReturn(order([shipped(["a"], { shipped_at: daysAgo(8) })]), 7, NOW)).toBe(false)
   })
 
   it("ยังไม่ fulfill / ยังไม่ส่ง → ไม่ได้", () => {
     expect(canRequestReturn(order([]), 30, NOW)).toBe(false)
-    expect(canRequestReturn(order([{ shipped_at: null }]), 30, NOW)).toBe(false)
+    expect(canRequestReturn(order([shipped(["a"], { shipped_at: null })]), 30, NOW)).toBe(false)
   })
 
   it("ไม่มี item ที่คืนได้ (เช่น มีแต่ e-voucher) → ไม่ได้", () => {
-    const voucherOnly = order([{ shipped_at: daysAgo(1) }], [item("v", { fulfilled_quantity: 1, shipped_quantity: 1 }, false)])
+    const voucherOnly = order(
+      [shipped(["v"], { shipped_at: daysAgo(1) })],
+      [item("v", { fulfilled_quantity: 1, shipped_quantity: 1 }, false)]
+    )
     expect(canRequestReturn(voucherOnly, 30, NOW)).toBe(false)
   })
 
   it("อ่าน region ไม่ได้ (return_window_days = null) → ไม่ได้", () => {
-    expect(canRequestReturn(order([{ delivered_at: daysAgo(1) }]), null, NOW)).toBe(false)
+    expect(canRequestReturn(order([shipped(["a"], { delivered_at: daysAgo(1) })]), null, NOW)).toBe(false)
+  })
+
+  // กฎข้อ 66b: ไม่ใช้ fulfillment ล่าสุดของทั้ง order — line ที่ส่งไปนานแล้วไม่ได้สิทธิ์จาก line อื่นที่เพิ่งส่ง
+  it("line A พ้นช่วง แต่ line B เพิ่งส่ง → ยังมีปุ่ม (มี line คืนได้ ≥ 1)", () => {
+    const items = [
+      item("A", { fulfilled_quantity: 1, shipped_quantity: 1 }),
+      item("B", { fulfilled_quantity: 1, shipped_quantity: 1 }),
+    ]
+    const fulfillments = [shipped(["A"], { shipped_at: daysAgo(31) }), shipped(["B"], { shipped_at: daysAgo(1) })]
+    expect(canRequestReturn({ items, fulfillments }, 30, NOW)).toBe(true)
   })
 })
 
@@ -125,14 +147,29 @@ describe("returnableItemsNow", () => {
   const items = [item("a", { fulfilled_quantity: 2, shipped_quantity: 2 })]
 
   it("ภายในช่วงคืน → line ที่คืนได้พร้อมจำนวน", () => {
-    const lines = returnableItemsNow({ items, fulfillments: [{ shipped_at: daysAgo(1) }] }, 7, NOW)
+    const lines = returnableItemsNow({ items, fulfillments: [shipped(["a"], { shipped_at: daysAgo(1) })] }, 7, NOW)
     expect(lines.map((r) => [r.item.id, r.quantity])).toEqual([["a", 2]])
   })
 
   it("เลยช่วงคืน / ยังไม่ส่ง / ไม่ทราบช่วงคืน → ว่าง", () => {
-    expect(returnableItemsNow({ items, fulfillments: [{ shipped_at: daysAgo(8) }] }, 7, NOW)).toEqual([])
+    expect(returnableItemsNow({ items, fulfillments: [shipped(["a"], { shipped_at: daysAgo(8) })] }, 7, NOW)).toEqual([])
     expect(returnableItemsNow({ items, fulfillments: [] }, 7, NOW)).toEqual([])
-    expect(returnableItemsNow({ items, fulfillments: [{ shipped_at: daysAgo(1) }] }, null, NOW)).toEqual([])
+    expect(returnableItemsNow({ items, fulfillments: [shipped(["a"], { shipped_at: daysAgo(1) })] }, null, NOW)).toEqual([])
+  })
+
+  // AC-102: line A ส่งเมื่อ window + 1 วันก่อน, line B ส่งเมื่อวาน → เลือกได้เฉพาะ B
+  it("ช่วงคืนต่อ line: เฉพาะ line ที่ยังอยู่ในช่วง", () => {
+    const two = [
+      item("A", { fulfilled_quantity: 1, shipped_quantity: 1 }),
+      item("B", { fulfilled_quantity: 2, shipped_quantity: 2 }),
+    ]
+    const fulfillments = [shipped(["A"], { shipped_at: daysAgo(31) }), shipped(["B"], { shipped_at: daysAgo(1) })]
+    expect(returnableItemsNow({ items: two, fulfillments }, 30, NOW).map((r) => [r.item.id, r.quantity])).toEqual([["B", 2]])
+  })
+
+  it("line ที่ส่งหลายรอบใช้วันอ้างอิงล่าสุด (แบบเดียวกับ backend)", () => {
+    const fulfillments = [shipped(["a"], { shipped_at: daysAgo(40) }), shipped(["a"], { shipped_at: daysAgo(2) })]
+    expect(returnableItemsNow({ items, fulfillments }, 30, NOW).map((r) => r.item.id)).toEqual(["a"])
   })
 })
 
