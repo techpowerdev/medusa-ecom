@@ -6,6 +6,7 @@ import {
   when,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
+import type { MedusaContainer } from "@medusajs/framework/types"
 import { MathBN, MedusaError, Modules } from "@medusajs/framework/utils"
 import { adjustInventoryLevelsStep, useQueryGraphStep } from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
@@ -67,6 +68,22 @@ export const voidAvailableEvoucherCodesStep = createStep(
 
 type EvoucherStockLevel = { inventory_item_id: string; location_id: string }
 
+// EV-N1: อ่าน stocked/reserved ของ inventory level ของ pool — ใช้ร่วมกันระหว่างตรวจ reservation ของ admin void (ใต้ lock)
+// และ job รายวัน (อ่านอย่างเดียว ไม่ lock)
+const readEvoucherStock = async (
+  container: MedusaContainer,
+  level: EvoucherStockLevel
+): Promise<{ stocked: number; reserved: number }> => {
+  const [row] = await container.resolve(Modules.INVENTORY).listInventoryLevels({
+    inventory_item_id: level.inventory_item_id,
+    location_id: level.location_id,
+  })
+  return {
+    stocked: MathBN.convert(row?.stocked_quantity ?? 0).toNumber(),
+    reserved: MathBN.convert(row?.reserved_quantity ?? 0).toNumber(),
+  }
+}
+
 // กฎข้อ 12: admin void ต้องเหลือ stock ที่ไม่ถูกจองอย่างน้อย 1 — ไม่งั้น order ที่จองไว้กลายเป็น backordered
 // ตรวจและลด stock ภายใต้ lock key เดียวกับ reserveInventoryStep/adjustInventoryLevelsStep ของ Medusa (inventory_item_id)
 // จึง serialize กับ void พร้อมกันและ checkout ที่จองระหว่างนั้น (ห้ามครอบ adjustInventoryLevelsStep ด้วย lock เดียวกัน — deadlock)
@@ -76,12 +93,8 @@ export const voidEvoucherStockStep = createStep(
     const inventory = container.resolve(Modules.INVENTORY)
     const locking = container.resolve(Modules.LOCKING)
     await locking.execute([input.inventory_item_id], async () => {
-      const [level] = await inventory.listInventoryLevels({
-        inventory_item_id: input.inventory_item_id,
-        location_id: input.location_id,
-      })
-      const free = MathBN.sub(level?.stocked_quantity ?? 0, level?.reserved_quantity ?? 0)
-      if (MathBN.lt(free, 1)) {
+      const { stocked, reserved } = await readEvoucherStock(container, input)
+      if (MathBN.lt(MathBN.sub(stocked, reserved), 1)) {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
           `Evoucher code ${input.code_id} cannot be voided: the remaining stock is reserved by orders`,
@@ -145,19 +158,14 @@ export type VoidExpiringEvoucherCodesInput = {
 }
 
 // EV-12 (กฎข้อ 12b a): `near` = code `available` ที่ expires_at < now + 7 วัน, `long` = available ที่เหลือ
+// EV-N1 (AC-38): นับ near/long ใน query เดียวต่อ pool
 export const listExpiringEvoucherCodesStep = createStep(
   "list-expiring-evoucher-codes",
   async (input: { pool_id: string; expires_before: string }, { container }) => {
     const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
-    const near = await service.listEvoucherCodes(
-      { pool_id: input.pool_id, status: "available", expires_at: { $lt: new Date(input.expires_before) } },
-      { select: ["id", "expires_at"] }
+    return new StepResponse(
+      await service.listExpiryCandidates(input.pool_id, new Date(input.expires_before))
     )
-    const counts = await service.countCodesByStatus([input.pool_id])
-    return new StepResponse({
-      near: near.map((code) => ({ id: code.id, expires_at: code.expires_at!.toISOString() })),
-      long: Math.max(0, counts[input.pool_id].available - near.length),
-    })
   }
 )
 
@@ -165,12 +173,7 @@ export const listExpiringEvoucherCodesStep = createStep(
 export const readEvoucherStockStep = createStep(
   "read-evoucher-stock",
   async (level: EvoucherStockLevel, { container }) => {
-    const [row] = await container.resolve(Modules.INVENTORY).listInventoryLevels(level)
-    return new StepResponse({
-      ...level,
-      stocked: MathBN.convert(row?.stocked_quantity ?? 0).toNumber(),
-      reserved: MathBN.convert(row?.reserved_quantity ?? 0).toNumber(),
-    })
+    return new StepResponse({ ...level, ...(await readEvoucherStock(container, level)) })
   }
 )
 
