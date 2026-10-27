@@ -1,0 +1,57 @@
+# EV-7c — checkout digital-only (spec 02 กฎข้อ 24, AC-3 ส่วน storefront, AC-37)
+# วันที่ 2026-10-28, branch feat/EV-7c-digital-only-checkout
+
+## Red: e2e ก่อนแก้โค้ด (stash โค้ด storefront เหลือแค่ test) — ล้มตามคาด
+  ✘  1 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:86:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ (19.8s)
+  ✘  2 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:158:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery (10.6s)
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    test-results/ev-7c-digital-only-checkou-4bf4e-ipping-address-order-สำเร็จ-chromium/test-failed-1.png
+    Error: expect(locator).toBeEnabled() failed
+(test ที่ 2 ล้มในรอบ red เพราะ dev server กำลัง recompile หลัง stash — รอบ green รันผ่านทั้งสองซ้ำ 2 ครั้ง)
+unit: ล้มเพราะยังไม่มี @lib/util/digital-checkout
+
+## Green: unit (vitest) apps/storefront/src/ev-7c-digital-only-checkout.test.ts
+ ✓ src/ev-7c-digital-only-checkout.test.ts > isDigitalOnlyCart (กฎข้อ 24) > ทุก line requires_shipping=false → digital-only 2ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > isDigitalOnlyCart (กฎข้อ 24) > cart ผสม (กฎข้อ 24d) → ไม่ใช่ digital-only 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > isDigitalOnlyCart (กฎข้อ 24) > ไม่ทราบค่า requires_shipping → ไม่ใช่ digital-only 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > isDigitalOnlyCart (กฎข้อ 24) > cart ว่าง → ไม่ใช่ digital-only 1ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > isDigitalOnlyCart (กฎข้อ 24) > cart null → ไม่ใช่ digital-only 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > deliveryStepDone / checkoutStep > digital-only ไม่ต้องมี shipping method (AC-3) 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > deliveryStepDone / checkoutStep > cart ที่ต้องจัดส่งยังต้องมี shipping method 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > deliveryStepDone / checkoutStep > digital-only ที่มีที่อยู่แล้ว → ไปขั้น payment ข้าม delivery 1ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > deliveryStepDone / checkoutStep > สินค้าจัดส่งที่มีที่อยู่แต่ยังไม่มี shipping method → delivery 1ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > deliveryStepDone / checkoutStep > ยังไม่มีที่อยู่ → address 0ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > setAddresses แบบ digital-only (กฎข้อ 24b) > ตั้ง shipping_address = billing_address เดียวกัน แล้วไปขั้น payment ของ country ใน URL 167ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > setAddresses แบบ digital-only (กฎข้อ 24b) > flow ปกติ (ไม่มี digital_only) ยังไปขั้น delivery 1ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > placeOrder redirect ใช้ countryCode จาก URL (กฎข้อ 24c) > ส่ง countryCode มา → /<cc>/order/<id>/confirmed แม้ shipping_address ไม่มี country 1ms
+ ✓ src/ev-7c-digital-only-checkout.test.ts > placeOrder redirect ใช้ countryCode จาก URL (กฎข้อ 24c) > ไม่ส่ง countryCode → ใช้ country ของ shipping_address แบบเดิม 0ms
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+
+## storefront unit ทั้งชุด: 40 files, 437 tests passed
+
+## integration http (backend) apps/backend/integration-tests/http/evoucher-digital-checkout.spec.ts
+(ตรวจพฤติกรรมของ Medusa ที่ storefront พึ่ง — ผ่านตั้งแต่รอบแรกเพราะไม่มีโค้ด backend ใหม่; ถ้าไม่ตั้ง shipping_address tax_total จะเป็น 0 และ test ล้ม)
+PASS integration-tests/http/evoucher-digital-checkout.spec.ts (27.394 s)
+    ✓ AC-37: ที่อยู่ใบกำกับภาษีเป็น shipping_address, ไม่มี shipping method → order มี tax_total = total × 7/107 (7310 ms)
+Tests:       1 passed, 1 total
+
+## e2e (Playwright chromium, backend dev :9252 + storefront dev :8252, manual payment)
+  ✓  1 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:86:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ (10.8s)
+  ✓  2 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:158:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery (6.3s)
+  2 passed (18.5s)
+
+## e2e regression ของ checkout ปกติ
+  ✓  1 [chromium] › e2e/thai-ui-checkout.spec.ts:21:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (24.6s)
+  ✓  2 [chromium] › e2e/core-19b-continue-to-review.spec.ts:22:5 › AC-64: กด Continue to review ครั้งเดียว 20 รอบ (cart ใหม่ทุกรอบ) → step=review ภายใน 10 วินาที (1.9m)
+  -  3 [chromium] › e2e/core-19b-continue-to-review.spec.ts:73:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว
+  1 skipped
+  2 passed (1.9m)
+
+## อื่นๆ
+pnpm typecheck: ผ่าน (รันใน worktree ที่ลบ .medusa/ แล้ว ก่อน build)
+pnpm lint: 0 errors (warning เดิมของไฟล์ที่มีอยู่ก่อน)
+pnpm --filter storefront test:e2e:unit: 33 passed
+pnpm --filter backend test:unit: 65 suites, 632 tests passed
+pnpm --filter storefront build: ผ่าน

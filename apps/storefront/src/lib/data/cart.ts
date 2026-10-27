@@ -41,7 +41,7 @@ export async function retrieveCart(
 ) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, +items.requires_shipping, *promotions, +shipping_methods.name"
 
   if (!id) {
     return null
@@ -457,6 +457,21 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   if (!(await getCartId())) {
     return "ไม่พบตะกร้าสินค้า กรุณาเพิ่มสินค้าลงตะกร้าก่อน"
   }
+  // EV-7c (spec 02 กฎข้อ 24b): cart digital-only กรอกเฉพาะที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี แล้วใช้เป็น
+  // shipping_address ด้วย เพื่อให้ Tax module ของ Medusa คำนวณ VAT จากที่อยู่ — ข้ามขั้น delivery
+  if (formData.get("digital_only") === "1") {
+    try {
+      const address = billingAddressFrom(formData)
+      await updateCart({
+        email: formData.get("email"),
+        billing_address: address,
+        shipping_address: address,
+      } as HttpTypes.StoreUpdateCart)
+    } catch (e: unknown) {
+      return friendlyErrorMessage(e, "บันทึกที่อยู่ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง")
+    }
+    return redirect(`/${formData.get("checkout_country_code")}/checkout?step=payment`)
+  }
   try {
 
     const data = {
@@ -478,19 +493,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
     const sameAsBilling = formData.get("same_as_billing")
     if (sameAsBilling === "on") data.billing_address = data.shipping_address
 
-    if (sameAsBilling !== "on")
-      data.billing_address = {
-        first_name: formData.get("billing_address.first_name"),
-        last_name: formData.get("billing_address.last_name"),
-        address_1: formData.get("billing_address.address_1"),
-        address_2: "",
-        company: formData.get("billing_address.company"),
-        postal_code: formData.get("billing_address.postal_code"),
-        city: formData.get("billing_address.city"),
-        country_code: formData.get("billing_address.country_code"),
-        province: formData.get("billing_address.province"),
-        phone: formData.get("billing_address.phone"),
-      }
+    if (sameAsBilling !== "on") data.billing_address = billingAddressFrom(formData)
     await updateCart(data)
   } catch (e: unknown) {
     // CORE-4e (กฎข้อ 55): message ของ Medusa เป็นอังกฤษ — แสดงข้อความไทย
@@ -500,6 +503,21 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   redirect(
     `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`
   )
+}
+
+function billingAddressFrom(formData: FormData) {
+  return {
+    first_name: formData.get("billing_address.first_name"),
+    last_name: formData.get("billing_address.last_name"),
+    address_1: formData.get("billing_address.address_1"),
+    address_2: "",
+    company: formData.get("billing_address.company"),
+    postal_code: formData.get("billing_address.postal_code"),
+    city: formData.get("billing_address.city"),
+    country_code: formData.get("billing_address.country_code"),
+    province: formData.get("billing_address.province"),
+    phone: formData.get("billing_address.phone"),
+  } as HttpTypes.StoreAddAddress
 }
 
 /**
@@ -520,11 +538,13 @@ export async function syncCartAffiliate(
  * @param cartId - optional - The ID of the cart to place an order for.
  * @param cartMetadata - optional - `metadata` ของ cart ที่ผู้เรียกอ่านอยู่แล้ว (AF-3b กฎ 23): ส่งมา → sync cookie `aff`
  * ลง cart ก่อน complete เมื่อค่าต่าง; ไม่ส่ง (cart ถูก complete โดย webhook แล้ว เช่น PromptPay) → ไม่ sync
+ * @param countryCode - optional - country ใน URL ของหน้า checkout (EV-7c กฎข้อ 24c) — ไม่ส่ง → ใช้ของ shipping address
  * @returns The cart object if the order was successful, or null if not.
  */
 export async function placeOrder(
   cartId?: string,
-  cartMetadata?: HttpTypes.StoreCart["metadata"]
+  cartMetadata?: HttpTypes.StoreCart["metadata"],
+  countryCode?: string
 ) {
   const id = cartId || (await getCartId())
 
@@ -550,14 +570,14 @@ export async function placeOrder(
     .catch(medusaError)
 
   if (cartRes?.type === "order") {
-    const countryCode =
-      cartRes.order.shipping_address?.country_code?.toLowerCase()
+    const orderCountry =
+      countryCode ?? cartRes.order.shipping_address?.country_code?.toLowerCase()
 
     const orderCacheTag = await getCacheTag("orders")
     revalidateTag(orderCacheTag, { expire: 0 })
 
     removeCartId()
-    redirect(`/${countryCode}/order/${cartRes?.order.id}/confirmed`)
+    redirect(`/${orderCountry}/order/${cartRes?.order.id}/confirmed`)
   }
 
   return cartRes.cart

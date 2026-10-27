@@ -3,6 +3,7 @@
 import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
+import { deliveryStepDone } from "@lib/util/digital-checkout"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isPromptPay } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
@@ -27,7 +28,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     !cart.shipping_address ||
     !cart.billing_address ||
     !cart.email ||
-    (cart.shipping_methods?.length ?? 0) < 1
+    !deliveryStepDone(cart)
 
   const paymentSession = cart.payment_collection?.payment_sessions?.[0]
 
@@ -182,10 +183,12 @@ const ManualTestPaymentButton = ({
 }) => {
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // EV-7c (กฎข้อ 24c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
+  const { countryCode } = useParams()
 
   const onPaymentCompleted = async () => {
     // AF-3b (กฎ 23): ส่ง metadata ของ cart ที่อ่านไว้ → placeOrder sync cookie `aff` ก่อน complete
-    await placeOrder(cart.id, cart.metadata ?? null)
+    await placeOrder(cart.id, cart.metadata ?? null, countryCode as string)
       .catch((err) => {
         setErrorMessage(friendlyErrorMessage(err, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       })
