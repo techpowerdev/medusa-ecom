@@ -206,13 +206,24 @@ Payout
     (a) `status=active`: ในโปรแกรม active ณ `now` ที่ scope คลุม variant ใดของสินค้า เลือกโปรแกรมที่ `commission_value` **สูงสุด** เสมอกันเลือก `starts_at` ล่าสุด
     (เกณฑ์เดียวกับ Q7 ที่ AF-3 ใช้คิดเงิน) — การ์ดแสดงอัตรา ชื่อ และวันที่ของโปรแกรมนั้น; ถ้า variant ต่างกันได้อัตราต่างกัน แสดงอัตราสูงสุดพร้อม flag `rate_varies=true`
     (การ์ดขึ้น "สูงสุด X%")
-    (b) `status=upcoming`: ในโปรแกรม upcoming ที่คลุมสินค้า เลือก `starts_at` **เร็วสุด** เสมอกันเลือก `commission_value` สูงสุด — สินค้าอยู่ได้ทั้งสองแท็บ
+    (b) `status=upcoming`: ในโปรแกรม upcoming ที่คลุมสินค้า เลือก `starts_at` **เร็วสุด** เสมอกันเลือก `commission_value` สูงสุด — สินค้าอยู่ได้ทั้งสองแท็บ;
+    (รอบ 10 ตามที่ AF-7b #122 ทำและ review ยอมรับ — AF-8 ต้องแสดงตามนี้) แท็บ upcoming มี `rate_varies=false` **เสมอ** และอัตรา/ข้อมูลของการ์ดมาจากโปรแกรมที่เลือกเพียงตัวเดียว
+    (variant ที่ไม่อยู่ในโปรแกรมนั้นไม่ถูกนำมาคิด) — AF-8 ห้ามคำนวณอัตราใหม่ที่ storefront
     (c) dedupe ทำใน API ก่อน paging (`count` = จำนวนสินค้าไม่ซ้ำ) ไม่ทำที่ storefront
     (d) ยอดประมาณการ ฿ บนการ์ด = ราคาปัจจุบัน × อัตราใน (a)/(b) ปัด 2 ตำแหน่ง half-up (กฎ 11) ไม่รวม cap
 30. (รอบ 9, AF-10 — follow-up review #90) ตาข่ายกันพลาดของ reversal จาก cancel: reversal ของ AF-4 retry ใต้ lock ได้ราว 40 วินาที ถ้า DB ล่มนานกว่านั้น event หายและ entry
     `pending` ของ order ที่ยกเลิกจะถูก approve → maturity job รายวัน (AF-4) ก่อน approve ให้อ่าน `order.status` ของ entry ที่ครบกำหนด; order `canceled` และยอดสุทธิของ line > 0
     → สร้าง reversal ตามกฎ 28a (ใต้ lock `affiliate-attribution:<order_id>` ตามกฎ 27, idempotent กับ reversal ที่ subscriber สร้าง) แทนการ approve และ log warn `affiliate_cancel_reconciled`
-    — ไม่เพิ่ม job ใหม่ ไม่ครอบ entry ที่ approve ไปแล้ว (ถ้าต้องการต้องเป็น task ใหม่)
+    — ไม่เพิ่ม job ใหม่ ไม่ครอบ entry ที่ approve ไปแล้ว (ถ้าต้องการต้องเป็น task ใหม่ — รอบ 10: owner Q15)
+31. (รอบ 10, AF-3c — review #119) การ sync cookie `aff` ก่อนชำระ (AF-3b) ต้องครอบ**ทุก**จุดที่ storefront เริ่มการชำระ ใน `modules/checkout/components/**`:
+    (a) `stripe.confirmPayment(` (บัตร) อยู่ภายใน argument ของ `syncAffiliateBefore(`; (b) ในฟังก์ชันที่เรียก `confirmPromptPayPayment(` ต้องมี `syncAffiliateBefore(` ก่อนหน้าใน
+    ฟังก์ชันเดียวกัน (ตามที่ #119 ทำ: sync ครอบ `retrievePaymentIntent` ตัวแรกแล้วจึง confirm); (c) `placeOrder(` ของ manual ส่ง `cart.metadata` ให้ sync ภายใน; การเรียก
+    `retrievePaymentIntent` เพื่อ poll สถานะอย่างเดียวได้รับยกเว้นเมื่ออยู่ใน allow-list ของ test พร้อมเหตุผล — บังคับด้วย static test ที่อ่าน source (แบบ `thai-ui-rule.test.ts`) ไม่พึ่ง review; "cookie ไม่เปลี่ยน → ไม่มี `POST /store/carts/:id`" พิสูจน์ด้วย unit ของ `syncAffiliateBefore` (POST เกิดจาก Next
+    server จึงนับใน e2e ฝั่ง browser ไม่ได้ — แก้ถ้อยคำ AC-21)
+32. (รอบ 10, AF-N2 — nit review #125/#122) maturity job (AF-10): (a) ขอ lock `affiliate-attribution:<order_id>` ด้วย timeout สั้น (≤ 5 วินาที) — ขอไม่ได้ → **ข้าม** entry นั้นในรอบนี้
+    (คง `pending` ไม่ approve) log warn `affiliate_maturity_lock_skipped` พร้อม `order_id` แล้วไปรอบถัดไป (ไม่รอ 30 วินาทีต่อ order); (b) log ตอนสั่ง reversal ที่ workflow ยัง retry แบบ async
+    ไม่ใช้คำว่า "failed"/ระดับ error จนกว่า workflow จะล้มจริง; (c) order `canceled` ที่ไม่สร้าง reversal เพราะยอดสุทธิ ≤ 0 อยู่แล้ว log info `affiliate_cancel_reconcile_noop`;
+    (d) type `Program` ใน `src/api/affiliate/products/route.ts` ระบุ field ตาม `PORTAL_PROGRAM_FIELDS` + `scope` (ไม่ใช้ `Record<string, unknown>`) — ก่อน AF-8
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -247,8 +258,9 @@ Payout
 - AC-20 (AF-9, กฎ 19) entry `approved` ที่ `created_at` อยู่ก่อน `period_from` และยังไม่อยู่ใน payout ใด ถูกรวมใน payout รอบ
   `[period_from, period_to)`; entry ที่ `created_at >= period_to` ไม่ถูกรวม; entry ที่อยู่ใน payout อื่นแล้วไม่ถูกรวม
 - AC-21 (AF-3b, กฎ 23) Given โปรแกรม active และลูกค้า click `/r/ann` แล้ว add to cart When click `/r/bob` (cookie เปลี่ยน) แล้ว checkout ทันทีโดยไม่ add
-  เพิ่ม Then `cart.metadata.affiliate_token` ตอน complete เป็นของ Bob และ attribution ของ order เป็นของ Bob; Given cookie ไม่เปลี่ยน Then ไม่มี
-  `POST /store/carts/:id` เพื่อ sync (e2e นับ request)
+  เพิ่ม Then `cart.metadata.affiliate_token` ตอน complete เป็นของ Bob และ attribution ของ order เป็นของ Bob (e2e); ~~Given cookie ไม่เปลี่ยน Then ไม่มี
+  `POST /store/carts/:id` เพื่อ sync (e2e นับ request)~~ (แก้รอบ 10 ตาม #119 — POST มาจาก Next server e2e นับไม่ได้) Given unit ของ `syncAffiliateBefore` (mock SDK) ที่ cookie
+  เท่ากับ `cart.metadata.affiliate_token` Then ไม่เรียก update cart; ค่าต่าง → เรียก 1 ครั้งก่อน step ที่ห่อ (unit Vitest — ส่งมอบใน #119)
 - AC-22 (AF-3b, กฎ 23) Given unit test ของ action add-to-cart ใน `lib/data/cart.ts` (mock SDK) When เพิ่มสินค้าโดยมี cookie `aff` Then จำนวนครั้งที่เรียก
   retrieve cart เท่ากับก่อน AF-2 (ไม่มี round-trip `GET /store/carts/:id` เพิ่ม) และ metadata ถูกตั้งเมื่อค่าต่าง (unit Vitest)
 - AC-23 (กฎ 24 — logic ส่งมอบใน AF-3 #77 พร้อม unit test แล้ว; **integration test นี้ทำใน AF-4**) Given โปรแกรม P1 active (15%, `attribution_window_days=7`) และ
@@ -291,6 +303,13 @@ Payout
 - AC-36 (AF-10, กฎ 30) Given entry `pending` ของ order O ที่ครบ `matures_at` และ O ถูก cancel โดยไม่มี reversal (จำลอง event หาย: ปิด subscriber ใน test) When maturity job รัน
   Then entry ไม่เป็น `approved`, มี reversal เท่ายอดสุทธิ, ยอดสุทธิของ O = 0 และมี log warn `affiliate_cancel_reconciled`; รัน job ซ้ำ Then ไม่มี reversal เพิ่ม;
   order ที่ไม่ถูก cancel ยัง approve ตามเดิม (AC-6 ผ่าน) (integration)
+- AC-37 (AF-3c, กฎ 31) Given source ใต้ `apps/storefront/src/modules/checkout/components/` When static test (Vitest, ตรวจด้วย AST ของ TypeScript — ไม่ตัด source ด้วย `indexOf`)
+  ตรวจเงื่อนไข (a)–(c) ของกฎ 31 Then ผ่านบน develop; positive control (fixture ใน test): `stripe.confirmPayment(...)` นอก `syncAffiliateBefore`, ฟังก์ชันที่เรียก
+  `confirmPromptPayPayment` โดยไม่มี sync ก่อน, `placeOrder(cart.id)` ที่ไม่ส่ง metadata — แต่ละกรณีทำให้ test ล้ม; allow-list ของการ poll มีเหตุผลกำกับทุกแถว (unit Vitest)
+- AC-38 (AF-N2, กฎ 32) Given entry `pending` ครบ `matures_at` ของ order O และ test ถือ lock `affiliate-attribution:O` ค้างไว้ When maturity job รัน Then job จบภายใน 10 วินาที, entry ยัง `pending`,
+  มี log warn `affiliate_maturity_lock_skipped` ที่มี O; When ปล่อย lock แล้วรัน job อีกครั้ง Then entry ถูกประมวลผลตามกฎ 30/Q8; Given order canceled ที่ยอดสุทธิ = 0 Then log info
+  `affiliate_cancel_reconcile_noop` และไม่มี reversal ใหม่; spy logger: ไม่มีบรรทัดระดับ error ที่มีคำว่า `failed` ระหว่าง workflow reversal ยัง retry; `pnpm typecheck` ผ่านและ
+  `src/api/affiliate/products/route.ts` ไม่มี `Record<string, unknown>` (grep) (integration + unit)
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -306,6 +325,7 @@ Payout
 - Unit: สัดส่วน reversal ของ return (AC-30)
 - e2e: AC-9 + AC-1 แบบ end-to-end พร้อม cookie, AC-21 (AF-3b); unit (Vitest storefront): AC-22 (AF-3b); e2e admin: AC-26 (AF-6, ใช้ helper ของ OPS-11)
 - Integration (http): AC-32 (AF-7; ส่วน `reference` ใน AF-7b), AC-33 (AF-7), AC-34 (AF-7b) + unit ของฟังก์ชันเลือกโปรแกรมต่อสินค้า (กฎ 29); integration: AC-36 (AF-10); e2e: AC-35 (AF-8)
+- unit Vitest (static): AC-37 (AF-3c); integration + unit: AC-38 (AF-N2)
 
 ## Tasks
 | ID | Task | Depends |
@@ -320,13 +340,18 @@ Payout
 | AF-6 | หน้า Admin UI รวมปุ่มยกเลิก payout `draft` (AC-26) | AF-5, AF-9 (route ยกเลิก) |
 | AF-7 | Portal APIs รวม `/affiliate/products` (แปลงขอบเขต → สินค้า ตามกฎ 16, paging) (AC-13, AC-14, AC-18) — หมายเหตุ: ปรับ middleware matcher ให้คลุมทุก `/affiliate/*` ยกเว้น register (กฎ 18) และสิทธิ์ตามสถานะ (Q6); (รอบ 9, owner 2026-10-27) รวม `GET /affiliate/me/payouts` ที่ #110 ทำไว้ + paging ของ programs/payouts (AC-32 ยกเว้นส่วน `reference`, AC-33) — ◐ #110 | AF-3 |
 | AF-7b | (เล็ก, backend, follow-up #110 — **PR แยก เริ่มหลัง #110 merge เท่านั้น**) `/affiliate/products` หนึ่งรายการต่อสินค้าด้วยอัตราที่ได้จริงตามกฎ 29 (dedupe ก่อน paging, `rate_varies`; ปรับ test เดิมของ #110 ที่ยึดคู่โปรแกรม–สินค้า) (AC-34) + ตัด `reference` ออกจาก response ของ `GET /affiliate/me/payouts` พร้อม test (AC-32 ส่วน `reference`) | AF-7 (#110 merged) |
-| AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts (`/affiliate/me/payouts`), Profile (Q5) + e2e (AC-9, AC-35 การ์ดเดียวต่อสินค้าตามกฎ 29); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) | AF-7, AF-7b, AF-4 ☑ |
+| AF-8 | หน้า portal ใน storefront (login ของตัวเอง, เรียก API จาก server side ตามกฎ 17): Products now/soon + Share, Programs, Earnings, Payouts (`/affiliate/me/payouts`), Profile (Q5) + e2e (AC-9, AC-35 การ์ดเดียวต่อสินค้าตามกฎ 29); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); แท็บ upcoming ตามกฎ 29(b) รอบ 10 | AF-7 ☑, AF-7b ☑, AF-4 ☑, AF-N2 (รอบ 10) |
 | AF-10 | (เล็ก, backend, follow-up review #90) maturity job reconcile order ที่ยกเลิกแต่ไม่มี reversal ก่อน approve (กฎ 30) (AC-36) | AF-4 ☑ |
 | AF-N1 | (เล็ก, test-only, nit review #107) test lock ของ AF-9b: `await` holding/waiting ต้องมี timeout (ไม่ค้างทั้ง suite เมื่อ lock ผิด), เปลี่ยน `toBeGreaterThanOrEqual(400)` เป็น status ที่คาดแน่นอน — AC-27 ต้องยังผ่าน | AF-9b (#107) |
 | AF-9 | follow-up AF-5 (เล็ก): `cancelPayoutWorkflow` + admin route ยกเลิก payout `draft` (คืน entry ให้เลือกได้อีก) และย้ายการกรอง entry ของ `createPayoutWorkflow` ไปทำใน DB (filter ตามกฎ 19 แทนโหลด entry ทั้งหมดแล้วกรองในแอป) (AC-19, AC-20; AC-7 ต้องยังผ่าน) | AF-5 |
+| AF-3c | (เล็ก, storefront test-only, รอบ 10 — review #119) static test ว่าทุกจุดเริ่มชำระผ่าน `syncAffiliateBefore` (กฎ 31) (AC-37) — ถ้า test พบจุดที่ไม่ครอบ แก้ใน PR เดียวกัน | AF-3b ☑ (#119) |
+| AF-N2 | (เล็ก, backend, รอบ 10 — nit review #125 AF-10 + #122 r2 AF-7b) maturity job ข้าม order ที่ขอ lock ไม่ได้ภายใน ≤ 5s, ถ้อยคำ/ระดับ log ระหว่าง retry, log `affiliate_cancel_reconcile_noop`, type `Program` ระบุ field (กฎ 32) (AC-38) | AF-10 ☑ (#125), AF-7b ☑ (#122) — ควร merge ก่อน AF-8 (type) |
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
+(รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125; AF-3c ∥ AF-N2 ∥ AF-6 ∥ AF-N1 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
+backlog หลัง v1.0 (ไม่มี AC): dedupe ของ `/affiliate/products` ทำใน SQL เมื่อแคตตาล็อกใหญ่ (v1 dedupe ในแอปมีเพดานจำนวนสินค้าตามที่ AF-7b ทำ — review #122);
+AF-11 reconcile entry ที่ **approve ไปแล้ว** ของ order ที่ถูกยกเลิกแต่ไม่มี reversal (review #125) — รอ owner ตอบ Q15
 AF-3b แตะ `lib/data/cart.ts` เดียวกับ CORE-14/CORE-4d — ตัวที่ merge ทีหลัง rebase
 follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใน production (กฎ 22) ผนวกเข้า **OPS-7** (spec 07 AC-13) ไม่ใช่ task ของ spec นี้;
 `/buy/[items]` ที่สร้าง cart โดยไม่มี token อยู่ใน CORE-14 (spec 01 AC-41) แล้ว
@@ -356,3 +381,7 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 - ~~Q13~~ ตัดสินแล้ว (owner ยืนยัน 2026-10-27): order ที่ยกเลิกก่อน attribution ไม่บันทึกทั้ง `AffiliateAttribution` และ entry (ตามที่ AF-4b #91 ทำ) — กฎ 27
 - ~~Q14~~ ตัดสินแล้ว (owner 2026-10-27): เก็บ `GET /affiliate/me/payouts` ที่ #110 ทำไว้ (อ่านอย่างเดียว ไม่ส่ง `entry_ids`, paging ≤ 100 ค่าเริ่มต้น 50) และ
   **ไม่แสดง `reference`** ให้ affiliate (ตัดออกใน AF-7b) — API, AC-32
+- Q15 (รอบ 10, review #125) entry ที่ maturity job **approve ไปแล้ว** ก่อน order ถูกยกเลิก และ event `order.canceled` หาย (reversal ของ AF-4 retry ~40s ไม่สำเร็จ เช่น DB ล่มนาน) จะค้างเป็น
+  ค่าคอมที่จ่ายได้ — AF-10 (กฎ 30) ครอบเฉพาะ entry ที่ยัง `pending` ทางเลือก: (ก) **[แนะนำ] เลื่อนหลัง v1.0** (ไม่มี task ตอนนี้) — ต้องเกิดสองเหตุพร้อมกัน (cancel หลังพ้น `hold_days`
+  + DB ล่มเกิน 40s ตอนนั้น) และ admin ตรวจ/ยกเลิก payout `draft` ได้ก่อน mark paid; (ข) AF-11: maturity job สแกน entry `approved` ที่ยังไม่อยู่ใน payout `paid` ของ order ที่ถูกยกเลิก
+  แล้วสร้าง reversal (กฎ 28a) — เพิ่ม query ข้ามโมดูลทุกวันตามจำนวน entry approved ที่ยังไม่จ่าย

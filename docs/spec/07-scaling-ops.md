@@ -30,9 +30,9 @@
 4. Indexes: ทุก column ของ custom module ที่ใช้ใน filter (ระบุไว้ในแต่ละ spec) รวมถึงตรวจสอบ
    `EXPLAIN` ของ 5 store query ที่ถูกเรียกบ่อยที่สุด
 5. Rate limiting (reverse proxy หรือ middleware) บน `/store/auth/*`, `/store/group-buy/*/join`,
-   `/store/affiliate/r/*`
+   `/store/affiliate/r/*` — **owner 2026-10-27 (Q-O1): เลื่อนหลัง v1.0** (OPS-3b → backlog)
 6. Observability: JSON logs พร้อม request id, error tracking (Sentry), `/health` สำหรับ liveness
-   (Tracing เลื่อนไปจนกว่าจะมีความจำเป็นที่วัดได้)
+   (Tracing เลื่อนไปจนกว่าจะมีความจำเป็นที่วัดได้) — **owner 2026-10-27 (Q-O2): Sentry เลื่อนหลัง v1.0** (OPS-3c → backlog); v1.0 ใช้ JSON log + alert จาก log (OPS-3 ☑, AC-18)
 7. Backups: snapshot Postgres รายวัน; จัดทำเอกสารการซ้อม restore
 8. Load test: k6 scripts ใน `tools/load/` สำหรับ browse, flash-sale burst, group-buy join;
    รันใน CI ทุกคืนกับ staging; บันทึกผลไว้ที่ `docs/evidence/scale/`
@@ -70,6 +70,8 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 5. logger ของ OPS-3 (`apps/backend/src/lib/json-logger.ts`): format ของ log JSON (timestamp/errors/splat/json, `LOG_LEVEL`/`LOG_FILE`) ยังตรงกับ
    logger default ของ Medusa (`@medusajs/cli/dist/reporter`), deep import class `Reporter` และ `ora` ที่ resolve จาก `@medusajs/cli` ยังใช้ได้ และ
    `medusa start` ที่ไม่ตั้ง `NODE_ENV` ยังบูตได้
+6. (รอบ 10, GB-N2 #126) helper ของ test `group-buy-join.spec.ts` ที่รอ subscriber ให้จบ พึ่ง `eventEmitter_` ภายในของ local event bus — ยังมีชื่อ/พฤติกรรมเดิม (test ล้ม = ตรวจที่นี่ก่อน)
+7. (รอบ 10, ADR-016) Store API ของเวอร์ชันใหม่ยังอ่าน draft order ฝั่ง store ไม่ได้ — ถ้าได้แล้วให้ทบทวน route ของ GB-8; `allowFields` (EV-7a) ยังมีและยังตัด field ที่ไม่อนุญาต
 
 ## Acceptance criteria
 - AC-1 Backend boot เป็น `server` และ `worker` ได้จาก image เดียวกัน; scheduled jobs รันเฉพาะบน worker
@@ -133,12 +135,23 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-21 (OPS-13, Q-F1 spec 01) Given `docs/ops/production.md` หัวข้อ checklist go-live Then มีข้อที่อ้าง `Q-F1` และ `shipping_rate` (ค่าส่ง "Standard" และราคา
   "Standard return" ยังเป็น placeholder 10 THB — owner ตัดสินค่าและแก้ใน admin ก่อนเปิดร้าน) และข้อที่เคยกล่าวถึง "ค่าว่าง" (ข้อ 3 เดิมของ #108) ระบุชัดว่าตัวแปรที่
   "ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" ถูกนับเหมือนกัน (ตามที่โค้ดของ OPS-7 ทำ — builder ยืนยันจากโค้ดแล้วเขียนตามจริง) (unit grep ไฟล์)
-- AC-22 (OPS-3b, เกณฑ์ตาม Q-O1) Given path P ที่มีเพดาน L request ต่อหน้าต่างเวลา W ต่อ key (IP หรือ customer ตาม Q-O1) When ยิง L+1 request ภายใน W จาก key เดียวกัน Then
+- AC-22 (OPS-3b — **เลื่อนหลัง v1.0**, owner Q-O1 2026-10-27; ไม่ใช่เงื่อนไขของ v1.0) Given path P ที่มีเพดาน L request ต่อหน้าต่างเวลา W ต่อ key (IP หรือ customer ตาม Q-O1) When ยิง L+1 request ภายใน W จาก key เดียวกัน Then
   request ที่ L+1 ได้ **429** พร้อม header `Retry-After` และ request ที่ 1..L ไม่ได้ 429; key อื่นไม่ถูกจำกัด; path นอกรายการไม่ถูกจำกัด (integration http หรือ test ของ config proxy
   ตามที่ Q-O1 เลือก)
-- AC-23 (OPS-3c, ตาม Q-O2) Given ตั้ง `SENTRY_DSN` (transport mock ใน test) When route ของ backend throw error ที่ไม่ใช่ `MedusaError` 4xx Then มี event 1 รายการที่มี `environment`
+- AC-23 (OPS-3c — **เลื่อนหลัง v1.0**, owner Q-O2 2026-10-27; ไม่ใช่เงื่อนไขของ v1.0) Given ตั้ง `SENTRY_DSN` (transport mock ใน test) When route ของ backend throw error ที่ไม่ใช่ `MedusaError` 4xx Then มี event 1 รายการที่มี `environment`
   และไม่มีอีเมล/cookie/header `authorization` ของผู้ใช้ (PII scrub); `MedusaError` 4xx ไม่ส่ง; Given ไม่ตั้ง `SENTRY_DSN` Then ไม่ init SDK (unit/integration); storefront ทำแบบเดียวกัน
   ถ้า Q-O2 รวม storefront
+- AC-24 (OPS-14, owner อนุมัติ 2026-10-27 — ◐ #133) Given `.github/workflows/ci.yml` Then (a) job `storefront-e2e` ไม่มี `backend-tests` (หรือ job shard ใด) ใน `needs` — เริ่มพร้อม
+  backend หลัง `lint-typecheck`/`changes`; (b) integration แบบ http รันเป็น matrix 3 shard ด้วย `--shard=<i>/3` ของ jest; (c) ทุก job shard มีเงื่อนไข `if:` จาก output ของ
+  `tools/ci/classify-changes.sh` เท่ากับ job `backend-tests` เดิม (PR ที่แก้แค่ `apps/storefront/**` หรือเอกสาร → ทุก shard `SKIPPED`) (unit อ่าน YAML ใน `lint-typecheck`);
+  Given `TEST_TYPE=integration:http` When `jest --listTests --shard=i/3` สำหรับ i = 1..3 Then union ของไฟล์ = `jest --listTests` แบบไม่ shard และไม่มีไฟล์ใดอยู่สองชุด (script/unit);
+  evidence ใน PR: เวลารวมของ workflow ก่อน/หลัง (run id อย่างละ 1) — ไม่ใช่ gate
+- AC-25 (OPS-13b, nit review #127) Given `docs/ops/production.md` checklist go-live Then ข้อที่พูดถึง `ALLOW_TEST_PROVIDERS` ใช้ถ้อยคำเดียวกับข้อ 3 ว่า "ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง"
+  นับเหมือนกัน และข้อ Q-F1 บอกตำแหน่งแก้ `shipping_rate` ใน admin (มีคำว่า `Settings`, `Regions`, `Metadata`) และราคาของ shipping option "Standard"/"Standard return"
+  (unit grep ไฟล์ใน `ops-runbook.unit.spec.ts` หรือ test เดิมของ AC-21)
+- AC-26 (OPS-15, review #122 — log `Connection ended unexpectedly` ของ knex ~1,400 บรรทัดใน CI) Given job integration ของ backend ใน CI When รันจบ Then จำนวนบรรทัดที่มี
+  `Connection ended unexpectedly` = 0 — ขั้นท้าย job นับจาก log ของ test แล้ว fail เมื่อ > 0; สาเหตุจริงบันทึกใน body ของ PR (เช่น ปิด connection ของ app ก่อน DB ถูก drop ใน teardown) และ
+  ไม่แก้ด้วยการกรอง/ปิด log ข้อความนี้ (grep: ไม่มีสตริงนี้ในโค้ดนอกขั้นนับของ CI); ผ่าน 3 run ติดกัน (run id ใน PR)
 
 ## Tasks
 | ID | Task | Depends |
@@ -146,9 +159,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-1 | Dockerfiles + compose + env ของ worker mode + health (AC-1) | CORE-1 |
 | OPS-2 | Prod config: Redis modules, pool size, S3, เอกสาร CDN | OPS-1 |
 | OPS-3 | JSON logs + request id + alert log `Error running event bus worker` ของ worker (รอบ 8, AC-18) — รอบ 9 แยก rate limiting → OPS-3b และ Sentry → OPS-3c | OPS-1, OPS-8 ☑ (#101) |
-| OPS-3b | (รอบ 9) rate limiting ตาม Deliverables ข้อ 5 + `/store/search` (AC-22) — **รอ owner ตอบ Q-O1** (เกณฑ์และตำแหน่งที่บังคับ) | OPS-3, Q-O1 |
-| OPS-3c | (รอบ 9) error tracking Sentry ตาม Deliverables ข้อ 6 (AC-23) — **รอ owner ตอบ Q-O2**; dependency ใหม่ (`@sentry/*`) ระบุใน PR | OPS-3, Q-O2 |
-| OPS-4 | k6 scripts + nightly CI job + evidence (AC-2, AC-3) | FS-6, GB-7 |
+| OPS-3b | (รอบ 9) rate limiting ตาม Deliverables ข้อ 5 + `/store/search` (AC-22) — **⏸ backlog หลัง v1.0** (owner Q-O1 2026-10-27); ข้อเสนอเดิมใน Q-O1 ใช้ตอนกลับมาทำ | OPS-3 ☑ |
+| OPS-3c | (รอบ 9) error tracking Sentry ตาม Deliverables ข้อ 6 (AC-23) — **⏸ backlog หลัง v1.0** (owner Q-O2 2026-10-27); dependency ใหม่ (`@sentry/*`) ระบุใน PR ตอนกลับมาทำ | OPS-3 ☑ |
+| OPS-4 | k6 scripts + nightly CI job + evidence (AC-2, AC-3) — **รอ owner ตอบ Q-O3** (สภาพแวดล้อม, seed, นิยาม "พอดี 100", k6, workflow) | เดิม: FS-6 ☑, GB-7 — **เสนอ (Q-O3 e)**: FS-3 ☑, GB-3 ☑, OPS-1 ☑, OPS-14 (#133, แตะ CI) |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
 | OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13); fail-fast `STOREFRONT_URL` (รอบ 7, AC-17 — ถ้า GB-4 ยังไม่ merge ตอนเริ่ม OPS-7 ให้ทำส่วนนี้เมื่อ GB-4 merge แล้ว ไม่แตะโค้ดอีเมลของ GB-4) | OPS-2, PAY-1, CORE-3, AF-2 (#66), GB-4 (#89, เฉพาะ AC-17) |
@@ -156,18 +169,42 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-8 | (☑ #101) Worker กับ Redis ของ event bus ขาด ตาม ADR-012 ภาคผนวก (owner ตัดสิน 2026-10-26): `tools/ops/smoke-redis-outage.sh` เป็น regression test (AC-5) + เอกสารความเสี่ยงที่เหลือใน `docs/ops/production.md`; **ไม่**แก้ `infra-modules.ts` และไม่แตะ internal ของ module | OPS-2 |
 | OPS-12 | (เล็ก, CI, รอบ 8) รัน `smoke-redis-outage.sh` ใน job `docker-worker-mode` ของ `ci.yml` (AC-19) | OPS-8 ☑ #101, OPS-7 (◐ #108 — แตะ job เดียวกันใน `ci.yml`; **เริ่มหลัง #108 merge**) |
 | OPS-13 | (เล็ก, รอบ 9, follow-up review #108) warn ตอนบูตเมื่อ production ตั้ง `ALLOW_TEST_PROVIDERS=true` (AC-20) + `docs/ops/production.md`: ถ้อยคำ checklist go-live ข้อ 3 เรื่องค่าว่าง และข้อ Q-F1 ค่าส่ง placeholder (AC-21) | OPS-7 (#108) (∥ OPS-12 — คนละไฟล์: OPS-13 แตะ config/guard + `production.md`, OPS-12 แตะ `ci.yml`) |
+| OPS-13b | (เล็ก, docs + test grep, รอบ 10 — nit review #127) `docs/ops/production.md` ถ้อยคำ `ALLOW_TEST_PROVIDERS` ให้ตรงข้อ 3, ตำแหน่งแก้ `shipping_rate`/ราคา option ใน admin (AC-25) — ต้องเป็น PR ที่รัน unit ของ backend (อย่ารวมใน PR เอกสารล้วนเพราะ CI ข้าม test ที่อ่านไฟล์นี้) | OPS-13 ☑ (#127) |
+| OPS-14 | (CI, owner อนุมัติ 2026-10-27 — ◐ #133) `storefront-e2e` รันขนานกับ backend + แบ่ง integration:http เป็น 3 shard + test อ่าน YAML/shard ครบ (AC-24) | — (ไม่มี dependency; OPS-10/OPS-12 แตะ `ci.yml` เดียวกัน → เริ่มหลัง #133 merge) |
+| OPS-15 | (เล็ก, test infra, รอบ 10 — review #122) หาสาเหตุ log knex `Connection ended unexpectedly` ใน integration ของ CI แล้วแก้ที่ต้นเหตุ + ขั้นนับใน CI (AC-26) | OPS-14 (#133 — แตะ job integration เดียวกัน) |
 | OPS-9 | (เล็ก) typecheck ในเครื่องล้มที่ `group-buy-campaigns.spec.ts` เมื่อมี `.medusa/types` (typed `query.graph` ของ link) — แก้ที่ test ให้ type ตรงกับ type ของ link ที่ Medusa generate (เช่น อ่านผ่าน type ของ entity/cast ให้ตรง) **ไม่** exclude `.medusa/types` จาก tsconfig (ทำให้ typed query ทั้งโปรเจกต์หายและ CI กับเครื่อง dev typecheck ต่างกันมากขึ้น); ถ้าแก้ที่ test ไม่ได้ให้หยุดและรายงาน (AC-12) | GB-2a |
 | OPS-11 | (เล็ก, e2e tooling, รอบ 6) ย้าย login admin + header `x-forwarded-proto` จาก e2e admin ของ FS-10 ไปเป็น helper ร่วม `e2e/support/admin.ts` + `data-testid` ที่ `Container` ของ widget "Flash sale options" แทน locator `div.last()` (AC-16) — **ทำเมื่อมี e2e admin ตัวที่สอง** (ตัวแรกที่จะเริ่มจาก EV-5b, EV-9, GB-6b, GB-6c, AF-6): ถ้า OPS-11 ยังไม่ merge ตอน task นั้นเริ่ม ให้รวม OPS-11 ไว้ใน PR ของ task นั้น (ไม่สร้าง helper ก่อนมีผู้ใช้สองที่) | FS-10 (#74) |
 OPS-3 ∥ OPS-6 ∥ OPS-7 ∥ OPS-8 ∥ OPS-9 (OPS-9 แตะเฉพาะ `integration-tests/http/group-buy-campaigns.spec.ts`; OPS-6 แตะ `next.config.js`/Dockerfile/jest config; OPS-7 แตะ `notification-providers.ts`/seed/`ci.yml`;
 OPS-8 แตะ `tools/ops/`/`docs/ops/production.md` — ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)
 OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น; OPS-13 หลัง OPS-7 (#108) ∥ OPS-12; OPS-3b ∥ OPS-3c หลัง OPS-3 และคำตอบ Q-O1/Q-O2
+(รอบ 10) สถานะ: OPS-3 ☑ #120, OPS-7 ☑ #108, OPS-13 ☑ #127; OPS-3b/OPS-3c ⏸ หลัง v1.0; OPS-12 ∥ OPS-13b ∥ OPS-10 เริ่มได้ (OPS-12/OPS-10 แตะ `ci.yml` ร่วมกับ OPS-14 #133 —
+เริ่มหลัง #133 merge เพื่อลด conflict); OPS-15 หลัง OPS-14; OPS-4 รอ Q-O3
 
-## Open questions (รอบ 9)
-- Q-O1 (OPS-3b) เกณฑ์ rate limit และตำแหน่งที่บังคับ — **ข้อเสนอ**: บังคับที่ reverse proxy/load balancer ของ prod (ไม่เพิ่มโค้ด; Deliverables ข้อ 5 อนุญาต) ถ้า hosting ไม่มี proxy ที่ทำได้
+## Open questions (รอบ 10)
+- Q-O3 (OPS-4 load test — builder ยังไม่เริ่ม ต้องตัดสินก่อน) **ข้อเสนอรวม**:
+  (a) **สภาพแวดล้อม**: ยังไม่มี staging — เสนอบูต stack แบบ prod ใน GitHub runner ด้วย `docker-compose.prod.yml` ของ OPS-1 (server + worker + Postgres + Redis ใน runner เดียว,
+  `NODE_ENV=production`, `ALLOW_TEST_PROVIDERS=true` เพื่อใช้ manual payment) **ไม่สร้าง infra ใหม่**; ข้อจำกัด: runner มาตรฐาน (4 vCPU/16GB) และ k6 อยู่เครื่องเดียวกับระบบ ตัวเลข latency
+  จึงไม่แทน production → เสนอให้ AC-2/AC-3 ส่วน **ความถูกต้อง** (พอดี 100 / พอดี 10 / 0 5xx) เป็น gate และ p95 < 300ms **รายงานอย่างเดียว** (ไม่ fail) จนกว่าจะมี staging จริง
+  (staging จริง = infra ใหม่ ต้องมี ADR)
+  (b) **seed**: script `tools/load/seed-load.ts` (รันด้วย `medusa exec` ใน container) สร้างลูกค้า N คน (เช่น 300 สำหรับ flash, 200 สำหรับ join) ผ่าน workflow ของ Medusa
+  + ออก token ของลูกค้าแต่ละคนผ่าน `/auth/customer/emailpass` แล้วเขียนไฟล์ JSON ที่ k6 อ่าน (`SharedArray`) — ไฟล์อยู่ใน runner เท่านั้นไม่ commit; admin ใช้ `SEED_ADMIN_EMAIL`/
+  `SEED_ADMIN_PASSWORD` ที่ workflow สุ่มขึ้นเองตอนรัน (ไม่ต้องมี secret ใหม่)
+  (c) **นิยาม "order ได้ส่วนลดพอดี 100"**: k6 ต้อง **complete checkout** (การจองโควตาเกิดตอน complete cart — กฎ FS-3 ไม่ใช่ตอน add to cart) ด้วย manual payment; ลูกค้า 300 คน คนละ 1 ชิ้น
+  แข่งกับ `total_cap=100` → หลังจบ query DB: จำนวน order ที่มี adjustment ของ promotion ในแคมเปญ = 100, `units_sold = 100`, ที่เหลือได้ 409 `FLASH_SOLD_OUT` (4xx ไม่นับเป็น error),
+  5xx = 0; burst 500 rps เป็น add-to-cart/อ่าน cart ของลูกค้าเดียวกันระหว่างนั้น (ไม่ใช่ 500 order/วินาที)
+  (d) **k6**: ใช้ image `grafana/k6` แบบ pin เวอร์ชัน (หรือ action `grafana/setup-k6-action`) — ไม่เพิ่ม dependency ใน `package.json`/pnpm; script เป็น JS ใน `tools/load/`
+  (e) **workflow**: ไฟล์แยก `.github/workflows/load-nightly.yml` (`schedule` รายคืน + `workflow_dispatch`) ไม่อยู่ใน `ci.yml` (ไม่กระทบ PR และกติกา merge); ผล k6 (`--summary-export`) เป็น
+  artifact 14 วัน; `docs/evidence/scale/` เก็บ `REPORT.md` ของ PR OPS-4 ครั้งเดียว (nightly ไม่ commit); Depends เปลี่ยนจาก GB-7 เป็น FS-3 ☑ + GB-3 ☑ เพราะ load test ยิง API ล้วน
+  (ไม่ใช้หน้า storefront) → เริ่มได้ทันทีหลัง owner ตอบ
+- ~~Q-O1~~ ตัดสินแล้ว (owner 2026-10-27): rate limiting **เลื่อนหลัง v1.0** — OPS-3b ย้ายไป backlog (ข้อเสนอด้านล่างเก็บไว้ใช้ตอนกลับมาทำ)
+- ~~Q-O2~~ ตัดสินแล้ว (owner 2026-10-27): Sentry **เลื่อนหลัง v1.0** — OPS-3c ย้ายไป backlog; v1.0 ใช้ alert จาก log (AC-18)
+
+## Open questions (รอบ 9 — ปิดแล้วรอบ 10)
+- ~~Q-O1~~ (OPS-3b) เกณฑ์ rate limit และตำแหน่งที่บังคับ — **ข้อเสนอ**: บังคับที่ reverse proxy/load balancer ของ prod (ไม่เพิ่มโค้ด; Deliverables ข้อ 5 อนุญาต) ถ้า hosting ไม่มี proxy ที่ทำได้
   จึงทำเป็น middleware ใน backend ที่ใช้ Redis ที่มีอยู่ (ต้องมี ADR ก่อนเพราะเป็นกลไกใหม่); เกณฑ์เริ่มต้นต่อ IP: `/auth/customer/*` และ `/store/auth/*` 10 ครั้ง/นาที,
   `/store/group-buy/*/join` 30 ครั้ง/นาที (ต่อ customer), `/store/affiliate/r/*` 60 ครั้ง/นาที, `/store/search` และ `/store/products?q=` 120 ครั้ง/นาที; เกิน → 429 + `Retry-After`
   ต้องให้ owner ระบุ hosting/proxy ที่ใช้จริงและยืนยันตัวเลข
-- Q-O2 (OPS-3c) ใช้ Sentry แบบใด — **ข้อเสนอ**: Sentry SaaS (sentry.io) เก็บเฉพาะ error (`tracesSampleRate: 0`, Tracing เลื่อนไปตาม Deliverables ข้อ 6), `sendDefaultPii: false`,
+- ~~Q-O2~~ (OPS-3c) ใช้ Sentry แบบใด — **ข้อเสนอ**: Sentry SaaS (sentry.io) เก็บเฉพาะ error (`tracesSampleRate: 0`, Tracing เลื่อนไปตาม Deliverables ข้อ 6), `sendDefaultPii: false`,
   ทั้ง backend และ storefront, env `SENTRY_DSN`/`SENTRY_ENVIRONMENT` (ไม่ตั้ง = ปิด); builder ตรวจ docs instrumentation ของ Medusa v2 ก่อนเลือกวิธีผูก; ทางเลือก: self-host
   (เพิ่ม infra — ขัดหลักไม่เพิ่ม infra) หรือเลื่อน error tracking ไปหลัง v1.0 แล้วใช้ alert จาก log (AC-18) แทน
 OPS-11 ∥ งานอื่น แต่แตะ e2e ของ FS-10 + `src/admin/widgets/flash-sale-options.tsx` — ทำเมื่อมี e2e admin ตัวที่สองเท่านั้น (ดูแถว OPS-11)

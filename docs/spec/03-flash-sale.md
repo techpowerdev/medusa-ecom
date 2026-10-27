@@ -22,6 +22,7 @@
 | กัน race ข้าม cart ของลูกค้าคนเดียว | Locking module (Redis ใน prod, spec 07) | ใช้ตามที่มี — lock ต่อ `(campaign_id, customer_id)` ใน hook |
 | ขยาย `completeCartWorkflow` พร้อม compensation | workflow hook `validate` (handler + compensate) | ขยาย — **hook หนึ่งตัวมี handler ได้ตัวเดียว** (กฎข้อ 8) |
 | order ↔ cart | link `order.cart` ของ Medusa | ใช้ตามที่มี — FS-2 หา reservation จาก `cart_id` ของ order |
+| variant id ของสินค้าที่มาจาก search hit | `GET /store/products?id[]=…&fields=id,variants.id` | ใช้ตามที่มี (FS-14) — ไม่เพิ่ม field ใน search index |
 
 ช่องว่างที่เราเติม (แบบบาง):
 1. **Per-customer cap** ตลอดทั้งแคมเปญ (เช่น สูงสุด 2 หน่วยต่อลูกค้า) — Promotion มี
@@ -171,12 +172,31 @@ Link: `flash_sale_config ↔ promotion_campaign`
 16. (FS-11, review FS-8 #69) เส้นทาง `payment.refunded` ต้องได้กลไก retry เดียวกับ `order.canceled` ของ FS-8: การหา order/`cart_id` จาก payment และเกณฑ์
     refund เต็มจำนวน (กฎข้อ 10) ต้องอยู่**ใน** workflow (step) ไม่ใช่ใน subscriber ก่อนเรียก workflow — subscriber เหลือเพียงส่ง id จาก event เข้า workflow
     เพื่อให้ error ชั่วคราวระหว่างหา order ถูก retry/กวาดซ้ำได้
-17. (FS-12, รอบ 9 — follow-up qa/review FS-6 #115) context ของ item ที่ preview ส่งให้ `computeActions` (`get-active-flash-sales.ts`) ต้องมีรูปเดียวกับ context ที่
+17. (**ปิดรอบ 10 — ไม่ต้องทำ**: QA #115 `docs/evidence/flash-sale/FS-6/REPORT.md` หัวข้อ "ราคา PDP เทียบกับ cart" ตรวจ target rule 5 แบบ (`items.product.id`,
+    `items.product_id`, `items.variant_id`, `items.product.collection_id`, `items.product.categories.id`) + fixed ฿100 + จำนวน 2 แล้ว preview = `cart.total` ทุกกรณี —
+    preview ส่งทั้ง `product_id` และ `product` ของ variant อยู่แล้ว (`lib/flash-sale-preview.ts`) และ cart ของ Medusa ก็รับทั้งสองแบบ ข้อกังวลเดิมไม่เกิดจริง)
+    ข้อความเดิม: (FS-12, รอบ 9 — follow-up qa/review FS-6 #115) context ของ item ที่ preview ส่งให้ `computeActions` (`get-active-flash-sales.ts`) ต้องมีรูปเดียวกับ context ที่
     Medusa สร้างตอนคำนวณ promotion ของ cart (builder อ่าน core-flows 2.22.1 ว่า cart ส่ง field ใดของ item เช่น `product.id` แบบซ้อน) — promotion ที่มีผลกับสินค้าใน cart ต้อง
     มี `flash_price` ใน preview และ promotion ที่ไม่มีผลใน cart ต้องไม่มี (ปัจจุบัน preview ส่ง `product_id` แบน ทำให้ rule `items.product.id` กับ preview ไม่ตรงกัน); ข้อจำกัดของ
     กฎข้อ 14 ยังคงเดิม
 18. (FS-13, รอบ 9 — qa FS-6 #115) storefront: เมื่อ `sold_out=true` ปุ่มเพิ่มลง cart ของสินค้านั้นบน PDP (`add-product-button`) ถูก disable และแสดง `flash-sold-out`
     (ไม่ให้ลูกค้าไปล้ม `FLASH_SOLD_OUT` ตอน checkout); การ์ดสินค้าใน PLP และแถบล่างของ PDP บนมือถือแสดงราคา flash เหมือน PDP
+19. (FS-14, รอบ 10 — FS-13 #129 ส่งมอบเฉพาะ collection/category + PDP) การ์ดสินค้าบนหน้า `/store`, ผลค้นหา (`/search`) และ rail สินค้าของหน้าแรกแสดงราคา flash แบบเดียวกับการ์ดของ
+    FS-13 (test id `flash-price`/`flash-original-price` เดิม) — hit ของ search index ไม่มี variant id: storefront หา variant id ของการ์ดที่แสดงอยู่ด้วย `GET /store/products` ของ Medusa
+    (`id[]=<hit ids>&fields=id,variants.id`) **หนึ่ง request ต่อหน้า** แล้วเรียก data function flash เดิม (แบ่งชุด ≤ 24 variant) — **ไม่**เพิ่ม field ใน search index
+    (เลี่ยงลำดับ release ของ spec 01 กฎข้อ 15); การ์ดที่ยังไม่ได้ข้อมูล flash แสดงราคาปกติ (ไม่ค้าง skeleton)
+20. (FS-15, รอบ 10 — qa FS-6 O-1 #115 / CORE-24 #134) จำนวนที่เกินโควตา flash:
+    (a) PDP: เมื่อแคมเปญของ variant มี `remaining_units` (ไม่ใช่ null) และจำนวนที่เลือกใน `product-quantity-select` (CORE-24) > `remaining_units` → แสดง
+    `flash-qty-exceeds-remaining` (ข้อความไทยบอกจำนวนที่เหลือ) และ disable `add-product-button` จนกว่าจะลดจำนวน (units นับเต็มจำนวนตามกฎข้อ 9 → เกินแล้ว complete ล้มแน่นอน);
+    `remaining_units = null` → ไม่เตือน (ไม่รู้ยอด)
+    (b) cart: line ที่มี adjustment ของ flash campaign และ `quantity > remaining_units` แสดง `cart-flash-exceeds-remaining` ที่ line นั้น (ไม่บล็อกการแก้จำนวน)
+    (c) checkout: complete ล้มด้วย code `FLASH_SOLD_OUT`, `FLASH_LIMIT_EXCEEDED`, `PROMOTION_NOT_COMBINABLE` (409 ของ PROMO-2) → ข้อความไทยเฉพาะของแต่ละ code ใน error ของขั้น
+    review (ไม่ใช่ข้อความอังกฤษของ backend และไม่ใช่ข้อความ fallback ทั่วไป) — อ่าน `code` จาก error ถ้า js-sdk 2.22.1 เก็บไว้ (builder ตรวจ `FetchError`); ถ้าไม่เก็บ map
+    ด้วยข้อความคงที่ของ backend พร้อม contract test ที่อ่าน source backend (แบบเดียวกับ spec 01 กฎข้อ 66c)
+21. (FS-16, รอบ 10 — qa FS-13 #129 O-A/O-B/O-C) (a) PDP ของสินค้าที่ยังโหลดข้อมูล flash ไม่เสร็จ: `add-product-button` อยู่ในสถานะรอ (`disabled` + `aria-busy="true"`) จน request
+    flash ตอบ (สำเร็จหรือ error — error แล้วปุ่มกลับมากดได้, ไม่ค้าง) (b) เมื่อ variant ที่เลือกมีราคา flash ราคาบน `product-price` (ด้านบนของ PDP) แสดงราคาเดิมแบบขีดฆ่า
+    (`text-decoration: line-through`) — ไม่แสดงราคาเต็มแบบปกติคู่กับกล่อง flash (c) การ์ด PLP/`/store` ของสินค้าที่แคมเปญ `sold_out=true` แสดงป้าย `flash-card-sold-out`
+    (ข้อความไทย) และราคาปกติ
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญที่ทำงานอยู่ (−20% สำหรับ collection X, automatic) และลูกค้าเพิ่มสินค้า X
@@ -245,11 +265,23 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - AC-17 (FS-11, กฎข้อ 16) Given order ที่มี flash 2 หน่วย capture ฿1,000 When refund เต็มจำนวน (`payment.refunded`) และขั้นหา order จาก payment ล้มครั้งแรก
   (test inject error ครั้งเดียว) Then ภายในรอบ retry/job ถัดไป usage และ `units_sold` ถูกคืนครบครั้งเดียว และ reservation มี `released_at`; AC-5 (a) และ
   AC-6 ยังผ่าน; ไฟล์ subscriber `payment.refunded` ไม่มีการเรียก `query.graph`/service (ตรวจด้วย unit test หรือ grep) (integration http)
-- AC-18 (FS-12, กฎข้อ 17) Given แคมเปญ flash ที่มี automatic promotion P1 (target rule attribute `items.product.id` in [X]) และ P2 (rule attribute ที่ไม่ตรงกับ context ของ cart
+- ~~AC-18~~ (FS-12) **ยกเลิกรอบ 10** — ปิดตามผล QA #115 (กฎข้อ 17) ไม่มี test ใหม่; ข้อความเดิม: (FS-12, กฎข้อ 17) Given แคมเปญ flash ที่มี automatic promotion P1 (target rule attribute `items.product.id` in [X]) และ P2 (rule attribute ที่ไม่ตรงกับ context ของ cart
   เช่น `items.product_id` in [Y]) When `GET /store/flash-sales/active` และเพิ่ม X, Y ลง cart ของลูกค้า Then สำหรับแต่ละสินค้า "มี `flash_price` ใน preview" ⇔ "line ใน cart มี
   adjustment ของ promotion นั้น" และ `flash_price` ของ X เท่ากับราคาต่อหน่วยหลังส่วนลดของ line X ใน cart (promotion แบบ percentage) (integration http)
 - AC-19 (FS-13, กฎข้อ 18) Given สินค้าในแคมเปญที่ `sold_out=true` When เปิด PDP Then `add-product-button` เป็น `disabled` และเห็น `flash-sold-out`; Given แคมเปญที่ไม่ sold out
   When เปิด PLP (desktop) และ PDP ที่ viewport 375×812 Then การ์ดสินค้าและแถบล่างของ PDP แสดงราคา flash (test id ราคา flash เดียวกับ PDP ของ FS-6) (e2e, screenshot ≤ 2)
+- AC-20 (FS-14, กฎข้อ 19) Given แคมเปญ flash active ของสินค้า X (ไม่ sold out) และสินค้า Y นอกแคมเปญ When e2e เปิด `/th/store`, `/th/search?q=<ชื่อ X>` และหน้าแรก Then การ์ดของ X
+  มี `flash-price` และ `flash-original-price` ทุกหน้า, การ์ดของ Y ไม่มี; unit ของ data function ที่หา variant id (mock SDK) ยืนยันว่าเรียก `GET /store/products` **1 ครั้ง**ต่อชุด hit ของหน้า (24 hit → 1 ครั้ง);
+  diff ของ PR ไม่แตะ `apps/backend/src/search/` (grep) (e2e + unit Vitest)
+- AC-21 (FS-15, กฎข้อ 20a/b) Given แคมเปญ `total_cap=3`, `show_remaining=true`, `units_sold=1` (`remaining_units=2`) When เลือกจำนวน 3 บน PDP Then เห็น `flash-qty-exceeds-remaining`
+  มีอักษรไทย และ `add-product-button` disabled; เลือก 2 → ไม่มีคำเตือนและกดได้; Given `show_remaining=false` เลือก 3 Then ไม่มีคำเตือน; Given cart มี line ของ X qty 3 ขณะ
+  `remaining_units=2` When เปิด `/th/cart` Then line นั้นมี `cart-flash-exceeds-remaining` (e2e)
+- AC-22 (FS-15, กฎข้อ 20c) Given cart ที่ complete แล้วได้ 409 `FLASH_SOLD_OUT` (ตั้ง `units_sold = total_cap` ระหว่าง checkout) When กดสั่งซื้อในขั้น review Then error ที่แสดงมีอักษรไทย,
+  ไม่มีข้อความอังกฤษของ backend และต่างจากข้อความของ `FLASH_LIMIT_EXCEEDED` (unit Vitest ของ mapping ทั้ง 3 code + e2e 1 กรณี `FLASH_SOLD_OUT`); ถ้า map ด้วยข้อความ: contract test
+  ที่อ่าน source ของ backend ล้มเมื่อข้อความ backend เปลี่ยน (positive control ใน evidence)
+- AC-23 (FS-16, กฎข้อ 21) Given PDP ของสินค้า X ในแคมเปญ sold out และ route ของ flash ถูกหน่วง 3 วินาที (route mock) When เปิดหน้า Then ระหว่างรอ `add-product-button` มี `aria-busy="true"`
+  และ disabled, หลังตอบ disabled ด้วยเหตุ sold out; Given route ของ flash ตอบ 500 Then ปุ่มกลับมากดได้ภายใน 5 วินาที; Given แคมเปญไม่ sold out Then computed `text-decoration-line`
+  ของราคาใน `product-price` มี `line-through`; Given แคมเปญ sold out When เปิด collection ของ X Then การ์ดของ X มี `flash-card-sold-out` มีอักษรไทย (e2e, screenshot ≤ 2)
 
 ## Non-functional
 - การจอง usage + `units_sold` อยู่ใน request path ของ complete cart (ข้อตัดสิน owner) ภายใต้ lock ต่อ
@@ -268,7 +300,8 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - Unit (FS-7): การคำนวณ `sold_out` / `remaining_units` จาก config (AC-13 a–d รวม clamp ที่ 0)
 - e2e: AC-8 (g), AC-13 (e)
 - e2e admin / component test: AC-16
-- Integration (http): AC-18 (FS-12); e2e: AC-19 (FS-13)
+- ~~Integration (http): AC-18 (FS-12)~~ (ปิดรอบ 10); e2e: AC-19 (FS-13)
+- e2e + unit Vitest: AC-20 (FS-14), AC-21, AC-22 (FS-15), AC-23 (FS-16)
 - e2e: AC-4 (screenshot PLP/PDP/cart ที่ T-1min และ T+1min โดยใช้ clock control)
 
 ## Tasks
@@ -287,11 +320,16 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-7 | follow-up FS-4 (backend เล็ก): `GET /store/flash-sales/active` เอา `remaining_usage` ออก เพิ่ม `sold_out` + `remaining_units` จาก `FlashSaleConfig` (pure function + unit test) และระบุข้อจำกัดของ preview (กฎข้อ 14) ใน JSDoc ของ route (AC-13 a–d) | FS-4 |
 | FS-10 | follow-up QA FS-5 D-1r (เล็ก, frontend เท่านั้น): in-flight flag `useRef` ในปุ่ม Save ของ widget "Flash sale options" (กฎข้อ 15); AC-16 | FS-5 |
 | FS-11 | follow-up review FS-8 #69 (เล็ก, backend): ย้ายการหา order/`cart_id` + เกณฑ์ refund เต็มจำนวนของเส้นทาง `payment.refunded` เข้า workflow ให้ใช้ retry ของ FS-8 (กฎข้อ 16); AC-17 | FS-8 |
-| FS-12 | (เล็ก, backend, รอบ 9 — follow-up #115) context ของ item ใน price preview ตรงกับของ cart (กฎข้อ 17); AC-18 | FS-4 ☑ (∥ FS-6 #115 — คนละไฟล์) |
-| FS-13 | (เล็ก, storefront, รอบ 9 — qa #115) disable ปุ่มเพิ่มลง cart เมื่อ `sold_out` + ราคา flash บนการ์ด PLP และแถบล่าง PDP มือถือ (กฎข้อ 18); AC-19 | FS-6 (#115) |
+| FS-12 | **✕ ปิดรอบ 10 (ไม่ต้องทำ)** — QA #115 พิสูจน์ preview = cart ทั้ง 5 แบบ target rule (กฎข้อ 17); เดิม: context ของ item ใน price preview ตรงกับของ cart; AC-18 | — |
+| FS-13 | ☑ #129 — (เล็ก, storefront, รอบ 9 — qa #115) disable ปุ่มเพิ่มลง cart เมื่อ `sold_out` + ราคา flash บนการ์ด PLP และแถบล่าง PDP มือถือ (กฎข้อ 18); AC-19 | FS-6 ☑ (#115) |
+| FS-14 | (เล็ก, storefront, รอบ 10 — scope ที่ FS-13 #129 ไม่ครอบ) ราคา flash บนการ์ดของ `/store`, `/search`, rail หน้าแรก โดยหา variant id ผ่าน `GET /store/products` หนึ่ง request ต่อหน้า ไม่แตะ search index (กฎข้อ 19); AC-20 | FS-13 ☑ (#129) |
+| FS-15 | (storefront, รอบ 10 — qa FS-6 O-1, CORE-24 #134) เตือน/disable เมื่อจำนวนเกิน `remaining_units` บน PDP + เตือนใน cart + ข้อความไทยของ `FLASH_*`/`PROMOTION_NOT_COMBINABLE` ตอน complete (กฎข้อ 20); AC-21, AC-22 | CORE-24 (#134 — ใช้ `product-quantity-select`), FS-13 ☑ |
+| FS-16 | (เล็ก, storefront, รอบ 10 — qa FS-13 O-A/O-B/O-C) ปุ่มรอระหว่างโหลดข้อมูล flash, ราคา `product-price` ขีดฆ่าเมื่อมีราคา flash, ป้าย sold out บนการ์ด (กฎข้อ 21); AC-23 | FS-15 (แตะ PDP ไฟล์เดียวกัน), FS-14 (แตะการ์ดเดียวกัน) |
 FS-11 หลัง FS-8 (แตะ subscriber/workflow คืนโควตาไฟล์เดียวกัน); FS-10 ยังไม่ทำ (สถานะ 2026-10-26) ไม่เปลี่ยนนิยาม
 PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 ปิด (owner ไม่ทำ 2026-10-27);
-FS-10 หลัง FS-5; FS-12 ∥ FS-13 (FS-12 backend เริ่มได้ทันที; FS-13 หลัง FS-6 #115 merge)
+FS-10 หลัง FS-5; FS-12 ∥ FS-13 (FS-12 backend เริ่มได้ทันที; FS-13 หลัง FS-6 #115 merge) — รอบ 10: FS-12 ปิด, FS-13 ☑ #129
+(รอบ 10) FS-14 เริ่มได้ทันที ∥ FS-15 (หลัง CORE-24 #134 merge); FS-16 หลังทั้งสอง (แตะ PDP/การ์ดเดียวกัน); review nit #115 ที่เหลือ (server action ทำงานทีละตัวต่อ client — พฤติกรรมของ Next,
+ไม่มี task; `slice(0,24)` แก้แล้วเป็นการแบ่งชุดใน FS-13) ไม่มี task
 PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวกับ FS-3 แต่ FS-3 merge แล้ว); ต้อง merge ก่อน GB-3 (dependency) และควรก่อน FS-6
 
 ## คำถามที่ยังเปิดอยู่
