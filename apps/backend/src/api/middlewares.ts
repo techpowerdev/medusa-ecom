@@ -4,6 +4,7 @@ import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
 import { adminFlashSaleMiddlewares } from './admin/flash-sales/middlewares'
 import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
+import { storeEvoucherMiddlewares } from './store/evouchers/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
 import { storeGroupBuyMiddlewares } from './store/group-buy/middlewares'
 import { businessErrorHandler } from './error-handler'
@@ -29,6 +30,8 @@ export default defineMiddlewares({
     // Affiliate portal: separate `affiliate` actor type (spec 05, AC-12, AC-18, กฎ 18, Q6)
     ...affiliatePortalMiddlewares,
     ...adminEvoucherMiddlewares,
+    // EV-7a (spec 02 กฎข้อ 22, 23): รายการ code ของลูกค้า + field ของ pool/partner บน GET /store/products*
+    ...storeEvoucherMiddlewares,
     ...adminFlashSaleMiddlewares,
     ...storeFlashSaleMiddlewares,
     ...adminAffiliateMiddlewares,

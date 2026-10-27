@@ -8,6 +8,7 @@ import PendingAddToCartFields from "@modules/account/components/pending-add-to-c
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { signup } from "@lib/data/customer"
+import { useSubmitOnce } from "@lib/hooks/use-submit-once"
 import { STORE_NAME } from "@lib/store-content"
 
 type Props = {
@@ -15,7 +16,10 @@ type Props = {
 }
 
 const Register = ({ setCurrentView }: Props) => {
-  const [message, formAction] = useActionState(signup, null)
+  const [message, formAction, isPending] = useActionState(signup, null)
+  const onSubmit = useSubmitOnce(isPending)
+  // CORE-4h (กฎข้อ 69b): สมัครล้มแล้วคงชื่อ/นามสกุล/เบอร์ (React 19 reset ฟอร์มกลับเป็น defaultValue หลัง action)
+  const fields = message?.state === "error" ? message.fields : undefined
 
   return (
     <div
@@ -37,7 +41,7 @@ const Register = ({ setCurrentView }: Props) => {
           กรุณาตรวจสอบกล่องจดหมายเพื่อยืนยันอีเมล จากนั้นเข้าสู่ระบบ
         </div>
       )}
-      <form className="w-full flex flex-col" action={formAction}>
+      <form className="w-full flex flex-col" action={formAction} onSubmit={onSubmit}>
         <PendingAddToCartFields />
         <div className="flex flex-col w-full gap-y-2">
           <Input
@@ -45,6 +49,7 @@ const Register = ({ setCurrentView }: Props) => {
             name="first_name"
             required
             autoComplete="given-name"
+            defaultValue={fields?.first_name}
             data-testid="first-name-input"
           />
           <Input
@@ -52,6 +57,7 @@ const Register = ({ setCurrentView }: Props) => {
             name="last_name"
             required
             autoComplete="family-name"
+            defaultValue={fields?.last_name}
             data-testid="last-name-input"
           />
           <Input
@@ -69,6 +75,7 @@ const Register = ({ setCurrentView }: Props) => {
             name="phone"
             type="tel"
             autoComplete="tel"
+            defaultValue={fields?.phone}
             data-testid="phone-input"
           />
           <Input

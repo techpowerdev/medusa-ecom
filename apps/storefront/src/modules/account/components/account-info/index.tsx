@@ -12,6 +12,8 @@ type AccountInfoProps = {
   isError?: boolean
   errorMessage?: string
   clearState: () => void
+  /** CORE-23b: ฟอร์มที่ submit ผ่าน onSubmit (ไม่ใช่ action) ส่ง pending มาเอง */
+  isPending?: boolean
   children?: React.ReactNode
   'data-testid'?: string
 }
@@ -22,13 +24,15 @@ const AccountInfo = ({
   isSuccess,
   isError,
   clearState,
+  isPending,
   errorMessage = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
   children,
   'data-testid': dataTestid
 }: AccountInfoProps) => {
   const { state, close, toggle } = useToggleState()
 
-  const { pending } = useFormStatus()
+  const formStatus = useFormStatus()
+  const pending = isPending || formStatus.pending
 
   const handleToggle = () => {
     clearState()
