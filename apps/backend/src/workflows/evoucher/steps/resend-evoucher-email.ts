@@ -46,15 +46,27 @@ export const releaseEvoucherResendLockStep = createStep(
   }
 )
 
+const RESENDABLE = ["allocated", "delivered"]
+
+/** order พร้อม code จาก link order ↔ evoucher_code (EV-9) */
+export type EvoucherResendOrder = EvoucherOrder & {
+  evoucher_codes?: ({
+    id: string
+    status: string
+    order_line_item_id: string | null
+    created_at: Date | string
+    pool: { id: string; name: string }
+  } | null)[] | null
+}
+
 /** code `delivered` + `allocated` (ส่งล้ม, กฎข้อ 17) ของ order จัดกลุ่มต่อ line item ในรูปเดียวกับ claim ของ EV-4 — ไม่ allocate ใหม่ */
 export const resolveEvoucherResendCodesStep = createStep(
   "resolve-evoucher-resend-codes",
-  async (input: { order: EvoucherOrder }, { container }) => {
-    const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
-    const codes = await service.listEvoucherCodes(
-      { order_id: input.order.id, status: ["allocated", "delivered"] },
-      { relations: ["pool"], order: { created_at: "ASC" } }
-    )
+  async (input: { order: EvoucherResendOrder }) => {
+    // EV-9: code มาจาก link (ไม่ filter order_id ผ่าน service) — กรองสถานะและเรียง created_at ASC เอง
+    const codes = (input.order.evoucher_codes ?? [])
+      .filter((code): code is NonNullable<typeof code> => !!code && RESENDABLE.includes(code.status))
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     if (!codes.length) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
