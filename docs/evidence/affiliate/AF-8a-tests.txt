@@ -52,3 +52,29 @@ vitest src/lib/util/affiliate-portal.test.ts src/thai-ui-rule.test.ts → Test F
 
 ## pnpm lint && pnpm typecheck → exit 0 (0 errors; warning เดิมของ repo ไม่มีในไฟล์ของ task นี้)
 ## next build (storefront) → exit 0: ƒ /[countryCode]/affiliate, ƒ /[countryCode]/affiliate/login
+
+## แก้ตาม review #135 (REQUEST CHANGES รอบ 1) — 2026-10-27
+### Red (เพิ่ม e2e ก่อนแก้โค้ด)
+  ✘  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (8.6s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:132:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (1.8s)
+  ✘  3 [chromium] › e2e/affiliate-portal.spec.ts:158:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (6.5s)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:181:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (1.2s)
+    Error: expect(locator).toContainText(expected) failed
+    Expected substring: "สูงสุด"
+    Received string:    "ได้ประมาณ ฿88.50 ต่อชิ้น"
+    test-results/affiliate-portal-AF-8a-log-57c7c-้า-และแชร์ลิงก์-AC-9-AC-35--chromium/test-failed-1.png
+    Error: affiliate-login-error
+    expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    test-results/affiliate-portal-AF-8a-cus-e9823-ไม่ตั้ง-session-review-135--chromium/test-failed-1.png
+  2 failed
+  2 passed (21.0s)
+  (test suspended ผ่านตั้งแต่ก่อนแก้ — เพิ่มเพื่อครอบ Q6 ด้วย e2e)
+### Green
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (5.6s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:132:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (1.7s)
+  ✓  3 [chromium] › e2e/affiliate-portal.spec.ts:158:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (1.6s)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:181:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (1.2s)
+  4 passed (12.1s)
+vitest storefront: Test Files 30 passed, Tests 324 passed
+pnpm lint && pnpm typecheck → exit 0; next build → exit 0

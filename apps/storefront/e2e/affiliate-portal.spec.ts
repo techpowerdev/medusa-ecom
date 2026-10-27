@@ -4,7 +4,7 @@ import { APIRequestContext } from "@playwright/test"
 
 import { createActiveAffiliate } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
-import { STOREFRONT_COUNTRY as CC, Headers, adminHeaders, publishableKey } from "./support/medusa"
+import { STOREFRONT_COUNTRY as CC, Headers, adminHeaders, createCustomer, publishableKey } from "./support/medusa"
 import { THAI, expectThai } from "./support/thai-text"
 
 // AF-8a (spec 05): portal affiliate ใน storefront — login/register ของตัวเอง (actor `affiliate`) และหน้า Products
@@ -92,14 +92,16 @@ test("AF-8a: login → แท็บได้ค่าคอมตอนนี้
     await expect(card.getByTestId("affiliate-program-name")).toHaveText(p3)
     await expect(card.getByTestId("affiliate-program-dates")).toBeVisible()
     await expect(card.getByTestId("affiliate-rate-varies")).toHaveCount(0)
+    await expect(card.getByTestId("affiliate-estimate")).not.toContainText("สูงสุด")
   })
 
-  await step("AC-35: Y (variant ได้อัตราต่างกัน) การ์ดเดียว แสดง 'สูงสุด 15%'", async () => {
+  await step("AC-35: Y (variant ได้อัตราต่างกัน) การ์ดเดียว แสดง 'สูงสุด 15%' และ 'สูงสุด' หน้ายอดประมาณการ", async () => {
     const card = page.locator(`[data-testid="affiliate-product-card"][data-handle="${Y}"]`)
     await expect(card).toHaveCount(1)
     await expect(card.getByTestId("affiliate-rate")).toContainText("15%")
     await expectThai(page, ["affiliate-rate-varies"])
     await expect(card.getByTestId("affiliate-rate-varies")).toContainText("สูงสุด")
+    await expect(card.getByTestId("affiliate-estimate")).toContainText("สูงสุด")
     await evidence("01-earning-tab")
   })
 
@@ -150,5 +152,49 @@ test("AF-8a: สมัคร affiliate ผ่าน portal → สถานะ�
   await step("ออกจากระบบ → กลับหน้า login", async () => {
     await page.getByTestId("affiliate-logout").click()
     await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate/login(\\?|$)`))
+  })
+})
+
+test("AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135)", async ({
+  page,
+  context,
+  request,
+  step,
+}) => {
+  const admin = await adminHeaders(request)
+  const customer = await createCustomer(request, await publishableKey(request, admin))
+
+  await step("login portal ด้วยอีเมล/รหัสผ่านของ customer", async () => {
+    await page.goto(`/${CC}/affiliate/login`)
+    await page.getByTestId("affiliate-login-email").fill(customer.email)
+    await page.getByTestId("affiliate-login-password").fill(customer.password)
+    await page.getByTestId("affiliate-login-submit").click()
+  })
+
+  await step("ยังอยู่หน้า login พร้อมข้อความไทย และไม่มี cookie _affiliate_jwt", async () => {
+    await expectThai(page, ["affiliate-login-error"])
+    await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate/login(\\?|$)`))
+    expect((await context.cookies()).find((c) => c.name === "_affiliate_jwt")).toBeUndefined()
+  })
+})
+
+test("AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6)", async ({ page, request, step }) => {
+  const admin = await adminHeaders(request)
+  const ann = await createActiveAffiliate(request, admin, "e2e-af8s")
+  const res = await request.post(`${BACKEND_URL}/admin/affiliate/affiliates/${ann.id}`, {
+    headers: admin,
+    data: { status: "suspended" },
+  })
+  expect(res.status(), "admin suspend affiliate").toBe(200)
+
+  await step("login แล้วเห็นข้อความระงับ ไม่มีแท็บและการ์ด", async () => {
+    await page.goto(`/${CC}/affiliate/login`)
+    await page.getByTestId("affiliate-login-email").fill(ann.email)
+    await page.getByTestId("affiliate-login-password").fill(ann.password)
+    await page.getByTestId("affiliate-login-submit").click()
+    await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate(\\?|$)`))
+    await expectThai(page, ["affiliate-suspended-message"])
+    await expect(page.getByTestId("affiliate-tab-earning")).toHaveCount(0)
+    await expect(page.getByTestId("affiliate-product-card")).toHaveCount(0)
   })
 })

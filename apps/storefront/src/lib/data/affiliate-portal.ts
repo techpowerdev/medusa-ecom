@@ -94,13 +94,26 @@ const setSession = async (token: string) => {
 const portalPath = (formData: FormData) => `/${formData.get("countryCode")}/affiliate`
 
 export async function affiliateLogin(_state: AffiliateAuthState, formData: FormData): Promise<AffiliateAuthState> {
+  let token: string
   try {
-    await setSession(await login(String(formData.get("email")), String(formData.get("password"))))
+    token = await login(String(formData.get("email")), String(formData.get("password")))
   } catch (error) {
     return {
       error: statusOf(error) === 401 ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" : "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
     }
   }
+  // Medusa คืน token ให้ identity ที่ยังไม่มี affiliate (เช่น customer อย่างเดียว; actor_id ว่าง) — ตรวจก่อนตั้ง session (review #135)
+  try {
+    await portalFetch("/affiliate/me", { authorization: `Bearer ${token}` })
+  } catch (error) {
+    return {
+      error:
+        statusOf(error) === 401
+          ? "อีเมลนี้ยังไม่ได้สมัครแอฟฟิลิเอต กรุณาสมัครด้วยรหัสผ่านเดิม"
+          : "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+    }
+  }
+  await setSession(token)
   redirect(portalPath(formData))
 }
 

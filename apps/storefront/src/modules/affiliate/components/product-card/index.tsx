@@ -27,7 +27,7 @@ export default function AffiliateProductCard({ item, tab }: { item: PortalProduc
       </p>
       {price && (
         <p className="text-small-regular" data-testid="affiliate-estimate">
-          ได้ประมาณ{" "}
+          {rate_varies ? "ได้ประมาณสูงสุด" : "ได้ประมาณ"}{" "}
           {convertToLocale({
             amount: estimateCommission(price.amount, program.commission_value),
             currency_code: price.currency_code,
