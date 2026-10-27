@@ -1,3 +1,4 @@
+import type { EventEmitter } from "events"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createCartWorkflow, createPromotionsWorkflow } from "@medusajs/medusa/core-flows"
@@ -74,7 +75,42 @@ medusaIntegrationTestRunner({
       variantXS = variant("t-shirt", "S")
       variantXM = variant("t-shirt", "M")
       variantY = variant("sweatshirt", "M")
+      trackSubscribers(container)
     })
+
+    // GB-N2: subscriber ของ local event bus รันแบบ async หลัง response (เช่น order.canceled →
+    // release-flash-sale-for-order ที่ retry ทุก 10 วินาที 30 ครั้ง) ถ้ายังไม่จบเมื่อ beforeEach ของ test ถัดไป
+    // restore DB → step หา order ไม่เจอแล้ว retry ค้าง `invoking` จน afterEach (waitWorkflowExecutions) ของ test
+    // ถัดไปรอเกิน hook timeout — จึงจับ promise ของ subscriber ทุกตัวไว้ และรอให้จบก่อนจบแต่ละ test
+    const runningSubscribers = new Set<Promise<unknown>>()
+
+    const trackSubscribers = (container: ReturnType<typeof getContainer>) => {
+      const emitter = (container.resolve(Modules.EVENT_BUS) as unknown as { eventEmitter_: EventEmitter })
+        .eventEmitter_
+      for (const name of emitter.eventNames()) {
+        for (const listener of emitter.listeners(name) as ((...args: unknown[]) => unknown)[]) {
+          emitter.removeListener(name, listener)
+          emitter.on(name, function (this: EventEmitter, ...args: unknown[]) {
+            const run = Promise.resolve(listener.apply(this, args))
+            const settled = run.then(
+              () => undefined,
+              () => undefined
+            )
+            runningSubscribers.add(settled)
+            void settled.finally(() => runningSubscribers.delete(settled))
+            return run
+          })
+        }
+      }
+    }
+
+    afterEach(async () => {
+      // local event bus emit ใน microtask หลังปล่อย event — ให้ listener เริ่มก่อน แล้วรอจนไม่เหลือตัวที่รันอยู่
+      await new Promise((resolve) => setImmediate(resolve))
+      while (runningSubscribers.size) {
+        await Promise.all([...runningSubscribers])
+      }
+    }, 60 * 1000)
 
     const createCampaign = async (data: Partial<CreateGroupBuyCampaignInput> = {}) => {
       const container = getContainer()

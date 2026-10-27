@@ -2,7 +2,7 @@
 
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
-import { getAuthHeaders, getCacheOptions } from "./cookies"
+import { getAuthHeaders } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
 
 export const retrieveOrder = async (id: string) => {
@@ -37,10 +37,7 @@ export const listOrders = async (
     ...(await getAuthHeaders()),
   }
 
-  const next = {
-    ...(await getCacheOptions("orders")),
-  }
-
+  // CORE-20c (กฎข้อ 60): ไม่ cache แบบเดียวกับ retrieveOrder — สถานะ return/การส่งเปลี่ยนจากฝั่ง admin
   return sdk.client
     .fetch<HttpTypes.StoreOrderListResponse>(`/store/orders`, {
       method: "GET",
@@ -52,8 +49,7 @@ export const listOrders = async (
         ...filters,
       },
       headers,
-      next,
-      cache: "force-cache",
+      cache: "no-store",
     })
     .then(({ orders }) => orders)
     .catch((err) => medusaError(err))

@@ -1,0 +1,40 @@
+# AF-N1 — evidence (test-only, nit review #107)
+# วันที่ 2026-10-27, Node v22.23.3, branch feat/AF-N1-lock-test-timeout
+
+## 1) ไฟล์ที่แก้ทั้งไฟล์: pnpm --filter backend test:integration:http integration-tests/http/affiliate-admin.spec.ts
+PASS integration-tests/http/affiliate-admin.spec.ts (11.293 s)
+    ✓ requires an admin user (254 ms)
+    programs CRUD
+      ✓ creates a draft program, lists, publishes and ends it (400 ms)
+      ✓ rejects an invalid window or rate (127 ms)
+      ✓ deletes only draft programs (138 ms)
+    affiliates
+      ✓ lists by status, approves, suspends and sets payout_info (136 ms)
+    ledger, payouts and summary (AC-7)
+      ✓ lists ledger entries filtered by affiliate and status (105 ms)
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid (124 ms)
+      ✓ rolls entries back to approved when marking the payout paid fails (167 ms)
+      ✓ exposes ledger and payouts through Query (92 ms)
+      ✓ serializes concurrent payout creation so entries are paid out once (416 ms)
+      ✓ does not create a payout when the net is zero or negative (Q8) (150 ms)
+      ✓ cancels a draft payout and returns its entries to the pool (AC-19) (108 ms)
+      ✓ refuses to cancel a paid payout and leaves it unchanged (AC-19) (114 ms)
+      ✓ holds the affiliate payout lock through cancel compensation (AC-27) (1314 ms)
+      ✓ rejects cancelling a payout without an admin token (AC-27) (116 ms)
+      ✓ selects entries by rule 19 across payout rounds (AC-20) (114 ms)
+      ✓ filters payable entries in the database (rule 19) (98 ms)
+      ✓ summarizes the ledger per affiliate and status (89 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       18 passed, 18 total
+Snapshots:   0 total
+Time:        11.49 s
+Ran all test suites matching /integration-tests\/http\/affiliate-admin.spec.ts/i.
+
+## 2) ตรวจว่า timeout ทำงาน (แก้ paidKey เป็น key ผิดชั่วคราว ไม่ได้ commit) -t "holds the affiliate payout lock"
+## ก่อน AF-N1: await holding ค้างจน jest timeout 120s ของทั้งไฟล์; หลัง AF-N1: ล้มที่ 30s พร้อมเหตุผล
+      ✕ holds the affiliate payout lock through cancel compensation (AC-27) (30522 ms)
+    timed out after 30000ms: cancel never reached the release of affiliate-payout-paid:WRONG (lock order or step changed?)
+Tests:       1 failed, 17 skipped, 18 total
+
+## 3) pnpm lint && pnpm typecheck: ผ่าน (0 errors)
