@@ -67,7 +67,7 @@ export async function getOrSetCart(countryCode: string) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id")
+  let cart = await retrieveCart(undefined, "id,region_id,metadata")
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -95,7 +95,8 @@ export async function getOrSetCart(countryCode: string) {
   }
 
   // AF-2: cookie `aff` → cart metadata.affiliate_token
-  await syncCartAffiliateToken(cart.id, headers)
+  // AF-3b (กฎ 23): ใช้ metadata จาก cart ที่อ่าน/สร้างข้างบน ไม่อ่าน cart ซ้ำ
+  await syncCartAffiliateToken(cart.id, cart.metadata, headers)
 
   return cart
 }
@@ -474,11 +475,29 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
 }
 
 /**
+ * AF-3b (spec 05 กฎ 23): sync cookie `aff` ลง cart ก่อนยืนยันการชำระที่ webhook อาจ complete cart เอง (Stripe/PromptPay)
+ * ใช้ `metadata` ของ cart ที่หน้า checkout อ่านไว้แล้ว — POST เฉพาะเมื่อค่าต่าง ไม่อ่าน cart เพิ่ม
+ */
+export async function syncCartAffiliate(
+  cartId: string,
+  cartMetadata: HttpTypes.StoreCart["metadata"]
+) {
+  await syncCartAffiliateToken(cartId, cartMetadata, {
+    ...(await getAuthHeaders()),
+  })
+}
+
+/**
  * Places an order for a cart. If no cart ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to place an order for.
+ * @param cartMetadata - optional - `metadata` ของ cart ที่ผู้เรียกอ่านอยู่แล้ว (AF-3b กฎ 23): ส่งมา → sync cookie `aff`
+ * ลง cart ก่อน complete เมื่อค่าต่าง; ไม่ส่ง (cart ถูก complete โดย webhook แล้ว เช่น PromptPay) → ไม่ sync
  * @returns The cart object if the order was successful, or null if not.
  */
-export async function placeOrder(cartId?: string) {
+export async function placeOrder(
+  cartId?: string,
+  cartMetadata?: HttpTypes.StoreCart["metadata"]
+) {
   const id = cartId || (await getCartId())
 
   if (!id) {
@@ -487,6 +506,10 @@ export async function placeOrder(cartId?: string) {
 
   const headers = {
     ...(await getAuthHeaders()),
+  }
+
+  if (cartMetadata !== undefined) {
+    await syncCartAffiliateToken(id, cartMetadata, headers)
   }
 
   const cartRes = await sdk.store.cart

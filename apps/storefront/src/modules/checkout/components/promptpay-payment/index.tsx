@@ -1,6 +1,11 @@
 "use client"
 
-import { getPromptPayState, placeOrder, renewPromptPaySession } from "@lib/data/cart"
+import {
+  getPromptPayState,
+  placeOrder,
+  renewPromptPaySession,
+  syncCartAffiliate,
+} from "@lib/data/cart"
 import {
   PROMPTPAY_POLL_MS,
   formatCountdown,
@@ -137,6 +142,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       return expire()
     }
     if (intent?.status !== "requires_action") {
+      // AF-3b (กฎ 23): order สร้างโดย webhook หลังสแกน → sync cookie `aff` ลง cart ก่อนสร้าง QR
+      await syncCartAffiliate(cart.id, cart.metadata ?? null)
       const confirmed = await stripe.confirmPromptPayPayment(
         clientSecret,
         { payment_method: { billing_details: { email: cart.email ?? "" } } },

@@ -1,7 +1,7 @@
 "use client"
 
 import { isManual, isStripeLike } from "@lib/constants"
-import { placeOrder } from "@lib/data/cart"
+import { placeOrder, syncCartAffiliate } from "@lib/data/cart"
 import { isPromptPay } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
@@ -48,7 +48,11 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
       )
     case isManual(paymentSession?.provider_id):
       return (
-        <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
+        <ManualTestPaymentButton
+          cart={cart}
+          notReady={notReady}
+          data-testid={dataTestId}
+        />
       )
     default:
       return <Button disabled>Select a payment method</Button>
@@ -89,6 +93,9 @@ const StripePaymentButton = ({
     }
 
     setSubmitting(true)
+
+    // AF-3b (กฎ 23): sync cookie `aff` ก่อนยืนยันการชำระ — webhook อาจ complete cart ก่อน placeOrder
+    await syncCartAffiliate(cart.id, cart.metadata ?? null)
 
     await stripe
       .confirmPayment({
@@ -166,12 +173,19 @@ const StripePaymentButton = ({
   )
 }
 
-const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
+const ManualTestPaymentButton = ({
+  cart,
+  notReady,
+}: {
+  cart: HttpTypes.StoreCart
+  notReady: boolean
+}) => {
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const onPaymentCompleted = async () => {
-    await placeOrder()
+    // AF-3b (กฎ 23): ส่ง metadata ของ cart ที่อ่านไว้ → placeOrder sync cookie `aff` ก่อน complete
+    await placeOrder(cart.id, cart.metadata ?? null)
       .catch((err) => {
         setErrorMessage(err.message)
       })
