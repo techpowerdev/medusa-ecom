@@ -1,0 +1,35 @@
+OPS-15 — log knex "Connection ended unexpectedly" ใน integration ของ CI (spec 07 AC-26, review #122)
+
+== สาเหตุจริง
+medusaIntegrationTestRunner (@medusajs/test-utils 2.22.1) snapshot/restore DB จาก template ใน beforeEach
+ของทุก test: restorePostgresDatabaseFromTemplate → pg_terminate_backend ทุก backend ของ DB ของ test
+แล้ว DROP/CREATE DATABASE ใหม่ connection ที่ว่างอยู่ใน pool ของ app (knex PG_CONNECTION ที่ module ทุกตัวใช้ร่วมกัน)
+จึงถูกปิดฝั่ง server — pg client ยิง 'end' → knex ติดป้าย __knex__disposed = "Connection ended unexpectedly"
+แล้วเตือน "Connection Error: ..." ทุกครั้งที่ pool หยิบ connection ที่ตายนั้นขึ้นมา validate ใน query ถัดไป
+
+== วิธีแก้ (ที่ต้นเหตุ ไม่กรอง log)
+integration-tests/setup-after-env.ts (setupFilesAfterEnv ของ integration:http): beforeEach ระดับบนสุดรันก่อน
+beforeEach ของ runner → releaseIdlePgConnections(): knex.destroy() (รอ connection ที่ใช้อยู่คืน) แล้ว
+knex.initialize() pool ใหม่บน instance เดิม — ไม่มี connection เหลือใน pool ตอน DB ถูก terminate
+
+== Red
+ci-workflow.unit.spec.ts + pg-pool-reset.unit.spec.ts ก่อนเขียนโค้ด:
+  Cannot find module '../../integration-tests/pg-pool'
+  ✕ ขั้นรัน test เขียน log ลงไฟล์ (pipefail คง exit code ของ jest)
+  ✕ มีขั้นนับที่รันแม้ test ล้ม และ exit 1 เมื่อจำนวน > 0
+  ✕ สตริงที่นับไม่อยู่ในโค้ดส่วนอื่น (ไม่แก้ด้วยการกรอง/ปิด log)
+Tests:       3 failed, 4 passed, 7 total
+CI ก่อนแก้ (run 40504356517, PR AF-N2): http 1/3 = 461, http 2/3 = 698, http 3/3 = 408, unit-modules = 0 บรรทัด
+
+== ในเครื่อง (Node 22, Postgres 16 ของ docker compose) จำนวนบรรทัดที่มีข้อความนี้
+ก่อนแก้: flash-sale-module + evoucher-links            → 17   (Tests: 4 passed)
+หลังแก้: flash-sale-module + evoucher-links            → 0    (Tests: 4 passed)
+หลังแก้: group-buy-outcome + order-notifications       → 0    (Tests: 16 passed; ไม่มี "Connection Error"/"Unable to acquire")
+
+== Green
+pnpm --filter backend test:unit
+Test Suites: 63 passed, 63 total
+Tests:       616 passed, 616 total
+pnpm lint && pnpm typecheck: ผ่าน (exit 0); pnpm --filter backend build: ผ่าน
+
+== CI (AC-26: ผ่าน 3 run ติดกัน) — run id บันทึกใน body ของ PR

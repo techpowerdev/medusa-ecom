@@ -78,3 +78,34 @@ describe("OPS-14 ci.yml", () => {
     expect(body).toMatch(/exit 1/)
   })
 })
+
+// OPS-15 (AC-26): job integration ของ backend เก็บ log ของ test แล้วนับบรรทัด error ของ knex
+// ที่เกิดจาก connection ถูก terminate — fail เมื่อ > 0 (แก้ที่ต้นเหตุ ไม่กรอง/ปิด log)
+describe("OPS-15 ci.yml นับ log connection ของ knex", () => {
+  const body = jobs["backend-suites"]
+  const countStep = /- name: [^\n]*OPS-15[^\n]*\n([\s\S]*?)(?=\n {6}- |\n*$)/.exec(body)?.[1] ?? ""
+  const pattern = /grep -c "([^"]+)"/.exec(countStep)?.[1]
+
+  it("ขั้นรัน test เขียน log ลงไฟล์ (pipefail คง exit code ของ jest)", () => {
+    expect(body).toMatch(/set -o pipefail/)
+    expect(body).toMatch(/\{ \$\{\{ matrix\.run \}\}; \} 2>&1 \| tee "?\$TEST_LOG"?/)
+  })
+
+  it("มีขั้นนับที่รันแม้ test ล้ม และ exit 1 เมื่อจำนวน > 0", () => {
+    expect(countStep).toMatch(/if: \$\{\{ !cancelled\(\) \}\}/)
+    expect(pattern).toMatch(/ended unexpectedly/)
+    expect(countStep).toMatch(/-gt 0/)
+    expect(countStep).toMatch(/exit 1/)
+  })
+
+  it("สตริงที่นับไม่อยู่ในโค้ดส่วนอื่น (ไม่แก้ด้วยการกรอง/ปิด log)", () => {
+    const repo = path.resolve(BACKEND_DIR, "../..")
+    const out = execFileSync("git", ["grep", "-l", "-F", pattern ?? "", "--", ".", ":!docs"], {
+      cwd: repo,
+      encoding: "utf8",
+    })
+      .split("\n")
+      .filter(Boolean)
+    expect(out).toEqual([".github/workflows/ci.yml"])
+  })
+})
