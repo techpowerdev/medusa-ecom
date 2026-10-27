@@ -122,12 +122,12 @@ export const createMemberPaymentCollectionsStep = createStep(
     const orders = await ordersById(
       container,
       members.map((m) => m.order_id),
-      ["total", "payment_collections.id"]
+      ["total", "raw_total", "payment_collections.id"]
     )
     const created: { id: string; order_id: string }[] = []
     for (const order of orders.filter((o) => !o.payment_collections?.length)) {
       const { result } = await createOrderPaymentCollectionWorkflow(container).run({
-        input: { order_id: order.id, amount: memberPaymentAmount(order.total).toNumber() },
+        input: { order_id: order.id, amount: memberPaymentAmount(order.raw_total ?? order.total).toNumber() },
       })
       created.push({ id: result[0].id, order_id: order.id })
     }

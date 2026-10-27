@@ -27,6 +27,12 @@ import { LOCK_TIMEOUT, LOCK_TTL } from "./join-group"
 
 export type MembershipPaymentInput = { membership_id: string }
 type Member = { id: string; order_id: string }
+export type MembershipPaymentResult = {
+  order_id: string
+  membership_status: MembershipStatus
+  action: ReturnType<typeof paymentCapturedAction>
+  convert: boolean
+}
 
 const groupBuy = (container: MedusaContainer): GroupBuyModuleService => container.resolve(GROUP_BUY_MODULE)
 
@@ -64,19 +70,21 @@ const lockKey = (input: MembershipPaymentInput) =>
 // spec 04: payment.captured → membership `paid` (idempotent ผ่านสถานะ) — compensation คืน `awaiting_payment` ถ้าแปลง order ล้ม
 export const markMembershipPaidStep = createStep(
   "mark-membership-paid",
-  async (input: MembershipPaymentInput, { container }) => {
+  async (input: MembershipPaymentInput, { container }): Promise<StepResponse<MembershipPaymentResult, string | null>> => {
     const m = await loadMembership(container, input.membership_id)
     const action = paymentCapturedAction(m.status, m.collectionStatuses)
-    if (action === "orphan") {
-      container
-        .resolve(ContainerRegistrationKeys.LOGGER)
-        .error(`group-buy: payment captured for ${m.status} membership ${m.id} (order ${m.order_id}) — refund manually`)
-    }
+    // orphan (เงินเข้าแต่ membership ไม่ได้รอชำระ) → subscriber ส่ง ops alert จาก action ที่คืนไป
     if (action !== "mark_paid") {
-      return new StepResponse({ order_id: m.order_id as string, convert: false }, null)
+      return new StepResponse(
+        { order_id: m.order_id as string, membership_status: m.status, action, convert: false },
+        null
+      )
     }
     await groupBuy(container).updateGroupBuyMemberships({ id: m.id, status: "paid" })
-    return new StepResponse({ order_id: m.order_id as string, convert: !!m.order?.is_draft_order }, m.id as string)
+    return new StepResponse(
+      { order_id: m.order_id as string, membership_status: m.status, action, convert: !!m.order?.is_draft_order },
+      m.id as string
+    )
   },
   async (id, { container }) => {
     if (id) {
@@ -92,6 +100,8 @@ export const confirmGroupBuyMembershipPaymentWorkflow = createWorkflow(
     acquireLockStep({ key, timeout: LOCK_TIMEOUT, ttl: LOCK_TTL })
     const result = markMembershipPaidStep(input)
     // draft order → order ปกติด้วย workflow ของ Medusa (emit order.placed → อีเมลยืนยันคำสั่งซื้อเดิม)
+    // ข้อควรรู้: workflow นี้จอง inventory (สต็อกไม่พอ = ล้ม → compensation คืน awaiting_payment แล้ว subscriber ส่ง ops alert)
+    // และคำนวณ tax lines ใหม่ (updateOrderTaxLinesWorkflow) — ถ้า tax rate เปลี่ยนระหว่างรอชำระ total หลังแปลงจะไม่เท่ายอดที่ capture
     when("convert-group-buy-draft-order", { result }, ({ result }) => result.convert).then(() => {
       convertDraftOrderWorkflow.runAsStep({ input: { id: result.order_id } })
     })

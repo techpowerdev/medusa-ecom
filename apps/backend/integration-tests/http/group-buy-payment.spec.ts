@@ -19,6 +19,7 @@ jest.setTimeout(240 * 1000)
 const HOUR = 60 * 60 * 1000
 // mock provider ของ Medusa (seed เปิดใน region) — ไม่ออก network
 const PROVIDER = "pp_system_default"
+const OPS_EMAIL = "gb5-ops@example.com"
 
 // GB-5: payment.captured → membership paid + แปลง draft order (AC-2 ส่วน API, AC-37) และหมดเวลาชำระเงิน (AC-10)
 medusaIntegrationTestRunner({
@@ -31,6 +32,7 @@ medusaIntegrationTestRunner({
     let variantStocked: string
 
     beforeAll(async () => {
+      process.env.OPS_ALERT_EMAIL = OPS_EMAIL
       const container = getContainer()
       await seedThailand({ container, args: [] })
       pk = await getPublishableKey(container)
@@ -163,6 +165,12 @@ medusaIntegrationTestRunner({
         member.headers
       )
       const session = data.payment_collection.payment_sessions[0]
+      if ((member as { cancelFirst?: boolean }).cancelFirst) {
+        await groupBuy().updateGroupBuyMemberships({
+          id: (member as { membership_id?: string }).membership_id!,
+          status: "cancelled",
+        })
+      }
       // order.placed มาจาก convertDraftOrderWorkflow ใน subscriber ของ payment.captured
       const settled = Promise.allSettled(events.map((e) => TestEventUtils.waitSubscribersExecution(e, eventBus())))
       await processPaymentWorkflow(getContainer()).run({
@@ -170,6 +178,28 @@ medusaIntegrationTestRunner({
       })
       await settled
       return session
+    }
+
+    const reemitCaptured = async (sessionId: string) => {
+      const { data: payments } = await query().graph({
+        entity: "payment",
+        fields: ["id"],
+        filters: { payment_session_id: sessionId },
+      })
+      const again = TestEventUtils.waitSubscribersExecution("payment.captured", eventBus())
+      await eventBus().emit({ name: "payment.captured", data: { id: payments[0].id } })
+      await again.catch(() => undefined)
+    }
+
+    const expectOpsAlert = async (member: { order_id: string; membership_id: string }, reason: string) => {
+      const alerts = await getContainer()
+        .resolve(Modules.NOTIFICATION)
+        .listNotifications({ template: "group-buy-paid-without-order", resource_id: member.order_id })
+      expect(alerts).toHaveLength(1)
+      expect(alerts[0].to).toEqual(OPS_EMAIL)
+      expect(alerts[0].data).toEqual(
+        expect.objectContaining({ reason, membership_id: member.membership_id, order_id: member.order_id })
+      )
     }
 
     it.each([
@@ -247,7 +277,7 @@ medusaIntegrationTestRunner({
         locations.map((l) => ({ inventory_item_id: inventoryItemId, location_id: l.id, stocked_quantity: 0 }))
       )
 
-      await pay(member, ["payment.captured"])
+      const session = await pay(member, ["payment.captured"])
       const { errors } = await confirmGroupBuyMembershipPaymentWorkflow(container).run({
         input: { membership_id: member.membership_id },
         throwOnError: false,
@@ -258,6 +288,22 @@ medusaIntegrationTestRunner({
       const order = await orderOf(member.order_id)
       expect(order.is_draft_order).toBe(true)
       expect(order.payment_collections[0].status).toEqual("completed")
+      // review #185: เงินเข้าแล้วแต่ไม่มี order → alert ถึง ops (spec 06 กฎข้อ 7D) ครั้งเดียวแม้ event ซ้ำ
+      await reemitCaptured(session.id)
+      await expectOpsAlert(member, "convert_failed")
+    })
+
+    it("orphan: payment captured after the membership was cancelled → ops alert once, membership stays cancelled", async () => {
+      const { joined } = await succeededGroup(1)
+      const [member] = joined
+      // จำลองว่า job หมดเวลายกเลิก membership ไปก่อนที่ capture จะมาถึง (เช่นพร้อมเพย์จ่ายช้า)
+      const pending = { ...member, cancelFirst: true }
+      const session = await pay(pending, ["payment.captured"])
+      await reemitCaptured(session.id)
+
+      expect((await membershipOf(member.membership_id)).status).toEqual("cancelled")
+      expect((await orderOf(member.order_id)).is_draft_order).toBe(true)
+      await expectOpsAlert(member, "membership_cancelled")
     })
 
     it("AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched", async () => {
