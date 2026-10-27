@@ -379,12 +379,16 @@ export async function applyPromotions(codes: string[]) {
 
   return sdk.store.cart
     .update(cartId, { promo_codes: codes }, {}, headers)
-    .then(async () => {
+    .then(async ({ cart }: { cart: HttpTypes.StoreCart }) => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag, { expire: 0 })
 
       const fulfillmentCacheTag = await getCacheTag("fulfillment")
       revalidateTag(fulfillmentCacheTag, { expire: 0 })
+
+      // CORE-4g (กฎข้อ 63b): code ที่ใช้ไม่ได้ (เช่น campaign หมดอายุ) Medusa ตอบ 200 แต่ไม่ใส่ใน promotions
+      // — คืน code ที่อยู่ใน cart จริงให้ผู้เรียกตรวจ
+      return (cart.promotions ?? []).flatMap((p) => (p.code ? [p.code] : []))
     })
     .catch(medusaError)
 }
