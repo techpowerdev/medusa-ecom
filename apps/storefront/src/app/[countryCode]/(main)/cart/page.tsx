@@ -1,5 +1,6 @@
 import { retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
+import { getCartFlashExceeded } from "@lib/data/flash-sales"
 import CartTemplate from "@modules/cart/templates"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
@@ -15,7 +16,12 @@ export default async function Cart() {
     return notFound()
   })
 
-  const customer = await retrieveCustomer()
+  const [customer, flashExceeded] = await Promise.all([
+    retrieveCustomer(),
+    cart ? getCartFlashExceeded(cart) : {},
+  ])
 
-  return <CartTemplate cart={cart} customer={customer} />
+  return (
+    <CartTemplate cart={cart} customer={customer} flashExceeded={flashExceeded} />
+  )
 }

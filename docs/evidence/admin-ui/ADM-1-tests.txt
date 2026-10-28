@@ -1,0 +1,40 @@
+# ADM-1 — ผลทดสอบ (spec 08 AC-1, AC-2) 2026-10-28 Node v24.12.0
+
+## Red (ก่อนแก้ dependency/route config)
+- deps.unit.spec.ts: ล้ม 4 ข้อ — @medusajs/ui คาด 4.2.8 ได้ 4.2.6; @medusajs/icons, react-hook-form, @hookform/resolvers คาด 2.22.1/7.83.0/5.5.7 ได้ undefined
+- deps.unit.spec.ts: import("@medusajs/dashboard/lib") ผ่านตั้งแต่ต้น (ไม่ต้องแก้ jest config)
+- medusa-ui.unit.spec.ts: ล้ม 2 ข้อ — evouchers, group-buying ไม่มี icon ใน defineRouteConfig
+
+## Green: admin tests
+PASS src/admin/__tests__/deps.unit.spec.ts
+  admin dependencies (spec 08 AC-1)
+    ✓ @medusajs/ui ตรงกับ dependency ของ @medusajs/dashboard แบบ exact (1 ms)
+    ✓ @medusajs/icons ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ react-hook-form ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ @hookform/resolvers ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ zod ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ @tanstack/react-query ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ react-router-dom ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ jest โหลด @medusajs/dashboard/lib ได้ (กฎ 2) (774 ms)
+
+PASS src/admin/__tests__/medusa-ui.unit.spec.ts
+  route config icon (spec 08 AC-2)
+    ✓ พบ route ที่ต้องตรวจ (1 ms)
+    ✓ evouchers มี icon ที่ import จาก @medusajs/icons
+    ✓ group-buying มี icon ที่ import จาก @medusajs/icons
+
+Test Suites: 2 passed, 2 total
+Tests:       11 passed, 11 total
+Snapshots:   0 total
+Time:        1.017 s, estimated 2 s
+Ran all test suites matching /src\/admin\/__tests__/i.
+
+## pnpm --filter @dtc/backend test:unit
+Test Suites: 70 passed, 70 total
+Tests:       682 passed, 682 total
+
+## pnpm typecheck (worktree ไม่มี .medusa) / pnpm lint / backend build
+typecheck: exit 0; lint: exit 0 (0 errors); medusa build: Backend + Frontend build completed successfully
+
+## lockfile
+จำนวน @medusajs/ui@4.2.6 ใน pnpm-lock.yaml: 0

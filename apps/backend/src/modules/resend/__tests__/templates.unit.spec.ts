@@ -279,5 +279,31 @@ describe("renderEmailTemplate", () => {
       expect(email!.subject).toMatch(/[\u0E00-\u0E7F]/)
       expect(email!.html).toContain("#1042")
     })
+
+    // GB-5 (review #185): alert ถึง ops เมื่อเงินเข้าแต่ไม่มี order ที่ใช้ได้
+    it("renders the paid-without-order ops alert with ids, reason and the runbook title (escaped)", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER, {
+        reason: "convert_failed",
+        membership_id: "gbmem_<1>",
+        order_id: "order_01",
+        payment_id: "pay_01",
+        amount: "700",
+        error: "Not enough stock",
+      })
+      expect(email!.subject).toContain("GROUP_BUY_PAID_WITHOUT_ORDER")
+      expect(email!.subject).toContain("order_01")
+      expect(email!.html).toContain("gbmem_&lt;1&gt;")
+      expect(email!.html).toContain("pay_01")
+      expect(email!.html).toContain("convert_failed")
+      expect(email!.html).toContain("Not enough stock")
+      expect(email!.html).toContain("group buy: เงินเข้าแต่ไม่มี order")
+    })
+
+    // GB-5 (AC-10): อีเมล "หมดเวลาชำระเงิน"
+    it("renders the payment-expired email in Thai with the order number", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAYMENT_EXPIRED, { order: data.order })
+      expect(email!.subject).toMatch(/[฀-๿]/)
+      expect(email!.html).toContain("#1042")
+    })
   })
 })

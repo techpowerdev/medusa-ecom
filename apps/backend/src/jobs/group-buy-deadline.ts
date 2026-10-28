@@ -10,13 +10,14 @@ import {
 } from "../modules/group_buy/utils/group-outcome"
 import { setGroupBuyCampaignStatusWorkflow } from "../workflows/group-buy/campaign-status"
 import { failGroupWorkflow, succeedGroupWorkflow } from "../workflows/group-buy/group-outcome"
+import { expireGroupBuyMembershipPaymentWorkflow } from "../workflows/group-buy/membership-payment"
 
 // spec 04 Non-functional: ≤ 50 กลุ่มต่อรอบ
 const BATCH = 50
 
 // spec 04 scheduled job (GB-4): กลุ่ม open ที่ ends_at <= now → succeed/fail ตามเป้าหมาย (AC-3, AC-11, AC-12)
 // และแคมเปญ active ที่ ends_at ของ Medusa campaign ผ่านไปแล้ว → ended (AC-22)
-// หมดเวลาชำระเงิน (awaiting_payment) อยู่ใน GB-5
+// และ membership awaiting_payment ที่กลุ่มเลย pay_deadline_at → ยกเลิก + อีเมลหมดเวลา (GB-5, AC-10)
 export default async function groupBuyDeadlineJob(container: MedusaContainer) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const service: GroupBuyModuleService = container.resolve(GROUP_BUY_MODULE)
@@ -42,6 +43,23 @@ export default async function groupBuyDeadlineJob(container: MedusaContainer) {
       logger[deadlineSettleLogLevel(error)](
         `group-buy-deadline: failed to settle group ${group.id}: ${(error as Error).message}`
       )
+    }
+  }
+
+  // GB-5: ตรวจซ้ำใต้ lock ของ membership ใน workflow (ข้าม order ที่มีเงินเข้าแล้ว)
+  const expiredFilters = { status: "awaiting_payment" as const, group: { pay_deadline_at: { $lte: now } } }
+  const [, expiredCount] = await service.listAndCountGroupBuyMemberships(expiredFilters, { select: ["id"], take: 1 })
+  const expired = await service.listGroupBuyMemberships(expiredFilters, {
+    select: ["id"],
+    take: BATCH,
+    skip: deadlineBatchSkip(expiredCount, BATCH, tick),
+    order: { joined_at: "ASC" },
+  })
+  for (const membership of expired) {
+    try {
+      await expireGroupBuyMembershipPaymentWorkflow(container).run({ input: { membership_id: membership.id } })
+    } catch (error) {
+      logger.error(`group-buy-deadline: failed to expire membership ${membership.id}: ${(error as Error).message}`)
     }
   }
 
