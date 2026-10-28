@@ -29,7 +29,10 @@ function withPayment(body: Gb8, { payment_status, collection, session }: Payment
   if (payment_status) body.order.payment_status = payment_status
   if (collection) pc.status = collection
   if (session) {
-    pc.payment_sessions = [{ id: "payses_mock", provider_id: CARD_PROVIDER, status: session, amount: pc.amount, data: {} }]
+    // คง session จริง (มี client_secret เมื่อ CI มี Stripe key — StripeWrapper ต้องใช้) เปลี่ยนแค่ status; ไม่มี session จริงจึงสร้างแทน
+    pc.payment_sessions = pc.payment_sessions.length
+      ? pc.payment_sessions.map((s: Gb8) => ({ ...s, status: session }))
+      : [{ id: "payses_mock", provider_id: CARD_PROVIDER, status: session, amount: pc.amount, data: {} }]
   }
   return body
 }

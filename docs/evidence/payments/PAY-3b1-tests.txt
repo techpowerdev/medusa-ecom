@@ -30,3 +30,6 @@
 pnpm lint: 0 errors (warning เดิมของ starter)
 pnpm typecheck: ผ่าน (รันโดยไม่มี apps/backend/.medusa)
 pnpm --filter storefront build: ผ่าน (route ƒ /[countryCode]/account/orders/[id]/pay)
+
+## CI รอบแรก (run 40605095918)
+บัตร 4242 (Stripe test mode) ผ่าน; 3 กรณี d2 "ยังไม่ชำระ" ล้มเพราะ mock แทน session จริงด้วย session ที่ไม่มี client_secret → StripeWrapper (มี Stripe key ใน CI) throw ก่อนแสดง order-pay-error — แก้ mock ให้คง session จริงแล้วเปลี่ยนแค่ status
