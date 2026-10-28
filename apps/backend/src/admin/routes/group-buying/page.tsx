@@ -1,4 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
+import { Users } from "@medusajs/icons"
 import {
   Badge,
   Container,
@@ -117,6 +118,7 @@ const GroupBuyingPage = () => {
 
 export const config = defineRouteConfig({
   label: "Group buying",
+  icon: Users,
 })
 
 export default GroupBuyingPage
