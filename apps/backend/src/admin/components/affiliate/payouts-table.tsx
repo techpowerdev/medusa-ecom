@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react"
 import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
 import { formatAmount, formatDate } from "../../lib/affiliate-format"
 import { canCancelPayout, canMarkPaid } from "../../lib/affiliate-payout"
-import { AffiliateListTable } from "./list-table"
+import { AffiliateCell, AffiliateListTable } from "./list-table"
 import { MarkPaidPrompt } from "./mark-paid-prompt"
 import { PayoutFormModal } from "./payout-form"
 
@@ -95,6 +95,11 @@ export const PayoutsTable = () => {
           </div>
         ),
       }),
+      // AF-14: ชื่อ/อีเมล affiliate ถัดจากปุ่ม เพื่อให้อยู่ในจอที่ 1280px
+      columnHelper.accessor("affiliate_id", {
+        header: "Affiliate",
+        cell: ({ row }) => <AffiliateCell row={row.original} />,
+      }),
       columnHelper.accessor((row) => formatAmount(row.amount, row.currency), {
         id: "amount",
         header: "Amount",
@@ -106,7 +111,6 @@ export const PayoutsTable = () => {
       columnHelper.accessor("paid_at", { header: "Paid at", cell: ({ getValue }) => formatDate(getValue()) }),
       columnHelper.accessor("reference", { header: "Reference", cell: ({ getValue }) => getValue() ?? "-" }),
       columnHelper.accessor("id", { header: "Payout" }),
-      columnHelper.accessor("affiliate_id", { header: "Affiliate" }),
     ],
     // confirmCancel ใช้แค่ ref, prompt, mutateAsync และ setter ของ state ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending เปลี่ยน
     [cancel.isPending],
@@ -124,7 +128,7 @@ export const PayoutsTable = () => {
           Create payout
         </Button>
       </div>
-      <AffiliateListTable resource="payouts" columns={columns} empty="No payouts yet" />
+      <AffiliateListTable resource="payouts" columns={columns} empty="No payouts yet" affiliateNames />
       {creating && <PayoutFormModal key={creating} onClose={() => setCreating(undefined)} />}
       {markingPaid && (
         <MarkPaidPrompt
