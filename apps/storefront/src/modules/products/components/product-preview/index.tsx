@@ -1,8 +1,8 @@
 import { Text } from "@modules/common/components/ui"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
-import type { FlashVariantPrice } from "@lib/util/flash-sale"
-import { CardFlashPrice, FlashPrice } from "../flash-sale"
+import type { CardFlash } from "@lib/util/flash-sale"
+import { CardFlashPrice, CardFlashView } from "../flash-sale"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "../thumbnail"
 import PreviewPrice from "./price"
@@ -17,8 +17,8 @@ export default async function ProductPreview({
   product: HttpTypes.StoreProduct
   isFeatured?: boolean
   region: HttpTypes.StoreRegion
-  /** FS-13 (spec 03 กฎข้อ 18): ราคา flash ของการ์ดบน PLP — ไม่ส่ง = แสดงราคาปกติ */
-  flashPrice?: FlashVariantPrice | null
+  /** FS-13 (spec 03 กฎข้อ 18): ราคา flash ของการ์ดบน PLP — ไม่ส่ง = แสดงราคาปกติ; FS-16: sold out → ป้าย + ราคาปกติ */
+  flashPrice?: CardFlash | null
   /** FS-14 (กฎข้อ 19): อ่านราคา flash จาก `CardFlashPricesProvider` ฝั่ง client (หน้า static เช่น rail หน้าแรก) */
   liveFlash?: boolean
 }) {
@@ -55,7 +55,12 @@ export default async function ProductPreview({
           </Text>
           <div className="flex items-center gap-x-2">
             {flashPrice ? (
-              <FlashPrice price={flashPrice} />
+              <CardFlashView
+                flash={flashPrice}
+                fallback={
+                  cheapestPrice && <PreviewPrice price={cheapestPrice} />
+                }
+              />
             ) : liveFlash ? (
               <CardFlashPrice
                 productId={product.id}

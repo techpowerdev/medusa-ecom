@@ -3,6 +3,7 @@
 import { getActiveFlashSales } from "@lib/data/flash-sales"
 import {
   type ActiveFlashSales,
+  type CardFlash,
   type FlashOffer,
   type FlashVariantPrice,
   cardFlashPrices,
@@ -17,6 +18,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useSyncExternalStore,
 } from "react"
 
 type FlashOfferState = { offer: FlashOffer | null; now: number }
@@ -24,23 +26,36 @@ type FlashOfferState = { offer: FlashOffer | null; now: number }
 /**
  * FS-6/FS-13: offer flash ของ variant ที่เลือกบน PDP — PDP เป็น static (revalidate 60) จึงดึงข้อมูลฝั่ง client ทุกครั้งที่เปิดหน้า
  * ใช้ร่วมกันระหว่างกล่อง flash, ปุ่มเพิ่มลง cart (disable เมื่อ sold_out, กฎข้อ 18) และแถบล่างบนมือถือ
+ * FS-16 (กฎข้อ 21a): `loading` = request flash ของชุด variant ปัจจุบันยังไม่ตอบ (สำเร็จหรือ error) — HTML ฝั่ง server
+ * (ฟอร์ม no-JS) ไม่อยู่ในสถานะรอ จึงนับเฉพาะหลัง hydrate
  */
 export function useFlashOffer(
   product: HttpTypes.StoreProduct,
   region: HttpTypes.StoreRegion,
   variant?: HttpTypes.StoreProductVariant
-): FlashOfferState {
+): FlashOfferState & { loading: boolean } {
   const [data, setData] = useState<ActiveFlashSales | null>(null)
+  const [answeredKey, setAnsweredKey] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const hydrated = useSyncExternalStore(noopSubscribe, isClient, isServer)
+  const key = `${region.id}:${(product.variants ?? []).map((v) => v.id)}`
 
   useEffect(() => {
     let alive = true
     const ids = (product.variants ?? []).map((v) => v.id)
-    getActiveFlashSales(region.id, ids).then((res) => alive && setData(res))
+    // server action ล้ม (เช่น 500) → reject: ถือว่าไม่มีข้อมูล flash แล้วปลดสถานะรอ ไม่ค้างปุ่ม
+    getActiveFlashSales(region.id, ids)
+      .catch(() => null)
+      .then((res) => {
+        if (alive) {
+          setData(res)
+          setAnsweredKey(key)
+        }
+      })
     return () => {
       alive = false
     }
-  }, [product.variants, region.id])
+  }, [product.variants, region.id, key])
 
   const offer = flashOfferForVariant(data, variant?.id, now)
   const ticking = !!offer
@@ -54,8 +69,12 @@ export function useFlashOffer(
     return () => clearInterval(timer)
   }, [ticking])
 
-  return { offer, now }
+  return { offer, now, loading: hydrated && answeredKey !== key }
 }
+
+const noopSubscribe = () => () => {}
+const isClient = () => true
+const isServer = () => false
 
 /**
  * FS-14 (กฎข้อ 19): ราคา flash ของการ์ดที่ดึงฝั่ง client (หน้าแรกเป็น static, `/store` มาจาก search hit) — no-store ตามกฎข้อ 4
@@ -64,8 +83,8 @@ export function useFlashOffer(
 export function useCardFlashPrices(
   regionId: string,
   variantIdsByProduct: Record<string, string[]>
-): Record<string, FlashVariantPrice> {
-  const [prices, setPrices] = useState<Record<string, FlashVariantPrice>>({})
+): Record<string, CardFlash> {
+  const [prices, setPrices] = useState<Record<string, CardFlash>>({})
   const key = JSON.stringify(variantIdsByProduct)
 
   useEffect(() => {
@@ -86,11 +105,9 @@ export function useCardFlashPrices(
   return key === "{}" ? NO_PRICES : prices
 }
 
-const NO_PRICES: Record<string, FlashVariantPrice> = {}
+const NO_PRICES: Record<string, CardFlash> = {}
 
-const CardFlashPricesContext = createContext<Record<string, FlashVariantPrice>>(
-  {}
-)
+const CardFlashPricesContext = createContext<Record<string, CardFlash>>({})
 
 /** FS-14: ดึงราคา flash ครั้งเดียวต่อรายการการ์ด (rail หน้าแรก) ให้ `CardFlashPrice` ของแต่ละการ์ดอ่าน */
 export function CardFlashPricesProvider({
@@ -118,8 +135,37 @@ export function CardFlashPrice({
   productId: string
   fallback: ReactNode
 }) {
-  const price = useContext(CardFlashPricesContext)[productId]
-  return price ? <FlashPrice price={price} /> : <>{fallback}</>
+  const flash = useContext(CardFlashPricesContext)[productId]
+  return <CardFlashView flash={flash} fallback={fallback} />
+}
+
+/**
+ * ราคาบนการ์ด: ราคา flash, หรือป้าย sold out + ราคาปกติ (FS-16 กฎข้อ 21c), หรือราคาปกติ (`fallback`) เมื่อไม่อยู่ในแคมเปญ/ยังไม่ได้ข้อมูล
+ */
+export function CardFlashView({
+  flash,
+  fallback,
+}: {
+  flash?: CardFlash | null
+  fallback: ReactNode
+}) {
+  if (!flash) {
+    return <>{fallback}</>
+  }
+  if ("sold_out" in flash) {
+    return (
+      <>
+        <span
+          className="rounded-rounded bg-ui-bg-subtle px-2 py-0.5 text-small-regular text-ui-fg-error"
+          data-testid="flash-card-sold-out"
+        >
+          แฟลชเซลหมดแล้ว
+        </span>
+        {fallback}
+      </>
+    )
+  }
+  return <FlashPrice price={flash} />
 }
 
 /** ราคา flash + ราคาขีดฆ่า (test id เดียวกันทั้งกล่องบน PDP, แถบล่างบนมือถือ และการ์ด PLP — AC-19) */

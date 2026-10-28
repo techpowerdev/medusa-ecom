@@ -209,7 +209,11 @@ export default function ProductActions({
             )}
           </div>
 
-          <ProductPrice product={product} variant={selectedVariant} />
+          <ProductPrice
+            product={product}
+            variant={selectedVariant}
+            struck={!!flash.offer && !flash.offer.sale.sold_out}
+          />
 
           <FlashSale {...flash} />
 
@@ -258,8 +262,11 @@ export default function ProductActions({
               !!disabled ||
               isAdding ||
               !isValidVariant ||
-              flashRemaining != null
+              flashRemaining != null ||
+              flash.loading
             }
+            // FS-16 (กฎข้อ 21a): รอข้อมูล flash (sold_out/remaining) ก่อนให้กด
+            aria-busy={flash.loading}
             variant="primary"
             className="w-full h-10"
             isLoading={isAdding}

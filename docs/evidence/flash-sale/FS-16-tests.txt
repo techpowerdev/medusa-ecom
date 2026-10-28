@@ -1,0 +1,83 @@
+# FS-16 — evidence ของ test (spec 03 กฎข้อ 21, AC-23) — รันในเครื่อง 2026-10-28
+# storefront: next build + next start (production) :8273, backend: medusa start (build) :9273 (DB medusa_b_fs16, Redis db 4)
+
+## Red (ก่อนเขียนโค้ด) — unit Vitest (src/lib/util/flash-sale.test.ts)
+ FAIL  src/lib/util/flash-sale.test.ts > cardFlashPrices (FS-14) > แคมเปญ sold_out → { sold_out: true } (ไม่มีราคา flash)
+AssertionError: expected {} to deeply equal { prod_x: { sold_out: true } }
+      Tests  1 failed | 26 passed (27)
+# (อีก 2 เคสใหม่ — มี variant ขายได้ → ราคา flash, sold out เลย ends_at → {} — เป็น guard ที่ผ่านอยู่แล้วบนโค้ดเดิม)
+
+## Red — e2e บน build ของโค้ดเดิม (stash src, คง e2e/flash-sale-fs16.spec.ts)
+  ✘  1 [chromium] › e2e/flash-sale-fs16.spec.ts:132:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (5.8s)
+    Error: expect(locator).toHaveCSS(expected) failed
+    Expected: "line-through"
+    Received: "none"
+    > 141 |     await expect(page.getByTestId("product-price")).toHaveCSS("text-decoration-line", "line-through")
+  1 failed
+  ✘  1 [chromium] › e2e/flash-sale-fs16.spec.ts:160:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (7.4s)
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Expected: "true"
+    Received: ""
+    > 180 |     await expect(button).toHaveAttribute("aria-busy", "true")
+  1 failed
+  ✘  1 [chromium] › e2e/flash-sale-fs16.spec.ts:147:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (5.5s)
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Expected: "true"
+    Received: ""
+    > 158 |     await expect(button).toHaveAttribute("aria-busy", "true")
+  1 failed
+# หมายเหตุ: รอบแรกของ test 500 ผ่านบนโค้ดเดิม (assert ได้ก่อน hydrate) → แก้ test ให้รอ mock ตอบและตรวจ aria-busy ระหว่างรอ แล้ว Red ตามด้านบน
+
+## Green — unit Vitest
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashPrices (FS-14) > map ราคา flash ต่อสินค้า เฉพาะสินค้าที่มี variant ในแคมเปญ 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashPrices (FS-14) > ไม่มีข้อมูล flash → {} 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashPrices (FS-14) > แคมเปญ sold_out → { sold_out: true } (ไม่มีราคา flash) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashPrices (FS-14) > มี variant ที่ยังขายราคา flash ได้ → ราคา flash ไม่ใช่ป้าย sold out 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashPrices (FS-14) > แคมเปญ sold out ที่เลย ends_at แล้ว → ไม่มีป้าย (การ์ดปกติ) 0ms
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+ Test Files  50 passed (50)
+      Tests  534 passed (534)
+
+## Green — e2e ของ task นี้ (E2E_SAVE_EVIDENCE=1)
+  ✓  1 [chromium] › e2e/flash-sale-fs16.spec.ts:132:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (1.2s)
+  ✓  2 [chromium] › e2e/flash-sale-fs16.spec.ts:147:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (2.4s)
+  ✓  3 [chromium] › e2e/flash-sale-fs16.spec.ts:167:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (7.8s)
+  3 passed (13.6s)
+
+## Regression — e2e flash-sale ที่เกี่ยวข้อง + PDP quantity + no-JS (workers=1)
+  ✓   1 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (4.0s)
+  ✓   2 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (652ms)
+  ✓   3 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (577ms)
+  ✓   4 [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton (2.9s)
+  ✓   5 [chromium] › e2e/core-14d-cart-after-login.spec.ts:139:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error) (1.0s)
+  ✓   6 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS on) (939ms)
+  ✓   7 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS off) (919ms)
+  ✓   8 [chromium] › e2e/core-14d-cart-after-login.spec.ts:218:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่มีปุ่มยืนยัน (553ms)
+  ✓   9 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS เปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS on) (992ms)
+  ✓  10 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS ปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS off) (737ms)
+  ✓  11 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น zz → ไม่มี 5xx เห็น error ไทย (487ms)
+  ✓  12 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น /evil.example → ไม่มี 5xx เห็น error ไทย (445ms)
+  ✓  13 [chromium] › e2e/core-24-pdp-quantity.spec.ts:32:5 › AC-94: (JS) เลือก 3 ใน product-quantity-select แล้วกดเพิ่มลง cart → cart มี line qty 3 (3.3s)
+  ✓  14 [chromium] › e2e/core-24-pdp-quantity.spec.ts:69:7 › ปิด JavaScript › AC-94: (no-JS, ไม่ล็อกอิน) เลือก 2 แล้ว submit และ login → cart มี qty 2 (3.7s)
+  ✓  15 [chromium] › e2e/core-24-pdp-quantity.spec.ts:100:5 › qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-cart-error ภาษาไทย ปุ่มและตัวเลือกจำนวนใช้ต่อได้ (1.6s)
+  ✓  16 [chromium] › e2e/flash-sale-fs13.spec.ts:121:5 › AC-19: การ์ดสินค้าบน PLP (desktop) แสดงราคา flash + ราคาขีดฆ่า (260ms)
+  ✓  17 [chromium] › e2e/flash-sale-fs13.spec.ts:133:5 › AC-19: PDP ที่ 375×812 แถบล่างแสดงราคา flash (2.0s)
+  ✓  18 [chromium] › e2e/flash-sale-fs13.spec.ts:149:5 › AC-19: แคมเปญ sold out → add-product-button disabled และเห็น flash-sold-out (5.1s)
+  ✓  19 [chromium] › e2e/flash-sale-fs14.spec.ts:169:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (556ms)
+  ✓  20 [chromium] › e2e/flash-sale-fs14.spec.ts:192:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (284ms)
+  ✓  21 [chromium] › e2e/flash-sale-fs14.spec.ts:207:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (977ms)
+  ✓  22 [chromium] › e2e/flash-sale-fs14.spec.ts:255:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.2m)
+  ✓  23 [chromium] › e2e/flash-sale-fs15.spec.ts:122:5 › AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 → เตือน + ปุ่ม disabled; เลือก 2 → กดได้ (440ms)
+  ✓  24 [chromium] › e2e/flash-sale-fs15.spec.ts:149:5 › AC-21: show_remaining=false (remaining_units=null) เลือก 3 → ไม่เตือน (324ms)
+  ✓  25 [chromium] › e2e/flash-sale-fs15.spec.ts:165:5 › AC-21: cart มี line ของสินค้า flash qty 3 ขณะ remaining_units=2 → cart-flash-exceeds-remaining (1.1s)
+  ✓  26 [chromium] › e2e/flash-sale-fs15.spec.ts:195:5 › AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkout → ข้อความไทยของ code ในขั้น review (3.4s)
+  ✓  27 [chromium] › e2e/flash-sale-storefront.spec.ts:183:5 › AC-4, AC-13: PDP แสดง banner, countdown, ราคา flash + ราคาขีดฆ่า, เหลือ N ชิ้น และหายเมื่อเลย ends_at (T−1min / T+1min) (549ms)
+  ✓  28 [chromium] › e2e/flash-sale-storefront.spec.ts:212:5 › AC-1, AC-8 (g): cart ได้ส่วนลด flash; ใส่ code แล้วแสดงข้อความว่าใช้ร่วมกันไม่ได้ (1.1s)
+  ✓  29 [chromium] › e2e/flash-sale-storefront.spec.ts:245:5 › AC-13 (e): units_sold ถึง total_cap → PDP แสดง 'สินค้าหมด' (2.4s)
+  ✓  30 [chromium] › e2e/flash-sale-storefront.spec.ts:285:5 › AC-1: หลัง ends_at cart ใหม่แสดงราคาเต็ม (622ms)
+  30 passed (1.9m)
+
+## lint / typecheck (root)
+pnpm lint → 0 errors, 31 warnings (เท่าเดิมก่อน task; ไม่มี warning ใหม่จากไฟล์ของ task)
+pnpm typecheck → exit 0 (storefront tsc --noEmit ผ่านก่อน build ด้วย; backend ไม่ถูกแก้)
