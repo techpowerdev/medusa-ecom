@@ -52,7 +52,9 @@ export const AdminListAffiliatePrograms = listParams().extend({
 
 export const AdminGetAffiliateParams = createFindParams()
 
+// AF-14 (กฎ 38): filter id ค่าเดียวหรือ id[] — รูปเดียวกับ validator ของ Medusa core (เช่น AdminCustomersParams)
 export const AdminListAffiliates = listParams().extend({
+  id: z.union([z.string(), z.array(z.string())]).optional(),
   status: z.enum(["pending", "active", "suspended"]).optional(),
 })
 

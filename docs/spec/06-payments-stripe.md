@@ -115,6 +115,9 @@
    `completed` ซึ่งข้อ (b) ไม่แสดงฟอร์มตั้งแต่ต้น (ถ้าเกิดขึ้น predicate จริงจาก collection `completed` และหน้าแสดงตามข้อ (b) เหมือนเดิม);
    `not_paid`/`awaiting`/`requires_action`/`canceled` และ session `pending`/`requires_more`/`error`/`canceled` อยู่นอก — เหตุผลที่ไม่ match status code/ข้อความ: ฝั่งที่แพ้ race
    ได้ code ต่างกันตามว่า provider cancel สำเร็จหรือไม่ และข้อความมาจาก MikroORM/Stripe ที่เปลี่ยนได้เมื่อ bump เวอร์ชัน ส่วนสถานะใน GB-8 เป็นสัญญาของเราเอง;
+   (d3) (รอบ 12, review #189) กลับมาที่หน้า pay จาก redirect ของ Stripe (3DS/พร้อมเพย์) ที่ query มี `payment_intent` + `redirect_status`: `succeeded`/`processing` → เข้าทาง poll GB-8
+   ของข้อ (d) ทันทีโดยไม่แสดงฟอร์มเดิม (webhook อาจยังไม่มา); `failed`/`requires_payment_method` → `order-pay-error` + ฟอร์มตามข้อ (b); ใน (d2) ถ้าการอ่าน GB-8 ล้มเอง → แสดง
+   `order-pay-error` ไม่ poll ต่อ — ปลอดภัยเพราะถ้าเงินเข้าแล้ว การลองใหม่ได้ 409 `PAYMENT_ALREADY_COMPLETED` จาก guard (PAY-6a) และเข้าทาง (d) ไม่ตัดเงินซ้ำ (ใส่ comment นี้ในโค้ด)
    (e) ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4)
 
 ## Acceptance criteria
@@ -203,6 +206,10 @@
   request GET ของ GB-8 หลังได้ error = 1 ครั้ง (ไม่ poll ต่อ); Given ได้ 401 Then ไปหน้า login และไม่มี request GET ของ GB-8 จาก d2 (e2e, screenshot ≤ 3);
   unit Vitest ของ predicate "มีการชำระแล้ว": ตารางกรณีจริง/เท็จครบทุกค่าที่กฎข้อ 9 d2 ระบุ (รวม `partially_authorized` → จริง, `refunded` + collection `not_paid` → เท็จ,
   session `authorized` + `payment_status=not_paid` → จริง)
+- AC-20 (PAY-3b2, กฎข้อ 9 d3) Given A ชำระบนหน้า pay แล้ว Stripe redirect กลับมาที่ `/th/account/orders/<DA>/pay?payment_intent=pi_x&redirect_status=succeeded` (หลัง 3DS/พร้อมเพย์) ขณะ GB-8 ยังตอบ
+  `payment_status=not_paid` (webhook ยังไม่มา — route mock) แล้วครั้งถัดไป `captured` Then ไม่มี `order-pay-form` ระหว่างรอ, มี request GET ของ GB-8 ซ้ำ ≤ 10 ครั้ง และเห็น `order-pay-paid`;
+  Given `redirect_status=failed` Then เห็น `order-pay-error` (อักษรไทย) และ `order-pay-form` ให้ลองใหม่; Given ข้อ d2 แล้ว request GET ของ GB-8 ล้ม (route mock 500) Then เห็น `order-pay-error`,
+  ไม่ poll ต่อ และกดชำระใหม่แล้วถ้าจ่ายไปแล้ว guard ตอบ 409 `PAYMENT_ALREADY_COMPLETED` → เข้าทาง poll ของข้อ d (e2e route mock + unit Vitest ของฟังก์ชันอ่าน query)
 
 ## Test plan
 - Integration (http): AC-8 โดย mock provider
@@ -212,7 +219,7 @@
 - integration/e2e กับ Stripe test mode: AC-11; e2e: AC-12, AC-12b (ส่วน storefront); integration: AC-12b (complete cart หลัง guard)
 - unit: guard (AC-13 a–g ด้วย mock payment module), การตรวจ runbook/env (AC-16, AC-16b); integration http: AC-13; integration: AC-14, AC-15, AC-16c
 - e2e + unit (Vitest): AC-17 (PAY-6c)
-- integration (http/modules): AC-18 (PAY-3a); e2e กับ Stripe test mode: AC-7, AC-19 (PAY-3b) — กรณี 409/400/500/401 ของ AC-19 ใช้ route mock; unit Vitest: predicate "มีการชำระแล้ว" (AC-19)
+- integration (http/modules): AC-18 (PAY-3a); e2e กับ Stripe test mode: AC-19 (PAY-3b1), AC-7 (PAY-3b2); e2e route mock + unit: AC-20 (PAY-3b2) — กรณี 409/400/500/401 ของ AC-19 ใช้ route mock; unit Vitest: predicate "มีการชำระแล้ว" (AC-19)
 
 ## Tasks
 | ID | Task | Depends |
@@ -221,7 +228,10 @@
 | PAY-2 | Storefront: ขั้นตอนชำระเงินด้วยบัตร + PromptPay, polling, error + e2e (AC-1..AC-5); `payment_method_types: ["card"]` ของ session บัตร (กฎข้อ 5, AC-9); แก้ขั้น `stripe listen` ใน `ci.yml` ที่ใส่ `--forward-to` ซ้ำ (AC-10) | PAY-1, CORE-5 |
 | PAY-3 | **แยกรอบ 10** (builder หยุด: Store API อ่าน draft order ไม่ได้) → PAY-3a + PAY-3b ด้านล่าง; route อ่านข้อมูลเป็น GB-8 (spec 04, ADR-016) | — |
 | PAY-3a | (เล็ก, backend test-only) integration: ownership ของ `POST /store/payment-collections/:id/payment-sessions` บน collection ของ draft order + guard × webhook พร้อมกันบน collection ของ order ตามภาคผนวก ADR-015 (กฎข้อ 9c, AC-18) — ไม่แก้โค้ด production ถ้า test ผ่าน — ☑ #157 | PAY-6a ☑, GB-4 ☑ |
-| PAY-3b | storefront หน้า `/account/orders/:id/pay` ตามกฎข้อ 9 (อ่านจาก GB-8, component บัตร/พร้อมเพย์เดิม, 409 `PAYMENT_ALREADY_COMPLETED` → poll GB-8 อย่างเดียวมีเพดาน, non-2xx อื่นยกเว้น 401 → ตรวจสถานะ GB-8 1 ครั้งด้วย predicate "มีการชำระแล้ว" ตามกฎข้อ 9 d2; ไม่แก้ GB-8) + e2e (AC-7, AC-19) | GB-8 ☑ #145, PAY-3a ☑ #157, PAY-6c ☑ #136 (ใช้ตัวนับเพดานของ PAY-6c ไม่เขียนซ้ำ) — **เริ่มได้หลัง PR spec รอบ 12 (`docs/PAY-3b-spec-race-400`) merge** |
+| PAY-3b | **แยกรอบ 12 (session หลัก 2026-10-28)** → PAY-3b1 / PAY-3b2 ด้านล่าง — นิยามเดิม: storefront หน้า `/account/orders/:id/pay` ตามกฎข้อ 9 (อ่านจาก GB-8, component บัตร/พร้อมเพย์เดิม, 409 `PAYMENT_ALREADY_COMPLETED` → poll GB-8 อย่างเดียวมีเพดาน, non-2xx อื่นยกเว้น 401 → ตรวจสถานะ GB-8 1 ครั้งด้วย predicate "มีการชำระแล้ว" ตามกฎข้อ 9 d2; ไม่แก้ GB-8) + e2e (AC-7, AC-19) | — |
+| PAY-3b1 | ◐ #189 — หน้า `/account/orders/:id/pay` (กฎข้อ 9 a, b, e) + ชำระด้วยบัตร (9c) + 409/non-2xx/predicate (9 d, d2) + e2e (AC-19) | GB-8 ☑ #145, PAY-3a ☑ #157, PAY-6c ☑ #136, #184 ☑ |
+| PAY-3b2 | พร้อมเพย์บนหน้า `/account/orders/:id/pay` (กฎข้อ 9c) + e2e (AC-7) — แยก logic เปิด QR เป็น `open-qr.ts` ใช้ร่วมกับ checkout (ไม่ copy); จุดเรียกบนหน้า order อยู่นอกกฎ 31 ของ spec 05 (ไม่มี cart — affiliate ผูกกับ draft order ตอน join, spec 05 กฎ 41) ใส่ใน allow-list ของ static test AF-3c พร้อมเหตุผลนี้;
+(review #189) กลับจาก 3DS/redirect ของ Stripe มาที่หน้า pay: อ่าน `redirect_status`/`payment_intent` จาก query แล้วเข้าทาง poll GB-8 ของกฎข้อ 9(d) แทนการแสดงฟอร์มเดิม และ comment เรื่อง d2 อ่าน GB-8 ล้ม (กฎข้อ 9 d3) (AC-7, AC-20) | PAY-3b1 (#189) |
 | PAY-4 | Refund e2e + screenshot หน้า admin (AC-6) | PAY-2 |
 | PAY-5 | follow-up review PR #48 (เล็ก): race ระหว่าง QR หมดอายุกับการชำระสำเร็จ — test AC-11 ก่อนเพื่อยืนยันพฤติกรรมของ Medusa/Stripe provider เมื่อลบ session ที่ PI `succeeded` แล้ว; ถ้าเป็นกรณี (a) ของกฎข้อ 7 แก้เฉพาะ storefront ให้ poll ต่อเมื่อสร้าง session ใหม่ล้ม (AC-12); ถ้าเป็นกรณี (b) หยุดแล้วเขียน ADR (ไม่เขียน reconciliation เอง) | PAY-2 |
 | PAY-6a | (◐ #82, แยกรอบ 6) ADR-015 A ฝั่ง backend: guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`/`payment_collection_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + guard หลัง ownership ของ CORE-12 + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-11, AC-13 a–g, AC-14, AC-12b ส่วน backend = integration complete cart หลัง guard) + integration race ตาม "หมายเหตุ (รอบ 6)" ด้านล่าง — **ไม่รวม** storefront (AC-12 และ AC-12b ส่วน storefront อยู่ใน PAY-6b) | PAY-5 (#65), PROMO-2 |
@@ -233,6 +243,8 @@ PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment
 (เพดานนับต่อการ mount ไม่ใช่ต่อ cart — reload ได้อีกชุด, refund แล้วสร้าง session ใหม่ไม่สำเร็จได้เพดานใหม่เมื่อเริ่มใหม่, unit จำลอง loop เอง, สัญญาณคืนเงินยังไม่มี integration
 ผ่าน Store API จริง) — **ยอมรับใน v1** เพราะเพดานมีไว้กันลูปไม่รู้จบในหน้าเดียว (แต่ละครั้งเป็น request complete ที่ idempotent) ไม่มี task; ถ้า PAY-3b ใช้ตัวนับเดิมให้คงพฤติกรรมนี้
 (รอบ 12, review #157) สถานะ: PAY-3a ☑ #157 → dependency ของ PAY-3b ครบ (GB-8 ☑ #145, PAY-3a ☑ #157, PAY-6c ☑ #136); PAY-3b เริ่มได้หลัง PR spec นี้ merge (กฎข้อ 9 d2, AC-19 ที่ปรับ)
+(รอบ 12 planner, 2026-10-28) สถานะ: #184 (spec PAY-3b) ☑, PAY-3b แยกเป็น PAY-3b1 ◐ #189 → PAY-3b2 ☐; CORE-4i (spec 01) ต้องรอทั้งสองตัว (contract error ของ action สร้าง session) — planner ไม่แก้กฎข้อ 9 ระหว่าง task ทำงาน; nit review #184 (เงื่อนไขหยุด poll ของข้อ d/d2 = `payment_status=captured`
+หรือ collection `completed` ไม่ใช่เมื่อ predicate "มีการชำระแล้ว" จริงครั้งแรก — กรณี session `authorized` + `not_paid` ของ AC-19) ส่งให้ builder PAY-3b ผ่าน session หลัก; reviewer ของ PAY-3b ตรวจข้อนี้
 PAY-6a → PAY-6b (storefront ต้องได้ 409 จริงจาก guard); PAY-6c หลัง CORE-4e (∥ CORE-19b ถ้าไม่แตะไฟล์เดียวกัน — ตัวที่ merge ทีหลัง rebase); PAY-6c ควร merge ก่อน release ที่เปิดพร้อมเพย์จริง; PAY-6b แตะ `promptpay-payment` เดียวกับ PAY-3 — ตัวที่ merge ทีหลัง rebase; **ทั้ง PAY-6a และ PAY-6b**
 ต้อง merge ก่อน release ที่เปิด PromptPay ให้ลูกค้าจริง
 หมายเหตุ (รอบ 6, จาก #82): ข้อกังวลในภาคผนวก ADR-015 ("lock key `payment_collection_id` ของ collection ที่ไม่มี cart ไม่ตรงกับ lock ของ `processPaymentWorkflow`

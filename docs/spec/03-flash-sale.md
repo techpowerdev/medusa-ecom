@@ -209,6 +209,10 @@ Link: `flash_sale_config ↔ promotion_campaign`
     แก้เป็น: fetch เหล่านี้ตั้ง `next.revalidate = 60` (วินาที) **เสมอ** และคง tag เดิมเมื่อมี cookie (การ revalidate ตาม tag หลัง action ของ starter ยังทำงาน) — ใช้กลไก Data Cache/ISR
     ของ Next ไม่เพิ่ม infra (ADR-017 ทางเลือก A, accepted owner 2026-10-27); ข้อมูลใหม่ปรากฏบนหน้าแรก, `/store`, `/search`, collection ภายใน ≤ 90 วินาที (สอดคล้อง spec 01 กฎข้อ 66f); `listRegions`/อื่นๆ นอก 4 ฟังก์ชันนี้ไม่อยู่ในขอบเขต;
     nit #148: data function ของ `/store` ไม่ยิง `GET /store/products` เมื่อชุด hit ว่าง (short-circuit)
+23. (FS-18, รอบ 12 — review #164 FS-17, builder FS-17, qa #177, qa #148 O-3) (a) fetch ใน `lib/data/*` ที่ยังใช้ `force-cache` โดยไม่มี `revalidate` — อย่างน้อย `listCategories`,
+    `getCategoryByHandle`, `listRegions`, `retrieveRegion`, `retrieveCollection` — ตั้ง `next.revalidate = 60` เสมอและคง tag เดิมเมื่อมี cookie (กลไกเดียวกับกฎข้อ 22 / ADR-017 ทางเลือก A
+    ที่ accepted แล้ว — ไม่ใช่การตัดสินใจใหม่); (b) e2e ของ FS-14/FS-17 ที่สร้าง collection/สินค้า/แคมเปญ ลบข้อมูลทั้งหมดใน `afterAll` ก่อน assert ผลการลบ (`ok()` ทุกตัว — collection
+    ไม่ค้างใน footer), `toPass` ใช้ `intervals` 1–2 วินาที; (c) `/store` เมื่อค้นใหม่ เรียกข้อมูล flash ด้วยชุด variant ของผลค้นหาล่าสุดเท่านั้น (ไม่ยิงซ้ำด้วยชุดเก่า)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญที่ทำงานอยู่ (−20% สำหรับ collection X, automatic) และลูกค้าเพิ่มสินค้า X
@@ -299,6 +303,9 @@ Link: `flash_sale_config ↔ promotion_campaign`
   e2e (บน `next build && next start` ของ CI): Given storefront เริ่มทำงานแล้ว When test สร้าง collection C ใหม่ (ชื่อมี run id) พร้อมสินค้า X ในแคมเปญ flash active ผ่าน admin API
   (helper ของ OPS-11; ลบใน `afterAll` และตรวจ `response.ok()`) Then ภายใน 90 วินาที (reload ซ้ำ) หน้าแรก `/th` มี rail ของ C และการ์ดของ X มี `flash-price`/`flash-original-price` —
   test หน้าแรกของ AC-20 ที่ FS-14 (#148) ทำเป็น `test.fixme` ต้องเปลี่ยนเป็น `test` และผ่าน (grep: ไม่มี `test.fixme` ใน spec ของ FS-14) (unit Vitest + e2e)
+- AC-25 (FS-18, กฎข้อ 23) unit (Vitest, mock `sdk.client.fetch`, ไม่มี cookie): ฟังก์ชันในกฎข้อ 23a ส่ง `next.revalidate` เป็นตัวเลข ≤ 60 ทุกตัว; static: ใน `lib/data/` ไม่มี fetch ที่ตั้ง
+  `force-cache` โดยไม่มี `revalidate` (ยกเว้นรายการที่ระบุเหตุผลใน test); grep: e2e ของ FS-14/FS-17 ตรวจ `ok()` ของทุก request ลบใน `afterAll` และไม่มี `toPass` ที่ไม่ระบุ `intervals`;
+  e2e: ค้น `/th/store?q=<X>` แล้วค้นใหม่ `q=<Y>` → request ข้อมูล flash หลังค้นครั้งที่สองมี variant ของผล Y เท่านั้นและเกิด 1 ครั้ง (นับด้วย `page.on("request")`) (unit Vitest + e2e)
 
 ## Non-functional
 - การจอง usage + `units_sold` อยู่ใน request path ของ complete cart (ข้อตัดสิน owner) ภายใต้ lock ต่อ
@@ -318,7 +325,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 - e2e: AC-8 (g), AC-13 (e)
 - e2e admin / component test: AC-16
 - ~~Integration (http): AC-18 (FS-12)~~ (ปิดรอบ 10); e2e: AC-19 (FS-13)
-- e2e + unit Vitest: AC-20 (FS-14), AC-21, AC-22 (FS-15), AC-23 (FS-16), AC-24 (FS-17 — รวม test หน้าแรกของ AC-20)
+- e2e + unit Vitest: AC-20 (FS-14), AC-21, AC-22 (FS-15), AC-23 (FS-16), AC-24 (FS-17 — รวม test หน้าแรกของ AC-20), AC-25 (FS-18)
 - e2e: AC-4 (screenshot PLP/PDP/cart ที่ T-1min และ T+1min โดยใช้ clock control)
 
 ## Tasks
@@ -342,7 +349,8 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-14 | ◐ #148 — (เล็ก, storefront, รอบ 10 — scope ที่ FS-13 #129 ไม่ครอบ) ราคา flash บนการ์ดของ `/store`, `/search`, rail หน้าแรก โดยหา variant id ผ่าน `GET /store/products` หนึ่ง request ต่อหน้า ไม่แตะ search index (กฎข้อ 19); AC-20 — **ถือว่า ☑ เต็มเมื่อ FS-17 merge แล้วเท่านั้น** (test หน้าแรกของ AC-20 เป็น `test.fixme` ใน #148 จน FS-17 แก้ cache) | FS-13 ☑ (#129) |
 | FS-17 | (เล็ก, storefront, รอบ 11 — เงื่อนไข review #148) `next.revalidate = 60` ใน fetch ของ collections/products/`listVariantIdsByProduct` (คง tag เมื่อมี cookie), short-circuit ชุด hit ว่าง, e2e สร้าง collection + สินค้า flash เองผ่าน admin API แล้วเปลี่ยน test หน้าแรกของ AC-20 จาก `test.fixme` เป็น `test` (กฎข้อ 22); AC-24, AC-20 (หน้าแรก) — ไฟล์: `lib/data/{collections,products}.ts`, data function ของ FS-14, e2e ของ FS-14 | FS-14 (#148 merged) — ชน `lib/data/products.ts`/การ์ดกับ FS-16 ตัวที่ merge ทีหลัง rebase |
 | FS-15 | (storefront, รอบ 10 — qa FS-6 O-1, CORE-24 #134) เตือน/disable เมื่อจำนวนเกิน `remaining_units` บน PDP + เตือนใน cart + ข้อความไทยของ `FLASH_*`/`PROMOTION_NOT_COMBINABLE` ตอน complete (กฎข้อ 20); AC-21, AC-22 | CORE-24 (#134 — ใช้ `product-quantity-select`), FS-13 ☑ |
-| FS-16 | (เล็ก, storefront, รอบ 10 — qa FS-13 O-A/O-B/O-C) ปุ่มรอระหว่างโหลดข้อมูล flash, ราคา `product-price` ขีดฆ่าเมื่อมีราคา flash, ป้าย sold out บนการ์ด (กฎข้อ 21); AC-23 | FS-15 (แตะ PDP ไฟล์เดียวกัน), FS-14 (แตะการ์ดเดียวกัน) |
+| FS-16 | (เล็ก, storefront, รอบ 10 — qa FS-13 O-A/O-B/O-C) ปุ่มรอระหว่างโหลดข้อมูล flash, ราคา `product-price` ขีดฆ่าเมื่อมีราคา flash, ป้าย sold out บนการ์ด (กฎข้อ 21); AC-23 | FS-15 ☑ (#178), FS-14 ☑ (#148) — **เริ่มได้**; ชน `product-actions` กับ CORE-25 (spec 01) ตัวที่ merge ทีหลัง rebase |
+| FS-18 | (เล็ก, storefront, รอบ 12 — review #164, builder FS-17, qa #177/#148 O-3) `revalidate = 60` ให้ fetch ที่เหลือใน `lib/data/*`, e2e ลบข้อมูลครบ + `intervals`, `/store` ไม่ยิงข้อมูล flash ด้วยชุด variant เก่า (กฎข้อ 23); AC-25 — ไฟล์: `lib/data/{categories,regions,collections}.ts`, data function ของ `/store`, e2e ของ FS-14/FS-17 | FS-17 ☑ (#164) — **เริ่มได้** |
 FS-11 หลัง FS-8 (แตะ subscriber/workflow คืนโควตาไฟล์เดียวกัน); FS-10 ยังไม่ทำ (สถานะ 2026-10-26) ไม่เปลี่ยนนิยาม
 PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 ปิด (owner ไม่ทำ 2026-10-27);
 FS-10 หลัง FS-5; FS-12 ∥ FS-13 (FS-12 backend เริ่มได้ทันที; FS-13 หลัง FS-6 #115 merge) — รอบ 10: FS-12 ปิด, FS-13 ☑ #129
@@ -351,6 +359,8 @@ FS-10 หลัง FS-5; FS-12 ∥ FS-13 (FS-12 backend เริ่มได้
 (รอบ 11) FS-14 ◐ #148 → FS-17 (หลัง #148 merge; FS-14 ☑ เต็มเมื่อ FS-17 ☑) ∥ FS-15 (CORE-24 ☑ #134 — เริ่มได้); FS-16 หลัง FS-14 + FS-15;
 seed **ไม่**เพิ่ม collection สำหรับ e2e — test สร้างข้อมูลของตัวเอง (พิสูจน์กฎข้อ 22 ได้ในตัว และไม่ผูก seed ของ production กับ test; collection ตัวอย่างสำหรับ dev → CORE-10b ตาม Q6 ที่ owner ตัดสิน)
 PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวกับ FS-3 แต่ FS-3 merge แล้ว); ต้อง merge ก่อน GB-3 (dependency) และควรก่อน FS-6
+(รอบ 12 สถานะ) FS-14 ☑ #148 (☑ เต็มแล้วเพราะ FS-17 ☑ #164), FS-17 ☑ #164, FS-15 ☑ #178; FS-16 ∥ FS-18 เริ่มได้ (คนละไฟล์: FS-16 แตะ PDP/การ์ด, FS-18 แตะ `lib/data`/e2e) —
+ไม่มีงาน FS อื่นค้าง; backend warn ของ search ingestion ที่ builder FS-17 พบ → CORE-9b (spec 01)
 
 ## คำถามที่ยังเปิดอยู่
 - คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน

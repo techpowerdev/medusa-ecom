@@ -1,4 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
+import { GiftCards } from "@medusajs/icons"
 import { Container, Heading, Text } from "@medusajs/ui"
 import { PartnersSection } from "../../components/evoucher/partners-section"
 import { PoolsTable } from "../../components/evoucher/pools-table"
@@ -24,6 +25,7 @@ const EvouchersPage = () => {
 
 export const config = defineRouteConfig({
   label: "E-vouchers",
+  icon: GiftCards,
 })
 
 export default EvouchersPage
