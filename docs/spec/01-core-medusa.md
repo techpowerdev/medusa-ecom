@@ -1056,7 +1056,9 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
 
 ### Business rules
 72. (CORE-4i — builder FS-15, review #160/#170, qa #142) server action ใน `lib/data/cart.ts` ที่ UI แสดง error (อย่างน้อย `applyPromotions`, `setAddresses`, `initiatePaymentSession`,
-    `placeOrder`, `updateLineItem` — builder ตรวจผู้เรียกทั้งหมด) คืน `{ error: "unauthorized" | "failed" | <code ที่ UI แยก เช่น FLASH_*> }` แทนการ throw (แบบกฎข้อ 68) — `redirect`/`notFound`
+    `placeOrder`, `updateLineItem` — builder ตรวจผู้เรียก**ทั้งหมด** รวมหน้า `/account/orders/:id/pay` ของ PAY-3b1/PAY-3b2 ที่ใช้ component ชำระเงินเดียวกัน) คืน
+    `{ error: "unauthorized" | "failed" | <code ที่ UI แยก — อย่างน้อย `PAYMENT_ALREADY_COMPLETED` (spec 06 กฎข้อ 9 d), `FLASH_*`, `PROMOTION_NOT_COMBINABLE`> }` แทนการ throw
+    (แบบกฎข้อ 68) และผู้เรียกทุกตัวต้องอ่านค่าที่คืน (ไม่มีผู้เรียกที่ห่อ `try/catch` แล้วถือว่าไม่ throw = สำเร็จ) — แยกทางของ spec 06 กฎข้อ 9 (d)/(d2)/401 ต้องคงพฤติกรรมเดิม (review #188); `redirect`/`notFound`
     ของ Next ยัง throw ได้; ตอนนี้มีผู้ใช้ ≥ 2 ที่ → ย้ายการแปลง `FetchError` → ผล เป็น helper เดียวใน `lib/util/` (ใช้ร่วมกับ `deleteLineItem` ของ CORE-19d); UI แสดง `unauthorized`
     ด้วย constant `SIGN_IN_AGAIN_MESSAGE` ตัวเดียวทั้งเว็บ; ข้อยกเว้น literal `"unauthorized"`/`"failed"` ใน `user-messages-thai.test` จำกัดเฉพาะไฟล์ที่ใช้จริง (ไม่ยกเว้นทั้งโฟลเดอร์)
 73. (CORE-4j — qa/review #170) (a) โค้ดส่วนลด trim ช่องว่างหัวท้ายก่อนส่ง — **ไม่**แปลงตัวพิมพ์ (Medusa เทียบตัวพิมพ์ และ code ของร้านมีตัวเล็กได้ เช่น `GB-<token>`);
@@ -1073,7 +1075,8 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
     `instantsearch.js` ใน `apps/storefront/package.json` pin เวอร์ชันเดียวกับที่ `react-instantsearch` ใช้ (lockfile มีสำเนาเดียว)
 77. (CORE-5d — qa #169, qa #173, builder CORE-5c/AF-12c) รัน e2e ทั้งชุดด้วย `E2E_SAVE_EVIDENCE=1` ต้องไม่ล้มเพราะงบ evidence ของ CORE-5c: ชื่อที่ spec ส่งให้ `evidence()`/`step()` ในโฟลเดอร์
     ที่มี PNG ครบ 5 แล้วต้องเป็นชื่อไฟล์ที่ commit อยู่ (แก้ชื่อใน spec ให้ตรงไฟล์ของ qa ไม่ลบ/เปลี่ยนรูปที่ commit) — อย่างน้อย CORE-22, CORE-14a, CORE-14d, CORE-4f, FS-10, AF-6, AF-8b;
-    spec ที่ไม่ตั้ง `evidenceTarget` แต่เรียก `evidence()` → `console.warn` 1 ครั้งต่อไฟล์ (ยังไม่เขียนไฟล์ ตามกฎข้อ 67)
+    spec ที่ไม่ตั้ง `evidenceTarget` แต่เรียก `evidence()` → `console.warn` 1 ครั้งต่อไฟล์ (ยังไม่เขียนไฟล์ ตามกฎข้อ 67); (review #154) static test ที่ห้าม `if (await x.isVisible())`
+    ใน e2e (ของ CORE-23b) จับรูปแบบ `getByTestId("…").isVisible()` และ locator แบบ chain ด้วย
 78. (CORE-25 — qa #178 defect PDP ของ starter, flaky `core-19a-nav-cart-search.spec.ts:183`) PDP: option ที่ลูกค้าเลือกต้อง**ไม่ถูกรีเซ็ต**เป็นค่าจาก `v_id` ใน URL เมื่อ effect
     ที่ขึ้นกับ `product.variants` ทำงานซ้ำ (เลือก S → M แล้วกดเพิ่มทันที → line ใน cart เป็น M เสมอ — ลูกค้าต้องไม่ได้ไซซ์ผิด); helper `uiAddSizes` ของ e2e รอ `v_id` ของ variant
     ที่เลือกก่อนกดเพิ่ม; แถบปุ่มของ PDP บนมือถือที่ 375px ไม่ทับปุ่มเพิ่มลงตะกร้าหลัก
@@ -1090,7 +1093,8 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
   และไม่มี `shirts-1`); Given collection `featured` ที่ไม่มีสินค้า When seed Then มีสินค้า seed ≥ 2 ใน collection และชื่อเดิมไม่เปลี่ยน; test ของ AC-30 assert จำนวน product collection = 1
 - AC-110 (CORE-4i, กฎข้อ 72) unit (Vitest, mock SDK): ทุก action ที่เปลี่ยนเมื่อ SDK throw `FetchError` 401 → `{ error: "unauthorized" }`, 500/network → `{ error: "failed" }` (หรือ code ที่ UI แยก) และ
   ไม่ throw; component: ผล `unauthorized` แสดง `SIGN_IN_AGAIN_MESSAGE`; static (Vitest อ่าน source): ใน `modules/checkout/**` และ `modules/cart/**` ไม่มี `friendlyErrorMessage(` ที่รับค่าจาก
-  `catch` ของการเรียก server action, ข้อยกเว้นใน `user-messages-thai.test` ระบุรายชื่อไฟล์; e2e AC-99, AC-100, AC-22 (spec 03) ยังผ่าน
+  `catch` ของการเรียก server action, ข้อยกเว้นใน `user-messages-thai.test` ระบุรายชื่อไฟล์; unit: action สร้าง session ที่ SDK throw 409 code `PAYMENT_ALREADY_COMPLETED` → คืน
+  `{ error: "PAYMENT_ALREADY_COMPLETED" }` และหน้า `/account/orders/:id/pay` เข้าทาง poll ของ spec 06 กฎข้อ 9(d); e2e AC-99, AC-100, AC-22 (spec 03), AC-19 และ AC-7 (spec 06) ยังผ่าน
 - AC-111 (CORE-4j, กฎข้อ 73) e2e: ใส่โค้ด `"  <code ที่ใช้ได้>  "` → `cart.promotions` มี code นั้น; กรอกฟอร์มที่อยู่ (ยังไม่กดบันทึก) แล้วใส่โค้ดส่วนลด → input ที่อยู่ยังมีค่าเดิม; หลัง
   `document.fonts.ready` ความสูง `billing-country-code-select` ต่างจาก input ข้างเคียง ≤ 1px; grep: `createExpiredPromotion` ตรวจ `ok()` ของการลบ
 - AC-112 (CORE-23c, กฎข้อ 74) e2e: route mock request ของ server action เพิ่มที่อยู่/แก้ที่อยู่ให้ตอบ 500 → ค่าที่พิมพ์ยังอยู่และ error มีอักษรไทย; mock action ที่อยู่ใบเสร็จให้ล้มระดับ network →
@@ -1103,7 +1107,8 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
   unit (อ่าน `pnpm-lock.yaml`): `instantsearch.js` มีเวอร์ชันเดียว (e2e + unit Vitest)
 - AC-115 (CORE-5d, กฎข้อ 77) unit (Playwright project `unit`): สำหรับทุก spec ที่ตั้ง `evidenceTarget` และโฟลเดอร์มี PNG 5 ไฟล์ → ชื่อที่ spec ใช้กับ `evidence()`/`step()` เป็นสับเซตของชื่อ PNG
   ในโฟลเดอร์ (อ่าน source); fixture: ไม่ตั้ง `evidenceTarget` แล้วเรียก `evidence()` → `console.warn` 1 ครั้ง ไม่เขียนไฟล์; e2e: `E2E_SAVE_EVIDENCE=1` กับ spec ของ CORE-22, FS-10, AF-6,
-  AF-8b → ไม่มี error จากงบ evidence และ `git status --porcelain docs/evidence` ไม่มีไฟล์ใหม่ในโฟลเดอร์ที่เต็ม
+  AF-8b → ไม่มี error จากงบ evidence และ `git status --porcelain docs/evidence` ไม่มีไฟล์ใหม่ในโฟลเดอร์ที่เต็ม; static test เรื่อง `isVisible` ล้มกับ fixture
+  `if (await page.getByTestId("x").isVisible())` (positive control ใน evidence)
 - AC-116 (CORE-25, กฎข้อ 78) e2e (`--repeat-each=10` ใน evidence): PDP สินค้า 2 ไซซ์ เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ) → line ใน cart เป็น M ทุกรอบ; `core-19a-nav-cart-search.spec.ts:183`
   ผ่าน `--repeat-each=10`; ที่ 375×812 `boundingBox` ของแถบปุ่มมือถือไม่ทับปุ่มเพิ่มลงตะกร้าหลักเมื่อปุ่มหลักอยู่ในจอ
 
@@ -1120,14 +1125,14 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
 |----|------|----|---------|
 | CORE-9b | (backend เล็ก, builder FS-17) search ingestion ไม่ throw กับ event ลบที่ไม่มี relation (กฎข้อ 79) — ไฟล์: `src/search/helpers/resolve-product-ids.ts` + test | AC-108 | CORE-9 ☑ — **เริ่มได้** |
 | CORE-10c | (backend seed เล็ก, review #159) category ไทย + `handle` คงที่ + หาด้วย handle, ซ่อม `featured` ที่ว่าง, test AC-72/AC-30 (กฎข้อ 80) — ไฟล์: `src/scripts/seed.ts` + test seed | AC-72, AC-109 | CORE-10b ☑ (#159) — **เริ่มได้** |
-| CORE-4i | (storefront, FS-15/#160/#170) server action ของ `lib/data/cart.ts` คืนผลแบบมีโครงสร้าง + helper กลาง + `SIGN_IN_AGAIN_MESSAGE` เดียว (กฎข้อ 72) — ไฟล์: `lib/data/cart.ts`, `lib/util/` (helper), component ใน `modules/checkout`/`modules/cart` ที่เรียก action, `user-messages-thai.test` | AC-110 | CORE-19d ☑, FS-15 ☑ (#178) — **เริ่มได้**; ชน component ชำระเงินกับ PAY-3b (◐) ตัวที่ merge ทีหลัง rebase |
+| CORE-4i | (storefront, FS-15/#160/#170) server action ของ `lib/data/cart.ts` คืนผลแบบมีโครงสร้าง + helper กลาง + `SIGN_IN_AGAIN_MESSAGE` เดียว (กฎข้อ 72) — ไฟล์: `lib/data/cart.ts`, `lib/util/` (helper), component ใน `modules/checkout`/`modules/cart` และหน้า `/account/orders/:id/pay` ที่เรียก action, `user-messages-thai.test` — เกิน ~400 LOC ให้ builder แยก (เช่น 4i-a: helper + `applyPromotions`/`updateLineItem` + cart; 4i-b: action ชำระเงิน + ผู้เรียก checkout/หน้า pay) | AC-110 | CORE-19d ☑, FS-15 ☑ (#178), **PAY-3b1 (#189) และ PAY-3b2** (spec 06 — contract error ของ action สร้าง session เดียวกัน; review #188) |
 | CORE-4j | (storefront เล็ก, qa/review #170) trim โค้ดส่วนลด, ฟอร์มที่อยู่ไม่หายเมื่อใส่โค้ด, ความสูง billing select, `ok()` ใน helper e2e (กฎข้อ 73) | AC-111 | CORE-4i (แตะ `applyPromotions`/ฟอร์ม checkout เดียวกัน) |
 | CORE-23c | (storefront เล็ก, qa/review #154/#150/#164) ฟอร์มที่อยู่ใน account คงค่าเมื่อล้ม, ที่อยู่ใบเสร็จไม่ล่มทั้งหน้า, พิมพ์หลังกดแก้ไข, ลิงก์ `/contact`, log ใน `customer.ts` (กฎข้อ 74) — ไฟล์: `modules/account/components/{address-card,profile-billing-address}`, `modules/account/templates/account-layout.tsx`, `lib/data/customer.ts` | AC-112 | CORE-23b ☑ (#154) — **เริ่มได้** (∥ CORE-4i — คนละไฟล์) |
-| CORE-19f | (storefront เล็ก, qa #166/#151) revalidate cart หลังสร้าง session, Continue หลัง timeout ไม่ข้าม session, e2e สลับวิธีชำระ (กฎข้อ 75) — ไฟล์: `lib/data/cart.ts` (action สร้าง session), `modules/checkout/components/payment` | AC-113 | CORE-19e ☑ (#166), **PAY-3b** (แตะ component ชำระเงินเดียวกัน), CORE-4i (แตะ action เดียวกัน) |
+| CORE-19f | (storefront เล็ก, qa #166/#151) revalidate cart หลังสร้าง session, Continue หลัง timeout ไม่ข้าม session, e2e สลับวิธีชำระ (กฎข้อ 75) — ไฟล์: `lib/data/cart.ts` (action สร้าง session), `modules/checkout/components/payment` | AC-113 | CORE-19e ☑ (#166), CORE-4i (แตะ action เดียวกัน — CORE-4i รอ PAY-3b1/3b2 อยู่แล้ว) |
 | CORE-15b | (storefront เล็ก, review #177) error ของ search drawer ที่ header + pin `instantsearch.js` (กฎข้อ 76) — ไฟล์: `modules/search` (drawer), `apps/storefront/package.json`, `pnpm-lock.yaml` | AC-114 | CORE-15 ☑ (#177) — **เริ่มได้** |
 | CORE-5d | (e2e tooling เล็ก, qa #169/#173) ชื่อ evidence ใน spec ตรงไฟล์ที่ commit + `console.warn` เมื่อไม่มี `evidenceTarget` (กฎข้อ 77) — ไฟล์: `e2e/support/` (fixture), `e2e/*.spec.ts` ที่ชื่อไม่ตรง | AC-115 | CORE-5c ☑ (#169) — **เริ่มได้** (แก้เฉพาะสตริงชื่อใน spec — ชนไฟล์ e2e ตัวที่ merge ทีหลัง rebase) |
 | CORE-25 | (storefront เล็ก, **defect ที่ลูกค้าอาจได้ไซซ์ผิด** — qa #178) option บน PDP ไม่ถูกรีเซ็ตจาก `v_id`, `uiAddSizes` รอ `v_id`, แถบมือถือไม่ทับปุ่มหลัก (กฎข้อ 78) — ไฟล์: `modules/products/components/product-actions/{index,mobile-actions}.tsx`, e2e ของ CORE-19a | AC-116 | — **เริ่มได้** (ควรก่อน FS-16; ชน `product-actions` กับ FS-16 ตัวที่ merge ทีหลัง rebase) |
-CORE-9b ∥ CORE-10c ∥ CORE-4i ∥ CORE-23c ∥ CORE-15b ∥ CORE-5d ∥ CORE-25 เริ่มได้ทันที; CORE-4j หลัง CORE-4i; CORE-19f หลัง PAY-3b + CORE-4i
+CORE-9b ∥ CORE-10c ∥ CORE-23c ∥ CORE-15b ∥ CORE-5d ∥ CORE-25 เริ่มได้ทันที; PAY-3b1 (#189) → PAY-3b2 → CORE-4i → (CORE-4j ∥ CORE-19f ∥ EV-7d ของ spec 02)
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

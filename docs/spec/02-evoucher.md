@@ -390,7 +390,7 @@ release ที่มี EV-7c ต้องมี backfill ของ EV-10 แล
 (รอบ 11 สถานะ) EV-9 ☑ #139 · EV-N1 ◐ #149 (กฎข้อ 2 แก้ถ้อยคำขอบ cutoff ให้ตรงโค้ด — EV-N1 ไม่ต้องแก้โค้ด `claimCodesForOrder` เพราะเรื่องนี้) · EV-7a/7b/7c, EV-13, EV-5c ยังไม่เริ่ม — นิยามไม่เปลี่ยน;
 nit #139: `evoucher-admin-ui.spec` ยังหา code จากลำดับ `codes[0]` ของ CSV → ให้ PR ถัดไปที่แตะไฟล์นั้น (EV-13) หา code จากค่าแทน (ไม่สร้าง task)
 (รอบ 12 สถานะ) ☑: EV-N1 #149 · EV-7a #155 · EV-13 #167 · EV-5c #171 · EV-7c #174 · EV-7b #179 → EV ของ v0.3.0 ครบทุก task เดิม; ใหม่รอบ 12: EV-14 ∥ EV-N2 ∥ EV-7e เริ่มได้ทันที,
-EV-7d หลัง CORE-4i; nit EV-13 (review/qa #167: e2e mock ข้อความ resend รูปแบบใหม่ + ตรวจ `/log/i`, ข้อความ error มีจุดซ้อน `resolved.). Try again`) รวมใน ADM-2a (spec 08 — แตะ widget
+EV-7d หลัง CORE-4i (ซึ่งรอ PAY-3b1/PAY-3b2 ของ spec 06); nit EV-13 (review/qa #167: e2e mock ข้อความ resend รูปแบบใหม่ + ตรวจ `/log/i`, ข้อความ error มีจุดซ้อน `resolved.). Try again`) รวมใน ADM-2a (spec 08 — แตะ widget
 `order-evouchers` เดียวกัน); ถ้า owner ต้องการ release v0.3.0 ก่อน EV-14 ให้แจ้ง — EV-14 เป็นเรื่องความปลอดภัยฝั่ง admin (ต้องมีสิทธิ์ admin จึงใส่ค่าได้) แต่ storefront render ลิงก์นั้นให้ลูกค้า
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)

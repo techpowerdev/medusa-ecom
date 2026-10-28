@@ -41,7 +41,7 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | กล่องยืนยัน / toast ใน admin | `usePrompt`, `toast` ของ `@medusajs/ui` | ใช้ตามเดิม (GB-6b, GB-6c) |
 | lock ข้าม request/step | Locking module (Redis, spec 07) + `acquireLockStep` / `releaseLockStep` | ใช้ตามเดิม (ADR-009) |
 | ops แปลง draft order เองหลังเงินเข้า | `@medusajs/draft-order` 2.22.1 (ปุ่ม Convert ใน admin) + `POST /admin/draft-orders/:id/convert-to-order` → `convertDraftOrderWorkflow` (ตรวจโดย re-review #185) | ใช้ตามเดิม — เราเพิ่มแค่การอัปเดต membership หลังแปลง (GB-10, กฎข้อ 26) |
-| refund payment ของ draft/order ที่ยกเลิก | `POST /admin/payments/:id/refund` (`refundPaymentWorkflow` ไม่ปฏิเสธ draft/order ยกเลิก — re-review #185) | ใช้ตามเดิมใน runbook (กฎข้อ 25) — ไม่ refund อัตโนมัติจนกว่า owner ตอบ Q13 |
+| refund payment ของ draft/order ที่ยกเลิก | `POST /admin/payments/:id/refund` (`refundPaymentWorkflow` ไม่ปฏิเสธ draft/order ยกเลิก — re-review #185) | ใช้ตามเดิมใน runbook (กฎข้อ 25) — ไม่ refund อัตโนมัติ (owner Q13 = ก) |
 | exclusivity ของ promotion | ไม่มี native (ตรวจ 2.22.1); มี hook `validate` / `setPromotionContext` บน `updateCartPromotionsWorkflow` | ขยาย — ทำครั้งเดียวใน PROMO-1 (ADR-009) |
 
 ## ดีไซน์หลัก: สร้าง draft order ตอนเข้าร่วม ชำระเงินเมื่อสำเร็จ
@@ -236,8 +236,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
    (d) ด่านสำรองตอน complete cart ตาม spec 03 กฎข้อ 6
 8. กลุ่มสำเร็จได้มากที่สุดครั้งเดียว; ขั้นตอน succeed/fail/cancel ต้อง idempotent และรันซ้ำได้
 9. อีเมล: เข้าร่วมแล้ว, กลุ่มสำเร็จ (ลิงก์ชำระเงิน + deadline), ได้รับการชำระเงินแล้ว, กลุ่มไม่สำเร็จ,
-   หมดเวลาชำระเงิน — (รอบ 12, review #185) ปัจจุบัน "ได้รับการชำระเงินแล้ว" คืออีเมล `order-placed` ที่ส่งเมื่อ draft order ถูกแปลงหลัง capture (GB-5 #185) ซึ่งข้อความ
-   ไม่พูดถึงการชำระเงิน — รอ owner ยืนยันว่ายอมรับใน v1 หรือต้องมี template แยก (Q14)
+   หมดเวลาชำระเงิน — (รอบ 12, owner ตัดสิน Q14 = (ก) 2026-10-28) "ได้รับการชำระเงินแล้ว" ใน v1 **คืออีเมล `order-placed`** ที่ Medusa ส่งเมื่อ draft order ถูกแปลงหลัง capture
+   (GB-5 #185) — ไม่มี template แยก
 10. **สถานะแคมเปญ**: สร้างเป็น `draft` → admin เปลี่ยนเป็น `active` เอง (ไม่มี auto-activate; ตั้ง `active` ก่อน `starts_at`
     ได้) → `ended` เมื่อ admin สั่ง หรือ job (GB-4) เมื่อ `ends_at` ของ Medusa campaign ผ่านไป
     `ended` เป็นสถานะสุดท้าย ห้ามย้อนกลับ สร้างกลุ่ม/เข้าร่วมได้เฉพาะเมื่อ `active` **และ** อยู่ในช่วงเวลาของ Medusa campaign
@@ -325,7 +325,10 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     ตาม runbook ของกฎข้อ 25) → membership ต้องเป็น `paid`: subscriber ของ event ที่ `convertDraftOrderWorkflow` emit (`order.placed` — builder ยืนยันใน 2.22.1; ต่างจากนี้ให้ใช้ event
     ที่ emit จริงและบันทึกใน PR) สำหรับ order ที่มี `metadata.group_buy_membership_id` → workflow ใต้ lock ต่อ membership ตัวเดียวกับ GB-5: membership `awaiting_payment` + order
     `is_draft_order = false` + payment collection `completed` → `paid`; สถานะอื่น (รวม `paid` อยู่แล้วจากเส้นทางปกติของ GB-5) → noop + log info; ไม่ส่งอีเมลเพิ่ม
-    (อีเมล `order-placed` ของการแปลงส่งแล้ว); ไม่แปลง/ไม่ refund อะไรเอง
+    (อีเมล `order-placed` ของการแปลงส่งแล้ว); ไม่แปลง/ไม่ refund อะไรเอง — (owner Q13 = (ก) 2026-10-28: เงินค้างจัดการแบบ manual ด้วย alert + runbook + GB-10 ใน v1)
+27. (รอบ 12, owner Q19 = (ข) 2026-10-28 — ส่งมอบใน AF-16 ของ spec 05) order ของ group buy ได้ค่าคอม affiliate: `joinGroupWorkflow` ขั้น 3 คัดลอก `cart.metadata.affiliate_token`
+    (ถ้ามี) ลง `metadata.affiliate_token` ของ draft order พร้อม key เดิม; storefront (GB-7) sync cookie `aff` ลง cart ก่อนเรียก join แบบเดียวกับก่อน `placeOrder` (spec 05 กฎ 23) —
+    ค่าคอมเกิดเมื่อ draft ถูกแปลงเป็น order ปกติเท่านั้น (spec 05 กฎ 41)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -467,7 +470,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   (unit jest + integration http)
 - AC-44 (GB-10, กฎข้อ 26) Given membership M `awaiting_payment` ที่ collection `completed` แต่ order ยังเป็น draft (สร้างสภาพแบบ test สต็อกหมดของ GB-5 แล้วเติมสต็อก) When admin
   `POST /admin/draft-orders/<order>/convert-to-order` Then order `is_draft_order=false` และ M เป็น `paid` ภายในรอบ subscriber; ส่ง event ซ้ำ → ไม่เปลี่ยน/ไม่มี error; Given membership
-  `awaiting_payment` ที่ collection ยังไม่ `completed` แล้ว admin แปลง Then M ไม่เปลี่ยน และมี log info; AC-2 (API) ของ GB-5 ยังผ่าน (integration http)
+  `awaiting_payment` ที่ collection ยังไม่ `completed` แล้ว admin แปลง Then M ไม่เปลี่ยน และมี log info; Given เส้นทางปกติของ GB-5 (capture → membership `paid` → แปลง → event)
+  When subscriber ของ GB-10 ทำงาน Then เป็น noop ภายใต้ lock ต่อ membership (ไม่ error, ไม่ deadlock — ขอ lock ได้ภายใน timeout ของ GB-5 และ test จบภายใน timeout ปกติ) และ subscriber อื่นของ
+  event เดียวกัน (affiliate attribution, e-voucher) ยังทำงาน; AC-2 (API) ของ GB-5 ยังผ่าน (integration http)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -516,7 +521,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-N3 | (เล็ก, รอบ 11 — qa #143, nit review #145) highlight `td` แรก (admin) + ส่ง collection ที่กรอง `null` แล้วเข้า `getLastPaymentStatus` ใน route รายตัว GB-8 (กฎข้อ 24) (AC-42) — ไฟล์: ตารางกลุ่มใน `src/admin/routes/group-buying/[id]/`, `orders/[order_id]/route.ts` ของ GB-8 | GB-6d ☑ (#143), GB-8 ☑ (#145) — เริ่มได้; ไม่บล็อก PAY-3b |
 | GB-9 | (backend เล็ก, รอบ 12 — re-review #185) alert เงินค้างอ่านสถานะใหม่ก่อนส่ง, idempotency key ต่อ membership+เหตุ, runbook ขั้นตรวจ draft + URL `/app/orders/<id>`, test คืนค่า `OPS_ALERT_EMAIL` (กฎข้อ 25) (AC-43) — ไฟล์: `src/subscribers/group-buy-payment-captured.ts`, `src/workflows/group-buy/membership-payment.ts`, `docs/ops/production.md`, `integration-tests/http/group-buy-payment.spec.ts` | GB-5 ☑ (#185) — **เริ่มได้** |
 | GB-10 | (backend เล็ก, รอบ 12 — review #185) membership เป็น `paid` เมื่อ ops แปลง draft order เองหลังเงินเข้า (กฎข้อ 26) (AC-44) — ไฟล์: subscriber ใหม่ใน `src/subscribers/`, workflow/step ใน `src/workflows/group-buy/` | GB-5 ☑ (#185) — เริ่มได้; ชน `membership-payment.ts` กับ GB-9 ตัวที่ merge ทีหลัง rebase |
-| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); (รอบ 10) รายการ draft order ของกลุ่มในหน้า account อ่านจาก route ของ GB-8 และลิงก์ไปหน้าชำระเงินของ PAY-3b (ไม่สร้างหน้าชำระเงินซ้ำ) | GB-5, GB-8, PAY-3b (spec 06), GB-3b ☑ |
+| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); (รอบ 10) รายการ draft order ของกลุ่มในหน้า account อ่านจาก route ของ GB-8 และลิงก์ไปหน้าชำระเงินของ PAY-3b (ไม่สร้างหน้าชำระเงินซ้ำ); (รอบ 12) sync cookie `aff` ลง cart ก่อนเรียก join (กฎข้อ 27) + เพิ่มจุดนี้ใน static test ของ spec 05 กฎ 31 | GB-5 ☑ (#185), GB-8 ☑, **PAY-3b1 (#189) + PAY-3b2** (spec 06), GB-3b ☑, AF-16 (spec 05 — token บน draft order) |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
 GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
@@ -528,18 +533,18 @@ GB-2c ไม่บล็อก GB-3 (แตะ `campaign.ts`/`validators.ts`/tes
 (รอบ 10) ลำดับใหม่ของ critical path ชำระเงิน: PAY-3a (เริ่มได้ทันที) ∥ GB-8 (เริ่มได้ — ADR-016 accepted) → GB-5 (← PAY-3a) ∥ PAY-3b (← GB-8) → GB-7 (← GB-5, GB-8, PAY-3b);
 GB-6d ∥ ทุกตัว (admin UI ล้วน); GB-8 กับ PAY-3a คนละไฟล์ (route ใหม่ใต้ `src/api/store/customers/me/group-buy/` vs test ของ payment collection) ขนานได้
 (รอบ 11) สถานะ: GB-6d ☑ #143, GB-8 ☑ #145 → PAY-3b เริ่มได้เมื่อ PAY-3a ☑ ด้วย (ดู spec 06); GB-N3 เริ่มได้ทันที (ไม่บล็อกงานอื่น); PAY-3a, GB-5, GB-7 ☐
-(รอบ 12) สถานะ: PAY-3a ☑ #157, GB-N3 ☑ #161, GB-5 ☑ #185; PAY-3b ◐ (builder) → GB-7 (← PAY-3b); GB-9 ∥ GB-10 เริ่มได้ (backend; ไม่บล็อก GB-7 แต่ควร merge ก่อน release v0.5.0);
-review #185: test "convert ล้มเพราะสต็อกหมด" มีแล้วใน #185 (ไม่ต้องมี task); คำถาม owner Q13, Q14 ด้านล่าง และ spec 05 Q19 (ค่าคอม affiliate ของ order กลุ่ม)
+(รอบ 12) สถานะ: PAY-3a ☑ #157, GB-N3 ☑ #161, GB-5 ☑ #185; PAY-3b1 ◐ #189 → PAY-3b2 ☐ → GB-7 (← ทั้งสอง + AF-16); GB-9 ∥ GB-10 เริ่มได้ (backend; ไม่บล็อก GB-7 แต่ควร merge ก่อน release v0.5.0);
+review #185: test "convert ล้มเพราะสต็อกหมด" มีแล้วใน #185 (ไม่ต้องมี task); owner ตอบแล้ว 2026-10-28: Q13 (ก), Q14 (ก), spec 05 Q19 (ข) → กฎข้อ 27 + AF-16
 
 ## Open questions
-- **Q13** (รอบ 12, review #185 — ต้องให้ owner ตัดสิน) เงินถูก capture แต่ไม่มี order ที่ใช้ได้ (GB-5 ตอนนี้ทำแค่ ops alert + runbook — ops ตัดสิน refund หรือเติมสต็อกแล้วแปลงเอง):
+- ~~Q13~~ ตัดสินแล้ว (owner 2026-10-28): **(ก)** manual ใน v1 — alert + runbook (กฎข้อ 25, GB-9) + GB-10; ไม่มี job ลองแปลงใหม่/refund อัตโนมัติ; คำถามเดิม (รอบ 12, review #185): เงินถูก capture แต่ไม่มี order ที่ใช้ได้ (GB-5 ตอนนี้ทำแค่ ops alert + runbook — ops ตัดสิน refund หรือเติมสต็อกแล้วแปลงเอง):
   (1) แปลงไม่สำเร็จ (เช่นสต็อกหมด) → membership ค้าง `awaiting_payment` + collection `completed`; (2) เงินเข้าหลัง membership ถูกยกเลิกเพราะหมดเวลา (พร้อมเพย์จ่ายช้า) ทางเลือก:
   (ก) **[แนะนำ] คงแบบ manual ใน v1** (alert + runbook ของกฎข้อ 25 + GB-10 อัปเดต membership เมื่อ ops แปลงเอง) — เหตุผล: สาเหตุหลักของ (1) คือสต็อกหมดซึ่งลองซ้ำไม่ช่วยจนกว่าจะเติมสต็อก
   และต้องมีคนเลือกว่าจะคืนเงินหรือส่งของ; ปริมาณช่วงแรกน้อย; ไม่มีโค้ดเงินอัตโนมัติเพิ่ม;
   (ข) job ลองแปลงใหม่ทุก N นาทีสูงสุด K ครั้งสำหรับ membership `awaiting_payment` + collection `completed` แล้วค่อย alert — ช่วยกรณีล้มชั่วคราว (DB/lock) ~150 LOC;
   (ค) refund อัตโนมัติสำหรับกรณี (2) ผ่าน `refundPaymentWorkflow` + อีเมลแจ้งลูกค้า — ลูกค้าได้เงินคืนเร็ว แต่เพิ่มเส้นทางเงินอัตโนมัติที่ต้องกันซ้ำ/ทดสอบกับ Stripe ~250 LOC
   ((ข) และ (ค) เลือกร่วมกันได้)
-- **Q14** (รอบ 12, review #185) อีเมล "ได้รับการชำระเงินแล้ว" (กฎข้อ 9): (ก) **[แนะนำ] ใช้อีเมล `order-placed` ที่ส่งหลังแปลง draft (ตามที่ GB-5 ทำ) ใน v1** แล้วบันทึกเป็นกฎ —
+- ~~Q14~~ ตัดสินแล้ว (owner 2026-10-28): **(ก)** ใช้ `order-placed` (กฎข้อ 9); คำถามเดิม (รอบ 12, review #185) อีเมล "ได้รับการชำระเงินแล้ว" (กฎข้อ 9): (ก) **[แนะนำ] ใช้อีเมล `order-placed` ที่ส่งหลังแปลง draft (ตามที่ GB-5 ทำ) ใน v1** แล้วบันทึกเป็นกฎ —
   ส่งเฉพาะหลัง capture จึงตรงเวลา ไม่เพิ่ม template; ข้อเสีย: ข้อความไม่พูดถึงการชำระเงิน; (ข) template แยก `group-buy-payment-received` (ไทย) ส่งจาก subscriber ของ GB-5 แทน/เพิ่มจาก
   `order-placed` ~80 LOC (task เล็ก ต่อจาก GB-9)
 - ~~Q12~~ ตัดสินแล้ว (owner 2026-10-27): **อนุมัติ ADR-016 ทางเลือก A** → GB-8 เริ่มได้; คำถามเดิม (รอบ 10): อนุมัติ store route อ่านอย่างเดียวของ draft order ผ่าน membership
