@@ -227,7 +227,7 @@ Payout
     `retrievePaymentIntent` เพื่อ poll สถานะอย่างเดียวได้รับยกเว้นเมื่ออยู่ใน allow-list ของ test พร้อมเหตุผล — บังคับด้วย static test ที่อ่าน source (แบบ `thai-ui-rule.test.ts`) ไม่พึ่ง review; "cookie ไม่เปลี่ยน → ไม่มี `POST /store/carts/:id`" พิสูจน์ด้วย unit ของ `syncAffiliateBefore` (POST เกิดจาก Next
     server จึงนับใน e2e ฝั่ง browser ไม่ได้ — แก้ถ้อยคำ AC-21)
     (รอบ 12, review #189) **นอกขอบเขตกฎนี้**: หน้า `/account/orders/:id/pay` ของ group buy (`modules/order/components/order-pay/**` ที่เรียก `stripe.confirmPayment` และ `open-qr.ts`
-    ที่ PAY-3b2 ใช้จากหน้านี้) — ไม่มี cart ให้ sync และ attribution ของ order กลุ่มอ่าน token จาก `metadata` ของ draft order ที่บันทึกตอน join (กฎ 41); static test ของ AF-3c ต้องไม่ตรวจ
+    ที่ PAY-3b2 ใช้จากหน้านี้) — ไม่มี cart ให้ sync และ attribution ของ order กลุ่มอ่าน token จาก `metadata` ของ draft order ที่บันทึกตอน join (กฎ 41, AF-16); static test ของ AF-3c ต้องไม่ตรวจ
     path นี้ (หรือใส่ใน allow-list พร้อมเหตุผลนี้) ส่วน `open-qr.ts` เมื่อถูกเรียกจาก checkout ยังต้องผ่าน `syncAffiliateBefore` ตามข้อ (b)
 32. (รอบ 10, AF-N2 — nit review #125/#122) maturity job (AF-10): (a) ขอ lock `affiliate-attribution:<order_id>` ด้วย timeout สั้น (≤ 5 วินาที) — ขอไม่ได้ → **ข้าม** entry นั้นในรอบนี้
     (คง `pending` ไม่ approve) log warn `affiliate_maturity_lock_skipped` พร้อม `order_id` แล้วไปรอบถัดไป (ไม่รอ 30 วินาทีต่อ order); (b) log ตอนสั่ง reversal ที่ workflow ยัง retry แบบ async
