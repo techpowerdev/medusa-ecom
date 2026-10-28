@@ -72,6 +72,8 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
    `medusa start` ที่ไม่ตั้ง `NODE_ENV` ยังบูตได้
 6. (รอบ 10, GB-N2 #126) helper ของ test `group-buy-join.spec.ts` ที่รอ subscriber ให้จบ พึ่ง `eventEmitter_` ภายในของ local event bus — ยังมีชื่อ/พฤติกรรมเดิม (test ล้ม = ตรวจที่นี่ก่อน)
 7. (รอบ 10, ADR-016) Store API ของเวอร์ชันใหม่ยังอ่าน draft order ฝั่ง store ไม่ได้ — ถ้าได้แล้วให้ทบทวน route ของ GB-8; `allowFields` (EV-7a) ยังมีและยังตัด field ที่ไม่อนุญาต
+8. (รอบ 12, builder CORE-4h) ข้อความ `Identity with email already exists` ของ auth emailpass ที่ storefront ใช้แยก "อีเมลซ้ำ" ตอนสมัคร (spec 01 กฎข้อ 69) ยังเหมือนเดิม — หรือ
+   Medusa มี code แยกแล้ว (ให้เปลี่ยนไปใช้ code); `convertDraftOrderWorkflow` ยัง emit event ที่ GB-10 ฟัง (spec 04 กฎข้อ 26)
 
 ## Acceptance criteria
 - AC-1 Backend boot เป็น `server` และ `worker` ได้จาก image เดียวกัน; scheduled jobs รันเฉพาะบน worker
@@ -159,6 +161,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   exit ≠ 0 พร้อมข้อความบอกว่าหาหัวข้อไม่เจอ; (b) job `storefront-e2e` cache โฟลเดอร์ browser ของ Playwright ด้วย `actions/cache` (key มีเวอร์ชัน `@playwright/test` จาก lockfile) และ
   cache hit → ไม่ดาวน์โหลด browser ซ้ำ (ติดตั้งเฉพาะ system deps); (c) test ที่อ่าน `ci.yml` (ของ OPS-14) parse ด้วย parser YAML (package ที่อยู่ใน lockfile แล้ว — ถ้าไม่มี ให้ระบุใน PR และคง regex)
   ไม่ใช้ regex; evidence ใน PR: เวลา step ติดตั้ง Playwright ของ run ที่ cache hit (run id) — ไม่ใช่ gate (unit/script + CI)
+- AC-28 (OPS-17, รอบ 12 — nit OPS-16 #180, review #175 OPS-4) Given `apps/backend/src/__tests__/prod-guards.unit.spec.ts` Then อ่าน env ของ job ใน `ci.yml` ด้วย `parse` ของ package `yaml`
+  (แบบ `ci-workflow.unit.spec.ts`) ไม่วนบรรทัด/regex (grep: ไม่มีตัวแปรสถานะแบบ `inEnv`) และ assertion เดิมของ AC-13/AC-17 ยังผ่าน; Given `tools/load/run.sh` Then ตั้ง `IMAGE_TAG` ค่าเริ่มต้น
+  `load` เมื่อไม่ได้ส่งมา (ไม่ใช้ image `local` ของ dev) (unit อ่านไฟล์); `apps/backend/src/scripts/seed-load.ts` ไม่มี `as unknown as`/`as any` (grep) และ `tsc` ผ่าน
 
 ## Tasks
 | ID | Task | Depends |
@@ -168,7 +173,8 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-3 | JSON logs + request id + alert log `Error running event bus worker` ของ worker (รอบ 8, AC-18) — รอบ 9 แยก rate limiting → OPS-3b และ Sentry → OPS-3c | OPS-1, OPS-8 ☑ (#101) |
 | OPS-3b | (รอบ 9) rate limiting ตาม Deliverables ข้อ 5 + `/store/search` (AC-22) — **⏸ backlog หลัง v1.0** (owner Q-O1 2026-10-27); ข้อเสนอเดิมใน Q-O1 ใช้ตอนกลับมาทำ | OPS-3 ☑ |
 | OPS-3c | (รอบ 9) error tracking Sentry ตาม Deliverables ข้อ 6 (AC-23) — **⏸ backlog หลัง v1.0** (owner Q-O2 2026-10-27); dependency ใหม่ (`@sentry/*`) ระบุใน PR ตอนกลับมาทำ | OPS-3 ☑ |
-| OPS-4 | k6 scripts ใน `tools/load/` + seed script + `.github/workflows/load-nightly.yml` + evidence (AC-2, AC-3) ตาม Q-O3 ที่ owner ตัดสิน 2026-10-27 (a)–(e) — **เริ่มได้** | FS-3 ☑, GB-3 ☑, OPS-1 ☑ |
+| OPS-4 | ☑ #175 — k6 scripts ใน `tools/load/` + seed script (`apps/backend/src/scripts/seed-load.ts` — ย้ายจาก `tools/load/` เพราะ `.dockerignore`) + `.github/workflows/load-nightly.yml` + evidence (AC-2, AC-3) ตาม Q-O3 ที่ owner ตัดสิน 2026-10-27 (a)–(e); `REPORT.md` ใช้ผลของ run หลัง merge (40590093846) ตัวล่าสุด — ถ้า gate ล้มให้อ่าน `backend-tail.log` ก่อน | FS-3 ☑, GB-3 ☑, OPS-1 ☑ |
+| OPS-17 | (เล็ก, test/tooling, รอบ 12 — nit OPS-16 #180, review #175) `prod-guards.unit.spec.ts` อ่าน `ci.yml` ด้วย parser YAML, `IMAGE_TAG` ค่าเริ่มต้น `load` ใน `tools/load/run.sh`, ตัด cast ใน `seed-load.ts` (AC-28) | OPS-16 ☑ (#180), OPS-4 ☑ (#175) — **เริ่มได้** |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
 | OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13); fail-fast `STOREFRONT_URL` (รอบ 7, AC-17 — ถ้า GB-4 ยังไม่ merge ตอนเริ่ม OPS-7 ให้ทำส่วนนี้เมื่อ GB-4 merge แล้ว ไม่แตะโค้ดอีเมลของ GB-4) | OPS-2, PAY-1, CORE-3, AF-2 (#66), GB-4 (#89, เฉพาะ AC-17) |
@@ -190,6 +196,8 @@ OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `c
 (รอบ 11) สถานะ: OPS-10 ☑ #141, OPS-14 ☑ #133, OPS-13b ☑ #147 (nit review #147 — เพิ่ม "→ service zone" ในเส้นทางเมนู shipping option ของ `production.md` ข้อ 5 —
 #147 ไม่ได้แก้ จึงแก้ใน PR เอกสารรอบ 11 (#152) หลัง merge develop);
 OPS-12, OPS-15, OPS-16 เริ่มได้ (แตะ `ci.yml` ร่วมกัน — ทีละตัว ลำดับแนะนำ OPS-15 → OPS-12 → OPS-16); OPS-4, OPS-5 ☐; e2e รันแม้ backend test ล้ม (ผลของการรันขนานใน OPS-14) — ยอมรับ ไม่มี task
+(รอบ 12) สถานะ: OPS-15 ☑ #156, OPS-12 ☑ #172, OPS-4 ☑ #175 (load-nightly run 40590093846 success — `REPORT.md` ของ OPS-4 รอ session หลัก commit), OPS-16 ☑ #180 (รวม test `if: false` ของ review #172);
+OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_POOL_MAX` ไม่ต้องมี task เพราะ gate ของ load test ผ่าน (5xx = 0) — ทบทวนเมื่อรอบเต็มล้มด้วย 5xx
 
 ## Open questions (รอบ 10)
 - ~~Q-O3~~ ตัดสินแล้ว (owner 2026-10-27): **รับข้อเสนอทั้งชุด (a)–(e)** ด้านล่าง → OPS-4 เริ่มได้ (Depends FS-3 ☑, GB-3 ☑, OPS-1 ☑); คำถามเดิม (OPS-4 load test) **ข้อเสนอรวม**:
@@ -197,7 +205,7 @@ OPS-12, OPS-15, OPS-16 เริ่มได้ (แตะ `ci.yml` ร่วม
   `NODE_ENV=production`, `ALLOW_TEST_PROVIDERS=true` เพื่อใช้ manual payment) **ไม่สร้าง infra ใหม่**; ข้อจำกัด: runner มาตรฐาน (4 vCPU/16GB) และ k6 อยู่เครื่องเดียวกับระบบ ตัวเลข latency
   จึงไม่แทน production → เสนอให้ AC-2/AC-3 ส่วน **ความถูกต้อง** (พอดี 100 / พอดี 10 / 0 5xx) เป็น gate และ p95 < 300ms **รายงานอย่างเดียว** (ไม่ fail) จนกว่าจะมี staging จริง
   (staging จริง = infra ใหม่ ต้องมี ADR)
-  (b) **seed**: script `tools/load/seed-load.ts` (รันด้วย `medusa exec` ใน container) สร้างลูกค้า N คน (เช่น 300 สำหรับ flash, 200 สำหรับ join) ผ่าน workflow ของ Medusa
+  (b) **seed**: script `tools/load/seed-load.ts` (ส่งมอบจริงใน #175 ที่ `apps/backend/src/scripts/seed-load.ts` เพราะ `.dockerignore` — แก้ถ้อยคำรอบ 12) (รันด้วย `medusa exec` ใน container) สร้างลูกค้า N คน (เช่น 300 สำหรับ flash, 200 สำหรับ join) ผ่าน workflow ของ Medusa
   + ออก token ของลูกค้าแต่ละคนผ่าน `/auth/customer/emailpass` แล้วเขียนไฟล์ JSON ที่ k6 อ่าน (`SharedArray`) — ไฟล์อยู่ใน runner เท่านั้นไม่ commit; admin ใช้ `SEED_ADMIN_EMAIL`/
   `SEED_ADMIN_PASSWORD` ที่ workflow สุ่มขึ้นเองตอนรัน (ไม่ต้องมี secret ใหม่)
   (c) **นิยาม "order ได้ส่วนลดพอดี 100"**: k6 ต้อง **complete checkout** (การจองโควตาเกิดตอน complete cart — กฎ FS-3 ไม่ใช่ตอน add to cart) ด้วย manual payment; ลูกค้า 300 คน คนละ 1 ชิ้น
