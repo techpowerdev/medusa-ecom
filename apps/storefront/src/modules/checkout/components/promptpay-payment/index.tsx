@@ -19,12 +19,12 @@ import {
   secondsLeft,
 } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Button, Text } from "@modules/common/components/ui"
 import { useStripe } from "@stripe/react-stripe-js"
 import { useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import ErrorMessage from "../error-message"
+import PromptPayOrderDelayed from "./order-delayed"
 import { StripeContext } from "../payment-wrapper/stripe-wrapper"
 
 type Props = {
@@ -250,19 +250,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   }, [polling, cart.id, finish, takeFallbackSlot, router])
 
   if (delayed) {
-    return (
-      <div className="flex flex-col items-start gap-y-2" data-testid="promptpay-order-delayed">
-        <Text className="txt-medium-plus text-ui-fg-base" aria-live="polite">
-          ได้รับเงินแล้ว ระบบกำลังตรวจสอบคำสั่งซื้อของคุณ
-        </Text>
-        <Text className="txt-medium text-ui-fg-subtle">
-          หากยังไม่ได้รับการยืนยันคำสั่งซื้อ กรุณา{" "}
-          <LocalizedClientLink href="/contact" className="underline" data-testid="promptpay-contact-link">
-            ติดต่อร้าน
-          </LocalizedClientLink>
-        </Text>
-      </div>
-    )
+    return <PromptPayOrderDelayed />
   }
 
   if (awaitingOrder) {
