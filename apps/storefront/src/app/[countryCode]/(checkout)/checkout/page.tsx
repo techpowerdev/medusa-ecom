@@ -21,7 +21,7 @@ export default async function Checkout() {
 
   return (
     <div className="grid grid-cols-1 small:grid-cols-[1fr_416px] content-container gap-x-40 py-12">
-      <PaymentWrapper cart={cart}>
+      <PaymentWrapper paymentSessions={cart.payment_collection?.payment_sessions}>
         <CheckoutForm cart={cart} customer={customer} />
       </PaymentWrapper>
       <CheckoutSummary cart={cart} />

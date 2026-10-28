@@ -212,6 +212,39 @@ describe("cardFlashPrices (FS-14)", () => {
   it("ไม่มีข้อมูล flash → {}", () => {
     expect(cardFlashPrices(null, { prod_x: ["var_1"] }, NOW)).toEqual({})
   })
+
+  // FS-16 (กฎข้อ 21c): การ์ดของสินค้าที่แคมเปญ sold out แสดงป้าย flash-card-sold-out + ราคาปกติ
+  it("แคมเปญ sold_out → { sold_out: true } (ไม่มีราคา flash)", () => {
+    const prices = cardFlashPrices(
+      active(sale({ sold_out: true })),
+      { prod_x: ["var_1"], prod_y: ["var_2"] },
+      NOW
+    )
+    expect(prices).toEqual({ prod_x: { sold_out: true } })
+  })
+
+  it("มี variant ที่ยังขายราคา flash ได้ → ราคา flash ไม่ใช่ป้าย sold out", () => {
+    const data: ActiveFlashSales = {
+      flash_sales: [sale({ sold_out: true }), sale({ id: "camp_2" })],
+      variants: [
+        { ...active().variants[0], variant_id: "var_1" },
+        { ...active().variants[0], variant_id: "var_3", campaign_id: "camp_2" },
+      ],
+    }
+    expect(
+      cardFlashPrices(data, { prod_x: ["var_1", "var_3"] }, NOW).prod_x
+    ).toMatchObject({ variant_id: "var_3", flash_price: 472 })
+  })
+
+  it("แคมเปญ sold out ที่เลย ends_at แล้ว → ไม่มีป้าย (การ์ดปกติ)", () => {
+    expect(
+      cardFlashPrices(
+        active(sale({ sold_out: true, ends_at: "2026-10-27T10:00:00Z" })),
+        { prod_x: ["var_1"] },
+        NOW
+      )
+    ).toEqual({})
+  })
 })
 
 describe("flashQtyExceeded (FS-15 กฎข้อ 20a)", () => {

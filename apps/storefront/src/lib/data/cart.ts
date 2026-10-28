@@ -1,6 +1,6 @@
 "use server"
 
-import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
+import { sdk } from "@lib/config"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { checkoutConflictMessage } from "@lib/util/checkout-error"
 import { safeCountryCode } from "@lib/util/digital-checkout"
@@ -19,6 +19,7 @@ import {
 import { getRegion } from "./regions"
 import { syncCartAffiliateToken } from "./affiliate"
 import { getLocale } from "./locale-actions"
+import { createPaymentSession } from "./payment"
 import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
 import {
   PromptPayPollState,
@@ -314,26 +315,12 @@ export async function renewPromptPaySession(
     return { status: "error", message: "ไม่พบข้อมูลการชำระเงินของตะกร้านี้ กรุณาลองอีกครั้ง" }
   }
 
-  const res = await fetch(
-    `${MEDUSA_BACKEND_URL}/store/payment-collections/${collectionId}/payment-sessions`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
-        ...(await getAuthHeaders()),
-      },
-      body: JSON.stringify({ provider_id: providerId, data: paymentSessionData(providerId) }),
-      cache: "no-store",
-    }
-  ).catch(() => null)
-
-  if (res?.ok) {
+  const res = await createPaymentSession(collectionId, providerId)
+  if (res.status >= 200 && res.status < 300) {
     revalidateTag(await getCacheTag("carts"), { expire: 0 })
     return { status: "renewed" }
   }
-  const body = res ? await res.json().catch(() => null) : null
-  if (res && promptPayRenewalOutcome(res.status, body) === "already-paid") {
+  if (promptPayRenewalOutcome(res.status, res) === "already-paid") {
     return { status: "already-paid" }
   }
   return {

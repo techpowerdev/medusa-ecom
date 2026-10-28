@@ -6,9 +6,12 @@ import { HttpTypes } from "@medusajs/types"
 export default function ProductPrice({
   product,
   variant,
+  struck,
 }: {
   product: HttpTypes.StoreProduct
   variant?: HttpTypes.StoreProductVariant
+  /** FS-16 (spec 03 กฎข้อ 21b): variant มีราคา flash → ราคานี้เป็นราคาเดิม แสดงแบบขีดฆ่า (ราคาจริงอยู่ในกล่อง flash) */
+  struck?: boolean
 }) {
   const { cheapestPrice, variantPrice } = getProductPrice({
     product,
@@ -30,6 +33,7 @@ export default function ProductPrice({
       >
         {!variant && "เริ่มต้น "}
         <span
+          className={clx({ "line-through text-ui-fg-subtle": struck })}
           data-testid="product-price"
           data-value={selectedPrice.calculated_price_number}
         >

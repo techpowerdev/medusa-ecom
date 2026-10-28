@@ -9,7 +9,7 @@ import useSearchSettled from "@lib/hooks/use-search-settled"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Text } from "@modules/common/components/ui"
 import {
-  FlashPrice,
+  CardFlashView,
   useCardFlashPrices,
 } from "@modules/products/components/flash-sale"
 import Thumbnail from "@modules/products/components/thumbnail"
@@ -101,11 +101,14 @@ const StoreHits = ({ hitsPerPage, currencyCode, regionId }: StoreHitsProps) => {
                       >
                         {hit.title}
                       </Text>
-                      {flashPrices[hit.objectID] ? (
-                        <FlashPrice price={flashPrices[hit.objectID]} />
-                      ) : (
-                        <HitPrice hit={hit} currencyCode={currencyCode} />
-                      )}
+                      <div className="flex items-center gap-x-2">
+                        <CardFlashView
+                          flash={flashPrices[hit.objectID]}
+                          fallback={
+                            <HitPrice hit={hit} currencyCode={currencyCode} />
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
                 </LocalizedClientLink>
