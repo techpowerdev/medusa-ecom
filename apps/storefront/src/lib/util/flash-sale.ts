@@ -68,17 +68,29 @@ export function cardFlashOffer(
   }, null)
 }
 
-/** FS-13/FS-14: ราคา flash ต่อสินค้าของการ์ด (key = product id; ไม่มี key = แสดงราคาปกติ) */
+/** FS-16 (กฎข้อ 21c): ข้อมูล flash ของการ์ด — ราคา flash หรือแคมเปญ sold out (การ์ดแสดงป้าย + ราคาปกติ) */
+export type CardFlash = FlashVariantPrice | { sold_out: true }
+
+/**
+ * FS-13/FS-14: ราคา flash ต่อสินค้าของการ์ด (key = product id; ไม่มี key = แสดงราคาปกติ)
+ * FS-16: ไม่มี variant ที่ขายราคา flash ได้แต่มีแคมเปญ sold out (ยังไม่เลย `ends_at`) → `{ sold_out: true }`
+ */
 export function cardFlashPrices(
   data: ActiveFlashSales | null,
   variantIdsByProduct: Record<string, string[]>,
   now: number
-): Record<string, FlashVariantPrice> {
-  const prices: Record<string, FlashVariantPrice> = {}
+): Record<string, CardFlash> {
+  const prices: Record<string, CardFlash> = {}
   for (const [productId, variantIds] of Object.entries(variantIdsByProduct)) {
     const offer = cardFlashOffer(data, variantIds, now)
     if (offer) {
       prices[productId] = offer.price
+    } else if (
+      variantIds.some(
+        (id) => flashOfferForVariant(data, id, now)?.sale.sold_out
+      )
+    ) {
+      prices[productId] = { sold_out: true }
     }
   }
   return prices
