@@ -5,6 +5,7 @@ import { updateLineItem } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import CartItemSelect from "@modules/cart/components/cart-item-select"
 import ErrorMessage from "@modules/checkout/components/error-message"
+import CartFlashExceedsRemaining from "@modules/cart/components/flash-exceeds-remaining"
 import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
 import LineItemPrice from "@modules/common/components/line-item-price"
@@ -18,9 +19,16 @@ type ItemProps = {
   item: HttpTypes.StoreCartLineItem
   type?: "full" | "preview"
   currencyCode: string
+  /** FS-15 (กฎข้อ 20b): remaining_units เมื่อจำนวนของ line นี้เกินโควตา flash */
+  flashRemaining?: number
 }
 
-const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
+const Item = ({
+  item,
+  type = "full",
+  currencyCode,
+  flashRemaining,
+}: ItemProps) => {
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -106,6 +114,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             {updating && <Spinner />}
           </div>
           <ErrorMessage error={error} data-testid="product-error-message" />
+          <CartFlashExceedsRemaining remaining={flashRemaining} />
         </Table.Cell>
       )}
 

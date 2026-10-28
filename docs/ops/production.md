@@ -210,6 +210,22 @@ provider ตอนอ่าน PI เดิม — guard ไม่ลบ session
   (เช่นผ่าน script `medusa exec`) ก็ cancel PI เดิมผ่าน provider ก่อนลบ จึงล้มด้วยสาเหตุเดียวกัน — วิธีที่ใช้ได้โดยไม่เขียนโค้ดใหม่คือให้ลูกค้าเริ่ม cart ใหม่ (ข้อ 3) — และห้ามใช้ route นี้กับ session ที่ PI `succeeded` (ลบ session ที่ชำระแล้ว = ปัญหาเดิมของ
   ADR-015) ห้ามแก้ตาราง payment ใน DB ตรง
 
+### group buy: เงินเข้าแต่ไม่มี order (alert `GROUP_BUY_PAID_WITHOUT_ORDER`)
+subscriber `apps/backend/src/subscribers/group-buy-payment-captured.ts` (GB-5, spec 04) เขียน log ระดับ error ขึ้นต้นด้วย `GROUP_BUY_PAID_WITHOUT_ORDER`
+(`reason`, `membership_id`, `order_id`, `payment_id`, `amount`, `error`) และส่งอีเมลหา `OPS_ALERT_EMAIL` ครั้งเดียวต่อ membership
+payment มีอยู่ใน Medusa และผูกกับ draft order ของกลุ่มแล้ว จึง refund ผ่าน admin ของ Medusa ได้ (`POST /admin/payments/<payment_id>/refund` /
+ปุ่ม Refund ในหน้า order) — **ห้าม refund ใน Stripe dashboard** และห้ามใช้ script `refund-orphan-payment` (script ปฏิเสธ payment ที่ผูก order)
+ก่อน refund ทุกครั้งดู `refunds` จาก `GET /admin/payments/<payment_id>` ถ้า refund ครบแล้วข้ามขั้น refund
+- `reason=convert_failed` — capture ครบแต่ `convertDraftOrderWorkflow` ล้ม (ส่วนใหญ่สต็อกไม่พอ ดู `error`) membership ยังเป็น `awaiting_payment`,
+  order ยังเป็น draft และ job หมดเวลาจะไม่ยกเลิก (collection `completed`) ไม่มีการลองใหม่อัตโนมัติ
+  1. เติมสต็อกได้ → เติมใน admin → Inventory แล้วแปลงด้วย Medusa admin: Draft Orders → order นั้น → Convert to order
+     (`POST /admin/draft-orders/<order_id>/convert-to-order`) จากนั้นตรวจว่า order อยู่ใน Orders และ fulfill ตามปกติ — membership ของกลุ่มยังแสดง
+     `awaiting_payment` (ยังไม่มีทางอัปเดตจาก admin — follow-up ใน spec 04) ให้จดใน incident
+  2. เติมสต็อกไม่ได้ → refund เต็มจำนวนตามวิธีด้านบน ห้าม convert หลัง refund
+- `reason=membership_cancelled` — capture มาหลัง membership ถูกยกเลิก (หมดเวลาชำระ) order ถูกยกเลิกแล้วหรือกำลังถูกยกเลิก: ถ้า capture เกิดก่อน
+  `cancelOrderWorkflow` ทำงาน Medusa refund ให้เองแล้ว — ดู `refunds` ก่อน ถ้ายังไม่ refund ให้ refund เต็มจำนวนตามวิธีด้านบน ห้ามคืนสถานะ membership เอง
+แล้วแจ้งลูกค้า (อีเมลของ order) ว่าแปลงเป็นคำสั่งซื้อแล้ว/คืนเงินแล้ว และบันทึก incident (membership, order, payment, จำนวนเงิน, `reason`, การดำเนินการ, ผู้ทำ)
+
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
 - `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL` และ Alerts)

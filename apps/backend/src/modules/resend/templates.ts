@@ -16,6 +16,9 @@ export const EmailTemplates = {
   PAYMENT_WEBHOOK_ORPHAN: "payment-webhook-orphan",
   GROUP_BUY_SUCCEEDED: "group-buy-succeeded",
   GROUP_BUY_FAILED: "group-buy-failed",
+  GROUP_BUY_PAYMENT_EXPIRED: "group-buy-payment-expired",
+  // GB-5 (spec 06 กฎข้อ 7D): อีเมลถึง OPS_ALERT_EMAIL เมื่อเงินเข้าแต่ไม่มี order ของ group buy ที่ใช้ได้
+  GROUP_BUY_PAID_WITHOUT_ORDER: "group-buy-paid-without-order",
 } as const
 
 /** EV-4: code/PIN ใน notification.data เป็น ciphertext — provider ส่งฟังก์ชันถอดรหัสมาตอน render */
@@ -383,6 +386,35 @@ const renderGroupBuyFailed = (data: Record<string, unknown>): RenderedEmail => {
   return { subject, html: layout(subject, body) }
 }
 
+// GB-5 (AC-10): หมดเวลาชำระเงิน — ข้อมูลจาก src/workflows/group-buy/membership-payment.ts
+const renderGroupBuyPaymentExpired = (data: Record<string, unknown>): RenderedEmail => {
+  const { order = {} } = data as GroupBuyEmail
+  const orderNo = `#${escapeHtml(order.display_id)}`
+  const subject = `หมดเวลาชำระเงิน คำสั่งซื้อ ${orderNo} ถูกยกเลิก`
+  const body =
+    `<h1 style="font-size:20px">เลยกำหนดชำระเงินของกลุ่มแล้ว</h1>` +
+    `<p>คำสั่งซื้อ ${orderNo} ถูกยกเลิกเพราะไม่ได้ชำระเงินภายในเวลาที่กำหนด จึงไม่มีการเรียกเก็บเงินใดๆ</p>`
+  return { subject, html: layout(subject, body) }
+}
+
+// GB-5 (review #185): ข้อมูลจาก src/subscribers/group-buy-payment-captured.ts — ช่องทางเดียวกับ PAY-6b
+const renderGroupBuyPaidWithoutOrder = (data: Record<string, unknown>): RenderedEmail => {
+  const subject = `[ด่วน] GROUP_BUY_PAID_WITHOUT_ORDER: เงินเข้าแต่ไม่มี order ${String(data.order_id ?? "")}`
+  const row = (label: string, value: unknown) => `<li>${label}: <b>${escapeHtml(value)}</b></li>`
+  const body =
+    `<h1 style="font-size:20px">group buy: เงินเข้าแต่ไม่มี order ที่ใช้ได้</h1>` +
+    `<ul>` +
+    row("Reason", data.reason) +
+    row("Membership", data.membership_id) +
+    row("Order (draft)", data.order_id) +
+    row("Payment", data.payment_id) +
+    row("Amount (THB)", data.amount) +
+    row("Error", data.error) +
+    `</ul>` +
+    `<p>ทำตาม runbook "group buy: เงินเข้าแต่ไม่มี order" ใน docs/ops/production.md</p>`
+  return { subject, html: layout(subject, body) }
+}
+
 const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderContext) => RenderedEmail> = {
   [EmailTemplates.ORDER_PLACED]: renderOrderPlaced,
   [EmailTemplates.ORDER_SHIPPED]: renderOrderShipped,
@@ -394,6 +426,8 @@ const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderCont
   [EmailTemplates.PAYMENT_WEBHOOK_ORPHAN]: renderPaymentWebhookOrphan,
   [EmailTemplates.GROUP_BUY_SUCCEEDED]: renderGroupBuySucceeded,
   [EmailTemplates.GROUP_BUY_FAILED]: renderGroupBuyFailed,
+  [EmailTemplates.GROUP_BUY_PAYMENT_EXPIRED]: renderGroupBuyPaymentExpired,
+  [EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER]: renderGroupBuyPaidWithoutOrder,
 }
 
 export const renderEmailTemplate = (

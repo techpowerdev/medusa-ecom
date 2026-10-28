@@ -76,6 +76,10 @@ const StripePaymentButton = ({
 
   const onPaymentCompleted = async () => {
     await placeOrder()
+      // FS-15 (กฎข้อ 20c): 409 ของ flash/promotion มาเป็นค่า `{ error }` ภาษาไทย
+      .then((res) => {
+        if (res && "error" in res) setErrorMessage(res.error)
+      })
       .catch((err) => {
         setErrorMessage(friendlyErrorMessage(err, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       })
@@ -189,6 +193,10 @@ const ManualTestPaymentButton = ({
   const onPaymentCompleted = async () => {
     // AF-3b (กฎ 23): ส่ง metadata ของ cart ที่อ่านไว้ → placeOrder sync cookie `aff` ก่อน complete
     await placeOrder(cart.id, cart.metadata ?? null, countryCode as string)
+      // FS-15 (กฎข้อ 20c): 409 ของ flash/promotion มาเป็นค่า `{ error }` ภาษาไทย
+      .then((res) => {
+        if (res && "error" in res) setErrorMessage(res.error)
+      })
       .catch((err) => {
         setErrorMessage(friendlyErrorMessage(err, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
       })

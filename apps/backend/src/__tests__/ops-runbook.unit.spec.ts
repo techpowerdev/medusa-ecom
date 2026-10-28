@@ -87,6 +87,15 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
   it("ไม่แนะนำแก้ DB ด้วย SQL ตรง", () => {
     expect(body).not.toMatch(/\b(DELETE FROM|UPDATE\s+\w+\s+SET|INSERT INTO)\b/i)
   })
+
+  // GB-5 (review #185): เงินเข้าแต่ไม่มี order ของ group buy — alert เดียวกันทาง OPS_ALERT_EMAIL
+  it("กรณี group buy: alert GROUP_BUY_PAID_WITHOUT_ORDER ทั้งสองสาเหตุ และขั้นตอนที่ admin ทำได้", () => {
+    const gb = body!.slice(body!.search(/### group buy: เงินเข้าแต่ไม่มี order/))
+    expect(gb).toContain("GROUP_BUY_PAID_WITHOUT_ORDER")
+    for (const step of ["convert_failed", "membership_cancelled", "convert-to-order", "refund", "แจ้งลูกค้า", "incident"]) {
+      expect(gb).toContain(step)
+    }
+  })
 })
 
 describe("AC-16 apps/backend/.env.example", () => {
