@@ -49,7 +49,8 @@ CORE-4 (spec 01) ต้องส่งมอบ storefront ภาษาไทย
    (ผูกเป็น CSS variable แล้วใช้เป็น `fontFamily.sans` ตัวแรก) owner เปลี่ยนค่า token ภายหลังโดยไม่ต้องแก้ component
 5. THB แสดงเป็น `฿1,000` (ไม่มีทศนิยมเมื่อเป็นจำนวนเต็ม) และ `฿1,000.50` (2 ตำแหน่งเมื่อมีสตางค์) ทั้ง th และ en
    ใช้ `Intl.NumberFormat` กับ `currencyDisplay: "narrowSymbol"` (จำเป็นสำหรับ en ไม่เช่นนั้นจะได้ `THB`)
-6. unit test ของ storefront ใช้ **Vitest** (dev dependency)
+6. unit test ของ storefront ใช้ **Vitest** (dev dependency) — (บันทึกรอบ 12 ตาม review #166) environment ค่าเริ่มต้นของ suite คือ `node`; component test แบบ interactive
+   ระบุ `jsdom` ทีละไฟล์ด้วย comment `// @vitest-environment jsdom` ที่หัวไฟล์ (ไม่เปลี่ยนค่าเริ่มต้นของทั้ง suite)
 
 ### การแทนที่กฎใน CLAUDE.md
 กฎ "UI label ที่ test/screenshot อ้างถึงคงเป็นอังกฤษใน spec จนกว่าจะตัดสินใจเรื่อง i18n" **ถูกแทนด้วยข้อ 3** ข้างบน
