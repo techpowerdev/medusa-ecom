@@ -100,6 +100,15 @@ export default function OrderPay({ initial, serverNow }: Props) {
     }
   }, [awaiting, read])
 
+  /**
+   * (d2) ยังไม่ชำระ → error + ฟอร์มเดิมให้ลองใหม่: ล้างตัวเลือก เพราะ RadioGroup ไม่เรียก onChange เมื่อคลิกค่าเดิม
+   * (qa #189 D-1: คลิกบัตรซ้ำแล้วไม่สร้าง session ใหม่)
+   */
+  const fail = useCallback(() => {
+    setError(PAY_FAILED)
+    setSelected("")
+  }, [])
+
   /** (c) สร้าง/ต่อ session แล้วจัดการผลตามข้อ (d)/(d2) */
   const startSession = useCallback(
     async (providerId: string) => {
@@ -109,7 +118,7 @@ export default function OrderPay({ initial, serverNow }: Props) {
       const res = await createPaymentSession(collection.id, providerId).catch(() => ({ status: 0, code: null }))
       const outcome = sessionCreateOutcome(res.status, res.code)
       if (outcome === "created") {
-        if (!(await read())) setError(PAY_FAILED)
+        if (!(await read())) fail()
       } else if (outcome === "already-paid") {
         awaitCapture()
       } else if (outcome === "unauthorized") {
@@ -121,12 +130,12 @@ export default function OrderPay({ initial, serverNow }: Props) {
         if (next && hasPayment(next)) {
           if (orderPayView(next, Date.now()) !== "paid") awaitCapture(1)
         } else {
-          setError(PAY_FAILED)
+          fail()
         }
       }
       setBusy(false)
     },
-    [collection, read, awaitCapture, router]
+    [collection, read, awaitCapture, router, fail]
   )
 
   const select = (providerId: string) => {
@@ -182,6 +191,7 @@ export default function OrderPay({ initial, serverNow }: Props) {
                 paymentInfoMap={paymentInfoMap}
                 setError={setElementError}
                 setPaymentComplete={setCardReady}
+                disabled={busy}
               />
             </RadioGroup>
             <ErrorMessage error={elementError} data-testid="order-pay-element-error" />

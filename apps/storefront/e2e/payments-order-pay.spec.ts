@@ -52,6 +52,8 @@ async function fulfillResult(route: Route, fn: (result: Gb8) => Gb8) {
 type Mock = {
   /** ผลของ createPaymentSession (`status` ของ Medusa + `code`) */
   create?: { status: number; code: string | null }
+  /** mock `create` เฉพาะ n ครั้งแรก (ครั้งถัดไปใช้ผลจริง) */
+  createTimes?: number
   /** response ของ GB-8 ครั้งที่ n (นับจากหลังสร้าง session) */
   gb8?: (n: number, body: Gb8) => Gb8
   /** ก่อนตอบผลการสร้าง session (เช่น ล้าง cookie = token หมดอายุ) */
@@ -70,7 +72,8 @@ async function mockActions(page: Page, orderId: string, mock: Mock) {
       if (body.includes("pay_col_")) {
         log.created++
         await mock.beforeCreate?.()
-        return mock.create ? fulfillResult(route, () => mock.create) : route.fallback()
+        const mocked = mock.create && log.created <= (mock.createTimes ?? Infinity)
+        return mocked ? fulfillResult(route, () => mock.create) : route.fallback()
       }
       if (!log.created) return route.fallback()
       if (body === JSON.stringify([orderId])) {
@@ -221,6 +224,41 @@ test.describe("หน้าชำระเงินของ order กลุ่�
       if (status === 500) await evidence("03-order-pay-error")
     })
   }
+
+  test("d2 ยังไม่ชำระแล้วคลิกบัตรอีกครั้ง → สร้าง session ใหม่ได้ (ฟอร์มเดิมให้ลองใหม่ — qa #189 D-1)", async ({
+    page,
+    context,
+    request,
+    baseURL,
+  }) => {
+    const ctx = await groupBuyOrder(request, true)
+    await openPay(page, context, baseURL!, ctx)
+    const option = page.getByTestId(`payment-option-${CARD_PROVIDER}`)
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    const log = await mockActions(page, ctx.orderId, {
+      // ครั้งแรกล้ม (ไม่มี session จริงเหมือน Stripe ล่ม) ครั้งที่สองใช้ผลจริง
+      create: { status: 500, code: "unknown_error" },
+      createTimes: 1,
+      beforeCreate: () => (log.created === 1 ? held : Promise.resolve()),
+      gb8: (n, body) => {
+        if (n > 1) return body
+        withPayment(body, { payment_status: "not_paid", collection: "not_paid" }).order.payment_collections[0].payment_sessions = []
+        return body
+      },
+    })
+    await option.click()
+    // ระหว่างส่ง ตัวเลือกบัตรถูก disable (กันกดซ้ำ)
+    await expect(option).toHaveAttribute("aria-disabled", "true")
+    release()
+    await expect(page.getByTestId("order-pay-error")).toBeVisible()
+    await expect(page.getByTestId("order-pay-form")).toBeVisible()
+    expect(log.created).toBe(1)
+
+    await option.click()
+    await expect.poll(() => log.created, { message: "คลิกบัตรอีกครั้งต้องสร้าง session ใหม่" }).toBe(2)
+    if (HAS_STRIPE_UI) await expect(page.getByTestId("order-pay-card-button")).toBeVisible({ timeout: 30_000 })
+  })
 
   test("401 → หน้า login และไม่อ่าน GB-8 จาก d2", async ({ page, context, request, baseURL }) => {
     const ctx = await groupBuyOrder(request, true)

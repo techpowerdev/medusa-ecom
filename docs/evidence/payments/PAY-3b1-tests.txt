@@ -36,3 +36,24 @@ pnpm --filter storefront build: ผ่าน (route ƒ /[countryCode]/account/or
 
 ## CI รอบสอง (run 40607228404)
 3 กรณีเดิมเห็น order-pay-error แล้วหายไป: onChange ของ PaymentElement (StripePaymentContainer) เรียก setError(null) ตอน mount เมื่อมี Stripe key จริง → ลบ error ของข้อ d2 — แก้ production: แยก error ของ element เป็น order-pay-element-error
+
+## แก้ qa #189 D-1 (2026-10-28)
+สาเหตุ: หลัง order-pay-error (d2 ยังไม่ชำระ) selected ยังเป็น pp_stripe_stripe และ headlessui RadioGroup ไม่เรียก onChange เมื่อคลิกค่าเดิม → ไม่สร้าง session ใหม่ ต้อง reload
+แก้: d2 ยังไม่ชำระ/อ่าน GB-8 ไม่ได้ → ล้าง selected (ฟอร์มเดิมลองใหม่ได้); ตัวเลือกบัตร disabled ระหว่าง busy (aria-disabled)
+red: test ใหม่ล้มที่ aria-disabled ("" แทน "true") และ mutation (ไม่ล้าง selected) ล้มที่ "คลิกบัตรอีกครั้งต้องสร้าง session ใหม่" Expected 2
+green (e2e ในเครื่อง, Stripe key ปลอม):
+  ✓   1 [chromium] › e2e/payments-order-pay.spec.ts:103:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › B เปิด URL ของ A → HTTP 404; A เห็นฟอร์มชำระเงิน
+  ✓   2 [chromium] › e2e/payments-order-pay.spec.ts:119:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › joined → order-pay-waiting; cancelled → order-pay-closed (ไม่มีฟอร์ม)
+  ✓   3 [chromium] › e2e/payments-order-pay.spec.ts:133:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › เลย pay_deadline_at → order-pay-closed
+  ✓   4 [chromium] › e2e/payments-order-pay.spec.ts:145:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 409 PAYMENT_ALREADY_COMPLETED → poll GB-8 อย่างเดียว ≤ 10 ครั้ง แล้ว promptpay-order-delayed
+  ✓   5 [chromium] › e2e/payments-order-pay.spec.ts:172:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 500 unknown_error + GB-8 มีการชำระแล้ว → poll จน captured แล้ว order-pay-paid (ไม่มี error)
+  ✓   6 [chromium] › e2e/payments-order-pay.spec.ts:172:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 400 invalid_data + GB-8 มีการชำระแล้ว → poll จน captured แล้ว order-pay-paid (ไม่มี error)
+  ✓   7 [chromium] › e2e/payments-order-pay.spec.ts:204:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 500 unknown_error + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8 1 ครั้ง
+  ✓   8 [chromium] › e2e/payments-order-pay.spec.ts:204:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 400 invalid_data + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8 1 ครั้ง
+  ✓   9 [chromium] › e2e/payments-order-pay.spec.ts:204:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 409 invalid_state_error + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8 1 ครั้ง
+  ✓  10 [chromium] › e2e/payments-order-pay.spec.ts:228:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › d2 ยังไม่ชำระแล้วคลิกบัตรอีกครั้ง → สร้าง session ใหม่ได้ (ฟอร์มเดิมให้ลองใหม่ — qa #189 D-1)
+  ✓  11 [chromium] › e2e/payments-order-pay.spec.ts:263:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 401 → หน้า login และไม่อ่าน GB-8 จาก d2
+  -  12 [chromium] › e2e/payments-order-pay.spec.ts:281:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร; AC-7 พร้อมเพย์อยู่ใน PAY-3b2) › บัตร 4242 → order-pay-paid ภายใน 60 วินาที และ payment captured
+  1 skipped
+  11 passed (1.5m)
+unit storefront: 51 files / 584 passed; pnpm lint 0 errors; pnpm typecheck ผ่าน
