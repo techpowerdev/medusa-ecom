@@ -42,6 +42,8 @@ export default function OrderPay({ initial, serverNow }: Props) {
   const [awaiting, setAwaiting] = useState(false)
   const [delayed, setDelayed] = useState(false)
   const [cardReady, setCardReady] = useState(false)
+  // error ของ PaymentElement แยกจาก order-pay-error — onChange ของ element ล้างค่าตอน mount จะได้ไม่ลบ error ของข้อ d2
+  const [elementError, setElementError] = useState<string | null>(null)
   // PAY-6c: จำนวนการอ่าน GB-8 นับจากรู้ว่าชำระแล้ว — เพดาน PROMPTPAY_FALLBACK_MAX_REQUESTS (ข้อ d)
   const reads = useRef(0)
 
@@ -130,6 +132,7 @@ export default function OrderPay({ initial, serverNow }: Props) {
   const select = (providerId: string) => {
     setSelected(providerId)
     setCardReady(false)
+    setElementError(null)
     if (session?.provider_id !== providerId) startSession(providerId)
   }
 
@@ -177,10 +180,11 @@ export default function OrderPay({ initial, serverNow }: Props) {
                 paymentProviderId={CARD}
                 selectedPaymentOptionId={selected}
                 paymentInfoMap={paymentInfoMap}
-                setError={setError}
+                setError={setElementError}
                 setPaymentComplete={setCardReady}
               />
             </RadioGroup>
+            <ErrorMessage error={elementError} data-testid="order-pay-element-error" />
             <PayButton selected={selected} session={session} cardReady={cardReady} onPaid={awaitCapture} />
           </div>
         </PaymentWrapper>
