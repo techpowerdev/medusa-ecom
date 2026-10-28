@@ -18,6 +18,8 @@ import { useParams, usePathname } from "next/navigation"
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import FlashSale, { useFlashOffer } from "../flash-sale"
+import FlashQtyExceedsRemaining from "../flash-sale/qty-exceeds-remaining"
+import { flashQtyExceeded } from "@lib/util/flash-sale"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
 
@@ -131,6 +133,8 @@ export default function ProductActions({
   )
   // FS-13 (กฎข้อ 18): แคมเปญ flash ขายครบ cap แล้ว → checkout จะล้ม FLASH_SOLD_OUT จึงไม่ให้เพิ่มลง cart
   const canBuy = inStock && !flash.offer?.sale.sold_out
+  // FS-15 (กฎข้อ 20a): จำนวนเกิน remaining_units ของแคมเปญ → complete ล้มแน่นอน จึงไม่ให้เพิ่มจนกว่าจะลดจำนวน
+  const flashRemaining = flashQtyExceeded(flash.offer, quantity)
 
   const actionsRef = useRef<HTMLDivElement>(null)
 
@@ -235,6 +239,8 @@ export default function ProductActions({
             </select>
           </label>
 
+          <FlashQtyExceedsRemaining remaining={flashRemaining} />
+
           {selectedVariant && isValidVariant && (
             <p
               className="text-small-regular text-ui-fg-subtle"
@@ -251,7 +257,8 @@ export default function ProductActions({
               !selectedVariant ||
               !!disabled ||
               isAdding ||
-              !isValidVariant
+              !isValidVariant ||
+              flashRemaining != null
             }
             variant="primary"
             className="w-full h-10"
@@ -280,6 +287,7 @@ export default function ProductActions({
           options={options}
           updateOptions={setOptionValue}
           inStock={canBuy}
+          qtyExceeded={flashRemaining != null}
           flashOffer={flash.offer}
           handleAddToCart={handleAddToCart}
           isAdding={isAdding}

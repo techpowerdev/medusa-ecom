@@ -84,6 +84,57 @@ export function cardFlashPrices(
   return prices
 }
 
+/**
+ * FS-15 (กฎข้อ 20a): จำนวนที่เลือกบน PDP เกินโควตาที่เหลือของแคมเปญ → คืน `remaining_units` (ไว้แสดงในข้อความ), ไม่เกิน → null
+ * units นับเต็มจำนวน (กฎข้อ 9) จึงเกินแล้ว complete ล้มแน่นอน; `remaining_units = null` (ไม่รู้ยอด) และแคมเปญ sold out
+ * (FS-13 แสดง `flash-sold-out` และ disable ปุ่มอยู่แล้ว) → null
+ */
+export function flashQtyExceeded(
+  offer: FlashOffer | null,
+  quantity: number
+): number | null {
+  const remaining = offer?.sale.remaining_units
+  if (remaining == null || offer!.sale.sold_out) {
+    return null
+  }
+  return quantity > remaining ? remaining : null
+}
+
+type CartLineLike = {
+  id: string
+  variant_id?: string | null
+  quantity: number
+  adjustments?: { promotion_id?: string | null }[] | null
+}
+
+/**
+ * FS-15 (กฎข้อ 20b): line ใน cart ที่ได้ส่วนลด flash และ `quantity > remaining_units` → { line id: remaining_units }
+ * "ได้ส่วนลด flash" = variant อยู่ในแคมเปญ และ line มี adjustment ของ promotion อัตโนมัติ — store API ของ cart ไม่ให้อ่าน
+ * campaign ของ adjustment; ส่วนลดจาก code (`is_automatic=false`) ไม่นับ เพราะ code ชนะ flash (ADR-009)
+ */
+export function cartFlashExceeded(
+  items: CartLineLike[],
+  promotions: { id: string; is_automatic?: boolean | null }[] | null | undefined,
+  data: ActiveFlashSales | null,
+  now: number
+): Record<string, number> {
+  const automatic = new Set(
+    (promotions ?? []).filter((p) => p.is_automatic).map((p) => p.id)
+  )
+  const exceeded: Record<string, number> = {}
+  for (const item of items) {
+    const remaining = flashOfferForVariant(data, item.variant_id ?? undefined, now)
+      ?.sale.remaining_units
+    const discounted = (item.adjustments ?? []).some(
+      (a) => !!a.promotion_id && automatic.has(a.promotion_id)
+    )
+    if (remaining != null && discounted && item.quantity > remaining) {
+      exceeded[item.id] = remaining
+    }
+  }
+  return exceeded
+}
+
 /** FS-13: รวมผลของ `GET /store/flash-sales/active` ที่แบ่งยิงตามเพดาน variant ต่อ request; ทุกชุดล้ม → null */
 export function mergeActiveFlashSales(
   parts: (ActiveFlashSales | null)[]
