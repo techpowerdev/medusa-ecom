@@ -36,6 +36,13 @@ export default function VoucherCard({ voucher }: { voucher: CustomerEvoucher }) 
         <span className="text-ui-fg-muted">หมดอายุ</span>
         <span>{voucher.expires_at ? formatDate(voucher.expires_at) : "ไม่มีวันหมดอายุ"}</span>
       </div>
+      {/* EV-7e (กฎข้อ 29b): ช่องทางติดต่อพาร์ทเนอร์เมื่อใช้ code ไม่ได้ — แสดงเป็นข้อความ (ไม่ render เป็นลิงก์) */}
+      {partner.support_contact && (
+        <div className="flex gap-x-3" data-testid="voucher-support-contact">
+          <span className="text-ui-fg-muted">ติดต่อพาร์ทเนอร์</span>
+          <span className="whitespace-pre-line break-all">{partner.support_contact}</span>
+        </div>
+      )}
       <details>
         <summary className="cursor-pointer">วิธีใช้</summary>
         <p className="mt-2 whitespace-pre-line">{pool.how_to_use}</p>
