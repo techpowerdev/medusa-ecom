@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 
 import { getAffiliate } from "@lib/data/affiliate-portal"
 import { getBaseURL } from "@lib/util/env"
-import ShareLinkButton from "@modules/affiliate/components/share-link-button"
+import ShareLinkButton from "@modules/common/components/share-link-button"
 
 export const metadata: Metadata = { title: "โปรไฟล์แอฟฟิลิเอต", robots: { index: false } }
 
