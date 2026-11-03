@@ -29,6 +29,8 @@ type MobileActionsProps = {
   qtyExceeded?: boolean
   /** qa #134 D-1: ข้อความเมื่อเพิ่มลง cart ไม่สำเร็จ (handler เดียวกับฟอร์มหลัก) */
   error?: string | null
+  /** FS-19 (กฎข้อ 24a): ข้อมูล flash ยังไม่ตอบ — ปุ่มรอแบบเดียวกับ `add-product-button` (กฎข้อ 21a) */
+  flashLoading?: boolean
 }
 
 const MobileActions: React.FC<MobileActionsProps> = ({
@@ -44,6 +46,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   flashOffer,
   qtyExceeded,
   error,
+  flashLoading,
 }) => {
   const { state, open, close } = useToggleState()
 
@@ -70,92 +73,98 @@ const MobileActions: React.FC<MobileActionsProps> = ({
           "pointer-events-none": !show,
         })}
       >
-        <Transition
-          as={Fragment}
-          show={show}
-          enter="ease-in-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-300"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div
-            className="bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
-            data-testid="mobile-actions"
+        {/* FS-19 (กฎข้อ 24b): จางเฉพาะตอนแสดง — ซ่อนด้วยการ unmount ทันที ไม่มี leave transition ที่จางทับปุ่มหลัก */}
+        {show && (
+          <Transition
+            as={Fragment}
+            appear
+            show
+            enter="ease-in-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
           >
-            <div className="flex items-center gap-x-2">
-              <span data-testid="mobile-title">{product.title}</span>
-              <span>—</span>
-              {flashOffer && !flashOffer.sale.sold_out ? (
-                <FlashPrice price={flashOffer.price} />
-              ) : selectedPrice ? (
-                <div className="flex items-end gap-x-2 text-ui-fg-base">
-                  {selectedPrice.price_type === "sale" && (
-                    <p>
-                      <span className="line-through text-small-regular">
-                        {selectedPrice.original_price}
-                      </span>
-                    </p>
-                  )}
-                  <span
-                    className={clx({
-                      "text-ui-fg-interactive":
-                        selectedPrice.price_type === "sale",
-                    })}
+            <div
+              className="bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
+              data-testid="mobile-actions"
+            >
+              <div className="flex items-center gap-x-2">
+                <span data-testid="mobile-title">{product.title}</span>
+                <span>—</span>
+                {flashOffer && !flashOffer.sale.sold_out ? (
+                  <FlashPrice price={flashOffer.price} />
+                ) : selectedPrice ? (
+                  <div className="flex items-end gap-x-2 text-ui-fg-base">
+                    {selectedPrice.price_type === "sale" && (
+                      <p>
+                        <span className="line-through text-small-regular">
+                          {selectedPrice.original_price}
+                        </span>
+                      </p>
+                    )}
+                    <span
+                      className={clx({
+                        "text-ui-fg-interactive":
+                          selectedPrice.price_type === "sale",
+                      })}
+                    >
+                      {selectedPrice.calculated_price}
+                    </span>
+                  </div>
+                ) : (
+                  <div></div>
+                )}
+              </div>
+              <div
+                className={clx("grid grid-cols-2 w-full gap-x-4", {
+                  "!grid-cols-1": isSimple,
+                })}
+              >
+                {!isSimple && (
+                  <Button
+                    type="button"
+                    onClick={open}
+                    variant="secondary"
+                    className="w-full"
+                    data-testid="mobile-actions-button"
                   >
-                    {selectedPrice.calculated_price}
-                  </span>
-                </div>
-              ) : (
-                <div></div>
+                    <div className="flex items-center justify-between w-full">
+                      <span>
+                        {variant
+                          ? Object.values(options).join(" / ")
+                          : "เลือกตัวเลือก"}
+                      </span>
+                      <ChevronDown />
+                    </div>
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={!inStock || !variant || qtyExceeded || flashLoading}
+                  aria-busy={flashLoading}
+                  className="w-full"
+                  isLoading={isAdding}
+                  data-testid="mobile-cart-button"
+                >
+                  {!variant
+                    ? "เลือกตัวเลือกสินค้า"
+                    : !inStock
+                    ? "สินค้าหมด"
+                    : "เพิ่มลงตะกร้า"}
+                </Button>
+              </div>
+              {error && (
+                <p
+                  className="text-small-regular text-ui-fg-error"
+                  role="alert"
+                  data-testid="mobile-add-to-cart-error"
+                >
+                  {error}
+                </p>
               )}
             </div>
-            <div className={clx("grid grid-cols-2 w-full gap-x-4", {
-              "!grid-cols-1": isSimple
-            })}>
-              {!isSimple && <Button
-                type="button"
-                onClick={open}
-                variant="secondary"
-                className="w-full"
-                data-testid="mobile-actions-button"
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span>
-                    {variant
-                      ? Object.values(options).join(" / ")
-                      : "เลือกตัวเลือก"}
-                  </span>
-                  <ChevronDown />
-                </div>
-              </Button>}
-              <Button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={!inStock || !variant || qtyExceeded}
-                className="w-full"
-                isLoading={isAdding}
-                data-testid="mobile-cart-button"
-              >
-                {!variant
-                  ? "เลือกตัวเลือกสินค้า"
-                  : !inStock
-                  ? "สินค้าหมด"
-                  : "เพิ่มลงตะกร้า"}
-              </Button>
-            </div>
-            {error && (
-              <p
-                className="text-small-regular text-ui-fg-error"
-                role="alert"
-                data-testid="mobile-add-to-cart-error"
-              >
-                {error}
-              </p>
-            )}
-          </div>
-        </Transition>
+          </Transition>
+        )}
       </div>
       <Transition appear show={state} as={Fragment}>
         <Dialog as="div" className="relative z-[75]" onClose={close}>
