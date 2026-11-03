@@ -1,3 +1,4 @@
+import { useDate } from "@medusajs/dashboard/hooks"
 import {
   Badge,
   Button,
@@ -10,10 +11,11 @@ import {
   usePrompt,
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { canSetGroupOutcome, customerLabel, orderAdminPath } from "../../lib/group-buy-campaign"
-import { formatDateTime, Group, groupBuyApi, groupBuyKeys, Membership } from "../../lib/group-buy"
+import { Group, groupBuyApi, groupBuyKeys, Membership } from "../../lib/group-buy"
+import { createSingleFlight } from "../../lib/single-flight"
 
 type Outcome = "succeed" | "fail"
 
@@ -31,26 +33,36 @@ const PROMPTS: Record<Outcome, { title: string; description: string; confirmText
 }
 
 const columnHelper = createDataTableColumnHelper<Membership>()
-const columns = [
-  columnHelper.accessor(customerLabel, { id: "customer", header: "Customer" }),
-  columnHelper.accessor("units", { header: "Units" }),
-  columnHelper.accessor("status", {
-    header: "Status",
-    cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
-  }),
-  columnHelper.accessor("order_id", {
-    header: "Order",
-    cell: ({ row }) => (
-      <Link to={orderAdminPath(row.original)} data-testid="gb-membership-order-link">
-        <Text size="small" className="text-ui-fg-interactive">
-          {row.original.order_id}
-        </Text>
-      </Link>
-    ),
-  }),
-  columnHelper.accessor((m) => m.order?.payment_status ?? "-", { id: "payment_status", header: "Payment" }),
-  columnHelper.accessor((m) => formatDateTime(m.joined_at), { id: "joined_at", header: "Joined (ICT)" }),
-]
+// วันเวลาแสดงด้วย useDate ของ Medusa (timezone ของเครื่องแอดมิน — spec 08 กฎ 5)
+const useColumns = () => {
+  const { getFullDate } = useDate()
+  return useMemo(
+    () => [
+      columnHelper.accessor(customerLabel, { id: "customer", header: "Customer" }),
+      columnHelper.accessor("units", { header: "Units" }),
+      columnHelper.accessor("status", {
+        header: "Status",
+        cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
+      }),
+      columnHelper.accessor("order_id", {
+        header: "Order",
+        cell: ({ row }) => (
+          <Link to={orderAdminPath(row.original)} data-testid="gb-membership-order-link">
+            <Text size="small" className="text-ui-fg-interactive">
+              {row.original.order_id}
+            </Text>
+          </Link>
+        ),
+      }),
+      columnHelper.accessor((m) => m.order?.payment_status ?? "-", { id: "payment_status", header: "Payment" }),
+      columnHelper.accessor((m) => (m.joined_at ? getFullDate({ date: m.joined_at, includeTime: true }) : "-"), {
+        id: "joined_at",
+        header: "Joined (ICT)",
+      }),
+    ],
+    [getFullDate]
+  )
+}
 
 // GB-6c (spec 04 Admin UI, AC-35): membership ของกลุ่มที่เลือก + succeed/fail แบบ manual (route ของ GB-4)
 export const GroupMembers = ({
@@ -64,6 +76,7 @@ export const GroupMembers = ({
 }) => {
   const queryClient = useQueryClient()
   const prompt = usePrompt()
+  const columns = useColumns()
   const [pagination, setPagination] = useState<DataTablePaginationState>({ pageIndex: 0, pageSize: 20 })
   const limit = pagination.pageSize
   const offset = pagination.pageIndex * limit
@@ -74,30 +87,24 @@ export const GroupMembers = ({
     placeholderData: keepPreviousData,
   })
 
-  // กฎข้อ 17: ref ตั้งทันทีก่อน await prompt — dblclick ไม่ยิงซ้ำ
-  const inFlight = useRef(false)
+  // กฎข้อ 17 / spec 08 กฎ 4: guard ตั้งทันทีก่อน await prompt — dblclick ไม่ยิงซ้ำ
+  const [outcomeOnce] = useState(createSingleFlight)
   const outcome = useMutation({
     mutationFn: (action: Outcome) => groupBuyApi.setOutcome(group.id, action),
     onSuccess: (_, action) => toast.success(action === "succeed" ? "Group succeeded" : "Group failed"),
     onError: (e: Error) => toast.error(e.message),
     // GB-6d (กฎข้อ 23): refetch ทั้งตอนสำเร็จและล้ม — ล้ม (4xx) มักแปลว่ากลุ่มเปลี่ยนสถานะไปแล้ว ตารางต้องตรง DB
     onSettled: () => {
-      inFlight.current = false
       queryClient.invalidateQueries({ queryKey: groupBuyKeys.groups(campaignId) })
       queryClient.invalidateQueries({ queryKey: groupBuyKeys.memberships(group.id) })
     },
   })
-  const onOutcome = async (action: Outcome) => {
-    if (inFlight.current) {
-      return
-    }
-    inFlight.current = true
-    if (!(await prompt({ ...PROMPTS[action], cancelText: "Cancel" }))) {
-      inFlight.current = false
-      return
-    }
-    outcome.mutate(action)
-  }
+  const onOutcome = (action: Outcome) =>
+    outcomeOnce(async () => {
+      if (await prompt({ ...PROMPTS[action], cancelText: "Cancel" })) {
+        await outcome.mutateAsync(action).catch(() => undefined)
+      }
+    })
 
   const table = useDataTable({
     data: data?.memberships ?? [],

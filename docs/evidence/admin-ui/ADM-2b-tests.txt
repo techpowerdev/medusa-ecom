@@ -1,0 +1,111 @@
+# ADM-2b (spec 08 AC-3, AC-4) — ผล test
+# วันที่: 2026-11-03, node v24.12.0, base origin/develop c09073e
+
+## Red (ก่อนแก้โค้ด)
+### jest src/admin/__tests__/medusa-ui.unit.spec.ts — ล้มเพราะยังมี useRef(false)/toLocale*/timeZone: และ formatDate/formatDateTime
+  ✕ lib/evoucher.ts, lib/group-buy.ts, widgets/flash-sale-options.tsx, widgets/order-evouchers.tsx,
+    components/group-buy/group-members.tsx, routes/group-buying/[id]/page.tsx ไม่มี pattern ต้องห้าม
+  ✕ 4 ไฟล์ใช้ useState(createSingleFlight) และไม่มี useRef
+  ✕ lib/evoucher.ts, lib/group-buy.ts ไม่มี formatDate/formatDateTime
+  ✕ 6 ไฟล์ผู้เรียกเดิมใช้ useDate จาก @medusajs/dashboard/hooks
+Tests:       18 failed, 31 passed, 49 total
+### playwright --project=unit e2e/support/admin-options.unit.spec.ts
+  ✘ ADMIN_UI_OPTIONS ตั้ง locale en-US และ timezoneId Asia/Bangkok
+  1 failed, 13 passed
+
+## Green (หลังแก้โค้ด)
+PASS src/admin/__tests__/medusa-ui.unit.spec.ts
+  route config icon (spec 08 AC-2)
+    ✓ พบ route ที่ต้องตรวจ
+    ✓ evouchers มี icon ที่ import จาก @medusajs/icons
+    ✓ group-buying มี icon ที่ import จาก @medusajs/icons
+  Header + SectionRow (spec 08 AC-5)
+    ✓ components/common/header.tsx ถูก import อย่างน้อย 2 ไฟล์
+    ✓ widgets/flash-sale-options.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+    ✓ widgets/variant-evoucher-pool.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+  รายการข้อยกเว้นของ AC-4 (spec 08)
+    ✓ components/affiliate/** ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ routes/affiliate/** ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ lib/affiliate* ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ components/group-buy/create-campaign.tsx ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ components/group-buy/groups-section.tsx ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ lib/group-buy-form.ts ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ จับเฉพาะไฟล์ในรายการ
+  pattern ต้องห้ามของกฎ 4–6 (spec 08 AC-4)
+    ✓ ตรวจไฟล์ที่ ADM-2a/2b ปรับแล้ว
+    ✓ vite-env.d.ts ไม่มี pattern ต้องห้าม
+    ✓ i18n/index.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/client.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher-resend.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/group-buy-campaign.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/group-buy.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/single-flight.ts ไม่มี pattern ต้องห้าม
+    ✓ widgets/flash-sale-options.tsx ไม่มี pattern ต้องห้าม
+    ✓ widgets/order-evouchers.tsx ไม่มี pattern ต้องห้าม
+    ✓ widgets/variant-evoucher-pool.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/common/container.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/common/header.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/codes-table.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/import-codes.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/partners-section.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/pools-table.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/group-buy/group-members.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/group-buy/product-picker.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/evouchers/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/group-buying/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/group-buying/[id]/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/evouchers/pools/[id]/page.tsx ไม่มี pattern ต้องห้าม
+  กันกดซ้ำด้วย createSingleFlight (spec 08 กฎ 4, ADM-2b)
+    ✓ widgets/flash-sale-options.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ widgets/order-evouchers.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ components/group-buy/group-members.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ routes/group-buying/[id]/page.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+  แสดงวันเวลาด้วย useDate (spec 08 AC-3, ADM-2b)
+    ✓ lib/evoucher.ts ไม่มี formatDate/formatDateTime
+    ✓ lib/group-buy.ts ไม่มี formatDate/formatDateTime
+    ✓ widgets/order-evouchers.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/evoucher/codes-table.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/group-buy/group-members.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/group-buy/groups-section.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ routes/group-buying/page.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ routes/group-buying/[id]/page.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+Test Suites: 1 passed, 1 total
+Tests:       49 passed, 49 total
+Snapshots:   0 total
+Time:        0.279 s, estimated 1 s
+
+  15 passed (329ms)
+
+## ชุดเต็มในเครื่อง
+pnpm --filter backend test:unit → Test Suites: 79 passed, 79 total; Tests: 811 passed, 811 total
+pnpm --filter storefront test:e2e:unit → 52 passed
+pnpm lint → 0 errors (warning เดิมของ develop เท่านั้น); pnpm typecheck → ผ่าน; pnpm --filter backend build → ผ่าน
+
+## e2e admin (backend medusa start ที่ :9141, DB แยก, locale en-US + timezoneId Asia/Bangkok จาก ADMIN_UI_OPTIONS)
+  ✓   1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (2.6s)
+  ✓   2 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.2s)
+  ✓   3 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (2.5s)
+  ✓   4 [chromium] › e2e/flash-sale-admin-save.spec.ts:10:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (2.6s)
+  ✓   5 [chromium] › e2e/flash-sale-admin-widget.spec.ts:9:5 › AC-5: widget flash sale ที่บันทึกแล้วแสดงค่า Total cap ตรงกับ API (1.3s)
+  ✓   6 [chromium] › e2e/group-buy-admin-dates.spec.ts:11:5 › AC-3: ends_at ของแคมเปญแสดง Feb 1, 2026 12:30 AM ตามเวลาไทยของ browser (1.3s)
+  ✓   7 [chromium] › e2e/group-buy-admin-detail.spec.ts:62:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (1.9s)
+  ✓   8 [chromium] › e2e/group-buy-admin-detail.spec.ts:103:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (1.9s)
+  ✓   9 [chromium] › e2e/group-buy-admin-detail.spec.ts:144:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading (990ms)
+  ✓  10 [chromium] › e2e/group-buy-admin-detail.spec.ts:154:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (2.2s)
+  ✓  11 [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย (2.7s)
+  ✓  12 [chromium] › e2e/group-buy-admin-members.spec.ts:148:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request (1.9s)
+  ✓  13 [chromium] › e2e/group-buy-admin-members.spec.ts:181:7 › GB-6d › AC-41: fail ล้มเพราะกลุ่ม succeeded ไปแล้ว → GET กลุ่มใหม่ แถวเป็น succeeded ปุ่มหาย ไม่ต้อง reload (2.3s)
+  ✓  14 [chromium] › e2e/group-buy-admin-members.spec.ts:230:7 › GB-6d › AC-41: แถวที่เลือกมี highlight + ปุ่มปิด; เปลี่ยนหน้าไปหน้าที่ไม่มีแถวที่เลือก → ปิดตาราง membership (3.3s)
+  ✓  15 [chromium] › e2e/group-buy-admin-members.spec.ts:291:7 › GB-N3 › AC-42: td แรกของแถวที่เลือกสีเดียวกับ td ที่สองและต่างจากแถวที่ไม่ถูกเลือก (1.6s)
+  15 passed (32.8s)
+### e2e admin ที่เหลือ (ตรวจผลของ locale/timezone ใน ADMIN_UI_OPTIONS)
+  ✓  1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:40:5 › AC-43: approve dblclick ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (4.6s)
+  ✓  2 [chromium] › e2e/affiliate-admin-names.spec.ts:31:5 › AC-45: Ledger/Payouts แสดงชื่อและอีเมลของ affiliate ด้วย request id[] 1 ครั้งต่อหน้า (2.7s)
+  ✓  3 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:31:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (4.3s)
+  ✓  4 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว (3.3s)
+  ✓  5 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (3.5s)
+  ✓  6 [chromium] › e2e/group-buy-admin-form.spec.ts:75:5 › AC-32: max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (2.0s)
+  ✓  7 [chromium] › e2e/group-buy-admin-form.spec.ts:140:5 › AC-33: เลือกสินค้า 2 ตัวผ่าน gb-product-picker (ค้นหาด้วยชื่อ) → target_rules ใน body (2.5s)
+  ✓  8 [chromium] › e2e/group-buy-admin-form.spec.ts:188:5 › AC-33: selection ของ gb-product-picker คงอยู่ข้ามหน้า → target_rules มีสินค้าจากทั้งสองหน้า (2.8s)
+  8 passed (27.1s)
