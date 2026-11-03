@@ -1,5 +1,6 @@
 import { readFileSync } from "fs"
 import path from "path"
+import { parse } from "yaml"
 import { buildNotificationProviders } from "../lib/notification-providers"
 import { seedPaymentProviders } from "../lib/prod-guards"
 import { goLiveFailures } from "../scripts/check-go-live"
@@ -157,35 +158,20 @@ describe("AC-13 / AC-17 boot guards ใน medusa-config", () => {
   })
 })
 
-/** env ระดับ job (บรรทัดย่อหน้า 6 ช่องใต้ `    env:`) ของแต่ละ job ใน ci.yml */
+type CiJob = { env?: Record<string, unknown>; steps?: { run?: string }[] }
+
+/** env ระดับ job (ค่าเป็น string) + คำสั่ง `run:` ของทุก step ของแต่ละ job ใน ci.yml — OPS-17 (AC-28): parse ด้วย `yaml` แบบ ci-workflow.unit.spec.ts */
 function ciJobs(yml: string): Record<string, { body: string; env: Record<string, string> }> {
-  const lines = yml.split(/\r?\n/)
-  const start = lines.findIndex((l) => l === "jobs:")
-  const jobs: Record<string, { body: string; env: Record<string, string> }> = {}
-  let current: string | null = null
-  let inEnv = false
-  for (const line of lines.slice(start + 1)) {
-    const job = /^ {2}([\w-]+):\s*$/.exec(line)
-    if (job) {
-      current = job[1]
-      jobs[current] = { body: "", env: {} }
-      inEnv = false
-      continue
-    }
-    if (!current) {
-      continue
-    }
-    jobs[current].body += `${line}\n`
-    if (/^ {4}\S/.test(line)) {
-      inEnv = /^ {4}env:\s*$/.test(line)
-      continue
-    }
-    const entry = /^ {6}([A-Z_][A-Z0-9_]*):\s*(.*)$/.exec(line)
-    if (inEnv && entry) {
-      jobs[current].env[entry[1]] = entry[2].replace(/\s+#.*$/, "").replace(/^["']|["']$/g, "")
-    }
-  }
-  return jobs
+  const { jobs } = parse(yml) as { jobs: Record<string, CiJob> }
+  return Object.fromEntries(
+    Object.entries(jobs).map(([name, job]) => [
+      name,
+      {
+        body: (job.steps ?? []).map((step) => step.run ?? "").join("\n"),
+        env: Object.fromEntries(Object.entries(job.env ?? {}).map(([key, value]) => [key, String(value)])),
+      },
+    ])
+  )
 }
 
 describe("AC-13 / AC-17 ci.yml และ .env.example", () => {
