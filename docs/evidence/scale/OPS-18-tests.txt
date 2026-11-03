@@ -1,0 +1,45 @@
+# OPS-18 test evidence — 2026-11-03 17:09 +0700
+# node v24.12.0 (host)
+
+### Red — ก่อนมี LOCK_TIMING_MARKER/log ใน hook และ tools/load/lock-timing.js
+    Expected length: 1
+    Received length: 0
+    TypeError: Cannot read properties of undefined (reading 'startsWith')
+    Cannot find module '<repo>/tools/load/lock-timing.js' from 'src/__tests__/load-lock-timing.unit.spec.ts'
+Tests:       2 failed, 1 passed, 3 total
+
+### Green — TEST_TYPE=unit jest (test ของ OPS-18 + load-nightly เดิม)
+PASS src/workflows/hooks/__tests__/flash-sale-lock-timing.unit.spec.ts
+    ✓ log หนึ่งบรรทัดต่อ checkout: wait_ms = ก่อนได้ lock, hold_ms = เวลาภายใน locking.execute, outcome ok (2 ms)
+    ✓ sold out ใน lock → ยัง log (outcome = code ของ error) แล้วโยน error เดิมต่อ (1 ms)
+    ✓ logger ไม่ได้เปิด debug (ค่าเริ่มต้นของ prod) → ไม่ log
+PASS src/__tests__/load-lock-timing.unit.spec.ts
+    ✓ อ่านเฉพาะบรรทัด JSON ที่ message ขึ้นต้นด้วย marker ข้ามบรรทัดอื่น/บรรทัดที่ไม่ใช่ JSON (1 ms)
+    ✓ ไม่มี entry → null และ markdown บอกว่าไม่พบ log (1 ms)
+    ✓ min/median/p95/max ของ wait และ hold (percentile แบบ linear interpolation แบบเดียวกับ k6)
+    ✓ นับ outcome และไม่นับ hold ที่ไม่ได้ lock (acquired_at = null) เข้าสถิติ hold (1 ms)
+    ✓ ต่อคิวทีละตัว (hold ไม่ซ้อนกัน, wait โตตามลำดับขอ lock) → ยืนยัน serialize ทั้งสองเกณฑ์
+    ✓ ทำงานขนานกัน (hold ซ้อนกัน, wait ≈ 0) → หักล้าง: wait ไม่โตตามคิว
+    ✓ hold โตตามคิวแม้ wait ≈ 0 → รายงาน hold_rank_corr (ต่อคิวภายใน lock เช่น row lock ของ DB)
+    ✓ markdown มีตาราง (a)/(b) min/median/p95/max และผลเกณฑ์ (1 ms)
+    ✓ ตั้ง LOG_LEVEL=debug เฉพาะ load run และค่าเริ่มต้นของ compose prod ยังเป็น info
+    ✓ ดึง log ของ server+worker ทุก run (ไม่ใช่แค่ตอนล้ม) แล้วสรุปลง tools/load/out
+PASS src/__tests__/load-nightly.unit.spec.ts
+    ✓ workflow แยกไฟล์ รันรายคืน + สั่งเองได้ และไม่อยู่ใน ci.yml (1 ms)
+    ✓ ผล k6 (--summary-export) อัปโหลดเป็น artifact 14 วันแม้ run ล้ม
+    ✓ บูต stack แบบ prod ของ OPS-1 ด้วย provider ทดสอบ และ k6 จาก image ที่ pin เวอร์ชัน (1 ms)
+    ✓ ค่าเริ่มต้นตาม AC-2 (300 คน, cap 100, 500 rps 60 วินาที) และ AC-3 (200 คน, กลุ่ม 10)
+    ✓ tools/load/flash-sale.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว)
+    ✓ tools/load/group-buy-join.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว) (5 ms)
+    ✓ ตรวจผลจาก DB หลังจบ: order ที่มี adjustment ของแคมเปญ, units_sold และสมาชิกกลุ่ม
+Test Suites: 3 passed, 3 total
+Tests:       20 passed, 20 total
+
+### pnpm --filter backend test:unit
+Test Suites: 74 passed, 74 total
+Tests:       724 passed, 724 total
+
+### pnpm lint && pnpm typecheck && pnpm --filter backend build
+lint: 0 errors (backend 1 warning เดิมใน json-logger.ts), typecheck: ผ่าน, build: Backend/Frontend build completed successfully
+
+### load run (load-nightly.yml บน branch) — ผลอยู่ใน docs/evidence/scale/OPS-18/REPORT.md
