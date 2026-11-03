@@ -284,7 +284,11 @@ async function addPendingToCart(
   }
 
   // CORE-14f (กฎ 65): countryCode ที่ไม่ใช่ประเทศของ region ใด (เช่น `zz`) → `/account` ของประเทศหลัก ไม่ใช่ `/zz/…` (404)
-  const region = await getRegion(pending.countryCode).catch(() => null)
+  // CORE-23c (กฎข้อ 74e, review #150): log ก่อน fallback ไป `/account` ไม่กลืน error เงียบ
+  const region = await getRegion(pending.countryCode).catch((error) => {
+    console.error(error)
+    return null
+  })
   redirect(
     loginPathForAddToCart(region ? pending.countryCode : null, pending.variantId, pending.quantity, {
       failed: true,
