@@ -17,9 +17,10 @@ import { sendEvoucherDeliveredNotificationStep } from "./steps/send-evoucher-del
 
 export { EVOUCHER_BACKORDERED_METADATA_KEY } from "./steps/evoucher-order"
 
-// EV-5c (กฎข้อ 21): รอ resend ที่ถืออยู่ได้ (ส่งอีเมลไม่กี่วินาที); ถือตลอด claim → ส่งอีเมล → mark delivered
+// EV-5c (กฎข้อ 21): รอ resend ที่ถืออยู่ได้ (ส่งอีเมลไม่กี่วินาที); ถือตลอด claim → fulfillment → ส่งอีเมล → mark delivered
 const ORDER_LOCK_TIMEOUT = 30
-const ORDER_LOCK_TTL = 120
+// EV-N2 (กฎข้อ 27a): ≥ 300 วินาที — เผื่อ fulfillment + SMTP ช้า; lock หมดอายุเองถ้า process ตายกลางทาง
+const ORDER_LOCK_TTL = 300
 
 export type AllocateAndDeliverEvouchersInput = {
   order_id: string
@@ -38,7 +39,11 @@ export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
   "allocate-and-deliver-evouchers",
   function (input: AllocateAndDeliverEvouchersInput) {
     const lockKey = transform({ input }, ({ input }) => evoucherOrderLockKey(input.order_id))
-    acquireLockStep({ key: lockKey, timeout: ORDER_LOCK_TIMEOUT, ttl: ORDER_LOCK_TTL })
+    // EV-N2 (กฎข้อ 27a): owner ต่อ run (transaction id ของ workflow) — release ลบเฉพาะ lock ของ run นี้
+    // ไม่ลบ lock ที่ owner อื่นได้ไปหลัง TTL ของ run นี้หมด (release ที่ไม่ระบุ owner ลบ lock ของใครก็ได้)
+    // (workflow-export ของ workflows-sdk 2.22.1 ตั้ง `context.transactionId` ให้ทุก run ที่ไม่ได้ระบุเอง)
+    const lockOwnerId = transform({ input }, (_, { context }) => `evoucher-allocation:${context.transactionId}`)
+    acquireLockStep({ key: lockKey, ownerId: lockOwnerId, timeout: ORDER_LOCK_TIMEOUT, ttl: ORDER_LOCK_TTL })
 
     const { data: orders } = useQueryGraphStep({
       entity: "order",
@@ -106,7 +111,7 @@ export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
       })
     })
 
-    releaseLockStep({ key: lockKey })
+    releaseLockStep({ key: lockKey, ownerId: lockOwnerId })
     return new WorkflowResponse(claim)
   }
 )
