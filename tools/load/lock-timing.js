@@ -166,7 +166,7 @@ function renderLockTimingMarkdown(s) {
   ].join("\n")
 }
 
-module.exports = { parseLockTimings, summarizeLockTimings, renderLockTimingMarkdown }
+module.exports = { parseLockTimings, summarizeLockTimings, renderLockTimingMarkdown, stats } // stats: ใช้ร่วมกับ checkout-timing.js (OPS-20a)
 
 if (require.main === module) {
   const fs = require("fs")

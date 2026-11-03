@@ -96,6 +96,16 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
       expect(gb).toContain(step)
     }
   })
+
+  // GB-9 กฎข้อ 25 (c) (AC-43): ขั้นแรกตรวจว่ายังเป็นเงินค้างจริง (draft + ไม่ paid) ก่อนขั้น refund และเปิด draft ด้วย URL ตรง
+  it("กรณี group buy: ขั้นตรวจ draft/membership มาก่อนขั้น refund และมี URL /app/orders/", () => {
+    const gb = body!.slice(body!.search(/### group buy: เงินเข้าแต่ไม่มี order/))
+    const check = gb.search(/ตรวจว่า order\s+ยังเป็น draft และ membership ยังไม่ `paid`/)
+    expect(check).toBeGreaterThan(-1)
+    expect(gb).toContain("ห้าม refund")
+    expect(check).toBeLessThan(gb.indexOf("refund"))
+    expect(gb).toContain("/app/orders/<order_id>")
+  })
 })
 
 describe("AC-16 apps/backend/.env.example", () => {

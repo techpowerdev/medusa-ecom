@@ -10,3 +10,6 @@ process.env.STRIPE_WEBHOOK_SECRET ??= "whsec_dummy"
 // project config → read-only link store_locale ↔ locale (link-modules/definitions/readonly/store-locale)
 // ถูกข้ามเพราะเช็ก flag ตอน require จึงตั้ง env ที่นี่ให้ตรงกับ server จริง (medusa develop/start ไม่ต้องตั้ง)
 process.env.MEDUSA_FF_TRANSLATION = "true"
+// OPS-15b (spec 07 AC-26): cron ของ src/jobs ไม่ลงทะเบียนใน integration test (src/lib/scheduled-jobs.ts) —
+// cron ที่รันเองซ้อนกับการ restore DB ของ runner ทำให้ connection ถูก terminate; test เรียก job function ตรงแทน
+process.env.MEDUSA_DISABLE_SCHEDULED_JOBS = "true"
