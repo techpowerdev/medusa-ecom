@@ -30,7 +30,8 @@ export const resolveRegion = async (
   return code && region ? { countryCode: code, region } : null
 }
 
-const createCartWithItems = async (
+/** cart ใหม่ของ customer (headers) ที่มี line ตามรายการ — ไม่ตั้งเป็น cart ปัจจุบัน (ใช้ร่วมกับหน้ากลุ่ม GB-7a2) */
+export const createCartWithItems = async (
   regionId: string,
   items: { variant_id: string; quantity: number }[],
   headers: Record<string, string>

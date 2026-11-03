@@ -1,5 +1,6 @@
 // GB-7a1 (spec 04 กฎข้อ 29b, AC-16a): logic ล้วนของหน้ากลุ่ม `/<cc>/g/<token>` — อ่านจาก response ของ GB-11 เท่านั้น ไม่มี I/O
 import { convertToLocale } from "./money"
+import { MAX_LINE_ITEM_QUANTITY, clampLineItemQuantity } from "./pending-add-to-cart"
 
 type TargetType = "orders" | "units" | "people"
 
@@ -68,3 +69,27 @@ export const GROUP_STATUS_LABEL: Record<PublicGroupBuyGroup["status"], string> =
 
 /** ลิงก์แชร์ — middleware เติม country ให้ `/g/<token>` เอง (กฎข้อ 29b) */
 export const groupSharePath = (token: string) => `/g/${encodeURIComponent(token)}`
+
+/** GB-7a2 (กฎข้อ 29e): ปุ่ม join และลิงก์แชร์ — กลุ่ม `open` และยังไม่เลย `ends_at` (job อาจยังไม่ตัดสินกลุ่มที่หมดเวลา) */
+export const groupJoinable = (group: Pick<PublicGroupBuyGroup, "status" | "ends_at">, now: number) =>
+  group.status === "open" && !!group.ends_at && Date.parse(group.ends_at) > now
+
+/** GB-7a2 (กฎข้อ 31): รายการ `group-selection` — state ในหน้า (Q20ก) แต่ละรายการคือ 1 line ของ cart ใหม่ */
+export type GroupSelectionItem = { variant_id: string; quantity: number }
+
+/** variant เดิมซ้ำ = รวมจำนวน (ไม่เกินจำนวนสูงสุดต่อ line) */
+export const addToSelection = (list: GroupSelectionItem[], variantId: string, quantity: number): GroupSelectionItem[] =>
+  list.some((i) => i.variant_id === variantId)
+    ? list.map((i) =>
+        i.variant_id === variantId ? { ...i, quantity: Math.min(i.quantity + quantity, MAX_LINE_ITEM_QUANTITY) } : i
+      )
+    : [...list, { variant_id: variantId, quantity }]
+
+export const setSelectionQuantity = (list: GroupSelectionItem[], variantId: string, raw: string): GroupSelectionItem[] =>
+  list.map((i) => (i.variant_id === variantId ? { ...i, quantity: clampLineItemQuantity(raw) } : i))
+
+export const removeFromSelection = (list: GroupSelectionItem[], variantId: string) =>
+  list.filter((i) => i.variant_id !== variantId)
+
+/** จำนวนชิ้นรวมทุก variant (`max_units_per_person` นับรวม — Q20ค) */
+export const selectionUnits = (list: GroupSelectionItem[]) => list.reduce((sum, i) => sum + i.quantity, 0)

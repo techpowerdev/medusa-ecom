@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { retrieveCustomer } from "@lib/data/customer"
 import { retrievePublicGroup } from "@lib/data/group-buy"
 import { listProducts } from "@lib/data/products"
 import { groupSharePath } from "@lib/util/group-page"
@@ -24,13 +25,15 @@ export default async function GroupTokenPage(props: Props) {
   }
 
   const productId = view.campaign.product_id
-  const [product, origin] = await Promise.all([
+  const [product, origin, customer] = await Promise.all([
     productId
       ? listProducts({ countryCode, queryParams: { id: [productId], limit: 1 } })
           .then(({ response }) => response.products[0] ?? null)
           .catch(() => null)
       : null,
     getSiteOrigin(),
+    // GB-7a2: ที่อยู่ที่บันทึกไว้ (กฎข้อ 29c1) — ยังไม่ login → null (กด join → หน้า login)
+    retrieveCustomer().catch(() => null),
   ])
 
   return (
@@ -38,6 +41,7 @@ export default async function GroupTokenPage(props: Props) {
       view={view}
       product={product}
       shareUrl={`${origin}${groupSharePath(token)}`}
+      addresses={customer ? (customer.addresses ?? []) : null}
       // เวลาของ request ใช้เริ่มนับถอยหลัง (server component render ครั้งเดียวต่อ request)
       // eslint-disable-next-line react-hooks/purity
       now={Date.now()}

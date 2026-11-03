@@ -2,6 +2,7 @@ import { getProductPrice } from "@lib/util/get-product-price"
 import {
   GROUP_STATUS_LABEL,
   groupDiscountValue,
+  groupJoinable,
   groupProgress,
   type PublicGroupBuyGroupView,
 } from "@lib/util/group-page"
@@ -10,21 +11,26 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import ShareLinkButton from "@modules/common/components/share-link-button"
 import Thumbnail from "@modules/products/components/thumbnail"
 import GroupCountdown from "./countdown"
+import GroupJoin from "./group-join"
 
 type Props = {
   view: PublicGroupBuyGroupView
   /** สินค้าเดียวของ `product_id` (กฎข้อ 30) — null เมื่อแคมเปญไม่มีสินค้าที่ใช้ได้หรือไม่ขายใน region นี้ */
   product: HttpTypes.StoreProduct | null
   shareUrl: string
+  /** ที่อยู่ที่บันทึกไว้ของลูกค้า; null = ยังไม่ login */
+  addresses: HttpTypes.StoreCustomerAddress[] | null
   /** เวลาของ request (server component render ครั้งเดียว) */
   now: number
 }
 
-// GB-7a1 (spec 04 กฎข้อ 29b, AC-16a): หน้ากลุ่มอ่านอย่างเดียว — ปุ่ม join/เลือก variant เป็นของ GB-7a2
-export default function GroupPage({ view: { group, campaign }, product, shareUrl, now }: Props) {
+// GB-7a1 (spec 04 กฎข้อ 29b, AC-16a): หน้ากลุ่ม — GB-7a2 เพิ่มการเลือก variant + join (กฎข้อ 29c–f, 31)
+export default function GroupPage({ view: { group, campaign }, product, shareUrl, addresses, now }: Props) {
   const progress = groupProgress(group, campaign)
   const discount = groupDiscountValue(campaign.discount)
   const open = group.status === "open"
+  // กฎข้อ 29e: ปุ่ม join และลิงก์แชร์ซ่อนเมื่อกลุ่มไม่ open หรือเลย ends_at แล้ว (job อาจยังไม่ตัดสิน)
+  const joinable = groupJoinable(group, now)
   const price = product ? getProductPrice({ product }).cheapestPrice : null
 
   return (
@@ -88,8 +94,19 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
         {open && <GroupCountdown endsAt={group.ends_at} now={now} />}
       </section>
 
+      {/* mount ไว้แม้หมดเวลา (joinable=false) เพื่อคง error ของ join ที่เพิ่งล้ม — qa #238 D2 */}
+      {product && (
+        <GroupJoin
+          token={group.join_token}
+          product={product}
+          addresses={addresses}
+          maxUnitsPerPerson={campaign.max_units_per_person}
+          joinable={joinable}
+        />
+      )}
+
       {/* ลิงก์แชร์ `/g/<token>` + ปุ่มคัดลอก (กฎข้อ 29b, 29g) */}
-      {open && (
+      {joinable && (
         <section className="flex flex-col gap-y-2">
           <span className="text-small-regular text-ui-fg-subtle">แชร์ลิงก์นี้ให้เพื่อนเข้าร่วมกลุ่ม</span>
           <a href={shareUrl} className="break-all text-ui-fg-interactive underline" data-testid="group-share-link">

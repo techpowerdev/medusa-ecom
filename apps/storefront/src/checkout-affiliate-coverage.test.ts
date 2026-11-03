@@ -9,6 +9,9 @@ const COMPONENTS_DIR = path.resolve(__dirname, "modules/checkout/components")
 // PAY-3b2: สแกนหน้าชำระเงินของ order กลุ่มด้วย (key = `order-pay/...`) เพื่อให้ทุกจุดเริ่มชำระที่นั่นอยู่ใน START_ALLOW_LIST พร้อมเหตุผล
 const ORDER_COMPONENTS_DIR = path.resolve(__dirname, "modules/order/components")
 const ORDER_PAY_DIR = path.join(ORDER_COMPONENTS_DIR, "order-pay")
+// GB-7a2 (spec 04 กฎข้อ 27, 29d; AC-47): หน้ากลุ่มเรียก server action join ด้วย cart ใหม่ — ต้อง sync `aff` ก่อน (key = `group-buy/...`)
+const MODULES_DIR = path.resolve(__dirname, "modules")
+const GROUP_BUY_DIR = path.join(MODULES_DIR, "group-buy/components")
 
 /**
  * การเรียก `retrievePaymentIntent` เพื่อ poll สถานะอย่างเดียว (ไม่เริ่มการชำระ) — ได้รับยกเว้นพร้อมเหตุผล (กฎ 31)
@@ -50,7 +53,10 @@ type Violation = { key: string; rule: string; line: number }
 type ScanResult = {
   violations: Violation[]
   /** จำนวน call ที่พบต่อชนิด — กัน test ผ่านแบบว่างเปล่าเมื่อชื่อฟังก์ชันเปลี่ยน */
-  counts: Record<"confirmPayment" | "confirmPromptPayPayment" | "openQr" | "placeOrder" | "retrievePaymentIntent", number>
+  counts: Record<
+    "confirmPayment" | "confirmPromptPayPayment" | "openQr" | "placeOrder" | "retrievePaymentIntent" | "joinGroupBuy",
+    number
+  >
   /** key ของ allow-list ที่ถูกใช้จริง — กัน allow-list ค้าง */
   usedAllowKeys: Set<string>
 }
@@ -99,8 +105,8 @@ const qualifiedName = (node: ts.Node): string => {
   return names.join(".") || "<top-level>"
 }
 
-/** call อยู่ภายในฟังก์ชันที่ส่งเป็น argument ของ `syncAffiliateBefore(` (ไม่ใช่ถูกเรียกก่อนแล้วส่งผลลัพธ์) */
-const isWrappedBySync = (node: ts.Node): boolean => {
+/** `syncAffiliateBefore(` ที่ call นี้อยู่ภายในฟังก์ชันที่ส่งเป็น argument (ไม่ใช่ถูกเรียกก่อนแล้วส่งผลลัพธ์) */
+const wrappingSync = (node: ts.Node): ts.CallExpression | undefined => {
   for (let n = node.parent; n; n = n.parent) {
     if (
       isFunctionLike(n) &&
@@ -108,25 +114,26 @@ const isWrappedBySync = (node: ts.Node): boolean => {
       calleeName(n.parent) === "syncAffiliateBefore" &&
       n.parent.arguments.some((a) => a === n)
     ) {
-      return true
+      return n.parent
     }
   }
-  return false
+  return undefined
 }
+const isWrappedBySync = (node: ts.Node): boolean => !!wrappingSync(node)
 
 /**
  * มี `syncAffiliateBefore(` ที่**จบ**ก่อน call นี้เริ่ม ในฟังก์ชันเดียวกัน (ฟังก์ชันที่ใกล้ที่สุดที่ครอบ) — AF-N3 (กฎ 40e):
  * ไม่นับ sync ที่อยู่ในฟังก์ชันซ้อนที่ประกาศไว้ (ไม่ได้ถูกเรียกในลำดับนี้) และไม่นับ sync ที่เป็นส่วนหนึ่งของ argument ของ call เอง
  */
-const hasSyncBeforeInSameFunction = (call: ts.CallExpression): boolean => {
+const precedingSync = (call: ts.CallExpression): ts.CallExpression | undefined => {
   let fn: ts.Node | undefined = call.parent
   while (fn && !isFunctionLike(fn)) fn = fn.parent
-  if (!fn) return false
-  let found = false
+  if (!fn) return undefined
+  let found: ts.CallExpression | undefined
   const visit = (n: ts.Node) => {
     if (found) return
     if (ts.isCallExpression(n) && calleeName(n) === "syncAffiliateBefore" && n.getEnd() <= call.getStart()) {
-      found = true
+      found = n
       return
     }
     // ฟังก์ชันซ้อน = scope อื่น (sync ข้างในเกิดเมื่อถูกเรียกเท่านั้น)
@@ -136,6 +143,7 @@ const hasSyncBeforeInSameFunction = (call: ts.CallExpression): boolean => {
   ts.forEachChild(fn, visit)
   return found
 }
+const hasSyncBeforeInSameFunction = (call: ts.CallExpression): boolean => !!precedingSync(call)
 
 const unwrap = (e: ts.Expression): ts.Expression =>
   ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e) || ts.isSatisfiesExpression(e)
@@ -150,11 +158,27 @@ const passesMetadata = (call: ts.CallExpression): boolean => {
   return !(ts.isIdentifier(e) && e.text === "undefined") && !ts.isVoidExpression(e)
 }
 
+const isUndefinedArg = (e: ts.Expression) => (ts.isIdentifier(e) && e.text === "undefined") || ts.isVoidExpression(e)
+
+/** GB-7a2 (AC-47): cart ที่ส่งให้ `syncAffiliateBefore(` มี `metadata` — object literal ต้องมี key `metadata` ที่ไม่ใช่ undefined */
+const syncPassesMetadata = (sync: ts.CallExpression): boolean => {
+  const arg = sync.arguments[0]
+  if (!arg) return false
+  const e = unwrap(arg)
+  if (!ts.isObjectLiteralExpression(e)) return !isUndefinedArg(e)
+  if (e.properties.some(ts.isSpreadAssignment)) return true
+  return e.properties.some(
+    (p) =>
+      p.name?.getText() === "metadata" &&
+      (ts.isShorthandPropertyAssignment(p) || (ts.isPropertyAssignment(p) && !isUndefinedArg(unwrap(p.initializer))))
+  )
+}
+
 function scan(relFile: string, code: string): ScanResult {
   const sf = ts.createSourceFile(relFile, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const result: ScanResult = {
     violations: [],
-    counts: { confirmPayment: 0, confirmPromptPayPayment: 0, openQr: 0, placeOrder: 0, retrievePaymentIntent: 0 },
+    counts: { confirmPayment: 0, confirmPromptPayPayment: 0, openQr: 0, placeOrder: 0, retrievePaymentIntent: 0, joinGroupBuy: 0 },
     usedAllowKeys: new Set(),
   }
 
@@ -189,6 +213,12 @@ function scan(relFile: string, code: string): ScanResult {
           if (key in PLACE_ORDER_ALLOW_LIST) result.usedAllowKeys.add(key)
           else result.violations.push({ key, rule: "31c: placeOrder ไม่ส่ง cart.metadata", line })
         }
+      } else if (name === "joinGroupBuy") {
+        // (d) GB-7a2: server action join ต้องมี sync ครอบหรือก่อนหน้าในฟังก์ชันเดียวกัน และส่ง metadata ของ cart ใหม่
+        result.counts.joinGroupBuy++
+        const sync = wrappingSync(n) ?? precedingSync(n)
+        if (!sync) fail("31d: joinGroupBuy ไม่มี syncAffiliateBefore ก่อนหน้า")
+        else if (!syncPassesMetadata(sync)) fail("31d: syncAffiliateBefore ก่อน joinGroupBuy ไม่ส่ง metadata ของ cart")
       } else if (name === "retrievePaymentIntent") {
         result.counts.retrievePaymentIntent++
         if (!isWrappedBySync(n)) {
@@ -213,12 +243,13 @@ const sourceFiles = (dir: string): string[] =>
 const scanComponents = () => {
   const merged: ScanResult = {
     violations: [],
-    counts: { confirmPayment: 0, confirmPromptPayPayment: 0, openQr: 0, placeOrder: 0, retrievePaymentIntent: 0 },
+    counts: { confirmPayment: 0, confirmPromptPayPayment: 0, openQr: 0, placeOrder: 0, retrievePaymentIntent: 0, joinGroupBuy: 0 },
     usedAllowKeys: new Set(),
   }
   const files = [
     ...sourceFiles(COMPONENTS_DIR).map((f) => [COMPONENTS_DIR, f]),
     ...sourceFiles(ORDER_PAY_DIR).map((f) => [ORDER_COMPONENTS_DIR, f]),
+    ...sourceFiles(GROUP_BUY_DIR).map((f) => [MODULES_DIR, f]),
   ]
   for (const [root, file] of files) {
     const rel = path.relative(root, file).split(path.sep).join("/")
@@ -233,7 +264,7 @@ const scanComponents = () => {
 }
 
 describe("ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37)", () => {
-  it("source ใต้ modules/checkout/components ผ่านเงื่อนไข (a)–(c)", () => {
+  it("source ใต้ modules/checkout/components, order-pay และ group-buy/components ผ่านเงื่อนไข (a)–(d)", () => {
     const result = scanComponents()
     expect(result.violations).toEqual([])
     // กัน test ผ่านแบบว่างเปล่า: ต้องพบจุดเริ่มชำระจริงทุกชนิด
@@ -241,6 +272,7 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
     expect(result.counts.confirmPromptPayPayment).toBeGreaterThan(0)
     expect(result.counts.openQr).toBeGreaterThan(0)
     expect(result.counts.placeOrder).toBeGreaterThan(0)
+    expect(result.counts.joinGroupBuy).toBeGreaterThan(0)
   })
 
   it("allow-list ไม่มีแถวค้าง และทุกแถวมีเหตุผล", () => {
@@ -333,6 +365,46 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
            await stripe.confirmPromptPayPayment(clientSecret, await syncAffiliateBefore(cart, async () => ({})))
          } }`,
       ],
+      // GB-7a2 (AC-47): join ของหน้ากลุ่ม
+      [
+        "31d",
+        "joinGroupBuy โดยไม่มี sync ก่อน",
+        `const Join = () => { const join = async () => {
+           await setShippingMethod({ cartId, shippingMethodId })
+           await joinGroupBuy(token, cartId)
+         } }`,
+      ],
+      [
+        "31d",
+        "sync อยู่หลัง joinGroupBuy",
+        `const Join = () => { const join = async () => {
+           await joinGroupBuy(token, cart.id)
+           await syncAffiliateBefore(cart, async () => null)
+         } }`,
+      ],
+      [
+        "31d",
+        "sync ในฟังก์ชันซ้อนที่ประกาศก่อน joinGroupBuy",
+        `const Join = () => { const join = async () => {
+           const prepare = async () => { await syncAffiliateBefore(cart, async () => null) }
+           await joinGroupBuy(token, cart.id)
+         } }`,
+      ],
+      [
+        "31d",
+        "sync ด้วย cart ที่ไม่มี metadata",
+        `const Join = () => { const join = async () => {
+           await syncAffiliateBefore({ id: cartId }, () => joinGroupBuy(token, cartId))
+         } }`,
+      ],
+      [
+        "31d",
+        "sync ด้วย metadata: undefined",
+        `const Join = () => { const join = async () => {
+           await syncAffiliateBefore({ id: cartId, metadata: undefined }, async () => null)
+           await joinGroupBuy(token, cartId)
+         } }`,
+      ],
       [
         "31:",
         "retrievePaymentIntent นอก sync และไม่อยู่ใน allow-list",
@@ -361,6 +433,13 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
         }
         const onPaymentCompleted = async () => {
           await placeOrder(cart.id, cart.metadata ?? null)
+        }
+        const join = async () => {
+          await syncAffiliateBefore(cart, () => joinGroupBuy(token, cart.id))
+        }
+        const joinAfter = async () => {
+          await syncAffiliateBefore({ id: cart.id, metadata: cart.metadata }, async () => null)
+          await joinGroupBuy(token, cart.id)
         }
       }`
       expect(scan(FILE, code).violations).toEqual([])

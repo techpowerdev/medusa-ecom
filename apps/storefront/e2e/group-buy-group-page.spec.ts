@@ -30,8 +30,8 @@ test.describe("หน้ากลุ่ม (AC-16a)", () => {
     await expect(page.getByTestId("group-product")).toBeVisible()
     await expect(page.getByTestId("group-discount")).toContainText("10%")
     await expect(page.getByTestId("group-share-link")).toHaveAttribute("href", new RegExp(`/g/${ctx.token}$`))
-    // หน้าอ่านอย่างเดียว — ปุ่ม join เป็นของ GB-7a2
-    await expect(page.getByTestId("group-join-button")).toHaveCount(0)
+    // GB-7a2: ปุ่ม join แสดงให้คนที่ยังไม่ login ด้วย (กดแล้วไปหน้า login — group-buy-join.spec.ts)
+    await expect(page.getByTestId("group-join-button")).toBeVisible()
 
     const countdown = page.getByTestId("group-countdown")
     await expect(countdown).toContainText(/\d+:\d{2}:\d{2}/)

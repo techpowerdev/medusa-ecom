@@ -1,3 +1,4 @@
+import type { ActionError } from "./action-result"
 import { SIGN_IN_AGAIN_MESSAGE } from "./error-message"
 
 // GB-7a2a (spec 04 กฎข้อ 29f, 30a): error ของ join/สร้างกลุ่ม → ข้อความไทยใน helper เดียว (หน้ากลุ่ม GB-7a2 + ปุ่มสร้างทีม GB-7c)
@@ -37,17 +38,43 @@ export function groupJoinErrorCode(error: unknown): GroupJoinCode | null {
   return GROUP_JOIN_CODES.find((c) => CODES[c].message?.test(text) || message.includes(c)) ?? null
 }
 
+const EMPTY_CART_MESSAGE = "กรุณาเลือกสินค้าอย่างน้อย 1 ชิ้นก่อนเข้าร่วม"
+
+/** GB-7a2: ผลที่ล้มของ server action join (`ActionResult` ของ CORE-4i) — code ที่รู้จัก + closed (ปิดรับ) + empty_cart */
+export type GroupJoinActionError = ActionError<GroupJoinCode | "closed" | "empty_cart">
+
+/**
+ * ฝั่ง server: error ของ join → `{ error }` ที่ส่งข้าม boundary ของ server action ได้: code ที่รู้จัก → code นั้น; 401 → unauthorized;
+ * 400 "The cart has no items" → empty_cart; 400/403 (mode ไม่เปิดให้สร้างทีม)/404 (กลุ่ม/แคมเปญไม่มีแล้ว) → closed; อื่นๆ → failed
+ */
+export function groupJoinFailure(error: unknown): { error: GroupJoinActionError } {
+  const code = groupJoinErrorCode(error)
+  if (code) return { error: code }
+  const { status, message } = (error ?? {}) as { status?: unknown; message?: unknown }
+  if (status === 401) return { error: "unauthorized" }
+  if (status === 400 && typeof message === "string" && normalize(message) === "the cart has no items") {
+    return { error: "empty_cart" }
+  }
+  if (status === 400 || status === 403 || status === 404) return { error: "closed" }
+  return { error: "failed" }
+}
+
+/** ฝั่ง client: ข้อความไทยของผลที่ล้ม (แสดงใน `group-join-error`) */
+export function groupJoinActionMessage(error: GroupJoinActionError, opts: { maxUnitsPerPerson?: number | null } = {}): string {
+  if (error === "unauthorized") return SIGN_IN_AGAIN_MESSAGE
+  if (error === "closed") return CLOSED_MESSAGE
+  if (error === "empty_cart") return EMPTY_CART_MESSAGE
+  if (error === "failed") return FAILED_MESSAGE
+  if (error === "GB_UNITS_LIMIT_EXCEEDED" && opts.maxUnitsPerPerson) {
+    return `${CODES[error].text} (${opts.maxUnitsPerPerson} ชิ้น)`
+  }
+  return CODES[error].text
+}
+
 /**
  * ข้อความไทยที่แสดงใน `group-join-error`: code ที่รู้จัก → ข้อความของ code; 401 → เข้าสู่ระบบใหม่;
- * 400/403 (mode ไม่เปิดให้สร้างทีม)/404 (กลุ่ม/แคมเปญไม่มีแล้ว) → ปิดรับแล้ว; อื่นๆ → ลองใหม่
+ * 400 cart ว่าง → ให้เลือกสินค้า; 400/403/404 อื่น → ปิดรับแล้ว; อื่นๆ → ลองใหม่
  */
 export function groupJoinErrorMessage(error: unknown, opts: { maxUnitsPerPerson?: number | null } = {}): string {
-  const code = groupJoinErrorCode(error)
-  if (code === "GB_UNITS_LIMIT_EXCEEDED" && opts.maxUnitsPerPerson) {
-    return `${CODES[code].text} (${opts.maxUnitsPerPerson} ชิ้น)`
-  }
-  if (code) return CODES[code].text
-  const status = (error as { status?: unknown } | null)?.status
-  if (status === 401) return SIGN_IN_AGAIN_MESSAGE
-  return status === 400 || status === 403 || status === 404 ? CLOSED_MESSAGE : FAILED_MESSAGE
+  return groupJoinActionMessage(groupJoinFailure(error).error, opts)
 }
