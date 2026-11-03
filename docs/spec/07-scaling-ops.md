@@ -170,12 +170,13 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   `load` เมื่อไม่ได้ส่งมา (ไม่ใช้ image `local` ของ dev) (unit อ่านไฟล์); `apps/backend/src/scripts/seed-load.ts` ไม่มี `as unknown as`/`as any` (grep) และ `tsc` ผ่าน
 - AC-29 (OPS-18, owner 2026-11-03 — run 40590093846: checkout flash ทุกตัวใช้ 58–71s, min 58.14s) Given `tools/load/run.sh` ขนาดเต็มเดิม (300 ลูกค้า, `total_cap=100`) When รัน
   (`workflow_dispatch` ของ `load-nightly.yml`) Then `REPORT.md` ของ OPS-18 ใต้ `docs/evidence/scale/` มีตาราง per-checkout (อย่างน้อย min/median/p95/max) ของ (a) เวลารอ lock ของ flash checkout
-  และ (b) เวลาใน step ของ complete cart ที่ถือ lock — วัดจาก log/metric ที่มีอยู่แล้ว (JSON log ของ OPS-3, duration ของ k6/workflow) หรือ log ระดับ debug ใหม่ใน logger เดิม
+  และ (b) เวลาถือ lock (เวลาภายใน `locking.execute` ของ hook `flash-sale-reservation.ts`) — วัดจาก log/metric ที่มีอยู่แล้ว (JSON log ของ OPS-3, duration ของ k6/workflow) หรือ log ระดับ debug ใหม่ใน logger เดิม
+  (ตั้ง `LOG_LEVEL=debug` เฉพาะ load run — ไม่เปลี่ยนค่าเริ่มต้นของ prod)
   (ไม่เพิ่ม infra/dependency — grep diff: ไม่มี package ใหม่ใน `package.json`/service ใหม่ใน compose) พร้อม run id; และสรุปสาเหตุ: ยืนยันหรือหักล้างว่า checkout ถูก serialize ด้วย lock
-  (เกณฑ์: ผลรวมเวลาถือ lock ≈ เวลาช่วง checkout ทั้งหมด และเวลารอ lock โตตามลำดับคิว) — gate ความถูกต้องของ AC-2 ยังผ่านใน run เดียวกัน; ถ้าต้องแก้ design → เปิด ADR/task แยกพร้อม AC
+  (เกณฑ์ยืนยัน: ผลรวมเวลาถือ lock ≥ 80% ของช่วงเวลา checkout ทั้งหมด และเวลารอ lock โตตามลำดับคิว) — gate ความถูกต้องของ AC-2 ยังผ่านใน run เดียวกัน; ถ้าต้องแก้ design → เปิด ADR/task แยกพร้อม AC
   (ไม่แก้ใน OPS-18)
 - AC-30 (OPS-19 — **⏸ backlog**, ต้องมี ADR สำหรับ staging ก่อน; ไม่ใช่เงื่อนไขของ OPS-4) Given staging ตาม ADR นั้น (k6 อยู่คนละเครื่องกับระบบ) When รัน flash-sale burst ด้วย `total_cap=100`
-  Then burst ทำได้จริง ≥ 500 rps ตลอด 60 วินาที (`dropped_iterations` = 0, จำนวน request ของ burst ≥ 30,000), p95 ของ burst และ checkout < 300ms เป็น **gate** (threshold k6 ทำให้ล้ม)
+  Then burst ทำได้จริง ≥ 500 rps ตลอด 60 วินาที (`dropped_iterations` = 0, จำนวน request ของ burst ≥ 30,000), p95 ของ burst และ checkout < 300ms เป็น **gate** (threshold k6 ทำให้ล้ม — ขอบเขตของ p95 ยืนยันกับ owner ตอนเขียน ADR staging)
   และ gate ความถูกต้องของ AC-2 ผ่านครบ (order ได้ส่วนลด = 100, `units_sold` = 100, ที่เหลือ 409 `FLASH_SOLD_OUT`, 5xx = 0)
 
 ## Tasks
