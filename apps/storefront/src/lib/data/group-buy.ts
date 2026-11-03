@@ -9,6 +9,7 @@ import {
 } from "@lib/util/group-buy-orders"
 import medusaError from "@lib/util/medusa-error"
 import type { GroupBuyOrder } from "@lib/util/order-pay"
+import type { PublicGroupBuyGroupView } from "@lib/util/group-page"
 import { getAuthHeaders } from "./cookies"
 
 /**
@@ -58,4 +59,17 @@ export async function leaveGroupBuyMembership(membershipId: string): Promise<{ e
       if (status === 401 || status === 403) return { error: SIGN_IN_AGAIN_MESSAGE }
       return { error: GENERIC_ERROR_MESSAGE }
     })
+}
+
+/**
+ * GB-7a1 (spec 04 กฎข้อ 29b): หน้ากลุ่มอ่าน route สาธารณะของ GB-11 — ไม่ส่ง token ลูกค้า, `no-store` ให้ความคืบหน้าตรง DB ทุกครั้งที่โหลดหน้า
+ * 404 (token ไม่มีจริง) → null
+ */
+export async function retrievePublicGroup(token: string): Promise<PublicGroupBuyGroupView | null> {
+  return sdk.client
+    .fetch<PublicGroupBuyGroupView>(`/store/group-buy/groups/${encodeURIComponent(token)}`, {
+      method: "GET",
+      cache: "no-store",
+    })
+    .catch((err) => ((err as { status?: unknown }).status === 404 ? null : medusaError(err)))
 }

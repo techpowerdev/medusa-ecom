@@ -54,6 +54,8 @@ const THAI_UI_FILES = [
   "src/modules/evoucher/**",
   // GB-7 (group buy: รายการในหน้า account ของ GB-7b; หน้าแคมเปญ/กลุ่มของ GB-7a ใช้ module เดียวกัน)
   "src/modules/group-buy/**",
+  // GB-7a1 (หน้ากลุ่ม /<cc>/g/<token>)
+  "src/app/[[]countryCode]/(main)/g/**",
 ]
 
 export default defineConfig([

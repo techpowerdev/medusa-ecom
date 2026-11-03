@@ -13,7 +13,7 @@ type Props = {
 }
 
 /**
- * spec 05 (AF-8a/AF-8b, AF-N3 กฎ 40b): ปุ่มคัดลอก/แชร์ลิงก์ของ portal — component เดียวของ Profile และการ์ด Products
+ * spec 05 (AF-8a/AF-8b, AF-N3 กฎ 40b): ปุ่มคัดลอก/แชร์ลิงก์ — component เดียวของ Profile, การ์ด Products ของ portal และหน้ากลุ่ม (GB-7a1)
  * Web Share ไม่รองรับ → คัดลอกลิงก์; กันกดซ้ำระหว่างทำงาน
  */
 export default function ShareLinkButton({ url, label, buttonTestId, statusTestId, shareTitle }: Props) {
