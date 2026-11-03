@@ -17,7 +17,8 @@ export type CreateTeamResult =
 const toCents = (amount: number) => Math.round(amount * 100)
 
 /**
- * ราคาหลังส่วนลดกลุ่ม (แสดงผลเท่านั้น — ยอดจริงคำนวณโดย Promotion module ใน draft order) คิดเป็นสตางค์ (จำนวนเต็ม) ไม่ใช้ float
+ * ราคาหลังส่วนลดกลุ่ม — **แสดงผลบนการ์ดเท่านั้น** (ยอดจริงคำนวณโดย Promotion module ใน draft order):
+ * แปลงเป็นสตางค์แล้วปัด; percentage ยังคูณ/หารด้วย float ก่อนปัดเป็นสตางค์ (ไม่ใช่ MathBN — ห้ามใช้กับยอดเงินจริง)
  * ไม่มีส่วนลด / fixed คนละสกุลเงิน / ค่า ≤ 0 → null
  */
 export function groupDiscountedAmount(amount: number, currencyCode: string, discount: GroupBuyDiscount | null): number | null {
@@ -36,11 +37,22 @@ export const canCreateTeam = (campaign: Pick<PublicGroupBuyCampaign, "group_mode
 export const poolProgress = (pool: PublicPoolGroup, campaign: PublicGroupBuyCampaign) =>
   groupProgress({ ...pool, kind: "pool" }, campaign)
 
-/** error ของ `POST /store/group-buy/groups`: 401 → ไปหน้า login; อื่นๆ → ข้อความไทยจาก helper ของ GB-7a2a */
+/**
+ * error ของ `POST /store/group-buy/groups`: 401 → ไปหน้า login; อื่นๆ → ข้อความไทยจาก helper ของ GB-7a2a
+ * ไม่ใช้ `actionFailure` เพราะมันแปลง 403 เป็น unauthorized — แต่ 403 ของ route นี้ = แคมเปญไม่อนุญาต team mode (ไม่ใช่ปัญหา login)
+ */
 export function teamCreateFailure(error: unknown): Exclude<CreateTeamResult, { ok: true }> {
   if ((error as { status?: unknown } | null)?.status === 401) return { error: "unauthorized" }
   return { error: "failed", message: groupJoinErrorMessage(error) }
 }
+
+const endsAtMs = (g: PublicPoolGroup) => (g.ends_at ? new Date(g.ends_at).getTime() : Infinity)
+
+/** pool ที่แสดงบนการ์ด: `ends_at` เร็วสุด (เท่ากัน → `join_token`) — ลำดับคงที่ เพราะ route ของ GB-11 ไม่เรียงกลุ่ม */
+export const firstPool = (campaign: ActiveGroupBuyCampaign): PublicPoolGroup | null =>
+  [...campaign.pool_groups].sort(
+    (a, b) => endsAtMs(a) - endsAtMs(b) || a.join_token.localeCompare(b.join_token)
+  )[0] ?? null
 
 export const hasHomeCampaigns = (flash: FlashSale[], groups: ActiveGroupBuyCampaign[]) =>
   flash.length > 0 || groups.length > 0

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { GROUP_JOIN_CODES, groupJoinErrorMessage } from "./group-join-error"
 import {
   canCreateTeam,
+  firstPool,
   groupDiscountedAmount,
   hasHomeCampaigns,
   poolProgress,
@@ -70,6 +71,31 @@ describe("poolProgress", () => {
       progress_people: 2,
     }
     expect(poolProgress(pool, campaign())).toEqual({ current: 2, target: 5, percent: 40, unit: "คำสั่งซื้อ" })
+  })
+})
+
+describe("firstPool (ลำดับคงที่ — route ไม่เรียงกลุ่ม)", () => {
+  const pool = (join_token: string, ends_at: string | null) => ({
+    id: `grp_${join_token}`,
+    name: null,
+    join_token,
+    status: "open" as const,
+    starts_at: null,
+    ends_at,
+    progress_orders: 0,
+    progress_units: 0,
+    progress_people: 0,
+  })
+
+  it("ไม่มี pool → null; หลาย pool → ends_at เร็วสุด, เท่ากันเรียง join_token, ไม่มี ends_at ไว้ท้าย ไม่ขึ้นกับลำดับใน array", () => {
+    expect(firstPool(campaign())).toBeNull()
+    const a = pool("b", "2026-11-05T00:00:00Z")
+    const b = pool("a", "2026-11-05T00:00:00Z")
+    const c = pool("c", "2026-11-04T00:00:00Z")
+    const d = pool("d", null)
+    expect(firstPool(campaign({ pool_groups: [d, a, b, c] }))?.join_token).toBe("c")
+    expect(firstPool(campaign({ pool_groups: [d, a, b] }))?.join_token).toBe("a")
+    expect(firstPool(campaign({ pool_groups: [b, a, d].reverse() }))?.join_token).toBe("a")
   })
 })
 

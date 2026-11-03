@@ -1,6 +1,6 @@
 import { getProductPrice } from "@lib/util/get-product-price"
 import { groupDiscountValue, groupSharePath } from "@lib/util/group-page"
-import { canCreateTeam, groupDiscountedAmount, poolProgress, type ActiveGroupBuyCampaign } from "@lib/util/home-campaigns"
+import { canCreateTeam, firstPool, groupDiscountedAmount, poolProgress, type ActiveGroupBuyCampaign } from "@lib/util/home-campaigns"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -21,7 +21,7 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
   const discount = groupDiscountValue(campaign.discount)
   const price = product ? getProductPrice({ product }).cheapestPrice : null
   const after = price ? groupDiscountedAmount(price.calculated_price_number, price.currency_code, campaign.discount) : null
-  const pool = campaign.pool_groups[0]
+  const pool = firstPool(campaign)
   const progress = pool ? poolProgress(pool, campaign) : null
 
   return (
