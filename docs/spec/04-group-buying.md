@@ -12,7 +12,9 @@
 รอบ 13 2026-11-03: follow-up ของ GB-9 #196 รวมเข้า GB-10 (กฎข้อ 25e–f, 26 ท้าย, AC-44 ส่วนรอบ 13), ถ้อยคำกฎข้อ 25(c) ตรงหัวข้อ runbook จริง;
 รอบ 14 2026-11-03: builder GB-7 พบว่า route สาธารณะ `GET /store/group-buy/campaigns/active` / `GET /store/group-buy/groups/:token` ใน "API" ยังไม่มีและไม่มี task รับ
 → GB-11 (backend) + แยก GB-7 เป็น GB-7a1 (หน้ากลุ่ม) / GB-7a2 (ที่อยู่ + วิธีส่ง + join ด้วย cart ใหม่) / GB-7b (หน้า account, ◐ #223) / GB-7c (แคมเปญบนหน้าแรก + สร้างทีม)
-— กฎข้อ 28–29, กฎข้อ 14c แทนที่ (ไม่ล้าง cart ปัจจุบัน), AC-16 แยก (a)/(b), AC-28 แทนที่, AC-45..48; owner ตอบ Q15–Q19 แล้ว 2026-11-03 (Q19 จาก review #224))
+— กฎข้อ 28–29, กฎข้อ 14c แทนที่ (ไม่ล้าง cart ปัจจุบัน), AC-16 แยก (a)/(b), AC-28 แทนที่, AC-45..48; owner ตอบ Q15–Q19 แล้ว 2026-11-03 (Q19 จาก review #224);
+รอบ 15 2026-11-03: **owner ตัดสิน 1 แคมเปญ = 1 สินค้า** หน้ากลุ่มเป็น "ตะกร้าเฉพาะของสินค้านั้น" เลือกได้หลาย variant พร้อมจำนวน → กฎข้อ 30–31, GB-6e (admin picker สินค้าเดียว +
+backend validation), GB-11 คืน `product_id` แทน `product_ids`, GB-7a2 หลาย variant (แยก GB-7a2a error map), GB-7c การ์ดสินค้าเดียว — AC-28/33/45/46/48 ปรับ, AC-49..50, คำถาม Q20 (ก–ง) พร้อมค่าตั้งต้น)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -47,7 +49,7 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | ops แปลง draft order เองหลังเงินเข้า | `@medusajs/draft-order` 2.22.1 (ปุ่ม Convert ใน admin) + `POST /admin/draft-orders/:id/convert-to-order` → `convertDraftOrderWorkflow` (ตรวจโดย re-review #185) | ใช้ตามเดิม — เราเพิ่มแค่การอัปเดต membership หลังแปลง (GB-10, กฎข้อ 26) |
 | refund payment ของ draft/order ที่ยกเลิก | `POST /admin/payments/:id/refund` (`refundPaymentWorkflow` ไม่ปฏิเสธ draft/order ยกเลิก — re-review #185) | ใช้ตามเดิมใน runbook (กฎข้อ 25) — ไม่ refund อัตโนมัติ (owner Q13 = ก) |
 | (รอบ 14) ผู้เยี่ยมชมดูแคมเปญ/กลุ่มที่เปิดอยู่ (ไม่ login) | **ไม่มี** — Store API ไม่มี route ของ promotion/campaign (`/store/promotions*` ไม่มีใน 2.22.1; code `GBT-*`/`GB-*` ต้องไม่รั่ว) และข้อมูลกลุ่มอยู่ใน module ของเรา | custom route อ่านอย่างเดียว 2 ตัว (GB-11, กฎข้อ 28) อ่านผ่าน `query.graph` + link เดิม; ไม่เพิ่ม link/model |
-| (รอบ 14) ข้อมูลสินค้า/ราคาในขอบเขตแคมเปญบน storefront | `GET /store/products?id[]=...` ของ Medusa (ราคาตาม region, publishable key) | ใช้ตามเดิม — GB-11 คืนแค่ `product_ids` ไม่คืนข้อมูลสินค้าซ้ำ |
+| (รอบ 14) ข้อมูลสินค้า/ราคาในขอบเขตแคมเปญบน storefront | `GET /store/products?id[]=...` ของ Medusa (ราคาตาม region, publishable key) | ใช้ตามเดิม — GB-11 คืนแค่ `product_id` (รอบ 15: สินค้าเดียวต่อแคมเปญ, กฎข้อ 30) ไม่คืนข้อมูลสินค้าซ้ำ |
 | (รอบ 14, Q19) ที่อยู่/วิธีส่งของ cart ใหม่ที่ใช้ join | ที่อยู่ที่ลูกค้าบันทึก (`customer.addresses`), `POST /store/carts/:id` (ที่อยู่), `GET /store/shipping-options?cart_id=`, `POST /store/carts/:id/shipping-methods`; `createGroupDraftOrderStep` คัดลอกที่อยู่/วิธีส่งจาก cart ลง draft order อยู่แล้ว | ใช้ตามเดิมผ่าน data function ของ starter (`retrieveCustomer`, `listCartShippingMethods`, `setShippingMethod`) — ไม่มี backend เพิ่ม (กฎข้อ 29c) |
 | exclusivity ของ promotion | ไม่มี native (ตรวจ 2.22.1); มี hook `validate` / `setPromotionContext` บน `updateCartPromotionsWorkflow` | ขยาย — ทำครั้งเดียวใน PROMO-1 (ADR-009) |
 
@@ -206,7 +208,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   - `GET /store/group-buy/campaigns/active` → 200 `{ campaigns: [Campaign & { pool_groups: [Group] }] }` (ไม่แบ่งหน้า; สูงสุด 50 เรียง `ends_at` น้อยไปมาก)
   - `GET /store/group-buy/groups/:token` → 200 `{ group: Group & { kind }, campaign: Campaign }` (กลุ่มทุกสถานะ); token ไม่มีจริง → 404 `not_found`
   - `Campaign` = `{ id, name, starts_at, ends_at, target_type, target_value, group_mode, max_people_per_group, max_units_per_person, team_duration_hours, pay_within_hours,
-    discount: { type, value, currency_code }, product_ids: string[] | null }` (`starts_at`/`ends_at` จาก Medusa campaign; `discount`/`product_ids` ตามกฎข้อ 28e)
+    discount: { type, value, currency_code }, product_id: string | null }` (`starts_at`/`ends_at` จาก Medusa campaign; `discount`/`product_id` ตามกฎข้อ 28e — รอบ 15 แทน `product_ids: string[]`)
   - `Group` = `{ id, name, join_token, status, starts_at, ends_at, progress_orders, progress_units, progress_people }` (`progress_people` = จำนวนสมาชิกที่แสดงบนหน้า)
   - ห้ามมี key อื่นนอกจากรายการนี้ (allow-list ประกอบทีละ field ไม่ spread entity — AC-45/46 ตรวจชุด key ตรงตัว)
 
@@ -364,9 +366,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
       จึงไม่แสดงแคมเปญที่ job (GB-4) ยังไม่ตั้ง `ended` แต่หมดเวลาแล้ว
     (d) `pool_groups` = กลุ่ม `kind = pool`, `status = open`, `ends_at > now` ของแคมเปญนั้น พร้อม `join_token` (pool เปิดให้ทุกคน); **ไม่ list team** — token ของ team
       ได้จากลิงก์แชร์ของผู้สร้างเท่านั้น (route รายตัวด้วย token ยังเปิด team ได้)
-    (e) `discount = { type, value, currency_code }` และ `product_ids` อ่านจาก `application_method` ของ promotion: รายการแคมเปญ (`campaigns/active` — การ์ดบนหน้าแรก) ใช้ **ต้นแบบ** (ADR-011); หน้ากลุ่มใช้ **promotion
-      ของกลุ่ม** (ส่วนลดที่สมาชิกได้จริง — ต้นแบบที่แก้ภายหลังไม่กระทบกลุ่มเดิม, Q5); `product_ids` = `values` ของ `target_rules` ที่ `attribute = "items.product.id"` และ
-      `operator = "in"`; ไม่มี rule แบบนี้ → `null` (= ไม่จำกัดสินค้า); `currency_code` null เมื่อเป็น `percentage`
+    (e) `discount = { type, value, currency_code }` และ `product_id` อ่านจาก `application_method` ของ promotion: รายการแคมเปญ (`campaigns/active` — การ์ดบนหน้าแรก) ใช้ **ต้นแบบ** (ADR-011); หน้ากลุ่มใช้ **promotion
+      ของกลุ่ม** (ส่วนลดที่สมาชิกได้จริง — ต้นแบบที่แก้ภายหลังไม่กระทบกลุ่มเดิม, Q5); (รอบ 15, กฎข้อ 30) `product_id` = ค่าเดียวใน `values` ของ `target_rules` ที่ `attribute = "items.product.id"` และ
+      `operator = "in"`; ไม่มี rule แบบนี้ หรือมีมากกว่า 1 ค่า (ข้อมูลก่อนกฎข้อ 30) → `null` (หน้าไม่แสดงตัวเลือกสินค้า/ปุ่ม join) และ `campaigns/active` **ไม่คืน**แคมเปญนั้น; `currency_code` null เมื่อเป็น `percentage`
     (f) อ่านด้วย `query.graph` ครั้งเดียวต่อ request (รวม relation ที่ต้องใช้ ไม่ยิงต่อแถว) ผ่าน link เดิม (`group_buy_campaign ↔ promotion_campaign`, template, `group ↔ promotion`)
       — ไม่เพิ่ม link/model/index; แคมเปญ active พร้อมกันมีน้อย (≤ 50) จึงกรองช่วงเวลา/กลุ่มใน route ได้
 29. (รอบ 14, owner ตอบ Q15–Q19 2026-11-03) storefront ของ group buy:
@@ -378,13 +380,13 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
       ปุ่ม `group-create-team-button` เมื่อ `group_mode ∈ {team, both}`); ส่วนนี้ใช้ cache ของหน้าแรกเดิม (`force-static` + `revalidate = 60`, ADR-017 — ข้อมูลใหม่ภายใน ≤ 90 วินาที เหมือน spec 03
       กฎข้อ 22) **รวม `sold_out`/`remaining_units` ของการ์ด flash และ `progress_*` ของ pool ที่อาจค้าง ~90 วินาที — ยอมรับตาม ADR-017** (เป็นข้อมูลแสดงผล; โควตา flash บังคับตอน complete cart
       ตาม spec 03 และข้อจำกัดของกลุ่มบังคับใน `joinGroupWorkflow` ส่วนหน้ากลุ่มอ่านสด — กฎข้อ 29b) ไม่อ่านสดฝั่ง client; ไม่มีแคมเปญเลย → ไม่แสดงส่วนนี้ (GB-7c)
-    (b) หน้ากลุ่ม `/<cc>/g/<token>` (ลิงก์แชร์ `/g/<token>` ถูก middleware เติม country อยู่แล้ว) อ่าน GB-11 แบบ `cache: "no-store"` — ความคืบหน้าตรง DB ทุกครั้งที่โหลดหน้า; แสดงสินค้าใน
-      `product_ids` ผ่าน `listProducts` เดิม (`GET /store/products` ของ Medusa) ให้เลือก **variant เดียว + จำนวน** (สูงสุด `max_units_per_person` ถ้าตั้งไว้); `product_ids = null` → ไม่มีตัวเลือกสินค้าและไม่มีปุ่ม join
-      (ข้อจำกัด v1: admin สร้างแคมเปญผ่าน product picker ของ GB-6b จึงมี scope เสมอ) (GB-7a1 — หน้าอ่านอย่างเดียว ยังไม่มีปุ่ม join)
+    (b) หน้ากลุ่ม `/<cc>/g/<token>` (ลิงก์แชร์ `/g/<token>` ถูก middleware เติม country อยู่แล้ว) อ่าน GB-11 แบบ `cache: "no-store"` — ความคืบหน้าตรง DB ทุกครั้งที่โหลดหน้า; แสดงสินค้า
+      `product_id` ผ่าน `listProducts` เดิม (`GET /store/products` ของ Medusa) — (รอบ 15) เลือก**หลาย variant พร้อมจำนวน**ตามกฎข้อ 31; `product_id = null` → ไม่มีตัวเลือกสินค้าและไม่มีปุ่ม join
+      (กฎข้อ 30 บังคับสินค้าเดียวตั้งแต่สร้าง/activate) (GB-7a1 — หน้าอ่านอย่างเดียว ยังไม่มีปุ่ม join)
     (c) **join ด้วย cart ใหม่ต่อการ join** (Q16) + **ที่อยู่และวิธีส่งก่อน join** (Q19, owner 2026-11-03 — review #224: cart ที่สร้างใหม่ไม่มี `shipping_address`/`shipping_methods`
       เพราะ Medusa 2.22.1 ไม่เติมที่อยู่ default และ `createGroupDraftOrderStep` คัดลอกที่อยู่/วิธีส่งจาก cart ตรงๆ → draft order ไม่มีที่อยู่ ยอดไม่รวมค่าส่ง และ fulfill ไม่ได้หลังแปลง — ขัด ADR-004)
       สองขั้นบนหน้ากลุ่ม (GB-7a2):
-      (c1) ลูกค้าเลือก variant/จำนวน + **ที่อยู่ที่บันทึกไว้** (`customer.addresses` จาก `retrieveCustomer` เดิม, `group-address-select`; ไม่มีที่อยู่ → `group-join-button` disabled +
+      (c1) ลูกค้าเลือก variant/จำนวน (รอบ 15: หลายรายการตามกฎข้อ 31) + **ที่อยู่ที่บันทึกไว้** (`customer.addresses` จาก `retrieveCustomer` เดิม, `group-address-select`; ไม่มีที่อยู่ → `group-join-button` disabled +
         ลิงก์ `group-add-address-link` ไปหน้าที่อยู่ใน account ของ starter) → server action สร้าง cart ใหม่ผ่าน `createCartWithItems` ใน `lib/util/server-cart.ts` (export ร่วมกับ `/buy/[items]`;
         **ไม่**เรียก `activateCart`/`setCartId`) แล้ว `sdk.store.cart.update(cart_id, { shipping_address, billing_address: <ที่อยู่เดียวกัน>, email: <อีเมลลูกค้าถ้า cart ยังไม่มี> })`
         → คืน `cart_id` + วิธีส่งจาก `listCartShippingMethods(cart_id)` ใน `lib/data/fulfillment.ts` (รับ cart id — **ไม่ใช้** `listCartOptions` เพราะอ่าน cart จาก cookie); option แบบ `calculated`
@@ -404,6 +406,28 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
       "กลุ่มหรือแคมเปญนี้ปิดรับแล้ว", code อื่น/5xx "เข้าร่วมไม่สำเร็จ กรุณาลองใหม่" (ถ้อยคำปรับได้ใน PR แต่ต้องต่างกันทุก code) — ใช้รูปแบบ `{ ok } | { error }` ของ CORE-4i ถ้า merge แล้ว
     (g) **สร้างทีม** (Q18 = ก): `POST /store/group-buy/groups` อย่างเดียว (ไม่ join อัตโนมัติ) แล้วพาไป `/<cc>/g/<token>` ของทีมใหม่ที่มี `group-share-link` (ลิงก์ `/g/<token>` + ปุ่มคัดลอก)
       และผู้สร้าง join เองด้วย `group-join-button` เหมือนคนอื่น; กันกดซ้ำ (disable ระหว่างส่ง + in-flight flag แบบกฎข้อ 17) เพราะ route สร้างทีมไม่ idempotent (GB-7c)
+
+30. (รอบ 15, **owner ตัดสิน 2026-11-03**) **1 แคมเปญ group buy = 1 สินค้า**: promotion ต้นแบบต้องมี `target_rules` ที่ `attribute = "items.product.id"`, `operator = "in"` และ `values` **ค่าเดียว**
+    (variant ใดก็ได้ของสินค้านั้นร่วมแคมเปญ) — **ห้าม scope ระดับ variant** (`items.variant_id`) หรือ attribute อื่นของ `items` (review #227: `scripts/seed-load.ts` เดิมใช้ `items.variant_id` → แปลงเป็น
+    `items.product.id` ของสินค้าที่ variant นั้นอยู่ใน GB-6e); rule อื่นนอก `items.*` ใน `rules` ของ promotion ไม่อยู่ในกฎนี้ — บังคับที่:
+    (a) zod validator ของ `POST /admin/group-buy/campaigns` (`application_method.target_rules`): ไม่มี rule นี้, `values` ว่าง หรือ > 1 ค่า → 400 `invalid_data` ข้อความระบุ code `GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED`
+      และ `createGroupBuyCampaignWorkflow` ตรวจซ้ำก่อนขั้น 1 (ผู้เรียก workflow ตรงไม่ผ่าน validator) → `MedusaError INVALID_DATA` code เดียวกัน ไม่สร้าง Medusa campaign/promotion;
+    (b) scope ไม่ได้แก้ผ่าน route ของเรา (`updateGroupBuyCampaignWorkflow` แก้ได้แค่คอนฟิก — ส่วนลด/scope แก้ที่หน้า promotion ของ Medusa ตาม ADR-011) จึงตรวจ**ตอน `draft → active`**
+      ใน `setGroupBuyCampaignStatusWorkflow` (ต้นแบบที่ถูกแก้เป็นหลายสินค้า/ไม่มี scope ระหว่าง `draft` → 400 `NOT_ALLOWED` code `GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED`) และ**ตอนสร้างกลุ่ม** ใน
+      `createGroupWorkflow` ขั้น 2 (ต้นแบบถูกแก้ระหว่าง `active` → 400 code เดียวกัน ไม่ clone) — กลุ่มเดิมไม่กระทบ (Q5); **ข้อยอมรับ (review #227)**: admin แก้ promotion ของกลุ่ม `GB-<token>` เองที่หน้า Medusa ให้มีสินค้าที่ 2 ได้ → `validateJoinStep` ยอม join สินค้าที่ 2 ผ่าน API
+      (target_rules ของกลุ่มยอมรับ) แต่หน้ากลุ่มได้ `product_id = null` จึงไม่มีปุ่ม join — **ไม่กันที่ join** เพราะขัดกฎข้อ 30c (กลุ่มเดิมต้อง join ได้ตามเดิม); ผลข้างเคียง: ถ้าต้นแบบถูกแก้หลัง `active`
+      ให้ไม่ผ่านกฎ GB-11 ซ่อน**ทั้งแคมเปญ**จาก `campaigns/active` (รวม pool ที่ยัง join ได้) → ลิงก์หายจากหน้าแรก แต่ URL `/g/<token>` ของกลุ่มเดิมยังใช้ได้ (หน้ากลุ่มอ่าน promotion ของกลุ่ม) —
+      แก้ได้โดยแก้ต้นแบบกลับเป็นสินค้าเดียว;
+    (c) ข้อมูลเดิมก่อนกฎนี้ (dev/staging) ไม่ backfill — GB-11 ไม่แสดงแคมเปญที่ไม่ผ่าน (กฎข้อ 28e); join ของกลุ่มเดิมยังทำงานตามเดิม (`GB_ITEMS_NOT_ELIGIBLE` คุมสินค้า)
+    (d) admin picker (GB-6e) เลือกได้ 1 สินค้า — ส่วน "หลายสินค้า" ของ GB-6b/AC-33 ถูกแทนที่
+31. (รอบ 15, owner) **หน้ากลุ่ม = ตะกร้าเฉพาะของสินค้านั้น** (GB-7a2): (a) ลูกค้าเลือก option ด้วย component `OptionSelect` เดิมของ PDP (`modules/products/components/product-actions/option-select.tsx`
+      — import ใช้ร่วม ไม่ copy; ตรรกะหา variant จาก option ถ้าใช้ร่วมได้ให้ย้ายเป็น helper ที่ PDP และหน้ากลุ่ม import — ผู้ใช้ 2 ที่ตาม CLAUDE.md ข้อ 3) + จำนวน แล้วกด "เพิ่มในรายการ" (`group-add-variant`)
+      (review #227: `id` ของ input ใน `OptionSelect` มาจาก prop `name` — ส่ง `name` ที่ไม่ซ้ำกับส่วนอื่นของหน้า; testid `option-button` ตายตัว → e2e หาภายใต้ wrapper ของหน้ากลุ่ม;
+      ย้าย `optionsAsKeymap` + การหา variant จาก option ออกจาก `product-actions/index.tsx` เป็น helper ใน `lib/util/` ~30 LOC ให้ PDP และหน้ากลุ่ม import)
+      → รายการ `group-selection` ในหน้า (variant เดิมซ้ำ = รวมจำนวน, แก้จำนวน/ลบรายการได้ก่อนยืนยัน); (b) ยืนยัน → cart ใหม่ **หลาย line** ตามรายการ (กฎข้อ 29c) แล้ว join ครั้งเดียว = 1 membership/1 draft order
+      ที่มีทุก variant, `units` = ผลรวมจำนวน (backend เดิม `cartUnits` รวมทุก line); (c) ผลรวมเกิน `max_units_per_person` → ปุ่ม join disabled + `group-units-limit` (ตรวจฝั่ง client จากค่าในหน้า —
+      ด่านจริงคือ backend กฎข้อ 4 ที่นับรวม membership เดิมด้วย); (d) ค่าตั้งต้นที่ใช้จน owner ตอบ Q20: รายการเป็น state ในหน้า ไม่จำข้ามการออกจากหน้า (Q20ก), หลัง join แก้รายการไม่ได้ —
+      leave แล้ว join ใหม่ (Q20ข), `max_units_per_person` นับรวมทุก variant (Q20ค), คงเป้า orders/units/people ทั้งสามแบบ (Q20ง)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -486,13 +510,15 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - AC-27 (GB-3, กฎข้อ 14b) Given A join G ด้วย cart C สำเร็จ When A join G (หรือกลุ่มอื่นของแคมเปญเดียวกัน) ด้วย C อีกครั้ง Then 409
   `{ type: "conflict", code: "GB_CART_ALREADY_JOINED" }`, membership/draft order/ตัวนับไม่เปลี่ยน; When A join G ด้วย cart ใหม่ C2 Then 201 (integration http)
 - AC-28 (**GB-7a2**, กฎข้อ 14c, 29c — แทนที่รอบ 14 ตาม owner Q16/Q19) Given A login แล้วมีที่อยู่ที่บันทึกไว้ 2 รายการ (H1, H2 ในประเทศไทย) และ cart ปัจจุบัน C (cookie `_medusa_cart_id = C`)
-  ที่มีสินค้า Z นอกแคมเปญ qty 2 When A เปิดหน้ากลุ่ม เลือก variant V ของสินค้าในแคมเปญ qty 1, เลือกที่อยู่ H2 ใน `group-address-select`, เลือกวิธีส่ง S ใน `group-shipping-option` แล้วกด
+  ที่มีสินค้า Z นอกแคมเปญ qty 2 When A เปิดหน้ากลุ่ม เพิ่ม variant V1 qty 2 และ V2 qty 1 ของสินค้าในแคมเปญ (รอบ 15, กฎข้อ 31) ลงรายการ `group-selection`, เลือกที่อยู่ H2 ใน `group-address-select`, เลือกวิธีส่ง S ใน `group-shipping-option` แล้วกด
   `group-join-button` (ซ้ำด้วย `dblclick`) Then มี `POST .../join` **1** ครั้งด้วย `cart_id ≠ C`; cookie `_medusa_cart_id` ยังเป็น C; C (อ่านผ่าน
-  store API) มี line ของ Z qty 2 เหมือนก่อนและไม่มี promotion `GB-*`; draft order ที่สร้าง (อ่านผ่าน admin API) มี item เดียวคือ V qty 1, `customer_id = A`, `shipping_address` ตรงกับ H2
+  store API) มี line ของ Z qty 2 เหมือนก่อนและไม่มี promotion `GB-*`; draft order ที่สร้าง (อ่านผ่าน admin API) มี item ครบ 2 รายการ V1 qty 2 และ V2 qty 1 (ไม่มีสินค้าอื่น), membership `units = 3`, `customer_id = A`, `shipping_address` ตรงกับ H2
   (`address_1`, `postal_code`, `country_code`, `phone`), `shipping_methods` 1 รายการที่ `shipping_option_id = S`, `shipping_total` = ราคาของ S และ `total` = ยอด item หลังส่วนลด + ค่าส่ง (เทียบ
   `MathBN`); Given ลูกค้า B ที่ไม่มีที่อยู่ When เปิดหน้ากลุ่ม Then `group-join-button` disabled, มี `group-add-address-link` และไม่มี `POST /store/carts` เกิดจากหน้า; cart ที่ใช้ join (`GET /store/carts/<cart_id ของ request>` ด้วย token ของ A ได้ 200)
   มี `customer_id = A`; When join ตอบ 409 `GB_GROUP_FULL` (กลุ่มเต็ม) Then `group-join-error` มีข้อความไทยและ C ยังไม่เปลี่ยน (e2e); unit: helper map ทุก code ในกฎข้อ 29f
-  ได้ข้อความที่ต่างกันทุกตัวและมีอักษรไทย (unit Vitest)
+  ได้ข้อความที่ต่างกันทุกตัวและมีอักษรไทย (unit Vitest — **GB-7a2a**);
+  (รอบ 15) Given `max_units_per_person = 3` When รายการรวม 4 ชิ้น (ข้าม variant) Then ปุ่ม `group-join-button` disabled พร้อมข้อความไทย `group-units-limit` และไม่มี `POST /store/carts`;
+  Given A มี membership 2 ชิ้นอยู่แล้วในแคมเปญ When join ด้วยรายการรวม 2 ชิ้น Then backend ตอบ 409 `GB_UNITS_LIMIT_EXCEEDED` และ `group-join-error` แสดงข้อความของ code นั้น (นับรวมทุก variant/membership — กฎข้อ 4) (e2e)
 - AC-29 (GB-6a, #75) Given admin ล็อกอิน When เปิด route "Group buying" Then ตารางแสดงแคมเปญจาก `GET /admin/group-buy/campaigns` (ชื่อ + สถานะ);
   When กรอกฟอร์มสร้างครบแล้ว submit Then มี `POST /admin/group-buy/campaigns` 1 ครั้ง และแคมเปญใหม่สถานะ `draft` ปรากฏในตารางโดยไม่ reload
   (e2e admin หรือ component test ที่ mock `fetch` ตามที่ #75 ใช้)
@@ -508,9 +534,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   จึงเว้นว่างไม่ได้; แก้ถ้อยคำรอบ 8 ตาม review #96) Then ส่งได้; When `ends_at` เป็นเวลาที่ผ่านไปแล้ว Then
   เห็น `gb-ends-at-warning` และยังส่งได้ (แคมเปญ `draft`); When `dblclick` ปุ่ม submit ของฟอร์มที่ถูกต้อง Then มี `POST` **1** ครั้งและแคมเปญใหม่ 1 แถว
   (component test ที่ mock `fetch` หรือ e2e admin)
-- AC-33 (GB-6b) Given ฟอร์มสร้างแคมเปญ When เลือกสินค้า 2 ตัวผ่าน `gb-product-picker` (ค้นหาด้วยชื่อ) แล้ว submit Then body ของ `POST` มี
-  `application_method.target_rules = [{ attribute: "items.product.id", operator: "in", values: [<id1>, <id2>] }]`; และในฟอร์มไม่มีช่องกรอก product ID
-  แบบข้อความอิสระ (component test ตรวจ body ที่ส่ง)
+- AC-33 (GB-6b — **รอบ 15 แทนที่ด้วย AC-50** ส่วนจำนวนสินค้า: picker เลือกได้ 1 ตัว; ส่วน "ไม่มีช่องกรอก product ID" ยังใช้) ~~Given ฟอร์มสร้างแคมเปญ When เลือกสินค้า 2 ตัวผ่าน `gb-product-picker` (ค้นหาด้วยชื่อ) แล้ว submit Then body ของ `POST` มี~~
+  ~~`application_method.target_rules = [{ attribute: "items.product.id", operator: "in", values: [<id1>, <id2>] }]`; และในฟอร์มไม่มีช่องกรอก product ID~~
+  ~~แบบข้อความอิสระ (component test ตรวจ body ที่ส่ง)~~
 - AC-34 (GB-6c) Given กลุ่ม G ที่มี membership 2 รายการ (`joined` 1, `cancelled` 1) When admin `GET /admin/group-buy/groups/G/memberships` Then 200
   `count=2` และแต่ละรายการมี `order_id`, `order.status`, `order.payment_status`, `customer.email` ตรงกับ DB; `limit=1&offset=1` → 1 รายการ `count=2`;
   `limit=101`, `limit=0`, `offset=-1`, `limit=abc` → 400; กลุ่มไม่มีจริง → 404; ไม่มี token → 401
@@ -565,21 +591,33 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - AC-45 (GB-11, กฎข้อ 28) Given แคมเปญ A (`active`, ในช่วงเวลา, `group_mode=both`, ต้นแบบ −30% scope = product X) ที่มี pool P1 `open`, pool P2 `failed`, pool P3 `open` แต่ `ends_at` ผ่านแล้ว
   (ตั้งผ่าน module), team T1 `open` และมีสมาชิก 1 คนใน P1; แคมเปญ B `draft`; แคมเปญ C `active` ที่ Medusa campaign `starts_at` อยู่ในอนาคต; แคมเปญ D `active` ที่ Medusa campaign `ends_at` ผ่านแล้ว
   When `GET /store/group-buy/campaigns/active` ด้วย publishable key อย่างเดียว (ไม่มี token ลูกค้า) Then 200, `campaigns` มีเฉพาะ A; ชุด key ของ campaign และของ group ใน `pool_groups`
-  **เท่ากับ** allow-list ใน "API" รอบ 14 พอดี; `pool_groups` = [P1] พร้อม `join_token` และ `progress_people = 1`; `discount = { type: "percentage", value: 30, currency_code: null }`; `product_ids = [X]`;
-  `JSON.stringify(response)` ไม่มี customer id ของสมาชิก, `GBT-`, `GB-<join_token>` ของกลุ่มใดๆ และ id ของ promotion ใดๆ; When ต้นแบบไม่มี `target_rules` Then `product_ids = null` (integration http)
+  **เท่ากับ** allow-list ใน "API" รอบ 14 พอดี; `pool_groups` = [P1] พร้อม `join_token` และ `progress_people = 1`; `discount = { type: "percentage", value: 30, currency_code: null }`; `product_id = X` (รอบ 15);
+  `JSON.stringify(response)` ไม่มี customer id ของสมาชิก, `GBT-`, `GB-<join_token>` ของกลุ่มใดๆ และ id ของ promotion ใดๆ; When ต้นแบบของแคมเปญ A2 (active) ไม่มี `target_rules` หรือมี 2 สินค้า (ตั้งผ่าน Promotion module ข้ามกฎข้อ 30) Then `campaigns` ไม่มี A2 (integration http)
 - AC-46 (GB-11, กฎข้อ 28) Given team T1 ของแคมเปญ A ที่มี membership ของลูกค้า X 2 รายการ, Y 1 รายการ และ Z 1 รายการที่ `cancelled` และหลังสร้าง T1 admin แก้ต้นแบบเป็น scope = product W
   When `GET /store/group-buy/groups/<T1.join_token>` ไม่มี token ลูกค้า Then 200, `group.kind = "team"`, `progress_people`/`progress_orders`/`progress_units`/`ends_at`/`status` เท่ากับ DB,
-  `campaign.product_ids = [X]` (จาก promotion ของกลุ่ม ไม่ใช่ต้นแบบ), ชุด key ของ `group`/`campaign` เท่ากับ allow-list พอดี และ `JSON.stringify(response)` ไม่มี id/อีเมลของ X, Y, Z,
+  `campaign.product_id` = สินค้าในแคมเปญตอนสร้าง T1 (จาก promotion ของกลุ่ม ไม่ใช่ต้นแบบ — รอบ 15), ชุด key ของ `group`/`campaign` เท่ากับ allow-list พอดี และ `JSON.stringify(response)` ไม่มี id/อีเมลของ X, Y, Z,
   `order_id` ใดๆ, `created_by_customer_id`, `pay_deadline_at`; เรียกด้วย token ลูกค้าได้ body เดียวกัน; When กลุ่ม `succeeded` Then 200 `status = "succeeded"`;
   When token ไม่มีจริง Then 404 `type = "not_found"`; `POST /store/group-buy/groups/<token>/join` ไม่มี token ลูกค้ายังได้ 401 (integration http)
 - AC-47 (GB-7a2, กฎข้อ 27, 29c–e) static test ของ spec 05 กฎ 31 ครอบไฟล์ GB-7a2: ฟังก์ชันที่เรียก server action join ต้องมี `syncAffiliateBefore(` ก่อนหน้าในฟังก์ชันเดียวกัน — fixture ที่ไม่มี
   → test ล้ม (positive control ใน PR) (unit); Given cookie `aff = T` When A join ผ่านหน้ากลุ่ม (cart ใหม่ตามกฎข้อ 29c) Then draft order ที่สร้าง (อ่านผ่าน admin API) มี
   `metadata.affiliate_token = T`; Given A ยังไม่ login When กด `group-join-button` Then ไปหน้า login และไม่มี `POST .../join` และไม่มี cart ใหม่ (e2e)
 - AC-48 (GB-7c, กฎข้อ 29a, 29g) Given แคมเปญ group buy G1 (`group_mode=both`, มี pool P `open`) และ G2 (`group_mode=pool`) ที่ active และแคมเปญ flash F ที่ active When เปิดหน้าแรก `/th`
-  (reload ได้ภายใน 90 วินาที) Then `home-campaigns` มี `group-campaign-card` 2 ใบ (G1, G2) และ `flash-campaign-card` ของ F, ข้อความมีอักษรไทย; การ์ด G1 มี `group-pool-link` ที่ href ลงท้าย `/g/<P.join_token>`
+  (reload ได้ภายใน 90 วินาที) Then `home-campaigns` มี `group-campaign-card` 2 ใบ (G1, G2) และ `flash-campaign-card` ของ F, ข้อความมีอักษรไทย; (รอบ 15) การ์ด group buy แต่ละใบแสดงสินค้าเดียวของแคมเปญ: `group-campaign-thumbnail` (รูปจาก `GET /store/products`), ชื่อสินค้า,
+  `group-campaign-price` (ราคาเริ่มต้นของ variant ใน region ก่อนส่วนลดแบบขีดฆ่า + หลังส่วนลดตาม `discount`) และ `group-campaign-progress` ของ pool ที่เปิดอยู่ (ถ้ามี); การ์ด G1 มี `group-pool-link` ที่ href ลงท้าย `/g/<P.join_token>`
   และมี `group-create-team-button`; การ์ด G2 ไม่มี `group-create-team-button`; When A (login) `dblclick` `group-create-team-button` ของ G1 Then มี `POST /store/group-buy/groups` **1** ครั้ง, URL เป็น
-  `/th/g/<token ใหม่>`, `group-share-link` มี `/g/<token ใหม่>` และ A ยังไม่มี membership ใหม่ (ไม่ join อัตโนมัติ); When ยังไม่ login แล้วกด Then ไปหน้า login
+  `/th/g/<token ใหม่>`, `group-share-link` มี `/g/<token ใหม่>` และ A ยังไม่มี membership ใหม่ (ไม่ join อัตโนมัติ); When `POST /store/group-buy/groups` ตอบ 400 (mock หรือแคมเปญที่ต้นแบบถูกแก้) Then `group-create-team-error` มีข้อความไทยและไม่เปลี่ยนหน้า; When ยังไม่ login แล้วกด Then ไปหน้า login
   และไม่มี `POST`; Given ไม่มีแคมเปญ active ทั้งสองแบบ Then ไม่มี `home-campaigns` (e2e + screenshot)
+
+- AC-49 (GB-6e, กฎข้อ 30a–c) integration http: `POST /admin/group-buy/campaigns` ที่ `target_rules` มีสินค้า 1 ตัว → 201; 2 ตัว, `values: []` หรือไม่มี rule `items.product.id` → 400
+  `type = "invalid_data"` ข้อความมี `GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED` และจำนวน Medusa campaign/promotion ก่อน-หลังเท่ากัน; workflow `createGroupBuyCampaignWorkflow` เรียกตรงด้วย 2 สินค้า → error code เดียวกัน
+  ไม่มี campaign/promotion ใหม่; Given แคมเปญ `draft` ที่ต้นแบบถูกแก้เป็น 2 สินค้าผ่าน Promotion module When `POST .../status {status:"active"}` Then 400 และยังเป็น `draft`; Given แคมเปญ `active`
+  ที่ต้นแบบถูกแก้เป็น 2 สินค้า When admin `POST .../groups` หรือลูกค้า `POST /store/group-buy/groups` Then 400 code เดียวกัน และไม่มี promotion `GB-*` ใหม่; กลุ่มที่สร้างก่อนแก้ยัง join ได้ 201;
+  (review #227) หลังแปลง `seed-load.ts` เป็น `items.product.id`: `integration-tests/http/load-seed.spec.ts` ผ่าน และ gate AC-2/AC-3 ของ load test OPS-4 (spec 07) ยังผ่าน (ระบุ run ใน PR);
+  e2e admin เดิม AC-30/AC-31 (`group-buy-admin-detail.spec.ts`) ผ่านหลัง helper สร้างแคมเปญส่ง `target_rules` สินค้าเดียว
+- AC-50 (GB-6e, กฎข้อ 30d) e2e admin หรือ component test (mock `fetch`): Given ฟอร์มสร้างแคมเปญ When เลือกสินค้า A ใน `gb-product-picker` แล้วเลือก B Then เหลือ B ตัวเดียว (single select) และ body ของ
+  `POST` มี `target_rules = [{ attribute: "items.product.id", operator: "in", values: [<B>] }]`; When ยังไม่เลือกสินค้าแล้ว submit Then เห็น `gb-product-required-error` และไม่มี `POST`; ไม่มีช่องกรอก product ID อิสระ;
+  เคส AC-32 (submit โดยไม่เลือกสินค้า) และ AC-33 สองเคส (เลือก 2 สินค้า) ใน `group-buy-admin-form.spec.ts` ถูกเขียนใหม่ตาม AC-50 (ไม่ลบโดยไม่แทน); unit `group-buy-form.unit.spec.ts` คาด `values` 1 ค่า
+  และไม่มี comment "ว่าง = ทุกสินค้า" ใน `lib/group-buy-form.ts` (grep)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -606,8 +644,9 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - Integration (http): AC-38, AC-39, AC-40 (GB-8); e2e admin / component test: AC-41 (GB-6d)
 - (รอบ 12) unit + integration (http): AC-43 (GB-9); integration (http): AC-44 (GB-10)
 - (รอบ 13) unit jest: AC-44 ส่วนรอบ 13 (GB-10 — subscriber fail-open, กรณี `membership_joined`, ขอบหัวข้อ runbook)
-- (รอบ 14) integration (http): AC-45, AC-46 (GB-11) + unit ของ helper ดึง `product_ids`/`discount` จาก `application_method` (กฎข้อ 28e);
+- (รอบ 14) integration (http): AC-45, AC-46 (GB-11) + unit ของ helper ดึง `product_id`/`discount` (0, 1, 2 ค่า) จาก `application_method` (กฎข้อ 28e);
   e2e: AC-16a (GB-7a1); e2e: AC-28, AC-47 ส่วน e2e + unit static test AC-47 และ unit ของ map code → ข้อความไทย (AC-28) (GB-7a2); e2e: AC-48 (GB-7c); e2e: AC-2, AC-16b (GB-7b)
+- (รอบ 15) integration (http): AC-49 + e2e admin/component: AC-50 (GB-6e); AC-28 ส่วนหลาย variant/`units` รวม (GB-7a2), unit map code (GB-7a2a)
 
 ## Tasks
 | ID | Task | Depends |
@@ -631,10 +670,12 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-N3 | (เล็ก, รอบ 11 — qa #143, nit review #145) highlight `td` แรก (admin) + ส่ง collection ที่กรอง `null` แล้วเข้า `getLastPaymentStatus` ใน route รายตัว GB-8 (กฎข้อ 24) (AC-42) — ไฟล์: ตารางกลุ่มใน `src/admin/routes/group-buying/[id]/`, `orders/[order_id]/route.ts` ของ GB-8 | GB-6d ☑ (#143), GB-8 ☑ (#145) — เริ่มได้; ไม่บล็อก PAY-3b |
 | GB-9 | (backend เล็ก, รอบ 12 — re-review #185) alert เงินค้างอ่านสถานะใหม่ก่อนส่ง, idempotency key ต่อ membership+เหตุ, runbook ขั้นตรวจ draft + URL `/app/orders/<id>`, test คืนค่า `OPS_ALERT_EMAIL` (กฎข้อ 25) (AC-43) — ไฟล์: `src/subscribers/group-buy-payment-captured.ts`, `src/workflows/group-buy/membership-payment.ts`, `docs/ops/production.md`, `integration-tests/http/group-buy-payment.spec.ts` | GB-5 ☑ (#185) — **เริ่มได้** |
 | GB-10 | (backend เล็ก, รอบ 12 — review #185) membership เป็น `paid` เมื่อ ops แปลง draft order เองหลังเงินเข้า (กฎข้อ 26) (AC-44) — ไฟล์: subscriber ใหม่ใน `src/subscribers/`, workflow/step ใน `src/workflows/group-buy/`; **(รอบ 13) รวม follow-up review #196 (GB-9)**: subscriber `group-buy-payment-captured.ts` fail-open เมื่ออ่านสถานะใหม่ล้ม (`loadMembership` ราวบรรทัด 37 เข้าไปใน `try`), ย้าย `loadMembership` ออกจาก `src/workflows/group-buy/membership-payment.ts` เป็น helper เดียวถ้า subscriber ใหม่ใช้ร่วม, test กรณี `membership_joined` ใน `src/modules/group_buy/utils/membership-payment.ts`, ขอบตัวแปร `gb` ใน `src/__tests__/ops-runbook.unit.spec.ts` (กฎข้อ 25e–f) — ไฟล์เพิ่ม: `src/subscribers/group-buy-payment-captured.ts`, `src/modules/group_buy/utils/membership-payment.ts` (+ test), `src/__tests__/ops-runbook.unit.spec.ts` — ถ้ารวมแล้วเกิน ~400 LOC ให้ builder แยกเป็น **GB-10** (subscriber/workflow ของกฎข้อ 26 + AC-44 ส่วนเดิม) และ **GB-10b** (follow-up #196 ของกฎข้อ 25e–f + AC-44 ส่วนรอบ 13; ทำก่อนหรือหลังก็ได้ — ถ้า GB-10 ใช้ `loadMembership` ร่วม ให้ตัวที่ทำก่อนย้าย helper) | GB-5 ☑ (#185), **GB-9 (#196) merge** (รอบ 13 — แก้โค้ดที่ #196 เพิ่ม; เดิม "ชน `membership-payment.ts` ตัวที่ merge ทีหลัง rebase") |
-| GB-11 | (backend, รอบ 14 — builder GB-7 พบว่าไม่มี route) route สาธารณะอ่านอย่างเดียว `GET /store/group-buy/campaigns/active` + `GET /store/group-buy/groups/:token` ตาม "API" รอบ 14 และกฎข้อ 28 + integration test (AC-45, AC-46) — ไฟล์: `src/api/store/group-buy/campaigns/active/route.ts`, `src/api/store/group-buy/groups/[token]/route.ts` (GET; ข้าง `join/` เดิม), helper pure ของกฎข้อ 28e ใน `src/modules/group_buy/utils/` (+ unit), `src/api/store/group-buy/middlewares.ts` (ไม่ใส่ `customerAuth` ให้ `GET`), `integration-tests/http/group-buy-public.spec.ts`; ~300 LOC | GB-8 ☑, GB-3b ☑ — **เริ่มได้** (∥ GB-7b, GB-10) |
-| GB-7a1 | (รอบ 14 — GB-7a เดิมเกิน ~400 LOC หลังเพิ่มที่อยู่/วิธีส่งตาม Q19 จึงแยก) หน้ากลุ่ม `/<cc>/g/<token>` อ่านอย่างเดียว: ความคืบหน้า/นับถอยหลัง/จำนวนสมาชิกจาก GB-11 แบบ `no-store`, ส่วนลด, สินค้าใน `product_ids` (`listProducts` เดิม), `group-share-link`, ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) (กฎข้อ 29b; AC-16a) — ~200 LOC | **GB-11**; ∥ GB-7b (ไฟล์ร่วม `lib/data/group-buy.ts`/ESLint rule — ตัวที่ merge ทีหลัง rebase) |
-| GB-7a2 | (รอบ 14, Q16/Q17/Q19) บนหน้ากลุ่ม: เลือก variant + จำนวน + ที่อยู่ที่บันทึกไว้ + วิธีส่ง → cart ใหม่ผ่าน `createCartWithItems` (export จาก `lib/util/server-cart.ts`) + `sdk.store.cart.update` (ที่อยู่) + `listCartShippingMethods(cart_id)` + `setShippingMethod` เดิม, ไม่แตะ cart ปัจจุบัน (กฎข้อ 14c, 29c; 14d ไม่ต้องกัน), sync cookie `aff` ลง cart ใหม่ก่อน join (กฎข้อ 27) + เพิ่มจุดนี้ใน static test ของ spec 05 กฎ 31, ข้อความ error ต่อ code (กฎข้อ 29f), กันกดซ้ำ (กฎข้อ 29c–f; AC-28, AC-47) — ไม่มี backend เพิ่ม (`createGroupDraftOrderStep` คัดลอกที่อยู่/วิธีส่งจาก cart อยู่แล้ว); ~380 LOC — ถ้าเกินให้ย้าย error map + unit (กฎข้อ 29f) ไปทำก่อนเป็น PR เล็กแยก | **GB-7a1**, GB-3 ☑, AF-16 ☑ (#197) |
-| GB-7c | (รอบ 14 — owner Q15 ให้แสดงทุกแคมเปญบนหน้าแรก, Q18 = ก; แยกเพื่อให้แต่ละ PR ≤ ~400 LOC) ส่วน `home-campaigns` บนหน้าแรก `/<cc>`: การ์ด flash ผ่าน**ฟังก์ชันใหม่** ใน `lib/data/flash-sales.ts` ที่เรียก `GET /store/flash-sales/active` โดยไม่ส่ง `variant_ids` (reviewer #224 ยืนยันว่าได้แคมเปญครบ; `getActiveFlashSales` เดิมคืน `null` เมื่อ array ว่างจึงใช้ไม่ได้ — ไม่แก้ฟังก์ชันเดิม, ไม่สร้าง route ใหม่) + การ์ด group buy (GB-11) + ปุ่มสร้างทีม → `/<cc>/g/<token>` ที่มี `group-share-link` (กฎข้อ 29a, 29g; AC-48) — ใช้ cache ของหน้าแรกเดิม (ADR-017; ค่า `sold_out`/`remaining_units`/`progress_*` ค้างได้ ~90 วินาที ยอมรับตามกฎข้อ 29a); **rebase กับ #216 (FS-18)** ที่แก้ `lib/data/flash-sales.ts` เดียวกัน — ตัวที่ merge ทีหลัง rebase; ~250 LOC (ส่วน + การ์ด 2 แบบ ~120, ฟังก์ชัน flash ~20, ปุ่มสร้างทีม ~40, e2e ~70) | **GB-7a1** (หน้า `/g/<token>` + `group-share-link` ที่ปุ่มสร้างทีมพาไป), GB-11, FS-4 ☑ |
+| GB-6e | (admin + backend, รอบ 15 — owner: 1 แคมเปญ = 1 สินค้า) validator ของ `POST /admin/group-buy/campaigns` + ตรวจซ้ำใน `createGroupBuyCampaignWorkflow`, `setGroupBuyCampaignStatusWorkflow` (`draft → active`) และ `createGroupWorkflow` (กฎข้อ 30a–c; AC-49) + `gb-product-picker` เลือกได้ 1 สินค้า + `gb-product-required-error` (กฎข้อ 30d; AC-50) — ไฟล์: `src/api/admin/group-buy/validators.ts`, `src/workflows/group-buy/{campaign,create-group}.ts` (หรือไฟล์ที่ workflow อยู่จริง), helper pure ตรวจ `target_rules` ใน `src/modules/group_buy/utils/` (+ unit — ใช้ร่วมกับ helper `product_id` ของ GB-11 ถ้าตัวหนึ่ง merge ก่อน), `src/admin/components/group-buy/{product-picker,create-campaign}.tsx`, test http ของ campaigns/groups; **โค้ด/test เดิมที่พังเมื่อบังคับกฎข้อ 30 (review #227) — แก้ใน PR นี้**: `src/scripts/seed-load.ts` (~123–139 `items.variant_id` → `items.product.id`; `integration-tests/http/load-seed.spec.ts` + gate load test OPS-4), `storefront/e2e/group-buy-admin-detail.spec.ts` (helper ~25–40 ส่ง `target_rules` สินค้าเดียว; AC-30/31), `storefront/e2e/group-buy-admin-form.spec.ts` (เคส AC-32 ไม่เลือกสินค้า + AC-33 สองเคส → AC-50), `src/admin/lib/__tests__/group-buy-form.unit.spec.ts` (`values` 1 ค่า) + comment "ว่าง = ทุกสินค้า" ใน `src/admin/lib/group-buy-form.ts`; ~320 LOC | GB-6b ☑ — **เริ่มได้** (∥ GB-11; ชน `product-picker.tsx` กับ ADM-7 (spec 08) และ helper `utils/` กับ GB-11 — ตัวที่ merge ทีหลัง rebase) |
+| GB-11 | (backend, รอบ 14 — builder GB-7 พบว่าไม่มี route) route สาธารณะอ่านอย่างเดียว `GET /store/group-buy/campaigns/active` + `GET /store/group-buy/groups/:token` ตาม "API" รอบ 14 และกฎข้อ 28 + integration test (AC-45, AC-46; รอบ 15: `product_id` ค่าเดียวแทน `product_ids` ตามกฎข้อ 28e/30) — ไฟล์: `src/api/store/group-buy/campaigns/active/route.ts`, `src/api/store/group-buy/groups/[token]/route.ts` (GET; ข้าง `join/` เดิม), helper pure ของกฎข้อ 28e ใน `src/modules/group_buy/utils/` (+ unit), `src/api/store/group-buy/middlewares.ts` (ไม่ใส่ `customerAuth` ให้ `GET`), `integration-tests/http/group-buy-public.spec.ts`; ~300 LOC | GB-8 ☑, GB-3b ☑ — **เริ่มได้** (∥ GB-7b, GB-10) |
+| GB-7a1 | (รอบ 14 — GB-7a เดิมเกิน ~400 LOC หลังเพิ่มที่อยู่/วิธีส่งตาม Q19 จึงแยก) หน้ากลุ่ม `/<cc>/g/<token>` อ่านอย่างเดียว: ความคืบหน้า/นับถอยหลัง/จำนวนสมาชิกจาก GB-11 แบบ `no-store`, ส่วนลด, สินค้าเดียวของ `product_id` (รอบ 15) (`listProducts` เดิม), `group-share-link`, ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014) (กฎข้อ 29b; AC-16a) — ~200 LOC | **GB-11**; ∥ GB-7b (ไฟล์ร่วม `lib/data/group-buy.ts`/ESLint rule — ตัวที่ merge ทีหลัง rebase) |
+| GB-7a2a | (storefront เล็ก, รอบ 15 — แยกจาก GB-7a2 ล่วงหน้าเพราะหลาย variant ทำให้เกิน ~400 LOC) helper map code ของ join → ข้อความไทย (กฎข้อ 29f + รอบ 15: `GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED` "แคมเปญนี้ยังไม่พร้อมเปิดกลุ่ม" — ใช้ร่วมกับปุ่มสร้างทีมของ GB-7c) + unit Vitest (AC-28 ส่วน unit) — ไฟล์: `src/lib/util/group-join-error.ts` (+ test); ~80 LOC | none — **เริ่มได้** (∥ ทุกตัว) |
+| GB-7a2 | (รอบ 14, Q16/Q17/Q19; รอบ 15 หลาย variant) บนหน้ากลุ่ม: รายการ `group-selection` หลาย variant + จำนวนด้วย `OptionSelect` ของ PDP (กฎข้อ 31) + ที่อยู่ที่บันทึกไว้ + วิธีส่ง → cart ใหม่หลาย line ผ่าน `createCartWithItems` (export จาก `lib/util/server-cart.ts`) + `sdk.store.cart.update` (ที่อยู่) + `listCartShippingMethods(cart_id)` + `setShippingMethod` เดิม, ไม่แตะ cart ปัจจุบัน (กฎข้อ 14c, 29c; 14d ไม่ต้องกัน), sync cookie `aff` ลง cart ใหม่ก่อน join (กฎข้อ 27) + เพิ่มจุดนี้ใน static test ของ spec 05 กฎ 31, ใช้ error map ของ GB-7a2a, `group-units-limit`, กันกดซ้ำ (กฎข้อ 29c–e, 31; AC-28 ส่วน e2e, AC-47) — ไม่มี backend เพิ่ม (`createGroupDraftOrderStep` คัดลอกทุก line/ที่อยู่/วิธีส่ง และ `cartUnits` รวมทุก line อยู่แล้ว); ~380 LOC (หลังย้าย error map ไป GB-7a2a; รายการหลาย variant ~+80 รวมย้าย `optionsAsKeymap`/หา variant เป็น helper ~30 — กฎข้อ 31a) — ถ้ายังเกินให้แยกส่วนที่อยู่/วิธีส่งเป็น PR ก่อน join | **GB-7a1**, **GB-7a2a**, GB-6e (สินค้าเดียว), GB-3 ☑, AF-16 ☑ (#197) |
+| GB-7c | (รอบ 14 — owner Q15 ให้แสดงทุกแคมเปญบนหน้าแรก, Q18 = ก; แยกเพื่อให้แต่ละ PR ≤ ~400 LOC) ส่วน `home-campaigns` บนหน้าแรก `/<cc>`: การ์ด flash ผ่าน**ฟังก์ชันใหม่** ใน `lib/data/flash-sales.ts` ที่เรียก `GET /store/flash-sales/active` โดยไม่ส่ง `variant_ids` (reviewer #224 ยืนยันว่าได้แคมเปญครบ; `getActiveFlashSales` เดิมคืน `null` เมื่อ array ว่างจึงใช้ไม่ได้ — ไม่แก้ฟังก์ชันเดิม, ไม่สร้าง route ใหม่) + การ์ด group buy (GB-11; รอบ 15: สินค้าเดียวต่อการ์ด — รูป/ชื่อ/ราคาก่อน-หลังส่วนลด/ความคืบหน้า pool จาก `listProducts` เดิมด้วย `product_id` ของทุกแคมเปญใน request เดียว) + ปุ่มสร้างทีม → `/<cc>/g/<token>` (ล้ม → ข้อความไทยจาก helper ของ GB-7a2a ใน `group-create-team-error` บนการ์ด เช่น 400 `GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED`/`not_allowed`, 403 mode) ที่มี `group-share-link` (กฎข้อ 29a, 29g; AC-48) — ใช้ cache ของหน้าแรกเดิม (ADR-017; ค่า `sold_out`/`remaining_units`/`progress_*` ค้างได้ ~90 วินาที ยอมรับตามกฎข้อ 29a); **rebase กับ #216 (FS-18)** ที่แก้ `lib/data/flash-sales.ts` เดียวกัน — ตัวที่ merge ทีหลัง rebase; ~280 LOC (ส่วน + การ์ด 2 แบบ ~150 รวมสินค้าบนการ์ด, ฟังก์ชัน flash ~20, ปุ่มสร้างทีม ~40, e2e ~70) | **GB-7a1** (หน้า `/g/<token>` + `group-share-link` ที่ปุ่มสร้างทีมพาไป), **GB-7a2a** (error map), GB-11, FS-4 ☑ |
 | GB-7b | (รอบ 14 แยกจาก GB-7 — ◐ #223) หน้า account: รายการ draft order ของกลุ่มจาก route GB-8 พร้อมสถานะ (`group-pay-deadline`), ปุ่มออกจากกลุ่ม (GB-3b), ลิงก์ไป `/account/orders/:id/pay` ของ PAY-3b (ไม่สร้างหน้าชำระเงินซ้ำ); ข้อความไทย + path ใหม่ใน ESLint rule (AC-2 e2e, AC-16b) | GB-5 ☑ (#185), GB-8 ☑, GB-3b ☑, PAY-3b1 ☑ (#189), PAY-3b2 ☑ (#203) (spec 06) |
 | ~~GB-7~~ | (รอบ 14) แยกเป็น GB-7a1 + GB-7a2 + GB-7b + GB-7c — ข้อความเดิม: หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); (รอบ 10) รายการ draft order ของกลุ่มในหน้า account อ่านจาก route ของ GB-8 และลิงก์ไปหน้าชำระเงินของ PAY-3b (ไม่สร้างหน้าชำระเงินซ้ำ); (รอบ 12) sync cookie `aff` ลง cart ก่อนเรียก join (กฎข้อ 27) + เพิ่มจุดนี้ใน static test ของ spec 05 กฎ 31 | GB-5 ☑ (#185), GB-8 ☑, PAY-3b1 ☑ (#189) + **PAY-3b2 (◐ #203)** (spec 06), GB-3b ☑, AF-16 ☑ (#197) (spec 05 — token บน draft order) |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
@@ -653,8 +694,16 @@ review #185: test "convert ล้มเพราะสต็อกหมด" ม
 (รอบ 13, 2026-11-03) สถานะ: GB-9 ◐ #196, AF-16 ☑ #197 (spec 05), PAY-3b1 ☑ #189, PAY-3b2 ◐ #203 (spec 06); GB-10 ← #196 (รวม follow-up ของ #196); GB-7 ← PAY-3b2 (AF-16 ☑)
 (รอบ 14, 2026-11-03) GB-7 แยก: GB-7b ◐ #223 (PAY-3b2 ☑ #203; ไม่ใช้ route สาธารณะ) ∥ GB-11 ☐ เริ่มได้ (backend ล้วน คนละไฟล์กับ GB-10) → GB-7a1 ☐ → (GB-7a2 ☐ ∥ GB-7c ☐);
 GB-7a1/GB-7a2/GB-7c ∥ GB-7b; owner ตอบ Q15–Q19 แล้ว (2026-11-03); release v0.5.0 ต้องมี GB-7a1, GB-7a2, GB-7b และ GB-7c
+(รอบ 15, 2026-11-03 — 1 แคมเปญ = 1 สินค้า) (GB-6e ☐ ∥ GB-11 ☐ ∥ GB-7a2a ☐) → GB-7a1 ☐ (← GB-11) → (GB-7a2 ☐ (← GB-7a1, GB-7a2a, GB-6e) ∥ GB-7c ☐ (← GB-7a1, GB-7a2a)); ทั้งหมด ∥ GB-7b;
+Q20 ยังไม่ตอบ — ใช้ค่าตั้งต้นในกฎข้อ 31d ไม่บล็อก task; release v0.5.0 ต้องมี GB-6e และ GB-7a2a ด้วย
 
 ## Open questions
+- (บันทึก รอบ 15) **owner ตัดสิน 2026-11-03**: group buy แยกรายสินค้า — 1 แคมเปญมีสินค้าเดียว; หน้ากลุ่มเป็น "ตะกร้าเฉพาะของสินค้านั้น" เลือกได้หลาย variant พร้อมจำนวน
+  (เช่น S ×2, M ×1) แยกจากตะกร้าหลัก (สอดคล้อง Q16/Q19) → กฎข้อ 30–31, GB-6e, GB-7a2/GB-7a2a, AC-49..50
+- **Q20** (รอบ 15, GB-7a2 — ยังไม่บล็อก ใช้ค่าตั้งต้นด้านล่างจนกว่า owner ตอบ): (ก) **[ค่าตั้งต้น]** รายการที่เลือกบนหน้ากลุ่มไม่จำข้ามการออกจากหน้า (state ในหน้า สร้าง cart ตอนกดยืนยัน)
+  — ไม่มี cart ค้างจากคนที่แค่ดู; ทางเลือก: จำใน cookie/localStorage; (ข) **[ค่าตั้งต้น]** หลัง join แก้รายการไม่ได้ใน v1 (leave แล้ว join ใหม่ — GB-3b มีแล้ว) — แก้ draft order ต้องใช้ order edit
+  ของ Medusa + ปรับตัวนับใต้ lock (task backend ใหม่); (ค) **[ค่าตั้งต้น]** `max_units_per_person` นับรวมทุก variant (ตาม backend เดิม กฎข้อ 4) — ทางเลือก: จำกัดต่อ variant ต้องเพิ่ม config;
+  (ง) **[ค่าตั้งต้น]** คงเป้า `orders`/`units`/`people` ทั้งหมด — ทางเลือก: ตัด `orders` (หลาย variant ใน 1 order ทำให้ orders ≈ people ถ้าลูกค้าไม่สั่งซ้ำ)
 - ~~Q15–Q18~~ ตัดสินแล้ว (owner 2026-11-03): **Q15** ต่างจากข้อเสนอ — แสดงทุกแคมเปญ (flash + group buy) บนหน้าแรก `/<cc>` ไม่มีหน้า `/group-buy` แยก หน้ากลุ่มคง `/<cc>/g/<token>`
   (กฎข้อ 29a, GB-7c); **Q16** ต่างจากข้อเสนอ = (ข) join ด้วย cart ใหม่เฉพาะสินค้าที่เลือก ไม่แตะ cart ปัจจุบัน (กฎข้อ 14c, 29c, GB-7a — ไม่ต้องมี backend เพิ่ม); **Q17** = (ก) ข้อความไทยต่อ code
   (กฎข้อ 29f — ถ้อยคำปรับตาม Q16); **Q18** = (ก) สร้างทีมแล้วพาไปหน้าทีมที่มี `group-share-link` ผู้สร้าง join เอง (กฎข้อ 29g) — คำถามเดิมด้านล่าง
