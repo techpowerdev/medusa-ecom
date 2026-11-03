@@ -41,3 +41,12 @@
 
 ## pnpm lint && pnpm typecheck
 exit 0 (0 errors; warning เดิม 31 รายการไม่มีในไฟล์ของ task นี้)
+
+## รอบแก้ review #223 (blocker: error ของการออกจากกลุ่มหายหลัง router.refresh) 2026-11-03T15:59Z
+- test ที่ :71 รอ refresh เสร็จ (group-pay-deadline) ก่อนตรวจ group-leave-error
+- บนโค้ดเดิม (prod build): --repeat-each=3 → 3 failed (red)
+- หลังแก้ (prod build): e2e/group-buy-account-orders.spec.ts --repeat-each=3
+  6 skipped
+  9 passed (5.3s)
+- regression payments-order-pay (ย้าย authorizePromptPay ไป e2e/support/stripe.ts): 14 passed, 4 skipped (Stripe)
+- vitest 633 passed; playwright --project=unit 37 passed; pnpm lint && pnpm typecheck exit 0

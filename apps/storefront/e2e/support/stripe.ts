@@ -32,6 +32,18 @@ export async function retrievePaymentIntent(request: APIRequestContext, id: stri
   return res.json()
 }
 
+/** สแกน QR ใน test mode: กด authorize แล้วรอจน PI succeeded ก่อนปิดหน้า (ปิดทันที = request ไป pm-hooks.stripe.com ถูกตัด — review #203 B1) */
+export async function authorizePromptPay(context: BrowserContext, request: APIRequestContext, intentId: string) {
+  const intent = await retrievePaymentIntent(request, intentId)
+  const bank = await context.newPage()
+  await bank.goto(intent.next_action!.promptpay_display_qr_code!.data)
+  await bank.getByRole("button", { name: /authorize test payment/i }).click()
+  await expect
+    .poll(async () => (await retrievePaymentIntent(request, intentId)).status, { timeout: 60_000, intervals: [500] })
+    .toBe("succeeded")
+  await bank.close()
+}
+
 export async function cartIdOf(context: BrowserContext): Promise<string> {
   const cartId = (await context.cookies()).find((c) => c.name === "_medusa_cart_id")?.value
   expect(cartId, "cart cookie").toBeTruthy()

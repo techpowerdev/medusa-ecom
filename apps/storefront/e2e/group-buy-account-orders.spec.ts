@@ -3,7 +3,7 @@ import { APIRequestContext, BrowserContext, Page } from "@playwright/test"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { GroupBuyOrderCtx, groupBuyOrder } from "./support/group-buy"
 import { signInAs, STOREFRONT_COUNTRY as CC } from "./support/medusa"
-import { CARD_PROVIDER, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, fillCard, retrievePaymentIntent } from "./support/stripe"
+import { CARD_PROVIDER, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, authorizePromptPay, fillCard } from "./support/stripe"
 import { expectThai } from "./support/thai-text"
 
 // GB-7b (spec 04 Storefront, AC-16 ส่วน account + พร้อมเพย์, AC-2): รายการ draft order ของกลุ่มในหน้า account อ่านจาก GB-8
@@ -82,9 +82,12 @@ test.describe("หน้า account: คำสั่งซื้อแบบก�
     expect(res.status()).toBe(200)
 
     await row.getByTestId("group-leave-confirm").click()
-    await expect(page.getByTestId("group-leave-error")).toBeVisible()
+    // review #223: รอ router.refresh() เสร็จ (แถวเปลี่ยนเป็นชำระเงินภายใน → canLeave = false) ก่อนตรวจ error
+    // error ต้องยังอยู่หลัง refresh — ไม่ใช่โผล่ชั่วครู่แล้วหายเพราะปุ่มถูกถอด
+    await expect(row.getByTestId("group-pay-deadline")).toBeVisible({ timeout: 15_000 })
+    await expect(row.getByTestId("group-leave-button")).toHaveCount(0)
+    await expect(row.getByTestId("group-leave-error")).toBeVisible()
     await expectThai(page, ["group-leave-error"])
-    await expect(row.getByTestId("group-pay-deadline")).toBeVisible()
     expect((await membershipOf(request, ctx)).status).toBe("awaiting_payment")
   })
 
@@ -161,15 +164,7 @@ test.describe("หน้า account → หน้าชำระเงิน —
     const session = (await gb8(request, ctx)).order.payment_collections[0].payment_sessions.find(
       (s: { provider_id: string; status: string }) => s.provider_id === PROMPTPAY_PROVIDER && s.status === "pending"
     )
-    const intent = await retrievePaymentIntent(request, session.data.id)
-    const bank = await context.newPage()
-    await bank.goto(intent.next_action!.promptpay_display_qr_code!.data)
-    await bank.getByRole("button", { name: /authorize test payment/i }).click()
-    // รอ PI succeeded ก่อนปิดหน้า (ปิดทันที = request ไป pm-hooks.stripe.com ถูกตัด — review #203 B1)
-    await expect
-      .poll(async () => (await retrievePaymentIntent(request, session.data.id)).status, { timeout: 60_000, intervals: [500] })
-      .toBe("succeeded")
-    await bank.close()
+    await authorizePromptPay(context, request, session.data.id)
     await expect(page.getByTestId("order-pay-paid")).toBeVisible({ timeout: 60_000 })
   })
 })

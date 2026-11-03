@@ -90,7 +90,7 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
             <Button variant="secondary">ดูรายละเอียด</Button>
           </LocalizedClientLink>
         )}
-        {view.canLeave && <LeaveGroupButton membershipId={m.id} />}
+        <LeaveGroupButton membershipId={m.id} canLeave={view.canLeave} />
       </div>
     </li>
   )
