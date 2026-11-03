@@ -4,9 +4,9 @@ import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { adminHeaders, Headers } from "./support/medusa"
 
-// GB-6b2 (spec 04 กฎข้อ 15–17, AC-32, AC-33): ฟอร์มสร้างแคมเปญ group buying ใน Medusa admin
+// GB-6b2 (spec 04 กฎข้อ 15–17, AC-32) + GB-6e (กฎข้อ 30d, AC-50 แทน AC-33): ฟอร์มสร้างแคมเปญ group buying ใน Medusa admin
 // admin UI เป็นภาษาอังกฤษ — หา element ด้วย data-testid ตาม spec
-test.use({ ...ADMIN_UI_OPTIONS, evidenceTarget: { feature: "group-buying", taskId: "GB-6b2" } })
+test.use({ ...ADMIN_UI_OPTIONS, evidenceTarget: { feature: "group-buying", taskId: "GB-6e" } })
 
 const CAMPAIGNS_PATH = "/admin/group-buy/campaigns"
 
@@ -72,13 +72,26 @@ async function createProduct(request: APIRequestContext, admin: Headers, title: 
   return (await res.json()).product.id
 }
 
-test("AC-32: max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง", async ({
+/** ค้นหาด้วยชื่อใน gb-product-picker แล้วติ๊กแถวที่ชื่อตรง */
+async function pickProduct(page: Page, title: string) {
+  const picker = page.getByTestId("gb-product-picker")
+  await picker.getByRole("searchbox").fill(title)
+  const row = picker.locator("tbody tr").filter({ hasText: title })
+  await expect(row).toHaveCount(1)
+  await row.getByRole("checkbox").click()
+  await expect(row.getByRole("checkbox")).toBeChecked()
+}
+
+test("AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง", async ({
   page,
+  request,
   step,
   evidence,
 }) => {
   test.setTimeout(90_000)
-  const name = `GB-6b2 form ${Date.now()}`
+  const name = `GB-6e form ${Date.now()}`
+  const productTitle = `GB6e form product ${Date.now()}`
+  const productId = await createProduct(request, await adminHeaders(request), productTitle)
   const posts = campaignPosts(page)
 
   // หน่วง response ของ POST แรกไว้จนกว่า test ปล่อย เพื่อพิสูจน์ว่าปุ่ม disabled ระหว่างรอ (กฎข้อ 17)
@@ -93,14 +106,24 @@ test("AC-32: max_quantity < max_units_per_person ไม่ส่ง, ends_at อ
     await route.continue()
   })
 
-  await step("max_quantity=1, max_units_per_person=2 แล้ว submit → gb-max-quantity-error และไม่มี POST", async () => {
+  // AC-50: ยังไม่เลือกสินค้า (เดิมฟอร์มส่งได้ = ทุกสินค้า) → error ที่ picker และไม่มี POST
+  await step("ยังไม่เลือกสินค้าแล้ว submit → gb-product-required-error และไม่มี POST", async () => {
     await openCreateForm(page)
     await fillValidForm(page, name)
+    await page.getByTestId("gb-campaign-create-submit").click()
+    await expect(page.getByTestId("gb-product-required-error")).toBeVisible()
+    await evidence("01-product-required-error")
+    expect(posts).toHaveLength(0)
+  })
+
+  await step("เลือกสินค้า → error หาย; max_quantity=1, max_units_per_person=2 แล้ว submit → gb-max-quantity-error และไม่มี POST", async () => {
+    await pickProduct(page, productTitle)
+    await expect(page.getByTestId("gb-product-required-error")).toHaveCount(0)
     await page.getByTestId("gb-field-max_quantity").fill("1")
     await page.getByTestId("gb-field-max_units_per_person").fill("2")
     await page.getByTestId("gb-campaign-create-submit").click()
     await expect(page.getByTestId("gb-max-quantity-error")).toBeVisible()
-    await evidence("01-max-quantity-error")
+    await evidence("02-max-quantity-error")
     expect(posts).toHaveLength(0)
   })
 
@@ -114,7 +137,7 @@ test("AC-32: max_quantity < max_units_per_person ไม่ส่ง, ends_at อ
     // GB-N1: เป็นคำเตือน (ยังส่งได้) จึงใช้สีเตือน ไม่ใช่สี error ของ gb-max-quantity-error
     await expect(warning).not.toHaveClass(/text-ui-fg-error/)
     await expect(warning).toHaveClass(/text-ui-tag-orange-text/)
-    await evidence("02-ends-at-warning")
+    await evidence("03-ends-at-warning")
   })
 
   await step("dblclick submit → POST 1 ครั้ง ปุ่ม disabled ระหว่างรอ แล้วแคมเปญ draft ใหม่ 1 แถว", async () => {
@@ -124,6 +147,9 @@ test("AC-32: max_quantity < max_units_per_person ไม่ส่ง, ends_at อ
     expect(posts).toHaveLength(1)
     expect(posts[0].application_method.max_quantity).toBe(2)
     expect(posts[0].max_units_per_person).toBe(2)
+    expect(posts[0].application_method.target_rules).toEqual([
+      { attribute: "items.product.id", operator: "in", values: [productId] },
+    ])
     const response = page.waitForResponse(
       (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
     )
@@ -137,7 +163,8 @@ test("AC-32: max_quantity < max_units_per_person ไม่ส่ง, ends_at อ
   })
 })
 
-test("AC-33: เลือกสินค้า 2 ตัวผ่าน gb-product-picker (ค้นหาด้วยชื่อ) → target_rules ใน body", async ({
+// AC-50 (แทน AC-33 เคสเลือก 2 สินค้า): picker เป็น single select
+test("AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B]", async ({
   page,
   request,
   step,
@@ -145,54 +172,60 @@ test("AC-33: เลือกสินค้า 2 ตัวผ่าน gb-produc
 }) => {
   test.setTimeout(90_000)
   const admin = await adminHeaders(request)
-  const token = `GB6b2pick${Date.now()}`
-  const ids = [await createProduct(request, admin, `${token} Alpha`), await createProduct(request, admin, `${token} Beta`)]
+  const token = `GB6epick${Date.now()}`
+  const [alphaId, betaId] = [
+    await createProduct(request, admin, `${token} Alpha`),
+    await createProduct(request, admin, `${token} Beta`),
+  ]
   const posts = campaignPosts(page)
   const picker = page.getByTestId("gb-product-picker")
+  const rows = picker.locator("tbody tr")
+  const checkbox = (label: string) => rows.filter({ hasText: `${token} ${label}` }).getByRole("checkbox")
 
-  await step("ฟอร์มไม่มีช่องกรอก product ID แบบข้อความอิสระ", async () => {
+  await step("ฟอร์มไม่มีช่องกรอก product ID แบบข้อความอิสระ และไม่มีช่องเลือกทั้งหน้า", async () => {
     await openCreateForm(page)
-    await fillValidForm(page, `GB-6b2 picker ${token}`)
+    await fillValidForm(page, `GB-6e picker ${token}`)
     await expect(page.getByTestId("gb-field-product_ids")).toHaveCount(0)
+    await expect(page.getByTestId("gb-field-product_id")).toHaveCount(0)
     await expect(page.getByText("Product IDs")).toHaveCount(0)
-  })
-
-  await step("ค้นหาด้วยชื่อแล้วเลือก 2 ตัว", async () => {
     await picker.getByRole("searchbox").fill(token)
-    const rows = picker.locator("tbody tr")
     await expect(rows).toHaveCount(2)
-    for (const label of ["Alpha", "Beta"]) {
-      await rows.filter({ hasText: `${token} ${label}` }).getByRole("checkbox").click()
-    }
-    await expect(page.getByTestId("gb-product-picker-count")).toContainText("2")
-    for (const label of ["Alpha", "Beta"]) {
-      await expect(rows.filter({ hasText: `${token} ${label}` }).getByRole("checkbox")).toBeChecked()
-    }
-    await evidence("03-product-picker")
+    await expect(picker.locator("thead").getByRole("checkbox")).toHaveCount(0)
   })
 
-  await step("submit → body ของ POST มี target_rules items.product.id in [id1, id2]", async () => {
+  await step("เลือก Alpha แล้วเลือก Beta → Beta ติ๊กอยู่ตัวเดียว", async () => {
+    await checkbox("Alpha").click()
+    await expect(checkbox("Alpha")).toBeChecked()
+    await checkbox("Beta").click()
+    await expect(checkbox("Beta")).toBeChecked()
+    await expect(checkbox("Alpha")).not.toBeChecked()
+    await expect(page.getByTestId("gb-product-picker-count")).toContainText("1 selected")
+    await evidence("04-product-picker-single")
+  })
+
+  await step("submit → body ของ POST มี target_rules items.product.id in [Beta]", async () => {
     const response = page.waitForResponse(
       (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
     )
     await page.getByTestId("gb-campaign-create-submit").click()
     expect((await response).status()).toBe(200)
     expect(posts).toHaveLength(1)
-    const rules = posts[0].application_method.target_rules ?? []
-    expect(rules).toHaveLength(1)
-    expect(rules[0]).toEqual({ attribute: "items.product.id", operator: "in", values: expect.any(Array) })
-    expect([...rules[0].values].sort()).toEqual([...ids].sort())
+    expect(posts[0].application_method.target_rules).toEqual([
+      { attribute: "items.product.id", operator: "in", values: [betaId] },
+    ])
+    expect(posts[0].application_method.target_rules?.[0].values).not.toContain(alphaId)
   })
 })
 
-test("AC-33: selection ของ gb-product-picker คงอยู่ข้ามหน้า → target_rules มีสินค้าจากทั้งสองหน้า", async ({
+// AC-50 (แทน AC-33 เคสข้ามหน้า): selection เป็น id ใน state ของฟอร์ม — เลือกตัวหน้า 2 แทนตัวหน้า 1
+test("AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2]", async ({
   page,
   request,
   step,
 }) => {
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const token = `GB6b2page${Date.now()}`
+  const token = `GB6epage${Date.now()}`
   // picker แสดงหน้าละ 5 แถว — 6 ตัวทำให้มีหน้าที่สอง
   const products: Record<string, string> = {}
   for (const n of [1, 2, 3, 4, 5, 6]) {
@@ -204,36 +237,37 @@ test("AC-33: selection ของ gb-product-picker คงอยู่ข้า�
   const rows = picker.locator("tbody tr")
   const picked: string[] = []
 
-  await step("หน้า 1 เลือก 1 ตัว → หน้า 2 เลือก 1 ตัว → กลับหน้า 1 ยังติ๊กอยู่", async () => {
+  await step("หน้า 1 เลือก 1 ตัว → หน้า 2 เลือก 1 ตัว → กลับหน้า 1 ตัวเดิมไม่ติ๊กแล้ว", async () => {
     await openCreateForm(page)
-    await fillValidForm(page, `GB-6b2 paging ${token}`)
+    await fillValidForm(page, `GB-6e paging ${token}`)
     await picker.getByRole("searchbox").fill(token)
     // รอผลค้นหา (debounce) ก่อน — หน้าแรกแบบไม่กรองก็มี 5 แถวเหมือนกัน
     await expect(rows.filter({ hasText: token })).toHaveCount(5)
     const first = rows.first()
     picked.push((await first.locator("td").nth(1).innerText()).trim())
     await first.getByRole("checkbox").click()
+    await expect(page.getByTestId("gb-product-picker-count")).toContainText("1 selected")
 
     await picker.getByRole("button", { name: "Next" }).click()
     await expect(rows).toHaveCount(1)
     picked.push((await rows.first().locator("td").nth(1).innerText()).trim())
     await rows.first().getByRole("checkbox").click()
-    await expect(page.getByTestId("gb-product-picker-count")).toContainText("2")
+    await expect(rows.first().getByRole("checkbox")).toBeChecked()
+    await expect(page.getByTestId("gb-product-picker-count")).toContainText("1 selected")
 
     await picker.getByRole("button", { name: "Prev" }).click()
     await expect(rows).toHaveCount(5)
-    await expect(rows.filter({ hasText: picked[0] }).getByRole("checkbox")).toBeChecked()
-    await expect(page.getByTestId("gb-product-picker-count")).toContainText("2")
+    await expect(rows.filter({ hasText: picked[0] }).getByRole("checkbox")).not.toBeChecked()
   })
 
-  await step("submit → target_rules มี id ของทั้งสองตัว", async () => {
+  await step("submit → target_rules มีเฉพาะตัวหน้า 2", async () => {
     const response = page.waitForResponse(
       (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
     )
     await page.getByTestId("gb-campaign-create-submit").click()
     expect((await response).status()).toBe(200)
-    const rules = posts[0].application_method.target_rules ?? []
-    expect(rules).toHaveLength(1)
-    expect([...rules[0].values].sort()).toEqual(picked.map((title) => products[title]).sort())
+    expect(posts[0].application_method.target_rules).toEqual([
+      { attribute: "items.product.id", operator: "in", values: [products[picked[1]]] },
+    ])
   })
 })

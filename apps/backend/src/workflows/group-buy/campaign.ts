@@ -23,6 +23,7 @@ import {
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
 import { assertCampaignPatchAllowed } from "../../modules/group_buy/utils/campaign-status"
+import { assertSingleProductScope } from "../../modules/group_buy/utils/single-product"
 import { generateTemplateCode } from "../../modules/group_buy/utils/template-code"
 import { loadGroupBuyCampaign } from "./load-campaign"
 
@@ -156,10 +157,21 @@ const campaignLinks = (
     : []),
 ]
 
+// spec 04 กฎข้อ 30a: ผู้เรียก workflow ตรงไม่ผ่าน validator — ตรวจก่อนสร้างอะไร (ไม่เขียนจึงไม่มี compensation)
+export const validateSingleProductScopeStep = createStep(
+  "validate-group-buy-single-product-scope",
+  async (input: Pick<CreateGroupBuyCampaignInput, "application_method">) => {
+    assertSingleProductScope(input.application_method?.target_rules, MedusaError.Types.INVALID_DATA)
+    return new StepResponse(undefined)
+  }
+)
+
 // spec 04 + ADR-011 ข้อ 1: Medusa campaign → promotion ต้นแบบ (draft, GBT-*) → GroupBuyCampaign (draft) → links
 export const createGroupBuyCampaignWorkflow = createWorkflow(
   "create-group-buy-campaign",
   function (input: CreateGroupBuyCampaignInput) {
+    validateSingleProductScopeStep(input)
+
     const prepared = transform({ input }, ({ input }) => {
       const code = generateTemplateCode()
       const { starts_at, ends_at, application_method, rules, is_tax_inclusive, ...config } = input

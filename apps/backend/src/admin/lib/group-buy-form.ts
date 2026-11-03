@@ -18,12 +18,12 @@ export const emptyCampaignForm = () => ({
   discount_type: "percentage" as "percentage" | "fixed",
   discount_value: "",
   max_quantity: "10",
-  product_ids: [] as string[], // GB-6b2: จาก product picker; ว่าง = ทุกสินค้า (แก้ scope ภายหลังที่หน้า promotion ของ Medusa ได้)
+  product_id: null as string | null, // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า จาก product picker — บังคับเลือก
   is_tax_inclusive: true, // spec 04 กฎข้อ 12
 })
 export type CampaignForm = ReturnType<typeof emptyCampaignForm>
 
-type FormField = "max_quantity"
+type FormField = "max_quantity" | "product"
 
 class FormError extends Error {
   constructor(message: string, readonly field?: FormField) {
@@ -61,6 +61,12 @@ const ictToIso = (value: string) => {
   return date.toISOString()
 }
 
+// GB-6e (AC-50): selection ของ DataTable → สินค้าเดียว — id ใหม่ที่ไม่ใช่ตัวเดิมแทนตัวเดิม; ยกเลิกตัวเดิม = null
+export const selectSingleProduct = (current: string | null, next: Record<string, boolean>): string | null => {
+  const selected = Object.keys(next).filter((id) => next[id])
+  return selected.find((id) => id !== current) ?? (current && selected.includes(current) ? current : null)
+}
+
 // GB-6b2 กฎข้อ 16: ends_at ที่ไม่อยู่ในอนาคตแค่เตือน (แคมเปญเป็น draft; backend ปฏิเสธ activate เอง)
 export const isEndsAtPast = (endsAt: string, now = Date.now()) => {
   try {
@@ -92,7 +98,9 @@ const buildBody = (form: CampaignForm) => {
   if (form.discount_type === "percentage" && value > 100) {
     throw new FormError("Percentage discount cannot exceed 100")
   }
-  const productIds = form.product_ids
+  if (!form.product_id) {
+    throw new FormError("Select the product of this campaign", "product")
+  }
   const max_units_per_person = intOrNull(form.max_units_per_person, "Max units per person")
   const max_quantity = required(intOrNull(form.max_quantity, "Max quantity"), "Max quantity")
   // กฎข้อ 15: ไม่เช่นนั้นสมาชิก join ด้วยจำนวนชิ้นที่ส่วนลดไม่ครอบ (ตรวจในฟอร์มเท่านั้น — Q10)
@@ -121,9 +129,7 @@ const buildBody = (form: CampaignForm) => {
       value,
       // ราคาร้านเป็น THB; ส่วนลด fixed ของ Medusa ต้องมี currency_code
       ...(form.discount_type === "fixed" ? { currency_code: "thb" } : {}),
-      ...(productIds.length
-        ? { target_rules: [{ attribute: "items.product.id", operator: "in" as const, values: productIds }] }
-        : {}),
+      target_rules: [{ attribute: "items.product.id", operator: "in" as const, values: [form.product_id] }],
     },
   }
 }

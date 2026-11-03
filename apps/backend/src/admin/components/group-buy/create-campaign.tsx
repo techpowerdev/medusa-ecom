@@ -41,10 +41,13 @@ export const CreateCampaign = () => {
   const [form, setForm] = useState(emptyCampaignForm())
   // GB-6b2 กฎข้อ 15: error ผูกกับช่อง max_quantity (ล้างเมื่อแก้ฟอร์ม)
   const [maxQuantityError, setMaxQuantityError] = useState<string | null>(null)
+  // GB-6e (AC-50): ยังไม่เลือกสินค้า → error ที่ picker ไม่ส่ง POST
+  const [productError, setProductError] = useState<string | null>(null)
   // GB-6a D1: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างคลิกใน task เดียว
   const inFlight = useRef(false)
   const set = (patch: Partial<CampaignForm>) => {
     setMaxQuantityError(null)
+    setProductError(null)
     setForm((f) => ({ ...f, ...patch }))
   }
 
@@ -70,6 +73,8 @@ export const CreateCampaign = () => {
     if ("error" in result) {
       if (result.field === "max_quantity") {
         setMaxQuantityError(result.error)
+      } else if (result.field === "product") {
+        setProductError(result.error)
       } else {
         toast.error(result.error)
       }
@@ -82,6 +87,7 @@ export const CreateCampaign = () => {
   const openModal = () => {
     setForm(emptyCampaignForm())
     setMaxQuantityError(null)
+    setProductError(null)
     setOpen(true)
   }
 
@@ -158,7 +164,11 @@ export const CreateCampaign = () => {
                   )}
                 </div>
               ))}
-              <ProductPicker value={form.product_ids} onChange={(product_ids) => set({ product_ids })} />
+              <ProductPicker
+                value={form.product_id}
+                onChange={(product_id) => set({ product_id })}
+                error={productError}
+              />
               <div className="flex items-center gap-x-2">
                 <Switch
                   id="gb-tax-inclusive"

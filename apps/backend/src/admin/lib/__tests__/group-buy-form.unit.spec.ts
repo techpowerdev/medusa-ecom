@@ -1,5 +1,13 @@
 import { AdminCreateGroupBuyCampaign } from "../../../api/admin/group-buy/validators"
-import { emptyCampaignForm, isEndsAtPast, toCampaignBody, type CampaignForm } from "../group-buy-form"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import {
+  emptyCampaignForm,
+  isEndsAtPast,
+  selectSingleProduct,
+  toCampaignBody,
+  type CampaignForm,
+} from "../group-buy-form"
 
 // GB-6a: ฟอร์มสร้างแคมเปญใน admin → body ของ POST /admin/group-buy/campaigns (validator ของ GB-2a/GB-2c)
 const form = (patch: Partial<CampaignForm> = {}): CampaignForm => ({
@@ -9,6 +17,7 @@ const form = (patch: Partial<CampaignForm> = {}): CampaignForm => ({
   starts_at: "2026-11-11T00:00",
   ends_at: "2026-11-12T00:00",
   discount_value: "30",
+  product_id: "prod_a",
   ...patch,
 })
 
@@ -26,25 +35,39 @@ describe("toCampaignBody", () => {
     expect(parsed.success).toBe(true)
   })
 
-  it("maps percentage discount and product scope onto an items application method", () => {
-    const body = bodyOf(form({ product_ids: ["prod_a", "prod_b"] }))
+  // GB-6e (spec 04 กฎข้อ 30, AC-50): 1 แคมเปญ = 1 สินค้า → target_rules มี values ค่าเดียว
+  it("maps percentage discount and the single product onto an items application method", () => {
+    const body = bodyOf(form({ product_id: "prod_b" }))
     expect(body.application_method).toEqual({
       type: "percentage",
       target_type: "items",
       allocation: "each",
       max_quantity: 10,
       value: 30,
-      target_rules: [{ attribute: "items.product.id", operator: "in", values: ["prod_a", "prod_b"] }],
+      target_rules: [{ attribute: "items.product.id", operator: "in", values: ["prod_b"] }],
     })
   })
 
-  it("omits target rules when no product is given and sets THB for a fixed discount", () => {
+  it("sets THB for a fixed discount and keeps the single product scope", () => {
     const body = bodyOf(form({ discount_type: "fixed", discount_value: "100" }))
     expect(body.application_method).toEqual(
-      expect.objectContaining({ type: "fixed", value: 100, currency_code: "thb" })
+      expect.objectContaining({
+        type: "fixed",
+        value: 100,
+        currency_code: "thb",
+        target_rules: [{ attribute: "items.product.id", operator: "in", values: ["prod_a"] }],
+      })
     )
-    expect(body.application_method).not.toHaveProperty("target_rules")
     expect(AdminCreateGroupBuyCampaign.safeParse(body).success).toBe(true)
+  })
+
+  it("rejects a form without a product with a product field error (gb-product-required-error)", () => {
+    expect(toCampaignBody(form({ product_id: null }))).toEqual({ error: expect.any(String), field: "product" })
+  })
+
+  it("has no 'empty = all products' comment left in lib/group-buy-form.ts", () => {
+    const source = readFileSync(join(__dirname, "..", "group-buy-form.ts"), "utf8")
+    expect(source).not.toMatch(/ว่าง = ทุกสินค้า/)
   })
 
   it("reads date-time inputs as Thai time (ICT, UTC+7)", () => {
@@ -94,6 +117,19 @@ describe("toCampaignBody", () => {
     ["per-person limit left blank", { max_quantity: "1", max_units_per_person: "" }],
   ])("accepts max_quantity vs max_units_per_person when %s", (_, patch) => {
     expect(toCampaignBody(form(patch))).toHaveProperty("body")
+  })
+})
+
+// GB-6e (AC-50): picker เลือกได้สินค้าเดียว — เลือกตัวใหม่แทนตัวเดิม, ยกเลิกตัวที่เลือก = ไม่มีสินค้า
+describe("selectSingleProduct", () => {
+  it.each<[string, string | null, Record<string, boolean>, string | null]>([
+    ["first pick", null, { prod_a: true }, "prod_a"],
+    ["A then B keeps only B", "prod_a", { prod_a: true, prod_b: true }, "prod_b"],
+    ["unselect the current one", "prod_a", {}, null],
+    ["unselect via false flag", "prod_a", { prod_a: false }, null],
+    ["state unchanged keeps the current one", "prod_a", { prod_a: true }, "prod_a"],
+  ])("%s", (_, current, next, expected) => {
+    expect(selectSingleProduct(current, next)).toBe(expected)
   })
 })
 
