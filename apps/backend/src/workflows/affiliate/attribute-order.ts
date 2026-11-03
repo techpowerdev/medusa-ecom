@@ -22,6 +22,20 @@ export type AttributeAffiliateOrderInput = { order_id: string }
 
 export type PreparedAttribution = (AttributionPlan & { order_id: string; currency_code: string }) | null
 
+type Metadata = Record<string, unknown> | null | undefined
+
+const tokenOf = (metadata: Metadata): string | undefined => {
+  const token = metadata?.affiliate_token
+  return typeof token === "string" && token.trim() !== "" ? token : undefined
+}
+
+/**
+ * กฎ 41b (AF-17): token จาก cart ก่อน ไม่มีจึงใช้ของ order — "ไม่มี" = undefined/null/ไม่ใช่ string/string ที่ trim แล้วว่าง
+ * (ไม่ใช้ `??` เพราะไม่ fallback เมื่อค่าเป็น "")
+ */
+export const selectAffiliateToken = (cartMetadata: Metadata, orderMetadata: Metadata): string | undefined =>
+  tokenOf(cartMetadata) ?? tokenOf(orderMetadata)
+
 /**
  * อ่านอย่างเดียว: order + cart.metadata.affiliate_token (ไม่มี cart → order.metadata.affiliate_token ของ group buy, กฎ 41b)
  * → ตรวจลายเซ็น/affiliate/โปรแกรม → แผน (planAttribution)
@@ -70,10 +84,8 @@ export const prepareAffiliateAttributionStep = createStep(
     if (!order || order.is_draft_order) {
       return new StepResponse<PreparedAttribution>(null)
     }
-    type Metadata = Record<string, unknown> | null | undefined
-    const token =
-      (order.cart?.metadata as Metadata)?.affiliate_token ?? (order.metadata as Metadata)?.affiliate_token
-    if (token === undefined || token === null || token === "") {
+    const token = selectAffiliateToken(order.cart?.metadata, order.metadata)
+    if (token === undefined) {
       return new StepResponse<PreparedAttribution>(null)
     }
 
