@@ -148,7 +148,12 @@ medusaIntegrationTestRunner({
         api.post(`/store/group-buy/groups/${group.join_token}/join`, { cart_id: cart.cart.id }, headers)
       )
       await succeeded
-      return { headers, order_id: res.membership.order_id as string, membership_id: res.membership.id as string }
+      return {
+        headers,
+        cart_id: cart.cart.id as string,
+        order_id: res.membership.order_id as string,
+        membership_id: res.membership.id as string,
+      }
     }
 
     const orderOf = async (id: string) => {
@@ -241,6 +246,35 @@ medusaIntegrationTestRunner({
       expect((await orderOf(member.order_id)).is_draft_order).toBe(false)
       expect(await attributionsOf(member.order_id)).toHaveLength(0)
       expect(await entriesOf(member.order_id)).toHaveLength(0)
+    })
+
+    // AF-17 (กฎ 41b, AC-49): cart ที่ link กับ order มี affiliate_token = "" → ถือว่าไม่มี แล้วอ่าน token ของ draft order
+    it("AC-49: converted order whose cart has affiliate_token '' falls back to the draft order token → one attribution of Ann", async () => {
+      const token = await tokenOfAnn()
+      const member = await joinAs(`af17-empty-${seq}@example.com`, { affiliate_token: "" })
+
+      // จำลอง order ที่มี cart (link order ↔ cart ของ Medusa) ซึ่ง metadata.affiliate_token = "" และ draft order มี token
+      // ของ Ann (update metadata ของ Medusa ลบ key ที่ค่าเป็น "" จึงสร้าง cart ด้วย "" แล้วใส่ token ที่ draft order แทน)
+      await getContainer()
+        .resolve(Modules.ORDER)
+        .updateOrders(member.order_id, { metadata: { affiliate_token: token } })
+      await getContainer()
+        .resolve(ContainerRegistrationKeys.LINK)
+        .create({ [Modules.ORDER]: { order_id: member.order_id }, [Modules.CART]: { cart_id: member.cart_id } })
+      const { data: linked } = await query().graph({
+        entity: "order",
+        fields: ["cart.metadata"],
+        filters: { id: member.order_id },
+      })
+      expect((linked[0] as any).cart.metadata).toEqual(expect.objectContaining({ affiliate_token: "" }))
+      expect((await orderOf(member.order_id)).metadata).toEqual(expect.objectContaining({ affiliate_token: token }))
+
+      await payAndConvert(member)
+
+      expect((await orderOf(member.order_id)).is_draft_order).toBe(false)
+      const attributions = await attributionsOf(member.order_id)
+      expect(attributions).toHaveLength(1)
+      expect(attributions[0]).toEqual(expect.objectContaining({ affiliate_id: ann.id, program_id: program.id }))
     })
 
     it("AC-48 (กฎ 12): Ann's token on an order whose email is Ann's → no entry", async () => {
