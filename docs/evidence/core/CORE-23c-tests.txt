@@ -1,0 +1,51 @@
+# CORE-23c — ผล test (รันในเครื่อง 2026-11-03, Node 24.12.0, Next 16.3.8 `next build && next start` :8131, backend `medusa develop` :9131, DB medusa_core23c, Redis db 1)
+
+## สาเหตุที่พบ
+- (a) ฟอร์มเพิ่ม/แก้ที่อยู่ใช้ `<form action={fn}>` → React 19 reset ฟอร์มหลัง action แม้ล้ม และ server action ที่ตอบ 500 ทำให้ promise ฝั่ง client reject → ใช้ `submitWithoutReset` (CORE-23b) + `withActionFallback` (ใหม่)
+- (b) ที่อยู่ใบเสร็จ: action ล้มระดับ network → `useActionState` โยนเข้า error boundary ("This page couldn't load") → ห่อด้วย `withActionFallback` แสดง error ไทยในฟอร์ม
+- (c) `AccountInfo.handleToggle` เปิด panel ผ่าน `setTimeout(100)` → 100ms แรกช่องยังอยู่ใต้ `inert` ตัวอักษรที่พิมพ์หาย → เปิดทันที
+- (d) ลิงก์ `/customer-service` ไม่มีหน้า (prefetch ได้ 404 `/th/customer-service`) → `/contact`
+- (e) `getRegion(...).catch(() => null)` ใน `addPendingToCart` (review #150) → `console.error` ก่อนคืน null
+
+## Red (ก่อนแก้) — e2e/core-23c-account-forms.spec.ts + vitest
+    ✘  1 [chromium] › e2e/core-23c-account-forms.spec.ts:61:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (5.9s)
+    ✘  2 [chromium] › e2e/core-23c-account-forms.spec.ts:95:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (6.0s)
+    ✘  3 [chromium] › e2e/core-23c-account-forms.spec.ts:140:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย (5.9s)
+    ✘  4 [chromium] › e2e/core-23c-account-forms.spec.ts:182:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์ (5.5s)
+    ✘  5 [chromium] › e2e/core-23c-account-forms.spec.ts:201:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact (30.1s)
+  vitest: src/lib/util/action-fallback.test.ts — Failed to resolve import "./action-fallback"
+  vitest: src/login-pending-add.test.ts › getRegion ล้ม → console.error — expected "listRegions failed" ได้ "Variant does not exist"
+
+## Green (หลังแก้)
+### e2e/core-23c-account-forms.spec.ts (E2E_SAVE_EVIDENCE=1)
+  ✓  1 [chromium] › e2e/core-23c-account-forms.spec.ts:61:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (1.6s)
+  ✓  2 [chromium] › e2e/core-23c-account-forms.spec.ts:95:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (1.2s)
+  ✓  3 [chromium] › e2e/core-23c-account-forms.spec.ts:140:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย (1.6s)
+  ✓  4 [chromium] › e2e/core-23c-account-forms.spec.ts:183:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์ (556ms)
+  ✓  5 [chromium] › e2e/core-23c-account-forms.spec.ts:202:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact (1.3s)
+  5 passed (7.3s)
+
+### regression: core-22, core-23, core-23b, store-content, thai-ui-account
+  ✓   4 [chromium] › e2e/core-23-profile-order.spec.ts:42:5 › AC-85: ล้างช่องเบอร์แล้วบันทึก → phone ว่าง และแสดง ยังไม่ได้ระบุ (3.6s)
+  ✓   5 [chromium] › e2e/core-23-profile-order.spec.ts:74:5 › AC-86, AC-89: อีเมลอ่านอย่างเดียว และ ยังไม่ได้ระบุ ชิดแนวเดียวกับค่าชื่อ (783ms)
+  ✓   2 [chromium] › e2e/core-23b-account-progress.spec.ts:17:5 › AC-97: คลิกเมนู orders → account-nav-pending แสดงก่อนหน้าใหม่ (4.5s)
+  ✓   7 [chromium] › e2e/core-23b-account-progress.spec.ts:56:5 › AC-97: บันทึกเบอร์โทรล้ม (500) → input ยังเป็นค่าที่พิมพ์ (1.5s)
+  ✓   3 [chromium] › e2e/store-content.spec.ts:46:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (6.2s)
+  ✓   8 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (493ms)
+  ✓   1 [chromium] › e2e/core-22-account-fixes.spec.ts:18:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (7.0s)
+  ✓   9 [chromium] › e2e/store-content.spec.ts:88:5 › AC-61, AC-74: title/description ของหน้า login และ profile ใช้ชื่อร้าน ไม่มีชื่อ starter (1.3s)
+  ✓  10 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (1.9s)
+  ✓  11 [chromium] › e2e/core-22-account-fixes.spec.ts:67:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (1.6s)
+  ✓  12 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (376ms)
+  ✓   6 [chromium] › e2e/core-23-profile-order.spec.ts:106:5 › AC-87: order ที่ไม่มีอยู่ และ order ของ customer อื่น ตอบ HTTP 404 (4.9s)
+  ✓  13 [chromium] › e2e/core-23-profile-order.spec.ts:128:5 › AC-88: token หายระหว่างบันทึกเบอร์ → ไม่มี error ดิบของ React และแสดงข้อความไทย (784ms)
+  13 passed (11.0s)
+
+### vitest (pnpm --filter storefront test:unit)
+ Test Files  53 passed (53)
+      Tests  592 passed (592)
+
+### playwright project unit (test:e2e:unit)
+37 passed (507ms)
+
+### pnpm lint && pnpm typecheck: ผ่าน (warning เดิมเท่านั้น ไม่มีใหม่), next build: ผ่าน

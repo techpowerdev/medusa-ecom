@@ -9,6 +9,11 @@ import { addCustomerAddress, updateCustomerAddress } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
 import AccountInfo from "../account-info"
 import { submitWithoutReset } from "@lib/util/submit-without-reset"
+import { withActionFallback } from "@lib/util/action-fallback"
+
+// CORE-23c (กฎข้อ 74b): action ล้มระดับ network/5xx → error ไทยในฟอร์ม ไม่ใช่หน้า "This page couldn't load"
+const addBillingAddress = withActionFallback(addCustomerAddress)
+const updateBillingAddress = withActionFallback(updateCustomerAddress)
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
@@ -49,8 +54,13 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
     initialState.addressId = billingAddress.id
   }
 
+  // CORE-23c: ผลที่ล้มไม่มี isDefaultBilling/addressId — เติมจาก initialState ให้กดบันทึกซ้ำยังเป็นที่อยู่ใบเสร็จ
   const [state, formAction, isPending] = useActionState(
-    billingAddress ? updateCustomerAddress : addCustomerAddress,
+    (current: Record<string, unknown>, formData: FormData) =>
+      (billingAddress ? updateBillingAddress : addBillingAddress)(
+        { ...initialState, ...current, isDefaultBilling: true },
+        formData
+      ),
     initialState
   )
   const onSubmit = submitWithoutReset(formAction)
@@ -99,6 +109,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
         currentInfo={currentInfo}
         isSuccess={successState}
         isError={!!state.error}
+        errorMessage={typeof state.error === "string" ? state.error : undefined}
         clearState={clearState}
         isPending={isPending}
         data-testid="account-billing-address-editor"
