@@ -35,7 +35,7 @@
    (Tracing เลื่อนไปจนกว่าจะมีความจำเป็นที่วัดได้) — **owner 2026-10-27 (Q-O2): Sentry เลื่อนหลัง v1.0** (OPS-3c → backlog); v1.0 ใช้ JSON log + alert จาก log (OPS-3 ☑, AC-18)
 7. Backups: snapshot Postgres รายวัน; จัดทำเอกสารการซ้อม restore
 8. Load test: k6 scripts ใน `tools/load/` สำหรับ browse, flash-sale burst, group-buy join;
-   รันใน CI ทุกคืนกับ staging; บันทึกผลไว้ที่ `docs/evidence/scale/`
+   รันใน CI ทุกคืนบน GitHub runner (gate ความถูกต้อง — AC-2/AC-3) และกับ staging เมื่อมี ADR (OPS-19, AC-30); บันทึกผลไว้ที่ `docs/evidence/scale/`
 9. Env ที่ต้องตั้งใน prod (นอกเหนือจาก `.env.example`):
    - `TZ=UTC` ในทุก container ของ backend (server + worker) — `schedule` ของ scheduled job ใน Medusa เป็น cron ที่ไม่มีตัวเลือก
      timezone จึงตีความตามเวลาของ process; spec ที่ระบุเวลาไทย (เช่น job รายวันของ EV-5) ต้องแปลงเป็น UTC ใน cron เอง
@@ -81,7 +81,11 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   พอดี 100 รายการ, p95 < 300ms, 0 5xx — (รอบ 10, owner Q-O3) บน runner ของ CI: "order ที่ได้ส่วนลด" = order จาก **complete checkout** ด้วย manual payment ที่มี adjustment
   ของ promotion ในแคมเปญ (นับด้วย query DB หลังจบ) = 100 และ `units_sold = 100`, ที่เหลือได้ 409 `FLASH_SOLD_OUT`, 5xx = 0 → **gate** (workflow ล้มถ้าไม่ผ่าน);
   p95 < 300ms **รายงานอย่างเดียว** (threshold ของ k6 ไม่ทำให้ล้ม) จนกว่าจะมี staging จริง (ต้องมี ADR)
-- AC-3 k6 group-buy join: การเข้าร่วมพร้อมกัน 200 ครั้งกับกลุ่มขนาด 10 คน → มีสมาชิกพอดี 10 คน (ลูกค้า 200 คนจาก seed script; ตรวจจาก DB หลังจบ; 5xx = 0 — gate)
+  — **ปรับโดย owner 2026-11-03 (อ้าง run 40590093846)**: nightly บน GitHub runner เป็น gate **ความถูกต้อง** เท่านั้น (order ได้ส่วนลด = `total_cap` 100, `units_sold` = 100,
+  checkout ที่เหลือได้ 409 `FLASH_SOLD_OUT`, checkout ผลอื่น = 0, 5xx = 0) ภายใต้ burst ที่**ตั้งเป้า** 500 rps × 60s โดยยอมรับอัตราที่ runner ทำได้จริง (run อ้างอิงยิง burst ได้ ~421 request,
+  VU ของ burst เต็ม 300, `dropped_iterations` 29,423) — ไม่ gate ที่อัตรา burst; burst ที่ถึง 500 rps × 60s จริง + p95 < 300ms ย้ายไปเป็นเงื่อนไขของ staging (AC-30, OPS-19);
+  p95 ยังเป็นรายงานอย่างเดียวตาม Q-O3 (a) — **☑** ตาม run 40590093846 (`docs/evidence/scale/OPS-4/REPORT.md`)
+- AC-3 k6 group-buy join: การเข้าร่วมพร้อมกัน 200 ครั้งกับกลุ่มขนาด 10 คน → มีสมาชิกพอดี 10 คน (ลูกค้า 200 คนจาก seed script; ตรวจจาก DB หลังจบ; 5xx = 0 — gate) — **☑** run 40590093846
 - AC-4 ซ้อม restore จาก backup สำเร็จและร้าน boot ได้ (runbook)
 - AC-5 (ADR-012, ปรับรอบ 8 ตามผลทดลอง OPS-8 #101 และการตัดสินของ owner 2026-10-26) Given compose แบบ prod (1 server + 1 worker + Redis,
   `NODE_ENV=production`) When Redis ถูก `docker pause` นาน 30 วินาทีระหว่างที่ worker ทำงานอยู่ แล้ว unpause Then event ที่ emit จาก server
@@ -164,6 +168,16 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-28 (OPS-17, รอบ 12 — nit OPS-16 #180, review #175 OPS-4) Given `apps/backend/src/__tests__/prod-guards.unit.spec.ts` Then อ่าน env ของ job ใน `ci.yml` ด้วย `parse` ของ package `yaml`
   (แบบ `ci-workflow.unit.spec.ts`) ไม่วนบรรทัด/regex (grep: ไม่มีตัวแปรสถานะแบบ `inEnv`) และ assertion เดิมของ AC-13/AC-17 ยังผ่าน; Given `tools/load/run.sh` Then ตั้ง `IMAGE_TAG` ค่าเริ่มต้น
   `load` เมื่อไม่ได้ส่งมา (ไม่ใช้ image `local` ของ dev) (unit อ่านไฟล์); `apps/backend/src/scripts/seed-load.ts` ไม่มี `as unknown as`/`as any` (grep) และ `tsc` ผ่าน
+- AC-29 (OPS-18, owner 2026-11-03 — run 40590093846: checkout flash ทุกตัวใช้ 58–71s, min 58.14s) Given `tools/load/run.sh` ขนาดเต็มเดิม (300 ลูกค้า, `total_cap=100`) When รัน
+  (`workflow_dispatch` ของ `load-nightly.yml`) Then `REPORT.md` ของ OPS-18 ใต้ `docs/evidence/scale/` มีตาราง per-checkout (อย่างน้อย min/median/p95/max) ของ (a) เวลารอ lock ของ flash checkout
+  และ (b) เวลาถือ lock (เวลาภายใน `locking.execute` ของ hook `flash-sale-reservation.ts`) — วัดจาก log/metric ที่มีอยู่แล้ว (JSON log ของ OPS-3, duration ของ k6/workflow) หรือ log ระดับ debug ใหม่ใน logger เดิม
+  (ตั้ง `LOG_LEVEL=debug` เฉพาะ load run — ไม่เปลี่ยนค่าเริ่มต้นของ prod)
+  (ไม่เพิ่ม infra/dependency — grep diff: ไม่มี package ใหม่ใน `package.json`/service ใหม่ใน compose) พร้อม run id; และสรุปสาเหตุ: ยืนยันหรือหักล้างว่า checkout ถูก serialize ด้วย lock
+  (เกณฑ์ยืนยัน: ผลรวมเวลาถือ lock ≥ 80% ของช่วงเวลา checkout ทั้งหมด และเวลารอ lock โตตามลำดับคิว) — gate ความถูกต้องของ AC-2 ยังผ่านใน run เดียวกัน; ถ้าต้องแก้ design → เปิด ADR/task แยกพร้อม AC
+  (ไม่แก้ใน OPS-18)
+- AC-30 (OPS-19 — **⏸ backlog**, ต้องมี ADR สำหรับ staging ก่อน; ไม่ใช่เงื่อนไขของ OPS-4) Given staging ตาม ADR นั้น (k6 อยู่คนละเครื่องกับระบบ) When รัน flash-sale burst ด้วย `total_cap=100`
+  Then burst ทำได้จริง ≥ 500 rps ตลอด 60 วินาที (`dropped_iterations` = 0, จำนวน request ของ burst ≥ 30,000), p95 ของ burst และ checkout < 300ms เป็น **gate** (threshold k6 ทำให้ล้ม — ขอบเขตของ p95 ยืนยันกับ owner ตอนเขียน ADR staging)
+  และ gate ความถูกต้องของ AC-2 ผ่านครบ (order ได้ส่วนลด = 100, `units_sold` = 100, ที่เหลือ 409 `FLASH_SOLD_OUT`, 5xx = 0)
 
 ## Tasks
 | ID | Task | Depends |
@@ -173,7 +187,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-3 | JSON logs + request id + alert log `Error running event bus worker` ของ worker (รอบ 8, AC-18) — รอบ 9 แยก rate limiting → OPS-3b และ Sentry → OPS-3c | OPS-1, OPS-8 ☑ (#101) |
 | OPS-3b | (รอบ 9) rate limiting ตาม Deliverables ข้อ 5 + `/store/search` (AC-22) — **⏸ backlog หลัง v1.0** (owner Q-O1 2026-10-27); ข้อเสนอเดิมใน Q-O1 ใช้ตอนกลับมาทำ | OPS-3 ☑ |
 | OPS-3c | (รอบ 9) error tracking Sentry ตาม Deliverables ข้อ 6 (AC-23) — **⏸ backlog หลัง v1.0** (owner Q-O2 2026-10-27); dependency ใหม่ (`@sentry/*`) ระบุใน PR ตอนกลับมาทำ | OPS-3 ☑ |
-| OPS-4 | ☑ #175 — k6 scripts ใน `tools/load/` + seed script (`apps/backend/src/scripts/seed-load.ts` — ย้ายจาก `tools/load/` เพราะ `.dockerignore`) + `.github/workflows/load-nightly.yml` + evidence (AC-2, AC-3) ตาม Q-O3 ที่ owner ตัดสิน 2026-10-27 (a)–(e); `REPORT.md` ใช้ผลของ run หลัง merge (40590093846) ตัวล่าสุด — ถ้า gate ล้มให้อ่าน `backend-tail.log` ก่อน | FS-3 ☑, GB-3 ☑, OPS-1 ☑ |
+| OPS-4 | ☑ #175 — k6 scripts ใน `tools/load/` + seed script (`apps/backend/src/scripts/seed-load.ts` — ย้ายจาก `tools/load/` เพราะ `.dockerignore`) + `.github/workflows/load-nightly.yml` + evidence (AC-2, AC-3) ตาม Q-O3 ที่ owner ตัดสิน 2026-10-27 (a)–(e); `REPORT.md` ใช้ผลของ run หลัง merge (40590093846) ตัวล่าสุด — ถ้า gate ล้มให้อ่าน `backend-tail.log` ก่อน; REPORT ☑ #191; **AC-2 ☑ (ถ้อยคำปรับโดย owner 2026-11-03), AC-3 ☑** (run 40590093846) | FS-3 ☑, GB-3 ☑, OPS-1 ☑ |
+| OPS-18 | (เล็ก, วัดผล, owner 2026-11-03) วัด/หาสาเหตุเวลา checkout flash 58–71s ใน run 40590093846 — สงสัย lock ของ flash checkout ทำให้ต่อคิวทีละตัว: วัดเวลารอ lock/เวลาใน step จาก log/metric ที่มีอยู่ (ห้ามเพิ่ม infra) + สรุปสาเหตุใน evidence; ต้องแก้ design → ADR/task แยก (AC-29) | OPS-4 ☑ — **เริ่มได้เมื่อ owner สั่ง** (owner พักงานใหม่) |
+| OPS-19 | (staging load test) burst 500 rps × 60s จริง + p95 < 300ms เป็น gate (AC-30) — **⏸ backlog**: ต้องมี ADR สำหรับ staging (infra ใหม่ ตามข้อห้ามข้อ 3) ก่อน — ยังไม่มี ADR | ADR staging (ยังไม่มี), OPS-4 ☑ |
 | OPS-17 | (เล็ก, test/tooling, รอบ 12 — nit OPS-16 #180, review #175) `prod-guards.unit.spec.ts` อ่าน `ci.yml` ด้วย parser YAML, `IMAGE_TAG` ค่าเริ่มต้น `load` ใน `tools/load/run.sh`, ตัด cast ใน `seed-load.ts` (AC-28) | OPS-16 ☑ (#180), OPS-4 ☑ (#175) — **เริ่มได้** |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
@@ -196,7 +212,7 @@ OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `c
 (รอบ 11) สถานะ: OPS-10 ☑ #141, OPS-14 ☑ #133, OPS-13b ☑ #147 (nit review #147 — เพิ่ม "→ service zone" ในเส้นทางเมนู shipping option ของ `production.md` ข้อ 5 —
 #147 ไม่ได้แก้ จึงแก้ใน PR เอกสารรอบ 11 (#152) หลัง merge develop);
 OPS-12, OPS-15, OPS-16 เริ่มได้ (แตะ `ci.yml` ร่วมกัน — ทีละตัว ลำดับแนะนำ OPS-15 → OPS-12 → OPS-16); OPS-4, OPS-5 ☐; e2e รันแม้ backend test ล้ม (ผลของการรันขนานใน OPS-14) — ยอมรับ ไม่มี task
-(รอบ 12) สถานะ: OPS-15 ☑ #156, OPS-12 ☑ #172, OPS-4 ☑ #175 (load-nightly run 40590093846 success — `REPORT.md` ของ OPS-4 รอ session หลัก commit), OPS-16 ☑ #180 (รวม test `if: false` ของ review #172);
+(รอบ 12) สถานะ: OPS-15 ☑ #156, OPS-12 ☑ #172, OPS-4 ☑ #175 (load-nightly run 40590093846 success — `REPORT.md` ☑ #191; owner 2026-11-03: AC-2 ☑ ตามถ้อยคำใหม่, AC-3 ☑ → OPS-18 รอ owner สั่ง, OPS-19 ⏸), OPS-16 ☑ #180 (รวม test `if: false` ของ review #172);
 OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_POOL_MAX` ไม่ต้องมี task เพราะ gate ของ load test ผ่าน (5xx = 0) — ทบทวนเมื่อรอบเต็มล้มด้วย 5xx
 
 ## Open questions (รอบ 10)
