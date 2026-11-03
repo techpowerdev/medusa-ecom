@@ -15,7 +15,8 @@
 — กฎข้อ 28–29, กฎข้อ 14c แทนที่ (ไม่ล้าง cart ปัจจุบัน), AC-16 แยก (a)/(b), AC-28 แทนที่, AC-45..48; owner ตอบ Q15–Q19 แล้ว 2026-11-03 (Q19 จาก review #224);
 รอบ 15 2026-11-03: **owner ตัดสิน 1 แคมเปญ = 1 สินค้า** หน้ากลุ่มเป็น "ตะกร้าเฉพาะของสินค้านั้น" เลือกได้หลาย variant พร้อมจำนวน → กฎข้อ 30–31, GB-6e (admin picker สินค้าเดียว +
 backend validation), GB-11 คืน `product_id` แทน `product_ids`, GB-7a2 หลาย variant (แยก GB-7a2a error map), GB-7c การ์ดสินค้าเดียว — AC-28/33/45/46/48 ปรับ, AC-49..50, คำถาม Q20 (ก–ง);
-รอบ 15b 2026-11-03: owner ตอบ Q20 = ตามค่าตั้งต้นทั้งหมด → กฎข้อ 31d เป็นคำตัดสิน, test id ของหน้ากลุ่ม/การ์ดครบตาม re-review #227)
+รอบ 15b 2026-11-03: owner ตอบ Q20 = ตามค่าตั้งต้นทั้งหมด → กฎข้อ 31d เป็นคำตัดสิน, test id ของหน้ากลุ่ม/การ์ดครบตาม re-review #227;
+รอบ 15c 2026-11-04: owner ตัดสินคง status 200 ของ `POST /admin/group-buy/campaigns` (ไม่ใช่ 201) ตามที่พบใน review/qa ของ PR #231 → แก้ AC-49)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -610,7 +611,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   `/th/g/<token ใหม่>`, `group-share-link` มี `/g/<token ใหม่>` และ A ยังไม่มี membership ใหม่ (ไม่ join อัตโนมัติ); When `POST /store/group-buy/groups` ตอบ 400 (mock หรือแคมเปญที่ต้นแบบถูกแก้) Then `group-create-team-error` มีข้อความไทยและไม่เปลี่ยนหน้า; When ยังไม่ login แล้วกด Then ไปหน้า login
   และไม่มี `POST`; Given ไม่มีแคมเปญ active ทั้งสองแบบ Then ไม่มี `home-campaigns` (e2e + screenshot)
 
-- AC-49 (GB-6e, กฎข้อ 30a–c) integration http: `POST /admin/group-buy/campaigns` ที่ `target_rules` มีสินค้า 1 ตัว → 201; 2 ตัว, `values: []` หรือไม่มี rule `items.product.id` → 400
+- AC-49 (GB-6e, กฎข้อ 30a–c) integration http: `POST /admin/group-buy/campaigns` ที่ `target_rules` มีสินค้า 1 ตัว → 200 (ตามที่ route ตอบมาตั้งแต่ GB-2a เหมือน create route ฝั่ง admin ของ Medusa — รอบ 15c); 2 ตัว, `values: []` หรือไม่มี rule `items.product.id` → 400
   `type = "invalid_data"` ข้อความมี `GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED` และจำนวน Medusa campaign/promotion ก่อน-หลังเท่ากัน; workflow `createGroupBuyCampaignWorkflow` เรียกตรงด้วย 2 สินค้า → error code เดียวกัน
   ไม่มี campaign/promotion ใหม่; Given แคมเปญ `draft` ที่ต้นแบบถูกแก้เป็น 2 สินค้าผ่าน Promotion module When `POST .../status {status:"active"}` Then 400 และยังเป็น `draft`; Given แคมเปญ `active`
   ที่ต้นแบบถูกแก้เป็น 2 สินค้า When admin `POST .../groups` หรือลูกค้า `POST /store/group-buy/groups` Then 400 code เดียวกัน และไม่มี promotion `GB-*` ใหม่; กลุ่มที่สร้างก่อนแก้ยัง join ได้ 201;
