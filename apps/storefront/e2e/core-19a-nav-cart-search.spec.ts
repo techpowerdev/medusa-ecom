@@ -8,6 +8,7 @@ import {
   createCustomer,
   publishableKey,
   signInAs,
+  variantIdsByOption,
 } from "./support/medusa"
 
 // CORE-19a: spec 01 AC-62 (กฎข้อ 34), AC-63 — หา element ด้วย data-testid เท่านั้น
@@ -47,11 +48,15 @@ async function uiLogin(page: Page, c: Customer) {
   await expect(page.getByTestId("login-page")).toHaveCount(0, { timeout: 15_000 })
 }
 
-/** เพิ่มสินค้าจาก PDP ทีละ size รอให้ server action ของ add-to-cart ตอบก่อนกดครั้งถัดไป */
-async function uiAddSizes(page: Page, sizes: string[]) {
+/**
+ * เพิ่มสินค้าจาก PDP ทีละ size รอให้ server action ของ add-to-cart ตอบก่อนกดครั้งถัดไป
+ * CORE-25 (กฎข้อ 78): รอ `v_id` ใน URL เป็น variant ที่เลือกก่อนกดเพิ่ม (flaky :183 — add ครั้งที่สองได้ variant ของ S)
+ */
+async function uiAddSizes(page: Page, sizes: string[], variantIds: Record<string, string>) {
   await page.goto(`/${CC}/products/${PRODUCT}`)
   for (const size of sizes) {
     await page.getByTestId("product-options").getByTestId("option-button").filter({ hasText: size }).click()
+    await expect(page).toHaveURL(new RegExp(`[?&]v_id=${variantIds[size]}(&|$)`))
     const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
     await page.getByTestId("add-product-button").click()
     await done
@@ -185,10 +190,11 @@ for (const sizes of [["S", "M"], ["S"]]) {
     request,
     step,
   }) => {
-    const { customer } = await newCustomer(request)
+    const { pk, customer } = await newCustomer(request)
+    const variantIds = await variantIdsByOption(request, pk, PRODUCT)
     await step("ล็อกอินผ่าน UI แล้วเพิ่มสินค้าจาก PDP", async () => {
       await uiLogin(page, customer)
-      await uiAddSizes(page, sizes)
+      await uiAddSizes(page, sizes, variantIds)
       await expect.poll(() => shownCount(page), { timeout: 5000 }).toBe(sizes.length)
     })
     await step("ลบ line หนึ่งใน dropdown → ตัวนับลดภายใน 5 วินาที โดยไม่ reload", async () => {

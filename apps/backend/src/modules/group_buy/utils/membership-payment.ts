@@ -36,3 +36,21 @@ export const shouldExpireMembershipPayment = (
   !!payDeadlineAt &&
   new Date(payDeadlineAt).getTime() <= now.getTime() &&
   collectionStatuses.every((s) => UNPAID.has(s))
+
+// กฎข้อ 25 (GB-9): alert เงินค้าง GROUP_BUY_PAID_WITHOUT_ORDER — `convert_failed` หรือ `membership_<สถานะตอน capture>`
+export type PaidWithoutOrderReason = "convert_failed" | `membership_${MembershipStatus}`
+
+// ตัดสินจากสถานะที่อ่านใหม่หลัง workflow จบ: ส่งเฉพาะเมื่อยังเป็นเงินค้างจริง (กัน ops refund order ที่แปลงสำเร็จแล้ว)
+export function shouldSendPaidWithoutOrderAlert(
+  reason: PaidWithoutOrderReason,
+  current: { membership_status: MembershipStatus; is_draft_order: boolean }
+): boolean {
+  if (reason === "convert_failed") {
+    return current.is_draft_order && current.membership_status !== "paid"
+  }
+  return reason === `membership_${current.membership_status}`
+}
+
+// membership เดียวเจอได้ทั้งสองเหตุ → key ต่อ membership + เหตุ
+export const paidWithoutOrderAlertKey = (membershipId: string, reason: PaidWithoutOrderReason) =>
+  `${membershipId}:${reason}`
