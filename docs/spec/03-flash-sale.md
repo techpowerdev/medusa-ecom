@@ -313,8 +313,11 @@ Link: `flash_sale_config ↔ promotion_campaign`
   (รอบ 13) grep ของ `afterAll` ครอบ `flash-sale-fs16.spec.ts` ด้วย (ลบสินค้า + collection + แคมเปญที่สร้าง, `ok()` ทุกตัว) และท้าย `afterAll` ยืนยันด้วย admin API ว่า
   collection/สินค้าที่ suite สร้าง (ชื่อมี run id) ไม่เหลือ (`count = 0`)
 - AC-26 (FS-19, กฎข้อ 24) e2e ที่ 375×812: Given PDP ของสินค้าในแคมเปญ flash และ route ของ flash หน่วง 3 วินาที (route mock) When เลื่อนจนแถบล่างแสดง Then `mobile-cart-button` มี `aria-busy="true"`
-  และ disabled ระหว่างรอ และกดได้หลังตอบ; Given route ของ flash ตอบ 500 Then `mobile-cart-button` กดได้ภายใน 5 วินาที; Given แถบล่างแสดงอยู่ When `window.scrollTo` (ไม่ smooth) ให้ปุ่มหลักอยู่ในจอ
-  Then ใน animation frame ถัดไป (`requestAnimationFrame` ภายในหน้า) แถบล่างไม่มองเห็น (`visibility`/`opacity` 0 หรือไม่อยู่ใน DOM) หรือ `boundingBox` ไม่ทับปุ่มหลัก — ทำซ้ำ `--repeat-each=5`;
+  และ disabled ระหว่างรอ และกดได้หลังตอบ; Given route ของ flash ตอบ 500 Then `mobile-cart-button` กดได้ภายใน 5 วินาที; Given แถบล่างแสดงอยู่ When เลื่อนแบบไม่ smooth ด้วย
+  `add-product-button.scrollIntoView({ block: "center" })` (ปุ่มหลักอยู่กลางจอ จึงอยู่ในพื้นที่ที่แถบล่างจะทับถ้ายังแสดง) Then `expect.poll` ภายใน ≤ 100ms แถบล่างมี computed `opacity` 0
+  หรือไม่อยู่ใน DOM **และ**ไม่มี frame ใดระหว่าง leave transition ที่แถบทับปุ่มหลักขณะ `opacity` > 0 (sampler ในหน้า: `requestAnimationFrame` loop บันทึก computed `opacity`
+  + การทับของ `getBoundingClientRect()` ทุก frame ตั้งแต่ก่อน scroll จนแถบซ่อน — ไม่มีตัวอย่างที่ทับและ 0 < `opacity` < 1 คือไม่มีการจางทับ ส่วน frame ที่แถบยังแสดงเต็มก่อนเริ่มซ่อน
+  ยอมรับได้ภายในเพดาน 100ms) — ไม่บังคับวิธีเขียน (IntersectionObserver + React render หรือ scroll listener ก็ได้); ทำซ้ำ `--repeat-each=5`;
   AC-23 และ AC-116 (spec 01) ยังผ่าน (e2e)
 
 ## Non-functional
@@ -362,7 +365,7 @@ Link: `flash_sale_config ↔ promotion_campaign`
 | FS-15 | (storefront, รอบ 10 — qa FS-6 O-1, CORE-24 #134) เตือน/disable เมื่อจำนวนเกิน `remaining_units` บน PDP + เตือนใน cart + ข้อความไทยของ `FLASH_*`/`PROMOTION_NOT_COMBINABLE` ตอน complete (กฎข้อ 20); AC-21, AC-22 | CORE-24 (#134 — ใช้ `product-quantity-select`), FS-13 ☑ |
 | FS-16 | (เล็ก, storefront, รอบ 10 — qa FS-13 O-A/O-B/O-C) ปุ่มรอระหว่างโหลดข้อมูล flash, ราคา `product-price` ขีดฆ่าเมื่อมีราคา flash, ป้าย sold out บนการ์ด (กฎข้อ 21); AC-23 | FS-15 ☑ (#178), FS-14 ☑ (#148) — **เริ่มได้**; ชน `product-actions` กับ CORE-25 (spec 01) ตัวที่ merge ทีหลัง rebase |
 | FS-18 | (เล็ก, storefront, รอบ 12 — review #164, builder FS-17, qa #177/#148 O-3) `revalidate = 60` ให้ fetch ที่เหลือใน `lib/data/*`, e2e ลบข้อมูลครบ + `intervals`, `/store` ไม่ยิงข้อมูล flash ด้วยชุด variant เก่า (กฎข้อ 23); AC-25 — ไฟล์: `lib/data/{categories,regions,collections}.ts`, data function ของ `/store`, e2e ของ FS-14/FS-17; (รอบ 13, qa #190) + `e2e/flash-sale-fs16.spec.ts` (`afterAll` ลบสินค้า/collection) | FS-17 ☑ (#164) — **เริ่มได้** |
-| FS-19 | (storefront เล็ก, รอบ 13 — qa/review #190 FS-16, review #199 CORE-25) `MobileActions`/`mobile-cart-button` รอ `flash.loading` แบบปุ่มหลัก, แถบมือถือซ่อนทันทีเมื่อปุ่มหลักเข้าจอ (ไม่จางทับ) (กฎข้อ 24); AC-26 — ไฟล์: `modules/products/components/product-actions/mobile-actions.tsx`, `product-actions/index.tsx` (ส่ง `flash.loading` ลง props), e2e ใหม่ของ FS-19 | **CORE-25 (#199) merge** (ชน `mobile-actions.tsx`/`index.tsx`); FS-16 ☑ (#190); ∥ CORE-26 (spec 01 — แตะ `product-actions/index.tsx` ได้ถ้า test ของ CORE-25 ล้ม: ตัวที่ merge ทีหลัง rebase) |
+| FS-19 | (storefront เล็ก, รอบ 13 — qa/review #190 FS-16, review #199 CORE-25) `MobileActions`/`mobile-cart-button` รอ `flash.loading` แบบปุ่มหลัก, แถบมือถือซ่อนทันทีเมื่อปุ่มหลักเข้าจอ (ไม่จางทับ) (กฎข้อ 24); AC-26 — ไฟล์: `modules/products/components/product-actions/mobile-actions.tsx`, `product-actions/index.tsx` (ส่ง `flash.loading` ลง props), `lib/hooks/use-in-view.tsx` (ถ้าต้องปรับการซ่อน), e2e ใหม่ของ FS-19 | **CORE-25 (#199) merge** (#199 แตะ `product-actions/index.tsx` และเพิ่ม `lib/hooks/use-in-view.tsx` ที่ FS-19 ต่อยอด); FS-16 ☑ (#190); ∥ CORE-26 (spec 01 — แตะ `product-actions/index.tsx` ได้ถ้า test ของ CORE-25 ล้ม: ตัวที่ merge ทีหลัง rebase) |
 FS-11 หลัง FS-8 (แตะ subscriber/workflow คืนโควตาไฟล์เดียวกัน); FS-10 ยังไม่ทำ (สถานะ 2026-10-26) ไม่เปลี่ยนนิยาม
 PROMO-1 ∥ FS-1; หลังทั้งสอง merge: FS-3 ∥ FS-4 ∥ FS-5; FS-2 หลัง FS-3 (ใช้ `FlashSaleReservation`); FS-7 หลัง FS-4; FS-6 หลัง FS-4 และ FS-7; FS-8 หลัง FS-2; FS-9 ปิด (owner ไม่ทำ 2026-10-27);
 FS-10 หลัง FS-5; FS-12 ∥ FS-13 (FS-12 backend เริ่มได้ทันที; FS-13 หลัง FS-6 #115 merge) — รอบ 10: FS-12 ปิด, FS-13 ☑ #129

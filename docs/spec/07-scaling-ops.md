@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (รอบ 13 2026-11-03: OPS-17 รวม follow-up ของ OPS-18 #194 — AC-28 ส่วนรอบ 13, ลำดับ OPS-20a → OPS-17 → OPS-20b)
+สถานะ: draft (รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -168,10 +168,7 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-28 (OPS-17, รอบ 12 — nit OPS-16 #180, review #175 OPS-4) Given `apps/backend/src/__tests__/prod-guards.unit.spec.ts` Then อ่าน env ของ job ใน `ci.yml` ด้วย `parse` ของ package `yaml`
   (แบบ `ci-workflow.unit.spec.ts`) ไม่วนบรรทัด/regex (grep: ไม่มีตัวแปรสถานะแบบ `inEnv`) และ assertion เดิมของ AC-13/AC-17 ยังผ่าน; Given `tools/load/run.sh` Then ตั้ง `IMAGE_TAG` ค่าเริ่มต้น
   `load` เมื่อไม่ได้ส่งมา (ไม่ใช้ image `local` ของ dev) (unit อ่านไฟล์); `apps/backend/src/scripts/seed-load.ts` ไม่มี `as unknown as`/`as any` (grep) และ `tsc` ผ่าน;
-  (รอบ 13, review/qa #194 OPS-18 — **token ใน artifact**) Given load run ใดก็ตาม Then ไฟล์ใน `OUT` (artifact) ไม่มี key `setup_data` และไม่มีสตริงรูปแบบ JWT (`eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.`) —
-  k6 script ที่ `setup()` คืน token (`flash-sale.js`, `group-buy-join.js`) ส่งออก summary ผ่าน `handleSummary` ที่ตัด `setup_data` (หรือ `run.sh` ตัดก่อนเขียน `OUT`) และ `run.sh` มีขั้นตรวจท้าย run
-  ที่ล้ม (exit ≠ 0) เมื่อพบรูปแบบ JWT ใน `OUT` (unit: fixture summary ที่มี `setup_data.checkout[].token` → ผลไม่มี `setup_data`; fixture ไฟล์มี JWT → ขั้นตรวจล้ม; ยืนยันด้วย run id ใน PR);
-  `hold_rank_corr` ของ `tools/load/lock-timing.js` หาลำดับคิวด้วย `Map` (O(n)) ไม่ใช่ `queue.indexOf` ในลูป (grep: ไม่มี `indexOf` ใน `lock-timing.js`) และ unit ของ analyzer ได้ค่าเดิมกับ fixture เดิม
+  (รอบ 13, review/qa #194) `hold_rank_corr` ของ `tools/load/lock-timing.js` หาลำดับคิวด้วย `Map` (O(n)) ไม่ใช่ `queue.indexOf` ในลูป (grep: ไม่มี `indexOf` ใน `lock-timing.js`) และ unit ของ analyzer ได้ค่าเดิมกับ fixture เดิม
 - AC-29 (OPS-18, owner 2026-11-03 — run 40590093846: checkout flash ทุกตัวใช้ 58–71s, min 58.14s) Given `tools/load/run.sh` ขนาดเต็มเดิม (300 ลูกค้า, `total_cap=100`) When รัน
   (`workflow_dispatch` ของ `load-nightly.yml`) Then `REPORT.md` ของ OPS-18 ใต้ `docs/evidence/scale/` มีตาราง per-checkout (อย่างน้อย min/median/p95/max) ของ (a) เวลารอ lock ของ flash checkout
   และ (b) เวลาถือ lock (เวลาภายใน `locking.execute` ของ hook `flash-sale-reservation.ts`) — วัดจาก log/metric ที่มีอยู่แล้ว (JSON log ของ OPS-3, duration ของ k6/workflow) หรือ log ระดับ debug ใหม่ใน logger เดิม
@@ -206,6 +203,10 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   และจำนวนที่รอ pool ของ knex (`numPendingAcquires` ของ `PG_CONNECTION`) — ถ้าเข้าถึงไม่ได้ให้ระบุเหตุผลใน REPORT (ไม่เพิ่ม infra/dependency เหมือน AC-31)
   และสรุปตามเกณฑ์ (owner อนุมัติ 2026-11-03): "อิ่มตัว" เมื่อ p95 event-loop delay ของ server ≥ 100ms หรือ median CPU ของ server ≥ 90% ของ 1 core (`docker stats` 100% = 1 core)
   หรือ p95 ของจำนวนรอ pool > 0 ในช่วง checkout; ระบุว่าช่วงหลักของ AC-31 (โดยเฉพาะ (e)) อธิบายได้ด้วยความอิ่มตัวหรือไม่ — gate ของ AC-2 ผ่านทั้งสอง run; ถ้าต้องแก้ → ADR/task แยกพร้อม AC
+- AC-33 (OPS-17a, รอบ 13 — review/qa #194 OPS-18, **token ใน artifact**) Given load run ใดก็ตาม Then ไฟล์ใน `OUT` (artifact) ไม่มี key `setup_data` และไม่มีสตริงรูปแบบ JWT
+  (`eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.`) — k6 script ที่ `setup()` คืน token (`flash-sale.js`, `group-buy-join.js`) ส่งออก summary ผ่าน `handleSummary` ที่ตัด `setup_data` (หรือ `run.sh`
+  ตัดก่อนเขียน `OUT`) และ `run.sh` มีขั้นตรวจท้าย run ที่ล้ม (exit ≠ 0) เมื่อพบรูปแบบ JWT ใน `OUT` (unit: fixture summary ที่มี `setup_data.checkout[].token` → ผลไม่มี `setup_data`;
+  fixture ไฟล์มี JWT → ขั้นตรวจล้ม; ยืนยันด้วย run id ใน PR — gate ของ AC-2 ยังผ่าน)
 
 ## Tasks
 | ID | Task | Depends |
@@ -218,9 +219,10 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-4 | ☑ #175 — k6 scripts ใน `tools/load/` + seed script (`apps/backend/src/scripts/seed-load.ts` — ย้ายจาก `tools/load/` เพราะ `.dockerignore`) + `.github/workflows/load-nightly.yml` + evidence (AC-2, AC-3) ตาม Q-O3 ที่ owner ตัดสิน 2026-10-27 (a)–(e); `REPORT.md` ใช้ผลของ run หลัง merge (40590093846) ตัวล่าสุด — ถ้า gate ล้มให้อ่าน `backend-tail.log` ก่อน; REPORT ☑ #191; **AC-2 ☑ (ถ้อยคำปรับโดย owner 2026-11-03), AC-3 ☑** (run 40590093846) | FS-3 ☑, GB-3 ☑, OPS-1 ☑ |
 | OPS-18 | (เล็ก, วัดผล, owner 2026-11-03) วัด/หาสาเหตุเวลา checkout flash 58–71s ใน run 40590093846 — สงสัย lock ของ flash checkout ทำให้ต่อคิวทีละตัว: วัดเวลารอ lock/เวลาใน step จาก log/metric ที่มีอยู่ (ห้ามเพิ่ม infra) + สรุปสาเหตุใน evidence; ต้องแก้ design → ADR/task แยก (AC-29) — ☑ #194, **AC-29 ☑** (run 41617065775: **หักล้าง** lock serialize) | OPS-4 ☑ |
 | OPS-20a | (เล็ก, วัดผล, owner 2026-11-03) หาว่าเวลา checkout flash 52–63s ของ run 41617065775 อยู่ที่ไหน: input `flash_burst` ของ `load-nightly.yml` → `LOAD_FLASH_BURST` ตัด scenario burst + รันเทียบมี/ไม่มี burst, log debug ช่วง (b)–(d) ที่ middleware ของ route complete และ handler รวม `complete-cart-validate.ts` + analyzer (ต่อจาก `lock-timing.js`) + สรุป burst vs workflow ใน evidence (ห้ามเพิ่ม infra/dependency; ไม่ใช้ `registerOtel`); ต้องแก้ → ADR/task แยก (AC-31) | OPS-18 ☑ (#194); ชน `tools/load/run.sh` กับ OPS-17 — ทำทีละตัว (ตัวที่เริ่มทีหลังรอตัวก่อน merge); แตะ `load-nightly.yml` (ไม่มี task อื่นที่เปิดอยู่แตะ) |
-| OPS-20b | (เล็ก, วัดผล) ตัวชี้วัดความอิ่มตัว: event-loop delay ของ server/worker ใน `instrumentation.ts` (เฉพาะ `LOG_LEVEL=debug`), sampler `docker stats`/`pg_stat_activity` ใน `run.sh`, รอ pool ของ knex + รันเทียบมี/ไม่มี burst อีกสองครั้ง + สรุปเรื่องอิ่มตัวใน evidence (AC-32) | OPS-20a, **OPS-17** (รอบ 13 — ลำดับ OPS-20a → OPS-17 → OPS-20b; ชน `tools/load/run.sh`) |
+| OPS-20b | (เล็ก, วัดผล) ตัวชี้วัดความอิ่มตัว: event-loop delay ของ server/worker ใน `instrumentation.ts` (เฉพาะ `LOG_LEVEL=debug`), sampler `docker stats`/`pg_stat_activity` ใน `run.sh`, รอ pool ของ knex + รันเทียบมี/ไม่มี burst อีกสองครั้ง + สรุปเรื่องอิ่มตัวใน evidence (AC-32) | OPS-20a, **OPS-17** (รอบ 13 — ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b; ชน `tools/load/run.sh`; ปิด token ใน artifact ก่อนรัน load เพิ่มอีกสองครั้ง) |
 | OPS-19 | (staging load test) burst 500 rps × 60s จริง + p95 < 300ms เป็น gate (AC-30) — **⏸ backlog**: ต้องมี ADR สำหรับ staging (infra ใหม่ ตามข้อห้ามข้อ 3) ก่อน — ยังไม่มี ADR | ADR staging (ยังไม่มี), OPS-4 ☑ |
-| OPS-17 | (เล็ก, test/tooling, รอบ 12 — nit OPS-16 #180, review #175) `prod-guards.unit.spec.ts` อ่าน `ci.yml` ด้วย parser YAML, `IMAGE_TAG` ค่าเริ่มต้น `load` ใน `tools/load/run.sh`, ตัด cast ใน `seed-load.ts`; **(รอบ 13, review/qa #194 OPS-18) รวม**: summary/artifact ของ k6 ไม่มี `setup_data`/JWT ของลูกค้า load test (มีมาตั้งแต่ OPS-4) + ขั้นตรวจ JWT ใน `run.sh`, `hold_rank_corr` ใน `lock-timing.js` เป็น O(n) (AC-28) — ไฟล์เพิ่ม: `tools/load/{flash-sale,group-buy-join,lock-timing}.js`, `tools/load/run.sh`, unit ของ `tools/load` | OPS-16 ☑ (#180), OPS-4 ☑ (#175), **OPS-20a (#204) merge** (รอบ 13 — ชน `tools/load/run.sh`, `flash-sale.js`, analyzer); OPS-20b เริ่มหลัง OPS-17 merge (ชน `run.sh` — ปิด token ใน artifact ก่อนรัน load เพิ่มอีกสองครั้งของ OPS-20b) |
+| OPS-17 | (เล็ก, test/tooling, รอบ 12 — nit OPS-16 #180, review #175) `prod-guards.unit.spec.ts` อ่าน `ci.yml` ด้วย parser YAML, `IMAGE_TAG` ค่าเริ่มต้น `load` ใน `tools/load/run.sh`, ตัด cast ใน `seed-load.ts`; (รอบ 13, review #194) `hold_rank_corr` ใน `lock-timing.js` เป็น O(n) (AC-28) — ไฟล์เพิ่ม: `tools/load/lock-timing.js` + unit | OPS-16 ☑ (#180), OPS-4 ☑ (#175), **OPS-17a** (รอบ 13 — ชน `tools/load/run.sh`) |
+| OPS-17a | (เล็ก, **ความปลอดภัย** — ทำก่อน OPS-17, รอบ 13 — review/qa #194 OPS-18) summary/artifact ของ k6 ไม่มี `setup_data`/JWT ของลูกค้า load test (มีมาตั้งแต่ OPS-4) + ขั้นตรวจ JWT ท้าย `run.sh` (AC-33) — ไฟล์: `tools/load/{flash-sale,group-buy-join}.js`, `tools/load/run.sh`, unit ของ `tools/load` | OPS-4 ☑ (#175), **OPS-20a (#204) merge** (ชน `run.sh`, `flash-sale.js`) |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
 | OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13); fail-fast `STOREFRONT_URL` (รอบ 7, AC-17 — ถ้า GB-4 ยังไม่ merge ตอนเริ่ม OPS-7 ให้ทำส่วนนี้เมื่อ GB-4 merge แล้ว ไม่แตะโค้ดอีเมลของ GB-4) | OPS-2, PAY-1, CORE-3, AF-2 (#66), GB-4 (#89, เฉพาะ AC-17) |
@@ -245,7 +247,8 @@ OPS-12, OPS-15, OPS-16 เริ่มได้ (แตะ `ci.yml` ร่วม
 (รอบ 12) สถานะ: OPS-15 ☑ #156, OPS-12 ☑ #172, OPS-4 ☑ #175 (load-nightly run 40590093846 success — `REPORT.md` ☑ #191; owner 2026-11-03: AC-2 ☑ ตามถ้อยคำใหม่, AC-3 ☑, OPS-19 ⏸), OPS-16 ☑ #180 (รวม test `if: false` ของ review #172);
 OPS-18 ☑ #194 (AC-29 ☑ — lock ไม่ใช่สาเหตุ) → OPS-20a ☐ เริ่มได้ → OPS-20b ☐ (owner 2026-11-03; ทั้งคู่ทีละตัวกับ OPS-17 เพราะชน `run.sh`);
 OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_POOL_MAX` ไม่ต้องมี task เพราะ gate ของ load test ผ่าน (5xx = 0) — ทบทวนเมื่อรอบเต็มล้มด้วย 5xx
-(รอบ 13, 2026-11-03) สถานะ: OPS-20a ◐ #204; OPS-17 รวม follow-up ของ #194 (token ใน artifact, O(n²) ของ analyzer) → **OPS-17 ← #204**; ลำดับ `tools/load/*`: OPS-20a → OPS-17 → OPS-20b
+(รอบ 13, 2026-11-03) สถานะ: OPS-20a ◐ #204; follow-up ของ #194 แยกเป็น OPS-17a (token ใน artifact — ความปลอดภัย, AC-33) และส่วน O(n²) ของ analyzer รวมใน OPS-17 (AC-28);
+ลำดับ `tools/load/*`: OPS-20a → OPS-17a → OPS-17 → OPS-20b
 (ความเสี่ยงของ token: เป็น JWT ของลูกค้าทดสอบใน DB ชั่วคราวของ runner ที่ถูกทิ้งหลัง run — ไม่ใช่ข้อมูลจริง แต่ไม่ควรอยู่ใน artifact 14 วัน; ไม่ต้องลบ artifact เดิมเพราะ token ใช้กับระบบใดไม่ได้แล้ว)
 
 ## Open questions (รอบ 10)
