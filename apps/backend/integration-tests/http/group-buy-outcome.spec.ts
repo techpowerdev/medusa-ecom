@@ -1,5 +1,6 @@
 import { medusaIntegrationTestRunner, TestEventUtils } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { WorkflowManager } from "@medusajs/framework/orchestration"
 import { createCartWorkflow } from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
@@ -378,6 +379,13 @@ medusaIntegrationTestRunner({
     })
 
     describe("deadline job (AC-11, AC-12, AC-22)", () => {
+      // OPS-15b (spec 07 AC-26): cron ทุกนาทีเคย query ค้างตอน runner restore DB → knex log ว่า connection ถูกปิด
+      // test เรียก job function ตรง (ด้านล่าง) จึงต้องไม่มี cron ของ job ใดลงทะเบียนใน integration test
+      it("OPS-15b: ไม่ลงทะเบียน cron ของ scheduled job ใน integration test", () => {
+        const scheduled = [...WorkflowManager.getWorkflows().keys()].filter((id) => id.startsWith("job-"))
+        expect(scheduled).toEqual([])
+      })
+
       it("AC-11: target_type=units 10 — 10 units → succeeded; 9 units → failed", async () => {
         const campaign = await createCampaign({ target_type: "units", target_value: 10 })
         const [g10, g9] = [await poolGroup(campaign.id), await poolGroup(campaign.id)]

@@ -1,5 +1,6 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, defineFileConfig } from "@medusajs/framework/utils"
+import { scheduledJobsDisabled } from "../lib/scheduled-jobs"
 import { GROUP_BUY_MODULE } from "../modules/group_buy"
 import type GroupBuyModuleService from "../modules/group_buy/service"
 import {
@@ -91,3 +92,6 @@ export const config = {
   name: "group-buy-deadline",
   schedule: "* * * * *",
 }
+
+// OPS-15b (spec 07 AC-26): ไม่ลงทะเบียน cron ใน integration test — ดู src/lib/scheduled-jobs.ts
+defineFileConfig({ isDisabled: () => scheduledJobsDisabled() })
