@@ -8,10 +8,13 @@ export const AdminListEvoucherPoolParams = createFindParams().extend({
   variant_id: z.string().optional(),
 })
 
+// EV-14 (กฎข้อ 26): storefront render เป็น <a href>/<img src> — รับเฉพาะ http(s) กัน javascript:/data:
+const httpUrl = z.url({ protocol: /^https?$/ })
+
 export const AdminCreateEvoucherPartner = z.object({
   name: z.string().min(1),
-  logo_url: z.url().nullish(),
-  terms_url: z.url().nullish(),
+  logo_url: httpUrl.nullish(),
+  terms_url: httpUrl.nullish(),
   support_contact: z.string().nullish(),
 })
 export type AdminCreateEvoucherPartner = z.infer<typeof AdminCreateEvoucherPartner>
