@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (follow-up ล่าสุด: รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
+สถานะ: accepted (follow-up ล่าสุด: รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; CORE-14g cookie cart ใน server action (qa #222 D-1), กฎข้อ 84, AC-120; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
 เป้าหมาย: ร้านค้าพื้นฐานที่สมบูรณ์และพร้อม production โดย **ไม่มี custom commerce logic เลย**
 ทุกอย่างใน spec นี้คือการตั้งค่า, seeding, theming และ deployment
 
@@ -1100,6 +1100,8 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
   `{ error: "PAYMENT_ALREADY_COMPLETED" }` และหน้า `/account/orders/:id/pay` เข้าทาง poll ของ spec 06 กฎข้อ 9(d); e2e AC-99, AC-100, AC-22 (spec 03), AC-19, AC-7 และ (รอบ 13) AC-20
   (spec 06 — กลับจาก redirect ของ Stripe, PAY-3b2 #203) ยังผ่าน; (รอบ 13, Q-C2 = (ก) owner 2026-11-03) unit: ผลของ `createPaymentSession` (`lib/data/payment.ts`) และ `initiatePaymentSession` (`lib/data/cart.ts`)
   ผ่าน helper กลาง — ผู้เรียกใน UI ทั้งสองที่ได้ผลรูปแบบเดียว `{ ok: true } | { error }` (non-2xx อื่น → `"failed"`, 401 → `"unauthorized"`, 409 `PAYMENT_ALREADY_COMPLETED` → code นั้น)
+  (รอบ 14, owner 2026-11-03) หมายเหตุ: ข้อ 1 ของ AC นี้ (ผล `unauthorized` แสดง `SIGN_IN_AGAIN_MESSAGE`) บนหน้า `/cart` เมื่อ JWT หายแต่ cookie `_medusa_cart_id` ยังอยู่ ไม่ขึ้นใน e2e เพราะ
+  middleware ล้าง cookie ใน request ของ server action แล้วหน้าถูก render เป็นตะกร้าว่าง (qa #222 D-1) — **ปิดใน CORE-14g** (กฎข้อ 84, AC-120) ไม่ใช่ใน CORE-4i-a; หลังทั้งสอง merge ต้องรัน e2e ข้อนี้ซ้ำ
 - AC-111 (CORE-4j, กฎข้อ 73) e2e: ใส่โค้ด `"  <code ที่ใช้ได้>  "` → `cart.promotions` มี code นั้น; กรอกฟอร์มที่อยู่ (ยังไม่กดบันทึก) แล้วใส่โค้ดส่วนลด → input ที่อยู่ยังมีค่าเดิม; หลัง
   `document.fonts.ready` ความสูง `billing-country-code-select` ต่างจาก input ข้างเคียง ≤ 1px; grep: `createExpiredPromotion` ตรวจ `ok()` ของการลบ
 - AC-112 (CORE-23c, กฎข้อ 74) e2e: route mock request ของ server action เพิ่มที่อยู่/แก้ที่อยู่ให้ตอบ 500 → ค่าที่พิมพ์ยังอยู่และ error มีอักษรไทย; mock action ที่อยู่ใบเสร็จให้ล้มระดับ network →
@@ -1261,6 +1263,51 @@ none
 (รอบ 14 สถานะ) CORE-27 ☐ (← FS-19 #211); ไม่มีคำถามค้าง
 
 ### Open questions (รอบ 14)
+none
+
+## Follow-up รอบ 14b (2026-11-03 — owner อนุมัติ: cookie cart ใน server action, qa #222 D-1)
+ที่มา: qa #222 (CORE-4i-a) D-1 + builder ยืนยันบน develop — ลูกค้า login อยู่หน้า `/cart` แล้ว JWT หาย/หมดอายุ แต่ cookie `_medusa_cart_id` ยังอยู่ → กดแก้จำนวน/ใส่โค้ด/ลบโค้ด/ลบสินค้า →
+`clearStaleCartCookie` (`lib/util/stale-cart-cookie.ts`, middleware ของ CORE-14a) ล้าง cookie ใน request ของ server action ด้วย → Next render `/cart` ใหม่ใน response เดียวกันโดยไม่มี cart id →
+เห็นตะกร้าว่างทับผล `{ error: "unauthorized" }` และไม่ขึ้น `SIGN_IN_AGAIN_MESSAGE` (cart ใน backend ยังอยู่ครบ) — AC-43 ครอบเฉพาะตอน**เปิดหน้า** ส่วนกฎข้อ 68/72 + AC-104/AC-110 ต้องบอกให้เข้าสู่ระบบใหม่
+สองข้อนี้ไม่ขัดกันถ้า middleware ไม่ล้าง cookie ใน request ของ server action
+Out of scope: backend, การ refresh token อัตโนมัติ, การย้าย cart หลัง login ใหม่ (CORE-14c เดิม)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| ปฏิเสธการแก้ cart เมื่อไม่มี token | ownership ของ CORE-6/CORE-12 → Store API ตอบ 401 | ใช้ตามเดิม |
+| แยก request ของ server action | Next.js ส่ง header `next-action` ในทุก POST ของ server action | ใช้ตามเดิม — เงื่อนไขเพิ่มใน `clearStaleCartCookie` |
+| ล้าง cookie cart ค้าง | middleware ของ starter + `clearStaleCartCookie` (CORE-14a) | ขยาย — ข้ามเฉพาะ request ของ server action |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+84. (CORE-14g — qa #222 D-1, owner 2026-11-03) `clearStaleCartCookie` **ไม่ล้าง** `_medusa_cart_id` เมื่อ request มี header `next-action` (server action) — ให้ action ทำงานกับ cart id เดิม
+    ได้รับ 401 จาก backend แล้วคืน `{ error: "unauthorized" }` ตามกฎข้อ 68/72 และหน้าแสดง `SIGN_IN_AGAIN_MESSAGE` โดยแถวสินค้ายังอยู่; request อื่น (GET หน้า/RSC navigation) ยังล้างตาม AC-43
+    เหมือนเดิม; ความปลอดภัยไม่ลด เพราะ action ตรวจ JWT ก่อนเรียก SDK และ backend ตอบ 401 สำหรับ cart ที่ไม่มี token (CORE-12) — ไม่แก้ middleware ส่วนอื่น ไม่เพิ่ม helper ใหม่
+
+### Acceptance criteria (follow-up รอบ 14b)
+- AC-120 (CORE-14g, กฎข้อ 84) unit (Vitest, `stale-cart-cookie.test.ts` เดิม): request ที่มี `_medusa_cart_id` ไม่มี `_medusa_jwt` และมี header `next-action` → response ไม่มี `Set-Cookie` ของ `_medusa_cart_id`;
+  เหมือนกันแต่ไม่มี `next-action` (GET) → ล้าง (`maxAge: 0`) ตาม test เดิม; มี `_medusa_jwt` → ไม่ล้างทั้งสองแบบ (test เดิมยังผ่าน);
+  e2e (`e2e/core-14g-action-stale-jwt.spec.ts`, customer login มี cart ที่มีสินค้า 1 line + โค้ดส่วนลด 1 ตัว): เปิด `/th/cart` แล้วลบ cookie `_medusa_jwt` ออกจาก context (คง `_medusa_cart_id`) โดยไม่ reload
+  แล้วทำทีละอย่าง — (1) เปลี่ยนจำนวน (2) ลบโค้ดส่วนลด (3) ใส่โค้ด (4) ลบสินค้า — แต่ละครั้ง Then เห็นข้อความเท่ากับ `SIGN_IN_AGAIN_MESSAGE` (import constant ไม่ match ข้อความ hard-code) และแถวสินค้ายังอยู่
+  (`data-testid` ของแถวใน cart), cookie `_medusa_cart_id` ยังเป็นค่าเดิม และ cart ใน backend (อ่านด้วย token เดิมผ่าน API) ไม่เปลี่ยน; จากนั้น reload `/th/cart` → cookie `_medusa_cart_id` ถูกล้าง
+  และหน้าเป็นตามที่ AC-43 กำหนด; test ต้อง fail กับโค้ดก่อนแก้ (แนบผลรันก่อนแก้ใน PR)
+
+### แผนการทดสอบ (follow-up รอบ 14b)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-120 (`next-action` → ไม่ล้าง, GET → ล้าง, มี JWT → ไม่ล้าง) |
+| e2e | AC-120 (จำนวน / ลบโค้ด / ใส่โค้ด / ลบสินค้า + reload → AC-43) |
+
+### Tasks (follow-up รอบ 14b)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-14g | (storefront เล็ก ~60–80 LOC, qa #222 D-1; owner เรียก "CORE-14d" แต่เลขนี้ใช้แล้ว ☑ #128) เงื่อนไข `!request.headers.has("next-action")` ใน `clearStaleCartCookie` (กฎข้อ 84) — ไฟล์: `lib/util/stale-cart-cookie.ts`, `lib/util/stale-cart-cookie.test.ts`, `e2e/core-14g-action-stale-jwt.spec.ts` ใหม่ | AC-120 | CORE-4i-a (#222) — ขนานได้ (คนละไฟล์) แต่ e2e ของ AC-120 พึ่งผล `unauthorized` ของ #222: ถ้า #222 ยังไม่ merge ให้ merge ก่อนเปิด PR; หลังทั้งสอง merge รัน AC-110 ข้อ 1 ซ้ำ |
+(รอบ 14b สถานะ) CORE-14g ☐ เริ่มได้; ไม่มีคำถามค้าง
+
+### Open questions (รอบ 14b)
 none
 
 หมายเหตุจาก CORE-1:
