@@ -1,0 +1,72 @@
+FS-18 — spec 03 กฎข้อ 23 (a)(b)(c), AC-25 (รวมส่วนขยายรอบ 13)
+รันในเครื่อง 2026-11-03: backend medusa start :9134 (DB medusa_fs18, Redis db 5), storefront next build && next start :8134, Node v24.12.0
+
+=== RED (ก่อนแก้โค้ด) ===
+vitest src/lib/data/catalog-revalidate.test.ts: 11 failed | 9 passed (20)
+  - listCategories/getCategoryByHandle/listRegions/retrieveRegion/retrieveCollection: next.revalidate Expected "number" Received "undefined" (ไม่มี cookie และมี cookie)
+  - static: force-cache ไม่มี revalidate เกินรายการยกเว้น: categories.ts:getCategoryByHandle, categories.ts:listCategories, collections.ts:retrieveCollection,
+    locales.ts:listLocales, payment.ts:listCartPaymentMethods, regions.ts:listRegions, regions.ts:retrieveRegion, variants.ts:retrieveVariant
+vitest src/fs-18-e2e-cleanup.test.ts: 3 failed | 1 passed (4) — afterAll ของ fs14/fs16 ไม่ใช้ deleteAllThenExpectOk, toPass ของ fs14 ไม่มี intervals
+playwright --project=unit e2e/support/cleanup.unit.spec.ts: ล้มเพราะยังไม่มี ./cleanup
+e2e flash-sale-fs14.spec.ts -g AC-25 (โค้ด store-hits เดิม): 1 failed —
+  Expected length: 1 / Received length: 2
+  ["[\"reg_…\",[\"variant_…DCQB\",\"variant_…NWZZ\"]]", "[\"reg_…\",[\"variant_…NWZZ\"]]"]  ← ยิงชุด variant เก่า (X+Y) ก่อน แล้วจึงยิงชุดของ Y (qa #148 O-3)
+
+=== GREEN ===
+--- pnpm --filter storefront test:unit ---
+ Test Files  53 passed (53)
+      Tests  604 passed (604)
+--- vitest (ไฟล์ของ task) ---
+ ✓ src/fs-18-e2e-cleanup.test.ts > flash-sale-fs14.spec.ts (FS-18, AC-25) > afterAll ลบโปรโมชัน แคมเปญ สินค้า collection ผ่าน deleteAllThenExpectOk แล้วยืนยันว่าไม่เหลือ
+ ✓ src/fs-18-e2e-cleanup.test.ts > flash-sale-fs14.spec.ts (FS-18, AC-25) > ทุก toPass ระบุ intervals 1–2 วินาที
+ ✓ src/fs-18-e2e-cleanup.test.ts > flash-sale-fs16.spec.ts (FS-18, AC-25) > afterAll ลบโปรโมชัน แคมเปญ สินค้า collection ผ่าน deleteAllThenExpectOk แล้วยืนยันว่าไม่เหลือ
+ ✓ src/fs-18-e2e-cleanup.test.ts > flash-sale-fs16.spec.ts (FS-18, AC-25) > ทุก toPass ระบุ intervals 1–2 วินาที
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listCollections ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > getCollectionByHandle ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listProducts ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listVariantIdsByProduct ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listCategories ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > getCategoryByHandle ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listRegions ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > retrieveRegion ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > retrieveCollection ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listCollections มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > getCollectionByHandle มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listProducts มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listVariantIdsByProduct มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listCategories มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > getCategoryByHandle มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > listRegions มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > retrieveRegion มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > retrieveCollection มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17 AC-24, FS-18 AC-25) > data function ของ /store กับชุด hit ว่าง → ไม่เรียก fetch
+ ✓ src/lib/data/catalog-revalidate.test.ts > lib/data ไม่มี force-cache ที่ไม่มี revalidate (FS-18, AC-25) > ทุกรายการที่เหลือมีเหตุผลใน FORCE_CACHE_WITHOUT_REVALIDATE
+      Tests  24 passed (24)
+--- pnpm --filter storefront test:e2e:unit ---
+  ✓   7 [unit] › e2e/support/cleanup.unit.spec.ts:17:5 › ลบครบทุก path แม้ตัวแรกตอบ 500 หรือ throw แล้วจึงล้มพร้อมรายการที่ไม่ ok (3ms)
+  ✓   9 [unit] › e2e/support/cleanup.unit.spec.ts:38:5 › ข้าม id ที่ยังไม่ถูกสร้าง (beforeAll ล้มกลางทาง) และผ่านเมื่อทุกตัว ok (0ms)
+  39 passed (511ms)
+--- e2e (chromium, workers=1) flash-sale-fs14.spec.ts + flash-sale-fs16.spec.ts ---
+  ✓  1 [chromium] › e2e/flash-sale-fs14.spec.ts:160:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (571ms)
+  ✓  2 [chromium] › e2e/flash-sale-fs14.spec.ts:183:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (343ms)
+  ✓  3 [chromium] › e2e/flash-sale-fs14.spec.ts:198:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (906ms)
+  ✓  4 [chromium] › e2e/flash-sale-fs14.spec.ts:246:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.1m)
+  ✓  5 [chromium] › e2e/flash-sale-fs14.spec.ts:280:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง (5.9s)
+  ✓  6 [chromium] › e2e/flash-sale-fs16.spec.ts:152:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (700ms)
+  ✓  7 [chromium] › e2e/flash-sale-fs16.spec.ts:167:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (2.2s)
+  ✓  8 [chromium] › e2e/flash-sale-fs16.spec.ts:189:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (6.3s)
+  8 passed (1.4m)
+
+pnpm lint: 0 errors (warning ที่เหลือมีอยู่เดิม: cart.ts, store-hits refs บรรทัด 57-58); pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน
+
+หมายเหตุระหว่างทำ: รอบแรกที่รัน fs14+fs16 แบบหลาย worker พบ (1) run id (Date.now) ของสอง suite ชนกันในมิลลิวินาทีเดียว → expectNoneLeft
+นับเฉพาะ handle prefix ของ suite (e2e-fs14-/e2e-fs16-) (2) DELETE สินค้าของ fs16 ตอบ 400 "Cannot remove following inventory item(s) since they
+have reservations" เพราะ order ของ test sold out ถือ reservation → afterAll ยกเลิก order ก่อน (POST /admin/orders/:id/cancel) แล้วจึงลบ
+
+=== รอบแก้ตาม review (หลัง merge origin/develop ac69573 ที่มี #211 FS-19) ===
+ย้าย gate()/sleep ที่ซ้ำใน flash-sale-fs16.spec.ts และ flash-sale-fs19.spec.ts ไป e2e/support/gate.ts (CLAUDE.md ข้อ 3: ผู้ใช้ 2 ที่)
+DB medusa_fs18b, backend :9134, storefront next build && next start :8134
+pnpm --filter storefront test:unit: Test Files 55 passed (55), Tests 613 passed (613)
+pnpm --filter storefront test:e2e:unit: 39 passed
+e2e chromium --workers=1 --repeat-each=3 flash-sale-fs16.spec.ts flash-sale-fs19.spec.ts: 18 passed (52.9s) — 0 failed, 0 flaky
+pnpm lint: 0 errors (31 warnings เดิม); pnpm typecheck: ผ่าน

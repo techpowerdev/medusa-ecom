@@ -1,6 +1,7 @@
 "use server"
 
 import { sdk } from "@lib/config"
+import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import { getCacheOptions } from "./cookies"
 
 export type Locale = {
@@ -14,6 +15,7 @@ export type Locale = {
  */
 export const listLocales = async (): Promise<Locale[] | null> => {
   const next = {
+    revalidate: CATALOG_REVALIDATE_SECONDS,
     ...(await getCacheOptions("locales")),
   }
 
