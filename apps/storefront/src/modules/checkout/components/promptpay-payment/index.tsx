@@ -8,13 +8,10 @@ import {
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import {
   PROMPTPAY_POLL_MS,
-  formatCountdown,
   promptPayFallbackAllowed,
   promptPayFallbackCanPoll,
-  promptPayDeadline,
   promptPayExpiryAction,
   promptPayPollAction,
-  promptPayQrImage,
   promptPaySession,
   secondsLeft,
 } from "@lib/util/payment-session"
@@ -24,7 +21,9 @@ import { useStripe } from "@stripe/react-stripe-js"
 import { useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import ErrorMessage from "../error-message"
+import { openQr } from "./open-qr"
 import PromptPayOrderDelayed from "./order-delayed"
+import PromptPayQr from "./qr-panel"
 import { StripeContext } from "../payment-wrapper/stripe-wrapper"
 
 type Props = {
@@ -167,41 +166,15 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     setExpired(false)
     setRefunded(false)
 
-    // โหลดหน้าใหม่ระหว่างรอ: PaymentIntent ยังรอสแกนอยู่ → ใช้ QR เดิม ไม่ confirm ซ้ำ
-    // AF-3b (กฎ 23): order สร้างโดย webhook หลังสแกน → sync cookie `aff` ก่อนทั้ง QR เดิม (requires_action) และการ confirm ใหม่
+    // AF-3b (กฎ 23): order สร้างโดย webhook หลังสแกน → sync cookie `aff` ก่อนทั้ง QR เดิม (requires_action) และการ confirm ใหม่ใน openQr
     const current = await syncAffiliateBefore(cart, () => stripe.retrievePaymentIntent(clientSecret))
-    let intent = current.paymentIntent
-    if (intent && promptPayExpiryAction(intent.status) === "keep-polling") {
-      setSubmitting(false)
-      setAwaitingOrder(true)
-      return
-    }
-    if (intent && Date.now() >= promptPayDeadline(intent.created)) {
-      setSubmitting(false)
-      return expire()
-    }
-    if (intent?.status !== "requires_action") {
-      const confirmed = await stripe.confirmPromptPayPayment(
-        clientSecret,
-        { payment_method: { billing_details: { email: cart.email ?? "" } } },
-        { handleActions: false }
-      )
-      if (confirmed.error) {
-        setError(confirmed.error.message ?? "ชำระด้วยพร้อมเพย์ไม่สำเร็จ")
-        setSubmitting(false)
-        return
-      }
-      intent = confirmed.paymentIntent
-    }
+    const step = await openQr(stripe, clientSecret, cart.email ?? "", current.paymentIntent)
     setSubmitting(false)
-
-    const image = promptPayQrImage(intent)
-    if (!intent || !image) {
-      setError("สร้างคิวอาร์โค้ดพร้อมเพย์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
-      return
-    }
+    if (step.kind === "paid") return setAwaitingOrder(true)
+    if (step.kind === "expired") return expire()
+    if (step.kind === "error") return setError(step.message)
     setNow(Date.now())
-    setQr({ image, deadline: promptPayDeadline(intent.created) })
+    setQr({ image: step.image, deadline: step.deadline })
   }
 
   // นับถอยหลัง → ครบ 10 นาทีตัดสินจากสถานะ PI
@@ -267,24 +240,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   if (qr) {
     return (
       <div className="flex flex-col items-start gap-y-3" data-testid="promptpay-panel">
-        <Text className="txt-medium-plus text-ui-fg-base">
-          สแกนคิวอาร์โค้ดด้วยแอปธนาคารเพื่อชำระเงิน
-        </Text>
-        {/* eslint-disable-next-line @next/next/no-img-element -- รูป QR จาก Stripe (URL ภายนอกที่เปลี่ยนต่อ payment) */}
-        <img
-          src={qr.image}
-          alt="คิวอาร์โค้ดพร้อมเพย์"
-          width={240}
-          height={240}
-          className="border border-ui-border-base rounded-rounded"
-          data-testid="promptpay-qr"
-        />
-        <Text className="txt-small text-ui-fg-subtle" aria-live="polite">
-          หมดอายุใน <span data-testid="promptpay-countdown">{formatCountdown(secondsLeft(qr.deadline, now))}</span>
-        </Text>
-        <Text className="txt-small text-ui-fg-subtle">
-          กำลังรอยืนยันการชำระเงิน… หน้านี้จะอัปเดตอัตโนมัติ
-        </Text>
+        <PromptPayQr image={qr.image} deadline={qr.deadline} now={now} />
         <ErrorMessage error={error} data-testid="promptpay-payment-error-message" />
       </div>
     )

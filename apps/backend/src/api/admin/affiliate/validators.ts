@@ -1,5 +1,6 @@
 import { z } from "@medusajs/framework/zod"
 import { createFindParams } from "@medusajs/medusa/api/utils/validators"
+import { isAccountNumber, normalizeAccountNumber } from "../../../modules/affiliate/utils/account-number"
 
 // Stable pagination: newest first by default, limit capped at 200
 const listParams = () =>
@@ -58,10 +59,27 @@ export const AdminListAffiliates = listParams().extend({
   status: z.enum(["pending", "active", "suspended"]).optional(),
 })
 
+const affiliateStatus = z.enum(["pending", "active", "suspended"])
+const requiredText = z.string().trim().min(1)
+
+// AF-15 (กฎ 39a, owner Q18/Q20): null หรือ 3 ช่องนี้เท่านั้น; account_number เก็บค่าที่ตัด `-`/ช่องว่างแล้ว
+const PayoutInfo = z
+  .object({
+    bank_name: requiredText,
+    account_name: requiredText,
+    account_number: z
+      .string()
+      .transform(normalizeAccountNumber)
+      .refine(isAccountNumber, { message: "account_number must be 10-12 digits" }),
+  })
+  .strict()
+
 export const AdminUpdateAffiliate = z
   .object({
-    status: z.enum(["pending", "active", "suspended"]).optional(),
-    payout_info: z.record(z.string(), z.unknown()).nullish(),
+    status: affiliateStatus.optional(),
+    payout_info: PayoutInfo.nullish(),
+    // AF-15 (กฎ 39b): ไม่ตรงสถานะปัจจุบัน → 409 AFFILIATE_STATUS_CHANGED
+    expected_status: affiliateStatus.optional(),
   })
   .strict()
 export type AdminUpdateAffiliate = z.infer<typeof AdminUpdateAffiliate>

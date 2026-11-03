@@ -1,11 +1,13 @@
 import { retrieveCustomer } from "@lib/data/customer"
 import { retrieveGroupBuyOrder } from "@lib/data/group-buy"
+import { stripeReturn } from "@lib/util/order-pay"
 import OrderPay from "@modules/order/components/order-pay"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 type Props = {
   params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export const metadata: Metadata = {
@@ -27,6 +29,13 @@ export default async function OrderPayPage(props: Props) {
   }
 
   // server component render ครั้งเดียวต่อ request — เวลาของ request ใช้ render แรก (client ใช้นาฬิกาของตัวเองหลัง hydrate)
-  // eslint-disable-next-line react-hooks/purity
-  return <OrderPay initial={data} serverNow={Date.now()} />
+  return (
+    <OrderPay
+      initial={data}
+      email={customer.email}
+      redirect={stripeReturn(await props.searchParams)}
+      // eslint-disable-next-line react-hooks/purity
+      serverNow={Date.now()}
+    />
+  )
 }
