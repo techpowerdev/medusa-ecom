@@ -64,8 +64,10 @@ describe.each(DIRS.flatMap(sourceFiles).filter((f) => !PENDING_4I_B.includes(f))
   }
 )
 
-describe("รายการค้างของ CORE-4i-b ยังเป็นไฟล์ที่มีอยู่จริง", () => {
+// กันรายการค้างหลัง 4i-b แปลงไฟล์แล้วลืมลบ: ทุกไฟล์ในรายการต้องยังมี friendlyErrorMessage( ใน catch อยู่จริง
+describe("รายการค้างของ CORE-4i-b ยังมี friendlyErrorMessage( ใน catch จริง", () => {
   it.each(PENDING_4I_B)("%s", (name) => {
-    expect(fs.existsSync(path.resolve(__dirname, name))).toBe(true)
+    const source = fs.readFileSync(path.resolve(__dirname, name), "utf8")
+    expect(friendlyInCatch(source, name).length).toBeGreaterThan(0)
   })
 })

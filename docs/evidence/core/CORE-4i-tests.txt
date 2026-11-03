@@ -1,4 +1,6 @@
-# CORE-4i-a — ผลการทดสอบ (spec 01 กฎข้อ 72, AC-110 ส่วน helper + applyPromotions/updateLineItem + cart) 2026-11-03
+# CORE-4i — ผลการทดสอบ (spec 01 กฎข้อ 72, AC-110) — 4i-a และ 4i-b เขียนต่อในไฟล์นี้
+
+# ===== 4i-a: helper + applyPromotions/updateLineItem + cart (2026-11-03) =====
 # สภาพแวดล้อม: Node 24.12.0; e2e: backend medusa start (build) :9139, DB medusa_core4i seed ใหม่, Redis db 14,
 # storefront next build+start :8139, Chromium (ไม่มี Stripe key — e2e ของ Stripe ไม่อยู่ในชุดที่รัน)
 
@@ -128,3 +130,8 @@
 ## lint / typecheck (pnpm lint && pnpm typecheck)
   storefront lint: 0 errors (warning เดิมของ starter เท่านั้น ไม่มีในบรรทัดที่ task นี้แก้)
   typecheck: storefront Done, backend Done
+
+## แก้ตาม review #222 (เปลี่ยนชื่อไฟล์ evidence ให้ตรง TASK_ID, รายการค้าง 4i-b ต้องยังมี friendlyErrorMessage( ใน catch)
+  storefront test:unit: Test Files 59 passed, Tests 690 passed
+  storefront test:e2e:unit (รวม evidence-budget): 37 passed
+  pnpm lint: 0 errors; pnpm typecheck: Done
