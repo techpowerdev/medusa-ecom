@@ -20,6 +20,8 @@ const HOUR = 60 * 60 * 1000
 // mock provider ของ Medusa (seed เปิดใน region) — ไม่ออก network
 const PROVIDER = "pp_system_default"
 const OPS_EMAIL = "gb5-ops@example.com"
+// GB-9 กฎข้อ 25 (d): suite นี้ตั้ง OPS_ALERT_EMAIL — คืนค่าเดิมใน afterAll ไม่ให้รั่วไป suite อื่นใน worker เดียวกัน
+const SAVED_OPS_ALERT_EMAIL = process.env.OPS_ALERT_EMAIL
 
 // GB-5: payment.captured → membership paid + แปลง draft order (AC-2 ส่วน API, AC-37) และหมดเวลาชำระเงิน (AC-10)
 medusaIntegrationTestRunner({
@@ -82,6 +84,15 @@ medusaIntegrationTestRunner({
       variantX = result[0].variants.find((v) => v.title === "One")!.id
       variantOdd = result[0].variants.find((v) => v.title === "Odd")!.id
       variantStocked = result[0].variants.find((v) => v.title === "Stocked")!.id
+    })
+
+    afterAll(() => {
+      if (SAVED_OPS_ALERT_EMAIL === undefined) {
+        delete process.env.OPS_ALERT_EMAIL
+      } else {
+        process.env.OPS_ALERT_EMAIL = SAVED_OPS_ALERT_EMAIL
+      }
+      expect(process.env.OPS_ALERT_EMAIL).toEqual(SAVED_OPS_ALERT_EMAIL)
     })
 
     const query = () => getContainer().resolve(ContainerRegistrationKeys.QUERY)
@@ -200,6 +211,8 @@ medusaIntegrationTestRunner({
       expect(alerts[0].data).toEqual(
         expect.objectContaining({ reason, membership_id: member.membership_id, order_id: member.order_id })
       )
+      // GB-9 กฎข้อ 25 (b): key ต่อ membership + เหตุ (column มีจริงแต่ NotificationDTO 2.22.1 ไม่ประกาศ field นี้)
+      expect((alerts[0] as { idempotency_key?: string }).idempotency_key).toEqual(`${member.membership_id}:${reason}`)
     }
 
     it.each([
