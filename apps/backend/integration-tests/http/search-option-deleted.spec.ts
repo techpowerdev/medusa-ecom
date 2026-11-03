@@ -1,4 +1,6 @@
+import { setTimeout as delay } from "node:timers/promises"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
+import { logger } from "@medusajs/framework/logger"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
@@ -11,7 +13,19 @@ const TITLE_P = "เสื้อทดสอบลบตัวเลือก"
 
 type Headers = { headers: Record<string, string> }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+// CORE-9c (กฎข้อ 82): รอผลของ ingestion ด้วยการ poll พร้อม timeout แทนการรอเวลาคงที่
+const POLL_TIMEOUT_MS = 30 * 1000
+const POLL_INTERVAL_MS = 200
+
+async function pollUntil(label: string, check: () => Promise<boolean>): Promise<void> {
+  const deadline = Date.now() + POLL_TIMEOUT_MS
+  while (!(await check())) {
+    if (Date.now() > deadline) {
+      throw new Error(`timeout ${POLL_TIMEOUT_MS}ms: ${label}`)
+    }
+    await delay(POLL_INTERVAL_MS)
+  }
+}
 
 // axios error มี circular reference → ห่อเป็น Error ธรรมดา (CLAUDE.md)
 async function call<T>(request: () => Promise<{ data: T }>): Promise<T> {
@@ -78,15 +92,13 @@ medusaIntegrationTestRunner({
       )
       await container.resolve(Modules.SEARCH).reindex({ index: "product" })
 
-      // error ของ subscriber ถูก log ผ่าน logger ของ event bus (ไม่ใช่ instance เดียวกับ logger ของ container)
-      const loggers = [
-        container.resolve(ContainerRegistrationKeys.LOGGER),
-        (container.resolve(Modules.EVENT_BUS) as unknown as { logger_: typeof console }).logger_,
-      ]
-      const spies = loggers.flatMap((logger) => [
-        jest.spyOn(logger, "warn"),
-        jest.spyOn(logger, "error"),
-      ])
+      // event bus ของ Medusa 2.22.1 log (รวม error ของ subscriber) ผ่าน singleton `logger` ของ framework
+      // ไม่ใช่ LOGGER ของ container (คนละ instance เมื่อ config ตั้ง logger เอง) — spy ที่ export สาธารณะ ไม่แตะ property private
+      const spies = (["info", "warn", "error"] as const).map((level) => jest.spyOn(logger, level))
+      const logged = () =>
+        spies
+          .flatMap((spy) => spy.mock.calls.flat())
+          .map((arg) => String((arg as { message?: unknown })?.message ?? arg))
 
       // 1) เอา option "สี" ออกจาก P (option exclusive ที่ไม่มีสินค้าผูกจะถูก soft delete)
       const color = p.options.find((option) => option.title === "สี")!
@@ -98,14 +110,6 @@ medusaIntegrationTestRunner({
       // 3) ลบสินค้า Q → Medusa cascade ส่ง product-option.deleted ของ option ของ Q ที่ถูกตัด link แล้ว
       await call(() => api.delete(`/admin/products/${q.id}`, adminHeaders))
 
-      // ingestion รันแบบ async ผ่าน event bus — รอให้ subscriber ประมวลผล event ลบให้เสร็จ
-      await sleep(3000)
-
-      const logged = spies
-        .flatMap((spy) => spy.mock.calls.flat())
-        .map((arg) => String((arg as { message?: unknown })?.message ?? arg))
-      expect(logged.filter((line) => line.includes("Cannot read properties of undefined"))).toEqual([])
-
       const search = (text: string) =>
         call<{ results: { hits: { id: string }[] }[] }>(() =>
           api.post(
@@ -115,6 +119,22 @@ medusaIntegrationTestRunner({
           )
         ).then((data) => data.results[0].hits.map((hit) => hit.id))
 
+      // ingestion รันแบบ async ผ่าน event bus — poll จน P ยังค้นเจอ, Q หายจาก index และ event ลบ option ถูกประมวลผลแล้ว
+      await pollUntil("ingestion ของ event ลบ option/สินค้า", async () => {
+        const processed = logged().some((line) => line.startsWith("Processing product-option.deleted"))
+        return (
+          processed &&
+          (await search(TITLE_P)).includes(p.id) &&
+          !(await search("สินค้าที่จะถูกลบ")).includes(q.id)
+        )
+      })
+
+      // positive control: spy จับ log ของ event bus ได้จริง ก่อน assert ว่าไม่มีบรรทัด error
+      expect(spies.some((spy) => spy.mock.calls.length > 0)).toBe(true)
+      expect(
+        logged().filter((line) => line.startsWith("Processing product-option.deleted")).length
+      ).toBeGreaterThanOrEqual(1)
+      expect(logged().filter((line) => line.includes("Cannot read properties of undefined"))).toEqual([])
       expect(await search(TITLE_P)).toContain(p.id)
       expect(await search("สินค้าที่จะถูกลบ")).not.toContain(q.id)
     })

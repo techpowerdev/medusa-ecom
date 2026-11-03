@@ -1168,7 +1168,10 @@ none
     unit ของ PDP มีกรณีเปลี่ยน `product.id` (render สินค้าใหม่พร้อม `v_id` ของสินค้าใหม่) → option เป็นของ variant ตาม `v_id` ใหม่ ไม่ค้างค่าของสินค้าเดิม; (e) (review #202) comment
     ใน `apps/storefront/e2e/thai-ui-pages.spec.ts` ราวบรรทัด 11 ที่ยังอ้างชื่อ category "Shirts" แก้ตามชื่อไทยของกฎข้อ 80
 82. (CORE-9c — review #200 CORE-9b) `integration-tests/http/search-option-deleted.spec.ts`: (a) รอผลของ ingestion ด้วยการ poll ค่าที่ test ต้องการ (เช่นผลของ `POST /store/search`)
-    พร้อม timeout ชัดเจน แทน `sleep(3000)` คงที่; (b) ตรวจ log ผ่าน logger ที่ resolve จาก container (`ContainerRegistrationKeys.LOGGER`) ไม่ spy `logger_` ที่เป็น property private ของ event bus —
+    พร้อม timeout ชัดเจน แทน `sleep(3000)` คงที่; (b) ตรวจ log ผ่าน `logger` ที่ export สาธารณะจาก `@medusajs/framework/logger` ไม่ spy `logger_` ที่เป็น property private ของ event bus
+    (แก้ระหว่าง CORE-9c 2026-11-03 ตามที่ session หลักอนุมัติ: ถ้อยคำเดิมให้ใช้ logger จาก container (`ContainerRegistrationKeys.LOGGER`) แต่ probe บน Medusa 2.22.1 พบว่า
+    event bus ได้ singleton `logger` ของ framework (`eventBus.logger_ === logger` เป็น true) ส่วน LOGGER ของ container เป็น JSON logger จาก option `logger` ของ
+    `medusa-config.ts` คนละ instance (`eventBus.logger_ === container.resolve(LOGGER)` เป็น false) spy ที่ container จึงจับ log ของ event bus ไม่ได้และ positive control ไม่ผ่าน) —
     ก่อน assert "ไม่มีบรรทัด error" ต้องยืนยันว่า spy จับ log ได้จริง (positive control: log ที่รู้ว่าเกิดในช่วงเดียวกัน หรือ assert ว่า spy ถูกเรียก ≥ 1 ครั้ง)
 
 ### Acceptance criteria (follow-up รอบ 13)
