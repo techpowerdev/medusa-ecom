@@ -22,6 +22,7 @@ type Summary = {
   outcomes: Record<string, number>
   wait: Stats
   hold: Stats
+  hold_count: number
   window_ms: number
   hold_sum_ms: number
   hold_sum_ratio: number
@@ -123,6 +124,15 @@ describe("OPS-18 summarizeLockTimings", () => {
     const s = summarizeLockTimings(entries)!
     expect(s.hold_rank_corr).toBe(1)
     expect(s.wait_rank_corr).toBe(0)
+  })
+
+  it("OPS-17 (AC-28) hold_rank_corr ใช้ลำดับในคิวทั้งหมด (ไม่ใช่ลำดับใน input/ใน held) — input สลับ + มีตัวที่ไม่ได้ lock แทรก", () => {
+    // ขอ lock ที่ t = 0..6 (input เรียงกลับ), hold ลดลงตามคิวยกเว้นคู่ที่ขอพร้อมกัน, ตัวที่ t=3 lock ไม่สำเร็จ, ตัวที่ t=4,5 ขอพร้อมกัน (คงลำดับ log)
+    const timeout: Entry = { ...entry(3, 3, 500, 0), acquired_at: null, released_at: null, hold_ms: null, outcome: "LOCK_ERROR" }
+    const entries = [entry(6, 6, 0, 10), entry(5, 4, 0, 20), entry(4, 4, 0, 30), timeout, entry(2, 2, 0, 50), entry(1, 1, 0, 60), entry(0, 0, 0, 70)]
+    const s = summarizeLockTimings(entries)!
+    expect(s.hold_count).toBe(6)
+    expect(s.hold_rank_corr).toBe(-0.94)
   })
 
   it("markdown มีตาราง (a)/(b) min/median/p95/max และผลเกณฑ์", () => {
