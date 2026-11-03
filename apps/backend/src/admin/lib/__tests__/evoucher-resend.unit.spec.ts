@@ -28,6 +28,20 @@ describe("resendErrorMessage", () => {
     )
   })
 
+  // ADM-2a (spec 08 AC-5, nit EV-13 #167): รูปแบบปัจจุบันของ backend ใส่ reason ในวงเล็บ — reason ที่ลงท้ายด้วยจุดไม่ทำให้จุดซ้อน
+  it("does not double the full stop when the backend reason ends with one", () => {
+    const message = resendErrorMessage(
+      new Error("Could not send the e-voucher email (smtp down.). Try again or check the server logs.")
+    )
+    expect(message).toBe("Could not send the e-voucher email (smtp down). Try again or check the server logs.")
+  })
+
+  it("collapses repeated full stops", () => {
+    const message = resendErrorMessage(new Error("Could not send the e-voucher email: smtp down.. Try again or check the logs."))
+    expect(message).not.toMatch(/\.\)\.|\.\./)
+    expect(message).toBe("Could not send the e-voucher email: smtp down. Try again or check the logs.")
+  })
+
   it("falls back to a generic hint when there is no message", () => {
     expect(resendErrorMessage(new Error(""))).toMatch(/try again.*log/i)
   })
