@@ -18,6 +18,10 @@ async function createCampaign(
   status: "draft" | "active" | "ended" = "draft",
   name = `GB-6b ${group_mode} ${status} ${Date.now()}`
 ): Promise<string> {
+  // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า — ใช้สินค้าตัวแรกของ seed
+  const products = await request.get(`${BACKEND_URL}/admin/products?limit=1&fields=id`, { headers: admin })
+  expect(products.status(), "list products").toBe(200)
+  const productId: string = (await products.json()).products[0].id
   const res = await request.post(`${BASE}/campaigns`, {
     headers: admin,
     data: {
@@ -33,6 +37,7 @@ async function createCampaign(
         allocation: "each",
         max_quantity: 10,
         value: 10,
+        target_rules: [{ attribute: "items.product.id", operator: "in", values: [productId] }],
       },
     },
   })
