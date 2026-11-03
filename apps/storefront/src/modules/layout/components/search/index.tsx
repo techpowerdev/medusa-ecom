@@ -36,12 +36,20 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const { query, refine } = useSearchBox({ queryHook })
   const { items } = useHits<ProductHit>()
-  const { status } = useInstantSearch()
+  // CORE-15b (กฎข้อ 76): catchError — ไม่มีใครรับ error ของ search แล้ว InstantSearch โยนเป็น uncaught (pageerror)
+  // ที่นี่แสดง search-drawer-error แทน และ log 1 บรรทัด (ไม่มี stack) ต่อ error เพื่อ debug
+  const { status, error } = useInstantSearch({ catchError: true })
   const { isSettled } = useSearchSettled()
 
   const [inputValue, setInputValue] = useState(query)
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  useEffect(() => {
+    if (error) {
+      console.error(`[search-drawer] search request failed: ${error.message}`)
+    }
+  }, [error])
 
   const hasInput = Boolean(inputValue.trim())
   const isPending = inputValue.trim() !== query.trim()
@@ -77,7 +85,7 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
         ) : status === "error" ? (
           <Text
             className="px-4 py-6 text-center text-ui-fg-error"
-            data-testid="search-error"
+            data-testid="search-drawer-error"
           >
             ค้นหาสินค้าไม่สำเร็จ
           </Text>
