@@ -7,9 +7,9 @@ import {
 } from "@lib/util/group-page"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import ShareLinkButton from "@modules/common/components/share-link-button"
 import Thumbnail from "@modules/products/components/thumbnail"
 import GroupCountdown from "./countdown"
-import GroupShareLink from "./share-link"
 
 type Props = {
   view: PublicGroupBuyGroupView
@@ -88,7 +88,23 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
         {open && <GroupCountdown endsAt={group.ends_at} now={now} />}
       </section>
 
-      {open && <GroupShareLink url={shareUrl} />}
+      {/* ลิงก์แชร์ `/g/<token>` + ปุ่มคัดลอก (กฎข้อ 29b, 29g) */}
+      {open && (
+        <section className="flex flex-col gap-y-2">
+          <span className="text-small-regular text-ui-fg-subtle">แชร์ลิงก์นี้ให้เพื่อนเข้าร่วมกลุ่ม</span>
+          <a href={shareUrl} className="break-all text-ui-fg-interactive underline" data-testid="group-share-link">
+            {shareUrl}
+          </a>
+          <div className="self-start">
+            <ShareLinkButton
+              url={shareUrl}
+              label="คัดลอกลิงก์"
+              buttonTestId="group-share-copy"
+              statusTestId="group-share-copy-status"
+            />
+          </div>
+        </section>
+      )}
     </div>
   )
 }

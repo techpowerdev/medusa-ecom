@@ -41,7 +41,13 @@ test.describe("หน้ากลุ่ม (AC-16a)", () => {
     expect(after).toBeLessThan(before)
     expect(before).toBeLessThanOrEqual(24 * 3600)
 
-    await expectThai(page, ["group-member-count", "group-progress", "group-countdown", "group-discount", "group-share-copy"])
+    await expectThai(page, ["group-member-count", "group-progress", "group-countdown", "group-discount"])
+
+    // ปุ่มคัดลอก (ShareLinkButton ร่วม) — ผลแสดงใน status แยกจากปุ่ม
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"])
+    await page.getByTestId("group-share-copy").click()
+    await expectThai(page, ["group-share-copy-status"])
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(new RegExp(`/g/${ctx.token}$`))
     await evidence("01-group-page-2-of-3")
 
     await joinAsNewCustomer(request, ctx)

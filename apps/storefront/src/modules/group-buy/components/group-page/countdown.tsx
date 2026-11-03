@@ -8,11 +8,16 @@ export default function GroupCountdown({ endsAt, now }: { endsAt: string | null;
   const [current, setCurrent] = useState(now)
   const label = countdownLabel(endsAt, current)
 
+  // เดินทุกวินาทีจนเลย `ends_at` (label เป็น null แล้วหยุด) — deps ตาม `endsAt` ไม่สร้าง interval ใหม่ทุก tick
   useEffect(() => {
-    if (!label) return
-    const timer = setInterval(() => setCurrent(Date.now()), 1000)
+    if (!endsAt) return
+    const timer = setInterval(() => {
+      const t = Date.now()
+      setCurrent(t)
+      if (!countdownLabel(endsAt, t)) clearInterval(timer)
+    }, 1000)
     return () => clearInterval(timer)
-  }, [label])
+  }, [endsAt])
 
   return (
     <p className="text-base-regular" data-testid="group-countdown">
