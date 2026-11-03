@@ -3,7 +3,7 @@ import { APIRequestContext, BrowserContext, Page, Route } from "@playwright/test
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { GroupBuyOrderCtx, groupBuyOrder, leaveGroup } from "./support/group-buy"
 import { createCustomer, signInAs, STOREFRONT_COUNTRY as CC } from "./support/medusa"
-import { CARD_PROVIDER, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, fillCard, retrievePaymentIntent } from "./support/stripe"
+import { CARD_PROVIDER, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, authorizePromptPay, fillCard } from "./support/stripe"
 import { expectThai } from "./support/thai-text"
 
 // PAY-3b1/PAY-3b2: spec 06 กฎข้อ 9, AC-19 (บัตร), AC-7 (พร้อมเพย์), AC-20 (กลับจาก redirect ของ Stripe) — หน้า /account/orders/:id/pay ของ draft order กลุ่ม (อ่านจาก GB-8)
@@ -105,18 +105,6 @@ async function mockActions(page: Page, orderId: string, mock: Mock) {
 /** ไม่มี action ที่ส่ง cart id (complete cart / placeOrder) — ข้อ d/d2 อ่าน GB-8 อย่างเดียว */
 const expectNoCartComplete = (log: { other: string[] }) =>
   expect(log.other.filter((b) => b.includes("cart_"))).toEqual([])
-
-/** สแกน QR ใน test mode: กด authorize แล้วรอจน PI succeeded ก่อนปิดหน้า (ปิดทันที = request ไป pm-hooks.stripe.com ถูกตัด — review #203 B1) */
-async function authorizePromptPay(context: BrowserContext, request: APIRequestContext, intentId: string) {
-  const intent = await retrievePaymentIntent(request, intentId)
-  const bank = await context.newPage()
-  await bank.goto(intent.next_action!.promptpay_display_qr_code!.data)
-  await bank.getByRole("button", { name: /authorize test payment/i }).click()
-  await expect
-    .poll(async () => (await retrievePaymentIntent(request, intentId)).status, { timeout: 60_000, intervals: [500] })
-    .toBe("succeeded")
-  await bank.close()
-}
 
 /** id ของ PI ของ session พร้อมเพย์ที่ pending (หลังแสดง QR) */
 async function promptPayIntentId(request: APIRequestContext, ctx: GroupBuyOrderCtx): Promise<string> {
