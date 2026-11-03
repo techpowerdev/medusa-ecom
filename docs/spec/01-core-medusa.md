@@ -1174,8 +1174,9 @@ none
 ### Acceptance criteria (follow-up รอบ 13)
 - AC-117 (CORE-26, กฎข้อ 81) e2e: Given แคมเปญ flash −20% ของสินค้า X ราคา ฿2,950 และ cart ของลูกค้ามี X qty 2 When ชี้ `nav-cart-link` Then `cart-subtotal` ใน `nav-cart-dropdown`
   มี `data-value` เท่ากับ `item_total` ของ `GET /store/carts/:id` (เทียบตัวเลข) = ผลรวมราคา line ที่แสดง (±0.01) และป้ายเป็น "ยอดรวมสินค้า (รวม VAT)" ไม่มีคำ "ไม่รวมภาษี" (Q-C1 (1) = (ก)); ที่ `/th/cart` แถวของ
-  `cart-totals` (ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง + ภาษี — ตาม field ที่แสดง) = ยอดรวม ±0.01; static (Vitest อ่าน source): `cart-dropdown/index.tsx` ไม่มี `1.07` และไม่มี `reduce(` ที่อ่าน `unit_price`/`total`/`subtotal` (regex
-  `reduce\([^)]*(unit_price|total|subtotal)` — `countItems` ที่ `reduce` รวม `quantity` ได้รับยกเว้น);
+  `cart-totals` (ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง + ภาษี — ตาม field ที่แสดง) = ยอดรวม ±0.01; static (Vitest อ่าน source): `cart-dropdown/index.tsx` ไม่มี `1.07` และไม่มี `.reduce(` ที่อ่าน `unit_price`/`total`/`subtotal` (regex
+  `/\.reduce\([\s\S]*?\b(unit_price|total|subtotal)\b/` กับ source ที่ตัด `countItems` ออกแล้ว — `countItems` ที่ `reduce` รวม `quantity` ได้รับยกเว้น;
+  review #206: regex เดิม `reduce\([^)]*…` หยุดที่ `)` ของ arrow function จึงจับโค้ดจริงไม่ได้);
   e2e (desktop 1280px): กด `add-product-button` บน PDP โดยไม่ขยับ mouse → `nav-cart-dropdown` ปรากฏแล้วหายภายใน 6 วินาที และกด `add-product-button` ซ้ำได้ด้วย `click()` ปกติ (ไม่ใช้
   `dispatchEvent` — grep e2e ของ CORE-25/CORE-19a: ไม่มี `dispatchEvent("click")` กับปุ่มนี้); ชี้ `nav-cart-link` → dropdown ยังเปิดค้างตามเดิม; unit (Vitest + jsdom) ของ PDP: rerender ด้วย
   `product` ใหม่ + `v_id` ของ variant ในสินค้าใหม่ → option ที่เลือกตรง variant นั้น; grep: `thai-ui-pages.spec.ts` ไม่มี `Shirts` (e2e + unit Vitest)

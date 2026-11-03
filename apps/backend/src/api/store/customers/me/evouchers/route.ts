@@ -51,7 +51,9 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
     },
     pagination: {
       ...req.queryConfig.pagination,
-      order: { delivered_at: "DESC", id: "DESC" },
+      // กฎข้อ 27b: code `allocated` ที่ส่งอีเมลล้ม (delivered_at null) อยู่บนสุด — ระบุชัด ไม่พึ่งค่าเริ่มต้นของ Postgres;
+      // Medusa ส่ง order ต่อให้ MikroORM ตรง (type ของ Query รับแค่ ASC/DESC)
+      order: { delivered_at: "DESC NULLS FIRST" as "DESC", id: "DESC" },
     },
   })
 
