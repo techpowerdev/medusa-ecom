@@ -8,6 +8,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { SIGN_IN_AGAIN_MESSAGE } from "../src/lib/util/error-message"
 import { THAI } from "./support/thai-text"
 
 // CORE-19c: spec 01 AC-100 (กฎข้อ 64) — หา element ด้วย data-testid เท่านั้น
@@ -193,7 +194,8 @@ test("AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้�
   await first.getByTestId("product-delete-button").click()
   const error = first.getByTestId("cart-item-remove-error")
   await expect(error).toBeVisible({ timeout: 5000 })
-  await expect(error).toContainText("เข้าสู่ระบบใหม่")
+  // CORE-4i (กฎข้อ 72): unauthorized = SIGN_IN_AGAIN_MESSAGE ตัวเดียวทั้งเว็บ
+  await expect(error).toHaveText(SIGN_IN_AGAIN_MESSAGE)
   await expect(first.getByTestId("cart-item-remove-spinner")).toHaveCount(0)
   expect(await backendLineCount(request, cartId, headers)).toBe(2)
 })

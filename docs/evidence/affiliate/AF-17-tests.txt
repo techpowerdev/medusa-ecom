@@ -1,0 +1,35 @@
+AF-17 — หลักฐาน test (spec 05 กฎ 41b, AC-49) 2026-11-03
+
+## Red (ก่อนแก้โค้ด)
+- unit: 8/8 ล้ม — TypeError: selectAffiliateToken is not a function (ยังไม่มี pure function)
+- integration AC-49 ล้ม: เงื่อนไขตั้งต้นผ่าน (cart.metadata.affiliate_token = "", draft order มี token ของ Ann) แต่หลังแปลง Expected length: 1 Received length: 0 — `??` ไม่ fallback เมื่อค่าเป็น ""
+
+## Green: unit src/workflows/affiliate/__tests__/attribute-order.unit.spec.ts
+PASS src/workflows/affiliate/__tests__/attribute-order.unit.spec.ts
+    ✓ cart '' + order T → T (1 ms)
+    ✓ cart '  ' + order T → T
+    ✓ cart T1 + order T2 → T1
+    ✓ cart missing + order '' → no token
+    ✓ cart 123 (not a string) + order T → T
+    ✓ cart null + order null → no token
+    ✓ cart missing + order '  ' → no token
+    ✓ cart missing + order T → T
+Tests:       8 passed, 8 total
+
+## Green: integration-tests/http/affiliate-group-buy.spec.ts (AC-49 + AC-48 เดิม)
+PASS integration-tests/http/affiliate-group-buy.spec.ts (11.912 s)
+    ✓ AC-48: join copies the cart affiliate_token to the draft order; no attribution on the draft; one attribution + 10% entry after conversion (1359 ms)
+    ✓ AC-48: cart with no metadata → draft order has no affiliate_token key and no attribution after conversion (1221 ms)
+    ✓ AC-48: cart with empty affiliate_token → draft order has no affiliate_token key and no attribution after conversion (896 ms)
+    ✓ AC-49: converted order whose cart has affiliate_token '' falls back to the draft order token → one attribution of Ann (730 ms)
+    ✓ AC-48 (กฎ 12): Ann's token on an order whose email is Ann's → no entry (786 ms)
+Tests:       5 passed, 5 total
+
+## Unit ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 75 passed, 75 total
+Tests:       741 passed, 741 total
+
+## pnpm lint && pnpm typecheck && pnpm --filter backend build
+ผ่านทั้งหมด (lint 0 errors)
+
+หมายเหตุ: integration ชุดอื่น (รวม affiliate-attribution.spec.ts AC-1/AC-10) ให้ CI รันตามกติกา CLAUDE.md

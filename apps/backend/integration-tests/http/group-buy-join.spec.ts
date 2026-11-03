@@ -49,6 +49,7 @@ medusaIntegrationTestRunner({
     let pk: string
     let regionId: string
     let productXId: string
+    let productYId: string // sweatshirt — สินค้าที่ 2 (กฎข้อ 30)
     let variantXS: string // t-shirt S — product X (ในขอบเขต)
     let variantXM: string // t-shirt M — product X
     let variantY: string // sweatshirt M — นอกขอบเขต
@@ -72,6 +73,7 @@ medusaIntegrationTestRunner({
           `${handle} ${title}`
         ).id
       productXId = must(byHandle["t-shirt"], "t-shirt").id
+      productYId = must(byHandle["sweatshirt"], "sweatshirt").id
       variantXS = variant("t-shirt", "S")
       variantXM = variant("t-shirt", "M")
       variantY = variant("sweatshirt", "M")
@@ -327,6 +329,47 @@ medusaIntegrationTestRunner({
         ).toEqual(401)
         expect((await join(group.join_token, "cart_x")).status).toEqual(401)
         expect((await leave("gbmem_x")).status).toEqual(401)
+      })
+    })
+
+    // GB-6e (กฎข้อ 30b–c, AC-49): ต้นแบบของแคมเปญ active ถูกแก้เป็น 2 สินค้า → สร้างกลุ่มใหม่ไม่ได้ กลุ่มเดิม join ได้
+    describe("single product scope after the template is edited (AC-49)", () => {
+      it("store POST /store/group-buy/groups and createGroupWorkflow → 400 code, no new GB- promotion; an existing group still joins 201", async () => {
+        const CODE = "GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED"
+        const campaign = await createCampaign({ group_mode: "both" })
+        const existing = await poolGroup(campaign.id)
+
+        const { data } = await getContainer()
+          .resolve(ContainerRegistrationKeys.QUERY)
+          .graph({
+            entity: "group_buy_campaign",
+            fields: ["promotion.application_method.target_rules.id"],
+            filters: { id: campaign.id },
+          })
+        const ruleId = must((data[0] as any)?.promotion?.application_method?.target_rules?.[0]?.id, "rule")
+        const promotions = getContainer().resolve(Modules.PROMOTION)
+        await promotions.updatePromotionRules([{ id: ruleId, values: [productXId, productYId] }])
+        const medusaCampaign = await medusaCampaignId(campaign.id)
+        const promotionCount = async () =>
+          (await promotions.listPromotions({}, { select: ["id", "campaign_id"] })).filter(
+            (p) => p.campaign_id === medusaCampaign
+          ).length
+        const before = await promotionCount()
+
+        const s = await shopper()
+        const res = await settle(api.post("/store/group-buy/groups", { campaign_id: campaign.id }, s.headers))
+        expect(res.status).toEqual(400)
+        expect(res.data.message).toContain(CODE)
+
+        const { errors } = await createGroupWorkflow(getContainer()).run({
+          input: { campaign_id: campaign.id, kind: "pool" },
+          throwOnError: false,
+        })
+        expect(errors[0]?.error).toEqual(expect.objectContaining({ type: "not_allowed", code: CODE }))
+        expect(await promotionCount()).toEqual(before)
+
+        const joined = await joinWithNewCart(existing.join_token, s)
+        expect(joined.status).toEqual(201)
       })
     })
 

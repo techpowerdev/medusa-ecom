@@ -12,6 +12,7 @@ import type GroupBuyModuleService from "../../modules/group_buy/service"
 import type { GroupBuyCampaignStatus } from "../../modules/group_buy/utils/campaign-status"
 import { assertGroupCreatable } from "../../modules/group_buy/utils/group-creation"
 import { computeGroupEndsAt } from "../../modules/group_buy/utils/group-deadline"
+import { assertSingleProductScope } from "../../modules/group_buy/utils/single-product"
 import {
   buildGroupPromotionInput,
   generateJoinToken,
@@ -102,6 +103,8 @@ export const prepareGroupBuyGroupStep = createStep(
         "The campaign has no template promotion with an application method"
       )
     }
+    // กฎข้อ 30b: ต้นแบบถูกแก้เป็นหลายสินค้า/ไม่มี scope ระหว่าง active → ไม่ clone (กลุ่มเดิมไม่กระทบ)
+    assertSingleProductScope(campaign.promotion.application_method.target_rules, MedusaError.Types.NOT_ALLOWED)
 
     const token = generateJoinToken()
     return new StepResponse({

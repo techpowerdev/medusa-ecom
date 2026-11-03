@@ -17,7 +17,13 @@ task ใหม่/ขยาย: CORE-26 (**ยอดรวม dropdown ตะก
 **owner ตอบคำถามรอบ 13 (2026-11-03) ตามข้อเสนอทั้งหมด**: spec 01 Q-C1 (1) = (ก) `item_total` ป้าย "ยอดรวมสินค้า (รวม VAT)", (2) = (ก) คงเปิดเองแต่ปิดเองใน 5 วินาที → CORE-26;
 Q-C2 = (ก) helper กลาง `{ ok } | { error }` → CORE-4i · ไม่มีคำถามค้าง
 **รอบ 14 (2026-11-03 — owner สั่ง)**: กันกดเพิ่มตะกร้าซ้ำบน PDP (qa/review #211) → CORE-27 (spec 01 กฎข้อ 83, AC-119; ← FS-19 #211) ·
-spec 01 (owner อนุมัติ, qa #222 D-1): JWT หายบนหน้า `/cart` แล้ว server action เห็นตะกร้าว่างแทน `SIGN_IN_AGAIN_MESSAGE` → CORE-14g (กฎข้อ 84, AC-120; ← CORE-4i-a #222) · ไม่มีคำถามค้าง
+spec 01 (owner อนุมัติ, qa #222 D-1): JWT หายบนหน้า `/cart` แล้ว server action เห็นตะกร้าว่างแทน `SIGN_IN_AGAIN_MESSAGE` → CORE-14g (กฎข้อ 84, AC-120; ← CORE-4i-a #222) ·
+spec 04 (builder GB-7 พบ route สาธารณะที่ spec ระบุแต่ไม่มี task): GB-11 (backend, กฎข้อ 28, AC-45..46) + แยก GB-7 → GB-7a1 (← GB-11) → GB-7a2 ∥ GB-7c / GB-7b (◐ #223) ·
+**owner ตอบ spec 04 Q15–Q19 (2026-11-03)**: Q15 แสดงทุกแคมเปญบนหน้าแรก (→ GB-7c), Q16 join ด้วย cart ใหม่เฉพาะสินค้าที่เลือก (กฎข้อ 14c แทนที่),
+Q17 = (ก) (กฎข้อ 29f ปรับถ้อยคำตาม Q16), Q18 = (ก), Q19 (review #224) เลือกที่อยู่ + วิธีส่งบนหน้ากลุ่มก่อน join (→ GB-7a2) · ไม่มีคำถามค้าง
+**รอบ 15 (2026-11-03 — owner ตัดสิน: group buy 1 แคมเปญ = 1 สินค้า)**: หน้ากลุ่ม = ตะกร้าเฉพาะสินค้านั้น เลือกหลาย variant + จำนวน → spec 04 กฎข้อ 30–31, AC-49..50,
+GB-6e (admin picker สินค้าเดียว + backend validation) ∥ GB-11 (`product_id`) ∥ GB-7a2a (error map) → GB-7a1 → GB-7a2 (หลาย variant) ∥ GB-7c (การ์ดสินค้าเดียว) ·
+**owner ตอบ spec 04 Q20 (2026-11-03) = ตามค่าตั้งต้นทั้งหมด**: ไม่จำรายการข้ามหน้า, หลัง join แก้ไม่ได้ (leave แล้ว join ใหม่), `max_units_per_person` รวมทุก variant, คงเป้า orders/units/people (กฎข้อ 31d) · ไม่มีคำถามค้าง
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -125,7 +131,12 @@ FS-18 ☐ **เริ่มได้** (รอบ 12: `revalidate` ให้ fet
 GB-1 ☑ #17 · ADR-011 ☑ #33 · GB-2a ☑ #42 → GB-2b ☑ #49 → GB-2c ☑ #58 ·
 GB-3 ☑ #68 → (GB-3b ☑ #95 ∥ GB-3c ☑ #100 ∥ GB-4 ☑ #89) →
 (รอบ 10) PAY-3a ☑ #157 ∥ GB-8 ☑ #145 →
-GB-5 ☑ #185 (+ ops alert/runbook เงินค้าง) ∥ PAY-3b1 ☑ #189 → PAY-3b2 ◐ #203 → GB-7 ☐ (← PAY-3b2; AF-16 ☑ #197; GB-5 ☑, GB-8 ☑, GB-3b ☑; รอบ 12: sync cookie `aff` ก่อน join) ;
+GB-5 ☑ #185 (+ ops alert/runbook เงินค้าง) ∥ PAY-3b1 ☑ #189 → PAY-3b2 ☑ #203 → GB-7 (รอบ 14 แยก: **GB-7b ◐ #223** หน้า account จาก GB-8 + ออกจากกลุ่ม + ลิงก์ชำระเงิน; AC-2 e2e, AC-16b ∥
+**GB-11 ☐ เริ่มได้** route สาธารณะ `GET /store/group-buy/campaigns/active` + `GET /store/group-buy/groups/:token` ไม่คืน PII; AC-45..46 → **GB-7a1 ☐** หน้ากลุ่ม `/<cc>/g/<token>` อ่านอย่างเดียว; AC-16a →
+(**GB-7a2 ☐** เลือกที่อยู่ + วิธีส่ง (Q19) + join ด้วย cart ใหม่ (ไม่แตะ cart ปัจจุบัน), sync `aff`, ข้อความ error ต่อ code; AC-28, AC-47 ∥
+**GB-7c ☐** แคมเปญ flash + group buy บนหน้าแรก + สร้างทีม; rebase กับ #216 FS-18; AC-48)) ;
+(รอบ 15 — 1 แคมเปญ = 1 สินค้า) **GB-6e ☐ เริ่มได้** (picker สินค้าเดียว + validation + แก้ seed-load/e2e/unit เดิมที่ใช้หลายสินค้า/variant scope (review #227); AC-49..50; ชน `product-picker.tsx` กับ ADM-7) ∥ **GB-7a2a ☐ เริ่มได้** (error map; ← none) →
+GB-7a2 ใช้หลาย variant (← GB-7a1, GB-7a2a, GB-6e); GB-7c การ์ดแสดงสินค้าเดียว; Q20 ตัดสินแล้ว (owner 2026-11-03, กฎข้อ 31d) ;
 (รอบ 12) GB-9 ◐ #196 (alert เงินค้างอ่านสถานะใหม่ + runbook ตรวจ draft ก่อน refund; AC-43) → GB-10 ☐ (← #196 — รอบ 13 รวม follow-up ของ #196 (เกิน ~400 LOC → แยก GB-10b): subscriber fail-open, `loadMembership` ที่เดียว,
 test `membership_joined`, ขอบหัวข้อ runbook; membership `paid` เมื่อ ops แปลง draft เอง + noop ใต้ lock ในเส้นทางปกติ; AC-44) — ควรก่อน release v0.5.0;
 owner Q13 = (ก) manual, Q14 = (ก) `order-placed` (2026-10-28) ;
@@ -230,7 +241,11 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   spec 02: #201 + #205 (ต้นเหตุจุดซ้อนที่ backend) → EV-N3 · spec 03: #190 (`mobile-cart-button`) + #199 (แถบจาง 300ms) → FS-19 · #190 (`afterAll` ของ fs16) → FS-18 ·
   spec 04: #196 → รวมเข้า GB-10 (+ แก้ถ้อยคำกฎข้อ 25c) · spec 05: #197 (`??` กับ `""`) → AF-17 · spec 07: #194 JWT ใน `flash-sale.json` → OPS-17a (← #204, ความปลอดภัย), O(n²) → รวมเข้า OPS-17 ·
   spec 08: #195 (URL ของ partner ฝั่งฟอร์ม) → ADM-5 · #187 (nit `affiliate-names`) → ADM-8a
-- รอบ 14 (2026-11-03, owner สั่ง) → spec 01: qa #211 (คลิกซ้อนใน tick เดียวได้ quantity 2) + review #211 (`mobile-cart-button` disable ไม่ครบ) → CORE-27 (กฎข้อ 83, AC-119) · qa #222 D-1 (cookie cart ถูกล้างใน request ของ server action) → CORE-14g (กฎข้อ 84, AC-120; owner เรียก CORE-14d แต่เลขซ้ำกับ ☑ #128)
+- รอบ 14 (2026-11-03, owner สั่ง) → spec 01: qa #211 (คลิกซ้อนใน tick เดียวได้ quantity 2) + review #211 (`mobile-cart-button` disable ไม่ครบ) → CORE-27 (กฎข้อ 83, AC-119) · qa #222 D-1 (cookie cart ถูกล้างใน request ของ server action) → CORE-14g (กฎข้อ 84, AC-120; owner เรียก CORE-14d แต่เลขซ้ำกับ ☑ #128) ·
+  spec 04: builder GB-7 (route สาธารณะใน "API" ไม่มีใน backend และไม่มี task) → GB-11 (กฎข้อ 28, AC-45..46) + GB-7 แยก GB-7a1/GB-7a2/GB-7b/GB-7c (กฎข้อ 29, AC-16a/16b, AC-28 แทนที่, AC-47..48) + Q15–Q19 (owner ตอบแล้ว; Q19 จาก blocker review #224)
+- รอบ 15 (2026-11-03, owner ตัดสิน) → spec 04: 1 แคมเปญ = 1 สินค้า + หน้ากลุ่มเลือกหลาย variant → กฎข้อ 30–31, GB-6e, GB-7a2a, ปรับ GB-11/GB-7a1/GB-7a2/GB-7c, AC-28/33/45/46/48, AC-49..50, Q20 ·
+  spec 08: ADM-7 หมายเหตุ picker single select (ชน GB-6e) · review #227 → GB-6e รวมโค้ด/test เดิมที่พัง (~320 LOC), กฎ 30 ห้าม variant scope + ข้อยอมรับ promotion ของกลุ่ม, AC-33 ขีดฆ่า ·
+  รอบ 15b: owner ตอบ Q20 = ค่าตั้งต้นทั้งหมด (กฎข้อ 31d) + nit re-review #227 (test id ของหน้ากลุ่ม/การ์ดในหัวข้อ Storefront)
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →

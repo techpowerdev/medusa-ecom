@@ -1,4 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
+import { useDate } from "@medusajs/dashboard/hooks"
 import { Users } from "@medusajs/icons"
 import {
   Badge,
@@ -11,57 +12,64 @@ import {
   useDataTable,
 } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
 import {
   Campaign,
   CAMPAIGN_STATUS_COLOR,
-  formatDateTime,
   groupBuyApi,
   groupBuyKeys,
 } from "../../lib/group-buy"
 
 const columnHelper = createDataTableColumnHelper<Campaign>()
 
-const columns = [
-  columnHelper.accessor("name", { header: "Campaign" }),
-  columnHelper.accessor("status", {
-    header: "Status",
-    cell: ({ getValue }) => (
-      <Badge size="2xsmall" color={CAMPAIGN_STATUS_COLOR[getValue()]}>
-        {getValue()}
-      </Badge>
-    ),
-  }),
-  columnHelper.accessor((row) => `${row.target_value} ${row.target_type}`, {
-    id: "target",
-    header: "Target",
-  }),
-  columnHelper.accessor("group_mode", { header: "Mode" }),
-  columnHelper.accessor((row) => formatDateTime(row.campaign?.ends_at), {
-    id: "ends_at",
-    header: "Ends (ICT)",
-  }),
-  // แก้ส่วนลด/scope ที่หน้า promotion ของ Medusa (ADR-011)
-  columnHelper.accessor("template_promotion_id", {
-    header: "Template promotion",
-    cell: ({ getValue, row }) =>
-      getValue() ? (
-        <Link to={`/promotions/${getValue()}`} onClick={(e) => e.stopPropagation()}>
-          <Text size="small" className="text-ui-fg-interactive">
-            {row.original.promotion?.code ?? "Open"}
-          </Text>
-        </Link>
-      ) : (
-        "-"
+// วันเวลาแสดงด้วย useDate ของ Medusa (timezone ของเครื่องแอดมิน — spec 08 กฎ 5)
+const useColumns = () => {
+  const { getFullDate } = useDate()
+  return useMemo(
+    () => [
+      columnHelper.accessor("name", { header: "Campaign" }),
+      columnHelper.accessor("status", {
+        header: "Status",
+        cell: ({ getValue }) => (
+          <Badge size="2xsmall" color={CAMPAIGN_STATUS_COLOR[getValue()]}>
+            {getValue()}
+          </Badge>
+        ),
+      }),
+      columnHelper.accessor((row) => `${row.target_value} ${row.target_type}`, {
+        id: "target",
+        header: "Target",
+      }),
+      columnHelper.accessor("group_mode", { header: "Mode" }),
+      columnHelper.accessor(
+        (row) => (row.campaign?.ends_at ? getFullDate({ date: row.campaign.ends_at, includeTime: true }) : "-"),
+        { id: "ends_at", header: "Ends (ICT)" }
       ),
-  }),
-]
+      // แก้ส่วนลด/scope ที่หน้า promotion ของ Medusa (ADR-011)
+      columnHelper.accessor("template_promotion_id", {
+        header: "Template promotion",
+        cell: ({ getValue, row }) =>
+          getValue() ? (
+            <Link to={`/promotions/${getValue()}`} onClick={(e) => e.stopPropagation()}>
+              <Text size="small" className="text-ui-fg-interactive">
+                {row.original.promotion?.code ?? "Open"}
+              </Text>
+            </Link>
+          ) : (
+            "-"
+          ),
+      }),
+    ],
+    [getFullDate]
+  )
+}
 
 // GB-6a: หน้า "Group buying" — รายการแคมเปญ + สร้างแคมเปญ
 const GroupBuyingPage = () => {
   const navigate = useNavigate()
+  const columns = useColumns()
   const [pagination, setPagination] = useState<DataTablePaginationState>({
     pageIndex: 0,
     pageSize: 20,

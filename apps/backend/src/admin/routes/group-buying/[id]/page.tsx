@@ -1,11 +1,13 @@
+import { useDate } from "@medusajs/dashboard/hooks"
 import { Badge, Button, Container, Heading, Text, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { FetchError } from "@medusajs/js-sdk"
-import { useRef } from "react"
+import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { GroupsSection } from "../../../components/group-buy/groups-section"
 import { campaignActions } from "../../../lib/group-buy-campaign"
-import { CAMPAIGN_STATUS_COLOR, formatDateTime, groupBuyApi, groupBuyKeys } from "../../../lib/group-buy"
+import { CAMPAIGN_STATUS_COLOR, groupBuyApi, groupBuyKeys } from "../../../lib/group-buy"
+import { createSingleFlight } from "../../../lib/single-flight"
 
 type Action = "activate" | "end" | "remove"
 
@@ -33,6 +35,7 @@ const GroupBuyCampaignPage = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const prompt = usePrompt()
+  const { getFullDate } = useDate()
 
   const { data, isLoading, error } = useQuery({
     queryKey: groupBuyKeys.campaign(id),
@@ -41,8 +44,8 @@ const GroupBuyCampaignPage = () => {
     retry: (count, e) => (e as FetchError).status !== 404 && count < 2,
   })
 
-  // กันกดซ้ำ (กฎข้อ 17): ref ตั้งทันทีก่อน await — สองคลิกใน task เดียวไม่ยิงซ้ำ
-  const inFlight = useRef(false)
+  // กันกดซ้ำ (กฎข้อ 17 / spec 08 กฎ 4): guard ตั้งทันทีก่อน await — สองคลิกใน task เดียวไม่ยิงซ้ำ
+  const [actionOnce] = useState(createSingleFlight)
   const run = useMutation({
     mutationFn: (action: Action) =>
       action === "remove"
@@ -64,22 +67,14 @@ const GroupBuyCampaignPage = () => {
       }
     },
     onError: (e: Error) => toast.error(e.message),
-    onSettled: () => {
-      inFlight.current = false
-    },
   })
 
-  const onAction = async (action: Action) => {
-    if (inFlight.current) {
-      return
-    }
-    inFlight.current = true
-    if (!(await prompt({ ...PROMPTS[action], cancelText: "Cancel" }))) {
-      inFlight.current = false
-      return
-    }
-    run.mutate(action)
-  }
+  const onAction = (action: Action) =>
+    actionOnce(async () => {
+      if (await prompt({ ...PROMPTS[action], cancelText: "Cancel" })) {
+        await run.mutateAsync(action).catch(() => undefined)
+      }
+    })
 
   if (error) {
     const notFound = (error as FetchError).status === 404
@@ -117,11 +112,12 @@ const GroupBuyCampaignPage = () => {
     { action: "end", testId: "gb-campaign-end", label: "End campaign" },
     { action: "remove", testId: "gb-campaign-delete", label: "Delete", danger: true },
   ]
-  const fields: [string, string][] = [
-    ["Target", `${campaign.target_value} ${campaign.target_type}`],
-    ["Group mode", campaign.group_mode],
-    ["Starts (ICT)", formatDateTime(campaign.campaign?.starts_at)],
-    ["Ends (ICT)", formatDateTime(campaign.campaign?.ends_at)],
+  const fullDate = (value: string | null | undefined) => (value ? getFullDate({ date: value, includeTime: true }) : "-")
+  const fields: [string, string, string][] = [
+    ["target", "Target", `${campaign.target_value} ${campaign.target_type}`],
+    ["group_mode", "Group mode", campaign.group_mode],
+    ["starts_at", "Starts (ICT)", fullDate(campaign.campaign?.starts_at)],
+    ["ends_at", "Ends (ICT)", fullDate(campaign.campaign?.ends_at)],
   ]
 
   return (
@@ -151,8 +147,8 @@ const GroupBuyCampaignPage = () => {
               ))}
           </div>
         </div>
-        {fields.map(([label, value]) => (
-          <div key={label} className="grid grid-cols-2 px-6 py-4">
+        {fields.map(([key, label, value]) => (
+          <div key={key} className="grid grid-cols-2 px-6 py-4" data-testid={`gb-campaign-row-${key}`}>
             <Text size="small" leading="compact" weight="plus">
               {label}
             </Text>

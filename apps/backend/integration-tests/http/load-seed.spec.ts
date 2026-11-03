@@ -76,10 +76,26 @@ medusaIntegrationTestRunner({
       ])
       const { data: campaigns } = await query().graph({
         entity: "group_buy_campaign",
-        fields: ["status", "max_people_per_group"],
+        fields: [
+          "status",
+          "max_people_per_group",
+          "promotion.application_method.target_rules.attribute",
+          "promotion.application_method.target_rules.operator",
+          "promotion.application_method.target_rules.values.value",
+        ],
         filters: { id: groups[0].campaign_id },
       })
       expect(campaigns).toEqual([expect.objectContaining({ status: "active", max_people_per_group: 2 })])
+      // spec 04 กฎข้อ 30 (GB-6e): scope ของต้นแบบ = items.product.id ของสินค้าที่ variant ของ load อยู่ (ไม่ใช่ระดับ variant)
+      const { data: variants } = await query().graph({
+        entity: "product_variant",
+        fields: ["product_id"],
+        filters: { id: data.group_buy.variant_id },
+      })
+      const rules = (campaigns[0] as any).promotion.application_method.target_rules
+      expect(
+        rules.map((r: any) => ({ attribute: r.attribute, operator: r.operator, values: r.values.map((v: any) => v.value) }))
+      ).toEqual([{ attribute: "items.product.id", operator: "in", values: [variants[0].product_id] }])
       expect(data.group_buy.variant_id).toMatch(/^variant_/)
       expect(data.group_buy.variant_id).not.toEqual(data.flash.variant_id)
     })

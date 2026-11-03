@@ -149,10 +149,14 @@ export default function ProductActions({
 
   const inView = useIntersection(actionsRef, "0px")
 
+  // CORE-27 (กฎข้อ 83): กันยิงซ้อนแบบ synchronous — `isAdding` เป็น state จึงยังไม่อัปเดตในคลิกที่สองของ tick เดียว
+  const addInFlight = useRef(false)
+
   // add the selected variant to the cart
   const handleAddToCart = async () => {
-    if (!selectedVariant?.id) return null
+    if (!selectedVariant?.id || addInFlight.current) return null
 
+    addInFlight.current = true
     setIsAdding(true)
     setAddError(null)
 
@@ -166,6 +170,7 @@ export default function ProductActions({
     } catch (error) {
       setAddError(friendlyErrorMessage(error, ADD_TO_CART_FAILED))
     } finally {
+      addInFlight.current = false
       setIsAdding(false)
     }
   }
@@ -303,6 +308,7 @@ export default function ProductActions({
           options={options}
           updateOptions={setOptionValue}
           inStock={canBuy}
+          isValidVariant={!!isValidVariant}
           qtyExceeded={flashRemaining != null}
           flashOffer={flash.offer}
           flashLoading={flash.loading}

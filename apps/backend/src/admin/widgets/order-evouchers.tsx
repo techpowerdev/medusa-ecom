@@ -1,24 +1,27 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
+import { useDate } from "@medusajs/dashboard/hooks"
 import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
 import { Badge, Table, Text, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useRef } from "react"
+import { useState } from "react"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
-import { evoucherApi, evoucherKeys, formatDate, STATUS_COLOR } from "../lib/evoucher"
+import { evoucherApi, evoucherKeys, STATUS_COLOR } from "../lib/evoucher"
 import { canResendEvouchers, resendErrorMessage } from "../lib/evoucher-resend"
+import { createSingleFlight } from "../lib/single-flight"
 
 // EV-6: ส่วน "E-vouchers" บนหน้า order — code ของ order แบบ masked
 // (Medusa admin ไม่มี tab บนหน้า order จึงใช้ widget) + ปุ่มส่งอีเมลซ้ำ (EV-5b)
 const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.AdminOrder>) => {
   const queryClient = useQueryClient()
+  const { getFullDate } = useDate()
   const { data, isLoading, isError, error } = useQuery({
     queryKey: evoucherKeys.orderCodes(order.id),
     queryFn: () => evoucherApi.listOrderCodes(order.id),
   })
 
-  // กันกดซ้ำ (กฎข้อ 11): ref กันคลิกซ้อนใน tick เดียวก่อน isPending เป็น true; backend มี lock ต่อ order อีกชั้น
-  const inFlight = useRef(false)
+  // กันกดซ้ำ (กฎข้อ 11 / spec 08 กฎ 4): กันคลิกซ้อนใน tick เดียวก่อน isPending เป็น true; backend มี lock ต่อ order อีกชั้น
+  const [resendOnce] = useState(createSingleFlight)
   const resend = useMutation({
     mutationFn: () => evoucherApi.resendOrderEmail(order.id),
     onSuccess: ({ code_count }) => {
@@ -28,17 +31,8 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
     onError: (err: Error) => {
       toast.error(resendErrorMessage(err))
     },
-    onSettled: () => {
-      inFlight.current = false
-    },
   })
-  const onResend = () => {
-    if (inFlight.current) {
-      return
-    }
-    inFlight.current = true
-    resend.mutate()
-  }
+  const onResend = () => resendOnce(() => resend.mutateAsync().catch(() => undefined))
 
   // order ที่ไม่มี voucher ไม่ต้องแสดงอะไร (แต่ API ล้มต้องแสดง error ไม่ใช่ซ่อนเงียบ)
   if (!isLoading && !isError && !data?.codes.length) {
@@ -99,7 +93,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
                     </Badge>
                   </Table.Cell>
                   <Table.Cell>{code.delivered_to_email ?? "-"}</Table.Cell>
-                  <Table.Cell>{formatDate(code.expires_at)}</Table.Cell>
+                  <Table.Cell>{code.expires_at ? getFullDate({ date: code.expires_at }) : "-"}</Table.Cell>
                 </Table.Row>
               ))}
             </Table.Body>

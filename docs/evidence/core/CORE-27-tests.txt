@@ -1,0 +1,80 @@
+# CORE-27 — ผล test (spec 01 กฎข้อ 83, AC-119; qa/review #211), Node v24.12.0, รันในเครื่อง 2026-11-03
+สภาพแวดล้อม: backend `medusa start` (build) :9138 + storefront prod build (`next build && next start` :8138), DB medusa_core27 (migrate + seed), Redis db 12
+
+## Red (ก่อนแก้ — product-actions/index.tsx + mobile-actions.tsx ของ origin/develop ac69573)
+## $ vitest run src/core-27-add-to-cart-guard.test.ts
+     × คลิก add-product-button สองครั้งใน act() เดียว → addToCart 1 ครั้ง 196ms
+     × คลิก mobile-cart-button สองครั้งใน act() เดียว → addToCart 1 ครั้ง 6ms
+     × คลิกปุ่มหลัก + ปุ่มมือถือสลับกันใน act() เดียว → addToCart 1 ครั้ง 5ms
+     × request แรก resolve แล้วคลิกอีกครั้ง → เรียกครั้งที่ 2 5ms
+     × request แรก reject → ปลด guard แล้วคลิกอีกครั้งได้ 4ms
+     × prop disabled → mobile-cart-button มี attribute disabled 4ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+AssertionError: expected "vi.fn()" to be called 1 times, but got 3 times
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+AssertionError: expected false to be true // Object.is equality
+      Tests  6 failed | 2 passed (8)
+หมายเหตุ: 2 กรณีที่ผ่านบนโค้ดเดิม — 'ระหว่าง request ค้าง disabled' (Button ของ @medusajs/ui disable เมื่อ isLoading) และ
+'option ไม่มี variant' (โค้ดเดิมมี !variant ซึ่งตรงกับ !isValidVariant ในกรณีนี้) เก็บไว้เป็น regression guard ของกฎข้อ 83c
+
+## $ playwright test e2e/core-27-add-to-cart-guard.spec.ts --project=chromium (storefront build ของโค้ดเดิม)
+  ✘  1 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › desktop 1280px › AC-119: click() add-product-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (6.4s)
+  ✘  2 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › มือถือ 375×812 › AC-119: click() mobile-cart-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (9.1s)
+    Error: จำนวน server action addToCart
+    Expected length: 1
+    Received length: 2
+    Received array:  ["40f7c0d70bd0ea9bb4ea8294350ff329e39626c493", "40f7c0d70bd0ea9bb4ea8294350ff329e39626c493"]
+    Error: จำนวน server action addToCart
+    Expected length: 1
+    Received length: 2
+    Received array:  ["40f7c0d70bd0ea9bb4ea8294350ff329e39626c493", "40f7c0d70bd0ea9bb4ea8294350ff329e39626c493"]
+  2 failed
+
+## Green (หลังแก้)
+## $ vitest run src/core-27-add-to-cart-guard.test.ts --reporter=verbose
+ ✓ src/core-27-add-to-cart-guard.test.ts > CORE-27: กันกดเพิ่มลงตะกร้าซ้อนบน PDP (กฎข้อ 83, AC-119) > คลิก add-product-button สองครั้งใน act() เดียว → addToCart 1 ครั้ง 153ms
+ ✓ src/core-27-add-to-cart-guard.test.ts > CORE-27: กันกดเพิ่มลงตะกร้าซ้อนบน PDP (กฎข้อ 83, AC-119) > คลิก mobile-cart-button สองครั้งใน act() เดียว → addToCart 1 ครั้ง 6ms
+ ✓ src/core-27-add-to-cart-guard.test.ts > CORE-27: กันกดเพิ่มลงตะกร้าซ้อนบน PDP (กฎข้อ 83, AC-119) > คลิกปุ่มหลัก + ปุ่มมือถือสลับกันใน act() เดียว → addToCart 1 ครั้ง 5ms
+ ✓ src/core-27-add-to-cart-guard.test.ts > CORE-27: กันกดเพิ่มลงตะกร้าซ้อนบน PDP (กฎข้อ 83, AC-119) > request แรก resolve แล้วคลิกอีกครั้ง → เรียกครั้งที่ 2 6ms
+ ✓ src/core-27-add-to-cart-guard.test.ts > CORE-27: กันกดเพิ่มลงตะกร้าซ้อนบน PDP (กฎข้อ 83, AC-119) > request แรก reject → ปลด guard แล้วคลิกอีกครั้งได้ 5ms
+ ✓ src/core-27-add-to-cart-guard.test.ts > CORE-27: กันกดเพิ่มลงตะกร้าซ้อนบน PDP (กฎข้อ 83, AC-119) > ระหว่าง request ค้าง mobile-cart-button disabled (isAdding) 3ms
+ ✓ src/core-27-add-to-cart-guard.test.ts > CORE-27: กันกดเพิ่มลงตะกร้าซ้อนบน PDP (กฎข้อ 83, AC-119) > prop disabled → mobile-cart-button มี attribute disabled 2ms
+ ✓ src/core-27-add-to-cart-guard.test.ts > CORE-27: กันกดเพิ่มลงตะกร้าซ้อนบน PDP (กฎข้อ 83, AC-119) > เลือก option ที่ไม่มี variant (ไม่ valid) → mobile-cart-button มี attribute disabled 4ms
+      Tests  8 passed (8)
+
+## $ pnpm --filter storefront test:unit
+ Test Files  55 passed (55)
+      Tests  606 passed (606)
+
+## $ playwright test e2e/core-27-add-to-cart-guard.spec.ts --project=chromium --repeat-each=5
+  ✓   1 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › desktop 1280px › AC-119: click() add-product-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (8.4s)
+  ✓   4 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › desktop 1280px › AC-119: click() add-product-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (8.5s)
+  ✓   3 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › desktop 1280px › AC-119: click() add-product-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (10.3s)
+  ✓   2 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › desktop 1280px › AC-119: click() add-product-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (13.6s)
+  ✓   5 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › มือถือ 375×812 › AC-119: click() mobile-cart-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (6.8s)
+  ✓   6 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › มือถือ 375×812 › AC-119: click() mobile-cart-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (7.4s)
+  ✓   7 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › มือถือ 375×812 › AC-119: click() mobile-cart-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (7.4s)
+  ✓   8 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › มือถือ 375×812 › AC-119: click() mobile-cart-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (6.9s)
+  ✓   9 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › desktop 1280px › AC-119: click() add-product-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (7.0s)
+  ✓  10 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › มือถือ 375×812 › AC-119: click() mobile-cart-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (7.2s)
+  10 passed (30.6s)
+
+## $ playwright test core-24-pdp-quantity core-25-pdp-option-reset flash-sale-fs19 --project=chromium --workers=1 (regression ของ PDP)
+  ✓  1 [chromium] › e2e/core-24-pdp-quantity.spec.ts:32:5 › AC-94: (JS) เลือก 3 ใน product-quantity-select แล้วกดเพิ่มลง cart → cart มี line qty 3 (3.2s)
+  ✓  2 [chromium] › e2e/core-24-pdp-quantity.spec.ts:69:7 › ปิด JavaScript › AC-94: (no-JS, ไม่ล็อกอิน) เลือก 2 แล้ว submit และ login → cart มี qty 2 (3.4s)
+  ✓  3 [chromium] › e2e/core-24-pdp-quantity.spec.ts:100:5 › qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-cart-error ภาษาไทย ปุ่มและตัวเลือกจำนวนใช้ต่อได้ (1.3s)
+  ✓  4 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:47:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (9.7s)
+  ✓  5 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (539ms)
+  ✓  6 [chromium] › e2e/flash-sale-fs19.spec.ts:137:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (3.7s)
+  ✓  7 [chromium] › e2e/flash-sale-fs19.spec.ts:179:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (2.2s)
+  ✓  8 [chromium] › e2e/flash-sale-fs19.spec.ts:202:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (2.4s)
+  8 passed (27.7s)
+
+## $ pnpm --filter storefront test:e2e:unit
+  37 passed
+
+## $ pnpm lint && pnpm typecheck
+ผ่าน (exit 0)

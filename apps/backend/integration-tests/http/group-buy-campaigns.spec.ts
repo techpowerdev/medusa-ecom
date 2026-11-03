@@ -49,6 +49,7 @@ medusaIntegrationTestRunner({
     let headers: { headers: Record<string, string> }
     let regionId: string
     let productXId: string
+    let productYId: string // sweatshirt (สินค้าที่ 2 — กฎข้อ 30)
     let variantXId: string // t-shirt S (product X — อยู่ใน scope)
     let variantYId: string // sweatshirt M (นอก scope)
 
@@ -72,6 +73,7 @@ medusaIntegrationTestRunner({
           `${handle} ${title}`
         ).id
       productXId = must(byHandle["t-shirt"], "t-shirt").id
+      productYId = must(byHandle["sweatshirt"], "sweatshirt").id
       variantXId = variant("t-shirt", "S")
       variantYId = variant("sweatshirt", "M")
     })
@@ -480,6 +482,86 @@ medusaIntegrationTestRunner({
             target_value: 3,
           })
         )
+      })
+    })
+
+    // GB-6e (spec 04 กฎข้อ 30a–b, AC-49): 1 แคมเปญ = 1 สินค้า
+    describe("single product scope (AC-49)", () => {
+      const CODE = "GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED"
+      const promotionModule = () => getContainer().resolve(Modules.PROMOTION)
+      const counts = async () => ({
+        campaigns: (await promotionModule().listCampaigns({}, { select: ["id"] })).length,
+        promotions: (await promotionModule().listPromotions({}, { select: ["id"] })).length,
+        groupBuyCampaigns: (
+          await getContainer().resolve<GroupBuyModuleService>(GROUP_BUY_MODULE).listGroupBuyCampaigns({})
+        ).length,
+      })
+      const scope = (target_rules: unknown[]) =>
+        ({
+          type: "percentage",
+          target_type: "items",
+          allocation: "each",
+          max_quantity: 10,
+          value: 30,
+          target_rules,
+        }) as CreateGroupBuyCampaignInput["application_method"]
+
+      // route นี้ตอบ 200 ตั้งแต่ GB-2a (AC-49 เขียน 201 — คงพฤติกรรมเดิม ดูหมายเหตุใน PR)
+      it("POST with one product → 200", async () => {
+        const response = await api
+          .post("/admin/group-buy/campaigns", campaignInput(), headers)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(200)
+      })
+
+      it.each([
+        ["two products", () => [{ attribute: "items.product.id", operator: "in", values: [productXId, productYId] }]],
+        ["values: []", () => [{ attribute: "items.product.id", operator: "in", values: [] }]],
+        ["no items.product.id rule", () => []],
+        ["a variant-level scope", () => [{ attribute: "items.variant_id", operator: "in", values: [variantXId] }]],
+      ])("POST with %s → 400 invalid_data with the code; no Medusa campaign/promotion is created", async (_, rules) => {
+        const before = await counts()
+        const response = await api
+          .post("/admin/group-buy/campaigns", campaignInput({ application_method: scope(rules()) }), headers)
+          .catch((e) => e.response)
+
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(response.data.message).toContain(CODE)
+        expect(await counts()).toEqual(before)
+      })
+
+      it("createGroupBuyCampaignWorkflow called directly with two products → same code; nothing is created", async () => {
+        const before = await counts()
+        const { errors } = await createGroupBuyCampaignWorkflow(getContainer()).run({
+          input: campaignInput({
+            application_method: scope([
+              { attribute: "items.product.id", operator: "in", values: [productXId, productYId] },
+            ]),
+          }),
+          throwOnError: false,
+        })
+
+        expect(errors.length).toBeGreaterThan(0)
+        expect(errors[0].action).toEqual("validate-group-buy-single-product-scope")
+        expect(errors[0].error).toEqual(expect.objectContaining({ type: "invalid_data", code: CODE }))
+        expect(await counts()).toEqual(before)
+      })
+
+      it("draft whose template was edited to two products via the Promotion module → activate 400, still draft", async () => {
+        const created = await createViaApi()
+        const [template] = await promotionModule().listPromotions(
+          { id: created.template_promotion_id },
+          { relations: ["application_method.target_rules"] }
+        )
+        const rule = must(template.application_method?.target_rules?.[0], "template target rule")
+        await promotionModule().updatePromotionRules([{ id: rule.id, values: [productXId, productYId] }])
+
+        const response = await setStatus(created.id, "active")
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("not_allowed")
+        expect(response.data.message).toContain(CODE)
+        expect((await graphCampaign(created.id)).status).toEqual("draft")
       })
     })
   },

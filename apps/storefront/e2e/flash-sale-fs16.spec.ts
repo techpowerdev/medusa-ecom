@@ -1,6 +1,8 @@
 import { APIResponse, Page, Route } from "@playwright/test"
 
+import { deleteAllThenExpectOk, expectNoneLeft } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { gate, sleep } from "./support/gate"
 import {
   STOREFRONT_COUNTRY as CC,
   Headers,
@@ -12,7 +14,8 @@ import {
 
 // FS-16 (spec 03 กฎข้อ 21, AC-23): (a) ปุ่มเพิ่มลงตะกร้ารอ (disabled + aria-busy) จนข้อมูล flash ตอบ — error แล้วกลับมากดได้
 // (b) product-price ขีดฆ่าเมื่อ variant มีราคา flash (c) การ์ดบน collection ของสินค้าที่แคมเปญ sold out มีป้าย flash-card-sold-out
-// สร้างสินค้า/collection/แคมเปญเฉพาะของ test นี้ (target rule เฉพาะสินค้านี้) และปิดแคมเปญเมื่อจบ — หา element ด้วย data-testid (ADR-014)
+// สร้างสินค้า/collection/แคมเปญเฉพาะของ test นี้ (target rule เฉพาะสินค้านี้) — หา element ด้วย data-testid (ADR-014)
+// FS-18 (กฎข้อ 23b, qa #190): afterAll ลบโปรโมชัน แคมเปญ สินค้า collection แล้วยืนยันว่าไม่เหลือ (ชื่อ collection ค้างใน footer ดันหน้า 375px)
 test.use({ evidenceTarget: { feature: "flash-sale", taskId: "FS-16" } })
 test.describe.configure({ mode: "serial" })
 
@@ -27,6 +30,11 @@ const ok = async (res: APIResponse, what: string): Promise<any> => {
 
 let admin: Headers
 let pk: string
+let run: string
+let productId: string
+let collectionId: string
+let promotionId: string
+let orderId: string
 let handle: string
 let collectionHandle: string
 let variantId: string
@@ -52,7 +60,7 @@ test.beforeAll(async ({ request }) => {
   const get = async (path: string) => ok(await request.get(`${BACKEND_URL}${path}`, { headers: admin }), path)
   const post = async (path: string, data: object) =>
     ok(await request.post(`${BACKEND_URL}${path}`, { headers: admin, data }), path)
-  const run = `${Date.now()}`
+  run = `${Date.now()}`
 
   const { sales_channels } = await get("/admin/sales-channels?limit=1")
   const { shipping_profiles } = await get("/admin/shipping-profiles?type=default")
@@ -60,6 +68,7 @@ test.beforeAll(async ({ request }) => {
 
   collectionHandle = `e2e-fs16-${run}`
   const { collection } = await post("/admin/collections", { title: `FS-16 ${run}`, handle: collectionHandle })
+  collectionId = collection.id
 
   handle = `e2e-fs16-${run}`
   const { product } = await post("/admin/products?fields=id,*variants,*variants.inventory_items", {
@@ -80,6 +89,7 @@ test.beforeAll(async ({ request }) => {
       },
     ],
   })
+  productId = product.id
   variantId = product.variants[0].id
   await post(
     `/admin/inventory-items/${product.variants[0].inventory_items[0].inventory_item_id}/location-levels`,
@@ -94,7 +104,7 @@ test.beforeAll(async ({ request }) => {
   })
   campaignId = campaign.id
   // automatic −20% (Promotion module ของ Medusa คำนวณ ฿800); FS-5 ใส่ exclusivity rule ให้ตอนบันทึก config
-  await post("/admin/promotions", {
+  const { promotion } = await post("/admin/promotions", {
     code: `FS16-FLASH-${run}`,
     type: "standard",
     status: "active",
@@ -108,6 +118,7 @@ test.beforeAll(async ({ request }) => {
       target_rules: [{ attribute: "items.product.id", operator: "in", values: [product.id] }],
     },
   })
+  promotionId = promotion.id
   await ok(
     await request.post(`${BACKEND_URL}/admin/flash-sales/${campaignId}/config`, {
       headers: admin,
@@ -118,15 +129,15 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.afterAll(async ({ request }) => {
-  if (campaignId) {
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/campaigns/${campaignId}`, {
-        headers: admin,
-        data: { ends_at: new Date(Date.now() - 60_000).toISOString() },
-      }),
-      "end campaign"
-    )
-  }
+  await deleteAllThenExpectOk(request, admin, [
+    // order ของ test sold out ถือ reservation ของสินค้า → ยกเลิกก่อน ไม่งั้นลบสินค้าไม่ได้
+    orderId && `POST /admin/orders/${orderId}/cancel`,
+    promotionId && `/admin/promotions/${promotionId}`,
+    campaignId && `/admin/campaigns/${campaignId}`,
+    productId && `/admin/products/${productId}`,
+    collectionId && `/admin/collections/${collectionId}`,
+  ])
+  if (run) await expectNoneLeft(request, admin, run, "e2e-fs16-")
 })
 
 test("AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through)", async ({
@@ -146,8 +157,9 @@ test("AC-23: แคมเปญไม่ sold out → product-price ขีดฆ
 
 test("AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที", async ({ page, step }) => {
   let served = false
+  const checked = gate()
   await mockFlashAction(page, async (route) => {
-    await new Promise((r) => setTimeout(r, 1_000))
+    await Promise.all([sleep(1_000), checked.opened])
     await route.fulfill({ status: 500, body: "boom" })
     served = true
   })
@@ -156,6 +168,7 @@ test("AC-23: route ของ flash ตอบ 500 → ปุ่มกลับม
     await page.goto(`/${CC}/products/${handle}`)
     const button = page.getByTestId("add-product-button")
     await expect(button).toHaveAttribute("aria-busy", "true")
+    checked.open()
     await expect.poll(() => served, { timeout: 5_000 }).toBe(true)
     await expect(button).toBeEnabled({ timeout: 5_000 })
     await expect(button).not.toHaveAttribute("aria-busy", "true")
@@ -171,12 +184,14 @@ test("AC-23: แคมเปญ sold out + route ของ flash หน่วง
   evidence,
 }) => {
   await step("complete order flash 1 ชิ้นใต้ total_cap=1 (units_sold = 1 → sold_out)", async () => {
-    await placeOrder(request, pk, await createCustomer(request, pk), { variant: variantId })
+    const order = await placeOrder(request, pk, await createCustomer(request, pk), { variant: variantId })
+    orderId = order.id
   })
 
   let answered = false
+  const checked = gate()
   await mockFlashAction(page, async (route) => {
-    await new Promise((r) => setTimeout(r, 3_000))
+    await Promise.all([sleep(3_000), checked.opened])
     await route.continue()
     answered = true
   })
@@ -187,6 +202,7 @@ test("AC-23: แคมเปญ sold out + route ของ flash หน่วง
     await expect(button).toHaveAttribute("aria-busy", "true")
     await expect(button).toBeDisabled()
     expect(answered, "ต้องตรวจขณะ request flash ยังไม่ตอบ").toBe(false)
+    checked.open()
   })
 
   await step("หลังตอบ: flash-sold-out แสดง ปุ่มยัง disabled และไม่อยู่ในสถานะรอแล้ว", async () => {

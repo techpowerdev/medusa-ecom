@@ -1170,7 +1170,13 @@ none
     unit ของ PDP มีกรณีเปลี่ยน `product.id` (render สินค้าใหม่พร้อม `v_id` ของสินค้าใหม่) → option เป็นของ variant ตาม `v_id` ใหม่ ไม่ค้างค่าของสินค้าเดิม; (e) (review #202) comment
     ใน `apps/storefront/e2e/thai-ui-pages.spec.ts` ราวบรรทัด 11 ที่ยังอ้างชื่อ category "Shirts" แก้ตามชื่อไทยของกฎข้อ 80
 82. (CORE-9c — review #200 CORE-9b) `integration-tests/http/search-option-deleted.spec.ts`: (a) รอผลของ ingestion ด้วยการ poll ค่าที่ test ต้องการ (เช่นผลของ `POST /store/search`)
-    พร้อม timeout ชัดเจน แทน `sleep(3000)` คงที่; (b) ตรวจ log ผ่าน logger ที่ resolve จาก container (`ContainerRegistrationKeys.LOGGER`) ไม่ spy `logger_` ที่เป็น property private ของ event bus —
+    พร้อม timeout ชัดเจน แทน `sleep(3000)` คงที่; (b) ตรวจ log ผ่าน `logger` ที่ export สาธารณะจาก `@medusajs/framework/logger` ไม่ spy `logger_` ที่เป็น property private ของ event bus
+    (แก้ระหว่าง CORE-9c 2026-11-03 ตามที่ session หลักอนุมัติ: ถ้อยคำเดิมให้ใช้ logger จาก container (`ContainerRegistrationKeys.LOGGER`) แต่ใน
+    `medusaIntegrationTestRunner` ของ 2.22.1 เป็นคนละ instance — `medusa-test-runner.js:89-91` ตั้ง `LOGGER` = `logger` ของ framework แล้ว `appLoader.load()`
+    สร้าง module ก่อน (event bus เก็บ logger ไว้ใน constructor, `medusa-module.js:285-292`) จากนั้น `loaders/index.js:97-100` จึงตั้ง `LOGGER = configDir.logger`
+    (JSON logger ของ `medusa-config.ts`) ทับ — probe: `eventBus.logger_ === logger` เป็น true, `=== container.resolve(LOGGER)` เป็น false spy ที่ container จึงจับ log
+    ของ event bus ไม่ได้ เป็นพฤติกรรมเฉพาะ test runner: ใน production (`medusa start`/worker) `initializeContainer` ตั้ง `LOGGER = configDir.logger ?? logger` ก่อน load
+    module event bus จึงใช้ JSON logger ของ `medusa-config.ts` ตามปกติ) —
     ก่อน assert "ไม่มีบรรทัด error" ต้องยืนยันว่า spy จับ log ได้จริง (positive control: log ที่รู้ว่าเกิดในช่วงเดียวกัน หรือ assert ว่า spy ถูกเรียก ≥ 1 ครั้ง)
 
 ### Acceptance criteria (follow-up รอบ 13)
@@ -1196,7 +1202,7 @@ none
 | ID | Task | AC | Depends |
 |----|------|----|---------|
 | CORE-26 | (storefront เล็ก, **qa #199 — ยอดรวมใน dropdown ไม่ตรงราคาหลังส่วนลด**, review #199/#202) ยอดรวมของ `nav-cart-dropdown` จาก field ของ Medusa ที่สอดคล้องกับส่วนลด, แถว `cart-totals` รวมได้ยอดสุทธิ, dropdown ที่เปิดเองปิดเองแม้ mouse อยู่ใต้ panel, unit PDP เปลี่ยน `product.id`, comment "Shirts" (กฎข้อ 81) — ไฟล์: `modules/layout/components/cart-dropdown/index.tsx`, `modules/common/components/cart-totals` (ถ้าแถวไม่รวมกัน), `src/core-25-pdp-option-reset.test.ts` (+ `product-actions/index.tsx` ถ้า test ล้ม), `e2e/thai-ui-pages.spec.ts`, e2e ใหม่ของ CORE-26 | AC-117 | **CORE-25 (#199) merge** (test/e2e ของ PDP + ชน `product-actions`), CORE-10c (#202) เป็น dependency อ่อน — **ไม่บล็อก** (เริ่มหลัง #199 ได้; ส่วน (e) comment "Shirts" ใช้ชื่อ category ไทยของ #202 — ถ้า #202 ยังไม่ merge ตอนเปิด PR ให้ rebase แล้วทำ (e) ก่อน merge หรือข้าม (e) ไป PR ถัดไปที่แตะไฟล์นั้น); ∥ FS-19 (spec 03 — ชน `product-actions/index.tsx` ได้ ตัวที่ merge ทีหลัง rebase); ชน `cart-totals` กับ EV-7d (spec 02) ตัวที่ merge ทีหลัง rebase — **ควรทำก่อน** (ลูกค้าเห็นราคาสับสน) |
-| CORE-9c | (backend test-only เล็ก, review #200) `search-option-deleted.spec.ts` poll + timeout แทน `sleep`, logger จาก container + positive control (กฎข้อ 82) — ไฟล์: `integration-tests/http/search-option-deleted.spec.ts` | AC-118 | **CORE-9b (#200) merge** |
+| CORE-9c | (backend test-only เล็ก, review #200) `search-option-deleted.spec.ts` poll + timeout แทน `sleep`, spy `logger` ของ `@medusajs/framework/logger` (ไม่ใช่ `logger_`) + positive control (กฎข้อ 82) — ไฟล์: `integration-tests/http/search-option-deleted.spec.ts` | AC-118 | **CORE-9b (#200) merge** |
 CORE-26 ∥ CORE-9c ∥ FS-19 (spec 03) หลัง PR ที่ระบุ merge; CORE-4i ← PAY-3b2 (#203)
 
 ### Open questions (รอบ 13 — ปิดแล้ว)

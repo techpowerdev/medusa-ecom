@@ -1,0 +1,73 @@
+# GB-11 — ผล test (2026-11-04, clone feat/GB-11-public-group-routes จาก origin/develop bb3c2a0 + merge 77927c7, node v24.12.0)
+
+## Red (ก่อนแก้)
+- unit public-campaign.unit.spec.ts: Cannot find module '../utils/public-campaign' (suite failed)
+- integration group-buy-public.spec.ts: 2 failed — route ยังไม่มี
+        ✕ AC-45: campaigns/active without a customer token → only live, single-product campaigns with open, unexpired pools; allow-list keys, no PII/codes (1222 ms)
+        ✕ AC-46: groups/:token of a team → group + campaign from the group's own promotion; allow-list keys, no PII; same body with a customer token; succeeded; 404; join still 401 (673 ms)
+        Expected: 200
+        Received: 404
+        Expected: 200
+        Received: 404
+    Tests:       2 failed, 2 total
+
+## ข้อค้นพบระหว่างทำ (probe ใน integration แล้วลบออก)
+- query.graph จาก group_buy_group: fields ["id","campaign.name"] → คืนแค่ id (relation campaign ชนชื่อกับ entity campaign ของ Promotion module — แบบเดียวกับ GB-8)
+- query.graph จาก group_buy_campaign filters { groups: { join_token } } → groups ที่คืน = ทุกกลุ่มของแคมเปญ (2 กลุ่มเมื่อ match 1) — filter ของ relation ไม่กรอง relation
+→ GET /store/group-buy/groups/:token ใช้ query.graph 2 ครั้งคงที่ (group + promotion ของกลุ่ม แล้วแคมเปญ) ไม่ยิงต่อแถว; campaigns/active ใช้ครั้งเดียว
+
+## Green — unit public-campaign.unit.spec.ts (--verbose)
+PASS src/modules/group_buy/__tests__/public-campaign.unit.spec.ts
+    ✓ no application method → null (1 ms)
+    ✓ no target rules → { target_rules: [] }
+    ✓ one product → { target_rules: [Array] }
+    ✓ two products → { target_rules: [Array] }
+    ✓ empty values → { target_rules: [Array] }
+    ✓ variant scope → { target_rules: [Array] }
+    ✓ other operator → { target_rules: [Array] }
+    ✓ two product rules → { target_rules: [Array] }
+    ✓ product rule next to another items rule → { target_rules: [Array] }
+    ✓ percentage → currency_code null, value as number (1 ms)
+    ✓ fixed keeps currency_code
+    ✓ no application method → null
+    ✓ active, in window → active
+    ✓ active, no starts_at → active
+    ✓ draft → draft
+    ✓ ended → ended
+    ✓ starts in the future → active
+    ✓ ends_at passed → active
+    ✓ no ends_at → active
+    ✓ open pool → pool (1 ms)
+    ✓ failed pool → pool
+    ✓ open pool past ends_at → pool
+    ✓ open team → team
+    ✓ returns exactly the allow-listed keys (1 ms)
+Tests:       24 passed, 24 total
+
+## Green — integration http group-buy-public.spec.ts + group-buy-join.spec.ts (AC-15: POST ใต้ /store/group-buy/* ยัง 401)
+PASS integration-tests/http/group-buy-join.spec.ts (45.742 s)
+      {"level":"warn","message":"ไม่ได้ตั้ง SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD — ข้ามการสร้าง admin user","timestamp":"2026-11-04 00:05:49","worker_mode":"shared"}
+PASS integration-tests/http/group-buy-public.spec.ts (7.393 s)
+      {"level":"warn","message":"ไม่ได้ตั้ง SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD — ข้ามการสร้าง admin user","timestamp":"2026-11-04 00:06:33","worker_mode":"shared"}
+Tests:       35 passed, 35 total
+
+## unit ทั้งชุด (pnpm --filter backend test:unit)
+Test Suites: 80 passed, 80 total
+Tests:       803 passed, 803 total
+
+## lint / typecheck / build
+pnpm lint: 0 errors (backend warning เดิม 1 ตัว @medusajs/cli/dist/reporter ไม่เกี่ยว); pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
+
+## แก้ตาม review #230 (2026-11-04)
+Red (ก่อนแก้, unit):
+- publicCampaignProductId: product rule + items.variant_id → Expected null, Received "prod_x"
+- campaigns/active: Expected number of calls: 2, Received: 1 (โหลดทุกกลุ่มผ่าน relation groups)
+- groups/:token แคมเปญหาย: ได้ TypeError (500) แทน not_found
+Green:
+- unit ทั้งชุด: Tests: 803 passed, 803 total
+- unit public-routes.unit.spec.ts: 3 passed (query กลุ่ม filters { campaign_id, kind: pool, status: open, ends_at: { $gt } }, ไม่มีแคมเปญ live → ไม่ query กลุ่ม, 404)
+- integration group-buy-public.spec.ts:
+    ✓ AC-45: campaigns/active without a customer token → only live, single-product campaigns with open, unexpired pools; allow-list keys, no PII/codes (1152 ms)
+    ✓ AC-46: groups/:token of a team → group + campaign from the group's own promotion; allow-list keys, no PII; same body with a customer token; succeeded; 404; join still 401 (1359 ms)
+Tests:       2 passed, 2 total
+- lint 0 error, typecheck ผ่าน, backend build ผ่าน

@@ -1,0 +1,48 @@
+GB-6e — หลักฐาน test (spec 04 กฎข้อ 30, AC-49, AC-50) 2026-11-04
+
+## Red (ก่อนแก้โค้ด)
+- unit single-product.unit.spec.ts: ล้ม — Cannot find module '../utils/single-product'
+- integration AC-49 (campaigns + join): 8 ล้ม — POST 2 สินค้า/values []/ไม่มี rule/variant ได้ 200 แทน 400, workflow ตรงไม่มี error, activate ต้นแบบ 2 สินค้าได้ 200, store POST groups ได้ 201 แทน 400
+- integration load-seed.spec.ts (seed-load เดิม items.variant_id + validation ใหม่): 3 ล้มด้วย GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED → แปลงเป็น items.product.id แล้วผ่าน
+- unit group-buy-form.unit.spec.ts: 10 ล้ม (ไม่มี selectSingleProduct, ไม่บังคับเลือกสินค้า, มี comment 'ว่าง = ทุกสินค้า')
+
+## Green: integration (เฉพาะไฟล์ที่เกี่ยวข้อง)
+PASS integration-tests/http/group-buy-campaigns.spec.ts (13.565 s)
+PASS integration-tests/http/load-seed.spec.ts (10.791 s)
+PASS integration-tests/http/group-buy-groups.spec.ts (16.257 s)
+PASS integration-tests/http/group-buy-join.spec.ts (64.342 s)
+Tests:       78 passed, 78 total
+
+AC-49 + load-seed (verbose, -t):
+      ✓ store POST /store/group-buy/groups and createGroupWorkflow → 400 code, no new GB- promotion; an existing group still joins 201 (982 ms)
+      ✓ POST with one product → 200 (297 ms)
+      ✓ POST with two products → 400 invalid_data with the code; no Medusa campaign/promotion is created (290 ms)
+      ✓ POST with values: [] → 400 invalid_data with the code; no Medusa campaign/promotion is created (174 ms)
+      ✓ POST with no items.product.id rule → 400 invalid_data with the code; no Medusa campaign/promotion is created (188 ms)
+      ✓ POST with a variant-level scope → 400 invalid_data with the code; no Medusa campaign/promotion is created (195 ms)
+      ✓ createGroupBuyCampaignWorkflow called directly with two products → same code; nothing is created (202 ms)
+      ✓ draft whose template was edited to two products via the Promotion module → activate 400, still draft (246 ms)
+    ✓ สร้างลูกค้าตามจำนวนพร้อม token ที่ใช้กับ store API ได้ (ไม่ซ้ำกันระหว่าง flash และ join) (602 ms)
+    ✓ flash campaign มี config total_cap และ automatic promotion ที่ target variant ของ load (796 ms)
+    ✓ group buy campaign active + pool group เปิดอยู่ที่ max_people_per_group = groupSize (517 ms)
+    ✓ production ที่ไม่ได้ตั้ง ALLOW_TEST_PROVIDERS=true → ปฏิเสธ (ไม่สร้างลูกค้ารหัสผ่านที่รู้กันใน prod) (162 ms)
+
+## Green: e2e admin (Playwright, backend local)
+  ✓  2 [chromium] › e2e/group-buy-admin-detail.spec.ts:67:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (13.1s)
+  ✓  1 [chromium] › e2e/group-buy-admin-form.spec.ts:85:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (13.3s)
+  ✓  3 [chromium] › e2e/group-buy-admin-detail.spec.ts:108:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (2.5s)
+  ✓  4 [chromium] › e2e/group-buy-admin-form.spec.ts:167:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (3.5s)
+  ✓  5 [chromium] › e2e/group-buy-admin-detail.spec.ts:149:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading (1.3s)
+  ✓  7 [chromium] › e2e/group-buy-admin-detail.spec.ts:159:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (2.8s)
+  ✓  6 [chromium] › e2e/group-buy-admin-form.spec.ts:221:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (3.4s)
+  7 passed (21.4s)
+
+## Unit ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 80 passed, 80 total
+Tests:       806 passed, 806 total
+
+## pnpm lint && pnpm typecheck && pnpm --filter backend build && pnpm --filter storefront test:e2e:unit
+ผ่านทั้งหมด (lint 0 errors; e2e:unit 39 passed)
+
+## Load test OPS-4 (AC-49 ข้อ review #227)
+ดู run ของ load-nightly.yml บน branch นี้ที่ระบุใน PR

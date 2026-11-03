@@ -11,6 +11,8 @@ import {
   type GroupBuyCampaignStatus,
   resolveCampaignStatusTransition,
 } from "../../modules/group_buy/utils/campaign-status"
+import { assertSingleProductScope } from "../../modules/group_buy/utils/single-product"
+import { MedusaError } from "@medusajs/framework/utils"
 import { loadGroupBuyCampaign } from "./load-campaign"
 
 export type SetGroupBuyCampaignStatusInput = { id: string; status: GroupBuyCampaignStatus }
@@ -29,6 +31,8 @@ export const setGroupBuyCampaignStatusStep = createStep(
         endsAt: campaign.campaign?.ends_at ? new Date(campaign.campaign.ends_at) : null,
         now: new Date(),
       })
+      // กฎข้อ 30b: ต้นแบบอาจถูกแก้ที่หน้า promotion ของ Medusa ระหว่าง draft
+      assertSingleProductScope(campaign.promotion?.application_method?.target_rules, MedusaError.Types.NOT_ALLOWED)
     }
 
     const service: GroupBuyModuleService = container.resolve(GROUP_BUY_MODULE)

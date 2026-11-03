@@ -1,6 +1,7 @@
 import { APIResponse, Page, Route } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { gate, sleep } from "./support/gate"
 import {
   STOREFRONT_COUNTRY as CC,
   Customer,
@@ -34,16 +35,6 @@ let collectionId: string
 let variantId: string
 let campaignId: string
 let promotionId: string
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-/** ประตูที่ test เปิดหลังตรวจสถานะรอแล้ว — request flash ตอบหลังครบเวลาหน่วง **และ**หลัง test ตรวจเสร็จ
- * (เวลาโหลดหน้า/รูปไม่แน่นอน ถ้าใช้เวลาหน่วงอย่างเดียว แถบอาจแสดงหลัง flash ตอบไปแล้ว) */
-function gate() {
-  let open!: () => void
-  const opened = new Promise<void>((r) => (open = r))
-  return { open, opened }
-}
 
 /** ข้อมูล flash บน PDP มาจาก server action — mock เฉพาะ POST ที่มี header next-action และ body มี variant ของสินค้านี้ */
 async function mockFlashAction(page: Page, handler: (route: Route) => Promise<void>) {

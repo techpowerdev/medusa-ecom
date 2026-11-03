@@ -1,0 +1,48 @@
+CORE-10c — spec 01 กฎข้อ 35, 80; AC-72, AC-109 (2026-11-03)
+
+## Red (ก่อนแก้ seed.ts) — integration-tests/http/seed-categories.spec.ts
+    ✕ AC-72 names every sample category in Thai with fixed handles, idempotent (740 ms)
+    ✓ AC-72 links each sample product to its category by handle (753 ms)
+    ✓ AC-72 reuses an existing English category with handle `shirts` without renaming or duplicating it (767 ms)
+    ✕ AC-109 links sample products to an existing empty `featured` collection and keeps its title (654 ms)
+    Expected pattern: /[฀-๿]/
+    Received string:  "Sweatshirts"
+    Expected: >= 2
+    Received:    0
+Tests:       2 failed, 2 passed, 4 total
+
+## Green (หลังแก้) — integration (http/seed)
+PASS integration-tests/http/seed-categories.spec.ts (10.33 s)
+    ✓ AC-72 names every sample category in Thai with fixed handles, idempotent (1084 ms)
+    ✓ AC-72 links each sample product to its category by handle (1563 ms)
+    ✓ AC-72 reuses an existing English category with handle `shirts` without renaming or duplicating it (625 ms)
+    ✓ AC-109 links sample products to an existing empty `featured` collection and keeps its title (502 ms)
+Tests:       4 passed, 4 total
+PASS integration-tests/http/seed.spec.ts (11.277 s)
+    ✓ creates region Thailand in THB, tax-inclusive, with store policy metadata (359 ms)
+    ✓ sets store default currency to THB (tax-inclusive) (353 ms)
+    ✓ creates tax region th with VAT 7% (194 ms)
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free) (215 ms)
+    ✓ creates return option Standard return (is_return, flat THB, manual, at the seeded location) (265 ms)
+    ✓ adds Standard return to a store seeded before CORE-16, once (279 ms)
+    ✓ enables fulfillment provider digital at the seeded stock location (EV-3) (190 ms)
+    ✓ upgrades an already-seeded store: Digital delivery moves from manual to digital (EV-3) (361 ms)
+    ✓ AC-14 upgrades Digital delivery renamed in admin, found by type.code, without creating a new option (252 ms)
+    ✓ exposes sample products in THB (tax-inclusive) to the storefront publishable key (240 ms)
+    ✓ stocks every sample variant at the seeded location (208 ms)
+    ✓ AC-29 names every sample product in Thai and keeps the handles (236 ms)
+    ✓ AC-68 names every option of the sample products in Thai (196 ms)
+    ✓ AC-30 is idempotent: running seed again does not change resource counts (265 ms)
+    ✓ AC-106 seeds one Thai-named `featured` collection with sample products, idempotent and keeps admin edits (330 ms)
+Tests:       15 passed, 15 total
+PASS integration-tests/http/seed-partial.spec.ts (8.311 s)
+    ✓ AC-31 skips the admin user when SEED_ADMIN_PASSWORD is not set (328 ms)
+    ✓ AC-30 keeps the existing region and creates every other resource (324 ms)
+    ✓ AC-30 a customer can check out (AC-1 flow) on the completed store (1348 ms)
+Tests:       3 passed, 3 total
+
+## อื่นๆ
+- pnpm --filter backend test:unit: Test Suites 74 passed, Tests 724 passed
+- pnpm lint: 0 errors (storefront warnings เดิม 31)
+- pnpm typecheck: ผ่าน
+- pnpm --filter backend build: ผ่าน

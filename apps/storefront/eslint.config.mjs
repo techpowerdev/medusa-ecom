@@ -52,6 +52,8 @@ const THAI_UI_FILES = [
   "src/modules/affiliate/**",
   // EV-7b (บล็อกพาร์ทเนอร์บน PDP, บัตรกำนัลของฉัน; page อยู่ใต้ glob account ของ 4c1 แล้ว)
   "src/modules/evoucher/**",
+  // GB-7 (group buy: รายการในหน้า account ของ GB-7b; หน้าแคมเปญ/กลุ่มของ GB-7a ใช้ module เดียวกัน)
+  "src/modules/group-buy/**",
 ]
 
 export default defineConfig([
