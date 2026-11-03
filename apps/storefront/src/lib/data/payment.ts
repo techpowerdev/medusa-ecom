@@ -2,6 +2,7 @@
 
 import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
 import { paymentSessionData } from "@lib/util/payment-session"
+import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
 
@@ -11,6 +12,7 @@ export const listCartPaymentMethods = async (regionId: string) => {
   }
 
   const next = {
+    revalidate: CATALOG_REVALIDATE_SECONDS,
     ...(await getCacheOptions("payment_providers")),
   }
 

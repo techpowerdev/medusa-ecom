@@ -111,6 +111,25 @@ export const resolveEvoucherResendCodesStep = createStep(
   }
 )
 
+// วรรคตอนท้ายของสาเหตุ (`.`, `。`, ช่องว่าง) — ตัดก่อนใส่วงเล็บเพื่อไม่ให้เกิด `.).` (กฎข้อ 30a)
+const stripTrailingPunctuation = (text: string) => text.replace(/[.。\s]+$/u, "")
+
+/**
+ * ข้อความ error ที่ admin เห็นเมื่อ resend ล้ม (EV-13 AC-32, EV-N3 AC-44): ไม่มี id ของ notification (`noti_…` อยู่ใน log เท่านั้น),
+ * ไม่มีจุดซ้อน และไม่มีวงเล็บว่างเมื่อไม่มีสาเหตุ
+ */
+export const resendFailureMessage = (detail: string): string => {
+  const reason = stripTrailingPunctuation(
+    stripTrailingPunctuation(
+      detail
+        .replace(/Failed to send notification with id \S+:\s*/g, "")
+        .replace(/\s*noti_[A-Za-z0-9]+/g, "")
+        .trim()
+    ).slice(0, 100)
+  )
+  return `Could not send the e-voucher email${reason ? ` (${reason})` : ""}. Try again or check the server logs.`
+}
+
 /**
  * ส่งอีเมลซ้ำด้วย idempotency_key ใหม่ทุกครั้ง (กฎข้อ 19 — key เดิมที่ status=failure ทำให้ Notification module throw NOT_FOUND)
  * ส่งล้ม → throw (admin เห็น error, code คง `allocated`); สำเร็จ → code `allocated` ของ order เป็น `delivered` (กฎข้อ 17)
@@ -132,15 +151,7 @@ export const sendEvoucherResendNotificationStep = createStep(
       container
         .resolve(ContainerRegistrationKeys.LOGGER)
         .error(`evoucher: resend email for order ${input.order.id} failed: ${detail}`)
-      const reason = detail
-        .replace(/Failed to send notification with id \S+:\s*/g, "")
-        .replace(/\s*noti_[A-Za-z0-9]+/g, "")
-        .trim()
-        .slice(0, 100)
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        `Could not send the e-voucher email${reason ? ` (${reason})` : ""}. Try again or check the server logs.`
-      )
+      throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, resendFailureMessage(detail))
     }
     // กฎข้อ 21: อีเมลถึงลูกค้าแล้ว — update ล้มต้องไม่ตอบ 500 (admin จะกดซ้ำ) code ที่ยัง allocated เปลี่ยนใน resend ครั้งถัดไป
     try {

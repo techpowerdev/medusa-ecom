@@ -7,10 +7,14 @@ import { useActionState, useEffect, useState } from "react"
 import { addCustomerAddress } from "@lib/data/customer"
 import useToggleState from "@lib/hooks/use-toggle-state"
 import { HttpTypes } from "@medusajs/types"
+import { withActionFallback } from "@lib/util/action-fallback"
+import { submitWithoutReset } from "@lib/util/submit-without-reset"
 import CountrySelect from "@modules/checkout/components/country-select"
-import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
 import Modal from "@modules/common/components/modal"
+
+// CORE-23c (กฎข้อ 74a): action ล้ม (5xx/network) → error ไทยในฟอร์ม ไม่ใช่หน้า error ทั้งหน้า
+const saveAddress = withActionFallback(addCustomerAddress)
 
 const AddAddress = ({
   region,
@@ -21,10 +25,12 @@ const AddAddress = ({
   const [successState, setSuccessState] = useState(false)
   const { state, open, close: closeModal } = useToggleState(false)
 
-  const [formState, formAction] = useActionState(addCustomerAddress, {
+  const [formState, formAction, isPending] = useActionState(saveAddress, {
     success: false,
     error: null,
   } as { success: boolean; error: string | null })
+  // CORE-23c (กฎข้อ 74a): onSubmit แทน `action` — React 19 reset ฟอร์มหลัง action แม้บันทึกล้ม (ค่าที่พิมพ์หาย)
+  const onSubmit = submitWithoutReset(formAction)
 
   const close = () => {
     setSuccessState(false)
@@ -59,7 +65,7 @@ const AddAddress = ({
         <Modal.Title>
           <Heading className="mb-2">เพิ่มที่อยู่</Heading>
         </Modal.Title>
-        <form action={formAction}>
+        <form onSubmit={onSubmit}>
           <Modal.Body>
             <div className="flex flex-col gap-y-2">
               <div className="grid grid-cols-2 gap-x-2">
@@ -133,15 +139,16 @@ const AddAddress = ({
                 data-testid="phone-input"
               />
             </div>
-            {formState.error && (
-              <div
-                className="text-rose-500 text-small-regular py-2"
-                data-testid="address-error"
-              >
-                {formState.error}
-              </div>
-            )}
           </Modal.Body>
+          {/* CORE-23c: Modal.Body เป็น flex แถว — error อยู่ใต้ฟอร์มไม่ใช่ข้างช่อง */}
+          {formState.error && (
+            <div
+              className="text-rose-500 text-small-regular py-2"
+              data-testid="address-error"
+            >
+              {formState.error}
+            </div>
+          )}
           <Modal.Footer>
             <div className="flex gap-3 mt-6">
               <Button
@@ -153,7 +160,9 @@ const AddAddress = ({
               >
                 ยกเลิก
               </Button>
-              <SubmitButton data-testid="save-button">บันทึก</SubmitButton>
+              <Button type="submit" isLoading={isPending} data-testid="save-button">
+                บันทึก
+              </Button>
             </div>
           </Modal.Footer>
         </form>
