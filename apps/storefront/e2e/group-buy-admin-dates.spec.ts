@@ -17,6 +17,10 @@ test("AC-3: ends_at ของแคมเปญแสดง Feb 1, 2026 12:30 AM
   // โหลด admin bundle ครั้งแรกหลัง start (cold) ใช้เวลารวมเกิน 30s ได้ในเครื่อง/CI
   test.setTimeout(90_000)
   const admin = await adminHeaders(request)
+  // GB-6e (spec 04 กฎข้อ 30a): 1 แคมเปญ = 1 สินค้า — ใช้สินค้าตัวแรกของ seed
+  const products = await request.get(`${BACKEND_URL}/admin/products?limit=1&fields=id`, { headers: admin })
+  expect(products.status(), "list products").toBe(200)
+  const productId: string = (await products.json()).products[0].id
   // draft ตั้ง ends_at ในอดีตได้ (ตรวจ ends_at > now ตอน activate เท่านั้น)
   const res = await request.post(`${BACKEND_URL}/admin/group-buy/campaigns`, {
     headers: admin,
@@ -27,7 +31,14 @@ test("AC-3: ends_at ของแคมเปญแสดง Feb 1, 2026 12:30 AM
       group_mode: "pool",
       team_duration_hours: null,
       ends_at: ENDS_AT,
-      application_method: { type: "percentage", target_type: "items", allocation: "each", max_quantity: 10, value: 10 },
+      application_method: {
+        type: "percentage",
+        target_type: "items",
+        allocation: "each",
+        max_quantity: 10,
+        value: 10,
+        target_rules: [{ attribute: "items.product.id", operator: "in", values: [productId] }],
+      },
     },
   })
   expect(res.status(), "create campaign").toBe(200)
