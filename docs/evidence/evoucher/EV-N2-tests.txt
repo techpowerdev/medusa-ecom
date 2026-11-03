@@ -1,0 +1,64 @@
+EV-N2 — ผลทดสอบ (2026-11-03, Node 24.12.0, Medusa 2.22.1, base origin/develop 05fec0e)
+
+== Red (ก่อนเขียนโค้ด) ==
+- AC-41 lock: Expected >= 300, Received 120 (allocation acquire ด้วย ttl 120 และไม่ระบุ ownerId)
+- mutation check หลัง Green: ถอด ownerId ออกจาก releaseLockStep → Expected "Failed to acquire lock for key ...", Received "acquired" (release ลบ lock ของ owner X) — test จับได้
+- AC-41 ลำดับ (evouchers[0] = code allocated): ผ่านตั้งแต่ก่อนแก้ เพราะ Postgres ใช้ NULLS FIRST เป็นค่าเริ่มต้นของ DESC
+  โค้ดระบุ "DESC NULLS FIRST" ให้ชัด (กฎข้อ 27b) test นี้เป็น regression guard
+
+== integration:http evoucher-resend + evoucher-allocate + evoucher-store (Green, หลัง merge origin/develop) ==
+PASS integration-tests/http/evoucher-resend.spec.ts (34.039 s)
+      ✓ sends one new email with the same 2 codes to the order email and leaves the codes unchanged (2131 ms)
+      ✓ returns 400 for an order without delivered or allocated codes (2462 ms)
+      ✓ returns 401 without an admin token (2396 ms)
+      ✓ marks allocated codes delivered and uses a new idempotency key on every resend (1932 ms)
+      ✓ keeps the codes allocated, answers an error and can be retried when the provider still fails (2532 ms)
+      ✓ sends only one email when two resends of the same order arrive together (3665 ms)
+      ✓ answers 409 while allocation holds the order lock and allocation still sends exactly one email (1566 ms)
+      ✓ acquires with ttl >= 300 and an ownerId, and its release keeps a lock taken by another owner after expiry (2615 ms)
+      ✓ answers 5xx (not 409) when the locking provider fails for another reason (1704 ms)
+      ✓ answers 200 and logs the order id when the email is sent but the status update fails (1100 ms)
+PASS integration-tests/http/evoucher-allocate.spec.ts (26.282 s)
+      ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry (1907 ms)
+      ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method (1387 ms)
+      ✓ does not warn about shipping profile when the voucher product has none (AC-31) (799 ms)
+      ✓ warns once (but still delivers) when the voucher product has the default shipping profile (AC-31) (1209 ms)
+      ✓ warns once (but still delivers) when the voucher product has the digital shipping profile (AC-31) (1106 ms)
+      ✓ does nothing for an order without voucher items (792 ms)
+      ✓ re-running for the same order allocates no more codes and sends no more emails (976 ms)
+      ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails (838 ms)
+      ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available (805 ms)
+      ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails (1187 ms)
+      ✓ uses a new idempotency key per claim and clears the backordered flag once delivered (915 ms)
+      ✓ delivers the farthest kept code to a reserved order after the daily job ran (1420 ms)
+      ✓ still prefers a long-lived code over a near-expiry one (953 ms)
+      ✓ gives the last code to only one of two concurrently captured orders and flags the other (1102 ms)
+      ✓ sends one notification to the mailbox and none to the 3 admin users (1160 ms)
+      ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged) (965 ms)
+PASS integration-tests/http/evoucher-store.spec.ts (11.216 s)
+      ✓ returns only the caller's delivered/allocated codes decrypted, with pool and partner (254 ms)
+      ✓ B sees only B's code (370 ms)
+      ✓ paginates with limit/offset (193 ms)
+      ✓ rejects limit=101 with 400 (173 ms)
+      ✓ rejects limit=0 with 400 (148 ms)
+      ✓ rejects offset=-1 with 400 (149 ms)
+      ✓ requires a customer: no token or an affiliate token → 401 (147 ms)
+      ✓ has no per-code route → 404 (154 ms)
+      ✓ returns the allocated (email failed) code first (178 ms)
+      ✓ returns pool and partner fields of the voucher variant (public, no token) (169 ms)
+      ✓ returns pool fields on the product list too (162 ms)
+      ✓ never exposes code data for fields=*variants.evoucher_pool (209 ms)
+      ✓ never exposes code data for fields=+variants.evoucher_pool.codes.code (199 ms)
+      ✓ never exposes code data for fields=+variants.evoucher_pool.codes.pin (210 ms)
+      ✓ never exposes code data for fields=*variants.evoucher_pool.codes (224 ms)
+      ✓ never exposes code data for fields=+variants.evoucher_pool.batch_ref (204 ms)
+      ✓ never exposes code data for fields=+variants.evoucher_pool.* (178 ms)
+Test Suites: 3 passed, 3 total
+Tests:       43 passed, 43 total
+
+== unit (pnpm --filter backend test:unit) ==
+Test Suites: 72 passed, 72 total
+Tests:       711 passed, 711 total
+
+== pnpm lint && pnpm typecheck && pnpm --filter backend build ==
+lint: 0 error (warning เดิมใน src/lib/json-logger.ts ไม่เกี่ยวกับ task นี้), typecheck: ผ่าน, build: ผ่าน
