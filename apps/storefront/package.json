@@ -29,7 +29,7 @@
     "@stripe/react-stripe-js": "^5.3.0",
     "@stripe/stripe-js": "^8.2.0",
     "clsx": "^2.1.1",
-    "instantsearch.js": "4.113.0",
+    "instantsearch.js": "4.120.0",
     "lodash": "^4.17.21",
     "next": "16.3.8",
     "pg": "^8.11.3",

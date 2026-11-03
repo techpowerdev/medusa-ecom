@@ -7,6 +7,7 @@ import { getCacheOptions } from "./cookies"
 
 export const retrieveCollection = async (id: string) => {
   const next = {
+    revalidate: CATALOG_REVALIDATE_SECONDS,
     ...(await getCacheOptions("collections")),
   }
 

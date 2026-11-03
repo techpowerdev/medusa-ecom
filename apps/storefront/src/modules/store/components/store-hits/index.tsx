@@ -129,9 +129,12 @@ const NO_HITS: Record<string, string[]> = {}
  * หนึ่ง request ต่อชุด hit แล้วดึงราคา flash; ระหว่างรอการ์ดแสดงราคาจาก index ตามปกติ
  */
 function useHitFlashPrices(regionId: string, productIds: string[]) {
-  const [variantIdsByProduct, setVariantIdsByProduct] = useState<
-    Record<string, string[]>
-  >({})
+  // FS-18 (กฎข้อ 23c, qa #148 O-3): เก็บ variant id คู่กับชุด hit ที่ใช้หา — ระหว่างรอชุดใหม่ไม่ส่งชุดเก่าต่อ
+  // (เดิมค้นไม่พบแล้วค้นใหม่ ชุดเก่ากลับมาเป็น input ของ useCardFlashPrices และยิงข้อมูล flash ซ้ำด้วย variant เก่า)
+  const [resolved, setResolved] = useState<{
+    idsKey: string
+    byProduct: Record<string, string[]>
+  }>({ idsKey: "", byProduct: NO_HITS })
   const idsKey = productIds.join(",")
 
   useEffect(() => {
@@ -141,14 +144,17 @@ function useHitFlashPrices(regionId: string, productIds: string[]) {
     }
     let alive = true
     listVariantIdsByProduct(idsKey.split(",")).then(
-      (byProduct) => alive && setVariantIdsByProduct(byProduct)
+      (byProduct) => alive && setResolved({ idsKey, byProduct })
     )
     return () => {
       alive = false
     }
   }, [idsKey])
 
-  return useCardFlashPrices(regionId, idsKey ? variantIdsByProduct : NO_HITS)
+  return useCardFlashPrices(
+    regionId,
+    idsKey && resolved.idsKey === idsKey ? resolved.byProduct : NO_HITS
+  )
 }
 
 export default StoreHits

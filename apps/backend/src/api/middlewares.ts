@@ -10,6 +10,7 @@ import { storeGroupBuyMiddlewares } from './store/group-buy/middlewares'
 import { businessErrorHandler } from './error-handler'
 import { storeOwnershipMiddlewares } from './store/ownership/middlewares'
 import { guardPaidStripeSession } from './store/payment-collections/stripe-session-guard'
+import { checkoutPhaseTiming } from './store/carts/checkout-phase-timing'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
 // the route narrows it to published products in the key's sales channels.
@@ -53,6 +54,12 @@ export default defineMiddlewares({
       method: ['POST'],
       matcher: '/store/payment-collections/:id/payment-sessions',
       middlewares: [guardPaidStripeSession],
+    },
+    // OPS-20a (spec 07 AC-31): เวลาเข้า/finish ของ complete (log debug เฉพาะ load run) — หลัง auth + ownership แบบเดียวกับ PAY-6
+    {
+      method: ['POST'],
+      matcher: '/store/carts/:id/complete',
+      middlewares: [checkoutPhaseTiming],
     },
   ],
 })

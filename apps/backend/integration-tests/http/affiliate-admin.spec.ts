@@ -187,13 +187,13 @@ medusaIntegrationTestRunner({
 
         const approved = await api.post(
           `/admin/affiliate/affiliates/${ann.id}`,
-          { status: "active", payout_info: { bank: "KBank", account: "123" } },
+          { status: "active", payout_info: { bank_name: "KBank", account_name: "Ann", account_number: "1234567890" } },
           { headers }
         )
         expect(approved.data.affiliate).toEqual(
           expect.objectContaining({
             status: "active",
-            payout_info: { bank: "KBank", account: "123" },
+            payout_info: { bank_name: "KBank", account_name: "Ann", account_number: "1234567890" },
           })
         )
 
@@ -244,6 +244,96 @@ medusaIntegrationTestRunner({
           .get(`/admin/affiliate/affiliates?id[]=${a.id}`)
           .catch((e) => e.response)
         expect(anonymous.status).toEqual(401)
+      })
+    })
+
+    // AF-15 (กฎ 39, AC-46): payout_info 3 ช่องแบบ strict + เลขบัญชี 10–12 หลัก (owner Q20) และ expected_status
+    describe("payout_info and expected_status (AC-46)", () => {
+      const post = (id: string, body: unknown) =>
+        api
+          .post(`/admin/affiliate/affiliates/${id}`, body, { headers })
+          .catch((e) => {
+            if (!e.response) {
+              throw new Error(String(e?.message))
+            }
+            return e.response
+          })
+          .then((r) => ({ status: r.status as number, data: r.data }))
+
+      const valid = { bank_name: "K", account_name: "A", account_number: "123-4-56789-0" }
+
+      it("stores account_number without dashes or spaces", async () => {
+        const ann = await createAffiliate("ann")
+        const res = await post(ann.id, { payout_info: valid })
+        expect(res.status).toEqual(200)
+        expect(res.data.affiliate.payout_info).toEqual({ ...valid, account_number: "1234567890" })
+
+        const spaced = await post(ann.id, {
+          payout_info: { bank_name: " SCB ", account_name: " Ann A. ", account_number: " 123 456 789 012 " },
+        })
+        expect(spaced.status).toEqual(200)
+        expect(spaced.data.affiliate.payout_info).toEqual({
+          bank_name: "SCB",
+          account_name: "Ann A.",
+          account_number: "123456789012",
+        })
+      })
+
+      it.each([
+        ["9 digits", { ...valid, account_number: "123-456-789" }],
+        ["13 digits", { ...valid, account_number: "1234567890123" }],
+        ["letters", { ...valid, account_number: "123456789A" }],
+        ["an extra key", { ...valid, promptpay_id: "0812345678" }],
+        ["a missing field", { bank_name: "K", account_number: "1234567890" }],
+        ["a blank field after trim", { ...valid, account_name: "   " }],
+        ["a non-string field", { ...valid, bank_name: 1 }],
+      ])("rejects payout_info with %s (400) and keeps the stored value", async (_, payout_info) => {
+        const ann = await createAffiliate("ann")
+        await service.updateAffiliates({ id: ann.id, payout_info: { ...valid, account_number: "1234567890" } })
+        const res = await post(ann.id, { payout_info })
+        expect(res.status).toEqual(400)
+        expect(res.data.type).toEqual("invalid_data")
+        const stored = await service.retrieveAffiliate(ann.id)
+        expect(stored.payout_info).toEqual({ ...valid, account_number: "1234567890" })
+      })
+
+      it("clears payout_info with null", async () => {
+        const ann = await createAffiliate("ann")
+        await service.updateAffiliates({ id: ann.id, payout_info: { ...valid, account_number: "1234567890" } })
+        const res = await post(ann.id, { payout_info: null })
+        expect(res.status).toEqual(200)
+        expect(res.data.affiliate.payout_info).toBeNull()
+      })
+
+      it("returns 409 AFFILIATE_STATUS_CHANGED when expected_status is stale and changes nothing", async () => {
+        const ann = await createAffiliate("ann", "suspended")
+        const res = await post(ann.id, { status: "active", expected_status: "pending" })
+        expect(res.status).toEqual(409)
+        expect(res.data).toEqual(expect.objectContaining({ type: "conflict", code: "AFFILIATE_STATUS_CHANGED" }))
+        expect((await service.retrieveAffiliate(ann.id)).status).toEqual("suspended")
+
+        const matching = await post(ann.id, { status: "active", expected_status: "suspended" })
+        expect(matching.status).toEqual(200)
+        expect(matching.data.affiliate.status).toEqual("active")
+
+        const without = await post(ann.id, { status: "suspended" })
+        expect(without.status).toEqual(200)
+        expect(without.data.affiliate.status).toEqual("suspended")
+      })
+
+      it("lets only one of two concurrent approvals with the same expected_status through", async () => {
+        const ann = await createAffiliate("ann", "pending")
+        const results = await within(
+          Promise.all([
+            post(ann.id, { status: "active", expected_status: "pending" }),
+            post(ann.id, { status: "suspended", expected_status: "pending" }),
+          ]),
+          30_000,
+          "concurrent status updates"
+        )
+        expect(results.map((r) => r.status).sort()).toEqual([200, 409])
+        const winner = results.find((r) => r.status === 200)!
+        expect((await service.retrieveAffiliate(ann.id)).status).toEqual(winner.data.affiliate.status)
       })
     })
 

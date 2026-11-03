@@ -7,6 +7,13 @@ on:
   schedule:
     - cron: "0 19 * * *" # 02:00 Asia/Bangkok
   workflow_dispatch:
+    inputs:
+      # OPS-20a (spec 07 AC-31): "0" = ตัด scenario burst ของ flash-sale (รันเทียบ); schedule ไม่มี input → มี burst
+      flash_burst:
+        description: "flash-sale burst: 1 = มี (ค่าเริ่มต้น), 0 = ปิด"
+        type: choice
+        options: ["1", "0"]
+        default: "1"
 
 permissions:
   contents: read
@@ -22,6 +29,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: tools/load/run.sh
+        env:
+          LOAD_FLASH_BURST: ${{ inputs.flash_burst || '1' }}
       - name: Upload k6 results
         if: always()
         uses: actions/upload-artifact@v4

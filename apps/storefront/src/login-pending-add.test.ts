@@ -106,4 +106,19 @@ describe("login พร้อม add_variant ที่ค้างไว้ (CORE
       confirmWith({ add_variant: "v", country_code: "zz" })
     ).rejects.toThrow(/^REDIRECT \/account\?add_variant=v&add_error=1$/)
   })
+  // CORE-23c (กฎข้อ 74e, review #150): getRegion ล้มตอนเพิ่มไม่สำเร็จ → log error ก่อน fallback ไป /account (ไม่กลืนเงียบ)
+  it("getRegion ล้ม → console.error ด้วย error นั้น แล้วไป /account พร้อม add_error", async () => {
+    addToCart.mockRejectedValueOnce(new Error("Variant does not exist"))
+    const regionError = new Error("listRegions failed")
+    getRegion.mockRejectedValueOnce(regionError)
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      await expect(
+        confirmWith({ add_variant: "v", country_code: "th" })
+      ).rejects.toThrow(/^REDIRECT \/account\?add_variant=v&add_error=1$/)
+      expect(log).toHaveBeenCalledWith(regionError)
+    } finally {
+      log.mockRestore()
+    }
+  })
 })
