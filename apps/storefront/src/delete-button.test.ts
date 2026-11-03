@@ -2,6 +2,7 @@ import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { SIGN_IN_AGAIN_MESSAGE } from "@lib/util/error-message"
 import DeleteButton, { removeLineItem } from "@modules/common/components/delete-button"
 
 // CORE-19c (spec 01 กฎข้อ 64, AC-100): DeleteButton ส่งต่อ data-testid ที่ผู้เรียกส่งมาไปที่ <button>
@@ -30,6 +31,7 @@ describe("DeleteButton (กฎข้อ 64)", () => {
 
 // CORE-19d (spec 01 กฎข้อ 68, AC-104): ข้อความใน `cart-item-remove-error` มาจาก `removeLineItem`
 // (handler ของปุ่ม) — unauthorized ให้เข้าสู่ระบบใหม่ ต่างจากข้อความ fallback ของกรณีอื่น
+// CORE-4i (กฎข้อ 72): unauthorized = SIGN_IN_AGAIN_MESSAGE ตัวเดียวทั้งเว็บ
 describe("DeleteButton แยก unauthorized (กฎข้อ 68)", () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -40,7 +42,7 @@ describe("DeleteButton แยก unauthorized (กฎข้อ 68)", () => {
     const failed = await removeLineItem("line_1")
 
     expect(unauthorized).toMatch(THAI)
-    expect(unauthorized).toContain("เข้าสู่ระบบใหม่")
+    expect(unauthorized).toBe(SIGN_IN_AGAIN_MESSAGE)
     expect(failed).toMatch(THAI)
     expect(failed).not.toContain("เข้าสู่ระบบ")
     expect(unauthorized).not.toBe(failed)

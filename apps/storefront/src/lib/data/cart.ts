@@ -5,6 +5,7 @@ import { friendlyErrorMessage } from "@lib/util/error-message"
 import { checkoutConflictMessage } from "@lib/util/checkout-error"
 import { safeCountryCode } from "@lib/util/digital-checkout"
 import medusaError from "@lib/util/medusa-error"
+import { ActionResult, actionErrorMessage, actionFailure } from "@lib/util/action-result"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
@@ -185,42 +186,47 @@ export async function addToCart({
     .catch(medusaError)
 }
 
+// CORE-4i (spec 01 กฎข้อ 72): คืนผลแทนการ throw ผ่าน helper กลาง (แบบ deleteLineItem ของกฎข้อ 68)
 export async function updateLineItem({
   lineId,
   quantity,
 }: {
   lineId: string
   quantity: number
-}) {
-  if (!lineId) {
-    throw new Error("ไม่พบรายการสินค้าที่จะแก้ไข")
-  }
-
-  const cartId = await getCartId()
-
-  if (!cartId) {
-    throw new Error("ไม่พบตะกร้าสินค้าที่จะแก้ไข")
-  }
-
+}): Promise<ActionResult> {
   const headers = {
     ...(await getAuthHeaders()),
   }
 
-  await sdk.store.cart
-    .updateLineItem(cartId, lineId, { quantity }, {}, headers)
-    .then(async () => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag, { expire: 0 })
+  // qa #160 D-1: ไม่มี JWT → middleware ล้าง `_medusa_cart_id` ไปแล้ว จึงต้องเช็กก่อน cart id
+  if (!("authorization" in headers)) {
+    return { error: "unauthorized" }
+  }
 
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag, { expire: 0 })
-    })
-    .catch(medusaError)
+  const cartId = await getCartId()
+
+  if (!lineId || !cartId) {
+    return { error: "failed" }
+  }
+
+  try {
+    await sdk.store.cart.updateLineItem(cartId, lineId, { quantity }, {}, headers)
+  } catch (error) {
+    return actionFailure(error)
+  }
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag, { expire: 0 })
+
+  const fulfillmentCacheTag = await getCacheTag("fulfillment")
+  revalidateTag(fulfillmentCacheTag, { expire: 0 })
+
+  return { ok: true }
 }
 
 // CORE-19d (spec 01 กฎข้อ 68): คืนผลแทนการ throw — Next ใน production ซ่อน error ที่ throw จาก server action
 // client จึงแยก 401/403 (`FetchError.status`) ไม่ได้ถ้า throw
-export type DeleteLineItemResult = { ok: true } | { error: "unauthorized" | "failed" }
+export type DeleteLineItemResult = ActionResult
 
 export async function deleteLineItem(lineId: string): Promise<DeleteLineItemResult> {
   if (!lineId) {
@@ -245,8 +251,7 @@ export async function deleteLineItem(lineId: string): Promise<DeleteLineItemResu
   try {
     await sdk.store.cart.deleteLineItem(cartId, lineId, {}, headers)
   } catch (error) {
-    const status = (error as { status?: unknown } | null)?.status
-    return { error: status === 401 || status === 403 ? "unauthorized" : "failed" }
+    return actionFailure(error)
   }
 
   const cartCacheTag = await getCacheTag("carts")
@@ -355,31 +360,41 @@ export async function getPromptPayState(
   return promptPayPollState(cart)
 }
 
-export async function applyPromotions(codes: string[]) {
-  const cartId = await getCartId()
+// CORE-4i (กฎข้อ 72): คืนผลแทนการ throw — 409 PROMOTION_NOT_COMBINABLE เป็น code ที่ UI แยกข้อความ
+export type ApplyPromotionsResult = ActionResult<"PROMOTION_NOT_COMBINABLE", { codes: string[] }>
 
-  if (!cartId) {
-    throw new Error("ไม่พบตะกร้าสินค้า")
-  }
-
+export async function applyPromotions(codes: string[]): Promise<ApplyPromotionsResult> {
   const headers = {
     ...(await getAuthHeaders()),
   }
 
-  return sdk.store.cart
-    .update(cartId, { promo_codes: codes }, {}, headers)
-    .then(async ({ cart }: { cart: HttpTypes.StoreCart }) => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag, { expire: 0 })
+  // qa #160 D-1: ไม่มี JWT → middleware ล้าง `_medusa_cart_id` ไปแล้ว จึงต้องเช็กก่อน cart id
+  if (!("authorization" in headers)) {
+    return { error: "unauthorized" }
+  }
 
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag, { expire: 0 })
+  const cartId = await getCartId()
 
-      // CORE-4g (กฎข้อ 63b): code ที่ใช้ไม่ได้ (เช่น campaign หมดอายุ) Medusa ตอบ 200 แต่ไม่ใส่ใน promotions
-      // — คืน code ที่อยู่ใน cart จริงให้ผู้เรียกตรวจ
-      return (cart.promotions ?? []).flatMap((p) => (p.code ? [p.code] : []))
-    })
-    .catch(medusaError)
+  if (!cartId) {
+    return { error: "failed" }
+  }
+
+  let cart: HttpTypes.StoreCart
+  try {
+    cart = (await sdk.store.cart.update(cartId, { promo_codes: codes }, {}, headers)).cart
+  } catch (error) {
+    return actionFailure(error, ["PROMOTION_NOT_COMBINABLE"])
+  }
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag, { expire: 0 })
+
+  const fulfillmentCacheTag = await getCacheTag("fulfillment")
+  revalidateTag(fulfillmentCacheTag, { expire: 0 })
+
+  // CORE-4g (กฎข้อ 63b): code ที่ใช้ไม่ได้ (เช่น campaign หมดอายุ) Medusa ตอบ 200 แต่ไม่ใส่ใน promotions
+  // — คืน code ที่อยู่ใน cart จริงให้ผู้เรียกตรวจ
+  return { ok: true, codes: (cart.promotions ?? []).flatMap((p) => (p.code ? [p.code] : [])) }
 }
 
 export async function applyGiftCard(code: string) {
@@ -430,11 +445,10 @@ export async function submitPromotionForm(
   formData: FormData
 ) {
   const code = formData.get("code") as string
-  try {
-    await applyPromotions([code])
-  } catch (e: unknown) {
-    // CORE-4e (กฎข้อ 55): message ของ Medusa เป็นอังกฤษ — แสดงข้อความไทย
-    return friendlyErrorMessage(e, "ใช้โค้ดส่วนลดไม่สำเร็จ กรุณาตรวจสอบโค้ดแล้วลองอีกครั้ง")
+  const result = await applyPromotions([code])
+  if ("error" in result) {
+    // CORE-4e (กฎข้อ 55) / CORE-4i (กฎข้อ 72): แสดงข้อความไทยจากผลที่คืน
+    return actionErrorMessage(result.error, "ใช้โค้ดส่วนลดไม่สำเร็จ กรุณาตรวจสอบโค้ดแล้วลองอีกครั้ง")
   }
 }
 

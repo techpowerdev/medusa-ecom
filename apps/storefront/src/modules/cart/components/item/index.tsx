@@ -2,6 +2,7 @@
 
 import { Table, Text, clx } from "@modules/common/components/ui"
 import { updateLineItem } from "@lib/data/cart"
+import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { HttpTypes } from "@medusajs/types"
 import CartItemSelect from "@modules/cart/components/cart-item-select"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -14,6 +15,14 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import Spinner from "@modules/common/icons/spinner"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { useState } from "react"
+
+const UPDATE_QUANTITY_FAILED = "แก้ไขจำนวนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+
+/** CORE-4i (spec 01 กฎข้อ 72): แก้จำนวนแล้วคืนข้อความ error ที่จะแสดง (null = สำเร็จ); action ที่ reject เอง → fallback */
+export const changeLineQuantity = async (lineId: string, quantity: number): Promise<string | null> => {
+  const result = await settleAction(updateLineItem({ lineId, quantity }))
+  return "error" in result ? actionErrorMessage(result.error, UPDATE_QUANTITY_FAILED) : null
+}
 
 type ItemProps = {
   item: HttpTypes.StoreCartLineItem
@@ -36,16 +45,8 @@ const Item = ({
     setError(null)
     setUpdating(true)
 
-    await updateLineItem({
-      lineId: item.id,
-      quantity,
-    })
-      .catch((err) => {
-        setError(err.message)
-      })
-      .finally(() => {
-        setUpdating(false)
-      })
+    setError(await changeLineQuantity(item.id, quantity))
+    setUpdating(false)
   }
 
   // TODO: Update this to grab the actual max inventory

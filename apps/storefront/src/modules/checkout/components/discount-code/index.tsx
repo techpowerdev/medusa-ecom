@@ -4,7 +4,7 @@ import { Badge, Heading, Input, Label, Text } from "@modules/common/components/u
 import React from "react"
 
 import { applyPromotions } from "@lib/data/cart"
-import { friendlyErrorMessage } from "@lib/util/error-message"
+import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import Trash from "@modules/common/icons/trash"
@@ -13,6 +13,23 @@ import { SubmitButton } from "../submit-button"
 
 const PROMOTION_NOT_APPLICABLE =
   "ใช้โค้ดนี้ไม่ได้ โค้ดอาจหมดอายุหรือไม่ตรงเงื่อนไขของตะกร้า"
+const PROMOTION_FAILED = "ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค้ดอีกครั้ง"
+
+/**
+ * CORE-4i (spec 01 กฎข้อ 72): ตั้งชุดโค้ดของ cart แล้วคืนข้อความ error ที่จะแสดง ("" = สำเร็จ)
+ * `wanted` = โค้ดที่ผู้ใช้เพิ่งใส่ — Medusa ตอบ 200 แต่ไม่ใส่โค้ดที่ใช้ไม่ได้ (กฎข้อ 63b); action ที่ reject เอง → fallback
+ */
+export const submitPromotionCodes = async (codes: string[], wanted?: string): Promise<string> => {
+  const result = await settleAction(applyPromotions(codes))
+  if ("error" in result) {
+    return actionErrorMessage(result.error, PROMOTION_FAILED)
+  }
+  const code = wanted?.trim().toLowerCase()
+  if (code && !result.codes.some((c) => c.toLowerCase() === code)) {
+    return PROMOTION_NOT_APPLICABLE
+  }
+  return ""
+}
 
 type DiscountCodeProps = {
   cart: HttpTypes.StoreCart
@@ -28,8 +45,10 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
       (promotion) => promotion.code !== code
     )
 
-    await applyPromotions(
-      validPromotions.filter((p) => p.code !== undefined).map((p) => p.code!)
+    setErrorMessage(
+      await submitPromotionCodes(
+        validPromotions.filter((p) => p.code !== undefined).map((p) => p.code!)
+      )
     )
   }
 
@@ -46,16 +65,8 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
       .map((p) => p.code!)
     codes.push(code.toString())
 
-    try {
-      const applied = await applyPromotions(codes)
-      // CORE-4g (กฎข้อ 63b): Medusa ตอบ 200 แต่ไม่ใส่ code ที่ใช้ไม่ได้ (หมดอายุ/ไม่ตรงเงื่อนไข) — แจ้งผู้ใช้ ไม่เงียบ
-      const wanted = code.toString().trim().toLowerCase()
-      if (!applied.some((c) => c.toLowerCase() === wanted)) {
-        setErrorMessage(PROMOTION_NOT_APPLICABLE)
-      }
-    } catch (e) {
-      setErrorMessage(friendlyErrorMessage(e, "ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค้ดอีกครั้ง"))
-    }
+    // CORE-4g (กฎข้อ 63b): Medusa ตอบ 200 แต่ไม่ใส่ code ที่ใช้ไม่ได้ (หมดอายุ/ไม่ตรงเงื่อนไข) — แจ้งผู้ใช้ ไม่เงียบ
+    setErrorMessage(await submitPromotionCodes(codes, code.toString()))
 
     if (input) {
       input.value = ""
