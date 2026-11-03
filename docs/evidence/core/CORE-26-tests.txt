@@ -1,0 +1,66 @@
+# CORE-26 — ผล test (spec 01 กฎข้อ 81, AC-117; qa/review #199, nit review #206), Node v24.12.0, รันในเครื่อง 2026-11-03
+สภาพแวดล้อม: backend `medusa develop` :9112 + storefront prod build (`next build && next start` :8112), DB medusa_core26 (migrate + seed), Redis db 14
+
+## Red (ก่อนแก้) — ล้มด้วยสาเหตุที่ถูกต้อง
+- unit src/core-26-cart-dropdown.test.ts:
+  - static "ไม่หาร/คูณ 1.07 และใช้ item_total" — expected source to match /\bitem_total\b/ (dropdown ใช้ cart.subtotal)
+  - "ยอดรวม = item_total" — expected 5514.02 to be 4720 (แสดง subtotal ก่อนส่วนลด ไม่รวมภาษี)
+  - "เปิดเองแล้ว mouse อยู่ใต้ panel → ปิดเองใน 5 วินาที" — panel ยังอยู่หลัง 6 วินาที (mouseenter ของ wrapper ยกเลิก timer)
+- unit src/core-25-pdp-option-reset.test.ts กรณีเปลี่ยน product.id (กฎข้อ 81d) — ผ่านตั้งแต่แรกบนโค้ดของ CORE-25
+  (state ของ option ถูกตั้งใหม่ตาม v_id ของสินค้าใหม่อยู่แล้ว) จึงไม่แตะ product-actions/index.tsx
+- e2e core-26 บน build ของ dropdown เดิม (origin/develop):
+  - AC-117 ยอดรวม: expect(dataValue(cart-subtotal)).toBeCloseTo(4720) — Received: 5523.36 (subtotal ก่อนส่วนลด/ไม่รวม VAT)
+  - AC-117 ปิดเอง: expect(nav-cart-dropdown).toBeHidden({timeout: 6000}) — Received: visible (mouse ใต้ panel ทำให้ค้างเปิด)
+
+## Green (หลังแก้)
+## $ vitest run src/core-26-cart-dropdown.test.ts src/core-25-pdp-option-reset.test.ts --reporter=verbose
+ ✓ src/core-25-pdp-option-reset.test.ts > CORE-25: option บน PDP ไม่ถูกรีเซ็ตจาก v_id (กฎข้อ 78) > เปิด PDP ด้วย ?v_id=M → เลือก M (ใช้ v_id ตอนโหลด) 72ms
+ ✓ src/core-25-pdp-option-reset.test.ts > CORE-25: option บน PDP ไม่ถูกรีเซ็ตจาก v_id (กฎข้อ 78) > URL ยังเป็น v_id=S ขณะเลือก M แล้ว product.variants เปลี่ยน reference (RSC refresh) → ยังเป็น M 12ms
+ ✓ src/core-25-pdp-option-reset.test.ts > CORE-25: option บน PDP ไม่ถูกรีเซ็ตจาก v_id (กฎข้อ 78) > CORE-26: rerender ด้วย product ใหม่ + v_id ของ variant ในสินค้าใหม่ → option ตรง variant นั้น ไม่ค้างของสินค้าเดิม 4ms
+ ✓ src/core-26-cart-dropdown.test.ts > CORE-26: static — ยอดรวมจาก field ของ Medusa ไม่คำนวณเอง (AC-117) > regex ของ reduce จับโค้ดรูปแบบที่ใช้จริง (arrow function ใน reduce) 1ms
+ ✓ src/core-26-cart-dropdown.test.ts > CORE-26: static — ยอดรวมจาก field ของ Medusa ไม่คำนวณเอง (AC-117) > ไม่หาร/คูณ 1.07 และใช้ item_total ไม่ใช่ subtotal 0ms
+ ✓ src/core-26-cart-dropdown.test.ts > CORE-26: dropdown ของตะกร้า (กฎข้อ 81) > ยอดรวม = item_total ป้าย 'ยอดรวมสินค้า (รวม VAT)' ไม่มี 'ไม่รวมภาษี' 212ms
+ ✓ src/core-26-cart-dropdown.test.ts > CORE-26: dropdown ของตะกร้า (กฎข้อ 81) > เปิดเองหลังจำนวนเปลี่ยน แล้ว mouse อยู่ใต้ panel → ยังปิดเองภายใน 5 วินาที 15ms
+ ✓ src/core-26-cart-dropdown.test.ts > CORE-26: dropdown ของตะกร้า (กฎข้อ 81) > ชี้ nav-cart-link → เปิดค้างตามเดิมของ starter (ยกเลิกการปิดเอง) 9ms
+
+## $ pnpm --filter storefront test:unit
+ Test Files  53 passed (53)
+      Tests  595 passed (595)
+
+## $ playwright test core-26 core-25 core-19a core-19c thai-ui-pages thai-ui-shell thai-ui-cart-order --project=chromium
+  ✓   2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (2.1s)
+  ✓   1 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (3.2s)
+  ✓   7 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (382ms)
+  ✓   5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.7s)
+  ✓   8 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (448ms)
+  ✓  10 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (3.4s)
+  ✓  11 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (325ms)
+  ✓   9 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (4.0s)
+  ✓  12 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:148:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (947ms)
+  ✓  13 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:148:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (3.5s)
+  ✓   4 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:47:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (16.3s)
+  ✓  15 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (427ms)
+  ✓  14 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (10.2s)
+  ✓  16 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (3.8s)
+  ✓  17 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:213:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (628ms)
+  17 passed (28.0s)
+  ✓  3 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (669ms)
+  ✓  2 [chromium] › e2e/core-19c-delete-button-error.spec.ts:104:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (1.2s)
+  ✓  1 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:148:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (1.8s)
+  ✓  5 [chromium] › e2e/core-19c-delete-button-error.spec.ts:122:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1.9s)
+  ✓  7 [chromium] › e2e/core-19c-delete-button-error.spec.ts:155:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (1.1s)
+  ✓  8 [chromium] › e2e/core-19c-delete-button-error.spec.ts:155:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (1.0s)
+  ✓  4 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (5.0s)
+  ✓  9 [chromium] › e2e/core-19c-delete-button-error.spec.ts:181:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่ (818ms)
+  ✓  6 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:203:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (19.1s)
+  9 passed (22.1s)
+
+## $ pnpm lint && pnpm typecheck
+lint: exit 0 (0 errors; warning เดิมของ repo)
+typecheck: exit 0 (backend + admin + storefront)
+## $ pnpm --filter storefront build — สำเร็จ (prod build ที่ใช้รัน e2e)
+
+## grep (AC-117)
+$ grep -n "dispatchEvent(\"click\")" e2e/core-25-pdp-option-reset.spec.ts e2e/core-19a-nav-cart-search.spec.ts
+e2e/core-25-pdp-option-reset.spec.ts:78:    await option(page, "M").dispatchEvent("click")
+(เหลือเฉพาะ option-button ไซซ์ M ของ CORE-25 — ไม่ใช่ add-product-button; add-product-button ใช้ click() ทุกที่)

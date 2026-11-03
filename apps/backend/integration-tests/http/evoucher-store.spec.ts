@@ -232,6 +232,16 @@ medusaIntegrationTestRunner({
       })
     })
 
+    // EV-N2 (กฎข้อ 27b): code `allocated` ที่ส่งอีเมลล้ม (delivered_at null) อยู่บนสุด แล้วเรียง delivered_at ใหม่สุดก่อน
+    describe("AC-41: order delivered_at DESC NULLS FIRST", () => {
+      it("returns the allocated (email failed) code first", async () => {
+        const res = await settle(api.get("/store/customers/me/evouchers", a))
+        expect(res.status).toBe(200)
+        expect(res.data.evouchers[0]).toEqual(expect.objectContaining({ code: "EV7A-A-3", delivered_at: null }))
+        expect(res.data.evouchers.map((e: { code: string }) => e.code)).toEqual(["EV7A-A-3", "EV7A-A-2", "EV7A-A-1"])
+      })
+    })
+
     describe("AC-35: pool/partner on GET /store/products*", () => {
       const variantOf = (product: any) =>
         product.variants.find((v: { id: string }) => v.id === voucherVariantId)
