@@ -1,0 +1,130 @@
+# CORE-4i-a — ผลการทดสอบ (spec 01 กฎข้อ 72, AC-110 ส่วน helper + applyPromotions/updateLineItem + cart) 2026-11-03
+# สภาพแวดล้อม: Node 24.12.0; e2e: backend medusa start (build) :9139, DB medusa_core4i seed ใหม่, Redis db 14,
+# storefront next build+start :8139, Chromium (ไม่มี Stripe key — e2e ของ Stripe ไม่อยู่ในชุดที่รัน)
+
+## Red (ก่อนแก้): unit — ยังไม่มี helper `@lib/util/action-result`, applyPromotions/updateLineItem ยัง throw (ผ่าน medusaError),
+## ยังไม่มี handler submitPromotionCodes/changeLineQuantity, discount-code มี friendlyErrorMessage( ใน catch
+ FAIL  src/lib/util/action-result.test.ts — Error: Cannot find package '@lib/util/action-result'
+ FAIL  applyPromotions > สำเร็จ → { ok: true, codes } — AssertionError: expected [ 'OK10' ] to deeply equal { ok: true, codes: [ 'OK10' ] }
+ FAIL  applyPromotions > SDK throw FetchError 401 → { error } ไม่ throw — promise rejected "Error: Error setting up the request: Unauthorized" { status: 401 }
+ FAIL  applyPromotions > 409 PROMOTION_NOT_COMBINABLE — promise rejected "Error: Error setting up the request: This promotion can't be combined …" { status: 409 }
+ FAIL  updateLineItem > SDK throw … → { error } ไม่ throw (×4), ไม่มี JWT, ไม่มี cart id/line id
+ FAIL  core-4i-ui-results (submitPromotionCodes / changeLineQuantity / removeLineItem = SIGN_IN_AGAIN_MESSAGE) — export ยังไม่มี
+ FAIL  core-4i-static > modules/checkout/components/discount-code/index.tsx ไม่มี friendlyErrorMessage( ใน catch
+      Failed Tests 25 (+ 1 ไฟล์ import ไม่ได้)
+
+## Green: unit ของ task + test เดิมที่แก้ (verbose)
+ ✓ src/delete-button.test.ts > DeleteButton (กฎข้อ 64) > ส่งต่อ data-testid ไปที่ <button> 5ms
+ ✓ src/delete-button.test.ts > DeleteButton (กฎข้อ 64) > ไม่แสดง cart-item-remove-error ก่อนกดลบ 1ms
+ ✓ src/delete-button.test.ts > DeleteButton แยก unauthorized (กฎข้อ 68) > unauthorized กับ failed ได้ข้อความไทยต่างกัน และไม่แจ้ง cart อัปเดต 1ms
+ ✓ src/delete-button.test.ts > DeleteButton แยก unauthorized (กฎข้อ 68) > action reject (เช่น request ของ action ตอบ 500) → ข้อความ fallback เดียวกับ failed 0ms
+ ✓ src/delete-button.test.ts > DeleteButton แยก unauthorized (กฎข้อ 68) > สำเร็จ → ไม่มีข้อความ error และแจ้ง cart อัปเดต 0ms
+    at collectTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/f61e05c0-f1ba-46ab-87ef-6817671555bf/scratchpad/wt-CORE-4i/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_jsdom@30.1.3_vite@7.3.7_@typ_4854ebdf12c7279dad923ef2c74fb477/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:3441:3)
+    at startTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/f61e05c0-f1ba-46ab-87ef-6817671555bf/scratchpad/wt-CORE-4i/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_jsdom@30.1.3_vite@7.3.7_@typ_4854ebdf12c7279dad923ef2c74fb477/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:4190:17)
+    at collectTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/f61e05c0-f1ba-46ab-87ef-6817671555bf/scratchpad/wt-CORE-4i/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_jsdom@30.1.3_vite@7.3.7_@typ_4854ebdf12c7279dad923ef2c74fb477/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:3441:3)
+    at startTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/f61e05c0-f1ba-46ab-87ef-6817671555bf/scratchpad/wt-CORE-4i/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_jsdom@30.1.3_vite@7.3.7_@typ_4854ebdf12c7279dad923ef2c74fb477/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:4190:17)
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > FetchError 401 → { error: "unauthorized" } 2ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > FetchError 403 → { error: "unauthorized" } 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > FetchError 500 → { error: "failed" } 2ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > network → { error: "failed" } 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > ค่าที่ไม่ใช่ object → { error: "failed" } 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > null → { error: "failed" } 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > 409 ที่ code อยู่ในรายการที่ผู้เรียกแยก → คืน code นั้น (FetchError ไม่มี code จึงเทียบข้อความของ backend) 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > code ที่ผู้เรียกไม่ได้ขอแยก → "failed" 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > object ที่มี code (ผลของ fetch ตรง) → คืน code ที่ขอแยก 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > 401 ชนะ code เสมอ 0ms
+ ✓ src/lib/util/action-result.test.ts > actionErrorMessage (กฎข้อ 72) > unauthorized → SIGN_IN_AGAIN_MESSAGE 0ms
+ ✓ src/lib/util/action-result.test.ts > actionErrorMessage (กฎข้อ 72) > failed → fallback ของผู้เรียก 0ms
+ ✓ src/lib/util/action-result.test.ts > actionErrorMessage (กฎข้อ 72) > code ของ 409 ที่รู้จัก → ข้อความไทยของ code นั้น 0ms
+ ✓ src/lib/util/action-result.test.ts > settleAction (ฝั่ง client) > action reject → { error: "failed" }; resolve → ผลเดิม 0ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > unauthorized → SIGN_IN_AGAIN_MESSAGE 3ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > PROMOTION_NOT_COMBINABLE → ข้อความไทยของ code นั้น 0ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 1ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > สำเร็จแต่ code ไม่อยู่ใน cart (กฎข้อ 63b) → ข้อความใช้โค้ดไม่ได้; อยู่ใน cart → "" 1ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > ลบโค้ด (ไม่มี code ที่ต้องตรวจ) สำเร็จ → "" 0ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > unauthorized → SIGN_IN_AGAIN_MESSAGE 0ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 0ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > สำเร็จ → null 0ms
+ ✓ src/core-4i-ui-results.test.ts > ลบสินค้า (removeLineItem) ใช้ SIGN_IN_AGAIN_MESSAGE เดียวกัน > unauthorized → SIGN_IN_AGAIN_MESSAGE 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > สำเร็จ → { ok: true, codes } เป็น code ที่อยู่ใน cart จริง และ revalidate 29ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 401 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 403 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 500 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw network → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > 409 PROMOTION_NOT_COMBINABLE → { error: "PROMOTION_NOT_COMBINABLE" } 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > ไม่มี JWT (cookie cart ถูกล้างแล้ว) → unauthorized ไม่เรียก SDK 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > ไม่มี cart id → failed ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > สำเร็จ → { ok: true } และ revalidate 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 401 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 403 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 500 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw network → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > ไม่มี JWT → unauthorized ไม่เรียก SDK 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > ไม่มี cart id หรือ line id → failed ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > submitPromotionForm อ่านผลของ applyPromotions (AC-110) > SDK 401 → SIGN_IN_AGAIN_MESSAGE 9ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 401 → friendlyErrorMessage ให้เข้าสู่ระบบใหม่ 1ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 403 → friendlyErrorMessage ให้เข้าสู่ระบบใหม่ 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 500 → ข้อความ fallback (ต่างจาก 401) 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > setAddresses: SDK 401 → ข้อความให้เข้าสู่ระบบใหม่ (ผ่าน medusaError ของ updateCart) 34ms
+ ✓ src/core-4g-checkout-polish.test.ts > applyPromotions คืน code ที่อยู่ใน cart จริง (กฎข้อ 63b) > Medusa ตอบ 200 แต่ไม่มี code ที่ส่งไป → ไม่อยู่ในผลลัพธ์ 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company null เท่ากับ  0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company undefined เท่ากับ  0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company null เท่ากับ undefined 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > ไม่มี key เลยเท่ากับค่าว่าง 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > ค่าต่างกันจริงยังไม่เท่ากัน 0ms
+ ✓ src/core-4i-static.test.ts > ตัวตรวจ friendlyErrorMessage ใน catch (AC-110) > พบทั้ง try/catch และ .catch(callback); ไม่นับการเรียกนอก catch 5ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/address-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 5ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/addresses/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 4ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/billing_address/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 4ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/country-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/discount-code/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/error-message/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-container/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 3ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-test/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-wrapper/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-wrapper/stripe-wrapper.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 3ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/open-qr.ts ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/order-delayed.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/qr-panel.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/review/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/shipping-address/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/submit-button/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/templates/checkout-form/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/templates/checkout-summary/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/cart-item-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/empty-cart-message/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/flash-code-notice/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/flash-exceeds-remaining/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/item/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/sign-in-prompt/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/items.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/preview.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/summary.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > รายการค้างของ CORE-4i-b ยังเป็นไฟล์ที่มีอยู่จริง > modules/checkout/components/payment/index.tsx 0ms
+ ✓ src/core-4i-static.test.ts > รายการค้างของ CORE-4i-b ยังเป็นไฟล์ที่มีอยู่จริง > modules/checkout/components/payment-button/index.tsx 0ms
+ ✓ src/core-4i-static.test.ts > รายการค้างของ CORE-4i-b ยังเป็นไฟล์ที่มีอยู่จริง > modules/checkout/components/shipping/index.tsx 0ms
+ Test Files  6 passed (6)
+      Tests  87 passed (87)
+
+## ชุดเต็ม storefront unit (pnpm --filter storefront test:unit)
+ Test Files  59 passed (59)
+      Tests  690 passed (690)
+
+## Playwright project unit (pnpm --filter storefront test:e2e:unit)
+  37 passed
+
+## e2e regression (prod build) — AC-99, AC-100, AC-104 (ข้อความเป็น SIGN_IN_AGAIN_MESSAGE), AC-21/AC-22 (spec 03)
+  ✓ core-19c-delete-button-error.spec.ts › AC-100: ทุก line ใน cart dropdown มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button
+  ✓ core-19c-delete-button-error.spec.ts › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่
+  ✓ core-19c-delete-button-error.spec.ts › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย (1280px)
+  ✓ core-19c-delete-button-error.spec.ts › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย (375px)
+  ✓ core-19c-delete-button-error.spec.ts › AC-104: ลบ cookie _medusa_jwt แล้วกดลบ → cart-item-remove-error = SIGN_IN_AGAIN_MESSAGE line ยังอยู่
+  ✓ core-4g-checkout-polish.spec.ts › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect
+  ✓ flash-sale-fs15.spec.ts › AC-21 ×3, AC-22: complete ล้ม 409 FLASH_SOLD_OUT → ข้อความไทยของ code ในขั้น review
+  10 passed (23.3s)
+
+## lint / typecheck (pnpm lint && pnpm typecheck)
+  storefront lint: 0 errors (warning เดิมของ starter เท่านั้น ไม่มีในบรรทัดที่ task นี้แก้)
+  typecheck: storefront Done, backend Done
