@@ -1,5 +1,7 @@
 // AF-8a (spec 05): logic ล้วนของ portal affiliate — การ์ดสินค้า (กฎ 29) และแท็บ
 
+import { convertToLocale, STORE_CURRENCY_CODE } from "./money"
+
 export type PortalTab = "active" | "upcoming"
 
 type VariantPrice = {
@@ -15,6 +17,10 @@ export const portalPage = (value: string | string[] | undefined): number => {
   const page = Math.floor(Number(value))
   return Number.isSafeInteger(page) && page >= 1 ? page : 1
 }
+
+/** AF-N3 (กฎ 40c): `?page=` เลยหน้าสุดท้าย — หน้าแรกที่ว่างคือ "ยังไม่มีรายการ" ไม่ใช่เกินจำนวน */
+export const pageOutOfRange = (page: number, limit: number, count: number): boolean =>
+  page > 1 && (page - 1) * limit >= count
 
 /**
  * กฎ 29d: ราคาปัจจุบัน × อัตรา% ปัด 2 ตำแหน่งแบบ half-up (กฎ 11) ไม่รวม cap
@@ -72,7 +78,7 @@ type Money = { amount: number; currency_code: string }
 
 /**
  * AF-8b (กฎ 33): จัดแถวของ `GET /affiliate/me/earnings` (GROUP BY currency, status) ตามสถานะ — ใช้ยอดของแถวตรงๆ
- * ไม่หักลบหรือรวมยอดที่ storefront (reversed เป็นแถวติดลบแยก); สถานะที่ API ไม่คืนแถว → ฿0
+ * ไม่หักลบหรือรวมยอดที่ storefront (reversed เป็นแถวติดลบแยก); สถานะที่ API ไม่คืนแถว → 0 ในสกุลของร้าน (กฎ 40a — แถวที่มีใช้สกุลของ API)
  */
 export const earningsByStatus = (totals: EarningsTotal[]): Record<EarningStatus, Money[]> =>
   Object.fromEntries(
@@ -80,6 +86,15 @@ export const earningsByStatus = (totals: EarningsTotal[]): Record<EarningStatus,
       const rows = totals
         .filter((t) => t.status === status)
         .map((t) => ({ amount: t.amount, currency_code: t.currency }))
-      return [status, rows.length ? rows : [{ amount: 0, currency_code: "thb" }]]
+      return [status, rows.length ? rows : [{ amount: 0, currency_code: STORE_CURRENCY_CODE }]]
     })
   ) as Record<EarningStatus, Money[]>
+
+/**
+ * AF-N3 (กฎ 40d): ยอดเงินของ portal — ยอดติดลบ (reversed) ขึ้นต้นด้วย − (U+2212) แทน hyphen ของ Intl
+ * จัดรูปแบบด้วย `convertToLocale` เดิม (เปลี่ยนแค่เครื่องหมาย ไม่คำนวณยอด)
+ */
+export const portalAmount = ({ amount, currency_code }: Money): string =>
+  amount < 0
+    ? `\u2212${convertToLocale({ amount: -amount, currency_code })}`
+    : convertToLocale({ amount, currency_code })
