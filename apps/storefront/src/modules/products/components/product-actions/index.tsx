@@ -13,7 +13,7 @@ import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
-import { isEqual } from "lodash"
+import { findVariantByOptions, optionsAsKeymap } from "@lib/util/product-variant-options"
 import { useParams, usePathname } from "next/navigation"
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
@@ -27,15 +27,6 @@ type ProductActionsProps = {
   product: HttpTypes.StoreProduct
   region: HttpTypes.StoreRegion
   disabled?: boolean
-}
-
-const optionsAsKeymap = (
-  variantOptions: HttpTypes.StoreProductVariant["options"]
-) => {
-  return variantOptions?.reduce((acc: Record<string, string>, varopt) => {
-    if (varopt.option_id) acc[varopt.option_id] = varopt.value
-    return acc
-  }, {})
 }
 
 const ADD_TO_CART_FAILED =
@@ -64,16 +55,10 @@ export default function ProductActions({
   const [addError, setAddError] = useState<string | null>(null)
   const countryCode = useParams().countryCode as string
 
-  const selectedVariant = useMemo(() => {
-    if (!product.variants || product.variants.length === 0) {
-      return
-    }
-
-    return product.variants.find((v) => {
-      const variantOptions = optionsAsKeymap(v.options)
-      return isEqual(variantOptions, options)
-    })
-  }, [product.variants, options])
+  const selectedVariant = useMemo(
+    () => findVariantByOptions(product.variants, options),
+    [product.variants, options]
+  )
 
   // update the options when a variant is selected
   const setOptionValue = (optionId: string, value: string) => {
@@ -84,12 +69,7 @@ export default function ProductActions({
   }
 
   //check if the selected options produce a valid variant
-  const isValidVariant = useMemo(() => {
-    return product.variants?.some((v) => {
-      const variantOptions = optionsAsKeymap(v.options)
-      return isEqual(variantOptions, options)
-    })
-  }, [product.variants, options])
+  const isValidVariant = !!selectedVariant
 
   // CORE-25 (กฎข้อ 78): ใช้ `v_id` จาก URL ครั้งเดียวต่อสินค้า — RSC refresh (เช่นหลัง add-to-cart) ส่ง `product`
   // object ใหม่มาได้ขณะที่ URL ยังเป็น `v_id` ของตัวเลือกก่อนหน้า (router.replace ยังไม่ commit) ถ้าใช้ซ้ำจะรีเซ็ตตัวเลือกของลูกค้า

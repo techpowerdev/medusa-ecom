@@ -1,0 +1,95 @@
+# GB-7a2 — หลักฐาน test (spec 04 กฎข้อ 14c, 27, 29c–f, 31; AC-28 ส่วน e2e, AC-47)
+# วันที่ 2026-11-03T22:03Z — node v22.23.3, storefront :8301, backend :9301 (DB medusa_gb7a2, Redis db 5)
+
+## 1) RED (ก่อนเขียนโค้ด) — unit/static ที่เพิ่มล้มด้วยสาเหตุที่ถูกต้อง
+     × open + ends_at ในอนาคต → true 2ms
+     × ends_at <= now แม้ status ยัง open → false 0ms
+     × ไม่ open หรือไม่มี ends_at → false 0ms
+     × variant เดิมซ้ำ = รวมจำนวน; variant ใหม่ต่อท้าย 0ms
+     × แก้จำนวน (clamp 1..100) และลบรายการ 0ms
+     × code ที่รู้จัก → code นั้น และข้อความเดียวกับ groupJoinErrorMessage 2ms
+     × 401 → unauthorized; 400/403/404 → closed; อื่นๆ → failed 0ms
+     × 400 The cart has no items → empty_cart ข้อความไทยของตัวเอง ไม่ซ้ำกับข้อความอื่น 0ms
+     × ผลเป็น object ธรรมดา (ส่งข้าม boundary ของ server action ได้) 0ms
+     × source ใต้ modules/checkout/components ผ่านเงื่อนไข (a)–(c) 48ms
+Error: Cannot find module './product-variant-options' imported from src/lib/util/product-variant-options.test.ts
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected 0 to be greater than 0
+      Tests  10 failed | 32 passed (42)
+
+## 1b) positive control: ลบ syncAffiliateBefore ออกจาก group-join.tsx จริง → static test ล้ม (คืนโค้ดแล้ว)
++     "rule": "31d: joinGroupBuy ไม่มี syncAffiliateBefore ก่อนหน้า",
+      Tests  1 failed | 18 passed (19)
+
+## 2) GREEN — unit/static ของ task
+ ✓ src/lib/util/product-variant-options.test.ts > optionsAsKeymap / findVariantByOptions > option ของ variant → map option_id → value 1ms
+ ✓ src/lib/util/product-variant-options.test.ts > optionsAsKeymap / findVariantByOptions > เลือกครบทุก option → variant ที่ตรง; ไม่ครบ/ไม่มี → undefined 1ms
+ ✓ src/lib/util/group-page.test.ts > groupProgress (GB-7a1, AC-16a) > target_type=people ใช้ progress_people เทียบ target_value 1ms
+ ✓ src/lib/util/group-page.test.ts > groupProgress (GB-7a1, AC-16a) > orders/units ใช้ progress ของชนิดนั้น 0ms
+ ✓ src/lib/util/group-page.test.ts > groupProgress (GB-7a1, AC-16a) > เกินเป้าหมาย → แถบเต็ม 100% แต่ตัวเลขจริงคงเดิม 0ms
+ ✓ src/lib/util/group-page.test.ts > groupProgress (GB-7a1, AC-16a) > target_value ≤ 0 ไม่หารด้วยศูนย์ 0ms
+ ✓ src/lib/util/group-page.test.ts > groupDiscountValue > percentage → N% 0ms
+ ✓ src/lib/util/group-page.test.ts > groupDiscountValue > fixed → ลดเป็นจำนวนเงินตามสกุลเงิน 9ms
+ ✓ src/lib/util/group-page.test.ts > groupDiscountValue > ไม่มีส่วนลด → null 0ms
+ ✓ src/lib/util/group-page.test.ts > groupSharePath > ลิงก์แชร์ /g/<token> (middleware เติม country เอง — กฎข้อ 29b) 0ms
+ ✓ src/lib/util/group-page.test.ts > groupJoinable > open + ends_at ในอนาคต → true 0ms
+ ✓ src/lib/util/group-page.test.ts > groupJoinable > ends_at <= now แม้ status ยัง open → false 0ms
+ ✓ src/lib/util/group-page.test.ts > groupJoinable > ไม่ open หรือไม่มี ends_at → false 0ms
+ ✓ src/lib/util/group-page.test.ts > รายการ group-selection > variant เดิมซ้ำ = รวมจำนวน; variant ใหม่ต่อท้าย 0ms
+ ✓ src/lib/util/group-page.test.ts > รายการ group-selection > แก้จำนวน (clamp 1..100) และลบรายการ 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorMessage > ทุก code ในกฎข้อ 29f + GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED มีข้อความไทย และไม่ซ้ำกัน (รวม 400/อื่นๆ/401) 1ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorMessage > ข้อความตามกฎข้อ 29f/30a 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorMessage > GB_UNITS_LIMIT_EXCEEDED แสดงจำนวนสูงสุดต่อคนเมื่อรู้ค่า 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorCode — FetchError ของ js-sdk 2.22.1 ไม่มี code จึงจับจากข้อความคงที่ของ backend > FetchError 409 → code จากข้อความ (รวมข้อความที่ medusaError ทำตัวแรกใหญ่ + จุดท้าย) 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorCode — FetchError ของ js-sdk 2.22.1 ไม่มี code จึงจับจากข้อความคงที่ของ backend > ข้อความที่มีชื่อ code อยู่ (กฎข้อ 30a: 400 ระบุ code ในข้อความ) → code นั้น 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorCode — FetchError ของ js-sdk 2.22.1 ไม่มี code จึงจับจากข้อความคงที่ของ backend > contract: ทุก conflict(CODE, ข้อความ) ใน join.ts ของ backend จับกลับเป็น code เดิมได้ 1ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinFailure + groupJoinActionMessage (GB-7a2) > code ที่รู้จัก → code นั้น และข้อความเดียวกับ groupJoinErrorMessage 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinFailure + groupJoinActionMessage (GB-7a2) > 401 → unauthorized; 400/403/404 → closed; อื่นๆ → failed 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinFailure + groupJoinActionMessage (GB-7a2) > 400 The cart has no items → empty_cart ข้อความไทยของตัวเอง ไม่ซ้ำกับข้อความอื่น 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinFailure + groupJoinActionMessage (GB-7a2) > ผลเป็น object ธรรมดา (ส่งข้าม boundary ของ server action ได้) 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > source ใต้ modules/checkout/components ผ่านเงื่อนไข (a)–(c) 49ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > allow-list ไม่มีแถวค้าง และทุกแถวมีเหตุผล 20ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31a stripe.confirmPayment นอก syncAffiliateBefore → ล้ม 1ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31a stripe.confirmPayment ถูกเรียกก่อนแล้วส่งผลลัพธ์ (ไม่ได้ห่อเป็นฟังก์ชัน) → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b ฟังก์ชันที่เรียก confirmPromptPayPayment โดยไม่มี sync ก่อน → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b openQr( โดยไม่มี sync ก่อน (helper confirm พร้อมเพย์ภายใน) → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31c placeOrder(cart.id) ที่ไม่ส่ง metadata → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31c placeOrder(id, undefined) — มี argument ที่ 2 แต่ไม่ส่ง metadata จริง → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31c placeOrder(id, void 0) → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b syncAffiliateBefore อยู่ในฟังก์ชันอื่นที่ประกาศก่อน confirmPromptPayPayment → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b syncAffiliateBefore อยู่ในฟังก์ชันอื่นที่ประกาศก่อน openQr( → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b syncAffiliateBefore เป็น argument ของ confirm เอง (ไม่ได้ทำก่อน) → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31d joinGroupBuy โดยไม่มี sync ก่อน → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31d sync อยู่หลัง joinGroupBuy → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31d sync ในฟังก์ชันซ้อนที่ประกาศก่อน joinGroupBuy → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31d sync ด้วย cart ที่ไม่มี metadata → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31d sync ด้วย metadata: undefined → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31: retrievePaymentIntent นอก sync และไม่อยู่ใน allow-list → ล้ม 0ms
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > รูปแบบที่ถูกต้อง (ตาม #119) → ไม่มี violation 0ms
+ Test Files  4 passed (4)
+      Tests  44 passed (44)
+
+## 3) unit ทั้งหมดของ storefront (vitest)
+ Test Files  72 passed (72)
+      Tests  804 passed (804)
+
+## 4) e2e (Playwright chromium) — group-buy-join.spec.ts + group-buy-group-page.spec.ts (GB-7a1 ปรับ assertion ปุ่ม join)
+Running 9 tests using 2 workers
+
+  ✓  2 [chromium] › e2e/group-buy-join.spec.ts:72:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order (4.2s)
+  ✓  1 [chromium] › e2e/group-buy-group-page.spec.ts:17:7 › หน้ากลุ่ม (AC-16a) › ไม่ login: จำนวนสมาชิก ความคืบหน้า นับถอยหลัง ลิงก์แชร์ และ reload หลังคนที่ 3 join (4.9s)
+  ✓  3 [chromium] › e2e/group-buy-join.spec.ts:146:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่ (3.1s)
+  ✓  4 [chromium] › e2e/group-buy-group-page.spec.ts:60:7 › หน้ากลุ่ม (AC-16a) › 375px: ไม่เลื่อนแนวนอน (2.6s)
+  ✓  6 [chromium] › e2e/group-buy-group-page.spec.ts:71:7 › หน้ากลุ่ม (AC-16a) › token ไม่มีจริง → หน้าไม่พบ (172ms)
+  ✓  5 [chromium] › e2e/group-buy-join.spec.ts:160:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่ (3.0s)
+  ✓  7 [chromium] › e2e/group-buy-join.spec.ts:180:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (2.2s)
+  ✓  8 [chromium] › e2e/group-buy-join.spec.ts:180:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (2.2s)
+  ✓  9 [chromium] › e2e/group-buy-join.spec.ts:203:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47) (2.7s)
+
+  9 passed (18.3s)
+
+## 5) lint + typecheck (root)
+apps/storefront lint:   141 |   // CORE-19e (กฎข้อ 71): ล็อกเกิน 5 วินาที → refresh 1 ครั้ง; 10 วินาที → ปลดล็อก + error  react-hooks/set-state-in-effect
+apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
