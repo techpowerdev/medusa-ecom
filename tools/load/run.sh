@@ -21,6 +21,8 @@ export STRIPE_API_KEY="sk_test_dummy" STRIPE_WEBHOOK_SECRET="whsec_dummy" # ไ�
 export ALLOW_TEST_PROVIDERS=true
 export AFFILIATE_TOKEN_SECRET="${AFFILIATE_TOKEN_SECRET:-$(openssl rand -hex 32)}"
 export STOREFRONT_URL="${STOREFRONT_URL:-http://localhost:8000}"
+# OPS-18 (AC-29): log debug ของเวลา lock ของ flash checkout — เฉพาะ load run (ค่าเริ่มต้นของ compose prod = info)
+export LOG_LEVEL="${LOG_LEVEL:-debug}"
 
 FLASH_CUSTOMERS="${LOAD_FLASH_CUSTOMERS:-300}"
 TOTAL_CAP="${LOAD_FLASH_TOTAL_CAP:-100}"
@@ -70,6 +72,11 @@ UNITS_SOLD="$(sql "SELECT units_sold FROM flash_sale_config WHERE campaign_id = 
 MEMBERS="$(sql "SELECT count(DISTINCT customer_id) FROM group_buy_membership
   WHERE group_id = '$GROUP_ID' AND status IN ('joined', 'awaiting_payment', 'paid') AND deleted_at IS NULL")"
 
+# OPS-18 (AC-29): ดึง log ของ server+worker ทุก run แล้วสรุปเวลารอ/ถือ lock — log เต็มอยู่ใน DATA (ไม่เข้า artifact)
+compose logs --no-color --no-log-prefix server worker >"$DATA/backend.log" 2>&1 || true
+node tools/load/lock-timing.js "$DATA/backend.log" "$OUT/lock-timing.jsonl" >"$OUT/lock-timing.md" \
+  || echo "lock-timing: สรุปไม่สำเร็จ (ไม่ใช่ gate)" >"$OUT/lock-timing.md"
+
 metric() { jq -r "($2) // \"-\"" "$OUT/$1.json" 2>/dev/null || echo "-"; }
 failures=0
 {
@@ -101,7 +108,8 @@ failures=0
   echo "failures: $failures"
 } >"$OUT/report.md"
 cat "$OUT/report.md"
-[ -n "${GITHUB_STEP_SUMMARY:-}" ] && cat "$OUT/report.md" >>"$GITHUB_STEP_SUMMARY"
+cat "$OUT/lock-timing.md"
+[ -n "${GITHUB_STEP_SUMMARY:-}" ] && cat "$OUT/report.md" "$OUT/lock-timing.md" >>"$GITHUB_STEP_SUMMARY"
 if grep -q "^failures: 0$" "$OUT/report.md"; then
   echo "load test: ผ่าน"
 else
