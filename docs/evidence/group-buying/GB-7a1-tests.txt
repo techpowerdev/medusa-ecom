@@ -1,0 +1,28 @@
+# GB-7a1 — หน้ากลุ่ม /<cc>/g/<token> อ่านอย่างเดียว (spec 04 กฎข้อ 29b, AC-16a)
+# วันที่ 2026-11-04, node 22, backend medusa develop :9261 (DB medusa_gb7a1), storefront next build + next start :8261
+
+## Red: e2e ก่อนมีหน้า (ย้าย app/[countryCode]/(main)/g ออกชั่วคราว) — ล้มเพราะไม่พบ group-member-count
+    Error: expect(locator).toContainText(expected) failed
+    Error: element(s) not found
+    test-results/group-buy-group-page-หน้ากลุ่ม-AC-16a-375px-ไม่เลื่อนแนวนอน-chromium/test-failed-1.png
+  2 failed
+  1 passed (15.2s)
+
+## Red: unit ก่อนมี src/lib/util/group-page.ts — Test Files 1 failed (ไม่พบ module)
+
+## Green: unit (vitest) storefront ทั้งชุด
+  src/lib/util/group-page.test.ts — 8 passed (groupProgress 4, groupDiscountValue 3, groupSharePath 1)
+ Test Files  70 passed (70)
+      Tests  766 passed (766)
+
+## Green: e2e (Playwright chromium, E2E_SAVE_EVIDENCE=1)
+  ✓  1 [chromium] › e2e/group-buy-group-page.spec.ts:17:7 › หน้ากลุ่ม (AC-16a) › ไม่ login: จำนวนสมาชิก ความคืบหน้า นับถอยหลัง ลิงก์แชร์ และ reload หลังคนที่ 3 join (5.5s)
+  ✓  2 [chromium] › e2e/group-buy-group-page.spec.ts:54:7 › หน้ากลุ่ม (AC-16a) › 375px: ไม่เลื่อนแนวนอน (3.0s)
+  ✓  3 [chromium] › e2e/group-buy-group-page.spec.ts:65:7 › หน้ากลุ่ม (AC-16a) › token ไม่มีจริง → หน้าไม่พบ (217ms)
+  3 passed (9.6s)
+
+## Playwright project unit (กฎ evidence)
+  54 passed (635ms)
+
+## pnpm lint && pnpm typecheck: exit 0 (0 errors; warning เดิมเท่านั้น ไม่มีในไฟล์ของ GB-7a1)
+## next build: exit 0 — ƒ /[countryCode]/g/[token] (dynamic)
