@@ -1,4 +1,6 @@
-# OPS-17 (spec 07 AC-28 + follow-up review #220) — ผล test ในเครื่อง 2026-11-03T20:51:48Z, node v22.23.3
+# OPS-17 (spec 07 AC-28 + follow-up review #220, แก้ตาม review #235: scan ก่อน cat) — ผล test ในเครื่อง 2026-11-03T21:02:15Z, node v22.23.3
+
+red ก่อนแก้รอบ review #235: เคส JWT ใน report.md → JWT หลุดลง stdout, เคส report เก่าใน OUT → cleanup พิมพ์ STALE-REPORT, ลำดับ scan/cat ในซอร์สผิด (3 ล้ม)
 
 $ TEST_TYPE=unit npx jest --verbose (suite ที่เกี่ยวข้อง)
 PASS src/__tests__/load-nightly.unit.spec.ts
@@ -43,14 +45,16 @@ PASS src/__tests__/load-run.unit.spec.ts
     ✓ ไม่ส่ง IMAGE_TAG → compose ได้ IMAGE_TAG=load (ไม่ใช่ local ของ dev)
     ✓ ส่ง IMAGE_TAG มา → ใช้ค่าที่ส่ง
   OPS-17 (review #220) cleanup() ของ run.sh เมื่อ script หยุดกลางทาง
-    ✓ พิมพ์ report ที่มีลง job log, ตรวจ OUT แล้วลบไฟล์ที่มี JWT/setup_data และคง exit code เดิม (≠ 0)
-    ✓ ใน cleanup() พิมพ์ report ก่อน scan (ไฟล์ที่ scan ลบยังเห็นใน job log) และ scan ไม่ทำให้ cleanup ล้ม
+    ✓ ตรวจ OUT แล้วลบไฟล์ที่มี JWT/setup_data, พิมพ์ report ที่เหลือลง job log และคง exit code เดิม (≠ 0)
+    ✓ review #235: report.md มี JWT → scan ลบก่อนพิมพ์ JWT ไม่หลุดลง job log (stdout/stderr)
+    ✓ review #235 nit: report ของ run ก่อนใน OUT ถูกล้างตอนเริ่ม — cleanup ไม่พิมพ์ report เก่า
+    ✓ scan มาก่อน cat ทั้งใน cleanup() และทางปกติ (job log/GITHUB_STEP_SUMMARY) และ scan ใน cleanup ไม่ทำให้ cleanup ล้ม
   OPS-17 AC-28 grep
     ✓ seed-load.ts ไม่มี cast (as unknown as / as any / as CreateGroupBuyCampaignInput)
     ✓ prod-guards.unit.spec.ts อ่าน ci.yml ด้วย parse ของ yaml ไม่วนบรรทัด (ไม่มีตัวแปรสถานะ inEnv)
     ✓ lock-timing.js ไม่มี indexOf (ลำดับคิวของ hold_rank_corr ใช้ Map — O(n))
 
-(node:45017) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:61866) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
 (Use `node --trace-warnings ...` to show where the warning was created)
 PASS src/__tests__/prod-guards.unit.spec.ts
   AC-9 buildNotificationProviders ใน production (ADR-010)
@@ -96,15 +100,15 @@ PASS src/__tests__/prod-guards.unit.spec.ts
     ✓ package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec
 
 Test Suites: 5 passed, 5 total
-Tests:       67 passed, 67 total
+Tests:       69 passed, 69 total
 Snapshots:   0 total
 Ran all test suites matching /src\/__tests__\/load-run.unit.spec.ts|src\/__tests__\/load-lock-timing.unit.spec.ts|src\/__tests__\/prod-guards.unit.spec.ts|src\/__tests__\/load-artifact-guard.unit.spec.ts|src\/__tests__\/load-nightly.unit.spec.ts/i.
 
 $ pnpm --filter backend test:unit (ชุดเต็ม)
 Test Suites: 87 passed, 87 total
-Tests:       911 passed, 911 total
+Tests:       913 passed, 913 total
 
-$ pnpm lint && pnpm typecheck && pnpm --filter backend build → exit 0
+$ pnpm lint && pnpm typecheck → exit 0 (build: รอบแรกผ่าน; รอบนี้แก้แค่ shell script + test)
 
 $ grep -nE "inEnv|as unknown as|as any|as CreateGroupBuyCampaignInput|indexOf" (AC-28)
 (ไม่พบ)

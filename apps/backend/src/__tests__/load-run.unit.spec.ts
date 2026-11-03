@@ -13,17 +13,30 @@ const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64ur
 const fakeJwt = () => `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ actor_id: "cus_1" })}.c2lnbmF0dXJl`
 
 type Run = { status: number | null; stdout: string; stderr: string; imageTag: string; outDir: string }
+type Files = Record<string, string>
 
-function runStopped(env: Record<string, string>, plant: Record<string, string> = {}): Run {
+/**
+ * รัน run.sh โดย `docker` เป็น stub: บันทึก IMAGE_TAG, คัดลอก `written` ลง OUT ตอน `compose up` (จำลองไฟล์ที่ run เขียนก่อนหยุด — ไม่คัดลอกซ้ำตอน `compose down`) แล้ว exit 1
+ * → script หยุดที่ `compose up` (set -e) และ cleanup() ทำงาน; `stale` = ไฟล์ใน OUT จาก run ก่อน (มีอยู่ก่อนเริ่ม)
+ */
+function runStopped(env: Record<string, string>, { stale = {}, written = {} }: { stale?: Files; written?: Files } = {}): Run {
   const bin = mkdtempSync(path.join(tmpdir(), "ops17-bin-"))
+  const staging = path.join(bin, "written")
+  mkdirSync(staging)
+  for (const [name, text] of Object.entries(written)) {
+    writeFileSync(path.join(staging, name), text)
+  }
   const record = path.join(bin, "image-tag.txt")
-  writeFileSync(path.join(bin, "docker"), `#!/bin/sh\nprintf '%s' "\${IMAGE_TAG-<unset>}" > "${record}"\nexit 1\n`)
-  chmodSync(path.join(bin, "docker"), 0o755)
   // OUT ต้องเป็น path relative กับ cwd (run.sh ใช้ $(pwd)/$LOAD_OUT) — อยู่ใต้ tools/load/out ที่ gitignore แล้ว
   const outRel = `tools/load/out/unit-ops17-${process.pid}-${Date.now()}`
   const outDir = path.join(ROOT, outRel)
+  writeFileSync(
+    path.join(bin, "docker"),
+    `#!/bin/sh\nprintf '%s' "\${IMAGE_TAG-<unset>}" > "${record}"\ncase " $* " in *" up "*) cp -R "${staging}/." "${outDir}/" ;; esac\nexit 1\n`
+  )
+  chmodSync(path.join(bin, "docker"), 0o755)
   mkdirSync(outDir, { recursive: true })
-  for (const [name, text] of Object.entries(plant)) {
+  for (const [name, text] of Object.entries(stale)) {
     writeFileSync(path.join(outDir, name), text)
   }
   const { IMAGE_TAG: _omit, ...base } = process.env
@@ -36,6 +49,8 @@ function runStopped(env: Record<string, string>, plant: Record<string, string> =
   rmSync(bin, { recursive: true, force: true })
   return { status: r.status, stdout: r.stdout, stderr: r.stderr, imageTag, outDir }
 }
+
+const JWT_RE = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./
 
 describe("OPS-17 AC-28 run.sh IMAGE_TAG", () => {
   const dirs: string[] = []
@@ -55,15 +70,17 @@ describe("OPS-17 AC-28 run.sh IMAGE_TAG", () => {
 })
 
 describe("OPS-17 (review #220) cleanup() ของ run.sh เมื่อ script หยุดกลางทาง", () => {
-  it("พิมพ์ report ที่มีลง job log, ตรวจ OUT แล้วลบไฟล์ที่มี JWT/setup_data และคง exit code เดิม (≠ 0)", () => {
+  it("ตรวจ OUT แล้วลบไฟล์ที่มี JWT/setup_data, พิมพ์ report ที่เหลือลง job log และคง exit code เดิม (≠ 0)", () => {
     const r = runStopped(
       {},
       {
-        "report.md": "## OPS-4 load test\n\nfailures: 1\n",
-        "lock-timing.md": "## OPS-18 เวลา lock\n",
-        "leak.log": `Authorization: Bearer ${fakeJwt()}\n`,
-        "summary.json": JSON.stringify({ setup_data: { checkout: [] } }),
-        "clean.json": JSON.stringify({ metrics: {} }),
+        written: {
+          "report.md": "## OPS-4 load test\n\nfailures: 1\n",
+          "lock-timing.md": "## OPS-18 เวลา lock\n",
+          "leak.log": `Authorization: Bearer ${fakeJwt()}\n`,
+          "summary.json": JSON.stringify({ setup_data: { checkout: [] } }),
+          "clean.json": JSON.stringify({ metrics: {} }),
+        },
       }
     )
     try {
@@ -74,20 +91,51 @@ describe("OPS-17 (review #220) cleanup() ของ run.sh เมื่อ script
       expect(existsSync(path.join(r.outDir, "summary.json"))).toBe(false)
       expect(existsSync(path.join(r.outDir, "clean.json"))).toBe(true)
       expect(r.stderr).toContain("AC-33")
-      expect(`${r.stdout}${r.stderr}`).not.toMatch(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./)
+      expect(`${r.stdout}${r.stderr}`).not.toMatch(JWT_RE)
     } finally {
       rmSync(r.outDir, { recursive: true, force: true })
     }
   })
 
-  it("ใน cleanup() พิมพ์ report ก่อน scan (ไฟล์ที่ scan ลบยังเห็นใน job log) และ scan ไม่ทำให้ cleanup ล้ม", () => {
+  it("review #235: report.md มี JWT → scan ลบก่อนพิมพ์ JWT ไม่หลุดลง job log (stdout/stderr)", () => {
+    const r = runStopped(
+      {},
+      { written: { "report.md": `failures: 1\nAuthorization: Bearer ${fakeJwt()}\n`, "lock-timing.md": "## OPS-18 เวลา lock\n" } }
+    )
+    try {
+      expect(r.status).not.toBe(0)
+      expect(`${r.stdout}${r.stderr}`).not.toMatch(JWT_RE)
+      expect(existsSync(path.join(r.outDir, "report.md"))).toBe(false)
+      expect(r.stdout).toContain("## OPS-18 เวลา lock")
+    } finally {
+      rmSync(r.outDir, { recursive: true, force: true })
+    }
+  })
+
+  it("review #235 nit: report ของ run ก่อนใน OUT ถูกล้างตอนเริ่ม — cleanup ไม่พิมพ์ report เก่า", () => {
+    const r = runStopped({}, { stale: { "report.md": "STALE-REPORT-OPS17\n", "checkout-timing.md": "STALE-TIMING-OPS17\n" } })
+    try {
+      expect(r.status).not.toBe(0)
+      expect(r.stdout).not.toContain("STALE-")
+      expect(existsSync(path.join(r.outDir, "report.md"))).toBe(false)
+    } finally {
+      rmSync(r.outDir, { recursive: true, force: true })
+    }
+  })
+
+  it("scan มาก่อน cat ทั้งใน cleanup() และทางปกติ (job log/GITHUB_STEP_SUMMARY) และ scan ใน cleanup ไม่ทำให้ cleanup ล้ม", () => {
     const runner = read("tools/load/run.sh")
+    const SCAN = 'node tools/load/artifact-guard.js scan "$OUT"'
     const body = /^cleanup\(\) \{\n([\s\S]*?)^\}/m.exec(runner)?.[1] ?? ""
-    const cat = body.indexOf("cat ")
-    const scan = body.indexOf('node tools/load/artifact-guard.js scan "$OUT"')
-    expect(cat).toBeGreaterThan(-1)
-    expect(scan).toBeGreaterThan(cat)
+    expect(body.indexOf(SCAN)).toBeGreaterThan(-1)
+    expect(body.indexOf("cat ")).toBeGreaterThan(body.indexOf(SCAN))
     expect(body).toMatch(/artifact-guard\.js scan "\$OUT"[^\n]*\|\| true/)
+
+    const main = runner.slice(runner.indexOf('} >"$OUT/report.md"'))
+    const firstScan = main.indexOf(SCAN)
+    expect(firstScan).toBeGreaterThan(-1)
+    expect(main.indexOf("cat ")).toBeGreaterThan(firstScan)
+    expect(main.indexOf('>>"$GITHUB_STEP_SUMMARY"')).toBeGreaterThan(firstScan)
   })
 })
 
