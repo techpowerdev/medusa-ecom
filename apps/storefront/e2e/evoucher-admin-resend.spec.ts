@@ -116,9 +116,32 @@ test.describe("EV-13", () => {
       await expect(toast).toBeVisible()
       await expect(toast).not.toContainText(/noti_[A-Za-z0-9]+/)
       await expect(toast).toContainText(/try again/i)
+      await expect(toast).toContainText(/log/i)
       // รอ toast เลื่อนเข้าจอจนสุดก่อนเก็บ screenshot
       await expect.poll(async () => (await toast.boundingBox())?.y ?? -1).toBeGreaterThanOrEqual(0)
       await evidence("01-widget-and-error-toast")
+    })
+
+    // ADM-2a (spec 08 AC-5, nit EV-13 #167): รูปแบบปัจจุบันของ backend (reason ในวงเล็บ ไม่มี noti_) ที่ reason ลงท้ายด้วยจุด
+    await step("resend ล้มด้วยข้อความรูปแบบปัจจุบันของ backend → toast ไม่มีจุดซ้อน และบอกให้ลองใหม่/ดู log", async () => {
+      await page.unroute(`**/admin/evoucher/orders/${orderId}/resend`)
+      await page.route(`**/admin/evoucher/orders/${orderId}/resend`, (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({
+            type: "unexpected_state",
+            message: "Could not send the e-voucher email (connection refused.). Try again or check the server logs.",
+          }),
+        })
+      )
+      await page.getByTestId("evoucher-resend").click()
+      const toast = page.locator("[data-sonner-toast]").filter({ hasText: "connection refused" })
+      await expect(toast).toBeVisible()
+      await expect(toast).not.toContainText(/noti_[A-Za-z0-9]+/)
+      await expect(toast).not.toContainText(/\.\)\.|\.\./)
+      await expect(toast).toContainText(/try again/i)
+      await expect(toast).toContainText(/log/i)
     })
   })
 })

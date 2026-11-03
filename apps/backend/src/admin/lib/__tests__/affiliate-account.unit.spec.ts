@@ -15,12 +15,24 @@ describe("affiliateAction", () => {
 })
 
 describe("parsePayoutInfo", () => {
-  it("trims the three fields and returns only those keys", () => {
+  it("trims the three fields, strips - and spaces from account_number and returns only those keys", () => {
     expect(
       parsePayoutInfo({ bank_name: "  KBank ", account_name: " Ann A. ", account_number: " 123-4-56789-0 " }),
     ).toEqual({
       ok: true,
-      value: { bank_name: "KBank", account_name: "Ann A.", account_number: "123-4-56789-0" },
+      value: { bank_name: "KBank", account_name: "Ann A.", account_number: "1234567890" },
+    })
+    expect(parsePayoutInfo({ bank_name: "K", account_name: "A", account_number: "123 456 789 012" })).toEqual({
+      ok: true,
+      value: { bank_name: "K", account_name: "A", account_number: "123456789012" },
+    })
+  })
+
+  // AF-15 (กฎ 39a, owner Q20): ตัด - และช่องว่างแล้วต้องเป็นตัวเลข 10–12 หลัก — แบบเดียวกับ validator ของ API
+  it.each(["123-456-789", "1234567890123", "123456789A"])("rejects account_number %p", (account_number) => {
+    expect(parsePayoutInfo({ bank_name: "K", account_name: "A", account_number })).toEqual({
+      ok: false,
+      errors: { account_number: "Must be 10–12 digits" },
     })
   })
 
