@@ -20,7 +20,7 @@ test("AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไ
   await step("เปิด PDP ของ voucher → เห็นชื่อพาร์ทเนอร์ วิธีใช้ และข้อความไทย", async () => {
     await page.goto(`/${STOREFRONT_COUNTRY}/products/${voucher.handle}`)
     const block = page.getByTestId("evoucher-partner-block")
-    // ระหว่าง hydrate Suspense อาจมี fallback (variant ตั้งต้น) ค้างชั่วครู่ — รอให้เหลือบล็อกเดียว
+    // EV-7e (กฎข้อ 29c): บล็อกเดียวตลอดการโหลด (ไม่มี Suspense fallback ซ้อน)
     await expect(block).toHaveCount(1)
     await expect(block).toBeVisible()
     await expect(block.getByTestId("evoucher-partner-name")).toHaveText(voucher.partnerName)
