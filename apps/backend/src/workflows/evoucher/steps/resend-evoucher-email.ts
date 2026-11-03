@@ -13,7 +13,8 @@ const RESEND_LOCK_TTL = 60
 
 type ResendLock = { key: string; owner_id: string }
 
-// ข้อความที่ provider ของ Locking module (in-memory และ redis) throw เมื่อ key มีเจ้าของอื่นถืออยู่
+// ข้อความที่ provider ของ Locking module (in-memory และ redis) throw เมื่อ key มีเจ้าของอื่นถืออยู่ —
+// ยืนยันกับ source ของ @medusajs/locking และ @medusajs/locking-redis 2.22.1 (ตรวจใหม่เมื่อ bump เวอร์ชัน; AC-33 ครอบคลุม)
 const isLockHeldError = (error: unknown, key: string) =>
   error instanceof Error && error.message === `Failed to acquire lock for key "${key}"`
 

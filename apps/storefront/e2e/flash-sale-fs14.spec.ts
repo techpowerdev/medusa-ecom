@@ -1,5 +1,6 @@
 import { APIResponse, Locator, Page } from "@playwright/test"
 
+import { deleteAllThenExpectOk, expectNoneLeft } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import {
   STOREFRONT_COUNTRY as CC,
@@ -8,8 +9,8 @@ import {
 } from "./support/medusa"
 
 // FS-14 (spec 03 กฎข้อ 19, AC-20): ราคา flash บนการ์ดของ `/store` (search hit), `/search` และ rail หน้าแรก
-// สินค้า X อยู่ในแคมเปญ (−20%: ฿800 จาก ฿1,000), สินค้า Y อยู่ collection เดียวกันแต่นอกแคมเปญ; ปิดแคมเปญเมื่อจบ
-// หาการ์ดจาก href ของลิงก์สินค้า + data-testid (ADR-014)
+// สินค้า X อยู่ในแคมเปญ (−20%: ฿800 จาก ฿1,000), สินค้า Y อยู่ collection เดียวกันแต่นอกแคมเปญ
+// หาการ์ดจาก href ของลิงก์สินค้า + data-testid (ADR-014); FS-18 (กฎข้อ 23b): afterAll ลบข้อมูลที่สร้างทั้งหมดแล้วยืนยันว่าไม่เหลือ
 test.use({ evidenceTarget: { feature: "flash-sale", taskId: "FS-14" } })
 test.describe.configure({ mode: "serial" })
 
@@ -22,13 +23,16 @@ const ok = async (res: APIResponse, what: string): Promise<any> => {
 }
 
 let admin: Headers
+let run: string
 let campaignId: string
+let promotionId: string
 let titleX: string
 let handleX: string
 let handleY: string
 let collectionHandle: string
 let collectionId: string
 const productIds: string[] = []
+const variantIds: Record<string, string> = {}
 // FS-17 (spec 03 กฎข้อ 22, AC-24): เวลาที่สร้างข้อมูลเสร็จ — หน้าแรกต้องแสดงภายใน 90 วินาทีนับจากนี้
 let createdAt = 0
 const FRESH_WITHIN_MS = 90_000
@@ -63,7 +67,7 @@ test.beforeAll(async ({ request }) => {
       await request.post(`${BACKEND_URL}${path}`, { headers: admin, data }),
       path
     )
-  const run = `${Date.now()}`
+  run = `${Date.now()}`
 
   // FS-17 (AC-24): ให้หน้าแรกถูก render/cache ก่อนสร้างข้อมูล — พิสูจน์ว่าข้อมูลใหม่ขึ้นด้วย revalidate ไม่ใช่เพราะเพิ่ง render ครั้งแรก
   expect((await request.get(`/${CC}`)).ok(), "warm หน้าแรก").toBe(true)
@@ -99,6 +103,7 @@ test.beforeAll(async ({ request }) => {
       ],
     })
     productIds.push(product.id)
+    variantIds[handle] = product.variants[0].id
     return product
   }
 
@@ -117,7 +122,7 @@ test.beforeAll(async ({ request }) => {
     ends_at: new Date(Date.now() + 60 * 60_000).toISOString(),
   })
   campaignId = campaign.id
-  await post("/admin/promotions", {
+  const { promotion } = await post("/admin/promotions", {
     code: `FS14-FLASH-${run}`,
     type: "standard",
     status: "active",
@@ -133,6 +138,7 @@ test.beforeAll(async ({ request }) => {
       ],
     },
   })
+  promotionId = promotion.id
   await post(`/admin/flash-sales/${campaignId}/config`, {
     show_countdown: true,
     show_remaining: false,
@@ -141,29 +147,14 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.afterAll(async ({ request }) => {
-  if (campaignId) {
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/campaigns/${campaignId}`, {
-        headers: admin,
-        data: { ends_at: new Date(Date.now() - 60_000).toISOString() },
-      }),
-      "end campaign"
-    )
-  }
-  // FS-17 (AC-24): ลบสินค้าและ collection ที่ test สร้าง (ไม่ให้ rail ค้างบนหน้าแรกของ run ถัดไป)
-  for (const id of productIds) {
-    const res = await request.delete(`${BACKEND_URL}/admin/products/${id}`, {
-      headers: admin,
-    })
-    expect(res.ok(), `delete product ${id}: ${await res.text()}`).toBe(true)
-  }
-  if (collectionId) {
-    const res = await request.delete(
-      `${BACKEND_URL}/admin/collections/${collectionId}`,
-      { headers: admin }
-    )
-    expect(res.ok(), `delete collection: ${await res.text()}`).toBe(true)
-  }
+  // FS-17 (AC-24) + FS-18 (กฎข้อ 23b): ลบทุกอย่างที่ suite สร้าง (ไม่ให้ rail/collection ค้างบนหน้าแรกและ footer ของ run ถัดไป)
+  await deleteAllThenExpectOk(request, admin, [
+    promotionId && `/admin/promotions/${promotionId}`,
+    campaignId && `/admin/campaigns/${campaignId}`,
+    ...productIds.map((id) => `/admin/products/${id}`),
+    collectionId && `/admin/collections/${collectionId}`,
+  ])
+  if (run) await expectNoneLeft(request, admin, run, "e2e-fs14-")
 })
 
 test("AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง", async ({
@@ -179,7 +170,7 @@ test("AC-20: /store (search hit) การ์ด X แสดงราคา flas
       await expect(async () => {
         await expect(card(page, handleX)).toHaveCount(1, { timeout: 2_000 })
         await expect(card(page, handleY)).toHaveCount(1, { timeout: 2_000 })
-      }).toPass({ timeout: 60_000 })
+      }).toPass({ intervals: [1_000, 2_000], timeout: 60_000 })
     }
   )
 
@@ -266,7 +257,7 @@ test("AC-20: rail หน้าแรก การ์ด X แสดงราค�
         await page.goto(`/${CC}`)
         await expect(card(page, handleX)).toHaveCount(1, { timeout: 2_000 })
       }).toPass({
-        intervals: [5_000],
+        intervals: [2_000],
         timeout: Math.max(createdAt + FRESH_WITHIN_MS - Date.now(), 5_000),
       })
       await expect(
@@ -282,4 +273,67 @@ test("AC-20: rail หน้าแรก การ์ด X แสดงราค�
     await expectFlashOnXOnly(page)
     await evidence("03-home-rail-flash-price")
   })
+})
+
+// FS-18 (spec 03 กฎข้อ 23c, AC-25; qa #148 O-3): /store ค้นแล้วไม่พบ แล้วค้นคำใหม่ — ข้อมูล flash (server action `getActiveFlashSales`
+// ที่ body มี variant id) ต้องยิงด้วยชุด variant ของผลค้นล่าสุดเท่านั้น และครั้งเดียว (เดิมยิงชุดเก่าเกินมา 1 ครั้ง)
+test("AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง", async ({
+  page,
+  step,
+}) => {
+  const flashBodies: string[] = []
+  page.on("request", (req) => {
+    const body = req.postData() ?? ""
+    if (
+      req.method() === "POST" &&
+      req.headers()["next-action"] &&
+      body.includes("variant_")
+    ) {
+      flashBodies.push(body)
+    }
+  })
+  const search = page.getByTestId("store-search-input")
+  const vx = variantIds[handleX]
+  const vy = variantIds[handleY]
+
+  await step(
+    "ค้น X: เห็นการ์ด X พร้อมราคา flash (ชุด variant ของ X และ Y)",
+    async () => {
+      await page.goto(`/${CC}/store`)
+      await search.fill(titleX)
+      await expect(async () => {
+        await expect(card(page, handleX)).toHaveCount(1, { timeout: 2_000 })
+        await expect(card(page, handleY)).toHaveCount(1, { timeout: 2_000 })
+      }).toPass({ intervals: [1_000, 2_000], timeout: 60_000 })
+      await expect(card(page, handleX).getByTestId("flash-price")).toHaveText(
+        "฿800",
+        { timeout: 15_000 }
+      )
+    }
+  )
+
+  let before = 0
+  await step("ค้นคำที่ไม่พบสินค้า: แสดง no-products", async () => {
+    await search.fill(`ไม่มีสินค้านี้ ${run}`)
+    await expect(page.getByTestId("no-products")).toBeVisible({
+      timeout: 15_000,
+    })
+    before = flashBodies.length
+  })
+
+  await step(
+    "ค้น Y (ไม่ตรง X): ข้อมูล flash ยิง 1 ครั้งด้วย variant ของ Y เท่านั้น",
+    async () => {
+      await search.fill(`${titleX} ราคาปกติ`)
+      await expect(card(page, handleY)).toHaveCount(1, { timeout: 15_000 })
+      await expect(card(page, handleX)).toHaveCount(0)
+      // รอ request ที่อาจตามมา (ชุด variant ของ Y ต้องตามหลัง listVariantIdsByProduct)
+      await expect.poll(() => flashBodies.length - before).toBeGreaterThan(0)
+      await page.waitForTimeout(3_000)
+      const after = flashBodies.slice(before)
+      expect(after, "จำนวน request ข้อมูล flash หลังค้นใหม่").toHaveLength(1)
+      expect(after[0]).toContain(vy)
+      expect(after[0]).not.toContain(vx)
+    }
+  )
 })

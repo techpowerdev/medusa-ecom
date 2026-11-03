@@ -305,6 +305,7 @@ export default function ProductActions({
           inStock={canBuy}
           qtyExceeded={flashRemaining != null}
           flashOffer={flash.offer}
+          flashLoading={flash.loading}
           handleAddToCart={handleAddToCart}
           isAdding={isAdding}
           // CORE-25 (กฎข้อ 78): แสดงเฉพาะเมื่อรู้แน่ว่าฟอร์มหลักพ้นจอ — SSR/ก่อน hydrate แถบเคยทับปุ่มเพิ่มลงตะกร้าหลัก

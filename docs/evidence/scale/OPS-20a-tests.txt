@@ -1,0 +1,72 @@
+# OPS-20a test evidence — 2026-11-03 18:01 +0700
+# node v24.12.0 (host)
+
+### Red — ก่อนมี tools/load/checkout-timing.js, src/lib/checkout-phase-timing.ts และ middleware
+FAIL src/__tests__/load-checkout-timing.unit.spec.ts
+    Cannot find module '<repo>/tools/load/checkout-timing.js' from 'src/__tests__/load-checkout-timing.unit.spec.ts'
+FAIL src/workflows/hooks/__tests__/complete-cart-validate-timing.unit.spec.ts
+    Cannot find module '../../../lib/checkout-phase-timing'
+FAIL src/api/store/carts/__tests__/checkout-phase-timing.unit.spec.ts
+    Cannot find module '../../../../lib/checkout-phase-timing'
+Tests:       0 total
+
+### Green — TEST_TYPE=unit jest (test ของ OPS-20a + OPS-18/OPS-4 เดิมที่แตะไฟล์เดียวกัน)
+PASS src/workflows/hooks/__tests__/complete-cart-validate-timing.unit.spec.ts
+    ✓ จองสำเร็จ → log phase hook: started_at = ต้น handler, ended_at = ท้าย handler, outcome ok
+    ✓ sold out → ยัง log (outcome = code ของ error) แล้วโยน error เดิมต่อ
+    ✓ cart ที่ complete แล้ว → log outcome already_completed และไม่จองซ้ำ
+    ✓ logger ไม่ได้เปิด debug → ไม่ log
+PASS src/workflows/hooks/__tests__/flash-sale-lock-timing.unit.spec.ts
+    ✓ log หนึ่งบรรทัดต่อ checkout: wait_ms = ก่อนได้ lock, hold_ms = เวลาภายใน locking.execute, outcome ok
+    ✓ sold out ใน lock → ยัง log (outcome = code ของ error) แล้วโยน error เดิมต่อ
+    ✓ logger ไม่ได้เปิด debug (ค่าเริ่มต้นของ prod) → ไม่ log
+PASS src/api/store/carts/__tests__/checkout-phase-timing.unit.spec.ts
+    ✓ log หนึ่งบรรทัดตอน res finish: entered_at = ตอนเข้า middleware, finished_at = ตอน finish, status
+    ✓ logger ไม่ได้เปิด debug (ค่าเริ่มต้นของ prod) → ไม่ฟัง finish และไม่ log
+PASS src/__tests__/load-nightly.unit.spec.ts
+    ✓ workflow แยกไฟล์ รันรายคืน + สั่งเองได้ และไม่อยู่ใน ci.yml
+    ✓ ผล k6 (--summary-export) อัปโหลดเป็น artifact 14 วันแม้ run ล้ม
+    ✓ บูต stack แบบ prod ของ OPS-1 ด้วย provider ทดสอบ และ k6 จาก image ที่ pin เวอร์ชัน
+    ✓ ค่าเริ่มต้นตาม AC-2 (300 คน, cap 100, 500 rps 60 วินาที) และ AC-3 (200 คน, กลุ่ม 10)
+    ✓ tools/load/flash-sale.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว)
+    ✓ tools/load/group-buy-join.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว)
+    ✓ ตรวจผลจาก DB หลังจบ: order ที่มี adjustment ของแคมเปญ, units_sold และสมาชิกกลุ่ม
+PASS src/__tests__/load-checkout-timing.unit.spec.ts
+    ✓ parseK6Checkouts อ่านบรรทัด console ของ k6 (มี/ไม่มี quote ของ logrus) ข้ามบรรทัดอื่น
+    ✓ parsePhaseTimings อ่านเฉพาะ message ที่ขึ้นต้นด้วย marker และ phase ที่รู้จัก
+    ✓ (a)=k6, (b) เข้า middleware → ต้น hook, (c) ใน hook, (d) ท้าย hook → finish, (e)=(a)−(b+c+d); lock เป็นส่วนย่อย
+    ✓ ไม่มี log ของ server สำหรับ cart → (b)–(e) เป็น null แต่ยังนับใน (a); ไม่มี hook → (b)–(d) null, (e) ยังคิดได้
+    ✓ ไม่มี row → null และ markdown บอกว่าไม่พบ log
+    ✓ แยกกลุ่มรวม + ตาม outcome, min/median/p95/max ต่อช่วง และช่วง checkout = เข้า middleware แรก → finish สุดท้าย
+    ✓ row ที่ไม่ครบไม่เข้าสถิติของ (b)–(e) แต่นับใน (a) และ complete นับเฉพาะ row ที่มีครบ
+    ✓ markdown มีตาราง (a)–(e) + lock ต่อกลุ่ม, ช่วงหลัก และ timestamp ของช่วง checkout
+    ✓ median มี burst 10000 ms, ไม่มี burst 2000 ms → burst เป็นสาเหตุหลัก
+    ✓ median มี burst 10000 ms, ไม่มี burst 8000 ms → workflow เอง
+    ✓ median มี burst 10000 ms, ไม่มี burst 5000 ms → ทั้งสอง
+    ✓ workflow_dispatch มี input flash_burst ค่าเริ่มต้น = มี burst และส่งเป็น env LOAD_FLASH_BURST (schedule ไม่มี input → มี burst)
+    ✓ run.sh ค่าเริ่มต้นมี burst และส่ง LOAD_FLASH_BURST + เก็บ console ของ k6 แล้วสรุปด้วย checkout-timing.js ก่อน gate
+    ✓ flash-sale.js: LOAD_FLASH_BURST=0 ตัด scenario burst ออกจาก options.scenarios (ไม่ใช้ rate 0) และ log เวลา checkout ต่อ cart
+PASS src/__tests__/load-lock-timing.unit.spec.ts
+    ✓ อ่านเฉพาะบรรทัด JSON ที่ message ขึ้นต้นด้วย marker ข้ามบรรทัดอื่น/บรรทัดที่ไม่ใช่ JSON
+    ✓ ไม่มี entry → null และ markdown บอกว่าไม่พบ log
+    ✓ min/median/p95/max ของ wait และ hold (percentile แบบ linear interpolation แบบเดียวกับ k6)
+    ✓ นับ outcome และไม่นับ hold ที่ไม่ได้ lock (acquired_at = null) เข้าสถิติ hold
+    ✓ ต่อคิวทีละตัว (hold ไม่ซ้อนกัน, wait โตตามลำดับขอ lock) → ยืนยัน serialize ทั้งสองเกณฑ์
+    ✓ ทำงานขนานกัน (hold ซ้อนกัน, wait ≈ 0) → หักล้าง: wait ไม่โตตามคิว
+    ✓ hold โตตามคิวแม้ wait ≈ 0 → รายงาน hold_rank_corr (ต่อคิวภายใน lock เช่น row lock ของ DB)
+    ✓ markdown มีตาราง (a)/(b) min/median/p95/max และผลเกณฑ์
+    ✓ ตั้ง LOG_LEVEL=debug เฉพาะ load run และค่าเริ่มต้นของ compose prod ยังเป็น info
+    ✓ ดึง log ของ server+worker ทุก run (ไม่ใช่แค่ตอนล้ม) แล้วสรุปลง tools/load/out
+Tests:       40 passed, 40 total
+
+### k6 inspect (grafana/k6:2.3.0) — scenarios/thresholds ของ flash-sale.js
+LOAD_FLASH_BURST=1 → scenarios ['burst', 'checkout']
+LOAD_FLASH_BURST=0 → scenarios ['checkout'] (threshold http_req_duration{scenario:burst} ถูกตัดด้วย)
+
+### pnpm --filter backend test:unit
+Test Suites: 77 passed, 77 total
+Tests:       744 passed, 744 total
+
+### pnpm lint && pnpm typecheck
+lint: 0 errors (backend 1 warning เดิมที่ src/lib/json-logger.ts ไม่ได้แตะ); typecheck: Done ทั้ง backend/storefront
+### pnpm --filter backend build: Backend + Frontend build completed successfully
