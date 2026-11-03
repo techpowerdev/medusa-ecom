@@ -281,7 +281,14 @@ medusaIntegrationTestRunner({
       await seedThailand({ container: getContainer(), args: [] })
 
       expect(await snapshot()).toEqual(before)
-      expect(before).toMatchObject({ region: 1, publishable_key: 1, product_category: 2, product: 2 })
+      // CORE-10c AC-109: นับ product collection ด้วย (collection `featured` 1 รายการ)
+      expect(before).toMatchObject({
+        region: 1,
+        publishable_key: 1,
+        product_category: 2,
+        product_collection: 1,
+        product: 2,
+      })
     })
 
     // CORE-10b AC-106 (spec 01 กฎข้อ 70): collection ตัวอย่าง `featured` ชื่อไทย ให้หน้าแรกมี rail — หาด้วย handle, มีอยู่แล้วไม่แก้
