@@ -34,13 +34,12 @@ const option = (page: Page, size: string) =>
 
 /**
  * กดเพิ่มแล้วรอ server action ของ add-to-cart ตอบและปุ่มกลับมากดได้
- * `immediate`: ส่ง click ตรงที่ element (ไม่รอ actionability) — หลังเพิ่มครั้งก่อน cart dropdown เปิดทับคอลัมน์ขวาของ PDP
- * ถ้า Playwright เลื่อน mouse เข้าไปรอ dropdown จะค้างเปิด (hover) และจังหวะ "กดทันที" จะหายไป
+ * CORE-26 (กฎข้อ 81c): cart dropdown ที่เปิดเองหลังเพิ่มปิดเองใน 5 วินาทีแม้ mouse อยู่ใต้ panel จึงกดด้วย `click()` ปกติได้
  */
-async function addAndWait(page: Page, { immediate = false } = {}) {
+async function addAndWait(page: Page) {
   const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
   const button = page.getByTestId("add-product-button")
-  await (immediate ? button.dispatchEvent("click") : button.click())
+  await button.click()
   await done
   await expect(button).toBeEnabled()
 }
@@ -75,8 +74,9 @@ test("AC-116: เลือก S → M แล้วกดเพิ่มทัน
     await expect(page).toHaveURL(/[?&]v_id=/)
     await option(page, "S").click()
     await addAndWait(page)
+    // เลือก M ทันที (ก่อน RSC refresh ของการเพิ่ม S มาถึง) ขณะ dropdown ที่เปิดเองยังทับคอลัมน์ขวา
     await option(page, "M").dispatchEvent("click")
-    await addAndWait(page, { immediate: true })
+    await addAndWait(page)
     expect(await cartLines(page, customer, pk)).toEqual({ [ids.S]: 1, [ids.M]: 2 })
     await evidence("01-pdp-selected-size-kept")
   })
