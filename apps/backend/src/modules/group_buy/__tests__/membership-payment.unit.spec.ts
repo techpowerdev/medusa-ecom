@@ -1,7 +1,9 @@
 import { MathBN } from "@medusajs/framework/utils"
 import {
   memberPaymentAmount,
+  paidWithoutOrderAlertKey,
   paymentCapturedAction,
+  shouldSendPaidWithoutOrderAlert,
   shouldExpireMembershipPayment,
 } from "../utils/membership-payment"
 
@@ -61,5 +63,27 @@ describe("shouldExpireMembershipPayment", () => {
 
   it.each(["joined", "paid", "cancelled"] as const)("ignores %s memberships", (status) => {
     expect(shouldExpireMembershipPayment(status, past, now, ["not_paid"])).toBe(false)
+  })
+})
+
+// GB-9 กฎข้อ 25 (AC-43): อ่านสถานะใหม่ก่อนส่ง alert เงินค้าง — ส่งเฉพาะเมื่อยังเป็นเงินค้างจริง
+describe("shouldSendPaidWithoutOrderAlert", () => {
+  it.each([
+    ["convert_failed", "awaiting_payment", false, false],
+    ["convert_failed", "paid", true, false],
+    ["convert_failed", "paid", false, false],
+    ["convert_failed", "awaiting_payment", true, true],
+    ["membership_cancelled", "cancelled", true, true],
+    ["membership_cancelled", "awaiting_payment", true, false],
+    ["membership_cancelled", "paid", false, false],
+  ] as const)("%s + membership %s + is_draft_order=%s → %s", (reason, status, isDraft, expected) => {
+    expect(shouldSendPaidWithoutOrderAlert(reason, { membership_status: status, is_draft_order: isDraft })).toBe(expected)
+  })
+})
+
+describe("paidWithoutOrderAlertKey", () => {
+  it("= <membership_id>:<reason> (membership เดียวเจอทั้งสองเหตุได้ 2 ฉบับ)", () => {
+    expect(paidWithoutOrderAlertKey("gbmem_1", "convert_failed")).toEqual("gbmem_1:convert_failed")
+    expect(paidWithoutOrderAlertKey("gbmem_1", "membership_cancelled")).toEqual("gbmem_1:membership_cancelled")
   })
 })
