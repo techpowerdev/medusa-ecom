@@ -37,7 +37,10 @@ export function groupJoinErrorCode(error: unknown): GroupJoinCode | null {
   return GROUP_JOIN_CODES.find((c) => CODES[c].message?.test(text) || message.includes(c)) ?? null
 }
 
-/** ข้อความไทยที่แสดงใน `group-join-error`: code ที่รู้จัก → ข้อความของ code; 401 → เข้าสู่ระบบใหม่; 400 อื่น → ปิดรับแล้ว; อื่นๆ → ลองใหม่ */
+/**
+ * ข้อความไทยที่แสดงใน `group-join-error`: code ที่รู้จัก → ข้อความของ code; 401 → เข้าสู่ระบบใหม่;
+ * 400/403 (mode ไม่เปิดให้สร้างทีม)/404 (กลุ่ม/แคมเปญไม่มีแล้ว) → ปิดรับแล้ว; อื่นๆ → ลองใหม่
+ */
 export function groupJoinErrorMessage(error: unknown, opts: { maxUnitsPerPerson?: number | null } = {}): string {
   const code = groupJoinErrorCode(error)
   if (code === "GB_UNITS_LIMIT_EXCEEDED" && opts.maxUnitsPerPerson) {
@@ -46,5 +49,5 @@ export function groupJoinErrorMessage(error: unknown, opts: { maxUnitsPerPerson?
   if (code) return CODES[code].text
   const status = (error as { status?: unknown } | null)?.status
   if (status === 401) return SIGN_IN_AGAIN_MESSAGE
-  return status === 400 ? CLOSED_MESSAGE : FAILED_MESSAGE
+  return status === 400 || status === 403 || status === 404 ? CLOSED_MESSAGE : FAILED_MESSAGE
 }

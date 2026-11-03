@@ -16,3 +16,8 @@
 ## pnpm lint && pnpm typecheck
 exit 0 (0 errors)
 red ก่อนเขียน helper: ไฟล์ test โหลด ./group-join-error ไม่ได้ (no tests)
+
+## รอบแก้ review #229 2026-11-03T17:04Z
+- TASK_ID ของกฎ evidence รับ GB-7a2a (ปฏิเสธ GB-7a2ab, CORE-4ab): test:e2e:unit บนโค้ดเดิม 2 failed → หลังแก้ 39 passed
+- 403/404 → "กลุ่มหรือแคมเปญนี้ปิดรับแล้ว": test ใหม่บนโค้ดเดิม 1 failed → หลังแก้ group-join-error 6 passed
+- vitest ทั้ง storefront 644 passed; pnpm lint && pnpm typecheck exit 0

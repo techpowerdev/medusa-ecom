@@ -40,6 +40,9 @@ describe("groupJoinErrorMessage", () => {
       "แคมเปญนี้ยังไม่พร้อมเปิดกลุ่ม"
     )
     expect(groupJoinErrorMessage({ status: 400 })).toBe("กลุ่มหรือแคมเปญนี้ปิดรับแล้ว")
+    // review #229: 403 (mode ไม่เปิดให้สร้างทีม) และ 404 (กลุ่ม/แคมเปญไม่มีแล้ว) = ปิดรับ ไม่ใช่ "ลองใหม่"
+    expect(groupJoinErrorMessage({ status: 403, message: "Forbidden" })).toBe("กลุ่มหรือแคมเปญนี้ปิดรับแล้ว")
+    expect(groupJoinErrorMessage({ status: 404, message: "Not found" })).toBe("กลุ่มหรือแคมเปญนี้ปิดรับแล้ว")
     expect(groupJoinErrorMessage(new Error("network"))).toBe("เข้าร่วมไม่สำเร็จ กรุณาลองใหม่")
     expect(groupJoinErrorMessage(null)).toBe("เข้าร่วมไม่สำเร็จ กรุณาลองใหม่")
     expect(groupJoinErrorMessage({ status: 401 })).toBe(SIGN_IN_AGAIN_MESSAGE)

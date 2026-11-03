@@ -73,7 +73,8 @@ test.describe("evidence-rules", () => {
   // CORE-5b AC-20: task id มี suffix ตัวเล็กได้หนึ่งตัว
   test("evidenceDir รับ task id ที่มี suffix ตัวเล็ก (AC-20)", () => {
     // GB-6b1: task ที่ spec แยกย่อย (suffix ตัวเล็ก + ตัวเลขหนึ่งหลัก); GB-N1: งานเล็กรวม nit (N นำหน้าตัวเลข)
-    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2", "GB-N1", "GB-N12"]) {
+    // GB-7a2a (spec 04 รอบ 15): แยกย่อยอีกชั้น = ตามด้วยตัวเล็กได้อีกหนึ่งตัวหลังตัวเลข
+    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2", "GB-7a2a", "GB-6b1a", "GB-N1", "GB-N12"]) {
       expect(evidenceDir("/repo", { feature: "core", taskId })).toBe(
         path.join("/repo", "docs", "evidence", "core", taskId)
       )
@@ -88,7 +89,7 @@ test.describe("evidence-rules", () => {
       "CORE-",
       "CORE-4A",
       "GB-6b12",
-      "GB-6b1a",
+      "GB-7a2ab",
       "GB-6B1",
       "GB-61-",
       "GB-N",
