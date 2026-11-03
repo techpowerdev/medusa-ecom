@@ -1,11 +1,10 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
+import { SectionRow } from "@medusajs/dashboard/components"
 import type { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
 import {
   Alert,
   Button,
-  Container,
   Drawer,
-  Heading,
   Input,
   Label,
   Switch,
@@ -14,6 +13,8 @@ import {
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRef, useState } from "react"
+import { Container } from "../components/common/container"
+import { Header } from "../components/common/header"
 import { sdk } from "../lib/client"
 
 // FS-5 (spec 03): "Flash sale options" บนหน้า Campaign detail
@@ -59,17 +60,6 @@ const parseLimit = (value: string): number | null | undefined => {
   const n = Number(value)
   return Number.isInteger(n) && n > 0 ? n : undefined
 }
-
-const Field = ({ label, value }: { label: string; value: string }) => (
-  <div className="grid grid-cols-2 items-center px-6 py-4">
-    <Text size="small" leading="compact" weight="plus">
-      {label}
-    </Text>
-    <Text size="small" leading="compact" className="text-ui-fg-subtle">
-      {value}
-    </Text>
-  </div>
-)
 
 const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.AdminCampaign>) => {
   const queryClient = useQueryClient()
@@ -132,13 +122,16 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
   }
 
   return (
-    <Container className="divide-y p-0" data-testid="flash-sale-options">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Flash sale options</Heading>
-        <Button size="small" variant="secondary" onClick={openEditor} disabled={isLoading}>
-          Edit
-        </Button>
-      </div>
+    <Container data-testid="flash-sale-options">
+      <Header
+        title="Flash sale options"
+        actions={[
+          {
+            type: "button",
+            props: { variant: "secondary", onClick: openEditor, disabled: isLoading, children: "Edit" },
+          },
+        ]}
+      />
 
       {missing.length > 0 && (
         <div className="px-6 py-4">
@@ -164,14 +157,19 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
           </Text>
         </div>
       ) : (
-        <>
-          <Field label="Per-customer limit" value={config.per_customer_limit?.toString() ?? "Unlimited"} />
-          <Field label="Total cap" value={config.total_cap?.toString() ?? "Unlimited"} />
-          <Field label="Units sold" value={config.units_sold.toString()} />
-          <Field label="Show countdown" value={config.show_countdown ? "Yes" : "No"} />
-          <Field label="Show remaining" value={config.show_remaining ? "Yes" : "No"} />
-          <Field label="Banner text" value={config.banner_text ?? "-"} />
-        </>
+        // SectionRow ไม่รับ data-testid จึงห่อแต่ละแถวด้วย div ที่มี testid (e2e ของ AC-5 อ่านค่า Total cap)
+        [
+          ["per_customer_limit", "Per-customer limit", config.per_customer_limit?.toString() ?? "Unlimited"],
+          ["total_cap", "Total cap", config.total_cap?.toString() ?? "Unlimited"],
+          ["units_sold", "Units sold", config.units_sold.toString()],
+          ["show_countdown", "Show countdown", config.show_countdown ? "Yes" : "No"],
+          ["show_remaining", "Show remaining", config.show_remaining ? "Yes" : "No"],
+          ["banner_text", "Banner text", config.banner_text ?? "-"],
+        ].map(([key, title, value]) => (
+          <div key={key} data-testid={`flash-sale-row-${key}`}>
+            <SectionRow title={title} value={value} />
+          </div>
+        ))
       )}
 
       <Drawer open={open} onOpenChange={setOpen}>

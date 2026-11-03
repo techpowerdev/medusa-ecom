@@ -1,8 +1,10 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
-import { Badge, Button, Container, Heading, Table, Text, toast } from "@medusajs/ui"
+import { Badge, Table, Text, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRef } from "react"
+import { Container } from "../components/common/container"
+import { Header } from "../components/common/header"
 import { evoucherApi, evoucherKeys, formatDate, STATUS_COLOR } from "../lib/evoucher"
 import { canResendEvouchers, resendErrorMessage } from "../lib/evoucher-resend"
 
@@ -44,22 +46,27 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
   }
 
   return (
-    <Container className="divide-y p-0" data-testid="evoucher-order-widget">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">E-vouchers</Heading>
-        {data && canResendEvouchers(data.codes) && (
-          <Button
-            size="small"
-            variant="secondary"
-            data-testid="evoucher-resend"
-            disabled={resend.isPending}
-            isLoading={resend.isPending}
-            onClick={onResend}
-          >
-            Resend email
-          </Button>
-        )}
-      </div>
+    <Container data-testid="evoucher-order-widget">
+      <Header
+        title="E-vouchers"
+        actions={
+          data && canResendEvouchers(data.codes)
+            ? [
+                {
+                  type: "button",
+                  props: {
+                    variant: "secondary",
+                    "data-testid": "evoucher-resend",
+                    disabled: resend.isPending,
+                    isLoading: resend.isPending,
+                    onClick: onResend,
+                    children: "Resend email",
+                  },
+                },
+              ]
+            : []
+        }
+      />
       {isLoading ? (
         <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
           Loading…
