@@ -16,6 +16,9 @@ export type FlashSaleCartLike = {
 
 export type FlashSaleReservationRef = { cart_id: string }
 
+/** OPS-18: prefix ของบรรทัด log เวลา lock — `tools/load/lock-timing.js` อ่านบรรทัดนี้ */
+export const LOCK_TIMING_MARKER = "flash_sale_lock_timing"
+
 /** จองสิทธิ์ flash ของ cart; คืน ref สำหรับ compensation เมื่อมีการจอง (ไม่มี flash campaign → undefined) */
 export async function reserveFlashSaleForCart(
   container: MedusaContainer,
@@ -67,10 +70,42 @@ export async function reserveFlashSaleForCart(
 
   // lock ทุก campaign เรียงตาม campaign_id (campaignUnitsInCart เรียงให้แล้ว) กัน deadlock
   const locking = container.resolve(Modules.LOCKING)
-  await locking.execute(
-    campaigns.map((c) => flashSaleLockKey(c.campaign_id, customerId)),
-    () => flashSale.reserveForCart({ cart_id: cart.id, customer_id: customerId, campaigns })
-  )
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+  // OPS-18 (spec 07 AC-29): วัดเวลารอ lock และเวลาภายใน locking.execute — log เฉพาะเมื่อเปิด LOG_LEVEL=debug (load run)
+  const requestedAt = Date.now()
+  let acquiredAt: number | null = null
+  let releasedAt: number | null = null
+  let outcome = "ok"
+  try {
+    await locking.execute(
+      campaigns.map((c) => flashSaleLockKey(c.campaign_id, customerId)),
+      async () => {
+        acquiredAt = Date.now()
+        try {
+          return await flashSale.reserveForCart({ cart_id: cart.id, customer_id: customerId, campaigns })
+        } finally {
+          releasedAt = Date.now()
+        }
+      }
+    )
+  } catch (e) {
+    outcome = (e as { code?: string })?.code || (acquiredAt === null ? "LOCK_ERROR" : "ERROR")
+    throw e
+  } finally {
+    if (logger.shouldLog("debug")) {
+      logger.debug(
+        `${LOCK_TIMING_MARKER} ${JSON.stringify({
+          cart_id: cart.id,
+          requested_at: requestedAt,
+          acquired_at: acquiredAt,
+          released_at: releasedAt,
+          wait_ms: (acquiredAt ?? Date.now()) - requestedAt,
+          hold_ms: acquiredAt === null || releasedAt === null ? null : releasedAt - acquiredAt,
+          outcome,
+        })}`
+      )
+    }
+  }
 
   return { cart_id: cart.id }
 }
