@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted
+สถานะ: accepted (follow-up ล่าสุด: รอบ 13 2026-11-03 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
 เป้าหมาย: ร้านค้าพื้นฐานที่สมบูรณ์และพร้อม production โดย **ไม่มี custom commerce logic เลย**
 ทุกอย่างใน spec นี้คือการตั้งค่า, seeding, theming และ deployment
 
@@ -1084,17 +1084,22 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
     ข้าม row ที่หา `product_id` ไม่ได้ (ไม่อ่าน property ของ `undefined`) — สินค้าที่ได้รับผลถูก index ใหม่จาก event ของ product ที่ Medusa ส่งตามมา (builder ยืนยันใน 2.22.1;
     ถ้าไม่มี event ตามมา ให้หา `product_id` จากข้อมูลที่ payload มีหรือรายงานใน PR)
 80. (CORE-10c — review #159) ทำกฎข้อ 35/AC-72 ให้จริง: category ตัวอย่างชื่อไทย `handle` คงที่ `shirts`/`sweatshirts` และ `ensureCategories` หาด้วย `handle` (ไม่ใช่ `name`);
-    collection `featured` ที่มีอยู่แต่**ไม่มีสินค้า** (seed ล้มกลางทางรอบก่อน) → ผูกสินค้า seed ตามกฎข้อ 70 (ไม่แก้ชื่อ) — collection ที่มีสินค้าแล้วไม่แตะ
+    collection `featured` ที่มีอยู่แต่**ไม่มีสินค้า** (seed ล้มกลางทางรอบก่อน) → ผูกสินค้า seed ตามกฎข้อ 70 (ไม่แก้ชื่อ) — collection ที่มีสินค้าแล้วไม่แตะ;
+    หมายเหตุ (รอบ 13, review #202): seed แยกไม่ออกว่า `featured` ว่างเพราะ seed ล้มหรือเพราะ admin เอาสินค้าออกเอง — รัน seed ซ้ำจึง**เติมสินค้า seed กลับเข้า `featured` ที่ admin ทำว่าง**
+    (ยอมรับ: seed ใช้กับ dev/สภาพแวดล้อมใหม่ ไม่รันซ้ำบน production ที่ admin จัดการ collection เอง — ไม่มี task)
 
 ### Acceptance criteria (follow-up รอบ 12)
 - AC-108 (CORE-9b, กฎข้อ 79) unit ของ `resolve-product-ids` ด้วย payload `product-option.deleted` ที่ไม่มี relation → คืนรายการ (อาจว่าง) ไม่ throw; integration: Given สินค้า P ที่มี option
-  When ลบ option ผ่าน admin API Then spy logger ไม่มีบรรทัด warn/error ที่มี `Cannot read properties of undefined` และ `GET /store/search?q=<ชื่อ P>` ยังคืน P (unit jest + integration http)
+  When ลบ option ผ่าน admin API Then spy logger ไม่มีบรรทัด warn/error ที่มี `Cannot read properties of undefined` และ `POST /store/search` ค้นด้วยชื่อ P ยังคืน P (unit jest + integration http)
+  — (แก้ถ้อยคำรอบ 13 ตาม review #200: route ค้นหาของเราเป็น `POST /store/search` ไม่ใช่ `GET ?q=`)
 - AC-109 (CORE-10c, กฎข้อ 80) integration seed ที่อ้าง AC-72 (ชื่อ category มีอักษรไทย, `handle` ∈ {`shirts`, `sweatshirts`}, รันซ้ำจำนวนเท่าเดิม, category อังกฤษ `handle=shirts` เดิมไม่ถูกเปลี่ยน
   และไม่มี `shirts-1`); Given collection `featured` ที่ไม่มีสินค้า When seed Then มีสินค้า seed ≥ 2 ใน collection และชื่อเดิมไม่เปลี่ยน; test ของ AC-30 assert จำนวน product collection = 1
 - AC-110 (CORE-4i, กฎข้อ 72) unit (Vitest, mock SDK): ทุก action ที่เปลี่ยนเมื่อ SDK throw `FetchError` 401 → `{ error: "unauthorized" }`, 500/network → `{ error: "failed" }` (หรือ code ที่ UI แยก) และ
   ไม่ throw; component: ผล `unauthorized` แสดง `SIGN_IN_AGAIN_MESSAGE`; static (Vitest อ่าน source): ใน `modules/checkout/**` และ `modules/cart/**` ไม่มี `friendlyErrorMessage(` ที่รับค่าจาก
   `catch` ของการเรียก server action, ข้อยกเว้นใน `user-messages-thai.test` ระบุรายชื่อไฟล์; unit: action สร้าง session ที่ SDK throw 409 code `PAYMENT_ALREADY_COMPLETED` → คืน
-  `{ error: "PAYMENT_ALREADY_COMPLETED" }` และหน้า `/account/orders/:id/pay` เข้าทาง poll ของ spec 06 กฎข้อ 9(d); e2e AC-99, AC-100, AC-22 (spec 03), AC-19 และ AC-7 (spec 06) ยังผ่าน
+  `{ error: "PAYMENT_ALREADY_COMPLETED" }` และหน้า `/account/orders/:id/pay` เข้าทาง poll ของ spec 06 กฎข้อ 9(d); e2e AC-99, AC-100, AC-22 (spec 03), AC-19, AC-7 และ (รอบ 13) AC-20
+  (spec 06 — กลับจาก redirect ของ Stripe, PAY-3b2 #203) ยังผ่าน; (รอบ 13, Q-C2 = (ก) owner 2026-11-03) unit: ผลของ `createPaymentSession` (`lib/data/payment.ts`) และ `initiatePaymentSession` (`lib/data/cart.ts`)
+  ผ่าน helper กลาง — ผู้เรียกใน UI ทั้งสองที่ได้ผลรูปแบบเดียว `{ ok: true } | { error }` (non-2xx อื่น → `"failed"`, 401 → `"unauthorized"`, 409 `PAYMENT_ALREADY_COMPLETED` → code นั้น)
 - AC-111 (CORE-4j, กฎข้อ 73) e2e: ใส่โค้ด `"  <code ที่ใช้ได้>  "` → `cart.promotions` มี code นั้น; กรอกฟอร์มที่อยู่ (ยังไม่กดบันทึก) แล้วใส่โค้ดส่วนลด → input ที่อยู่ยังมีค่าเดิม; หลัง
   `document.fonts.ready` ความสูง `billing-country-code-select` ต่างจาก input ข้างเคียง ≤ 1px; grep: `createExpiredPromotion` ตรวจ `ok()` ของการลบ
 - AC-112 (CORE-23c, กฎข้อ 74) e2e: route mock request ของ server action เพิ่มที่อยู่/แก้ที่อยู่ให้ตอบ 500 → ค่าที่พิมพ์ยังอยู่และ error มีอักษรไทย; mock action ที่อยู่ใบเสร็จให้ล้มระดับ network →
@@ -1123,16 +1128,87 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
 ### Tasks (follow-up รอบ 12)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
-| CORE-9b | (backend เล็ก, builder FS-17) search ingestion ไม่ throw กับ event ลบที่ไม่มี relation (กฎข้อ 79) — ไฟล์: `src/search/helpers/resolve-product-ids.ts` + test | AC-108 | CORE-9 ☑ — **เริ่มได้** |
-| CORE-10c | (backend seed เล็ก, review #159) category ไทย + `handle` คงที่ + หาด้วย handle, ซ่อม `featured` ที่ว่าง, test AC-72/AC-30 (กฎข้อ 80) — ไฟล์: `src/scripts/seed.ts` + test seed | AC-72, AC-109 | CORE-10b ☑ (#159) — **เริ่มได้** |
-| CORE-4i | (storefront, FS-15/#160/#170) server action ของ `lib/data/cart.ts` คืนผลแบบมีโครงสร้าง + helper กลาง + `SIGN_IN_AGAIN_MESSAGE` เดียว (กฎข้อ 72) — ไฟล์: `lib/data/cart.ts`, `lib/util/` (helper), component ใน `modules/checkout`/`modules/cart` และหน้า `/account/orders/:id/pay` ที่เรียก action, `user-messages-thai.test` — เกิน ~400 LOC ให้ builder แยก (เช่น 4i-a: helper + `applyPromotions`/`updateLineItem` + cart; 4i-b: action ชำระเงิน + ผู้เรียก checkout/หน้า pay) | AC-110 | CORE-19d ☑, FS-15 ☑ (#178), **PAY-3b1 (#189) และ PAY-3b2** (spec 06 — contract error ของ action สร้าง session เดียวกัน; review #188) |
+| CORE-9b | (backend เล็ก, builder FS-17) search ingestion ไม่ throw กับ event ลบที่ไม่มี relation (กฎข้อ 79) — ไฟล์: `src/search/helpers/resolve-product-ids.ts` + test | AC-108 | CORE-9 ☑ — ◐ #200 |
+| CORE-10c | (backend seed เล็ก, review #159) category ไทย + `handle` คงที่ + หาด้วย handle, ซ่อม `featured` ที่ว่าง, test AC-72/AC-30 (กฎข้อ 80) — ไฟล์: `src/scripts/seed.ts` + test seed | AC-72, AC-109 | CORE-10b ☑ (#159) — ◐ #202 |
+| CORE-4i | (storefront, FS-15/#160/#170) server action ของ `lib/data/cart.ts` คืนผลแบบมีโครงสร้าง + helper กลาง + `SIGN_IN_AGAIN_MESSAGE` เดียว (กฎข้อ 72) — ไฟล์: `lib/data/cart.ts`, `lib/util/` (helper), component ใน `modules/checkout`/`modules/cart` และหน้า `/account/orders/:id/pay` ที่เรียก action, `user-messages-thai.test` — เกิน ~400 LOC ให้ builder แยก (เช่น 4i-a: helper + `applyPromotions`/`updateLineItem` + cart; 4i-b: action ชำระเงิน + ผู้เรียก checkout/หน้า pay); (รอบ 13) + `lib/data/payment.ts` (`createPaymentSession`) และ `modules/order/components/order-pay` ตาม Q-C2 = (ก) (helper กลาง `{ ok } | { error }`) | AC-110 | CORE-19d ☑, FS-15 ☑ (#178), PAY-3b1 ☑ (#189), **PAY-3b2 (#203) merge** (spec 06 — contract error ของ action สร้าง session เดียวกัน; review #188) |
 | CORE-4j | (storefront เล็ก, qa/review #170) trim โค้ดส่วนลด, ฟอร์มที่อยู่ไม่หายเมื่อใส่โค้ด, ความสูง billing select, `ok()` ใน helper e2e (กฎข้อ 73) | AC-111 | CORE-4i (แตะ `applyPromotions`/ฟอร์ม checkout เดียวกัน) |
 | CORE-23c | (storefront เล็ก, qa/review #154/#150/#164) ฟอร์มที่อยู่ใน account คงค่าเมื่อล้ม, ที่อยู่ใบเสร็จไม่ล่มทั้งหน้า, พิมพ์หลังกดแก้ไข, ลิงก์ `/contact`, log ใน `customer.ts` (กฎข้อ 74) — ไฟล์: `modules/account/components/{address-card,profile-billing-address}`, `modules/account/templates/account-layout.tsx`, `lib/data/customer.ts` | AC-112 | CORE-23b ☑ (#154) — **เริ่มได้** (∥ CORE-4i — คนละไฟล์) |
 | CORE-19f | (storefront เล็ก, qa #166/#151) revalidate cart หลังสร้าง session, Continue หลัง timeout ไม่ข้าม session, e2e สลับวิธีชำระ (กฎข้อ 75) — ไฟล์: `lib/data/cart.ts` (action สร้าง session), `modules/checkout/components/payment` | AC-113 | CORE-19e ☑ (#166), CORE-4i (แตะ action เดียวกัน — CORE-4i รอ PAY-3b1/3b2 อยู่แล้ว) |
 | CORE-15b | (storefront เล็ก, review #177) error ของ search drawer ที่ header + pin `instantsearch.js` (กฎข้อ 76) — ไฟล์: `modules/search` (drawer), `apps/storefront/package.json`, `pnpm-lock.yaml` | AC-114 | CORE-15 ☑ (#177) — **เริ่มได้** |
 | CORE-5d | (e2e tooling เล็ก, qa #169/#173) ชื่อ evidence ใน spec ตรงไฟล์ที่ commit + `console.warn` เมื่อไม่มี `evidenceTarget` (กฎข้อ 77) — ไฟล์: `e2e/support/` (fixture), `e2e/*.spec.ts` ที่ชื่อไม่ตรง | AC-115 | CORE-5c ☑ (#169) — **เริ่มได้** (แก้เฉพาะสตริงชื่อใน spec — ชนไฟล์ e2e ตัวที่ merge ทีหลัง rebase) |
-| CORE-25 | (storefront เล็ก, **defect ที่ลูกค้าอาจได้ไซซ์ผิด** — qa #178) option บน PDP ไม่ถูกรีเซ็ตจาก `v_id`, `uiAddSizes` รอ `v_id`, แถบมือถือไม่ทับปุ่มหลัก (กฎข้อ 78) — ไฟล์: `modules/products/components/product-actions/{index,mobile-actions}.tsx`, e2e ของ CORE-19a | AC-116 | — **เริ่มได้** (ควรก่อน FS-16; ชน `product-actions` กับ FS-16 ตัวที่ merge ทีหลัง rebase) |
-CORE-9b ∥ CORE-10c ∥ CORE-23c ∥ CORE-15b ∥ CORE-5d ∥ CORE-25 เริ่มได้ทันที; PAY-3b1 (#189) → PAY-3b2 → CORE-4i → (CORE-4j ∥ CORE-19f ∥ EV-7d ของ spec 02)
+| CORE-25 | (storefront เล็ก, **defect ที่ลูกค้าอาจได้ไซซ์ผิด** — qa #178) option บน PDP ไม่ถูกรีเซ็ตจาก `v_id`, `uiAddSizes` รอ `v_id`, แถบมือถือไม่ทับปุ่มหลัก (กฎข้อ 78) — ไฟล์: `modules/products/components/product-actions/{index,mobile-actions}.tsx`, e2e ของ CORE-19a (รอบ 13: #199 จริงแตะ `product-actions/index.tsx` + `lib/hooks/use-in-view.tsx` ใหม่) | AC-116 | — ◐ #199 |
+(รอบ 13 สถานะ) CORE-9b ◐ #200, CORE-10c ◐ #202, CORE-25 ◐ #199; CORE-23c ∥ CORE-15b ∥ CORE-5d เริ่มได้ทันที; PAY-3b1 (#189) → PAY-3b2 → CORE-4i → (CORE-4j ∥ CORE-19f ∥ EV-7d ของ spec 02)
+
+## Follow-up รอบ 13 จาก review/qa (2026-11-03)
+ที่มา: review/qa ของ #199 (CORE-25), #200 (CORE-9b), #202 (CORE-10c), #203 (PAY-3b2 — contract ของ action สร้าง session ที่ค้างจากรอบ 12)
+แก้ถ้อยคำในที่เดิม: AC-108 (`POST /store/search`), กฎข้อ 80 (หมายเหตุ seed เติม `featured` ที่ admin ทำว่าง), AC-110 (+ AC-20 ของ spec 06, Q-C2), แถว CORE-4i (← #203); owner ตัดสิน Q-C1/Q-C2 ตามข้อเสนอ (ก) ทั้งหมด 2026-11-03
+ไม่ทำ/ยอมรับ (planner รอบ 13):
+- review #200: option กลางที่ผูกหลายสินค้า — `query.graph` ของ `resolve-product-ids` ไม่แบ่งหน้า → **backlog** (ไม่มี AC): ทำเมื่อ option ตัวเดียวผูกสินค้าหลักร้อยจริง (แคตตาล็อก v1 เล็ก)
+- review #199: แถบมือถือจาง 300ms ทับปุ่มหลักชั่วครู่เมื่อเลื่อนเร็ว → FS-19 (spec 03 กฎข้อ 24b — แตะไฟล์เดียวกับเรื่องรอ `flash.loading`)
+Out of scope: เปลี่ยนรูปแบบ `cart-totals` ของหน้า `/cart`/checkout นอกจากให้แถวรวมกันได้ยอดสุทธิ (กฎข้อ 81b), i18n
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| ยอดรวมของ cart หลังส่วนลด | field ที่ Medusa คำนวณใน cart: `item_total` (รวมภาษี หลังส่วนลด), `item_subtotal`, `subtotal`, `discount_total`/`discount_subtotal`, `tax_total`, `total` | ใช้ตามเดิม — ห้ามคำนวณยอดเองใน storefront (กฎข้อ 81) |
+| dropdown ของตะกร้า | `cart-dropdown` ของ Medusa Next.js Starter (เปิดเอง 5 วินาทีเมื่อจำนวนชิ้นเปลี่ยน) | ขยาย — แก้ยอดรวมและพฤติกรรมเปิดเอง (กฎข้อ 81, Q-C1) |
+| รอ event ใน integration test | `medusaIntegrationTestRunner` + logger ใน container (`ContainerRegistrationKeys.LOGGER`) | ใช้ตามเดิม — ไม่ spy property private ของ event bus (กฎข้อ 82) |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+81. (CORE-26 — **qa #199: ลูกค้าสับสนเรื่องราคา**, review #199) (a) dropdown ของตะกร้า (`nav-cart-dropdown`) แสดงยอดรวมจาก field ที่ Medusa คำนวณซึ่ง**สอดคล้องกับราคาต่อ line ที่แสดง
+    (หลังส่วนลด flash/promotion และรวม VAT ตามราคาร้าน)** — ตาม Q-C1 (1) = (ก) (owner 2026-11-03): `cart.item_total` พร้อมป้าย "ยอดรวมสินค้า (รวม VAT)" แทน `cart.subtotal` + "(ไม่รวมภาษี)" ที่เป็นยอดก่อนส่วนลด
+    และไม่รวมภาษี (เคส qa: line ฿2,360 × 2 แต่ยอดรวม ฿5,514.02 = 5,900/1.07); ห้ามคำนวณเอง (ไม่หาร 1.07, ไม่ `reduce` ราคา line); (b) `cart-totals` ของ `/cart` และ checkout: แถวที่แสดง
+    (ยอดก่อนส่วนลด, ส่วนลด, ค่าจัดส่ง, ภาษี) ต้องรวมได้ `total` (±0.01) — ใช้ field ฐานภาษีเดียวกัน (`item_subtotal − discount_subtotal + shipping_subtotal + tax_total = total` — ไม่ใช้ `subtotal`
+    ของ cart เพราะใน Medusa v2 รวม `shipping_subtotal` แล้ว จะนับค่าส่งซ้ำกับแถวค่าจัดส่ง) ถ้าปัจจุบันไม่รวมกันได้ให้แก้ใน task เดียวกัน;
+    (c) dropdown ที่เปิดเองหลังจำนวนชิ้นเปลี่ยน (เช่นกดเพิ่มบน PDP) ต้องปิดเองภายใน 5 วินาที**แม้ mouse ค้างอยู่ใต้ panel ตั้งแต่ตอนเปิด** (panel เปิดทับปุ่มที่ลูกค้าเพิ่งกด — review #199:
+    ค้างเปิดทับคอลัมน์ขวาของ PDP จน e2e ต้อง `dispatchEvent`) — การชี้ที่ `nav-cart-link` ยังเปิดค้างได้ตามเดิมของ starter (Q-C1 (2) = (ก), owner 2026-11-03); (d) (review #199 CORE-25)
+    unit ของ PDP มีกรณีเปลี่ยน `product.id` (render สินค้าใหม่พร้อม `v_id` ของสินค้าใหม่) → option เป็นของ variant ตาม `v_id` ใหม่ ไม่ค้างค่าของสินค้าเดิม; (e) (review #202) comment
+    ใน `apps/storefront/e2e/thai-ui-pages.spec.ts` ราวบรรทัด 11 ที่ยังอ้างชื่อ category "Shirts" แก้ตามชื่อไทยของกฎข้อ 80
+82. (CORE-9c — review #200 CORE-9b) `integration-tests/http/search-option-deleted.spec.ts`: (a) รอผลของ ingestion ด้วยการ poll ค่าที่ test ต้องการ (เช่นผลของ `POST /store/search`)
+    พร้อม timeout ชัดเจน แทน `sleep(3000)` คงที่; (b) ตรวจ log ผ่าน logger ที่ resolve จาก container (`ContainerRegistrationKeys.LOGGER`) ไม่ spy `logger_` ที่เป็น property private ของ event bus —
+    ก่อน assert "ไม่มีบรรทัด error" ต้องยืนยันว่า spy จับ log ได้จริง (positive control: log ที่รู้ว่าเกิดในช่วงเดียวกัน หรือ assert ว่า spy ถูกเรียก ≥ 1 ครั้ง)
+
+### Acceptance criteria (follow-up รอบ 13)
+- AC-117 (CORE-26, กฎข้อ 81) e2e: Given แคมเปญ flash −20% ของสินค้า X ราคา ฿2,950 และ cart ของลูกค้ามี X qty 2 When ชี้ `nav-cart-link` Then `cart-subtotal` ใน `nav-cart-dropdown`
+  มี `data-value` เท่ากับ `item_total` ของ `GET /store/carts/:id` (เทียบตัวเลข) = ผลรวมราคา line ที่แสดง (±0.01) และป้ายเป็น "ยอดรวมสินค้า (รวม VAT)" ไม่มีคำ "ไม่รวมภาษี" (Q-C1 (1) = (ก)); ที่ `/th/cart` แถวของ
+  `cart-totals` (ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง + ภาษี — ตาม field ที่แสดง) = ยอดรวม ±0.01; static (Vitest อ่าน source): `cart-dropdown/index.tsx` ไม่มี `1.07` และไม่มี `reduce(` ที่อ่าน `unit_price`/`total`/`subtotal` (regex
+  `reduce\([^)]*(unit_price|total|subtotal)` — `countItems` ที่ `reduce` รวม `quantity` ได้รับยกเว้น);
+  e2e (desktop 1280px): กด `add-product-button` บน PDP โดยไม่ขยับ mouse → `nav-cart-dropdown` ปรากฏแล้วหายภายใน 6 วินาที และกด `add-product-button` ซ้ำได้ด้วย `click()` ปกติ (ไม่ใช้
+  `dispatchEvent` — grep e2e ของ CORE-25/CORE-19a: ไม่มี `dispatchEvent("click")` กับปุ่มนี้); ชี้ `nav-cart-link` → dropdown ยังเปิดค้างตามเดิม; unit (Vitest + jsdom) ของ PDP: rerender ด้วย
+  `product` ใหม่ + `v_id` ของ variant ในสินค้าใหม่ → option ที่เลือกตรง variant นั้น; grep: `thai-ui-pages.spec.ts` ไม่มี `Shirts` (e2e + unit Vitest)
+- AC-118 (CORE-9c, กฎข้อ 82) grep `search-option-deleted.spec.ts`: ไม่มี `sleep(`/`setTimeout(` ที่รอเวลาคงที่ และไม่มี `logger_`; มีการ poll ที่มี timeout; spy ของ logger ถูกเรียก ≥ 1 ครั้งในช่วง test
+  (positive control) และไม่มีบรรทัด warn/error ที่มี `Cannot read properties of undefined`; suite ผ่าน 3 run ติดใน CI (run id ใน PR); AC-108 ยังผ่าน (integration http)
+
+### แผนการทดสอบ (follow-up รอบ 13)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-117 (static + PDP rerender) |
+| integration (http) | AC-118 |
+| e2e | AC-117 |
+
+### Tasks (follow-up รอบ 13)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-26 | (storefront เล็ก, **qa #199 — ยอดรวมใน dropdown ไม่ตรงราคาหลังส่วนลด**, review #199/#202) ยอดรวมของ `nav-cart-dropdown` จาก field ของ Medusa ที่สอดคล้องกับส่วนลด, แถว `cart-totals` รวมได้ยอดสุทธิ, dropdown ที่เปิดเองปิดเองแม้ mouse อยู่ใต้ panel, unit PDP เปลี่ยน `product.id`, comment "Shirts" (กฎข้อ 81) — ไฟล์: `modules/layout/components/cart-dropdown/index.tsx`, `modules/common/components/cart-totals` (ถ้าแถวไม่รวมกัน), `src/core-25-pdp-option-reset.test.ts` (+ `product-actions/index.tsx` ถ้า test ล้ม), `e2e/thai-ui-pages.spec.ts`, e2e ใหม่ของ CORE-26 | AC-117 | **CORE-25 (#199) merge** (test/e2e ของ PDP + ชน `product-actions`), CORE-10c (#202) เป็น dependency อ่อน — **ไม่บล็อก** (เริ่มหลัง #199 ได้; ส่วน (e) comment "Shirts" ใช้ชื่อ category ไทยของ #202 — ถ้า #202 ยังไม่ merge ตอนเปิด PR ให้ rebase แล้วทำ (e) ก่อน merge หรือข้าม (e) ไป PR ถัดไปที่แตะไฟล์นั้น); ∥ FS-19 (spec 03 — ชน `product-actions/index.tsx` ได้ ตัวที่ merge ทีหลัง rebase); ชน `cart-totals` กับ EV-7d (spec 02) ตัวที่ merge ทีหลัง rebase — **ควรทำก่อน** (ลูกค้าเห็นราคาสับสน) |
+| CORE-9c | (backend test-only เล็ก, review #200) `search-option-deleted.spec.ts` poll + timeout แทน `sleep`, logger จาก container + positive control (กฎข้อ 82) — ไฟล์: `integration-tests/http/search-option-deleted.spec.ts` | AC-118 | **CORE-9b (#200) merge** |
+CORE-26 ∥ CORE-9c ∥ FS-19 (spec 03) หลัง PR ที่ระบุ merge; CORE-4i ← PAY-3b2 (#203)
+
+### Open questions (รอบ 13 — ปิดแล้ว)
+- ~~Q-C1~~ ตัดสินแล้ว (owner 2026-11-03): **(1) = (ก)** `item_total` ป้าย "ยอดรวมสินค้า (รวม VAT)", **(2) = (ก)** คงเปิดเองแต่ปิดเองใน 5 วินาทีแม้ mouse อยู่ใต้ panel → กฎข้อ 81, AC-117, CORE-26;
+  คำถามเดิม (CORE-26, qa/review #199) dropdown ของตะกร้า: (1) ยอดรวมที่แสดง — (ก) **[แนะนำ]** `item_total` ป้าย "ยอดรวมสินค้า (รวม VAT)": ตรงกับราคาต่อ line ที่ลูกค้าเห็น (หลังส่วนลด รวม VAT
+  เพราะราคาร้านรวม VAT) ไม่รวมค่าส่งที่ยังไม่ได้เลือก; (ข) `total` — รวมค่าส่ง/ภาษีทั้งหมด แต่ก่อนเลือกวิธีส่งไม่ตรงกับยอดที่จะจ่าย อาจสับสนอีกแบบ; (ค) คง `subtotal` (ก่อนส่วนลด ไม่รวมภาษี)
+  แล้วเพิ่มแถวส่วนลด/ภาษี — ครบแต่ dropdown ยาวขึ้นและยังขัดกับราคา line ที่รวม VAT; (2) dropdown เปิดเองหลังกดเพิ่ม — (ก) **[แนะนำ]** คงการเปิดเอง (feedback ว่าเพิ่มแล้ว) แต่ปิดเองใน 5 วินาที
+  แม้ mouse อยู่ใต้ panel (กฎข้อ 81c); (ข) ไม่เปิดเองบน PDP (ใช้ toast/ข้อความใต้ปุ่มแทน — ต้องมีข้อความใหม่); (ค) คงตามเดิมของ starter (ปัญหาค้างทับปุ่มยังอยู่)
+- ~~Q-C2~~ ตัดสินแล้ว (owner 2026-11-03): **(ก)** helper กลาง — ผู้เรียกใน UI ได้ `{ ok: true } | { error }` รูปแบบเดียว (`createPaymentSession` คงเป็นตัวส่ง request ระดับล่าง) → กฎข้อ 72, AC-110, CORE-4i;
+  คำถามเดิม (CORE-4i, ค้างจากรอบ 12 — ชน PAY-3b2 #203) action สร้าง payment session มีสองรูปแบบผล: `createPaymentSession` (`lib/data/payment.ts`, ใช้ fetch ตรง) คืน `{ status, code }`
+  ให้หน้า pay แยกกฎข้อ 9 d/d2/401 ของ spec 06 ส่วน `initiatePaymentSession` (`lib/data/cart.ts`) คืน `{ error }` ตามกฎข้อ 72 — (ก) **[แนะนำ]** คง `createPaymentSession` เป็นตัวส่ง request
+  ระดับล่าง (ต้องใช้ status/code จาก fetch ตรงเพราะ `FetchError` ไม่เก็บ code) แต่ผู้เรียกใน UI ทั้งหน้า pay และ checkout ได้ผลผ่าน helper กลางของกฎข้อ 72 รูปแบบเดียว `{ ok: true } | { error }`
+  (`401` → `"unauthorized"`, 409 `PAYMENT_ALREADY_COMPLETED` → code นั้น, non-2xx อื่น/network → `"failed"`) — การแยกทางของกฎข้อ 9 d/d2/401 ทำได้ครบจากค่านี้ และ UI มีรูปแบบผลเดียวทั้งเว็บ;
+  (ข) คงสองรูปแบบ + บันทึกเหตุผลใน JSDoc — แก้น้อยสุด แต่ผู้เรียกต้องจำสองแบบ (ขัดเจตนา "helper เดียว" ของกฎข้อ 72); (ค) ทุก action คืน `{ status, code }` — ต้องแก้ผู้เรียกของกฎข้อ 68/72
+  ทั้งหมดที่ทำไปแล้ว; ไม่กระทบ EV-7d (spec 02 กฎข้อ 28 — redirect ผ่าน `safeCountryCode`; EV-7d ยังรอ CORE-4i ตามเดิม)
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
