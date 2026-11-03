@@ -51,7 +51,7 @@ const SAMPLE_PRODUCTS = [
   {
     title: "เสื้อยืด Medusa",
     handle: "t-shirt",
-    category: "Shirts",
+    category: "shirts",
     image: `${IMG}/tee-black-front.png`,
     option: { title: "ขนาด", values: ["S", "M", "L"] },
     price: 590,
@@ -59,11 +59,16 @@ const SAMPLE_PRODUCTS = [
   {
     title: "เสื้อสเวตเตอร์ Medusa",
     handle: "sweatshirt",
-    category: "Sweatshirts",
+    category: "sweatshirts",
     image: `${IMG}/sweatshirt-vintage-front.png`,
     option: { title: "ขนาด", values: ["M", "L"] },
     price: 990,
   },
+]
+// CORE-10c (spec 01 กฎข้อ 35, 80): ชื่อ category ไทย handle คงที่ (= handle เดิมจากชื่ออังกฤษ — URL `/categories/<handle>` ไม่เปลี่ยน)
+const SAMPLE_CATEGORIES = [
+  { name: "เสื้อ", handle: "shirts" },
+  { name: "เสื้อสเวตเตอร์", handle: "sweatshirts" },
 ]
 const SAMPLE_SKUS = SAMPLE_PRODUCTS.flatMap((p) => p.option.values.map((value) => sku(p.handle, value)))
 // CORE-10b (spec 01 กฎข้อ 70): collection ตัวอย่างให้หน้าแรกมี rail — หาด้วย handle (ชื่อแก้ได้ใน admin)
@@ -331,18 +336,21 @@ async function ensurePublishableKey(container: Container, salesChannelId: string
   })
 }
 
-/** category ตามชื่อ คืน map ชื่อ → id */
+/** category ตาม handle (ชื่อแก้ได้ใน admin — มีอยู่แล้วไม่เปลี่ยนชื่อ) คืน map handle → id */
 async function ensureCategories(container: Container): Promise<Record<string, string>> {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
-  const names = [...new Set(SAMPLE_PRODUCTS.map((p) => p.category))]
-  const { data } = await query.graph({ entity: "product_category", fields: ["id", "name"], filters: { name: names } })
-  const ids: Record<string, string> = Object.fromEntries(data.map((c) => [c.name, c.id]))
-  const missing = names.filter((name) => !ids[name])
+  const { data } = await query.graph({
+    entity: "product_category",
+    fields: ["id", "handle"],
+    filters: { handle: SAMPLE_CATEGORIES.map((c) => c.handle) },
+  })
+  const ids: Record<string, string> = Object.fromEntries(data.map((c) => [c.handle, c.id]))
+  const missing = SAMPLE_CATEGORIES.filter((c) => !ids[c.handle])
   if (missing.length) {
     const { result } = await createProductCategoriesWorkflow(container).run({
-      input: { product_categories: missing.map((name) => ({ name, is_active: true })) },
+      input: { product_categories: missing.map((c) => ({ ...c, is_active: true })) },
     })
-    result.forEach((c) => (ids[c.name] = c.id))
+    result.forEach((c) => (ids[c.handle] = c.id))
   }
   return ids
 }
@@ -386,22 +394,23 @@ async function ensureProducts(
 }
 
 /**
- * collection `featured` (CORE-10b) ใส่สินค้าตัวอย่างที่ยังไม่อยู่ใน collection ใด — สร้างเฉพาะเมื่อยังไม่มี handle นี้
- * มีอยู่แล้ว → ไม่สร้าง/ไม่แก้ (คงชื่อและสินค้าที่ admin จัดไว้)
+ * collection `featured` (CORE-10b) หาด้วย handle — ยังไม่มี → สร้าง; มีอยู่แล้ว → ไม่แก้ชื่อ
+ * ผูกสินค้าตัวอย่างที่ยังไม่อยู่ใน collection ใด เฉพาะเมื่อ collection ยังไม่มีสินค้า (CORE-10c กฎข้อ 80: ซ่อม collection ว่าง
+ * จาก seed ที่ล้มกลางทาง) — collection ที่มีสินค้าแล้วไม่แตะ (คงสินค้าที่ admin จัดไว้)
  */
 async function ensureFeaturedCollection(container: Container) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data: existing } = await query.graph({
     entity: "product_collection",
-    fields: ["id"],
+    fields: ["id", "products.id"],
     filters: { handle: FEATURED_COLLECTION.handle },
   })
-  if (existing.length) {
+  if (existing[0]?.products?.length) {
     return
   }
-  const { result } = await createCollectionsWorkflow(container).run({
-    input: { collections: [FEATURED_COLLECTION] },
-  })
+  const collectionId =
+    existing[0]?.id ??
+    (await createCollectionsWorkflow(container).run({ input: { collections: [FEATURED_COLLECTION] } })).result[0].id
   const { data: products } = await query.graph({
     entity: "product",
     fields: ["id", "collection_id"],
@@ -409,7 +418,7 @@ async function ensureFeaturedCollection(container: Container) {
   })
   const add = products.filter((p) => !p.collection_id).map((p) => p.id)
   if (add.length) {
-    await batchLinkProductsToCollectionWorkflow(container).run({ input: { id: result[0].id, add } })
+    await batchLinkProductsToCollectionWorkflow(container).run({ input: { id: collectionId, add } })
   }
 }
 
