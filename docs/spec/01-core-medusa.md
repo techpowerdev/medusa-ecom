@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (follow-up ล่าสุด: รอบ 13 2026-11-03 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
+สถานะ: accepted (follow-up ล่าสุด: รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
 เป้าหมาย: ร้านค้าพื้นฐานที่สมบูรณ์และพร้อม production โดย **ไม่มี custom commerce logic เลย**
 ทุกอย่างใน spec นี้คือการตั้งค่า, seeding, theming และ deployment
 
@@ -1174,8 +1174,9 @@ none
 ### Acceptance criteria (follow-up รอบ 13)
 - AC-117 (CORE-26, กฎข้อ 81) e2e: Given แคมเปญ flash −20% ของสินค้า X ราคา ฿2,950 และ cart ของลูกค้ามี X qty 2 When ชี้ `nav-cart-link` Then `cart-subtotal` ใน `nav-cart-dropdown`
   มี `data-value` เท่ากับ `item_total` ของ `GET /store/carts/:id` (เทียบตัวเลข) = ผลรวมราคา line ที่แสดง (±0.01) และป้ายเป็น "ยอดรวมสินค้า (รวม VAT)" ไม่มีคำ "ไม่รวมภาษี" (Q-C1 (1) = (ก)); ที่ `/th/cart` แถวของ
-  `cart-totals` (ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง + ภาษี — ตาม field ที่แสดง) = ยอดรวม ±0.01; static (Vitest อ่าน source): `cart-dropdown/index.tsx` ไม่มี `1.07` และไม่มี `reduce(` ที่อ่าน `unit_price`/`total`/`subtotal` (regex
-  `reduce\([^)]*(unit_price|total|subtotal)` — `countItems` ที่ `reduce` รวม `quantity` ได้รับยกเว้น);
+  `cart-totals` (ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง + ภาษี — ตาม field ที่แสดง) = ยอดรวม ±0.01; static (Vitest อ่าน source): `cart-dropdown/index.tsx` ไม่มี `1.07` และไม่มี `.reduce(` ที่อ่าน `unit_price`/`total`/`subtotal` (regex
+  `/\.reduce\([\s\S]*?\b(unit_price|total|subtotal)\b/` กับ source ที่ตัด `countItems` ออกแล้ว — `countItems` ที่ `reduce` รวม `quantity` ได้รับยกเว้น;
+  review #206: regex เดิม `reduce\([^)]*…` หยุดที่ `)` ของ arrow function จึงจับโค้ดจริงไม่ได้);
   e2e (desktop 1280px): กด `add-product-button` บน PDP โดยไม่ขยับ mouse → `nav-cart-dropdown` ปรากฏแล้วหายภายใน 6 วินาที และกด `add-product-button` ซ้ำได้ด้วย `click()` ปกติ (ไม่ใช้
   `dispatchEvent` — grep e2e ของ CORE-25/CORE-19a: ไม่มี `dispatchEvent("click")` กับปุ่มนี้); ชี้ `nav-cart-link` → dropdown ยังเปิดค้างตามเดิม; unit (Vitest + jsdom) ของ PDP: rerender ด้วย
   `product` ใหม่ + `v_id` ของ variant ในสินค้าใหม่ → option ที่เลือกตรง variant นั้น; grep: `thai-ui-pages.spec.ts` ไม่มี `Shirts` (e2e + unit Vitest)
@@ -1209,6 +1210,58 @@ CORE-26 ∥ CORE-9c ∥ FS-19 (spec 03) หลัง PR ที่ระบุ me
   (`401` → `"unauthorized"`, 409 `PAYMENT_ALREADY_COMPLETED` → code นั้น, non-2xx อื่น/network → `"failed"`) — การแยกทางของกฎข้อ 9 d/d2/401 ทำได้ครบจากค่านี้ และ UI มีรูปแบบผลเดียวทั้งเว็บ;
   (ข) คงสองรูปแบบ + บันทึกเหตุผลใน JSDoc — แก้น้อยสุด แต่ผู้เรียกต้องจำสองแบบ (ขัดเจตนา "helper เดียว" ของกฎข้อ 72); (ค) ทุก action คืน `{ status, code }` — ต้องแก้ผู้เรียกของกฎข้อ 68/72
   ทั้งหมดที่ทำไปแล้ว; ไม่กระทบ EV-7d (spec 02 กฎข้อ 28 — redirect ผ่าน `safeCountryCode`; EV-7d ยังรอ CORE-4i ตามเดิม)
+
+## Follow-up รอบ 14 (2026-11-03 — owner สั่ง: กันกดเพิ่มตะกร้าซ้ำบน storefront)
+ที่มา: qa #211 (FS-19) — `el.click()` สองครั้งใน tick เดียวที่ `add-product-button` หรือ `mobile-cart-button` → line ได้ quantity 2 (ปัญหาเดิมของ starter ไม่ใช่ regression;
+qa #209 ใช้ dblclick ของ Playwright ได้ +1 เพราะมีจังหวะให้ React render ระหว่างคลิก) ต้นเหตุ: ปุ่ม disable ด้วย state `isAdding` ซึ่งยังไม่ render ตอนคลิกที่สองใน tick เดียว;
+review #211: `mobile-cart-button` ไม่ disable ด้วย `!isValidVariant`/`optionsDisabled`/`isAdding` ครบแบบปุ่มหลัก
+ค้นแล้ว (`apps/storefront/src`): จุดเดียวใน UI ที่เรียก `addToCart` คือ `handleAddToCart` ของ `product-actions/index.tsx` (ทั้งสองปุ่มเรียก handler นี้) — `lib/data/customer.ts` เรียกฝั่ง server
+หลัง login (pending add ครั้งเดียว ไม่ใช่ปุ่ม) จึง**ไม่สร้าง hook ใหม่** (CLAUDE.md ข้อ 3 — ผู้ใช้ที่เดียว); hook ที่มีอยู่ `lib/hooks/use-submit-once.tsx` (login/register, กฎข้อ 69c)
+ไม่ใช้ เพราะผูกกับ `FormEvent` ของ `<form>` และปลด guard ผ่าน `useEffect` ตาม `isPending` ของ form action ขณะที่ `mobile-cart-button` เป็น `onClick` นอก form และ `handleAddToCart` เรียก `addToCart` ตรง
+Out of scope: backend / Store API (เพิ่มสินค้าเดิมซ้ำโดยตั้งใจยังต้องรวม quantity ตามเดิม), ปุ่มอื่นของ storefront ที่ไม่ใช่เพิ่มตะกร้า
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| เพิ่ม line ลง cart | `POST /store/carts/:id/line-items` (variant เดิมรวม quantity) ผ่าน `addToCart` ของ Medusa Next.js Starter (`lib/data/cart.ts`) | ใช้ตามเดิม — ไม่แตะ |
+| ปุ่ม/สถานะ loading | `Button` ของ `@medusajs/ui` (`isLoading`, `disabled`) + state `isAdding` ของ `ProductActions` ใน starter | ขยาย — เพิ่ม guard แบบ synchronous (`useRef`) ใน `handleAddToCart` เพราะ state ไม่ทันในคลิกที่สองของ tick เดียว |
+| กันยิงซ้ำฝั่ง server | Store API ไม่มี idempotency key ของ line item | ไม่ทำ — owner กำหนดไม่แตะ backend; กันที่ client พอสำหรับการกดซ้อนของคนเดียว |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+83. (CORE-27 — qa/review #211) ปุ่มเพิ่มลงตะกร้าทั้งสองจุดของ PDP ต้องกันการยิงซ้อน**แบบ synchronous** (ฟอร์ม login/register อยู่ใต้กฎข้อ 69c + `use-submit-once` ตามเดิม — กฎนี้ไม่ซ้อน/ไม่แก้กฎนั้น) — (a) `handleAddToCart`
+    ใน `product-actions/index.tsx` ใช้ `useRef` in-flight: ถ้ามี request ค้างอยู่ให้ return ทันที ตั้งค่าก่อน `await` แรก และปลดใน `finally` (ทั้งสำเร็จและ error) — `isAdding` ยังใช้แสดงผล/disable
+    ได้ แต่ห้ามเป็นตัวกันเพียงอย่างเดียว; (b) หลัง request แรกจบ กดเพิ่มอีกครั้งต้องได้ (quantity สะสมตาม Medusa); (c) `mobile-cart-button` disable ด้วยเงื่อนไขเดียวกับ `add-product-button`
+    (`!inStock`, `!variant`, `!isValidVariant`, `optionsDisabled`, `isAdding`, `qtyExceeded`, และ prop `flashLoading` ที่ FS-19 #211 เพิ่มตามกฎข้อ 24a ของ spec 03) — ส่งค่าที่ขาดเป็น prop จาก `index.tsx`;
+    (d) ไม่สร้าง hook/abstraction ใหม่จนกว่าจะมีจุดที่สองที่ต้องใช้จริง
+
+### Acceptance criteria (follow-up รอบ 14)
+- AC-119 (CORE-27, กฎข้อ 83) unit (Vitest + jsdom, `src/core-27-add-to-cart-guard.test.ts`): `addToCart` mock คืน promise ที่ยังไม่ resolve; Given PDP render แล้ว When เรียก `.click()`
+  ที่ `add-product-button` สองครั้งภายใน `act()` เดียว (ไม่ให้ React render ระหว่างคลิก — test นี้ต้อง fail กับโค้ดก่อนแก้) Then `addToCart` ถูกเรียก 1 ครั้ง; เหมือนกันกับ `mobile-cart-button`
+  (mock `useIntersection` คืน `false` — หลัง #211 แถบ mount เฉพาะ `inView === false`) และคลิกปุ่มหลัก + ปุ่มมือถือสลับกันใน `act()` เดียว → 1 ครั้ง; resolve request แรกแล้วคลิกอีกครั้ง → เรียกครั้งที่ 2; mock reject → ปลด guard แล้วคลิกอีกครั้งได้;
+  render ด้วย variant ที่ไม่ valid / `disabled` → `mobile-cart-button` มี attribute `disabled`; ทุกกรณีคลิกต้อง mock `useFlashOffer` คืน `loading: false` และ assert ว่าปุ่ม**ไม่ disabled ก่อนคลิก**
+  (ไม่งั้นปุ่ม disabled ตั้งแต่ต้น test ผ่านโดยไม่ได้ทดสอบ guard);
+  e2e (`e2e/core-27-add-to-cart-guard.spec.ts`, customer login, desktop 1280px และ 375×812 สำหรับ `mobile-cart-button`): เริ่มนับ request ของ server action เพิ่มตะกร้า (POST ที่มี header
+  `next-action` จาก `page.on("request")`) **ก่อน** `page.evaluate` ที่เรียก `el.click()` สองครั้งติดกัน → รอ network idle + ช่วงคงที่ที่กำหนดในไฟล์ (เช่น 1 วินาที) → จำนวน request = **1 พอดี**
+  (กัน false-pass: โค้ดเดิมยิงสอง action พร้อมกัน ตัวแรกจบแล้วอ่าน cart ได้ 1 ขณะตัวที่สองยังค้าง) แล้ว quantity ของ line ใน `GET /store/carts/:id` = 1; จากนั้น `click()` ปกติแล้วรอ → จำนวน request = 2
+  และ quantity = 2; ผ่าน `--repeat-each=5` (ผลใน evidence) และต้อง fail กับโค้ดก่อนแก้ (แนบผลรันก่อนแก้ใน PR)
+
+### แผนการทดสอบ (follow-up รอบ 14)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-119 (คลิกซ้อน, หลัง resolve/reject, disabled ของปุ่มมือถือ) |
+| e2e | AC-119 (desktop + 375px) |
+
+### Tasks (follow-up รอบ 14)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-27 | (storefront เล็ก, qa/review #211) guard `useRef` in-flight ใน `handleAddToCart` + `mobile-cart-button` disable ครบแบบปุ่มหลัก (กฎข้อ 83) — ไฟล์: `modules/products/components/product-actions/index.tsx`, `modules/products/components/product-actions/mobile-actions.tsx`, `src/core-27-add-to-cart-guard.test.ts` ใหม่, `e2e/core-27-add-to-cart-guard.spec.ts` ใหม่ | AC-119 | **FS-19 (#211) merge** (แตะ `index.tsx` + `mobile-actions.tsx` และเพิ่ม `flash.loading` ใน prop เดียวกัน); CORE-26 (#209) — ชน e2e/unit ของ PDP (core-25) ตัวที่ merge ทีหลัง rebase (ไม่บล็อกถ้า #211 merge แล้ว) |
+(รอบ 14 สถานะ) CORE-27 ☐ (← FS-19 #211); ไม่มีคำถามค้าง
+
+### Open questions (รอบ 14)
+none
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

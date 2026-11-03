@@ -52,13 +52,25 @@ const product = () =>
 let container: HTMLDivElement
 let root: Root
 
-const render = async () => {
+// CORE-26 (กฎข้อ 81d, review #199): สินค้าอีกตัว (ไซซ์ชื่อเดียวกันแต่ variant id ต่างกัน)
+const B_S = "variant_b_s"
+const B_M = "variant_b_m"
+const productB = () =>
+  ({
+    id: "prod_polo",
+    options: [
+      { id: "opt_size", title: "Size", values: [{ value: "S" }, { value: "M" }] },
+    ],
+    variants: [variant(B_S, "S"), variant(B_M, "M")],
+  }) as never
+
+const render = async (p: () => never = product) => {
   const { default: ProductActions } = await import(
     "@modules/products/components/product-actions"
   )
   await act(async () => {
     root.render(
-      createElement(ProductActions, { product: product(), region: { id: "reg_th" } as never })
+      createElement(ProductActions, { product: p(), region: { id: "reg_th" } as never })
     )
   })
 }
@@ -110,5 +122,17 @@ describe("CORE-25: option บน PDP ไม่ถูกรีเซ็ตจา�
       container.querySelector<HTMLButtonElement>('[data-testid="add-product-button"]')!.click()
     })
     expect(addToCart).toHaveBeenCalledWith(expect.objectContaining({ variantId: M }))
+  })
+
+  it("CORE-26: rerender ด้วย product ใหม่ + v_id ของ variant ในสินค้าใหม่ → option ตรง variant นั้น ไม่ค้างของสินค้าเดิม", async () => {
+    window.history.replaceState(null, "", `/th/products/t-shirt?v_id=${S}`)
+    await render()
+    expect(sizeInput("S").checked).toBe(true)
+
+    // client navigation ไป PDP ของสินค้าอื่น: component เดิมได้ product ใหม่ และ URL มี v_id ของสินค้าใหม่
+    window.history.replaceState(null, "", `/th/products/polo?v_id=${B_M}`)
+    await render(productB)
+    expect(sizeInput("M").checked, "ต้องเป็น M ตาม v_id ใหม่").toBe(true)
+    expect(postedVariant()).toBe(B_M)
   })
 })
