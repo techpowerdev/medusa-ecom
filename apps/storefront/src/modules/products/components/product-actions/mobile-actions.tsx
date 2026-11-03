@@ -19,6 +19,8 @@ type MobileActionsProps = {
   options: Record<string, string | undefined>
   updateOptions: (title: string, value: string) => void
   inStock?: boolean
+  /** CORE-27 (กฎข้อ 83c): ตัวเลือกที่เลือกตรงกับ variant — disable ปุ่มเหมือนฟอร์มหลัก */
+  isValidVariant?: boolean
   handleAddToCart: () => void
   isAdding?: boolean
   show: boolean
@@ -39,6 +41,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   options,
   updateOptions,
   inStock,
+  isValidVariant,
   handleAddToCart,
   isAdding,
   show,
@@ -140,7 +143,17 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                 <Button
                   type="button"
                   onClick={handleAddToCart}
-                  disabled={!inStock || !variant || qtyExceeded || flashLoading}
+                  // CORE-27 (กฎข้อ 83c): เงื่อนไขชุดเดียวกับ `add-product-button`
+                  disabled={
+                    !inStock ||
+                    !variant ||
+                    !isValidVariant ||
+                    // = `!!disabled || isAdding` ของ ProductActions
+                    optionsDisabled ||
+                    !!isAdding ||
+                    !!qtyExceeded ||
+                    !!flashLoading
+                  }
                   aria-busy={flashLoading}
                   className="w-full"
                   isLoading={isAdding}
