@@ -14,7 +14,8 @@
 → GB-11 (backend) + แยก GB-7 เป็น GB-7a1 (หน้ากลุ่ม) / GB-7a2 (ที่อยู่ + วิธีส่ง + join ด้วย cart ใหม่) / GB-7b (หน้า account, ◐ #223) / GB-7c (แคมเปญบนหน้าแรก + สร้างทีม)
 — กฎข้อ 28–29, กฎข้อ 14c แทนที่ (ไม่ล้าง cart ปัจจุบัน), AC-16 แยก (a)/(b), AC-28 แทนที่, AC-45..48; owner ตอบ Q15–Q19 แล้ว 2026-11-03 (Q19 จาก review #224);
 รอบ 15 2026-11-03: **owner ตัดสิน 1 แคมเปญ = 1 สินค้า** หน้ากลุ่มเป็น "ตะกร้าเฉพาะของสินค้านั้น" เลือกได้หลาย variant พร้อมจำนวน → กฎข้อ 30–31, GB-6e (admin picker สินค้าเดียว +
-backend validation), GB-11 คืน `product_id` แทน `product_ids`, GB-7a2 หลาย variant (แยก GB-7a2a error map), GB-7c การ์ดสินค้าเดียว — AC-28/33/45/46/48 ปรับ, AC-49..50, คำถาม Q20 (ก–ง) พร้อมค่าตั้งต้น)
+backend validation), GB-11 คืน `product_id` แทน `product_ids`, GB-7a2 หลาย variant (แยก GB-7a2a error map), GB-7c การ์ดสินค้าเดียว — AC-28/33/45/46/48 ปรับ, AC-49..50, คำถาม Q20 (ก–ง);
+รอบ 15b 2026-11-03: owner ตอบ Q20 = ตามค่าตั้งต้นทั้งหมด → กฎข้อ 31d เป็นคำตัดสิน, test id ของหน้ากลุ่ม/การ์ดครบตาม re-review #227)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -231,7 +232,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     join ด้วย cart ใหม่ + error map (กฎข้อ 29c–f; test id `group-address-select`, `group-add-address-link`, `group-shipping-option`); **GB-7c** = ส่วนแคมเปญบนหน้าแรก `/<cc>`
     (flash + group buy) + สร้างทีม (กฎข้อ 29a, 29g); **GB-7b** = รายการในหน้า account (GB-8) + ปุ่มออกจากกลุ่ม + ลิงก์ไปหน้าชำระเงินของ PAY-3b; ไม่มีหน้า `/group-buy` แยก
     — test id เพิ่ม: `home-campaigns`, `flash-campaign-card`, `group-campaign-card`, `group-pool-link`, `group-progress`, `group-countdown`, `group-member-count`, `group-variant-select`,
-    `group-quantity`, `group-share-link`, `group-join-error`
+    `group-quantity`, `group-share-link`, `group-join-error`, (รอบ 15) `group-selection`, `group-add-variant`, `group-units-limit`, `group-create-team-error`,
+    `group-campaign-thumbnail`, `group-campaign-price`, `group-campaign-progress`
 
 ## Business rules
 1. 1 membership = 1 draft order; ลูกค้าเดียวสั่งซ้ำในกลุ่มเดิมได้ (หลาย membership) เป้าหมาย (นับเฉพาะ membership
@@ -426,7 +428,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
       ย้าย `optionsAsKeymap` + การหา variant จาก option ออกจาก `product-actions/index.tsx` เป็น helper ใน `lib/util/` ~30 LOC ให้ PDP และหน้ากลุ่ม import)
       → รายการ `group-selection` ในหน้า (variant เดิมซ้ำ = รวมจำนวน, แก้จำนวน/ลบรายการได้ก่อนยืนยัน); (b) ยืนยัน → cart ใหม่ **หลาย line** ตามรายการ (กฎข้อ 29c) แล้ว join ครั้งเดียว = 1 membership/1 draft order
       ที่มีทุก variant, `units` = ผลรวมจำนวน (backend เดิม `cartUnits` รวมทุก line); (c) ผลรวมเกิน `max_units_per_person` → ปุ่ม join disabled + `group-units-limit` (ตรวจฝั่ง client จากค่าในหน้า —
-      ด่านจริงคือ backend กฎข้อ 4 ที่นับรวม membership เดิมด้วย); (d) ค่าตั้งต้นที่ใช้จน owner ตอบ Q20: รายการเป็น state ในหน้า ไม่จำข้ามการออกจากหน้า (Q20ก), หลัง join แก้รายการไม่ได้ —
+      ด่านจริงคือ backend กฎข้อ 4 ที่นับรวม membership เดิมด้วย); (d) **คำตัดสินของ owner (Q20, 2026-11-03)**: รายการเป็น state ในหน้า ไม่จำข้ามการออกจากหน้า (Q20ก), หลัง join แก้รายการไม่ได้ —
       leave แล้ว join ใหม่ (Q20ข), `max_units_per_person` นับรวมทุก variant (Q20ค), คงเป้า orders/units/people ทั้งสามแบบ (Q20ง)
 
 ## Acceptance criteria
@@ -695,12 +697,13 @@ review #185: test "convert ล้มเพราะสต็อกหมด" ม
 (รอบ 14, 2026-11-03) GB-7 แยก: GB-7b ◐ #223 (PAY-3b2 ☑ #203; ไม่ใช้ route สาธารณะ) ∥ GB-11 ☐ เริ่มได้ (backend ล้วน คนละไฟล์กับ GB-10) → GB-7a1 ☐ → (GB-7a2 ☐ ∥ GB-7c ☐);
 GB-7a1/GB-7a2/GB-7c ∥ GB-7b; owner ตอบ Q15–Q19 แล้ว (2026-11-03); release v0.5.0 ต้องมี GB-7a1, GB-7a2, GB-7b และ GB-7c
 (รอบ 15, 2026-11-03 — 1 แคมเปญ = 1 สินค้า) (GB-6e ☐ ∥ GB-11 ☐ ∥ GB-7a2a ☐) → GB-7a1 ☐ (← GB-11) → (GB-7a2 ☐ (← GB-7a1, GB-7a2a, GB-6e) ∥ GB-7c ☐ (← GB-7a1, GB-7a2a)); ทั้งหมด ∥ GB-7b;
-Q20 ยังไม่ตอบ — ใช้ค่าตั้งต้นในกฎข้อ 31d ไม่บล็อก task; release v0.5.0 ต้องมี GB-6e และ GB-7a2a ด้วย
+Q20 ตัดสินแล้ว (owner 2026-11-03, กฎข้อ 31d); release v0.5.0 ต้องมี GB-6e และ GB-7a2a ด้วย
 
 ## Open questions
 - (บันทึก รอบ 15) **owner ตัดสิน 2026-11-03**: group buy แยกรายสินค้า — 1 แคมเปญมีสินค้าเดียว; หน้ากลุ่มเป็น "ตะกร้าเฉพาะของสินค้านั้น" เลือกได้หลาย variant พร้อมจำนวน
   (เช่น S ×2, M ×1) แยกจากตะกร้าหลัก (สอดคล้อง Q16/Q19) → กฎข้อ 30–31, GB-6e, GB-7a2/GB-7a2a, AC-49..50
-- **Q20** (รอบ 15, GB-7a2 — ยังไม่บล็อก ใช้ค่าตั้งต้นด้านล่างจนกว่า owner ตอบ): (ก) **[ค่าตั้งต้น]** รายการที่เลือกบนหน้ากลุ่มไม่จำข้ามการออกจากหน้า (state ในหน้า สร้าง cart ตอนกดยืนยัน)
+- ~~Q20~~ ตัดสินแล้ว (owner 2026-11-03): **ใช้ค่าตั้งต้นทั้งหมด** (ก) ไม่จำรายการข้ามการออกจากหน้า (ข) หลัง join แก้ไม่ได้ใน v1 — leave แล้ว join ใหม่
+  (ค) `max_units_per_person` นับรวมทุก variant (ง) คงเป้า orders/units/people — กฎข้อ 31d; คำถามเดิม (รอบ 15, GB-7a2): (ก) **[ค่าตั้งต้น]** รายการที่เลือกบนหน้ากลุ่มไม่จำข้ามการออกจากหน้า (state ในหน้า สร้าง cart ตอนกดยืนยัน)
   — ไม่มี cart ค้างจากคนที่แค่ดู; ทางเลือก: จำใน cookie/localStorage; (ข) **[ค่าตั้งต้น]** หลัง join แก้รายการไม่ได้ใน v1 (leave แล้ว join ใหม่ — GB-3b มีแล้ว) — แก้ draft order ต้องใช้ order edit
   ของ Medusa + ปรับตัวนับใต้ lock (task backend ใหม่); (ค) **[ค่าตั้งต้น]** `max_units_per_person` นับรวมทุก variant (ตาม backend เดิม กฎข้อ 4) — ทางเลือก: จำกัดต่อ variant ต้องเพิ่ม config;
   (ง) **[ค่าตั้งต้น]** คงเป้า `orders`/`units`/`people` ทั้งหมด — ทางเลือก: ตัด `orders` (หลาย variant ใน 1 order ทำให้ orders ≈ people ถ้าลูกค้าไม่สั่งซ้ำ)
