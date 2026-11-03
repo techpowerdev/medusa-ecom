@@ -10,6 +10,8 @@ import {
 import medusaError from "@lib/util/medusa-error"
 import type { GroupBuyOrder } from "@lib/util/order-pay"
 import type { PublicGroupBuyGroupView } from "@lib/util/group-page"
+import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
+import { teamCreateFailure, type ActiveGroupBuyCampaign, type CreateTeamResult } from "@lib/util/home-campaigns"
 import { getAuthHeaders } from "./cookies"
 
 /**
@@ -72,4 +74,36 @@ export async function retrievePublicGroup(token: string): Promise<PublicGroupBuy
       cache: "no-store",
     })
     .catch((err) => ((err as { status?: unknown }).status === 404 ? null : medusaError(err)))
+}
+
+/**
+ * GB-7c (spec 04 กฎข้อ 29a): แคมเปญ group buy ที่ active สำหรับการ์ดบนหน้าแรก — route สาธารณะของ GB-11 (ไม่ส่ง token ลูกค้า)
+ * ใช้ cache ของหน้าแรก (ADR-017: `progress_*` ของ pool ค้างได้ ~90 วินาที); ล้มเหลว → [] (ไม่แสดงการ์ด group buy)
+ */
+export async function listActiveGroupBuyCampaigns(): Promise<ActiveGroupBuyCampaign[]> {
+  return sdk.client
+    .fetch<{ campaigns: ActiveGroupBuyCampaign[] }>(`/store/group-buy/campaigns/active`, {
+      method: "GET",
+      next: { revalidate: CATALOG_REVALIDATE_SECONDS },
+    })
+    .then(({ campaigns }) => campaigns ?? [])
+    .catch(() => [])
+}
+
+/**
+ * GB-7c (spec 04 กฎข้อ 29e, 29g): สร้างทีมอย่างเดียว (ไม่ join อัตโนมัติ) — ยังไม่ login → unauthorized โดยไม่ยิง POST;
+ * error → ข้อความไทยจาก helper ของ GB-7a2a (route ไม่ idempotent: ผู้เรียกกันกดซ้ำเอง)
+ */
+export async function createGroupBuyTeam(campaignId: string): Promise<CreateTeamResult> {
+  const headers = await getAuthHeaders()
+  if (!("authorization" in headers)) return { error: "unauthorized" }
+  return sdk.client
+    .fetch<{ group: { join_token: string } }>(`/store/group-buy/groups`, {
+      method: "POST",
+      headers,
+      body: { campaign_id: campaignId },
+      cache: "no-store",
+    })
+    .then(({ group }): CreateTeamResult => ({ ok: true, token: group.join_token }))
+    .catch(teamCreateFailure)
 }

@@ -1,0 +1,64 @@
+# GB-7c — ส่วน home-campaigns บนหน้าแรก + ปุ่มสร้างทีม (spec 04 กฎข้อ 29a, 29e, 29g; AC-48)
+# วันที่ 2026-11-04 05:00 +07 — node v22.23.3, branch feat/GB-7c-home-campaign-cards
+
+## 1) Red: unit test ก่อนเขียนโค้ด
+- src/lib/util/home-campaigns.test.ts → FAIL (Failed to resolve import "./home-campaigns")
+- src/lib/data/home-campaigns.test.ts → 6 failed (TypeError: listActiveGroupBuyCampaigns / createGroupBuyTeam is not a function)
+
+## 2) Green: unit (Vitest) ของ task
+ ✓ src/lib/util/home-campaigns.test.ts > groupDiscountedAmount (GB-7c, AC-48) > percentage: ราคาหลังส่วนลด ปัดเป็นสตางค์ 1ms
+ ✓ src/lib/util/home-campaigns.test.ts > groupDiscountedAmount (GB-7c, AC-48) > fixed: หักจำนวนเงินเมื่อสกุลตรงกัน (ไม่ต่ำกว่า 0) ไม่ใช้ float 0ms
+ ✓ src/lib/util/home-campaigns.test.ts > groupDiscountedAmount (GB-7c, AC-48) > ไม่มีส่วนลด/สกุลไม่ตรง/ค่าไม่บวก → null (การ์ดแสดงราคาปกติอย่างเดียว) 0ms
+ ✓ src/lib/util/home-campaigns.test.ts > canCreateTeam (กฎข้อ 29a) > team/both สร้างทีมได้, pool ไม่ได้ 0ms
+ ✓ src/lib/util/home-campaigns.test.ts > poolProgress > ความคืบหน้าของ pool ตาม target_type ของแคมเปญ 0ms
+ ✓ src/lib/util/home-campaigns.test.ts > teamCreateFailure (กฎข้อ 29e, 29g — error map ของ GB-7a2a) > 401 → unauthorized (พาไปหน้า login) 0ms
+ ✓ src/lib/util/home-campaigns.test.ts > teamCreateFailure (กฎข้อ 29e, 29g — error map ของ GB-7a2a) > 400 GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED → ข้อความไทยของ code 1ms
+ ✓ src/lib/util/home-campaigns.test.ts > teamCreateFailure (กฎข้อ 29e, 29g — error map ของ GB-7a2a) > 400 not_allowed / 403 mode / 5xx → ข้อความไทย ปิดรับ ≠ ลองใหม่ 0ms
+ ✓ src/lib/util/home-campaigns.test.ts > hasHomeCampaigns (AC-48: ไม่มีแคมเปญ → ไม่มี home-campaigns) > ว่างทั้งสองแบบ → false; มีแบบใดแบบหนึ่ง → true 0ms
+ ✓ src/lib/data/home-campaigns.test.ts > listActiveFlashCampaigns > เรียก /store/flash-sales/active โดยไม่ส่ง variant_ids และใช้ revalidate ของหน้าแรก (≤ 60) 1ms
+ ✓ src/lib/data/home-campaigns.test.ts > listActiveFlashCampaigns > ล้ม → [] 0ms
+ ✓ src/lib/data/home-campaigns.test.ts > listActiveGroupBuyCampaigns > อ่าน GB-11 แบบสาธารณะ (ไม่ส่ง token ลูกค้า) ใช้ revalidate ของหน้าแรก 0ms
+ ✓ src/lib/data/home-campaigns.test.ts > listActiveGroupBuyCampaigns > ล้ม → [] 0ms
+ ✓ src/lib/data/home-campaigns.test.ts > createGroupBuyTeam > ยังไม่ login → unauthorized และไม่ยิง POST (กฎข้อ 29e) 0ms
+ ✓ src/lib/data/home-campaigns.test.ts > createGroupBuyTeam > login แล้ว → POST /store/group-buy/groups ครั้งเดียว คืน join_token ของทีมใหม่ 0ms
+ ✓ src/lib/data/home-campaigns.test.ts > createGroupBuyTeam > 400 GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED → ข้อความไทย 0ms
+ ✓ src/lib/data/home-campaigns.test.ts > createGroupBuyTeam > 401 (JWT หมดอายุ) → unauthorized 0ms
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+
+## 3) unit ทั้งหมดของ storefront (pnpm --filter storefront test:unit)
+ Test Files  73 passed (73)
+      Tests  805 passed (805)
+
+## 4) e2e (Playwright, chromium) — next build + next start :8311, medusa develop :9311 (DB medusa_gb7c)
+  ✓  1 [chromium] › e2e/group-buy-home-campaigns.spec.ts:175:5 › AC-48: การ์ด group buy 2 แบบ + การ์ด flash บนหน้าแรก ข้อความไทย (46.1s)
+  ✓  2 [chromium] › e2e/group-buy-home-campaigns.spec.ts:209:5 › AC-48: login แล้ว dblclick สร้างทีม → POST ครั้งเดียว ไปหน้าทีมใหม่ที่มีลิงก์แชร์ ไม่ join อัตโนมัติ (605ms)
+  ✓  3 [chromium] › e2e/group-buy-home-campaigns.spec.ts:237:5 › AC-48: ยังไม่ login กดสร้างทีม → หน้า login และไม่สร้างทีม (273ms)
+  ✓  4 [chromium] › e2e/group-buy-home-campaigns.spec.ts:246:5 › 375px: การ์ดแคมเปญไม่ทำให้หน้าเลื่อนแนวนอน (2.0s)
+  ✓  5 [chromium] › e2e/group-buy-home-campaigns.spec.ts:256:5 › AC-48: POST สร้างทีมตอบ 400 (ต้นแบบถูกแก้เป็น 2 สินค้า) → group-create-team-error ไทย ไม่เปลี่ยนหน้า (493ms)
+  5 passed (50.6s)
+
+## 4b) e2e รอบหลังเพิ่ม testid `product-title` บนชื่อสินค้าของการ์ด — มีแคมเปญ active ค้างจาก group-buy-group-page.spec (การ์ดบนหน้าแรก)
+## แล้วรัน store-content (ห้ามมีคำ Medusa นอก testid ข้อมูล backend) + thai-ui-shell + GB-7c ซ้ำ
+  ✓  1 [chromium] › e2e/group-buy-home-campaigns.spec.ts:175:5 › AC-48: การ์ด group buy 2 แบบ + การ์ด flash บนหน้าแรก ข้อความไทย (1.1m)
+  ✓  2 [chromium] › e2e/group-buy-home-campaigns.spec.ts:209:5 › AC-48: login แล้ว dblclick สร้างทีม → POST ครั้งเดียว ไปหน้าทีมใหม่ที่มีลิงก์แชร์ ไม่ join อัตโนมัติ (616ms)
+  ✓  3 [chromium] › e2e/group-buy-home-campaigns.spec.ts:237:5 › AC-48: ยังไม่ login กดสร้างทีม → หน้า login และไม่สร้างทีม (273ms)
+  ✓  4 [chromium] › e2e/group-buy-home-campaigns.spec.ts:246:5 › 375px: การ์ดแคมเปญไม่ทำให้หน้าเลื่อนแนวนอน (2.0s)
+  ✓  5 [chromium] › e2e/group-buy-home-campaigns.spec.ts:256:5 › AC-48: POST สร้างทีมตอบ 400 (ต้นแบบถูกแก้เป็น 2 สินค้า) → group-create-team-error ไทย ไม่เปลี่ยนหน้า (481ms)
+  ✓  6 [chromium] › e2e/store-content.spec.ts:46:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (2.9s)
+  ✓  7 [chromium] › e2e/store-content.spec.ts:88:5 › AC-61, AC-74: title/description ของหน้า login และ profile ใช้ชื่อร้าน ไม่มีชื่อ starter (490ms)
+  ✓  8 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (3.0s)
+  ✓  9 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (250ms)
+  9 passed (1.3m)
+
+## 5) storefront build: /[countryCode] ยังเป็น static (○, ISR revalidate 60 — ADR-017)
+├ ○ /[countryCode]
+
+## 6) pnpm --filter storefront test:e2e:unit
+  54 passed (514ms)
+
+## 7) pnpm lint && pnpm typecheck
+apps/backend lint: ✖ 2 problems (0 errors, 2 warnings)
+apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+apps/storefront typecheck: Done
+apps/backend typecheck: Done

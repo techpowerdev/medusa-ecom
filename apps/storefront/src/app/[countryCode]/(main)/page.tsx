@@ -1,8 +1,12 @@
 import { Metadata } from "next"
 
 import FeaturedProducts from "@modules/home/components/featured-products"
+import HomeCampaigns from "@modules/home/components/campaigns"
 import Hero from "@modules/home/components/hero"
 import { listCollections } from "@lib/data/collections"
+import { listActiveFlashCampaigns } from "@lib/data/flash-sales"
+import { listActiveGroupBuyCampaigns } from "@lib/data/group-buy"
+import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions, listRegionsUncached } from "@lib/data/regions"
 import { toJsonLd } from "@lib/util/product-structured-data"
 import { hreflangAlternates } from "@lib/util/hreflang"
@@ -49,6 +53,23 @@ export default async function Home(props: {
     return null
   }
 
+  // GB-7c (spec 04 กฎข้อ 29a): แคมเปญ flash + group buy ที่ active — สินค้าเดียวของทุกแคมเปญ group buy ใน request เดียว
+  const [flashSales, groupCampaigns] = await Promise.all([
+    listActiveFlashCampaigns(),
+    listActiveGroupBuyCampaigns(),
+  ])
+  const productIds = Array.from(
+    new Set(groupCampaigns.flatMap((c) => (c.product_id ? [c.product_id] : [])))
+  )
+  const campaignProducts = productIds.length
+    ? await listProducts({
+        regionId: region.id,
+        queryParams: { id: productIds, limit: productIds.length },
+      })
+        .then(({ response }) => response.products)
+        .catch(() => [])
+    : []
+
   const origin = await getSiteOrigin()
   const homeUrl = `${origin}/${countryCode}`
   // CORE-20c (กฎข้อ 60): policy ใน structured data อ่าน region แบบไม่ cache
@@ -86,6 +107,15 @@ export default async function Home(props: {
         dangerouslySetInnerHTML={{ __html: toJsonLd(structuredData) }}
       />
       <Hero />
+      <HomeCampaigns
+        flashSales={flashSales}
+        groupCampaigns={groupCampaigns}
+        products={campaignProducts}
+        countryCode={countryCode}
+        // เวลาที่ render (หน้า static/ISR) ใช้เริ่มนับถอยหลัง — client เดินต่อจากเวลาจริง
+        // eslint-disable-next-line react-hooks/purity
+        now={Date.now()}
+      />
       <div className="py-12">
         <ul className="flex flex-col gap-x-6">
           <FeaturedProducts collections={collections} region={region} />

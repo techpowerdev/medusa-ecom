@@ -1,8 +1,10 @@
 "use server"
 
 import { sdk } from "@lib/config"
+import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import {
   type ActiveFlashSales,
+  type FlashSale,
   cartFlashExceeded,
   mergeActiveFlashSales,
 } from "@lib/util/flash-sale"
@@ -59,4 +61,19 @@ export async function getCartFlashExceeded(
   }
   const data = await getActiveFlashSales(cart.region_id, variantIds)
   return cartFlashExceeded(items, cart.promotions, data, Date.now())
+}
+
+/**
+ * GB-7c (spec 04 กฎข้อ 29a): แคมเปญ flash ที่ active ทั้งหมดสำหรับการ์ดบนหน้าแรก — เรียก route เดิมของ FS-4 โดยไม่ส่ง `variant_ids`
+ * (ไม่แก้ `getActiveFlashSales` ที่คืน null เมื่อไม่มี variant) ใช้ cache ของหน้าแรก (ADR-017: `sold_out`/`remaining_units` ค้างได้ ~90 วินาที)
+ * ล้มเหลว → [] (ไม่แสดงการ์ด flash)
+ */
+export async function listActiveFlashCampaigns(): Promise<FlashSale[]> {
+  return sdk.client
+    .fetch<ActiveFlashSales>("/store/flash-sales/active", {
+      method: "GET",
+      next: { revalidate: CATALOG_REVALIDATE_SECONDS },
+    })
+    .then(({ flash_sales }) => flash_sales ?? [])
+    .catch(() => [])
 }
