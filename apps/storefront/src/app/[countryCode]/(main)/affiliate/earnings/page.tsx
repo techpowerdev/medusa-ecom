@@ -2,8 +2,7 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { getAffiliate, getAffiliateEarnings } from "@lib/data/affiliate-portal"
-import { EARNING_STATUSES, earningsByStatus } from "@lib/util/affiliate-portal"
-import { convertToLocale } from "@lib/util/money"
+import { EARNING_STATUSES, earningsByStatus, portalAmount } from "@lib/util/affiliate-portal"
 import PortalError from "@modules/affiliate/components/portal-error"
 import StatusNotice from "@modules/affiliate/components/status-notice"
 
@@ -49,7 +48,7 @@ export default async function AffiliateEarningsPage({ params }: { params: Promis
               <dt className="text-small-regular text-ui-fg-subtle">{LABEL[status]}</dt>
               {byStatus[status].map((m) => (
                 <dd key={m.currency_code} className="text-large-semi">
-                  {convertToLocale(m)}
+                  {portalAmount(m)}
                 </dd>
               ))}
               {status === "reversed" && (
