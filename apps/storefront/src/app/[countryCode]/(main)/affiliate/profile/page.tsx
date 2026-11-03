@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 
 import { getAffiliate } from "@lib/data/affiliate-portal"
 import { getBaseURL } from "@lib/util/env"
-import CopyLinkButton from "@modules/affiliate/components/copy-link-button"
+import ShareLinkButton from "@modules/affiliate/components/share-link-button"
 
 export const metadata: Metadata = { title: "โปรไฟล์แอฟฟิลิเอต", robots: { index: false } }
 
@@ -39,7 +39,12 @@ export default async function AffiliateProfilePage({ params }: { params: Promise
         <p className="break-all" data-testid="affiliate-default-link">
           {link}
         </p>
-        <CopyLinkButton link={link} />
+        <ShareLinkButton
+          url={link}
+          label="คัดลอกลิงก์"
+          buttonTestId="affiliate-default-link-copy"
+          statusTestId="affiliate-default-link-status"
+        />
       </div>
     </div>
   )

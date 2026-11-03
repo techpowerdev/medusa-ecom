@@ -1,5 +1,8 @@
 import { isEmpty } from "./isEmpty"
 
+/** สกุลเงินของร้าน (ADR-008) — ใช้เมื่อไม่มีข้อมูลสกุลจาก API เช่นยอด 0 ของสถานะที่ไม่มีแถว (spec 05 กฎ 40a) */
+export const STORE_CURRENCY_CODE = "thb"
+
 type ConvertToLocaleParams = {
   amount: number
   currency_code: string
