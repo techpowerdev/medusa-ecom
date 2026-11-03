@@ -114,7 +114,10 @@ const isWrappedBySync = (node: ts.Node): boolean => {
   return false
 }
 
-/** มี `syncAffiliateBefore(` เริ่มก่อน call นี้ในฟังก์ชันเดียวกัน (ฟังก์ชันที่ใกล้ที่สุดที่ครอบ) */
+/**
+ * มี `syncAffiliateBefore(` ที่**จบ**ก่อน call นี้เริ่ม ในฟังก์ชันเดียวกัน (ฟังก์ชันที่ใกล้ที่สุดที่ครอบ) — AF-N3 (กฎ 40e):
+ * ไม่นับ sync ที่อยู่ในฟังก์ชันซ้อนที่ประกาศไว้ (ไม่ได้ถูกเรียกในลำดับนี้) และไม่นับ sync ที่เป็นส่วนหนึ่งของ argument ของ call เอง
+ */
 const hasSyncBeforeInSameFunction = (call: ts.CallExpression): boolean => {
   let fn: ts.Node | undefined = call.parent
   while (fn && !isFunctionLike(fn)) fn = fn.parent
@@ -122,18 +125,29 @@ const hasSyncBeforeInSameFunction = (call: ts.CallExpression): boolean => {
   let found = false
   const visit = (n: ts.Node) => {
     if (found) return
-    if (
-      ts.isCallExpression(n) &&
-      calleeName(n) === "syncAffiliateBefore" &&
-      n.getStart() < call.getStart()
-    ) {
+    if (ts.isCallExpression(n) && calleeName(n) === "syncAffiliateBefore" && n.getEnd() <= call.getStart()) {
       found = true
       return
     }
+    // ฟังก์ชันซ้อน = scope อื่น (sync ข้างในเกิดเมื่อถูกเรียกเท่านั้น)
+    if (isFunctionLike(n)) return
     ts.forEachChild(n, visit)
   }
   ts.forEachChild(fn, visit)
   return found
+}
+
+const unwrap = (e: ts.Expression): ts.Expression =>
+  ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e) || ts.isSatisfiesExpression(e)
+    ? unwrap(e.expression)
+    : e
+
+/** AF-N3 (กฎ 40e/31c): argument ของ metadata มีจริง และไม่ใช่ `undefined` / `void …` */
+const passesMetadata = (call: ts.CallExpression): boolean => {
+  const arg = call.arguments[1]
+  if (!arg) return false
+  const e = unwrap(arg)
+  return !(ts.isIdentifier(e) && e.text === "undefined") && !ts.isVoidExpression(e)
 }
 
 function scan(relFile: string, code: string): ScanResult {
@@ -171,7 +185,7 @@ function scan(relFile: string, code: string): ScanResult {
       } else if (name === "placeOrder") {
         // (c) ต้องส่ง cart.metadata ให้ placeOrder sync ภายใน — เว้น completion หลังชำระที่อยู่ใน allow-list
         result.counts.placeOrder++
-        if (n.arguments.length < 2) {
+        if (!passesMetadata(n)) {
           if (key in PLACE_ORDER_ALLOW_LIST) result.usedAllowKeys.add(key)
           else result.violations.push({ key, rule: "31c: placeOrder ไม่ส่ง cart.metadata", line })
         }
@@ -278,6 +292,45 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
         "placeOrder(cart.id) ที่ไม่ส่ง metadata",
         `const ManualTestPaymentButton = () => { const onPaymentCompleted = async () => {
            await placeOrder(cart.id)
+         } }`,
+      ],
+      // AF-N3 (กฎ 40e, AC-47): ตรวจค่า argument ของ metadata ไม่ใช่แค่จำนวน argument
+      [
+        "31c",
+        "placeOrder(id, undefined) — มี argument ที่ 2 แต่ไม่ส่ง metadata จริง",
+        `const ManualTestPaymentButton = () => { const onPaymentCompleted = async () => {
+           await placeOrder(cart.id, undefined)
+         } }`,
+      ],
+      [
+        "31c",
+        "placeOrder(id, void 0)",
+        `const ManualTestPaymentButton = () => { const onPaymentCompleted = async () => {
+           await placeOrder(cart.id, void 0)
+         } }`,
+      ],
+      // AF-N3 (กฎ 40e, AC-47): sync ในฟังก์ชันอื่นที่ประกาศก่อน (ซ้อนอยู่ข้างใน) ไม่นับเป็น sync ของฟังก์ชันนี้
+      [
+        "31b",
+        "syncAffiliateBefore อยู่ในฟังก์ชันอื่นที่ประกาศก่อน confirmPromptPayPayment",
+        `const Pay = () => { const showQr = async () => {
+           const prepare = async () => { await syncAffiliateBefore(cart, async () => null) }
+           await stripe.confirmPromptPayPayment(clientSecret, {}, { handleActions: false })
+         } }`,
+      ],
+      [
+        "31b",
+        "syncAffiliateBefore อยู่ในฟังก์ชันอื่นที่ประกาศก่อน openQr(",
+        `const Pay = () => { const showQr = async () => {
+           function prepare() { return syncAffiliateBefore(cart, async () => null) }
+           await openQr(stripe, clientSecret, email, undefined)
+         } }`,
+      ],
+      [
+        "31b",
+        "syncAffiliateBefore เป็น argument ของ confirm เอง (ไม่ได้ทำก่อน)",
+        `const Pay = () => { const showQr = async () => {
+           await stripe.confirmPromptPayPayment(clientSecret, await syncAffiliateBefore(cart, async () => ({})))
          } }`,
       ],
       [
