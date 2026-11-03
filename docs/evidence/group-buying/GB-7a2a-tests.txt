@@ -1,0 +1,18 @@
+# GB-7a2a (spec 04 กฎข้อ 29f, 30a; AC-28 ส่วน unit) — 2026-11-03T16:54Z บน origin/develop bb3c2a0
+
+## vitest src/lib/util/group-join-error.test.ts
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorMessage > ทุก code ในกฎข้อ 29f + GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED มีข้อความไทย และไม่ซ้ำกัน (รวม 400/อื่นๆ/401) 1ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorMessage > ข้อความตามกฎข้อ 29f/30a 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorMessage > GB_UNITS_LIMIT_EXCEEDED แสดงจำนวนสูงสุดต่อคนเมื่อรู้ค่า 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorCode — FetchError ของ js-sdk 2.22.1 ไม่มี code จึงจับจากข้อความคงที่ของ backend > FetchError 409 → code จากข้อความ (รวมข้อความที่ medusaError ทำตัวแรกใหญ่ + จุดท้าย) 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorCode — FetchError ของ js-sdk 2.22.1 ไม่มี code จึงจับจากข้อความคงที่ของ backend > ข้อความที่มีชื่อ code อยู่ (กฎข้อ 30a: 400 ระบุ code ในข้อความ) → code นั้น 0ms
+ ✓ src/lib/util/group-join-error.test.ts > groupJoinErrorCode — FetchError ของ js-sdk 2.22.1 ไม่มี code จึงจับจากข้อความคงที่ของ backend > contract: ทุก conflict(CODE, ข้อความ) ใน join.ts ของ backend จับกลับเป็น code เดิมได้ 0ms
+      Tests  6 passed (6)
+
+## vitest ทั้ง storefront
+ Test Files  59 passed (59)
+      Tests  644 passed (644)
+
+## pnpm lint && pnpm typecheck
+exit 0 (0 errors)
+red ก่อนเขียน helper: ไฟล์ test โหลด ./group-join-error ไม่ได้ (no tests)
