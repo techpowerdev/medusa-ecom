@@ -43,6 +43,45 @@ export const evoucherPoolOf = (
   return selected?.evoucher_pool ?? null
 }
 
+/**
+ * EV-7e (spec 02 กฎข้อ 29c): pool ของ variant ที่ ProductActions เลือกอยู่จริง — ก่อน ProductActions เขียน `v_id` ลง URL
+ * (`synced=false`) ใช้ variant ที่มันจะเลือก (`v_id` ที่มีจริง ไม่งั้นตัวตั้งต้น); หลังจากนั้นใช้ `v_id` ตรงตัว
+ * ไม่มี `v_id` = ลูกค้าเลือก option ไม่ครบ/ไม่ถูกต้อง (ProductActions ลบออก) → null
+ */
+export const partnerBlockPool = (
+  variants: VariantWithPool[] | null | undefined,
+  variantId: string | null,
+  synced: boolean
+): EvoucherPool | null =>
+  synced
+    ? variants?.find((v) => v.id === variantId)?.evoucher_pool ?? null
+    : evoucherPoolOf({ variants }, variantId)
+
+/** EV-7e (spec 02 กฎข้อ 26): URL ของ partner ที่ render เป็นลิงก์/รูปได้ — เฉพาะ http(s) (กันข้อมูลที่บันทึกก่อน EV-14) */
+export const safeHttpUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null
+  try {
+    const { protocol } = new URL(url)
+    return protocol === "http:" || protocol === "https:" ? url : null
+  } catch {
+    return null
+  }
+}
+
+/** EV-7e (spec 02 กฎข้อ 29a): หน้า /account/vouchers แบ่งหน้าละ 20 ตาม `?page=` */
+export const VOUCHERS_PAGE_SIZE = 20
+
+export const vouchersPagination = (page: string | string[] | undefined) => {
+  const n =
+    typeof page === "string" && /^[1-9]\d*$/.test(page) ? Number(page) : 1
+  return { page: n, offset: (n - 1) * VOUCHERS_PAGE_SIZE }
+}
+
+export const vouchersHasNext = (
+  { offset }: ReturnType<typeof vouchersPagination>,
+  count: number
+) => offset + VOUCHERS_PAGE_SIZE < count
+
 /** variant แบบย่อสำหรับบล็อกพาร์ทเนอร์ — null เมื่อไม่มี variant ใดเป็น voucher */
 export const voucherVariantsOf = (variants?: VariantWithPool[] | null) =>
   variants?.some((v) => v.evoucher_pool)

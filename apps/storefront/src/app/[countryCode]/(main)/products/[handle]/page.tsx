@@ -18,6 +18,15 @@ type Props = {
   params: Promise<{ countryCode: string; handle: string }>
 }
 
+// EV-7e (spec 02 กฎข้อ 29c): generateMetadata กับหน้าใช้ argument เดียวกัน → URL ของ fetch เท่ากัน Next dedupe เป็น 1 request
+// EV-7b (กฎข้อ 23): field ของ pool/partner ของ voucher variant สำหรับ evoucher-partner-block
+const pdpProduct = (countryCode: string, handle: string) =>
+  listProducts({
+    countryCode,
+    queryParams: { handle },
+    extraFields: EVOUCHER_POOL_FIELDS,
+  }).then(({ response }) => response.products[0])
+
 export const dynamic = "force-static"
 export const revalidate = 60
 
@@ -30,10 +39,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
-  const product = await listProducts({
-    countryCode: params.countryCode,
-    queryParams: { handle },
-  }).then(({ response }) => response.products[0])
+  const product = await pdpProduct(params.countryCode, handle)
 
   if (!product) {
     notFound()
@@ -108,12 +114,7 @@ export default async function ProductPage(props: Props) {
     notFound()
   }
 
-  const pricedProduct = await listProducts({
-    countryCode: params.countryCode,
-    queryParams: { handle: params.handle },
-    // EV-7b (spec 02 กฎข้อ 23): ข้อมูลพาร์ทเนอร์ของ voucher variant สำหรับ evoucher-partner-block
-    extraFields: EVOUCHER_POOL_FIELDS,
-  }).then(({ response }) => response.products[0])
+  const pricedProduct = await pdpProduct(params.countryCode, params.handle)
 
   if (!pricedProduct) {
     notFound()
