@@ -1,3 +1,4 @@
+import { isAccountNumber, normalizeAccountNumber } from "../../modules/affiliate/utils/account-number"
 import type { Affiliate } from "./affiliate"
 
 // AF-12b (spec 05 กฎ 37b): ปุ่มเดียวต่อแถวตามสถานะ affiliate — suspend ต้องยืนยันด้วย usePrompt
@@ -30,7 +31,8 @@ export const payoutInfoForm = (stored: Record<string, unknown> | null | undefine
   }
 }
 
-/** validator ฝั่ง admin: trim ทุกช่อง และทั้ง 3 ช่องต้องไม่ว่าง — ส่งเฉพาะ 3 key นี้ */
+/** validator ฝั่ง admin: trim ทุกช่อง และทั้ง 3 ช่องต้องไม่ว่าง — ส่งเฉพาะ 3 key นี้;
+ * account_number ตัด `-`/ช่องว่างแล้วต้องเป็นตัวเลข 10–12 หลัก (AF-15 กฎ 39a — ตรงกับ validator ของ API) */
 export const parsePayoutInfo = (
   form: PayoutInfo,
 ): { ok: true; value: PayoutInfo } | { ok: false; errors: Partial<PayoutInfo> } => {
@@ -41,6 +43,10 @@ export const parsePayoutInfo = (
     if (!value[key]) {
       errors[key] = "Required"
     }
+  }
+  value.account_number = normalizeAccountNumber(value.account_number)
+  if (value.account_number && !isAccountNumber(value.account_number)) {
+    errors.account_number = "Must be 10–12 digits"
   }
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, value }
 }

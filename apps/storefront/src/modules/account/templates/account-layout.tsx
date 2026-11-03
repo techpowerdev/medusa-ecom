@@ -28,8 +28,9 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
               ดูคำถามที่พบบ่อยและคำตอบได้ที่หน้าบริการลูกค้า
             </span>
           </div>
-          <div>
-            <UnderlineLink href="/customer-service">
+          {/* CORE-23c (กฎข้อ 74d): /customer-service ไม่มีหน้า (404) — ใช้หน้าติดต่อที่มีอยู่ */}
+          <div data-testid="account-help-link">
+            <UnderlineLink href="/contact">
               บริการลูกค้า
             </UnderlineLink>
           </div>

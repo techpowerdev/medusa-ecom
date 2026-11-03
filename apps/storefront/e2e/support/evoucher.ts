@@ -22,14 +22,15 @@ export async function call(
   return res.json()
 }
 
-export type Voucher = { variantId: string; handle: string; partnerName: string }
+export type Voucher = { variantId: string; handle: string; partnerName: string; partnerId: string }
 
 /** voucher variant (ไม่มี shipping profile) + pool + import `count` code (`code,pin,expires_at?`) ผ่าน admin API */
 export async function createVoucher(
   request: APIRequestContext,
   admin: Headers,
   count = 2,
-  pool: { validity_note?: string; expires_at?: string } = {}
+  pool: { validity_note?: string; expires_at?: string } = {},
+  partnerFields: { support_contact?: string } = {}
 ): Promise<Voucher> {
   const tag = `ev-${Date.now()}-${crypto.randomInt(1e6)}`
   const { sales_channels } = await call(request, admin, "/admin/sales-channels?name=Default%20Sales%20Channel")
@@ -59,7 +60,7 @@ export async function createVoucher(
     stocked_quantity: 0,
   })
   const partnerName = `Partner ${tag}`
-  const { partner } = await call(request, admin, "/admin/evoucher/partners", { name: partnerName })
+  const { partner } = await call(request, admin, "/admin/evoucher/partners", { name: partnerName, ...partnerFields })
   const created = await call(request, admin, "/admin/evoucher/pools", {
     partner_id: partner.id,
     variant_id: variantId,
@@ -81,7 +82,7 @@ export async function createVoucher(
     },
   })
   expect(imported.status(), "import codes").toBe(200)
-  return { variantId, handle: product.handle, partnerName }
+  return { variantId, handle: product.handle, partnerName, partnerId: partner.id }
 }
 
 /** cart digital-only (ไม่มีที่อยู่/shipping method, AC-3) → complete → capture โดย admin → payment.captured */

@@ -1,4 +1,4 @@
-import { Button, Drawer, Input, Label, Text, toast } from "@medusajs/ui"
+import { Button, Drawer, Input, Label, Text, toast, usePrompt } from "@medusajs/ui"
 import { useId, useState } from "react"
 import { AdminAffiliate } from "../../lib/affiliate"
 import { parsePayoutInfo, PAYOUT_INFO_FIELDS, PayoutInfo, payoutInfoForm } from "../../lib/affiliate-account"
@@ -20,6 +20,7 @@ type Props = {
 // AF-12b (กฎ 37b): ฟอร์มข้อมูลรับเงิน 3 ช่อง (owner Q18) — Save ส่ง object, Clear ส่ง null; ค่าเต็มเห็นเฉพาะ admin (กฎ 8)
 export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
   const prefix = useId()
+  const prompt = usePrompt()
   const [form, setForm] = useState(() => payoutInfoForm(affiliate.payout_info))
   const [errors, setErrors] = useState<Partial<PayoutInfo>>({})
   const [pending, setPending] = useState(false)
@@ -28,6 +29,18 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
 
   const send = (payoutInfo: PayoutInfo | null) =>
     submitOnce(async () => {
+      // AF-15 (กฎ 39c): Clear ต้องยืนยันก่อนส่ง null — ยกเลิก = ไม่มี request
+      if (
+        payoutInfo === null &&
+        !(await prompt({
+          title: `Clear payout info of ${affiliate.name}?`,
+          description: "Bank name, account name and account number are removed.",
+          confirmText: "Clear",
+          cancelText: "Cancel",
+        }))
+      ) {
+        return
+      }
       setPending(true)
       try {
         await save(payoutInfo)

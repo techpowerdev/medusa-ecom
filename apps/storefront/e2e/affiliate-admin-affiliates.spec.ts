@@ -1,4 +1,4 @@
-import { APIRequestContext } from "@playwright/test"
+import { APIRequestContext, Locator } from "@playwright/test"
 import crypto from "node:crypto"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
@@ -7,6 +7,8 @@ import { Headers, adminHeaders } from "./support/medusa"
 
 // AF-12b (spec 05 กฎ 37b, AC-43): แท็บ Affiliates ของหน้า Affiliate ใน admin — approve (dblclick = POST 1 ครั้ง),
 // suspend ยืนยันด้วย usePrompt (ยกเลิก = ไม่มี request), reactivate และฟอร์มข้อมูลรับเงิน 3 ช่อง (Save / Clear → null)
+// AF-15 (กฎ 39, AC-46): ปุ่มสถานะส่ง expected_status (แท็บอื่นเปลี่ยนแล้ว → 409 → toast + refetch), เลขบัญชี 10–12 หลัก,
+// Clear ยืนยันด้วย usePrompt และรอด้วย expect.poll/สถานะของ element (ไม่หน่วงเวลาตายตัว)
 // admin UI เป็นภาษาอังกฤษ (CLAUDE.md) — หา element ด้วย data-testid
 test.use({
   ...ADMIN_UI_OPTIONS,
@@ -52,6 +54,9 @@ test("AC-43: approve dblclick ยิงครั้งเดียว, suspend �
   page.on("request", (req) => {
     if (req.method() === "POST" && new URL(req.url()).pathname === path) posts.push(req.postDataJSON())
   })
+  // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence (ไม่หน่วงเวลาตายตัว)
+  const settled = (locator: Locator) =>
+    locator.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
   const row = page.getByRole("row").filter({ hasText: ann.code })
   const status = row.getByTestId("affiliate-status")
 
@@ -69,8 +74,7 @@ test("AC-43: approve dblclick ยิงครั้งเดียว, suspend �
     await page.evaluate(() => ((window as unknown as { __af12b: boolean }).__af12b = true))
     await row.getByTestId("affiliate-approve").dblclick()
     await expect(status).toHaveText("active")
-    await page.waitForTimeout(500)
-    expect(posts).toEqual([{ status: "active" }])
+    await expect.poll(() => posts).toEqual([{ status: "active", expected_status: "pending" }])
     expect(await page.evaluate(() => (window as unknown as { __af12b?: boolean }).__af12b)).toBe(true)
   })
 
@@ -78,39 +82,44 @@ test("AC-43: approve dblclick ยิงครั้งเดียว, suspend �
     await row.getByTestId("affiliate-suspend").click()
     const dialog = page.getByRole("alertdialog")
     await expect(dialog).toBeVisible()
-    await page.waitForTimeout(300) // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence
+    await settled(dialog)
     await evidence("02-suspend-prompt")
     await dialog.getByRole("button", { name: "Cancel" }).click()
     await expect(dialog).toBeHidden()
-    await page.waitForTimeout(500)
-    expect(posts).toHaveLength(1)
     await expect(status).toHaveText("active")
 
     await row.getByTestId("affiliate-suspend").dblclick()
     await page.getByRole("alertdialog").getByRole("button", { name: "Suspend" }).click()
     await expect(status).toHaveText("suspended")
     await expect(row.getByTestId("affiliate-reactivate")).toBeVisible()
-    expect(posts.slice(1)).toEqual([{ status: "suspended" }])
+    // ไม่มี request จากการยกเลิก prompt: request ถัดจาก approve คือ suspend ที่ยืนยันแล้วเท่านั้น
+    await expect.poll(() => posts.slice(1)).toEqual([{ status: "suspended", expected_status: "active" }])
     expect((await getAffiliate(request, admin, ann.id)).status).toBe("suspended")
   })
 
   await step("reactivate → active", async () => {
     await row.getByTestId("affiliate-reactivate").click()
     await expect(status).toHaveText("active")
-    expect(posts.slice(2)).toEqual([{ status: "active" }])
+    await expect.poll(() => posts.slice(2)).toEqual([{ status: "active", expected_status: "suspended" }])
   })
 
   const info = { bank_name: "Kasikorn Bank", account_name: "Ann E2E", account_number: "123-4-56789-0" }
+  // กฎ 39a: เก็บเลขบัญชีที่ตัด - และช่องว่างแล้ว
+  const stored = { ...info, account_number: "1234567890" }
 
-  await step("ช่องว่าง → ไม่ส่ง; กรอก 3 ช่องแล้ว dblclick Save → POST 1 ครั้ง และ payout_info ตรงกัน", async () => {
+  await step("ช่องว่าง/เลขบัญชี 9 หลัก → ไม่ส่ง; กรอก 3 ช่องแล้ว dblclick Save → POST 1 ครั้ง และ payout_info ตรงกัน", async () => {
     await row.getByTestId("affiliate-payout-info-edit").click()
     const drawer = page.getByTestId("affiliate-payout-info-drawer")
     await expect(drawer).toBeVisible()
     await drawer.getByTestId("affiliate-payout-info-bank_name").fill("  ")
     await drawer.getByTestId("affiliate-payout-info-save").click()
-    await page.waitForTimeout(300)
-    expect(posts).toHaveLength(3)
     await expect(drawer.getByTestId("affiliate-payout-info-error")).toHaveCount(3)
+
+    await drawer.getByTestId("affiliate-payout-info-bank_name").fill(info.bank_name)
+    await drawer.getByTestId("affiliate-payout-info-account_name").fill(info.account_name)
+    await drawer.getByTestId("affiliate-payout-info-account_number").fill("123-456-789")
+    await drawer.getByTestId("affiliate-payout-info-save").click()
+    await expect(drawer.getByTestId("affiliate-payout-info-error")).toHaveCount(1)
 
     await drawer.getByTestId("affiliate-payout-info-bank_name").fill(` ${info.bank_name} `)
     await drawer.getByTestId("affiliate-payout-info-account_name").fill(info.account_name)
@@ -119,18 +128,73 @@ test("AC-43: approve dblclick ยิงครั้งเดียว, suspend �
     await evidence("03-payout-info-form")
     await drawer.getByTestId("affiliate-payout-info-save").dblclick()
     await expect(drawer).toBeHidden()
-    expect(posts.slice(3)).toEqual([{ payout_info: info }])
-    expect((await getAffiliate(request, admin, ann.id)).payout_info).toEqual(info)
+    // request ถัดจาก reactivate คือ Save ครั้งเดียว — กด Save ที่ไม่ผ่าน validator ก่อนหน้าไม่ได้ยิง
+    await expect.poll(() => posts.slice(3)).toEqual([{ payout_info: stored }])
+    expect((await getAffiliate(request, admin, ann.id)).payout_info).toEqual(stored)
   })
 
-  await step("เปิดฟอร์มอีกครั้งเห็นค่าเดิม แล้ว Clear → payout_info = null", async () => {
+  await step("เปิดฟอร์มอีกครั้งเห็นค่าเดิม; Clear แล้วยกเลิก prompt → ไม่มี request; ยืนยัน → payout_info = null", async () => {
     await row.getByTestId("affiliate-payout-info-edit").click()
     const drawer = page.getByTestId("affiliate-payout-info-drawer")
-    await expect(drawer.getByTestId("affiliate-payout-info-account_number")).toHaveValue(info.account_number)
+    await expect(drawer.getByTestId("affiliate-payout-info-account_number")).toHaveValue(stored.account_number)
     await drawer.getByTestId("affiliate-payout-info-clear").click()
+    const dialog = page.getByRole("alertdialog")
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole("button", { name: "Cancel" }).click()
+    await expect(dialog).toBeHidden()
+    await expect(drawer).toBeVisible()
+
+    await drawer.getByTestId("affiliate-payout-info-clear").click()
+    await page.getByRole("alertdialog").getByRole("button", { name: "Clear" }).click()
     await expect(drawer).toBeHidden()
-    expect(posts.slice(4)).toEqual([{ payout_info: null }])
+    // request ถัดจาก Save คือ Clear ที่ยืนยันแล้วเท่านั้น — การยกเลิก prompt ไม่ได้ยิง
+    await expect.poll(() => posts.slice(4)).toEqual([{ payout_info: null }])
     expect((await getAffiliate(request, admin, ann.id)).payout_info).toBeNull()
     await evidence("04-payout-info-cleared")
+  })
+})
+
+// evidence ของ AC-46 อยู่ใต้ AF-15 (ไม่ปนกับงบ 5 รูปของ AF-12b)
+test.describe("AF-15", () => {
+  test.use({ evidenceTarget: { feature: "affiliate", taskId: "AF-15" } })
+
+  test("AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const bob = await createPendingAffiliate(request)
+    const path = `/admin/affiliate/affiliates/${bob.id}`
+    const responses: number[] = []
+    page.on("response", (res) => {
+      if (res.request().method() === "POST" && new URL(res.url()).pathname === path) responses.push(res.status())
+    })
+    const row = page.getByRole("row").filter({ hasText: bob.code })
+    const status = row.getByTestId("affiliate-status")
+
+    await step("เปิดแท็บ Affiliates → แถวแสดง pending", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/affiliate`)
+      await page.getByTestId("affiliate-admin-tab-affiliates").click()
+      await expect(status).toHaveText("pending", { timeout: 30_000 })
+    })
+
+    await step("อีกแท็บระงับ (API) แล้วหน้าเดิมกด approve → 409 + toast error และแถวเป็น suspended", async () => {
+      const suspend = await request.post(`${BACKEND_URL}${path}`, { headers: admin, data: { status: "suspended" } })
+      expect(suspend.status()).toBe(200)
+      await expect(status).toHaveText("pending")
+
+      await row.getByTestId("affiliate-approve").click()
+      await expect.poll(() => responses).toEqual([409])
+      // toast ข้อความจาก API (admin เป็นอังกฤษ; toast ไม่มี testid — แบบ evoucher-admin-resend)
+      await expect(page.locator("[data-sonner-toast]").filter({ hasText: "Affiliate status changed" })).toBeVisible()
+      await expect(status).toHaveText("suspended")
+      await expect(row.getByTestId("affiliate-reactivate")).toBeVisible()
+      expect((await getAffiliate(request, admin, bob.id)).status).toBe("suspended")
+      await evidence("01-stale-approve-conflict")
+    })
   })
 })

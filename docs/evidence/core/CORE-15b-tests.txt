@@ -1,0 +1,22 @@
+# CORE-15b — e2e (next build/start :8132, backend medusa develop :9132 seed แล้ว, DB medusa_core15b), 2026-11-03
+# Red (ก่อนแก้): unit — pnpm-lock.yaml มี instantsearch.js 2 เวอร์ชัน (4.113.0, 4.120.0); package.json pin 4.113.0 แต่ react-instantsearch@7.52.0 ใช้ 4.120.0
+#      e2e — ไม่พบ search-drawer-error (testid เดิม search-error)
+# positive control: ถอด catchError ออกชั่วคราว → AC-114 ล้มที่ pageErrors (Received 4 รายการ) — ยืนยันว่า test จับ uncaught error ได้
+# Green:
+  ✓   1 [chromium] › e2e/core-15b-search-drawer-error.spec.ts:12:5 › AC-114: /store/search ตอบ 500 → search drawer แสดง search-drawer-error ไทย ไม่มี pageerror และ console.error 1 บรรทัดต่อ search ที่ล้ม (1.9s)
+  ✓   3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (3.0s)
+  ✓   4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.3s)
+  ✓   2 [chromium] › e2e/core-15-store-search-error.spec.ts:11:5 › AC-54, AC-55: /store/search ตอบ 500 → หยุดยิงซ้ำ แสดง products-error ไทย และกลับมาปกติเมื่อ search ใช้ได้ (6.8s)
+  ✓   6 [chromium] › e2e/core-15-store-search-error.spec.ts:62:7 › AC-69: browser locale en-US › ป้ายช่วงราคาใต้ slider แสดง ฿ ไม่มี THB ทั้งก่อนและหลังลาก (552ms)
+  ✓   5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (3.6s)
+  ✓   7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:148:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (939ms)
+  ✓   8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:148:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (3.2s)
+  ✓   9 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (10.4s)
+  ✓  10 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (7.1s)
+  ✓  11 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:213:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (637ms)
+  11 passed (31.2s)
+
+# storefront test:unit (vitest) — รวม src/core-15b-instantsearch-pin.test.ts (2 tests)
+ Test Files  53 passed (53)
+      Tests  591 passed (591)
+# pnpm typecheck: ผ่าน; pnpm lint: 0 errors (warning เดิม ไม่ได้เกิดจาก task นี้); pnpm --filter storefront build: ผ่าน

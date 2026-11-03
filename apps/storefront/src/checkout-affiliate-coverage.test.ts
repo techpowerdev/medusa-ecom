@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest"
 // spec 05 AF-3c (กฎ 31, AC-37): ทุกจุดที่ storefront เริ่มการชำระใน `modules/checkout/components/**`
 // ต้อง sync cookie `aff` ผ่าน `syncAffiliateBefore` (AF-3b) — ตรวจด้วย AST ของ TypeScript ไม่ตัด source ด้วย indexOf
 const COMPONENTS_DIR = path.resolve(__dirname, "modules/checkout/components")
+// PAY-3b2: สแกนหน้าชำระเงินของ order กลุ่มด้วย (key = `order-pay/...`) เพื่อให้ทุกจุดเริ่มชำระที่นั่นอยู่ใน START_ALLOW_LIST พร้อมเหตุผล
+const ORDER_COMPONENTS_DIR = path.resolve(__dirname, "modules/order/components")
+const ORDER_PAY_DIR = path.join(ORDER_COMPONENTS_DIR, "order-pay")
 
 /**
  * การเรียก `retrievePaymentIntent` เพื่อ poll สถานะอย่างเดียว (ไม่เริ่มการชำระ) — ได้รับยกเว้นพร้อมเหตุผล (กฎ 31)
@@ -27,12 +30,27 @@ const PLACE_ORDER_ALLOW_LIST: Record<string, string> = {
     "ทางสำรองหลังชำระพร้อมเพย์แล้ว (webhook complete cart ไปแล้ว) — sync เกิดก่อน retrievePaymentIntent/confirm ใน showQr (กฎ 31b)",
 }
 
+const ORDER_PAY_REASON =
+  "หน้า /account/orders/:id/pay ของ group buy อยู่นอกกฎ 31 (รอบ 12) — ไม่มี cart ให้ sync; attribution ของ order กลุ่มอ่าน token จาก metadata ของ draft order ที่บันทึกตอน join (spec 05 กฎ 41)"
+
+/**
+ * จุดเริ่มชำระ (confirmPayment / confirmPromptPayPayment / openQr / retrievePaymentIntent) ที่ได้รับยกเว้นทั้งฟังก์ชันพร้อมเหตุผล
+ * key = `<ไฟล์>#<ชื่อฟังก์ชันที่ครอบ>`
+ */
+const START_ALLOW_LIST: Record<string, string> = {
+  "promptpay-payment/open-qr.ts#openQr":
+    "helper ที่ใช้ร่วมกับหน้า order — ไม่รู้จัก cart; ผู้เรียกใน checkout ต้อง sync ก่อนเรียก openQr( (ตรวจที่จุดเรียกด้วยกฎ 31b)",
+  "order-pay/pay-buttons.tsx#OrderCardButton.pay": ORDER_PAY_REASON,
+  "order-pay/pay-buttons.tsx#OrderPromptPayButton.showQr": ORDER_PAY_REASON,
+  "order-pay/pay-buttons.tsx#OrderPromptPayButton.expire": ORDER_PAY_REASON,
+}
+
 type Violation = { key: string; rule: string; line: number }
 
 type ScanResult = {
   violations: Violation[]
   /** จำนวน call ที่พบต่อชนิด — กัน test ผ่านแบบว่างเปล่าเมื่อชื่อฟังก์ชันเปลี่ยน */
-  counts: Record<"confirmPayment" | "confirmPromptPayPayment" | "placeOrder" | "retrievePaymentIntent", number>
+  counts: Record<"confirmPayment" | "confirmPromptPayPayment" | "openQr" | "placeOrder" | "retrievePaymentIntent", number>
   /** key ของ allow-list ที่ถูกใช้จริง — กัน allow-list ค้าง */
   usedAllowKeys: Set<string>
 }
@@ -122,7 +140,7 @@ function scan(relFile: string, code: string): ScanResult {
   const sf = ts.createSourceFile(relFile, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const result: ScanResult = {
     violations: [],
-    counts: { confirmPayment: 0, confirmPromptPayPayment: 0, placeOrder: 0, retrievePaymentIntent: 0 },
+    counts: { confirmPayment: 0, confirmPromptPayPayment: 0, openQr: 0, placeOrder: 0, retrievePaymentIntent: 0 },
     usedAllowKeys: new Set(),
   }
 
@@ -131,7 +149,10 @@ function scan(relFile: string, code: string): ScanResult {
       const name = calleeName(n)
       const key = `${relFile}#${qualifiedName(n)}`
       const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1
-      const fail = (rule: string) => result.violations.push({ key, rule, line })
+      const fail = (rule: string) => {
+        if (key in START_ALLOW_LIST) result.usedAllowKeys.add(key)
+        else result.violations.push({ key, rule, line })
+      }
 
       if (name === "confirmPayment") {
         // (a) บัตร: ต้องอยู่ภายใน argument ของ syncAffiliateBefore
@@ -143,17 +164,21 @@ function scan(relFile: string, code: string): ScanResult {
         if (!isWrappedBySync(n) && !hasSyncBeforeInSameFunction(n)) {
           fail("31b: confirmPromptPayPayment ไม่มี syncAffiliateBefore ก่อนหน้า")
         }
+      } else if (name === "openQr") {
+        // PAY-3b2: openQr( confirm พร้อมเพย์ภายใน → ผู้เรียกต้อง sync ก่อนเหมือน (b)
+        result.counts.openQr++
+        if (!isWrappedBySync(n) && !hasSyncBeforeInSameFunction(n)) fail("31b: openQr ไม่มี syncAffiliateBefore ก่อนหน้า")
       } else if (name === "placeOrder") {
         // (c) ต้องส่ง cart.metadata ให้ placeOrder sync ภายใน — เว้น completion หลังชำระที่อยู่ใน allow-list
         result.counts.placeOrder++
         if (n.arguments.length < 2) {
           if (key in PLACE_ORDER_ALLOW_LIST) result.usedAllowKeys.add(key)
-          else fail("31c: placeOrder ไม่ส่ง cart.metadata")
+          else result.violations.push({ key, rule: "31c: placeOrder ไม่ส่ง cart.metadata", line })
         }
       } else if (name === "retrievePaymentIntent") {
         result.counts.retrievePaymentIntent++
         if (!isWrappedBySync(n)) {
-          if (key in POLL_ALLOW_LIST) result.usedAllowKeys.add(key)
+          if (key in POLL_ALLOW_LIST && !(key in START_ALLOW_LIST)) result.usedAllowKeys.add(key)
           else fail("31: retrievePaymentIntent นอก syncAffiliateBefore และไม่อยู่ใน allow-list ของการ poll")
         }
       }
@@ -174,11 +199,15 @@ const sourceFiles = (dir: string): string[] =>
 const scanComponents = () => {
   const merged: ScanResult = {
     violations: [],
-    counts: { confirmPayment: 0, confirmPromptPayPayment: 0, placeOrder: 0, retrievePaymentIntent: 0 },
+    counts: { confirmPayment: 0, confirmPromptPayPayment: 0, openQr: 0, placeOrder: 0, retrievePaymentIntent: 0 },
     usedAllowKeys: new Set(),
   }
-  for (const file of sourceFiles(COMPONENTS_DIR)) {
-    const rel = path.relative(COMPONENTS_DIR, file).split(path.sep).join("/")
+  const files = [
+    ...sourceFiles(COMPONENTS_DIR).map((f) => [COMPONENTS_DIR, f]),
+    ...sourceFiles(ORDER_PAY_DIR).map((f) => [ORDER_COMPONENTS_DIR, f]),
+  ]
+  for (const [root, file] of files) {
+    const rel = path.relative(root, file).split(path.sep).join("/")
     const r = scan(rel, fs.readFileSync(file, "utf8"))
     merged.violations.push(...r.violations)
     for (const k of Object.keys(merged.counts) as (keyof ScanResult["counts"])[]) {
@@ -196,12 +225,13 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
     // กัน test ผ่านแบบว่างเปล่า: ต้องพบจุดเริ่มชำระจริงทุกชนิด
     expect(result.counts.confirmPayment).toBeGreaterThan(0)
     expect(result.counts.confirmPromptPayPayment).toBeGreaterThan(0)
+    expect(result.counts.openQr).toBeGreaterThan(0)
     expect(result.counts.placeOrder).toBeGreaterThan(0)
   })
 
   it("allow-list ไม่มีแถวค้าง และทุกแถวมีเหตุผล", () => {
     const { usedAllowKeys } = scanComponents()
-    for (const list of [POLL_ALLOW_LIST, PLACE_ORDER_ALLOW_LIST]) {
+    for (const list of [POLL_ALLOW_LIST, PLACE_ORDER_ALLOW_LIST, START_ALLOW_LIST]) {
       for (const [key, reason] of Object.entries(list)) {
         expect(reason.trim().length, key).toBeGreaterThan(10)
         expect(usedAllowKeys.has(key), `allow-list ค้าง: ${key}`).toBe(true)
@@ -237,6 +267,13 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
          } }`,
       ],
       [
+        "31b",
+        "openQr( โดยไม่มี sync ก่อน (helper confirm พร้อมเพย์ภายใน)",
+        `const Pay = () => { const showQr = async () => {
+           const step = await openQr(stripe, clientSecret, email, undefined)
+         } }`,
+      ],
+      [
         "31c",
         "placeOrder(cart.id) ที่ไม่ส่ง metadata",
         `const ManualTestPaymentButton = () => { const onPaymentCompleted = async () => {
@@ -264,6 +301,10 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
         const showQr = async () => {
           const current = await syncAffiliateBefore(cart, () => stripe.retrievePaymentIntent(clientSecret))
           await stripe.confirmPromptPayPayment(clientSecret, {}, { handleActions: false })
+        }
+        const showSharedQr = async () => {
+          const current = await syncAffiliateBefore(cart, () => stripe.retrievePaymentIntent(clientSecret))
+          await openQr(stripe, clientSecret, email, current.paymentIntent)
         }
         const onPaymentCompleted = async () => {
           await placeOrder(cart.id, cart.metadata ?? null)

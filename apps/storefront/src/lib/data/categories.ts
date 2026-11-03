@@ -1,9 +1,11 @@
 import { sdk } from "@lib/config"
 import { HttpTypes } from "@medusajs/types"
+import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import { getCacheOptions } from "./cookies"
 
 export const listCategories = async (query?: Record<string, unknown>) => {
   const next = {
+    revalidate: CATALOG_REVALIDATE_SECONDS,
     ...(await getCacheOptions("categories")),
   }
 
@@ -30,6 +32,7 @@ export const getCategoryByHandle = async (categoryHandle: string[]) => {
   const handle = `${categoryHandle.join("/")}`
 
   const next = {
+    revalidate: CATALOG_REVALIDATE_SECONDS,
     ...(await getCacheOptions("categories")),
   }
 
