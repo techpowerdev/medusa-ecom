@@ -50,13 +50,17 @@ medusa_exec ./src/scripts/seed-load.js -e LOAD_OUTPUT=/tmp/load-data.json \
   -e LOAD_JOIN_CUSTOMERS="$JOIN_CUSTOMERS" -e LOAD_GROUP_SIZE="$GROUP_SIZE"
 compose cp server:/tmp/load-data.json "$DATA/load-data.json"
 chmod 755 "$DATA" && chmod 644 "$DATA/load-data.json"
+# OPS-17a (AC-33): summary ดิบของ k6 มี setup_data (token ของลูกค้า) → เขียนนอก OUT แล้ว strip ก่อนเขียนลง OUT
+mkdir -p "$DATA/k6" && chmod 777 "$DATA/k6"
 
 k6() { # k6 <script> — exit code เก็บไว้ ไม่หยุด script (ตรวจ DB และรายงานให้ครบก่อน)
-  docker run --rm --network "${PROJECT}_default" -v "$DATA:/data:ro" -v "$(pwd)/tools/load:/scripts:ro" -v "$OUT:/out" \
+  docker run --rm --network "${PROJECT}_default" -v "$DATA:/data:ro" -v "$DATA/k6:/k6" -v "$(pwd)/tools/load:/scripts:ro" -v "$OUT:/out" \
     -e BASE_URL=http://server:9000 -e LOAD_DATA=/data/load-data.json \
     -e LOAD_BURST_RATE="$BURST_RATE" -e LOAD_BURST_DURATION="$BURST_DURATION" -e LOAD_FLASH_BURST="$FLASH_BURST" \
-    "$K6_IMAGE" run --quiet --summary-export "/out/$1.json" --console-output "/out/$1-console.log" "/scripts/$1.js" \
+    "$K6_IMAGE" run --quiet --summary-export "/k6/$1.json" --console-output "/out/$1-console.log" "/scripts/$1.js" \
     || echo "$1: k6 exit $?" >>"$OUT/k6-failures.txt"
+  [ ! -f "$DATA/k6/$1.json" ] || node tools/load/artifact-guard.js strip "$DATA/k6/$1.json" "$OUT/$1.json" \
+    || echo "$1: strip summary ไม่สำเร็จ" >>"$OUT/k6-failures.txt"
   grep -v checkout_k6_timing "$OUT/$1-console.log" 2>/dev/null || true # error/console อื่นของ k6 ยังเห็นใน log ของ job
 }
 rm -f "$OUT/k6-failures.txt"
@@ -118,10 +122,14 @@ failures=0
 cat "$OUT/report.md"
 cat "$OUT/lock-timing.md" "$OUT/checkout-timing.md"
 [ -n "${GITHUB_STEP_SUMMARY:-}" ] && cat "$OUT/report.md" "$OUT/lock-timing.md" "$OUT/checkout-timing.md" >>"$GITHUB_STEP_SUMMARY"
-if grep -q "^failures: 0$" "$OUT/report.md"; then
+passed=0
+grep -q "^failures: 0$" "$OUT/report.md" && passed=1
+[ "$passed" = 1 ] || compose logs --tail 100 server worker >"$OUT/backend-tail.log" 2>&1 || true
+# OPS-17a (AC-33): ขั้นตรวจท้าย run หลังไฟล์สุดท้ายใน OUT — พบ JWT/setup_data → ลบไฟล์นั้นแล้วล้ม
+node tools/load/artifact-guard.js scan "$OUT" || { echo "load test: ไม่ผ่าน (AC-33 พบ JWT/setup_data ใน OUT)" >&2; exit 1; }
+if [ "$passed" = 1 ]; then
   echo "load test: ผ่าน"
 else
-  compose logs --tail 100 server worker >"$OUT/backend-tail.log" 2>&1 || true
   echo "load test: ไม่ผ่าน" >&2
   exit 1
 fi
