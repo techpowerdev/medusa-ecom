@@ -6,6 +6,7 @@ import {
   orderPayView,
   paymentSettled,
   sessionCreateOutcome,
+  stripeReturn,
 } from "./order-pay"
 
 const NOW = Date.parse("2026-10-28T10:00:00Z")
@@ -180,5 +181,26 @@ describe("sessionCreateOutcome", () => {
     [0, null], // network error
   ])("%i %s → check-status", (status, code) => {
     expect(sessionCreateOutcome(status, code)).toBe("check-status")
+  })
+})
+
+// PAY-3b2 (กฎข้อ 9 d3, AC-20): query ที่ Stripe แนบมาตอน redirect กลับหน้า pay
+describe("stripeReturn", () => {
+  it.each(["succeeded", "processing"])("redirect_status %s → poll GB-8", (redirect_status) => {
+    expect(stripeReturn({ payment_intent: "pi_x", redirect_status })).toBe("poll")
+  })
+
+  it.each(["failed", "requires_payment_method"])("redirect_status %s → failed", (redirect_status) => {
+    expect(stripeReturn({ payment_intent: "pi_x", redirect_status })).toBe("failed")
+  })
+
+  it.each([
+    [{}],
+    [{ redirect_status: "succeeded" }],
+    [{ payment_intent: "pi_x" }],
+    [{ payment_intent: "pi_x", redirect_status: "canceled" }],
+    [{ payment_intent: ["pi_x", "pi_y"], redirect_status: ["succeeded", "failed"] }],
+  ])("ไม่ครบ/ไม่รู้จัก/ซ้ำ %j → null (แสดงตามข้อ b)", (query) => {
+    expect(stripeReturn(query)).toBeNull()
   })
 })

@@ -1,9 +1,9 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
+import { SectionRow } from "@medusajs/dashboard/components"
 import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
 import {
   Badge,
   Button,
-  Container,
   FocusModal,
   Heading,
   Input,
@@ -15,7 +15,8 @@ import {
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Container } from "../components/common/container"
+import { Header } from "../components/common/header"
 import { evoucherApi, evoucherKeys } from "../lib/evoucher"
 import { createSingleFlight } from "../lib/single-flight"
 
@@ -27,17 +28,6 @@ const EMPTY = {
   validity_note: "",
   low_stock_threshold: "20",
 }
-
-const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="flex items-center justify-between">
-    <Text size="small" leading="compact" className="text-ui-fg-subtle">
-      {label}
-    </Text>
-    <Text size="small" leading="compact" weight="plus">
-      {value}
-    </Text>
-  </div>
-)
 
 // EV-6: "Voucher pool" บนหน้า variant — พาร์ทเนอร์, face value, สต็อกจาก pool; ยังไม่มี pool → สร้างได้ที่นี่
 const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpTypes.AdminProductVariant>) => {
@@ -105,56 +95,60 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   )
 
   return (
-    <Container className="divide-y p-0">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Voucher pool</Heading>
-        {pool ? (
-          <Button size="small" variant="secondary" asChild>
-            <Link to={`/evouchers/pools/${pool.id}`}>Manage codes</Link>
-          </Button>
-        ) : (
-          !isLoading &&
-          !isError && (
-            <Button size="small" variant="secondary" onClick={() => setOpen(true)}>
-              Create pool
-            </Button>
-          )
-        )}
-      </div>
-      <div className="flex flex-col gap-y-2 px-6 py-4">
-        {isLoading ? (
-          <Text size="small" leading="compact" className="text-ui-fg-subtle">
-            Loading…
-          </Text>
-        ) : isError ? (
-          <Text size="small" leading="compact" className="text-ui-fg-error">
-            Could not load voucher pool: {error.message}
-          </Text>
-        ) : !pool ? (
-          <Text size="small" leading="compact" className="text-ui-fg-subtle">
-            This variant is not an e-voucher.
-          </Text>
-        ) : (
-          <>
-            <Row label="Partner" value={pool.partner.name} />
-            <Row label="Face value" value={pool.face_value ?? "-"} />
-            <Row
-              label="Available codes"
-              value={
-                <span className="flex items-center gap-x-2">
-                  {pool.code_counts.available}
-                  {pool.low_stock && (
-                    <Badge size="2xsmall" color="red">
-                      Low stock
-                    </Badge>
-                  )}
-                </span>
-              }
-            />
-            <Row label="Delivered" value={pool.code_counts.delivered} />
-          </>
-        )}
-      </div>
+    <Container>
+      <Header
+        title="Voucher pool"
+        actions={
+          pool
+            ? [
+                {
+                  type: "button",
+                  props: { variant: "secondary", children: "Manage codes" },
+                  link: { to: `/evouchers/pools/${pool.id}` },
+                },
+              ]
+            : !isLoading && !isError
+              ? [
+                  {
+                    type: "button",
+                    props: { variant: "secondary", onClick: () => setOpen(true), children: "Create pool" },
+                  },
+                ]
+              : []
+        }
+      />
+      {isLoading ? (
+        <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
+          Loading…
+        </Text>
+      ) : isError ? (
+        <Text size="small" leading="compact" className="text-ui-fg-error px-6 py-4">
+          Could not load voucher pool: {error.message}
+        </Text>
+      ) : !pool ? (
+        <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
+          This variant is not an e-voucher.
+        </Text>
+      ) : (
+        <>
+          <SectionRow title="Partner" value={pool.partner.name} />
+          <SectionRow title="Face value" value={pool.face_value?.toString() ?? "-"} />
+          <SectionRow
+            title="Available codes"
+            value={
+              <span className="flex items-center gap-x-2">
+                {pool.code_counts.available}
+                {pool.low_stock && (
+                  <Badge size="2xsmall" color="red">
+                    Low stock
+                  </Badge>
+                )}
+              </span>
+            }
+          />
+          <SectionRow title="Delivered" value={pool.code_counts.delivered.toString()} />
+        </>
+      )}
 
       <FocusModal open={open} onOpenChange={setOpen}>
         <FocusModal.Content>

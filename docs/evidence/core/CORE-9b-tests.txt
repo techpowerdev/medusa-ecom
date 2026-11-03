@@ -1,0 +1,49 @@
+# CORE-9b — ผล test (spec 01 กฎข้อ 79, AC-108), Node v24.12.0, รันในเครื่อง 2026-11-03
+
+## สาเหตุ (ยืนยันใน Medusa 2.22.1)
+ตั้งแต่ 2.16 `product_option` ผูกกับสินค้าแบบ many-to-many (`products`) ไม่มี field `product_id` แล้ว
+`resolve-product-ids.ts` ขอ field `product_id` / `option.product_id` → `query.graph` คืน row เป็น undefined แล้ว
+`row.product_id` throw `Cannot read properties of undefined (reading 'product_id')` ใน subscriber `search-ingestion`
+(log ของ event bus: "An error occurred while processing product-option.deleted:" และ product-option.created)
+
+## Red (ก่อนแก้)
+### unit: src/__tests__/search-resolve-product-ids.unit.spec.ts
+    ✕ product-option.deleted ที่ query คืน row ว่าง/ไม่มี relation → คืน [] ไม่ throw
+    ✕ product-option.* หา product ผ่าน relation products (option ผูกได้หลายสินค้า) และอ่าน row ที่ถูกลบ
+    ✕ product-option-value.deleted ที่ไม่มี option → คืน [] ไม่ throw; มี option → product ของ option
+    Rejected to value: [TypeError: Cannot read properties of undefined (reading 'product_id')]
+    Rejected to value: [TypeError: Cannot read properties of undefined (reading 'option')]
+Tests:       3 failed, 3 total
+
+### integration: integration-tests/http/search-option-deleted.spec.ts
+    ✕ AC-108: ลบ option ผ่าน admin API → ไม่มี log 'Cannot read properties of undefined' และยังค้นเจอ P
+    - Array []
+    + Array [
+    +   "Cannot read properties of undefined (reading 'product_id')",
+    +   "Cannot read properties of undefined (reading 'product_id')",
+    +   "Cannot read properties of undefined (reading 'product_id')",
+    + ]
+
+## Green (หลังแก้)
+### pnpm --filter backend test:unit
+Test Suites: 73 passed, 73 total
+Tests:       714 passed, 714 total
+(รวม 3 test ของ search-resolve-product-ids.unit.spec.ts)
+
+### test:integration:http (เฉพาะ suite ที่เกี่ยว)
+PASS integration-tests/http/search-option-deleted.spec.ts
+PASS integration-tests/http/search-thb.spec.ts
+Test Suites: 2 passed, 2 total
+Tests:       2 passed, 2 total
+log "An error occurred while processing" = 0 บรรทัด
+
+### อื่นๆ
+pnpm --filter backend build: ผ่าน
+pnpm lint: ผ่าน
+pnpm typecheck: ผ่าน
+
+## event ที่ Medusa 2.22.1 ส่งจริง (สังเกตจาก log ของ integration test)
+- POST /admin/products/:id/options/batch { remove } → ส่งแค่ `product.updated` (ไม่มี product-option.deleted
+  แม้ option exclusive จะถูก soft delete) → P ถูก index ใหม่จาก product.updated
+- DELETE /admin/product-options/:id → ลบได้เฉพาะ option ที่ไม่ผูกสินค้า → `product-option.deleted` ไม่มี relation → คืน []
+- DELETE /admin/products/:id → `product.deleted` + `product-option.deleted` ของ option ที่ cascade (link ถูกลบแล้ว → คืน [])
