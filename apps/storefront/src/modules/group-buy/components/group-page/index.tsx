@@ -94,12 +94,14 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
         {open && <GroupCountdown endsAt={group.ends_at} now={now} />}
       </section>
 
-      {joinable && product && (
+      {/* mount ไว้แม้หมดเวลา (joinable=false) เพื่อคง error ของ join ที่เพิ่งล้ม — qa #238 D2 */}
+      {product && (
         <GroupJoin
           token={group.join_token}
           product={product}
           addresses={addresses}
           maxUnitsPerPerson={campaign.max_units_per_person}
+          joinable={joinable}
         />
       )}
 

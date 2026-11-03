@@ -264,7 +264,7 @@ const scanComponents = () => {
 }
 
 describe("ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37)", () => {
-  it("source ใต้ modules/checkout/components ผ่านเงื่อนไข (a)–(c)", () => {
+  it("source ใต้ modules/checkout/components, order-pay และ group-buy/components ผ่านเงื่อนไข (a)–(d)", () => {
     const result = scanComponents()
     expect(result.violations).toEqual([])
     // กัน test ผ่านแบบว่างเปล่า: ต้องพบจุดเริ่มชำระจริงทุกชนิด

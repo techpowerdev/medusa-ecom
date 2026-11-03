@@ -21,19 +21,24 @@ const getJson = async (request: APIRequestContext, url: string, headers: Record<
 }
 const storeHeaders = (ctx: PoolGroupCtx, c: Customer) => ({ authorization: `Bearer ${c.token}`, "x-publishable-api-key": ctx.pk })
 
-/** cart ทั้งหมดของลูกค้า (DB — POST /store/carts เกิดจาก Next server จึงนับฝั่ง browser ไม่ได้) */
-async function cartIdsOf(email: string): Promise<string[]> {
+/** SQL ตรงกับ DB ของ backend (CI ตั้ง DATABASE_URL ให้ job e2e) */
+async function sql<T = Record<string, unknown>>(text: string, params: unknown[]): Promise<T[]> {
   const db = new Client({ connectionString: process.env.DATABASE_URL })
   await db.connect()
   try {
-    const { rows } = await db.query(
-      "select c.id from cart c join customer u on u.id = c.customer_id where u.email = $1 and c.deleted_at is null",
-      [email]
-    )
-    return rows.map((r) => r.id as string)
+    return (await db.query(text, params)).rows as T[]
   } finally {
     await db.end()
   }
+}
+
+/** cart ทั้งหมดของลูกค้า (DB — POST /store/carts เกิดจาก Next server จึงนับฝั่ง browser ไม่ได้) */
+async function cartIdsOf(email: string): Promise<string[]> {
+  const rows = await sql<{ id: string }>(
+    "select c.id from cart c join customer u on u.id = c.customer_id where u.email = $1 and c.deleted_at is null",
+    [email]
+  )
+  return rows.map((r) => r.id)
 }
 
 /** ลูกค้าใหม่ที่ login ในเบราว์เซอร์ + cart ปัจจุบัน C (สินค้า Z นอกแคมเปญ qty 2) ใน cookie */
@@ -53,6 +58,15 @@ async function addVariant(page: Page, size: string, quantity: number) {
   await page.getByTestId("group-options").getByTestId("option-button").filter({ hasText: new RegExp(`^${size}$`) }).click()
   await page.getByTestId("group-quantity").selectOption(String(quantity))
   await page.getByTestId("group-add-variant").click()
+}
+
+/** เลือกวิธีส่ง Standard (ลูกค้าต้องเลือกเอง — qa #238 D1) คืน id ของ option */
+async function pickStandard(page: Page) {
+  const shipping = page.getByTestId("group-shipping-option")
+  await expect(shipping).toBeVisible()
+  const id = (await shipping.locator("option").filter({ hasText: "Standard" }).getAttribute("value"))!
+  await shipping.selectOption(id)
+  return id
 }
 
 /**
@@ -90,6 +104,9 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     await page.getByTestId("group-shipping-load").dblclick()
     const shipping = page.getByTestId("group-shipping-option")
     await expect(shipping).toBeVisible()
+    // qa #238 D1: ไม่เลือกวิธีส่งให้ (ตัวแรกอาจเป็น Digital delivery ฿0 — spec 02 กฎ 8) → ยังกด join ไม่ได้จนกว่าลูกค้าเลือกเอง
+    await expect(shipping).toHaveValue("")
+    await expect(page.getByTestId("group-join-button")).toBeDisabled()
     const standard = shipping.locator("option").filter({ hasText: "Standard" })
     const optionId = (await standard.getAttribute("value"))!
     await shipping.selectOption(optionId)
@@ -188,7 +205,7 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
       await page.goto(`/${CC}/g/${ctx.token}`)
       await addVariant(page, "M", 2)
       await page.getByTestId("group-shipping-load").click()
-      await expect(page.getByTestId("group-shipping-option")).toBeVisible()
+      await pickStandard(page)
       await page.getByTestId("group-join-button").click()
       const error = page.getByTestId("group-join-error")
       await expect(error).toHaveText(groupJoinActionMessage(scenario, { maxUnitsPerPerson: 3 }))
@@ -199,6 +216,22 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
       expect(c.items.map((i: { variant_id: string; quantity: number }) => [i.variant_id, i.quantity])).toEqual([[zVariant, 2]])
     })
   }
+
+  // qa #238 D2: กลุ่มหมดเวลาระหว่างอยู่บนหน้า → หน้า render ใหม่หลัง server action แล้วปุ่มหาย แต่ error ของ join ต้องยังแสดง
+  test("กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย", async ({ page, context, request, baseURL }) => {
+    const ctx = await poolGroup(request)
+    await shopper(request, context, baseURL!, ctx)
+    await page.goto(`/${CC}/g/${ctx.token}`)
+    await addVariant(page, "S", 1)
+    await page.getByTestId("group-shipping-load").click()
+    await pickStandard(page)
+    await sql("update group_buy_group set ends_at = now() - interval '1 second' where id = $1", [ctx.groupId])
+    await page.getByTestId("group-join-button").click()
+    await expect(page.getByTestId("group-join-error")).toHaveText(groupJoinActionMessage("closed"))
+    await expect(page.getByTestId("group-join-button")).toHaveCount(0)
+    await expect(page.getByTestId("group-share-link")).toHaveCount(0)
+    await expectThai(page, ["group-join-error"])
+  })
 
   test("ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47)", async ({ page, request, evidence }) => {
     const ctx = await poolGroup(request)

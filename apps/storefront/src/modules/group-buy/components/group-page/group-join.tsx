@@ -28,6 +28,8 @@ type Props = {
   /** ที่อยู่ที่บันทึกไว้ของลูกค้า; null = ยังไม่ login (กด join → หน้า login, กฎข้อ 29e) */
   addresses: HttpTypes.StoreCustomerAddress[] | null
   maxUnitsPerPerson: number | null
+  /** กฎข้อ 29e: กลุ่ม open และยังไม่เลย ends_at — false → ซ่อนฟอร์ม/ปุ่มแต่คง error ของ join ไว้ (qa #238 D2) */
+  joinable: boolean
 }
 
 const PREPARE_FAILED = "เตรียมรายการไม่สำเร็จ กรุณาลองใหม่"
@@ -39,7 +41,7 @@ const addressLabel = (a: HttpTypes.StoreCustomerAddress) =>
 
 // GB-7a2 (spec 04 กฎข้อ 29c–f, 31): เลือกหลาย variant + ที่อยู่ → cart ใหม่ (c1) → วิธีส่ง → sync aff → join (c2)
 // cart ปัจจุบัน (`_medusa_cart_id`) ไม่ถูกอ่าน/แก้ (กฎข้อ 14c); action ที่สร้างข้อมูลกันกดซ้ำด้วย ref (in-flight) + disabled
-export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson }: Props) {
+export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson, joinable }: Props) {
   const router = useRouter()
   const countryCode = useParams().countryCode as string
   const inFlight = useRef(false)
@@ -86,8 +88,9 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         setError(actionErrorMessage(result.error, PREPARE_FAILED))
         return
       }
+      // qa #238 D1: ไม่เลือกวิธีส่งให้ (ตัวแรกอาจเป็น Digital delivery ฿0 — spec 02 กฎ 8) ลูกค้าต้องเลือกเอง
       setPrepared(result)
-      setShippingId(result.shipping_options[0]?.id ?? "")
+      setShippingId("")
     })
 
   const join = () =>
@@ -109,6 +112,15 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       setJoined(true)
       router.push(`/${countryCode}/account/orders`)
     })
+
+  // หน้า render ใหม่หลัง server action (เช่น setShippingMethod) ตอนกลุ่มหมดเวลา → ซ่อนฟอร์มแต่ยังแสดงผลของ join ที่ล้ม
+  if (!joinable) {
+    return error ? (
+      <p className="text-small-regular text-rose-500" role="alert" data-testid="group-join-error">
+        {error}
+      </p>
+    ) : null
+  }
 
   return (
     <section className="flex flex-col gap-y-4 rounded-rounded border border-ui-border-base p-4" data-testid="group-join">
@@ -239,6 +251,9 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
             className="rounded-md border border-ui-border-base px-3 py-1.5"
             data-testid="group-shipping-option"
           >
+            <option value="" disabled>
+              เลือกวิธีจัดส่ง
+            </option>
             {prepared.shipping_options.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name} — {convertToLocale({ amount: o.amount, currency_code: prepared.currency_code })}

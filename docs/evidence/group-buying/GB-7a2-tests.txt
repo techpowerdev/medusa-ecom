@@ -93,3 +93,44 @@ apps/storefront lint:   141 |   // CORE-19e (กฎข้อ 71): ล็อก�
 apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
 apps/storefront typecheck: Done
 apps/backend typecheck: Done
+
+## รอบแก้ qa #238 (D1 ไม่ preselect วิธีส่ง, D2 คง group-join-error เมื่อกลุ่มหมดเวลาระหว่างอยู่บนหน้า) — 2026-11-03T22:21Z
+### RED (โค้ดก่อนแก้ + e2e ใหม่)
+  ✘  1 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order (7.0s)
+  ✓  2 [chromium] › e2e/group-buy-join.spec.ts:163:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่ (3.1s)
+  ✓  3 [chromium] › e2e/group-buy-join.spec.ts:177:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่ (3.1s)
+  ✓  4 [chromium] › e2e/group-buy-join.spec.ts:197:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (2.4s)
+  ✓  5 [chromium] › e2e/group-buy-join.spec.ts:197:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (2.2s)
+  ✘  6 [chromium] › e2e/group-buy-join.spec.ts:221:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย (6.2s)
+  ✓  7 [chromium] › e2e/group-buy-join.spec.ts:236:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47) (2.7s)
+    Error: expect(locator).toHaveValue(expected) failed
+    Expected: ""
+    Received: "so_01M6HQX49YC0CWZMRVR1SE1EVB"
+    Error: expect(locator).toHaveText(expected) failed
+    Expected: "กลุ่มหรือแคมเปญนี้ปิดรับแล้ว"
+    Error: element(s) not found
+  2 failed
+  5 passed (28.1s)
+### GREEN — e2e (หลัง merge origin/develop)
+Running 10 tests using 2 workers
+
+  ✓   2 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order (4.2s)
+  ✓   1 [chromium] › e2e/group-buy-group-page.spec.ts:17:7 › หน้ากลุ่ม (AC-16a) › ไม่ login: จำนวนสมาชิก ความคืบหน้า นับถอยหลัง ลิงก์แชร์ และ reload หลังคนที่ 3 join (4.9s)
+  ✓   3 [chromium] › e2e/group-buy-join.spec.ts:163:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่ (3.0s)
+  ✓   4 [chromium] › e2e/group-buy-group-page.spec.ts:60:7 › หน้ากลุ่ม (AC-16a) › 375px: ไม่เลื่อนแนวนอน (2.7s)
+  ✓   6 [chromium] › e2e/group-buy-group-page.spec.ts:71:7 › หน้ากลุ่ม (AC-16a) › token ไม่มีจริง → หน้าไม่พบ (183ms)
+  ✓   5 [chromium] › e2e/group-buy-join.spec.ts:177:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่ (3.1s)
+  ✓   7 [chromium] › e2e/group-buy-join.spec.ts:197:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (2.3s)
+  ✓   8 [chromium] › e2e/group-buy-join.spec.ts:197:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (1.6s)
+  ✓   9 [chromium] › e2e/group-buy-join.spec.ts:221:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย (1.8s)
+  ✓  10 [chromium] › e2e/group-buy-join.spec.ts:236:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47) (2.6s)
+
+  10 passed (19.4s)
+### unit (vitest storefront)
+ Test Files  72 passed (72)
+      Tests  804 passed (804)
+### lint + typecheck
+apps/backend lint: ✖ 2 problems (0 errors, 2 warnings)
+apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
