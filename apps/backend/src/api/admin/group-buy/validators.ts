@@ -4,6 +4,7 @@ import {
   AdminCreateApplicationMethod,
   AdminCreatePromotionRule,
 } from "@medusajs/medusa/api/admin/promotions/validators"
+import { SINGLE_PRODUCT_MESSAGE, singleProductIdOf } from "../../../modules/group_buy/utils/single-product"
 
 const positiveInt = z.number().int().positive()
 
@@ -28,7 +29,12 @@ export const AdminCreateGroupBuyCampaign = z
     application_method: AdminCreateApplicationMethod.refine((m) => m.target_type === "items", {
       message: "application_method.target_type must be items",
       path: ["target_type"],
-    }),
+    })
+      // spec 04 กฎข้อ 30a: 1 แคมเปญ = 1 สินค้า (items.product.id in [ค่าเดียว])
+      .refine((m) => singleProductIdOf(m.target_rules) !== null, {
+        message: SINGLE_PRODUCT_MESSAGE,
+        path: ["target_rules"],
+      }),
     rules: z.array(AdminCreatePromotionRule).optional(),
     // spec 04 กฎข้อ 12 (ADR-011 หมายเหตุ): ราคา THB รวม VAT — ต้นแบบลดยอดที่ลูกค้าจ่ายตามตัวเลขที่ admin กรอก
     is_tax_inclusive: z.boolean().default(true),

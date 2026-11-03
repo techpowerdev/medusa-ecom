@@ -16,6 +16,21 @@ function section(markdown: string, title: string): string | null {
   return lines.slice(start + 1, end < 0 ? undefined : end).join("\n")
 }
 
+const GB_TITLE = "### group buy: เงินเข้าแต่ไม่มี order"
+// กฎข้อ 25 (c): ขั้นแรกของหัวข้อ group buy — ตรวจว่ายังเป็นเงินค้างจริงก่อน refund
+const GB_CHECK_STEP = /ตรวจว่า order\s+ยังเป็น draft และ membership ยังไม่ `paid`/
+
+/** GB-10 กฎข้อ 25 (f): เนื้อหาหัวข้อย่อย `### <prefix>…` จนถึงหัวข้อ `###`/`##` ถัดไป (ไม่ใช่ถึงท้ายไฟล์) */
+function subsection(markdown: string, prefix: string): string {
+  const lines = markdown.split(/\r?\n/)
+  const start = lines.findIndex((line) => line.startsWith(prefix))
+  if (start < 0) {
+    return ""
+  }
+  const end = lines.findIndex((line, i) => i > start && /^#{2,3} /.test(line))
+  return lines.slice(start + 1, end < 0 ? undefined : end).join("\n")
+}
+
 describe("AC-16 runbook ใน docs/ops/production.md", () => {
   const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
   const body = section(doc, RUNBOOK_TITLE)
@@ -90,7 +105,7 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
 
   // GB-5 (review #185): เงินเข้าแต่ไม่มี order ของ group buy — alert เดียวกันทาง OPS_ALERT_EMAIL
   it("กรณี group buy: alert GROUP_BUY_PAID_WITHOUT_ORDER ทั้งสองสาเหตุ และขั้นตอนที่ admin ทำได้", () => {
-    const gb = body!.slice(body!.search(/### group buy: เงินเข้าแต่ไม่มี order/))
+    const gb = subsection(body!, GB_TITLE)
     expect(gb).toContain("GROUP_BUY_PAID_WITHOUT_ORDER")
     for (const step of ["convert_failed", "membership_cancelled", "convert-to-order", "refund", "แจ้งลูกค้า", "incident"]) {
       expect(gb).toContain(step)
@@ -99,12 +114,27 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
 
   // GB-9 กฎข้อ 25 (c) (AC-43): ขั้นแรกตรวจว่ายังเป็นเงินค้างจริง (draft + ไม่ paid) ก่อนขั้น refund และเปิด draft ด้วย URL ตรง
   it("กรณี group buy: ขั้นตรวจ draft/membership มาก่อนขั้น refund และมี URL /app/orders/", () => {
-    const gb = body!.slice(body!.search(/### group buy: เงินเข้าแต่ไม่มี order/))
-    const check = gb.search(/ตรวจว่า order\s+ยังเป็น draft และ membership ยังไม่ `paid`/)
+    const gb = subsection(body!, GB_TITLE)
+    const check = gb.search(GB_CHECK_STEP)
     expect(check).toBeGreaterThan(-1)
     expect(gb).toContain("ห้าม refund")
     expect(check).toBeLessThan(gb.indexOf("refund"))
     expect(gb).toContain("/app/orders/<order_id>")
+  })
+
+  // GB-10 กฎข้อ 25 (f) (AC-44 รอบ 13): ขอบเนื้อหาจบก่อนหัวข้อ ### ถัดไป — ขั้นตรวจที่อยู่ในหัวข้อถัดไปไม่นับ
+  it("หัวข้อ group buy ตัดถึงหัวข้อถัดไป: ขั้นตรวจที่อยู่นอกหัวข้อไม่นับ (fixture) และหัวข้อจริงไม่มีหัวข้ออื่นปน", () => {
+    const fixture = [
+      `${GB_TITLE} (alert \`GROUP_BUY_PAID_WITHOUT_ORDER\`)`,
+      "1. refund ผ่าน admin",
+      "### หัวข้อถัดไป",
+      "1. ตรวจว่า order ยังเป็น draft และ membership ยังไม่ `paid`",
+    ].join("\n")
+    expect(subsection(fixture, GB_TITLE)).toContain("refund ผ่าน admin")
+    expect(subsection(fixture, GB_TITLE).search(GB_CHECK_STEP)).toEqual(-1)
+    // positive control: ขั้นตรวจอยู่ในหัวข้อเอง → พบ
+    expect(subsection(fixture.replace("### หัวข้อถัดไป\n", ""), GB_TITLE).search(GB_CHECK_STEP)).toBeGreaterThan(-1)
+    expect(subsection(body!, GB_TITLE)).not.toMatch(/^#{2,3} /m)
   })
 })
 

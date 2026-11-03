@@ -10,8 +10,14 @@ export const ADMIN_LOGIN_URL = `${BACKEND_URL}/app/login`
  * ใส่ใน test.use ของ e2e ที่เปิด admin UI: backend ที่ `medusa start` (production) ตั้ง session cookie
  * ของ admin เป็น Secure และเชื่อ proxy (trust proxy 1) — CI/local เป็น http จึงจำลอง proxy ที่ terminate TLS
  * แบบ prod ไม่เช่นนั้น Set-Cookie ไม่ถูกส่งและ login admin UI ไม่ติด
+ * spec 08 กฎ 12 (ADM-2b): วันเวลา/เงินใน admin ตาม timezone/locale ของ browser (useDate, getLocaleAmount ของ Medusa)
+ * จึงตั้ง locale en-US + timezone ไทยให้ผลตายตัว (ภาษาของ admin ยังเป็น English — useDate อ่าน locale จากภาษานั้น)
  */
-export const ADMIN_UI_OPTIONS = { extraHTTPHeaders: { "x-forwarded-proto": "https" } }
+export const ADMIN_UI_OPTIONS = {
+  extraHTTPHeaders: { "x-forwarded-proto": "https" },
+  locale: "en-US",
+  timezoneId: "Asia/Bangkok",
+}
 
 const env = (key: string, fallback: string) => {
   const value = process.env[key] ?? process.env[fallback]

@@ -23,6 +23,15 @@ export function paymentCapturedAction(
   return collectionStatuses.includes("completed") ? "mark_paid" : "noop"
 }
 
+// GB-10 กฎข้อ 26: ops แปลง draft order เองหลังเงินเข้า (order.placed) → paid เฉพาะ membership ที่ยังรอชำระ,
+// order แปลงแล้ว และ collection capture ครบ — สถานะอื่น (รวม paid จากเส้นทางปกติของ GB-5) = no-op
+export const convertedOrderAction = (
+  status: MembershipStatus,
+  isDraftOrder: boolean,
+  collectionStatuses: string[]
+): "mark_paid" | "noop" =>
+  status === "awaiting_payment" && !isDraftOrder && collectionStatuses.includes("completed") ? "mark_paid" : "noop"
+
 // หมดเวลาชำระเงิน: ไม่ยกเลิก order ที่มีการ authorize/capture แล้ว (cancelOrderWorkflow จะ refund เงินที่ capture แล้ว)
 const UNPAID = new Set(["not_paid", "awaiting", "canceled", "failed"])
 

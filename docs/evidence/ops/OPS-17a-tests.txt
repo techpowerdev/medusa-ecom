@@ -1,0 +1,36 @@
+# OPS-17a (spec 07 AC-33) — ผล test ในเครื่อง (2026-11-03, node v24.12.0)
+
+## Red (ก่อนเพิ่ม tools/load/artifact-guard.js และแก้ run.sh)
+FAIL src/__tests__/load-artifact-guard.unit.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'tools/load/artifact-guard.js' from 'src/__tests__/load-artifact-guard.unit.spec.ts'
+
+      11 | const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8")
+      12 |
+    > 13 | const guard = createRequire(__filename)(GUARD) as {
+         |                             ^
+      14 |   stripSetupData: (summary: Record<string, unknown>) => Record<string, unknown>
+      15 |   findLeaks: (dir: string) => string[]
+      16 | }
+
+## Green — load-artifact-guard.unit.spec.ts
+PASS src/__tests__/load-artifact-guard.unit.spec.ts
+    ✓ summary ที่มี setup_data.checkout[].token → ผลไม่มี setup_data/JWT และ metric เดิมครบ (1 ms)
+    ✓ CLI strip: อ่าน summary ดิบแล้วเขียนไฟล์ที่ไม่มี setup_data (20 ms)
+    ✓ ไฟล์ไม่มี JWT/setup_data → ไม่พบ และ scan exit 0 (19 ms)
+    ✓ ไฟล์มี JWT (รวมในโฟลเดอร์ย่อย) หรือ key setup_data → พบ และ scan ล้ม (exit ≠ 0) ลบไฟล์นั้นและไม่พิมพ์ token (25 ms)
+    ✓ k6 เขียน summary ดิบนอก OUT แล้ว strip ก่อนเขียนลง OUT
+    ✓ ขั้นตรวจ JWT ใน OUT อยู่หลังไฟล์สุดท้ายที่เขียนลง OUT และก่อนตัดสินผ่าน/ไม่ผ่าน (1 ms)
+Tests:       6 passed, 6 total
+
+## pnpm --filter backend test:unit / pnpm lint / pnpm typecheck / pnpm --filter backend build
+Test Suites: 80 passed, 80 total
+Tests:       769 passed, 769 total
+apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+info:    Backend build completed successfully (4.52s)
+info:    Frontend build completed successfully (12.44s)
+
+## load run บน branch (gh workflow run load-nightly.yml) — ดู run id ใน PR (artifact ไม่มี setup_data/JWT, gate AC-2/AC-3)

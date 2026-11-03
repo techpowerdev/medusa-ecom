@@ -1,0 +1,52 @@
+# GB-7b (spec 04 GB-7 ส่วน b) — ผล test ในเครื่อง 2026-11-03T15:19Z บน worktree จาก origin/develop ac65dbf
+# backend :9140 (medusa start, build) + storefront :8140 (next build/start), DB medusa_gb7, Redis db 15; ไม่มี Stripe key ในเครื่อง → test Stripe ถูก skip (CI รัน)
+
+## vitest (unit) — test ใหม่
+ ✓ src/lib/util/group-buy-orders.test.ts > groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก) > joined + กลุ่ม open ยังไม่หมดเวลา → waiting และออกจากกลุ่มได้ (กฎข้อ 13) 1ms
+ ✓ src/lib/util/group-buy-orders.test.ts > groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก) > joined แต่กลุ่มหมดเวลาแล้ว (job ยังไม่ตัดสิน) → waiting แต่ออกไม่ได้ 0ms
+ ✓ src/lib/util/group-buy-orders.test.ts > groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก) > joined แต่กลุ่มไม่ open แล้ว → ออกไม่ได้ 0ms
+ ✓ src/lib/util/group-buy-orders.test.ts > groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก) > awaiting_payment ก่อน pay_deadline_at → pay พร้อม deadline 0ms
+ ✓ src/lib/util/group-buy-orders.test.ts > groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก) > awaiting_payment เลย pay_deadline_at หรือไม่มี deadline → expired (ไม่มีลิงก์ชำระ) 0ms
+ ✓ src/lib/util/group-buy-orders.test.ts > groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก) > paid → paid; ถ้า order แปลงแล้วมีลิงก์รายละเอียด order ปกติ 0ms
+ ✓ src/lib/util/group-buy-orders.test.ts > groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก) > cancelled → cancelled 0ms
+ ✓ src/lib/util/group-buy-orders.test.ts > groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก) > กลุ่ม/order เป็น null (ข้อมูลหาย) ไม่ throw 0ms
+ ✓ src/group-buy-account-actions.test.ts > listGroupBuyMemberships > ยิง GB-8 ด้วย token ของลูกค้า ไม่ cache และส่ง limit 3ms
+ ✓ src/group-buy-account-actions.test.ts > listGroupBuyMemberships > อ่านล้ม → null (ไม่ทำให้หน้า orders ล่ม) 0ms
+ ✓ src/group-buy-account-actions.test.ts > leaveGroupBuyMembership > สำเร็จ → POST leave ของ membership นั้น และ error = null 0ms
+ ✓ src/group-buy-account-actions.test.ts > leaveGroupBuyMembership > 400 → ข้อความไทย (LEAVE_NOT_ALLOWED_MESSAGE) ไม่ throw 0ms
+ ✓ src/group-buy-account-actions.test.ts > leaveGroupBuyMembership > 401 → ข้อความไทย (SIGN_IN_AGAIN_MESSAGE) ไม่ throw 0ms
+ ✓ src/group-buy-account-actions.test.ts > leaveGroupBuyMembership > 404 → ข้อความไทย (GENERIC_ERROR_MESSAGE) ไม่ throw 0ms
+ ✓ src/group-buy-account-actions.test.ts > leaveGroupBuyMembership > 500 → ข้อความไทย (GENERIC_ERROR_MESSAGE) ไม่ throw 0ms
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+
+## vitest (unit) — ทั้ง storefront
+ Test Files  57 passed (57)
+      Tests  633 passed (633)
+
+## playwright e2e/group-buy-account-orders.spec.ts (chromium)
+  ✓  1 [chromium] › e2e/group-buy-account-orders.spec.ts:41:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › joined → รอกลุ่ม + ออกจากกลุ่ม (ยืนยันก่อน) → ยกเลิก และ membership cancelled (1.3s)
+  ✓  2 [chromium] › e2e/group-buy-account-orders.spec.ts:71:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › กลุ่มสำเร็จระหว่างเปิดหน้าอยู่ แล้วกดออก → error ไทย และรายการแสดงสถานะใหม่ (ชำระเงินภายใน) (926ms)
+  ✓  3 [chromium] › e2e/group-buy-account-orders.spec.ts:91:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › awaiting_payment → ชำระเงินภายใน <deadline> และลิงก์ไปหน้าชำระเงินของ PAY-3b (868ms)
+  -  4 [chromium] › e2e/group-buy-account-orders.spec.ts:115:7 › หน้า account → หน้าชำระเงิน — Stripe test mode (AC-2, AC-16 พร้อมเพย์) › AC-2: บัตร 4242 จากลิงก์ในหน้า account → order ปกติ captured, membership paid และรายการแสดงชำระแล้ว
+  -  5 [chromium] › e2e/group-buy-account-orders.spec.ts:147:7 › หน้า account → หน้าชำระเงิน — Stripe test mode (AC-2, AC-16 พร้อมเพย์) › AC-16: พร้อมเพย์จากลิงก์ในหน้า account → QR → authorize test payment → order-pay-paid
+  2 skipped
+  3 passed (3.6s)
+
+## regression: thai-ui-account, core-23-profile-order, payments-order-pay (chromium)
+21 passed, 4 skipped (Stripe test mode)
+
+## playwright --project=unit
+37 passed
+
+## pnpm lint && pnpm typecheck
+exit 0 (0 errors; warning เดิม 31 รายการไม่มีในไฟล์ของ task นี้)
+
+## รอบแก้ review #223 (blocker: error ของการออกจากกลุ่มหายหลัง router.refresh) 2026-11-03T15:59Z
+- test ที่ :71 รอ refresh เสร็จ (group-pay-deadline) ก่อนตรวจ group-leave-error
+- บนโค้ดเดิม (prod build): --repeat-each=3 → 3 failed (red)
+- หลังแก้ (prod build): e2e/group-buy-account-orders.spec.ts --repeat-each=3
+  6 skipped
+  9 passed (5.3s)
+- regression payments-order-pay (ย้าย authorizePromptPay ไป e2e/support/stripe.ts): 14 passed, 4 skipped (Stripe)
+- vitest 633 passed; playwright --project=unit 37 passed; pnpm lint && pnpm typecheck exit 0

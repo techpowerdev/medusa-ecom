@@ -10,19 +10,29 @@ import {
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { sdk } from "../../lib/client"
+import { selectSingleProduct } from "../../lib/group-buy-form"
 
 type Product = Pick<HttpTypes.AdminProduct, "id" | "title" | "status">
 
 const columnHelper = createDataTableColumnHelper<Product>()
 const columns = [
-  columnHelper.select(),
+  // GB-6e: เลือกได้สินค้าเดียว — ไม่มีช่อง "เลือกทั้งหน้า"
+  columnHelper.select({ header: () => null }),
   columnHelper.accessor("title", { header: "Product" }),
   columnHelper.accessor("status", { header: "Status" }),
 ]
 
-// GB-6b2 (spec 04 AC-33): dashboard ไม่ export product picker ให้ extension → DataTable + sdk.admin.product.list
-// selection เก็บเป็น id ใน state ของฟอร์ม จึงคงอยู่ข้ามหน้า/การค้นหา
-export const ProductPicker = ({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) => {
+// GB-6b2: dashboard ไม่ export product picker ให้ extension → DataTable + sdk.admin.product.list
+// GB-6e (spec 04 กฎข้อ 30d, AC-50): single select — เลือกตัวใหม่แทนตัวเดิม; id อยู่ใน state ของฟอร์ม จึงคงอยู่ข้ามหน้า/การค้นหา
+export const ProductPicker = ({
+  value,
+  onChange,
+  error,
+}: {
+  value: string | null
+  onChange: (id: string | null) => void
+  error?: string | null
+}) => {
   const [search, setSearch] = useState("")
   const [pagination, setPagination] = useState<DataTablePaginationState>({ pageIndex: 0, pageSize: 5 })
   const limit = pagination.pageSize
@@ -35,7 +45,7 @@ export const ProductPicker = ({ value, onChange }: { value: string[]; onChange: 
   })
 
   const rowSelection = useMemo(
-    () => Object.fromEntries(value.map((id) => [id, true])) as DataTableRowSelectionState,
+    () => (value ? { [value]: true } : {}) as DataTableRowSelectionState,
     [value]
   )
 
@@ -47,7 +57,7 @@ export const ProductPicker = ({ value, onChange }: { value: string[]; onChange: 
     isLoading,
     rowSelection: {
       state: rowSelection,
-      onRowSelectionChange: (next) => onChange(Object.keys(next).filter((id) => next[id])),
+      onRowSelectionChange: (next) => onChange(selectSingleProduct(value, next)),
     },
     search: {
       state: search,
@@ -62,12 +72,17 @@ export const ProductPicker = ({ value, onChange }: { value: string[]; onChange: 
   return (
     <div data-testid="gb-product-picker" className="flex flex-col gap-y-2">
       <Text size="small" weight="plus">
-        Products
+        Product *
       </Text>
       <Text size="xsmall" className="text-ui-fg-subtle" data-testid="gb-product-picker-count">
-        {value.length ? `${value.length} selected` : "None selected = all products"}. Scope can be refined later on
-        the template promotion.
+        {value ? "1 selected" : "None selected"}. A group buy campaign covers exactly one product (any of its
+        variants).
       </Text>
+      {error && (
+        <Text size="xsmall" className="text-ui-fg-error" data-testid="gb-product-required-error">
+          {error}
+        </Text>
+      )}
       <div className="shadow-elevation-card-rest rounded-lg">
         <DataTable instance={table}>
           <DataTable.Toolbar>

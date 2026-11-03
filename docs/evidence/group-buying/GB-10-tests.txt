@@ -1,0 +1,112 @@
+# GB-10 — ผล test (2026-11-03, worktree feat/GB-10-membership-paid-on-convert จาก origin/develop 66b01f8, node v24.12.0)
+
+event ที่ convertDraftOrderWorkflow emit ใน @medusajs/core-flows 2.22.1 (draft-order/workflows/convert-draft-order.js): order.placed { id } หลัง releaseLockStep ของ order
+
+## Red (ก่อนแก้)
+- unit membership-payment.unit.spec.ts: convertedOrderAction is not a function (8 failed)
+- unit group-buy-payment-captured.unit.spec.ts: Received promise rejected instead of resolved (2 failed — loadMembership อยู่นอก try)
+- integration group-buy-payment.spec.ts -t AC-44 (ยังไม่มี subscriber group-buy-order-placed.ts): 3 failed
+        ✕ AC-44: convert failed (out of stock) → ops restocks and converts via admin → membership paid; order.placed again is a no-op (1504 ms)
+        ✕ AC-44: admin converts while the collection is not completed → membership unchanged, info logged (1119 ms)
+        ✕ AC-44: normal GB-5 path (capture → paid → convert → order.placed) → GB-10 subscriber is a no-op under the membership lock; order-placed email still sent (768 ms)
+        Expected: "paid"
+        Received: "awaiting_payment"
+        Expected: true
+        Received: false
+        Expected: true
+        Received: false
+    Tests:       3 failed, 6 skipped, 9 total
+
+## Green — unit (3 ไฟล์ที่แก้, --verbose)
+PASS src/modules/group_buy/__tests__/membership-payment.unit.spec.ts
+    ✓ 699.9999999999999999999983 → 700 (1 ms)
+    ✓ 699.994999 → 699.99
+    ✓ 699.995 → 700
+    ✓ 0.005 → 0.01
+    ✓ 350 → 350
+    ✓ accepts Medusa raw amount objects
+    ✓ awaiting_payment with ["completed"] = mark_paid
+    ✓ awaiting_payment with ["canceled","completed"] = mark_paid
+    ✓ awaiting_payment with ["partially_captured"] = noop (1 ms)
+    ✓ awaiting_payment with ["authorized"] = noop
+    ✓ paid with ["completed"] = noop
+    ✓ cancelled with ["completed"] = orphan
+    ✓ joined with ["completed"] = orphan
+    ✓ expires an unpaid awaiting_payment membership past its deadline
+    ✓ keeps it before the deadline or without a deadline
+    ✓ keeps it when a collection is authorized (payment.captured subscriber settles it)
+    ✓ keeps it when a collection is partially_authorized (payment.captured subscriber settles it)
+    ✓ keeps it when a collection is partially_captured (payment.captured subscriber settles it)
+    ✓ keeps it when a collection is completed (payment.captured subscriber settles it) (1 ms)
+    ✓ ignores joined memberships
+    ✓ ignores paid memberships
+    ✓ ignores cancelled memberships
+    ✓ convert_failed + membership awaiting_payment + is_draft_order=false → false
+    ✓ convert_failed + membership paid + is_draft_order=true → false
+    ✓ convert_failed + membership paid + is_draft_order=false → false
+    ✓ convert_failed + membership awaiting_payment + is_draft_order=true → true
+    ✓ membership_cancelled + membership cancelled + is_draft_order=true → true
+    ✓ membership_cancelled + membership awaiting_payment + is_draft_order=true → false
+    ✓ membership_cancelled + membership paid + is_draft_order=false → false
+    ✓ membership_joined + membership joined + is_draft_order=true → true
+    ✓ membership_joined + membership awaiting_payment + is_draft_order=true → false
+    ✓ membership_joined + membership paid + is_draft_order=false → false
+    ✓ = <membership_id>:<reason> (membership เดียวเจอทั้งสองเหตุได้ 2 ฉบับ)
+    ✓ membership awaiting_payment + is_draft_order=false + collections ["completed"] → mark_paid
+    ✓ membership awaiting_payment + is_draft_order=false + collections ["canceled","completed"] → mark_paid
+    ✓ membership awaiting_payment + is_draft_order=false + collections ["not_paid"] → noop
+    ✓ membership awaiting_payment + is_draft_order=false + collections [] → noop
+    ✓ membership awaiting_payment + is_draft_order=true + collections ["completed"] → noop
+    ✓ membership paid + is_draft_order=false + collections ["completed"] → noop
+    ✓ membership joined + is_draft_order=false + collections ["completed"] → noop
+    ✓ membership cancelled + is_draft_order=false + collections ["completed"] → noop
+PASS src/subscribers/__tests__/group-buy-payment-captured.unit.spec.ts
+    ✓ convert_failed: still sends one alert with key <membership_id>:<reason> and logs a warning (1 ms)
+    ✓ membership_cancelled: still sends one alert with key <membership_id>:<reason> and logs a warning (1 ms)
+PASS src/__tests__/ops-runbook.unit.spec.ts
+    ✓ มีหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" (1 ms)
+    ✓ อ้าง alert และ code ของ guard
+    ✓ ระบุขั้นตอน: ค้น PI ใน Stripe dashboard, ยืนยันไม่มี order, refund เต็มจำนวน, แจ้งลูกค้า, บันทึก incident (1 ms)
+    ✓ มีกรณีไม่มี alert: ให้ลูกค้าเปิดหน้า checkout อีกครั้ง (storefront เรียก complete ตาม AC-12b)
+    ✓ กรณีไม่มี alert ที่ refund ใน Stripe: ปิดทางที่ cart จะถูก complete ทีหลัง (review #97)
+    ✓ กรณีมี alert: ตรวจ Refunds ของ PI ก่อน และถ้าพบ payment ใน Medusa ให้ใช้ script ห้ามใช้ dashboard (review #97 r3)
+    ✓ AC-16b กรณีไม่มี alert: ตรวจก่อน refund แล้ว refund ผ่าน script refund-orphan-payment ไม่ใช่ Stripe dashboard (ADR-015 ภาคผนวก 2)
+    ✓ มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้)
+    ✓ ไม่แนะนำแก้ DB ด้วย SQL ตรง
+    ✓ กรณี group buy: alert GROUP_BUY_PAID_WITHOUT_ORDER ทั้งสองสาเหตุ และขั้นตอนที่ admin ทำได้
+    ✓ กรณี group buy: ขั้นตรวจ draft/membership มาก่อนขั้น refund และมี URL /app/orders/ (1 ms)
+    ✓ หัวข้อ group buy ตัดถึงหัวข้อถัดไป: ขั้นตรวจที่อยู่นอกหัวข้อไม่นับ (fixture) และหัวข้อจริงไม่มีหัวข้ออื่นปน
+    ✓ มีบรรทัด OPS_ALERT_EMAIL=
+    ✓ มีหัวข้อ "Alerts" (1 ms)
+    ✓ มีกฎที่ match สตริง `Error running event bus worker` กรองด้วย level error และ worker_mode worker
+    ✓ ระบุขั้นตอนตอบสนอง: restart worker
+Tests:       59 passed, 59 total
+
+## Green — integration http group-buy-payment.spec.ts (ทั้งไฟล์ รวม AC-2 API/AC-37/AC-10 เดิมของ GB-5)
+    ✓ AC-44: convert failed (out of stock) → ops restocks and converts via admin → membership paid; order.placed again is a no-op (1127 ms)
+    ✓ AC-44: admin converts while the collection is not completed → membership unchanged, info logged (895 ms)
+    ✓ AC-44: normal GB-5 path (capture → paid → convert → order.placed) → GB-10 subscriber is a no-op under the membership lock; order-placed email still sent (764 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (731 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (729 ms)
+    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (1004 ms)
+    ✓ out of stock at convert: convertDraftOrderWorkflow fails → membership compensated back to awaiting_payment, order stays draft (854 ms)
+    ✓ orphan: payment captured after the membership was cancelled → ops alert once, membership stays cancelled (684 ms)
+    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (1268 ms)
+Tests:       9 passed, 9 total
+
+## Green — integration http affiliate-group-buy.spec.ts (subscriber order.placed อื่นบน order ของ group buy)
+    ✓ AC-48: join copies the cart affiliate_token to the draft order; no attribution on the draft; one attribution + 10% entry after conversion (996 ms)
+    ✓ AC-48: cart with no metadata → draft order has no affiliate_token key and no attribution after conversion (820 ms)
+    ✓ AC-48: cart with empty affiliate_token → draft order has no affiliate_token key and no attribution after conversion (729 ms)
+    ✓ AC-48 (กฎ 12): Ann's token on an order whose email is Ann's → no entry (764 ms)
+Tests:       4 passed, 4 total
+
+## unit ทั้งชุด (pnpm --filter backend test:unit)
+Test Suites: 75 passed, 75 total
+Tests:       747 passed, 747 total
+
+## grep: loadMembership ประกาศที่เดียว
+apps/backend/src/workflows/group-buy/membership-payment.ts:42:export async function loadMembership(container: MedusaContainer, id: string) {
+
+## lint / typecheck / build
+pnpm lint: 0 errors (backend 1 warning เดิม @medusajs/cli/dist/reporter ไม่เกี่ยวกับ task นี้); pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน

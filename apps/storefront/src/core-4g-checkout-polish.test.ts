@@ -76,7 +76,8 @@ describe("applyPromotions คืน code ที่อยู่ใน cart จร
     })
     const { applyPromotions } = await import("@lib/data/cart")
     const applied = await applyPromotions(["OK10", "EXPIRED"])
-    expect(applied).toEqual(["OK10"])
+    // CORE-4i (กฎข้อ 72): ผลแบบมีโครงสร้าง
+    expect(applied).toEqual({ ok: true, codes: ["OK10"] })
   })
 })
 

@@ -77,13 +77,3 @@ export const groupBuyApi = {
   setOutcome: (groupId: string, outcome: "succeed" | "fail") =>
     sdk.client.fetch<{ group: Group }>(`${BASE}/groups/${groupId}/${outcome}`, { method: "POST" }),
 }
-
-// แสดงเวลาไทยเสมอ (ฟอร์มก็ตีความเป็น ICT) ไม่ขึ้นกับ timezone ของ browser
-export const formatDateTime = (value: string | null | undefined) =>
-  value
-    ? new Date(value).toLocaleString(undefined, {
-        timeZone: "Asia/Bangkok",
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : "-"

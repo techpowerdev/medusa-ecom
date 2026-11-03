@@ -22,16 +22,22 @@ export const CHECKOUT_CONFLICTS: { code: string; message: string; text: string }
 // medusaError ทำตัวแรกเป็นตัวใหญ่และต่อ "." ท้ายข้อความ — ตัดออกก่อนเทียบ
 const normalize = (message: string) => message.replace(/\.$/, "").toLowerCase()
 
-/** ข้อความไทยของ 409 ที่รู้จักตอน complete cart; error อื่น → null (ผู้เรียกใช้ข้อความเดิมของตัวเอง) */
-export const checkoutConflictMessage = (error: unknown): string | null => {
+const knownConflict = (error: unknown) => {
   if (typeof error !== "object" || error === null) {
-    return null
+    return undefined
   }
   const { code, message } = error as { code?: unknown; message?: unknown }
-  const known = CHECKOUT_CONFLICTS.find(
+  return CHECKOUT_CONFLICTS.find(
     (c) =>
       c.code === code ||
       (typeof message === "string" && normalize(message) === normalize(c.message))
   )
-  return known?.text ?? null
 }
+
+/** ข้อความไทยของ 409 ที่รู้จักตอน complete cart; error อื่น → null (ผู้เรียกใช้ข้อความเดิมของตัวเอง) */
+export const checkoutConflictMessage = (error: unknown): string | null =>
+  knownConflict(error)?.text ?? null
+
+/** CORE-4i (กฎข้อ 72): code ของ 409 ที่รู้จัก (จาก `code` หรือข้อความคงที่ของ backend); error อื่น → null */
+export const checkoutConflictCode = (error: unknown): string | null =>
+  knownConflict(error)?.code ?? null

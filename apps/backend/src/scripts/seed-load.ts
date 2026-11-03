@@ -90,6 +90,7 @@ export async function seedLoad(container: MedusaContainer, opts: SeedLoadOptions
     },
   })
   const [flashVariantId, groupVariantId] = products.map((p) => p.variants[0].id)
+  const groupProductId = products[1].id
 
   const { result: campaigns } = await createCampaignsWorkflow(container).run({
     input: { campaignsData: [{ name: `Load flash ${run}`, campaign_identifier: `load-flash-${run}` }] },
@@ -135,7 +136,8 @@ export async function seedLoad(container: MedusaContainer, opts: SeedLoadOptions
         allocation: "each",
         max_quantity: 1,
         value: 10,
-        target_rules: [{ attribute: "items.variant_id", operator: "in", values: [groupVariantId] }],
+        // spec 04 กฎข้อ 30: 1 แคมเปญ = 1 สินค้า (scope ระดับ product ไม่ใช่ variant) — สินค้านี้มี variant เดียว
+        target_rules: [{ attribute: "items.product.id", operator: "in", values: [groupProductId] }],
       },
     } as CreateGroupBuyCampaignInput,
   })
