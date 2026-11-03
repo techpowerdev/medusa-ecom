@@ -40,7 +40,8 @@ const CartDropdown = ({
 
   const totalItems = countItems(cartState)
 
-  const subtotal = cartState?.subtotal ?? 0
+  // CORE-26 (กฎข้อ 81a): ยอดของสินค้าหลังส่วนลดและรวม VAT ที่ Medusa คำนวณ — ตรงกับราคาต่อ line ที่แสดง
+  const itemTotal = cartState?.item_total ?? 0
   const itemRef = useRef<number>(totalItems || 0)
 
   useEffect(() => {
@@ -103,13 +104,11 @@ const CartDropdown = ({
   }, [totalItems, itemRef.current])
 
   return (
-    <div
-      className="h-full z-50"
-      onMouseEnter={openAndCancel}
-      onMouseLeave={close}
-    >
+    // CORE-26 (กฎข้อ 81c): ชี้ที่ปุ่มตะกร้าเท่านั้นที่ยกเลิกการปิดเอง — panel ที่เปิดเองทับปุ่มที่ลูกค้าเพิ่งกด
+    // จึงต้องปิดเองใน 5 วินาทีแม้ mouse ค้างอยู่ใต้ panel
+    <div className="h-full z-50" onMouseLeave={close}>
       <Popover className="relative h-full">
-        <PopoverButton className="h-full">
+        <PopoverButton className="h-full" onMouseEnter={openAndCancel}>
           <LocalizedClientLink
             className="hover:text-ui-fg-base"
             href="/cart"
@@ -205,17 +204,21 @@ const CartDropdown = ({
                 </div>
                 <div className="p-4 flex flex-col gap-y-4 text-small-regular">
                   <div className="flex items-center justify-between">
-                    <span className="text-ui-fg-base font-semibold">
-                      ยอดรวม{" "}
-                      <span className="font-normal">(ไม่รวมภาษี)</span>
+                    <span
+                      className="text-ui-fg-base font-semibold"
+                      data-testid="cart-subtotal-label"
+                    >
+                      ยอดรวมสินค้า{" "}
+                      {/* eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C1 ที่ owner ตัดสิน (spec 01 กฎข้อ 81a) */}
+                      <span className="font-normal">(รวม VAT)</span>
                     </span>
                     <span
                       className="text-large-semi"
                       data-testid="cart-subtotal"
-                      data-value={subtotal}
+                      data-value={itemTotal}
                     >
                       {convertToLocale({
-                        amount: subtotal,
+                        amount: itemTotal,
                         currency_code: cartState.currency_code,
                       })}
                     </span>

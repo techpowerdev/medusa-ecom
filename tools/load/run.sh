@@ -28,6 +28,8 @@ FLASH_CUSTOMERS="${LOAD_FLASH_CUSTOMERS:-300}"
 TOTAL_CAP="${LOAD_FLASH_TOTAL_CAP:-100}"
 BURST_RATE="${LOAD_BURST_RATE:-500}"
 BURST_DURATION="${LOAD_BURST_DURATION:-60s}"
+# OPS-20a (AC-31): 0 = ตัด scenario burst ของ flash-sale.js (รันเทียบ checkout ไม่มี burst); ค่าเริ่มต้น/schedule = มี burst
+FLASH_BURST="${LOAD_FLASH_BURST:-1}"
 JOIN_CUSTOMERS="${LOAD_JOIN_CUSTOMERS:-200}"
 GROUP_SIZE="${LOAD_GROUP_SIZE:-10}"
 K6_IMAGE="grafana/k6:2.3.0"
@@ -52,8 +54,10 @@ chmod 755 "$DATA" && chmod 644 "$DATA/load-data.json"
 k6() { # k6 <script> — exit code เก็บไว้ ไม่หยุด script (ตรวจ DB และรายงานให้ครบก่อน)
   docker run --rm --network "${PROJECT}_default" -v "$DATA:/data:ro" -v "$(pwd)/tools/load:/scripts:ro" -v "$OUT:/out" \
     -e BASE_URL=http://server:9000 -e LOAD_DATA=/data/load-data.json \
-    -e LOAD_BURST_RATE="$BURST_RATE" -e LOAD_BURST_DURATION="$BURST_DURATION" \
-    "$K6_IMAGE" run --quiet --summary-export "/out/$1.json" "/scripts/$1.js" || echo "$1: k6 exit $?" >>"$OUT/k6-failures.txt"
+    -e LOAD_BURST_RATE="$BURST_RATE" -e LOAD_BURST_DURATION="$BURST_DURATION" -e LOAD_FLASH_BURST="$FLASH_BURST" \
+    "$K6_IMAGE" run --quiet --summary-export "/out/$1.json" --console-output "/out/$1-console.log" "/scripts/$1.js" \
+    || echo "$1: k6 exit $?" >>"$OUT/k6-failures.txt"
+  grep -v checkout_k6_timing "$OUT/$1-console.log" 2>/dev/null || true # error/console อื่นของ k6 ยังเห็นใน log ของ job
 }
 rm -f "$OUT/k6-failures.txt"
 k6 flash-sale
@@ -76,13 +80,17 @@ MEMBERS="$(sql "SELECT count(DISTINCT customer_id) FROM group_buy_membership
 compose logs --no-color --no-log-prefix server worker >"$DATA/backend.log" 2>&1 || true
 node tools/load/lock-timing.js "$DATA/backend.log" "$OUT/lock-timing.jsonl" >"$OUT/lock-timing.md" \
   || echo "lock-timing: สรุปไม่สำเร็จ (ไม่ใช่ gate)" >"$OUT/lock-timing.md"
+# OPS-20a (AC-31): ช่วงเวลา (a)–(e) ต่อ checkout จาก console ของ k6 + log debug ของ middleware/hook
+node tools/load/checkout-timing.js "$DATA/backend.log" "$OUT/flash-sale-console.log" "$OUT/checkout-timing.jsonl" "$OUT/checkout-timing.json" \
+  >"$OUT/checkout-timing.md" || echo "checkout-timing: สรุปไม่สำเร็จ (ไม่ใช่ gate)" >"$OUT/checkout-timing.md"
 
 metric() { jq -r "($2) // \"-\"" "$OUT/$1.json" 2>/dev/null || echo "-"; }
 failures=0
 {
   echo "## OPS-4 load test ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
   echo
-  echo "flash: $FLASH_CUSTOMERS ลูกค้า, total_cap=$TOTAL_CAP, burst $BURST_RATE rps × $BURST_DURATION | join: $JOIN_CUSTOMERS ลูกค้า, กลุ่ม $GROUP_SIZE คน"
+  [ "$FLASH_BURST" = "0" ] && burst_desc="ปิด (LOAD_FLASH_BURST=0)" || burst_desc="$BURST_RATE rps × $BURST_DURATION"
+  echo "flash: $FLASH_CUSTOMERS ลูกค้า, total_cap=$TOTAL_CAP, burst $burst_desc | join: $JOIN_CUSTOMERS ลูกค้า, กลุ่ม $GROUP_SIZE คน"
   echo
   echo "| ตรวจ | คาดหวัง | ได้ | ผล |"
   echo "|---|---|---|---|"
@@ -108,8 +116,8 @@ failures=0
   echo "failures: $failures"
 } >"$OUT/report.md"
 cat "$OUT/report.md"
-cat "$OUT/lock-timing.md"
-[ -n "${GITHUB_STEP_SUMMARY:-}" ] && cat "$OUT/report.md" "$OUT/lock-timing.md" >>"$GITHUB_STEP_SUMMARY"
+cat "$OUT/lock-timing.md" "$OUT/checkout-timing.md"
+[ -n "${GITHUB_STEP_SUMMARY:-}" ] && cat "$OUT/report.md" "$OUT/lock-timing.md" "$OUT/checkout-timing.md" >>"$GITHUB_STEP_SUMMARY"
 if grep -q "^failures: 0$" "$OUT/report.md"; then
   echo "load test: ผ่าน"
 else
