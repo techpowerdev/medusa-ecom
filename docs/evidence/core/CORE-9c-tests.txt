@@ -3,9 +3,11 @@
 
 ## สิ่งที่เปลี่ยน
 - (a) ลบ `sleep(3000)` → `pollUntil` (timeout 30s, ทุก 200ms ผ่าน node:timers/promises) poll จน
-  `POST /store/search` ยังเจอ P, ไม่เจอ Q และ spy เห็น log "Processing product-option.deleted"
+  `POST /store/search` ยังเจอ P, ไม่เจอ Q และ spy เห็น log "Processing product-option.deleted" ครบ 3 บรรทัด
+  (option กลาง 1 + option ของ Q ที่ cascade 2) — แก้ตาม review #218
 - (b) ลบการ spy `logger_` (private ของ event bus) → spy `logger` ที่ export จาก `@medusajs/framework/logger`
-  + positive control (spy ถูกเรียก ≥ 1 ครั้ง และมี "Processing product-option.deleted" ≥ 1 บรรทัด) ก่อน assert ว่าไม่มี error
+  + positive control (spy ถูกเรียก ≥ 1 ครั้ง และมี "Processing product-option.deleted" = 3 บรรทัด) ก่อน assert ว่าไม่มี error;
+  spy ห่อด้วย try/finally + mockRestore() (review #218)
 - แก้ถ้อยคำกฎข้อ 82(b) ใน docs/spec/01-core-medusa.md ตามผล probe ด้านล่าง (session หลักอนุมัติ)
 
 ## Probe: logger ตัวไหนที่ event bus ใช้ (Medusa 2.22.1, test runner)
@@ -13,6 +15,11 @@
 - same          = eventBus.logger_ === container.resolve(ContainerRegistrationKeys.LOGGER) → false
 - ebIsReporter  = eventBus.logger_ === singleton logger ของ @medusajs/cli/dist/reporter (= @medusajs/framework/logger) → true
 - LOGGER ของ container คือ JSON logger จาก option `logger` ของ medusa-config.ts (src/lib/json-logger.ts)
+- สาเหตุ (เฉพาะ medusaIntegrationTestRunner, reviewer ยืนยันจาก source ใน review #218): medusa-test-runner.js:89-91 ตั้ง
+  LOGGER = logger ของ framework → appLoader.load() สร้าง module (event bus เก็บ logger ใน constructor,
+  medusa-module.js:285-292) → loaders/index.js:97-100 ตั้ง LOGGER = configDir.logger ทับภายหลัง
+  ใน production (medusa start/worker) initializeContainer ตั้ง LOGGER = configDir.logger ?? logger ก่อนโหลด module
+  event bus จึงใช้ JSON logger ตามปกติ
 
 ## Red 1: ทำตามถ้อยคำเดิมของกฎ 82(b) (spy LOGGER ของ container) + ย้อนการแก้ของ #200 (CORE-9c-red.log)
     ✕ AC-108: ... (31203 ms)
@@ -20,8 +27,8 @@
 → spy ไม่เห็น log ของ event bus เลย (positive control ไม่ผ่าน) แม้ stdout มี
   "Cannot read properties of undefined (reading 'product_id')" — แบบนี้จับ regression จาก log ไม่ได้
 
-## Red 2: โค้ดสุดท้าย (spy framework logger) + ย้อน resolve-product-ids.ts เป็นของก่อน #200 (a95e5ee) (CORE-9c-final-red.log)
-    ✕ AC-108: ลบ option ผ่าน admin API → ไม่มี log 'Cannot read properties of undefined' และยังค้นเจอ P (1046 ms)
+## Red 2: โค้ดสุดท้าย (spy framework logger) + ย้อน resolve-product-ids.ts เป็นของก่อน #200 (a95e5ee) (CORE-9c-fix-red.log, หลังแก้ review #218)
+    ✕ AC-108: ลบ option ผ่าน admin API → ไม่มี log 'Cannot read properties of undefined' และยังค้นเจอ P (1122 ms)
     - Array []
     + Array [
     +   "Cannot read properties of undefined (reading 'product_id')",
@@ -31,10 +38,10 @@
     Tests: 1 failed, 1 total
 → test ใหม่ยังจับ regression ได้ จากนั้นคืน resolve-product-ids.ts (diff กับ develop = ว่าง)
 
-## Green: โค้ดสุดท้าย + resolve-product-ids.ts ของ develop (CORE-9c-final-green.log)
+## Green: โค้ดสุดท้าย + resolve-product-ids.ts ของ develop (CORE-9c-fix-green.log, หลังแก้ review #218)
     PASS integration-tests/http/search-option-deleted.spec.ts
-    ✓ AC-108: ลบ option ผ่าน admin API → ไม่มี log 'Cannot read properties of undefined' และยังค้นเจอ P (1111 ms)
-    Tests: 1 passed, 1 total (Time 7.3 s; เดิมรอคงที่ 3 s ใน test)
+    ✓ AC-108: ลบ option ผ่าน admin API → ไม่มี log 'Cannot read properties of undefined' และยังค้นเจอ P (1002 ms)
+    Tests: 1 passed, 1 total (Time 7.5 s; เดิมรอคงที่ 3 s ใน test)
     log "An error occurred while processing" = 0 บรรทัด
 
 ## AC-118 (grep)

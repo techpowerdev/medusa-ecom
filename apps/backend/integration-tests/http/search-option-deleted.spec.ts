@@ -92,51 +92,58 @@ medusaIntegrationTestRunner({
       )
       await container.resolve(Modules.SEARCH).reindex({ index: "product" })
 
-      // event bus ของ Medusa 2.22.1 log (รวม error ของ subscriber) ผ่าน singleton `logger` ของ framework
-      // ไม่ใช่ LOGGER ของ container (คนละ instance เมื่อ config ตั้ง logger เอง) — spy ที่ export สาธารณะ ไม่แตะ property private
+      // ใน medusaIntegrationTestRunner event bus log (รวม error ของ subscriber) ผ่าน singleton `logger` ของ framework
+      // ไม่ใช่ LOGGER ของ container (ถูกตั้งทับด้วย logger ของ medusa-config หลังโหลด module — spec 01 กฎข้อ 82(b))
+      // spy ที่ export สาธารณะ ไม่แตะ property private
       const spies = (["info", "warn", "error"] as const).map((level) => jest.spyOn(logger, level))
-      const logged = () =>
-        spies
-          .flatMap((spy) => spy.mock.calls.flat())
-          .map((arg) => String((arg as { message?: unknown })?.message ?? arg))
+      try {
+        const logged = () =>
+          spies
+            .flatMap((spy) => spy.mock.calls.flat())
+            .map((arg) => String((arg as { message?: unknown })?.message ?? arg))
+        const optionDeletedLines = () =>
+          logged().filter((line) => line.startsWith("Processing product-option.deleted")).length
+        // event product-option.deleted ที่คาด: option กลาง 1 + option ของ Q ที่ cascade 2 (ไซซ์, สี)
+        // (เอา option ออกจาก P ส่งแค่ product.updated — ดู docs/evidence/core/CORE-9b-tests.txt)
+        const OPTION_DELETED_EVENTS = 3
 
-      // 1) เอา option "สี" ออกจาก P (option exclusive ที่ไม่มีสินค้าผูกจะถูก soft delete)
-      const color = p.options.find((option) => option.title === "สี")!
-      await call(() =>
-        api.post(`/admin/products/${p.id}/options/batch`, { remove: [color.id] }, adminHeaders)
-      )
-      // 2) ลบ option กลาง → product-option.deleted ที่ไม่มี relation กับสินค้าใด
-      await call(() => api.delete(`/admin/product-options/${standalone.id}`, adminHeaders))
-      // 3) ลบสินค้า Q → Medusa cascade ส่ง product-option.deleted ของ option ของ Q ที่ถูกตัด link แล้ว
-      await call(() => api.delete(`/admin/products/${q.id}`, adminHeaders))
-
-      const search = (text: string) =>
-        call<{ results: { hits: { id: string }[] }[] }>(() =>
-          api.post(
-            "/store/search",
-            { queries: [{ entity: "product", filters: { q: text }, pagination: { take: 20, skip: 0 } }] },
-            storeHeaders
-          )
-        ).then((data) => data.results[0].hits.map((hit) => hit.id))
-
-      // ingestion รันแบบ async ผ่าน event bus — poll จน P ยังค้นเจอ, Q หายจาก index และ event ลบ option ถูกประมวลผลแล้ว
-      await pollUntil("ingestion ของ event ลบ option/สินค้า", async () => {
-        const processed = logged().some((line) => line.startsWith("Processing product-option.deleted"))
-        return (
-          processed &&
-          (await search(TITLE_P)).includes(p.id) &&
-          !(await search("สินค้าที่จะถูกลบ")).includes(q.id)
+        // 1) เอา option "สี" ออกจาก P (option exclusive ที่ไม่มีสินค้าผูกจะถูก soft delete)
+        const color = p.options.find((option) => option.title === "สี")!
+        await call(() =>
+          api.post(`/admin/products/${p.id}/options/batch`, { remove: [color.id] }, adminHeaders)
         )
-      })
+        // 2) ลบ option กลาง → product-option.deleted ที่ไม่มี relation กับสินค้าใด
+        await call(() => api.delete(`/admin/product-options/${standalone.id}`, adminHeaders))
+        // 3) ลบสินค้า Q → Medusa cascade ส่ง product-option.deleted ของ option ของ Q ที่ถูกตัด link แล้ว
+        await call(() => api.delete(`/admin/products/${q.id}`, adminHeaders))
 
-      // positive control: spy จับ log ของ event bus ได้จริง ก่อน assert ว่าไม่มีบรรทัด error
-      expect(spies.some((spy) => spy.mock.calls.length > 0)).toBe(true)
-      expect(
-        logged().filter((line) => line.startsWith("Processing product-option.deleted")).length
-      ).toBeGreaterThanOrEqual(1)
-      expect(logged().filter((line) => line.includes("Cannot read properties of undefined"))).toEqual([])
-      expect(await search(TITLE_P)).toContain(p.id)
-      expect(await search("สินค้าที่จะถูกลบ")).not.toContain(q.id)
+        const search = (text: string) =>
+          call<{ results: { hits: { id: string }[] }[] }>(() =>
+            api.post(
+              "/store/search",
+              { queries: [{ entity: "product", filters: { q: text }, pagination: { take: 20, skip: 0 } }] },
+              storeHeaders
+            )
+          ).then((data) => data.results[0].hits.map((hit) => hit.id))
+
+        // ingestion รันแบบ async ผ่าน event bus — poll จน event ลบ option ถูกประมวลผลครบ, P ยังค้นเจอ และ Q หายจาก index
+        await pollUntil("ingestion ของ event ลบ option/สินค้า", async () => {
+          return (
+            optionDeletedLines() >= OPTION_DELETED_EVENTS &&
+            (await search(TITLE_P)).includes(p.id) &&
+            !(await search("สินค้าที่จะถูกลบ")).includes(q.id)
+          )
+        })
+
+        // positive control: spy จับ log ของ event bus ได้จริง ก่อน assert ว่าไม่มีบรรทัด error
+        expect(spies.some((spy) => spy.mock.calls.length > 0)).toBe(true)
+        expect(optionDeletedLines()).toBe(OPTION_DELETED_EVENTS)
+        expect(logged().filter((line) => line.includes("Cannot read properties of undefined"))).toEqual([])
+        expect(await search(TITLE_P)).toContain(p.id)
+        expect(await search("สินค้าที่จะถูกลบ")).not.toContain(q.id)
+      } finally {
+        spies.forEach((spy) => spy.mockRestore())
+      }
     })
   },
 })
