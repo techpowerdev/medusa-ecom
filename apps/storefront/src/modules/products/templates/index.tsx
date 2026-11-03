@@ -1,9 +1,7 @@
 import React, { Suspense } from "react"
 
-import { evoucherPoolOf, voucherVariantsOf } from "@lib/util/evoucher"
-import EvoucherPartnerBlock, {
-  EvoucherPartnerBlockView,
-} from "@modules/evoucher/components/partner-block"
+import { voucherVariantsOf } from "@lib/util/evoucher"
+import EvoucherPartnerBlock from "@modules/evoucher/components/partner-block"
 import VariantImageGallery from "@modules/products/components/image-gallery/variant-image-gallery"
 import ProductActions from "@modules/products/components/product-actions"
 import ProductTabs from "@modules/products/components/product-tabs"
@@ -40,16 +38,8 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
         <div className="flex flex-col small:sticky small:top-48 small:py-0 small:max-w-[300px] w-full py-8 gap-y-6">
           <ProductInfo product={product} />
           {voucherVariants && (
-            // หน้าเป็น static: `?v_id=` อ่านได้หลัง hydrate — ระหว่างนั้นแสดงของ variant ตั้งต้น
-            <Suspense
-              fallback={
-                <EvoucherPartnerBlockView
-                  pool={evoucherPoolOf({ variants: voucherVariants }, null)}
-                />
-              }
-            >
-              <EvoucherPartnerBlock variants={voucherVariants} />
-            </Suspense>
+            // EV-7e (กฎข้อ 29c): บล็อกอ่าน `?v_id=` หลัง mount เอง — ไม่ห่อ Suspense (fallback ทำให้บล็อกซ้อน)
+            <EvoucherPartnerBlock variants={voucherVariants} />
           )}
           <ProductTabs product={product} />
         </div>

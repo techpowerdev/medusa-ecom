@@ -1,0 +1,53 @@
+EV-7e — หน้า vouchers แบ่งหน้า + support_contact, บล็อก partner บน PDP, ลิงก์ partner เฉพาะ http(s) (spec 02 กฎข้อ 26, 29; AC-43)
+วันที่: 2026-11-03  node v24.12.0  base: origin/develop db37265
+
+== Red (ก่อนเขียนโค้ด): vitest ของ test ใหม่ ==
+14 failed — safeHttpUrl/vouchersPagination/vouchersHasNext/partnerBlockPool is not a function;
+partner block: HTML server แสดง Partner B (อ่าน v_id ตอน prerender), บล็อกยังแสดงเมื่อ v_id ถูกลบ, render <a href="javascript:...">;
+PDP: generateMetadata ไม่ส่ง extraFields (argument ต่างจากหน้า); vouchers page: เรียก listCustomerEvouchers() ไม่ใช่ (20, offset), ไม่มี voucher-support-contact
+
+== Green: vitest (test ของ task นี้, verbose) ==
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > คืน pool ของ variant ที่เลือกผ่าน v_id
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > variant ที่เลือกไม่มี pool → null แม้ variant อื่นมี
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > ไม่มี v_id → ใช้ variant ตั้งต้นแบบเดียวกับ ProductActions (ตัวแรกที่มีของ)
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > v_id ที่ไม่มีในสินค้า → ใช้ variant ตั้งต้น
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > สินค้าปกติ (ไม่มี field evoucher_pool) → null
+ ✓ src/lib/util/evoucher.test.ts > evoucherPoolOf > ขอ field ของ pool/partner ทีละ path ตามกฎข้อ 23 เท่านั้น (ไม่ขอ code)
+ ✓ src/lib/util/evoucher.test.ts > voucherVariantsOf > สินค้าที่ไม่มี variant ใดมี pool → null (ไม่ render บล็อก)
+ ✓ src/lib/util/evoucher.test.ts > voucherVariantsOf > ส่งเฉพาะ field ที่บล็อกใช้ไปยัง client component
+ ✓ src/lib/util/evoucher.test.ts > safeHttpUrl (กฎข้อ 26) > คืน URL เดิมเฉพาะ scheme http/https
+ ✓ src/lib/util/evoucher.test.ts > safeHttpUrl (กฎข้อ 26) > scheme อื่น ค่าที่ parse ไม่ได้ หรือค่าว่าง → null
+ ✓ src/lib/util/evoucher.test.ts > vouchersPagination (กฎข้อ 29a) > หน้าละ 20 รายการ และคำนวณ offset จาก ?page=
+ ✓ src/lib/util/evoucher.test.ts > vouchersPagination (กฎข้อ 29a) > ?page= ที่ไม่ใช่จำนวนเต็มบวก → หน้า 1
+ ✓ src/lib/util/evoucher.test.ts > vouchersPagination (กฎข้อ 29a) > มีหน้าก่อน/ถัดไปตาม count
+ ✓ src/lib/util/evoucher.test.ts > partnerBlockPool (กฎข้อ 29c) > ก่อน ProductActions เขียน v_id ลง URL → variant ที่ ProductActions จะเลือก (v_id ที่มีจริง ไม่งั้นตัวตั้งต้น)
+ ✓ src/lib/util/evoucher.test.ts > partnerBlockPool (กฎข้อ 29c) > หลัง sync แล้ว → เฉพาะ variant ตาม v_id; ไม่ได้เลือก variant ใด (ไม่มี v_id) → null
+ ✓ src/ev-7e-pdp-fields.test.ts > PDP fields (กฎข้อ 29c) > generateMetadata กับหน้าเรียก listProducts ด้วย argument เดียวกัน (รวม field ของ pool/partner)
+ ✓ src/ev-7e-vouchers-page.test.ts > หน้า vouchers แบ่งหน้า (กฎข้อ 29a) > หน้าแรกขอ limit 20 offset 0 และมีปุ่ม vouchers-next เมื่อ count > 20
+ ✓ src/ev-7e-vouchers-page.test.ts > หน้า vouchers แบ่งหน้า (กฎข้อ 29a) > ?page=2 ขอ offset 20, มี vouchers-prev ไปหน้า 1 และไม่มี vouchers-next
+ ✓ src/ev-7e-vouchers-page.test.ts > หน้า vouchers แบ่งหน้า (กฎข้อ 29a) > ไม่เกิน 20 รายการ → ไม่มีปุ่มแบ่งหน้า
+ ✓ src/ev-7e-vouchers-page.test.ts > voucher-card (กฎข้อ 29b, 26) > แสดง support_contact เมื่อ partner มี และไม่แสดงเมื่อไม่มี
+ ✓ src/ev-7e-vouchers-page.test.ts > voucher-card (กฎข้อ 29b, 26) > ไม่มี <a> ที่ href ขึ้นต้น javascript: บนหน้า
+ ✓ src/ev-7e-partner-block.test.ts > EvoucherPartnerBlock (กฎข้อ 29c) > HTML จาก server: บล็อกเดียวของ variant ตั้งต้น และไม่อ่าน search params ระหว่าง prerender
+ ✓ src/ev-7e-partner-block.test.ts > EvoucherPartnerBlock (กฎข้อ 29c) > หลัง mount อ่าน v_id จาก URL → แสดงของ variant นั้น เหลือบล็อกเดียว
+ ✓ src/ev-7e-partner-block.test.ts > EvoucherPartnerBlock (กฎข้อ 29c) > ยังไม่มี v_id (ProductActions ยังไม่ sync) → variant ตั้งต้น; หลังลูกค้าเลือก option ไม่ครบ (v_id ถูกลบ) → ไม่แสดงบล็อก
+ ✓ src/ev-7e-partner-block.test.ts > EvoucherPartnerBlock (กฎข้อ 29c) > เลือก variant ที่ไม่มี pool → ไม่แสดงบล็อก
+ ✓ src/ev-7e-partner-block.test.ts > ลิงก์/รูปของ partner เฉพาะ http(s) (กฎข้อ 26, 29d) > terms_url javascript: และ logo_url data: (ข้อมูลเก่า) → ไม่ render <a>/<img>
+ ✓ src/ev-7e-partner-block.test.ts > ลิงก์/รูปของ partner เฉพาะ http(s) (กฎข้อ 26, 29d) > https → render ลิงก์และรูปตามเดิม
+ Test Files  4 passed (4)
+      Tests  27 passed (27)
+
+== vitest ทั้งชุดของ storefront ==
+ Test Files  55 passed (55)
+      Tests  608 passed (608)
+
+== Playwright e2e (chromium, storefront prod build :8135, backend medusa start :9135, DB medusa_ev7e) ==
+  ✓  2 [chromium] › e2e/ev-7e-vouchers-partner.spec.ts:30:5 › AC-43: vouchers แบ่งหน้า 20 + support_contact, ลิงก์ javascript: ไม่ถูก render, PDP บล็อกเดียวระหว่างโหลด (3.0s)
+  ✓  1 [chromium] › e2e/evoucher-storefront.spec.ts:16:5 › AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไทย ส่วนสินค้าปกติไม่มี (4.3s)
+  ✓  3 [chromium] › e2e/evoucher-storefront.spec.ts:40:5 › AC-6 + AC-36: บัตรกำนัลของฉันแสดงเฉพาะ code ของตนเอง พร้อมปุ่มคัดลอก (3.1s)
+  3 passed (8.4s)
+
+== pnpm lint / typecheck / build ==
+pnpm lint: exit 0 (0 errors; warning เดิมของไฟล์อื่น ไม่มีจากไฟล์ของ task นี้)
+pnpm --filter storefront typecheck: exit 0; pnpm --filter backend typecheck: exit 0
+next build (storefront): exit 0 — /[countryCode]/products/[handle] ยังเป็น ○ (static) ไม่มี error useSearchParams/Suspense
