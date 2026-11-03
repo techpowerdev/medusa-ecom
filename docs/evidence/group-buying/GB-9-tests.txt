@@ -1,0 +1,74 @@
+# GB-9 — ผล test (2026-11-03, worktree feat/GB-9-payment-alert-recheck จาก origin/develop e7c59a2, node v24.12.0)
+
+## Red (ก่อนแก้)
+- unit membership-payment.unit.spec.ts: shouldSendPaidWithoutOrderAlert / paidWithoutOrderAlertKey is not a function (8 failed)
+- unit ops-runbook.unit.spec.ts: ไม่มีขั้นตรวจ draft ก่อนขั้น refund และไม่มี /app/orders/<order_id> (1 failed)
+- integration group-buy-payment.spec.ts: 2 failed — idempotency_key
+    Expected: "gbmem_01M6GES6KWB8YMYD60RK8QNGKK:convert_failed"
+    Received: "group-buy-paid-without-order-gbmem_01M6GES6KWB8YMYD60RK8QNGKK"
+    Expected: "gbmem_01M6GES7NEGPKKGKRZ82DGC9X3:membership_cancelled"
+    Received: "group-buy-paid-without-order-gbmem_01M6GES7NEGPKKGKRZ82DGC9X3"
+
+## Green — unit (membership-payment + ops-runbook, --verbose)
+    ✓ มีหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" (2 ms)
+    ✓ อ้าง alert และ code ของ guard (1 ms)
+    ✓ ระบุขั้นตอน: ค้น PI ใน Stripe dashboard, ยืนยันไม่มี order, refund เต็มจำนวน, แจ้งลูกค้า, บันทึก incident
+    ✓ มีกรณีไม่มี alert: ให้ลูกค้าเปิดหน้า checkout อีกครั้ง (storefront เรียก complete ตาม AC-12b)
+    ✓ กรณีไม่มี alert ที่ refund ใน Stripe: ปิดทางที่ cart จะถูก complete ทีหลัง (review #97) (1 ms)
+    ✓ กรณีมี alert: ตรวจ Refunds ของ PI ก่อน และถ้าพบ payment ใน Medusa ให้ใช้ script ห้ามใช้ dashboard (review #97 r3)
+    ✓ AC-16b กรณีไม่มี alert: ตรวจก่อน refund แล้ว refund ผ่าน script refund-orphan-payment ไม่ใช่ Stripe dashboard (ADR-015 ภาคผนวก 2)
+    ✓ มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้)
+    ✓ ไม่แนะนำแก้ DB ด้วย SQL ตรง
+    ✓ กรณี group buy: alert GROUP_BUY_PAID_WITHOUT_ORDER ทั้งสองสาเหตุ และขั้นตอนที่ admin ทำได้ (2 ms)
+    ✓ กรณี group buy: ขั้นตรวจ draft/membership มาก่อนขั้น refund และมี URL /app/orders/
+    ✓ มีบรรทัด OPS_ALERT_EMAIL= (1 ms)
+    ✓ มีหัวข้อ "Alerts"
+    ✓ มีกฎที่ match สตริง `Error running event bus worker` กรองด้วย level error และ worker_mode worker
+    ✓ ระบุขั้นตอนตอบสนอง: restart worker
+    ✓ 699.9999999999999999999983 → 700 (2 ms)
+    ✓ 699.994999 → 699.99
+    ✓ 699.995 → 700
+    ✓ 0.005 → 0.01
+    ✓ 350 → 350
+    ✓ accepts Medusa raw amount objects
+    ✓ awaiting_payment with ["completed"] = mark_paid (1 ms)
+    ✓ awaiting_payment with ["canceled","completed"] = mark_paid
+    ✓ awaiting_payment with ["partially_captured"] = noop
+    ✓ awaiting_payment with ["authorized"] = noop
+    ✓ paid with ["completed"] = noop
+    ✓ cancelled with ["completed"] = orphan
+    ✓ joined with ["completed"] = orphan
+    ✓ expires an unpaid awaiting_payment membership past its deadline
+    ✓ keeps it before the deadline or without a deadline
+    ✓ keeps it when a collection is authorized (payment.captured subscriber settles it)
+    ✓ keeps it when a collection is partially_authorized (payment.captured subscriber settles it)
+    ✓ keeps it when a collection is partially_captured (payment.captured subscriber settles it)
+    ✓ keeps it when a collection is completed (payment.captured subscriber settles it)
+    ✓ ignores joined memberships
+    ✓ ignores paid memberships
+    ✓ ignores cancelled memberships
+    ✓ convert_failed + membership awaiting_payment + is_draft_order=false → false
+    ✓ convert_failed + membership paid + is_draft_order=true → false
+    ✓ convert_failed + membership paid + is_draft_order=false → false
+    ✓ convert_failed + membership awaiting_payment + is_draft_order=true → true
+    ✓ membership_cancelled + membership cancelled + is_draft_order=true → true
+    ✓ membership_cancelled + membership awaiting_payment + is_draft_order=true → false
+    ✓ membership_cancelled + membership paid + is_draft_order=false → false
+    ✓ = <membership_id>:<reason> (membership เดียวเจอทั้งสองเหตุได้ 2 ฉบับ)
+Tests:       45 passed, 45 total
+
+## Green — integration:http group-buy-payment.spec.ts (PORT=9103)
+    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1110 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1274 ms)
+    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (993 ms)
+    ✓ out of stock at convert: convertDraftOrderWorkflow fails → membership compensated back to awaiting_payment, order stays draft (983 ms)
+    ✓ orphan: payment captured after the membership was cancelled → ops alert once, membership stays cancelled (880 ms)
+    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (1619 ms)
+Tests:       6 passed, 6 total
+
+## test:unit ทั้งชุด
+Test Suites: 72 passed, 72 total
+Tests:       720 passed, 720 total
+
+## lint / typecheck / build
+pnpm lint: 0 errors (warning เดิมของ storefront); pnpm typecheck: 0 error; pnpm --filter backend build: สำเร็จ

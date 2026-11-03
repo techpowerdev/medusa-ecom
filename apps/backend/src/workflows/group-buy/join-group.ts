@@ -288,6 +288,7 @@ export const createGroupDraftOrderStep = createStep(
         "email",
         "sales_channel_id",
         "currency_code",
+        "metadata",
         "shipping_address.*",
         "billing_address.*",
         "items.variant_id",
@@ -304,6 +305,8 @@ export const createGroupDraftOrderStep = createStep(
       filters: { id: input.cart_id },
     })
     const cart = data[0] as any
+    // spec 05 กฎ 41a (AF-16): token ของ affiliate ไปกับ draft order — ตรวจลายเซ็นตอน attribution หลังแปลง
+    const affiliateToken = cart.metadata?.affiliate_token
     const { result: order } = await createOrderWorkflow(container).run({
       input: {
         is_draft_order: true,
@@ -334,6 +337,9 @@ export const createGroupDraftOrderStep = createStep(
         metadata: {
           group_buy_group_id: input.group_id,
           group_buy_membership_id: input.membership_id,
+          ...(affiliateToken === undefined || affiliateToken === null || affiliateToken === ""
+            ? {}
+            : { affiliate_token: affiliateToken }),
         },
       } as any,
     })

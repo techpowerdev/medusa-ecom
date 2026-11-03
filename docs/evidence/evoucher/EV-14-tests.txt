@@ -1,0 +1,52 @@
+# EV-14 (spec 02 AC-40, กฎข้อ 26) — ผลการทดสอบ 2026-11-03 17:22 +0700
+
+## Red (ก่อนแก้ validator)
+### integration-tests/http/evoucher-partner-url.spec.ts
+```
+    ✕ create ด้วย terms_url = javascript:alert(1) → 400 invalid_data และไม่บันทึก (568 ms)
+    ✕ create ด้วย logo_url = data:text/html,x → 400 invalid_data และไม่บันทึก (550 ms)
+    ✕ create ด้วย terms_url = vbscript:msgbox(1) → 400 invalid_data และไม่บันทึก (192 ms)
+    ✕ create ด้วย logo_url = ftp://example.com/logo.png → 400 invalid_data และไม่บันทึก (190 ms)
+    ✕ update ด้วย terms_url = javascript:alert(1) → 400 invalid_data และค่าเดิมไม่เปลี่ยน (176 ms)
+    ✕ update ด้วย logo_url = data:text/html,x → 400 invalid_data และค่าเดิมไม่เปลี่ยน (205 ms)
+    ✕ update ด้วย terms_url = vbscript:msgbox(1) → 400 invalid_data และค่าเดิมไม่เปลี่ยน (203 ms)
+    ✕ update ด้วย logo_url = ftp://example.com/logo.png → 400 invalid_data และค่าเดิมไม่เปลี่ยน (216 ms)
+    ✓ รับ http/https และ null ได้ทั้งสร้างและแก้ (213 ms)
+Test Suites: 1 failed, 1 total
+Tests:       8 failed, 1 passed, 9 total
+```
+
+## Green
+### integration-tests/http/evoucher-partner-url.spec.ts
+```
+PASS integration-tests/http/evoucher-partner-url.spec.ts (9.854 s)
+    ✓ create ด้วย terms_url = javascript:alert(1) → 400 invalid_data และไม่บันทึก (363 ms)
+    ✓ create ด้วย logo_url = data:text/html,x → 400 invalid_data และไม่บันทึก (355 ms)
+    ✓ create ด้วย terms_url = vbscript:msgbox(1) → 400 invalid_data และไม่บันทึก (296 ms)
+    ✓ create ด้วย logo_url = ftp://example.com/logo.png → 400 invalid_data และไม่บันทึก (209 ms)
+    ✓ update ด้วย terms_url = javascript:alert(1) → 400 invalid_data และค่าเดิมไม่เปลี่ยน (207 ms)
+    ✓ update ด้วย logo_url = data:text/html,x → 400 invalid_data และค่าเดิมไม่เปลี่ยน (253 ms)
+    ✓ update ด้วย terms_url = vbscript:msgbox(1) → 400 invalid_data และค่าเดิมไม่เปลี่ยน (286 ms)
+    ✓ update ด้วย logo_url = ftp://example.com/logo.png → 400 invalid_data และค่าเดิมไม่เปลี่ยน (204 ms)
+    ✓ รับ http/https และ null ได้ทั้งสร้างและแก้ (185 ms)
+Test Suites: 1 passed, 1 total
+Tests:       9 passed, 9 total
+```
+### evoucher-partner-url.spec.ts + evoucher-admin.spec.ts (regression ของ partner CRUD เดิม)
+```
+PASS integration-tests/http/evoucher-partner-url.spec.ts (8.561 s)
+PASS integration-tests/http/evoucher-admin.spec.ts (10.132 s)
+Test Suites: 2 passed, 2 total
+Tests:       22 passed, 22 total
+```
+### pnpm --filter backend test:unit
+```
+Test Suites: 72 passed, 72 total
+Tests:       711 passed, 711 total
+```
+### pnpm lint && pnpm typecheck && pnpm --filter backend build
+```
+lint: 0 errors (storefront 31 warnings เดิม ไม่เกี่ยวกับ task นี้)
+typecheck: backend + storefront Done
+build: Backend build completed successfully / Frontend build completed successfully
+```

@@ -1,5 +1,6 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, defineFileConfig } from "@medusajs/framework/utils"
+import { scheduledJobsDisabled } from "../lib/scheduled-jobs"
 import { bangkokDateKey, expiryCutoff } from "../modules/evoucher/utils/expiry"
 import {
   EvoucherExpiryPoolResult,
@@ -52,3 +53,6 @@ export const config = {
   // 01:00 เวลาไทย เมื่อ server ใช้ UTC (container ของ prod)
   schedule: "0 18 * * *",
 }
+
+// OPS-15b (spec 07 AC-26): ไม่ลงทะเบียน cron ใน integration test — ดู src/lib/scheduled-jobs.ts
+defineFileConfig({ isDisabled: () => scheduledJobsDisabled() })
