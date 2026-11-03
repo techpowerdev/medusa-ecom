@@ -1,3 +1,4 @@
+import { useDate } from "@medusajs/dashboard/hooks"
 import {
   Badge,
   Button,
@@ -21,7 +22,6 @@ import {
   CodeStatus,
   evoucherApi,
   evoucherKeys,
-  formatDate,
   MaskedCode,
   RevealedCode,
   STATUS_COLOR,
@@ -33,6 +33,7 @@ const ALL = "all"
 // รายการ code แบบ masked (AC-8); ค่าจริงดูได้ทีละ code ผ่าน reveal ซึ่ง backend เขียน audit ทุกครั้ง
 export const CodesTable = ({ poolId }: { poolId: string }) => {
   const prompt = usePrompt()
+  const { getFullDate } = useDate()
   const [status, setStatus] = useState<CodeStatus | typeof ALL>(ALL)
   const [revealed, setRevealed] = useState<RevealedCode | null>(null)
   const [pagination, setPagination] = useState<DataTablePaginationState>({
@@ -80,7 +81,10 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
       }),
       columnHelper.accessor("expires_at", {
         header: "Expires",
-        cell: ({ getValue }) => formatDate(getValue()),
+        cell: ({ getValue }) => {
+          const value = getValue()
+          return value ? getFullDate({ date: value }) : "-"
+        },
       }),
       columnHelper.accessor("order_id", {
         header: "Order",
@@ -111,7 +115,7 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
         ),
       }),
     ],
-    [prompt, reveal]
+    [prompt, reveal, getFullDate]
   )
 
   const table = useDataTable({
@@ -183,7 +187,8 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
                   <Text className="font-mono">{revealed.pin ?? "-"}</Text>
                 </div>
                 <Text size="small" className="text-ui-fg-subtle">
-                  Expires {formatDate(revealed.expires_at)} · This reveal was recorded in the audit log.
+                  Expires {revealed.expires_at ? getFullDate({ date: revealed.expires_at }) : "-"} · This reveal was
+                  recorded in the audit log.
                 </Text>
               </>
             )}

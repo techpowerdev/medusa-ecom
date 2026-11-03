@@ -1,4 +1,4 @@
-// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-5 (ADM-2a)
+// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a)
 import { readdirSync, readFileSync } from "fs"
 import { join } from "path"
 
@@ -92,5 +92,74 @@ describe("รายการข้อยกเว้นของ AC-4 (spec 08)"
     expect(isAc4Exception("lib/affiliate-format.ts")).toBe(true)
     expect(isAc4Exception("widgets/order-evouchers.tsx")).toBe(false)
     expect(isAc4Exception("components/group-buy/group-members.tsx")).toBe(false)
+  })
+})
+
+// spec 08 กฎ 4–6: pattern ต้องห้ามนอกรายการข้อยกเว้น (กันกดซ้ำด้วย createSingleFlight, วันเวลาด้วย useDate/DatePicker,
+// เงินด้วย getLocaleAmount)
+const FORBIDDEN: [string, RegExp][] = [
+  ["useRef(false)", /useRef\(\s*false\s*\)/],
+  ["datetime-local", /datetime-local/],
+  ["ictToIso", /\bictToIso\b/],
+  ["isoToIct", /\bisoToIct\b/],
+  ["timeZone:", /\btimeZone\s*:/],
+  ["toLocaleString(", /\.toLocaleString\(/],
+  ["toLocaleDateString(", /\.toLocaleDateString\(/],
+  ["Intl.DateTimeFormat(", /\bIntl\.DateTimeFormat\(/],
+  ["Intl.NumberFormat(", /\bIntl\.NumberFormat\(/],
+]
+
+describe("pattern ต้องห้ามของกฎ 4–6 (spec 08 AC-4)", () => {
+  const checked = adminFiles.filter((f) => !isAc4Exception(f))
+
+  it("ตรวจไฟล์ที่ ADM-2a/2b ปรับแล้ว", () => {
+    expect(checked).toEqual(
+      expect.arrayContaining([
+        "widgets/flash-sale-options.tsx",
+        "widgets/order-evouchers.tsx",
+        "components/group-buy/group-members.tsx",
+        "routes/group-buying/[id]/page.tsx",
+        "lib/evoucher.ts",
+        "lib/group-buy.ts",
+      ])
+    )
+  })
+
+  it.each(checked)("%s ไม่มี pattern ต้องห้าม", (file) => {
+    const src = read(file)
+    const found = FORBIDDEN.filter(([, re]) => re.test(src)).map(([name]) => name)
+    expect(found).toEqual([])
+  })
+})
+
+describe("กันกดซ้ำด้วย createSingleFlight (spec 08 กฎ 4, ADM-2b)", () => {
+  it.each([
+    "widgets/flash-sale-options.tsx",
+    "widgets/order-evouchers.tsx",
+    "components/group-buy/group-members.tsx",
+    "routes/group-buying/[id]/page.tsx",
+  ])("%s ใช้ useState(createSingleFlight) และไม่มี useRef", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    expect(src).not.toMatch(/\buseRef\b/)
+  })
+})
+
+describe("แสดงวันเวลาด้วย useDate (spec 08 AC-3, ADM-2b)", () => {
+  it.each(["lib/evoucher.ts", "lib/group-buy.ts"])("%s ไม่มี formatDate/formatDateTime", (file) => {
+    expect(read(file)).not.toMatch(/\bformatDate(Time)?\b/)
+  })
+
+  it.each([
+    "widgets/order-evouchers.tsx",
+    "components/evoucher/codes-table.tsx",
+    "components/group-buy/group-members.tsx",
+    "components/group-buy/groups-section.tsx",
+    "routes/group-buying/page.tsx",
+    "routes/group-buying/[id]/page.tsx",
+  ])("%s (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import\s*{[^}]*\buseDate\b[^}]*}\s*from\s*["']@medusajs\/dashboard\/hooks["']/)
+    expect(src).not.toMatch(/\bformatDate(Time)?\b/)
   })
 })
