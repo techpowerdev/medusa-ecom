@@ -10,7 +10,7 @@ import {
 } from "@medusajs/medusa/core-flows"
 import { testProvidersGuarded } from "../lib/prod-guards"
 import { upsertFlashSaleConfigWorkflow } from "../workflows/flash-sale/upsert-flash-sale-config"
-import { createGroupBuyCampaignWorkflow, type CreateGroupBuyCampaignInput } from "../workflows/group-buy/campaign"
+import { createGroupBuyCampaignWorkflow } from "../workflows/group-buy/campaign"
 import { setGroupBuyCampaignStatusWorkflow } from "../workflows/group-buy/campaign-status"
 import { createGroupWorkflow } from "../workflows/group-buy/create-group"
 import { getPublishableKey } from "./print-publishable-key"
@@ -139,7 +139,7 @@ export async function seedLoad(container: MedusaContainer, opts: SeedLoadOptions
         // spec 04 กฎข้อ 30: 1 แคมเปญ = 1 สินค้า (scope ระดับ product ไม่ใช่ variant) — สินค้านี้มี variant เดียว
         target_rules: [{ attribute: "items.product.id", operator: "in", values: [groupProductId] }],
       },
-    } as CreateGroupBuyCampaignInput,
+    },
   })
   await setGroupBuyCampaignStatusWorkflow(container).run({ input: { id: gbCampaign.id, status: "active" } })
   const { result: group } = await createGroupWorkflow(container).run({

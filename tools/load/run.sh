@@ -13,6 +13,8 @@ PROJECT="${LOAD_PROJECT:-loadtest}"
 case "$PROJECT" in medusa-ecom*) echo "LOAD_PROJECT=$PROJECT ใช้ไม่ได้ (ชนกับ project ของ dev)" >&2; exit 2 ;; esac
 unset DATABASE_URL REDIS_URL
 export SERVER_PORT="${SERVER_PORT:-9106}"
+# OPS-17 (AC-28): tag ของ image แยกจาก `local` ของ dev — `compose up --build` จะไม่ tag ทับ image prod-like ในเครื่อง
+export IMAGE_TAG="${IMAGE_TAG:-load}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$(openssl rand -hex 16)}"
 export JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 export COOKIE_SECRET="${COOKIE_SECRET:-$(openssl rand -hex 32)}"
@@ -37,7 +39,17 @@ OUT="$(pwd)/${LOAD_OUT:-tools/load/out}"
 DATA="$(mktemp -d)" # token ของลูกค้าทดสอบ — ไม่อยู่ใน OUT (artifact)
 
 compose() { docker compose -p "$PROJECT" -f docker-compose.prod.yml "$@"; }
-cleanup() { rm -rf "$DATA"; [ -n "${KEEP_UP:-}" ] || compose down -v --remove-orphans >/dev/null 2>&1 || true; }
+REPORTED=""
+# OPS-17 (follow-up review #220, AC-33): script หยุดกลางทาง (set -e) → พิมพ์ report ที่มีลง job log ก่อน แล้วตรวจ OUT
+# (ลบไฟล์ที่มี JWT/setup_data ก่อน step upload artifact) — exit code เดิมของ script คงไว้
+cleanup() {
+  if [ -d "$OUT" ]; then
+    [ -n "$REPORTED" ] || cat "$OUT/report.md" "$OUT/lock-timing.md" "$OUT/checkout-timing.md" 2>/dev/null || true
+    node tools/load/artifact-guard.js scan "$OUT" || true
+  fi
+  rm -rf "$DATA"
+  [ -n "${KEEP_UP:-}" ] || compose down -v --remove-orphans >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 mkdir -p "$OUT"
 chmod 777 "$OUT" # k6 ใน container รันเป็น user อื่น
@@ -121,6 +133,7 @@ failures=0
 } >"$OUT/report.md"
 cat "$OUT/report.md"
 cat "$OUT/lock-timing.md" "$OUT/checkout-timing.md"
+REPORTED=1
 [ -n "${GITHUB_STEP_SUMMARY:-}" ] && cat "$OUT/report.md" "$OUT/lock-timing.md" "$OUT/checkout-timing.md" >>"$GITHUB_STEP_SUMMARY"
 passed=0
 grep -q "^failures: 0$" "$OUT/report.md" && passed=1

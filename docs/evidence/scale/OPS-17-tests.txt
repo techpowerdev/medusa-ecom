@@ -1,0 +1,110 @@
+# OPS-17 (spec 07 AC-28 + follow-up review #220) — ผล test ในเครื่อง 2026-11-03T20:51:48Z, node v22.23.3
+
+$ TEST_TYPE=unit npx jest --verbose (suite ที่เกี่ยวข้อง)
+PASS src/__tests__/load-nightly.unit.spec.ts
+  OPS-4 load-nightly
+    ✓ workflow แยกไฟล์ รันรายคืน + สั่งเองได้ และไม่อยู่ใน ci.yml
+    ✓ ผล k6 (--summary-export) อัปโหลดเป็น artifact 14 วันแม้ run ล้ม
+    ✓ บูต stack แบบ prod ของ OPS-1 ด้วย provider ทดสอบ และ k6 จาก image ที่ pin เวอร์ชัน
+    ✓ ค่าเริ่มต้นตาม AC-2 (300 คน, cap 100, 500 rps 60 วินาที) และ AC-3 (200 คน, กลุ่ม 10)
+    ✓ tools/load/flash-sale.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว)
+    ✓ tools/load/group-buy-join.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว)
+    ✓ ตรวจผลจาก DB หลังจบ: order ที่มี adjustment ของแคมเปญ, units_sold และสมาชิกกลุ่ม
+
+PASS src/__tests__/load-lock-timing.unit.spec.ts
+  OPS-18 parseLockTimings
+    ✓ อ่านเฉพาะบรรทัด JSON ที่ message ขึ้นต้นด้วย marker ข้ามบรรทัดอื่น/บรรทัดที่ไม่ใช่ JSON
+  OPS-18 summarizeLockTimings
+    ✓ ไม่มี entry → null และ markdown บอกว่าไม่พบ log
+    ✓ min/median/p95/max ของ wait และ hold (percentile แบบ linear interpolation แบบเดียวกับ k6)
+    ✓ นับ outcome และไม่นับ hold ที่ไม่ได้ lock (acquired_at = null) เข้าสถิติ hold
+    ✓ ต่อคิวทีละตัว (hold ไม่ซ้อนกัน, wait โตตามลำดับขอ lock) → ยืนยัน serialize ทั้งสองเกณฑ์
+    ✓ ทำงานขนานกัน (hold ซ้อนกัน, wait ≈ 0) → หักล้าง: wait ไม่โตตามคิว
+    ✓ hold โตตามคิวแม้ wait ≈ 0 → รายงาน hold_rank_corr (ต่อคิวภายใน lock เช่น row lock ของ DB)
+    ✓ OPS-17 (AC-28) hold_rank_corr ใช้ลำดับในคิวทั้งหมด (ไม่ใช่ลำดับใน input/ใน held) — input สลับ + มีตัวที่ไม่ได้ lock แทรก
+    ✓ markdown มีตาราง (a)/(b) min/median/p95/max และผลเกณฑ์
+  OPS-18 run.sh เก็บ log ของ load run
+    ✓ ตั้ง LOG_LEVEL=debug เฉพาะ load run และค่าเริ่มต้นของ compose prod ยังเป็น info
+    ✓ ดึง log ของ server+worker ทุก run (ไม่ใช่แค่ตอนล้ม) แล้วสรุปลง tools/load/out
+
+PASS src/__tests__/load-artifact-guard.unit.spec.ts
+  OPS-17a stripSetupData
+    ✓ summary ที่มี setup_data.checkout[].token → ผลไม่มี setup_data/JWT และ metric เดิมครบ
+    ✓ CLI strip: อ่าน summary ดิบแล้วเขียนไฟล์ที่ไม่มี setup_data
+  OPS-17a findLeaks / CLI scan
+    ✓ ไฟล์ไม่มี JWT/setup_data → ไม่พบ และ scan exit 0
+    ✓ ไฟล์มี JWT (รวมในโฟลเดอร์ย่อย) หรือ key setup_data → พบ และ scan ล้ม (exit ≠ 0) ลบไฟล์นั้นและไม่พิมพ์ token
+  OPS-17a run.sh
+    ✓ k6 เขียน summary ดิบนอก OUT แล้ว strip ก่อนเขียนลง OUT
+    ✓ ขั้นตรวจ JWT ใน OUT อยู่หลังไฟล์สุดท้ายที่เขียนลง OUT และก่อนตัดสินผ่าน/ไม่ผ่าน
+
+PASS src/__tests__/load-run.unit.spec.ts
+  OPS-17 AC-28 run.sh IMAGE_TAG
+    ✓ ไม่ส่ง IMAGE_TAG → compose ได้ IMAGE_TAG=load (ไม่ใช่ local ของ dev)
+    ✓ ส่ง IMAGE_TAG มา → ใช้ค่าที่ส่ง
+  OPS-17 (review #220) cleanup() ของ run.sh เมื่อ script หยุดกลางทาง
+    ✓ พิมพ์ report ที่มีลง job log, ตรวจ OUT แล้วลบไฟล์ที่มี JWT/setup_data และคง exit code เดิม (≠ 0)
+    ✓ ใน cleanup() พิมพ์ report ก่อน scan (ไฟล์ที่ scan ลบยังเห็นใน job log) และ scan ไม่ทำให้ cleanup ล้ม
+  OPS-17 AC-28 grep
+    ✓ seed-load.ts ไม่มี cast (as unknown as / as any / as CreateGroupBuyCampaignInput)
+    ✓ prod-guards.unit.spec.ts อ่าน ci.yml ด้วย parse ของ yaml ไม่วนบรรทัด (ไม่มีตัวแปรสถานะ inEnv)
+    ✓ lock-timing.js ไม่มี indexOf (ลำดับคิวของ hold_rank_corr ใช้ Map — O(n))
+
+(node:45017) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/__tests__/prod-guards.unit.spec.ts
+  AC-9 buildNotificationProviders ใน production (ADR-010)
+    ✓ throws naming RESEND_API_KEY when missing
+    ✓ throws naming RESEND_FROM_EMAIL when missing
+    ✓ throws naming RESEND_API_KEY, RESEND_FROM_EMAIL when missing
+    ✓ ALLOW_TEST_PROVIDERS=true keeps the local provider for email
+    ✓ other values of ALLOW_TEST_PROVIDERS do not disable the guard
+    ✓ outside production keeps the local fallback
+    ✓ production with both values uses Resend
+  AC-10 payment providers ที่ seed เปิดให้ region Thailand
+    ✓ production without ALLOW_TEST_PROVIDERS → Stripe only
+    ✓ production with ALLOW_TEST_PROVIDERS=true and non-production → includes pp_system_default
+  AC-13 / AC-17 boot guards ใน medusa-config
+    ✓ boots in production when everything is set
+    ✓ AC-13 production without AFFILIATE_TOKEN_SECRET throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="" throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="shop.example.com" throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="ftp://shop.example.com" throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="https://" throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="http://exa mple.com" throws with the variable name
+    ✓ ALLOW_TEST_PROVIDERS does not disable the AFFILIATE_TOKEN_SECRET / STOREFRONT_URL guards
+    ✓ outside production warns once per missing variable at boot
+    ✓ outside production with both set does not warn
+    ✓ AC-20 production with ALLOW_TEST_PROVIDERS=true still boots and warns exactly once
+    ✓ AC-20 production without the variable does not warn about ALLOW_TEST_PROVIDERS
+    ✓ AC-20 production with an empty value does not warn about ALLOW_TEST_PROVIDERS
+    ✓ AC-20 development with ALLOW_TEST_PROVIDERS=true does not warn about ALLOW_TEST_PROVIDERS
+  AC-13 / AC-17 ci.yml และ .env.example
+    ✓ finds the production-mode jobs
+    ✓ every production-mode job sets AFFILIATE_TOKEN_SECRET
+    ✓ every production-mode job sets STOREFRONT_URL
+    ✓ every production-mode job sets ALLOW_TEST_PROVIDERS=true (ADR-010 ข้อ 4)
+    ✓ STOREFRONT_URL in CI is an http(s) URL
+    ✓ apps/backend/.env.example has a STOREFRONT_URL= line
+  AC-11 Go-live checklist ใน docs/ops/production.md
+    ✓ มีหัวข้อและอ้างคำสั่ง check:go-live
+    ✓ AC-21 มีข้อ Q-F1: ค่าส่ง Standard / Standard return ยังเป็น placeholder shipping_rate
+    ✓ AC-21 ข้อที่พูดถึงค่าว่างของ ALLOW_TEST_PROVIDERS ระบุว่าไม่ตั้งกับตั้งเป็นค่าว่างนับเหมือนกัน
+    ✓ AC-25 ทุกบรรทัดที่พูดถึง ALLOW_TEST_PROVIDERS ใช้ถ้อยคำเดียวกับข้อ 3 (ไม่ตั้ง / ตั้งเป็นค่าว่าง)
+    ✓ AC-25 ข้อ Q-F1 บอกตำแหน่งแก้ shipping_rate และราคา shipping option ใน admin
+    ✓ AC-21 check:go-live นับ ALLOW_TEST_PROVIDERS ที่ไม่ตั้งกับค่าว่างเหมือนกัน แต่ค่าอื่นทุกค่าไม่ผ่าน
+    ✓ package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec
+
+Test Suites: 5 passed, 5 total
+Tests:       67 passed, 67 total
+Snapshots:   0 total
+Ran all test suites matching /src\/__tests__\/load-run.unit.spec.ts|src\/__tests__\/load-lock-timing.unit.spec.ts|src\/__tests__\/prod-guards.unit.spec.ts|src\/__tests__\/load-artifact-guard.unit.spec.ts|src\/__tests__\/load-nightly.unit.spec.ts/i.
+
+$ pnpm --filter backend test:unit (ชุดเต็ม)
+Test Suites: 87 passed, 87 total
+Tests:       911 passed, 911 total
+
+$ pnpm lint && pnpm typecheck && pnpm --filter backend build → exit 0
+
+$ grep -nE "inEnv|as unknown as|as any|as CreateGroupBuyCampaignInput|indexOf" (AC-28)
+(ไม่พบ)
