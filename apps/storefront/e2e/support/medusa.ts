@@ -76,6 +76,22 @@ export async function variantOf(
   return { productId: product.id, variantId: product.variants[0].id }
 }
 
+/** id ของ variant ตามค่าของ option แรก (เช่นไซซ์ของ t-shirt ใน seed: S/M/L) — CORE-25 */
+export async function variantIdsByOption(
+  request: APIRequestContext,
+  pk: string,
+  handle: string
+): Promise<Record<string, string>> {
+  const res = await request.get(
+    `${BACKEND_URL}/store/products?handle=${handle}&fields=id,*variants,*variants.options`,
+    { headers: { "x-publishable-api-key": pk } }
+  )
+  const [product] = (await res.json()).products
+  return Object.fromEntries(
+    (product.variants as { id: string; options: { value: string }[] }[]).map((v) => [v.options[0].value, v.id])
+  )
+}
+
 /** id ของ shipping option ตามชื่อใน seed สำหรับ cart ปัจจุบันของ browser (cookie `_medusa_cart_id`) */
 export async function shippingOptionId(
   request: APIRequestContext,
