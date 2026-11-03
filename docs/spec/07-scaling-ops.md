@@ -178,6 +178,30 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-30 (OPS-19 — **⏸ backlog**, ต้องมี ADR สำหรับ staging ก่อน; ไม่ใช่เงื่อนไขของ OPS-4) Given staging ตาม ADR นั้น (k6 อยู่คนละเครื่องกับระบบ) When รัน flash-sale burst ด้วย `total_cap=100`
   Then burst ทำได้จริง ≥ 500 rps ตลอด 60 วินาที (`dropped_iterations` = 0, จำนวน request ของ burst ≥ 30,000), p95 ของ burst และ checkout < 300ms เป็น **gate** (threshold k6 ทำให้ล้ม — ขอบเขตของ p95 ยืนยันกับ owner ตอนเขียน ADR staging)
   และ gate ความถูกต้องของ AC-2 ผ่านครบ (order ได้ส่วนลด = 100, `units_sold` = 100, ที่เหลือ 409 `FLASH_SOLD_OUT`, 5xx = 0)
+- AC-31 (OPS-20a, owner 2026-11-03 — OPS-18 run 41617065775: รอ lock median 12ms, ถือ lock ≤ 2.4s แต่ checkout ทั้ง request 52–63s → ≥ 95% อยู่นอก `locking.execute`)
+  Given `load-nightly.yml` มี `workflow_dispatch.inputs.flash_burst` (ค่าเริ่มต้น = มี burst) ส่งเป็น env `LOAD_FLASH_BURST` ให้ `tools/load/run.sh` → k6 และ `LOAD_FLASH_BURST=0` **ตัด scenario burst ออกจาก
+  `options.scenarios`** ของ `tools/load/flash-sale.js` (ไม่ใช้ `LOAD_BURST_RATE=0` — `constant-arrival-rate` ไม่รับ rate 0); `schedule` ไม่ส่ง input → มี burst (unit อ่าน `load-nightly.yml`/`run.sh`/`flash-sale.js`)
+  When รัน `workflow_dispatch` ขนาดเต็มเดิม (300 ลูกค้า, `total_cap=100`) สองครั้ง — (1) มี burst (2) `flash_burst` ปิด — Then `docs/evidence/scale/OPS-20a/REPORT.md` มี run id ทั้งสอง และต่อ run มีตาราง
+  per-checkout (min/median/p95/max, จำนวนรวม = 300) **แยกทั้งรวมและตาม outcome** (ok = 100 / `FLASH_SOLD_OUT` = 200) ของ (a) checkout ทั้ง request (k6)
+  (b) ก่อน hook = middleware ของ route `/store/carts/:id/complete` (เข้า) → ต้น handler รวม `apps/backend/src/workflows/hooks/complete-cart-validate.ts`
+  (c) ใน hook = ต้น → ท้าย handler รวมนั้น (รวม exclusivity check + `reserveFlashSaleForCart`; รอ/ถือ lock ของ OPS-18 แสดงเป็นส่วนย่อย)
+  (d) หลัง hook = ท้าย handler รวม → response ออก (`res` `finish` ใน middleware เดียวกับ (b))
+  (e) ก่อนถึง middleware ของ route + หลัง response = (a) − (b+c+d) (คิว event loop/accept ของ server, middleware ส่วนกลาง/`authenticate`, เครือข่ายใน runner) — **ห้ามสรุปว่า (e) "อยู่นอก server"**;
+  ตีความ (e) คู่กับ event-loop delay ของ AC-32 (ก่อน OPS-20b ให้ระบุว่ายังแยกไม่ได้)
+  — (b)–(d) เป็น log ระดับ debug ของ logger เดิมแบบ OPS-18 ผูกด้วย `cart_id` (ไม่ใช้ duration ของ OPS-3 — ไม่มี log ระยะเวลา request); handler ของ hook คงเป็นตัวรวมตัวเดียว (`createHook` มี handler เดียว)
+  และ REPORT ใส่ timestamp ของ "ช่วง checkout" ต่อ run = request checkout แรกเข้า middleware ของ (b) → response สุดท้ายออกของ (d)
+  (ไม่เพิ่ม infra/dependency — grep diff: ไม่มี package ใหม่ใน `package.json`/service ใหม่ใน compose; `LOG_LEVEL=debug` เฉพาะ load run; ตั้งใจไม่ใช้ `registerOtel` ของ Medusa (`instrumentation.ts`)
+  แม้ให้ span ราย step ได้ตรงกว่า เพราะต้องเพิ่ม `@opentelemetry/*` + exporter/collector = dependency/infra ใหม่ตามข้อห้ามข้อ 3)
+  และสรุปตามเกณฑ์ (owner อนุมัติ 2026-11-03): median (a) ของ run ไม่มี burst ≤ 20% ของ run มี burst → "burst เป็นสาเหตุหลัก", ≥ 80% → "workflow เอง", ระหว่างนั้น → "ทั้งสอง" (ระบุสัดส่วน);
+  ช่วงใน (b)–(e) ที่ median ≥ 50% ของ median (a) = ช่วงหลัก (ต่อ run และต่อ outcome) — gate ความถูกต้องของ AC-2 ผ่านในทั้งสอง run; ถ้าต้องแก้ → ADR/task แยกพร้อม AC (ไม่แก้ใน OPS-20a)
+- AC-32 (OPS-20b) Given OPS-20a ☑ When รัน `workflow_dispatch` สองครั้งแบบ AC-31 (มี/ไม่มี burst) โดยเปิด sampler **เท่ากันทั้งสอง run** (REPORT บันทึกค่าตั้งและ interval ของ sampler)
+  Then `docs/evidence/scale/OPS-20b/REPORT.md` มี run id ทั้งสอง, ตาราง (a)–(e) ของ AC-31 จาก run เดียวกัน และตารางตัวชี้วัดรายวินาทีใน "ช่วง checkout" (นิยามเดียวกับ AC-31 พร้อม timestamp)
+  min/median/p95/max ของ: event-loop delay ของ server และ worker (`perf_hooks.monitorEventLoopDelay` ใน `register()` ของ `apps/backend/instrumentation.ts` ที่ `medusa start` โหลดทั้งสองโหมด
+  — ยืนยันด้วย log ของทั้งสอง process; histogram/timer สร้าง**เฉพาะเมื่อ `LOG_LEVEL=debug`** ไม่มี timer ใน prod — unit: ไม่ตั้ง `LOG_LEVEL=debug` → ไม่สร้าง interval),
+  CPU ของแต่ละ container (`docker stats --no-stream` ที่ `run.sh` sample), จำนวน connection ของ Postgres แยก `state`/`wait_event_type` (`pg_stat_activity` ผ่าน `psql` ใน container postgres เดิม)
+  และจำนวนที่รอ pool ของ knex (`numPendingAcquires` ของ `PG_CONNECTION`) — ถ้าเข้าถึงไม่ได้ให้ระบุเหตุผลใน REPORT (ไม่เพิ่ม infra/dependency เหมือน AC-31)
+  และสรุปตามเกณฑ์ (owner อนุมัติ 2026-11-03): "อิ่มตัว" เมื่อ p95 event-loop delay ของ server ≥ 100ms หรือ median CPU ของ server ≥ 90% ของ 1 core (`docker stats` 100% = 1 core)
+  หรือ p95 ของจำนวนรอ pool > 0 ในช่วง checkout; ระบุว่าช่วงหลักของ AC-31 (โดยเฉพาะ (e)) อธิบายได้ด้วยความอิ่มตัวหรือไม่ — gate ของ AC-2 ผ่านทั้งสอง run; ถ้าต้องแก้ → ADR/task แยกพร้อม AC
 
 ## Tasks
 | ID | Task | Depends |
@@ -188,7 +212,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-3b | (รอบ 9) rate limiting ตาม Deliverables ข้อ 5 + `/store/search` (AC-22) — **⏸ backlog หลัง v1.0** (owner Q-O1 2026-10-27); ข้อเสนอเดิมใน Q-O1 ใช้ตอนกลับมาทำ | OPS-3 ☑ |
 | OPS-3c | (รอบ 9) error tracking Sentry ตาม Deliverables ข้อ 6 (AC-23) — **⏸ backlog หลัง v1.0** (owner Q-O2 2026-10-27); dependency ใหม่ (`@sentry/*`) ระบุใน PR ตอนกลับมาทำ | OPS-3 ☑ |
 | OPS-4 | ☑ #175 — k6 scripts ใน `tools/load/` + seed script (`apps/backend/src/scripts/seed-load.ts` — ย้ายจาก `tools/load/` เพราะ `.dockerignore`) + `.github/workflows/load-nightly.yml` + evidence (AC-2, AC-3) ตาม Q-O3 ที่ owner ตัดสิน 2026-10-27 (a)–(e); `REPORT.md` ใช้ผลของ run หลัง merge (40590093846) ตัวล่าสุด — ถ้า gate ล้มให้อ่าน `backend-tail.log` ก่อน; REPORT ☑ #191; **AC-2 ☑ (ถ้อยคำปรับโดย owner 2026-11-03), AC-3 ☑** (run 40590093846) | FS-3 ☑, GB-3 ☑, OPS-1 ☑ |
-| OPS-18 | (เล็ก, วัดผล, owner 2026-11-03) วัด/หาสาเหตุเวลา checkout flash 58–71s ใน run 40590093846 — สงสัย lock ของ flash checkout ทำให้ต่อคิวทีละตัว: วัดเวลารอ lock/เวลาใน step จาก log/metric ที่มีอยู่ (ห้ามเพิ่ม infra) + สรุปสาเหตุใน evidence; ต้องแก้ design → ADR/task แยก (AC-29) | OPS-4 ☑ — **เริ่มได้เมื่อ owner สั่ง** (owner พักงานใหม่) |
+| OPS-18 | (เล็ก, วัดผล, owner 2026-11-03) วัด/หาสาเหตุเวลา checkout flash 58–71s ใน run 40590093846 — สงสัย lock ของ flash checkout ทำให้ต่อคิวทีละตัว: วัดเวลารอ lock/เวลาใน step จาก log/metric ที่มีอยู่ (ห้ามเพิ่ม infra) + สรุปสาเหตุใน evidence; ต้องแก้ design → ADR/task แยก (AC-29) — ☑ #194, **AC-29 ☑** (run 41617065775: **หักล้าง** lock serialize) | OPS-4 ☑ |
+| OPS-20a | (เล็ก, วัดผล, owner 2026-11-03) หาว่าเวลา checkout flash 52–63s ของ run 41617065775 อยู่ที่ไหน: input `flash_burst` ของ `load-nightly.yml` → `LOAD_FLASH_BURST` ตัด scenario burst + รันเทียบมี/ไม่มี burst, log debug ช่วง (b)–(d) ที่ middleware ของ route complete และ handler รวม `complete-cart-validate.ts` + analyzer (ต่อจาก `lock-timing.js`) + สรุป burst vs workflow ใน evidence (ห้ามเพิ่ม infra/dependency; ไม่ใช้ `registerOtel`); ต้องแก้ → ADR/task แยก (AC-31) | OPS-18 ☑ (#194); ชน `tools/load/run.sh` กับ OPS-17 — ทำทีละตัว (ตัวที่เริ่มทีหลังรอตัวก่อน merge); แตะ `load-nightly.yml` (ไม่มี task อื่นที่เปิดอยู่แตะ) |
+| OPS-20b | (เล็ก, วัดผล) ตัวชี้วัดความอิ่มตัว: event-loop delay ของ server/worker ใน `instrumentation.ts` (เฉพาะ `LOG_LEVEL=debug`), sampler `docker stats`/`pg_stat_activity` ใน `run.sh`, รอ pool ของ knex + รันเทียบมี/ไม่มี burst อีกสองครั้ง + สรุปเรื่องอิ่มตัวใน evidence (AC-32) | OPS-20a; ชน `tools/load/run.sh` กับ OPS-17 — ทำทีละตัว |
 | OPS-19 | (staging load test) burst 500 rps × 60s จริง + p95 < 300ms เป็น gate (AC-30) — **⏸ backlog**: ต้องมี ADR สำหรับ staging (infra ใหม่ ตามข้อห้ามข้อ 3) ก่อน — ยังไม่มี ADR | ADR staging (ยังไม่มี), OPS-4 ☑ |
 | OPS-17 | (เล็ก, test/tooling, รอบ 12 — nit OPS-16 #180, review #175) `prod-guards.unit.spec.ts` อ่าน `ci.yml` ด้วย parser YAML, `IMAGE_TAG` ค่าเริ่มต้น `load` ใน `tools/load/run.sh`, ตัด cast ใน `seed-load.ts` (AC-28) | OPS-16 ☑ (#180), OPS-4 ☑ (#175) — **เริ่มได้** |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
@@ -212,7 +238,8 @@ OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `c
 (รอบ 11) สถานะ: OPS-10 ☑ #141, OPS-14 ☑ #133, OPS-13b ☑ #147 (nit review #147 — เพิ่ม "→ service zone" ในเส้นทางเมนู shipping option ของ `production.md` ข้อ 5 —
 #147 ไม่ได้แก้ จึงแก้ใน PR เอกสารรอบ 11 (#152) หลัง merge develop);
 OPS-12, OPS-15, OPS-16 เริ่มได้ (แตะ `ci.yml` ร่วมกัน — ทีละตัว ลำดับแนะนำ OPS-15 → OPS-12 → OPS-16); OPS-4, OPS-5 ☐; e2e รันแม้ backend test ล้ม (ผลของการรันขนานใน OPS-14) — ยอมรับ ไม่มี task
-(รอบ 12) สถานะ: OPS-15 ☑ #156, OPS-12 ☑ #172, OPS-4 ☑ #175 (load-nightly run 40590093846 success — `REPORT.md` ☑ #191; owner 2026-11-03: AC-2 ☑ ตามถ้อยคำใหม่, AC-3 ☑ → OPS-18 รอ owner สั่ง, OPS-19 ⏸), OPS-16 ☑ #180 (รวม test `if: false` ของ review #172);
+(รอบ 12) สถานะ: OPS-15 ☑ #156, OPS-12 ☑ #172, OPS-4 ☑ #175 (load-nightly run 40590093846 success — `REPORT.md` ☑ #191; owner 2026-11-03: AC-2 ☑ ตามถ้อยคำใหม่, AC-3 ☑, OPS-19 ⏸), OPS-16 ☑ #180 (รวม test `if: false` ของ review #172);
+OPS-18 ☑ #194 (AC-29 ☑ — lock ไม่ใช่สาเหตุ) → OPS-20a ☐ เริ่มได้ → OPS-20b ☐ (owner 2026-11-03; ทั้งคู่ทีละตัวกับ OPS-17 เพราะชน `run.sh`);
 OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_POOL_MAX` ไม่ต้องมี task เพราะ gate ของ load test ผ่าน (5xx = 0) — ทบทวนเมื่อรอบเต็มล้มด้วย 5xx
 
 ## Open questions (รอบ 10)
