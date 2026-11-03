@@ -23,8 +23,9 @@ export type AttributeAffiliateOrderInput = { order_id: string }
 export type PreparedAttribution = (AttributionPlan & { order_id: string; currency_code: string }) | null
 
 /**
- * อ่านอย่างเดียว: order + cart.metadata.affiliate_token → ตรวจลายเซ็น/affiliate/โปรแกรม → แผน (planAttribution)
- * หยุด (null) เมื่อ order นี้มี attribution แล้ว (กฎ 15, AC-10) หรือไม่มี/ปฏิเสธ token (AC-11 log)
+ * อ่านอย่างเดียว: order + cart.metadata.affiliate_token (ไม่มี cart → order.metadata.affiliate_token ของ group buy, กฎ 41b)
+ * → ตรวจลายเซ็น/affiliate/โปรแกรม → แผน (planAttribution)
+ * หยุด (null) เมื่อ order นี้มี attribution แล้ว (กฎ 15, AC-10), เป็น draft order (กฎ 41c) หรือไม่มี/ปฏิเสธ token (AC-11 log)
  */
 export const prepareAffiliateAttributionStep = createStep(
   "prepare-affiliate-attribution",
@@ -51,6 +52,8 @@ export const prepareAffiliateAttributionStep = createStep(
         "status",
         "currency_code",
         "created_at",
+        "is_draft_order",
+        "metadata",
         // field ยอดรวมระดับ order ทำให้ Order module คำนวณ totals ของ item (subtotal/discount_subtotal) ให้ด้วย
         "subtotal",
         "cart.metadata",
@@ -63,8 +66,14 @@ export const prepareAffiliateAttributionStep = createStep(
       ],
       filters: { id: input.order_id },
     })
-    const token = (order?.cart?.metadata as Record<string, unknown> | null | undefined)?.affiliate_token
-    if (!order || token === undefined || token === null || token === "") {
+    // กฎ 41c: draft order (group buy ก่อนชำระ) ไม่ทำ attribution — เกิดจาก order.placed ของการแปลงแทน
+    if (!order || order.is_draft_order) {
+      return new StepResponse<PreparedAttribution>(null)
+    }
+    type Metadata = Record<string, unknown> | null | undefined
+    const token =
+      (order.cart?.metadata as Metadata)?.affiliate_token ?? (order.metadata as Metadata)?.affiliate_token
+    if (token === undefined || token === null || token === "") {
       return new StepResponse<PreparedAttribution>(null)
     }
 
