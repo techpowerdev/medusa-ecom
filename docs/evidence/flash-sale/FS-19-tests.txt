@@ -1,0 +1,127 @@
+# FS-19 — evidence ของ test (spec 03 กฎข้อ 24, AC-26) — รันในเครื่อง 2026-11-03
+# storefront: next build + next start (production) :8113, backend: medusa develop :9113 (DB medusa_fs19), node v24.12.0, --workers=1 (เหมือน CI)
+
+## Red — unit Vitest (src/fs-19-mobile-actions.test.ts) บนโค้ดเดิม
+ FAIL  (a) ระหว่าง flash.loading → mobile-cart-button disabled + aria-busy=true — expected false to be true
+ FAIL  (b) ปุ่มหลักเข้าจอ → แถบล่างหายจาก DOM ทันที — แถบต้องไม่ค้างใน DOM ระหว่างจาง: expected <div data-testid="mobile-actions"> to be null
+      Tests  2 failed | 1 passed (3)
+
+## Red — e2e บน build ของโค้ดเดิม (คง e2e/flash-sale-fs19.spec.ts; รันทีละ test เพราะ describe เป็น serial)
+  ✘  1 [chromium] › e2e/flash-sale-fs19.spec.ts:126:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (7.3s)
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Expected: "true"
+    Received: ""
+    > 146 |     await expect(button).toHaveAttribute("aria-busy", "true")
+  1 failed
+  ✘  1 [chromium] › e2e/flash-sale-fs19.spec.ts:166:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (7.7s)
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Expected: "true"
+    Received: ""
+    > 178 |     await expect(button).toHaveAttribute("aria-busy", "true")
+  1 failed
+  ✘  1 [chromium] › e2e/flash-sale-fs19.spec.ts:187:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (2.4s)
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: true
+    Received: false
+    > 238 |     await expect.poll(barHidden, { timeout: 100, intervals: [5] }).toBe(true)
+  1 failed
+
+# หมายเหตุ: หลัง Red เพิ่ม "ประตู" ให้ mock ของ flash ตอบหลังครบเวลาหน่วงและหลัง test ตรวจสถานะรอแล้ว — รอบ Green แรกมี 1/15 ที่แถบแสดงหลัง flash ตอบ
+# (page.goto รอ load ของรูปภายนอกนานกว่า 3 วินาที) ไม่ใช่โค้ดที่ทดสอบ
+
+## Green — unit Vitest ทั้งชุดของ storefront (pnpm --filter storefront test:unit)
+ Test Files  53 passed (53)
+      Tests  592 passed (592)
+
+## Green — e2e AC-26 (--repeat-each=5 --workers=1)
+  ✓   1 [chromium] › e2e/flash-sale-fs19.spec.ts:137:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (3.8s)
+  ✓   2 [chromium] › e2e/flash-sale-fs19.spec.ts:179:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (2.1s)
+  ✓   3 [chromium] › e2e/flash-sale-fs19.spec.ts:202:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (2.3s)
+  ✓   4 [chromium] › e2e/flash-sale-fs19.spec.ts:137:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (3.8s)
+  ✓   5 [chromium] › e2e/flash-sale-fs19.spec.ts:179:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (2.1s)
+  ✓   6 [chromium] › e2e/flash-sale-fs19.spec.ts:202:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (2.3s)
+  ✓   7 [chromium] › e2e/flash-sale-fs19.spec.ts:137:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (3.6s)
+  ✓   8 [chromium] › e2e/flash-sale-fs19.spec.ts:179:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (2.0s)
+  ✓   9 [chromium] › e2e/flash-sale-fs19.spec.ts:202:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (2.3s)
+  ✓  10 [chromium] › e2e/flash-sale-fs19.spec.ts:137:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (4.1s)
+  ✓  11 [chromium] › e2e/flash-sale-fs19.spec.ts:179:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (2.1s)
+  ✓  12 [chromium] › e2e/flash-sale-fs19.spec.ts:202:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (2.3s)
+  ✓  13 [chromium] › e2e/flash-sale-fs19.spec.ts:137:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (3.7s)
+  ✓  14 [chromium] › e2e/flash-sale-fs19.spec.ts:179:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (2.1s)
+  ✓  15 [chromium] › e2e/flash-sale-fs19.spec.ts:202:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (2.3s)
+  15 passed (45.6s)
+
+## Regression — CORE-25 AC-116 (spec 01) --repeat-each=10
+  ✓   1 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.1s)
+  ✓   2 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (530ms)
+  ✓   3 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (3.8s)
+  ✓   4 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (594ms)
+  ✓   5 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.6s)
+  ✓   6 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (568ms)
+  ✓   7 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (3.8s)
+  ✓   8 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (550ms)
+  ✓   9 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.4s)
+  ✓  10 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (548ms)
+  ✓  11 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (3.8s)
+  ✓  12 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (552ms)
+  ✓  13 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (9.8s)
+  ✓  14 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (524ms)
+  ✓  15 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (3.9s)
+  ✓  16 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (424ms)
+  ✓  17 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.1s)
+  ✓  18 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (562ms)
+  ✓  19 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.2s)
+  ✓  20 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (446ms)
+  20 passed (56.4s)
+
+## Regression — core-25 + core-19a + FS-16 (AC-23) + FS-13 --repeat-each=5 --workers=1
+  6 failed
+  1 did not run
+  73 passed (5.9m)
+# ล้ม 6 ตัวที่ไม่เกี่ยวกับ FS-19:
+#  - core-19a AC-63 ×2: document scrollWidth 380 > 375 — collection ของ flash-sale-fs16.spec.ts (afterAll ไม่ลบ) สะสมใน footer จากการรันซ้ำ = ปัญหาที่ FS-18 (กฎข้อ 23b รอบ 13) แก้
+#  - core-19a AC-62 ×3 + FS-13 AC-19 ×1: Test timeout 30s ที่ page.goto (รอ load ของรูปจาก S3 ภายนอก) — หน้าแสดงครบใน screenshot
+# หลังลบ collection ค้างของ fs13/fs16 ใน DB ของเครื่องนี้ รัน core-19a + FS-13 ซ้ำ:
+  ✓   1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (2.0s)
+  ✓   2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (1.2s)
+  ✓   3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (3.9s)
+  ✓   4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:148:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (947ms)
+  ✓   5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:148:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (3.3s)
+  ✓   6 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (4.0s)
+  ✓   7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (3.8s)
+  ✓   8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:213:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (683ms)
+  ✓   9 [chromium] › e2e/flash-sale-fs13.spec.ts:121:5 › AC-19: การ์ดสินค้าบน PLP (desktop) แสดงราคา flash + ราคาขีดฆ่า (300ms)
+  ✓  10 [chromium] › e2e/flash-sale-fs13.spec.ts:133:5 › AC-19: PDP ที่ 375×812 แถบล่างแสดงราคา flash (2.2s)
+  ✓  11 [chromium] › e2e/flash-sale-fs13.spec.ts:149:5 › AC-19: แคมเปญ sold out → add-product-button disabled และเห็น flash-sold-out (3.1s)
+  11 passed (26.8s)
+# CORE-25 และ FS-16 ในรอบ --repeat-each=5 ผ่านทุกรอบ:
+  ✓   9 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.9s)
+  ✓  10 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (602ms)
+  ✓  14 [chromium] › e2e/flash-sale-fs16.spec.ts:132:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (431ms)
+  ✓  15 [chromium] › e2e/flash-sale-fs16.spec.ts:147:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (2.1s)
+  ✓  16 [chromium] › e2e/flash-sale-fs16.spec.ts:167:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (4.6s)
+  ✓  25 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (3.7s)
+  ✓  26 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (536ms)
+  ✓  30 [chromium] › e2e/flash-sale-fs16.spec.ts:132:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (437ms)
+  ✓  31 [chromium] › e2e/flash-sale-fs16.spec.ts:147:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (2.1s)
+  ✓  32 [chromium] › e2e/flash-sale-fs16.spec.ts:167:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (4.7s)
+  ✓  41 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (3.8s)
+  ✓  42 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (424ms)
+  ✓  46 [chromium] › e2e/flash-sale-fs16.spec.ts:132:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (673ms)
+  ✓  47 [chromium] › e2e/flash-sale-fs16.spec.ts:147:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (2.1s)
+  ✓  48 [chromium] › e2e/flash-sale-fs16.spec.ts:167:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (5.1s)
+  ✓  57 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (3.7s)
+  ✓  58 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (562ms)
+  ✓  62 [chromium] › e2e/flash-sale-fs16.spec.ts:132:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (405ms)
+  ✓  63 [chromium] › e2e/flash-sale-fs16.spec.ts:147:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (2.1s)
+  ✓  64 [chromium] › e2e/flash-sale-fs16.spec.ts:167:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (4.7s)
+  ✓  73 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.3s)
+  ✓  74 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (436ms)
+  ✓  78 [chromium] › e2e/flash-sale-fs16.spec.ts:132:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (384ms)
+  ✓  79 [chromium] › e2e/flash-sale-fs16.spec.ts:147:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (2.1s)
+  ✓  80 [chromium] › e2e/flash-sale-fs16.spec.ts:167:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (4.6s)
+
+## lint / typecheck
+pnpm lint      → 0 errors (warning เดิม; ไม่มี warning ใหม่ในไฟล์ของ FS-19)
+pnpm typecheck → ผ่าน (storefront + backend)
+pnpm --filter storefront build → ผ่าน
