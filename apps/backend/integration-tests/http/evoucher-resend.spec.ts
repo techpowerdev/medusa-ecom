@@ -386,8 +386,8 @@ medusaIntegrationTestRunner({
 
         expect(allocationArgs).toHaveLength(1)
         expect(allocationArgs[0].expire).toBeGreaterThanOrEqual(300)
-        expect(allocationArgs[0].ownerId).toEqual(expect.any(String))
-        expect(allocationArgs[0].ownerId).not.toBe("")
+        // EV-N3 (กฎข้อ 30b, AC-44): รูปแบบจริงของ owner — ไม่ใช่ `evoucher-allocation:undefined`
+        expect(allocationArgs[0].ownerId).toMatch(/^evoucher-allocation:(?!undefined$).+/)
         // lock ของ X ยังอยู่: owner อื่นขอไม่ได้
         const other = await locking.acquire(key, { ownerId: "owner-y", expire: 1 }).then(
           () => "acquired",
