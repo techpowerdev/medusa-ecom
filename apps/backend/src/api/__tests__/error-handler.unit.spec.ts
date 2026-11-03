@@ -29,7 +29,7 @@ const run = (handler: (...args: any[]) => unknown, error: unknown): Sent => {
 const medusa = medusaErrorHandler()
 
 describe("businessErrorHandler", () => {
-  it("covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void + reserved + resend lock; spec 04 GB_*; spec 06 PAY-6)", () => {
+  it("covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void + reserved + resend lock; spec 04 GB_*; spec 06 PAY-6; spec 05 AF-15)", () => {
     expect([...BUSINESS_CONFLICT_CODES].sort()).toEqual(
       [
         "EVOUCHER_CODE_NOT_AVAILABLE",
@@ -45,6 +45,7 @@ describe("businessErrorHandler", () => {
         "GB_UNITS_LIMIT_EXCEEDED",
         "GB_ITEMS_NOT_ELIGIBLE",
         "GB_CART_ALREADY_JOINED",
+        "AFFILIATE_STATUS_CHANGED",
       ].sort()
     )
     // spec 04 กฎข้อ 5: GB_DISCOUNT_NOT_APPLIED เป็น 400 not_allowed ไม่ใช่ 409
