@@ -1215,7 +1215,8 @@ CORE-26 ∥ CORE-9c ∥ FS-19 (spec 03) หลัง PR ที่ระบุ me
 qa #209 ใช้ dblclick ของ Playwright ได้ +1 เพราะมีจังหวะให้ React render ระหว่างคลิก) ต้นเหตุ: ปุ่ม disable ด้วย state `isAdding` ซึ่งยังไม่ render ตอนคลิกที่สองใน tick เดียว;
 review #211: `mobile-cart-button` ไม่ disable ด้วย `!isValidVariant`/`optionsDisabled`/`isAdding` ครบแบบปุ่มหลัก
 ค้นแล้ว (`apps/storefront/src`): จุดเดียวใน UI ที่เรียก `addToCart` คือ `handleAddToCart` ของ `product-actions/index.tsx` (ทั้งสองปุ่มเรียก handler นี้) — `lib/data/customer.ts` เรียกฝั่ง server
-หลัง login (pending add ครั้งเดียว ไม่ใช่ปุ่ม) จึง**ไม่สร้าง hook ใหม่** (CLAUDE.md ข้อ 3 — ผู้ใช้ที่เดียว)
+หลัง login (pending add ครั้งเดียว ไม่ใช่ปุ่ม) จึง**ไม่สร้าง hook ใหม่** (CLAUDE.md ข้อ 3 — ผู้ใช้ที่เดียว); hook ที่มีอยู่ `lib/hooks/use-submit-once.tsx` (login/register, กฎข้อ 69c)
+ไม่ใช้ เพราะผูกกับ `FormEvent` ของ `<form>` และปลด guard ผ่าน `useEffect` ตาม `isPending` ของ form action ขณะที่ `mobile-cart-button` เป็น `onClick` นอก form และ `handleAddToCart` เรียก `addToCart` ตรง
 Out of scope: backend / Store API (เพิ่มสินค้าเดิมซ้ำโดยตั้งใจยังต้องรวม quantity ตามเดิม), ปุ่มอื่นของ storefront ที่ไม่ใช่เพิ่มตะกร้า
 
 ### สิ่งที่ Medusa มีให้อยู่แล้ว
@@ -1229,19 +1230,22 @@ Out of scope: backend / Store API (เพิ่มสินค้าเดิม
 none
 
 ### Business rules
-83. (CORE-27 — qa/review #211) ปุ่มบน storefront ที่สร้าง/เปลี่ยนข้อมูล (ขั้นแรก: ปุ่มเพิ่มลงตะกร้าทั้งสองจุดของ PDP) ต้องกันการยิงซ้อน**แบบ synchronous** — (a) `handleAddToCart`
+83. (CORE-27 — qa/review #211) ปุ่มเพิ่มลงตะกร้าทั้งสองจุดของ PDP ต้องกันการยิงซ้อน**แบบ synchronous** (ฟอร์ม login/register อยู่ใต้กฎข้อ 69c + `use-submit-once` ตามเดิม — กฎนี้ไม่ซ้อน/ไม่แก้กฎนั้น) — (a) `handleAddToCart`
     ใน `product-actions/index.tsx` ใช้ `useRef` in-flight: ถ้ามี request ค้างอยู่ให้ return ทันที ตั้งค่าก่อน `await` แรก และปลดใน `finally` (ทั้งสำเร็จและ error) — `isAdding` ยังใช้แสดงผล/disable
     ได้ แต่ห้ามเป็นตัวกันเพียงอย่างเดียว; (b) หลัง request แรกจบ กดเพิ่มอีกครั้งต้องได้ (quantity สะสมตาม Medusa); (c) `mobile-cart-button` disable ด้วยเงื่อนไขเดียวกับ `add-product-button`
-    (`!inStock`, `!variant`, `!isValidVariant`, `optionsDisabled`, `isAdding`, `qtyExceeded`, และ `flash.loading` ตาม FS-19 กฎข้อ 24a ของ spec 03) — ส่งค่าที่ขาดเป็น prop จาก `index.tsx`;
+    (`!inStock`, `!variant`, `!isValidVariant`, `optionsDisabled`, `isAdding`, `qtyExceeded`, และ prop `flashLoading` ที่ FS-19 #211 เพิ่มตามกฎข้อ 24a ของ spec 03) — ส่งค่าที่ขาดเป็น prop จาก `index.tsx`;
     (d) ไม่สร้าง hook/abstraction ใหม่จนกว่าจะมีจุดที่สองที่ต้องใช้จริง
 
 ### Acceptance criteria (follow-up รอบ 14)
 - AC-119 (CORE-27, กฎข้อ 83) unit (Vitest + jsdom, `src/core-27-add-to-cart-guard.test.ts`): `addToCart` mock คืน promise ที่ยังไม่ resolve; Given PDP render แล้ว When เรียก `.click()`
   ที่ `add-product-button` สองครั้งภายใน `act()` เดียว (ไม่ให้ React render ระหว่างคลิก — test นี้ต้อง fail กับโค้ดก่อนแก้) Then `addToCart` ถูกเรียก 1 ครั้ง; เหมือนกันกับ `mobile-cart-button`
-  (mock `useIntersection` ให้แถบแสดง) และคลิกปุ่มหลัก + ปุ่มมือถือสลับกันใน `act()` เดียว → 1 ครั้ง; resolve request แรกแล้วคลิกอีกครั้ง → เรียกครั้งที่ 2; mock reject → ปลด guard แล้วคลิกอีกครั้งได้;
-  render ด้วย variant ที่ไม่ valid / `disabled` → `mobile-cart-button` มี attribute `disabled`;
-  e2e (`e2e/core-27-add-to-cart-guard.spec.ts`, customer login, desktop 1280px และ 375×812 สำหรับ `mobile-cart-button`): `page.evaluate` เรียก `el.click()` สองครั้งติดกันที่ปุ่ม → รอ request
-  เพิ่มตะกร้าจบ → quantity ของ line ใน `GET /store/carts/:id` = 1; จากนั้นกดปุ่มอีกครั้งด้วย `click()` ปกติแล้วรอ → quantity = 2; ผ่าน `--repeat-each=5` (ผลใน evidence)
+  (mock `useIntersection` คืน `false` — หลัง #211 แถบ mount เฉพาะ `inView === false`) และคลิกปุ่มหลัก + ปุ่มมือถือสลับกันใน `act()` เดียว → 1 ครั้ง; resolve request แรกแล้วคลิกอีกครั้ง → เรียกครั้งที่ 2; mock reject → ปลด guard แล้วคลิกอีกครั้งได้;
+  render ด้วย variant ที่ไม่ valid / `disabled` → `mobile-cart-button` มี attribute `disabled`; ทุกกรณีคลิกต้อง mock `useFlashOffer` คืน `loading: false` และ assert ว่าปุ่ม**ไม่ disabled ก่อนคลิก**
+  (ไม่งั้นปุ่ม disabled ตั้งแต่ต้น test ผ่านโดยไม่ได้ทดสอบ guard);
+  e2e (`e2e/core-27-add-to-cart-guard.spec.ts`, customer login, desktop 1280px และ 375×812 สำหรับ `mobile-cart-button`): เริ่มนับ request ของ server action เพิ่มตะกร้า (POST ที่มี header
+  `next-action` จาก `page.on("request")`) **ก่อน** `page.evaluate` ที่เรียก `el.click()` สองครั้งติดกัน → รอ network idle + ช่วงคงที่ที่กำหนดในไฟล์ (เช่น 1 วินาที) → จำนวน request = **1 พอดี**
+  (กัน false-pass: โค้ดเดิมยิงสอง action พร้อมกัน ตัวแรกจบแล้วอ่าน cart ได้ 1 ขณะตัวที่สองยังค้าง) แล้ว quantity ของ line ใน `GET /store/carts/:id` = 1; จากนั้น `click()` ปกติแล้วรอ → จำนวน request = 2
+  และ quantity = 2; ผ่าน `--repeat-each=5` (ผลใน evidence) และต้อง fail กับโค้ดก่อนแก้ (แนบผลรันก่อนแก้ใน PR)
 
 ### แผนการทดสอบ (follow-up รอบ 14)
 | ระดับ | AC |
