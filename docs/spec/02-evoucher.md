@@ -1,6 +1,6 @@
 # 02 E-voucher — ขายต่อ voucher code ของพาร์ทเนอร์ ส่งมอบทางอีเมล
 
-สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด)
+สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด; รอบ 12: EV-14, EV-N2, EV-7d, EV-7e; รอบ 13 2026-11-03: EV-N3 (follow-up #201/#205 — กฎข้อ 30, AC-44), ฟอร์ม partner ตรวจ URL ฝั่ง client → ADM-5 ของ spec 08)
 เป้าหมาย (เจ้าของระบบ): ขาย e-voucher จากพาร์ทเนอร์ (Lotus, Big C, ห้างสรรพสินค้า, คาเฟ่…) เราได้รับ
 coupon code จากพาร์ทเนอร์ล่วงหน้า และส่งมอบ 1 code ต่อ 1 หน่วยที่ขายได้ในรูปแบบดิจิทัล
 (อีเมล) การ redeem เกิดขึ้นที่พาร์ทเนอร์ เราไม่ redeem เอง
@@ -191,7 +191,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 25. (รอบ 10, EV-9 — ที่มา: qa ของ EV-9 ระหว่างรอบ 10 (#139); ส่งมอบใน #139 พร้อม AC-39 — ที่มาระบุรอบ 11 ตาม nit #140) รายการ code ที่เรียงตาม `created_at` (เช่น `GET /admin/evoucher/pools/:id/codes` และตารางใน admin) ใช้ `id` เป็น key เรียงรองเสมอ (`created_at`, `id`) —
     code จาก CSV เดียวกันมี `created_at` เท่ากัน ถ้าไม่มี key รอง การแบ่งหน้าอาจซ้ำ/หายระหว่างหน้า
 26. (รอบ 12, EV-14 — **ความปลอดภัย**, qa #179) `logo_url`/`terms_url` ของ partner ใน admin API (สร้างและแก้) รับเฉพาะ URL ที่ scheme เป็น `http:` หรือ `https:` — อื่น
-    (`javascript:`, `data:`, `vbscript:` ฯลฯ) → 400 `invalid_data` ไม่บันทึก; storefront render ลิงก์/รูปของ partner เฉพาะเมื่อ URL เป็น http(s) (กันข้อมูลเก่าที่บันทึกก่อนแก้ — EV-7e)
+    (`javascript:`, `data:`, `vbscript:` ฯลฯ) → 400 `invalid_data` ไม่บันทึก; storefront render ลิงก์/รูปของ partner เฉพาะเมื่อ URL เป็น http(s) (กันข้อมูลเก่าที่บันทึกก่อนแก้ — EV-7e);
+    (รอบ 13, review/qa #195 EV-14) ฟอร์ม partner ใน admin (`src/admin/components/evoucher/partners-section.tsx`) ตรวจกฎเดียวกันก่อนส่ง (error ใต้ช่อง ไม่มี request) —
+    ส่งมอบใน ADM-5 (spec 08 AC-8) เพราะ ADM-5 เขียนฟอร์มนี้ใหม่เป็น `Form` + zod อยู่แล้ว; backend ยังเป็นด่านจริง
 27. (รอบ 12, EV-N2 — review #171, #155) (a) lock `evoucher-order:<order_id>` ของ allocation (EV-4/EV-5c) ตั้ง TTL ≥ 300 วินาที และ acquire/release ด้วย `ownerId` เฉพาะของ run นั้น
     (เช่น transaction id ของ workflow) — release ต้องไม่ลบ lock ที่ owner อื่นถืออยู่หลัง TTL ของตัวเองหมด (ห้าม release แบบไม่ระบุ owner/wildcard); comment ที่ `isLockHeldError`
     ระบุเวอร์ชัน Medusa ที่ข้อความ error อ้างอิง; (b) (nit EV-7a) `GET /store/customers/me/evouchers` เรียง `delivered_at DESC NULLS FIRST` แล้ว `id` — code `allocated` ที่ส่งอีเมลล้ม
@@ -202,6 +204,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 29. (รอบ 12, EV-7e — review/qa #179, builder EV-7b) (a) หน้า `/account/vouchers` แบ่งหน้า (`limit` 20, `?page=`, ปุ่ม `vouchers-prev`/`vouchers-next`) ไม่ตัดที่ 100; (b) `voucher-card`
     แสดง `support_contact` ของ partner เมื่อมี; (c) PDP: บล็อก `evoucher-partner-block` ไม่แสดงซ้อนสองบล็อกระหว่างโหลด, อ่าน `v_id` หลัง mount, แสดงข้อมูลของ variant ที่ PDP เลือกอยู่จริง
     เท่านั้น (ไม่ได้เลือก variant ใด → ไม่แสดงบล็อก), `generateMetadata` กับหน้าใช้ชุด `fields` เดียวกัน (Next dedupe ได้ → 1 request ต่อ render); (d) ลิงก์/รูป partner ตามกฎข้อ 26
+30. (รอบ 13, EV-N3 — review #201 EV-N2, review/qa #205 ADM-2a) (a) ข้อความ error ของ resend (`steps/resend-evoucher-email.ts`) ประกอบจากสาเหตุที่**ตัดเครื่องหมายวรรคตอนท้าย**
+    (`.`, `。`, ช่องว่าง) ก่อนใส่ในวงเล็บ — ไม่มี `.).` หรือ `..` ในข้อความ (ต้นเหตุอยู่ backend; admin ที่ ADM-2a #205 กันไว้แล้วคงไว้เป็นชั้นที่สอง); แยกการประกอบข้อความเป็น pure function
+    เพื่อ unit test; (b) test AC-41 ใน `integration-tests/http/evoucher-resend.spec.ts` ตรวจ `ownerId` ด้วยรูปแบบจริง `^evoucher-allocation:(?!undefined$).+` แทน `expect.any(String)`
 
 ## Acceptance criteria
 - AC-1 Admin import CSV จำนวน 100 code (ซ้ำ 2 รายการ) → 98 `available`, inventory ของ variant +98,
@@ -333,6 +338,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-43 (EV-7e, กฎข้อ 29) e2e: A มี code 25 รายการ → `/th/account/vouchers` หน้าแรก 20 การ์ด, `vouchers-next` → 5 การ์ด; partner ที่มี `support_contact` → การ์ดแสดงค่านั้น; partner ที่ `terms_url`
   เป็น `javascript:` (ตั้งตรงใน DB ของ test) → ไม่มี `<a>` ที่ `href` ขึ้นต้น `javascript:` บนหน้า; PDP ของ voucher: ระหว่างโหลดมี `evoucher-partner-block` ไม่เกิน 1 ตัว; unit: request ของ
   `generateMetadata` กับหน้าใช้ `fields` เท่ากัน (e2e + unit Vitest)
+- AC-44 (EV-N3, กฎข้อ 30) unit ของฟังก์ชันประกอบข้อความ: สาเหตุ `"... could not be resolved."` → ข้อความมี `(... could not be resolved).` และไม่มี `.).`/`..`; สาเหตุว่าง → ไม่มี `()`;
+  สาเหตุมี `noti_…` → ไม่มี `noti_` (AC-32 เดิม); integration: test AC-41 ใน `evoucher-resend.spec.ts` ใช้ `toMatch(/^evoucher-allocation:(?!undefined$).+/)` กับ `ownerId` (grep: ไม่มี
+  `ownerId: expect.any(String)`) และ AC-32, AC-33, AC-41 ยังผ่าน (unit jest + integration http)
 
 ## Non-functional
 - การ allocate รันใน subscriber (worker) ไม่ใช่ใน request ของ checkout
@@ -355,6 +363,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - e2e admin: AC-32 (EV-13); integration http: AC-33 (EV-5c)
 - integration http: AC-34, AC-35 (EV-7a); e2e: AC-6, AC-36 (EV-7b), AC-3 ส่วน storefront + AC-37 (EV-7c); integration + unit: AC-38 (EV-N1); integration http: AC-39 (EV-9)
 - (รอบ 12) integration http: AC-40 (EV-14), AC-41 (EV-N2); e2e + unit Vitest: AC-42 (EV-7d), AC-43 (EV-7e)
+- (รอบ 13) unit jest + integration http: AC-44 (EV-N3)
 
 ## Tasks
 | ID | Task | Depends |
@@ -378,8 +387,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-12 | (owner Q6 2026-10-27 — **เริ่มได้**) job รายวันเว้น code ใกล้หมดอายุไว้เท่าที่ order จอง (`keep`, `expires_at` ไกลสุดก่อน) แล้ว void ส่วนที่เหลือ + อีเมลสรุปแสดง void/เว้น/ขาดต่อ pool (กฎข้อ 12b); allocation claim code ที่เว้นเมื่อ code อายุยาวไม่พอ (กฎข้อ 2 ข้อยกเว้น — เพิ่ม query ส่วนเติม `expires_at DESC` ใน `claimCodesForOrder` ของ `modules/evoucher/service.ts`) (AC-5 ปรับ, AC-30, AC-30b) | EV-5 ☑, EV-10 ☑ |
 | EV-5c | (เล็ก, backend, nit review #111) lock `evoucher-order:<order_id>` ร่วมระหว่าง allocation กับ resend, ไม่กลืน error ของ Redis เป็น 409, ส่งสำเร็จแต่ update ล้ม → log + 200 (กฎข้อ 21) (AC-33) | EV-5b (#111) (∥ EV-12/EV-13 — EV-12 แตะ `claimCodesForOrder` ของ service ส่วน EV-5c แตะ workflow allocate/resend; ถ้าชนไฟล์ allocate ตัวที่ merge ทีหลัง rebase) |
 | EV-13 | (เล็ก, admin UI, qa #111) widget E-vouchers บน order (EV-6) ไม่ล้นที่ 1280px + `data-testid="evoucher-order-widget"`; toast error ของ resend ไม่แสดง id `noti_…` (แสดงข้อความสั้น id ไปอยู่ใน log); README dev: ไม่ตั้ง `RESEND_API_KEY` ตอน seed/dev แล้ว notification ค้าง — บอกวิธีตั้ง key test หรือดูสถานะใน DB (AC-32) | EV-5b (#111) |
-| EV-14 | (backend เล็ก, **ความปลอดภัย**, รอบ 12 — qa #179) validator ของ partner รับ `logo_url`/`terms_url` เฉพาะ http(s) (กฎข้อ 26) (AC-40) — ไฟล์: `src/api/admin/evoucher/validators.ts` + integration test | EV-2 ☑ — **เริ่มได้** (ควรก่อน release v0.3.0) |
+| EV-14 | ☑ #195 (AC-40 ☑) — (backend เล็ก, **ความปลอดภัย**, รอบ 12 — qa #179) validator ของ partner รับ `logo_url`/`terms_url` เฉพาะ http(s) (กฎข้อ 26) (AC-40) — ไฟล์: `src/api/admin/evoucher/validators.ts` + integration test | EV-2 ☑ — **เริ่มได้** (ควรก่อน release v0.3.0) |
 | EV-N2 | (backend เล็ก, รอบ 12 — review #171 EV-5c, #155 EV-7a) lock ของ allocation: TTL ≥ 300s + `ownerId` ต่อ run, release ไม่ลบ lock ของคนอื่น, comment เวอร์ชันของ `isLockHeldError`; ลำดับ `NULLS FIRST` + test `evouchers[0]`, ย้าย validator, ตัด `defaults` (กฎข้อ 27) (AC-41) — ไฟล์: `src/workflows/evoucher/allocate-and-deliver-evouchers.ts`, `steps/resend-evoucher-email.ts`, route `store/customers/me/evouchers` | EV-5c ☑ (#171), EV-7a ☑ (#155) — **เริ่มได้** |
+| EV-N3 | (backend เล็กมาก, รอบ 13 — review #201 EV-N2, review/qa #205 ADM-2a) ข้อความ error ของ resend ไม่มีจุดซ้อน (ตัดวรรคตอนท้ายของสาเหตุ, pure function + unit) + test AC-41 ตรวจรูปแบบ `ownerId` (กฎข้อ 30) (AC-44) — ไฟล์: `src/workflows/evoucher/steps/resend-evoucher-email.ts` (+ unit), `integration-tests/http/evoucher-resend.spec.ts` | **EV-N2 (#201) merge** (แตะสองไฟล์เดียวกัน); ∥ ADM-2a #205 (admin คงการกันจุดซ้อนไว้ — ไม่แตะ `src/admin`) |
 | EV-7d | (storefront เล็ก, รอบ 12 — #174) cart-totals ของ digital-only ไม่มีแถวค่าจัดส่ง, digital-only คำนวณฝั่ง server, redirect ทุกวิธีชำระ + `setAddresses` ผ่าน `safeCountryCode` (กฎข้อ 28) (AC-42) — ไฟล์: `modules/common/components/cart-totals`, `lib/data/cart.ts`, component ชำระเงิน | EV-7c ☑ (#174), CORE-4i (spec 01 — แตะ `lib/data/cart.ts` action เดียวกัน) |
 | EV-7e | (storefront เล็ก, รอบ 12 — #179) หน้า vouchers แบ่งหน้า + `support_contact`, บล็อก partner บน PDP (โหลด/`v_id`/metadata), ลิงก์ partner เฉพาะ http(s) (กฎข้อ 29) (AC-43) — ไฟล์: `app/[countryCode]/(main)/account/@dashboard/vouchers`, `modules/account` (voucher card), บล็อก partner บน PDP, data function | EV-7b ☑ (#179) — **เริ่มได้** (∥ EV-14; ชน PDP กับ CORE-25 ตัวที่ merge ทีหลัง rebase) |
 EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-10 ∥ EV-4/EV-9 (EV-10 แตะ `void-evoucher-codes.ts`, `evoucher-pool.ts`, `utils/csv.ts`, migration script — ถ้า EV-9 แตะ
@@ -392,6 +402,8 @@ nit #139: `evoucher-admin-ui.spec` ยังหา code จากลำดับ
 (รอบ 12 สถานะ) ☑: EV-N1 #149 · EV-7a #155 · EV-13 #167 · EV-5c #171 · EV-7c #174 · EV-7b #179 → EV ของ v0.3.0 ครบทุก task เดิม; ใหม่รอบ 12: EV-14 ∥ EV-N2 ∥ EV-7e เริ่มได้ทันที,
 EV-7d หลัง CORE-4i (ซึ่งรอ PAY-3b1/PAY-3b2 ของ spec 06); nit EV-13 (review/qa #167: e2e mock ข้อความ resend รูปแบบใหม่ + ตรวจ `/log/i`, ข้อความ error มีจุดซ้อน `resolved.). Try again`) รวมใน ADM-2a (spec 08 — แตะ widget
 `order-evouchers` เดียวกัน); ถ้า owner ต้องการ release v0.3.0 ก่อน EV-14 ให้แจ้ง — EV-14 เป็นเรื่องความปลอดภัยฝั่ง admin (ต้องมีสิทธิ์ admin จึงใส่ค่าได้) แต่ storefront render ลิงก์นั้นให้ลูกค้า
+(รอบ 13 สถานะ, 2026-11-03) EV-14 ☑ #195 · EV-N2 ◐ #201 · ADM-2a ◐ #205 (spec 08); ใหม่: EV-N3 (← #201); การตรวจ URL ฝั่งฟอร์ม admin → ADM-5 (spec 08); EV-7d ยังรอ CORE-4i
+(Q-C2 ของ spec 01 ตัดสินแล้ว = (ก) owner 2026-11-03 — helper กลาง ไม่เปลี่ยนกฎข้อ 28 ของ EV-7d); EV-7e เริ่มได้ (ชน PDP กับ CORE-25 #199 ตัวที่ merge ทีหลัง rebase)
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 

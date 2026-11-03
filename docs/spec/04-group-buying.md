@@ -8,7 +8,8 @@
 รอบ 8: leave หลังหมดเวลา (กฎข้อ 13), ถ้อยคำ AC-32/AC-36, ปัดยอด 2 ตำแหน่ง (กฎข้อ 20, AC-37), รวม nit เป็น GB-N1;
 รอบ 9 2026-10-27: owner ยืนยัน Q11 (ก), แยก GB-6c → 6c1 (#114)/6c2 + nit #114, GB-N2 test flaky;
 รอบ 10 2026-10-27: store route อ่าน draft order ของ membership (GB-8, ADR-016 accepted โดย owner 2026-10-27) ที่ PAY-3 ต้องใช้, GB-5 พึ่ง PAY-3a แทน PAY-3, GB-6d nit admin — กฎข้อ 21–23, AC-38..41;
-รอบ 12 2026-10-28: follow-up ของ GB-5 #185 → GB-9/GB-10, กฎข้อ 25–26, AC-43..44, คำถาม owner Q13–Q14)
+รอบ 12 2026-10-28: follow-up ของ GB-5 #185 → GB-9/GB-10, กฎข้อ 25–26, AC-43..44, คำถาม owner Q13–Q14;
+รอบ 13 2026-11-03: follow-up ของ GB-9 #196 รวมเข้า GB-10 (กฎข้อ 25e–f, 26 ท้าย, AC-44 ส่วนรอบ 13), ถ้อยคำกฎข้อ 25(c) ตรงหัวข้อ runbook จริง)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -318,14 +319,19 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 25. (รอบ 12, GB-9 — re-review #185 GB-5) alert `GROUP_BUY_PAID_WITHOUT_ORDER` ของ GB-5 (ถึง `OPS_ALERT_EMAIL`, เหตุ `convert_failed` / `membership_cancelled`):
     (a) ก่อนส่ง subscriber **อ่านสถานะใหม่** และส่งเฉพาะเมื่อยังเป็นเงินค้างจริง — `convert_failed`: order ยัง `is_draft_order = true` และ membership ไม่ใช่ `paid`;
     `membership_cancelled`: membership ยัง `cancelled` — ไม่เช่นนั้น log info ไม่ส่ง (กัน ops refund order ที่แปลงสำเร็จแล้ว); (b) idempotency key ของ alert = `<membership_id>:<reason>`
-    (membership เดียวเจอทั้งสองเหตุได้ 2 ฉบับ); (c) runbook "group buy: จ่ายแล้วแต่แปลง order ไม่ได้/membership ถูกยกเลิก" ใน `docs/ops/production.md` ขึ้นต้นด้วยขั้น "ตรวจว่า order
+    (membership เดียวเจอทั้งสองเหตุได้ 2 ฉบับ); (c) runbook หัวข้อ "group buy: เงินเข้าแต่ไม่มี order" (alert `GROUP_BUY_PAID_WITHOUT_ORDER`) ใน `docs/ops/production.md`
+    (แก้ถ้อยคำรอบ 13 ให้ตรงหัวข้อที่มีจริง — review #196) ขึ้นต้นด้วยขั้น "ตรวจว่า order
     ยังเป็น draft และ membership ยังไม่ `paid` — ถ้าไม่ใช่ ถือว่า alert ผิด ปิด incident ห้าม refund" และเปิด draft order ด้วย URL `/app/orders/<order_id>` (draft ไม่อยู่ในรายการ Orders);
-    (d) test ที่ตั้ง `OPS_ALERT_EMAIL` คืนค่าเดิมใน `afterAll`
+    (d) test ที่ตั้ง `OPS_ALERT_EMAIL` คืนค่าเดิมใน `afterAll`;
+    (e) (รอบ 13, review #196 — ส่งมอบใน GB-10) การอ่านสถานะใหม่ของ (a) ล้ม (เช่น `query.graph` throw) → **fail-open: ส่ง alert ต่อ** พร้อม log warn (ยอมให้ alert ซ้ำ/ผิดได้ดีกว่าเงินค้างเงียบ —
+    ops มีขั้นตรวจของ (c) อยู่แล้ว); `loadMembership` ที่ subscriber เรียกต้องอยู่ใน `try` เดียวกับการตัดสิน ไม่ใช่ก่อน `try`;
+    (f) test ของ runbook (`src/__tests__/ops-runbook.unit.spec.ts`) ตัดเนื้อหาหัวข้อของ (c) จากหัวข้อนั้นถึงหัวข้อระดับเดียวกันถัดไป (ไม่ใช่ถึงท้ายไฟล์) เพื่อให้ขั้นที่ตรวจอยู่ในหัวข้อนั้นจริง
 26. (รอบ 12, GB-10 — review #185) ops แปลง draft order ของ membership `awaiting_payment` เอง (ปุ่ม Convert ของ `@medusajs/draft-order` หรือ `POST /admin/draft-orders/:id/convert-to-order`
     ตาม runbook ของกฎข้อ 25) → membership ต้องเป็น `paid`: subscriber ของ event ที่ `convertDraftOrderWorkflow` emit (`order.placed` — builder ยืนยันใน 2.22.1; ต่างจากนี้ให้ใช้ event
     ที่ emit จริงและบันทึกใน PR) สำหรับ order ที่มี `metadata.group_buy_membership_id` → workflow ใต้ lock ต่อ membership ตัวเดียวกับ GB-5: membership `awaiting_payment` + order
     `is_draft_order = false` + payment collection `completed` → `paid`; สถานะอื่น (รวม `paid` อยู่แล้วจากเส้นทางปกติของ GB-5) → noop + log info; ไม่ส่งอีเมลเพิ่ม
-    (อีเมล `order-placed` ของการแปลงส่งแล้ว); ไม่แปลง/ไม่ refund อะไรเอง — (owner Q13 = (ก) 2026-10-28: เงินค้างจัดการแบบ manual ด้วย alert + runbook + GB-10 ใน v1)
+    (อีเมล `order-placed` ของการแปลงส่งแล้ว); ไม่แปลง/ไม่ refund อะไรเอง — (owner Q13 = (ก) 2026-10-28: เงินค้างจัดการแบบ manual ด้วย alert + runbook + GB-10 ใน v1);
+    (รอบ 13) `loadMembership` ที่ GB-9 (#196) วางไว้ในไฟล์ workflow `membership-payment.ts` — ถ้า GB-10 ใช้ด้วย ย้ายไปเป็น helper เดียวที่ทั้งสองไฟล์ import (ไม่ copy)
 27. (รอบ 12, owner Q19 = (ข) 2026-10-28 — ส่งมอบใน AF-16 ของ spec 05) order ของ group buy ได้ค่าคอม affiliate: `joinGroupWorkflow` ขั้น 3 คัดลอก `cart.metadata.affiliate_token`
     (ถ้ามี) ลง `metadata.affiliate_token` ของ draft order พร้อม key เดิม; storefront (GB-7) sync cookie `aff` ลง cart ก่อนเรียก join แบบเดียวกับก่อน `placeOrder` (spec 05 กฎ 23) —
     ค่าคอมเกิดเมื่อ draft ถูกแปลงเป็น order ปกติเท่านั้น (spec 05 กฎ 41)
@@ -472,7 +478,11 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   `POST /admin/draft-orders/<order>/convert-to-order` Then order `is_draft_order=false` และ M เป็น `paid` ภายในรอบ subscriber; ส่ง event ซ้ำ → ไม่เปลี่ยน/ไม่มี error; Given membership
   `awaiting_payment` ที่ collection ยังไม่ `completed` แล้ว admin แปลง Then M ไม่เปลี่ยน และมี log info; Given เส้นทางปกติของ GB-5 (capture → membership `paid` → แปลง → event)
   When subscriber ของ GB-10 ทำงาน Then เป็น noop ภายใต้ lock ต่อ membership (ไม่ error, ไม่ deadlock — ขอ lock ได้ภายใน timeout ของ GB-5 และ test จบภายใน timeout ปกติ) และ subscriber อื่นของ
-  event เดียวกัน (affiliate attribution, e-voucher) ยังทำงาน; AC-2 (API) ของ GB-5 ยังผ่าน (integration http)
+  event เดียวกัน (affiliate attribution, e-voucher) ยังทำงาน; AC-2 (API) ของ GB-5 ยังผ่าน (integration http);
+  (รอบ 13, กฎข้อ 25e–f — follow-up #196) unit ของ subscriber `group-buy-payment-captured.ts` (mock `query.graph` ให้ throw ตอนอ่านสถานะใหม่): ยังสร้าง notification alert 1 ฉบับ
+  ด้วย key `<membership_id>:<reason>` และมี log warn; unit ของฟังก์ชันตัดสินส่ง alert (`src/modules/group_buy/utils/membership-payment.ts`) มีกรณี membership `joined` (`membership_joined`)
+  ตามผลที่ฟังก์ชันกำหนด (assert ค่าตรง ไม่ใช่แค่ไม่ throw); unit ของ runbook: ตัวแปรเนื้อหาหัวข้อ "group buy: เงินเข้าแต่ไม่มี order" จบก่อนหัวข้อ `###` ถัดไป
+  (fixture: ขั้นตรวจ draft ที่อยู่ในหัวข้อถัดไปเท่านั้น → test ล้ม; positive control ใน PR); grep: `loadMembership` ประกาศที่เดียว (unit jest)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -498,6 +508,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   ถ้าเป็น e2e admin ตัวที่สองของโปรเจกต์
 - Integration (http): AC-38, AC-39, AC-40 (GB-8); e2e admin / component test: AC-41 (GB-6d)
 - (รอบ 12) unit + integration (http): AC-43 (GB-9); integration (http): AC-44 (GB-10)
+- (รอบ 13) unit jest: AC-44 ส่วนรอบ 13 (GB-10 — subscriber fail-open, กรณี `membership_joined`, ขอบหัวข้อ runbook)
 
 ## Tasks
 | ID | Task | Depends |
@@ -520,8 +531,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-6d | (เล็ก, admin UI, รอบ 10 — qa/review #121) invalidate ตารางกลุ่มเมื่อ succeed/fail ล้ม, highlight + ปุ่มปิดของแถวที่เลือก, selection ข้ามหน้า, ตัด `Membership.order.total` ที่ไม่ใช้ (กฎข้อ 23) (AC-41) | GB-6c2 ☑ (#121) |
 | GB-N3 | (เล็ก, รอบ 11 — qa #143, nit review #145) highlight `td` แรก (admin) + ส่ง collection ที่กรอง `null` แล้วเข้า `getLastPaymentStatus` ใน route รายตัว GB-8 (กฎข้อ 24) (AC-42) — ไฟล์: ตารางกลุ่มใน `src/admin/routes/group-buying/[id]/`, `orders/[order_id]/route.ts` ของ GB-8 | GB-6d ☑ (#143), GB-8 ☑ (#145) — เริ่มได้; ไม่บล็อก PAY-3b |
 | GB-9 | (backend เล็ก, รอบ 12 — re-review #185) alert เงินค้างอ่านสถานะใหม่ก่อนส่ง, idempotency key ต่อ membership+เหตุ, runbook ขั้นตรวจ draft + URL `/app/orders/<id>`, test คืนค่า `OPS_ALERT_EMAIL` (กฎข้อ 25) (AC-43) — ไฟล์: `src/subscribers/group-buy-payment-captured.ts`, `src/workflows/group-buy/membership-payment.ts`, `docs/ops/production.md`, `integration-tests/http/group-buy-payment.spec.ts` | GB-5 ☑ (#185) — **เริ่มได้** |
-| GB-10 | (backend เล็ก, รอบ 12 — review #185) membership เป็น `paid` เมื่อ ops แปลง draft order เองหลังเงินเข้า (กฎข้อ 26) (AC-44) — ไฟล์: subscriber ใหม่ใน `src/subscribers/`, workflow/step ใน `src/workflows/group-buy/` | GB-5 ☑ (#185) — เริ่มได้; ชน `membership-payment.ts` กับ GB-9 ตัวที่ merge ทีหลัง rebase |
-| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); (รอบ 10) รายการ draft order ของกลุ่มในหน้า account อ่านจาก route ของ GB-8 และลิงก์ไปหน้าชำระเงินของ PAY-3b (ไม่สร้างหน้าชำระเงินซ้ำ); (รอบ 12) sync cookie `aff` ลง cart ก่อนเรียก join (กฎข้อ 27) + เพิ่มจุดนี้ใน static test ของ spec 05 กฎ 31 | GB-5 ☑ (#185), GB-8 ☑, **PAY-3b1 (#189) + PAY-3b2** (spec 06), GB-3b ☑, AF-16 (spec 05 — token บน draft order) |
+| GB-10 | (backend เล็ก, รอบ 12 — review #185) membership เป็น `paid` เมื่อ ops แปลง draft order เองหลังเงินเข้า (กฎข้อ 26) (AC-44) — ไฟล์: subscriber ใหม่ใน `src/subscribers/`, workflow/step ใน `src/workflows/group-buy/`; **(รอบ 13) รวม follow-up review #196 (GB-9)**: subscriber `group-buy-payment-captured.ts` fail-open เมื่ออ่านสถานะใหม่ล้ม (`loadMembership` ราวบรรทัด 37 เข้าไปใน `try`), ย้าย `loadMembership` ออกจาก `src/workflows/group-buy/membership-payment.ts` เป็น helper เดียวถ้า subscriber ใหม่ใช้ร่วม, test กรณี `membership_joined` ใน `src/modules/group_buy/utils/membership-payment.ts`, ขอบตัวแปร `gb` ใน `src/__tests__/ops-runbook.unit.spec.ts` (กฎข้อ 25e–f) — ไฟล์เพิ่ม: `src/subscribers/group-buy-payment-captured.ts`, `src/modules/group_buy/utils/membership-payment.ts` (+ test), `src/__tests__/ops-runbook.unit.spec.ts` | GB-5 ☑ (#185), **GB-9 (#196) merge** (รอบ 13 — แก้โค้ดที่ #196 เพิ่ม; เดิม "ชน `membership-payment.ts` ตัวที่ merge ทีหลัง rebase") |
+| GB-7 | หน้า storefront แคมเปญ/กลุ่ม/account/ชำระเงิน + ล้าง cart หลัง join (กฎข้อ 14c; 14d ไม่ต้องกัน) + e2e (AC-2, AC-16, AC-28); ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (spec 01 CORE-4 กฎข้อ 4, ADR-014); (รอบ 10) รายการ draft order ของกลุ่มในหน้า account อ่านจาก route ของ GB-8 และลิงก์ไปหน้าชำระเงินของ PAY-3b (ไม่สร้างหน้าชำระเงินซ้ำ); (รอบ 12) sync cookie `aff` ลง cart ก่อนเรียก join (กฎข้อ 27) + เพิ่มจุดนี้ใน static test ของ spec 05 กฎ 31 | GB-5 ☑ (#185), GB-8 ☑, PAY-3b1 ☑ (#189) + **PAY-3b2 (◐ #203)** (spec 06), GB-3b ☑, AF-16 ☑ (#197) (spec 05 — token บน draft order) |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
 GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
@@ -535,6 +546,7 @@ GB-6d ∥ ทุกตัว (admin UI ล้วน); GB-8 กับ PAY-3a ค�
 (รอบ 11) สถานะ: GB-6d ☑ #143, GB-8 ☑ #145 → PAY-3b เริ่มได้เมื่อ PAY-3a ☑ ด้วย (ดู spec 06); GB-N3 เริ่มได้ทันที (ไม่บล็อกงานอื่น); PAY-3a, GB-5, GB-7 ☐
 (รอบ 12) สถานะ: PAY-3a ☑ #157, GB-N3 ☑ #161, GB-5 ☑ #185; PAY-3b1 ◐ #189 → PAY-3b2 ☐ → GB-7 (← ทั้งสอง + AF-16); GB-9 ∥ GB-10 เริ่มได้ (backend; ไม่บล็อก GB-7 แต่ควร merge ก่อน release v0.5.0);
 review #185: test "convert ล้มเพราะสต็อกหมด" มีแล้วใน #185 (ไม่ต้องมี task); owner ตอบแล้ว 2026-10-28: Q13 (ก), Q14 (ก), spec 05 Q19 (ข) → กฎข้อ 27 + AF-16
+(รอบ 13, 2026-11-03) สถานะ: GB-9 ◐ #196, AF-16 ☑ #197 (spec 05), PAY-3b1 ☑ #189, PAY-3b2 ◐ #203 (spec 06); GB-10 ← #196 (รวม follow-up ของ #196); GB-7 ← PAY-3b2 (AF-16 ☑)
 
 ## Open questions
 - ~~Q13~~ ตัดสินแล้ว (owner 2026-10-28): **(ก)** manual ใน v1 — alert + runbook (กฎข้อ 25, GB-9) + GB-10; ไม่มี job ลองแปลงใหม่/refund อัตโนมัติ; คำถามเดิม (รอบ 12, review #185): เงินถูก capture แต่ไม่มี order ที่ใช้ได้ (GB-5 ตอนนี้ทำแค่ ops alert + runbook — ops ตัดสิน refund หรือเติมสต็อกแล้วแปลงเอง):

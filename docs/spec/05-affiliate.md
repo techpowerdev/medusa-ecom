@@ -1,7 +1,8 @@
 # 05 Affiliate — ค่าคอมมิชชันแบบมีช่วงเวลากำหนด
 
 สถานะ: in-progress (AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31; รอบ 9 2026-10-27: payouts/paging ของ portal, กฎ 29–30, AC-32..36, AF-7b/AF-10/AF-N1;
-รอบ 11 2026-10-27: admin UI แบบเขียนได้ AF-12a/b/c (owner), นิยาม AF-8a/8b/8c, `has_payout_info` AF-13, ชื่อ affiliate ใน admin AF-14 (owner Q17), กฎ 33–38, AC-39..45)
+รอบ 11 2026-10-27: admin UI แบบเขียนได้ AF-12a/b/c (owner), นิยาม AF-8a/8b/8c, `has_payout_info` AF-13, ชื่อ affiliate ใน admin AF-14 (owner Q17), กฎ 33–38, AC-39..45;
+รอบ 12 2026-10-28: AF-15, AF-N3, AF-16, กฎ 39–41, AC-46..48; รอบ 13 2026-11-03: token ว่างของ AF-16 #197 → AF-17 (กฎ 41b แก้, AC-49), nit AF-14 #187 → ADM-8a ของ spec 08)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -293,6 +294,7 @@ Payout
     (a) `joinGroupWorkflow` (GB-3, ขั้นสร้าง draft order ใน `workflows/group-buy/join-group.ts`) คัดลอก `cart.metadata.affiliate_token` (ถ้ามีและไม่ว่าง) ลง `metadata.affiliate_token` ของ draft order
     พร้อม key `group_buy_*` เดิม — ไม่ตรวจลายเซ็นตอน join (ตรวจตอน attribution ตามเดิม);
     (b) attribution (`workflows/affiliate/attribute-order.ts`) อ่าน token จาก `order.cart.metadata.affiliate_token` ก่อน ไม่มีจึงอ่าน `order.metadata.affiliate_token`;
+    "ไม่มี" = `undefined`, `null`, ไม่ใช่ string หรือ string ที่ trim แล้วว่าง (แก้ถ้อยคำรอบ 13 ตาม review #197 — `??` ไม่ fallback เมื่อค่าเป็น `""`; ส่งมอบใน AF-17);
     (c) order ที่ `is_draft_order = true` → **ไม่ทำ attribution และไม่บันทึกอะไร** (หยุดเงียบ — attribution เกิดจาก `order.placed` ของการแปลงใน GB-5/GB-10 แทน; กันค่าคอมของ draft ที่ไม่ได้จ่าย/ถูกยกเลิก);
     (d) เวลาอ้างอิงกฎ 24 = `order.created_at` เดิม (= เวลาที่ join เพราะการแปลงไม่สร้าง order ใหม่ — builder ยืนยันใน 2.22.1 ถ้าไม่ใช่ให้หยุดรายงาน); ฐานคำนวณ = ยอดหลังส่วนลด `GB-*` ตามกฎ 3;
     (e) ไม่สร้าง cart/link ใหม่, ไม่แก้ AF-3b/กฎ 31 ฝั่ง checkout — จุด sync cookie ก่อน join เป็นของ GB-7 (spec 04 กฎข้อ 27)
@@ -420,6 +422,9 @@ Payout
   และ `group_buy_membership_id`; When รัน workflow attribution กับ draft order (หรือ event ของการสร้าง draft ถ้ามี) Then ไม่มี `AffiliateAttribution`/entry ของ order นั้น; When กลุ่มสำเร็จ ชำระ
   และแปลง (GB-5, mock provider) Then มี attribution 1 รายการ และ entry ยอด = 10% ของ `subtotal − discount_subtotal` ของ line หลังส่วนลด `GB-*` (เทียบ `MathBN`); Given cart ไม่มี token Then draft order
   ไม่มี key `affiliate_token` และหลังแปลงไม่มี attribution; Given token ของ Ann และอีเมล order = อีเมลของ Ann Then ไม่มี entry (กฎ 12); AC-1, AC-10 เดิมยังผ่าน (integration http)
+- AC-49 (AF-17, กฎ 41b — รอบ 13, review #197) unit ของฟังก์ชันเลือก token (แยกเป็น pure function ใน `attribute-order.ts` หรือ helper ข้างไฟล์): cart `""` + order `T` → `T`; cart `"  "` + order `T` → `T`;
+  cart `T1` + order `T2` → `T1`; cart ไม่มี + order `""` → ไม่มี token (หยุดเงียบตามเดิม); cart `123` (ไม่ใช่ string) + order `T` → `T`; integration: Given order ที่แปลงจาก draft ซึ่ง cart มี
+  `metadata.affiliate_token = ""` และ draft order มี token ที่ถูกต้องของ Ann Then มี attribution 1 รายการของ Ann; AC-48 ยังผ่าน (unit jest + integration http)
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -438,6 +443,7 @@ Payout
 - unit Vitest (static): AC-37 (AF-3c); integration + unit: AC-38 (AF-N2)
 - (รอบ 11) integration http: AC-39 (AF-13); e2e: AC-40 (AF-8b); unit Vitest: AC-41 (AF-8c); e2e admin: AC-42 (AF-12a), AC-43 (AF-12b), AC-44 (AF-12c); integration http + e2e admin: AC-45 (AF-14)
 - (รอบ 12) integration http + e2e admin: AC-46 (AF-15); unit Vitest + e2e: AC-47 (AF-N3); integration http: AC-48 (AF-16)
+- (รอบ 13) unit jest + integration http: AC-49 (AF-17)
 
 ## Tasks
 | ID | Task | Depends |
@@ -466,8 +472,9 @@ Payout
 | AF-9 | follow-up AF-5 (เล็ก): `cancelPayoutWorkflow` + admin route ยกเลิก payout `draft` (คืน entry ให้เลือกได้อีก) และย้ายการกรอง entry ของ `createPayoutWorkflow` ไปทำใน DB (filter ตามกฎ 19 แทนโหลด entry ทั้งหมดแล้วกรองในแอป) (AC-19, AC-20; AC-7 ต้องยังผ่าน) | AF-5 |
 | AF-3c | (เล็ก, storefront test-only, รอบ 10 — review #119) static test ว่าทุกจุดเริ่มชำระผ่าน `syncAffiliateBefore` (กฎ 31) (AC-37) — ถ้า test พบจุดที่ไม่ครอบ แก้ใน PR เดียวกัน | AF-3b ☑ (#119) |
 | AF-N2 | (เล็ก, backend, รอบ 10 — nit review #125 AF-10 + #122 r2 AF-7b) maturity job ข้าม order ที่ขอ lock ไม่ได้ภายใน ≤ 5s, ถ้อยคำ/ระดับ log ระหว่าง retry, log `affiliate_cancel_reconcile_noop`, type `Program` ระบุ field (กฎ 32) (AC-38) | AF-10 ☑ (#125), AF-7b ☑ (#122) — ควร merge ก่อน AF-8 (type) |
-| AF-15 | (backend เล็ก + admin UI, รอบ 12 — review/qa #165) validator `payout_info` 3 ช่องแบบ strict, `expected_status` + 409 `AFFILIATE_STATUS_CHANGED`, prompt ของ Clear, e2e `expect.poll` (กฎ 39) (AC-46) — ไฟล์: `src/api/admin/affiliate/validators.ts`, route/workflow update affiliate, `src/admin/components/affiliate/` (affiliates table, payout info drawer), `src/admin/lib/affiliate.ts`, e2e `affiliate-admin-affiliates`; รวมรูปแบบ `account_number` 10–12 หลัก (owner Q20) — เกิน ~400 LOC ให้ builder แยกเป็น AF-15a backend (validator + `expected_status`) / AF-15b admin UI + e2e | AF-12b ☑ (#165), **AF-14** (◐ #187 — แตะ `lib/affiliate.ts`/`validators.ts` เดียวกัน) — ควร merge ก่อน ADM-8a (ADM-8a ต้องรอ AF-15 ด้วย) |
-| AF-16 | (backend เล็ก, รอบ 12 — owner Q19 = (ข)) คัดลอก `affiliate_token` จาก cart ลง metadata ของ draft order ตอน join, attribution อ่าน `order.metadata` เมื่อไม่มี cart และข้าม order ที่เป็น draft (กฎ 41) (AC-48) — ไฟล์: `src/workflows/group-buy/join-group.ts`, `src/workflows/affiliate/attribute-order.ts` + integration test | AF-3 ☑, GB-3 ☑, GB-5 ☑ (#185) — **เริ่มได้**; ต้อง merge ก่อน GB-7 (spec 04) |
+| AF-15 | (backend เล็ก + admin UI, รอบ 12 — review/qa #165) validator `payout_info` 3 ช่องแบบ strict, `expected_status` + 409 `AFFILIATE_STATUS_CHANGED`, prompt ของ Clear, e2e `expect.poll` (กฎ 39) (AC-46) — ไฟล์: `src/api/admin/affiliate/validators.ts`, route/workflow update affiliate, `src/admin/components/affiliate/` (affiliates table, payout info drawer), `src/admin/lib/affiliate.ts`, e2e `affiliate-admin-affiliates`; รวมรูปแบบ `account_number` 10–12 หลัก (owner Q20) — เกิน ~400 LOC ให้ builder แยกเป็น AF-15a backend (validator + `expected_status`) / AF-15b admin UI + e2e | AF-12b ☑ (#165), AF-14 ☑ (#187 — รอบ 13: **เริ่มได้**) — ควร merge ก่อน ADM-8a (ADM-8a ต้องรอ AF-15 ด้วย) |
+| AF-16 | ☑ #197 (AC-48 ☑) — (backend เล็ก, รอบ 12 — owner Q19 = (ข)) คัดลอก `affiliate_token` จาก cart ลง metadata ของ draft order ตอน join, attribution อ่าน `order.metadata` เมื่อไม่มี cart และข้าม order ที่เป็น draft (กฎ 41) (AC-48) — ไฟล์: `src/workflows/group-buy/join-group.ts`, `src/workflows/affiliate/attribute-order.ts` + integration test | AF-3 ☑, GB-3 ☑, GB-5 ☑ (#185) — **เริ่มได้**; ต้อง merge ก่อน GB-7 (spec 04) |
+| AF-17 | (backend เล็กมาก, รอบ 13 — review #197 AF-16) เลือก token ของ attribution: ค่าว่าง/ไม่ใช่ string ของ `cart.metadata.affiliate_token` ถือว่า "ไม่มี" แล้ว fallback ไป `order.metadata` (แทน `??`) (กฎ 41b) (AC-49) — ไฟล์: `src/workflows/affiliate/attribute-order.ts` + unit/integration test ของ AF-16 | AF-16 ☑ (#197) — **เริ่มได้**; ไม่บล็อก GB-7 |
 | AF-N3 | (storefront เล็ก, รอบ 12 — review/qa #173, nit #153/#174) สกุลเงินของ Earnings, component คัดลอก/แชร์เดียว, หน้าเกินจำนวน, เครื่องหมาย `−`, static test ของกฎ 31 ด้วย AST (กฎ 40) (AC-47) — ไฟล์: `app/[countryCode]/(main)/affiliate/**`, `modules/affiliate/**`, static test ของ AF-3c | AF-8c ☑ (#182), AF-3c ☑ (#153) — **เริ่มได้** |
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
@@ -478,6 +485,8 @@ AF-8b (← AF-13) → AF-8c; release v0.6.0 ต้องมี AF-8b, AF-12a/b/c
 (รอบ 12) สถานะ: AF-3c ☑ #153, AF-13 ☑ #158, AF-12a ☑ #163, AF-12b ☑ #165, AF-8b ☑ #173, AF-12c ☑ #176, AF-8c ☑ #182; AF-14 ◐ #187; ใหม่: AF-N3 ∥ AF-16 เริ่มได้ทันที,
 AF-15 หลัง AF-14; owner ตอบ 2026-10-28: Q19 (ข) → กฎ 41/AF-16, Q20 (ข) → กฎ 39a/AF-15; nit admin ของ #163/#176 (วันเวลาของฟอร์มโปรแกรม, scope ว่าง, ตัวเลือก affiliate > 200, mark paid ระหว่าง cancel) รวมใน ADM-8b/ADM-9 (spec 08) เพราะ ADM เขียนฟอร์ม/ปุ่มเหล่านั้นใหม่;
 release v0.6.0 ต้องมี AF-14 (AF-15 ควรมี)
+(รอบ 13, 2026-11-03) สถานะ: AF-14 ☑ #187, AF-16 ☑ #197 (AC-48 ☑); ใหม่: AF-17 เริ่มได้ (← AF-16 ☑); nit review/qa ของ AF-14 #187 (assertion `safeParse` ใน `affiliate-names.unit.spec.ts` ไม่ยืนยันค่า,
+cast `as unknown as` ของ `affiliateNames` ใน `list-table.tsx`, query ชื่อไม่มี `placeholderData: keepPreviousData`) ยังไม่อยู่ใน ADM-8a/AF-15 → **เพิ่มเข้า ADM-8a** (spec 08 — ADM-8a เขียน `list-table` ใหม่อยู่แล้ว)
 (รอบ 11, review #146 AF-N2) nit `tryAcquire` ที่ `catch {}` กลืน error ทุกชนิด (ต้องข้ามเฉพาะ lock conflict) และ `.run()` ที่ throw แบบ sync ต้อง release lock — #146 merge แล้ว
 ถ้ายังไม่ได้แก้ ให้ PR ถัดไปที่แตะ maturity job แก้ (ไม่สร้าง task); ข้อสังเกต: entry `pending` ของ order ที่ยกเลิกและยอดสุทธิ = 0 ค้าง `pending` ถาวร (กฎ 5 ห้ามแก้ status ย้อน/ข้าม) และถูกสแกนทุกวันพร้อม log `affiliate_cancel_reconcile_noop`
 — ยอมรับใน v1 (ปริมาณน้อย; ไม่ใช่ยอดที่จ่ายได้) → backlog หลัง v1.0 พร้อม AF-11
