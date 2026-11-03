@@ -75,3 +75,17 @@ export function sessionCreateOutcome(status: number, code: string | null): Sessi
   if (status === 401) return "unauthorized"
   return "check-status"
 }
+
+export type StripeReturn = "poll" | "failed" | null
+
+/**
+ * กฎข้อ 9 (d3): query ที่ Stripe แนบมาเมื่อ redirect กลับหน้า pay (3DS/พร้อมเพย์) — ต้องมีทั้ง `payment_intent` และ `redirect_status`
+ * `succeeded`/`processing` → poll GB-8 ทันที (webhook อาจยังไม่มา); `failed`/`requires_payment_method` → error + ฟอร์ม; อื่น ๆ → null (ตามข้อ b)
+ */
+export function stripeReturn(query: Record<string, string | string[] | undefined>): StripeReturn {
+  const { payment_intent: pi, redirect_status: status } = query
+  if (typeof pi !== "string" || !pi || typeof status !== "string") return null
+  if (status === "succeeded" || status === "processing") return "poll"
+  if (status === "failed" || status === "requires_payment_method") return "failed"
+  return null
+}
