@@ -34,9 +34,14 @@ const AccountInfo = ({
   const formStatus = useFormStatus()
   const pending = isPending || formStatus.pending
 
-  const handleToggle = () => {
+  // CORE-23c (กฎข้อ 74c): เปิด panel ทันที — setTimeout เดิมทำให้ช่องยังอยู่ใต้ `inert` หลังกดแก้ไข (ค่าที่พิมพ์หาย)
+  // ปุ่มเป็น type="button" เสมอ (เปลี่ยน type ระหว่าง click ทำให้ browser reset ฟอร์มตอนเปิด) — ยกเลิกจึง reset เอง
+  const handleToggle = (event: React.MouseEvent<HTMLButtonElement>) => {
     clearState()
-    setTimeout(() => toggle(), 100)
+    if (state) {
+      event.currentTarget.form?.reset()
+    }
+    toggle()
   }
 
   useEffect(() => {
@@ -64,7 +69,7 @@ const AccountInfo = ({
             variant="secondary"
             className="w-[100px] min-h-[25px] py-1"
             onClick={handleToggle}
-            type={state ? "reset" : "button"}
+            type="button"
             data-testid="edit-button"
             data-active={state}
           >
