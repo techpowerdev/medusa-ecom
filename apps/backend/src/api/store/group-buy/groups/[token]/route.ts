@@ -36,8 +36,13 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     fields: CAMPAIGN_CONFIG_FIELDS,
     filters: { id: group.campaign_id },
   })
+  const campaign = campaigns[0] as PublicCampaignSource | undefined
+  if (!campaign) {
+    // กลุ่มกำพร้า (แคมเปญถูกลบ) — ไม่มีอะไรให้แสดง ตอบเหมือนไม่พบ ไม่ใช่ 500
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, "Group not found")
+  }
   res.json({
     group: { ...toPublicGroup(group), kind: group.kind },
-    campaign: toPublicCampaign(campaigns[0] as PublicCampaignSource, group.promotion),
+    campaign: toPublicCampaign(campaign, group.promotion),
   })
 }

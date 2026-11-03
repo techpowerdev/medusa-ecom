@@ -19,9 +19,14 @@ export type PublicApplicationMethod = {
 const PRODUCT_ATTRIBUTE = "items.product.id"
 const iso = (d: DateLike) => (d ? new Date(d).toISOString() : null)
 
-// กฎข้อ 28e + 30: ค่าเดียวใน values ของ rule `items.product.id` / `in` — ไม่มี rule, หลาย rule หรือ ≠ 1 ค่า → null
+// กฎข้อ 28e + 30: ค่าเดียวใน values ของ rule `items.product.id` / `in` — ไม่มี rule, หลาย rule, ≠ 1 ค่า
+// หรือมี rule อื่นของ `items.*` ปน (ห้าม scope ระดับ variant/attribute อื่น) → null; rule นอก `items.*` ไม่อยู่ในกฎนี้
 export function publicCampaignProductId(method: Pick<PublicApplicationMethod, "target_rules"> | null | undefined) {
-  const rules = (method?.target_rules ?? []).filter((r) => r.attribute === PRODUCT_ATTRIBUTE && r.operator === "in")
+  const itemRules = (method?.target_rules ?? []).filter((r) => r.attribute.startsWith("items."))
+  const rules = itemRules.filter((r) => r.attribute === PRODUCT_ATTRIBUTE && r.operator === "in")
+  if (rules.length !== itemRules.length) {
+    return null
+  }
   const values = rules.length === 1 ? (rules[0].values ?? []) : []
   return values.length === 1 ? values[0].value : null
 }
@@ -55,10 +60,6 @@ export function isCampaignLive(
     return false
   }
 }
-
-// กฎข้อ 28d: list เฉพาะ pool ที่เปิดรับและยังไม่หมดเวลา — team ได้จากลิงก์แชร์เท่านั้น
-export const isListedPool = (g: { kind: string; status: string; ends_at: DateLike }, now: Date) =>
-  g.kind === "pool" && g.status === "open" && !!g.ends_at && new Date(g.ends_at).getTime() > now.getTime()
 
 export type PublicCampaignSource = {
   id: string

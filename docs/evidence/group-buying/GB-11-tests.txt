@@ -57,3 +57,17 @@ Tests:       803 passed, 803 total
 
 ## lint / typecheck / build
 pnpm lint: 0 errors (backend warning เดิม 1 ตัว @medusajs/cli/dist/reporter ไม่เกี่ยว); pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
+
+## แก้ตาม review #230 (2026-11-04)
+Red (ก่อนแก้, unit):
+- publicCampaignProductId: product rule + items.variant_id → Expected null, Received "prod_x"
+- campaigns/active: Expected number of calls: 2, Received: 1 (โหลดทุกกลุ่มผ่าน relation groups)
+- groups/:token แคมเปญหาย: ได้ TypeError (500) แทน not_found
+Green:
+- unit ทั้งชุด: Tests: 803 passed, 803 total
+- unit public-routes.unit.spec.ts: 3 passed (query กลุ่ม filters { campaign_id, kind: pool, status: open, ends_at: { $gt } }, ไม่มีแคมเปญ live → ไม่ query กลุ่ม, 404)
+- integration group-buy-public.spec.ts:
+    ✓ AC-45: campaigns/active without a customer token → only live, single-product campaigns with open, unexpired pools; allow-list keys, no PII/codes (1152 ms)
+    ✓ AC-46: groups/:token of a team → group + campaign from the group's own promotion; allow-list keys, no PII; same body with a customer token; succeeded; 404; join still 401 (1359 ms)
+Tests:       2 passed, 2 total
+- lint 0 error, typecheck ผ่าน, backend build ผ่าน

@@ -1,6 +1,5 @@
 import {
   isCampaignLive,
-  isListedPool,
   publicCampaignProductId,
   publicDiscount,
   toPublicCampaign,
@@ -31,9 +30,17 @@ describe("publicCampaignProductId", () => {
       null,
     ],
     [
+      // กฎข้อ 30: ห้าม scope ด้วย attribute อื่นของ items — มี rule items.* อื่นปน = ไม่ผ่าน (review #230)
       "product rule next to another items rule",
       {
         target_rules: [rule("items.product.id", ["prod_x"]), rule("items.variant_id", ["variant_1"])],
+      },
+      null,
+    ],
+    [
+      "product rule next to a rule outside items.*",
+      {
+        target_rules: [rule("items.product.id", ["prod_x"]), rule("shipping_methods.shipping_option.id", ["so_1"])],
       },
       "prod_x",
     ],
@@ -79,19 +86,6 @@ describe("isCampaignLive", () => {
     ["no ends_at", "active", past, null, false],
   ] as const)("%s → %s", (_, status, startsAt, endsAt, expected) => {
     expect(isCampaignLive({ status, starts_at: startsAt, ends_at: endsAt }, now)).toBe(expected)
-  })
-})
-
-// กฎข้อ 28d: pool ที่ open และยังไม่หมดเวลาเท่านั้น ไม่ list team
-describe("isListedPool", () => {
-  const now = new Date("2026-11-03T10:00:00Z")
-  it.each([
-    ["open pool", "pool", "open", "2026-11-03T11:00:00Z", true],
-    ["failed pool", "pool", "failed", "2026-11-03T11:00:00Z", false],
-    ["open pool past ends_at", "pool", "open", "2026-11-03T09:00:00Z", false],
-    ["open team", "team", "open", "2026-11-03T11:00:00Z", false],
-  ] as const)("%s → %s", (_, kind, status, endsAt, expected) => {
-    expect(isListedPool({ kind, status, ends_at: endsAt }, now)).toBe(expected)
   })
 })
 
