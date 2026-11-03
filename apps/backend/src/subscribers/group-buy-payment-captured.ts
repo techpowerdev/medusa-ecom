@@ -32,16 +32,23 @@ const errorMessage = (error: unknown) => (error as { message?: string } | null)?
 
 // กฎข้อ 25: อ่านสถานะใหม่ก่อน — ไม่ใช่เงินค้างแล้ว (เช่น order แปลงสำเร็จ/membership paid) → log info ไม่ส่ง
 // ยังค้าง → log error + อีเมลหา OPS_ALERT_EMAIL (idempotency key ต่อ membership + เหตุ — event ซ้ำไม่ส่งซ้ำ) ไม่ทำให้ subscriber ล้ม
+// กฎข้อ 25 (e): อ่านสถานะใหม่ล้ม → fail-open ส่ง alert ต่อ (alert ซ้ำ/ผิดดีกว่าเงินค้างเงียบ — runbook มีขั้นตรวจก่อน refund)
 async function alertPaidWithoutOrder(container: MedusaContainer, alert: PaidWithoutOrder) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const current = await loadMembership(container, alert.membership_id)
-  const state = { membership_status: current.status, is_draft_order: !!current.order?.is_draft_order }
-  if (!shouldSendPaidWithoutOrderAlert(alert.reason, state)) {
-    logger.info(
-      `${GROUP_BUY_PAID_WITHOUT_ORDER} skipped reason=${alert.reason} membership_id=${alert.membership_id} ` +
-        `order_id=${alert.order_id} — no longer stuck (membership_status=${state.membership_status} is_draft_order=${state.is_draft_order})`
+  try {
+    const current = await loadMembership(container, alert.membership_id)
+    const state = { membership_status: current.status, is_draft_order: !!current.order?.is_draft_order }
+    if (!shouldSendPaidWithoutOrderAlert(alert.reason, state)) {
+      logger.info(
+        `${GROUP_BUY_PAID_WITHOUT_ORDER} skipped reason=${alert.reason} membership_id=${alert.membership_id} ` +
+          `order_id=${alert.order_id} — no longer stuck (membership_status=${state.membership_status} is_draft_order=${state.is_draft_order})`
+      )
+      return
+    }
+  } catch (error) {
+    logger.warn(
+      `${GROUP_BUY_PAID_WITHOUT_ORDER}: re-reading membership_id=${alert.membership_id} failed — sending the alert anyway: ${errorMessage(error)}`
     )
-    return
   }
   logger.error(
     `${GROUP_BUY_PAID_WITHOUT_ORDER} reason=${alert.reason} membership_id=${alert.membership_id} ` +
