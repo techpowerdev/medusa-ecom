@@ -22,6 +22,10 @@ const PROVIDER = "pp_system_default"
 const OPS_EMAIL = "gb5-ops@example.com"
 // GB-9 กฎข้อ 25 (d): suite นี้ตั้ง OPS_ALERT_EMAIL — คืนค่าเดิมใน afterAll ไม่ให้รั่วไป suite อื่นใน worker เดียวกัน
 const SAVED_OPS_ALERT_EMAIL = process.env.OPS_ALERT_EMAIL
+// GB-10: admin แปลง draft order เอง (POST /admin/draft-orders/:id/convert-to-order)
+const ADMIN_EMAIL = "gb10-admin@example.com"
+const ADMIN_PASSWORD = "gb10-password"
+const SAVED_SEED_ADMIN = [process.env.SEED_ADMIN_EMAIL, process.env.SEED_ADMIN_PASSWORD] as const
 
 // GB-5: payment.captured → membership paid + แปลง draft order (AC-2 ส่วน API, AC-37) และหมดเวลาชำระเงิน (AC-10)
 medusaIntegrationTestRunner({
@@ -35,6 +39,8 @@ medusaIntegrationTestRunner({
 
     beforeAll(async () => {
       process.env.OPS_ALERT_EMAIL = OPS_EMAIL
+      process.env.SEED_ADMIN_EMAIL = ADMIN_EMAIL
+      process.env.SEED_ADMIN_PASSWORD = ADMIN_PASSWORD
       const container = getContainer()
       await seedThailand({ container, args: [] })
       pk = await getPublishableKey(container)
@@ -87,6 +93,9 @@ medusaIntegrationTestRunner({
     })
 
     afterAll(() => {
+      const [email, password] = SAVED_SEED_ADMIN
+      email === undefined ? delete process.env.SEED_ADMIN_EMAIL : (process.env.SEED_ADMIN_EMAIL = email)
+      password === undefined ? delete process.env.SEED_ADMIN_PASSWORD : (process.env.SEED_ADMIN_PASSWORD = password)
       if (SAVED_OPS_ALERT_EMAIL === undefined) {
         delete process.env.OPS_ALERT_EMAIL
       } else {
@@ -214,6 +223,93 @@ medusaIntegrationTestRunner({
       // GB-9 กฎข้อ 25 (b): key ต่อ membership + เหตุ (column มีจริงแต่ NotificationDTO 2.22.1 ไม่ประกาศ field นี้)
       expect((alerts[0] as { idempotency_key?: string }).idempotency_key).toEqual(`${member.membership_id}:${reason}`)
     }
+
+    // GB-10 (กฎข้อ 26): ops แปลงผ่าน route ของ @medusajs/draft-order แล้วรอ subscriber ของ order.placed ทุกตัว
+    async function adminConvert(orderId: string) {
+      const { data: auth } = await api.post("/auth/user/emailpass", { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      const placed = TestEventUtils.waitSubscribersExecution("order.placed", eventBus())
+      const res = await api
+        .post(`/admin/draft-orders/${orderId}/convert-to-order`, {}, { headers: { authorization: `Bearer ${auth.token}` } })
+        .catch((e) => {
+          throw new Error(`${e?.response?.status} ${JSON.stringify(e?.response?.data)}`)
+        })
+      await placed
+      return res.status
+    }
+
+    const reemitPlaced = async (orderId: string) => {
+      const again = TestEventUtils.waitSubscribersExecution("order.placed", eventBus())
+      await eventBus().emit({ name: "order.placed", data: { id: orderId } })
+      await again
+    }
+
+    const logger = () => getContainer().resolve(ContainerRegistrationKeys.LOGGER)
+    const loggedWith = (spy: jest.SpyInstance, ...parts: string[]) =>
+      spy.mock.calls.some(([message]) => parts.every((p) => String(message).includes(p)))
+
+    async function stockedVariantLevels(quantity: number) {
+      const { data: variants } = await query().graph({
+        entity: "product_variant",
+        fields: ["inventory_items.inventory_item_id"],
+        filters: { id: variantStocked },
+      })
+      const { data: locations } = await query().graph({ entity: "stock_location", fields: ["id"] })
+      const inventoryItemId = (variants[0] as any).inventory_items[0].inventory_item_id
+      return locations.map((l) => ({ inventory_item_id: inventoryItemId, location_id: l.id, stocked_quantity: quantity }))
+    }
+
+    it("AC-44: convert failed (out of stock) → ops restocks and converts via admin → membership paid; order.placed again is a no-op", async () => {
+      const inventory = getContainer().resolve(Modules.INVENTORY)
+      await inventory.createInventoryLevels(await stockedVariantLevels(1))
+      const { joined } = await succeededGroup(1, {}, variantStocked)
+      const [member] = joined
+      await inventory.updateInventoryLevels(await stockedVariantLevels(0))
+      await pay(member, ["payment.captured"])
+      expect((await membershipOf(member.membership_id)).status).toEqual("awaiting_payment")
+      expect((await orderOf(member.order_id)).is_draft_order).toBe(true)
+
+      await inventory.updateInventoryLevels(await stockedVariantLevels(1))
+      expect(await adminConvert(member.order_id)).toEqual(200)
+
+      expect((await orderOf(member.order_id)).is_draft_order).toBe(false)
+      expect((await membershipOf(member.membership_id)).status).toEqual("paid")
+      const error = jest.spyOn(logger(), "error")
+      await reemitPlaced(member.order_id)
+      expect((await membershipOf(member.membership_id)).status).toEqual("paid")
+      expect(loggedWith(error, member.membership_id)).toBe(false)
+      error.mockRestore()
+    })
+
+    it("AC-44: admin converts while the collection is not completed → membership unchanged, info logged", async () => {
+      const { joined } = await succeededGroup(1)
+      const [member] = joined
+      const info = jest.spyOn(logger(), "info")
+      expect(await adminConvert(member.order_id)).toEqual(200)
+
+      expect((await orderOf(member.order_id)).is_draft_order).toBe(false)
+      expect((await membershipOf(member.membership_id)).status).toEqual("awaiting_payment")
+      expect(loggedWith(info, "group-buy-order-placed", member.membership_id, "noop")).toBe(true)
+      info.mockRestore()
+    })
+
+    it("AC-44: normal GB-5 path (capture → paid → convert → order.placed) → GB-10 subscriber is a no-op under the membership lock; order-placed email still sent", async () => {
+      const { joined } = await succeededGroup(1)
+      const [member] = joined
+      const info = jest.spyOn(logger(), "info")
+      const error = jest.spyOn(logger(), "error")
+      await pay(member)
+
+      expect((await membershipOf(member.membership_id)).status).toEqual("paid")
+      expect(loggedWith(info, "group-buy-order-placed", member.membership_id, "noop")).toBe(true)
+      expect(loggedWith(error, member.membership_id)).toBe(false)
+      expect(
+        await getContainer()
+          .resolve(Modules.NOTIFICATION)
+          .listNotifications({ template: "order-placed", resource_id: member.order_id })
+      ).toHaveLength(1)
+      info.mockRestore()
+      error.mockRestore()
+    })
 
     it.each([
       ["฿1,000 (review #100)", () => variantX, 700],

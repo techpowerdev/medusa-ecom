@@ -17,6 +17,7 @@ import {
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
 import {
+  convertedOrderAction,
   type MembershipStatus,
   paymentCapturedAction,
   shouldExpireMembershipPayment,
@@ -106,6 +107,49 @@ export const confirmGroupBuyMembershipPaymentWorkflow = createWorkflow(
     when("convert-group-buy-draft-order", { result }, ({ result }) => result.convert).then(() => {
       convertDraftOrderWorkflow.runAsStep({ input: { id: result.order_id } })
     })
+    releaseLockStep({ key })
+    return new WorkflowResponse(result)
+  }
+)
+
+// GB-10 กฎข้อ 26: ops แปลง draft order เอง → membership `paid` (idempotent ผ่านสถานะ) — compensation คืน `awaiting_payment`
+export type ConvertedMembershipInput = MembershipPaymentInput & { order_id: string }
+export type ConvertedMembershipResult = {
+  membership_id: string
+  membership_status: MembershipStatus
+  action: ReturnType<typeof convertedOrderAction>
+}
+
+export const markConvertedMembershipPaidStep = createStep(
+  "mark-converted-membership-paid",
+  async (input: ConvertedMembershipInput, { container }) => {
+    const m = await loadMembership(container, input.membership_id)
+    // metadata ของ order ปกติมาจาก cart.metadata (ลูกค้าตั้งได้) → ต้องเป็น order ของ membership นี้จริง
+    const action =
+      m.order_id === input.order_id
+        ? convertedOrderAction(m.status, !!m.order?.is_draft_order, m.collectionStatuses)
+        : "noop"
+    const result: ConvertedMembershipResult = { membership_id: m.id, membership_status: m.status, action }
+    if (action !== "mark_paid") {
+      return new StepResponse(result, null as string | null)
+    }
+    await groupBuy(container).updateGroupBuyMemberships({ id: m.id, status: "paid" })
+    return new StepResponse(result, m.id as string | null)
+  },
+  async (id, { container }) => {
+    if (id) {
+      await groupBuy(container).updateGroupBuyMemberships({ id, status: "awaiting_payment" })
+    }
+  }
+)
+
+// lock ต่อ membership ตัวเดียวกับ GB-5 — order.placed ที่เกิดจากการแปลงใน confirm workflow มาหลัง lock นั้นถูกปล่อยแล้ว
+export const markGroupBuyMembershipPaidOnConvertWorkflow = createWorkflow(
+  "mark-group-buy-membership-paid-on-convert",
+  function (input: ConvertedMembershipInput) {
+    const key = lockKey(input)
+    acquireLockStep({ key, timeout: LOCK_TIMEOUT, ttl: LOCK_TTL })
+    const result = markConvertedMembershipPaidStep(input)
     releaseLockStep({ key })
     return new WorkflowResponse(result)
   }

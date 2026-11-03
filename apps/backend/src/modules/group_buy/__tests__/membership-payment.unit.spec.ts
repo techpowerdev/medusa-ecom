@@ -1,5 +1,6 @@
 import { MathBN } from "@medusajs/framework/utils"
 import {
+  convertedOrderAction,
   memberPaymentAmount,
   paidWithoutOrderAlertKey,
   paymentCapturedAction,
@@ -76,6 +77,10 @@ describe("shouldSendPaidWithoutOrderAlert", () => {
     ["membership_cancelled", "cancelled", true, true],
     ["membership_cancelled", "awaiting_payment", true, false],
     ["membership_cancelled", "paid", false, false],
+    // GB-10 (กฎข้อ 25e, AC-44 รอบ 13): capture มาตอน membership ยัง `joined` → orphan เหตุ membership_joined
+    ["membership_joined", "joined", true, true],
+    ["membership_joined", "awaiting_payment", true, false],
+    ["membership_joined", "paid", false, false],
   ] as const)("%s + membership %s + is_draft_order=%s → %s", (reason, status, isDraft, expected) => {
     expect(shouldSendPaidWithoutOrderAlert(reason, { membership_status: status, is_draft_order: isDraft })).toBe(expected)
   })
@@ -85,5 +90,21 @@ describe("paidWithoutOrderAlertKey", () => {
   it("= <membership_id>:<reason> (membership เดียวเจอทั้งสองเหตุได้ 2 ฉบับ)", () => {
     expect(paidWithoutOrderAlertKey("gbmem_1", "convert_failed")).toEqual("gbmem_1:convert_failed")
     expect(paidWithoutOrderAlertKey("gbmem_1", "membership_cancelled")).toEqual("gbmem_1:membership_cancelled")
+  })
+})
+
+// GB-10 กฎข้อ 26 (AC-44): ops แปลง draft order เอง → membership paid เฉพาะ awaiting_payment + แปลงแล้ว + collection completed
+describe("convertedOrderAction", () => {
+  it.each([
+    ["awaiting_payment", false, ["completed"], "mark_paid"],
+    ["awaiting_payment", false, ["canceled", "completed"], "mark_paid"],
+    ["awaiting_payment", false, ["not_paid"], "noop"],
+    ["awaiting_payment", false, [], "noop"],
+    ["awaiting_payment", true, ["completed"], "noop"],
+    ["paid", false, ["completed"], "noop"],
+    ["joined", false, ["completed"], "noop"],
+    ["cancelled", false, ["completed"], "noop"],
+  ] as const)("membership %s + is_draft_order=%s + collections %j → %s", (status, isDraft, collections, expected) => {
+    expect(convertedOrderAction(status, isDraft, [...collections])).toEqual(expected)
   })
 })
