@@ -100,7 +100,8 @@ describe("OPS-17a run.sh", () => {
   })
 
   it("ขั้นตรวจ JWT ใน OUT อยู่หลังไฟล์สุดท้ายที่เขียนลง OUT และก่อนตัดสินผ่าน/ไม่ผ่าน", () => {
-    const scan = runner.indexOf('node tools/load/artifact-guard.js scan "$OUT"')
+    // ตัวท้าย script (cleanup() ก็เรียก scan ด้วย — OPS-17)
+    const scan = runner.lastIndexOf('node tools/load/artifact-guard.js scan "$OUT" ||')
     expect(scan).toBeGreaterThan(-1)
     expect(scan).toBeGreaterThan(runner.lastIndexOf("backend-tail.log"))
     expect(scan).toBeGreaterThan(runner.lastIndexOf('>"$OUT/report.md"'))

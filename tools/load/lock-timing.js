@@ -102,6 +102,7 @@ function summarizeLockTimings(entries) {
   }
 
   const positions = queue.map((_, i) => i)
+  const position = new Map(queue.map((e, i) => [e, i])) // ลำดับคิวของแต่ละ entry — O(n) (OPS-17 AC-28)
   const waits = queue.map((e) => e.wait_ms)
   const quartiles = [0, 1, 2, 3].map((q) => {
     const part = waits.filter((_, i) => Math.floor((i * 4) / waits.length) === q)
@@ -126,7 +127,7 @@ function summarizeLockTimings(entries) {
     max_concurrent_holds: maxActive,
     wait_rank_corr: waitCorr,
     hold_rank_corr: spearman(
-      held.map((e) => queue.indexOf(e)),
+      held.map((e) => position.get(e)),
       held.map((e) => e.hold_ms)
     ),
     wait_quartile_medians: quartiles,
