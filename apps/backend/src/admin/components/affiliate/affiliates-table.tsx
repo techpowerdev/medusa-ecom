@@ -30,7 +30,7 @@ export const AffiliatesTable = () => {
       toast.success("Affiliate updated")
       return refetch()
     },
-    // ล้ม (เช่น สถานะถูกเปลี่ยนไปแล้ว) → toast ข้อความจาก API แล้วโหลดรายการใหม่ (กฎ 37)
+    // ล้ม (เช่น สถานะถูกเปลี่ยนไปแล้ว 409 AFFILIATE_STATUS_CHANGED) → toast ข้อความจาก API แล้วโหลดรายการใหม่ (กฎ 37)
     onError: (e: Error) => {
       toast.error(e.message)
       return refetch()
@@ -51,7 +51,10 @@ export const AffiliatesTable = () => {
           return
         }
       }
-      await update.mutateAsync({ id: row.id, body: { status: action.status } }).catch(() => undefined)
+      // AF-15 (กฎ 39b): ส่งสถานะที่แถวแสดงเสมอ — แท็บอื่นเปลี่ยนไปแล้ว → 409 → toast + refetch (onError)
+      await update
+        .mutateAsync({ id: row.id, body: { status: action.status, expected_status: row.status } })
+        .catch(() => undefined)
     })
 
   const columns = useMemo(

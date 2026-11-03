@@ -1,6 +1,7 @@
 import { errorHandler, type MedusaErrorHandlerFunction } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { PROMOTION_NOT_COMBINABLE } from "../lib/promotion-exclusivity"
+import { AFFILIATE_STATUS_CHANGED } from "../modules/affiliate/errors"
 import {
   EVOUCHER_CODE_NOT_AVAILABLE,
   EVOUCHER_CODE_RESERVED,
@@ -23,6 +24,7 @@ export const BUSINESS_CONFLICT_CODES: ReadonlySet<string> = new Set([
   EVOUCHER_RESEND_IN_PROGRESS, // EV-5b
   ...GB_CONFLICT_CODES,
   PAYMENT_ALREADY_COMPLETED, // PAY-6 (spec 06 กฎข้อ 7A)
+  AFFILIATE_STATUS_CHANGED, // AF-15 (spec 05 กฎ 39b)
 ])
 
 const medusaErrorHandler = errorHandler()

@@ -113,7 +113,12 @@ export type AdminAffiliate = Affiliate & { payout_info: Record<string, unknown> 
 
 export const updateAffiliate = (
   id: string,
-  body: { status?: Affiliate["status"]; payout_info?: Record<string, string> | null },
+  body: {
+    status?: Affiliate["status"]
+    payout_info?: Record<string, string> | null
+    /** AF-15 (กฎ 39b): สถานะของแถวที่แสดง — ไม่ตรง → 409 AFFILIATE_STATUS_CHANGED */
+    expected_status?: Affiliate["status"]
+  },
 ) => sdk.client.fetch<{ affiliate: AdminAffiliate }>(`/admin/affiliate/affiliates/${id}`, { method: "POST", body })
 
 // AF-14 (กฎ 38): ชื่อ/อีเมลของ affiliate ตาม id[] ของแถวในหน้า (query จาก affiliateNamesQuery)
