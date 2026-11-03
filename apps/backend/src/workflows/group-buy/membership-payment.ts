@@ -37,7 +37,8 @@ export type MembershipPaymentResult = {
 const groupBuy = (container: MedusaContainer): GroupBuyModuleService => container.resolve(GROUP_BUY_MODULE)
 
 // อ่านใต้ lock ของ membership: สถานะ, deadline ของกลุ่ม และสถานะ collection ของ order (read-only link, ADR-009)
-async function loadMembership(container: MedusaContainer, id: string) {
+// GB-9: subscriber ใช้อ่านสถานะใหม่ก่อนส่ง alert เงินค้าง (กฎข้อ 25 a)
+export async function loadMembership(container: MedusaContainer, id: string) {
   const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
     entity: "group_buy_membership",
     fields: [

@@ -91,14 +91,23 @@ export default function ProductActions({
     })
   }, [product.variants, options])
 
+  // CORE-25 (กฎข้อ 78): ใช้ `v_id` จาก URL ครั้งเดียวต่อสินค้า — RSC refresh (เช่นหลัง add-to-cart) ส่ง `product`
+  // object ใหม่มาได้ขณะที่ URL ยังเป็น `v_id` ของตัวเลือกก่อนหน้า (router.replace ยังไม่ commit) ถ้าใช้ซ้ำจะรีเซ็ตตัวเลือกของลูกค้า
+  const urlVariantAppliedFor = useRef<string | null>(null)
+
   useEffect(() => {
+    if (urlVariantAppliedFor.current === product.id) {
+      return
+    }
+    urlVariantAppliedFor.current = product.id
+
     const variantId = new URLSearchParams(window.location.search).get("v_id")
     const variant = product.variants?.find((v) => v.id === variantId)
     if (variant) {
       setOptions(optionsAsKeymap(variant.options) ?? {})
     }
     setIsUrlVariantApplied(true)
-  }, [product.variants])
+  }, [product.id, product.variants])
 
   useEffect(() => {
     if (!isUrlVariantApplied) {
@@ -296,9 +305,11 @@ export default function ProductActions({
           inStock={canBuy}
           qtyExceeded={flashRemaining != null}
           flashOffer={flash.offer}
+          flashLoading={flash.loading}
           handleAddToCart={handleAddToCart}
           isAdding={isAdding}
-          show={!inView}
+          // CORE-25 (กฎข้อ 78): แสดงเฉพาะเมื่อรู้แน่ว่าฟอร์มหลักพ้นจอ — SSR/ก่อน hydrate แถบเคยทับปุ่มเพิ่มลงตะกร้าหลัก
+          show={inView === false}
           optionsDisabled={!!disabled || isAdding}
           error={addError}
         />

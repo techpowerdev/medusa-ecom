@@ -5,7 +5,13 @@ import { GROUP_BUY_MODULE } from "../modules/group_buy"
 import type GroupBuyModuleService from "../modules/group_buy/service"
 import { EmailTemplates } from "../modules/resend/templates"
 import {
+  paidWithoutOrderAlertKey,
+  type PaidWithoutOrderReason,
+  shouldSendPaidWithoutOrderAlert,
+} from "../modules/group_buy/utils/membership-payment"
+import {
   confirmGroupBuyMembershipPaymentWorkflow,
+  loadMembership,
   type MembershipPaymentResult,
 } from "../workflows/group-buy/membership-payment"
 
@@ -13,7 +19,7 @@ import {
 export const GROUP_BUY_PAID_WITHOUT_ORDER = "GROUP_BUY_PAID_WITHOUT_ORDER"
 
 type PaidWithoutOrder = {
-  reason: string
+  reason: PaidWithoutOrderReason
   membership_id: string
   order_id: string
   payment_id: string
@@ -24,9 +30,19 @@ type PaidWithoutOrder = {
 // workflow engine คืน error ที่ serialize แล้ว (ไม่ใช่ instance ของ Error) — อ่าน message ตรงๆ
 const errorMessage = (error: unknown) => (error as { message?: string } | null)?.message ?? String(error)
 
-// log error + อีเมลหา OPS_ALERT_EMAIL (idempotency key ต่อ membership — event ซ้ำไม่ส่งซ้ำ) ไม่ทำให้ subscriber ล้ม
+// กฎข้อ 25: อ่านสถานะใหม่ก่อน — ไม่ใช่เงินค้างแล้ว (เช่น order แปลงสำเร็จ/membership paid) → log info ไม่ส่ง
+// ยังค้าง → log error + อีเมลหา OPS_ALERT_EMAIL (idempotency key ต่อ membership + เหตุ — event ซ้ำไม่ส่งซ้ำ) ไม่ทำให้ subscriber ล้ม
 async function alertPaidWithoutOrder(container: MedusaContainer, alert: PaidWithoutOrder) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+  const current = await loadMembership(container, alert.membership_id)
+  const state = { membership_status: current.status, is_draft_order: !!current.order?.is_draft_order }
+  if (!shouldSendPaidWithoutOrderAlert(alert.reason, state)) {
+    logger.info(
+      `${GROUP_BUY_PAID_WITHOUT_ORDER} skipped reason=${alert.reason} membership_id=${alert.membership_id} ` +
+        `order_id=${alert.order_id} — no longer stuck (membership_status=${state.membership_status} is_draft_order=${state.is_draft_order})`
+    )
+    return
+  }
   logger.error(
     `${GROUP_BUY_PAID_WITHOUT_ORDER} reason=${alert.reason} membership_id=${alert.membership_id} ` +
       `order_id=${alert.order_id} payment_id=${alert.payment_id} amount=${alert.amount} error=${alert.error ?? ""} ` +
@@ -45,7 +61,7 @@ async function alertPaidWithoutOrder(container: MedusaContainer, alert: PaidWith
       data: alert,
       resource_id: alert.order_id,
       resource_type: "order",
-      idempotency_key: `${EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER}-${alert.membership_id}`,
+      idempotency_key: paidWithoutOrderAlertKey(alert.membership_id, alert.reason),
     })
   } catch (error) {
     logger.error(`${GROUP_BUY_PAID_WITHOUT_ORDER}: OPS_ALERT_EMAIL send failed: ${errorMessage(error)}`)
@@ -91,7 +107,7 @@ export default async function groupBuyPaymentCapturedHandler({
     })
   } else if (result.action === "orphan") {
     // capture มาหลัง membership ถูกยกเลิก (เช่นพร้อมเพย์จ่ายช้ากว่า job หมดเวลา) — ไม่มี refund อัตโนมัติสำหรับ capture ที่มาหลังยกเลิก
-    await alertPaidWithoutOrder(container, { ...alert, reason: `membership_${result.membership_status}` })
+    await alertPaidWithoutOrder(container, { ...alert, reason: `membership_${result.membership_status}` as const })
   }
 }
 

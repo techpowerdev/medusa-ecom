@@ -352,6 +352,51 @@ medusaIntegrationTestRunner({
         expect(keys.filter((key) => key === `evoucher-order:${orderId}`)).toHaveLength(2)
       })
 
+      // EV-N2 (กฎข้อ 27a, AC-41): release ของ allocation ระบุ owner ของ run — ไม่ลบ lock ที่ owner อื่นถือหลัง TTL ของตัวเองหมด
+      it("acquires with ttl >= 300 and an ownerId, and its release keeps a lock taken by another owner after expiry", async () => {
+        const variantId = await createVoucher("X-0001\n")
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        const key = `evoucher-order:${orderId}`
+        const locking = container.resolve(Modules.LOCKING)
+        const originalAcquire = locking.acquire.bind(locking)
+        const allocationArgs: { expire?: number; ownerId?: string | null }[] = []
+        // บันทึก args จริงของ allocation แล้วย่อ TTL เหลือ 1 วินาที เพื่อจำลอง lock หมดอายุระหว่างส่งอีเมล
+        jest.spyOn(locking, "acquire").mockImplementation(async (keys, args) => {
+          if (keys === key && args?.ownerId !== "owner-x") {
+            allocationArgs.push({ ...args })
+            return originalAcquire(keys, { ...args, expire: 1 })
+          }
+          return originalAcquire(keys, args)
+        })
+        let entered!: () => void
+        const reached = new Promise<void>((resolve) => (entered = resolve))
+        let proceed!: () => void
+        const signal = new Promise<void>((resolve) => (proceed = resolve))
+        mockDeliveredSend(async () => {
+          entered()
+          await signal
+        })
+
+        const allocation = allocate(orderId)
+        await reached
+        await new Promise((resolve) => setTimeout(resolve, 1200))
+        await locking.acquire(key, { ownerId: "owner-x", expire: 60 })
+        proceed()
+        await allocation
+
+        expect(allocationArgs).toHaveLength(1)
+        expect(allocationArgs[0].expire).toBeGreaterThanOrEqual(300)
+        expect(allocationArgs[0].ownerId).toEqual(expect.any(String))
+        expect(allocationArgs[0].ownerId).not.toBe("")
+        // lock ของ X ยังอยู่: owner อื่นขอไม่ได้
+        const other = await locking.acquire(key, { ownerId: "owner-y", expire: 1 }).then(
+          () => "acquired",
+          (e: Error) => e.message
+        )
+        expect(other).toBe(`Failed to acquire lock for key "${key}"`)
+        await locking.release(key, { ownerId: "owner-x" })
+      })
+
       it("answers 5xx (not 409) when the locking provider fails for another reason", async () => {
         const variantId = await createVoucher("E-0001\n")
         const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])

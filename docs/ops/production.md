@@ -212,7 +212,14 @@ provider ตอนอ่าน PI เดิม — guard ไม่ลบ session
 
 ### group buy: เงินเข้าแต่ไม่มี order (alert `GROUP_BUY_PAID_WITHOUT_ORDER`)
 subscriber `apps/backend/src/subscribers/group-buy-payment-captured.ts` (GB-5, spec 04) เขียน log ระดับ error ขึ้นต้นด้วย `GROUP_BUY_PAID_WITHOUT_ORDER`
-(`reason`, `membership_id`, `order_id`, `payment_id`, `amount`, `error`) และส่งอีเมลหา `OPS_ALERT_EMAIL` ครั้งเดียวต่อ membership
+(`reason`, `membership_id`, `order_id`, `payment_id`, `amount`, `error`) และส่งอีเมลหา `OPS_ALERT_EMAIL` ครั้งเดียวต่อ membership + เหตุ
+(idempotency key `<membership_id>:<reason>` — membership เดียวอาจได้ 2 ฉบับถ้าเจอทั้งสองเหตุ) subscriber อ่านสถานะใหม่ก่อนส่งและข้าม (log info
+`GROUP_BUY_PAID_WITHOUT_ORDER skipped`) ถ้าไม่ใช่เงินค้างแล้ว (GB-9 กฎข้อ 25)
+0. **ขั้นแรกเสมอ** — ตรวจว่า order ยังเป็น draft และ membership ยังไม่ `paid`: เปิด order ด้วย URL ตรง `/app/orders/<order_id>` ใน admin
+   (draft order ไม่อยู่ในรายการ Orders) ดูว่ายังเป็น draft และดูสถานะ membership ในหน้าแคมเปญ group buy ของ admin
+   (`reason=membership_cancelled`: membership ต้องยัง `cancelled`) — ถ้าไม่ใช่ ถือว่า alert ผิด ปิด incident ห้าม refund
+   (order ที่แปลงสำเร็จแล้วคือคำสั่งซื้อปกติของลูกค้า)
+
 payment มีอยู่ใน Medusa และผูกกับ draft order ของกลุ่มแล้ว จึง refund ผ่าน admin ของ Medusa ได้ (`POST /admin/payments/<payment_id>/refund` /
 ปุ่ม Refund ในหน้า order) — **ห้าม refund ใน Stripe dashboard** และห้ามใช้ script `refund-orphan-payment` (script ปฏิเสธ payment ที่ผูก order)
 ก่อน refund ทุกครั้งดู `refunds` จาก `GET /admin/payments/<payment_id>` ถ้า refund ครบแล้วข้ามขั้น refund

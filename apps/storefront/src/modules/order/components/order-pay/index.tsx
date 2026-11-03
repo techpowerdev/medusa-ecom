@@ -12,34 +12,40 @@ import {
   orderPayView,
   payableCollection,
   sessionCreateOutcome,
+  StripeReturn,
 } from "@lib/util/order-pay"
 import { PROMPTPAY_POLL_MS, promptPayFallbackAllowed } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
 import ErrorMessage from "@modules/checkout/components/error-message"
-import { StripePaymentContainer } from "@modules/checkout/components/payment-container"
+import PaymentContainer, { StripePaymentContainer } from "@modules/checkout/components/payment-container"
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
 import { StripeContext } from "@modules/checkout/components/payment-wrapper/stripe-wrapper"
 import PromptPayOrderDelayed from "@modules/checkout/components/promptpay-payment/order-delayed"
 import { Heading, Text } from "@modules/common/components/ui"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
-import { OrderCardButton } from "./pay-buttons"
+import { OrderCardButton, OrderPromptPayButton } from "./pay-buttons"
 
 const CARD = "pp_stripe_stripe"
+const PROMPTPAY = "pp_stripe-promptpay_stripe"
 const PAY_FAILED = "ชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
 
-type Props = { initial: GroupBuyOrder; serverNow: number }
+/** `redirect` = ผลของ `stripeReturn` จาก query ที่ Stripe แนบมาตอนกลับหน้านี้ (กฎข้อ 9 d3) */
+type Props = { initial: GroupBuyOrder; email: string; redirect: StripeReturn; serverNow: number }
 
 /** PAY-3b (spec 06 กฎข้อ 9): หน้าชำระเงินของ draft order กลุ่ม — สถานะจาก GB-8, สร้าง session ด้วย route ของ Medusa */
-export default function OrderPay({ initial, serverNow }: Props) {
+export default function OrderPay({ initial, email, redirect, serverNow }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
   const orderId = initial.order.id
   const [data, setData] = useState(initial)
   // เวลาของ server ตอน render แล้วใช้เวลาของ browser หลัง hydrate (ไม่ hydration mismatch)
   const [now, setNow] = useState(serverNow)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [awaiting, setAwaiting] = useState(false)
+  // (d3) กลับจาก redirect: succeeded/processing → poll GB-8 ทันทีโดยไม่แสดงฟอร์ม; failed → error + ฟอร์มตามข้อ (b)
+  const [error, setError] = useState<string | null>(redirect === "failed" ? PAY_FAILED : null)
+  const [awaiting, setAwaiting] = useState(redirect === "poll" && orderPayView(initial, serverNow) !== "paid")
+  const [expired, setExpired] = useState(false)
   const [delayed, setDelayed] = useState(false)
   const [cardReady, setCardReady] = useState(false)
   // error ของ PaymentElement แยกจาก order-pay-error — onChange ของ element ล้างค่าตอน mount จะได้ไม่ลบ error ของข้อ d2
@@ -62,6 +68,11 @@ export default function OrderPay({ initial, serverNow }: Props) {
       clearInterval(timer)
     }
   }, [])
+
+  // review #189: ลบ query ของ Stripe (reload ไม่เข้าทาง d3 ซ้ำ)
+  useEffect(() => {
+    if (redirect) router.replace(pathname, { scroll: false })
+  }, [redirect, router, pathname])
 
   const read = useCallback(async () => {
     const next = await retrieveGroupBuyOrder(orderId).catch(() => null)
@@ -126,6 +137,8 @@ export default function OrderPay({ initial, serverNow }: Props) {
         router.refresh()
       } else {
         // (d2) อ่าน GB-8 1 ครั้ง (นับรวมในเพดาน) แล้วตัดสินจากสถานะ ไม่ดู status code/ข้อความ — guard อาจแพ้ race กับ webhook
+        // (d3) read() คืน null เมื่ออ่าน GB-8 ล้มเอง → fail(): order-pay-error ไม่ poll ต่อ — ปลอดภัยเพราะถ้าเงินเข้าแล้ว
+        // การลองใหม่ได้ 409 PAYMENT_ALREADY_COMPLETED จาก guard (PAY-6a) แล้วเข้าทาง (d) ไม่ตัดเงินซ้ำ
         const next = await read()
         if (next && hasPayment(next)) {
           if (orderPayView(next, Date.now()) !== "paid") awaitCapture(1)
@@ -142,8 +155,24 @@ export default function OrderPay({ initial, serverNow }: Props) {
     setSelected(providerId)
     setCardReady(false)
     setElementError(null)
+    setExpired(false)
     if (session?.provider_id !== providerId) startSession(providerId)
   }
+
+  /**
+   * poll GB-8 ระหว่างแสดง QR — อยู่ที่หน้า (ไม่ใช่ในปุ่ม) เพราะปุ่มถูก unmount เมื่อ session ไม่ pending แล้ว
+   * review #203 B2: processPaymentWorkflow แยก authorize กับ capture → เจอ "มีการชำระแล้ว" ที่ยังไม่ captured ให้เข้าทาง (d)
+   */
+  const pollQr = useCallback(async () => {
+    const next = await read()
+    if (next && hasPayment(next) && orderPayView(next, Date.now()) !== "paid") awaitCapture(1)
+  }, [read, awaitCapture])
+
+  /** พร้อมเพย์หมดอายุ 10 นาทีและ PI ยังไม่ชำระ → session ใหม่ (Medusa ลบ session เดิม → provider cancel PI เดิม) */
+  const renewPromptPay = useCallback(async () => {
+    await startSession(PROMPTPAY)
+    setExpired(true)
+  }, [startSession])
 
   return (
     <div className="flex flex-col gap-y-6 w-full" data-testid="order-pay-page">
@@ -193,9 +222,28 @@ export default function OrderPay({ initial, serverNow }: Props) {
                 setPaymentComplete={setCardReady}
                 disabled={busy}
               />
+              <PaymentContainer
+                paymentProviderId={PROMPTPAY}
+                selectedPaymentOptionId={selected}
+                paymentInfoMap={paymentInfoMap}
+                disabled={busy}
+              />
             </RadioGroup>
             <ErrorMessage error={elementError} data-testid="order-pay-element-error" />
-            <PayButton selected={selected} session={session} cardReady={cardReady} onPaid={awaitCapture} />
+            {expired && (
+              <Text className="txt-medium text-ui-fg-subtle" data-testid="promptpay-expired">
+                คิวอาร์โค้ดพร้อมเพย์หมดอายุแล้ว กดชำระด้วยพร้อมเพย์อีกครั้งเพื่อรับคิวอาร์โค้ดใหม่
+              </Text>
+            )}
+            <PayButton
+              selected={selected}
+              session={session}
+              email={email}
+              cardReady={cardReady}
+              onPaid={awaitCapture}
+              renew={renewPromptPay}
+              poll={pollQr}
+            />
           </div>
         </PaymentWrapper>
       )}
@@ -207,13 +255,17 @@ export default function OrderPay({ initial, serverNow }: Props) {
 type PayButtonProps = {
   selected: string
   session: GroupBuyPaymentSession | undefined
+  email: string
   cardReady: boolean
   onPaid: () => void
+  renew: () => void
+  poll: () => Promise<void>
 }
 
-/** ปุ่มชำระบัตร — ต้องมี session ของบัตรและ <Elements> (StripeContext) ก่อน (พร้อมเพย์: PAY-3b2) */
-const PayButton = ({ selected, session, cardReady, onPaid }: PayButtonProps) => {
+/** ปุ่มชำระตามวิธีที่เลือก — ต้องมี session ของวิธีนั้นและ <Elements> (StripeContext) ก่อน */
+const PayButton = ({ selected, session, email, cardReady, onPaid, renew, poll }: PayButtonProps) => {
   const stripeReady = useContext(StripeContext)
-  if (!stripeReady || selected !== CARD || session?.provider_id !== CARD) return null
-  return <OrderCardButton ready={cardReady} onPaid={onPaid} />
+  if (!stripeReady || !session || session.provider_id !== selected) return null
+  if (selected === CARD) return <OrderCardButton ready={cardReady} onPaid={onPaid} />
+  return <OrderPromptPayButton session={session} email={email} renew={renew} onPaid={onPaid} poll={poll} />
 }
