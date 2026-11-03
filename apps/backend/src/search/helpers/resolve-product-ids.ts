@@ -16,6 +16,8 @@ function payloadIds(data: unknown): string[] {
  * The products behind rows of another entity, read through `query.graph`.
  * Deleted rows are soft-deleted, so they're still readable with `withDeleted`,
  * which is how a deleted variant or category still leads back to its products.
+ * A row can come back without the relation, or not at all (an option detached
+ * from every product), so such rows are skipped rather than read.
  */
 async function relatedProductIds(
   query: RemoteQueryFunction,
@@ -32,8 +34,8 @@ async function relatedProductIds(
     withDeleted,
   });
 
-  return (data as Record<string, any>[])
-    .flatMap(pick)
+  return (data as (Record<string, any> | null | undefined)[])
+    .flatMap((row) => (row ? pick(row) : []))
     .filter((id): id is string => Boolean(id));
 }
 
@@ -101,18 +103,19 @@ export async function resolveProductIds(
       return relatedProductIds(
         query,
         "product_option",
-        ["product_id"],
+        ["products.id"],
         ids,
-        (row) => [row.product_id],
+        (row) => (row.products ?? []).map((product: any) => product?.id),
         deleted,
       );
     case "product-option-value":
       return relatedProductIds(
         query,
         "product_option_value",
-        ["option.product_id"],
+        ["option.products.id"],
         ids,
-        (row) => [row.option?.product_id],
+        (row) =>
+          (row.option?.products ?? []).map((product: any) => product?.id),
         deleted,
       );
     case "product-tag":
