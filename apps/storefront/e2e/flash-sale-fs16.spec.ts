@@ -2,6 +2,7 @@ import { APIResponse, Page, Route } from "@playwright/test"
 
 import { deleteAllThenExpectOk, expectNoneLeft } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { gate, sleep } from "./support/gate"
 import {
   STOREFRONT_COUNTRY as CC,
   Headers,
@@ -38,16 +39,6 @@ let handle: string
 let collectionHandle: string
 let variantId: string
 let campaignId: string
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-/** FS-18 (ข้อเสนอ #211): ประตูที่ test เปิดหลังตรวจสถานะรอแล้ว — mock ตอบหลังครบเวลาหน่วง **และ**หลัง test ตรวจเสร็จ
- * (หน้า/รูปโหลดช้าไม่แน่นอน ถ้าใช้เวลาหน่วงอย่างเดียว request อาจตอบก่อน test ได้ตรวจสถานะรอ) */
-function gate() {
-  let open!: () => void
-  const opened = new Promise<void>((r) => (open = r))
-  return { open, opened }
-}
 
 /**
  * ข้อมูล flash บน PDP ดึงผ่าน server action (`getActiveFlashSales`) — mock เฉพาะ POST ที่มี header next-action

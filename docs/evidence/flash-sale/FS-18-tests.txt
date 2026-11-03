@@ -62,3 +62,11 @@ pnpm lint: 0 errors (warning ที่เหลือมีอยู่เดิ
 หมายเหตุระหว่างทำ: รอบแรกที่รัน fs14+fs16 แบบหลาย worker พบ (1) run id (Date.now) ของสอง suite ชนกันในมิลลิวินาทีเดียว → expectNoneLeft
 นับเฉพาะ handle prefix ของ suite (e2e-fs14-/e2e-fs16-) (2) DELETE สินค้าของ fs16 ตอบ 400 "Cannot remove following inventory item(s) since they
 have reservations" เพราะ order ของ test sold out ถือ reservation → afterAll ยกเลิก order ก่อน (POST /admin/orders/:id/cancel) แล้วจึงลบ
+
+=== รอบแก้ตาม review (หลัง merge origin/develop ac69573 ที่มี #211 FS-19) ===
+ย้าย gate()/sleep ที่ซ้ำใน flash-sale-fs16.spec.ts และ flash-sale-fs19.spec.ts ไป e2e/support/gate.ts (CLAUDE.md ข้อ 3: ผู้ใช้ 2 ที่)
+DB medusa_fs18b, backend :9134, storefront next build && next start :8134
+pnpm --filter storefront test:unit: Test Files 55 passed (55), Tests 613 passed (613)
+pnpm --filter storefront test:e2e:unit: 39 passed
+e2e chromium --workers=1 --repeat-each=3 flash-sale-fs16.spec.ts flash-sale-fs19.spec.ts: 18 passed (52.9s) — 0 failed, 0 flaky
+pnpm lint: 0 errors (31 warnings เดิม); pnpm typecheck: ผ่าน
