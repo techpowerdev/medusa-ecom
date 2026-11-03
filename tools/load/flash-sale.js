@@ -45,6 +45,11 @@ export const options = {
     "http_req_duration{scenario:checkout}": ["max>=0"],
   },
 }
+// OPS-20a (spec 07 AC-31): LOAD_FLASH_BURST=0 ตัด scenario burst ออก (constant-arrival-rate ไม่รับ rate 0) — setup เหมือนเดิม
+if (__ENV.LOAD_FLASH_BURST === "0") {
+  delete options.scenarios.burst
+  delete options.thresholds["http_req_duration{scenario:burst}"]
+}
 
 const ADDRESS = {
   first_name: "Load",
@@ -97,14 +102,22 @@ export function burst(data) {
 
 export function checkout(data) {
   const c = data.checkout[exec.scenario.iterationInTest]
+  const startedAt = Date.now()
   const res = track(http.post(`${BASE_URL}/store/carts/${c.cart_id}/complete`, "{}", headersOf(c.token)))
   const body = res.status ? res.json() : {}
+  let outcome = `status_${res.status}`
   if (res.status === 200 && body.type === "order") {
     ordersPlaced.add(1)
+    outcome = "ok"
   } else if (res.status === 409 && body.code === "FLASH_SOLD_OUT") {
     soldOut.add(1)
+    outcome = "FLASH_SOLD_OUT"
   } else {
     unexpected.add(1)
     console.error(`checkout ${c.cart_id}: ${res.status} ${String(res.body).slice(0, 300)}`)
   }
+  // OPS-20a: (a) ต่อ checkout = http_req_duration ของ request นี้ — tools/load/checkout-timing.js อ่านบรรทัดนี้
+  console.log(
+    `checkout_k6_timing cart_id=${c.cart_id} status=${res.status} outcome=${outcome} started_at=${startedAt} duration_ms=${res.timings.duration}`
+  )
 }
