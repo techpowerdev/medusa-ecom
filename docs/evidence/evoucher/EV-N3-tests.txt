@@ -1,0 +1,35 @@
+# EV-N3 (AC-44) — ผลการทดสอบ 2026-11-03
+## unit: resend-evoucher-email.unit.spec.ts (red ก่อนแก้: 9 failed — resendFailureMessage is not a function)
+    ✓ strips trailing punctuation of the cause before wrapping it in parentheses (1 ms)
+    ✓ strips trailing "。" as well
+    ✓ strips trailing " " as well
+    ✓ strips trailing ". " as well
+    ✓ strips trailing "..." as well
+    ✓ has no empty parentheses when the cause is "" (1 ms)
+    ✓ has no empty parentheses when the cause is "   "
+    ✓ has no empty parentheses when the cause is "."
+    ✓ removes the notification id from the cause (AC-32)
+Test Suites: 1 passed, 1 total
+Tests:       9 passed, 9 total
+## unit ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 77 passed, 77 total
+Tests:       752 passed, 752 total
+## integration http: evoucher-resend.spec.ts (Postgres 16 + Redis db 11)
+PASS integration-tests/http/evoucher-resend.spec.ts (17.252 s)
+      ✓ sends one new email with the same 2 codes to the order email and leaves the codes unchanged (953 ms)
+      ✓ returns 400 for an order without delivered or allocated codes (866 ms)
+      ✓ returns 401 without an admin token (700 ms)
+      ✓ marks allocated codes delivered and uses a new idempotency key on every resend (682 ms)
+      ✓ keeps the codes allocated, answers an error and can be retried when the provider still fails (713 ms)
+      ✓ sends only one email when two resends of the same order arrive together (2191 ms)
+      ✓ answers 409 while allocation holds the order lock and allocation still sends exactly one email (770 ms)
+      ✓ acquires with ttl >= 300 and an ownerId, and its release keeps a lock taken by another owner after expiry (1895 ms)
+      ✓ answers 5xx (not 409) when the locking provider fails for another reason (721 ms)
+      ✓ answers 200 and logs the order id when the email is sent but the status update fails (741 ms)
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+## build / lint / typecheck
+build: Backend build completed successfully; lint: 0 errors; typecheck: Done (exit 0)
+## grep 'ownerId).toEqual(expect.any(String))' / 'ownerId: expect.any' ใน evoucher-resend.spec.ts
+0
+(หลัง merge origin/develop 1805b7c: test:unit 80 suites / 772 tests ผ่าน, typecheck backend ผ่าน)
