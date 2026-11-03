@@ -178,6 +178,19 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-30 (OPS-19 — **⏸ backlog**, ต้องมี ADR สำหรับ staging ก่อน; ไม่ใช่เงื่อนไขของ OPS-4) Given staging ตาม ADR นั้น (k6 อยู่คนละเครื่องกับระบบ) When รัน flash-sale burst ด้วย `total_cap=100`
   Then burst ทำได้จริง ≥ 500 rps ตลอด 60 วินาที (`dropped_iterations` = 0, จำนวน request ของ burst ≥ 30,000), p95 ของ burst และ checkout < 300ms เป็น **gate** (threshold k6 ทำให้ล้ม — ขอบเขตของ p95 ยืนยันกับ owner ตอนเขียน ADR staging)
   และ gate ความถูกต้องของ AC-2 ผ่านครบ (order ได้ส่วนลด = 100, `units_sold` = 100, ที่เหลือ 409 `FLASH_SOLD_OUT`, 5xx = 0)
+- AC-31 (OPS-20, owner 2026-11-03 — OPS-18 run 41617065775: รอ lock median 12ms, ถือ lock ≤ 2.4s แต่ checkout ทั้ง request 52–63s → ≥ 95% อยู่นอก `locking.execute`)
+  Given `tools/load/run.sh` ขนาดเต็มเดิม (300 ลูกค้า, `total_cap=100`) มีตัวเลือก (env ของ `run.sh`/k6 เช่น `FLASH_BURST=0`) ปิด burst ได้ โดยค่าเริ่มต้นและ schedule ของ nightly ยังมี burst (unit อ่านไฟล์)
+  When รัน `workflow_dispatch` ของ `load-nightly.yml` สองครั้ง — (1) มี burst (2) ไม่มี burst — Then `docs/evidence/scale/OPS-20/REPORT.md` มี run id ทั้งสองและต่อ run มีตาราง per-checkout
+  (min/median/p95/max, จำนวน = 300) ของ (a) checkout ทั้ง request (k6) (b) ก่อน hook = request เข้า server → hook ของ flash sale เริ่ม (c) ใน hook (รวมรอ+ถือ lock ของ OPS-18)
+  (d) หลัง hook = hook จบ → response ส่งออก (e) ส่วนที่ไม่อยู่ใน server = (a) − (b+c+d) — (b)–(d) วัดด้วย log debug ของ logger เดิมแบบ OPS-18 (ผูกด้วย `cart_id`; จุดเริ่ม/จบ request ใช้ middleware ของ route
+  `/store/carts/:id/complete` หรือ duration ใน JSON log ของ OPS-3 ถ้ามี; handler ของ hook ใช้ตัวเดิมใน `flash-sale-reservation.ts` — `createHook` มี handler เดียว)
+  และตารางตัวชี้วัดความอิ่มตัวรายวินาทีในช่วง checkout (min/median/p95/max): event-loop delay ของ server และ worker (`perf_hooks.monitorEventLoopDelay` log ระดับ debug),
+  CPU ของแต่ละ container (`docker stats` ที่ `run.sh` sample), จำนวน connection ของ Postgres แยก `state`/`wait_event_type` (`pg_stat_activity` ผ่าน `psql` ใน container เดิม)
+  และจำนวนที่รอ pool ของ knex (`numPendingAcquires`) ถ้าเข้าถึงได้ — ไม่ได้ให้ระบุเหตุผลใน REPORT
+  (ไม่เพิ่ม infra/dependency — grep diff: ไม่มี package ใหม่ใน `package.json`/service ใหม่ใน compose; `LOG_LEVEL=debug` เฉพาะ load run)
+  และสรุปสาเหตุหลักตามเกณฑ์ตัวเลข: median (a) ของ run ไม่มี burst ≤ 20% ของ run มี burst → "burst เป็นสาเหตุหลัก", ≥ 80% → "workflow เอง", ระหว่างนั้น → "ทั้งสอง" (ระบุสัดส่วน);
+  ช่วงที่ median ≥ 50% ของ median (a) = ช่วงหลัก; ระบบ "อิ่มตัว" เมื่อ p95 event-loop delay ของ server ≥ 100ms หรือ median CPU ของ server ≥ 90% ของ 1 core
+  หรือ p95 ของจำนวนรอ pool > 0 ในช่วง checkout — gate ความถูกต้องของ AC-2 ผ่านในทั้งสอง run; ถ้าต้องแก้ → เปิด ADR/task แยกพร้อม AC (ไม่แก้ใน OPS-20)
 
 ## Tasks
 | ID | Task | Depends |
@@ -188,7 +201,8 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-3b | (รอบ 9) rate limiting ตาม Deliverables ข้อ 5 + `/store/search` (AC-22) — **⏸ backlog หลัง v1.0** (owner Q-O1 2026-10-27); ข้อเสนอเดิมใน Q-O1 ใช้ตอนกลับมาทำ | OPS-3 ☑ |
 | OPS-3c | (รอบ 9) error tracking Sentry ตาม Deliverables ข้อ 6 (AC-23) — **⏸ backlog หลัง v1.0** (owner Q-O2 2026-10-27); dependency ใหม่ (`@sentry/*`) ระบุใน PR ตอนกลับมาทำ | OPS-3 ☑ |
 | OPS-4 | ☑ #175 — k6 scripts ใน `tools/load/` + seed script (`apps/backend/src/scripts/seed-load.ts` — ย้ายจาก `tools/load/` เพราะ `.dockerignore`) + `.github/workflows/load-nightly.yml` + evidence (AC-2, AC-3) ตาม Q-O3 ที่ owner ตัดสิน 2026-10-27 (a)–(e); `REPORT.md` ใช้ผลของ run หลัง merge (40590093846) ตัวล่าสุด — ถ้า gate ล้มให้อ่าน `backend-tail.log` ก่อน; REPORT ☑ #191; **AC-2 ☑ (ถ้อยคำปรับโดย owner 2026-11-03), AC-3 ☑** (run 40590093846) | FS-3 ☑, GB-3 ☑, OPS-1 ☑ |
-| OPS-18 | (เล็ก, วัดผล, owner 2026-11-03) วัด/หาสาเหตุเวลา checkout flash 58–71s ใน run 40590093846 — สงสัย lock ของ flash checkout ทำให้ต่อคิวทีละตัว: วัดเวลารอ lock/เวลาใน step จาก log/metric ที่มีอยู่ (ห้ามเพิ่ม infra) + สรุปสาเหตุใน evidence; ต้องแก้ design → ADR/task แยก (AC-29) | OPS-4 ☑ — **เริ่มได้เมื่อ owner สั่ง** (owner พักงานใหม่) |
+| OPS-18 | (เล็ก, วัดผล, owner 2026-11-03) วัด/หาสาเหตุเวลา checkout flash 58–71s ใน run 40590093846 — สงสัย lock ของ flash checkout ทำให้ต่อคิวทีละตัว: วัดเวลารอ lock/เวลาใน step จาก log/metric ที่มีอยู่ (ห้ามเพิ่ม infra) + สรุปสาเหตุใน evidence; ต้องแก้ design → ADR/task แยก (AC-29) — ◐ #194 (approve แล้ว รอ merge; run 41617065775: **หักล้าง** lock serialize) | OPS-4 ☑ |
+| OPS-20 | (เล็ก, วัดผล, owner 2026-11-03) หาว่าเวลา checkout flash 52–63s ของ run 41617065775 อยู่ที่ไหน: ตัวเลือกปิด burst ใน `run.sh` + รันเทียบมี/ไม่มี burst, log debug ก่อน/ใน/หลัง hook ของ `completeCartWorkflow`, event-loop delay/CPU/`pg_stat_activity`/รอ pool (ห้ามเพิ่ม infra/dependency) + สรุปสาเหตุใน evidence; ต้องแก้ → ADR/task แยก (AC-31) | OPS-18 (#194 — ใช้ log/`lock-timing.js` ของ OPS-18; **เริ่มหลัง #194 merge**); ชน `tools/load/run.sh` กับ OPS-17 — ทำทีละตัว (ตัวที่เริ่มทีหลังรอตัวก่อน merge) |
 | OPS-19 | (staging load test) burst 500 rps × 60s จริง + p95 < 300ms เป็น gate (AC-30) — **⏸ backlog**: ต้องมี ADR สำหรับ staging (infra ใหม่ ตามข้อห้ามข้อ 3) ก่อน — ยังไม่มี ADR | ADR staging (ยังไม่มี), OPS-4 ☑ |
 | OPS-17 | (เล็ก, test/tooling, รอบ 12 — nit OPS-16 #180, review #175) `prod-guards.unit.spec.ts` อ่าน `ci.yml` ด้วย parser YAML, `IMAGE_TAG` ค่าเริ่มต้น `load` ใน `tools/load/run.sh`, ตัด cast ใน `seed-load.ts` (AC-28) | OPS-16 ☑ (#180), OPS-4 ☑ (#175) — **เริ่มได้** |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
@@ -213,6 +227,7 @@ OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `c
 #147 ไม่ได้แก้ จึงแก้ใน PR เอกสารรอบ 11 (#152) หลัง merge develop);
 OPS-12, OPS-15, OPS-16 เริ่มได้ (แตะ `ci.yml` ร่วมกัน — ทีละตัว ลำดับแนะนำ OPS-15 → OPS-12 → OPS-16); OPS-4, OPS-5 ☐; e2e รันแม้ backend test ล้ม (ผลของการรันขนานใน OPS-14) — ยอมรับ ไม่มี task
 (รอบ 12) สถานะ: OPS-15 ☑ #156, OPS-12 ☑ #172, OPS-4 ☑ #175 (load-nightly run 40590093846 success — `REPORT.md` ☑ #191; owner 2026-11-03: AC-2 ☑ ตามถ้อยคำใหม่, AC-3 ☑ → OPS-18 รอ owner สั่ง, OPS-19 ⏸), OPS-16 ☑ #180 (รวม test `if: false` ของ review #172);
+OPS-18 ◐ #194 (approve แล้ว — lock ไม่ใช่สาเหตุ) → OPS-20 ☐ (owner 2026-11-03; หลัง #194 merge, ทีละตัวกับ OPS-17 เพราะชน `run.sh`);
 OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_POOL_MAX` ไม่ต้องมี task เพราะ gate ของ load test ผ่าน (5xx = 0) — ทบทวนเมื่อรอบเต็มล้มด้วย 5xx
 
 ## Open questions (รอบ 10)
