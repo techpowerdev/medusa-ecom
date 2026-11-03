@@ -1,3 +1,4 @@
+import { useDate } from "@medusajs/dashboard/hooks"
 import {
   Badge,
   Button,
@@ -12,7 +13,7 @@ import {
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { campaignActions, groupProgress } from "../../lib/group-buy-campaign"
-import { Campaign, formatDateTime, Group, groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
+import { Campaign, Group, groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
 import { GroupMembers } from "./group-members"
 
 const GROUP_STATUS_COLOR = { open: "blue", succeeded: "green", failed: "red" } as const
@@ -21,6 +22,7 @@ const columnHelper = createDataTableColumnHelper<Group>()
 // GB-6b (spec 04 Admin UI, AC-31): ตารางกลุ่มของแคมเปญ + สร้าง pool group
 export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
   const queryClient = useQueryClient()
+  const { getFullDate } = useDate()
   const [pagination, setPagination] = useState<DataTablePaginationState>({ pageIndex: 0, pageSize: 20 })
   const limit = pagination.pageSize
   const offset = pagination.pageIndex * limit
@@ -87,10 +89,13 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
         ),
       }),
       columnHelper.accessor((g) => groupProgress(g, campaign), { id: "progress", header: "Progress" }),
-      columnHelper.accessor((g) => formatDateTime(g.ends_at), { id: "ends_at", header: "Ends (ICT)" }),
+      columnHelper.accessor((g) => (g.ends_at ? getFullDate({ date: g.ends_at, includeTime: true }) : "-"), {
+        id: "ends_at",
+        header: "Ends (ICT)",
+      }),
       columnHelper.accessor("join_token", { header: "Join token" }),
     ],
-    [campaign, selectedId]
+    [campaign, selectedId, getFullDate]
   )
 
   const table = useDataTable({

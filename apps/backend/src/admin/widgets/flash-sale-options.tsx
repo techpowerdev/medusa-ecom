@@ -12,10 +12,11 @@ import {
   toast,
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { sdk } from "../lib/client"
+import { createSingleFlight } from "../lib/single-flight"
 
 // FS-5 (spec 03): "Flash sale options" บนหน้า Campaign detail
 // บันทึกแล้ว backend ใส่ exclusivity rule ให้ automatic promotion ของ campaign (กฎข้อ 7) และเตือนตัวที่ยังไม่มี rule
@@ -66,8 +67,8 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
   const queryKey = ["flash-sale-config", campaign.id]
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<FormState>(toForm(null))
-  // FS-10 (กฎข้อ 15): คลิกซ้ำใน tick เดียวยังเห็น isPending เดิม จึงกันด้วย ref ที่ตั้งแบบ synchronous ก่อน mutate
-  const inFlight = useRef(false)
+  // FS-10 (กฎข้อ 15 / spec 08 กฎ 4): คลิกซ้ำใน tick เดียวยังเห็น isPending เดิม จึงกันด้วย guard ที่ตั้งแบบ synchronous ก่อน mutate
+  const [saveOnce] = useState(createSingleFlight)
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -91,9 +92,6 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
     onError: (error: Error) => {
       toast.error(error.message || "Failed to save flash sale options")
     },
-    onSettled: () => {
-      inFlight.current = false
-    },
   })
 
   const perCustomerLimit = parseLimit(form.per_customer_limit)
@@ -108,17 +106,17 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
   }
 
   const handleSave = () => {
-    if (invalid || inFlight.current) {
+    if (invalid) {
       return
     }
-    inFlight.current = true
-    save.mutate({
+    const body = {
       per_customer_limit: perCustomerLimit,
       total_cap: totalCap,
       show_countdown: form.show_countdown,
       show_remaining: form.show_remaining,
       banner_text: form.banner_text.trim() === "" ? null : form.banner_text,
-    })
+    }
+    saveOnce(() => save.mutateAsync(body).catch(() => undefined))
   }
 
   return (
