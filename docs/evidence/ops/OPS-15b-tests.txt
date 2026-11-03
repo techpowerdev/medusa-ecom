@@ -1,0 +1,44 @@
+OPS-15b (spec 07 AC-26) — hotfix: cron ของ scheduled job ไม่ลงทะเบียนใน integration test
+วันที่ 2026-11-03, node v24.12.0, Postgres 16 (docker compose), Medusa 2.22.1
+
+== Red: unit (ก่อนผูก defineFileConfig ใน src/jobs) ==
+✕ affiliate-maturity.ts / ✕ evoucher-daily.ts / ✕ group-buy-deadline.ts — Tests: 3 failed, 4 passed, 7 total
+
+== Red: integration group-buy-outcome.spec.ts ==
+      ✓ AC-1: 3 logged-in customers join pool P → succeeded, payment collection = discounted draft total, email with pay link (3108 ms)
+      ✓ AC-9: succeed twice (workflow + admin route) → no duplicate payment collections or emails (4219 ms)
+      ✓ AC-3: 2 members at ends_at → job fails the group, cancels draft orders, emails both, no payment collection (2460 ms)
+      ✓ review #89: at_deadline fail re-checks the target under the group lock — a group that reached it is not failed (1106 ms)
+      ✓ GB-N1: deadline job logs an at_deadline outcome mismatch as warn, not error (867 ms)
+      ✓ AC-9: fail twice (admin route + workflow) → no duplicate cancellation or emails; succeed after fail → 400 (979 ms)
+      ✓ admin succeed/fail: unknown group → 404, no admin token → 401 (239 ms)
+      ✕ OPS-15b: ไม่ลงทะเบียน cron ของ scheduled job ใน integration test (248 ms)
+      ✓ AC-11: target_type=units 10 — 10 units → succeeded; 9 units → failed (1625 ms)
+      ✓ AC-12: target_type=people 3 — 3 customers (one with 2 orders) → succeeded; 2 customers with 4 orders → failed (2696 ms)
+      ✓ AC-22: active campaign past Medusa campaign ends_at → ended after the job; creating a group → 400 (341 ms)
+Tests:       1 failed, 10 passed, 11 total
+    + Received  + 5
+
+    - Array []
+    + Array [
+    +   "job-affiliate-maturity",
+    +   "job-evoucher-daily",
+    +   "job-group-buy-deadline",
+    + ]
+
+
+== Green: unit scheduled-jobs.unit.spec.ts + ชุด unit ทั้งหมด ==
+Test Suites: 75 passed, 75 total
+Tests:       740 passed, 740 total
+
+== Green: integration group-buy (outcome, campaigns, payment, store-memberships) ==
+PASS integration-tests/http/group-buy-outcome.spec.ts (18.053 s)
+PASS integration-tests/http/group-buy-campaigns.spec.ts (10.872 s)
+PASS integration-tests/http/group-buy-payment.spec.ts (13.384 s)
+PASS integration-tests/http/group-buy-store-memberships.spec.ts (10.217 s)
+Tests:       44 passed, 44 total
+จำนวนบรรทัด 'Connection ended unexpectedly': 0
+จำนวนบรรทัด 'Scheduled job': 0
+
+== lint / typecheck / build ==
+pnpm lint: exit 0 (0 errors); pnpm typecheck: exit 0; pnpm --filter backend build: exit 0
