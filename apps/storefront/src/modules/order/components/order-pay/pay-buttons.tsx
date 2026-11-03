@@ -58,8 +58,8 @@ type PromptPayProps = {
   /** QR หมดอายุและ PI ยังไม่ชำระ → สร้าง session ใหม่ (ผล 409/error จัดการที่หน้าตามข้อ d/d2) */
   renew: () => void
   onPaid: () => void
-  /** อ่าน GB-8 ระหว่างแสดง QR — capture แล้วหน้าเปลี่ยนเป็น order-pay-paid เอง */
-  poll: () => void
+  /** อ่าน GB-8 ระหว่างแสดง QR (รอผลก่อนรอบถัดไป) — ชำระแล้วหน้าเปลี่ยนเป็น awaiting/paid เอง */
+  poll: () => Promise<void>
 }
 
 /** PAY-3b2 (กฎข้อ 9c): พร้อมเพย์ — ขั้นเปิด QR + QR เดิมของ checkout; poll GB-8 แทน cart */
@@ -83,9 +83,12 @@ export const OrderPromptPayButton = ({ session, email, renew, onPaid, poll }: Pr
     if (!stripe || !clientSecret) return
     setSubmitting(true)
     setError(null)
-    const current = await stripe.retrievePaymentIntent(clientSecret)
-    const step = await openQr(stripe, clientSecret, email, current.paymentIntent)
-    setSubmitting(false)
+    // review #203: network error ของ Stripe.js → ไม่ให้ปุ่มค้าง loading
+    const step = await stripe
+      .retrievePaymentIntent(clientSecret)
+      .then((current) => openQr(stripe, clientSecret, email, current.paymentIntent))
+      .catch(() => ({ kind: "error" as const, message: "ชำระด้วยพร้อมเพย์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }))
+      .finally(() => setSubmitting(false))
     if (step.kind === "paid") return onPaid()
     if (step.kind === "expired") return expire()
     if (step.kind === "error") return setError(step.message)
@@ -103,10 +106,18 @@ export const OrderPromptPayButton = ({ session, email, renew, onPaid, poll }: Pr
         expire()
       }
     }, 1_000)
-    const pollTimer = setInterval(poll, PROMPTPAY_POLL_MS)
+    // setTimeout ต่อกัน (ไม่ใช่ setInterval) — GB-8 ตอบช้ากว่า PROMPTPAY_POLL_MS จะไม่ยิงซ้อน
+    let active = true
+    let pollTimer: ReturnType<typeof setTimeout>
+    const tick = async () => {
+      await poll()
+      if (active) pollTimer = setTimeout(tick, PROMPTPAY_POLL_MS)
+    }
+    pollTimer = setTimeout(tick, PROMPTPAY_POLL_MS)
     return () => {
+      active = false
       clearInterval(timer)
-      clearInterval(pollTimer)
+      clearTimeout(pollTimer)
     }
   }, [qr, expire, poll])
 

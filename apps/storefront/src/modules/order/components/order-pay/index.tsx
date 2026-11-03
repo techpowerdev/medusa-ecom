@@ -159,6 +159,15 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
     if (session?.provider_id !== providerId) startSession(providerId)
   }
 
+  /**
+   * poll GB-8 ระหว่างแสดง QR — อยู่ที่หน้า (ไม่ใช่ในปุ่ม) เพราะปุ่มถูก unmount เมื่อ session ไม่ pending แล้ว
+   * review #203 B2: processPaymentWorkflow แยก authorize กับ capture → เจอ "มีการชำระแล้ว" ที่ยังไม่ captured ให้เข้าทาง (d)
+   */
+  const pollQr = useCallback(async () => {
+    const next = await read()
+    if (next && hasPayment(next) && orderPayView(next, Date.now()) !== "paid") awaitCapture(1)
+  }, [read, awaitCapture])
+
   /** พร้อมเพย์หมดอายุ 10 นาทีและ PI ยังไม่ชำระ → session ใหม่ (Medusa ลบ session เดิม → provider cancel PI เดิม) */
   const renewPromptPay = useCallback(async () => {
     await startSession(PROMPTPAY)
@@ -233,7 +242,7 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
               cardReady={cardReady}
               onPaid={awaitCapture}
               renew={renewPromptPay}
-              poll={read}
+              poll={pollQr}
             />
           </div>
         </PaymentWrapper>
@@ -250,7 +259,7 @@ type PayButtonProps = {
   cardReady: boolean
   onPaid: () => void
   renew: () => void
-  poll: () => void
+  poll: () => Promise<void>
 }
 
 /** ปุ่มชำระตามวิธีที่เลือก — ต้องมี session ของวิธีนั้นและ <Elements> (StripeContext) ก่อน */

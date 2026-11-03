@@ -27,6 +27,10 @@ async function openPay(page: Page, context: BrowserContext, baseURL: string, ctx
 const stripeReturnQuery = (status: string) => `?payment_intent=pi_x&payment_intent_client_secret=pi_x_secret&redirect_status=${status}`
 const CAPTURED: Payment = { payment_status: "captured", collection: "completed", session: "authorized" }
 const NOT_PAID: Payment = { payment_status: "not_paid", collection: "not_paid", session: "pending" }
+/** ช่วงที่ processPaymentWorkflow ของ Medusa authorize แล้วแต่ยังไม่ capture (คนละ step) */
+const AUTHORIZED: Payment = { payment_status: "authorized", collection: "authorized", session: "authorized" }
+/** ไม่ poll ต่อ = ไม่มี GB-8 เพิ่มใน 2 รอบ poll (PROMPTPAY_POLL_MS = 3 วินาที) + ส่วนเผื่อ */
+const NO_MORE_POLL_MS = 2 * 3_000 + 1_000
 
 /** แก้สถานะการชำระใน response ของ GB-8 (collection แรก) */
 function withPayment(body: Gb8, { payment_status, collection, session }: Payment): Gb8 {
@@ -101,6 +105,26 @@ async function mockActions(page: Page, orderId: string, mock: Mock) {
 /** ไม่มี action ที่ส่ง cart id (complete cart / placeOrder) — ข้อ d/d2 อ่าน GB-8 อย่างเดียว */
 const expectNoCartComplete = (log: { other: string[] }) =>
   expect(log.other.filter((b) => b.includes("cart_"))).toEqual([])
+
+/** สแกน QR ใน test mode: กด authorize แล้วรอจน PI succeeded ก่อนปิดหน้า (ปิดทันที = request ไป pm-hooks.stripe.com ถูกตัด — review #203 B1) */
+async function authorizePromptPay(context: BrowserContext, request: APIRequestContext, intentId: string) {
+  const intent = await retrievePaymentIntent(request, intentId)
+  const bank = await context.newPage()
+  await bank.goto(intent.next_action!.promptpay_display_qr_code!.data)
+  await bank.getByRole("button", { name: /authorize test payment/i }).click()
+  await expect
+    .poll(async () => (await retrievePaymentIntent(request, intentId)).status, { timeout: 60_000, intervals: [500] })
+    .toBe("succeeded")
+  await bank.close()
+}
+
+/** id ของ PI ของ session พร้อมเพย์ที่ pending (หลังแสดง QR) */
+async function promptPayIntentId(request: APIRequestContext, ctx: GroupBuyOrderCtx): Promise<string> {
+  const session = (await gb8(request, ctx)).order.payment_collections[0].payment_sessions.find(
+    (s: { provider_id: string; status: string }) => s.provider_id === PROMPTPAY_PROVIDER && s.status === "pending"
+  )
+  return session.data.id
+}
 
 async function gb8(request: APIRequestContext, ctx: GroupBuyOrderCtx): Promise<Gb8> {
   const res = await request.get(`${BACKEND_URL}/store/customers/me/group-buy/orders/${ctx.orderId}`, {
@@ -370,7 +394,7 @@ test.describe("หน้าชำระเงินของ order กลุ่�
     await expect(page.getByTestId("order-pay-error")).toBeVisible()
     await expect(page.getByTestId("order-pay-form")).toBeVisible()
     await expectThai(page, ["order-pay-error"])
-    await page.waitForTimeout(7_000)
+    await page.waitForTimeout(NO_MORE_POLL_MS)
     expect(log.gb8, "ไม่ poll ต่อหลังอ่าน GB-8 ล้ม").toBe(1)
 
     await option.click()
@@ -407,16 +431,31 @@ test.describe("หน้าชำระเงินของ order กลุ่�
     await page.getByTestId(`payment-option-${PROMPTPAY_PROVIDER}`).click()
     await page.getByTestId("order-pay-promptpay-button").click()
     await expect(page.getByTestId("promptpay-qr")).toBeVisible({ timeout: 30_000 })
-    const session = (await gb8(request, ctx)).order.payment_collections[0].payment_sessions.find(
-      (s: { provider_id: string; status: string }) => s.provider_id === PROMPTPAY_PROVIDER && s.status === "pending"
-    )
-    const intent = await retrievePaymentIntent(request, session.data.id)
-    const bank = await context.newPage()
-    await bank.goto(intent.next_action!.promptpay_display_qr_code!.data)
-    await bank.getByRole("button", { name: /authorize test payment/i }).click()
-    await bank.close()
+    await authorizePromptPay(context, request, await promptPayIntentId(request, ctx))
     await expect(page.getByTestId("order-pay-paid")).toBeVisible({ timeout: 60_000 })
     expect((await gb8(request, ctx)).order.payment_status).toBe("captured")
+  })
+
+  test("poll ระหว่างแสดง QR เจอ authorized ที่ยังไม่ captured → order-pay-awaiting แล้ว order-pay-paid (review #203 B2)", async ({
+    page,
+    context,
+    request,
+    baseURL,
+  }) => {
+    test.setTimeout(90_000)
+    const ctx = await groupBuyOrder(request, true)
+    await openPay(page, context, baseURL!, ctx)
+    // GB-8 ครั้งที่ 1 = อ่านหลังสร้าง session (จริง — ต้องมี session pending ให้แสดง QR) ครั้งที่ 2 = poll ระหว่าง QR เจอ authorized
+    const log = await mockActions(page, ctx.orderId, {
+      gb8: (n, body) => (n === 1 ? body : withPayment(body, n === 2 ? AUTHORIZED : CAPTURED)),
+    })
+    await page.getByTestId(`payment-option-${PROMPTPAY_PROVIDER}`).click()
+    await page.getByTestId("order-pay-promptpay-button").click()
+    await expect(page.getByTestId("promptpay-qr")).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId("order-pay-awaiting")).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId("order-pay-paid")).toBeVisible({ timeout: 30_000 })
+    expect(log.gb8).toBeGreaterThanOrEqual(3)
+    expectNoCartComplete(log)
   })
 
   test("กลับจาก redirect ที่ failed แล้วลองใหม่ด้วยบัตร 4242 → order-pay-paid และ captured", async ({
