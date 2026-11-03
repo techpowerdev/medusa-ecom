@@ -3,6 +3,8 @@
 Spec: `docs/spec/04-group-buying.md` (AC-16a, กฎข้อ 28b, 29b) — วันที่ 2026-11-04, commit `a379136`
 สภาพแวดล้อม: prod build — backend `medusa build` + `medusa start` (`.medusa/server`), storefront `next build` + `next start`, DB แยก (seed ปกติ), Redis db แยก, node 22, Playwright chromium; ไม่ได้ใช้ Stripe (หน้านี้ไม่มีการชำระเงิน)
 ผล: `group-buy-group-page.spec.ts` ของ builder ผ่าน 3/3 + spec ของ QA ผ่าน 12/12 (รวม 15 passed)
+> หมายเหตุ (session หลัก): QA ตรวจที่ `a379136` — หลัง re-review `50b9de0` ปุ่มคัดลอกเปลี่ยนเป็น `ShareLinkButton` ร่วม (`src/modules/common/components/share-link-button`) ปุ่มคง label "คัดลอกลิงก์" และผลแสดงที่ `group-share-copy-status` ("คัดลอกลิงก์แล้ว") แทนการเปลี่ยนข้อความบนปุ่ม; e2e ของ builder ตรวจพฤติกรรมใหม่แล้ว
+
 รายงาน/trace ฉบับเต็ม: CI artifact `playwright-report` ของ PR #236 (เก็บ 14 วัน)
 
 | AC | Result | Evidence |
