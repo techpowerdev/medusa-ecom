@@ -1,0 +1,108 @@
+# CORE-25 — ผล test (spec 01 กฎข้อ 78, AC-116; defect qa #178), Node v24.12.0, รันในเครื่อง 2026-11-03
+สภาพแวดล้อม: prod build (`medusa start` :9101 + `next build && next start` :8101), DB medusa_core25 (migrate + seed), Redis db 11
+
+## Red (ก่อนแก้) — ล้มด้วยสาเหตุที่ถูกต้อง
+- unit src/core-25-pdp-option-reset.test.ts (jsdom): "URL ยังเป็น v_id=S ขณะเลือก M แล้ว product.variants เปลี่ยน reference
+  (RSC refresh) → ยังเป็น M" — AssertionError: ตัวเลือก M ต้องไม่ถูกรีเซ็ตเป็น S: expected false to be true
+  (effect ที่ขึ้นกับ product.variants อ่าน v_id=S จาก URL ซ้ำแล้ว setOptions(S)) ; test "เปิดด้วย ?v_id=M" ผ่านทั้งก่อน/หลัง
+- e2e core-25 375×812 "ก่อน hydrate": expect(barOverMainButton).toBeNull() ได้
+  {"bar":{"top":703,"bottom":812},"main":{"top":740.375,"bottom":780.375}} — SSR render แถบ mobile-actions (useIntersection
+  เริ่มที่ false → show=true) ทับ add-product-button จนกว่า JS โหลดและ observer ตอบ (โหมด no-JS ทับถาวร)
+- e2e core-25 race (S → M → เพิ่มทันที, เพิ่ม S → M → เพิ่มทันที) บนโค้ดเดิม: 10/10 ผ่านในเครื่อง — race ของ CI ทำซ้ำในเครื่องไม่ได้
+  (เหมือนที่ qa #178 รายงาน 30/30) จึงใช้ unit ด้านบนเป็น red ที่แน่นอนของ root cause
+
+## Green (หลังแก้)
+## $ pnpm --filter storefront test:unit
+ Test Files  52 passed (52)
+      Tests  589 passed (589)
+
+## $ pnpm --filter storefront test:e2e:unit
+  37 passed (1.1s)
+
+## $ pnpm lint && pnpm typecheck
+lint + typecheck: ผ่าน (exit 0)
+
+## $ playwright test e2e/core-25-pdp-option-reset.spec.ts --repeat-each=10 --workers=1
+  ✓   1 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (7.3s)
+  ✓   2 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (980ms)
+  ✓   3 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (5.8s)
+  ✓   4 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (872ms)
+  ✓   5 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (7.8s)
+  ✓   6 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (640ms)
+  ✓   7 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.8s)
+  ✓   8 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (759ms)
+  ✓   9 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (5.1s)
+  ✓  10 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (545ms)
+  ✓  11 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.9s)
+  ✓  12 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (617ms)
+  ✓  13 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (5.6s)
+  ✓  14 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (781ms)
+  ✓  15 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (10.8s)
+  ✓  16 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (833ms)
+  ✓  17 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.1s)
+  ✓  18 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (562ms)
+  ✓  19 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (4.1s)
+  ✓  20 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (572ms)
+  20 passed (1.2m)
+
+## $ playwright test e2e/core-19a-nav-cart-search.spec.ts -g 'UI flow, D-1' --repeat-each=10 --workers=1  (เดิม :183)
+  ✓   1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (4.6s)
+  ✓   2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.1s)
+  ✓   3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (10.2s)
+  ✓   4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (3.9s)
+  ✓   5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (4.1s)
+  ✓   6 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (3.8s)
+  ✓   7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (6.4s)
+  ✓   8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (5.6s)
+  ✓   9 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (14.3s)
+  ✓  10 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (11.9s)
+  ✓  11 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (11.0s)
+  ✓  12 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (5.0s)
+  ✓  13 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (5.0s)
+  ✓  14 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.2s)
+  ✓  15 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (4.1s)
+  ✓  16 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (3.8s)
+  ✓  17 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (10.6s)
+  ✓  18 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.5s)
+  ✓  19 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (5.4s)
+  ✓  20 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.7s)
+  20 passed (2.2m)
+
+## $ E2E_SAVE_EVIDENCE=1 playwright test core-25 + regression PDP (core-19a, core-24, core-14b, flash-sale-fs13/fs15/fs16)
+  ✓   1 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (4.2s)
+  ✓   2 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (966ms)
+  ✓   3 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (944ms)
+  ✓   4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (1.8s)
+  ✓   5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (2.6s)
+  ✓   6 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:68:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (12.6s)
+  ✓   7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:148:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (2.0s)
+  ✓   8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:148:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (3.6s)
+  ✓   9 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (10.4s)
+  ✓  10 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:188:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.3s)
+  ✓  11 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:213:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (725ms)
+  ✓  12 [chromium] › e2e/core-24-pdp-quantity.spec.ts:32:5 › AC-94: (JS) เลือก 3 ใน product-quantity-select แล้วกดเพิ่มลง cart → cart มี line qty 3 (3.6s)
+  ✓  13 [chromium] › e2e/core-24-pdp-quantity.spec.ts:69:7 › ปิด JavaScript › AC-94: (no-JS, ไม่ล็อกอิน) เลือก 2 แล้ว submit และ login → cart มี qty 2 (3.8s)
+  ✓  14 [chromium] › e2e/core-24-pdp-quantity.spec.ts:100:5 › qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-cart-error ภาษาไทย ปุ่มและตัวเลือกจำนวนใช้ต่อได้ (1.7s)
+  ✓  15 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (11.0s)
+  ✓  16 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:99:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (587ms)
+  ✓  17 [chromium] › e2e/flash-sale-fs13.spec.ts:121:5 › AC-19: การ์ดสินค้าบน PLP (desktop) แสดงราคา flash + ราคาขีดฆ่า (517ms)
+  ✓  18 [chromium] › e2e/flash-sale-fs13.spec.ts:133:5 › AC-19: PDP ที่ 375×812 แถบล่างแสดงราคา flash (2.1s)
+  ✓  19 [chromium] › e2e/flash-sale-fs13.spec.ts:149:5 › AC-19: แคมเปญ sold out → add-product-button disabled และเห็น flash-sold-out (3.9s)
+  ✓  20 [chromium] › e2e/flash-sale-fs15.spec.ts:122:5 › AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 → เตือน + ปุ่ม disabled; เลือก 2 → กดได้ (795ms)
+  ✓  21 [chromium] › e2e/flash-sale-fs15.spec.ts:149:5 › AC-21: show_remaining=false (remaining_units=null) เลือก 3 → ไม่เตือน (562ms)
+  ✓  22 [chromium] › e2e/flash-sale-fs15.spec.ts:165:5 › AC-21: cart มี line ของสินค้า flash qty 3 ขณะ remaining_units=2 → cart-flash-exceeds-remaining (2.3s)
+  ✘  23 [chromium] › e2e/flash-sale-fs15.spec.ts:195:5 › AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkout → ข้อความไทยของ code ในขั้น review (17.7s)
+  ✓  24 [chromium] › e2e/flash-sale-fs16.spec.ts:132:5 › AC-23: แคมเปญไม่ sold out → product-price ขีดฆ่า (text-decoration-line: line-through) (678ms)
+  ✓  25 [chromium] › e2e/flash-sale-fs16.spec.ts:147:5 › AC-23: route ของ flash ตอบ 500 → ปุ่มกลับมากดได้ภายใน 5 วินาที (2.2s)
+  ✓  26 [chromium] › e2e/flash-sale-fs16.spec.ts:167:5 › AC-23: แคมเปญ sold out + route ของ flash หน่วง 3 วินาที → ปุ่มรอ แล้ว disabled ด้วยเหตุ sold out (5.4s)
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    test-results/flash-sale-fs15-AC-22-comp-f46ef-ามไทยของ-code-ในขั้น-review-chromium/test-failed-1.png
+    Error Context: test-results/flash-sale-fs15-AC-22-comp-f46ef-ามไทยของ-code-ในขั้น-review-chromium/error-context.md
+    Error Context: test-results/flash-sale-fs15-AC-22-comp-f46ef-ามไทยของ-code-ในขั้น-review-chromium/error-context.md
+  1 failed
+  25 passed (1.8m)
+
+หมายเหตุ: flash-sale-fs15.spec.ts:195 (AC-22 FLASH_SOLD_OUT ขั้น review) ล้มในเครื่องที่ขั้นชำระเงิน (ไม่มี submit-order-button;
+cart เตรียมผ่าน API ไม่ผ่าน PDP) — เครื่องนี้ไม่ได้ตั้ง Stripe key; ไม่เกี่ยวกับ product-actions ให้ CI ตัดสิน
+ไฟล์ PNG ของ task อื่นที่ถูกเขียนทับระหว่างรัน E2E_SAVE_EVIDENCE=1 ถูก git checkout คืนแล้ว (commit เฉพาะ docs/evidence/core/CORE-25/)
