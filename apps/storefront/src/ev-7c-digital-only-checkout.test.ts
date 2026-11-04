@@ -2,6 +2,7 @@ import { HttpTypes } from "@medusajs/types"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  checkoutRedirectStep,
   checkoutStep,
   deliveryStepDone,
   isDigitalOnlyCart,
@@ -172,6 +173,85 @@ describe("checkoutStep(cart, options) — ขั้นแรกที่ยั�
   it("digital-only: ไม่มีที่อยู่ → address, มีที่อยู่ → payment (ข้าม delivery)", () => {
     expect(checkoutStep(cartOf([voucher]), [])).toBe("address")
     expect(checkoutStep(cartOf([voucher], withAddress), [])).toBe("payment")
+  })
+})
+
+// CORE-45 (spec 01 กฎข้อ 103, AC-139): step ที่ใช้ไม่ได้ → ขั้นแรกที่ยังไม่เสร็จ; ปลายทางต้องไม่ redirect ซ้ำ (ไม่วน)
+describe("checkoutRedirectStep(step, cart, options) — step ที่ใช้ไม่ได้ (กฎข้อ 103)", () => {
+  const standard = { id: "so_standard" }
+  const digital = { id: "so_digital" }
+  const filtered = [standard]
+  const withAddress = { shipping_address: address, email: "a@b.co" }
+  const fixtures: Record<string, HttpTypes.StoreCart> = {
+    "ไม่มีที่อยู่": cartOf([shirt], {
+      shipping_methods: [{ id: "sm_1", shipping_option_id: standard.id }],
+    } as never),
+    "มีที่อยู่ ไม่มี method": cartOf([shirt], withAddress),
+    "มีที่อยู่ + method ค้าง": cartOf([shirt], {
+      ...withAddress,
+      shipping_methods: [{ id: "sm_1", shipping_option_id: digital.id }],
+    } as never),
+    "มีที่อยู่ + Standard": cartOf([shirt], {
+      ...withAddress,
+      shipping_methods: [{ id: "sm_1", shipping_option_id: standard.id }],
+    } as never),
+    "digital-only ไม่มีที่อยู่": cartOf([voucher]),
+    "digital-only มีที่อยู่": cartOf([voucher], withAddress),
+  }
+  const optionsOf = (name: string) => (name.startsWith("digital-only") ? [] : filtered)
+  const steps = [undefined, "", "foo", "REVIEW", "Delivery", "address", "delivery", "payment", "review"]
+
+  it.each([undefined, "foo", "REVIEW"])("step=%s + ไม่มีที่อยู่ → address", (step) => {
+    expect(checkoutRedirectStep(step, fixtures["ไม่มีที่อยู่"], filtered)).toBe("address")
+  })
+
+  it.each([undefined, "foo", "REVIEW"])("step=%s + มีที่อยู่ + Standard → payment", (step) => {
+    expect(checkoutRedirectStep(step, fixtures["มีที่อยู่ + Standard"], filtered)).toBe("payment")
+  })
+
+  it("delivery + ไม่มีที่อยู่ → address", () => {
+    expect(checkoutRedirectStep("delivery", fixtures["ไม่มีที่อยู่"], filtered)).toBe("address")
+  })
+
+  it.each(["มีที่อยู่ ไม่มี method", "มีที่อยู่ + method ค้าง", "มีที่อยู่ + Standard"])(
+    "delivery + %s → ไม่ redirect (กลับมาเปลี่ยนวิธีส่งได้)",
+    (name) => {
+      expect(checkoutRedirectStep("delivery", fixtures[name], filtered)).toBeNull()
+    }
+  )
+
+  it("delivery + digital-only: ไม่มีที่อยู่ → address, มีที่อยู่ → payment", () => {
+    expect(checkoutRedirectStep("delivery", fixtures["digital-only ไม่มีที่อยู่"], [])).toBe("address")
+    expect(checkoutRedirectStep("delivery", fixtures["digital-only มีที่อยู่"], [])).toBe("payment")
+  })
+
+  it.each(Object.keys(fixtures))("address + %s → ไม่ redirect", (name) => {
+    expect(checkoutRedirectStep("address", fixtures[name], optionsOf(name))).toBeNull()
+  })
+
+  it.each(Object.keys(fixtures))("payment/review + %s → ผลเดียวกับกฎข้อ 99 (AC-135)", (name) => {
+    const cart = fixtures[name]
+    const options = optionsOf(name)
+    const first = checkoutStep(cart, options)
+    const expected = first === "payment" ? null : first
+    expect(checkoutRedirectStep("payment", cart, options)).toBe(expected)
+    expect(checkoutRedirectStep("review", cart, options)).toBe(expected)
+  })
+
+  it("payment/review + มีที่อยู่ + method ค้าง → delivery (AC-129)", () => {
+    expect(checkoutRedirectStep("payment", fixtures["มีที่อยู่ + method ค้าง"], filtered)).toBe("delivery")
+    expect(checkoutRedirectStep("review", fixtures["มีที่อยู่ + method ค้าง"], filtered)).toBe("delivery")
+  })
+
+  it("ทุก fixture × ทุก step: ปลายทางของ redirect ไม่ redirect ซ้ำ (ไม่วน)", () => {
+    for (const [name, cart] of Object.entries(fixtures)) {
+      for (const step of steps) {
+        const target = checkoutRedirectStep(step, cart, optionsOf(name))
+        if (target !== null) {
+          expect(checkoutRedirectStep(target, cart, optionsOf(name)), `${name} / ${step} → ${target}`).toBeNull()
+        }
+      }
+    }
   })
 })
 

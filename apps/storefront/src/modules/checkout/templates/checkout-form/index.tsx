@@ -1,7 +1,7 @@
 import { listCartShippingMethods } from "@lib/data/fulfillment"
 import { listCartPaymentMethods } from "@lib/data/payment"
 import {
-  checkoutStep,
+  checkoutRedirectStep,
   deliveryStepDone,
   isDigitalOnlyCart,
   safeCountryCode,
@@ -40,14 +40,12 @@ export default async function CheckoutForm({
   // method ค้างที่ถูกกรองออก (เช่น Digital delivery บน cart ที่ต้องจัดส่ง) ไม่นับ
   const options = shippingOptionsForCart(shippingMethods, cart)
   const deliveryDone = deliveryStepDone(cart, options)
-  // CORE-41 (กฎข้อ 99): เปิด step=payment/review ตรงๆ ขณะขั้นก่อนหน้ายังไม่เสร็จ → ขั้นแรกที่ยังไม่เสร็จ (address หรือ delivery)
-  // ปลายทาง (address/delivery) ไม่เข้าเงื่อนไขนี้ จึงไม่ redirect วน
-  if (step === "payment" || step === "review") {
-    const firstIncomplete = checkoutStep(cart, options)
-    if (firstIncomplete !== "payment") {
-      const cc = safeCountryCode(countryCode)
-      redirect(`${cc ? `/${cc}` : ""}/checkout?step=${firstIncomplete}`)
-    }
+  // CORE-41/CORE-45 (กฎข้อ 99, 103): step ที่ใช้ไม่ได้ (ไม่มี/ไม่รู้จัก, delivery ก่อนมีที่อยู่หรือของ digital-only,
+  // payment/review ก่อนขั้นก่อนหน้าเสร็จ) → ขั้นแรกที่ยังไม่เสร็จ; ปลายทางไม่เข้าเงื่อนไขซ้ำ จึงไม่ redirect วน
+  const redirectStep = checkoutRedirectStep(step, cart, options)
+  if (redirectStep) {
+    const cc = safeCountryCode(countryCode)
+    redirect(`${cc ? `/${cc}` : ""}/checkout?step=${redirectStep}`)
   }
 
   return (

@@ -1,4 +1,4 @@
-import { APIRequestContext } from "@playwright/test"
+import { APIRequestContext, Frame, Page, Request } from "@playwright/test"
 
 import { createVoucher } from "./support/evoucher"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
@@ -101,4 +101,127 @@ test("AC-135 regression: cart มีที่อยู่ + Standard เปิ�
   await page.goto(`/${CC}/checkout?step=payment`)
   await expect(page.getByTestId("submit-payment-button")).toBeVisible()
   await expect(page).toHaveURL(/[?&]step=payment(&|$)/)
+})
+
+// CORE-45 (spec 01 กฎข้อ 103, AC-139): ไม่มี step / step ไม่รู้จัก / delivery ก่อนมีที่อยู่ / delivery ของ digital-only
+// → ขั้นแรกที่ยังไม่เสร็จ; ทุกเคส navigation ≤ 2 (ไม่วน) และไม่มี request complete cart
+test.describe("CORE-45 step ที่ใช้ไม่ได้", () => {
+  test.use({ evidenceTarget: { feature: "core", taskId: "CORE-45" } })
+
+  /** เปิด path แล้วนับ navigation ของ main frame + เก็บ request complete ของ cart นี้ */
+  async function openCounting(page: Page, path: string, cartId: string) {
+    let navigations = 0
+    const completes: string[] = []
+    const onNav = (frame: Frame) => {
+      if (frame === page.mainFrame()) navigations++
+    }
+    const onRequest = (req: Request) => {
+      if (req.method() === "POST" && req.url().includes(`/store/carts/${cartId}/complete`)) completes.push(req.url())
+    }
+    page.on("framenavigated", onNav)
+    page.on("request", onRequest)
+    await page.goto(path)
+    return {
+      done: async () => {
+        await page.waitForLoadState("load")
+        page.off("framenavigated", onNav)
+        page.off("request", onRequest)
+        expect(navigations, `navigation ของ ${path}`).toBeLessThanOrEqual(2)
+        expect(completes, "ไม่มี POST complete").toEqual([])
+      },
+    }
+  }
+
+  async function setAddress(request: APIRequestContext, pk: string, customer: Customer, cartId: string) {
+    const headers = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
+    const address = {
+      first_name: "Somchai",
+      last_name: "Jaidee",
+      address_1: "1 Sukhumvit Rd",
+      city: "Bangkok",
+      postal_code: "10110",
+      country_code: CC,
+    }
+    const res = await request.post(`${BACKEND_URL}/store/carts/${cartId}`, {
+      headers,
+      data: { email: customer.email, shipping_address: address, billing_address: address },
+    })
+    expect(res.status(), `set address: ${await res.text()}`).toBe(200)
+  }
+
+  test("AC-139 cart t-shirt ไม่มีที่อยู่: step=delivery / ไม่มี step / step=foo / step ซ้ำ → step=address", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const pk = await publishableKey(request, await adminHeaders(request))
+    const customer = await createCustomer(request, pk)
+    const { variantId } = await variantOf(request, pk, "t-shirt")
+    const cartId = await cartWithoutAddress(request, pk, customer, variantId)
+    await signInAs(context, baseURL!, customer)
+    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+
+    for (const query of ["?step=delivery", "", "?step=foo", "?step=address&step=address"]) {
+      const nav = await openCounting(page, `/${CC}/checkout${query}`, cartId)
+      await expect(page).toHaveURL(/[?&]step=address(&|$)/)
+      await expect(page.getByTestId("shipping-first-name-input")).toBeVisible()
+      await expect(page.getByTestId("delivery-option-radio")).toHaveCount(0)
+      await nav.done()
+      if (query === "") await evidence("01-tshirt-no-step-redirected-to-address")
+    }
+  })
+
+  test("AC-139 cart มีที่อยู่ + Standard: ไม่มี step → step=payment, step=delivery ไม่ถูก redirect", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const pk = await publishableKey(request, await adminHeaders(request))
+    const customer = await createCustomer(request, pk)
+    const cartId = await cartReadyForPayment(request, pk, customer)
+    await signInAs(context, baseURL!, customer)
+    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+
+    const noStep = await openCounting(page, `/${CC}/checkout`, cartId)
+    await expect(page).toHaveURL(/[?&]step=payment(&|$)/)
+    await expect(page.getByTestId("submit-payment-button")).toBeVisible()
+    await noStep.done()
+    await evidence("02-ready-no-step-redirected-to-payment")
+
+    const delivery = await openCounting(page, `/${CC}/checkout?step=delivery`, cartId)
+    await expect(page.getByTestId("delivery-option-radio").first()).toBeVisible()
+    await expect(page).toHaveURL(/[?&]step=delivery(&|$)/)
+    await delivery.done()
+  })
+
+  test("AC-139 cart digital-only มีที่อยู่: step=delivery → step=payment", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const pk = await publishableKey(request, admin)
+    const customer = await createCustomer(request, pk)
+    const voucher = await createVoucher(request, admin, 1)
+    const cartId = await cartWithoutAddress(request, pk, customer, voucher.variantId)
+    await setAddress(request, pk, customer, cartId)
+    await signInAs(context, baseURL!, customer)
+    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+
+    const nav = await openCounting(page, `/${CC}/checkout?step=delivery`, cartId)
+    await expect(page).toHaveURL(/[?&]step=payment(&|$)/)
+    await expect(page.getByTestId("submit-payment-button")).toBeVisible()
+    await expect(page.getByTestId("delivery-option-radio")).toHaveCount(0)
+    await nav.done()
+    await evidence("03-digital-only-delivery-redirected-to-payment")
+  })
 })
