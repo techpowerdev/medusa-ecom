@@ -55,7 +55,8 @@ const Item = ({
 
   return (
     <Table.Row className="w-full" data-testid="product-row">
-      <Table.Cell className="!pl-0 p-4 w-24">
+      {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ช่องจำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 — ≥ small คงเดิม */}
+      <Table.Cell className="!pl-0 p-4 pr-2 small:pr-4 w-24">
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
           className={clx("flex", {
@@ -82,7 +83,7 @@ const Item = ({
       </Table.Cell>
 
       {type === "full" && (
-        <Table.Cell>
+        <Table.Cell className="px-2 small:px-4">
           {/* qa #142 D-2 (CORE-19c): `!contents` ให้ปุ่มลบและข้อความ error เป็น flex item ของแถวนี้ — error ขึ้นบรรทัดใหม่กว้างเต็ม w-28 */}
           <div className="flex flex-wrap gap-2 items-center w-28">
             <DeleteButton
