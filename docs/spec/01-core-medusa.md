@@ -1451,8 +1451,9 @@ none
       บน cart ที่ต้องจัดส่ง) → ไม่มี radio ถูกเลือก, `submit-delivery-option-button` disabled จนลูกค้าเลือก option ในรายการ, และสรุปตอนขั้นปิดไม่แสดงชื่อ method นั้น;
       เงื่อนไขอยู่ใน helper pure ใน `lib/util/shipping-options.ts` เดิม (+ unit) ไม่กระจาย `cart.shipping_methods?.[0]` หลายที่
     (c) cart ที่ทุก line `requires_shipping = false` ทำตาม EV-7c เดิม (ไม่แตะ)
-    (d) e2e `e2e/core-32-shipping-profile-filter.spec.ts` (~70) มี comment อธิบายว่าทำไมสร้าง cart อีกใบ (เพื่ออ่าน id ของ option Digital delivery จาก `GET /store/shipping-options?cart_id=`
-      ของ cart voucher ที่ option นั้นใช้ได้) — แก้ comment เท่านั้น
+    (d) e2e `e2e/core-32-shipping-profile-filter.spec.ts` (~70 ใน #243 — บล็อกที่เรียก `cartReadyForPayment` ซึ่ง default เป็น variant ของ **t-shirt**) มี comment อธิบายเหตุผลจริง:
+      หน้ากลุ่ม join ด้วย cart ใหม่ที่ test เข้าถึง id ไม่ได้ จึงสร้าง cart t-shirt อีกใบเพื่ออ่าน id ของ option Digital delivery จาก `GET /store/shipping-options?cart_id=` (ใช้แทนกันได้เพราะ seed
+      ให้ id ของ option เดียวกันกับทุก cart) และบล็อกนี้ยัง assert ว่า Store API **คืน** Digital delivery ให้ cart t-shirt (พิสูจน์ว่าการซ่อนมาจากการกรองของ storefront) — แก้ comment เท่านั้น
 92. (CORE-34 — qa #241 O-3) `removePromotionCode` ใน `modules/checkout/components/discount-code` ล้าง error เดิม (`setErrorMessage("")`) ก่อนเรียก `submitPromotionCodes` แบบเดียวกับ `addPromotionCode`
     — error ของรอบก่อนไม่ค้างระหว่างลบรอบใหม่; ผลของการลบ (สำเร็จ/ล้ม) ตั้ง error ตามเดิมของกฎข้อ 85
 
@@ -1462,9 +1463,11 @@ none
   ด้วย token ของ A (id ของ option จาก `type.code` — ไม่ match ข้อความ) When เปิดขั้น delivery ของ `/th/checkout` Then ไม่มี radio ใน `delivery-options-container` ที่ `checked`/`aria-checked="true"`
   และ `submit-delivery-option-button` disabled; When เลือก Standard Then ปุ่ม enabled และ `GET /store/carts/:id` มี `shipping_methods` ที่ `shipping_option_id` = Standard;
   component test (Vitest + jsdom): Given component ขั้น delivery ได้รายการ option (prop เดิมของ starter) เฉพาะ Digital delivery กับ cart ที่มี line ต้องจัดส่ง (รายการที่กรองแล้วว่าง) Then มี `delivery-options-empty` ข้อความตรง regex อักษรไทย,
-  ไม่มี radio และปุ่ม disabled; grep: `core-32-shipping-profile-filter.spec.ts` มี comment ภาษาไทยในบล็อกที่สร้าง cart ใบที่สอง; AC-125 และ spec 02 AC-37 ยังผ่าน
+  ไม่มี radio และปุ่ม disabled; component test: Given ขั้น delivery **ปิด** และ `cart.shipping_methods` ตัวล่าสุดเป็น method ที่ถูกกรองออก (fixture `name = "Digital delivery"`, option ไม่อยู่ในรายการที่กรองแล้ว)
+  Then ส่วนสรุปของขั้น delivery ไม่มีข้อความ `name` ของ method นั้น (เทียบกับค่าใน fixture ไม่ใช่ข้อความ UI) และไม่ render ราคาของ method นั้น (กฎข้อ 91b);
+  grep: `core-32-shipping-profile-filter.spec.ts` มี comment ภาษาไทยในบล็อกที่สร้าง cart ใบที่สอง; AC-125 และ spec 02 AC-37 ยังผ่าน
 - AC-128 (CORE-34, กฎข้อ 92) unit (Vitest + jsdom, ต่อจาก `src/core-28-promotion-error.test.ts` หรือไฟล์ใหม่): Given `promotion-error` มีข้อความจากการใส่โค้ดที่ล้ม และ `applyPromotions` mock
-  คืน promise ที่ยังไม่ resolve When กด `remove-discount-button` Then ก่อน resolve `promotion-error` ว่าง; resolve สำเร็จ → ยังว่าง; resolve `{ error: "unauthorized" }` → `SIGN_IN_AGAIN_MESSAGE`;
+  คืน promise ที่ยังไม่ resolve When กด `remove-discount-button` Then ก่อน resolve ไม่มี element `promotion-error` (`ErrorMessage` คืน `null` เมื่อไม่มีข้อความ); resolve สำเร็จ → ยังไม่มี element `promotion-error`; resolve `{ error: "unauthorized" }` → `SIGN_IN_AGAIN_MESSAGE`;
   test ต้อง fail กับโค้ดก่อนแก้ (แนบผลใน PR); AC-121 ยังผ่าน
 
 ### แผนการทดสอบ (follow-up รอบ 17)
