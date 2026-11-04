@@ -39,6 +39,12 @@ export type PaymentSessionResult = ActionResult<typeof PAYMENT_ALREADY_COMPLETED
  * ผลของ `createPaymentSession` (`{ status, code }` — `status` 0 = network) → `PaymentSessionResult`:
  * 2xx → ok, 409 + `PAYMENT_ALREADY_COMPLETED` → code นั้น (spec 06 กฎข้อ 9 d), 401 → `"unauthorized"`,
  * non-2xx อื่นทุกแบบ (รวม 403) → `"failed"` (กฎข้อ 9 d2 ตัดสินจากสถานะของ GB-8 ไม่ดู status)
+ *
+ * หมายเหตุ 403: ต่างจาก `actionFailure` ที่แปลง 401/403 เป็น `"unauthorized"` — ที่นี่เฉพาะ 401 เป็น `"unauthorized"`
+ * ตาม Q-C2 = (ก) / AC-110 ("non-2xx อื่น → failed") เหตุผล: spec 06 กฎข้อ 9 (d2) กำหนดว่าการสร้าง session ได้ non-2xx
+ * ทุกแบบยกเว้น 401 และ 409 `PAYMENT_ALREADY_COMPLETED` ต้องไปอ่าน GB-8 เพื่อตัดสินจากสถานะการชำระ — ถ้า 403 เป็น
+ * `"unauthorized"` หน้า pay จะพาไป login แทนการอ่าน GB-8 ผลข้างเคียงใน checkout: 403 ตอนสร้าง collection
+ * (`actionFailure`) แสดง `SIGN_IN_AGAIN_MESSAGE` แต่ 403 ตอนสร้าง session แสดงข้อความทั่วไปของผู้เรียก
  */
 export function paymentSessionResult(res: { status: number; code: string | null }): PaymentSessionResult {
   if (res.status >= 200 && res.status < 300) return { ok: true }
