@@ -13,6 +13,7 @@ const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8")
 const guard = createRequire(__filename)(GUARD) as {
   stripSetupData: (summary: Record<string, unknown>) => Record<string, unknown>
   findLeaks: (dir: string) => string[]
+  redact: (text: string) => string
 }
 
 // JWT ปลอมสร้างตอนรัน (ไม่มี literal รูปแบบ JWT ใน repo)
@@ -106,5 +107,125 @@ describe("OPS-17a run.sh", () => {
     expect(scan).toBeGreaterThan(runner.lastIndexOf("backend-tail.log"))
     expect(scan).toBeGreaterThan(runner.lastIndexOf('>"$OUT/report.md"'))
     expect(scan).toBeLessThan(runner.lastIndexOf('echo "load test: ผ่าน"'))
+  })
+})
+
+// OPS-17b (spec 07 AC-34): ก่อน cat/grep เนื้อหาจาก OUT หรือ console ของ k6 ลง job log/GITHUB_STEP_SUMMARY ต้อง scan ก่อน
+// (ในบล็อกเดียวกัน) หรือ pipe ผ่าน `artifact-guard.js redact`
+describe("OPS-17b redact", () => {
+  const { redact } = guard
+
+  it("input ที่มี JWT → ผลไม่มีรูปแบบ JWT แทนด้วย [REDACTED_JWT] และข้อความอื่นคงเดิม", () => {
+    const t1 = fakeJwt()
+    const t2 = fakeJwt()
+    const input = `checkout cart_1: 500 {"auth":"Bearer ${t1}"}\nไม่มี token ตรงนี้ cart_2\nx=${t2} y=1\n`
+    const out = redact(input)
+    expect(out).not.toMatch(JWT_RE)
+    expect(out).toBe(`checkout cart_1: 500 {"auth":"Bearer [REDACTED_JWT]"}\nไม่มี token ตรงนี้ cart_2\nx=[REDACTED_JWT] y=1\n`)
+    expect(redact("checkout_k6_timing cart_id=cart_1 status=200\n")).toBe("checkout_k6_timing cart_id=cart_1 status=200\n")
+  })
+
+  it("CLI redact: อ่าน stdin แล้วพิมพ์ stdout ที่ไม่มี JWT (exit 0)", () => {
+    const token = fakeJwt()
+    const r = spawnSync(process.execPath, [GUARD, "redact"], { input: `join cart_9: 500 ${token}\nok\n`, encoding: "utf8" })
+    expect(r.status).toBe(0)
+    expect(r.stdout + r.stderr).not.toContain(token)
+    expect(r.stdout).toBe("join cart_9: 500 [REDACTED_JWT]\nok\n")
+  })
+})
+
+// คำสั่ง cat/grep (ไม่ใช่ grep -q) ที่อ่านไฟล์ใน $OUT/console ของ k6 แต่ไม่ pipe ผ่าน redact และไม่มี scan "$OUT" ก่อนหน้าในบล็อกเดียวกัน
+// บล็อก = body ของ function ระดับบนสุด (`name() {` … `}`) หรือส่วนนอก function
+function unguardedPrints(script: string): string[] {
+  const bad: string[] = []
+  let fn: string | null = null
+  const scanned = new Set<string>()
+  for (const [i, line] of script.split("\n").entries()) {
+    const code = line.replace(/(^|\s)#.*$/, "")
+    const open = code.match(/^([A-Za-z_][\w-]*)\(\)\s*\{/)
+    if (open && !/\}\s*$/.test(code.trim())) {
+      fn = open[1]
+      continue
+    }
+    if (fn && /^\}/.test(code)) {
+      fn = null
+      continue
+    }
+    const block = fn ?? "<top>"
+    if (/artifact-guard\.js scan "\$OUT"/.test(code)) scanned.add(block)
+    const reads = /(^|[\s;&|({])(cat|grep)\s/.test(code) && !/\bgrep -q\b/.test(code) && /\$OUT|-console\.log/.test(code)
+    if (!reads) continue
+    if (/\|\s*node tools\/load\/artifact-guard\.js redact/.test(code)) continue
+    if (scanned.has(block)) continue
+    bad.push(`${i + 1}: ${line.trim()}`)
+  }
+  return bad
+}
+
+describe("OPS-17b run.sh: scan ก่อน cat/grep หรือผ่าน redact", () => {
+  const runner = read("tools/load/run.sh")
+
+  it("run.sh ไม่มี cat/grep ของ OUT/console ของ k6 ที่พิมพ์ก่อน scan หรือไม่ผ่าน redact", () => {
+    expect(unguardedPrints(runner)).toEqual([])
+  })
+
+  it("console ของ k6 ใน k6() ส่งผ่าน artifact-guard.js redact ก่อนลง job log", () => {
+    expect(runner).toMatch(/grep -v checkout_k6_timing "\$OUT\/\$1-console\.log"[^\n]*\| node tools\/load\/artifact-guard\.js redact/)
+  })
+
+  it("cleanup() และ flow หลักพิมพ์ report หลัง scan ในบล็อกเดียวกัน", () => {
+    const body = runner.slice(runner.indexOf("cleanup() {"), runner.indexOf("\n}", runner.indexOf("cleanup() {")))
+    expect(body.indexOf('artifact-guard.js scan "$OUT"')).toBeGreaterThan(-1)
+    expect(body.indexOf('artifact-guard.js scan "$OUT"')).toBeLessThan(body.indexOf("cat "))
+    const main = runner.slice(runner.indexOf("leaked=0"))
+    expect(main.indexOf('artifact-guard.js scan "$OUT"')).toBeLessThan(main.indexOf("cat "))
+  })
+
+  it("positive control: fixture ที่สลับลำดับ (cat ก่อน scan) หรือ grep console ไม่ผ่าน redact → ถูกจับ", () => {
+    const swapped = [
+      "cleanup() {",
+      '  [ -n "$REPORTED" ] || (cd "$OUT" && cat "${REPORTS[@]}" 2>/dev/null) || true',
+      '  node tools/load/artifact-guard.js scan "$OUT" || true',
+      "}",
+    ].join("\n")
+    expect(unguardedPrints(swapped)).toHaveLength(1)
+    const raw = ["k6() {", '  grep -v checkout_k6_timing "$OUT/$1-console.log" 2>/dev/null || true', "}"].join("\n")
+    expect(unguardedPrints(raw)).toHaveLength(1)
+    const summary = ['(cd "$OUT" && cat report.md) >>"$GITHUB_STEP_SUMMARY"', 'node tools/load/artifact-guard.js scan "$OUT"'].join("\n")
+    expect(unguardedPrints(summary)).toHaveLength(1)
+    // scan ในบล็อกอื่น (function) ไม่นับเป็น scan ของ flow หลัก
+    const otherBlock = ["cleanup() {", '  node tools/load/artifact-guard.js scan "$OUT"', "}", 'cat "$OUT/k6-failures.txt"'].join("\n")
+    expect(unguardedPrints(otherBlock)).toHaveLength(1)
+  })
+})
+
+// argument ของ console.(log|error|warn|info)( — นับวงเล็บจนปิด
+function consoleArgs(src: string): string[] {
+  const out: string[] = []
+  const re = /console\.(log|error|warn|info)\(/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(src))) {
+    let depth = 1
+    let j = m.index + m[0].length
+    for (; j < src.length && depth > 0; j++) {
+      if (src[j] === "(") depth++
+      else if (src[j] === ")") depth--
+    }
+    out.push(src.slice(m.index + m[0].length, j - 1))
+  }
+  return out
+}
+const SECRET_IDENT = /\b(token|authorization|headers|setup)\b/i
+
+describe("OPS-17b k6 script ไม่ส่ง token/header เข้า console.*", () => {
+  it.each(["tools/load/flash-sale.js", "tools/load/group-buy-join.js"])("%s", (file) => {
+    const args = consoleArgs(read(file))
+    expect(args.length).toBeGreaterThan(0)
+    expect(args.filter((a) => SECRET_IDENT.test(a))).toEqual([])
+  })
+
+  it("positive control: console ที่มี token/headers → ถูกจับ", () => {
+    const args = consoleArgs("console.error(`x ${c.token}`)\nconsole.log(fmt(res.request.headers))\nconsole.info(`ok ${c.cart_id}`)")
+    expect(args.filter((a) => SECRET_IDENT.test(a))).toHaveLength(2)
   })
 })

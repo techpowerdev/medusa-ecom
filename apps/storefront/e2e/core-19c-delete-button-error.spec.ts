@@ -178,7 +178,8 @@ for (const viewport of [
 }
 
 // CORE-19d (spec 01 กฎข้อ 68, AC-104; qa #160 D-1): JWT หมดอายุ/ถูกลบระหว่างอยู่หน้า cart → กดลบต้องบอกให้เข้าสู่ระบบใหม่
-// (middleware ล้าง `_medusa_cart_id` เมื่อไม่มี `_medusa_jwt` ก่อนถึง action) ไม่ใช่ข้อความ fallback — ไม่ mock request ใดๆ
+// (CORE-14g กฎข้อ 84: middleware ไม่ล้าง `_medusa_cart_id` ใน server action — action ได้ 401 จาก backend แล้วคืน `unauthorized`)
+// ไม่ใช่ข้อความ fallback — ไม่ mock request ใดๆ
 test("AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่", async ({
   page,
   context,
