@@ -4,6 +4,7 @@ import { sdk } from "@lib/config"
 import { actionFailure, type ActionResult } from "@lib/util/action-result"
 import { groupJoinFailure, type GroupJoinActionError } from "@lib/util/group-join-error"
 import type { GroupSelectionItem } from "@lib/util/group-page"
+import { shippingOptionsForCart } from "@lib/util/shipping-options"
 import { createCartWithItems, resolveRegion } from "@lib/util/server-cart"
 import { getAuthHeaders } from "./cookies"
 import { retrieveCustomer } from "./customer"
@@ -52,7 +53,8 @@ export async function prepareGroupCart(input: {
       {},
       headers
     )
-    const options = (await listCartShippingMethods(cartId)) ?? []
+    // CORE-32 (spec 01 กฎข้อ 89): กรองด้วย helper เดียวกับ checkout (line ต้องจัดส่ง → ไม่มี Digital delivery)
+    const options = shippingOptionsForCart((await listCartShippingMethods(cartId)) ?? [], cart)
     const shipping_options = (
       await Promise.all(
         options
