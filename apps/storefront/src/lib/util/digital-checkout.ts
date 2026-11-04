@@ -40,6 +40,51 @@ export function checkoutStep(cart: CheckoutCart, options?: { id: string }[]) {
   return deliveryStepDone(cart, options) ? "payment" : "delivery"
 }
 
+/**
+ * CORE-45 (spec 01 กฎข้อ 103): step ใน URL ที่ใช้ไม่ได้ → คืน step ปลายทาง (= `checkoutStep(cart, options)`) ไม่งั้น `null`
+ * - ไม่มี step / ไม่ใช่ address|delivery|payment|review แบบตรงตัว → ขั้นแรกที่ยังไม่เสร็จ
+ * - address → ไม่ redirect เสมอ; delivery → redirect เมื่อยังไม่มีที่อยู่ หรือ cart digital-only (ไม่มีขั้น delivery)
+ * - payment/review → กฎข้อ 99 (ขั้นก่อนหน้ายังไม่เสร็จ)
+ * ปลายทาง address/delivery(มีที่อยู่)/payment(พร้อมจ่าย) ไม่เข้าเงื่อนไขซ้ำ จึงไม่วน
+ */
+export function checkoutRedirectStep(
+  step: string | undefined,
+  cart: CheckoutCart,
+  options?: { id: string }[]
+): "address" | "delivery" | "payment" | null {
+  const first = checkoutStep(cart, options)
+  switch (step) {
+    case "address":
+      return null
+    case "delivery":
+      return first === "address" || isDigitalOnlyCart(cart) ? first : null
+    case "payment":
+    case "review":
+      return first === "payment" ? null : first
+    default:
+      return first
+  }
+}
+
+/**
+ * D-1 (qa PR #288): cart ที่หน้าอ่านแบบ force-cache อาจยังเป็นค่าก่อน mutation (เช่น หน้า `step=delivery` หลัง `setAddresses`)
+ * ถ้าเชื่อค่านั้น กฎข้อ 103b จะเด้งกลับ address → เมื่อ `checkoutRedirectStep` บอกให้ redirect ให้อ่าน cart ล่าสุด (`loadLatest`)
+ * แล้วตัดสินซ้ำ (คืน cart/options ที่ใช้ตัดสินเพื่อ render ต่อ); ไม่ redirect = ไม่อ่าน cart เพิ่ม; อ่านไม่ได้ = ใช้ผลจาก cart เดิม
+ */
+export async function checkoutRedirectWithLatest<C extends CheckoutCart>(
+  step: string | undefined,
+  cart: C,
+  optionsFor: (cart: C) => { id: string }[],
+  loadLatest: () => Promise<C | null>
+) {
+  const options = optionsFor(cart)
+  const redirectStep = checkoutRedirectStep(step, cart, options)
+  const latest = redirectStep ? await loadLatest() : null
+  if (!latest) return { redirectStep, cart, options }
+  const latestOptions = optionsFor(latest)
+  return { redirectStep: checkoutRedirectStep(step, latest, latestOptions), cart: latest, options: latestOptions }
+}
+
 const COUNTRY_CODE_RE = /^[a-z]{2}$/
 
 /**
