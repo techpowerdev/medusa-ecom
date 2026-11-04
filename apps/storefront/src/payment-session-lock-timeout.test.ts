@@ -57,6 +57,7 @@ const render = async (cart: unknown) => {
       createElement(Payment, {
         cart: cart as never,
         availablePaymentMethods: [{ id: PROMPTPAY }],
+        deliveryDone: true, // CORE-35: cart นี้มี shipping method (ค่าเดิมของ deliveryStepDone)
       })
     )
   })

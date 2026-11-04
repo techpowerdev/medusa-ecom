@@ -1,14 +1,20 @@
 "use client"
 
 import { STORE_NAME } from "@lib/store-content"
-import { deliveryStepDone } from "@lib/util/digital-checkout"
 import { Heading, Text, clx } from "@modules/common/components/ui"
 
 import PaymentButton from "../payment-button"
 import { useSearchParams } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 
-const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
+const Review = ({
+  cart,
+  deliveryDone,
+}: {
+  cart: HttpTypes.StoreCart
+  /** CORE-35 (กฎข้อ 93): จาก checkout-form — deliveryStepDone กับรายการ option ที่กรองแล้ว */
+  deliveryDone: boolean
+}) => {
   const searchParams = useSearchParams()
 
   const isOpen = searchParams.get("step") === "review"
@@ -19,7 +25,7 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
 
   const previousStepsCompleted =
     cart.shipping_address &&
-    deliveryStepDone(cart) &&
+    deliveryDone &&
     (cart.payment_collection || paidByGiftcard)
 
   return (
@@ -52,7 +58,11 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
               </Text>
             </div>
           </div>
-          <PaymentButton cart={cart} data-testid="submit-order-button" />
+          <PaymentButton
+            cart={cart}
+            deliveryDone={deliveryDone}
+            data-testid="submit-order-button"
+          />
         </>
       )}
     </div>
