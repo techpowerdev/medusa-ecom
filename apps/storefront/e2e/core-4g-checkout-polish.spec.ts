@@ -10,6 +10,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { THAI } from "./support/thai-text"
+import { addToCartFromPdp } from "./support/server-action"
 
 // CORE-4g: spec 01 กฎข้อ 63, AC-99 — โค้ดส่วนลดที่ Medusa ไม่ใส่ใน cart (campaign หมดอายุ, ตอบ 200) แสดง `promotion-error` ไทย,
 // เลือกที่อยู่ที่บันทึกไว้ที่มี field ว่าง (company = null) แล้ว dropdown แสดงที่อยู่นั้น, CountrySelect สูงเท่า Input (±1px)
@@ -109,8 +110,7 @@ test("AC-99: โค้ดหมดอายุแสดง promotion-error ไ�
     await signInAs(context, baseURL!, customer)
 
     await page.goto(`/${CC}/products/${PRODUCT}`)
-    await page.getByTestId("add-product-button").click()
-    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await addToCartFromPdp(page, { request, pk, customer })
     await page.goto(`/${CC}/checkout?step=address`)
     await expect(page.getByTestId("shipping-first-name-input")).toBeVisible()
 
