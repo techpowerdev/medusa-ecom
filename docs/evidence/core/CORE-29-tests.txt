@@ -1,0 +1,68 @@
+# CORE-29 — ผล test (spec 01 กฎข้อ 86, AC-122; ADR-019 ทางเลือก B)
+# วันที่ 2026-11-04 | branch feat/CORE-29-restore-cart-after-login | base origin/develop 2c0fea6
+# env: backend medusa start (build) :9291, DB medusa_core29 (seed), storefront next build + start :8291
+
+## 1) Red — e2e core-29 กับโค้ดก่อนแก้ (next dev, impl ถูก stash)
+  ✘ AC-122 test 1: expect(metadata.active_cart_id).toBe(cartC) — Received: undefined (ยังไม่บันทึก active_cart_id)
+  ✓ test 2 / test 3 (regression guard: โค้ดเดิมไม่กู้ cart อยู่แล้ว) — 1 failed, 2 passed
+## 1b) Red — unit core-29-active-cart.test.ts กับโค้ดก่อนแก้: Tests 7 failed | 8 passed (15)
+
+## 2) Green — unit (Vitest) ไฟล์ที่เกี่ยว
+ Test Files  3 passed (3)
+      Tests  27 passed (27)
+
+## 3) Green — unit ทั้งหมดของ storefront: Test Files 82 passed (82) | Tests 889 passed (889)
+## 4) e2e:unit (กฎ evidence): 54 passed
+
+## 5) Green — e2e core-29 (build จริง)
+  ✓  1 [chromium] › e2e/core-29-restore-cart.spec.ts:142:5 › AC-122: ลบ JWT → login ใหม่ได้ตะกร้าเดิม; cart ที่ complete แล้วไม่ถูกกู้; key อื่นใน metadata ยังอยู่ (5.0s)
+  ✓  2 [chromium] › e2e/core-29-restore-cart.spec.ts:192:5 › AC-122: active_cart_id ของ A ชี้ cart ของ B → login สำเร็จ ไม่มี cookie cart และ cart ของ B ยังเป็นของ B (1.0s)
+  ✓  3 [chromium] › e2e/core-29-restore-cart.spec.ts:217:5 › AC-122: browser มี cookie cart D ของ A อยู่แล้วตอน login → cookie ยังเป็น D (ไม่ทับด้วย active_cart_id) (1.3s)
+  3 passed (7.9s)
+
+## 6) e2e ที่เกี่ยวข้อง (build จริง) — core-14*, core-27, core-30, group-buy-join, payments
+# payments.spec.ts skipped: เครื่องนี้ไม่มี STRIPE_TEST_API_KEY/PUBLISHABLE (CI รัน); payment-return ครอบคลุมด้วย unit
+# core-29 test 1 ในรอบนี้ timeout ที่ waitForLoadState(networkidle) บน PDP — เอาออกแล้ว (ไม่จำเป็น) ผลหลังแก้ดูข้อ 5
+  ✓   1 [chromium] › e2e/core-14-buy-login.spec.ts:38:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (2.0s)
+  ✓   2 [chromium] › e2e/core-14-buy-login.spec.ts:98:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (86ms)
+  ✓   3 [chromium] › e2e/core-14-buy-login.spec.ts:121:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (748ms)
+  ✓   4 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (3.4s)
+  ✓   5 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (731ms)
+  ✓   6 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (800ms)
+  ✓   7 [chromium] › e2e/core-14c-login-foreign-cart.spec.ts:26:5 › AC-76: login ขณะมี cookie cart ของ customer อื่น → login สำเร็จ, cookie ไม่ชี้ cart ของคนอื่น, cart นั้นยังเป็นของเจ้าของเดิม (1.1s)
+  ✓   8 [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton (2.8s)
+  ✓   9 [chromium] › e2e/core-14d-cart-after-login.spec.ts:139:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error) (913ms)
+  ✓  10 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS on) (947ms)
+  ✓  11 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS off) (870ms)
+  ✓  12 [chromium] › e2e/core-14d-cart-after-login.spec.ts:218:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่มีปุ่มยืนยัน (434ms)
+  ✓  13 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS เปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS on) (862ms)
+  ✓  14 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS ปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS off) (739ms)
+  ✓  15 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น zz → ไม่มี 5xx เห็น error ไทย (507ms)
+  ✓  16 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น /evil.example → ไม่มี 5xx เห็น error ไทย (477ms)
+  ✓  17 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (3.5s)
+  ✓  18 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › desktop 1280px › AC-119: click() add-product-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (6.9s)
+  ✓  19 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › มือถือ 375×812 › AC-119: click() mobile-cart-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2 (7.3s)
+  ✘  20 [chromium] › e2e/core-29-restore-cart.spec.ts:142:5 › AC-122: ลบ JWT → login ใหม่ได้ตะกร้าเดิม; cart ที่ complete แล้วไม่ถูกกู้; key อื่นใน metadata ยังอยู่ (30.1s)
+  ✓  21 [chromium] › e2e/core-29-restore-cart.spec.ts:192:5 › AC-122: active_cart_id ของ A ชี้ cart ของ B → login สำเร็จ ไม่มี cookie cart และ cart ของ B ยังเป็นของ B (1.2s)
+  ✓  22 [chromium] › e2e/core-29-restore-cart.spec.ts:217:5 › AC-122: browser มี cookie cart D ของ A อยู่แล้วตอน login → cookie ยังเป็น D (ไม่ทับด้วย active_cart_id) (1.2s)
+  ✓  23 [chromium] › e2e/core-30-login-return.spec.ts:30:5 › AC-123: หน้ากลุ่ม — ไม่ login กด join → login พร้อม return_to → กลับหน้ากลุ่ม ไม่มี membership ใหม่ (1.0s)
+  ✓  24 [chromium] › e2e/core-30-login-return.spec.ts:52:5 › AC-123: return_to ถูกแก้เป็น URL ภายนอก → login แล้วอยู่ที่ /th/account (589ms)
+  ✓  25 [chromium] › e2e/core-30-login-return.spec.ts:61:5 › AC-123: หน้าแรก — ไม่ login กดสร้างทีม → login แล้วกลับ /th และจำนวนทีมไม่เพิ่ม (3.9s)
+  ✓  26 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order (3.9s)
+  ✓  27 [chromium] › e2e/group-buy-join.spec.ts:162:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่ (3.0s)
+  ✓  28 [chromium] › e2e/group-buy-join.spec.ts:176:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่ (3.3s)
+  ✓  29 [chromium] › e2e/group-buy-join.spec.ts:196:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (3.0s)
+  ✓  30 [chromium] › e2e/group-buy-join.spec.ts:196:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (2.8s)
+  ✓  31 [chromium] › e2e/group-buy-join.spec.ts:220:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย (2.0s)
+  ✓  32 [chromium] › e2e/group-buy-join.spec.ts:235:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47) (2.7s)
+  -  33 [chromium] › e2e/payments.spec.ts:49:5 › AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay']
+  -  34 [chromium] › e2e/payments.spec.ts:91:7 › บัตร (Stripe Elements) › AC-1: บัตร 4242 → order สำเร็จ payment_status=captured
+  -  35 [chromium] › e2e/payments.spec.ts:109:7 › บัตร (Stripe Elements) › AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ
+  -  36 [chromium] › e2e/payments.spec.ts:136:7 › บัตร (Stripe Elements) › AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่
+  -  37 [chromium] › e2e/payments.spec.ts:169:7 › PromptPay (QR + polling) › AC-4: แสดง QR → authorize test payment → webhook → order captured
+  -  38 [chromium] › e2e/payments.spec.ts:226:7 › PromptPay (QR + polling) › AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
+  1 failed
+  6 skipped
+  31 passed (1.6m)
+
+## 7) lint / typecheck: pnpm lint 0 errors; tsc --noEmit (storefront) ผ่าน; next build ผ่าน

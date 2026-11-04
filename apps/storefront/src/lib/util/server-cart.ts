@@ -1,5 +1,6 @@
 import "server-only"
 import { sdk } from "@lib/config"
+import { rememberActiveCart } from "@lib/data/active-cart"
 import { getAuthHeaders, getCacheTag, setCartId } from "@lib/data/cookies"
 import { listRegions } from "@lib/data/regions"
 import { FetchError } from "@medusajs/js-sdk"
@@ -11,6 +12,8 @@ import { getDefaultCountryCode } from "./site"
 /** Stores the cart in the shopper's cookie and clears cached cart reads. */
 export const activateCart = async (cartId: string) => {
   await setCartId(cartId)
+  // CORE-29 (กฎข้อ 86a): จำตะกร้าหลักไว้กู้หลัง login ใหม่
+  await rememberActiveCart(cartId)
   const cartCacheTag = await getCacheTag("carts")
   if (cartCacheTag) {
     revalidateTag(cartCacheTag, { expire: 0 })

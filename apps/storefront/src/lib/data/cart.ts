@@ -18,6 +18,7 @@ import {
   setCartId,
 } from "./cookies"
 import { getRegion } from "./regions"
+import { rememberActiveCart } from "./active-cart"
 import { syncCartAffiliateToken } from "./affiliate"
 import { getLocale } from "./locale-actions"
 import { createPaymentSession } from "./payment"
@@ -95,6 +96,8 @@ export async function getOrSetCart(countryCode: string) {
     cart = cartResp.cart
 
     await setCartId(cart.id)
+    // CORE-29 (กฎข้อ 86a): จำตะกร้าหลักไว้กู้หลัง login ใหม่ — เขียนล้มไม่ทำให้การสร้าง cart ล้ม
+    await rememberActiveCart(cart.id)
 
     const cartCacheTag = await getCacheTag("carts")
     revalidateTag(cartCacheTag, { expire: 0 })

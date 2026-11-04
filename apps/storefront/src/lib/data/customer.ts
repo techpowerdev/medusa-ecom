@@ -32,6 +32,7 @@ import {
 } from "@lib/util/pending-add-to-cart"
 import { isBuyReturnPath, readReturnTo } from "@lib/util/login-return"
 import { buyFromPermalink } from "@lib/util/server-cart"
+import { restoreActiveCart } from "./active-cart"
 
 export type CustomerAuthState =
   // CORE-4f (กฎข้อ 62): `email` = อีเมลที่กรอกไว้ ฟอร์ม login/register ใช้เป็น defaultValue ไม่ให้หายเมื่อล้ม
@@ -395,10 +396,17 @@ async function completeLogin(
   const customerCacheTag = await getCacheTag("customers")
   revalidateTag(customerCacheTag, { expire: 0 })
 
+  let hasCartCookie: boolean
   try {
-    await transferCart()
+    hasCartCookie = await transferCart()
   } catch (error) {
     return { state: "error", error: friendlyErrorMessage(error, LOGIN_FAILED_MESSAGE) }
+  }
+
+  // CORE-29 (กฎข้อ 86b/c): ไม่มี cookie cart (ไม่มีมาแต่แรก หรือถูกทิ้งเพราะ 404) → กู้จาก metadata.active_cart_id;
+  // มี cookie อยู่แล้ว → ไม่แตะ; กู้ไม่ได้ไม่ทำให้ login ล้ม
+  if (!hasCartCookie) {
+    await restoreActiveCart()
   }
 
   return { state: "success" }
@@ -436,17 +444,19 @@ export async function signout(countryCode: string) {
   redirect(`/${countryCode}/account`)
 }
 
-export async function transferCart() {
+/** คืน `true` เมื่อ cookie cart ยังอยู่หลังโอน (CORE-29 ใช้ตัดสินว่าต้องกู้ตะกร้าหรือไม่) */
+export async function transferCart(): Promise<boolean> {
   const cartId = await getCartId()
 
   if (!cartId) {
-    return
+    return false
   }
 
   const headers = await getAuthHeaders()
 
   // CORE-14c (spec 01 กฎข้อ 40): cookie ชี้ cart ของ customer อื่น → ownership ของ CORE-12 (ADR-013) ตอบ 404
   // → ทิ้ง cookie นั้นแทนการให้ login ล้ม; error อื่น (5xx/network) ส่งต่อตามเดิม
+  let kept = true
   try {
     await sdk.store.cart.transferCart(cartId, {}, headers)
   } catch (error) {
@@ -454,10 +464,12 @@ export async function transferCart() {
       throw error
     }
     await removeCartId()
+    kept = false
   }
 
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag, { expire: 0 })
+  return kept
 }
 
 export const addCustomerAddress = async (
