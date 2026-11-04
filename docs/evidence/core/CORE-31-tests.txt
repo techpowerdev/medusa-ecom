@@ -1,0 +1,39 @@
+# CORE-31 — ผล test (spec 01 กฎข้อ 88, AC-124), Node v22.23.3, รันในเครื่อง 2026-11-04
+สภาพแวดล้อม: backend `medusa start` (build) :9311 + storefront prod build (`next build && next start` :8311), DB medusa_core31 (migrate + seed), Redis db 12
+
+## Red (ก่อนเขียน component — origin/develop e7b4dd8; ยังไม่มี modules/common/components/copy-button)
+## $ vitest run src/core-31-copy-button.test.ts
+ FAIL  src/core-31-copy-button.test.ts [ src/core-31-copy-button.test.ts ]
+Error: Failed to resolve import "@modules/common/components/copy-button" from "src/core-31-copy-button.test.ts". Does the file exist?
+ Test Files  1 failed (1)
+      Tests  no tests
+
+## Green
+## $ vitest run src/core-31-copy-button.test.ts
+ ✓ src/core-31-copy-button.test.ts > CORE-31: component คัดลอกกลาง (กฎข้อ 88, AC-124) > grep: navigator.clipboard.writeText อยู่ไฟล์เดียวใต้ src/modules (common/components/copy-button) 19ms
+ ✓ src/core-31-copy-button.test.ts > CORE-31: component คัดลอกกลาง (กฎข้อ 88, AC-124) > คลิกสองครั้งใน act() เดียว → writeText ถูกเรียก 1 ครั้ง 16ms
+ ✓ src/core-31-copy-button.test.ts > CORE-31: component คัดลอกกลาง (กฎข้อ 88, AC-124) > resolve → สถานะตาม prop successMessage และกดได้อีกครั้ง 4ms
+ ✓ src/core-31-copy-button.test.ts > CORE-31: component คัดลอกกลาง (กฎข้อ 88, AC-124) > reject → สถานะ 'คัดลอกไม่สำเร็จ' พร้อมข้อความให้คัดลอกเอง 2ms
+ ✓ src/core-31-copy-button.test.ts > CORE-31: component คัดลอกกลาง (กฎข้อ 88, AC-124) > ShareLinkButton (ไม่มี navigator.share) คัดลอก URL แบบ absolute 3ms
+ ✓ src/core-31-copy-button.test.ts > CORE-31: component คัดลอกกลาง (กฎข้อ 88, AC-124) > ShareLinkButton (มี navigator.share + shareTitle) แชร์แทนการคัดลอก 2ms
+ ✓ src/core-31-copy-button.test.ts > CORE-31: component คัดลอกกลาง (กฎข้อ 88, AC-124) > VoucherCopyButton คง data-testid='voucher-copy-button' และคัดลอก code 2ms
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+## $ pnpm --filter storefront test:unit (ทั้งชุด)
+ Test Files  78 passed (78)
+      Tests  844 passed (844)
+
+## $ playwright test --project=chromium e2e/evoucher-storefront.spec.ts e2e/affiliate-portal.spec.ts e2e/affiliate-portal-pages.spec.ts e2e/group-buy-group-page.spec.ts (ไม่แก้ locator)
+  ✓   3 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.6s)
+  ✓   1 [chromium] › e2e/affiliate-portal-pages.spec.ts:68:5 › AC-40: nav ของ portal → Programs, Earnings (reversed แยกติดลบ), Payouts ไม่มี reference, Profile (2.6s)
+  ✓   5 [chromium] › e2e/affiliate-portal.spec.ts:140:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (634ms)
+  ✓   6 [chromium] › e2e/affiliate-portal-pages.spec.ts:172:5 › AC-40: affiliate ที่ถูกระงับ → Products/Programs แสดง affiliate-status-notice, Earnings/Payouts เปิดได้ (990ms)
+  ✓   7 [chromium] › e2e/affiliate-portal.spec.ts:166:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (523ms)
+  ✓   8 [chromium] › e2e/affiliate-portal.spec.ts:189:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (462ms)
+  ✓   2 [chromium] › e2e/evoucher-storefront.spec.ts:16:5 › AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไทย ส่วนสินค้าปกติไม่มี (5.3s)
+  ✓   4 [chromium] › e2e/group-buy-group-page.spec.ts:17:7 › หน้ากลุ่ม (AC-16a) › ไม่ login: จำนวนสมาชิก ความคืบหน้า นับถอยหลัง ลิงก์แชร์ และ reload หลังคนที่ 3 join (5.8s)
+  ✓   9 [chromium] › e2e/evoucher-storefront.spec.ts:40:5 › AC-6 + AC-36: บัตรกำนัลของฉันแสดงเฉพาะ code ของตนเอง พร้อมปุ่มคัดลอก (2.3s)
+  ✓  10 [chromium] › e2e/group-buy-group-page.spec.ts:60:7 › หน้ากลุ่ม (AC-16a) › 375px: ไม่เลื่อนแนวนอน (2.8s)
+  ✓  11 [chromium] › e2e/group-buy-group-page.spec.ts:71:7 › หน้ากลุ่ม (AC-16a) › token ไม่มีจริง → หน้าไม่พบ (193ms)
+  11 passed (9.6s)
