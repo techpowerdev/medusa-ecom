@@ -1,6 +1,6 @@
 # ADR-019 กู้ตะกร้าของลูกค้าหลัง login ใหม่ (หลัง JWT หมดอายุ/ถูกลบ)
 
-สถานะ: **proposed** (planner รอบ 16 2026-11-04 — รอ owner)
+สถานะ: **accepted** (owner 2026-11-04 — เลือกทางเลือก **B**; spec 01 Q-C3; planner เสนอรอบ 16 2026-11-04)
 เกี่ยวข้อง: spec 01 กฎข้อ 25, 40, 84, 86 (CORE-29, AC-122), AC-43, CORE-14a/14c/14g; ADR-013 (ownership ของ cart); spec 04 กฎข้อ 14c, 29c (cart ของ group buy ไม่เป็น cart ปัจจุบัน)
 
 ## บริบท
@@ -27,7 +27,7 @@ B. **[แนะนำ] จำ id ของตะกร้าหลักใน `
 C. **ไม่กู้**: ยอมรับว่าตะกร้าหายหลัง login ใหม่ (สถานะปัจจุบัน — spec 01 รอบ 14b ระบุเป็น out of scope) ลูกค้าต้องเพิ่มสินค้าใหม่
 D. ไม่ล้าง cookie cart ตอน GET เมื่อ JWT หาย (ยกเลิก AC-43): ขัดกฎข้อ 25/AC-43 ที่ accepted แล้ว และหน้าจะแสดง cart ที่อ่านไม่ได้ (401) แบบกำกวม — ไม่เสนอ
 
-## การตัดสินใจ (เสนอ — รอ owner)
+## การตัดสินใจ (accepted — owner 2026-11-04 เลือก B)
 เลือก **B** รายละเอียดที่ทดสอบได้อยู่ใน spec 01 กฎข้อ 86 และ AC-122 (CORE-29):
 1. key เดียว `metadata.active_cart_id` บน customer เขียนผ่าน `sdk.store.customer.update` จาก helper เดียวใน `apps/storefront/src/lib/data/`
 2. เขียนทุกครั้งที่ตั้ง cookie `_medusa_cart_id` เป็น cart ใหม่ (`getOrSetCart`, `activateCart`, `app/api/payment-return/route.ts`) ถ้าเขียนไม่สำเร็จให้ log แล้วไปต่อ (การสร้าง cart ไม่ล้ม)
