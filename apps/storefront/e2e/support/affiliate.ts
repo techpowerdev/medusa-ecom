@@ -7,13 +7,15 @@ import { Headers } from "./medusa"
 
 /**
  * สมัคร affiliate (actor `affiliate`) แล้วให้ admin อนุมัติเป็น active (spec 05 กฎ 7) — คืน id, code และ email/password (login portal)
- * `email` ไม่ระบุ = `<code>@example.com` (AF-18 ระบุเองเพื่อได้อีเมลยาวคงที่)
+ * `email` ไม่ระบุ = `<code>@example.com` (AF-18 ระบุเองเพื่อได้อีเมลยาวคงที่); `name` ไม่ระบุ = `E2E <prefix>`
+ * (AF-19 ระบุเองเพื่อได้ชื่อละตินยาวคงที่)
  */
 export async function createActiveAffiliate(
   request: APIRequestContext,
   admin: Headers,
   prefix = "e2e-af2",
-  email?: string
+  email?: string,
+  name = `E2E ${prefix}`
 ): Promise<{ id: string; code: string; email: string; password: string }> {
   const suffix = `${Date.now().toString(36)}${crypto.randomInt(1e6)}`
   const code = `${prefix}-${suffix}`
@@ -25,7 +27,7 @@ export async function createActiveAffiliate(
   expect(reg.status(), "affiliate auth register").toBe(200)
   const created = await request.post(`${BACKEND_URL}/affiliate/register`, {
     headers: { authorization: `Bearer ${(await reg.json()).token}` },
-    data: { name: `E2E ${prefix}`, code },
+    data: { name, code },
   })
   expect(created.status(), "affiliate register").toBe(200)
   const { affiliate } = await created.json()
