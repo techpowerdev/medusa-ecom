@@ -1,6 +1,7 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (follow-up ล่าสุด: รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
+สถานะ: accepted (follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
 รอบ 16 2026-11-04 — CORE-28..32, กฎข้อ 85–89, AC-121..125, ADR-019 (CORE-29), คำถาม Q-C3/Q-C4; รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; CORE-14g cookie cart ใน server action (qa #222 D-1), กฎข้อ 84, AC-120; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
@@ -1927,7 +1928,7 @@ none
 ### Tasks (follow-up รอบ 21)
 | ID | Task | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends |
 |----|------|------|------|------|----|---------|
-| CORE-47 | (storefront, qa #287 O-1; **owner เลือกทาง (C) 2026-11-04** แทนทางเดิม "แก้เฉพาะ className ของ cell" — `a74a496` ไม่ล้นแต่ช่องชื่อเหลือ 16px) `/cart` ที่ < 1024 แต่ละ line เป็นแถวแบบการ์ด: รูปซ้าย, ชื่อ + ตัวเลือกใช้ความกว้างที่เหลือ, บรรทัดล่างปุ่มลบ + select จำนวน + ราคารวมชิดขวาไม่ตัดตัวเลข; ≥ 1024 ตารางเดิมทุกพิกเซล; `type="preview"` ไม่เปลี่ยน (กฎข้อ 105) | `modules/cart/components/item/index.tsx` (className แบบ breakpoint ของ `tr`/`td` + wrapper เฉพาะ `type === "full"`), `modules/cart/templates/items.tsx` (className ของ `Table`/`Table.Header`/`Table.Body`), e2e ใหม่ `e2e/core-47-cart-375-long-title.spec.ts` | ~150 LOC รวม e2e | 375×812, 1023×800 (+ regression 1024×768, 1280×800) | AC-142 | none — **เริ่มได้**; ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-48 (และ CORE-4i ☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
+| CORE-47 | (storefront, qa #287 O-1; **owner เลือกทาง (C) 2026-11-04** แทนทางเดิม "แก้เฉพาะ className ของ cell" — `a74a496` ไม่ล้นแต่ช่องชื่อเหลือ 16px) `/cart` ที่ < 1024 แต่ละ line เป็นแถวแบบการ์ด: รูปซ้าย, ชื่อ + ตัวเลือกใช้ความกว้างที่เหลือ, บรรทัดล่างปุ่มลบ + select จำนวน + ราคารวมชิดขวาไม่ตัดตัวเลข; ≥ 1024 ตารางเดิมทุกพิกเซล; `type="preview"` ไม่เปลี่ยน (กฎข้อ 105) | `modules/cart/components/item/index.tsx` (className แบบ breakpoint ของ `tr`/`td` + wrapper เฉพาะ `type === "full"`), `modules/cart/templates/items.tsx` (className ของ `Table`/`Table.Header`/`Table.Body`), e2e ใหม่ `e2e/core-47-cart-375-long-title.spec.ts` — ☑ #298 (train #299) | ~150 LOC รวม e2e | 375×812, 1023×800 (+ regression 1024×768, 1280×800) | AC-142 | none — **เริ่มได้**; ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-48 (และ CORE-4i ☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
 | CORE-48 | (storefront, qa #287 O-2) แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ แทนข้อความทั่วไป (กฎข้อ 106) | `lib/data/cart.ts` (`updateLineItem`), helper ใหม่ใน `lib/util/` (+ unit Vitest ใน `src/`), `modules/cart/components/item/index.tsx` (`changeLineQuantity` + ค่าคงที่ข้อความ), e2e ใหม่ `e2e/core-48-cart-insufficient-stock.spec.ts` | ~130 LOC รวม test | 1280×800, 375×812 | AC-143 | none — **เริ่มได้** (CORE-4i-a ☑, CORE-44 ☑ #287); ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-47/CORE-4i และ `lib/data/cart.ts` กับ CORE-4i (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
 | CORE-49 | (e2e test hygiene, nit review #289 + qa #286/#288) รวม grep test ไว้ที่ core-46, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/core-26/fs19 ใช้ `waitForServerAction`/`isServerAction` (กฎข้อ 107) | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-43-e2e-hygiene.unit.spec.ts`, `e2e/affiliate-admin-programs.spec.ts`, `e2e/core-25-pdp-option-reset.spec.ts`, `e2e/core-26-cart-dropdown-total.spec.ts`, `e2e/flash-sale-fs19.spec.ts` | ~70 LOC | ไม่มี UI ใหม่ (e2e เดิมรันที่ viewport เดิมของแต่ละไฟล์) | AC-144 | none — **เริ่มได้** (CORE-46 ☑ #289); ∥ ทุกตัว (ไม่มี task อื่นแตะไฟล์เหล่านี้); ไม่บล็อก release |
 (รอบ 21) CORE-47 ∥ CORE-48 ∥ CORE-49 เริ่มได้ทันที (และ ∥ AF-20 ของ spec 05) — ไม่มีตัวใดบล็อก release; CORE-47 กับ CORE-48 แตะ `item/index.tsx` คนละส่วน (CORE-47 = className/JSX ของแถว, CORE-48 = `changeLineQuantity` + ค่าคงที่ข้อความ) ตัวที่ merge ทีหลัง rebase
@@ -1946,6 +1947,83 @@ none
 
 ### Open questions (รอบ 21)
 none
+
+## Follow-up รอบ 23 จาก review/qa (2026-11-05 — owner อนุมัติให้ทำรอบถัดไป)
+ที่มา: qa CORE-47 #298 (`docs/evidence/core/CORE-47/REPORT.md` O-1), qa AF-20 #295 (`docs/evidence/affiliate/AF-20/REPORT.md` O-1, O-2), nit review #295 (AF-20) และ #298 (CORE-47)
+— merge แล้วผ่าน train #299: CORE-47 #298, AF-20 #295 (spec 05); ตรวจโค้ดบน develop `a349676` (path ย่อจาก `apps/storefront/`):
+- `src/modules/layout/templates/nav/index.tsx:17–58`: nav เป็น 3 คอลัมน์ — ซ้าย `nav-menu-button` (`flex-1 basis-0`), กลาง `nav-store-link` (`txt-compact-xlarge-plus uppercase`, ไม่มี `whitespace-nowrap`),
+  ขวา `nav-search-button` + (`hidden small:flex` บัญชี) + `nav-cart-link` ใน `gap-x-6` (`flex-1 basis-0`); `content-container` = `px-6` (`src/styles/globals.css:54–56`) → ที่ 320 เหลือ 272px
+  ให้ทั้งสามคอลัมน์; `nav-cart-link` (`src/modules/layout/components/cart-dropdown/index.tsx:112–116`, ข้อความ `ตะกร้า (${totalItems})`) ไม่มี `whitespace-nowrap` → "ตะกร้า (116)" ตัด 2 บรรทัด
+  เกือบชนไอคอนค้นหา (qa #298 O-1) และชื่อร้าน "ร้านค้าของเรา" ชิดไอคอนค้นหา (qa #295 O-2) — ยังจริง
+- `e2e/core-42-cart-voucher-layout.spec.ts:84–88` และ `e2e/core-47-cart-375-long-title.spec.ts:29–34` มี `DESKTOP_BASELINE` ค่าเดียวกันสองชุด (comment `:29` บอกว่าคัดลอกเพราะ import ไฟล์ spec จะลงทะเบียน test ซ้ำ)
+  — ผู้ใช้ 2 ที่แล้ว → ย้ายไป `e2e/support/` — ยังจริง
+- `e2e/support/affiliate.ts:13–20` `createActiveAffiliate(request, admin, prefix?, email?, name?, code?)` optional แบบตำแหน่ง 4 ตัว ผู้เรียก 20 จุดใน 10 ไฟล์
+  (`affiliate-header-overflow.spec.ts:120–127` ต้องส่ง `undefined` แทน email) — ยังจริง;
+  `e2e/affiliate-header-overflow.spec.ts:92–99` `longCode()` สุ่ม a-z (`letters`) ความกว้างของรหัสจึงต่างกันทุกรอบ (`w` กับ `i`) — ยังจริง;
+  `:11` `test.use({ evidenceTarget: { …, taskId: "AF-19" } })` ระดับไฟล์ครอบ describe ของ AC-52 (AF-20, `:111–160`) ด้วย — ยังจริง (test ของ AF-20 ไม่เรียก `evidence()` จึงยังไม่มีไฟล์ผิดโฟลเดอร์)
+- CORE-49 (☐ — ไม่อยู่ในรายการงานที่กำลังทำของ session หลัก 2026-11-05) แตะ `core-43/core-46-e2e-hygiene.unit.spec.ts`, `affiliate-admin-programs`, `core-25`, `core-26`, `flash-sale-fs19` — **ไม่มีไฟล์ซ้ำ**กับรายการข้างบน แต่รวมแล้ว diff เกิน ~200 LOC
+  และขอบเขตต่างกัน (CORE-49 = รอเงื่อนไขจริง; รายการนี้ = ของกลาง/API ของ helper) → **เปิดเป็น task ใหม่ CORE-51** ไม่ขยาย CORE-49
+Out of scope: เปลี่ยนข้อความ/ไอคอนของ nav (คง "เมนู", ชื่อร้าน, "ตะกร้า (n)" ตาม ADR-014), nav ที่ ≥ 1024, header ของ affiliate portal
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 23)
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| nav ของร้าน | `Nav` ของ Medusa Next.js Starter (`templates/nav`) + Tailwind | ขยาย — แก้ className แบบ breakpoint `< small` เท่านั้น ไม่เพิ่ม component |
+| วัด layout ใน e2e | Playwright `boundingBox`, `evaluate` + `Range.getClientRects` (แบบ AC-142) | ใช้ตามเดิม |
+| ของกลาง e2e | `e2e/support/*` | ขยาย — เพิ่มไฟล์ค่าคงที่ของ layout cart |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 23)
+108. (CORE-50 — qa #298 O-1 + qa #295 O-2) nav ที่ < 1024px (`small`) ตั้งแต่ 320px:
+     (a) `nav-menu-button`, `nav-store-link`, `nav-search-button`, `nav-cart-link` ไม่ทับกัน — ระยะแนวนอนระหว่างตัวที่ติดกัน ≥ 8px และทุกตัวอยู่ใน `[0, viewport]`;
+     (b) `nav-cart-link` และ `nav-store-link` อยู่บรรทัดเดียว (`whitespace-nowrap`) และชื่อร้านแสดงครบ (ไม่ตัดด้วย `truncate`/ellipsis) แม้ตะกร้ามี 3 หลัก; ความสูง header คง `h-16`;
+     (c) วิธีทำเลือกใน PR ตามผลวัด เฉพาะ class `< small` (เช่น `gap-x-6` → `gap-x-3`, ขนาดตัวอักษรชื่อร้านเล็กลง, `min-w-0`/`shrink-0` ของคอลัมน์, padding ของ `content-container` ภายใน nav) —
+         **ห้าม render สองชุด** (testid ซ้ำ — กฎข้อ 105c) และไม่เปลี่ยนข้อความ; ถ้าที่ 320 ทำ (a)+(b) พร้อมกันไม่ได้โดยไม่เปลี่ยนข้อความ ให้หยุดรายงาน planner (owner ตัดสินเรื่องข้อความ/ไอคอน);
+     (d) ≥ 1024 เหมือนเดิม: ชื่อร้านอยู่กึ่งกลาง viewport, `nav-account-link` แสดง, class `small:` เดิมไม่เปลี่ยน
+109. (CORE-51 — test hygiene, nit review #295/#298) (a) `DESKTOP_BASELINE` อยู่ที่ `e2e/support/cart-layout.ts` (ใหม่) ไฟล์เดียว — `core-42-cart-voucher-layout.spec.ts`
+     และ `core-47-cart-375-long-title.spec.ts` import (ลบ comment "คัดลอก" ที่ core-47 `:29`) ค่าเท่าเดิม;
+     (b) `createActiveAffiliate(request, admin, options?)` รับ `{ prefix?, email?, name?, code? }` ค่า default เท่าเดิม (`prefix` = `"e2e-af2"`, `name` = `` `E2E ${prefix}` ``, `code` = `<prefix>-<สุ่ม>`, `email` = `<code>@example.com`)
+         ผู้เรียกทุกจุดเปลี่ยนเป็น object (ไม่ส่ง `undefined` แทนตำแหน่ง);
+     (c) `longCode()` ใน `affiliate-header-overflow.spec.ts` ไม่สุ่มตัวอักษร: ส่วนที่ต่างกันต่อรอบเป็นตัวเลขเท่านั้น (เช่น timestamp ฐาน 10) ตัวอักษรที่เหลือคงที่ ยาว 32 ตัว มี `-` ≥ 3 ตัว
+         และผ่าน regex ของ register เดิม — ความกว้างของรหัสคงที่ทุกรอบ;
+     (d) describe ของ AC-52 (AF-20) ใน `affiliate-header-overflow.spec.ts` ตั้ง `evidenceTarget` เป็น `{ feature: "affiliate", taskId: "AF-20" }` ของตัวเอง (AC-51 คง AF-19);
+         ไม่เพิ่มการเรียก `evidence()` (โฟลเดอร์ AF-20 มีภาพครบงบ 5 รูปแล้ว)
+
+### Acceptance criteria (follow-up รอบ 23)
+- AC-145 (CORE-50, กฎข้อ 108) e2e ใหม่ `e2e/core-50-nav-narrow.spec.ts`: Given สินค้าของ test เอง (`manage_inventory: false` ผ่าน admin API, ลบใน `afterAll` — แนวปฏิบัติรอบ 20) และ cart ของ A
+  จำนวนรวม 116 (ผ่าน Store API, token ของ A) When เปิด `/th` ที่ 320×640, 375×812, 639×812 และ 1023×800 Then `nav-cart-link` `textContent` ตรง `/^ตะกร้า \(116\)$/` (มีอักษรไทย `/[฀-๿]/`);
+  สำหรับคู่ที่ติดกัน (`nav-menu-button`→`nav-store-link`→`nav-search-button`→`nav-cart-link`) `left ของตัวขวา − right ของตัวซ้าย ≥ 8`; ทุกตัว `left ≥ 0`, `right ≤ viewport`;
+  `Range.selectNodeContents` ของ `nav-cart-link` และ `nav-store-link` มี `getClientRects().length === 1`; `nav-store-link` มี `scrollWidth ≤ clientWidth` และ `textContent` = ชื่อร้านเต็ม;
+  `document.documentElement.scrollWidth ≤ viewport`; ความสูงของ `header` = 64; When 1280×800 Then `|centerX(nav-store-link) − 640| ≤ 1`, `nav-account-link` visible และระยะ/ขนาดของทั้ง 4 ตัว
+  เท่ากับที่วัดบน develop `a349676` (±1px — แนบค่าใน PR); test ต้องล้มบน develop ที่ 320 (บรรทัดของ `nav-cart-link` หรือระยะ < 8);
+  e2e เดิมผ่านโดยไม่แก้ locator: `core-19a-nav-cart-search` (375), `core-26-cart-dropdown-total`; qa แนบภาพ 320 ใน `REPORT.md`
+- AC-146 (CORE-51, กฎข้อ 109) grep/unit (Playwright `unit` project, ต่อจาก `core-46-e2e-hygiene.unit.spec.ts`): ใน `e2e/**/*.ts` มี `DESKTOP_BASELINE = {` เฉพาะ `e2e/support/cart-layout.ts`
+  และสองไฟล์ cart import จากที่นั่น; ทุกการเรียก `createActiveAffiliate(` (regex หลายบรรทัด) มีอาร์กิวเมนต์ไม่เกิน 3 ตัวและตัวที่ 3 (ถ้ามี) ขึ้นต้นด้วย `{`; `affiliate-header-overflow.spec.ts`
+  ไม่มี `letters(` ใน `longCode` และมี `taskId: "AF-20"`; ใน test ของ AC-52 assertion ใหม่ `code.replace(/\d/g, "0")` เท่ากับค่าคงที่ในไฟล์; `pnpm --filter storefront typecheck` (หรือ `pnpm typecheck`) ผ่าน;
+  e2e `core-42-cart-voucher-layout`, `core-47-cart-375-long-title`, `affiliate-header-overflow` และไฟล์ที่เรียก `createActiveAffiliate` ทั้ง 10 ไฟล์ผ่าน (CI)
+
+### แผนการทดสอบ (follow-up รอบ 23)
+| ระดับ | AC |
+|------|----|
+| unit (Playwright `unit` project, grep) | AC-146 |
+| e2e | AC-145 (320/375/639/1023 + regression 1280), AC-146 (ไฟล์ที่แตะทั้งหมด) |
+
+### Tasks (follow-up รอบ 23)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|------|----|---------|------|
+| CORE-50 | (storefront, qa #298 O-1 + qa #295 O-2) nav ที่ < 1024 ตั้งแต่ 320: ชื่อร้าน/ไอคอนค้นหา/"ตะกร้า (n)" ไม่ชิด/ทับกัน และ "ตะกร้า (n)" บรรทัดเดียว (กฎข้อ 108) | `src/modules/layout/templates/nav/index.tsx`, `src/modules/layout/components/cart-dropdown/index.tsx` (เฉพาะ className ของ `nav-cart-link`), `src/modules/layout/components/side-menu/index.tsx` (ถ้าต้องแก้ className), e2e ใหม่ `e2e/core-50-nav-narrow.spec.ts` | ~120 LOC รวม e2e | 320×640, 375×812, 639×812, 1023×800 (+ regression 1280×800) | AC-145 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release | ไม่ชน CORE-48 (`item/index.tsx`, `cart.ts`), CORE-4i-b (`cart.ts`/`payment.ts`), ADM-* |
+| CORE-51 | (e2e test hygiene, nit review #295/#298) `DESKTOP_BASELINE` ไป `e2e/support/cart-layout.ts`, `createActiveAffiliate` รับ options object, `longCode()` ความกว้างคงที่, `evidenceTarget` ของ AC-52 เป็น AF-20 (กฎข้อ 109) | `e2e/support/cart-layout.ts` (ใหม่), `e2e/core-42-cart-voucher-layout.spec.ts`, `e2e/core-47-cart-375-long-title.spec.ts`, `e2e/support/affiliate.ts`, ผู้เรียก 10 ไฟล์ (`e2e/affiliate-{admin-names,admin-payouts,admin-payout-create,header-overflow,profile-overflow,portal,portal-pages,portal-polish,tracking,last-click}.spec.ts`), `e2e/core-46-e2e-hygiene.unit.spec.ts` (grep ใหม่) | ~110 LOC (ส่วนใหญ่เปลี่ยนบรรทัดเรียก) | ไม่มี UI ใหม่ (e2e เดิมรันที่ viewport เดิม) | AC-146 | none — **เริ่มได้**; ไม่บล็อก release | **ชน ADM-8a** (แก้ข้อความเงินใน `affiliate-admin-*.spec.ts` — `affiliate-admin-{payouts,payout-create,names}`) และ ADM-8b (locator ปุ่มต่อแถวในไฟล์เดียวกัน) → ตัวที่ merge ทีหลัง rebase (เปลี่ยนเฉพาะบรรทัดเรียก); **ชน CORE-49** ที่ `core-46-e2e-hygiene.unit.spec.ts` → ตัวที่ merge ทีหลัง rebase; ไม่ชน CORE-48, CORE-4i-b |
+(รอบ 23) CORE-50 ∥ CORE-51 เริ่มได้ทันที (และ ∥ ADM-10..12 ของ spec 08); CORE-47 ☑ #298 (train #299)
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 23)
+- (qa #298 O-2) ราคาในการ์ด `/cart` อยู่กึ่งกลางแนวตั้งเมื่อมี error/คำเตือนในแถวล่าง — ความสวยงามเล็กน้อย ไม่ทับ อ่านได้ (qa ยืนยัน) — ไม่เปิด task
+- (qa #295 O-1) รหัสแนะนำ 32 ตัวที่เป็นตัวกว้าง (`w`/`m`) ถูกตัดหลัง `-` ที่ 375/320 — spec 05 กฎ 44(b) อนุญาตเมื่อรหัสกว้างเกินบรรทัด, คัดลอกได้ตรงตัว,
+  และทางเลือก (ตัดกลางคำด้วย `break-all` หรือย่อตัวอักษร) อ่านยากกว่า — ปิดโดยไม่สร้าง task (บันทึกใน spec 05 รอบ 23)
+
+### Open questions (รอบ 23)
+none (คำถามของรอบนี้อยู่ที่ spec 08 Q7)
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

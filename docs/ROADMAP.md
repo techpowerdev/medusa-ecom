@@ -51,6 +51,12 @@ spec 05 AF-19 (header portal ชื่อละตินยาว) · แก้�
 **รอบ 21 (2026-11-04 — owner อนุมัติเปิด task)**: merge แล้ว — train #290: GB-15 #285, AF-19 #286, CORE-44 #287, CORE-46 #289 · train #291: CORE-45 #288 ·
 task ใหม่: spec 01 CORE-47 (`/cart` 375 ชื่อยาว + ยอด 7 หลัก) ∥ CORE-48 (แก้จำนวนเกิน stock → ข้อความ "สินค้ามีไม่พอ") ∥ CORE-49 (e2e hygiene: grep test ที่เดียว, regex config, `waitForTimeout` ของ affiliate-admin-programs, `waitForServerAction` ใน core-25/26/fs19) ·
 spec 05 AF-20 (ป้าย "รหัสแนะนำ"/รหัสไม่ถูกตัดบรรทัด) · spec 01 แก้ถ้อยคำกฎข้อ 103 (103e + AC-141 ครอบแล้วโดย #288) · spec 07 Deliverables ข้อ 11 (prod ต้อง HTTPS — cookie `Secure`, qa #285 O-1) · ไม่มีคำถามค้าง
+**รอบ 23 (2026-11-05 — owner อนุมัติให้ทำรอบถัดไป)**: merge แล้ว — train #299: ADM-3 #294, ADM-4 #296, ADM-6 #293, AF-20 #295, CORE-47 #298 · กำลังทำ: ADM-5, ADM-7, ADM-8a, CORE-48, CORE-4i-b ·
+task ใหม่: spec 08 ADM-10 (offset ใน URL ผ่าน hook กลาง) ∥ ADM-11 (`initialData` จาก loader + breadcrumb E-vouchers) ∥ ADM-12 (ช่อง number `badInput`) · ADM-13 (หัวตารางแคมเปญใน `DataTable`, ← ADM-7 + ADM-10) ·
+spec 01 CORE-50 (nav 320) ∥ CORE-51 (e2e hygiene: `DESKTOP_BASELINE`, `createActiveAffiliate` options, `longCode`, `evidenceTarget`) · ADR-018 หมายเหตุ 2026-11-05 (แถว #2 ตามที่ทำจริง) ·
+ร่าง issue upstream `DataTable` ไม่ reset offset (spec 08 รอบ 23 — owner ส่ง) · ~~คำถามค้าง spec 08 Q7~~ owner ตอบ **(ก)** 2026-11-05: ปุ่มใน `action` ของ `DataTable` หาด้วย
+`getByTestId("<wrapper>").getByRole("button", { name })` (ข้อยกเว้นที่สองของ testid — spec 08 กฎ 7c/18, ADR-018 หมายเหตุ 2026-11-05 (2), CLAUDE.md) → ADM-13 ปลดล็อก (← ADM-7 + ADM-10) ·
+task ใหม่ ADM-14 (ปุ่มสร้าง Partners/Programs/Payouts เข้า `action`, ← ADM-5 + ADM-8b; AC-18) · ไม่มีคำถามค้าง
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -137,9 +143,11 @@ spec 05 AF-20 (ป้าย "รหัสแนะนำ"/รหัสไม่�
 | CORE-44 | (รอบ 20, qa #278 D-2/O-1) `/cart` ที่ ≥ 1024 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด + `product-select-button` แสดงจำนวนจริงของ line (> 10) (กฎข้อ 102, AC-138) | ☑ #287 (train #290) |
 | CORE-45 | (รอบ 20, qa #276 Obs 1–2) checkout ไม่มี step/step ไม่รู้จัก/`delivery` ก่อนมีที่อยู่/`delivery` ของ digital-only → ขั้นแรกที่ยังไม่เสร็จผ่าน `checkoutRedirectStep` (กฎข้อ 103, AC-139; + D-1 ของ qa → กฎข้อ 103e, AC-141) | ☑ #288 (train #291) |
 | CORE-46 | (รอบ 20, test hygiene — nit review #281/#278) `checkoutToPayment` ใช้ `addToCartFromPdp`, comment timeout ตาม docs, core-19a/core-24 ใช้ `isAddToCartBody`, e2e admin ดึงสินค้า seed ด้วย handle แทน `limit=1` (กฎข้อ 104, AC-140) | ☑ #289 (train #290) |
-| CORE-47 | (รอบ 21, qa #287 O-1) `/cart` ที่ < 1024 แต่ละ line เป็นแถวแบบการ์ด อ่านได้เมื่อชื่อสินค้ายาว ~90 ตัว + ยอด 7 หลักพร้อมส่วนลด; ≥ 1024 ตารางเดิม (owner เลือกทาง (C) 2026-11-04; กฎข้อ 105, AC-142) | ☐ **เริ่มได้** |
-| CORE-48 | (รอบ 21, qa #287 O-2) แก้จำนวนเกิน stock บน `/cart` → ข้อความไทยว่าสินค้าไม่พอ (400 `insufficient_inventory` ของ Medusa) (กฎข้อ 106, AC-143) | ☐ **เริ่มได้** |
+| CORE-47 | (รอบ 21, qa #287 O-1) `/cart` ที่ < 1024 แต่ละ line เป็นแถวแบบการ์ด อ่านได้เมื่อชื่อสินค้ายาว ~90 ตัว + ยอด 7 หลักพร้อมส่วนลด; ≥ 1024 ตารางเดิม (owner เลือกทาง (C) 2026-11-04; กฎข้อ 105, AC-142) | ☑ #298 (train #299) |
+| CORE-48 | (รอบ 21, qa #287 O-2) แก้จำนวนเกิน stock บน `/cart` → ข้อความไทยว่าสินค้าไม่พอ (400 `insufficient_inventory` ของ Medusa) (กฎข้อ 106, AC-143) | ◐ กำลังทำ |
 | CORE-49 | (รอบ 21, test hygiene — nit review #289 + qa #286/#288) grep test ที่เดียว, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/26/fs19 ใช้ `waitForServerAction` (กฎข้อ 107, AC-144) | ☐ **เริ่มได้** |
+| CORE-50 | (รอบ 23, qa #298 O-1 + qa #295 O-2) nav ที่ < 1024 ตั้งแต่ 320: ชื่อร้าน/ค้นหา/"ตะกร้า (n)" ไม่ชิดกัน, "ตะกร้า (n)" บรรทัดเดียว (กฎข้อ 108, AC-145) | ☐ **เริ่มได้** |
+| CORE-51 | (รอบ 23, test hygiene — nit review #295/#298) `DESKTOP_BASELINE` ใน `e2e/support/`, `createActiveAffiliate` options object, `longCode()` ความกว้างคงที่, `evidenceTarget` AF-20 (กฎข้อ 109, AC-146; ชน ADM-8a/8b/CORE-49 — ตัวที่ merge ทีหลัง rebase) | ☐ **เริ่มได้** |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | ☑ #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | ☑ #124 ∥ ☑ #130 |
 | CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | ☑ #168 |
@@ -213,7 +221,7 @@ AF-N3 ☑ #237 (portal: สกุลเงิน, หน้าเกิน, `−
 (รอบ 13) AF-17 ☐ **เริ่มได้** (← AF-16 ☑ #197: token ว่างใน cart fallback ไป `order.metadata`; AC-49) ·
 (รอบ 19) **AF-18 ☑ #277 (train #279)** (qa #265 O-2: หน้า Profile ล้นที่ 375 เมื่ออีเมลยาวไม่มีช่องว่าง → `minmax(0,1fr)` + `break-words`; AC-50) →
 (รอบ 20) **AF-19 ☑ #286 (train #290)** (qa #277 D-1: header ของ portal ล้นทุกหน้าเมื่อชื่อละตินยาวไม่มีช่องว่าง → `min-w-0` + ตัดคำ + `affiliate-header-name`; กฎ 43, AC-51) →
-(รอบ 21) AF-20 ☐ **เริ่มได้** (qa #286 O-1: ป้าย "รหัสแนะนำ" `whitespace-nowrap` + `affiliate-code-label`, รหัสแนะนำไม่ถูกตัดที่ `-`; กฎ 44, AC-52 — ไม่บล็อก release) ·
+(รอบ 21) **AF-20 ☑ #295 (train #299)** (qa #286 O-1: ป้าย "รหัสแนะนำ" `whitespace-nowrap` + `affiliate-code-label`, รหัสแนะนำไม่ถูกตัดที่ `-`; กฎ 44, AC-52 — รอบ 23: qa #295 O-1 ปิดโดยไม่สร้าง task, nit e2e → CORE-51) ·
 release v0.6.0 ต้องมี AF-14 (ที่เหลือ ☑ แล้ว; AF-15, AF-16 ควรมี) · owner รอบ 11: Q16 คง `variant_ids` ผ่าน API, Q18 `payout_info` 3 ช่อง
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
@@ -238,13 +246,16 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | Task | งาน | สถานะ |
 |------|-----|--------|
 | ADM-1 | dependency ตรงกับ dashboard (`@medusajs/ui` 4.2.8, `react-hook-form`, `@hookform/resolvers`, `@medusajs/icons`) + jest โหลด `@medusajs/dashboard/lib` ได้ + `icon` ของ route (AC-1, 2) | ☑ #186 |
-| ADM-2a | Header/Container (guide) + Header/`SectionRow` ใน 3 widget + เพิ่มข้อตรวจใน `medusa-ui.unit.spec.ts` เดิม (AC-5; รอบ 12 + nit EV-13 #167) | ◐ #205 |
-| ADM-2b | `createSingleFlight` แทน `useRef`, วันที่ผ่าน `useDate` (locale จากภาษาของ admin — แก้รอบ 12), Playwright admin `locale`/`timezoneId` (AC-3, AC-4) | ☐ (← ADM-2a) |
-| ADM-3 ∥ ADM-4 ∥ ADM-6 | pilot ฟอร์ม widget (`Form` + zod, AC-6) ∥ หน้า e-voucher (`LayoutComposer`, `DataTable` dashboard, `ActionMenu` Reveal, AC-7) ∥ หน้า group buy (AC-9; ← GB-N3 ถ้ายังเปิดอยู่) | ☐ ∥ ☐ ∥ ☐ (← ADM-2b) |
-| ADM-5 ∥ ADM-7 | partners ตาราง + ฟอร์ม + `ActionMenu` (AC-8; รอบ 13: + ตรวจ URL http(s) ของ partner ฝั่งฟอร์ม — follow-up EV-14 #195) ∥ ฟอร์มสร้างแคมเปญ + `DatePicker` + `useProducts` (AC-10) | ☐ ∥ ☐ (← ADM-3) |
-| ADM-8a | affiliate ตาราง (`DataTable` dashboard, `getLocaleAmount`, `useDate`, icon + ลบ `affiliate` จาก `ICON_PENDING`; AC-2, AC-11; รอบ 13: + nit AF-14 #187 — assertion `safeParse`, cast `as unknown as`, `keepPreviousData` ของ query ชื่อ) | ☐ (← ADM-2b, #176 ☑, AF-14 ☑ #187, **AF-15**) |
+| ADM-2a | Header/Container (guide) + Header/`SectionRow` ใน 3 widget + เพิ่มข้อตรวจใน `medusa-ui.unit.spec.ts` เดิม (AC-5; รอบ 12 + nit EV-13 #167) | ☑ #205 |
+| ADM-2b | `createSingleFlight` แทน `useRef`, วันที่ผ่าน `useDate` (locale จากภาษาของ admin — แก้รอบ 12), Playwright admin `locale`/`timezoneId` (AC-3, AC-4) | ☑ #225 |
+| ADM-3 ∥ ADM-4 ∥ ADM-6 | pilot ฟอร์ม widget (`Form` + zod, AC-6) ∥ หน้า e-voucher (`LayoutComposer`, `DataTable` dashboard, `ActionMenu` Reveal, AC-7) ∥ หน้า group buy (AC-9; ← GB-N3 ถ้ายังเปิดอยู่) | ☑ #294 ∥ ☑ #296 ∥ ☑ #293 (train #299) |
+| ADM-5 ∥ ADM-7 | partners ตาราง + ฟอร์ม + `ActionMenu` (AC-8; รอบ 13: + ตรวจ URL http(s) ของ partner ฝั่งฟอร์ม — follow-up EV-14 #195) ∥ ฟอร์มสร้างแคมเปญ + `DatePicker` + `useProducts` (AC-10) | ◐ ∥ ◐ กำลังทำ |
+| ADM-8a | affiliate ตาราง (`DataTable` dashboard, `getLocaleAmount`, `useDate`, icon + ลบ `affiliate` จาก `ICON_PENDING`; AC-2, AC-11; รอบ 13: + nit AF-14 #187 — assertion `safeParse`, cast `as unknown as`, `keepPreviousData` ของ query ชื่อ) | ◐ กำลังทำ |
 | ADM-8b | affiliate ปุ่มต่อแถวเป็น `ActionMenu` + แก้ locator e2e + (รอบ 12) Cancel/Mark paid ของแถวเดียวกันกันกัน (AC-13) | ☐ (← ADM-8a) |
 | ADM-9 | affiliate ฟอร์ม (`Form`, `DatePicker`, `Combobox` scope, ฟอร์มของ AF-12c; รอบ 12: ส่งวันที่เฉพาะที่แก้, scope ว่าง → error, ตัวเลือก affiliate ค้นหาได้; AC-12) | ☐ (← ADM-3, ADM-7, ADM-8b) |
+| ADM-10 ∥ ADM-11 ∥ ADM-12 | (รอบ 23) offset ใน URL ผ่าน `pageOffset`/`clampOffset` + hook `usePageOffset` (qa #296 O-1/O-2; AC-14) ∥ `initialData` จาก loader + breadcrumb E-vouchers (qa #293 Obs 4; AC-15) ∥ ช่อง number ตรวจ `badInput` (qa #294 Obs 1; AC-16) | ☐ ∥ ☐ ∥ ☐ **เริ่มได้** |
+| ADM-13 | (รอบ 23) หัวตารางแคมเปญ group buy ใช้ `heading`/`subHeading`/`action` ของ `DataTable`, `CreateCampaign` controlled (qa #293 Obs 1; AC-17) | ☐ (← ADM-7, ADM-10; Q7 = ก 2026-11-05) |
+| ADM-14 | (Q7 = ก) ปุ่มสร้างของ Partners/Programs/Payouts เข้า `action` ของ `DataTable` + wrapper testid `evoucher-partners-table`/`affiliate-programs-table`/`affiliate-payouts-table` (spec 08 กฎ 18; AC-18) | ☐ (← ADM-5, ADM-8b; ∥ ADM-13) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -338,6 +349,13 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   qa #287 O-1 → CORE-47 (กฎข้อ 105, AC-142) · qa #287 O-2 → CORE-48 (กฎข้อ 106, AC-143) · nit review #289 + `waitForTimeout` ของ affiliate-admin-programs + `next-action` ของ core-25/26/fs19 → CORE-49 (กฎข้อ 107, AC-144) ·
   spec 05: qa #286 O-1 → AF-20 (กฎ 44, AC-52) · spec 07: qa #285 O-1 → Deliverables ข้อ 11 (HTTPS + cookie `Secure`) ·
   ยอมรับ/ไม่เปิด: shipping option จาก cache tag `fulfillment` ใน `checkout-form` (seed มี service zone เดียว — ไม่มีผล), กด `checkout-button` ไม่ย้ายหน้าตอน 12 workers (qa #288 Obs 1; CI `workers: 1`)
+- รอบ 23 (2026-11-05, owner อนุมัติให้ทำรอบถัดไปหลัง train #299) → spec 08: qa #296 O-1/O-2 + qa #293 Obs 5 → ADM-10 (กฎ 13, AC-14; รวม `pageOffset`/`toOffset` ที่เดียว) ·
+  qa #293 Obs 4 + review #293/#296 → ADM-11 (กฎ 14, AC-15; + breadcrumb `/evouchers`) · qa #294 Obs 1 → ADM-12 (กฎ 15, AC-16) · qa #293 Obs 1 → ADM-13 (กฎ 16, AC-17; ← Q7) ·
+  `DataTable` ไม่ reset offset (upstream) → กฎ 17 + ร่าง issue ใน spec 08 (ไม่มี task) · ADR-018 หมายเหตุ 2026-11-05 (แถว #2) ·
+  spec 01: qa #298 O-1 + qa #295 O-2 → CORE-50 (กฎข้อ 108, AC-145) · nit review #295/#298 → CORE-51 (กฎข้อ 109, AC-146; ไม่รวมใน CORE-49 — ขอบเขตต่าง) ·
+  ยอมรับ/ไม่เปิด: qa #295 O-1 (รหัสตัวกว้างตัดหลัง `-` — กฎ 44(b) อนุญาต), qa #298 O-2 (ราคากึ่งกลางแนวตั้งเมื่อมี error ในการ์ด)
+- 2026-11-05 owner ตอบ spec 08 Q7 = (ก) → spec 08 กฎ 7c + 18 (wrapper testid ต่อหน้า), AC-17 ปลดเงื่อนไข, ADM-14 + AC-18 · ADR-018 หมายเหตุ 2026-11-05 (2) (ข้อยกเว้นหลักการ 7–8,
+  `DataTableAction` 2.22.1 ไม่ส่งต่อ `data-testid`) · CLAUDE.md แก้ประโยคข้อยกเว้น testid (หัวข้อ Language + ข้อห้ามข้อ 1; owner อนุญาต)
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →
