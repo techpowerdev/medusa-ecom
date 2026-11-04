@@ -34,10 +34,24 @@ function campaignPosts(page: Page) {
 const ictLocal = (hours: number) =>
   new Date(Date.now() + hours * 3_600_000 + 7 * 3_600_000).toISOString().slice(0, 16)
 
+/**
+ * toast ของ Medusa (sonner) อยู่มุมขวาบนทับปุ่ม gb-campaign-create / gb-campaign-create-submit และหยุดนับเวลาเมื่อเมาส์ชี้อยู่
+ * → ย้ายเมาส์ออกแล้วรอ toast หมดก่อนคลิกปุ่มมุมขวาบน (ไม่ใช้ force)
+ */
+async function waitToastsGone(page: Page) {
+  await page.mouse.move(0, 0)
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, { timeout: 15_000 })
+}
+
+async function clickCreateCampaign(page: Page) {
+  await waitToastsGone(page)
+  await page.getByTestId("gb-campaign-create").click()
+}
+
 async function openCreateForm(page: Page) {
   await loginAdmin(page)
   await page.goto(`${BACKEND_URL}/app/group-buying`)
-  await page.getByTestId("gb-campaign-create").click()
+  await clickCreateCampaign(page)
   await expect(page.getByTestId("gb-campaign-create-submit")).toBeVisible()
 }
 
@@ -316,6 +330,8 @@ test("AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหล�
     const response = page.waitForResponse(
       (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
     )
+    // toast "Failed to fetch" ของ step ก่อนทับปุ่ม submit มุมขวาบน
+    await waitToastsGone(page)
     await submit.click()
     expect((await response).status()).toBe(200)
     expect(posts).toHaveLength(2)
@@ -325,7 +341,7 @@ test("AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหล�
   })
 
   await step("ปิดแล้วเปิดฟอร์มใหม่ → key ใหม่ ได้แคมเปญใหม่", async () => {
-    await page.getByTestId("gb-campaign-create").click()
+    await clickCreateCampaign(page)
     await fillValidForm(page, `${token} second`)
     await pickProduct(page, productTitle)
     const response = page.waitForResponse(
