@@ -21,6 +21,7 @@ import { Button } from "@modules/common/components/ui"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { useParams, useRouter } from "next/navigation"
 import { useRef, useState } from "react"
+import GroupSelectionInfo from "./group-selection-info"
 
 type Props = {
   token: string
@@ -168,7 +169,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         <ul className="flex flex-col gap-y-2" data-testid="group-selection">
           {selection.map((item) => (
             <li key={item.variant_id} className="flex items-center gap-x-3" data-testid="group-selection-item">
-              <span className="min-w-0 flex-1 break-words">{variantTitle(item.variant_id)}</span>
+              <GroupSelectionInfo product={product} variantId={item.variant_id} />
               <input
                 type="number"
                 min={1}

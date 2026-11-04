@@ -1,4 +1,6 @@
 // GB-7a1 (spec 04 กฎข้อ 29b, AC-16a): logic ล้วนของหน้ากลุ่ม `/<cc>/g/<token>` — อ่านจาก response ของ GB-11 เท่านั้น ไม่มี I/O
+import { HttpTypes } from "@medusajs/types"
+
 import { convertToLocale } from "./money"
 import { MAX_LINE_ITEM_QUANTITY, clampLineItemQuantity } from "./pending-add-to-cart"
 
@@ -54,11 +56,14 @@ export function groupProgress(group: PublicGroupBuyGroup, campaign: PublicGroupB
   return { current, target, percent, unit }
 }
 
-/** มูลค่าส่วนลดของ promotion ของกลุ่ม: `10%` หรือจำนวนเงินตามสกุลเงิน (fixed) */
+/**
+ * มูลค่าส่วนลดของ promotion ของกลุ่ม: `10%` หรือจำนวนเงินตามสกุลเงินต่อชิ้น (fixed)
+ * GB-12 (กฎข้อ 32c): ต้นแบบสร้างด้วย `allocation: "each"` เสมอ จึงต่อท้าย "ต่อชิ้น" — ต้นแบบที่ถูกแก้เป็น `across` ยอมรับใน v1
+ */
 export function groupDiscountValue(discount: GroupBuyDiscount | null): string | null {
   if (!discount) return null
   if (discount.type === "percentage") return `${discount.value}%`
-  return convertToLocale({ amount: discount.value, currency_code: discount.currency_code ?? "" })
+  return `${convertToLocale({ amount: discount.value, currency_code: discount.currency_code ?? "" })} ต่อชิ้น`
 }
 
 export const GROUP_STATUS_LABEL: Record<PublicGroupBuyGroup["status"], string> = {
@@ -93,3 +98,13 @@ export const removeFromSelection = (list: GroupSelectionItem[], variantId: strin
 
 /** จำนวนชิ้นรวมทุก variant (`max_units_per_person` นับรวม — Q20ค) */
 export const selectionUnits = (list: GroupSelectionItem[]) => list.reduce((sum, i) => sum + i.quantity, 0)
+
+/** GB-12 (กฎข้อ 32b): ชื่อสินค้า + variant และราคาต่อชิ้นใน region (ก่อนส่วนลดกลุ่ม) ของแถวในรายการ — จาก product ที่หน้าโหลดแล้ว */
+export function selectionVariantInfo(product: HttpTypes.StoreProduct, variantId: string) {
+  const variant = product.variants?.find((v) => v.id === variantId)
+  const calculated = variant?.calculated_price
+  const amount = calculated?.calculated_amount ?? null
+  const price =
+    amount != null && calculated?.currency_code ? convertToLocale({ amount, currency_code: calculated.currency_code }) : null
+  return { title: `${product.title} — ${variant?.title ?? variantId}`, amount, price }
+}

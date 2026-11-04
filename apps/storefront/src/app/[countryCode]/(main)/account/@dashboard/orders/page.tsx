@@ -29,9 +29,12 @@ export default async function Orders() {
       {/* GB-7b: เวลาของ request ใช้ตัดสินสถานะ (server component render ครั้งเดียวต่อ request) */}
       {/* eslint-disable-next-line react-hooks/purity */}
       <AccountGroupOrders data={groupOrders} now={Date.now()} />
-      <div>
-        <OrderOverview orders={orders} />
-      </div>
+      {/* GB-12 (กฎข้อ 32e): empty state ของ OrderOverview เฉพาะเมื่อไม่มีทั้ง order ปกติและคำสั่งซื้อแบบกลุ่ม */}
+      {(orders.length > 0 || !groupOrders?.memberships.length) && (
+        <div>
+          <OrderOverview orders={orders} />
+        </div>
+      )}
     </div>
   )
 }

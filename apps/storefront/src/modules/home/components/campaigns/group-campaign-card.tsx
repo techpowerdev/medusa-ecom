@@ -3,9 +3,9 @@ import { groupDiscountValue, groupSharePath } from "@lib/util/group-page"
 import { canCreateTeam, firstPool, groupDiscountedAmount, poolProgress, type ActiveGroupBuyCampaign } from "@lib/util/home-campaigns"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import Countdown from "@modules/common/components/countdown"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "@modules/products/components/thumbnail"
-import CampaignCountdown from "./campaign-countdown"
 import CreateTeamButton from "./create-team-button"
 
 type Props = {
@@ -60,7 +60,7 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
         </div>
       )}
       {discount && <p className="text-small-regular text-ui-fg-interactive">ลด {discount} เมื่อกลุ่มครบเป้าหมาย</p>}
-      <CampaignCountdown endsAt={campaign.ends_at} now={now} testId="group-campaign-countdown" />
+      <Countdown endsAt={campaign.ends_at} now={now} testId="group-campaign-countdown" expiredLabel="หมดเวลาแล้ว" />
       {pool && progress && (
         <div className="flex flex-col gap-y-2">
           <span className="text-small-regular" data-testid="group-campaign-progress">
