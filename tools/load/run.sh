@@ -68,11 +68,15 @@ chmod 755 "$DATA" && chmod 644 "$DATA/load-data.json"
 mkdir -p "$DATA/k6" && chmod 777 "$DATA/k6"
 
 k6() { # k6 <script> — exit code เก็บไว้ ไม่หยุด script (ตรวจ DB และรายงานให้ครบก่อน)
+  # OPS-17c (AC-35): stdout/stderr ของ docker run (log ERRO/WARN ของ k6) ผ่าน redact ก่อนลง job log
+  # exit code ที่บันทึกเป็นของ docker run (PIPESTATUS[0]) ไม่ใช่ของ redact
+  local rc=0
   docker run --rm --network "${PROJECT}_default" -v "$DATA:/data:ro" -v "$DATA/k6:/k6" -v "$(pwd)/tools/load:/scripts:ro" -v "$OUT:/out" \
     -e BASE_URL=http://server:9000 -e LOAD_DATA=/data/load-data.json \
     -e LOAD_BURST_RATE="$BURST_RATE" -e LOAD_BURST_DURATION="$BURST_DURATION" -e LOAD_FLASH_BURST="$FLASH_BURST" \
-    "$K6_IMAGE" run --quiet --summary-export "/k6/$1.json" --console-output "/out/$1-console.log" "/scripts/$1.js" \
-    || echo "$1: k6 exit $?" >>"$OUT/k6-failures.txt"
+    "$K6_IMAGE" run --quiet --summary-export "/k6/$1.json" --console-output "/out/$1-console.log" "/scripts/$1.js" 2>&1 | node tools/load/artifact-guard.js redact \
+    || rc=${PIPESTATUS[0]}
+  [ "$rc" = 0 ] || echo "$1: k6 exit $rc" >>"$OUT/k6-failures.txt"
   [ ! -f "$DATA/k6/$1.json" ] || node tools/load/artifact-guard.js strip "$DATA/k6/$1.json" "$OUT/$1.json" \
     || echo "$1: strip summary ไม่สำเร็จ" >>"$OUT/k6-failures.txt"
   # error/console อื่นของ k6 ยังเห็นใน log ของ job — OPS-17b (AC-34): ผ่าน redact ก่อน (body ของ response อาจมี JWT)
