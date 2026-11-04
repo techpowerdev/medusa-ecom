@@ -5,7 +5,12 @@ import { Customer } from "./medusa"
 
 // CORE-43 (spec 01 กฎข้อ 101): รอผลจริงของ server action แทน timeout default ของ assertion ถัดไป
 // trace ตอนเครื่องโหลดสูง: action (add-to-cart, login, setAddresses) ใช้ 4–5 วินาทีขึ้นไป — `toBeEnabled()`/`toHaveURL()` 5s ล้ม
-// `page.waitForResponse` ไม่มี timeout ของ assertion (ใช้ timeout ของ test) จึงรอจนกว่า action ตอบจริง
+// timeout ของ `page.waitForResponse` (CORE-46 กฎข้อ 104b, Playwright 1.64.1): option `timeout` "defaults to 30 seconds ...
+// can be changed by using browserContext.setDefaultTimeout() or page.setDefaultTimeout()"
+// https://playwright.dev/docs/api/class-page#page-wait-for-response — แต่ใน @playwright/test ค่า default นั้นมาจาก `actionTimeout`
+// "same as configured via page.setDefaultTimeout()" ซึ่ง "defaults to 0 (no timeout)" https://playwright.dev/docs/api/class-testoptions#test-options-action-timeout
+// และ playwright.config.ts ไม่ตั้ง `actionTimeout` → ไม่มีเพดานของตัวเอง (ไม่ใช่ expect timeout 5s) จำกัดด้วย timeout ของ test เท่านั้น
+// https://playwright.dev/docs/test-timeouts — จึงรอจนกว่า action ตอบจริง
 
 type ActionRequest = Pick<Request, "method" | "headers" | "postData">
 

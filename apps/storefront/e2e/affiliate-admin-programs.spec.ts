@@ -32,7 +32,9 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
   const tag = `${Date.now()}`
-  const { products } = await call(request, admin, "/admin/products?limit=1&fields=id,variants.id")
+  // CORE-46 (กฎข้อ 104d): สินค้า seed ด้วย handle คงที่ — `limit=1` อาจได้สินค้าชั่วคราวของ test อื่น
+  const { products } = await call(request, admin, "/admin/products?handle=t-shirt&fields=id,variants.id")
+  expect(products, "สินค้า seed t-shirt").toHaveLength(1)
   const variantId: string = products[0].variants[0].id
 
   // published ที่หน้าต่างเวลาจบไปแล้ว ไม่กระทบ portal ของ test อื่น
