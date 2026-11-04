@@ -46,7 +46,8 @@ export const CreateCampaign = () => {
   // GB-6a D1: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างคลิกใน task เดียว
   const inFlight = useRef(false)
   // GB-13 (กฎข้อ 33d): key เดียวต่อการเปิดฟอร์ม — submit ซ้ำหลัง network ล้มได้แคมเปญเดิม
-  const idempotencyKey = useRef(crypto.randomUUID())
+  // ตั้งใน openModal เท่านั้น (ไม่เรียก randomUUID ตอน render — context ที่ไม่ secure จะ throw ทั้งหน้า)
+  const idempotencyKey = useRef("")
   const set = (patch: Partial<CampaignForm>) => {
     setMaxQuantityError(null)
     setProductError(null)
@@ -83,7 +84,9 @@ export const CreateCampaign = () => {
       return
     }
     inFlight.current = true
-    create.mutate({ ...result.body, idempotency_key: idempotencyKey.current })
+    // modal เปิดผ่าน openModal เท่านั้นจึงมี key เสมอ; ถ้าว่างไม่ส่ง field (backend ไม่รับ key ว่าง)
+    const key = idempotencyKey.current
+    create.mutate(key ? { ...result.body, idempotency_key: key } : result.body)
   }
 
   const openModal = () => {
