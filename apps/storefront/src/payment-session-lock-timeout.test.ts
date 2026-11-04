@@ -77,7 +77,7 @@ describe("CORE-19e: ปุ่ม Continue ที่ล็อกรอ session �
   beforeEach(() => {
     vi.useFakeTimers()
     refresh.mockReset()
-    initiatePaymentSession.mockReset().mockResolvedValue(undefined)
+    initiatePaymentSession.mockReset().mockResolvedValue({ ok: true })
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)

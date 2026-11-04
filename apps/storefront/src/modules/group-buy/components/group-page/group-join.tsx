@@ -98,10 +98,10 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
   const join = () =>
     run(async () => {
       if (!prepared || !shippingId || joined) return
-      try {
-        await setShippingMethod({ cartId: prepared.cart.id, shippingMethodId: shippingId })
-      } catch {
-        setError(JOIN_FAILED)
+      // CORE-4i-b (spec 01 กฎข้อ 72): setShippingMethod คืนผลแทนการ throw
+      const shipped = await settleAction(setShippingMethod({ cartId: prepared.cart.id, shippingMethodId: shippingId }))
+      if ("error" in shipped) {
+        setError(actionErrorMessage(shipped.error, JOIN_FAILED))
         return
       }
       // กฎข้อ 27: sync cookie `aff` ลง cart ใหม่ก่อน join (static test ของ spec 05 กฎ 31 ตรวจจุดนี้)

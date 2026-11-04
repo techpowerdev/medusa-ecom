@@ -1,11 +1,12 @@
+import { useDate } from "@medusajs/dashboard/hooks"
 import { Badge, Button, createDataTableColumnHelper, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { affiliateKeys, deleteProgram, Program } from "../../lib/affiliate"
-import { formatDate } from "../../lib/affiliate-format"
 import { canDeleteProgram } from "../../lib/affiliate-program-form"
 import { createSingleFlight } from "../../lib/single-flight"
-import { AffiliateListTable } from "./list-table"
+import { Header } from "../common/header"
+import { AffiliateListTable, useAffiliateList } from "./list-table"
 import { ProgramFormModal } from "./program-form"
 
 const program = createDataTableColumnHelper<Program>()
@@ -14,6 +15,8 @@ const program = createDataTableColumnHelper<Program>()
 export const ProgramsTable = () => {
   const prompt = usePrompt()
   const queryClient = useQueryClient()
+  const { getFullDate } = useDate()
+  const list = useAffiliateList<Program>("programs", "programs")
   // modal: undefined = ปิด, null = สร้าง, Program = แก้; `opened` เป็น key ให้ฟอร์ม mount ใหม่ทุกครั้งที่เปิด
   const [modal, setModal] = useState<{ program: Program | null; opened: number }>()
   const [deleteOnce] = useState(createSingleFlight)
@@ -80,11 +83,11 @@ export const ProgramsTable = () => {
       }),
       program.accessor("starts_at", {
         header: "Starts",
-        cell: ({ getValue }) => formatDate(getValue()),
+        cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
       program.accessor("ends_at", {
         header: "Ends",
-        cell: ({ getValue }) => formatDate(getValue()),
+        cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
       program.accessor((row) => `${row.commission_value}%`, {
         id: "rate",
@@ -92,23 +95,33 @@ export const ProgramsTable = () => {
       }),
       program.accessor("hold_days", { header: "Hold days" }),
     ],
-    // confirmDelete ใช้ prompt/mutateAsync/deleteOnce ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending เปลี่ยน
-    [remove.isPending],
+    // confirmDelete ใช้ prompt/mutateAsync/deleteOnce ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending/getFullDate เปลี่ยน
+    [remove.isPending, getFullDate],
   )
 
   return (
     <>
-      <div className="flex justify-end px-6 py-4">
-        <Button
-          size="small"
-          variant="secondary"
-          data-testid="affiliate-program-create"
-          onClick={() => setModal({ program: null, opened: Date.now() })}
-        >
-          Create program
-        </Button>
-      </div>
-      <AffiliateListTable resource="programs" columns={columns} empty="No programs yet" />
+      {/* ปุ่ม Create อยู่ใน Header เพราะ `action` ของ DataTable ใส่ data-testid ไม่ได้ (e2e หาด้วย testid — กฎ 7) */}
+      <Header
+        title="Programs"
+        actions={[
+          {
+            type: "button",
+            props: {
+              variant: "secondary",
+              "data-testid": "affiliate-program-create",
+              onClick: () => setModal({ program: null, opened: Date.now() }),
+              children: "Create program",
+            },
+          },
+        ]}
+      />
+      <AffiliateListTable
+        {...list}
+        columns={columns}
+        subHeading="Only draft programs can be deleted."
+        empty="No programs yet"
+      />
       {modal && (
         <ProgramFormModal
           key={modal.opened}

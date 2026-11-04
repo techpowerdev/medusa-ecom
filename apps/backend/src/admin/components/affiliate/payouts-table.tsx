@@ -1,10 +1,12 @@
+import { useDate } from "@medusajs/dashboard/hooks"
+import { castNumber, getLocaleAmount } from "@medusajs/dashboard/lib"
 import { Badge, Button, createDataTableColumnHelper, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useRef, useState } from "react"
 import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
-import { formatAmount, formatDate } from "../../lib/affiliate-format"
 import { canCancelPayout, canMarkPaid } from "../../lib/affiliate-payout"
-import { AffiliateCell, AffiliateListTable } from "./list-table"
+import { Header } from "../common/header"
+import { AffiliateCell, AffiliateListTable, useAffiliateList, useAffiliateNames } from "./list-table"
 import { MarkPaidPrompt } from "./mark-paid-prompt"
 import { PayoutFormModal } from "./payout-form"
 
@@ -15,6 +17,9 @@ const columnHelper = createDataTableColumnHelper<Payout>()
 export const PayoutsTable = () => {
   const prompt = usePrompt()
   const queryClient = useQueryClient()
+  const { getFullDate } = useDate()
+  const list = useAffiliateList<Payout>("payouts", "payouts")
+  const rows = useAffiliateNames(list.rows)
   // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → คลิกซ้ำ (dblclick) ถูกเพิกเฉย (ค่าคงอยู่ข้าม render)
   const inFlight = useRef(false)
   // `opened` เป็น key ให้ฟอร์ม/กล่องยืนยัน mount ใหม่ทุกครั้งที่เปิด (ค่าเริ่มต้นสด)
@@ -100,35 +105,52 @@ export const PayoutsTable = () => {
         header: "Affiliate",
         cell: ({ row }) => <AffiliateCell row={row.original} />,
       }),
-      columnHelper.accessor((row) => formatAmount(row.amount, row.currency), {
+      columnHelper.accessor((row) => getLocaleAmount(castNumber(row.amount), row.currency), {
         id: "amount",
         header: "Amount",
       }),
       columnHelper.accessor(
-        (row) => `${formatDate(row.period_from, false)} – ${formatDate(row.period_to, false)}`,
+        (row) => `${getFullDate({ date: row.period_from })} – ${getFullDate({ date: row.period_to })}`,
         { id: "period", header: "Period" },
       ),
-      columnHelper.accessor("paid_at", { header: "Paid at", cell: ({ getValue }) => formatDate(getValue()) }),
+      columnHelper.accessor("paid_at", {
+        header: "Paid at",
+        cell: ({ getValue }) => {
+          const value = getValue()
+          return value ? getFullDate({ date: value, includeTime: true }) : "-"
+        },
+      }),
       columnHelper.accessor("reference", { header: "Reference", cell: ({ getValue }) => getValue() ?? "-" }),
       columnHelper.accessor("id", { header: "Payout" }),
     ],
-    // confirmCancel ใช้แค่ ref, prompt, mutateAsync และ setter ของ state ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending เปลี่ยน
-    [cancel.isPending],
+    // confirmCancel ใช้แค่ ref, prompt, mutateAsync และ setter ของ state ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending/getFullDate เปลี่ยน
+    [cancel.isPending, getFullDate],
   )
 
   return (
     <>
-      <div className="flex justify-end px-6 py-4">
-        <Button
-          size="small"
-          variant="secondary"
-          data-testid="affiliate-payout-create"
-          onClick={() => setCreating((c) => c ?? Date.now())}
-        >
-          Create payout
-        </Button>
-      </div>
-      <AffiliateListTable resource="payouts" columns={columns} empty="No payouts yet" affiliateNames />
+      {/* ปุ่ม Create อยู่ใน Header เพราะ `action` ของ DataTable ใส่ data-testid ไม่ได้ (e2e หาด้วย testid — กฎ 7) */}
+      <Header
+        title="Payouts"
+        actions={[
+          {
+            type: "button",
+            props: {
+              variant: "secondary",
+              "data-testid": "affiliate-payout-create",
+              onClick: () => setCreating((c) => c ?? Date.now()),
+              children: "Create payout",
+            },
+          },
+        ]}
+      />
+      <AffiliateListTable
+        {...list}
+        rows={rows}
+        columns={columns}
+        subHeading="Draft payouts can be marked paid or cancelled."
+        empty="No payouts yet"
+      />
       {creating && <PayoutFormModal key={creating} onClose={() => setCreating(undefined)} />}
       {markingPaid && (
         <MarkPaidPrompt

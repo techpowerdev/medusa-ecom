@@ -2,7 +2,7 @@
 import { RadioGroup } from "@headlessui/react"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
-import { friendlyErrorMessage } from "@lib/util/error-message"
+import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { isPromptPay } from "@lib/util/payment-session"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -20,6 +20,17 @@ import {
 import { HttpTypes } from "@medusajs/types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+
+const SESSION_FAILED = "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+
+/** CORE-4i-b (กฎข้อ 72): สร้าง session แล้วคืนข้อความไทยเมื่อล้ม (`unauthorized` → SIGN_IN_AGAIN_MESSAGE), สำเร็จ → null */
+export const paymentSessionError = async (
+  cart: HttpTypes.StoreCart,
+  providerId: string
+): Promise<string | null> => {
+  const result = await settleAction(initiatePaymentSession(cart, { provider_id: providerId }))
+  return "error" in result ? actionErrorMessage(result.error, SESSION_FAILED) : null
+}
 
 const Payment = ({
   cart,
@@ -69,16 +80,13 @@ const Payment = ({
       // ล็อกปุ่ม Continue จนสร้าง session เสร็จ — ไม่งั้น handleSubmit สร้างซ้ำ แล้ว PaymentIntent
       // ตัวแรก (ที่หน้าอาจถืออยู่) ถูก cancel → Stripe ตอบ "A processing error occurred"
       setIsLoading(true)
-      try {
-        await initiatePaymentSession(cart, {
-          provider_id: method,
-        })
+      const failure = await paymentSessionError(cart, method)
+      if (failure) {
+        setError(failure)
+      } else {
         setAwaitingSessionFor(method)
-      } catch (err) {
-        setError(friendlyErrorMessage(err, "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
-      } finally {
-        setIsLoading(false)
       }
+      setIsLoading(false)
     }
   }
 
@@ -116,9 +124,10 @@ const Payment = ({
         activeSession?.provider_id === selectedPaymentMethod
 
       if (!checkActiveSession) {
-        await initiatePaymentSession(cart, {
-          provider_id: selectedPaymentMethod,
-        })
+        const failure = await paymentSessionError(cart, selectedPaymentMethod)
+        if (failure) {
+          return setError(failure)
+        }
       }
 
       if (!shouldInputPaymentDetails) {
@@ -129,8 +138,6 @@ const Payment = ({
           }
         )
       }
-    } catch (err) {
-      setError(friendlyErrorMessage(err, "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
     } finally {
       setIsLoading(false)
     }

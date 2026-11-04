@@ -1,4 +1,5 @@
 // PAY-3b (spec 06 กฎข้อ 9): logic ล้วนของหน้า /account/orders/:id/pay — อ่านจาก response ของ GB-8 เท่านั้น ไม่มี I/O
+import type { PaymentSessionResult } from "./action-result"
 import { PAYMENT_ALREADY_COMPLETED } from "./payment-session"
 
 export type GroupBuyPaymentSession = {
@@ -66,13 +67,13 @@ export function orderPayView(data: GroupBuyOrder, nowMs: number): OrderPayView {
 export type SessionCreateOutcome = "created" | "already-paid" | "unauthorized" | "check-status"
 
 /**
- * ผลของ `POST /store/payment-collections/:id/payment-sessions` (`status` 0 = network error):
- * 409 + code ของ guard → (d) poll GB-8; 401 → login; non-2xx อื่นทุกแบบ → (d2) ตัดสินจากสถานะ GB-8 ไม่ดู code/ข้อความ
+ * ผลของ action สร้าง session (CORE-4i-b: `{ ok } | { error }` จาก helper กลาง — `paymentSessionResult`):
+ * 409 + code ของ guard → (d) poll GB-8; 401 → login; `failed` (non-2xx อื่นทุกแบบ/network) → (d2) ตัดสินจากสถานะ GB-8
  */
-export function sessionCreateOutcome(status: number, code: string | null): SessionCreateOutcome {
-  if (status >= 200 && status < 300) return "created"
-  if (status === 409 && code === PAYMENT_ALREADY_COMPLETED) return "already-paid"
-  if (status === 401) return "unauthorized"
+export function sessionCreateOutcome(result: PaymentSessionResult): SessionCreateOutcome {
+  if ("ok" in result) return "created"
+  if (result.error === PAYMENT_ALREADY_COMPLETED) return "already-paid"
+  if (result.error === "unauthorized") return "unauthorized"
   return "check-status"
 }
 

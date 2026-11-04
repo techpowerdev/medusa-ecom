@@ -1,81 +1,111 @@
+import { ActionMenu, DataTable, Form, KeyboundForm, NoRecords } from "@medusajs/dashboard/components"
+import { useQueryParams } from "@medusajs/dashboard/hooks"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { EllipsisHorizontal, PencilSquare, Trash } from "@medusajs/icons"
 import {
   Button,
-  Container,
+  createDataTableColumnHelper,
   Drawer,
   FocusModal,
   Heading,
+  IconButton,
   Input,
-  Label,
-  Text,
   toast,
   usePrompt,
 } from "@medusajs/ui"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useId, useState } from "react"
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useMemo, useState } from "react"
+import { useForm } from "react-hook-form"
+import { useSearchParams } from "react-router-dom"
 import { evoucherApi, evoucherKeys, Partner, PartnerInput } from "../../lib/evoucher"
+import {
+  PARTNER_PARSE_OPTIONS,
+  partnerFormSchema,
+  type PartnerFormValues,
+  toPartnerFormValues,
+} from "../../lib/evoucher-partner-form"
+import { pageOffset } from "../../lib/group-buy-campaign"
 import { createSingleFlight } from "../../lib/single-flight"
+import { Container } from "../common/container"
+import { Header } from "../common/header"
 
-const FIELDS: { key: keyof PartnerInput; label: string }[] = [
-  { key: "name", label: "Name *" },
-  { key: "logo_url", label: "Logo URL" },
-  { key: "terms_url", label: "Terms URL" },
-  { key: "support_contact", label: "Support contact" },
+const columnHelper = createDataTableColumnHelper<Partner>()
+const PAGE_SIZE = 20
+// spec 08 กฎ 9: prefix ไม่ซ้ำกับตาราง pools ในหน้าเดียวกัน — หน้าปัจจุบันอยู่ใน URL (`partners_offset`)
+const PREFIX = "partners"
+const OFFSET_KEY = `${PREFIX}_offset`
+
+const FIELDS: { name: keyof PartnerFormValues; label: string }[] = [
+  { name: "name", label: "Name *" },
+  { name: "logo_url", label: "Logo URL" },
+  { name: "terms_url", label: "Terms URL" },
+  { name: "support_contact", label: "Support contact" },
 ]
 
-const toForm = (p?: Partner): Record<keyof PartnerInput, string> => ({
-  name: p?.name ?? "",
-  logo_url: p?.logo_url ?? "",
-  terms_url: p?.terms_url ?? "",
-  support_contact: p?.support_contact ?? "",
-})
-
-// ค่าว่าง → null เพื่อให้ล้างค่าเดิมได้ (validator รับ nullish)
-const toBody = (form: Record<keyof PartnerInput, string>): PartnerInput => ({
-  name: form.name.trim(),
-  logo_url: form.logo_url.trim() || null,
-  terms_url: form.terms_url.trim() || null,
-  support_contact: form.support_contact.trim() || null,
-})
-
-const PartnerFields = ({
-  form,
-  onChange,
-}: {
-  form: Record<keyof PartnerInput, string>
-  onChange: (form: Record<keyof PartnerInput, string>) => void
-}) => {
-  // กฎข้อ 11: Label ผูก htmlFor กับ id ของ input (useId กัน id ซ้ำระหว่าง modal สร้างกับ drawer แก้ไข)
-  const prefix = useId()
-  return (
-    <div className="flex flex-col gap-y-4">
-      {FIELDS.map(({ key, label }) => (
-        <div key={key} className="flex flex-col gap-y-2">
-          <Label size="small" htmlFor={`${prefix}-${key}`}>
-            {label}
-          </Label>
-          <Input
-            id={`${prefix}-${key}`}
-            size="small"
-            value={form[key]}
-            onChange={(e) => onChange({ ...form, [key]: e.target.value })}
-          />
-        </div>
-      ))}
-    </div>
-  )
+// partners_offset ผู้ใช้แก้เองได้ และ DataTable ของ dashboard parseInt ค่าดิบเอง ("abc" → "NaN of N results")
+// → ใช้ค่าที่ normalize แล้วกับ request และแก้ URL ให้ตรง (แบบเดียวกับหน้า Group buying — ADM-6)
+const usePartnersOffset = () => {
+  const { offset: raw } = useQueryParams(["offset"], PREFIX)
+  const offset = pageOffset(raw)
+  const [, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (raw === undefined || raw === String(offset)) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (offset) next.set(OFFSET_KEY, String(offset))
+        else next.delete(OFFSET_KEY)
+        return next
+      },
+      { replace: true }
+    )
+  }, [raw, offset, setSearchParams])
+  return offset
 }
 
+const PartnerFields = () => (
+  <div className="flex flex-col gap-y-4">
+    {FIELDS.map(({ name, label }) => (
+      <Form.Field
+        key={name}
+        name={name}
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>{label}</Form.Label>
+            <Form.Control>
+              <Input {...field} size="small" />
+            </Form.Control>
+            <Form.ErrorMessage data-testid={`evoucher-partner-${name}-error`} />
+          </Form.Item>
+        )}
+      />
+    ))}
+  </div>
+)
+
+// EV-6: พาร์ทเนอร์ของ e-voucher — ADM-5: DataTable ของ dashboard (แบ่งหน้าใน URL), Edit/Delete ใน ActionMenu,
+// ฟอร์มเป็น Form + zod (สร้าง = FocusModal, แก้ = Drawer แบบ state — ADR-018 Q5)
 export const PartnersSection = () => {
   const queryClient = useQueryClient()
   const prompt = usePrompt()
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Partner | null>(null)
-  const [form, setForm] = useState(toForm())
+  // Form.Field ของ dashboard รับ control ที่ค่าก่อน/หลัง submit เป็น type เดียวกัน จึงให้ resolver คืนค่าดิบ (raw)
+  // แล้วแปลงเป็น body ด้วย schema เดียวกันตอน submit (แบบ ADM-3)
+  const form = useForm({
+    resolver: zodResolver(partnerFormSchema, PARTNER_PARSE_OPTIONS, { raw: true }),
+    defaultValues: toPartnerFormValues(),
+  })
+  // spec 02 กฎข้อ 11 / spec 08 กฎ 4: dblclick / ⌘+Enter ซ้ำก่อน isPending เป็น true → request ครั้งเดียว
   const [submitOnce] = useState(createSingleFlight)
+  const [deleteOnce] = useState(createSingleFlight)
 
+  const offset = usePartnersOffset()
+  const query = { limit: PAGE_SIZE, offset }
   const { data, isLoading } = useQuery({
-    queryKey: evoucherKeys.partners,
-    queryFn: evoucherApi.listPartners,
+    queryKey: [...evoucherKeys.partners, query],
+    queryFn: () => evoucherApi.listPartners(query),
+    placeholderData: keepPreviousData,
   })
 
   const onSuccess = (message: string) => {
@@ -88,11 +118,9 @@ export const PartnersSection = () => {
   const onError = (e: Error) => toast.error(e.message)
 
   const save = useMutation({
-    mutationFn: () =>
-      editing
-        ? evoucherApi.updatePartner(editing.id, toBody(form))
-        : evoucherApi.createPartner(toBody(form)),
-    onSuccess: () => onSuccess(editing ? "Partner updated" : "Partner created"),
+    mutationFn: ({ id, body }: { id?: string; body: PartnerInput }) =>
+      id ? evoucherApi.updatePartner(id, body) : evoucherApi.createPartner(body),
+    onSuccess: (_, { id }) => onSuccess(id ? "Partner updated" : "Partner created"),
     onError,
   })
   const remove = useMutation({
@@ -102,115 +130,147 @@ export const PartnersSection = () => {
   })
 
   const openCreate = () => {
-    setForm(toForm())
+    form.reset(toPartnerFormValues())
     setCreateOpen(true)
   }
-  const openEdit = (partner: Partner) => {
-    setForm(toForm(partner))
-    setEditing(partner)
-  }
-  const confirmDelete = async (partner: Partner) => {
-    const ok = await prompt({
-      title: `Delete ${partner.name}?`,
-      description: "Partners that still have pools cannot be deleted.",
-      confirmText: "Delete",
-      cancelText: "Cancel",
-    })
-    if (ok) {
-      remove.mutate(partner.id)
+
+  const { mutateAsync: removePartner, isPending: removing } = remove
+  const columns = useMemo(() => {
+    const openEdit = (partner: Partner) => {
+      form.reset(toPartnerFormValues(partner))
+      setEditing(partner)
     }
-  }
-  const submit = () => {
-    if (!form.name.trim()) {
-      toast.error("Name is required")
-      return
-    }
-    // กฎข้อ 11: กันคลิกซ้อนก่อน isPending เป็น true; error แสดงผ่าน onError แล้ว
-    submitOnce(() => save.mutateAsync().catch(() => undefined))
-  }
+    // guard ครอบทั้ง prompt + request — กด Delete ซ้ำระหว่างรอ prompt/request ไม่ยิงซ้ำ
+    const confirmDelete = (partner: Partner) =>
+      deleteOnce(async () => {
+        const ok = await prompt({
+          title: `Delete ${partner.name}?`,
+          description: "Partners that still have pools cannot be deleted.",
+          confirmText: "Delete",
+          cancelText: "Cancel",
+        })
+        if (ok) {
+          await removePartner(partner.id).catch(() => undefined)
+        }
+      })
+
+    return [
+      columnHelper.accessor("name", { header: "Name" }),
+      columnHelper.accessor("support_contact", {
+        header: "Support contact",
+        cell: ({ getValue }) => getValue() ?? "-",
+      }),
+      columnHelper.display({
+        id: "actions",
+        cell: ({ row }) => (
+          <ActionMenu
+            groups={[
+              {
+                actions: [
+                  { label: "Edit", icon: <PencilSquare />, onClick: () => openEdit(row.original) },
+                  {
+                    label: "Delete",
+                    icon: <Trash />,
+                    disabled: removing,
+                    onClick: () => confirmDelete(row.original),
+                  },
+                ],
+              },
+            ]}
+          >
+            <IconButton size="small" variant="transparent" data-testid="evoucher-partner-row-actions">
+              <EllipsisHorizontal />
+            </IconButton>
+          </ActionMenu>
+        ),
+      }),
+    ]
+  }, [form, prompt, deleteOnce, removePartner, removing])
+
+  const submit = form.handleSubmit((values) =>
+    submitOnce(() =>
+      save
+        .mutateAsync({ id: editing?.id, body: partnerFormSchema.parse(values, PARTNER_PARSE_OPTIONS) })
+        .catch(() => undefined)
+    )
+  )
 
   const saveButton = (
-    <Button size="small" onClick={submit} disabled={save.isPending} isLoading={save.isPending}>
+    <Button size="small" type="submit" disabled={save.isPending} isLoading={save.isPending}>
       Save
     </Button>
   )
 
   return (
-    <Container className="divide-y p-0">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Partners</Heading>
-        <Button size="small" variant="secondary" onClick={openCreate}>
-          Create partner
-        </Button>
-      </div>
-      <div className="flex flex-col gap-y-2 px-6 py-4">
-        {isLoading ? (
-          <Text size="small" leading="compact" className="text-ui-fg-subtle">
-            Loading…
-          </Text>
-        ) : !data?.partners.length ? (
-          <Text size="small" leading="compact" className="text-ui-fg-subtle">
-            No partners yet
-          </Text>
-        ) : (
-          data.partners.map((partner) => (
-            <div key={partner.id} className="flex items-center justify-between gap-x-3">
-              <div className="flex flex-col">
-                <Text size="small" leading="compact" weight="plus">
-                  {partner.name}
-                </Text>
-                <Text size="small" leading="compact" className="text-ui-fg-subtle">
-                  {partner.support_contact ?? "-"}
-                </Text>
-              </div>
-              <div className="flex gap-x-2">
-                <Button size="small" variant="secondary" onClick={() => openEdit(partner)}>
-                  Edit
-                </Button>
-                <Button
-                  size="small"
-                  variant="danger"
-                  disabled={remove.isPending}
-                  onClick={() => confirmDelete(partner)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+    <Container data-testid="evoucher-partners">
+      {!isLoading && data?.count === 0 ? (
+        <>
+          <Header
+            title="Partners"
+            actions={[{ type: "button", props: { variant: "secondary", onClick: openCreate, children: "Create partner" } }]}
+          />
+          <div data-testid="evoucher-partners-empty">
+            <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
+          </div>
+        </>
+      ) : (
+        <DataTable
+          data={data?.partners ?? []}
+          columns={columns}
+          getRowId={(partner) => partner.id}
+          rowCount={data?.count ?? 0}
+          isLoading={isLoading}
+          heading="Partners"
+          headingLevel="h2"
+          action={{ label: "Create partner", onClick: openCreate }}
+          prefix={PREFIX}
+          pageSize={PAGE_SIZE}
+          enableSearch={false}
+          emptyState={{ empty: { heading: "No partners on this page" } }}
+        />
+      )}
 
       <FocusModal open={createOpen} onOpenChange={setCreateOpen}>
         <FocusModal.Content>
-          <FocusModal.Header>
-            <div className="flex items-center justify-end gap-x-2">{saveButton}</div>
-          </FocusModal.Header>
-          <FocusModal.Body className="flex justify-center overflow-auto py-16">
-            <div className="flex w-full max-w-lg flex-col gap-y-6">
-              <Heading>Create partner</Heading>
-              <PartnerFields form={form} onChange={setForm} />
-            </div>
-          </FocusModal.Body>
+          {/* noValidate: validation ทั้งหมดเป็นของ zod (error ใต้ช่อง) */}
+          <Form {...form}>
+            <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
+              <FocusModal.Header>
+                <div className="flex items-center justify-end gap-x-2">{saveButton}</div>
+              </FocusModal.Header>
+              <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
+                <div className="flex w-full max-w-lg flex-col gap-y-6">
+                  <Heading>Create partner</Heading>
+                  <PartnerFields />
+                </div>
+              </FocusModal.Body>
+            </KeyboundForm>
+          </Form>
         </FocusModal.Content>
       </FocusModal>
 
       <Drawer open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <Drawer.Content>
-          <Drawer.Header>
-            <Drawer.Title>Edit partner</Drawer.Title>
-          </Drawer.Header>
-          <Drawer.Body className="overflow-auto p-4">
-            <PartnerFields form={form} onChange={setForm} />
-          </Drawer.Body>
-          <Drawer.Footer>
-            <Drawer.Close asChild>
-              <Button size="small" variant="secondary" disabled={save.isPending}>
-                Cancel
-              </Button>
-            </Drawer.Close>
-            {saveButton}
-          </Drawer.Footer>
+          <Form {...form}>
+            <KeyboundForm noValidate onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">
+              <Drawer.Header>
+                <Drawer.Title>Edit partner</Drawer.Title>
+              </Drawer.Header>
+              <Drawer.Body className="flex-1 overflow-auto p-4">
+                <PartnerFields />
+              </Drawer.Body>
+              <Drawer.Footer>
+                <div className="flex items-center justify-end gap-x-2">
+                  <Drawer.Close asChild>
+                    <Button size="small" variant="secondary" type="button" disabled={save.isPending}>
+                      Cancel
+                    </Button>
+                  </Drawer.Close>
+                  {saveButton}
+                </div>
+              </Drawer.Footer>
+            </KeyboundForm>
+          </Form>
         </Drawer.Content>
       </Drawer>
     </Container>

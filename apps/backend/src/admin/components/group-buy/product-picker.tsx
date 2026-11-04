@@ -1,3 +1,4 @@
+import { useProducts } from "@medusajs/dashboard/hooks"
 import { HttpTypes } from "@medusajs/framework/types"
 import {
   createDataTableColumnHelper,
@@ -7,9 +8,8 @@ import {
   Text,
   useDataTable,
 } from "@medusajs/ui"
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { keepPreviousData } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
-import { sdk } from "../../lib/client"
 import { selectSingleProduct } from "../../lib/group-buy-form"
 
 type Product = Pick<HttpTypes.AdminProduct, "id" | "title" | "status">
@@ -22,7 +22,8 @@ const columns = [
   columnHelper.accessor("status", { header: "Status" }),
 ]
 
-// GB-6b2: dashboard ไม่ export product picker ให้ extension → DataTable + sdk.admin.product.list
+// GB-6b2: dashboard ไม่ export product picker ให้ extension → DataTable ของ ui (อยู่ใน modal — spec 08)
+// ADM-7 (spec 08 AC-10): ดึงสินค้าด้วย useProducts ของ dashboard (query key ของ Medusa) แทนการเรียก sdk เอง
 // GB-6e (spec 04 กฎข้อ 30d, AC-50): single select — เลือกตัวใหม่แทนตัวเดิม; id อยู่ใน state ของฟอร์ม จึงคงอยู่ข้ามหน้า/การค้นหา
 export const ProductPicker = ({
   value,
@@ -38,11 +39,10 @@ export const ProductPicker = ({
   const limit = pagination.pageSize
   const offset = pagination.pageIndex * limit
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["gb-product-picker", search, limit, offset],
-    queryFn: () => sdk.admin.product.list({ q: search || undefined, limit, offset, fields: "id,title,status" }),
-    placeholderData: keepPreviousData,
-  })
+  const { products, count, isLoading } = useProducts(
+    { q: search || undefined, limit, offset, fields: "id,title,status" },
+    { placeholderData: keepPreviousData }
+  )
 
   const rowSelection = useMemo(
     () => (value ? { [value]: true } : {}) as DataTableRowSelectionState,
@@ -50,10 +50,10 @@ export const ProductPicker = ({
   )
 
   const table = useDataTable({
-    data: (data?.products ?? []) as Product[],
+    data: (products ?? []) as Product[],
     columns,
     getRowId: (product) => product.id,
-    rowCount: data?.count ?? 0,
+    rowCount: count ?? 0,
     isLoading,
     rowSelection: {
       state: rowSelection,

@@ -1,0 +1,71 @@
+CORE-48 (spec 01 กฎข้อ 106, AC-143) — ผล test
+base: origin/develop a349676; Medusa 2.22.1; storefront prod build (next build + next start); backend medusa start (NODE_ENV=production)
+
+== RED: unit (ก่อนแก้ — helper ยังไม่มี / updateLineItem คืน failed) ==
+ FAIL  src/core-48-ui-results.test.ts [ src/core-48-ui-results.test.ts ]
+Error: Cannot find package '@lib/util/insufficient-inventory' imported from <scratchpad>/wt-CORE-48/apps/storefront/src/core-48-ui-results.test.ts
+      5| import { UPDATE_QUANTITY_FAILED, changeLineQuantity } from "@modules/c…
+ FAIL  src/lib/util/insufficient-inventory.test.ts [ src/lib/util/insufficient-inventory.test.ts ]
+Error: Cannot find package '@lib/util/insufficient-inventory' imported from <scratchpad>/wt-CORE-48/apps/storefront/src/lib/util/insufficient-inventory.test.ts
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/core-48-cart-actions.test.ts > updateLineItem — stock ไม่พอ (AC-143) > FetchError 400 ข้อความของ Medusa → { error: "INSUFFICIENT_INVENTORY" } ไม่ revalidate
+ FAIL  src/core-48-cart-actions.test.ts > updateLineItem — stock ไม่พอ (AC-143) > 400 code insufficient_inventory → { error: "INSUFFICIENT_INVENTORY" } ไม่ revalidate
+AssertionError: expected { error: 'failed' } to deeply equal { error: 'INSUFFICIENT_INVENTORY' }
+ Test Files  3 failed (3)
+      Tests  2 failed | 3 passed (5)
+
+== RED: e2e core-48 (helper มีแต่ยังไม่ต่อสาย — UI แสดงข้อความทั่วไป) ==
+  ✘  1 [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:71:7 › AC-143: 1280×800 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้ (6.4s)
+  ✘  2 [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:71:7 › AC-143: 375×812 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้ (6.4s)
+    Error: expect(locator).toHaveText(expected) failed
+    Expected: "สินค้ามีไม่พอตามจำนวนที่เลือก กรุณาลดจำนวนแล้วลองใหม่อีกครั้ง"
+    Received: "แก้ไขจำนวนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+    test-results/core-48-cart-insufficient--76a82-ม่พอ-จำนวนคงเดิม-แล้วแก้ได้-chromium/test-failed-1.png
+    Error: expect(locator).toHaveText(expected) failed
+    Expected: "สินค้ามีไม่พอตามจำนวนที่เลือก กรุณาลดจำนวนแล้วลองใหม่อีกครั้ง"
+    Received: "แก้ไขจำนวนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+    test-results/core-48-cart-insufficient--2a655-ม่พอ-จำนวนคงเดิม-แล้วแก้ได้-chromium/test-failed-1.png
+  2 failed
+
+== ข้อความจริงของ Medusa 2.22.1 (log ของ storefront จาก actionFailure ก่อนแก้) ==
+Error: Some variant does not have the required inventory { statusText: 'Bad Request', status: 400 }  (FetchError ไม่มี code)
+
+== GREEN: unit (vitest ทั้งหมด รวม checkout-conflict-contract.test.ts ที่ไม่ได้แก้) ==
+ Test Files  86 passed (86)
+      Tests  973 passed (973)
+
+== GREEN: e2e core-48 --repeat-each=3 --workers=2 ==
+  ✓  2 [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:71:7 › AC-143: 1280×800 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้ (9.1s)
+  ✓  1 [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:71:7 › AC-143: 1280×800 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้ (9.2s)
+  ✓  3 [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:71:7 › AC-143: 375×812 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้ (7.7s)
+  ✓  4 [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:71:7 › AC-143: 375×812 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้ (7.8s)
+  ✓  5 [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:71:7 › AC-143: 1280×800 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้ (3.1s)
+  ✓  6 [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:71:7 › AC-143: 375×812 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้ (3.9s)
+  6 passed (26.7s)
+
+== regression: core-47, core-44, core-42, thai-ui-cart-order, core-19c (--workers=2) ==
+  ✓   1 [chromium] › e2e/core-19c-delete-button-error.spec.ts:105:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (7.5s)
+  ✓   3 [chromium] › e2e/core-19c-delete-button-error.spec.ts:123:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (8.9s)
+  ✓   4 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (8.8s)
+  ✓   2 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:90:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (26.9s)
+  ✘   6 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:247:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (2.8s)
+  ✓   5 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (6.7s)
+  ✓   8 [chromium] › e2e/core-19c-delete-button-error.spec.ts:183:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่ (5.7s)
+  ✓   7 [chromium] › e2e/core-44-cart-summary-qty.spec.ts:67:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2) (15.0s)
+  ✓   9 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:130:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน (8.7s)
+  ✓  10 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (744ms)
+  ✓  11 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (4.8s)
+    test-results/core-42-cart-voucher-layou-57f41-นะคัดลอกล้มอยู่ในแถวใต้ปุ่ม-chromium/test-failed-1.png
+  1 failed
+  10 passed (55.8s)
+หมายเหตุ: core-42 AC-136b ล้มรอบแรกเพราะ backend ในเครื่องไม่ได้ตั้ง EVOUCHER_ENCRYPTION_KEY (import codes 500) — ตั้งแล้วรันซ้ำ:
+  ✓  1 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:90:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (10.2s)
+  ✓  2 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:247:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (6.3s)
+  2 passed (17.6s)
+
+== playwright --project=unit (hygiene: no waitForTimeout/force ฯลฯ) ==
+  71 passed (1.4s)
+
+== pnpm lint / pnpm typecheck ==
+lint: exit 0 (0 errors; warning เดิมทั้งหมด (backend 2, storefront 31) — ไม่มีในบรรทัดที่ task นี้แตะ)
+typecheck: exit 0

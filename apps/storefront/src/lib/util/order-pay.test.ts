@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+import { paymentSessionResult } from "./action-result"
 
 import {
   GroupBuyOrder,
@@ -159,28 +161,41 @@ describe("orderPayView", () => {
 })
 
 // spec 06 กฎข้อ 9 (d)/(d2): ไม่ดู status code อื่นนอกจาก 409 + code ของเรา และ 401
+// CORE-4i-b: รับผลจาก helper กลาง (`paymentSessionResult` แปลง status/code — test ใน action-result.test.ts)
 describe("sessionCreateOutcome", () => {
-  it.each([200, 201])("%i → created", (status) => {
-    expect(sessionCreateOutcome(status, null)).toBe("created")
+  it("ok → created", () => {
+    expect(sessionCreateOutcome({ ok: true })).toBe("created")
   })
 
-  it("409 PAYMENT_ALREADY_COMPLETED → already-paid", () => {
-    expect(sessionCreateOutcome(409, "PAYMENT_ALREADY_COMPLETED")).toBe("already-paid")
+  it("PAYMENT_ALREADY_COMPLETED → already-paid", () => {
+    expect(sessionCreateOutcome({ error: "PAYMENT_ALREADY_COMPLETED" })).toBe("already-paid")
   })
 
-  it("401 → unauthorized", () => {
-    expect(sessionCreateOutcome(401, null)).toBe("unauthorized")
+  it("unauthorized → unauthorized", () => {
+    expect(sessionCreateOutcome({ error: "unauthorized" })).toBe("unauthorized")
   })
 
+  it("failed → check-status", () => {
+    expect(sessionCreateOutcome({ error: "failed" })).toBe("check-status")
+  })
+})
+
+describe("paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม)", () => {
   it.each([
-    [500, null],
-    [400, null],
-    [409, null],
-    [409, "OTHER"],
-    [403, null],
-    [0, null], // network error
-  ])("%i %s → check-status", (status, code) => {
-    expect(sessionCreateOutcome(status, code)).toBe("check-status")
+    [200, null, "created"],
+    [201, null, "created"],
+    [409, "PAYMENT_ALREADY_COMPLETED", "already-paid"],
+    [401, null, "unauthorized"],
+    [500, null, "check-status"],
+    [400, null, "check-status"],
+    [409, null, "check-status"],
+    [409, "OTHER", "check-status"],
+    [500, "PAYMENT_ALREADY_COMPLETED", "check-status"],
+    [403, null, "check-status"],
+    [0, null, "check-status"], // network error
+  ] as const)("%i %s → %s", (status, code, outcome) => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    expect(sessionCreateOutcome(paymentSessionResult({ status, code }))).toBe(outcome)
   })
 })
 

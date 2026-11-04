@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => "/th/checkout",
 }))
-vi.mock("@lib/data/cart", () => ({ setShippingMethod: vi.fn().mockResolvedValue(undefined) }))
+vi.mock("@lib/data/cart", () => ({ setShippingMethod: vi.fn().mockResolvedValue({ ok: true }) }))
 vi.mock("@lib/data/fulfillment", () => ({ calculatePriceForShippingOption: vi.fn() }))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true

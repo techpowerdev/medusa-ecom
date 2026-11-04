@@ -5,8 +5,10 @@ import {
   placeOrder,
   renewPromptPaySession,
 } from "@lib/data/cart"
+import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import {
+  PAYMENT_ALREADY_COMPLETED,
   PROMPTPAY_POLL_MS,
   promptPayFallbackAllowed,
   promptPayFallbackCanPoll,
@@ -35,6 +37,20 @@ type Props = {
 type Qr = { image: string; deadline: number }
 
 const PAY_WITH_PROMPTPAY = "ชำระด้วยพร้อมเพย์"
+
+/**
+ * CORE-4i-b (กฎข้อ 72): สร้าง session พร้อมเพย์ใหม่ตอน QR หมดอายุ — 409 `PAYMENT_ALREADY_COMPLETED` → already-paid (PAY-6b),
+ * ล้มแบบอื่น → ข้อความไทย (`unauthorized` → SIGN_IN_AGAIN_MESSAGE)
+ */
+export const renewPromptPayQr = async (
+  cart: HttpTypes.StoreCart,
+  providerId: string
+): Promise<{ status: "renewed" | "already-paid" } | { status: "error"; message: string }> => {
+  const result = await settleAction(renewPromptPaySession(cart, providerId))
+  if ("ok" in result) return { status: "renewed" }
+  if (result.error === PAYMENT_ALREADY_COMPLETED) return { status: "already-paid" }
+  return { status: "error", message: actionErrorMessage(result.error, "สร้างคิวอาร์โค้ดพร้อมเพย์ใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง") }
+}
 
 /**
  * PAY-2 (spec 06): PromptPay — แสดง QR เอง (confirmPromptPayPayment แบบ handleActions: false),
@@ -143,7 +159,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     // สร้าง session ใหม่ = Medusa ลบ session เดิม → Stripe provider cancel PaymentIntent เดิม (cart ยังอยู่)
     // PAY-6b: guard ของ backend ตอบ 409 PAYMENT_ALREADY_COMPLETED ถ้าชำระไปแล้ว (race) → ไม่แสดงหมดอายุ
     setSubmitting(true) // ระหว่างรอผลห้ามกดปุ่มซ้ำ
-    const renewed = await renewPromptPaySession(cart, session!.provider_id)
+    const renewed = await renewPromptPayQr(cart, session!.provider_id)
     setSubmitting(false)
     if (renewed.status === "already-paid") {
       awaitOrder()

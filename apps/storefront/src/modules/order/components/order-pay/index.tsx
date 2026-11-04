@@ -3,7 +3,9 @@
 import { RadioGroup } from "@headlessui/react"
 import { paymentInfoMap } from "@lib/constants"
 import { retrieveGroupBuyOrder } from "@lib/data/group-buy"
-import { createPaymentSession } from "@lib/data/payment"
+import { startPaymentSession } from "@lib/data/payment"
+import { settleAction } from "@lib/util/action-result"
+import { SIGN_IN_AGAIN_MESSAGE } from "@lib/util/error-message"
 import { convertToLocale } from "@lib/util/money"
 import {
   GroupBuyOrder,
@@ -126,14 +128,15 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
       if (!collection) return
       setBusy(true)
       setError(null)
-      const res = await createPaymentSession(collection.id, providerId).catch(() => ({ status: 0, code: null }))
-      const outcome = sessionCreateOutcome(res.status, res.code)
+      // CORE-4i-b (กฎข้อ 72): action ที่ reject เอง = failed → (d2)
+      const outcome = sessionCreateOutcome(await settleAction(startPaymentSession(collection.id, providerId)))
       if (outcome === "created") {
         if (!(await read())) fail()
       } else if (outcome === "already-paid") {
         awaitCapture()
       } else if (outcome === "unauthorized") {
-        // token หมดอายุ → layout ของ account แสดงหน้า login
+        // token หมดอายุ → layout ของ account แสดงหน้า login (ข้อความเดียวทั้งเว็บระหว่างรอ/ถ้ายังอยู่หน้านี้)
+        setError(SIGN_IN_AGAIN_MESSAGE)
         router.refresh()
       } else {
         // (d2) อ่าน GB-8 1 ครั้ง (นับรวมในเพดาน) แล้วตัดสินจากสถานะ ไม่ดู status code/ข้อความ — guard อาจแพ้ race กับ webhook

@@ -17,6 +17,9 @@ import {
 } from "../lib/evoucher-pool-form"
 import { createSingleFlight } from "../lib/single-flight"
 
+// ตัวเลือก partner ของฟอร์ม Create pool คงเพดานเดิม (ทำเป็น Combobox ค้นหาได้นอกขอบเขต ADM-5)
+const PARTNER_SELECT_QUERY = { limit: 100, offset: 0 }
+
 // EV-6: "Voucher pool" บนหน้า variant — พาร์ทเนอร์, face value, สต็อกจาก pool; ยังไม่มี pool → สร้างได้ที่นี่
 const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpTypes.AdminProductVariant>) => {
   const queryClient = useQueryClient()
@@ -38,8 +41,8 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
 
   // modal-only: รายชื่อพาร์ทเนอร์โหลดเมื่อเปิดฟอร์ม
   const { data: partners } = useQuery({
-    queryKey: evoucherKeys.partners,
-    queryFn: evoucherApi.listPartners,
+    queryKey: [...evoucherKeys.partners, PARTNER_SELECT_QUERY],
+    queryFn: () => evoucherApi.listPartners(PARTNER_SELECT_QUERY),
     enabled: open,
   })
 
