@@ -2,7 +2,7 @@ import { Button, FocusModal, Heading, Input, Label, Select, Switch, Text, toast 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useRef, useState } from "react"
 import { groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
-import { CampaignForm, emptyCampaignForm, isEndsAtPast, toCampaignBody } from "../../lib/group-buy-form"
+import { CampaignForm, emptyCampaignForm, isEndsAtPast, newIdempotencyKey, toCampaignBody } from "../../lib/group-buy-form"
 import { ProductPicker } from "./product-picker"
 
 type TextKey = {
@@ -46,7 +46,7 @@ export const CreateCampaign = () => {
   // GB-6a D1: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างคลิกใน task เดียว
   const inFlight = useRef(false)
   // GB-13 (กฎข้อ 33d): key เดียวต่อการเปิดฟอร์ม — submit ซ้ำหลัง network ล้มได้แคมเปญเดิม
-  // ตั้งใน openModal เท่านั้น (ไม่เรียก randomUUID ตอน render — context ที่ไม่ secure จะ throw ทั้งหน้า)
+  // ตั้งใน openModal เท่านั้นด้วย newIdempotencyKey (GB-15: getRandomValues ใช้ได้ทั้ง http/https — ไม่ใช้ API ที่มีเฉพาะ secure context)
   const idempotencyKey = useRef("")
   const set = (patch: Partial<CampaignForm>) => {
     setMaxQuantityError(null)
@@ -90,7 +90,7 @@ export const CreateCampaign = () => {
   }
 
   const openModal = () => {
-    idempotencyKey.current = crypto.randomUUID()
+    idempotencyKey.current = newIdempotencyKey()
     setForm(emptyCampaignForm())
     setMaxQuantityError(null)
     setProductError(null)
