@@ -1,7 +1,8 @@
+import { retrieveCart } from "@lib/data/cart"
 import { listCartShippingMethods } from "@lib/data/fulfillment"
 import { listCartPaymentMethods } from "@lib/data/payment"
 import {
-  checkoutStep,
+  checkoutRedirectWithLatest,
   deliveryStepDone,
   isDigitalOnlyCart,
   safeCountryCode,
@@ -38,35 +39,39 @@ export default async function CheckoutForm({
 
   // CORE-35 (spec 01 กฎข้อ 93): "เสร็จ" ใช้ option ที่เลือกในรายการที่กรองแล้ว (กฎข้อ 89) — คำนวณที่นี่ครั้งเดียวแล้วส่งเป็น prop
   // method ค้างที่ถูกกรองออก (เช่น Digital delivery บน cart ที่ต้องจัดส่ง) ไม่นับ
-  const options = shippingOptionsForCart(shippingMethods, cart)
-  const deliveryDone = deliveryStepDone(cart, options)
-  // CORE-41 (กฎข้อ 99): เปิด step=payment/review ตรงๆ ขณะขั้นก่อนหน้ายังไม่เสร็จ → ขั้นแรกที่ยังไม่เสร็จ (address หรือ delivery)
-  // ปลายทาง (address/delivery) ไม่เข้าเงื่อนไขนี้ จึงไม่ redirect วน
-  if (step === "payment" || step === "review") {
-    const firstIncomplete = checkoutStep(cart, options)
-    if (firstIncomplete !== "payment") {
-      const cc = safeCountryCode(countryCode)
-      redirect(`${cc ? `/${cc}` : ""}/checkout?step=${firstIncomplete}`)
-    }
+  // CORE-41/CORE-45 (กฎข้อ 99, 103): step ที่ใช้ไม่ได้ (ไม่มี/ไม่รู้จัก, delivery ก่อนมีที่อยู่หรือของ digital-only,
+  // payment/review ก่อนขั้นก่อนหน้าเสร็จ) → ขั้นแรกที่ยังไม่เสร็จ; ปลายทางไม่เข้าเงื่อนไขซ้ำ จึงไม่ redirect วน
+  // D-1 (qa PR #288): `cart` มาจาก force-cache ซึ่งอาจยังเป็นค่าก่อน mutation (หน้า step=delivery หลัง setAddresses)
+  // → ก่อน redirect ตัดสินซ้ำด้วย cart ล่าสุด (no-store) แล้ว render ด้วย cart นั้น; ไม่ redirect = ไม่อ่าน cart เพิ่ม
+  const { redirectStep, cart: current, options } = await checkoutRedirectWithLatest(
+    step,
+    cart,
+    (c) => shippingOptionsForCart(shippingMethods, c),
+    () => retrieveCart(cart.id, undefined, { fresh: true })
+  )
+  if (redirectStep) {
+    const cc = safeCountryCode(countryCode)
+    redirect(`${cc ? `/${cc}` : ""}/checkout?step=${redirectStep}`)
   }
+  const deliveryDone = deliveryStepDone(current, options)
 
   return (
     <div className="w-full grid grid-cols-1 gap-y-8">
-      <Addresses cart={cart} customer={customer} />
+      <Addresses cart={current} customer={customer} />
 
       {/* EV-7c (spec 02 กฎข้อ 24a): cart digital-only ไม่มีขั้น delivery;
           CORE-33: Shipping กรองตามกฎข้อ 89 เอง (shippingOptionsForCart) เพื่อใช้รายการเดียวกันกับ method ที่เลือก */}
-      {!isDigitalOnlyCart(cart) && (
-        <Shipping cart={cart} availableShippingMethods={shippingMethods} />
+      {!isDigitalOnlyCart(current) && (
+        <Shipping cart={current} availableShippingMethods={shippingMethods} />
       )}
 
       <Payment
-        cart={cart}
+        cart={current}
         availablePaymentMethods={paymentMethods}
         deliveryDone={deliveryDone}
       />
 
-      <Review cart={cart} deliveryDone={deliveryDone} />
+      <Review cart={current} deliveryDone={deliveryDone} />
     </div>
   )
 }
