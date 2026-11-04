@@ -1,0 +1,91 @@
+# CORE-42 (spec 01 กฎข้อ 100, AC-136) — ผล test
+# base: origin/develop 023a720; node v22.23.3; รันในเครื่อง backend (medusa develop) :9421, storefront (next dev) :8421, DB medusa_core42, redis db 9
+
+## 1) RED — e2e ก่อนแก้โค้ด (e2e/core-42-cart-voucher-layout.spec.ts)
+# หมายเหตุ: รอบแรกที่ cart ไม่มีส่วนลด AC-136a ผ่านตั้งแต่ก่อนแก้ (฿590 พอดีจอ) — ภาพ qa #264 (qa-04) ล้นเมื่อ line มีส่วนลด
+# (ราคาเดิมขีดฆ่า + ราคาลด ฿560.50) จึงใส่โค้ด 5% ใน test ให้ตรงสถานการณ์ของ qa แล้วจึงล้มด้วยสาเหตุที่ถูกต้อง
+  1) [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:60:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 และคอลัมน์ราคาต่อหน่วยยังแสดงที่ 1280 › 375: หน้าไม่ล้นแนวนอน และ product-price อยู่ในจอครบ ไม่ถูกตัด
+    Error: expect(received).toBeLessThanOrEqual(expected)
+    Expected: <= 375
+    Received:    385
+  2) [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:154:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม › 375: สถานะว่าง → ไม่มีช่องว่างใต้แถวรหัส และ live region ยังอยู่
+    Error: page.evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')   (ยังไม่มี data-testid="voucher-code-row")
+  2 failed
+
+## 2) GREEN — e2e หลังแก้ + regression ที่เกี่ยว (รันทีละไฟล์)
+== core-42-cart-voucher-layout
+  ✓  1 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:60:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 และคอลัมน์ราคาต่อหน่วยยังแสดงที่ 1280 (1.9s)
+  ✓  2 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:154:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (2.5s)
+  2 passed (4.9s)
+== core-37-copy-button
+  ✓  1 [chromium] › e2e/core-37-copy-button.spec.ts:14:5 › AC-131: แถวรหัสของการ์ด voucher ไม่เยื้องที่ 1280 และข้อความคัดลอกล้มไม่ล้นจอที่ 375 (1.8s)
+  1 passed (2.3s)
+== evoucher-storefront
+  ✓  1 [chromium] › e2e/evoucher-storefront.spec.ts:16:5 › AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไทย ส่วนสินค้าปกติไม่มี (4.9s)
+  ✓  2 [chromium] › e2e/evoucher-storefront.spec.ts:40:5 › AC-6 + AC-36: บัตรกำนัลของฉันแสดงเฉพาะ code ของตนเอง พร้อมปุ่มคัดลอก (3.6s)
+  2 passed (9.6s)
+== thai-ui-cart-order
+  ✓  1 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (4.3s)
+  ✓  2 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (8.9s)
+  2 passed (14.2s)
+== core-19c-delete-button-error
+  ✓  1 [chromium] › e2e/core-19c-delete-button-error.spec.ts:105:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (2.3s)
+  ✓  2 [chromium] › e2e/core-19c-delete-button-error.spec.ts:123:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (3.3s)
+  ✓  3 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (1.9s)
+  ✓  4 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (1.6s)
+  ✓  5 [chromium] › e2e/core-19c-delete-button-error.spec.ts:183:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่ (1.3s)
+  5 passed (13.5s)
+== core-26-cart-dropdown-total
+  ✓  1 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:148:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (2.3s)
+  ✓  2 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:203:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (19.9s)
+  2 passed (24.3s)
+
+## 3) unit (vitest — ทั้ง storefront รวม AC-124 src/core-31-copy-button.test.ts 11/11)
+ Test Files  82 passed (82)
+      Tests  906 passed (906)
+## 4) Playwright project unit: 54 passed
+## 5) pnpm lint && pnpm typecheck (root): ผ่าน 0 errors (warning เดิม ไม่มีในไฟล์ที่แก้)
+## 6) pnpm --filter storefront build: ผ่าน
+
+# ===== รอบแก้ตาม review/qa ของ PR #278 (base origin/develop a88b14d; storefront prod build `next build`/`next start` :8421, backend :9421) =====
+
+## R1) วัด layout ที่ 1280 บนโค้ดก่อน CORE-42 (origin/develop) — baseline ของ e2e
+# `/cart` ใช้ `Table` ของ storefront (`modules/common/components/ui`, clsx: td `p-4`, th `px-4`) ไม่ใช่ `@medusajs/ui`
+# padding ซ้าย/ขวา (th และ td เหมือนกัน): ["0px/16px","16px/16px","16px/16px","16px/16px","16px/0px"], กล่องปุ่มลบ/จำนวน 112px
+# บนโค้ดของ PR head 3d05ada ค่าเท่ากันทุกช่อง (step 1280 ผ่าน) — ช่องจำนวนที่ ≥ small ไม่ได้เปลี่ยนจาก 0/24 เป็น 16/16
+
+## R2) RED — qa #278 D-1 (จำนวน 99 + โค้ด 5%, ฿58,410 / ฿55,489.50) บนโค้ดของ PR head 3d05ada
+  1) [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:88:5 › AC-136a: ... › 375 จำนวน 99: หน้าไม่ล้นแนวนอน และ product-price อยู่ในจอครบ ไม่ถูกตัด
+    Error: expect(received).toBeLessThanOrEqual(expected)
+    Expected: <= 375
+    Received:    381
+  1 failed
+
+## R3) ทางที่ลองแล้วไม่ใช้: กล่องจำนวน `w-20`/`w-[5.5rem]` ที่ < small → core-19c AC-100 (375px) ล้ม
+#     "ความสูง error (line-height 20px) Expected: <= 41 Received: 60" (ข้อความ error ตัด 3 บรรทัด) — จึงคงกล่อง w-28 แล้วลด padding ช่องชื่อสินค้าแทน
+
+## R4) GREEN — e2e บน prod build (รันทีละไฟล์)
+== core-42-cart-voucher-layout
+  ✓  1 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:88:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (2.5s)
+  ✓  2 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:195:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (1.4s)
+  2 passed (4.4s)
+== core-37-copy-button
+  ✓  1 [chromium] › e2e/core-37-copy-button.spec.ts:14:5 › AC-131: แถวรหัสของการ์ด voucher ไม่เยื้องที่ 1280 และข้อความคัดลอกล้มไม่ล้นจอที่ 375 (1.3s)
+  1 passed (1.7s)
+== thai-ui-cart-order
+  ✓  1 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (560ms)
+  ✓  2 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (4.1s)
+  2 passed (5.1s)
+== core-26-cart-dropdown-total
+  ✓  1 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:148:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (1.7s)
+  ✓  2 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:203:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (18.4s)
+  2 passed (20.8s)
+== core-19c-delete-button-error
+  ✓  1 [chromium] › e2e/core-19c-delete-button-error.spec.ts:105:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (866ms)
+  ✓  2 [chromium] › e2e/core-19c-delete-button-error.spec.ts:123:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1.0s)
+  ✓  3 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (798ms)
+  ✓  4 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (750ms)
+  ✓  5 [chromium] › e2e/core-19c-delete-button-error.spec.ts:183:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่ (847ms)
+  5 passed (4.7s)
+
+## R5) unit vitest 906/906 (82 files), Playwright project unit 54/54; `pnpm lint && pnpm typecheck` (root) ผ่าน 0 errors; storefront build ผ่าน
