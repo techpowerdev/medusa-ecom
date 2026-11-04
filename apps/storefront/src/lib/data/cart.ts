@@ -6,6 +6,7 @@ import { checkoutConflictMessage } from "@lib/util/checkout-error"
 import { safeCountryCode } from "@lib/util/digital-checkout"
 import medusaError from "@lib/util/medusa-error"
 import { ActionResult, actionErrorMessage, actionFailure } from "@lib/util/action-result"
+import { INSUFFICIENT_INVENTORY, isInsufficientInventory } from "@lib/util/insufficient-inventory"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
@@ -194,7 +195,7 @@ export async function updateLineItem({
 }: {
   lineId: string
   quantity: number
-}): Promise<ActionResult> {
+}): Promise<ActionResult<typeof INSUFFICIENT_INVENTORY>> {
   const headers = {
     ...(await getAuthHeaders()),
   }
@@ -213,6 +214,10 @@ export async function updateLineItem({
   try {
     await sdk.store.cart.updateLineItem(cartId, lineId, { quantity }, {}, headers)
   } catch (error) {
+    // CORE-48 (กฎข้อ 106a): 400 stock ไม่พอของ Medusa → code ของตัวเอง (ไม่ใช่ 409 ของ CHECKOUT_CONFLICTS) ก่อน helper กลาง
+    if (isInsufficientInventory(error)) {
+      return { error: INSUFFICIENT_INVENTORY }
+    }
     return actionFailure(error)
   }
 
