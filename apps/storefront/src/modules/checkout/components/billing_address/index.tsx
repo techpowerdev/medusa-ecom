@@ -80,6 +80,7 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           autoComplete="address-level2"
           value={formData["billing_address.city"]}
           onChange={handleChange}
+          data-testid="billing-city-input"
         />
         <CountrySelect
           name="billing_address.country_code"

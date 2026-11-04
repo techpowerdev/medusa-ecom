@@ -11,6 +11,7 @@ import {
 } from "./support/medusa"
 import { Headers } from "./support/medusa"
 import { THAI } from "./support/thai-text"
+import { addToCartFromPdp } from "./support/server-action"
 
 // CORE-4e: spec 01 กฎข้อ 55–56, AC-91 — placeholder ของ CountrySelect เป็นไทย, popup ทักทายที่อยู่/shipping nudge หาได้ด้วย test id,
 // ปุ่ม X ของ nudge มี aria-label ไทย, floating label ไม่ทับค่าที่เติมจากที่อยู่ที่บันทึกไว้, STORE_NAME ตามด้วย " แล้ว" (เว้นวรรค)
@@ -176,8 +177,7 @@ test("AC-91: ขั้นที่อยู่ของ checkout — placeholder
       "shipping nudge: หาได้ด้วย test id และปุ่ม X มี aria-label ไทย",
       async () => {
         await page.goto(`/${CC}/products/${PRODUCT}`)
-        await page.getByTestId("add-product-button").click()
-        await expect(page.getByTestId("add-product-button")).toBeEnabled()
+        await addToCartFromPdp(page, { request, pk, customer })
         await page.goto(`/${CC}/store`)
         const popup = page.getByTestId("free-shipping-nudge-popup")
         await expect(popup).toBeVisible()

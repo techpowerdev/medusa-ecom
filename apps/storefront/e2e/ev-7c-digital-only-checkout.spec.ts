@@ -10,6 +10,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { expectThai } from "./support/thai-text"
+import { addToCartFromPdp, waitForServerAction } from "./support/server-action"
 
 // EV-7c (spec 02 กฎข้อ 24, AC-3 ส่วน storefront, AC-37): checkout ของ cart ที่มีแต่ e-voucher
 // ไม่มีขั้น delivery, ขั้นที่อยู่เป็นที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี (ไม่มีคำว่า "จัดส่ง"), manual payment (CI)
@@ -100,8 +101,7 @@ test("AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น 
 
   await step("ใส่ voucher ลงตะกร้าแล้วไปชำระเงิน", async () => {
     await page.goto(`/${CC}/products/${handle}`)
-    await page.getByTestId("add-product-button").click()
-    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await addToCartFromPdp(page, { request, pk, customer })
     await page.goto(`/${CC}/cart`)
     await expect(page.getByTestId("product-row")).toHaveCount(1)
     await page.getByTestId("checkout-button").click()
@@ -122,7 +122,10 @@ test("AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น 
     await page.getByTestId("billing-postal-input").fill(BILLING.postal_code)
     await page.getByTestId("billing-country-select").selectOption(BILLING.country_code)
     await page.getByTestId("billing-email-input").fill(customer.email)
+    // CORE-43 (กฎข้อ 101b): setAddresses ช้าเกิน 5 วินาทีได้ตอนเครื่องโหลดสูง — รอ action ที่ส่งอีเมลนี้ตอบ redirect ไปขั้นชำระเงิน
+    const saved = waitForServerAction(page, (body) => body.includes(customer.email))
     await page.getByTestId("submit-address-button").click()
+    expect((await saved).headers()["x-action-redirect"]).toMatch(/step=payment/)
   })
 
   await step("ข้ามไปขั้นชำระเงินทันที (manual payment)", async () => {
@@ -172,8 +175,7 @@ test("AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้า�
   await step("ใส่ voucher + t-shirt ลงตะกร้า", async () => {
     for (const product of [handle, "t-shirt"]) {
       await page.goto(`/${CC}/products/${product}`)
-      await page.getByTestId("add-product-button").click()
-      await expect(page.getByTestId("add-product-button")).toBeEnabled()
+      await addToCartFromPdp(page, { request, pk, customer })
     }
     await page.goto(`/${CC}/cart`)
     await expect(page.getByTestId("product-row")).toHaveCount(2)

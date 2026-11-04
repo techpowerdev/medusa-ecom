@@ -9,6 +9,7 @@ import {
   signInAs,
   variantOf,
 } from "./support/medusa"
+import { addToCartFromPdp } from "./support/server-action"
 
 // AF-3b (spec 05 กฎ 23, AC-21): last click — click Ann แล้ว add to cart, click Bob แล้ว checkout ทันทีโดยไม่ add เพิ่ม
 // → cart.metadata.affiliate_token ตอน complete เป็นของ Bob และ attribution ของ order เป็นของ Bob
@@ -64,8 +65,7 @@ test("AF-3b: click Ann → add to cart → click Bob → checkout ทันท�
     expect(annToken, "cookie aff ของ Ann").toBeTruthy()
     await signInAs(context, baseURL!, customer)
     await page.goto(`/${CC}/products/${PRODUCT}`)
-    await page.getByTestId("add-product-button").click()
-    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await addToCartFromPdp(page, { request, pk, customer })
     await expect.poll(async () => (await cartMetadata())?.affiliate_token).toBe(annToken)
   })
 

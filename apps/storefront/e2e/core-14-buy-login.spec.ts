@@ -8,6 +8,7 @@ import {
   publishableKey,
   variantOf,
 } from "./support/medusa"
+import { waitForServerAction } from "./support/server-action"
 
 // CORE-14a: spec 01 AC-41, AC-42, AC-43, AC-56 (กฎ 24-25) — หา element ด้วย data-testid เท่านั้น
 // ข้อมูลตั้งต้นจาก seed (CORE-2): region Thailand, t-shirt
@@ -70,7 +71,11 @@ test("AC-41: /buy ไม่มี session → login พร้อม return URL �
   await step("ล็อกอิน → 303 กลับ /buy → /th/checkout และ cart ใหม่เป็นของลูกค้า", async () => {
     await page.getByTestId("email-input").fill(customer.email)
     await page.getByTestId("password-input").fill(customer.password)
+    // CORE-43 (กฎข้อ 101b): action ของ login ทำ login + สร้าง cart + เพิ่มสินค้าแล้ว redirect ในตัว — ตอนเครื่องโหลดสูง
+    // ใช้ > 4 วินาที (trace) จึงรอ response ของ action ที่ส่งอีเมลนี้ก่อน แล้วจึงตรวจ URL ปลายทาง
+    const signedIn = waitForServerAction(page, (body) => body.includes(customer.email))
     await page.getByTestId("sign-in-button").click()
+    expect((await signedIn).headers()["x-action-redirect"]).toMatch(new RegExp(`^/${CC}/checkout`))
     await expect(page).toHaveURL(new RegExp(`/${CC}/checkout`))
 
     const cartId = (await context.cookies()).find((c) => c.name === "_medusa_cart_id")?.value

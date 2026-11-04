@@ -7,6 +7,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { addToCartFromPdp } from "./support/server-action"
 
 // AF-2 (spec 05): ลิงก์ `/r/<code>?to=` → cookie `aff` (httpOnly) → เพิ่มสินค้า → cart metadata.affiliate_token
 // เตรียมสำหรับ AC-3/AC-1 (attribution ทำใน AF-3) — หา element ด้วย data-testid (ADR-014)
@@ -52,8 +53,7 @@ test("AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ�
   await step("ล็อกอินแล้วเพิ่มสินค้า → cart ของ customer มี metadata.affiliate_token เท่ากับ cookie", async () => {
     await signInAs(context, baseURL!, customer)
     await page.goto(`/${CC}/products/${PRODUCT}`)
-    await page.getByTestId("add-product-button").click()
-    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await addToCartFromPdp(page, { request, pk, customer })
 
     await expect
       .poll(async () => {
