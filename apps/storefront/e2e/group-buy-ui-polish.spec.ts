@@ -80,7 +80,7 @@ test.describe("GB-12: UI ของ group buy (AC-51)", () => {
     await evidence("01-selection-title-price")
   })
 
-  test("375px: กล่องยืนยันออกจากกลุ่มสองแถว ปุ่มไม่ตัดคำ ไม่ล้นจอ; 1280px แถวเดียว; ไม่มี no-orders-container", async ({
+  test("375px: กล่องยืนยันออกจากกลุ่มสองแถว ปุ่มไม่ตัดคำ ไม่ล้นจอ; 639px สองแถว, 640/768/1280px แถวเดียว; ไม่มี no-orders-container", async ({
     page,
     context,
     request,
@@ -116,12 +116,23 @@ test.describe("GB-12: UI ของ group buy (AC-51)", () => {
     await expectThai(page, ["group-leave-confirm-box"])
     await evidence("02-leave-confirm-375")
 
-    await page.setViewportSize({ width: 1280, height: 720 })
+    // กฎข้อ 32d: breakpoint 640px (Tailwind `sm`) — `small` ของ starter คือ 1024px จึงตรวจทั้งสองฝั่งของ 640 และช่วง 640–1023
+    const twoRows = async () => {
+      const [mm, cc] = [await box(message), await box(confirm)]
+      return mm.y + mm.height <= cc.y
+    }
+    const oneRow = async () => {
+      const [mm, cc] = [await box(message), await box(confirm)]
+      return Math.abs(mm.y + mm.height / 2 - (cc.y + cc.height / 2)) < 5
+    }
+    await page.setViewportSize({ width: 639, height: 812 })
     await expect(confirmBox).toBeVisible()
-    const [m2, c2] = [await box(message), await box(confirm)]
-    expect(
-      Math.abs(m2.y + m2.height / 2 - (c2.y + c2.height / 2))
-    ).toBeLessThan(5)
+    expect(await twoRows(), "639px ต้องสองแถว").toBe(true)
+    for (const width of [640, 768, 1280]) {
+      await page.setViewportSize({ width, height: 812 })
+      await expect(confirmBox).toBeVisible()
+      expect(await oneRow(), `${width}px ต้องแถวเดียว`).toBe(true)
+    }
     await expect(page.getByTestId("no-orders-container")).toHaveCount(0)
   })
 
