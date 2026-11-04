@@ -582,6 +582,8 @@ medusaIntegrationTestRunner({
           idempotency_key: key,
         })
         expect(failed.status).toBeGreaterThanOrEqual(400)
+        // GB-N7 (กฎข้อ 38, AC-57): assertion นี้ยืนยันว่า request แรกล้มที่ promotion module (createPromotionsWorkflow) หลัง acquireLockStep
+        // ไม่ใช่ล้มที่ zod validator ของ route — ถ้าลบทิ้ง test อาจผ่านทั้งที่ไม่เคยถือ lock เลย จึงไม่ได้พิสูจน์ว่า compensation ปล่อย lock
         expect(JSON.stringify(failed.data)).toContain("percentage number between 0 and 100")
         expect(await counts()).toEqual(before)
 
