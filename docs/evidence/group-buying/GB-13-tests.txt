@@ -65,3 +65,15 @@ exit 0 (0 errors; warning เดิมเท่านั้น)
 ## pnpm --filter backend build
 info:    Backend build completed successfully (5.50s)
 info:    Frontend build completed successfully (13.65s)
+
+## รอบแก้ review #259 (nit: ไม่เรียก randomUUID ตอน render; key ว่างไม่ส่ง field) — หลัง merge origin/develop (de5e915)
+### e2e admin: e2e/group-buy-admin-form.spec.ts
+  ✓  1 [chromium] › e2e/group-buy-admin-form.spec.ts:86:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (2.5s)
+  ✓  2 [chromium] › e2e/group-buy-admin-form.spec.ts:168:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.5s)
+  ✓  3 [chromium] › e2e/group-buy-admin-form.spec.ts:222:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.8s)
+  ✓  4 [chromium] › e2e/group-buy-admin-form.spec.ts:279:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (3.8s)
+  4 passed (12.3s)
+### pnpm lint && pnpm typecheck: exit 0 (0 errors)
+### pnpm --filter backend build
+info:    Backend build completed successfully (5.89s)
+info:    Frontend build completed successfully (14.90s)
