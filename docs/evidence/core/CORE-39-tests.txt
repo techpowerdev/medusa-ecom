@@ -1,0 +1,25 @@
+# CORE-39 (spec 01 กฎข้อ 97, AC-133) — ผล test 2026-11-04 15:23
+
+## Red (ก่อนแก้ login-return.ts): token 65 ตัวยังผ่าน allow-list
+Tests  1 failed | 7 passed (8) — AssertionError: "/th/g/a×65" expected to be null
+
+## Green: vitest login-return.test.ts
+ ✓ src/lib/util/login-return.test.ts > loginPathForReturn > points to the account (login) page of the country with an encoded return path 1ms
+ ✓ src/lib/util/login-return.test.ts > readReturnTo > returns a /buy/ path from the login form 7ms
+ ✓ src/lib/util/login-return.test.ts > readReturnTo > returns null when missing or not a same-origin /buy/ path (no open redirect) 0ms
+ ✓ src/lib/util/login-return.test.ts > readReturnTo — group page and home (CORE-30) > returns the group page path and the country home path 0ms
+ ✓ src/lib/util/login-return.test.ts > readReturnTo — group page and home (CORE-30) > returns null for anything else (no open redirect; query is rejected on the new paths) 0ms
+ ✓ src/lib/util/login-return.test.ts > readReturnTo — hardening (CORE-39) > returns null for backslash, encoded slashes, trailing newline and a 65-char token 0ms
+ ✓ src/lib/util/login-return.test.ts > readReturnTo — hardening (CORE-39) > returns a group page path with a 64-char token unchanged 0ms
+ ✓ src/lib/util/login-return.test.ts > isBuyReturnPath > is true only for /buy/ return paths 0ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+
+## unit ทั้งชุดของ storefront
+ Test Files  82 passed (82)
+      Tests  902 passed (902)
+
+## grep AC-133
+8:const GROUP_PAGE_RE = /^\/[a-z]{2}\/g\/[A-Za-z0-9_-]{1,64}$/
+220:// CORE-39 (กฎข้อ 97): ฟอร์มมีทั้ง `return_to` และ `add_variant` → `return_to` ที่ผ่าน allow-list (readReturnTo) มาก่อน
+221:// (redirect กลับหน้าเดิม หรือ /buy/ → checkout) และ `add_variant` ถูกข้าม; `return_to` ไม่ผ่าน allow-list → ใช้ `add_variant` ตามเดิม

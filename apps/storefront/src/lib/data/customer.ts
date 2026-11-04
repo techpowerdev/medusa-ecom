@@ -217,6 +217,8 @@ export async function login(
 // CORE-14 (AC-41): มาจาก /buy/... → ล็อกอินสำเร็จแล้วสร้าง cart จากลิงก์เดิมแล้วไป checkout
 // (ไม่ redirect ไป route handler `/buy` จาก server action เพราะ client router ตาม redirect แบบ RSC ไม่ได้)
 // CORE-30 (กฎข้อ 87): มาจากหน้ากลุ่ม/หน้าแรก → กลับหน้าเดิม (ไม่ join/สร้างทีมแทนลูกค้า)
+// CORE-39 (กฎข้อ 97): ฟอร์มมีทั้ง `return_to` และ `add_variant` → `return_to` ที่ผ่าน allow-list (readReturnTo) มาก่อน
+// (redirect กลับหน้าเดิม หรือ /buy/ → checkout) และ `add_variant` ถูกข้าม; `return_to` ไม่ผ่าน allow-list → ใช้ `add_variant` ตามเดิม
 async function continueAfterAuth(
   formData: FormData,
   result: CustomerAuthState

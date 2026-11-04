@@ -71,6 +71,20 @@ describe("readReturnTo — group page and home (CORE-30)", () => {
   })
 })
 
+// CORE-39 (spec 01 กฎข้อ 97, AC-133): เคสที่ qa #258 ลองมือ + จำกัดความยาว token ของหน้ากลุ่ม (join_token จริงยาว 12 ตัว)
+describe("readReturnTo — hardening (CORE-39)", () => {
+  it("returns null for backslash, encoded slashes, trailing newline and a 65-char token", () => {
+    for (const value of ["/\\evil", "/%2F%2Fevil", "/th/g/abc\n", `/th/g/${"a".repeat(65)}`]) {
+      expect(readReturnTo(form({ [RETURN_TO_PARAM]: value })), JSON.stringify(value)).toBeNull()
+    }
+  })
+
+  it("returns a group page path with a 64-char token unchanged", () => {
+    const value = `/th/g/${"A".repeat(63)}1`
+    expect(readReturnTo(form({ [RETURN_TO_PARAM]: value }))).toBe(value)
+  })
+})
+
 describe("isBuyReturnPath", () => {
   it("is true only for /buy/ return paths", () => {
     expect(isBuyReturnPath("/buy/v1:1?x=1")).toBe(true)
