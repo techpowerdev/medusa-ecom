@@ -10,6 +10,7 @@ import {
   signInAs,
   variantIdsByOption,
 } from "./support/medusa"
+import { isAddToCartBody, waitForServerAction } from "./support/server-action"
 
 // CORE-19a: spec 01 AC-62 (กฎข้อ 34), AC-63 — หา element ด้วย data-testid เท่านั้น
 // ข้อมูลตั้งต้นจาก seed (CORE-2): region Thailand, t-shirt (มีหลาย variant)
@@ -57,7 +58,7 @@ async function uiAddSizes(page: Page, sizes: string[], variantIds: Record<string
   for (const size of sizes) {
     await page.getByTestId("product-options").getByTestId("option-button").filter({ hasText: size }).click()
     await expect(page).toHaveURL(new RegExp(`[?&]v_id=${variantIds[size]}(&|$)`))
-    const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
+    const done = waitForServerAction(page, isAddToCartBody)
     await page.getByTestId("add-product-button").click()
     await done
     await expect(page.getByTestId("add-product-button")).toBeEnabled()

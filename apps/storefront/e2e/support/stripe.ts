@@ -2,6 +2,7 @@ import { APIRequestContext, BrowserContext, Frame, Page, expect } from "@playwri
 
 import { BACKEND_URL } from "./fixtures"
 import { Customer, shippingOptionId } from "./medusa"
+import { addToCartFromPdp } from "./server-action"
 import { stripeE2eMode } from "./stripe-env"
 
 // PAY-2: อ่านผลจาก Stripe test mode ด้วย secret key จาก env (test key เท่านั้น) และพา checkout ไปถึงขั้น payment
@@ -101,8 +102,7 @@ export async function checkoutToPayment(
   product: string
 ) {
   await page.goto(`/${cc}/products/${product}`)
-  await page.getByTestId("add-product-button").click()
-  await expect(page.getByTestId("add-product-button")).toBeEnabled()
+  await addToCartFromPdp(page, { request, pk, customer })
   await page.goto(`/${cc}/cart`)
   await expect(page.getByTestId("product-row")).toHaveCount(1)
 

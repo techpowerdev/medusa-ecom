@@ -10,6 +10,7 @@ import {
   signInAs,
   variantOf,
 } from "./support/medusa"
+import { isAddToCartBody, waitForServerAction } from "./support/server-action"
 
 // CORE-24: spec 01 AC-94 (กฎข้อ 59) — ตัวเลือกจำนวนบน PDP ทั้งโหมด JS และ no-JS; หา element ด้วย data-testid เท่านั้น
 // ข้อมูลตั้งต้นจาก seed (CORE-2): region Thailand, t-shirt
@@ -51,7 +52,7 @@ test("AC-94: (JS) เลือก 3 ใน product-quantity-select แล้ว�
 
   await step("เลือก 3 แล้วกดเพิ่มลงตะกร้า (server action)", async () => {
     await page.getByTestId("product-quantity-select").selectOption("3")
-    const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
+    const done = waitForServerAction(page, isAddToCartBody)
     await page.getByTestId("add-product-button").click()
     await done
     await expect(page.getByTestId("add-product-button")).toBeEnabled()
@@ -174,7 +175,7 @@ test("qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-c
   await step("กลับไปเลือก S เลือก 2 แล้วกดเพิ่ม → ข้อความหาย และ cart มี qty 2", async () => {
     await page.getByTestId("product-options").getByTestId("option-button").filter({ hasText: "S" }).click()
     await page.getByTestId("product-quantity-select").selectOption("2")
-    const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
+    const done = waitForServerAction(page, isAddToCartBody)
     await page.getByTestId("add-product-button").click()
     await done
     await expect(page.getByTestId("add-product-button")).toBeEnabled()
