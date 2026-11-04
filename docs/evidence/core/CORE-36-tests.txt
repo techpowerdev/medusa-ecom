@@ -1,0 +1,45 @@
+# CORE-36 (spec 01 กฎข้อ 94, AC-130) — ผล test storefront
+# base: origin/develop 037b8a4, node v22.23.3
+
+## Red (ก่อนแก้ component) — vitest run src/core-28-promotion-error.test.ts
+     × กดสองครั้งใน act เดียว → เรียก applyPromotions ครั้งเดียว; disabled + aria-busy ระหว่างรอ; resolve แล้วกดได้อีก 11ms
+     × ลบล้มแบบ reject → ข้อความไทยเฉพาะการลบ ไม่เท่ากับ PROMOTION_FAILED 1009ms
+     × ลบได้ { error: 'failed' } → PROMOTION_REMOVE_FAILED 4ms
+     × ใส่โค้ดล้ม (failed) → ยังเป็น PROMOTION_FAILED เดิม 1010ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > กดสองครั้งใน act เดียว → เรียก applyPromotions ครั้งเดียว; disabled + aria-busy ระหว่างรอ; resolve แล้วกดได้อีก
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+ FAIL  src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบล้มแบบ reject → ข้อความไทยเฉพาะการลบ ไม่เท่ากับ PROMOTION_FAILED
+AssertionError: expected 'ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค…' to be undefined // Object.is equality
+    162|     expect(PROMOTION_REMOVE_FAILED).toMatch(/[\u0E00-\u0E7F]/)
+ FAIL  src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบได้ { error: 'failed' } → PROMOTION_REMOVE_FAILED
+AssertionError: expected 'ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค…' to be undefined // Object.is equality
+ FAIL  src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ใส่โค้ดล้ม (failed) → ยังเป็น PROMOTION_FAILED เดิม
+AssertionError: expected 'ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค…' to be undefined // Object.is equality
+TypeError: Cannot read properties of undefined (reading 'catch')
+      Tests  4 failed | 4 passed (8)
+
+## Green — vitest run src/core-28-promotion-error.test.ts src/core-34-remove-promotion-error.test.ts (AC-130 + AC-121 + AC-128)
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: promotion-error เห็นได้แม้ช่องใส่โค้ดปิด (AC-121) > ช่องปิด + ลบโค้ดได้ unauthorized → promotion-error = SIGN_IN_AGAIN_MESSAGE โดยไม่ต้องเปิดช่อง 70ms
+ ✓ src/core-34-remove-promotion-error.test.ts > CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) > ระหว่างรอผลการลบไม่มี promotion-error; ลบสำเร็จแล้วก็ยังไม่มี 117ms
+ ✓ src/core-34-remove-promotion-error.test.ts > CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) > ระหว่างรอไม่มี promotion-error; ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE 31ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: promotion-error เห็นได้แม้ช่องใส่โค้ดปิด (AC-121) > ใส่โค้ดที่ใช้ไม่ได้แล้วปิดช่อง → promotion-error ยังมีข้อความ; ลบโค้ดสำเร็จ → ว่าง 41ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: comment ใน e2e core-19c ตรงกับพฤติกรรมหลัง CORE-14g > ไม่มีวลี 'ก่อนถึง action' 5ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > กดสองครั้งใน act เดียว → เรียก applyPromotions ครั้งเดียว; disabled + aria-busy ระหว่างรอ; resolve แล้วกดได้อีก 10ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบล้มแบบ reject → ข้อความไทยเฉพาะการลบ ไม่เท่ากับ PROMOTION_FAILED 6ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบได้ { error: 'failed' } → PROMOTION_REMOVE_FAILED 5ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE 6ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ใส่โค้ดล้ม (failed) → ยังเป็น PROMOTION_FAILED เดิม 6ms
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+
+## pnpm --filter storefront test:unit
+ Test Files  81 passed (81)
+      Tests  879 passed (879)
+
+## pnpm --filter storefront lint
+✖ 31 problems (0 errors, 31 warnings)
+(warning ทั้งหมดเป็นของเดิม ไฟล์ที่แก้ใน PR นี้ eslint ไม่มี warning/error)
+
+## pnpm --filter storefront typecheck
+tsc --noEmit: ผ่าน (exit 0)
