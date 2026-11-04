@@ -4,7 +4,8 @@
 export const RETURN_TO_PARAM = "return_to"
 
 const BUY_PATH_RE = /^\/buy\/[^/\\]+$/
-const GROUP_PAGE_RE = /^\/[a-z]{2}\/g\/[A-Za-z0-9_-]+$/
+// CORE-39 (กฎข้อ 97): token จำกัด 1..64 ตัว (join_token จริงยาว 12 ตัว — group_buy/utils/template-code.ts)
+const GROUP_PAGE_RE = /^\/[a-z]{2}\/g\/[A-Za-z0-9_-]{1,64}$/
 const HOME_RE = /^\/[a-z]{2}$/
 
 export const loginPathForReturn = (countryCode: string, returnTo: string) =>
