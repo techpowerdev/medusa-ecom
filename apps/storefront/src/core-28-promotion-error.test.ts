@@ -6,6 +6,10 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { SIGN_IN_AGAIN_MESSAGE } from "@lib/util/error-message"
+import {
+  PROMOTION_FAILED,
+  PROMOTION_REMOVE_FAILED,
+} from "@modules/checkout/components/discount-code"
 
 // CORE-28 (spec 01 กฎข้อ 85, AC-121; qa #222 O-2): `promotion-error` ต้อง render นอก `isOpen`
 // — error ของการใส่/ลบโค้ด (รวม SIGN_IN_AGAIN_MESSAGE) เห็นทันทีไม่ว่าช่องใส่โค้ดเปิดหรือปิด
@@ -98,5 +102,90 @@ describe("CORE-28: comment ใน e2e core-19c ตรงกับพฤติก
       "utf8"
     )
     expect(src.includes("ก่อนถึง action")).toBe(false)
+  })
+})
+
+const deferred = <T>() => {
+  let resolve!: (v: T) => void
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+describe("CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(async () => {
+    await act(async () => root.unmount())
+    container.remove()
+  })
+
+  const removeButton = () => byTestId("remove-discount-button") as HTMLButtonElement
+
+  it("กดสองครั้งใน act เดียว → เรียก applyPromotions ครั้งเดียว; disabled + aria-busy ระหว่างรอ; resolve แล้วกดได้อีก", async () => {
+    const pending = deferred<unknown>()
+    applyPromotions.mockReturnValueOnce(pending.promise)
+    await render()
+
+    await act(async () => {
+      removeButton().click()
+      removeButton().click()
+    })
+    expect(applyPromotions).toHaveBeenCalledTimes(1)
+    expect(removeButton().disabled).toBe(true)
+    expect(removeButton().getAttribute("aria-busy")).toBe("true")
+
+    await act(async () => {
+      pending.resolve({ ok: true, codes: [] })
+    })
+    expect(removeButton().disabled).toBe(false)
+    expect(removeButton().getAttribute("aria-busy")).not.toBe("true")
+
+    applyPromotions.mockResolvedValueOnce({ ok: true, codes: [] })
+    await click("remove-discount-button")
+    expect(applyPromotions).toHaveBeenCalledTimes(2)
+  })
+
+  it("ลบล้มแบบ reject → ข้อความไทยเฉพาะการลบ ไม่เท่ากับ PROMOTION_FAILED", async () => {
+    applyPromotions.mockRejectedValueOnce(new Error("network"))
+    await render()
+    await click("remove-discount-button")
+    await vi.waitFor(() =>
+      expect(byTestId("promotion-error")?.textContent).toBe(PROMOTION_REMOVE_FAILED)
+    )
+    expect(PROMOTION_REMOVE_FAILED).toMatch(/[\u0E00-\u0E7F]/)
+    expect(PROMOTION_REMOVE_FAILED).not.toBe(PROMOTION_FAILED)
+    expect(removeButton().disabled).toBe(false)
+  })
+
+  it("ลบได้ { error: 'failed' } → PROMOTION_REMOVE_FAILED", async () => {
+    applyPromotions.mockResolvedValueOnce({ error: "failed" })
+    await render()
+    await click("remove-discount-button")
+    expect(byTestId("promotion-error")?.textContent).toBe(PROMOTION_REMOVE_FAILED)
+  })
+
+  it("ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE", async () => {
+    applyPromotions.mockResolvedValueOnce({ error: "unauthorized" })
+    await render()
+    await click("remove-discount-button")
+    expect(byTestId("promotion-error")?.textContent).toBe(SIGN_IN_AGAIN_MESSAGE)
+  })
+
+  it("ใส่โค้ดล้ม (failed) → ยังเป็น PROMOTION_FAILED เดิม", async () => {
+    applyPromotions.mockResolvedValueOnce({ error: "failed" })
+    await render()
+    await click("add-discount-button")
+    ;(byTestId("discount-input") as HTMLInputElement).value = "NEW"
+    await click("discount-apply-button")
+    await vi.waitFor(() =>
+      expect(byTestId("promotion-error")?.textContent).toBe(PROMOTION_FAILED)
+    )
   })
 })
