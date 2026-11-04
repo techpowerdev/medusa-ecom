@@ -4,7 +4,7 @@ import { formatDate } from "@lib/util/date"
 import { convertToLocale } from "@lib/util/money"
 import Thumbnail from "@modules/products/components/thumbnail"
 
-import ShareButton from "../share-button"
+import ShareLinkButton from "@modules/common/components/share-link-button"
 
 // spec 05 Storefront + กฎ 29: การ์ดเดียวต่อสินค้า อัตราของโปรแกรมที่เลือก (rate_varies → "สูงสุด X%")
 // AF-8c กฎ 35b: rate_varies ไม่แสดงยอดประมาณการ — API ไม่ส่งอัตราต่อ variant ตัวเลขอาจไม่ตรง variant ใดเลย
@@ -46,7 +46,13 @@ export default function AffiliateProductCard({ item, tab }: { item: PortalProduc
           {countdownText(program.starts_at)}
         </p>
       )}
-      <ShareButton url={share_url} title={product.title} />
+      <ShareLinkButton
+        url={share_url}
+        shareTitle={product.title}
+        label="แชร์"
+        buttonTestId="affiliate-share-button"
+        statusTestId="affiliate-share-status"
+      />
     </li>
   )
 }

@@ -13,6 +13,8 @@ PROJECT="${LOAD_PROJECT:-loadtest}"
 case "$PROJECT" in medusa-ecom*) echo "LOAD_PROJECT=$PROJECT ใช้ไม่ได้ (ชนกับ project ของ dev)" >&2; exit 2 ;; esac
 unset DATABASE_URL REDIS_URL
 export SERVER_PORT="${SERVER_PORT:-9106}"
+# OPS-17 (AC-28): tag ของ image แยกจาก `local` ของ dev — `compose up --build` จะไม่ tag ทับ image prod-like ในเครื่อง
+export IMAGE_TAG="${IMAGE_TAG:-load}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$(openssl rand -hex 16)}"
 export JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 export COOKIE_SECRET="${COOKIE_SECRET:-$(openssl rand -hex 32)}"
@@ -37,10 +39,22 @@ OUT="$(pwd)/${LOAD_OUT:-tools/load/out}"
 DATA="$(mktemp -d)" # token ของลูกค้าทดสอบ — ไม่อยู่ใน OUT (artifact)
 
 compose() { docker compose -p "$PROJECT" -f docker-compose.prod.yml "$@"; }
-cleanup() { rm -rf "$DATA"; [ -n "${KEEP_UP:-}" ] || compose down -v --remove-orphans >/dev/null 2>&1 || true; }
+REPORTED=""
+REPORTS=(report.md lock-timing.md checkout-timing.md)
+# OPS-17 (follow-up review #220/#235, AC-33): script หยุดกลางทาง (set -e) → ตรวจ OUT ก่อน (ลบไฟล์ที่มี JWT/setup_data
+# ก่อน step upload artifact) แล้วค่อยพิมพ์ report ที่เหลือลง job log — ไฟล์ที่ถูกลบไม่ถูกพิมพ์; exit code เดิมของ script คงไว้
+cleanup() {
+  if [ -d "$OUT" ]; then
+    node tools/load/artifact-guard.js scan "$OUT" || true
+    [ -n "$REPORTED" ] || (cd "$OUT" && cat "${REPORTS[@]}" 2>/dev/null) || true
+  fi
+  rm -rf "$DATA"
+  [ -n "${KEEP_UP:-}" ] || compose down -v --remove-orphans >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 mkdir -p "$OUT"
 chmod 777 "$OUT" # k6 ใน container รันเป็น user อื่น
+(cd "$OUT" && rm -f "${REPORTS[@]}") # report ของ run ก่อน — cleanup ต้องไม่พิมพ์ของเก่า (review #235)
 
 compose up -d --build --wait server worker
 medusa_exec() { compose exec -T "${@:2}" server /app/node_modules/.bin/medusa exec "$1"; }
@@ -119,14 +133,17 @@ failures=0
   echo
   echo "failures: $failures"
 } >"$OUT/report.md"
-cat "$OUT/report.md"
-cat "$OUT/lock-timing.md" "$OUT/checkout-timing.md"
-[ -n "${GITHUB_STEP_SUMMARY:-}" ] && cat "$OUT/report.md" "$OUT/lock-timing.md" "$OUT/checkout-timing.md" >>"$GITHUB_STEP_SUMMARY"
+# OPS-17 (review #235, AC-33): ตรวจ OUT ก่อนพิมพ์ report ลง job log/GITHUB_STEP_SUMMARY — ไฟล์ที่มี JWT ถูกลบและไม่ถูกพิมพ์
+leaked=0
+node tools/load/artifact-guard.js scan "$OUT" || leaked=1
+REPORTED=1
+(cd "$OUT" && cat "${REPORTS[@]}" 2>/dev/null) || true
+[ -z "${GITHUB_STEP_SUMMARY:-}" ] || (cd "$OUT" && cat "${REPORTS[@]}" 2>/dev/null) >>"$GITHUB_STEP_SUMMARY" || true
 passed=0
-grep -q "^failures: 0$" "$OUT/report.md" && passed=1
+grep -q "^failures: 0$" "$OUT/report.md" 2>/dev/null && passed=1
 [ "$passed" = 1 ] || compose logs --tail 100 server worker >"$OUT/backend-tail.log" 2>&1 || true
-# OPS-17a (AC-33): ขั้นตรวจท้าย run หลังไฟล์สุดท้ายใน OUT — พบ JWT/setup_data → ลบไฟล์นั้นแล้วล้ม
-node tools/load/artifact-guard.js scan "$OUT" || { echo "load test: ไม่ผ่าน (AC-33 พบ JWT/setup_data ใน OUT)" >&2; exit 1; }
+# OPS-17a (AC-33): ขั้นตรวจท้าย run หลังไฟล์สุดท้ายใน OUT (backend-tail.log) — พบ JWT/setup_data (รวมรอบก่อนพิมพ์ report) → ล้ม
+[ "$leaked" = 0 ] && node tools/load/artifact-guard.js scan "$OUT" || { echo "load test: ไม่ผ่าน (AC-33 พบ JWT/setup_data ใน OUT)" >&2; exit 1; }
 if [ "$passed" = 1 ]; then
   echo "load test: ผ่าน"
 else

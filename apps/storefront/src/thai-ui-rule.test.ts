@@ -102,7 +102,7 @@ describe("ESLint rule ข้อความไทย (AC-47)", () => {
     "src/app/[countryCode]/(main)/affiliate/page.tsx",
     "src/app/[countryCode]/(main)/affiliate/login/page.tsx",
     "src/modules/affiliate/components/product-card/index.tsx",
-    "src/modules/affiliate/components/share-button/index.tsx",
+    "src/modules/common/components/share-link-button/index.tsx",
   ])("เปิด rule กับ %s (path ในตาราง AC-49)", async (file) => {
     const config = await eslint.calculateConfigForFile(path.join(ROOT, file))
     expect(config.rules["no-restricted-syntax"]?.[0]).toBe(2)

@@ -2,8 +2,9 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { getAffiliate, listAffiliatePrograms } from "@lib/data/affiliate-portal"
-import { portalPage } from "@lib/util/affiliate-portal"
+import { pageOutOfRange, portalPage } from "@lib/util/affiliate-portal"
 import { formatDate } from "@lib/util/date"
+import PageOutOfRange from "@modules/affiliate/components/page-out-of-range"
 import Pager from "@modules/affiliate/components/pager"
 import PortalError from "@modules/affiliate/components/portal-error"
 import StatusNotice from "@modules/affiliate/components/status-notice"
@@ -62,10 +63,12 @@ export default async function AffiliateProgramsPage({ params, searchParams }: Pr
             </li>
           ))}
         </ul>
+      ) : pageOutOfRange(page, result.limit, result.count) ? (
+        <PageOutOfRange href={`/${countryCode}/affiliate/programs`} />
       ) : (
         <p data-testid="affiliate-programs-empty">ยังไม่มีโปรแกรมที่เปิดหรือกำลังจะเปิด</p>
       )}
-      {result && <Pager href={`/${countryCode}/affiliate/programs`} page={page} limit={result.limit} count={result.count} />}
+      {result && !pageOutOfRange(page, result.limit, result.count) && <Pager href={`/${countryCode}/affiliate/programs`} page={page} limit={result.limit} count={result.count} />}
     </div>
   )
 }

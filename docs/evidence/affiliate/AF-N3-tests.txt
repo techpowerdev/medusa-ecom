@@ -1,0 +1,202 @@
+# AF-N3 — ผลการทดสอบ (spec 05 กฎ 40, AC-47) — 2026-11-04, node 22, branch fix/AF-N3-affiliate-portal-polish
+
+## Red (ก่อนแก้โค้ด): vitest src/af-n3-portal-polish.test.ts src/checkout-affiliate-coverage.test.ts
+Tests 20 failed | 11 passed (31) — สาเหตุที่ถูกต้อง:
+  × lib/util/affiliate-portal.ts ไม่มี literal "thb"  (fallback "thb" ใน earningsByStatus)
+  × ยอด reversed ติดลบขึ้นต้นด้วย − (U+2212)  (ได้ '-฿20.50' hyphen จาก Intl)
+  × Profile และการ์ด Products import component เดียวกัน  (copy-link-button vs share-button)
+  × ไม่มี component คัดลอก/แชร์ตัวเก่าค้าง
+  × pageOutOfRange ×6  (TypeError: pageOutOfRange is not a function)
+  × Programs/Payouts ?page=99 → affiliate-page-out-of-range  (แสดง 'ยังไม่มี…' แทน)
+  positive control กฎ 31 (scanner เดิมไม่จับ — expected [] to have a length of 1 but got +0):
+  × 31c placeOrder(id, undefined) — มี argument ที่ 2 แต่ไม่ส่ง metadata จริง → ล้ม
+  × 31c placeOrder(id, void 0) → ล้ม
+  × 31b syncAffiliateBefore อยู่ในฟังก์ชันอื่นที่ประกาศก่อน confirmPromptPayPayment → ล้ม
+  × 31b syncAffiliateBefore อยู่ในฟังก์ชันอื่นที่ประกาศก่อน openQr( → ล้ม
+
+## Green: vitest (ไฟล์ที่เกี่ยวข้อง, verbose)
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 990 × อัตรา 15 = 148.5
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 590 × อัตรา 10 = 59
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 0.1 × อัตรา 5 = 0.01
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 333.33 × อัตรา 12.5 = 41.67
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 100.1 × อัตรา 3 = 3
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 1.15 × อัตรา 50 = 0.58
+ ✓ src/lib/util/affiliate-portal.test.ts > cardPrice > ราคาต่ำสุดของ variant ที่อยู่ในโปรแกรม
+ ✓ src/lib/util/affiliate-portal.test.ts > cardPrice > ไม่มีราคา → null
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 3 ชั่วโมง → ชั่วโมง ไม่มีวัน
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 30 นาที → ไม่ถึง 1 ชั่วโมง
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 176400000 ms → เริ่มในอีก 2 วัน
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 86400000 ms → เริ่มในอีก 1 วัน
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 172440000 ms → เริ่มในอีก 1 วัน
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 84600000 ms → เริ่มในอีก 24 ชั่วโมง
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 3600000 ms → เริ่มในอีก 1 ชั่วโมง
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 3599999 ms → เริ่มในอีกไม่ถึง 1 ชั่วโมง
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 1 ms → เริ่มในอีกไม่ถึง 1 ชั่วโมง
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ 0 ms → เริ่มแล้ว
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > เหลือ -3600000 ms → เริ่มแล้ว
+ ✓ src/lib/util/affiliate-portal.test.ts > countdownText > ค่าเริ่มต้นของ now คือเวลาปัจจุบัน
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}},{"calculated_price":{"calculated_amount":200,"currency_code":"thb"}}] → true
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}},{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}}] → false
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}},{"calculated_price":{"calculated_amount":null,"currency_code":"thb"}}] → false
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [{"calculated_price":{"calculated_amount":100,"currency_code":"thb"}}] → false
+ ✓ src/lib/util/affiliate-portal.test.ts > priceVaries > [] → false
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "upcoming" → upcoming
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "active" → active
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > undefined → active
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "x" → active
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > ["upcoming","active"] → active
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > undefined → 1
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "abc" → 1
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "0" → 1
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "-3" → 1
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1.5" → 1
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "2.9" → 2
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "3" → 3
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1e400" → 1
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1e20" → 1
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > ["2","3"] → 1
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > แต่ละสถานะใช้ค่าของแถวนั้นตรงๆ — reversed ติดลบแยก ไม่หักจาก approved (AC-40)
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > สถานะที่ API ไม่คืนแถว → ฿0
+ ✓ src/lib/util/affiliate-portal.test.ts > earningsByStatus > หลายสกุลเงินแสดงแยกแถว ไม่รวมข้ามสกุล
+ ✓ src/af-n3-portal-polish.test.ts > Earnings: สกุลเงินตาม API (กฎ 40a) > app/[countryCode]/(main)/affiliate/earnings/page.tsx ไม่มี literal "thb"
+ ✓ src/af-n3-portal-polish.test.ts > Earnings: สกุลเงินตาม API (กฎ 40a) > lib/util/affiliate-portal.ts ไม่มี literal "thb"
+ ✓ src/af-n3-portal-polish.test.ts > Earnings: สกุลเงินตาม API (กฎ 40a) > แสดงสกุลตาม currency ของแถวที่ API คืน (usd ไม่กลายเป็น ฿)
+ ✓ src/af-n3-portal-polish.test.ts > Earnings: สกุลเงินตาม API (กฎ 40a) > สถานะที่ไม่มีแถว → 0 ในสกุลของร้าน (STORE_CURRENCY_CODE)
+ ✓ src/af-n3-portal-polish.test.ts > Earnings: สกุลเงินตาม API (กฎ 40a) > ยอด reversed ติดลบขึ้นต้นด้วย − (U+2212) ไม่ใช่ hyphen (กฎ 40d)
+ ✓ src/af-n3-portal-polish.test.ts > ปุ่มคัดลอก/แชร์ใช้ component เดียว (กฎ 40b) > Profile และการ์ด Products import component เดียวกัน
+ ✓ src/af-n3-portal-polish.test.ts > ปุ่มคัดลอก/แชร์ใช้ component เดียว (กฎ 40b) > ไม่มี component คัดลอก/แชร์ตัวเก่าค้าง
+ ✓ src/af-n3-portal-polish.test.ts > pageOutOfRange (กฎ 40c) > page 1 limit 50 count 0 → false
+ ✓ src/af-n3-portal-polish.test.ts > pageOutOfRange (กฎ 40c) > page 2 limit 50 count 0 → true
+ ✓ src/af-n3-portal-polish.test.ts > pageOutOfRange (กฎ 40c) > page 2 limit 50 count 50 → true
+ ✓ src/af-n3-portal-polish.test.ts > pageOutOfRange (กฎ 40c) > page 2 limit 50 count 51 → false
+ ✓ src/af-n3-portal-polish.test.ts > pageOutOfRange (กฎ 40c) > page 99 limit 50 count 120 → true
+ ✓ src/af-n3-portal-polish.test.ts > pageOutOfRange (กฎ 40c) > page 3 limit 50 count 120 → false
+ ✓ src/af-n3-portal-polish.test.ts > หน้าเกินจำนวนของ Programs/Payouts (กฎ 40c) > Programs ?page=99 → affiliate-page-out-of-range ภาษาไทย + ลิงก์หน้าแรก
+ ✓ src/af-n3-portal-polish.test.ts > หน้าเกินจำนวนของ Programs/Payouts (กฎ 40c) > Payouts ?page=99 → affiliate-page-out-of-range ภาษาไทย + ลิงก์หน้าแรก
+ ✓ src/af-n3-portal-polish.test.ts > หน้าเกินจำนวนของ Programs/Payouts (กฎ 40c) > Programs หน้าแรกว่าง → ยังแสดงข้อความ ยังไม่มี… เดิม
+ ✓ src/af-n3-portal-polish.test.ts > หน้าเกินจำนวนของ Programs/Payouts (กฎ 40c) > Payouts หน้าแรกว่าง → ยังแสดงข้อความ ยังไม่มี… เดิม
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=true → ไม่มี affiliate-estimate แต่มี affiliate-rate-varies
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=false variant 100/200 อัตรา 10% → affiliate-estimate ฿10 ขึ้นต้น ตั้งแต่
+ ✓ src/af-8c-portal.test.ts > การ์ดสินค้า (กฎ 35) > rate_varies=false ราคาเดียว → ไม่มี ตั้งแต่
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > data function: network → reject (ไม่กลืนเป็น null แบบ 401)
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > data function: 5xx → reject (ไม่กลืนเป็น null แบบ 401)
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 401 → null (redirect ไป login ตามเดิม)
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > layout: /affiliate/me ล้มแบบ network → render affiliate-portal-error แทนเนื้อหา
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > layout: /affiliate/me ล้มแบบ 5xx → render affiliate-portal-error แทนเนื้อหา
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Products: API ของหน้าล้ม → render affiliate-portal-error
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Programs: API ของหน้าล้ม → render affiliate-portal-error
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Earnings: API ของหน้าล้ม → render affiliate-portal-error
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > network > หน้า Payouts: API ของหน้าล้ม → render affiliate-portal-error
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Products: API ของหน้าล้ม → render affiliate-portal-error
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Programs: API ของหน้าล้ม → render affiliate-portal-error
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Earnings: API ของหน้าล้ม → render affiliate-portal-error
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 5xx > หน้า Payouts: API ของหน้าล้ม → render affiliate-portal-error
+ ✓ src/af-8c-portal.test.ts > backend ล่ม (กฎ 36b) > 403 ตามสถานะยังแสดง affiliate-status-notice ไม่ใช่ affiliate-portal-error
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > source ใต้ modules/checkout/components ผ่านเงื่อนไข (a)–(c)
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > allow-list ไม่มีแถวค้าง และทุกแถวมีเหตุผล
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31a stripe.confirmPayment นอก syncAffiliateBefore → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31a stripe.confirmPayment ถูกเรียกก่อนแล้วส่งผลลัพธ์ (ไม่ได้ห่อเป็นฟังก์ชัน) → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b ฟังก์ชันที่เรียก confirmPromptPayPayment โดยไม่มี sync ก่อน → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b openQr( โดยไม่มี sync ก่อน (helper confirm พร้อมเพย์ภายใน) → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31c placeOrder(cart.id) ที่ไม่ส่ง metadata → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31c placeOrder(id, undefined) — มี argument ที่ 2 แต่ไม่ส่ง metadata จริง → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31c placeOrder(id, void 0) → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b syncAffiliateBefore อยู่ในฟังก์ชันอื่นที่ประกาศก่อน confirmPromptPayPayment → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b syncAffiliateBefore อยู่ในฟังก์ชันอื่นที่ประกาศก่อน openQr( → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31b syncAffiliateBefore เป็น argument ของ confirm เอง (ไม่ได้ทำก่อน) → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > 31: retrievePaymentIntent นอก sync และไม่อยู่ใน allow-list → ล้ม
+ ✓ src/checkout-affiliate-coverage.test.ts > ทุกจุดเริ่มชำระผ่าน syncAffiliateBefore (AF-3c, กฎ 31, AC-37) > positive control (fixture) — กรณีไม่ครอบต้องถูกจับ > รูปแบบที่ถูกต้อง (ตาม #119) → ไม่มี violation
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>Hello</p> → error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <input placeholder="Search" /> → error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>{`Cart (${price})`}</p> → error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <button aria-label={"Close menu"} /> → error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <button>{price ? "Loading..." : "ซื้อ"}</button> → error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>{price && "Out of stock"}</p> → error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>{price ? `Only ${price}` : null}</p> → error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>สวัสดี</p> → ไม่มี error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>{price} ฿</p> → ไม่มี error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p>
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <input placeholder="ค้นหาสินค้า" className="txt-medium" data-testid="search-input" /> → ไม่มี error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <button>{price ? "กำลังดำเนินการ..." : "ซื้อ"}</button> → ไม่มี error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > <p className={price ? "text-red-500" : "text-ui-fg-base"}>สวัสดี</p> → ไม่มี error
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/layout.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/not-found.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/layout.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/not-found.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/layout/templates/nav/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/home/components/hero/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/store/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/search/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/categories/[...category]/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/collections/[handle]/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/products/[handle]/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/store/templates/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/search/components/search-form/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/categories/templates/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/collections/templates/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/products/components/product-actions/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/buy/[items]/route.ts (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/layout.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/@login/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/@dashboard/profile/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/@dashboard/orders/details/[id]/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/verify-account/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/account/components/register/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/account/templates/account-layout.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/cart/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/cart/not-found.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/order/[id]/confirmed/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/contact/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/terms/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/privacy/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/returns/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/shipping/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/cart/templates/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/order/templates/order-details-template.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/policies/templates/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/common/components/native-select/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/common/components/filter-radio-group/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/skeletons/templates/skeleton-cart-page/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(checkout)/layout.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(checkout)/not-found.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(checkout)/checkout/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/checkout/components/payment/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/checkout/components/promptpay-payment/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/checkout/templates/checkout-summary/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/shipping/components/free-shipping-price-nudge/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/lib/constants.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/account/@dashboard/orders/details/[id]/return/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/returns/components/return-request-form/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/affiliate/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/affiliate/login/page.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/affiliate/components/product-card/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/affiliate/components/share-link-button/index.tsx (path ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > ไม่เปิด rule กับ src/lib/util/product-markdown.ts (ไม่อยู่ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > ไม่เปิด rule กับ src/lib/data/cart.ts (ไม่อยู่ในตาราง AC-49)
+ ✓ src/thai-ui-rule.test.ts > ไม่มี i18n ในระยะแรก (AC-46) > ไม่มี dependency next-intl และไม่มีโฟลเดอร์ messages/
+ ✓ src/thai-ui-rule.test.ts > ไม่มี i18n ในระยะแรก (AC-46) > ลบ component language-select แล้ว
+ Test Files  5 passed (5)
+      Tests  161 passed (161)
+
+## vitest ทั้งชุดของ storefront
+ Test Files  70 passed (70)
+      Tests  780 passed (780)
+
+## playwright --project=unit (กฎ evidence)
+  54 passed (456ms)
+
+## e2e (chromium, backend :9271 DB medusa_afn3, storefront build :8271) — spec ใหม่ + spec ของ portal เดิม
+  ✓  1 [chromium] › e2e/affiliate-portal-polish.spec.ts:49:5 › AC-47: ?page=99 ของ Payouts/Programs → affiliate-page-out-of-range ไทย + ลิงก์หน้าแรก; reversed ขึ้นต้นด้วย − (1.8s)
+  ✓  3 [chromium] › e2e/affiliate-portal-pages.spec.ts:68:5 › AC-40: nav ของ portal → Programs, Earnings (reversed แยกติดลบ), Payouts ไม่มี reference, Profile (2.1s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.2s)
+  ✓  5 [chromium] › e2e/affiliate-portal.spec.ts:140:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (654ms)
+  ✓  4 [chromium] › e2e/affiliate-portal-pages.spec.ts:172:5 › AC-40: affiliate ที่ถูกระงับ → Products/Programs แสดง affiliate-status-notice, Earnings/Payouts เปิดได้ (1.0s)
+  ✓  6 [chromium] › e2e/affiliate-portal.spec.ts:166:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (558ms)
+  ✓  7 [chromium] › e2e/affiliate-portal.spec.ts:189:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (625ms)
+  7 passed (4.7s)
+
+screenshot (375px): docs/evidence/affiliate/AF-N3/01-payouts-out-of-range-375.png, 02-earnings-reversed-375.png
+
+## pnpm lint && pnpm typecheck (root)
+lint exit 0 (0 errors; warning เดิมนอกไฟล์ของ task) / typecheck exit 0
