@@ -1,27 +1,58 @@
-// GB-6a: แปลงค่าฟอร์ม "Create campaign" (string ทั้งหมด) เป็น body ของ POST /admin/group-buy/campaigns
+import { z } from "zod"
+import { fieldErrorMap } from "./form-validation"
+
+// GB-6a: แปลงค่าฟอร์ม "Create campaign" เป็น body ของ POST /admin/group-buy/campaigns
 // pure — ไม่ import sdk เพื่อให้ unit test ตรวจกับ validator ของ GB-2a/GB-2c ได้
+// ADM-7 (spec 08 กฎ 5, 8): ฟอร์มเป็น react-hook-form — schema ตรวจรูปค่า (วันเวลาเป็น Date จาก DatePicker ตาม timezone
+// ของเครื่องแอดมิน), กฎธุรกิจอยู่ใน toCampaignBody แล้ว map error เข้า form.setError
 export type TargetType = "orders" | "units" | "people"
 export type GroupMode = "pool" | "team" | "both"
 
-export const emptyCampaignForm = () => ({
+const INVALID_DATE = "Invalid date"
+
+export const campaignFormSchema = z.object({
+  name: z.string(),
+  target_type: z.enum(["orders", "units", "people"]),
+  target_value: z.string(),
+  group_mode: z.enum(["pool", "team", "both"]),
+  team_duration_hours: z.string(),
+  max_total_orders: z.string(),
+  max_units_per_person: z.string(),
+  max_people_per_group: z.string(),
+  pay_within_hours: z.string(),
+  starts_at: z.date().nullable(),
+  ends_at: z.date().nullable(),
+  discount_type: z.enum(["percentage", "fixed"]),
+  discount_value: z.string(),
+  max_quantity: z.string(),
+  product_id: z.string().nullable(), // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า จาก product picker — บังคับเลือก
+  is_tax_inclusive: z.boolean(), // spec 04 กฎข้อ 12
+})
+export type CampaignForm = z.input<typeof campaignFormSchema>
+
+// z.date() กับ Invalid Date/ค่าที่ไม่ใช่ Date ให้ "Invalid input" — แทนด้วยข้อความของช่อง (ADM-3 fieldErrorMap)
+export const CAMPAIGN_PARSE_OPTIONS = {
+  error: fieldErrorMap({ starts_at: INVALID_DATE, ends_at: INVALID_DATE }),
+}
+
+export const emptyCampaignForm = (): CampaignForm => ({
   name: "",
-  target_type: "orders" as TargetType,
+  target_type: "orders",
   target_value: "",
-  group_mode: "pool" as GroupMode,
+  group_mode: "pool",
   team_duration_hours: "",
   max_total_orders: "",
   max_units_per_person: "",
   max_people_per_group: "",
   pay_within_hours: "24",
-  starts_at: "", // <input type="datetime-local"> ตีความเป็นเวลาไทย (ICT)
-  ends_at: "",
-  discount_type: "percentage" as "percentage" | "fixed",
+  starts_at: null,
+  ends_at: null,
+  discount_type: "percentage",
   discount_value: "",
   max_quantity: "10",
-  product_id: null as string | null, // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า จาก product picker — บังคับเลือก
-  is_tax_inclusive: true, // spec 04 กฎข้อ 12
+  product_id: null,
+  is_tax_inclusive: true,
 })
-export type CampaignForm = ReturnType<typeof emptyCampaignForm>
 
 type FormField = "max_quantity" | "product"
 
@@ -49,16 +80,12 @@ const required = <T>(value: T | null, label: string): T => {
   return value
 }
 
-// ร้านอยู่ไทย: เวลาที่กรอกเป็น ICT ไม่ขึ้นกับ timezone ของ browser
-const ictToIso = (value: string) => {
-  if (!value) {
-    return null
+// Date จาก DatePicker ส่งเข้า body ตรงๆ (JSON เป็น ISO UTC; validator ของ backend coerce)
+const validDate = (value: Date | null) => {
+  if (value && Number.isNaN(value.getTime())) {
+    throw new FormError(INVALID_DATE)
   }
-  const date = new Date(`${value.length === 16 ? `${value}:00` : value}+07:00`)
-  if (Number.isNaN(date.getTime())) {
-    throw new FormError("Invalid date")
-  }
-  return date.toISOString()
+  return value
 }
 
 // GB-6e (AC-50): selection ของ DataTable → สินค้าเดียว — id ใหม่ที่ไม่ใช่ตัวเดิมแทนตัวเดิม; ยกเลิกตัวเดิม = null
@@ -77,23 +104,17 @@ export const newIdempotencyKey = (): string => {
 }
 
 // GB-6b2 กฎข้อ 16: ends_at ที่ไม่อยู่ในอนาคตแค่เตือน (แคมเปญเป็น draft; backend ปฏิเสธ activate เอง)
-export const isEndsAtPast = (endsAt: string, now = Date.now()) => {
-  try {
-    const iso = ictToIso(endsAt)
-    return iso !== null && Date.parse(iso) <= now
-  } catch {
-    return false
-  }
-}
+export const isEndsAtPast = (endsAt: Date | null, now = Date.now()) =>
+  endsAt !== null && endsAt.getTime() <= now
 
 const buildBody = (form: CampaignForm) => {
   const name = form.name.trim()
   if (!name) {
     throw new FormError("Name is required")
   }
-  const starts_at = ictToIso(form.starts_at)
-  const ends_at = required(ictToIso(form.ends_at), "End date")
-  if (starts_at && starts_at >= ends_at) {
+  const starts_at = validDate(form.starts_at)
+  const ends_at = required(validDate(form.ends_at), "End date")
+  if (starts_at && starts_at.getTime() >= ends_at.getTime()) {
     throw new FormError("End date must be after start date")
   }
   const team_duration_hours = intOrNull(form.team_duration_hours, "Team duration")

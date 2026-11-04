@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test"
+import { Locator, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect } from "./fixtures"
 
@@ -33,4 +33,22 @@ export async function loginAdmin(page: Page) {
   await page.locator('button[type="submit"]').click()
   await page.waitForURL((url) => !url.pathname.startsWith("/app/login"))
   await expect(page.locator('input[name="email"]')).toHaveCount(0)
+}
+
+/**
+ * ADM-7 (spec 08): กรอก `DatePicker` (`granularity="minute"`) ของ `@medusajs/ui` ด้วยคีย์บอร์ด — `wrapper` คือ element ที่ห่อ
+ * DatePicker (เช่น `getByTestId("gb-field-starts_at")`) และ `value` เป็นเวลาตามเครื่อง (`timezoneId` ของ test) รูป `YYYY-MM-DDTHH:mm`
+ * คลิก segment แรกแล้วพิมพ์ตามลำดับ segment ของ en-US: เดือน/วัน/ปี ชั่วโมง (12 ชม.):นาที AM/PM — segment เต็มแล้วเลื่อนไปช่องถัดไปเอง
+ */
+export async function fillDatePicker(wrapper: Locator, value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
+  if (!match) throw new Error(`fillDatePicker: ต้องเป็น YYYY-MM-DDTHH:mm ได้ ${value}`)
+  const [, year, month, day, hour, minute] = match
+  const hour24 = Number(hour)
+  const hour12 = String(hour24 % 12 || 12).padStart(2, "0")
+  const segments = wrapper.getByRole("spinbutton")
+  await segments.first().click()
+  await wrapper.page().keyboard.type(`${month}${day}${year}${hour12}${minute}${hour24 < 12 ? "A" : "P"}`)
+  // segment สุดท้าย (AM/PM) แสดงค่าแล้ว = DatePicker ได้ค่าครบทุกช่อง
+  await expect(segments.last()).toHaveText(hour24 < 12 ? "AM" : "PM")
 }

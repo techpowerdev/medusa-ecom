@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { webcrypto } from "node:crypto"
 import {
+  CAMPAIGN_PARSE_OPTIONS,
+  campaignFormSchema,
   emptyCampaignForm,
   isEndsAtPast,
   newIdempotencyKey,
@@ -12,12 +14,15 @@ import {
 } from "../group-buy-form"
 
 // GB-6a: ฟอร์มสร้างแคมเปญใน admin → body ของ POST /admin/group-buy/campaigns (validator ของ GB-2a/GB-2c)
+// ADM-7 (spec 08 กฎ 5, AC-10): วันเวลามาจาก DatePicker เป็น Date (ตาม timezone ของเครื่อง) — fixture ระบุ offset ไทยให้ผลตายตัว
+const ict = (local: string) => new Date(`${local}:00+07:00`)
+
 const form = (patch: Partial<CampaignForm> = {}): CampaignForm => ({
   ...emptyCampaignForm(),
   name: "GB 11.11",
   target_value: "3",
-  starts_at: "2026-11-11T00:00",
-  ends_at: "2026-11-12T00:00",
+  starts_at: ict("2026-11-11T00:00"),
+  ends_at: ict("2026-11-12T00:00"),
   discount_value: "30",
   product_id: "prod_a",
   ...patch,
@@ -72,14 +77,25 @@ describe("toCampaignBody", () => {
     expect(source).not.toMatch(/ว่าง = ทุกสินค้า/)
   })
 
-  it("reads date-time inputs as Thai time (ICT, UTC+7)", () => {
-    const body = bodyOf(form())
-    expect(body.starts_at).toBe("2026-11-10T17:00:00.000Z")
-    expect(body.ends_at).toBe("2026-11-11T17:00:00.000Z")
+  // ADM-7: แทน test ของ ictToIso — ส่ง Date ที่ DatePicker ให้มาเข้า body ตรงๆ (JSON เป็น ISO UTC)
+  it("passes the picked Date values to the body as-is (serialized as ISO UTC)", () => {
+    const starts = new Date("2026-12-01T03:00:00.000Z")
+    const ends = new Date("2026-12-31T16:30:00.000Z")
+    const body = bodyOf(form({ starts_at: starts, ends_at: ends }))
+    expect(body.starts_at).toBe(starts)
+    expect(body.ends_at).toBe(ends)
+    expect(JSON.parse(JSON.stringify(body))).toEqual(
+      expect.objectContaining({ starts_at: "2026-12-01T03:00:00.000Z", ends_at: "2026-12-31T16:30:00.000Z" })
+    )
+  })
+
+  it("has no ictToIso left in lib/group-buy-form.ts (spec 08 rule 5)", () => {
+    const source = readFileSync(join(__dirname, "..", "group-buy-form.ts"), "utf8")
+    expect(source).not.toMatch(/\bictToIso\b|datetime-local/)
   })
 
   it("sends null start and optional limits as null/omitted when left blank", () => {
-    const body = bodyOf(form({ starts_at: "" }))
+    const body = bodyOf(form({ starts_at: null }))
     expect(body.starts_at).toBeNull()
     expect(body.max_total_orders).toBeNull()
     expect(body.max_units_per_person).toBeNull()
@@ -96,8 +112,10 @@ describe("toCampaignBody", () => {
   it.each<[string, Partial<CampaignForm>]>([
     ["name", { name: "  " }],
     ["target value", { target_value: "0" }],
-    ["end date", { ends_at: "" }],
-    ["end after start", { ends_at: "2026-11-10T00:00" }],
+    ["end date", { ends_at: null }],
+    ["end after start", { ends_at: ict("2026-11-10T00:00") }],
+    ["end equal to start", { ends_at: ict("2026-11-11T00:00") }],
+    ["invalid end date", { ends_at: new Date("not-a-date") }],
     ["discount value", { discount_value: "abc" }],
     ["percentage above 100", { discount_value: "101" }],
     ["team duration for team mode", { group_mode: "team", team_duration_hours: "" }],
@@ -135,22 +153,47 @@ describe("selectSingleProduct", () => {
   })
 })
 
-// GB-6b2 กฎข้อ 16 (AC-32): เตือนเมื่อ ends_at (ICT) ไม่อยู่ในอนาคต แต่ยังส่งได้
+// GB-6b2 กฎข้อ 16 (AC-32): เตือนเมื่อ ends_at ไม่อยู่ในอนาคต แต่ยังส่งได้ (ADM-7: รับ Date จาก DatePicker)
 describe("isEndsAtPast", () => {
   const now = Date.parse("2026-11-11T05:00:00.000Z") // 12:00 ICT
 
-  it.each<[string, boolean]>([
-    ["2026-11-11T11:59", true],
-    ["2026-11-11T12:00", true],
-    ["2026-11-11T12:01", false],
-    ["", false],
-    ["not-a-date", false],
-  ])("ends_at %s → %s", (endsAt, expected) => {
+  it.each<[string, Date | null, boolean]>([
+    ["11:59 ICT", ict("2026-11-11T11:59"), true],
+    ["12:00 ICT", ict("2026-11-11T12:00"), true],
+    ["12:01 ICT", ict("2026-11-11T12:01"), false],
+    ["empty", null, false],
+    ["invalid date", new Date("not-a-date"), false],
+  ])("ends_at %s → %s", (_, endsAt, expected) => {
     expect(isEndsAtPast(endsAt, now)).toBe(expected)
   })
 
   it("still lets a past end date through to the API (draft campaign)", () => {
-    expect(toCampaignBody(form({ starts_at: "", ends_at: "2020-01-01T00:00" }))).toHaveProperty("body")
+    expect(toCampaignBody(form({ starts_at: null, ends_at: ict("2020-01-01T00:00") }))).toHaveProperty("body")
+  })
+})
+
+// ADM-7 (spec 08 กฎ 5, 8): schema ของ react-hook-form — วันเวลาเป็น z.date() (nullable), กฎธุรกิจอยู่ใน toCampaignBody
+describe("campaignFormSchema", () => {
+  const parse = (patch: Partial<CampaignForm>) =>
+    campaignFormSchema.safeParse(form(patch), CAMPAIGN_PARSE_OPTIONS)
+  const messageOf = (patch: Partial<CampaignForm>, field: string) =>
+    parse(patch).error?.issues.find((i) => i.path[0] === field)?.message
+
+  it("accepts the default form values with Date/null date fields", () => {
+    expect(campaignFormSchema.safeParse(emptyCampaignForm(), CAMPAIGN_PARSE_OPTIONS).success).toBe(true)
+    expect(parse({}).success).toBe(true)
+  })
+
+  it("parses to the same values (raw resolver, parse on submit)", () => {
+    expect(campaignFormSchema.parse(form(), CAMPAIGN_PARSE_OPTIONS)).toEqual(form())
+  })
+
+  it.each(["starts_at", "ends_at"] as const)("shows 'Invalid date' (not zod's 'Invalid input') for an invalid %s", (field) => {
+    expect(messageOf({ [field]: new Date("not-a-date") }, field)).toBe("Invalid date")
+  })
+
+  it("rejects a non-date value for ends_at with 'Invalid date'", () => {
+    expect(messageOf({ ends_at: "2026-11-12T00:00" as unknown as Date }, "ends_at")).toBe("Invalid date")
   })
 })
 

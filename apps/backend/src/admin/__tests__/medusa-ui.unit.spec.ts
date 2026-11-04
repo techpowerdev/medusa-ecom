@@ -68,8 +68,6 @@ const AC4_EXCEPTIONS = [
   "components/affiliate/**",
   "routes/affiliate/**",
   "lib/affiliate*",
-  "components/group-buy/create-campaign.tsx",
-  "lib/group-buy-form.ts",
 ]
 
 const matchesEntry = (entry: string, file: string) =>
@@ -234,5 +232,57 @@ describe("หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)
     expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+common\/header["']/)
     expect(src).toMatch(/useState\(createSingleFlight\)/)
     expect(src).not.toMatch(/upload\.mutate\(/)
+  })
+})
+
+describe("ฟอร์มสร้างแคมเปญ group buy ใช้ Form + DatePicker และ product picker ใช้ useProducts (spec 08 AC-10, ADM-7)", () => {
+  const campaign = () => read("components/group-buy/create-campaign.tsx")
+  const picker = () => read("components/group-buy/product-picker.tsx")
+
+  it("create-campaign ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState", () => {
+    const src = campaign()
+    expect(src).toMatch(
+      /import\s*{[^}]*\bForm\b[^}]*\bKeyboundForm\b[^}]*}\s*from\s*["']@medusajs\/dashboard\/components["']/
+    )
+    expect(importsFrom(src, "useForm", "react-hook-form")).toBe(true)
+    expect(importsFrom(src, "zodResolver", "@hookform/resolvers/zod")).toBe(true)
+    expect(src).toMatch(/\{ raw: true \}/)
+    expect(src).toMatch(/\bnoValidate\b/)
+    expect(src).not.toMatch(/\b(setForm|useState\(emptyCampaignForm)\b/)
+  })
+
+  it("create-campaign กรอกวันเวลาด้วย DatePicker granularity=minute ไม่มี datetime-local", () => {
+    const src = campaign()
+    expect(importsFrom(src, "DatePicker", "@medusajs/ui")).toBe(true)
+    expect(src.match(/granularity="minute"/g)?.length).toBeGreaterThanOrEqual(1)
+    expect(src).not.toMatch(/datetime-local/)
+  })
+
+  it("create-campaign คง toCampaignBody → form.setError และ idempotency key ของ GB-15 ที่ตั้งตอน openModal", () => {
+    const src = campaign()
+    expect(src).toMatch(/toCampaignBody\(/)
+    expect(src).toMatch(/form\.setError\(/)
+    expect(src).toMatch(/newIdempotencyKey\(\)/)
+    expect(src).toMatch(/idempotency_key/)
+  })
+
+  it("create-campaign กันกดซ้ำด้วย useState(createSingleFlight) และไม่มี useRef", () => {
+    const src = campaign()
+    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    expect(src).not.toMatch(/\buseRef\b/)
+  })
+
+  it("product-picker ใช้ useProducts ของ dashboard ไม่เรียก sdk.admin.product.list เอง และยังเป็น single select (GB-6e)", () => {
+    const src = picker()
+    expect(importsFrom(src, "useProducts", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).not.toMatch(/sdk\.admin\.product\.list/)
+    expect(src).not.toMatch(/\buseQuery\b/)
+    expect(src).toMatch(/selectSingleProduct\(/)
+  })
+
+  it("lib/group-buy-form.ts ใช้ z.date() และไม่ import ui/components/hooks (กฎ 2)", () => {
+    const src = read("lib/group-buy-form.ts")
+    expect(src).toMatch(/z\.date\(\)/)
+    expect(src).not.toMatch(/from\s*["']@medusajs\/(ui|dashboard\/components|dashboard\/hooks)["']/)
   })
 })

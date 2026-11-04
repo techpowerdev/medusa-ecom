@@ -1,25 +1,45 @@
-import { Button, FocusModal, Heading, Input, Label, Select, Switch, Text, toast } from "@medusajs/ui"
+import { Form, KeyboundForm } from "@medusajs/dashboard/components"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Button, DatePicker, FocusModal, Heading, Input, Select, Switch, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useRef, useState } from "react"
+import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
-import { CampaignForm, emptyCampaignForm, isEndsAtPast, newIdempotencyKey, toCampaignBody } from "../../lib/group-buy-form"
+import {
+  CAMPAIGN_PARSE_OPTIONS,
+  CampaignBody,
+  CampaignForm,
+  campaignFormSchema,
+  emptyCampaignForm,
+  isEndsAtPast,
+  newIdempotencyKey,
+  toCampaignBody,
+} from "../../lib/group-buy-form"
+import { createSingleFlight } from "../../lib/single-flight"
 import { ProductPicker } from "./product-picker"
 
 type TextKey = {
   [K in keyof CampaignForm]: CampaignForm[K] extends string ? K : never
 }[keyof CampaignForm]
 
-const SELECTS: { key: TextKey; label: string; options: string[] }[] = [
+const SELECTS: { key: "target_type" | "group_mode" | "discount_type"; label: string; options: string[] }[] = [
   { key: "target_type", label: "Target type *", options: ["orders", "units", "people"] },
   { key: "group_mode", label: "Group mode *", options: ["pool", "team", "both"] },
   { key: "discount_type", label: "Discount type *", options: ["percentage", "fixed"] },
 ]
 
-const INPUTS: { key: TextKey; label: string; type?: string; hint?: string }[] = [
+const NAME_AND_TARGET: { key: TextKey; label: string; type?: string; hint?: string }[] = [
   { key: "name", label: "Name *" },
   { key: "target_value", label: "Target value *", type: "number" },
-  { key: "starts_at", label: "Starts at (ICT)", type: "datetime-local" },
-  { key: "ends_at", label: "Ends at (ICT) *", type: "datetime-local" },
+]
+
+// spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
+const DATES: { key: "starts_at" | "ends_at"; label: string }[] = [
+  { key: "starts_at", label: "Starts at" },
+  { key: "ends_at", label: "Ends at *" },
+]
+
+const INPUTS: { key: TextKey; label: string; type?: string; hint?: string }[] = [
   { key: "discount_value", label: "Discount value *", type: "number", hint: "Percent, or THB for fixed" },
   {
     key: "max_quantity",
@@ -34,25 +54,28 @@ const INPUTS: { key: TextKey; label: string; type?: string; hint?: string }[] = 
   { key: "pay_within_hours", label: "Pay within (hours) *", type: "number" },
 ]
 
+// testid ของ error ใต้ช่องที่ e2e ใช้อยู่ (GB-6b2 / GB-6e)
+const ERROR_TESTIDS: Partial<Record<keyof CampaignForm, string>> = {
+  max_quantity: "gb-max-quantity-error",
+}
+
 // GB-6a: สร้างแคมเปญ (status draft) — ส่วนลด/scope ไปอยู่ที่ promotion ต้นแบบ (ADR-011)
+// ADM-7 (spec 08 AC-10, กฎ 8): Form + KeyboundForm ของ dashboard + zod (⌘/Ctrl+Enter ส่งได้); กฎธุรกิจยังอยู่ใน toCampaignBody
+// แล้ว map error เข้า form.setError — error ที่ไม่ผูกช่องแสดงเป็น toast เหมือนเดิม
 export const CreateCampaign = () => {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState(emptyCampaignForm())
-  // GB-6b2 กฎข้อ 15: error ผูกกับช่อง max_quantity (ล้างเมื่อแก้ฟอร์ม)
-  const [maxQuantityError, setMaxQuantityError] = useState<string | null>(null)
-  // GB-6e (AC-50): ยังไม่เลือกสินค้า → error ที่ picker ไม่ส่ง POST
-  const [productError, setProductError] = useState<string | null>(null)
-  // GB-6a D1: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างคลิกใน task เดียว
-  const inFlight = useRef(false)
+  // Form.Field ของ dashboard รับ control ที่ค่าก่อน/หลัง submit เป็น type เดียวกัน จึงให้ resolver คืนค่าดิบ (raw)
+  // แล้ว parse ด้วย schema เดียวกันตอน submit (แบบ ADM-3)
+  const form = useForm<CampaignForm>({
+    resolver: zodResolver(campaignFormSchema, CAMPAIGN_PARSE_OPTIONS, { raw: true }),
+    defaultValues: emptyCampaignForm(),
+  })
+  // spec 08 กฎ 4: dblclick / ⌘+Enter ซ้ำผ่าน validation พร้อมกันได้ — createSingleFlight ให้ POST ครั้งเดียว
+  const [submitOnce] = useState(createSingleFlight)
   // GB-13 (กฎข้อ 33d): key เดียวต่อการเปิดฟอร์ม — submit ซ้ำหลัง network ล้มได้แคมเปญเดิม
   // ตั้งใน openModal เท่านั้นด้วย newIdempotencyKey (GB-15: getRandomValues ใช้ได้ทั้ง http/https — ไม่ใช้ API ที่มีเฉพาะ secure context)
-  const idempotencyKey = useRef("")
-  const set = (patch: Partial<CampaignForm>) => {
-    setMaxQuantityError(null)
-    setProductError(null)
-    setForm((f) => ({ ...f, ...patch }))
-  }
+  const [idempotencyKey, setIdempotencyKey] = useState("")
 
   const create = useMutation({
     mutationFn: groupBuyApi.createCampaign,
@@ -62,131 +85,163 @@ export const CreateCampaign = () => {
       setOpen(false)
     },
     onError: (e: Error) => toast.error(e.message),
-    onSettled: () => {
-      inFlight.current = false
-    },
   })
 
-  const submit = () => {
-    // กันกดซ้ำ: ไม่ยิงซ้ำถ้ายังมี request ค้าง (ref) + ปุ่ม disabled ระหว่างส่ง
-    if (inFlight.current) {
-      return
-    }
-    const result = toCampaignBody(form)
-    if ("error" in result) {
-      if (result.field === "max_quantity") {
-        setMaxQuantityError(result.error)
-      } else if (result.field === "product") {
-        setProductError(result.error)
-      } else {
-        toast.error(result.error)
+  const handleSubmit = form.handleSubmit((values) =>
+    submitOnce(async () => {
+      const result = toCampaignBody(campaignFormSchema.parse(values, CAMPAIGN_PARSE_OPTIONS))
+      if ("error" in result) {
+        if (result.field === "max_quantity") {
+          form.setError("max_quantity", { message: result.error })
+        } else if (result.field === "product") {
+          form.setError("product_id", { message: result.error })
+        } else {
+          toast.error(result.error)
+        }
+        return
       }
-      return
-    }
-    inFlight.current = true
-    // modal เปิดผ่าน openModal เท่านั้นจึงมี key เสมอ; ถ้าว่างไม่ส่ง field (backend ไม่รับ key ว่าง)
-    const key = idempotencyKey.current
-    create.mutate(key ? { ...result.body, idempotency_key: key } : result.body)
-  }
+      // modal เปิดผ่าน openModal เท่านั้นจึงมี key เสมอ; ถ้าว่างไม่ส่ง field (backend ไม่รับ key ว่าง)
+      const body: CampaignBody = idempotencyKey ? { ...result.body, idempotency_key: idempotencyKey } : result.body
+      await create.mutateAsync(body).catch(() => undefined)
+    })
+  )
 
   const openModal = () => {
-    idempotencyKey.current = newIdempotencyKey()
-    setForm(emptyCampaignForm())
-    setMaxQuantityError(null)
-    setProductError(null)
+    setIdempotencyKey(newIdempotencyKey())
+    form.reset(emptyCampaignForm())
     setOpen(true)
   }
+
+  const endsAt = form.watch("ends_at")
+
+  const textField = ({ key, label, type, hint }: (typeof INPUTS)[number]) => (
+    <Form.Field
+      key={key}
+      control={form.control}
+      name={key}
+      render={({ field }) => (
+        <Form.Item>
+          <Form.Label>{label}</Form.Label>
+          <Form.Control>
+            <Input {...field} size="small" type={type ?? "text"} data-testid={`gb-field-${key}`} />
+          </Form.Control>
+          {hint && <Form.Hint>{hint}</Form.Hint>}
+          <Form.ErrorMessage data-testid={ERROR_TESTIDS[key]} />
+        </Form.Item>
+      )}
+    />
+  )
 
   return (
     <>
       <Button size="small" variant="secondary" onClick={openModal} data-testid="gb-campaign-create">
         Create campaign
       </Button>
-      <FocusModal open={open} onOpenChange={(o) => !inFlight.current && setOpen(o)}>
+      <FocusModal open={open} onOpenChange={(o) => !create.isPending && setOpen(o)}>
         <FocusModal.Content>
-          <FocusModal.Header>
-            <div className="flex items-center justify-end gap-x-2">
-              <Button
-                size="small"
-                onClick={submit}
-                isLoading={create.isPending}
-                disabled={create.isPending}
-                data-testid="gb-campaign-create-submit"
-              >
-                Create
-              </Button>
-            </div>
-          </FocusModal.Header>
-          <FocusModal.Body className="flex justify-center overflow-auto py-16">
-            <div className="flex w-full max-w-lg flex-col gap-y-4">
-              <Heading>Create group-buy campaign</Heading>
-              <Text size="small" className="text-ui-fg-subtle">
-                The campaign starts as draft. Activate it from the campaign page when ready.
-              </Text>
-              {SELECTS.map(({ key, label, options }) => (
-                <div key={key} className="flex flex-col gap-y-2">
-                  <Label size="small">{label}</Label>
-                  <Select size="small" value={form[key]} onValueChange={(v) => set({ [key]: v })}>
-                    <Select.Trigger>
-                      <Select.Value />
-                    </Select.Trigger>
-                    <Select.Content>
-                      {options.map((o) => (
-                        <Select.Item key={o} value={o}>
-                          {o}
-                        </Select.Item>
-                      ))}
-                    </Select.Content>
-                  </Select>
-                </div>
-              ))}
-              {INPUTS.map(({ key, label, type, hint }) => (
-                <div key={key} className="flex flex-col gap-y-2">
-                  <Label size="small">{label}</Label>
-                  <Input
+          <Form {...form}>
+            {/* noValidate: validation เป็นของ zod/toCampaignBody (error ใต้ช่อง) ไม่ให้ browser ดัก input number ก่อน */}
+            <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">
+              <FocusModal.Header>
+                <div className="flex items-center justify-end gap-x-2">
+                  <Button
                     size="small"
-                    type={type ?? "text"}
-                    value={form[key]}
-                    onChange={(e) => set({ [key]: e.target.value })}
-                    aria-invalid={key === "max_quantity" && !!maxQuantityError}
-                    data-testid={`gb-field-${key}`}
-                  />
-                  {hint && (
-                    <Text size="xsmall" className="text-ui-fg-subtle">
-                      {hint}
-                    </Text>
-                  )}
-                  {key === "max_quantity" && maxQuantityError && (
-                    <Text size="xsmall" className="text-ui-fg-error" data-testid="gb-max-quantity-error">
-                      {maxQuantityError}
-                    </Text>
-                  )}
-                  {/* กฎข้อ 16: เตือนแต่ยังส่งได้ — activate จะถูก backend ปฏิเสธจนกว่าจะแก้ ends_at */}
-                  {key === "ends_at" && isEndsAtPast(form.ends_at) && (
-                    <Text size="xsmall" className="text-ui-tag-orange-text" data-testid="gb-ends-at-warning">
-                      This end time has already passed. The campaign will be created as draft but cannot be
-                      activated until the end time is in the future.
-                    </Text>
-                  )}
+                    type="submit"
+                    isLoading={create.isPending}
+                    disabled={create.isPending}
+                    data-testid="gb-campaign-create-submit"
+                  >
+                    Create
+                  </Button>
                 </div>
-              ))}
-              <ProductPicker
-                value={form.product_id}
-                onChange={(product_id) => set({ product_id })}
-                error={productError}
-              />
-              <div className="flex items-center gap-x-2">
-                <Switch
-                  id="gb-tax-inclusive"
-                  checked={form.is_tax_inclusive}
-                  onCheckedChange={(checked) => set({ is_tax_inclusive: checked })}
-                />
-                <Label size="small" htmlFor="gb-tax-inclusive">
-                  Discount is tax inclusive (THB prices include VAT)
-                </Label>
-              </div>
-            </div>
-          </FocusModal.Body>
+              </FocusModal.Header>
+              <FocusModal.Body className="flex justify-center overflow-auto py-16">
+                <div className="flex w-full max-w-lg flex-col gap-y-4">
+                  <Heading>Create group-buy campaign</Heading>
+                  <Text size="small" className="text-ui-fg-subtle">
+                    The campaign starts as draft. Activate it from the campaign page when ready.
+                  </Text>
+                  {SELECTS.map(({ key, label, options }) => (
+                    <Form.Field
+                      key={key}
+                      control={form.control}
+                      name={key}
+                      render={({ field: { onChange, ref, ...field } }) => (
+                        <Form.Item>
+                          <Form.Label>{label}</Form.Label>
+                          <Form.Control>
+                            <Select {...field} size="small" onValueChange={onChange}>
+                              <Select.Trigger ref={ref}>
+                                <Select.Value />
+                              </Select.Trigger>
+                              <Select.Content>
+                                {options.map((o) => (
+                                  <Select.Item key={o} value={o}>
+                                    {o}
+                                  </Select.Item>
+                                ))}
+                              </Select.Content>
+                            </Select>
+                          </Form.Control>
+                        </Form.Item>
+                      )}
+                    />
+                  ))}
+                  {NAME_AND_TARGET.map(textField)}
+                  {DATES.map(({ key, label }) => (
+                    <Form.Field
+                      key={key}
+                      control={form.control}
+                      name={key}
+                      render={({ field }) => (
+                        <Form.Item>
+                          <Form.Label>{label}</Form.Label>
+                          {/* e2e กรอกผ่าน wrapper ที่มี testid เดิม (fillDatePicker — spec 08 กฎ 7b) */}
+                          <div data-testid={`gb-field-${key}`}>
+                            <Form.Control>
+                              <DatePicker {...field} granularity="minute" shouldCloseOnSelect={false} />
+                            </Form.Control>
+                          </div>
+                          <Form.ErrorMessage />
+                          {/* กฎข้อ 16: เตือนแต่ยังส่งได้ — activate จะถูก backend ปฏิเสธจนกว่าจะแก้ ends_at */}
+                          {key === "ends_at" && isEndsAtPast(endsAt) && (
+                            <Text size="xsmall" className="text-ui-tag-orange-text" data-testid="gb-ends-at-warning">
+                              This end time has already passed. The campaign will be created as draft but cannot be
+                              activated until the end time is in the future.
+                            </Text>
+                          )}
+                        </Form.Item>
+                      )}
+                    />
+                  ))}
+                  {INPUTS.map(textField)}
+                  <Form.Field
+                    control={form.control}
+                    name="product_id"
+                    render={({ field, fieldState }) => (
+                      <ProductPicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        error={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                  <Form.Field
+                    control={form.control}
+                    name="is_tax_inclusive"
+                    render={({ field: { value, onChange, ...field } }) => (
+                      <Form.Item className="flex-row items-center gap-x-2 space-y-0">
+                        <Form.Control>
+                          <Switch {...field} checked={value} onCheckedChange={onChange} />
+                        </Form.Control>
+                        <Form.Label>Discount is tax inclusive (THB prices include VAT)</Form.Label>
+                      </Form.Item>
+                    )}
+                  />
+                </div>
+              </FocusModal.Body>
+            </KeyboundForm>
+          </Form>
         </FocusModal.Content>
       </FocusModal>
     </>
