@@ -4,6 +4,7 @@ import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { convertToLocale } from "@lib/util/money"
+import { selectedShippingOptionId, shippingOptionsForCart } from "@lib/util/shipping-options"
 import { CheckCircleSolid, Loader } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -49,8 +50,14 @@ function formatAddress(address: HttpTypes.StoreCartAddress) {
 
 const Shipping: React.FC<ShippingProps> = ({
   cart,
-  availableShippingMethods,
+  availableShippingMethods: unfilteredShippingMethods,
 }) => {
+  // CORE-32/33 (กฎข้อ 89, 91): กรองตาม cart ที่นี่ที่เดียว แล้วใช้รายการนี้ตัดสินทั้ง radio, ปุ่ม และสรุป
+  const availableShippingMethods = shippingOptionsForCart(unfilteredShippingMethods ?? [], cart)
+  const selectedOptionId = selectedShippingOptionId(cart, availableShippingMethods)
+  const selectedMethod = selectedOptionId
+    ? cart.shipping_methods?.filter((m) => m.shipping_option_id === selectedOptionId).at(-1)
+    : undefined
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingPrices, setIsLoadingPrices] = useState(true)
 
@@ -61,7 +68,7 @@ const Shipping: React.FC<ShippingProps> = ({
   >({})
   const [error, setError] = useState<string | null>(null)
   const [shippingMethodId, setShippingMethodId] = useState<string | null>(
-    cart.shipping_methods?.at(-1)?.shipping_option_id || null
+    selectedOptionId
   )
 
   const searchParams = useSearchParams()
@@ -108,7 +115,7 @@ const Shipping: React.FC<ShippingProps> = ({
     if (_pickupMethods?.find((m) => m.id === shippingMethodId)) {
       setShowPickupOptions(PICKUP_OPTION_ON)
     }
-  }, [availableShippingMethods])
+  }, [unfilteredShippingMethods])
 
   const handleEdit = () => {
     router.push(pathname + "?step=delivery", { scroll: false })
@@ -161,13 +168,13 @@ const Shipping: React.FC<ShippingProps> = ({
             "flex flex-row text-3xl-regular gap-x-2 items-baseline",
             {
               "opacity-50 pointer-events-none select-none":
-                !isOpen && cart.shipping_methods?.length === 0,
+                !isOpen && !selectedMethod,
             }
           )}
           data-testid="delivery-heading"
         >
           การจัดส่ง
-          {!isOpen && (cart.shipping_methods?.length ?? 0) > 0 && (
+          {!isOpen && selectedMethod && (
             <CheckCircleSolid />
           )}
         </Heading>
@@ -200,6 +207,14 @@ const Shipping: React.FC<ShippingProps> = ({
                 เลือกวิธีรับสินค้าที่คุณต้องการ
               </span>
             </div>
+            {availableShippingMethods.length === 0 ? (
+              <Text
+                className="pb-8 txt-medium text-ui-fg-subtle"
+                data-testid="delivery-options-empty"
+              >
+                ไม่มีวิธีจัดส่งสำหรับสินค้าในตะกร้านี้ กรุณาติดต่อร้าน
+              </Text>
+            ) : (
             <div data-testid="delivery-options-container">
               <div className="pb-8 md:pt-0 pt-2">
                 {hasPickupOptions && (
@@ -302,6 +317,7 @@ const Shipping: React.FC<ShippingProps> = ({
                 </RadioGroup>
               </div>
             </div>
+            )}
           </div>
 
           {showPickupOptions === PICKUP_OPTION_ON && (
@@ -382,7 +398,7 @@ const Shipping: React.FC<ShippingProps> = ({
               className="mt"
               onClick={handleSubmit}
               isLoading={isLoading}
-              disabled={!cart.shipping_methods?.[0]}
+              disabled={!selectedOptionId}
               data-testid="submit-delivery-option-button"
             >
               ไปขั้นตอนการชำระเงิน
@@ -392,15 +408,15 @@ const Shipping: React.FC<ShippingProps> = ({
       ) : (
         <div>
           <div className="text-small-regular">
-            {cart && (cart.shipping_methods?.length ?? 0) > 0 && (
+            {selectedMethod && (
               <div className="flex flex-col w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
                   วิธีจัดส่ง
                 </Text>
                 <Text className="txt-medium text-ui-fg-subtle">
-                  {cart.shipping_methods!.at(-1)!.name}{" "}
+                  {selectedMethod.name}{" "}
                   {convertToLocale({
-                    amount: cart.shipping_methods!.at(-1)!.amount!,
+                    amount: selectedMethod.amount!,
                     currency_code: cart?.currency_code,
                   })}
                 </Text>

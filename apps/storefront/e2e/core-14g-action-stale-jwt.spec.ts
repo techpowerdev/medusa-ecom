@@ -122,7 +122,7 @@ test("AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ย�
     const row = page.getByTestId("product-row")
     await expect(row).toHaveCount(1)
     await expect(page.getByTestId("discount-row")).toHaveCount(1)
-    // promotion-error แสดงเฉพาะเมื่อเปิดช่องใส่โค้ด (component ของ starter) — เปิดก่อนลบ JWT
+    // เปิดช่องใส่โค้ดก่อนลบ JWT เพราะขั้น (3) ต้องใช้ `discount-input` (promotion-error แสดงได้โดยไม่ต้องเปิดช่องแล้ว — กฎข้อ 85)
     await page.getByTestId("add-discount-button").click()
     await expect(page.getByTestId("discount-input")).toBeVisible()
 

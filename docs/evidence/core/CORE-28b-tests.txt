@@ -1,0 +1,28 @@
+# CORE-28b — evidence (กฎข้อ 90, AC-126) 2026-11-04T05:42:24Z
+base: origin/develop e7b4dd8
+
+## AC-126 grep: ไม่มีวลี "แสดงเฉพาะเมื่อเปิดช่อง" (คาด 0)
+$ grep -c 'แสดงเฉพาะเมื่อเปิดช่อง' apps/storefront/e2e/core-14g-action-stale-jwt.spec.ts
+0
+exit=1 (1 = ไม่พบ)
+
+## AC-126 git diff: บรรทัดที่เปลี่ยนเป็น comment ทั้งหมด
+$ git diff -U0 origin/develop -- apps/storefront/e2e/core-14g-action-stale-jwt.spec.ts | grep -E '^[-+][^-+]'
+-    // promotion-error แสดงเฉพาะเมื่อเปิดช่องใส่โค้ด (component ของ starter) — เปิดก่อนลบ JWT
++    // เปิดช่องใส่โค้ดก่อนลบ JWT เพราะขั้น (3) ต้องใช้ `discount-input` (promotion-error แสดงได้โดยไม่ต้องเปิดช่องแล้ว — กฎข้อ 85)
+บรรทัดที่เปลี่ยนแต่ไม่ใช่ comment (คาด 0): 0
+git diff --stat:
+ apps/storefront/e2e/core-14g-action-stale-jwt.spec.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+## pnpm --filter storefront lint
+✖ 31 problems (0 errors, 31 warnings)
+
+exit=0
+warning ในไฟล์ core-14g (คาด 0): 0
+
+## pnpm --filter storefront typecheck
+$ tsc --noEmit
+exit=0
+
+## e2e: ไม่รันในเครื่อง (ไม่เปลี่ยนขั้นตอน/assertion) — CI job storefront e2e เป็นผู้รัน

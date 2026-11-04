@@ -153,7 +153,10 @@ function unguardedPrints(script: string): string[] {
     }
     const block = fn ?? "<top>"
     if (/artifact-guard\.js scan "\$OUT"/.test(code)) scanned.add(block)
-    const reads = /(^|[\s;&|({])(cat|grep)\s/.test(code) && !/\bgrep -q\b/.test(code) && /\$OUT|-console\.log/.test(code)
+    // OPS-17c (AC-35 c): แยกคำสั่งตาม &&/||/;/| แล้วข้ามเฉพาะส่วนที่เป็น grep -q (ไม่ข้ามทั้งบรรทัด)
+    const segments = code.split(/&&|\|\||;|\|/)
+    const prints = segments.some((seg) => /(^|[\s({])(cat|grep)\s/.test(seg) && !/\bgrep -q\b/.test(seg))
+    const reads = prints && /\$OUT|-console\.log/.test(code)
     if (!reads) continue
     if (/\|\s*node tools\/load\/artifact-guard\.js redact/.test(code)) continue
     if (scanned.has(block)) continue
@@ -215,7 +218,8 @@ function consoleArgs(src: string): string[] {
   }
   return out
 }
-const SECRET_IDENT = /\b(token|authorization|headers|setup)\b/i
+// OPS-17c (AC-35 b): JSON.stringify( ของ object (เช่น response/request) อาจมี token
+const SECRET_IDENT = /\b(token|authorization|headers|setup)\b|JSON\.stringify\(/i
 
 describe("OPS-17b k6 script ไม่ส่ง token/header เข้า console.*", () => {
   it.each(["tools/load/flash-sale.js", "tools/load/group-buy-join.js"])("%s", (file) => {
@@ -227,5 +231,68 @@ describe("OPS-17b k6 script ไม่ส่ง token/header เข้า console
   it("positive control: console ที่มี token/headers → ถูกจับ", () => {
     const args = consoleArgs("console.error(`x ${c.token}`)\nconsole.log(fmt(res.request.headers))\nconsole.info(`ok ${c.cart_id}`)")
     expect(args.filter((a) => SECRET_IDENT.test(a))).toHaveLength(2)
+  })
+})
+
+// OPS-17c (spec 07 AC-35)
+describe("OPS-17c (b) console.* ของ k6 script ปฏิเสธ JSON.stringify(", () => {
+  it("positive control: console.log(JSON.stringify(res)) → ถูกจับ, ข้อความปกติไม่ถูกจับ", () => {
+    const args = consoleArgs("console.log(JSON.stringify(res))\nconsole.info(`ok ${c.cart_id} ${res.status}`)")
+    expect(args.filter((a) => SECRET_IDENT.test(a))).toEqual(["JSON.stringify(res)"])
+  })
+})
+
+describe("OPS-17c (c) unguardedPrints ข้ามเฉพาะส่วน grep -q", () => {
+  it("positive control: grep -q ... && cat \"$OUT/a\" ก่อน scan → ถูกจับ", () => {
+    for (const op of ["&&", "||", ";", "|"]) {
+      expect(unguardedPrints(`grep -q x "$OUT/a" ${op} cat "$OUT/a"\nnode tools/load/artifact-guard.js scan "$OUT"`)).toHaveLength(1)
+    }
+  })
+
+  it("grep -q ล้วน (ไม่พิมพ์เนื้อหา) → ไม่ถูกจับ", () => {
+    expect(unguardedPrints('grep -q "^failures: 0$" "$OUT/report.md" 2>/dev/null && passed=1')).toEqual([])
+  })
+})
+
+describe("OPS-17c (a) stdout/stderr ของ docker run k6 ผ่าน redact และคง exit code ของ docker", () => {
+  const runner = read("tools/load/run.sh")
+  const start = runner.indexOf("k6() {")
+  const k6Fn = runner.slice(start, runner.indexOf("\n}\n", start) + 3)
+
+  it("stub docker พิมพ์ JWT ลง stdout/stderr แล้ว exit 99 → output ไม่มี JWT และ k6-failures.txt มี exit 99", () => {
+    expect(start).toBeGreaterThan(-1)
+    const token = fakeJwt()
+    const bin = path.join(dir, "bin")
+    const out = path.join(dir, "out")
+    const data = path.join(dir, "data")
+    for (const d of [bin, out, path.join(data, "k6")]) mkdirSync(d, { recursive: true })
+    writeFileSync(
+      path.join(bin, "docker"),
+      `#!/usr/bin/env bash\necho "ERRO[0001] request failed body=${token}" >&2\necho "WARN stdout ${token}"\nexit 99\n`,
+      { mode: 0o755 }
+    )
+    const script = [
+      "set -euo pipefail",
+      `OUT=${JSON.stringify(out)} DATA=${JSON.stringify(data)} PROJECT=t K6_IMAGE=k6 BURST_RATE=1 BURST_DURATION=1s FLASH_BURST=1`,
+      k6Fn,
+      "k6 flash-sale",
+      'echo "after k6"',
+    ].join("\n")
+    const r = spawnSync("bash", ["-c", script], {
+      cwd: ROOT,
+      encoding: "utf8",
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+    })
+    const output = r.stdout + r.stderr
+    expect(r.status).toBe(0)
+    expect(output).toContain("after k6")
+    expect(output).toContain("ERRO[0001] request failed body=[REDACTED_JWT]")
+    expect(output).toContain("WARN stdout [REDACTED_JWT]")
+    expect(output).not.toMatch(JWT_RE)
+    expect(readFileSync(path.join(out, "k6-failures.txt"), "utf8")).toContain("flash-sale: k6 exit 99")
+  })
+
+  it("docker run ใน k6() pipe ทั้ง stdout/stderr ผ่าน artifact-guard.js redact", () => {
+    expect(k6Fn).toMatch(/"\/scripts\/\$1\.js" 2>&1 \| node tools\/load\/artifact-guard\.js redact/)
   })
 })
