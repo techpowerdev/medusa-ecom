@@ -22,8 +22,9 @@ const ItemsTemplate = ({ cart, flashExceeded }: ItemsTemplateProps) => {
           ตะกร้าสินค้า
         </Heading>
       </div>
-      <Table>
-        <Table.Header className="border-t-0">
+      {/* CORE-47 (กฎข้อ 105b): < small ตารางเป็น block ให้แถวเป็นการ์ด (grid ใน Item) และซ่อนหัวคอลัมน์ — ≥ small ตารางเดิม */}
+      <Table className="max-small:block">
+        <Table.Header className="border-t-0 max-small:hidden">
           <Table.Row
             className="text-ui-fg-subtle txt-medium-plus"
             data-testid="cart-items-header"
@@ -44,7 +45,7 @@ const ItemsTemplate = ({ cart, flashExceeded }: ItemsTemplateProps) => {
             </Table.HeaderCell>
           </Table.Row>
         </Table.Header>
-        <Table.Body>
+        <Table.Body className="max-small:block">
           {items
             ? items
                 .sort((a, b) => {

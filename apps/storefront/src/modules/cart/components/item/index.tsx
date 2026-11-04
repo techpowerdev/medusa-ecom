@@ -50,10 +50,25 @@ const Item = ({
     setUpdating(false)
   }
 
+  // CORE-47 (กฎข้อ 105): /cart < small แต่ละ line เป็นการ์ด — render ครั้งเดียว `tr` เป็น grid 3 คอลัมน์ (รูป | ชื่อ/จำนวน | รวม)
+  // แล้ว `td` เป็น block: รูป row-span 2 ซ้าย, ชื่อ + ตัวเลือก col-span 2 ใช้ความกว้างที่เหลือ, บรรทัดล่าง = ปุ่มลบ/จำนวน + รวมชิดขวา
+  // class ทั้งหมดอยู่ใต้ `type === "full"` และเป็น `max-small:` (≥ small ไม่มี class ใหม่ → ตารางเดิมทุกพิกเซล; preview เท่าเดิม)
+  const card = type === "full"
+
   return (
-    <Table.Row className="w-full" data-testid="product-row">
+    <Table.Row
+      className={clx("w-full", {
+        "max-small:grid max-small:grid-cols-[auto_minmax(0,1fr)_auto] max-small:items-center":
+          card,
+      })}
+      data-testid="product-row"
+    >
       {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ชื่อสินค้า/จำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 (รวมยอดหลักหมื่นมีทศนิยม — qa #278 D-1) — ≥ small คงเดิม */}
-      <Table.Cell className="!pl-0 p-4 pr-2 small:pr-4 w-24">
+      <Table.Cell
+        className={clx("!pl-0 p-4 pr-2 small:pr-4 w-24", {
+          "max-small:block max-small:w-auto max-small:row-span-2": card,
+        })}
+      >
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
           className={clx("flex", {
@@ -69,7 +84,12 @@ const Item = ({
         </LocalizedClientLink>
       </Table.Cell>
 
-      <Table.Cell className="text-left px-2 small:px-4">
+      <Table.Cell
+        className={clx("text-left px-2 small:px-4", {
+          "max-small:block max-small:col-span-2 max-small:min-w-0 max-small:break-words":
+            card,
+        })}
+      >
         <Text
           className="txt-medium-plus text-ui-fg-base"
           data-testid="product-title"
@@ -80,7 +100,11 @@ const Item = ({
       </Table.Cell>
 
       {type === "full" && (
-        <Table.Cell className="px-2 small:px-4">
+        <Table.Cell
+          className={clx("px-2 small:px-4", {
+            "max-small:block max-small:min-w-0 max-small:pt-0": card,
+          })}
+        >
           {/* qa #142 D-2 (CORE-19c): `!contents` ให้ปุ่มลบและข้อความ error เป็น flex item ของแถวนี้ — error ขึ้นบรรทัดใหม่กว้างเต็ม w-28 */}
           <div className="flex flex-wrap gap-2 items-center w-28">
             <DeleteButton
@@ -118,7 +142,12 @@ const Item = ({
         </Table.Cell>
       )}
 
-      <Table.Cell className="!pr-0">
+      <Table.Cell
+        className={clx("!pr-0", {
+          "max-small:block max-small:pl-2 max-small:pt-0 max-small:whitespace-nowrap":
+            card,
+        })}
+      >
         <span
           className={clx("!pr-0", {
             "flex flex-col items-end h-full justify-center": type === "preview",
