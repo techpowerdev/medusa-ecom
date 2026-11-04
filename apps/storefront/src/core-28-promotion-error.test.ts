@@ -189,3 +189,101 @@ describe("CORE-36: ปุ่มลบโค้ดส่วนลดกันค�
     )
   })
 })
+
+describe("CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(async () => {
+    await act(async () => root.unmount())
+    container.remove()
+  })
+
+  const applyButton = () => byTestId("discount-apply-button") as HTMLButtonElement
+  const removeButtons = () =>
+    Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[data-testid="remove-discount-button"]')
+    )
+
+  // ส่งฟอร์มตรงๆ (ไม่ผ่านปุ่ม) — จำลองกด Enter ในช่องใส่โค้ดแม้ปุ่ม disabled
+  const submitCode = async (code: string) => {
+    ;(byTestId("discount-input") as HTMLInputElement).value = code
+    await act(async () => {
+      byTestId("discount-input")!.closest("form")!.requestSubmit()
+    })
+  }
+
+  it("ลบค้าง → ปุ่มใส่โค้ด disabled และส่งฟอร์มไม่ยิง action; resolve แล้วกดได้", async () => {
+    const pending = deferred<unknown>()
+    applyPromotions.mockReturnValueOnce(pending.promise)
+    await render()
+    await click("add-discount-button")
+
+    await click("remove-discount-button")
+    expect(applyButton().disabled).toBe(true)
+    await submitCode("B")
+    expect(applyPromotions).toHaveBeenCalledTimes(1)
+    expect(applyPromotions).toHaveBeenLastCalledWith([])
+
+    await act(async () => {
+      pending.resolve({ ok: true, codes: [] })
+    })
+    expect(applyButton().disabled).toBe(false)
+  })
+
+  it("ลบสำเร็จด้วย codes: [] โดยไม่ re-render prop (cart ยังมี SAVE10) แล้วใส่ B → ส่ง [B] ไม่มีโค้ดที่ลบ", async () => {
+    const pending = deferred<unknown>()
+    applyPromotions.mockReturnValueOnce(pending.promise)
+    await render()
+    await click("add-discount-button")
+    await click("remove-discount-button")
+    await act(async () => {
+      pending.resolve({ ok: true, codes: [] })
+    })
+
+    applyPromotions.mockResolvedValueOnce({ ok: true, codes: ["B"] })
+    await submitCode("B")
+    await vi.waitFor(() => expect(applyPromotions).toHaveBeenCalledTimes(2))
+    expect(applyPromotions).toHaveBeenLastCalledWith(["B"])
+  })
+
+  it("ลบล้ม (failed) → ใส่ B ครั้งถัดไปส่ง [SAVE10, B] (โค้ดเดิมยังอยู่)", async () => {
+    applyPromotions.mockResolvedValueOnce({ error: "failed" })
+    await render()
+    await click("add-discount-button")
+    await click("remove-discount-button")
+    expect(byTestId("promotion-error")?.textContent).toBe(PROMOTION_REMOVE_FAILED)
+
+    applyPromotions.mockResolvedValueOnce({ ok: true, codes: ["SAVE10", "B"] })
+    await submitCode("B")
+    await vi.waitFor(() => expect(applyPromotions).toHaveBeenCalledTimes(2))
+    expect(applyPromotions).toHaveBeenLastCalledWith(["SAVE10", "B"])
+  })
+
+  it("ใส่โค้ดค้าง → ทุก remove-discount-button disabled และคลิกไม่ยิง action เพิ่ม", async () => {
+    const pending = deferred<unknown>()
+    applyPromotions.mockReturnValueOnce(pending.promise)
+    await render()
+    await click("add-discount-button")
+    await submitCode("B")
+    expect(applyPromotions).toHaveBeenCalledTimes(1)
+
+    expect(removeButtons().length).toBeGreaterThan(0)
+    for (const button of removeButtons()) {
+      expect(button.disabled).toBe(true)
+    }
+    await act(async () => {
+      removeButtons()[0].click()
+    })
+    expect(applyPromotions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      pending.resolve({ ok: true, codes: ["SAVE10", "B"] })
+    })
+    expect(removeButtons()[0].disabled).toBe(false)
+  })
+})
