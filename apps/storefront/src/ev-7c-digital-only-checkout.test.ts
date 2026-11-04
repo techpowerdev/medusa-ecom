@@ -99,6 +99,38 @@ describe("deliveryStepDone / checkoutStep", () => {
   })
 })
 
+// CORE-35 (spec 01 กฎข้อ 93, AC-129): ส่งรายการ option ที่กรองแล้ว (กฎข้อ 89) → ใช้ option ที่เลือกในรายการนั้น
+describe("deliveryStepDone(cart, options) — รายการที่กรองแล้ว (กฎข้อ 93)", () => {
+  const standard = { id: "so_standard" }
+  const digital = { id: "so_digital" }
+  const filtered = [standard] // cart ที่ต้องจัดส่ง: Digital delivery ถูกกรองออก
+
+  it("cart ต้องจัดส่ง + method ล่าสุดเป็น Digital delivery ที่ไม่อยู่ในรายการ → ยังไม่เสร็จ", () => {
+    const cart = cartOf([shirt], {
+      shipping_methods: [{ id: "sm_1", shipping_option_id: digital.id }],
+    } as never)
+    expect(deliveryStepDone(cart, filtered)).toBe(false)
+  })
+
+  it("method Standard อยู่ในรายการ → เสร็จ", () => {
+    const cart = cartOf([shirt], {
+      shipping_methods: [{ id: "sm_1", shipping_option_id: standard.id }],
+    } as never)
+    expect(deliveryStepDone(cart, filtered)).toBe(true)
+  })
+
+  it("digital-only ไม่มี method → เสร็จ (EV-7c)", () => {
+    expect(deliveryStepDone(cartOf([voucher]), [])).toBe(true)
+  })
+
+  it("ไม่ส่งรายการ → พฤติกรรมเดิม (มี method = เสร็จ)", () => {
+    const cart = cartOf([shirt], {
+      shipping_methods: [{ id: "sm_1", shipping_option_id: digital.id }],
+    } as never)
+    expect(deliveryStepDone(cart)).toBe(true)
+  })
+})
+
 describe("setAddresses แบบ digital-only (กฎข้อ 24b)", () => {
   const billingForm = () => {
     const form = new FormData()

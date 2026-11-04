@@ -2,7 +2,6 @@
 import { RadioGroup } from "@headlessui/react"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
-import { deliveryStepDone } from "@lib/util/digital-checkout"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isPromptPay } from "@lib/util/payment-session"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
@@ -25,9 +24,12 @@ import { useCallback, useEffect, useState } from "react"
 const Payment = ({
   cart,
   availablePaymentMethods,
+  deliveryDone,
 }: {
   cart: HttpTypes.StoreCart
   availablePaymentMethods: { id: string }[]
+  /** CORE-35 (กฎข้อ 93): จาก checkout-form — deliveryStepDone กับรายการ option ที่กรองแล้ว */
+  deliveryDone: boolean
 }) => {
   const activeSession = cart.payment_collection?.payment_sessions?.find(
     (paymentSession) => paymentSession.status === "pending"
@@ -85,7 +87,7 @@ const Payment = ({
   )
 
   const paymentReady =
-    (activeSession && deliveryStepDone(cart)) || paidByGiftcard
+    (activeSession && deliveryDone) || paidByGiftcard
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
