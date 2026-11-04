@@ -51,6 +51,7 @@ describe("businessErrorHandler", () => {
     // spec 04 กฎข้อ 5: GB_DISCOUNT_NOT_APPLIED เป็น 400 not_allowed ไม่ใช่ 409
     expect(BUSINESS_CONFLICT_CODES.has("GB_DISCOUNT_NOT_APPLIED")).toBe(false)
     expect(BUSINESS_CONFLICT_CODES.has("GB_CART_NOT_COMPLETABLE")).toBe(false) // กฎข้อ 14a: 400
+    expect(BUSINESS_CONFLICT_CODES.has("GB_SHIPPING_PROFILE_NOT_COVERED")).toBe(false) // กฎข้อ 35: 400
   })
 
   // AC-12 (d): route ของเราไม่ตอบ 409 เอง — ใช้ errorHandler กลางเท่านั้น

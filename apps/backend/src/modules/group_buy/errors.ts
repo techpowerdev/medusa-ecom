@@ -12,6 +12,8 @@ export const GB_CART_NOT_COMPLETABLE = "GB_CART_NOT_COMPLETABLE"
 export const GB_DISCOUNT_NOT_APPLIED = "GB_DISCOUNT_NOT_APPLIED"
 // 400 (กฎข้อ 30, AC-49): promotion ต้นแบบต้องมี target_rules = items.product.id in [ค่าเดียว] — ไม่ใช่ 409
 export const GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED = "GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED"
+// 400 NOT_ALLOWED (กฎข้อ 35, AC-54): shipping method ของ cart ไม่ครอบ shipping profile ของสินค้า — ไม่ใช่ 409
+export const GB_SHIPPING_PROFILE_NOT_COVERED = "GB_SHIPPING_PROFILE_NOT_COVERED"
 // ภายใน (ไม่ใช่ HTTP): deadline job เลือกผลจาก snapshot นอก lock แต่ใต้ lock ผลเปลี่ยนแล้ว (review #89) — job log เป็น warn
 export const GB_DEADLINE_OUTCOME_CHANGED = "GB_DEADLINE_OUTCOME_CHANGED"
 

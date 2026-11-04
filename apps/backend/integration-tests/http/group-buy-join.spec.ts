@@ -1,6 +1,6 @@
 import type { EventEmitter } from "events"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, generateJwtToken, Modules } from "@medusajs/framework/utils"
 import { createCartWorkflow, createPromotionsWorkflow } from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
@@ -815,6 +815,176 @@ medusaIntegrationTestRunner({
         expect(await ordersOf(b.customerId)).toEqual([])
         expect(await progress(group.id)).toEqual([0, 0, 0])
         expect(await cartPromotions(cartA)).toEqual(before)
+      })
+    })
+
+    // GB-14 (กฎข้อ 35, AC-54): วิธีส่งของ cart ต้องครอบ shipping profile ของ line ที่ต้องจัดส่ง (แบบ validateShippingStep)
+    describe("shipping profile coverage on join (GB-14, AC-54)", () => {
+      const CODE = "GB_SHIPPING_PROFILE_NOT_COVERED"
+      let admin: { headers: Record<string, string> }
+      let optionStd: string // O_std (P_phys)
+      let optionDig: string // O_dig (P_dig)
+
+      const adminPost = async (url: string, body: unknown) => {
+        const res = await settle(api.post(url, body, admin))
+        if (res.status !== 200) {
+          throw new Error(`${url}: ${res.status} ${JSON.stringify(res.data)}`)
+        }
+        return res.data
+      }
+
+      beforeEach(async () => {
+        const container = getContainer()
+        const user = await container.resolve(Modules.USER).createUsers({ email: "gb14-admin@example.com" })
+        const identity = await container.resolve(Modules.AUTH).createAuthIdentities({
+          provider_identities: [{ provider: "emailpass", entity_id: "gb14-admin@example.com" }],
+          app_metadata: { user_id: user.id },
+        })
+        const { http } = container.resolve(ContainerRegistrationKeys.CONFIG_MODULE).projectConfig
+        const token = generateJwtToken(
+          { actor_id: user.id, actor_type: "user", auth_identity_id: identity.id, app_metadata: { user_id: user.id } },
+          { secret: http.jwtSecret as string, expiresIn: "1d" }
+        )
+        admin = { headers: { authorization: `Bearer ${token}` } }
+
+        // เขตบริการไทยของ seed (ที่ "Standard" ใช้)
+        const { data: zones } = await container
+          .resolve(ContainerRegistrationKeys.QUERY)
+          .graph({ entity: "shipping_option", fields: ["service_zone_id"], filters: { type: { code: "standard" } } })
+        const serviceZoneId = must(zones[0]?.service_zone_id, "service zone")
+
+        const profile = async (name: string) =>
+          (await adminPost("/admin/shipping-profiles", { name, type: name })).shipping_profile.id as string
+        const option = async (name: string, shippingProfileId: string) =>
+          (
+            await adminPost("/admin/shipping-options", {
+              name,
+              service_zone_id: serviceZoneId,
+              shipping_profile_id: shippingProfileId,
+              provider_id: "manual_manual",
+              price_type: "flat",
+              type: { label: name, description: name, code: name },
+              prices: [
+                { currency_code: "thb", amount: 50 },
+                { region_id: regionId, amount: 50 },
+              ],
+              rules: [
+                { attribute: "enabled_in_store", value: "true", operator: "eq" },
+                { attribute: "is_return", value: "false", operator: "eq" },
+              ],
+            })
+          ).shipping_option.id as string
+        const pPhys = await profile("gb14-phys")
+        const pDig = await profile("gb14-dig")
+        optionStd = await option("gb14-std", pPhys)
+        optionDig = await option("gb14-dig", pDig)
+        await adminPost(`/admin/products/${productXId}`, { shipping_profile_id: pPhys })
+      })
+
+      const cartWithShipping = async (s: Shopper, optionIds: string[]) => {
+        const cartId = await cartFor(s)
+        const ok = (r: Res) => {
+          if (r.status !== 200) {
+            throw new Error(`prepare shipping: ${r.status} ${JSON.stringify(r.data)}`)
+          }
+        }
+        ok(
+          await settle(
+            api.post(
+              `/store/carts/${cartId}`,
+              {
+                shipping_address: {
+                  first_name: "Somchai",
+                  last_name: "Jaidee",
+                  address_1: "1 Sukhumvit Rd",
+                  city: "Bangkok",
+                  postal_code: "10110",
+                  country_code: "th",
+                },
+              },
+              s.headers
+            )
+          )
+        )
+        for (const option_id of optionIds) {
+          ok(await settle(api.post(`/store/carts/${cartId}/shipping-methods`, { option_id }, s.headers)))
+        }
+        return cartId
+      }
+
+      const shippingMethodIds = async (cartId: string) => {
+        const { data } = await getContainer()
+          .resolve(ContainerRegistrationKeys.QUERY)
+          .graph({ entity: "cart", fields: ["shipping_methods.id"], filters: { id: cartId } })
+        return ((data[0]?.shipping_methods ?? []) as { id: string }[]).map((m) => m.id)
+      }
+
+      it("O_dig on a shippable line → 400 not_allowed with the code, nothing created; switching to O_std → 201", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await shopper()
+        const cartId = await cartWithShipping(s, [optionDig])
+        expect(await shippingMethodIds(cartId)).toHaveLength(1)
+
+        const res = await join(group.join_token, cartId, s)
+        expect(res.status).toEqual(400)
+        expect(res.data.type).toEqual("not_allowed")
+        expect(res.data.message).toContain(CODE)
+        expect(await memberships({ group_id: group.id })).toEqual([])
+        expect(await ordersOf(s.customerId)).toEqual([])
+        expect(await progress(group.id)).toEqual([0, 0, 0])
+        expect((await cartPromotions(cartId)).promotions.filter((c: string) => c.startsWith("GB-"))).toEqual([])
+
+        // store API ของ Medusa ไม่มี route ลบ shipping method — เอา O_dig ออกด้วย cart module แล้วเลือก O_std ผ่าน store API
+        await getContainer().resolve(Modules.CART).deleteShippingMethods(await shippingMethodIds(cartId))
+        const switched = await settle(
+          api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: optionStd }, s.headers)
+        )
+        expect(switched.status).toEqual(200)
+        expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+      })
+
+      it("cart with both O_std and O_dig → 201", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await shopper()
+        const cartId = await cartWithShipping(s, [optionStd])
+        // refreshCartShippingMethods ของ Medusa ลบ method ที่ profile ไม่มี line รองรับเมื่อ cart มี > 1 method
+        // (แคมเปญมีสินค้าเดียว — กฎข้อ 30) จึงเพิ่ม O_dig ด้วย cart module ให้ได้ cart ที่มีทั้งสอง method
+        await getContainer()
+          .resolve(Modules.CART)
+          .addShippingMethods({ cart_id: cartId, shipping_option_id: optionDig, name: "gb14-dig", amount: 50 })
+        expect(await shippingMethodIds(cartId)).toHaveLength(2)
+        expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+      })
+
+      it("cart without any shipping method → 201 (rule 35c)", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await shopper()
+        expect((await joinWithNewCart(group.join_token, s)).status).toEqual(201)
+      })
+
+      it("every line requires_shipping = false + O_dig → 201", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await shopper()
+        const cartId = await cartWithShipping(s, [optionDig])
+        // สินค้าที่มี shipping profile ได้ requires_shipping = true เสมอ (prepare-line-item-data ของ Medusa) — ตั้งที่ line ตรงๆ
+        const cartModule = getContainer().resolve(Modules.CART)
+        const items = await cartModule.listLineItems({ cart_id: cartId }, { select: ["id"] })
+        await cartModule.updateLineItems(items.map((i) => ({ id: i.id, requires_shipping: false })))
+
+        expect((await join(group.join_token, cartId, s)).status).toEqual(201)
+      })
+
+      it("group full and O_dig → 409 GB_GROUP_FULL (409 comes first)", async () => {
+        const campaign = await createCampaign({ max_people_per_group: 1 })
+        const group = await poolGroup(campaign.id)
+        expect((await joinWithNewCart(group.join_token, await shopper())).status).toEqual(201)
+
+        const s = await shopper()
+        expectConflict(await join(group.join_token, await cartWithShipping(s, [optionDig]), s), "GB_GROUP_FULL")
       })
     })
 

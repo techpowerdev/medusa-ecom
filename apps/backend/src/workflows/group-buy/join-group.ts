@@ -35,6 +35,11 @@ import {
   itemMatchesTargetRules,
   type TargetRule,
 } from "../../modules/group_buy/utils/join"
+import {
+  assertShippingProfilesCovered,
+  type ShippingCart,
+  type ShippingOptionProfile,
+} from "../../modules/group_buy/utils/shipping-profile"
 import { isTargetReached } from "../../modules/group_buy/utils/target"
 
 export const GROUP_BUY_GROUP_SUCCEEDED = "group_buy.group.succeeded"
@@ -155,6 +160,10 @@ export const validateJoinStep = createStep(
         ...rules.map((r) => r.attribute),
         "promotions.code",
         "promotions.is_automatic",
+        // กฎข้อ 35: ชุดเดียวกับ completeCartFields ที่ validateShippingStep ของ Medusa ใช้
+        "items.requires_shipping",
+        "items.variant.product.shipping_profile.id",
+        "shipping_methods.shipping_option_id",
       ],
       filters: { id: input.cart_id },
     })
@@ -196,6 +205,20 @@ export const validateJoinStep = createStep(
       customerMemberships: customerMemberships.map((m) => ({ group_id: m.group_id, units: m.units })),
       campaignMembershipCount,
     })
+
+    // กฎข้อ 35 (GB-14): หลัง 409 ของ assertJoinAllowed — option ของ shipping method แบบ completeCartWorkflow
+    const shippingCart = carts[0] as unknown as ShippingCart
+    const optionIds = (shippingCart.shipping_methods ?? [])
+      .map((m) => m?.shipping_option_id)
+      .filter((id): id is string => !!id)
+    const { data: shippingOptions } = optionIds.length
+      ? await query.graph({
+          entity: "shipping_option",
+          fields: ["id", "shipping_profile_id"],
+          filters: { id: optionIds },
+        })
+      : { data: [] }
+    assertShippingProfilesCovered(shippingCart, shippingOptions as ShippingOptionProfile[])
 
     return new StepResponse({
       code: group.promotion.code,
