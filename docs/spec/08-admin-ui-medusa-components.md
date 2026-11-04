@@ -1,11 +1,12 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
 Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
-ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7)
+ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
+2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18)
 Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้งหมดได้ใช้ component, hook, utility และอื่นที่ medusa ให้แล้วหรือยัง ถ้ายังให้วางแผนปรับใช้ตามที่ medusa มีให้ก่อนเป็นฐาน
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
-(ยกเว้นปุ่มต่อแถวที่ย้ายเข้า `ActionMenu` และช่องวันเวลาที่เป็น `DatePicker` — กฎ 7), หน้า admin ของ Medusa เอง (เราไม่ override), เวลาของ storefront (คงเวลาไทยตาม spec 01 กฎ 42)
+(ยกเว้นปุ่มต่อแถวที่ย้ายเข้า `ActionMenu`, ช่องวันเวลาที่เป็น `DatePicker` และปุ่มสร้างที่ย้ายเข้า `action` ของ `DataTable` — กฎ 7), หน้า admin ของ Medusa เอง (เราไม่ override), เวลาของ storefront (คงเวลาไทยตาม spec 01 กฎ 42)
 
 ผลตรวจทีละไฟล์และเหตุผล: ADR-018 (accepted)
 
@@ -59,8 +60,9 @@ none (ใช้ admin route เดิมทั้งหมด; `GET /admin/evouc
    และ storefront แสดงเวลาไทยตามเดิม; ใน `src/admin` ห้ามมี `datetime-local`, `ictToIso`, `isoToIct`, `timeZone:`, `toLocaleString(`, `toLocaleDateString(`, `Intl.DateTimeFormat(`
 6. เงินแสดงด้วย `getLocaleAmount(castNumber(amount), currency_code)` (รูปแบบตาม locale ของ browser เหมือนหน้า admin หลักของ Medusa); ห้าม `Intl.NumberFormat(` ใน `src/admin`
 7. ไม่เปลี่ยน `data-testid` ที่มีอยู่และ label ที่ e2e หาด้วย `getByLabel`; ไฟล์ `apps/storefront/e2e/*admin*.spec.ts` ที่มีอยู่ต้องผ่านโดยไม่แก้ locator **ยกเว้น** (a) ปุ่มต่อแถวที่ย้ายเข้า
-   `ActionMenu` (กฎ 10) และ (b) การกรอกช่องวันเวลาที่เป็น `DatePicker` (ใช้ `fillDatePicker`) — แก้ได้เฉพาะ locator/วิธีกรอกของจุดนั้น assertion อื่นคงเดิม; ข้อความที่คาดของเงิน
-   เปลี่ยนตามกฎ 6 ได้ (เช่น `THB 1,234.50` → `฿1,234.50`)
+   `ActionMenu` (กฎ 10), (b) การกรอกช่องวันเวลาที่เป็น `DatePicker` (ใช้ `fillDatePicker`) และ (c) (owner Q7 = ก, 2026-11-05) ปุ่มสร้างที่ย้ายเข้า `action` ของ `DataTable`
+   ของ dashboard (กฎ 18) — testid เดิมของปุ่มนั้นหายได้ และ e2e หาด้วย `page.getByTestId("<wrapper>").getByRole("button", { name: "<Label อังกฤษ>" })` — แก้ได้เฉพาะ locator/วิธีกรอก
+   ของจุดนั้น assertion อื่นคงเดิม; ข้อความที่คาดของเงินเปลี่ยนตามกฎ 6 ได้ (เช่น `THB 1,234.50` → `฿1,234.50`)
 8. ฟอร์มใช้ `Form` + `KeyboundForm` + `useForm`; validation ด้วย zod ยกเว้นฟอร์มที่มี builder + unit test เดิม (`toProgramBody`, `toCampaignBody`) ซึ่ง map error เข้า `form.setError`
    (builder รับ `Date` แทน string ICT); ข้อความ error แสดงใต้ช่องด้วย `Form.ErrorMessage` (คง testid error เดิม); `⌘/Ctrl+Enter` ส่งฟอร์มได้ 1 ครั้ง;
    ช่องจำนวนเต็มบวกที่ว่างได้ใช้ `optionalInt` + `.refine` (ว่าง หรือจำนวนเต็ม ≥ 1) + `.transform` (`""`/`undefined` → `null`, string → number) — `optionalInt` อย่างเดียวรับ `"0"` และไม่แปลง `""` เป็น `null`
@@ -68,8 +70,9 @@ none (ใช้ admin route เดิมทั้งหมด; `GET /admin/evouc
 10. ปุ่ม action ต่อแถวของตาราง (Edit, Delete, Approve, Suspend, Reactivate, Payout info, Mark paid, Cancel, Reveal) อยู่ใน `ActionMenu` ของ `@medusajs/dashboard/components`
     (owner Q3): `Action` ไม่รับ `data-testid` จึงส่ง trigger เป็น `children` — `<IconButton size="small" variant="transparent" data-testid="<entity>-row-actions"><EllipsisHorizontal /></IconButton>`
     (ActionMenu ห่อ children ด้วย `DropdownMenu.Trigger asChild` จึงคง testid ที่ปุ่ม); e2e หาแถว → trigger ด้วย testid ภายในแถว → `page.getByRole("menuitem", { name: "<Label อังกฤษ>" })`
-    (ข้อยกเว้นเดียวของการหาด้วย testid — CLAUDE.md); action ที่สถานะไม่อนุญาตไม่ใส่ใน `groups` (เดิม "ไม่มีปุ่ม" → ตอนนี้ "ไม่มี menuitem"); แถวที่ไม่มี action เลยไม่ render trigger;
+    (ข้อยกเว้นแรกของการหาด้วย testid — CLAUDE.md; ข้อที่สองคือปุ่มใน `action` ของ `DataTable` — กฎ 7c, 18); action ที่สถานะไม่อนุญาตไม่ใส่ใน `groups` (เดิม "ไม่มีปุ่ม" → ตอนนี้ "ไม่มี menuitem"); แถวที่ไม่มี action เลยไม่ render trigger;
     `usePrompt` ยืนยันเหมือนเดิม; ปุ่มระดับ section/หน้า (Create, Save, `evoucher-resend`, `gb-campaign-*`, `gb-group-succeed`/`-fail`, `gb-create-pool-group`) คงเป็น `Button` + testid
+    ยกเว้นปุ่มสร้างของหน้า list ที่ย้ายเข้า `action` ของ `DataTable` ตามกฎ 18
 11. รายการที่เคยดึงแบบมีเพดาน (`partners` `limit: 100`, scope `limit: 200`) ต้องแบ่งหน้า/ค้นหาได้ ไม่ตัดข้อมูลเงียบ
 12. e2e admin ทุกไฟล์รันด้วย Playwright `locale: "en-US"` และ `timezoneId: "Asia/Bangkok"` (ผลของกฎ 5–6 ตายตัว)
 
@@ -165,7 +168,7 @@ qa เก็บ evidence ทุก task ที่มี UI (ADM-2a..9) ตาม
 ไม่มี task ใดบล็อก release; ADM-1..7 ไม่แตะไฟล์ affiliate (ไม่ชน #176/AF-14)
 (รอบ 13 สถานะ, 2026-11-03) ADM-2a ◐ #205; AF-14 ☑ #187; ADM-5 เพิ่มการตรวจ URL ของ partner (follow-up EV-14 #195 ☑), ADM-8a เพิ่ม nit ของ #187 — ลำดับ/Depends เดิม
 (รอบ 23 สถานะ, 2026-11-05) ADM-1 ☑ #186, ADM-2a ☑ #205, ADM-2b ☑ #225, ADM-3 ☑ #294, ADM-4 ☑ #296, ADM-6 ☑ #293 (สามตัวหลังผ่าน train #299); ADM-5, ADM-7, ADM-8a กำลังทำ; ADM-8b, ADM-9 ☐ ตามลำดับเดิม;
-งานใหม่ ADM-10..13 อยู่ในหัวข้อ "Follow-up รอบ 23" ด้านล่าง
+งานใหม่ ADM-10..13 อยู่ในหัวข้อ "Follow-up รอบ 23" ด้านล่าง; (2026-11-05 Q7 = ก) เพิ่ม ADM-14 — ADM-5/8a/8b ไม่ต้องย้อนแก้ Depends/AC เดิม (กฎ 18)
 
 ## Follow-up รอบ 23 (2026-11-05 — owner อนุมัติให้ทำรอบถัดไป)
 ที่มา: qa ADM-4 #296 (`docs/evidence/admin-ui/ADM-4/REPORT.md` O-1, O-2), qa ADM-6 #293 (`ADM-6/REPORT.md` Observation 1, 4), qa ADM-3 #294 (`ADM-3/REPORT.md` Observation 1),
@@ -200,7 +203,7 @@ Out of scope: แก้ `DataTable` ของ dashboard เอง (patch-package
 | หน้าใน URL | `DataTable` ของ dashboard เขียน/อ่าน `<prefix>_offset` (`parseInt` ค่าดิบ) + `useQueryParams` | ใช้ตามเดิม + **custom** hook normalize ค่าใน URL (Medusa ไม่มี — หน้า campaigns ของ Medusa เองล่มกับ `offset=abc`) |
 | แชร์ผล loader กับ query | Medusa ใช้ `queryClient.ensureQueryData` (ไม่ export) | **extend**: `initialData` ของ `useQuery` จาก `useLoaderData()` (Tanstack Query) — ใช้ `staleTime` 90s ของ QueryClient ของ dashboard |
 | breadcrumb | `handle.breadcrumb` + `createRouteMap` (branch ตาม path) | ใช้ตามเดิม — เพิ่ม `handle` ที่ `/evouchers` |
-| หัวตารางหน้า list | `DataTable` ของ dashboard `heading`, `subHeading`, `action`/`actions` (แบบหน้า list ของ Medusa) | ใช้แทน Header แยก (ADR-018 หมายเหตุ 2026-11-05); `action` ไม่รับ `data-testid` → Q7 |
+| หัวตารางหน้า list | `DataTable` ของ dashboard `heading`, `subHeading`, `action`/`actions` (แบบหน้า list ของ Medusa) | ใช้แทน Header แยก (ADR-018 หมายเหตุ 2026-11-05); `action` ไม่รับ `data-testid` → Q7 = (ก): e2e หาปุ่มด้วย role + ชื่อภายใน wrapper ที่มี testid (กฎ 18) |
 | ค่าไม่ใช่ตัวเลขใน `<input type="number">` | ไม่มี (`Input` ของ ui, `optionalInt`/`optionalFloat` ไม่ดู `validity.badInput`) | **custom** เล็ก ใน `components/common/` (ผู้ใช้ 2 ที่: widget flash sale + modal pool) |
 | filter แล้วกลับหน้าแรก | `autoResetPageIndex` ของ `useDataTable` (พังเมื่อใช้กับ `setSearchParams` ของ dashboard — ด้านบน) | คง workaround จน upstream แก้ (กฎ 17) |
 
@@ -223,12 +226,27 @@ Out of scope: แก้ `DataTable` ของ dashboard เอง (patch-package
     ถ้า `validity.badInput === true` ตอน submit → error ใต้ช่อง (ข้อความเดียวกับค่าไม่ถูกของช่องนั้น เช่น `POSITIVE_INT_MESSAGE`) และไม่ส่ง request — ไม่ถือเป็น "ว่าง";
     ทำเป็นของกลางชิ้นเดียวใน `src/admin/components/common/` (เช่น `NumberInput` ที่ห่อ `Input` ของ ui หรือ helper ตรวจ `badInput` ก่อน `handleSubmit` — เลือกใน PR) ไม่คัดลอกต่อช่อง;
     ฟอร์มที่ ADM-7/ADM-9 เขียนใหม่ใช้ของกลางนี้เมื่อ merge หลัง ADM-12
-16. (ADM-13 — **รอ Q7**) หน้า list ที่ใช้ `DataTable` ของ dashboard ใส่หัวตารางด้วย `heading`/`subHeading` และปุ่มสร้างด้วย `action` ของ `DataTable` (ไม่มี Header แยก → ไม่มีแถว toolbar ว่าง);
+16. (ADM-13 — Q7 = (ก) owner 2026-11-05) หน้า list ที่ใช้ `DataTable` ของ dashboard ใส่หัวตารางด้วย `heading`/`subHeading` และปุ่มสร้างด้วย `action` ของ `DataTable` (ไม่มี Header แยก → ไม่มีแถว toolbar ว่าง);
     `CreateCampaign` เป็น controlled (`open`, `onOpenChange`) ไม่มีปุ่ม trigger ในตัว; ทุกครั้งที่ `open` เปลี่ยน false → true ตั้ง idempotency key ใหม่และ reset ฟอร์ม (spec 04 กฎข้อ 33d — GB-13/GB-15 ห้ามถอย);
     ข้อความเตือน GBT- (spec 04 Q7) ยังเห็นใน Container เดียวกัน (testid ใหม่ `gb-template-warning`)
 17. (upstream) workaround reset offset เมื่อ filter เปลี่ยน (`codes-table.tsx:44–74` → ใน hook ของกฎ 13c หลัง ADM-10) คงไว้จนกว่า `@medusajs/dashboard` ที่ pin มี fix;
     PR ที่ bump `@medusajs/dashboard` (ผ่าน ADR ตาม CLAUDE.md) ต้องรัน e2e "เปลี่ยน filter จากหน้า 2" ของ AC-7 โดยปิด `resetOn` — ผ่าน → ลบ workaround ใน PR นั้น, ล้ม → คงไว้;
     เมื่อ owner ส่ง issue แล้ว ให้ PR ถัดไปที่แตะ `codes-table.tsx`/hook ใส่ URL ของ issue ใน comment ของ workaround
+18. (owner Q7 = (ก), 2026-11-05 — ADR-018 หมายเหตุ 2026-11-05 (2)) ปุ่มสร้างของหน้า list ที่ใช้ `DataTable` ของ dashboard อยู่ใน `action` ของ `DataTable`
+    (หัวตารางใช้ `heading`/`subHeading` — ไม่มี Header แยก); `DataTableAction` ของ `@medusajs/dashboard` 2.22.1 (`chunk-6CQCXI3F.mjs:799–816`) ไม่ส่งต่อ `data-testid`
+    จึง**ห่อ `DataTable` ด้วย element ที่มี wrapper testid** (ครอบทั้ง toolbar และตาราง) และ e2e หาปุ่มด้วย
+    `page.getByTestId("<wrapper>").getByRole("button", { name: "<Label อังกฤษ>" })` — ข้อยกเว้นที่สองของการหาด้วย testid (CLAUDE.md); ห้ามหาปุ่มด้วยชื่อระดับ `page` โดยไม่มี wrapper;
+    wrapper testid ต่อหน้า (ตายตัว):
+
+    | หน้า/ตาราง | wrapper testid | ปุ่ม (ชื่อ) | testid เดิมที่หายไป | Task |
+    |---|---|---|---|---|
+    | `/group-buying` รายการแคมเปญ | `gb-campaigns-table` (มีอยู่แล้ว `routes/group-buying/page.tsx:113`) | "Create campaign" | `gb-campaign-create` | ADM-13 |
+    | `/evouchers` ตาราง Partners | `evoucher-partners-table` (ใหม่) | "Create partner" | — (เดิมไม่มี testid; e2e หาด้วยชื่อระดับ `page`) | ADM-5 หรือ ADM-14 |
+    | `/affiliate` แท็บ Programs | `affiliate-programs-table` (ใหม่) | "Create program" | `affiliate-program-create` | ADM-14 |
+    | `/affiliate` แท็บ Payouts | `affiliate-payouts-table` (ใหม่) | "Create payout" | `affiliate-payout-create` | ADM-14 |
+
+    กันกดซ้ำ: `onClick` ของ `action` เปิด modal ที่เป็น controlled (`open`/`onOpenChange`) — กดซ้ำขณะเปิดอยู่ไม่สร้าง modal/idempotency key ซ้อน; การกันส่งซ้ำอยู่ที่ปุ่ม submit ตามกฎ 4 เดิม;
+    ADM-5/ADM-8a/ADM-8b ที่กำลังทำไม่บังคับให้ย้อนแก้ — ถ้ายังไม่เปิด PR ใช้กฎนี้ได้เลย (แล้วตัดส่วนนั้นออกจาก ADM-14) ไม่งั้นคง Header/ปุ่ม + testid เดิมแล้ว ADM-14 ตามแก้
 
 ### Acceptance criteria (รอบ 23)
 - AC-14 (ADM-10, กฎ 13) unit `lib/__tests__/page-offset.unit.spec.ts`: `pageOffset(x, 50)` = 0 สำหรับ `undefined`, `""`, `"abc"`, `"-50"`, `"NaN"`, `"Infinity"`, `"12.5"`; `pageOffset("75", 50)` = 50,
@@ -250,16 +268,21 @@ Out of scope: แก้ `DataTable` ของ dashboard เอง (patch-package
   ข้อความ "Must be a whole number greater than 0" และไม่มี `POST …/config`; เช่นเดียวกันกับ `1e` และกับช่อง Per-customer limit (`fs-per-customer-limit-error`); When ล้างช่อง (`fill("")`) แล้ว Save
   Then `POST` 1 ครั้ง body `total_cap: null`; Given modal Create pool (กรอกช่องบังคับครบ) When Face value = `e` Then `evoucher-pool-face_value-error` visible และไม่มี POST; Low stock threshold = `e`
   → `evoucher-pool-low_stock_threshold-error` และไม่มี POST; static: `flash-sale-options.tsx` และ `variant-evoucher-pool.tsx` import ของกลางจาก `components/common/`; AC-6 ผ่านโดยไม่แก้
-- AC-17 (ADM-13, กฎ 16 — ใช้เมื่อ owner ตอบ Q7 = (ก)) e2e 1280×800: เปิด `/app/group-buying` Then ภายใน `gb-campaigns-table` มี heading "Group-buy campaigns" 1 ตัว และปุ่ม role `button` ชื่อ "Create campaign"
+- AC-17 (ADM-13, กฎ 16, 18 — Q7 = (ก) owner 2026-11-05) e2e 1280×800: เปิด `/app/group-buying` Then ภายใน `gb-campaigns-table` มี heading "Group-buy campaigns" 1 ตัว และปุ่ม role `button` ชื่อ "Create campaign"
   ที่ `|centerY(ปุ่ม) − centerY(heading)| ≤ 8` (อยู่แถวเดียวกัน) และ `gb-template-warning` visible; static: `routes/group-buying/page.tsx` ไม่ import `components/common/header`, `create-campaign.tsx` ไม่มี `gb-campaign-create`
   และ `CreateCampaign` รับ `open`/`onOpenChange`; e2e `group-buy-admin-form` ผ่านโดยแก้เฉพาะ locator ของปุ่มเปิด modal (`gb-campaign-create` → `getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" })`)
   — dblclick Create = 1 POST และ (GB-15) เปิด modal สองครั้งแล้วสร้าง → `idempotency_key` ของสอง POST ต่างกัน
+- AC-18 (ADM-14, กฎ 18) e2e 1280×800: ทุกแถวในตารางกฎ 18 ที่ ADM-14 ทำ — เปิดหน้า/แท็บนั้น Then ภายใน wrapper testid มีปุ่ม role `button` ชื่อตามตาราง 1 ตัว
+  ที่ `|centerY(ปุ่ม) − centerY(heading ของตาราง)| ≤ 8` และระยะจากขอบบน wrapper ถึงขอบบน heading ≤ 24px (ไม่มีแถว toolbar ว่าง 32px — qa #293 Obs 1); กดปุ่มแล้ว modal เดิมเปิด (`affiliate-program-*`/`affiliate-payout-*` testid ในฟอร์มเดิม); static: `programs-table.tsx`, `payouts-table.tsx`
+  ไม่มี `affiliate-program-create`/`affiliate-payout-create`, `partners-section.tsx` (ถ้าอยู่ใน ADM-14) และไฟล์ทั้งสองไม่ import `components/common/header`;
+  e2e `affiliate-admin-programs`, `affiliate-admin-payout-create`, `evoucher-admin-forms` ผ่านโดยแก้เฉพาะ locator ปุ่มเปิด modal ตามกฎ 7c
+  (เช่น `getByTestId("affiliate-program-create")` → `getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" })`) — dblclick ปุ่ม submit = 1 POST ตามเดิม
 
 ### Test plan (รอบ 23)
 | ชนิด | AC |
 |---|---|
-| unit (jest `test:unit`) | AC-14 (pure + static), static ของ AC-16/AC-17 |
-| e2e admin (`locale: "en-US"`, `timezoneId: "Asia/Bangkok"`, 1280×800) | AC-14, AC-15, AC-16, AC-17 |
+| unit (jest `test:unit`) | AC-14 (pure + static), static ของ AC-16/AC-17/AC-18 |
+| e2e admin (`locale: "en-US"`, `timezoneId: "Asia/Bangkok"`, 1280×800) | AC-14, AC-15, AC-16, AC-17, AC-18 |
 qa เก็บ evidence ทุก task (UI admin) — ADM-11 วัดจำนวน GET บน prod build (`medusa build` + `medusa start`) แบบ qa #293
 
 ### Tasks (รอบ 23)
@@ -268,8 +291,9 @@ qa เก็บ evidence ทุก task (UI admin) — ADM-11 วัดจำน
 | ADM-10 | (qa #296 O-1/O-2 + qa #293 Obs 5) offset ใน URL ผ่านของกลาง: `pageOffset`/`clampOffset` + hook `usePageOffset` (normalize + clamp + reset เมื่อ filter เปลี่ยนในตัวเขียนเดียว) ใช้ใน group buy, pools, codes (กฎ 13) | `lib/page-offset.ts` (ใหม่) + `lib/__tests__/page-offset.unit.spec.ts` (ใหม่), `components/common/use-page-offset.ts` (ใหม่), `lib/group-buy-campaign.ts` (+ unit เดิม), `lib/evoucher-query.ts` (+ unit เดิม), `routes/group-buying/page.tsx`, `components/evoucher/{pools-table,codes-table}.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/evoucher-admin-pool-page.spec.ts` | ~220 LOC รวม test | 1280×800 | AC-14 | none — **เริ่มได้** (ADM-4 ☑ #296, ADM-6 ☑ #293); ∥ ADM-11, ADM-12 | ไม่ชนไฟล์กับ ADM-5/7/8a, CORE-48, CORE-4i-b; ตาราง partners (ADM-5) และ affiliate (ADM-8a) ใช้ hook ตามกฎ 13e — ตัวที่ merge ทีหลังปรับ |
 | ADM-11 | (qa #293 Obs 4 + review #293/#296) หน้ารายละเอียด pool/group buy ส่ง `initialData` จาก `useLoaderData()` ให้ `useQuery` + breadcrumb `E-vouchers` ที่ `/evouchers` (กฎ 14) | `routes/evouchers/pools/[id]/page.tsx`, `routes/group-buying/[id]/page.tsx`, `routes/evouchers/page.tsx` (เฉพาะ `handle`), `apps/storefront/e2e/admin-detail-loader.spec.ts` (ใหม่) | ~120 LOC รวม e2e | 1280×800 | AC-15 | none — **เริ่มได้**; ∥ ADM-10, ADM-12 | ไม่ชน (ADM-5 แตะ `partners-section`/`lib/evoucher.ts` ไม่แตะ `routes/evouchers/page.tsx` — ถ้าแตะ ตัวที่ merge ทีหลัง rebase) |
 | ADM-12 | (qa #294 Obs 1) ช่อง number ที่ว่างได้ตรวจ `validity.badInput` → error ใต้ช่อง ไม่ส่ง request ด้วยของกลางชิ้นเดียว (กฎ 15) | `components/common/number-input.tsx` (ใหม่ — ชื่อเลือกใน PR), `widgets/flash-sale-options.tsx`, `widgets/variant-evoucher-pool.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/admin-form-pilot.spec.ts` | ~120 LOC รวม e2e | 1280×800 | AC-16 | none — **เริ่มได้** (ADM-3 ☑ #294); ∥ ADM-10, ADM-11 | ไม่ชน; ADM-7 (`create-campaign.tsx`) / ADM-9 ใช้ของกลางเมื่อ merge หลัง ADM-12 (กฎ 15) |
-| ADM-13 | (qa #293 Obs 1 + review #293) หน้า `/group-buying` ใช้ `heading`/`subHeading`/`action` ของ `DataTable` แทน Header แยก, `CreateCampaign` เป็น controlled (กฎ 16) | `routes/group-buying/page.tsx`, `components/group-buy/create-campaign.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-form.spec.ts` (locator ปุ่มเปิด modal) | ~90 LOC | 1280×800 | AC-17 | **owner ตอบ Q7 = (ก)**, ADM-7 (merge แล้ว), ADM-10 (merge แล้ว — ชน `group-buying/page.tsx`) | **ชน ADM-7** (`create-campaign.tsx`, `group-buy-admin-form.spec.ts`) → ห้ามเริ่มก่อน ADM-7 merge; ไม่ชน ADM-5/8a, CORE-48, CORE-4i-b |
-ลำดับ: ADM-10 ∥ ADM-11 ∥ ADM-12 เริ่มได้ทันที → ADM-13 ← (Q7 = ก) + ADM-7 + ADM-10; ไม่มี task ใดบล็อก release; ถ้า Q7 = (ข) ปิด ADM-13 (✕) และยอมรับแถวว่าง
+| ADM-13 | (qa #293 Obs 1 + review #293) หน้า `/group-buying` ใช้ `heading`/`subHeading`/`action` ของ `DataTable` แทน Header แยก, `CreateCampaign` เป็น controlled (กฎ 16); ปุ่ม "Create campaign" ใน `action` หาใน wrapper `gb-campaigns-table` (กฎ 18) | `routes/group-buying/page.tsx`, `components/group-buy/create-campaign.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-form.spec.ts` (locator ปุ่มเปิด modal) | ~90 LOC | 1280×800 | AC-17 | ADM-7 (#301 ยังไม่ merge), ADM-10 (ยังไม่เริ่ม — ชน `group-buying/page.tsx`) ต้อง merge ทั้งคู่ก่อน | **ชน ADM-7** (`create-campaign.tsx`, `group-buy-admin-form.spec.ts`) → ห้ามเริ่มก่อน ADM-7 merge; ไม่ชน ADM-5/8a, CORE-48, CORE-4i-b |
+| ADM-14 | (Q7 = ก, 2026-11-05) ปุ่มสร้างของหน้า list ที่เหลือเข้า `action` ของ `DataTable` + wrapper testid ตามตารางกฎ 18: Partners (เฉพาะเมื่อ ADM-5 merge โดยยังมี Header/ปุ่มแยก), Programs, Payouts (ADM-8a ใช้ Header + `subHeading`) — ตัด Header แยกของตารางนั้น, ลบ `affiliate-program-create`/`affiliate-payout-create`, แก้ locator e2e ตามกฎ 7c | `components/affiliate/{programs-table,payouts-table}.tsx` (+ ตารางของ ADM-8a ถ้า `heading`/`action` ส่งผ่านที่นั่น), `components/evoucher/partners-section.tsx` (ถ้ามี), `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/{affiliate-admin-programs,affiliate-admin-payout-create,evoucher-admin-forms}.spec.ts` (locator ปุ่มเปิด modal) | ~120 LOC | 1280×800 | AC-18 | ADM-5, ADM-8b (merge แล้ว — ชน `programs-table`/`payouts-table`); ∥ ADM-13 (คนละไฟล์) | ชน ADM-9 ถ้า ADM-9 แตะ `payouts-table.tsx`/`programs-table.tsx` (เปิด modal) — ตัวที่ merge ทีหลัง rebase |
+ลำดับ: ADM-10 ∥ ADM-11 ∥ ADM-12 เริ่มได้ทันที → ADM-13 ← ADM-7 + ADM-10 (Q7 = ก แล้ว 2026-11-05); ADM-14 ← ADM-5 + ADM-8b (∥ ADM-13); ไม่มี task ใดบล็อก release
 
 ### ร่าง issue upstream (owner ส่งที่ https://github.com/medusajs/medusa/issues — ค้นว่ามี issue ซ้ำก่อนส่ง)
 ข้อความด้านล่างเป็นภาษาอังกฤษสำหรับ GitHub; ตัวเลขบรรทัดอ้าง `@medusajs/dashboard` 2.22.1 / `@medusajs/ui` 4.2.8 ที่เรา pin
@@ -310,9 +334,12 @@ Workaround we use: an effect that deletes `<prefix>_offset` when the filter valu
   (กฎ 5; แก้ spec 00, 03 กฎ 5, 05 กฎ 37c/AC-44 ให้สอดคล้อง)
 - ~~Q5~~ ตัดสินแล้ว (owner 2026-10-28): คง `FocusModal`/`Drawer` แบบ state ไม่ใช้ `RouteFocusModal`/`RouteDrawer`
 - ~~Q6~~ ตัดสินแล้ว (owner 2026-10-28): ยอมรับ pagination ใน URL (`?<prefix>_offset=`)
-- **Q7 (รอบ 23, ADM-13 — ขัด ADR-018 หลักการ 8 / กฎ 7 จึงต้องให้ owner ตัดสิน)** ปุ่มใน `action` ของ `DataTable` ของ dashboard ไม่รับ `data-testid`
+- ~~Q7~~ ตัดสินแล้ว (owner 2026-11-05): **(ก)** — ย้ายปุ่มสร้างของหน้า list เข้า `action` ของ `DataTable` ได้ และหาปุ่มด้วย
+  `getByTestId("<wrapper>").getByRole("button", { name })` เป็นข้อยกเว้นที่สองของการหาด้วย testid (กฎ 7c, 18; ADR-018 หมายเหตุ 2026-11-05 (2); CLAUDE.md แก้ใน PR เดียวกับ spec นี้);
+  ADM-13 ปลดล็อก, ปุ่มสร้างของ Partners/Programs/Payouts → ADM-14 — ข้อความคำถามเดิมด้านล่าง:
+- Q7 (รอบ 23, ADM-13 — ขัด ADR-018 หลักการ 8 / กฎ 7 จึงต้องให้ owner ตัดสิน) ปุ่มใน `action` ของ `DataTable` ของ dashboard ไม่รับ `data-testid`
   (`DataTableAction` ส่งต่อแค่ `label`/`disabled`/`tooltip`/`onClick`/`to` — `chunk-6CQCXI3F.mjs:799–816`) การย้ายปุ่ม "Create campaign" เข้า `action` เพื่อตัดแถว toolbar ว่างจึงทำให้ `gb-campaign-create` หายไป
   - (ก) **ข้อเสนอ**: เพิ่มข้อยกเว้นที่สองของการหาด้วย testid — ปุ่มใน `action`/`actions` ของ `DataTable` หาด้วย `getByTestId("<wrapper ของตาราง>").getByRole("button", { name: "<Label อังกฤษ>" })`
-    (แบบเดียวกับ menuitem ของ `ActionMenu`) → planner แก้ ADR-018 หลักการ 7–8 และกฎ 7/10 ของ spec นี้; owner แก้ประโยคข้อยกเว้นใน CLAUDE.md (agent แก้ CLAUDE.md ไม่ได้);
+    (แบบเดียวกับ menuitem ของ `ActionMenu`) → planner แก้ ADR-018 หลักการ 7–8 และกฎ 7/10 ของ spec นี้; owner แก้ประโยคข้อยกเว้นใน CLAUDE.md (รอบนี้ owner อนุญาตให้แก้ผ่าน PR);
     ใช้กับปุ่มสร้างของหน้า list อื่นที่จะย้ายเข้า `action` ด้วย (ADM-5 partners, ADM-8a/8b programs — ADR-018 แถว 14)
   - (ข) คง Header + `gb-campaign-create` และยอมรับแถวว่าง 32px (ผลต่อผู้ใช้ต่ำตาม qa #293) → ปิด ADM-13 (✕)

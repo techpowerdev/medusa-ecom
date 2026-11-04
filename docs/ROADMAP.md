@@ -52,9 +52,11 @@ spec 05 AF-19 (header portal ชื่อละตินยาว) · แก้�
 task ใหม่: spec 01 CORE-47 (`/cart` 375 ชื่อยาว + ยอด 7 หลัก) ∥ CORE-48 (แก้จำนวนเกิน stock → ข้อความ "สินค้ามีไม่พอ") ∥ CORE-49 (e2e hygiene: grep test ที่เดียว, regex config, `waitForTimeout` ของ affiliate-admin-programs, `waitForServerAction` ใน core-25/26/fs19) ·
 spec 05 AF-20 (ป้าย "รหัสแนะนำ"/รหัสไม่ถูกตัดบรรทัด) · spec 01 แก้ถ้อยคำกฎข้อ 103 (103e + AC-141 ครอบแล้วโดย #288) · spec 07 Deliverables ข้อ 11 (prod ต้อง HTTPS — cookie `Secure`, qa #285 O-1) · ไม่มีคำถามค้าง
 **รอบ 23 (2026-11-05 — owner อนุมัติให้ทำรอบถัดไป)**: merge แล้ว — train #299: ADM-3 #294, ADM-4 #296, ADM-6 #293, AF-20 #295, CORE-47 #298 · กำลังทำ: ADM-5, ADM-7, ADM-8a, CORE-48, CORE-4i-b ·
-task ใหม่: spec 08 ADM-10 (offset ใน URL ผ่าน hook กลาง) ∥ ADM-11 (`initialData` จาก loader + breadcrumb E-vouchers) ∥ ADM-12 (ช่อง number `badInput`) · ADM-13 (หัวตารางแคมเปญใน `DataTable`, ← ADM-7 + ADM-10 + **Q7**) ·
+task ใหม่: spec 08 ADM-10 (offset ใน URL ผ่าน hook กลาง) ∥ ADM-11 (`initialData` จาก loader + breadcrumb E-vouchers) ∥ ADM-12 (ช่อง number `badInput`) · ADM-13 (หัวตารางแคมเปญใน `DataTable`, ← ADM-7 + ADM-10) ·
 spec 01 CORE-50 (nav 320) ∥ CORE-51 (e2e hygiene: `DESKTOP_BASELINE`, `createActiveAffiliate` options, `longCode`, `evidenceTarget`) · ADR-018 หมายเหตุ 2026-11-05 (แถว #2 ตามที่ทำจริง) ·
-ร่าง issue upstream `DataTable` ไม่ reset offset (spec 08 รอบ 23 — owner ส่ง) · **คำถามค้างสำหรับ owner**: spec 08 Q7 (ปุ่มใน `action` ของ `DataTable` ไม่มี testid — ขัด ADR-018 หลักการ 8)
+ร่าง issue upstream `DataTable` ไม่ reset offset (spec 08 รอบ 23 — owner ส่ง) · ~~คำถามค้าง spec 08 Q7~~ owner ตอบ **(ก)** 2026-11-05: ปุ่มใน `action` ของ `DataTable` หาด้วย
+`getByTestId("<wrapper>").getByRole("button", { name })` (ข้อยกเว้นที่สองของ testid — spec 08 กฎ 7c/18, ADR-018 หมายเหตุ 2026-11-05 (2), CLAUDE.md) → ADM-13 ปลดล็อก (← ADM-7 + ADM-10) ·
+task ใหม่ ADM-14 (ปุ่มสร้าง Partners/Programs/Payouts เข้า `action`, ← ADM-5 + ADM-8b; AC-18) · ไม่มีคำถามค้าง
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -252,7 +254,8 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-8b | affiliate ปุ่มต่อแถวเป็น `ActionMenu` + แก้ locator e2e + (รอบ 12) Cancel/Mark paid ของแถวเดียวกันกันกัน (AC-13) | ☐ (← ADM-8a) |
 | ADM-9 | affiliate ฟอร์ม (`Form`, `DatePicker`, `Combobox` scope, ฟอร์มของ AF-12c; รอบ 12: ส่งวันที่เฉพาะที่แก้, scope ว่าง → error, ตัวเลือก affiliate ค้นหาได้; AC-12) | ☐ (← ADM-3, ADM-7, ADM-8b) |
 | ADM-10 ∥ ADM-11 ∥ ADM-12 | (รอบ 23) offset ใน URL ผ่าน `pageOffset`/`clampOffset` + hook `usePageOffset` (qa #296 O-1/O-2; AC-14) ∥ `initialData` จาก loader + breadcrumb E-vouchers (qa #293 Obs 4; AC-15) ∥ ช่อง number ตรวจ `badInput` (qa #294 Obs 1; AC-16) | ☐ ∥ ☐ ∥ ☐ **เริ่มได้** |
-| ADM-13 | (รอบ 23) หัวตารางแคมเปญ group buy ใช้ `heading`/`subHeading`/`action` ของ `DataTable`, `CreateCampaign` controlled (qa #293 Obs 1; AC-17) | ☐ (← **owner Q7**, ADM-7, ADM-10) |
+| ADM-13 | (รอบ 23) หัวตารางแคมเปญ group buy ใช้ `heading`/`subHeading`/`action` ของ `DataTable`, `CreateCampaign` controlled (qa #293 Obs 1; AC-17) | ☐ (← ADM-7, ADM-10; Q7 = ก 2026-11-05) |
+| ADM-14 | (Q7 = ก) ปุ่มสร้างของ Partners/Programs/Payouts เข้า `action` ของ `DataTable` + wrapper testid `evoucher-partners-table`/`affiliate-programs-table`/`affiliate-payouts-table` (spec 08 กฎ 18; AC-18) | ☐ (← ADM-5, ADM-8b; ∥ ADM-13) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -351,6 +354,8 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   `DataTable` ไม่ reset offset (upstream) → กฎ 17 + ร่าง issue ใน spec 08 (ไม่มี task) · ADR-018 หมายเหตุ 2026-11-05 (แถว #2) ·
   spec 01: qa #298 O-1 + qa #295 O-2 → CORE-50 (กฎข้อ 108, AC-145) · nit review #295/#298 → CORE-51 (กฎข้อ 109, AC-146; ไม่รวมใน CORE-49 — ขอบเขตต่าง) ·
   ยอมรับ/ไม่เปิด: qa #295 O-1 (รหัสตัวกว้างตัดหลัง `-` — กฎ 44(b) อนุญาต), qa #298 O-2 (ราคากึ่งกลางแนวตั้งเมื่อมี error ในการ์ด)
+- 2026-11-05 owner ตอบ spec 08 Q7 = (ก) → spec 08 กฎ 7c + 18 (wrapper testid ต่อหน้า), AC-17 ปลดเงื่อนไข, ADM-14 + AC-18 · ADR-018 หมายเหตุ 2026-11-05 (2) (ข้อยกเว้นหลักการ 7–8,
+  `DataTableAction` 2.22.1 ไม่ส่งต่อ `data-testid`) · CLAUDE.md แก้ประโยคข้อยกเว้น testid (หัวข้อ Language + ข้อห้ามข้อ 1; owner อนุญาต)
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →

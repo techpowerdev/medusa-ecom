@@ -1,6 +1,6 @@
 # ADR-018 Admin UI ใช้ component, hook และ utility ของ Medusa เป็นฐาน
 
-สถานะ: **accepted** (owner 2026-10-28 — ทางเลือก A + คำตัดสิน Q2–Q6 ด้านล่าง; เสนอโดย planner 2026-10-28) · หมายเหตุ 2026-11-05 ท้ายเอกสาร (แถว #2 ตามที่ทำจริง)
+สถานะ: **accepted** (owner 2026-10-28 — ทางเลือก A + คำตัดสิน Q2–Q6 ด้านล่าง; เสนอโดย planner 2026-10-28) · หมายเหตุ 2026-11-05 ท้ายเอกสาร (แถว #2 ตามที่ทำจริง; (2) ข้อยกเว้นของหลักการ 7–8 ตาม spec 08 Q7 = ก)
 เกี่ยวข้อง: spec 08 (task ADM-1..9, AC-1..13), CLAUDE.md ข้อ 1 และ 3, spec 05 กฎ 37 (`createSingleFlight`), spec 00 (เวลา), spec 03 กฎ 5, spec 05 กฎ 37c/AC-44
 
 ## บริบท
@@ -138,3 +138,15 @@ context ของ ui เช่น `TooltipProvider` ข้ามสำเนา�
 - ข้อจำกัดของ `@medusajs/dashboard` 2.22.1 ที่พบ (spec 08 รอบ 23): `queryClient` ไม่ถูก export (หน้ารายละเอียดใช้ `initialData` จาก `useLoaderData()` แทน `ensureQueryData` — กฎ 14),
   `DataTable` อ่าน `<prefix>_offset` ด้วย `parseInt` ค่าดิบ (normalize ด้วย hook กลาง — กฎ 13) และเปลี่ยน filter/sort จากหน้า 2 แล้ว offset ไม่ reset
   (workaround คงไว้จน upstream แก้ — กฎ 17, ร่าง issue อยู่ใน spec 08)
+
+## หมายเหตุ 2026-11-05 (2) — owner ตอบ spec 08 Q7 = (ก): ข้อยกเว้นของหลักการ 7–8 (ไม่แก้ข้อความเดิมด้านบน)
+- บริบท: `action` ของ `DataTable` ของ `@medusajs/dashboard` 2.22.1 = `{ label, disabled?, tooltip?, onClick | to }` และ `DataTableAction`
+  (`dist/chunk-6CQCXI3F.mjs:799–816`) render ปุ่มโดย**ไม่ส่งต่อ `data-testid`** — ย้ายปุ่มสร้างเข้า `action` แล้ว testid ของปุ่ม (เช่น `gb-campaign-create`) หายไป
+- การตัดสินใจ: ปุ่มสร้างของหน้า list ที่ใช้ `DataTable` ของ dashboard อยู่ใน `action` ได้ (ไม่มี Header แยก → ไม่มีแถว toolbar ว่าง); `DataTable` ห่อด้วย element ที่มี wrapper testid
+  และ e2e หาปุ่มด้วย `page.getByTestId("<wrapper>").getByRole("button", { name: "<Label อังกฤษ>" })` แบบเดียวกับ menuitem ของ `ActionMenu`
+- ผลต่อหลักการ: หลักการ 7 "ข้อยกเว้นเดียว" → มีข้อยกเว้น**สองข้อ** (menuitem ของ `ActionMenu` และปุ่มใน `action` ของ `DataTable` ภายใน wrapper ที่มี testid);
+  หลักการ 8 "ไม่เปลี่ยน `data-testid`" → ยกเว้น testid ของปุ่มที่ย้ายเข้า `action` ซึ่งหายได้ และ e2e แก้เฉพาะ locator ของปุ่มนั้น
+- รายการ wrapper testid และ task: spec 08 กฎ 7c, 18 (`gb-campaigns-table` — ADM-13; `evoucher-partners-table`, `affiliate-programs-table`, `affiliate-payouts-table` — ADM-5/ADM-14);
+  แถว #14 ของตารางตรวจ (`programs-table.tsx` "→ `action` ของ `DataTable` หรือ Header") ให้อ่านเป็น "→ `action` ของ `DataTable`" (ADM-14)
+- ถ้า `@medusajs/dashboard` เวอร์ชันที่ bump ในอนาคตส่งต่อ `data-testid` ใน `action` ได้ ให้ PR ที่ bump กลับไปใช้ testid ที่ปุ่มและตัดข้อยกเว้นนี้ (แก้ CLAUDE.md ด้วย)
+- CLAUDE.md (หัวข้อ Language และข้อห้ามข้อ 1) แก้ประโยคข้อยกเว้นให้ตรงกันใน PR เดียวกับหมายเหตุนี้ (owner อนุญาต 2026-11-05)
