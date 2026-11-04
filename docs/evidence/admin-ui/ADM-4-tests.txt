@@ -1,0 +1,82 @@
+# ADM-4 (spec 08 AC-7) — ผล test
+# วันที่: 2026-11-04, node v22.23.3, base origin/develop 167faba (merge origin/develop ก่อน push)
+
+## Red (ก่อนแก้โค้ด)
+### jest src/admin/__tests__/medusa-ui.unit.spec.ts + src/admin/lib/__tests__/evoucher-query.unit.spec.ts
+  ✕ pools-table.tsx / codes-table.tsx ใช้ DataTable ของ @medusajs/dashboard/components (ยังเป็น ui DataTable + DataTablePaginationState)
+  ✕ codes-table: Reveal ต่อแถวอยู่ใน ActionMenu (evoucher-code-row-actions) + filters ของ DataTable (ยังเป็น Button + Select)
+  ✕ routes/evouchers/page.tsx, routes/evouchers/pools/[id]/page.tsx ใช้ LayoutComposer
+  ✕ หน้า pool ใช้ Header + SectionRow; import-codes ใช้ Header + createSingleFlight
+  ✕ codes-table.tsx ใช้ useState(createSingleFlight)
+FAIL src/admin/__tests__/medusa-ui.unit.spec.ts
+FAIL src/admin/lib/__tests__/evoucher-query.unit.spec.ts
+    Cannot find module '../evoucher-query' from 'src/admin/lib/__tests__/evoucher-query.unit.spec.ts'
+Tests:       8 failed, 49 passed, 57 total
+### playwright e2e/evoucher-admin-pool-page.spec.ts (prod build) — รันครั้งแรกหลังย้ายเป็น DataTable ของ dashboard
+  ✘ step กรองสถานะ delivered: request เป็น status=delivered&offset=50 → ตารางว่าง (DataTable ของ dashboard 2.22.1 บน react-router 7
+    reset หน้าไม่ติดเมื่อเปลี่ยน filter) → แก้ใน codes-table (useResetOffsetOnStatusChange) แล้วผ่าน
+
+## Green (หลังแก้โค้ด)
+### jest (ไฟล์ของ AC-7)
+PASS src/admin/__tests__/medusa-ui.unit.spec.ts
+    ✓ evouchers มี icon ที่ import จาก @medusajs/icons (1 ms)
+    ✓ widgets/order-evouchers.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/codes-table.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/import-codes.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/pools-table.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/evouchers/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/evouchers/pools/[id]/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ widgets/order-evouchers.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ components/evoucher/codes-table.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ widgets/order-evouchers.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/evoucher/codes-table.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+  หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)
+    ✓ components/evoucher/pools-table.tsx ใช้ DataTable ของ @medusajs/dashboard/components (แบ่งหน้าใน URL) ไม่ใช่ state เอง (1 ms)
+    ✓ components/evoucher/codes-table.tsx ใช้ DataTable ของ @medusajs/dashboard/components (แบ่งหน้าใน URL) ไม่ใช่ state เอง (1 ms)
+    ✓ codes-table: Reveal ต่อแถวอยู่ใน ActionMenu (trigger evoucher-code-row-actions) และกรองสถานะด้วย filters ของ DataTable (1 ms)
+    ✓ routes/evouchers/page.tsx ใช้ LayoutComposer ของ @medusajs/dashboard/components
+    ✓ routes/evouchers/pools/[id]/page.tsx ใช้ LayoutComposer ของ @medusajs/dashboard/components
+    ✓ หน้า pool ใช้ Header + SectionRow
+    ✓ import-codes ใช้ Header และกันกดซ้ำด้วย useState(createSingleFlight) (useRef ใช้แค่อ้าง input file)
+PASS src/admin/lib/__tests__/evoucher-query.unit.spec.ts
+  poolsListQuery
+    ✓ ไม่มี offset ใน URL → หน้าแรก (1 ms)
+    ✓ อ่าน offset จาก URL (1 ms)
+    ✓ offset "-20" ที่ไม่ใช่จำนวนเต็ม ≥ 0 → 0
+    ✓ offset "abc" ที่ไม่ใช่จำนวนเต็ม ≥ 0 → 0
+    ✓ offset "1.5" ที่ไม่ใช่จำนวนเต็ม ≥ 0 → 0
+    ✓ offset "" ที่ไม่ใช่จำนวนเต็ม ≥ 0 → 0 (1 ms)
+  codesListQuery
+    ✓ ไม่มี filter → ไม่ส่ง status
+    ✓ filter radio ของ DataTable เก็บเป็น JSON string → ส่ง status (1 ms)
+    ✓ status "\"bogus\"" ที่ไม่ใช่สถานะของ code → ไม่ส่ง status
+    ✓ status "[\"delivered\"]" ที่ไม่ใช่สถานะของ code → ไม่ส่ง status
+    ✓ status "{" ที่ไม่ใช่สถานะของ code → ไม่ส่ง status
+Tests:       70 passed, 70 total
+
+### pnpm --filter backend test:unit
+Test Suites: 89 passed, 89 total
+Tests:       955 passed, 955 total
+
+### playwright --project=unit (storefront)
+  69 passed (801ms)
+
+### Playwright e2e admin บน prod build (medusa build + medusa start NODE_ENV=production, port 9462)
+### AC-7 รันซ้ำ 3 รอบผ่านทุกรอบก่อนรอบสุดท้ายนี้
+Running 1 test using 1 worker
+  ✓  1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (6.4s)
+  1 passed (7.4s)
+Running 5 tests using 4 workers
+  ✓  2 [chromium] › e2e/flash-sale-admin-widget.spec.ts:9:5 › AC-5: widget flash sale ที่บันทึกแล้วแสดงค่า Total cap ตรงกับ API (2.5s)
+  ✓  4 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (4.7s)
+  ✓  1 [chromium] › e2e/flash-sale-admin-save.spec.ts:10:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (4.8s)
+  ✓  3 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (5.5s)
+  ✓  5 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (3.1s)
+  5 passed (9.9s)
+
+### pnpm lint && pnpm typecheck
+lint: 0 errors (warning เดิมของ develop: backend 2, storefront 31 — ไม่มีในไฟล์ที่แตะ)
+typecheck: apps/backend Done, apps/storefront Done
+build: pnpm --filter backend build — Backend/Frontend build completed successfully
+
+### integration: ไม่รัน — ไม่แก้ backend (spec 08 Test plan: integration none)
