@@ -43,3 +43,60 @@ apps/storefront lint: Done
 รอบแรกที่รัน --workers=2: affiliate-admin-payouts ล้ม 1 ครั้ง (boundingBox ของปุ่มยกเลิกเป็น null) ขณะ affiliate-admin-tables
 ใส่ payout draft 21 แถวลง DB เดียวกันพร้อมกัน — refetch ตอน window focus ดันแถวของ test นั้นไปหน้า 2 (ข้อมูลชนกันข้าม worker)
 รันเดี่ยวผ่าน 3/3 และรันชุดเต็ม --workers=2 อีก 2 รอบผ่านทั้งหมด; CI รัน e2e ด้วย workers=1 (playwright.config.ts)
+
+== แก้ตาม review (#304 Blocker 1): แถวถมหน้าของ affiliate-admin-tables ดันแถวของ test อื่นตกไปหน้า 2 ==
+prod build (medusa start จาก .medusa/server, port 9483, DB medusa_adm8afix, redis db 3) ไม่ล้างข้อมูลระหว่างรอบ
+
+-- Red (โค้ดเดิม 67065e3) #1: DB ว่าง รัน affiliate-admin-tables ก่อนไฟล์อื่น (เดี่ยว) --
+  ✘  1 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (5.1s)
+    Error: GET affiliates?id[] หน้า 2 ของ Ledger
+    Expected length: 1
+    Received length: 0
+    test-results/affiliate-admin-tables-AC--e55e7-ละดึงชื่อ-1-request-ต่อหน้า-chromium/test-failed-1.png
+  1 failed
+สาเหตุ: ทั้ง 21 entry เป็นของ affiliate คนเดียว ชุด id[] ของหน้า 1 และหน้า 2 เท่ากัน หน้า 2 จึงใช้ cache ไม่ยิง request
+
+-- Red (โค้ดเดิม) #2: tables + payouts + names --workers=2 --repeat-each=3 บน DB เดิม --
+  ✘  8 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว (8.0s)
+    Error: ปุ่มยกเลิกของ affpay_01M6KYXA89S4C4V5HZ3JT5119B
+  1 failed
+  8 passed (55.6s)
+สาเหตุ: payout 21 แถวของ tables (created_at = now) ดันแถว draft ของ affiliate-admin-payouts ไปหน้า 2
+
+-- Green (โค้ดใหม่) บน DB เดิมต่อจากรอบ Red --
+tables + payouts + names --workers=2 --repeat-each=3 รอบ 1:
+  9 passed (25.5s)
+tables + payouts + names --workers=2 --repeat-each=3 รอบ 2:
+  9 passed (22.9s)
+affiliate-admin-* --workers=2 --repeat-each=3:
+  21 passed (58.7s)
+
+-- Green (โค้ดใหม่) DB ว่าง (drop + migrate + seed ใหม่): affiliate-admin-tables ก่อน แล้ว affiliate-admin-* --workers=2 --repeat-each=3 --
+  ✓  1 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (5.1s)
+  1 passed (5.9s)
+  ✓   2 [chromium] › e2e/affiliate-admin-names.spec.ts:31:5 › AC-45: Ledger/Payouts แสดงชื่อและอีเมลของ affiliate ด้วย request id[] 1 ครั้งต่อหน้า (4.8s)
+  ✓   1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:42:5 › AC-43: approve dblclick ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (7.9s)
+  ✓   4 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:161:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (2.8s)
+  ✓   3 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:31:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (8.7s)
+  ✓   5 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว (5.7s)
+  ✓   6 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (5.9s)
+  ✓   7 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (6.5s)
+  ✓   8 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:42:5 › AC-43: approve dblclick ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (7.8s)
+  ✓   9 [chromium] › e2e/affiliate-admin-names.spec.ts:31:5 › AC-45: Ledger/Payouts แสดงชื่อและอีเมลของ affiliate ด้วย request id[] 1 ครั้งต่อหน้า (4.8s)
+  ✓  10 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:161:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (2.5s)
+  ✓  12 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว (6.2s)
+  ✓  11 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:31:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (8.8s)
+  ✓  13 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (4.8s)
+  ✓  14 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (6.1s)
+  ✓  15 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:42:5 › AC-43: approve dblclick ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (6.8s)
+  ✓  16 [chromium] › e2e/affiliate-admin-names.spec.ts:31:5 › AC-45: Ledger/Payouts แสดงชื่อและอีเมลของ affiliate ด้วย request id[] 1 ครั้งต่อหน้า (4.9s)
+  ✓  17 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:161:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (2.5s)
+  ✓  19 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว (7.2s)
+  ✓  18 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:31:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (9.9s)
+  ✓  20 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (5.3s)
+  ✓  21 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (6.8s)
+  21 passed (1.2m)
+
+== pnpm lint && pnpm typecheck (หลังแก้) ==
+apps/backend lint: 0 errors, 2 warnings (เดิม) / apps/storefront lint: 0 errors, 31 warnings (เดิม)
+apps/backend typecheck: Done / apps/storefront typecheck: Done
