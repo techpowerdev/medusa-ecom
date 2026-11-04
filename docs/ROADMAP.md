@@ -35,7 +35,7 @@ spec 01 กฎข้อ 86e/87) · merge แล้วตั้งแต่รอ
 **owner ตัดสินรอบ 17 (2026-11-04)**: spec 04 Q22 = (ก) ไม่ปฏิเสธ join ที่ไม่มีวิธีส่งเลย (กฎข้อ 35c) · หน้า orders เมื่อโหลด group orders ล้มไม่แสดง `no-orders-container` (กฎข้อ 32e1, AC-51 — ใน GB-12 #244) ·
 task ใหม่จาก review/qa รอบ 17: spec 01 CORE-33 (← #243) · CORE-34 (← #241) · spec 04 GB-N5 (← #247, #246) · spec 07 OPS-17c (← #242; ก่อน OPS-20b) · ไม่มีคำถามค้าง
 **รอบ 18 (2026-11-04)**: merge แล้วผ่าน merge train — train #248: CORE-28 #241, OPS-17b #242, CORE-32 #243 · train #250: GB-12 #244, GB-N4 #246, GB-14 #247 ·
-train #256: CORE-28b #251, CORE-34 #252, OPS-17c #253, CORE-31 #254, CORE-33 #255 · train #260: GB-N5 #257, CORE-30 #258 · เปิดอยู่ (◐): GB-13 #259, CORE-29 (กำลังทำ) ·
+train #256: CORE-28b #251, CORE-34 #252, OPS-17c #253, CORE-31 #254, CORE-33 #255 · train #260: GB-N5 #257, CORE-30 #258 · เปิดอยู่ (◐): GB-13 #259 (train #261), CORE-29 (กำลังทำ) ·
 task ใหม่จาก review/qa รอบ 17–18: spec 01 **CORE-35** (delivery "เสร็จ" ใช้ option ที่เลือกในรายการที่กรองแล้ว — **ควรก่อน v0.5.0**) ∥ CORE-36 (ปุ่มลบโค้ด) ∥ CORE-37 (ปุ่มคัดลอก/การ์ด voucher)
 ∥ CORE-38 (layout 375px: สรุปที่อยู่ + label ลอย) · CORE-39 (← CORE-29: nit `return_to`) · spec 04 GB-N6 (← GB-13 #259: toast ใน e2e admin + test error หลัง lock) ·
 แก้ถ้อยคำ spec 04 กฎข้อ 36b/AC-55 (core-flows 2.22.1 ลบเฉพาะ method ที่ profile ชน + refresh ทิ้ง method ของ profile ที่ไม่มี item ใช้) และ AC-52 (e2e admin `page.route` แทน component test) · ไม่มีคำถามค้าง
@@ -172,9 +172,8 @@ GB-6a ☑ #75 → (GB-6b1 ☑ #87 ∥ GB-6b2 ☑ #96) → GB-6c1 ☑ #114 → GB
 GB-N1 ☑ #106 · GB-N2 ☑ #126 (nit `trackSubscribers` คัดลอก `subscriberId` ถ้ายังไม่แก้ใน #126 → แก้ใน PR ถัดไปที่แตะ `group-buy-join.spec.ts`) · Q11 owner ยืนยัน (ก) ยอมรับ lock TTL 60s ใน v1 — ไม่มี task
 (รอบ 16) **GB-12 ☑ #244** (countdown กลาง, ชื่อสินค้า/ราคาใน `group-selection`, fixed "ต่อชิ้น", กล่องยืนยันออกจากกลุ่ม 375px + empty state เดียว
 + รอบ 17: ไม่แสดง empty state เมื่อโหลด group orders ล้ม (กฎข้อ 32e1); AC-51 — ควรก่อน v0.5.0) ∥
-**GB-N4 ☑ #246** (test hygiene; AC-53) → **GB-13 ◐ #259** (Q21 = ก owner 2026-11-04: `idempotency_key` ของการสร้างแคมเปญ; AC-52 — รอบ 18 แก้ถ้อยคำเป็น e2e admin `page.route`) →
-(รอบ 18) GB-N6 ☐ (← #259: e2e admin รอ/ปิด toast ก่อนคลิก `gb-campaign-create` + integration test error หลังขอ lock แล้ว key เดิมใช้ต่อได้ทันที; AC-56 — ไม่บล็อก release;
-ถ้า #259 ต้อง push แก้ review อยู่แล้วรวมเข้า #259 ได้แล้วปิด GB-N6 ✕) ∥
+**GB-N4 ☑ #246** (test hygiene; AC-53) → **GB-13 ◐ #259 (train #261)** (Q21 = ก owner 2026-11-04: `idempotency_key` ของการสร้างแคมเปญ; AC-52 — รอบ 18 แก้ถ้อยคำเป็น e2e admin `page.route`) →
+(รอบ 18) GB-N6 ☐ (← #259: e2e admin รอ/ปิด toast ก่อนคลิก `gb-campaign-create` + integration test error หลังขอ lock แล้ว key เดิมใช้ต่อได้ทันที; AC-56 — ไม่บล็อก release) ∥
 (รอบ 16b) **GB-14 ☑ #247** (Q-C4 = ข: ตรวจ shipping profile ตอน join → 400 `GB_SHIPPING_PROFILE_NOT_COVERED` + ข้อความไทยใน `group-join-error.ts`; AC-54; ∥ CORE-32 ไม่มีไฟล์ชน — ควรก่อน v0.5.0;
 Q22 = (ก) owner 2026-11-04: cart ไม่มีวิธีส่งเลยไม่ถูกปฏิเสธ) →
 (รอบ 17) **GB-N5 ☑ #257** (ตัด `!profile ||`, ขั้น O_dig → O_std ผ่าน Store API, helper admin ของ integration test, ชื่อตัวแปร pool ใน `home-campaigns.test.ts`; AC-55 — รอบ 18 แก้ถ้อยคำกฎข้อ 36b ตาม core-flows จริง) ·
