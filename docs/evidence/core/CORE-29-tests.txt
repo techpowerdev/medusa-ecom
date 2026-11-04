@@ -66,3 +66,37 @@
   31 passed (1.6m)
 
 ## 7) lint / typecheck: pnpm lint 0 errors; tsc --noEmit (storefront) ผ่าน; next build ผ่าน
+
+# ===== รอบ 2 (2026-11-04) — แก้ nit จาก review/qa ของ PR #263, base origin/develop 037b8a4 =====
+## Red — unit core-29-active-cart.test.ts กับโค้ดรอบ 1: Tests 3 failed | 14 passed (17)
+  × activateCart กับ cart เดิมใน cookie (เช่น /cart/add เพิ่มลง cart เดิม) → ไม่เรียก customer.update
+  × cart ไม่ใช่ของตัวเอง (404 — CORE-12) → ไม่ตั้ง cookie, login สำเร็จ, warn สั้นๆ ไม่ใช่ error
+  × ใช้ metadata จากการอ่าน customer ครั้งเดิมของ completeLogin (ไม่ retrieve ซ้ำ)
+## Green — unit core-29: Tests 17 passed (17)
+## Green — unit ทั้งหมดของ storefront: Test Files 82 passed (82) | Tests 891 passed (891)
+## e2e (build จริง) core-29 + core-14* — รันตอน load average ของเครื่อง < 7
+# หมายเหตุ: ตอน load 12–14 (agent อื่น) core-14-buy-login AC-41 และ core-29 ขั้น PDP ชน timeout 5s ของ expect เป็นพักๆ
+# (1/3 และ 2/2 รอบ) — flow เหล่านี้ไม่มี request เพิ่มจากรอบ 1 (completeLogin ลดลง 1 request) ผลเมื่อ load ลดลง:
+  ✓   1 [chromium] › e2e/core-14-buy-login.spec.ts:38:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (3.5s)
+  ✓   2 [chromium] › e2e/core-14-buy-login.spec.ts:98:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (155ms)
+  ✓   3 [chromium] › e2e/core-14-buy-login.spec.ts:121:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (1.6s)
+  ✓   4 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (15.2s)
+  ✓   5 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (1.5s)
+  ✓   6 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (1.4s)
+  ✓   7 [chromium] › e2e/core-14c-login-foreign-cart.spec.ts:26:5 › AC-76: login ขณะมี cookie cart ของ customer อื่น → login สำเร็จ, cookie ไม่ชี้ cart ของคนอื่น, cart นั้นยังเป็นของเจ้าของเดิม (1.9s)
+  ✓   8 [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton (9.9s)
+  ✓   9 [chromium] › e2e/core-14d-cart-after-login.spec.ts:139:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error) (2.2s)
+  ✓  10 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS on) (1.6s)
+  ✓  11 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS off) (901ms)
+  ✓  12 [chromium] › e2e/core-14d-cart-after-login.spec.ts:218:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่มีปุ่มยืนยัน (447ms)
+  ✓  13 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS เปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS on) (847ms)
+  ✓  14 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS ปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS off) (814ms)
+  ✓  15 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น zz → ไม่มี 5xx เห็น error ไทย (478ms)
+  ✓  16 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น /evil.example → ไม่มี 5xx เห็น error ไทย (460ms)
+  ✓  17 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (5.5s)
+  ✓  18 [chromium] › e2e/core-29-restore-cart.spec.ts:142:5 › AC-122: ลบ JWT → login ใหม่ได้ตะกร้าเดิม; cart ที่ complete แล้วไม่ถูกกู้; key อื่นใน metadata ยังอยู่ (10.4s)
+  ✓  19 [chromium] › e2e/core-29-restore-cart.spec.ts:192:5 › AC-122: active_cart_id ของ A ชี้ cart ของ B → login สำเร็จ ไม่มี cookie cart และ cart ของ B ยังเป็นของ B (1.2s)
+  ✓  20 [chromium] › e2e/core-29-restore-cart.spec.ts:217:5 › AC-122: browser มี cookie cart D ของ A อยู่แล้วตอน login → cookie ยังเป็น D (ไม่ทับด้วย active_cart_id) (1.2s)
+  20 passed (1.0m)
+14:45  up 12 days, 11:22, 2 users, load averages: 7.44 10.91 11.43
+## lint 0 errors (ไฟล์ที่แตะไม่มี warning); tsc --noEmit (storefront) ผ่าน; next build ผ่าน

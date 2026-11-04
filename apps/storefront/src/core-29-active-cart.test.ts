@@ -123,6 +123,14 @@ describe("บันทึก active_cart_id เมื่อตั้ง cookie c
     expect(setCartId).toHaveBeenLastCalledWith("cart_buy2")
   })
 
+  it("activateCart กับ cart เดิมใน cookie (เช่น /cart/add เพิ่มลง cart เดิม) → ไม่เรียก customer.update", async () => {
+    cartCookie = "cart_same"
+    const { activateCart } = await import("@lib/util/server-cart")
+    await activateCart("cart_same")
+    expect(setCartId).toHaveBeenCalledWith("cart_same")
+    expect(customerUpdate).not.toHaveBeenCalled()
+  })
+
   it("prepareGroupCart (cart ของกลุ่ม — spec 04 กฎข้อ 14c) → ไม่เรียก customer.update และไม่ตั้ง cookie", async () => {
     const address = { id: "addr_1", first_name: "A", country_code: "th" }
     customerRetrieve.mockReset()
@@ -202,10 +210,21 @@ describe("กู้ตะกร้าตอน login (กฎข้อ 86b, 86c)"
     expect(setCartId).not.toHaveBeenCalled()
   })
 
-  it("cart ไม่ใช่ของตัวเอง (404 — CORE-12) → ไม่ตั้ง cookie และ login สำเร็จ", async () => {
+  it("cart ไม่ใช่ของตัวเอง (404 — CORE-12) → ไม่ตั้ง cookie, login สำเร็จ, warn สั้นๆ ไม่ใช่ error", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     fetch.mockRejectedValue(new FetchError("Cart not found", "Not Found", 404))
     await expect(login()).resolves.toEqual({ state: "success" })
     expect(setCartId).not.toHaveBeenCalled()
+    expect(console.error).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0].every((arg) => typeof arg === "string"), "ไม่ส่ง error object (ไม่มี stack)").toBe(true)
+  })
+
+  it("อ่าน cart ได้ 500 → ไม่ตั้ง cookie, login สำเร็จ และ console.error", async () => {
+    fetch.mockRejectedValue(new FetchError("boom", "Internal Server Error", 500))
+    await expect(login()).resolves.toEqual({ state: "success" })
+    expect(setCartId).not.toHaveBeenCalled()
+    expect(console.error).toHaveBeenCalled()
   })
 
   it("ไม่มีค่าใน metadata → ไม่อ่าน cart", async () => {
@@ -215,12 +234,11 @@ describe("กู้ตะกร้าตอน login (กฎข้อ 86b, 86c)"
     expect(setCartId).not.toHaveBeenCalled()
   })
 
-  it("อ่าน customer ล้ม → login สำเร็จตามเดิม", async () => {
-    customerRetrieve
-      .mockResolvedValueOnce({ customer: {} })
-      .mockRejectedValueOnce(new TypeError("fetch failed"))
+  it("ใช้ metadata จากการอ่าน customer ครั้งเดิมของ completeLogin (ไม่ retrieve ซ้ำ)", async () => {
+    fetch.mockResolvedValue({ cart: { id: "cart_c", completed_at: null } })
     await expect(login()).resolves.toEqual({ state: "success" })
-    expect(setCartId).not.toHaveBeenCalled()
+    expect(customerRetrieve).toHaveBeenCalledTimes(1)
+    expect(setCartId).toHaveBeenCalledWith("cart_c")
   })
 
   it("มี cookie cart D อยู่แล้วหลัง transfer → ไม่แตะ (ไม่อ่าน active_cart_id)", async () => {

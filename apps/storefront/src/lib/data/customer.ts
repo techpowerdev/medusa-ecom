@@ -360,12 +360,13 @@ async function completeLogin(
   // `/store/customers/me` rejects tokens without a registered actor, so a
   // failed retrieve means we still need to create the customer, then log in
   // again to obtain a customer-bound token.
-  const customerExists = await sdk.store.customer
+  // CORE-29: field เริ่มต้นของ `/store/customers/me` มี `metadata` → ใช้ `active_cart_id` จากการอ่านนี้ (ไม่ retrieve ซ้ำ)
+  const existing = await sdk.store.customer
     .retrieve({}, { authorization: `Bearer ${token}` })
-    .then(() => true)
-    .catch(() => false)
+    .then(({ customer }) => customer)
+    .catch(() => null)
 
-  if (!customerExists) {
+  if (!existing) {
     const pending = await getPendingCustomer()
 
     try {
@@ -405,8 +406,9 @@ async function completeLogin(
 
   // CORE-29 (กฎข้อ 86b/c): ไม่มี cookie cart (ไม่มีมาแต่แรก หรือถูกทิ้งเพราะ 404) → กู้จาก metadata.active_cart_id;
   // มี cookie อยู่แล้ว → ไม่แตะ; กู้ไม่ได้ไม่ทำให้ login ล้ม
+  // customer ที่เพิ่งสร้าง (existing = null) ยังไม่มี hint
   if (!hasCartCookie) {
-    await restoreActiveCart()
+    await restoreActiveCart(existing?.metadata)
   }
 
   return { state: "success" }
