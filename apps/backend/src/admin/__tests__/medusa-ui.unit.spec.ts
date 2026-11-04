@@ -1,4 +1,4 @@
-// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a)
+// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a), AC-6 (ADM-3)
 import { readdirSync, readFileSync } from "fs"
 import { join } from "path"
 
@@ -162,4 +162,30 @@ describe("แสดงวันเวลาด้วย useDate (spec 08 AC-3, A
     expect(src).toMatch(/import\s*{[^}]*\buseDate\b[^}]*}\s*from\s*["']@medusajs\/dashboard\/hooks["']/)
     expect(src).not.toMatch(/\bformatDate(Time)?\b/)
   })
+})
+
+describe("ฟอร์ม pilot ใช้ Form + KeyboundForm + zod (spec 08 AC-6, กฎ 8, ADM-3)", () => {
+  it.each(["widgets/flash-sale-options.tsx", "widgets/variant-evoucher-pool.tsx"])(
+    "%s ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState",
+    (file) => {
+      const src = read(file)
+      expect(src).toMatch(
+        /import\s*{[^}]*\bForm\b[^}]*\bKeyboundForm\b[^}]*}\s*from\s*["']@medusajs\/dashboard\/components["']/
+      )
+      expect(src).toMatch(/import\s*{[^}]*\buseForm\b[^}]*}\s*from\s*["']react-hook-form["']/)
+      expect(src).toMatch(/import\s*{[^}]*\bzodResolver\b[^}]*}\s*from\s*["']@hookform\/resolvers\/zod["']/)
+      expect(src).toMatch(/useState\(createSingleFlight\)/)
+      expect(src).not.toMatch(/\b(toForm|EMPTY|parseLimit|setForm)\b/)
+      expect(src).not.toMatch(/\buseRef\b/)
+    }
+  )
+
+  it.each(["lib/flash-sale-form.ts", "lib/evoucher-pool-form.ts"])(
+    "%s ใช้ optionalInt จาก @medusajs/dashboard/lib (ไม่ import ui/components/hooks — กฎ 2)",
+    (file) => {
+      const src = read(file)
+      expect(src).toMatch(/import\s*{[^}]*\boptionalInt\b[^}]*}\s*from\s*["']@medusajs\/dashboard\/lib["']/)
+      expect(src).not.toMatch(/from\s*["']@medusajs\/(ui|dashboard\/components|dashboard\/hooks)["']/)
+    }
+  )
 })

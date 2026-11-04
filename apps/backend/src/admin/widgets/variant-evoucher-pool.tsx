@@ -1,39 +1,33 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { SectionRow } from "@medusajs/dashboard/components"
+import { Form, KeyboundForm, SectionRow } from "@medusajs/dashboard/components"
 import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
-import {
-  Badge,
-  Button,
-  FocusModal,
-  Heading,
-  Input,
-  Label,
-  Select,
-  Text,
-  Textarea,
-  toast,
-} from "@medusajs/ui"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Badge, Button, FocusModal, Heading, Input, Select, Text, Textarea, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { evoucherApi, evoucherKeys } from "../lib/evoucher"
+import {
+  POOL_FORM_DEFAULTS,
+  POOL_PARSE_OPTIONS,
+  type PoolFormBody,
+  poolFormSchema,
+} from "../lib/evoucher-pool-form"
 import { createSingleFlight } from "../lib/single-flight"
-
-const EMPTY = {
-  partner_id: "",
-  name: "",
-  how_to_use: "",
-  face_value: "",
-  validity_note: "",
-  low_stock_threshold: "20",
-}
 
 // EV-6: "Voucher pool" บนหน้า variant — พาร์ทเนอร์, face value, สต็อกจาก pool; ยังไม่มี pool → สร้างได้ที่นี่
 const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpTypes.AdminProductVariant>) => {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState(EMPTY)
+  // ADM-3 (spec 08 กฎ 8): Form + KeyboundForm ของ dashboard + zod — error แสดงใต้ช่อง, ⌘/Ctrl+Enter ส่งได้
+  // Form.Field ของ dashboard รับ control ที่ค่าก่อน/หลัง submit เป็น type เดียวกัน จึงให้ resolver คืนค่าดิบ (raw)
+  // แล้วแปลงเป็น body ด้วย schema เดียวกันตอน submit
+  const form = useForm({
+    resolver: zodResolver(poolFormSchema, POOL_PARSE_OPTIONS, { raw: true }),
+    defaultValues: POOL_FORM_DEFAULTS,
+  })
   const [submitOnce] = useState(createSingleFlight)
 
   const { data, isLoading, isError, error } = useQuery({
@@ -50,48 +44,39 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   })
 
   const create = useMutation({
-    mutationFn: () =>
-      evoucherApi.createPool({
-        variant_id: variant.id,
-        partner_id: form.partner_id,
-        name: form.name.trim(),
-        how_to_use: form.how_to_use.trim(),
-        face_value: form.face_value ? Number(form.face_value) : null,
-        validity_note: form.validity_note.trim() || null,
-        low_stock_threshold: Number(form.low_stock_threshold || 20),
-      }),
+    mutationFn: (body: PoolFormBody) =>
+      evoucherApi.createPool({ ...body, variant_id: variant.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: evoucherKeys.poolByVariant(variant.id) })
       queryClient.invalidateQueries({ queryKey: evoucherKeys.pools })
       toast.success("Voucher pool created")
       setOpen(false)
-      setForm(EMPTY)
+      form.reset(POOL_FORM_DEFAULTS)
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
-  const submit = () => {
-    if (!form.partner_id || !form.name.trim() || !form.how_to_use.trim()) {
-      toast.error("Partner, name and how to use are required")
-      return
-    }
-    // กฎข้อ 11: กันคลิกซ้อนก่อน isPending เป็น true; error แสดงผ่าน onError แล้ว
-    submitOnce(() => create.mutateAsync().catch(() => undefined))
-  }
+  // กฎข้อ 11 (spec 02): dblclick / ⌘+Enter ซ้ำก่อน isPending เป็น true → POST ครั้งเดียว; error แสดงผ่าน onError แล้ว
+  const submit = form.handleSubmit((values) =>
+    submitOnce(() =>
+      create.mutateAsync(poolFormSchema.parse(values, POOL_PARSE_OPTIONS)).catch(() => undefined)
+    )
+  )
 
-  const field = (key: keyof typeof EMPTY, label: string, type = "text") => (
-    <div className="flex flex-col gap-y-2">
-      <Label size="small" htmlFor={`evoucher-pool-${key}`}>
-        {label}
-      </Label>
-      <Input
-        id={`evoucher-pool-${key}`}
-        size="small"
-        type={type}
-        value={form[key]}
-        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-      />
-    </div>
+  const field = (name: "name" | "face_value" | "validity_note" | "low_stock_threshold", label: string, type = "text") => (
+    <Form.Field
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <Form.Item>
+          <Form.Label>{label}</Form.Label>
+          <Form.Control>
+            <Input {...field} size="small" type={type} />
+          </Form.Control>
+          <Form.ErrorMessage data-testid={`evoucher-pool-${name}-error`} />
+        </Form.Item>
+      )}
+    />
   )
 
   return (
@@ -152,53 +137,63 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
 
       <FocusModal open={open} onOpenChange={setOpen}>
         <FocusModal.Content>
-          <FocusModal.Header>
-            <div className="flex items-center justify-end gap-x-2">
-              <Button size="small" onClick={submit} disabled={create.isPending} isLoading={create.isPending}>
-                Save
-              </Button>
-            </div>
-          </FocusModal.Header>
-          <FocusModal.Body className="flex justify-center overflow-auto py-16">
-            <div className="flex w-full max-w-lg flex-col gap-y-4">
-              <Heading>Create voucher pool for {variant.title}</Heading>
-              <div className="flex flex-col gap-y-2">
-                <Label size="small" htmlFor="evoucher-pool-partner_id">
-                  Partner *
-                </Label>
-                <Select
-                  size="small"
-                  value={form.partner_id}
-                  onValueChange={(partner_id) => setForm({ ...form, partner_id })}
-                >
-                  <Select.Trigger id="evoucher-pool-partner_id">
-                    <Select.Value placeholder="Select partner" />
-                  </Select.Trigger>
-                  <Select.Content>
-                    {partners?.partners.map((p) => (
-                      <Select.Item key={p.id} value={p.id}>
-                        {p.name}
-                      </Select.Item>
-                    ))}
-                  </Select.Content>
-                </Select>
-              </div>
-              {field("name", "Name *")}
-              <div className="flex flex-col gap-y-2">
-                <Label size="small" htmlFor="evoucher-pool-how_to_use">
-                  How to use * (shown in the delivery email)
-                </Label>
-                <Textarea
-                  id="evoucher-pool-how_to_use"
-                  value={form.how_to_use}
-                  onChange={(e) => setForm({ ...form, how_to_use: e.target.value })}
-                />
-              </div>
-              {field("face_value", "Face value", "number")}
-              {field("validity_note", "Validity note")}
-              {field("low_stock_threshold", "Low-stock threshold", "number")}
-            </div>
-          </FocusModal.Body>
+          <Form {...form}>
+            <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
+              <FocusModal.Header>
+                <div className="flex items-center justify-end gap-x-2">
+                  <Button size="small" type="submit" disabled={create.isPending} isLoading={create.isPending}>
+                    Save
+                  </Button>
+                </div>
+              </FocusModal.Header>
+              <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
+                <div className="flex w-full max-w-lg flex-col gap-y-4">
+                  <Heading>Create voucher pool for {variant.title}</Heading>
+                  <Form.Field
+                    control={form.control}
+                    name="partner_id"
+                    render={({ field: { value, onChange, ref, name, disabled } }) => (
+                      <Form.Item>
+                        <Form.Label>Partner *</Form.Label>
+                        <Select size="small" name={name} value={value} onValueChange={onChange} disabled={disabled}>
+                          <Form.Control>
+                            <Select.Trigger ref={ref}>
+                              <Select.Value placeholder="Select partner" />
+                            </Select.Trigger>
+                          </Form.Control>
+                          <Select.Content>
+                            {partners?.partners.map((p) => (
+                              <Select.Item key={p.id} value={p.id}>
+                                {p.name}
+                              </Select.Item>
+                            ))}
+                          </Select.Content>
+                        </Select>
+                        <Form.ErrorMessage data-testid="evoucher-pool-partner_id-error" />
+                      </Form.Item>
+                    )}
+                  />
+                  {field("name", "Name *")}
+                  <Form.Field
+                    control={form.control}
+                    name="how_to_use"
+                    render={({ field }) => (
+                      <Form.Item>
+                        <Form.Label>How to use * (shown in the delivery email)</Form.Label>
+                        <Form.Control>
+                          <Textarea {...field} />
+                        </Form.Control>
+                        <Form.ErrorMessage data-testid="evoucher-pool-how_to_use-error" />
+                      </Form.Item>
+                    )}
+                  />
+                  {field("face_value", "Face value", "number")}
+                  {field("validity_note", "Validity note")}
+                  {field("low_stock_threshold", "Low-stock threshold", "number")}
+                </div>
+              </FocusModal.Body>
+            </KeyboundForm>
+          </Form>
         </FocusModal.Content>
       </FocusModal>
     </Container>
