@@ -133,7 +133,8 @@ const buildBody = (form: CampaignForm) => {
     },
   }
 }
-export type CampaignBody = ReturnType<typeof buildBody>
+// idempotency_key: ฟอร์มใส่ต่อการเปิด FocusModal (GB-13, กฎข้อ 33d)
+export type CampaignBody = ReturnType<typeof buildBody> & { idempotency_key?: string }
 
 export const toCampaignBody = (
   form: CampaignForm

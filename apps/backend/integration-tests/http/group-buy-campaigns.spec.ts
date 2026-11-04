@@ -486,6 +486,103 @@ medusaIntegrationTestRunner({
       })
     })
 
+    // GB-13 (spec 04 กฎข้อ 33, AC-52): idempotency_key กันสร้างแคมเปญซ้ำเมื่อยิงซ้ำ/พร้อมกัน
+    describe("idempotency_key (AC-52)", () => {
+      const KEY = "gb13-key-0001"
+      const counts = async () => {
+        const promotionModule = getContainer().resolve(Modules.PROMOTION)
+        const promotions = await promotionModule.listPromotions({}, { select: ["id", "code"] })
+        return {
+          groupBuyCampaigns: (
+            await getContainer().resolve<GroupBuyModuleService>(GROUP_BUY_MODULE).listGroupBuyCampaigns({})
+          ).length,
+          campaigns: (await promotionModule.listCampaigns({}, { select: ["id"] })).length,
+          templates: promotions.filter((p) => p.code?.startsWith("GBT-")).length,
+        }
+      }
+      const post = (body: Record<string, unknown>) =>
+        api.post("/admin/group-buy/campaigns", body, headers).catch((e) => {
+          // ห่อ error ของ axios (circular) เป็น response ธรรมดา
+          if (!e.response) {
+            throw new Error(`create campaign: ${e.message}`)
+          }
+          return { status: e.response.status as number, data: e.response.data }
+        })
+      const plus = (base: Awaited<ReturnType<typeof counts>>, n: number) => ({
+        groupBuyCampaigns: base.groupBuyCampaigns + n,
+        campaigns: base.campaigns + n,
+        templates: base.templates + n,
+      })
+
+      it("two concurrent POSTs with key K → both 200 with the same campaign; one of each is created", async () => {
+        const before = await counts()
+        const [a, b] = await Promise.all([
+          post({ ...campaignInput(), idempotency_key: KEY }),
+          post({ ...campaignInput(), idempotency_key: KEY }),
+        ])
+
+        expect([a.status, b.status]).toEqual([200, 200])
+        expect(a.data.campaign.id).toEqual(b.data.campaign.id)
+        expect(a.data.campaign.template_promotion_id).toEqual(b.data.campaign.template_promotion_id)
+        expect(await counts()).toEqual(plus(before, 1))
+        expect((await graphCampaign(a.data.campaign.id)).campaign.campaign_identifier).toEqual(`group-buy-${KEY}`)
+      })
+
+      it("POST K again later (different body) → 200 same id, nothing new; key K2 → a new campaign", async () => {
+        const first = await post({ ...campaignInput(), idempotency_key: KEY })
+        expect(first.status).toEqual(200)
+        const afterFirst = await counts()
+
+        const again = await post({ ...campaignInput({ name: "GB other body" }), idempotency_key: KEY })
+        expect(again.status).toEqual(200)
+        expect(again.data.campaign).toEqual(first.data.campaign)
+        expect(await counts()).toEqual(afterFirst)
+
+        const other = await post({ ...campaignInput(), idempotency_key: "gb13-key-0002" })
+        expect(other.status).toEqual(200)
+        expect(other.data.campaign.id).not.toEqual(first.data.campaign.id)
+        expect(await counts()).toEqual(plus(afterFirst, 1))
+      })
+
+      it("no key twice → two campaigns (previous behaviour)", async () => {
+        const before = await counts()
+        const a = await createViaApi()
+        const b = await createViaApi()
+        expect(a.id).not.toEqual(b.id)
+        expect(await counts()).toEqual(plus(before, 2))
+        expect((await graphCampaign(a.id)).campaign.campaign_identifier).toMatch(/^group-buy-[0-9a-f-]{36}$/)
+      })
+
+      it.each([
+        ["with a space", "a b"],
+        ["129 characters", "k".repeat(129)],
+        ["7 characters", "k".repeat(7)],
+      ])("key %s → 400 invalid_data; nothing is created", async (_, key) => {
+        const before = await counts()
+        const response = await post({ ...campaignInput(), idempotency_key: key })
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(await counts()).toEqual(before)
+      })
+
+      it("accepts a 128-character key", async () => {
+        const response = await post({ ...campaignInput(), idempotency_key: "K".repeat(128) })
+        expect(response.status).toEqual(200)
+      })
+
+      it("createGroupBuyCampaignWorkflow called directly and concurrently with the same key → one campaign", async () => {
+        const before = await counts()
+        const run = () =>
+          createGroupBuyCampaignWorkflow(getContainer()).run({
+            input: { ...campaignInput(), idempotency_key: "gb13-direct-01" },
+          })
+        const [a, b] = await Promise.all([run(), run()])
+        expect(a.result.id).toEqual(b.result.id)
+        expect(a.result.template_promotion_id).toEqual(b.result.template_promotion_id)
+        expect(await counts()).toEqual(plus(before, 1))
+      })
+    })
+
     // GB-6e (spec 04 กฎข้อ 30a–b, AC-49): 1 แคมเปญ = 1 สินค้า
     describe("single product scope (AC-49)", () => {
       const CODE = "GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED"

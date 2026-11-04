@@ -1,0 +1,67 @@
+# GB-13 — idempotency_key ของการสร้างแคมเปญ (spec 04 กฎข้อ 33, กฎข้อ 17, AC-52)
+# วันที่: 2026-11-04, Node v22.23.3, Medusa 2.22.1
+
+## Red (ก่อนแก้โค้ด) — integration http: group-buy-campaigns.spec.ts -t AC-52
+      ✕ two concurrent POSTs with key K → both 200 with the same campaign; one of each is created (358 ms)
+      ✕ POST K again later (different body) → 200 same id, nothing new; key K2 → a new campaign (390 ms)
+      ✓ no key twice → two campaigns (previous behaviour) (305 ms)
+      ✓ key with a space → 400 invalid_data; nothing is created (206 ms)
+      ✓ key 129 characters → 400 invalid_data; nothing is created (204 ms)
+      ✓ key 7 characters → 400 invalid_data; nothing is created (199 ms)
+      ✕ accepts a 128-character key (201 ms)
+      ✕ createGroupBuyCampaignWorkflow called directly and concurrently with the same key → one campaign (232 ms)
+
+## Red — e2e admin (ฟอร์มเดิม): group-buy-admin-form.spec.ts
+  ✘ AC-52: ... → expect(posts[0].idempotency_key).toMatch(UUID) — Received: undefined
+
+## Green — integration http: integration-tests/http/group-buy-campaigns.spec.ts (ทั้งไฟล์)
+      ✓ creates a Medusa campaign + draft GBT- template promotion linked to the campaign (402 ms)
+      ✓ template code on a cart with X gives no adjustment; once active it would give X only (677 ms)
+      ✓ rolls back the Medusa campaign and template when the group buy campaign cannot be created (274 ms)
+      ✓ restores the campaign, template, links and Medusa campaign when a later step fails (272 ms)
+      ✓ requires an admin user (235 ms)
+      ✓ creates (returning template_promotion_id), lists, retrieves and updates a draft campaign (254 ms)
+      ✓ rejects an invalid body with 400 (193 ms)
+      ✓ template is_tax_inclusive defaults to true, keeps false, and rejects a non-boolean (AC-20c) (301 ms)
+      ✓ returns 404 for an unknown campaign (199 ms)
+      ✓ DELETE on a draft campaign removes the campaign, template, Medusa campaign and links (AC-20a) (257 ms)
+      ✓ DELETE on an active campaign → 400 and nothing is removed (AC-20a) (268 ms)
+      ✓ draft → active → ended succeed; active again on active is a no-op 200 (267 ms)
+      ✓ rejects active → draft and ended → active with 400 (285 ms)
+      ✓ rejects draft → active when the Medusa campaign ends_at has passed (273 ms)
+      ✓ editing target_value of an active campaign → 400; name and pay_within_hours are still editable (256 ms)
+      ✓ two concurrent POSTs with key K → both 200 with the same campaign; one of each is created (617 ms)
+      ✓ POST K again later (different body) → 200 same id, nothing new; key K2 → a new campaign (333 ms)
+      ✓ no key twice → two campaigns (previous behaviour) (262 ms)
+      ✓ key with a space → 400 invalid_data; nothing is created (198 ms)
+      ✓ key 129 characters → 400 invalid_data; nothing is created (213 ms)
+      ✓ key 7 characters → 400 invalid_data; nothing is created (194 ms)
+      ✓ accepts a 128-character key (225 ms)
+      ✓ createGroupBuyCampaignWorkflow called directly and concurrently with the same key → one campaign (569 ms)
+      ✓ POST with one product → 200 (278 ms)
+      ✓ POST with two products → 400 invalid_data with the code; no Medusa campaign/promotion is created (204 ms)
+      ✓ POST with values: [] → 400 invalid_data with the code; no Medusa campaign/promotion is created (198 ms)
+      ✓ POST with no items.product.id rule → 400 invalid_data with the code; no Medusa campaign/promotion is created (196 ms)
+      ✓ POST with a variant-level scope → 400 invalid_data with the code; no Medusa campaign/promotion is created (184 ms)
+      ✓ createGroupBuyCampaignWorkflow called directly with two products → same code; nothing is created (193 ms)
+      ✓ draft whose template was edited to two products via the Promotion module → activate 400, still draft (260 ms)
+Test Suites: 1 passed, 1 total
+Tests:       30 passed, 30 total
+
+## Green — e2e admin (Playwright, backend medusa start ที่ build แล้ว): e2e/group-buy-admin-form.spec.ts
+  ✓  1 [chromium] › e2e/group-buy-admin-form.spec.ts:86:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (3.3s)
+  ✓  2 [chromium] › e2e/group-buy-admin-form.spec.ts:168:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.6s)
+  ✓  3 [chromium] › e2e/group-buy-admin-form.spec.ts:222:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.8s)
+  ✓  4 [chromium] › e2e/group-buy-admin-form.spec.ts:279:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (4.0s)
+  4 passed (13.5s)
+
+## unit: pnpm --filter backend test:unit
+Test Suites: 88 passed, 88 total
+Tests:       928 passed, 928 total
+
+## pnpm lint && pnpm typecheck
+exit 0 (0 errors; warning เดิมเท่านั้น)
+
+## pnpm --filter backend build
+info:    Backend build completed successfully (5.50s)
+info:    Frontend build completed successfully (13.65s)

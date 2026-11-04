@@ -4,21 +4,24 @@ import {
   createWorkflow,
   StepResponse,
   transform,
+  when,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import { MedusaError, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import type {
   CreateApplicationMethodDTO,
   CreatePromotionRuleDTO,
   LinkDefinition,
 } from "@medusajs/framework/types"
 import {
+  acquireLockStep,
   createCampaignsWorkflow,
   createPromotionsWorkflow,
   createRemoteLinkStep,
   deleteCampaignsWorkflow,
   deletePromotionsWorkflow,
   dismissRemoteLinkStep,
+  releaseLockStep,
 } from "@medusajs/medusa/core-flows"
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
@@ -46,6 +49,8 @@ export type CreateGroupBuyCampaignInput = GroupBuyCampaignConfig & {
   application_method: CreateApplicationMethodDTO
   rules?: CreatePromotionRuleDTO[]
   is_tax_inclusive?: boolean
+  // spec 04 กฎข้อ 33: key เดิม → คืนแคมเปญเดิม; ไม่ส่ง → สร้างใหม่ทุกครั้ง
+  idempotency_key?: string
 }
 
 export type UpdateGroupBuyCampaignInput = Partial<GroupBuyCampaignConfig> & { id: string }
@@ -166,22 +171,57 @@ export const validateSingleProductScopeStep = createStep(
   }
 )
 
+// spec 04 กฎข้อ 33b: Medusa campaign ที่ campaign_identifier = group-buy-<key> → แคมเปญของเราผ่าน link (อ่านอย่างเดียว)
+export const findGroupBuyCampaignByKeyStep = createStep(
+  "find-group-buy-campaign-by-key",
+  async ({ idempotency_key }: { idempotency_key?: string }, { container }) => {
+    if (!idempotency_key) {
+      return new StepResponse(null)
+    }
+    const query = container.resolve(ContainerRegistrationKeys.QUERY)
+    const { data: campaigns } = await query.graph({
+      entity: "campaign",
+      fields: ["id", "group_buy_campaign.id"],
+      filters: { campaign_identifier: `group-buy-${idempotency_key}` },
+    })
+    const id = (campaigns[0] as { group_buy_campaign?: { id: string } | null } | undefined)
+      ?.group_buy_campaign?.id
+    if (!id) {
+      return new StepResponse(null)
+    }
+    const campaign = await groupBuyService(container).retrieveGroupBuyCampaign(id)
+    const { promotion } = await loadGroupBuyCampaign(container, id)
+    return new StepResponse({ ...campaign, template_promotion_id: promotion?.id ?? null })
+  }
+)
+
+export const groupBuyCampaignCreateLockKey = (key: string) => `group-buy-campaign-create:${key}`
+
 // spec 04 + ADR-011 ข้อ 1: Medusa campaign → promotion ต้นแบบ (draft, GBT-*) → GroupBuyCampaign (draft) → links
 export const createGroupBuyCampaignWorkflow = createWorkflow(
   "create-group-buy-campaign",
   function (input: CreateGroupBuyCampaignInput) {
     validateSingleProductScopeStep(input)
 
+    // กฎข้อ 33b: lock ต่อ key แล้วค่อยหา — request พร้อมกันด้วย key เดียวกันเห็นแคมเปญที่ตัวแรกสร้าง
+    // ไม่มี key → [] (acquire/release lock step ของ Medusa ข้ามเมื่อไม่มี key)
+    const lockKey = transform({ input }, ({ input }) =>
+      input.idempotency_key ? [groupBuyCampaignCreateLockKey(input.idempotency_key)] : []
+    )
+    acquireLockStep({ key: lockKey, timeout: 30, ttl: 30 })
+    const existing = findGroupBuyCampaignByKeyStep({ idempotency_key: input.idempotency_key })
+
     const prepared = transform({ input }, ({ input }) => {
       const code = generateTemplateCode()
-      const { starts_at, ends_at, application_method, rules, is_tax_inclusive, ...config } = input
+      const { starts_at, ends_at, application_method, rules, is_tax_inclusive, idempotency_key, ...config } =
+        input
       return {
         code,
         config,
         campaign: {
           name: input.name,
           // ไม่ใช้ code ต้นแบบซ้ำ — campaign_identifier แสดงในหน้า campaign ของ Medusa admin
-          campaign_identifier: `group-buy-${randomUUID()}`,
+          campaign_identifier: `group-buy-${idempotency_key ?? randomUUID()}`,
           starts_at: starts_at ? new Date(starts_at) : null,
           ends_at: new Date(ends_at),
         },
@@ -190,38 +230,46 @@ export const createGroupBuyCampaignWorkflow = createWorkflow(
       }
     })
 
-    const promotionCampaigns = createCampaignsWorkflow.runAsStep({
-      input: transform({ prepared }, ({ prepared }) => ({ campaignsData: [prepared.campaign] })),
-    })
+    const created = when("create-group-buy-campaign-when-key-is-new", { existing }, ({ existing }) => !existing).then(
+      () => {
+        const promotionCampaigns = createCampaignsWorkflow.runAsStep({
+          input: transform({ prepared }, ({ prepared }) => ({ campaignsData: [prepared.campaign] })),
+        })
 
-    const templates = createPromotionsWorkflow.runAsStep({
-      input: transform({ prepared, promotionCampaigns }, ({ prepared, promotionCampaigns }) => ({
-        promotionsData: [
-          {
-            ...prepared.promotion,
-            code: prepared.code,
-            type: "standard" as const,
-            status: "draft" as const,
-            is_automatic: false,
-            campaign_id: promotionCampaigns[0].id,
-          },
-        ],
-      })),
-    })
+        const templates = createPromotionsWorkflow.runAsStep({
+          input: transform({ prepared, promotionCampaigns }, ({ prepared, promotionCampaigns }) => ({
+            promotionsData: [
+              {
+                ...prepared.promotion,
+                code: prepared.code,
+                type: "standard" as const,
+                status: "draft" as const,
+                is_automatic: false,
+                campaign_id: promotionCampaigns[0].id,
+              },
+            ],
+          })),
+        })
 
-    const campaign = createGroupBuyCampaignStep(prepared.config)
+        const campaign = createGroupBuyCampaignStep(prepared.config)
 
-    createRemoteLinkStep(
-      transform({ campaign, promotionCampaigns, templates }, (data) =>
-        campaignLinks(data.campaign.id, data.promotionCampaigns[0].id, data.templates[0].id)
-      )
+        createRemoteLinkStep(
+          transform({ campaign, promotionCampaigns, templates }, (data) =>
+            campaignLinks(data.campaign.id, data.promotionCampaigns[0].id, data.templates[0].id)
+          )
+        )
+
+        return transform({ campaign, templates }, ({ campaign, templates }) => ({
+          ...campaign,
+          template_promotion_id: templates[0].id as string | null,
+        }))
+      }
     )
 
+    releaseLockStep({ key: lockKey })
+
     return new WorkflowResponse(
-      transform({ campaign, templates }, ({ campaign, templates }) => ({
-        ...campaign,
-        template_promotion_id: templates[0].id,
-      }))
+      transform({ existing, created }, ({ existing, created }) => (existing ?? created)!)
     )
   }
 )
