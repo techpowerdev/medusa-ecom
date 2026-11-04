@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
+สถานะ: draft (รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -207,6 +207,15 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   (`eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.`) — k6 script ที่ `setup()` คืน token (`flash-sale.js`, `group-buy-join.js`) ส่งออก summary ผ่าน `handleSummary` ที่ตัด `setup_data` (หรือ `run.sh`
   ตัดก่อนเขียน `OUT`) และ `run.sh` มีขั้นตรวจท้าย run ที่ล้ม (exit ≠ 0) เมื่อพบรูปแบบ JWT ใน `OUT` (unit: fixture summary ที่มี `setup_data.checkout[].token` → ผลไม่มี `setup_data`;
   fixture ไฟล์มี JWT → ขั้นตรวจล้ม; ยืนยันด้วย run id ใน PR — gate ของ AC-2 ยังผ่าน)
+- AC-34 (OPS-17b, รอบ 16 — review/qa 2026-11-04) **กฎ cleanup/รายงานของ `tools/load/run.sh`: ก่อน `cat`/`grep` เนื้อหาจาก `OUT` หรือ console ของ k6 ลง job log หรือ `GITHUB_STEP_SUMMARY`
+  ต้อง scan หา secret (รูปแบบ JWT ของ AC-33) ก่อนเสมอ — ไฟล์ที่พบถูกลบและไม่ถูกพิมพ์ ส่วน stream ที่พิมพ์ระหว่าง run ต้องผ่านตัว redact** —
+  (a) `cleanup()` และ flow หลักพิมพ์ report หลัง `artifact-guard.js scan "$OUT"` (มีแล้วใน OPS-17 #235 — test นี้ล็อกลำดับไว้);
+  (b) บรรทัดใน `k6()` ที่ `grep -v checkout_k6_timing` console ของ k6 ลง job log ส่งผ่าน `node tools/load/artifact-guard.js redact` ที่แทนสตริงรูปแบบ JWT ด้วย `[REDACTED_JWT]` ก่อนพิมพ์;
+  (c) k6 script (`flash-sale.js`, `group-buy-join.js`) ไม่ส่ง token/header ของ request เข้า `console.*`;
+  unit (node test ของ `tools/load`): `redact` กับ input ที่มี JWT → ผลไม่มีรูปแบบ JWT และข้อความอื่นคงเดิม; static test อ่าน `run.sh`: ทุกคำสั่ง `cat`/`grep` ที่อ่านไฟล์ใน `$OUT` หรือ console ของ k6
+  แล้วเขียนไป stdout หรือ `>>"$GITHUB_STEP_SUMMARY"` อยู่หลัง `artifact-guard.js scan` ในบล็อกเดียวกัน หรือ pipe ผ่าน `artifact-guard.js redact` — fixture ที่สลับลำดับ (cat ก่อน scan) → test ล้ม
+  (positive control ใน PR); static: argument ของ `console.(log|error|warn|info)(` ใน `tools/load/{flash-sale,group-buy-join}.js` ไม่มี identifier `token`, `authorization`, `headers`, `setup`;
+  run ของ `load-nightly.yml` (`workflow_dispatch`) ผ่าน และ gate AC-2/AC-3 + AC-33 ยังผ่าน (run id ใน PR)
 
 ## Tasks
 | ID | Task | Depends |
@@ -223,6 +232,7 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-19 | (staging load test) burst 500 rps × 60s จริง + p95 < 300ms เป็น gate (AC-30) — **⏸ backlog**: ต้องมี ADR สำหรับ staging (infra ใหม่ ตามข้อห้ามข้อ 3) ก่อน — ยังไม่มี ADR | ADR staging (ยังไม่มี), OPS-4 ☑ |
 | OPS-17 | (เล็ก, test/tooling, รอบ 12 — nit OPS-16 #180, review #175) `prod-guards.unit.spec.ts` อ่าน `ci.yml` ด้วย parser YAML, `IMAGE_TAG` ค่าเริ่มต้น `load` ใน `tools/load/run.sh`, ตัด cast ใน `seed-load.ts`; (รอบ 13, review #194) `hold_rank_corr` ใน `lock-timing.js` เป็น O(n) (AC-28) — ไฟล์เพิ่ม: `tools/load/lock-timing.js` + unit | OPS-16 ☑ (#180), OPS-4 ☑ (#175), **OPS-17a** (รอบ 13 — ชน `tools/load/run.sh`) |
 | OPS-17a | (เล็ก, **ความปลอดภัย** — ทำก่อน OPS-17, รอบ 13 — review/qa #194 OPS-18) summary/artifact ของ k6 ไม่มี `setup_data`/JWT ของลูกค้า load test (มีมาตั้งแต่ OPS-4) + ขั้นตรวจ JWT ท้าย `run.sh` (AC-33) — ไฟล์: `tools/load/{flash-sale,group-buy-join}.js`, `tools/load/run.sh`, unit ของ `tools/load` | OPS-4 ☑ (#175), **OPS-20a (#204) merge** (ชน `run.sh`, `flash-sale.js`) |
+| OPS-17b | (เล็ก ~100 LOC, **ความปลอดภัย**, รอบ 16 — review/qa 2026-11-04) redact JWT ใน console ของ k6 ก่อนลง job log + test ล็อกลำดับ "scan ก่อน cat" ของ `cleanup()`/report + static test `console.*` ของ k6 (AC-34) — ไฟล์: `tools/load/run.sh`, `tools/load/artifact-guard.js` (+ unit), `tools/load/{flash-sale,group-buy-join}.js` (ถ้าต้องแก้) | OPS-17a ☑ และ OPS-17 ☑ (#235 — `artifact-guard.js` อยู่ใน develop `abbbc92` แล้ว); ชน `run.sh` กับ OPS-20b → **OPS-17b ก่อน OPS-20b** |
 | OPS-5 | ตรวจสอบ index + migrations; runbook สำหรับ backup/restore (AC-4) | ทุก module |
 | OPS-6 | Tooling: Next `output: "standalone"` + Dockerfile storefront ใช้ `.next/standalone`, `agentRules: false`, แก้ `testMatch` ของ jest ไม่ให้ unit spec ถูกจับซ้ำ (AC-6, AC-7, AC-8) | OPS-1 |
 | OPS-7 | Prod guards ตาม ADR-010 (accepted, D1): fail-fast เมื่อขาด `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (AC-9), seed ไม่เปิด `pp_system_default` ใน prod (AC-10), script `check:go-live` + checklist go-live ใน `docs/ops/production.md` (AC-11), ตั้ง `ALLOW_TEST_PROVIDERS=true` ใน CI job ที่รันโหมด production; fail-fast `AFFILIATE_TOKEN_SECRET` + ตั้งตัวแปรใน job `docker-worker-mode` (เพิ่ม 2026-10-26 จาก review AF-2, AC-13); fail-fast `STOREFRONT_URL` (รอบ 7, AC-17 — ถ้า GB-4 ยังไม่ merge ตอนเริ่ม OPS-7 ให้ทำส่วนนี้เมื่อ GB-4 merge แล้ว ไม่แตะโค้ดอีเมลของ GB-4) | OPS-2, PAY-1, CORE-3, AF-2 (#66), GB-4 (#89, เฉพาะ AC-17) |
@@ -250,6 +260,7 @@ OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_PO
 (รอบ 13, 2026-11-03) สถานะ: OPS-20a ◐ #204; follow-up ของ #194 แยกเป็น OPS-17a (token ใน artifact — ความปลอดภัย, AC-33) และส่วน O(n²) ของ analyzer รวมใน OPS-17 (AC-28);
 ลำดับ `tools/load/*`: OPS-20a → OPS-17a → OPS-17 → OPS-20b
 (ความเสี่ยงของ token: เป็น JWT ของลูกค้าทดสอบใน DB ชั่วคราวของ runner ที่ถูกทิ้งหลัง run — ไม่ใช่ข้อมูลจริง แต่ไม่ควรอยู่ใน artifact 14 วัน; ไม่ต้องลบ artifact เดิมเพราะ token ใช้กับระบบใดไม่ได้แล้ว)
+(รอบ 16, 2026-11-04) OPS-17b ☐ เริ่มได้ → OPS-20b (ลำดับ `tools/load/*` ที่เหลือ: OPS-17b → OPS-20b)
 
 ## Open questions (รอบ 10)
 - ~~Q-O3~~ ตัดสินแล้ว (owner 2026-10-27): **รับข้อเสนอทั้งชุด (a)–(e)** ด้านล่าง → OPS-4 เริ่มได้ (Depends FS-3 ☑, GB-3 ☑, OPS-1 ☑); คำถามเดิม (OPS-4 load test) **ข้อเสนอรวม**:
