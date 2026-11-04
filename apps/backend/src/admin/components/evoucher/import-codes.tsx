@@ -1,7 +1,10 @@
-import { Button, Container, Heading, Text, toast } from "@medusajs/ui"
+import { Button, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useRef, useState } from "react"
 import { evoucherApi, evoucherKeys, ImportResult } from "../../lib/evoucher"
+import { createSingleFlight } from "../../lib/single-flight"
+import { Container } from "../common/container"
+import { Header } from "../common/header"
 
 // import CSV `code,pin?,expires_at?` → แสดงสรุปจำนวนที่เพิ่ม / ข้ามเพราะซ้ำ (AC-1)
 export const ImportCodes = ({ poolId }: { poolId: string }) => {
@@ -9,6 +12,7 @@ export const ImportCodes = ({ poolId }: { poolId: string }) => {
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<ImportResult | null>(null)
+  const [importOnce] = useState(createSingleFlight)
 
   const upload = useMutation({
     mutationFn: (f: File) => evoucherApi.importCodes(poolId, f),
@@ -30,13 +34,11 @@ export const ImportCodes = ({ poolId }: { poolId: string }) => {
   })
 
   return (
-    <Container className="divide-y p-0">
-      <div className="flex flex-col gap-y-1 px-6 py-4">
-        <Heading level="h2">Import codes</Heading>
-        <Text size="small" leading="compact" className="text-ui-fg-subtle">
-          CSV columns: code, pin (optional), expires_at (optional, YYYY-MM-DD). Duplicates are skipped.
-        </Text>
-      </div>
+    <Container>
+      <Header
+        title="Import codes"
+        subtitle="CSV columns: code, pin (optional), expires_at (optional, YYYY-MM-DD). Duplicates are skipped."
+      />
       <div className="flex items-center gap-x-3 px-6 py-4">
         <input
           ref={inputRef}
@@ -50,7 +52,7 @@ export const ImportCodes = ({ poolId }: { poolId: string }) => {
           size="small"
           disabled={!file}
           isLoading={upload.isPending}
-          onClick={() => file && upload.mutate(file)}
+          onClick={() => file && importOnce(() => upload.mutateAsync(file).catch(() => undefined))}
         >
           Import
         </Button>

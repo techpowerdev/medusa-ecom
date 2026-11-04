@@ -1,56 +1,92 @@
-import { useDate } from "@medusajs/dashboard/hooks"
+import { ActionMenu, DataTable } from "@medusajs/dashboard/components"
+import { useDate, useQueryParams } from "@medusajs/dashboard/hooks"
+import { EllipsisHorizontal, Eye } from "@medusajs/icons"
 import {
   Badge,
-  Button,
-  Container,
   Copy,
   createDataTableColumnHelper,
-  DataTable,
-  DataTablePaginationState,
+  createDataTableFilterHelper,
   Drawer,
-  Heading,
-  Select,
+  IconButton,
   Text,
   toast,
-  useDataTable,
   usePrompt,
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import {
   CODE_STATUSES,
-  CodeStatus,
   evoucherApi,
   evoucherKeys,
   MaskedCode,
   RevealedCode,
   STATUS_COLOR,
 } from "../../lib/evoucher"
+import { codesListQuery } from "../../lib/evoucher-query"
+import { createSingleFlight } from "../../lib/single-flight"
+import { Container } from "../common/container"
 
 const columnHelper = createDataTableColumnHelper<MaskedCode>()
-const ALL = "all"
+const filterHelper = createDataTableFilterHelper<MaskedCode>()
+const PAGE_SIZE = 50
+const PREFIX = "codes"
+
+// spec 08 AC-7: กรองสถานะด้วย filter ของ DataTable (radio = ค่าเดียว ตรงกับ `status` ของ API)
+const filters = [
+  filterHelper.accessor("status", {
+    type: "radio",
+    label: "Status",
+    options: CODE_STATUSES.map((status) => ({ label: status, value: status })),
+  }),
+]
+
+const OFFSET_KEY = `${PREFIX}_offset`
+
+// เปลี่ยน filter แล้วต้องกลับหน้าแรก: DataTable ของ dashboard 2.22.1 เรียก reset หน้า (ลบ `codes_offset`) แล้วตามด้วยตั้ง filter
+// ผ่าน setSearchParams สองครั้งใน tick เดียว — บน react-router 7 ครั้งหลังเขียนทับครั้งแรก offset จึงค้าง (กรองจากหน้า 2 แล้วได้ตารางว่าง)
+// คืน true ตั้งแต่ status เปลี่ยนจนกว่า URL ไม่มี offset แล้วจริง เพื่อให้ทุก request ระหว่างนั้นใช้ offset 0 (ไม่ยิง request ของหน้าเก่า)
+// — หน้า pool มี loader: การลบ offset ทำให้ router revalidate loader ก่อนอัปเดต URL จึงจำ status ใหม่ได้เมื่อ offset หายไปแล้วเท่านั้น
+const useResetOffsetOnStatusChange = (status?: string, offset?: string) => {
+  const [, setSearchParams] = useSearchParams()
+  const [seen, setSeen] = useState(status)
+  const changed = status !== seen
+
+  useEffect(() => {
+    if (!changed) {
+      return
+    }
+    if (!offset) {
+      setSeen(status)
+      return
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete(OFFSET_KEY)
+        return next
+      },
+      { replace: true }
+    )
+  }, [changed, offset, status, setSearchParams])
+
+  return changed
+}
 
 // รายการ code แบบ masked (AC-8); ค่าจริงดูได้ทีละ code ผ่าน reveal ซึ่ง backend เขียน audit ทุกครั้ง
+// ADM-4: DataTable ของ dashboard (หน้า/filter อยู่ใน URL `codes_offset`, `codes_status`), Reveal ต่อแถวใน ActionMenu
 export const CodesTable = ({ poolId }: { poolId: string }) => {
   const prompt = usePrompt()
   const { getFullDate } = useDate()
-  const [status, setStatus] = useState<CodeStatus | typeof ALL>(ALL)
+  const [revealOnce] = useState(createSingleFlight)
   const [revealed, setRevealed] = useState<RevealedCode | null>(null)
-  const [pagination, setPagination] = useState<DataTablePaginationState>({
-    pageIndex: 0,
-    pageSize: 50,
-  })
-  const limit = pagination.pageSize
-  const offset = pagination.pageIndex * limit
+  const params = useQueryParams(["offset", "status"], PREFIX)
+  const statusChanged = useResetOffsetOnStatusChange(params.status, params.offset)
+  const query = codesListQuery(statusChanged ? { status: params.status } : params, PAGE_SIZE)
 
   const { data, isLoading } = useQuery({
-    queryKey: [...evoucherKeys.codes(poolId), status, limit, offset],
-    queryFn: () =>
-      evoucherApi.listCodes(poolId, {
-        limit,
-        offset,
-        ...(status === ALL ? {} : { status }),
-      }),
+    queryKey: [...evoucherKeys.codes(poolId), query],
+    queryFn: () => evoucherApi.listCodes(poolId, query),
     placeholderData: keepPreviousData,
   })
 
@@ -61,8 +97,24 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
     onError: (e: Error) => toast.error(e.message),
   })
 
-  const columns = useMemo(
-    () => [
+  const { mutateAsync: revealCode, isPending: revealing } = reveal
+  const columns = useMemo(() => {
+    // กฎ 4: guard ครอบทั้ง prompt + request — กด Reveal ซ้ำระหว่างรอเปิด prompt/request ใหม่ไม่ได้ (reveal เขียน audit ทุกครั้ง)
+    const onReveal = (id: string) =>
+      revealOnce(async () => {
+        const ok = await prompt({
+          title: "Reveal code?",
+          description: "The real code and PIN will be shown. This action is recorded in the audit log.",
+          confirmText: "Reveal",
+          cancelText: "Cancel",
+          variant: "confirmation",
+        })
+        if (ok) {
+          await revealCode(id).catch(() => undefined)
+        }
+      })
+
+    return [
       columnHelper.accessor("code", {
         header: "Code",
         cell: ({ getValue }) => <span className="font-mono">{getValue()}</span>,
@@ -91,75 +143,50 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
         cell: ({ getValue }) => getValue() ?? "-",
       }),
       columnHelper.display({
-        id: "reveal",
+        id: "actions",
         cell: ({ row }) => (
-          <Button
-            size="small"
-            variant="secondary"
-            disabled={reveal.isPending}
-            onClick={async () => {
-              const ok = await prompt({
-                title: "Reveal code?",
-                description: "The real code and PIN will be shown. This action is recorded in the audit log.",
-                confirmText: "Reveal",
-                cancelText: "Cancel",
-                variant: "confirmation",
-              })
-              if (ok) {
-                reveal.mutate(row.original.id)
-              }
-            }}
+          <ActionMenu
+            groups={[
+              {
+                actions: [
+                  {
+                    label: "Reveal",
+                    icon: <Eye />,
+                    disabled: revealing,
+                    onClick: () => onReveal(row.original.id),
+                  },
+                ],
+              },
+            ]}
           >
-            Reveal
-          </Button>
+            <IconButton size="small" variant="transparent" data-testid="evoucher-code-row-actions">
+              <EllipsisHorizontal />
+            </IconButton>
+          </ActionMenu>
         ),
       }),
-    ],
-    [prompt, reveal, getFullDate]
-  )
-
-  const table = useDataTable({
-    data: data?.codes ?? [],
-    columns,
-    getRowId: (code) => code.id,
-    rowCount: data?.count ?? 0,
-    isLoading,
-    pagination: { state: pagination, onPaginationChange: setPagination },
-  })
+    ]
+  }, [prompt, revealOnce, revealCode, revealing, getFullDate])
 
   return (
-    <Container className="divide-y p-0">
-      <DataTable instance={table}>
-        <DataTable.Toolbar className="flex items-center justify-between px-6 py-4">
-          <Heading level="h2">Codes</Heading>
-          <div className="w-40">
-            <Select
-              size="small"
-              value={status}
-              onValueChange={(value) => {
-                setStatus(value as CodeStatus | typeof ALL)
-                setPagination((p) => ({ ...p, pageIndex: 0 }))
-              }}
-            >
-              <Select.Trigger aria-label="Filter by status">
-                <Select.Value />
-              </Select.Trigger>
-              <Select.Content>
-                <Select.Item value={ALL}>All statuses</Select.Item>
-                {CODE_STATUSES.map((s) => (
-                  <Select.Item key={s} value={s}>
-                    {s}
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select>
-          </div>
-        </DataTable.Toolbar>
-        <DataTable.Table
-          emptyState={{ empty: { heading: "No codes", description: "Import a CSV to add codes." } }}
-        />
-        <DataTable.Pagination />
-      </DataTable>
+    <Container data-testid="evoucher-codes">
+      <DataTable
+        data={data?.codes ?? []}
+        columns={columns}
+        filters={filters}
+        getRowId={(code) => code.id}
+        rowCount={data?.count ?? 0}
+        isLoading={isLoading}
+        heading="Codes"
+        headingLevel="h2"
+        prefix={PREFIX}
+        pageSize={PAGE_SIZE}
+        enableSearch={false}
+        emptyState={{
+          empty: { heading: "No codes", description: "Import a CSV to add codes." },
+          filtered: { heading: "No codes", description: "No codes match the selected status." },
+        }}
+      />
 
       <Drawer open={!!revealed} onOpenChange={(open) => !open && setRevealed(null)}>
         <Drawer.Content>

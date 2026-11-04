@@ -1,4 +1,4 @@
-// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a), AC-6 (ADM-3)
+// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a), AC-6 (ADM-3), AC-7 (ADM-4)
 import { readdirSync, readFileSync } from "fs"
 import { join } from "path"
 
@@ -138,6 +138,7 @@ describe("กันกดซ้ำด้วย createSingleFlight (spec 08 ก�
     "widgets/order-evouchers.tsx",
     "components/group-buy/group-members.tsx",
     "routes/group-buying/[id]/page.tsx",
+    "components/evoucher/codes-table.tsx",
   ])("%s ใช้ useState(createSingleFlight) และไม่มี useRef", (file) => {
     const src = read(file)
     expect(src).toMatch(/useState\(createSingleFlight\)/)
@@ -188,4 +189,50 @@ describe("ฟอร์ม pilot ใช้ Form + KeyboundForm + zod (spec 08 AC-
       expect(src).not.toMatch(/from\s*["']@medusajs\/(ui|dashboard\/components|dashboard\/hooks)["']/)
     }
   )
+})
+
+const importsFrom = (src: string, name: string, from: string) =>
+  new RegExp(`import\\s*{[^}]*\\b${name}\\b[^}]*}\\s*from\\s*["']${from}["']`).test(src)
+
+describe("หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)", () => {
+  it.each(["components/evoucher/pools-table.tsx", "components/evoucher/codes-table.tsx"])(
+    "%s ใช้ DataTable ของ @medusajs/dashboard/components (แบ่งหน้าใน URL) ไม่ใช่ state เอง",
+    (file) => {
+      const src = read(file)
+      expect(importsFrom(src, "DataTable", "@medusajs/dashboard/components")).toBe(true)
+      expect(importsFrom(src, "DataTable", "@medusajs/ui")).toBe(false)
+      expect(src).not.toMatch(/\bDataTablePaginationState\b/)
+      expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+    }
+  )
+
+  it("codes-table: Reveal ต่อแถวอยู่ใน ActionMenu (trigger evoucher-code-row-actions) และกรองสถานะด้วย filters ของ DataTable", () => {
+    const src = read("components/evoucher/codes-table.tsx")
+    expect(importsFrom(src, "ActionMenu", "@medusajs/dashboard/components")).toBe(true)
+    expect(src).toContain('data-testid="evoucher-code-row-actions"')
+    expect(src).toMatch(/\bfilters=/)
+    expect(importsFrom(src, "Select", "@medusajs/ui")).toBe(false)
+  })
+
+  it.each(["routes/evouchers/page.tsx", "routes/evouchers/pools/[id]/page.tsx"])(
+    "%s ใช้ LayoutComposer ของ @medusajs/dashboard/components",
+    (file) => {
+      const src = read(file)
+      expect(importsFrom(src, "LayoutComposer", "@medusajs/dashboard/components")).toBe(true)
+      expect(src).not.toMatch(/className="flex flex-col gap-y-3"/)
+    }
+  )
+
+  it("หน้า pool ใช้ Header + SectionRow", () => {
+    const src = read("routes/evouchers/pools/[id]/page.tsx")
+    expect(importsFrom(src, "SectionRow", "@medusajs/dashboard/components")).toBe(true)
+    expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+components\/common\/header["']/)
+  })
+
+  it("import-codes ใช้ Header และกันกดซ้ำด้วย useState(createSingleFlight) (useRef ใช้แค่อ้าง input file)", () => {
+    const src = read("components/evoucher/import-codes.tsx")
+    expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+common\/header["']/)
+    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    expect(src).not.toMatch(/upload\.mutate\(/)
+  })
 })
