@@ -1,5 +1,7 @@
 import { HttpTypes } from "@medusajs/types"
 
+import { selectedShippingOptionId } from "./shipping-options"
+
 // EV-7c (spec 02 กฎข้อ 24): cart ที่ทุก line requires_shipping=false (e-voucher) ข้ามขั้น delivery
 // cart ผสมใช้ flow ปกติ (กฎข้อ 24d) — Medusa บังคับ shipping method ตาม line ที่ต้องจัดส่งเอง
 type CheckoutCart = Pick<
@@ -12,9 +14,18 @@ export function isDigitalOnlyCart(cart: Pick<CheckoutCart, "items"> | null | und
   return items.length > 0 && items.every((item) => item.requires_shipping === false)
 }
 
-/** ขั้น delivery ถือว่าเสร็จ: digital-only ไม่ต้องมี shipping method (AC-3) */
-export function deliveryStepDone(cart: Pick<CheckoutCart, "items" | "shipping_methods">) {
-  return isDigitalOnlyCart(cart) || (cart.shipping_methods?.length ?? 0) > 0
+/**
+ * ขั้น delivery ถือว่าเสร็จ: digital-only ไม่ต้องมี shipping method (AC-3)
+ * CORE-35 (spec 01 กฎข้อ 93): ส่ง `options` = รายการที่กรองแล้ว (กฎข้อ 89) → ต้องมี method ที่อยู่ในรายการนั้น
+ * (method ค้างที่ถูกกรองออกไม่นับ); ไม่ส่ง = มี method ใดก็ได้ (หน้าตะกร้าที่ไม่มีรายการ option — ปลายทางตรวจซ้ำ)
+ */
+export function deliveryStepDone(
+  cart: Pick<CheckoutCart, "items" | "shipping_methods">,
+  options?: { id: string }[]
+) {
+  if (isDigitalOnlyCart(cart)) return true
+  if (options) return selectedShippingOptionId(cart, options) !== null
+  return (cart.shipping_methods?.length ?? 0) > 0
 }
 
 /** ขั้นแรกที่ยังไม่เสร็จ สำหรับปุ่มไปชำระเงินในหน้าตะกร้า */

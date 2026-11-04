@@ -167,3 +167,68 @@ test.describe("CORE-33", () => {
     expect(await shippingOptionIds()).not.toContain(ids.digital)
   })
 })
+
+// CORE-35 (spec 01 กฎข้อ 93, AC-129): cart t-shirt ที่ค้าง Digital delivery (ถูกกรองออก) ถือว่าขั้น delivery ยังไม่เสร็จ
+// เปิด ?step=payment / ?step=review ตรงๆ → ถูกพากลับ ?step=delivery และไม่มีทางยิง complete (เดิม backend ตอบ 400 อังกฤษ)
+test.describe("CORE-35", () => {
+  test.use({ evidenceTarget: { feature: "core", taskId: "CORE-35" } })
+
+  test("AC-129 checkout: cart ค้าง Digital delivery เปิด step=payment/review ตรงๆ → กลับ delivery; เลือก Standard แล้วไป payment ได้", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    test.setTimeout(150_000)
+    const pk = await publishableKey(request, await adminHeaders(request))
+    const customer = await createCustomer(request, pk)
+    const cartId = await tshirtCartWithoutMethod(request, pk, customer)
+    const ids = await optionIds(request, pk, customer, cartId)
+    const headers = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
+    const set = await request.post(`${BACKEND_URL}/store/carts/${cartId}/shipping-methods`, {
+      headers,
+      data: { option_id: ids.digital },
+    })
+    expect(set.status(), `set digital: ${await set.text()}`).toBe(200)
+
+    const completeRequests: string[] = []
+    page.on("request", (req) => {
+      if (req.method() === "POST" && req.url().includes(`/store/carts/${cartId}/complete`)) {
+        completeRequests.push(req.url())
+      }
+    })
+
+    await signInAs(context, baseURL!, customer)
+    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+    const submitDelivery = page.getByTestId("submit-delivery-option-button")
+
+    for (const step of ["payment", "review"]) {
+      await page.goto(`/${CC}/checkout?step=${step}`)
+      await expect(page).toHaveURL(/[?&]step=delivery(&|$)/)
+      await expect(submitDelivery).toBeVisible()
+      await expect(submitDelivery).toBeDisabled()
+      await expect(page.locator('[data-testid="submit-order-button"]:enabled')).toHaveCount(0)
+      if (step === "review") await evidence("01-step-review-redirected-to-delivery")
+    }
+    expect(completeRequests).toEqual([])
+    // cart ยังไม่ถูก complete (ไม่มี order) — ด่านฝั่ง backend ไม่ถูกเรียกเลย
+    const cartRes = await request.get(`${BACKEND_URL}/store/carts/${cartId}`, { headers })
+    expect(cartRes.status()).toBe(200)
+    expect((await cartRes.json()).cart.completed_at ?? null).toBeNull()
+
+    await page
+      .getByTestId("delivery-options-container")
+      .locator(`[data-testid="delivery-option-radio"][data-option-id="${ids.standard}"]`)
+      .click()
+    await expect(submitDelivery).toBeEnabled({ timeout: 15_000 })
+    await submitDelivery.click()
+    await expect(page).toHaveURL(/[?&]step=payment(&|$)/)
+    await expect(page.getByTestId("submit-payment-button")).toBeVisible()
+    // ไม่ถูกพากลับ delivery หลัง RSC refresh
+    await expect(page).toHaveURL(/[?&]step=payment(&|$)/)
+    await expect(submitDelivery).toBeHidden()
+    await evidence("02-standard-selected-payment-open")
+    expect(completeRequests).toEqual([])
+  })
+})

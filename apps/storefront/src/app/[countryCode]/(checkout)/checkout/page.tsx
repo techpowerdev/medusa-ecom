@@ -10,7 +10,11 @@ export const metadata: Metadata = {
   title: "ชำระเงิน",
 }
 
-export default async function Checkout() {
+export default async function Checkout(props: {
+  params: Promise<{ countryCode: string }>
+  searchParams: Promise<{ step?: string | string[] }>
+}) {
+  const [{ countryCode }, { step }] = await Promise.all([props.params, props.searchParams])
   const cart = await retrieveCart()
 
   if (!cart) {
@@ -22,7 +26,12 @@ export default async function Checkout() {
   return (
     <div className="grid grid-cols-1 small:grid-cols-[1fr_416px] content-container gap-x-40 py-12">
       <PaymentWrapper paymentSessions={cart.payment_collection?.payment_sessions}>
-        <CheckoutForm cart={cart} customer={customer} />
+        <CheckoutForm
+          cart={cart}
+          customer={customer}
+          countryCode={countryCode}
+          step={typeof step === "string" ? step : undefined}
+        />
       </PaymentWrapper>
       <CheckoutSummary cart={cart} />
     </div>

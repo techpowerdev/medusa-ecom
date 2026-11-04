@@ -3,7 +3,6 @@
 import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
-import { deliveryStepDone } from "@lib/util/digital-checkout"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isPromptPay } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
@@ -16,11 +15,14 @@ import PromptPayPaymentButton from "../promptpay-payment"
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
+  /** CORE-35 (กฎข้อ 93): จาก checkout-form — deliveryStepDone กับรายการ option ที่กรองแล้ว */
+  deliveryDone: boolean
   "data-testid": string
 }
 
 const PaymentButton: React.FC<PaymentButtonProps> = ({
   cart,
+  deliveryDone,
   "data-testid": dataTestId,
 }) => {
   const notReady =
@@ -28,7 +30,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     !cart.shipping_address ||
     !cart.billing_address ||
     !cart.email ||
-    !deliveryStepDone(cart)
+    !deliveryDone
 
   const paymentSession = cart.payment_collection?.payment_sessions?.[0]
 

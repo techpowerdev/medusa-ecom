@@ -1,0 +1,80 @@
+GB-N6 (spec 04 กฎข้อ 37 a–b, AC-56) — ผล test ในเครื่อง 2026-11-04 บน base origin/develop 8b42355
+
+== (b) integration http: integration-tests/http/group-buy-campaigns.spec.ts (ทั้งไฟล์) ==
+      ✓ creates a Medusa campaign + draft GBT- template promotion linked to the campaign (1553 ms)
+      ✓ template code on a cart with X gives no adjustment; once active it would give X only (3801 ms)
+      ✓ rolls back the Medusa campaign and template when the group buy campaign cannot be created (1464 ms)
+      ✓ restores the campaign, template, links and Medusa campaign when a later step fails (787 ms)
+      ✓ requires an admin user (597 ms)
+      ✓ creates (returning template_promotion_id), lists, retrieves and updates a draft campaign (694 ms)
+      ✓ rejects an invalid body with 400 (556 ms)
+      ✓ template is_tax_inclusive defaults to true, keeps false, and rejects a non-boolean (AC-20c) (438 ms)
+      ✓ returns 404 for an unknown campaign (322 ms)
+      ✓ DELETE on a draft campaign removes the campaign, template, Medusa campaign and links (AC-20a) (314 ms)
+      ✓ DELETE on an active campaign → 400 and nothing is removed (AC-20a) (417 ms)
+      ✓ draft → active → ended succeed; active again on active is a no-op 200 (406 ms)
+      ✓ rejects active → draft and ended → active with 400 (338 ms)
+      ✓ rejects draft → active when the Medusa campaign ends_at has passed (339 ms)
+      ✓ editing target_value of an active campaign → 400; name and pay_within_hours are still editable (405 ms)
+      ✓ two concurrent POSTs with key K → both 200 with the same campaign; one of each is created (547 ms)
+      ✓ POST K again later (different body) → 200 same id, nothing new; key K2 → a new campaign (387 ms)
+      ✓ no key twice → two campaigns (previous behaviour) (261 ms)
+      ✓ key with a space → 400 invalid_data; nothing is created (254 ms)
+      ✓ key 129 characters → 400 invalid_data; nothing is created (244 ms)
+      ✓ key 7 characters → 400 invalid_data; nothing is created (215 ms)
+      ✓ accepts a 128-character key (234 ms)
+      ✓ POST K that fails after the lock → error, nothing left; POST K again → 200 without waiting for the lock TTL (322 ms)
+      ✓ createGroupBuyCampaignWorkflow called directly and concurrently with the same key → one campaign (570 ms)
+      ✓ POST with one product → 200 (266 ms)
+      ✓ POST with two products → 400 invalid_data with the code; no Medusa campaign/promotion is created (233 ms)
+      ✓ POST with values: [] → 400 invalid_data with the code; no Medusa campaign/promotion is created (235 ms)
+      ✓ POST with no items.product.id rule → 400 invalid_data with the code; no Medusa campaign/promotion is created (263 ms)
+      ✓ POST with a variant-level scope → 400 invalid_data with the code; no Medusa campaign/promotion is created (242 ms)
+      ✓ createGroupBuyCampaignWorkflow called directly with two products → same code; nothing is created (230 ms)
+      ✓ draft whose template was edited to two products via the Promotion module → activate 400, still draft (289 ms)
+Tests:       31 passed, 31 total
+
+== (b) mutation: acquireLockStep ถูกแทนชั่วคราวด้วย step ที่ไม่มี compensation (ถอยด้วย git stash แล้ว) → test ใหม่ต้องล้ม ==
+      ✕ POST K that fails after the lock → error, nothing left; POST K again → 200 without waiting for the lock TTL (30884 ms)
+    Expected: < 10000
+    Received:   30394
+Tests:       1 failed, 30 skipped, 31 total
+
+== (b) ไม่ flaky: describe idempotency_key (AC-52 + test ใหม่) รัน 5 รอบ ==
+รอบ 1: Tests:       22 skipped, 9 passed, 31 total
+รอบ 2: Tests:       22 skipped, 9 passed, 31 total
+รอบ 3: Tests:       22 skipped, 9 passed, 31 total
+รอบ 4: Tests:       22 skipped, 9 passed, 31 total
+รอบ 5: Tests:       22 skipped, 9 passed, 31 total
+
+== (a) e2e admin: e2e/group-buy-admin-form.spec.ts --project=chromium --repeat-each=5 --workers=1 (backend medusa start) ==
+  ✓   1 [chromium] › e2e/group-buy-admin-form.spec.ts:100:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (2.7s)
+  ✓   2 [chromium] › e2e/group-buy-admin-form.spec.ts:182:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.6s)
+  ✓   3 [chromium] › e2e/group-buy-admin-form.spec.ts:236:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (3.0s)
+  ✓   4 [chromium] › e2e/group-buy-admin-form.spec.ts:293:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (12.9s)
+  ✓   5 [chromium] › e2e/group-buy-admin-form.spec.ts:100:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (3.2s)
+  ✓   6 [chromium] › e2e/group-buy-admin-form.spec.ts:182:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.6s)
+  ✓   7 [chromium] › e2e/group-buy-admin-form.spec.ts:236:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.9s)
+  ✓   8 [chromium] › e2e/group-buy-admin-form.spec.ts:293:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (8.3s)
+  ✓   9 [chromium] › e2e/group-buy-admin-form.spec.ts:100:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (3.2s)
+  ✓  10 [chromium] › e2e/group-buy-admin-form.spec.ts:182:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.6s)
+  ✓  11 [chromium] › e2e/group-buy-admin-form.spec.ts:236:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (3.0s)
+  ✓  12 [chromium] › e2e/group-buy-admin-form.spec.ts:293:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (8.4s)
+  ✓  13 [chromium] › e2e/group-buy-admin-form.spec.ts:100:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (3.2s)
+  ✓  14 [chromium] › e2e/group-buy-admin-form.spec.ts:182:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.7s)
+  ✓  15 [chromium] › e2e/group-buy-admin-form.spec.ts:236:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.8s)
+  ✓  16 [chromium] › e2e/group-buy-admin-form.spec.ts:293:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (8.3s)
+  ✓  17 [chromium] › e2e/group-buy-admin-form.spec.ts:100:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (3.2s)
+  ✓  18 [chromium] › e2e/group-buy-admin-form.spec.ts:182:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.6s)
+  ✓  19 [chromium] › e2e/group-buy-admin-form.spec.ts:236:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.9s)
+  ✓  20 [chromium] › e2e/group-buy-admin-form.spec.ts:293:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (8.4s)
+  20 passed (1.6m)
+
+== (a) grep force/waitForTimeout ใน e2e/group-buy-admin-form.spec.ts (โค้ด ไม่นับ comment) ==
+(ไม่พบ)
+
+== unit backend / lint / typecheck ==
+Test Suites: 88 passed, 88 total
+Tests:       933 passed, 933 total
+pnpm lint: exit 0 (0 errors)
+pnpm typecheck: exit 0
