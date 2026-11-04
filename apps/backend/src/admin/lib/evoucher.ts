@@ -84,9 +84,10 @@ export const evoucherKeys = {
 const BASE = "/admin/evoucher"
 
 export const evoucherApi = {
-  listPartners: () =>
+  // ADM-5 (spec 08 กฎ 11): ผู้เรียกกำหนดหน้าเอง — ตาราง Partners แบ่งหน้าตาม URL
+  listPartners: (query: { limit: number; offset: number }) =>
     sdk.client.fetch<{ partners: Partner[]; count: number }>(`${BASE}/partners`, {
-      query: { limit: 100, order: "name" },
+      query: { ...query, order: "name" },
     }),
   createPartner: (body: PartnerInput) =>
     sdk.client.fetch<{ partner: Partner }>(`${BASE}/partners`, { method: "POST", body }),

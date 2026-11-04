@@ -40,7 +40,9 @@ test("AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง p
   // โหลด admin bundle ครั้งแรกหลัง start (cold)
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const name = `EV-9 partner ${Date.now()}`
+  // ADM-5: ตาราง Partners แบ่งหน้าละ 20 และเรียงตามชื่อ — ขึ้นต้นด้วย "000" ให้อยู่หน้าแรกแม้ DB มี partner สะสม
+  // (และลบทิ้งท้าย step ไม่ให้สะสมเอง)
+  const name = `000 EV-9 partner ${Date.now()}`
 
   const posts: string[] = []
   page.on("request", (req) => {
@@ -79,10 +81,12 @@ test("AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง p
     )
     release()
     expect((await response).status()).toBe(200)
-    await expect(page.getByText(name, { exact: true })).toHaveCount(1)
+    await expect(page.getByTestId("evoucher-partners").getByText(name, { exact: true })).toHaveCount(1)
     expect(posts).toHaveLength(1)
     const { partners } = await call(request, admin, `${PARTNERS_PATH}?limit=100&order=-created_at`)
-    expect(partners.filter((p: { name: string }) => p.name === name)).toHaveLength(1)
+    const created = partners.filter((p: { name: string }) => p.name === name)
+    expect(created).toHaveLength(1)
+    await request.delete(`${BACKEND_URL}${PARTNERS_PATH}/${created[0].id}`, { headers: admin })
   })
 
   await step("ฟอร์ม Create pool บนหน้า variant → ทุก input หาได้ด้วย label", async () => {

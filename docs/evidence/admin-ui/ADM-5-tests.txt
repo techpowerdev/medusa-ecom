@@ -1,0 +1,113 @@
+# ADM-5 (spec 08 AC-8 + spec 02 กฎข้อ 26 / follow-up EV-14 #195) — ผล test
+# วันที่: 2026-11-05, node v22.23.3, base origin/develop a349676 (fetch ก่อน push — develop ไม่มี commit ใหม่)
+
+## Red (ก่อนแก้โค้ด)
+### jest src/admin (หลังเพิ่ม evoucher-partner-form.unit.spec.ts + describe ADM-5 ท้าย medusa-ui.unit.spec.ts)
+FAIL src/admin/__tests__/medusa-ui.unit.spec.ts
+  ✕ partners-section ใช้ DataTable/ActionMenu/NoRecords/Form/KeyboundForm ของ dashboard + useQueryParams (ยังเป็นรายการเขียนเอง + Button ต่อแถว)
+  ✕ Edit/Delete ต่อแถวอยู่ใน ActionMenu (evoucher-partner-row-actions) / evoucher-partners-empty
+  ✕ offset ใน URL normalize ด้วย pageOffset + replace: true
+  ✕ ฟอร์มใช้ useForm + zodResolver (raw) + noValidate + useState(createSingleFlight) (ยังเป็น toForm/setForm + toast "Name is required")
+  ✕ listPartners รับ limit/offset (ยังเป็น limit: 100)
+FAIL src/admin/lib/__tests__/evoucher-partner-form.unit.spec.ts
+    Cannot find module '../evoucher-partner-form' from 'src/admin/lib/__tests__/evoucher-partner-form.unit.spec.ts'
+Tests:       6 failed, 224 passed, 230 total
+
+## Green (หลังแก้โค้ด)
+### jest (ไฟล์ของ AC-8)
+PASS src/admin/__tests__/medusa-ui.unit.spec.ts
+    ✓ lib/evoucher-partner-form.ts ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/partners-section.tsx ไม่มี pattern ต้องห้าม
+    ✓ widgets/flash-sale-options.tsx ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState (1 ms)
+    ✓ widgets/variant-evoucher-pool.tsx ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState
+    ✓ components/evoucher/pools-table.tsx ใช้ DataTable ของ @medusajs/dashboard/components (แบ่งหน้าใน URL) ไม่ใช่ state เอง
+    ✓ components/evoucher/codes-table.tsx ใช้ DataTable ของ @medusajs/dashboard/components (แบ่งหน้าใน URL) ไม่ใช่ state เอง (1 ms)
+  ตาราง/ฟอร์ม partner ใช้ของ Medusa (spec 08 AC-8, ADM-5)
+    ✓ Edit/Delete ต่อแถวอยู่ใน ActionMenu (trigger evoucher-partner-row-actions) และว่างแสดง evoucher-partners-empty
+    ✓ offset ใน URL ที่ผิดรูปถูก normalize ด้วย pageOffset แล้วแก้ URL แบบ replace (บทเรียน ADM-6)
+    ✓ lib/evoucher-partner-form.ts ตรวจ URL ด้วย new URL(...).protocol และไม่ import ui/components/hooks (กฎ 2)
+    ✓ listPartners รับ limit/offset จากผู้เรียก ไม่ตัดที่ limit: 100 เอง (กฎ 11)
+PASS src/admin/lib/__tests__/evoucher-partner-form.unit.spec.ts
+  partnerFormSchema
+    ✓ ค่าเริ่มต้นของฟอร์มสร้างเป็น string ว่างทุกช่อง (1 ms)
+    ✓ ค่าของ partner เดิม → ค่าฟอร์ม (null → ว่าง)
+    ✓ แปลงค่าฟอร์มเป็น body (trim; ช่องไม่บังคับที่ว่าง → null เพื่อล้างค่าเดิม) (1 ms)
+    ✓ name "" → Name is required
+    ✓ name "   " → Name is required
+    ✓ URL "http://example.com/logo.png" (http/https) ผ่าน
+    ✓ URL "https://example.com/terms" (http/https) ผ่าน
+    ✓ URL "HTTPS://EXAMPLE.COM" (http/https) ผ่าน (1 ms)
+    ✓ URL "javascript:alert(1)" ไม่ใช่ http(s) → error ใต้ช่องนั้น
+    ✓ URL "data:text/html,x" ไม่ใช่ http(s) → error ใต้ช่องนั้น
+    ✓ URL "ftp://example.com/file" ไม่ใช่ http(s) → error ใต้ช่องนั้น
+    ✓ URL "example.com" ไม่ใช่ http(s) → error ใต้ช่องนั้น (1 ms)
+    ✓ URL "vbscript:msgbox(1)" ไม่ใช่ http(s) → error ใต้ช่องนั้น
+    ✓ URL "https//x" ไม่ใช่ http(s) → error ใต้ช่องนั้น
+    ✓ ค่าที่ไม่ใช่ string (เช่น undefined) ได้ข้อความต่อช่องจาก fieldErrorMap ไม่ใช่ Invalid input (1 ms)
+Tests:       89 passed, 89 total
+Ran all test suites matching /src\/admin\/lib\/__tests__\/evoucher-partner-form.unit.spec.ts|src\/admin\/__tests__\/medusa-ui.unit.spec.ts/i.
+
+### pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 93 passed, 93 total
+Tests:       1034 passed, 1034 total
+
+### playwright e2e (prod build: medusa build + medusa start ที่ :9484, --workers=2)
+### npx playwright test e2e/evoucher-admin- e2e/admin-form-pilot.spec.ts --project=chromium --workers=2
+Running 9 tests using 2 workers
+
+  ✓  1 [chromium] › e2e/admin-form-pilot.spec.ts:23:5 › AC-6: drawer flash sale — Total cap 0 แสดง error ไม่ POST; dblclick Save และ Meta+Enter = POST 1 ครั้ง (4.5s)
+  ✓  2 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (5.4s)
+  ✓  3 [chromium] › e2e/admin-form-pilot.spec.ts:109:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง (5.1s)
+  ✓  4 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty (5.8s)
+  ✓  6 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ (1.7s)
+  ✓  7 [chromium] › e2e/evoucher-admin-partners.spec.ts:155:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE (3.5s)
+  ✓  5 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (8.6s)
+  ✓  8 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.8s)
+  ✓  9 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (4.4s)
+
+  9 passed (25.2s)
+
+### pnpm --filter storefront test:e2e:unit
+  72 passed
+
+### pnpm lint && pnpm typecheck
+apps/backend lint: 0 errors, 2 warnings (เดิม: src/lib/json-logger.ts, src/workflows/group-buy/campaign.ts — ไม่ใช่ไฟล์ของ task นี้)
+apps/storefront lint: 0 errors, 31 warnings (เดิม)
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+
+### pnpm --filter backend build
+Backend build completed successfully
+Frontend build completed successfully
+
+## แก้ตาม qa (D-1) — 2026-11-05
+DB ทดสอบมี partner "AAA ADM-5 qa repro 01..25" 25 ราย (สร้างผ่าน POST /admin/evoucher/partners) ซึ่งเรียงก่อน "EV-9"
+
+### ก่อนแก้: npx playwright test e2e/evoucher-admin-forms.spec.ts (workers=1) — ล้มตามที่ qa รายงาน
+  ✘  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (7.1s)
+    Error: expect(locator).toHaveCount(expected) failed
+    Received: 0
+    ADM-5-fix-pw-red/evoucher-admin-forms-AC-20-6c860-r-pool-หาได้ด้วย-getByLabel-chromium/test-failed-1.png
+  1 failed
+
+### หลังแก้: DB เดียวกัน
+  ✓  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (2.9s)
+  1 passed (3.4s)
+
+### npx playwright test e2e/evoucher-admin- e2e/admin-form-pilot --workers=2
+  ✓  2 [chromium] › e2e/admin-form-pilot.spec.ts:23:5 › AC-6: drawer flash sale — Total cap 0 แสดง error ไม่ POST; dblclick Save และ Meta+Enter = POST 1 ครั้ง (3.2s)
+  ✓  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (3.3s)
+  ✓  3 [chromium] › e2e/admin-form-pilot.spec.ts:109:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง (2.8s)
+  ✓  4 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty (4.0s)
+  ✓  6 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ (2.0s)
+  ✓  7 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE (3.5s)
+  ✓  5 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (8.5s)
+  ✓  8 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.8s)
+  ✓  9 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (3.4s)
+  9 passed (20.0s)
+
+### รันซ้ำ --workers=2 --repeat-each=2 (partner คงอยู่ใน DB หลังรัน 38 ราย)
+18 passed (36.7s)
+
+### pnpm lint && pnpm typecheck
+exit 0 (0 errors; warning เดิม)

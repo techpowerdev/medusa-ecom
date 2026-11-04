@@ -286,3 +286,56 @@ describe("ฟอร์มสร้างแคมเปญ group buy ใช้ F
     expect(src).not.toMatch(/from\s*["']@medusajs\/(ui|dashboard\/components|dashboard\/hooks)["']/)
   })
 })
+
+describe("ตาราง/ฟอร์ม partner ใช้ของ Medusa (spec 08 AC-8, ADM-5)", () => {
+  const file = "components/evoucher/partners-section.tsx"
+
+  it("ใช้ DataTable, ActionMenu, NoRecords, Form, KeyboundForm ของ @medusajs/dashboard/components และ useQueryParams", () => {
+    const src = read(file)
+    for (const name of ["DataTable", "ActionMenu", "NoRecords", "Form", "KeyboundForm"]) {
+      expect(importsFrom(src, name, "@medusajs/dashboard/components")).toBe(true)
+    }
+    expect(importsFrom(src, "DataTable", "@medusajs/ui")).toBe(false)
+    expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).not.toMatch(/\bDataTablePaginationState\b/)
+  })
+
+  it("Edit/Delete ต่อแถวอยู่ใน ActionMenu (trigger evoucher-partner-row-actions) และว่างแสดง evoucher-partners-empty", () => {
+    const src = read(file)
+    expect(src).toContain('data-testid="evoucher-partner-row-actions"')
+    expect(src).toContain('data-testid="evoucher-partners-empty"')
+  })
+
+  it("offset ใน URL ที่ผิดรูปถูก normalize ด้วย pageOffset แล้วแก้ URL แบบ replace (บทเรียน ADM-6)", () => {
+    const src = read(file)
+    expect(src).toMatch(/pageOffset\(/)
+    expect(src).toMatch(/replace:\s*true/)
+  })
+
+  it("ฟอร์มใช้ useForm + zodResolver (raw) + noValidate และกันกดซ้ำด้วย useState(createSingleFlight)", () => {
+    const src = read(file)
+    expect(src).toMatch(/import\s*{[^}]*\buseForm\b[^}]*}\s*from\s*["']react-hook-form["']/)
+    expect(src).toMatch(/import\s*{[^}]*\bzodResolver\b[^}]*}\s*from\s*["']@hookform\/resolvers\/zod["']/)
+    expect(src).toMatch(/raw:\s*true/)
+    expect(src).toMatch(/\bnoValidate\b/)
+    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    expect(src).not.toMatch(/\b(toForm|toBody|setForm)\b/)
+    expect(src).not.toMatch(/\buseRef\b/)
+    expect(src).not.toMatch(/toast\.error\("Name is required"\)/)
+  })
+
+  it("lib/evoucher-partner-form.ts ตรวจ URL ด้วย new URL(...).protocol และไม่ import ui/components/hooks (กฎ 2)", () => {
+    const src = read("lib/evoucher-partner-form.ts")
+    expect(src).toMatch(/new URL\(/)
+    expect(src).toMatch(/\.protocol\b/)
+    expect(src).toMatch(/\bfieldErrorMap\b/)
+    expect(src).not.toMatch(/from\s*["']@medusajs\/(ui|dashboard\/components|dashboard\/hooks)["']/)
+  })
+
+  it("listPartners รับ limit/offset จากผู้เรียก ไม่ตัดที่ limit: 100 เอง (กฎ 11)", () => {
+    const src = read("lib/evoucher.ts")
+    const listPartners = src.slice(src.indexOf("listPartners:"), src.indexOf("createPartner:"))
+    expect(listPartners).toMatch(/limit:\s*number;\s*offset:\s*number/)
+    expect(listPartners).not.toMatch(/limit:\s*100/)
+  })
+})
