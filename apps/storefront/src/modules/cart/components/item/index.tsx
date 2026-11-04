@@ -3,6 +3,7 @@
 import { Table, Text, clx } from "@modules/common/components/ui"
 import { updateLineItem } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
+import { cartQuantityOptions } from "@lib/util/cart-quantity-options"
 import { HttpTypes } from "@medusajs/types"
 import CartItemSelect from "@modules/cart/components/cart-item-select"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -49,10 +50,6 @@ const Item = ({
     setUpdating(false)
   }
 
-  // TODO: Update this to grab the actual max inventory
-  const maxQtyFromInventory = 10
-  const maxQuantity = item.variant?.manage_inventory ? 10 : maxQtyFromInventory
-
   return (
     <Table.Row className="w-full" data-testid="product-row">
       {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ชื่อสินค้า/จำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 (รวมยอดหลักหมื่นมีทศนิยม — qa #278 D-1) — ≥ small คงเดิม */}
@@ -97,21 +94,12 @@ const Item = ({
               className="w-14 h-10 p-4"
               data-testid="product-select-button"
             >
-              {/* TODO: Update this with the v2 way of managing inventory */}
-              {Array.from(
-                {
-                  length: Math.min(maxQuantity, 10),
-                },
-                (_, i) => (
-                  <option value={i + 1} key={i}>
-                    {i + 1}
-                  </option>
-                )
-              )}
-
-              <option value={1} key={1}>
-                1
-              </option>
+              {/* CORE-44 (กฎข้อ 102b): 1..10 + จำนวนจริงเมื่อ > 10 — stock ตรวจโดย Medusa ตอนแก้จำนวน */}
+              {cartQuantityOptions(item.quantity).map((quantity) => (
+                <option value={quantity} key={quantity}>
+                  {quantity}
+                </option>
+              ))}
             </CartItemSelect>
             {updating && <Spinner />}
           </div>

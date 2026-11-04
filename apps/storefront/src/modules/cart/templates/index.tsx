@@ -19,8 +19,9 @@ const CartTemplate = ({
   return (
     <div className="py-12">
       <div className="content-container" data-testid="cart-container">
+        {/* CORE-44 (กฎข้อ 102a): คอลัมน์ซ้ายหดได้ (minmax(0,1fr)) และช่วง small–ก่อน large ระยะห่างเล็กลง — คอลัมน์สรุปไม่ล้นที่ 1024 เมื่อมีส่วนลด */}
         {cart?.items?.length ? (
-          <div className="grid grid-cols-1 small:grid-cols-[1fr_360px] gap-x-40">
+          <div className="grid grid-cols-1 small:grid-cols-[minmax(0,1fr)_360px] gap-x-10 large:gap-x-40">
             <div className="flex flex-col bg-white py-6 gap-y-6">
               {!customer && (
                 <>
@@ -30,7 +31,7 @@ const CartTemplate = ({
               )}
               <ItemsTemplate cart={cart} flashExceeded={flashExceeded} />
             </div>
-            <div className="relative">
+            <div className="relative" data-testid="cart-summary-column">
               <div className="flex flex-col gap-y-8 sticky top-12">
                 {cart && cart.region && (
                   <>
