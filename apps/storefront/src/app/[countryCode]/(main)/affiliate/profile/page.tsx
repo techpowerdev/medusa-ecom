@@ -20,11 +20,12 @@ export default async function AffiliateProfilePage({ params }: { params: Promise
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-profile-page">
       <h1 className="text-xl-semi">โปรไฟล์</h1>
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2">
+      {/* AF-18 (กฎ 42): minmax(0,1fr) + ตัดคำใน <dd> — ค่ายาวไม่มีช่องว่าง (อีเมล) ไม่ดันหน้าล้นที่ 375px */}
+      <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 [&>dd]:[overflow-wrap:anywhere]">
         <dt className="text-ui-fg-subtle">ชื่อ</dt>
         <dd>{affiliate.name}</dd>
         <dt className="text-ui-fg-subtle">อีเมล</dt>
-        <dd>{affiliate.email}</dd>
+        <dd data-testid="affiliate-profile-email">{affiliate.email}</dd>
         <dt className="text-ui-fg-subtle">รหัสแนะนำ</dt>
         <dd>{affiliate.code}</dd>
         <dt className="text-ui-fg-subtle">ข้อมูลรับเงิน</dt>
