@@ -1,6 +1,7 @@
 import { sdk } from "@lib/config"
 import { placeOrder } from "@lib/data/cart"
-import { getAuthHeaders, setCartId } from "@lib/data/cookies"
+import { setCartCookie } from "@lib/data/active-cart"
+import { getAuthHeaders } from "@lib/data/cookies"
 import { HttpTypes } from "@medusajs/types"
 import { unstable_rethrow } from "next/navigation"
 import { NextRequest, NextResponse } from "next/server"
@@ -47,7 +48,8 @@ export async function GET(req: NextRequest) {
     return rejected()
   }
 
-  await setCartId(cartId)
+  // CORE-29 (กฎข้อ 86a): cookie เปลี่ยนเป็น cart นี้ → จำเป็นตะกร้าหลัก (cookie เดิมเป็น cart นี้อยู่แล้ว → ไม่เขียนซ้ำ)
+  await setCartCookie(cartId)
 
   // The customer backed out or the bank declined. Stripe puts the PaymentIntent
   // back into `requires_payment_method`, so the Payment Element can mount

@@ -13,16 +13,22 @@ import { SubmitButton } from "../submit-button"
 
 const PROMOTION_NOT_APPLICABLE =
   "ใช้โค้ดนี้ไม่ได้ โค้ดอาจหมดอายุหรือไม่ตรงเงื่อนไขของตะกร้า"
-const PROMOTION_FAILED = "ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค้ดอีกครั้ง"
+export const PROMOTION_FAILED = "ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค้ดอีกครั้ง"
+/** CORE-36 (กฎข้อ 94): ลบโค้ดล้มด้วยเหตุที่ไม่ใช่ auth — ข้อความเฉพาะการลบ ไม่ใช้ข้อความของการใส่โค้ด */
+export const PROMOTION_REMOVE_FAILED = "ลบโค้ดส่วนลดไม่สำเร็จ กรุณาลองอีกครั้ง"
 
 /**
  * CORE-4i (spec 01 กฎข้อ 72): ตั้งชุดโค้ดของ cart แล้วคืนข้อความ error ที่จะแสดง ("" = สำเร็จ)
  * `wanted` = โค้ดที่ผู้ใช้เพิ่งใส่ — Medusa ตอบ 200 แต่ไม่ใส่โค้ดที่ใช้ไม่ได้ (กฎข้อ 63b); action ที่ reject เอง → fallback
  */
-export const submitPromotionCodes = async (codes: string[], wanted?: string): Promise<string> => {
+export const submitPromotionCodes = async (
+  codes: string[],
+  wanted?: string,
+  fallback: string = PROMOTION_FAILED
+): Promise<string> => {
   const result = await settleAction(applyPromotions(codes))
   if ("error" in result) {
-    return actionErrorMessage(result.error, PROMOTION_FAILED)
+    return actionErrorMessage(result.error, fallback)
   }
   const code = wanted?.trim().toLowerCase()
   if (code && !result.codes.some((c) => c.toLowerCase() === code)) {
@@ -38,9 +44,17 @@ type DiscountCodeProps = {
 const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState("")
+  // CORE-36 (กฎข้อ 94): โค้ดที่กำลังลบ (แสดงสถานะ) + ref กันคลิกซ้อนใน tick เดียว ก่อน state re-render (แบบ CORE-27)
+  const [removingCode, setRemovingCode] = React.useState<string | null>(null)
+  const removingRef = React.useRef(false)
 
   const { promotions = [] } = cart
   const removePromotionCode = async (code: string) => {
+    if (removingRef.current) {
+      return
+    }
+    removingRef.current = true
+    setRemovingCode(code)
     // CORE-34 (กฎข้อ 92): ล้าง error ของรอบก่อนก่อนส่ง แบบเดียวกับ addPromotionCode
     setErrorMessage("")
 
@@ -48,11 +62,18 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
       (promotion) => promotion.code !== code
     )
 
-    setErrorMessage(
-      await submitPromotionCodes(
-        validPromotions.filter((p) => p.code !== undefined).map((p) => p.code!)
+    try {
+      setErrorMessage(
+        await submitPromotionCodes(
+          validPromotions.filter((p) => p.code !== undefined).map((p) => p.code!),
+          undefined,
+          PROMOTION_REMOVE_FAILED
+        )
       )
-    )
+    } finally {
+      removingRef.current = false
+      setRemovingCode(null)
+    }
   }
 
   const addPromotionCode = async (formData: FormData) => {
@@ -165,7 +186,9 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                     </Text>
                     {!promotion.is_automatic && (
                       <button
-                        className="flex items-center"
+                        className="flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={removingCode !== null}
+                        aria-busy={removingCode === promotion.code}
                         onClick={() => {
                           if (!promotion.code) {
                             return
