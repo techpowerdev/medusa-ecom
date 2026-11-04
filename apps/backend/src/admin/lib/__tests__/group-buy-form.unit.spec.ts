@@ -1,9 +1,11 @@
 import { AdminCreateGroupBuyCampaign } from "../../../api/admin/group-buy/validators"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { webcrypto } from "node:crypto"
 import {
   emptyCampaignForm,
   isEndsAtPast,
+  newIdempotencyKey,
   selectSingleProduct,
   toCampaignBody,
   type CampaignForm,
@@ -149,5 +151,33 @@ describe("isEndsAtPast", () => {
 
   it("still lets a past end date through to the API (draft campaign)", () => {
     expect(toCampaignBody(form({ starts_at: "", ends_at: "2020-01-01T00:00" }))).toHaveProperty("body")
+  })
+})
+
+// GB-15 (AC-58, กฎข้อ 33d): key ของฟอร์มต้องสร้างได้บนหน้า http (ไม่มี crypto.randomUUID — มีแค่ getRandomValues)
+describe("newIdempotencyKey", () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "crypto")
+
+  afterEach(() => {
+    if (original) {
+      Object.defineProperty(globalThis, "crypto", original)
+    }
+  })
+
+  it("makes 1,000 unique UUID v4 keys with only getRandomValues (non-secure context)", () => {
+    Object.defineProperty(globalThis, "crypto", {
+      value: { getRandomValues: webcrypto.getRandomValues.bind(webcrypto) },
+      configurable: true,
+      writable: true,
+    })
+    expect((globalThis.crypto as Partial<Crypto>).randomUUID).toBeUndefined()
+
+    const keys = Array.from({ length: 1000 }, () => newIdempotencyKey())
+
+    for (const key of keys) {
+      expect(key).toMatch(/^[A-Za-z0-9_-]{8,128}$/)
+      expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+    }
+    expect(new Set(keys).size).toBe(1000)
   })
 })

@@ -67,6 +67,15 @@ export const selectSingleProduct = (current: string | null, next: Record<string,
   return selected.find((id) => id !== current) ?? (current && selected.includes(current) ? current : null)
 }
 
+// GB-15 (กฎข้อ 33d): key รูป UUID v4 (RFC 4122) จาก crypto.getRandomValues — มีทั้งบนหน้า http และ https
+export const newIdempotencyKey = (): string => {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 // GB-6b2 กฎข้อ 16: ends_at ที่ไม่อยู่ในอนาคตแค่เตือน (แคมเปญเป็น draft; backend ปฏิเสธ activate เอง)
 export const isEndsAtPast = (endsAt: string, now = Date.now()) => {
   try {
