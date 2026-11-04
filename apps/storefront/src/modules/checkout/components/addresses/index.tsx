@@ -123,8 +123,9 @@ const Addresses = ({
         <div>
           <div className="text-small-regular">
             {cart && cart.billing_address && digitalOnly ? (
-              <div className="flex items-start gap-x-1 w-full">
-                <div className="flex flex-col w-1/2" data-testid="billing-address-summary">
+              // CORE-38 (กฎข้อ 96): < 640px เรียงแนวตั้ง, ≥ sm แถวเดียว; min-w-0 ให้ข้อความยาวตัดบรรทัดในคอลัมน์ของตัวเอง
+              <div className="flex flex-col gap-y-4 w-full sm:flex-row sm:items-start sm:gap-x-1">
+                <div className="flex flex-col min-w-0 sm:w-1/2" data-testid="billing-address-summary">
                   <Text className="txt-medium-plus text-ui-fg-base mb-1">
                     ที่อยู่สำหรับออกใบเสร็จ/ใบกำกับภาษี
                   </Text>
@@ -141,19 +142,22 @@ const Addresses = ({
                     {cart.billing_address.country_code?.toUpperCase()}
                   </Text>
                 </div>
-                <div className="flex flex-col w-1/2" data-testid="billing-contact-summary">
+                <div className="flex flex-col min-w-0 sm:w-1/2" data-testid="billing-contact-summary">
                   <Text className="txt-medium-plus text-ui-fg-base mb-1">ข้อมูลติดต่อ</Text>
                   <Text className="txt-medium text-ui-fg-subtle">
                     {cart.billing_address.phone}
                   </Text>
-                  <Text className="txt-medium text-ui-fg-subtle">{cart.email}</Text>
+                  <Text className="txt-medium text-ui-fg-subtle [overflow-wrap:anywhere]">
+                    {cart.email}
+                  </Text>
                 </div>
               </div>
             ) : cart && cart.shipping_address ? (
               <div className="flex items-start gap-x-8">
-                <div className="flex items-start gap-x-1 w-full">
+                {/* CORE-38 (กฎข้อ 96): < 640px เรียงแนวตั้ง, ≥ sm แถวเดียว; min-w-0 ให้ข้อความยาวตัดบรรทัดในคอลัมน์ของตัวเอง */}
+                <div className="flex flex-col gap-y-4 w-full sm:flex-row sm:items-start sm:gap-x-1">
                   <div
-                    className="flex flex-col w-1/3"
+                    className="flex flex-col min-w-0 sm:w-1/3"
                     data-testid="shipping-address-summary"
                   >
                     <Text className="txt-medium-plus text-ui-fg-base mb-1">
@@ -177,7 +181,7 @@ const Addresses = ({
                   </div>
 
                   <div
-                    className="flex flex-col w-1/3 "
+                    className="flex flex-col min-w-0 sm:w-1/3"
                     data-testid="shipping-contact-summary"
                   >
                     <Text className="txt-medium-plus text-ui-fg-base mb-1">
@@ -186,13 +190,16 @@ const Addresses = ({
                     <Text className="txt-medium text-ui-fg-subtle">
                       {cart.shipping_address.phone}
                     </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
+                    <Text
+                      className="txt-medium text-ui-fg-subtle [overflow-wrap:anywhere]"
+                      data-testid="shipping-contact-email"
+                    >
                       {cart.email}
                     </Text>
                   </div>
 
                   <div
-                    className="flex flex-col w-1/3"
+                    className="flex flex-col min-w-0 sm:w-1/3"
                     data-testid="billing-address-summary"
                   >
                     <Text className="txt-medium-plus text-ui-fg-base mb-1">

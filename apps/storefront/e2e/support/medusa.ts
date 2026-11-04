@@ -40,9 +40,12 @@ export async function publishableKey(request: APIRequestContext, admin: Headers)
 
 export type Customer = { email: string; password: string; token: string }
 
-/** สมัคร customer ใหม่ผ่าน auth route ของ Medusa (email ไม่ซ้ำต่อการรัน) */
-export async function createCustomer(request: APIRequestContext, pk: string): Promise<Customer> {
-  const email = `e2e-core6-${Date.now()}-${crypto.randomInt(1e6)}@example.com`
+/** สมัคร customer ใหม่ผ่าน auth route ของ Medusa (email ไม่ซ้ำต่อการรัน; ส่ง `email` เองได้ เช่น อีเมลยาวของ CORE-38) */
+export async function createCustomer(
+  request: APIRequestContext,
+  pk: string,
+  email = `e2e-core6-${Date.now()}-${crypto.randomInt(1e6)}@example.com`
+): Promise<Customer> {
   const password = crypto.randomBytes(12).toString("hex")
   const reg = await request.post(`${BACKEND_URL}/auth/customer/emailpass/register`, {
     data: { email, password },
