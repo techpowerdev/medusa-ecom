@@ -1,6 +1,7 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (follow-up ล่าสุด: รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
+สถานะ: accepted (follow-up ล่าสุด: รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
+รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
 รอบ 16 2026-11-04 — CORE-28..32, กฎข้อ 85–89, AC-121..125, ADR-019 (CORE-29), คำถาม Q-C3/Q-C4; รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; CORE-14g cookie cart ใน server action (qa #222 D-1), กฎข้อ 84, AC-120; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
 เป้าหมาย: ร้านค้าพื้นฐานที่สมบูรณ์และพร้อม production โดย **ไม่มี custom commerce logic เลย**
@@ -1618,6 +1619,7 @@ none
     ไม่มีที่อยู่/อีเมล → `?step=address` (ฟอร์มที่อยู่เปิด); มีที่อยู่แต่ delivery ยังไม่เสร็จตามกฎข้อ 93 → `?step=delivery` (เดิม);
     ใช้ helper เดียว `checkoutStep(cart, options?)` ใน `lib/util/digital-checkout.ts` (ส่ง `options` = รายการที่กรองแล้ว → delivery ใช้ `deliveryStepDone(cart, options)`; ไม่ส่ง = พฤติกรรมเดิมของหน้าตะกร้า)
     แทนเงื่อนไขใน `checkout-form` — ไม่ยิง API เพิ่ม; cart digital-only ข้าม delivery ตามเดิม
+    (รอบ 21: `checkoutStep` ยังเป็น pure แต่ `checkout-form` อ่าน cart แบบ fresh เพิ่ม 1 ครั้งเมื่อ cart จาก cache บอกให้ redirect — ดูกฎข้อ 103e)
 100. (CORE-42 — qa #264 O-4, qa/review #265 O-1) layout มือถือ: (a) หน้า `/cart` ที่ 375px ตารางสินค้าไม่ล้นขอบขวา — คอลัมน์ "รวม" (`product-price`) เห็นครบในจอ
      (ลดความกว้างของช่องรูป/ช่องจำนวนที่ < `small` หรือจัด cell ใหม่ — เลือกใน PR; ≥ `small` คง layout เดิม); (b) แถวรหัสของการ์ด voucher ไม่มีช่องว่างใต้แถวเมื่อสถานะของ `CopyButton` ว่าง —
      span สถานะยังอยู่ใน DOM พร้อม `aria-live="polite"` (ไม่ใช้ `display:none`/ไม่ unmount เพราะ live region ที่ถูกซ่อนแล้วแสดงอาจไม่ถูกอ่าน) เช่น ย้ายระยะห่างไปเป็น margin ของ span เมื่อมีเนื้อหา
@@ -1719,7 +1721,12 @@ none
      (a) ไม่มี `step` หรือ `step` ไม่ใช่ค่าใดใน `address`/`delivery`/`payment`/`review` แบบตรงตัว (`REVIEW`, `foo`, step ซ้ำ ถือว่าไม่รู้จัก);
      (b) `step=delivery` และ `checkoutStep` = `"address"`; (c) `step=delivery` บน cart digital-only (ไม่มีขั้น delivery); (d) `step=payment`/`review` ตามกฎข้อ 99 เดิม;
      ไม่ redirect: `step=address` ทุกกรณี และ `step=delivery` เมื่อมีที่อยู่แล้ว (รวมเมื่อ delivery เสร็จแล้ว — ลูกค้ากลับมาเปลี่ยนวิธีส่ง); ปลายทางของ redirect ต้องไม่เข้าเงื่อนไขซ้ำ (ไม่วน);
-     ตัดสินด้วย helper pure `checkoutRedirectStep(step, cart, options)` (คืน step ปลายทางหรือ `null`) ใน `lib/util/digital-checkout.ts` ข้าง `checkoutStep` — ไม่ยิง API เพิ่ม
+     ตัดสินด้วย helper pure `checkoutRedirectStep(step, cart, options)` (คืน step ปลายทางหรือ `null`) ใน `lib/util/digital-checkout.ts` ข้าง `checkoutStep` — ~~ไม่ยิง API เพิ่ม~~
+     **(รอบ 21 แก้ถ้อยคำตามของที่ merge แล้ว #288)** `checkoutRedirectStep` ยังเป็น pure (ไม่ยิง API);
+     (e) (D-1 ของ qa #288: หลังกด `submit-address-button` หน้าเด้งกลับ `step=address` เพราะ cart ที่หน้าอ่านแบบ `force-cache` ยังเป็นค่าก่อน `setAddresses`)
+     `checkout-form` ตัดสินผ่าน `checkoutRedirectWithLatest(step, cart, optionsFor, loadLatest)` (`lib/util/digital-checkout.ts:74–86`): ถ้า cart จาก cache **ไม่**ต้อง redirect
+     → ไม่อ่าน cart เพิ่ม; ถ้าต้อง redirect → อ่าน cart แบบ fresh (`retrieveCart(cart.id, undefined, { fresh: true })` = `cache: "no-store"`, `lib/data/cart.ts:69`) **เพิ่ม 1 ครั้ง**
+     แล้วตัดสินซ้ำด้วย `checkoutRedirectStep` และ render ด้วย cart/options ล่าสุดนั้น (`checkout-form/index.tsx:46–56`); อ่าน fresh ไม่ได้ (`null`) → ใช้ผลจาก cart เดิม
 104. (CORE-46 — test hygiene, nit review #281/#278, builder CORE-43) (a) `checkoutToPayment` ใน `e2e/support/stripe.ts` ใส่ตะกร้าด้วย `addToCartFromPdp` (มี `request`/`pk`/`customer` ใน argument อยู่แล้ว);
      (b) comment ใน `e2e/support/server-action.ts` (~6–8) บอกที่มาของ timeout ของ `page.waitForResponse` ตรงตามจริง — builder ตรวจกับ docs ของ Playwright เวอร์ชันที่ pin และ `playwright.config.ts`
      (ค่า default ของ `timeout` option, ผลของ `actionTimeout`/`setDefaultTimeout`) แล้วอ้าง URL ของ docs ใน comment — ห้ามเดา; ถ้าตรวจแล้วเดิมถูก ให้เพิ่ม URL อ้างอิงอย่างเดียวและบอกใน PR;
@@ -1743,7 +1750,8 @@ none
   และไม่มี `delivery-option-radio`; Given มีที่อยู่ + Standard When `/th/checkout` Then `step=payment`, When `?step=delivery` Then URL ยังเป็น `step=delivery` และ `delivery-option-radio` visible;
   Given digital-only มีที่อยู่ When `?step=delivery` Then `step=payment`; ทุกเคสมี navigation ≤ 2 (นับ `framenavigated` ของ main frame) และไม่มี request `POST /store/carts/<id>/complete`;
   regression: AC-135, AC-129, e2e `core-32-shipping-profile-filter`, `core-40-discount-action-race` (เปิด `/th/checkout`), `thai-ui-checkout`, `core-14-buy-login` (`/buy` → `/th/checkout`) ผ่าน —
-  ถ้า e2e เดิมเปิด `step=delivery` บน cart ที่ไม่มีที่อยู่ ให้ตั้งที่อยู่ผ่าน Store API ใน setup ของ test นั้น (ไม่ผ่อนกฎ) และระบุใน PR
+  ถ้า e2e เดิมเปิด `step=delivery` บน cart ที่ไม่มีที่อยู่ ให้ตั้งที่อยู่ผ่าน Store API ใน setup ของ test นั้น (ไม่ผ่อนกฎ) และระบุใน PR;
+  (รอบ 21) เคส cart ใน cache ค้าง (กฎข้อ 103e) แยกเป็น AC-141
 - AC-140 (CORE-46, กฎข้อ 104) grep: ทุกไฟล์ใน `apps/storefront/e2e/**/*.ts` (รวม `support/`) ไม่มีลำดับ `getByTestId("add-product-button").click()` ตามด้วย `toBeEnabled()` ของปุ่มเดียวกันในบรรทัดถัดไป
   (ยกเว้นบรรทัดที่มี comment อ้างกฎข้อ 101a — ขยาย AC-137 ไป `support/`); `checkoutToPayment` เรียก `addToCartFromPdp`; `core-19a-nav-cart-search.spec.ts` และ `core-24-pdp-quantity.spec.ts`
   ไม่มี `headers()["next-action"]` (ใช้ `waitForServerAction`/`isAddToCartBody`); `e2e/support/server-action.ts` มี URL `playwright.dev` ใน comment เรื่อง timeout และ PR ยกข้อความจาก docs ที่ยืนยัน;
@@ -1764,10 +1772,11 @@ none
 ### Tasks (follow-up รอบ 20)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
-| CORE-44 | (storefront เล็ก ~130 LOC รวม test, qa #278 D-2 + O-1) หน้า `/cart`: คอลัมน์สรุปไม่ล้นที่ ≥ 1024 เมื่อมีส่วนลด + ตัวเลือกจำนวนแสดงจำนวนจริงของ line (กฎข้อ 102) — ไฟล์: `modules/cart/templates/index.tsx`, `modules/cart/components/item/index.tsx`, `lib/util/cart-quantity-options.ts` ใหม่ (+ test), e2e ใหม่ `e2e/core-44-*.spec.ts` | AC-138 | none — **เริ่มได้** (CORE-42 ☑ #278); ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-4i (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
-| CORE-45 | (storefront เล็ก ~150 LOC รวม test, qa #276 Observation 1–2) checkout เปิด step ที่ใช้ไม่ได้ (ไม่มี step, step ไม่รู้จัก, `delivery` ก่อนมีที่อยู่, `delivery` ของ digital-only) → ขั้นแรกที่ยังไม่เสร็จ ผ่าน `checkoutRedirectStep` (กฎข้อ 103) — ไฟล์: `lib/util/digital-checkout.ts` (+ `src/ev-7c-digital-only-checkout.test.ts`), `modules/checkout/templates/checkout-form/index.tsx`, e2e (ต่อจาก `e2e/core-41-checkout-first-step.spec.ts`) | AC-139 | none — **เริ่มได้** (CORE-41 ☑ #276); ∥ ทุกตัว; ชน `checkout-form` กับ CORE-4i/CORE-19f (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
-| CORE-46 | (e2e test hygiene ~60 LOC, nit review #281/#278 + builder CORE-43) `checkoutToPayment` ใช้ `addToCartFromPdp`, comment timeout ของ `waitForResponse` ตาม docs, core-19a/core-24 เลือก action ด้วย `isAddToCartBody`, e2e admin ดึงสินค้า seed ด้วย handle (กฎข้อ 104) — ไฟล์: `e2e/support/{stripe,server-action}.ts`, `e2e/core-19a-nav-cart-search.spec.ts`, `e2e/core-24-pdp-quantity.spec.ts`, `e2e/affiliate-admin-programs.spec.ts`, `e2e/group-buy-admin-detail.spec.ts`, `e2e/group-buy-admin-dates.spec.ts` | AC-140 | none — **เริ่มได้** (CORE-43 ☑ #281); ∥ ทุกตัว (CORE-44/45 สร้าง e2e ไฟล์ใหม่ ไม่ชน); ไม่บล็อก release |
+| CORE-44 | (storefront เล็ก ~130 LOC รวม test, qa #278 D-2 + O-1) หน้า `/cart`: คอลัมน์สรุปไม่ล้นที่ ≥ 1024 เมื่อมีส่วนลด + ตัวเลือกจำนวนแสดงจำนวนจริงของ line (กฎข้อ 102) — ไฟล์: `modules/cart/templates/index.tsx`, `modules/cart/components/item/index.tsx`, `lib/util/cart-quantity-options.ts` ใหม่ (+ test), e2e ใหม่ `e2e/core-44-*.spec.ts` — ☑ #287 (train #290) | AC-138 | none — **เริ่มได้** (CORE-42 ☑ #278); ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-4i (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
+| CORE-45 | (storefront เล็ก ~150 LOC รวม test, qa #276 Observation 1–2) checkout เปิด step ที่ใช้ไม่ได้ (ไม่มี step, step ไม่รู้จัก, `delivery` ก่อนมีที่อยู่, `delivery` ของ digital-only) → ขั้นแรกที่ยังไม่เสร็จ ผ่าน `checkoutRedirectStep` (กฎข้อ 103) — ไฟล์: `lib/util/digital-checkout.ts` (+ `src/ev-7c-digital-only-checkout.test.ts`), `modules/checkout/templates/checkout-form/index.tsx`, e2e (ต่อจาก `e2e/core-41-checkout-first-step.spec.ts`) — ☑ #288 (train #291; รวม D-1 ของ qa #288 → กฎข้อ 103e) | AC-139 | none — **เริ่มได้** (CORE-41 ☑ #276); ∥ ทุกตัว; ชน `checkout-form` กับ CORE-4i/CORE-19f (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
+| CORE-46 | (e2e test hygiene ~60 LOC, nit review #281/#278 + builder CORE-43) `checkoutToPayment` ใช้ `addToCartFromPdp`, comment timeout ของ `waitForResponse` ตาม docs, core-19a/core-24 เลือก action ด้วย `isAddToCartBody`, e2e admin ดึงสินค้า seed ด้วย handle (กฎข้อ 104) — ไฟล์: `e2e/support/{stripe,server-action}.ts`, `e2e/core-19a-nav-cart-search.spec.ts`, `e2e/core-24-pdp-quantity.spec.ts`, `e2e/affiliate-admin-programs.spec.ts`, `e2e/group-buy-admin-detail.spec.ts`, `e2e/group-buy-admin-dates.spec.ts` — ☑ #289 (train #290) | AC-140 | none — **เริ่มได้** (CORE-43 ☑ #281); ∥ ทุกตัว (CORE-44/45 สร้าง e2e ไฟล์ใหม่ ไม่ชน); ไม่บล็อก release |
 (รอบ 20) CORE-44 ∥ CORE-45 ∥ CORE-46 เริ่มได้ทันที — ไม่มีตัวใดบล็อก release
+(รอบ 21 สถานะ 2026-11-04) merge แล้วผ่าน merge train: CORE-44 ☑ #287, CORE-46 ☑ #289 (train #290); CORE-45 ☑ #288 (train #291)
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 20)
 - `ECONNRESET` ระหว่าง Playwright `request` กับ backend ตอนรัน e2e 12 workers ในเครื่อง (builder CORE-43) — CI รัน `workers: 1` (`playwright.config.ts:14`) จึงไม่เกิดใน gate;
@@ -1776,6 +1785,129 @@ none
 - ชื่อสินค้ายาวตัดหลายบรรทัดที่ 375 (qa #278 O-2) — ไม่ล้นและอ่านได้
 
 ### Open questions (รอบ 20)
+none
+
+## Follow-up รอบ 21 จาก review/qa (2026-11-04 — owner อนุมัติเปิด task)
+ที่มา: qa #288 (`docs/evidence/core/CORE-45/REPORT.md` D-1, Observation 1), qa #287 (`CORE-44/REPORT.md` O-1, O-2), nit review #289 (CORE-46), qa #286 (`affiliate-admin-programs` — ดู spec 05 AF-20 สำหรับ O-1),
+qa #285 O-1 (spec 04 GB-15 → หมายเหตุใน spec 07 Deliverables ข้อ 11) — ตรวจโค้ดบน develop `167faba`:
+- `lib/util/digital-checkout.ts:50–67` `checkoutRedirectStep` ยัง pure; `:74–86` `checkoutRedirectWithLatest` อ่าน cart ล่าสุดเฉพาะเมื่อผลจาก cart เดิมบอกให้ redirect;
+  `modules/checkout/templates/checkout-form/index.tsx:46–51` ส่ง `retrieveCart(cart.id, undefined, { fresh: true })` (`cache: "no-store"` — `lib/data/cart.ts:69`) → ถ้อยคำ "ไม่ยิง API เพิ่ม" ของกฎข้อ 103 ไม่ตรงแล้ว
+  → **แก้ถ้อยคำในกฎข้อ 103e (ไม่มีโค้ด ไม่สร้าง task)**;
+- `checkout-form/index.tsx:33` `listCartShippingMethods(cart.id)` (`lib/data/fulfillment.ts:12–26` tag `fulfillment` + `force-cache`) ไม่ถูกอ่านใหม่เมื่อ `checkoutRedirectWithLatest` อ่าน cart แบบ fresh
+  (`:49` กรองรายการเดิมด้วย cart ล่าสุด) — ข้อสังเกต ไม่เปิด task (ดู "ยอมรับใน v1" ด้านล่าง);
+- `modules/cart/components/item/index.tsx:72–80` ช่องชื่อสินค้าไม่มีการตัดคำ/`min-w-0`, `:121–143` ช่อง "รวม" ไม่มี `whitespace-nowrap`; `modules/common/components/line-item-price/index.tsx:23–58` แสดงราคาขีดฆ่า + ราคาลดคนละบรรทัด —
+  ที่ 375 ตาม qa (ชื่อไทยปนอังกฤษ ~90 ตัว, จำนวน 99 ยอด 7 หลัก ฿1,222,221.33 → ฿1,161,110.26 พร้อมส่วนลด + อีก line จำนวน 11) ตารางกว้างเกินจอ → `product-price` ล้นขวา 10px (`scrollWidth` 385) — ยังจริง
+  (ชื่อสั้นไม่ล้น = AC-136 ผ่าน);
+- `item/index.tsx:20–26` `changeLineQuantity` → `actionErrorMessage(result.error, UPDATE_QUANTITY_FAILED)`; `lib/data/cart.ts:213–216` `updateLineItem` → `actionFailure(error)` ไม่ส่ง `codes`
+  (`lib/util/action-result.ts:18–32` รู้จักเฉพาะ code ใน `CHECKOUT_CONFLICTS` = 409 ของ complete — `lib/util/checkout-error.ts:4–20`) → stock ไม่พอได้ `"failed"` → ข้อความทั่วไป — ยังจริง;
+  Medusa: `confirmInventoryStep` ของ `@medusajs/core-flows` (เรียกจาก `updateLineItemInCartWorkflow` ผ่าน `confirmVariantInventoryWorkflow`) throw
+  `MedusaError(MedusaError.Types.NOT_ALLOWED, "Some variant does not have the required inventory", MedusaError.Codes.INSUFFICIENT_INVENTORY)` (`type` = `not_allowed`, `code` = `insufficient_inventory`)
+  → `errorHandler` ของ Medusa ตอบ **400** (backend `src/api/error-handler.ts:32–36` ส่ง error ที่ไม่อยู่ใน allow-list 409 ให้ handler ของ Medusa ตามเดิม);
+  `FetchError` ของ js-sdk 2.22.1 เก็บแค่ message/status (comment `checkout-error.ts:2`) → จับคู่ด้วย status 400 + `code` (ถ้ามี) หรือข้อความคงที่;
+  storefront ที่อื่น**ไม่มี**ตัวแยก error นี้: PDP (`modules/products/components/product-actions/index.tsx:32–33`, `:150–151`) ใช้ fallback ที่บอกเรื่อง stock อยู่แล้วกับทุก error
+  (error ที่ throw จาก server action ถูกซ่อนข้อความใน production); `modules/account/components/add-variant-error/index.tsx:36` ตรวจ stock ก่อนด้วย `canPurchaseVariant` ไม่ได้อ่าน error
+  → ไม่มี helper ให้ใช้ซ้ำ ต้องเพิ่มที่เดียว;
+- `e2e/core-46-e2e-hygiene.unit.spec.ts:65` `not.toMatch(/timeout/i)` (ซ้ำ `core-43-e2e-hygiene.unit.spec.ts:43`) ล้มได้แค่เพราะคำว่า timeout ใน comment; `:18–30` ซ้ำ `core-43…:12–24`
+  (core-46 ครอบมากกว่า: `e2e/**/*.ts` รวม `support/`); `:59` `toMatch(/toHaveLength\(1\)/)` ค้นทั้งไฟล์ — ทั้งสามไฟล์มี `toHaveLength(1)` ของ assertion อื่น
+  (`group-buy-admin-detail.spec.ts:98`, `:141`, `:206`, `:214`; `affiliate-admin-programs.spec.ts:132`) → ลบ assertion ข้าง `handle=` ทิ้งก็ยังผ่าน — ยังจริง;
+- `e2e/affiliate-admin-programs.spec.ts:79`, `:124`, `:128` `waitForTimeout(300)` (core-46 unit `:63` ยกเว้นไฟล์นี้ไว้) — ยังจริง;
+- `e2e/core-25-pdp-option-reset.spec.ts:40`, `core-26-cart-dropdown-total.spec.ts:221`, `flash-sale-fs19.spec.ts:162` รอ response ของ action **ใดก็ได้** ที่มี `next-action` (อาจจับ action ราคา/flash ที่ PDP ยิงตอนโหลด)
+  และ `flash-sale-fs19.spec.ts:43` อ่าน header เองใน route handler — ยังจริง
+Out of scope: ไฟล์ e2e อื่นที่อ่าน `next-action` เอง (เช่น `core-27`, `core-19c`, `core-4h`, `payments-*` — action อื่นหรือ mock เฉพาะ ไม่ถูกรายงาน), ข้อความ error ของการเพิ่มลงตะกร้าบน PDP (บอกเรื่อง stock อยู่แล้ว)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| ตรวจ stock ตอนแก้จำนวน | `updateLineItemInCartWorkflow` → `confirmVariantInventoryWorkflow` / `confirmInventoryStep` (400, `type` `not_allowed`, `code` `insufficient_inventory`) | ใช้ตามเดิม — storefront แปลงเป็นข้อความไทยเท่านั้น ไม่ตรวจ stock เอง |
+| แปลงผล server action เป็นข้อความ | `actionFailure` / `actionErrorMessage` ของ CORE-4i (`lib/util/action-result.ts`) | ขยาย — เพิ่ม code ที่รู้จัก 1 ตัว |
+| ตารางสินค้า | `Table` ของ `@medusajs/ui` (starter) | ใช้ตามเดิม — แก้ className ของ cell |
+| อ่าน cart แบบไม่ cache | `retrieveCart(..., { fresh: true })` (`cache: "no-store"`) | ใช้ตามเดิม (ของ #288) |
+| รอ server action ใน e2e | `waitForServerAction`, `isServerAction`, `isAddToCartBody` (`e2e/support/server-action.ts`) | ใช้ตามเดิม |
+| รอ animation ของ dialog ใน e2e | `locator.evaluate` + Web Animations API (`getAnimations()`), `expect(locator).toBeVisible()` ของ Playwright | ใช้ตามเดิม — ไม่เพิ่ม dependency |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+105. (CORE-47 — qa #287 O-1; ขยายกฎข้อ 100a) หน้า `/cart` ที่ < 640px (`small`) ตารางสินค้าไม่ล้นขอบขวาแม้ชื่อสินค้ายาว (~90 ตัว ไทยปนอังกฤษ) และยอดรวม 7 หลักมีทศนิยมพร้อมราคาขีดฆ่า:
+     ช่องชื่อสินค้า (`product-title`) หดและตัดคำได้ (`min-w-0` + `break-words`/`[overflow-wrap:anywhere]` — เลือกใน PR ตามผลวัด); ค่าในช่อง "รวม" (`product-price`, `product-original-price`)
+     ไม่ถูกตัดกลางตัวเลข (อยู่บรรทัดเดียว) และอยู่ในจอครบ; แก้ที่ className ของ cell ใน `modules/cart/components/item/index.tsx` เท่านั้น — **ไม่แก้** `LineItemPrice`
+     (ใช้ร่วมกับหน้า order/checkout); ≥ 640px คงตามกฎข้อ 100a/102a
+106. (CORE-48 — qa #287 O-2) แก้จำนวนบน `/cart` แล้ว Medusa ตอบ stock ไม่พอ → `product-error-message` แสดงข้อความไทยเฉพาะ
+     `INSUFFICIENT_INVENTORY_MESSAGE` = "สินค้ามีไม่พอตามจำนวนที่เลือก กรุณาลดจำนวนแล้วลองใหม่อีกครั้ง" (ค่าคงที่ที่เดียว):
+     (a) `updateLineItem` (`lib/data/cart.ts`) คืน `{ error: "INSUFFICIENT_INVENTORY" }` เมื่อ error มี status 400 **และ** (`code === "insufficient_inventory"` หรือข้อความ
+     (ตัด `.` ท้าย ไม่สนตัวพิมพ์ — แบบ `normalize` ของ `checkout-error.ts:23`) = `"Some variant does not have the required inventory"`) ผ่าน helper pure ตัวเดียวใน `lib/util/`
+     (เช่น `isInsufficientInventory(error)`) ที่ `actionFailure` ใช้ (ขยาย argument `codes` เดิม หรือเรียกก่อน `actionFailure` — เลือกใน PR);
+     **ไม่**เพิ่มลง `CHECKOUT_CONFLICTS` (map ของ 409 ตอน complete ที่ `src/checkout-conflict-contract.test.ts:40–44` นับจำนวนให้เท่ากับ backend);
+     (b) error อื่น (5xx, network, 400 อื่น) คง `UPDATE_QUANTITY_FAILED`; 401/403 คง `SIGN_IN_AGAIN_MESSAGE` (กฎข้อ 72);
+     (c) หลัง error `product-select-button` แสดงจำนวนจริงของ line (Medusa ไม่แก้ line) และ error หายเมื่อแก้จำนวนสำเร็จครั้งถัดไป;
+     (d) ไม่ตรวจ stock ฝั่ง storefront เอง ไม่ตั้งเพดานจำนวน (กฎข้อ 102b คงเดิม)
+107. (CORE-49 — test hygiene, nit review #289 + qa #286/#288) (a) grep test "`add-product-button` `click()` ตามด้วย `toBeEnabled()`" และการตรวจ `playwright.config.ts` อยู่ที่เดียวใน
+     `e2e/core-46-e2e-hygiene.unit.spec.ts` (ครอบ `e2e/**/*.ts` รวม `support/`) — ลบตัวที่ซ้ำใน `core-43-e2e-hygiene.unit.spec.ts:12–24` และ `:43`;
+     (b) การตรวจ config ห้ามเฉพาะ**การตั้งค่า** timeout: regex ของ key `timeout`, `actionTimeout`, `navigationTimeout` ที่ตามด้วย `:` (เช่น `/\b(timeout|actionTimeout|navigationTimeout)\s*:/`)
+     — ครอบ `timeout`/`expect.timeout` (กฎข้อ 101b) และ `actionTimeout` (ที่ comment ของ `e2e/support/server-action.ts:8–13` อ้างว่าไม่ได้ตั้ง) โดยคำว่า timeout ใน comment ไม่ทำให้ล้ม;
+     (c) assertion จำนวน 1 ของสินค้า seed (กฎข้อ 104d) ต้องอยู่ติดการดึง: ในสามไฟล์ `toHaveLength(1)` อยู่ภายใน 3 บรรทัดถัดจากบรรทัดที่มี `/admin/products?handle=` (regex หลายบรรทัด) — ไม่ค้นทั้งไฟล์;
+     (d) `affiliate-admin-programs.spec.ts` ไม่มี `waitForTimeout`: `:79` (ไม่มี POST หลัง validation ล้ม) และ `:124` (ไม่มี DELETE หลัง "Keep program") ใช้ assertion ที่พิสูจน์ได้แทนการรอเวลา —
+     คง `expect(requests).toEqual([])` ทันทีหลัง error แสดง และให้ assertion นับ request ของขั้นถัดไปเป็นตัวพิสูจน์ (`:89` คาด `POST` เดียว, `:132` คาด `DELETE` เดียว — request เกินจะล้มที่นั่น) พร้อม comment;
+     `:128` (animation ก่อนถ่าย evidence) รอ `alertdialog` visible แล้วรอ animation ของ dialog จบ (`getAnimations({ subtree: true })` → `finished`) — builder ยืนยันในเครื่องว่าภาพ evidence ไม่ใช่ภาพกลาง transition;
+     (e) `core-25-pdp-option-reset.spec.ts:40`, `core-26-cart-dropdown-total.spec.ts:221`, `flash-sale-fs19.spec.ts:162` ใช้ `waitForServerAction(page, isAddToCartBody)`;
+     `flash-sale-fs19.spec.ts:43` (route handler ที่ mock action ข้อมูล flash) ใช้ `isServerAction(req, (body) => body.includes(variantId))` — พฤติกรรมของ test คงเดิม
+
+### Acceptance criteria (follow-up รอบ 21)
+- AC-141 (กฎข้อ 103e — ☑ ครอบแล้วโดย #288 ไม่มี task) unit (Vitest) `src/ev-7c-digital-only-checkout.test.ts:261–301`: Given cart จาก cache ไม่มีที่อยู่ + cart ล่าสุดมีที่อยู่ When `checkoutRedirectWithLatest("delivery", …)`
+  Then `redirectStep === null`, ใช้ cart ล่าสุด และ `loadLatest` ถูกเรียก 1 ครั้ง; ไม่มี step + cart ล่าสุดพร้อมจ่าย → `"payment"`; cart ล่าสุดก็ยังไม่มีที่อยู่ → `"address"`;
+  cart จาก cache ไม่ต้อง redirect → `loadLatest` ไม่ถูกเรียก; `loadLatest` คืน `null` → ใช้ผลจาก cart เดิม;
+  e2e `e2e/core-41-checkout-first-step.spec.ts:206–230` (D-1): Given หน้าเปิด `/th/checkout?step=address` ขณะ cart ไม่มีที่อยู่ (cache cart ไว้) แล้วตั้งที่อยู่ผ่าน Store API ตรง (ไม่มี `revalidateTag`)
+  When เปิด `?step=delivery` Then URL ยังเป็น `step=delivery`, `delivery-option-radio` visible, `shipping-first-name-input` count 0, navigation ≤ 2 และไม่มี `POST …/complete`;
+  grep: `checkout-form/index.tsx` เรียก `checkoutRedirectWithLatest` และ `{ fresh: true }`
+- AC-142 (CORE-47, กฎข้อ 105) e2e 375×812: Given สินค้าของ test เอง (`manage_inventory: false` ผ่าน admin API, ลบใน `afterAll` — แนวปฏิบัติรอบ 20) 2 ตัว ชื่อคงที่ในไฟล์ test ยาว 85–95 ตัว
+  ที่มีทั้งอักษรไทย (`/[฀-๿]/`) และคำอังกฤษ ราคาต่อหน่วย ฿12,345.67; cart ของ A: line 1 จำนวน 99 (ยอด ≥ ฿1,000,000.00) และ line 2 จำนวน 11 + โค้ดส่วนลด 5% ผ่าน Store API (token ของ A)
+  When เปิด `/th/cart` Then `document.documentElement.scrollWidth ≤ 375`; ทุก `product-price` และ `product-original-price` มี `getBoundingClientRect()` `right ≤ 375` และ `left ≥ 0`,
+  `elementFromPoint` ที่จุดกลางอยู่ภายใน element นั้น และ `Range` ที่ครอบเนื้อหา (`selectNodeContents`) มี `getClientRects().length === 1` (ตัวเลขไม่ถูกตัดบรรทัด);
+  ทุก `product-title` มี `right ≤ 375` และ `textContent` เท่ากับชื่อที่สร้าง; test ต้อง fail กับโค้ดก่อนแก้ (แนบผลใน PR); AC-136 (375), AC-138 (1024/1280) และ e2e เดิมของ `/cart` ผ่านโดยไม่แก้ locator
+- AC-143 (CORE-48, กฎข้อ 106) unit (Vitest): helper คืน `true` กับ `{ status: 400, message: "Some variant does not have the required inventory" }`, ข้อความเดียวกันที่มี `.` ท้าย/ตัวพิมพ์ต่าง,
+  และ `{ status: 400, code: "insufficient_inventory", message: "x" }`; คืน `false` กับ 400 ข้อความอื่น, 500 ข้อความเดียวกัน, 409, `null`/`undefined`/string;
+  `updateLineItem` (mock `sdk.store.cart.updateLineItem` reject ด้วย error ข้างต้น, มี JWT + cart id) → `{ error: "INSUFFICIENT_INVENTORY" }`;
+  `changeLineQuantity` → `INSUFFICIENT_INVENTORY_MESSAGE` เมื่อได้ code นี้, `UPDATE_QUANTITY_FAILED` เมื่อ `"failed"`, `SIGN_IN_AGAIN_MESSAGE` เมื่อ `"unauthorized"`; `src/checkout-conflict-contract.test.ts` ผ่านโดยไม่แก้;
+  e2e ที่ 1280×800 และ 375×812: Given สินค้าของ test เอง `manage_inventory: true` stock 5 (location ของ seed, ลบใน `afterAll`), cart ของ A จำนวน 1 ผ่าน Store API When `/th/cart` → `selectOption("10")` ของ `product-select-button`
+  Then `product-error-message` visible, `textContent` เท่ากับ `INSUFFICIENT_INVENTORY_MESSAGE` และตรง `/[฀-๿]/`, `product-select-button` `inputValue() === "1"`,
+  `GET /store/carts/:id` (token ของ A) quantity = 1; When `selectOption("3")` Then `product-error-message` count 0 (หรือว่าง) และ quantity = 3 — e2e นี้ยืนยันข้อความ/สถานะจริงของ Medusa 2.22.1 ที่ pin
+  (ถ้าไม่ตรงให้หยุดรายงาน ไม่เดา); AC-138 และ `core-19c-delete-button-error` ผ่าน
+- AC-144 (CORE-49, กฎข้อ 107) grep/unit (Playwright `unit` project): `core-43-e2e-hygiene.unit.spec.ts` ไม่มี `add-product-button").click()` และไม่อ่าน `playwright.config.ts`; `core-46-e2e-hygiene.unit.spec.ts` มีทั้งสอง;
+  regex ของ config ผ่านกับ `playwright.config.ts` ปัจจุบัน และ PR แนบผล mutation: เพิ่ม comment ที่มีคำว่า timeout → ยังผ่าน, เพิ่ม `timeout: 1`, `actionTimeout: 1` หรือ `expect: { timeout: 1 }` → ล้ม;
+  ลบ `toHaveLength(1)` ที่อยู่ถัดจาก `handle=` ในไฟล์ใดไฟล์หนึ่งของสามไฟล์ → test ของกฎข้อ 104d ล้ม (แนบผลใน PR); `affiliate-admin-programs.spec.ts` ไม่มี `waitForTimeout` และอยู่ในรายการไฟล์ที่ตรวจ
+  `waitForTimeout` ของ core-46 (ลบ comment ยกเว้นที่ `:63`); `core-25-pdp-option-reset.spec.ts`, `core-26-cart-dropdown-total.spec.ts`, `flash-sale-fs19.spec.ts` ไม่มี `headers()["next-action"]` และมี
+  `waitForServerAction(page, isAddToCartBody)` (fs19 มี `isServerAction(` ด้วย); `playwright.config.ts` ไม่เปลี่ยน; diff ไม่มี `waitForTimeout`;
+  e2e `affiliate-admin-programs`, `core-25-pdp-option-reset`, `core-26-cart-dropdown-total`, `flash-sale-fs19` ผ่าน `--repeat-each=3` (CI หรือในเครื่อง 4 workers — แนบผลใน PR)
+
+### แผนการทดสอบ (follow-up รอบ 21)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-141 (มีแล้ว), AC-143 |
+| unit (Playwright `unit` project, grep) | AC-144 |
+| e2e | AC-141 (มีแล้ว), AC-142 (375 + regression 1024/1280), AC-143 (1280/375), AC-144 (repeat 3) |
+
+### Tasks (follow-up รอบ 21)
+| ID | Task | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends |
+|----|------|------|------|------|----|---------|
+| CORE-47 | (storefront, qa #287 O-1) ตาราง `/cart` ที่ 375 ไม่ล้นเมื่อชื่อสินค้ายาว + ยอด 7 หลักพร้อมส่วนลด: ช่องชื่อตัดคำได้, ช่อง "รวม" ไม่ตัดตัวเลข (กฎข้อ 105) | `modules/cart/components/item/index.tsx` (className ของ cell), e2e ใหม่ `e2e/core-47-cart-375-long-title.spec.ts` | ~90 LOC รวม e2e | 375×812 (+ regression 1024×768, 1280×800) | AC-142 | none — **เริ่มได้** (CORE-44 ☑ #287); ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-48 และ CORE-4i (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
+| CORE-48 | (storefront, qa #287 O-2) แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ แทนข้อความทั่วไป (กฎข้อ 106) | `lib/data/cart.ts` (`updateLineItem`), helper ใหม่ใน `lib/util/` (+ unit Vitest ใน `src/`), `modules/cart/components/item/index.tsx` (`changeLineQuantity` + ค่าคงที่ข้อความ), e2e ใหม่ `e2e/core-48-cart-insufficient-stock.spec.ts` | ~130 LOC รวม test | 1280×800, 375×812 | AC-143 | none — **เริ่มได้** (CORE-4i-a ☑, CORE-44 ☑ #287); ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-47/CORE-4i และ `lib/data/cart.ts` กับ CORE-4i (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
+| CORE-49 | (e2e test hygiene, nit review #289 + qa #286/#288) รวม grep test ไว้ที่ core-46, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/core-26/fs19 ใช้ `waitForServerAction`/`isServerAction` (กฎข้อ 107) | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-43-e2e-hygiene.unit.spec.ts`, `e2e/affiliate-admin-programs.spec.ts`, `e2e/core-25-pdp-option-reset.spec.ts`, `e2e/core-26-cart-dropdown-total.spec.ts`, `e2e/flash-sale-fs19.spec.ts` | ~70 LOC | ไม่มี UI ใหม่ (e2e เดิมรันที่ viewport เดิมของแต่ละไฟล์) | AC-144 | none — **เริ่มได้** (CORE-46 ☑ #289); ∥ ทุกตัว (ไม่มี task อื่นแตะไฟล์เหล่านี้); ไม่บล็อก release |
+(รอบ 21) CORE-47 ∥ CORE-48 ∥ CORE-49 เริ่มได้ทันที (และ ∥ AF-20 ของ spec 05) — ไม่มีตัวใดบล็อก release; CORE-47 กับ CORE-48 แตะ `item/index.tsx` คนละ cell/ฟังก์ชัน ตัวที่ merge ทีหลัง rebase
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 21)
+- กฎข้อ 103 "ไม่ยิง API เพิ่ม" → แก้ถ้อยคำเป็นกฎข้อ 103e + AC-141 (ครอบโดย test ที่ merge แล้วใน #288) — ไม่มีโค้ด
+- รายการ shipping option ใน `checkout-form/index.tsx:33` มาจาก cache tag `fulfillment` ของ request ก่อนหน้า (ไม่ถูกอ่านใหม่ตอนอ่าน cart แบบ fresh ของกฎข้อ 103e):
+  **ไม่มีผลตอนนี้** — seed มี service zone เดียวทั้งประเทศ (`apps/backend/src/scripts/seed.ts:246` geo zone `country` = TH) option จึงไม่ขึ้นกับที่อยู่ และ e2e D-1 (`core-41-checkout-first-step.spec.ts:220–227`)
+  ที่ cache หน้าไว้ตอนยังไม่มีที่อยู่ก็ยังเห็น `delivery-option-radio` หลังตั้งที่อยู่; mutation ของ cart ใน storefront revalidate tag `fulfillment` พร้อม `carts` อยู่แล้ว (`lib/data/cart.ts:134–135`, `:222–223`)
+  — ถ้าเพิ่ม service zone/geo zone ระดับจังหวัดหรือ option ที่ขึ้นกับที่อยู่ ให้ task นั้นอ่านรายการ option แบบ fresh คู่กับ cart ใน `checkoutRedirectWithLatest`
+- (qa #288 Observation 1) ตอนรัน e2e 12 workers ในเครื่อง (load average 32–63) กด `checkout-button` บน `/th/cart` แล้วบางครั้งไม่ย้ายหน้าภายใน 30 วินาที (RSC ของ `?step=address` ตอบ 200 แต่ router ไม่ย้าย);
+  ที่ 8 workers ไม่เกิด — CI รัน `workers: 1` (`playwright.config.ts:14`) จึงไม่อยู่ใน gate และเป็นอาการเดียวกับ `ECONNRESET` ของรอบ 20 (เครื่องโหลดเกิน ไม่ใช่พฤติกรรมของ production);
+  แนวทาง: รันในเครื่องด้วย `--workers=4` ถ้าเกิดใน CI หรือที่ ≤ 4 workers ค่อยเปิด task สอบสวนพร้อม trace
+- (qa #285 O-1) `medusa start` (NODE_ENV=production) ตั้ง session cookie ของ admin เป็น `Secure` → login admin ผ่าน http ที่ไม่ใช่ localhost ไม่ติด — เป็นพฤติกรรมตั้งใจของ Medusa;
+  บันทึกเป็นข้อกำหนดของ prod ใน spec 07 Deliverables ข้อ 11 (spec 07 ยังไม่เคยระบุ)
+
+### Open questions (รอบ 21)
 none
 
 หมายเหตุจาก CORE-1:
