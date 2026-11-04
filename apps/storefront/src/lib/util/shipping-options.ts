@@ -18,3 +18,21 @@ export function shippingOptionsForCart<T extends OptionLike>(options: T[], cart:
   if (!needsShipping) return options
   return options.filter((o) => o.type?.code !== DIGITAL_DELIVERY_TYPE_CODE)
 }
+
+type MethodLike = { shipping_option_id?: string | null }
+
+/**
+ * CORE-33 (กฎข้อ 91b): option ที่ถือว่า "เลือกแล้ว" = `shipping_option_id` ของ `cart.shipping_methods` ตัวล่าสุด
+ * ที่อยู่ในรายการที่กรองแล้ว — method ค้างที่ถูกกรองออก (เช่น Digital delivery บน cart ที่ต้องจัดส่ง) ถือว่ายังไม่เลือก
+ */
+export function selectedShippingOptionId(
+  cart: { shipping_methods?: MethodLike[] | null },
+  options: { id: string }[]
+): string | null {
+  const methods = cart.shipping_methods ?? []
+  for (let i = methods.length - 1; i >= 0; i--) {
+    const id = methods[i].shipping_option_id
+    if (id && options.some((o) => o.id === id)) return id
+  }
+  return null
+}
