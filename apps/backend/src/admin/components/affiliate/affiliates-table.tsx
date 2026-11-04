@@ -1,11 +1,11 @@
+import { useDate } from "@medusajs/dashboard/hooks"
 import { Badge, Button, createDataTableColumnHelper, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { AdminAffiliate, affiliateKeys, updateAffiliate } from "../../lib/affiliate"
 import { affiliateAction } from "../../lib/affiliate-account"
-import { formatDate } from "../../lib/affiliate-format"
 import { createSingleFlight } from "../../lib/single-flight"
-import { AffiliateListTable } from "./list-table"
+import { AffiliateListTable, useAffiliateList } from "./list-table"
 import { PayoutInfoDrawer } from "./payout-info-drawer"
 
 const columnHelper = createDataTableColumnHelper<AdminAffiliate>()
@@ -18,6 +18,8 @@ type Update = { id: string; body: Parameters<typeof updateAffiliate>[1] }
 export const AffiliatesTable = () => {
   const prompt = usePrompt()
   const queryClient = useQueryClient()
+  const { getFullDate } = useDate()
+  const list = useAffiliateList<AdminAffiliate>("affiliates", "affiliates")
   const [editing, setEditing] = useState<AdminAffiliate | null>(null)
   // instance คงที่ตลอดอายุ component (กฎ 37) — dblclick หรือกดระหว่าง prompt เปิด = ไม่ยิงซ้ำ
   const [actOnce] = useState(createSingleFlight)
@@ -99,16 +101,22 @@ export const AffiliatesTable = () => {
       }),
       columnHelper.accessor("created_at", {
         header: "Joined",
-        cell: ({ getValue }) => formatDate(getValue()),
+        cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
     ],
-    // changeStatus ใช้ actOnce/prompt/mutateAsync ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending เปลี่ยน
-    [update.isPending],
+    // changeStatus ใช้ actOnce/prompt/mutateAsync ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending/getFullDate เปลี่ยน
+    [update.isPending, getFullDate],
   )
 
   return (
     <>
-      <AffiliateListTable resource="affiliates" columns={columns} empty="No affiliates yet" />
+      <AffiliateListTable
+        {...list}
+        columns={columns}
+        heading="Affiliates"
+        subHeading="Approve applicants and manage payout info."
+        empty="No affiliates yet"
+      />
       {editing && (
         <PayoutInfoDrawer
           key={editing.id}

@@ -5,8 +5,8 @@ import { join } from "path"
 const ADMIN_DIR = join(__dirname, "..")
 const ROUTES_DIR = join(ADMIN_DIR, "routes")
 
-// route ที่ยังไม่ได้ทำตาม AC-2 — ต้องว่างเมื่อ ADM-8a merge
-const ICON_PENDING = ["affiliate"]
+// route ที่ยังไม่ได้ทำตาม AC-2 — ว่างตั้งแต่ ADM-8a (route ใหม่ที่ยังไม่มี icon ต้องเพิ่มที่นี่ชั่วคราว)
+const ICON_PENDING: string[] = []
 
 const routePages = readdirSync(ROUTES_DIR, { withFileTypes: true })
   .filter((d) => d.isDirectory())
@@ -33,6 +33,15 @@ describe("route config icon (spec 08 AC-2)", () => {
       expect(src).toMatch(importRe)
     }
   )
+
+  // review #186: ลืมลบ route ออกจาก ICON_PENDING หลังใส่ icon แล้ว → ล้ม (it ธรรมดาเพราะ it.each ไม่รับ array ว่าง)
+  it("route ใน ICON_PENDING ยังไม่มี icon: (ใส่แล้วต้องลบออกจากรายการ)", () => {
+    const withIcon = routePages
+      .filter((r) => ICON_PENDING.includes(r.name))
+      .filter((r) => /\bicon:/.test(r.src.slice(r.src.indexOf("defineRouteConfig("))))
+      .map((r) => r.name)
+    expect(withIcon).toEqual([])
+  })
 })
 
 // ไฟล์ .ts/.tsx ทั้งหมดใน src/admin (ยกเว้น test) เป็น path สัมพัทธ์ เช่น "widgets/order-evouchers.tsx"
@@ -234,5 +243,85 @@ describe("หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)
     expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+common\/header["']/)
     expect(src).toMatch(/useState\(createSingleFlight\)/)
     expect(src).not.toMatch(/upload\.mutate\(/)
+  })
+})
+
+describe("ตาราง affiliate ใช้ของ Medusa (spec 08 AC-2, AC-11, ADM-8a)", () => {
+  const TABLES = [
+    "components/affiliate/programs-table.tsx",
+    "components/affiliate/affiliates-table.tsx",
+    "components/affiliate/payouts-table.tsx",
+    "routes/affiliate/page.tsx",
+  ]
+
+  it("lib/affiliate-format.ts ถูกลบแล้ว (เงินใช้ getLocaleAmount, วันเวลาใช้ useDate)", () => {
+    expect(adminFiles).not.toContain("lib/affiliate-format.ts")
+    expect(adminFiles.filter((f) => /affiliate-format/.test(read(f)))).toEqual([])
+  })
+
+  it("route affiliate อยู่ในชุดที่ตรวจ icon ของ AC-2", () => {
+    expect(routePages.map((r) => r.name)).toContain("affiliate")
+  })
+
+  it("list-table: DataTable ของ dashboard + useQueryParams, ไม่มี state แบ่งหน้าเองและไม่มี as unknown as", () => {
+    const src = read("components/affiliate/list-table.tsx")
+    expect(importsFrom(src, "DataTable", "@medusajs/dashboard/components")).toBe(true)
+    expect(importsFrom(src, "DataTable", "@medusajs/ui")).toBe(false)
+    expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).not.toMatch(/\b(DataTablePaginationState|useDataTable)\b/)
+    expect(src).not.toMatch(/as unknown as/)
+  })
+
+  it("query ชื่อ affiliate ตั้ง placeholderData: keepPreviousData (AF-14 nit #187)", () => {
+    const queries = read("components/affiliate/list-table.tsx").split("useQuery(").slice(1)
+    const names = queries.filter((q) => q.includes("listAffiliateNames("))
+    expect(names).toHaveLength(1)
+    expect(names[0].slice(0, names[0].indexOf("})"))).toMatch(/placeholderData:\s*keepPreviousData/)
+  })
+
+  it("แต่ละแท็บใช้ prefix ไม่ซ้ำกัน (กฎ 9)", () => {
+    const prefixes = TABLES.flatMap((f) =>
+      [...read(f).matchAll(/useAffiliateList(?:<[^>]*>)?\(\s*"[a-z]+",\s*"([a-z_]+)"/g)].map((m) => m[1])
+    )
+    expect(prefixes.sort()).toEqual(["affiliates", "ledger", "payouts", "programs"])
+  })
+
+  it.each(TABLES)("%s ใช้ useDate/getLocaleAmount ของ dashboard ไม่ใช่ formatter เอง", (file) => {
+    const src = read(file)
+    expect(src).not.toMatch(/\bformat(Date|Amount)\b/)
+    expect(importsFrom(src, "useDate", "@medusajs/dashboard/hooks")).toBe(true)
+  })
+
+  it.each(["routes/affiliate/page.tsx", "components/affiliate/payouts-table.tsx", "components/affiliate/mark-paid-prompt.tsx"])(
+    "%s แสดงเงินด้วย getLocaleAmount + castNumber จาก @medusajs/dashboard/lib",
+    (file) => {
+      const src = read(file)
+      expect(importsFrom(src, "getLocaleAmount", "@medusajs/dashboard/lib")).toBe(true)
+      expect(importsFrom(src, "castNumber", "@medusajs/dashboard/lib")).toBe(true)
+    }
+  )
+
+  it("หน้า affiliate ใช้ Header ของ components/common", () => {
+    expect(read("routes/affiliate/page.tsx")).toMatch(/from\s*["'](?:\.{1,2}\/)+components\/common\/header["']/)
+  })
+
+  // payouts-table ยังมี useRef(false) จนถึง ADM-8b; program-form/payout-info-drawer เป็นของ ADM-9 — ตรวจเฉพาะไฟล์ที่ ADM-8a ปรับครบแล้ว
+  it.each([
+    "components/affiliate/list-table.tsx",
+    "components/affiliate/programs-table.tsx",
+    "components/affiliate/affiliates-table.tsx",
+    "components/affiliate/mark-paid-prompt.tsx",
+    "routes/affiliate/page.tsx",
+  ])("%s ไม่มี pattern ต้องห้ามของกฎ 4–6", (file) => {
+    const src = read(file)
+    expect(FORBIDDEN.filter(([, re]) => re.test(src)).map(([name]) => name)).toEqual([])
+  })
+
+  it("payouts-table ไม่มี pattern วันเวลา/เงินต้องห้าม (useRef(false) รอ ADM-8b)", () => {
+    const src = read("components/affiliate/payouts-table.tsx")
+    const found = FORBIDDEN.filter(([name]) => name !== "useRef(false)")
+      .filter(([, re]) => re.test(src))
+      .map(([name]) => name)
+    expect(found).toEqual([])
   })
 })

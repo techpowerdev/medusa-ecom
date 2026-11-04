@@ -10,8 +10,10 @@ describe("affiliateNamesQuery", () => {
       { affiliate_id: "aff_b" },
     ])
     expect(query).toEqual({ id: ["aff_a", "aff_b"], limit: 2, offset: 0, fields: "id,name,email" })
-    // backend รับ query นี้ได้ (validator ของ AF-14)
-    expect(AdminListAffiliates.safeParse(query).success).toBe(true)
+    // backend รับ query นี้ได้ (validator ของ AF-14) และได้ค่าที่ parse ตรงตามที่ส่ง (nit #187)
+    const parsed = AdminListAffiliates.parse(query)
+    expect(parsed.id).toEqual(["aff_a", "aff_b"])
+    expect(parsed.limit).toBe(2)
   })
 
   it("is null for an empty page (no request)", () => {

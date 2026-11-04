@@ -1,0 +1,45 @@
+ADM-8a — ตาราง affiliate ใช้ DataTable ของ dashboard + getLocaleAmount/useDate (spec 08 AC-2 ส่วน affiliate, AC-11)
+base: origin/develop a349676 | Node 22.23.3 | วันที่ 2026-11-05
+
+== Red (ก่อนแก้โค้ด) ==
+unit static (medusa-ui.unit.spec.ts + affiliate-names.unit.spec.ts): Tests: 13 failed, 79 passed, 92 total
+  - route config icon › affiliate มี icon ที่ import จาก @medusajs/icons
+  - affiliate-format.ts ถูกลบแล้ว / list-table ใช้ DataTable ของ dashboard ไม่มี as unknown as / names query keepPreviousData
+  - prefix ต่อแท็บไม่ซ้ำ / useDate ใน 4 ไฟล์ / getLocaleAmount + castNumber ใน 3 ไฟล์ / หน้า affiliate ใช้ Header
+e2e ใหม่ affiliate-admin-tables.spec.ts บน prod build ของ admin เดิม (develop):
+✘  1 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (32.6s)
+Expected substring: "฿1,234.50"
+Received string:    "Nov 5, 2026, 1:12 AME2E e2e-adm8ae2e-adm8a-mw2fpqt5101755@example.comorder_e2e_adm8a_mw2fpqyr_bigTHB 1,234.50approved"
+
+== Green: e2e affiliate-admin-* บน prod build (medusa start จาก .medusa/server, port 9483, --workers=2) ==
+✓  2 [chromium] › e2e/affiliate-admin-names.spec.ts:31:5 › AC-45: Ledger/Payouts แสดงชื่อและอีเมลของ affiliate ด้วย request id[] 1 ครั้งต่อหน้า (3.4s)
+✓  1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:42:5 › AC-43: approve dblclick ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (5.5s)
+✓  4 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:161:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (1.7s)
+✓  3 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:31:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (6.5s)
+✓  5 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว (5.5s)
+✓  6 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (5.8s)
+✓  7 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (5.5s)
+7 passed (20.1s)
+
+== Green: pnpm --filter backend test:unit ==
+Test Suites: 91 passed, 91 total
+Tests:       1030 passed, 1030 total
+
+== pnpm --filter backend build ==
+info:    Backend build completed successfully (8.74s)
+info:    Frontend build completed successfully (31.34s)
+
+== pnpm typecheck ==
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+
+== pnpm lint (0 errors; warning เดิมนอกไฟล์ที่แตะ) ==
+apps/backend lint: ✖ 2 problems (0 errors, 2 warnings)
+apps/backend lint: Done
+apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+apps/storefront lint: Done
+
+== หมายเหตุ ==
+รอบแรกที่รัน --workers=2: affiliate-admin-payouts ล้ม 1 ครั้ง (boundingBox ของปุ่มยกเลิกเป็น null) ขณะ affiliate-admin-tables
+ใส่ payout draft 21 แถวลง DB เดียวกันพร้อมกัน — refetch ตอน window focus ดันแถวของ test นั้นไปหน้า 2 (ข้อมูลชนกันข้าม worker)
+รันเดี่ยวผ่าน 3/3 และรันชุดเต็ม --workers=2 อีก 2 รอบผ่านทั้งหมด; CI รัน e2e ด้วย workers=1 (playwright.config.ts)
