@@ -93,30 +93,26 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
           </Label>
 
           {isOpen && (
-            <>
-              <div className="flex w-full gap-x-2">
-                <Input
-                  className="size-full"
-                  id="promotion-input"
-                  name="code"
-                  type="text"
-                  autoFocus={false}
-                  data-testid="discount-input"
-                />
-                <SubmitButton
-                  variant="secondary"
-                  data-testid="discount-apply-button"
-                >
-                  ใช้โค้ด
-                </SubmitButton>
-              </div>
-
-              <ErrorMessage
-                error={errorMessage}
-                data-testid="promotion-error"
+            <div className="flex w-full gap-x-2">
+              <Input
+                className="size-full"
+                id="promotion-input"
+                name="code"
+                type="text"
+                autoFocus={false}
+                data-testid="discount-input"
               />
-            </>
+              <SubmitButton
+                variant="secondary"
+                data-testid="discount-apply-button"
+              >
+                ใช้โค้ด
+              </SubmitButton>
+            </div>
           )}
+
+          {/* CORE-28 (กฎข้อ 85): error ของการใส่/ลบโค้ดต้องเห็นแม้ช่องใส่โค้ดปิด */}
+          <ErrorMessage error={errorMessage} data-testid="promotion-error" />
         </form>
 
         {promotions.length > 0 && (

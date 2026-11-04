@@ -1,0 +1,36 @@
+# CORE-28 (spec 01 กฎข้อ 85, AC-121) — ผลทดสอบ 2026-11-04 (node v22.23.3)
+
+## Red: src/core-28-promotion-error.test.ts กับโค้ดก่อนแก้ (git stash)
+     × ช่องปิด + ลบโค้ดได้ unauthorized → promotion-error = SIGN_IN_AGAIN_MESSAGE โดยไม่ต้องเปิดช่อง 64ms
+     × ใส่โค้ดที่ใช้ไม่ได้แล้วปิดช่อง → promotion-error ยังมีข้อความ; ลบโค้ดสำเร็จ → ว่าง 10ms
+     × ไม่มีวลี 'ก่อนถึง action' 5ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected undefined to be 'กรุณาเข้าสู่ระบบอีกครั้ง' // Object.is equality
+AssertionError: expected undefined to be 'ใช้โค้ดนี้ไม่ได้ โค้ดอาจหมดอายุหรือไม…' // Object.is equality
+AssertionError: expected 'import type { APIRequestContext, Brow…' not to contain 'ก่อนถึง action'
+      Tests  3 failed (3)
+
+## Green: src/core-28-promotion-error.test.ts
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: promotion-error เห็นได้แม้ช่องใส่โค้ดปิด (AC-121) > ช่องปิด + ลบโค้ดได้ unauthorized → promotion-error = SIGN_IN_AGAIN_MESSAGE โดยไม่ต้องเปิดช่อง 48ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: promotion-error เห็นได้แม้ช่องใส่โค้ดปิด (AC-121) > ใส่โค้ดที่ใช้ไม่ได้แล้วปิดช่อง → promotion-error ยังมีข้อความ; ลบโค้ดสำเร็จ → ว่าง 14ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: comment ใน e2e core-19c ตรงกับพฤติกรรมหลัง CORE-14g > ไม่มีวลี 'ก่อนถึง action' 0ms
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+
+## unit ทั้งหมดของ storefront (vitest)
+ Test Files  76 passed (76)
+      Tests  831 passed (831)
+
+## test:e2e:unit (playwright project unit)
+  54 passed (678ms)
+
+## typecheck / lint (storefront)
+typecheck: ผ่าน (tsc --noEmit exit 0)
+✖ 31 problems (0 errors, 31 warnings)
+lint: 0 errors (warnings เดิมทั้งหมด ไม่มีในไฟล์ที่ task นี้แตะ)
+
+## build (storefront)
+next build: Compiled successfully; prerender /sitemap.xml ต้องมี backend (ECONNREFUSED ในเครื่องที่ไม่รัน backend) — build เต็มรันใน CI job storefront-e2e
+
+## grep AC-121: e2e/core-19c-delete-button-error.spec.ts ไม่มีวลี "ก่อนถึง action"
+0
