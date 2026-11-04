@@ -2,7 +2,8 @@
 
 สถานะ: in-progress (AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31; รอบ 9 2026-10-27: payouts/paging ของ portal, กฎ 29–30, AC-32..36, AF-7b/AF-10/AF-N1;
 รอบ 11 2026-10-27: admin UI แบบเขียนได้ AF-12a/b/c (owner), นิยาม AF-8a/8b/8c, `has_payout_info` AF-13, ชื่อ affiliate ใน admin AF-14 (owner Q17), กฎ 33–38, AC-39..45;
-รอบ 12 2026-10-28: AF-15, AF-N3, AF-16, กฎ 39–41, AC-46..48; รอบ 13 2026-11-03: token ว่างของ AF-16 #197 → AF-17 (กฎ 41b แก้, AC-49), nit AF-14 #187 → ADM-8a ของ spec 08)
+รอบ 12 2026-10-28: AF-15, AF-N3, AF-16, กฎ 39–41, AC-46..48; รอบ 13 2026-11-03: token ว่างของ AF-16 #197 → AF-17 (กฎ 41b แก้, AC-49), nit AF-14 #187 → ADM-8a ของ spec 08;
+รอบ 19 2026-11-04: qa #265 O-2 (หน้า Profile ล้นที่ 375 เมื่ออีเมลยาว) → AF-18, กฎ 42, AC-50)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -298,6 +299,9 @@ Payout
     (c) order ที่ `is_draft_order = true` → **ไม่ทำ attribution และไม่บันทึกอะไร** (หยุดเงียบ — attribution เกิดจาก `order.placed` ของการแปลงใน GB-5/GB-10 แทน; กันค่าคอมของ draft ที่ไม่ได้จ่าย/ถูกยกเลิก);
     (d) เวลาอ้างอิงกฎ 24 = `order.created_at` เดิม (= เวลาที่ join เพราะการแปลงไม่สร้าง order ใหม่ — builder ยืนยันใน 2.22.1 ถ้าไม่ใช่ให้หยุดรายงาน); ฐานคำนวณ = ยอดหลังส่วนลด `GB-*` ตามกฎ 3;
     (e) ไม่สร้าง cart/link ใหม่, ไม่แก้ AF-3b/กฎ 31 ฝั่ง checkout — จุด sync cookie ก่อน join เป็นของ GB-7 (spec 04 กฎข้อ 27)
+42. (รอบ 19, AF-18 — qa #265 O-2; ตรวจโค้ดบน develop `028f353`) หน้า Profile ของ portal (`app/[countryCode]/(main)/affiliate/profile/page.tsx`) ที่ 375px ไม่ล้นแนวนอนแม้ค่ายาวไม่มีช่องว่าง:
+    `<dl>` ใช้ `grid-cols-[max-content_minmax(0,1fr)]` (แทน `1fr` ที่ค่าต่ำสุดเป็น min-content) และ `<dd>` ตัดคำด้วย `break-words`/`[overflow-wrap:anywhere]`;
+    `<dd>` ของอีเมลมี `data-testid="affiliate-profile-email"` (ใหม่ — สำหรับ test); ที่ ≥ 640px layout คงเดิม (ป้ายซ้าย ค่าขวา)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -425,6 +429,10 @@ Payout
 - AC-49 (AF-17, กฎ 41b — รอบ 13, review #197) unit ของฟังก์ชันเลือก token (แยกเป็น pure function ใน `attribute-order.ts` หรือ helper ข้างไฟล์): cart `""` + order `T` → `T`; cart `"  "` + order `T` → `T`;
   cart `T1` + order `T2` → `T1`; cart ไม่มี + order `""` → ไม่มี token (หยุดเงียบตามเดิม); cart `123` (ไม่ใช่ string) + order `T` → `T`; integration: Given order ที่แปลงจาก draft ซึ่ง cart มี
   `metadata.affiliate_token = ""` และ draft order มี token ที่ถูกต้องของ Ann Then มี attribution 1 รายการของ Ann; AC-48 ยังผ่าน (unit jest + integration http)
+- AC-50 (AF-18, กฎ 42) e2e 375×812: Given affiliate `active` ที่อีเมลยาว ≥ 40 ตัวไม่มีช่องว่าง (ตั้งตอน register ใน setup) When เปิด `/th/affiliate/profile` (รอ `affiliate-profile-page`)
+  Then `document.documentElement.scrollWidth ≤ 375`, ขอบขวาของ `affiliate-profile-email` (`getBoundingClientRect().right`) ≤ 375 และ `textContent` ของมันเท่ากับอีเมลที่สมัคร (เทียบค่าจาก setup);
+  ตรวจซ้ำ 5 รอบ (`--repeat-each=5`) ผ่านทุกรอบ (qa พบ 2/9 รอบ); ที่ 1280: top ของ `<dt>` ป้ายอีเมลกับ `affiliate-profile-email` ต่างกัน ≤ 2px (ยังอยู่แถวเดียวกัน);
+  e2e เดิมของ AC-40 (Profile) และ spec 01 AC-124/AC-131 (`affiliate-default-link-*`) ผ่านโดยไม่แก้ locator (e2e)
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -444,6 +452,7 @@ Payout
 - (รอบ 11) integration http: AC-39 (AF-13); e2e: AC-40 (AF-8b); unit Vitest: AC-41 (AF-8c); e2e admin: AC-42 (AF-12a), AC-43 (AF-12b), AC-44 (AF-12c); integration http + e2e admin: AC-45 (AF-14)
 - (รอบ 12) integration http + e2e admin: AC-46 (AF-15); unit Vitest + e2e: AC-47 (AF-N3); integration http: AC-48 (AF-16)
 - (รอบ 13) unit jest + integration http: AC-49 (AF-17)
+- (รอบ 19) e2e (375/1280, repeat 5): AC-50 (AF-18)
 
 ## Tasks
 | ID | Task | Depends |
@@ -476,6 +485,7 @@ Payout
 | AF-16 | ☑ #197 (AC-48 ☑) — (backend เล็ก, รอบ 12 — owner Q19 = (ข)) คัดลอก `affiliate_token` จาก cart ลง metadata ของ draft order ตอน join, attribution อ่าน `order.metadata` เมื่อไม่มี cart และข้าม order ที่เป็น draft (กฎ 41) (AC-48) — ไฟล์: `src/workflows/group-buy/join-group.ts`, `src/workflows/affiliate/attribute-order.ts` + integration test | AF-3 ☑, GB-3 ☑, GB-5 ☑ (#185) |
 | AF-17 | (backend เล็กมาก, รอบ 13 — review #197 AF-16) เลือก token ของ attribution: ค่าว่าง/ไม่ใช่ string ของ `cart.metadata.affiliate_token` ถือว่า "ไม่มี" แล้ว fallback ไป `order.metadata` (แทน `??`) (กฎ 41b) (AC-49) — ไฟล์: `src/workflows/affiliate/attribute-order.ts` + unit/integration test ของ AF-16 | AF-16 ☑ (#197) — **เริ่มได้**; ไม่บล็อก GB-7 |
 | AF-N3 | (storefront เล็ก, รอบ 12 — review/qa #173, nit #153/#174) สกุลเงินของ Earnings, component คัดลอก/แชร์เดียว, หน้าเกินจำนวน, เครื่องหมาย `−`, static test ของกฎ 31 ด้วย AST (กฎ 40) (AC-47) — ไฟล์: `app/[countryCode]/(main)/affiliate/**`, `modules/affiliate/**`, static test ของ AF-3c | AF-8c ☑ (#182), AF-3c ☑ (#153) — **เริ่มได้** |
+| AF-18 | (storefront เล็ก ~40 LOC รวม e2e, รอบ 19 — qa #265 O-2) หน้า Profile ของ portal ไม่ล้นที่ 375 เมื่อค่ายาวไม่มีช่องว่าง: `minmax(0,1fr)` + `break-words` + test id อีเมล (กฎ 42) (AC-50) — ไฟล์: `app/[countryCode]/(main)/affiliate/profile/page.tsx`, e2e (ต่อจาก `e2e/affiliate-portal-pages.spec.ts` หรือไฟล์ใหม่) | none — **เริ่มได้** (AF-8b ☑, CORE-37 ☑ #265); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/profile/page.tsx`); ไม่บล็อก release |
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
@@ -487,6 +497,7 @@ AF-15 หลัง AF-14; owner ตอบ 2026-10-28: Q19 (ข) → กฎ 41/AF
 release v0.6.0 ต้องมี AF-14 (AF-15 ควรมี)
 (รอบ 13, 2026-11-03) สถานะ: AF-14 ☑ #187, AF-16 ☑ #197 (AC-48 ☑); ใหม่: AF-17 เริ่มได้ (← AF-16 ☑); nit review/qa ของ AF-14 #187 (assertion `safeParse` ใน `affiliate-names.unit.spec.ts` ไม่ยืนยันค่า,
 cast `as unknown as` ของ `affiliateNames` ใน `list-table.tsx`, query ชื่อไม่มี `placeholderData: keepPreviousData`) ยังไม่อยู่ใน ADM-8a/AF-15 → **เพิ่มเข้า ADM-8a** (spec 08 — ADM-8a เขียน `list-table` ใหม่อยู่แล้ว)
+(รอบ 19, 2026-11-04) ใหม่: AF-18 เริ่มได้ (∥ ทุกตัว, ไม่บล็อก release v0.6.0)
 (รอบ 11, review #146 AF-N2) nit `tryAcquire` ที่ `catch {}` กลืน error ทุกชนิด (ต้องข้ามเฉพาะ lock conflict) และ `.run()` ที่ throw แบบ sync ต้อง release lock — #146 merge แล้ว
 ถ้ายังไม่ได้แก้ ให้ PR ถัดไปที่แตะ maturity job แก้ (ไม่สร้าง task); ข้อสังเกต: entry `pending` ของ order ที่ยกเลิกและยอดสุทธิ = 0 ค้าง `pending` ถาวร (กฎ 5 ห้ามแก้ status ย้อน/ข้าม) และถูกสแกนทุกวันพร้อม log `affiliate_cancel_reconcile_noop`
 — ยอมรับใน v1 (ปริมาณน้อย; ไม่ใช่ยอดที่จ่ายได้) → backlog หลัง v1.0 พร้อม AF-11

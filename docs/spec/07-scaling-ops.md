@@ -7,7 +7,7 @@
 ## สิ่งที่ Medusa มีให้อยู่แล้ว
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |------|-----------------|-----|
-| แยก HTTP ออกจากงาน background | `workerMode: "server" | "worker"` | 2 deployables |
+| แยก HTTP ออกจากงาน background | `workerMode: "server" \| "worker"` | 2 deployables |
 | Events / jobs แบบคงทน (durable) | Redis Event Bus, Redis Workflow Engine, Redis Locking, Redis Cache modules | เปิดใช้ใน prod |
 | Horizontal scaling ของ API | Server แบบ stateless; flag `--cluster` | N replicas |
 | DB pooling | `databaseDriverOptions` | ตั้งค่า pool size |
