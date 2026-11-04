@@ -23,7 +23,9 @@ backend validation), GB-11 คืน `product_id` แทน `product_ids`, GB-7a
 follow-up review #247/#246 → GB-N5 (test/cleanup) — กฎข้อ 36, AC-55;
 รอบ 18 2026-11-04: แก้ถ้อยคำกฎข้อ 36b/AC-55 ตาม core-flows 2.22.1 จริง (ลบเฉพาะ method ที่ profile ชน + ทิ้ง method ของ profile ที่ไม่มี item ใช้ตอน refresh),
 AC-52 ใช้ e2e admin ดัก network ด้วย `page.route` แทน component test, follow-up qa/review #259 → GB-N6 — กฎข้อ 37, AC-56;
-รอบ 19 2026-11-04: GB-13 ☑ #259, GB-N6 ☑ #269 (ข้อ (a) ปิดโดย #259), nit review #269 → GB-N7 (comment ของ assertion) — กฎข้อ 38, AC-57)
+รอบ 19 2026-11-04: GB-13 ☑ #259, GB-N6 ☑ #269 (ข้อ (a) ปิดโดย #259), nit review #269 → GB-N7 (comment ของ assertion) — กฎข้อ 38, AC-57;
+รอบ 20 2026-11-04: GB-N7 ☑ #274, owner เลือกทาง (ก) ให้ key ของฟอร์มสร้างแคมเปญใช้ `crypto.getRandomValues` (admin ที่เปิดผ่าน http เปิดฟอร์มไม่ได้เพราะ `crypto.randomUUID()`
+มีเฉพาะ secure context) → GB-15 — กฎข้อ 33d แก้, AC-58)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -465,8 +467,11 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
       `campaign_identifier = group-buy-<key>` และแคมเปญของเราผ่าน link เดิมด้วย `query.graph` → พบ → คืนแคมเปญเดิม (ไม่สร้าง campaign/promotion/link ใหม่) / ไม่พบ → สร้างตามเดิมด้วย
       `campaign_identifier = group-buy-<key>` → `releaseLockStep`; `when(...)` ตั้งชื่อคงที่ (CLAUDE.md) และ compensation ของขั้นเดิมคงไว้
     (c) ตอบ 200 `{ campaign }` รูปเดียวกันทั้งสร้างใหม่และคืนของเดิม (AC-49 ยัง 200); key เดิมแต่ body ต่าง → คืนแคมเปญเดิม (key ใช้ได้ครั้งเดียวต่อการเปิดฟอร์ม — ไม่เทียบ body)
-    (d) ฟอร์มสร้างแคมเปญใน admin สร้าง key ด้วย `crypto.randomUUID()` ครั้งเดียวต่อการเปิด `FocusModal` และส่ง key เดิมทุกครั้งที่ submit ในรอบนั้น (ลองใหม่หลัง network ล้มได้แคมเปญเดิม);
-      การกันกดซ้ำของกฎข้อ 17 คงไว้
+    (d) ฟอร์มสร้างแคมเปญใน admin สร้าง key ครั้งเดียวต่อการเปิด `FocusModal` และส่ง key เดิมทุกครั้งที่ submit ในรอบนั้น (ลองใหม่หลัง network ล้มได้แคมเปญเดิม);
+      การกันกดซ้ำของกฎข้อ 17 คงไว้ — **(รอบ 20, owner เลือกทาง (ก) 2026-11-04 — GB-15)** สร้าง key ด้วย `crypto.getRandomValues` (มีทั้งบน http และ https)
+      **ไม่ใช่** `crypto.randomUUID()` (มีเฉพาะ secure context — https/localhost; admin ที่เปิดผ่าน http เช่น staging/LAN กด "Create campaign" แล้ว throw จนฟอร์มไม่เปิด):
+      helper pure `newIdempotencyKey()` ใน `src/admin/lib/group-buy-form.ts` สุ่ม 16 byte แล้วจัดรูปเป็น UUID v4 (ตั้ง bit version/variant ตาม RFC 4122 — key ยังเป็น "รูป UUID" ตาม AC-52
+      และผ่าน validator เดิมของข้อ (a)); ไม่เพิ่ม dependency (ไม่ใช้ lib `uuid`), ไม่แก้ backend
 34. (รอบ 16, GB-N4 — review/qa GB-6e/GB-7a2/GB-7c) hygiene ของ test: (a) `e2e/group-buy-join.spec.ts` ไม่เรียก `evidence("01-selection-address-shipping")` และ `evidence("05-guest-login")`
     (รูปถูกแทนด้วยรูปของ qa ใน `docs/evidence/group-buying/GB-7a2/REPORT.md`) — คงขั้นตรวจของ test; (b) `src/lib/util/home-campaigns.test.ts` กรณี `firstPool` ที่ `[b, a, d].reverse()` ซ้ำกับ
     `[d, a, b]` → แทนด้วยลำดับที่ต่างจริง; (c) `integration-tests/http/group-buy-campaigns.spec.ts` helper `createViaApi` assert status 200 ตรงๆ (AC-49 รอบ 15c) ไม่ใช่แค่ไม่ throw
@@ -731,6 +736,11 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   (วัดเวลาใน test — น้อยกว่า TTL 30s ของกฎข้อ 33b) และ Medusa campaign มี `campaign_identifier = "group-buy-K"`; AC-52 ยังผ่าน
 - AC-57 (GB-N7, กฎข้อ 38) grep: ใน `group-buy-campaigns.spec.ts` บรรทัดก่อนหน้า (ติดกัน) ของบรรทัดที่มี `percentage number between 0 and 100` เป็น comment ที่มีอักษรไทยและมีคำว่า `lock`
   และ `zod`; diff ของ PR ในไฟล์นี้มีเฉพาะบรรทัด comment (ไม่มีบรรทัด code เปลี่ยน); AC-56 ยังผ่านใน CI (`backend-tests`)
+- AC-58 (GB-15, กฎข้อ 33d รอบ 20) unit jest (`src/admin/lib/__tests__/group-buy-form.unit.spec.ts`): Given `globalThis.crypto` ถูกแทนชั่วคราวด้วย object ที่มี**เฉพาะ** `getRandomValues`
+  (ของจริงจาก `node:crypto` `webcrypto`; ไม่มี `randomUUID` — จำลองหน้า http) When เรียก `newIdempotencyKey()` 1,000 ครั้ง Then ไม่ throw, ทุกค่าตรง `/^[A-Za-z0-9_-]{8,128}$/`
+  (regex ของกฎข้อ 33a) และ `/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/`, `new Set(keys).size === 1000`; คืนค่า `globalThis.crypto` เดิมหลัง test (`afterEach`);
+  grep: `apps/backend/src/admin/components/group-buy/create-campaign.tsx` และ `apps/backend/src/admin/lib/group-buy-form.ts` ไม่มีคำว่า `randomUUID` (รวม comment) และ `openModal` เรียก `newIdempotencyKey()`;
+  diff ของ PR ไม่แตะ `apps/backend/src/api/` และ `package.json`; e2e admin ของ AC-52 (body มี `idempotency_key` รูป UUID, key เดิมเมื่อ submit ซ้ำ, key ใหม่เมื่อเปิดฟอร์มใหม่) และ AC-56 ผ่านโดยไม่แก้ assertion
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -765,6 +775,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - (รอบ 17) unit Vitest: AC-51 ส่วนกฎข้อ 32e1 (GB-12); grep + suite เดิม (integration http, unit jest, Vitest): AC-55 (GB-N5)
 - (รอบ 18) e2e admin (repeat) + integration (http) + grep: AC-56 (GB-N6)
 - (รอบ 19) grep + suite เดิม: AC-57 (GB-N7)
+- (รอบ 20) unit jest + grep + e2e admin เดิม: AC-58 (GB-15); qa (ไม่ใช่ AC): เปิด admin ผ่าน http ที่ไม่ใช่ localhost (เช่น IP ของเครื่องใน LAN) แล้วกด `gb-campaign-create` → ฟอร์มเปิดและสร้างแคมเปญได้
 
 ## Tasks
 | ID | Task | Depends |
@@ -802,7 +813,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-14 | (backend + storefront เล็ก ~150 LOC, รอบ 16b — owner spec 01 Q-C4 = ข) ตรวจ shipping profile ตอน join + map code ใหม่เป็นข้อความไทย (กฎข้อ 35; AC-54) — ไฟล์: `src/workflows/group-buy/join-group.ts` (`validateJoinStep` — field ของ cart + query `shipping_option`), `src/modules/group_buy/utils/shipping-profile.ts` ใหม่ (+ unit), `src/modules/group_buy/errors.ts`, `src/api/__tests__/error-handler.unit.spec.ts`, `integration-tests/http/group-buy-join.spec.ts`, `storefront/src/lib/util/group-join-error.ts` (+ `group-join-error.test.ts`) | none — **เริ่มได้** (∥ CORE-32 ของ spec 01 — ไม่มีไฟล์ชน: CORE-32 แตะ `lib/data/group-join.ts`/`lib/util/shipping-options.ts`; ∥ GB-12, GB-13, GB-N4 — ไม่มีไฟล์ชน (GB-N4 แตะ `e2e/group-buy-join.spec.ts` ฝั่ง storefront ไม่ใช่ไฟล์ http ชื่อเดียวกันของ backend)); ควรมีก่อน release v0.5.0 — ☑ #247 |
 | GB-N5 | (test/cleanup เล็ก ~150 LOC, รอบ 17 — nit review #247/#246) ตัด `!profile \|\|`, ขั้น O_dig → O_std ใช้ Store API, helper `integration-tests/helpers/admin.ts` แทนโค้ดสร้าง admin + JWT ที่ซ้ำ, ชื่อตัวแปร pool ใน `home-campaigns.test.ts` (กฎข้อ 36; AC-55) — ไฟล์: `src/modules/group_buy/utils/shipping-profile.ts`, `integration-tests/helpers/admin.ts` ใหม่, `integration-tests/http/{group-buy-join,evoucher-admin,evoucher-admin-ui,evoucher-partner-url,evoucher-void-expiry,affiliate-admin,flash-sale-admin-config}.spec.ts` (ตามที่มีโค้ดชุดนั้นจริงตอนเริ่ม), `storefront/src/lib/util/home-campaigns.test.ts`; ถ้าเกิน ~400 LOC แยกส่วน helper admin เป็น PR ที่สอง — ☑ #257 | **GB-14 (#247) merge**, **GB-N4 (#246) merge** (แก้ `home-campaigns.test.ts` ส่วน `firstPool` เดียวกัน); ชน spec http กับ GB-13 (`group-buy-campaigns.spec.ts` — ไม่อยู่ในรายการถ้าไม่มี `actor_type: "user"`) และ AF-15 (`affiliate-admin.spec.ts`) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
 | GB-N6 | (test-only เล็ก ~60 LOC, รอบ 18 — qa #259 O-3, nit 2 review #259) e2e admin ของ AC-52 รอ/ปิด toast ก่อนคลิก `gb-campaign-create` + integration test เส้นทาง error หลังขอ lock แล้ว key เดิมใช้ต่อได้ทันที (กฎข้อ 37; AC-56) — ไฟล์: e2e admin ที่ #259 เพิ่ม, `storefront/e2e/support/admin.ts` (ถ้าเป็น helper), `backend/integration-tests/http/group-buy-campaigns.spec.ts` — ☑ #269 (train #270; ข้อ (a) ปิดโดย #259 commit `016f204`) | **GB-13 (#259) merge** (แก้ test ที่ #259 เพิ่ม); ∥ ทุกตัวของ spec 01; ชน e2e admin ของฟอร์มสร้างแคมเปญกับ ADM-7 (spec 08) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
-| GB-N7 | (test-only comment ~2 LOC, รอบ 19 — nit review #269) comment เหนือ assertion ข้อความ "percentage number between 0 and 100" ว่ายืนยันการล้มหลัง lock ไม่ใช่ที่ zod (กฎข้อ 38; AC-57) — ไฟล์: `backend/integration-tests/http/group-buy-campaigns.spec.ts` | none — **เริ่มได้** (GB-N6 ☑ #269); ∥ ทุกตัว; ไม่บล็อก release — ถ้ามี PR อื่นแตะไฟล์นี้ก่อน รวมเข้า PR นั้นได้แล้วปิด GB-N7 |
+| GB-N7 | (test-only comment ~2 LOC, รอบ 19 — nit review #269) comment เหนือ assertion ข้อความ "percentage number between 0 and 100" ว่ายืนยันการล้มหลัง lock ไม่ใช่ที่ zod (กฎข้อ 38; AC-57) — ไฟล์: `backend/integration-tests/http/group-buy-campaigns.spec.ts` — ☑ #274 | none — **เริ่มได้** (GB-N6 ☑ #269); ∥ ทุกตัว; ไม่บล็อก release — ถ้ามี PR อื่นแตะไฟล์นี้ก่อน รวมเข้า PR นั้นได้แล้วปิด GB-N7 |
+| GB-15 | (admin เล็ก ~40 LOC รวม test, รอบ 20 — owner เลือกทาง (ก) 2026-11-04) key ของฟอร์มสร้างแคมเปญสร้างด้วย `crypto.getRandomValues` ผ่าน helper `newIdempotencyKey()` (รูป UUID v4) แทน `crypto.randomUUID()` ที่ใช้ไม่ได้บน http (กฎข้อ 33d; AC-58) — ไฟล์: `src/admin/lib/group-buy-form.ts` (+ `src/admin/lib/__tests__/group-buy-form.unit.spec.ts`), `src/admin/components/group-buy/create-campaign.tsx` (`openModal` + comment ~49); ไม่แตะ backend/`package.json` | none — **เริ่มได้** (GB-13 ☑ #259); ∥ ทุกตัว; ชน `create-campaign.tsx` กับ ADM-7 (spec 08, ☐) ตัวที่ merge ทีหลัง rebase; **ควรมีก่อน release v0.5.0** (admin ที่เปิดผ่าน http สร้างแคมเปญไม่ได้เลย) |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
 GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
@@ -828,6 +840,8 @@ GB-14 ☐ เริ่มได้ (∥ ทุกตัว, Q-C4 = ข) — GB-1
 (รอบ 17, 2026-11-04) GB-12 ◐ #244 (+ กฎข้อ 32e1), GB-N4 ◐ #246, GB-14 ◐ #247; Q22 = (ก) ตัดสินแล้ว; GB-N5 ☐ (← #247, #246) → ไม่บล็อก release; GB-13 ☐ (← GB-N4 #246)
 (รอบ 18, 2026-11-04) merge แล้วผ่าน merge train: GB-12 ☑ #244, GB-N4 ☑ #246, GB-14 ☑ #247 (train #250); GB-N5 ☑ #257 (train #260); GB-13 ◐ #259 (อยู่ใน train #261) → GB-N6 ☐ (← #259; ไม่บล็อก release)
 (รอบ 19, 2026-11-04) merge แล้ว: GB-13 ☑ #259 (train #261), GB-N6 ☑ #269 (train #270; ข้อ (a) ปิดโดย #259 commit `016f204`); GB-N7 ☐ เริ่มได้ (comment อย่างเดียว ไม่บล็อก release)
+(รอบ 20, 2026-11-04) merge แล้ว: GB-N7 ☑ #274 (merge ตรง); ใหม่: GB-15 ☐ เริ่มได้ (∥ ทุกตัว — owner ทาง (ก): `crypto.getRandomValues` แทน `crypto.randomUUID()`);
+e2e `group-buy-admin-detail.spec.ts`/`group-buy-admin-dates.spec.ts` ที่ดึง `/admin/products?limit=1` แก้ใน CORE-46 ของ spec 01 (กฎข้อ 104d — e2e hygiene กลุ่มเดียวกัน)
 
 ## Open questions
 - ~~**Q22**~~ **ตัดสินแล้ว (owner 2026-11-04 รอบ 17) = (ก)** → กฎข้อ 35c เป็นกฎปกติ (cart ไม่มี shipping method เลย → ไม่ตรวจ) ไม่มี task เพิ่ม — คำถามเดิม: (รอบ 16b, GB-14 กฎข้อ 35c) join ด้วย cart ที่มี line ต้องจัดส่งแต่**ไม่มี shipping method เลย**ควรถูกปฏิเสธด้วยไหม (แบบ `validateShippingStep` ของ Medusa):
