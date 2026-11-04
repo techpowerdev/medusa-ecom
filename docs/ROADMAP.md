@@ -24,6 +24,10 @@ Q17 = (ก) (กฎข้อ 29f ปรับถ้อยคำตาม Q16), Q
 **รอบ 15 (2026-11-03 — owner ตัดสิน: group buy 1 แคมเปญ = 1 สินค้า)**: หน้ากลุ่ม = ตะกร้าเฉพาะสินค้านั้น เลือกหลาย variant + จำนวน → spec 04 กฎข้อ 30–31, AC-49..50,
 GB-6e (admin picker สินค้าเดียว + backend validation) ∥ GB-11 (`product_id`) ∥ GB-7a2a (error map) → GB-7a1 → GB-7a2 (หลาย variant) ∥ GB-7c (การ์ดสินค้าเดียว) ·
 **owner ตอบ spec 04 Q20 (2026-11-03) = ตามค่าตั้งต้นทั้งหมด**: ไม่จำรายการข้ามหน้า, หลัง join แก้ไม่ได้ (leave แล้ว join ใหม่), `max_units_per_person` รวมทุก variant, คงเป้า orders/units/people (กฎข้อ 31d) · ไม่มีคำถามค้าง
+**รอบ 16 (2026-11-04 — owner อนุมัติเปิด task จาก follow-up ของ review/qa 2026-11-04)**: spec 01 CORE-28 (`promotion-error` เมื่อช่องโค้ดปิด) · CORE-29 (กู้ตะกร้าหลัง login ใหม่ ← **ADR-019 proposed**) ·
+CORE-30 (กลับหน้าเดิมหลัง login) · CORE-31 (ปุ่มคัดลอกกลาง) · CORE-32 (ซ่อน Digital delivery ของสินค้าที่ต้องจัดส่ง) · spec 04 GB-12 (UI group buy) · GB-13 (idempotency สร้างแคมเปญ ← Q21) · GB-N4 (test hygiene) ·
+spec 07 OPS-17b (redact JWT ใน log ของ load test) · **คำถามค้างสำหรับ owner**: spec 01 Q-C3 (= อนุมัติ ADR-019), Q-C4 (บังคับ backend เรื่อง shipping profile ไหม),
+spec 04 Q21 (ขัด Q10 เดิม — ทำ `POST /admin/group-buy/campaigns` ให้ idempotent ไหม)
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -90,6 +94,11 @@ GB-6e (admin picker สินค้าเดียว + backend validation) ∥ 
 | CORE-26 | (รอบ 13, **qa #199 — ยอดรวมใน dropdown ตะกร้าเป็นยอดก่อนส่วนลด ลูกค้าสับสนราคา**) ยอดรวมจาก field ของ Medusa ที่ตรงส่วนลด, แถว `cart-totals` รวมได้ยอดสุทธิ, dropdown ที่เปิดเองไม่ค้างทับ PDP, unit PDP เปลี่ยน `product.id`, comment "Shirts" (AC-117) | ☐ **ควรทำก่อน** (← CORE-25 #199; CORE-10c #202 ไม่บล็อก — แค่ส่วน comment ต้อง rebase; Q-C1 = ก/ก) |
 | CORE-27 | (รอบ 14, qa/review #211) ปุ่มเพิ่มลงตะกร้าทั้งสองจุดของ PDP กันคลิกซ้อนใน tick เดียวด้วย `useRef` in-flight + `mobile-cart-button` disable ครบแบบปุ่มหลัก (AC-119) | ☐ (← FS-19 #211; ชน e2e/unit PDP กับ CORE-26 #209 — ตัวที่ merge ทีหลัง rebase) |
 | CORE-14g | (รอบ 14b, qa #222 D-1) `clearStaleCartCookie` ไม่ล้าง `_medusa_cart_id` ใน request ของ server action (`next-action`) → แก้จำนวน/โค้ด/ลบสินค้าตอน JWT หายแสดง `SIGN_IN_AGAIN_MESSAGE` แถวสินค้ายังอยู่; GET ถัดไปยังล้างตาม AC-43 (AC-120) | ☐ (← CORE-4i-a #222 — คนละไฟล์ ขนานได้; รัน AC-110 ข้อ 1 ซ้ำหลังทั้งคู่ merge) |
+| CORE-28 | (รอบ 16, qa #222 O-2) `promotion-error` render นอก `isOpen` — error ของการใส่/ลบโค้ดเห็นได้แม้ช่องปิด + แก้ comment ค้างใน e2e core-19c (AC-121) | ☐ (← CORE-14g #234) |
+| CORE-29 | (รอบ 16, รอบ 14b) กู้ตะกร้าหลัง login ใหม่: จำ id ตะกร้าหลักใน `customer.metadata` แล้วกู้เมื่อไม่มี cookie cart (AC-122) | ☐ (← **ADR-019 accepted**, CORE-14g #234, CORE-30) |
+| CORE-30 | (รอบ 16, qa #239/#238) ไม่ login กด join/สร้างทีม → login แล้วกลับ `/<cc>/g/<token>` หรือ `/<cc>` (allow-list ของ `return_to`) (AC-123) | ☐ **เริ่มได้** |
+| CORE-31 | (รอบ 16) ปุ่มคัดลอกกลางใช้ร่วม `ShareLinkButton` + `VoucherCopyButton` (AC-124) | ☐ **เริ่มได้** |
+| CORE-32 | (รอบ 16, qa #238) กรอง option วิธีส่งตาม shipping profile ที่ checkout และหน้ากลุ่ม — ไม่แสดง Digital delivery ให้สินค้าที่ต้องจัดส่ง (AC-125) | ☐ **เริ่มได้** (Q-C4 ไม่บล็อก) |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | ☑ #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | ☑ #124 ∥ ☑ #130 |
 | CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | ☑ #168 |
@@ -142,6 +151,8 @@ test `membership_joined`, ขอบหัวข้อ runbook; membership `paid`
 owner Q13 = (ก) manual, Q14 = (ก) `order-placed` (2026-10-28) ;
 GB-6a ☑ #75 → (GB-6b1 ☑ #87 ∥ GB-6b2 ☑ #96) → GB-6c1 ☑ #114 → GB-6c2 ☑ #121 → GB-6d ☑ #143 → GB-N3 ☑ #161 ;
 GB-N1 ☑ #106 · GB-N2 ☑ #126 (nit `trackSubscribers` คัดลอก `subscriberId` ถ้ายังไม่แก้ใน #126 → แก้ใน PR ถัดไปที่แตะ `group-buy-join.spec.ts`) · Q11 owner ยืนยัน (ก) ยอมรับ lock TTL 60s ใน v1 — ไม่มี task
+(รอบ 16) **GB-12 ☐ เริ่มได้** (countdown กลาง, ชื่อสินค้า/ราคาใน `group-selection`, fixed "ต่อชิ้น", กล่องยืนยันออกจากกลุ่ม 375px + empty state เดียว; AC-51 — ควรก่อน v0.5.0) ∥
+**GB-N4 ☐ เริ่มได้** (test hygiene; AC-53) → GB-13 ☐ (← **Q21 = ก**: `idempotency_key` ของการสร้างแคมเปญ; AC-52) · CORE-30, CORE-32 (spec 01) ควรก่อน v0.5.0
 
 ## M6 Affiliate — **v0.6.0**
 AF-1 ☑ #11 · AF-2 ☑ #66 · AF-5 ☑ #35 → AF-3 ☑ #77 → (AF-3b ☑ #119 ∥ AF-4 ☑ #90 ∥ AF-4b ☑ #91 ∥ AF-7 ☑ #110) → AF-7b ☑ #122 →
@@ -163,6 +174,7 @@ OPS-18 ☑ #194 (run 41617065775: lock ไม่ใช่สาเหตุ, ≥
 OPS-20a ◐ #204 (owner 2026-11-03 — ปิด burst ได้ผ่าน dispatch input + แตกเวลาก่อน/ใน/หลัง hook, สรุป burst vs workflow; AC-31) → OPS-17a → OPS-17 → OPS-20b ☐ (ตัวชี้วัดความอิ่มตัว; AC-32)
 — ลำดับ `tools/load/*` (รอบ 13): OPS-20a → OPS-17a → OPS-17 → OPS-20b (ชน `run.sh`) · OPS-19 ⏸ (staging load test 500 rps × 60s + p95 < 300ms gate; AC-30 — ต้องมี ADR staging ก่อน) ·
 OPS-5 ☐ (ท้ายสุด)
+(รอบ 16) **OPS-17b ☐ — ความปลอดภัย, เริ่มได้** (scan secret ก่อนพิมพ์ลง job log + redact JWT ใน console ของ k6; AC-34) → OPS-20b (ชน `run.sh`)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
@@ -246,6 +258,10 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 - รอบ 15 (2026-11-03, owner ตัดสิน) → spec 04: 1 แคมเปญ = 1 สินค้า + หน้ากลุ่มเลือกหลาย variant → กฎข้อ 30–31, GB-6e, GB-7a2a, ปรับ GB-11/GB-7a1/GB-7a2/GB-7c, AC-28/33/45/46/48, AC-49..50, Q20 ·
   spec 08: ADM-7 หมายเหตุ picker single select (ชน GB-6e) · review #227 → GB-6e รวมโค้ด/test เดิมที่พัง (~320 LOC), กฎ 30 ห้าม variant scope + ข้อยอมรับ promotion ของกลุ่ม, AC-33 ขีดฆ่า ·
   รอบ 15b: owner ตอบ Q20 = ค่าตั้งต้นทั้งหมด (กฎข้อ 31d) + nit re-review #227 (test id ของหน้ากลุ่ม/การ์ดในหัวข้อ Storefront)
+- รอบ 16 (2026-11-04, owner อนุมัติเปิด task จาก follow-up ของ review/qa 2026-11-04) → spec 01: qa #222 O-2 → CORE-28 · รอบ 14b ตะกร้าหายหลัง login → CORE-29 + ADR-019 (proposed, Q-C3) ·
+  qa #239/#238 return URL → CORE-30 · ปุ่มคัดลอกซ้ำ → CORE-31 · qa #238 Digital delivery → CORE-32 (+ Q-C4) · comment e2e core-19c → รวมใน CORE-28 ·
+  spec 04: countdown ซ้ำ + `group-selection` + "ต่อชิ้น" (qa GB-7a1) + qa GB-7b 375px/empty state → GB-12 · qa GB-6e O-2 → GB-13 (+ Q21 ขัด Q10) · evidence/`firstPool`/`createViaApi` → GB-N4 ·
+  test id ในหัวข้อ Storefront แก้ในที่เดิม (ไม่มี task) · spec 07: scan ก่อน cat + k6 console → OPS-17b
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →

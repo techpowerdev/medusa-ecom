@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (follow-up ล่าสุด: รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; CORE-14g cookie cart ใน server action (qa #222 D-1), กฎข้อ 84, AC-120; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
+สถานะ: accepted (follow-up ล่าสุด: รอบ 16 2026-11-04 — CORE-28..32, กฎข้อ 85–89, AC-121..125, ADR-019 proposed (CORE-29), คำถาม Q-C3/Q-C4; รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; CORE-14g cookie cart ใน server action (qa #222 D-1), กฎข้อ 84, AC-120; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
 เป้าหมาย: ร้านค้าพื้นฐานที่สมบูรณ์และพร้อม production โดย **ไม่มี custom commerce logic เลย**
 ทุกอย่างใน spec นี้คือการตั้งค่า, seeding, theming และ deployment
 
@@ -1315,6 +1315,99 @@ none
 
 ### Open questions (รอบ 14b)
 none
+
+## Follow-up รอบ 16 จาก review/qa (2026-11-04 — owner อนุมัติเปิด task)
+ที่มา: qa CORE-4i (#222) O-2, qa GB-7a2 (#238) ข้อสังเกต 1 และ D1, qa GB-7c (#239) AC-48 (ไม่ login → `/th/account` แล้วไม่กลับหน้าเดิม), รอบ 14b (ตะกร้าหายหลัง login ใหม่ — เดิม out of scope),
+review/qa 2026-11-04 (ปุ่มคัดลอกซ้ำกัน 2 ที่, comment ค้างใน e2e core-19c) — ตรวจโค้ดบน develop `abbbc92` แล้วยังเป็นจริงทุกข้อ:
+`promotion-error` อยู่ใต้ `{isOpen && ...}` (`discount-code/index.tsx` ~95–118); `readReturnTo` รับเฉพาะ `/buy/` (`lib/util/login-return.ts`) และหน้ากลุ่ม/ปุ่มสร้างทีม `router.push("/<cc>/account")`
+ไม่มี return URL; `VoucherCopyButton` เรียก `navigator.clipboard.writeText` เองซ้ำกับ `ShareLinkButton`; checkout/หน้ากลุ่มแสดงทุก option จาก `GET /store/shipping-options` (ไม่กรอง);
+comment `core-19c-delete-button-error.spec.ts` ~180–181 ยังว่า middleware ล้าง cookie ก่อนถึง action (จะผิดเมื่อ CORE-14g #234 merge)
+ย้ายไป spec 04 (GB-12 กฎข้อ 32c): ข้อความส่วนลด fixed "ต่อชิ้น" — อยู่ใน `groupDiscountValue` ของหน้ากลุ่ม/การ์ด group buy (qa GB-7a1 ข้อสังเกต 2) ไม่ใช่ checkout
+Out of scope: กฎข้อ 84/AC-120 (CORE-14g #234 ยังเปิด — ไม่แก้), refresh token อัตโนมัติ, merge cart สองใบ, กรอง shipping option ฝั่ง backend (Q-C4), i18n
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| หา cart ล่าสุดของ customer หลัง login | **ไม่มี** — Store API 2.22.1 ไม่มี `GET /store/carts` (`api/store/carts/route.ts` export แค่ `POST`), อ่าน cart ได้ด้วย id ที่ storefront เก็บเท่านั้น; `metadata` ของ customer แก้ได้ผ่าน `POST /store/customers/me` | ขยาย — **ADR-019 (proposed)** ทางเลือก B: จำ id ของตะกร้าหลักใน `customer.metadata` แล้วกู้ตอน login; ownership ของ CORE-12 ตรวจ cart ที่กู้ (กฎข้อ 86) |
+| โอน cart ตอน login | `transferCart()` → `POST /store/carts/:id/customer` (+ กฎข้อ 40) | ใช้ตามเดิม — กู้เฉพาะเมื่อหลังขั้นนี้ไม่มี cookie cart |
+| return URL หลัง login | `RETURN_TO_PARAM` + `readReturnTo` + `loginPathForReturn` ของ CORE-14 (รับเฉพาะ `/buy/<items>`) | ขยาย allow-list (กฎข้อ 87) |
+| วิธีส่งที่ใช้ได้กับสินค้าใน cart | `GET /store/shipping-options?cart_id=` คืน `shipping_profile_id` ของ option แต่**ไม่กรอง**ตาม shipping profile ของสินค้า (`list-shipping-options-for-cart` 2.22.1 กรองแค่ fulfillment set/ที่อยู่); Medusa ตรวจ profile ตอน complete cart (`validate-shipping`) | ขยาย — กรองฝั่ง storefront (กฎข้อ 89); ไม่ห่อ route ของ Medusa |
+| ปุ่มคัดลอก | `Button` (`@modules/common/components/ui`) + `navigator.clipboard`; `ShareLinkButton` (spec 05) และ `VoucherCopyButton` (spec 02) ทำซ้ำกัน | custom — component คัดลอกกลางตัวเดียว (ผู้ใช้จริง 3 ที่ — CLAUDE.md ข้อห้าม 3) |
+
+### Data model / Workflows / API routes
+none — ADR-019 ทางเลือก B ใช้ `POST /store/customers/me` และ `GET /store/carts/:id` ของ Medusa (ถ้า owner เลือก A ต้องเพิ่ม route ตาม ADR)
+
+### Business rules
+85. (CORE-28 — qa #222 O-2) `promotion-error` ใน `modules/checkout/components/discount-code` render **นอก** `isOpen` — error ของการใส่/ลบโค้ด (รวม `SIGN_IN_AGAIN_MESSAGE`) เห็นทันทีไม่ว่าช่องใส่โค้ดเปิดหรือปิด
+    และยังอยู่หลังกดปิดช่อง; การใส่/ลบครั้งถัดไปที่สำเร็จล้าง error (พฤติกรรมเดิม); comment ใน `e2e/core-19c-delete-button-error.spec.ts` (~180–181) แก้ให้ตรงกฎข้อ 84 (action ไม่ถูกล้าง cookie)
+86. (CORE-29 — รอบ 14b, **ADR-019 proposed ทางเลือก B**) กู้ตะกร้าหลัง login ใหม่:
+    (a) ทุกจุดที่ตั้ง cookie `_medusa_cart_id` เป็น cart ใหม่ (`getOrSetCart` ใน `lib/data/cart.ts`, `activateCart` ใน `lib/util/server-cart.ts`, `app/api/payment-return/route.ts`) บันทึก
+      `metadata.active_cart_id = <cart id>` ของ customer ผ่าน `sdk.store.customer.update` จาก helper เดียวใน `lib/data/` — เขียนไม่สำเร็จ → log แล้วไปต่อ (การสร้าง cart ไม่ล้ม);
+      cart ของ group buy ไม่ถูกตั้งเป็น cookie (spec 04 กฎข้อ 14c) จึงไม่ถูกบันทึก
+    (b) `completeLogin` หลัง `transferCart()`: ถ้า**ไม่มี** cookie `_medusa_cart_id` (ไม่มีมาแต่แรก หรือถูกทิ้งเพราะ 404 ตามกฎข้อ 40) → อ่าน `metadata.active_cart_id` → `GET /store/carts/:id` ด้วย token ใหม่
+      → 200 และ `completed_at` null → `setCartId` + revalidate tag `carts`; ไม่มีค่า / 404 (ไม่ใช่ของตัวเอง — CORE-12) / complete แล้ว / error อื่น → ไม่ตั้ง cookie และ login สำเร็จตามเดิม
+    (c) มี cookie cart อยู่แล้วหลัง `transferCart()` → ไม่แตะ (ไม่ทับ ไม่ merge)
+    (d) ไม่แก้กฎข้อ 84 / AC-43 (GET ที่ไม่มี JWT ยังล้าง cookie ค้าง)
+    (e) builder ตรวจการ merge ของ `metadata` ใน `updateCustomersWorkflow` 2.22.1 ก่อน แล้วส่งเฉพาะ key `active_cart_id` โดย key อื่นของ customer ไม่หาย (test ยืนยัน)
+87. (CORE-30 — qa #239 AC-48, #238 AC-47) ลูกค้าที่ยังไม่ login กด `group-join-button` (หน้ากลุ่ม) หรือ `group-create-team-button` (การ์ดหน้าแรก) → ไป `loginPathForReturn(<cc>, <path ของหน้านั้น>)`
+    และหลัง login สำเร็จ redirect กลับ path นั้น: `readReturnTo` รับเพิ่มเฉพาะ `^/[a-z]{2}/g/[A-Za-z0-9_-]+$` (หน้ากลุ่ม) และ `^/[a-z]{2}$` (หน้าแรก) นอกเหนือจาก `/buy/<items>` เดิม —
+    ค่าอื่น (URL เต็ม, `//`, `\`, `..`, path อื่น, มี query) → `null` แล้วทำตามเดิม (`/account`); `/buy/` คงพฤติกรรมเดิม (สร้าง cart แล้วไป checkout); หลังกลับ**ไม่** join/สร้างทีมให้อัตโนมัติ
+    (ลูกค้ากดเอง — ไม่ยิง POST แทนลูกค้า); ฟอร์ม no-JS ใช้ hidden input เดิมของ `PendingAddToCartFields`
+88. (CORE-31 — review 2026-11-04) ปุ่มคัดลอกของ storefront ใช้ component กลาง `modules/common/components/copy-button` — `navigator.clipboard.writeText` อยู่ไฟล์เดียวใต้ `src/modules`:
+    props = ข้อความที่คัดลอก, label, ข้อความสถานะสำเร็จ, test id ของปุ่ม/สถานะ; กันกดซ้ำระหว่างทำงาน; ล้ม → สถานะ "คัดลอกไม่สำเร็จ" พร้อมข้อความให้คัดลอกเอง; `ShareLinkButton`
+    ใช้ component นี้ในทางที่ไม่มี Web Share (แปลง URL relative เป็น absolute ก่อนส่งเหมือนเดิม); `VoucherCopyButton` ใช้ component นี้ (หรือถูกแทน) โดยคง `data-testid="voucher-copy-button"`
+    และข้อความเดิม — e2e เดิมของ EV-7b, AF-8a/8b, GB-7a1 ไม่ต้องแก้ locator
+89. (CORE-32 — qa #238 ข้อสังเกต 1, D1) option วิธีส่งที่แสดงที่ checkout (`modules/checkout/templates/checkout-form` → `shipping`) และหน้ากลุ่ม (`prepareGroupCart` ใน `lib/data/group-join.ts`)
+    ผ่าน helper เดียว `lib/util/shipping-options.ts`: (a) ถ้า Store API คืน shipping profile ของสินค้าใน line (เช่น `items.product.shipping_profile.id` — builder ตรวจว่า 2.22.1 อนุญาต field ใด)
+    แสดงเฉพาะ option ที่ `shipping_profile_id` อยู่ใน profile ของ line ที่ `requires_shipping = true`; (b) ถ้า Store API ไม่คืน profile ของสินค้า → cart ที่มี line `requires_shipping = true`
+    ซ่อน option ที่ `type.code === "digital-delivery"` (ตัวระบุเดียวกับ spec 02 กฎข้อ 8 — ไม่ใช้ชื่อ) — ระบุใน PR ว่าใช้ทาง (a) หรือ (b); (c) cart ที่ทุก line `requires_shipping = false`
+    ทำตาม EV-7c เดิม (ข้ามขั้น delivery — ไม่แตะ); (d) กรองแล้วไม่เหลือ option → ข้อความไม่มีวิธีส่งเดิมของแต่ละหน้า; ไม่แก้ backend (Q-C4)
+
+### Acceptance criteria (follow-up รอบ 16)
+- AC-121 (CORE-28, กฎข้อ 85) unit (Vitest + jsdom, `src/core-28-promotion-error.test.ts`): Given cart มีโค้ด 1 ตัว ช่องใส่โค้ด**ปิด** (ไม่กด `add-discount-button`) และ `applyPromotions` mock คืน
+  `{ error: "unauthorized" }` When กด `remove-discount-button` Then `promotion-error` มีข้อความเท่ากับ `SIGN_IN_AGAIN_MESSAGE` (import constant) โดยไม่ต้องเปิดช่อง; Given เปิดช่องแล้วใส่โค้ดที่ใช้ไม่ได้
+  (mock คืน `codes` ที่ไม่มีโค้ดนั้น) When กด `add-discount-button` เพื่อปิดช่อง Then `promotion-error` ยังมีข้อความ; ลบโค้ดสำเร็จ → `promotion-error` ว่าง; test ต้อง fail กับโค้ดก่อนแก้ (แนบผลใน PR);
+  grep: `e2e/core-19c-delete-button-error.spec.ts` ไม่มีวลี "ก่อนถึง action"
+- AC-122 (CORE-29, กฎข้อ 86; **← ADR-019 accepted**) e2e (`e2e/core-29-restore-cart.spec.ts`): Given customer A login และมี cart C (เพิ่มสินค้า 1 line ผ่าน PDP) When ลบ cookie `_medusa_jwt` แล้วเปิด `/th/cart`
+  (cookie `_medusa_cart_id` ถูกล้างตาม AC-43) แล้ว login ใหม่ผ่านฟอร์ม Then cookie `_medusa_cart_id = C`, `/th/cart` มีแถวสินค้าเดิม (`data-testid` ของแถว) และ `nav-cart-link` มีจำนวนเดิม;
+  Given C ถูก complete แล้ว (ผ่าน API ด้วย manual payment) When ลบ JWT แล้ว login ใหม่ Then ไม่มี cookie `_medusa_cart_id`; Given `metadata.active_cart_id` ของ A ถูกตั้ง (ผ่าน API) เป็น cart ของ B
+  When A login Then login สำเร็จ ไม่มี cookie cart และ cart ของ B ยังมี `customer_id = B`; Given browser มี cookie cart D ของ A อยู่แล้วตอน login Then cookie ยังเป็น D;
+  unit (Vitest, mock sdk): สร้าง cart ใหม่ผ่าน `getOrSetCart`/`activateCart`/payment-return → `customer.update` ถูกเรียกด้วย `{ metadata: { active_cart_id: <id> } }` 1 ครั้ง; `customer.update` reject →
+  การสร้าง cart ยังสำเร็จ; `prepareGroupCart` ไม่เรียก `customer.update`; e2e/อ่าน API: key อื่นใน `metadata` ของ customer (ตั้งไว้ก่อน test) ยังอยู่หลังบันทึก (กฎข้อ 86e)
+- AC-123 (CORE-30, กฎข้อ 87) unit (`lib/util/login-return.test.ts`): `readReturnTo` รับ `/th/g/abc_D-1`, `/th`, `/buy/<items>` (เคสเดิม); คืน `null` สำหรับ `https://evil.example/th`, `//evil.example`,
+  `/th/g/../account`, `/th/g/a/b`, `/th/account`, `/th/g/abc?x=1`, `\evil`; e2e (`e2e/core-30-login-return.spec.ts`): Given ไม่ login When เปิด `/th/g/<pool token>` แล้วกด `group-join-button`
+  Then URL เป็นหน้า login ที่มี `return_to=/th/g/<token>`; login ผ่านฟอร์ม → URL เป็น `/th/g/<token>` และไม่มี membership ใหม่ (อ่านผ่าน admin API); เหมือนกันสำหรับ `group-create-team-button` บน `/th` →
+  กลับ `/th` และจำนวนทีมของแคมเปญไม่เพิ่ม; แก้ `return_to` เป็น `https://evil.example` แล้ว login → URL เป็น `/th/account`; AC-41 (`/buy`) ยังผ่าน
+- AC-124 (CORE-31, กฎข้อ 88) grep: `navigator.clipboard.writeText` อยู่ในไฟล์เดียวใต้ `apps/storefront/src/modules` (`common/components/copy-button`); unit (Vitest + jsdom): คลิกสองครั้งใน `act()` เดียว →
+  `writeText` ถูกเรียก 1 ครั้ง; resolve → สถานะตาม prop; reject → ข้อความล้มที่มีข้อความให้คัดลอกเอง; `ShareLinkButton` (ไม่มี `navigator.share`) คัดลอก URL แบบ absolute;
+  e2e เดิมผ่านโดยไม่แก้ locator: EV-7b (`voucher-copy-button`), AF-8a/8b (Profile/Products), GB-7a1 (`group-share-copy`, `group-share-copy-status`)
+- AC-125 (CORE-32, กฎข้อ 89) unit (`lib/util/shipping-options.test.ts`): Standard (profile Default) + Digital delivery (profile Digital, `type.code = "digital-delivery"`) กับ cart ที่มี line `requires_shipping = true`
+  ของสินค้า profile Default → เหลือ Standard; ไม่มี option ที่ตรง → `[]`; e2e: Given cart ของ A มี t-shirt (seed) When เปิดขั้น delivery ของ `/th/checkout` Then ไม่มี option ที่ id = Digital delivery
+  (id จาก `GET /store/shipping-options?cart_id=` ด้วย `type.code` — ไม่ match ข้อความ) และมี Standard; หน้ากลุ่ม: หลังกด `group-shipping-load` `group-shipping-option` ไม่มี `<option value=<id ของ Digital delivery>>`;
+  spec 02 AC-37 (cart voucher ล้วน) และ spec 04 AC-28 ยังผ่าน
+
+### แผนการทดสอบ (follow-up รอบ 16)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-121, AC-122 (helper บันทึก/กู้ — mock sdk), AC-123 (allow-list), AC-124, AC-125 |
+| e2e | AC-122, AC-123, AC-124 (regression ของ e2e เดิม), AC-125 |
+
+### Tasks (follow-up รอบ 16)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-28 | (storefront เล็ก ~60 LOC, qa #222 O-2) `promotion-error` นอก `isOpen` + แก้ comment ค้างใน e2e core-19c (กฎข้อ 85) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, `src/core-28-promotion-error.test.ts` ใหม่, `e2e/core-19c-delete-button-error.spec.ts` (comment) | AC-121 | **CORE-14g (#234) merge** (e2e ของ AC-120 ลบ/ใส่โค้ดตอน JWT หาย + comment อ้างพฤติกรรมของ #234) — ถ้า #234 ย้าย `promotion-error` ออกจาก `isOpen` ไปแล้ว CORE-28 เหลือ unit + comment |
+| CORE-29 | (storefront ~180 LOC, รอบ 14b) บันทึก `metadata.active_cart_id` เมื่อตั้ง cookie cart ใหม่ + กู้ตอน login เมื่อไม่มี cookie cart (กฎข้อ 86) — ไฟล์: helper ใหม่ใน `lib/data/` (+ unit), `lib/data/cart.ts`, `lib/util/server-cart.ts`, `app/api/payment-return/route.ts`, `lib/data/customer.ts` (`completeLogin`), `e2e/core-29-restore-cart.spec.ts` ใหม่ | AC-122 | **ADR-019 accepted (owner)**, **CORE-14g (#234) merge** (พฤติกรรม cookie เมื่อ JWT หาย), **CORE-30** (ชน `lib/data/customer.ts` — ทำทีละตัว CORE-30 ก่อน) |
+| CORE-30 | (storefront เล็ก ~150 LOC, qa #239/#238) return URL ของหน้ากลุ่ม/หน้าแรกหลัง login (กฎข้อ 87) — ไฟล์: `lib/util/login-return.ts` (+ test), `lib/data/customer.ts` (`continueAfterAuth`), `modules/group-buy/components/group-page/group-join.tsx`, `modules/home/components/campaigns/create-team-button.tsx`, `e2e/core-30-login-return.spec.ts` ใหม่ | AC-123 | none — **เริ่มได้** (GB-7a2 ☑ #238, GB-7c ☑ #239); ชน `group-join.tsx` กับ GB-12 (spec 04) ตัวที่ merge ทีหลัง rebase |
+| CORE-31 | (storefront เล็ก ~120 LOC, review 2026-11-04) component คัดลอกกลาง ใช้โดย `ShareLinkButton` และ `VoucherCopyButton` (กฎข้อ 88) — ไฟล์: `modules/common/components/copy-button/index.tsx` ใหม่ (+ unit), `modules/common/components/share-link-button/index.tsx`, `modules/evoucher/components/voucher-copy-button/index.tsx` | AC-124 | none — **เริ่มได้** (∥ ทุกตัว) |
+| CORE-32 | (storefront ~150 LOC, qa #238) กรอง option วิธีส่งตาม shipping profile ที่ checkout และหน้ากลุ่ม (กฎข้อ 89) — ไฟล์: `lib/util/shipping-options.ts` ใหม่ (+ unit), `modules/checkout/templates/checkout-form/index.tsx` (หรือ `components/shipping`), `lib/data/group-join.ts`, `lib/data/cart.ts` (field ของ line ถ้าใช้ทาง (a)), e2e | AC-125 | none — **เริ่มได้** (∥; ชน `group-join.ts` ไม่มี task อื่นแตะ) |
+(รอบ 16 สถานะ) CORE-30 ∥ CORE-31 ∥ CORE-32 เริ่มได้; CORE-28 ← #234; CORE-29 ← ADR-019 + #234 + CORE-30; ไม่บล็อก release ใด แต่ CORE-30/CORE-32 ควรมีก่อน release v0.5.0 (flow ของ group buy)
+
+### Open questions (รอบ 16)
+- **Q-C3** (CORE-29) อนุมัติ **ADR-019** หรือไม่: (A) route ใหม่ `GET /store/customers/me/carts/latest` + marker ของ cart กลุ่ม; (B) **[แนะนำ]** จำ id ตะกร้าหลักใน `customer.metadata` ด้วย API ของ Medusa
+  ไม่มี backend ใหม่; (C) ไม่กู้ (คงสถานะปัจจุบัน) — รายละเอียดข้อดี/ข้อเสียใน ADR; ถ้า (C) ตัด CORE-29/AC-122
+- **Q-C4** (CORE-32) ต้องบังคับฝั่ง backend ด้วยหรือไม่: checkout ปกติ Medusa ตรวจ profile ตอน complete อยู่แล้ว แต่ draft order ของกลุ่มไม่ผ่าน `validate-shipping` — (ก) **[แนะนำ]** ไม่ใน v1:
+  storefront กรองตามกฎข้อ 89 ส่วน join ที่เลือก Digital delivery ได้ต้องยิง API ตรง (ops แก้ด้วย order edit ของ Medusa); (ข) เพิ่มขั้นตรวจใน `validateJoinStep` ของ spec 04 ว่า shipping method
+  ของ cart ครอบ profile ของทุก line ที่ต้องจัดส่ง → 400 code ใหม่ (task backend ~80 LOC ใน spec 04)
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
