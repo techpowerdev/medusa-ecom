@@ -83,7 +83,7 @@ async function backendCart(request: APIRequestContext, cartId: string, headers: 
  * ทำ action หนึ่งครั้งแล้วรอ response ของ server action (POST + `next-action`) — ยืนยันว่า request ยังส่ง cookie cart
  * และ response ไม่ล้าง `_medusa_cart_id` (กฎข้อ 84) แล้วข้อความใน `message` เท่ากับ SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่
  */
-async function expectSignInAgain(page: Page, act: () => Promise<void>, message: Locator) {
+async function expectSignInAgain(page: Page, cartId: string, act: () => Promise<void>, message: Locator) {
   const [response] = await Promise.all([
     page.waitForResponse((r) => r.request().method() === "POST" && r.request().headers()["next-action"] !== undefined),
     act(),
@@ -93,9 +93,9 @@ async function expectSignInAgain(page: Page, act: () => Promise<void>, message: 
   await expect(message).toHaveText(SIGN_IN_AGAIN_MESSAGE, { timeout: 10_000 })
   await expect(page.getByTestId("product-row")).toHaveCount(1)
   expect(
-    (await page.context().cookies()).some((c) => c.name === "_medusa_cart_id"),
-    "browser ยังมี cookie cart"
-  ).toBe(true)
+    (await page.context().cookies()).find((c) => c.name === "_medusa_cart_id")?.value,
+    "browser ยังมี cookie cart ตัวเดิม"
+  ).toBe(cartId)
 }
 
 test("AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่", async ({
@@ -126,12 +126,16 @@ test("AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ย�
     await page.getByTestId("add-discount-button").click()
     await expect(page.getByTestId("discount-input")).toBeVisible()
 
+    // รอ link prefetch (GET `?_rsc=` + `next-router-prefetch`) จบก่อน — ถ้าลบ JWT ระหว่าง prefetch ยังวิ่ง
+    // middleware จะล้าง `_medusa_cart_id` ใน GET นั้นตาม AC-43 (ถูกตาม spec) ทำให้ test flaky (qa D-1)
+    await page.waitForLoadState("networkidle")
     // ลบ JWT โดยไม่ reload (คง `_medusa_cart_id`)
     await context.clearCookies({ name: "_medusa_jwt" })
 
     await step("(1) เปลี่ยนจำนวน → product-error-message", async () => {
       await expectSignInAgain(
         page,
+        cartId,
         async () => {
           await row.getByTestId("product-select-button").selectOption("2")
         },
@@ -143,6 +147,7 @@ test("AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ย�
     await step("(2) ลบโค้ดส่วนลด → promotion-error", async () => {
       await expectSignInAgain(
         page,
+        cartId,
         () => page.getByTestId("remove-discount-button").click(),
         page.getByTestId("promotion-error")
       )
@@ -153,6 +158,7 @@ test("AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ย�
       await page.getByTestId("discount-input").fill(promo.code)
       await expectSignInAgain(
         page,
+        cartId,
         () => page.getByTestId("discount-apply-button").click(),
         page.getByTestId("promotion-error")
       )
@@ -162,6 +168,7 @@ test("AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ย�
     await step("(4) ลบสินค้า → cart-item-remove-error", async () => {
       await expectSignInAgain(
         page,
+        cartId,
         () => row.getByTestId("product-delete-button").click(),
         row.getByTestId("cart-item-remove-error")
       )
@@ -170,6 +177,16 @@ test("AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ย�
 
     await step("cart ใน backend ไม่เปลี่ยน", async () => {
       expect(await backendCart(request, cartId, headers)).toEqual({ quantities: [1], codes: [promo.code] })
+    })
+
+    // AC-120 ขั้นสุดท้าย: เปิดหน้าใหม่ (GET) ยังล้าง cookie cart ตาม AC-43 — ข้ามเฉพาะ request ของ server action
+    await step("reload /th/cart → cookie cart ถูกล้าง หน้าเป็นตาม AC-43", async () => {
+      const res = await page.reload()
+      expect(res!.status()).toBeLessThan(500)
+      await expect(page.getByTestId("empty-cart-message")).toBeVisible()
+      await expect(page.getByTestId("product-row")).toHaveCount(0)
+      const cookies = await context.cookies()
+      expect(cookies.find((c) => c.name === "_medusa_cart_id"), "cookie cart ถูกล้าง").toBeUndefined()
     })
   }
 })
