@@ -110,6 +110,56 @@ describe("CORE-31: component คัดลอกกลาง (กฎข้อ 88,
     expect(status).toContain("ABC-123")
   })
 
+  // CORE-37 (spec 01 กฎข้อ 95, AC-131)
+  it("reject → ค่าอยู่ใน element <statusTestId>-value แยกจากข้อความนำภาษาไทย", async () => {
+    const text = "VC-LONG-0123456789"
+    writeText.mockRejectedValue(new Error("denied"))
+    await copyButton({ text })
+
+    await act(async () => byTestId("copy-btn").click())
+    const status = byTestId("copy-status")
+    const value = byTestId("copy-status-value")
+    expect(value.textContent).toBe(text)
+    expect(status.contains(value)).toBe(true)
+    const lead = (status.textContent ?? "").replace(value.textContent ?? "", "")
+    expect(lead).toMatch(/[\u0E00-\u0E7F]/)
+    expect(value.textContent).not.toMatch(/[\u0E00-\u0E7F]/)
+    expect(value.className).not.toContain("break-all")
+    expect(status.className).not.toContain("break-all")
+  })
+
+  it("share reject NotAllowedError → ลองคัดลอกด้วย writeText 1 ครั้ง resolve → สถานะสำเร็จ", async () => {
+    writeText.mockResolvedValue(undefined)
+    const share = vi.fn().mockRejectedValue(new DOMException("denied", "NotAllowedError"))
+    await copyButton({ share })
+
+    await act(async () => byTestId("copy-btn").click())
+    expect(share).toHaveBeenCalledTimes(1)
+    expect(writeText).toHaveBeenCalledTimes(1)
+    expect(writeText).toHaveBeenCalledWith("ABC-123")
+    expect(byTestId("copy-status").textContent).toBe("คัดลอกแล้ว")
+  })
+
+  it("share reject NotAllowedError + writeText reject → ข้อความล้มพร้อม element ค่า", async () => {
+    writeText.mockRejectedValue(new Error("denied"))
+    const share = vi.fn().mockRejectedValue(new DOMException("denied", "NotAllowedError"))
+    await copyButton({ share })
+
+    await act(async () => byTestId("copy-btn").click())
+    expect(writeText).toHaveBeenCalledTimes(1)
+    expect(byTestId("copy-status-value").textContent).toBe("ABC-123")
+  })
+
+  it("share reject AbortError → ไม่คัดลอก และสถานะว่าง", async () => {
+    const share = vi.fn().mockRejectedValue(new DOMException("cancel", "AbortError"))
+    await copyButton({ share })
+
+    await act(async () => byTestId("copy-btn").click())
+    expect(writeText).toHaveBeenCalledTimes(0)
+    expect(byTestId("copy-status").textContent).toBe("")
+    expect(document.querySelector('[data-testid="copy-status-value"]')).toBeNull()
+  })
+
   it("ShareLinkButton (ไม่มี navigator.share) คัดลอก URL แบบ absolute", async () => {
     writeText.mockResolvedValue(undefined)
     Object.defineProperty(navigator, "share", { value: undefined, configurable: true })

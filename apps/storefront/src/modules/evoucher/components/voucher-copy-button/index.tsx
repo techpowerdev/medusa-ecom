@@ -12,6 +12,7 @@ export default function VoucherCopyButton({ code }: { code: string }) {
       buttonTestId="voucher-copy-button"
       statusTestId="voucher-copy-status"
       size="small"
+      layout="row"
     />
   )
 }
