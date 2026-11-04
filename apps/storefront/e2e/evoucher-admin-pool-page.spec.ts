@@ -60,6 +60,24 @@ test("AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้า�
   })
 
   await step("กรองสถานะ delivered ผ่าน filter ของ DataTable → 5 แถว ทุกแถว delivered", async () => {
+    // review nit 1: ระหว่างเปลี่ยน filter จากหน้า 2 ต้องไม่มี request ใดของ status=delivered ที่ยังพา offset หน้าเก่า (50) ไป
+    // (เคยรั่ว 1 request ใน render ที่ loader ของ router revalidate ก่อน URL ลบ codes_offset) — เก็บทุก request ตั้งแต่ก่อนกด filter
+    const deliveredOffsets: string[] = []
+    const onCodesRequest = (req: { url: () => string }) => {
+      const url = new URL(req.url())
+      if (url.pathname === `/admin/evoucher/pools/${poolId}/codes` && url.searchParams.get("status") === "delivered") {
+        deliveredOffsets.push(url.searchParams.get("offset") ?? "")
+      }
+    }
+    page.on("request", onCodesRequest)
+    // หน่วง GET pool ที่ loader ของหน้า revalidate ทุกครั้งที่ search เปลี่ยน — เครื่องเร็ว loader เสร็จก่อนจน race ไม่เกิด
+    // หน่วงไว้ให้หน้าต่างระหว่าง "loader กำลังโหลด" กับ "URL อัปเดต" กว้างพอเหมือนเครือข่ายจริง
+    const isPoolLoader = (url: URL) => url.pathname === `/admin/evoucher/pools/${poolId}`
+    const slowLoader = async (route: { continue: () => Promise<void> }) => {
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      await route.continue()
+    }
+    await page.route(isPoolLoader, slowLoader)
     const filtered = codesRequest(page, poolId, (p) => p.get("status") === "delivered" && p.get("offset") === "0")
     // ปุ่ม filter (Funnel) เป็น trigger ของ dropdown ตัวแรกใน toolbar ของตาราง (trigger ต่อแถวอยู่ใน tbody)
     await codes.locator('button[aria-haspopup="menu"]').first().click()
@@ -74,6 +92,10 @@ test("AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้า�
       await expect(row.getByText("delivered", { exact: true })).toBeVisible()
     }
     await expect(page).not.toHaveURL(/codes_offset=/)
+    page.off("request", onCodesRequest)
+    await page.unroute(isPoolLoader, slowLoader)
+    expect(deliveredOffsets.length).toBeGreaterThan(0)
+    expect(deliveredOffsets.filter((offset) => offset !== "0")).toEqual([])
     await evidence("01-codes-filter-delivered")
   })
 

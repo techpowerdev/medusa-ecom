@@ -1,3 +1,4 @@
+import { CODE_STATUSES } from "../evoucher-status"
 import { codesListQuery, poolsListQuery } from "../evoucher-query"
 
 // ADM-4 (spec 08 กฎ 9, AC-7): ค่าที่ DataTable ของ dashboard เขียนลง URL (`<prefix>_offset`, `<prefix>_status`)
@@ -31,6 +32,11 @@ describe("codesListQuery", () => {
 
   it("ค่าดิบที่ไม่ใช่ JSON อ่านแบบเดียวกับ DataTable ของ dashboard (ใช้ string ตรงๆ)", () => {
     expect(codesListQuery({ status: "void" }, 50)).toEqual({ limit: 50, offset: 0, status: "void" })
+  })
+
+  // review nit 2: รายการสถานะมีแหล่งเดียว (evoucher-status) — สถานะที่ filter ของตารางเสนอต้องส่งไป API ได้ทุกตัว
+  it.each(CODE_STATUSES)("ทุกสถานะใน CODE_STATUSES (%p) ส่งเป็น status ได้", (status) => {
+    expect(codesListQuery({ status: JSON.stringify(status) }, 50)).toEqual({ limit: 50, offset: 0, status })
   })
 
   it.each([JSON.stringify("bogus"), JSON.stringify(["delivered"]), "{"])(

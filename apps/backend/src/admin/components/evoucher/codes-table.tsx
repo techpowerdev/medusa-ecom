@@ -45,8 +45,9 @@ const OFFSET_KEY = `${PREFIX}_offset`
 
 // เปลี่ยน filter แล้วต้องกลับหน้าแรก: DataTable ของ dashboard 2.22.1 เรียก reset หน้า (ลบ `codes_offset`) แล้วตามด้วยตั้ง filter
 // ผ่าน setSearchParams สองครั้งใน tick เดียว — บน react-router 7 ครั้งหลังเขียนทับครั้งแรก offset จึงค้าง (กรองจากหน้า 2 แล้วได้ตารางว่าง)
-// คืน true ระหว่าง render ที่ status เพิ่งเปลี่ยน เพื่อให้ request ใช้ offset 0 ทันที (ไม่ยิง request ของหน้าเก่า)
-const useResetOffsetOnStatusChange = (status?: string) => {
+// คืน true ตั้งแต่ status เปลี่ยนจนกว่า URL ไม่มี offset แล้วจริง เพื่อให้ทุก request ระหว่างนั้นใช้ offset 0 (ไม่ยิง request ของหน้าเก่า)
+// — หน้า pool มี loader: การลบ offset ทำให้ router revalidate loader ก่อนอัปเดต URL จึงจำ status ใหม่ได้เมื่อ offset หายไปแล้วเท่านั้น
+const useResetOffsetOnStatusChange = (status?: string, offset?: string) => {
   const [, setSearchParams] = useSearchParams()
   const [seen, setSeen] = useState(status)
   const changed = status !== seen
@@ -55,7 +56,10 @@ const useResetOffsetOnStatusChange = (status?: string) => {
     if (!changed) {
       return
     }
-    setSeen(status)
+    if (!offset) {
+      setSeen(status)
+      return
+    }
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -64,7 +68,7 @@ const useResetOffsetOnStatusChange = (status?: string) => {
       },
       { replace: true }
     )
-  }, [changed, status, setSearchParams])
+  }, [changed, offset, status, setSearchParams])
 
   return changed
 }
@@ -77,7 +81,7 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
   const [revealOnce] = useState(createSingleFlight)
   const [revealed, setRevealed] = useState<RevealedCode | null>(null)
   const params = useQueryParams(["offset", "status"], PREFIX)
-  const statusChanged = useResetOffsetOnStatusChange(params.status)
+  const statusChanged = useResetOffsetOnStatusChange(params.status, params.offset)
   const query = codesListQuery(statusChanged ? { status: params.status } : params, PAGE_SIZE)
 
   const { data, isLoading } = useQuery({

@@ -1,8 +1,9 @@
 import { sdk } from "./client"
+import type { CodeStatus } from "./evoucher-status"
+
+export { CODE_STATUSES, type CodeStatus } from "./evoucher-status"
 
 // รูปร่าง response ของ admin API e-voucher (src/api/admin/evoucher/*)
-export type CodeStatus = "available" | "allocated" | "delivered" | "void"
-export const CODE_STATUSES: CodeStatus[] = ["available", "allocated", "delivered", "void"]
 export const STATUS_COLOR: Record<CodeStatus, "green" | "orange" | "blue" | "grey"> = {
   available: "green",
   allocated: "orange",

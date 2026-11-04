@@ -80,3 +80,40 @@ typecheck: apps/backend Done, apps/storefront Done
 build: pnpm --filter backend build — Backend/Frontend build completed successfully
 
 ### integration: ไม่รัน — ไม่แก้ backend (spec 08 Test plan: integration none)
+
+## แก้ตาม review (PR #296 nit 1–2) — 2026-11-04, node v22.23.3, base origin/develop 63cd172
+### Red (ก่อนแก้)
+#### jest src/admin/lib/__tests__/evoucher-query.unit.spec.ts (nit 2: CODE_STATUSES แหล่งเดียว)
+FAIL src/admin/lib/__tests__/evoucher-query.unit.spec.ts
+    Cannot find module '../evoucher-status' from 'src/admin/lib/__tests__/evoucher-query.unit.spec.ts'
+Test Suites: 1 failed, 1 total
+#### playwright e2e/evoucher-admin-pool-page.spec.ts (prod build, nit 1: ไม่มี request status=delivered คู่ offset=50)
+  (หน่วง GET pool ที่ loader revalidate 800ms ให้ race เกิดแน่นอน; ไม่หน่วง = เครื่องเร็ว loader เสร็จก่อน race ไม่เกิด test ผ่านทั้งที่ยังรั่ว)
+  ✘  1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (6.7s)
+    - Expected  - 1
+    + Received  + 3
+    +   "50",
+  1 failed
+### Green (หลังแก้)
+#### jest src/admin
+Test Suites: 13 passed, 13 total
+Tests:       172 passed, 172 total
+#### pnpm --filter backend test:unit
+Test Suites: 89 passed, 89 total
+Tests:       960 passed, 960 total
+#### playwright --project=unit (storefront): 69 passed
+#### Playwright e2e บน prod build (medusa build + medusa start NODE_ENV=production, port 9462) — spec ใหม่ --repeat-each=3
+  ✓  1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (11.0s)
+  ✓  3 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (11.3s)
+  ✓  2 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (11.3s)
+  3 passed (12.6s)
+#### Playwright e2e/evoucher-admin-* ทั้งหมด
+  ✓  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (7.1s)
+  ✓  2 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (9.9s)
+  ✓  4 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (3.2s)
+  ✓  3 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (13.8s)
+  4 passed (14.7s)
+#### pnpm lint && pnpm typecheck
+lint: 0 errors (warning เดิมของ develop: backend 2, storefront 31 — ไม่มีในไฟล์ที่แตะ)
+typecheck: apps/backend Done (รวม src/admin), apps/storefront Done
+build: pnpm --filter backend build — Backend/Frontend build completed successfully
