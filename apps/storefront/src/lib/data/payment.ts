@@ -2,6 +2,7 @@
 
 import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
 import { paymentSessionData } from "@lib/util/payment-session"
+import { PaymentSessionResult, paymentSessionResult } from "@lib/util/action-result"
 import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
@@ -55,10 +56,19 @@ export async function createPaymentSession(
     },
     // กฎข้อ 5: provider บัตรขอ PaymentIntent แบบ card เท่านั้น
     body: JSON.stringify({ provider_id: providerId, data: paymentSessionData(providerId) }),
-    cache: "no-store",
+    // CORE-4i-b: ไม่ตั้ง `cache: "no-store"` — POST ไม่ถูก cache อยู่แล้ว และเมื่อใช้ใน action ของ checkout (initiatePaymentSession)
+    // cart ที่ render หลัง action ยังเป็นค่าก่อนสร้าง session แม้ revalidateTag แล้ว (e2e core-19b / thai-ui-checkout บน prod build)
   }).catch(() => null)
   if (!res) return { status: 0, code: null }
   const body = res.ok ? null : await res.json().catch(() => null)
   const code = typeof body?.code === "string" ? body.code : null
   return { status: res.status, code }
+}
+
+/**
+ * CORE-4i-b (spec 01 กฎข้อ 72, Q-C2 = (ก)): action ที่หน้า `/account/orders/:id/pay` เรียก — ผลของ `createPaymentSession`
+ * ผ่าน helper กลาง รูปแบบเดียวกับ `initiatePaymentSession` ของ checkout (`{ ok: true } | { error }`)
+ */
+export async function startPaymentSession(collectionId: string, providerId: string): Promise<PaymentSessionResult> {
+  return paymentSessionResult(await createPaymentSession(collectionId, providerId))
 }

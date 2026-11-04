@@ -3,7 +3,7 @@
 import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
-import { friendlyErrorMessage } from "@lib/util/error-message"
+import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { isPromptPay } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
@@ -12,6 +12,17 @@ import { useParams } from "next/navigation"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
 import PromptPayPaymentButton from "../promptpay-payment"
+
+/**
+ * CORE-4i-b (กฎข้อ 72): ยืนยันคำสั่งซื้อแล้วคืนข้อความไทยเมื่อล้ม — 409 ที่รู้จัก (FS-15) → ข้อความของ code,
+ * `unauthorized` → SIGN_IN_AGAIN_MESSAGE; สำเร็จ = redirect ของ Next (ไม่มีผล) → null
+ */
+export const completeOrder = async (order: ReturnType<typeof placeOrder>): Promise<string | null> => {
+  const result = await settleAction(order)
+  return result && "error" in result
+    ? actionErrorMessage(result.error, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
+    : null
+}
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -77,17 +88,9 @@ const StripePaymentButton = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const onPaymentCompleted = async () => {
-    await placeOrder()
-      // FS-15 (กฎข้อ 20c): 409 ของ flash/promotion มาเป็นค่า `{ error }` ภาษาไทย
-      .then((res) => {
-        if (res && "error" in res) setErrorMessage(res.error)
-      })
-      .catch((err) => {
-        setErrorMessage(friendlyErrorMessage(err, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
-      })
-      .finally(() => {
-        setSubmitting(false)
-      })
+    const failure = await completeOrder(placeOrder())
+    if (failure) setErrorMessage(failure)
+    setSubmitting(false)
   }
 
   const stripe = useStripe()
@@ -194,17 +197,9 @@ const ManualTestPaymentButton = ({
 
   const onPaymentCompleted = async () => {
     // AF-3b (กฎ 23): ส่ง metadata ของ cart ที่อ่านไว้ → placeOrder sync cookie `aff` ก่อน complete
-    await placeOrder(cart.id, cart.metadata ?? null, countryCode as string)
-      // FS-15 (กฎข้อ 20c): 409 ของ flash/promotion มาเป็นค่า `{ error }` ภาษาไทย
-      .then((res) => {
-        if (res && "error" in res) setErrorMessage(res.error)
-      })
-      .catch((err) => {
-        setErrorMessage(friendlyErrorMessage(err, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
-      })
-      .finally(() => {
-        setSubmitting(false)
-      })
+    const failure = await completeOrder(placeOrder(cart.id, cart.metadata ?? null, countryCode as string))
+    if (failure) setErrorMessage(failure)
+    setSubmitting(false)
   }
 
   const handlePayment = () => {

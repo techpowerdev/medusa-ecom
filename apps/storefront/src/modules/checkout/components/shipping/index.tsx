@@ -2,7 +2,7 @@
 import { Radio, RadioGroup } from "@headlessui/react"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
-import { friendlyErrorMessage } from "@lib/util/error-message"
+import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { convertToLocale } from "@lib/util/money"
 import { selectedShippingOptionId, shippingOptionsForCart } from "@lib/util/shipping-options"
 import { CheckCircleSolid, Loader } from "@medusajs/icons"
@@ -13,6 +13,12 @@ import MedusaRadio from "@modules/common/components/radio"
 import { Button, clx, Heading, Text } from "@modules/common/components/ui"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
+
+/** CORE-4i-b (กฎข้อ 72): เลือกวิธีจัดส่งแล้วคืนข้อความไทยเมื่อล้ม (`unauthorized` → SIGN_IN_AGAIN_MESSAGE), สำเร็จ → null */
+export const selectShippingMethod = async (cartId: string, shippingMethodId: string): Promise<string | null> => {
+  const result = await settleAction(setShippingMethod({ cartId, shippingMethodId }))
+  return "error" in result ? actionErrorMessage(result.error, "เลือกวิธีจัดส่งไม่สำเร็จ กรุณาลองใหม่อีกครั้ง") : null
+}
 
 const PICKUP_OPTION_ON = "__PICKUP_ON"
 const PICKUP_OPTION_OFF = "__PICKUP_OFF"
@@ -144,15 +150,12 @@ const Shipping: React.FC<ShippingProps> = ({
       return id
     })
 
-    await setShippingMethod({ cartId: cart.id, shippingMethodId: id })
-      .catch((err) => {
-        setShippingMethodId(currentId)
-
-        setError(friendlyErrorMessage(err, "เลือกวิธีจัดส่งไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"))
-      })
-      .finally(() => {
-        setIsLoading(false)
-      })
+    const failure = await selectShippingMethod(cart.id, id)
+    if (failure) {
+      setShippingMethodId(currentId)
+      setError(failure)
+    }
+    setIsLoading(false)
   }
 
   useEffect(() => {
