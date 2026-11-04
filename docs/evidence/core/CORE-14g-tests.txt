@@ -1,0 +1,71 @@
+# CORE-14g — ผล test (spec 01 กฎข้อ 84, AC-120), Node v22.23.3, รันในเครื่อง 2026-11-04
+ไฟล์: apps/storefront/src/lib/util/stale-cart-cookie.ts, stale-cart-cookie.test.ts, e2e/core-14g-action-stale-jwt.spec.ts
+
+## สิ่งที่เปลี่ยน
+- clearStaleCartCookie ไม่ล้าง _medusa_cart_id เมื่อ request เป็น server action (request.method === "POST" && header next-action)
+  ตามข้อแนะนำ review #226; GET/RSC navigation ยังล้างตาม AC-43
+
+## Red (ก่อนแก้)
+unit: 1 failed | 6 passed — "keeps the cart cookie on a server action POST without a session"
+  AssertionError: expected { name: '_medusa_cart_id', …(3) } to be undefined
+e2e (next dev, โค้ดเดิม): AC-120 ล้มที่ step (1) — response ของ server action มี
+  Set-Cookie: _medusa_cart_id=; Path=/; Max-Age=0  (middleware ล้าง cookie cart ใน request ของ action)
+
+## Green — unit (Vitest) stale-cart-cookie.test.ts
+ ✓ src/lib/util/stale-cart-cookie.test.ts > clearStaleCartCookie > expires the cart cookie when there is no customer session 2ms
+ ✓ src/lib/util/stale-cart-cookie.test.ts > clearStaleCartCookie > keeps the cart cookie when the customer is signed in 0ms
+ ✓ src/lib/util/stale-cart-cookie.test.ts > clearStaleCartCookie > does nothing when there is no cart cookie 0ms
+ ✓ src/lib/util/stale-cart-cookie.test.ts > clearStaleCartCookie > server action requests (CORE-14g, AC-120) > keeps the cart cookie on a server action POST without a session 0ms
+ ✓ src/lib/util/stale-cart-cookie.test.ts > clearStaleCartCookie > server action requests (CORE-14g, AC-120) > still expires the cart cookie on a GET that carries next-action 0ms
+ ✓ src/lib/util/stale-cart-cookie.test.ts > clearStaleCartCookie > server action requests (CORE-14g, AC-120) > still expires the cart cookie on a POST without next-action 0ms
+ ✓ src/lib/util/stale-cart-cookie.test.ts > clearStaleCartCookie > server action requests (CORE-14g, AC-120) > keeps the cart cookie on a server action when signed in 0ms
+      Tests  7 passed (7)
+
+## Green — storefront test:unit ทั้งชุด
+ Test Files  69 passed (69)
+      Tests  762 passed (762)
+
+## Green — e2e unit project (test:e2e:unit)
+  54 passed (592ms)
+
+## Green — e2e chromium (next build + next start, backend medusa start; DB แยก medusa_core14g)
+รวม AC-110 ข้อ 1 ซ้ำ (AC-104 ใน core-19c + AC-120) และ AC-43 (core-14-buy-login) ตามตาราง task
+  ✓   1 [chromium] › e2e/core-14-buy-login.spec.ts:38:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (1.9s)
+  ✓   2 [chromium] › e2e/core-14-buy-login.spec.ts:98:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (194ms)
+  ✓   3 [chromium] › e2e/core-14-buy-login.spec.ts:121:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (708ms)
+  ✓   4 [chromium] › e2e/core-14c-login-foreign-cart.spec.ts:26:5 › AC-76: login ขณะมี cookie cart ของ customer อื่น → login สำเร็จ, cookie ไม่ชี้ cart ของคนอื่น, cart นั้นยังเป็นของเจ้าของเดิม (1.1s)
+  ✓   5 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (1.3s)
+  ✓   6 [chromium] › e2e/core-19c-delete-button-error.spec.ts:105:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (848ms)
+  ✓   7 [chromium] › e2e/core-19c-delete-button-error.spec.ts:123:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1.1s)
+  ✓   8 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (1.1s)
+  ✓   9 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (822ms)
+  ✓  10 [chromium] › e2e/core-19c-delete-button-error.spec.ts:182:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่ (878ms)
+  ✓  11 [chromium] › e2e/core-4f-auth-errors.spec.ts:8:5 › AC-98: login รหัสผ่านผิด / สมัครด้วยอีเมลที่มีบัญชีแล้ว → error ไทย และอีเมลยังอยู่ (967ms)
+  ✓  12 [chromium] › e2e/core-4g-checkout-polish.spec.ts:66:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect (5.2s)
+  12 passed (16.9s)
+
+## lint / typecheck / build
+pnpm lint: ผ่าน (exit 0)
+pnpm typecheck: ผ่าน (exit 0)
+pnpm --filter storefront build (next build): ผ่าน (exit 0)
+
+## แก้ตาม review + qa D-1 (flaky) — รันบน base develop abbbc92
+- สาเหตุ D-1: test ลบ _medusa_jwt ทันทีหลังเปิดหน้า ขณะ link prefetch (GET ?_rsc= + next-router-prefetch) ยังวิ่ง
+  → middleware ล้าง _medusa_cart_id ใน GET นั้นตาม AC-43 (ถูกตาม spec) ไม่ใช่ bug ของ middleware
+- แก้เฉพาะ test (owner อนุมัติทาง ข′): รอ page.waitForLoadState("networkidle") ก่อนลบ JWT (มีจุดเดียว ไม่มีรอบ 375px)
+- expectSignInAgain เทียบค่า cookie cart กับ cartId เดิม; เพิ่มขั้น reload /th/cart → status < 500,
+  empty-cart-message, ไม่มี product-row, cookie cart ถูกล้าง (AC-43)
+
+e2e chromium --repeat-each=8 --workers=1 (next build + next start :8234, backend medusa start :9234, DB medusa_core14g_b, redis db 14)
+✓  1 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (3.9s)
+✓  2 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (3.6s)
+✓  3 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (3.6s)
+✓  4 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (3.6s)
+✓  5 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (3.6s)
+✓  6 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (3.6s)
+✓  7 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (3.9s)
+✓  8 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (7.9s)
+8 passed (36.5s)
+
+vitest stale-cart-cookie.test.ts: 7 passed (7)
+storefront lint: 0 errors (31 warnings เดิม); storefront typecheck (tsc --noEmit): ผ่าน
