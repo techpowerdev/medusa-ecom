@@ -11,6 +11,7 @@ test.use({ ...ADMIN_UI_OPTIONS, evidenceTarget: { feature: "group-buying", taskI
 const CAMPAIGNS_PATH = "/admin/group-buy/campaigns"
 
 type CampaignPost = {
+  idempotency_key?: string
   max_units_per_person: number | null
   application_method: {
     max_quantity: number
@@ -269,5 +270,73 @@ test("AC-50: เลือกสินค้าหน้า 1 แล้วเล�
     expect(posts[0].application_method.target_rules).toEqual([
       { attribute: "items.product.id", operator: "in", values: [products[picked[1]]] },
     ])
+  })
+})
+
+// GB-13 (spec 04 กฎข้อ 33d, AC-52): key ต่อการเปิดฟอร์ม — response หาย (network error) แล้ว submit ซ้ำต้องได้แคมเปญเดิม
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+test("AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่", async ({
+  page,
+  request,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const admin = await adminHeaders(request)
+  const token = `GB13key${Date.now()}`
+  const productTitle = `${token} product`
+  await createProduct(request, admin, productTitle)
+  const posts = campaignPosts(page)
+  const submit = page.getByTestId("gb-campaign-create-submit")
+  const rows = (name: string) => page.locator("tbody tr").filter({ hasText: name })
+
+  // POST แรก: ส่งถึง backend จริง (สร้างแคมเปญแล้ว) แต่ browser ได้ network error แทน response
+  let dropped = false
+  await page.route(`**${CAMPAIGNS_PATH}`, async (route) => {
+    if (route.request().method() === "POST" && !dropped) {
+      dropped = true
+      await route.fetch()
+      await route.abort("failed")
+      return
+    }
+    await route.continue()
+  })
+
+  await step("submit ครั้งแรก → network error ฟอร์มยังเปิดอยู่ และ body มี idempotency_key รูป UUID", async () => {
+    await openCreateForm(page)
+    await fillValidForm(page, `${token} first`)
+    await pickProduct(page, productTitle)
+    await submit.click()
+    await expect.poll(() => posts.length).toBe(1)
+    await expect(submit).toBeEnabled()
+    expect(posts[0].idempotency_key).toMatch(UUID)
+  })
+
+  await step("submit ซ้ำในรอบเดิม → ส่ง key เดิม ได้ 200 และมีแคมเปญเดียว", async () => {
+    const response = page.waitForResponse(
+      (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
+    )
+    await submit.click()
+    expect((await response).status()).toBe(200)
+    expect(posts).toHaveLength(2)
+    expect(posts[1].idempotency_key).toBe(posts[0].idempotency_key)
+    await expect(submit).toHaveCount(0)
+    await expect(rows(`${token} first`)).toHaveCount(1)
+  })
+
+  await step("ปิดแล้วเปิดฟอร์มใหม่ → key ใหม่ ได้แคมเปญใหม่", async () => {
+    await page.getByTestId("gb-campaign-create").click()
+    await fillValidForm(page, `${token} second`)
+    await pickProduct(page, productTitle)
+    const response = page.waitForResponse(
+      (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
+    )
+    await submit.click()
+    expect((await response).status()).toBe(200)
+    expect(posts).toHaveLength(3)
+    expect(posts[2].idempotency_key).toMatch(UUID)
+    expect(posts[2].idempotency_key).not.toBe(posts[0].idempotency_key)
+    await expect(rows(`${token} second`)).toHaveCount(1)
+    await expect(rows(`${token} first`)).toHaveCount(1)
   })
 })
