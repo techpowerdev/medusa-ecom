@@ -98,19 +98,23 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   }
 
   const addPromotionCode = async (formData: FormData) => {
+    if (busyRef.current) {
+      return
+    }
+    // ส่งช่องว่าง = ล้าง error ของรอบก่อนแล้วจบ (พฤติกรรมเดิมก่อน CORE-40)
+    setErrorMessage("")
     const code = formData.get("code")
-    if (busyRef.current || !code) {
+    if (!code) {
       return
     }
     busyRef.current = true
     setApplying(true)
-    setErrorMessage("")
 
     const input = document.getElementById("promotion-input") as HTMLInputElement
-    const codes = knownCodes()
-    codes.push(code.toString())
 
     try {
+      const codes = knownCodes()
+      codes.push(code.toString())
       // CORE-4g (กฎข้อ 63b): Medusa ตอบ 200 แต่ไม่ใส่ code ที่ใช้ไม่ได้ (หมดอายุ/ไม่ตรงเงื่อนไข) — แจ้งผู้ใช้ ไม่เงียบ
       setErrorMessage(
         await submitPromotionCodes(codes, code.toString(), PROMOTION_FAILED, rememberCodes)

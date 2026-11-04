@@ -36,10 +36,10 @@ const cart = {
 let container: HTMLDivElement
 let root: Root
 
-const render = async () => {
+const render = async (props: { cart: never } = { cart }) => {
   const { default: DiscountCode } = await import("@modules/checkout/components/discount-code")
   await act(async () => {
-    root.render(createElement(DiscountCode, { cart }))
+    root.render(createElement(DiscountCode, props))
   })
 }
 
@@ -262,6 +262,43 @@ describe("CORE-40: action โค้ดค้างได้ทีละหนึ
     await submitCode("B")
     await vi.waitFor(() => expect(applyPromotions).toHaveBeenCalledTimes(2))
     expect(applyPromotions).toHaveBeenLastCalledWith(["SAVE10", "B"])
+  })
+
+  it("ลบสำเร็จ (จำ codes: []) แล้ว cart prop refresh เป็น array ใหม่ [SAVE10, X] → ใส่ B ใช้ prop: [SAVE10, X, B]", async () => {
+    applyPromotions.mockResolvedValueOnce({ ok: true, codes: [] })
+    await render()
+    await click("add-discount-button")
+    await click("remove-discount-button")
+    expect(applyPromotions).toHaveBeenLastCalledWith([])
+
+    const refreshed = {
+      id: "cart_1",
+      currency_code: "thb",
+      promotions: [
+        { id: "promo_1", code: "SAVE10", is_automatic: false, application_method: { type: "percentage", value: 10, currency_code: "thb" } },
+        { id: "promo_x", code: "X", is_automatic: false, application_method: { type: "percentage", value: 5, currency_code: "thb" } },
+      ],
+    } as never
+    await render({ cart: refreshed })
+
+    applyPromotions.mockResolvedValueOnce({ ok: true, codes: ["SAVE10", "X", "B"] })
+    await submitCode("B")
+    await vi.waitFor(() => expect(applyPromotions).toHaveBeenCalledTimes(2))
+    expect(applyPromotions).toHaveBeenLastCalledWith(["SAVE10", "X", "B"])
+  })
+
+  it("ส่งฟอร์มช่องว่าง → ล้าง error ของรอบก่อน และไม่ยิง action (พฤติกรรมเดิมก่อน CORE-40)", async () => {
+    applyPromotions.mockResolvedValueOnce({ error: "failed" })
+    await render()
+    await click("add-discount-button")
+    await submitCode("NEW")
+    await vi.waitFor(() =>
+      expect(byTestId("promotion-error")?.textContent).toBe(PROMOTION_FAILED)
+    )
+
+    await submitCode("")
+    await vi.waitFor(() => expect(byTestId("promotion-error")?.textContent ?? "").toBe(""))
+    expect(applyPromotions).toHaveBeenCalledTimes(1)
   })
 
   it("ใส่โค้ดค้าง → ทุก remove-discount-button disabled และคลิกไม่ยิง action เพิ่ม", async () => {
