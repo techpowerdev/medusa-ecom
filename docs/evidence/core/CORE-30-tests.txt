@@ -1,0 +1,82 @@
+# CORE-30 (spec 01 กฎข้อ 87, AC-123) — ผลการทดสอบ
+# branch feat/CORE-30-login-return-group, base origin/develop 98a5018, 2026-11-04 13:15 +07
+# env ในเครื่อง: backend medusa start :9301 (DB medusa_core30, redis db 1), storefront next start :8301
+
+## 1. RED — unit (vitest src/lib/util/login-return.test.ts) ก่อนแก้โค้ด
+     × returns the group page path and the country home path 2ms
+     × is true only for /buy/ return paths 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/lib/util/login-return.test.ts > readReturnTo — group page and home (CORE-30) > returns the group page path and the country home path
+AssertionError: /th/g/abc_D-1: expected null to be '/th/g/abc_D-1' // Object.is equality
+ FAIL  src/lib/util/login-return.test.ts > isBuyReturnPath > is true only for /buy/ return paths
+TypeError: isBuyReturnPath is not a function
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+
+## 2. RED — e2e core-30-login-return.spec.ts กับ storefront ที่ build จากโค้ดก่อนแก้ (src ถูก stash)
+  ✘  1 [chromium] › e2e/core-30-login-return.spec.ts:30:5 › AC-123: หน้ากลุ่ม — ไม่ login กด join → login พร้อม return_to → กลับหน้ากลุ่ม ไม่มี membership ใหม่ (6.4s)
+  ✓  2 [chromium] › e2e/core-30-login-return.spec.ts:51:5 › AC-123: return_to ถูกแก้เป็น URL ภายนอก → login แล้วอยู่ที่ /th/account (1.3s)
+  ✘  3 [chromium] › e2e/core-30-login-return.spec.ts:60:5 › AC-123: หน้าแรก — ไม่ login กดสร้างทีม → login แล้วกลับ /th และจำนวนทีมไม่เพิ่ม (1.1m)
+    Error: expect(page).toHaveURL(expected) failed
+    Received: "http://localhost:8301/th/account"
+    test-results/core-30-login-return-AC-12-d1471-กลุ่ม-ไม่มี-membership-ใหม่-chromium/test-failed-1.png
+    Error: expect(page).toHaveURL(expected) failed
+    Received: "http://localhost:8301/th/account"
+    test-results/core-30-login-return-AC-12-b572a-กลับ-th-และจำนวนทีมไม่เพิ่ม-chromium/test-failed-1.png
+  2 failed
+  1 passed (1.2m)
+
+## 3. GREEN — unit ทั้งหมดของ storefront (pnpm --filter storefront test:unit)
+ Test Files  78 passed (78)
+      Tests  855 passed (855)
+
+## 4. GREEN — e2e ที่เกี่ยวกับ login (core-14, 14b, 14c, 14d, 14f, 14g, GB-7a2 group-buy-join, GB-7c home-campaigns, core-30)
+# รอบนี้ core-30 ล้ม 1 test เพราะ assertion ของ test เอง (ลูกค้าใหม่ไม่มีที่อยู่ → ไม่มี group-address-select) แก้ test เป็น group-add-address-link แล้วรันซ้ำในข้อ 5
+  ✓   4 [chromium] › e2e/core-14c-login-foreign-cart.spec.ts:26:5 › AC-76: login ขณะมี cookie cart ของ customer อื่น → login สำเร็จ, cookie ไม่ชี้ cart ของคนอื่น, cart นั้นยังเป็นของเจ้าของเดิม (2.4s)
+  ✓   2 [chromium] › e2e/core-14-buy-login.spec.ts:38:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (3.1s)
+  ✓   6 [chromium] › e2e/core-14-buy-login.spec.ts:98:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (160ms)
+  ✓   5 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS เปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS on) (1.5s)
+  ✓   3 [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton (4.6s)
+  ✓   7 [chromium] › e2e/core-14-buy-login.spec.ts:121:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (1.5s)
+  ✓   1 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (5.6s)
+  ✓   8 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS ปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS off) (1.9s)
+  ✓   9 [chromium] › e2e/core-14d-cart-after-login.spec.ts:139:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error) (2.0s)
+  ✓  12 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น zz → ไม่มี 5xx เห็น error ไทย (1.0s)
+  ✓  11 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (1.8s)
+  ✓  14 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น /evil.example → ไม่มี 5xx เห็น error ไทย (977ms)
+  ✓  13 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS on) (2.1s)
+  ✓  15 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (1.9s)
+  ✓  10 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (4.9s)
+  ✓  17 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS off) (1.9s)
+  ✓  20 [chromium] › e2e/core-14d-cart-after-login.spec.ts:218:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่มีปุ่มยืนยัน (788ms)
+  ✘  16 [chromium] › e2e/core-30-login-return.spec.ts:30:5 › AC-123: หน้ากลุ่ม — ไม่ login กด join → login พร้อม return_to → กลับหน้ากลุ่ม ไม่มี membership ใหม่ (7.0s)
+  ✓  19 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order (5.4s)
+  ✓  21 [chromium] › e2e/core-30-login-return.spec.ts:51:5 › AC-123: return_to ถูกแก้เป็น URL ภายนอก → login แล้วอยู่ที่ /th/account (884ms)
+  ✓  22 [chromium] › e2e/group-buy-join.spec.ts:162:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่ (3.5s)
+  ✓  24 [chromium] › e2e/group-buy-join.spec.ts:176:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่ (3.4s)
+  ✓  25 [chromium] › e2e/group-buy-join.spec.ts:196:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (3.4s)
+  ✓  26 [chromium] › e2e/group-buy-join.spec.ts:196:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (3.6s)
+  ✓  27 [chromium] › e2e/group-buy-join.spec.ts:220:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย (2.9s)
+  ✓  28 [chromium] › e2e/group-buy-join.spec.ts:235:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47) (3.0s)
+  ✓  18 [chromium] › e2e/group-buy-home-campaigns.spec.ts:175:5 › AC-48: การ์ด group buy 2 แบบ + การ์ด flash บนหน้าแรก ข้อความไทย (58.7s)
+  ✓  23 [chromium] › e2e/core-30-login-return.spec.ts:60:5 › AC-123: หน้าแรก — ไม่ login กดสร้างทีม → login แล้วกลับ /th และจำนวนทีมไม่เพิ่ม (53.2s)
+  ✓  29 [chromium] › e2e/group-buy-home-campaigns.spec.ts:209:5 › AC-48: login แล้ว dblclick สร้างทีม → POST ครั้งเดียว ไปหน้าทีมใหม่ที่มีลิงก์แชร์ ไม่ join อัตโนมัติ (705ms)
+  ✓  30 [chromium] › e2e/group-buy-home-campaigns.spec.ts:237:5 › AC-48: ยังไม่ login กดสร้างทีม → หน้า login และไม่สร้างทีม (289ms)
+  ✓  31 [chromium] › e2e/group-buy-home-campaigns.spec.ts:247:5 › 375px: การ์ดแคมเปญไม่ทำให้หน้าเลื่อนแนวนอน (2.1s)
+  ✓  32 [chromium] › e2e/group-buy-home-campaigns.spec.ts:257:5 › AC-48: POST สร้างทีมตอบ 400 (ต้นแบบถูกแก้เป็น 2 สินค้า) → group-create-team-error ไทย ไม่เปลี่ยนหน้า (577ms)
+    Error: expect(locator).toBeVisible() failed
+    test-results/core-30-login-return-AC-12-d1471-กลุ่ม-ไม่มี-membership-ใหม่-chromium/test-failed-1.png
+  1 failed
+  31 passed (1.2m)
+
+## 5. GREEN — e2e core-30-login-return.spec.ts (หลังแก้ assertion)
+  ✓  1 [chromium] › e2e/core-30-login-return.spec.ts:30:5 › AC-123: หน้ากลุ่ม — ไม่ login กด join → login พร้อม return_to → กลับหน้ากลุ่ม ไม่มี membership ใหม่ (1.4s)
+  ✓  2 [chromium] › e2e/core-30-login-return.spec.ts:52:5 › AC-123: return_to ถูกแก้เป็น URL ภายนอก → login แล้วอยู่ที่ /th/account (636ms)
+  ✓  3 [chromium] › e2e/core-30-login-return.spec.ts:61:5 › AC-123: หน้าแรก — ไม่ login กดสร้างทีม → login แล้วกลับ /th และจำนวนทีมไม่เพิ่ม (3.8s)
+  3 passed (6.5s)
+
+## 6. lint / typecheck / build
+pnpm lint: exit 0 (0 errors; warning เดิมทั้งหมดไม่อยู่ในไฟล์ที่ task นี้แตะ)
+pnpm typecheck: exit 0
+pnpm --filter storefront build: exit 0
+pnpm --filter storefront test:e2e:unit: 54 passed

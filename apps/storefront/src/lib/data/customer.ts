@@ -30,7 +30,7 @@ import {
   loginPathForAddToCart,
   readPendingAddToCart,
 } from "@lib/util/pending-add-to-cart"
-import { readReturnTo } from "@lib/util/login-return"
+import { isBuyReturnPath, readReturnTo } from "@lib/util/login-return"
 import { buyFromPermalink } from "@lib/util/server-cart"
 
 export type CustomerAuthState =
@@ -215,11 +215,15 @@ export async function login(
 // ล็อกอินสำเร็จ → เพิ่มลง cart แล้วไปหน้า cart
 // CORE-14 (AC-41): มาจาก /buy/... → ล็อกอินสำเร็จแล้วสร้าง cart จากลิงก์เดิมแล้วไป checkout
 // (ไม่ redirect ไป route handler `/buy` จาก server action เพราะ client router ตาม redirect แบบ RSC ไม่ได้)
+// CORE-30 (กฎข้อ 87): มาจากหน้ากลุ่ม/หน้าแรก → กลับหน้าเดิม (ไม่ join/สร้างทีมแทนลูกค้า)
 async function continueAfterAuth(
   formData: FormData,
   result: CustomerAuthState
 ): Promise<CustomerAuthState> {
   const returnTo = readReturnTo(formData)
+  if (result?.state === "success" && returnTo && !isBuyReturnPath(returnTo)) {
+    redirect(returnTo)
+  }
   if (result?.state === "success" && returnTo) {
     const url = new URL(returnTo, "http://storefront.invalid")
     const bought = await buyFromPermalink(

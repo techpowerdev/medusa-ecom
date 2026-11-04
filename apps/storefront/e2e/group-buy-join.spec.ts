@@ -238,7 +238,8 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     const actions = await recordActions(page)
     await expect(page.getByTestId("group-address-select")).toHaveCount(0)
     await page.getByTestId("group-join-button").click()
-    await expect(page).toHaveURL(new RegExp(`/${CC}/account$`))
+    // CORE-30 (spec 01 กฎข้อ 87): หน้า login พร้อม return_to กลับหน้ากลุ่มนี้
+    await expect(page).toHaveURL((url) => url.pathname === `/${CC}/account` && url.searchParams.get("return_to") === `/${CC}/g/${ctx.token}`)
     expect(actions).toEqual([])
     const { group } = await getJson(request, `${BACKEND_URL}/store/group-buy/groups/${ctx.token}`, { "x-publishable-api-key": ctx.pk })
     expect(group.progress_people).toBe(0)

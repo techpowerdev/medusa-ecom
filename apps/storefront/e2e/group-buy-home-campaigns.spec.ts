@@ -239,7 +239,8 @@ test("AC-48: ยังไม่ login กดสร้างทีม → หน�
   await openHomeWithCards(page)
   const before = await teamsOf(request, ids.g1)
   await cardOf(page, ids.g1).getByTestId("group-create-team-button").click()
-  await expect(page).toHaveURL(new RegExp(`/${CC}/account$`))
+  // CORE-30 (spec 01 กฎข้อ 87): หน้า login พร้อม return_to กลับหน้าแรก
+  await expect(page).toHaveURL((url) => url.pathname === `/${CC}/account` && url.searchParams.get("return_to") === `/${CC}`)
   expect(await teamsOf(request, ids.g1)).toBe(before)
 })
 

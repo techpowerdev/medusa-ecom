@@ -5,6 +5,7 @@ import { joinGroupBuy, prepareGroupCart, type GroupCart } from "@lib/data/group-
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import { groupJoinActionMessage } from "@lib/util/group-join-error"
+import { loginPathForReturn } from "@lib/util/login-return"
 import {
   addToSelection,
   removeFromSelection,
@@ -113,6 +114,9 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       setJoined(true)
       router.push(`/${countryCode}/account/orders`)
     })
+
+  // CORE-30 (spec 01 กฎข้อ 87): ยังไม่ login → หน้า login แล้วกลับหน้ากลุ่มนี้ (ลูกค้ากด join เองอีกครั้ง)
+  const goLogin = () => router.push(loginPathForReturn(countryCode, `/${countryCode}/g/${encodeURIComponent(token)}`))
 
   // หน้า render ใหม่หลัง server action (เช่น setShippingMethod) ตอนกลุ่มหมดเวลา → ซ่อนฟอร์มแต่ยังแสดงผลของ join ที่ล้ม
   if (!joinable) {
@@ -275,7 +279,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
           className="w-full"
           isLoading={busy || joined}
           disabled={addresses !== null && (!prepared || !shippingId || overLimit)}
-          onClick={addresses === null ? () => router.push(`/${countryCode}/account`) : join}
+          onClick={addresses === null ? goLogin : join}
           data-testid="group-join-button"
         >
           เข้าร่วมกลุ่ม
