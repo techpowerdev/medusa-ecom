@@ -1,3 +1,5 @@
+import crypto from "node:crypto"
+
 import { Page } from "@playwright/test"
 
 import {
@@ -97,8 +99,10 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
   // qa #264 O-4: ล้นเมื่อ line มีส่วนลด (ราคาเดิมขีดฆ่า + ราคาลดมีทศนิยม เช่น ฿560.50) — ใส่โค้ด 5% แบบเดียวกับ qa
-  // qa #278 D-1: จำนวน 99 (฿58,410 ขีดฆ่า / ฿55,489.50) ยังล้น
-  const code = `CORE42${Date.now()}`
+  // qa #278 D-1: จำนวน 99 (฿58,410 ขีดฆ่า / ฿55,489.50) ยังล้น — ใช้สินค้าของ test เองราคาเดียวกับ t-shirt (590)
+  // suffix สุ่ม — worker ที่รันขนาน (เช่น --repeat-each) ได้ Date.now() เดียวกัน
+  const runId = `${Date.now()}${crypto.randomInt(1e6)}`
+  const code = `CORE42${runId}`
   const created = await request.post(`${BACKEND_URL}/admin/promotions`, {
     headers: admin,
     data: {
@@ -116,22 +120,70 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
   })
   expect(created.ok(), `create promotion: ${await created.text()}`).toBe(true)
   const promotionId = (await created.json()).promotion.id
+  let productId: string | undefined
   try {
+    // สินค้าของ test เอง (ไม่ตัด stock) ราคาเท่า t-shirt ของ seed — จำนวน 99 ไม่ขึ้นกับ stock ที่ test อื่นใช้ไป (CI #278 insufficient_inventory)
+    const product = await createTempProduct()
+    productId = product.productId
     for (const quantity of [1, 99]) {
-      await openCart(quantity)
+      await openCart(quantity, product.variantId)
       await expectCartFits(quantity)
       if (quantity === 1) await expectDesktopLayout()
     }
   } finally {
     await deleteAllThenExpectOk(request, admin, [
       `/admin/promotions/${promotionId}`,
+      productId && `/admin/products/${productId}`,
     ])
   }
 
-  /** cart ใหม่ของลูกค้าใหม่ (Store API ด้วย token ของเจ้าของ) ที่มี t-shirt 1 line ตามจำนวน + โค้ด 5% แล้วตั้ง cookie ให้ browser */
-  async function openCart(quantity: number) {
+  /** เสื้อชั่วคราว 590 THB (`manage_inventory: false`) ชื่อ/ราคาเดียวกับ t-shirt ของ seed (ความกว้างช่องชื่อ = คำยาวสุด → layout เดียวกับ qa) — คืน id ของ product/variant */
+  async function createTempProduct() {
+    const get = async (path: string) =>
+      (await request.get(`${BACKEND_URL}${path}`, { headers: admin })).json()
+    const { sales_channels } = await get("/admin/sales-channels?limit=1")
+    const { shipping_profiles } = await get(
+      "/admin/shipping-profiles?type=default"
+    )
+    const handle = `e2e-core42-${runId}`
+    const res = await request.post(
+      `${BACKEND_URL}/admin/products?fields=id,*variants`,
+      {
+        headers: admin,
+        data: {
+          title: "เสื้อยืด Medusa",
+          handle,
+          status: "published",
+          shipping_profile_id: shipping_profiles[0].id,
+          sales_channels: [{ id: sales_channels[0].id }],
+          options: [{ title: "Size", values: ["M"] }],
+          variants: [
+            {
+              title: "M",
+              sku: handle.toUpperCase(),
+              options: { Size: "M" },
+              manage_inventory: false,
+              prices: [{ currency_code: "thb", amount: 590 }],
+            },
+          ],
+        },
+      }
+    )
+    expect(res.ok(), `create product: ${await res.text()}`).toBe(true)
+    const { product } = await res.json()
+    return {
+      productId: product.id as string,
+      variantId: product.variants[0].id as string,
+    }
+  }
+
+  /** cart ใหม่ของลูกค้าใหม่ (Store API ด้วย token ของเจ้าของ) ที่มีสินค้า 1 line ตามจำนวน + โค้ด 5% แล้วตั้ง cookie ให้ browser */
+  async function openCart(quantity: number, variant: string) {
     const a = await createCustomer(request, pk)
-    const cartId = await cartReadyForPayment(request, pk, a, { quantity })
+    const cartId = await cartReadyForPayment(request, pk, a, {
+      quantity,
+      variant,
+    })
     const applied = await request.post(
       `${BACKEND_URL}/store/carts/${cartId}/promotions`,
       {

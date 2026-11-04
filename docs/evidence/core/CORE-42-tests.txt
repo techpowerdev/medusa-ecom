@@ -89,3 +89,27 @@
   5 passed (4.7s)
 
 ## R5) unit vitest 906/906 (82 files), Playwright project unit 54/54; `pnpm lint && pnpm typecheck` (root) ผ่าน 0 errors; storefront build ผ่าน
+
+# ===== รอบแก้ CI ของ PR #278 / train #280 (run 41816648736): AC-136a จำนวน 99 ล้มที่ add line item 400 insufficient_inventory =====
+# สาเหตุ: เคสจำนวน 99 ใช้ t-shirt ของ seed — ใน CI test อื่นใช้ stock ไปจน < 99 (ในเครื่องผ่านเพราะ DB สด)
+# แก้ใน test: สินค้าของ test เอง (admin API, `manage_inventory: false`, 590 THB, ชื่อ "เสื้อยืด Medusa" เท่า seed) ลบใน `finally`
+# + suffix สุ่มของโค้ดส่วนลด/handle (worker ขนานได้ Date.now() เดียวกัน)
+# base origin/develop ae28a8a; storefront prod build :8421, backend :9421; จำลอง CI: stocked_quantity ของ T-SHIRT-S/M/L = 10
+
+## C1) RED — test ใหม่บนโค้ดก่อนแก้ D-1 (cart files ของ 3d05ada, next dev)
+  1) [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:88:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม › 375 จำนวน 99: หน้าไม่ล้นแนวนอน และ product-price อยู่ในจอครบ ไม่ถูกตัด 
+    Error: expect(received).toBeLessThanOrEqual(expected)
+    Expected: <= 375
+    Received:    381
+  1 failed
+
+## C2) GREEN — e2e core-42 --repeat-each=3 (prod build, stock t-shirt = 10); สินค้า e2e-core42-* ค้างหลังรัน = 0
+  ✓  1 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:90:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (3.1s)
+  ✓  2 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:90:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (3.1s)
+  ✓  3 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:90:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (3.1s)
+  ✓  5 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:247:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (1.7s)
+  ✓  6 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:247:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (1.7s)
+  ✓  4 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:247:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (1.8s)
+  6 passed (5.4s)
+
+## C3) pnpm lint && pnpm typecheck (root): ผ่าน 0 errors
