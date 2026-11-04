@@ -570,6 +570,30 @@ medusaIntegrationTestRunner({
         expect(response.status).toEqual(200)
       })
 
+      // GB-N6 (กฎข้อ 37b ทาง 1, AC-56): percentage 150 ผ่าน validator แต่ promotion module ปฏิเสธใน createPromotionsWorkflow
+      // (หลัง acquireLockStep และหลังสร้าง Medusa campaign) → compensation ต้องปล่อย lock ไม่งั้น request ถัดไปรอ TTL 30s
+      it("POST K that fails after the lock → error, nothing left; POST K again → 200 without waiting for the lock TTL", async () => {
+        const key = "gbn6-lock-error-01"
+        const before = await counts()
+        const failed = await post({
+          ...campaignInput({
+            application_method: { ...campaignInput().application_method, value: 150 },
+          }),
+          idempotency_key: key,
+        })
+        expect(failed.status).toBeGreaterThanOrEqual(400)
+        expect(JSON.stringify(failed.data)).toContain("percentage number between 0 and 100")
+        expect(await counts()).toEqual(before)
+
+        const startedAt = Date.now()
+        const ok = await post({ ...campaignInput(), idempotency_key: key })
+        const elapsed = Date.now() - startedAt
+        expect(ok.status).toEqual(200)
+        expect(elapsed).toBeLessThan(10_000)
+        expect(await counts()).toEqual(plus(before, 1))
+        expect((await graphCampaign(ok.data.campaign.id)).campaign.campaign_identifier).toEqual(`group-buy-${key}`)
+      })
+
       it("createGroupBuyCampaignWorkflow called directly and concurrently with the same key → one campaign", async () => {
         const before = await counts()
         const run = () =>
