@@ -28,12 +28,16 @@ export function deliveryStepDone(
   return (cart.shipping_methods?.length ?? 0) > 0
 }
 
-/** ขั้นแรกที่ยังไม่เสร็จ สำหรับปุ่มไปชำระเงินในหน้าตะกร้า */
-export function checkoutStep(cart: CheckoutCart) {
+/**
+ * ขั้นแรกที่ยังไม่เสร็จ: ไม่มีที่อยู่/อีเมล → address; delivery ยังไม่เสร็จ → delivery; ไม่งั้น payment
+ * CORE-41 (spec 01 กฎข้อ 99): `checkout-form` ส่ง `options` = รายการที่กรองแล้ว (delivery ใช้ `deliveryStepDone(cart, options)`);
+ * หน้าตะกร้าไม่ส่ง = พฤติกรรมเดิม
+ */
+export function checkoutStep(cart: CheckoutCart, options?: { id: string }[]) {
   if (!cart.shipping_address?.address_1 || !cart.email) {
     return "address"
   }
-  return deliveryStepDone(cart) ? "payment" : "delivery"
+  return deliveryStepDone(cart, options) ? "payment" : "delivery"
 }
 
 const COUNTRY_CODE_RE = /^[a-z]{2}$/

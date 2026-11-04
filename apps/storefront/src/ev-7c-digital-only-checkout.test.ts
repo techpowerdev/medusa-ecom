@@ -131,6 +131,50 @@ describe("deliveryStepDone(cart, options) — รายการที่กร�
   })
 })
 
+// CORE-41 (spec 01 กฎข้อ 99, AC-135): ขั้นแรกที่ยังไม่เสร็จ — ส่งรายการที่กรองแล้ว → delivery ใช้ deliveryStepDone(cart, options)
+describe("checkoutStep(cart, options) — ขั้นแรกที่ยังไม่เสร็จ (กฎข้อ 99)", () => {
+  const standard = { id: "so_standard" }
+  const digital = { id: "so_digital" }
+  const filtered = [standard]
+  const withAddress = { shipping_address: address, email: "a@b.co" }
+
+  it("ไม่มีที่อยู่ + method Standard อยู่ในรายการ → address", () => {
+    const cart = cartOf([shirt], {
+      shipping_methods: [{ id: "sm_1", shipping_option_id: standard.id }],
+    } as never)
+    expect(checkoutStep(cart, filtered)).toBe("address")
+  })
+
+  it("มีที่อยู่แต่ไม่มีอีเมล → address", () => {
+    const cart = cartOf([shirt], {
+      shipping_address: address,
+      shipping_methods: [{ id: "sm_1", shipping_option_id: standard.id }],
+    } as never)
+    expect(checkoutStep(cart, filtered)).toBe("address")
+  })
+
+  it("มีที่อยู่ + method Digital ค้างที่ไม่อยู่ในรายการ → delivery", () => {
+    const cart = cartOf([shirt], {
+      ...withAddress,
+      shipping_methods: [{ id: "sm_1", shipping_option_id: digital.id }],
+    } as never)
+    expect(checkoutStep(cart, filtered)).toBe("delivery")
+  })
+
+  it("มีที่อยู่ + Standard อยู่ในรายการ → payment", () => {
+    const cart = cartOf([shirt], {
+      ...withAddress,
+      shipping_methods: [{ id: "sm_1", shipping_option_id: standard.id }],
+    } as never)
+    expect(checkoutStep(cart, filtered)).toBe("payment")
+  })
+
+  it("digital-only: ไม่มีที่อยู่ → address, มีที่อยู่ → payment (ข้าม delivery)", () => {
+    expect(checkoutStep(cartOf([voucher]), [])).toBe("address")
+    expect(checkoutStep(cartOf([voucher], withAddress), [])).toBe("payment")
+  })
+})
+
 describe("setAddresses แบบ digital-only (กฎข้อ 24b)", () => {
   const billingForm = () => {
     const form = new FormData()

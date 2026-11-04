@@ -1,0 +1,65 @@
+# CORE-41 (spec 01 กฎข้อ 99, AC-135) — ผล test
+# base: origin/develop 023a720; node v22; backend :9411 (medusa start, DB medusa_core41, redis db 2), storefront :8411 (next build + start)
+
+## RED 1 — unit ก่อนแก้ (vitest src/ev-7c-digital-only-checkout.test.ts): เคส delivery ได้ 'payment'; tsc: checkoutStep รับ argument เดียว (TS2554)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/ev-7c-digital-only-checkout.test.ts > checkoutStep(cart, options) — ขั้นแรกที่ยังไม่เสร็จ (กฎข้อ 99) > มีที่อยู่ + method Digital ค้างที่ไม่อยู่ในรายการ → delivery
+AssertionError: expected 'payment' to be 'delivery' // Object.is equality
+
+Expected: "delivery"
+Received: "payment"
+
+ ❯ src/ev-7c-digital-only-checkout.test.ts:161:42
+    159|       shipping_methods: [{ id: "sm_1", shipping_option_id: digital.id …
+    160|     } as never)
+    161|     expect(checkoutStep(cart, filtered)).toBe("delivery")
+       |                                          ^
+    162|   })
+    163|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 28 passed (29)
+   Start at  17:00:33
+   Duration  467ms (tests 88%, import 6%, transform 3%, worker 2%)
+
+## RED 2 — e2e ก่อนแก้ (e2e/core-41-checkout-first-step.spec.ts): t-shirt ไปจบที่ step=delivery, digital-only ค้าง step=review; regression ผ่าน
+✓  3 [chromium] › e2e/core-41-checkout-first-step.spec.ts:88:5 › AC-135 regression: cart มีที่อยู่ + Standard เปิด step=payment ตรงๆ → ไม่ถูก redirect (3.2s)
+1) [chromium] › e2e/core-41-checkout-first-step.spec.ts:41:5 › AC-135 cart t-shirt ไม่มีที่อยู่: เปิด step=payment/review ตรงๆ → step=address ฟอร์มที่อยู่เปิด
+Expected pattern: /[?&]step=address(&|$)/
+Received string:  "http://localhost:8411/th/checkout?step=delivery"
+2) [chromium] › e2e/core-41-checkout-first-step.spec.ts:65:5 › AC-135 cart digital-only ไม่มีที่อยู่: เปิด step=review ตรงๆ → step=address ฟอร์มที่อยู่ใบเสร็จเปิด
+Expected pattern: /[?&]step=address(&|$)/
+Received string:  "http://localhost:8411/th/checkout?step=review"
+2 failed
+1 passed (17.3s)
+
+## GREEN — unit: src/ev-7c-digital-only-checkout.test.ts + ทั้ง storefront (pnpm --filter storefront test:unit)
+ Test Files  82 passed (82)
+      Tests  911 passed (911)
+
+## GREEN — e2e ที่เกี่ยว (core-41, core-32 รวม CORE-33/CORE-35 AC-129, ev-7c AC-37/AC-3, thai-ui-checkout, core-4e/4f/4g/4h) --workers=2
+  ✓   1 [chromium] › e2e/core-41-checkout-first-step.spec.ts:41:5 › AC-135 cart t-shirt ไม่มีที่อยู่: เปิด step=payment/review ตรงๆ → step=address ฟอร์มที่อยู่เปิด (2.5s)
+  ✓   2 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:37:5 › AC-125 checkout: ขั้น delivery ของ cart t-shirt มี Standard ไม่มี Digital delivery (3.8s)
+  ✓   3 [chromium] › e2e/core-41-checkout-first-step.spec.ts:65:5 › AC-135 cart digital-only ไม่มีที่อยู่: เปิด step=review ตรงๆ → step=address ฟอร์มที่อยู่ใบเสร็จเปิด (3.3s)
+  ✓   5 [chromium] › e2e/core-41-checkout-first-step.spec.ts:88:5 › AC-135 regression: cart มีที่อยู่ + Standard เปิด step=payment ตรงๆ → ไม่ถูก redirect (2.8s)
+  ✓   4 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:59:5 › AC-125 หน้ากลุ่ม: หลังกด group-shipping-load ไม่มี option ของ Digital delivery (4.8s)
+  ✓   6 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:126:7 › CORE-33 › AC-127 checkout: cart t-shirt ที่ค้าง Digital delivery ไม่มี radio ติ๊ก ปุ่ม disabled จนเลือก Standard (3.2s)
+  ✓   8 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:176:7 › CORE-35 › AC-129 checkout: cart ค้าง Digital delivery เปิด step=payment/review ตรงๆ → กลับ delivery; เลือก Standard แล้วไป payment ได้ (2.7s)
+  ✓   9 [chromium] › e2e/core-4f-auth-errors.spec.ts:8:5 › AC-98: login รหัสผ่านผิด / สมัครด้วยอีเมลที่มีบัญชีแล้ว → error ไทย และอีเมลยังอยู่ (859ms)
+  ✓   7 [chromium] › e2e/core-4e-checkout-polish.spec.ts:127:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (6.9s)
+  ✓  11 [chromium] › e2e/core-4h-auth-reason.spec.ts:9:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (2.5s)
+  ✓  10 [chromium] › e2e/core-4g-checkout-polish.spec.ts:66:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect (3.9s)
+  ✓  12 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:86:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ (2.3s)
+  ✓  13 [chromium] › e2e/thai-ui-checkout.spec.ts:21:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (4.6s)
+  ✓  14 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:158:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery (3.5s)
+  14 passed (25.2s)
+
+## GREEN — Playwright project unit (pnpm --filter storefront test:e2e:unit)
+  54 passed (837ms)
+
+## pnpm lint && pnpm typecheck: exit 0
+## pnpm --filter storefront build: exit 0
