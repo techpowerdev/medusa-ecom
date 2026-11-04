@@ -69,7 +69,6 @@ const AC4_EXCEPTIONS = [
   "routes/affiliate/**",
   "lib/affiliate*",
   "components/group-buy/create-campaign.tsx",
-  "components/group-buy/groups-section.tsx",
   "lib/group-buy-form.ts",
 ]
 
@@ -137,6 +136,7 @@ describe("กันกดซ้ำด้วย createSingleFlight (spec 08 ก�
     "widgets/flash-sale-options.tsx",
     "widgets/order-evouchers.tsx",
     "components/group-buy/group-members.tsx",
+    "components/group-buy/groups-section.tsx",
     "routes/group-buying/[id]/page.tsx",
   ])("%s ใช้ useState(createSingleFlight) และไม่มี useRef", (file) => {
     const src = read(file)

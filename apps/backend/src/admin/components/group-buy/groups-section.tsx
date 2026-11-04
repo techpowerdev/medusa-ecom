@@ -1,17 +1,17 @@
 import { useDate } from "@medusajs/dashboard/hooks"
 import {
   Badge,
-  Button,
-  Container,
   createDataTableColumnHelper,
   DataTable,
   DataTablePaginationState,
-  Heading,
   toast,
   useDataTable,
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { Container } from "../common/container"
+import { Header } from "../common/header"
+import { createSingleFlight } from "../../lib/single-flight"
 import { campaignActions, groupProgress } from "../../lib/group-buy-campaign"
 import { Campaign, Group, groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
 import { GroupMembers } from "./group-members"
@@ -42,8 +42,8 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
     }
   }, [selectedId, data, isPlaceholderData, selected])
 
-  // กฎข้อ 17: in-flight guard แบบ synchronous — isPending ยังไม่เปลี่ยนระหว่างสองคลิกใน task เดียว
-  const inFlight = useRef(false)
+  // กฎข้อ 17 / spec 08 กฎ 4: guard ตั้งทันทีก่อน await — สองคลิกใน task เดียว (isPending ยังไม่เปลี่ยน) ไม่ยิงซ้ำ
+  const [createOnce] = useState(createSingleFlight)
   const createPool = useMutation({
     mutationFn: () => groupBuyApi.createPoolGroup(campaign.id),
     onSuccess: () => {
@@ -51,17 +51,8 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
       toast.success("Pool group created")
     },
     onError: (e: Error) => toast.error(e.message),
-    onSettled: () => {
-      inFlight.current = false
-    },
   })
-  const onCreatePool = () => {
-    if (inFlight.current) {
-      return
-    }
-    inFlight.current = true
-    createPool.mutate()
-  }
+  const onCreatePool = () => createOnce(() => createPool.mutateAsync().catch(() => undefined))
 
   const columns = useMemo(
     () => [
@@ -109,22 +100,27 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
   })
 
   return (
-    <Container className="divide-y p-0">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Groups</Heading>
-        {campaignActions(campaign).createPool && (
-          <Button
-            size="small"
-            variant="secondary"
-            data-testid="gb-create-pool-group"
-            onClick={onCreatePool}
-            isLoading={createPool.isPending}
-            disabled={createPool.isPending}
-          >
-            Create pool group
-          </Button>
-        )}
-      </div>
+    <Container>
+      <Header
+        title="Groups"
+        actions={
+          campaignActions(campaign).createPool
+            ? [
+                {
+                  type: "button",
+                  props: {
+                    variant: "secondary",
+                    "data-testid": "gb-create-pool-group",
+                    onClick: onCreatePool,
+                    isLoading: createPool.isPending,
+                    disabled: createPool.isPending,
+                    children: "Create pool group",
+                  },
+                },
+              ]
+            : []
+        }
+      />
       {/* กฎข้อ 24a: highlight ที่ระดับ td ด้วย — td แรกของ DataTable เป็น sticky มี bg-ui-bg-base (+ group-hover) ทับสีของแถว */}
       <div
         data-testid="gb-groups-table"

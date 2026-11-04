@@ -1,9 +1,13 @@
+import { LayoutComposer, NoRecords, SectionRow } from "@medusajs/dashboard/components"
 import { useDate } from "@medusajs/dashboard/hooks"
-import { Badge, Button, Container, Heading, Text, toast, usePrompt } from "@medusajs/ui"
+import { Spinner } from "@medusajs/icons"
+import { Badge, Text, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { FetchError } from "@medusajs/js-sdk"
 import { useState } from "react"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { Link, LoaderFunctionArgs, UIMatch, useNavigate, useParams } from "react-router-dom"
+import { Container } from "../../../components/common/container"
+import { Header } from "../../../components/common/header"
 import { GroupsSection } from "../../../components/group-buy/groups-section"
 import { campaignActions } from "../../../lib/group-buy-campaign"
 import { CAMPAIGN_STATUS_COLOR, groupBuyApi, groupBuyKeys } from "../../../lib/group-buy"
@@ -79,28 +83,20 @@ const GroupBuyCampaignPage = () => {
   if (error) {
     const notFound = (error as FetchError).status === 404
     return (
-      <Container className="flex flex-col gap-y-2 px-6 py-4" data-testid={notFound ? "gb-campaign-not-found" : undefined}>
-        <Text size="small" weight="plus">
-          {notFound ? "Campaign not found" : "Could not load the campaign"}
-        </Text>
-        <Text size="small" className="text-ui-fg-subtle">
-          {notFound ? "It may have been deleted." : error.message}
-        </Text>
-        <Link to="/group-buying">
-          <Text size="small" className="text-ui-fg-interactive">
-            Back to group-buy campaigns
-          </Text>
-        </Link>
+      <Container data-testid={notFound ? "gb-campaign-not-found" : undefined}>
+        <NoRecords
+          title={notFound ? "Campaign not found" : "Could not load the campaign"}
+          message={notFound ? "It may have been deleted." : error.message}
+          action={{ to: "/group-buying", label: "Back to group-buy campaigns" }}
+        />
       </Container>
     )
   }
 
   if (isLoading || !data) {
     return (
-      <Container className="px-6 py-4">
-        <Text size="small" className="text-ui-fg-subtle">
-          Loading...
-        </Text>
+      <Container>
+        <NoRecords icon={<Spinner className="text-ui-fg-subtle animate-spin" />} title="Loading..." message="" />
       </Container>
     )
   }
@@ -121,58 +117,79 @@ const GroupBuyCampaignPage = () => {
   ]
 
   return (
-    <div className="flex flex-col gap-y-3">
-      <Container className="divide-y p-0">
-        <div className="flex items-center justify-between gap-x-4 px-6 py-4">
-          <div className="flex items-center gap-x-2">
-            <Heading level="h1">{campaign.name}</Heading>
-            <Badge size="2xsmall" color={CAMPAIGN_STATUS_COLOR[campaign.status]} data-testid="gb-campaign-status">
-              {campaign.status}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-x-2">
-            {buttons
-              .filter((b) => actions[b.action])
-              .map((b) => (
-                <Button
-                  key={b.action}
-                  size="small"
-                  variant={b.danger ? "danger" : "secondary"}
-                  data-testid={b.testId}
-                  onClick={() => onAction(b.action)}
-                  disabled={run.isPending}
-                >
-                  {b.label}
-                </Button>
-              ))}
-          </div>
-        </div>
-        {fields.map(([key, label, value]) => (
-          <div key={key} className="grid grid-cols-2 px-6 py-4" data-testid={`gb-campaign-row-${key}`}>
-            <Text size="small" leading="compact" weight="plus">
-              {label}
-            </Text>
-            <Text size="small" leading="compact">
-              {value}
-            </Text>
-          </div>
-        ))}
-        {campaign.template_promotion_id && (
-          <div className="grid grid-cols-2 px-6 py-4">
-            <Text size="small" leading="compact" weight="plus">
-              Template promotion
-            </Text>
-            <Link to={`/promotions/${campaign.template_promotion_id}`}>
-              <Text size="small" leading="compact" className="text-ui-fg-interactive">
-                {campaign.promotion?.code ?? "Open"}
-              </Text>
-            </Link>
-          </div>
-        )}
-      </Container>
-      <GroupsSection campaign={campaign} />
-    </div>
+    <LayoutComposer
+      widgetsZonePrefix="group_buy.details"
+      preferredLayoutId="core:single-column"
+      data={campaign}
+      sections={{
+        main: (
+          <>
+            <LayoutComposer.Entry id="GroupBuyCampaignGeneralSection">
+              <Container>
+                <Header
+                  title={campaign.name}
+                  actions={[
+                    {
+                      type: "custom",
+                      children: (
+                        <Badge size="2xsmall" color={CAMPAIGN_STATUS_COLOR[campaign.status]} data-testid="gb-campaign-status">
+                          {campaign.status}
+                        </Badge>
+                      ),
+                    },
+                    ...buttons
+                      .filter((b) => actions[b.action])
+                      .map((b) => ({
+                        type: "button" as const,
+                        props: {
+                          variant: b.danger ? ("danger" as const) : ("secondary" as const),
+                          "data-testid": b.testId,
+                          onClick: () => onAction(b.action),
+                          disabled: run.isPending,
+                          children: b.label,
+                        },
+                      })),
+                  ]}
+                />
+                {/* SectionRow ไม่รับ data-testid — ห่อด้วย div ที่คง testid เดิมของ e2e (spec 08 กฎ 7) */}
+                {fields.map(([key, label, value]) => (
+                  <div key={key} data-testid={`gb-campaign-row-${key}`}>
+                    <SectionRow title={label} value={value} />
+                  </div>
+                ))}
+                {campaign.template_promotion_id && (
+                  <SectionRow
+                    title="Template promotion"
+                    value={
+                      <Link to={`/promotions/${campaign.template_promotion_id}`}>
+                        <Text size="small" leading="compact" className="text-ui-fg-interactive">
+                          {campaign.promotion?.code ?? "Open"}
+                        </Text>
+                      </Link>
+                    }
+                  />
+                )}
+              </Container>
+            </LayoutComposer.Entry>
+            <LayoutComposer.Entry id="GroupBuyGroupsSection">
+              <GroupsSection campaign={campaign} />
+            </LayoutComposer.Entry>
+          </>
+        ),
+      }}
+    />
   )
+}
+
+type CampaignLoaderData = Awaited<ReturnType<typeof groupBuyApi.getCampaign>> | null
+
+// ADM-6 (spec 08 AC-9): breadcrumb แสดงชื่อแคมเปญ (loader โหลดตอนเข้า route แบบหน้า pool)
+// โหลดไม่ได้ (เช่น 404) → null ไม่ throw ให้ component แสดง gb-campaign-not-found เหมือนเดิม (ไม่ตกไป error boundary)
+export const loader = async ({ params }: LoaderFunctionArgs): Promise<CampaignLoaderData> =>
+  groupBuyApi.getCampaign(params.id!).catch(() => null)
+
+export const handle = {
+  breadcrumb: ({ loaderData }: UIMatch<CampaignLoaderData>) => loaderData?.campaign.name ?? "Campaign",
 }
 
 export default GroupBuyCampaignPage

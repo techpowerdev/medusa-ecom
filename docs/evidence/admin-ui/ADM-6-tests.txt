@@ -1,0 +1,48 @@
+# ADM-6 (spec 08 AC-9) — ผล test (2026-11-04, base origin/develop 167faba)
+
+## Red: static unit ก่อนแก้โค้ด (group-buy-pages.unit.spec.ts + medusa-ui.unit.spec.ts ที่ลบ groups-section จากข้อยกเว้น AC-4)
+Tests:       9 failed, 56 passed, 65 total
+  - รายการแคมเปญ: ไม่ใช้ LayoutComposer/DataTable ของ dashboard, ไม่มี rowHref/prefix
+  - รายละเอียด: ไม่มี SectionRow/NoRecords/LayoutComposer/Header, ไม่มี loader + handle.breadcrumb
+  - groups-section: ไม่ใช้ Header, มี useRef(false) แทน createSingleFlight
+
+## Red: e2e group-buy-admin-pages.spec.ts บน prod build ของโค้ดเดิม
+    Error: expect(locator).toHaveText(expected) failed
+    Expected: "ADM-6 1793808848887 detail"
+    Error: element(s) not found
+
+## Green: unit (pnpm --filter backend test:unit)
+Test Suites: 89 passed, 89 total
+Tests:       942 passed, 942 total
+
+## Green: e2e group-buy admin ทั้งหมด (prod build: medusa build + medusa start, chromium, locale en-US, Asia/Bangkok)
+## e2e เดิม group-buy-admin-{dates,detail,form,members} ไม่ได้แก้ (git diff ว่าง)
+  ✓   1 [chromium] › e2e/group-buy-admin-dates.spec.ts:11:5 › AC-3: ends_at ของแคมเปญแสดง Feb 1, 2026 12:30 AM ตามเวลาไทยของ browser (2.9s)
+  ✓   2 [chromium] › e2e/group-buy-admin-detail.spec.ts:69:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (4.4s)
+  ✓   3 [chromium] › e2e/group-buy-admin-form.spec.ts:100:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (7.1s)
+  ✓   5 [chromium] › e2e/group-buy-admin-pages.spec.ts:55:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL (4.6s)
+  ✓   4 [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย (7.9s)
+  ✓   6 [chromium] › e2e/group-buy-admin-detail.spec.ts:110:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (3.5s)
+  ✓   9 [chromium] › e2e/group-buy-admin-detail.spec.ts:151:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading (1.3s)
+  ✓   8 [chromium] › e2e/group-buy-admin-members.spec.ts:148:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request (2.6s)
+  ✓   7 [chromium] › e2e/group-buy-admin-form.spec.ts:182:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (3.4s)
+  ✓  10 [chromium] › e2e/group-buy-admin-detail.spec.ts:161:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (2.9s)
+  ✓  11 [chromium] › e2e/group-buy-admin-members.spec.ts:181:7 › GB-6d › AC-41: fail ล้มเพราะกลุ่ม succeeded ไปแล้ว → GET กลุ่มใหม่ แถวเป็น succeeded ปุ่มหาย ไม่ต้อง reload (2.8s)
+  ✓  12 [chromium] › e2e/group-buy-admin-form.spec.ts:236:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (3.7s)
+  ✓  13 [chromium] › e2e/group-buy-admin-members.spec.ts:230:7 › GB-6d › AC-41: แถวที่เลือกมี highlight + ปุ่มปิด; เปลี่ยนหน้าไปหน้าที่ไม่มีแถวที่เลือก → ปิดตาราง membership (2.9s)
+  ✓  15 [chromium] › e2e/group-buy-admin-members.spec.ts:291:7 › GB-N3 › AC-42: td แรกของแถวที่เลือกสีเดียวกับ td ที่สองและต่างจากแถวที่ไม่ถูกเลือก (1.8s)
+  ✓  14 [chromium] › e2e/group-buy-admin-form.spec.ts:293:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (13.9s)
+  15 passed (29.4s)
+
+## pnpm typecheck
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+
+## pnpm lint (0 errors; warning เดิมที่ไม่เกี่ยวกับ task นี้)
+apps/backend lint: ✖ 2 problems (0 errors, 2 warnings)
+apps/backend lint: warn:    Lint produced 2 warning(s).
+apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+
+## pnpm --filter backend build
+info:    Backend build completed successfully (7.82s)
+info:    Frontend build completed successfully (19.73s)
