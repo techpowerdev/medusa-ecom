@@ -1,5 +1,7 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: accepted (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11)
+Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
+ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7)
 Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้งหมดได้ใช้ component, hook, utility และอื่นที่ medusa ให้แล้วหรือยัง ถ้ายังให้วางแผนปรับใช้ตามที่ medusa มีให้ก่อนเป็นฐาน
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
@@ -14,7 +16,7 @@ Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤต�
 | เรียก API | JS SDK (`lib/client.ts`) + Tanstack Query ตาม Admin tips | ใช้ตามเดิม |
 | ข้อมูลสินค้า/collection/category | `useProducts` + `productsQueryKeys` (dashboard/hooks), `useComboboxData` + `sdk.admin.productCollection/productCategory.list` | ใช้แทน `useQuery` เอง (ADM-7, ADM-9) |
 | layout หน้า | `LayoutComposer` (`core:single-column`, widget zone) | ใช้แทน `div flex-col gap-y-3` (ADM-4, ADM-6) |
-| หัว section | ไม่ export — custom guide **Header** (+ Container wrapper) | คัดลอกจาก guide ไป `components/common/` (ADM-2a) |
+| หัว section | ไม่ export — custom guide **Header** (+ Container wrapper) | คัดลอกจาก guide ไป `components/common/` (ADM-2a); **หน้า list ที่มี `DataTable` ของ dashboard ใช้ `heading`/`subHeading` (+ `action`) ของตารางแทน Header** (รอบ 23 — ADR-018 หมายเหตุ 2026-11-05; ADM-4 ☑, ADM-13) |
 | แถว key/value | `SectionRow` | ใช้แทน `Field`/`Row`/grid เอง (ADM-2a, ADM-4, ADM-6) |
 | empty state | `NoRecords` | ใช้แทนข้อความเอง (ADM-5, ADM-6) |
 | ตาราง + แบ่งหน้า + filter | `DataTable` ของ dashboard (`heading`, `prefix`, `pageSize`, `rowHref`, `filters`, `emptyState`, `action`) + `useQueryParams`; `DataTable` ของ `@medusajs/ui` | dashboard เป็นค่าตั้งต้น; คง ui `DataTable` เมื่อต้องการ `onRowClick` (groups) หรืออยู่ใน modal (product picker) |
@@ -147,13 +149,13 @@ qa เก็บ evidence ทุก task ที่มี UI (ADM-2a..9) ตาม
 ## Tasks (each = one PR, ≤ ~400 LOC, ordered, with dependencies)
 | Task | งาน — ไฟล์ | AC | Depends |
 |---|---|---|---|
-| ADM-1 | dependency ตรงกับ dashboard: bump `@medusajs/ui` 4.2.6 → 4.2.8, เพิ่ม `react-hook-form` 7.83.0, `@hookform/resolvers` 5.5.7, `@medusajs/icons` 2.22.1 (exact) + `deps.unit.spec.ts` (รวมตรวจ jest โหลด `@medusajs/dashboard/lib`) + `icon` ของ route `evouchers`, `group-buying` — ไฟล์: `apps/backend/package.json`, `pnpm-lock.yaml`, jest config (ถ้าต้องแก้), `src/admin/__tests__/`, `routes/{evouchers,group-buying}/page.tsx` (เฉพาะ config) | AC-1, AC-2 (2 route) | PR ของ ADR-018/spec 08 merge |
-| ADM-2a | `components/common/{header,container}.tsx` (จาก guide); Header + `SectionRow` ใน `flash-sale-options`, `order-evouchers`, `variant-evoucher-pool`; **เพิ่ม**ข้อตรวจ AC-5 + โครงรายการข้อยกเว้นใน `src/admin/__tests__/medusa-ui.unit.spec.ts` ที่ ADM-1 (#186) สร้างไว้แล้ว (แก้รอบ 12 ตาม review #186); (รอบ 12) nit EV-13 #167 ใน `order-evouchers` (จุดซ้อนใน toast + เคส e2e ข้อความใหม่) | AC-5 | ADM-1 |
-| ADM-2b | `createSingleFlight` แทน `useRef` ใน `flash-sale-options`, `order-evouchers`, `group-members`, `group-buying/[id]/page`; แสดงวันที่ด้วย `useDate` แทน `formatDate`/`formatDateTime` ของ `lib/evoucher.ts`, `lib/group-buy.ts` และผู้เรียก (รวม `codes-table` เฉพาะ cell วันที่); ตั้ง Playwright e2e admin `locale: "en-US"` + `timezoneId: "Asia/Bangkok"` (project ของไฟล์ `*admin*.spec.ts` หรือ `test.use` ทุกไฟล์); ข้อตรวจ AC-4 ใน `medusa-ui.unit.spec.ts` | AC-3, AC-4 | ADM-2a |
-| ADM-3 | pilot ฟอร์ม: drawer ของ `flash-sale-options` + modal Create pool ของ `variant-evoucher-pool` เป็น `Form` + `KeyboundForm` + zod (`optionalInt` + refine/transform) | AC-6 | ADM-2b |
-| ADM-4 | หน้า e-voucher: `LayoutComposer` + Header ใน `routes/evouchers/**`, `SectionRow` หน้า pool, `pools-table`/`codes-table` เป็น `DataTable` ของ dashboard (+ filter สถานะ), Reveal ต่อแถวเป็น `ActionMenu` (+ แก้ locator e2e ที่กด Reveal), Header ใน `import-codes` | AC-7 | ADM-2b — ∥ ADM-3, ADM-6 |
+| ADM-1 | dependency ตรงกับ dashboard: bump `@medusajs/ui` 4.2.6 → 4.2.8, เพิ่ม `react-hook-form` 7.83.0, `@hookform/resolvers` 5.5.7, `@medusajs/icons` 2.22.1 (exact) + `deps.unit.spec.ts` (รวมตรวจ jest โหลด `@medusajs/dashboard/lib`) + `icon` ของ route `evouchers`, `group-buying` — ไฟล์: `apps/backend/package.json`, `pnpm-lock.yaml`, jest config (ถ้าต้องแก้), `src/admin/__tests__/`, `routes/{evouchers,group-buying}/page.tsx` (เฉพาะ config) — ☑ #186 | AC-1, AC-2 (2 route) | PR ของ ADR-018/spec 08 merge |
+| ADM-2a | `components/common/{header,container}.tsx` (จาก guide); Header + `SectionRow` ใน `flash-sale-options`, `order-evouchers`, `variant-evoucher-pool`; **เพิ่ม**ข้อตรวจ AC-5 + โครงรายการข้อยกเว้นใน `src/admin/__tests__/medusa-ui.unit.spec.ts` ที่ ADM-1 (#186) สร้างไว้แล้ว (แก้รอบ 12 ตาม review #186); (รอบ 12) nit EV-13 #167 ใน `order-evouchers` (จุดซ้อนใน toast + เคส e2e ข้อความใหม่) — ☑ #205 | AC-5 | ADM-1 |
+| ADM-2b | `createSingleFlight` แทน `useRef` ใน `flash-sale-options`, `order-evouchers`, `group-members`, `group-buying/[id]/page`; แสดงวันที่ด้วย `useDate` แทน `formatDate`/`formatDateTime` ของ `lib/evoucher.ts`, `lib/group-buy.ts` และผู้เรียก (รวม `codes-table` เฉพาะ cell วันที่); ตั้ง Playwright e2e admin `locale: "en-US"` + `timezoneId: "Asia/Bangkok"` (project ของไฟล์ `*admin*.spec.ts` หรือ `test.use` ทุกไฟล์); ข้อตรวจ AC-4 ใน `medusa-ui.unit.spec.ts` — ☑ #225 | AC-3, AC-4 | ADM-2a |
+| ADM-3 | pilot ฟอร์ม: drawer ของ `flash-sale-options` + modal Create pool ของ `variant-evoucher-pool` เป็น `Form` + `KeyboundForm` + zod (`optionalInt` + refine/transform) — ☑ #294 (train #299) | AC-6 | ADM-2b |
+| ADM-4 | หน้า e-voucher: `LayoutComposer` + Header ใน `routes/evouchers/**`, `SectionRow` หน้า pool, `pools-table`/`codes-table` เป็น `DataTable` ของ dashboard (+ filter สถานะ), Reveal ต่อแถวเป็น `ActionMenu` (+ แก้ locator e2e ที่กด Reveal), Header ใน `import-codes` — ☑ #296 (train #299; หัวตาราง pool ใช้ `heading`/`subHeading` ของ `DataTable` แทน Header — ADR-018 หมายเหตุ 2026-11-05) | AC-7 | ADM-2b — ∥ ADM-3, ADM-6 |
 | ADM-5 | `partners-section`: ตาราง `DataTable` แบ่งหน้า + `NoRecords` + Edit/Delete ต่อแถวเป็น `ActionMenu` + ฟอร์มสร้าง/แก้เป็น `Form`; `listPartners` รับ `limit`/`offset` (`lib/evoucher.ts`); แก้ locator Edit/Delete ใน `evoucher-admin-forms`; (รอบ 13, follow-up EV-14 #195) zod ของฟอร์ม partner ตรวจ `logo_url`/`terms_url` เป็น http(s) (spec 02 กฎข้อ 26) | AC-8 | ADM-3 — ∥ ADM-4 (คนละไฟล์; ชน `lib/evoucher.ts` ตัวที่ merge ทีหลัง rebase) |
-| ADM-6 | หน้า group buy: `LayoutComposer`, Header, รายการแคมเปญเป็น `DataTable` ของ dashboard (`rowHref`), หน้ารายละเอียด `SectionRow` + `NoRecords` + `loader`/breadcrumb, `groups-section` (คง ui `DataTable`) ใช้ Header + `createSingleFlight` | AC-9 | ADM-2b, GB-N3 (ถ้ายังไม่ merge — ชน `groups-section.tsx`) — ∥ ADM-3, ADM-4 |
+| ADM-6 | หน้า group buy: `LayoutComposer`, Header, รายการแคมเปญเป็น `DataTable` ของ dashboard (`rowHref`), หน้ารายละเอียด `SectionRow` + `NoRecords` + `loader`/breadcrumb, `groups-section` (คง ui `DataTable`) ใช้ Header + `createSingleFlight` — ☑ #293 (train #299; แถว toolbar ว่างเหนือตาราง → ADM-13) | AC-9 | ADM-2b, GB-N3 (ถ้ายังไม่ merge — ชน `groups-section.tsx`) — ∥ ADM-3, ADM-4 |
 | ADM-7 | `create-campaign` เป็น `Form` + `DatePicker`/`z.date()` (คง `toCampaignBody` → `setError` แต่รับ `Date`; ลบ `ictToIso` ใน `lib/group-buy-form.ts` + ปรับ unit, `createSingleFlight`) + `product-picker` ใช้ `useProducts`; helper `fillDatePicker` ใน `e2e/support/admin.ts` (ห่อ `DatePicker` ด้วย element ที่มี testid เดิม เช่น `gb-field-starts_at`; helper คลิก segment แรกใน wrapper แล้วพิมพ์ตามลำดับ segment ของ en-US) + แก้การกรอกวันเวลาใน `group-buy-admin-form`; (รอบ 15 spec 04) `product-picker` เป็น single select ตาม GB-6e (กฎข้อ 30d ของ spec 04) — ห้ามกลับเป็นหลายสินค้าตอนย้ายไป `useProducts` | AC-10 | ADM-3 — ∥ ADM-6 (คนละไฟล์); ชน `product-picker.tsx` กับ GB-6e (spec 04) — ตัวที่ merge ทีหลัง rebase |
 | ADM-8a | affiliate ตาราง: `list-table` → `DataTable` ของ dashboard (`prefix` ต่อแท็บ), Header, `getLocaleAmount` + `useDate` (ลบ `affiliate-format.ts` + ปรับ unit/ข้อความเงินใน e2e), `icon` ของ route `affiliate` + ลบ `"affiliate"` ออกจาก `ICON_PENDING` ใน `medusa-ui.unit.spec.ts` และเพิ่ม assertion ว่าทุก route ใน `ICON_PENDING` ต้อง**ยังไม่มี** `icon:` (กันลืมลบ — review #186); (รอบ 13, nit AF-14 #187) assertion ค่าที่ parse ใน `affiliate-names.unit.spec.ts`, ตัด cast `as unknown as` ของ `affiliateNames`, query ชื่อใช้ `placeholderData: keepPreviousData` — ไฟล์เพิ่ม: `lib/__tests__/affiliate-names.unit.spec.ts` | AC-2 (affiliate), AC-11 | ADM-2b, #176 (AF-12c) ☑, AF-14 ☑ (#187), **AF-15 merge** (รอบ 12 — แตะตาราง affiliates เดียวกัน) |
 | ADM-8b | affiliate ปุ่มต่อแถว: `affiliates-table`, `programs-table`, `payouts-table` เป็น `ActionMenu` (trigger `affiliate-row-actions`, `affiliate-program-row-actions`, `affiliate-payout-row-actions`) + `createSingleFlight` ใน `payouts-table` + แก้ locator ปุ่มต่อแถวใน e2e `affiliate-admin-*`; (รอบ 12, nit #176) action ของแถว payout เดียวกันกันกัน — ระหว่าง Cancel กำลังส่ง Mark paid กดไม่ได้ และกลับกัน; (nit review #163) deps ของ `useMemo` คอลัมน์ action ใน `programs-table` ครบตามค่าที่อ่าน (ไม่ใช่แค่ `[remove.isPending]`) — ถ้า `ActionMenu` ทำให้ไม่ต้อง memo คอลัมน์แล้วให้ตัด `useMemo` ทิ้ง | AC-13 | ADM-8a |
@@ -162,6 +164,142 @@ qa เก็บ evidence ทุก task ที่มี UI (ADM-2a..9) ตาม
 (รอบ 12 สถานะ) #183 (ADR-018/spec 08) ☑; ADM-1 ☑ #186 → ADM-2a เริ่มได้; ที่เหลือ ☐ ตามลำดับเดิม — แก้ถ้อยคำ `useDate` (locale จากภาษาของ admin) และเพิ่ม nit ของ #163/#167/#176 ใน ADM-2a/8b/9
 ไม่มี task ใดบล็อก release; ADM-1..7 ไม่แตะไฟล์ affiliate (ไม่ชน #176/AF-14)
 (รอบ 13 สถานะ, 2026-11-03) ADM-2a ◐ #205; AF-14 ☑ #187; ADM-5 เพิ่มการตรวจ URL ของ partner (follow-up EV-14 #195 ☑), ADM-8a เพิ่ม nit ของ #187 — ลำดับ/Depends เดิม
+(รอบ 23 สถานะ, 2026-11-05) ADM-1 ☑ #186, ADM-2a ☑ #205, ADM-2b ☑ #225, ADM-3 ☑ #294, ADM-4 ☑ #296, ADM-6 ☑ #293 (สามตัวหลังผ่าน train #299); ADM-5, ADM-7, ADM-8a กำลังทำ; ADM-8b, ADM-9 ☐ ตามลำดับเดิม;
+งานใหม่ ADM-10..13 อยู่ในหัวข้อ "Follow-up รอบ 23" ด้านล่าง
+
+## Follow-up รอบ 23 (2026-11-05 — owner อนุมัติให้ทำรอบถัดไป)
+ที่มา: qa ADM-4 #296 (`docs/evidence/admin-ui/ADM-4/REPORT.md` O-1, O-2), qa ADM-6 #293 (`ADM-6/REPORT.md` Observation 1, 4), qa ADM-3 #294 (`ADM-3/REPORT.md` Observation 1),
+review #293/#296 (หัวตารางใช้ `heading`/`subHeading` ของ `DataTable`, `initialData` จาก loader) — ตรวจโค้ดบน develop `a349676` (path ย่อจาก `apps/backend/src/admin/`):
+- `components/evoucher/pools-table.tsx:40–41` และ `codes-table.tsx:83–85` ส่ง `<prefix>_offset` ผ่าน `lib/evoucher-query.ts:7–10` (`toOffset`: ไม่ใช่จำนวนเต็มบวก → 0) แต่**ไม่แก้ URL**;
+  `DataTable` ของ dashboard 2.22.1 อ่านค่าดิบเอง (`@medusajs/dashboard/dist/chunk-6CQCXI3F.mjs:555–557` `parsePaginationState` = `parseInt`) → `abc` = "NaN of 2 pages" และ Prev/Next disable,
+  `-50` = "0 of 2 pages" (กด Next ครั้งแรกแค่ลบ param) — ยังจริง (O-1); หน้า `/app/campaigns?offset=abc` ของ Medusa เองแสดง error page (qa) — Medusa ไม่มีตัว normalize ให้ใช้
+- `codes_offset=99999999` → request ได้ 0 แถว → `emptyState.empty` "Import a CSV to add codes." (`codes-table.tsx:185–188`) ทั้งที่ pool มี code — ยังจริง (O-2)
+- `routes/group-buying/page.tsx:71–86` normalize `gb_offset` ด้วย `pageOffset()` (`lib/group-buy-campaign.ts:32–36`, `Math.trunc` ไม่ปัดเป็นหน้า — qa #293 `gb_offset=25` ได้แถว 26–45 แต่ป้าย "2 of 2")
+  + `setSearchParams(…, { replace: true })`; ค่าว่าง `gb_offset=` ค้าง (qa #293 Observation 5 — `useQueryParams` คืน `undefined`) — helper สองตัวทำงานเดียวกันคนละกติกา และมีผู้ใช้ 3 ที่ → ย้ายไปที่เดียว
+- `routes/evouchers/pools/[id]/page.tsx:17–20` (`useQuery`) + `:93–94` (`loader`) และ `routes/group-buying/[id]/page.tsx:44–49` + `:188–189` เรียก API เดียวกันสองทางโดยไม่แชร์ผล — qa #293 วัดได้ GET 5 ครั้ง
+  เมื่อเปิดตรง (หน้า product ของ Medusa 1 ครั้ง) และ GET หน่วง 2 วินาทีแล้วหน้าพร้อมที่ 4.4 วินาที — ยังจริง; Medusa ใช้ `queryClient.ensureQueryData` ใน loader
+  (`dist/product-detail-EFCAHRXH.mjs:145–153`) แต่ `queryClient` (`dist/chunk-SEMVMECK.mjs:4–12`, `staleTime: 9e4`) **ไม่ถูก export** จาก `@medusajs/dashboard/{components,hooks,lib}` (ตรวจ `dist/*.d.ts`)
+  และ `admin-vite-plugin` 2.22.1 รับเฉพาะ export `loader`/`handle` (`dist/index.mjs:1546–1552`, `:1690–1701`) — `shouldRevalidate` ใช้ไม่ได้
+- `routes/evouchers/page.tsx:35–40` ไม่มี `handle` → `createRouteMap` ของ dashboard (`dist/chunk-34AF5R5P.mjs:140616–140669`) ให้ branch `evouchers` ไม่มี breadcrumb (`pools` เป็น branch ว่าง)
+  → breadcrumb หน้า pool มีระดับเดียว — ยังจริง (ADM-6 แก้แบบเดียวกันที่ `routes/group-buying/page.tsx:147`)
+- `routes/group-buying/page.tsx:102–106` Header แยก + `:115–131` `DataTable` ไม่มี `heading` → `DataTable` render `Toolbar` เสมอ (`chunk-6CQCXI3F.mjs:682–726`) = แถวว่าง 32px (qa #293 Observation 1) — ยังจริง;
+  `action` ของ `DataTable` = `{ label: string, disabled?, onClick | to }` และ `DataTableAction` (`chunk-6CQCXI3F.mjs:799–816`) **ไม่ส่งต่อ `data-testid`** → ย้ายปุ่มแล้ว `gb-campaign-create`
+  (`components/group-buy/create-campaign.tsx:102`, e2e `group-buy-admin-form.spec.ts:48`) หายไป — ขัดกฎ 7/ADR-018 หลักการ 8 → **Q7**
+- filter เปลี่ยนแล้ว offset ไม่ reset: `useDataTable` ของ `@medusajs/ui` 4.2.8 (`dist/esm/blocks/data-table/use-data-table.js:13–18`, `:126–147`) เรียก `onPaginationChange({ pageIndex: 0 })` แล้วตามด้วย
+  `onFilteringChange` ใน tick เดียว; handler ของ dashboard ทั้งสอง (`chunk-6CQCXI3F.mjs:558–570`, `:575–595`) ใช้ `setSearchParams((prev) => …)` และ `react-router` 7.18.2
+  สร้าง `prev` จาก `searchParams` ของ render ปัจจุบันทุกครั้ง (`react-router/dist/development/chunk-62JRHF6Z.mjs:10851–10859`) → ครั้งหลังเขียนทับครั้งแรก; sort (`onSortingChange`) เป็นแบบเดียวกัน;
+  workaround อยู่ที่ `codes-table.tsx:44–74` (`useResetOffsetOnStatusChange`) — ยังจริง → ร่าง issue upstream ด้านล่าง (ไม่มี task โค้ด)
+- `widgets/flash-sale-options.tsx:161`, `:174` และ `widgets/variant-evoucher-pool.tsx:66–80` (`face_value`, `low_stock_threshold`) เป็น `<Input type="number">`; พิมพ์ `e` → `validity.badInput = true`
+  แต่ value = `""` → schema (`lib/flash-sale-form.ts:10–12`, `lib/evoucher-pool-form.ts:13`, `:18–19`) ถือว่า "ว่าง" → `total_cap: null` (ไม่จำกัด) / `face_value: null` / `low_stock_threshold` = ค่า default โดยไม่มี error
+  — ยังจริง (qa #294 Observation 1); `@medusajs/ui` `Input` และ `optionalInt`/`optionalFloat` ไม่ดู `badInput`
+Out of scope: แก้ `DataTable` ของ dashboard เอง (patch-package), ตาราง partners (ADM-5) และ affiliate (ADM-8a) — ใช้ hook ของ ADM-10 เมื่อ merge ตามลำดับ (กฎ 13e), ช่อง number ของฟอร์มที่ ADM-7/ADM-9 เขียนใหม่ (ใช้ของกลางของ ADM-12 เมื่อ merge ตามลำดับ)
+
+### What Medusa already gives us (รอบ 23)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| หน้าใน URL | `DataTable` ของ dashboard เขียน/อ่าน `<prefix>_offset` (`parseInt` ค่าดิบ) + `useQueryParams` | ใช้ตามเดิม + **custom** hook normalize ค่าใน URL (Medusa ไม่มี — หน้า campaigns ของ Medusa เองล่มกับ `offset=abc`) |
+| แชร์ผล loader กับ query | Medusa ใช้ `queryClient.ensureQueryData` (ไม่ export) | **extend**: `initialData` ของ `useQuery` จาก `useLoaderData()` (Tanstack Query) — ใช้ `staleTime` 90s ของ QueryClient ของ dashboard |
+| breadcrumb | `handle.breadcrumb` + `createRouteMap` (branch ตาม path) | ใช้ตามเดิม — เพิ่ม `handle` ที่ `/evouchers` |
+| หัวตารางหน้า list | `DataTable` ของ dashboard `heading`, `subHeading`, `action`/`actions` (แบบหน้า list ของ Medusa) | ใช้แทน Header แยก (ADR-018 หมายเหตุ 2026-11-05); `action` ไม่รับ `data-testid` → Q7 |
+| ค่าไม่ใช่ตัวเลขใน `<input type="number">` | ไม่มี (`Input` ของ ui, `optionalInt`/`optionalFloat` ไม่ดู `validity.badInput`) | **custom** เล็ก ใน `components/common/` (ผู้ใช้ 2 ที่: widget flash sale + modal pool) |
+| filter แล้วกลับหน้าแรก | `autoResetPageIndex` ของ `useDataTable` (พังเมื่อใช้กับ `setSearchParams` ของ dashboard — ด้านบน) | คง workaround จน upstream แก้ (กฎ 17) |
+
+### Business rules (รอบ 23)
+13. (ADM-10) offset ของตาราง `DataTable` ของ dashboard ใน `src/admin` ผ่านของกลางชุดเดียว:
+    (a) `src/admin/lib/page-offset.ts` (pure, ไม่ import ui/dashboard): `pageOffset(raw, pageSize)` — `undefined`/ว่าง/ไม่ใช่ตัวเลข/ไม่ finite/≤ 0 → `0`, อื่นๆ ปัดลงเป็นต้นหน้า
+        (`Math.floor(n / pageSize) * pageSize`); `clampOffset(offset, count, pageSize)` — `count === 0` → `0`, `offset ≥ count` → ต้นหน้าสุดท้าย (`Math.floor((count - 1) / pageSize) * pageSize`), อื่นๆ คงเดิม;
+    (b) hook `usePageOffset(prefix, pageSize, { count?, resetOn? })` ใน `src/admin/components/common/use-page-offset.ts` คืน offset ที่ใช้ขอข้อมูล และเมื่อค่าดิบใน URL ≠ ค่าที่ normalize
+        (รวม `<prefix>_offset=` ค่าว่าง และ offset เกินเมื่อรู้ `count` แล้ว) แก้ URL ด้วย `setSearchParams(…, { replace: true })` (ค่า 0 = ลบ param) — ไม่เพิ่ม history;
+    (c) **ผู้เขียน URL ต่อ commit มีตัวเดียว**: reset เมื่อ filter เปลี่ยน (workaround ของ `codes-table`, กฎ 17) ย้ายเข้า hook เดียวกัน (`resetOn` = ค่า filter) เพราะ `setSearchParams` สองครั้งใน commit เดียวเขียนทับกัน;
+        ระหว่างรอ URL เปลี่ยน request ใช้ offset ที่ normalize แล้ว (ไม่ยิง request ของค่าดิบ);
+    (d) ผู้ใช้: `routes/group-buying/page.tsx`, `components/evoucher/pools-table.tsx`, `components/evoucher/codes-table.tsx`; ลบ `pageOffset` ออกจาก `lib/group-buy-campaign.ts` และ `toOffset` ออกจาก `lib/evoucher-query.ts`
+        (ย้าย unit test เดิมไป `lib/__tests__/page-offset.unit.spec.ts`);
+    (e) ตารางที่ใช้ `DataTable` ของ dashboard ที่ merge หลัง ADM-10 (ADM-5 partners, ADM-8a affiliate) ใช้ hook นี้; ถ้า merge ก่อน ADM-10 ให้ ADM-10 เปลี่ยนตารางนั้นด้วย
+14. (ADM-11) หน้ารายละเอียดที่มี `loader` (`routes/evouchers/pools/[id]/page.tsx`, `routes/group-buying/[id]/page.tsx`) ส่ง `initialData: useLoaderData() ?? undefined` ให้ `useQuery` key เดิม
+    — ไม่ import ของภายในของ dashboard, ไม่เพิ่ม cache ใน loader; loader ที่คืน `null` (group buy 404) → `initialData` เป็น `undefined` → `useQuery` ยิงเองและแสดง `gb-campaign-not-found` เหมือนเดิม;
+    ถ้าแก้แล้วเปิดตรงยังมี GET ของ resource > 2 เพราะ loader ถูกเรียกซ้ำเอง (revalidate) ให้หยุดรายงาน planner (ห้ามเขียน cache เอง);
+    `routes/evouchers/page.tsx` export `handle = { breadcrumb: () => "E-vouchers" }` → breadcrumb หน้า pool = "E-vouchers › <ชื่อ pool>"
+15. (ADM-12) ช่อง `<Input type="number">` ใน `Form` ของ admin ที่ว่างได้หรือมีค่า default (flash sale `per_customer_limit`, `total_cap`; pool `face_value`, `low_stock_threshold`):
+    ถ้า `validity.badInput === true` ตอน submit → error ใต้ช่อง (ข้อความเดียวกับค่าไม่ถูกของช่องนั้น เช่น `POSITIVE_INT_MESSAGE`) และไม่ส่ง request — ไม่ถือเป็น "ว่าง";
+    ทำเป็นของกลางชิ้นเดียวใน `src/admin/components/common/` (เช่น `NumberInput` ที่ห่อ `Input` ของ ui หรือ helper ตรวจ `badInput` ก่อน `handleSubmit` — เลือกใน PR) ไม่คัดลอกต่อช่อง;
+    ฟอร์มที่ ADM-7/ADM-9 เขียนใหม่ใช้ของกลางนี้เมื่อ merge หลัง ADM-12
+16. (ADM-13 — **รอ Q7**) หน้า list ที่ใช้ `DataTable` ของ dashboard ใส่หัวตารางด้วย `heading`/`subHeading` และปุ่มสร้างด้วย `action` ของ `DataTable` (ไม่มี Header แยก → ไม่มีแถว toolbar ว่าง);
+    `CreateCampaign` เป็น controlled (`open`, `onOpenChange`) ไม่มีปุ่ม trigger ในตัว; ทุกครั้งที่ `open` เปลี่ยน false → true ตั้ง idempotency key ใหม่และ reset ฟอร์ม (spec 04 กฎข้อ 33d — GB-13/GB-15 ห้ามถอย);
+    ข้อความเตือน GBT- (spec 04 Q7) ยังเห็นใน Container เดียวกัน (testid ใหม่ `gb-template-warning`)
+17. (upstream) workaround reset offset เมื่อ filter เปลี่ยน (`codes-table.tsx:44–74` → ใน hook ของกฎ 13c หลัง ADM-10) คงไว้จนกว่า `@medusajs/dashboard` ที่ pin มี fix;
+    PR ที่ bump `@medusajs/dashboard` (ผ่าน ADR ตาม CLAUDE.md) ต้องรัน e2e "เปลี่ยน filter จากหน้า 2" ของ AC-7 โดยปิด `resetOn` — ผ่าน → ลบ workaround ใน PR นั้น, ล้ม → คงไว้;
+    เมื่อ owner ส่ง issue แล้ว ให้ PR ถัดไปที่แตะ `codes-table.tsx`/hook ใส่ URL ของ issue ใน comment ของ workaround
+
+### Acceptance criteria (รอบ 23)
+- AC-14 (ADM-10, กฎ 13) unit `lib/__tests__/page-offset.unit.spec.ts`: `pageOffset(x, 50)` = 0 สำหรับ `undefined`, `""`, `"abc"`, `"-50"`, `"NaN"`, `"Infinity"`, `"12.5"`; `pageOffset("75", 50)` = 50,
+  `pageOffset("50", 50)` = 50, `pageOffset("25", 20)` = 20, `pageOffset("1e1", 20)` = 0; `clampOffset(99999950, 60, 50)` = 50, `clampOffset(50, 60, 50)` = 50, `clampOffset(100, 0, 50)` = 0;
+  static (`medusa-ui.unit.spec.ts`): `lib/group-buy-campaign.ts` ไม่มี `pageOffset`, `lib/evoucher-query.ts` ไม่มี `toOffset`, `use-page-offset` ถูก import ≥ 3 ไฟล์, `codes-table.tsx` ไม่มี `useSearchParams`;
+  e2e 1280×800 (ต่อจาก `e2e/evoucher-admin-pool-page.spec.ts`): Given pool ที่มี code 60 ตัว When เปิด `?codes_offset=abc` Then URL ไม่มี `codes_offset`, ตารางใน `evoucher-codes` มี 50 แถว,
+  ข้อความใน `evoucher-codes` ไม่ตรง `/NaN/` และ `history.length` เท่ากับก่อนเปิด (replace); กด Next → `codes_offset=50` และ 10 แถว; When `?codes_offset=-50` Then ไม่มี `codes_offset` และกด Next ครั้งเดียว → `codes_offset=50`;
+  When `?codes_offset=99999999` Then URL เป็น `codes_offset=50`, 10 แถว, ไม่มีข้อความ "Import a CSV to add codes." ใน `evoucher-codes`; filter `delivered` จากหน้า 2 ยังได้ 5 แถว (AC-7 ผ่านโดยไม่แก้);
+  `/app/evouchers?pools_offset=abc` → ไม่มี `pools_offset`; `/app/group-buying?gb_offset=` → ไม่มี `gb_offset`; Given แคมเปญ ≥ 21 (test สร้างเองให้พอ) When `?gb_offset=25` Then `gb_offset=20`; When `?gb_offset=99999` Then `gb_offset` =
+  `Math.floor((count − 1) / 20) * 20` โดย `count` จาก `GET /admin/group-buy/campaigns` ตอนนั้น (DB ของ e2e มีแคมเปญของ test อื่น — ไม่ fix ตัวเลข);
+  e2e `group-buy-admin-pages` และ `evoucher-admin-pool-page` เดิมผ่าน
+- AC-15 (ADM-11, กฎ 14) e2e ใหม่ `e2e/admin-detail-loader.spec.ts` 1280×800: Given แคมเปญ C และ pool P (สร้างผ่าน API) When `page.goto` `/app/group-buying/<C>` แล้วรอ `gb-campaign-status` visible
+  และ network idle Then จำนวน request `GET` ที่ pathname = `/admin/group-buy/campaigns/<C>` พอดี (ไม่นับ `/groups`) ≤ 2; When `page.goto` `/app/evouchers/pools/<P>` แล้วรอ `evoucher-codes` visible
+  Then `GET` ที่ pathname = `/admin/evoucher/pools/<P>` พอดี (ไม่นับ `/codes`) ≤ 2 — PR แนบจำนวนก่อน/หลังแก้ (develop 5 ตาม qa #293) และ test ต้องล้มบน develop `a349676`;
+  Given `page.route` หน่วงทุก GET ของ `/admin/group-buy/campaigns/<C>` 2000ms When คลิกแถว C ใน `gb-campaigns-table` Then เวลาจากคลิกถึง `gb-campaign-status` visible < 3500ms (develop ~4.4s);
+  id ที่ไม่มี → `gb-campaign-not-found` (AC-9); breadcrumb หน้า P (อ่านแบบ e2e `group-buy-admin-pages` ของ AC-9) = `["E-vouchers", <ชื่อ P>]` และรายการแรกลิงก์ไป `/app/evouchers`;
+  e2e `group-buy-admin-detail`, `group-buy-admin-members`, `evoucher-admin-pool-page` ผ่านโดยไม่แก้
+- AC-16 (ADM-12, กฎ 15) e2e 1280×800 (ต่อจาก `e2e/admin-form-pilot.spec.ts`): Given drawer flash sale When `pressSequentially("e")` ในช่อง Total cap แล้วกด Save Then `fs-total-cap-error` visible
+  ข้อความ "Must be a whole number greater than 0" และไม่มี `POST …/config`; เช่นเดียวกันกับ `1e` และกับช่อง Per-customer limit (`fs-per-customer-limit-error`); When ล้างช่อง (`fill("")`) แล้ว Save
+  Then `POST` 1 ครั้ง body `total_cap: null`; Given modal Create pool (กรอกช่องบังคับครบ) When Face value = `e` Then `evoucher-pool-face_value-error` visible และไม่มี POST; Low stock threshold = `e`
+  → `evoucher-pool-low_stock_threshold-error` และไม่มี POST; static: `flash-sale-options.tsx` และ `variant-evoucher-pool.tsx` import ของกลางจาก `components/common/`; AC-6 ผ่านโดยไม่แก้
+- AC-17 (ADM-13, กฎ 16 — ใช้เมื่อ owner ตอบ Q7 = (ก)) e2e 1280×800: เปิด `/app/group-buying` Then ภายใน `gb-campaigns-table` มี heading "Group-buy campaigns" 1 ตัว และปุ่ม role `button` ชื่อ "Create campaign"
+  ที่ `|centerY(ปุ่ม) − centerY(heading)| ≤ 8` (อยู่แถวเดียวกัน) และ `gb-template-warning` visible; static: `routes/group-buying/page.tsx` ไม่ import `components/common/header`, `create-campaign.tsx` ไม่มี `gb-campaign-create`
+  และ `CreateCampaign` รับ `open`/`onOpenChange`; e2e `group-buy-admin-form` ผ่านโดยแก้เฉพาะ locator ของปุ่มเปิด modal (`gb-campaign-create` → `getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" })`)
+  — dblclick Create = 1 POST และ (GB-15) เปิด modal สองครั้งแล้วสร้าง → `idempotency_key` ของสอง POST ต่างกัน
+
+### Test plan (รอบ 23)
+| ชนิด | AC |
+|---|---|
+| unit (jest `test:unit`) | AC-14 (pure + static), static ของ AC-16/AC-17 |
+| e2e admin (`locale: "en-US"`, `timezoneId: "Asia/Bangkok"`, 1280×800) | AC-14, AC-15, AC-16, AC-17 |
+qa เก็บ evidence ทุก task (UI admin) — ADM-11 วัดจำนวน GET บน prod build (`medusa build` + `medusa start`) แบบ qa #293
+
+### Tasks (รอบ 23)
+| Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-10 | (qa #296 O-1/O-2 + qa #293 Obs 5) offset ใน URL ผ่านของกลาง: `pageOffset`/`clampOffset` + hook `usePageOffset` (normalize + clamp + reset เมื่อ filter เปลี่ยนในตัวเขียนเดียว) ใช้ใน group buy, pools, codes (กฎ 13) | `lib/page-offset.ts` (ใหม่) + `lib/__tests__/page-offset.unit.spec.ts` (ใหม่), `components/common/use-page-offset.ts` (ใหม่), `lib/group-buy-campaign.ts` (+ unit เดิม), `lib/evoucher-query.ts` (+ unit เดิม), `routes/group-buying/page.tsx`, `components/evoucher/{pools-table,codes-table}.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/evoucher-admin-pool-page.spec.ts` | ~220 LOC รวม test | 1280×800 | AC-14 | none — **เริ่มได้** (ADM-4 ☑ #296, ADM-6 ☑ #293); ∥ ADM-11, ADM-12 | ไม่ชนไฟล์กับ ADM-5/7/8a, CORE-48, CORE-4i-b; ตาราง partners (ADM-5) และ affiliate (ADM-8a) ใช้ hook ตามกฎ 13e — ตัวที่ merge ทีหลังปรับ |
+| ADM-11 | (qa #293 Obs 4 + review #293/#296) หน้ารายละเอียด pool/group buy ส่ง `initialData` จาก `useLoaderData()` ให้ `useQuery` + breadcrumb `E-vouchers` ที่ `/evouchers` (กฎ 14) | `routes/evouchers/pools/[id]/page.tsx`, `routes/group-buying/[id]/page.tsx`, `routes/evouchers/page.tsx` (เฉพาะ `handle`), `apps/storefront/e2e/admin-detail-loader.spec.ts` (ใหม่) | ~120 LOC รวม e2e | 1280×800 | AC-15 | none — **เริ่มได้**; ∥ ADM-10, ADM-12 | ไม่ชน (ADM-5 แตะ `partners-section`/`lib/evoucher.ts` ไม่แตะ `routes/evouchers/page.tsx` — ถ้าแตะ ตัวที่ merge ทีหลัง rebase) |
+| ADM-12 | (qa #294 Obs 1) ช่อง number ที่ว่างได้ตรวจ `validity.badInput` → error ใต้ช่อง ไม่ส่ง request ด้วยของกลางชิ้นเดียว (กฎ 15) | `components/common/number-input.tsx` (ใหม่ — ชื่อเลือกใน PR), `widgets/flash-sale-options.tsx`, `widgets/variant-evoucher-pool.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/admin-form-pilot.spec.ts` | ~120 LOC รวม e2e | 1280×800 | AC-16 | none — **เริ่มได้** (ADM-3 ☑ #294); ∥ ADM-10, ADM-11 | ไม่ชน; ADM-7 (`create-campaign.tsx`) / ADM-9 ใช้ของกลางเมื่อ merge หลัง ADM-12 (กฎ 15) |
+| ADM-13 | (qa #293 Obs 1 + review #293) หน้า `/group-buying` ใช้ `heading`/`subHeading`/`action` ของ `DataTable` แทน Header แยก, `CreateCampaign` เป็น controlled (กฎ 16) | `routes/group-buying/page.tsx`, `components/group-buy/create-campaign.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-form.spec.ts` (locator ปุ่มเปิด modal) | ~90 LOC | 1280×800 | AC-17 | **owner ตอบ Q7 = (ก)**, ADM-7 (merge แล้ว), ADM-10 (merge แล้ว — ชน `group-buying/page.tsx`) | **ชน ADM-7** (`create-campaign.tsx`, `group-buy-admin-form.spec.ts`) → ห้ามเริ่มก่อน ADM-7 merge; ไม่ชน ADM-5/8a, CORE-48, CORE-4i-b |
+ลำดับ: ADM-10 ∥ ADM-11 ∥ ADM-12 เริ่มได้ทันที → ADM-13 ← (Q7 = ก) + ADM-7 + ADM-10; ไม่มี task ใดบล็อก release; ถ้า Q7 = (ข) ปิด ADM-13 (✕) และยอมรับแถวว่าง
+
+### ร่าง issue upstream (owner ส่งที่ https://github.com/medusajs/medusa/issues — ค้นว่ามี issue ซ้ำก่อนส่ง)
+ข้อความด้านล่างเป็นภาษาอังกฤษสำหรับ GitHub; ตัวเลขบรรทัดอ้าง `@medusajs/dashboard` 2.22.1 / `@medusajs/ui` 4.2.8 ที่เรา pin
+```
+Title: [dashboard] DataTable: changing a filter (or sort) on page 2+ does not reset `<prefix>_offset` — table shows an empty page
+
+Package versions: @medusajs/dashboard 2.22.1 (exports from @medusajs/dashboard/components), @medusajs/ui 4.2.8, react-router-dom 7.18.2
+
+Steps to reproduce (admin extension):
+1. Render `<DataTable prefix="codes" pageSize={50} filters={[radio filter "status"]} … />` from
+   `@medusajs/dashboard/components`, with data fetched via `useQueryParams(["offset","status"], "codes")`.
+2. Go to page 2 (URL has `codes_offset=50`).
+3. Pick a filter value that matches fewer than 50 rows.
+
+Expected: offset is reset (URL has no `codes_offset`), first page of the filtered result is shown.
+Actual: URL keeps `codes_offset=50` and gets `codes_status=…`; the table is empty ("No results")
+although matching rows exist. Sorting from page 2 behaves the same.
+
+Cause: `useDataTable` (@medusajs/ui, blocks/data-table/use-data-table.js) calls
+`onPaginationChange({ pageIndex: 0 })` and then `onFilteringChange(...)` in the same tick.
+Both handlers in the dashboard `DataTable` call `setSearchParams((prev) => …)`.
+react-router's `setSearchParams` builds `prev` from the searchParams of the current render
+(not from a queued update), so the second call overwrites the first and the offset deletion is lost.
+
+Suggested fix: in the dashboard DataTable, delete `getQueryParamKey("offset", prefix)` inside
+`handleFilteringChange` and `handleSortingChange` (single setSearchParams call), or pass
+`autoResetPageIndex: false` to `useDataTable` and reset the page in the same update.
+
+Workaround we use: an effect that deletes `<prefix>_offset` when the filter value changes.
+```
 
 ## Open questions
 - ~~Q1~~ ตัดสินแล้ว (owner 2026-10-28): **A** ทำครบ ADM-1..9 ทีละ module
@@ -172,3 +310,9 @@ qa เก็บ evidence ทุก task ที่มี UI (ADM-2a..9) ตาม
   (กฎ 5; แก้ spec 00, 03 กฎ 5, 05 กฎ 37c/AC-44 ให้สอดคล้อง)
 - ~~Q5~~ ตัดสินแล้ว (owner 2026-10-28): คง `FocusModal`/`Drawer` แบบ state ไม่ใช้ `RouteFocusModal`/`RouteDrawer`
 - ~~Q6~~ ตัดสินแล้ว (owner 2026-10-28): ยอมรับ pagination ใน URL (`?<prefix>_offset=`)
+- **Q7 (รอบ 23, ADM-13 — ขัด ADR-018 หลักการ 8 / กฎ 7 จึงต้องให้ owner ตัดสิน)** ปุ่มใน `action` ของ `DataTable` ของ dashboard ไม่รับ `data-testid`
+  (`DataTableAction` ส่งต่อแค่ `label`/`disabled`/`tooltip`/`onClick`/`to` — `chunk-6CQCXI3F.mjs:799–816`) การย้ายปุ่ม "Create campaign" เข้า `action` เพื่อตัดแถว toolbar ว่างจึงทำให้ `gb-campaign-create` หายไป
+  - (ก) **ข้อเสนอ**: เพิ่มข้อยกเว้นที่สองของการหาด้วย testid — ปุ่มใน `action`/`actions` ของ `DataTable` หาด้วย `getByTestId("<wrapper ของตาราง>").getByRole("button", { name: "<Label อังกฤษ>" })`
+    (แบบเดียวกับ menuitem ของ `ActionMenu`) → planner แก้ ADR-018 หลักการ 7–8 และกฎ 7/10 ของ spec นี้; owner แก้ประโยคข้อยกเว้นใน CLAUDE.md (agent แก้ CLAUDE.md ไม่ได้);
+    ใช้กับปุ่มสร้างของหน้า list อื่นที่จะย้ายเข้า `action` ด้วย (ADM-5 partners, ADM-8a/8b programs — ADR-018 แถว 14)
+  - (ข) คง Header + `gb-campaign-create` และยอมรับแถวว่าง 32px (ผลต่อผู้ใช้ต่ำตาม qa #293) → ปิด ADM-13 (✕)

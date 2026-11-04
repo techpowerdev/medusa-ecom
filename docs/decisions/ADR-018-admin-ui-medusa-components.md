@@ -1,6 +1,6 @@
 # ADR-018 Admin UI ใช้ component, hook และ utility ของ Medusa เป็นฐาน
 
-สถานะ: **accepted** (owner 2026-10-28 — ทางเลือก A + คำตัดสิน Q2–Q6 ด้านล่าง; เสนอโดย planner 2026-10-28)
+สถานะ: **accepted** (owner 2026-10-28 — ทางเลือก A + คำตัดสิน Q2–Q6 ด้านล่าง; เสนอโดย planner 2026-10-28) · หมายเหตุ 2026-11-05 ท้ายเอกสาร (แถว #2 ตามที่ทำจริง)
 เกี่ยวข้อง: spec 08 (task ADM-1..9, AC-1..13), CLAUDE.md ข้อ 1 และ 3, spec 05 กฎ 37 (`createSingleFlight`), spec 00 (เวลา), spec 03 กฎ 5, spec 05 กฎ 37c/AC-44
 
 ## บริบท
@@ -127,3 +127,14 @@ context ของ ui เช่น `TooltipProvider` ข้ามสำเนา�
 - pagination ของตารางที่ใช้ `DataTable` ของ dashboard ไปอยู่ใน URL (`?<prefix>_offset=`) — back/refresh คงหน้าเดิม
 - ไฟล์ static test `src/admin/__tests__/medusa-ui.unit.spec.ts` ตรวจ pattern ต้องห้าม (เช่น `useRef(false)`, `datetime-local`, `toLocaleString`/`Intl.NumberFormat`) เพิ่มข้อตรวจทีละ task
 - ถ้า Medusa bump dashboard ในอนาคต unit test ของ ADM-1 จะล้มจนกว่าจะปรับ version ที่ต้องตรงกัน
+
+## หมายเหตุ 2026-11-05 (planner รอบ 23 — บันทึกสิ่งที่ทำจริง ไม่เปลี่ยนการตัดสินใจ)
+- **ตารางตรวจแถว #2** (`routes/evouchers/page.tsx`): ที่ทำจริงใน ADM-4 (#296) หัวตาราง pool **ไม่ใช้ Header แยก** แต่ใช้ `heading`/`subHeading` ของ `DataTable` ของ dashboard
+  (`components/evoucher/pools-table.tsx` — แบบหน้า list ของ Medusa) เพราะ `DataTable` render แถว toolbar เสมอ Header แยกจะทำให้มีแถว toolbar ว่างซ้อนอยู่ใต้หัว
+  — review #296 และ #293 ยอมรับแล้ว; ข้อความ "หัว L12–17 → Header (subtitle)" ในแถว #2 ให้อ่านเป็น "หัว → `heading`/`subHeading` ของ `DataTable`"
+- แนวปฏิบัติจากนี้: หน้า list ที่ใช้ `DataTable` ของ dashboard ใส่หัวด้วย `heading`/`subHeading` (และปุ่มสร้างด้วย `action`) แทน Header แยก; Header (guide) ใช้กับ section ที่ไม่ใช่ตาราง
+  — แถว #4 (`routes/group-buying/page.tsx`, ADM-6 #293 ยังมี Header + แถวว่าง) ปรับใน ADM-13 ของ spec 08
+- **ยังไม่เปลี่ยนหลักการ 7–8**: `action` ของ `DataTable` ไม่รับ `data-testid` (`DataTableAction` ใน `@medusajs/dashboard` 2.22.1) การย้ายปุ่มที่มี testid เข้า `action` จึงรอ owner ตัดสิน spec 08 Q7
+- ข้อจำกัดของ `@medusajs/dashboard` 2.22.1 ที่พบ (spec 08 รอบ 23): `queryClient` ไม่ถูก export (หน้ารายละเอียดใช้ `initialData` จาก `useLoaderData()` แทน `ensureQueryData` — กฎ 14),
+  `DataTable` อ่าน `<prefix>_offset` ด้วย `parseInt` ค่าดิบ (normalize ด้วย hook กลาง — กฎ 13) และเปลี่ยน filter/sort จากหน้า 2 แล้ว offset ไม่ reset
+  (workaround คงไว้จน upstream แก้ — กฎ 17, ร่าง issue อยู่ใน spec 08)

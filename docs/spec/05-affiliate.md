@@ -5,7 +5,8 @@
 รอบ 12 2026-10-28: AF-15, AF-N3, AF-16, กฎ 39–41, AC-46..48; รอบ 13 2026-11-03: token ว่างของ AF-16 #197 → AF-17 (กฎ 41b แก้, AC-49), nit AF-14 #187 → ADM-8a ของ spec 08;
 รอบ 19 2026-11-04: qa #265 O-2 (หน้า Profile ล้นที่ 375 เมื่ออีเมลยาว) → AF-18, กฎ 42, AC-50;
 รอบ 20 2026-11-04: AF-18 ☑ #277, qa #277 D-1 (ชื่อละตินยาวไม่มีช่องว่างทำให้ header ของ portal ล้นทุกหน้า) → AF-19, กฎ 43, AC-51;
-รอบ 21 2026-11-04: AF-19 ☑ #286, qa #286 O-1 (ป้าย "รหัสแนะนำ" และรหัสแนะนำถูกตัดบรรทัดใน header) → AF-20, กฎ 44, AC-52)
+รอบ 21 2026-11-04: AF-19 ☑ #286, qa #286 O-1 (ป้าย "รหัสแนะนำ" และรหัสแนะนำถูกตัดบรรทัดใน header) → AF-20, กฎ 44, AC-52;
+รอบ 23 2026-11-05: AF-20 ☑ #295 (train #299); qa #295 O-1 ปิดโดยไม่สร้าง task (กฎ 44(b)); nit review #295 ของ e2e → CORE-51 ของ spec 01; qa #295 O-2 (nav ของร้าน) → CORE-50 ของ spec 01)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -512,7 +513,7 @@ Payout
 | AF-N3 | (storefront เล็ก, รอบ 12 — review/qa #173, nit #153/#174) สกุลเงินของ Earnings, component คัดลอก/แชร์เดียว, หน้าเกินจำนวน, เครื่องหมาย `−`, static test ของกฎ 31 ด้วย AST (กฎ 40) (AC-47) — ไฟล์: `app/[countryCode]/(main)/affiliate/**`, `modules/affiliate/**`, static test ของ AF-3c | AF-8c ☑ (#182), AF-3c ☑ (#153) — **เริ่มได้** |
 | AF-18 | (storefront เล็ก ~40 LOC รวม e2e, รอบ 19 — qa #265 O-2) หน้า Profile ของ portal ไม่ล้นที่ 375 เมื่อค่ายาวไม่มีช่องว่าง: `minmax(0,1fr)` + `break-words` + test id อีเมล (กฎ 42) (AC-50) — ไฟล์: `app/[countryCode]/(main)/affiliate/profile/page.tsx`, e2e (ต่อจาก `e2e/affiliate-portal-pages.spec.ts` หรือไฟล์ใหม่) — ☑ #277 (train #279) | none — **เริ่มได้** (AF-8b ☑, CORE-37 ☑ #265); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/profile/page.tsx`); ไม่บล็อก release |
 | AF-19 | (storefront เล็ก ~50 LOC รวม e2e, รอบ 20 — qa #277 D-1) header ของ portal ไม่ล้นเมื่อชื่อละตินยาวไม่มีช่องว่าง: `min-w-0` + ตัดคำ + test id ชื่อ (กฎ 43) (AC-51) — ไฟล์: `app/[countryCode]/(main)/affiliate/layout.tsx`, e2e (ต่อจาก `e2e/affiliate-profile-overflow.spec.ts` ของ AF-18 หรือไฟล์ใหม่) — ☑ #286 (train #290) | none — **เริ่มได้** (AF-18 ☑ #277); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/layout.tsx`); ไม่บล็อก release |
-| AF-20 | (storefront เล็ก ~50 LOC รวม e2e, รอบ 21 — qa #286 O-1) header ของ portal: ป้าย "รหัสแนะนำ" ไม่ถูกตัดบรรทัด (`whitespace-nowrap` + `affiliate-code-label`) และรหัสแนะนำไม่ถูกตัดที่ `-` เมื่อพอดีบรรทัด โดยกฎ 43 ไม่ถอย (กฎ 44) (AC-52) — ไฟล์: `app/[countryCode]/(main)/affiliate/layout.tsx`, `e2e/affiliate-header-overflow.spec.ts`; viewport 375×812, 639×812 (+ 1280×800 ชื่อสั้น) | none — **เริ่มได้** (AF-19 ☑ #286); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/layout.tsx`); ไม่บล็อก release |
+| AF-20 | (storefront เล็ก ~50 LOC รวม e2e, รอบ 21 — qa #286 O-1) header ของ portal: ป้าย "รหัสแนะนำ" ไม่ถูกตัดบรรทัด (`whitespace-nowrap` + `affiliate-code-label`) และรหัสแนะนำไม่ถูกตัดที่ `-` เมื่อพอดีบรรทัด โดยกฎ 43 ไม่ถอย (กฎ 44) (AC-52) — ไฟล์: `app/[countryCode]/(main)/affiliate/layout.tsx`, `e2e/affiliate-header-overflow.spec.ts`; viewport 375×812, 639×812 (+ 1280×800 ชื่อสั้น) — ☑ #295 (train #299) | none — **เริ่มได้** (AF-19 ☑ #286); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/layout.tsx`); ไม่บล็อก release |
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
@@ -527,6 +528,10 @@ cast `as unknown as` ของ `affiliateNames` ใน `list-table.tsx`, query �
 (รอบ 19, 2026-11-04) ใหม่: AF-18 เริ่มได้ (∥ ทุกตัว, ไม่บล็อก release v0.6.0)
 (รอบ 20, 2026-11-04) merge แล้ว: AF-18 ☑ #277 (train #279); ใหม่: AF-19 เริ่มได้ (∥ ทุกตัว, ไม่บล็อก release v0.6.0); nit review #278 (`affiliate-admin-programs.spec.ts:35` `limit=1`) อยู่ใน CORE-46 ของ spec 01 (e2e hygiene ไฟล์เดียวกันกลุ่ม)
 (รอบ 21, 2026-11-04) merge แล้ว: AF-19 ☑ #286 (train #290); ใหม่: AF-20 เริ่มได้ (∥ ทุกตัว, ไม่บล็อก release v0.6.0); `waitForTimeout(300)` 3 จุดของ `affiliate-admin-programs.spec.ts` อยู่ใน CORE-49 ของ spec 01
+(รอบ 23, 2026-11-05) merge แล้ว: AF-20 ☑ #295 (train #299); **qa #295 O-1 ปิดโดยไม่สร้าง task**: รหัส 32 ตัวที่เป็นตัวกว้าง (`w`/`m`) กว้างเกินบรรทัดที่ 375 (327px)/320 (272px) จึงตัดหลัง `-`
+— กฎ 44(b) อนุญาต (ไม่ตัดเฉพาะเมื่อรหัสพอดีบรรทัด), ค่าที่คัดลอกตรงตัว, ไม่ล้นจอ (qa 240 การวัดผ่าน) และทางเลือกอื่น (`break-all` ตัดกลางกลุ่มตัวอักษร, ย่อตัวอักษร) อ่านยากกว่า;
+nit review #295 ของ e2e (`createActiveAffiliate` เป็น options object, `longCode()` ความกว้างคงที่, `evidenceTarget` ของ AC-52) → CORE-51 ของ spec 01 (e2e hygiene รวมกับ `DESKTOP_BASELINE`);
+qa #295 O-2 (ชื่อร้านใน nav ชิดไอคอนค้นหาที่ 320) → CORE-50 ของ spec 01
 (รอบ 11, review #146 AF-N2) nit `tryAcquire` ที่ `catch {}` กลืน error ทุกชนิด (ต้องข้ามเฉพาะ lock conflict) และ `.run()` ที่ throw แบบ sync ต้อง release lock — #146 merge แล้ว
 ถ้ายังไม่ได้แก้ ให้ PR ถัดไปที่แตะ maturity job แก้ (ไม่สร้าง task); ข้อสังเกต: entry `pending` ของ order ที่ยกเลิกและยอดสุทธิ = 0 ค้าง `pending` ถาวร (กฎ 5 ห้ามแก้ status ย้อน/ข้าม) และถูกสแกนทุกวันพร้อม log `affiliate_cancel_reconcile_noop`
 — ยอมรับใน v1 (ปริมาณน้อย; ไม่ใช่ยอดที่จ่ายได้) → backlog หลัง v1.0 พร้อม AF-11
