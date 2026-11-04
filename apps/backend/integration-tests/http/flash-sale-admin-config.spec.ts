@@ -1,9 +1,6 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
-import {
-  ContainerRegistrationKeys,
-  generateJwtToken,
-  Modules,
-} from "@medusajs/framework/utils"
+import { Modules } from "@medusajs/framework/utils"
+import { createAdminUser } from "../helpers/admin"
 import { FLASH_SALE_MODULE } from "../../src/modules/flash_sale"
 import FlashSaleModuleService from "../../src/modules/flash_sale/service"
 import {
@@ -41,24 +38,7 @@ medusaIntegrationTestRunner({
 
     beforeEach(async () => {
       const container = getContainer()
-      const userModule = container.resolve(Modules.USER)
-      const authModule = container.resolve(Modules.AUTH)
-      const user = await userModule.createUsers({ email: "fs5-admin@example.com" })
-      const identity = await authModule.createAuthIdentities({
-        provider_identities: [{ provider: "emailpass", entity_id: "fs5-admin@example.com" }],
-        app_metadata: { user_id: user.id },
-      })
-      const { http } = container.resolve(ContainerRegistrationKeys.CONFIG_MODULE).projectConfig
-      const token = generateJwtToken(
-        {
-          actor_id: user.id,
-          actor_type: "user",
-          auth_identity_id: identity.id,
-          app_metadata: { user_id: user.id },
-        },
-        { secret: http.jwtSecret, expiresIn: "1d" }
-      )
-      headers = { authorization: `Bearer ${token}` }
+      headers = (await createAdminUser(container, "fs5-admin@example.com")).headers
 
       const promotionModule = container.resolve(Modules.PROMOTION)
       const campaign = await promotionModule.createCampaigns({

@@ -1,0 +1,110 @@
+GB-N5 — test/cleanup (กฎข้อ 36, AC-55) — base origin/develop 98a5018, 2026-11-04
+
+== AC-55 grep ==
+$ grep -c "!profile ||" apps/backend/src/modules/group_buy/utils/shipping-profile.ts
+0
+$ grep -c "ไม่มี route ลบ" apps/backend/integration-tests/http/group-buy-join.spec.ts
+0
+$ grep -rn 'actor_type: "user"' apps/backend/integration-tests/
+apps/backend/integration-tests/helpers/admin.ts:19:      actor_type: "user",
+$ sed -n "/O_dig on a shippable line/,/^      })/p" group-buy-join.spec.ts | grep -n "container.resolve\|getContainer\|/admin/\|/store/carts/"
+21:          api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: optionStd }, s.headers)
+24:        const after = await settle(api.get(`/store/carts/${cartId}?fields=shipping_methods.shipping_option_id`, s.headers))
+(บรรทัดด้านบนทั้งหมดเป็น /store/carts/ — ขั้นเปลี่ยน O_dig → O_std ไม่มี container.resolve หรือ /admin/; shippingMethodIds ก่อน join ครั้งแรกเป็น helper ของ query.graph ใช้ตรวจ state เดิม ไม่ใช่ขั้นเปลี่ยน)
+$ grep -nE "const ([a-z]+) = pool\(\"([a-z]+)\"" home-campaigns.test.ts  (ทุกบรรทัด x === y)
+92:    const a = pool("a", "2026-11-05T00:00:00Z")
+93:    const b = pool("b", "2026-11-05T00:00:00Z")
+94:    const c = pool("c", "2026-11-04T00:00:00Z")
+95:    const d = pool("d", null)
+$ perl -ne 'print if /const (\w+) = pool\("(\w+)"/ && $1 ne $2' home-campaigns.test.ts | wc -l   (จำนวนบรรทัดที่ x ≠ y; ก่อนแก้ = 2)
+0
+
+== core-flows 2.22.1 (node_modules/@medusajs/core-flows/dist/cart/workflows) ==
+add-shipping-method-to-cart.js:123-136 removeShippingMethodFromCartStep ลบเฉพาะ method เดิมที่ profile ชนกับ option ใหม่ (หรือไม่มี profile) — O_dig (P_dig) ≠ O_std (P_phys) จึงไม่ถูกลบที่ขั้นนี้
+add-shipping-method-to-cart.js:138 → refresh-cart-items.js:130 refreshCartShippingMethodsWorkflow.runAsStep
+refresh-cart-shipping-methods.js:110-131 shouldCleanupOrphanProfiles (cart มี > 1 method) ลบ method ที่ profile ไม่มี item ใดต้องใช้ → :154 removeShippingMethodFromCartStep → O_dig ถูกลบ
+
+== jest unit (apps/backend test:unit) ==
+Test Suites: 88 passed, 88 total
+Tests:       928 passed, 928 total
+
+== vitest: src/lib/util/home-campaigns.test.ts ==
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+
+== jest integration:http: integration-tests/http/group-buy-join.spec.ts (DB medusa_gbn5) ==
+      ✓ group_mode=pool → 403 (691 ms)
+      ✓ group_mode=both → 201 team group owned by the caller with its own join_token and ends_at (425 ms)
+      ✓ does not accept kind from the body → 400 (343 ms)
+      ✓ create / join / leave without auth → 401 (321 ms)
+      ✓ store POST /store/group-buy/groups and createGroupWorkflow → 400 code, no new GB- promotion; an existing group still joins 201 (752 ms)
+      ✓ creates a draft order with the GB- discount, a membership and counters (796 ms)
+      ✓ unknown token → 404 (737 ms)
+      ✓ cart with items outside the campaign → 409 GB_ITEMS_NOT_ELIGIBLE (747 ms)
+      ✓ AC-4: max_people_per_group=2 → 3rd person 409; 2nd order of A 201 and progress_people stays 2 (2820 ms)
+      ✓ AC-5: max_units_per_person=1 and qty 2 → 409 (874 ms)
+      ✓ AC-17: max_units_per_person=2 counts non-cancelled memberships only (2128 ms)
+      ✓ AC-13: max_total_orders=5 across 2 groups → 6th join (repeat order too) 409 (3682 ms)
+      ✓ AC-18: a member of G1 joining G2 of the same campaign → 409 GB_ALREADY_IN_OTHER_GROUP (1916 ms)
+      ✓ AC-14: SAVE10 on the cart → 409; SAVE10 after joining → 409; flash cart joins with GB- only (2872 ms)
+      ✓ AC-23: Medusa campaign starts_at moved to the future → 400 not_allowed, nothing left behind (1758 ms)
+      ✓ AC-23: GB- promotion inactive → 400 GB_DISCOUNT_NOT_APPLIED and the code does not stay on the cart (1909 ms)
+      ✓ counter update fails after the membership insert → transaction rolls back (no membership), order canceled, code removed, locks released (2451 ms)
+      ✓ GB-N1 (GB-3c): confirming the freeze order change fails → order change declined, no adjustment left on the draft order (1126 ms)
+      ✓ GB-N1 (GB-3c): declining the order change fails too → the confirm error is surfaced and the decline failure is logged (1132 ms)
+      ✓ AC-27: joining again with the same cart (same or other group) → 409 GB_CART_ALREADY_JOINED; a new cart → 201 (2040 ms)
+      ✓ campaign row gone while the group remains → 404 instead of a crash (review #68) (952 ms)
+      ✓ AC-24: customer B joining with A's cart → 404 and nothing changes (742 ms)
+        ✓ after joining → 400 not_allowed GB_CART_NOT_COMPLETABLE, cart not completed (1410 ms)
+        ✓ GB-<token> added through Medusa's promotions route without joining → 400 as well (1137 ms)
+      ✓ O_dig on a shippable line → 400 not_allowed with the code, nothing created; switching to O_std → 201 (1709 ms)
+      ✓ cart with both O_std and O_dig → 201 (1597 ms)
+      ✓ cart without any shipping method → 201 (rule 35c) (1368 ms)
+      ✓ every line requires_shipping = false + O_dig → 201 (2353 ms)
+      ✓ group full and O_dig → 409 GB_GROUP_FULL (409 comes first) (2169 ms)
+      ✓ AC-7: leaving one of two memberships keeps people; the last one decrements people; then join again (2179 ms)
+      ✓ AC-7: after leaving every membership the customer can join another group of the campaign (1895 ms)
+      ✓ AC-25: someone else's / unknown membership → 404; leaving twice → 400 without double decrement (1178 ms)
+      ✓ GB-N1: someone else's membership → 404 without taking the group lock (1041 ms)
+      ✓ AC-25: group no longer open → 400 and nothing changes (953 ms)
+      ✓ open group whose ends_at has passed (deadline job not run yet) → 400 and nothing changes (730 ms)
+      ✓ AC-25: cancelling the draft order fails → membership back to joined, counters restored, lock released (1853 ms)
+      ✓ AC-8: 20 concurrent joins, max_people_per_group=5 → exactly 5 people (6995 ms)
+      ✓ AC-13: 8 concurrent joins across 2 groups, max_total_orders=5 → exactly 5 (2908 ms)
+      ✓ AC-18: one customer joining G1 and G2 at the same time → exactly one succeeds (862 ms)
+Test Suites: 1 passed, 1 total
+Tests:       39 passed, 39 total
+
+== jest integration:http: integration-tests/http/evoucher-admin.spec.ts (DB medusa_gbn5) ==
+    ✓ requires an authenticated admin (490 ms)
+    ✓ creates, updates, lists and deletes partners (731 ms)
+    ✓ creates a pool for an existing variant and rejects unknown variants (378 ms)
+    ✓ AC-1 imports 100 codes with 2 duplicates → 98 available, inventory +98 (415 ms)
+    ✓ skips codes that already exist in the pool on re-import (328 ms)
+    ✓ stores only v1: ciphertext (never plaintext) for code and pin (272 ms)
+    ✓ rejects an invalid CSV without inserting anything (323 ms)
+    ✓ rolls back the inserted batch when the inventory adjustment fails (350 ms)
+    ✓ removes earlier chunks when a later insert chunk fails (no orphan rows) (453 ms)
+    ✓ refuses to delete a pool that has codes (302 ms)
+    ✓ checks EVOUCHER_ENCRYPTION_KEY before touching data (228 ms)
+    ✓ AC-8 lists codes masked and reveals the real value with an audit row (334 ms)
+    ✓ returns 404 when revealing an unknown code and writes no audit (563 ms)
+Test Suites: 1 passed, 1 total
+Tests:       13 passed, 13 total
+
+== jest integration:http: integration-tests/http/flash-sale-admin-config.spec.ts (DB medusa_gbn5) ==
+    ✓ GET before any config returns null config and warns about automatic promotions without the rule (344 ms)
+    ✓ POST creates the config and adds the exclusivity rule to every automatic promotion of the campaign (531 ms)
+    ✓ POST is idempotent: saving again updates the same config and never duplicates the rule (274 ms)
+    ✓ concurrent POSTs on a new config (double-click Save) all return 200 with one config and one rule per promotion (1458 ms)
+    ✓ AC-11 (a): POST total_cap=5 while units_sold=10 → 200 and units_sold stays 10 (356 ms)
+    ✓ rejects units_sold and invalid limits in the body (400) (210 ms)
+    ✓ returns 404 for an unknown campaign and does not create a config (285 ms)
+    ✓ requires an authenticated admin user (401) (246 ms)
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+
+spec http อื่นที่แตะ (affiliate-admin, evoucher-admin-ui, evoucher-partner-url, evoucher-void-expiry) — ให้ CI รัน (typecheck ผ่าน)
+
+== pnpm lint && pnpm typecheck ==
+exit 0 (storefront lint: 0 errors, 31 warnings เดิม)

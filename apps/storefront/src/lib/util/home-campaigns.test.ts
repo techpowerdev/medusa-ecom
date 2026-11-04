@@ -89,15 +89,15 @@ describe("firstPool (ลำดับคงที่ — route ไม่เรี
 
   it("ไม่มี pool → null; หลาย pool → ends_at เร็วสุด, เท่ากันเรียง join_token, ไม่มี ends_at ไว้ท้าย ไม่ขึ้นกับลำดับใน array", () => {
     expect(firstPool(campaign())).toBeNull()
-    const a = pool("b", "2026-11-05T00:00:00Z")
-    const b = pool("a", "2026-11-05T00:00:00Z")
+    const a = pool("a", "2026-11-05T00:00:00Z")
+    const b = pool("b", "2026-11-05T00:00:00Z")
     const c = pool("c", "2026-11-04T00:00:00Z")
     const d = pool("d", null)
-    expect(firstPool(campaign({ pool_groups: [d, a, b, c] }))?.join_token).toBe("c")
+    expect(firstPool(campaign({ pool_groups: [d, b, a, c] }))?.join_token).toBe("c")
     const orders = [
-      [d, a, b],
-      [b, a, d],
-      [a, d, b],
+      [d, b, a],
+      [a, b, d],
+      [b, d, a],
     ]
     // ลำดับ input ต่างกันจริง (กฎข้อ 34b)
     expect(new Set(orders.map((o) => JSON.stringify(o.map((g) => g.join_token)))).size).toBe(orders.length)
