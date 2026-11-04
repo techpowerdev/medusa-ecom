@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
+สถานะ: draft (รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -49,6 +49,12 @@
    - Stripe webhook endpoint ทั้งสองต้องสมัคร event ตามรายการใน `docs/ops/production.md` หัวข้อ "Stripe webhooks" (OPS-10)
 10. Runbook ลำดับ release: migrate → รีสตาร์ต backend (server + worker, reindex search ตอนบูต) → ตรวจ index → ปล่อย storefront
     (`docs/ops/production.md` หัวข้อ "ลำดับ release"; spec 01 กฎข้อ 15) — เพิ่มใน docs 2026-10-26 ไม่มี task โค้ด
+11. (รอบ 21 2026-11-04 — qa #285 O-1, หมายเหตุ ไม่มี task) **admin และ store API ของ prod ต้องอยู่หลัง HTTPS**: เมื่อ `NODE_ENV=production` (หรือ staging) Medusa ตั้ง session cookie
+    เป็น `{ sameSite: "lax", secure: true }` เป็นค่า default (`resolveSessionCookieSecurity` ใน `@medusajs/framework` http express loader; ตั้งทับได้ด้วย `projectConfig.cookieOptions`
+    ตั้งแต่ v2.8.5 — https://docs.medusajs.com/learn/configurations/medusa-config) → login admin ผ่าน http ที่ไม่ใช่ localhost ไม่ติด (qa #285 ทำซ้ำด้วย `medusa start` บน 2.22.1);
+    loader ตั้ง `app.set("trust proxy", 1)` แล้ว จึง terminate TLS ที่ reverse proxy/load balancer ชั้นเดียวได้ (proxy ต้องส่ง `X-Forwarded-Proto: https`);
+    **ห้าม**ตั้ง `cookieOptions.secure: false` ใน `medusa-config.ts` ที่ commit — ทดสอบแบบ prod ในเครื่องให้เปิดผ่าน `localhost` (หรือ tunnel HTTPS)
+    (ข้อมูล default มาจาก source ของ medusajs/medusa branch develop — ตอน bump `@medusajs/*` ให้ตรวจซ้ำตาม checklist ด้านล่าง)
 
 ## ความเสี่ยงที่ติดตาม (2026-10-26)
 - R-1 (หลัง hotfix #52) jest integration รันด้วย `maxWorkers: 1` + `workerIdleMemoryLimit` แล้ว แต่ suite `flash-sale-limits` ใช้ heap
