@@ -107,12 +107,13 @@ medusaIntegrationTestRunner({
       }) as CreateGroupBuyCampaignInput
 
     const createViaApi = async (data: Partial<CreateGroupBuyCampaignInput> = {}) => {
-      const { data: body } = await api
+      const res = await api
         .post("/admin/group-buy/campaigns", campaignInput(data), headers)
         .catch((e) => {
-          throw new Error(`create campaign: ${JSON.stringify(e.response?.data)}`)
+          throw new Error(`create campaign: ${e.response?.status} ${JSON.stringify(e.response?.data)}`)
         })
-      return body.campaign
+      expect(res.status).toBe(200)
+      return res.data.campaign
     }
 
     const setStatus = (id: string, status: string) =>

@@ -1,0 +1,45 @@
+GB-N4 — test hygiene (กฎข้อ 34, AC-53) — base origin/develop e45b046, 2026-11-04
+
+== AC-53 grep ==
+$ grep -c -e "01-selection-address-shipping" -e "05-guest-login" apps/storefront/e2e/group-buy-join.spec.ts
+0
+$ grep -n "reverse()" apps/storefront/src/lib/util/home-campaigns.test.ts
+(ไม่พบ)
+$ grep -n "expect(res.status).toBe(200)" apps/backend/integration-tests/http/group-buy-campaigns.spec.ts
+115:      expect(res.status).toBe(200)
+
+== vitest: src/lib/util/home-campaigns.test.ts ==
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+
+== jest integration:http: integration-tests/http/group-buy-campaigns.spec.ts (DB medusa_gbn4, redis db 10) ==
+      ✓ creates a Medusa campaign + draft GBT- template promotion linked to the campaign (653 ms)
+      ✓ template code on a cart with X gives no adjustment; once active it would give X only (809 ms)
+      ✓ rolls back the Medusa campaign and template when the group buy campaign cannot be created (275 ms)
+      ✓ restores the campaign, template, links and Medusa campaign when a later step fails (297 ms)
+      ✓ requires an admin user (213 ms)
+      ✓ creates (returning template_promotion_id), lists, retrieves and updates a draft campaign (327 ms)
+      ✓ rejects an invalid body with 400 (196 ms)
+      ✓ template is_tax_inclusive defaults to true, keeps false, and rejects a non-boolean (AC-20c) (352 ms)
+      ✓ returns 404 for an unknown campaign (228 ms)
+      ✓ DELETE on a draft campaign removes the campaign, template, Medusa campaign and links (AC-20a) (281 ms)
+      ✓ DELETE on an active campaign → 400 and nothing is removed (AC-20a) (258 ms)
+      ✓ draft → active → ended succeed; active again on active is a no-op 200 (263 ms)
+      ✓ rejects active → draft and ended → active with 400 (274 ms)
+      ✓ rejects draft → active when the Medusa campaign ends_at has passed (234 ms)
+      ✓ editing target_value of an active campaign → 400; name and pay_within_hours are still editable (320 ms)
+      ✓ POST with one product → 200 (241 ms)
+      ✓ POST with two products → 400 invalid_data with the code; no Medusa campaign/promotion is created (202 ms)
+      ✓ POST with values: [] → 400 invalid_data with the code; no Medusa campaign/promotion is created (201 ms)
+      ✓ POST with no items.product.id rule → 400 invalid_data with the code; no Medusa campaign/promotion is created (211 ms)
+      ✓ POST with a variant-level scope → 400 invalid_data with the code; no Medusa campaign/promotion is created (217 ms)
+      ✓ createGroupBuyCampaignWorkflow called directly with two products → same code; nothing is created (215 ms)
+      ✓ draft whose template was edited to two products via the Promotion module → activate 400, still draft (270 ms)
+Test Suites: 1 passed, 1 total
+Tests:       22 passed, 22 total
+
+== pnpm lint && pnpm typecheck ==
+exit 0 (storefront lint: 0 errors, 31 warnings เดิม; backend/storefront typecheck: Done)
+
+== e2e group-buy-join.spec.ts ==
+ไม่รันในเครื่อง (ตามคำสั่ง) — ให้ CI รัน; typecheck ผ่าน
