@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   checkoutRedirectStep,
+  checkoutRedirectWithLatest,
   checkoutStep,
   deliveryStepDone,
   isDigitalOnlyCart,
@@ -252,6 +253,50 @@ describe("checkoutRedirectStep(step, cart, options) — step ที่ใช้�
         }
       }
     }
+  })
+})
+
+// D-1 (qa PR #288): cart ที่หน้าได้จาก force-cache อาจยังเป็นค่าก่อน mutation (เช่น หลัง setAddresses) → ก่อน redirect
+// ต้องตัดสินซ้ำด้วย cart ล่าสุด; ไม่ redirect = ไม่อ่าน cart เพิ่ม
+describe("checkoutRedirectWithLatest(step, cart, optionsFor, loadLatest) — ตัดสิน redirect ด้วย cart ล่าสุด (D-1)", () => {
+  const standard = { id: "so_standard" }
+  const optionsFor = () => [standard]
+  const stale = cartOf([shirt], { email: "a@b.co" })
+  const latest = cartOf([shirt], { email: "a@b.co", shipping_address: address })
+  const ready = cartOf([shirt], {
+    email: "a@b.co",
+    shipping_address: address,
+    shipping_methods: [{ id: "sm_1", shipping_option_id: standard.id }],
+  } as never)
+
+  it("delivery + cart ใน cache ยังไม่มีที่อยู่ แต่ cart ล่าสุดมีแล้ว → ไม่ redirect และใช้ cart ล่าสุด", async () => {
+    const loadLatest = vi.fn().mockResolvedValue(latest)
+    const result = await checkoutRedirectWithLatest("delivery", stale, optionsFor, loadLatest)
+    expect(result).toEqual({ redirectStep: null, cart: latest, options: [standard] })
+    expect(loadLatest).toHaveBeenCalledTimes(1)
+  })
+
+  it("ไม่มี step + cart ใน cache ยังไม่มีที่อยู่ แต่ cart ล่าสุดพร้อมจ่าย → payment (ปลายทางจาก cart ล่าสุด)", async () => {
+    const result = await checkoutRedirectWithLatest(undefined, stale, optionsFor, vi.fn().mockResolvedValue(ready))
+    expect(result.redirectStep).toBe("payment")
+    expect(result.cart).toBe(ready)
+  })
+
+  it("cart ล่าสุดก็ยังไม่มีที่อยู่ → ยัง redirect ไป address (กฎข้อ 103b)", async () => {
+    const result = await checkoutRedirectWithLatest("delivery", stale, optionsFor, vi.fn().mockResolvedValue(stale))
+    expect(result.redirectStep).toBe("address")
+  })
+
+  it("cart ใน cache ไม่ต้อง redirect → ไม่อ่าน cart ล่าสุด (ไม่ยิง API เพิ่ม)", async () => {
+    const loadLatest = vi.fn()
+    const result = await checkoutRedirectWithLatest("delivery", latest, optionsFor, loadLatest)
+    expect(result).toEqual({ redirectStep: null, cart: latest, options: [standard] })
+    expect(loadLatest).not.toHaveBeenCalled()
+  })
+
+  it("อ่าน cart ล่าสุดไม่ได้ (null) → ใช้ผลจาก cart เดิม", async () => {
+    const result = await checkoutRedirectWithLatest("delivery", stale, optionsFor, vi.fn().mockResolvedValue(null))
+    expect(result).toEqual({ redirectStep: "address", cart: stale, options: [standard] })
   })
 })
 

@@ -200,6 +200,35 @@ test.describe("CORE-45 step ที่ใช้ไม่ได้", () => {
     await delivery.done()
   })
 
+  // D-1 (qa PR #288): หลังกด submit-address-button หน้า step=delivery อาจได้ cart เก่าจาก force-cache (ยังไม่มีที่อยู่)
+  // แล้วกฎข้อ 103b เด้งกลับ address — จำลองแบบแน่นอน: ให้หน้า cache cart ที่ไม่มีที่อยู่ แล้วตั้งที่อยู่ผ่าน Store API ตรง
+  // (ไม่ผ่าน server action จึงไม่มี revalidateTag) ก่อนเปิด step=delivery → ต้องตัดสินด้วย cart ล่าสุด ไม่ redirect
+  test("D-1 cart ใน cache ยังไม่มีที่อยู่ แต่ cart จริงมีแล้ว: step=delivery ไม่เด้งกลับ address", async ({
+    page,
+    context,
+    request,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000)
+    const pk = await publishableKey(request, await adminHeaders(request))
+    const customer = await createCustomer(request, pk)
+    const { variantId } = await variantOf(request, pk, "t-shirt")
+    const cartId = await cartWithoutAddress(request, pk, customer, variantId)
+    await signInAs(context, baseURL!, customer)
+    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+
+    const cached = await openCounting(page, `/${CC}/checkout?step=address`, cartId)
+    await expect(page.getByTestId("shipping-first-name-input")).toBeVisible()
+    await cached.done()
+    await setAddress(request, pk, customer, cartId)
+
+    const nav = await openCounting(page, `/${CC}/checkout?step=delivery`, cartId)
+    await expect(page).toHaveURL(/[?&]step=delivery(&|$)/)
+    await expect(page.getByTestId("delivery-option-radio").first()).toBeVisible()
+    await expect(page.getByTestId("shipping-first-name-input")).toHaveCount(0)
+    await nav.done()
+  })
+
   test("AC-139 cart digital-only มีที่อยู่: step=delivery → step=payment", async ({
     page,
     context,

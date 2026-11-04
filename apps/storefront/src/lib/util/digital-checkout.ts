@@ -66,6 +66,25 @@ export function checkoutRedirectStep(
   }
 }
 
+/**
+ * D-1 (qa PR #288): cart ที่หน้าอ่านแบบ force-cache อาจยังเป็นค่าก่อน mutation (เช่น หน้า `step=delivery` หลัง `setAddresses`)
+ * ถ้าเชื่อค่านั้น กฎข้อ 103b จะเด้งกลับ address → เมื่อ `checkoutRedirectStep` บอกให้ redirect ให้อ่าน cart ล่าสุด (`loadLatest`)
+ * แล้วตัดสินซ้ำ (คืน cart/options ที่ใช้ตัดสินเพื่อ render ต่อ); ไม่ redirect = ไม่อ่าน cart เพิ่ม; อ่านไม่ได้ = ใช้ผลจาก cart เดิม
+ */
+export async function checkoutRedirectWithLatest<C extends CheckoutCart>(
+  step: string | undefined,
+  cart: C,
+  optionsFor: (cart: C) => { id: string }[],
+  loadLatest: () => Promise<C | null>
+) {
+  const options = optionsFor(cart)
+  const redirectStep = checkoutRedirectStep(step, cart, options)
+  const latest = redirectStep ? await loadLatest() : null
+  if (!latest) return { redirectStep, cart, options }
+  const latestOptions = optionsFor(latest)
+  return { redirectStep: checkoutRedirectStep(step, latest, latestOptions), cart: latest, options: latestOptions }
+}
+
 const COUNTRY_CODE_RE = /^[a-z]{2}$/
 
 /**

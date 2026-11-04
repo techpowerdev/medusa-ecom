@@ -126,3 +126,64 @@ TypeError: checkoutRedirectStep is not a function
 pnpm lint: exit 0 (0 errors; warnings เดิม ไม่มีในไฟล์ที่แก้)
 pnpm typecheck: exit 0
 pnpm --filter storefront build: exit 0
+
+# ===== แก้ D-1 ตาม qa (PR #288) =====
+# base: e49fc2c; node v22; backend :9447 (medusa start, DB medusa_core45d1, redis db 15), storefront :8447 (next build + start)
+# สาเหตุที่ยืนยันได้: render ของ step=delivery ภายใน server action (redirect ของ setAddresses) ได้ cart จาก force-cache ที่ยังไม่มีที่อยู่
+#   - trace ของ qa: GET step=address&_rsc หลัง action มี _rsc hash/state tree เดียวกับการตาม NEXT_REDIRECT;replace ใน flight
+#   - ยืนยันในเครื่อง: RSC ของ /th/checkout?step=delivery บน cart ไม่มีที่อยู่ ตอบ 200 + NEXT_REDIRECT;replace;/th/checkout?step=address
+#   - Next 16.3.8 รัน executeRevalidates ก่อน render redirect (action-handler.js) → entry ที่ stale ต้องถูกเขียนหลัง revalidate
+#     (areTagsExpired นับเฉพาะ entry ที่ lastModified < expired; tag ไม่อยู่ใน cache key) — จำลองแบบแน่นอนด้วย e2e D-1 ด้านล่าง
+
+## RED 3 — unit ก่อนแก้: checkoutRedirectWithLatest ยังไม่มี
+ FAIL  src/ev-7c-digital-only-checkout.test.ts > checkoutRedirectWithLatest(step, cart, optionsFor, loadLatest) — ตัดสิน redirect ด้วย cart ล่าสุด (D-1) > delivery + cart ใน cache ยังไม่มีที่อยู่ แต่ cart ล่าสุดมีแล้ว → ไม่ redirect และใช้ cart ล่าสุด
+TypeError: checkoutRedirectWithLatest is not a function
+ FAIL  src/ev-7c-digital-only-checkout.test.ts > checkoutRedirectWithLatest(step, cart, optionsFor, loadLatest) — ตัดสิน redirect ด้วย cart ล่าสุด (D-1) > ไม่มี step + cart ใน cache ยังไม่มีที่อยู่ แต่ cart ล่าสุดพร้อมจ่าย → payment (ปลายทางจาก cart ล่าสุด)
+TypeError: checkoutRedirectWithLatest is not a function
+ FAIL  src/ev-7c-digital-only-checkout.test.ts > checkoutRedirectWithLatest(step, cart, optionsFor, loadLatest) — ตัดสิน redirect ด้วย cart ล่าสุด (D-1) > cart ล่าสุดก็ยังไม่มีที่อยู่ → ยัง redirect ไป address (กฎข้อ 103b)
+TypeError: checkoutRedirectWithLatest is not a function
+ FAIL  src/ev-7c-digital-only-checkout.test.ts > checkoutRedirectWithLatest(step, cart, optionsFor, loadLatest) — ตัดสิน redirect ด้วย cart ล่าสุด (D-1) > cart ใน cache ไม่ต้อง redirect → ไม่อ่าน cart ล่าสุด (ไม่ยิง API เพิ่ม)
+TypeError: checkoutRedirectWithLatest is not a function
+ FAIL  src/ev-7c-digital-only-checkout.test.ts > checkoutRedirectWithLatest(step, cart, optionsFor, loadLatest) — ตัดสิน redirect ด้วย cart ล่าสุด (D-1) > อ่าน cart ล่าสุดไม่ได้ (null) → ใช้ผลจาก cart เดิม
+TypeError: checkoutRedirectWithLatest is not a function
+      Tests  5 failed | 54 passed (59)
+
+## RED 4 — e2e ก่อนแก้ (build ของ e49fc2c): cart ใน cache ไม่มีที่อยู่ + ตั้งที่อยู่ผ่าน Store API ตรง → step=delivery เด้งกลับ address
+  Error: expect(page).toHaveURL(expected) failed
+  Expected pattern: /[?&]step=delivery(&|$)/
+  Received string:  "http://localhost:8447/th/checkout?step=address"
+  1 failed
+
+## GREEN 5 — unit storefront ทั้งหมด (pnpm --filter storefront test:unit)
+ Test Files  82 passed (82)
+      Tests  947 passed (947)
+
+## GREEN 6 — e2e core-41 + core-14-buy-login + thai-ui-checkout --repeat-each=5 --workers=4 (prod build)
+  5 e2e/core-14-buy-login.spec.ts:103:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404
+  5 e2e/core-14-buy-login.spec.ts:126:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง
+  5 e2e/core-14-buy-login.spec.ts:39:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า
+  5 e2e/core-41-checkout-first-step.spec.ts:152:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart t-shirt ไม่มีที่อยู่: step=delivery / ไม่มี step / step=foo / step ซ้ำ → step=address
+  5 e2e/core-41-checkout-first-step.spec.ts:177:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart มีที่อยู่ + Standard: ไม่มี step → step=payment, step=delivery ไม่ถูก redirect
+  5 e2e/core-41-checkout-first-step.spec.ts:206:7 › CORE-45 step ที่ใช้ไม่ได้ › D-1 cart ใน cache ยังไม่มีที่อยู่ แต่ cart จริงมีแล้ว: step=delivery ไม่เด้งกลับ address
+  5 e2e/core-41-checkout-first-step.spec.ts:232:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart digital-only มีที่อยู่: step=delivery → step=payment
+  5 e2e/core-41-checkout-first-step.spec.ts:41:5 › AC-135 cart t-shirt ไม่มีที่อยู่: เปิด step=payment/review ตรงๆ → step=address ฟอร์มที่อยู่เปิด
+  5 e2e/core-41-checkout-first-step.spec.ts:65:5 › AC-135 cart digital-only ไม่มีที่อยู่: เปิด step=review ตรงๆ → step=address ฟอร์มที่อยู่ใบเสร็จเปิด
+  5 e2e/core-41-checkout-first-step.spec.ts:88:5 › AC-135 regression: cart มีที่อยู่ + Standard เปิด step=payment ตรงๆ → ไม่ถูก redirect
+  5 e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย
+  55 passed (33.2s)
+
+## GREEN 7 — regression AC-139: core-32, core-40, ev-7c --workers=4
+  ✓  3 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:37:5 › AC-125 checkout: ขั้น delivery ของ cart t-shirt มี Standard ไม่มี Digital delivery
+  ✓  2 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:87:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ
+  ✓  1 [chromium] › e2e/core-40-discount-action-race.spec.ts:67:5 › AC-134: ลบโค้ด A ค้าง → ปุ่มใส่โค้ด disabled; ปล่อยแล้วใส่ B → cart มีแค่ B
+  ✓  4 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:59:5 › AC-125 หน้ากลุ่ม: หลังกด group-shipping-load ไม่มี option ของ Digital delivery
+  ✓  6 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:126:7 › CORE-33 › AC-127 checkout: cart t-shirt ที่ค้าง Digital delivery ไม่มี radio ติ๊ก ปุ่ม disabled จนเลือก Standard
+  ✓  7 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:176:7 › CORE-35 › AC-129 checkout: cart ค้าง Digital delivery เปิด step=payment/review ตรงๆ → กลับ delivery; เลือก Standard แล้วไป payment ได้
+  ✓  5 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:161:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery
+  7 passed (22.8s)
+
+## GREEN 8 — test:e2e:unit / lint / typecheck / build
+  62 passed (675ms)
+pnpm lint: exit 0 (0 errors; warnings เดิม ไม่มีในไฟล์ที่แก้)
+pnpm typecheck: exit 0
+pnpm --filter storefront build: exit 0
