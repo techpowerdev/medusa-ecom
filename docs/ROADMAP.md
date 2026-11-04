@@ -137,7 +137,7 @@ spec 05 AF-20 (ป้าย "รหัสแนะนำ"/รหัสไม่�
 | CORE-44 | (รอบ 20, qa #278 D-2/O-1) `/cart` ที่ ≥ 1024 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด + `product-select-button` แสดงจำนวนจริงของ line (> 10) (กฎข้อ 102, AC-138) | ☑ #287 (train #290) |
 | CORE-45 | (รอบ 20, qa #276 Obs 1–2) checkout ไม่มี step/step ไม่รู้จัก/`delivery` ก่อนมีที่อยู่/`delivery` ของ digital-only → ขั้นแรกที่ยังไม่เสร็จผ่าน `checkoutRedirectStep` (กฎข้อ 103, AC-139; + D-1 ของ qa → กฎข้อ 103e, AC-141) | ☑ #288 (train #291) |
 | CORE-46 | (รอบ 20, test hygiene — nit review #281/#278) `checkoutToPayment` ใช้ `addToCartFromPdp`, comment timeout ตาม docs, core-19a/core-24 ใช้ `isAddToCartBody`, e2e admin ดึงสินค้า seed ด้วย handle แทน `limit=1` (กฎข้อ 104, AC-140) | ☑ #289 (train #290) |
-| CORE-47 | (รอบ 21, qa #287 O-1) `/cart` ที่ 375 ไม่ล้นเมื่อชื่อสินค้ายาว ~90 ตัว + ยอด 7 หลักพร้อมส่วนลด (กฎข้อ 105, AC-142) | ☐ **เริ่มได้** |
+| CORE-47 | (รอบ 21, qa #287 O-1) `/cart` ที่ < 1024 แต่ละ line เป็นแถวแบบการ์ด อ่านได้เมื่อชื่อสินค้ายาว ~90 ตัว + ยอด 7 หลักพร้อมส่วนลด; ≥ 1024 ตารางเดิม (owner เลือกทาง (C) 2026-11-04; กฎข้อ 105, AC-142) | ☐ **เริ่มได้** |
 | CORE-48 | (รอบ 21, qa #287 O-2) แก้จำนวนเกิน stock บน `/cart` → ข้อความไทยว่าสินค้าไม่พอ (400 `insufficient_inventory` ของ Medusa) (กฎข้อ 106, AC-143) | ☐ **เริ่มได้** |
 | CORE-49 | (รอบ 21, test hygiene — nit review #289 + qa #286/#288) grep test ที่เดียว, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/26/fs19 ใช้ `waitForServerAction` (กฎข้อ 107, AC-144) | ☐ **เริ่มได้** |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | ☑ #112 |
