@@ -48,6 +48,9 @@ task ใหม่: spec 01 **CORE-40** (bug: ใส่โค้ดระหว�
 train #283: CORE-42 #278, CORE-43 #281 · **owner เลือกทาง (ก)**: key ของฟอร์มสร้างแคมเปญใช้ `crypto.getRandomValues` → spec 04 **GB-15** (กฎข้อ 33d, AC-58 — admin ผ่าน http เปิดฟอร์มไม่ได้; ควรมีก่อน v0.5.0) ·
 task ใหม่: spec 01 CORE-44 (`/cart` 1024 + จำนวนจริงในตัวเลือก) ∥ CORE-45 (step ที่ใช้ไม่ได้ → ขั้นแรกที่ยังไม่เสร็จ; ถอน "ยอมรับ" `step=delivery` ของรอบ 19) ∥ CORE-46 (e2e hygiene) ·
 spec 05 AF-19 (header portal ชื่อละตินยาว) · แก้แถว PAY-3b2 ที่แตกบรรทัดใน spec 06 (+ สถานะ ☑ #203) · ไม่มีคำถามค้าง
+**รอบ 21 (2026-11-04 — owner อนุมัติเปิด task)**: merge แล้ว — train #290: GB-15 #285, AF-19 #286, CORE-44 #287, CORE-46 #289 · train #291: CORE-45 #288 ·
+task ใหม่: spec 01 CORE-47 (`/cart` 375 ชื่อยาว + ยอด 7 หลัก) ∥ CORE-48 (แก้จำนวนเกิน stock → ข้อความ "สินค้ามีไม่พอ") ∥ CORE-49 (e2e hygiene: grep test ที่เดียว, regex config, `waitForTimeout` ของ affiliate-admin-programs, `waitForServerAction` ใน core-25/26/fs19) ·
+spec 05 AF-20 (ป้าย "รหัสแนะนำ"/รหัสไม่ถูกตัดบรรทัด) · spec 01 แก้ถ้อยคำกฎข้อ 103 (103e + AC-141 ครอบแล้วโดย #288) · spec 07 Deliverables ข้อ 11 (prod ต้อง HTTPS — cookie `Secure`, qa #285 O-1) · ไม่มีคำถามค้าง
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -131,9 +134,12 @@ spec 05 AF-19 (header portal ชื่อละตินยาว) · แก้�
 | CORE-41 | (รอบ 19, review/qa #266) `?step=payment`/`review` ตรงๆ → ขั้นแรกที่ยังไม่เสร็จ (`step=address` เมื่อไม่มีที่อยู่) ผ่าน `checkoutStep(cart, options)` (กฎข้อ 99, AC-135) | ☑ #276 (train #279) |
 | CORE-42 | (รอบ 19, qa #264 O-4 / #265 O-1) ตารางสินค้า `/cart` ไม่ล้นที่ 375 + แถวรหัส voucher ไม่มีช่องว่างเมื่อสถานะว่าง (คง `aria-live`) (กฎข้อ 100, AC-136) | ☑ #278 (train #283) |
 | CORE-43 | (รอบ 19, test hygiene) helper ใส่ตะกร้าจาก PDP ที่รอผลจริง, แก้ assertion ที่ล้มจริงของ e2e ไม่นิ่ง (ห้ามเพิ่ม timeout ระดับ config), `LONG_CITY` + `billing-city-input` (กฎข้อ 101, AC-137) | ☑ #281 (train #283) |
-| CORE-44 | (รอบ 20, qa #278 D-2/O-1) `/cart` ที่ ≥ 1024 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด + `product-select-button` แสดงจำนวนจริงของ line (> 10) (กฎข้อ 102, AC-138) | ☐ **เริ่มได้** |
-| CORE-45 | (รอบ 20, qa #276 Obs 1–2) checkout ไม่มี step/step ไม่รู้จัก/`delivery` ก่อนมีที่อยู่/`delivery` ของ digital-only → ขั้นแรกที่ยังไม่เสร็จผ่าน `checkoutRedirectStep` (กฎข้อ 103, AC-139) | ☐ **เริ่มได้** |
-| CORE-46 | (รอบ 20, test hygiene — nit review #281/#278) `checkoutToPayment` ใช้ `addToCartFromPdp`, comment timeout ตาม docs, core-19a/core-24 ใช้ `isAddToCartBody`, e2e admin ดึงสินค้า seed ด้วย handle แทน `limit=1` (กฎข้อ 104, AC-140) | ☐ **เริ่มได้** |
+| CORE-44 | (รอบ 20, qa #278 D-2/O-1) `/cart` ที่ ≥ 1024 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด + `product-select-button` แสดงจำนวนจริงของ line (> 10) (กฎข้อ 102, AC-138) | ☑ #287 (train #290) |
+| CORE-45 | (รอบ 20, qa #276 Obs 1–2) checkout ไม่มี step/step ไม่รู้จัก/`delivery` ก่อนมีที่อยู่/`delivery` ของ digital-only → ขั้นแรกที่ยังไม่เสร็จผ่าน `checkoutRedirectStep` (กฎข้อ 103, AC-139; + D-1 ของ qa → กฎข้อ 103e, AC-141) | ☑ #288 (train #291) |
+| CORE-46 | (รอบ 20, test hygiene — nit review #281/#278) `checkoutToPayment` ใช้ `addToCartFromPdp`, comment timeout ตาม docs, core-19a/core-24 ใช้ `isAddToCartBody`, e2e admin ดึงสินค้า seed ด้วย handle แทน `limit=1` (กฎข้อ 104, AC-140) | ☑ #289 (train #290) |
+| CORE-47 | (รอบ 21, qa #287 O-1) `/cart` ที่ < 1024 แต่ละ line เป็นแถวแบบการ์ด อ่านได้เมื่อชื่อสินค้ายาว ~90 ตัว + ยอด 7 หลักพร้อมส่วนลด; ≥ 1024 ตารางเดิม (owner เลือกทาง (C) 2026-11-04; กฎข้อ 105, AC-142) | ☐ **เริ่มได้** |
+| CORE-48 | (รอบ 21, qa #287 O-2) แก้จำนวนเกิน stock บน `/cart` → ข้อความไทยว่าสินค้าไม่พอ (400 `insufficient_inventory` ของ Medusa) (กฎข้อ 106, AC-143) | ☐ **เริ่มได้** |
+| CORE-49 | (รอบ 21, test hygiene — nit review #289 + qa #286/#288) grep test ที่เดียว, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/26/fs19 ใช้ `waitForServerAction` (กฎข้อ 107, AC-144) | ☐ **เริ่มได้** |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | ☑ #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | ☑ #124 ∥ ☑ #130 |
 | CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | ☑ #168 |
@@ -191,7 +197,7 @@ GB-N1 ☑ #106 · GB-N2 ☑ #126 (nit `trackSubscribers` คัดลอก `sub
 **GB-N4 ☑ #246** (test hygiene; AC-53) → **GB-13 ☑ #259 (train #261)** (Q21 = ก owner 2026-11-04: `idempotency_key` ของการสร้างแคมเปญ; AC-52 — รอบ 18 แก้ถ้อยคำเป็น e2e admin `page.route`) →
 (รอบ 18) **GB-N6 ☑ #269 (train #270)** (ข้อ (a) toast ปิดโดย #259 commit `016f204`; #269 ส่งมอบ integration test error หลังขอ lock แล้ว key เดิมใช้ต่อได้ทันที; AC-56) →
 (รอบ 19) **GB-N7 ☑ #274** (comment เหนือ assertion "percentage number between 0 and 100" ว่ายืนยันการล้มหลัง lock ไม่ใช่ zod; AC-57) →
-(รอบ 20) GB-15 ☐ **เริ่มได้** (owner ทาง (ก): key ของฟอร์มสร้างแคมเปญจาก `crypto.getRandomValues` รูป UUID v4 แทน `crypto.randomUUID()` ที่ใช้ไม่ได้บน http; กฎข้อ 33d, AC-58 — ควรมีก่อน v0.5.0; ชน `create-campaign.tsx` กับ ADM-7) ∥
+(รอบ 20) **GB-15 ☑ #285 (train #290)** (owner ทาง (ก): key ของฟอร์มสร้างแคมเปญจาก `crypto.getRandomValues` รูป UUID v4 แทน `crypto.randomUUID()` ที่ใช้ไม่ได้บน http; กฎข้อ 33d, AC-58 — ควรมีก่อน v0.5.0; ชน `create-campaign.tsx` กับ ADM-7) ∥
 (รอบ 16b) **GB-14 ☑ #247** (Q-C4 = ข: ตรวจ shipping profile ตอน join → 400 `GB_SHIPPING_PROFILE_NOT_COVERED` + ข้อความไทยใน `group-join-error.ts`; AC-54; ∥ CORE-32 ไม่มีไฟล์ชน — ควรก่อน v0.5.0;
 Q22 = (ก) owner 2026-11-04: cart ไม่มีวิธีส่งเลยไม่ถูกปฏิเสธ) →
 (รอบ 17) **GB-N5 ☑ #257** (ตัด `!profile ||`, ขั้น O_dig → O_std ผ่าน Store API, helper admin ของ integration test, ชื่อตัวแปร pool ใน `home-campaigns.test.ts`; AC-55 — รอบ 18 แก้ถ้อยคำกฎข้อ 36b ตาม core-flows จริง) ·
@@ -206,7 +212,8 @@ AF-10 ☑ #125 · AF-3c ☑ #153 · AF-11 ⏸ หลัง v1.0 (owner Q15 2026-
 AF-N3 ☑ #237 (portal: สกุลเงิน, หน้าเกิน, `−`, static test AST; AC-47) ∥ **AF-16 ☑ #197** (owner Q19 = ข: ค่าคอม affiliate ของ order group buy — token บน draft order, attribution ตอนแปลง; AC-48 ☑) →
 (รอบ 13) AF-17 ☐ **เริ่มได้** (← AF-16 ☑ #197: token ว่างใน cart fallback ไป `order.metadata`; AC-49) ·
 (รอบ 19) **AF-18 ☑ #277 (train #279)** (qa #265 O-2: หน้า Profile ล้นที่ 375 เมื่ออีเมลยาวไม่มีช่องว่าง → `minmax(0,1fr)` + `break-words`; AC-50) →
-(รอบ 20) AF-19 ☐ **เริ่มได้** (qa #277 D-1: header ของ portal ล้นทุกหน้าเมื่อชื่อละตินยาวไม่มีช่องว่าง → `min-w-0` + ตัดคำ + `affiliate-header-name`; กฎ 43, AC-51 — ไม่บล็อก release) ·
+(รอบ 20) **AF-19 ☑ #286 (train #290)** (qa #277 D-1: header ของ portal ล้นทุกหน้าเมื่อชื่อละตินยาวไม่มีช่องว่าง → `min-w-0` + ตัดคำ + `affiliate-header-name`; กฎ 43, AC-51) →
+(รอบ 21) AF-20 ☐ **เริ่มได้** (qa #286 O-1: ป้าย "รหัสแนะนำ" `whitespace-nowrap` + `affiliate-code-label`, รหัสแนะนำไม่ถูกตัดที่ `-`; กฎ 44, AC-52 — ไม่บล็อก release) ·
 release v0.6.0 ต้องมี AF-14 (ที่เหลือ ☑ แล้ว; AF-15, AF-16 ควรมี) · owner รอบ 11: Q16 คง `variant_ids` ผ่าน API, Q18 `payout_info` 3 ช่อง
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
@@ -327,6 +334,10 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   nit review #281 (`checkoutToPayment`, comment `server-action.ts`) + builder CORE-43 (core-19a/core-24 `waitForResponse`) + nit review #278 (`limit=1` — รวม `group-buy-admin-{detail,dates}` ที่มี pattern เดียวกัน) → CORE-46 (กฎข้อ 104, AC-140) ·
   บทเรียน train #280 (e2e ใช้ stock seed) → หมายเหตุแนวปฏิบัติใน test plan รอบ 20 ของ spec 01 · spec 05: qa #277 D-1 → AF-19 (กฎ 43, AC-51) · spec 06: แถว PAY-3b2 แตกบรรทัด + สถานะ ☑ #203 ·
   ยอมรับ/ไม่เปิด: `ECONNRESET` ตอน 12 workers ในเครื่อง (CI `workers: 1`), ชื่อสินค้ายาวหลายบรรทัดที่ 375 (qa #278 O-2)
+- รอบ 21 (2026-11-04, owner อนุมัติเปิด task หลัง train #290/#291) → spec 01: qa #288 D-1 (ของที่ merge แล้ว) → แก้ถ้อยคำกฎข้อ 103 เป็น 103e + AC-141 (ไม่มี task) ·
+  qa #287 O-1 → CORE-47 (กฎข้อ 105, AC-142) · qa #287 O-2 → CORE-48 (กฎข้อ 106, AC-143) · nit review #289 + `waitForTimeout` ของ affiliate-admin-programs + `next-action` ของ core-25/26/fs19 → CORE-49 (กฎข้อ 107, AC-144) ·
+  spec 05: qa #286 O-1 → AF-20 (กฎ 44, AC-52) · spec 07: qa #285 O-1 → Deliverables ข้อ 11 (HTTPS + cookie `Secure`) ·
+  ยอมรับ/ไม่เปิด: shipping option จาก cache tag `fulfillment` ใน `checkout-form` (seed มี service zone เดียว — ไม่มีผล), กด `checkout-button` ไม่ย้ายหน้าตอน 12 workers (qa #288 Obs 1; CI `workers: 1`)
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →
