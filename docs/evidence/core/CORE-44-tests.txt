@@ -41,3 +41,25 @@ $ pnpm --filter storefront test:unit
 - pnpm --filter storefront lint → 0 errors (31 warnings เดิมของไฟล์อื่น; ไฟล์ที่ task นี้แตะไม่มี warning)
 - pnpm --filter storefront build → ผ่าน
 - pnpm --filter storefront test:e2e:unit → 62 passed
+
+## รอบแก้ตาม review #287 (2026-11-04) — prod build (medusa start :9441, next start :8441)
+- nit 1: เลือกจำนวน 2 แบบ retry มีเงื่อนไข (`expect(...).toPass()`) จนกว่า server action ของ `updateLineItem({ quantity: 2 })` ตอบ 200 (รอ hydrate) แล้วจึง poll Store API — ไม่มี waitForTimeout
+- nit 2: skeleton-cart-page ใช้ grid เดียวกับหน้าจริง (`minmax(0,1fr)_360px`, `gap-x-10 large:gap-x-40`)
+
+### e2e core-44 --repeat-each=5 --workers=4
+  ✓  3 [chromium] › e2e/core-44-cart-summary-qty.spec.ts:67:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2) (9.7s)
+  ✓  2 [chromium] › e2e/core-44-cart-summary-qty.spec.ts:67:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2) (10.0s)
+  ✓  1 [chromium] › e2e/core-44-cart-summary-qty.spec.ts:67:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2) (10.1s)
+  ✓  4 [chromium] › e2e/core-44-cart-summary-qty.spec.ts:67:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2) (13.2s)
+  ✓  5 [chromium] › e2e/core-44-cart-summary-qty.spec.ts:67:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2) (4.6s)
+  5 passed (15.7s)
+
+### e2e core-44 + core-42 (--workers=1)
+  ✓  1 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:90:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (2.6s)
+  ✓  2 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:247:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (2.0s)
+  ✓  3 [chromium] › e2e/core-44-cart-summary-qty.spec.ts:67:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2) (4.0s)
+  3 passed (9.4s)
+
+### unit / lint / typecheck
+- vitest: Test Files 83 passed, Tests 921 passed; test:e2e:unit: 62 passed
+- typecheck ผ่าน; lint 0 errors (31 warnings เดิมของไฟล์อื่น; ไฟล์ที่แก้ไม่มี warning)
