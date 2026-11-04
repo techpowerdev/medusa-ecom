@@ -9,6 +9,7 @@ const cartCreate = vi.fn()
 const cartUpdate = vi.fn()
 const createLineItem = vi.fn()
 const transferCart = vi.fn()
+const cartComplete = vi.fn()
 const customerUpdate = vi.fn()
 const customerRetrieve = vi.fn()
 const setCartId = vi.fn()
@@ -27,6 +28,7 @@ vi.mock("@lib/config", () => ({
         update: (...a: unknown[]) => cartUpdate(...a),
         createLineItem: (...a: unknown[]) => createLineItem(...a),
         transferCart: (...a: unknown[]) => transferCart(...a),
+        complete: (...a: unknown[]) => cartComplete(...a),
       },
       customer: {
         update: (...a: unknown[]) => customerUpdate(...a),
@@ -78,7 +80,7 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {})
   cartCookie = undefined
   // mockReset: ค่า Once ที่ค้างจาก test ก่อนหน้าไม่รั่วข้าม test
-  for (const fn of [fetch, cartCreate, cartUpdate, createLineItem, transferCart, customerUpdate, customerRetrieve]) {
+  for (const fn of [fetch, cartCreate, cartUpdate, createLineItem, transferCart, cartComplete, customerUpdate, customerRetrieve]) {
     fn.mockReset()
   }
   cartCreate.mockResolvedValue({ cart: { id: "cart_new", region_id: "reg_1", metadata: null } })
@@ -179,6 +181,44 @@ describe("payment-return ตั้ง cookie cart (กฎข้อ 86a)", () => 
     const { GET } = await import("./app/api/payment-return/route")
     await GET(returnRequest())
     expect(customerUpdate).not.toHaveBeenCalled()
+  })
+})
+
+// CORE-4i-b (กฎข้อ 72): placeOrder คืน { error } แทนการ throw — route อ่านผลแล้ว redirect order_failed เหมือนเดิม
+describe("payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b)", () => {
+  const succeededRequest = () =>
+    new NextRequest(
+      "http://shop.test/api/payment-return?cart_id=cart_pay&country_code=th&payment_intent=pi_1&payment_intent_client_secret=sec_1&redirect_status=succeeded"
+    )
+
+  beforeEach(() => {
+    cartCookie = "cart_pay"
+    fetch.mockResolvedValue({
+      cart: { payment_collection: { payment_sessions: [{ data: { id: "pi_1", client_secret: "sec_1" } }] } },
+    })
+  })
+
+  it.each([
+    ["409 FLASH_SOLD_OUT", () => cartComplete.mockRejectedValue(Object.assign(new FetchError("x", "Conflict", 409), { code: "FLASH_SOLD_OUT" }))],
+    ["401", () => cartComplete.mockRejectedValue(new FetchError("x", "Unauthorized", 401))],
+    ["500", () => cartComplete.mockRejectedValue(new FetchError("x", "Internal Server Error", 500))],
+    ["cart ไม่ complete (type: cart)", () => cartComplete.mockResolvedValue({ type: "cart", cart: {}, error: { message: "declined" } })],
+  ])("%s → { error } → /cart?error=order_failed", async (_label, arrange) => {
+    arrange()
+    const { GET } = await import("./app/api/payment-return/route")
+    const res = await GET(succeededRequest())
+    expect(cartComplete).toHaveBeenCalledWith("cart_pay", {}, expect.anything())
+    expect(res.headers.get("location")).toBe("http://shop.test/th/cart?error=order_failed")
+  })
+
+  it("ได้ order → redirect ของ Next ถูกส่งต่อ (unstable_rethrow) ไม่กลายเป็น order_failed", async () => {
+    const { unstable_rethrow } = await import("next/navigation")
+    vi.mocked(unstable_rethrow).mockImplementationOnce((e: unknown) => {
+      throw e
+    })
+    cartComplete.mockResolvedValue({ type: "order", order: { id: "order_1", shipping_address: { country_code: "TH" } } })
+    const { GET } = await import("./app/api/payment-return/route")
+    await expect(GET(succeededRequest())).rejects.toThrow("REDIRECT /th/order/order_1/confirmed")
   })
 })
 

@@ -6,12 +6,6 @@ import { describe, expect, it } from "vitest"
 // CORE-4i (spec 01 กฎข้อ 72, AC-110 static): ใน modules/checkout/** และ modules/cart/** ห้ามมี `friendlyErrorMessage(`
 // ใน `catch` หรือ callback ของ `.catch(` — server action ต้องคืน `{ error }` ให้ผู้เรียกอ่าน (error ที่ throw ถูก Next ซ่อนใน production)
 const DIRS = ["modules/checkout", "modules/cart"]
-// CORE-4i-b (action ชำระเงิน + ผู้เรียก checkout) ยังไม่ทำ — ลบรายการออกเมื่อแปลงไฟล์นั้นแล้ว (ห้ามเพิ่มไฟล์ใหม่)
-const PENDING_4I_B = [
-  "modules/checkout/components/payment/index.tsx",
-  "modules/checkout/components/payment-button/index.tsx",
-  "modules/checkout/components/shipping/index.tsx",
-]
 
 const sourceFiles = (dir: string): string[] =>
   fs.readdirSync(path.resolve(__dirname, dir), { withFileTypes: true }).flatMap((entry) => {
@@ -54,7 +48,8 @@ describe("ตัวตรวจ friendlyErrorMessage ใน catch (AC-110)", () 
   })
 })
 
-describe.each(DIRS.flatMap(sourceFiles).filter((f) => !PENDING_4I_B.includes(f)))(
+// CORE-4i-b: ไม่มีไฟล์ยกเว้นแล้ว (payment, payment-button, shipping แปลงครบ)
+describe.each(DIRS.flatMap(sourceFiles))(
   "%s ไม่แปลง error จาก catch ของ server action (กฎข้อ 72)",
   (name) => {
     it("ไม่มี friendlyErrorMessage( ใน catch", () => {
@@ -63,11 +58,3 @@ describe.each(DIRS.flatMap(sourceFiles).filter((f) => !PENDING_4I_B.includes(f))
     })
   }
 )
-
-// กันรายการค้างหลัง 4i-b แปลงไฟล์แล้วลืมลบ: ทุกไฟล์ในรายการต้องยังมี friendlyErrorMessage( ใน catch อยู่จริง
-describe("รายการค้างของ CORE-4i-b ยังมี friendlyErrorMessage( ใน catch จริง", () => {
-  it.each(PENDING_4I_B)("%s", (name) => {
-    const source = fs.readFileSync(path.resolve(__dirname, name), "utf8")
-    expect(friendlyInCatch(source, name).length).toBeGreaterThan(0)
-  })
-})

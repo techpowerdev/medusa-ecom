@@ -71,15 +71,16 @@ describe("server action ของ checkout ไม่ส่งข้อควา�
 
   const cart = { id: "cart_1", payment_collection: { id: "pay_col_1" } } as never
 
-  it("renewPromptPaySession: fetch throw → ข้อความไทย", async () => {
+  // CORE-4i-b (กฎข้อ 72): action คืนรหัส `failed` (ไม่ส่งข้อความดิบของ backend) — ข้อความไทยแปลงที่ UI (renewPromptPayQr,
+  // test ใน core-4i-b-ui-results.test.ts)
+  it("renewPromptPaySession: fetch throw → { error: \"failed\" } ไม่มีข้อความดิบ", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error(RAW)))
     const { renewPromptPaySession } = await import("@lib/data/cart")
     const result = await renewPromptPaySession(cart, "pp_stripe-promptpay_stripe")
-    expect(result.status).toBe("error")
-    expectThaiNotRaw("message" in result ? result.message : undefined)
+    expect(result).toEqual({ error: "failed" })
   })
 
-  it("renewPromptPaySession: backend 404 พร้อม message อังกฤษ → ข้อความไทย", async () => {
+  it("renewPromptPaySession: backend 404 พร้อม message อังกฤษ → { error: \"failed\" } ไม่มีข้อความดิบ", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -88,8 +89,7 @@ describe("server action ของ checkout ไม่ส่งข้อควา�
     )
     const { renewPromptPaySession } = await import("@lib/data/cart")
     const result = await renewPromptPaySession(cart, "pp_stripe-promptpay_stripe")
-    expect(result.status).toBe("error")
-    expectThaiNotRaw("message" in result ? result.message : undefined)
+    expect(result).toEqual({ error: "failed" })
   })
 })
 

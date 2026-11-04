@@ -2,10 +2,16 @@
 
 import { sdk } from "@lib/config"
 import { friendlyErrorMessage } from "@lib/util/error-message"
-import { checkoutConflictMessage } from "@lib/util/checkout-error"
 import { safeCountryCode } from "@lib/util/digital-checkout"
 import medusaError from "@lib/util/medusa-error"
-import { ActionResult, actionErrorMessage, actionFailure } from "@lib/util/action-result"
+import {
+  ActionError,
+  ActionResult,
+  PaymentSessionResult,
+  actionErrorMessage,
+  actionFailure,
+  paymentSessionResult,
+} from "@lib/util/action-result"
 import { INSUFFICIENT_INVENTORY, isInsufficientInventory } from "@lib/util/insufficient-inventory"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
@@ -23,12 +29,7 @@ import { syncCartAffiliateToken } from "./affiliate"
 import { getLocale } from "./locale-actions"
 import { createPaymentSession } from "./payment"
 import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
-import {
-  PromptPayPollState,
-  paymentSessionData,
-  promptPayPollState,
-  promptPayRenewalOutcome,
-} from "@lib/util/payment-session"
+import { PromptPayPollState, promptPayPollState } from "@lib/util/payment-session"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -269,76 +270,75 @@ export async function deleteLineItem(lineId: string): Promise<DeleteLineItemResu
   return { ok: true }
 }
 
+// CORE-4i-b (กฎข้อ 72): คืนผลแทนการ throw ผ่าน helper กลาง
 export async function setShippingMethod({
   cartId,
   shippingMethodId,
 }: {
   cartId: string
   shippingMethodId: string
-}) {
+}): Promise<ActionResult> {
   const headers = {
     ...(await getAuthHeaders()),
   }
 
-  return sdk.store.cart
-    .addShippingMethod(cartId, { option_id: shippingMethodId }, {}, headers)
-    .then(async () => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag, { expire: 0 })
-    })
-    .catch(medusaError)
+  try {
+    await sdk.store.cart.addShippingMethod(cartId, { option_id: shippingMethodId }, {}, headers)
+  } catch (error) {
+    return actionFailure(error)
+  }
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag, { expire: 0 })
+  return { ok: true }
 }
 
-export async function initiatePaymentSession(
-  cart: HttpTypes.StoreCart,
-  data: HttpTypes.StoreInitializePaymentSession
-) {
-  const headers = {
-    ...(await getAuthHeaders()),
+/** สร้าง session ผ่าน `createPaymentSession` แล้ว revalidate cart เมื่อสำเร็จ (ผลผ่าน helper กลางของ Q-C2) */
+async function createCartPaymentSession(collectionId: string, providerId: string): Promise<PaymentSessionResult> {
+  const result = paymentSessionResult(await createPaymentSession(collectionId, providerId))
+  if ("ok" in result) {
+    revalidateTag(await getCacheTag("carts"), { expire: 0 })
   }
-
-  // PAY-2 (spec 06 กฎข้อ 5): provider บัตรขอ PaymentIntent แบบ card เท่านั้น
-  const sessionData = paymentSessionData(data.provider_id)
-  const body = sessionData
-    ? { ...data, data: { ...data.data, ...sessionData } } // กฎข้อ 5 ชนะเสมอ
-    : data
-
-  return sdk.store.payment
-    .initiatePaymentSession(cart, body, {}, headers)
-    .then(async (resp) => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag, { expire: 0 })
-      return resp
-    })
-    .catch(medusaError)
+  return result
 }
 
 /**
- * PAY-6b (spec 06 กฎข้อ 7A, AC-12): สร้าง session PromptPay ใหม่ตอน QR หมดอายุ — คืนผลแทนการ throw เพราะต้องอ่าน `code` ของ 409
- * (FetchError ของ js-sdk เก็บแค่ message และ error ของ server action ถูกซ่อนข้อความใน production)
+ * CORE-4i-b (กฎข้อ 72, Q-C2 = (ก)): ผลรูปแบบเดียวกับหน้า `/account/orders/:id/pay` — ใช้ `createPaymentSession` (fetch ตรง)
+ * แทน `sdk.store.payment.initiatePaymentSession` เพราะ `FetchError` ไม่เก็บ `code` ของ 409 `PAYMENT_ALREADY_COMPLETED`;
+ * data ของกฎข้อ 5 (บัตร = card) ใส่ใน `createPaymentSession`; cart ที่ยังไม่มี collection สร้างก่อนด้วย route ของ Medusa (แบบ js-sdk)
+ */
+export async function initiatePaymentSession(
+  cart: HttpTypes.StoreCart,
+  { provider_id }: Pick<HttpTypes.StoreInitializePaymentSession, "provider_id">
+): Promise<PaymentSessionResult> {
+  let collectionId = cart.payment_collection?.id
+  if (!collectionId) {
+    try {
+      const { payment_collection } = await sdk.client.fetch<HttpTypes.StorePaymentCollectionResponse>(
+        `/store/payment-collections`,
+        { method: "POST", headers: { ...(await getAuthHeaders()) }, body: { cart_id: cart.id } }
+      )
+      collectionId = payment_collection.id
+    } catch (error) {
+      return actionFailure(error)
+    }
+  }
+  return createCartPaymentSession(collectionId, provider_id)
+}
+
+/**
+ * PAY-6b (spec 06 กฎข้อ 7A, AC-12): สร้าง session PromptPay ใหม่ตอน QR หมดอายุ — 409 `PAYMENT_ALREADY_COMPLETED` (ชำระไปแล้ว)
+ * เป็น code ที่ผู้เรียกแยกทาง (CORE-4i-b: ผลผ่าน helper กลาง)
  */
 export async function renewPromptPaySession(
   cart: HttpTypes.StoreCart,
   providerId: string
-): Promise<{ status: "renewed" | "already-paid" } | { status: "error"; message: string }> {
+): Promise<PaymentSessionResult> {
   const collectionId = cart.payment_collection?.id
   if (!collectionId) {
-    return { status: "error", message: "ไม่พบข้อมูลการชำระเงินของตะกร้านี้ กรุณาลองอีกครั้ง" }
+    return { error: "failed" }
   }
-
-  const res = await createPaymentSession(collectionId, providerId)
-  if (res.status >= 200 && res.status < 300) {
-    revalidateTag(await getCacheTag("carts"), { expire: 0 })
-    return { status: "renewed" }
-  }
-  if (promptPayRenewalOutcome(res.status, res) === "already-paid") {
-    return { status: "already-paid" }
-  }
-  return {
-    status: "error",
-    // CORE-4d: message ของ backend เป็นอังกฤษ — แสดงข้อความไทย (401/403 → ให้เข้าสู่ระบบใหม่)
-    message: friendlyErrorMessage(res, "สร้างคิวอาร์โค้ดพร้อมเพย์ใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง"),
-  }
+  return createCartPaymentSession(collectionId, providerId)
 }
 
 /**
@@ -544,6 +544,10 @@ export async function syncCartAffiliate(
   })
 }
 
+const PLACE_ORDER_CONFLICTS = ["FLASH_SOLD_OUT", "FLASH_LIMIT_EXCEEDED", "PROMOTION_NOT_COMBINABLE"] as const
+// สำเร็จ = redirect ของ Next (throw) จึงไม่มีผล ok
+export type PlaceOrderResult = { error: ActionError<(typeof PLACE_ORDER_CONFLICTS)[number]> }
+
 /**
  * Places an order for a cart. If no cart ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to place an order for.
@@ -556,11 +560,11 @@ export async function placeOrder(
   cartId?: string,
   cartMetadata?: HttpTypes.StoreCart["metadata"],
   countryCode?: string
-) {
+): Promise<PlaceOrderResult> {
   const id = cartId || (await getCartId())
 
   if (!id) {
-    throw new Error("ไม่พบตะกร้าสินค้าสำหรับยืนยันคำสั่งซื้อ")
+    return { error: "failed" }
   }
 
   const headers = {
@@ -571,26 +575,16 @@ export async function placeOrder(
     await syncCartAffiliateToken(id, cartMetadata, headers)
   }
 
-  const cartRes = await sdk.store.cart
-    .complete(id, {}, headers)
-    .then(async (cartRes) => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag, { expire: 0 })
-      return cartRes
-    })
-    .catch((error) => {
-      // FS-15 (spec 03 กฎข้อ 20c): 409 ที่รู้จักคืนเป็นค่า — error ที่ throw จาก server action ถูกซ่อนข้อความใน production
-      const conflict = checkoutConflictMessage(error)
-      return conflict
-        ? ({ type: "conflict", error: conflict } as const)
-        : medusaError(error)
-    })
-
-  if (cartRes.type === "conflict") {
-    return { error: cartRes.error }
+  let cartRes: HttpTypes.StoreCompleteCartResponse
+  try {
+    cartRes = await sdk.store.cart.complete(id, {}, headers)
+  } catch (error) {
+    // FS-15 (spec 03 กฎข้อ 20c) / CORE-4i-b (กฎข้อ 72): 409 ที่รู้จักคืนเป็น code — UI แปลงเป็นข้อความไทยด้วย actionErrorMessage
+    return actionFailure(error, PLACE_ORDER_CONFLICTS)
   }
+  revalidateTag(await getCacheTag("carts"), { expire: 0 })
 
-  if (cartRes?.type === "order") {
+  if (cartRes.type === "order") {
     const orderCountry =
       safeCountryCode(countryCode) ??
       cartRes.order.shipping_address?.country_code?.toLowerCase()
@@ -599,10 +593,12 @@ export async function placeOrder(
     revalidateTag(orderCacheTag, { expire: 0 })
 
     removeCartId()
-    redirect(`/${orderCountry}/order/${cartRes?.order.id}/confirmed`)
+    redirect(`/${orderCountry}/order/${cartRes.order.id}/confirmed`)
   }
 
-  return cartRes.cart
+  // Medusa คืน cart (ยังไม่ได้ order — เช่น authorize payment ไม่ผ่าน)
+  console.error("placeOrder: cart not completed", cartRes.error)
+  return { error: "failed" }
 }
 
 /**

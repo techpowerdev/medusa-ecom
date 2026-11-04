@@ -1,5 +1,6 @@
 import { APIRequestContext, BrowserContext, Page, Route } from "@playwright/test"
 
+import { paymentSessionResult } from "../src/lib/util/action-result"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { GroupBuyOrderCtx, groupBuyOrder, leaveGroup } from "./support/group-buy"
 import { createCustomer, signInAs, STOREFRONT_COUNTRY as CC } from "./support/medusa"
@@ -59,7 +60,10 @@ async function fulfillResult(route: Route, fn: (result: Gb8) => Gb8) {
 }
 
 type Mock = {
-  /** ผลของ createPaymentSession (`status` ของ Medusa + `code`); ฟังก์ชัน = ผลของครั้งที่ n (undefined = ผลจริง) */
+  /**
+   * response ของ Medusa (`status` + `code`) ที่ createPaymentSession ได้ — action คืนผลผ่าน `paymentSessionResult` (CORE-4i-b);
+   * ฟังก์ชัน = ผลของครั้งที่ n (undefined = ผลจริง)
+   */
   create?: { status: number; code: string | null } | ((n: number) => { status: number; code: string | null } | undefined)
   /** mock `create` เฉพาะ n ครั้งแรก (ครั้งถัดไปใช้ผลจริง) */
   createTimes?: number
@@ -87,7 +91,7 @@ async function mockActions(page: Page, orderId: string, mock: Mock) {
         await mock.beforeCreate?.()
         const result = typeof mock.create === "function" ? mock.create(log.created) : mock.create
         const mocked = result && log.created <= (mock.createTimes ?? Infinity)
-        return mocked ? fulfillResult(route, () => result) : route.fallback()
+        return mocked ? fulfillResult(route, () => paymentSessionResult(result)) : route.fallback()
       }
       if (!log.created && !mock.fromStart) return route.fallback()
       if (body === JSON.stringify([orderId])) {

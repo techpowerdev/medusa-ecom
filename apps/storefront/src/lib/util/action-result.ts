@@ -1,5 +1,6 @@
 import { checkoutConflictCode, checkoutConflictMessage } from "./checkout-error"
 import { SIGN_IN_AGAIN_MESSAGE } from "./error-message"
+import { PAYMENT_ALREADY_COMPLETED, promptPayRenewalOutcome } from "./payment-session"
 
 /**
  * CORE-4i (spec 01 กฎข้อ 72): ผลของ server action ที่ UI แสดง error — Next ใน production ซ่อนข้อความ/สถานะของ error
@@ -28,6 +29,28 @@ export function actionFailure<C extends string = never>(
     return { error: code }
   }
   console.error(error)
+  return { error: "failed" }
+}
+
+/** CORE-4i-b (Q-C2 = (ก)): ผลของ action สร้าง payment session ทั้ง checkout และหน้า `/account/orders/:id/pay` */
+export type PaymentSessionResult = ActionResult<typeof PAYMENT_ALREADY_COMPLETED>
+
+/**
+ * ผลของ `createPaymentSession` (`{ status, code }` — `status` 0 = network) → `PaymentSessionResult`:
+ * 2xx → ok, 409 + `PAYMENT_ALREADY_COMPLETED` → code นั้น (spec 06 กฎข้อ 9 d), 401 → `"unauthorized"`,
+ * non-2xx อื่นทุกแบบ (รวม 403) → `"failed"` (กฎข้อ 9 d2 ตัดสินจากสถานะของ GB-8 ไม่ดู status)
+ *
+ * หมายเหตุ 403: ต่างจาก `actionFailure` ที่แปลง 401/403 เป็น `"unauthorized"` — ที่นี่เฉพาะ 401 เป็น `"unauthorized"`
+ * ตาม Q-C2 = (ก) / AC-110 ("non-2xx อื่น → failed") เหตุผล: spec 06 กฎข้อ 9 (d2) กำหนดว่าการสร้าง session ได้ non-2xx
+ * ทุกแบบยกเว้น 401 และ 409 `PAYMENT_ALREADY_COMPLETED` ต้องไปอ่าน GB-8 เพื่อตัดสินจากสถานะการชำระ — ถ้า 403 เป็น
+ * `"unauthorized"` หน้า pay จะพาไป login แทนการอ่าน GB-8 ผลข้างเคียงใน checkout: 403 ตอนสร้าง collection
+ * (`actionFailure`) แสดง `SIGN_IN_AGAIN_MESSAGE` แต่ 403 ตอนสร้าง session แสดงข้อความทั่วไปของผู้เรียก
+ */
+export function paymentSessionResult(res: { status: number; code: string | null }): PaymentSessionResult {
+  if (res.status >= 200 && res.status < 300) return { ok: true }
+  if (promptPayRenewalOutcome(res.status, res) === "already-paid") return { error: PAYMENT_ALREADY_COMPLETED }
+  if (res.status === 401) return { error: "unauthorized" }
+  console.error("payment session failed", res)
   return { error: "failed" }
 }
 

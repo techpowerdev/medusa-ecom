@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // FS-15 (spec 03 กฎข้อ 20c, AC-22): placeOrder เป็น server action — error ที่ throw ข้าม boundary ถูกซ่อนข้อความใน production build
-// จึงคืน 409 ที่รู้จัก (FLASH_*, PROMOTION_NOT_COMBINABLE) เป็นค่า `{ error }` ภาษาไทยให้ปุ่มในขั้น review แสดง; error อื่น throw เหมือนเดิม
+// จึงคืน 409 ที่รู้จัก (FLASH_*, PROMOTION_NOT_COMBINABLE) เป็น `{ error: <code> }` ให้ปุ่มในขั้น review แปลงเป็นข้อความไทย;
+// CORE-4i-b (spec 01 กฎข้อ 72): error อื่น → `{ error: "failed" }` แทนการ throw
 const complete = vi.fn()
 
 vi.mock("server-only", () => ({}))
@@ -38,19 +39,13 @@ beforeEach(() => {
 })
 
 describe("placeOrder: 409 ตอน complete (FS-15)", () => {
-  it("FLASH_SOLD_OUT → คืน { error } เป็นข้อความไทย ไม่ throw", async () => {
+  it("FLASH_SOLD_OUT → คืน { error: code } ไม่ throw (ข้อความไทยของ code แปลงที่ UI — actionErrorMessage)", async () => {
     complete.mockRejectedValueOnce(fetchError("This flash sale is sold out"))
-    const res = await place()
-    expect(res).toEqual({ error: expect.stringMatching(/[฀-๿]/) })
-    expect((res as { error: string }).error).not.toContain("sold out")
+    await expect(place()).resolves.toEqual({ error: "FLASH_SOLD_OUT" })
   })
 
-  it("error อื่น → throw เหมือนเดิม (ผู้เรียกใช้ข้อความ fallback ของตัวเอง)", async () => {
-    complete.mockRejectedValueOnce(
-      Object.assign(fetchError("Payment sessions are required", 400), {
-        response: undefined,
-      })
-    )
-    await expect(place()).rejects.toThrow()
+  it("error อื่น → { error: \"failed\" } ไม่ throw (ผู้เรียกใช้ข้อความ fallback ของตัวเอง)", async () => {
+    complete.mockRejectedValueOnce(fetchError("Payment sessions are required", 400))
+    await expect(place()).resolves.toEqual({ error: "failed" })
   })
 })
