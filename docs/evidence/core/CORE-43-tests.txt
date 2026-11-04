@@ -99,3 +99,8 @@ Error: apiRequestContext.get: read ECONNRESET
   ↑ รอบ A4: ผ่าน toHaveURL(/th/checkout) แล้ว แต่ request.get ไป backend ได้ ECONNRESET ก่อนถึง server (ไม่มีใน log ของ backend)
     = socket keep-alive ของ APIRequestContext ถูกปิด ไม่ใช่ assertion ที่รอเงื่อนไข — เสนอเป็น task แยก (ไม่อยู่ในขอบเขตกฎข้อ 101)
 สรุป: ก่อนแก้ล้ม 1/68 และ 3/70 ที่ timeout 5s ของ assertion; หลังแก้ 35/35 + 70/70 + 70/70 + 67/68 (ECONNRESET ไม่ใช่ timeout)
+
+== หลัง merge origin/develop (ae28a8a: CORE-41, AF-18) — rebuild storefront ==
+e2e unit: 62 passed; typecheck + lint ของ storefront ผ่าน
+e2e ทุกไฟล์ที่แตะ (--workers=2): 18 passed (31.7s)
+[A5] 4 spec --repeat-each=5 --workers=4: 35 passed (26.9s)
