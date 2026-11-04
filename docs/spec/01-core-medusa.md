@@ -1820,7 +1820,7 @@ Out of scope: ไฟล์ e2e อื่นที่อ่าน `next-action` �
 |------|------|------|
 | ตรวจ stock ตอนแก้จำนวน | `updateLineItemInCartWorkflow` → `confirmVariantInventoryWorkflow` / `confirmInventoryStep` (400, `type` `not_allowed`, `code` `insufficient_inventory`) | ใช้ตามเดิม — storefront แปลงเป็นข้อความไทยเท่านั้น ไม่ตรวจ stock เอง |
 | แปลงผล server action เป็นข้อความ | `actionFailure` / `actionErrorMessage` ของ CORE-4i (`lib/util/action-result.ts`) | ขยาย — เพิ่ม code ที่รู้จัก 1 ตัว |
-| ตารางสินค้า | `Table` ของ `@medusajs/ui` (starter) | ใช้ตามเดิม — แก้ className ของ cell |
+| ตารางสินค้า | `Table` ของ starter (`@modules/common/components/ui` — ตัวแทน `@medusajs/ui` ที่ใช้ `clsx` ต่อ `className`) | ใช้ตามเดิม — CORE-47 ส่ง className แบบ breakpoint ให้ `Table`/`Table.Header`/`Table.Body`/row/cell (กฎข้อ 105) ไม่แก้ component |
 | อ่าน cart แบบไม่ cache | `retrieveCart(..., { fresh: true })` (`cache: "no-store"`) | ใช้ตามเดิม (ของ #288) |
 | รอ server action ใน e2e | `waitForServerAction`, `isServerAction`, `isAddToCartBody` (`e2e/support/server-action.ts`) | ใช้ตามเดิม |
 | รอ animation ของ dialog ใน e2e | `locator.evaluate` + Web Animations API (`getAnimations()`), `expect(locator).toBeVisible()` ของ Playwright | ใช้ตามเดิม — ไม่เพิ่ม dependency |
@@ -1829,10 +1829,29 @@ Out of scope: ไฟล์ e2e อื่นที่อ่าน `next-action` �
 none
 
 ### Business rules
-105. (CORE-47 — qa #287 O-1; ขยายกฎข้อ 100a) หน้า `/cart` ที่ < 640px (`small`) ตารางสินค้าไม่ล้นขอบขวาแม้ชื่อสินค้ายาว (~90 ตัว ไทยปนอังกฤษ) และยอดรวม 7 หลักมีทศนิยมพร้อมราคาขีดฆ่า:
-     ช่องชื่อสินค้า (`product-title`) หดและตัดคำได้ (`min-w-0` + `break-words`/`[overflow-wrap:anywhere]` — เลือกใน PR ตามผลวัด); ค่าในช่อง "รวม" (`product-price`, `product-original-price`)
-     ไม่ถูกตัดกลางตัวเลข (อยู่บรรทัดเดียว) และอยู่ในจอครบ; แก้ที่ className ของ cell ใน `modules/cart/components/item/index.tsx` เท่านั้น — **ไม่แก้** `LineItemPrice`
-     (ใช้ร่วมกับหน้า order/checkout); ≥ 640px คงตามกฎข้อ 100a/102a
+105. (CORE-47 — qa #287 O-1; ขยายกฎข้อ 100a; **owner เลือกทาง (C) "จัดแถวใหม่สำหรับมือถือ" 2026-11-04**) หน้า `/cart` ที่ < 1024px (`small` ใน `apps/storefront/tailwind.config.js` = `1024px`)
+     แต่ละ line item (`Item` แบบ `type="full"`) แสดงเป็นแถวแบบการ์ด อ่านได้แม้ชื่อสินค้ายาว (~90 ตัว ไทยปนอังกฤษ) และยอดรวม 7 หลักมีทศนิยมพร้อมราคาขีดฆ่า
+     (ที่มา: ทางเดิม "แก้เฉพาะ className ของ cell" ของ builder `a74a496` ไม่ล้นจอแต่ที่ 375 container 327px เหลือช่องชื่อ 16px — รูป 59, จำนวน 128, รวม 108 — ชื่อยาวตัดราว 50 บรรทัด):
+     (a) โครงการ์ด: รูปอยู่ซ้าย; ชื่อสินค้า (`product-title`) + ตัวเลือก (`product-variant`) ใช้ความกว้างที่เหลือทั้งหมดทางขวาของรูป และตัดคำตามปกติ (`break-words` กันคำยาวล้น —
+     ไม่บังคับ `[overflow-wrap:anywhere]`); บรรทัดล่างมีปุ่มลบ (`product-delete-button`), select จำนวน (`product-select-button`) และราคารวมชิดขวา
+     (`product-original-price` ขีดฆ่า + `product-price`) — ตัวเลขแต่ละค่าอยู่บรรทัดเดียว (`whitespace-nowrap` ที่ cell ของ "รวม" เฉพาะ < small) ไม่ถูกตัด/ทับ และอยู่ในจอครบ;
+     ข้อความ error ของการลบ/แก้จำนวน (`cart-item-remove-error`, `product-error-message`) และ `CartFlashExceedsRemaining` อยู่ในการ์ดของ line นั้น (AC-100 ที่ 375 ยังผ่าน);
+     (b) วิธีทำ: **render ครั้งเดียว** — คง `<tr>` 1 ตัวและ `<td>` 5 ตัวเดิมตามลำดับเดิม แล้วสลับ display ด้วย class breakpoint: < small `tr` เป็น `grid`
+     (เช่น `grid grid-cols-[auto_minmax(0,1fr)_auto]` + วาง cell ด้วย `col-span`/`row-span`/`col-start` — เลือกใน PR) และ `td` เป็น `block`; ≥ small `small:table-row` / `small:table-cell`;
+     ใน `modules/cart/templates/items.tsx` < small `Table` และ `Table.Body` เป็น `block` (`block small:table`, `block small:table-row-group`) และ `Table.Header` ซ่อน
+     (`hidden small:table-header-group`) — หัวคอลัมน์ "สินค้า/จำนวน/ราคา/รวม" ไม่มีความหมายในการ์ด และ `thead` ที่ยังเป็น table-row จะกำหนดความกว้างคอลัมน์ทับ grid;
+     `Table` (`@modules/common/components/ui` — `clsx` ต่อ `className` ท้าย class เดิม) รับ className ได้อยู่แล้ว ไม่ต้องแก้ `ui/index.tsx`;
+     (c) **ห้าม render สองชุด** (ชุดมือถือ + ชุดตาราง ซ่อนด้วย `hidden`/`small:hidden`): testid จะซ้ำใน DOM — `toHaveCount`/`getByTestId` ของ Playwright นับ element ที่ซ่อนด้วย
+     (`core-19c-delete-button-error.spec.ts:115` คาด `product-delete-button` 1 ตัวต่อแถว) และ `core-42-cart-voucher-layout.spec.ts:72–78` อ่าน `td` ทั้งหมดของแถวกับ `product-select-button` ตัวแรกใน DOM;
+     testid เดิมทุกตัว (`product-row`, `product-title`, `product-variant`, `product-delete-button`, `product-select-button`, `product-error-message`, `product-unit-price`, `product-price`,
+     `product-original-price`, `cart-items-header`) ต้องมี **1 ตัวต่อแถวใน DOM** และไม่แก้ locator ของ e2e เดิม;
+     (d) class ของการ์ดทั้งหมดใน `Item` ใส่ผ่านเงื่อนไข `type === "full"` (`clx({...})`) — **`type="preview"` ห้ามเปลี่ยน** (`modules/cart/templates/preview.tsx` = สรุปตะกร้าใน checkout
+     ซึ่งแสดงที่ < 1024 ด้วย) DOM/class ของ preview ต้องเท่าเดิม;
+     (e) ≥ 1024 (`small:`) layout ตารางเหมือนเดิมทุกพิกเซล: header 5 ช่อง, padding ของ th/td = `DESKTOP_BASELINE` ของ `core-42-cart-voucher-layout.spec.ts:84–88`,
+     กล่องลบ/จำนวน `w-28` (112px), รูป `small:w-24`, `product-unit-price` แสดง — กฎข้อ 100a/102a และ CORE-44 (AC-138) ห้ามถอย;
+     (f) **ไม่แก้** `LineItemPrice`, `LineItemOptions`, `LineItemUnitPrice`, `DeleteButton`, `CartItemSelect` (ใช้ร่วมกับ order/checkout/dropdown) และไม่แก้ logic
+     (`changeLineQuantity`, `cartQuantityOptions`) — แตะเฉพาะ className/โครงสร้าง wrapper ใน `item/index.tsx` และ className ใน `items.tsx`;
+     `SkeletonLineItem` (ตอนโหลด) คงเดิม
 106. (CORE-48 — qa #287 O-2) แก้จำนวนบน `/cart` แล้ว Medusa ตอบ stock ไม่พอ → `product-error-message` แสดงข้อความไทยเฉพาะ
      `INSUFFICIENT_INVENTORY_MESSAGE` = "สินค้ามีไม่พอตามจำนวนที่เลือก กรุณาลดจำนวนแล้วลองใหม่อีกครั้ง" (ค่าคงที่ที่เดียว):
      (a) `updateLineItem` (`lib/data/cart.ts`) คืน `{ error: "INSUFFICIENT_INVENTORY" }` เมื่อ error มี status 400 **และ** (`code === "insufficient_inventory"` หรือข้อความ
@@ -1860,11 +1879,29 @@ none
   e2e `e2e/core-41-checkout-first-step.spec.ts:206–230` (D-1): Given หน้าเปิด `/th/checkout?step=address` ขณะ cart ไม่มีที่อยู่ (cache cart ไว้) แล้วตั้งที่อยู่ผ่าน Store API ตรง (ไม่มี `revalidateTag`)
   When เปิด `?step=delivery` Then URL ยังเป็น `step=delivery`, `delivery-option-radio` visible, `shipping-first-name-input` count 0, navigation ≤ 2 และไม่มี `POST …/complete`;
   grep: `checkout-form/index.tsx` เรียก `checkoutRedirectWithLatest` และ `{ fresh: true }`
-- AC-142 (CORE-47, กฎข้อ 105) e2e 375×812: Given สินค้าของ test เอง (`manage_inventory: false` ผ่าน admin API, ลบใน `afterAll` — แนวปฏิบัติรอบ 20) 2 ตัว ชื่อคงที่ในไฟล์ test ยาว 85–95 ตัว
-  ที่มีทั้งอักษรไทย (`/[฀-๿]/`) และคำอังกฤษ ราคาต่อหน่วย ฿12,345.67; cart ของ A: line 1 จำนวน 99 (ยอด ≥ ฿1,000,000.00) และ line 2 จำนวน 11 + โค้ดส่วนลด 5% ผ่าน Store API (token ของ A)
-  When เปิด `/th/cart` Then `document.documentElement.scrollWidth ≤ 375`; ทุก `product-price` และ `product-original-price` มี `getBoundingClientRect()` `right ≤ 375` และ `left ≥ 0`,
-  `elementFromPoint` ที่จุดกลางอยู่ภายใน element นั้น และ `Range` ที่ครอบเนื้อหา (`selectNodeContents`) มี `getClientRects().length === 1` (ตัวเลขไม่ถูกตัดบรรทัด);
-  ทุก `product-title` มี `right ≤ 375` และ `textContent` เท่ากับชื่อที่สร้าง; test ต้อง fail กับโค้ดก่อนแก้ (แนบผลใน PR); AC-136 (375), AC-138 (1024/1280) และ e2e เดิมของ `/cart` ผ่านโดยไม่แก้ locator
+- AC-142 (CORE-47, กฎข้อ 105) e2e `e2e/core-47-cart-375-long-title.spec.ts`: Given สินค้าของ test เอง (`manage_inventory: false` ผ่าน admin API, ลบใน `afterAll` — แนวปฏิบัติรอบ 20) 2 ตัว
+  ชื่อคงที่ในไฟล์ test ยาว 85–95 ตัว ที่มีทั้งอักษรไทย (`/[฀-๿]/`) และคำอังกฤษ ราคาต่อหน่วย ฿12,345.67; cart ของ A: line 1 จำนวน 99 (ยอด ≥ ฿1,000,000.00) และ line 2 จำนวน 11
+  + โค้ดส่วนลด 5% ผ่าน Store API (token ของ A)
+  (a) 375×812 When เปิด `/th/cart` Then `product-row` count 2; `document.documentElement.scrollWidth ≤ 375`; ทุก testid ในกฎข้อ 105c (ที่ line มี) count 1 ภายในแต่ละ `product-row`;
+  ทุก `product-title`: `textContent` เท่ากับชื่อที่สร้าง, `right ≤ 375`, ความกว้าง `≥ 0.6 ×` ความกว้างของ `product-row` ของแถวนั้น
+  (เหตุผล: เหลือได้แค่ช่องรูป ≤ 40% — ถ้าช่องชื่อยังอยู่แถวเดียวกับช่องจำนวน 128px + ช่องรวม ≥ 108px จะได้ ≤ ~28% ของแถว 327px; `a74a496` ได้ 16px ≈ 5%)
+  และจำนวนบรรทัด `Math.round(height / lineHeight) ≤ 5` โดย `lineHeight = parseFloat(getComputedStyle(el).lineHeight)` ต้องเป็นตัวเลข (ไม่ใช่ `normal`)
+  (เหตุผล: ~90 ตัวที่กว้าง ≥ 196px ได้ราว 3–4 บรรทัด เผื่อฟอนต์ไทยของเครื่อง CI กว้างกว่า 1 บรรทัด; ก่อนแก้ ~50 บรรทัด);
+  ทุก `product-price` และ `product-original-price`: `left ≥ 0`, `right ≤ 375`, `elementFromPoint` ที่จุดกลางอยู่ภายใน element นั้น และ `Range` ที่ครอบเนื้อหา (`selectNodeContents`)
+  มี `getClientRects().length === 1` (ตัวเลขไม่ถูกตัดบรรทัด); ราคาชิดขวา: `max(right ของ product-price, product-original-price) ≥ right ของ product-row − 2`;
+  ราคา/select/ปุ่มลบอยู่บรรทัดล่าง: `top` ของ `product-price`, `product-select-button` และ `product-delete-button` `≥ bottom` ของ `product-variant` ในแถวเดียวกัน (−1px);
+  `product-select-button` และ `product-delete-button` มี `elementFromPoint` ที่จุดกลางอยู่ภายใน element นั้น (`el.contains(hit)`) และ `cart-items-header` ไม่ visible;
+  (b) 375 When `selectOption("2")` ที่ `product-select-button` ของแถวจำนวน 11 (หาแถวด้วย `product-row` ที่ `product-title` ตรงชื่อ) Then `inputValue() === "2"` และ `GET /store/carts/:id` (token ของ A)
+  line นั้น quantity = 2 (`expect.poll`); When คลิก `product-delete-button` ของแถวเดียวกัน Then `product-row` count 1 และ Store API มี 1 line;
+  (c) 1023×800 When เปิด `/th/cart` Then `getComputedStyle(product-row).display !== "table-row"` (ขอบ breakpoint เป็นการ์ด) และ `scrollWidth ≤ 1023`;
+  (d) 1024×768 และ 1280×800 (cart เดียวกันก่อนข้อ b) When เปิด `/th/cart` Then `cart-items-header` มี `th` 5 ตัว visible ทั้งหมด; ทุก `product-row` `display === "table-row"`
+  และ `td` ทุกตัว `display === "table-cell"`; padding ของ th/td แถวแรกเท่า `DESKTOP_BASELINE` ของ `core-42-cart-voucher-layout.spec.ts:84–88` และกล่องลบ/จำนวน
+  (`product-select-button.closest("td").firstElementChild`) กว้าง 112; ลิงก์รูปกว้าง 96; `product-unit-price` visible; `scrollWidth ≤` ความกว้าง viewport;
+  (e) preview ไม่เปลี่ยน: 375×812 When เปิด `/th/checkout` (cart เดียวกัน ไม่กรอกข้อมูล ไม่กดชำระ) Then ทุก `product-row` ภายใน `items-table` มี `display === "table-row"` (ถ้าที่ 375 สรุปตะกร้าถูกพับหรือหา `items-table` ไม่เจอ ให้เปิดสรุปตะกร้าก่อน ถ้าทำไม่ได้ให้ตรวจที่ 1280 แทน และเพิ่ม grep ว่า class ของการ์ดอยู่ภายใต้เงื่อนไข `type === "full"` เท่านั้น — session หลัก 2026-11-04);
+  test ต้อง fail กับ develop `1c664a9` (ข้อ a: ความกว้าง/บรรทัดของ `product-title` หรือ `scrollWidth`) — แนบผลใน PR;
+  e2e เดิมผ่านโดยไม่แก้ locator: `core-42-cart-voucher-layout` (AC-136, 375 + 1280), `core-44-cart-summary-qty` (AC-138, 1024/1280), `core-19c-delete-button-error` (AC-100, 1280 + 375),
+  `thai-ui-cart-order`, `core-14g-action-stale-jwt`, `flash-sale-fs15`, `core-26-cart-dropdown-total`;
+  qa เทียบภาพ `/th/cart` ที่ 1024 และ 1280 กับ develop (ข้อมูลเดียวกัน) ว่าไม่ต่าง และแนบภาพ 375 ชื่อยาวใน `REPORT.md`
 - AC-143 (CORE-48, กฎข้อ 106) unit (Vitest): helper คืน `true` กับ `{ status: 400, message: "Some variant does not have the required inventory" }`, ข้อความเดียวกันที่มี `.` ท้าย/ตัวพิมพ์ต่าง,
   และ `{ status: 400, code: "insufficient_inventory", message: "x" }`; คืน `false` กับ 400 ข้อความอื่น, 500 ข้อความเดียวกัน, 409, `null`/`undefined`/string;
   `updateLineItem` (mock `sdk.store.cart.updateLineItem` reject ด้วย error ข้างต้น, มี JWT + cart id) → `{ error: "INSUFFICIENT_INVENTORY" }`;
@@ -1885,15 +1922,15 @@ none
 |------|----|
 | unit (Vitest) | AC-141 (มีแล้ว), AC-143 |
 | unit (Playwright `unit` project, grep) | AC-144 |
-| e2e | AC-141 (มีแล้ว), AC-142 (375 + regression 1024/1280), AC-143 (1280/375), AC-144 (repeat 3) |
+| e2e | AC-141 (มีแล้ว), AC-142 (375 + 1023 + regression 1024/1280 + preview ใน checkout 375), AC-143 (1280/375), AC-144 (repeat 3) |
 
 ### Tasks (follow-up รอบ 21)
 | ID | Task | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends |
 |----|------|------|------|------|----|---------|
-| CORE-47 | (storefront, qa #287 O-1) ตาราง `/cart` ที่ 375 ไม่ล้นเมื่อชื่อสินค้ายาว + ยอด 7 หลักพร้อมส่วนลด: ช่องชื่อตัดคำได้, ช่อง "รวม" ไม่ตัดตัวเลข (กฎข้อ 105) | `modules/cart/components/item/index.tsx` (className ของ cell), e2e ใหม่ `e2e/core-47-cart-375-long-title.spec.ts` | ~90 LOC รวม e2e | 375×812 (+ regression 1024×768, 1280×800) | AC-142 | none — **เริ่มได้** (CORE-44 ☑ #287); ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-48 และ CORE-4i (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
+| CORE-47 | (storefront, qa #287 O-1; **owner เลือกทาง (C) 2026-11-04** แทนทางเดิม "แก้เฉพาะ className ของ cell" — `a74a496` ไม่ล้นแต่ช่องชื่อเหลือ 16px) `/cart` ที่ < 1024 แต่ละ line เป็นแถวแบบการ์ด: รูปซ้าย, ชื่อ + ตัวเลือกใช้ความกว้างที่เหลือ, บรรทัดล่างปุ่มลบ + select จำนวน + ราคารวมชิดขวาไม่ตัดตัวเลข; ≥ 1024 ตารางเดิมทุกพิกเซล; `type="preview"` ไม่เปลี่ยน (กฎข้อ 105) | `modules/cart/components/item/index.tsx` (className แบบ breakpoint ของ `tr`/`td` + wrapper เฉพาะ `type === "full"`), `modules/cart/templates/items.tsx` (className ของ `Table`/`Table.Header`/`Table.Body`), e2e ใหม่ `e2e/core-47-cart-375-long-title.spec.ts` | ~150 LOC รวม e2e | 375×812, 1023×800 (+ regression 1024×768, 1280×800) | AC-142 | none — **เริ่มได้**; ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-48 (และ CORE-4i ☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
 | CORE-48 | (storefront, qa #287 O-2) แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ แทนข้อความทั่วไป (กฎข้อ 106) | `lib/data/cart.ts` (`updateLineItem`), helper ใหม่ใน `lib/util/` (+ unit Vitest ใน `src/`), `modules/cart/components/item/index.tsx` (`changeLineQuantity` + ค่าคงที่ข้อความ), e2e ใหม่ `e2e/core-48-cart-insufficient-stock.spec.ts` | ~130 LOC รวม test | 1280×800, 375×812 | AC-143 | none — **เริ่มได้** (CORE-4i-a ☑, CORE-44 ☑ #287); ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-47/CORE-4i และ `lib/data/cart.ts` กับ CORE-4i (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
 | CORE-49 | (e2e test hygiene, nit review #289 + qa #286/#288) รวม grep test ไว้ที่ core-46, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/core-26/fs19 ใช้ `waitForServerAction`/`isServerAction` (กฎข้อ 107) | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-43-e2e-hygiene.unit.spec.ts`, `e2e/affiliate-admin-programs.spec.ts`, `e2e/core-25-pdp-option-reset.spec.ts`, `e2e/core-26-cart-dropdown-total.spec.ts`, `e2e/flash-sale-fs19.spec.ts` | ~70 LOC | ไม่มี UI ใหม่ (e2e เดิมรันที่ viewport เดิมของแต่ละไฟล์) | AC-144 | none — **เริ่มได้** (CORE-46 ☑ #289); ∥ ทุกตัว (ไม่มี task อื่นแตะไฟล์เหล่านี้); ไม่บล็อก release |
-(รอบ 21) CORE-47 ∥ CORE-48 ∥ CORE-49 เริ่มได้ทันที (และ ∥ AF-20 ของ spec 05) — ไม่มีตัวใดบล็อก release; CORE-47 กับ CORE-48 แตะ `item/index.tsx` คนละ cell/ฟังก์ชัน ตัวที่ merge ทีหลัง rebase
+(รอบ 21) CORE-47 ∥ CORE-48 ∥ CORE-49 เริ่มได้ทันที (และ ∥ AF-20 ของ spec 05) — ไม่มีตัวใดบล็อก release; CORE-47 กับ CORE-48 แตะ `item/index.tsx` คนละส่วน (CORE-47 = className/JSX ของแถว, CORE-48 = `changeLineQuantity` + ค่าคงที่ข้อความ) ตัวที่ merge ทีหลัง rebase
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 21)
 - กฎข้อ 103 "ไม่ยิง API เพิ่ม" → แก้ถ้อยคำเป็นกฎข้อ 103e + AC-141 (ครอบโดย test ที่ merge แล้วใน #288) — ไม่มีโค้ด
