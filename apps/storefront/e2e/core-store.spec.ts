@@ -9,6 +9,7 @@ import {
   signInAs,
   variantOf,
 } from "./support/medusa"
+import { addToCartFromPdp } from "./support/server-action"
 
 // CORE-6: spec 01 AC-1, AC-2, AC-3, AC-4, AC-6 — หา element ด้วย data-testid เท่านั้น (ADR-008 ข้อ 3)
 // ข้อมูลตั้งต้นจาก seed (CORE-2): region Thailand, t-shirt, shipping "Standard", manual payment provider
@@ -73,8 +74,7 @@ test("AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture �
 
   await step("ลูกค้าเพิ่มสินค้าลง cart", async () => {
     await page.goto(`/${CC}/products/${PRODUCT}`)
-    await page.getByTestId("add-product-button").click()
-    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await addToCartFromPdp(page, { request, pk, customer })
     await page.goto(`/${CC}/cart`)
     await expect(page.getByTestId("product-row")).toHaveCount(1)
   })

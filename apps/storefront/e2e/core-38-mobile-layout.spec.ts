@@ -11,6 +11,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { createVoucher } from "./support/evoucher"
+import { addToCartFromPdp } from "./support/server-action"
 
 // CORE-38: spec 01 กฎข้อ 96, AC-132 — สรุปที่อยู่ของ checkout เรียงแนวตั้งที่ < 640px (อีเมลยาวตัดบรรทัดในคอลัมน์ของตัวเอง)
 // และ label แบบลอยของ `Input` ไม่ลงไปในพื้นที่ข้อความ (ขอบล่างของ label ≤ input.top + paddingTop) ทุกฟอร์มที่ใช้ `Input`
@@ -138,8 +139,7 @@ test("AC-132: checkout — label ของฟอร์มที่อยู่�
   await page.setViewportSize(MOBILE)
 
   await page.goto(`/${CC}/products/t-shirt`)
-  await page.getByTestId("add-product-button").click()
-  await expect(page.getByTestId("add-product-button")).toBeEnabled()
+  await addToCartFromPdp(page, { request, pk, customer })
   await page.goto(`/${CC}/checkout?step=address`)
   await expect(page.getByTestId("shipping-first-name-input")).toBeVisible()
 
@@ -213,8 +213,7 @@ test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมือง�
   await page.setViewportSize(MOBILE)
 
   await page.goto(`/${CC}/products/t-shirt`)
-  await page.getByTestId("add-product-button").click()
-  await expect(page.getByTestId("add-product-button")).toBeEnabled()
+  await addToCartFromPdp(page, { request, pk, customer })
   await page.goto(`/${CC}/checkout?step=address`)
   await expect(page.getByTestId("shipping-first-name-input")).toBeVisible()
 
@@ -231,6 +230,7 @@ test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมือง�
     await page.getByTestId("billing-last-name-input").fill(LONG_NAME)
     await page.getByTestId("billing-address-input").fill(LONG_ADDRESS)
     await page.getByTestId("billing-postal-input").fill("10110")
+    await page.getByTestId("billing-city-input").fill(LONG_CITY)
     await page.getByTestId("billing-country-select").selectOption(CC)
     await page.getByTestId("submit-address-button").click()
     await expect(page).toHaveURL(/step=delivery/, { timeout: 30_000 })
@@ -244,7 +244,7 @@ test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมือง�
   }
 })
 
-test("AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่ยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280", async ({
+test("AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280", async ({
   page,
   context,
   request,
@@ -261,14 +261,14 @@ test("AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่�
 
   await step("ใส่ voucher แล้วกรอกที่อยู่ใบเสร็จด้วยข้อความยาว", async () => {
     await page.goto(`/${CC}/products/${voucher.handle}`)
-    await page.getByTestId("add-product-button").click()
-    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await addToCartFromPdp(page, { request, pk, customer })
     await page.goto(`/${CC}/checkout?step=address`)
     await expect(page.getByTestId("billing-first-name-input")).toBeVisible()
     await page.getByTestId("billing-first-name-input").fill(LONG_NAME)
     await page.getByTestId("billing-last-name-input").fill(LONG_NAME)
     await page.getByTestId("billing-address-input").fill(LONG_ADDRESS)
     await page.getByTestId("billing-postal-input").fill("10110")
+    await page.getByTestId("billing-city-input").fill(LONG_CITY)
     await page.getByTestId("billing-country-select").selectOption(CC)
     await page.getByTestId("billing-phone-input").fill("0812345678")
     await page.getByTestId("submit-address-button").click()
