@@ -1,6 +1,7 @@
 import { listCartShippingMethods } from "@lib/data/fulfillment"
 import { listCartPaymentMethods } from "@lib/data/payment"
 import { isDigitalOnlyCart } from "@lib/util/digital-checkout"
+import { shippingOptionsForCart } from "@lib/util/shipping-options"
 import { HttpTypes } from "@medusajs/types"
 import Addresses from "@modules/checkout/components/addresses"
 import Payment from "@modules/checkout/components/payment"
@@ -31,7 +32,10 @@ export default async function CheckoutForm({
 
       {/* EV-7c (spec 02 กฎข้อ 24a): cart digital-only ไม่มีขั้น delivery */}
       {!isDigitalOnlyCart(cart) && (
-        <Shipping cart={cart} availableShippingMethods={shippingMethods} />
+        <Shipping
+          cart={cart}
+          availableShippingMethods={shippingOptionsForCart(shippingMethods, cart)}
+        />
       )}
 
       <Payment cart={cart} availablePaymentMethods={paymentMethods} />
