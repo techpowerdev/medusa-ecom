@@ -17,8 +17,9 @@ export default function VoucherCard({ voucher }: { voucher: CustomerEvoucher }) 
         </span>
         <span className="text-ui-fg-subtle">{pool.name}</span>
       </div>
-      {/* CORE-37 (กฎข้อ 95c): สถานะของปุ่มคัดลอกขึ้นบรรทัดของตัวเองใต้แถวรหัส — ไม่ดันปุ่ม/ไม่ทำให้แถวรหัสเยื้อง */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {/* CORE-37 (กฎข้อ 95c): สถานะของปุ่มคัดลอกขึ้นบรรทัดของตัวเองใต้แถวรหัส — ไม่ดันปุ่ม/ไม่ทำให้แถวรหัสเยื้อง
+          CORE-42 (กฎข้อ 100b): ไม่มี gap-y — ระยะห่างอยู่ที่ margin ของสถานะเมื่อมีเนื้อหา (สถานะว่าง = ไม่มีช่องว่างใต้แถว) */}
+      <div className="flex flex-wrap items-center gap-x-3" data-testid="voucher-code-row">
         <span className="text-ui-fg-muted">รหัส</span>
         <code className="break-all font-mono text-base-semi" data-testid="voucher-code">
           {voucher.code}
