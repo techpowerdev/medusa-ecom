@@ -1,7 +1,6 @@
 "use client"
 
-import { Button } from "@modules/common/components/ui"
-import { useState } from "react"
+import CopyButton from "@modules/common/components/copy-button"
 
 type Props = {
   url: string
@@ -14,40 +13,29 @@ type Props = {
 
 /**
  * spec 05 (AF-8a/AF-8b, AF-N3 กฎ 40b): ปุ่มคัดลอก/แชร์ลิงก์ — component เดียวของ Profile, การ์ด Products ของ portal และหน้ากลุ่ม (GB-7a1)
- * Web Share ไม่รองรับ → คัดลอกลิงก์; กันกดซ้ำระหว่างทำงาน
+ * Web Share ไม่รองรับ → คัดลอกลิงก์ผ่าน CopyButton กลาง (CORE-31 กฎข้อ 88); กันกดซ้ำอยู่ใน CopyButton
  */
 export default function ShareLinkButton({ url, label, buttonTestId, statusTestId, shareTitle }: Props) {
-  const [busy, setBusy] = useState(false)
-  const [status, setStatus] = useState<string | null>(null)
+  // share_url เป็น relative เมื่อ backend ไม่ได้ตั้ง STOREFRONT_URL → แปลงเป็น absolute ตอนคลิก
+  const absolute = () => new URL(url, window.location.origin).toString()
 
-  const run = async () => {
-    setBusy(true)
-    // share_url เป็น relative เมื่อ backend ไม่ได้ตั้ง STOREFRONT_URL
-    const link = new URL(url, window.location.origin).toString()
-    try {
-      if (shareTitle !== undefined && typeof navigator.share === "function") {
-        await navigator.share({ url: link, title: shareTitle })
-        setStatus(null)
-      } else {
-        await navigator.clipboard.writeText(link)
-        setStatus("คัดลอกลิงก์แล้ว")
-      }
-    } catch (error) {
-      // ผู้ใช้ปิดหน้าต่างแชร์เอง (AbortError) ไม่ใช่ข้อผิดพลาด
-      setStatus((error as Error)?.name === "AbortError" ? null : `คัดลอกไม่สำเร็จ ลิงก์: ${link}`)
-    } finally {
-      setBusy(false)
+  // ตรวจ Web Share ตอนคลิก (ไม่ใช่ตอน mount) — browser/e2e อาจไม่มี navigator.share
+  const share = async (link: string) => {
+    if (shareTitle === undefined || typeof navigator.share !== "function") {
+      return false
     }
+    await navigator.share({ url: link, title: shareTitle })
+    return true
   }
 
   return (
-    <div className="flex flex-col gap-y-1">
-      <Button variant="secondary" onClick={run} disabled={busy} isLoading={busy} data-testid={buttonTestId}>
-        {label}
-      </Button>
-      <span aria-live="polite" className="text-small-regular text-ui-fg-subtle break-all" data-testid={statusTestId}>
-        {status}
-      </span>
-    </div>
+    <CopyButton
+      text={absolute}
+      label={label}
+      successMessage="คัดลอกลิงก์แล้ว"
+      buttonTestId={buttonTestId}
+      statusTestId={statusTestId}
+      share={share}
+    />
   )
 }
