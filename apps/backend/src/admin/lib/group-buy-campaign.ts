@@ -28,3 +28,9 @@ export const orderAdminPath = (m: { order_id: string; order: { is_draft_order: b
 // review #114: customer เป็น null เมื่อไม่พบลูกค้าใน Customer module (เช่นถูกลบ)
 export const customerLabel = (m: { customer_id: string; customer: { email: string } | null }) =>
   m.customer?.email ?? `${m.customer_id} (deleted)`
+
+// ADM-6 (spec 08 กฎ 9): gb_offset ใน URL ผู้ใช้แก้เองได้ — ไม่ใช่ตัวเลข/ติดลบ → 0, ทศนิยม → ปัดลง
+export const pageOffset = (raw: string | undefined): number => {
+  const n = Math.trunc(Number(raw))
+  return Number.isFinite(n) && n > 0 ? n : 0
+}

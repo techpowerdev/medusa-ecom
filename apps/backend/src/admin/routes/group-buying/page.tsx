@@ -1,20 +1,15 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { useDate } from "@medusajs/dashboard/hooks"
+import { DataTable, LayoutComposer } from "@medusajs/dashboard/components"
+import { useDate, useQueryParams } from "@medusajs/dashboard/hooks"
 import { Users } from "@medusajs/icons"
-import {
-  Badge,
-  Container,
-  createDataTableColumnHelper,
-  DataTable,
-  DataTablePaginationState,
-  Heading,
-  Text,
-  useDataTable,
-} from "@medusajs/ui"
+import { Badge, createDataTableColumnHelper, Text } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useEffect, useMemo } from "react"
+import { Link, useSearchParams } from "react-router-dom"
+import { Container } from "../../components/common/container"
+import { Header } from "../../components/common/header"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
+import { pageOffset } from "../../lib/group-buy-campaign"
 import {
   Campaign,
   CAMPAIGN_STATUS_COLOR,
@@ -66,16 +61,29 @@ const useColumns = () => {
   )
 }
 
-// GB-6a: หน้า "Group buying" — รายการแคมเปญ + สร้างแคมเปญ
+const PAGE_SIZE = 20
+// spec 08 กฎ 9: หน้าปัจจุบันอยู่ใน URL (`gb_offset`) — DataTable ของ dashboard เขียน, useQueryParams อ่านกลับไปขอข้อมูล
+const PREFIX = "gb"
+
+// GB-6a: หน้า "Group buying" — รายการแคมเปญ + สร้างแคมเปญ (ADM-6: LayoutComposer + Header + DataTable ของ dashboard)
 const GroupBuyingPage = () => {
-  const navigate = useNavigate()
   const columns = useColumns()
-  const [pagination, setPagination] = useState<DataTablePaginationState>({
-    pageIndex: 0,
-    pageSize: 20,
-  })
-  const limit = pagination.pageSize
-  const offset = pagination.pageIndex * limit
+  const { offset: offsetParam } = useQueryParams(["offset"], PREFIX)
+  const limit = PAGE_SIZE
+  const offset = pageOffset(offsetParam)
+  // DataTable ของ dashboard parseInt ค่า gb_offset ดิบเอง ("abc" → "NaN of N results") → แก้ URL ให้เป็นค่าที่ใช้จริง
+  const [, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (offsetParam === undefined || offsetParam === String(offset)) return
+    setSearchParams(
+      (prev) => {
+        if (offset) prev.set(`${PREFIX}_offset`, String(offset))
+        else prev.delete(`${PREFIX}_offset`)
+        return prev
+      },
+      { replace: true }
+    )
+  }, [offsetParam, offset, setSearchParams])
 
   const { data, isLoading } = useQuery({
     queryKey: [...groupBuyKeys.campaigns, limit, offset],
@@ -83,44 +91,50 @@ const GroupBuyingPage = () => {
     placeholderData: keepPreviousData,
   })
 
-  const table = useDataTable({
-    data: data?.campaigns ?? [],
-    columns,
-    getRowId: (campaign) => campaign.id,
-    rowCount: data?.count ?? 0,
-    isLoading,
-    pagination: { state: pagination, onPaginationChange: setPagination },
-    onRowClick: (_, campaign) => navigate(`/group-buying/${campaign.id}`),
-  })
-
   return (
-    <Container className="divide-y p-0">
-      <div className="flex items-start justify-between gap-x-4 px-6 py-4">
-        <div className="flex flex-col gap-y-1">
-          <Heading level="h1">Group-buy campaigns</Heading>
-          <Text size="small" leading="compact" className="text-ui-fg-subtle">
-            Discount and product scope live on each campaign's template promotion (GBT-…); edits apply
-            only to groups created afterwards.
-          </Text>
-          {/* spec 04 Q7: ต้นแบบ GBT-* มองเห็นในหน้า Promotions — เตือนห้ามเปิดใช้/เผยแพร่ */}
-          <Text size="small" leading="compact" className="text-ui-fg-error">
-            Never activate or share GBT- template codes; customers get a GB- code per group.
-          </Text>
-        </div>
-        <CreateCampaign />
-      </div>
-      <DataTable instance={table}>
-        <DataTable.Table
-          emptyState={{
-            empty: {
-              heading: "No group-buy campaigns yet",
-              description: "Create a campaign to start selling in groups.",
-            },
-          }}
-        />
-        <DataTable.Pagination />
-      </DataTable>
-    </Container>
+    <LayoutComposer
+      widgetsZonePrefix="group_buy.list"
+      preferredLayoutId="core:single-column"
+      sections={{
+        main: (
+          <LayoutComposer.Entry id="GroupBuyCampaignList">
+            <Container>
+              <Header
+                title="Group-buy campaigns"
+                subtitle="Discount and product scope live on each campaign's template promotion (GBT-…); edits apply only to groups created afterwards."
+                actions={[{ type: "custom", children: <CreateCampaign /> }]}
+              />
+              {/* spec 04 Q7: ต้นแบบ GBT-* มองเห็นในหน้า Promotions — เตือนห้ามเปิดใช้/เผยแพร่ */}
+              <div className="px-6 py-3">
+                <Text size="small" leading="compact" className="text-ui-fg-error">
+                  Never activate or share GBT- template codes; customers get a GB- code per group.
+                </Text>
+              </div>
+              <div data-testid="gb-campaigns-table">
+                {/* backend ไม่รองรับค้นหา (q) → ปิด search */}
+                <DataTable
+                  data={data?.campaigns ?? []}
+                  columns={columns}
+                  getRowId={(campaign) => campaign.id}
+                  rowCount={data?.count ?? 0}
+                  isLoading={isLoading}
+                  prefix={PREFIX}
+                  pageSize={PAGE_SIZE}
+                  enableSearch={false}
+                  rowHref={(campaign) => `/group-buying/${campaign.id}`}
+                  emptyState={{
+                    empty: {
+                      heading: "No group-buy campaigns yet",
+                      description: "Create a campaign to start selling in groups.",
+                    },
+                  }}
+                />
+              </div>
+            </Container>
+          </LayoutComposer.Entry>
+        ),
+      }}
+    />
   )
 }
 
@@ -128,5 +142,8 @@ export const config = defineRouteConfig({
   label: "Group buying",
   icon: Users,
 })
+
+// ADM-6: createRouteMap ของ dashboard สร้าง route "group-buying" เป็นพ่อของ ":id" → breadcrumb "Group buying › <ชื่อแคมเปญ>"
+export const handle = { breadcrumb: () => "Group buying" }
 
 export default GroupBuyingPage
