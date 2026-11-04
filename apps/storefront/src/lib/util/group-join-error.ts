@@ -17,6 +17,8 @@ const CODES = {
   },
   GB_CART_ALREADY_JOINED: { text: "รายการนี้เข้าร่วมกลุ่มแล้ว", message: /^this cart was already used to join a group$/ },
   GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED: { text: "แคมเปญนี้ยังไม่พร้อมเปิดกลุ่ม", message: null },
+  // GB-14 (กฎข้อ 35d): 400 ที่มีชื่อ code ในข้อความ
+  GB_SHIPPING_PROFILE_NOT_COVERED: { text: "วิธีจัดส่งที่เลือกใช้กับสินค้านี้ไม่ได้ กรุณาเลือกวิธีจัดส่งใหม่", message: null },
 } as const
 
 export type GroupJoinCode = keyof typeof CODES

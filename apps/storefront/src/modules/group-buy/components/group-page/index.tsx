@@ -7,10 +7,10 @@ import {
   type PublicGroupBuyGroupView,
 } from "@lib/util/group-page"
 import { HttpTypes } from "@medusajs/types"
+import Countdown from "@modules/common/components/countdown"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ShareLinkButton from "@modules/common/components/share-link-button"
 import Thumbnail from "@modules/products/components/thumbnail"
-import GroupCountdown from "./countdown"
 import GroupJoin from "./group-join"
 
 type Props = {
@@ -91,7 +91,15 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
         <p className="text-base-regular" data-testid="group-member-count">
           สมาชิก <span className="tabular-nums">{group.progress_people}</span> คน
         </p>
-        {open && <GroupCountdown endsAt={group.ends_at} now={now} />}
+        {open && (
+          <Countdown
+            endsAt={group.ends_at}
+            now={now}
+            testId="group-countdown"
+            expiredLabel="หมดเวลารวมกลุ่มแล้ว"
+            className="text-base-regular"
+          />
+        )}
       </section>
 
       {/* mount ไว้แม้หมดเวลา (joinable=false) เพื่อคง error ของ join ที่เพิ่งล้ม — qa #238 D2 */}

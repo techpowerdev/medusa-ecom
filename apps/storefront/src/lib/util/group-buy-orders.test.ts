@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { GroupBuyMembership, groupBuyMembershipView } from "./group-buy-orders"
+import { GroupBuyMembership, groupBuyMembershipView, showOrdersEmptyState } from "./group-buy-orders"
 
 const NOW = Date.parse("2026-11-03T10:00:00Z")
 const LATER = "2026-11-04T10:00:00Z"
@@ -79,5 +79,28 @@ describe("groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / �
   it("กลุ่ม/order เป็น null (ข้อมูลหาย) ไม่ throw", () => {
     const m = { ...membership({ status: "awaiting_payment" }), order: null }
     expect(() => groupBuyMembershipView(m, NOW)).not.toThrow()
+  })
+})
+
+// GB-12 (กฎข้อ 32e + คำตัดสิน owner 2026-11-04): empty state ของ OrderOverview เฉพาะเมื่อรู้แน่ว่าไม่มีทั้ง order ปกติและ order แบบกลุ่ม
+describe("showOrdersEmptyState", () => {
+  const membership = {} as GroupBuyMembership
+  const none = { memberships: [], count: 0 }
+
+  it("ไม่มี order ปกติ และ GB-8 ตอบว่าไม่มี membership → แสดง", () => {
+    expect(showOrdersEmptyState([], none)).toBe(true)
+  })
+
+  it("ไม่มี order ปกติ แต่มี group orders → ไม่แสดง", () => {
+    expect(showOrdersEmptyState([], { memberships: [membership], count: 1 })).toBe(false)
+  })
+
+  it("อ่าน GB-8 ล้ม (null) → ไม่แสดง เพราะไม่รู้ว่ามี order แบบกลุ่มหรือไม่", () => {
+    expect(showOrdersEmptyState([], null)).toBe(false)
+  })
+
+  it("มี order ปกติ → ไม่ใช่ empty state (OrderOverview แสดงรายการ)", () => {
+    expect(showOrdersEmptyState([{ id: "order_1" }], none)).toBe(false)
+    expect(showOrdersEmptyState([{ id: "order_1" }], null)).toBe(false)
   })
 })

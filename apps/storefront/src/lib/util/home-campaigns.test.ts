@@ -94,8 +94,16 @@ describe("firstPool (ลำดับคงที่ — route ไม่เรี
     const c = pool("c", "2026-11-04T00:00:00Z")
     const d = pool("d", null)
     expect(firstPool(campaign({ pool_groups: [d, a, b, c] }))?.join_token).toBe("c")
-    expect(firstPool(campaign({ pool_groups: [d, a, b] }))?.join_token).toBe("a")
-    expect(firstPool(campaign({ pool_groups: [b, a, d].reverse() }))?.join_token).toBe("a")
+    const orders = [
+      [d, a, b],
+      [b, a, d],
+      [a, d, b],
+    ]
+    // ลำดับ input ต่างกันจริง (กฎข้อ 34b)
+    expect(new Set(orders.map((o) => JSON.stringify(o.map((g) => g.join_token)))).size).toBe(orders.length)
+    for (const pool_groups of orders) {
+      expect(firstPool(campaign({ pool_groups }))?.join_token).toBe("a")
+    }
   })
 })
 

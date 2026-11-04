@@ -110,7 +110,6 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     const standard = shipping.locator("option").filter({ hasText: "Standard" })
     const optionId = (await standard.getAttribute("value"))!
     await shipping.selectOption(optionId)
-    await evidence("01-selection-address-shipping")
 
     const actions = await recordActions(page)
     await page.getByTestId("group-join-button").dblclick()
@@ -233,7 +232,7 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     await expectThai(page, ["group-join-error"])
   })
 
-  test("ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47)", async ({ page, request, evidence }) => {
+  test("ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47)", async ({ page, request }) => {
     const ctx = await poolGroup(request)
     await page.goto(`/${CC}/g/${ctx.token}`)
     const actions = await recordActions(page)
@@ -243,6 +242,5 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     expect(actions).toEqual([])
     const { group } = await getJson(request, `${BACKEND_URL}/store/group-buy/groups/${ctx.token}`, { "x-publishable-api-key": ctx.pk })
     expect(group.progress_people).toBe(0)
-    await evidence("05-guest-login")
   })
 })
