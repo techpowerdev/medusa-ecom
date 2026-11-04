@@ -38,6 +38,11 @@ export const AdminCreateGroupBuyCampaign = z
     rules: z.array(AdminCreatePromotionRule).optional(),
     // spec 04 กฎข้อ 12 (ADR-011 หมายเหตุ): ราคา THB รวม VAT — ต้นแบบลดยอดที่ลูกค้าจ่ายตามตัวเลขที่ admin กรอก
     is_tax_inclusive: z.boolean().default(true),
+    // spec 04 กฎข้อ 33a: key เดิม → แคมเปญเดิม (ฟอร์ม admin สร้างต่อการเปิดฟอร์ม)
+    idempotency_key: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{8,128}$/, "idempotency_key must be 8-128 characters of A-Z, a-z, 0-9, _ or -")
+      .optional(),
   })
   .strict()
   .refine((c) => !c.starts_at || c.starts_at < c.ends_at, {
