@@ -1,31 +1,17 @@
 "use client"
 
-import { Button } from "@modules/common/components/ui"
-import { useState } from "react"
+import CopyButton from "@modules/common/components/copy-button"
 
-/** EV-7b (spec 02 AC-6): คัดลอก code ลง clipboard ของเครื่องผู้ใช้ — ไม่เก็บค่าไว้ที่อื่น */
+/** EV-7b (spec 02 AC-6): คัดลอก code ลง clipboard ของเครื่องผู้ใช้ — ไม่เก็บค่าไว้ที่อื่น (ผ่าน CopyButton กลาง — CORE-31 กฎข้อ 88) */
 export default function VoucherCopyButton({ code }: { code: string }) {
-  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle")
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(code)
-      setStatus("copied")
-    } catch {
-      setStatus("failed")
-    }
-  }
-
   return (
-    <Button
-      type="button"
-      variant="secondary"
+    <CopyButton
+      text={code}
+      label="คัดลอกรหัส"
+      successMessage="คัดลอกแล้ว"
+      buttonTestId="voucher-copy-button"
+      statusTestId="voucher-copy-status"
       size="small"
-      onClick={copy}
-      aria-live="polite"
-      data-testid="voucher-copy-button"
-    >
-      {status === "copied" ? "คัดลอกแล้ว" : status === "failed" ? "คัดลอกไม่สำเร็จ" : "คัดลอกรหัส"}
-    </Button>
+    />
   )
 }

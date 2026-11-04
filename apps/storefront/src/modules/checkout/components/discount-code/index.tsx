@@ -41,6 +41,9 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
 
   const { promotions = [] } = cart
   const removePromotionCode = async (code: string) => {
+    // CORE-34 (กฎข้อ 92): ล้าง error ของรอบก่อนก่อนส่ง แบบเดียวกับ addPromotionCode
+    setErrorMessage("")
+
     const validPromotions = promotions.filter(
       (promotion) => promotion.code !== code
     )

@@ -1,0 +1,89 @@
+# CORE-34 (spec 01 กฎข้อ 92, AC-128) — ผล test storefront (Vitest + jsdom)
+
+## Red: test ใหม่กับโค้ดก่อนแก้ (removePromotionCode ไม่ล้าง error)
+
+ RUN  v5.0.5 <worktree>/apps/storefront
+
+ ❯ src/core-34-remove-promotion-error.test.ts (2 tests | 2 failed) 625ms
+   ❯ CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) (2)
+     × ระหว่างรอผลการลบไม่มี promotion-error; ลบสำเร็จแล้วก็ยังไม่มี 619ms
+     × ระหว่างรอไม่มี promotion-error; ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/core-34-remove-promotion-error.test.ts > CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) > ระหว่างรอผลการลบไม่มี promotion-error; ลบสำเร็จแล้วก็ยังไม่มี
+AssertionError: error เดิมต้องหายก่อน resolve: expected <div …(2)><span></span></div> to be null
+
+- Expected:
+null
+
++ Received:
+<div
+  class="pt-2 text-rose-500 text-small-regular"
+  data-testid="promotion-error"
+>
+  <span>
+    ใช้โค้ดนี้ไม่ได้ โค้ดอาจหมดอายุหรือไม่ตรงเงื่อนไขของตะกร้า
+  </span>
+</div>
+
+ ❯ src/core-34-remove-promotion-error.test.ts:82:74
+     80|     await click("remove-discount-button")
+     81|     expect(applyPromotions).toHaveBeenLastCalledWith([])
+     82|     expect(byTestId("promotion-error"), "error เดิมต้องหายก่อน resolve…
+       |                                                                          ^
+     83|
+     84|     await act(async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/core-34-remove-promotion-error.test.ts > CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) > ระหว่างรอไม่มี promotion-error; ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE
+AssertionError: error เดิมต้องหายก่อน resolve: expected <div …(2)><span></span></div> to be null
+
+- Expected:
+null
+
++ Received:
+<div
+  class="pt-2 text-rose-500 text-small-regular"
+  data-testid="promotion-error"
+>
+  <span>
+    ใช้โค้ดนี้ไม่ได้ โค้ดอาจหมดอายุหรือไม่ตรงเงื่อนไขของตะกร้า
+  </span>
+</div>
+
+ ❯ src/core-34-remove-promotion-error.test.ts:96:74
+     94|
+     95|     await click("remove-discount-button")
+     96|     expect(byTestId("promotion-error"), "error เดิมต้องหายก่อน resolve…
+       |                                                                          ^
+     97|
+     98|     await act(async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  12:42:34
+   Duration  1.64s (tests 40%, environment 37%, transform 19%, import 3%)
+
+
+## Green: CORE-34 + CORE-28 (AC-121) หลังแก้
+
+ RUN  v5.0.5 <worktree>/apps/storefront
+
+
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+   Start at  12:42:45
+   Duration  600ms (environment 78%, tests 9%, import 8%, transform 5%, worker 1%)
+
+
+## pnpm --filter storefront test:unit (ชุดเต็ม)
+ Test Files  78 passed (78)
+      Tests  839 passed (839)
+   Duration  3.50s (tests 39%, environment 24%, import 19%, transform 16%, worker 2%)
+
+## storefront lint: 0 errors (31 warnings เดิม) / typecheck (tsc --noEmit): ผ่าน

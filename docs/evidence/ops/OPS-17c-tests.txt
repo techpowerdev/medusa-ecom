@@ -1,0 +1,57 @@
+# OPS-17c (spec 07 AC-35) — ผล test ในเครื่อง (2026-11-04, node v22.23.3, bash 3.2.57)
+
+## Red (เพิ่ม test ใหม่ก่อนแก้ run.sh, SECRET_IDENT และ unguardedPrints)
+    ✕ positive control: console.log(JSON.stringify(res)) → ถูกจับ, ข้อความปกติไม่ถูกจับ
+      (SECRET_IDENT เดิมไม่จับ JSON.stringify( — Expected ["JSON.stringify(res)"], Received [])
+    ✕ positive control: grep -q ... && cat "$OUT/a" ก่อน scan → ถูกจับ
+      (unguardedPrints เดิมข้ามทั้งบรรทัดที่มี grep -q — Expected length: 1, Received length: 0)
+    ✓ grep -q ล้วน (ไม่พิมพ์เนื้อหา) → ไม่ถูกจับ
+    ✕ stub docker พิมพ์ JWT ลง stdout/stderr แล้ว exit 99 → output ไม่มี JWT และ k6-failures.txt มี exit 99
+      (stdout/stderr ของ docker run ออก job log ตรง — "WARN stdout <JWT ปลอม>" ไม่ถูก redact; ตัด token ออกจาก evidence)
+    ✕ docker run ใน k6() pipe ทั้ง stdout/stderr ผ่าน artifact-guard.js redact
+Tests:       4 failed, 16 passed, 20 total   (test ของ OPS-17a/17b เดิม 15 ตัวผ่านทั้งหมด)
+
+## Green — load-artifact-guard.unit.spec.ts
+  OPS-17a stripSetupData
+    ✓ summary ที่มี setup_data.checkout[].token → ผลไม่มี setup_data/JWT และ metric เดิมครบ (2 ms)
+    ✓ CLI strip: อ่าน summary ดิบแล้วเขียนไฟล์ที่ไม่มี setup_data (38 ms)
+  OPS-17a findLeaks / CLI scan
+    ✓ ไฟล์ไม่มี JWT/setup_data → ไม่พบ และ scan exit 0 (31 ms)
+    ✓ ไฟล์มี JWT (รวมในโฟลเดอร์ย่อย) หรือ key setup_data → พบ และ scan ล้ม (exit ≠ 0) ลบไฟล์นั้นและไม่พิมพ์ token (21 ms)
+  OPS-17a run.sh
+    ✓ k6 เขียน summary ดิบนอก OUT แล้ว strip ก่อนเขียนลง OUT
+    ✓ ขั้นตรวจ JWT ใน OUT อยู่หลังไฟล์สุดท้ายที่เขียนลง OUT และก่อนตัดสินผ่าน/ไม่ผ่าน
+  OPS-17b redact
+    ✓ input ที่มี JWT → ผลไม่มีรูปแบบ JWT แทนด้วย [REDACTED_JWT] และข้อความอื่นคงเดิม (1 ms)
+    ✓ CLI redact: อ่าน stdin แล้วพิมพ์ stdout ที่ไม่มี JWT (exit 0) (22 ms)
+  OPS-17b run.sh: scan ก่อน cat/grep หรือผ่าน redact
+    ✓ run.sh ไม่มี cat/grep ของ OUT/console ของ k6 ที่พิมพ์ก่อน scan หรือไม่ผ่าน redact (1 ms)
+    ✓ console ของ k6 ใน k6() ส่งผ่าน artifact-guard.js redact ก่อนลง job log
+    ✓ cleanup() และ flow หลักพิมพ์ report หลัง scan ในบล็อกเดียวกัน (1 ms)
+    ✓ positive control: fixture ที่สลับลำดับ (cat ก่อน scan) หรือ grep console ไม่ผ่าน redact → ถูกจับ
+  OPS-17b k6 script ไม่ส่ง token/header เข้า console.*
+    ✓ tools/load/flash-sale.js (1 ms)
+    ✓ tools/load/group-buy-join.js
+    ✓ positive control: console ที่มี token/headers → ถูกจับ (1 ms)
+  OPS-17c (b) console.* ของ k6 script ปฏิเสธ JSON.stringify(
+    ✓ positive control: console.log(JSON.stringify(res)) → ถูกจับ, ข้อความปกติไม่ถูกจับ
+  OPS-17c (c) unguardedPrints ข้ามเฉพาะส่วน grep -q
+    ✓ positive control: grep -q ... && cat "$OUT/a" ก่อน scan → ถูกจับ
+    ✓ grep -q ล้วน (ไม่พิมพ์เนื้อหา) → ไม่ถูกจับ
+  OPS-17c (a) stdout/stderr ของ docker run k6 ผ่าน redact และคง exit code ของ docker
+    ✓ stub docker พิมพ์ JWT ลง stdout/stderr แล้ว exit 99 → output ไม่มี JWT และ k6-failures.txt มี exit 99 (183 ms)
+    ✓ docker run ใน k6() pipe ทั้ง stdout/stderr ผ่าน artifact-guard.js redact
+Tests:       20 passed, 20 total
+
+## Smoke ด้วยมือ: k6() จาก run.sh ภายใต้ `set -euo pipefail`, stub docker ใน PATH (JWT ปลอมลง stdout+stderr)
+| shell | docker exit | script exit | JWT ใน output | k6-failures.txt |
+|---|---|---|---|---|
+| /bin/bash 3.2 | 99 | 0 (ทำงานต่อ) | 0 | `flash-sale: k6 exit 99` |
+| /bin/bash 3.2 | 0 | 0 | 0 | ไม่มีไฟล์ |
+output: `ERRO x [REDACTED_JWT]` / `WARN y [REDACTED_JWT]` / `after k6 (...)`
+`bash -n tools/load/run.sh` → ผ่าน
+
+## ชุดเต็ม
+pnpm --filter backend test:unit → Test Suites: 87 passed, 87 total; Tests: 927 passed, 927 total
+pnpm lint → 0 errors (warning เดิมของ storefront)
+pnpm typecheck → ผ่าน (backend + admin + storefront)
