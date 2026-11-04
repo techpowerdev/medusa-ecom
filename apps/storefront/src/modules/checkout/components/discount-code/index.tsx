@@ -20,16 +20,19 @@ export const PROMOTION_REMOVE_FAILED = "ลบโค้ดส่วนลดไ�
 /**
  * CORE-4i (spec 01 กฎข้อ 72): ตั้งชุดโค้ดของ cart แล้วคืนข้อความ error ที่จะแสดง ("" = สำเร็จ)
  * `wanted` = โค้ดที่ผู้ใช้เพิ่งใส่ — Medusa ตอบ 200 แต่ไม่ใส่โค้ดที่ใช้ไม่ได้ (กฎข้อ 63b); action ที่ reject เอง → fallback
+ * `onCodes` (CORE-40 กฎข้อ 98b) = รับชุดโค้ดที่อยู่ใน cart จริงหลัง action สำเร็จ
  */
 export const submitPromotionCodes = async (
   codes: string[],
   wanted?: string,
-  fallback: string = PROMOTION_FAILED
+  fallback: string = PROMOTION_FAILED,
+  onCodes?: (codes: string[]) => void
 ): Promise<string> => {
   const result = await settleAction(applyPromotions(codes))
   if ("error" in result) {
     return actionErrorMessage(result.error, fallback)
   }
+  onCodes?.(result.codes)
   const code = wanted?.trim().toLowerCase()
   if (code && !result.codes.some((c) => c.toLowerCase() === code)) {
     return PROMOTION_NOT_APPLICABLE
@@ -45,52 +48,80 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState("")
   // CORE-36 (กฎข้อ 94): โค้ดที่กำลังลบ (แสดงสถานะ) + ref กันคลิกซ้อนใน tick เดียว ก่อน state re-render (แบบ CORE-27)
+  // CORE-40 (กฎข้อ 98a): ref/สถานะเดียวกันกันทั้งการใส่และการลบ — action โค้ดค้างได้ทีละหนึ่ง
   const [removingCode, setRemovingCode] = React.useState<string | null>(null)
-  const removingRef = React.useRef(false)
+  // การใส่โค้ดเป็น form action (transition) — state ธรรมดาไม่ commit จนจบ action จึงใช้ useOptimistic (คืนเป็น false เองเมื่อจบ)
+  const [applying, setApplying] = React.useOptimistic(false)
+  const busyRef = React.useRef(false)
+  const busy = applying || removingCode !== null
+  // CORE-40 (กฎข้อ 98b): ชุดโค้ดจาก action ที่สำเร็จล่าสุด ผูกกับ prop `cart.promotions` ที่เห็นตอนนั้น —
+  // prop เปลี่ยน (cart refresh แล้ว) = ข้อมูลใหม่กว่า → กลับไปใช้ prop
+  const latestRef = React.useRef<{
+    basis: HttpTypes.StoreCart["promotions"]
+    codes: string[]
+  } | null>(null)
 
   const { promotions = [] } = cart
+  const knownCodes = () => {
+    const latest = latestRef.current
+    if (latest && latest.basis === cart.promotions) {
+      return [...latest.codes]
+    }
+    return promotions.filter((p) => p.code !== undefined).map((p) => p.code!)
+  }
+  const rememberCodes = (codes: string[]) => {
+    latestRef.current = { basis: cart.promotions, codes }
+  }
+
   const removePromotionCode = async (code: string) => {
-    if (removingRef.current) {
+    if (busyRef.current) {
       return
     }
-    removingRef.current = true
+    busyRef.current = true
     setRemovingCode(code)
     // CORE-34 (กฎข้อ 92): ล้าง error ของรอบก่อนก่อนส่ง แบบเดียวกับ addPromotionCode
     setErrorMessage("")
 
-    const validPromotions = promotions.filter(
-      (promotion) => promotion.code !== code
-    )
-
     try {
       setErrorMessage(
         await submitPromotionCodes(
-          validPromotions.filter((p) => p.code !== undefined).map((p) => p.code!),
+          knownCodes().filter((c) => c !== code),
           undefined,
-          PROMOTION_REMOVE_FAILED
+          PROMOTION_REMOVE_FAILED,
+          rememberCodes
         )
       )
     } finally {
-      removingRef.current = false
+      busyRef.current = false
       setRemovingCode(null)
     }
   }
 
   const addPromotionCode = async (formData: FormData) => {
+    if (busyRef.current) {
+      return
+    }
+    // ส่งช่องว่าง = ล้าง error ของรอบก่อนแล้วจบ (พฤติกรรมเดิมก่อน CORE-40)
     setErrorMessage("")
-
     const code = formData.get("code")
     if (!code) {
       return
     }
-    const input = document.getElementById("promotion-input") as HTMLInputElement
-    const codes = promotions
-      .filter((p) => p.code !== undefined)
-      .map((p) => p.code!)
-    codes.push(code.toString())
+    busyRef.current = true
+    setApplying(true)
 
-    // CORE-4g (กฎข้อ 63b): Medusa ตอบ 200 แต่ไม่ใส่ code ที่ใช้ไม่ได้ (หมดอายุ/ไม่ตรงเงื่อนไข) — แจ้งผู้ใช้ ไม่เงียบ
-    setErrorMessage(await submitPromotionCodes(codes, code.toString()))
+    const input = document.getElementById("promotion-input") as HTMLInputElement
+
+    try {
+      const codes = knownCodes()
+      codes.push(code.toString())
+      // CORE-4g (กฎข้อ 63b): Medusa ตอบ 200 แต่ไม่ใส่ code ที่ใช้ไม่ได้ (หมดอายุ/ไม่ตรงเงื่อนไข) — แจ้งผู้ใช้ ไม่เงียบ
+      setErrorMessage(
+        await submitPromotionCodes(codes, code.toString(), PROMOTION_FAILED, rememberCodes)
+      )
+    } finally {
+      busyRef.current = false
+    }
 
     if (input) {
       input.value = ""
@@ -128,6 +159,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
               />
               <SubmitButton
                 variant="secondary"
+                disabled={busy}
                 data-testid="discount-apply-button"
               >
                 ใช้โค้ด
@@ -187,7 +219,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                     {!promotion.is_automatic && (
                       <button
                         className="flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={removingCode !== null}
+                        disabled={busy}
                         aria-busy={removingCode === promotion.code}
                         onClick={() => {
                           if (!promotion.code) {
