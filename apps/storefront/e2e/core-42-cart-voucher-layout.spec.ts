@@ -57,7 +57,35 @@ async function codeRowGap(page: Page) {
   })
 }
 
-test("AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 และคอลัมน์ราคาต่อหน่วยยังแสดงที่ 1280", async ({
+/**
+ * padding ซ้าย/ขวาของทุก header cell (`cart-items-header`) และทุก cell ของ `product-row` แรก + ความกว้างกล่องปุ่มลบ/จำนวน —
+ * ใช้เทียบ layout ที่ ≥ small กับค่าก่อน CORE-42 (กฎข้อ 100a "≥ small คง layout เดิม"); ไม่เทียบ left/width ของ cell
+ * เพราะขึ้นกับฟอนต์ของเครื่องที่รัน
+ */
+async function desktopLayout(page: Page) {
+  return page.evaluate(() => {
+    const padding = (el: Element) =>
+      `${getComputedStyle(el).paddingLeft}/${getComputedStyle(el).paddingRight}`
+    const header = document.querySelector('[data-testid="cart-items-header"]')!
+    const row = document.querySelector('[data-testid="product-row"]')!
+    const quantity = row
+      .querySelector('[data-testid="product-select-button"]')!
+      .closest("td")!.firstElementChild!
+    return {
+      header: Array.from(header.querySelectorAll("th")).map(padding),
+      row: Array.from(row.querySelectorAll("td")).map(padding),
+      quantityBoxWidth: quantity.getBoundingClientRect().width,
+    }
+  })
+}
+
+const DESKTOP_BASELINE = {
+  header: ["0px/16px", "16px/16px", "16px/16px", "16px/16px", "16px/0px"],
+  row: ["0px/16px", "16px/16px", "16px/16px", "16px/16px", "16px/0px"],
+  quantityBoxWidth: 112,
+}
+
+test("AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม", async ({
   page,
   context,
   request,
@@ -65,12 +93,11 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
   step,
   evidence,
 }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
-  const a = await createCustomer(request, pk)
-  const cartId = await cartReadyForPayment(request, pk, a)
   // qa #264 O-4: ล้นเมื่อ line มีส่วนลด (ราคาเดิมขีดฆ่า + ราคาลดมีทศนิยม เช่น ฿560.50) — ใส่โค้ด 5% แบบเดียวกับ qa
+  // qa #278 D-1: จำนวน 99 (฿58,410 ขีดฆ่า / ฿55,489.50) ยังล้น
   const code = `CORE42${Date.now()}`
   const created = await request.post(`${BACKEND_URL}/admin/promotions`, {
     headers: admin,
@@ -90,6 +117,21 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
   expect(created.ok(), `create promotion: ${await created.text()}`).toBe(true)
   const promotionId = (await created.json()).promotion.id
   try {
+    for (const quantity of [1, 99]) {
+      await openCart(quantity)
+      await expectCartFits(quantity)
+      if (quantity === 1) await expectDesktopLayout()
+    }
+  } finally {
+    await deleteAllThenExpectOk(request, admin, [
+      `/admin/promotions/${promotionId}`,
+    ])
+  }
+
+  /** cart ใหม่ของลูกค้าใหม่ (Store API ด้วย token ของเจ้าของ) ที่มี t-shirt 1 line ตามจำนวน + โค้ด 5% แล้วตั้ง cookie ให้ browser */
+  async function openCart(quantity: number) {
+    const a = await createCustomer(request, pk)
+    const cartId = await cartReadyForPayment(request, pk, a, { quantity })
     const applied = await request.post(
       `${BACKEND_URL}/store/carts/${cartId}/promotions`,
       {
@@ -101,25 +143,21 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
       }
     )
     expect(applied.ok(), `apply promotion: ${applied.status()}`).toBe(true)
+    await context.clearCookies()
     await signInAs(context, baseURL!, a)
     await context.addCookies([
       { name: "_medusa_cart_id", value: cartId, url: baseURL! },
     ])
-    await checkCart()
-  } finally {
-    await deleteAllThenExpectOk(request, admin, [
-      `/admin/promotions/${promotionId}`,
-    ])
   }
 
-  async function checkCart() {
+  async function expectCartFits(quantity: number) {
     await step(
-      "375: หน้าไม่ล้นแนวนอน และ product-price อยู่ในจอครบ ไม่ถูกตัด",
+      `375 จำนวน ${quantity}: หน้าไม่ล้นแนวนอน และ product-price อยู่ในจอครบ ไม่ถูกตัด`,
       async () => {
         await page.setViewportSize(MOBILE)
         await page.goto(`/${CC}/cart`)
         await expect(page.getByTestId("product-row")).toHaveCount(1)
-        await expect(page.getByTestId("product-price")).toBeVisible()
+        await expect(page.getByTestId("product-original-price")).toBeVisible()
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth)
         ).toBeLessThanOrEqual(375)
@@ -130,22 +168,25 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
           expect(p.right).toBeLessThanOrEqual(375)
           expect(p.hitInside, "จุดกลางของ product-price ไม่ถูกตัด").toBe(true)
         }
-        await evidence("01-cart-375")
+        await evidence(`01-cart-375-qty${quantity}`)
       }
     )
+  }
 
+  async function expectDesktopLayout() {
     await step(
-      "1280: cart-items-header มี 5 ช่อง คอลัมน์ราคาต่อหน่วยแสดง",
+      "1280: header 5 ช่อง visible และ padding/ตำแหน่งของทุก cell เท่าก่อน CORE-42",
       async () => {
         await page.setViewportSize(DESKTOP)
         await page.goto(`/${CC}/cart`)
         const header = page.getByTestId("cart-items-header")
-        // ช่องที่ 2 เป็น HeaderCell ว่าง (toBeVisible อาจไม่นับ) — นับจำนวนช่องแล้วเช็กช่องราคา/รวม visible
         await expect(header.locator("th")).toHaveCount(5)
-        await expect(header.locator("th").nth(3)).toBeVisible()
-        await expect(header.locator("th").nth(4)).toBeVisible()
+        for (let i = 0; i < 5; i++) {
+          await expect(header.locator("th").nth(i)).toBeVisible()
+        }
         await expect(page.getByTestId("product-unit-price")).toBeVisible()
         await expect(page.getByTestId("product-price")).toBeVisible()
+        expect(await desktopLayout(page)).toEqual(DESKTOP_BASELINE)
       }
     )
   }

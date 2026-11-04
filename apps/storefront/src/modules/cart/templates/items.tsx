@@ -28,11 +28,11 @@ const ItemsTemplate = ({ cart, flashExceeded }: ItemsTemplateProps) => {
             className="text-ui-fg-subtle txt-medium-plus"
             data-testid="cart-items-header"
           >
-            {/* CORE-42 (กฎข้อ 100a): padding < small ตรงกับ cell ของ Item */}
+            {/* CORE-42 (กฎข้อ 100a): padding < small ตรงกับ cell ของ Item (≥ small คงเดิม) */}
             <Table.HeaderCell className="!pl-0 pr-2 small:pr-4">
               สินค้า
             </Table.HeaderCell>
-            <Table.HeaderCell></Table.HeaderCell>
+            <Table.HeaderCell className="px-2 small:px-4"></Table.HeaderCell>
             <Table.HeaderCell className="px-2 small:px-4">
               จำนวน
             </Table.HeaderCell>

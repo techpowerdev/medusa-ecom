@@ -55,7 +55,7 @@ const Item = ({
 
   return (
     <Table.Row className="w-full" data-testid="product-row">
-      {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ช่องจำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 — ≥ small คงเดิม */}
+      {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ชื่อสินค้า/จำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 (รวมยอดหลักหมื่นมีทศนิยม — qa #278 D-1) — ≥ small คงเดิม */}
       <Table.Cell className="!pl-0 p-4 pr-2 small:pr-4 w-24">
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
@@ -72,7 +72,7 @@ const Item = ({
         </LocalizedClientLink>
       </Table.Cell>
 
-      <Table.Cell className="text-left">
+      <Table.Cell className="text-left px-2 small:px-4">
         <Text
           className="txt-medium-plus text-ui-fg-base"
           data-testid="product-title"
