@@ -106,7 +106,7 @@ test("AC-44: ฟอร์มสร้าง payout ค่าเริ่มต�
     await expect(save).toBeHidden()
     await expect(row(payoutId)).toBeVisible()
     await expect(row(payoutId)).toContainText("draft")
-    await expect(row(payoutId)).toContainText("THB 200.00")
+    await expect(row(payoutId)).toContainText("฿200.00")
     expect(posts.filter((p) => p.path === PAYOUTS)).toHaveLength(1)
     await evidence("02-draft-created")
   })

@@ -1,8 +1,8 @@
+import { castNumber, getLocaleAmount } from "@medusajs/dashboard/lib"
 import { Button, Input, Label, Prompt, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useId, useState } from "react"
 import { affiliateKeys, markPayoutPaid, Payout } from "../../lib/affiliate"
-import { formatAmount } from "../../lib/affiliate-format"
 import { markPaidBody } from "../../lib/affiliate-payout"
 import { createSingleFlight } from "../../lib/single-flight"
 
@@ -47,7 +47,7 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
         <Prompt.Header>
           <Prompt.Title>Mark payout as paid?</Prompt.Title>
           <Prompt.Description>
-            Confirm the bank transfer of {formatAmount(payout.amount, payout.currency)} was made. Its entries become
+            Confirm the bank transfer of {getLocaleAmount(castNumber(payout.amount), payout.currency)} was made. Its entries become
             paid. This cannot be undone.
           </Prompt.Description>
         </Prompt.Header>
