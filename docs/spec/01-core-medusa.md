@@ -1,6 +1,7 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (follow-up ล่าสุด: รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
+สถานะ: accepted (follow-up ล่าสุด: รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
+หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
 รอบ 16 2026-11-04 — CORE-28..32, กฎข้อ 85–89, AC-121..125, ADR-019 (CORE-29), คำถาม Q-C3/Q-C4; รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; CORE-14g cookie cart ใน server action (qa #222 D-1), กฎข้อ 84, AC-120; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
 เป้าหมาย: ร้านค้าพื้นฐานที่สมบูรณ์และพร้อม production โดย **ไม่มี custom commerce logic เลย**
 ทุกอย่างใน spec นี้คือการตั้งค่า, seeding, theming และ deployment
@@ -1367,6 +1368,8 @@ none — ADR-019 ทางเลือก B (accepted) ใช้ `POST /store/cu
     ซ่อน option ที่ `type.code === "digital-delivery"` (ตัวระบุเดียวกับ spec 02 กฎข้อ 8 — ไม่ใช้ชื่อ) — ระบุใน PR ว่าใช้ทาง (a) หรือ (b); (c) cart ที่ทุก line `requires_shipping = false`
     ทำตาม EV-7c เดิม (ข้ามขั้น delivery — ไม่แตะ); (d) กรองแล้วไม่เหลือ option → ข้อความไม่มีวิธีส่งเดิมของแต่ละหน้า; CORE-32 แก้ storefront อย่างเดียว —
     ด่านฝั่ง backend ของ join (Q-C4 = ข) อยู่ที่ **spec 04 GB-14 กฎข้อ 35 / AC-54** (ทำขนานกันได้; checkout ปกติ Medusa ตรวจตอน complete อยู่แล้ว)
+    **หมายเหตุ (รอบ 17, CORE-32 #243)**: builder ใช้ทาง **(b)** เพราะ Store API 2.22.1 ไม่คืน shipping profile ของสินค้าใน line → ตอนนี้กรองได้**เฉพาะ** option `type.code = "digital-delivery"`;
+    ถ้าร้านเพิ่ม shipping profile อื่น (เช่น สินค้าชิ้นใหญ่/ของสด) ต้องทบทวนกฎนี้ — ทาง (a) ต้องมี route ของเราเองที่คืน profile ของ line (เขียน ADR ก่อน เพราะเป็นการห่อข้อมูลที่ Medusa ไม่เปิดใน Store API)
 90. (CORE-28b — รอบ 16b, session หลัก 2026-11-04; test-only) comment ใน `e2e/core-14g-action-stale-jwt.spec.ts` (~125) ที่ว่า "promotion-error แสดงเฉพาะเมื่อเปิดช่องใส่โค้ด" ไม่จริงหลังกฎข้อ 85 (CORE-28 #241)
     → แก้ comment ให้บอกเหตุผลจริงของการเปิดช่อง (ขั้น (3) ต้องใช้ `discount-input`) โดยไม่เปลี่ยนขั้นตอน/assertion ของ test; แยกจาก CORE-28 เพราะ PR #241 เปิดแล้ว
 
@@ -1405,14 +1408,15 @@ none — ADR-019 ทางเลือก B (accepted) ใช้ `POST /store/cu
 ### Tasks (follow-up รอบ 16)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
-| CORE-28 | (storefront เล็ก ~60 LOC, qa #222 O-2) `promotion-error` นอก `isOpen` + แก้ comment ค้างใน e2e core-19c (กฎข้อ 85) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, `src/core-28-promotion-error.test.ts` ใหม่, `e2e/core-19c-delete-button-error.spec.ts` (comment) | AC-121 | CORE-14g ☑ (#234 merge แล้ว 2026-11-04 — e2e ของ AC-120 ลบ/ใส่โค้ดตอน JWT หาย + comment อ้างพฤติกรรมของ #234) — **เริ่มได้** |
+| CORE-28 | (storefront เล็ก ~60 LOC, qa #222 O-2) `promotion-error` นอก `isOpen` + แก้ comment ค้างใน e2e core-19c (กฎข้อ 85) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, `src/core-28-promotion-error.test.ts` ใหม่, `e2e/core-19c-delete-button-error.spec.ts` (comment) — ◐ #241 | AC-121 | CORE-14g ☑ (#234 merge แล้ว 2026-11-04 — e2e ของ AC-120 ลบ/ใส่โค้ดตอน JWT หาย + comment อ้างพฤติกรรมของ #234) — **เริ่มได้** |
 | CORE-29 | (storefront ~180 LOC, รอบ 14b) บันทึก `metadata.active_cart_id` เมื่อตั้ง cookie cart ใหม่ + กู้ตอน login เมื่อไม่มี cookie cart (กฎข้อ 86) — ไฟล์: helper ใหม่ใน `lib/data/` (+ unit), `lib/data/cart.ts`, `lib/util/server-cart.ts`, `app/api/payment-return/route.ts`, `lib/data/customer.ts` (`completeLogin`), `e2e/core-29-restore-cart.spec.ts` ใหม่ | AC-122 | CORE-14g ☑ (#234 — พฤติกรรม cookie เมื่อ JWT หาย), **CORE-30** (ชน `lib/data/customer.ts` — ทำทีละตัว CORE-30 ก่อน) |
 | CORE-30 | (storefront เล็ก ~150 LOC, qa #239/#238) return URL ของหน้ากลุ่ม/หน้าแรกหลัง login (กฎข้อ 87) — ไฟล์: `lib/util/login-return.ts` (+ test), `lib/data/customer.ts` (`continueAfterAuth`), `modules/group-buy/components/group-page/group-join.tsx`, `modules/home/components/campaigns/create-team-button.tsx`, `e2e/core-30-login-return.spec.ts` ใหม่ | AC-123 | none — **เริ่มได้** (GB-7a2 ☑ #238, GB-7c ☑ #239); ชน `group-join.tsx` กับ GB-12 (spec 04) ตัวที่ merge ทีหลัง rebase |
 | CORE-31 | (storefront เล็ก ~120 LOC, review 2026-11-04) component คัดลอกกลาง ใช้โดย `ShareLinkButton` และ `VoucherCopyButton` (กฎข้อ 88) — ไฟล์: `modules/common/components/copy-button/index.tsx` ใหม่ (+ unit), `modules/common/components/share-link-button/index.tsx`, `modules/evoucher/components/voucher-copy-button/index.tsx` | AC-124 | none — **เริ่มได้** (∥ ทุกตัว) |
-| CORE-32 | (storefront ~150 LOC, qa #238) กรอง option วิธีส่งตาม shipping profile ที่ checkout และหน้ากลุ่ม (กฎข้อ 89) — ไฟล์: `lib/util/shipping-options.ts` ใหม่ (+ unit), `modules/checkout/templates/checkout-form/index.tsx` (หรือ `components/shipping`), `lib/data/group-join.ts`, `lib/data/cart.ts` (field ของ line ถ้าใช้ทาง (a)), e2e | AC-125 | none — **เริ่มได้** (∥; `lib/data/group-join.ts` ไม่มี task อื่นแตะ; ∥ GB-14 ของ spec 04 — ไม่มีไฟล์ชน: GB-14 แตะ `lib/util/group-join-error.ts` ไม่แตะ `group-join.ts`/`shipping-options.ts`) |
+| CORE-32 | (storefront ~150 LOC, qa #238) กรอง option วิธีส่งตาม shipping profile ที่ checkout และหน้ากลุ่ม (กฎข้อ 89) — ไฟล์: `lib/util/shipping-options.ts` ใหม่ (+ unit), `modules/checkout/templates/checkout-form/index.tsx` (หรือ `components/shipping`), `lib/data/group-join.ts`, `lib/data/cart.ts` (field ของ line ถ้าใช้ทาง (a)), e2e — ◐ #243 (ทาง (b)) | AC-125 | none — **เริ่มได้** (∥; `lib/data/group-join.ts` ไม่มี task อื่นแตะ; ∥ GB-14 ของ spec 04 — ไม่มีไฟล์ชน: GB-14 แตะ `lib/util/group-join-error.ts` ไม่แตะ `group-join.ts`/`shipping-options.ts`) |
 | CORE-28b | (test-only เล็ก ~2 LOC, รอบ 16b) แก้ comment ค้างใน e2e core-14g หลังกฎข้อ 85 (กฎข้อ 90) — ไฟล์: `e2e/core-14g-action-stale-jwt.spec.ts` | AC-126 | **CORE-28 (#241) merge** (∥ ทุกตัว; ไฟล์นี้ไม่มี task อื่นแตะ) |
 (รอบ 16 สถานะ) CORE-30 ∥ CORE-31 ∥ CORE-32 เริ่มได้; CORE-28 ← #234; CORE-29 ← ADR-019 + #234 + CORE-30; ไม่บล็อก release ใด แต่ CORE-30/CORE-32 ควรมีก่อน release v0.5.0 (flow ของ group buy)
 (รอบ 16b สถานะ 2026-11-04) #234 ☑ และ ADR-019 accepted → CORE-28 เริ่มได้ (◐ รอบ 17), CORE-32 ◐ รอบ 17; CORE-29 ← CORE-30 เท่านั้น; CORE-30 ∥ CORE-31 เริ่มได้
+(รอบ 17 สถานะ 2026-11-04) CORE-28 ◐ #241, CORE-32 ◐ #243 → follow-up CORE-33 (← #243), CORE-34 (← #241) ในหัวข้อ "Follow-up รอบ 17"
 
 ### Open questions (รอบ 16)
 - ~~**Q-C3**~~ **ตัดสินแล้ว (owner 2026-11-04) = (B)** → ADR-019 accepted: จำ id ตะกร้าหลักใน `customer.metadata` ด้วย API ของ Medusa ไม่มี backend ใหม่ (กฎข้อ 86, CORE-29) —
@@ -1420,6 +1424,65 @@ none — ADR-019 ทางเลือก B (accepted) ใช้ `POST /store/cu
 - ~~**Q-C4**~~ **ตัดสินแล้ว (owner 2026-11-04) = (ข)** → ตรวจฝั่ง backend ตอน join ใน `validateJoinStep` ว่า shipping method ของ cart ครอบ shipping profile ของทุก line ที่ `requires_shipping = true`
   ไม่ครอบ → 400 code `GB_SHIPPING_PROFILE_NOT_COVERED` — **spec 04 GB-14 (กฎข้อ 35, AC-54)**; CORE-32 ยังเป็น storefront อย่างเดียว — คำถามเดิม: (ก) ไม่ใน v1 (storefront กรองอย่างเดียว);
   (ข) ตรวจใน `validateJoinStep` → 400 code ใหม่
+
+## Follow-up รอบ 17 จาก review/qa (2026-11-04 — owner อนุมัติเปิด task)
+ที่มา: qa CORE-32 (#243) O-1, O-2; qa CORE-28 (#241) O-3; review/qa test hygiene ของ #243 — ตรวจโค้ดบน develop `e45b046`:
+`removePromotionCode` ใน `modules/checkout/components/discount-code/index.tsx` (~43–53) ไม่เรียก `setErrorMessage("")` ก่อนส่ง ต่างจาก `addPromotionCode` (~56) — ยังจริง;
+ปุ่ม `submit-delivery-option-button` ใน `modules/checkout/components/shipping/index.tsx` (~385) disabled ด้วย `!cart.shipping_methods?.[0]` และค่าเริ่มของ radio มาจาก
+`cart.shipping_methods?.at(-1)?.shipping_option_id` (~63–64) โดยไม่เทียบกับรายการที่แสดง — ยังจริง; การกรองและ `delivery-options-container` ที่ว่างอยู่ในโค้ดของ #243 (ยังไม่ merge — ยืนยันจากรายงาน qa)
+Out of scope: แปลง error 400 ของ `completeCartWorkflow` (`validate-shipping`) เป็นข้อความไทยเมื่อลูกค้าข้ามขั้น delivery ด้วย URL `?step=payment` (ด่านจริงคือ backend ของ Medusa — ยอมรับใน v1),
+ทาง (a) ของกฎข้อ 89
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| วิธีส่งที่ cart เลือกไว้ | `cart.shipping_methods[].shipping_option_id` ของ Store API | ใช้ตามเดิม — storefront เทียบกับรายการที่กรองแล้วของกฎข้อ 89 (กฎข้อ 91) |
+| ตรวจวิธีส่งตอน complete | `validateShippingStep` ใน `completeCartWorkflow` (400 เมื่อไม่ครอบ profile) | ใช้ตามเดิม — ไม่แก้ |
+| แทนวิธีส่งเดิมของ cart | `POST /store/carts/:id/shipping-methods` (`setShippingMethod` เดิม) | ใช้ตามเดิม |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+91. (CORE-33 — qa #243 O-1, O-2) ขั้น delivery ของ checkout (`modules/checkout/components/shipping`) หลังกรองตามกฎข้อ 89:
+    (a) กรองแล้วไม่เหลือ option (ทั้งส่งและรับเอง) → แสดงข้อความไทยใน `delivery-options-empty` (เช่น "ไม่มีวิธีจัดส่งสำหรับสินค้าในตะกร้านี้ กรุณาติดต่อร้าน" — ปรับถ้อยคำได้ใน PR)
+      แทน `delivery-options-container` ที่ว่าง และ `submit-delivery-option-button` disabled;
+    (b) วิธีส่งที่ถือว่า "เลือกแล้ว" = `shipping_option_id` ของ `cart.shipping_methods` ตัวล่าสุด**ที่อยู่ในรายการที่กรองแล้ว**เท่านั้น — cart เก่าที่ค้าง method ที่ถูกกรองออก (เช่น Digital delivery
+      บน cart ที่ต้องจัดส่ง) → ไม่มี radio ถูกเลือก, `submit-delivery-option-button` disabled จนลูกค้าเลือก option ในรายการ, และสรุปตอนขั้นปิดไม่แสดงชื่อ method นั้น;
+      เงื่อนไขอยู่ใน helper pure ใน `lib/util/shipping-options.ts` เดิม (+ unit) ไม่กระจาย `cart.shipping_methods?.[0]` หลายที่
+    (c) cart ที่ทุก line `requires_shipping = false` ทำตาม EV-7c เดิม (ไม่แตะ)
+    (d) e2e `e2e/core-32-shipping-profile-filter.spec.ts` (~70) มี comment อธิบายว่าทำไมสร้าง cart อีกใบ (เพื่ออ่าน id ของ option Digital delivery จาก `GET /store/shipping-options?cart_id=`
+      ของ cart voucher ที่ option นั้นใช้ได้) — แก้ comment เท่านั้น
+92. (CORE-34 — qa #241 O-3) `removePromotionCode` ใน `modules/checkout/components/discount-code` ล้าง error เดิม (`setErrorMessage("")`) ก่อนเรียก `submitPromotionCodes` แบบเดียวกับ `addPromotionCode`
+    — error ของรอบก่อนไม่ค้างระหว่างลบรอบใหม่; ผลของการลบ (สำเร็จ/ล้ม) ตั้ง error ตามเดิมของกฎข้อ 85
+
+### Acceptance criteria (follow-up รอบ 17)
+- AC-127 (CORE-33, กฎข้อ 91) unit (`lib/util/shipping-options.test.ts`): helper "option ที่เลือกแล้ว" — method ล่าสุดเป็น Standard ที่อยู่ในรายการ → id ของ Standard; method ล่าสุดเป็น Digital delivery ที่ไม่อยู่ในรายการ
+  (และไม่มี method อื่นในรายการ) → `null`; ไม่มี method → `null`; e2e: Given cart ของ A มี t-shirt (seed) และตั้ง shipping method เป็น Digital delivery ผ่าน `POST /store/carts/:id/shipping-methods`
+  ด้วย token ของ A (id ของ option จาก `type.code` — ไม่ match ข้อความ) When เปิดขั้น delivery ของ `/th/checkout` Then ไม่มี radio ใน `delivery-options-container` ที่ `checked`/`aria-checked="true"`
+  และ `submit-delivery-option-button` disabled; When เลือก Standard Then ปุ่ม enabled และ `GET /store/carts/:id` มี `shipping_methods` ที่ `shipping_option_id` = Standard;
+  component test (Vitest + jsdom): Given component ขั้น delivery ได้รายการ option (prop เดิมของ starter) เฉพาะ Digital delivery กับ cart ที่มี line ต้องจัดส่ง (รายการที่กรองแล้วว่าง) Then มี `delivery-options-empty` ข้อความตรง regex อักษรไทย,
+  ไม่มี radio และปุ่ม disabled; grep: `core-32-shipping-profile-filter.spec.ts` มี comment ภาษาไทยในบล็อกที่สร้าง cart ใบที่สอง; AC-125 และ spec 02 AC-37 ยังผ่าน
+- AC-128 (CORE-34, กฎข้อ 92) unit (Vitest + jsdom, ต่อจาก `src/core-28-promotion-error.test.ts` หรือไฟล์ใหม่): Given `promotion-error` มีข้อความจากการใส่โค้ดที่ล้ม และ `applyPromotions` mock
+  คืน promise ที่ยังไม่ resolve When กด `remove-discount-button` Then ก่อน resolve `promotion-error` ว่าง; resolve สำเร็จ → ยังว่าง; resolve `{ error: "unauthorized" }` → `SIGN_IN_AGAIN_MESSAGE`;
+  test ต้อง fail กับโค้ดก่อนแก้ (แนบผลใน PR); AC-121 ยังผ่าน
+
+### แผนการทดสอบ (follow-up รอบ 17)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-127 (helper), AC-128 |
+| e2e / component | AC-127 |
+| grep | AC-127 (comment) |
+
+### Tasks (follow-up รอบ 17)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-33 | (storefront เล็ก ~100 LOC, qa #243 O-1/O-2) ข้อความเมื่อไม่มีวิธีส่งหลังกรอง + method ค้างที่ถูกกรองออกถือว่ายังไม่เลือก + comment e2e core-32 (กฎข้อ 91) — ไฟล์: `lib/util/shipping-options.ts` (+ test), `modules/checkout/components/shipping/index.tsx`, `e2e/core-32-shipping-profile-filter.spec.ts` (comment + เคสใหม่) | AC-127 | **CORE-32 (#243) merge** (แก้โค้ด/e2e ที่ #243 เพิ่ม); ∥ CORE-34 (คนละไฟล์) |
+| CORE-34 | (storefront เล็ก ~30 LOC, qa #241 O-3) `removePromotionCode` ล้าง error ก่อนส่ง (กฎข้อ 92) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, unit | AC-128 | **CORE-28 (#241) merge** (ไฟล์เดียวกัน); ∥ CORE-28b, CORE-33 |
+(รอบ 17) ไม่บล็อก release ใด; CORE-33 ควรมีก่อน release v0.5.0 ถ้า CORE-32 อยู่ใน release นั้น (cart เก่าที่ค้าง Digital delivery)
+
+### Open questions (รอบ 17)
+none
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

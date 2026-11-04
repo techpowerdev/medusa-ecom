@@ -31,7 +31,9 @@ spec 04 Q21 (ขัด Q10 เดิม — ทำ `POST /admin/group-buy/campai
 **รอบ 16b (2026-11-04 — owner ตัดสิน)**: spec 01 Q-C3 = B (**ADR-019 accepted**; CORE-29 ← CORE-30 เท่านั้น) · Q-C4 = (ข) → **GB-14** (spec 04 กฎข้อ 35, AC-54: ตรวจ shipping profile ตอน join
 + code `GB_SHIPPING_PROFILE_NOT_COVERED`; ∥ CORE-32) · spec 04 Q21 = (ก) (GB-13 ← GB-N4) · CORE-28b (comment e2e core-14g หลัง CORE-28 #241; กฎข้อ 90, AC-126) · nit review #240 (spec 07 AC-34 `run.sh:132`,
 spec 01 กฎข้อ 86e/87) · merge แล้วตั้งแต่รอบ 16: #220 OPS-17a, #221 CORE-27, #223 GB-7b, #230 GB-11, #231 GB-6e, #234 CORE-14g, #235 OPS-17, #236 GB-7a1, #237 AF-N3, #238 GB-7a2, #239 GB-7c, #240 spec รอบ 16 ·
-**รอบ 17 กำลังทำ (◐)**: CORE-28 (#241), CORE-32, GB-12, OPS-17b · **คำถามค้างสำหรับ owner**: spec 04 Q22 (join ที่ไม่มีวิธีส่งเลยต้องถูกปฏิเสธด้วยไหม — แนะนำ (ก) ไม่ปฏิเสธใน v1)
+**รอบ 17 กำลังทำ (◐)**: CORE-28 #241, OPS-17b #242, CORE-32 #243, GB-12 #244, GB-N4 #246, GB-14 #247 ·
+**owner ตัดสินรอบ 17 (2026-11-04)**: spec 04 Q22 = (ก) ไม่ปฏิเสธ join ที่ไม่มีวิธีส่งเลย (กฎข้อ 35c) · หน้า orders เมื่อโหลด group orders ล้มไม่แสดง `no-orders-container` (กฎข้อ 32e1, AC-51 — ใน GB-12 #244) ·
+task ใหม่จาก review/qa รอบ 17: spec 01 CORE-33 (← #243) · CORE-34 (← #241) · spec 04 GB-N5 (← #247, #246) · spec 07 OPS-17c (← #242; ก่อน OPS-20b) · ไม่มีคำถามค้าง
 
 ## M0 Scaffold
 | PR | Task | สถานะ |
@@ -103,7 +105,9 @@ spec 01 กฎข้อ 86e/87) · merge แล้วตั้งแต่รอ
 | CORE-29 | (รอบ 16, รอบ 14b) กู้ตะกร้าหลัง login ใหม่: จำ id ตะกร้าหลักใน `customer.metadata` แล้วกู้เมื่อไม่มี cookie cart (AC-122; ADR-019 accepted owner 2026-11-04) | ☐ (← CORE-30; #234 ☑) |
 | CORE-30 | (รอบ 16, qa #239/#238) ไม่ login กด join/สร้างทีม → login แล้วกลับ `/<cc>/g/<token>` หรือ `/<cc>` (allow-list ของ `return_to`) (AC-123) | ☐ **เริ่มได้** |
 | CORE-31 | (รอบ 16) ปุ่มคัดลอกกลางใช้ร่วม `ShareLinkButton` + `VoucherCopyButton` (AC-124) | ☐ **เริ่มได้** |
-| CORE-32 | (รอบ 16, qa #238) กรอง option วิธีส่งตาม shipping profile ที่ checkout และหน้ากลุ่ม — ไม่แสดง Digital delivery ให้สินค้าที่ต้องจัดส่ง (AC-125) | ◐ (รอบ 17; ∥ GB-14 ด่าน backend ของ Q-C4 = ข) |
+| CORE-32 | (รอบ 16, qa #238) กรอง option วิธีส่งตาม shipping profile ที่ checkout และหน้ากลุ่ม — ไม่แสดง Digital delivery ให้สินค้าที่ต้องจัดส่ง (AC-125) | ◐ #243 (รอบ 17, ทาง (b); ∥ GB-14 ด่าน backend ของ Q-C4 = ข) |
+| CORE-33 | (รอบ 17, qa #243 O-1/O-2) ข้อความไทยเมื่อกรองแล้วไม่มีวิธีส่ง + method ค้างที่ถูกกรองออก (Digital delivery บน cart เก่า) ถือว่ายังไม่เลือก + comment e2e core-32 (AC-127) | ☐ (← CORE-32 #243) |
+| CORE-34 | (รอบ 17, qa #241 O-3) `removePromotionCode` ล้าง error เดิมก่อนส่ง (AC-128) | ☐ (← CORE-28 #241) |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | ☑ #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | ☑ #124 ∥ ☑ #130 |
 | CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | ☑ #168 |
@@ -149,17 +153,20 @@ GB-5 ☑ #185 (+ ops alert/runbook เงินค้าง) ∥ PAY-3b1 ☑ #18
 **GB-11 ☑ #230** route สาธารณะ `GET /store/group-buy/campaigns/active` + `GET /store/group-buy/groups/:token` ไม่คืน PII; AC-45..46 → **GB-7a1 ☑ #236** หน้ากลุ่ม `/<cc>/g/<token>` อ่านอย่างเดียว; AC-16a →
 (**GB-7a2 ☑ #238** เลือกที่อยู่ + วิธีส่ง (Q19) + join ด้วย cart ใหม่ (ไม่แตะ cart ปัจจุบัน), sync `aff`, ข้อความ error ต่อ code; AC-28, AC-47 ∥
 **GB-7c ☑ #239** แคมเปญ flash + group buy บนหน้าแรก + สร้างทีม; rebase กับ #216 FS-18; AC-48)) ;
-(รอบ 15 — 1 แคมเปญ = 1 สินค้า) **GB-6e ☑ #231** (picker สินค้าเดียว + validation + แก้ seed-load/e2e/unit เดิมที่ใช้หลายสินค้า/variant scope (review #227); AC-49..50; ชน `product-picker.tsx` กับ ADM-7) ∥ **GB-7a2a ☑ #229** (error map — `lib/util/group-join-error.ts` อยู่ใน develop `b20c1e1`; เลข PR จาก evidence "review #229") →
+(รอบ 15 — 1 แคมเปญ = 1 สินค้า) **GB-6e ☑ #231** (picker สินค้าเดียว + validation + แก้ seed-load/e2e/unit เดิมที่ใช้หลายสินค้า/variant scope (review #227); AC-49..50; ชน `product-picker.tsx` กับ ADM-7) ∥ **GB-7a2a ☑ #229** (error map — `lib/util/group-join-error.ts`) →
 GB-7a2 ใช้หลาย variant (← GB-7a1, GB-7a2a, GB-6e); GB-7c การ์ดแสดงสินค้าเดียว; Q20 ตัดสินแล้ว (owner 2026-11-03, กฎข้อ 31d) ;
 (รอบ 12) GB-9 ◐ #196 (alert เงินค้างอ่านสถานะใหม่ + runbook ตรวจ draft ก่อน refund; AC-43) → GB-10 ☐ (← #196 — รอบ 13 รวม follow-up ของ #196 (เกิน ~400 LOC → แยก GB-10b): subscriber fail-open, `loadMembership` ที่เดียว,
 test `membership_joined`, ขอบหัวข้อ runbook; membership `paid` เมื่อ ops แปลง draft เอง + noop ใต้ lock ในเส้นทางปกติ; AC-44) — ควรก่อน release v0.5.0;
 owner Q13 = (ก) manual, Q14 = (ก) `order-placed` (2026-10-28) ;
 GB-6a ☑ #75 → (GB-6b1 ☑ #87 ∥ GB-6b2 ☑ #96) → GB-6c1 ☑ #114 → GB-6c2 ☑ #121 → GB-6d ☑ #143 → GB-N3 ☑ #161 ;
 GB-N1 ☑ #106 · GB-N2 ☑ #126 (nit `trackSubscribers` คัดลอก `subscriberId` ถ้ายังไม่แก้ใน #126 → แก้ใน PR ถัดไปที่แตะ `group-buy-join.spec.ts`) · Q11 owner ยืนยัน (ก) ยอมรับ lock TTL 60s ใน v1 — ไม่มี task
-(รอบ 16) **GB-12 ◐ (รอบ 17)** (countdown กลาง, ชื่อสินค้า/ราคาใน `group-selection`, fixed "ต่อชิ้น", กล่องยืนยันออกจากกลุ่ม 375px + empty state เดียว; AC-51 — ควรก่อน v0.5.0) ∥
-**GB-N4 ☐ เริ่มได้** (test hygiene; AC-53; ต้อง merge ก่อน GB-13) → GB-13 ☐ (Q21 = ก owner 2026-11-04: `idempotency_key` ของการสร้างแคมเปญ; AC-52) ∥
-(รอบ 16b) **GB-14 ☐ เริ่มได้** (Q-C4 = ข: ตรวจ shipping profile ตอน join → 400 `GB_SHIPPING_PROFILE_NOT_COVERED` + ข้อความไทยใน `group-join-error.ts`; AC-54; ∥ CORE-32 ไม่มีไฟล์ชน — ควรก่อน v0.5.0;
-Q22 ค้าง: cart ไม่มีวิธีส่งเลย) · CORE-30, CORE-32 (spec 01) ควรก่อน v0.5.0
+(รอบ 16) **GB-12 ◐ #244 (รอบ 17)** (countdown กลาง, ชื่อสินค้า/ราคาใน `group-selection`, fixed "ต่อชิ้น", กล่องยืนยันออกจากกลุ่ม 375px + empty state เดียว
++ รอบ 17: ไม่แสดง empty state เมื่อโหลด group orders ล้ม (กฎข้อ 32e1); AC-51 — ควรก่อน v0.5.0) ∥
+**GB-N4 ◐ #246** (test hygiene; AC-53; ต้อง merge ก่อน GB-13) → GB-13 ☐ (Q21 = ก owner 2026-11-04: `idempotency_key` ของการสร้างแคมเปญ; AC-52) ∥
+(รอบ 16b) **GB-14 ◐ #247** (Q-C4 = ข: ตรวจ shipping profile ตอน join → 400 `GB_SHIPPING_PROFILE_NOT_COVERED` + ข้อความไทยใน `group-join-error.ts`; AC-54; ∥ CORE-32 ไม่มีไฟล์ชน — ควรก่อน v0.5.0;
+Q22 = (ก) owner 2026-11-04: cart ไม่มีวิธีส่งเลยไม่ถูกปฏิเสธ) →
+(รอบ 17) GB-N5 ☐ (← #247, #246: ตัด `!profile ||`, ขั้น O_dig → O_std ผ่าน Store API, helper admin ของ integration test, ชื่อตัวแปร pool ใน `home-campaigns.test.ts`; AC-55 — ไม่บล็อก release) ·
+CORE-30, CORE-32 (spec 01) ควรก่อน v0.5.0 (+ CORE-33 ถ้า CORE-32 อยู่ใน release)
 
 ## M6 Affiliate — **v0.6.0**
 AF-1 ☑ #11 · AF-2 ☑ #66 · AF-5 ☑ #35 → AF-3 ☑ #77 → (AF-3b ☑ #119 ∥ AF-4 ☑ #90 ∥ AF-4b ☑ #91 ∥ AF-7 ☑ #110) → AF-7b ☑ #122 →
@@ -181,7 +188,8 @@ OPS-18 ☑ #194 (run 41617065775: lock ไม่ใช่สาเหตุ, ≥
 OPS-20a ◐ #204 (owner 2026-11-03 — ปิด burst ได้ผ่าน dispatch input + แตกเวลาก่อน/ใน/หลัง hook, สรุป burst vs workflow; AC-31) → OPS-17a → OPS-17 → OPS-20b ☐ (ตัวชี้วัดความอิ่มตัว; AC-32)
 — ลำดับ `tools/load/*` (รอบ 13): OPS-20a → OPS-17a → OPS-17 → OPS-20b (ชน `run.sh`) · OPS-19 ⏸ (staging load test 500 rps × 60s + p95 < 300ms gate; AC-30 — ต้องมี ADR staging ก่อน) ·
 OPS-5 ☐ (ท้ายสุด)
-(รอบ 16) **OPS-17b ◐ (รอบ 17) — ความปลอดภัย** (scan secret ก่อนพิมพ์ลง job log + redact JWT ใน console ของ k6 + `run.sh:132` `k6-failures.txt` ผ่าน redact (nit review #240); AC-34) → OPS-20b (ชน `run.sh`)
+(รอบ 16) **OPS-17b ◐ #242 (รอบ 17) — ความปลอดภัย** (scan secret ก่อนพิมพ์ลง job log + redact JWT ใน console ของ k6 + `run.sh:132` `k6-failures.txt` ผ่าน redact (nit review #240); AC-34) →
+(รอบ 17) OPS-17c ☐ (← #242: stdout/stderr ของ `docker run` k6 ผ่าน redact, static test จับ `JSON.stringify(`, ตัวตรวจไม่ข้ามบรรทัด `grep -q`; AC-35) → OPS-20b (ชน `run.sh`)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
@@ -271,6 +279,9 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   test id ในหัวข้อ Storefront แก้ในที่เดิม (ไม่มี task) · spec 07: scan ก่อน cat + k6 console → OPS-17b
 - รอบ 16b (2026-11-04, owner ตัดสิน) → spec 01: Q-C3 = B (ADR-019 accepted), Q-C4 = ข → spec 04 GB-14 (กฎข้อ 35, AC-54, + Q22), comment e2e core-14g หลัง #241 → CORE-28b (กฎข้อ 90, AC-126) ·
   spec 04: Q21 = ก (กฎข้อ 17/33, Q10) · nit review #240 → spec 01 กฎข้อ 86e/87, Depends CORE-28/29; spec 04 GB-N4 ก่อน GB-13; spec 07 AC-34 (`run.sh:132`)
+- รอบ 17 (2026-11-04, owner ตัดสิน + อนุมัติเปิด task) → spec 04: Q22 = ก (กฎข้อ 35c), group orders ล้ม → ไม่แสดง empty state (กฎข้อ 32e1, AC-51 ใน GB-12 #244), แก้ breakpoint กฎข้อ 32d (`sm` 640px) ·
+  review #247 + `home-campaigns.test.ts` → GB-N5 (กฎข้อ 36, AC-55) · spec 01: qa #243 O-1/O-2 + comment e2e core-32 → CORE-33 (กฎข้อ 91, AC-127) · qa #241 O-3 → CORE-34 (กฎข้อ 92, AC-128) ·
+  หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89 · spec 07: nit review #242 → OPS-17c (AC-35) · เลข PR ของ ◐ รอบ 17
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →
