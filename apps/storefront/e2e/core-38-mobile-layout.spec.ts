@@ -10,6 +10,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { createVoucher } from "./support/evoucher"
 
 // CORE-38: spec 01 กฎข้อ 96, AC-132 — สรุปที่อยู่ของ checkout เรียงแนวตั้งที่ < 640px (อีเมลยาวตัดบรรทัดในคอลัมน์ของตัวเอง)
 // และ label แบบลอยของ `Input` ไม่ลงไปในพื้นที่ข้อความ (ขอบล่างของ label ≤ input.top + paddingTop) ทุกฟอร์มที่ใช้ `Input`
@@ -17,6 +18,12 @@ test.use({ evidenceTarget: { feature: "core", taskId: "CORE-38" } })
 
 const MOBILE = { width: 375, height: 812 }
 const DESKTOP = { width: 1280, height: 720 }
+const SM = { width: 640, height: 720 }
+
+// qa #267 D-1: ข้อความยาวไม่มีช่องว่างในทุกกล่องสรุป (ไม่ใช่แค่อีเมล)
+const LONG_NAME = "Somchaiwithaveryveryverylongfirstnamewithoutspaces"
+const LONG_ADDRESS = "Moo9SukhumvitRoadKhlongToeiNueaWattanaBangkokThailand1234567890"
+const LONG_CITY = "KhlongToeiNueaWattanaDistrictWithAVeryLongNameWithoutSpaces"
 
 type Box = { x: number; y: number; width: number; height: number }
 
@@ -54,6 +61,32 @@ async function expectLabelsAboveText(page: Page, scopeTestId: string, minInputs:
   const { count, overlaps } = await labelsOverText(page, scopeTestId)
   expect(count, `${scopeTestId}: จำนวน input ที่ตรวจ`).toBeGreaterThanOrEqual(minInputs)
   expect(overlaps, `${scopeTestId}: label ทับพื้นที่ข้อความ`).toEqual([])
+}
+
+/** ทุก text node ในกล่องสรุปต้องอยู่ในกล่องของตัวเอง (วัดด้วย Range) และหน้าไม่ล้นแนวนอน */
+async function expectSummaryTextContained(page: Page, ids: string[], width: number) {
+  await page.setViewportSize({ width, height: 812 })
+  for (const id of ids) await expect(page.getByTestId(id)).toBeVisible()
+  const result = await page.evaluate((testIds) => {
+    const overflow: string[] = []
+    for (const id of testIds) {
+      const box = document.querySelector(`[data-testid="${id}"]`)!
+      const b = box.getBoundingClientRect()
+      const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent?.trim()) continue
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        const r = range.getBoundingClientRect()
+        if (r.left < b.left - 0.5 || r.right > b.right + 0.5 || r.top < b.top - 0.5 || r.bottom > b.bottom + 0.5) {
+          overflow.push(`${id}: "${node.textContent.trim().slice(0, 24)}…" right=${r.right} > box.right=${b.right}`)
+        }
+      }
+    }
+    return { overflow, scrollWidth: document.documentElement.scrollWidth }
+  }, ids)
+  expect(result.overflow, `ข้อความล้นกล่องสรุปที่ ${width}px`).toEqual([])
+  expect(result.scrollWidth, `scrollWidth ที่ ${width}px`).toBeLessThanOrEqual(width)
 }
 
 for (const viewport of [MOBILE, DESKTOP]) {
@@ -164,4 +197,88 @@ test("AC-132: checkout — label ของฟอร์มที่อยู่�
     const tops = await Promise.all(ids.map(async (id) => (await page.getByTestId(id).boundingBox())!.y))
     for (const top of tops) expect(Math.abs(top - tops[0])).toBeLessThanOrEqual(2)
   })
+})
+
+test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const pk = await publishableKey(request, await adminHeaders(request))
+  const customer = await createCustomer(request, pk)
+  await signInAs(context, baseURL!, customer)
+  await page.setViewportSize(MOBILE)
+
+  await page.goto(`/${CC}/products/t-shirt`)
+  await page.getByTestId("add-product-button").click()
+  await expect(page.getByTestId("add-product-button")).toBeEnabled()
+  await page.goto(`/${CC}/checkout?step=address`)
+  await expect(page.getByTestId("shipping-first-name-input")).toBeVisible()
+
+  await step("กรอกที่อยู่จัดส่งและที่อยู่ใบเสร็จ (ต่างกัน) ด้วยข้อความยาวไม่มีช่องว่าง", async () => {
+    await page.getByTestId("shipping-first-name-input").fill(LONG_NAME)
+    await page.getByTestId("shipping-last-name-input").fill(LONG_NAME)
+    await page.getByTestId("shipping-address-input").fill(LONG_ADDRESS)
+    await page.getByTestId("shipping-postal-code-input").fill("10110")
+    await page.getByTestId("shipping-city-input").fill(LONG_CITY)
+    await page.getByTestId("shipping-country-select").selectOption(CC)
+    await page.getByTestId("shipping-phone-input").fill("0812345678")
+    await page.getByTestId("billing-address-checkbox").click()
+    await page.getByTestId("billing-first-name-input").fill(LONG_NAME)
+    await page.getByTestId("billing-last-name-input").fill(LONG_NAME)
+    await page.getByTestId("billing-address-input").fill(LONG_ADDRESS)
+    await page.getByTestId("billing-postal-input").fill("10110")
+    await page.getByTestId("billing-country-select").selectOption(CC)
+    await page.getByTestId("submit-address-button").click()
+    await expect(page).toHaveURL(/step=delivery/, { timeout: 30_000 })
+  })
+
+  const ids = ["shipping-address-summary", "shipping-contact-summary", "billing-address-summary"]
+  for (const width of [MOBILE.width, SM.width, DESKTOP.width]) {
+    await step(`${width}px: ข้อความยาวอยู่ในกล่องสรุปของตัวเอง`, async () => {
+      await expectSummaryTextContained(page, ids, width)
+    })
+  }
+})
+
+test("AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่ยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const admin = await adminHeaders(request)
+  const pk = await publishableKey(request, admin)
+  const customer = await createCustomer(request, pk)
+  await signInAs(context, baseURL!, customer)
+  const voucher = await createVoucher(request, admin)
+  await page.setViewportSize(MOBILE)
+
+  await step("ใส่ voucher แล้วกรอกที่อยู่ใบเสร็จด้วยข้อความยาว", async () => {
+    await page.goto(`/${CC}/products/${voucher.handle}`)
+    await page.getByTestId("add-product-button").click()
+    await expect(page.getByTestId("add-product-button")).toBeEnabled()
+    await page.goto(`/${CC}/checkout?step=address`)
+    await expect(page.getByTestId("billing-first-name-input")).toBeVisible()
+    await page.getByTestId("billing-first-name-input").fill(LONG_NAME)
+    await page.getByTestId("billing-last-name-input").fill(LONG_NAME)
+    await page.getByTestId("billing-address-input").fill(LONG_ADDRESS)
+    await page.getByTestId("billing-postal-input").fill("10110")
+    await page.getByTestId("billing-country-select").selectOption(CC)
+    await page.getByTestId("billing-phone-input").fill("0812345678")
+    await page.getByTestId("submit-address-button").click()
+    await expect(page).toHaveURL(/step=payment/, { timeout: 30_000 })
+  })
+
+  const ids = ["billing-address-summary", "billing-contact-summary"]
+  for (const width of [MOBILE.width, SM.width, DESKTOP.width]) {
+    await step(`${width}px: ข้อความยาวอยู่ในกล่องสรุปของตัวเอง`, async () => {
+      await expectSummaryTextContained(page, ids, width)
+    })
+  }
 })

@@ -121,9 +121,11 @@ const Addresses = ({
         </form>
       ) : (
         <div>
-          <div className="text-small-regular">
+          {/* CORE-38 (กฎข้อ 96): overflow-wrap สืบทอดถึงทุกข้อความในกล่องสรุป (ชื่อ/ที่อยู่/เมือง/อีเมลยาวไม่มีช่องว่าง)
+              ตัดบรรทัดในคอลัมน์ของตัวเอง; คอลัมน์ต้องมี min-w-0 */}
+          <div className="text-small-regular [overflow-wrap:anywhere]">
             {cart && cart.billing_address && digitalOnly ? (
-              // CORE-38 (กฎข้อ 96): < 640px เรียงแนวตั้ง, ≥ sm แถวเดียว; min-w-0 ให้ข้อความยาวตัดบรรทัดในคอลัมน์ของตัวเอง
+              // CORE-38: < 640px เรียงแนวตั้ง, ≥ sm แถวเดียว
               <div className="flex flex-col gap-y-4 w-full sm:flex-row sm:items-start sm:gap-x-1">
                 <div className="flex flex-col min-w-0 sm:w-1/2" data-testid="billing-address-summary">
                   <Text className="txt-medium-plus text-ui-fg-base mb-1">
@@ -147,14 +149,12 @@ const Addresses = ({
                   <Text className="txt-medium text-ui-fg-subtle">
                     {cart.billing_address.phone}
                   </Text>
-                  <Text className="txt-medium text-ui-fg-subtle [overflow-wrap:anywhere]">
-                    {cart.email}
-                  </Text>
+                  <Text className="txt-medium text-ui-fg-subtle">{cart.email}</Text>
                 </div>
               </div>
             ) : cart && cart.shipping_address ? (
               <div className="flex items-start gap-x-8">
-                {/* CORE-38 (กฎข้อ 96): < 640px เรียงแนวตั้ง, ≥ sm แถวเดียว; min-w-0 ให้ข้อความยาวตัดบรรทัดในคอลัมน์ของตัวเอง */}
+                {/* CORE-38: < 640px เรียงแนวตั้ง, ≥ sm แถวเดียว */}
                 <div className="flex flex-col gap-y-4 w-full sm:flex-row sm:items-start sm:gap-x-1">
                   <div
                     className="flex flex-col min-w-0 sm:w-1/3"
@@ -191,7 +191,7 @@ const Addresses = ({
                       {cart.shipping_address.phone}
                     </Text>
                     <Text
-                      className="txt-medium text-ui-fg-subtle [overflow-wrap:anywhere]"
+                      className="txt-medium text-ui-fg-subtle"
                       data-testid="shipping-contact-email"
                     >
                       {cart.email}
