@@ -1,0 +1,26 @@
+# GB-N7 evidence (กฎข้อ 38, AC-57) — base origin/develop 023a720
+
+## AC-57: บรรทัดก่อนหน้า (ติดกัน) ของ assertion
+586-        // ไม่ใช่ล้มที่ zod validator ของ route — ถ้าลบทิ้ง test อาจผ่านทั้งที่ไม่เคยถือ lock เลย จึงไม่ได้พิสูจน์ว่า compensation ปล่อย lock
+587:        expect(JSON.stringify(failed.data)).toContain("percentage number between 0 and 100")
+
+## ตรวจ: comment / อักษรไทย / lock / zod
+comment: PASS
+thai: PASS
+lock: PASS
+zod: PASS
+
+## ตรวจ: diff ในไฟล์มีเฉพาะบรรทัด comment
++        // GB-N7 (กฎข้อ 38, AC-57): assertion นี้ยืนยันว่า request แรกล้มที่ promotion module (createPromotionsWorkflow) หลัง acquireLockStep
++        // ไม่ใช่ล้มที่ zod validator ของ route — ถ้าลบทิ้ง test อาจผ่านทั้งที่ไม่เคยถือ lock เลย จึงไม่ได้พิสูจน์ว่า compensation ปล่อย lock
+non-comment changed lines: 0
+comment-only diff: PASS
+
+## pnpm lint
+exit 0 (0 errors; warnings เดิมของ storefront ไม่เกี่ยวกับ task)
+
+## pnpm typecheck
+exit 0 (backend + admin + storefront)
+
+## integration (AC-56 ยังผ่าน)
+ไม่รันในเครื่องตามคำสั่ง — CI job backend-tests เป็นผู้ยืนยัน (diff เป็น comment ล้วน ไม่เปลี่ยนพฤติกรรม)
