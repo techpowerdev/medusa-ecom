@@ -1,14 +1,9 @@
-import {
-  Badge,
-  createDataTableColumnHelper,
-  DataTable,
-  DataTablePaginationState,
-  useDataTable,
-} from "@medusajs/ui"
+import { DataTable } from "@medusajs/dashboard/components"
+import { useQueryParams } from "@medusajs/dashboard/hooks"
+import { Badge, createDataTableColumnHelper } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { evoucherApi, evoucherKeys, Pool } from "../../lib/evoucher"
+import { poolsListQuery } from "../../lib/evoucher-query"
 
 const columnHelper = createDataTableColumnHelper<Pool>()
 
@@ -37,42 +32,39 @@ const columns = [
   }),
 ]
 
+const PAGE_SIZE = 20
+const PREFIX = "pools"
+
+// spec 08 กฎ 9: หน้าปัจจุบันอยู่ใน URL (`pools_offset`) — DataTable ของ dashboard เขียน, useQueryParams อ่านกลับเพื่อ request
 export const PoolsTable = () => {
-  const navigate = useNavigate()
-  const [pagination, setPagination] = useState<DataTablePaginationState>({
-    pageIndex: 0,
-    pageSize: 20,
-  })
-  const limit = pagination.pageSize
-  const offset = pagination.pageIndex * limit
+  const params = useQueryParams(["offset"], PREFIX)
+  const query = poolsListQuery(params, PAGE_SIZE)
 
   const { data, isLoading } = useQuery({
-    queryKey: [...evoucherKeys.pools, limit, offset],
-    queryFn: () => evoucherApi.listPools({ limit, offset }),
+    queryKey: [...evoucherKeys.pools, query],
+    queryFn: () => evoucherApi.listPools(query),
     placeholderData: keepPreviousData,
   })
 
-  const table = useDataTable({
-    data: data?.pools ?? [],
-    columns,
-    getRowId: (pool) => pool.id,
-    rowCount: data?.count ?? 0,
-    isLoading,
-    pagination: { state: pagination, onPaginationChange: setPagination },
-    onRowClick: (_, pool) => navigate(`/evouchers/pools/${pool.id}`),
-  })
-
   return (
-    <DataTable instance={table}>
-      <DataTable.Table
-        emptyState={{
-          empty: {
-            heading: "No voucher pools yet",
-            description: "Open a product variant and create a voucher pool from the Voucher pool widget.",
-          },
-        }}
-      />
-      <DataTable.Pagination />
-    </DataTable>
+    <DataTable
+      data={data?.pools ?? []}
+      columns={columns}
+      getRowId={(pool) => pool.id}
+      rowCount={data?.count ?? 0}
+      isLoading={isLoading}
+      heading="E-voucher pools"
+      subHeading="Create a pool from a product variant page (Voucher pool widget), then import partner codes here."
+      prefix={PREFIX}
+      pageSize={PAGE_SIZE}
+      enableSearch={false}
+      rowHref={(pool) => `/evouchers/pools/${pool.id}`}
+      emptyState={{
+        empty: {
+          heading: "No voucher pools yet",
+          description: "Open a product variant and create a voucher pool from the Voucher pool widget.",
+        },
+      }}
+    />
   )
 }

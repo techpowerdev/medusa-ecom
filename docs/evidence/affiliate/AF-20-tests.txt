@@ -1,0 +1,65 @@
+AF-20 — หลักฐาน test (spec 05 กฎ 44, AC-52) 2026-11-04
+รันบน prod build (next build + next start, backend medusa start จาก .medusa/server) Chromium
+
+## Red 1 (ยังไม่แก้ layout.tsx): AC-52 3/3 ล้ม — getByTestId('affiliate-code-label') element(s) not found; AC-51 3/3 ผ่าน
+  ✓  1 [chromium] › e2e/affiliate-header-overflow.spec.ts:34:9 › AC-51 ที่ 375×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 375 (1.2s)
+  ✓  2 [chromium] › e2e/affiliate-header-overflow.spec.ts:34:9 › AC-51 ที่ 639×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 639 (1.1s)
+  ✓  3 [chromium] › e2e/affiliate-header-overflow.spec.ts:68:5 › AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (463ms)
+  ✘  4 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 375×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 375 (5.6s)
+  ✘  5 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 639×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 639 (5.6s)
+  ✘  6 [chromium] › e2e/affiliate-header-overflow.spec.ts:151:7 › AC-52 ที่ 1280×800 › AC-52: ที่ 1280 ชื่อสั้นและรหัสสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (หน้าตาเดิม) (5.8s)
+  3 failed
+  3 passed (21.0s)
+
+## Red 2 (เพิ่มเฉพาะ testid affiliate-code-label ยังไม่ใส่ whitespace-nowrap / inline-block): ส่วนป้าย/รหัสล้ม
+  375: lineCount(affiliate-code-label) Expected 1, Received 2 (ป้ายถูกตัดเป็น "รหัส / แนะนำ") — spec.ts:137
+  639: lineCount(affiliate-code) Expected 1, Received 2 (รหัส 32 ตัวถูกตัดที่ `-`) — spec.ts:139
+  ✘  1 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 375×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 375 (764ms)
+  ✘  2 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 639×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 639 (735ms)
+  ✓  3 [chromium] › e2e/affiliate-header-overflow.spec.ts:151:7 › AC-52 ที่ 1280×800 › AC-52: ที่ 1280 ชื่อสั้นและรหัสสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (หน้าตาเดิม) (535ms)
+  2 failed
+  1 passed (3.0s)
+
+## ผลวัดที่ 375 (font 16px): ความกว้างบรรทัดของ <p> = 327px; รหัส 32 ตัวกว้างสุด ("w" x 32) > 327px → whitespace-nowrap จะล้น
+   จึงเลือก inline-block max-w-full (ขึ้นบรรทัดใหม่ทั้งก้อนเมื่อพอดีบรรทัด ตัดได้เฉพาะเมื่อยาวเกินบรรทัด)
+
+## Green: npx playwright test e2e/affiliate-header-overflow.spec.ts --project=chromium --workers=1 --repeat-each=3
+   (AC-51 ชื่อ "AF19"+"N"x72 ทุก 5 หน้า; AC-52 ชื่อ "AF20"+"N"x72 + รหัส 32 ตัวมี - 3 ตัว ที่ /th/affiliate และ /th/affiliate/profile; 1280x800 ชื่อ/รหัสสั้น)
+  ✓   1 [chromium] › e2e/affiliate-header-overflow.spec.ts:34:9 › AC-51 ที่ 375×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 375 (1.2s)
+  ✓   2 [chromium] › e2e/affiliate-header-overflow.spec.ts:34:9 › AC-51 ที่ 639×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 639 (973ms)
+  ✓   3 [chromium] › e2e/affiliate-header-overflow.spec.ts:68:5 › AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (577ms)
+  ✓   4 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 375×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 375 (621ms)
+  ✓   5 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 639×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 639 (653ms)
+  ✓   6 [chromium] › e2e/affiliate-header-overflow.spec.ts:151:7 › AC-52 ที่ 1280×800 › AC-52: ที่ 1280 ชื่อสั้นและรหัสสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (หน้าตาเดิม) (606ms)
+  ✓   7 [chromium] › e2e/affiliate-header-overflow.spec.ts:34:9 › AC-51 ที่ 375×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 375 (1.0s)
+  ✓   8 [chromium] › e2e/affiliate-header-overflow.spec.ts:34:9 › AC-51 ที่ 639×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 639 (998ms)
+  ✓   9 [chromium] › e2e/affiliate-header-overflow.spec.ts:68:5 › AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (590ms)
+  ✓  10 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 375×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 375 (628ms)
+  ✓  11 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 639×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 639 (791ms)
+  ✓  12 [chromium] › e2e/affiliate-header-overflow.spec.ts:151:7 › AC-52 ที่ 1280×800 › AC-52: ที่ 1280 ชื่อสั้นและรหัสสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (หน้าตาเดิม) (624ms)
+  ✓  13 [chromium] › e2e/affiliate-header-overflow.spec.ts:34:9 › AC-51 ที่ 375×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 375 (1.4s)
+  ✓  14 [chromium] › e2e/affiliate-header-overflow.spec.ts:34:9 › AC-51 ที่ 639×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 639 (1.1s)
+  ✓  15 [chromium] › e2e/affiliate-header-overflow.spec.ts:68:5 › AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (766ms)
+  ✓  16 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 375×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 375 (670ms)
+  ✓  17 [chromium] › e2e/affiliate-header-overflow.spec.ts:115:9 › AC-52 ที่ 639×812 › AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ 639 (660ms)
+  ✓  18 [chromium] › e2e/affiliate-header-overflow.spec.ts:151:7 › AC-52 ที่ 1280×800 › AC-52: ที่ 1280 ชื่อสั้นและรหัสสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (หน้าตาเดิม) (585ms)
+  18 passed (16.2s)
+
+## e2e เดิม (AC-50 + affiliate-portal*): ไม่แก้ locator
+  ✓  1 [chromium] › e2e/affiliate-portal-pages.spec.ts:68:5 › AC-40: nav ของ portal → Programs, Earnings (reversed แยกติดลบ), Payouts ไม่มี reference, Profile (1.3s)
+  ✓  2 [chromium] › e2e/affiliate-portal-pages.spec.ts:172:5 › AC-40: affiliate ที่ถูกระงับ → Products/Programs แสดง affiliate-status-notice, Earnings/Payouts เปิดได้ (763ms)
+  ✓  3 [chromium] › e2e/affiliate-portal-polish.spec.ts:49:5 › AC-47: ?page=99 ของ Payouts/Programs → affiliate-page-out-of-range ไทย + ลิงก์หน้าแรก; reversed ขึ้นต้นด้วย − (994ms)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (1.4s)
+  ✓  5 [chromium] › e2e/affiliate-portal.spec.ts:140:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (602ms)
+  ✓  6 [chromium] › e2e/affiliate-portal.spec.ts:166:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (512ms)
+  ✓  7 [chromium] › e2e/affiliate-portal.spec.ts:189:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (506ms)
+  ✓  8 [chromium] › e2e/affiliate-profile-overflow.spec.ts:31:7 › AC-50 ที่ 375×812 › AC-50: อีเมลยาวไม่มีช่องว่าง → ไม่มี scroll แนวนอน และอีเมลอยู่ในจอครบ (723ms)
+  ✓  9 [chromium] › e2e/affiliate-profile-overflow.spec.ts:52:5 › AC-50: ที่ 1280 ป้ายอีเมล (<dt>) กับค่า (affiliate-profile-email) ยังอยู่แถวเดียวกัน (846ms)
+  9 passed (8.6s)
+
+## storefront unit (vitest): pnpm --filter storefront test:unit
+ Test Files  83 passed (83)
+      Tests  951 passed (951)
+## storefront e2e unit project: pnpm --filter storefront test:e2e:unit
+  68 passed
+## pnpm lint: 0 errors (warning เดิม 31 รายการ ไม่มีจากไฟล์ที่แก้); pnpm typecheck: ผ่าน (backend + storefront)

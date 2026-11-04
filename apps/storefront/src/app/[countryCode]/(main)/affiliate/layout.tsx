@@ -29,10 +29,17 @@ export default async function AffiliatePortalLayout({
     <>
       <div className="content-container pt-12 flex flex-col gap-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          {/* AF-19 กฎ 43: ชื่อละตินยาวไม่มีช่องว่างต้องหดและตัดคำได้ ไม่ดันหน้าล้นแนวนอน */}
+          {/* AF-19 กฎ 43: ชื่อละตินยาวไม่มีช่องว่างต้องหดและตัดคำได้ ไม่ดันหน้าล้นแนวนอน
+              AF-20 กฎ 44: ป้ายไม่ตัดบรรทัด; รหัสเป็น inline-block → พอดีบรรทัดก็ขึ้นบรรทัดใหม่ทั้งก้อน (ไม่ตัดที่ `-`)
+              ตัดได้เฉพาะเมื่อยาวเกินบรรทัด (max-w-full + overflow-wrap ที่สืบทอดจาก <p>) */}
           <p className="min-w-0 [overflow-wrap:anywhere]">
-            <span data-testid="affiliate-header-name">{affiliate.name}</span> · รหัสแนะนำ{" "}
-            <span data-testid="affiliate-code">{affiliate.code}</span>
+            <span data-testid="affiliate-header-name">{affiliate.name}</span> ·{" "}
+            <span className="whitespace-nowrap" data-testid="affiliate-code-label">
+              รหัสแนะนำ
+            </span>{" "}
+            <span className="inline-block max-w-full" data-testid="affiliate-code">
+              {affiliate.code}
+            </span>
           </p>
           <form action={affiliateLogout}>
             <input type="hidden" name="countryCode" value={countryCode} />
