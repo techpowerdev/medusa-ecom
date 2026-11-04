@@ -16,7 +16,7 @@ export const SHIPPING_PROFILE_NOT_COVERED_MESSAGE = `${GB_SHIPPING_PROFILE_NOT_C
 
 /**
  * spec 04 กฎข้อ 35: กฎเทียบเดียวกับ `validateShippingStep` ของ Medusa 2.22.1 — profile ของทุก line ที่ `requires_shipping`
- * ต้องอยู่ในชุด profile ของ option ของ shipping method; line ที่สินค้าไม่มี profile ถือว่าไม่ครอบ
+ * ต้องอยู่ในชุด profile ของ option ของ shipping method; line ที่สินค้าไม่มี profile ถือว่าไม่ครอบ (`available` ไม่มีค่าว่าง)
  * ต่างจาก Medusa: cart ที่ไม่มี shipping method เลยไม่ตรวจ (กฎข้อ 35c, Q22)
  */
 export function assertShippingProfilesCovered(cart: ShippingCart, shippingOptions: ShippingOptionProfile[]): void {
@@ -30,7 +30,7 @@ export function assertShippingProfilesCovered(cart: ShippingCart, shippingOption
     .filter((i) => i?.requires_shipping)
     .some((i) => {
       const profile = i?.variant?.product?.shipping_profile?.id
-      return !profile || !available.has(profile)
+      return !available.has(profile)
     })
   if (missing) {
     throw new MedusaError(
