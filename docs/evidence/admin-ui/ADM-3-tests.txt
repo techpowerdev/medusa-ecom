@@ -1,0 +1,138 @@
+# ADM-3 (spec 08 AC-6, กฎ 8) — ผล test
+# วันที่: 2026-11-04, node v22.23.3, base origin/develop 1c664a9
+
+## Red (ก่อนเขียนโค้ด)
+### jest lib/__tests__/flash-sale-form.unit.spec.ts, evoucher-pool-form.unit.spec.ts — ล้มเพราะยังไม่มี module
+  Cannot find module '../flash-sale-form' / '../evoucher-pool-form'
+Test Suites: 2 failed, 2 total
+### jest src/admin/__tests__/medusa-ui.unit.spec.ts — ข้อตรวจ AC-6 ใหม่
+  ✕ widgets/flash-sale-options.tsx ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState
+  ✕ widgets/variant-evoucher-pool.tsx ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState
+  ✕ lib/flash-sale-form.ts ใช้ optionalInt จาก @medusajs/dashboard/lib (ไม่ import ui/components/hooks — กฎ 2)
+  ✕ lib/evoucher-pool-form.ts ใช้ optionalInt จาก @medusajs/dashboard/lib (ไม่ import ui/components/hooks — กฎ 2)
+Tests:       4 failed, 49 passed, 53 total
+### playwright e2e/admin-form-pilot.spec.ts (รอบแรกบน prod build)
+  ✘ AC-6 drawer flash sale — fs-total-cap-error ไม่ปรากฏ: browser ดัก min=1 ของ input number ก่อน zod → แก้ด้วย noValidate ที่ KeyboundForm
+  (หมายเหตุ: e2e เขียนหลังแปลง widget; โค้ดก่อน ADM-3 ไม่มี testid fs-total-cap-error/evoucher-pool-partner_id-error จึงล้มแน่นอน)
+
+## Green — jest (unit ของ schema + static AC-6)
+PASS src/admin/lib/__tests__/flash-sale-form.unit.spec.ts
+  optionalPositiveInt
+    ✓ "" → null
+    ✓ undefined → null
+    ✓ "2" → 2
+    ✓ 3 → 3
+    ✓ "0" → error
+    ✓ "1.5" → error
+    ✓ "abc" → error
+    ✓ "-1" → error
+  flashSaleFormSchema
+    ✓ แปลงค่าฟอร์มเป็น body ของ POST .../config
+    ✓ คง banner_text ที่ไม่ว่างไว้ตามที่กรอก
+    ✓ total_cap "0" → error ที่ช่อง total_cap พร้อมข้อความภาษาอังกฤษ
+    ✓ total_cap "1.5" → error ที่ช่อง total_cap พร้อมข้อความภาษาอังกฤษ
+    ✓ total_cap "abc" → error ที่ช่อง total_cap พร้อมข้อความภาษาอังกฤษ
+  toFlashSaleFormValues
+    ✓ ไม่มี config → ค่าว่าง
+    ✓ config ที่บันทึกแล้ว → ค่าในฟอร์ม (null = ว่าง)
+PASS src/admin/lib/__tests__/evoucher-pool-form.unit.spec.ts
+  poolFormSchema
+    ✓ ค่าเริ่มต้น low_stock_threshold = 20
+    ✓ แปลงค่าฟอร์มเป็น body ของ createPool (ไม่รวม variant_id)
+    ✓ แปลง face_value/low_stock_threshold/validity_note ที่กรอก
+    ✓ low_stock_threshold ว่าง → 20 (ค่าเดิมของฟอร์ม)
+    ✓ ไม่เลือก partner และไม่กรอกช่องบังคับ → error ที่ทุกช่องบังคับ
+    ✓ name ที่มีแต่ช่องว่าง → error
+    ✓ face_value "-1" → error
+    ✓ face_value "abc" → error
+    ✓ low_stock_threshold "-1" → error
+    ✓ low_stock_threshold "1.5" → error
+    ✓ low_stock_threshold "abc" → error
+PASS src/admin/__tests__/medusa-ui.unit.spec.ts
+  route config icon (spec 08 AC-2)
+    ✓ พบ route ที่ต้องตรวจ
+    ✓ evouchers มี icon ที่ import จาก @medusajs/icons
+    ✓ group-buying มี icon ที่ import จาก @medusajs/icons
+  Header + SectionRow (spec 08 AC-5)
+    ✓ components/common/header.tsx ถูก import อย่างน้อย 2 ไฟล์
+    ✓ widgets/flash-sale-options.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+    ✓ widgets/variant-evoucher-pool.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+  รายการข้อยกเว้นของ AC-4 (spec 08)
+    ✓ components/affiliate/** ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ routes/affiliate/** ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ lib/affiliate* ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ components/group-buy/create-campaign.tsx ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ components/group-buy/groups-section.tsx ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ lib/group-buy-form.ts ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ จับเฉพาะไฟล์ในรายการ
+  pattern ต้องห้ามของกฎ 4–6 (spec 08 AC-4)
+    ✓ ตรวจไฟล์ที่ ADM-2a/2b ปรับแล้ว
+    ✓ vite-env.d.ts ไม่มี pattern ต้องห้าม
+    ✓ i18n/index.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/client.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher-pool-form.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher-resend.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/flash-sale-form.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/form-validation.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/group-buy-campaign.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/group-buy.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/single-flight.ts ไม่มี pattern ต้องห้าม
+    ✓ widgets/flash-sale-options.tsx ไม่มี pattern ต้องห้าม
+    ✓ widgets/order-evouchers.tsx ไม่มี pattern ต้องห้าม
+    ✓ widgets/variant-evoucher-pool.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/common/container.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/common/header.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/codes-table.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/import-codes.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/partners-section.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/pools-table.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/group-buy/group-members.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/group-buy/product-picker.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/evouchers/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/group-buying/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/group-buying/[id]/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/evouchers/pools/[id]/page.tsx ไม่มี pattern ต้องห้าม
+  กันกดซ้ำด้วย createSingleFlight (spec 08 กฎ 4, ADM-2b)
+    ✓ widgets/flash-sale-options.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ widgets/order-evouchers.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ components/group-buy/group-members.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ routes/group-buying/[id]/page.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+  แสดงวันเวลาด้วย useDate (spec 08 AC-3, ADM-2b)
+    ✓ lib/evoucher.ts ไม่มี formatDate/formatDateTime
+    ✓ lib/group-buy.ts ไม่มี formatDate/formatDateTime
+    ✓ widgets/order-evouchers.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/evoucher/codes-table.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/group-buy/group-members.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/group-buy/groups-section.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ routes/group-buying/page.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ routes/group-buying/[id]/page.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+  ฟอร์ม pilot ใช้ Form + KeyboundForm + zod (spec 08 AC-6, กฎ 8, ADM-3)
+    ✓ widgets/flash-sale-options.tsx ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState
+    ✓ widgets/variant-evoucher-pool.tsx ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState
+    ✓ lib/flash-sale-form.ts ใช้ optionalInt จาก @medusajs/dashboard/lib (ไม่ import ui/components/hooks — กฎ 2)
+    ✓ lib/evoucher-pool-form.ts ใช้ optionalInt จาก @medusajs/dashboard/lib (ไม่ import ui/components/hooks — กฎ 2)
+Tests:       82 passed, 82 total
+
+## pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 90 passed, 90 total
+Tests:       967 passed, 967 total
+
+## e2e admin บน prod build (medusa build + medusa start, ADMIN_UI_OPTIONS locale en-US / Asia/Bangkok)
+  ✓  1 [chromium] › e2e/admin-form-pilot.spec.ts:23:5 › AC-6: drawer flash sale — Total cap 0 แสดง error ไม่ POST; dblclick Save และ Meta+Enter = POST 1 ครั้ง (2.9s)
+  ✓  2 [chromium] › e2e/admin-form-pilot.spec.ts:109:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง (2.3s)
+  ✓  3 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (3.1s)
+  ✓  4 [chromium] › e2e/flash-sale-admin-save.spec.ts:10:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (3.0s)
+  ✓  5 [chromium] › e2e/flash-sale-admin-widget.spec.ts:9:5 › AC-5: widget flash sale ที่บันทึกแล้วแสดงค่า Total cap ตรงกับ API (1.3s)
+  5 passed (13.5s)
+
+## pnpm --filter storefront test:e2e:unit
+  69 passed
+
+## pnpm typecheck
+exit 0 (backend + storefront)
+
+## pnpm lint
+  apps/backend lint: ✖ 2 problems (0 errors, 2 warnings)
+  apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+  (warning ทั้งหมดเป็นของไฟล์เดิมที่ task นี้ไม่ได้แตะ)
