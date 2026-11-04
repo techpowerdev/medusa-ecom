@@ -26,6 +26,7 @@ describe("groupJoinErrorMessage", () => {
         "GB_GROUP_FULL",
         "GB_ITEMS_NOT_ELIGIBLE",
         "GB_MAX_TOTAL_ORDERS_REACHED",
+        "GB_SHIPPING_PROFILE_NOT_COVERED",
         "GB_UNITS_LIMIT_EXCEEDED",
         "PROMOTION_NOT_COMBINABLE",
       ].sort()
@@ -85,7 +86,9 @@ describe("groupJoinErrorCode — FetchError ของ js-sdk 2.22.1 ไม่ม
       message: message.replace(/\$\{[^}]+\}/g, "5"),
     }))
     expect(found.map((f) => f.code).sort()).toEqual(
-      GROUP_JOIN_CODES.filter((c) => c !== "GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED").sort()
+      GROUP_JOIN_CODES.filter(
+        (c) => c !== "GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED" && c !== "GB_SHIPPING_PROFILE_NOT_COVERED"
+      ).sort()
     )
     for (const { code, message } of found) {
       expect(groupJoinErrorCode(new FetchError(message, "Conflict", 409)), message).toBe(code)
@@ -130,5 +133,30 @@ describe("groupJoinFailure + groupJoinActionMessage (GB-7a2)", () => {
     expect(JSON.parse(JSON.stringify(groupJoinFailure(new FetchError("The group is full", "Conflict", 409))))).toEqual({
       error: "GB_GROUP_FULL",
     })
+  })
+})
+
+// GB-14 (spec 04 กฎข้อ 35d, AC-54): 400 ที่มีชื่อ code ในข้อความ → code นั้น ไม่ใช่ "ปิดรับแล้ว"
+describe("GB_SHIPPING_PROFILE_NOT_COVERED (GB-14)", () => {
+  const CODE = "GB_SHIPPING_PROFILE_NOT_COVERED"
+
+  it("400 ที่ข้อความขึ้นต้นด้วยชื่อ code → code นั้น (ไม่ใช่ closed) ทั้ง object และ FetchError", () => {
+    expect(groupJoinFailure({ status: 400, message: `${CODE}: the shipping methods don't cover the items` })).toEqual({
+      error: CODE,
+    })
+    expect(groupJoinFailure(new FetchError(`${CODE}: x`, "Bad Request", 400))).toEqual({ error: CODE })
+  })
+
+  it("ข้อความไทยของ code นี้ต่างจากข้อความของทุก code อื่น", () => {
+    const text = groupJoinActionMessage(CODE)
+    expect(text).toMatch(THAI)
+    const others = [
+      ...GROUP_JOIN_CODES.filter((c) => c !== CODE).map((c) => groupJoinActionMessage(c)),
+      groupJoinActionMessage("closed"),
+      groupJoinActionMessage("failed"),
+      groupJoinActionMessage("empty_cart"),
+      groupJoinActionMessage("unauthorized"),
+    ]
+    expect(others).not.toContain(text)
   })
 })
