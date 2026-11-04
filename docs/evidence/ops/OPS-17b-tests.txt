@@ -1,0 +1,49 @@
+# OPS-17b (spec 07 AC-34) — ผล test ในเครื่อง (2026-11-04, node v22.23.3)
+
+## Red (ก่อนเพิ่ม redact ใน tools/load/artifact-guard.js และแก้ run.sh)
+FAIL src/__tests__/load-artifact-guard.unit.spec.ts
+    ✓ summary ที่มี setup_data.checkout[].token → ผลไม่มี setup_data/JWT และ metric เดิมครบ (1 ms)
+    ✓ CLI strip: อ่าน summary ดิบแล้วเขียนไฟล์ที่ไม่มี setup_data (20 ms)
+    ✓ ไฟล์ไม่มี JWT/setup_data → ไม่พบ และ scan exit 0 (20 ms)
+    ✓ ไฟล์มี JWT (รวมในโฟลเดอร์ย่อย) หรือ key setup_data → พบ และ scan ล้ม (exit ≠ 0) ลบไฟล์นั้นและไม่พิมพ์ token (23 ms)
+    ✓ k6 เขียน summary ดิบนอก OUT แล้ว strip ก่อนเขียนลง OUT (1 ms)
+    ✓ ขั้นตรวจ JWT ใน OUT อยู่หลังไฟล์สุดท้ายที่เขียนลง OUT และก่อนตัดสินผ่าน/ไม่ผ่าน
+    ✕ input ที่มี JWT → ผลไม่มีรูปแบบ JWT แทนด้วย [REDACTED_JWT] และข้อความอื่นคงเดิม (1 ms)
+    ✕ CLI redact: อ่าน stdin แล้วพิมพ์ stdout ที่ไม่มี JWT (exit 0) (23 ms)
+    ✕ run.sh ไม่มี cat/grep ของ OUT/console ของ k6 ที่พิมพ์ก่อน scan หรือไม่ผ่าน redact (2 ms)
+    ✕ console ของ k6 ใน k6() ส่งผ่าน artifact-guard.js redact ก่อนลง job log
+    ✓ cleanup() และ flow หลักพิมพ์ report หลัง scan ในบล็อกเดียวกัน
+    ✓ positive control: fixture ที่สลับลำดับ (cat ก่อน scan) หรือ grep console ไม่ผ่าน redact → ถูกจับ
+    ✓ tools/load/flash-sale.js (1 ms)
+    ✓ tools/load/group-buy-join.js
+    ✓ positive control: console ที่มี token/headers → ถูกจับ
+Tests:       4 failed, 11 passed, 15 total
+  (run.sh ที่ develop b20c1e1 ถูกจับ 2 บรรทัด: 78 grep console ของ k6 ไม่ผ่าน redact, 132 cat k6-failures.txt ก่อน scan)
+
+## Green — load-artifact-guard.unit.spec.ts
+PASS src/__tests__/load-artifact-guard.unit.spec.ts
+    ✓ summary ที่มี setup_data.checkout[].token → ผลไม่มี setup_data/JWT และ metric เดิมครบ (2 ms)
+    ✓ CLI strip: อ่าน summary ดิบแล้วเขียนไฟล์ที่ไม่มี setup_data (25 ms)
+    ✓ ไฟล์ไม่มี JWT/setup_data → ไม่พบ และ scan exit 0 (24 ms)
+    ✓ ไฟล์มี JWT (รวมในโฟลเดอร์ย่อย) หรือ key setup_data → พบ และ scan ล้ม (exit ≠ 0) ลบไฟล์นั้นและไม่พิมพ์ token (26 ms)
+    ✓ k6 เขียน summary ดิบนอก OUT แล้ว strip ก่อนเขียนลง OUT
+    ✓ ขั้นตรวจ JWT ใน OUT อยู่หลังไฟล์สุดท้ายที่เขียนลง OUT และก่อนตัดสินผ่าน/ไม่ผ่าน
+    ✓ input ที่มี JWT → ผลไม่มีรูปแบบ JWT แทนด้วย [REDACTED_JWT] และข้อความอื่นคงเดิม
+    ✓ CLI redact: อ่าน stdin แล้วพิมพ์ stdout ที่ไม่มี JWT (exit 0) (26 ms)
+    ✓ run.sh ไม่มี cat/grep ของ OUT/console ของ k6 ที่พิมพ์ก่อน scan หรือไม่ผ่าน redact (1 ms)
+    ✓ console ของ k6 ใน k6() ส่งผ่าน artifact-guard.js redact ก่อนลง job log
+    ✓ cleanup() และ flow หลักพิมพ์ report หลัง scan ในบล็อกเดียวกัน
+    ✓ positive control: fixture ที่สลับลำดับ (cat ก่อน scan) หรือ grep console ไม่ผ่าน redact → ถูกจับ (1 ms)
+    ✓ tools/load/flash-sale.js (1 ms)
+    ✓ tools/load/group-buy-join.js
+    ✓ positive control: console ที่มี token/headers → ถูกจับ (1 ms)
+Tests:       15 passed, 15 total
+
+## pnpm --filter backend test:unit / pnpm lint / pnpm typecheck
+Test Suites: 87 passed, 87 total
+Tests:       922 passed, 922 total
+lint: 0 errors (apps/storefront 31 warnings เดิม)
+typecheck: backend + admin + storefront ผ่าน
+
+## smoke: pipeline ใน k6() ภายใต้ set -euo pipefail
+console มี JWT → พิมพ์เป็น [REDACTED_JWT]; ไฟล์ console ไม่มี → ไม่หยุด script (|| true)

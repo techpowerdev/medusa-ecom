@@ -75,7 +75,8 @@ k6() { # k6 <script> — exit code เก็บไว้ ไม่หยุด s
     || echo "$1: k6 exit $?" >>"$OUT/k6-failures.txt"
   [ ! -f "$DATA/k6/$1.json" ] || node tools/load/artifact-guard.js strip "$DATA/k6/$1.json" "$OUT/$1.json" \
     || echo "$1: strip summary ไม่สำเร็จ" >>"$OUT/k6-failures.txt"
-  grep -v checkout_k6_timing "$OUT/$1-console.log" 2>/dev/null || true # error/console อื่นของ k6 ยังเห็นใน log ของ job
+  # error/console อื่นของ k6 ยังเห็นใน log ของ job — OPS-17b (AC-34): ผ่าน redact ก่อน (body ของ response อาจมี JWT)
+  grep -v checkout_k6_timing "$OUT/$1-console.log" 2>/dev/null | node tools/load/artifact-guard.js redact || true
 }
 rm -f "$OUT/k6-failures.txt"
 k6 flash-sale
@@ -129,7 +130,7 @@ failures=0
   echo "| flash burst | $(metric flash-sale '.metrics["http_req_duration{scenario:burst}"]["p(95)"] | floor') | $(metric flash-sale '.metrics.http_reqs.rate | floor') | $(metric flash-sale '.metrics.dropped_iterations.count') | $(metric flash-sale '.metrics.burst_non_2xx.count') |"
   echo "| flash checkout | $(metric flash-sale '.metrics["http_req_duration{scenario:checkout}"]["p(95)"] | floor') | - | - | - |"
   echo "| group-buy join | $(metric group-buy-join '.metrics["http_req_duration{scenario:join}"]["p(95)"] | floor') | - | - | - |"
-  [ -s "$OUT/k6-failures.txt" ] && { echo; echo "k6 threshold ล้ม:"; cat "$OUT/k6-failures.txt"; failures=$((failures + 1)); }
+  [ -s "$OUT/k6-failures.txt" ] && { echo; echo "k6 threshold ล้ม:"; node tools/load/artifact-guard.js redact <"$OUT/k6-failures.txt"; failures=$((failures + 1)); }
   echo
   echo "failures: $failures"
 } >"$OUT/report.md"
