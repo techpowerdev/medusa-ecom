@@ -1,0 +1,38 @@
+# GB-15 — key ของฟอร์มสร้างแคมเปญใช้ crypto.getRandomValues (spec 04 กฎข้อ 33d, AC-58)
+# วันที่ 2026-11-04, base origin/develop 15b2724, Node v22.23.3
+
+## Red (ก่อนเพิ่ม newIdempotencyKey)
+TypeError: (0 , _groupbuyform.newIdempotencyKey) is not a function
+Tests: 1 failed, 30 passed, 31 total
+
+## Green — unit jest: src/admin/lib/__tests__/group-buy-form.unit.spec.ts
+  newIdempotencyKey
+    ✓ makes 1,000 unique UUID v4 keys with only getRandomValues (non-secure context) (45 ms)
+Test Suites: 1 passed, 1 total
+Tests:       31 passed, 31 total
+
+## pnpm --filter backend test:unit
+Test Suites: 88 passed, 88 total
+Tests:       934 passed, 934 total
+
+## e2e admin (AC-52/AC-56 ไม่แก้ assertion) — backend build (medusa start) port 9151, DB medusa_gb15, redis db 11
+pnpm --filter storefront exec playwright test e2e/group-buy-admin-form.spec.ts --project=chromium
+
+Running 4 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/group-buy-admin-form.spec.ts:100:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (7.2s)
+  ✓  2 [chromium] › e2e/group-buy-admin-form.spec.ts:182:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (5.0s)
+  ✓  3 [chromium] › e2e/group-buy-admin-form.spec.ts:236:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (6.5s)
+  ✓  4 [chromium] › e2e/group-buy-admin-form.spec.ts:293:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (14.8s)
+
+  4 passed (37.3s)
+
+## grep AC-58
+$ grep -c randomUUID apps/backend/src/admin/components/group-buy/create-campaign.tsx apps/backend/src/admin/lib/group-buy-form.ts
+apps/backend/src/admin/lib/group-buy-form.ts:0
+apps/backend/src/admin/components/group-buy/create-campaign.tsx:0
+$ grep -n "newIdempotencyKey()" apps/backend/src/admin/components/group-buy/create-campaign.tsx
+93:    idempotencyKey.current = newIdempotencyKey()
+
+## pnpm lint && pnpm typecheck && pnpm --filter backend build
+lint: ผ่าน, typecheck: ผ่าน, build: Backend/Frontend build completed successfully

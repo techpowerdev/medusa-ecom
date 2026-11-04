@@ -1,0 +1,35 @@
+AF-19 — หลักฐาน test (spec 05 กฎ 43, AC-51) 2026-11-04
+
+## Red 1 (ยังไม่แก้ layout.tsx): 3/3 ล้ม — getByTestId('affiliate-header-name') element(s) not found (ยังไม่มี testid)
+
+## Red 2 (เพิ่มเฉพาะ testid ยังไม่ใส่ min-w-0/ตัดคำ): ที่ 375 และ 639 ล้ม — scrollWidth Expected <= 375 / <= 639, Received 936 (ชื่อละติน 76 ตัว); ที่ 1280 ชื่อสั้นผ่าน (regression guard)
+  2 failed
+  1 passed (5.0s)
+
+## Green: npx playwright test e2e/affiliate-header-overflow.spec.ts --project=chromium --repeat-each=3 (ชื่อ "AF19" + "N".repeat(72) คงที่; 5 หน้า: /th/affiliate, /programs, /earnings, /payouts, /profile)
+  ✓  1 [chromium] › e2e/affiliate-header-overflow.spec.ts:32:9 › AC-51 ที่ 375×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 375 (4.8s)
+  ✓  2 [chromium] › e2e/affiliate-header-overflow.spec.ts:32:9 › AC-51 ที่ 375×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 375 (4.7s)
+  ✓  3 [chromium] › e2e/affiliate-header-overflow.spec.ts:32:9 › AC-51 ที่ 375×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 375 (4.7s)
+  ✓  5 [chromium] › e2e/affiliate-header-overflow.spec.ts:32:9 › AC-51 ที่ 639×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 639 (5.9s)
+  ✓  4 [chromium] › e2e/affiliate-header-overflow.spec.ts:32:9 › AC-51 ที่ 639×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 639 (5.9s)
+  ✓  6 [chromium] › e2e/affiliate-header-overflow.spec.ts:32:9 › AC-51 ที่ 639×812 › AC-51: ชื่อละตินยาว 76 ตัว → ทุกหน้าของ portal ไม่ล้นที่ 639 (5.9s)
+  ✓  7 [chromium] › e2e/affiliate-header-overflow.spec.ts:66:5 › AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (2.4s)
+  ✓  9 [chromium] › e2e/affiliate-header-overflow.spec.ts:66:5 › AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (2.4s)
+  ✓  8 [chromium] › e2e/affiliate-header-overflow.spec.ts:66:5 › AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (2.9s)
+  9 passed (15.1s)
+
+## e2e เดิม (AC-50 + affiliate-portal*): affiliate-portal.spec.ts, affiliate-portal-pages.spec.ts, affiliate-portal-polish.spec.ts, affiliate-profile-overflow.spec.ts — ไม่แก้ locator
+  ✓  3 [chromium] › e2e/affiliate-profile-overflow.spec.ts:31:7 › AC-50 ที่ 375×812 › AC-50: อีเมลยาวไม่มีช่องว่าง → ไม่มี scroll แนวนอน และอีเมลอยู่ในจอครบ (3.6s)
+  ✓  2 [chromium] › e2e/affiliate-portal-polish.spec.ts:49:5 › AC-47: ?page=99 ของ Payouts/Programs → affiliate-page-out-of-range ไทย + ลิงก์หน้าแรก; reversed ขึ้นต้นด้วย − (4.6s)
+  ✓  4 [chromium] › e2e/affiliate-portal-pages.spec.ts:68:5 › AC-40: nav ของ portal → Programs, Earnings (reversed แยกติดลบ), Payouts ไม่มี reference, Profile (4.7s)
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (4.9s)
+  ✓  5 [chromium] › e2e/affiliate-profile-overflow.spec.ts:52:5 › AC-50: ที่ 1280 ป้ายอีเมล (<dt>) กับค่า (affiliate-profile-email) ยังอยู่แถวเดียวกัน (1.5s)
+  ✓  7 [chromium] › e2e/affiliate-portal.spec.ts:140:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (1.7s)
+  ✓  6 [chromium] › e2e/affiliate-portal-pages.spec.ts:172:5 › AC-40: affiliate ที่ถูกระงับ → Products/Programs แสดง affiliate-status-notice, Earnings/Payouts เปิดได้ (2.6s)
+  ✓  8 [chromium] › e2e/affiliate-portal.spec.ts:166:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (1.1s)
+  ✓  9 [chromium] › e2e/affiliate-portal.spec.ts:189:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (1.1s)
+  9 passed (10.0s)
+
+## storefront unit (vitest): Test Files 82 passed (82), Tests 917 passed (917)
+## storefront e2e:unit (playwright project unit): 62 passed
+## pnpm lint: 0 errors (warning เดิม 31 + backend 2 ไม่มีในไฟล์ที่แก้); pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน

@@ -1,0 +1,58 @@
+CORE-46 — e2e hygiene: checkoutToPayment, timeout ของ waitForResponse, isAddToCartBody, สินค้า seed ด้วย handle (spec 01 กฎข้อ 104, AC-140)
+เครื่อง: macOS, Postgres 16 + Redis 7 (docker, redis db 14), backend `medusa start` (build) :9446,
+storefront `next build && next start` :8446 (prod build), DB medusa_core46 (seed ใหม่), chromium, Playwright 1.64.1
+base: origin/develop 15b2724
+
+== Red: grep test ใหม่ e2e/core-46-e2e-hygiene.unit.spec.ts ก่อนแก้โค้ด ==
+  6 failed — offenders [support/stripe.ts:104]; checkoutToPayment ไม่เรียก addToCartFromPdp;
+  server-action.ts ไม่มี URL playwright.dev; core-19a/core-24 ยังมี headers()["next-action"];
+  e2e ยังมี admin/products?limit=1 (3 ไฟล์)
+
+== ตรวจที่มาของ timeout ของ page.waitForResponse (กฎข้อ 104b) ==
+- types.d.ts ของ playwright-core 1.64.1 (= https://playwright.dev/docs/api/class-page#page-wait-for-response):
+  "Maximum wait time in milliseconds, defaults to 30 seconds, pass 0 to disable the timeout. The default value can be
+   changed by using the browserContext.setDefaultTimeout(timeout) or page.setDefaultTimeout(timeout) methods."
+- test.d.ts ของ playwright 1.64.1 (= https://playwright.dev/docs/api/class-testoptions#test-options-action-timeout):
+  "Default timeout for each Playwright action in milliseconds, defaults to 0 (no timeout). This is a default timeout
+   for all Playwright actions, same as configured via page.setDefaultTimeout(timeout)."
+- playwright/lib/index.js:360 (_setupContextOptions): `playwright._defaultContextTimeout = actionTimeout || 0`
+- playwright.config.ts ไม่ตั้ง actionTimeout → waitForResponse ไม่มีเพดานของตัวเอง จำกัดด้วย timeout ของ test เท่านั้น
+  (comment เดิม "ใช้ timeout ของ test" ถูกในผล แต่ไม่บอกที่มา — แก้ให้บอกกลไก + URL)
+
+== ตรวจสินค้าที่ admin/products?limit=1 ได้บน DB ที่ seed ใหม่ (กฎข้อ 104d) ==
+GET /admin/products?limit=1 → sweatshirt (count 2)
+ทั้งสองสินค้ามี created_at เท่ากัน (2026-11-04T13:06:11.038Z, ULID ms เดียวกัน prod_01M6KANGEW…) และลำดับ insert (ctid)
+คือ t-shirt ก่อน แต่ผลเรียงตาม id → ตัวที่ได้ขึ้นกับส่วนสุ่มของ ULID ต่อการ seed (CI ได้ t-shirt หรือ sweatshirt ได้ทั้งคู่)
+เลือก handle t-shirt (ตามคำสั่งงาน) — อยู่ในชุดค่าที่ limit=1 เคยให้ได้อยู่แล้ว
+GET /admin/products?handle=t-shirt → count 1
+
+== Green ==
+[G1] pnpm --filter storefront test:e2e:unit (project unit ทั้งหมด รวม core-43/core-46 grep)
+  68 passed (682ms)
+
+[G2] e2e ที่แตะ --repeat-each=3 --workers=4 (prod build)
+  spec: core-19a-nav-cart-search, core-24-pdp-quantity, affiliate-admin-programs, group-buy-admin-detail,
+        group-buy-admin-dates, payments, payments-promptpay-fallback-cap, payments-promptpay-already-paid (เรียก checkoutToPayment)
+  30 skipped
+  51 passed (57.2s)
+  จำนวน run ต่อไฟล์ (รวม repeat 3):
+      3 e2e/affiliate-admin-programs.spec.ts
+     24 e2e/core-19a-nav-cart-search.spec.ts
+      9 e2e/core-24-pdp-quantity.spec.ts
+      3 e2e/group-buy-admin-dates.spec.ts
+     12 e2e/group-buy-admin-detail.spec.ts
+      6 e2e/payments-promptpay-already-paid.spec.ts
+      6 e2e/payments-promptpay-fallback-cap.spec.ts
+     18 e2e/payments.spec.ts
+  skipped 30 = payments* ทั้งหมด: เครื่องนี้ไม่ได้ตั้ง Stripe test key ทั้งคู่ (stripe-env.ts skip) — CI รันด้วย secret STRIPE_TEST_*
+
+[G3] pnpm --filter storefront test:unit (Vitest)
+ Test Files  82 passed (82)
+      Tests  917 passed (917)
+[G4] pnpm --filter backend test:unit
+Test Suites: 88 passed, 88 total
+Tests:       933 passed, 933 total
+[G5] pnpm lint && pnpm typecheck → exit 0 / exit 0
+
+== grep diff (AC-140) ==
+git diff ไม่มีบรรทัดเพิ่มที่มี waitForTimeout หรือ force; playwright.config.ts ไม่เปลี่ยน

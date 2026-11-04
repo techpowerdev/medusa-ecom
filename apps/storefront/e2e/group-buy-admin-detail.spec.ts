@@ -18,10 +18,12 @@ async function createCampaign(
   status: "draft" | "active" | "ended" = "draft",
   name = `GB-6b ${group_mode} ${status} ${Date.now()}`
 ): Promise<string> {
-  // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า — ใช้สินค้าตัวแรกของ seed
-  const products = await request.get(`${BACKEND_URL}/admin/products?limit=1&fields=id`, { headers: admin })
+  // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า — ใช้สินค้า seed `t-shirt` ด้วย handle (CORE-46 กฎข้อ 104d)
+  const products = await request.get(`${BACKEND_URL}/admin/products?handle=t-shirt&fields=id`, { headers: admin })
   expect(products.status(), "list products").toBe(200)
-  const productId: string = (await products.json()).products[0].id
+  const { products: found } = await products.json()
+  expect(found, "สินค้า seed t-shirt").toHaveLength(1)
+  const productId: string = found[0].id
   const res = await request.post(`${BASE}/campaigns`, {
     headers: admin,
     data: {
