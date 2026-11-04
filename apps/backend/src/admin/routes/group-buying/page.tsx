@@ -4,11 +4,12 @@ import { useDate, useQueryParams } from "@medusajs/dashboard/hooks"
 import { Users } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, Text } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { useMemo } from "react"
-import { Link } from "react-router-dom"
+import { useEffect, useMemo } from "react"
+import { Link, useSearchParams } from "react-router-dom"
 import { Container } from "../../components/common/container"
 import { Header } from "../../components/common/header"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
+import { pageOffset } from "../../lib/group-buy-campaign"
 import {
   Campaign,
   CAMPAIGN_STATUS_COLOR,
@@ -69,7 +70,20 @@ const GroupBuyingPage = () => {
   const columns = useColumns()
   const { offset: offsetParam } = useQueryParams(["offset"], PREFIX)
   const limit = PAGE_SIZE
-  const offset = offsetParam ? Number(offsetParam) : 0
+  const offset = pageOffset(offsetParam)
+  // DataTable ของ dashboard parseInt ค่า gb_offset ดิบเอง ("abc" → "NaN of N results") → แก้ URL ให้เป็นค่าที่ใช้จริง
+  const [, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (offsetParam === undefined || offsetParam === String(offset)) return
+    setSearchParams(
+      (prev) => {
+        if (offset) prev.set(`${PREFIX}_offset`, String(offset))
+        else prev.delete(`${PREFIX}_offset`)
+        return prev
+      },
+      { replace: true }
+    )
+  }, [offsetParam, offset, setSearchParams])
 
   const { data, isLoading } = useQuery({
     queryKey: [...groupBuyKeys.campaigns, limit, offset],
@@ -128,5 +142,8 @@ export const config = defineRouteConfig({
   label: "Group buying",
   icon: Users,
 })
+
+// ADM-6: createRouteMap ของ dashboard สร้าง route "group-buying" เป็นพ่อของ ":id" → breadcrumb "Group buying › <ชื่อแคมเปญ>"
+export const handle = { breadcrumb: () => "Group buying" }
 
 export default GroupBuyingPage

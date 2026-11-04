@@ -30,6 +30,20 @@ describe("รายการแคมเปญ (spec 08 AC-9)", () => {
     expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
     expect(src).not.toMatch(/DataTablePaginationState|useDataTable|onRowClick/)
   })
+
+  it("แปลง gb_offset ด้วย pageOffset (กัน NaN/ค่าติดลบ) ไม่ใช้ Number() ตรงๆ", () => {
+    expect(src).toMatch(/pageOffset\(/)
+    expect(src).not.toMatch(/Number\(offsetParam\)/)
+  })
+
+  it("gb_offset ไม่ถูกต้อง → แก้ URL ด้วย setSearchParams(..., { replace: true }) (DataTable ของ dashboard parseInt ค่าดิบเอง → NaN)", () => {
+    expect(importsFrom(src, "useSearchParams", "react-router-dom")).toBe(true)
+    expect(src).toMatch(/setSearchParams\([\s\S]*replace:\s*true/)
+  })
+
+  it("export handle.breadcrumb เป็น \"Group buying\" (breadcrumb 2 ระดับร่วมกับหน้ารายละเอียด)", () => {
+    expect(src).toMatch(/export const handle\s*=\s*{\s*breadcrumb:\s*\(\)\s*=>\s*"Group buying"/)
+  })
 })
 
 describe("รายละเอียดแคมเปญ (spec 08 AC-9)", () => {

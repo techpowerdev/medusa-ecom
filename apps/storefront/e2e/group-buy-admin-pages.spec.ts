@@ -63,26 +63,32 @@ test("AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), ค�
   const productId = await tshirtId(request, admin)
   const token = `ADM-6 ${Date.now()}`
   const name = `${token} detail`
-  const id = await createCampaign(request, admin, productId, name)
-  // ต้องมีมากกว่า 1 หน้า (pageSize 20) — สร้างเพิ่มเท่าที่ขาด
+  // ต้องมีมากกว่า 1 หน้า (pageSize 20) — สร้างตัวเติมเท่าที่ขาดก่อน แล้วสร้าง `name` เป็นตัวสุดท้าย:
+  // endpoint เรียง -created_at → `name` (ใหม่สุด) อยู่แถวแรกของหน้า 1 เสมอ แม้ DB ยังไม่มีแคมเปญ (review PR #293)
   const { count } = await listCampaigns(request, admin, 0)
-  for (let i = count; i <= PAGE_SIZE; i++) {
+  for (let i = count; i < PAGE_SIZE; i++) {
     await createCampaign(request, admin, productId, `${token} fill ${i}`)
   }
+  const id = await createCampaign(request, admin, productId, name)
 
-  const breadcrumbLast = page.locator("ol").first().locator("li").last()
+  const breadcrumb = page.locator("ol").first().locator("li")
+  // Breadcrumbs ของ dashboard (shell.tsx): เมื่อมี > 1 ระดับ li สุดท้ายมี "..." (lg:hidden) + label → ดูเฉพาะ span ที่มองเห็น
+  const breadcrumbLast = breadcrumb.last().locator("span:visible")
   const rows = page.getByTestId("gb-campaigns-table").locator("tbody tr")
 
   await step("เปิด /group-buying/:id → breadcrumb รายการสุดท้ายเป็นชื่อแคมเปญ", async () => {
     await loginAdmin(page)
     await page.goto(`${BACKEND_URL}/app/group-buying/${id}`)
     await expect(page.getByTestId("gb-campaign-status")).toBeVisible({ timeout: 30_000 })
+    // breadcrumb 2 ระดับ: "Group buying" (handle ของหน้ารายการ) › ชื่อแคมเปญ (loader)
+    await expect(breadcrumb.first()).toHaveText("Group buying")
     await expect(breadcrumbLast).toHaveText(name)
     await evidence("01-detail-breadcrumb")
   })
 
   await step("รายการแคมเปญ: คลิกแถว → /group-buying/:id", async () => {
     await page.goto(`${BACKEND_URL}/app/group-buying`)
+    // `name` สร้างล่าสุด → อยู่หน้า 1 (filter ด้วยชื่อ ไม่ใช้ first() เพราะ spec อื่นที่รันขนานอาจสร้างแคมเปญใหม่กว่า)
     const row = rows.filter({ hasText: name })
     await expect(row).toHaveCount(1)
     await expect(rows).toHaveCount(PAGE_SIZE)
@@ -102,5 +108,15 @@ test("AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), ค�
     expect(new URL(page.url()).searchParams.get("gb_offset")).toBe(String(PAGE_SIZE))
     await expect(rows.filter({ hasText: second.campaigns[0].name })).toHaveCount(1)
     await evidence("02-list-page-2")
+  })
+
+  await step("gb_offset ไม่ใช่ตัวเลข/ติดลบ → แสดงหน้า 1 (ไม่ 400, ไม่ NaN)", async () => {
+    for (const bad of ["abc", "-5"]) {
+      await page.goto(`${BACKEND_URL}/app/group-buying?gb_offset=${bad}`)
+      await page.waitForURL((url) => !url.searchParams.has("gb_offset"))
+      await expect(rows).toHaveCount(PAGE_SIZE)
+      await expect(rows.filter({ hasText: name })).toHaveCount(1)
+      await expect(page.getByTestId("gb-campaigns-table")).not.toContainText("NaN")
+    }
   })
 })
