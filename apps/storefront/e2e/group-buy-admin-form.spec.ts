@@ -1,6 +1,6 @@
 import { APIRequestContext, Page } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
+import { ADMIN_UI_OPTIONS, fillDatePicker, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { adminHeaders, Headers } from "./support/medusa"
 
@@ -12,6 +12,8 @@ const CAMPAIGNS_PATH = "/admin/group-buy/campaigns"
 
 type CampaignPost = {
   idempotency_key?: string
+  starts_at?: string | null
+  ends_at?: string
   max_units_per_person: number | null
   application_method: {
     max_quantity: number
@@ -30,7 +32,7 @@ function campaignPosts(page: Page) {
   return bodies
 }
 
-/** datetime-local (ICT) ห่างจากตอนนี้ `hours` ชั่วโมง */
+/** เวลาไทย (ICT = timezone ของ test) รูป YYYY-MM-DDTHH:mm ห่างจากตอนนี้ `hours` ชั่วโมง — ค่าที่ fillDatePicker รับ */
 const ictLocal = (hours: number) =>
   new Date(Date.now() + hours * 3_600_000 + 7 * 3_600_000).toISOString().slice(0, 16)
 
@@ -59,13 +61,14 @@ async function fillValidForm(page: Page, name: string) {
   const fields: Record<string, string> = {
     name,
     target_value: "3",
-    ends_at: ictLocal(48),
     discount_value: "10",
     max_quantity: "10",
   }
   for (const [key, value] of Object.entries(fields)) {
     await page.getByTestId(`gb-field-${key}`).fill(value)
   }
+  // ADM-7: ช่องวันเวลาเป็น DatePicker (spec 08 กฎ 7b)
+  await fillDatePicker(page.getByTestId("gb-field-ends_at"), ictLocal(48))
 }
 
 async function createProduct(request: APIRequestContext, admin: Headers, title: string): Promise<string> {
@@ -146,7 +149,7 @@ test("AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่�
     await page.getByTestId("gb-field-max_quantity").fill("2")
     await expect(page.getByTestId("gb-max-quantity-error")).toHaveCount(0)
     await expect(page.getByTestId("gb-ends-at-warning")).toHaveCount(0)
-    await page.getByTestId("gb-field-ends_at").fill(ictLocal(-1))
+    await fillDatePicker(page.getByTestId("gb-field-ends_at"), ictLocal(-1))
     const warning = page.getByTestId("gb-ends-at-warning")
     await expect(warning).toBeVisible()
     // GB-N1: เป็นคำเตือน (ยังส่งได้) จึงใช้สีเตือน ไม่ใช่สี error ของ gb-max-quantity-error
@@ -354,5 +357,39 @@ test("AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหล�
     expect(posts[2].idempotency_key).not.toBe(posts[0].idempotency_key)
     await expect(rows(`${token} second`)).toHaveCount(1)
     await expect(rows(`${token} first`)).toHaveCount(1)
+  })
+})
+
+// ADM-7 (spec 08 AC-10, กฎ 5): DatePicker ตีความตาม timezone ของเครื่อง (test ตั้ง Asia/Bangkok) แล้วส่ง Date → ISO UTC;
+// ⌘/Ctrl+Enter (KeyboundForm) ส่งฟอร์ม 1 ครั้ง
+test("AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง body เป็น UTC", async ({
+  page,
+  request,
+  step,
+}) => {
+  test.setTimeout(90_000)
+  const token = `ADM7tz${Date.now()}`
+  const productTitle = `${token} product`
+  await createProduct(request, await adminHeaders(request), productTitle)
+  const posts = campaignPosts(page)
+
+  await step("กรอกฟอร์มด้วย fillDatePicker แล้วกด ControlOrMeta+Enter ในช่อง Name", async () => {
+    await openCreateForm(page)
+    await fillValidForm(page, `ADM-7 tz ${token}`)
+    await fillDatePicker(page.getByTestId("gb-field-starts_at"), "2026-12-01T10:00")
+    await fillDatePicker(page.getByTestId("gb-field-ends_at"), "2026-12-31T23:30")
+    await pickProduct(page, productTitle)
+    const response = page.waitForResponse(
+      (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
+    )
+    await page.getByTestId("gb-field-name").press("ControlOrMeta+Enter")
+    expect((await response).status()).toBe(200)
+    await expect(page.getByTestId("gb-campaign-create-submit")).toHaveCount(0)
+  })
+
+  await step("body ของ POST มี starts_at/ends_at เป็น UTC ของเวลาไทยที่กรอก และส่งครั้งเดียว", async () => {
+    expect(posts).toHaveLength(1)
+    expect(posts[0].starts_at).toBe("2026-12-01T03:00:00.000Z")
+    expect(posts[0].ends_at).toBe("2026-12-31T16:30:00.000Z")
   })
 })
