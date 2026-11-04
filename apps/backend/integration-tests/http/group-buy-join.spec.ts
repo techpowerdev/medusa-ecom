@@ -1,10 +1,11 @@
 import type { EventEmitter } from "events"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
-import { ContainerRegistrationKeys, generateJwtToken, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createCartWorkflow, createPromotionsWorkflow } from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 import { registerCustomer, storeHeadersFor } from "../helpers/customer"
+import { createAdminUser } from "../helpers/admin"
 import { exclusiveAutomaticRule } from "../../src/lib/promotion-exclusivity"
 import {
   createGroupBuyCampaignWorkflow,
@@ -835,17 +836,7 @@ medusaIntegrationTestRunner({
 
       beforeEach(async () => {
         const container = getContainer()
-        const user = await container.resolve(Modules.USER).createUsers({ email: "gb14-admin@example.com" })
-        const identity = await container.resolve(Modules.AUTH).createAuthIdentities({
-          provider_identities: [{ provider: "emailpass", entity_id: "gb14-admin@example.com" }],
-          app_metadata: { user_id: user.id },
-        })
-        const { http } = container.resolve(ContainerRegistrationKeys.CONFIG_MODULE).projectConfig
-        const token = generateJwtToken(
-          { actor_id: user.id, actor_type: "user", auth_identity_id: identity.id, app_metadata: { user_id: user.id } },
-          { secret: http.jwtSecret as string, expiresIn: "1d" }
-        )
-        admin = { headers: { authorization: `Bearer ${token}` } }
+        admin = { headers: (await createAdminUser(container, "gb14-admin@example.com")).headers }
 
         // เขตบริการไทยของ seed (ที่ "Standard" ใช้)
         const { data: zones } = await container
@@ -935,12 +926,18 @@ medusaIntegrationTestRunner({
         expect(await progress(group.id)).toEqual([0, 0, 0])
         expect((await cartPromotions(cartId)).promotions.filter((c: string) => c.startsWith("GB-"))).toEqual([])
 
-        // store API ของ Medusa ไม่มี route ลบ shipping method — เอา O_dig ออกด้วย cart module แล้วเลือก O_std ผ่าน store API
-        await getContainer().resolve(Modules.CART).deleteShippingMethods(await shippingMethodIds(cartId))
+        // เปลี่ยนเป็น O_std ด้วย Store API ล้วน (กฎข้อ 36b): addShippingMethodToCartWorkflow ของ core-flows 2.22.1 รัน
+        // refreshCartShippingMethodsWorkflow ต่อ ซึ่งลบ method ที่ profile ไม่มี line ใดต้องใช้เมื่อ cart มี > 1 method
+        // → O_dig (P_dig) หลุดออก เหลือ O_std (P_phys) ตัวเดียว
         const switched = await settle(
           api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: optionStd }, s.headers)
         )
         expect(switched.status).toEqual(200)
+        const after = await settle(api.get(`/store/carts/${cartId}?fields=shipping_methods.shipping_option_id`, s.headers))
+        expect(after.status).toEqual(200)
+        expect(after.data.cart.shipping_methods.map((m: { shipping_option_id: string }) => m.shipping_option_id)).toEqual([
+          optionStd,
+        ])
         expect((await join(group.join_token, cartId, s)).status).toEqual(201)
       })
 

@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (follow-up ล่าสุด: รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
+สถานะ: accepted (follow-up ล่าสุด: รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
 รอบ 16 2026-11-04 — CORE-28..32, กฎข้อ 85–89, AC-121..125, ADR-019 (CORE-29), คำถาม Q-C3/Q-C4; รอบ 14 2026-11-03 — CORE-27 กันกดเพิ่มตะกร้าซ้ำ, กฎข้อ 83, AC-119; CORE-14g cookie cart ใน server action (qa #222 D-1), กฎข้อ 84, AC-120; รอบ 13 — CORE-26, CORE-9c, กฎข้อ 81–82, AC-117..118, Q-C1/Q-C2 ตัดสินแล้วโดย owner 2026-11-03)
 เป้าหมาย: ร้านค้าพื้นฐานที่สมบูรณ์และพร้อม production โดย **ไม่มี custom commerce logic เลย**
@@ -1408,12 +1408,12 @@ none — ADR-019 ทางเลือก B (accepted) ใช้ `POST /store/cu
 ### Tasks (follow-up รอบ 16)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
-| CORE-28 | (storefront เล็ก ~60 LOC, qa #222 O-2) `promotion-error` นอก `isOpen` + แก้ comment ค้างใน e2e core-19c (กฎข้อ 85) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, `src/core-28-promotion-error.test.ts` ใหม่, `e2e/core-19c-delete-button-error.spec.ts` (comment) — ◐ #241 | AC-121 | CORE-14g ☑ (#234 merge แล้ว 2026-11-04 — e2e ของ AC-120 ลบ/ใส่โค้ดตอน JWT หาย + comment อ้างพฤติกรรมของ #234) — **เริ่มได้** |
-| CORE-29 | (storefront ~180 LOC, รอบ 14b) บันทึก `metadata.active_cart_id` เมื่อตั้ง cookie cart ใหม่ + กู้ตอน login เมื่อไม่มี cookie cart (กฎข้อ 86) — ไฟล์: helper ใหม่ใน `lib/data/` (+ unit), `lib/data/cart.ts`, `lib/util/server-cart.ts`, `app/api/payment-return/route.ts`, `lib/data/customer.ts` (`completeLogin`), `e2e/core-29-restore-cart.spec.ts` ใหม่ | AC-122 | CORE-14g ☑ (#234 — พฤติกรรม cookie เมื่อ JWT หาย), **CORE-30** (ชน `lib/data/customer.ts` — ทำทีละตัว CORE-30 ก่อน) |
-| CORE-30 | (storefront เล็ก ~150 LOC, qa #239/#238) return URL ของหน้ากลุ่ม/หน้าแรกหลัง login (กฎข้อ 87) — ไฟล์: `lib/util/login-return.ts` (+ test), `lib/data/customer.ts` (`continueAfterAuth`), `modules/group-buy/components/group-page/group-join.tsx`, `modules/home/components/campaigns/create-team-button.tsx`, `e2e/core-30-login-return.spec.ts` ใหม่ | AC-123 | none — **เริ่มได้** (GB-7a2 ☑ #238, GB-7c ☑ #239); ชน `group-join.tsx` กับ GB-12 (spec 04) ตัวที่ merge ทีหลัง rebase |
-| CORE-31 | (storefront เล็ก ~120 LOC, review 2026-11-04) component คัดลอกกลาง ใช้โดย `ShareLinkButton` และ `VoucherCopyButton` (กฎข้อ 88) — ไฟล์: `modules/common/components/copy-button/index.tsx` ใหม่ (+ unit), `modules/common/components/share-link-button/index.tsx`, `modules/evoucher/components/voucher-copy-button/index.tsx` | AC-124 | none — **เริ่มได้** (∥ ทุกตัว) |
-| CORE-32 | (storefront ~150 LOC, qa #238) กรอง option วิธีส่งตาม shipping profile ที่ checkout และหน้ากลุ่ม (กฎข้อ 89) — ไฟล์: `lib/util/shipping-options.ts` ใหม่ (+ unit), `modules/checkout/templates/checkout-form/index.tsx` (หรือ `components/shipping`), `lib/data/group-join.ts`, `lib/data/cart.ts` (field ของ line ถ้าใช้ทาง (a)), e2e — ◐ #243 (ทาง (b)) | AC-125 | none — **เริ่มได้** (∥; `lib/data/group-join.ts` ไม่มี task อื่นแตะ; ∥ GB-14 ของ spec 04 — ไม่มีไฟล์ชน: GB-14 แตะ `lib/util/group-join-error.ts` ไม่แตะ `group-join.ts`/`shipping-options.ts`) |
-| CORE-28b | (test-only เล็ก ~2 LOC, รอบ 16b) แก้ comment ค้างใน e2e core-14g หลังกฎข้อ 85 (กฎข้อ 90) — ไฟล์: `e2e/core-14g-action-stale-jwt.spec.ts` | AC-126 | **CORE-28 (#241) merge** (∥ ทุกตัว; ไฟล์นี้ไม่มี task อื่นแตะ) |
+| CORE-28 | (storefront เล็ก ~60 LOC, qa #222 O-2) `promotion-error` นอก `isOpen` + แก้ comment ค้างใน e2e core-19c (กฎข้อ 85) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, `src/core-28-promotion-error.test.ts` ใหม่, `e2e/core-19c-delete-button-error.spec.ts` (comment) — ☑ #241 | AC-121 | CORE-14g ☑ (#234 merge แล้ว 2026-11-04 — e2e ของ AC-120 ลบ/ใส่โค้ดตอน JWT หาย + comment อ้างพฤติกรรมของ #234) — **เริ่มได้** |
+| CORE-29 | (storefront ~180 LOC, รอบ 14b) บันทึก `metadata.active_cart_id` เมื่อตั้ง cookie cart ใหม่ + กู้ตอน login เมื่อไม่มี cookie cart (กฎข้อ 86) — ไฟล์: helper ใหม่ใน `lib/data/` (+ unit), `lib/data/cart.ts`, `lib/util/server-cart.ts`, `app/api/payment-return/route.ts`, `lib/data/customer.ts` (`completeLogin`), `e2e/core-29-restore-cart.spec.ts` ใหม่ — ◐ (กำลังทำ รอบ 18) | AC-122 | CORE-14g ☑ (#234 — พฤติกรรม cookie เมื่อ JWT หาย), **CORE-30** (ชน `lib/data/customer.ts` — ทำทีละตัว CORE-30 ก่อน) |
+| CORE-30 | (storefront เล็ก ~150 LOC, qa #239/#238) return URL ของหน้ากลุ่ม/หน้าแรกหลัง login (กฎข้อ 87) — ไฟล์: `lib/util/login-return.ts` (+ test), `lib/data/customer.ts` (`continueAfterAuth`), `modules/group-buy/components/group-page/group-join.tsx`, `modules/home/components/campaigns/create-team-button.tsx`, `e2e/core-30-login-return.spec.ts` ใหม่ — ☑ #258 | AC-123 | none — **เริ่มได้** (GB-7a2 ☑ #238, GB-7c ☑ #239); ชน `group-join.tsx` กับ GB-12 (spec 04) ตัวที่ merge ทีหลัง rebase |
+| CORE-31 | (storefront เล็ก ~120 LOC, review 2026-11-04) component คัดลอกกลาง ใช้โดย `ShareLinkButton` และ `VoucherCopyButton` (กฎข้อ 88) — ไฟล์: `modules/common/components/copy-button/index.tsx` ใหม่ (+ unit), `modules/common/components/share-link-button/index.tsx`, `modules/evoucher/components/voucher-copy-button/index.tsx` — ☑ #254 | AC-124 | none — **เริ่มได้** (∥ ทุกตัว) |
+| CORE-32 | (storefront ~150 LOC, qa #238) กรอง option วิธีส่งตาม shipping profile ที่ checkout และหน้ากลุ่ม (กฎข้อ 89) — ไฟล์: `lib/util/shipping-options.ts` ใหม่ (+ unit), `modules/checkout/templates/checkout-form/index.tsx` (หรือ `components/shipping`), `lib/data/group-join.ts`, `lib/data/cart.ts` (field ของ line ถ้าใช้ทาง (a)), e2e — ☑ #243 (ทาง (b)) | AC-125 | none — **เริ่มได้** (∥; `lib/data/group-join.ts` ไม่มี task อื่นแตะ; ∥ GB-14 ของ spec 04 — ไม่มีไฟล์ชน: GB-14 แตะ `lib/util/group-join-error.ts` ไม่แตะ `group-join.ts`/`shipping-options.ts`) |
+| CORE-28b | (test-only เล็ก ~2 LOC, รอบ 16b) แก้ comment ค้างใน e2e core-14g หลังกฎข้อ 85 (กฎข้อ 90) — ไฟล์: `e2e/core-14g-action-stale-jwt.spec.ts` — ☑ #251 | AC-126 | **CORE-28 (#241) merge** (∥ ทุกตัว; ไฟล์นี้ไม่มี task อื่นแตะ) |
 (รอบ 16 สถานะ) CORE-30 ∥ CORE-31 ∥ CORE-32 เริ่มได้; CORE-28 ← #234; CORE-29 ← ADR-019 + #234 + CORE-30; ไม่บล็อก release ใด แต่ CORE-30/CORE-32 ควรมีก่อน release v0.5.0 (flow ของ group buy)
 (รอบ 16b สถานะ 2026-11-04) #234 ☑ และ ADR-019 accepted → CORE-28 เริ่มได้ (◐ รอบ 17), CORE-32 ◐ รอบ 17; CORE-29 ← CORE-30 เท่านั้น; CORE-30 ∥ CORE-31 เริ่มได้
 (รอบ 17 สถานะ 2026-11-04) CORE-28 ◐ #241, CORE-32 ◐ #243 → follow-up CORE-33 (← #243), CORE-34 (← #241) ในหัวข้อ "Follow-up รอบ 17"
@@ -1431,7 +1431,8 @@ none — ADR-019 ทางเลือก B (accepted) ใช้ `POST /store/cu
 ปุ่ม `submit-delivery-option-button` ใน `modules/checkout/components/shipping/index.tsx` (~385) disabled ด้วย `!cart.shipping_methods?.[0]` และค่าเริ่มของ radio มาจาก
 `cart.shipping_methods?.at(-1)?.shipping_option_id` (~63–64) โดยไม่เทียบกับรายการที่แสดง — ยังจริง; การกรองและ `delivery-options-container` ที่ว่างอยู่ในโค้ดของ #243 (ยังไม่ merge — ยืนยันจากรายงาน qa)
 Out of scope: แปลง error 400 ของ `completeCartWorkflow` (`validate-shipping`) เป็นข้อความไทยเมื่อลูกค้าข้ามขั้น delivery ด้วย URL `?step=payment` (ด่านจริงคือ backend ของ Medusa — ยอมรับใน v1),
-ทาง (a) ของกฎข้อ 89
+ทาง (a) ของกฎข้อ 89 — **(รอบ 18)** กรณี cart ค้าง method ที่ถูกกรองออกแล้วเข้า `?step=payment`/`?step=review` ตรงๆ ถูกยกขึ้นเป็น CORE-35 (กฎข้อ 93) เพราะ
+`deliveryStepDone` ยังนับ method ค้างเป็น "เสร็จ"; ข้อยอมรับเดิมเหลือเฉพาะ race ที่ cart เปลี่ยนระหว่างเปิดหน้า (backend ตอบ 400 ตามเดิม)
 
 ### สิ่งที่ Medusa มีให้อยู่แล้ว
 | ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
@@ -1480,11 +1481,103 @@ none
 ### Tasks (follow-up รอบ 17)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
-| CORE-33 | (storefront เล็ก ~100 LOC, qa #243 O-1/O-2) ข้อความเมื่อไม่มีวิธีส่งหลังกรอง + method ค้างที่ถูกกรองออกถือว่ายังไม่เลือก + comment e2e core-32 (กฎข้อ 91) — ไฟล์: `lib/util/shipping-options.ts` (+ test), `modules/checkout/components/shipping/index.tsx`, `e2e/core-32-shipping-profile-filter.spec.ts` (comment + เคสใหม่) | AC-127 | **CORE-32 (#243) merge** (แก้โค้ด/e2e ที่ #243 เพิ่ม); ∥ CORE-34 (คนละไฟล์) |
-| CORE-34 | (storefront เล็ก ~30 LOC, qa #241 O-3) `removePromotionCode` ล้าง error ก่อนส่ง (กฎข้อ 92) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, unit | AC-128 | **CORE-28 (#241) merge** (ไฟล์เดียวกัน); ∥ CORE-28b, CORE-33 |
+| CORE-33 | (storefront เล็ก ~100 LOC, qa #243 O-1/O-2) ข้อความเมื่อไม่มีวิธีส่งหลังกรอง + method ค้างที่ถูกกรองออกถือว่ายังไม่เลือก + comment e2e core-32 (กฎข้อ 91) — ไฟล์: `lib/util/shipping-options.ts` (+ test), `modules/checkout/components/shipping/index.tsx`, `e2e/core-32-shipping-profile-filter.spec.ts` (comment + เคสใหม่) — ☑ #255 | AC-127 | **CORE-32 (#243) merge** (แก้โค้ด/e2e ที่ #243 เพิ่ม); ∥ CORE-34 (คนละไฟล์) |
+| CORE-34 | (storefront เล็ก ~30 LOC, qa #241 O-3) `removePromotionCode` ล้าง error ก่อนส่ง (กฎข้อ 92) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, unit — ☑ #252 | AC-128 | **CORE-28 (#241) merge** (ไฟล์เดียวกัน); ∥ CORE-28b, CORE-33 |
 (รอบ 17) ไม่บล็อก release ใด; CORE-33 ควรมีก่อน release v0.5.0 ถ้า CORE-32 อยู่ใน release นั้น (cart เก่าที่ค้าง Digital delivery)
+(รอบ 18 สถานะ 2026-11-04) merge แล้วผ่าน merge train: CORE-28 ☑ #241, CORE-32 ☑ #243 (train #248); CORE-28b ☑ #251, CORE-34 ☑ #252, CORE-31 ☑ #254, CORE-33 ☑ #255 (train #256);
+CORE-30 ☑ #258 (train #260); CORE-29 ◐ กำลังทำ
 
 ### Open questions (รอบ 17)
+none
+
+## Follow-up รอบ 18 จาก review/qa (2026-11-04 — session หลักส่ง follow-up ของ #252/#254/#255/#258)
+ที่มา: review #255, qa #252 (`docs/evidence/core/CORE-34/REPORT.md` O-2), qa/review #254 (`CORE-31/REPORT.md` ข้อสังเกต 2–4), qa #255 O-2 (`CORE-33/REPORT.md`),
+qa #258 O-3 (`CORE-30/REPORT.md`, ภาพ qa-04), review #258 nits — ตรวจโค้ดบน develop `2c0fea6`:
+`lib/util/digital-checkout.ts` `deliveryStepDone` = `isDigitalOnlyCart || shipping_methods.length > 0` (บรรทัด 16–18) ใช้ใน `payment/index.tsx` (~88), `review/index.tsx` (~22),
+`payment-button/index.tsx` (~31) — ยังจริง; `discount-code/index.tsx` ปุ่ม `remove-discount-button` (~167–182) ไม่มีสถานะกำลังลบ และ `submitPromotionCodes` ใช้ `PROMOTION_FAILED` ร่วมกันทั้งใส่/ลบ — ยังจริง;
+`common/components/copy-button/index.tsx` ข้อความล้ม `คัดลอกไม่สำเร็จ กรุณาคัดลอกเอง: ${value}` ใน `<span class="... break-all">` เดียว (~52, ~75) และ `share` ที่ throw (ไม่ใช่ `AbortError`) ไปตกที่ข้อความเดียวกันโดยไม่ลองคัดลอก — ยังจริง;
+`voucher-card/index.tsx` วาง `VoucherCopyButton` (ปุ่ม + สถานะใน `flex-col`) ในแถว `flex-wrap items-center` (~20–26) → สถานะที่ขึ้นใต้ปุ่มดันปุ่มขึ้นและแถวสูงขึ้น — ยังจริง;
+`VoucherCopyButton` ส่ง `size="small"` แล้ว (#254) — **ไม่ต้องทำ**; `checkout/components/addresses/index.tsx` สรุปที่อยู่ 3 คอลัมน์ `w-1/3` แถวเดียวทุกความกว้าง (~153–226) — ยังจริง;
+`common/components/input/index.tsx` label ลอย `top-3.5` + `-translate-y-3` (globals.css ~20–28) กับ input `h-12 pt-5` — ภาพ qa-04 label ทับค่าที่กรอก — ยังจริง (ต้นเหตุเชิงเรขาคณิตให้ builder ยืนยัน);
+`lib/util/login-return.ts` `GROUP_PAGE_RE` = `[A-Za-z0-9_-]+` ไม่จำกัดความยาว, `login-return.test.ts` ไม่มีเคส `/\evil`, `%2F%2Fevil`, `/th/g/abc\n`, `continueAfterAuth` ใน `lib/data/customer.ts` (~214–245)
+ไม่มี comment ลำดับเมื่อมีทั้ง `return_to` และ `add_variant` — ยังจริง
+Out of scope: แสดงค่าส่งในสรุปตะกร้าของ method ค้าง (qa #255 O-3 — ฿0 ของ Digital delivery; หายเองเมื่อลูกค้าเลือกวิธีส่งใหม่ — ยอมรับใน v1), เปลี่ยนป้ายปุ่มคัดลอกกลับเป็นสถานะบนปุ่ม (qa #254 ข้อ 1 — reviewer ยอมรับแล้ว)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| ตรวจวิธีส่งตอน complete | `validateShippingStep` ใน `completeCartWorkflow` | ใช้ตามเดิม — CORE-35 แค่ไม่ให้ UI พาไปถึงขั้นนั้นด้วย method ค้าง |
+| รายการ option ของ cart | `GET /store/shipping-options?cart_id=` (`listCartShippingMethods` เดิม) + helper `shippingOptionsForCart`/`selectedShippingOptionId` (CORE-32/33) | ใช้ตามเดิม — ไม่ยิง API เพิ่ม (checkout-form ดึงอยู่แล้ว) |
+| สถานะปุ่มกำลังทำงาน | `Button` ของ `@medusajs/ui` (re-export ที่ `@modules/common/components/ui`) prop `isLoading` | ใช้ตามเดิม (ปุ่มลบโค้ด, CopyButton) |
+| label ของ input | `Input` ของ starter (`modules/common/components/input`) | ขยาย — แก้ CSS ใน component เดิม ไม่สร้าง input ใหม่ |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules
+93. (CORE-35 — review #255) ขั้น delivery ของ checkout ถือว่า "เสร็จ" = cart digital-only (EV-7c) **หรือ** `selectedShippingOptionId(cart, <รายการที่กรองแล้วของกฎข้อ 89>) !== null` (helper เดียวกับกฎข้อ 91b)
+    — ไม่ใช่แค่ `shipping_methods.length > 0`: (a) `deliveryStepDone` รับรายการที่กรองแล้วเป็น argument (ไม่มี argument = พฤติกรรมเดิม สำหรับ `checkoutStep` ของหน้าตะกร้าที่ไม่มีรายการ option);
+    (b) `checkout-form` (server) คำนวณครั้งเดียวจาก `listCartShippingMethods` ที่ดึงอยู่แล้วแล้วส่งเป็น prop ให้ Payment/Review/PaymentButton — ไม่ยิง API เพิ่มฝั่ง client;
+    (c) เปิด `/<cc>/checkout?step=payment` หรือ `?step=review` ตรงๆ ขณะขั้น delivery ยังไม่เสร็จ → พาไป `?step=delivery` (redirect ฝั่ง server หรือ `router.replace` — เลือกใน PR)
+    และไม่มีทางกด `submit-order-button`; หน้าตะกร้า (`checkoutStep`) ไม่ต้องแก้ เพราะปลายทางตรวจซ้ำตามข้อ (c)
+94. (CORE-36 — qa #252 O-2) ปุ่ม `remove-discount-button` ระหว่างลบ: disabled + แสดงสถานะกำลังทำงาน (spinner หรือ `aria-busy="true"`) และกันคลิกซ้อนใน tick เดียว (ref in-flight แบบ CORE-27);
+    ลบล้มด้วยเหตุที่ไม่ใช่ auth → ข้อความไทยเฉพาะการลบ (เช่น "ลบโค้ดส่วนลดไม่สำเร็จ กรุณาลองอีกครั้ง" — ปรับถ้อยคำได้ใน PR แต่ต่างจาก `PROMOTION_FAILED`);
+    auth ยังเป็น `SIGN_IN_AGAIN_MESSAGE` (กฎข้อ 85); การใส่โค้ดคงข้อความเดิม
+95. (CORE-37 — qa/review #254) `CopyButton` กลาง (กฎข้อ 88): (a) คัดลอกล้ม → ข้อความนำ "คัดลอกไม่สำเร็จ กรุณาคัดลอกเอง" แยกจากค่าที่ให้คัดลอก — ค่าอยู่ใน element ของตัวเอง
+    (`<statusTestId>-value`, `select-all`, ตัดบรรทัดแบบ `break-words`/`overflow-wrap:anywhere` ไม่ใช่ `break-all` ของทั้งประโยค); (b) `share` throw error ที่ไม่ใช่ `AbortError` → ลองคัดลอกด้วย clipboard ต่อ
+    (สำเร็จ = ข้อความสำเร็จ, ล้ม = ข้อ (a)); (c) การ์ด voucher: แถวรหัสวางปุ่มคัดลอกไม่เยื้องเมื่อสถานะขึ้น — สถานะไม่ดันปุ่ม (เช่น แถว `items-start` หรือสถานะอยู่แถวของตัวเองใต้แถวรหัส)
+96. (CORE-38 — qa #255 O-2, qa #258 O-3) layout ฟอร์ม/สรุปที่ 375px: (a) สรุปที่อยู่ของขั้น address (`shipping-address-summary`, `shipping-contact-summary`, `billing-address-summary` และคู่ digital-only)
+    ที่ความกว้าง < 640px (`sm`) เรียงเป็นแนวตั้ง, ≥ 640px คงแถวเดียว; อีเมล/ข้อความยาวตัดบรรทัดในคอลัมน์ของตัวเอง (`break-words`/`overflow-wrap:anywhere`) ไม่ล้นทับคอลัมน์ข้าง;
+    (b) `Input` ของ starter: label ที่ลอยแล้ว (มีค่าหรือ focus) ไม่ทับข้อความในช่อง — แก้ที่ `modules/common/components/input` / `globals.css` ที่เดียว (มีผลทุกฟอร์มที่ใช้ `Input`)
+97. (CORE-39 — nit review #258; ไม่เปลี่ยนพฤติกรรมของ path ที่ถูกต้อง) (a) `GROUP_PAGE_RE` ใน `lib/util/login-return.ts` จำกัดความยาว token `{1,64}`;
+    (b) comment ใน `continueAfterAuth` (`lib/data/customer.ts`) บอกลำดับเมื่อฟอร์มมีทั้ง `return_to` และ `add_variant` (`return_to` ที่ผ่าน allow-list มาก่อน — `add_variant` ถูกข้าม) ตามโค้ดจริงตอนแก้;
+    (c) unit ถาวรใน `login-return.test.ts` ของเคสที่ qa #258 ลองมือ: `/\evil`, `/%2F%2Fevil`, `/th/g/abc\n`, token ยาว 65 ตัว → `null`; token ยาว 64 ตัว → คืนค่า
+
+### Acceptance criteria (follow-up รอบ 18)
+- AC-129 (CORE-35, กฎข้อ 93) unit (Vitest, ต่อจาก `src/ev-7c-digital-only-checkout.test.ts`): `deliveryStepDone(cart, options)` — cart ต้องจัดส่ง + method ล่าสุดเป็น Digital delivery ที่ไม่อยู่ใน `options` → `false`;
+  method Standard อยู่ใน `options` → `true`; digital-only ไม่มี method → `true`; ไม่ส่ง `options` → ผลเท่าเดิม (`shipping_methods.length > 0`) — expectation เดิมของไฟล์ผ่านโดยไม่แก้;
+  e2e (ต่อจาก `e2e/core-32-shipping-profile-filter.spec.ts` หรือไฟล์ใหม่ `e2e/core-35-*.spec.ts`): Given cart ของ A มี t-shirt + ที่อยู่ + shipping method = Digital delivery ตั้งผ่าน
+  `POST /store/carts/:id/shipping-methods` ด้วย token ของ A (id จาก `type.code`) When เปิด `/th/checkout?step=payment` และ `/th/checkout?step=review` (แยกกัน)
+  Then URL มี `step=delivery`, `submit-delivery-option-button` disabled, ไม่มี `submit-order-button` ที่ enabled และไม่มี request `POST /store/carts/<id>/complete` (นับด้วย `page.on("request")`);
+  When เลือก Standard แล้วกด `submit-delivery-option-button` Then URL มี `step=payment` และขั้น payment เปิดอยู่ (ไม่ถูกพากลับ delivery); AC-127, AC-125 และ spec 02 AC-37 ยังผ่าน
+- AC-130 (CORE-36, กฎข้อ 94) unit (Vitest + jsdom, ต่อจาก `src/core-28-promotion-error.test.ts`): `applyPromotions` mock คืน promise ที่ยังไม่ resolve When กด `remove-discount-button` สองครั้งใน `act()` เดียว
+  Then `applyPromotions` ถูกเรียก 1 ครั้ง และปุ่ม `disabled` (และ `aria-busy="true"` ถ้าใช้) ก่อน resolve; resolve แล้วปุ่มกดได้อีก (ถ้าแถวยังอยู่); mock reject/คืน error ที่ไม่ใช่ `unauthorized` →
+  `promotion-error` มีข้อความตรง regex อักษรไทยและ**ไม่เท่ากับ**ข้อความ fallback ของการใส่โค้ด (import หรือ export constant — ไม่ hard-code ซ้ำ); `{ error: "unauthorized" }` → `SIGN_IN_AGAIN_MESSAGE`;
+  การใส่โค้ดที่ล้มยังได้ข้อความเดิม; AC-121, AC-128 ยังผ่าน
+- AC-131 (CORE-37, กฎข้อ 95) unit (Vitest + jsdom, ต่อจาก `src/core-31-copy-button.test.ts`): `writeText` reject → มี element `<statusTestId>-value` ที่ `textContent` เท่ากับค่าที่ส่ง (เทียบ prop ไม่ hard-code)
+  และข้อความนำตรง regex อักษรไทยอยู่นอก element นั้น; `share` reject `NotAllowedError` → `writeText` ถูกเรียก 1 ครั้งด้วยค่าเดิม และ resolve → สถานะสำเร็จ; `share` reject `AbortError` → `writeText` 0 ครั้ง สถานะว่าง (เดิม);
+  e2e 375×812 (หน้า `/th/account/vouchers`, override `writeText` ให้ reject): ค่าใน `voucher-copy-status-value` อยู่ใน element เดียวที่ `getComputedStyle(...).wordBreak !== "break-all"`, `document.documentElement.scrollWidth ≤ 375`;
+  e2e 1280: ตำแหน่ง y ของ `voucher-copy-button` ก่อน-หลังคลิก (สำเร็จ) ต่างกัน ≤ 1px และ y-center ของ `voucher-code` กับปุ่มต่างกัน < 5px; e2e เดิมของ AC-124 ผ่านโดยไม่แก้ locator
+- AC-132 (CORE-38, กฎข้อ 96) e2e 375×812 (checkout ของ A ที่อีเมลยาว ≥ 40 ตัวไม่มีช่องว่าง, ใช้ที่อยู่เดียวกัน, หลังกด `submit-address-button`): bounding box ของ `shipping-contact-summary` และ
+  `billing-address-summary` ไม่ซ้อนกัน (intersection = 0) และไม่ซ้อนกับ `shipping-address-summary`, ข้อความอีเมลอยู่ภายในกล่องของ `shipping-contact-summary`, `scrollWidth ≤ 375`; ที่ 1280 ทั้งสามกล่องมี top เท่ากัน (±2px);
+  e2e 375 และ 1280 หน้า register (`/th/account` → สลับไปฟอร์มสมัคร) หลังกรอกทุกช่องแล้ว blur และรอ transition จบ: ทุก label ของ input ในฟอร์ม `getBoundingClientRect().bottom` ≤
+  `input.getBoundingClientRect().top + parseFloat(getComputedStyle(input).paddingTop)` (label ไม่ลงไปในพื้นที่ข้อความ); เงื่อนไขเดียวกันผ่านสำหรับฟอร์ม login และฟอร์มที่อยู่ของ checkout ที่มีค่าเติม (regression);
+  ภาพ evidence 375 ของ register และสรุปที่อยู่
+- AC-133 (CORE-39, กฎข้อ 97) unit (`lib/util/login-return.test.ts`): `/\evil`, `/%2F%2Fevil`, `"/th/g/abc\n"`, `/th/g/<65 ตัว>` → `null`; `/th/g/<64 ตัว>` → คืนค่าเดิม; เคสเดิมทั้งหมดผ่านโดยไม่แก้ expectation;
+  grep: `login-return.ts` มี `{1,64}`; `lib/data/customer.ts` มี comment ที่กล่าวถึงทั้ง `return_to` และ `add_variant` ใน `continueAfterAuth`; AC-123 (e2e) ยังผ่าน
+
+### แผนการทดสอบ (follow-up รอบ 18)
+| ระดับ | AC |
+|------|----|
+| unit (Vitest) | AC-129, AC-130, AC-131, AC-133 |
+| e2e | AC-129, AC-131 (375/1280), AC-132 (375/1280 + regression ฟอร์ม login/ที่อยู่) |
+| grep | AC-133 |
+
+### Tasks (follow-up รอบ 18)
+| ID | Task | AC | Depends |
+|----|------|----|---------|
+| CORE-35 | (storefront ~120 LOC, review #255) ขั้น delivery "เสร็จ" ใช้ option ที่เลือกในรายการที่กรองแล้ว + `?step=payment`/`review` ตรงๆ พากลับ delivery (กฎข้อ 93) — ไฟล์: `lib/util/digital-checkout.ts` (+ `src/ev-7c-digital-only-checkout.test.ts`), `modules/checkout/templates/checkout-form/index.tsx`, `modules/checkout/components/{payment,review,payment-button}/index.tsx`, e2e | AC-129 | none — **เริ่มได้** (CORE-32/33 ☑); ∥ CORE-36..39 (คนละไฟล์); ชน `checkout-form` กับ CORE-4i/CORE-19f (spec ☐) ตัวที่ merge ทีหลัง rebase — **ควรก่อน release v0.5.0** (ลูกค้าเจอ 400 อังกฤษตอนจ่าย) |
+| CORE-36 | (storefront เล็ก ~50 LOC, qa #252 O-2) ปุ่มลบโค้ดส่วนลดมีสถานะกำลังลบ + กันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (กฎข้อ 94) — ไฟล์: `modules/checkout/components/discount-code/index.tsx`, `src/core-28-promotion-error.test.ts` | AC-130 | none — **เริ่มได้** (CORE-28/34 ☑); ∥ ทุกตัว |
+| CORE-37 | (storefront เล็ก ~80 LOC, qa/review #254) ข้อความล้มของปุ่มคัดลอกแยกค่า + Web Share ล้มแล้วลองคัดลอก + แถวรหัสของการ์ด voucher ไม่เยื้อง (กฎข้อ 95) — ไฟล์: `modules/common/components/copy-button/index.tsx`, `src/core-31-copy-button.test.ts`, `modules/evoucher/components/voucher-card/index.tsx`, e2e | AC-131 | none — **เริ่มได้** (CORE-31 ☑ #254); ∥ ทุกตัว (EV-7e ☐ แตะ `voucher-card` — ตัวที่ merge ทีหลัง rebase) |
+| CORE-38 | (storefront เล็ก ~60 LOC + e2e, qa #255 O-2 / qa #258 O-3) สรุปที่อยู่ของ checkout เรียงแนวตั้งที่ < 640px + label ลอยของ `Input` ไม่ทับค่า (กฎข้อ 96) — ไฟล์: `modules/checkout/components/addresses/index.tsx`, `modules/common/components/input/index.tsx` และ/หรือ `styles/globals.css`, e2e ใหม่ | AC-132 | none — **เริ่มได้**; ∥ ทุกตัว (CORE-4j ☐ แตะฟอร์มที่อยู่ — ตัวที่ merge ทีหลัง rebase) |
+| CORE-39 | (storefront test/nit เล็ก ~25 LOC, review #258) จำกัดความยาว token ใน `return_to`, comment ลำดับ `return_to`/`add_variant`, unit เคสที่ qa ลองมือ (กฎข้อ 97) — ไฟล์: `lib/util/login-return.ts` (+ test), `lib/data/customer.ts` (comment) | AC-133 | **CORE-29 merge** (ชน `lib/data/customer.ts` — `completeLogin`/`continueAfterAuth` ไฟล์เดียวกัน; ไม่แตก branch ระหว่าง CORE-29 เปิด); ไม่บล็อก release |
+(รอบ 18) CORE-35 ∥ CORE-36 ∥ CORE-37 ∥ CORE-38 เริ่มได้ทันที; CORE-39 ← CORE-29; CORE-35 ควรมีก่อน release v0.5.0, ที่เหลือไม่บล็อก release
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 18)
+- ปุ่ม voucher `size="small"` (qa #254 ข้อ 2) — ทำแล้วใน #254 (`voucher-copy-button/index.tsx` ส่ง `size="small"`); ที่ 375px ปุ่มเต็มความกว้างการ์ดเป็นพฤติกรรมของแถว `flex-wrap` ซึ่ง CORE-37 ข้อ (c) จัดใหม่อยู่แล้ว
+- ค่าส่ง ฿0 ในสรุปตะกร้าขณะ cart ค้าง Digital delivery (qa #255 O-3) — ยอดจริงคำนวณใหม่เมื่อเลือกวิธีส่ง และ CORE-35 กันไม่ให้จ่ายด้วย method ค้าง
+
+### Open questions (รอบ 18)
 none
 
 หมายเหตุจาก CORE-1:

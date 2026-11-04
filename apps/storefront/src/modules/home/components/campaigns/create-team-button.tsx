@@ -3,6 +3,7 @@
 import { createGroupBuyTeam } from "@lib/data/group-buy"
 import { settleAction } from "@lib/util/action-result"
 import { groupJoinErrorMessage } from "@lib/util/group-join-error"
+import { loginPathForReturn } from "@lib/util/login-return"
 import { Button } from "@modules/common/components/ui"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
@@ -26,7 +27,8 @@ export default function CreateTeamButton({ campaignId, countryCode }: { campaign
       return
     }
     if (result.error === "unauthorized") {
-      router.push(`/${countryCode}/account`)
+      // CORE-30 (spec 01 กฎข้อ 87): login แล้วกลับหน้าแรก — ไม่สร้างทีมให้อัตโนมัติ
+      router.push(loginPathForReturn(countryCode, `/${countryCode}`))
       return
     }
     setError("message" in result ? result.message : groupJoinErrorMessage(null))
