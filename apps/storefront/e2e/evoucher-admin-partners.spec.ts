@@ -113,6 +113,7 @@ test("AC-8: Create partner — ชื่อว่าง/URL ที่ไม่�
   // ขึ้นต้นด้วย "000" ให้อยู่หน้าแรกของตารางที่เรียงตามชื่อ
   const name = `000 ADM-5 create ${Date.now()}`
   const posts = countWrites(page, "POST")
+  let createdId = ""
 
   await step("เปิดฟอร์ม Create partner แล้วกด Save โดยไม่กรอกชื่อ → error ใต้ช่อง Name ไม่มี POST", async () => {
     await loginAdmin(page)
@@ -142,14 +143,17 @@ test("AC-8: Create partner — ชื่อว่าง/URL ที่ไม่�
       (res) => res.request().method() === "POST" && new URL(res.url()).pathname === PARTNERS_PATH
     )
     await page.keyboard.press(process.platform === "darwin" ? "Meta+Enter" : "Control+Enter")
-    expect((await created).status()).toBe(200)
+    const response = await created
+    expect(response.status()).toBe(200)
+    createdId = (await response.json()).partner.id
     await expect(page.getByTestId("evoucher-partners").getByText(name, { exact: true })).toHaveCount(1)
     expect(posts).toHaveLength(1)
   })
 
-  const { partners } = await call(request, admin, `${PARTNERS_PATH}?limit=1&order=-created_at`)
-  expect(partners[0]).toMatchObject({ name, terms_url: "https://example.com/terms", logo_url: null })
-  await request.delete(`${BACKEND_URL}${PARTNERS_PATH}/${partners[0].id}`, { headers: admin })
+  // อ่านด้วย id จาก response ของ POST — `order=-created_at&limit=1` ชนกับ test อื่นที่สร้าง partner พร้อมกันเมื่อ workers > 1
+  const { partner } = await call(request, admin, `${PARTNERS_PATH}/${createdId}`)
+  expect(partner).toMatchObject({ name, terms_url: "https://example.com/terms", logo_url: null })
+  await request.delete(`${BACKEND_URL}${PARTNERS_PATH}/${createdId}`, { headers: admin })
 })
 
 test("AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE", async ({

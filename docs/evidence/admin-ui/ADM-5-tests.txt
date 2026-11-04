@@ -79,3 +79,35 @@ apps/storefront typecheck: Done
 ### pnpm --filter backend build
 Backend build completed successfully
 Frontend build completed successfully
+
+## แก้ตาม qa (D-1) — 2026-11-05
+DB ทดสอบมี partner "AAA ADM-5 qa repro 01..25" 25 ราย (สร้างผ่าน POST /admin/evoucher/partners) ซึ่งเรียงก่อน "EV-9"
+
+### ก่อนแก้: npx playwright test e2e/evoucher-admin-forms.spec.ts (workers=1) — ล้มตามที่ qa รายงาน
+  ✘  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (7.1s)
+    Error: expect(locator).toHaveCount(expected) failed
+    Received: 0
+    ADM-5-fix-pw-red/evoucher-admin-forms-AC-20-6c860-r-pool-หาได้ด้วย-getByLabel-chromium/test-failed-1.png
+  1 failed
+
+### หลังแก้: DB เดียวกัน
+  ✓  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (2.9s)
+  1 passed (3.4s)
+
+### npx playwright test e2e/evoucher-admin- e2e/admin-form-pilot --workers=2
+  ✓  2 [chromium] › e2e/admin-form-pilot.spec.ts:23:5 › AC-6: drawer flash sale — Total cap 0 แสดง error ไม่ POST; dblclick Save และ Meta+Enter = POST 1 ครั้ง (3.2s)
+  ✓  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (3.3s)
+  ✓  3 [chromium] › e2e/admin-form-pilot.spec.ts:109:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง (2.8s)
+  ✓  4 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty (4.0s)
+  ✓  6 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ (2.0s)
+  ✓  7 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE (3.5s)
+  ✓  5 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (8.5s)
+  ✓  8 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.8s)
+  ✓  9 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (3.4s)
+  9 passed (20.0s)
+
+### รันซ้ำ --workers=2 --repeat-each=2 (partner คงอยู่ใน DB หลังรัน 38 ราย)
+18 passed (36.7s)
+
+### pnpm lint && pnpm typecheck
+exit 0 (0 errors; warning เดิม)
