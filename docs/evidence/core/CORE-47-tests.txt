@@ -1,0 +1,63 @@
+# CORE-47 — ผล test (spec 01 กฎข้อ 105, AC-142) — 2026-11-05, node v22.23.3, รันในเครื่องแบบ prod build (backend :9464 medusa start, storefront :8464 next build + next start)
+
+## Red — e2e ใหม่บน storefront ของ develop 63cd172 (item/index.tsx + items.tsx เท่า develop)
+
+Running 1 test using 1 worker
+
+  ✘  1 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:130:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน (2.4s)
+
+
+  1) [chromium] › e2e/core-47-cart-375-long-title.spec.ts:130:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน › (a) 375: การ์ด — ชื่อใช้ความกว้างทางขวาของรูป ≤ 5 บรรทัด, บรรทัดล่างปุ่มลบ/จำนวน/รวมชิดขวาไม่ถูกตัด, หน้าไม่ล้น 
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 375
+    Received:    414
+
+      237 |         expect(
+      238 |           await page.evaluate(() => document.documentElement.scrollWidth)
+    > 239 |         ).toBeLessThanOrEqual(MOBILE.width)
+          |           ^
+      240 |         expect(cards.map((c) => c.title.text).sort()).toEqual([...TITLES].sort())
+      241 |         // ยอด 7 หลัก: line จำนวน 99 = ฿1,222,221.33 ก่อนลด
+      242 |         const amounts = cards.flatMap((c) =>
+
+## Green — e2e core-47 --repeat-each=3 --workers=2
+  ✓  2 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:130:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน (7.5s)
+  ✓  1 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:130:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน (8.2s)
+  ✓  3 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:130:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน (6.4s)
+  3 passed (15.5s)
+
+## Regression — e2e (--workers=2): core-42, core-44, core-19c, thai-ui-cart-order, core-14g, flash-sale-fs15, core-26
+  ✓   2 [chromium] › e2e/core-19c-delete-button-error.spec.ts:105:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (1.8s)
+  ✓   3 [chromium] › e2e/core-19c-delete-button-error.spec.ts:123:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1.8s)
+  ✓   1 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (4.7s)
+  ✓   4 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (1.6s)
+  ✓   6 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (1.5s)
+  ✓   5 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:148:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (2.4s)
+  ✓   7 [chromium] › e2e/core-19c-delete-button-error.spec.ts:183:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่ (1.4s)
+  ✓   9 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:90:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (2.7s)
+  ✓  10 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:247:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (1.5s)
+  ✓  11 [chromium] › e2e/core-44-cart-summary-qty.spec.ts:67:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2) (7.1s)
+  ✓  12 [chromium] › e2e/flash-sale-fs15.spec.ts:122:5 › AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 → เตือน + ปุ่ม disabled; เลือก 2 → กดได้ (484ms)
+  ✓  13 [chromium] › e2e/flash-sale-fs15.spec.ts:149:5 › AC-21: show_remaining=false (remaining_units=null) เลือก 3 → ไม่เตือน (342ms)
+  ✓  14 [chromium] › e2e/flash-sale-fs15.spec.ts:165:5 › AC-21: cart มี line ของสินค้า flash qty 3 ขณะ remaining_units=2 → cart-flash-exceeds-remaining (1.4s)
+  ✓   8 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:203:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (19.5s)
+  ✓  15 [chromium] › e2e/flash-sale-fs15.spec.ts:195:5 › AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkout → ข้อความไทยของ code ในขั้น review (4.4s)
+  ✓  16 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (563ms)
+  ✓  17 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (4.2s)
+  17 passed (32.9s)
+
+## Unit
+$ pnpm --filter storefront test:unit
+ Test Files  83 passed (83)
+      Tests  951 passed (951)
+$ pnpm --filter storefront test:e2e:unit
+  68 passed (588ms)
+$ pnpm --filter backend test:unit
+Test Suites: 88 passed, 88 total
+Tests:       934 passed, 934 total
+
+## typecheck / lint
+$ pnpm typecheck → exit 0
+$ pnpm lint → exit 0 (0 errors; warning เดิมของ repo ไม่มีในไฟล์ที่ task นี้แตะ)
