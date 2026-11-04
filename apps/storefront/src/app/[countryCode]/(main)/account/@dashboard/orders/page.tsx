@@ -4,6 +4,7 @@ import OrderOverview from "@modules/account/components/order-overview"
 import { notFound } from "next/navigation"
 import { listOrders } from "@lib/data/orders"
 import { listGroupBuyMemberships } from "@lib/data/group-buy"
+import { showOrdersEmptyState } from "@lib/util/group-buy-orders"
 import AccountGroupOrders from "@modules/group-buy/components/account-group-orders"
 
 export const metadata: Metadata = {
@@ -29,8 +30,8 @@ export default async function Orders() {
       {/* GB-7b: เวลาของ request ใช้ตัดสินสถานะ (server component render ครั้งเดียวต่อ request) */}
       {/* eslint-disable-next-line react-hooks/purity */}
       <AccountGroupOrders data={groupOrders} now={Date.now()} />
-      {/* GB-12 (กฎข้อ 32e): empty state ของ OrderOverview เฉพาะเมื่อไม่มีทั้ง order ปกติและคำสั่งซื้อแบบกลุ่ม */}
-      {(orders.length > 0 || !groupOrders?.memberships.length) && (
+      {/* GB-12 (กฎข้อ 32e + คำตัดสิน owner): empty state เฉพาะเมื่อรู้แน่ว่าไม่มีทั้ง order ปกติและแบบกลุ่ม (GB-8 ล้ม → ไม่แสดง) */}
+      {(orders.length > 0 || showOrdersEmptyState(orders, groupOrders)) && (
         <div>
           <OrderOverview orders={orders} />
         </div>

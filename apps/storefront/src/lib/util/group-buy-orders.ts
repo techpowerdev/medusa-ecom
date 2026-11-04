@@ -55,3 +55,12 @@ export function groupBuyMembershipView(m: GroupBuyMembership, nowMs: number): Gr
       return { kind: "cancelled", canLeave: false }
   }
 }
+
+/**
+ * GB-12 (spec 04 กฎข้อ 32e + คำตัดสิน owner 2026-11-04): แสดง empty state (`no-orders-container`) ของหน้า orders
+ * เฉพาะเมื่อไม่มี order ปกติ และ GB-8 ตอบสำเร็จว่าไม่มี membership — อ่าน GB-8 ล้ม (null) ไม่รู้ว่ามี order แบบกลุ่มหรือไม่ จึงไม่แสดง
+ */
+export const showOrdersEmptyState = (
+  orders: readonly unknown[],
+  groupOrders: { memberships: readonly GroupBuyMembership[]; count: number } | null
+) => orders.length === 0 && groupOrders !== null && groupOrders.memberships.length === 0
