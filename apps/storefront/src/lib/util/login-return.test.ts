@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { RETURN_TO_PARAM, loginPathForReturn, readReturnTo } from "./login-return"
+import { RETURN_TO_PARAM, isBuyReturnPath, loginPathForReturn, readReturnTo } from "./login-return"
 
 // CORE-14 (spec 01 AC-41, กฎ 25): /buy/[items] ต้องล็อกอินก่อน → หน้า login พร้อม return URL กลับ /buy/...
 const form = (entries: Record<string, string>) => {
@@ -40,5 +40,41 @@ describe("readReturnTo", () => {
       expect(readReturnTo(form({ [RETURN_TO_PARAM]: value })), value).toBeNull()
     }
     expect(readReturnTo(form({}))).toBeNull()
+  })
+})
+
+// CORE-30 (spec 01 กฎข้อ 87, AC-123): ไม่ login กด join/สร้างทีม → login แล้วกลับหน้ากลุ่ม/หน้าแรก (path ภายในเท่านั้น)
+describe("readReturnTo — group page and home (CORE-30)", () => {
+  it("returns the group page path and the country home path", () => {
+    for (const value of ["/th/g/abc_D-1", "/th", "/buy/variant_01:2"]) {
+      expect(readReturnTo(form({ [RETURN_TO_PARAM]: value })), value).toBe(value)
+    }
+  })
+
+  it("returns null for anything else (no open redirect; query is rejected on the new paths)", () => {
+    for (const value of [
+      "https://evil.example/th",
+      "//evil.example",
+      "/th/g/../account",
+      "/th/g/a/b",
+      "/th/account",
+      "/th/g/abc?x=1",
+      "/th?x=1",
+      "\\evil",
+      "/th/g/",
+      "/th/g/abc%2F..",
+      "/TH/g/abc",
+      "/th/",
+    ]) {
+      expect(readReturnTo(form({ [RETURN_TO_PARAM]: value })), value).toBeNull()
+    }
+  })
+})
+
+describe("isBuyReturnPath", () => {
+  it("is true only for /buy/ return paths", () => {
+    expect(isBuyReturnPath("/buy/v1:1?x=1")).toBe(true)
+    expect(isBuyReturnPath("/th/g/abc")).toBe(false)
+    expect(isBuyReturnPath("/th")).toBe(false)
   })
 })

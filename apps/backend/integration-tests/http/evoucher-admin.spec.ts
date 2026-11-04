@@ -1,10 +1,7 @@
 import { randomBytes } from "node:crypto"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
-import {
-  ContainerRegistrationKeys,
-  generateJwtToken,
-  Modules,
-} from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { createAdminUser } from "../helpers/admin"
 import {
   createInventoryLevelsWorkflow,
   createProductsWorkflow,
@@ -69,29 +66,9 @@ medusaIntegrationTestRunner({
       const container = getContainer()
       service = container.resolve(EVOUCHER_MODULE)
 
-      const userModule = container.resolve(Modules.USER)
-      const authModule = container.resolve(Modules.AUTH)
-      const user = await userModule.createUsers({ email: "admin@example.com" })
-      adminUserId = user.id
-      const identity = await authModule.createAuthIdentities({
-        provider_identities: [
-          { provider: "emailpass", entity_id: "admin@example.com" },
-        ],
-        app_metadata: { user_id: user.id },
-      })
-      const { http } = container.resolve(
-        ContainerRegistrationKeys.CONFIG_MODULE
-      ).projectConfig
-      const token = generateJwtToken(
-        {
-          actor_id: user.id,
-          actor_type: "user",
-          auth_identity_id: identity.id,
-          app_metadata: { user_id: user.id },
-        },
-        { secret: http.jwtSecret, expiresIn: "1d" }
-      )
-      headers = { authorization: `Bearer ${token}` }
+      const admin = await createAdminUser(container)
+      adminUserId = admin.userId
+      headers = admin.headers
 
       const { result: products } = await createProductsWorkflow(container).run({
         input: {
