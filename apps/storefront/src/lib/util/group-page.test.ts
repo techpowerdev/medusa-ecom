@@ -8,6 +8,7 @@ import {
   groupSharePath,
   removeFromSelection,
   selectionUnits,
+  selectionVariantInfo,
   setSelectionQuantity,
   type PublicGroupBuyCampaign,
   type PublicGroupBuyGroup,
@@ -77,8 +78,10 @@ describe("groupDiscountValue", () => {
     expect(groupDiscountValue({ type: "percentage", value: 10, currency_code: null })).toBe("10%")
   })
 
-  it("fixed → ลดเป็นจำนวนเงินตามสกุลเงิน", () => {
-    expect(groupDiscountValue({ type: "fixed", value: 100, currency_code: "thb" })).toBe("฿100")
+  // GB-12 (กฎข้อ 32c, AC-51): ต้นแบบสร้างด้วย allocation "each" → ส่วนลด fixed เป็นต่อชิ้น
+  it("fixed → จำนวนเงินตามสกุลเงิน ต่อท้าย ต่อชิ้น", () => {
+    expect(groupDiscountValue({ type: "fixed", value: 50, currency_code: "thb" })).toBe("฿50 ต่อชิ้น")
+    expect(groupDiscountValue({ type: "fixed", value: 100, currency_code: "thb" })).toBe("฿100 ต่อชิ้น")
   })
 
   it("ไม่มีส่วนลด → null", () => {
@@ -134,5 +137,29 @@ describe("รายการ group-selection", () => {
     expect(setSelectionQuantity(list, "v2", "500")[1].quantity).toBe(100)
     expect(removeFromSelection(list, "v1")).toEqual([{ variant_id: "v2", quantity: 1 }])
     expect(addToSelection([{ variant_id: "v1", quantity: 99 }], "v1", 5)).toEqual([{ variant_id: "v1", quantity: 100 }])
+  })
+})
+
+// GB-12 (กฎข้อ 32b, AC-51): ชื่อสินค้า + variant และราคาต่อชิ้นของแถวใน group-selection จาก product ที่หน้าโหลดแล้ว
+describe("selectionVariantInfo", () => {
+  const product = {
+    id: "prod_1",
+    title: "เสื้อยืด",
+    variants: [
+      { id: "v_s", title: "S", calculated_price: { calculated_amount: 1250.5, currency_code: "thb" } },
+      { id: "v_m", title: "M", calculated_price: null },
+    ],
+  } as never
+
+  it("ชื่อสินค้า + ชื่อ variant และราคา calculated_amount แสดงด้วย convertToLocale", () => {
+    expect(selectionVariantInfo(product, "v_s")).toEqual({ title: "เสื้อยืด — S", amount: 1250.5, price: "฿1,250.50" })
+  })
+
+  it("variant ไม่มีราคาใน region → ไม่มีราคา", () => {
+    expect(selectionVariantInfo(product, "v_m")).toEqual({ title: "เสื้อยืด — M", amount: null, price: null })
+  })
+
+  it("ไม่พบ variant → ชื่อสินค้าตามด้วย id", () => {
+    expect(selectionVariantInfo(product, "v_x")).toEqual({ title: "เสื้อยืด — v_x", amount: null, price: null })
   })
 })

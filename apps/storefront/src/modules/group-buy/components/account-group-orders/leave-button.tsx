@@ -44,14 +44,23 @@ export default function LeaveGroupButton({ membershipId, canLeave }: { membershi
   return (
     <div className="flex flex-col items-end gap-y-2">
       {!canLeave ? null : confirming ? (
-        <div className="flex gap-2" data-testid="group-leave-confirm-box">
-          <span className="text-small-regular self-center">ยืนยันออกจากกลุ่ม? คำสั่งซื้อนี้จะถูกยกเลิก</span>
-          <Button variant="secondary" disabled={pending} onClick={() => setConfirming(false)} data-testid="group-leave-cancel">
-            ไม่ใช่
-          </Button>
-          <Button isLoading={pending} onClick={leave} data-testid="group-leave-confirm">
-            ออกจากกลุ่ม
-          </Button>
+        // GB-12 (กฎข้อ 32d): < 640px ข้อความหนึ่งแถว ปุ่มสองปุ่มอีกแถว (ไม่ตัดคำ); ≥ 640px (`sm` ของ Tailwind — `small` ของ starter คือ 1024px) แถวเดียว
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center" data-testid="group-leave-confirm-box">
+          <span className="text-small-regular">ยืนยันออกจากกลุ่ม? คำสั่งซื้อนี้จะถูกยกเลิก</span>
+          <div className="flex shrink-0 gap-2">
+            <Button
+              variant="secondary"
+              className="whitespace-nowrap"
+              disabled={pending}
+              onClick={() => setConfirming(false)}
+              data-testid="group-leave-cancel"
+            >
+              ไม่ใช่
+            </Button>
+            <Button isLoading={pending} className="whitespace-nowrap" onClick={leave} data-testid="group-leave-confirm">
+              ออกจากกลุ่ม
+            </Button>
+          </div>
         </div>
       ) : (
         <Button variant="secondary" onClick={() => setConfirming(true)} data-testid="group-leave-button">
