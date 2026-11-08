@@ -1,10 +1,13 @@
+import { ActionMenu } from "@medusajs/dashboard/components"
 import { useDate } from "@medusajs/dashboard/hooks"
 import { castNumber, getLocaleAmount } from "@medusajs/dashboard/lib"
-import { Badge, Button, createDataTableColumnHelper, toast, usePrompt } from "@medusajs/ui"
+import { CheckCircle, EllipsisHorizontal, XCircle } from "@medusajs/icons"
+import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useReducer, useState } from "react"
 import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
 import { canCancelPayout, canMarkPaid } from "../../lib/affiliate-payout"
+import { createSingleFlight } from "../../lib/single-flight"
 import { Header } from "../common/header"
 import { AffiliateCell, AffiliateListTable, useAffiliateList, useAffiliateNames } from "./list-table"
 import { MarkPaidPrompt } from "./mark-paid-prompt"
@@ -12,41 +15,44 @@ import { PayoutFormModal } from "./payout-form"
 
 const columnHelper = createDataTableColumnHelper<Payout>()
 
-// AF-6 (spec 05 AC-26): เฉพาะแถว `draft` มีปุ่มยกเลิก (route ของ AF-9) ยืนยันด้วย usePrompt และกันกดซ้ำ
-// AF-12c (กฎ 37c): ปุ่มสร้าง payout (FocusModal) และ mark paid ต่อแถว `draft` (Prompt พร้อมช่อง reference)
-export const PayoutsTable = () => {
+/**
+ * ADM-8b (spec 08 AC-13, กฎ 4, 10): Mark paid/Cancel ต่อแถวใน ActionMenu — ถือ prompt/mutation ยกเลิกของแถวเอง (แบบ `*Actions` ของ dashboard)
+ * และกันกัน (nit #176): Cancel กำลังส่ง → Mark paid disabled; กล่อง mark paid เปิดอยู่ (รวมระหว่างส่ง) → Cancel disabled
+ * กล่อง mark paid อยู่นอกตาราง (render ใน cell แล้ว Escape ครั้งแรกไม่ปิด)
+ */
+const PayoutActions = ({
+  payout,
+  markPaidOpen,
+  onMarkPaid,
+}: {
+  payout: Payout
+  markPaidOpen: boolean
+  onMarkPaid: (p: Payout) => void
+}) => {
   const prompt = usePrompt()
   const queryClient = useQueryClient()
-  const { getFullDate } = useDate()
-  const list = useAffiliateList<Payout>("payouts", "payouts")
-  const rows = useAffiliateNames(list.rows)
-  // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → คลิกซ้ำ (dblclick) ถูกเพิกเฉย (ค่าคงอยู่ข้าม render)
-  const inFlight = useRef(false)
-  // `opened` เป็น key ให้ฟอร์ม/กล่องยืนยัน mount ใหม่ทุกครั้งที่เปิด (ค่าเริ่มต้นสด)
-  const [creating, setCreating] = useState<number>()
-  const [markingPaid, setMarkingPaid] = useState<{ payout: Payout; opened: number }>()
+  // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → กด Cancel ซ้ำถูกข้าม (กฎ 4)
+  const [cancelOnce] = useState(createSingleFlight)
+  // เปิด modal/drawer จาก menuitem: mount เมนูใหม่ใน commit เดียวกัน (ปิดทันทีไม่รอ animation) — ไม่งั้น Radix คนละสำเนา
+  // ของเมนูกับ modal คืนค่า pointer-events ของ body สลับกันจนหน้าเป็น `none` ค้างหลังปิด modal (คลิกอะไรไม่ได้)
+  const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
 
-  const refetchPayouts = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
-
+  const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
   const cancel = useMutation({
     mutationFn: cancelPayout,
     onSuccess: () => {
       toast.success("Payout cancelled")
-      return refetchPayouts()
+      return refetch()
     },
     // รอบ 10: ยกเลิกไม่สำเร็จ (เช่น ถูก mark paid ไปแล้ว) → โหลดรายการใหม่ให้ตารางแสดงสถานะจริง
     onError: (e: Error) => {
       toast.error(e.message)
-      return refetchPayouts()
+      return refetch()
     },
   })
 
-  const confirmCancel = async (id: string) => {
-    if (inFlight.current) {
-      return
-    }
-    inFlight.current = true
-    try {
+  const confirmCancel = () =>
+    cancelOnce(async () => {
       const ok = await prompt({
         title: "Cancel this draft payout?",
         description: "The payout is removed and its entries can be picked up by the next payout.",
@@ -54,12 +60,73 @@ export const PayoutsTable = () => {
         cancelText: "Keep payout",
       })
       if (ok) {
-        await cancel.mutateAsync(id).catch(() => undefined)
+        await cancel.mutateAsync(payout.id).catch(() => undefined)
       }
-    } finally {
-      inFlight.current = false
-    }
-  }
+    })
+
+  const actions = [
+    ...(canMarkPaid(payout)
+      ? [
+          {
+            label: "Mark paid",
+            icon: <CheckCircle />,
+            disabled: cancel.isPending,
+            onClick: () => {
+              remountMenu()
+              onMarkPaid(payout)
+            },
+          },
+        ]
+      : []),
+    ...(canCancelPayout(payout)
+      ? [
+          {
+            label: "Cancel",
+            icon: <XCircle />,
+            disabled: cancel.isPending || markPaidOpen,
+            onClick: confirmCancel,
+          },
+        ]
+      : []),
+  ]
+
+  // แถวที่ไม่มี action (paid/cancelled) ไม่ render trigger (spec 08 กฎ 10)
+  return actions.length ? (
+    <ActionMenu key={menuKey} groups={[{ actions }]}>
+      <IconButton size="small" variant="transparent" data-testid="affiliate-payout-row-actions">
+        <EllipsisHorizontal />
+      </IconButton>
+    </ActionMenu>
+  ) : null
+}
+
+// AF-6 (spec 05 AC-26): เฉพาะแถว `draft` มีปุ่มยกเลิก (route ของ AF-9) ยืนยันด้วย usePrompt และกันกดซ้ำ
+// AF-12c (กฎ 37c): ปุ่มสร้าง payout (FocusModal) และ mark paid ต่อแถว `draft` (Prompt พร้อมช่อง reference)
+export const PayoutsTable = () => {
+  const { getFullDate } = useDate()
+  const list = useAffiliateList<Payout>("payouts", "payouts")
+  const rows = useAffiliateNames(list.rows)
+  // `opened` เป็น key ให้ฟอร์ม/กล่องยืนยัน mount ใหม่ทุกครั้งที่เปิด (ค่าเริ่มต้นสด)
+  const [creating, setCreating] = useState<number>()
+  const [markingPaid, setMarkingPaid] = useState<{ payout: Payout; opened: number }>()
+  const markPaidOpen = markingPaid !== undefined
+
+  // `cell` ต้องคงที่ข้าม render: สร้างใหม่ = React mount แถวใหม่และเมนูที่เปิดอยู่ปิดเองตอนรายการ/ชื่อ affiliate โหลดเสร็จ
+  // (สร้างใหม่เฉพาะตอนกล่อง mark paid เปิด/ปิด ซึ่งตารางถูกกล่องบังอยู่)
+  const actionsColumn = useMemo(
+    () =>
+      columnHelper.display({
+        id: "actions",
+        cell: ({ row }) => (
+          <PayoutActions
+            payout={row.original}
+            markPaidOpen={markPaidOpen}
+            onMarkPaid={(payout) => setMarkingPaid((m) => m ?? { payout, opened: Date.now() })}
+          />
+        ),
+      }),
+    [markPaidOpen],
+  )
 
   // คอลัมน์สถานะ (sticky) และปุ่มอยู่ซ้ายสุด เพื่อให้ปุ่มอยู่ในจอที่ 1280px โดยไม่ต้องเลื่อนตาราง (รอบ 10)
   const columns = useMemo(
@@ -72,34 +139,7 @@ export const PayoutsTable = () => {
           </Badge>
         ),
       }),
-      columnHelper.display({
-        id: "actions",
-        cell: ({ row }) => (
-          <div className="flex gap-x-2">
-            {canMarkPaid(row.original) && (
-              <Button
-                size="small"
-                variant="secondary"
-                data-testid="affiliate-payout-mark-paid"
-                onClick={() => setMarkingPaid((m) => m ?? { payout: row.original, opened: Date.now() })}
-              >
-                Mark paid
-              </Button>
-            )}
-            {canCancelPayout(row.original) && (
-              <Button
-                size="small"
-                variant="secondary"
-                data-testid="affiliate-payout-cancel"
-                disabled={cancel.isPending}
-                onClick={() => confirmCancel(row.original.id)}
-              >
-                Cancel
-              </Button>
-            )}
-          </div>
-        ),
-      }),
+      actionsColumn,
       // AF-14: ชื่อ/อีเมล affiliate ถัดจากปุ่ม เพื่อให้อยู่ในจอที่ 1280px
       columnHelper.accessor("affiliate_id", {
         header: "Affiliate",
@@ -123,8 +163,7 @@ export const PayoutsTable = () => {
       columnHelper.accessor("reference", { header: "Reference", cell: ({ getValue }) => getValue() ?? "-" }),
       columnHelper.accessor("id", { header: "Payout" }),
     ],
-    // confirmCancel ใช้แค่ ref, prompt, mutateAsync และ setter ของ state ที่ stable — สร้างคอลัมน์ใหม่เมื่อ isPending/getFullDate เปลี่ยน
-    [cancel.isPending, getFullDate],
+    [actionsColumn, getFullDate],
   )
 
   return (

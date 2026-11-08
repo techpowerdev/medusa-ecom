@@ -1,4 +1,4 @@
-// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a), AC-6 (ADM-3), AC-7 (ADM-4)
+// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a), AC-6 (ADM-3), AC-7 (ADM-4), AC-13 (ADM-8b)
 import { readdirSync, readFileSync } from "fs"
 import { join } from "path"
 
@@ -408,23 +408,85 @@ describe("ตาราง affiliate ใช้ของ Medusa (spec 08 AC-2, AC-
     expect(read("routes/affiliate/page.tsx")).toMatch(/from\s*["'](?:\.{1,2}\/)+components\/common\/header["']/)
   })
 
-  // payouts-table ยังมี useRef(false) จนถึง ADM-8b; program-form/payout-info-drawer เป็นของ ADM-9 — ตรวจเฉพาะไฟล์ที่ ADM-8a ปรับครบแล้ว
+  // program-form/payout-info-drawer เป็นของ ADM-9 — ตรวจเฉพาะไฟล์ที่ ADM-8a/8b ปรับครบแล้ว
   it.each([
     "components/affiliate/list-table.tsx",
     "components/affiliate/programs-table.tsx",
     "components/affiliate/affiliates-table.tsx",
+    "components/affiliate/payouts-table.tsx",
     "components/affiliate/mark-paid-prompt.tsx",
     "routes/affiliate/page.tsx",
   ])("%s ไม่มี pattern ต้องห้ามของกฎ 4–6", (file) => {
     const src = read(file)
     expect(FORBIDDEN.filter(([, re]) => re.test(src)).map(([name]) => name)).toEqual([])
   })
+})
 
-  it("payouts-table ไม่มี pattern วันเวลา/เงินต้องห้าม (useRef(false) รอ ADM-8b)", () => {
+describe("ปุ่มต่อแถวของ affiliate อยู่ใน ActionMenu (spec 08 AC-13, กฎ 4, 10, ADM-8b)", () => {
+  // testid ปุ่มต่อแถวเดิม (ก่อน ADM-8b) — e2e หา menuitem ด้วย role + ชื่อแทน
+  const OLD_ROW_TESTIDS = [
+    "affiliate-approve",
+    "affiliate-suspend",
+    "affiliate-reactivate",
+    "affiliate-payout-info-edit",
+    "affiliate-program-edit",
+    "affiliate-program-delete",
+    "affiliate-payout-mark-paid",
+    "affiliate-payout-cancel",
+  ]
+
+  it.each([
+    ["components/affiliate/affiliates-table.tsx", "affiliate-row-actions"],
+    ["components/affiliate/programs-table.tsx", "affiliate-program-row-actions"],
+    ["components/affiliate/payouts-table.tsx", "affiliate-payout-row-actions"],
+  ])("%s import ActionMenu ของ dashboard, trigger %s และไม่มี testid ปุ่มต่อแถวเดิม", (file, trigger) => {
+    const src = read(file)
+    expect(importsFrom(src, "ActionMenu", "@medusajs/dashboard/components")).toBe(true)
+    expect(src).toContain(`data-testid="${trigger}"`)
+    expect(OLD_ROW_TESTIDS.filter((id) => new RegExp(`["'\`]${id}["'\`]`).test(src))).toEqual([])
+    expect(src).toMatch(/useState\(createSingleFlight\)/)
+  })
+
+  // `cell` ที่สร้างใหม่ทุก render (usePrompt/useDate คืนฟังก์ชันใหม่ทุกครั้ง) = React mount แถวใหม่ → เมนูที่เปิดอยู่ปิดเองเมื่อรายการ refetch
+  // (พบใน e2e: คลิก trigger ตอนชื่อ affiliate โหลดเสร็จแล้วเมนูไม่เปิด)
+  it.each([
+    "components/affiliate/affiliates-table.tsx",
+    "components/affiliate/programs-table.tsx",
+    "components/affiliate/payouts-table.tsx",
+  ])("%s: คอลัมน์ action memo แยกด้วย deps ที่ stable (ไม่มี prompt/getFullDate/mutation) และใช้ใน columns", (file) => {
+    const src = read(file)
+    const start = src.indexOf("const actionsColumn = useMemo(")
+    expect(start).toBeGreaterThan(-1)
+    const deps = src.slice(start).match(/\n {4}\[([^\]]*)\],?\n {2}\)/)
+    expect(deps).not.toBeNull()
+    expect(deps![1]).not.toMatch(/prompt|getFullDate|mutate|isPending|Once/)
+    expect(src).toMatch(/^\s+actionsColumn,$/m)
+  })
+
+  it("lib/affiliate-account.ts ไม่ถือ testid ของปุ่มต่อแถวแล้ว", () => {
+    expect(read("lib/affiliate-account.ts")).not.toMatch(/\btestId\b/)
+  })
+
+  it("components/affiliate/** ไม่มี useRef(false)", () => {
+    const files = adminFiles.filter((f) => f.startsWith("components/affiliate/"))
+    expect(files.length).toBeGreaterThan(0)
+    expect(files.filter((f) => /useRef\(\s*false\s*\)/.test(read(f)))).toEqual([])
+  })
+
+  it("payouts-table: Mark paid และ Cancel ของแถวเดียวกันกันกัน (disabled ระหว่างอีก action ทำงาน — nit #176)", () => {
     const src = read("components/affiliate/payouts-table.tsx")
-    const found = FORBIDDEN.filter(([name]) => name !== "useRef(false)")
-      .filter(([, re]) => re.test(src))
-      .map(([name]) => name)
-    expect(found).toEqual([])
+    const action = (label: string) => {
+      const i = src.indexOf(`label: "${label}"`)
+      expect(i).toBeGreaterThan(-1)
+      return src.slice(i, src.indexOf("}", src.indexOf("onClick", i)))
+    }
+    expect(action("Mark paid")).toMatch(/disabled:\s*\w+/)
+    expect(action("Cancel")).toMatch(/disabled:\s*\w+/)
+  })
+
+  it("programs-table: deps ของ useMemo คอลัมน์ครบ ไม่ใช่แค่ [remove.isPending] (nit #163)", () => {
+    const src = read("components/affiliate/programs-table.tsx")
+    expect(src).not.toMatch(/\[remove\.isPending(, getFullDate)?\]/)
+    expect(src).not.toMatch(/ที่ stable/)
   })
 })

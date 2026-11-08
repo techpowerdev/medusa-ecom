@@ -1,18 +1,18 @@
 import { isAccountNumber, normalizeAccountNumber } from "../../modules/affiliate/utils/account-number"
 import type { Affiliate } from "./affiliate"
 
-// AF-12b (spec 05 กฎ 37b): ปุ่มเดียวต่อแถวตามสถานะ affiliate — suspend ต้องยืนยันด้วย usePrompt
+// AF-12b (spec 05 กฎ 37b): action สถานะเดียวต่อแถวตามสถานะ affiliate — suspend ต้องยืนยันด้วย usePrompt
+// ADM-8b: อยู่ใน ActionMenu ของแถว (menuitem หาด้วย label — spec 08 กฎ 10)
 export type AffiliateAction = {
-  testId: "affiliate-approve" | "affiliate-suspend" | "affiliate-reactivate"
   label: string
   status: Affiliate["status"]
   confirm: boolean
 }
 
 const ACTIONS: Record<Affiliate["status"], AffiliateAction> = {
-  pending: { testId: "affiliate-approve", label: "Approve", status: "active", confirm: false },
-  active: { testId: "affiliate-suspend", label: "Suspend", status: "suspended", confirm: true },
-  suspended: { testId: "affiliate-reactivate", label: "Reactivate", status: "active", confirm: false },
+  pending: { label: "Approve", status: "active", confirm: false },
+  active: { label: "Suspend", status: "suspended", confirm: true },
+  suspended: { label: "Reactivate", status: "active", confirm: false },
 }
 
 export const affiliateAction = (status: Affiliate["status"]) => ACTIONS[status]

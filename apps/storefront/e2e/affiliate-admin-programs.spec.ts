@@ -1,11 +1,12 @@
 import { APIRequestContext } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
+import { ADMIN_UI_OPTIONS, loginAdmin, rowAction } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
 
 // AF-12a (spec 05 กฎ 37a, AC-42): แท็บ Programs ของหน้า Affiliate ใน admin สร้าง/แก้/ลบโปรแกรม draft ผ่าน admin API ของ AF-5
-// admin UI เป็นภาษาอังกฤษ (CLAUDE.md) — หา element ด้วย data-testid
+// admin UI เป็นภาษาอังกฤษ (CLAUDE.md) — หา element ด้วย data-testid ยกเว้น menuitem ของ ActionMenu ต่อแถว
+// (trigger `affiliate-program-row-actions`, หาด้วย role + ชื่อ — spec 08 กฎ 10, ADM-8b)
 test.use({ ...ADMIN_UI_OPTIONS, evidenceTarget: { feature: "affiliate", taskId: "AF-12a" } })
 
 const DAY = 24 * 60 * 60 * 1000
@@ -92,7 +93,7 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
   })
 
   await step("แก้ commission_value → ค่าใหม่ใน API และ scope.variant_ids เดิมไม่เปลี่ยน", async () => {
-    await row(editable.name).getByTestId("affiliate-program-edit").click()
+    await (await rowAction(row(editable.name), "affiliate-program-row-actions", "Edit")).click()
     await expect(page.getByTestId("affiliate-program-variant-count")).toContainText("1")
     await field("commission_value").fill("12.5")
     await evidence("02-program-edit-form")
@@ -104,8 +105,9 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
   })
 
   await step("โปรแกรม published → ตัวเลือก status ไม่มี draft และแถวไม่มีปุ่มลบ", async () => {
-    await expect(row(published.name).getByTestId("affiliate-program-delete")).toHaveCount(0)
-    await row(published.name).getByTestId("affiliate-program-edit").click()
+    await (await rowAction(row(published.name), "affiliate-program-row-actions", "Edit")).waitFor()
+    await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(0)
+    await page.getByRole("menuitem", { name: "Edit" }).click()
     await field("status").click()
     const options = page.getByRole("option")
     await expect(options).toHaveText(["published", "ended"])
@@ -117,14 +119,14 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
 
   await step("ลบ draft: ยกเลิก prompt → ไม่มี DELETE; ยืนยัน → แถวหาย", async () => {
     const created = row(createdName)
-    await created.getByTestId("affiliate-program-delete").click()
+    await (await rowAction(created, "affiliate-program-row-actions", "Delete")).click()
     const dialog = page.getByRole("alertdialog")
     await dialog.getByRole("button", { name: "Keep program" }).click()
     await expect(dialog).toBeHidden()
     await page.waitForTimeout(300)
     expect(requests.filter((r) => r.startsWith("DELETE"))).toHaveLength(0)
 
-    await created.getByTestId("affiliate-program-delete").click()
+    await (await rowAction(created, "affiliate-program-row-actions", "Delete")).click()
     await page.waitForTimeout(300) // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence
     await evidence("04-delete-prompt")
     await dialog.getByRole("button", { name: "Delete program" }).click()
