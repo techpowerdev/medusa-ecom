@@ -1,0 +1,93 @@
+# CORE-50 — ผล test (spec 01 กฎข้อ 108, AC-145) — 2026-11-09, node v22.23.3, backend :9102 (medusa develop), DB medusa_core50, Redis db 2
+
+## Red — e2e ใหม่บน storefront ของ develop 1743eb7 (nav/cart-dropdown/styles ไม่เปลี่ยนตั้งแต่ a349676 — `git log a349676..1743eb7 -- src/modules/layout src/styles tailwind.config.js` ว่าง; storefront next dev :8102)
+ที่ 320 ล้มด้วยระยะ nav-store-link → nav-search-button = 0 (ชิด/ทับกัน); 1280 ล้มเพราะยังไม่ได้ใส่ค่า baseline (บันทึกค่าที่วัดบน develop ในรอบนี้)
+
+  ✘  1 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (2.0s)
+  ✓  2 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (1.5s)
+  ✓  3 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (696ms)
+  ✓  4 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (764ms)
+CORE-50 1280 measure [{"id":"nav-menu-button","left":24,"width":18.265625},{"id":"nav-store-link","left":590.75,"width":98.484375},{"id":"nav-search-button","left":1107.703125,"width":15},{"id":"nav-cart-link","left":1195.46875,"width":60.53125}]
+  ✘  5 [chromium] › e2e/core-50-nav-narrow.spec.ts:169:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (631ms)
+    Error: ระยะ nav-store-link → nav-search-button
+    Expected: >= 8
+    Received:    0
+    test-results/core-50-nav-narrow-AC-145--41d0e-เดียว-ชื่อร้านครบ-header-64-chromium/test-failed-1.png
+    Error: nav-menu-button left
+    Expected: <= 1
+    Received:    24
+    test-results/core-50-nav-narrow-AC-145--5c6d7-ดง-ตำแหน่ง-ขนาดเท่า-develop-chromium/test-failed-1.png
+  2 failed
+  3 passed (8.9s)
+
+## Green — หลังแก้ (storefront next build + next start :8102) รวม regression core-19a, core-26
+
+Running 15 tests using 1 worker
+  ✓   1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (9.6s)
+  ✓   2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (4.6s)
+  ✓   3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (7.8s)
+  ✓   4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (4.0s)
+  ✓   5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (6.2s)
+  ✓   6 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (7.3s)
+  ✓   7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (5.6s)
+  ✓   8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:214:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (1.5s)
+  ✓   9 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:148:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (2.5s)
+  ✓  10 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:203:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (20.0s)
+  ✓  11 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (1.3s)
+  ✓  12 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (761ms)
+  ✓  13 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (767ms)
+  ✓  14 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (753ms)
+  ✓  15 [chromium] › e2e/core-50-nav-narrow.spec.ts:169:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (1.2s)
+  15 passed (1.4m)
+
+## ค่าที่วัดบน macOS (cart 116 ชิ้น) left/right เป็น px
+- 1280 บน develop (macOS — ไม่ใช้เป็น baseline แล้ว ดูหัวข้อ "แก้ตาม review"): nav-menu-button left 24 w 18.27, nav-store-link left 590.75 w 98.48, nav-search-button left 1107.7 w 15, nav-cart-link left 1195.47 w 60.53
+- หลังแก้ (cart 0, วัดด้วย script เดียวกัน) gap menu→store / store→search / search→cart:
+  - 320: 81.9 / 26.4 / 12  (cart 116 กว้างขึ้น ~13.7 → store→search ≈ 12.7)
+  - 375: 109.4 / 53.9 / 12; 639: 241.4 / 185.9 / 12; 1023: 433.4 / 377.9 / 12
+
+## lint / typecheck / e2e unit project
+- pnpm lint && pnpm typecheck: exit 0
+- pnpm --filter storefront test:e2e:unit: 73 passed (2.4s)
+- pnpm --filter storefront build (next build): exit 0
+
+## แก้ตาม review #309 (blocker 1) — baseline 1280 วัดใหม่บน Linux แบบ CI
+platform: `mcr.microsoft.com/playwright:v1.64.1-noble` (chromium ของ Playwright 1.64.1 ตรงกับ storefront, Linux aarch64) ชี้ไป storefront next build + next start :8102 และ backend :9102 ของ builder
+CI (run 42525314265) ล้มด้วย nav-menu-button width ต่าง 1.27px จากค่า macOS — รันใน container บน develop ได้ค่าต่างเท่ากันทุกหลัก (1.27) ยืนยันว่าเป็นเรื่อง platform
+
+### Red — develop 1743eb7 (src/modules/layout ของ develop) ใน container
+  ✘  1 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (14.2s)
+  ✓  2 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (9.3s)
+  ✓  3 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (5.4s)
+  ✓  4 [chromium] › e2e/core-50-nav-narrow.spec.ts:135:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (6.6s)
+  ✘  5 [chromium] › e2e/core-50-nav-narrow.spec.ts:170:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (4.6s)
+    Error: ระยะ nav-store-link → nav-search-button
+    Expected: >= 8
+    Received:    0
+    Error: nav-menu-button width
+    Expected: <= 1
+    Received:    1.2699999999999996
+  2 failed
+  3 passed (1.9m)
+
+### baseline ใหม่ 1280×800 (Linux, develop 1743eb7, cart 116)
+- nav-menu-button left 24 w 17; nav-store-link left 591 w 98; nav-search-button left 1107 w 15; nav-cart-link left 1195 w 61
+- gap หลังแก้บน Linux (cart 116) menu→store / store→search / search→cart: 320: 83 / 12 / 12; 375: 110.5 / 39.5 / 12; 639: 242.5 / 171.5 / 12; 1023: 434.5 / 363.5 / 12
+
+### Green — branch นี้ใน container (core-50 + regression core-19a, core-26)
+  ✓   1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (19.1s)
+  ✓   2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (22.4s)
+  ✓   3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (19.2s)
+  ✓   4 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (12.6s)
+  ✓   5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (20.8s)
+  ✓   6 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (44.6s)
+  ✓   7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (17.4s)
+  ✓   8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:214:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (3.5s)
+  ✓   9 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:148:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (8.3s)
+  ✓  10 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:203:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (32.1s)
+  ✓  11 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (3.4s)
+  ✓  12 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (3.3s)
+  ✓  13 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (3.1s)
+  ✓  14 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (1.8s)
+  ✓  15 [chromium] › e2e/core-50-nav-narrow.spec.ts:172:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (3.9s)
+  15 passed (4.4m)
