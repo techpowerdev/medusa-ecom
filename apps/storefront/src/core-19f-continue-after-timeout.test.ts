@@ -13,11 +13,13 @@ const push = vi.fn()
 // useRouter ของ Next คืน instance เดิมทุก render — mock ให้เหมือนกัน
 const router = { refresh, push }
 const initiatePaymentSession = vi.fn()
+// step ปัจจุบันใน URL — test ของ nit review #310 เปลี่ยนเป็นขั้นอื่นระหว่างรอ session
+const search = { value: "step=payment" }
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
   usePathname: () => "/th/checkout",
-  useSearchParams: () => new URLSearchParams("step=payment"),
+  useSearchParams: () => new URLSearchParams(search.value),
 }))
 vi.mock("@lib/data/cart", () => ({
   initiatePaymentSession: (...a: unknown[]) => initiatePaymentSession(...a),
@@ -30,7 +32,12 @@ vi.mock("@headlessui/react", async () => {
   const { createElement: h } = await import("react")
   return {
     RadioGroup: ({ onChange }: { onChange: (v: string) => void }) =>
-      h("button", { "data-testid": "select-promptpay", onClick: () => onChange(PROMPTPAY) }),
+      h(
+        "div",
+        null,
+        h("button", { "data-testid": "select-promptpay", onClick: () => onChange(PROMPTPAY) }),
+        h("button", { "data-testid": "select-card", onClick: () => onChange(CARD) })
+      ),
   }
 })
 
@@ -73,6 +80,7 @@ describe("CORE-19f: Continue หลังปลดล็อกจาก timeout 
     vi.useFakeTimers()
     refresh.mockReset()
     push.mockReset()
+    search.value = "step=payment"
     initiatePaymentSession.mockReset().mockResolvedValue({ ok: true })
     container = document.createElement("div")
     document.body.appendChild(container)
@@ -153,5 +161,34 @@ describe("CORE-19f: Continue หลังปลดล็อกจาก timeout 
     })
     expect(initiatePaymentSession).not.toHaveBeenCalled()
     expect(push).toHaveBeenCalledWith("/th/checkout?step=review", { scroll: false })
+  })
+
+  // ปลดล็อกจาก timeout แล้วกด Continue → รอ session พร้อมเพย์ (ตั้งใจไป review เมื่อ session มา)
+  const continueAfterTimeout = async () => {
+    await render(cartWith([]))
+    await act(async () => {
+      byTestId("select-promptpay")!.click()
+    })
+    await advance(10_000)
+    await act(async () => {
+      submit().click()
+    })
+    expect(push).not.toHaveBeenCalled()
+  }
+
+  it("กด Continue แล้วเปลี่ยนวิธีชำระระหว่างรอ → session ของวิธีใหม่มาถึงไม่ไปขั้น review เอง (review #310)", async () => {
+    await continueAfterTimeout()
+    await act(async () => {
+      byTestId("select-card")!.click()
+    })
+    await render(cartWith([{ provider_id: CARD, status: "pending" }]))
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it("กด Continue แล้วลูกค้ากลับไปแก้ขั้นอื่นระหว่างรอ → session มาถึงไม่ดึงไปขั้น review (review #310)", async () => {
+    await continueAfterTimeout()
+    search.value = "step=delivery"
+    await render(cartWith([{ provider_id: PROMPTPAY, status: "pending" }]))
+    expect(push).not.toHaveBeenCalled()
   })
 })

@@ -164,7 +164,6 @@ const Payment = ({
     const unlockTimer = setTimeout(() => {
       setAwaitingSessionFor(null)
       setSessionPendingError(true)
-      continueWhenSessionArrives.current = false
     }, 10_000)
     return () => {
       clearTimeout(refreshTimer)
@@ -173,6 +172,11 @@ const Payment = ({
   }, [sessionNotInCartYet, router])
 
   useEffect(() => {
+    // ลูกค้ากด "แก้ไข" ขั้นอื่นระหว่างรอ → ไม่ดึงกลับไปขั้น review (review #310)
+    if (!isOpen) {
+      continueWhenSessionArrives.current = false
+      return
+    }
     if (
       continueWhenSessionArrives.current &&
       awaitingSessionFor &&
@@ -184,6 +188,7 @@ const Payment = ({
       })
     }
   }, [
+    isOpen,
     awaitingSessionFor,
     sessionNotInCartYet,
     router,

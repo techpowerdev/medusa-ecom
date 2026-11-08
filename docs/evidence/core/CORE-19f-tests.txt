@@ -80,3 +80,65 @@ playwright --project=unit: 73 passed
 24 passed (4.9m)
 
 ## e2e AC-113 (core-19f-switch-payment-method) และ AC-64 PromptPay — ต้องใช้ Stripe test key จริง ตรวจใน CI
+
+# แก้ตาม review #310 (REQUEST CHANGES) — 2026-11-09
+
+## สาเหตุที่ e2e AC-113 ล้มใน CI (run 42526168546) — ยืนยันจาก trace
+- console: "Unsupported prop change: options.clientSecret is not a mutable property." (react-stripe-js <Elements>)
+- console ตอนเลือกบัตรรอบสอง: "[Stripe.js] The following payment method types are not activated: - promptpay" = Payment Element ของบัตร mount ใน Elements ที่ยังผูก client secret ของ PaymentIntent พร้อมเพย์ → ไม่มีช่องเลขบัตร
+- แก้: stripe-wrapper ใส่ key ของ <Elements> = client secret เมื่อ session เป็นบัตร (stripe-like) / provider_id เมื่อเป็นพร้อมเพย์ (ไม่ remount ตอน QR หมดอายุ/คืนเงินแล้วได้ PI ใหม่ — PAY-6b)
+
+## Red (ก่อนแก้)
+     × บัตร → พร้อมเพย์ → บัตร (PaymentIntent ใหม่ทุกครั้ง) → Elements ใช้ client secret ล่าสุดเสมอ 278ms
+     × กด Continue แล้วลูกค้ากลับไปแก้ขั้นอื่นระหว่างรอ → session มาถึงไม่ดึงไปขั้น review (review #310) 17ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+Received:
+AssertionError: expected 'pi_card1_secret' to be 'pi_pp_secret' // Object.is equality
+Expected: "pi_pp_secret"
+Received: "pi_card1_secret"
+      Tests  2 failed | 6 passed (8)
+(test พร้อมเพย์ไม่ remount: red เมื่อ key = client secret ทุก provider — 1 failed)
+nit 1: ลบ continueWhenSessionArrives.current = false ใน setPaymentMethod → test "เปลี่ยนวิธีชำระระหว่างรอ" ล้ม 1 (ตรวจแล้วคืนโค้ด)
+
+## Green
+ ✓ src/core-19f-revalidate-session.test.ts > CORE-19f: initiatePaymentSession revalidate cart ก่อนคืนผล (กฎข้อ 75 a) > มี payment collection แล้ว → revalidateTag(tag ของ carts) ก่อน action คืนผล 54ms
+ ✓ src/core-19f-revalidate-session.test.ts > CORE-19f: initiatePaymentSession revalidate cart ก่อนคืนผล (กฎข้อ 75 a) > ยังไม่มี payment collection → revalidateTag(tag ของ carts) ก่อน action คืนผล 1ms
+ ✓ src/core-19f-stripe-wrapper-key.test.ts > CORE-19f: StripeWrapper ผูก Elements กับ client secret ของ session ล่าสุด (กฎข้อ 75 c) > บัตร → พร้อมเพย์ → บัตร (PaymentIntent ใหม่ทุกครั้ง) → Elements ใช้ client secret ล่าสุดเสมอ 124ms
+ ✓ src/core-19f-stripe-wrapper-key.test.ts > CORE-19f: StripeWrapper ผูก Elements กับ client secret ของ session ล่าสุด (กฎข้อ 75 c) > พร้อมเพย์ได้ PaymentIntent ใหม่ (QR หมดอายุ/คืนเงินแล้วสร้างใหม่) → ไม่ mount children ใหม่ (state หมดอายุ/คืนเงินของ PAY-6b ไม่หาย) 6ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > cart ไม่มี session เลย → กด Continue สร้าง session ใหม่ ไม่ไปขั้น review และล็อกรอ session อีกรอบ 301ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > cart ยังมีแต่ session บัตรเดิม → กด Continue สร้าง session ใหม่ ไม่ไปขั้น review และล็อกรอ session อีกรอบ 39ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > Continue ที่สร้าง session ใหม่ → ไปขั้น review 1 ครั้งเมื่อ cart ใน props มี session นั้นแล้ว 21ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > ล็อกรอบสองก็ timeout → ปลดล็อก + error ไทย และไม่ไปขั้น review แม้ cart ได้ session ทีหลัง 19ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > cart มี session ของ provider ที่เลือกแล้ว → Continue ไปขั้น review โดยไม่สร้างซ้ำ (AC-64 คงเดิม) 7ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > กด Continue แล้วเปลี่ยนวิธีชำระระหว่างรอ → session ของวิธีใหม่มาถึงไม่ไปขั้น review เอง (review #310) 23ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > กด Continue แล้วลูกค้ากลับไปแก้ขั้นอื่นระหว่างรอ → session มาถึงไม่ดึงไปขั้น review (review #310) 9ms
+ ✓ src/payment-session-lock-timeout.test.ts > CORE-19e: ปุ่ม Continue ที่ล็อกรอ session ไม่ค้างถาวร (กฎข้อ 71) > 5 วินาที → router.refresh 1 ครั้งและปุ่มยัง disabled; 10 วินาที → ปุ่มกดได้และเห็น error ไทย 213ms
+ ✓ src/payment-session-lock-timeout.test.ts > CORE-19e: ปุ่ม Continue ที่ล็อกรอ session ไม่ค้างถาวร (กฎข้อ 71) > cart ได้ session ที่ 2 วินาที → ปลดล็อกทันที ไม่ refresh และไม่มี error หลัง 10 วินาที 16ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > เลือกวิธีชำระ → unauthorized แสดง SIGN_IN_AGAIN_MESSAGE 133ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > เลือกวิธีชำระ → failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 12ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > กด Continue → ผลล้มไม่ไปขั้น review และแสดง SIGN_IN_AGAIN_MESSAGE เมื่อ unauthorized 18ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > กด Continue → สร้าง session สำเร็จ → ไปขั้น review เมื่อ cart มี session (CORE-19f กฎข้อ 75 b) 12ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > unauthorized → SIGN_IN_AGAIN_MESSAGE 95ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > FLASH_SOLD_OUT → ข้อความไทยของ code นั้น 1ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 1ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > redirect ไปหน้า confirmed (action ไม่คืนค่า) → null 1ms
+ ✓ src/core-4i-b-ui-results.test.ts > ขั้น delivery (selectShippingMethod) อ่านผลของ setShippingMethod > ok → null; unauthorized → SIGN_IN_AGAIN_MESSAGE 21ms
+ ✓ src/core-4i-b-ui-results.test.ts > ขั้น delivery (selectShippingMethod) อ่านผลของ setShippingMethod > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 2ms
+ ✓ src/core-4i-b-ui-results.test.ts > QR พร้อมเพย์หมดอายุ (renewPromptPayQr) อ่านผลของ renewPromptPaySession > ok → renewed; PAYMENT_ALREADY_COMPLETED → already-paid 2ms
+ ✓ src/core-4i-b-ui-results.test.ts > QR พร้อมเพย์หมดอายุ (renewPromptPayQr) อ่านผลของ renewPromptPaySession > unauthorized → SIGN_IN_AGAIN_MESSAGE; failed/reject → ข้อความ fallback ไทย 1ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > unauthorized → SIGN_IN_AGAIN_MESSAGE + refresh (layout พาไป login) และไม่อ่าน GB-8 53ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > PAYMENT_ALREADY_COMPLETED → ทาง poll ของกฎข้อ 9(d) (order-pay-awaiting) ไม่มี error 7ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > failed → (d2) อ่าน GB-8 1 ครั้ง: ยังไม่ชำระ → order-pay-error ไทย 7ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > action reject → (d2) อ่าน GB-8 1 ครั้ง: ยังไม่ชำระ → order-pay-error ไทย 10ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > failed + GB-8 มีการชำระแล้ว → ทาง poll (d) ไม่มี error 5ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > ok → อ่าน GB-8 ใหม่ ไม่มี error 5ms
+ Test Files  5 passed (5)
+      Tests  31 passed (31)
+
+## unit storefront ทั้งชุด
+ Test Files  91 passed (91)
+      Tests  1055 passed (1055)
+
+lint: 0 errors / typecheck: ผ่าน
+e2e AC-113 (Stripe) — รอ CI รอบใหม่

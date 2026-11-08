@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 // CORE-19f (spec 01 กฎข้อ 75 a, AC-113): action สร้าง payment session ของ checkout เรียก `revalidateTag` ด้วย tag ของ cart
 // ก่อนคืนผล — `router.refresh()` ของกฎข้อ 71 จึงได้ cart ที่มี session (ไม่ค้าง force-cache) ทั้งกรณีมี/ยังไม่มี collection
@@ -30,6 +30,12 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined })
 
 const CARD = "pp_stripe_stripe"
 
+// import ครั้งเดียว (cold import ของ `@lib/data/cart` ช้า — review #310 nit 3)
+let initiatePaymentSession: typeof import("@lib/data/cart").initiatePaymentSession
+beforeAll(async () => {
+  ;({ initiatePaymentSession } = await import("@lib/data/cart"))
+}, 30_000)
+
 beforeEach(() => {
   vi.clearAllMocks()
   events.length = 0
@@ -42,7 +48,6 @@ describe("CORE-19f: initiatePaymentSession revalidate cart ก่อนคืน
     ["ยังไม่มี payment collection", { id: "cart_1" }],
   ])("%s → revalidateTag(tag ของ carts) ก่อน action คืนผล", async (_label, cart) => {
     fetchSdk.mockResolvedValueOnce({ payment_collection: { id: "pay_col_new" } })
-    const { initiatePaymentSession } = await import("@lib/data/cart")
     const result = await initiatePaymentSession(cart as never, { provider_id: CARD })
     events.push("returned")
     expect(result).toEqual({ ok: true })
