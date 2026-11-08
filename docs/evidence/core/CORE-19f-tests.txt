@@ -1,0 +1,82 @@
+CORE-19f (spec 01 กฎข้อ 75, AC-113) — ผลทดสอบในเครื่อง 2026-11-09
+
+## Red (ก่อนแก้ component — src/core-19f-*.test.ts)
+(a) revalidate: ผ่านอยู่แล้วตั้งแต่ CORE-4i-b (createCartPaymentSession เรียก revalidateTag) — test ใหม่ล็อกลำดับ revalidate ก่อนคืนผลทั้งกรณีมี/ไม่มี collection
+     × cart ไม่มี session เลย → กด Continue สร้าง session ใหม่ ไม่ไปขั้น review และล็อกรอ session อีกรอบ 52ms
+     × cart ยังมีแต่ session บัตรเดิม → กด Continue สร้าง session ใหม่ ไม่ไปขั้น review และล็อกรอ session อีกรอบ 6ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 3 passed (5)
+
+## Green: vitest ไฟล์ที่เกี่ยวข้อง (core-19f, core-4i-b-ui-results, payment-session-lock-timeout = AC-107)
+ ✓ src/core-19f-revalidate-session.test.ts > CORE-19f: initiatePaymentSession revalidate cart ก่อนคืนผล (กฎข้อ 75 a) > มี payment collection แล้ว → revalidateTag(tag ของ carts) ก่อน action คืนผล 1549ms
+ ✓ src/core-19f-revalidate-session.test.ts > CORE-19f: initiatePaymentSession revalidate cart ก่อนคืนผล (กฎข้อ 75 a) > ยังไม่มี payment collection → revalidateTag(tag ของ carts) ก่อน action คืนผล 1ms
+ ✓ src/payment-session-lock-timeout.test.ts > CORE-19e: ปุ่ม Continue ที่ล็อกรอ session ไม่ค้างถาวร (กฎข้อ 71) > 5 วินาที → router.refresh 1 ครั้งและปุ่มยัง disabled; 10 วินาที → ปุ่มกดได้และเห็น error ไทย 1963ms
+ ✓ src/payment-session-lock-timeout.test.ts > CORE-19e: ปุ่ม Continue ที่ล็อกรอ session ไม่ค้างถาวร (กฎข้อ 71) > cart ได้ session ที่ 2 วินาที → ปลดล็อกทันที ไม่ refresh และไม่มี error หลัง 10 วินาที 27ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > เลือกวิธีชำระ → unauthorized แสดง SIGN_IN_AGAIN_MESSAGE 1715ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > เลือกวิธีชำระ → failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 22ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > กด Continue → ผลล้มไม่ไปขั้น review และแสดง SIGN_IN_AGAIN_MESSAGE เมื่อ unauthorized 19ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > กด Continue → สร้าง session สำเร็จ → ไปขั้น review เมื่อ cart มี session (CORE-19f กฎข้อ 75 b) 19ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > cart ไม่มี session เลย → กด Continue สร้าง session ใหม่ ไม่ไปขั้น review และล็อกรอ session อีกรอบ 1981ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > cart ยังมีแต่ session บัตรเดิม → กด Continue สร้าง session ใหม่ ไม่ไปขั้น review และล็อกรอ session อีกรอบ 33ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > Continue ที่สร้าง session ใหม่ → ไปขั้น review 1 ครั้งเมื่อ cart ใน props มี session นั้นแล้ว 27ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > ล็อกรอบสองก็ timeout → ปลดล็อก + error ไทย และไม่ไปขั้น review แม้ cart ได้ session ทีหลัง 55ms
+ ✓ src/core-19f-continue-after-timeout.test.ts > CORE-19f: Continue หลังปลดล็อกจาก timeout ไม่ข้าม session (กฎข้อ 75 b) > cart มี session ของ provider ที่เลือกแล้ว → Continue ไปขั้น review โดยไม่สร้างซ้ำ (AC-64 คงเดิม) 37ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > unauthorized → SIGN_IN_AGAIN_MESSAGE 858ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > FLASH_SOLD_OUT → ข้อความไทยของ code นั้น 5ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 15ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > redirect ไปหน้า confirmed (action ไม่คืนค่า) → null 3ms
+ ✓ src/core-4i-b-ui-results.test.ts > ขั้น delivery (selectShippingMethod) อ่านผลของ setShippingMethod > ok → null; unauthorized → SIGN_IN_AGAIN_MESSAGE 217ms
+ ✓ src/core-4i-b-ui-results.test.ts > ขั้น delivery (selectShippingMethod) อ่านผลของ setShippingMethod > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 2ms
+ ✓ src/core-4i-b-ui-results.test.ts > QR พร้อมเพย์หมดอายุ (renewPromptPayQr) อ่านผลของ renewPromptPaySession > ok → renewed; PAYMENT_ALREADY_COMPLETED → already-paid 8ms
+ ✓ src/core-4i-b-ui-results.test.ts > QR พร้อมเพย์หมดอายุ (renewPromptPayQr) อ่านผลของ renewPromptPaySession > unauthorized → SIGN_IN_AGAIN_MESSAGE; failed/reject → ข้อความ fallback ไทย 20ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > unauthorized → SIGN_IN_AGAIN_MESSAGE + refresh (layout พาไป login) และไม่อ่าน GB-8 89ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > PAYMENT_ALREADY_COMPLETED → ทาง poll ของกฎข้อ 9(d) (order-pay-awaiting) ไม่มี error 14ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > failed → (d2) อ่าน GB-8 1 ครั้ง: ยังไม่ชำระ → order-pay-error ไทย 13ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > action reject → (d2) อ่าน GB-8 1 ครั้ง: ยังไม่ชำระ → order-pay-error ไทย 21ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > failed + GB-8 มีการชำระแล้ว → ทาง poll (d) ไม่มี error 8ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > ok → อ่าน GB-8 ใหม่ ไม่มี error 6ms
+ Test Files  4 passed (4)
+      Tests  27 passed (27)
+
+## unit storefront ทั้งชุด
+ Test Files  90 passed (90)
+      Tests  1051 passed (1051)
+
+## pnpm lint && pnpm typecheck
+lint: ผ่าน (0 errors; ไม่มี warning ใหม่ — ใช้ useRef แทน setState ใน effect)
+typecheck: ผ่าน (backend + storefront)
+playwright --project=unit: 73 passed
+
+## e2e ในเครื่อง (prod build, backend :9101, storefront :8101, ไม่มี Stripe key → test ที่ต้อง HAS_STRIPE_UI skip)
+✓   2 [chromium] › e2e/affiliate-last-click.spec.ts:22:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21) (31.3s)
+-   3 [chromium] › e2e/core-19f-switch-payment-method.spec.ts:20:5 › AC-113: บัตร → พร้อมเพย์ → บัตร แล้วกด Continue 1 ครั้ง → review แสดงบัตรและ cart มี session บัตรเท่านั้น
+✓   4 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:37:5 › AC-125 checkout: ขั้น delivery ของ cart t-shirt มี Standard ไม่มี Digital delivery (8.4s)
+✓   5 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:59:5 › AC-125 หน้ากลุ่ม: หลังกด group-shipping-load ไม่มี option ของ Digital delivery (18.4s)
+✓   6 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:126:7 › CORE-33 › AC-127 checkout: cart t-shirt ที่ค้าง Digital delivery ไม่มี radio ติ๊ก ปุ่ม disabled จนเลือก Standard (10.0s)
+✓   7 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:176:7 › CORE-35 › AC-129 checkout: cart ค้าง Digital delivery เปิด step=payment/review ตรงๆ → กลับ delivery; เลือก Standard แล้วไป payment ได้ (16.6s)
+✓   8 [chromium] › e2e/core-41-checkout-first-step.spec.ts:41:5 › AC-135 cart t-shirt ไม่มีที่อยู่: เปิด step=payment/review ตรงๆ → step=address ฟอร์มที่อยู่เปิด (4.4s)
+✓   9 [chromium] › e2e/core-41-checkout-first-step.spec.ts:65:5 › AC-135 cart digital-only ไม่มีที่อยู่: เปิด step=review ตรงๆ → step=address ฟอร์มที่อยู่ใบเสร็จเปิด (6.5s)
+✓  10 [chromium] › e2e/core-41-checkout-first-step.spec.ts:88:5 › AC-135 regression: cart มีที่อยู่ + Standard เปิด step=payment ตรงๆ → ไม่ถูก redirect (7.7s)
+✓  11 [chromium] › e2e/core-41-checkout-first-step.spec.ts:152:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart t-shirt ไม่มีที่อยู่: step=delivery / ไม่มี step / step=foo / step ซ้ำ → step=address (5.3s)
+✓  12 [chromium] › e2e/core-41-checkout-first-step.spec.ts:177:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart มีที่อยู่ + Standard: ไม่มี step → step=payment, step=delivery ไม่ถูก redirect (5.9s)
+✓  13 [chromium] › e2e/core-41-checkout-first-step.spec.ts:206:7 › CORE-45 step ที่ใช้ไม่ได้ › D-1 cart ใน cache ยังไม่มีที่อยู่ แต่ cart จริงมีแล้ว: step=delivery ไม่เด้งกลับ address (5.2s)
+✓  14 [chromium] › e2e/core-41-checkout-first-step.spec.ts:232:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart digital-only มีที่อยู่: step=delivery → step=payment (5.6s)
+✓  15 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (22.8s)
+✓  16 [chromium] › e2e/core-store.spec.ts:20:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (11.6s)
+✓   1 [chromium] › e2e/core-19b-continue-to-review.spec.ts:22:5 › AC-64: กด Continue to review ครั้งเดียว 20 รอบ (cart ใหม่ทุกรอบ) → step=review ภายใน 10 วินาที (2.9m)
+-  18 [chromium] › e2e/core-19b-continue-to-review.spec.ts:73:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว
+✓  17 [chromium] › e2e/core-store.spec.ts:60:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (37.4s)
+✓  19 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:87:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ (30.1s)
+✓  20 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (6.5s)
+✓  21 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:161:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery (16.0s)
+✓  22 [chromium] › e2e/flash-sale-fs15.spec.ts:122:5 › AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 → เตือน + ปุ่ม disabled; เลือก 2 → กดได้ (6.1s)
+✓  24 [chromium] › e2e/flash-sale-fs15.spec.ts:149:5 › AC-21: show_remaining=false (remaining_units=null) เลือก 3 → ไม่เตือน (8.3s)
+✓  23 [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (36.9s)
+✓  25 [chromium] › e2e/flash-sale-fs15.spec.ts:165:5 › AC-21: cart มี line ของสินค้า flash qty 3 ขณะ remaining_units=2 → cart-flash-exceeds-remaining (17.6s)
+✓  26 [chromium] › e2e/flash-sale-fs15.spec.ts:195:5 › AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkout → ข้อความไทยของ code ในขั้น review (25.5s)
+2 skipped
+24 passed (4.9m)
+
+## e2e AC-113 (core-19f-switch-payment-method) และ AC-64 PromptPay — ต้องใช้ Stripe test key จริง ตรวจใน CI
