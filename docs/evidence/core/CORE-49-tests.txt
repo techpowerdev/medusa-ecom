@@ -119,3 +119,38 @@ E2E_SAVE_EVIDENCE=1 → docs/evidence/affiliate/AF-12a/04-delete-prompt.png: ก
 
 == lint/typecheck ==
 pnpm lint && pnpm typecheck → exit 0 (warning เดิมของ storefront/backend ไม่เพิ่ม)
+
+## AC-144 `--repeat-each=3` (CI, session หลัก 2026-11-09)
+
+รันบน runner ของ GitHub ผ่าน draft PR #317 (branch `chore/CORE-49-repeat-proof` = branch นี้ + `ci.yml` รัน 4 ไฟล์ด้วย `--repeat-each=3`; ปิดโดยไม่ merge) — เครื่อง local load สูงจน timeout แม้บน develop
+run: https://github.com/techpowerdev/medusa-ecom/actions/runs/42532480353 (job storefront-e2e)
+
+```
+✓ Lockfile passes supply-chain policies (1647 entries in 7.1s)
+Running 24 tests using 1 worker
+  ✓   1 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน p
+  ✓   2 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M
+  ✓   3 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:100:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (1.1
+  ✓   4 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (2.7s)
+  ✓   5 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-ca
+  ✓   6 [chromium] › e2e/flash-sale-fs19.spec.ts:129:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (4.5s)
+  ✓   7 [chromium] › e2e/flash-sale-fs19.spec.ts:171:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (1.8s)
+  ✓   8 [chromium] › e2e/flash-sale-fs19.spec.ts:194:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (1.0s)
+  ✓   9 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน p
+  ✓  10 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M
+  ✓  11 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:100:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (912
+  ✓  12 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (2.4s)
+  ✓  13 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-ca
+  ✓  14 [chromium] › e2e/flash-sale-fs19.spec.ts:129:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (4.3s)
+  ✓  15 [chromium] › e2e/flash-sale-fs19.spec.ts:171:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (1.7s)
+  ✓  16 [chromium] › e2e/flash-sale-fs19.spec.ts:194:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (1.1s)
+  ✓  17 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน p
+  ✓  18 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M
+  ✓  19 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:100:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (941
+  ✓  20 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (2.4s)
+  ✓  21 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-ca
+  ✓  22 [chromium] › e2e/flash-sale-fs19.spec.ts:129:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (4.4s)
+  ✓  23 [chromium] › e2e/flash-sale-fs19.spec.ts:171:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (1.7s)
+  ✓  24 [chromium] › e2e/flash-sale-fs19.spec.ts:194:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (1.1s)
+  24 passed (2.4m)
+```
