@@ -280,6 +280,7 @@ follow-up (ไม่ใช่ task บังคับ — ทำในงาน�
 
 ## Open questions
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
+  — (2026-11-09, รอบ 25) owner **ยังไม่ยืนยัน**: ใช้ Stripe test mode ต่อไป; การยืนยันนี้เป็นข้อ 6 ใน "Go-live checklist" ของ `docs/ops/production.md` (ต้องทำก่อนเปิดร้านจริง) — ไม่มี task
 - ~~Q2~~ ตัดสินแล้ว (owner, 2026-10-25): production ห้าม `pp_system_default` แบบ D1 ของ ADR-010 (seed + `check:go-live`;
   ไม่กัน admin เปิดเอง) — กฎข้อ 6
 - ~~Q3~~ ตัดสินแล้ว (owner, 2026-10-26): **คงเดิมใน v1** — เวลา 10 นาทีของ PromptPay นับจาก `created` ของ PaymentIntent
