@@ -3,7 +3,7 @@ import { useDate } from "@medusajs/dashboard/hooks"
 import { castNumber, getLocaleAmount } from "@medusajs/dashboard/lib"
 import { CheckCircle, EllipsisHorizontal, XCircle } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useReducer, useState } from "react"
 import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
 import { canCancelPayout, canMarkPaid } from "../../lib/affiliate-payout"
@@ -17,18 +17,11 @@ const columnHelper = createDataTableColumnHelper<Payout>()
 
 /**
  * ADM-8b (spec 08 AC-13, กฎ 4, 10): Mark paid/Cancel ต่อแถวใน ActionMenu — ถือ prompt/mutation ยกเลิกของแถวเอง (แบบ `*Actions` ของ dashboard)
- * และกันกัน (nit #176): Cancel กำลังส่ง → Mark paid disabled; กล่อง mark paid เปิดอยู่ (รวมระหว่างส่ง) → Cancel disabled
- * กล่อง mark paid อยู่นอกตาราง (render ใน cell แล้ว Escape ครั้งแรกไม่ปิด)
+ * และกันกัน (nit #176): cancel และ mark paid ของ payout เดียวกันใช้ `mutationKey` เดียวกัน (`affiliateKeys.payoutAction`)
+ * → ระหว่างอันใดอันหนึ่งกำลังส่ง (รวม refetch หลังสำเร็จ) ทั้ง Mark paid และ Cancel disabled; นับจาก mutation cache ของ Tanstack
+ * จึงไม่หายแม้ cell ถูก mount ใหม่ (review #316) — กล่อง mark paid อยู่นอกตาราง (render ใน cell แล้ว Escape ครั้งแรกไม่ปิด)
  */
-const PayoutActions = ({
-  payout,
-  markPaidOpen,
-  onMarkPaid,
-}: {
-  payout: Payout
-  markPaidOpen: boolean
-  onMarkPaid: (p: Payout) => void
-}) => {
+const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p: Payout) => void }) => {
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → กด Cancel ซ้ำถูกข้าม (กฎ 4)
@@ -38,7 +31,10 @@ const PayoutActions = ({
   const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
+  const mutationKey = affiliateKeys.payoutAction(payout.id)
+  const busy = useIsMutating({ mutationKey }) > 0
   const cancel = useMutation({
+    mutationKey,
     mutationFn: cancelPayout,
     onSuccess: () => {
       toast.success("Payout cancelled")
@@ -70,7 +66,7 @@ const PayoutActions = ({
           {
             label: "Mark paid",
             icon: <CheckCircle />,
-            disabled: cancel.isPending,
+            disabled: busy,
             onClick: () => {
               remountMenu()
               onMarkPaid(payout)
@@ -83,7 +79,7 @@ const PayoutActions = ({
           {
             label: "Cancel",
             icon: <XCircle />,
-            disabled: cancel.isPending || markPaidOpen,
+            disabled: busy,
             onClick: confirmCancel,
           },
         ]
@@ -109,10 +105,8 @@ export const PayoutsTable = () => {
   // `opened` เป็น key ให้ฟอร์ม/กล่องยืนยัน mount ใหม่ทุกครั้งที่เปิด (ค่าเริ่มต้นสด)
   const [creating, setCreating] = useState<number>()
   const [markingPaid, setMarkingPaid] = useState<{ payout: Payout; opened: number }>()
-  const markPaidOpen = markingPaid !== undefined
 
-  // `cell` ต้องคงที่ข้าม render: สร้างใหม่ = React mount แถวใหม่และเมนูที่เปิดอยู่ปิดเองตอนรายการ/ชื่อ affiliate โหลดเสร็จ
-  // (สร้างใหม่เฉพาะตอนกล่อง mark paid เปิด/ปิด ซึ่งตารางถูกกล่องบังอยู่)
+  // `cell` ต้องคงที่ข้าม render: สร้างใหม่ = React mount `PayoutActions` ทุกแถวใหม่ (state ของแถวหาย และเมนูที่เปิดอยู่ปิดเอง)
   const actionsColumn = useMemo(
     () =>
       columnHelper.display({
@@ -120,12 +114,11 @@ export const PayoutsTable = () => {
         cell: ({ row }) => (
           <PayoutActions
             payout={row.original}
-            markPaidOpen={markPaidOpen}
             onMarkPaid={(payout) => setMarkingPaid((m) => m ?? { payout, opened: Date.now() })}
           />
         ),
       }),
-    [markPaidOpen],
+    [],
   )
 
   // คอลัมน์สถานะ (sticky) และปุ่มอยู่ซ้ายสุด เพื่อให้ปุ่มอยู่ในจอที่ 1280px โดยไม่ต้องเลื่อนตาราง (รอบ 10)

@@ -61,6 +61,8 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
             {
               label: "Edit",
               icon: <PencilSquare />,
+              // ระหว่าง Delete กำลังส่ง แก้ไม่ได้ (สอดคล้องกับแถว payout — review #316)
+              disabled: remove.isPending,
               onClick: () => {
                 remountMenu()
                 onEdit(row)

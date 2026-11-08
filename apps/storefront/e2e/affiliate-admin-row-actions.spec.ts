@@ -98,6 +98,19 @@ test("AC-13: menuitem Approve กดซ้ำระหว่างรอ respons
     await expect(await rowAction(row, "affiliate-row-actions", "Suspend")).toBeVisible()
     await closeRowMenu(page)
   })
+
+  await step("menuitem Suspend ถูกคลิกสองครั้งใน tick เดียว → prompt เดียว และยืนยันแล้ว POST 1 ครั้ง (review #316 nit)", async () => {
+    const suspend = await rowAction(row, "affiliate-row-actions", "Suspend")
+    // เมนูปิดหลังเลือกจึง dblclick ไม่ได้ — คลิก element เดิมซ้ำใน tick เดียวเพื่อพิสูจน์ createSingleFlight ของแถว
+    await suspend.evaluate((el: HTMLElement) => {
+      el.click()
+      el.click()
+    })
+    await expect(page.getByRole("alertdialog")).toHaveCount(1)
+    await page.getByRole("alertdialog").getByRole("button", { name: "Suspend" }).click()
+    await expect(status).toHaveText("suspended")
+    expect(posts.slice(1)).toEqual([{ status: "suspended", expected_status: "active" }])
+  })
 })
 
 test("AC-13: Cancel ของ payout กำลังส่ง → เปิดเมนูแถวเดียวกัน menuitem Mark paid disabled จนการยกเลิกจบ", async ({
@@ -117,13 +130,20 @@ test("AC-13: Cancel ของ payout กำลังส่ง → เปิด�
     scope: { all: true },
     status: "published",
   })
+  // draft อีกแถว (other) — เปิด/ปิดกล่อง mark paid ของแถวนี้ระหว่าง DELETE ของ draft ค้าง (review #316 blocker)
+  await insertApprovedEntry(ann.id, program.id, "order_e2e_adm8b_other", new Date(Date.now() - 5 * DAY))
+  const { payout: other } = await post(request, admin, PAYOUTS, {
+    affiliate_id: ann.id,
+    period_from: new Date(Date.now() - 6 * DAY).toISOString(),
+    period_to: new Date(Date.now() - 4 * DAY).toISOString(),
+  })
   await insertApprovedEntry(ann.id, program.id, "order_e2e_adm8b", new Date(Date.now() - DAY))
   const { payout: draft } = await post(request, admin, PAYOUTS, {
     affiliate_id: ann.id,
     period_from: new Date(Date.now() - 3 * DAY).toISOString(),
     period_to: new Date(Date.now()).toISOString(),
   })
-  expect(draft.status).toBe("draft")
+  expect([draft.status, other.status]).toEqual(["draft", "draft"])
 
   const requests: string[] = []
   page.on("request", (req) => {
@@ -151,6 +171,11 @@ test("AC-13: Cancel ของ payout กำลังส่ง → เปิด�
     await expect(page.getByRole("alertdialog")).toBeHidden()
     await expect.poll(() => requests).toEqual([`DELETE ${PAYOUTS}/${draft.id}`])
 
+    // เปิดแล้วปิดกล่อง mark paid ของอีกแถวระหว่าง DELETE ค้าง — state กันกดของแถวที่กำลังยกเลิกต้องไม่หาย
+    await (await rowAction(page.getByRole("row").filter({ hasText: other.id }), trigger, "Mark paid")).click()
+    await page.getByTestId("affiliate-payout-mark-paid-dismiss").click()
+    await expect(page.getByRole("alertdialog")).toBeHidden()
+
     const markPaid = await rowAction(row, trigger, "Mark paid")
     await expect(markPaid).toBeDisabled()
     await expect(page.getByRole("menuitem", { name: "Cancel", exact: true })).toBeDisabled()
@@ -167,5 +192,53 @@ test("AC-13: Cancel ของ payout กำลังส่ง → เปิด�
     expect((await response).status()).toBe(200)
     await expect(row).toHaveCount(0)
     expect(requests).toEqual([`DELETE ${PAYOUTS}/${draft.id}`])
+  })
+})
+
+test("AC-13: Delete โปรแกรม draft — คลิกซ้ำใน tick เดียวได้ prompt เดียว, ระหว่าง DELETE ค้าง Edit/Delete disabled, DELETE 1 ครั้ง", async ({
+  page,
+  request,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const admin = await adminHeaders(request)
+  const name = `E2E ADM-8b draft ${Date.now().toString(36)}`
+  const { program } = await post(request, admin, "/admin/affiliate/programs", {
+    name,
+    starts_at: new Date(Date.now() + 30 * DAY).toISOString(),
+    ends_at: new Date(Date.now() + 60 * DAY).toISOString(),
+    commission_value: 10,
+    scope: { all: true },
+    status: "draft",
+  })
+  const path = `/admin/affiliate/programs/${program.id}`
+  const deletes: string[] = []
+  page.on("request", (req) => {
+    if (req.method() === "DELETE" && new URL(req.url()).pathname === path) deletes.push(req.url())
+  })
+  const row = page.getByRole("row").filter({ hasText: name })
+  const trigger = "affiliate-program-row-actions"
+
+  await step("Delete ถูกคลิกสองครั้งใน tick เดียว → prompt เดียว; ยืนยัน (DELETE ถูกกัก) → เมนู Edit/Delete disabled", async () => {
+    await loginAdmin(page)
+    await page.goto(`${BACKEND_URL}/app/affiliate`)
+    await expect(row).toBeVisible({ timeout: 30_000 })
+    const release = await hold(page, `**${path}`, "DELETE")
+    const remove = await rowAction(row, trigger, "Delete")
+    await remove.evaluate((el: HTMLElement) => {
+      el.click()
+      el.click()
+    })
+    await expect(page.getByRole("alertdialog")).toHaveCount(1)
+    await page.getByRole("alertdialog").getByRole("button", { name: "Delete program" }).click()
+    await expect.poll(() => deletes.length).toBe(1)
+
+    await expect(await rowAction(row, trigger, "Edit")).toBeDisabled()
+    await expect(page.getByRole("menuitem", { name: "Delete" })).toBeDisabled()
+    await closeRowMenu(page)
+
+    release()
+    await expect(row).toHaveCount(0)
+    expect(deletes).toHaveLength(1)
   })
 })

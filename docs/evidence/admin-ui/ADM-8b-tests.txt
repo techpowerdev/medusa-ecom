@@ -46,3 +46,24 @@ typecheck: backend + storefront Done
 == pnpm --filter backend build ==
 info:    Backend build completed successfully (7.58s)
 info:    Frontend build completed successfully (21.84s)
+
+== แก้ตาม review #316 (2026-11-09, base หลัง merge origin/develop dcc90c07) ==
+-- Red: e2e affiliate-admin-row-actions บนโค้ดก่อนแก้ (prod build port 9103) --
+✓  1 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:56:5 › AC-13: menuitem Approve กดซ้ำระหว่างรอ response → POST 1 ครั้ง และ badge เป็น active โดยไม่ reload (5.4s)
+✘  2 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:116:5 › AC-13: Cancel ของ payout กำลังส่ง → เปิดเมนูแถวเดียวกัน menuitem Mark paid disabled จนการยกเลิกจบ (9.0s)
+✘  3 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:198:5 › AC-13: Delete โปรแกรม draft — คลิกซ้ำใน tick เดียวได้ prompt เดียว, ระหว่าง DELETE ค้าง Edit/Delete disabled, DELETE 1 ครั้ง (6.6s)
+Expected: disabled
+Received: enabled
+> 180 |     await expect(markPaid).toBeDisabled()
+Expected: disabled
+Received: enabled
+> 236 |     await expect(await rowAction(row, trigger, "Edit")).toBeDisabled()
+(test 2: DELETE ของ payout A ค้าง → เปิด/ปิดกล่อง mark paid ของ B → เมนู A Mark paid enabled = blocker; test 3: Edit ไม่ disabled ระหว่าง Delete ค้าง = nit)
+-- Green: e2e affiliate-admin-* --repeat-each=2 --
+20 passed (1.6m)
+-- Green: pnpm --filter backend test:unit --
+Test Suites: 92 passed, 92 total
+Tests:       1076 passed, 1076 total
+-- lint 0 errors, typecheck ผ่าน, medusa build ผ่าน --
+-- Escape ครั้งแรกหลังเปิดเมนู (nit 2): หลังคอลัมน์ action คงที่แล้ว ยังต้องกด 2 ครั้งในครั้งแรกทั้งสามแท็บ (keydown ถึง role=menu, ไม่ถูก preventDefault);
+   หน้า /app/products ของ Medusa กดครั้งเดียวปิด — ไม่ใช่อาการ remount จึงคง closeRowMenu ไว้

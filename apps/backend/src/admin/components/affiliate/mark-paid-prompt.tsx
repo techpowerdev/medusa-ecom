@@ -26,6 +26,8 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
     )
 
   const markPaid = useMutation({
+    // ADM-8b: key เดียวกับ cancel ของ payout นี้ — เมนูของแถว disable ระหว่างส่ง (และระหว่าง refetch หลังสำเร็จ)
+    mutationKey: affiliateKeys.payoutAction(payout.id),
     mutationFn: () => markPayoutPaid(payout.id, markPaidBody(reference)),
     onSuccess: () => {
       toast.success("Payout marked as paid")

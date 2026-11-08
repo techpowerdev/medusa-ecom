@@ -453,13 +453,13 @@ describe("ปุ่มต่อแถวของ affiliate อยู่ใน A
     "components/affiliate/affiliates-table.tsx",
     "components/affiliate/programs-table.tsx",
     "components/affiliate/payouts-table.tsx",
-  ])("%s: คอลัมน์ action memo แยกด้วย deps ที่ stable (ไม่มี prompt/getFullDate/mutation) และใช้ใน columns", (file) => {
+  ])("%s: คอลัมน์ action memo แยกด้วย deps ว่าง `[]` (cell ไม่ถูกสร้างใหม่ — review #316) และใช้ใน columns", (file) => {
     const src = read(file)
     const start = src.indexOf("const actionsColumn = useMemo(")
     expect(start).toBeGreaterThan(-1)
     const deps = src.slice(start).match(/\n {4}\[([^\]]*)\],?\n {2}\)/)
     expect(deps).not.toBeNull()
-    expect(deps![1]).not.toMatch(/prompt|getFullDate|mutate|isPending|Once/)
+    expect(deps![1].trim()).toBe("")
     expect(src).toMatch(/^\s+actionsColumn,$/m)
   })
 
@@ -480,8 +480,15 @@ describe("ปุ่มต่อแถวของ affiliate อยู่ใน A
       expect(i).toBeGreaterThan(-1)
       return src.slice(i, src.indexOf("}", src.indexOf("onClick", i)))
     }
-    expect(action("Mark paid")).toMatch(/disabled:\s*\w+/)
-    expect(action("Cancel")).toMatch(/disabled:\s*\w+/)
+    // ทั้งสอง action disabled จากตัวนับ mutation ของ payout เดียวกัน (cancel + mark paid ใช้ mutationKey เดียวกัน)
+    expect(src).toMatch(/const busy = useIsMutating\(\{ mutationKey \}\) > 0/)
+    expect(src).toMatch(/const mutationKey = affiliateKeys\.payoutAction\(payout\.id\)/)
+    expect(src).toMatch(/useMutation\(\{\s*mutationKey,/)
+    expect(action("Mark paid")).toMatch(/disabled:\s*busy\b/)
+    expect(action("Cancel")).toMatch(/disabled:\s*busy\b/)
+    expect(read("components/affiliate/mark-paid-prompt.tsx")).toMatch(
+      /useMutation\(\{[^}]*mutationKey:\s*affiliateKeys\.payoutAction\(payout\.id\)/
+    )
   })
 
   it("programs-table: deps ของ useMemo คอลัมน์ครบ ไม่ใช่แค่ [remove.isPending] (nit #163)", () => {
