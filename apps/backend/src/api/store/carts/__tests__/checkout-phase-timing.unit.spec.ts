@@ -2,12 +2,19 @@ import { EventEmitter } from "events"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import type { MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { CHECKOUT_PHASE_MARKER } from "../../../../lib/checkout-phase-timing"
+import { getSamplerPool, setSamplerPool } from "../../../../lib/saturation-sampler"
 import { checkoutPhaseTiming } from "../checkout-phase-timing"
 
 // OPS-20a (spec 07 AC-31): middleware ของ POST /store/carts/:id/complete log เวลาเข้า + เวลา `res` finish
 // ระดับ debug ผูกด้วย cart_id — (b) เริ่มที่จุดเข้า, (d) จบที่ finish
 describe("checkoutPhaseTiming middleware (OPS-20a)", () => {
-  afterEach(() => jest.restoreAllMocks())
+  afterEach(() => {
+    jest.restoreAllMocks()
+    setSamplerPool(undefined)
+  })
+
+  const pool = { numPendingAcquires: () => 0, numUsed: () => 0, numFree: () => 0 }
+  const knex = { client: { pool } }
 
   function setup(debug = true) {
     let now = 5_000
@@ -16,7 +23,10 @@ describe("checkoutPhaseTiming middleware (OPS-20a)", () => {
     const logger = { shouldLog: (level: string) => debug && level === "debug", debug: (m: string) => lines.push(m) }
     const req = {
       params: { id: "cart_1" },
-      scope: { resolve: (key: string) => (key === ContainerRegistrationKeys.LOGGER ? logger : undefined) },
+      scope: {
+        resolve: (key: string) =>
+          key === ContainerRegistrationKeys.LOGGER ? logger : key === ContainerRegistrationKeys.PG_CONNECTION ? knex : undefined,
+      },
     } as unknown as MedusaRequest
     const res = Object.assign(new EventEmitter(), { statusCode: 200 }) as unknown as MedusaResponse
     const next = jest.fn() as unknown as MedusaNextFunction
@@ -48,5 +58,18 @@ describe("checkoutPhaseTiming middleware (OPS-20a)", () => {
     expect(next).toHaveBeenCalledTimes(1)
     expect((res as unknown as EventEmitter).listenerCount("finish")).toBe(0)
     expect(lines).toHaveLength(0)
+  })
+
+  // OPS-20b (spec 07 AC-32): instrumentation ไม่มี container → middleware ของ checkout ส่ง pool ของ knex ให้ sampler
+  it("debug → ส่ง pool ของ PG_CONNECTION ให้ sampler (รอ pool ของ knex)", () => {
+    const { req, res, next } = setup()
+    checkoutPhaseTiming(req, res, next)
+    expect(getSamplerPool()).toBe(pool)
+  })
+
+  it("ไม่ได้เปิด debug → ไม่แตะ sampler", () => {
+    const { req, res, next } = setup(false)
+    checkoutPhaseTiming(req, res, next)
+    expect(getSamplerPool()).toBeUndefined()
   })
 })
