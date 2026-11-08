@@ -291,7 +291,7 @@ jobs:
           echo "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=$(pnpm --filter backend --silent print-publishable-key)" >> "$GITHUB_ENV"
       - run: pnpm --filter storefront build && (pnpm --filter storefront start &) && npx wait-on http://localhost:8000
       # project "unit" (กฎ evidence) ไม่ต้องใช้ server — แยกไปเปิดใน CI ตาม backlog (มี *-tests.txt เดิมผิด convention)
-      - run: pnpm --filter storefront test:e2e --project=chromium
+      - run: pnpm --filter storefront test:e2e --project=chromium --repeat-each=3 e2e/affiliate-admin-programs.spec.ts e2e/core-25-pdp-option-reset.spec.ts e2e/core-26-cart-dropdown-total.spec.ts e2e/flash-sale-fs19.spec.ts
       # PAY-2 (AC-10): payment_intent.succeeded (จาก AC-1/AC-4) ต้องถึงทั้งสอง path และ backend ตอบ 2xx
       - name: Stripe webhooks reached both endpoints
         if: env.STRIPE_API_KEY != ''
