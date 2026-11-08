@@ -137,6 +137,7 @@ backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDER
    และไม่มี region ใดเปิด `pp_system_default` — ไม่ผ่านข้อใดพิมพ์ `check:go-live FAIL ...` ทีละข้อและ exit code ≠ 0; ผ่านครบ exit 0
    (region ที่ seed สร้างก่อน OPS-7 หรือ admin เปิดเองยังมี `pp_system_default` → ปิดใน admin → Settings → Regions แล้วรันใหม่)
 5. ค่าส่ง placeholder (Q-F1 ใน `docs/spec/01-core-medusa.md` ยังไม่ตัดสิน): seed ตั้งราคา shipping option "Standard" และ return option "Standard return" จาก `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`) = 10 THB placeholder — owner ตัดสินค่าจริงแล้วแก้ใน admin ก่อนเปิดร้าน (ราคาของ shipping option "Standard" และ "Standard return" แก้ที่ Settings → Locations & Shipping → location → service zone → shipping option นั้น → Edit prices; `shipping_rate` ที่หน้า storefront แสดงแก้ที่ Settings → Regions → region นั้น → Metadata — แก้ทั้งสองที่ให้ตรงกัน)
+6. บัญชี Stripe (live) เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (spec 06 Q1 — owner ยังไม่ยืนยัน 2026-11-09; ระหว่างนี้ใช้ test mode) — ตรวจใน Stripe Dashboard → Settings → Payment methods ว่า PromptPay เป็น "On" ก่อนเปิดร้าน
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
