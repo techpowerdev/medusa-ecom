@@ -1,0 +1,87 @@
+# OPS-5 test evidence (spec 07 Deliverables ข้อ 4, ข้อ 7, AC-4) — Node v22.23.3, 2026-11-09
+
+## 1. RED — integration:modules src/modules/affiliate/__tests__/indexes.spec.ts (ก่อนเพิ่ม index ใน model)
+FAIL src/modules/affiliate/__tests__/indexes.spec.ts
+    ✕ has a non-partial order_id index on affiliate_commission_entry (310 ms)
+    ✕ serves ledger lookups by order_id of any status with an index condition (78 ms)
+  ●  › has a non-partial order_id index on affiliate_commission_entry
+    expect(received).toBe(expected) // Object.is equality
+    Expected: true
+    Received: false
+      28 |         `SELECT indexdef FROM pg_indexes WHERE tablename = 'affiliate_commission_entry'`
+      29 |       )
+    > 30 |       expect(rows.some((r) => /\(order_id\) WHERE \(deleted_at IS NULL\)$/.test(r.indexdef))).toBe(true)
+         |                                                                                               ^
+      31 |     })
+      32 |
+      33 |     it("serves ledger lookups by order_id of any status with an index condition", async () => {
+      at Object.toBe (src/modules/affiliate/__tests__/indexes.spec.ts:30:95)
+  ●  › serves ledger lookups by order_id of any status with an index condition
+    expect(received).toMatch(expected)
+    Expected pattern: /Index Cond: \(.*order_id = 'order_1'/
+    Received string:  "Index Scan using \"IDX_affiliate_commission_entry_status_matures_at\" on affiliate_commission_entry  (cost=0.12..8.14 rows=1 width=32)
+      Index Cond: (status = 'reversed'::text)
+      Filter: (order_id = 'order_1'::text)"
+      43 |         })
+      44 |       const plan = rows.map((r) => r["QUERY PLAN"]).join("\n")
+    > 45 |       expect(plan).toMatch(/Index Cond: \(.*order_id = 'order_1'/)
+         |                    ^
+      46 |     })
+      47 |   },
+      48 | })
+      at Object.toMatch (src/modules/affiliate/__tests__/indexes.spec.ts:45:20)
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+Snapshots:   0 total
+Time:        1.788 s
+Ran all test suites matching /src\/modules\/affiliate\/__tests__\/indexes.spec.ts/i.
+
+## 2. npx medusa db:generate affiliate (หลังเพิ่ม { on: ["order_id"] } ใน models/commission-entry.ts)
+info:    MODULE: affiliate
+info:    Generated successfully (Migration20261108223817.ts).
+
+## 3. GREEN — indexes.spec.ts (runner รัน migration จริงของ module ผ่าน pathToMigrations)
+PASS src/modules/affiliate/__tests__/indexes.spec.ts
+    ✓ has a non-partial order_id index on affiliate_commission_entry (270 ms)
+    ✓ serves ledger lookups by order_id of any status with an index condition (92 ms)
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        1.949 s, estimated 2 s
+Ran all test suites matching /src\/modules\/affiliate\/__tests__\/indexes.spec.ts/i.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+## 4. migration ตรงกับ model ทุก custom module (หลังเปลี่ยน) + index ใน DB (db:migrate) เทียบ .snapshot-*.json
+info:    MODULE: affiliate
+info:    Skipped. No changes detected in your models.
+info:    MODULE: evoucher
+info:    Skipped. No changes detected in your models.
+info:    MODULE: flash_sale
+info:    Skipped. No changes detected in your models.
+info:    MODULE: group_buy
+info:    Skipped. No changes detected in your models.
+snapshot vs DB index names: SAME (60 indexes)
+
+## 5. RED — unit src/__tests__/backup-runbook.unit.spec.ts (ก่อนเขียน docs/ops/database.md)
+    ✕ มีหัวข้อ "## Backup และ restore ของ Postgres" ใน docs/ops/database.md (4 ms)
+    ✕ ใช้ pg_dump/pg_restore ผ่าน service ที่มีอยู่จริงใน docker-compose.prod.yml (57 ms)
+    ✕ ระบุสิ่งที่ต้องคงไว้นอก DB และสิ่งที่ไม่ backup
+    ✕ มีบันทึกการซ้อม restore ที่อ้าง evidence ที่มีอยู่จริง
+    ✕ go-live checklist ใน docs/ops/production.md อ้าง runbook นี้ (2 ms)
+Tests:       5 failed, 5 total
+
+## 6. GREEN — backup-runbook + prod-guards + ops-runbook (อ่าน docs/ops/production.md)
+PASS src/__tests__/ops-runbook.unit.spec.ts
+PASS src/__tests__/backup-runbook.unit.spec.ts
+PASS src/__tests__/prod-guards.unit.spec.ts (5.284 s)
+Tests:       57 passed, 57 total
+
+## 7. pnpm --filter backend test:unit
+Test Suites: 93 passed, 93 total
+Tests:       1071 passed, 1071 total
+
+## 8. pnpm lint && pnpm typecheck
+lint exit 0 (backend 0 errors; warning 2 รายการเดิมในไฟล์ที่ OPS-5 ไม่แตะ; storefront 0 errors)
+typecheck exit 0
+apps/storefront typecheck: Done
+apps/backend typecheck: Done

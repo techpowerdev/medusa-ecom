@@ -1,0 +1,26 @@
+# OPS-5 การซ้อม restore (spec 07 AC-4) — runbook: docs/ops/database.md
+# เครื่อง dev: container postgres:16 ของ docker-compose.yml (image เดียวกับ service postgres ใน docker-compose.prod.yml), DB ของ OPS-5 เท่านั้น
+# ต้นทาง medusa_ops5 = db:migrate ครบ (develop + migration OPS-5) + ข้อมูลสังเคราะห์ (docs/evidence/ops/OPS-5-explain.txt)
+# OPS-5 restore drill 2026-11-08T22:45:01Z — postgres image: postgres (PostgreSQL) 16.15 (Debian 16.15-1.pgdg13+2)
+$ pg_dump --format=custom (medusa_ops5)
+( docker exec medusa-ecom-postgres-1 pg_dump -U medusa -d medusa_ops5 --format=custom --no-owner )  0.02s user 0.05s system 5% cpu 1.286 total
+dump bytes: 10279834
+$ createdb medusa_ops5_restore && pg_restore --exit-on-error
+( docker exec -i medusa-ecom-postgres-1 pg_restore -U medusa -d medusa_ops5_restore --no-owner   )  0.01s user 0.02s system 0% cpu 13.275 total
+pg_restore exit=0
+TABLE DATA entries in dump: 169
+tables: 169 ; row counts identical: yes
+affiliate_commission_entry=200000
+evoucher_code=200000
+flash_sale_reservation=100000
+group_buy_membership=200000
+mikro_orm_migrations=199
+script_migrations=8
+medusa_ops5 indexes on custom tables: 71
+medusa_ops5_restore indexes on custom tables: 71
+$ medusa db:migrate (DATABASE_URL=.../medusa_ops5_restore)
+Database already up-to-date; 49× Skipped. Database is up-to-date for module.; Migration scripts completed
+$ medusa develop (PORT=9109, DISABLE_MEDUSA_ADMIN=true) → GET /health
+✔ Server is ready on port: 9109; GET /health = 200 (~10s)
+$ medusa exec (query.graph group_buy_group join_token=tok500 บน DB ที่ restore)
+OPS5-DRILL {"group":{"id":"gbgrp_500","join_token":"tok500"}}

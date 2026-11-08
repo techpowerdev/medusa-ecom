@@ -1,0 +1,221 @@
+# OPS-5 EXPLAIN ของ query ที่ใช้บ่อย (spec 07 Deliverables ข้อ 4) — DB medusa_ops5, PostgreSQL 16.15
+# ข้อมูลสังเคราะห์ (ANALYZE แล้ว): group_buy_campaign 200, group_buy_group 20k, group_buy_membership 200k, evoucher_code 200k (100 pool),
+# affiliate_commission_entry 200k, affiliate_attribution 100k, flash_sale_usage 100k, flash_sale_reservation 100k, flash_sale_config 100
+
+## SQL ที่ใช้
+\echo '-- Q1 store GET /store/group-buy/groups/:token'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT * FROM group_buy_group WHERE join_token = 'tok500' AND deleted_at IS NULL;
+\echo '-- Q2 store GET /store/group-buy/campaigns/active (pool groups)'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT * FROM group_buy_group WHERE campaign_id IN ('gbcamp_1','gbcamp_2') AND kind = 'pool' AND status = 'open' AND ends_at > now() AND deleted_at IS NULL;
+\echo '-- Q3 store GET /store/customers/me/group-buy/memberships'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT * FROM group_buy_membership WHERE customer_id = 'cus_42' AND deleted_at IS NULL ORDER BY joined_at DESC LIMIT 20;
+\echo '-- Q4 store GET /store/customers/me/evouchers'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT * FROM evoucher_code WHERE customer_id = 'cus_42' AND status IN ('allocated','delivered') AND deleted_at IS NULL;
+\echo '-- Q5 store GET /store/flash-sales/active + checkout hook (config by campaign)'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT * FROM flash_sale_config WHERE campaign_id IN ('procamp_7') AND deleted_at IS NULL;
+\echo '-- Q6 checkout flash usage upsert target'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) UPDATE flash_sale_usage SET units = units + 1 WHERE campaign_id = 'procamp_2' AND customer_id = 'cus_1' AND deleted_at IS NULL;
+\echo '-- Q7 checkout flash reservation by cart'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) UPDATE flash_sale_reservation SET released_at = now() WHERE cart_id = 'cart_1' AND released_at IS NULL AND deleted_at IS NULL;
+\echo '-- Q8 evoucher claim (order placed)'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT id FROM evoucher_code WHERE pool_id = 'evpool_3' AND status = 'available' AND deleted_at IS NULL LIMIT 5 FOR UPDATE SKIP LOCKED;
+\echo '-- Q9 affiliate attribution by order'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT * FROM affiliate_attribution WHERE order_id = 'order_af_500' AND deleted_at IS NULL;
+\echo '-- Q10 job group-buy-deadline (every minute): groups past ends_at'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT id FROM group_buy_group WHERE status = 'open' AND ends_at <= now() AND deleted_at IS NULL ORDER BY ends_at LIMIT 50;
+\echo '-- Q11 job group-buy-deadline (every minute): memberships awaiting_payment past pay_deadline_at'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT m.id FROM group_buy_membership m JOIN group_buy_group g ON g.id = m.group_id AND g.deleted_at IS NULL WHERE m.status = 'awaiting_payment' AND m.deleted_at IS NULL AND g.pay_deadline_at <= now() ORDER BY m.joined_at LIMIT 50;
+\echo '-- Q12 affiliate reverse-commission / maturity: ledger entries by order'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT * FROM affiliate_commission_entry WHERE order_id = 'order_af_500' AND deleted_at IS NULL;
+\echo '-- Q13 affiliate maturity: reversed entries of matured orders'
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) SELECT * FROM affiliate_commission_entry WHERE status = 'reversed' AND order_id IN ('order_af_10','order_af_20') AND deleted_at IS NULL;
+
+## ก่อน OPS-5 (ไม่มี IDX_affiliate_commission_entry_order_id) — เฉพาะ Q12, Q13
+-- Q12 affiliate reverse-commission / maturity: ledger entries by order
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
+ Gather (actual rows=2 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on affiliate_commission_entry (actual rows=1 loops=3)
+         Filter: ((deleted_at IS NULL) AND (order_id = 'order_af_500'::text))
+         Rows Removed by Filter: 66666
+ Planning Time: 0.444 ms
+ Execution Time: 22.846 ms
+(8 rows)
+
+-- Q13 affiliate maturity: reversed entries of matured orders
+                                                QUERY PLAN                                                 
+-----------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on affiliate_commission_entry (actual rows=2 loops=1)
+   Recheck Cond: ((status = 'reversed'::text) AND (deleted_at IS NULL))
+   Filter: (order_id = ANY ('{order_af_10,order_af_20}'::text[]))
+   Rows Removed by Filter: 9998
+   Heap Blocks: exact=4556
+   ->  Bitmap Index Scan on "IDX_affiliate_commission_entry_status_matures_at" (actual rows=10000 loops=1)
+         Index Cond: (status = 'reversed'::text)
+ Planning Time: 0.066 ms
+ Execution Time: 24.851 ms
+(9 rows)
+
+
+## หลัง OPS-5 (migration Migration20261108223817) — ทุก query
+-- Q1 store GET /store/group-buy/groups/:token
+                                             QUERY PLAN                                              
+-----------------------------------------------------------------------------------------------------
+ Index Scan using "IDX_group_buy_group_join_token_unique" on group_buy_group (actual rows=1 loops=1)
+   Index Cond: (join_token = 'tok500'::text)
+ Planning Time: 0.767 ms
+ Execution Time: 0.099 ms
+(4 rows)
+
+-- Q2 store GET /store/group-buy/campaigns/active (pool groups)
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on group_buy_group (actual rows=0 loops=1)
+   Recheck Cond: ((status = 'open'::text) AND (ends_at > now()) AND (deleted_at IS NULL))
+   Filter: ((campaign_id = ANY ('{gbcamp_1,gbcamp_2}'::text[])) AND (kind = 'pool'::text))
+   Rows Removed by Filter: 50
+   Heap Blocks: exact=50
+   ->  Bitmap Index Scan on "IDX_group_buy_group_status_ends_at" (actual rows=50 loops=1)
+         Index Cond: ((status = 'open'::text) AND (ends_at > now()))
+ Planning Time: 0.238 ms
+ Execution Time: 1.459 ms
+(9 rows)
+
+-- Q3 store GET /store/customers/me/group-buy/memberships
+                                                   QUERY PLAN                                                    
+-----------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=4 loops=1)
+   ->  Sort (actual rows=4 loops=1)
+         Sort Key: joined_at DESC
+         Sort Method: quicksort  Memory: 25kB
+         ->  Bitmap Heap Scan on group_buy_membership (actual rows=4 loops=1)
+               Recheck Cond: ((customer_id = 'cus_42'::text) AND (deleted_at IS NULL))
+               Heap Blocks: exact=4
+               ->  Bitmap Index Scan on "IDX_group_buy_membership_customer_id_joined_at" (actual rows=4 loops=1)
+                     Index Cond: (customer_id = 'cus_42'::text)
+ Planning Time: 3.048 ms
+ Execution Time: 0.304 ms
+(11 rows)
+
+-- Q4 store GET /store/customers/me/evouchers
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on evoucher_code (actual rows=2 loops=1)
+   Recheck Cond: ((customer_id = 'cus_42'::text) AND (deleted_at IS NULL))
+   Filter: (status = ANY ('{allocated,delivered}'::text[]))
+   Heap Blocks: exact=2
+   ->  Bitmap Index Scan on "IDX_evoucher_code_customer_id_status" (actual rows=2 loops=1)
+         Index Cond: (customer_id = 'cus_42'::text)
+ Planning Time: 1.507 ms
+ Execution Time: 1.092 ms
+(8 rows)
+
+-- Q5 store GET /store/flash-sales/active + checkout hook (config by campaign)
+                               QUERY PLAN                               
+------------------------------------------------------------------------
+ Seq Scan on flash_sale_config (actual rows=1 loops=1)
+   Filter: ((deleted_at IS NULL) AND (campaign_id = 'procamp_7'::text))
+   Rows Removed by Filter: 99
+ Planning Time: 0.168 ms
+ Execution Time: 0.051 ms
+(5 rows)
+
+-- Q6 checkout flash usage upsert target
+                                                        QUERY PLAN                                                        
+--------------------------------------------------------------------------------------------------------------------------
+ Update on flash_sale_usage (actual rows=0 loops=1)
+   ->  Index Scan using "IDX_flash_sale_usage_campaign_id_customer_id_unique" on flash_sale_usage (actual rows=1 loops=1)
+         Index Cond: ((campaign_id = 'procamp_2'::text) AND (customer_id = 'cus_1'::text))
+         Filter: (deleted_at IS NULL)
+ Planning Time: 0.239 ms
+ Execution Time: 0.310 ms
+(6 rows)
+
+-- Q7 checkout flash reservation by cart
+                                                            QUERY PLAN                                                            
+----------------------------------------------------------------------------------------------------------------------------------
+ Update on flash_sale_reservation (actual rows=0 loops=1)
+   ->  Index Scan using "IDX_flash_sale_reservation_cart_id_campaign_id_unique" on flash_sale_reservation (actual rows=0 loops=1)
+         Index Cond: (cart_id = 'cart_1'::text)
+         Filter: ((released_at IS NULL) AND (deleted_at IS NULL))
+         Rows Removed by Filter: 1
+ Planning Time: 0.186 ms
+ Execution Time: 0.111 ms
+(7 rows)
+
+-- Q8 evoucher claim (order placed)
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Limit (actual rows=5 loops=1)
+   ->  LockRows (actual rows=5 loops=1)
+         ->  Index Scan using "IDX_evoucher_code_pool_id_status" on evoucher_code (actual rows=5 loops=1)
+               Index Cond: ((pool_id = 'evpool_3'::text) AND (status = 'available'::text))
+               Filter: (deleted_at IS NULL)
+ Planning Time: 0.087 ms
+ Execution Time: 0.182 ms
+(7 rows)
+
+-- Q9 affiliate attribution by order
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
+ Index Scan using "IDX_affiliate_attribution_order_id_unique" on affiliate_attribution (actual rows=1 loops=1)
+   Index Cond: (order_id = 'order_af_500'::text)
+ Planning Time: 0.188 ms
+ Execution Time: 0.040 ms
+(4 rows)
+
+-- Q10 job group-buy-deadline (every minute): groups past ends_at
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Limit (actual rows=50 loops=1)
+   ->  Index Scan using "IDX_group_buy_group_status_ends_at" on group_buy_group (actual rows=50 loops=1)
+         Index Cond: ((status = 'open'::text) AND (ends_at <= now()))
+ Planning Time: 0.149 ms
+ Execution Time: 1.620 ms
+(5 rows)
+
+-- Q11 job group-buy-deadline (every minute): memberships awaiting_payment past pay_deadline_at
+                                                    QUERY PLAN                                                     
+-------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=0 loops=1)
+   ->  Sort (actual rows=0 loops=1)
+         Sort Key: m.joined_at
+         Sort Method: quicksort  Memory: 25kB
+         ->  Hash Join (actual rows=0 loops=1)
+               Hash Cond: (m.group_id = g.id)
+               ->  Bitmap Heap Scan on group_buy_membership m (actual rows=500 loops=1)
+                     Recheck Cond: ((status = 'awaiting_payment'::text) AND (deleted_at IS NULL))
+                     Heap Blocks: exact=500
+                     ->  Bitmap Index Scan on "IDX_group_buy_membership_group_id_status" (actual rows=500 loops=1)
+                           Index Cond: (status = 'awaiting_payment'::text)
+               ->  Hash (actual rows=7550 loops=1)
+                     Buckets: 8192  Batches: 1  Memory Usage: 385kB
+                     ->  Seq Scan on group_buy_group g (actual rows=7550 loops=1)
+                           Filter: ((deleted_at IS NULL) AND (pay_deadline_at <= now()))
+                           Rows Removed by Filter: 12450
+ Planning Time: 0.827 ms
+ Execution Time: 30.790 ms
+(18 rows)
+
+-- Q12 affiliate reverse-commission / maturity: ledger entries by order
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
+ Index Scan using "IDX_affiliate_commission_entry_order_id" on affiliate_commission_entry (actual rows=2 loops=1)
+   Index Cond: (order_id = 'order_af_500'::text)
+ Planning Time: 0.671 ms
+ Execution Time: 0.156 ms
+(4 rows)
+
+-- Q13 affiliate maturity: reversed entries of matured orders
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
+ Index Scan using "IDX_affiliate_commission_entry_order_id" on affiliate_commission_entry (actual rows=2 loops=1)
+   Index Cond: (order_id = ANY ('{order_af_10,order_af_20}'::text[]))
+   Filter: (status = 'reversed'::text)
+   Rows Removed by Filter: 2
+ Planning Time: 0.051 ms
+ Execution Time: 0.395 ms
+(6 rows)
+
