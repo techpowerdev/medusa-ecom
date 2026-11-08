@@ -7,7 +7,6 @@ import { adminHeaders, Headers } from "./support/medusa"
 
 // ADM-11 (spec 08 AC-15, กฎ 14): หน้ารายละเอียด pool / group buy ใช้ผลของ loader เป็น `initialData` ของ `useQuery`
 // → เปิดตรงไม่ยิง GET resource ซ้ำ และคลิกจากรายการไม่รอ GET สองรอบต่อกัน; breadcrumb หน้า pool = "E-vouchers › <ชื่อ pool>"
-// expect.soft ที่ตัวเลข/breadcrumb: รายงานทุกข้อที่ล้มในรอบเดียว (หลักฐานก่อน/หลังแก้)
 // admin UI เป็นภาษาอังกฤษ — หา element ด้วย data-testid ยกเว้น breadcrumb ของ dashboard (ไม่มี testid; อ่านแบบ AC-9)
 test.use({
   ...ADMIN_UI_OPTIONS,
@@ -16,7 +15,10 @@ test.use({
 })
 
 const HOUR = 60 * 60 * 1000
-const MAX_GETS = 2
+// (รอบ 25, session หลัก 2026-11-09) loader ถูก dashboard 2.22.1 เรียกซ้ำเอง 4 ครั้ง (`createRouteMap` ใส่ loader ทั้ง branch และ leaf route)
+// → เกณฑ์ ≤ 4 และตรวจว่า useQuery ไม่ยิงเพิ่ม: loader ยิงพร้อมกันก่อน response แรกกลับ ส่วน useQuery mount หลัง loader เสร็จ
+// จึงต้องไม่มี GET ใดเริ่มหลัง response แรกของ path นั้น (develop ก่อนแก้: GET ที่ 5 เริ่มหลัง loader เสร็จ)
+const MAX_GETS = 4
 const DELAY_MS = 2000
 
 async function createCampaign(request: APIRequestContext, admin: Headers, name: string): Promise<string> {
@@ -42,16 +44,31 @@ async function createCampaign(request: APIRequestContext, admin: Headers, name: 
   return campaign.id
 }
 
-/** นับ GET ที่ pathname ตรง `pathname` พอดี (ไม่นับ sub-resource เช่น `/groups`, `/codes`) */
+/**
+ * นับ GET ที่ pathname ตรง `pathname` พอดี (ไม่นับ sub-resource เช่น `/groups`, `/codes`) และนับ GET ที่เริ่มหลัง
+ * response แรกของ path นั้นจบ (= ยิงหลัง loader เสร็จ เช่น useQuery ที่ไม่มี initialData) — event ของ page มาตามลำดับ ไม่ใช้เวลา
+ */
 function countGets(page: Page, pathname: string) {
-  const seen: string[] = []
+  let sent = 0
+  let afterFirstResponse = 0
+  let responded = false
+  const matches = (req: Request) => req.method() === "GET" && new URL(req.url()).pathname === pathname
   const onRequest = (req: Request) => {
-    if (req.method() === "GET" && new URL(req.url()).pathname === pathname) seen.push(req.url())
+    if (!matches(req)) return
+    sent++
+    if (responded) afterFirstResponse++
+  }
+  const onFinished = (req: Request) => {
+    if (matches(req)) responded = true
   }
   page.on("request", onRequest)
+  page.on("requestfinished", onFinished)
   return {
-    count: () => seen.length,
-    stop: () => page.off("request", onRequest),
+    stop: () => {
+      page.off("request", onRequest)
+      page.off("requestfinished", onFinished)
+      return { sent, afterFirstResponse }
+    },
   }
 }
 
@@ -80,9 +97,10 @@ test("AC-15: หน้ารายละเอียดใช้ผลของ 
     await page.goto(`${BACKEND_URL}/app/group-buying/${campaignId}`)
     await expect(page.getByTestId("gb-campaign-status")).toBeVisible({ timeout: 30_000 })
     await page.waitForLoadState("networkidle")
-    gets.stop()
-    console.log(`ADM-11 GET ${campaignPath}: ${gets.count()}`)
-    expect.soft(gets.count(), "จำนวน GET แคมเปญ").toBeLessThanOrEqual(MAX_GETS)
+    const { sent, afterFirstResponse } = gets.stop()
+    console.log(`ADM-11 GET ${campaignPath}: ${sent} (หลัง response แรก ${afterFirstResponse})`)
+    expect(afterFirstResponse, "GET แคมเปญที่ยิงหลัง loader เสร็จ (useQuery)").toBe(0)
+    expect(sent, "จำนวน GET แคมเปญ").toBeLessThanOrEqual(MAX_GETS)
   })
 
   await step(`เปิด /evouchers/pools/:id ตรง → GET ${poolPath} ≤ ${MAX_GETS} และ breadcrumb E-vouchers › ชื่อ pool`, async () => {
@@ -90,14 +108,15 @@ test("AC-15: หน้ารายละเอียดใช้ผลของ 
     await page.goto(`${BACKEND_URL}/app/evouchers/pools/${poolId}`)
     await expect(page.getByTestId("evoucher-codes")).toBeVisible({ timeout: 30_000 })
     await page.waitForLoadState("networkidle")
-    gets.stop()
-    console.log(`ADM-11 GET ${poolPath}: ${gets.count()}`)
-    expect.soft(gets.count(), "จำนวน GET pool").toBeLessThanOrEqual(MAX_GETS)
+    const { sent, afterFirstResponse } = gets.stop()
+    console.log(`ADM-11 GET ${poolPath}: ${sent} (หลัง response แรก ${afterFirstResponse})`)
+    expect(afterFirstResponse, "GET pool ที่ยิงหลัง loader เสร็จ (useQuery)").toBe(0)
+    expect(sent, "จำนวน GET pool").toBeLessThanOrEqual(MAX_GETS)
 
     const breadcrumb = page.locator("ol").first().locator("li")
-    await expect.soft(breadcrumb).toHaveCount(2)
-    await expect.soft(breadcrumb.first()).toHaveText("E-vouchers")
-    await expect.soft(breadcrumb.first().locator("a")).toHaveAttribute("href", "/app/evouchers")
+    await expect(breadcrumb).toHaveCount(2)
+    await expect(breadcrumb.first()).toHaveText("E-vouchers")
+    await expect(breadcrumb.first().locator("a")).toHaveAttribute("href", "/app/evouchers")
     // li สุดท้ายมี "..." (lg:hidden) + label → ดูเฉพาะ span ที่มองเห็น (แบบ e2e group-buy-admin-pages)
     await expect(breadcrumb.last().locator("span:visible")).toHaveText(poolName)
     await evidence("01-pool-breadcrumb")
@@ -119,7 +138,7 @@ test("AC-15: หน้ารายละเอียดใช้ผลของ 
     const elapsed = Date.now() - started
     await page.unroute(isCampaign, slow)
     console.log(`ADM-11 click → gb-campaign-status: ${elapsed}ms`)
-    expect.soft(elapsed, "เวลาจากคลิกถึงเห็นสถานะ (ms)").toBeLessThan(3500)
+    expect(elapsed, "เวลาจากคลิกถึงเห็นสถานะ (ms)").toBeLessThan(3500)
     await evidence("02-campaign-detail")
   })
 

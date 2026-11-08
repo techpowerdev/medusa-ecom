@@ -1,0 +1,47 @@
+# ADM-11 (spec 08 AC-15, กฎ 14) — e2e admin-detail-loader.spec.ts (prod build: medusa build + medusa start, 1280×800)
+
+## RED — โค้ด develop 1743eb74 (3 ไฟล์ routes) + e2e ใหม่
+(รอบแรกก่อนคำตัดสิน: GET แคมเปญ 5, GET pool 5, คลิก→สถานะ 4398ms, breadcrumb มีระดับเดียว)
+Running 1 test using 1 worker
+ADM-11 GET /admin/group-buy/campaigns/gbcamp_01M6YHYGBYJSBPPCH85D7NB53G: 5 (หลัง response แรก 1)
+  ✘  1 [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers (12.8s)
+  1) [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers › เปิด /group-buying/:id ตรง → GET /admin/group-buy/campaigns/gbcamp_01M6YHYGBYJSBPPCH85D7NB53G ≤ 4 
+    Error: GET แคมเปญที่ยิงหลัง loader เสร็จ (useQuery)
+    expect(received).toBe(expected) // Object.is equality
+    Expected: 0
+    Received: 1
+      100 |     const { sent, afterFirstResponse } = gets.stop()
+      101 |     console.log(`ADM-11 GET ${campaignPath}: ${sent} (หลัง response แรก ${afterFirstResponse})`)
+    > 102 |     expect(afterFirstResponse, "GET แคมเปญที่ยิงหลัง loader เสร็จ (useQuery)").toBe(0)
+          |                                                                                ^
+
+## GREEN — branch นี้, ไฟล์เดียว
+Running 1 test using 1 worker
+ADM-11 GET /admin/group-buy/campaigns/gbcamp_01M6YKSFNS8960D0B4SMZQAVRK: 4 (หลัง response แรก 0)
+ADM-11 GET /admin/evoucher/pools/evpool_01M6YKSQTDNE18HX199FHGDJG2: 4 (หลัง response แรก 0)
+ADM-11 click → gb-campaign-status: 3173ms
+  ✓  1 [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers (31.0s)
+  1 passed (33.0s)
+
+## GREEN — e2e เดิมของ AC-15 (รันพร้อมกัน 4 ไฟล์ในเครื่อง load avg ~11–16)
+ADM-11 GET /admin/group-buy/campaigns/gbcamp_01M6YKMN3Y5G232857TF2T880A: 4 (หลัง response แรก 0)
+ADM-11 GET /admin/evoucher/pools/evpool_01M6YKMW81XK0KVGS3J90BSEVZ: 4 (หลัง response แรก 0)
+  ✓   3 [chromium] › e2e/group-buy-admin-detail.spec.ts:69:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (18.6s)
+ADM-11 click → gb-campaign-status: 3724ms
+  ✘   2 [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers (26.4s)
+  ✓   5 [chromium] › e2e/group-buy-admin-detail.spec.ts:110:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (15.5s)
+  ✓   6 [chromium] › e2e/group-buy-admin-detail.spec.ts:151:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading (7.3s)
+  ✓   4 [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย (49.4s)
+  ✓   1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (57.2s)
+  ✓   8 [chromium] › e2e/group-buy-admin-members.spec.ts:148:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request (18.9s)
+  ✓   7 [chromium] › e2e/group-buy-admin-detail.spec.ts:161:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (25.0s)
+  ✓   9 [chromium] › e2e/group-buy-admin-members.spec.ts:181:7 › GB-6d › AC-41: fail ล้มเพราะกลุ่ม succeeded ไปแล้ว → GET กลุ่มใหม่ แถวเป็น succeeded ปุ่มหาย ไม่ต้อง reload (42.7s)
+  ✓  10 [chromium] › e2e/group-buy-admin-members.spec.ts:230:7 › GB-6d › AC-41: แถวที่เลือกมี highlight + ปุ่มปิด; เปลี่ยนหน้าไปหน้าที่ไม่มีแถวที่เลือก → ปิดตาราง membership (18.9s)
+  ✓  11 [chromium] › e2e/group-buy-admin-members.spec.ts:291:7 › GB-N3 › AC-42: td แรกของแถวที่เลือกสีเดียวกับ td ที่สองและต่างจากแถวที่ไม่ถูกเลือก (9.7s)
+      140 |     console.log(`ADM-11 click → gb-campaign-status: ${elapsed}ms`)
+  1 failed
+  10 passed (2.5m)
+หมายเหตุ: รอบรวมนี้ admin-detail-loader ล้มที่เกณฑ์เวลา (3724ms) เพราะรัน 4 worker บนเครื่อง load สูง; รันเดี่ยวผ่าน 3173ms (ก่อนหน้านี้ 2562ms) — CI ใช้ workers=1
+
+## unit (backend src/admin)
+Test Suites: 16 passed, 16 total / Tests: 278 passed, 278 total
