@@ -17,7 +17,7 @@ import {
 import { THAI } from "./support/thai-text"
 
 // CORE-50 (spec 01 กฎข้อ 108, AC-145): nav ที่ < 1024 ตั้งแต่ 320 — ปุ่มเมนู/ชื่อร้าน/ไอคอนค้นหา/"ตะกร้า (n)" ไม่ชิด/ทับกัน
-// ห่างกัน ≥ 8px อยู่ในจอ, ชื่อร้านและ "ตะกร้า (116)" บรรทัดเดียวไม่ถูกตัด, header สูง 64; ≥ 1024 เหมือนเดิม (ค่าที่วัดบน develop a349676)
+// ห่างกัน ≥ 8px อยู่ในจอ, ชื่อร้านและ "ตะกร้า (116)" บรรทัดเดียวไม่ถูกตัด, header สูง 64; ≥ 1024 เหมือนเดิม (ค่าที่วัดบน develop 1743eb7)
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-50" } })
 
 const NARROW = [
@@ -29,12 +29,14 @@ const NARROW = [
 const DESKTOP = { width: 1280, height: 800 }
 const QUANTITY = 116
 const ORDER = ["nav-menu-button", "nav-store-link", "nav-search-button", "nav-cart-link"] as const
-// วัดบน develop a349676 ที่ 1280×800 (cart 116 ชิ้น) — left/width ของทั้ง 4 ตัว (กฎข้อ 108d: class `small:` เดิมไม่เปลี่ยน)
+// วัดบน develop 1743eb7 (nav/styles เท่า a349676) ที่ 1280×800 (cart 116 ชิ้น) — left/width ของทั้ง 4 ตัว (กฎข้อ 108d: class `small:` เดิมไม่เปลี่ยน)
+// platform: chromium ของ image mcr.microsoft.com/playwright:v1.64.1-noble (Linux แบบ CI ubuntu-latest) — macOS render ข้อความไทยกว้างต่างไป ~1.3px
+// จึงต้องเทียบบน Linux (รันบน macOS ส่วน 1280 อาจล้ม)
 const DESKTOP_BASELINE: Record<(typeof ORDER)[number], { left: number; width: number }> = {
-  "nav-menu-button": { left: 24, width: 18.27 },
-  "nav-store-link": { left: 590.75, width: 98.48 },
-  "nav-search-button": { left: 1107.7, width: 15 },
-  "nav-cart-link": { left: 1195.47, width: 60.53 },
+  "nav-menu-button": { left: 24, width: 17 },
+  "nav-store-link": { left: 591, width: 98 },
+  "nav-search-button": { left: 1107, width: 15 },
+  "nav-cart-link": { left: 1195, width: 61 },
 }
 
 /** ตำแหน่งของทั้ง 4 ตัว + จำนวนบรรทัดของข้อความ (Range.getClientRects) + การล้นของชื่อร้าน/หน้า และความสูงของ header */
