@@ -209,7 +209,8 @@ describe("หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)
       expect(importsFrom(src, "DataTable", "@medusajs/dashboard/components")).toBe(true)
       expect(importsFrom(src, "DataTable", "@medusajs/ui")).toBe(false)
       expect(src).not.toMatch(/\bDataTablePaginationState\b/)
-      expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+      // ADM-10: offset จาก URL ผ่าน usePageOffset (กฎ 13)
+      expect(src).toMatch(/usePageOffset\(PREFIX,/)
     }
   )
 
@@ -299,13 +300,13 @@ describe("ฟอร์มสร้างแคมเปญ group buy ใช้ F
 describe("ตาราง/ฟอร์ม partner ใช้ของ Medusa (spec 08 AC-8, ADM-5)", () => {
   const file = "components/evoucher/partners-section.tsx"
 
-  it("ใช้ DataTable, ActionMenu, NoRecords, Form, KeyboundForm ของ @medusajs/dashboard/components และ useQueryParams", () => {
+  it("ใช้ DataTable, ActionMenu, NoRecords, Form, KeyboundForm ของ @medusajs/dashboard/components และ usePageOffset", () => {
     const src = read(file)
     for (const name of ["DataTable", "ActionMenu", "NoRecords", "Form", "KeyboundForm"]) {
       expect(importsFrom(src, name, "@medusajs/dashboard/components")).toBe(true)
     }
     expect(importsFrom(src, "DataTable", "@medusajs/ui")).toBe(false)
-    expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).toMatch(/usePageOffset\(PREFIX,/)
     expect(src).not.toMatch(/\bDataTablePaginationState\b/)
   })
 
@@ -313,12 +314,6 @@ describe("ตาราง/ฟอร์ม partner ใช้ของ Medusa (spe
     const src = read(file)
     expect(src).toContain('data-testid="evoucher-partner-row-actions"')
     expect(src).toContain('data-testid="evoucher-partners-empty"')
-  })
-
-  it("offset ใน URL ที่ผิดรูปถูก normalize ด้วย pageOffset แล้วแก้ URL แบบ replace (บทเรียน ADM-6)", () => {
-    const src = read(file)
-    expect(src).toMatch(/pageOffset\(/)
-    expect(src).toMatch(/replace:\s*true/)
   })
 
   it("ฟอร์มใช้ useForm + zodResolver (raw) + noValidate และกันกดซ้ำด้วย useState(createSingleFlight)", () => {
@@ -366,11 +361,11 @@ describe("ตาราง affiliate ใช้ของ Medusa (spec 08 AC-2, AC-
     expect(routePages.map((r) => r.name)).toContain("affiliate")
   })
 
-  it("list-table: DataTable ของ dashboard + useQueryParams, ไม่มี state แบ่งหน้าเองและไม่มี as unknown as", () => {
+  it("list-table: DataTable ของ dashboard + usePageOffset, ไม่มี state แบ่งหน้าเองและไม่มี as unknown as", () => {
     const src = read("components/affiliate/list-table.tsx")
     expect(importsFrom(src, "DataTable", "@medusajs/dashboard/components")).toBe(true)
     expect(importsFrom(src, "DataTable", "@medusajs/ui")).toBe(false)
-    expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).toMatch(/usePageOffset\(prefix,/)
     expect(src).not.toMatch(/\b(DataTablePaginationState|useDataTable)\b/)
     expect(src).not.toMatch(/as unknown as/)
   })
@@ -426,5 +421,41 @@ describe("ตาราง affiliate ใช้ของ Medusa (spec 08 AC-2, AC-
       .filter(([, re]) => re.test(src))
       .map(([name]) => name)
     expect(found).toEqual([])
+  })
+})
+
+// ADM-10 (spec 08 กฎ 13, AC-14): offset ใน URL ของตาราง DataTable ของ dashboard ผ่านของกลางชุดเดียว
+describe("page offset ของกลาง (spec 08 AC-14)", () => {
+  const PAGE_OFFSET_USERS = [
+    "routes/group-buying/page.tsx",
+    "components/evoucher/pools-table.tsx",
+    "components/evoucher/codes-table.tsx",
+    // กฎ 13e: ตารางที่ merge ก่อน ADM-10
+    "components/evoucher/partners-section.tsx",
+    "components/affiliate/list-table.tsx",
+  ]
+  const importsHook = (src: string) =>
+    /import\s*{[^}]*\busePageOffset\b[^}]*}\s*from\s*["'](?:\.{1,2}\/)+(?:components\/)?common\/use-page-offset["']/.test(src)
+
+  it("lib/group-buy-campaign.ts ไม่มี pageOffset", () => {
+    expect(read("lib/group-buy-campaign.ts")).not.toMatch(/\bpageOffset\b/)
+  })
+
+  it("lib/evoucher-query.ts ไม่มี toOffset", () => {
+    expect(read("lib/evoucher-query.ts")).not.toMatch(/\btoOffset\b/)
+  })
+
+  it("use-page-offset ถูก import อย่างน้อย 3 ไฟล์", () => {
+    expect(adminFiles.filter((f) => importsHook(read(f))).length).toBeGreaterThanOrEqual(3)
+  })
+
+  it.each(PAGE_OFFSET_USERS)("%s ใช้ usePageOffset และไม่เขียน offset ลง URL เอง", (file) => {
+    const src = read(file)
+    expect(importsHook(src)).toBe(true)
+    expect(src).not.toMatch(/\bsetSearchParams\b/)
+  })
+
+  it("codes-table.tsx ไม่มี useSearchParams (reset เมื่อ filter เปลี่ยนอยู่ใน hook — กฎ 13c)", () => {
+    expect(read("components/evoucher/codes-table.tsx")).not.toMatch(/\buseSearchParams\b/)
   })
 })

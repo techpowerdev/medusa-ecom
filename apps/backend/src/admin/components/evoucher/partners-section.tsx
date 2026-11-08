@@ -1,5 +1,4 @@
 import { ActionMenu, DataTable, Form, KeyboundForm, NoRecords } from "@medusajs/dashboard/components"
-import { useQueryParams } from "@medusajs/dashboard/hooks"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { EllipsisHorizontal, PencilSquare, Trash } from "@medusajs/icons"
 import {
@@ -16,7 +15,6 @@ import {
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
-import { useSearchParams } from "react-router-dom"
 import { evoucherApi, evoucherKeys, Partner, PartnerInput } from "../../lib/evoucher"
 import {
   PARTNER_PARSE_OPTIONS,
@@ -24,16 +22,15 @@ import {
   type PartnerFormValues,
   toPartnerFormValues,
 } from "../../lib/evoucher-partner-form"
-import { pageOffset } from "../../lib/group-buy-campaign"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { Header } from "../common/header"
+import { usePageOffset } from "../common/use-page-offset"
 
 const columnHelper = createDataTableColumnHelper<Partner>()
 const PAGE_SIZE = 20
 // spec 08 กฎ 9: prefix ไม่ซ้ำกับตาราง pools ในหน้าเดียวกัน — หน้าปัจจุบันอยู่ใน URL (`partners_offset`)
 const PREFIX = "partners"
-const OFFSET_KEY = `${PREFIX}_offset`
 
 const FIELDS: { name: keyof PartnerFormValues; label: string }[] = [
   { name: "name", label: "Name *" },
@@ -41,27 +38,6 @@ const FIELDS: { name: keyof PartnerFormValues; label: string }[] = [
   { name: "terms_url", label: "Terms URL" },
   { name: "support_contact", label: "Support contact" },
 ]
-
-// partners_offset ผู้ใช้แก้เองได้ และ DataTable ของ dashboard parseInt ค่าดิบเอง ("abc" → "NaN of N results")
-// → ใช้ค่าที่ normalize แล้วกับ request และแก้ URL ให้ตรง (แบบเดียวกับหน้า Group buying — ADM-6)
-const usePartnersOffset = () => {
-  const { offset: raw } = useQueryParams(["offset"], PREFIX)
-  const offset = pageOffset(raw)
-  const [, setSearchParams] = useSearchParams()
-  useEffect(() => {
-    if (raw === undefined || raw === String(offset)) return
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        if (offset) next.set(OFFSET_KEY, String(offset))
-        else next.delete(OFFSET_KEY)
-        return next
-      },
-      { replace: true }
-    )
-  }, [raw, offset, setSearchParams])
-  return offset
-}
 
 const PartnerFields = () => (
   <div className="flex flex-col gap-y-4">
@@ -100,13 +76,15 @@ export const PartnersSection = () => {
   const [submitOnce] = useState(createSingleFlight)
   const [deleteOnce] = useState(createSingleFlight)
 
-  const offset = usePartnersOffset()
+  const [count, setCount] = useState<number>()
+  const offset = usePageOffset(PREFIX, PAGE_SIZE, { count })
   const query = { limit: PAGE_SIZE, offset }
   const { data, isLoading } = useQuery({
     queryKey: [...evoucherKeys.partners, query],
     queryFn: () => evoucherApi.listPartners(query),
     placeholderData: keepPreviousData,
   })
+  useEffect(() => setCount(data?.count), [data?.count])
 
   const onSuccess = (message: string) => {
     queryClient.invalidateQueries({ queryKey: evoucherKeys.partners })
