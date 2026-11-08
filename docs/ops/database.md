@@ -8,7 +8,7 @@
 - **migration ตรงกับ model**: `npx medusa db:generate <module>` ทั้งสี่ module ได้ `Skipped. No changes detected in your models.`
   และ index ใน DB หลัง `db:migrate` ตรงกับ `.snapshot-*.json` ทุกตัว (ผลอยู่ใน `docs/evidence/ops/OPS-5-tests.txt`)
 - **query ที่ใช้บ่อยมี index** — `EXPLAIN ANALYZE` บนข้อมูลสังเคราะห์ขนาดประมาณร้านหลังเปิด 1 ปี (membership/code/ledger ตารางละ 200k แถว)
-  ผลเต็มใน `docs/evidence/ops/OPS-5-explain.txt`:
+  ผลเต็มใน `docs/evidence/ops/OPS-5-tests.txt` ข้อ 9:
 
 | query (ที่มา) | index ที่ใช้ |
 |---|---|
@@ -55,7 +55,7 @@
 
 ### Restore (ซ้อมทุกครั้งก่อน go-live และหลัง bump `@medusajs/*`)
 restore ลง database ใหม่ก่อนเสมอ ไม่เขียนทับ `medusa` จนตรวจผ่าน
-1. หยุดรับ traffic และงานเบื้องหลัง: `docker compose -f docker-compose.prod.yml stop storefront server worker`
+1. หยุดรับ traffic และงานเบื้องหลัง: `docker compose -f docker-compose.prod.yml --profile storefront stop storefront server worker` (storefront อยู่ใน profile `storefront` — ไม่ใส่ `--profile` compose ไม่หยุดให้)
 2. สร้าง DB ใหม่แล้ว restore:
    ```bash
    docker compose -f docker-compose.prod.yml exec -T postgres createdb -U medusa medusa_restore
@@ -81,9 +81,16 @@ restore ลง database ใหม่ก่อนเสมอ ไม่เขี�
      (ใช้รายการ PaymentIntent ใน Stripe Dashboard ช่วงเวลานั้น)
    - e-voucher ที่ส่งอีเมลให้ลูกค้าหลังเวลา backup กลับเป็น `available` → หา code จาก log การส่งอีเมลของ Resend ช่วงนั้นแล้ว void ใน admin
      ก่อนเปิดร้าน (กันส่ง code เดิมซ้ำให้ลูกค้าคนอื่น) และ import CSV ที่ import หลังเวลา backup ใหม่
+   - refund ที่ทำใน Stripe หลังเวลา backup ไม่มีใน DB (order/payment ยังแสดงว่าไม่ refund) → เทียบ Refunds ของ PaymentIntent ใน Stripe Dashboard
+     ก่อน refund ใดๆ ใน admin หรือ script `refund-orphan-payment` เสมอ (กัน refund ซ้ำ)
+   - payout ของ affiliate ที่ mark paid หลังเวลา backup กลับเป็น `draft` (entry กลับเป็น `approved`) → เทียบกับรายการโอนเงินจริงของธนาคาร
+     แล้ว mark paid ใน admin ด้วย reference เดิมก่อนสร้าง payout รอบใหม่ (กันโอนซ้ำ)
+   - workflow ที่รอ retry อยู่ใน Redis หายเมื่อ `FLUSHALL` (ข้อ 5) เช่น `release-flash-sale-for-order` (คืนสิทธิ์ flash เมื่อ order ถูกยกเลิก/refund)
+     และ `reverse-affiliate-commission` → ตรวจ order ที่ยกเลิก/refund ช่วงเวลา backup ถึงเหตุการณ์: `flash_sale_reservation` ของ cart นั้นต้องมี
+     `released_at` และ ledger ของ order นั้นต้องมี entry `reversed` — ถ้าขาด ให้รัน workflow นั้นซ้ำต่อ order (ทั้งคู่ idempotent) ด้วย script ชั่วคราวผ่าน `npx medusa exec` — ยังไม่มี script สำเร็จรูป
 9. เก็บ `medusa_before_restore` ไว้จนยืนยันผลแล้วจึง `DROP DATABASE`
 
 ### บันทึกการซ้อม restore
 | วันที่ | สภาพแวดล้อม | ผล |
 |---|---|---|
-| 2026-11-09 | เครื่อง dev, `postgres:16` (16.15), DB `medusa_ops5` (migration ครบ + ข้อมูลสังเคราะห์ 169 ตาราง) → `medusa_ops5_restore` | `pg_restore --exit-on-error` ผ่าน, จำนวนแถวทุกตารางตรงกัน, index ครบ 71, `db:migrate` = up-to-date, backend บูตและ `GET /health` = 200 — `docs/evidence/ops/OPS-5-restore-drill.txt` |
+| 2026-11-09 | เครื่อง dev, `postgres:16` (16.15), DB `medusa_ops5` (migration ครบ + ข้อมูลสังเคราะห์ 169 ตาราง) → `medusa_ops5_restore` | `pg_restore --exit-on-error` ผ่าน, จำนวนแถวทุกตารางตรงกัน, index ครบ 71, `db:migrate` = up-to-date, backend บูตและ `GET /health` = 200 — `docs/evidence/ops/OPS-5-tests.txt` ข้อ 10 |

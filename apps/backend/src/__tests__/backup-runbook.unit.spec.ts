@@ -6,7 +6,7 @@ import { parse } from "yaml"
 const repoRoot = path.resolve(__dirname, "../../../..")
 const RUNBOOK = "docs/ops/database.md"
 const TITLE = "## Backup และ restore ของ Postgres"
-const DRILL_EVIDENCE = "docs/evidence/ops/OPS-5-restore-drill.txt"
+const DRILL_EVIDENCE = "docs/evidence/ops/OPS-5-tests.txt"
 
 const read = (file: string) => readFileSync(path.join(repoRoot, file), "utf8")
 
@@ -34,7 +34,7 @@ describe("AC-4 runbook backup/restore", () => {
     // `exec -T <service> <คำสั่ง>` และ `stop|up -d --wait <service ...>`
     const used = [
       ...[...body.matchAll(new RegExp(`${compose} exec -T ([a-z]+)`, "g"))].map((m) => m[1]),
-      ...[...body.matchAll(new RegExp(`${compose} (?:stop|up -d --wait) ([a-z ]+)`, "g"))].flatMap((m) =>
+      ...[...body.matchAll(new RegExp(`${compose} (?:--profile [a-z]+ )?(?:stop|up -d --wait) ([a-z ]+)`, "g"))].flatMap((m) =>
         m[1].trim().split(/\s+/)
       ),
     ]
@@ -48,6 +48,8 @@ describe("AC-4 runbook backup/restore", () => {
     // code/pin ของ e-voucher เป็น ciphertext — backup ใช้ไม่ได้ถ้าไม่มี key เดิม
     expect(body).toContain("EVOUCHER_ENCRYPTION_KEY")
     // Redis เป็น queue/cache/lock/session ไม่ backup และล้างหลัง restore
+    // storefront อยู่ใน profile — stop ต้องใส่ --profile storefront
+    expect(body).toContain("docker compose -f docker-compose.prod.yml --profile storefront stop storefront")
     expect(body).toMatch(/Redis[^\n]*ไม่ backup/)
     expect(body).toContain("redis-cli FLUSHALL")
   })

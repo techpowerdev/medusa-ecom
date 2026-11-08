@@ -92,7 +92,7 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   VU ของ burst เต็ม 300, `dropped_iterations` 29,423) — ไม่ gate ที่อัตรา burst; burst ที่ถึง 500 rps × 60s จริง + p95 < 300ms ย้ายไปเป็นเงื่อนไขของ staging (AC-30, OPS-19);
   p95 ยังเป็นรายงานอย่างเดียวตาม Q-O3 (a) — **☑** ตาม run 40590093846 (`docs/evidence/scale/OPS-4/REPORT.md`)
 - AC-3 k6 group-buy join: การเข้าร่วมพร้อมกัน 200 ครั้งกับกลุ่มขนาด 10 คน → มีสมาชิกพอดี 10 คน (ลูกค้า 200 คนจาก seed script; ตรวจจาก DB หลังจบ; 5xx = 0 — gate) — **☑** run 40590093846
-- AC-4 ซ้อม restore จาก backup สำเร็จและร้าน boot ได้ (runbook) — **☑** OPS-5: runbook `docs/ops/database.md` หัวข้อ "Backup และ restore ของ Postgres", ซ้อม 2026-11-09 บนเครื่อง dev (`docs/evidence/ops/OPS-5-restore-drill.txt`); ก่อน go-live ซ้อมซ้ำบน environment จริงตาม go-live checklist ข้อ 7
+- AC-4 ซ้อม restore จาก backup สำเร็จและร้าน boot ได้ (runbook) — **☑** OPS-5: runbook `docs/ops/database.md` หัวข้อ "Backup และ restore ของ Postgres", ซ้อม 2026-11-09 บนเครื่อง dev (`docs/evidence/ops/OPS-5-tests.txt` ข้อ 10); ก่อน go-live ซ้อมซ้ำบน environment จริงตาม go-live checklist ข้อ 7
 - AC-5 (ADR-012, ปรับรอบ 8 ตามผลทดลอง OPS-8 #101 และการตัดสินของ owner 2026-10-26) Given compose แบบ prod (1 server + 1 worker + Redis,
   `NODE_ENV=production`) When Redis ถูก `docker pause` นาน 30 วินาทีระหว่างที่ worker ทำงานอยู่ แล้ว unpause Then event ที่ emit จาก server
   หลัง unpause ถูก subscriber บน worker ประมวลผลภายใน 60 วินาที — หรือ worker process จบด้วย exit code ≠ 0 แล้วถูก restart (restart policy)
