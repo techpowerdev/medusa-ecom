@@ -1,0 +1,54 @@
+# ADM-12 (spec 08 AC-16, กฎ 15) — ผล test
+# วันที่: 2026-11-09, node v22.23.3, base origin/develop 1743eb74
+
+## Red (ก่อนเขียนโค้ด)
+### jest lib/__tests__/form-validation.unit.spec.ts + __tests__/medusa-ui.unit.spec.ts (บล็อก ADM-12)
+  TypeError: (0 , _formvalidation.numberInputValue) is not a function
+  ENOENT: components/common/number-input.tsx
+  (widget ยังไม่ import NumberInput และยังมี Input type="number" เอง)
+Tests:       10 failed, 101 passed, 111 total
+### playwright e2e/admin-form-pilot.spec.ts -g AC-16 (prod build ของโค้ดก่อนแก้)
+    ✘  1 [chromium] › e2e/admin-form-pilot.spec.ts:189:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › drawer flash sale — Total cap / Per-customer limit = e, 1e → error ไม่ POST; ล้างช่องแล้ว Save → total_cap null (12.9s)
+    ✘  2 [chromium] › e2e/admin-form-pilot.spec.ts:248:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › modal Create pool — Face value / Low-stock threshold = e → error ใต้ช่องและไม่มี POST (20.8s)
+      Error: expect(locator).toBeVisible() failed
+      Expected: visible
+      Error: element(s) not found
+      Error: expect(locator).toHaveText(expected) failed
+      Expected: "Must be a number of 0 or more"
+      Error: element(s) not found
+    2 failed
+  (ยืนยันแล้วว่า browser ให้ value "" + validity.badInput = true ก่อนกด Save — ล้มที่ error ใต้ช่องไม่ปรากฏ)
+
+## Green — jest (unit ของ helper/schema + static AC-16)
+PASS src/admin/lib/__tests__/form-validation.unit.spec.ts (12.258 s)
+  numberInputValue
+    ✓ value "", badInput true → "NaN"
+    ✓ value "", badInput false → ""
+    ✓ value "12", badInput false → "12"
+  schema ปฏิเสธ BAD_NUMBER_INPUT ด้วยข้อความของช่อง
+    ✓ flash sale per_customer_limit (10 ms)
+    ✓ flash sale total_cap (1 ms)
+    ✓ pool face_value (1 ms)
+    ✓ pool low_stock_threshold (1 ms)
+  ช่อง number ใช้ NumberInput ของกลาง (spec 08 AC-16, ADM-12)
+    ✓ widgets/flash-sale-options.tsx import NumberInput จาก components/common/number-input และไม่มี Input type number เอง (1 ms)
+    ✓ widgets/variant-evoucher-pool.tsx import NumberInput จาก components/common/number-input และไม่มี Input type number เอง
+    ✓ components/common/number-input.tsx ห่อ Input ของ @medusajs/ui และตรวจ badInput ผ่าน helper เดียว (2 ms)
+Tests:       138 passed, 138 total
+
+## Green — playwright e2e/admin-form-pilot.spec.ts (prod build, chromium, AC-6 เดิมผ่านโดยไม่แก้)
+    ✓  1 [chromium] › e2e/admin-form-pilot.spec.ts:23:5 › AC-6: drawer flash sale — Total cap 0 แสดง error ไม่ POST; dblclick Save และ Meta+Enter = POST 1 ครั้ง (24.2s)
+    ✓  2 [chromium] › e2e/admin-form-pilot.spec.ts:109:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง (23.1s)
+    ✓  3 [chromium] › e2e/admin-form-pilot.spec.ts:189:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › drawer flash sale — Total cap / Per-customer limit = e, 1e → error ไม่ POST; ล้างช่องแล้ว Save → total_cap null (42.8s)
+    ✓  4 [chromium] › e2e/admin-form-pilot.spec.ts:248:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › modal Create pool — Face value / Low-stock threshold = e → error ใต้ช่องและไม่มี POST (23.7s)
+    4 passed (2.1m)
+
+## jest test:unit ทั้งชุด (backend, รันขนานในเครื่องที่ load ~18)
+Test Suites: 1 failed, 92 passed, 93 total
+Tests:       1 failed, 1076 passed, 1077 total
+  ล้ม 1 ตัว: src/__tests__/pg-pool-reset.unit.spec.ts (ไม่เกี่ยวกับ diff นี้ — แตะเฉพาะ src/admin) รันเดี่ยวซ้ำ → Tests: 8 passed, 8 total
+  (timing ภายใต้ load; ชุดเต็มให้ CI ยืนยัน)
+
+## lint / typecheck
+pnpm typecheck — apps/backend, apps/storefront: Done (0 error)
+pnpm lint — 0 errors (warning เดิมของ storefront/backend ไม่อยู่ในไฟล์ของ diff นี้)
