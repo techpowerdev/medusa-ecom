@@ -3,13 +3,13 @@
 สัญลักษณ์: ☐ ยังไม่ทำ · ◐ อยู่ใน PR · ☑ merge เข้า develop แล้ว · 🚀 release แล้ว · ✕ ปิด (owner ไม่ทำ / ไม่ต้องทำ) · ⏸ เลื่อนหลัง v1.0
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **ปิดรอบ 26 (2026-11-09, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้วถึง #328 — #308 เอกสาร sync รอบ 25, CORE-50 #309, CORE-19f #310, ADM-11 #311, CORE-49 #312, ADM-12 #313, CORE-4j #314, ADM-10 #315, ADM-8b #316, OPS-20b #318, OPS-5 #319, EV-7d #320, ADM-13 #321, ADM-9 #322, #323 spec รอบ 26, #324 hotfix ADM-10 (`PageOffsetGate`), OPS-21 #325, EV-15 #326, ADM-14 #327, CORE-51 #328 (#317 draft พิสูจน์ของ CORE-49 ปิดโดยไม่ merge) ·
-**เงื่อนไข release v0.1.0 ครบ** (OPS-21 ☑, EV-15 ☑; `develop → main` owner เป็นผู้ merge) · งานที่เหลือ ☐ ไม่บล็อก release: CORE-5d (← PR เอกสารปิดรอบ 26 — นิยามใหม่กฎข้อ 77), CORE-52, CORE-53, CORE-54, GB-16, OPS-22, OPS-23, OPS-24, ADM-15..19 ·
+**เงื่อนไข release v0.1.0 ครบ** (OPS-21 ☑, EV-15 ☑; `develop → main` owner เป็นผู้ merge) · งานที่เหลือ ☐ ไม่บล็อก release: CORE-52, CORE-53, CORE-54, GB-16, OPS-22, OPS-23, OPS-24, ADM-15..19 ·
 ก่อนเปิดร้านจริง: Q-F1 ค่าส่ง ฿10 เป็น placeholder (ข้อ 5) และ spec 06 Q1 ยืนยันบัญชี Stripe ไทย/PromptPay (ข้อ 6) อยู่ใน go-live checklist ของ `docs/ops/production.md`; ลด AC-15 ของ spec 08 กลับเป็น ≤ 2 (Q8) อยู่ใน checklist bump `@medusajs/*` ข้อ 9 ของ spec 07 ·
 **รอบ 26 (2026-11-09, เอกสารล้วน)** — follow-up จาก review/qa รอบ 25: **บล็อก release v0.1.0: OPS-21, EV-15** · ไม่บล็อก: OPS-22, CORE-52 (← #320), CORE-53, GB-16, ADM-15 (← #321), ADM-16, ADM-17 (← #322) · OPS-23 (← OPS-20b) · owner ตัดสิน 2026-11-09: Q-O4 = ก, Q8 (spec 08) = ก, Q12 = ก และ Q13 = ก (spec 02; ADR-021 accepted — EV-15 เริ่มได้เมื่อ PR รอบนี้ merge), OPS-22 ปรับประโยคใน `CLAUDE.md` ·
 **สถานะรอบ 25 (2026-11-09)** — merge เข้า develop แล้วถึง #307 (train #307 รอบ 24: CORE-48 #300, CORE-4i-b #305, ADM-7 #301, ADM-5 #302, ADM-8a #304), **ไม่มี PR เปิด** ·
 sync สถานะที่ค้างเป็น ☐/◐: CORE-25 #199, CORE-9b #200, EV-N2 #201, CORE-10c #202, GB-9 #196, AF-17 #207, GB-10 #208, CORE-26 #209, FS-19 #211, CORE-15b #213, CORE-23c #214, AF-15 #215,
 FS-18 #216, EV-7e #217, CORE-9c #218, EV-N3 #219, CORE-4i (#222 4i-a + #305 4i-b) ·
-**งานที่เหลือ (☐)**: CORE-4j, CORE-5d, CORE-19f, CORE-49, CORE-50, CORE-51, EV-7d, ADM-8b, ADM-9..14, OPS-5, OPS-20b — **owner สั่งเริ่มทั้งหมดรอบนี้ (2026-11-09)** ตาม Depends เดิม ·
+**งานที่ owner สั่งรอบ 2026-11-09 เสร็จครบ** (CORE-4j, CORE-5d, CORE-19f, CORE-49, CORE-50, CORE-51, EV-7d, ADM-8b, ADM-9..14, OPS-5, OPS-20b) ·
 **owner ตัดสิน 2026-11-09**: spec 02 Q1–Q3 = ยืนยันค่าเริ่มต้น (PIN optional, วันหมดอายุต่อ code ในคอลัมน์ CSV optional, code จาก order ที่คืนเงินไม่นำกลับมาขาย) ·
 spec 06 Q1 ยังไม่ยืนยัน — ใช้ Stripe test mode ต่อ, ยืนยันนิติบุคคลไทย + PromptPay เป็นข้อ 6 ของ go-live checklist (`docs/ops/production.md`) · spec 01 Q-F1 คง ฿10 placeholder (ยังอยู่ใน go-live checklist)
 
@@ -98,7 +98,7 @@ task ใหม่ ADM-14 (ปุ่มสร้าง Partners/Programs/Payouts 
 | CORE-23c | (รอบ 12, #154/#150/#164) ฟอร์มที่อยู่ใน account คงค่าเมื่อล้ม, ที่อยู่ใบเสร็จไม่ล่มทั้งหน้า, พิมพ์หลังกดแก้ไข, ลิงก์ `/contact` (AC-112) | ☑ #214 |
 | CORE-5 | Playwright + convention การเก็บ evidence | ☑ #7 |
 | CORE-5c | (รอบ 10, e2e tooling) evidence เขียนเฉพาะโฟลเดอร์ของ `evidenceTarget`, `step()` อยู่ในงบ (AC-103) | ☑ #169 |
-| CORE-5d | (รอบ 12, #169/#173; นิยามใหม่ปิดรอบ 26) โฟลเดอร์มี PNG ครบ 5 แล้ว `saveEvidencePng` ไม่เขียนและ `console.warn` แทน throw (ไม่แก้ชื่อใน spec e2e) — รัน e2e ทั้งชุดด้วย `E2E_SAVE_EVIDENCE=1` ไม่ล้มและไม่เขียนทับรูปของ qa ในโฟลเดอร์ที่ครบงบ (กฎข้อ 77, AC-115) | ☐ (← PR เอกสารปิดรอบ 26 `docs/close-round-26`) |
+| CORE-5d | (รอบ 12, #169/#173; นิยามใหม่ปิดรอบ 26) โฟลเดอร์มี PNG ครบ 5 แล้ว `saveEvidencePng` ไม่เขียนและ `console.warn` แทน throw (ไม่แก้ชื่อใน spec e2e) — รัน e2e ทั้งชุดด้วย `E2E_SAVE_EVIDENCE=1` ไม่ล้มและไม่เขียนทับรูปของ qa ในโฟลเดอร์ที่ครบงบ (กฎข้อ 77, AC-115) | ☑ #330 |
 | CORE-6 | store route เฉพาะ customer + e2e AC-1..4, AC-6 | ☑ #36 |
 | CORE-12 | ownership middleware: cart/payment-collection/order ต้องเป็นของ customer ที่ล็อกอิน (ADR-013) | ☑ #51 |
 | CORE-13 | `POST /store/returns` ต้องเป็นเจ้าของ order + ปิด order transfer ทั้งชุด | ☑ #56 |
