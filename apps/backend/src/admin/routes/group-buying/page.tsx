@@ -9,6 +9,7 @@ import { Link } from "react-router-dom"
 import { Container } from "../../components/common/container"
 import { Header } from "../../components/common/header"
 import { usePageOffset } from "../../components/common/use-page-offset"
+import { PageOffsetGate } from "../../components/common/page-offset-gate"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
 import {
   Campaign,
@@ -100,23 +101,25 @@ const GroupBuyingPage = () => {
               </div>
               <div data-testid="gb-campaigns-table">
                 {/* backend ไม่รองรับค้นหา (q) → ปิด search */}
-                <DataTable
-                  data={data?.campaigns ?? []}
-                  columns={columns}
-                  getRowId={(campaign) => campaign.id}
-                  rowCount={data?.count ?? 0}
-                  isLoading={isLoading}
-                  prefix={PREFIX}
-                  pageSize={PAGE_SIZE}
-                  enableSearch={false}
-                  rowHref={(campaign) => `/group-buying/${campaign.id}`}
-                  emptyState={{
-                    empty: {
-                      heading: "No group-buy campaigns yet",
-                      description: "Create a campaign to start selling in groups.",
-                    },
-                  }}
-                />
+                <PageOffsetGate prefix={PREFIX}>
+                  <DataTable
+                    data={data?.campaigns ?? []}
+                    columns={columns}
+                    getRowId={(campaign) => campaign.id}
+                    rowCount={data?.count ?? 0}
+                    isLoading={isLoading}
+                    prefix={PREFIX}
+                    pageSize={PAGE_SIZE}
+                    enableSearch={false}
+                    rowHref={(campaign) => `/group-buying/${campaign.id}`}
+                    emptyState={{
+                      empty: {
+                        heading: "No group-buy campaigns yet",
+                        description: "Create a campaign to start selling in groups.",
+                      },
+                    }}
+                  />
+                </PageOffsetGate>
               </div>
             </Container>
           </LayoutComposer.Entry>

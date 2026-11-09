@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { affiliateKeys, listAffiliateNames, listAffiliateResource } from "../../lib/affiliate"
 import { affiliateNamesQuery, withAffiliateNames } from "../../lib/affiliate-names"
 import { usePageOffset } from "../common/use-page-offset"
+import { PageOffsetGate } from "../common/page-offset-gate"
 
 const PAGE_SIZE = 20
 
@@ -65,20 +66,22 @@ export const AffiliateListTable = <T extends { id: string }>({
   empty,
 }: Props<T>) => (
   // backend ไม่รองรับค้นหา (q) → ปิด search
-  <DataTable
-    data={rows}
-    columns={columns}
-    getRowId={(row) => row.id}
-    rowCount={count}
-    isLoading={isLoading}
-    heading={heading}
-    headingLevel="h2"
-    subHeading={subHeading}
-    prefix={prefix}
-    pageSize={PAGE_SIZE}
-    enableSearch={false}
-    emptyState={{ empty: { heading: empty } }}
-  />
+  <PageOffsetGate prefix={prefix}>
+    <DataTable
+      data={rows}
+      columns={columns}
+      getRowId={(row) => row.id}
+      rowCount={count}
+      isLoading={isLoading}
+      heading={heading}
+      headingLevel="h2"
+      subHeading={subHeading}
+      prefix={prefix}
+      pageSize={PAGE_SIZE}
+      enableSearch={false}
+      emptyState={{ empty: { heading: empty } }}
+    />
+  </PageOffsetGate>
 )
 
 /** AF-14 (กฎ 38): คอลัมน์ Affiliate ของ Ledger/Payouts — ชื่อ + อีเมล; หาไม่เจอ/ยังโหลดไม่เสร็จ → affiliate_id */
