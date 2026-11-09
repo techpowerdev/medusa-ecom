@@ -240,7 +240,7 @@ describe("ฟอร์มสร้างแคมเปญ group buy ใช้ F
     expect(src).not.toMatch(/datetime-local/)
   })
 
-  it("create-campaign คง toCampaignBody → form.setError และ idempotency key ของ GB-15 ที่ตั้งตอน openModal", () => {
+  it("create-campaign คง toCampaignBody → form.setError และ idempotency key ของ GB-15 ที่ตั้งเมื่อ open เปลี่ยน false → true (กฎ 16)", () => {
     const src = campaign()
     expect(src).toMatch(/toCampaignBody\(/)
     expect(src).toMatch(/form\.setError\(/)
@@ -567,5 +567,43 @@ describe("ช่อง number ใช้ NumberInput ของกลาง (spec 
     const src = read("components/common/number-input.tsx")
     expect(importsFrom(src, "Input", "@medusajs/ui")).toBe(true)
     expect(importsFrom(src, "numberInputValue", String.raw`(?:\.{1,2}\/)+lib\/form-validation`)).toBe(true)
+  })
+})
+
+// ADM-13 (spec 08 AC-17, กฎ 16, 18): หัวตารางและปุ่มสร้างอยู่ใน DataTable ของ dashboard; CreateCampaign เป็น controlled
+describe("หน้ารายการแคมเปญใช้หัวตารางของ DataTable (spec 08 AC-17, ADM-13)", () => {
+  const LIST_PAGE = "routes/group-buying/page.tsx"
+  const CREATE_CAMPAIGN = "components/group-buy/create-campaign.tsx"
+
+  it("routes/group-buying/page.tsx ไม่ import components/common/header", () => {
+    expect(read(LIST_PAGE)).not.toMatch(/components\/common\/header/)
+  })
+
+  it("heading/subHeading/action อยู่ที่ DataTable ภายใน wrapper gb-campaigns-table และเปิด modal แบบ controlled", () => {
+    const src = read(LIST_PAGE)
+    const wrapper = src.slice(src.indexOf('data-testid="gb-campaigns-table"'))
+    expect(wrapper).toMatch(/<DataTable\b/)
+    expect(wrapper).toMatch(/heading="Group-buy campaigns"/)
+    expect(wrapper).toMatch(/subHeading=/)
+    expect(wrapper).toMatch(/action=\{\{\s*label: "Create campaign",\s*onClick:/)
+    expect(src).toMatch(/<CreateCampaign\s+open=\{\w+\}\s+onOpenChange=\{\w+\}/)
+  })
+
+  it("คำเตือน GBT- อยู่ในหน้าเดียวกันด้วย testid gb-template-warning", () => {
+    expect(read(LIST_PAGE)).toMatch(/data-testid="gb-template-warning"/)
+  })
+
+  it("create-campaign ไม่มีปุ่ม gb-campaign-create (คง gb-campaign-create-submit)", () => {
+    const src = read(CREATE_CAMPAIGN)
+    expect(src).not.toMatch(/["']gb-campaign-create["']/)
+    expect(src).toMatch(/data-testid="gb-campaign-create-submit"/)
+  })
+
+  it("CreateCampaign รับ open/onOpenChange ไม่ถือ state open เอง และตั้ง key + reset ฟอร์มเมื่อเปิด", () => {
+    const src = read(CREATE_CAMPAIGN)
+    expect(src).toMatch(/CreateCampaign = \(\{\s*open,\s*onOpenChange,?\s*\}/)
+    expect(src).not.toMatch(/useState\(false\)/)
+    expect(src).toMatch(/<FocusModal open=\{open\}/)
+    expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(!open\) return\s*setIdempotencyKey\(newIdempotencyKey\(\)\)\s*form\.reset\(emptyCampaignForm\(\)\)/)
   })
 })
