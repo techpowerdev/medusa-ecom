@@ -11,6 +11,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { isAddToCartBody, isServerAction, waitForServerAction } from "./support/server-action"
 
 // FS-19 (spec 03 กฎข้อ 24, AC-26) ที่ 375×812: (a) `mobile-cart-button` ของแถบล่างรอข้อมูล flash แบบเดียวกับปุ่มหลัก
 // (disabled + aria-busy ระหว่างรอ, error แล้วกดได้) (b) เมื่อปุ่มหลักเข้าจอ แถบล่างซ่อนทันทีโดยไม่จางทับปุ่มหลัก
@@ -40,7 +41,7 @@ let promotionId: string
 async function mockFlashAction(page: Page, handler: (route: Route) => Promise<void>) {
   await page.route(`**/products/${handle}**`, async (route) => {
     const req = route.request()
-    if (req.method() === "POST" && req.headers()["next-action"] && (req.postData() ?? "").includes(variantId)) {
+    if (isServerAction(req, (body) => body.includes(variantId))) {
       return handler(route)
     }
     return route.fallback()
@@ -159,7 +160,7 @@ test("AC-26: route ของ flash หน่วง 3 วินาที → mobi
     await expect(button).toBeEnabled()
     await expect(button).not.toHaveAttribute("aria-busy", "true")
     await page.unroute(`**/products/${handle}**`)
-    const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
+    const done = waitForServerAction(page, isAddToCartBody)
     await button.click()
     await done
     await expect(button).toBeEnabled()

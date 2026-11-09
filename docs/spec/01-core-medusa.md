@@ -1912,7 +1912,7 @@ none
   Then `product-error-message` visible, `textContent` เท่ากับ `INSUFFICIENT_INVENTORY_MESSAGE` และตรง `/[฀-๿]/`, `product-select-button` `inputValue() === "1"`,
   `GET /store/carts/:id` (token ของ A) quantity = 1; When `selectOption("3")` Then `product-error-message` count 0 (หรือว่าง) และ quantity = 3 — e2e นี้ยืนยันข้อความ/สถานะจริงของ Medusa 2.22.1 ที่ pin
   (ถ้าไม่ตรงให้หยุดรายงาน ไม่เดา); AC-138 และ `core-19c-delete-button-error` ผ่าน
-- AC-144 (CORE-49, กฎข้อ 107) grep/unit (Playwright `unit` project): `core-43-e2e-hygiene.unit.spec.ts` ไม่มี `add-product-button").click()` และไม่อ่าน `playwright.config.ts`; `core-46-e2e-hygiene.unit.spec.ts` มีทั้งสอง;
+- ☑ AC-144 (CORE-49, กฎข้อ 107) grep/unit (Playwright `unit` project): `core-43-e2e-hygiene.unit.spec.ts` ไม่มี `add-product-button").click()` และไม่อ่าน `playwright.config.ts`; `core-46-e2e-hygiene.unit.spec.ts` มีทั้งสอง;
   regex ของ config ผ่านกับ `playwright.config.ts` ปัจจุบัน และ PR แนบผล mutation: เพิ่ม comment ที่มีคำว่า timeout → ยังผ่าน, เพิ่ม `timeout: 1`, `actionTimeout: 1` หรือ `expect: { timeout: 1 }` → ล้ม;
   ลบ `toHaveLength(1)` ที่อยู่ถัดจาก `handle=` ในไฟล์ใดไฟล์หนึ่งของสามไฟล์ → test ของกฎข้อ 104d ล้ม (แนบผลใน PR); `affiliate-admin-programs.spec.ts` ไม่มี `waitForTimeout` และอยู่ในรายการไฟล์ที่ตรวจ
   `waitForTimeout` ของ core-46 (ลบ comment ยกเว้นที่ `:63`); `core-25-pdp-option-reset.spec.ts`, `core-26-cart-dropdown-total.spec.ts`, `flash-sale-fs19.spec.ts` ไม่มี `headers()["next-action"]` และมี
