@@ -82,29 +82,35 @@ export const cancelPayout = (id: string) =>
   sdk.client.fetch(`/admin/affiliate/payouts/${id}`, { method: "DELETE" })
 
 // AF-12a (กฎ 37a): สร้าง/แก้/ลบโปรแกรมผ่าน admin API ของ AF-5
-export type ProgramBody = Omit<Program, "id" | "status" | "commission_value" | "cap_per_order"> & {
+// ADM-9 (spec 08 กฎ 5): วันเวลาเป็น Date จาก DatePicker — JSON เป็น ISO UTC
+export type ProgramBody = Omit<
+  Program,
+  "id" | "status" | "commission_value" | "cap_per_order" | "starts_at" | "ends_at"
+> & {
   status: ProgramStatus
   commission_value: number
   cap_per_order: number | null
+  starts_at: Date
+  ends_at: Date
 }
 
 export const createProgram = (body: ProgramBody) =>
   sdk.client.fetch<{ program: Program }>("/admin/affiliate/programs", { method: "POST", body })
 
-export const updateProgram = (id: string, body: ProgramBody) =>
+export const updateProgram = (id: string, body: Partial<ProgramBody>) =>
   sdk.client.fetch<{ program: Program }>(`/admin/affiliate/programs/${id}`, { method: "POST", body })
 
 export const deleteProgram = (id: string) =>
   sdk.client.fetch(`/admin/affiliate/programs/${id}`, { method: "DELETE" })
 
 // AF-12c (กฎ 37c): สร้าง payout + mark paid ผ่าน admin API ของ AF-5 (ไม่แก้ backend)
-export const listAffiliatesByStatus = (status: "active" | "suspended") =>
+export const listAffiliatesByStatus = (status: "active" | "suspended", offset: number, limit: number) =>
   sdk.client.fetch<ListResponse<"affiliates", Pick<Affiliate, "id" | "name" | "email" | "status">>>(
     "/admin/affiliate/affiliates",
-    { query: { status, limit: 200, offset: 0, fields: "id,name,email,status" } },
+    { query: { status, limit, offset, fields: "id,name,email,status" } },
   )
 
-export const createPayout = (body: { affiliate_id: string; period_from: string; period_to: string }) =>
+export const createPayout = (body: { affiliate_id: string; period_from: Date; period_to: Date }) =>
   sdk.client.fetch<{ payout: Payout }>("/admin/affiliate/payouts", { method: "POST", body })
 
 export const markPayoutPaid = (id: string, body: { reference?: string }) =>

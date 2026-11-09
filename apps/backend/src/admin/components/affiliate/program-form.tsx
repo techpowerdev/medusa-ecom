@@ -1,120 +1,115 @@
-import {
-  Button,
-  Checkbox,
-  FocusModal,
-  Heading,
-  Input,
-  Label,
-  Select,
-  Switch,
-  Text,
-  Textarea,
-  toast,
-} from "@medusajs/ui"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useId, useState } from "react"
+import { Combobox, Form, KeyboundForm } from "@medusajs/dashboard/components"
+import { useComboboxData } from "@medusajs/dashboard/hooks"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Button, DatePicker, FocusModal, Heading, Input, Select, Switch, Text, Textarea, toast } from "@medusajs/ui"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
+import { useForm, type UseFormReturn } from "react-hook-form"
 import { sdk } from "../../lib/client"
-import { affiliateKeys, createProgram, Program, updateProgram } from "../../lib/affiliate"
+import { affiliateKeys, createProgram, Program, ProgramBody, updateProgram } from "../../lib/affiliate"
 import {
   allowedProgramStatuses,
   emptyProgramForm,
+  omitUnchangedDates,
+  PROGRAM_PARSE_OPTIONS,
   ProgramForm,
-  ProgramFormField,
+  programFormSchema,
   programToForm,
   toProgramBody,
 } from "../../lib/affiliate-program-form"
 import { createSingleFlight } from "../../lib/single-flight"
+import { NumberInput } from "../common/number-input"
 
-type TextField = Exclude<
-  ProgramFormField,
-  "status" | "all" | "collection_ids" | "category_ids" | "variant_ids" | "announce_text"
->
-
-const INPUTS: { key: TextField; label: string; type?: string }[] = [
-  { key: "name", label: "Name *" },
-  { key: "starts_at", label: "Starts at (ICT) *", type: "datetime-local" },
-  { key: "ends_at", label: "Ends at (ICT) *", type: "datetime-local" },
-  { key: "commission_value", label: "Commission (%) *", type: "number" },
-  { key: "attribution_window_days", label: "Attribution window (days) *", type: "number" },
-  { key: "hold_days", label: "Hold days *", type: "number" },
-  { key: "cap_per_order", label: "Cap per order (THB)", type: "number" },
+// spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
+const DATES: { key: "starts_at" | "ends_at"; label: string }[] = [
+  { key: "starts_at", label: "Starts at *" },
+  { key: "ends_at", label: "Ends at *" },
 ]
 
-// รายการ collection/category จาก admin API ของ Medusa (spec 05: ใช้ตามเดิม ไม่สร้าง route ใหม่)
-const useScopeOptions = (enabled: boolean) => {
-  const collections = useQuery({
-    queryKey: ["affiliate-program-scope", "collections"],
-    queryFn: () => sdk.admin.productCollection.list({ limit: 200, fields: "id,title" }),
-    enabled,
-  })
-  const categories = useQuery({
-    queryKey: ["affiliate-program-scope", "categories"],
-    queryFn: () => sdk.admin.productCategory.list({ limit: 200, fields: "id,name" }),
-    enabled,
-  })
-  return {
-    collection_ids: (collections.data?.collections ?? []).map((c) => ({ id: c.id, label: c.title })),
-    category_ids: (categories.data?.product_categories ?? []).map((c) => ({ id: c.id, label: c.name })),
-  }
-}
+const NUMBERS: { key: "commission_value" | "attribution_window_days" | "hold_days" | "cap_per_order"; label: string }[] = [
+  { key: "commission_value", label: "Commission (%) *" },
+  { key: "attribution_window_days", label: "Attribution window (days) *" },
+  { key: "hold_days", label: "Hold days *" },
+  { key: "cap_per_order", label: "Cap per order (THB)" },
+]
 
-const ScopeList = ({
-  title,
-  options,
-  value,
-  onChange,
-}: {
-  title: string
-  options: { id: string; label: string }[]
-  value: string[]
-  onChange: (ids: string[]) => void
-}) => {
-  const prefix = useId()
+const idsOrUndefined = (ids?: string[]) => (ids?.length ? ids : undefined)
+
+// spec 08 กฎ 11: scope ค้นหาฝั่ง server + แบ่งหน้าด้วย useComboboxData (route ของ Medusa ตามเดิม ไม่สร้างใหม่) — mount เมื่อปิด all เท่านั้น
+const ScopeFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; program?: Program }) => {
+  const collections = useComboboxData({
+    queryKey: ["affiliate-program-scope", "collections"],
+    queryFn: (params) => sdk.admin.productCollection.list({ ...params, fields: "id,title" }),
+    getOptions: (data) => data.collections.map((c) => ({ label: c.title, value: c.id })),
+    defaultValue: idsOrUndefined(program?.scope?.collection_ids),
+  })
+  const categories = useComboboxData({
+    queryKey: ["affiliate-program-scope", "categories"],
+    queryFn: (params) => sdk.admin.productCategory.list({ ...params, fields: "id,name" }),
+    getOptions: (data) => data.product_categories.map((c) => ({ label: c.name, value: c.id })),
+    defaultValue: idsOrUndefined(program?.scope?.category_ids),
+  })
+  const fields = [
+    { key: "collection_ids", label: "Collections", data: collections },
+    { key: "category_ids", label: "Categories", data: categories },
+  ] as const
+
   return (
-    <div className="flex flex-col gap-y-2">
-      <Label size="small">{title}</Label>
-      {!options.length && (
-        <Text size="xsmall" className="text-ui-fg-subtle">
-          None available
-        </Text>
-      )}
-      {options.map(({ id, label }) => (
-        <div key={id} className="flex items-center gap-x-2">
-          <Checkbox
-            id={`${prefix}-${id}`}
-            checked={value.includes(id)}
-            onCheckedChange={(checked) => onChange(checked ? [...value, id] : value.filter((v) => v !== id))}
-          />
-          <Label size="small" htmlFor={`${prefix}-${id}`}>
-            {label}
-          </Label>
-        </div>
+    <>
+      {fields.map(({ key, label, data }) => (
+        <Form.Field
+          key={key}
+          control={form.control}
+          name={key}
+          render={({ field: { onChange, ...field } }) => (
+            <Form.Item>
+              <Form.Label>{label}</Form.Label>
+              <Form.Control>
+                <Combobox
+                  {...field}
+                  onChange={(ids?: string | string[]) => {
+                    // error "ต้องเลือกอย่างน้อยหนึ่ง" ผูกกับ collection_ids — การเลือกช่องใดก็ตามล้างได้
+                    form.clearErrors("collection_ids")
+                    onChange(ids ?? [])
+                  }}
+                  options={data.options}
+                  searchValue={data.searchValue}
+                  onSearchValueChange={data.onSearchValueChange}
+                  fetchNextPage={data.fetchNextPage}
+                  isFetchingNextPage={data.isFetchingNextPage}
+                  data-testid={`affiliate-program-field-${key}`}
+                />
+              </Form.Control>
+              <Form.ErrorMessage data-testid={`affiliate-program-error-${key}`} />
+            </Form.Item>
+          )}
+        />
       ))}
-    </div>
+    </>
   )
 }
 
 /**
  * AF-12a (กฎ 37a): FocusModal สร้าง (program = undefined) หรือแก้โปรแกรม — ส่ง scope ทั้งก้อนโดยคง variant_ids เดิม (Q16)
  * เปิดเมื่อ `open`; component ถูก mount ใหม่ต่อการเปิดแต่ละครั้ง (key) จึงตั้งค่าฟอร์มเริ่มจาก props ได้เลย
+ * ADM-9 (spec 08 AC-12, กฎ 8): Form + KeyboundForm ของ dashboard + zod (⌘/Ctrl+Enter ส่งได้); กฎธุรกิจยังอยู่ใน toProgramBody → form.setError
  */
 export const ProgramFormModal = ({ program, onClose }: { program?: Program; onClose: () => void }) => {
   const queryClient = useQueryClient()
-  const prefix = useId()
-  const [form, setForm] = useState<ProgramForm>(() => (program ? programToForm(program) : emptyProgramForm()))
-  const [error, setError] = useState<{ field: ProgramFormField; message: string } | null>(null)
+  // resolver คืนค่าดิบ (raw) แบบ ADM-3/ADM-7 — schema ไม่มี transform จึงใช้ values ได้เลย
+  const form = useForm<ProgramForm>({
+    resolver: zodResolver(programFormSchema, PROGRAM_PARSE_OPTIONS, { raw: true }),
+    defaultValues: program ? programToForm(program) : emptyProgramForm(),
+  })
   const [submitOnce] = useState(createSingleFlight)
-  const options = useScopeOptions(!form.all)
+  const all = form.watch("all")
+  const variantCount = form.watch("variant_ids").length
 
-  const set = (patch: Partial<ProgramForm>) => {
-    setError(null)
-    setForm((f) => ({ ...f, ...patch }))
-  }
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("programs") })
 
   const save = useMutation({
-    mutationFn: (body: Parameters<typeof createProgram>[0]) =>
-      program ? updateProgram(program.id, body) : createProgram(body),
+    mutationFn: (body: ProgramBody) =>
+      program ? updateProgram(program.id, omitUnchangedDates(body, program)) : createProgram(body),
     onSuccess: () => {
       toast.success(program ? "Program updated" : "Program created")
       onClose()
@@ -126,123 +121,152 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
     },
   })
 
-  const submit = () =>
+  const handleSubmit = form.handleSubmit((values) =>
     submitOnce(async () => {
-      const result = toProgramBody(form)
+      const result = toProgramBody(values)
       if ("error" in result) {
-        setError({ field: result.field, message: result.error })
+        form.setError(result.field, { message: result.error })
         return
       }
       await save.mutateAsync(result.body).catch(() => undefined)
     })
-
-  const fieldError = (key: ProgramFormField) =>
-    error?.field === key && (
-      <Text size="xsmall" className="text-ui-fg-error" data-testid={`affiliate-program-error-${key}`}>
-        {error.message}
-      </Text>
-    )
+  )
 
   return (
     <FocusModal open onOpenChange={(open) => !open && !save.isPending && onClose()}>
       <FocusModal.Content>
-        <FocusModal.Header>
-          <div className="flex items-center justify-end gap-x-2">
-            <Button
-              size="small"
-              onClick={submit}
-              isLoading={save.isPending}
-              disabled={save.isPending}
-              data-testid="affiliate-program-save"
-            >
-              Save
-            </Button>
-          </div>
-        </FocusModal.Header>
-        <FocusModal.Body className="flex justify-center overflow-auto py-16">
-          <div className="flex w-full max-w-lg flex-col gap-y-4">
-            <Heading>{program ? "Edit program" : "Create program"}</Heading>
-            {INPUTS.map(({ key, label, type }) => (
-              <div key={key} className="flex flex-col gap-y-2">
-                <Label size="small" htmlFor={`${prefix}-${key}`}>
-                  {label}
-                </Label>
-                <Input
-                  id={`${prefix}-${key}`}
+        <Form {...form}>
+          {/* noValidate: validation เป็นของ zod/toProgramBody (error ใต้ช่อง) ไม่ให้ browser ดัก input number ก่อน */}
+          <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">
+            <FocusModal.Header>
+              <div className="flex items-center justify-end gap-x-2">
+                <Button
                   size="small"
-                  type={type ?? "text"}
-                  value={form[key]}
-                  onChange={(e) => set({ [key]: e.target.value })}
-                  aria-invalid={error?.field === key}
-                  data-testid={`affiliate-program-field-${key}`}
-                />
-                {fieldError(key)}
+                  type="submit"
+                  isLoading={save.isPending}
+                  disabled={save.isPending}
+                  data-testid="affiliate-program-save"
+                >
+                  Save
+                </Button>
               </div>
-            ))}
-            <div className="flex flex-col gap-y-2">
-              <Label size="small" htmlFor={`${prefix}-announce_text`}>
-                Announcement
-              </Label>
-              <Textarea
-                id={`${prefix}-announce_text`}
-                value={form.announce_text}
-                onChange={(e) => set({ announce_text: e.target.value })}
-                data-testid="affiliate-program-field-announce_text"
-              />
-            </div>
-            <div className="flex flex-col gap-y-2">
-              <Label size="small">Status *</Label>
-              {/* กฎ 20: แสดงเฉพาะสถานะที่เปลี่ยนไปได้จากสถานะปัจจุบัน */}
-              <Select
-                size="small"
-                value={form.status}
-                onValueChange={(v) => set({ status: v as ProgramForm["status"] })}
-              >
-                <Select.Trigger data-testid="affiliate-program-field-status">
-                  <Select.Value />
-                </Select.Trigger>
-                <Select.Content>
-                  {allowedProgramStatuses(program?.status).map((s) => (
-                    <Select.Item key={s} value={s}>
-                      {s}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select>
-            </div>
-            <div className="flex items-center gap-x-2">
-              <Switch
-                id={`${prefix}-all`}
-                checked={form.all}
-                onCheckedChange={(all) => set({ all })}
-                data-testid="affiliate-program-scope-all"
-              />
-              <Label size="small" htmlFor={`${prefix}-all`}>
-                All products
-              </Label>
-            </div>
-            {!form.all && (
-              <>
-                <ScopeList
-                  title="Collections"
-                  options={options.collection_ids}
-                  value={form.collection_ids}
-                  onChange={(collection_ids) => set({ collection_ids })}
+            </FocusModal.Header>
+            <FocusModal.Body className="flex justify-center overflow-auto py-16">
+              <div className="flex w-full max-w-lg flex-col gap-y-4">
+                <Heading>{program ? "Edit program" : "Create program"}</Heading>
+                <Form.Field
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <Form.Item>
+                      <Form.Label>Name *</Form.Label>
+                      <Form.Control>
+                        <Input {...field} size="small" data-testid="affiliate-program-field-name" />
+                      </Form.Control>
+                      <Form.ErrorMessage data-testid="affiliate-program-error-name" />
+                    </Form.Item>
+                  )}
                 />
-                <ScopeList
-                  title="Categories"
-                  options={options.category_ids}
-                  value={form.category_ids}
-                  onChange={(category_ids) => set({ category_ids })}
+                {DATES.map(({ key, label }) => (
+                  <Form.Field
+                    key={key}
+                    control={form.control}
+                    name={key}
+                    render={({ field }) => (
+                      <Form.Item>
+                        <Form.Label>{label}</Form.Label>
+                        {/* e2e กรอกผ่าน wrapper ที่มี testid เดิม (fillDatePicker — spec 08 กฎ 7b) */}
+                        <div data-testid={`affiliate-program-field-${key}`}>
+                          <Form.Control>
+                            <DatePicker {...field} granularity="minute" shouldCloseOnSelect={false} />
+                          </Form.Control>
+                        </div>
+                        <Form.ErrorMessage data-testid={`affiliate-program-error-${key}`} />
+                      </Form.Item>
+                    )}
+                  />
+                ))}
+                {NUMBERS.map(({ key, label }) => (
+                  <Form.Field
+                    key={key}
+                    control={form.control}
+                    name={key}
+                    render={({ field }) => (
+                      <Form.Item>
+                        <Form.Label>{label}</Form.Label>
+                        <Form.Control>
+                          <NumberInput {...field} size="small" data-testid={`affiliate-program-field-${key}`} />
+                        </Form.Control>
+                        <Form.ErrorMessage data-testid={`affiliate-program-error-${key}`} />
+                      </Form.Item>
+                    )}
+                  />
+                ))}
+                <Form.Field
+                  control={form.control}
+                  name="announce_text"
+                  render={({ field }) => (
+                    <Form.Item>
+                      <Form.Label>Announcement</Form.Label>
+                      <Form.Control>
+                        <Textarea {...field} data-testid="affiliate-program-field-announce_text" />
+                      </Form.Control>
+                    </Form.Item>
+                  )}
                 />
-              </>
-            )}
-            {/* Q16: variant_ids แก้ใน UI ไม่ได้ใน v1 — แสดงจำนวนและส่งค่าเดิมกลับเสมอ */}
-            <Text size="xsmall" className="text-ui-fg-subtle" data-testid="affiliate-program-variant-count">
-              Variants set via API: {form.variant_ids.length} (kept as is; edit through the API)
-            </Text>
-          </div>
-        </FocusModal.Body>
+                <Form.Field
+                  control={form.control}
+                  name="status"
+                  render={({ field: { onChange, ref, ...field } }) => (
+                    <Form.Item>
+                      <Form.Label>Status *</Form.Label>
+                      {/* กฎ 20: แสดงเฉพาะสถานะที่เปลี่ยนไปได้จากสถานะปัจจุบัน */}
+                      <Form.Control>
+                        <Select {...field} size="small" onValueChange={onChange}>
+                          <Select.Trigger ref={ref} data-testid="affiliate-program-field-status">
+                            <Select.Value />
+                          </Select.Trigger>
+                          <Select.Content>
+                            {allowedProgramStatuses(program?.status).map((s) => (
+                              <Select.Item key={s} value={s}>
+                                {s}
+                              </Select.Item>
+                            ))}
+                          </Select.Content>
+                        </Select>
+                      </Form.Control>
+                    </Form.Item>
+                  )}
+                />
+                <Form.Field
+                  control={form.control}
+                  name="all"
+                  render={({ field: { value, onChange, ...field } }) => (
+                    <Form.Item className="flex-row items-center gap-x-2 space-y-0">
+                      <Form.Control>
+                        <Switch
+                          {...field}
+                          checked={value}
+                          onCheckedChange={(checked) => {
+                            form.clearErrors("collection_ids")
+                            onChange(checked)
+                          }}
+                          data-testid="affiliate-program-scope-all"
+                        />
+                      </Form.Control>
+                      <Form.Label>All products</Form.Label>
+                    </Form.Item>
+                  )}
+                />
+                {!all && <ScopeFields form={form} program={program} />}
+                {/* Q16: variant_ids แก้ใน UI ไม่ได้ใน v1 — แสดงจำนวนและส่งค่าเดิมกลับเสมอ */}
+                <Text size="xsmall" className="text-ui-fg-subtle" data-testid="affiliate-program-variant-count">
+                  Variants set via API: {variantCount} (kept as is; edit through the API)
+                </Text>
+              </div>
+            </FocusModal.Body>
+          </KeyboundForm>
+        </Form>
       </FocusModal.Content>
     </FocusModal>
   )
