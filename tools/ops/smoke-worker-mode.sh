@@ -20,6 +20,7 @@ export STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-whsec_dummy}"
 # OPS-7 prod guards (image = NODE_ENV=production): smoke ไม่ใช่ prod → provider ทดสอบ + ค่าที่ guard บังคับ
 export ALLOW_TEST_PROVIDERS="${ALLOW_TEST_PROVIDERS:-true}"
 export AFFILIATE_TOKEN_SECRET="${AFFILIATE_TOKEN_SECRET:-$(openssl rand -hex 32)}"
+export EVOUCHER_ENCRYPTION_KEY="${EVOUCHER_ENCRYPTION_KEY:-$(openssl rand -hex 32)}"
 export STOREFRONT_URL="${STOREFRONT_URL:-http://localhost:8000}"
 
 compose() { docker compose -p "$PROJECT" -f docker-compose.prod.yml "$@"; }

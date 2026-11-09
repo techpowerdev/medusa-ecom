@@ -2,8 +2,9 @@ import { readFileSync } from "fs"
 import path from "path"
 import { parse } from "yaml"
 import { buildNotificationProviders } from "../lib/notification-providers"
-import { seedPaymentProviders } from "../lib/prod-guards"
+import { checkBootEnv, seedPaymentProviders } from "../lib/prod-guards"
 import { goLiveFailures } from "../scripts/check-go-live"
+import { parseEncryptionKey } from "../modules/evoucher/utils/crypto"
 import type { MedusaContainer } from "@medusajs/framework/types"
 
 // OPS-7 (docs/spec/07-scaling-ops.md AC-9, AC-10, AC-13, AC-17; ADR-010 C + D1); OPS-13 (AC-20, AC-21); OPS-13b (AC-25)
@@ -18,6 +19,9 @@ const ENV_KEYS = [
   "STOREFRONT_URL",
   "REDIS_URL",
   "MEDUSA_WORKER_MODE",
+  "EVOUCHER_ENCRYPTION_KEY",
+  "EVOUCHER_ADMIN_EMAIL",
+  "OPS_ALERT_EMAIL",
 ] as const
 
 type Env = Partial<Record<(typeof ENV_KEYS)[number], string>>
@@ -28,6 +32,9 @@ const PROD: Env = {
   RESEND_FROM_EMAIL: "Shop <shop@example.com>",
   AFFILIATE_TOKEN_SECRET: "secret-from-env",
   STOREFRONT_URL: "https://shop.example.com",
+  EVOUCHER_ENCRYPTION_KEY: "ab".repeat(32),
+  EVOUCHER_ADMIN_EMAIL: "voucher-admin@example.com",
+  OPS_ALERT_EMAIL: "ops@example.com",
 }
 
 function loadConfig(env: Env) {
@@ -158,6 +165,81 @@ describe("AC-13 / AC-17 boot guards ใน medusa-config", () => {
   })
 })
 
+describe("AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21)", () => {
+  const original = { ...process.env }
+  let warn: jest.SpyInstance
+
+  beforeEach(() => {
+    warn = jest.spyOn(console, "warn").mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    warn.mockRestore()
+    process.env = { ...original }
+  })
+
+  it.each([[""], ["abc"], ["z".repeat(64)], ["ab".repeat(31)]])(
+    "(b) production with EVOUCHER_ENCRYPTION_KEY=%j throws with the variable name",
+    (value) => {
+      expect(() => loadConfig({ ...PROD, EVOUCHER_ENCRYPTION_KEY: value })).toThrow("EVOUCHER_ENCRYPTION_KEY")
+    }
+  )
+
+  it("(b) ALLOW_TEST_PROVIDERS=true does not disable the key guard", () => {
+    expect(() =>
+      loadConfig({ ...PROD, ALLOW_TEST_PROVIDERS: "true", EVOUCHER_ENCRYPTION_KEY: "abc" })
+    ).toThrow("EVOUCHER_ENCRYPTION_KEY")
+  })
+
+  it("(b) production with a valid 64 hex key does not throw", () => {
+    expect(() => loadConfig(PROD)).not.toThrow()
+  })
+
+  it.each(["EVOUCHER_ADMIN_EMAIL", "OPS_ALERT_EMAIL"])(
+    "(c) production without %s does not throw and returns one warning naming it",
+    (name) => {
+      const warnings = checkBootEnv({ ...PROD, [name]: "" })
+      expect(warnings.filter((m) => m.includes(name))).toHaveLength(1)
+      expect(warnings).toHaveLength(1)
+    }
+  )
+
+  it("(c) production without either email returns one warning per variable", () => {
+    const warnings = checkBootEnv({ ...PROD, EVOUCHER_ADMIN_EMAIL: undefined, OPS_ALERT_EMAIL: undefined })
+    expect(warnings.filter((m) => m.includes("EVOUCHER_ADMIN_EMAIL"))).toHaveLength(1)
+    expect(warnings.filter((m) => m.includes("OPS_ALERT_EMAIL"))).toHaveLength(1)
+  })
+
+  it("(d) development without the three variables does not throw", () => {
+    expect(() => loadConfig({ NODE_ENV: "development" })).not.toThrow()
+    expect(checkBootEnv({ NODE_ENV: "development", AFFILIATE_TOKEN_SECRET: "x", STOREFRONT_URL: "http://localhost:8000" })).toEqual([])
+  })
+})
+
+describe("AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21)", () => {
+  const compose = parse(readFileSync(path.join(repoRoot, "docker-compose.prod.yml"), "utf8"), { merge: true }) as {
+    "x-backend-env": Record<string, unknown>
+    services: Record<string, { environment?: Record<string, unknown> }>
+  }
+  const NAMES = ["EVOUCHER_ENCRYPTION_KEY", "EVOUCHER_ADMIN_EMAIL", "OPS_ALERT_EMAIL"]
+
+  it.each(NAMES)("(a) x-backend-env passes %s from the shell", (name) => {
+    expect(compose["x-backend-env"][name]).toEqual(`\${${name}:-}`)
+  })
+
+  it("(a) TZ is the constant UTC", () => {
+    expect(compose["x-backend-env"].TZ).toEqual("UTC")
+  })
+
+  it.each(["migrate", "server", "worker"])("(a) service %s receives all four", (service) => {
+    const env = compose.services[service].environment ?? {}
+    for (const name of NAMES) {
+      expect(env[name]).toEqual(`\${${name}:-}`)
+    }
+    expect(env.TZ).toEqual("UTC")
+  })
+})
+
 type CiJob = { env?: Record<string, unknown>; steps?: { run?: string }[] }
 
 /** env ระดับ job (ค่าเป็น string) + คำสั่ง `run:` ของทุก step ของแต่ละ job ใน ci.yml — OPS-17 (AC-28): parse ด้วย `yaml` แบบ ci-workflow.unit.spec.ts */
@@ -183,7 +265,7 @@ describe("AC-13 / AC-17 ci.yml และ .env.example", () => {
     expect(prodJobs).toEqual(expect.arrayContaining(["storefront-e2e", "docker-worker-mode"]))
   })
 
-  it.each(["AFFILIATE_TOKEN_SECRET", "STOREFRONT_URL"])("every production-mode job sets %s", (key) => {
+  it.each(["AFFILIATE_TOKEN_SECRET", "STOREFRONT_URL", "EVOUCHER_ENCRYPTION_KEY"])("every production-mode job sets %s", (key) => {
     for (const name of prodJobs) {
       expect({ job: name, value: jobs[name].env[key] }).toEqual({ job: name, value: expect.stringMatching(/\S/) })
     }
@@ -201,6 +283,21 @@ describe("AC-13 / AC-17 ci.yml และ .env.example", () => {
     }
   })
 
+  it("AC-36 (e) EVOUCHER_ENCRYPTION_KEY in CI passes parseEncryptionKey", () => {
+    for (const name of prodJobs) {
+      expect(() => parseEncryptionKey(jobs[name].env.EVOUCHER_ENCRYPTION_KEY)).not.toThrow()
+    }
+  })
+
+  it.each(["tools/ops/smoke-worker-mode.sh", "tools/ops/smoke-redis-outage.sh", "tools/load/run.sh"])(
+    "AC-36 (e) %s generates EVOUCHER_ENCRYPTION_KEY like AFFILIATE_TOKEN_SECRET",
+    (script) => {
+      expect(readFileSync(path.join(repoRoot, script), "utf8")).toContain(
+        'export EVOUCHER_ENCRYPTION_KEY="${EVOUCHER_ENCRYPTION_KEY:-$(openssl rand -hex 32)}"'
+      )
+    }
+  )
+
   it("apps/backend/.env.example has a STOREFRONT_URL= line", () => {
     const envExample = readFileSync(path.resolve(__dirname, "../../.env.example"), "utf8")
     expect(envExample.split(/\r?\n/).some((l) => /^STOREFRONT_URL=/.test(l))).toBe(true)
@@ -213,6 +310,14 @@ describe("AC-11 Go-live checklist ใน docs/ops/production.md", () => {
   const start = lines.indexOf("## Go-live checklist")
   const end = lines.findIndex((line, i) => i > start && /^## /.test(line))
   const body = lines.slice(start + 1, end < 0 ? undefined : end).join("\n")
+
+  it("AC-36 (f) หัวข้อ Prod guards และ Go-live checklist ระบุ EVOUCHER_ENCRYPTION_KEY", () => {
+    const guardStart = lines.indexOf("## Prod guards (OPS-7, ADR-010)")
+    const guardEnd = lines.findIndex((line, i) => i > guardStart && /^## /.test(line))
+    expect(guardStart).toBeGreaterThan(-1)
+    expect(lines.slice(guardStart, guardEnd).join("\n")).toContain("EVOUCHER_ENCRYPTION_KEY")
+    expect(body).toContain("EVOUCHER_ENCRYPTION_KEY")
+  })
 
   it("มีหัวข้อและอ้างคำสั่ง check:go-live", () => {
     expect(start).toBeGreaterThan(-1)

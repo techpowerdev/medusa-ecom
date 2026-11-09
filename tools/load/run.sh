@@ -22,6 +22,7 @@ export STRIPE_API_KEY="sk_test_dummy" STRIPE_WEBHOOK_SECRET="whsec_dummy" # ไ�
 # ADR-010: provider ทดสอบ (pp_system_default + อีเมล local) — stack ของ load test เท่านั้น
 export ALLOW_TEST_PROVIDERS=true
 export AFFILIATE_TOKEN_SECRET="${AFFILIATE_TOKEN_SECRET:-$(openssl rand -hex 32)}"
+export EVOUCHER_ENCRYPTION_KEY="${EVOUCHER_ENCRYPTION_KEY:-$(openssl rand -hex 32)}"
 export STOREFRONT_URL="${STOREFRONT_URL:-http://localhost:8000}"
 # OPS-18 (AC-29): log debug ของเวลา lock ของ flash checkout — เฉพาะ load run (ค่าเริ่มต้นของ compose prod = info)
 export LOG_LEVEL="${LOG_LEVEL:-debug}"

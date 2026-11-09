@@ -163,6 +163,8 @@ jobs:
     env:
       ALLOW_TEST_PROVIDERS: "true"
       AFFILIATE_TOKEN_SECRET: ci-docker-worker-mode
+      # OPS-21 (AC-36): guard ตรวจรูปแบบ 64 hex — ค่าปลอมสำหรับ CI ไม่ใช่ secret
+      EVOUCHER_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
       STOREFRONT_URL: http://localhost:8000
     steps:
       - uses: actions/checkout@v4
@@ -197,6 +199,8 @@ jobs:
       COOKIE_SECRET: test
       # AF-2: secret ของ cookie `aff` (spec 05) — `medusa start` = production: ไม่ตั้ง = บูตไม่ขึ้น (OPS-7 AC-13)
       AFFILIATE_TOKEN_SECRET: test
+      # OPS-21 (AC-36): guard ตรวจรูปแบบ 64 hex — ค่าปลอมสำหรับ CI ไม่ใช่ secret (step "Random e-voucher encryption key" สุ่มทับต่อ run)
+      EVOUCHER_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
       # OPS-7 (AC-17): production ต้องมี URL http(s) ของ storefront (ลิงก์ในอีเมล GB-4)
       STOREFRONT_URL: http://localhost:8000
       # OPS-7 (ADR-010 ข้อ 4): CI ไม่ใช่ prod — ใช้ provider local (ไม่มี Resend key) และ seed เปิด pp_system_default ให้ e2e
