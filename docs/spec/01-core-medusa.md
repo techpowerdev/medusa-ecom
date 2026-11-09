@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+สถานะ: accepted (ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
 รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
@@ -237,7 +237,7 @@ none
 11. task id ของ evidence มีรูปแบบ `^[A-Z]+-\d+[a-z]?$` (รับ `CORE-4a`, `CORE-5b`) — **รอบ 7: #87 ขยายให้รับ task id ที่แยกซ้อนแบบ `GB-6b1`, `CORE-4c1`
     แล้ว** regex ที่ใช้จริงคือ `TASK_ID_RE`/`TESTS_TXT_RE` ใน `apps/storefront/e2e/support/evidence-rules.ts` (source of truth; spec ไม่ copy regex ซ้ำ)
 12. `evidence()` ตรวจงบ (≤ 5 PNG, ≤ 300KB) กับ **ชุดไฟล์ที่จะเกิดขึ้นหลังเขียน** ก่อนเขียนไฟล์จริง ถ้าเกินงบ → throw และไม่เขียนไฟล์
-    การเขียนทับไฟล์ชื่อเดิมไม่นับเป็นรูปใหม่
+    การเขียนทับไฟล์ชื่อเดิมไม่นับเป็นรูปใหม่ (หมายเหตุปิดรอบ 26 — มีผลเมื่อ CORE-5d merge: โฟลเดอร์ที่มี PNG ครบ 5 รูปแล้ว → `console.warn` และไม่เขียน แทน throw รวมกรณีชื่อซ้ำ — กฎข้อ 77a; กรณีอื่นเป็นไปตามข้อนี้)
 13. ใน `docs/evidence/<feature>/` (ระดับ feature) อนุญาตเฉพาะไฟล์ `<TASK-ID>-tests.txt` และโฟลเดอร์ `<TASK-ID>/`
     (ตาม `docs/evidence/README.md`) ไฟล์ `*-tests.txt` ที่อยู่ในโฟลเดอร์ `<TASK-ID>/` ต้องย้ายขึ้นมาระดับ feature
 14. ทุก element ที่ได้ font-family จาก class ของ `@medusajs/ui-preset` (`txt-*`, `h1-webs`…`h3-webs` และกลุ่ม `*-webs` อื่น)
@@ -261,9 +261,9 @@ none
 ### Acceptance criteria (follow-up)
 - AC-20 Given `evidenceDir` When taskId = `CORE-4a`, `CORE-5b`, `CORE-5`, `GB-12` Then คืน path
   `docs/evidence/<feature>/<taskId>`; When taskId = `core-4a`, `CORE4`, `CORE-4ab`, `CORE-`, `CORE-4A` Then throw (unit)
-- AC-21 Given โฟลเดอร์ปลายทางมี PNG อยู่แล้ว 5 รูป When `evidence("06-new")` ด้วย `E2E_SAVE_EVIDENCE=1` Then throw และโฟลเดอร์ยังมี
-  5 รูปเท่าเดิม (ไม่มี `06-new.png`); When `evidence("01-existing")` (ชื่อซ้ำ) Then เขียนทับได้; Given PNG ใหม่ > 300KB
-  Then throw และไม่มีไฟล์ถูกเขียน (unit test ของ helper ที่คำนวณชุดไฟล์ก่อนเขียน)
+- AC-21 (แก้ปิดรอบ 26 — จำกัดเป็นระดับ `planEvidenceWrite` ตามที่ `e2e/support/evidence-rules.unit.spec.ts:105–135` ตรวจจริง) Given `existing` มี PNG 5 รูป When `planEvidenceWrite(existing, { name: "06-new.png", … })` Then คืน violation ที่ระบุ 6 PNG;
+  When ชื่อซ้ำ `01-existing.png` Then คืน `[]` (ไม่นับเป็นรูปใหม่); Given PNG ใหม่ > 300KB Then คืน violation ที่มีชื่อไฟล์นั้น; Given ไฟล์เดิมเกิน 300KB When เขียนทับชื่อเดิมด้วยขนาดที่อยู่ในงบ Then คืน `[]` (unit test ของ helper ที่คำนวณชุดไฟล์ก่อนเขียน);
+  พฤติกรรมของ `evidence()`/`saveEvidencePng` เมื่อโฟลเดอร์ครบ 5 รูปดู AC-115 (กฎข้อ 77a)
 - AC-22 Given `docs/evidence/<feature>/` มีไฟล์ระดับ feature ที่ไม่ตรง `^[A-Z]+-\d+[a-z]?-tests\.txt$` (เช่น `x.png`, `CORE-5.txt`)
   When รัน `evidence-budget.unit.spec.ts` Then มี violation ระบุ path; Given ไฟล์ `CORE-2-tests.txt` อยู่ใน `core/CORE-2/` Then มี violation
 - AC-23 Given develop หลัง merge When รัน `pnpm --filter storefront test:e2e:unit` Then ผ่าน (ย้าย `*-tests.txt` ทุกไฟล์ที่อยู่ใน
@@ -928,7 +928,7 @@ none (storefront + e2e tooling)
     (e) ฟอร์มคืนสินค้าที่ส่งล้มคงจำนวน/เหตุผลที่เลือกไว้; e2e cleanup ตรวจผลของ `request.delete` (ไม่เงียบเมื่อลบ region ของ test ไม่สำเร็จ)
     (f) ค่าที่ admin แก้มีผลกับหน้า `/returns` ภายในรอบ ISR (สังเกต 71–85 วินาทีใน qa #130) — ยอมรับ ≤ 90 วินาที ไม่มี task
 67. (CORE-5c — qa #131 พบตอนรัน e2e ด้วย `E2E_SAVE_EVIDENCE=1`) การเก็บ evidence ของ e2e เขียนได้เฉพาะโฟลเดอร์ของ `evidenceTarget` ใน spec ที่กำลังรัน — spec ที่ไม่ตั้ง
-    `evidenceTarget` ไม่เขียนไฟล์ evidence; screenshot อัตโนมัติของ `step()` นับรวมในงบ ≤ 5 PNG (กฎข้อ 12) — ปัจจุบันรัน e2e ทั้งชุดแล้ว `CORE-22/` เกิน 5 รูปและไฟล์ของ task อื่นถูกเขียนทับ
+    `evidenceTarget` ไม่เขียนไฟล์ evidence; screenshot อัตโนมัติของ `step()` นับรวมในงบ ≤ 5 PNG (กฎข้อ 12) (หมายเหตุปิดรอบ 26: ตั้งแต่ #169 `step()` แนบเข้า HTML report อย่างเดียว ไม่เขียนไฟล์ — กฎข้อ 77d) — ปัจจุบันรัน e2e ทั้งชุดแล้ว `CORE-22/` เกิน 5 รูปและไฟล์ของ task อื่นถูกเขียนทับ
     (builder หาสาเหตุใน fixture `e2e/support/` ก่อนแก้)
 
 ### Acceptance criteria (follow-up รอบ 10)
@@ -1079,10 +1079,13 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
     (c) สลับ บัตร → พร้อมเพย์ → บัตร แล้วกด Continue ครั้งเดียว → ขั้น review แสดงวิธีบัตร
 76. (CORE-15b — review #177) search drawer ที่ header: request ค้นหาล้ม → แสดง `search-drawer-error` ข้อความไทย ไม่มี uncaught error (`pageerror`) และ `console.error` 1 บรรทัดเพื่อ debug;
     `instantsearch.js` ใน `apps/storefront/package.json` pin เวอร์ชันเดียวกับที่ `react-instantsearch` ใช้ (lockfile มีสำเนาเดียว)
-77. (CORE-5d — qa #169, qa #173, builder CORE-5c/AF-12c) รัน e2e ทั้งชุดด้วย `E2E_SAVE_EVIDENCE=1` ต้องไม่ล้มเพราะงบ evidence ของ CORE-5c: ชื่อที่ spec ส่งให้ `evidence()`/`step()` ในโฟลเดอร์
-    ที่มี PNG ครบ 5 แล้วต้องเป็นชื่อไฟล์ที่ commit อยู่ (แก้ชื่อใน spec ให้ตรงไฟล์ของ qa ไม่ลบ/เปลี่ยนรูปที่ commit) — อย่างน้อย CORE-22, CORE-14a, CORE-14d, CORE-4f, FS-10, AF-6, AF-8b;
-    spec ที่ไม่ตั้ง `evidenceTarget` แต่เรียก `evidence()` → `console.warn` 1 ครั้งต่อไฟล์ (ยังไม่เขียนไฟล์ ตามกฎข้อ 67); (review #154) static test ที่ห้าม `if (await x.isVisible())`
-    ใน e2e (ของ CORE-23b) จับรูปแบบ `getByTestId("…").isVisible()` และ locator แบบ chain ด้วย
+77. (CORE-5d — qa #169, qa #173, builder CORE-5c/AF-12c; **แก้ปิดรอบ 26 2026-11-09 ตามคำตัดสินของ session หลัก** — ผลสำรวจบน develop: ชื่อ `evidence()` ไม่ตรง PNG ที่ commit ราว 80 จุดในกว่า 30 spec เพราะ qa ตั้งชื่อรูปเอง; ถ้าแก้ชื่อให้ตรง
+    การรันด้วย `E2E_SAVE_EVIDENCE=1` จะเขียนทับรูปหลักฐานของ qa ซึ่งบางชื่อถ่ายคนละ state กับรูปเดิม จึง**ไม่แก้ชื่อใน spec e2e** และแก้ที่ fixture แทน) รัน e2e ทั้งชุดด้วย `E2E_SAVE_EVIDENCE=1` ต้องไม่ล้มเพราะงบจำนวนรูป และไม่เขียนทับรูปในโฟลเดอร์ที่ครบงบ:
+    (a) `saveEvidencePng` (`e2e/support/evidence-save.ts`): ถ้าโฟลเดอร์ปลายทางมีไฟล์ `.png` ≥ `EVIDENCE_MAX_FILES` (5) อยู่แล้ว → **ไม่เขียนไฟล์** ไม่แตะไฟล์เดิม เรียก `console.warn` 1 ครั้งต่อการเรียก (ข้อความมีชื่อไฟล์และโฟลเดอร์) แล้วคืน `null` — แทนการ throw ทั้งกรณีชื่อใหม่และชื่อซ้ำ และตรวจก่อน `planEvidenceWrite`;
+    (b) นอกกรณี (a) พฤติกรรมเดิมของ CORE-5b/5c คงไว้: PNG เกิน 300KB หรือมีไฟล์ต้องห้ามในโฟลเดอร์ → throw ไม่เขียน; โฟลเดอร์ที่มี < 5 รูปยังเขียนรูปใหม่ได้ และชื่อซ้ำเขียนทับได้ (qa/builder ใช้เก็บรูปของ task ที่ยังไม่ครบ); งบ ≤ 5 PNG ยังคงอยู่เพราะรูปที่ 6 ไม่ถูกเขียน; ข้อห้ามรัน `E2E_SAVE_EVIDENCE=1` กับ e2e ทั้งชุดใน `docs/evidence/README.md` จึงยังอยู่ — "ทั้งชุดไม่ล้ม" เป็นการกันความเสียหาย ไม่ใช่การอนุญาตให้รัน;
+    (c) `E2E_SAVE_EVIDENCE=1` และ spec ไม่ตั้ง `evidenceTarget` แต่เรียก `evidence()` → `console.warn` 1 ครั้งต่อไฟล์ spec (`saveEvidencePng` รับ `specFile` จาก `testInfo.file`; ยังไม่เขียนไฟล์ ตามกฎข้อ 67); ไม่เปิด `E2E_SAVE_EVIDENCE` → ไม่ warn;
+    (d) `step()` ไม่อยู่ในกฎนี้ — แนบเข้า HTML report อย่างเดียว ไม่เขียนไฟล์ (`fixtures.ts`);
+    (e) (review #154) static test ที่ห้าม `if (await x.isVisible())` ใน e2e (ของ CORE-23b) จับรูปแบบ `getByTestId("…").isVisible()` และ locator แบบ chain ด้วย
 78. (CORE-25 — qa #178 defect PDP ของ starter, flaky `core-19a-nav-cart-search.spec.ts:183`) PDP: option ที่ลูกค้าเลือกต้อง**ไม่ถูกรีเซ็ต**เป็นค่าจาก `v_id` ใน URL เมื่อ effect
     ที่ขึ้นกับ `product.variants` ทำงานซ้ำ (เลือก S → M แล้วกดเพิ่มทันที → line ใน cart เป็น M เสมอ — ลูกค้าต้องไม่ได้ไซซ์ผิด); helper `uiAddSizes` ของ e2e รอ `v_id` ของ variant
     ที่เลือกก่อนกดเพิ่ม; แถบปุ่มของ PDP บนมือถือที่ 375px ไม่ทับปุ่มเพิ่มลงตะกร้าหลัก
@@ -1118,10 +1121,14 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
   แสดงส่วนวิธีชำระเป็นบัตร; AC-64, AC-107 ยังผ่าน (unit Vitest + e2e)
 - AC-114 (CORE-15b, กฎข้อ 76) e2e: route mock ของ request ค้นหาตอบ 500 → เปิด search ที่ header แล้วพิมพ์ → เห็น `search-drawer-error` มีอักษรไทย และ `page.on("pageerror")` ไม่ถูกเรียก;
   unit (อ่าน `pnpm-lock.yaml`): `instantsearch.js` มีเวอร์ชันเดียว (e2e + unit Vitest)
-- AC-115 (CORE-5d, กฎข้อ 77) unit (Playwright project `unit`): สำหรับทุก spec ที่ตั้ง `evidenceTarget` และโฟลเดอร์มี PNG 5 ไฟล์ → ชื่อที่ spec ใช้กับ `evidence()`/`step()` เป็นสับเซตของชื่อ PNG
-  ในโฟลเดอร์ (อ่าน source); fixture: ไม่ตั้ง `evidenceTarget` แล้วเรียก `evidence()` → `console.warn` 1 ครั้ง ไม่เขียนไฟล์; e2e: `E2E_SAVE_EVIDENCE=1` กับ spec ของ CORE-22, FS-10, AF-6,
-  AF-8b → ไม่มี error จากงบ evidence และ `git status --porcelain docs/evidence` ไม่มีไฟล์ใหม่ในโฟลเดอร์ที่เต็ม; static test เรื่อง `isVisible` ล้มกับ fixture
-  `if (await page.getByTestId("x").isVisible())` (positive control ใน evidence)
+- AC-115 (CORE-5d, กฎข้อ 77 — แก้ปิดรอบ 26) unit (`e2e/support/evidence-save.unit.spec.ts`, Playwright project `unit`, repoRoot ชั่วคราว + spy `console.warn` — โฟลเดอร์ `core/CORE-22` มี `qa-01..05.png` + `REPORT.md` ตาม `beforeEach` เดิม):
+  (a) `saveEvidencePng({ save: true, target: CORE-22, name: "01-order-detail-title", … })` (ชื่อใหม่) → คืน `null` ไม่ throw, `snapshotFiles` เท่าเดิม, `console.warn` 1 ครั้งข้อความมี `01-order-detail-title.png` และ `CORE-22`;
+  (b) เรียกด้วย `name: "qa-01"` และเนื้อ PNG ต่างจากไฟล์เดิม → ผลเหมือน (a) และ sha1 ของ `qa-01.png` ไม่เปลี่ยน; (c) test เดิมของ CORE-5c ชื่อ `โฟลเดอร์ปลายทางมี PNG ครบงบแล้ว → throw และ PNG ยังไม่เกิน 5` ถูกลบ/แทนที่ด้วย (a)–(b) (grep: ไม่มีชื่อ test นี้ในไฟล์);
+  (d) โฟลเดอร์ที่มี 4 PNG: ครั้งแรกชื่อใหม่ → เขียนไฟล์ ไม่ warn (PNG = 5), ครั้งถัดไปชื่อใหม่ → ไม่เขียน + warn (PNG ยัง = 5); (e) 5 PNG + `png` เกิน `EVIDENCE_MAX_BYTES` → warn ไม่ throw; โฟลเดอร์ < 5 PNG + `png` เกิน → ยัง throw `/เกินงบ/` และไม่เขียน (CORE-5b);
+  (f) `save: true`, `target: undefined`, `specFile: "a.spec.ts"` เรียก 2 ครั้ง → `console.warn` 1 ครั้งข้อความมี `a.spec.ts` และไม่เขียนไฟล์; `specFile: "b.spec.ts"` อีกครั้ง → รวม 2 ครั้ง; (g) `save: false` กับโฟลเดอร์ครบ 5 และกับไม่มี target → `console.warn` 0 ครั้ง;
+  static: `fixtures.ts` ส่ง `specFile: testInfo.file`; `git diff --name-only` ของ PR ไม่มี `e2e/*.spec.ts` นอกจากไฟล์ของ CORE-23b และไม่แตะ `docs/evidence/**/*.png`;
+  e2e: `E2E_SAVE_EVIDENCE=1` กับ `core-22-account-fixes.spec.ts` (CORE-22 — PNG ครบ 5) และ `affiliate-portal-pages.spec.ts` (AF-8b — PNG ครบ 5) → ไม่มี error จากงบ evidence และ `git status --porcelain docs/evidence` ว่าง (FS-10, AF-6 ที่ AC เดิมระบุมี 4 PNG จึงไม่ใช่โฟลเดอร์ที่เต็ม — ตัดออก; ชุดเต็มคุมด้วย unit (a)–(e) เพราะ builder ไม่รัน e2e ทั้งชุดในเครื่องตาม CLAUDE.md);
+  `e2e/evidence-guard.spec.ts` ผ่านโดยไม่แก้; static test เรื่อง `isVisible` ล้มกับ fixture `if (await page.getByTestId("x").isVisible())` (positive control ใน evidence)
 - AC-116 (CORE-25, กฎข้อ 78) e2e (`--repeat-each=10` ใน evidence): PDP สินค้า 2 ไซซ์ เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ) → line ใน cart เป็น M ทุกรอบ; `core-19a-nav-cart-search.spec.ts:183`
   ผ่าน `--repeat-each=10`; ที่ 375×812 `boundingBox` ของแถบปุ่มมือถือไม่ทับปุ่มเพิ่มลงตะกร้าหลักเมื่อปุ่มหลักอยู่ในจอ
 
@@ -1139,11 +1146,11 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
 | CORE-9b | (backend เล็ก, builder FS-17) search ingestion ไม่ throw กับ event ลบที่ไม่มี relation (กฎข้อ 79) — ไฟล์: `src/search/helpers/resolve-product-ids.ts` + test — ☑ #200 | AC-108 | CORE-9 ☑ |
 | CORE-10c | (backend seed เล็ก, review #159) category ไทย + `handle` คงที่ + หาด้วย handle, ซ่อม `featured` ที่ว่าง, test AC-72/AC-30 (กฎข้อ 80) — ไฟล์: `src/scripts/seed.ts` + test seed — ☑ #202 | AC-72, AC-109 | CORE-10b ☑ (#159) |
 | CORE-4i | (storefront, FS-15/#160/#170) server action ของ `lib/data/cart.ts` คืนผลแบบมีโครงสร้าง + helper กลาง + `SIGN_IN_AGAIN_MESSAGE` เดียว (กฎข้อ 72) — ไฟล์: `lib/data/cart.ts`, `lib/util/` (helper), component ใน `modules/checkout`/`modules/cart` และหน้า `/account/orders/:id/pay` ที่เรียก action, `user-messages-thai.test` — เกิน ~400 LOC ให้ builder แยก (เช่น 4i-a: helper + `applyPromotions`/`updateLineItem` + cart; 4i-b: action ชำระเงิน + ผู้เรียก checkout/หน้า pay); (รอบ 13) + `lib/data/payment.ts` (`createPaymentSession`) และ `modules/order/components/order-pay` ตาม Q-C2 = (ก) (helper กลาง `{ ok } \| { error }`) — ☑ CORE-4i-a #222 + CORE-4i-b #305 (train #307) | AC-110 | CORE-19d ☑, FS-15 ☑ (#178), PAY-3b1 ☑ (#189), **PAY-3b2 (#203) merge** (spec 06 — contract error ของ action สร้าง session เดียวกัน; review #188) |
-| CORE-4j | (storefront เล็ก, qa/review #170) trim โค้ดส่วนลด, ฟอร์มที่อยู่ไม่หายเมื่อใส่โค้ด, ความสูง billing select, `ok()` ใน helper e2e (กฎข้อ 73) | AC-111 | CORE-4i (แตะ `applyPromotions`/ฟอร์ม checkout เดียวกัน) |
+| CORE-4j | (storefront เล็ก, qa/review #170) trim โค้ดส่วนลด, ฟอร์มที่อยู่ไม่หายเมื่อใส่โค้ด, ความสูง billing select, `ok()` ใน helper e2e (กฎข้อ 73) — ☑ #314 | AC-111 | CORE-4i (แตะ `applyPromotions`/ฟอร์ม checkout เดียวกัน) |
 | CORE-23c | (storefront เล็ก, qa/review #154/#150/#164) ฟอร์มที่อยู่ใน account คงค่าเมื่อล้ม, ที่อยู่ใบเสร็จไม่ล่มทั้งหน้า, พิมพ์หลังกดแก้ไข, ลิงก์ `/contact`, log ใน `customer.ts` (กฎข้อ 74) — ไฟล์: `modules/account/components/{address-card,profile-billing-address}`, `modules/account/templates/account-layout.tsx`, `lib/data/customer.ts` — ☑ #214 | AC-112 | CORE-23b ☑ (#154) — **เริ่มได้** (∥ CORE-4i — คนละไฟล์) |
-| CORE-19f | (storefront เล็ก, qa #166/#151) revalidate cart หลังสร้าง session, Continue หลัง timeout ไม่ข้าม session, e2e สลับวิธีชำระ (กฎข้อ 75) — ไฟล์: `lib/data/cart.ts` (action สร้าง session), `modules/checkout/components/payment` | AC-113 | CORE-19e ☑ (#166), CORE-4i (แตะ action เดียวกัน — CORE-4i รอ PAY-3b1/3b2 อยู่แล้ว) |
+| CORE-19f | (storefront เล็ก, qa #166/#151) revalidate cart หลังสร้าง session, Continue หลัง timeout ไม่ข้าม session, e2e สลับวิธีชำระ (กฎข้อ 75) — ไฟล์: `lib/data/cart.ts` (action สร้าง session), `modules/checkout/components/payment` — ☑ #310 | AC-113 | CORE-19e ☑ (#166), CORE-4i (แตะ action เดียวกัน — CORE-4i รอ PAY-3b1/3b2 อยู่แล้ว) |
 | CORE-15b | (storefront เล็ก, review #177) error ของ search drawer ที่ header + pin `instantsearch.js` (กฎข้อ 76) — ไฟล์: `modules/search` (drawer), `apps/storefront/package.json`, `pnpm-lock.yaml` — ☑ #213 | AC-114 | CORE-15 ☑ (#177) — **เริ่มได้** |
-| CORE-5d | (e2e tooling เล็ก, qa #169/#173) ชื่อ evidence ใน spec ตรงไฟล์ที่ commit + `console.warn` เมื่อไม่มี `evidenceTarget` (กฎข้อ 77) — ไฟล์: `e2e/support/` (fixture), `e2e/*.spec.ts` ที่ชื่อไม่ตรง | AC-115 | CORE-5c ☑ (#169) — **เริ่มได้** (แก้เฉพาะสตริงชื่อใน spec — ชนไฟล์ e2e ตัวที่ merge ทีหลัง rebase) |
+| CORE-5d | (e2e tooling เล็ก ~90 LOC รวม test, qa #169/#173; **นิยามใหม่ปิดรอบ 26**) โฟลเดอร์มี PNG ครบ 5 แล้ว `saveEvidencePng` ไม่เขียนและ `console.warn` แทน throw + `console.warn` เมื่อไม่มี `evidenceTarget` (กฎข้อ 77; ไม่แก้ชื่อใน spec e2e) — ไฟล์ (`apps/storefront/`): `e2e/support/evidence-save.ts`, `e2e/support/fixtures.ts` (ส่ง `specFile`), `e2e/support/evidence-save.unit.spec.ts` (แทนที่ test "ครบงบแล้ว → throw" ของ CORE-5c + เคสใหม่), `e2e/core-23b-no-conditional-expect.unit.spec.ts` (กฎข้อ 77e) — ☐ ยังไม่เสร็จ | AC-115 | CORE-5c ☑ (#169), **PR เอกสารปิดรอบ 26 (branch `docs/close-round-26`) merge**; ∥ ทุกตัว (ไม่ชนไฟล์กับ task ที่เปิดอยู่) |
 | CORE-25 | (storefront เล็ก, **defect ที่ลูกค้าอาจได้ไซซ์ผิด** — qa #178) option บน PDP ไม่ถูกรีเซ็ตจาก `v_id`, `uiAddSizes` รอ `v_id`, แถบมือถือไม่ทับปุ่มหลัก (กฎข้อ 78) — ไฟล์: `modules/products/components/product-actions/{index,mobile-actions}.tsx`, e2e ของ CORE-19a (รอบ 13: #199 จริงแตะ `product-actions/index.tsx` + `lib/hooks/use-in-view.tsx` ใหม่) — ☑ #199 | AC-116 | — |
 (รอบ 13 สถานะ) CORE-9b ◐ #200, CORE-10c ◐ #202, CORE-25 ◐ #199; CORE-23c ∥ CORE-15b ∥ CORE-5d เริ่มได้ทันที; PAY-3b1 (#189) → PAY-3b2 → CORE-4i → (CORE-4j ∥ CORE-19f ∥ EV-7d ของ spec 02)
 
@@ -1932,7 +1939,7 @@ none
 |----|------|------|------|------|----|---------|
 | CORE-47 | (storefront, qa #287 O-1; **owner เลือกทาง (C) 2026-11-04** แทนทางเดิม "แก้เฉพาะ className ของ cell" — `a74a496` ไม่ล้นแต่ช่องชื่อเหลือ 16px) `/cart` ที่ < 1024 แต่ละ line เป็นแถวแบบการ์ด: รูปซ้าย, ชื่อ + ตัวเลือกใช้ความกว้างที่เหลือ, บรรทัดล่างปุ่มลบ + select จำนวน + ราคารวมชิดขวาไม่ตัดตัวเลข; ≥ 1024 ตารางเดิมทุกพิกเซล; `type="preview"` ไม่เปลี่ยน (กฎข้อ 105) | `modules/cart/components/item/index.tsx` (className แบบ breakpoint ของ `tr`/`td` + wrapper เฉพาะ `type === "full"`), `modules/cart/templates/items.tsx` (className ของ `Table`/`Table.Header`/`Table.Body`), e2e ใหม่ `e2e/core-47-cart-375-long-title.spec.ts` — ☑ #298 (train #299) | ~150 LOC รวม e2e | 375×812, 1023×800 (+ regression 1024×768, 1280×800) | AC-142 | none — **เริ่มได้**; ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-48 (และ CORE-4i ☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
 | CORE-48 | (storefront, qa #287 O-2) แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ แทนข้อความทั่วไป (กฎข้อ 106) | `lib/data/cart.ts` (`updateLineItem`), helper ใหม่ใน `lib/util/` (+ unit Vitest ใน `src/`), `modules/cart/components/item/index.tsx` (`changeLineQuantity` + ค่าคงที่ข้อความ), e2e ใหม่ `e2e/core-48-cart-insufficient-stock.spec.ts` — ☑ #300 (train #307) | ~130 LOC รวม test | 1280×800, 375×812 | AC-143 | none — **เริ่มได้** (CORE-4i-a ☑, CORE-44 ☑ #287); ∥ ทุกตัว; ชน `item/index.tsx` กับ CORE-47/CORE-4i และ `lib/data/cart.ts` กับ CORE-4i (☐) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
-| CORE-49 | (e2e test hygiene, nit review #289 + qa #286/#288) รวม grep test ไว้ที่ core-46, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/core-26/fs19 ใช้ `waitForServerAction`/`isServerAction` (กฎข้อ 107) | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-43-e2e-hygiene.unit.spec.ts`, `e2e/affiliate-admin-programs.spec.ts`, `e2e/core-25-pdp-option-reset.spec.ts`, `e2e/core-26-cart-dropdown-total.spec.ts`, `e2e/flash-sale-fs19.spec.ts` | ~70 LOC | ไม่มี UI ใหม่ (e2e เดิมรันที่ viewport เดิมของแต่ละไฟล์) | AC-144 | none — **เริ่มได้** (CORE-46 ☑ #289); ∥ ทุกตัว (ไม่มี task อื่นแตะไฟล์เหล่านี้); ไม่บล็อก release |
+| CORE-49 | (e2e test hygiene, nit review #289 + qa #286/#288) รวม grep test ไว้ที่ core-46, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/core-26/fs19 ใช้ `waitForServerAction`/`isServerAction` (กฎข้อ 107) | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-43-e2e-hygiene.unit.spec.ts`, `e2e/affiliate-admin-programs.spec.ts`, `e2e/core-25-pdp-option-reset.spec.ts`, `e2e/core-26-cart-dropdown-total.spec.ts`, `e2e/flash-sale-fs19.spec.ts` — ☑ #312 | ~70 LOC | ไม่มี UI ใหม่ (e2e เดิมรันที่ viewport เดิมของแต่ละไฟล์) | AC-144 | none — **เริ่มได้** (CORE-46 ☑ #289); ∥ ทุกตัว (ไม่มี task อื่นแตะไฟล์เหล่านี้); ไม่บล็อก release |
 (รอบ 21) CORE-47 ∥ CORE-48 ∥ CORE-49 เริ่มได้ทันที (และ ∥ AF-20 ของ spec 05) — ไม่มีตัวใดบล็อก release; CORE-47 กับ CORE-48 แตะ `item/index.tsx` คนละส่วน (CORE-47 = className/JSX ของแถว, CORE-48 = `changeLineQuantity` + ค่าคงที่ข้อความ) ตัวที่ merge ทีหลัง rebase
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 21)
@@ -2015,8 +2022,8 @@ none
 ### Tasks (follow-up รอบ 23)
 | ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|------|----|---------|------|
-| CORE-50 | (storefront, qa #298 O-1 + qa #295 O-2) nav ที่ < 1024 ตั้งแต่ 320: ชื่อร้าน/ไอคอนค้นหา/"ตะกร้า (n)" ไม่ชิด/ทับกัน และ "ตะกร้า (n)" บรรทัดเดียว (กฎข้อ 108) | `src/modules/layout/templates/nav/index.tsx`, `src/modules/layout/components/cart-dropdown/index.tsx` (เฉพาะ className ของ `nav-cart-link`), `src/modules/layout/components/side-menu/index.tsx` (ถ้าต้องแก้ className), e2e ใหม่ `e2e/core-50-nav-narrow.spec.ts` | ~120 LOC รวม e2e | 320×640, 375×812, 639×812, 1023×800 (+ regression 1280×800) | AC-145 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release | ไม่ชน CORE-48 (`item/index.tsx`, `cart.ts`), CORE-4i-b (`cart.ts`/`payment.ts`), ADM-* |
-| CORE-51 | (e2e test hygiene, nit review #295/#298) `DESKTOP_BASELINE` ไป `e2e/support/cart-layout.ts`, `createActiveAffiliate` รับ options object, `longCode()` ความกว้างคงที่, `evidenceTarget` ของ AC-52 เป็น AF-20 (กฎข้อ 109) | `e2e/support/cart-layout.ts` (ใหม่), `e2e/core-42-cart-voucher-layout.spec.ts`, `e2e/core-47-cart-375-long-title.spec.ts`, `e2e/support/affiliate.ts`, ผู้เรียก 10 ไฟล์ (`e2e/affiliate-{admin-names,admin-payouts,admin-payout-create,header-overflow,profile-overflow,portal,portal-pages,portal-polish,tracking,last-click}.spec.ts`), `e2e/core-46-e2e-hygiene.unit.spec.ts` (grep ใหม่) | ~110 LOC (ส่วนใหญ่เปลี่ยนบรรทัดเรียก) | ไม่มี UI ใหม่ (e2e เดิมรันที่ viewport เดิม) | AC-146 | none — **เริ่มได้**; ไม่บล็อก release | **ชน ADM-8a** (แก้ข้อความเงินใน `affiliate-admin-*.spec.ts` — `affiliate-admin-{payouts,payout-create,names}`) และ ADM-8b (locator ปุ่มต่อแถวในไฟล์เดียวกัน) → ตัวที่ merge ทีหลัง rebase (เปลี่ยนเฉพาะบรรทัดเรียก); **ชน CORE-49** ที่ `core-46-e2e-hygiene.unit.spec.ts` → ตัวที่ merge ทีหลัง rebase; ไม่ชน CORE-48, CORE-4i-b |
+| CORE-50 | (storefront, qa #298 O-1 + qa #295 O-2) nav ที่ < 1024 ตั้งแต่ 320: ชื่อร้าน/ไอคอนค้นหา/"ตะกร้า (n)" ไม่ชิด/ทับกัน และ "ตะกร้า (n)" บรรทัดเดียว (กฎข้อ 108) | `src/modules/layout/templates/nav/index.tsx`, `src/modules/layout/components/cart-dropdown/index.tsx` (เฉพาะ className ของ `nav-cart-link`), `src/modules/layout/components/side-menu/index.tsx` (ถ้าต้องแก้ className), e2e ใหม่ `e2e/core-50-nav-narrow.spec.ts` — ☑ #309 | ~120 LOC รวม e2e | 320×640, 375×812, 639×812, 1023×800 (+ regression 1280×800) | AC-145 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release | ไม่ชน CORE-48 (`item/index.tsx`, `cart.ts`), CORE-4i-b (`cart.ts`/`payment.ts`), ADM-* |
+| CORE-51 | (e2e test hygiene, nit review #295/#298) `DESKTOP_BASELINE` ไป `e2e/support/cart-layout.ts`, `createActiveAffiliate` รับ options object, `longCode()` ความกว้างคงที่, `evidenceTarget` ของ AC-52 เป็น AF-20 (กฎข้อ 109) | `e2e/support/cart-layout.ts` (ใหม่), `e2e/core-42-cart-voucher-layout.spec.ts`, `e2e/core-47-cart-375-long-title.spec.ts`, `e2e/support/affiliate.ts`, ผู้เรียก 10 ไฟล์ (`e2e/affiliate-{admin-names,admin-payouts,admin-payout-create,header-overflow,profile-overflow,portal,portal-pages,portal-polish,tracking,last-click}.spec.ts`), `e2e/core-46-e2e-hygiene.unit.spec.ts` (grep ใหม่) — ☑ #328 | ~110 LOC (ส่วนใหญ่เปลี่ยนบรรทัดเรียก) | ไม่มี UI ใหม่ (e2e เดิมรันที่ viewport เดิม) | AC-146 | none — **เริ่มได้**; ไม่บล็อก release | **ชน ADM-8a** (แก้ข้อความเงินใน `affiliate-admin-*.spec.ts` — `affiliate-admin-{payouts,payout-create,names}`) และ ADM-8b (locator ปุ่มต่อแถวในไฟล์เดียวกัน) → ตัวที่ merge ทีหลัง rebase (เปลี่ยนเฉพาะบรรทัดเรียก); **ชน CORE-49** ที่ `core-46-e2e-hygiene.unit.spec.ts` → ตัวที่ merge ทีหลัง rebase; ไม่ชน CORE-48, CORE-4i-b |
 (รอบ 23) CORE-50 ∥ CORE-51 เริ่มได้ทันที (และ ∥ ADM-10..12 ของ spec 08); CORE-47 ☑ #298 (train #299)
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 23)
@@ -2074,12 +2081,39 @@ none
 |----|------|------|------|------|----|---------|------|
 | CORE-52 | (storefront, qa #320 + review #314) checkout: ตะกร้าว่างจากอีกแท็บ → `/cart`, ที่อยู่ช่องว่างไม่ผ่าน, ไม่แสดง section จัดส่งบน order voucher, select ประเทศคงค่าหลัง error, เลิก `eslint-disable` (กฎข้อ 110) | `src/app/[countryCode]/(checkout)/checkout/page.tsx`, `src/lib/data/cart.ts` (`setAddresses`, `placeOrder`), `src/modules/order/components/shipping-details/index.tsx` (หรือ template ผู้เรียก), `src/modules/checkout/components/{shipping-address,billing_address,country-select}/index.tsx`, e2e ใหม่ | ~200 LOC รวม e2e | 1280×800, 375×812 | AC-147 | **#320 (EV-7d) merge** (แตะ `lib/data/cart.ts`, ฟอร์มที่อยู่เดียวกัน); ไม่บล็อก release | ไม่ชน ADM-*, OPS-21; ชน CORE-19f/CORE-4j ถ้ามี PR แตะ `cart.ts` อยู่ — ตัวที่ merge ทีหลัง rebase |
 | CORE-53 | (e2e hygiene, nit review #312/#314) `setsTimeout`, parser `core-4j`, ข้อความ cleanup `core-4g`, cleanup `core-4j` ไม่กลบ error (กฎข้อ 111) | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-4j-e2e-hygiene.unit.spec.ts`, `e2e/core-4g-checkout-polish.spec.ts`, `e2e/core-4j-checkout-discount-address.spec.ts` | ~60 LOC | ไม่มี UI ใหม่ | AC-148 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release | ไม่ชน CORE-52 (คนละไฟล์) |
-(รอบ 26) CORE-53 เริ่มได้ทันที; CORE-52 หลัง #320
+(รอบ 26) CORE-53 เริ่มได้ทันที; CORE-52 หลัง #320 (ปิดรอบ 26: #320 merge แล้ว CORE-52 เริ่มได้)
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 26)
 - (qa #309 O-1, CORE-50) ตะกร้า 4 หลักที่ 320px ระยะชื่อร้าน→ไอคอนค้นหา 5.83px < 8 — ไม่ทับ/ไม่ล้น และ ≥ 340px ได้ ≥ 15.83px (qa); กฎข้อ 108b ครอบถึง 3 หลัก และตะกร้า ≥ 1,000 ชิ้นไม่ใช่กรณีใช้งานจริงของร้าน — ไม่เปิด task
 
 ### Open questions (รอบ 26)
+none
+
+## Follow-up ปิดรอบ 26 (2026-11-09)
+ที่มา: nit review #328 (CORE-51) — ตรวจโค้ดบน develop `0d1c678b`: `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts:147` ถ้า `function longCode` ไม่อยู่ใน source `indexOf` ได้ -1 แล้ว `slice` ได้สตริงว่าง `.not.toContain("letters(")` จึงผ่านเงียบ; `:113` `[\s\S]*` แบบ greedy เดินข้าม `}` ของ object ตัวแรก จึงรับ `request, admin, { a: 1 }, { b: 2 }` (tsc จับได้อยู่แล้ว)
+Out of scope: แก้ `setsTimeout`/parser `core-4j`/cleanup ของ CORE-53, เปลี่ยน signature ของ `createActiveAffiliate`
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว
+none (grep test ใน e2e ของเราเอง)
+
+### Business rules (ปิดรอบ 26)
+112. (CORE-54 — nit review #328) `e2e/core-46-e2e-hygiene.unit.spec.ts`: (a) test AC-146 (กฎข้อ 109c) ต้องล้มเมื่อหา body ของ `longCode` ไม่เจอ ไม่ผ่านเงียบ; (b) ตัวตรวจอาร์กิวเมนต์ของ `createActiveAffiliate` ปฏิเสธอาร์กิวเมนต์ตัวที่ 4 แม้ตัวสุดท้ายเป็น object
+
+### Acceptance criteria (ปิดรอบ 26)
+- AC-149 (CORE-54, กฎข้อ 112) unit (Playwright project `unit`, ไฟล์เดียวกัน): helper หา body ของ `longCode` กับ source ที่ไม่มี `longCode` → throw (`expect(() => longCodeBody("const other = 1")).toThrow()` หรือชื่อเทียบเท่า), กับไฟล์จริงยังผ่าน;
+  ตัวตรวจอาร์กิวเมนต์: `'request, admin, { a: 1 }, { b: 2 }'` → ไม่ผ่าน, `'request, admin, { a: { b: 1 } }'` และ `'request, await adminHeaders(request), {\n  prefix: "x",\n  name,\n}\n'` → ผ่าน; เคสเดิมของ AC-146 ผ่านโดยไม่แก้
+
+### แผนการทดสอบ (ปิดรอบ 26)
+| ระดับ | AC |
+|------|----|
+| unit (Playwright `unit` project) | AC-149 |
+
+### Tasks (ปิดรอบ 26)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-54 | (e2e hygiene, nit review #328) ตัวตรวจใน `core-46-e2e-hygiene` ไม่ผ่านเงียบเมื่อหา `longCode` ไม่เจอ และไม่รับอาร์กิวเมนต์เกิน 3 ตัว (กฎข้อ 112) | `e2e/core-46-e2e-hygiene.unit.spec.ts` | ~20 LOC | AC-149 | none — **เริ่มได้**; ไม่บล็อก release | ชน CORE-53 ที่ไฟล์เดียวกัน (คนละ test) → ตัวที่ merge ทีหลัง rebase |
+
+### Open questions (ปิดรอบ 26)
 none
 
 หมายเหตุจาก CORE-1:

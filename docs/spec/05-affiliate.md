@@ -260,22 +260,22 @@ Payout
     ทุกปุ่ม submit/ยืนยัน disabled ระหว่างส่ง + in-flight guard ด้วย `createSingleFlight` ที่มีอยู่แล้ว (`src/admin/lib/single-flight.ts` ของ EV-9 พร้อม unit test) — ไม่เขียน guard ใหม่;
     instance ต้อง**คงที่ตลอดอายุ component** ตามวิธีในหัวไฟล์ (`const [submitOnce] = useState(createSingleFlight)`) ห้ามเรียก `createSingleFlight()` ใน body ของ render (เหตุที่ AF-6 #138
     เลิกใช้ เพราะถูกสร้างใหม่ทุก render) — `dblclick` = 1 request (บทเรียน CLAUDE.md); สำเร็จ → invalidate query แล้วแถวเปลี่ยนโดยไม่ reload; ล้ม → toast error (ข้อความจาก API) และ refetch รายการ
-    (a) **Programs** (AF-12a): ปุ่ม `affiliate-program-create` และ `affiliate-program-edit` ต่อแถว เปิดฟอร์ม (`FocusModal`) field ตาม `AdminCreateAffiliateProgram`: name, starts_at, ends_at,
+    (a) **Programs** (AF-12a; แก้ testid ปิดรอบ 26 ให้ตรงโค้ดหลัง ADM-8b/ADM-14): ปุ่ม "Create program" ใน `action` ของ `DataTable` (หาภายใน wrapper `affiliate-programs-table` — spec 08 กฎ 18) และ menuitem "Edit" ของ trigger `affiliate-program-row-actions` ต่อแถว เปิดฟอร์ม (`FocusModal`, ปุ่มบันทึก `affiliate-program-save`) field ตาม `AdminCreateAffiliateProgram`: name, starts_at, ends_at,
     commission_value (%), attribution_window_days (ค่าเริ่มต้น 7), hold_days (14), cap_per_order (ว่างได้), announce_text, status; scope = สวิตช์ `all` **หรือ** เลือก collection/category
     หลายตัวจาก admin API ของ Medusa (`GET /admin/collections`, `GET /admin/product-categories`); `variant_ids` แก้ใน UI ไม่ได้ใน v1 (owner Q16: แก้ผ่าน API) — แสดงจำนวน และ
     ฟอร์มส่ง `scope` ทั้งก้อนโดยคง `variant_ids` เดิมเสมอ (`updateAffiliatePrograms` แทนที่ JSON `scope` ทั้งก้อน) **รวมกรณีสลับเป็น `all`** (`all: true` คลุมทุกสินค้าอยู่แล้ว
     `variant_ids` ที่คงไว้ไม่เปลี่ยนผล และกลับมาใช้ได้เมื่อปิด `all`) — admin ล้าง `variant_ids` ได้ทาง API เท่านั้น;
-    ตัวเลือก status แสดงเฉพาะที่กฎ 20 อนุญาตจากสถานะปัจจุบัน; ฟอร์มตรวจ `ends_at > starts_at` ก่อนส่ง; `affiliate-program-delete` (ยืนยันด้วย `usePrompt`) มีเฉพาะแถว `draft`
+    ตัวเลือก status แสดงเฉพาะที่กฎ 20 อนุญาตจากสถานะปัจจุบัน; ฟอร์มตรวจ `ends_at > starts_at` ก่อนส่ง; menuitem "Delete" ของ `affiliate-program-row-actions` (ยืนยันด้วย `usePrompt`) มีเฉพาะแถว `draft`
     (b) **Affiliates** (AF-12b): ปุ่มตามสถานะ — `pending` → `affiliate-approve` (status `active`); `active` → `affiliate-suspend` (ยืนยันด้วย `usePrompt`); `suspended` → `affiliate-reactivate`;
     `affiliate-payout-info-edit` เปิด drawer ฟอร์มข้อมูลรับเงิน `bank_name`, `account_name`, `account_number` (owner Q18 2026-10-27: 3 ช่องนี้เท่านั้นใน v1; เก็บเป็น `payout_info` JSON;
     ปุ่ม Clear ส่ง `null`) — ค่าเต็มเห็นเฉพาะ admin (กฎ 8)
-    (c) **Payouts** (AF-12c): `affiliate-payout-create` เปิดฟอร์ม: เลือก affiliate สถานะ `active`/`suspended` — filter `status` ของ `GET /admin/affiliate/affiliates` รับค่าเดียว
+    (c) **Payouts** (AF-12c; แก้ testid ปิดรอบ 26): ปุ่ม "Create payout" ใน `action` ของ `DataTable` (หาภายใน wrapper `affiliate-payouts-table` — spec 08 กฎ 18) เปิดฟอร์ม (ปุ่มบันทึก `affiliate-payout-save`): เลือก affiliate สถานะ `active`/`suspended` — filter `status` ของ `GET /admin/affiliate/affiliates` รับค่าเดียว
     จึงยิง 2 ครั้ง (`?status=active` และ `?status=suspended`, `limit` ≤ 200) แล้วรวมผล ไม่แก้ validator, `period_from`/`period_to` ค่าเริ่มต้น =
     เดือนก่อนหน้าตามเวลาไทย `[วันที่ 1 00:00, วันที่ 1 ของเดือนนี้ 00:00)` Asia/Bangkok ส่งเป็น ISO (ตั้งแต่ ADM-9: ใช้ `DatePicker` และคำนวณตาม timezone ของเครื่องแอดมิน
     ซึ่งต้องตั้งเป็นเวลาไทย — ADR-018; e2e admin ตั้ง `timezoneId: "Asia/Bangkok"`); 400 (เช่นไม่มี entry/ยอดสุทธิ ≤ 0 ตาม Q8) → toast ไม่มีแถวใหม่; แถว `draft` มี
-    `affiliate-payout-mark-paid` → กล่องยืนยันพร้อม input `reference` (แก้ถ้อยคำรอบ 12 ตาม AF-12c #176: `usePrompt` ไม่มีช่องกรอก จึงประกอบ `Prompt` ของ `@medusajs/ui` เองใน
+    menuitem "Mark paid" ของ trigger `affiliate-payout-row-actions` → กล่องยืนยันพร้อม input `reference` (`affiliate-payout-mark-paid-reference`) (แก้ถ้อยคำรอบ 12 ตาม AF-12c #176: `usePrompt` ไม่มีช่องกรอก จึงประกอบ `Prompt` ของ `@medusajs/ui` เองใน
     `mark-paid-prompt.tsx` — ตรงกับกฎ 37c ที่ถามใน AF-12c) (ไม่บังคับ; trim แล้วว่าง → **ไม่ส่ง key `reference`** เพราะ validator เป็น `min(1).optional()` — ส่ง `""` ได้ 400)
-    → `POST /admin/affiliate/payouts/:id/mark-paid`; แถว `paid` แสดง `paid_at`, `reference` และไม่มีทั้งปุ่ม mark paid/cancel;
+    → `POST /admin/affiliate/payouts/:id/mark-paid`; แถว `paid` แสดง `paid_at`, `reference` และไม่มี `affiliate-payout-row-actions`;
     ส่วนเพิ่มของ AC-26 จาก qa #138 (ปุ่มในจอที่ 1280px, ยกเลิกล้ม → refetch + toast) ถ้า #138 ยังไม่ครอบ ทำใน AF-12c
     (d) (ADR-018, owner 2026-10-28) ตั้งแต่ ADM-8b (แก้ถ้อยคำรอบ 12 ตาม nit #183 — ADM-8a ยังไม่ย้ายปุ่ม) ปุ่มต่อแถว (`affiliate-program-edit`/`-delete`, `affiliate-approve`/`-suspend`/`-reactivate`, `affiliate-payout-info-edit`,
     `affiliate-payout-mark-paid`/`-cancel`) ย้ายเข้า `ActionMenu` ของ dashboard — e2e ของ AC-26, AC-42..44 หา trigger ด้วย testid ระดับแถว แล้วหา menuitem ด้วย role + ชื่อ
@@ -412,16 +412,16 @@ Payout
 - AC-41 (AF-8c, กฎ 35, 36) unit (Vitest) ของฟังก์ชันนับถอยหลัง (ควบคุม `now`): เหลือ 3 ชั่วโมง → มี "ชั่วโมง" ไม่มี "วัน"; 30 นาที → "ไม่ถึง 1 ชั่วโมง"; 49 ชั่วโมง → "2 วัน"; การ์ดที่ `rate_varies=true`
   → ไม่มี `affiliate-estimate` แต่มี `affiliate-rate-varies`; `rate_varies=false` ที่ variant ราคา 100/200 อัตรา 10% → `affiliate-estimate` แสดง ฿10 และมี "ตั้งแต่"; data function ของ portal เมื่อ
   fetch ล้มแบบ network/5xx → หน้า render `affiliate-portal-error` (unit ของ component/หน้า ด้วย mock) (unit Vitest)
-- AC-42 (AF-12a, กฎ 37a) e2e admin (helper ของ OPS-11): When กรอกฟอร์มจาก `affiliate-program-create` แล้ว `dblclick` Save Then มี `POST /admin/affiliate/programs` **1 ครั้ง** และแถวใหม่สถานะ
-  `draft` ปรากฏโดยไม่ reload; When แก้ `commission_value` ผ่าน `affiliate-program-edit` Then `GET /admin/affiliate/programs/:id` ได้ค่าใหม่และ `scope.variant_ids` เดิมไม่เปลี่ยน (ตั้งผ่าน API ใน setup);
-  Given โปรแกรม `published` Then ตัวเลือก status ไม่มี `draft` และแถวไม่มี `affiliate-program-delete`; Given `draft` When กด `affiliate-program-delete` แล้วยกเลิก prompt Then ไม่มี `DELETE`;
+- AC-42 (AF-12a, กฎ 37a; แก้ testid ปิดรอบ 26) e2e admin (helper ของ OPS-11): When กรอกฟอร์มจากปุ่ม `getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" })` แล้ว `dblclick` `affiliate-program-save` Then มี `POST /admin/affiliate/programs` **1 ครั้ง** และแถวใหม่สถานะ
+  `draft` ปรากฏโดยไม่ reload; When แก้ `commission_value` ผ่าน menuitem "Edit" ของ `affiliate-program-row-actions` Then `GET /admin/affiliate/programs/:id` ได้ค่าใหม่และ `scope.variant_ids` เดิมไม่เปลี่ยน (ตั้งผ่าน API ใน setup);
+  Given โปรแกรม `published` Then ตัวเลือก status ไม่มี `draft` และเมนูของแถวไม่มี menuitem "Delete"; Given `draft` When กด menuitem "Delete" แล้วยกเลิก prompt Then ไม่มี `DELETE`;
   ยืนยัน Then แถวหาย; When `ends_at` ก่อน `starts_at` Then ปุ่ม Save ส่งไม่ได้หรือเห็น error และไม่มี `POST` (e2e admin)
 - AC-43 (AF-12b, กฎ 37b) Given affiliate `pending` When `dblclick` `affiliate-approve` Then มี `POST /admin/affiliate/affiliates/:id` 1 ครั้งด้วย `status: "active"` และ badge เป็น `active` โดยไม่ reload;
   When `affiliate-suspend` แล้วยกเลิก prompt Then ไม่มี request; ยืนยัน Then `suspended` และมี `affiliate-reactivate`; When บันทึกข้อมูลรับเงิน 3 field Then `GET /admin/affiliate/affiliates/:id`
   มี `payout_info` ตรงกัน; When Clear Then `payout_info = null` (e2e admin)
-- AC-44 (AF-12c, กฎ 37c) Given Ann มี entry `approved` ใน "เดือนก่อน" (ตั้ง `created_at` ใน setup) When เปิดฟอร์ม `affiliate-payout-create` Then ช่วงวันที่ค่าเริ่มต้นคือเดือนก่อนตามเวลาไทย (browser `timezoneId: "Asia/Bangkok"` — ADR-018);
-  When เลือก Ann แล้ว `dblclick` Create Then `POST /admin/affiliate/payouts` 1 ครั้งและแถว `draft` ใหม่แสดงยอดรวม; Given affiliate ที่ไม่มี entry Then เห็น toast error และไม่มีแถวใหม่;
-  When `affiliate-payout-mark-paid` ใส่ reference `TRX-AC44` แล้วยืนยัน Then แถวเป็น `paid` แสดง `TRX-AC44`, ไม่มี `affiliate-payout-mark-paid`/`affiliate-payout-cancel` และ `GET /admin/affiliate/entries?status=paid`
+- AC-44 (AF-12c, กฎ 37c; แก้ testid ปิดรอบ 26) Given Ann มี entry `approved` ใน "เดือนก่อน" (ตั้ง `created_at` ใน setup) When เปิดฟอร์มจากปุ่ม `getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" })` Then ช่วงวันที่ค่าเริ่มต้นคือเดือนก่อนตามเวลาไทย (browser `timezoneId: "Asia/Bangkok"` — ADR-018);
+  When เลือก Ann แล้ว `dblclick` `affiliate-payout-save` Then `POST /admin/affiliate/payouts` 1 ครั้งและแถว `draft` ใหม่แสดงยอดรวม; Given affiliate ที่ไม่มี entry Then เห็น toast error และไม่มีแถวใหม่;
+  When menuitem "Mark paid" ของ `affiliate-payout-row-actions` ใส่ reference `TRX-AC44` (`affiliate-payout-mark-paid-reference`) แล้วยืนยัน (`affiliate-payout-mark-paid-confirm`) Then แถวเป็น `paid` แสดง `TRX-AC44`, ไม่มี `affiliate-payout-row-actions` และ `GET /admin/affiliate/entries?status=paid`
   มี entry ของ payout นั้นครบ; When ยกเลิก prompt mark paid Then ไม่มี request; When mark paid โดยเว้น reference ว่าง (หรือมีแต่ช่องว่าง) Then body ของ request ไม่มี key `reference`
   และได้ 200; Given affiliate `active` 1 และ `suspended` 1 Then ตัวเลือก affiliate ในฟอร์มมีทั้งสองคนและไม่มีคนที่ `pending`; AC-26 ยังผ่าน (e2e admin)
 - AC-45 (AF-14, กฎ 38) Given affiliate A, B, C When `GET /admin/affiliate/affiliates?id[]=A&id[]=B` Then ได้ A และ B เท่านั้น (`count=2`); `?id=A` → A; ไม่มี token admin → 401
