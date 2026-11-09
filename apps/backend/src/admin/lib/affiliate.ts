@@ -65,6 +65,8 @@ export type ListResponse<K extends string, T> = { [key in K]: T[] } & {
 
 export const affiliateKeys = {
   list: (resource: string) => ["affiliate", resource] as const,
+  /** mutationKey ของ action ต่อ payout (cancel, mark paid) — ADM-8b: ตารางนับด้วย useIsMutating เพื่อกันสอง action ชนกัน */
+  payoutAction: (id: string) => ["affiliate", "payouts", "action", id] as const,
 }
 
 export const listAffiliateResource = <K extends string, T>(

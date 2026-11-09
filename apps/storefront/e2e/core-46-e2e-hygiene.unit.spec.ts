@@ -15,6 +15,15 @@ const walk = (dir: string): string[] =>
   })
 const files = walk(E2E)
 
+/** CORE-49 (กฎข้อ 107b): ห้ามเฉพาะ**การตั้งค่า** key timeout (ตัด comment ออกก่อน — คำว่า timeout ใน comment ไม่นับ) */
+const setsTimeout = (config: string) =>
+  /\b(timeout|actionTimeout|navigationTimeout)["']?\s*:/.test(
+    config.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+  )
+
+/** CORE-49 (กฎข้อ 107c): บรรทัดที่มี `/admin/products?handle=` แล้ว `toHaveLength(1)` ภายใน 3 บรรทัดถัดไป */
+const SEED_COUNT_NEXT_TO_FETCH = /\/admin\/products\?handle=[^\n]*\n(?:[^\n]*\n){0,2}[^\n]*toHaveLength\(1\)/
+
 test("AC-140: ทุกไฟล์ใน e2e/**/*.ts ไม่มี add-product-button click() ตามด้วย toBeEnabled() (ยกเว้น comment กฎข้อ 101a)", () => {
   const offenders = files.flatMap((name) => {
     const lines = read(name).split("\n")
@@ -54,15 +63,23 @@ test("AC-140 (กฎข้อ 104d): e2e ไม่มี admin/products?limit=1 
     "group-buy-admin-detail.spec.ts",
     "group-buy-admin-dates.spec.ts",
   ]) {
-    const src = read(name)
-    expect(src, name).toContain("/admin/products?handle=")
-    expect(src, name).toMatch(/toHaveLength\(1\)/)
+    // CORE-49 (กฎข้อ 107c): toHaveLength(1) ต้องอยู่ภายใน 3 บรรทัดถัดจากบรรทัดที่ดึง handle= — ไม่ค้นทั้งไฟล์
+    expect(read(name), name).toMatch(SEED_COUNT_NEXT_TO_FETCH)
   }
 })
 
-// affiliate-admin-programs มี waitForTimeout ของ animation อยู่ก่อน CORE-46 (AC-140 ตรวจที่ diff — ดู evidence) จึงไม่อยู่ในรายการ
-test("AC-140: playwright.config.ts ไม่ตั้ง timeout และไฟล์ที่แตะไม่มี waitForTimeout / force", () => {
-  expect(fs.readFileSync(path.join(E2E, "..", "playwright.config.ts"), "utf8")).not.toMatch(/timeout/i)
+test("AC-140/AC-144 (กฎข้อ 107b): playwright.config.ts ไม่ตั้ง timeout/expect.timeout/actionTimeout/navigationTimeout", () => {
+  expect(setsTimeout(fs.readFileSync(path.join(E2E, "..", "playwright.config.ts"), "utf8"))).toBe(false)
+})
+
+test("AC-144 (กฎข้อ 107b): regex ของ config ตรวจเฉพาะการตั้งค่า — comment ที่มีคำว่า timeout ไม่ทำให้ล้ม", () => {
+  expect(setsTimeout("// ไม่ตั้ง timeout: ใช้ default\n/* actionTimeout: 0 */\nexport default {}")).toBe(false)
+  for (const config of ["{ timeout: 1 }", "{ use: { actionTimeout: 1 } }", "{ expect: { timeout: 1 } }", "{ use: { navigationTimeout: 1 } }"]) {
+    expect(setsTimeout(config), config).toBe(true)
+  }
+})
+
+test("AC-140: ไฟล์ที่แตะไม่มี waitForTimeout / force", () => {
   for (const name of [
     path.join("support", "stripe.ts"),
     path.join("support", "server-action.ts"),
@@ -70,9 +87,19 @@ test("AC-140: playwright.config.ts ไม่ตั้ง timeout และไฟ
     "core-24-pdp-quantity.spec.ts",
     "group-buy-admin-detail.spec.ts",
     "group-buy-admin-dates.spec.ts",
+    "affiliate-admin-programs.spec.ts",
   ]) {
     const src = read(name)
     expect(src, name).not.toContain("waitForTimeout")
     expect(src, name).not.toMatch(/force:\s*true/)
   }
+})
+
+test("AC-144 (กฎข้อ 107e): core-25, core-26, fs19 รอ action ด้วย waitForServerAction(page, isAddToCartBody) ไม่อ่าน headers()[\"next-action\"] เอง", () => {
+  for (const name of ["core-25-pdp-option-reset.spec.ts", "core-26-cart-dropdown-total.spec.ts", "flash-sale-fs19.spec.ts"]) {
+    const src = read(name)
+    expect(src, name).not.toContain('headers()["next-action"]')
+    expect(src, name).toContain("waitForServerAction(page, isAddToCartBody)")
+  }
+  expect(read("flash-sale-fs19.spec.ts")).toContain("isServerAction(")
 })
