@@ -1,0 +1,25 @@
+EV-7d (spec 02 กฎข้อ 28, AC-42) ผลทดสอบ — 2026-11-09, base origin/develop 1942860d, Node 22
+
+== Red (ก่อนแก้โค้ด) ==
+vitest src/ev-7d-digital-only-totals.test.ts: 21 failed | 5 passed (26)
+  สาเหตุ: CartTotals ยังมีแถว/คำว่าค่าจัดส่ง, setAddresses ยังเชื่อ digital_only จากฟอร์มและไม่อ่าน cart,
+  redirect flow ปกติอ่าน shipping_address.country_code, placeOrder fallback ไป shipping_address,
+  ผู้เรียก placeOrder (บัตร/พร้อมเพย์/payment-return) ไม่ส่ง country จาก URL
+playwright e2e/ev-7d-digital-only-totals.spec.ts: 1 failed | 1 passed
+  AC-42 digital-only: Expected not "ค่าจัดส่ง"; Received "ยอดรวมสินค้า (ไม่รวมค่าจัดส่งและภาษี)฿467.29ค่าจัดส่ง฿0ภาษี฿32.71ยอดรวมทั้งสิ้น฿500"
+
+== Green (หลังแก้โค้ด) ==
+vitest ทั้ง storefront:
+ Test Files  92 passed (92)
+      Tests  1081 passed (1081)
+playwright (chromium, backend/storefront แยก port, manual payment):
+  ev-7d-digital-only-totals.spec.ts  2 passed (AC-42 digital-only ที่ /cart + review, cart ผสม)
+  ev-7c-digital-only-checkout.spec.ts 2 passed (AC-37 ยังผ่าน)
+  core-41-checkout-first-step.spec.ts + core-store.spec.ts 10 passed (flow ที่อยู่จัดส่งปกติ)
+playwright --project=unit: 73 passed
+pnpm lint: 0 errors (31 warnings)
+pnpm typecheck: ผ่าน
+pnpm --filter storefront build: ผ่าน
+
+== ไม่ได้รันในเครื่อง ==
+Stripe บัตร/พร้อมเพย์จริง (เครื่องนี้ใช้ key ปลอม) — ครอบด้วย static test ใน src/ev-7d-digital-only-totals.test.ts และ e2e Stripe ของ CI

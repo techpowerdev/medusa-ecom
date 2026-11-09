@@ -2,6 +2,7 @@ import { sdk } from "@lib/config"
 import { placeOrder, PlaceOrderResult } from "@lib/data/cart"
 import { setCartCookie } from "@lib/data/active-cart"
 import { getAuthHeaders } from "@lib/data/cookies"
+import { safeCountryCode } from "@lib/util/digital-checkout"
 import { HttpTypes } from "@medusajs/types"
 import { unstable_rethrow } from "next/navigation"
 import { NextRequest, NextResponse } from "next/server"
@@ -10,7 +11,8 @@ export async function GET(req: NextRequest) {
   const { origin, searchParams } = req.nextUrl
 
   const cartId = searchParams.get("cart_id")
-  const countryCode = searchParams.get("country_code")
+  // EV-7d (spec 02 กฎข้อ 28c): country จาก URL ของ return_url — ไม่ผ่าน → ให้ middleware เลือกประเทศ
+  const countryCode = safeCountryCode(searchParams.get("country_code"))
   const paymentIntent = searchParams.get("payment_intent")
   const paymentIntentClientSecret = searchParams.get(
     "payment_intent_client_secret"
@@ -77,7 +79,7 @@ export async function GET(req: NextRequest) {
   // CORE-4i-b (กฎข้อ 72): placeOrder ได้ order → redirect ไปหน้า confirmed (throw ของ Next — unstable_rethrow ส่งต่อ);
   // ไม่ได้ order (409, cart ไม่ complete, 401/403, network) → คืน { error } ไม่ throw
   // error ที่ไม่คาด (เช่นอ่าน cookie ล้ม) นับเป็น "failed" — ผลเหมือนกันคือกลับไปหน้า cart
-  const { error } = await placeOrder(cartId).catch(
+  const { error } = await placeOrder(cartId, undefined, countryCode).catch(
     (thrown: unknown): PlaceOrderResult => {
       unstable_rethrow(thrown)
       console.error(thrown)
