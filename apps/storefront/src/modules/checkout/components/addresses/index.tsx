@@ -70,7 +70,6 @@ const Addresses = ({
       {isOpen && digitalOnly ? (
         <form action={formAction}>
           <div className="pb-8">
-            <input type="hidden" name="digital_only" value="1" />
             <input type="hidden" name="checkout_country_code" value={countryCode as string} />
             <BillingAddress cart={cart} />
             <div className="grid grid-cols-2 gap-4 mt-4">
@@ -94,6 +93,7 @@ const Addresses = ({
       ) : isOpen ? (
         <form action={formAction}>
           <div className="pb-8">
+            <input type="hidden" name="checkout_country_code" value={countryCode as string} />
             <ShippingAddress
               customer={customer}
               checked={sameAsBilling}

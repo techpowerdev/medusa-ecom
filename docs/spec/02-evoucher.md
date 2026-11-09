@@ -1,6 +1,6 @@
 # 02 E-voucher — ขายต่อ voucher code ของพาร์ทเนอร์ ส่งมอบทางอีเมล
 
-สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด; รอบ 12: EV-14, EV-N2, EV-7d, EV-7e; รอบ 13 2026-11-03: EV-N3 (follow-up #201/#205 — กฎข้อ 30, AC-44), ฟอร์ม partner ตรวจ URL ฝั่ง client → ADM-5 ของ spec 08)
+สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด; รอบ 12: EV-14, EV-N2, EV-7d, EV-7e; รอบ 13 2026-11-03: EV-N3 (follow-up #201/#205 — กฎข้อ 30, AC-44), ฟอร์ม partner ตรวจ URL ฝั่ง client → ADM-5 ของ spec 08; รอบ 26 2026-11-09: EV-15 (กฎข้อ 31, AC-45 — **บล็อก release v0.1.0**), แก้ถ้อยคำกฎข้อ 28c)
 เป้าหมาย (เจ้าของระบบ): ขาย e-voucher จากพาร์ทเนอร์ (Lotus, Big C, ห้างสรรพสินค้า, คาเฟ่…) เราได้รับ
 coupon code จากพาร์ทเนอร์ล่วงหน้า และส่งมอบ 1 code ต่อ 1 หน่วยที่ขายได้ในรูปแบบดิจิทัล
 (อีเมล) การ redeem เกิดขึ้นที่พาร์ทเนอร์ เราไม่ redeem เอง
@@ -26,6 +26,7 @@ coupon code จากพาร์ทเนอร์ล่วงหน้า แ�
 | auth ของ route ใต้ `/store/customers/me*` | Medusa ใส่ `authenticate("customer", ["session","bearer"])` ให้ path นี้ (builder ยืนยันกับ source 2.22.1) | ใช้ตามเดิมกับ route ใหม่ `GET /store/customers/me/evouchers` (EV-7a) |
 | รายการบัตรกำนัลของลูกค้า | ไม่มี (module ของเรา) | custom route อ่านอย่างเดียว (EV-7a, กฎข้อ 22) |
 | shipping profile | product ที่มี shipping profile **ใดก็ตาม** (Default, Digital หรืออื่น) → line item `requires_shipping=true` เสมอ (`core-flows` 2.22.1 `cart/utils/prepare-line-item-data.js:23-29`: `hasShippingProfile \|\| someInventoryRequiresShipping`) และ `validate-shipping.js:48-57` บังคับ shipping method ตาม profile ของ line ที่ต้องจัดส่ง | product ของ voucher ต้อง**ไม่มี shipping profile เลย** (กฎข้อ 1) |
+| ล้าง shipping method ที่ไม่มี line ต้องจัดส่งแล้ว | `refreshCartShippingMethodsWorkflow` ล้างเฉพาะเมื่อ cart มี method > 1 (`core-flows` 2.22.1 `cart/workflows/refresh-cart-shipping-methods.js:107–110` `shouldCleanupOrphanProfiles`); hook `refreshCartItemsWorkflow.hooks.beforeRefreshingPaymentCollection` รันหลัง refresh method/promotion ก่อน refresh payment collection (`refresh-cart-items.js:183–186`) | **ขยาย** ด้วย hook (EV-15, กฎข้อ 31) — ไม่สร้าง route/workflow ใหม่ |
 
 ## Data model (module `evoucher`)
 ```
@@ -200,13 +201,21 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
     (`delivered_at` null) อยู่บนสุด; validator ของ route ย้ายไปไฟล์ข้าง route ตาม convention; ตัด `defaults: ["id"]` ที่ไม่มีผล
 28. (รอบ 12, EV-7d — builder/review/re-review #174 EV-7c) cart digital-only (กฎข้อ 24): (a) ยอดรวมของ cart/checkout (`cart-totals`) ไม่แสดงแถว "ค่าจัดส่ง" และคำว่า
     "ไม่รวมค่าจัดส่ง"; (b) การตัดสินว่าเป็น digital-only คำนวณจาก cart ฝั่ง server (`items[].requires_shipping`) ไม่รับ flag จาก client; (c) redirect หลัง complete ทุกวิธีชำระ
-    (manual, บัตร, พร้อมเพย์) และหลัง `setAddresses` สำเร็จ ใช้ `countryCode` จาก URL ที่ผ่าน `safeCountryCode` (ข้อ 24c) — ไม่อ่านจาก `shipping_address` หรือค่าที่ client ส่งมา
+    (manual, บัตร, พร้อมเพย์) และหลัง `setAddresses` สำเร็จ ใช้ `countryCode` ของ URL หน้าปัจจุบัน (ข้อ 24c) ซึ่งส่งเข้า action ทาง param หรือ hidden input `checkout_country_code` — ต้องผ่าน `safeCountryCode` ก่อนประกอบ path เสมอ (ค่านี้มาจาก browser จึงไม่เชื่อค่าดิบ; ถ้าไม่ผ่าน → path ที่ไม่มี country ให้ middleware เลือก) และไม่อ่านจาก `shipping_address` (แก้ถ้อยคำรอบ 26 ตาม review #320 — ไม่ต้องใช้ `Referer` เพราะมาจาก browser เหมือนกัน)
 29. (รอบ 12, EV-7e — review/qa #179, builder EV-7b) (a) หน้า `/account/vouchers` แบ่งหน้า (`limit` 20, `?page=`, ปุ่ม `vouchers-prev`/`vouchers-next`) ไม่ตัดที่ 100; (b) `voucher-card`
     แสดง `support_contact` ของ partner เมื่อมี; (c) PDP: บล็อก `evoucher-partner-block` ไม่แสดงซ้อนสองบล็อกระหว่างโหลด, อ่าน `v_id` หลัง mount, แสดงข้อมูลของ variant ที่ PDP เลือกอยู่จริง
     เท่านั้น (ไม่ได้เลือก variant ใด → ไม่แสดงบล็อก), `generateMetadata` กับหน้าใช้ชุด `fields` เดียวกัน (Next dedupe ได้ → 1 request ต่อ render); (d) ลิงก์/รูป partner ตามกฎข้อ 26
 30. (รอบ 13, EV-N3 — review #201 EV-N2, review/qa #205 ADM-2a) (a) ข้อความ error ของ resend (`steps/resend-evoucher-email.ts`) ประกอบจากสาเหตุที่**ตัดเครื่องหมายวรรคตอนท้าย**
     (`.`, `。`, ช่องว่าง) ก่อนใส่ในวงเล็บ — ไม่มี `.).` หรือ `..` ในข้อความ (ต้นเหตุอยู่ backend; admin ที่ ADM-2a #205 กันไว้แล้วคงไว้เป็นชั้นที่สอง); แยกการประกอบข้อความเป็น pure function
     เพื่อ unit test; (b) test AC-41 ใน `integration-tests/http/evoucher-resend.spec.ts` ตรวจ `ownerId` ด้วยรูปแบบจริง `^evoucher-allocation:(?!undefined$).+` แทน `expect.any(String)`
+31. (รอบ 26, EV-15 — **บล็อก release v0.1.0**; qa รอบ 25 พบ: voucher ฿500 + เสื้อเลือก Standard ฿10 แล้วลบเสื้อ → `requires_shipping=[false]`, `shipping_subtotal=9.35`, `total=510`, order 510 ขัดกฎข้อ 24a; ต้นเหตุ Medusa 2.22.1 ไม่ลบ method เมื่อเหลือ method เดียว — source อ้างในตารางข้างบน)
+    (a) ใช้ hook `refreshCartItemsWorkflow.hooks.beforeRefreshingPaymentCollection` ไฟล์ `src/workflows/hooks/refresh-cart-orphan-shipping.ts` (`createHook` มี handler ตัวเดียว — ปัจจุบันยังไม่มีผู้ใช้ hook นี้) รันภายใน lock ของ cart หลัง refresh shipping/promotion;
+    `refreshPaymentCollectionForCartWorkflow` ที่รันถัดไป query `total` ใหม่เมื่อ cart มี payment collection (`refresh-payment-collection.js:50–74`) ยอดจึงตามทัน ไม่ต้องอัปเดตเอง;
+    (b) hook ได้แค่ `{ input }` และ `input.items` เป็น undefined ตอน DELETE line → handler ต้อง Query `cart` จาก `input.cart_id` (`items.requires_shipping`, `shipping_methods.id`, `shipping_methods.shipping_option_id`). เงื่อนไขลบ: `items.length > 0` และทุก line `requires_shipping=false` (ตรรกะเดียวกับ `isDigitalOnlyCart`) **และ** `input.shipping_methods` ว่าง (refresh นี้ไม่ได้มาจาก `addShippingMethodToCartWorkflow`) → ลบ method ทุกตัวที่ `shipping_option.type.code !== "digital-delivery"` (กฎข้อ 8);
+        **ข้อจำกัด (แก้ตาม review #323)**: การข้ามด้วย `input.shipping_methods` มีผลเฉพาะ refresh ของการเพิ่ม method นั้นเอง — refresh ถัดไปของ cart voucher ล้วน (แก้จำนวน, `updateCartWorkflow`, เพิ่ม voucher, transfer) จะลบ Standard ที่ลูกค้าเพิ่มไว้ และแยกการลบ line ออกจากการแก้จำนวนด้วย input ไม่ได้ (`deleteLineItemsWorkflow` กับ `updateLineItemInCartWorkflow` ส่ง `{ cart_id, additional_data }` เหมือนกัน);
+        ผลคือ cart voucher ล้วนเหลือ method ได้เฉพาะ Digital เมื่อผ่าน refresh → เป็นการบังคับฝั่ง backend แบบลบเงียบ (ไม่ปฏิเสธ) ที่ owner ยอมรับแล้ว (Q13 = (ก) 2026-11-09, ADR-021 accepted): Standard ที่ยิง API เพิ่มบน cart voucher ล้วนจะหายเงียบใน refresh ถัดไป;
+    (c) ลบด้วย `softDeleteShippingMethods(ids)` ของ Cart module แบบเดียวกับ `removeShippingMethodFromCartStep`, compensation `restoreShippingMethods(ids)`; หา `type.code` ผ่าน Query (entity `shipping_option`); handler ไม่ throw กรณีไม่มีอะไรต้องลบ (idempotent) — cart ผสม/cart ที่ยังมี line ต้องจัดส่ง และ cart ว่าง ไม่แตะ;
+    (d) ของค้าง: ไม่มี migration/backfill — v0.1.0 ยังไม่ release, ยังไม่มี tag และ Stripe อยู่ test mode และ owner ยืนยันว่าไม่มี order ลูกค้าจริง (Q12 = (ก) 2026-11-09); cart ที่ค้างถูกแก้ตอน refresh ครั้งถัดไป
 
 ## Acceptance criteria
 - AC-1 Admin import CSV จำนวน 100 code (ซ้ำ 2 รายการ) → 98 `available`, inventory ของ variant +98,
@@ -217,7 +226,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-3 เมื่อ cart มีเฉพาะสินค้า voucher (product ไม่มี shipping profile, กฎข้อ 1) ทุก line มี `requires_shipping=false`, การ checkout ไม่ต้องกรอกที่อยู่
   และ complete cart ได้โดย `validate-shipping` ของ Medusa ไม่บังคับ shipping method (integration: complete cart ที่ไม่มี shipping method → order สำเร็จ);
   ยอดรวมมีค่าจัดส่ง ฿0; ถ้า storefront ใส่ method ต้องเป็น `type.code = "digital-delivery"` ไม่ใช่ Standard แม้ `GET /store/shipping-options?cart_id=`
-  คืน Standard มาก่อน (กฎข้อ 8, e2e) — ไม่มีการบังคับฝั่ง backend ว่า voucher ได้เฉพาะ Digital method (ถ้าต้องการต้องเขียน ADR ก่อน)
+  คืน Standard มาก่อน (กฎข้อ 8, e2e) — (แก้รอบ 26 ตาม ADR-021) backend ไม่ปฏิเสธการเพิ่ม method อื่นบน cart voucher ล้วน แต่ hook ของ EV-15 ลบ method ที่ไม่ใช่ `digital-delivery` เงียบๆ ใน refresh ถัดไป (กฎข้อ 31b, AC-45)
 - AC-25 (EV-4, กฎข้อ 16) Given order ที่ได้รับ code แล้ว When อ่านแถว `notification` ของ `evoucher.delivered` จาก DB Then `data` ไม่มีค่า plaintext ของ code/PIN
   (เทียบกับค่าที่ถอดรหัสแล้ว) และ mock provider ได้รับ code/PIN ที่ถอดแล้วถูกต้อง (integration)
 - AC-26 (EV-4, กฎข้อ 17) Given notification provider throw ตอนส่ง `evoucher.delivered` When allocation workflow ทำงาน Then code ของ order เป็น `allocated` (ไม่ใช่
@@ -341,6 +350,10 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - AC-44 (EV-N3, กฎข้อ 30) unit ของฟังก์ชันประกอบข้อความ: สาเหตุ `"Template evoucher-delivered could not be resolved."` → ข้อความมี `(Template evoucher-delivered could not be resolved).` และไม่มี `.).`/`..`; สาเหตุว่าง → ไม่มี `()`;
   สาเหตุมี `noti_…` → ไม่มี `noti_` (AC-32 เดิม); integration: test AC-41 ใน `evoucher-resend.spec.ts` ใช้ `toMatch(/^evoucher-allocation:(?!undefined$).+/)` กับ `ownerId` (grep: ไม่มี
   `ownerId: expect.any(String)`) และ AC-32, AC-33, AC-41 ยังผ่าน (unit jest + integration http)
+- AC-45 (EV-15, กฎข้อ 31) integration http ใหม่ `integration-tests/http/evoucher-orphan-shipping.spec.ts` (token ลูกค้าเจ้าของ cart; product voucher ไม่มี shipping profile ตามกฎข้อ 1): Given cart มี voucher ฿500 + สินค้าจัดส่ง + method Standard ฿10 When `DELETE /store/carts/:id/line-items/:line` ของสินค้าจัดส่ง Then response `shipping_methods` = `[]`, `shipping_total` = 0, `total` = 500 (ล้มบน develop);
+  complete cart ต่อ → order `shipping_methods` = `[]`, `total` = 500; Given cart เดียวกันที่มี payment collection ก่อนลบ Then `payment_collection.amount` = 500 และ session เดิมถูกล้าง (`GET` cart ซ้ำ); Given cart voucher ล้วนที่มี method `type.code = "digital-delivery"` When แก้จำนวน line Then ยังมี method นั้น 1 ตัว;
+  Given cart ผสมที่ method Standard When ลบเฉพาะ voucher Then method ยังอยู่ และ `total` ลดเฉพาะราคา voucher; Given cart voucher ล้วน When `POST /store/carts/:id/shipping-methods` ด้วย Standard Then 200 และ method อยู่ใน cart; Given cart voucher ล้วนที่มี Standard จากขั้นก่อนหน้า When แต่ละกรณีแยกกัน — แก้จำนวน line (`POST /store/carts/:id/line-items/:line`), เพิ่ม voucher (`POST /store/carts/:id/line-items`), แก้ cart (`POST /store/carts/:id` เช่น email) Then Standard ถูกลบ, `shipping_total` = 0 และ method `digital-delivery` (ถ้ามี) ยังอยู่ (ข้อจำกัดของกฎข้อ 31b; transfer ใช้เส้นทาง hook เดียวกัน ไม่บังคับ test แยก); Given cart ที่มีแต่สินค้าจัดส่ง When ลบ line สุดท้าย Then method ไม่ถูกแตะ;
+  unit (`refresh-cart-orphan-shipping.unit.spec.ts`): `input.shipping_methods` ไม่ว่าง → ไม่เรียก `softDeleteShippingMethods`; compensation เรียก `restoreShippingMethods` ด้วย id ที่ลบ; static: ไฟล์ใช้ `refreshCartItemsWorkflow.hooks.beforeRefreshingPaymentCollection` ไม่แก้ `node_modules` (grep); AC-3, AC-37, AC-42 ยังผ่าน
 
 ## Non-functional
 - การ allocate รันใน subscriber (worker) ไม่ใช่ใน request ของ checkout
@@ -364,6 +377,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - integration http: AC-34, AC-35 (EV-7a); e2e: AC-6, AC-36 (EV-7b), AC-3 ส่วน storefront + AC-37 (EV-7c); integration + unit: AC-38 (EV-N1); integration http: AC-39 (EV-9)
 - (รอบ 12) integration http: AC-40 (EV-14), AC-41 (EV-N2); e2e + unit Vitest: AC-42 (EV-7d), AC-43 (EV-7e)
 - (รอบ 13) unit jest + integration http: AC-44 (EV-N3)
+- (รอบ 26) unit jest + integration http: AC-45 (EV-15)
 
 ## Tasks
 | ID | Task | Depends |
@@ -392,6 +406,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-N3 | (backend เล็กมาก, รอบ 13 — review #201 EV-N2, review/qa #205 ADM-2a) ข้อความ error ของ resend ไม่มีจุดซ้อน (ตัดวรรคตอนท้ายของสาเหตุ, pure function + unit) + test AC-41 ตรวจรูปแบบ `ownerId` (กฎข้อ 30) (AC-44) — ไฟล์: `src/workflows/evoucher/steps/resend-evoucher-email.ts` (+ unit), `integration-tests/http/evoucher-resend.spec.ts` — ☑ #219 | **EV-N2 (#201) merge** (แตะสองไฟล์เดียวกัน); ∥ ADM-2a #205 (admin คงการกันจุดซ้อนไว้ — ไม่แตะ `src/admin`) |
 | EV-7d | (storefront เล็ก, รอบ 12 — #174) cart-totals ของ digital-only ไม่มีแถวค่าจัดส่ง, digital-only คำนวณฝั่ง server, redirect ทุกวิธีชำระ + `setAddresses` ผ่าน `safeCountryCode` (กฎข้อ 28) (AC-42) — ไฟล์: `modules/common/components/cart-totals`, `lib/data/cart.ts`, component ชำระเงิน | EV-7c ☑ (#174), CORE-4i (spec 01 — แตะ `lib/data/cart.ts` action เดียวกัน) |
 | EV-7e | (storefront เล็ก, รอบ 12 — #179) หน้า vouchers แบ่งหน้า + `support_contact`, บล็อก partner บน PDP (โหลด/`v_id`/metadata), ลิงก์ partner เฉพาะ http(s) (กฎข้อ 29) (AC-43) — ไฟล์: `app/[countryCode]/(main)/account/@dashboard/vouchers`, `modules/account` (voucher card), บล็อก partner บน PDP, data function — ☑ #217 | EV-7b ☑ (#179) — **เริ่มได้** (∥ EV-14; ชน PDP กับ CORE-25 ตัวที่ merge ทีหลัง rebase) |
+| EV-15 | (backend เล็ก ~100 LOC รวม test, **บล็อก release v0.1.0**, รอบ 26 — qa รอบ 25; ต้นเหตุตั้งแต่ EV-7c และ Medusa 2.22.1 ไม่ลบ shipping method เมื่อเหลือ method เดียว) ลบ shipping method ที่ค้างเมื่อ cart เหลือแต่ line `requires_shipping=false` ผ่าน hook `beforeRefreshingPaymentCollection` (กฎข้อ 31) (AC-45) — ไฟล์: `src/workflows/hooks/refresh-cart-orphan-shipping.ts` ใหม่ (+ unit), `integration-tests/http/evoucher-orphan-shipping.spec.ts` ใหม่ | EV-7c ☑ (#174) — **เริ่มได้เมื่อ PR นี้ (#323, ADR-021) merge**; ∥ ทุกตัว (ไม่ชนไฟล์กับ #320 EV-7d — คนละ layer) |
 EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-10 ∥ EV-4/EV-9 (EV-10 แตะ `void-evoucher-codes.ts`, `evoucher-pool.ts`, `utils/csv.ts`, migration script — ถ้า EV-9 แตะ
 `evoucher-pool.ts` ร่วม ตัวที่ merge ทีหลัง rebase) และต้อง merge ก่อน release ที่มี EV-7 (backfill); EV-9 หลัง EV-6 (แก้ฟอร์มของ EV-6; ถ้า EV-6 ต้องใช้ link ก่อน ให้รวม link เข้า PR นั้นแทน); EV-5b หลัง EV-4 และ EV-6; EV-11 หลัง EV-4 (∥ EV-5b; แตะไฟล์ allocation เดียวกันได้ — ตัวที่ merge ทีหลัง rebase); EV-12 เริ่มได้ทันที (∥ EV-9/EV-13 — EV-12 แตะ job/workflow void + `claimCodesForOrder` ของ service + template สรุป; ไม่แตะ admin UI);
 EV-13 หลัง EV-5b (#111) (∥ EV-12; ถ้า EV-9 แตะ widget order เดียวกัน ตัวที่ merge ทีหลัง rebase);
@@ -405,10 +420,13 @@ EV-7d หลัง CORE-4i (ซึ่งรอ PAY-3b1/PAY-3b2 ของ spec 06
 (รอบ 13 สถานะ, 2026-11-03) EV-14 ☑ #195 · EV-N2 ◐ #201 · ADM-2a ◐ #205 (spec 08); ใหม่: EV-N3 (← #201); การตรวจ URL ฝั่งฟอร์ม admin → ADM-5 (spec 08); EV-7d ยังรอ CORE-4i
 (Q-C2 ของ spec 01 ตัดสินแล้ว = (ก) owner 2026-11-03 — helper กลาง ไม่เปลี่ยนกฎข้อ 28 ของ EV-7d); EV-7e เริ่มได้ (ชน PDP กับ CORE-25 #199 ตัวที่ merge ทีหลัง rebase)
 (รอบ 25 สถานะ, 2026-11-09) ☑: EV-N2 #201 · EV-7e #217 · EV-N3 #219; CORE-4i ☑ (spec 01 — #222 + #305) → EV-7d เริ่มได้ (Depends เดิม); owner ปิด Q1–Q3 ตามค่าเริ่มต้น
+(รอบ 26, 2026-11-09) EV-15 ☐ **บล็อก release v0.1.0 — เริ่มได้เมื่อ PR นี้ merge** (Q13 = ก, ADR-021); กฎข้อ 28c แก้ถ้อยคำ (ไม่เปลี่ยนพฤติกรรม EV-7d)
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 
 ## คำถามที่ยังเปิดอยู่
+- ~~Q13~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** ลบ shipping method ที่ค้างด้วย hook `refreshCartItemsWorkflow.hooks.beforeRefreshingPaymentCollection` ยอมรับการลบเงียบตามกฎข้อ 31b และแก้ท้าย AC-3 — ADR-021 accepted (บันทึกทางเลือก ข/ค และผลข้างเคียง)
+- ~~Q12~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** ไม่มี order ลูกค้าจริง — ไม่ทำ backfill (กฎข้อ 31d)
 - ~~Q1~~ ตัดสินแล้ว (owner 2026-11-09): ยืนยันค่าเริ่มต้น — PIN เป็น **optional** (code มีหรือไม่มี PIN ก็ได้ ตาม model เดิม) ไม่มี task;
   คำถามเดิม: พาร์ทเนอร์ให้ PIN มาพร้อม code หรือให้ code อย่างเดียว? (model รองรับทั้งสองแบบ)
 - ~~Q2~~ ตัดสินแล้ว (owner 2026-11-09): ยืนยันค่าเริ่มต้น — วันหมดอายุ**ต่อ code** (คอลัมน์ใน CSV, optional) ไม่มี task;

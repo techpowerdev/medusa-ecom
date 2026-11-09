@@ -2,7 +2,8 @@
 Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
-2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18)
+2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
+รอบ 26 2026-11-09: แก้ถ้อยคำกฎ 7(b), 14, AC-18; ADM-15..17, กฎ 19–21, AC-19..21; Q8 ตัดสินแล้ว)
 Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้งหมดได้ใช้ component, hook, utility และอื่นที่ medusa ให้แล้วหรือยัง ถ้ายังให้วางแผนปรับใช้ตามที่ medusa มีให้ก่อนเป็นฐาน
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
@@ -60,7 +61,7 @@ none (ใช้ admin route เดิมทั้งหมด; `GET /admin/evouc
    และ storefront แสดงเวลาไทยตามเดิม; ใน `src/admin` ห้ามมี `datetime-local`, `ictToIso`, `isoToIct`, `timeZone:`, `toLocaleString(`, `toLocaleDateString(`, `Intl.DateTimeFormat(`
 6. เงินแสดงด้วย `getLocaleAmount(castNumber(amount), currency_code)` (รูปแบบตาม locale ของ browser เหมือนหน้า admin หลักของ Medusa); ห้าม `Intl.NumberFormat(` ใน `src/admin`
 7. ไม่เปลี่ยน `data-testid` ที่มีอยู่และ label ที่ e2e หาด้วย `getByLabel`; ไฟล์ `apps/storefront/e2e/*admin*.spec.ts` ที่มีอยู่ต้องผ่านโดยไม่แก้ locator **ยกเว้น** (a) ปุ่มต่อแถวที่ย้ายเข้า
-   `ActionMenu` (กฎ 10), (b) การกรอกช่องวันเวลาที่เป็น `DatePicker` (ใช้ `fillDatePicker`) และ (c) (owner Q7 = ก, 2026-11-05) ปุ่มสร้างที่ย้ายเข้า `action` ของ `DataTable`
+   `ActionMenu` (กฎ 10), (b) การกรอกช่องวันเวลาที่เป็น `DatePicker` (ใช้ `fillDatePicker`; assertion ค่าที่แสดงเปลี่ยนจาก `toHaveValue` เป็น `expectDatePicker` เพราะ `DatePicker` ไม่มี input ให้ตรวจ — ค่าที่คาดคงเดิม) และ `Combobox` ที่แทน `Select` (เลิกกด `Escape` หลังเปิดรายการ เพราะ `Escape` ปิดทั้ง `FocusModal` — รอบ 26 ตาม review #322) และ (c) (owner Q7 = ก, 2026-11-05) ปุ่มสร้างที่ย้ายเข้า `action` ของ `DataTable`
    ของ dashboard (กฎ 18) — testid เดิมของปุ่มนั้นหายได้ และ e2e หาด้วย `page.getByTestId("<wrapper>").getByRole("button", { name: "<Label อังกฤษ>" })` — แก้ได้เฉพาะ locator/วิธีกรอก
    ของจุดนั้น assertion อื่นคงเดิม; ข้อความที่คาดของเงินเปลี่ยนตามกฎ 6 ได้ (เช่น `THB 1,234.50` → `฿1,234.50`)
 8. ฟอร์มใช้ `Form` + `KeyboundForm` + `useForm`; validation ด้วย zod ยกเว้นฟอร์มที่มี builder + unit test เดิม (`toProgramBody`, `toCampaignBody`) ซึ่ง map error เข้า `form.setError`
@@ -221,7 +222,7 @@ Out of scope: แก้ `DataTable` ของ dashboard เอง (patch-package
     (e) ตารางที่ใช้ `DataTable` ของ dashboard ที่ merge หลัง ADM-10 (ADM-5 partners, ADM-8a affiliate) ใช้ hook นี้; ถ้า merge ก่อน ADM-10 ให้ ADM-10 เปลี่ยนตารางนั้นด้วย
 14. (ADM-11) หน้ารายละเอียดที่มี `loader` (`routes/evouchers/pools/[id]/page.tsx`, `routes/group-buying/[id]/page.tsx`) ส่ง `initialData: useLoaderData() ?? undefined` ให้ `useQuery` key เดิม
     — ไม่ import ของภายในของ dashboard, ไม่เพิ่ม cache ใน loader; loader ที่คืน `null` (group buy 404) → `initialData` เป็น `undefined` → `useQuery` ยิงเองและแสดง `gb-campaign-not-found` เหมือนเดิม;
-    ถ้าแก้แล้วเปิดตรงยังมี GET ของ resource > 2 เพราะ loader ถูกเรียกซ้ำเอง (revalidate) ให้หยุดรายงาน planner (ห้ามเขียน cache เอง);
+    ถ้าแก้แล้วจำนวน GET ของ resource เมื่อเปิดตรงเกินเกณฑ์ใน AC-15 เพราะ loader ถูกเรียกซ้ำเอง (revalidate) ให้หยุดรายงาน planner (ห้ามเขียน cache เอง);
     `routes/evouchers/page.tsx` export `handle = { breadcrumb: () => "E-vouchers" }` → breadcrumb หน้า pool = "E-vouchers › <ชื่อ pool>"
 15. (ADM-12) ช่อง `<Input type="number">` ใน `Form` ของ admin ที่ว่างได้หรือมีค่า default (flash sale `per_customer_limit`, `total_cap`; pool `face_value`, `low_stock_threshold`):
     ถ้า `validity.badInput === true` ตอน submit → error ใต้ช่อง (ข้อความเดียวกับค่าไม่ถูกของช่องนั้น เช่น `POSITIVE_INT_MESSAGE`) และไม่ส่ง request — ไม่ถือเป็น "ว่าง";
@@ -274,7 +275,7 @@ Out of scope: แก้ `DataTable` ของ dashboard เอง (patch-package
   และ `CreateCampaign` รับ `open`/`onOpenChange`; e2e `group-buy-admin-form` ผ่านโดยแก้เฉพาะ locator ของปุ่มเปิด modal (`gb-campaign-create` → `getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" })`)
   — dblclick Create = 1 POST และ (GB-15) เปิด modal สองครั้งแล้วสร้าง → `idempotency_key` ของสอง POST ต่างกัน
 - AC-18 (ADM-14, กฎ 18) e2e 1280×800: ทุกแถวในตารางกฎ 18 ที่ ADM-14 ทำ — เปิดหน้า/แท็บนั้น Then ภายใน wrapper testid มีปุ่ม role `button` ชื่อตามตาราง 1 ตัว
-  ที่ `|centerY(ปุ่ม) − centerY(heading ของตาราง)| ≤ 8` และระยะจากขอบบน wrapper ถึงขอบบน heading ≤ 24px (ไม่มีแถว toolbar ว่าง 32px — qa #293 Obs 1); กดปุ่มแล้ว modal เดิมเปิด (`affiliate-program-*`/`affiliate-payout-*` testid ในฟอร์มเดิม); static: `programs-table.tsx`, `payouts-table.tsx`
+  ที่ `|centerY(ปุ่ม) − centerY(บล็อกหัวตาราง)| ≤ 8` (บล็อกหัวตาราง = element ที่ครอบ heading และ subHeading; toolbar ของ `DataTable` จัดปุ่มกึ่งกลางกับบล็อกนี้ — รอบ 26 แบบเดียวกับ #321) และระยะจากขอบบน wrapper ถึงขอบบน heading ≤ 24px (ไม่มีแถว toolbar ว่าง 32px — qa #293 Obs 1); กดปุ่มแล้ว modal เดิมเปิด (`affiliate-program-*`/`affiliate-payout-*` testid ในฟอร์มเดิม); static: `programs-table.tsx`, `payouts-table.tsx`
   ไม่มี `affiliate-program-create`/`affiliate-payout-create`, `partners-section.tsx` (ถ้าอยู่ใน ADM-14) และไฟล์ทั้งสองไม่ import `components/common/header`;
   e2e `affiliate-admin-programs`, `affiliate-admin-payout-create`, `evoucher-admin-forms` ผ่านโดยแก้เฉพาะ locator ปุ่มเปิด modal ตามกฎ 7c
   (เช่น `getByTestId("affiliate-program-create")` → `getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" })`) — dblclick ปุ่ม submit = 1 POST ตามเดิม
@@ -326,7 +327,54 @@ Suggested fix: in the dashboard DataTable, delete `getQueryParamKey("offset", pr
 Workaround we use: an effect that deletes `<prefix>_offset` when the filter value changes.
 ```
 
+## Follow-up รอบ 26 (2026-11-09)
+ที่มา: review/qa #315 (ADM-10), #316 (ADM-8b), #321 (ADM-13), #322 (ADM-9) และ follow-up รอบ 25 — ตรวจโค้ดใน worktree `origin/develop` (path ย่อจาก `apps/backend/src/admin/`):
+- `components/group-buy/create-campaign.tsx:31–34`, `:42–55` ช่อง `type: "number"` ยังเป็น `Input` (ADM-12 ปิดเฉพาะ flash sale + pool; `NumberInput` อยู่ที่ `components/common/number-input.tsx`) — ยังจริง
+- `components/evoucher/codes-table.tsx:140` และ `partners-section.tsx:166` deps ของ `columns` มี `prompt`/`getFullDate` ที่สร้างใหม่ทุก render — blocker ของ #316 แก้ที่ `affiliate/programs-table.tsx:93–104` ด้วย component ต่อแถว + `actionsColumn` deps `[]` — ยังจริงที่สองไฟล์นี้
+- `?codes_offset=99999999` request แรกได้ 0 แถวก่อน clamp → empty state กระพริบ 1 frame (ไม่หน่วง) ถึง ~830ms (GET หน่วง 800ms; qa #315 O-1) — ยังจริง
+- `GET /admin/affiliate/affiliates` ไม่รับ `q` (`api/admin/affiliate/validators.ts:57`) → ADM-9 (#322) ดึงทีละ 200 จนครบทุกครั้งที่เปิดฟอร์ม และ query ล้มแล้วรายการว่างไม่มีข้อความ
+Out of scope: แก้ `DataTable`/`ActionMenu` ของ dashboard, patch-package, ปรับ AC-15/AC-17 (PR #311/#321 แก้เอง)
+
+### What Medusa already gives us (รอบ 26)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ค้นหาใน list ของ module เรา | `q` ของ `query.graph` (DML `.searchable()`) | **extend**: `.searchable()` ที่ `name`/`email` ของ affiliate + `q` ใน validator (ไม่มี migration) |
+| เลือกค่าแบบค้นหา | `Combobox` + `useComboboxData` (dashboard) | ใช้แทน `fetchAllAffiliates`/`Select` |
+| ช่อง number กันค่าไม่ใช่ตัวเลข | ไม่มี — `NumberInput` ของเรา (ADM-12) | ใช้ตามเดิม |
+| ปิด modal คืน focus | `FocusModal` (Radix `onCloseAutoFocus` ส่งผ่าน `Content` ของ `@medusajs/ui`) | ใช้ตามเดิม — ส่ง prop |
+
+### Business rules (รอบ 26)
+19. (ADM-15 — follow-up รอบ 25, #321) `create-campaign.tsx`: (a) ช่องที่เป็น `type: "number"` ทั้งหมดใช้ `NumberInput` (กฎ 15) และ schema ถือ `BAD_NUMBER_INPUT` เป็น error ใต้ช่อง; (b) ปิด modal แล้ว focus กลับปุ่ม "Create campaign" ในตาราง (`onCloseAutoFocus` ของ `FocusModal.Content`); (c) comment หัวไฟล์ `__tests__/group-buy-pages.unit.spec.ts` ตรงโค้ด (`heading` ของ `DataTable` ไม่ใช่ Header)
+20. (ADM-16 — #316, #315) (a) `codes-table.tsx` และ `partners-section.tsx`: ปุ่มต่อแถวเป็น component แยก (`usePrompt` อยู่ใน component นั้น) และคอลัมน์ action แยกเป็น `actionsColumn` (`useMemo` ที่ deps ไม่มี `prompt`/`getFullDate`) ให้ `cell` ของปุ่มต่อแถวคงที่ข้าม render ตามต้นแบบ `programs-table.tsx` — `columns` รวมมี `actionsColumn` และ `getFullDate` ใน deps ได้ (`[actionsColumn, getFullDate]`); (b) ระหว่าง offset ใน URL ยังไม่ถูก clamp ตารางไม่แสดง empty state (เช่น `isLoading`/`isPending` จนกว่า `raw === target`); (c) static ของ AC-14: `use-page-offset.ts` มี `replace: true`, `codes-table.tsx` มี `resetOn: status`
+21. (ADM-17 — #322, spec 05) `GET /admin/affiliate/affiliates` รับ `q` (ค้น `name`/`email`); ตัวเลือก affiliate ของฟอร์ม payout ใช้ `useComboboxData` + `q` (ไม่โหลดทุกหน้า) และแสดง error ใต้ช่องเมื่อ query ล้ม; e2e `affiliate-admin-forms`: ขั้นที่อ้างถึง collection นอกหน้าแรกตรวจว่า option ถูกเลือกจริง (หรือเปลี่ยนชื่อ step) และตรวจ response 200 — ข้อยกเว้นของ Out of scope เรื่อง backend ต้น spec (route ของเราเอง, เพิ่ม query param เดียว)
+
+### Acceptance criteria (รอบ 26)
+- AC-19 (ADM-15, กฎ 19) e2e 1280×800 (ต่อจาก `e2e/group-buy-admin-form.spec.ts`): Given modal สร้างแคมเปญ When `pressSequentially("e")` ในช่อง `Max total orders` แล้วส่ง Then error ใต้ช่องและไม่มี `POST`; When ล้างช่อง (ว่าง) แล้วส่ง Then `POST` 1 ครั้ง ช่องนี้เป็น `null`; When `dblclick` ปุ่ม "Create campaign" (wrapper `gb-campaigns-table`) Then มี dialog 1 ตัว (ไม่เปิดซ้อน, กฎ 18); When ปิด modal ด้วย Escape Then `document.activeElement` คือปุ่ม "Create campaign" (role + ชื่อใน wrapper); When เปิดใหม่ Then ช่องชื่อ `toHaveValue("")` และเป็น key ใหม่ (AC-17);
+  static: `create-campaign.tsx` ไม่มี `type: "number"`/`<Input ` ของช่องตัวเลข และ import `NumberInput`; AC-10 ผ่าน
+- AC-20 (ADM-16, กฎ 20) e2e 1280×800 (ต่อจาก `e2e/evoucher-admin-pool-page.spec.ts`): Given pool 60 code และ `page.route` หน่วง GET `/codes` 800ms When เปิด `?codes_offset=99999999` Then ตลอด 2 วินาทีแรก (MutationObserver นับ) ข้อความ "Import a CSV to add codes." ไม่ปรากฏ และจบที่ `codes_offset=50` 10 แถว; static: `codes-table.tsx`/`partners-section.tsx` มี `actionsColumn` ที่ deps ของ `useMemo` ไม่มี `prompt`/`getFullDate` และ `columns` ใช้ `actionsColumn` นั้น,
+  `usePrompt` อยู่ในไฟล์เหล่านั้นเฉพาะใน component ต่อแถว; `use-page-offset.ts` มี `replace: true`, `codes-table.tsx` มี `resetOn: status`; AC-7, AC-8, AC-14 ผ่าน
+- AC-21 (ADM-17, กฎ 21) integration http (`integration-tests/http/affiliate-admin*.spec.ts`): `GET /admin/affiliate/affiliates?q=<คำ>` คืนเฉพาะ affiliate ที่ `name`/`email` ตรง (case-insensitive); e2e: Given affiliate `active` 250 ราย When พิมพ์ชื่อรายที่ 250 ใน combobox affiliate Then มี request ที่มี `q=` และไม่มี `limit=200` วนหลายหน้า, เลือกได้ (AC-12 ยังผ่าน); Given GET รายชื่อล้ม (`page.route` → 500) Then error ใต้ช่องมีข้อความ (ไม่ใช่รายการว่างเงียบ); `affiliate-admin-forms` ขั้น :98 ตรวจ option selected (หรือชื่อ step ใหม่) และ :132 assert 200
+
+### Test plan (รอบ 26)
+| ชนิด | AC |
+|---|---|
+| unit (static) | ส่วน static ของ AC-19/20 |
+| integration | AC-21 (route) |
+| e2e admin | AC-19, AC-20, AC-21 |
+
+### Tasks (รอบ 26)
+| Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-15 | (รอบ 25 ข้อ D + #321) `create-campaign.tsx`: `NumberInput`, focus กลับปุ่มหลังปิด modal, e2e dblclick/`form.reset` (กฎ 19) | `components/group-buy/create-campaign.tsx`, `lib/group-buy-form.ts` (ถ้า schema ต้องรู้จัก sentinel), `__tests__/group-buy-pages.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-form.spec.ts` | ~80 LOC | 1280×800 | AC-19 | **ADM-13 (#321) merge** (แตะ `create-campaign.tsx`); ไม่บล็อก release | ชน ADM-14 ไม่มี (คนละไฟล์) |
+| ADM-16 | (#316, #315) deps คอลัมน์ `codes-table`/`partners-section`, empty state ไม่กระพริบตอน offset เกิน, static AC-14 (กฎ 20) | `components/evoucher/{codes-table,partners-section}.tsx`, `components/common/use-page-offset.ts` (ถ้าเพิ่มค่าคืน), `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/evoucher-admin-pool-page.spec.ts` | ~120 LOC | 1280×800 | AC-20 | none — **เริ่มได้** (ADM-5 ☑, ADM-8b ☑, ADM-10 ☑); ไม่บล็อก release | ไม่ชน ADM-15; ถ้า ADM-14 แตะ `partners-section.tsx` ตัวที่ merge ทีหลัง rebase |
+| ADM-17 | (#322) `q` ของ affiliate + `useComboboxData` + error ของรายการ + nit e2e (กฎ 21) | `apps/backend/src/modules/affiliate/models/*` (`.searchable()`), `api/admin/affiliate/validators.ts`, `components/affiliate/payout-form.tsx`, `apps/backend/integration-tests/http/affiliate-admin*.spec.ts`, `apps/storefront/e2e/affiliate-admin-forms.spec.ts` | ~120 LOC | 1280×800 | AC-21 | **ADM-9 (#322) merge** (แก้โค้ดของ PR นั้น); ไม่บล็อก release | ไม่ชน ADM-15/16 |
+ลำดับ: ADM-16 เริ่มได้ทันที; ADM-15 หลัง #321; ADM-17 หลัง #322; ไม่มี task ใดบล็อก release
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 26)
+- (qa #315, ADM-4/5) `ActionMenu` ต้อง Escape สองครั้งเมื่อกดทันทีหลังเปิด (รอ 300ms ได้ 10/10) เป็นจังหวะ animation ของ component Medusa — helper e2e `support/admin.ts:66–71` กดซ้ำจนเมนูหายอยู่แล้ว ไม่กระทบผู้ใช้จริง — ไม่เปิด task
+
 ## Open questions
+- ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task
 - ~~Q1~~ ตัดสินแล้ว (owner 2026-10-28): **A** ทำครบ ADM-1..9 ทีละ module
 - ~~Q2~~ ตัดสินแล้ว (owner 2026-10-28): อนุญาต bump `@medusajs/ui` 4.2.6 → 4.2.8 ให้ตรงกับ `@medusajs/dashboard` 2.22.1 (บันทึกใน ADR-018; ADM-1)
 - ~~เงิน~~ ตัดสินแล้ว (owner 2026-10-28): ใช้ `getLocaleAmount` รูปแบบตาม locale ของ browser เหมือนหน้า admin หลักของ Medusa; e2e/unit กำหนด locale ตายตัว (กฎ 6, 12)

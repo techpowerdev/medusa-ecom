@@ -1,4 +1,6 @@
+import { z } from "zod"
 import type { Affiliate, Payout } from "./affiliate"
+import { fieldErrorMap } from "./form-validation"
 
 // AF-6 (AC-26): payout `paid` ยกเลิกไม่ได้ (backend ตอบ 400) จึงไม่แสดงปุ่ม
 export const canCancelPayout = (payout: Pick<Payout, "status">) => payout.status === "draft"
@@ -6,45 +8,45 @@ export const canCancelPayout = (payout: Pick<Payout, "status">) => payout.status
 // AF-12c (spec 05 กฎ 37c): mark paid ได้เฉพาะ `draft`; แถว `paid` ไม่มีทั้งปุ่ม mark paid และ cancel
 export const canMarkPaid = (payout: Pick<Payout, "status">) => payout.status === "draft"
 
-const ICT_OFFSET_MS = 7 * 60 * 60 * 1000
+/** ADM-9 (spec 08 กฎ 5): ค่าเริ่มต้นของฟอร์ม = เดือนก่อนหน้าตามเวลาเครื่องของแอดมิน `[วันที่ 1 00:00, วันที่ 1 ของเดือนนี้ 00:00)` */
+export const defaultPayoutPeriod = (now: Date) => ({
+  period_from: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+  period_to: new Date(now.getFullYear(), now.getMonth(), 1),
+})
 
-const ymd = (year: number, monthIndex: number) => new Date(Date.UTC(year, monthIndex, 1)).toISOString().slice(0, 10)
+const INVALID_DATE = "Invalid date"
 
-/** ค่าเริ่มต้นของฟอร์ม = เดือนก่อนหน้าตามเวลาไทย `[วันที่ 1, วันที่ 1 ของเดือนนี้)` เป็นวันที่ (YYYY-MM-DD, ICT) */
-export const defaultPayoutPeriod = (now: Date) => {
-  const ict = new Date(now.getTime() + ICT_OFFSET_MS)
-  const year = ict.getUTCFullYear()
-  const month = ict.getUTCMonth()
-  return { period_from: ymd(year, month - 1), period_to: ymd(year, month) }
+// ADM-9 (spec 08 กฎ 8): รูปค่าของฟอร์ม — กฎตรวจอยู่ใน toPayoutBody แล้ว map error เข้า form.setError (แบบ toProgramBody)
+export const payoutFormSchema = z.object({
+  affiliate_id: z.string(),
+  period_from: z.date().nullable(),
+  period_to: z.date().nullable(),
+})
+export type PayoutForm = z.input<typeof payoutFormSchema>
+
+export const PAYOUT_PARSE_OPTIONS = {
+  error: fieldErrorMap({ period_from: INVALID_DATE, period_to: INVALID_DATE }),
 }
 
-export type PayoutForm = { affiliate_id: string; period_from: string; period_to: string }
-type PayoutBody = PayoutForm
-
-// วันที่จาก <input type="date"> = 00:00 เวลาไทยของวันนั้น ส่งเป็น ISO
-const ictDateToIso = (value: string) => {
-  const date = new Date(`${value}T00:00:00+07:00`)
-  return Number.isNaN(date.getTime()) ? null : date.toISOString()
-}
+type PayoutBody = { affiliate_id: string; period_from: Date; period_to: Date }
 
 export const toPayoutBody = (
   form: PayoutForm,
 ): { body: PayoutBody } | { error: string; field: keyof PayoutForm } => {
-  if (!form.affiliate_id) {
+  const { affiliate_id, period_from, period_to } = form
+  if (!affiliate_id) {
     return { error: "Select an affiliate", field: "affiliate_id" }
   }
-  const period_from = form.period_from ? ictDateToIso(form.period_from) : null
   if (!period_from) {
     return { error: "From is required", field: "period_from" }
   }
-  const period_to = form.period_to ? ictDateToIso(form.period_to) : null
   if (!period_to) {
     return { error: "To is required", field: "period_to" }
   }
-  if (period_to <= period_from) {
+  if (period_to.getTime() <= period_from.getTime()) {
     return { error: "To must be after From", field: "period_to" }
   }
-  return { body: { affiliate_id: form.affiliate_id, period_from, period_to } }
+  return { body: { affiliate_id, period_from, period_to } }
 }
 
 // validator ของ mark-paid เป็น `min(1).optional()` — ว่าง/ช่องว่างล้วนต้องไม่ส่ง key (ส่ง "" ได้ 400)
@@ -54,6 +56,20 @@ export const markPaidBody = (reference: string): { reference?: string } => {
 }
 
 export type AffiliateOption = Pick<Affiliate, "id" | "name" | "email" | "status">
+
+// ADM-9 (spec 08 กฎ 11): route ไม่มี `q` และ limit สูงสุด 200 — ดึงครบทุกหน้าแล้วให้ Combobox ค้นหาฝั่ง client ไม่ตัดรายการเงียบ
+export const fetchAllAffiliates = async <T>(
+  fetchPage: (offset: number, limit: number) => Promise<{ affiliates: T[]; count: number }>,
+): Promise<T[]> => {
+  const all: T[] = []
+  for (;;) {
+    const { affiliates, count } = await fetchPage(all.length, 200)
+    all.push(...affiliates)
+    if (!affiliates.length || all.length >= count) {
+      return all
+    }
+  }
+}
 
 // filter status ของ GET /admin/affiliate/affiliates รับค่าเดียว → ยิง active และ suspended แยกแล้วรวมผล (ไม่ซ้ำ id)
 export const mergeAffiliateOptions = (...lists: AffiliateOption[][]) => {

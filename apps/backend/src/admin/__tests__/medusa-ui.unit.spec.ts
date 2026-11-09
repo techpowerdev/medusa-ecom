@@ -1,4 +1,4 @@
-// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a), AC-6 (ADM-3), AC-7 (ADM-4), AC-13 (ADM-8b)
+// spec 08 static checks ของ src/admin — AC-2 (ADM-1, ADM-8a), AC-3/AC-4 (ADM-2b), AC-5 (ADM-2a), AC-6 (ADM-3), AC-7 (ADM-4), AC-12 (ADM-9), AC-13 (ADM-8b)
 import { readdirSync, readFileSync } from "fs"
 import { join } from "path"
 
@@ -70,38 +70,7 @@ describe("Header + SectionRow (spec 08 AC-5)", () => {
   )
 })
 
-// spec 08 AC-4: ไฟล์ที่ยังไม่ปรับ — ADM-2b เพิ่มข้อตรวจ pattern ต้องห้ามกับไฟล์นอกรายการนี้ และ task ที่แตะไฟล์ใด
-// ต้องลบไฟล์นั้นออกจากรายการใน PR เดียวกัน; ต้องว่างเมื่อ ADM-1..9 merge ครบ (AC-12)
-// รูปแบบ entry: path ตรง, "<dir>/**" (ทั้งโฟลเดอร์) หรือ "<prefix>*" (ชื่อขึ้นต้นด้วย)
-const AC4_EXCEPTIONS = [
-  "components/affiliate/**",
-  "routes/affiliate/**",
-  "lib/affiliate*",
-]
-
-const matchesEntry = (entry: string, file: string) =>
-  entry.endsWith("/**")
-    ? file.startsWith(entry.slice(0, -2))
-    : entry.endsWith("*")
-      ? file.startsWith(entry.slice(0, -1))
-      : file === entry
-
-const isAc4Exception = (file: string) => AC4_EXCEPTIONS.some((entry) => matchesEntry(entry, file))
-
-describe("รายการข้อยกเว้นของ AC-4 (spec 08)", () => {
-  it.each(AC4_EXCEPTIONS)("%s ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)", (entry) => {
-    expect(adminFiles.some((f) => matchesEntry(entry, f))).toBe(true)
-  })
-
-  it("จับเฉพาะไฟล์ในรายการ", () => {
-    expect(isAc4Exception("components/affiliate/list-table.tsx")).toBe(true)
-    expect(isAc4Exception("lib/affiliate-format.ts")).toBe(true)
-    expect(isAc4Exception("widgets/order-evouchers.tsx")).toBe(false)
-    expect(isAc4Exception("components/group-buy/group-members.tsx")).toBe(false)
-  })
-})
-
-// spec 08 กฎ 4–6: pattern ต้องห้ามนอกรายการข้อยกเว้น (กันกดซ้ำด้วย createSingleFlight, วันเวลาด้วย useDate/DatePicker,
+// spec 08 กฎ 4–6, AC-12: pattern ต้องห้ามในทุกไฟล์ของ src/admin (รายการข้อยกเว้นของ AC-4 ว่างแล้วตั้งแต่ ADM-9) (กันกดซ้ำด้วย createSingleFlight, วันเวลาด้วย useDate/DatePicker,
 // เงินด้วย getLocaleAmount)
 const FORBIDDEN: [string, RegExp][] = [
   ["useRef(false)", /useRef\(\s*false\s*\)/],
@@ -116,10 +85,8 @@ const FORBIDDEN: [string, RegExp][] = [
 ]
 
 describe("pattern ต้องห้ามของกฎ 4–6 (spec 08 AC-4)", () => {
-  const checked = adminFiles.filter((f) => !isAc4Exception(f))
-
-  it("ตรวจไฟล์ที่ ADM-2a/2b ปรับแล้ว", () => {
-    expect(checked).toEqual(
+  it("ตรวจไฟล์ที่ ADM-2a/2b/9 ปรับแล้ว", () => {
+    expect(adminFiles).toEqual(
       expect.arrayContaining([
         "widgets/flash-sale-options.tsx",
         "widgets/order-evouchers.tsx",
@@ -127,11 +94,16 @@ describe("pattern ต้องห้ามของกฎ 4–6 (spec 08 AC-4)",
         "routes/group-buying/[id]/page.tsx",
         "lib/evoucher.ts",
         "lib/group-buy.ts",
+        "components/affiliate/program-form.tsx",
+        "components/affiliate/payout-form.tsx",
+        "components/affiliate/payout-info-drawer.tsx",
+        "lib/affiliate-program-form.ts",
+        "lib/affiliate-payout.ts",
       ])
     )
   })
 
-  it.each(checked)("%s ไม่มี pattern ต้องห้าม", (file) => {
+  it.each(adminFiles)("%s ไม่มี pattern ต้องห้าม", (file) => {
     const src = read(file)
     const found = FORBIDDEN.filter(([, re]) => re.test(src)).map(([name]) => name)
     expect(found).toEqual([])
@@ -402,18 +374,67 @@ describe("ตาราง affiliate ใช้ของ Medusa (spec 08 AC-2, AC-
   it("หน้า affiliate ใช้ Header ของ components/common", () => {
     expect(read("routes/affiliate/page.tsx")).toMatch(/from\s*["'](?:\.{1,2}\/)+components\/common\/header["']/)
   })
+})
 
-  // program-form/payout-info-drawer เป็นของ ADM-9 — ตรวจเฉพาะไฟล์ที่ ADM-8a/8b ปรับครบแล้ว
-  it.each([
-    "components/affiliate/list-table.tsx",
-    "components/affiliate/programs-table.tsx",
-    "components/affiliate/affiliates-table.tsx",
-    "components/affiliate/payouts-table.tsx",
+describe("ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, กฎ 4, 5, 8, 11, 15, ADM-9)", () => {
+  const FORMS = [
+    "components/affiliate/program-form.tsx",
+    "components/affiliate/payout-form.tsx",
+    "components/affiliate/payout-info-drawer.tsx",
     "components/affiliate/mark-paid-prompt.tsx",
-    "routes/affiliate/page.tsx",
-  ])("%s ไม่มี pattern ต้องห้ามของกฎ 4–6", (file) => {
+  ]
+
+  it.each(FORMS)("%s ใช้ Form + KeyboundForm + useForm และกันกดซ้ำด้วย useState(createSingleFlight)", (file) => {
     const src = read(file)
-    expect(FORBIDDEN.filter(([, re]) => re.test(src)).map(([name]) => name)).toEqual([])
+    expect(importsFrom(src, "Form", "@medusajs/dashboard/components")).toBe(true)
+    expect(importsFrom(src, "KeyboundForm", "@medusajs/dashboard/components")).toBe(true)
+    expect(importsFrom(src, "useForm", "react-hook-form")).toBe(true)
+    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    expect(src).not.toMatch(/\bsetForm\b/)
+    expect(src).not.toMatch(/useState(<[^>]*>)?\(\(?\s*(\(\)\s*=>\s*)?\(?(emptyProgramForm|payoutInfoForm|programToForm)/)
+  })
+
+  it.each(["components/affiliate/program-form.tsx", "components/affiliate/payout-form.tsx"])(
+    "%s กรอกวันเวลาด้วย DatePicker granularity=minute",
+    (file) => {
+      const src = read(file)
+      expect(importsFrom(src, "DatePicker", "@medusajs/ui")).toBe(true)
+      expect(src).toMatch(/granularity="minute"/)
+      expect(src).not.toMatch(/type:?=?\s*"date"/)
+    }
+  )
+
+  it("scope เป็น Combobox + useComboboxData ไม่มี limit: 200", () => {
+    const src = read("components/affiliate/program-form.tsx")
+    expect(importsFrom(src, "Combobox", "@medusajs/dashboard/components")).toBe(true)
+    expect(importsFrom(src, "useComboboxData", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).not.toMatch(/limit:\s*200/)
+    expect(src).not.toMatch(/\bCheckbox\b/)
+  })
+
+  it("ตัวเลือก affiliate เป็น Combobox ที่ดึงครบทุกหน้า (กฎ 11)", () => {
+    const src = read("components/affiliate/payout-form.tsx")
+    expect(importsFrom(src, "Combobox", "@medusajs/dashboard/components")).toBe(true)
+    expect(src).not.toMatch(/<Select\b/)
+    expect(src).toMatch(/fetchAllAffiliates\(/)
+    expect(read("lib/affiliate.ts")).not.toMatch(/limit:\s*200/)
+  })
+
+  it("ช่อง number ของฟอร์มโปรแกรมใช้ NumberInput ของกลาง (กฎ 15)", () => {
+    const src = read("components/affiliate/program-form.tsx")
+    expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+common\/number-input["']/)
+    expect(src).not.toMatch(/type="number"/)
+  })
+
+  it("ฟอร์มแก้โปรแกรมส่งวันเวลาเฉพาะเมื่อแก้", () => {
+    expect(read("components/affiliate/program-form.tsx")).toMatch(/omitUnchangedDates\(/)
+  })
+
+  it("drawer ข้อมูลรับเงินใช้ schema zod และคง testid error", () => {
+    const src = read("components/affiliate/payout-info-drawer.tsx")
+    expect(src).toMatch(/payoutInfoSchema/)
+    expect(src).toMatch(/affiliate-payout-info-error/)
+    expect(read("lib/affiliate-account.ts")).not.toMatch(/\bparsePayoutInfo\b/)
   })
 })
 

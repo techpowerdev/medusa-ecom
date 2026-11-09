@@ -88,7 +88,8 @@ const StripePaymentButton = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const onPaymentCompleted = async () => {
-    const failure = await completeOrder(placeOrder())
+    // EV-7d (กฎข้อ 28c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
+    const failure = await completeOrder(placeOrder(cart.id, undefined, countryCode as string))
     if (failure) setErrorMessage(failure)
     setSubmitting(false)
   }

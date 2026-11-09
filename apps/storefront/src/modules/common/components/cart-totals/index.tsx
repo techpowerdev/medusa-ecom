@@ -1,5 +1,6 @@
 "use client"
 
+import { isDigitalOnlyCart } from "@lib/util/digital-checkout"
 import { convertToLocale } from "@lib/util/money"
 import React from "react"
 
@@ -12,6 +13,7 @@ type CartTotalsProps = {
     item_subtotal?: number | null
     shipping_subtotal?: number | null
     discount_subtotal?: number | null
+    items?: { requires_shipping?: boolean | null }[] | null
   }
 }
 
@@ -24,22 +26,31 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
     shipping_subtotal,
     discount_subtotal,
   } = totals
+  // EV-7d (spec 02 กฎข้อ 28a): cart digital-only ไม่มีการจัดส่ง — ไม่แสดงแถวและคำว่าค่าจัดส่ง
+  // ยกเว้นยังมีค่าจัดส่งเก็บจริง (ลบสินค้าจัดส่งออกแล้ว Medusa ไม่ลบ shipping method) — ยอดรวมต้องมีแถวอธิบาย
+  const noShippingCharge = isDigitalOnlyCart(totals) && !shipping_subtotal
 
   return (
     <div data-testid="cart-totals">
       <div className="flex flex-col gap-y-2 txt-medium text-ui-fg-subtle ">
         <div className="flex items-center justify-between">
-          <span>ยอดรวมสินค้า (ไม่รวมค่าจัดส่งและภาษี)</span>
+          <span>
+            {noShippingCharge
+              ? "ยอดรวมสินค้า (ไม่รวมภาษี)"
+              : "ยอดรวมสินค้า (ไม่รวมค่าจัดส่งและภาษี)"}
+          </span>
           <span data-testid="cart-subtotal" data-value={item_subtotal || 0}>
             {convertToLocale({ amount: item_subtotal ?? 0, currency_code })}
           </span>
         </div>
-        <div className="flex items-center justify-between">
-          <span>ค่าจัดส่ง</span>
-          <span data-testid="cart-shipping" data-value={shipping_subtotal || 0}>
-            {convertToLocale({ amount: shipping_subtotal ?? 0, currency_code })}
-          </span>
-        </div>
+        {!noShippingCharge && (
+          <div className="flex items-center justify-between">
+            <span>ค่าจัดส่ง</span>
+            <span data-testid="cart-shipping" data-value={shipping_subtotal || 0}>
+              {convertToLocale({ amount: shipping_subtotal ?? 0, currency_code })}
+            </span>
+          </div>
+        )}
         {!!discount_subtotal && (
           <div className="flex items-center justify-between">
             <span>ส่วนลด</span>

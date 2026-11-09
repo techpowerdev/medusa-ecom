@@ -2,6 +2,7 @@ import { Page, Route } from "@playwright/test"
 
 import { expect, test } from "./support/fixtures"
 import { Ctx, paidWhileQrShown } from "./support/promptpay-race"
+import { isCartIdActionBody } from "./support/server-action"
 import { HAS_STRIPE_UI, PROMPTPAY_PROVIDER } from "./support/stripe"
 import { expectThai } from "./support/thai-text"
 
@@ -28,7 +29,7 @@ async function routeCartActions(page: Page, ctx: Ctx, afterRenew: ActionHandler)
       const actionId = req.headers()["next-action"]
       if (req.method() !== "POST" || !actionId) return route.fallback()
       const body = req.postData() ?? ""
-      if (body === JSON.stringify([ctx.cartId])) {
+      if (isCartIdActionBody(body, ctx.cartId)) {
         if (state.renewed) return afterRenew(route, actionId)
         state.pollActionIds.add(actionId)
       } else if (body.includes(PROMPTPAY_PROVIDER)) {

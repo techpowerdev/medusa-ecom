@@ -20,7 +20,7 @@ import {
 import { HttpTypes } from "@medusajs/types"
 import { Button, Text } from "@modules/common/components/ui"
 import { useStripe } from "@stripe/react-stripe-js"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import ErrorMessage from "../error-message"
 import { openQr } from "./open-qr"
@@ -79,6 +79,7 @@ const PromptPayPaymentButton = (props: Props) => {
 const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props) => {
   const stripe = useStripe()
   const router = useRouter()
+  const { countryCode } = useParams()
   const [qr, setQr] = useState<Qr | null>(null)
   // ชำระแล้ว (PI succeeded/processing) แต่ webhook ยังไม่ complete cart → poll ต่อโดยไม่มี QR
   const [awaitingOrder, setAwaitingOrder] = useState(false)
@@ -128,7 +129,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     finishing.current = true
     try {
       // cart ถูก complete โดย webhook แล้ว — complete ซ้ำได้ order เดิมแล้ว redirect ไปหน้า confirmed
-      const res = await placeOrder(cart.id)
+      // EV-7d (กฎข้อ 28c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
+      const res = await placeOrder(cart.id, undefined, countryCode as string)
       // FS-15: 409 ที่ placeOrder คืนเป็นค่า → จัดการเหมือน error เดิมของทางสำรองนี้ (poll ต่อ)
       if (res && "error" in res) throw new Error(res.error)
     } catch {
@@ -137,7 +139,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     } finally {
       finishing.current = false
     }
-  }, [cart.id, takeFallbackSlot])
+  }, [cart.id, countryCode, takeFallbackSlot])
 
   // PAY-6b (spec 06 กฎข้อ 7A, AC-12b): ชำระแล้วแต่ยังไม่มี order → poll ต่อ และเรียก complete cart ของ Medusa เป็นทางสำรอง
   // (กรณี webhook ไม่มาหรือ complete จาก webhook ล้ม) complete ล้ม → finish แสดงข้อความแล้ว poll รอบถัดไปลองใหม่เมื่อ cart complete
