@@ -25,6 +25,7 @@ import {
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
+import { PageOffsetGate } from "../common/page-offset-gate"
 
 const columnHelper = createDataTableColumnHelper<Partner>()
 const PAGE_SIZE = 20
@@ -184,31 +185,33 @@ export const PartnersSection = () => {
     <Container data-testid="evoucher-partners">
       {/* spec 08 กฎ 18: `action` ของ DataTable ใส่ data-testid ไม่ได้ — e2e หาปุ่มด้วย role + ชื่อภายใน wrapper นี้ */}
       <div data-testid="evoucher-partners-table">
-        <DataTable
-          data={data?.partners ?? []}
-          columns={columns}
-          getRowId={(partner) => partner.id}
-          rowCount={data?.count ?? 0}
-          isLoading={isLoading}
-          heading="Partners"
-          headingLevel="h2"
-          action={{ label: "Create partner", onClick: openCreate }}
-          prefix={PREFIX}
-          pageSize={PAGE_SIZE}
-          enableSearch={false}
-          emptyState={{
-            empty:
-              data?.count === 0
-                ? {
-                    custom: (
-                      <div data-testid="evoucher-partners-empty">
-                        <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
-                      </div>
-                    ),
-                  }
-                : { heading: "No partners on this page" },
-          }}
-        />
+        <PageOffsetGate prefix={PREFIX}>
+          <DataTable
+            data={data?.partners ?? []}
+            columns={columns}
+            getRowId={(partner) => partner.id}
+            rowCount={data?.count ?? 0}
+            isLoading={isLoading}
+            heading="Partners"
+            headingLevel="h2"
+            action={{ label: "Create partner", onClick: openCreate }}
+            prefix={PREFIX}
+            pageSize={PAGE_SIZE}
+            enableSearch={false}
+            emptyState={{
+              empty:
+                data?.count === 0
+                  ? {
+                      custom: (
+                        <div data-testid="evoucher-partners-empty">
+                          <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
+                        </div>
+                      ),
+                    }
+                  : { heading: "No partners on this page" },
+            }}
+          />
+        </PageOffsetGate>
       </div>
 
       <FocusModal open={createOpen} onOpenChange={setCreateOpen}>

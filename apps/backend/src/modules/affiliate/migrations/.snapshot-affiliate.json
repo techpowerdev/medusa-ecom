@@ -648,6 +648,15 @@
           "expression": "CREATE UNIQUE INDEX IF NOT EXISTS \"IDX_affiliate_commission_entry_order_id_line_item_id_unique\" ON \"affiliate_commission_entry\" (\"order_id\", \"line_item_id\") WHERE status = 'pending' AND deleted_at IS NULL"
         },
         {
+          "keyName": "IDX_affiliate_commission_entry_order_id",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_affiliate_commission_entry_order_id\" ON \"affiliate_commission_entry\" (\"order_id\") WHERE deleted_at IS NULL"
+        },
+        {
           "keyName": "affiliate_commission_entry_pkey",
           "columnNames": [
             "id"

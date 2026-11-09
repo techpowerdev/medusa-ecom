@@ -93,16 +93,18 @@ logger นี้ จึงไม่มี `worker_mode` (มีเฉพาะ�
 ## Prod guards (OPS-7, ADR-010)
 backend ที่ `NODE_ENV=production` (image ตั้งให้แล้ว และ `medusa start` ตั้งเป็นค่า default) **บูตไม่ขึ้น** เมื่อ:
 - ขาด `RESEND_API_KEY` หรือ `RESEND_FROM_EMAIL` (ไม่งั้นอีเมลลูกค้าตกไปที่ provider `local` แบบเงียบ ๆ) — ยกเว้นตั้ง `ALLOW_TEST_PROVIDERS=true`
+- `EVOUCHER_ENCRYPTION_KEY` ว่างหรือไม่ใช่ 64 hex (กุญแจเข้ารหัส code/PIN ของ e-voucher, `openssl rand -hex 32`, OPS-21) — `ALLOW_TEST_PROVIDERS=true` ไม่ปิด guard นี้
 - ขาด `AFFILIATE_TOKEN_SECRET` (secret ของ cookie `aff`, spec 05 กฎ 22)
 - `STOREFRONT_URL` ไม่ใช่ URL `http(s)://` ที่ parse ได้ (ลิงก์ชำระเงินในอีเมล group buy ของ GB-4)
 
 นอก production ตัวแปรสองตัวหลังที่ว่างจะ log warning ครั้งเดียวตอนบูต (ไม่ log ต่อ request)
+production ที่ไม่ตั้ง `EVOUCHER_ADMIN_EMAIL` หรือ `OPS_ALERT_EMAIL` ยังบูตได้ แต่ log warning ตัวละครั้งตอนบูต และอีเมลแจ้งเตือนถูกข้าม (spec 02 กฎข้อ 9, ADR-015)
 seed (`pnpm --filter backend seed`) ใน production เปิดเฉพาะ `pp_stripe_stripe` และ `pp_stripe-promptpay_stripe` ให้ region Thailand
 (ไม่เปิด `pp_system_default` = manual payment ที่สั่งซื้อได้โดยไม่จ่ายเงินจริง)
 
 `ALLOW_TEST_PROVIDERS=true` ปิด guard ของ provider ทดสอบ (อีเมล + seed) — ใช้กับ CI/smoke/staging เท่านั้น **ห้ามตั้งใน prod**
 (job `storefront-e2e` และ `docker-worker-mode` ใน `ci.yml` ตั้งไว้เพราะรันโหมด production โดยไม่มี Resend key และ e2e ใช้ manual payment)
-ค่าอื่นนอกจาก `true` ไม่ปิด guard; ไม่ปิด guard ของ `AFFILIATE_TOKEN_SECRET`/`STOREFRONT_URL`
+ค่าอื่นนอกจาก `true` ไม่ปิด guard; ไม่ปิด guard ของ `AFFILIATE_TOKEN_SECRET`/`STOREFRONT_URL`/`EVOUCHER_ENCRYPTION_KEY`
 backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDERS=true` จะ log warn หนึ่งครั้งตอนบูต (`[medusa-config] ALLOW_TEST_PROVIDERS=true in production ...`, OPS-13)
 
 ## Stripe webhooks
@@ -125,7 +127,7 @@ backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDER
 
 ## Go-live checklist
 ทำครบทุกข้อก่อนเปิดร้านจริง และรันข้อ 4 ซ้ำหลังแก้ตั้งค่า payment ใน admin ทุกครั้ง (D1 ไม่กัน admin เปิด manual payment เองภายหลัง)
-1. env ของ server และ worker ครบตามหัวข้อ "Prod guards" และ `docs/spec/07-scaling-ops.md` ข้อ 9 (`TZ=UTC`, `EVOUCHER_ADMIN_EMAIL`, `OPS_ALERT_EMAIL` ฯลฯ)
+1. env ของ server และ worker ครบตามหัวข้อ "Prod guards" และ `docs/spec/07-scaling-ops.md` ข้อ 9 (`TZ=UTC`, `EVOUCHER_ENCRYPTION_KEY`, `EVOUCHER_ADMIN_EMAIL`, `OPS_ALERT_EMAIL` ฯลฯ — `docker-compose.prod.yml` ส่งให้ทั้ง migrate/server/worker)
 2. `STRIPE_API_KEY` เป็น live key และ `STRIPE_WEBHOOK_SECRET` มาจาก webhook endpoint ของ live mode (สมัคร event ตามหัวข้อ "Stripe webhooks")
 3. `ALLOW_TEST_PROVIDERS` ต้องไม่มีค่า — "ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" (`ALLOW_TEST_PROVIDERS=`) นับเหมือนกัน (ผ่าน); ค่าใด ๆ ที่ไม่ว่าง
    (รวม `false`, `0`) `check:go-live` นับว่าไม่ผ่าน
@@ -138,6 +140,7 @@ backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDER
    (region ที่ seed สร้างก่อน OPS-7 หรือ admin เปิดเองยังมี `pp_system_default` → ปิดใน admin → Settings → Regions แล้วรันใหม่)
 5. ค่าส่ง placeholder (Q-F1 ใน `docs/spec/01-core-medusa.md` ยังไม่ตัดสิน): seed ตั้งราคา shipping option "Standard" และ return option "Standard return" จาก `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`) = 10 THB placeholder — owner ตัดสินค่าจริงแล้วแก้ใน admin ก่อนเปิดร้าน (ราคาของ shipping option "Standard" และ "Standard return" แก้ที่ Settings → Locations & Shipping → location → service zone → shipping option นั้น → Edit prices; `shipping_rate` ที่หน้า storefront แสดงแก้ที่ Settings → Regions → region นั้น → Metadata — แก้ทั้งสองที่ให้ตรงกัน)
 6. บัญชี Stripe (live) เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (spec 06 Q1 — owner ยังไม่ยืนยัน 2026-11-09; ระหว่างนี้ใช้ test mode) — ตรวจใน Stripe Dashboard → Settings → Payment methods ว่า PromptPay เป็น "On" ก่อนเปิดร้าน
+7. เปิด backup รายวันของ Postgres และซ้อม restore สำเร็จตาม `docs/ops/database.md` หัวข้อ "Backup และ restore ของ Postgres" (spec 07 AC-4) — เก็บ `EVOUCHER_ENCRYPTION_KEY` ใน secret manager แยกจาก backup
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
@@ -239,6 +242,7 @@ payment มีอยู่ใน Medusa และผูกกับ draft order 
 - `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL` และ Alerts)
 - `pnpm --filter backend test:unit` — `src/lib/__tests__/json-logger.unit.spec.ts` (`worker_mode` ใน log JSON)
 - `pnpm --filter backend test:unit` — `src/__tests__/prod-guards.unit.spec.ts` (OPS-7 guards, env ใน `ci.yml`, หัวข้อ Go-live checklist)
+- `pnpm --filter backend test:unit` — `src/__tests__/backup-runbook.unit.spec.ts` (runbook backup/restore ใน `docs/ops/database.md`, OPS-5)
 - `pnpm --filter backend check:go-live` — checklist ก่อนเปิดร้าน (OPS-7)
 - `tools/ops/smoke-worker-mode.sh` — product ที่สร้างบน server ต้องถูกประมวลผลโดย subscriber บน worker
 - `tools/ops/smoke-redis-outage.sh` — worker กลับมาประมวลผล event หลัง Redis ถูก pause 30 วินาที (OPS-8)

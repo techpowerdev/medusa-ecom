@@ -545,6 +545,11 @@ describe("page offset ของกลาง (spec 08 AC-14)", () => {
     expect(src).not.toMatch(/\bsetSearchParams\b/)
   })
 
+  // hotfix: ปุ่ม Next ที่กดก่อน URL ถูกแก้หาย เพราะ DataTable parseInt ค่าดิบเอง — offset ผิดรูปต้องไม่ถึง DataTable
+  it.each(PAGE_OFFSET_USERS)("%s ครอบ DataTable ด้วย PageOffsetGate", (file) => {
+    expect(read(file)).toMatch(/<PageOffsetGate prefix=\{(PREFIX|prefix)\}>\s*(?:\{\/\*[^]*?\*\/\}\s*)?<DataTable\b/)
+  })
+
   it("codes-table.tsx ไม่มี useSearchParams (reset เมื่อ filter เปลี่ยนอยู่ใน hook — กฎ 13c)", () => {
     expect(read("components/evoucher/codes-table.tsx")).not.toMatch(/\buseSearchParams\b/)
   })

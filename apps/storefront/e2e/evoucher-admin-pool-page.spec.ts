@@ -199,4 +199,37 @@ test.describe("ADM-10: offset ใน URL ที่ผิดรูป", () => {
       await expect(page.locator("body")).not.toContainText(/NaN/)
     })
   })
+
+  // hotfix: DataTable ของ dashboard parseInt ค่าดิบเอง ("-50" → pageIndex -1 → Next ได้หน้า 0, "abc" → NaN) จนกว่า render ที่ URL ถูกแก้แล้วจะ commit
+  // ปุ่ม Next ที่กดในช่วงนั้นหาย (CI run 42582257796) — หน่วง loader ให้ช่วงนั้นกว้างพอจะกดได้ทุกครั้ง เหมือนเครือข่ายจริงหรือ render ที่ช้า
+  test("AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ", async ({ page, request, step }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const { variantId } = await createVoucher(request, admin, 60)
+    const { pools } = await call(request, admin, `/admin/evoucher/pools?variant_id=${variantId}&limit=1&offset=0`)
+    const poolId: string = pools[0].id
+    const poolUrl = `${BACKEND_URL}/app/evouchers/pools/${poolId}`
+
+    const codes = page.getByTestId("evoucher-codes")
+    const rows = codes.locator("tbody tr")
+
+    await loginAdmin(page)
+    await page.route(
+      (url) => url.pathname === `/admin/evoucher/pools/${poolId}`,
+      async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 800))
+        await route.continue()
+      }
+    )
+
+    for (const raw of ["-50", "abc"]) {
+      await step(`?codes_offset=${raw} → ตารางแสดงแล้วกด Next → codes_offset=50 + 10 แถว`, async () => {
+        await page.goto(`${poolUrl}?codes_offset=${raw}`)
+        await expect(rows).toHaveCount(50)
+        await codes.getByRole("button", { name: "Next" }).click()
+        await expect(page).toHaveURL(/[?&]codes_offset=50(&|$)/)
+        await expect(rows).toHaveCount(10)
+      })
+    }
+  })
 })

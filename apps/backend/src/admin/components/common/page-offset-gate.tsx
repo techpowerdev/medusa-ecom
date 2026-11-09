@@ -1,0 +1,14 @@
+import { ReactNode } from "react"
+import { useSearchParams } from "react-router-dom"
+import { isMalformedOffset } from "../../lib/page-offset"
+
+/**
+ * ครอบ `DataTable` ของ dashboard ที่ใช้ `usePageOffset`: ไม่ render จนกว่า `<prefix>_offset` ใน URL จะไม่ผิดรูป
+ * DataTable 2.22.1 parseInt ค่าดิบเอง และ URL แก้ด้วย navigation ที่ต้องรอ loader ก่อน commit (แล้ว render ใน startTransition) ระหว่างนั้น:
+ * "-50" → pageIndex -1 → Next ได้หน้า 0 จึงลบ offset แทนที่จะไปหน้า 2 (ปุ่มที่กดหาย); "abc" → NaN แก้แค่การแสดง "NaN of N pages" (Next ถูก disable)
+ * usePageOffset (ใน parent) ยังทำงานระหว่างซ่อนตาราง
+ */
+export const PageOffsetGate = ({ prefix, children }: { prefix: string; children: ReactNode }) => {
+  const [searchParams] = useSearchParams()
+  return isMalformedOffset(searchParams.get(`${prefix}_offset`)) ? null : <>{children}</>
+}
