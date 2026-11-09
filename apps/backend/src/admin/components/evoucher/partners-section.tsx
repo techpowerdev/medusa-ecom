@@ -24,7 +24,6 @@ import {
 } from "../../lib/evoucher-partner-form"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
-import { Header } from "../common/header"
 import { usePageOffset } from "../common/use-page-offset"
 import { PageOffsetGate } from "../common/page-offset-gate"
 
@@ -108,7 +107,9 @@ export const PartnersSection = () => {
     onError,
   })
 
+  // กดซ้ำขณะ modal เปิดอยู่ไม่ล้างค่าที่กรอกไว้ (spec 08 กฎ 18)
   const openCreate = () => {
+    if (createOpen) return
     form.reset(toPartnerFormValues())
     setCreateOpen(true)
   }
@@ -182,17 +183,8 @@ export const PartnersSection = () => {
 
   return (
     <Container data-testid="evoucher-partners">
-      {!isLoading && data?.count === 0 ? (
-        <>
-          <Header
-            title="Partners"
-            actions={[{ type: "button", props: { variant: "secondary", onClick: openCreate, children: "Create partner" } }]}
-          />
-          <div data-testid="evoucher-partners-empty">
-            <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
-          </div>
-        </>
-      ) : (
+      {/* spec 08 กฎ 18: `action` ของ DataTable ใส่ data-testid ไม่ได้ — e2e หาปุ่มด้วย role + ชื่อภายใน wrapper นี้ */}
+      <div data-testid="evoucher-partners-table">
         <PageOffsetGate prefix={PREFIX}>
           <DataTable
             data={data?.partners ?? []}
@@ -206,10 +198,21 @@ export const PartnersSection = () => {
             prefix={PREFIX}
             pageSize={PAGE_SIZE}
             enableSearch={false}
-            emptyState={{ empty: { heading: "No partners on this page" } }}
+            emptyState={{
+              empty:
+                data?.count === 0
+                  ? {
+                      custom: (
+                        <div data-testid="evoucher-partners-empty">
+                          <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
+                        </div>
+                      ),
+                    }
+                  : { heading: "No partners on this page" },
+            }}
           />
         </PageOffsetGate>
-      )}
+      </div>
 
       <FocusModal open={createOpen} onOpenChange={setCreateOpen}>
         <FocusModal.Content>

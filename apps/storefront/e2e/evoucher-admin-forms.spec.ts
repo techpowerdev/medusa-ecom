@@ -63,7 +63,7 @@ test("AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง p
   await step("เปิดฟอร์ม Create partner → ทุก input หาได้ด้วย label", async () => {
     await loginAdmin(page)
     await page.goto(`${BACKEND_URL}/app/evouchers`)
-    await page.getByRole("button", { name: "Create partner" }).click()
+    await page.getByTestId("evoucher-partners-table").getByRole("button", { name: "Create partner" }).click()
     for (const label of PARTNER_LABELS) {
       await expect(page.getByLabel(label, { exact: true })).toBeVisible()
     }

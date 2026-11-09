@@ -612,3 +612,49 @@ describe("หน้ารายการแคมเปญใช้หัวต�
     expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(!open\) return\s*setIdempotencyKey\(newIdempotencyKey\(\)\)\s*form\.reset\(emptyCampaignForm\(\)\)/)
   })
 })
+
+// ADM-14 (spec 08 AC-18, กฎ 18): ปุ่มสร้างของตารางที่เหลืออยู่ใน `action` ของ DataTable ภายใน wrapper testid (ไม่มี Header แยก)
+describe("ปุ่มสร้างของ Partners/Programs/Payouts อยู่ใน action ของ DataTable (spec 08 AC-18, กฎ 18, ADM-14)", () => {
+  const PARTNERS = "components/evoucher/partners-section.tsx"
+  const PROGRAMS = "components/affiliate/programs-table.tsx"
+  const PAYOUTS = "components/affiliate/payouts-table.tsx"
+  const CASES: [string, string, string, string][] = [
+    [PARTNERS, "evoucher-partners-table", "Partners", "Create partner"],
+    [PROGRAMS, "affiliate-programs-table", "Programs", "Create program"],
+    [PAYOUTS, "affiliate-payouts-table", "Payouts", "Create payout"],
+  ]
+
+  it.each(CASES)("%s ไม่ใช้ Header แยก — heading/action อยู่ที่ตารางภายใน wrapper %s", (file, wrapper, heading, label) => {
+    const src = read(file)
+    expect(src).not.toMatch(/common\/header/)
+    expect(src).not.toMatch(/<Header\b/)
+    const inside = src.slice(src.indexOf(`data-testid="${wrapper}"`))
+    expect(src).toContain(`data-testid="${wrapper}"`)
+    expect(inside).toMatch(/<(DataTable|AffiliateListTable)\b/)
+    expect(inside).toContain(`heading="${heading}"`)
+    expect(inside).toMatch(new RegExp(`action=\\{\\{\\s*label: "${label}",\\s*onClick:`))
+  })
+
+  it.each([
+    [PROGRAMS, "affiliate-program-create"],
+    [PAYOUTS, "affiliate-payout-create"],
+  ])("%s ไม่มี testid เดิม %s", (file, testid) => {
+    expect(read(file)).not.toContain(testid)
+  })
+
+  it("AffiliateListTable ส่ง action ต่อให้ DataTable", () => {
+    expect(read("components/affiliate/list-table.tsx")).toMatch(/\baction=\{action\}/)
+  })
+
+  it("Partners ไม่มี partner แสดง NoRecords ใน emptyState ของ DataTable ตัวเดียว (toolbar + ปุ่มสร้างยังอยู่)", () => {
+    const src = read(PARTNERS)
+    expect(src.match(/<DataTable\b/g)).toHaveLength(1)
+    expect(src).toMatch(/custom:\s*\(\s*<div data-testid="evoucher-partners-empty">/)
+  })
+
+  it("กดปุ่มสร้างซ้ำขณะ modal เปิดอยู่ไม่เปิดใหม่/ไม่ล้างฟอร์ม (กฎ 18)", () => {
+    expect(read(PROGRAMS)).toMatch(/setModal\(\(\w+\) => \w+ \?\? \{ program: null,/)
+    expect(read(PAYOUTS)).toMatch(/setCreating\(\(\w+\) => \w+ \?\? Date\.now\(\)\)/)
+    expect(read(PARTNERS)).toMatch(/const openCreate = \(\) => \{\s*if \(createOpen\) return/)
+  })
+})

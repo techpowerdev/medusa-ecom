@@ -70,7 +70,7 @@ test("AC-12: ปิด all โดยไม่เลือก scope → error ไ
 
     await step("ปิด all โดยไม่เลือก collection/category → error ใต้ช่อง scope และไม่มี POST", async () => {
       await openAffiliatePage(page)
-      await page.getByTestId("affiliate-program-create").click()
+      await page.getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" }).click()
       await field("name").fill(`ADM-9 ${tag}`)
       await fillDatePicker(field("starts_at"), "2026-12-01T00:00")
       await fillDatePicker(field("ends_at"), "2026-12-31T23:30")
@@ -172,7 +172,7 @@ test("AC-12: ฟอร์มสร้าง payout ค่าเริ่มต�
     await step("ค่าเริ่มต้นของช่วงเป็นเดือนก่อน 00:00 ตามเวลาเครื่อง", async () => {
       await openAffiliatePage(page)
       await page.getByTestId("affiliate-admin-tab-payouts").click()
-      await page.getByTestId("affiliate-payout-create").click()
+      await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
       await expectDatePicker(page.getByTestId("affiliate-payout-field-period_from"), local(m - 1))
       await expectDatePicker(page.getByTestId("affiliate-payout-field-period_to"), local(m))
     })
