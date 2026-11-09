@@ -58,7 +58,9 @@ async function createExpiredPromotion(
     },
   })
   if (!promotion.ok()) {
-    await request.delete(`${BACKEND_URL}/admin/campaigns/${campaignId}`, { headers: admin })
+    // CORE-4j (กฎข้อ 73d): cleanup ที่ล้มเงียบทิ้ง campaign ค้าง — ตรวจผลของการลบด้วย
+    const cleanup = await request.delete(`${BACKEND_URL}/admin/campaigns/${campaignId}`, { headers: admin })
+    expect(cleanup.ok(), `ลบ campaign หลังสร้าง promotion ไม่สำเร็จ: ${cleanup.status()}`).toBe(true)
   }
   expect(promotion.ok(), `create promotion: ${await promotion.text()}`).toBe(true)
   return { code, campaignId, promotionId: (await promotion.json()).promotion.id }

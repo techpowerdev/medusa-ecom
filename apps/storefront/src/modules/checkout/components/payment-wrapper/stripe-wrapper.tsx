@@ -4,6 +4,7 @@ import { Stripe, StripeElementsOptions } from "@stripe/stripe-js"
 import { Elements } from "@stripe/react-stripe-js"
 import { HttpTypes } from "@medusajs/types"
 import { createContext } from "react"
+import { isStripeLike } from "@lib/constants"
 
 type StripeWrapperProps = {
   paymentSession: HttpTypes.StorePaymentSession
@@ -41,7 +42,18 @@ const StripeWrapper: React.FC<StripeWrapperProps> = ({
 
   return (
     <StripeContext.Provider value={true}>
-      <Elements options={options} stripe={stripePromise}>
+      {/* CORE-19f (กฎข้อ 75 c): Elements ไม่รับ clientSecret ใหม่หลัง mount — session บัตรใหม่ (สลับ บัตร → พร้อมเพย์ → บัตร)
+          ต้อง mount ใหม่ ไม่งั้น Payment Element ผูกกับ PaymentIntent ตัวเก่า; พร้อมเพย์อ่าน secret จาก cart เอง จึงคง key
+          ตาม provider ไว้ ไม่ให้ state QR หมดอายุ/คืนเงินหายตอน PaymentIntent ใหม่ */}
+      <Elements
+        key={
+          isStripeLike(paymentSession.provider_id)
+            ? (paymentSession.data.client_secret as string)
+            : paymentSession.provider_id
+        }
+        options={options}
+        stripe={stripePromise}
+      >
         {children}
       </Elements>
     </StripeContext.Provider>
