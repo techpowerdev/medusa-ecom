@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 
 import { Page } from "@playwright/test"
 
+import { DESKTOP_BASELINE } from "./support/cart-layout"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import {
@@ -26,12 +27,6 @@ const REGRESSION = [
   { width: 1024, height: 768 },
   { width: 1280, height: 800 },
 ]
-// ค่าเดียวกับ DESKTOP_BASELINE ของ core-42-cart-voucher-layout.spec.ts:84–88 (กฎข้อ 100a) — คัดลอกเพราะ import ไฟล์ spec จะลงทะเบียน test ของไฟล์นั้นซ้ำ
-const DESKTOP_BASELINE = {
-  header: ["0px/16px", "16px/16px", "16px/16px", "16px/16px", "16px/0px"],
-  row: ["0px/16px", "16px/16px", "16px/16px", "16px/16px", "16px/0px"],
-  quantityBoxWidth: 112,
-}
 // ชื่อคงที่ 85–95 ตัว (ตรวจใน test) — แบบที่ qa #287 O-1 ใช้
 const TITLES = [
   "เสื้อยืดคอกลม Premium Organic Cotton Oversize Unisex รุ่นพิเศษ Limited Edition สีกรมท่าเข้มมาก",

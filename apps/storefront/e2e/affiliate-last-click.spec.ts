@@ -29,8 +29,8 @@ test("AF-3b: click Ann → add to cart → click Bob → checkout ทันท�
 }) => {
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
-  const ann = await createActiveAffiliate(request, admin, "e2e-af3b-ann")
-  const bob = await createActiveAffiliate(request, admin, "e2e-af3b-bob")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-af3b-ann" })
+  const bob = await createActiveAffiliate(request, admin, { prefix: "e2e-af3b-bob" })
   const customer = await createCustomer(request, pk)
   const { variantId } = await variantOf(request, pk, PRODUCT)
   const affCookie = async () => (await context.cookies()).find((c) => c.name === "aff")?.value

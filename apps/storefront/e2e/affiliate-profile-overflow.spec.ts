@@ -36,7 +36,7 @@ test.describe("AC-50 ที่ 375×812", () => {
   }) => {
     const email = longEmail()
     expect(email.split("@")[0].length).toBeGreaterThanOrEqual(40)
-    const ann = await createActiveAffiliate(request, await adminHeaders(request), "e2e-af18", email)
+    const ann = await createActiveAffiliate(request, await adminHeaders(request), { prefix: "e2e-af18", email })
 
     await step("เปิด /th/affiliate/profile → scrollWidth ≤ 375 และขอบขวาของอีเมล ≤ 375", async () => {
       await openProfile(page, ann)
@@ -55,7 +55,7 @@ test("AC-50: ที่ 1280 ป้ายอีเมล (<dt>) กับค่�
   step,
 }) => {
   const email = longEmail()
-  const ann = await createActiveAffiliate(request, await adminHeaders(request), "e2e-af18-wide", email)
+  const ann = await createActiveAffiliate(request, await adminHeaders(request), { prefix: "e2e-af18-wide", email })
 
   await step("top ของ <dt> ก่อนหน้า กับ affiliate-profile-email ต่างกัน ≤ 2px", async () => {
     await openProfile(page, ann)

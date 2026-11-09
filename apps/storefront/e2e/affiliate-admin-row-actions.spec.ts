@@ -121,7 +121,7 @@ test("AC-13: Cancel ของ payout กำลังส่ง → เปิด�
 }) => {
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const ann = await createActiveAffiliate(request, admin, "e2e-adm8b-ann")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-adm8b-ann" })
   const { program } = await post(request, admin, "/admin/affiliate/programs", {
     name: "E2E ADM-8b",
     starts_at: new Date(Date.now() - 30 * DAY).toISOString(),

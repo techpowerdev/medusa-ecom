@@ -35,7 +35,7 @@ test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, 
   // โหลด admin bundle ครั้งแรกหลัง start (cold)
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const ann = await createActiveAffiliate(request, admin, "e2e-af6-ann")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-af6-ann" })
   const { program } = await post(request, admin, "/admin/affiliate/programs", {
     name: "E2E AF-6",
     starts_at: new Date(Date.now() - 30 * DAY).toISOString(),

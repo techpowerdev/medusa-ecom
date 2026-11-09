@@ -7,6 +7,7 @@ import {
   placeCapturedOrder,
   waitDelivered,
 } from "./support/evoucher"
+import { DESKTOP_BASELINE } from "./support/cart-layout"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import {
@@ -79,12 +80,6 @@ async function desktopLayout(page: Page) {
       quantityBoxWidth: quantity.getBoundingClientRect().width,
     }
   })
-}
-
-const DESKTOP_BASELINE = {
-  header: ["0px/16px", "16px/16px", "16px/16px", "16px/16px", "16px/0px"],
-  row: ["0px/16px", "16px/16px", "16px/16px", "16px/16px", "16px/0px"],
-  quantityBoxWidth: 112,
 }
 
 test("AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม", async ({
