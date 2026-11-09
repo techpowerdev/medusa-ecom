@@ -14,7 +14,7 @@ type Fixtures = {
   step: (title: string, body: () => Promise<void>) => Promise<void>
   /**
    * screenshot สำคัญ: แนบใน report เสมอ และเขียนลง docs/evidence/<feature>/<task-id>/<name>.png
-   * เมื่อรันด้วย E2E_SAVE_EVIDENCE=1 และ spec ตั้ง evidenceTarget (ตรวจงบ ≤5 รูป, ≤300KB)
+   * เมื่อรันด้วย E2E_SAVE_EVIDENCE=1 และ spec ตั้ง evidenceTarget (ตรวจงบ ≤5 รูป, ≤300KB; โฟลเดอร์ครบ 5 รูป → warn ไม่เขียน)
    */
   evidence: (name: string) => Promise<void>
 }
@@ -58,6 +58,7 @@ export const test = base.extend<Fixtures & Options>({
         repoRoot: REPO_ROOT,
         name,
         png,
+        specFile: testInfo.file,
       })
     })
   },
