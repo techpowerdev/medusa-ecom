@@ -77,7 +77,7 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
     await field("commission_value").fill("8")
     await save.click()
     await expect(page.getByTestId("affiliate-program-error-ends_at")).toBeVisible()
-    await page.waitForTimeout(300)
+    // CORE-49 (กฎข้อ 107d): ไม่รอเวลา — POST ที่หลุดมาช้าจะล้มที่ toEqual([`POST …`]) ของขั้นถัดไป (คาด POST เดียว)
     expect(requests).toEqual([])
   })
 
@@ -123,11 +123,13 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
     const dialog = page.getByRole("alertdialog")
     await dialog.getByRole("button", { name: "Keep program" }).click()
     await expect(dialog).toBeHidden()
-    await page.waitForTimeout(300)
+    // CORE-49 (กฎข้อ 107d): ไม่รอเวลา — DELETE ที่หลุดมาช้าจะล้มที่ toHaveLength(1) หลังยืนยันลบ (คาด DELETE เดียว)
     expect(requests.filter((r) => r.startsWith("DELETE"))).toHaveLength(0)
 
     await (await rowAction(created, "affiliate-program-row-actions", "Delete")).click()
-    await page.waitForTimeout(300) // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence
+    // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence (CORE-49 กฎข้อ 107d)
+    await expect(dialog).toBeVisible()
+    await dialog.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
     await evidence("04-delete-prompt")
     await dialog.getByRole("button", { name: "Delete program" }).click()
     await expect(created).toHaveCount(0)
