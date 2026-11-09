@@ -88,6 +88,15 @@ git diff --name-only: เฉพาะ 4 ไฟล์ตามแถว task ไ�
 npx tsc --noEmit: exit=0
 npx eslint .: exit=0 (30 problems (0 errors, 30 warnings); warning เป็นของเดิม ไม่อยู่ในไฟล์ของ task)
 
-== ไม่ได้รันในเครื่อง ==
-AC-115 ส่วน e2e: E2E_SAVE_EVIDENCE=1 กับ core-22-account-fixes.spec.ts และ affiliate-portal-pages.spec.ts (ต้องมี backend + storefront)
-แทนด้วย unit (a)-(e) บน repoRoot ชั่วคราว; e2e ชุดเต็มให้ CI
+== AC-115 ส่วน e2e (QA, head 4723e544, backend + storefront แบบ prod build, Stripe key ปลอม) ==
+ทุกคำสั่งใช้ --project=chromium --workers=1
+E2E_SAVE_EVIDENCE=1 core-22-account-fixes.spec.ts: exit=0, 2 passed, warn "ไม่บันทึก ... มี PNG ครบ 5 รูปแล้ว" 2 บรรทัด
+E2E_SAVE_EVIDENCE=1 affiliate-portal-pages.spec.ts: exit=0, 2 passed, warn "ไม่บันทึก ... มี PNG ครบ 5 รูปแล้ว" 5 บรรทัด
+evidence-guard.spec.ts: exit=0, 1 passed, เห็น warn เมื่อไม่มี evidenceTarget
+negative control (evidence-save.ts จาก 6b27eb30 + core-22 ด้วย E2E_SAVE_EVIDENCE=1): exit=1, 2 failed "evidence เกินงบ" ตามคาด
+git status --porcelain docs/evidence: ว่าง
+sha256 ทุกไฟล์ใต้ docs/evidence (984 ไฟล์) ก่อน/หลังรัน: เท่ากัน
+
+== ไม่ได้รัน ==
+e2e ทั้งชุดด้วย E2E_SAVE_EVIDENCE=1: docs/evidence/README.md ห้าม; ครอบด้วย unit (a)-(e) บน repoRoot ชั่วคราว
+CI รัน e2e ชุดเต็มโดยไม่เปิด E2E_SAVE_EVIDENCE จึงไม่ถึง guard ใหม่
