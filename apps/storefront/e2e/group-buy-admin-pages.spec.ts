@@ -120,3 +120,43 @@ test("AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), ค�
     }
   })
 })
+
+// ADM-10 (spec 08 AC-14, กฎ 13): gb_offset ผ่าน usePageOffset — ค่าว่างถูกลบ, ปัดลงเป็นต้นหน้า, เกินจำนวนแถว → หน้าสุดท้าย
+test.describe("ADM-10: gb_offset ใน URL ที่ผิดรูป", () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test("AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp", async ({ page, request, step }) => {
+    test.setTimeout(180_000)
+    const admin = await adminHeaders(request)
+    const productId = await tshirtId(request, admin)
+    const token = `ADM-10 ${Date.now()}`
+    const { count } = await listCampaigns(request, admin, 0)
+    for (let i = count; i <= PAGE_SIZE; i++) {
+      await createCampaign(request, admin, productId, `${token} fill ${i}`)
+    }
+    const rows = page.getByTestId("gb-campaigns-table").locator("tbody tr")
+
+    await step("?gb_offset= → ไม่มี gb_offset", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/group-buying?gb_offset=`)
+      await page.waitForURL((url) => !url.searchParams.has("gb_offset"))
+      await expect(rows).toHaveCount(PAGE_SIZE)
+    })
+
+    await step("?gb_offset=25 → gb_offset=20 (ต้นหน้า 2)", async () => {
+      await page.goto(`${BACKEND_URL}/app/group-buying?gb_offset=25`)
+      await page.waitForURL((url) => url.searchParams.get("gb_offset") === String(PAGE_SIZE))
+      const second = await listCampaigns(request, admin, PAGE_SIZE)
+      await expect(rows.filter({ hasText: second.campaigns[0].name })).toHaveCount(1)
+    })
+
+    await step("?gb_offset=99999 → gb_offset = ต้นหน้าสุดท้ายตาม count ขณะนั้น", async () => {
+      const { count: total } = await listCampaigns(request, admin, 0)
+      const last = Math.floor((total - 1) / PAGE_SIZE) * PAGE_SIZE
+      await page.goto(`${BACKEND_URL}/app/group-buying?gb_offset=99999`)
+      await page.waitForURL((url) => url.searchParams.get("gb_offset") === String(last))
+      await expect(rows.first()).toBeVisible()
+      await expect(page.getByTestId("gb-campaigns-table")).not.toContainText("No group-buy campaigns yet")
+    })
+  })
+})

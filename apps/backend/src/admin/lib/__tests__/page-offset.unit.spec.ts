@@ -1,0 +1,35 @@
+import { clampOffset, pageOffset } from "../page-offset"
+
+// ADM-10 (spec 08 กฎ 13a, AC-14): `<prefix>_offset` ใน URL ผู้ใช้แก้เองได้ — ค่าที่ไม่ใช่จำนวนเต็มบวกใช้หน้าแรก
+// และค่าอื่นปัดลงเป็นต้นหน้า (DataTable ของ dashboard คำนวณหน้าจาก offset / pageSize)
+describe("pageOffset", () => {
+  it.each([undefined, "", "abc", "-50", "NaN", "Infinity", "12.5", "0"])("%p → 0", (raw) => {
+    expect(pageOffset(raw, 50)).toBe(0)
+  })
+
+  it.each([
+    ["75", 50, 50],
+    ["50", 50, 50],
+    ["25", 20, 20],
+    ["1e1", 20, 0],
+    ["40", 20, 40],
+    ["99999999", 50, 99999950],
+  ] as const)("pageOffset(%p, %p) = %p", (raw, pageSize, expected) => {
+    expect(pageOffset(raw, pageSize)).toBe(expected)
+  })
+})
+
+// ADM-10 (กฎ 13a): offset เกินจำนวนแถว → ต้นหน้าสุดท้าย (ไม่แสดงตารางว่างทั้งที่มีข้อมูล)
+describe("clampOffset", () => {
+  it.each([
+    [99999950, 60, 50, 50],
+    [50, 60, 50, 50],
+    [100, 0, 50, 0],
+    [0, 60, 50, 0],
+    [60, 60, 50, 50],
+    [100, 100, 50, 50],
+    [40, 41, 20, 40],
+  ] as const)("clampOffset(%p, %p, %p) = %p", (offset, count, pageSize, expected) => {
+    expect(clampOffset(offset, count, pageSize)).toBe(expected)
+  })
+})
