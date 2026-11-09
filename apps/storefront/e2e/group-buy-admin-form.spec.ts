@@ -37,7 +37,7 @@ const ictLocal = (hours: number) =>
   new Date(Date.now() + hours * 3_600_000 + 7 * 3_600_000).toISOString().slice(0, 16)
 
 /**
- * toast ของ Medusa (sonner) อยู่มุมขวาบนทับปุ่ม gb-campaign-create / gb-campaign-create-submit และหยุดนับเวลาเมื่อเมาส์ชี้อยู่
+ * toast ของ Medusa (sonner) อยู่มุมขวาบนทับปุ่ม Create campaign / gb-campaign-create-submit และหยุดนับเวลาเมื่อเมาส์ชี้อยู่
  * → ย้ายเมาส์ออกแล้วรอ toast หมดก่อนคลิกปุ่มมุมขวาบน (ไม่ใช้ force)
  */
 async function waitToastsGone(page: Page) {
@@ -47,7 +47,8 @@ async function waitToastsGone(page: Page) {
 
 async function clickCreateCampaign(page: Page) {
   await waitToastsGone(page)
-  await page.getByTestId("gb-campaign-create").click()
+  // spec 08 กฎ 7c, 18: ปุ่มอยู่ใน action ของ DataTable (ไม่รับ data-testid) — หาด้วย role + ชื่อภายใน wrapper
+  await page.getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" }).click()
 }
 
 async function openCreateForm(page: Page) {
@@ -391,5 +392,36 @@ test("AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เ�
     expect(posts).toHaveLength(1)
     expect(posts[0].starts_at).toBe("2026-12-01T03:00:00.000Z")
     expect(posts[0].ends_at).toBe("2026-12-31T16:30:00.000Z")
+  })
+})
+
+// ADM-13 (spec 08 AC-17, กฎ 16, 18): หัวตาราง + ปุ่มสร้างอยู่ใน toolbar ของ DataTable แถวเดียวกัน (ไม่มีแถว toolbar ว่าง)
+test.describe("ADM-13: หัวตารางรายการแคมเปญ", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-13" } })
+
+  test("AC-17: heading และปุ่ม Create campaign อยู่แถวเดียวกันใน gb-campaigns-table และยังเห็นคำเตือน GBT-", async ({
+    page,
+    step,
+    evidence,
+  }) => {
+    const table = page.getByTestId("gb-campaigns-table")
+    const heading = table.getByRole("heading", { name: "Group-buy campaigns" })
+    const create = table.getByRole("button", { name: "Create campaign" })
+
+    await step("เปิด /app/group-buying → ใน wrapper มี heading 1 ตัว ปุ่ม 1 ตัว และเห็น gb-template-warning", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/group-buying`)
+      await expect(heading).toHaveCount(1)
+      await expect(create).toHaveCount(1)
+      await expect(page.getByTestId("gb-template-warning")).toBeVisible()
+    })
+
+    await step("centerY ของปุ่มกับ heading ต่างกันไม่เกิน 8px", async () => {
+      const [headingBox, createBox] = await Promise.all([heading.boundingBox(), create.boundingBox()])
+      if (!headingBox || !createBox) throw new Error("ไม่พบตำแหน่งของ heading หรือปุ่ม Create campaign")
+      const centerY = (box: { y: number; height: number }) => box.y + box.height / 2
+      expect(Math.abs(centerY(createBox) - centerY(headingBox))).toBeLessThanOrEqual(8)
+      await evidence("01-list-toolbar")
+    })
   })
 })

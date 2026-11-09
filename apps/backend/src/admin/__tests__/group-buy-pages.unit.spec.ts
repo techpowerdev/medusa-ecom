@@ -18,10 +18,10 @@ const importsHeader = (src: string) =>
 describe("รายการแคมเปญ (spec 08 AC-9)", () => {
   const src = read(LIST)
 
-  it("ใช้ LayoutComposer + DataTable ของ @medusajs/dashboard/components และ Header", () => {
+  // ADM-13 (AC-17): หัวตารางย้ายเข้า heading/subHeading/action ของ DataTable — ตรวจใน medusa-ui.unit.spec.ts
+  it("ใช้ LayoutComposer + DataTable ของ @medusajs/dashboard/components", () => {
     expect(importsFrom(src, "LayoutComposer", "@medusajs/dashboard/components")).toBe(true)
     expect(importsFrom(src, "DataTable", "@medusajs/dashboard/components")).toBe(true)
-    expect(importsHeader(src)).toBe(true)
   })
 
   // ADM-10 (กฎ 13): gb_offset อ่าน/normalize/แก้ URL ผ่าน usePageOffset (ตรวจใน medusa-ui.unit.spec.ts AC-14)
