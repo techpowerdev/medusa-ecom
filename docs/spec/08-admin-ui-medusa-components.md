@@ -261,8 +261,8 @@ Out of scope: แก้ `DataTable` ของ dashboard เอง (patch-package
   `Math.floor((count − 1) / 20) * 20` โดย `count` จาก `GET /admin/group-buy/campaigns` ตอนนั้น (DB ของ e2e มีแคมเปญของ test อื่น — ไม่ fix ตัวเลข);
   e2e `group-buy-admin-pages` และ `evoucher-admin-pool-page` เดิมผ่าน
 - AC-15 (ADM-11, กฎ 14) e2e ใหม่ `e2e/admin-detail-loader.spec.ts` 1280×800: Given แคมเปญ C และ pool P (สร้างผ่าน API) When `page.goto` `/app/group-buying/<C>` แล้วรอ `gb-campaign-status` visible
-  และ network idle Then จำนวน request `GET` ที่ pathname = `/admin/group-buy/campaigns/<C>` พอดี (ไม่นับ `/groups`) ≤ 2; When `page.goto` `/app/evouchers/pools/<P>` แล้วรอ `evoucher-codes` visible
-  Then `GET` ที่ pathname = `/admin/evoucher/pools/<P>` พอดี (ไม่นับ `/codes`) ≤ 2 — PR แนบจำนวนก่อน/หลังแก้ (develop 5 ตาม qa #293) และ test ต้องล้มบน develop `a349676`;
+  และ network idle Then จำนวน request `GET` ที่ pathname = `/admin/group-buy/campaigns/<C>` พอดี (ไม่นับ `/groups`) ≤ 4 และไม่มี GET นั้นที่เริ่มหลัง response แรกของ path นั้น (useQuery ไม่ยิงเพิ่มจาก loader); When `page.goto` `/app/evouchers/pools/<P>` แล้วรอ `evoucher-codes` visible
+  Then `GET` ที่ pathname = `/admin/evoucher/pools/<P>` พอดี (ไม่นับ `/codes`) ≤ 4 และไม่มี GET ที่เริ่มหลัง response แรก (รอบ 25, session หลัก 2026-11-09) loader ถูก dashboard 2.22.1 เรียกซ้ำเอง — `createRouteMap` ใส่ loader ทั้ง branch และ leaf route; issue upstream ร่างไว้ owner ส่ง — PR แนบจำนวนก่อน/หลังแก้ (develop 5 ตาม qa #293) และ test ต้องล้มบน develop `a349676`;
   Given `page.route` หน่วงทุก GET ของ `/admin/group-buy/campaigns/<C>` 2000ms When คลิกแถว C ใน `gb-campaigns-table` Then เวลาจากคลิกถึง `gb-campaign-status` visible < 3500ms (develop ~4.4s);
   id ที่ไม่มี → `gb-campaign-not-found` (AC-9); breadcrumb หน้า P (อ่านแบบ e2e `group-buy-admin-pages` ของ AC-9) = `["E-vouchers", <ชื่อ P>]` และรายการแรกลิงก์ไป `/app/evouchers`;
   e2e `group-buy-admin-detail`, `group-buy-admin-members`, `evoucher-admin-pool-page` ผ่านโดยไม่แก้
