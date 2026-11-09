@@ -1,0 +1,42 @@
+# ADM-13 (spec 08 AC-17, กฎ 16, 18) — ผล test
+# วันที่: 2026-11-09, node v22.23.3, base origin/develop 6969de32
+
+## Red (ก่อนเขียนโค้ด)
+### jest __tests__/medusa-ui.unit.spec.ts + group-buy-pages.unit.spec.ts (บล็อก ADM-13)
+Tests:       5 failed, 123 passed, 128 total
+### playwright e2e/group-buy-admin-form.spec.ts -g AC-17 (prod build ของโค้ดก่อนแก้)
+  Expect "toHaveCount" getByTestId('gb-campaigns-table').getByRole('heading', { name: 'Group-buy campaigns' })
+  Expected: 1, Received: 0
+
+## คำตัดสิน AC-17 (รอบ 25, session หลัก 2026-11-09)
+เทียบตัว heading วัดได้ 10.39 px (toolbar ของ DataTable จัด items-center → ต่างครึ่งบรรทัด subHeading)
+AC-17 เปลี่ยนเป็นเทียบกับบล็อก heading+subHeading คงเกณฑ์ 8
+
+## พิสูจน์ว่า assertion ใหม่ล้มได้ (สำเนาชั่วคราว ไม่ commit: บังคับ toolbar เป็น flex-direction: column)
+  Expected: <= 8
+  Received:    46.3984375
+  1 failed
+
+## Green — jest ทั้ง backend (test:unit)
+Test Suites: 94 passed, 94 total
+Tests:       1097 passed, 1097 total
+
+## Green — playwright (prod build, viewport ตาม spec) group-buy-admin-form + group-buy-admin-pages + group-buy-admin-detail
+  ✓   1 [chromium] › e2e/group-buy-admin-detail.spec.ts:69:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (1.9s)
+  ✓   2 [chromium] › e2e/group-buy-admin-detail.spec.ts:110:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (1.8s)
+  ✓   3 [chromium] › e2e/group-buy-admin-detail.spec.ts:151:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading (944ms)
+  ✓   4 [chromium] › e2e/group-buy-admin-detail.spec.ts:161:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (2.2s)
+  ✓   5 [chromium] › e2e/group-buy-admin-form.spec.ts:104:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick 
+  ✓   6 [chromium] › e2e/group-buy-admin-form.spec.ts:186:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.5s)
+  ✓   7 [chromium] › e2e/group-buy-admin-form.spec.ts:240:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.9s)
+  ✓   8 [chromium] › e2e/group-buy-admin-form.spec.ts:297:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (8.5s)
+  ✓   9 [chromium] › e2e/group-buy-admin-form.spec.ts:366:5 › AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง body เป็น
+  ✓  10 [chromium] › e2e/group-buy-admin-form.spec.ts:402:7 › ADM-13: หัวตารางรายการแคมเปญ › AC-17: heading และปุ่ม Create campaign อยู่แถวเดียวกันใน gb-campaigns-table และยังเห็นค
+  ✓  11 [chromium] › e2e/group-buy-admin-pages.spec.ts:55:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL (3.0s)
+  ✓  12 [chromium] › e2e/group-buy-admin-pages.spec.ts:128:7 › ADM-10: gb_offset ใน URL ที่ผิดรูป › AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp (1.6s)
+  12 passed (32.5s)
+
+## lint / typecheck
+pnpm lint: exit 0 (0 errors)
+pnpm typecheck: exit 0
+pnpm --filter storefront test:e2e:unit: 74 passed

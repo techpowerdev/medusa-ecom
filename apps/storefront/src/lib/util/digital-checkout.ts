@@ -9,7 +9,10 @@ type CheckoutCart = Pick<
   "items" | "shipping_methods" | "shipping_address" | "email"
 >
 
-export function isDigitalOnlyCart(cart: Pick<CheckoutCart, "items"> | null | undefined) {
+// EV-7d (กฎข้อ 28b): ตัดสินจาก `requires_shipping` ของ line ที่ server คืนเท่านั้น — ไม่มี parameter flag จาก client
+export function isDigitalOnlyCart(
+  cart: { items?: { requires_shipping?: boolean | null }[] | null } | null | undefined
+) {
   const items = cart?.items ?? []
   return items.length > 0 && items.every((item) => item.requires_shipping === false)
 }

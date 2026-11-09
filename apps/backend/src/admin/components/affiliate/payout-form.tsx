@@ -1,41 +1,53 @@
-import { Button, FocusModal, Heading, Input, Label, Select, Text, toast } from "@medusajs/ui"
+import { Combobox, Form, KeyboundForm } from "@medusajs/dashboard/components"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Button, DatePicker, FocusModal, Heading, Text, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useId, useState } from "react"
+import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { affiliateKeys, createPayout, listAffiliatesByStatus } from "../../lib/affiliate"
 import {
   defaultPayoutPeriod,
+  fetchAllAffiliates,
   mergeAffiliateOptions,
+  PAYOUT_PARSE_OPTIONS,
   PayoutForm,
+  payoutFormSchema,
   toPayoutBody,
 } from "../../lib/affiliate-payout"
 import { createSingleFlight } from "../../lib/single-flight"
 
-// filter status รับค่าเดียว → ยิง active และ suspended แยก (limit 200) แล้วรวมผล; pending ไม่อยู่ในตัวเลือก
+// filter status รับค่าเดียว → ยิง active และ suspended แยกแล้วรวมผล; pending ไม่อยู่ในตัวเลือก
+// spec 08 กฎ 11: route ไม่มี `q` จึงดึงครบทุกหน้า แล้วให้ Combobox ค้นหาฝั่ง client (ไม่ตัดที่ 200)
 const useAffiliateOptions = () =>
   useQuery({
     queryKey: [...affiliateKeys.list("affiliates"), "payout-options"],
     queryFn: async () => {
-      const [active, suspended] = await Promise.all([
-        listAffiliatesByStatus("active"),
-        listAffiliatesByStatus("suspended"),
-      ])
-      return mergeAffiliateOptions(active.affiliates, suspended.affiliates)
+      const byStatus = (status: "active" | "suspended") =>
+        fetchAllAffiliates((offset, limit) => listAffiliatesByStatus(status, offset, limit))
+      const [active, suspended] = await Promise.all([byStatus("active"), byStatus("suspended")])
+      return mergeAffiliateOptions(active, suspended)
     },
   })
 
-/** AF-12c (spec 05 กฎ 37c): FocusModal สร้าง payout — ช่วงเริ่มต้น = เดือนก่อนตามเวลาไทย; 400 → toast และไม่มีแถวใหม่ */
+// spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
+const PERIOD: { key: "period_from" | "period_to"; label: string }[] = [
+  { key: "period_from", label: "From (inclusive) *" },
+  { key: "period_to", label: "To (exclusive) *" },
+]
+
+/**
+ * AF-12c (spec 05 กฎ 37c): FocusModal สร้าง payout — ช่วงเริ่มต้น = เดือนก่อนตามเวลาเครื่อง; 400 → toast และไม่มีแถวใหม่
+ * ADM-9 (spec 08 AC-12, กฎ 5, 8, 11): Form + KeyboundForm + DatePicker; ตัวเลือก affiliate เป็น Combobox ค้นหาได้
+ */
 export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
   const queryClient = useQueryClient()
-  const prefix = useId()
-  const [form, setForm] = useState<PayoutForm>(() => ({ affiliate_id: "", ...defaultPayoutPeriod(new Date()) }))
-  const [error, setError] = useState<{ field: keyof PayoutForm; message: string } | null>(null)
+  const form = useForm<PayoutForm>({
+    resolver: zodResolver(payoutFormSchema, PAYOUT_PARSE_OPTIONS, { raw: true }),
+    defaultValues: { affiliate_id: "", ...defaultPayoutPeriod(new Date()) },
+  })
   const [submitOnce] = useState(createSingleFlight)
   const options = useAffiliateOptions()
 
-  const set = (patch: Partial<PayoutForm>) => {
-    setError(null)
-    setForm((f) => ({ ...f, ...patch }))
-  }
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
 
   const save = useMutation({
@@ -51,86 +63,87 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
     },
   })
 
-  const submit = () =>
+  const handleSubmit = form.handleSubmit((values) =>
     submitOnce(async () => {
-      const result = toPayoutBody(form)
+      const result = toPayoutBody(values)
       if ("error" in result) {
-        setError({ field: result.field, message: result.error })
+        form.setError(result.field, { message: result.error })
         return
       }
       await save.mutateAsync(result.body).catch(() => undefined)
     })
-
-  const fieldError = (key: keyof PayoutForm) =>
-    error?.field === key && (
-      <Text size="xsmall" className="text-ui-fg-error" data-testid={`affiliate-payout-error-${key}`}>
-        {error.message}
-      </Text>
-    )
+  )
 
   return (
     <FocusModal open onOpenChange={(open) => !open && !save.isPending && onClose()}>
       <FocusModal.Content>
-        <FocusModal.Header>
-          <div className="flex items-center justify-end gap-x-2">
-            <Button
-              size="small"
-              onClick={submit}
-              isLoading={save.isPending}
-              disabled={save.isPending}
-              data-testid="affiliate-payout-save"
-            >
-              Create
-            </Button>
-          </div>
-        </FocusModal.Header>
-        <FocusModal.Body className="flex justify-center overflow-auto py-16">
-          <div className="flex w-full max-w-lg flex-col gap-y-4">
-            <Heading>Create payout</Heading>
-            <div className="flex flex-col gap-y-2">
-              <Label size="small">Affiliate *</Label>
-              <Select size="small" value={form.affiliate_id} onValueChange={(affiliate_id) => set({ affiliate_id })}>
-                <Select.Trigger data-testid="affiliate-payout-field-affiliate_id">
-                  <Select.Value placeholder={options.isLoading ? "Loading..." : "Select an affiliate"} />
-                </Select.Trigger>
-                <Select.Content>
-                  {(options.data ?? []).map((a) => (
-                    <Select.Item key={a.id} value={a.id} data-testid="affiliate-payout-affiliate-option">
-                      {a.name} ({a.email}){a.status === "suspended" ? " — suspended" : ""}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select>
-              {fieldError("affiliate_id")}
-            </div>
-            {(
-              [
-                { key: "period_from", label: "From (ICT, inclusive) *" },
-                { key: "period_to", label: "To (ICT, exclusive) *" },
-              ] as const
-            ).map(({ key, label }) => (
-              <div key={key} className="flex flex-col gap-y-2">
-                <Label size="small" htmlFor={`${prefix}-${key}`}>
-                  {label}
-                </Label>
-                <Input
-                  id={`${prefix}-${key}`}
+        <Form {...form}>
+          <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">
+            <FocusModal.Header>
+              <div className="flex items-center justify-end gap-x-2">
+                <Button
                   size="small"
-                  type="date"
-                  value={form[key]}
-                  onChange={(e) => set({ [key]: e.target.value })}
-                  aria-invalid={error?.field === key}
-                  data-testid={`affiliate-payout-field-${key}`}
-                />
-                {fieldError(key)}
+                  type="submit"
+                  isLoading={save.isPending}
+                  disabled={save.isPending}
+                  data-testid="affiliate-payout-save"
+                >
+                  Create
+                </Button>
               </div>
-            ))}
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Includes approved entries (and their reversals) created before To 00:00 Bangkok time that are not in
-              another payout. From is recorded as the period start.
-            </Text>
-          </div>
-        </FocusModal.Body>
+            </FocusModal.Header>
+            <FocusModal.Body className="flex justify-center overflow-auto py-16">
+              <div className="flex w-full max-w-lg flex-col gap-y-4">
+                <Heading>Create payout</Heading>
+                <Form.Field
+                  control={form.control}
+                  name="affiliate_id"
+                  render={({ field: { onChange, ...field } }) => (
+                    <Form.Item>
+                      <Form.Label>Affiliate *</Form.Label>
+                      <Form.Control>
+                        <Combobox
+                          {...field}
+                          onChange={(id?: string) => onChange(id ?? "")}
+                          placeholder={options.isLoading ? "Loading..." : "Select an affiliate"}
+                          options={(options.data ?? []).map((a) => ({
+                            value: a.id,
+                            label: `${a.name} (${a.email})${a.status === "suspended" ? " — suspended" : ""}`,
+                          }))}
+                          data-testid="affiliate-payout-field-affiliate_id"
+                        />
+                      </Form.Control>
+                      <Form.ErrorMessage data-testid="affiliate-payout-error-affiliate_id" />
+                    </Form.Item>
+                  )}
+                />
+                {PERIOD.map(({ key, label }) => (
+                  <Form.Field
+                    key={key}
+                    control={form.control}
+                    name={key}
+                    render={({ field }) => (
+                      <Form.Item>
+                        <Form.Label>{label}</Form.Label>
+                        {/* e2e กรอก/อ่านผ่าน wrapper ที่มี testid เดิม (spec 08 กฎ 7b) */}
+                        <div data-testid={`affiliate-payout-field-${key}`}>
+                          <Form.Control>
+                            <DatePicker {...field} granularity="minute" shouldCloseOnSelect={false} />
+                          </Form.Control>
+                        </div>
+                        <Form.ErrorMessage data-testid={`affiliate-payout-error-${key}`} />
+                      </Form.Item>
+                    )}
+                  />
+                ))}
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Includes approved entries (and their reversals) created before To that are not in another payout. From
+                  is recorded as the period start.
+                </Text>
+              </div>
+            </FocusModal.Body>
+          </KeyboundForm>
+        </Form>
       </FocusModal.Content>
     </FocusModal>
   )

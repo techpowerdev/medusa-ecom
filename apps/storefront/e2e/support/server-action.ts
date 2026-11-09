@@ -33,6 +33,20 @@ export const isAddToCartBody = (body: string) => {
   }
 }
 
+/**
+ * body ของ action ที่ระบุ cart ด้วย id อย่างเดียว: `getPromptPayState(cartId)` / `placeOrder(cartId, undefined, countryCode)`
+ * (EV-7d) — React เข้ารหัส undefined เป็น `"$undefined"`; `syncCartAffiliate(cartId, metadata)` มี argument ที่ 2 จริงจึงไม่นับ
+ * และ `renewPromptPaySession(cart, provider)` argument แรกเป็น object
+ */
+export const isCartIdActionBody = (body: string, cartId: string) => {
+  try {
+    const [id, second] = JSON.parse(body)
+    return id === cartId && (second === undefined || second === "$undefined")
+  } catch {
+    return false
+  }
+}
+
 /** เริ่มรอ **ก่อน** กดปุ่ม แล้ว await หลังกด — คืน response ของ action ที่ body ตรงเงื่อนไข */
 export const waitForServerAction = (page: Pick<Page, "waitForResponse">, matches?: (body: string) => boolean) =>
   page.waitForResponse((res: Response) => isServerAction(res.request(), matches))
