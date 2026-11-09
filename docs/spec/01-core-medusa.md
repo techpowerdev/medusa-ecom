@@ -574,7 +574,7 @@ none (CORE-16/17 เป็น middleware บน route ของ Medusa; seed เ
 - AC-63 (CORE-19a) Given viewport 375×812 When เปิด search drawer แล้วพิมพ์ข้อความ 200 ตัวอักษรไม่มีช่องว่าง Then
   `document.documentElement.scrollWidth <= 375` และ input/ผลลัพธ์ไม่ล้นออกนอก drawer (`scrollWidth <= clientWidth` ของ container) (e2e, screenshot)
 - AC-64 (CORE-19b) Given checkout ที่กรอกที่อยู่/shipping/payment ครบ When กด "Continue to review" **ครั้งเดียว** วนซ้ำ 20 รอบ (cart ใหม่ทุกรอบ หรือ
-  ย้อนกลับขั้น payment) Then ทุกรอบ URL มี `step=review` ภายใน 10 วินาที; และ helper `continueToReview` ใน `e2e/support/stripe.ts` ไม่มีการกดซ้ำ
+  ย้อนกลับขั้น payment) Then ทุกรอบ URL มี `step=review` ภายใน 10 วินาทีนับจากคลิก (เมื่อ backend ไม่ถูกหน่วงใน e2e; ถ้า backend ช้า งบ 5/10 วินาทีของกฎข้อ 71 นับจากจุดเริ่มล็อกตามกฎข้อนั้น — แก้ถ้อยคำรอบ 26); และ helper `continueToReview` ใน `e2e/support/stripe.ts` ไม่มีการกดซ้ำ
   (retry click) แล้ว (e2e + grep)
 - AC-65 (CORE-20) Given order ของ A ที่ fulfill แล้ว When A เปิดหน้า order detail แล้วกดขอคืนสินค้า (`data-testid="order-return-button"`) เลือก item,
   จำนวน, เหตุผล (จาก return reasons ของ Medusa) แล้วยืนยัน Then มี return `requested` ของ order นั้นใน DB ที่ใช้ option "Standard return" และหน้าแสดง
@@ -1004,7 +1004,8 @@ none (storefront)
     ก่อนสร้าง; มีอยู่แล้ว → ไม่สร้าง/ไม่แก้); e2e ของ FS-17 **ไม่**พึ่ง collection นี้ (สร้างข้อมูลเอง)
 71. (CORE-19e — review #151 CORE-19b) ปุ่ม Continue ของขั้นชำระเงินที่ CORE-19b ล็อกไว้จน cart (props) มี session ของ provider ที่เลือก ต้อง**ไม่ค้างถาวร**เมื่อ RSC refresh ไม่มาถึง:
     ล็อกเกิน 5 วินาที → เรียก `router.refresh()` 1 ครั้ง; เกิน 10 วินาทีนับจากเริ่มล็อก → ปลดล็อกปุ่มและแสดง `payment-session-pending-error` ข้อความไทย (ให้ลองอีกครั้ง) — cart ได้ session
-    เมื่อใดก็ปลดล็อกทันทีและยกเลิก timer (ไม่ refresh)
+    เมื่อใดก็ปลดล็อกทันทีและยกเลิก timer (ไม่ refresh); (แก้ถ้อยคำรอบ 26) "เริ่มล็อก" = ตอน action สร้าง session คืนผลสำเร็จแล้ว prop `cart` ยังไม่มี session (`sessionNotInCartYet` เป็น true — `modules/checkout/components/payment/index.tsx`)
+    ไม่ใช่ตอนคลิก — เวลาที่รอ action/backend ไม่นับรวมในงบ 5/10 วินาที และ timer เริ่มใหม่เมื่อ `sessionNotInCartYet` เปลี่ยนเป็น true อีกครั้ง
 
 ### Acceptance criteria (follow-up รอบ 11)
 - AC-104 (CORE-19d, กฎข้อ 68) unit (Vitest, mock SDK): `deleteLineItem` เมื่อ SDK throw `FetchError` 401 → คืน `{ error: "unauthorized" }`, 500/network → `{ error: "failed" }`, สำเร็จ → `{ ok: true }`
@@ -1135,15 +1136,15 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
 ### Tasks (follow-up รอบ 12)
 | ID | Task | AC | Depends |
 |----|------|----|---------|
-| CORE-9b | (backend เล็ก, builder FS-17) search ingestion ไม่ throw กับ event ลบที่ไม่มี relation (กฎข้อ 79) — ไฟล์: `src/search/helpers/resolve-product-ids.ts` + test | AC-108 | CORE-9 ☑ — ☑ #200 |
-| CORE-10c | (backend seed เล็ก, review #159) category ไทย + `handle` คงที่ + หาด้วย handle, ซ่อม `featured` ที่ว่าง, test AC-72/AC-30 (กฎข้อ 80) — ไฟล์: `src/scripts/seed.ts` + test seed | AC-72, AC-109 | CORE-10b ☑ (#159) — ☑ #202 |
+| CORE-9b | (backend เล็ก, builder FS-17) search ingestion ไม่ throw กับ event ลบที่ไม่มี relation (กฎข้อ 79) — ไฟล์: `src/search/helpers/resolve-product-ids.ts` + test — ☑ #200 | AC-108 | CORE-9 ☑ |
+| CORE-10c | (backend seed เล็ก, review #159) category ไทย + `handle` คงที่ + หาด้วย handle, ซ่อม `featured` ที่ว่าง, test AC-72/AC-30 (กฎข้อ 80) — ไฟล์: `src/scripts/seed.ts` + test seed — ☑ #202 | AC-72, AC-109 | CORE-10b ☑ (#159) |
 | CORE-4i | (storefront, FS-15/#160/#170) server action ของ `lib/data/cart.ts` คืนผลแบบมีโครงสร้าง + helper กลาง + `SIGN_IN_AGAIN_MESSAGE` เดียว (กฎข้อ 72) — ไฟล์: `lib/data/cart.ts`, `lib/util/` (helper), component ใน `modules/checkout`/`modules/cart` และหน้า `/account/orders/:id/pay` ที่เรียก action, `user-messages-thai.test` — เกิน ~400 LOC ให้ builder แยก (เช่น 4i-a: helper + `applyPromotions`/`updateLineItem` + cart; 4i-b: action ชำระเงิน + ผู้เรียก checkout/หน้า pay); (รอบ 13) + `lib/data/payment.ts` (`createPaymentSession`) และ `modules/order/components/order-pay` ตาม Q-C2 = (ก) (helper กลาง `{ ok } \| { error }`) — ☑ CORE-4i-a #222 + CORE-4i-b #305 (train #307) | AC-110 | CORE-19d ☑, FS-15 ☑ (#178), PAY-3b1 ☑ (#189), **PAY-3b2 (#203) merge** (spec 06 — contract error ของ action สร้าง session เดียวกัน; review #188) |
 | CORE-4j | (storefront เล็ก, qa/review #170) trim โค้ดส่วนลด, ฟอร์มที่อยู่ไม่หายเมื่อใส่โค้ด, ความสูง billing select, `ok()` ใน helper e2e (กฎข้อ 73) | AC-111 | CORE-4i (แตะ `applyPromotions`/ฟอร์ม checkout เดียวกัน) |
 | CORE-23c | (storefront เล็ก, qa/review #154/#150/#164) ฟอร์มที่อยู่ใน account คงค่าเมื่อล้ม, ที่อยู่ใบเสร็จไม่ล่มทั้งหน้า, พิมพ์หลังกดแก้ไข, ลิงก์ `/contact`, log ใน `customer.ts` (กฎข้อ 74) — ไฟล์: `modules/account/components/{address-card,profile-billing-address}`, `modules/account/templates/account-layout.tsx`, `lib/data/customer.ts` — ☑ #214 | AC-112 | CORE-23b ☑ (#154) — **เริ่มได้** (∥ CORE-4i — คนละไฟล์) |
 | CORE-19f | (storefront เล็ก, qa #166/#151) revalidate cart หลังสร้าง session, Continue หลัง timeout ไม่ข้าม session, e2e สลับวิธีชำระ (กฎข้อ 75) — ไฟล์: `lib/data/cart.ts` (action สร้าง session), `modules/checkout/components/payment` | AC-113 | CORE-19e ☑ (#166), CORE-4i (แตะ action เดียวกัน — CORE-4i รอ PAY-3b1/3b2 อยู่แล้ว) |
 | CORE-15b | (storefront เล็ก, review #177) error ของ search drawer ที่ header + pin `instantsearch.js` (กฎข้อ 76) — ไฟล์: `modules/search` (drawer), `apps/storefront/package.json`, `pnpm-lock.yaml` — ☑ #213 | AC-114 | CORE-15 ☑ (#177) — **เริ่มได้** |
 | CORE-5d | (e2e tooling เล็ก, qa #169/#173) ชื่อ evidence ใน spec ตรงไฟล์ที่ commit + `console.warn` เมื่อไม่มี `evidenceTarget` (กฎข้อ 77) — ไฟล์: `e2e/support/` (fixture), `e2e/*.spec.ts` ที่ชื่อไม่ตรง | AC-115 | CORE-5c ☑ (#169) — **เริ่มได้** (แก้เฉพาะสตริงชื่อใน spec — ชนไฟล์ e2e ตัวที่ merge ทีหลัง rebase) |
-| CORE-25 | (storefront เล็ก, **defect ที่ลูกค้าอาจได้ไซซ์ผิด** — qa #178) option บน PDP ไม่ถูกรีเซ็ตจาก `v_id`, `uiAddSizes` รอ `v_id`, แถบมือถือไม่ทับปุ่มหลัก (กฎข้อ 78) — ไฟล์: `modules/products/components/product-actions/{index,mobile-actions}.tsx`, e2e ของ CORE-19a (รอบ 13: #199 จริงแตะ `product-actions/index.tsx` + `lib/hooks/use-in-view.tsx` ใหม่) | AC-116 | — ☑ #199 |
+| CORE-25 | (storefront เล็ก, **defect ที่ลูกค้าอาจได้ไซซ์ผิด** — qa #178) option บน PDP ไม่ถูกรีเซ็ตจาก `v_id`, `uiAddSizes` รอ `v_id`, แถบมือถือไม่ทับปุ่มหลัก (กฎข้อ 78) — ไฟล์: `modules/products/components/product-actions/{index,mobile-actions}.tsx`, e2e ของ CORE-19a (รอบ 13: #199 จริงแตะ `product-actions/index.tsx` + `lib/hooks/use-in-view.tsx` ใหม่) — ☑ #199 | AC-116 | — |
 (รอบ 13 สถานะ) CORE-9b ◐ #200, CORE-10c ◐ #202, CORE-25 ◐ #199; CORE-23c ∥ CORE-15b ∥ CORE-5d เริ่มได้ทันที; PAY-3b1 (#189) → PAY-3b2 → CORE-4i → (CORE-4j ∥ CORE-19f ∥ EV-7d ของ spec 02)
 
 ## Follow-up รอบ 13 จาก review/qa (2026-11-03)
@@ -2025,6 +2026,61 @@ none
 
 ### Open questions (รอบ 23)
 none (คำถามของรอบนี้อยู่ที่ spec 08 Q7)
+
+## Follow-up รอบ 26 จาก review/qa รอบ 25 (2026-11-09)
+ที่มา: qa #320 (EV-7d), review #312, #314, #315, #320 — ตรวจโค้ดใน worktree `origin/develop` (path ย่อจาก `apps/storefront/`):
+- `src/app/[countryCode]/(checkout)/checkout/page.tsx:18–22` กันเฉพาะ `!cart` — cart ที่ว่างจากอีกแท็บผ่าน `checkoutRedirectStep` ได้ (เพราะมีที่อยู่แล้ว) จึงถึง review และกดยืนยันไม่เกิด order
+- `src/lib/data/cart.ts:462–516` `setAddresses` ไม่ตัดช่องว่างก่อนส่ง → ที่อยู่ช่องว่างล้วนบันทึกได้
+- `src/modules/order/components/shipping-details/index.tsx` render ทุก order (`order-completed-template.tsx:43`, `order-details-template.tsx:51`) → order voucher มี "การจัดส่ง"/"วิธีจัดส่ง (฿0)"
+- ฟอร์ม `setAddresses` เป็น `useActionState` (React reset ฟอร์มหลัง action) แต่ `shipping-country-select`/`billing-country-select` คุมด้วย state → หลัง error ค่าใน DOM กลับเป็นว่าง
+- e2e/hygiene: `core-46-e2e-hygiene.unit.spec.ts:19–22`, `core-4j-e2e-hygiene.unit.spec.ts:10–22`, `core-4g-checkout-polish.spec.ts:62–63`, `core-4j-checkout-discount-address.spec.ts:65–70`, `shipping-address/index.tsx:104`
+Out of scope: เปลี่ยน flow ขั้นตอน checkout, validation ฝั่ง backend ของที่อยู่ (Medusa รับช่องว่างได้ — ด่านเดียวคือ action)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 26)
+| ความต้องการ | Medusa / ไลบรารีมีให้ | ใช้ตามเดิม / ขยาย / custom |
+|------|------|------|
+| หน้าตะกร้าว่าง | `EmptyCartMessage` ของ starter (`empty-cart-message`) | ใช้ตามเดิม — redirect ไป `/cart` |
+| ตัด "ไม่ใช้งาน" ของ section จัดส่ง | ไม่มี (starter render เสมอ) | ขยาย component เดิม |
+| validation ที่อยู่ | ไม่มี (Store API รับ string อะไรก็ได้) | ขยาย `setAddresses` |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 26)
+110. (CORE-52 — qa/review #320, review #314) (a) `/checkout` ที่ cart มี `items` ว่าง → redirect `/<countryCode>/cart`; `placeOrder` บน cart ที่ไม่มี item → redirect ไป `/<countryCode>/cart` เช่นกัน (ไม่เกิด order ไม่มีข้อความ error เงียบ);
+     (b) `setAddresses` trim ช่องบังคับ (`first_name`, `last_name`, `address_1`, `postal_code`, `city`) ของ shipping และ billing (รวม path `digital_only`) — ว่างหลัง trim → คืนข้อความไทยใน `address-error-message`, ไม่เรียก `updateCart`;
+     (c) `ShippingDetails` ไม่ render เมื่อ order ไม่มี `shipping_methods` (voucher ล้วน) — ทั้งหน้า confirmed และ `/account/orders/details/:id`;
+     (d) หลัง `setAddresses` คืน error `shipping-country-select`/`billing-country-select` คงค่าที่ผู้ใช้เลือก (form reset ของ React ต้องไม่ล้าง);
+     (e) `shipping-address/index.tsx:104` เลิก `eslint-disable` ใช้แบบ "ปรับ state เมื่อ prop เปลี่ยน" (`prevKey` ใน state เทียบระหว่าง render — review #314)
+111. (CORE-53 — test hygiene, review #312/#314) (a) `setsTimeout` จับ shorthand `{ timeout }`/`{ actionTimeout }` และไม่ตัด `/*` ที่อยู่ใน string; (b) `functionBody` ใน `core-4j-e2e-hygiene` ไม่อาศัย `indexOf("):")` และไม่นับวงเล็บ/`.ok()` ใน string/comment (เขียนใหม่หรือใช้ `typescript` ที่มีอยู่ — ไม่เพิ่ม dependency);
+     (c) `core-4g-checkout-polish.spec.ts` ข้อความของ cleanup รวม `await promotion.text()`; (d) `core-4j-checkout-discount-address.spec.ts` cleanup ใน `finally` ใช้ `expect.soft` (ไม่กลบ error ของ `run()`)
+
+### Acceptance criteria (follow-up รอบ 26)
+- AC-147 (CORE-52, กฎข้อ 110) e2e ใหม่ `e2e/core-52-checkout-guards.spec.ts`: Given ลูกค้าที่ checkout ถึงขั้น review (cart ใช้ได้) When ลบ item ทั้งหมดผ่าน Store API (token เจ้าของ cart) แล้ว reload `/th/checkout?step=review` Then URL = `/th/cart` และ `empty-cart-message` visible;
+  When อยู่ขั้น review โดยไม่ reload แล้วลบ item ผ่าน API แล้วกดยืนยัน Then URL = `/th/cart`, `GET /store/orders` ไม่มี order ใหม่; When กรอก `shipping-city-input` เป็น `"   "` แล้วส่ง Then `address-error-message` มีอักษรไทย, URL ยังเป็น `step=address`, `GET` cart ไม่มีเมืองว่างใหม่;
+  และ `shipping-country-select` `toHaveValue("th")` (ค่าที่เลือกก่อน submit — ทำซ้ำกับ `billing-country-select` บน cart digital-only);
+  Given order voucher ล้วน When เปิดหน้า confirmed และ `/th/account/orders/details/<id>` Then ไม่มี `shipping-details-heading`; Given order มีสินค้าจัดส่ง Then ยังมี `shipping-details-heading`; grep: `shipping-address/index.tsx` ไม่มี `eslint-disable`; AC-42 (spec 02), AC-111 ผ่าน
+- AC-148 (CORE-53, กฎข้อ 111) unit (Playwright `unit` project): `setsTimeout("{ timeout }") === true`, `setsTimeout('const a="/*"; export default { timeout: 1 }') === true`, comment ที่มีคำว่า timeout ยัง `false` (AC-144 เดิม); `functionBody` กับ fixture function ไม่มี return type คืน body ที่ถูก และ fixture ที่ `${name}.ok()` อยู่แค่ใน comment → test AC-111 ล้ม (positive control ใน PR);
+  grep: `core-4g-checkout-polish.spec.ts` บรรทัด cleanup มี `promotion.text()`, `core-4j-checkout-discount-address.spec.ts` มี `expect.soft(res.ok()`; e2e `core-4g-*`, `core-4j-*` ผ่าน
+
+### แผนการทดสอบ (follow-up รอบ 26)
+| ระดับ | AC |
+|------|----|
+| unit (Playwright `unit` project, grep) | AC-148 |
+| e2e | AC-147 (qa แนบภาพ confirmed ของ voucher + error ที่อยู่) |
+
+### Tasks (follow-up รอบ 26)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|------|----|---------|------|
+| CORE-52 | (storefront, qa #320 + review #314) checkout: ตะกร้าว่างจากอีกแท็บ → `/cart`, ที่อยู่ช่องว่างไม่ผ่าน, ไม่แสดง section จัดส่งบน order voucher, select ประเทศคงค่าหลัง error, เลิก `eslint-disable` (กฎข้อ 110) | `src/app/[countryCode]/(checkout)/checkout/page.tsx`, `src/lib/data/cart.ts` (`setAddresses`, `placeOrder`), `src/modules/order/components/shipping-details/index.tsx` (หรือ template ผู้เรียก), `src/modules/checkout/components/{shipping-address,billing_address,country-select}/index.tsx`, e2e ใหม่ | ~200 LOC รวม e2e | 1280×800, 375×812 | AC-147 | **#320 (EV-7d) merge** (แตะ `lib/data/cart.ts`, ฟอร์มที่อยู่เดียวกัน); ไม่บล็อก release | ไม่ชน ADM-*, OPS-21; ชน CORE-19f/CORE-4j ถ้ามี PR แตะ `cart.ts` อยู่ — ตัวที่ merge ทีหลัง rebase |
+| CORE-53 | (e2e hygiene, nit review #312/#314) `setsTimeout`, parser `core-4j`, ข้อความ cleanup `core-4g`, cleanup `core-4j` ไม่กลบ error (กฎข้อ 111) | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-4j-e2e-hygiene.unit.spec.ts`, `e2e/core-4g-checkout-polish.spec.ts`, `e2e/core-4j-checkout-discount-address.spec.ts` | ~60 LOC | ไม่มี UI ใหม่ | AC-148 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release | ไม่ชน CORE-52 (คนละไฟล์) |
+(รอบ 26) CORE-53 เริ่มได้ทันที; CORE-52 หลัง #320
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 26)
+- (qa #309 O-1, CORE-50) ตะกร้า 4 หลักที่ 320px ระยะชื่อร้าน→ไอคอนค้นหา 5.83px < 8 — ไม่ทับ/ไม่ล้น และ ≥ 340px ได้ ≥ 15.83px (qa); กฎข้อ 108b ครอบถึง 3 หลัก และตะกร้า ≥ 1,000 ชิ้นไม่ใช่กรณีใช้งานจริงของร้าน — ไม่เปิด task
+
+### Open questions (รอบ 26)
+none
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
