@@ -1,0 +1,69 @@
+ADM-8b — ปุ่มต่อแถวของตาราง affiliate เป็น ActionMenu ของ dashboard (spec 08 AC-13, กฎ 4, 10; ADR-018)
+base: origin/develop 1743eb74 | Node 22.23.3 | วันที่ 2026-11-09
+
+== Red 1: unit static ก่อนแก้โค้ด (medusa-ui.unit.spec.ts + affiliate-account.unit.spec.ts) ==
+  ● ตาราง affiliate ใช้ของ Medusa (spec 08 AC-2, AC-11, ADM-8a) › components/affiliate/payouts-table.tsx ไม่มี pattern ต้องห้ามของกฎ 4–6
+  ● ปุ่มต่อแถวของ affiliate อยู่ใน ActionMenu (spec 08 AC-13, กฎ 4, 10, ADM-8b) › components/affiliate/affiliates-table.tsx import ActionMenu ของ dashboard, trigger affiliate-row-actions และไม่มี testid ปุ่มต่อแถวเดิม
+  ● ปุ่มต่อแถวของ affiliate อยู่ใน ActionMenu (spec 08 AC-13, กฎ 4, 10, ADM-8b) › components/affiliate/programs-table.tsx import ActionMenu ของ dashboard, trigger affiliate-program-row-actions และไม่มี testid ปุ่มต่อแถวเดิม
+  ● ปุ่มต่อแถวของ affiliate อยู่ใน ActionMenu (spec 08 AC-13, กฎ 4, 10, ADM-8b) › components/affiliate/payouts-table.tsx import ActionMenu ของ dashboard, trigger affiliate-payout-row-actions และไม่มี testid ปุ่มต่อแถวเดิม
+  ● ปุ่มต่อแถวของ affiliate อยู่ใน ActionMenu (spec 08 AC-13, กฎ 4, 10, ADM-8b) › lib/affiliate-account.ts ไม่ถือ testid ของปุ่มต่อแถวแล้ว
+  ● ปุ่มต่อแถวของ affiliate อยู่ใน ActionMenu (spec 08 AC-13, กฎ 4, 10, ADM-8b) › components/affiliate/** ไม่มี useRef(false)
+  ● ปุ่มต่อแถวของ affiliate อยู่ใน ActionMenu (spec 08 AC-13, กฎ 4, 10, ADM-8b) › payouts-table: Mark paid และ Cancel ของแถวเดียวกันกันกัน (disabled ระหว่างอีก action ทำงาน — nit #176)
+  ● ปุ่มต่อแถวของ affiliate อยู่ใน ActionMenu (spec 08 AC-13, กฎ 4, 10, ADM-8b) › programs-table: deps ของ useMemo คอลัมน์ครบ ไม่ใช่แค่ [remove.isPending] (nit #163)
+  ● affiliateAction › maps each status to its single action and target status
+Tests:       9 failed, 106 passed, 115 total
+
+== Red 2: e2e บน ActionMenu รุ่นแรก (คอลัมน์ action สร้างใหม่ทุก render / modal เปิดจาก menuitem) ==
+- คอลัมน์ action ที่ deps มี usePrompt/useDate (ฟังก์ชันใหม่ทุก render) → cell mount ใหม่ → เมนูปิดเอง:
+  ✘  4 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:32:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (2.2m)
+  (trace: คลิก trigger affiliate-payout-row-actions สำเร็จแต่ menuitem "Mark paid" ไม่ปรากฏจน timeout — ตอนชื่อ affiliate โหลดเสร็จหลัง reload)
+- modal แก้โปรแกรมเปิดจาก menuitem ขณะเมนูยังเล่น animation ปิด → body pointer-events: none ค้างหลังปิด modal:
+  ✘   6 [chromium] › e2e/affiliate-admin-programs.spec.ts:26:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (2.0m)
+  (trace: '<html> intercepts pointer events' ตอนคลิก affiliate-program-row-actions ของแถวถัดไป)
+แก้: คอลัมน์ action memo แยกด้วย deps ที่ stable + mount ActionMenu ใหม่ (key) ใน commit เดียวกับการเปิด modal/drawer
+
+== Green: e2e affiliate-admin-* บน prod build (medusa start จาก .medusa/server, port 9103, --workers=1) ==
+  ✓  1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:43:5 › AC-43: approve ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (9.5s)
+  ✓  2 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:165:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (2.5s)
+  ✓  3 [chromium] › e2e/affiliate-admin-names.spec.ts:31:5 › AC-45: Ledger/Payouts แสดงชื่อและอีเมลของ affiliate ด้วย request id[] 1 ครั้งต่อหน้า (2.9s)
+  ✓  4 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:32:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (6.5s)
+  ✓  5 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, ยืนยันแล้วยิง DELETE ครั้งเดียว (4.3s)
+  ✓  6 [chromium] › e2e/affiliate-admin-programs.spec.ts:26:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (4.9s)
+  ✓  7 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:56:5 › AC-13: menuitem Approve กดซ้ำระหว่างรอ response → POST 1 ครั้ง และ badge เป็น active โดยไม่ reload (4.0s)
+  ✓  8 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:103:5 › AC-13: Cancel ของ payout กำลังส่ง → เปิดเมนูแถวเดียวกัน menuitem Mark paid disabled จนการยกเลิกจบ (4.1s)
+  ✓  9 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (4.4s)
+  9 passed (46.4s)
+ซ้ำ --repeat-each=2:  18 passed (1.6m)
+
+== Green: pnpm --filter backend test:unit ==
+Test Suites: 92 passed, 92 total
+Tests:       1076 passed, 1076 total
+
+== pnpm lint && pnpm typecheck ==
+lint: 0 errors (warning เดิมของ develop: backend 2, storefront 31 — ไม่มีในไฟล์ที่แก้)
+typecheck: backend + storefront Done
+
+== pnpm --filter backend build ==
+info:    Backend build completed successfully (7.58s)
+info:    Frontend build completed successfully (21.84s)
+
+== แก้ตาม review #316 (2026-11-09, base หลัง merge origin/develop dcc90c07) ==
+-- Red: e2e affiliate-admin-row-actions บนโค้ดก่อนแก้ (prod build port 9103) --
+✓  1 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:56:5 › AC-13: menuitem Approve กดซ้ำระหว่างรอ response → POST 1 ครั้ง และ badge เป็น active โดยไม่ reload (5.4s)
+✘  2 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:116:5 › AC-13: Cancel ของ payout กำลังส่ง → เปิดเมนูแถวเดียวกัน menuitem Mark paid disabled จนการยกเลิกจบ (9.0s)
+✘  3 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:198:5 › AC-13: Delete โปรแกรม draft — คลิกซ้ำใน tick เดียวได้ prompt เดียว, ระหว่าง DELETE ค้าง Edit/Delete disabled, DELETE 1 ครั้ง (6.6s)
+Expected: disabled
+Received: enabled
+> 180 |     await expect(markPaid).toBeDisabled()
+Expected: disabled
+Received: enabled
+> 236 |     await expect(await rowAction(row, trigger, "Edit")).toBeDisabled()
+(test 2: DELETE ของ payout A ค้าง → เปิด/ปิดกล่อง mark paid ของ B → เมนู A Mark paid enabled = blocker; test 3: Edit ไม่ disabled ระหว่าง Delete ค้าง = nit)
+-- Green: e2e affiliate-admin-* --repeat-each=2 --
+20 passed (1.6m)
+-- Green: pnpm --filter backend test:unit --
+Test Suites: 92 passed, 92 total
+Tests:       1076 passed, 1076 total
+-- lint 0 errors, typecheck ผ่าน, medusa build ผ่าน --
+-- Escape ครั้งแรกหลังเปิดเมนู (nit 2): หลังคอลัมน์ action คงที่แล้ว ยังต้องกด 2 ครั้งในครั้งแรกทั้งสามแท็บ (keydown ถึง role=menu, ไม่ถูก preventDefault);
+   หน้า /app/products ของ Medusa กดครั้งเดียวปิด — ไม่ใช่อาการ remount จึงคง closeRowMenu ไว้

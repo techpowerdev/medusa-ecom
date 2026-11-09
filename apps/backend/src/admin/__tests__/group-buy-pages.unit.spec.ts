@@ -24,21 +24,12 @@ describe("รายการแคมเปญ (spec 08 AC-9)", () => {
     expect(importsHeader(src)).toBe(true)
   })
 
-  it("คลิกแถวด้วย rowHref และหน้าอยู่ใน URL (prefix + useQueryParams) ไม่ถือ state แบ่งหน้าเอง", () => {
+  // ADM-10 (กฎ 13): gb_offset อ่าน/normalize/แก้ URL ผ่าน usePageOffset (ตรวจใน medusa-ui.unit.spec.ts AC-14)
+  it("คลิกแถวด้วย rowHref และหน้าอยู่ใน URL (prefix + usePageOffset) ไม่ถือ state แบ่งหน้าเอง", () => {
     expect(src).toMatch(/rowHref=/)
     expect(src).toMatch(/prefix=/)
-    expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).toMatch(/usePageOffset\(PREFIX,/)
     expect(src).not.toMatch(/DataTablePaginationState|useDataTable|onRowClick/)
-  })
-
-  it("แปลง gb_offset ด้วย pageOffset (กัน NaN/ค่าติดลบ) ไม่ใช้ Number() ตรงๆ", () => {
-    expect(src).toMatch(/pageOffset\(/)
-    expect(src).not.toMatch(/Number\(offsetParam\)/)
-  })
-
-  it("gb_offset ไม่ถูกต้อง → แก้ URL ด้วย setSearchParams(..., { replace: true }) (DataTable ของ dashboard parseInt ค่าดิบเอง → NaN)", () => {
-    expect(importsFrom(src, "useSearchParams", "react-router-dom")).toBe(true)
-    expect(src).toMatch(/setSearchParams\([\s\S]*replace:\s*true/)
   })
 
   it("export handle.breadcrumb เป็น \"Group buying\" (breadcrumb 2 ระดับร่วมกับหน้ารายละเอียด)", () => {

@@ -131,3 +131,72 @@ test("AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้า�
     await evidence("02-code-revealed")
   })
 })
+
+// ADM-10 (spec 08 AC-14, กฎ 13): `<prefix>_offset` ที่ผู้ใช้แก้เองผ่าน usePageOffset — normalize/clamp แล้วแก้ URL แบบ replace
+test.describe("ADM-10: offset ใน URL ที่ผิดรูป", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-10" } })
+
+  test("AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(180_000)
+    const admin = await adminHeaders(request)
+    const { variantId } = await createVoucher(request, admin, 60)
+    const { pools } = await call(request, admin, `/admin/evoucher/pools?variant_id=${variantId}&limit=1&offset=0`)
+    const poolUrl = `${BACKEND_URL}/app/evouchers/pools/${pools[0].id}`
+
+    const codes = page.getByTestId("evoucher-codes")
+    const rows = codes.locator("tbody tr")
+    const offsetOf = () => new URL(page.url()).searchParams.get("codes_offset")
+
+    await step("?codes_offset=abc → ไม่มี codes_offset (replace), 50 แถว, ไม่มี NaN; Next → codes_offset=50 + 10 แถว", async () => {
+      await loginAdmin(page)
+      await page.goto(poolUrl)
+      await expect(rows).toHaveCount(50)
+      const before = await page.evaluate(() => history.length)
+      await page.goto(`${poolUrl}?codes_offset=abc`)
+      await page.waitForURL((url) => !url.searchParams.has("codes_offset"))
+      await expect(rows).toHaveCount(50)
+      await expect(codes).not.toContainText(/NaN/)
+      // goto เพิ่ม entry เอง 1 ครั้ง — การแก้ URL ต้องเป็น replace (ไม่เพิ่ม entry ที่สอง)
+      expect(await page.evaluate(() => history.length)).toBe(before + 1)
+      await evidence("01-codes-offset-abc")
+
+      await codes.getByRole("button", { name: "Next" }).click()
+      await page.waitForURL((url) => url.searchParams.get("codes_offset") === "50")
+      await expect(rows).toHaveCount(10)
+    })
+
+    await step("?codes_offset=-50 → ไม่มี codes_offset; กด Next ครั้งเดียว → codes_offset=50", async () => {
+      await page.goto(`${poolUrl}?codes_offset=-50`)
+      await page.waitForURL((url) => !url.searchParams.has("codes_offset"))
+      await expect(rows).toHaveCount(50)
+      await codes.getByRole("button", { name: "Next" }).click()
+      await page.waitForURL((url) => url.searchParams.get("codes_offset") === "50")
+      await expect(rows).toHaveCount(10)
+    })
+
+    await step("?codes_offset=99999999 → codes_offset=50 (หน้าสุดท้าย), 10 แถว, ไม่ใช่ empty state", async () => {
+      await page.goto(`${poolUrl}?codes_offset=99999999`)
+      await page.waitForURL((url) => url.searchParams.get("codes_offset") === "50")
+      await expect(rows).toHaveCount(10)
+      await expect(codes).not.toContainText("Import a CSV to add codes.")
+      expect(offsetOf()).toBe("50")
+      await evidence("02-codes-offset-clamped")
+    })
+
+    await step("/app/evouchers?pools_offset=abc → ไม่มี pools_offset", async () => {
+      const list = page.waitForResponse((res) => {
+        const url = new URL(res.url())
+        return url.pathname === "/admin/evoucher/pools" && url.searchParams.get("offset") === "0"
+      })
+      await page.goto(`${BACKEND_URL}/app/evouchers?pools_offset=abc`)
+      expect((await list).status()).toBe(200)
+      await page.waitForURL((url) => !url.searchParams.has("pools_offset"))
+      await expect(page.locator("body")).not.toContainText(/NaN/)
+    })
+  })
+})

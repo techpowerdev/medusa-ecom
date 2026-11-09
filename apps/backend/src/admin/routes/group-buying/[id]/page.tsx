@@ -5,7 +5,7 @@ import { Badge, Text, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { FetchError } from "@medusajs/js-sdk"
 import { useState } from "react"
-import { Link, LoaderFunctionArgs, UIMatch, useNavigate, useParams } from "react-router-dom"
+import { Link, LoaderFunctionArgs, UIMatch, useLoaderData, useNavigate, useParams } from "react-router-dom"
 import { Container } from "../../../components/common/container"
 import { Header } from "../../../components/common/header"
 import { GroupsSection } from "../../../components/group-buy/groups-section"
@@ -41,9 +41,12 @@ const GroupBuyCampaignPage = () => {
   const prompt = usePrompt()
   const { getFullDate } = useDate()
 
+  // ADM-11 (spec 08 กฎ 14): ใช้ผลของ loader เป็นค่าเริ่ม → ไม่ GET แคมเปญซ้ำ; loader คืน null (404) → undefined ให้ query ยิงเอง
+  const initialData = (useLoaderData() as CampaignLoaderData | undefined) ?? undefined
   const { data, isLoading, error } = useQuery({
     queryKey: groupBuyKeys.campaign(id),
     queryFn: () => groupBuyApi.getCampaign(id),
+    initialData,
     // 404 (ไม่มี/ลบแล้ว) ไม่ retry — แสดงผลทันที (qa D-2)
     retry: (count, e) => (e as FetchError).status !== 404 && count < 2,
   })
