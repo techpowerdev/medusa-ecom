@@ -1,6 +1,6 @@
 import { APIRequestContext } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin, rowAction } from "./support/admin"
+import { ADMIN_UI_OPTIONS, expectDatePicker, loginAdmin, rowAction } from "./support/admin"
 import { createActiveAffiliate, insertApprovedEntry } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
@@ -78,15 +78,15 @@ test("AC-44: ฟอร์มสร้าง payout ค่าเริ่มต�
     await page.goto(`${BACKEND_URL}/app/affiliate`)
     await page.getByTestId("affiliate-admin-tab-payouts").click()
     await page.getByTestId("affiliate-payout-create").click()
-    await expect(page.getByTestId("affiliate-payout-field-period_from")).toHaveValue(ymd(m - 1))
-    await expect(page.getByTestId("affiliate-payout-field-period_to")).toHaveValue(ymd(m))
+    await expectDatePicker(page.getByTestId("affiliate-payout-field-period_from"), `${ymd(m - 1)}T00:00`)
+    await expectDatePicker(page.getByTestId("affiliate-payout-field-period_to"), `${ymd(m)}T00:00`)
     await page.getByTestId("affiliate-payout-field-affiliate_id").click()
     const options = page.getByRole("option")
     await expect(options.filter({ hasText: ann.email })).toHaveCount(1)
     await expect(options.filter({ hasText: sue.email })).toHaveCount(1)
     await expect(options.filter({ hasText: pat.email })).toHaveCount(0)
     await evidence("01-payout-form")
-    await page.keyboard.press("Escape")
+    // ADM-9: ตัวเลือกเป็น Combobox — Escape ปิดทั้ง FocusModal (เดิมปิดแค่ Select) step ถัดไปเลือกจาก popover ที่เปิดอยู่ได้เลย
   })
 
   await step("affiliate ที่ไม่มี entry → toast error และไม่มีแถวใหม่", async () => {
