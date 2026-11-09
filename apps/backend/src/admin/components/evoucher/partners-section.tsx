@@ -26,6 +26,7 @@ import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { Header } from "../common/header"
 import { usePageOffset } from "../common/use-page-offset"
+import { PageOffsetGate } from "../common/page-offset-gate"
 
 const columnHelper = createDataTableColumnHelper<Partner>()
 const PAGE_SIZE = 20
@@ -192,20 +193,22 @@ export const PartnersSection = () => {
           </div>
         </>
       ) : (
-        <DataTable
-          data={data?.partners ?? []}
-          columns={columns}
-          getRowId={(partner) => partner.id}
-          rowCount={data?.count ?? 0}
-          isLoading={isLoading}
-          heading="Partners"
-          headingLevel="h2"
-          action={{ label: "Create partner", onClick: openCreate }}
-          prefix={PREFIX}
-          pageSize={PAGE_SIZE}
-          enableSearch={false}
-          emptyState={{ empty: { heading: "No partners on this page" } }}
-        />
+        <PageOffsetGate prefix={PREFIX}>
+          <DataTable
+            data={data?.partners ?? []}
+            columns={columns}
+            getRowId={(partner) => partner.id}
+            rowCount={data?.count ?? 0}
+            isLoading={isLoading}
+            heading="Partners"
+            headingLevel="h2"
+            action={{ label: "Create partner", onClick: openCreate }}
+            prefix={PREFIX}
+            pageSize={PAGE_SIZE}
+            enableSearch={false}
+            emptyState={{ empty: { heading: "No partners on this page" } }}
+          />
+        </PageOffsetGate>
       )}
 
       <FocusModal open={createOpen} onOpenChange={setCreateOpen}>
