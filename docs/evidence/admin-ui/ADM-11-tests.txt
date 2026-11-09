@@ -45,3 +45,17 @@ ADM-11 click → gb-campaign-status: 3724ms
 
 ## unit (backend src/admin)
 Test Suites: 16 passed, 16 total / Tests: 278 passed, 278 total
+
+## แก้ core-15 AC-69 ล้มเมื่อ admin-detail-loader รันก่อน (PR #311)
+สาเหตุ: สินค้า voucher ที่ spec สร้างเพิ่มกลุ่มตัวกรอง option → slider ราคาเลื่อนจาก y=624 เป็น y=748 ใต้ viewport 720 → page.mouse ไม่โดน thumb (elementFromPoint = null)
+== RED (ก่อนแก้, core-15 ไม่เลื่อน slider เข้า viewport) head eaf2d6dc
+  ✓  1 [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers (5.8s)
+  ✘  2 [chromium] › e2e/core-15-store-search-error.spec.ts:62:7 › AC-69: browser locale en-US › ป้ายช่วงราคาใต้ slider แสดง ฿ ไม่มี THB ทั้งก่อนและหลังลาก (5.5s)
+    Expected: not "฿500"
+    Received: "฿500"
+  1 failed
+  1 passed (11.9s)
+== GREEN (หลังแก้)
+  ✓  1 [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers (5.8s)
+  ✓  2 [chromium] › e2e/core-15-store-search-error.spec.ts:62:7 › AC-69: browser locale en-US › ป้ายช่วงราคาใต้ slider แสดง ฿ ไม่มี THB ทั้งก่อนและหลังลาก (592ms)
+  2 passed (6.9s)
