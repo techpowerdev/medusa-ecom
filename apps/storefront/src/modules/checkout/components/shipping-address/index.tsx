@@ -7,6 +7,18 @@ import React, { useEffect, useMemo, useState } from "react"
 import AddressSelect from "../address-select"
 import CountrySelect from "../country-select"
 
+const SAVED_ADDRESS_FIELDS = [
+  "first_name",
+  "last_name",
+  "address_1",
+  "company",
+  "postal_code",
+  "city",
+  "country_code",
+  "province",
+  "phone",
+] as const
+
 const ShippingAddress = ({
   customer,
   cart,
@@ -72,6 +84,14 @@ const ShippingAddress = ({
     }
   }
 
+  // CORE-4j (กฎข้อ 73b): sync จาก cart เฉพาะเมื่อที่อยู่/อีเมลที่บันทึกใน cart เปลี่ยน — cart refresh จากการใส่โค้ดส่วนลด
+  // (object ใหม่ ค่าเดิม) ต้องไม่ทับค่าที่ผู้ใช้พิมพ์ค้างไว้
+  const savedAddressKey = JSON.stringify([
+    SAVED_ADDRESS_FIELDS.map((field) => cart?.shipping_address?.[field] ?? null),
+    cart?.email,
+    customer?.email,
+  ])
+
   useEffect(() => {
     // Ensure cart is not null and has a shipping_address before setting form data
     if (cart && cart.shipping_address) {
@@ -81,7 +101,8 @@ const ShippingAddress = ({
     if (cart && !cart.email && customer?.email) {
       setFormAddress(undefined, customer.email)
     }
-  }, [cart]) // Add cart as a dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ตั้งใจผูกกับค่าที่บันทึกใน cart (savedAddressKey) ไม่ใช่ object cart
+  }, [savedAddressKey])
 
   const handleChange = (
     e: React.ChangeEvent<

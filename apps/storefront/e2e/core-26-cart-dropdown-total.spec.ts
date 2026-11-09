@@ -11,6 +11,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { isAddToCartBody, waitForServerAction } from "./support/server-action"
 
 // CORE-26: spec 01 AC-117 (กฎข้อ 81, qa #199) — ยอดรวมใน dropdown ของตะกร้า = `item_total` ที่ Medusa คำนวณ
 // (หลังส่วนลด flash รวม VAT) ตรงกับราคาต่อ line, แถว `cart-totals` รวมได้ยอดสุทธิ และ dropdown ที่เปิดเองปิดเองใน 5 วินาที
@@ -218,7 +219,7 @@ test("AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใ
 
   /** กดเพิ่มด้วย `click()` ปกติแล้วรอ server action ตอบ (timeout สั้นกว่า test — dropdown ที่ค้างเปิดทับปุ่ม = ล้มเร็ว) */
   const add = async () => {
-    const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
+    const done = waitForServerAction(page, isAddToCartBody)
     await button.click({ timeout: 10_000 })
     await done
   }

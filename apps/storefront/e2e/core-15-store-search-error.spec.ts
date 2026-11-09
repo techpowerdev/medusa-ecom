@@ -90,6 +90,9 @@ test.describe("AC-69: browser locale en-US", () => {
     })
 
     await step("ลาก thumb ต่ำสุดไปทางขวา → ป้ายยังเป็น ฿", async () => {
+      // page.mouse ใช้พิกัด viewport และไม่เลื่อนหน้าให้ — ตำแหน่ง slider ขึ้นกับจำนวนกลุ่มตัวกรอง (สินค้าที่ spec อื่นสร้างเพิ่ม option ใหม่)
+      // ถ้าอยู่ใต้ขอบ viewport การ mouse.down จะไม่โดน thumb จึงต้องเลื่อนให้เห็นก่อนวัดพิกัด
+      await page.getByTestId("price-range").scrollIntoViewIfNeeded()
       const track = await page.getByTestId("price-range").boundingBox()
       const thumb = await page
         .getByTestId("price-range")

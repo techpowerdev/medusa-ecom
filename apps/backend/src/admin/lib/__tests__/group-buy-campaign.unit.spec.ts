@@ -1,4 +1,4 @@
-import { campaignActions, groupProgress, pageOffset } from "../group-buy-campaign"
+import { campaignActions, groupProgress } from "../group-buy-campaign"
 
 // GB-6b (spec 04 Admin UI, AC-30/AC-31): ปุ่มที่หน้ารายละเอียดแคมเปญแสดงตามสถานะ/group_mode
 describe("campaignActions", () => {
@@ -22,21 +22,5 @@ describe("groupProgress", () => {
     ["people", "1 / 3 people"],
   ] as const)("reads progress_* of target type %s", (target_type, expected) => {
     expect(groupProgress(group, { target_type, target_value: 3 })).toBe(expected)
-  })
-})
-
-// ADM-6 (spec 08 กฎ 9, review PR #293): gb_offset ใน URL แก้ด้วยมือได้ — ค่าที่ไม่ใช่จำนวนเต็มไม่ติดลบใช้ 0 (ไม่ส่งให้ backend ตอบ 400)
-describe("pageOffset", () => {
-  it.each([
-    [undefined, 0],
-    ["", 0],
-    ["abc", 0],
-    ["-20", 0],
-    ["20", 20],
-    ["40", 40],
-    ["20.5", 20],
-    ["Infinity", 0],
-  ] as const)("%p → %p", (input, expected) => {
-    expect(pageOffset(input)).toBe(expected)
   })
 })

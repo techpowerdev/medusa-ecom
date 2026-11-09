@@ -1,7 +1,7 @@
 import { LayoutComposer, SectionRow } from "@medusajs/dashboard/components"
 import { Badge, Text } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
-import { LoaderFunctionArgs, UIMatch, useParams } from "react-router-dom"
+import { LoaderFunctionArgs, UIMatch, useLoaderData, useParams } from "react-router-dom"
 import { Container } from "../../../../components/common/container"
 import { Header } from "../../../../components/common/header"
 import { CodesTable } from "../../../../components/evoucher/codes-table"
@@ -14,9 +14,12 @@ const PoolPage = () => {
   const { id } = useParams()
   const poolId = id!
 
+  // ADM-11 (spec 08 กฎ 14): ใช้ผลของ loader เป็นค่าเริ่ม → ไม่ GET pool ซ้ำตอนเปิดหน้า (staleTime ของ QueryClient ของ dashboard)
+  const initialData = (useLoaderData() as PoolLoaderData | undefined) ?? undefined
   const { data, isLoading } = useQuery({
     queryKey: evoucherKeys.pool(poolId),
     queryFn: () => evoucherApi.retrievePool(poolId),
+    initialData,
   })
   const pool = data?.pool
 

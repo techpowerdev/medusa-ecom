@@ -1,0 +1,61 @@
+# OPS-20b — ผล test (spec 07 AC-32)
+
+## Red (ก่อนเขียนโค้ด)
+FAIL src/lib/__tests__/saturation-sampler.unit.spec.ts
+    Cannot find module '../saturation-sampler' from 'src/lib/__tests__/saturation-sampler.unit.spec.ts'
+FAIL src/api/store/carts/__tests__/checkout-phase-timing.unit.spec.ts
+    Cannot find module '../../../../lib/saturation-sampler' from 'src/api/store/carts/__tests__/checkout-phase-timing.unit.spec.ts'
+Test Suites: 4 failed, 4 total
+Tests:       3 failed, 3 total
+
+## Green — test ของ task
+PASS src/__tests__/load-saturation.unit.spec.ts
+  OPS-20b parsers
+    ✓ parseSamples อ่าน log JSON ของ logger เดิม ข้ามบรรทัดอื่น/ไม่ใช่ JSON (4 ms)
+    ✓ parseDockerStats แปลง CPUPerc เป็นตัวเลขและชื่อ container เป็น service ของ compose
+    ✓ parsePgActivity รวมจำนวน connection แยก state และ wait_event_type (ว่าง = none)
+  OPS-20b summarizeSaturation
+    ✓ min/median/p95/max เฉพาะ sample ในช่วง checkout แยก server/worker และ container (3 ms)
+    ✓ timeline รายวินาทีพร้อม timestamp ISO เฉพาะในช่วง checkout (1 ms)
+    ✓ เกณฑ์ owner: p95 event-loop ของ server ≥ 100ms / median CPU server ≥ 90% / p95 รอ pool > 0 → อิ่มตัว (1 ms)
+    ✓ ทุกค่าต่ำกว่าเกณฑ์ → ไม่อิ่มตัว; ไม่มีข้อมูลของเกณฑ์ → hit = null (ไม่นับว่าผ่าน/ไม่ผ่าน)
+    ✓ render: ช่วง checkout, จำนวน sample ของทั้งสอง process, ตารางสรุป, timeline และผลตามเกณฑ์ (1 ms)
+  OPS-20b run.sh sampler
+    ✓ sample docker stats --no-stream และ pg_stat_activity (state/wait_event_type ผ่าน psql ใน container postgres เดิม) ทุก LOAD_SAMPLE_INTERVAL วินาที
+    ✓ เปิด sampler ก่อน k6 flash-sale และปิดหลังจบ; cleanup ปิด sampler เสมอ (1 ms)
+    ✓ สรุปด้วย saturation.js ลง OUT และพิมพ์ใน report (หลัง scan)
+PASS src/lib/__tests__/saturation-sampler.unit.spec.ts
+  startSaturationSampler (OPS-20b)
+    ✓ LOG_LEVEL ไม่ใช่ debug ({}) → ไม่สร้าง histogram/interval (2 ms)
+    ✓ LOG_LEVEL ไม่ใช่ debug ({"LOG_LEVEL":"info"}) → ไม่สร้าง histogram/interval (5 ms)
+    ✓ LOG_LEVEL ไม่ใช่ debug ({"LOG_LEVEL":"http"}) → ไม่สร้าง histogram/interval (1 ms)
+    ✓ LOG_LEVEL=debug → interval 1 วินาทีที่ unref (ไม่ค้าง process) และ log ทุก tick แล้ว reset histogram (1 ms)
+    ✓ ค่าดิบน้อยกว่า resolution (timer เร็วกว่ากำหนด) → 0 ไม่ติดลบ (1 ms)
+    ✓ ไม่ตั้ง MEDUSA_WORKER_MODE → worker_mode = shared (เหมือน json-logger)
+    ✓ มี pool ของ knex (PG_CONNECTION) → log numPendingAcquires/numUsed/numFree
+  setSamplerPool (OPS-20b)
+    ✓ รับ knex ที่มี client.pool แบบ tarn เท่านั้น — อย่างอื่นไม่ตั้ง
+    ✓ เก็บบน globalThis (Symbol.for) — instance ของ module ที่ instrumentation โหลดกับที่ middleware โหลดเห็นค่าเดียวกัน (1 ms)
+PASS src/__tests__/instrumentation.unit.spec.ts
+  instrumentation.ts register() (OPS-20b)
+    ✓ ไม่ตั้ง LOG_LEVEL=debug → ไม่สร้าง interval (2 ms)
+    ✓ LOG_LEVEL=info (ค่าเริ่มต้นของ compose prod) → ไม่สร้าง interval
+    ✓ LOG_LEVEL=debug → สร้าง interval หนึ่งตัว (หยุดได้) (1 ms)
+PASS src/api/store/carts/__tests__/checkout-phase-timing.unit.spec.ts
+  checkoutPhaseTiming middleware (OPS-20a)
+    ✓ log หนึ่งบรรทัดตอน res finish: entered_at = ตอนเข้า middleware, finished_at = ตอน finish, status (3 ms)
+    ✓ logger ไม่ได้เปิด debug (ค่าเริ่มต้นของ prod) → ไม่ฟัง finish และไม่ log
+    ✓ debug → ส่ง pool ของ PG_CONNECTION ให้ sampler (รอ pool ของ knex)
+    ✓ ไม่ได้เปิด debug → ไม่แตะ sampler
+Test Suites: 4 passed, 4 total
+Tests:       27 passed, 27 total
+Snapshots:   0 total
+Time:        1.313 s, estimated 2 s
+Ran all test suites matching /src\/lib\/__tests__\/saturation-sampler|src\/__tests__\/instrumentation|src\/__tests__\/load-saturation|src\/api\/store\/carts\/__tests__\/checkout-phase-timing/i.
+
+## Green — backend test:unit ทั้งชุด
+Test Suites: 95 passed, 95 total
+Tests:       1091 passed, 1091 total
+
+## typecheck/lint/build (backend)
+pnpm --filter @dtc/backend typecheck: ผ่าน (0 error); lint: 0 error (2 warning เดิมที่ไม่ได้แตะ); build: ผ่าน (.medusa/server/instrumentation.js มีอยู่)

@@ -52,3 +52,23 @@ export async function fillDatePicker(wrapper: Locator, value: string) {
   // segment สุดท้าย (AM/PM) แสดงค่าแล้ว = DatePicker ได้ค่าครบทุกช่อง
   await expect(segments.last()).toHaveText(hour24 < 12 ? "AM" : "PM")
 }
+
+/**
+ * ADM-8b (spec 08 กฎ 10): ปุ่มต่อแถวอยู่ใน `ActionMenu` ของ dashboard — คลิก trigger (testid ภายในแถว) แล้วคืน menuitem ตามชื่อ
+ * (label อังกฤษ; ข้อยกเว้นของการหาด้วย testid — CLAUDE.md) ผู้เรียก click/ตรวจ disabled เอง แล้วกด Escape ถ้าไม่เลือก
+ */
+export async function rowAction(row: Locator, trigger: string, name: string) {
+  await row.getByTestId(trigger).click()
+  return row.page().getByRole("menuitem", { name, exact: true })
+}
+
+/**
+ * ปิด `ActionMenu` ที่เปิดอยู่โดยไม่เลือก — Escape ครั้งแรกหลังเปิดเมนูบางครั้งไม่ปิด (วัดใน admin 2.22.1) จึงกดซ้ำจนเมนูหาย
+ * ระหว่างเมนูเปิด Radix ซ่อนส่วนอื่นจาก accessibility tree (`getByRole("row")` หาไม่เจอ) ต้องปิดก่อนหาแถวถัดไป
+ */
+export async function closeRowMenu(page: Page) {
+  await expect(async () => {
+    await page.keyboard.press("Escape")
+    await expect(page.getByRole("menu")).toHaveCount(0, { timeout: 1_000 })
+  }).toPass({ timeout: 10_000 })
+}

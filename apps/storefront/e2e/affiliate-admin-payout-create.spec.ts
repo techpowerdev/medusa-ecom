@@ -1,12 +1,13 @@
 import { APIRequestContext } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
+import { ADMIN_UI_OPTIONS, loginAdmin, rowAction } from "./support/admin"
 import { createActiveAffiliate, insertApprovedEntry } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
 
 // AF-12c (spec 05 กฎ 37c, AC-44): แท็บ Payouts — สร้าง payout ผ่านฟอร์ม (ช่วงเริ่มต้น = เดือนก่อนตามเวลาไทย) และ mark paid พร้อม reference
-// admin UI เป็นภาษาอังกฤษ (CLAUDE.md) — หา element ด้วย data-testid
+// admin UI เป็นภาษาอังกฤษ (CLAUDE.md) — หา element ด้วย data-testid ยกเว้น menuitem ของ ActionMenu ต่อแถว
+// (trigger `affiliate-payout-row-actions`, หาด้วย role + ชื่อ — spec 08 กฎ 10, ADM-8b)
 test.use({
   ...ADMIN_UI_OPTIONS,
   viewport: { width: 1280, height: 800 },
@@ -113,7 +114,7 @@ test("AC-44: ฟอร์มสร้าง payout ค่าเริ่มต�
 
   await step("ยกเลิก prompt mark paid → ไม่มี request", async () => {
     posts.length = 0
-    await row(payoutId).getByTestId("affiliate-payout-mark-paid").click()
+    await (await rowAction(row(payoutId), "affiliate-payout-row-actions", "Mark paid")).click()
     await page.getByTestId("affiliate-payout-mark-paid-dismiss").click()
     await expect(page.getByRole("alertdialog")).toBeHidden()
     await page.waitForTimeout(300)
@@ -121,15 +122,14 @@ test("AC-44: ฟอร์มสร้าง payout ค่าเริ่มต�
   })
 
   await step("mark paid พร้อม reference TRX-AC44 → paid, ไม่มีปุ่ม, entry ทั้งหมดเป็น paid", async () => {
-    await row(payoutId).getByTestId("affiliate-payout-mark-paid").dblclick()
+    await (await rowAction(row(payoutId), "affiliate-payout-row-actions", "Mark paid")).click()
     await page.getByTestId("affiliate-payout-mark-paid-reference").fill("TRX-AC44")
     await page.waitForTimeout(300) // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence
     await evidence("03-mark-paid-prompt")
     await page.getByTestId("affiliate-payout-mark-paid-confirm").dblclick()
     await expect(row(payoutId)).toContainText("TRX-AC44")
     await expect(row(payoutId)).toContainText("paid")
-    await expect(row(payoutId).getByTestId("affiliate-payout-mark-paid")).toHaveCount(0)
-    await expect(row(payoutId).getByTestId("affiliate-payout-cancel")).toHaveCount(0)
+    await expect(row(payoutId).getByTestId("affiliate-payout-row-actions")).toHaveCount(0)
     expect(posts).toEqual([{ path: `${PAYOUTS}/${payoutId}/mark-paid`, body: { reference: "TRX-AC44" } }])
     await evidence("04-paid")
     const { payout } = await call(request, admin, `${PAYOUTS}/${payoutId}`)
@@ -148,12 +148,12 @@ test("AC-44: ฟอร์มสร้าง payout ค่าเริ่มต�
     posts.length = 0
     await page.reload()
     await page.getByTestId("affiliate-admin-tab-payouts").click()
-    await row(draft.id).getByTestId("affiliate-payout-mark-paid").click()
+    await (await rowAction(row(draft.id), "affiliate-payout-row-actions", "Mark paid")).click()
     await page.getByTestId("affiliate-payout-mark-paid-reference").fill("   ")
     const paid = page.waitForResponse((r) => new URL(r.url()).pathname === `${PAYOUTS}/${draft.id}/mark-paid`)
     await page.getByTestId("affiliate-payout-mark-paid-confirm").click()
     expect((await paid).status()).toBe(200)
     expect(posts).toEqual([{ path: `${PAYOUTS}/${draft.id}/mark-paid`, body: {} }])
-    await expect(row(draft.id).getByTestId("affiliate-payout-mark-paid")).toHaveCount(0)
+    await expect(row(draft.id).getByTestId("affiliate-payout-row-actions")).toHaveCount(0)
   })
 })

@@ -8,6 +8,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
+import { NumberInput } from "../components/common/number-input"
 import { evoucherApi, evoucherKeys } from "../lib/evoucher"
 import {
   POOL_FORM_DEFAULTS,
@@ -66,7 +67,8 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     )
   )
 
-  const field = (name: "name" | "face_value" | "validity_note" | "low_stock_threshold", label: string, type = "text") => (
+  // ช่องตัวเลขผ่าน NumberInput ของกลาง (ADM-12, spec 08 กฎ 15) — "e" ไม่ถูกถือเป็นค่าว่าง/ค่า default
+  const field = (name: "name" | "face_value" | "validity_note" | "low_stock_threshold", label: string, numeric = false) => (
     <Form.Field
       control={form.control}
       name={name}
@@ -74,7 +76,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
         <Form.Item>
           <Form.Label>{label}</Form.Label>
           <Form.Control>
-            <Input {...field} size="small" type={type} />
+            {numeric ? <NumberInput {...field} size="small" /> : <Input {...field} size="small" />}
           </Form.Control>
           <Form.ErrorMessage data-testid={`evoucher-pool-${name}-error`} />
         </Form.Item>
@@ -190,9 +192,9 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
                       </Form.Item>
                     )}
                   />
-                  {field("face_value", "Face value", "number")}
+                  {field("face_value", "Face value", true)}
                   {field("validity_note", "Validity note")}
-                  {field("low_stock_threshold", "Low-stock threshold", "number")}
+                  {field("low_stock_threshold", "Low-stock threshold", true)}
                 </div>
               </FocusModal.Body>
             </KeyboundForm>

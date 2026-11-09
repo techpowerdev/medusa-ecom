@@ -40,10 +40,45 @@ DATA="$(mktemp -d)" # token ของลูกค้าทดสอบ — ไ�
 
 compose() { docker compose -p "$PROJECT" -f docker-compose.prod.yml "$@"; }
 REPORTED=""
-REPORTS=(report.md lock-timing.md checkout-timing.md)
+REPORTS=(report.md lock-timing.md checkout-timing.md saturation.md)
+
+# OPS-20b (AC-32): sampler ความอิ่มตัวระหว่าง k6 flash-sale — ค่าตั้งเท่ากันทุก run (ไม่ขึ้นกับ LOAD_FLASH_BURST)
+# event-loop delay + รอ pool ของ knex มาจาก log debug ของ backend (instrumentation.ts, ทุก 1 วินาที)
+SAMPLE_INTERVAL="${LOAD_SAMPLE_INTERVAL:-1}"
+SAMPLER_PIDS=()
+sample_docker() { # CPU/หน่วยความจำต่อ container (100% = 1 core) — ไม่มี env/คำสั่งของ container
+  local ids s
+  ids="$(compose ps -q)"
+  while :; do
+    # shellcheck disable=SC2086 # ids = รายการ container id คั่นด้วยช่องว่าง
+    s="$(docker stats --no-stream --format '{"name":"{{.Name}}","cpu":"{{.CPUPerc}}","mem":"{{.MemUsage}}"}' $ids 2>/dev/null | paste -sd, -)" || true
+    [ -z "$s" ] || echo "{\"t\":$(date +%s%3N),\"containers\":[$s]}"
+    sleep "$SAMPLE_INTERVAL"
+  done
+}
+sample_pg() { # นับ connection แยก state/wait_event_type อย่างเดียว (ไม่ดึงข้อความ SQL) ผ่าน psql ใน container postgres เดิม
+  # jsonb พิมพ์บรรทัดเดียว (json_agg ขึ้นบรรทัดใหม่ระหว่าง element) → หนึ่ง sample ต่อบรรทัด
+  while :; do
+    compose exec -T postgres psql -U medusa -d medusa -tAc "SELECT jsonb_build_object('t', (extract(epoch FROM clock_timestamp()) * 1000)::bigint,
+      'rows', coalesce(jsonb_agg(r), '[]'::jsonb)) FROM (SELECT coalesce(state, '') AS state, coalesce(wait_event_type, '') AS wait_event_type,
+      count(*) AS n FROM pg_stat_activity WHERE backend_type = 'client backend' GROUP BY 1, 2) r" 2>/dev/null || true
+    sleep "$SAMPLE_INTERVAL"
+  done
+}
+start_samplers() {
+  sample_docker >"$OUT/saturation-docker.jsonl" &
+  SAMPLER_PIDS+=($!)
+  sample_pg >"$OUT/saturation-pg.jsonl" &
+  SAMPLER_PIDS+=($!)
+}
+stop_samplers() {
+  [ "${#SAMPLER_PIDS[@]}" = 0 ] || kill "${SAMPLER_PIDS[@]}" 2>/dev/null || true
+  SAMPLER_PIDS=()
+}
 # OPS-17 (follow-up review #220/#235, AC-33): script หยุดกลางทาง (set -e) → ตรวจ OUT ก่อน (ลบไฟล์ที่มี JWT/setup_data
 # ก่อน step upload artifact) แล้วค่อยพิมพ์ report ที่เหลือลง job log — ไฟล์ที่ถูกลบไม่ถูกพิมพ์; exit code เดิมของ script คงไว้
 cleanup() {
+  stop_samplers
   if [ -d "$OUT" ]; then
     node tools/load/artifact-guard.js scan "$OUT" || true
     [ -n "$REPORTED" ] || (cd "$OUT" && cat "${REPORTS[@]}" 2>/dev/null) || true
@@ -83,7 +118,9 @@ k6() { # k6 <script> — exit code เก็บไว้ ไม่หยุด s
   grep -v checkout_k6_timing "$OUT/$1-console.log" 2>/dev/null | node tools/load/artifact-guard.js redact || true
 }
 rm -f "$OUT/k6-failures.txt"
+start_samplers
 k6 flash-sale
+stop_samplers
 k6 group-buy-join
 
 sql() { compose exec -T postgres psql -U medusa -d medusa -tAc "$1"; }
@@ -106,6 +143,9 @@ node tools/load/lock-timing.js "$DATA/backend.log" "$OUT/lock-timing.jsonl" >"$O
 # OPS-20a (AC-31): ช่วงเวลา (a)–(e) ต่อ checkout จาก console ของ k6 + log debug ของ middleware/hook
 node tools/load/checkout-timing.js "$DATA/backend.log" "$OUT/flash-sale-console.log" "$OUT/checkout-timing.jsonl" "$OUT/checkout-timing.json" \
   >"$OUT/checkout-timing.md" || echo "checkout-timing: สรุปไม่สำเร็จ (ไม่ใช่ gate)" >"$OUT/checkout-timing.md"
+# OPS-20b (AC-32): ตัวชี้วัดความอิ่มตัวรายวินาทีใน "ช่วง checkout" ของ checkout-timing.json
+node tools/load/saturation.js "$DATA/backend.log" "$OUT/saturation-docker.jsonl" "$OUT/saturation-pg.jsonl" "$OUT/checkout-timing.json" \
+  "$OUT/saturation.json" >"$OUT/saturation.md" || echo "saturation: สรุปไม่สำเร็จ (ไม่ใช่ gate)" >"$OUT/saturation.md"
 
 metric() { jq -r "($2) // \"-\"" "$OUT/$1.json" 2>/dev/null || echo "-"; }
 failures=0
@@ -114,6 +154,7 @@ failures=0
   echo
   [ "$FLASH_BURST" = "0" ] && burst_desc="ปิด (LOAD_FLASH_BURST=0)" || burst_desc="$BURST_RATE rps × $BURST_DURATION"
   echo "flash: $FLASH_CUSTOMERS ลูกค้า, total_cap=$TOTAL_CAP, burst $burst_desc | join: $JOIN_CUSTOMERS ลูกค้า, กลุ่ม $GROUP_SIZE คน"
+  echo "sampler (OPS-20b): docker stats/pg_stat_activity ทุก ${SAMPLE_INTERVAL}s ระหว่าง flash-sale, event-loop/pool ทุก 1s (LOG_LEVEL=$LOG_LEVEL)"
   echo
   echo "| ตรวจ | คาดหวัง | ได้ | ผล |"
   echo "|---|---|---|---|"
