@@ -10,6 +10,7 @@ import {
   signInAs,
   variantIdsByOption,
 } from "./support/medusa"
+import { isAddToCartBody, waitForServerAction } from "./support/server-action"
 
 // CORE-25: spec 01 AC-116 (กฎข้อ 78, qa #178) — ตัวเลือกบน PDP ไม่ถูกรีเซ็ตจาก `v_id` และแถบปุ่มมือถือไม่ทับปุ่มหลัก
 // ข้อมูลตั้งต้นจาก seed (CORE-2): t-shirt ไซซ์ S/M/L; หา element ด้วย data-testid เท่านั้น
@@ -37,7 +38,7 @@ const option = (page: Page, size: string) =>
  * CORE-26 (กฎข้อ 81c): cart dropdown ที่เปิดเองหลังเพิ่มปิดเองใน 5 วินาทีแม้ mouse อยู่ใต้ panel จึงกดด้วย `click()` ปกติได้
  */
 async function addAndWait(page: Page) {
-  const done = page.waitForResponse((r) => r.request().headers()["next-action"] !== undefined)
+  const done = waitForServerAction(page, isAddToCartBody)
   const button = page.getByTestId("add-product-button")
   await button.click()
   await done

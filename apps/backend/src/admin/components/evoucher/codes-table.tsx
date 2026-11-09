@@ -14,7 +14,6 @@ import {
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "react-router-dom"
 import {
   CODE_STATUSES,
   evoucherApi,
@@ -26,6 +25,7 @@ import {
 import { codesListQuery } from "../../lib/evoucher-query"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
+import { usePageOffset } from "../common/use-page-offset"
 
 const columnHelper = createDataTableColumnHelper<MaskedCode>()
 const filterHelper = createDataTableFilterHelper<MaskedCode>()
@@ -41,38 +41,6 @@ const filters = [
   }),
 ]
 
-const OFFSET_KEY = `${PREFIX}_offset`
-
-// เปลี่ยน filter แล้วต้องกลับหน้าแรก: DataTable ของ dashboard 2.22.1 เรียก reset หน้า (ลบ `codes_offset`) แล้วตามด้วยตั้ง filter
-// ผ่าน setSearchParams สองครั้งใน tick เดียว — บน react-router 7 ครั้งหลังเขียนทับครั้งแรก offset จึงค้าง (กรองจากหน้า 2 แล้วได้ตารางว่าง)
-// คืน true ตั้งแต่ status เปลี่ยนจนกว่า URL ไม่มี offset แล้วจริง เพื่อให้ทุก request ระหว่างนั้นใช้ offset 0 (ไม่ยิง request ของหน้าเก่า)
-// — หน้า pool มี loader: การลบ offset ทำให้ router revalidate loader ก่อนอัปเดต URL จึงจำ status ใหม่ได้เมื่อ offset หายไปแล้วเท่านั้น
-const useResetOffsetOnStatusChange = (status?: string, offset?: string) => {
-  const [, setSearchParams] = useSearchParams()
-  const [seen, setSeen] = useState(status)
-  const changed = status !== seen
-
-  useEffect(() => {
-    if (!changed) {
-      return
-    }
-    if (!offset) {
-      setSeen(status)
-      return
-    }
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete(OFFSET_KEY)
-        return next
-      },
-      { replace: true }
-    )
-  }, [changed, offset, status, setSearchParams])
-
-  return changed
-}
-
 // รายการ code แบบ masked (AC-8); ค่าจริงดูได้ทีละ code ผ่าน reveal ซึ่ง backend เขียน audit ทุกครั้ง
 // ADM-4: DataTable ของ dashboard (หน้า/filter อยู่ใน URL `codes_offset`, `codes_status`), Reveal ต่อแถวใน ActionMenu
 export const CodesTable = ({ poolId }: { poolId: string }) => {
@@ -80,15 +48,18 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
   const { getFullDate } = useDate()
   const [revealOnce] = useState(createSingleFlight)
   const [revealed, setRevealed] = useState<RevealedCode | null>(null)
-  const params = useQueryParams(["offset", "status"], PREFIX)
-  const statusChanged = useResetOffsetOnStatusChange(params.status, params.offset)
-  const query = codesListQuery(statusChanged ? { status: params.status } : params, PAGE_SIZE)
+  const { status } = useQueryParams(["status"], PREFIX)
+  const [count, setCount] = useState<number>()
+  // เปลี่ยน filter แล้วกลับหน้าแรก (resetOn — workaround upstream กฎ 17 อยู่ใน hook)
+  const offset = usePageOffset(PREFIX, PAGE_SIZE, { count, resetOn: status })
+  const query = codesListQuery(status, offset, PAGE_SIZE)
 
   const { data, isLoading } = useQuery({
     queryKey: [...evoucherKeys.codes(poolId), query],
     queryFn: () => evoucherApi.listCodes(poolId, query),
     placeholderData: keepPreviousData,
   })
+  useEffect(() => setCount(data?.count), [data?.count])
 
   // useMutation (ไม่ใช่ useQuery) เพื่อไม่ให้ค่าจริงค้างใน query cache
   const reveal = useMutation({

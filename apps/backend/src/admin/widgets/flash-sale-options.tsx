@@ -8,6 +8,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
+import { NumberInput } from "../components/common/number-input"
 import { sdk } from "../lib/client"
 import {
   FLASH_SALE_PARSE_OPTIONS,
@@ -158,7 +159,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
                       <Form.Item>
                         <Form.Label>Per-customer limit</Form.Label>
                         <Form.Control>
-                          <Input {...field} type="number" min={1} placeholder="Unlimited" />
+                          <NumberInput {...field} min={1} placeholder="Unlimited" />
                         </Form.Control>
                         <Form.ErrorMessage data-testid="fs-per-customer-limit-error" />
                       </Form.Item>
@@ -171,7 +172,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
                       <Form.Item>
                         <Form.Label>Total cap</Form.Label>
                         <Form.Control>
-                          <Input {...field} type="number" min={1} placeholder="Unlimited" />
+                          <NumberInput {...field} min={1} placeholder="Unlimited" />
                         </Form.Control>
                         <Form.ErrorMessage data-testid="fs-total-cap-error" />
                         {capBelowSold && (

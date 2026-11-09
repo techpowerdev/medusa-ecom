@@ -37,4 +37,7 @@ export const config = defineRouteConfig({
   icon: GiftCards,
 })
 
+// ADM-11 (spec 08 กฎ 14): breadcrumb ระดับแรกของหน้า pool = "E-vouchers" (ลิงก์ไป /evouchers)
+export const handle = { breadcrumb: () => "E-vouchers" }
+
 export default EvouchersPage

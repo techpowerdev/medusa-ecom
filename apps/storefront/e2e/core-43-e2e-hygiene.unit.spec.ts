@@ -5,24 +5,6 @@ import path from "node:path"
 // CORE-43 (spec 01 กฎข้อ 101, AC-137 grep): e2e รอเงื่อนไขที่ถูกต้องแทน timeout default
 const E2E = __dirname
 const read = (...parts: string[]) => fs.readFileSync(path.join(E2E, ...parts), "utf8")
-const specs = fs
-  .readdirSync(E2E)
-  .filter((name) => name.endsWith(".spec.ts") && !name.endsWith(".unit.spec.ts"))
-
-test("AC-137: ไม่มี add-product-button click() ตามด้วย toBeEnabled() ของปุ่มเดียวกัน (ยกเว้น comment กฎข้อ 101a)", () => {
-  const offenders = specs.flatMap((name) => {
-    const lines = read(name).split("\n")
-    return lines.flatMap((line, i) => {
-      const next = lines[i + 1] ?? ""
-      const clicked = line.includes('getByTestId("add-product-button").click()')
-      const enabled = next.includes('getByTestId("add-product-button")).toBeEnabled()')
-      const exempt = /101a/.test(line) || /101a/.test(next)
-      return clicked && enabled && !exempt ? [`${name}:${i + 1}`] : []
-    })
-  })
-  expect(offenders).toEqual([])
-})
-
 test("AC-137: helper ของข้อ (a) อยู่ใน e2e/support และ spec ที่เคยใช้ pattern เดิมเรียก helper", () => {
   expect(read("support", "server-action.ts")).toContain("export async function addToCartFromPdp")
   for (const name of [
@@ -39,8 +21,8 @@ test("AC-137: helper ของข้อ (a) อยู่ใน e2e/support แ�
   }
 })
 
-test("AC-137: playwright.config.ts ไม่ตั้ง timeout/expect.timeout และ spec ของข้อ (b) + helper ไม่มี waitForTimeout", () => {
-  expect(fs.readFileSync(path.join(E2E, "..", "playwright.config.ts"), "utf8")).not.toMatch(/timeout/i)
+// grep ของ add-product-button click() และการตรวจ playwright.config.ts อยู่ที่ core-46-e2e-hygiene.unit.spec.ts ที่เดียว (CORE-49 กฎข้อ 107a)
+test("AC-137: spec ของข้อ (b) + helper ไม่มี waitForTimeout", () => {
   for (const name of [
     "core-14-buy-login.spec.ts",
     "ev-7c-digital-only-checkout.spec.ts",
