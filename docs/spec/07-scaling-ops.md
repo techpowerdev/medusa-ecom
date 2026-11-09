@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — รอ owner Q-O4); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
+สถานะ: draft (รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -82,6 +82,7 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 7. (รอบ 10, ADR-016) Store API ของเวอร์ชันใหม่ยังอ่าน draft order ฝั่ง store ไม่ได้ — ถ้าได้แล้วให้ทบทวน route ของ GB-8; `allowFields` (EV-7a) ยังมีและยังตัด field ที่ไม่อนุญาต
 8. (รอบ 12, builder CORE-4h) ข้อความ `Identity with email already exists` ของ auth emailpass ที่ storefront ใช้แยก "อีเมลซ้ำ" ตอนสมัคร (spec 01 กฎข้อ 69) ยังเหมือนเดิม — หรือ
    Medusa มี code แยกแล้ว (ให้เปลี่ยนไปใช้ code); `convertDraftOrderWorkflow` ยัง emit event ที่ GB-10 ฟัง (spec 04 กฎข้อ 26)
+9. (รอบ 26, owner Q8 ของ spec 08 = ก 2026-11-09) ถ้า `@medusajs/dashboard` เวอร์ชันใหม่แก้ปัญหา `createRouteMap` ผูก loader ซ้ำแล้ว (upstream ตามที่ระบุใน #311) ให้ลดเกณฑ์ AC-15 ของ spec 08 กลับเป็น ≤ 2 ใน PR ที่ bump — ไม่มี task ล่วงหน้า
 
 ## Acceptance criteria
 - AC-1 Backend boot เป็น `server` และ `worker` ได้จาก image เดียวกัน; scheduled jobs รันเฉพาะบน worker
@@ -235,16 +236,16 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
   test ของ AC-34 ยังผ่าน (ไม่ต้องรัน `load-nightly.yml` ซ้ำถ้า diff ของ `run.sh` อยู่เฉพาะ `k6()` — แนบ run id ถ้าแตะส่วนอื่น)
 - AC-36 (OPS-21, รอบ 26 — **บล็อก release v0.1.0**; ตรวจบน develop: `x-backend-env` ใน `docker-compose.prod.yml:33–63` ไม่มีสี่ตัวนี้ และ `checkBootEnv` ตรวจแค่ `AFFILIATE_TOKEN_SECRET`/`STOREFRONT_URL`
   ส่วน `EVOUCHER_ENCRYPTION_KEY` ถูกตรวจตอนใช้ — ร้านบูตได้แต่ import/encrypt/reveal/อีเมล voucher ล้ม) unit (`prod-guards.unit.spec.ts`, อ่าน YAML ด้วย parser):
-  (a) `x-backend-env` มี key `EVOUCHER_ENCRYPTION_KEY`, `EVOUCHER_ADMIN_EMAIL`, `OPS_ALERT_EMAIL` (รูปแบบ `${X:-}` เหมือน OPS-7) และ `TZ` ค่า `${TZ:-UTC}` และ service `migrate`/`server`/`worker` ได้ทั้งสี่ตัว;
+  (a) `x-backend-env` มี key `EVOUCHER_ENCRYPTION_KEY`, `EVOUCHER_ADMIN_EMAIL`, `OPS_ALERT_EMAIL` (รูปแบบ `${X:-}` เหมือน OPS-7) และ `TZ: UTC` ค่าคงที่ (Deliverables ข้อ 9 — ไม่รับค่าจาก shell) และ service `migrate`/`server`/`worker` ได้ทั้งสี่ตัว;
   (b) Given `NODE_ENV=production` When โหลด config โดย `EVOUCHER_ENCRYPTION_KEY` ว่าง หรือไม่ใช่ 64 hex (`"abc"`) Then throw ข้อความมีชื่อตัวแปร (ตรวจด้วย `parseEncryptionKey` ของ `modules/evoucher/utils/crypto` ตัวเดิม ไม่เขียน regex ซ้ำ)
   และ `ALLOW_TEST_PROVIDERS=true` ไม่ปิด guard นี้ (เหมือน AC-13); Given ค่า 64 hex ถูกต้อง Then ไม่ throw;
   (c) Given production ที่ไม่ตั้ง `EVOUCHER_ADMIN_EMAIL` หรือ `OPS_ALERT_EMAIL` Then **ไม่ throw** (spec 02 กฎข้อ 9, ADR-015 — ส่งข้ามพร้อม warn) แต่ `checkBootEnv` คืน warning ที่มีชื่อตัวแปรนั้นตัวละ 1 ข้อ;
   (d) Given `NODE_ENV=development` และไม่ตั้งสามตัวนี้ Then ไม่ throw; (e) `it.each` ของ "every production-mode job sets %s" รวม `EVOUCHER_ENCRYPTION_KEY` — job production-mode ใน `ci.yml` และ `tools/ops/smoke-*.sh`, `tools/load/run.sh`
-  ตั้งค่าแล้ว (`openssl rand -hex 32` แบบ `AFFILIATE_TOKEN_SECRET`); (f) `docs/ops/production.md` หัวข้อ guard และ go-live checklist ระบุ `EVOUCHER_ENCRYPTION_KEY` (grep); job `docker-worker-mode` ผ่าน
+  ตั้งค่าแล้ว (script ใช้ `openssl rand -hex 32` แบบ `AFFILIATE_TOKEN_SECRET`; `ci.yml` ใส่ค่า 64 hex ระดับ job ทั้งสอง job ที่ตั้ง `AFFILIATE_TOKEN_SECRET` อยู่ เพราะ guard ตรวจรูปแบบ — หรือปรับ test ถ้า job ใดไม่ได้รันโหมด production จริง); (f) `docs/ops/production.md` หัวข้อ guard และ go-live checklist ระบุ `EVOUCHER_ENCRYPTION_KEY` (grep); job `docker-worker-mode` ผ่าน
 - AC-37 (OPS-22, รอบ 26 — `prod-guards.unit.spec.ts`/`ops-runbook.unit.spec.ts`/`ci-workflow.unit.spec.ts`, `check-stripe-events.sh` และ `backup-runbook.unit.spec.ts` (ของ OPS-5 ยังไม่อยู่บน develop) อ่าน `docs/ops/**` แต่ `classify-changes.sh:29` นับเป็นเอกสาร) `classify-changes.test.sh` เคสใหม่:
   `docs/ops/production.md` → `true/true`; `docs/ops/production.md` + `docs/spec/01.md` → `true/true`; rename `docs/ops/a.md` → `docs/archive/a.md` → `true/true`; `docs/spec/01.md`, `docs/evidence/**`, `CLAUDE.md`, `docs/ROADMAP.md` ยัง `false/false`;
-  comment หัวไฟล์ระบุเหตุผล; เคสเดิม 30 เคสที่ไม่เกี่ยวกับ `docs/ops/` ผ่านโดยไม่แก้
-- AC-38 (OPS-23, รอบ 26 — **รอ owner Q-O4 ห้ามเริ่มก่อนได้คำตอบ**) Given run ของ `load-nightly.yml` (`workflow_dispatch`) ที่ `DATABASE_POOL_MAX` = 10 (ค่าเดิม), 20, 40 ค่าละอย่างน้อย 1 run (commit เดียวกัน)
+  comment หัวไฟล์ระบุเหตุผล; เคสเดิม 30 เคสที่ไม่เกี่ยวกับ `docs/ops/` ผ่านโดยไม่แก้; grep: ประโยค "PR เอกสารล้วน" ใน `CLAUDE.md` ระบุข้อยกเว้น `docs/ops/**`
+- AC-38 (OPS-23, รอบ 26 — owner Q-O4 = ก 2026-11-09) Given run ของ `load-nightly.yml` (`workflow_dispatch`) ที่ `DATABASE_POOL_MAX` = 10 (ค่าเดิม), 20, 40 ค่าละอย่างน้อย 1 run (commit เดียวกัน)
   Then `docs/evidence/scale/OPS-23/REPORT.md` มี run id ทุกตัว, ตาราง (d)/(e) ของ AC-31 และ pool wait/connection ตาม AC-32 ต่อค่า, ข้อสรุปว่า (d)/(e) อธิบายได้ด้วย pool หรือไม่ และค่าที่เสนอ (ถ้ามี);
   gate AC-2/AC-3/AC-33 ผ่านทุก run; ไม่เพิ่ม infra/dependency; ถ้าเสนอเปลี่ยนค่า prod → ADR-020 สถานะ proposed แยก (เลขนี้เท่านั้น)
 
@@ -278,9 +279,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-16 | (เล็ก, CI, รอบ 11 — nit review #141/#133, qa OPS-14) รัน `check-stripe-events.sh` ตัวจริงใน `lint-typecheck` + เคส trailing space, cache browser ของ Playwright ใน `storefront-e2e`, test อ่าน `ci.yml` ด้วย parser YAML (AC-27) — ไฟล์: `.github/workflows/ci.yml`, `tools/ci/check-stripe-events*.sh`, test ของ OPS-14 | OPS-10 ☑ (#141), OPS-14 ☑ (#133) — ชน `ci.yml` กับ OPS-12/OPS-15: ทำทีละตัว (ตัวที่เริ่มทีหลังรอตัวก่อน merge) |
 | OPS-9 | (เล็ก) typecheck ในเครื่องล้มที่ `group-buy-campaigns.spec.ts` เมื่อมี `.medusa/types` (typed `query.graph` ของ link) — แก้ที่ test ให้ type ตรงกับ type ของ link ที่ Medusa generate (เช่น อ่านผ่าน type ของ entity/cast ให้ตรง) **ไม่** exclude `.medusa/types` จาก tsconfig (ทำให้ typed query ทั้งโปรเจกต์หายและ CI กับเครื่อง dev typecheck ต่างกันมากขึ้น); ถ้าแก้ที่ test ไม่ได้ให้หยุดและรายงาน (AC-12) | GB-2a |
 | OPS-11 | (เล็ก, e2e tooling, รอบ 6) ย้าย login admin + header `x-forwarded-proto` จาก e2e admin ของ FS-10 ไปเป็น helper ร่วม `e2e/support/admin.ts` + `data-testid` ที่ `Container` ของ widget "Flash sale options" แทน locator `div.last()` (AC-16) — **ทำเมื่อมี e2e admin ตัวที่สอง** (ตัวแรกที่จะเริ่มจาก EV-5b, EV-9, GB-6b, GB-6c, AF-6): ถ้า OPS-11 ยังไม่ merge ตอน task นั้นเริ่ม ให้รวม OPS-11 ไว้ใน PR ของ task นั้น (ไม่สร้าง helper ก่อนมีผู้ใช้สองที่) | FS-10 (#74) |
-| OPS-21 | (เล็ก ~80 LOC, **บล็อก release v0.1.0**, รอบ 26 — qa/review รอบ 25) compose prod ส่ง `EVOUCHER_ENCRYPTION_KEY`/`EVOUCHER_ADMIN_EMAIL`/`OPS_ALERT_EMAIL`/`TZ` + guard หยุดบูตเมื่อขาดกุญแจ (AC-36) — ไฟล์: `docker-compose.prod.yml`, `apps/backend/src/lib/prod-guards.ts`, `src/__tests__/prod-guards.unit.spec.ts`, `src/__tests__/medusa-config.infra.unit.spec.ts` (ค่าใน PROD env), `.github/workflows/ci.yml` (job production-mode), `tools/ops/smoke-{worker-mode,redis-outage}.sh`, `tools/load/run.sh`, `docs/ops/production.md` | none — **เริ่มได้**; ชน `tools/load/run.sh` กับ OPS-20b (#318 ถ้ายังไม่ merge) ตัวที่ merge ทีหลัง rebase; ไม่แตะ `medusa-config.ts` |
-| OPS-22 | (เล็ก ~20 LOC, CI, รอบ 26 — follow-up รอบ 25 ข้อ F) `classify-changes.sh` นับ `docs/ops/**` เป็นโค้ด (`code=true`, `backend=true`) เพราะ unit test อ่านไฟล์เหล่านี้ (AC-37) — ไฟล์: `tools/ci/classify-changes.sh`, `tools/ci/classify-changes.test.sh` | none — **เริ่มได้**; ไม่บล็อก release; ควร merge ก่อน PR เอกสารที่แก้ `docs/ops/` (∥ OPS-21: OPS-21 แตะ `docs/ops/production.md` แต่มีไฟล์โค้ดจึงรัน test อยู่แล้ว) |
-| OPS-23 | (วัดผล ไม่แตะโค้ด app, รอบ 26 — load test #318) เทียบ `DATABASE_POOL_MAX` 10/20/40 ใน load-nightly (AC-38) — ไฟล์: `.github/workflows/load-nightly.yml` (`workflow_dispatch` input ถ้ายังไม่มี), `tools/load/run.sh` (ส่งค่า), `docs/evidence/scale/OPS-23/REPORT.md` | **รอ owner Q-O4**; OPS-20b (AC-32) merge; ไม่บล็อก release |
+| OPS-21 | (เล็ก ~80 LOC, **บล็อก release v0.1.0**, รอบ 26 — qa/review รอบ 25) compose prod ส่ง `EVOUCHER_ENCRYPTION_KEY`/`EVOUCHER_ADMIN_EMAIL`/`OPS_ALERT_EMAIL`/`TZ` + guard หยุดบูตเมื่อขาดกุญแจ (AC-36) — ไฟล์: `docker-compose.prod.yml`, `apps/backend/src/lib/prod-guards.ts`, `src/__tests__/prod-guards.unit.spec.ts`, `src/__tests__/medusa-config.infra.unit.spec.ts` (ค่าใน PROD env), `.github/workflows/ci.yml` (job production-mode), `tools/ops/smoke-{worker-mode,redis-outage}.sh`, `tools/load/run.sh`, `docs/ops/production.md` | none — **เริ่มได้**; ชน `tools/load/run.sh` กับ OPS-20b (#318 ถ้ายังไม่ merge) ตัวที่ merge ทีหลัง rebase; ชน `docs/ops/production.md` กับ OPS-5 (#319) ตัวที่ merge ทีหลัง rebase; ไม่แตะ `medusa-config.ts` |
+| OPS-22 | (เล็ก ~20 LOC, CI, รอบ 26 — follow-up รอบ 25 ข้อ F) `classify-changes.sh` นับ `docs/ops/**` เป็นโค้ด (`code=true`, `backend=true`) เพราะ unit test อ่านไฟล์เหล่านี้ และปรับประโยค "PR เอกสารล้วน" ใน `CLAUDE.md` ให้ยกเว้น `docs/ops/**` ตามคำตัดสิน owner 2026-11-09 (AC-37) — ไฟล์: `tools/ci/classify-changes.sh`, `tools/ci/classify-changes.test.sh`, `CLAUDE.md` | none — **เริ่มได้**; ไม่บล็อก release; ควร merge ก่อน PR เอกสารที่แก้ `docs/ops/` (∥ OPS-21: OPS-21 แตะ `docs/ops/production.md` แต่มีไฟล์โค้ดจึงรัน test อยู่แล้ว) |
+| OPS-23 | (วัดผล ไม่แตะโค้ด app, รอบ 26 — load test #318) เทียบ `DATABASE_POOL_MAX` 10/20/40 ใน load-nightly (AC-38) — ไฟล์: `.github/workflows/load-nightly.yml` (`workflow_dispatch` input ถ้ายังไม่มี), `tools/load/run.sh` (ส่งค่า), `docs/evidence/scale/OPS-23/REPORT.md` | OPS-20b (AC-32) merge (owner Q-O4 = ก 2026-11-09); ไม่บล็อก release |
 OPS-3 ∥ OPS-6 ∥ OPS-7 ∥ OPS-8 ∥ OPS-9 (OPS-9 แตะเฉพาะ `integration-tests/http/group-buy-campaigns.spec.ts`; OPS-6 แตะ `next.config.js`/Dockerfile/jest config; OPS-7 แตะ `notification-providers.ts`/seed/`ci.yml`;
 OPS-8 แตะ `tools/ops/`/`docs/ops/production.md` — ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)
 OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น; OPS-13 หลัง OPS-7 (#108) ∥ OPS-12; OPS-3b ∥ OPS-3c หลัง OPS-3 และคำตอบ Q-O1/Q-O2
@@ -299,13 +300,10 @@ OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_PO
 (รอบ 16b, 2026-11-04) OPS-17a ☑ #220, OPS-17 ☑ #235; OPS-17b ◐ (รอบ 17 — รวมการแก้ `run.sh:132` ตาม AC-34) → OPS-20b
 (รอบ 17, 2026-11-04) OPS-17b ◐ #242 → OPS-17c ☐ (nit review #242; AC-35) → OPS-20b (ลำดับ `tools/load/*`: OPS-17b → OPS-17c → OPS-20b)
 (รอบ 18, 2026-11-04) OPS-17b ☑ #242 (train #248), OPS-17c ☑ #253 (train #256) ; OPS-20a ☑ #204 (merge 2026-11-03) → OPS-20b ☐ **เริ่มได้** (dependency ครบ)
-(รอบ 26, 2026-11-09) OPS-21 ☐ **เริ่มได้ — บล็อก release v0.1.0**; OPS-22 ☐ เริ่มได้; OPS-23 ☐ รอ owner Q-O4
+(รอบ 26, 2026-11-09) OPS-21 ☐ **เริ่มได้ — บล็อก release v0.1.0**; OPS-22 ☐ เริ่มได้; OPS-23 ☐ หลัง OPS-20b
 
 ## Open questions (รอบ 26)
-- Q-O4 (OPS-23, load test #318) pool 10 เต็มทุก sample แต่ยังแยกไม่ได้ว่า (d)/(e) ของ AC-31 มาจาก pool ล้วนหรือไม่ — ต้องการให้ทำอย่างไร:
-  - (ก) **[แนะนำ]** เปิด OPS-23 วัดเทียบ 10/20/40 ก่อน แล้วค่อยตัดสินค่าของ prod ใน ADR-020 (proposed) จากตัวเลขจริง; เหตุผล: ไม่เปลี่ยนค่า prod โดยไม่มีหลักฐาน, ไม่เพิ่ม infra, ค่าเดียวกันกับ connection limit ของ Postgres ต้องดูคู่กัน
-  - (ข) เพิ่ม `DATABASE_POOL_MAX` ใน prod เป็น 20 ทันที (ADR-020) ไม่วัดก่อน — เร็วกว่า แต่ไม่รู้ว่าแก้ปัญหาจริงหรือไม่
-  - (ค) ไม่ทำก่อน v1.0 — gate ของ load test ผ่านอยู่แล้ว (5xx = 0) ปิด OPS-23 (✕)
+- ~~Q-O4~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เปิด OPS-23 วัดเทียบ `DATABASE_POOL_MAX` 10/20/40 ก่อน แล้วค่อยตัดสินค่าของ prod ใน ADR-020 จากตัวเลขจริง (AC-38)
 
 ## Open questions (รอบ 10)
 - ~~Q-O3~~ ตัดสินแล้ว (owner 2026-10-27): **รับข้อเสนอทั้งชุด (a)–(e)** ด้านล่าง → OPS-4 เริ่มได้ (Depends FS-3 ☑, GB-3 ☑, OPS-1 ☑); คำถามเดิม (OPS-4 load test) **ข้อเสนอรวม**:
