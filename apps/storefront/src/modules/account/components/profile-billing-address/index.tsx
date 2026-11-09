@@ -181,10 +181,12 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
             defaultValue={billingAddress?.province || undefined}
             data-testid="billing-province-input"
           />
+          {/* CORE-4j (กฎข้อ 73c): สูงเท่า Input (h-12) แบบ CountrySelect ของ checkout (กฎข้อ 63d) */}
           <NativeSelect
             name="country_code"
             defaultValue={billingAddress?.country_code || undefined}
             required
+            className="h-12"
             data-testid="billing-country-code-select"
           >
             <option value="">-</option>

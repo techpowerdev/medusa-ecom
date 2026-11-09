@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test"
+import { Locator, Page } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
@@ -171,5 +171,136 @@ test("AC-6: ฟอร์ม Create pool — Save โดยไม่เลือ�
     })
     await expect(page.getByRole("link", { name: "Manage codes" })).toBeVisible()
     expect(posts).toHaveLength(1)
+  })
+})
+
+// ADM-12 (spec 08 AC-16, กฎ 15): ช่อง number ที่พิมพ์ "e"/"1e" ได้ value "" แต่ validity.badInput = true
+// ต้องเป็น error ใต้ช่อง (ข้อความเดียวกับค่าไม่ถูก) ไม่ใช่ "ว่าง" (ไม่จำกัด / default) และไม่ส่ง request
+test.describe("AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput)", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-12" } })
+
+  /** ล้างช่องแล้วพิมพ์ทีละตัว — ยืนยันว่า browser ถือเป็น badInput จริง (value ว่าง) */
+  const typeBadInput = async (input: Locator, typed: string) => {
+    await input.fill("")
+    await input.pressSequentially(typed)
+    expect(await input.evaluate((el: HTMLInputElement) => [el.value, el.validity.badInput])).toEqual(["", true])
+  }
+
+  test("drawer flash sale — Total cap / Per-customer limit = e, 1e → error ไม่ POST; ล้างช่องแล้ว Save → total_cap null", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const created = await request.post(`${BACKEND_URL}/admin/campaigns`, {
+      headers: admin,
+      data: { name: "ADM-12 bad input", campaign_identifier: `adm12-${Date.now()}` },
+    })
+    expect(created.status(), "create campaign").toBe(200)
+    const campaignId: string = (await created.json()).campaign.id
+    const configPath = `/admin/flash-sales/${campaignId}/config`
+    const posts = countPosts(page, configPath)
+    const drawer = page.getByRole("dialog")
+    const save = drawer.getByRole("button", { name: "Save" })
+
+    await step("ล็อกอิน admin แล้วเปิด drawer ของ widget flash sale", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/campaigns/${campaignId}`)
+      await expect(page.getByRole("heading", { name: "Flash sale options" })).toBeVisible({ timeout: 30_000 })
+      await page.getByTestId("flash-sale-options").getByRole("button", { name: "Edit" }).click()
+      await expect(drawer).toBeVisible()
+    })
+
+    for (const [label, errorId] of [
+      ["Total cap", "fs-total-cap-error"],
+      ["Per-customer limit", "fs-per-customer-limit-error"],
+    ] as const) {
+      const input = drawer.getByLabel(label, { exact: true })
+      for (const typed of ["e", "1e"]) {
+        await step(`${label} = "${typed}" แล้ว Save → ${errorId} และไม่มี POST`, async () => {
+          await typeBadInput(input, typed)
+          await save.click()
+          await expect(drawer.getByTestId(errorId)).toBeVisible()
+          await expect(drawer.getByTestId(errorId)).toHaveText("Must be a whole number greater than 0")
+          await expect(input).toHaveAttribute("aria-invalid", "true")
+          if (label === "Total cap" && typed === "e") await evidence("01-total-cap-e-error")
+          expect(posts).toHaveLength(0)
+        })
+      }
+      await input.fill("")
+    }
+
+    await step("ล้างทั้งสองช่อง (fill \"\") แล้ว Save → POST 1 ครั้ง body total_cap: null", async () => {
+      const response = page.waitForResponse(
+        (res) => res.request().method() === "POST" && new URL(res.url()).pathname === configPath
+      )
+      await save.click()
+      const res = await response
+      expect(res.status()).toBe(200)
+      expect(res.request().postDataJSON()).toMatchObject({ total_cap: null, per_customer_limit: null })
+      await expect(drawer).toBeHidden()
+      expect(posts).toHaveLength(1)
+    })
+  })
+
+  test("modal Create pool — Face value / Low-stock threshold = e → error ใต้ช่องและไม่มี POST", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const created = await request.post(`${BACKEND_URL}/admin/products`, {
+      headers: admin,
+      data: {
+        title: `ADM-12 voucher ${Date.now()}`,
+        options: [{ title: "Value", values: ["500"] }],
+        variants: [{ title: "500 THB", options: { Value: "500" }, prices: [{ currency_code: "thb", amount: 500 }] }],
+      },
+    })
+    expect(created.status(), "create product").toBe(200)
+    const { product } = await created.json()
+    const partnerRes = await request.post(`${BACKEND_URL}/admin/evoucher/partners`, {
+      headers: admin,
+      data: { name: `ADM-12 partner ${Date.now()}` },
+    })
+    expect(partnerRes.status(), "create partner").toBe(200)
+    const { partner } = await partnerRes.json()
+    const posts = countPosts(page, POOLS_PATH)
+    const save = page.getByRole("button", { name: "Save" })
+    const faceValue = page.getByLabel("Face value", { exact: true })
+    const lowStock = page.getByLabel("Low-stock threshold", { exact: true })
+
+    await step("เปิดฟอร์ม Create pool แล้วกรอกช่องบังคับครบ", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/products/${product.id}/variants/${product.variants[0].id}`)
+      await page.getByRole("button", { name: "Create pool" }).click()
+      await page.getByLabel("Partner *", { exact: true }).click()
+      await page.getByRole("option", { name: partner.name }).click()
+      await page.getByLabel("Name *", { exact: true }).fill("ADM-12 pool")
+      await page.getByLabel("How to use * (shown in the delivery email)", { exact: true }).fill("Show the code")
+    })
+
+    await step("Face value = e แล้ว Save → evoucher-pool-face_value-error และไม่มี POST", async () => {
+      await typeBadInput(faceValue, "e")
+      await save.click()
+      await expect(page.getByTestId("evoucher-pool-face_value-error")).toHaveText("Must be a number of 0 or more")
+      await evidence("02-pool-face-value-e-error")
+      expect(posts).toHaveLength(0)
+    })
+
+    await step("Face value ว่าง + Low-stock threshold = e แล้ว Save → evoucher-pool-low_stock_threshold-error และไม่มี POST", async () => {
+      await faceValue.fill("")
+      await typeBadInput(lowStock, "e")
+      await save.click()
+      await expect(page.getByTestId("evoucher-pool-low_stock_threshold-error")).toHaveText(
+        "Must be a whole number of 0 or more"
+      )
+      await expect(page.getByTestId("evoucher-pool-face_value-error")).toHaveCount(0)
+      expect(posts).toHaveLength(0)
+    })
   })
 })

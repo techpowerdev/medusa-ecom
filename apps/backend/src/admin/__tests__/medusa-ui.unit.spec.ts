@@ -459,3 +459,23 @@ describe("page offset ของกลาง (spec 08 AC-14)", () => {
     expect(read("components/evoucher/codes-table.tsx")).not.toMatch(/\buseSearchParams\b/)
   })
 })
+
+// ADM-12 (spec 08 AC-16, กฎ 15): ช่อง number ที่ว่างได้ผ่านของกลางชิ้นเดียว — ตรวจ validity.badInput ไม่ให้ "e" กลายเป็น "ว่าง"
+describe("ช่อง number ใช้ NumberInput ของกลาง (spec 08 AC-16, ADM-12)", () => {
+  const NUMBER_INPUT_FROM = String.raw`(?:\.{1,2}\/)+components\/common\/number-input`
+
+  it.each(["widgets/flash-sale-options.tsx", "widgets/variant-evoucher-pool.tsx"])(
+    "%s import NumberInput จาก components/common/number-input และไม่มี Input type number เอง",
+    (file) => {
+      const src = read(file)
+      expect(importsFrom(src, "NumberInput", NUMBER_INPUT_FROM)).toBe(true)
+      expect(src).not.toMatch(/type(?:=|:\s*)["']number["']|"number"\)/)
+    }
+  )
+
+  it("components/common/number-input.tsx ห่อ Input ของ @medusajs/ui และตรวจ badInput ผ่าน helper เดียว", () => {
+    const src = read("components/common/number-input.tsx")
+    expect(importsFrom(src, "Input", "@medusajs/ui")).toBe(true)
+    expect(importsFrom(src, "numberInputValue", String.raw`(?:\.{1,2}\/)+lib\/form-validation`)).toBe(true)
+  })
+})
