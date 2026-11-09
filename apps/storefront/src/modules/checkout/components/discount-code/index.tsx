@@ -103,7 +103,8 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
     }
     // ส่งช่องว่าง = ล้าง error ของรอบก่อนแล้วจบ (พฤติกรรมเดิมก่อน CORE-40)
     setErrorMessage("")
-    const code = formData.get("code")
+    // CORE-4j (กฎข้อ 73a): trim ช่องว่างหัวท้ายก่อนส่ง — ไม่แปลงตัวพิมพ์ (Medusa เทียบตัวพิมพ์)
+    const code = formData.get("code")?.toString().trim()
     if (!code) {
       return
     }
@@ -114,11 +115,9 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
 
     try {
       const codes = knownCodes()
-      codes.push(code.toString())
+      codes.push(code)
       // CORE-4g (กฎข้อ 63b): Medusa ตอบ 200 แต่ไม่ใส่ code ที่ใช้ไม่ได้ (หมดอายุ/ไม่ตรงเงื่อนไข) — แจ้งผู้ใช้ ไม่เงียบ
-      setErrorMessage(
-        await submitPromotionCodes(codes, code.toString(), PROMOTION_FAILED, rememberCodes)
-      )
+      setErrorMessage(await submitPromotionCodes(codes, code, PROMOTION_FAILED, rememberCodes))
     } finally {
       busyRef.current = false
     }

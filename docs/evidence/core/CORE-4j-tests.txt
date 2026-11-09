@@ -1,0 +1,59 @@
+CORE-4j (spec 01 กฎข้อ 73, AC-111) — ผล test
+base: origin/develop 40cb965b; Medusa 2.22.1; RED ของ e2e รันกับ next dev, GREEN/regression รันกับ storefront prod build (next build + next start)
+
+== RED: Playwright unit core-4j-e2e-hygiene (ก่อนแก้ createExpiredPromotion) ==
+  ✘  1 [unit] › e2e/core-4j-e2e-hygiene.unit.spec.ts:25:5 › AC-111: createExpiredPromotion ตรวจ ok() ของการลบ campaign
+    Error: ผลของ request.delete ถูกเก็บในตัวแปร
+    Expected: 1
+    Received: 0
+
+== RED: e2e (73a) ใส่ "  <code>  " ก่อน trim ==
+  ✘  1 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด
+    Error: expect(received).toEqual(expected)  — cart.promotions: Expected ["Core4j-1794174871085"] Received []
+    (UI แสดง promotion-error "ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค้ดอีกครั้ง")
+
+== RED: e2e (73b) หลัง trim แล้ว แต่ ShippingAddress ยัง sync ทุกครั้งที่ cart เปลี่ยน ==
+  ✘  1 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: ...
+    Error: shipping-first-name-input — Expected: "สมหญิง" Received: "Somchai" (ค่าที่บันทึกใน cart ทับค่าที่พิมพ์)
+
+== RED: e2e (73c) billing-country-code-select ==
+  ✘  2 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:109:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px)
+    Error: country 46 province 48 — Expected: <= 1 Received: 2
+
+== GREEN: Playwright unit ทั้งหมด ==
+  74 passed (4.1s)
+
+== GREEN: vitest ทั้งหมด ==
+ Test Files  76 passed (76)
+      Tests  961 passed (961)
+
+== GREEN: e2e core-4j --repeat-each=3 --workers=2 (prod build) ==
+  ✓  2 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด (37.0s)
+  ✓  1 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด (37.0s)
+  ✓  3 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:109:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px) (4.4s)
+  ✓  4 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:109:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px) (4.4s)
+  ✓  5 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด (21.0s)
+  ✓  6 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:109:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px) (4.2s)
+  6 passed (1.2m)
+
+== Regression e2e (prod build, --workers=1): core-4g, core-4e, core-40, core-23c, core-38 + core-4j ==
+  ✓   1 [chromium] › e2e/core-23c-account-forms.spec.ts:61:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (26.0s)
+  ✓   2 [chromium] › e2e/core-23c-account-forms.spec.ts:95:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (8.3s)
+  ✓   3 [chromium] › e2e/core-23c-account-forms.spec.ts:140:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย (7.2s)
+  ✓   4 [chromium] › e2e/core-23c-account-forms.spec.ts:183:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์ (5.2s)
+  ✓   5 [chromium] › e2e/core-23c-account-forms.spec.ts:202:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact (10.9s)
+  ✓   6 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px) (4.1s)
+  ✓   7 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px) (2.7s)
+  ✓   8 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว (34.1s)
+  ✓   9 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280 (21.3s)
+  ✓  10 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280 (31.6s)
+  ✓  11 [chromium] › e2e/core-40-discount-action-race.spec.ts:67:5 › AC-134: ลบโค้ด A ค้าง → ปุ่มใส่โค้ด disabled; ปล่อยแล้วใส่ B → cart มีแค่ B (23.7s)
+  ✓  12 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (48.3s)
+  ✓  13 [chromium] › e2e/core-4g-checkout-polish.spec.ts:69:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect (27.6s)
+  ✓  14 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด (37.8s)
+  ✓  15 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:109:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px) (3.5s)
+  15 passed (5.1m)
+
+== lint / typecheck (root) ==
+pnpm lint: exit 0 (ไม่มี error; warning react-hooks/set-state-in-effect ใน shipping-address และ profile-billing-address มีอยู่เดิม)
+pnpm typecheck: exit 0

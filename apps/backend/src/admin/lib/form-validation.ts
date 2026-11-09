@@ -10,3 +10,13 @@ export const fieldErrorMap =
 
 /** ค่าว่างของช่องตัวเลขในฟอร์ม (input ส่ง `""`, ค่าที่ไม่ได้กรอกเป็น `undefined`) */
 export const isBlank = (value: unknown): value is "" | undefined => value === "" || value === undefined
+
+/**
+ * ADM-12 (spec 08 กฎ 15): ค่าฟอร์มของ `<input type="number">` ที่ browser ถือว่าไม่ใช่ตัวเลข (`validity.badInput` เช่นพิมพ์ "e", "1e")
+ * — browser ให้ value เป็น `""` จึงแยกจาก "ว่าง" ไม่ได้ เลยแทนด้วยสตริงที่ `castNumber` ได้ `NaN`
+ * ให้ `optionalInt`/`optionalFloat` ของ dashboard (และ refine ต่อท้าย) ปฏิเสธด้วยข้อความเดิมของช่อง
+ */
+export const BAD_NUMBER_INPUT = "NaN"
+
+export const numberInputValue = (el: { value: string; validity: { badInput: boolean } }): string =>
+  el.validity.badInput ? BAD_NUMBER_INPUT : el.value
