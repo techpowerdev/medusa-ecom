@@ -237,7 +237,7 @@ none
 11. task id ของ evidence มีรูปแบบ `^[A-Z]+-\d+[a-z]?$` (รับ `CORE-4a`, `CORE-5b`) — **รอบ 7: #87 ขยายให้รับ task id ที่แยกซ้อนแบบ `GB-6b1`, `CORE-4c1`
     แล้ว** regex ที่ใช้จริงคือ `TASK_ID_RE`/`TESTS_TXT_RE` ใน `apps/storefront/e2e/support/evidence-rules.ts` (source of truth; spec ไม่ copy regex ซ้ำ)
 12. `evidence()` ตรวจงบ (≤ 5 PNG, ≤ 300KB) กับ **ชุดไฟล์ที่จะเกิดขึ้นหลังเขียน** ก่อนเขียนไฟล์จริง ถ้าเกินงบ → throw และไม่เขียนไฟล์
-    การเขียนทับไฟล์ชื่อเดิมไม่นับเป็นรูปใหม่
+    การเขียนทับไฟล์ชื่อเดิมไม่นับเป็นรูปใหม่ (หมายเหตุปิดรอบ 26 — มีผลเมื่อ CORE-5d merge: โฟลเดอร์ที่มี PNG ครบ 5 รูปแล้ว → `console.warn` และไม่เขียน แทน throw รวมกรณีชื่อซ้ำ — กฎข้อ 77a; กรณีอื่นเป็นไปตามข้อนี้)
 13. ใน `docs/evidence/<feature>/` (ระดับ feature) อนุญาตเฉพาะไฟล์ `<TASK-ID>-tests.txt` และโฟลเดอร์ `<TASK-ID>/`
     (ตาม `docs/evidence/README.md`) ไฟล์ `*-tests.txt` ที่อยู่ในโฟลเดอร์ `<TASK-ID>/` ต้องย้ายขึ้นมาระดับ feature
 14. ทุก element ที่ได้ font-family จาก class ของ `@medusajs/ui-preset` (`txt-*`, `h1-webs`…`h3-webs` และกลุ่ม `*-webs` อื่น)
@@ -261,9 +261,9 @@ none
 ### Acceptance criteria (follow-up)
 - AC-20 Given `evidenceDir` When taskId = `CORE-4a`, `CORE-5b`, `CORE-5`, `GB-12` Then คืน path
   `docs/evidence/<feature>/<taskId>`; When taskId = `core-4a`, `CORE4`, `CORE-4ab`, `CORE-`, `CORE-4A` Then throw (unit)
-- AC-21 Given โฟลเดอร์ปลายทางมี PNG อยู่แล้ว 5 รูป When `evidence("06-new")` ด้วย `E2E_SAVE_EVIDENCE=1` Then throw และโฟลเดอร์ยังมี
-  5 รูปเท่าเดิม (ไม่มี `06-new.png`); When `evidence("01-existing")` (ชื่อซ้ำ) Then เขียนทับได้; Given PNG ใหม่ > 300KB
-  Then throw และไม่มีไฟล์ถูกเขียน (unit test ของ helper ที่คำนวณชุดไฟล์ก่อนเขียน)
+- AC-21 (แก้ปิดรอบ 26 — จำกัดเป็นระดับ `planEvidenceWrite` ตามที่ `e2e/support/evidence-rules.unit.spec.ts:105–135` ตรวจจริง) Given `existing` มี PNG 5 รูป When `planEvidenceWrite(existing, { name: "06-new.png", … })` Then คืน violation ที่ระบุ 6 PNG;
+  When ชื่อซ้ำ `01-existing.png` Then คืน `[]` (ไม่นับเป็นรูปใหม่); Given PNG ใหม่ > 300KB Then คืน violation ที่มีชื่อไฟล์นั้น; Given ไฟล์เดิมเกิน 300KB When เขียนทับชื่อเดิมด้วยขนาดที่อยู่ในงบ Then คืน `[]` (unit test ของ helper ที่คำนวณชุดไฟล์ก่อนเขียน);
+  พฤติกรรมของ `evidence()`/`saveEvidencePng` เมื่อโฟลเดอร์ครบ 5 รูปดู AC-115 (กฎข้อ 77a)
 - AC-22 Given `docs/evidence/<feature>/` มีไฟล์ระดับ feature ที่ไม่ตรง `^[A-Z]+-\d+[a-z]?-tests\.txt$` (เช่น `x.png`, `CORE-5.txt`)
   When รัน `evidence-budget.unit.spec.ts` Then มี violation ระบุ path; Given ไฟล์ `CORE-2-tests.txt` อยู่ใน `core/CORE-2/` Then มี violation
 - AC-23 Given develop หลัง merge When รัน `pnpm --filter storefront test:e2e:unit` Then ผ่าน (ย้าย `*-tests.txt` ทุกไฟล์ที่อยู่ใน
@@ -1079,10 +1079,10 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
     (c) สลับ บัตร → พร้อมเพย์ → บัตร แล้วกด Continue ครั้งเดียว → ขั้น review แสดงวิธีบัตร
 76. (CORE-15b — review #177) search drawer ที่ header: request ค้นหาล้ม → แสดง `search-drawer-error` ข้อความไทย ไม่มี uncaught error (`pageerror`) และ `console.error` 1 บรรทัดเพื่อ debug;
     `instantsearch.js` ใน `apps/storefront/package.json` pin เวอร์ชันเดียวกับที่ `react-instantsearch` ใช้ (lockfile มีสำเนาเดียว)
-77. (CORE-5d — qa #169, qa #173, builder CORE-5c/AF-12c; **แก้ปิดรอบ 26 2026-11-09 ตามคำตัดสินของ session หลัก** — ผลสำรวจบน develop: ชื่อ `evidence()` ไม่ตรง PNG ที่ commit 78 จุดใน 33 spec เพราะ qa ตั้งชื่อรูปเอง; ถ้าแก้ชื่อให้ตรง
+77. (CORE-5d — qa #169, qa #173, builder CORE-5c/AF-12c; **แก้ปิดรอบ 26 2026-11-09 ตามคำตัดสินของ session หลัก** — ผลสำรวจบน develop: ชื่อ `evidence()` ไม่ตรง PNG ที่ commit ราว 80 จุดในกว่า 30 spec เพราะ qa ตั้งชื่อรูปเอง; ถ้าแก้ชื่อให้ตรง
     การรันด้วย `E2E_SAVE_EVIDENCE=1` จะเขียนทับรูปหลักฐานของ qa ซึ่งบางชื่อถ่ายคนละ state กับรูปเดิม จึง**ไม่แก้ชื่อใน spec e2e** และแก้ที่ fixture แทน) รัน e2e ทั้งชุดด้วย `E2E_SAVE_EVIDENCE=1` ต้องไม่ล้มเพราะงบจำนวนรูป และไม่เขียนทับรูปในโฟลเดอร์ที่ครบงบ:
     (a) `saveEvidencePng` (`e2e/support/evidence-save.ts`): ถ้าโฟลเดอร์ปลายทางมีไฟล์ `.png` ≥ `EVIDENCE_MAX_FILES` (5) อยู่แล้ว → **ไม่เขียนไฟล์** ไม่แตะไฟล์เดิม เรียก `console.warn` 1 ครั้งต่อการเรียก (ข้อความมีชื่อไฟล์และโฟลเดอร์) แล้วคืน `null` — แทนการ throw ทั้งกรณีชื่อใหม่และชื่อซ้ำ และตรวจก่อน `planEvidenceWrite`;
-    (b) นอกกรณี (a) พฤติกรรมเดิมของ CORE-5b/5c คงไว้: PNG เกิน 300KB หรือมีไฟล์ต้องห้ามในโฟลเดอร์ → throw ไม่เขียน; โฟลเดอร์ที่มี < 5 รูปยังเขียนรูปใหม่ได้ และชื่อซ้ำเขียนทับได้ (qa/builder ใช้เก็บรูปของ task ที่ยังไม่ครบ); งบ ≤ 5 PNG ยังคงอยู่เพราะรูปที่ 6 ไม่ถูกเขียน;
+    (b) นอกกรณี (a) พฤติกรรมเดิมของ CORE-5b/5c คงไว้: PNG เกิน 300KB หรือมีไฟล์ต้องห้ามในโฟลเดอร์ → throw ไม่เขียน; โฟลเดอร์ที่มี < 5 รูปยังเขียนรูปใหม่ได้ และชื่อซ้ำเขียนทับได้ (qa/builder ใช้เก็บรูปของ task ที่ยังไม่ครบ); งบ ≤ 5 PNG ยังคงอยู่เพราะรูปที่ 6 ไม่ถูกเขียน; ข้อห้ามรัน `E2E_SAVE_EVIDENCE=1` กับ e2e ทั้งชุดใน `docs/evidence/README.md` จึงยังอยู่ — "ทั้งชุดไม่ล้ม" เป็นการกันความเสียหาย ไม่ใช่การอนุญาตให้รัน;
     (c) `E2E_SAVE_EVIDENCE=1` และ spec ไม่ตั้ง `evidenceTarget` แต่เรียก `evidence()` → `console.warn` 1 ครั้งต่อไฟล์ spec (`saveEvidencePng` รับ `specFile` จาก `testInfo.file`; ยังไม่เขียนไฟล์ ตามกฎข้อ 67); ไม่เปิด `E2E_SAVE_EVIDENCE` → ไม่ warn;
     (d) `step()` ไม่อยู่ในกฎนี้ — แนบเข้า HTML report อย่างเดียว ไม่เขียนไฟล์ (`fixtures.ts`);
     (e) (review #154) static test ที่ห้าม `if (await x.isVisible())` ใน e2e (ของ CORE-23b) จับรูปแบบ `getByTestId("…").isVisible()` และ locator แบบ chain ด้วย
@@ -1123,7 +1123,7 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
   unit (อ่าน `pnpm-lock.yaml`): `instantsearch.js` มีเวอร์ชันเดียว (e2e + unit Vitest)
 - AC-115 (CORE-5d, กฎข้อ 77 — แก้ปิดรอบ 26) unit (`e2e/support/evidence-save.unit.spec.ts`, Playwright project `unit`, repoRoot ชั่วคราว + spy `console.warn` — โฟลเดอร์ `core/CORE-22` มี `qa-01..05.png` + `REPORT.md` ตาม `beforeEach` เดิม):
   (a) `saveEvidencePng({ save: true, target: CORE-22, name: "01-order-detail-title", … })` (ชื่อใหม่) → คืน `null` ไม่ throw, `snapshotFiles` เท่าเดิม, `console.warn` 1 ครั้งข้อความมี `01-order-detail-title.png` และ `CORE-22`;
-  (b) เรียกด้วย `name: "qa-01"` และเนื้อ PNG ต่างจากไฟล์เดิม → ผลเหมือน (a) และ sha1 ของ `qa-01.png` ไม่เปลี่ยน; (c) test เดิมของ CORE-5c "โฟลเดอร์ปลายทางมี PNG ครบงบแล้ว → throw และ PNG ยังไม่เกิน 5" ถูกแทนที่ด้วย (a)–(b) (grep: ไม่มี `toThrow(/เกินงบ/)` บนโฟลเดอร์ที่ครบ 5 รูป);
+  (b) เรียกด้วย `name: "qa-01"` และเนื้อ PNG ต่างจากไฟล์เดิม → ผลเหมือน (a) และ sha1 ของ `qa-01.png` ไม่เปลี่ยน; (c) test เดิมของ CORE-5c ชื่อ `โฟลเดอร์ปลายทางมี PNG ครบงบแล้ว → throw และ PNG ยังไม่เกิน 5` ถูกลบ/แทนที่ด้วย (a)–(b) (grep: ไม่มีชื่อ test นี้ในไฟล์);
   (d) โฟลเดอร์ที่มี 4 PNG: ครั้งแรกชื่อใหม่ → เขียนไฟล์ ไม่ warn (PNG = 5), ครั้งถัดไปชื่อใหม่ → ไม่เขียน + warn (PNG ยัง = 5); (e) 5 PNG + `png` เกิน `EVIDENCE_MAX_BYTES` → warn ไม่ throw; โฟลเดอร์ < 5 PNG + `png` เกิน → ยัง throw `/เกินงบ/` และไม่เขียน (CORE-5b);
   (f) `save: true`, `target: undefined`, `specFile: "a.spec.ts"` เรียก 2 ครั้ง → `console.warn` 1 ครั้งข้อความมี `a.spec.ts` และไม่เขียนไฟล์; `specFile: "b.spec.ts"` อีกครั้ง → รวม 2 ครั้ง; (g) `save: false` กับโฟลเดอร์ครบ 5 และกับไม่มี target → `console.warn` 0 ครั้ง;
   static: `fixtures.ts` ส่ง `specFile: testInfo.file`; `git diff --name-only` ของ PR ไม่มี `e2e/*.spec.ts` นอกจากไฟล์ของ CORE-23b และไม่แตะ `docs/evidence/**/*.png`;

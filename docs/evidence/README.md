@@ -35,8 +35,9 @@ docs/evidence/
 - ห่อทุกขั้นด้วย `await step("ชื่อขั้น", async () => { ... })` → แนบ screenshot หลังจบ step เสมอ
   (รวมกรณี fail) ลงใน HTML report ข้ามเฉพาะ step ที่ยังไม่เปิดหน้าใด (`about:blank` เช่น step ที่เรียก API อย่างเดียว)
 - เรียก `await evidence("01-ชื่อ-kebab")` ณ จุดสำคัญ → แนบใน report เสมอ และเขียน PNG ลง
-  `docs/evidence/...` เฉพาะเมื่อรันด้วย `E2E_SAVE_EVIDENCE=1` — ตรวจงบ (≤ 5 PNG, ≤ 300KB) กับชุดไฟล์หลังเขียน
-  **ก่อน**เขียนจริง ถ้าเกินงบจะ throw และไม่เขียนไฟล์ใดเลย; เขียนทับชื่อเดิมไม่นับเป็นรูปใหม่
+  `docs/evidence/...` เฉพาะเมื่อรันด้วย `E2E_SAVE_EVIDENCE=1` — โฟลเดอร์ที่มี PNG ครบ 5 รูปแล้ว: ไม่เขียนไฟล์และ `console.warn` แทน throw
+  ทั้งชื่อใหม่และชื่อซ้ำ (spec 01 กฎข้อ 77a — มีผลเมื่อ CORE-5d merge); นอกกรณีนี้ตรวจงบ (≤ 5 PNG, ≤ 300KB) กับชุดไฟล์หลังเขียน
+  **ก่อน**เขียนจริง ถ้าเกินงบ (เช่น PNG เกิน 300KB) จะ throw และไม่เขียนไฟล์ใดเลย; เขียนทับชื่อเดิมในโฟลเดอร์ที่มี < 5 รูปไม่นับเป็นรูปใหม่
 - CORE-5c (spec 01 กฎข้อ 67): `evidence()` เขียนได้เฉพาะ `docs/evidence/<feature>/<TASK-ID>/` ของ `evidenceTarget` ใน spec นั้น;
   spec ที่ไม่ตั้ง `evidenceTarget` ไม่เขียนไฟล์ (แนบใน report อย่างเดียว ไม่ throw); screenshot ของ `step()` แนบใน report เท่านั้น
   ไม่เคยลง `docs/evidence/` จึงไม่กินงบ 5 รูป
@@ -52,5 +53,5 @@ E2E_SAVE_EVIDENCE=1 pnpm --filter storefront test:e2e e2e/core-22-account-fixes.
 เปลี่ยน URL ได้ด้วย `E2E_BASE_URL` (storefront) และ `E2E_BACKEND_URL`
 (ค่า default คือ `NEXT_PUBLIC_MEDUSA_BACKEND_URL` หรือ `http://localhost:9000`)
 
-ห้ามรัน `E2E_SAVE_EVIDENCE=1` กับ e2e ทั้งชุด: แต่ละ spec จะเขียนโฟลเดอร์ของ task ตัวเอง จึงเขียนทับ PNG ที่ commit แล้วของ task อื่น
-(ชื่อไฟล์ตรงกับที่ spec เรียก `evidence()`) และ throw ในโฟลเดอร์ที่ QA ใช้งบครบ 5 รูปแล้ว (สาเหตุที่ qa #131 พบ)
+ห้ามรัน `E2E_SAVE_EVIDENCE=1` กับ e2e ทั้งชุด: แต่ละ spec จะเขียนโฟลเดอร์ของ task ตัวเอง โฟลเดอร์ที่มี < 5 รูปจึงถูกเพิ่มรูป หรือถูกเขียนทับ PNG ที่ commit แล้ว
+เมื่อชื่อไฟล์ตรงกับที่ spec เรียก `evidence()` (spec 01 กฎข้อ 77b) ส่วนโฟลเดอร์ที่ QA ใช้งบครบ 5 รูปแล้วจะได้แค่ `console.warn` ไม่เขียนไฟล์ (กฎข้อ 77a; ก่อน CORE-5d merge ยัง throw — สาเหตุที่ qa #131 พบ)
