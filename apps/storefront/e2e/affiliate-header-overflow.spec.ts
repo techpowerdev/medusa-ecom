@@ -41,9 +41,7 @@ for (const width of [375, 639]) {
       const ann = await createActiveAffiliate(
         request,
         await adminHeaders(request),
-        "e2e-af19",
-        undefined,
-        LONG_NAME
+        { prefix: "e2e-af19", name: LONG_NAME }
       )
       await login(page, ann)
 
@@ -70,9 +68,7 @@ test("AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเด�
   const ann = await createActiveAffiliate(
     request,
     await adminHeaders(request),
-    "e2e-af19-wide",
-    undefined,
-    SHORT_NAME
+    { prefix: "e2e-af19-wide", name: SHORT_NAME }
   )
   await step("y-center ของ affiliate-header-name กับ affiliate-logout ต่างกัน < 5px", async () => {
     await login(page, ann)
@@ -92,10 +88,12 @@ test("AC-51: ที่ 1280 ชื่อสั้นอยู่แถวเด�
 const letters = (n: number) =>
   Array.from({ length: n }, () => String.fromCharCode(97 + crypto.randomInt(26))).join("")
 
-/** รหัสแนะนำ 32 ตัว มี `-` 3 ตัว ไม่ซ้ำต่อรอบ: `af20-<timestamp>-<a-z>-<a-z>` */
+/** รูปแบบของ longCode เมื่อแทนตัวเลขทุกตัวด้วย 0 — ส่วนที่ต่างกันต่อรอบเป็นตัวเลขล้วน ความกว้างของรหัสจึงคงที่ทุกรอบ (กฎ 109c) */
+const LONG_CODE_SHAPE = "af00-0000000000000-000000-abcdef"
+
+/** รหัสแนะนำ 32 ตัว มี `-` 3 ตัว ไม่ซ้ำต่อรอบ: `af20-<timestamp ฐาน 10>-<เลขสุ่ม 6 หลัก>-abcdef` */
 function longCode() {
-  const head = `af20-${Date.now().toString(36)}-${letters(6)}-`
-  return head + letters(32 - head.length)
+  return `af20-${Date.now()}-${crypto.randomInt(1e6).toString().padStart(6, "0")}-abcdef`
 }
 
 /** จำนวนบรรทัดที่เนื้อหาของ element กินจริง (Range.getClientRects ของ inline = 1 rect ต่อบรรทัด) */
@@ -110,20 +108,18 @@ const AF20_NAME = "AF20" + "N".repeat(72)
 
 for (const width of [375, 639]) {
   test.describe(`AC-52 ที่ ${width}×812`, () => {
-    test.use({ viewport: { width, height: 812 } })
+    test.use({ viewport: { width, height: 812 }, evidenceTarget: { feature: "affiliate", taskId: "AF-20" } })
 
     test(`AC-52: ป้าย "รหัสแนะนำ" และรหัส 32 ตัวไม่ถูกตัดบรรทัดที่ ${width}`, async ({ page, request, step }) => {
       const code = longCode()
       expect(code).toHaveLength(32)
+      expect(code.replace(/\d/g, "0")).toBe(LONG_CODE_SHAPE)
       expect(code).toMatch(/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/)
       expect(code.split("-").length - 1).toBeGreaterThanOrEqual(3)
       const ann = await createActiveAffiliate(
         request,
         await adminHeaders(request),
-        "e2e-af20",
-        undefined,
-        AF20_NAME,
-        code
+        { prefix: "e2e-af20", name: AF20_NAME, code }
       )
       await login(page, ann)
 
@@ -146,7 +142,7 @@ for (const width of [375, 639]) {
 }
 
 test.describe("AC-52 ที่ 1280×800", () => {
-  test.use({ viewport: { width: 1280, height: 800 } })
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "affiliate", taskId: "AF-20" } })
 
   test("AC-52: ที่ 1280 ชื่อสั้นและรหัสสั้นอยู่แถวเดียวกับปุ่มออกจากระบบ (หน้าตาเดิม)", async ({
     page,
@@ -155,7 +151,7 @@ test.describe("AC-52 ที่ 1280×800", () => {
   }) => {
     const name = "AF20 Short"
     const code = `af20-${letters(6)}`
-    const ann = await createActiveAffiliate(request, await adminHeaders(request), "e2e-af20w", undefined, name, code)
+    const ann = await createActiveAffiliate(request, await adminHeaders(request), { prefix: "e2e-af20w", name, code })
     await step("y-center ของ affiliate-header-name กับ affiliate-logout ต่างกัน < 5px", async () => {
       await login(page, ann)
       await expect(page.getByTestId("affiliate-header-name")).toHaveText(name)

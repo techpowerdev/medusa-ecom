@@ -13,12 +13,14 @@ import { Headers } from "./medusa"
 export async function createActiveAffiliate(
   request: APIRequestContext,
   admin: Headers,
-  prefix = "e2e-af2",
-  email?: string,
-  name = `E2E ${prefix}`,
-  code = `${prefix}-${Date.now().toString(36)}${crypto.randomInt(1e6)}`
+  options: { prefix?: string; email?: string; name?: string; code?: string } = {}
 ): Promise<{ id: string; code: string; email: string; password: string }> {
-  email ??= `${code}@example.com`
+  const {
+    prefix = "e2e-af2",
+    name = `E2E ${prefix}`,
+    code = `${prefix}-${Date.now().toString(36)}${crypto.randomInt(1e6)}`,
+    email = `${code}@example.com`,
+  } = options
   const password = crypto.randomBytes(12).toString("hex")
   const reg = await request.post(`${BACKEND_URL}/auth/affiliate/emailpass/register`, {
     data: { email, password },

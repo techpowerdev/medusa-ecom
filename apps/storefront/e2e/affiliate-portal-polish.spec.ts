@@ -53,7 +53,7 @@ test("AC-47: ?page=99 ของ Payouts/Programs → affiliate-page-out-of-range
   evidence,
 }) => {
   const admin = await adminHeaders(request)
-  const ann = await createActiveAffiliate(request, admin, "e2e-afn3")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-afn3" })
   await insertReversedEntry(ann.id, -20.5)
   await login(page, ann)
 

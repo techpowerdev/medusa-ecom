@@ -103,3 +103,54 @@ test("AC-144 (กฎข้อ 107e): core-25, core-26, fs19 รอ action ด้
   }
   expect(read("flash-sale-fs19.spec.ts")).toContain("isServerAction(")
 })
+
+/**
+ * CORE-51 (กฎข้อ 109b): อาร์กิวเมนต์ของทุกการเรียก `createActiveAffiliate(` (หลายบรรทัดได้, วงเล็บซ้อนได้ 2 ชั้น เช่น `await adminHeaders(request)`)
+ * ส่วนการประกาศ `function createActiveAffiliate(` ไม่นับ
+ */
+const AFFILIATE_CALL = /(?<!function )\bcreateActiveAffiliate\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\)/g
+/** 2 ตัวแรกไม่มี object; ตัวที่ 3 (ถ้ามี) เป็น `{...}` และเป็นตัวสุดท้าย */
+const VALID_AFFILIATE_ARGS = /^\s*[^,{]+,\s*[^,{]+(?:,\s*\{[\s\S]*\})?\s*,?\s*$/
+const affiliateCalls = (src: string) => Array.from(src.matchAll(AFFILIATE_CALL), (match) => match[1])
+
+test("AC-146 (กฎข้อ 109a): DESKTOP_BASELINE ค่าตาราง /cart อยู่ที่ support/cart-layout.ts ไฟล์เดียว และสองไฟล์ cart import จากที่นั่น", () => {
+  const home = path.join("support", "cart-layout.ts")
+  expect(files.filter((name) => read(name).includes("DESKTOP_BASELINE = {"))).toEqual([home])
+  for (const name of ["core-42-cart-voucher-layout.spec.ts", "core-47-cart-375-long-title.spec.ts"]) {
+    expect(read(name), name).toMatch(/import\s*\{[^}]*\bDESKTOP_BASELINE\b[^}]*\}\s*from\s*"\.\/support\/cart-layout"/)
+  }
+  expect(read("core-47-cart-375-long-title.spec.ts")).not.toContain("คัดลอก")
+})
+
+test("AC-146 (กฎข้อ 109b): ทุกการเรียก createActiveAffiliate มีอาร์กิวเมนต์ไม่เกิน 3 ตัว และตัวที่ 3 เป็น options object", () => {
+  // ตัวตรวจเองต้องจับแบบตำแหน่งได้ และไม่จับแบบ object หลายบรรทัด
+  expect(affiliateCalls('createActiveAffiliate(request, admin, "x")')).toEqual(['request, admin, "x"'])
+  expect(VALID_AFFILIATE_ARGS.test('request, admin, "x"')).toBe(false)
+  expect(VALID_AFFILIATE_ARGS.test('request, admin, "x", undefined, name, code')).toBe(false)
+  expect(VALID_AFFILIATE_ARGS.test('request, admin, { prefix: "x" }, "y"')).toBe(false)
+  expect(VALID_AFFILIATE_ARGS.test("request, admin")).toBe(true)
+  expect(VALID_AFFILIATE_ARGS.test('request, await adminHeaders(request), {\n  prefix: "x",\n  name,\n}\n')).toBe(true)
+
+  const callers = files.filter((name) => /(?<!function )\bcreateActiveAffiliate\(/.test(read(name)))
+  expect(callers.length).toBeGreaterThan(0)
+  for (const name of callers) {
+    const src = read(name)
+    const calls = affiliateCalls(src)
+    // regex ต้องจับครบทุกจุด — วงเล็บซ้อนเกินที่รองรับต้องล้ม ไม่ใช่ผ่านเพราะหาไม่เจอ
+    expect(calls.length, name).toBe(src.match(/(?<!function )\bcreateActiveAffiliate\(/g)?.length)
+    expect(calls.filter((args) => !VALID_AFFILIATE_ARGS.test(args)), name).toEqual([])
+  }
+})
+
+test("AC-146 (กฎข้อ 109c,d): longCode ไม่สุ่มตัวอักษร รูปแบบรหัสคงที่ และ describe ของ AC-52 ตั้ง evidenceTarget เป็น AF-20", () => {
+  const src = read("affiliate-header-overflow.spec.ts")
+  const body = src.slice(src.indexOf("function longCode"))
+  expect(body.slice(0, body.indexOf("\n}\n"))).not.toContain("letters(")
+  expect(src).toMatch(/const LONG_CODE_SHAPE = "[a-z0-9-]{32}"/)
+  expect(src).toContain('expect(code.replace(/\\d/g, "0")).toBe(LONG_CODE_SHAPE)')
+
+  const ac52 = src.split("test.describe(").filter((block) => /^[`"]AC-52/.test(block))
+  expect(ac52).toHaveLength(2)
+  for (const block of ac52) expect(block).toContain('taskId: "AF-20"')
+  expect(src).toContain('test.use({ evidenceTarget: { feature: "affiliate", taskId: "AF-19" } })')
+})

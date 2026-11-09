@@ -36,8 +36,8 @@ test("AC-45: Ledger/Payouts แสดงชื่อและอีเมลข�
 }) => {
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const ann = await createActiveAffiliate(request, admin, "e2e-af14-ann")
-  const bob = await createActiveAffiliate(request, admin, "e2e-af14-bob")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-af14-ann" })
+  const bob = await createActiveAffiliate(request, admin, { prefix: "e2e-af14-bob" })
   const programRes = await request.post(`${BACKEND_URL}/admin/affiliate/programs`, {
     headers: admin,
     data: {

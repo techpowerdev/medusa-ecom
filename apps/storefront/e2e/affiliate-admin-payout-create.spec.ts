@@ -38,11 +38,11 @@ test("AC-44: ฟอร์มสร้าง payout ค่าเริ่มต�
   // โหลด admin bundle ครั้งแรกหลัง start (cold)
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const ann = await createActiveAffiliate(request, admin, "e2e-af12c-ann")
-  const sue = await createActiveAffiliate(request, admin, "e2e-af12c-sue")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-af12c-ann" })
+  const sue = await createActiveAffiliate(request, admin, { prefix: "e2e-af12c-sue" })
   await call(request, admin, `/admin/affiliate/affiliates/${sue.id}`, { status: "suspended" })
   // affiliate `pending` (ยังไม่อนุมัติ) — ตั้งกลับเป็น pending ผ่าน admin API เดียวกับที่ใช้อนุมัติ
-  const pat = await createActiveAffiliate(request, admin, "e2e-af12c-pat")
+  const pat = await createActiveAffiliate(request, admin, { prefix: "e2e-af12c-pat" })
   await call(request, admin, `/admin/affiliate/affiliates/${pat.id}`, { status: "pending" })
 
   const { program } = await call(request, admin, "/admin/affiliate/programs", {

@@ -54,7 +54,7 @@ test("AF-8a: login → แท็บได้ค่าคอมตอนนี้
 }) => {
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
-  const ann = await createActiveAffiliate(request, admin, "e2e-af8")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-af8" })
   const x = await variantIds(request, pk, X)
   const y = await variantIds(request, pk, Y)
   const run = crypto.randomBytes(3).toString("hex")
@@ -188,7 +188,7 @@ test("AF-8a: customer ที่ยังไม่สมัครแอฟฟิ�
 
 test("AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6)", async ({ page, request, step }) => {
   const admin = await adminHeaders(request)
-  const ann = await createActiveAffiliate(request, admin, "e2e-af8s")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-af8s" })
   const res = await request.post(`${BACKEND_URL}/admin/affiliate/affiliates/${ann.id}`, {
     headers: admin,
     data: { status: "suspended" },

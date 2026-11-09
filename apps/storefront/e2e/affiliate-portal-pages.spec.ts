@@ -72,7 +72,7 @@ test("AC-40: nav ของ portal → Programs, Earnings (reversed แยกต�
   evidence,
 }) => {
   const admin = await adminHeaders(request)
-  const ann = await createActiveAffiliate(request, admin, "e2e-af8b")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-af8b" })
   const run = crypto.randomBytes(3).toString("hex")
   const names = { active: `E2E AF-8b active ${run}`, upcoming: `E2E AF-8b upcoming ${run}` }
 
@@ -176,7 +176,7 @@ test("AC-40: affiliate ที่ถูกระงับ → Products/Programs �
   evidence,
 }) => {
   const admin = await adminHeaders(request)
-  const bob = await createActiveAffiliate(request, admin, "e2e-af8b-bob")
+  const bob = await createActiveAffiliate(request, admin, { prefix: "e2e-af8b-bob" })
   await post(request, admin, `/admin/affiliate/affiliates/${bob.id}`, { status: "suspended" })
 
   await step("login แล้ว Products และ Programs แสดงข้อความสถานะเป็นไทย ไม่ใช่หน้า error", async () => {

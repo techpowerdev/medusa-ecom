@@ -37,7 +37,7 @@ test("AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL
 }) => {
   test.setTimeout(180_000)
   const admin = await adminHeaders(request)
-  const ann = await createActiveAffiliate(request, admin, "e2e-adm8a")
+  const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-adm8a" })
   const programRes = await request.post(`${BACKEND_URL}/admin/affiliate/programs`, {
     headers: admin,
     data: {
@@ -57,7 +57,7 @@ test("AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL
   // หรือรันซ้ำบน DB เดิม) — มีเพียง entry ยอด 1234.5 ที่เป็นแถวใหม่สุด (ดันแถวอื่นแค่ 1 แถวเหมือน test อื่น)
   // entry ถมหน้าเป็นของ affiliate อีกคน: หน้า 2 จึงมีชุด affiliate_id ต่างจากหน้า 1 (ann อยู่หน้า 1 เท่านั้น) และยิง id[] ใหม่เสมอ
   // แม้ DB ว่าง (รันไฟล์นี้ก่อนไฟล์อื่น) — ถ้าทุกแถวเป็นของ ann ชุด id ของสองหน้าเท่ากัน หน้า 2 ใช้ cache และไม่ยิง request
-  const filler = await createActiveAffiliate(request, admin, "e2e-adm8a-fill")
+  const filler = await createActiveAffiliate(request, admin, { prefix: "e2e-adm8a-fill" })
   const run = Date.now().toString(36)
   const past = Date.now() - 365 * DAY
   for (let i = 1; i <= 20; i++) {
