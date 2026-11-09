@@ -416,11 +416,16 @@ test.describe("ADM-13: หัวตารางรายการแคมเป
       await expect(page.getByTestId("gb-template-warning")).toBeVisible()
     })
 
-    await step("centerY ของปุ่มกับ heading ต่างกันไม่เกิน 8px", async () => {
-      const [headingBox, createBox] = await Promise.all([heading.boundingBox(), create.boundingBox()])
-      if (!headingBox || !createBox) throw new Error("ไม่พบตำแหน่งของ heading หรือปุ่ม Create campaign")
+    await step("centerY ของปุ่มกับบล็อก heading+subHeading ต่างกันไม่เกิน 8px", async () => {
+      // toolbar ของ DataTable จัด items-center — ปุ่มตรงกลางบล็อกที่ห่อ heading กับ subHeading (parent ของ heading)
+      const headingBlock = heading.locator("..")
+      await expect(headingBlock).toContainText("template promotion")
+      // กัน test ผ่านลอยๆ ถ้า parent กลายเป็นแถวที่ครอบปุ่มด้วย
+      await expect(headingBlock.getByRole("button", { name: "Create campaign" })).toHaveCount(0)
+      const [blockBox, createBox] = await Promise.all([headingBlock.boundingBox(), create.boundingBox()])
+      if (!blockBox || !createBox) throw new Error("ไม่พบตำแหน่งของบล็อกหัวตารางหรือปุ่ม Create campaign")
       const centerY = (box: { y: number; height: number }) => box.y + box.height / 2
-      expect(Math.abs(centerY(createBox) - centerY(headingBox))).toBeLessThanOrEqual(8)
+      expect(Math.abs(centerY(createBox) - centerY(blockBox))).toBeLessThanOrEqual(8)
       await evidence("01-list-toolbar")
     })
   })

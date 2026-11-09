@@ -268,7 +268,7 @@ describe("ฟอร์มสร้างแคมเปญ group buy ใช้ F
     expect(src).not.toMatch(/datetime-local/)
   })
 
-  it("create-campaign คง toCampaignBody → form.setError และ idempotency key ของ GB-15 ที่ตั้งตอน openModal", () => {
+  it("create-campaign คง toCampaignBody → form.setError และ idempotency key ของ GB-15 ที่ตั้งเมื่อ open เปลี่ยน false → true (กฎ 16)", () => {
     const src = campaign()
     expect(src).toMatch(/toCampaignBody\(/)
     expect(src).toMatch(/form\.setError\(/)
