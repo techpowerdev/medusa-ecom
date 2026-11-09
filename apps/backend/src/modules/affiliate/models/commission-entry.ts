@@ -19,6 +19,8 @@ const CommissionEntry = model
     // maturity job (AF-4): status = 'pending' AND matures_at <= now
     { on: ["status", "matures_at"] },
     { on: ["order_id", "line_item_id"], unique: true, where: { status: "pending" } },
+    // OPS-5: reversal / maturity / payout ค้นด้วย order_id ทุกสถานะ — index ข้างบนเป็น partial (pending) ใช้ไม่ได้
+    { on: ["order_id"] },
   ])
 
 export default CommissionEntry
