@@ -30,6 +30,7 @@ const PROD_GUARD_ENV = {
   ALLOW_TEST_PROVIDERS: "true",
   AFFILIATE_TOKEN_SECRET: "secret-from-env",
   STOREFRONT_URL: "https://shop.example.com",
+  EVOUCHER_ENCRYPTION_KEY: "ab".repeat(32),
 }
 
 function loadConfig(env: Env) {

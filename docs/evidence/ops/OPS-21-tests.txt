@@ -1,0 +1,50 @@
+# OPS-21 (AC-36) ผลทดสอบ — 2026-11-09
+
+## Red (ก่อนแก้โค้ด): prod-guards.unit.spec.ts
+  ● AC-11 Go-live checklist ใน docs/ops/production.md › AC-36 (f) หัวข้อ Prod guards และ Go-live checklist ระบุ EVOUCHER_ENCRYPTION_KEY
+  ● AC-13 / AC-17 ci.yml และ .env.example › AC-36 (e) EVOUCHER_ENCRYPTION_KEY in CI passes parseEncryptionKey
+  ● AC-13 / AC-17 ci.yml และ .env.example › AC-36 (e) tools/load/run.sh generates EVOUCHER_ENCRYPTION_KEY like AFFILIATE_TOKEN_SECRET
+  ● AC-13 / AC-17 ci.yml และ .env.example › AC-36 (e) tools/ops/smoke-redis-outage.sh generates EVOUCHER_ENCRYPTION_KEY like AFFILIATE_TOKEN
+  ● AC-13 / AC-17 ci.yml และ .env.example › AC-36 (e) tools/ops/smoke-worker-mode.sh generates EVOUCHER_ENCRYPTION_KEY like AFFILIATE_TOKEN_
+  ● AC-13 / AC-17 ci.yml และ .env.example › every production-mode job sets EVOUCHER_ENCRYPTION_KEY
+  ● AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21) › (b) ALLOW_TEST_PROVIDERS=true does not disable the key guard
+  ● AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21) › (b) production with EVOUCHER_ENCRYPTION_KEY="" throws with the variable 
+  ● AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21) › (b) production with EVOUCHER_ENCRYPTION_KEY="abababababababababababababa
+  ● AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21) › (b) production with EVOUCHER_ENCRYPTION_KEY="abc" throws with the variab
+  ● AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21) › (b) production with EVOUCHER_ENCRYPTION_KEY="zzzzzzzzzzzzzzzzzzzzzzzzzzz
+  ● AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21) › (c) production without EVOUCHER_ADMIN_EMAIL does not throw and returns o
+  ● AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21) › (c) production without OPS_ALERT_EMAIL does not throw and returns one wa
+  ● AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21) › (c) production without either email returns one warning per variable
+  ● AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21) › (a) TZ is the constant UTC
+  ● AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21) › (a) service migrate receives all four
+  ● AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21) › (a) service server receives all four
+  ● AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21) › (a) service worker receives all four
+  ● AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21) › (a) x-backend-env passes EVOUCHER_ADMIN_EMAIL from the shell
+  ● AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21) › (a) x-backend-env passes EVOUCHER_ENCRYPTION_KEY from the sh
+  ● AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21) › (a) x-backend-env passes OPS_ALERT_EMAIL from the shell
+Tests:       21 failed, 38 passed, 59 total
+
+## Green: prod-guards.unit.spec.ts + medusa-config*
+PASS src/__tests__/prod-guards.unit.spec.ts (8.777 s)
+PASS src/__tests__/medusa-config-modules.unit.spec.ts
+PASS src/__tests__/medusa-config.infra.unit.spec.ts
+PASS src/__tests__/medusa-config.unit.spec.ts
+PASS src/__tests__/medusa-config.translation.unit.spec.ts
+Test Suites: 5 passed, 5 total
+Tests:       76 passed, 76 total
+
+## Unit ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 97 passed, 97 total
+Tests:       1150 passed, 1150 total
+
+## lint / typecheck / build
+pnpm lint: 0 errors; pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
+
+## บูตจาก build จริง (.medusa/server, NODE_ENV=production, ALLOW_TEST_PROVIDERS=true, port 9116)
+EVOUCHER_ENCRYPTION_KEY ว่าง -> exit 1: EVOUCHER_ENCRYPTION_KEY must be 64 hex chars (32 bytes)
+EVOUCHER_ENCRYPTION_KEY=abc -> exit 1: EVOUCHER_ENCRYPTION_KEY must be 64 hex chars (32 bytes)
+openssl rand -hex 32 -> db:migrate exit 0, GET /health = 200
+ไม่ตั้ง EVOUCHER_ADMIN_EMAIL/OPS_ALERT_EMAIL -> บูตได้ และ log warning ตัวละ 1 บรรทัด
+
+## docker compose -f docker-compose.prod.yml config
+migrate/server/worker: EVOUCHER_ENCRYPTION_KEY ยาว 64, TZ=UTC, EVOUCHER_ADMIN_EMAIL/OPS_ALERT_EMAIL ว่างเมื่อไม่ตั้ง

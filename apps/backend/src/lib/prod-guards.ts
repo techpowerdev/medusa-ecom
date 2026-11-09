@@ -1,6 +1,7 @@
 // OPS-7 prod guards (ADR-010 C + D1, docs/spec/07-scaling-ops.md AC-9, AC-10, AC-13, AC-17)
 // production ที่ตั้งค่าไม่ครบต้องล้มตอนบูต (fail-closed) แทนการทำงานผิดแบบเงียบ ๆ
 import { MedusaError } from "@medusajs/framework/utils"
+import { parseEncryptionKey } from "../modules/evoucher/utils/crypto"
 
 type Env = Record<string, string | undefined>
 
@@ -27,6 +28,7 @@ const isHttpUrl = (value: string | undefined) => {
  * ตรวจ env ที่ production ขาดไม่ได้ตอนโหลด medusa-config (ไม่ขึ้นกับ ALLOW_TEST_PROVIDERS — CI ตั้งค่าทดสอบให้เอง)
  * production → throw; นอก production → คืนข้อความ warning (medusa-config log ครั้งเดียวตอนบูต)
  * production ที่ตั้ง ALLOW_TEST_PROVIDERS=true → คืน warning หนึ่งข้อ (OPS-13, AC-20)
+ * production: EVOUCHER_ENCRYPTION_KEY ว่าง/ผิดรูปแบบ → throw; อีเมลแจ้งเตือนว่าง → warning ตัวละข้อ (OPS-21, AC-36)
  */
 export const checkBootEnv = (env: Env): string[] => {
   const problems: [string, string][] = []
@@ -49,6 +51,16 @@ export const checkBootEnv = (env: Env): string[] => {
     )
   }
   const warnings = problems.map(([, warning]) => warning)
+  if (isProduction(env)) {
+    // AC-36 (OPS-21): กุญแจ e-voucher ผิด = import/reveal/อีเมล voucher ล้มตอนใช้งาน จึงหยุดตั้งแต่บูต (throw ข้อความมีชื่อตัวแปร ไม่มีค่ากุญแจ)
+    parseEncryptionKey(env.EVOUCHER_ENCRYPTION_KEY)
+    // ไม่บังคับ (spec 02 กฎข้อ 9, ADR-015): อีเมลแจ้งเตือนถูกข้ามพร้อม warn
+    for (const name of ["EVOUCHER_ADMIN_EMAIL", "OPS_ALERT_EMAIL"]) {
+      if (!env[name]) {
+        warnings.push(`${name} is not set — admin/ops alert emails are skipped`)
+      }
+    }
+  }
   // AC-20 (ADR-010 ภาคผนวก): production ที่ปิด guard ของ provider ทดสอบยังบูตได้ (CI ต้องใช้) แต่ต้องเห็นใน log
   if (isProduction(env) && testProvidersAllowed(env)) {
     warnings.push(

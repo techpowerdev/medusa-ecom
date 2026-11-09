@@ -44,6 +44,13 @@ x-backend-env: &backend-env
   STOREFRONT_URL: ${STOREFRONT_URL:-}
   # AF-2: secret ของ cookie `aff` (AC-13)
   AFFILIATE_TOKEN_SECRET: ${AFFILIATE_TOKEN_SECRET:-}
+  # OPS-21: กุญแจเข้ารหัส code/PIN ของ e-voucher 64 hex (AC-36) — ว่างหรือผิดรูปแบบ = บูตไม่ขึ้น
+  EVOUCHER_ENCRYPTION_KEY: ${EVOUCHER_ENCRYPTION_KEY:-}
+  # OPS-21: ว่าง = ข้ามอีเมลแจ้งเตือนพร้อม warn (spec 02 กฎข้อ 9, ADR-015)
+  EVOUCHER_ADMIN_EMAIL: ${EVOUCHER_ADMIN_EMAIL:-}
+  OPS_ALERT_EMAIL: ${OPS_ALERT_EMAIL:-}
+  # spec 07 Deliverables ข้อ 9: ค่าคงที่ ไม่รับจาก shell
+  TZ: UTC
   # CORE-3: อีเมลผ่าน Resend (AC-9)
   RESEND_API_KEY: ${RESEND_API_KEY:-}
   RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
