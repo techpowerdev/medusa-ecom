@@ -98,7 +98,7 @@ test("AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถ
     await mockPartners(page, 0)
     await page.goto(`${BACKEND_URL}/app/evouchers`)
     await expect(page.getByTestId("evoucher-partners-empty")).toBeVisible()
-    await expect(section.getByRole("button", { name: "Create partner" })).toBeVisible()
+    await expect(page.getByTestId("evoucher-partners-table").getByRole("button", { name: "Create partner" })).toBeVisible()
   })
 })
 
@@ -118,7 +118,7 @@ test("AC-8: Create partner — ชื่อว่าง/URL ที่ไม่�
   await step("เปิดฟอร์ม Create partner แล้วกด Save โดยไม่กรอกชื่อ → error ใต้ช่อง Name ไม่มี POST", async () => {
     await loginAdmin(page)
     await page.goto(`${BACKEND_URL}/app/evouchers`)
-    await page.getByRole("button", { name: "Create partner" }).click()
+    await page.getByTestId("evoucher-partners-table").getByRole("button", { name: "Create partner" }).click()
     await page.getByRole("button", { name: "Save" }).click()
     await expect(page.getByTestId("evoucher-partner-name-error")).toHaveText("Name is required")
     expect(posts).toHaveLength(0)

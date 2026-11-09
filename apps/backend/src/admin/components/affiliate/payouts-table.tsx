@@ -8,7 +8,6 @@ import { useMemo, useReducer, useState } from "react"
 import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
 import { canCancelPayout, canMarkPaid } from "../../lib/affiliate-payout"
 import { createSingleFlight } from "../../lib/single-flight"
-import { Header } from "../common/header"
 import { AffiliateCell, AffiliateListTable, useAffiliateList, useAffiliateNames } from "./list-table"
 import { MarkPaidPrompt } from "./mark-paid-prompt"
 import { PayoutFormModal } from "./payout-form"
@@ -161,28 +160,18 @@ export const PayoutsTable = () => {
 
   return (
     <>
-      {/* ปุ่ม Create อยู่ใน Header เพราะ `action` ของ DataTable ใส่ data-testid ไม่ได้ (e2e หาด้วย testid — กฎ 7) */}
-      <Header
-        title="Payouts"
-        actions={[
-          {
-            type: "button",
-            props: {
-              variant: "secondary",
-              "data-testid": "affiliate-payout-create",
-              onClick: () => setCreating((c) => c ?? Date.now()),
-              children: "Create payout",
-            },
-          },
-        ]}
-      />
-      <AffiliateListTable
-        {...list}
-        rows={rows}
-        columns={columns}
-        subHeading="Draft payouts can be marked paid or cancelled."
-        empty="No payouts yet"
-      />
+      {/* spec 08 กฎ 18: `action` ของ DataTable ใส่ data-testid ไม่ได้ — e2e หาปุ่มด้วย role + ชื่อภายใน wrapper นี้ */}
+      <div data-testid="affiliate-payouts-table">
+        <AffiliateListTable
+          {...list}
+          rows={rows}
+          columns={columns}
+          heading="Payouts"
+          subHeading="Draft payouts can be marked paid or cancelled."
+          action={{ label: "Create payout", onClick: () => setCreating((c) => c ?? Date.now()) }}
+          empty="No payouts yet"
+        />
+      </div>
       {creating && <PayoutFormModal key={creating} onClose={() => setCreating(undefined)} />}
       {markingPaid && (
         <MarkPaidPrompt

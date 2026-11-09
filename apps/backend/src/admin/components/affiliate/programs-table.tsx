@@ -7,7 +7,6 @@ import { useMemo, useReducer, useState } from "react"
 import { affiliateKeys, deleteProgram, Program } from "../../lib/affiliate"
 import { canDeleteProgram } from "../../lib/affiliate-program-form"
 import { createSingleFlight } from "../../lib/single-flight"
-import { Header } from "../common/header"
 import { AffiliateListTable, useAffiliateList } from "./list-table"
 import { ProgramFormModal } from "./program-form"
 
@@ -130,27 +129,18 @@ export const ProgramsTable = () => {
 
   return (
     <>
-      {/* ปุ่ม Create อยู่ใน Header เพราะ `action` ของ DataTable ใส่ data-testid ไม่ได้ (e2e หาด้วย testid — กฎ 7) */}
-      <Header
-        title="Programs"
-        actions={[
-          {
-            type: "button",
-            props: {
-              variant: "secondary",
-              "data-testid": "affiliate-program-create",
-              onClick: () => setModal({ program: null, opened: Date.now() }),
-              children: "Create program",
-            },
-          },
-        ]}
-      />
-      <AffiliateListTable
-        {...list}
-        columns={columns}
-        subHeading="Only draft programs can be deleted."
-        empty="No programs yet"
-      />
+      {/* spec 08 กฎ 18: `action` ของ DataTable ใส่ data-testid ไม่ได้ — e2e หาปุ่มด้วย role + ชื่อภายใน wrapper นี้ */}
+      <div data-testid="affiliate-programs-table">
+        <AffiliateListTable
+          {...list}
+          columns={columns}
+          heading="Programs"
+          subHeading="Only draft programs can be deleted."
+          // กดซ้ำขณะ modal เปิดอยู่ไม่เปลี่ยน `opened` (ฟอร์มไม่ mount ใหม่)
+          action={{ label: "Create program", onClick: () => setModal((m) => m ?? { program: null, opened: Date.now() }) }}
+          empty="No programs yet"
+        />
+      </div>
       {modal && (
         <ProgramFormModal
           key={modal.opened}

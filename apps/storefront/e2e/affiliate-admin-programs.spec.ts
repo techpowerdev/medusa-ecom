@@ -70,7 +70,7 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
     await loginAdmin(page)
     await page.goto(`${BACKEND_URL}/app/affiliate`)
     await expect(row(editable.name)).toBeVisible({ timeout: 30_000 })
-    await page.getByTestId("affiliate-program-create").click()
+    await page.getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" }).click()
     await field("name").fill(createdName)
     await fillDatePicker(field("starts_at"), "2030-01-10T00:00")
     await fillDatePicker(field("ends_at"), "2030-01-01T00:00")

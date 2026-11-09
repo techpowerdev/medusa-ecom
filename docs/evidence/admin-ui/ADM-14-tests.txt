@@ -1,0 +1,50 @@
+# ADM-14 (spec 08 AC-18, กฎ 7c, 18; ADR-018) — ผล test
+# วันที่: 2026-11-09, node v22.23.3, base origin/develop 4249cf81
+
+## Red (ก่อนเขียนโค้ด)
+### jest __tests__/medusa-ui.unit.spec.ts -t ADM-14
+Tests:       8 failed, 145 skipped, 153 total
+### playwright e2e/admin-list-create-action.spec.ts (prod build ของโค้ดก่อนแก้)
+  ✘  1 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Partners — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน evoucher-partners-table และเปิด modal เดิม 
+  ✘  2 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Programs — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-programs-table และเปิด modal เดิม
+  ✘  3 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Payouts — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-payouts-table และเปิด modal เดิม (
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 1
+
+## พิสูจน์ว่า assertion กดซ้ำล้มได้ (ถอด guard ชั่วคราว ไม่ commit: setModal ไม่ใช้ m ??, openCreate ไม่เช็ก createOpen)
+  ✘  1 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Partners — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน evoucher-partners-table และเปิด modal เดิม 
+  ✘  2 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Programs — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-programs-table และเปิด modal เดิม
+  ✓  3 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Payouts — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-payouts-table และเปิด modal เดิม (
+    Error: expect(locator).toHaveValue(expected) failed
+    Expected: "ADM-14"
+    Received: ""
+    Error: expect(locator).toHaveValue(expected) failed
+
+## Green — jest ทั้ง backend (test:unit)
+Test Suites: 97 passed, 97 total
+Tests:       1162 passed, 1162 total
+
+## Green — playwright (prod build, 1280x800 สำหรับ AC-18) ไฟล์ที่แก้ locator + AC-18 + group-buy-admin-form
+  ✓   1 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Partners — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน evoucher-partners-table และเปิด modal เดิม (1.3s)
+  ✓   2 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Programs — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-programs-table และเปิด modal เดิม (1.3s)
+  ✓   3 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Payouts — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-payouts-table และเปิด modal เดิม (1.3s)
+  ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:46:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at
+  ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:115:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.6s)
+  ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:149:5 › AC-12: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และเลือก affiliate รายที่ 25
+  ✓   7 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:32:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, ma
+  ✓   8 [chromium] › e2e/affiliate-admin-programs.spec.ts:26:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ dr
+  ✓   9 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด
+  ✓  10 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-part
+  ✓  11 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ 
+  ✓  12 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี 
+  ✓  13 [chromium] › e2e/group-buy-admin-form.spec.ts:104:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้,
+  ✓  14 [chromium] › e2e/group-buy-admin-form.spec.ts:186:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.7s)
+  ✓  15 [chromium] › e2e/group-buy-admin-form.spec.ts:240:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.9s)
+  ✓  16 [chromium] › e2e/group-buy-admin-form.spec.ts:297:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม
+  ✓  17 [chromium] › e2e/group-buy-admin-form.spec.ts:366:5 › AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง
+  ✓  18 [chromium] › e2e/group-buy-admin-form.spec.ts:402:7 › ADM-13: หัวตารางรายการแคมเปญ › AC-17: heading และปุ่ม Create campaign อยู่แถวเดียวกันใน gb-campaigns-table แ
+  18 passed (55.7s)
+
+## lint / typecheck
+pnpm lint: 0 errors (warning เดิมของ storefront)
+pnpm typecheck: ผ่าน

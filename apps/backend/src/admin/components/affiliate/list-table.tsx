@@ -48,9 +48,10 @@ type Props<T extends { id: string }> = {
   /** prefix ของ query param ใน URL — ไม่ซ้ำกันในหน้าเดียว (กฎ 9) */
   prefix: string
   columns: DataTableColumnDef<T, any>[]
-  /** หัวตารางในแถว toolbar ของ DataTable (แท็บที่มีปุ่ม Create ใช้ Header แทนเพราะ `action` ใส่ data-testid ไม่ได้) */
+  /** หัวตารางและปุ่มสร้างในแถว toolbar ของ DataTable — `action` ใส่ data-testid ไม่ได้ ผู้เรียกห่อตารางด้วย wrapper testid (spec 08 กฎ 18) */
   heading?: string
   subHeading?: string
+  action?: { label: string; onClick: () => void }
   empty: string
 }
 
@@ -62,6 +63,7 @@ export const AffiliateListTable = <T extends { id: string }>({
   columns,
   heading,
   subHeading,
+  action,
   empty,
 }: Props<T>) => (
   // backend ไม่รองรับค้นหา (q) → ปิด search
@@ -74,6 +76,7 @@ export const AffiliateListTable = <T extends { id: string }>({
     heading={heading}
     headingLevel="h2"
     subHeading={subHeading}
+    action={action}
     prefix={prefix}
     pageSize={PAGE_SIZE}
     enableSearch={false}
