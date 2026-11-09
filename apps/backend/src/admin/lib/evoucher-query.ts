@@ -2,12 +2,7 @@ import { CODE_STATUSES, type CodeStatus } from "./evoucher-status"
 
 // ADM-4 (spec 08 กฎ 9): DataTable ของ dashboard เก็บหน้าปัจจุบัน/filter ใน URL (`<prefix>_offset`, `<prefix>_<filter id>`)
 // หน้า/ตารางอ่านกลับด้วย useQueryParams (ได้ string ดิบ) แล้วแปลงเป็น query ของ admin API ที่นี่ (ไม่ import sdk เพื่อให้ unit test ได้)
-type RawParams = { offset?: string; status?: string }
-
-const toOffset = (raw?: string) => {
-  const n = Number(raw)
-  return raw && Number.isInteger(n) && n > 0 ? n : 0
-}
+// offset ผ่าน usePageOffset (ADM-10, กฎ 13) แล้ว — ที่นี่รับเป็นตัวเลข
 
 const isCodeStatus = (value: unknown): value is CodeStatus =>
   typeof value === "string" && (CODE_STATUSES as readonly string[]).includes(value)
@@ -26,12 +21,7 @@ const toStatus = (raw?: string): CodeStatus | undefined => {
   return isCodeStatus(value) ? value : undefined
 }
 
-export const poolsListQuery = (params: RawParams, pageSize: number) => ({
-  limit: pageSize,
-  offset: toOffset(params.offset),
-})
-
-export const codesListQuery = (params: RawParams, pageSize: number) => {
-  const status = toStatus(params.status)
-  return { ...poolsListQuery(params, pageSize), ...(status ? { status } : {}) }
+export const codesListQuery = (rawStatus: string | undefined, offset: number, pageSize: number) => {
+  const status = toStatus(rawStatus)
+  return { limit: pageSize, offset, ...(status ? { status } : {}) }
 }
