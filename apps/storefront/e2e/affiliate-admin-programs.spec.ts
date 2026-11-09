@@ -1,6 +1,6 @@
 import { APIRequestContext } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin, rowAction } from "./support/admin"
+import { ADMIN_UI_OPTIONS, fillDatePicker, loginAdmin, rowAction } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
 
@@ -72,8 +72,8 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
     await expect(row(editable.name)).toBeVisible({ timeout: 30_000 })
     await page.getByTestId("affiliate-program-create").click()
     await field("name").fill(createdName)
-    await field("starts_at").fill("2030-01-10T00:00")
-    await field("ends_at").fill("2030-01-01T00:00")
+    await fillDatePicker(field("starts_at"), "2030-01-10T00:00")
+    await fillDatePicker(field("ends_at"), "2030-01-01T00:00")
     await field("commission_value").fill("8")
     await save.click()
     await expect(page.getByTestId("affiliate-program-error-ends_at")).toBeVisible()
@@ -83,7 +83,7 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
 
   await step("dblclick Save → POST 1 ครั้ง และแถว draft ใหม่ปรากฏโดยไม่ reload", async () => {
     await page.evaluate(() => ((window as unknown as { __af12a: boolean }).__af12a = true))
-    await field("ends_at").fill("2030-02-01T00:00")
+    await fillDatePicker(field("ends_at"), "2030-02-01T00:00")
     await save.dblclick()
     await expect(row(createdName)).toBeVisible()
     await expect(row(createdName)).toContainText("draft")

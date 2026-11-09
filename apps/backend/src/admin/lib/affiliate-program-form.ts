@@ -1,39 +1,55 @@
+import { z } from "zod"
 import type { Program, ProgramBody, ProgramStatus } from "./affiliate"
+import { fieldErrorMap } from "./form-validation"
 
-// AF-12a (spec 05 กฎ 37a): ค่าฟอร์มโปรแกรม (string ตาม input) ↔ body ของ POST /admin/affiliate/programs(/:id)
+// AF-12a (spec 05 กฎ 37a): ค่าฟอร์มโปรแกรม ↔ body ของ POST /admin/affiliate/programs(/:id)
 // pure — import แค่ type เพื่อให้ unit test ตรวจกับ validator ของ AF-5 ได้
-export const emptyProgramForm = () => ({
+// ADM-9 (spec 08 กฎ 5, 8): schema ตรวจรูปค่า (วันเวลาเป็น Date จาก DatePicker ตาม timezone ของเครื่องแอดมิน),
+// กฎธุรกิจอยู่ใน toProgramBody แล้ว map error เข้า form.setError
+export const programFormSchema = z.object({
+  name: z.string(),
+  starts_at: z.date().nullable(),
+  ends_at: z.date().nullable(),
+  commission_value: z.string(),
+  attribution_window_days: z.string(),
+  hold_days: z.string(),
+  cap_per_order: z.string(),
+  announce_text: z.string(),
+  status: z.enum(["draft", "published", "ended"]),
+  all: z.boolean(),
+  collection_ids: z.array(z.string()),
+  category_ids: z.array(z.string()),
+  // Q16: แก้ใน UI ไม่ได้ — เก็บค่าเดิมไว้ส่งกลับทั้งก้อน (update แทนที่ JSON scope ทั้งก้อน)
+  variant_ids: z.array(z.string()),
+})
+export type ProgramForm = z.input<typeof programFormSchema>
+export type ProgramFormField = keyof ProgramForm
+
+// z.date() กับ Invalid Date ให้ "Invalid input" — แทนด้วยข้อความของช่อง (ADM-3 fieldErrorMap)
+export const PROGRAM_PARSE_OPTIONS = {
+  error: fieldErrorMap({ starts_at: "Start is invalid", ends_at: "End is invalid" }),
+}
+
+export const emptyProgramForm = (): ProgramForm => ({
   name: "",
-  starts_at: "", // <input type="datetime-local"> ตีความเป็นเวลาไทย (ICT)
-  ends_at: "",
+  starts_at: null,
+  ends_at: null,
   commission_value: "",
   attribution_window_days: "7",
   hold_days: "14",
   cap_per_order: "",
   announce_text: "",
-  status: "draft" as ProgramStatus,
+  status: "draft",
   all: true,
-  collection_ids: [] as string[],
-  category_ids: [] as string[],
-  // Q16: แก้ใน UI ไม่ได้ — เก็บค่าเดิมไว้ส่งกลับทั้งก้อน (update แทนที่ JSON scope ทั้งก้อน)
-  variant_ids: [] as string[],
+  collection_ids: [],
+  category_ids: [],
+  variant_ids: [],
 })
-export type ProgramForm = ReturnType<typeof emptyProgramForm>
-export type ProgramFormField = keyof ProgramForm
-
-const ICT_OFFSET_MS = 7 * 60 * 60 * 1000
-
-export const isoToIct = (iso: string) => new Date(Date.parse(iso) + ICT_OFFSET_MS).toISOString().slice(0, 16)
-
-const ictToIso = (value: string) => {
-  const date = new Date(`${value.length === 16 ? `${value}:00` : value}+07:00`)
-  return Number.isNaN(date.getTime()) ? null : date.toISOString()
-}
 
 export const programToForm = (p: Program): ProgramForm => ({
   name: p.name,
-  starts_at: isoToIct(p.starts_at),
-  ends_at: isoToIct(p.ends_at),
+  starts_at: new Date(p.starts_at),
+  ends_at: new Date(p.ends_at),
   commission_value: String(p.commission_value),
   attribution_window_days: String(p.attribution_window_days),
   hold_days: String(p.hold_days),
@@ -55,12 +71,14 @@ class FormError extends Error {
   }
 }
 
-const date = (value: string, label: string, field: ProgramFormField) => {
-  const iso = value ? ictToIso(value) : null
-  if (!iso) {
-    throw new FormError(value ? `${label} is invalid` : `${label} is required`, field)
+const date = (value: Date | null, label: string, field: ProgramFormField) => {
+  if (!value) {
+    throw new FormError(`${label} is required`, field)
   }
-  return iso
+  if (Number.isNaN(value.getTime())) {
+    throw new FormError(`${label} is invalid`, field)
+  }
+  return value
 }
 
 const number = (
@@ -96,8 +114,11 @@ const buildBody = (form: ProgramForm): ProgramBody => {
   }
   const starts_at = date(form.starts_at, "Start", "starts_at")
   const ends_at = date(form.ends_at, "End", "ends_at")
-  if (Date.parse(ends_at) <= Date.parse(starts_at)) {
+  if (ends_at.getTime() <= starts_at.getTime()) {
     throw new FormError("End must be after start", "ends_at")
+  }
+  if (!form.all && !form.collection_ids.length && !form.category_ids.length && !form.variant_ids.length) {
+    throw new FormError("Select at least one collection or category", "collection_ids")
   }
   return {
     name,
@@ -140,6 +161,22 @@ export const toProgramBody = (
       return { error: e.message, field: e.field }
     }
     throw e
+  }
+}
+
+/**
+ * ADM-9 (nit #163/#176): DatePicker ละเอียดระดับนาที — วันเวลาที่แอดมินไม่ได้แก้ต้องไม่ถูกส่ง (วินาทีเดิมไม่ถูกปัดทุก Save)
+ * form ถือ Date จาก `programToForm` ไว้ตรงๆ จึงเทียบ timestamp กับค่าที่เก็บได้เลย
+ */
+export const omitUnchangedDates = (
+  body: ProgramBody,
+  stored: Pick<Program, "starts_at" | "ends_at">,
+): Partial<ProgramBody> => {
+  const { starts_at, ends_at, ...rest } = body
+  return {
+    ...rest,
+    ...(starts_at.getTime() === Date.parse(stored.starts_at) ? {} : { starts_at }),
+    ...(ends_at.getTime() === Date.parse(stored.ends_at) ? {} : { ends_at }),
   }
 }
 
