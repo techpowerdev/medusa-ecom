@@ -1,14 +1,14 @@
 import { APIRequestContext } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
+import { ADMIN_UI_OPTIONS, loginAdmin, rowAction } from "./support/admin"
 import { createActiveAffiliate, insertApprovedEntry } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
 
-// AF-6 (spec 05 AC-26): แท็บ Payouts ของหน้า Affiliate ใน admin — เฉพาะแถว `draft` มีปุ่ม `affiliate-payout-cancel`
-// ยืนยันด้วย usePrompt, dblclick → DELETE 1 ครั้งและแถวหายโดยไม่ reload; ยกเลิกกล่องยืนยัน → ไม่มี request
+// AF-6 (spec 05 AC-26): แท็บ Payouts ของหน้า Affiliate ใน admin — เฉพาะแถว `draft` มีเมนู `affiliate-payout-row-actions` (menuitem Cancel — ADM-8b)
+// ยืนยันด้วย usePrompt, ยืนยัน → DELETE 1 ครั้งและแถวหายโดยไม่ reload (กดซ้ำระหว่างรอ → affiliate-admin-row-actions); ยกเลิกกล่องยืนยัน → ไม่มี request
 // รอบ 10 (qa #138): ที่ 1280×800 ปุ่มอยู่ในจอโดยไม่ต้องเลื่อนตาราง; ยกเลิกไม่สำเร็จ → toast error + refetch รายการ
-// admin UI เป็นภาษาอังกฤษ (CLAUDE.md) — หา element ด้วย data-testid
+// admin UI เป็นภาษาอังกฤษ (CLAUDE.md) — หา element ด้วย data-testid ยกเว้น menuitem ของ ActionMenu ต่อแถว (spec 08 กฎ 10)
 test.use({
   ...ADMIN_UI_OPTIONS,
   viewport: { width: 1280, height: 800 },
@@ -26,7 +26,7 @@ async function post(request: APIRequestContext, admin: Headers, path: string, da
   return res.json()
 }
 
-test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว", async ({
+test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, ยืนยันแล้วยิง DELETE ครั้งเดียว", async ({
   page,
   request,
   step,
@@ -72,6 +72,7 @@ test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, 
     if (req.method() === "DELETE" && path === cancelPath) deletes.push(req.url())
   })
   const row = (id: string) => page.getByRole("row").filter({ hasText: id })
+  const cancelAction = (id: string) => rowAction(row(id), "affiliate-payout-row-actions", "Cancel")
 
   await step("ล็อกอิน admin แล้วเปิดแท็บ Payouts → ปุ่มยกเลิกเฉพาะแถว draft", async () => {
     await loginAdmin(page)
@@ -79,11 +80,11 @@ test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, 
     await page.getByTestId("affiliate-admin-tab-payouts").click()
     await expect(row(draft.id)).toBeVisible({ timeout: 30_000 })
     await expect(row(paid.id)).toBeVisible()
-    await expect(row(draft.id).getByTestId("affiliate-payout-cancel")).toHaveCount(1)
-    await expect(row(paid.id).getByTestId("affiliate-payout-cancel")).toHaveCount(0)
+    await expect(row(draft.id).getByTestId("affiliate-payout-row-actions")).toHaveCount(1)
+    await expect(row(paid.id).getByTestId("affiliate-payout-row-actions")).toHaveCount(0)
     // ปุ่มอยู่ใน viewport 1280×800 โดยไม่ต้องเลื่อนตารางแนวนอน
     for (const id of [draft.id, stale.id]) {
-      const box = await row(id).getByTestId("affiliate-payout-cancel").boundingBox()
+      const box = await row(id).getByTestId("affiliate-payout-row-actions").boundingBox()
       expect(box, `ปุ่มยกเลิกของ ${id}`).not.toBeNull()
       expect(box!.x).toBeGreaterThanOrEqual(0)
       expect(box!.x + box!.width).toBeLessThanOrEqual(1280)
@@ -96,10 +97,10 @@ test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, 
     "ยกเลิก payout ที่ถูก mark paid ไปแล้ว → toast error, refetch รายการ และแถวไม่มีปุ่มอีก",
     async () => {
       await post(request, admin, `/admin/affiliate/payouts/${stale.id}/mark-paid`, {})
-      await row(stale.id).getByTestId("affiliate-payout-cancel").click()
+      await (await cancelAction(stale.id)).click()
       await page.getByRole("alertdialog").getByRole("button", { name: "Cancel payout" }).click()
       await expect(page.getByText("Only draft payouts can be cancelled")).toBeVisible()
-      await expect(row(stale.id).getByTestId("affiliate-payout-cancel")).toHaveCount(0)
+      await expect(row(stale.id).getByTestId("affiliate-payout-row-actions")).toHaveCount(0)
       await expect(row(stale.id)).toContainText("paid")
       const failed = requests.indexOf(`DELETE /admin/affiliate/payouts/${stale.id}`)
       expect(failed, "มี DELETE ที่ล้ม").toBeGreaterThanOrEqual(0)
@@ -111,7 +112,7 @@ test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, 
   )
 
   await step("กดยกเลิกแล้วปิดกล่องยืนยัน → ไม่มี request และแถวยังอยู่", async () => {
-    await row(draft.id).getByTestId("affiliate-payout-cancel").click()
+    await (await cancelAction(draft.id)).click()
     const dialog = page.getByRole("alertdialog")
     await expect(dialog).toBeVisible()
     await page.waitForTimeout(300) // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence
@@ -123,9 +124,9 @@ test("AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, 
     await expect(row(draft.id)).toBeVisible()
   })
 
-  await step("dblclick แล้วยืนยัน → DELETE 1 ครั้ง และแถวหายไปโดยไม่ reload", async () => {
+  await step("menuitem Cancel แล้วยืนยัน → DELETE 1 ครั้ง และแถวหายไปโดยไม่ reload", async () => {
     await page.evaluate(() => ((window as unknown as { __af6: boolean }).__af6 = true))
-    await row(draft.id).getByTestId("affiliate-payout-cancel").dblclick()
+    await (await cancelAction(draft.id)).click()
     const dialog = page.getByRole("alertdialog")
     await dialog.getByRole("button", { name: "Cancel payout" }).click()
     await expect(row(draft.id)).toHaveCount(0)

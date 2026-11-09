@@ -3,10 +3,9 @@ import { affiliateAction, parsePayoutInfo, payoutInfoForm } from "../affiliate-a
 // AF-12b (spec 05 กฎ 37b): ปุ่มตามสถานะ affiliate และ validator ของฟอร์มข้อมูลรับเงิน 3 ช่อง
 describe("affiliateAction", () => {
   it("maps each status to its single action and target status", () => {
-    expect(affiliateAction("pending")).toEqual({ testId: "affiliate-approve", label: "Approve", status: "active", confirm: false })
-    expect(affiliateAction("active")).toEqual({ testId: "affiliate-suspend", label: "Suspend", status: "suspended", confirm: true })
+    expect(affiliateAction("pending")).toEqual({ label: "Approve", status: "active", confirm: false })
+    expect(affiliateAction("active")).toEqual({ label: "Suspend", status: "suspended", confirm: true })
     expect(affiliateAction("suspended")).toEqual({
-      testId: "affiliate-reactivate",
       label: "Reactivate",
       status: "active",
       confirm: false,
