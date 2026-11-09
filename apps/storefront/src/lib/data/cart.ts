@@ -2,7 +2,7 @@
 
 import { sdk } from "@lib/config"
 import { friendlyErrorMessage } from "@lib/util/error-message"
-import { safeCountryCode } from "@lib/util/digital-checkout"
+import { isDigitalOnlyCart, safeCountryCode } from "@lib/util/digital-checkout"
 import medusaError from "@lib/util/medusa-error"
 import {
   ActionError,
@@ -463,56 +463,66 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   if (!formData) {
     return "ไม่พบข้อมูลที่อยู่ กรุณากรอกใหม่อีกครั้ง"
   }
-  if (!(await getCartId())) {
+  const cartId = await getCartId()
+  if (!cartId) {
     return "ไม่พบตะกร้าสินค้า กรุณาเพิ่มสินค้าลงตะกร้าก่อน"
   }
-  // EV-7c (spec 02 กฎข้อ 24b): cart digital-only กรอกเฉพาะที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี แล้วใช้เป็น
-  // shipping_address ด้วย เพื่อให้ Tax module ของ Medusa คำนวณ VAT จากที่อยู่ — ข้ามขั้น delivery
-  if (formData.get("digital_only") === "1") {
-    try {
+  let digitalOnly: boolean
+  try {
+    // EV-7d (spec 02 กฎข้อ 28b): ตัดสิน digital-only จาก cart ฝั่ง server ไม่รับ flag จากฟอร์ม
+    const { cart } = await sdk.store.cart.retrieve(
+      cartId,
+      { fields: "id,items.requires_shipping" },
+      await getAuthHeaders()
+    )
+    digitalOnly = isDigitalOnlyCart(cart)
+
+    // ฟอร์มที่แสดงอยู่เป็นคนละแบบกับ cart ล่าสุด (เช่นแก้ตะกร้าจากอีกแท็บ — ไม่มีช่องที่อยู่ของแบบนั้นเลย) → ไม่บันทึกที่อยู่ว่างทับ
+    if (!formData.has(digitalOnly ? "billing_address.address_1" : "shipping_address.address_1")) {
+      return "ตะกร้าสินค้ามีการเปลี่ยนแปลง กรุณาโหลดหน้าใหม่แล้วกรอกที่อยู่อีกครั้ง"
+    }
+
+    // EV-7c (spec 02 กฎข้อ 24b): cart digital-only กรอกเฉพาะที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี แล้วใช้เป็น
+    // shipping_address ด้วย เพื่อให้ Tax module ของ Medusa คำนวณ VAT จากที่อยู่ — ข้ามขั้น delivery
+    if (digitalOnly) {
       const address = billingAddressFrom(formData)
       await updateCart({
         email: formData.get("email"),
         billing_address: address,
         shipping_address: address,
       } as HttpTypes.StoreUpdateCart)
-    } catch (e: unknown) {
-      return friendlyErrorMessage(e, "บันทึกที่อยู่ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง")
+    } else {
+      const data = {
+        shipping_address: {
+          first_name: formData.get("shipping_address.first_name"),
+          last_name: formData.get("shipping_address.last_name"),
+          address_1: formData.get("shipping_address.address_1"),
+          address_2: "",
+          company: formData.get("shipping_address.company"),
+          postal_code: formData.get("shipping_address.postal_code"),
+          city: formData.get("shipping_address.city"),
+          country_code: formData.get("shipping_address.country_code"),
+          province: formData.get("shipping_address.province"),
+          phone: formData.get("shipping_address.phone"),
+        },
+        email: formData.get("email"),
+      } as any
+
+      const sameAsBilling = formData.get("same_as_billing")
+      if (sameAsBilling === "on") data.billing_address = data.shipping_address
+
+      if (sameAsBilling !== "on") data.billing_address = billingAddressFrom(formData)
+      await updateCart(data)
     }
-    // country ไม่ถูกต้อง → path ภายในร้าน ให้ middleware เลือกประเทศ (กัน open redirect)
-    const countryCode = safeCountryCode(formData.get("checkout_country_code"))
-    return redirect(`${countryCode ? `/${countryCode}` : ""}/checkout?step=payment`)
-  }
-  try {
-
-    const data = {
-      shipping_address: {
-        first_name: formData.get("shipping_address.first_name"),
-        last_name: formData.get("shipping_address.last_name"),
-        address_1: formData.get("shipping_address.address_1"),
-        address_2: "",
-        company: formData.get("shipping_address.company"),
-        postal_code: formData.get("shipping_address.postal_code"),
-        city: formData.get("shipping_address.city"),
-        country_code: formData.get("shipping_address.country_code"),
-        province: formData.get("shipping_address.province"),
-        phone: formData.get("shipping_address.phone"),
-      },
-      email: formData.get("email"),
-    } as any
-
-    const sameAsBilling = formData.get("same_as_billing")
-    if (sameAsBilling === "on") data.billing_address = data.shipping_address
-
-    if (sameAsBilling !== "on") data.billing_address = billingAddressFrom(formData)
-    await updateCart(data)
   } catch (e: unknown) {
     // CORE-4e (กฎข้อ 55): message ของ Medusa เป็นอังกฤษ — แสดงข้อความไทย
     return friendlyErrorMessage(e, "บันทึกที่อยู่ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง")
   }
 
+  // EV-7d (กฎข้อ 28c): country จาก URL ผ่าน safeCountryCode; ใช้ไม่ได้ → path ภายในร้าน ให้ middleware เลือกประเทศ (กัน open redirect)
+  const countryCode = safeCountryCode(formData.get("checkout_country_code"))
   redirect(
-    `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`
+    `${countryCode ? `/${countryCode}` : ""}/checkout?step=${digitalOnly ? "payment" : "delivery"}`
   )
 }
 
@@ -553,7 +563,8 @@ export type PlaceOrderResult = { error: ActionError<(typeof PLACE_ORDER_CONFLICT
  * @param cartId - optional - The ID of the cart to place an order for.
  * @param cartMetadata - optional - `metadata` ของ cart ที่ผู้เรียกอ่านอยู่แล้ว (AF-3b กฎ 23): ส่งมา → sync cookie `aff`
  * ลง cart ก่อน complete เมื่อค่าต่าง; ไม่ส่ง (cart ถูก complete โดย webhook แล้ว เช่น PromptPay) → ไม่ sync
- * @param countryCode - optional - country ใน URL ของหน้า checkout (EV-7c กฎข้อ 24c) — ไม่ส่ง → ใช้ของ shipping address
+ * @param countryCode - optional - country ใน URL ของหน้า checkout (EV-7c กฎข้อ 24c, EV-7d กฎข้อ 28c) — ไม่ส่ง/ไม่ผ่าน
+ * `safeCountryCode` → path ภายในร้าน ให้ middleware เลือกประเทศ (ไม่อ่านจาก shipping address)
  * @returns The cart object if the order was successful, or null if not.
  */
 export async function placeOrder(
@@ -585,15 +596,13 @@ export async function placeOrder(
   revalidateTag(await getCacheTag("carts"), { expire: 0 })
 
   if (cartRes.type === "order") {
-    const orderCountry =
-      safeCountryCode(countryCode) ??
-      cartRes.order.shipping_address?.country_code?.toLowerCase()
+    const orderCountry = safeCountryCode(countryCode)
 
     const orderCacheTag = await getCacheTag("orders")
     revalidateTag(orderCacheTag, { expire: 0 })
 
     removeCartId()
-    redirect(`/${orderCountry}/order/${cartRes.order.id}/confirmed`)
+    redirect(`${orderCountry ? `/${orderCountry}` : ""}/order/${cartRes.order.id}/confirmed`)
   }
 
   // Medusa คืน cart (ยังไม่ได้ order — เช่น authorize payment ไม่ผ่าน)

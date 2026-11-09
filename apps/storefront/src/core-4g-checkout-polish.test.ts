@@ -16,7 +16,14 @@ const update = vi.fn()
 vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   MEDUSA_BACKEND_URL: "http://backend",
-  sdk: { store: { cart: { update: (...a: unknown[]) => update(...a) } } },
+  sdk: {
+    store: {
+      cart: {
+        retrieve: async () => ({ cart: { id: "cart_1", items: [{ requires_shipping: true }] } }),
+        update: (...a: unknown[]) => update(...a),
+      },
+    },
+  },
 }))
 vi.mock("@lib/data/cookies", () => ({
   getAuthHeaders: vi.fn().mockResolvedValue({ authorization: "Bearer t" }),
@@ -63,6 +70,7 @@ describe("medusaError คง status (AC-99)", () => {
     update.mockRejectedValue(new FetchError("Unauthorized", "Unauthorized", 401))
     const { setAddresses } = await import("@lib/data/cart")
     const form = new FormData()
+    form.set("shipping_address.address_1", "1 Sukhumvit")
     form.set("shipping_address.country_code", "th")
     form.set("same_as_billing", "on")
     expect(await setAddresses(null, form)).toBe(SIGN_IN_AGAIN_MESSAGE)
