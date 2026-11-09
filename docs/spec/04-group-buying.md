@@ -511,6 +511,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 38. (รอบ 19, GB-N7 — nit review #269; test-only ไม่เปลี่ยนพฤติกรรม) ใน `integration-tests/http/group-buy-campaigns.spec.ts` test ของ GB-N6 ("POST K that fails after the lock …")
     บรรทัดเหนือ assertion `toContain("percentage number between 0 and 100")` มี comment ภาษาไทยว่า assertion นี้มีไว้ยืนยันว่า request ล้ม**หลัง lock** ใน promotion module
     (`createPromotionsWorkflow`) ไม่ใช่ล้มที่ zod validator ของ route (ถ้าล้มที่ zod จะไม่พิสูจน์การปล่อย lock); ไม่แก้ assertion/logic
+39. (รอบ 26, GB-16 — performance, follow-up รอบ 25) job `group-buy-deadline` กรอง membership ที่หมดเวลาด้วย `group: { status: "succeeded", pay_deadline_at: { $lte: now } }` เพื่อให้ใช้ index `(status, pay_deadline_at)` ของกลุ่ม (วัดได้ 50–65ms ต่อรอบเมื่อกรองแค่ `pay_deadline_at`);
+    ไม่เปลี่ยนพฤติกรรม: `pay_deadline_at` ถูกตั้งเฉพาะตอนกลุ่ม `succeeded` (`workflows/group-buy/group-outcome.ts:100`) และ membership `awaiting_payment` มีเฉพาะในกลุ่มนั้น
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -742,6 +744,8 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   (regex ของกฎข้อ 33a) และ `/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/`, `new Set(keys).size === 1000`; คืนค่า `globalThis.crypto` เดิมหลัง test (`afterEach`);
   grep: `apps/backend/src/admin/components/group-buy/create-campaign.tsx` และ `apps/backend/src/admin/lib/group-buy-form.ts` ไม่มีคำว่า `randomUUID` (รวม comment) และ `openModal` เรียก `newIdempotencyKey()`;
   diff ของ PR ไม่แตะ `apps/backend/src/api/` และ `package.json`; e2e admin ของ AC-52 (body มี `idempotency_key` รูป UUID, key เดิมเมื่อ submit ซ้ำ, key ใหม่เมื่อเปิดฟอร์มใหม่) และ AC-56 ผ่านโดยไม่แก้ assertion
+- AC-59 (GB-16, กฎข้อ 39) unit (mock service ของ job): `listAndCountGroupBuyMemberships`/`listGroupBuyMemberships` ถูกเรียกด้วย filter ที่ `group` มี `status: "succeeded"` และ `pay_deadline_at.$lte`; integration ที่มีอยู่ `group-buy-payment.spec.ts`, `group-buy-outcome.spec.ts` (AC-10) ผ่านโดยไม่แก้ assertion;
+  แนบผล `EXPLAIN` ของ query ก่อน/หลังใน PR (เป็นหลักฐาน ไม่ใช่เกณฑ์ผ่าน — planner เลือก plan ตามปริมาณข้อมูล)
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -816,6 +820,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-N6 | (test-only เล็ก ~60 LOC, รอบ 18 — qa #259 O-3, nit 2 review #259) e2e admin ของ AC-52 รอ/ปิด toast ก่อนคลิก `gb-campaign-create` + integration test เส้นทาง error หลังขอ lock แล้ว key เดิมใช้ต่อได้ทันที (กฎข้อ 37; AC-56) — ไฟล์: e2e admin ที่ #259 เพิ่ม, `storefront/e2e/support/admin.ts` (ถ้าเป็น helper), `backend/integration-tests/http/group-buy-campaigns.spec.ts` — ☑ #269 (train #270; ข้อ (a) ปิดโดย #259 commit `016f204`) | **GB-13 (#259) merge** (แก้ test ที่ #259 เพิ่ม); ∥ ทุกตัวของ spec 01; ชน e2e admin ของฟอร์มสร้างแคมเปญกับ ADM-7 (spec 08) ตัวที่ merge ทีหลัง rebase; ไม่บล็อก release |
 | GB-N7 | (test-only comment ~2 LOC, รอบ 19 — nit review #269) comment เหนือ assertion ข้อความ "percentage number between 0 and 100" ว่ายืนยันการล้มหลัง lock ไม่ใช่ที่ zod (กฎข้อ 38; AC-57) — ไฟล์: `backend/integration-tests/http/group-buy-campaigns.spec.ts` — ☑ #274 | none — **เริ่มได้** (GB-N6 ☑ #269); ∥ ทุกตัว; ไม่บล็อก release — ถ้ามี PR อื่นแตะไฟล์นี้ก่อน รวมเข้า PR นั้นได้แล้วปิด GB-N7 |
 | GB-15 | (admin เล็ก ~40 LOC รวม test, รอบ 20 — owner เลือกทาง (ก) 2026-11-04) key ของฟอร์มสร้างแคมเปญสร้างด้วย `crypto.getRandomValues` ผ่าน helper `newIdempotencyKey()` (รูป UUID v4) แทน `crypto.randomUUID()` ที่ใช้ไม่ได้บน http (กฎข้อ 33d; AC-58) — ไฟล์: `src/admin/lib/group-buy-form.ts` (+ `src/admin/lib/__tests__/group-buy-form.unit.spec.ts`), `src/admin/components/group-buy/create-campaign.tsx` (`openModal` + comment ~49); ไม่แตะ backend/`package.json` — ☑ #285 (train #290) | none — **เริ่มได้** (GB-13 ☑ #259); ∥ ทุกตัว; ชน `create-campaign.tsx` กับ ADM-7 (spec 08, ☐) ตัวที่ merge ทีหลัง rebase; **ควรมีก่อน release v0.5.0** (admin ที่เปิดผ่าน http สร้างแคมเปญไม่ได้เลย) |
+| GB-16 | (backend เล็ก ~20 LOC, รอบ 26 — follow-up รอบ 25) filter ของ job `group-buy-deadline` รวมสถานะกลุ่ม `succeeded` ให้ใช้ index `(status, pay_deadline_at)` (กฎข้อ 39; AC-59) — ไฟล์: `src/jobs/group-buy-deadline.ts` (+ unit) | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
 GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
