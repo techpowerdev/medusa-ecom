@@ -26,6 +26,7 @@ import { codesListQuery } from "../../lib/evoucher-query"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
+import { PageOffsetGate } from "../common/page-offset-gate"
 
 const columnHelper = createDataTableColumnHelper<MaskedCode>()
 const filterHelper = createDataTableFilterHelper<MaskedCode>()
@@ -141,23 +142,25 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
 
   return (
     <Container data-testid="evoucher-codes">
-      <DataTable
-        data={data?.codes ?? []}
-        columns={columns}
-        filters={filters}
-        getRowId={(code) => code.id}
-        rowCount={data?.count ?? 0}
-        isLoading={isLoading}
-        heading="Codes"
-        headingLevel="h2"
-        prefix={PREFIX}
-        pageSize={PAGE_SIZE}
-        enableSearch={false}
-        emptyState={{
-          empty: { heading: "No codes", description: "Import a CSV to add codes." },
-          filtered: { heading: "No codes", description: "No codes match the selected status." },
-        }}
-      />
+      <PageOffsetGate prefix={PREFIX}>
+        <DataTable
+          data={data?.codes ?? []}
+          columns={columns}
+          filters={filters}
+          getRowId={(code) => code.id}
+          rowCount={data?.count ?? 0}
+          isLoading={isLoading}
+          heading="Codes"
+          headingLevel="h2"
+          prefix={PREFIX}
+          pageSize={PAGE_SIZE}
+          enableSearch={false}
+          emptyState={{
+            empty: { heading: "No codes", description: "Import a CSV to add codes." },
+            filtered: { heading: "No codes", description: "No codes match the selected status." },
+          }}
+        />
+      </PageOffsetGate>
 
       <Drawer open={!!revealed} onOpenChange={(open) => !open && setRevealed(null)}>
         <Drawer.Content>

@@ -15,7 +15,14 @@ const elementsProps = vi.fn()
 vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   MEDUSA_BACKEND_URL: "http://backend",
-  sdk: { store: { cart: { update: (...a: unknown[]) => update(...a) } } },
+  sdk: {
+    store: {
+      cart: {
+        retrieve: async () => ({ cart: { id: "cart_1", items: [{ requires_shipping: true }] } }),
+        update: (...a: unknown[]) => update(...a),
+      },
+    },
+  },
 }))
 vi.mock("@lib/data/cookies", () => ({
   getAuthHeaders: vi.fn().mockResolvedValue({ authorization: "Bearer t" }),
@@ -56,6 +63,7 @@ describe("server action ของ checkout ไม่ส่งข้อควา�
     update.mockRejectedValue(new Error(RAW))
     const { setAddresses } = await import("@lib/data/cart")
     const form = new FormData()
+    form.set("shipping_address.address_1", "1 Sukhumvit")
     form.set("shipping_address.country_code", "th")
     form.set("same_as_billing", "on")
     expectThaiNotRaw(await setAddresses(null, form))

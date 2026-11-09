@@ -1,0 +1,40 @@
+# ADM-9 (spec 08 AC-12, กฎ 5, 8, 11, 15) — ผล test
+# วันที่: 2026-11-09, node 22, base origin/develop ee69cdc0
+
+## Red (ก่อนเขียนโค้ด)
+### jest src/admin
+  FAIL src/admin/__tests__/medusa-ui.unit.spec.ts (static ของ AC-12: Form/KeyboundForm, DatePicker, Combobox, NumberInput, omitUnchangedDates, payoutInfoSchema, pattern ต้องห้ามในไฟล์ affiliate)
+  FAIL src/admin/lib/__tests__/affiliate-account.unit.spec.ts (payoutInfoSchema ยังไม่มี)
+  FAIL src/admin/lib/__tests__/affiliate-payout.unit.spec.ts (fetchAllAffiliates ยังไม่มี, defaultPayoutPeriod/toPayoutBody ยังเป็น string)
+  FAIL src/admin/lib/__tests__/affiliate-program-form.unit.spec.ts (omitUnchangedDates ยังไม่มี, builder ยังรับ string ICT, ไม่มี error scope ว่าง)
+  Test Suites: 4 failed, 14 passed, 18 total
+### playwright e2e/affiliate-admin-forms.spec.ts (prod build ของโค้ดก่อนแก้)
+  3 failed — ไม่พบ spinbutton ของ DatePicker ใน wrapper (ยังเป็น input type=date/datetime-local)
+
+## Green
+### jest src/admin
+  Test Suites: 18 passed, 18 total
+  Tests:       336 passed, 336 total
+### pnpm --filter backend test:unit (ทั้งหมด หลังแก้)
+  Test Suites: 94 passed, 94 total
+  Tests:       1124 passed, 1124 total
+### pnpm --filter storefront test:e2e:unit
+  76 passed
+### pnpm lint && pnpm typecheck
+  0 errors (warning เดิมของ repo ไม่เกี่ยวกับ task นี้)
+### playwright --workers=1 --project=chromium (prod build, timezoneId Asia/Bangkok) รอบสุดท้าย
+  ✓  1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:43:5 › AC-43: approve ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (9.1s)
+  ✓  2 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:165:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (2.2s)
+  ✓  3 [chromium] › e2e/affiliate-admin-forms.spec.ts:46:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.2s)
+  ✓  4 [chromium] › e2e/affiliate-admin-forms.spec.ts:115:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.7s)
+  ✓  5 [chromium] › e2e/affiliate-admin-forms.spec.ts:149:5 › AC-12: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และเลือก affiliate รายที่ 250 ได้ (1.7s)
+  ✓  6 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:32:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (5.5s)
+  ✓  7 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, ยืนยันแล้วยิง DELETE ครั้งเดียว (4.4s)
+  ✓  8 [chromium] › e2e/affiliate-admin-programs.spec.ts:26:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (5.0s)
+  8 passed (34.7s)
+### รอบก่อนหน้า (โค้ดเดียวกัน ต่างแค่ cleanup ใน test) ชุด row-actions / tables / names
+  ✓ AC-45, AC-13 ×3, AC-11 — ผ่านทั้งหมด
+
+## หมายเหตุ
+  affiliate-admin-forms เพิ่มข้อมูล 250 แถวชั่วคราว — ต้องรัน --workers=1 (ค่า CI) ไม่งั้นแถวของ spec อื่นตกหน้าแรก
+  integration ไม่ได้รัน: ไม่มีการแก้ backend/API

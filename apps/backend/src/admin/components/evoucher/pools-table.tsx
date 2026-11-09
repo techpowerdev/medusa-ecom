@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { evoucherApi, evoucherKeys, Pool } from "../../lib/evoucher"
 import { usePageOffset } from "../common/use-page-offset"
+import { PageOffsetGate } from "../common/page-offset-gate"
 
 const columnHelper = createDataTableColumnHelper<Pool>()
 
@@ -49,24 +50,26 @@ export const PoolsTable = () => {
   useEffect(() => setCount(data?.count), [data?.count])
 
   return (
-    <DataTable
-      data={data?.pools ?? []}
-      columns={columns}
-      getRowId={(pool) => pool.id}
-      rowCount={data?.count ?? 0}
-      isLoading={isLoading}
-      heading="E-voucher pools"
-      subHeading="Create a pool from a product variant page (Voucher pool widget), then import partner codes here."
-      prefix={PREFIX}
-      pageSize={PAGE_SIZE}
-      enableSearch={false}
-      rowHref={(pool) => `/evouchers/pools/${pool.id}`}
-      emptyState={{
-        empty: {
-          heading: "No voucher pools yet",
-          description: "Open a product variant and create a voucher pool from the Voucher pool widget.",
-        },
-      }}
-    />
+    <PageOffsetGate prefix={PREFIX}>
+      <DataTable
+        data={data?.pools ?? []}
+        columns={columns}
+        getRowId={(pool) => pool.id}
+        rowCount={data?.count ?? 0}
+        isLoading={isLoading}
+        heading="E-voucher pools"
+        subHeading="Create a pool from a product variant page (Voucher pool widget), then import partner codes here."
+        prefix={PREFIX}
+        pageSize={PAGE_SIZE}
+        enableSearch={false}
+        rowHref={(pool) => `/evouchers/pools/${pool.id}`}
+        emptyState={{
+          empty: {
+            heading: "No voucher pools yet",
+            description: "Open a product variant and create a voucher pool from the Voucher pool widget.",
+          },
+        }}
+      />
+    </PageOffsetGate>
   )
 }

@@ -1,4 +1,4 @@
-import { clampOffset, pageOffset } from "../page-offset"
+import { clampOffset, isMalformedOffset, pageOffset } from "../page-offset"
 
 // ADM-10 (spec 08 กฎ 13a, AC-14): `<prefix>_offset` ใน URL ผู้ใช้แก้เองได้ — ค่าที่ไม่ใช่จำนวนเต็มบวกใช้หน้าแรก
 // และค่าอื่นปัดลงเป็นต้นหน้า (DataTable ของ dashboard คำนวณหน้าจาก offset / pageSize)
@@ -31,5 +31,16 @@ describe("clampOffset", () => {
     [40, 41, 20, 40],
   ] as const)("clampOffset(%p, %p, %p) = %p", (offset, count, pageSize, expected) => {
     expect(clampOffset(offset, count, pageSize)).toBe(expected)
+  })
+})
+
+// hotfix: DataTable ของ dashboard parseInt ค่าดิบเอง ("-50" → pageIndex -1, "abc" → NaN) — ค่าเหล่านี้ต้องไม่ถึงตาราง
+describe("isMalformedOffset", () => {
+  it.each(["abc", "-50", "NaN", "Infinity", "12.5", "1e1", ""])("%p → true", (raw) => {
+    expect(isMalformedOffset(raw)).toBe(true)
+  })
+
+  it.each([null, "0", "50", "75", "99999999"])("%p → false", (raw) => {
+    expect(isMalformedOffset(raw)).toBe(false)
   })
 })
