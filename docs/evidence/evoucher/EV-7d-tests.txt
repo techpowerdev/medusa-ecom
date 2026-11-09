@@ -23,3 +23,11 @@ pnpm --filter storefront build: ผ่าน
 
 == ไม่ได้รันในเครื่อง ==
 Stripe บัตร/พร้อมเพย์จริง (เครื่องนี้ใช้ key ปลอม) — ครอบด้วย static test ใน src/ev-7d-digital-only-totals.test.ts และ e2e Stripe ของ CI
+
+== แก้ตาม review #320 (2026-11-09) ==
+Red: vitest src/ev-7d-digital-only-totals.test.ts 3 failed | 26 passed (29)
+  - cart digital-only ที่ shipping_subtotal > 0 ไม่มีแถวค่าจัดส่ง
+  - ฟอร์มถูกแบบแต่ที่อยู่ว่าง ได้ข้อความ "ตะกร้าสินค้ามีการเปลี่ยนแปลง" (digital-only + ต้องจัดส่ง)
+Green หลัง merge origin/develop: vitest ทั้ง storefront 1084 passed; playwright --project=unit 81 passed (matcher ใหม่ของ PromptPay);
+pnpm lint 0 errors; pnpm typecheck ผ่าน
+ไม่ได้รันในเครื่อง: payments-promptpay-already-paid / payments-promptpay-fallback-cap ต้องใช้ Stripe test key จริง — รอ CI พิสูจน์ AC-12b/AC-17 ของ spec 06

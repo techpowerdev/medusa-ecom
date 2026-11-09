@@ -27,14 +27,15 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
     discount_subtotal,
   } = totals
   // EV-7d (spec 02 กฎข้อ 28a): cart digital-only ไม่มีการจัดส่ง — ไม่แสดงแถวและคำว่าค่าจัดส่ง
-  const digitalOnly = isDigitalOnlyCart(totals)
+  // ยกเว้นยังมีค่าจัดส่งเก็บจริง (ลบสินค้าจัดส่งออกแล้ว Medusa ไม่ลบ shipping method) — ยอดรวมต้องมีแถวอธิบาย
+  const noShippingCharge = isDigitalOnlyCart(totals) && !shipping_subtotal
 
   return (
     <div data-testid="cart-totals">
       <div className="flex flex-col gap-y-2 txt-medium text-ui-fg-subtle ">
         <div className="flex items-center justify-between">
           <span>
-            {digitalOnly
+            {noShippingCharge
               ? "ยอดรวมสินค้า (ไม่รวมภาษี)"
               : "ยอดรวมสินค้า (ไม่รวมค่าจัดส่งและภาษี)"}
           </span>
@@ -42,7 +43,7 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
             {convertToLocale({ amount: item_subtotal ?? 0, currency_code })}
           </span>
         </div>
-        {!digitalOnly && (
+        {!noShippingCharge && (
           <div className="flex items-center justify-between">
             <span>ค่าจัดส่ง</span>
             <span data-testid="cart-shipping" data-value={shipping_subtotal || 0}>

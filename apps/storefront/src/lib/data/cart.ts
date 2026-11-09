@@ -477,8 +477,8 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
     )
     digitalOnly = isDigitalOnlyCart(cart)
 
-    // ฟอร์มที่แสดงอยู่ไม่ตรงกับ cart ล่าสุด (เช่นแก้ตะกร้าจากอีกแท็บ) → ไม่บันทึกที่อยู่ว่างทับ
-    if (!formData.get(digitalOnly ? "billing_address.address_1" : "shipping_address.address_1")) {
+    // ฟอร์มที่แสดงอยู่เป็นคนละแบบกับ cart ล่าสุด (เช่นแก้ตะกร้าจากอีกแท็บ — ไม่มีช่องที่อยู่ของแบบนั้นเลย) → ไม่บันทึกที่อยู่ว่างทับ
+    if (!formData.has(digitalOnly ? "billing_address.address_1" : "shipping_address.address_1")) {
       return "ตะกร้าสินค้ามีการเปลี่ยนแปลง กรุณาโหลดหน้าใหม่แล้วกรอกที่อยู่อีกครั้ง"
     }
 

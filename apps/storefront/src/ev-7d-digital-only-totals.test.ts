@@ -79,6 +79,27 @@ describe("CartTotals (กฎข้อ 28a)", () => {
   })
 })
 
+describe("CartTotals เมื่อ cart digital-only ยังมีค่าจัดส่งเก็บจริง (review #320)", () => {
+  // voucher + t-shirt เลือก Standard แล้วลบ t-shirt: Medusa 2.22.1 ไม่ลบ shipping method — ยอดรวมยังรวมค่าจัดส่ง
+  it("shipping_subtotal > 0 → คงแถวค่าจัดส่ง ไม่ให้ยอดรวมมีเงินที่ไม่มีแถวอธิบาย", async () => {
+    const CartTotals = (await import("@modules/common/components/cart-totals")).default
+    const html = renderToStaticMarkup(
+      createElement(CartTotals, {
+        totals: {
+          currency_code: "thb",
+          item_subtotal: 467.29,
+          shipping_subtotal: 9.35,
+          total: 510,
+          items: [voucher],
+        },
+      })
+    )
+    expect(html).toContain('data-testid="cart-shipping"')
+    expect(html).toContain('data-value="9.35"')
+    expect(html).toContain("ไม่รวมค่าจัดส่งและภาษี")
+  })
+})
+
 describe("isDigitalOnlyCart (กฎข้อ 28b)", () => {
   it("รับเฉพาะ cart — ผลมาจาก requires_shipping ไม่มี parameter flag", () => {
     expect(isDigitalOnlyCart.length).toBe(1)
@@ -153,6 +174,19 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     expect(update).not.toHaveBeenCalled()
     expect(redirect).not.toHaveBeenCalled()
     expect(message).toMatch(/[฀-๿]/)
+  })
+
+  it.each([
+    ["digital-only", [voucher], billingForm, "billing_address.address_1"],
+    ["ต้องจัดส่ง", [shirt], shippingForm, "shipping_address.address_1"],
+  ])("%s: ฟอร์มถูกแบบแต่ที่อยู่ว่าง → ไม่บอกว่าตะกร้าเปลี่ยนแปลง (review #320)", async (_, items, form, field) => {
+    serverCart(...items)
+    const data = form()
+    data.set(field, "")
+
+    // สำเร็จ = redirect (mock ไม่ throw) จึงไม่มีข้อความคืน
+    expect((await submit(data)) ?? "").not.toMatch(/เปลี่ยนแปลง/)
+    expect(update).toHaveBeenCalledTimes(1)
   })
 
   it("อ่าน cart แล้ว 401 → ให้เข้าสู่ระบบใหม่ ไม่บันทึกที่อยู่", async () => {
