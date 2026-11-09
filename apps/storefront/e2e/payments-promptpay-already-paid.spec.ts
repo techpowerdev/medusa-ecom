@@ -2,6 +2,7 @@ import { APIRequestContext, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Ctx, paidWhileQrShown } from "./support/promptpay-race"
+import { isCartIdActionBody } from "./support/server-action"
 import { HAS_STRIPE_UI, cartPaymentState } from "./support/stripe"
 
 // PAY-6b: spec 06 AC-12 + AC-12b (ส่วน storefront), กฎข้อ 7A — QR หมดอายุแต่ลูกค้าชำระไปแล้ว (race)
@@ -80,7 +81,7 @@ test.describe("PromptPay ชำระแล้วตอน QR หมดอาย
         (url) => url.pathname.includes("/checkout"),
         async (route) => {
           const req = route.request()
-          if (req.method() === "POST" && req.headers()["next-action"] && req.postData() === JSON.stringify([ctx.cartId])) {
+          if (req.method() === "POST" && req.headers()["next-action"] && isCartIdActionBody(req.postData() ?? "", ctx.cartId)) {
             blocked++
             return route.abort("failed")
           }

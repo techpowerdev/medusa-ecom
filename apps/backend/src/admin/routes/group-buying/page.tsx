@@ -7,8 +7,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Container } from "../../components/common/container"
-import { Header } from "../../components/common/header"
 import { usePageOffset } from "../../components/common/use-page-offset"
+import { PageOffsetGate } from "../../components/common/page-offset-gate"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
 import {
   Campaign,
@@ -65,7 +65,7 @@ const PAGE_SIZE = 20
 // spec 08 กฎ 9: หน้าปัจจุบันอยู่ใน URL (`gb_offset`) — DataTable ของ dashboard เขียน, usePageOffset อ่านกลับไปขอข้อมูล (กฎ 13)
 const PREFIX = "gb"
 
-// GB-6a: หน้า "Group buying" — รายการแคมเปญ + สร้างแคมเปญ (ADM-6: LayoutComposer + Header + DataTable ของ dashboard)
+// GB-6a: หน้า "Group buying" — รายการแคมเปญ + สร้างแคมเปญ (ADM-6: LayoutComposer + DataTable ของ dashboard; ADM-13: หัวตาราง + ปุ่มสร้างอยู่ที่ DataTable)
 const GroupBuyingPage = () => {
   const columns = useColumns()
   const limit = PAGE_SIZE
@@ -78,6 +78,7 @@ const GroupBuyingPage = () => {
     placeholderData: keepPreviousData,
   })
   useEffect(() => setCount(data?.count), [data?.count])
+  const [createOpen, setCreateOpen] = useState(false)
 
   return (
     <LayoutComposer
@@ -87,37 +88,38 @@ const GroupBuyingPage = () => {
         main: (
           <LayoutComposer.Entry id="GroupBuyCampaignList">
             <Container>
-              <Header
-                title="Group-buy campaigns"
-                subtitle="Discount and product scope live on each campaign's template promotion (GBT-…); edits apply only to groups created afterwards."
-                actions={[{ type: "custom", children: <CreateCampaign /> }]}
-              />
               {/* spec 04 Q7: ต้นแบบ GBT-* มองเห็นในหน้า Promotions — เตือนห้ามเปิดใช้/เผยแพร่ */}
               <div className="px-6 py-3">
-                <Text size="small" leading="compact" className="text-ui-fg-error">
+                <Text size="small" leading="compact" className="text-ui-fg-error" data-testid="gb-template-warning">
                   Never activate or share GBT- template codes; customers get a GB- code per group.
                 </Text>
               </div>
               <div data-testid="gb-campaigns-table">
                 {/* backend ไม่รองรับค้นหา (q) → ปิด search */}
-                <DataTable
-                  data={data?.campaigns ?? []}
-                  columns={columns}
-                  getRowId={(campaign) => campaign.id}
-                  rowCount={data?.count ?? 0}
-                  isLoading={isLoading}
-                  prefix={PREFIX}
-                  pageSize={PAGE_SIZE}
-                  enableSearch={false}
-                  rowHref={(campaign) => `/group-buying/${campaign.id}`}
-                  emptyState={{
-                    empty: {
-                      heading: "No group-buy campaigns yet",
-                      description: "Create a campaign to start selling in groups.",
-                    },
-                  }}
-                />
+                <PageOffsetGate prefix={PREFIX}>
+                  <DataTable
+                    heading="Group-buy campaigns"
+                    subHeading="Discount and product scope live on each campaign's template promotion (GBT-…); edits apply only to groups created afterwards."
+                    action={{ label: "Create campaign", onClick: () => setCreateOpen(true) }}
+                    data={data?.campaigns ?? []}
+                    columns={columns}
+                    getRowId={(campaign) => campaign.id}
+                    rowCount={data?.count ?? 0}
+                    isLoading={isLoading}
+                    prefix={PREFIX}
+                    pageSize={PAGE_SIZE}
+                    enableSearch={false}
+                    rowHref={(campaign) => `/group-buying/${campaign.id}`}
+                    emptyState={{
+                      empty: {
+                        heading: "No group-buy campaigns yet",
+                        description: "Create a campaign to start selling in groups.",
+                      },
+                    }}
+                  />
+                </PageOffsetGate>
               </div>
+              <CreateCampaign open={createOpen} onOpenChange={setCreateOpen} />
             </Container>
           </LayoutComposer.Entry>
         ),

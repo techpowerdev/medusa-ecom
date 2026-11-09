@@ -53,6 +53,23 @@ export async function fillDatePicker(wrapper: Locator, value: string) {
   await expect(segments.last()).toHaveText(hour24 < 12 ? "AM" : "PM")
 }
 
+/** ADM-9: ค่าที่ `DatePicker` แสดงตรงกับ `YYYY-MM-DDTHH:mm` (เวลาเครื่อง) — segment en-US: เดือน/วัน/ปี ชั่วโมง 12 ชม.:นาที AM/PM */
+export async function expectDatePicker(wrapper: Locator, value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
+  if (!match) throw new Error(`expectDatePicker: ต้องเป็น YYYY-MM-DDTHH:mm ได้ ${value}`)
+  const [, year, month, day, hour, minute] = match
+  const hour24 = Number(hour)
+  const number = (n: number) => new RegExp(`^0?${n}$`)
+  await expect(wrapper.getByRole("spinbutton")).toHaveText([
+    number(Number(month)),
+    number(Number(day)),
+    year,
+    number(hour24 % 12 || 12),
+    minute,
+    hour24 < 12 ? "AM" : "PM",
+  ])
+}
+
 /**
  * ADM-8b (spec 08 กฎ 10): ปุ่มต่อแถวอยู่ใน `ActionMenu` ของ dashboard — คลิก trigger (testid ภายในแถว) แล้วคืน menuitem ตามชื่อ
  * (label อังกฤษ; ข้อยกเว้นของการหาด้วย testid — CLAUDE.md) ผู้เรียก click/ตรวจ disabled เอง แล้วกด Escape ถ้าไม่เลือก

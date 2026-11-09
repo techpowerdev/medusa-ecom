@@ -1,0 +1,56 @@
+EV-15 (spec 02 กฎข้อ 31, AC-45, ADR-021) — ผลทดสอบ 2026-11-09 บน Node 22
+
+== RED (ยังไม่มี hook) integration http: evoucher-orphan-shipping.spec.ts ==
+    ✕ ลบสินค้าจัดส่ง เหลือ voucher → ไม่มี method, shipping_total 0, total 500 และ order ไม่มีค่าส่ง (1968 ms)
+    ✕ cart ที่มี payment collection ก่อนลบ → amount 500 และ session เดิมถูกล้าง (1895 ms)
+    ✓ cart voucher ล้วนที่มี method digital-delivery → แก้จำนวน line แล้วยังมี method นั้น 1 ตัว (1481 ms)
+    ✓ cart ผสมที่ method Standard → ลบเฉพาะ voucher แล้ว method ยังอยู่ และ total ลดเฉพาะราคา voucher (1885 ms)
+    ✓ cart voucher ล้วน POST shipping-methods ด้วย Standard → 200 และ method อยู่ใน cart (1877 ms)
+    ✕ cart voucher ล้วนที่มี Standard เมื่อแก้จำนวน line → Standard ถูกลบ, shipping_total 0 (2026 ms)
+    ✕ cart voucher ล้วนที่มี Standard เมื่อเพิ่ม voucher → Standard ถูกลบ, shipping_total 0 (1660 ms)
+    ✕ cart voucher ล้วนที่มี Standard เมื่อแก้ cart (email) → Standard ถูกลบ, shipping_total 0 (1411 ms)
+    ✓ cart ที่มีแต่สินค้าจัดส่ง ลบ line สุดท้าย → method ไม่ถูกแตะ (1734 ms)
+Tests:       5 failed, 4 passed, 9 total
+unit: refresh-cart-orphan-shipping.unit.spec.ts 11 failed (Cannot find module ../refresh-cart-orphan-shipping)
+
+== GREEN integration http: evoucher-orphan-shipping.spec.ts ==
+    ✓ ลบสินค้าจัดส่ง เหลือ voucher → ไม่มี method, shipping_total 0, total 500 และ order ไม่มีค่าส่ง (2932 ms)
+    ✓ cart ที่มี payment collection ก่อนลบ → amount 500 และ session เดิมถูกล้าง (2431 ms)
+    ✓ cart voucher ล้วนที่มี method digital-delivery → แก้จำนวน line แล้วยังมี method นั้น 1 ตัว (2535 ms)
+    ✓ cart ผสมที่ method Standard → ลบเฉพาะ voucher แล้ว method ยังอยู่ และ total ลดเฉพาะราคา voucher (2622 ms)
+    ✓ cart voucher ล้วน POST shipping-methods ด้วย Standard → 200 และ method อยู่ใน cart (2102 ms)
+    ✓ cart voucher ล้วนที่มี Standard เมื่อแก้จำนวน line → Standard ถูกลบ, shipping_total 0 (2187 ms)
+    ✓ cart voucher ล้วนที่มี Standard เมื่อเพิ่ม voucher → Standard ถูกลบ, shipping_total 0 (2266 ms)
+    ✓ cart voucher ล้วนที่มี Standard เมื่อแก้ cart (email) → Standard ถูกลบ, shipping_total 0 (1318 ms)
+    ✓ cart ที่มีแต่สินค้าจัดส่ง ลบ line สุดท้าย → method ไม่ถูกแตะ (1476 ms)
+Test Suites: 1 passed, 1 total
+Tests:       9 passed, 9 total
+
+== GREEN integration http: evoucher-digital-checkout.spec.ts (AC-37) ร่วมกับ orphan-shipping ==
+Test Suites: 2 passed, 2 total
+Tests:       10 passed, 10 total
+
+== GREEN unit: refresh-cart-orphan-shipping.unit.spec.ts ==
+    ✓ input.shipping_methods ไม่ว่าง (refresh จากการเพิ่ม method) → ไม่เรียก softDeleteShippingMethods (1 ms)
+    ✓ cart voucher ล้วน → ลบ Standard และส่ง id ให้ compensation (1 ms)
+    ✓ cart voucher ล้วนที่มี Digital → ไม่ลบ method digital-delivery
+    ✓ method ที่ไม่มี shipping_option_id ไม่ใช่ digital-delivery → ลบ
+    ✓ cart ผสม → ไม่แตะและไม่ throw
+    ✓ cart ว่าง → ไม่แตะและไม่ throw
+    ✓ cart ที่ไม่มี method → ไม่แตะและไม่ throw
+    ✓ compensation เรียก restoreShippingMethods ด้วย id ที่ลบ
+    ✓ compensation เมื่อไม่มีอะไรถูกลบ ([]) → ไม่เรียก restoreShippingMethods
+    ✓ compensation เมื่อไม่มีอะไรถูกลบ (undefined) → ไม่เรียก restoreShippingMethods
+    ✓ static: ใช้ hook ของ Medusa และไม่แก้ node_modules
+Test Suites: 1 passed, 1 total
+Tests:       11 passed, 11 total
+
+== GREEN unit ทั้งชุด (pnpm test:unit) ==
+Test Suites: 98 passed, 98 total
+Tests:       1138 passed, 1138 total
+
+== lint / typecheck / build ==
+pnpm lint: 0 errors; pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
+
+== ทดลองเพื่อตรวจถ้อยคำ AC-45 (test ชั่วคราว ไม่ commit) ==
+cart voucher ล้วน เพิ่ม Standard แล้วเพิ่ม Digital -> หลัง POST shipping-methods ครั้งที่สอง shipping_methods = [] (Medusa shouldCleanupOrphanProfiles ลบทั้งคู่)

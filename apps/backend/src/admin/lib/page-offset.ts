@@ -1,9 +1,12 @@
 // ADM-10 (spec 08 กฎ 13a): offset ของตาราง DataTable ของ dashboard ใน URL (`<prefix>_offset`) ผู้ใช้แก้เองได้
 // pure — ไม่ import ui/dashboard เพื่อให้ unit test ได้; hook ที่แก้ URL อยู่ที่ components/common/use-page-offset.ts
 
-// ไม่ใช่จำนวนเต็มบวกแบบตัวเลขล้วน ("abc", "-50", "12.5", "1e1", "Infinity") → หน้าแรก; อื่นๆ ปัดลงเป็นต้นหน้า
+// ไม่มี param = ปกติ; ค่าอื่นที่ไม่ใช่ตัวเลขล้วน ("abc", "-50", "12.5", "1e1", "Infinity") = ผิดรูป
+export const isMalformedOffset = (raw: string | null): boolean => raw !== null && !/^\d+$/.test(raw)
+
+// ผิดรูป → หน้าแรก; อื่นๆ ปัดลงเป็นต้นหน้า
 export const pageOffset = (raw: string | undefined, pageSize: number): number => {
-  if (!raw || !/^\d+$/.test(raw)) {
+  if (!raw || isMalformedOffset(raw)) {
     return 0
   }
   return Math.floor(Number(raw) / pageSize) * pageSize

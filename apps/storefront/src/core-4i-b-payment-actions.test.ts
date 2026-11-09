@@ -180,7 +180,8 @@ describe("placeOrder คืน { error } แทนการ throw", () => {
 
   it("ได้ order → redirect ของ Next ยัง throw ได้", async () => {
     complete.mockResolvedValueOnce({ type: "order", order: { id: "order_1", shipping_address: { country_code: "TH" } } })
-    await expect(place()).rejects.toThrow("REDIRECT /th/order/order_1/confirmed")
+    const { placeOrder } = await import("@lib/data/cart")
+    await expect(placeOrder("cart_1", undefined, "th")).rejects.toThrow("REDIRECT /th/order/order_1/confirmed")
   })
 })
 
