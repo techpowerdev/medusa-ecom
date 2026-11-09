@@ -93,11 +93,11 @@ afterEach(() => {
 describe("checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession", () => {
   const cart = { id: "cart_1", total: 100, shipping_methods: [{ id: "sm_1" }], payment_collection: { payment_sessions: [] } }
 
-  const render = async () => {
+  const render = async (props: unknown = cart) => {
     const { default: Payment } = await import("@modules/checkout/components/payment")
     await act(async () => {
       root.render(
-        createElement(Payment, { cart: cart as never, availablePaymentMethods: [{ id: PROMPTPAY }], deliveryDone: true })
+        createElement(Payment, { cart: props as never, availablePaymentMethods: [{ id: PROMPTPAY }], deliveryDone: true })
       )
     })
   }
@@ -137,12 +137,14 @@ describe("checkout ขั้นชำระเงิน (Payment) อ่าน�
     expect(router.push).not.toHaveBeenCalled()
   })
 
-  it("กด Continue → สร้าง session สำเร็จ → ไปขั้น review", async () => {
+  it("กด Continue → สร้าง session สำเร็จ → ไปขั้น review เมื่อ cart มี session (CORE-19f กฎข้อ 75 b)", async () => {
     initiatePaymentSession.mockResolvedValueOnce({ error: "failed" })
     await render()
     await click("select-provider")
     initiatePaymentSession.mockResolvedValueOnce({ ok: true })
     await click("submit-payment-button")
+    expect(router.push).not.toHaveBeenCalled()
+    await render({ ...cart, payment_collection: { payment_sessions: [{ provider_id: PROMPTPAY, status: "pending" }] } })
     expect(router.push).toHaveBeenCalledWith("/th/checkout?step=review", { scroll: false })
   })
 })

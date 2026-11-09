@@ -1,12 +1,10 @@
 import { DataTable } from "@medusajs/dashboard/components"
-import { useQueryParams } from "@medusajs/dashboard/hooks"
 import { DataTableColumnDef, Text } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { useEffect, useMemo } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
 import { affiliateKeys, listAffiliateNames, listAffiliateResource } from "../../lib/affiliate"
 import { affiliateNamesQuery, withAffiliateNames } from "../../lib/affiliate-names"
-import { pageOffset } from "../../lib/group-buy-campaign"
+import { usePageOffset } from "../common/use-page-offset"
 
 const PAGE_SIZE = 20
 
@@ -14,32 +12,18 @@ type Resource = "programs" | "affiliates" | "entries" | "payouts"
 
 /**
  * AF-6 / ADM-8a (spec 08 กฎ 9): รายการของแท็บหนึ่งในหน้า Affiliate (เรียง created_at ใหม่สุดก่อนตามค่าเริ่มต้นของ AF-5)
- * หน้าปัจจุบันอยู่ใน URL (`<prefix>_offset`) — DataTable ของ dashboard เขียน, useQueryParams อ่านกลับเพื่อ request
+ * หน้าปัจจุบันอยู่ใน URL (`<prefix>_offset`) — DataTable ของ dashboard เขียน, usePageOffset อ่านกลับเพื่อ request (กฎ 13)
  */
 export const useAffiliateList = <T extends { id: string }>(resource: Resource, prefix: string) => {
-  const { offset: offsetParam } = useQueryParams(["offset"], prefix)
-  const offset = pageOffset(offsetParam)
-
-  // DataTable ของ dashboard parseInt ค่า offset ดิบเอง ("abc" → "NaN of N results") → แก้ URL เป็นค่าที่ใช้จริง (แบบหน้า group buy)
-  const [, setSearchParams] = useSearchParams()
-  useEffect(() => {
-    if (offsetParam === undefined || offsetParam === String(offset)) return
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        if (offset) next.set(`${prefix}_offset`, String(offset))
-        else next.delete(`${prefix}_offset`)
-        return next
-      },
-      { replace: true },
-    )
-  }, [offsetParam, offset, prefix, setSearchParams])
+  const [count, setCount] = useState<number>()
+  const offset = usePageOffset(prefix, PAGE_SIZE, { count })
 
   const { data, isLoading } = useQuery({
     queryKey: [...affiliateKeys.list(resource), PAGE_SIZE, offset],
     queryFn: () => listAffiliateResource<Resource, T>(resource, { limit: PAGE_SIZE, offset }),
     placeholderData: keepPreviousData,
   })
+  useEffect(() => setCount(data?.count), [data?.count])
 
   return { rows: data?.[resource] ?? [], count: data?.count ?? 0, isLoading, prefix }
 }

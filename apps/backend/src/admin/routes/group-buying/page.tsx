@@ -1,15 +1,15 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { DataTable, LayoutComposer } from "@medusajs/dashboard/components"
-import { useDate, useQueryParams } from "@medusajs/dashboard/hooks"
+import { useDate } from "@medusajs/dashboard/hooks"
 import { Users } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, Text } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { useEffect, useMemo } from "react"
-import { Link, useSearchParams } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 import { Container } from "../../components/common/container"
 import { Header } from "../../components/common/header"
+import { usePageOffset } from "../../components/common/use-page-offset"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
-import { pageOffset } from "../../lib/group-buy-campaign"
 import {
   Campaign,
   CAMPAIGN_STATUS_COLOR,
@@ -62,34 +62,22 @@ const useColumns = () => {
 }
 
 const PAGE_SIZE = 20
-// spec 08 กฎ 9: หน้าปัจจุบันอยู่ใน URL (`gb_offset`) — DataTable ของ dashboard เขียน, useQueryParams อ่านกลับไปขอข้อมูล
+// spec 08 กฎ 9: หน้าปัจจุบันอยู่ใน URL (`gb_offset`) — DataTable ของ dashboard เขียน, usePageOffset อ่านกลับไปขอข้อมูล (กฎ 13)
 const PREFIX = "gb"
 
 // GB-6a: หน้า "Group buying" — รายการแคมเปญ + สร้างแคมเปญ (ADM-6: LayoutComposer + Header + DataTable ของ dashboard)
 const GroupBuyingPage = () => {
   const columns = useColumns()
-  const { offset: offsetParam } = useQueryParams(["offset"], PREFIX)
   const limit = PAGE_SIZE
-  const offset = pageOffset(offsetParam)
-  // DataTable ของ dashboard parseInt ค่า gb_offset ดิบเอง ("abc" → "NaN of N results") → แก้ URL ให้เป็นค่าที่ใช้จริง
-  const [, setSearchParams] = useSearchParams()
-  useEffect(() => {
-    if (offsetParam === undefined || offsetParam === String(offset)) return
-    setSearchParams(
-      (prev) => {
-        if (offset) prev.set(`${PREFIX}_offset`, String(offset))
-        else prev.delete(`${PREFIX}_offset`)
-        return prev
-      },
-      { replace: true }
-    )
-  }, [offsetParam, offset, setSearchParams])
+  const [count, setCount] = useState<number>()
+  const offset = usePageOffset(PREFIX, PAGE_SIZE, { count })
 
   const { data, isLoading } = useQuery({
     queryKey: [...groupBuyKeys.campaigns, limit, offset],
     queryFn: () => groupBuyApi.listCampaigns({ limit, offset }),
     placeholderData: keepPreviousData,
   })
+  useEffect(() => setCount(data?.count), [data?.count])
 
   return (
     <LayoutComposer

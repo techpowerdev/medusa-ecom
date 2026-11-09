@@ -1,9 +1,9 @@
 import { DataTable } from "@medusajs/dashboard/components"
-import { useQueryParams } from "@medusajs/dashboard/hooks"
 import { Badge, createDataTableColumnHelper } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
 import { evoucherApi, evoucherKeys, Pool } from "../../lib/evoucher"
-import { poolsListQuery } from "../../lib/evoucher-query"
+import { usePageOffset } from "../common/use-page-offset"
 
 const columnHelper = createDataTableColumnHelper<Pool>()
 
@@ -35,16 +35,18 @@ const columns = [
 const PAGE_SIZE = 20
 const PREFIX = "pools"
 
-// spec 08 กฎ 9: หน้าปัจจุบันอยู่ใน URL (`pools_offset`) — DataTable ของ dashboard เขียน, useQueryParams อ่านกลับเพื่อ request
+// spec 08 กฎ 9: หน้าปัจจุบันอยู่ใน URL (`pools_offset`) — DataTable ของ dashboard เขียน, usePageOffset อ่านกลับเพื่อ request (กฎ 13)
 export const PoolsTable = () => {
-  const params = useQueryParams(["offset"], PREFIX)
-  const query = poolsListQuery(params, PAGE_SIZE)
+  const [count, setCount] = useState<number>()
+  const offset = usePageOffset(PREFIX, PAGE_SIZE, { count })
+  const query = { limit: PAGE_SIZE, offset }
 
   const { data, isLoading } = useQuery({
     queryKey: [...evoucherKeys.pools, query],
     queryFn: () => evoucherApi.listPools(query),
     placeholderData: keepPreviousData,
   })
+  useEffect(() => setCount(data?.count), [data?.count])
 
   return (
     <DataTable

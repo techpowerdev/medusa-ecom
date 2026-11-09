@@ -1,0 +1,48 @@
+# ADM-10 (spec 08 AC-14, กฎ 13) — ผล test (2026-11-09, base origin/develop 40cb965b)
+
+## Red: unit ก่อนเขียนโค้ด
+    Cannot find module '../page-offset' from 'src/admin/lib/__tests__/page-offset.unit.spec.ts'
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+  ● page offset ของกลาง (spec 08 AC-14) › lib/group-buy-campaign.ts ไม่มี pageOffset
+  ● page offset ของกลาง (spec 08 AC-14) › lib/evoucher-query.ts ไม่มี toOffset
+  ● page offset ของกลาง (spec 08 AC-14) › use-page-offset ถูก import อย่างน้อย 3 ไฟล์
+  ● page offset ของกลาง (spec 08 AC-14) › routes/group-buying/page.tsx ใช้ usePageOffset และไม่เขียน offset ลง URL เอง
+  ● page offset ของกลาง (spec 08 AC-14) › components/evoucher/pools-table.tsx ใช้ usePageOffset และไม่เขียน offset ลง URL เอง
+  ● page offset ของกลาง (spec 08 AC-14) › components/evoucher/codes-table.tsx ใช้ usePageOffset และไม่เขียน offset ลง URL เอง
+  ● page offset ของกลาง (spec 08 AC-14) › components/evoucher/partners-section.tsx ใช้ usePageOffset และไม่เขียน offset ลง URL เอง
+  ● page offset ของกลาง (spec 08 AC-14) › components/affiliate/list-table.tsx ใช้ usePageOffset และไม่เขียน offset ลง URL เอง
+  ● page offset ของกลาง (spec 08 AC-14) › codes-table.tsx ไม่มี useSearchParams (reset เมื่อ filter เปลี่ยนอยู่ใน hook — กฎ 13c)
+Tests:       9 failed, 101 passed, 110 total
+
+## Red: e2e ใหม่ของ AC-14 บน prod build ของโค้ดเดิม (waitForURL ไม่สำเร็จ → timeout 180s)
+  ✘  1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:139:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp (3.1m)
+  ✘  2 [chromium] › e2e/group-buy-admin-pages.spec.ts:128:7 › ADM-10: gb_offset ใน URL ที่ผิดรูป › AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp (3.1m)
+    test-results/evoucher-admin-pool-page-A-fe8a2-set-abc-ถูก-normalize-clamp-chromium/test-failed-1.png
+    test-results/group-buy-admin-pages-ADM--c4232-5-99999-ถูก-normalize-clamp-chromium/test-failed-1.png
+  2 failed
+
+## Green: unit (pnpm --filter backend test:unit)
+Test Suites: 93 passed, 93 total
+Tests:       1081 passed, 1081 total
+
+## Green: e2e admin ที่เกี่ยวข้อง (prod build: medusa build + medusa start, chromium, locale en-US, Asia/Bangkok; test ADM-10 ที่ 1280×800)
+  ✓   1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:42:5 › AC-43: approve dblclick ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (30.3s)
+  ✓   2 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:161:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (14.7s)
+  ✓   3 [chromium] › e2e/affiliate-admin-names.spec.ts:31:5 › AC-45: Ledger/Payouts แสดงชื่อและอีเมลของ affiliate ด้วย request id[] 1 ครั้งต่อหน้า (17.2s)
+  ✓   4 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, dblclick แล้วยืนยันยิง DELETE ครั้งเดียว (19.8s)
+  ✓   5 [chromium] › e2e/affiliate-admin-programs.spec.ts:25:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (46.5s)
+  ✓   6 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (25.6s)
+  ✓   7 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (39.5s)
+  ✓   8 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty (39.8s)
+  ✓   9 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ (17.8s)
+  ✓  10 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE (21.9s)
+  ✓  11 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (59.7s)
+  ✓  12 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:139:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp (37.5s)
+  ✓  13 [chromium] › e2e/group-buy-admin-pages.spec.ts:55:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL (39.6s)
+  ✓  14 [chromium] › e2e/group-buy-admin-pages.spec.ts:128:7 › ADM-10: gb_offset ใน URL ที่ผิดรูป › AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp (14.2s)
+  14 passed (7.6m)
+
+## lint / typecheck
+pnpm lint: 0 errors (warning เดิมที่ไม่ใช่ไฟล์ของ task นี้)
+pnpm typecheck: ผ่าน (backend + src/admin tsconfig + storefront)

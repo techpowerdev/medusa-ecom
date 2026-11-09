@@ -19,7 +19,7 @@ import {
 } from "@modules/common/components/ui"
 import { HttpTypes } from "@medusajs/types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 const SESSION_FAILED = "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
 
@@ -63,6 +63,8 @@ const Payment = ({
     activeSession?.provider_id !== awaitingSessionFor
   // CORE-19e (กฎข้อ 71): RSC refresh อาจไม่มาถึง → ปุ่มต้องไม่ล็อกค้างถาวร
   const [sessionPendingError, setSessionPendingError] = useState(false)
+  // CORE-19f (กฎข้อ 75 b): Continue ที่ต้องสร้าง session → ไปขั้น review หลัง cart ใน props มี session นั้นแล้ว
+  const continueWhenSessionArrives = useRef(false)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -75,6 +77,7 @@ const Payment = ({
     setSelectedPaymentMethod(method)
     setAwaitingSessionFor(null)
     setSessionPendingError(false)
+    continueWhenSessionArrives.current = false
     // PAY-2: PromptPay สร้าง session ทันทีที่เลือกเหมือนบัตร (QR พร้อมในขั้น review)
     if (isStripeLike(method) || isPromptPay(method)) {
       // ล็อกปุ่ม Continue จนสร้าง session เสร็จ — ไม่งั้น handleSubmit สร้างซ้ำ แล้ว PaymentIntent
@@ -128,6 +131,10 @@ const Payment = ({
         if (failure) {
           return setError(failure)
         }
+        // CORE-19f (กฎข้อ 75 b): cart ใน props ยังไม่มี session นี้ → ไปขั้น review ตอนนี้ส่วนการชำระเงินจะว่าง
+        // จึงล็อกรอ session อีกรอบ (refresh/timeout ของกฎข้อ 71) แล้วไปขั้น review เมื่อ cart มี session
+        continueWhenSessionArrives.current = true
+        return setAwaitingSessionFor(selectedPaymentMethod)
       }
 
       if (!shouldInputPaymentDetails) {
@@ -163,6 +170,31 @@ const Payment = ({
       clearTimeout(unlockTimer)
     }
   }, [sessionNotInCartYet, router])
+
+  useEffect(() => {
+    // ลูกค้ากด "แก้ไข" ขั้นอื่นระหว่างรอ → ไม่ดึงกลับไปขั้น review (review #310)
+    if (!isOpen) {
+      continueWhenSessionArrives.current = false
+      return
+    }
+    if (
+      continueWhenSessionArrives.current &&
+      awaitingSessionFor &&
+      !sessionNotInCartYet
+    ) {
+      continueWhenSessionArrives.current = false
+      router.push(pathname + "?" + createQueryString("step", "review"), {
+        scroll: false,
+      })
+    }
+  }, [
+    isOpen,
+    awaitingSessionFor,
+    sessionNotInCartYet,
+    router,
+    pathname,
+    createQueryString,
+  ])
 
   return (
     <div className="bg-white">
