@@ -7,7 +7,8 @@
 รอบ 20 2026-11-04: AF-18 ☑ #277, qa #277 D-1 (ชื่อละตินยาวไม่มีช่องว่างทำให้ header ของ portal ล้นทุกหน้า) → AF-19, กฎ 43, AC-51;
 รอบ 21 2026-11-04: AF-19 ☑ #286, qa #286 O-1 (ป้าย "รหัสแนะนำ" และรหัสแนะนำถูกตัดบรรทัดใน header) → AF-20, กฎ 44, AC-52;
 รอบ 23 2026-11-05: AF-20 ☑ #295 (train #299); qa #295 O-1 ปิดโดยไม่สร้าง task (กฎ 44(b)); nit review #295 ของ e2e → CORE-51 ของ spec 01; qa #295 O-2 (nav ของร้าน) → CORE-50 ของ spec 01;
-รอบ 27 2026-11-10: AF-21 (qa AF-M-02), กฎ 45, AC-53; ปิดรอบ 27 2026-11-10: AF-21 ☑ #334, qa #334 → AF-22 (กฎ 46, AC-54))
+รอบ 27 2026-11-10: AF-21 (qa AF-M-02), กฎ 45, AC-53; ปิดรอบ 27 2026-11-10: AF-21 ☑ #334, qa #334 → AF-22 (กฎ 46, AC-54);
+รอบ 28 2026-11-10: AF-22 ☑ #340; AF-M-03 → แก้กฎ 13 + AC-15 ตามพฤติกรรมจริง (owner) ไม่มี task โค้ด)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -160,7 +161,9 @@ Payout
     line ที่ได้ 0 ไม่สร้าง entry
 12. การซื้อเอง: อีเมลของ order เทียบกับ `Affiliate.email` แบบ trim + lowercase ถ้าตรงกัน → ไม่มี entry
 13. `Affiliate.email` มาจาก auth identity (emailpass `entity_id`) ตอน register เท่านั้น — `POST /affiliate/register`
-    ไม่รับ `email` ใน body (field ที่ไม่รู้จักถูกตัดทิ้งโดย validator) เพื่อกันการปลอมอีเมลหลบกฎ 12
+    ไม่รับ `email` ใน body เพื่อกันการปลอมอีเมลหลบกฎ 12 — (แก้รอบ 28 ตามพฤติกรรมจริง, AF-M-03 owner 2026-11-10) validator ของ Medusa เป็นแบบ strict
+    (`zodValidator` เรียก `.strict()`) จึง**ปฏิเสธ** body ที่มี `email` ด้วย 400 `invalid_data` (`Unrecognized fields: 'email'`) และไม่สร้างแถว affiliate
+    (ไม่ใช่ตัดทิ้งแล้วสมัครต่อตามถ้อยคำเดิม); ไม่ส่ง `email` → 200 และ `Affiliate.email` = อีเมลของ identity
 14. `code` เลือกเองตอน register: slug ตัวพิมพ์เล็ก `^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$` (3–32 ตัว) และ unique
     (ไม่นับแถวที่ soft-delete) การเปลี่ยนภายหลังและคำสงวน ดู Q4
 15. Idempotency ของ attribution (AC-10) อิงจาก unique `order_id` ของ `AffiliateAttribution`: workflow ตรวจ/สร้าง
@@ -321,7 +324,7 @@ Payout
     (b) `r` ของ Q4 ไม่อยู่ในรายการ เพราะ regex ของกฎ 14 บังคับ ≥ 3 ตัวอยู่แล้ว;
     (c) ตอบ 400 `invalid_data` ข้อความคงที่ `"This referral code is reserved"` (Medusa นำหน้าด้วย `Invalid request:`) ไม่ต่อค่าจาก input;
     (d) storefront: `affiliateRegister` (`lib/data/affiliate-portal.ts:222`) จับข้อความนี้ด้วย helper pure ใน `lib/util/` แล้วแสดง "รหัสแนะนำนี้เป็นคำสงวน กรุณาเลือกรหัสอื่น" ที่ `affiliate-register-error`; error อื่นคงข้อความเดิม (`FetchError` ไม่มี `code` จึงจับจากข้อความแบบ CORE-20d และมี contract test);
-    (e) ไม่ backfill: แถวและลิงก์ `/r/<code>` ที่มีอยู่แล้วทำงานต่อ; AF-M-03 ไม่อยู่ในกฎนี้ (รอ owner)
+    (e) ไม่ backfill: แถวและลิงก์ `/r/<code>` ที่มีอยู่แล้วทำงานต่อ; AF-M-03 ไม่อยู่ในกฎนี้ (ตัดสินรอบ 28 → กฎ 13/AC-15)
 46. (ปิดรอบ 27, AF-22 — qa #334; ตามแนว spec 01 กฎข้อ 61/CORE-23b) ฟอร์มสมัครและเข้าสู่ระบบของ portal (`modules/affiliate/components/auth-forms/index.tsx`) ใช้ `<form action={...}>` ของ React 19 ซึ่ง reset ฟอร์มหลัง action แม้ล้ม → หลัง error ผู้ใช้ต้องกรอกใหม่หมด:
     (a) ทั้งสองฟอร์มใช้ `onSubmit={submitWithoutReset(action)}` (`lib/util/submit-without-reset.ts` ที่มีอยู่) แทน `action=` — หลัง error ทุกช่องคงค่าที่ผู้ใช้กรอก (รวมรหัสผ่าน) และ error แสดงที่ `affiliate-register-error`/`affiliate-login-error` ตามเดิม;
     (b) กันกดซ้ำ: `useFormStatus` ของ `SubmitButton` ไม่เห็น submit แบบนี้ → ปุ่ม `affiliate-register-submit`/`affiliate-login-submit` disabled + loading จากค่าที่สามของ `useActionState` (เพิ่ม prop เลือกได้ให้ `SubmitButton` หรือใช้ `Button` ของ `@medusajs/ui` ตรงๆ — ไม่เขียน helper ใหม่);
@@ -349,8 +352,9 @@ Payout
 - AC-10 การส่ง event `order.placed` ซ้ำ (รวมกรณีส่งพร้อมกัน 2 ครั้ง) → มี attribution 1 แถวและชุด entry เพียงชุดเดียว
 - AC-11 เมื่อ cart metadata มี `affiliate_token` ที่ถูกปลอมแปลง/ดัดแปลง เมื่อสั่งซื้อแล้ว
   ต้องไม่มีการสร้าง attribution และ entry และมีการ log event นั้น
-- AC-15 เมื่อ `POST /affiliate/register` ด้วย body `{ name, code, email: "other@x.com" }` และ token ของ identity `ann@x.com`
-  → `affiliate.email = "ann@x.com"`; code ที่ไม่ตรง slug (เช่น `"A b"`, 2 ตัว, 33 ตัว) → 400; code ซ้ำ → error และไม่มีแถวใหม่
+- AC-15 (แก้รอบ 28 — AF-M-03, กฎ 13) เมื่อ `POST /affiliate/register` ด้วย body `{ name, code, email: "other@x.com" }` และ token ของ identity `ann@x.com`
+  → 400 `invalid_data` ข้อความมี `Unrecognized fields: 'email'` และไม่มีแถว affiliate ของ identity นั้น (`query.graph`); body `{ name, code }` (ไม่มี `email`)
+  → 200 และ `affiliate.email = "ann@x.com"`; code ที่ไม่ตรง slug (เช่น `"A b"`, 2 ตัว, 33 ตัว) → 400; code ซ้ำ → error และไม่มีแถวใหม่
 - AC-16 response ของ `POST /affiliate/register` และ `GET /affiliate/me` ไม่มี key `payout_info` แม้ affiliate มีค่านี้
 - AC-17 เมื่อโปรแกรม P มี `status = ended` แต่เวลาสั่งซื้ออยู่ใน `[starts_at, ends_at)` → attribution `program_id = null`
   และไม่มี entry; สั่งซื้อที่ `t = ends_at` พอดีของโปรแกรม published → ไม่มี entry
@@ -538,7 +542,7 @@ Payout
 | AF-20 | (storefront เล็ก ~50 LOC รวม e2e, รอบ 21 — qa #286 O-1) header ของ portal: ป้าย "รหัสแนะนำ" ไม่ถูกตัดบรรทัด (`whitespace-nowrap` + `affiliate-code-label`) และรหัสแนะนำไม่ถูกตัดที่ `-` เมื่อพอดีบรรทัด โดยกฎ 43 ไม่ถอย (กฎ 44) (AC-52) — ไฟล์: `app/[countryCode]/(main)/affiliate/layout.tsx`, `e2e/affiliate-header-overflow.spec.ts`; viewport 375×812, 639×812 (+ 1280×800 ชื่อสั้น) — ☑ #295 (train #299) | none — **เริ่มได้** (AF-19 ☑ #286); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/layout.tsx`); ไม่บล็อก release |
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 | AF-21 | (backend + storefront เล็ก ~90 LOC, รอบ 27 — qa AF-M-02) ปฏิเสธคำสงวนตอน register + ข้อความไทย (กฎ 45) (AC-53) — ไฟล์: `apps/backend/src/api/affiliate/validators.ts` + `__tests__/validators.unit.spec.ts` (ใหม่), `apps/backend/integration-tests/http/affiliate-auth.spec.ts`, `apps/storefront/src/lib/data/affiliate-portal.ts`, `apps/storefront/src/lib/util/` (helper ใหม่) + test, `apps/storefront/e2e/affiliate-portal.spec.ts` — ☑ #334 | PR spec รอบ 27 merge; ไม่ชน CORE-55/EV-16/ADM-20; ไม่บล็อก release v0.1.0 |
-| AF-22 | (storefront เล็ก ~80 LOC รวม e2e, ปิดรอบ 27 — qa #334) ฟอร์มสมัคร/เข้าสู่ระบบ portal คงค่าหลัง error (`submitWithoutReset`) + ปุ่มกันกดซ้ำจาก `isPending` (กฎ 46) (AC-54) — ไฟล์: `apps/storefront/src/modules/affiliate/components/auth-forms/index.tsx`, `apps/storefront/src/modules/checkout/components/submit-button/index.tsx` (ถ้าเพิ่ม prop), `apps/storefront/e2e/affiliate-portal.spec.ts`; viewport 1280×800, 375×812 | none — **เริ่มได้** (AF-21 ☑ #334); ∥ ทุกตัว; ไม่บล็อก release v0.1.0 |
+| AF-22 | (storefront เล็ก ~80 LOC รวม e2e, ปิดรอบ 27 — qa #334) ฟอร์มสมัคร/เข้าสู่ระบบ portal คงค่าหลัง error (`submitWithoutReset`) + ปุ่มกันกดซ้ำจาก `isPending` (กฎ 46) (AC-54) — ไฟล์: `apps/storefront/src/modules/affiliate/components/auth-forms/index.tsx`, `apps/storefront/src/modules/checkout/components/submit-button/index.tsx` (ถ้าเพิ่ม prop), `apps/storefront/e2e/affiliate-portal.spec.ts`; viewport 1280×800, 375×812 — ☑ #340 | none (AF-21 ☑ #334); ∥ ทุกตัว; ไม่บล็อก release v0.1.0 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
 (รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
@@ -556,7 +560,8 @@ cast `as unknown as` ของ `affiliateNames` ใน `list-table.tsx`, query �
 — กฎ 44(b) อนุญาต (ไม่ตัดเฉพาะเมื่อรหัสพอดีบรรทัด), ค่าที่คัดลอกตรงตัว, ไม่ล้นจอ (qa 240 การวัดผ่าน) และทางเลือกอื่น (`break-all` ตัดกลางกลุ่มตัวอักษร, ย่อตัวอักษร) อ่านยากกว่า;
 nit review #295 ของ e2e (`createActiveAffiliate` เป็น options object, `longCode()` ความกว้างคงที่, `evidenceTarget` ของ AC-52) → CORE-51 ของ spec 01 (e2e hygiene รวมกับ `DESKTOP_BASELINE`);
 qa #295 O-2 (ชื่อร้านใน nav ชิดไอคอนค้นหาที่ 320) → CORE-50 ของ spec 01
-(ปิดรอบ 27, 2026-11-10) merge แล้ว: AF-21 ☑ #334; ใหม่: AF-22 เริ่มได้ (qa #334 — ฟอร์มสมัครล้างค่าหลัง error); AF-M-03 ยังรอ owner
+(ปิดรอบ 27, 2026-11-10) merge แล้ว: AF-21 ☑ #334; ใหม่: AF-22 เริ่มได้ (qa #334 — ฟอร์มสมัครล้างค่าหลัง error)
+(รอบ 28, 2026-11-10) merge แล้ว: AF-22 ☑ #340; AF-M-03 owner ตัดสิน "แก้ AC-15 ให้ตรงพฤติกรรมจริง" → กฎ 13 + AC-15 แก้ถ้อยคำ (body ที่มี `email` → 400 `invalid_data` ไม่สร้างแถว) ไม่มี task โค้ด
 (รอบ 11, review #146 AF-N2) nit `tryAcquire` ที่ `catch {}` กลืน error ทุกชนิด (ต้องข้ามเฉพาะ lock conflict) และ `.run()` ที่ throw แบบ sync ต้อง release lock — #146 merge แล้ว
 ถ้ายังไม่ได้แก้ ให้ PR ถัดไปที่แตะ maturity job แก้ (ไม่สร้าง task); ข้อสังเกต: entry `pending` ของ order ที่ยกเลิกและยอดสุทธิ = 0 ค้าง `pending` ถาวร (กฎ 5 ห้ามแก้ status ย้อน/ข้าม) และถูกสแกนทุกวันพร้อม log `affiliate_cancel_reconcile_noop`
 — ยอมรับใน v1 (ปริมาณน้อย; ไม่ใช่ยอดที่จ่ายได้) → backlog หลัง v1.0 พร้อม AF-11
