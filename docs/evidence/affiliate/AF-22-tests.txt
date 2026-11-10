@@ -1,0 +1,96 @@
+# AF-22 — ผลการทดสอบ (spec 05 กฎ 46, AC-54) — 2026-11-10, node 22, branch feat/AF-22-portal-forms-keep-values (ฐาน origin/develop 5a7c1bf6)
+สภาพแวดล้อม: backend :9590 (medusa start, DISABLE_MEDUSA_ADMIN, ไม่ใช้ Redis), storefront :8590 (next build + start), DB medusa_b_af22, key ปลอม
+
+## Red (โค้ด develop — ก่อนแก้ auth-forms)
+
+### vitest static: src/af-22-portal-forms.test.ts
+         × ไม่มี action={ บน <form และ import submitWithoutReset 3ms
+         × ฟอร์ม login ผูก onSubmit={submitWithoutReset(...)} และปุ่มใช้ isPending 0ms
+         × ฟอร์ม register ผูก onSubmit={submitWithoutReset(...)} และปุ่มใช้ isPending 0ms
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+     FAIL  src/af-22-portal-forms.test.ts > AF-22 ฟอร์ม portal คงค่าหลัง error (กฎ 46) > ไม่มี action={ บน <form และ import submitWithoutReset
+     FAIL  src/af-22-portal-forms.test.ts > AF-22 ฟอร์ม portal คงค่าหลัง error (กฎ 46) > ฟอร์ม login ผูก onSubmit={submitWithoutReset(...)} และปุ่มใช้ isPending
+     FAIL  src/af-22-portal-forms.test.ts > AF-22 ฟอร์ม portal คงค่าหลัง error (กฎ 46) > ฟอร์ม register ผูก onSubmit={submitWithoutReset(...)} และปุ่มใช้ isPending
+          Tests  3 failed (3)
+    exit=1
+
+### e2e: playwright e2e/affiliate-portal.spec.ts -g AF-22 (1280×800, 375×812) — ช่องว่างหลัง error
+      ✘  1 [chromium] › e2e/affiliate-portal.spec.ts:250:9 › AF-22 1280×800 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (5.9s)
+      ✘  2 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 1280×800 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (5.7s)
+      ✘  3 [chromium] › e2e/affiliate-portal.spec.ts:250:9 › AF-22 375×812 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (5.5s)
+      ✘  4 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 375×812 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (5.6s)
+        Error: affiliate-register-name
+        expect(locator).toHaveValue(expected) failed
+        Expected: "ทดสอบ AF-22"
+        Received: ""
+        Error: expect(locator).toHaveValue(expected) failed
+        Expected: "e2e-af22l-mwacwdz6641687@example.com"
+        Received: ""
+        Error: affiliate-register-name
+        expect(locator).toHaveValue(expected) failed
+        Expected: "ทดสอบ AF-22"
+        Received: ""
+        Error: expect(locator).toHaveValue(expected) failed
+        Expected: "e2e-af22l-mwacwn4z826688@example.com"
+        Received: ""
+      4 failed
+    exit=1
+
+## Green (หลังแก้)
+
+### vitest static
+          Tests  3 passed (3)
+    exit=0
+
+### e2e: affiliate-portal.spec.ts ทั้งไฟล์ --repeat-each=3
+      ✓   1 [chromium] › e2e/affiliate-portal.spec.ts:49:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.4s)
+      ✓   4 [chromium] › e2e/affiliate-portal.spec.ts:141:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (583ms)
+      ✓   5 [chromium] › e2e/affiliate-portal.spec.ts:169:5 › AF-21: สมัครด้วยรหัสคำสงวน → ข้อความไทย แก้รหัสแล้วสมัครซ้ำด้วยอีเมลเดิมสำเร็จ (AC-53) (601ms)
+      ✓   6 [chromium] › e2e/affiliate-portal.spec.ts:197:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (524ms)
+      ✓   7 [chromium] › e2e/affiliate-portal.spec.ts:220:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (452ms)
+      ✓   8 [chromium] › e2e/affiliate-portal.spec.ts:250:9 › AF-22 1280×800 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (611ms)
+      ✘   2 [chromium] › e2e/affiliate-portal.spec.ts:49:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (6.9s)
+      ✘   3 [chromium] › e2e/affiliate-portal.spec.ts:49:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (6.9s)
+      ✓   9 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 1280×800 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.3s)
+      ✓  10 [chromium] › e2e/affiliate-portal.spec.ts:141:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (827ms)
+      ✓  11 [chromium] › e2e/affiliate-portal.spec.ts:141:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (832ms)
+      ✓  12 [chromium] › e2e/affiliate-portal.spec.ts:250:9 › AF-22 375×812 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (729ms)
+      ✓  14 [chromium] › e2e/affiliate-portal.spec.ts:169:5 › AF-21: สมัครด้วยรหัสคำสงวน → ข้อความไทย แก้รหัสแล้วสมัครซ้ำด้วยอีเมลเดิมสำเร็จ (AC-53) (687ms)
+      ✓  13 [chromium] › e2e/affiliate-portal.spec.ts:169:5 › AF-21: สมัครด้วยรหัสคำสงวน → ข้อความไทย แก้รหัสแล้วสมัครซ้ำด้วยอีเมลเดิมสำเร็จ (AC-53) (786ms)
+      ✓  16 [chromium] › e2e/affiliate-portal.spec.ts:197:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (593ms)
+      ✓  17 [chromium] › e2e/affiliate-portal.spec.ts:197:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (587ms)
+      ✓  18 [chromium] › e2e/affiliate-portal.spec.ts:220:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (585ms)
+      ✓  19 [chromium] › e2e/affiliate-portal.spec.ts:220:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (543ms)
+      ✓  15 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 375×812 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.1s)
+      ✓  20 [chromium] › e2e/affiliate-portal.spec.ts:250:9 › AF-22 1280×800 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (628ms)
+      ✓  21 [chromium] › e2e/affiliate-portal.spec.ts:250:9 › AF-22 1280×800 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (640ms)
+      ✓  22 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 1280×800 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.2s)
+      ✓  23 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 1280×800 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.2s)
+      ✓  24 [chromium] › e2e/affiliate-portal.spec.ts:250:9 › AF-22 375×812 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (586ms)
+      ✓  25 [chromium] › e2e/affiliate-portal.spec.ts:250:9 › AF-22 375×812 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (625ms)
+      ✓  26 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 375×812 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.1s)
+      ✓  27 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 375×812 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.1s)
+        Error: expect(locator).toHaveText(expected) failed
+        ../../../af22-pw-green/affiliate-portal-AF-8a-log-57c7c-้า-และแชร์ลิงก์-AC-9-AC-35--chromium/test-failed-1.png
+        Error: expect(locator).toHaveText(expected) failed
+        ../../../af22-pw-green/affiliate-portal-AF-8a-log-57c7c-้า-และแชร์ลิงก์-AC-9-AC-35--chromium-repeat1/test-failed-1.png
+      2 failed
+      25 passed (16.3s)
+    exit=1
+หมายเหตุ: AF-8a (บรรทัด 49) ล้มเฉพาะรอบ repeat 2–3 เพราะโปรแกรม P3 ของรอบก่อนใน DB เดียวกันยัง active (test เดิม ไม่ได้แตะ) — รอบแรกผ่าน; AF-22 ผ่าน 12/12, AF-21 ผ่าน 3/3
+
+### mutation: ลบ isLoading={loginPending} แล้ว build ใหม่ → test double-click ยังผ่าน
+      ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 1280×800 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.4s)
+      ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:280:9 › AF-22 375×812 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.1s)
+      2 passed (5.0s)
+    exit=0
+เหตุ: React 19.0.5 (FormActionEventPlugin) เรียก startHostTransition เมื่อ submit ถูก preventDefault และ handler เริ่ม transition
+→ useFormStatus เห็น pending ของ submitWithoutReset ด้วย; isLoading จาก isPending ตามกฎ 46(b) จึงเป็นแหล่งที่ชัดเจน ไม่ใช่ตัวเดียวที่ disable ปุ่ม
+
+## ชุดอื่นในเครื่อง
+    storefront test:unit (vitest): Test Files 94 passed (94) / Tests 1096 passed (1096) / exit=0
+    playwright --project=unit: 103 passed (673ms) / exit=0
+    pnpm lint: exit=0
+    pnpm typecheck: exit=0
+    storefront build: build=0
+    backend build: exit=0 (ใช้รัน e2e)
