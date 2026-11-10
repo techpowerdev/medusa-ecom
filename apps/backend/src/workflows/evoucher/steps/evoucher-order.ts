@@ -10,6 +10,8 @@ export type EvoucherOrderItem = {
 
 export type EvoucherOrder = {
   id: string
+  /** กฎข้อ 34: `canceled` → allocation ข้าม order นี้ */
+  status?: string | null
   display_id?: number | null
   email?: string | null
   customer_id?: string | null

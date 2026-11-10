@@ -38,6 +38,7 @@ type Voucher = { variantId: string; poolId: string; inventoryItemId: string }
 
 // EV-16 (spec 02 กฎข้อ 32, AC-46): order.canceled → code `allocated` ของ order กลับเป็น `available`
 // EV-17 (spec 02 กฎข้อ 33, AC-47): อีเมล code สำเร็จ → shipment แบบ no_notification (ยกเลิก fulfillment ของ code ที่ส่งมอบแล้วไม่ได้)
+// EV-18 (spec 02 กฎข้อ 34, AC-48): allocation ข้าม order ที่ถูกยกเลิกแล้วอย่างเงียบ (payment.captured มาช้า)
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let container: MedusaContainer
@@ -433,6 +434,65 @@ medusaIntegrationTestRunner({
         // run นี้ปล่อย lock ของตัวเองแล้ว — owner อื่นถือต่อได้ทันที
         await locking.acquire(evoucherOrderLockKey(orderId), { ownerId: "ev16-next-run", expire: 1 })
         await locking.release(evoucherOrderLockKey(orderId), { ownerId: "ev16-next-run" })
+      })
+    })
+
+    describe("AC-48 allocation skips an order canceled before allocation", () => {
+      const OPS_EMAIL = "ev18-ops@example.com"
+
+      // Given: order จ่ายแล้วมี line voucher qty 2 ของ P แล้วถูกยกเลิกก่อน allocation (ยังไม่มี fulfillment)
+      const givenCanceledOrder = async ({ emptyPool }: { emptyPool: boolean }) => {
+        const p = await createVoucher("C-0001\nC-0002\n")
+        const orderId = await placeOrder([{ variant_id: p.variantId, quantity: 2 }])
+        await cancelOrder(orderId)
+        expect(await orderStatus(orderId)).toBe("canceled")
+        if (emptyPool) {
+          // P ไม่มี code `available` เลย — บน develop: ตั้ง flag backordered + ส่งอีเมล backordered ถึง admin
+          const codes = await service.listEvoucherCodes({ pool_id: p.poolId })
+          await service.updateEvoucherCodes(codes.map((c) => ({ id: c.id, status: "void" as const })))
+        }
+        return { p, orderId }
+      }
+
+      const notificationIds = async () =>
+        (await container.resolve(Modules.NOTIFICATION).listNotifications({})).map((n) => n.id).sort()
+
+      const lineMetadata = async (orderId: string) => {
+        const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+          entity: "order",
+          fields: ["items.metadata"],
+          filters: { id: orderId },
+        })
+        return (data[0].items ?? []).map((i) => i?.metadata ?? {})
+      }
+
+      it.each([
+        ["P has available codes", false],
+        ["P has no code at all", true],
+      ])("resolves without claiming, flagging, emailing or fulfilling (%s)", async (_, emptyPool) => {
+        const { p, orderId } = await givenCanceledOrder({ emptyPool })
+        const availableBefore = await availableCount(p)
+        const notificationsBefore = await notificationIds()
+        const info = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "info")
+
+        let failure: string | undefined
+        try {
+          await allocateAndDeliverEvouchersWorkflow(container).run({
+            input: { order_id: orderId, admin_email: OPS_EMAIL },
+          })
+        } catch (error) {
+          failure = (error as Error).message
+        }
+
+        expect(failure).toBeUndefined()
+        expect(await service.listEvoucherCodes({ order_id: orderId })).toEqual([])
+        expect(await availableCount(p)).toBe(availableBefore)
+        expect(await fulfillmentsOf(orderId)).toEqual([])
+        expect(await notificationIds()).toEqual(notificationsBefore)
+        expect((await lineMetadata(orderId)).map((m) => m.evoucher_backordered)).toEqual([undefined])
+        expect(
+          info.mock.calls.map(([line]) => String(line)).filter((line) => line.startsWith("evoucher:") && line.includes(orderId))
+        ).toHaveLength(1)
       })
     })
 
