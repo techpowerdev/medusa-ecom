@@ -163,6 +163,36 @@ test("AF-8a: สมัคร affiliate ผ่าน portal → สถานะ�
   })
 })
 
+// AF-21 (กฎ 45, AC-53): code คำสงวน → ข้อความไทยที่ affiliate-register-error ไม่เข้า portal;
+// แก้รหัสแล้วส่งอีเมล/รหัสผ่านเดิมซ้ำ → identity มีอยู่แล้ว (401) → login แล้วสมัครสำเร็จ
+test("AF-21: สมัครด้วยรหัสคำสงวน → ข้อความไทย แก้รหัสแล้วสมัครซ้ำด้วยอีเมลเดิมสำเร็จ (AC-53)", async ({ page, step }) => {
+  const code = `e2e-af21-${Date.now().toString(36)}${crypto.randomInt(1e6)}`
+  const email = `${code}@example.com`
+  const password = crypto.randomBytes(12).toString("hex")
+  const register = async (value: string) => {
+    await page.getByTestId("affiliate-register-name").fill("ทดสอบ AF-21")
+    await page.getByTestId("affiliate-register-code").fill(value)
+    await page.getByTestId("affiliate-register-email").fill(email)
+    await page.getByTestId("affiliate-register-password").fill(password)
+    await page.getByTestId("affiliate-register-submit").click()
+  }
+
+  await step("สมัครด้วยรหัส admin → ข้อความไทยของคำสงวน ยังอยู่หน้า login", async () => {
+    await page.goto(`/${CC}/affiliate/login`)
+    await register("admin")
+    await expect(page.getByTestId("affiliate-register-error")).toBeVisible()
+    await expectThai(page, ["affiliate-register-error"])
+    await expect(page.getByTestId("affiliate-register-error")).toHaveText(/คำสงวน/)
+    await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate/login(\\?|$)`))
+  })
+
+  await step("แก้เป็นรหัสไม่ซ้ำ ส่งอีเมลเดิมซ้ำ → เข้า portal", async () => {
+    await register(code)
+    await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate(\\?|$)`))
+    await expect(page.getByTestId("affiliate-code")).toHaveText(code)
+  })
+})
+
 test("AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135)", async ({
   page,
   context,

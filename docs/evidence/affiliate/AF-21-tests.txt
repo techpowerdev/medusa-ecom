@@ -1,0 +1,112 @@
+# AF-21 — ผลการทดสอบ (spec 05 กฎ 45, AC-53) — 2026-11-10, node 22, branch feat/AF-21-reserved-codes (ฐาน origin/develop 11185452)
+
+## Red (ก่อนแก้โค้ด)
+
+### unit jest: src/api/affiliate/__tests__/validators.unit.spec.ts
+    ✕ rejects reserved code "admin" (2 ms)
+    ✕ rejects reserved code "affiliate"
+    ✕ rejects reserved code "store"
+    ✕ rejects reserved code "auth"
+    ✕ rejects reserved code "api"
+    ✕ rejects reserved code "app"
+    ✕ rejects reserved code "www"
+    ✕ rejects reserved code "support"
+    ✕ rejects reserved code "shop"
+    ✕ rejects reserved code "ADMIN" case-insensitively (1 ms)
+    ✕ rejects reserved code "AdMin" case-insensitively
+    ✓ accepts non-reserved code "admin1"
+    ✓ accepts non-reserved code "my-shop"
+    ✓ accepts non-reserved code "ann"
+Tests:       11 failed, 3 passed, 14 total
+EXIT=1
+
+### integration http: affiliate-auth.spec.ts -t reserved (develop สมัคร code admin ได้ 200 → error.response undefined)
+      ✕ rejects a reserved affiliate code and accepts a similar non-reserved code (AC-53) (1308 ms)
+    TypeError: Cannot read properties of undefined (reading 'status')
+    > 116 |         expect(error.response.status).toEqual(400)
+Tests:       1 failed, 11 skipped, 12 total
+EXIT=1
+
+### vitest: src/lib/util/affiliate-register-error.test.ts (ยังไม่มี helper)
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+Error: Cannot find package '@lib/util/affiliate-register-error' imported from $S/builder-af-21/apps/storefront/src/lib/util/affiliate-register-error.test.ts
+ Test Files  1 failed (1)
+EXIT=1
+
+### e2e: affiliate-portal.spec.ts -g AF-21 (ย้อน validators.ts + affiliate-portal.ts เป็นของ develop ชั่วคราว: สมัคร admin สำเร็จและเข้า portal ไม่มี affiliate-register-error)
+  ✘  1 [chromium] › e2e/affiliate-portal.spec.ts:168:5 › AF-21: สมัครด้วยรหัสคำสงวน → ข้อความไทย แก้รหัสแล้วสมัครซ้ำด้วยอีเมลเดิมสำเร็จ (AC-53) (5.9s)
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
+    Error: element(s) not found
+    ../../../af21-pw-red/affiliate-portal-AF-21-สมั-a9297-ำด้วยอีเมลเดิมสำเร็จ-AC-53--chromium/test-failed-1.png
+  1 failed
+EXIT=1
+
+## Green
+
+### unit jest: validators.unit.spec.ts (verbose)
+    ✓ rejects reserved code "admin" (1 ms)
+    ✓ rejects reserved code "affiliate"
+    ✓ rejects reserved code "store"
+    ✓ rejects reserved code "auth"
+    ✓ rejects reserved code "api" (1 ms)
+    ✓ rejects reserved code "app" (1 ms)
+    ✓ rejects reserved code "www"
+    ✓ rejects reserved code "support"
+    ✓ rejects reserved code "shop" (1 ms)
+    ✓ rejects reserved code "ADMIN" case-insensitively
+    ✓ rejects reserved code "AdMin" case-insensitively
+    ✓ accepts non-reserved code "admin1"
+    ✓ accepts non-reserved code "my-shop"
+    ✓ accepts non-reserved code "ann"
+Tests:       14 passed, 14 total
+EXIT=0
+
+### integration http: affiliate-auth.spec.ts (ทั้งไฟล์)
+      ✓ registers an affiliate as pending without creating a customer (549 ms)
+      ✓ logs in at /auth/affiliate/emailpass and reads /affiliate/me (618 ms)
+      ✓ returns has_payout_info for payout_info {"bank_name": "x"} as true without payout_info (AC-39) (316 ms)
+      ✓ returns has_payout_info for payout_info null as false without payout_info (AC-39) (339 ms)
+      ✓ returns has_payout_info for payout_info {} as false without payout_info (AC-39) (324 ms)
+      ✓ rejects registering twice with the same auth identity (333 ms)
+      ✓ rejects a duplicate affiliate code (355 ms)
+      ✓ rejects a reserved affiliate code and accepts a similar non-reserved code (AC-53) (261 ms)
+      ✓ requires authentication to register an affiliate (167 ms)
+      ✓ returns 401 on /affiliate/me without a token (168 ms)
+      ✓ returns 401 on /affiliate/me for a customer token (281 ms)
+      ✓ does not let a customer token register as an affiliate (301 ms)
+Tests:       12 passed, 12 total
+EXIT=0
+
+### vitest: affiliate-register-error.test.ts
+ ✓ src/lib/util/affiliate-register-error.test.ts > affiliateRegisterError (กฎ 45d) > ข้อความของ Medusa → ข้อความไทยของคำสงวน 1ms
+ ✓ src/lib/util/affiliate-register-error.test.ts > affiliateRegisterError (กฎ 45d) > ตัวพิมพ์ต่างและมี . ท้าย → ข้อความไทยของคำสงวน 0ms
+ ✓ src/lib/util/affiliate-register-error.test.ts > affiliateRegisterError (กฎ 45d) > FetchError ของ js-sdk → ข้อความไทยของคำสงวน 0ms
+ ✓ src/lib/util/affiliate-register-error.test.ts > affiliateRegisterError (กฎ 45d) > 400 ข้อความอื่น → ข้อความเดิม 0ms
+ ✓ src/lib/util/affiliate-register-error.test.ts > affiliateRegisterError (กฎ 45d) > 500 ข้อความเดียวกัน → ข้อความเดิม 0ms
+ ✓ src/lib/util/affiliate-register-error.test.ts > affiliateRegisterError (กฎ 45d) > null → ข้อความเดิม 0ms
+ ✓ src/lib/util/affiliate-register-error.test.ts > affiliateRegisterError (กฎ 45d) > string → ข้อความเดิม 0ms
+ ✓ src/lib/util/affiliate-register-error.test.ts > affiliateRegisterError (กฎ 45d) > ข้อความไทยตรงกับ spec 0ms
+ ✓ src/lib/util/affiliate-register-error.test.ts > contract: ข้อความคำสงวนของ POST /affiliate/register (AF-21) > ข้อความใน helper ตรงกับใน validators.ts ของ backend 0ms
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+EXIT=0
+
+### e2e: affiliate-portal.spec.ts --project=chromium (backend :9540 dev, storefront :8540 dev, DB medusa_b_af21)
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (4.0s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:140:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (2.1s)
+  ✓  3 [chromium] › e2e/affiliate-portal.spec.ts:168:5 › AF-21: สมัครด้วยรหัสคำสงวน → ข้อความไทย แก้รหัสแล้วสมัครซ้ำด้วยอีเมลเดิมสำเร็จ (AC-53) (1.6s)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:196:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (1.0s)
+  ✓  5 [chromium] › e2e/affiliate-portal.spec.ts:219:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (947ms)
+  5 passed (10.6s)
+EXIT=0
+
+## ชุดที่รันเพิ่มในเครื่อง
+pnpm --filter backend test:unit: Tests:       1233 passed, 1233 total — EXIT=0
+pnpm --filter storefront test:unit: Tests 1093 passed (1093) — EXIT=0
+pnpm lint: EXIT=0 (0 errors; warning เดิมของ storefront 30 ตัว ไม่มีในไฟล์ที่แก้)
+pnpm typecheck: EXIT=0
+pnpm --filter backend build: EXIT=0; pnpm --filter storefront build: EXIT=0 (เปิด backend :9540 ระหว่าง build เหมือน CI)
+
+## ไม่ได้รันในเครื่อง (ให้ CI)
+integration http/modules ชุดเต็ม, e2e ชุดเต็ม
