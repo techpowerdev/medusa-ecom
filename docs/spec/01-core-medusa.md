@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+สถานะ: accepted (รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
 รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
@@ -2115,6 +2115,71 @@ none (grep test ใน e2e ของเราเอง)
 
 ### Open questions (ปิดรอบ 26)
 none
+
+## Follow-up รอบ 27 จากการทดสอบจริงบน develop `84b9e610` (2026-11-10 — owner สั่งแก้)
+Status: accepted (ADR-022 accepted 2026-11-10)
+Goal (owner): return ที่ลูกค้าขอจากหน้าเว็บต้องรับของใน Admin ได้ — **บล็อก release v0.1.0**
+อาการ: ขอคืนจาก `/th/account/orders/details/<id>/return` แล้วกด Receive items → `POST /admin/returns/:id/receive/confirm` ตอบ 500 `Cannot receive the Return at location null`, `return.location_id` เป็น null, หลังล้ม `status=received`, `received_quantity=0`, stock ไม่คืน, ปุ่มหาย, ไม่เกิด `order.return_received` และ reversal ค่าคอม (ต้นเหตุและทางเลือก: ADR-022)
+Out of scope: เปิดให้ client กำหนด `location_id`, backfill return เก่า (spec 02 Q12), แก้/patch `@medusajs/core-flows`, return ที่สร้างจาก Admin
+
+### What Medusa already gives us (รอบ 27)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| สร้าง return จาก store | `POST /store/returns` + `createAndCompleteReturnOrderWorkflow` (`input.location_id`) | ใช้ตามเดิม |
+| รับ `location_id` ที่ server กำหนด | core route ส่ง `req.validatedBody` เข้า workflow และ validator ของ core ทำงานก่อน middleware ของเรา | **extend** ด้วย middleware (ADR-022 ทางเลือก ก) — ไม่สร้าง route |
+| location ของ return option | `service_zone.fulfillment_set.location` ผ่าน Query | ใช้ตามเดิม (query แบบเดียวกับ CORE-21) |
+| รับของ, คืน stock, event | `POST /admin/returns/:id/receive`, `/receive-items`, `/receive/confirm` + `confirmReturnReceiveWorkflow` (`order.return_received`) | ใช้ตามเดิม |
+| ปุ่ม/หน้า Receive items | หน้า order ของ dashboard | ใช้ตามเดิม ไม่ override |
+| reversal ค่าคอมเมื่อรับของ | subscriber `affiliate-reversal.ts` ฟัง `order.return_received` | ใช้ตามเดิม |
+| ตรวจ variant มี level ที่ location | `throwIfManagedItemsNotStockedAtReturnLocation` ของ core ไม่ถูก export | **custom** ใน middleware เท่าที่จำเป็น |
+
+### Data model
+none
+
+### Workflows
+none (ใช้ workflow ของ core ทั้งหมด)
+
+### API routes
+`POST /store/returns` (auth/ownership เดิม): body เดิม ห้าม `location_id` เดิม (CORE-16); ผลใหม่คือ return มี `location_id` และเพิ่ม 400 ตามกฎข้อ 113b–c
+
+### Admin UI และ Storefront
+none (ไม่แก้หน้า; ข้อความ error ของกฎข้อ 113c ใช้ fallback ไทยเดิมของหน้า return)
+
+### Business rules (รอบ 27)
+113. (CORE-55; ADR-022) `POST /store/returns`:
+    (a) `return.location_id` = `service_zone.fulfillment_set.location.id` ของ return option ที่ผ่าน CORE-17/21 แล้ว — กำหนดโดย middleware `assignStoreReturnLocation` (ไฟล์ใหม่ `src/api/store/ownership/return-location.ts`, ตัวสุดท้ายของ chain) ซึ่งตั้ง `req.validatedBody.location_id`; **client กำหนดไม่ได้** `rejectStoreReturnOverrides` คงเดิม;
+    (b) option ไม่มี stock location → 400 `invalid_data` ไม่สร้าง return (ข้อความคงที่ตามกฎข้อ 37);
+    (c) มี line ใน body ที่ `variant.manage_inventory=true` แต่ไม่มี inventory level ที่ location นั้น → 400 `invalid_data` ข้อความคงที่ `"This item cannot be returned online"` ไม่สร้าง return ไม่มี fulfillment และ `logger.warn` พร้อม `order_id`/`location_id` ให้ ops — storefront แสดง fallback ไทยเดิม (`returnErrorMessage`) ไม่เพิ่ม code ใน `RETURN_ERRORS`; ตรวจต่อ line เพราะการตรวจของ core ตอน confirm ผ่านเมื่อ line ใด line หนึ่งมี level;
+    (d) ไม่ backfill (spec 02 Q12)
+
+### Acceptance criteria (รอบ 27)
+ทุกข้อ integration อยู่ใน `integration-tests/http/store-returns-receive.spec.ts` (ใหม่; ใช้ token ลูกค้าเจ้าของ order ตาม CORE-13) เว้นแต่ระบุ
+- AC-150 (CORE-55, กฎข้อ 113a) Given order ของ A มี variant `manage_inventory=true` qty 2 ที่ fulfill + ship แล้ว When A `POST /store/returns` ด้วย return option ที่ seed และ 1 ชิ้น Then 200, `query.graph` ของ return ได้ `location_id` = location ของ option (ค่าเดียวกับ `fulfillments.location_id`) และ `status=requested`, `received_at=null` — **ล้มบน develop**
+- AC-151 (CORE-55, กฎข้อ 113a) Given return ของ AC-150 และ stock เดิม When admin `POST /admin/returns/:id/receive` → `/receive-items` 1 ชิ้น → `/receive/confirm` Then ทั้งสามตอบ 200; `return.status=received`, `items[0].received_quantity=1`, `stocked_quantity` ของ inventory level ที่ location นั้น +1 และ `reserved_quantity` ไม่เปลี่ยน; subscriber ของ `order.return_received` ถูกเรียกด้วย `{ order_id, return_id }`;
+  Given order ที่มี attribution ค่าคอม เมื่อรับของครบ Then มี entry ใหม่สถานะ `reversed` เหตุผล `returned` ยอดตามสัดส่วน (กฎ 28c ของ spec 05) — **ล้มบน develop**
+- AC-152 (CORE-55, กฎข้อ 113a) Given ทุกเคส `location_id` เดิมใน `store-returns-overrides.spec.ts` (ค่าใดก็ได้ รวม `null`) When POST Then 400 `invalid_data`, ไม่มี return และ test เดิมผ่านโดยไม่แก้; unit `return-location.unit.spec.ts`: ตั้ง `req.validatedBody.location_id` จาก Query ไม่อ่าน `req.body.location_id` แล้วเรียก `next()`; chain ของ `/store/returns` จบด้วย `validateStoreReturnWindow` → `assignStoreReturnLocation`
+- AC-153 (CORE-55, กฎข้อ 113b–c) Given return option ที่ fulfillment set ไม่มี link กับ location When POST Then 400 `invalid_data` และไม่มี return; Given variant `manage_inventory=true` ที่ไม่มี level ที่ location ของ option (order ผูกกับ level ที่ location อื่น) When POST Then 400 `invalid_data` ข้อความตามกฎข้อ 113c, ไม่มี return และไม่มี fulfillment ใหม่; Given variant `manage_inventory=false` When ขอคืนและรับของครบ Then 200, return มี `location_id`, confirm 200 และ inventory ไม่เปลี่ยน
+- AC-154 (CORE-55) e2e ใหม่ `e2e/core-55-return-receive.spec.ts` (`ADMIN_UI_OPTIONS`, 1280×800, ใช้สินค้าของ test เอง `manage_inventory=true` พร้อม level ที่ location ของ return option ลบใน `afterAll`): Given A มี order ที่ fulfill + ship แล้ว When A ขอคืนผ่านหน้าเว็บ (`order-return-button` → `return-item-quantity` → `return-submit-button`, เห็น `order-return-success`) แล้ว `loginAdmin` เปิด `/app/orders/<id>` คลิก `a[href$="/orders/<id>/returns/<return_id>/receive"]`, รอ POST `/admin/returns/<return_id>/receive` 200, กรอก `input[name="items.0.quantity"]` = 1 แล้ว blur, รอ POST `/receive-items` 200, คลิก `[role="dialog"] button[type="submit"]` Then POST `/receive/confirm` ตอบ 200, `GET /admin/returns/<return_id>` ได้ `status=received` และ `items[0].received_quantity=1`, stock +1, และลิงก์ `.../receive` บนหน้า order หายไป (qa บันทึก ≤ 5 รูปใน `REPORT.md`) — **ล้มบน develop**; หน้า order เป็นของ Medusa ใส่ `data-testid` ไม่ได้ จึงหา element ด้วย attribute แบบ `loginAdmin` ไม่ match ข้อความ
+
+### Non-functional (รอบ 27)
+- เพิ่ม query อ่าน 1–2 ครั้งต่อการขอคืน ไม่เพิ่ม infra; ไม่มี concurrency ใหม่ (return ยังสร้างใน workflow ของ core)
+
+### Test plan (รอบ 27)
+| ระดับ | AC |
+|---|---|
+| unit jest | AC-152 |
+| integration http | AC-150, AC-151, AC-153 + `store-returns-overrides.spec.ts` (AC-152) |
+| e2e admin + storefront | AC-154 |
+
+TDD: เขียน integration AC-150/151 และ e2e AC-154 ให้ล้มบน develop ก่อน แล้วจึงเพิ่ม middleware; แก้ unit เดิมที่ล็อก chain ไว้ — `return-window.unit.spec.ts:94–98` และ `src/lib/__tests__/store-ownership.unit.spec.ts:131, :198` — ให้นับ middleware ใหม่
+
+### Tasks (รอบ 27)
+| ID | Task | ไฟล์ที่แตะ (`apps/backend/` ยกเว้นระบุ) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-55 | **บล็อก release v0.1.0** — server กำหนด `location_id` ของ return จาก option + ปฏิเสธเมื่อหา location/level ไม่ได้ (กฎข้อ 113) | `src/api/store/ownership/return-location.ts` (ใหม่) + unit, `src/api/store/ownership/middlewares.ts`, `src/api/store/ownership/__tests__/return-window.unit.spec.ts`, `src/lib/__tests__/store-ownership.unit.spec.ts`, `integration-tests/http/store-returns-receive.spec.ts` (ใหม่), `apps/storefront/e2e/core-55-return-receive.spec.ts` (ใหม่; ถ้าใช้ `fulfillAndShip` ซ้ำให้ย้ายจาก `core-20-return-request.spec.ts` ไป `e2e/support/medusa.ts`) | ~350 LOC | AC-150..154 | PR spec นี้ merge + **ADR-022 accepted**; qa ผ่านปุ่มจริงก่อน merge | ไม่ชน EV-16/AF-21/ADM-20 |
+
+### Open questions (รอบ 27)
+- Q-C5 ✅ owner เลือก ADR-022 ทางเลือก ก (middleware ตั้ง `req.validatedBody.location_id` ฝั่ง server) 2026-11-10; ยืนยันแล้วว่าเป็นบั๊กของ Medusa ไม่ใช่การตั้งใจปิด
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

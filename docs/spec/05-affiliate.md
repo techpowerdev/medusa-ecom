@@ -6,7 +6,8 @@
 รอบ 19 2026-11-04: qa #265 O-2 (หน้า Profile ล้นที่ 375 เมื่ออีเมลยาว) → AF-18, กฎ 42, AC-50;
 รอบ 20 2026-11-04: AF-18 ☑ #277, qa #277 D-1 (ชื่อละตินยาวไม่มีช่องว่างทำให้ header ของ portal ล้นทุกหน้า) → AF-19, กฎ 43, AC-51;
 รอบ 21 2026-11-04: AF-19 ☑ #286, qa #286 O-1 (ป้าย "รหัสแนะนำ" และรหัสแนะนำถูกตัดบรรทัดใน header) → AF-20, กฎ 44, AC-52;
-รอบ 23 2026-11-05: AF-20 ☑ #295 (train #299); qa #295 O-1 ปิดโดยไม่สร้าง task (กฎ 44(b)); nit review #295 ของ e2e → CORE-51 ของ spec 01; qa #295 O-2 (nav ของร้าน) → CORE-50 ของ spec 01)
+รอบ 23 2026-11-05: AF-20 ☑ #295 (train #299); qa #295 O-1 ปิดโดยไม่สร้าง task (กฎ 44(b)); nit review #295 ของ e2e → CORE-51 ของ spec 01; qa #295 O-2 (nav ของร้าน) → CORE-50 ของ spec 01;
+รอบ 27 2026-11-10: AF-21 (qa AF-M-02), กฎ 45, AC-53)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -315,6 +316,12 @@ Payout
     (b) `affiliate-code` ไม่ถูกตัดบรรทัด (รวมที่ `-`) เมื่อรหัสทั้งตัวกว้างไม่เกินความกว้างของบรรทัด — ขึ้นบรรทัดใหม่ทั้งก้อนแทน (เช่น `inline-block max-w-full` + ตัดคำได้เฉพาะเมื่อยาวเกินบรรทัด
     หรือ `whitespace-nowrap` ถ้าวัดแล้วรหัสยาวสุด 32 ตัว (กฎของ register `a-z`, `0-9`, `-`) ไม่ล้นที่ 375 — เลือกใน PR ตามผลวัด); ห้ามแทน `-` ด้วยอักขระอื่น (รหัสที่ผู้ใช้คัดลอกต้องตรงตัว);
     (c) ชื่อยังตัดคำได้ตามกฎ 43 — กฎ 43 และ AC-51 ต้องไม่ถอย (ไม่ล้นที่ 375/639, ปุ่มออกจากระบบอยู่ในจอ)
+45. (รอบ 27, AF-21 — qa AF-M-02 บน develop `84b9e610`; ทำให้กฎ 14 + Q4 เป็นจริง) `POST /affiliate/register` ปฏิเสธ `code` ที่เป็นคำสงวน `admin, affiliate, store, auth, api, app, www, support, shop`:
+    (a) ตรวจใน `PostAffiliateRegisterSchema` (`src/api/affiliate/validators.ts`) ระดับ field `code` — คง object schema ไว้เพราะ `zodValidator` ของ Medusa เรียก `.strict()`; เทียบแบบไม่สนตัวพิมพ์ (`code.toLowerCase()`);
+    (b) `r` ของ Q4 ไม่อยู่ในรายการ เพราะ regex ของกฎ 14 บังคับ ≥ 3 ตัวอยู่แล้ว;
+    (c) ตอบ 400 `invalid_data` ข้อความคงที่ `"This referral code is reserved"` (Medusa นำหน้าด้วย `Invalid request:`) ไม่ต่อค่าจาก input;
+    (d) storefront: `affiliateRegister` (`lib/data/affiliate-portal.ts:222`) จับข้อความนี้ด้วย helper pure ใน `lib/util/` แล้วแสดง "รหัสแนะนำนี้เป็นคำสงวน กรุณาเลือกรหัสอื่น" ที่ `affiliate-register-error`; error อื่นคงข้อความเดิม (`FetchError` ไม่มี `code` จึงจับจากข้อความแบบ CORE-20d และมี contract test);
+    (e) ไม่ backfill: แถวและลิงก์ `/r/<code>` ที่มีอยู่แล้วทำงานต่อ; AF-M-03 ไม่อยู่ในกฎนี้ (รอ owner)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -457,6 +464,10 @@ Payout
   `affiliate-code` มี `textContent` เท่ากับรหัสที่สมัครและ `Range` ของเนื้อหามี `getClientRects().length === 1` (ไม่ถูกตัดที่ `-`) และ `right ≤ viewport`;
   `document.documentElement.scrollWidth ≤ viewport`; Given ชื่อสั้น (≤ 20 ตัว) + รหัสสั้น ที่ 1280 Then y-center ของ `affiliate-header-name` กับ `affiliate-logout` ต่างกัน < 5px (หน้าตาเดิม);
   test ส่วนป้าย/รหัสต้อง fail กับโค้ดก่อนแก้ (แนบผลใน PR); AC-51 และ AC-50 ผ่านโดยไม่แก้ locator; `--repeat-each=3` ผ่านทุกรอบ (e2e)
+- AC-53 (AF-21, กฎ 45) unit jest ใหม่ `src/api/affiliate/__tests__/validators.unit.spec.ts`: `PostAffiliateRegisterSchema.safeParse` กับคำสงวนทั้ง 9 คำ → `success=false` และมี issue ข้อความ `"This referral code is reserved"`; `"ADMIN"`, `"AdMin"` → `success=false` และมี issue เดียวกัน; `"admin1"`, `"my-shop"`, `"ann"` → `success=true` (ล้มบน develop);
+  integration (`affiliate-auth.spec.ts`): `POST /affiliate/register` ด้วยโทเคนใหม่และ `code: "admin"` → 400 `invalid_data`, `message` มี `This referral code is reserved`, ไม่มี affiliate ที่ `code = "admin"`; `code: "admin1"` → 200;
+  Vitest: helper คืนข้อความไทย (ตรง regex อักษรไทย) กับ error ที่มีข้อความนี้ และคืนข้อความเดิมกับ error อื่น; contract: ข้อความใน helper ตรงกับใน `validators.ts`;
+  e2e (`affiliate-portal.spec.ts`): สมัครด้วย `affiliate-register-code` = `admin` → `affiliate-register-error` visible ข้อความไทย ไม่พาเข้า portal; แก้เป็นรหัสไม่ซ้ำแล้วส่งอีเมลเดิมซ้ำ → เข้า portal สำเร็จ; AC-1..AC-52 ที่เกี่ยวกับ register ยังผ่าน
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -479,6 +490,7 @@ Payout
 - (รอบ 19) e2e (375/1280, repeat 5): AC-50 (AF-18)
 - (รอบ 20) e2e (375/639/1280, repeat 3): AC-51 (AF-19)
 - (รอบ 21) e2e (375/639/1280, repeat 3): AC-52 (AF-20)
+- (รอบ 27) unit jest + integration http + Vitest + e2e: AC-53 (AF-21) — เขียน unit jest ให้ล้มบน develop ก่อน (validator ตรวจแค่ regex)
 
 ## Tasks
 | ID | Task | Depends |
@@ -515,6 +527,7 @@ Payout
 | AF-19 | (storefront เล็ก ~50 LOC รวม e2e, รอบ 20 — qa #277 D-1) header ของ portal ไม่ล้นเมื่อชื่อละตินยาวไม่มีช่องว่าง: `min-w-0` + ตัดคำ + test id ชื่อ (กฎ 43) (AC-51) — ไฟล์: `app/[countryCode]/(main)/affiliate/layout.tsx`, e2e (ต่อจาก `e2e/affiliate-profile-overflow.spec.ts` ของ AF-18 หรือไฟล์ใหม่) — ☑ #286 (train #290) | none — **เริ่มได้** (AF-18 ☑ #277); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/layout.tsx`); ไม่บล็อก release |
 | AF-20 | (storefront เล็ก ~50 LOC รวม e2e, รอบ 21 — qa #286 O-1) header ของ portal: ป้าย "รหัสแนะนำ" ไม่ถูกตัดบรรทัด (`whitespace-nowrap` + `affiliate-code-label`) และรหัสแนะนำไม่ถูกตัดที่ `-` เมื่อพอดีบรรทัด โดยกฎ 43 ไม่ถอย (กฎ 44) (AC-52) — ไฟล์: `app/[countryCode]/(main)/affiliate/layout.tsx`, `e2e/affiliate-header-overflow.spec.ts`; viewport 375×812, 639×812 (+ 1280×800 ชื่อสั้น) — ☑ #295 (train #299) | none — **เริ่มได้** (AF-19 ☑ #286); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/layout.tsx`); ไม่บล็อก release |
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
+| AF-21 | (backend + storefront เล็ก ~90 LOC, รอบ 27 — qa AF-M-02) ปฏิเสธคำสงวนตอน register + ข้อความไทย (กฎ 45) (AC-53) — ไฟล์: `apps/backend/src/api/affiliate/validators.ts` + `__tests__/validators.unit.spec.ts` (ใหม่), `apps/backend/integration-tests/http/affiliate-auth.spec.ts`, `apps/storefront/src/lib/data/affiliate-portal.ts`, `apps/storefront/src/lib/util/` (helper ใหม่) + test, `apps/storefront/e2e/affiliate-portal.spec.ts` | PR spec รอบ 27 merge; ไม่ชน CORE-55/EV-16/ADM-20; ไม่บล็อก release v0.1.0 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
 (รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
@@ -550,7 +563,7 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 - Q3 cap ต่อ order แจกให้ line **ตามลำดับ line item** (แบบที่ AF-1 ทำ ไม่ต้องแก้ `utils/commission.ts`; "ลำดับ" = `created_at` แล้ว `id` ตามกฎ 26);
   ~~partial refund ของ line → reversal = `−entry.amount × ยอดที่คืน / base ของ line`~~ (แทนด้วยกฎ 28 ตามที่ #90 ทำ, 2026-10-26: refund บางส่วนที่ไม่ใช่ return
   ไม่ reverse; return ใช้สัดส่วนจำนวนชิ้น)
-- Q4 affiliate เปลี่ยน `code` เองไม่ได้ใน v1; คำสงวน `admin, affiliate, store, auth, api, app, www, support, shop, r`
+- Q4 affiliate เปลี่ยน `code` เองไม่ได้ใน v1; คำสงวน `admin, affiliate, store, auth, api, app, www, support, shop, r` (บังคับตาม AF-21, กฎ 45; `r` ถูก regex กันอยู่แล้ว)
 - Q5 portal ไม่ส่ง `payout_info` ออกเลย แสดงเพียง boolean `has_payout_info`; admin เป็นผู้กรอก
 - Q6 `pending` เข้าได้เฉพาะ `/affiliate/me`; `suspended` เข้า `/affiliate/me`, earnings, payouts แบบอ่านอย่างเดียว;
   `/affiliate/products` และ programs เฉพาะ `active` อื่น ๆ → 403
