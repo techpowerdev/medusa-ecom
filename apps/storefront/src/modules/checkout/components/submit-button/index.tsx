@@ -10,6 +10,7 @@ export function SubmitButton({
   size = "medium",
   className,
   disabled,
+  isLoading,
   "data-testid": dataTestId,
 }: {
   children: React.ReactNode
@@ -17,6 +18,8 @@ export function SubmitButton({
   size?: "small" | "medium" | "large"
   className?: string
   disabled?: boolean
+  /** AF-22: pending จากภายนอก (ค่าที่สามของ useActionState) เมื่อฟอร์มส่งด้วย submitWithoutReset ซึ่ง useFormStatus ไม่เห็น */
+  isLoading?: boolean
   "data-testid"?: string
 }) {
   const { pending } = useFormStatus()
@@ -26,7 +29,7 @@ export function SubmitButton({
       size={size}
       className={className}
       type="submit"
-      isLoading={pending}
+      isLoading={isLoading ?? pending}
       disabled={disabled}
       variant={variant || "primary"}
       data-testid={dataTestId}

@@ -1,10 +1,11 @@
 import crypto from "node:crypto"
 
-import { APIRequestContext } from "@playwright/test"
+import { APIRequestContext, Request } from "@playwright/test"
 
 import { createActiveAffiliate } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, Headers, adminHeaders, createCustomer, publishableKey } from "./support/medusa"
+import { isServerAction, waitForServerAction } from "./support/server-action"
 import { THAI, expectThai } from "./support/thai-text"
 
 // AF-8a (spec 05): portal affiliate ใน storefront — login/register ของตัวเอง (actor `affiliate`) และหน้า Products
@@ -236,3 +237,90 @@ test("AF-8a: affiliate ที่ถูกระงับ → ข้อควา�
     await expect(page.getByTestId("affiliate-product-card")).toHaveCount(0)
   })
 })
+
+// AF-22 (กฎ 46, AC-54): ฟอร์มสมัคร/เข้าสู่ระบบของ portal คงค่าที่กรอกหลัง error (submitWithoutReset แทน <form action=>)
+// และปุ่ม submit disabled จาก isPending ของ useActionState ระหว่าง server action ทำงาน (double-click ส่ง POST ครั้งเดียว)
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 375, height: 812 },
+]) {
+  test.describe(`AF-22 ${viewport.width}×${viewport.height}`, () => {
+    test.use({ viewport })
+
+    test("AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54)", async ({ page, step }) => {
+      const code = `e2e-af22-${Date.now().toString(36)}${crypto.randomInt(1e6)}`
+      const values = {
+        "affiliate-register-name": "ทดสอบ AF-22",
+        "affiliate-register-code": "admin",
+        "affiliate-register-email": `${code}@example.com`,
+        "affiliate-register-password": crypto.randomBytes(12).toString("hex"),
+      }
+
+      await step("กรอกทั้งสี่ช่องด้วยรหัส admin แล้วกดสมัคร → error ไทย และทุกช่องคงค่าเดิม", async () => {
+        await page.goto(`/${CC}/affiliate/login`)
+        for (const [testId, value] of Object.entries(values)) {
+          await page.getByTestId(testId).fill(value)
+        }
+        await page.getByTestId("affiliate-register-submit").click()
+        await expect(page.getByTestId("affiliate-register-error")).toBeVisible()
+        await expectThai(page, ["affiliate-register-error"])
+        for (const [testId, value] of Object.entries(values)) {
+          await expect(page.getByTestId(testId), testId).toHaveValue(value)
+        }
+      })
+
+      await step("แก้เฉพาะรหัสแนะนำแล้วกดอีกครั้ง → เข้า portal", async () => {
+        await page.getByTestId("affiliate-register-code").fill(code)
+        await page.getByTestId("affiliate-register-submit").click()
+        await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate(\\?|$)`))
+        await expect(page.getByTestId("affiliate-code")).toHaveText(code)
+      })
+    })
+
+    test("AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54)", async ({
+      page,
+      request,
+      step,
+    }) => {
+      const admin = await adminHeaders(request)
+      const ann = await createActiveAffiliate(request, admin, { prefix: "e2e-af22l" })
+      const wrong = `${ann.password}-wrong`
+
+      await step("login อีเมลที่มีอยู่ + รหัสผ่านผิด → error และอีเมล/รหัสผ่านคงค่าเดิม", async () => {
+        await page.goto(`/${CC}/affiliate/login`)
+        await page.getByTestId("affiliate-login-email").fill(ann.email)
+        await page.getByTestId("affiliate-login-password").fill(wrong)
+        await page.getByTestId("affiliate-login-submit").click()
+        await expect(page.getByTestId("affiliate-login-error")).toBeVisible()
+        await expect(page.getByTestId("affiliate-login-email")).toHaveValue(ann.email)
+        await expect(page.getByTestId("affiliate-login-password")).toHaveValue(wrong)
+      })
+
+      await step("หน่วง POST ของ server action 1.5 วินาที → ปุ่ม disabled จนได้ผล และ double-click ส่ง POST ครั้งเดียว", async () => {
+        const isLoginAction = (req: Request) => isServerAction(req, (body) => body.includes(ann.email))
+        let posts = 0
+        page.on("request", (req) => {
+          if (isLoginAction(req)) posts++
+        })
+        await page.route(
+          (url) => url.pathname === `/${CC}/affiliate/login`,
+          async (route) => {
+            if (isLoginAction(route.request())) {
+              await new Promise((resolve) => setTimeout(resolve, 1500))
+            }
+            await route.continue()
+          }
+        )
+        const submit = page.getByTestId("affiliate-login-submit")
+        const done = waitForServerAction(page, (body) => body.includes(ann.email))
+        await submit.dblclick()
+        await expect(submit).toBeDisabled()
+        await done
+        await expect(submit).toBeEnabled()
+        await expect(page.getByTestId("affiliate-login-error")).toBeVisible()
+        await expect(page.getByTestId("affiliate-login-email")).toHaveValue(ann.email)
+        expect(posts, "จำนวน POST ของ action เข้าสู่ระบบ").toBe(1)
+      })
+    })
+  })
+}
