@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+สถานะ: accepted (รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
 รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
@@ -1177,7 +1177,9 @@ none
     (หลังส่วนลด flash/promotion และรวม VAT ตามราคาร้าน)** — ตาม Q-C1 (1) = (ก) (owner 2026-11-03): `cart.item_total` พร้อมป้าย "ยอดรวมสินค้า (รวม VAT)" แทน `cart.subtotal` + "(ไม่รวมภาษี)" ที่เป็นยอดก่อนส่วนลด
     และไม่รวมภาษี (เคส qa: line ฿2,360 × 2 แต่ยอดรวม ฿5,514.02 = 5,900/1.07); ห้ามคำนวณเอง (ไม่หาร 1.07, ไม่ `reduce` ราคา line); (b) `cart-totals` ของ `/cart` และ checkout: แถวที่แสดง
     (ยอดก่อนส่วนลด, ส่วนลด, ค่าจัดส่ง, ภาษี) ต้องรวมได้ `total` (±0.01) — ใช้ field ฐานภาษีเดียวกัน (`item_subtotal − discount_subtotal + shipping_subtotal + tax_total = total` — ไม่ใช้ `subtotal`
-    ของ cart เพราะใน Medusa v2 รวม `shipping_subtotal` แล้ว จะนับค่าส่งซ้ำกับแถวค่าจัดส่ง) ถ้าปัจจุบันไม่รวมกันได้ให้แก้ใน task เดียวกัน;
+    ของ cart เพราะใน Medusa v2 รวม `shipping_subtotal` แล้ว จะนับค่าส่งซ้ำกับแถวค่าจัดส่ง) ถ้าปัจจุบันไม่รวมกันได้ให้แก้ใน task เดียวกัน
+    — **(แก้รอบ 28, Q-C7 = ก owner 2026-11-10) ฐานของแถวเปลี่ยนจาก "ก่อนภาษี" เป็น "รวม VAT ทั้งชุด" ตามกฎข้อ 115 (CORE-57); หลักการ "แถวที่บวก/ลบรวมได้ `total`" คงเดิม
+    แต่แถวภาษีกลายเป็นข้อมูลไม่บวกซ้ำ — จนกว่า CORE-57 merge โค้ดยังเป็นตามถ้อยคำเดิมของข้อนี้**;
     (c) dropdown ที่เปิดเองหลังจำนวนชิ้นเปลี่ยน (เช่นกดเพิ่มบน PDP) ต้องปิดเองภายใน 5 วินาที**แม้ mouse ค้างอยู่ใต้ panel ตั้งแต่ตอนเปิด** (panel เปิดทับปุ่มที่ลูกค้าเพิ่งกด — review #199:
     ค้างเปิดทับคอลัมน์ขวาของ PDP จน e2e ต้อง `dispatchEvent`) — การชี้ที่ `nav-cart-link` ยังเปิดค้างได้ตามเดิมของ starter (Q-C1 (2) = (ก), owner 2026-11-03); (d) (review #199 CORE-25)
     unit ของ PDP มีกรณีเปลี่ยน `product.id` (render สินค้าใหม่พร้อม `v_id` ของสินค้าใหม่) → option เป็นของ variant ตาม `v_id` ใหม่ ไม่ค้างค่าของสินค้าเดิม; (e) (review #202) comment
@@ -1195,7 +1197,7 @@ none
 ### Acceptance criteria (follow-up รอบ 13)
 - AC-117 (CORE-26, กฎข้อ 81) e2e: Given แคมเปญ flash −20% ของสินค้า X ราคา ฿2,950 และ cart ของลูกค้ามี X qty 2 When ชี้ `nav-cart-link` Then `cart-subtotal` ใน `nav-cart-dropdown`
   มี `data-value` เท่ากับ `item_total` ของ `GET /store/carts/:id` (เทียบตัวเลข) = ผลรวมราคา line ที่แสดง (±0.01) และป้ายเป็น "ยอดรวมสินค้า (รวม VAT)" ไม่มีคำ "ไม่รวมภาษี" (Q-C1 (1) = (ก)); ที่ `/th/cart` แถวของ
-  `cart-totals` (ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง + ภาษี — ตาม field ที่แสดง) = ยอดรวม ±0.01; static (Vitest อ่าน source): `cart-dropdown/index.tsx` ไม่มี `1.07` และไม่มี `.reduce(` ที่อ่าน `unit_price`/`total`/`subtotal` (regex
+  `cart-totals` (ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง + ภาษี — ตาม field ที่แสดง; หมายเหตุรอบ 28: เมื่อ CORE-57 merge แถวภาษีเป็นข้อมูลไม่บวก — สูตรตามกฎข้อ 115b/AC-156) = ยอดรวม ±0.01; static (Vitest อ่าน source): `cart-dropdown/index.tsx` ไม่มี `1.07` และไม่มี `.reduce(` ที่อ่าน `unit_price`/`total`/`subtotal` (regex
   `/\.reduce\([\s\S]*?\b(unit_price|total|subtotal)\b/` กับ source ที่ตัด `countItems` ออกแล้ว — `countItems` ที่ `reduce` รวม `quantity` ได้รับยกเว้น;
   review #206: regex เดิม `reduce\([^)]*…` หยุดที่ `)` ของ arrow function จึงจับโค้ดจริงไม่ได้);
   e2e (desktop 1280px): กด `add-product-button` บน PDP โดยไม่ขยับ mouse → `nav-cart-dropdown` ปรากฏแล้วหายภายใน 6 วินาที และกด `add-product-button` ซ้ำได้ด้วย `click()` ปกติ (ไม่ใช้
@@ -2185,22 +2187,23 @@ TDD: เขียน integration AC-150/151, เคส variant ไม่มี l
 ที่มา: qa #336 D-1 (CORE-55) — ลูกค้าเปิดสองแท็บแล้วกดขอคืน line qty 1 พร้อมกัน → ได้ return `requested` 2 รายการ; stock ไม่เพิ่มเกิน (รับได้แค่ตัวเดียว) แต่แอดมินเจอ return ค้างที่รับของไม่ได้
 ต้นเหตุ (ตรวจโค้ด 2.22.1): `createAndCompleteReturnOrderWorkflow` ไม่มี `acquireLockStep` และ step ตรวจ (`create-complete-return.js:152–155`) ไม่ตรวจจำนวน — จำนวนที่ขอคืนได้ตรวจใน Order module ตอนคำนวณ action `RETURN_ITEM`
 (`@medusajs/order/dist/utils/actions/return-item.js:28–31`: `fulfilled − (return_requested + received + dismissed)` → 400 `invalid_data`) ซึ่งถูกเมื่อ request มาทีละตัว แต่สอง request ที่อ่าน order พร้อมกันผ่านทั้งคู่
-Status: draft (รอ owner ตอบ Q-C6)
-Out of scope: แก้/patch `@medusajs/core-flows`, return ที่สร้างจาก Admin, ล้าง return ค้างของ dev (spec 02 Q12 — admin ยกเลิกเองได้ที่หน้า order)
+Status: accepted (owner ตอบ Q-C6 = ก 2026-11-10; CORE-56 พักไว้ — owner ยังไม่สั่งทำ)
+Out of scope: แก้/patch `@medusajs/core-flows`, override route `POST /store/returns`, return ที่สร้างจาก Admin, ล้าง return ค้างของ dev (spec 02 Q12 — admin ยกเลิกเองได้ที่หน้า order)
 
 ### What Medusa already gives us (ปิดรอบ 27)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
 | ตรวจจำนวนที่ขอคืนได้ | Order module action `RETURN_ITEM` (`return-item.js:28–31`) — 400 `invalid_data` เมื่อเกิน | ใช้ตามเดิม — แค่ทำให้ request ของ order เดียวกันวิ่งทีละตัว |
-| lock แบบกระจาย | Locking module (`Modules.LOCKING`, provider Redis ที่ใช้อยู่) + `acquireLockStep`/`releaseLockStep` ของ core-flows | ใช้ตามเดิม (ไม่เพิ่ม infra) |
-| สร้าง return จาก store | `POST /store/returns` + `createAndCompleteReturnOrderWorkflow` | ใช้ตามเดิมหรือห่อด้วย lock — ทางเลือกตาม Q-C6 |
+| lock แบบกระจาย | Locking module (`Modules.LOCKING`, provider Redis ที่ใช้อยู่) — `acquire`/`release` ของ service | ใช้ตามเดิม (ไม่เพิ่ม infra) — เรียกจาก middleware |
+| สร้าง return จาก store | `POST /store/returns` + `createAndCompleteReturnOrderWorkflow` | ใช้ตามเดิม — ขยายด้วย middleware ตัวสุดท้ายของ chain (Q-C6 = ก) ไม่แทน route |
 
 ### Data model / Workflows / API routes
-none ใหม่ (ขึ้นกับ Q-C6: ทาง ก = middleware ใหม่ใน chain `/store/returns`; ทาง ข = route override + workflow ห่อ); `POST /store/returns` ผลใหม่คือ request ที่แพ้ race ตอบ 4xx ตามกฎข้อ 114
+none ใหม่ — middleware ใหม่ตัวสุดท้ายของ chain `/store/returns` (Q-C6 = ก); `POST /store/returns` ผลใหม่คือ request ที่แพ้ race ตอบ 4xx ตามกฎข้อ 114
 
 ### Business rules (ปิดรอบ 27)
-114. (CORE-56 — qa #336 D-1; วิธีตาม Q-C6) `POST /store/returns` ของ order เดียวกันต้องไม่สร้าง return เกินจำนวนที่ขอคืนได้แม้ยิงพร้อมกัน:
-    (a) request ของ order เดียวกันถูกทำทีละตัว (lock key `store-return:<order_id>`, `ownerId` ต่อ request, TTL ≥ เวลาของ workflow) — ตัวที่ได้ lock ทีหลังเห็น `return_requested_quantity` ใหม่แล้ว Order module ปฏิเสธเอง (400 `invalid_data`);
+114. (CORE-56 — qa #336 D-1; Q-C6 = ก owner 2026-11-10) `POST /store/returns` ของ order เดียวกันต้องไม่สร้าง return เกินจำนวนที่ขอคืนได้แม้ยิงพร้อมกัน:
+    (a) request ของ order เดียวกันถูกทำทีละตัว — middleware ใหม่ (`src/api/store/ownership/return-lock.ts`) เป็นตัวสุดท้ายของ chain `/store/returns` ต่อจาก `assignStoreReturnLocation` ขอ lock ผ่าน Locking module
+    แล้ว release เมื่อ response `finish` หรือ `close` (ตัวใดเกิดก่อน, release ครั้งเดียว) (lock key `store-return:<order_id>`, `ownerId` ต่อ request, TTL ≥ เวลาของ workflow) — ตัวที่ได้ lock ทีหลังเห็น `return_requested_quantity` ใหม่แล้ว Order module ปฏิเสธเอง (400 `invalid_data`);
     (b) รอ lock ไม่เกิน timeout สั้น (≤ 5 วินาที) — เกินแล้วตอบ 409 ไม่สร้าง return; error ของ Redis ไม่ถูกกลบเป็น 409 (แบบกฎข้อ 21 ของ spec 02);
     (c) release lock ทุกทาง (สำเร็จ, 4xx, 5xx, client ตัดการเชื่อมต่อ) และไม่ลบ lock ของ owner อื่น;
     (d) order คนละใบไม่รอกัน; request ที่ไม่ผ่าน middleware ก่อนหน้า (auth/ownership/option/window/location) ไม่ถือ lock
@@ -2208,7 +2211,8 @@ none ใหม่ (ขึ้นกับ Q-C6: ทาง ก = middleware ให
 ### Acceptance criteria (ปิดรอบ 27)
 - AC-155 (CORE-56, กฎข้อ 114) integration http ต่อจาก `integration-tests/http/store-returns-receive.spec.ts` (token ลูกค้าเจ้าของ order): Given order ที่มี line `manage_inventory=true` qty 1 fulfill + ship แล้ว When ยิง `POST /store/returns` ขอคืน 1 ชิ้นสองครั้งพร้อมกัน (`Promise.allSettled`, ทำซ้ำ 5 รอบด้วย order ใหม่) Then ทุกรอบได้ 200 หนึ่งตัวและอีกตัว 400 `invalid_data` (หรือ 409 ตามกฎข้อ 114b) — **ล้มบน develop**, `query.graph` ของ return ของ order นั้นมี `status=requested` 1 รายการ และ `items.detail.return_requested_quantity` = 1;
   Given ยิงทีละครั้ง Then ครั้งที่สอง 400 `invalid_data` (ผ่านบน develop อยู่แล้ว — กันถอย); Given order สองใบของลูกค้าคนเดียวยิงพร้อมกัน Then 200 ทั้งคู่; Given request แรกล้มด้วย 400 (เช่น option ผิด) Then request ถัดไปของ order เดียวกันได้ 200 ทันที (lock ไม่ค้าง);
-  unit: lock ถูก release เมื่อ handler ถัดไป throw และเมื่อ response `close` ก่อน `finish` (ทาง ก) หรือ compensation ของ workflow (ทาง ข); AC-150..153 ยังผ่าน
+  unit (`return-lock.unit.spec.ts`): lock ถูก release เมื่อ handler ถัดไป throw, เมื่อ response `finish`, และเมื่อ response `close` ก่อน `finish` (client ตัดการเชื่อมต่อ) — release ครั้งเดียวด้วย `ownerId` ของ request นั้น;
+  chain ของ `/store/returns` จบด้วย `assignStoreReturnLocation` → middleware lock; AC-150..153 ยังผ่าน
 
 ### Test plan (ปิดรอบ 27)
 | ระดับ | AC |
@@ -2219,20 +2223,74 @@ none ใหม่ (ขึ้นกับ Q-C6: ทาง ก = middleware ให
 ### Tasks (ปิดรอบ 27)
 | ID | Task | ไฟล์ที่แตะ (`apps/backend/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|----|---------|------|
-| CORE-56 | (qa #336 D-1) lock ต่อ order บน `POST /store/returns` กัน return ซ้ำจากสองแท็บ (กฎข้อ 114) | ทาง ก: `src/api/store/ownership/return-lock.ts` (ใหม่) + unit, `src/api/store/ownership/middlewares.ts`, unit ที่ล็อก chain (`return-location.unit.spec.ts:156–159`, `return-window.unit.spec.ts:94–98`, `src/lib/__tests__/store-ownership.unit.spec.ts`); ทาง ข: `src/api/store/returns/route.ts` (override) + `src/workflows/` (ใหม่); ทั้งสองทาง: `integration-tests/http/store-returns-receive.spec.ts` | ~150 LOC | AC-155 | **owner ตอบ Q-C6** (ทาง ข ต้องมี ADR ก่อนตามข้อห้ามข้อ 1 เพราะแทน route ของ core); CORE-55 ☑ #336; ไม่บล็อก release v0.1.0 | ไม่ชนงานที่เปิดอยู่ |
+| CORE-56 | (qa #336 D-1) lock ต่อ order บน `POST /store/returns` กัน return ซ้ำจากสองแท็บ ด้วย middleware (กฎข้อ 114, Q-C6 = ก) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `src/api/store/ownership/return-lock.ts` (ใหม่) + `__tests__/return-lock.unit.spec.ts` (ใหม่), `src/api/store/ownership/middlewares.ts`, unit ที่ล็อก chain (`return-location.unit.spec.ts:156–159`, `return-window.unit.spec.ts:94–98`, `src/lib/__tests__/store-ownership.unit.spec.ts`), `integration-tests/http/store-returns-receive.spec.ts` | ~150 LOC | AC-155 | none (PR spec รอบ 28 merge; CORE-55 ☑ #336); ไม่บล็อก release v0.1.0 | ไม่ชนงานที่เปิดอยู่ |
 
 ### Open questions (ปิดรอบ 27)
-- Q-C6 (CORE-56, กฎข้อ 114) กัน return ซ้ำจาก `POST /store/returns` ที่ยิงพร้อมกันด้วยทางใด:
+- ~~Q-C6~~ ✅ owner ตอบ ก 2026-11-10 → กฎข้อ 114a, AC-155, CORE-56 (พักไว้ — owner ยังไม่สั่งทำ); คำถามเดิม (CORE-56, กฎข้อ 114) กัน return ซ้ำจาก `POST /store/returns` ที่ยิงพร้อมกันด้วยทางใด:
   (ก) **[แนะนำ]** middleware ตัวสุดท้ายของ chain `/store/returns` (ต่อจาก `assignStoreReturnLocation`) ขอ lock `store-return:<order_id>` ผ่าน Locking module แล้ว release เมื่อ response `finish`/`close` — ไม่แทน route ของ core, ใช้ validation จำนวนของ Order module เดิม;
   ข้อเสีย: lock คร่อมจาก middleware ถึง route handler โดยอาศัย event ของ response (ต้อง test ทางที่ client ตัดการเชื่อมต่อ) และถ้า process ตายต้องรอ TTL
   (ข) override route `POST /store/returns` ให้เรียก workflow ของเราที่ห่อ `acquireLockStep` → `createAndCompleteReturnOrderWorkflow.runAsStep` → `releaseLockStep` (แบบ lock ของ e-voucher/affiliate) — lock อยู่ใน workflow มี compensation ชัด;
   ข้อเสีย: แทน route ของ core (ต้องคง validator/response shape เดิม, ตรวจซ้ำทุก bump) จึงต้องเขียน ADR และได้รับอนุมัติก่อน
   (ค) middleware ปฏิเสธ 409 ถ้า order มี return `requested` อยู่แล้ว (ไม่มี lock) — ง่ายที่สุดแต่ไม่ปิด race (สองแท็บผ่านการตรวจพร้อมกันได้) และห้ามขอคืน line อื่นของ order เดียวกันจนกว่าจะรับของรอบแรก
   (ง) ยอมรับใน v1 ไม่มี task — admin ยกเลิก return ที่ค้างเองที่หน้า order ของ dashboard (stock ไม่เพี้ยนตามผล qa)
-- Q-C7 (ค่าส่ง — จาก qa รอบ 27, ยังไม่มีที่บันทึก) ราคาเดียวกันแสดงสองค่า: ขั้นเลือกวิธีจัดส่งแสดงราคา option ฿10 (รวม VAT) แต่ `cart-totals` แถว "ค่าจัดส่ง" แสดง `shipping_subtotal` ฿9.35 (ก่อน VAT — ตามกฎข้อ 81b ที่ให้ทุกแถวใช้ฐานก่อนภาษีแล้วบวก `tax_total` ให้รวมได้ `total`) ลูกค้าอาจคิดว่าราคาไม่ตรง:
+- ~~Q-C7~~ ✅ owner ตอบ ก 2026-11-10 → กฎข้อ 81b (แก้), กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28" (พักไว้ — owner ยังไม่สั่งทำ); คำถามเดิม (ค่าส่ง — จาก qa รอบ 27) ราคาเดียวกันแสดงสองค่า: ขั้นเลือกวิธีจัดส่งแสดงราคา option ฿10 (รวม VAT) แต่ `cart-totals` แถว "ค่าจัดส่ง" แสดง `shipping_subtotal` ฿9.35 (ก่อน VAT — ตามกฎข้อ 81b ที่ให้ทุกแถวใช้ฐานก่อนภาษีแล้วบวก `tax_total` ให้รวมได้ `total`) ลูกค้าอาจคิดว่าราคาไม่ตรง:
   (ก) **[แนะนำ]** แถวยอดรวมใช้ฐานรวม VAT ทั้งชุด: `item_total` ("ยอดรวมสินค้า (รวม VAT)" แบบกฎข้อ 81a), ส่วนลด `discount_total`, ค่าจัดส่ง `shipping_total` (฿10) และแถว "รวม VAT แล้ว" `tax_total` เป็นข้อมูลไม่บวกซ้ำ — แก้กฎข้อ 81b, task storefront เล็ก (`cart-totals` + e2e ยอดรวม) ~80 LOC;
   (ข) คงตัวเลขเดิม เปลี่ยนป้ายเป็น "ค่าจัดส่ง (ก่อน VAT)" และป้ายขั้นจัดส่งบอกว่า "รวม VAT" — งานน้อยแต่ลูกค้ายังเห็นสองตัวเลข;
   (ค) คงเดิม — ตัดสินพร้อม Q-F1 (ราคาค่าส่งจริง) ใน go-live checklist
+
+## Follow-up รอบ 28 (2026-11-10 — เอกสารล้วน: บันทึกคำตัดสินของ owner)
+ที่มา: owner ตอบ "ตามที่แนะนำ" ทุกข้อ — Q-C6 = ก (หัวข้อปิดรอบ 27 → accepted), Q-C7 = ก (หัวข้อนี้) **แต่สั่งว่ายังไม่ต้องทำตอนนี้** → CORE-56 และ CORE-57 พักไว้ ไม่บล็อก release v0.1.0
+Status: accepted (CORE-57 พักไว้ — owner ยังไม่สั่งทำ)
+Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คงเดิม), ราคาค่าส่งจริง (Q-F1 — go-live checklist), หน้า order ในบัญชีลูกค้า (`order-summary` — ไม่ใช้ `cart-totals`), credit line/gift card (v1 ไม่มี)
+
+### What Medusa already gives us (รอบ 28)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ยอดรวมแบบรวม VAT ของ cart/order | `decorateCartTotals` ของ `@medusajs/utils` 2.22.1 (`dist/totals/cart/index.js`): `original_item_total` (Σ `item.original_total` — รวม VAT ก่อนส่วนลด), `item_total` (Σ `item.total` — รวม VAT **หลังหักส่วนลดแล้ว**), `discount_total` (รวม VAT, **รวมส่วนลดของ line และของ shipping method**), `original_shipping_total` (รวม VAT ก่อนส่วนลดค่าส่ง), `shipping_total` (รวม VAT หลังส่วนลดค่าส่ง), `tax_total`, `total` = `subtotal + tax_total − discount_subtotal − credit_line_total` | ใช้ตามเดิม — ทุก field อยู่ใน `defaultStoreCartFields` และ default ของ store order (`api/store/{carts,orders}/query-config.js`) ไม่ต้องเพิ่ม `fields` ใน `retrieveCart`/`retrieveOrder` |
+| แสดงยอดรวม | `cart-totals` ของ Medusa Next.js Starter (ใช้ที่ `/cart`, checkout summary, order-completed) | ขยาย — เปลี่ยน field/ป้ายของแถว (กฎข้อ 115) |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 28)
+115. (CORE-57 — Q-C7 = ก owner 2026-11-10; แทนฐาน "ก่อนภาษี" ของกฎข้อ 81b) `cart-totals` (`modules/common/components/cart-totals/index.tsx` — ทั้ง `/cart`, checkout และหน้า order-completed ที่ส่ง `order`) แสดงทุกแถวด้วยฐาน**รวม VAT** และไม่คำนวณยอดเอง (กฎข้อ 81):
+    (a) แถวและ field (ตรวจกับ 2.22.1 แล้ว — ดูตารางข้างบน; `data-testid` และ `data-value` = ค่าของ field คงชื่อเดิม):
+        "ยอดรวมสินค้า (รวม VAT)" `cart-subtotal` = `original_item_total`; "ส่วนลด" `cart-discount` = `discount_total` แสดงเมื่อ > 0 และเป็นยอดลบ;
+        "ค่าจัดส่ง" `cart-shipping` = `original_shipping_total` (= ราคา option ที่ขั้นเลือกวิธีจัดส่งแสดง เช่น ฿10); "รวม VAT แล้ว" `cart-taxes` = `tax_total` เป็นข้อมูล**ไม่บวกซ้ำ**; "ยอดรวมทั้งสิ้น" `cart-total` = `total`;
+    (b) แถวที่บวก/ลบรวมได้ยอดสุทธิ: `original_item_total − discount_total + original_shipping_total = total` (±0.01; `credit_line_total` = 0 ใน v1) —
+        **ไม่ใช้ `item_total`/`shipping_total` ตามถ้อยคำของตัวเลือก ก ตรงตัว** เพราะใน 2.22.1 ทั้งสองหักส่วนลดแล้ว แต่ `discount_total` รวมส่วนลดเดียวกันอีก จะหักซ้ำเมื่อมีโปรโมชัน/flash (เช่นเคส AC-117)
+        หรือส่วนลดค่าส่ง; เมื่อไม่มีส่วนลด ค่าเท่ากัน (`original_item_total = item_total`, `original_shipping_total = shipping_total`) ตรงตามเจตนาของ owner;
+    (c) cart digital-only (spec 02 กฎข้อ 28a) ยังซ่อนแถวค่าจัดส่งเมื่อไม่มีค่าจัดส่งเก็บจริง — เงื่อนไขใช้ `original_shipping_total` แทน `shipping_subtotal`; ป้ายแถวสินค้าเป็น "ยอดรวมสินค้า (รวม VAT)" ทุกกรณี —
+        ใน `cart-totals` ไม่มีคำ "ไม่รวมภาษี"/"ก่อน VAT" และ source ไม่อ้าง `item_subtotal`, `shipping_subtotal`, `discount_subtotal` หรือ `1.07`;
+    (d) dropdown ของตะกร้า (กฎข้อ 81a) ไม่เปลี่ยน
+
+### Acceptance criteria (รอบ 28)
+- AC-156 (CORE-57, กฎข้อ 115) unit (Vitest `renderToStaticMarkup` — ไฟล์ใหม่ `src/core-57-cart-totals.test.ts`): Given totals `{ currency_code: "thb", original_item_total: 5900, item_total: 4720, discount_total: 1180, original_shipping_total: 10, shipping_total: 10, tax_total: 309.44, total: 4730, item_subtotal: 5514.02, shipping_subtotal: 9.35 }`
+  Then `cart-subtotal` `data-value="5900"`, `cart-discount` `data-value="1180"`, `cart-shipping` `data-value="10"`, `cart-taxes` `data-value="309.44"`, `cart-total` `data-value="4730"`, HTML มีป้าย "ยอดรวมสินค้า (รวม VAT)" และ "รวม VAT แล้ว" และไม่มี "ไม่รวมภาษี";
+  Given ส่วนลดค่าส่ง (`original_shipping_total: 10, shipping_total: 0, discount_total: 10`, ไม่มีส่วนลด line) Then `cart-shipping` `data-value="10"` และ subtotal − discount + shipping = total;
+  Given cart digital-only ที่ `original_shipping_total` = 0 Then ไม่มี `cart-shipping` และไม่มีคำ "ค่าจัดส่ง"; Given digital-only ที่ `original_shipping_total` = 10 Then มี `cart-shipping` `data-value="10"` (แทนเคส review #320 เดิมใน `ev-7d-digital-only-totals.test.ts` — แก้ test เดิมให้ใช้ field ใหม่);
+  static (อ่าน source): `cart-totals/index.tsx` ไม่มี `item_subtotal`, `shipping_subtotal`, `discount_subtotal`, `1.07`;
+  e2e (1280×800, ลูกค้า login, ใช้ shipping option ที่ seed ราคา ฿10): Given cart ที่เลือกวิธีจัดส่งแล้ว When เปิด `/th/cart` และขั้น review ของ checkout Then `cart-shipping` `data-value` = 10 = `original_shipping_total` ของ `GET /store/carts/:id` = ราคาที่ขั้นเลือกวิธีจัดส่งแสดง (`data-value` ของ option ที่เลือก หรือ `amount` ของ option จาก API ถ้าไม่มี),
+  `cart-subtotal − cart-discount + cart-shipping` = `cart-total` (±0.01) และ `cart-total` = `total` ของ API; step "/th/cart" ของ `e2e/core-26-cart-dropdown-total.spec.ts` (AC-117 — flash) ใช้สูตรเดียวกัน (ไม่บวก `cart-taxes`) และยังผ่าน; ป้ายใน `cart-totals` มีอักษรไทย (`expectThai` ของ `thai-ui-cart-order.spec.ts` ยังผ่าน)
+
+### Non-functional (รอบ 28)
+none (แสดงผลล้วน ไม่มี request เพิ่ม)
+
+### Test plan (รอบ 28)
+| ระดับ | AC |
+|---|---|
+| unit (Vitest) + static | AC-156 |
+| e2e storefront | AC-156 (+ AC-117 step `/th/cart`, AC-42 ของ spec 02 ยังผ่าน) |
+
+TDD: เขียน unit/e2e ของ AC-156 ให้ล้มบน develop ก่อน (ปัจจุบัน `cart-shipping` = `shipping_subtotal` 9.35)
+
+### Tasks (รอบ 28)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-57 | (storefront เล็ก — Q-C7 = ก) `cart-totals` ใช้ฐานรวม VAT ทั้งชุด ค่าจัดส่งตรงกับราคา option (กฎข้อ 115) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `src/modules/common/components/cart-totals/index.tsx`, `src/core-57-cart-totals.test.ts` (ใหม่), `src/ev-7d-digital-only-totals.test.ts`, `e2e/core-26-cart-dropdown-total.spec.ts` (step `/th/cart`), e2e ใหม่ `e2e/core-57-cart-totals.spec.ts` | ~80 LOC | AC-156 | none (PR spec รอบ 28 merge); ไม่บล็อก release v0.1.0 | ∥ CORE-56 (คนละ app) |
+
+### Open questions (รอบ 28)
+none
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

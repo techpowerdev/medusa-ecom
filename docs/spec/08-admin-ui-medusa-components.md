@@ -4,7 +4,8 @@ Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดส
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
 รอบ 26 2026-11-09: แก้ถ้อยคำกฎ 7(b), 14, AC-18; ADM-15..17, กฎ 19–21, AC-19..21; Q8 ตัดสินแล้ว;
-รอบ 27 2026-11-10: ADM-20, กฎ 24, AC-24; follow-up ADM-21, ADM-22; ปิดรอบ 27 2026-11-10: ADM-20 ☑ #335, ADM-21/22 ยังรอ owner สั่งทำ)
+รอบ 27 2026-11-10: ADM-20, กฎ 24, AC-24; follow-up ADM-21, ADM-22; ปิดรอบ 27 2026-11-10: ADM-20 ☑ #335;
+รอบ 28 2026-11-10: owner ตัดสิน ADM-21 = ทำ (แยก ADM-21a/21b, กฎ 25, AC-25..26) และ ADM-22 = ยืนยันก่อน (กฎ 26, AC-27) — ทั้งหมดพักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0)
 Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้งหมดได้ใช้ component, hook, utility และอื่นที่ medusa ให้แล้วหรือยัง ถ้ายังให้วางแผนปรับใช้ตามที่ medusa มีให้ก่อนเป็นฐาน
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
@@ -439,10 +440,65 @@ Out of scope: แก้ตารางอื่น (→ ADM-21), error ของ
 | Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
 | ADM-20 | (qa ADM-M-10) สถานะ error แทน empty ของหน้า list group buy (กฎ 24) | `routes/group-buying/page.tsx`, `__tests__/group-buy-pages.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-pages.spec.ts` — ☑ #335 | ~60 LOC | 1280×800 | AC-24 | PR spec รอบ 27 merge; ไม่บล็อก release v0.1.0 | ไม่ชน CORE-55/EV-16/AF-21; **ชน ADM-15** ที่ `__tests__/group-buy-pages.unit.spec.ts` (ADM-15 เพิ่ม test ของกฎ 19c ไฟล์เดียวกัน, คนละ test) → ตัวที่ merge ทีหลัง rebase; ไม่ชน ADM-16 |
-| ADM-21 | (follow-up จากการสำรวจ ADM-20 — ยังไม่สั่งทำ) ตารางอื่นที่ใช้แค่ `data`/`isLoading` จนอาจแสดง empty ตอน API ล้ม: `components/evoucher/pools-table.tsx:45`, `codes-table.tsx:58`, `partners-section.tsx:82`, `components/affiliate/list-table.tsx:22` (Programs/Affiliates/Payouts), `components/group-buy/groups-section.tsx:30`, `group-members.tsx:84` | ตามแถว | — | — | ไม่มี (ต้องเขียน AC ก่อนเริ่ม) | ADM-20, ADM-16 (แตะ `codes-table.tsx`/`partners-section.tsx`), ADM-17 (แตะ `payout-form.tsx` และ query รายการ affiliate); ไม่บล็อก release | — |
-| ADM-22 | (follow-up — ยังไม่สั่งทำ) loader ของหน้า pool (`routes/evouchers/pools/[id]/page.tsx:96`) ล้มแล้ว `ErrorBoundary` แสดง stack trace — source แสดงเฉพาะ `NODE_ENV=development` ต้องยืนยันบน build production ก่อนว่าไม่ใช่ปัญหาจริง | ตามแถว | — | — | ไม่มี (ต้องเขียน AC ก่อนเริ่ม) | none; ไม่บล็อก release | — |
+| ADM-21 | (follow-up จากการสำรวจ ADM-20 — ยังไม่สั่งทำ) ตารางอื่นที่ใช้แค่ `data`/`isLoading` จนอาจแสดง empty ตอน API ล้ม: `components/evoucher/pools-table.tsx:45`, `codes-table.tsx:58`, `partners-section.tsx:82`, `components/affiliate/list-table.tsx:22` (Programs/Affiliates/Payouts), `components/group-buy/groups-section.tsx:30`, `group-members.tsx:84` — **รอบ 28: owner ตัดสิน "ทำ" (พักไว้) → แยกเป็น ADM-21a/21b ในหัวข้อ "Follow-up รอบ 28"** | ตามแถว | — | — | → AC-25, AC-26 | ดูหัวข้อรอบ 28 | — |
+| ADM-22 | (follow-up — ยังไม่สั่งทำ) loader ของหน้า pool (`routes/evouchers/pools/[id]/page.tsx:96`) ล้มแล้ว `ErrorBoundary` แสดง stack trace — source แสดงเฉพาะ `NODE_ENV=development` ต้องยืนยันบน build production ก่อนว่าไม่ใช่ปัญหาจริง — **รอบ 28: owner ตัดสิน "ยืนยันก่อน" (พักไว้) → หัวข้อ "Follow-up รอบ 28"** | ตามแถว | — | — | → AC-27 | ดูหัวข้อรอบ 28 | — |
 
 ### Open questions (รอบ 27)
+none
+
+## Follow-up รอบ 28 (2026-11-10 — เอกสารล้วน: บันทึกคำตัดสินของ owner)
+ที่มา: owner ตอบ "ตามที่แนะนำ" — ADM-21 = ทำ, ADM-22 = ยืนยันก่อน **แต่สั่งว่ายังไม่ต้องทำตอนนี้** → ทุก task ในหัวข้อนี้พักไว้ ไม่บล็อก release v0.1.0 (path ย่อจาก `apps/backend/src/admin/`)
+Status: accepted (ADM-21a/21b/22 พักไว้ — owner ยังไม่สั่งทำ)
+Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard, patch-package, ปุ่มลองใหม่ (reload หน้า — กฎ 24e), ตารางนอก 6 ไฟล์ข้างล่าง
+
+### What Medusa already gives us (รอบ 28)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ข้อความ error โดยคงหัวตาราง/ปุ่มสร้าง | `emptyState.empty` (`heading`, `description`) ของ `DataTable` (dashboard) และ `DataTable.Table` (`@medusajs/ui` — `groups-section`, `group-members`) | ใช้ตามเดิม — แนวเดียวกับกฎ 24a (ADM-20) |
+| 401 → `/login` | `ErrorBoundary` ของ dashboard | ใช้ตามเดิมด้วย `throw error` (กฎ 24b); เงื่อนไข 401 ที่ใช้ ≥ 2 ที่ย้ายเป็น helper pure ใน `lib/` ได้ตามกฎ 2 |
+| หน้า error ของ loader | `ErrorBoundary` ของ dashboard (`errorElement` ของ route หลัก) — แสดง stack เฉพาะ `NODE_ENV=development` ตาม source | ใช้ตามเดิม — ADM-22 ยืนยันบน build production ก่อน |
+
+### Business rules (รอบ 28)
+25. (ADM-21a/21b — owner "ทำ" 2026-11-10) ตารางทั้ง 6 ไฟล์ทำตามกฎ 24a–d เมื่อ query รายการล้มและไม่มีข้อมูลในมือ (`isError && !data`): ส่ง `emptyState.empty` = `{ heading: <ข้อความในตาราง>, description: error.message }`
+    แทนข้อความ empty เดิม ห่อด้วย element ที่มี testid error **เฉพาะตอนสถานะนี้**, คงหัวตาราง/ปุ่มใน `action`/ปุ่ม toolbar เดิม; 401 → `throw error`; empty state เดิมแสดงเฉพาะเมื่อ API สำเร็จและไม่มีแถว; refetch ล้มขณะมี `data` คงตารางไว้ — ตารางของกฎ 25:
+
+| ตาราง | ไฟล์ | GET ที่ e2e ทำให้ล้ม (`page.route`) | testid error | heading | task |
+|---|---|---|---|---|---|
+| E-voucher pools (`/app/evouchers`) | `components/evoucher/pools-table.tsx` | `**/admin/evoucher/pools?*` (รายการ — ไม่ match `/pools/<id>`) | `evoucher-pools-error` | "Could not load voucher pools" | 21a |
+| Codes (หน้า pool) | `components/evoucher/codes-table.tsx` | `**/admin/evoucher/pools/*/codes*` | `evoucher-codes-error` (ภายใน `evoucher-codes`) | "Could not load codes" | 21a |
+| Partners (`/app/evouchers`) | `components/evoucher/partners-section.tsx` | GET `**/admin/evoucher/partners*` | `evoucher-partners-error` (ภายใน `evoucher-partners-table`; ไม่แสดง `evoucher-partners-empty`) | "Could not load partners" | 21a |
+| Affiliate ทุกแท็บที่ใช้ `useAffiliateList` (programs, affiliates, entries, payouts) | `components/affiliate/list-table.tsx` (`useAffiliateList` คืน `isError`/`error` ด้วย, `AffiliateListTable` แสดง) | `**/admin/affiliate/<resource>?*` ของแท็บนั้น | `affiliate-list-error` | "Could not load <resource>" | 21b |
+| Groups (หน้าแคมเปญ) | `components/group-buy/groups-section.tsx` | `**/admin/group-buy/campaigns/*/groups*` (GET) | `gb-groups-error` (ภายใน `gb-groups-table`) | "Could not load groups" | 21b |
+| Members (ของกลุ่มที่เลือก) | `components/group-buy/group-members.tsx` | `**/admin/group-buy/groups/*/memberships*` | `gb-memberships-error` (ภายใน `gb-memberships-table`) | "Could not load members" | 21b |
+
+26. (ADM-22 — owner "ยืนยันก่อน" 2026-11-10) loader ของ `routes/evouchers/pools/[id]/page.tsx` ล้ม (ไม่ใช่ 401) บน **build production** (`pnpm --filter backend build && pnpm --filter backend start`):
+    (a) ถ้าหน้าที่แสดงไม่มี stack trace/path ของ source → ปิด ADM-22 (✕) ไม่มีโค้ด บันทึกผลใน `docs/evidence/admin-ui/ADM-22/REPORT.md`;
+    (b) ถ้าพบ → เปิด task แก้ (ADM-22b) ในโค้ดของเรา: loader คืน `undefined` เมื่อ fetch ล้ม (ยกเว้น 401 ที่ยัง throw) แล้วหน้าแสดง error จาก `useQuery` ของ pool (`evoucher-pool-error`) แทน `ErrorBoundary`; ห้าม patch dashboard
+
+### Acceptance criteria (รอบ 28)
+- AC-25 (ADM-21a, กฎ 25) e2e 1280×800 (เพิ่มใน `e2e/evoucher-admin-pool-page.spec.ts` และ `e2e/evoucher-admin-forms.spec.ts`): สำหรับแต่ละแถว 21a ของตารางกฎ 25 — Given `page.route` GET ตามแถวตอบ 500 When เปิดหน้า Then testid error visible (timeout default), ข้อความ empty เดิมของตารางนั้นไม่ปรากฏ ("No voucher pools yet", "Import a CSV to add codes.", `evoucher-partners-empty` count 0), heading ของตาราง visible และปุ่ม "Create partner" ภายใน `evoucher-partners-table` enabled (ข้อยกเว้นกฎ 18) — **ล้มบน develop**; ทำซ้ำด้วย `route.abort()`;
+  Given ตอบ 401 Then `page.waitForURL(/\/app\/login/)` แล้วจบ test ทันที; Given ตอบรายการว่าง (`count: 0`) Then empty state เดิมแสดงและ testid error count 0; AC-7, AC-8, AC-20, AC-22, AC-23 ยังผ่าน;
+  static (`__tests__/medusa-ui.unit.spec.ts`): ทั้งสามไฟล์มี `isError && !data` และ heading error ตามตารางอยู่ใน `emptyState` (ไม่แทนตารางด้วย `NoRecords`)
+- AC-26 (ADM-21b, กฎ 25) e2e 1280×800 (เพิ่มใน `e2e/affiliate-admin-*.spec.ts` และ `e2e/group-buy-admin-pages.spec.ts`): Given `page.route` GET ของแท็บ affiliate ทีละแท็บ (`affiliate-admin-tab-*`) ตอบ 500 When เปิดแท็บ Then `affiliate-list-error` visible และปุ่มสร้างใน `action` (ภายใน `affiliate-programs-table`/`affiliate-payouts-table`) ยัง enabled;
+  Given GET groups ของแคมเปญตอบ 500 Then `gb-groups-error` visible และ `gb-create-pool-group` ยังอยู่; Given GET memberships ตอบ 500 หลังเลือกกลุ่ม Then `gb-memberships-error` visible และไม่มี "No members yet" — **ล้มบน develop**; ทำซ้ำด้วย `route.abort()`;
+  Given 401 Then ไป `/app/login` แล้วจบ test; Given รายการว่าง Then empty state เดิม และ testid error count 0; AC-11, AC-13, AC-21 ยังผ่าน; static: `list-table.tsx`, `groups-section.tsx`, `group-members.tsx` มี `isError && !data` และ heading error อยู่ใน `emptyState`
+- AC-27 (ADM-22, กฎ 26) qa บน build production (1280×800, `locale: "en-US"`, `timezoneId: "Asia/Bangkok"`): Given pool P และ `page.route` GET `**/admin/evoucher/pools/<P>` (loader) ตอบ 500 When เปิด `/app/evouchers/pools/<P>` Then ข้อความของหน้าไม่ตรง regex `/\bat \S+ \(|\.(tsx?|m?js):\d+/` (ไม่มี stack/path) → ปิด ADM-22 ✕ พร้อม REPORT;
+  ถ้าตรง → AC-27b (เงื่อนไขของ ADM-22b): หลังแก้ เคสเดียวกันแสดง `evoucher-pool-error` และไม่ตรง regex เดิม, 401 ไป `/app/login`, loader สำเร็จ AC-15 (spec 08) ยังผ่าน
+
+### Test plan (รอบ 28)
+| ชนิด | AC |
+|---|---|
+| static jest + e2e admin (1280×800) | AC-25 (ADM-21a), AC-26 (ADM-21b) — เขียน e2e ให้ล้มบน develop ก่อน |
+| qa ด้วยมือ/Playwright บน build production | AC-27 (ADM-22) |
+
+### Tasks (รอบ 28)
+| Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-21a | (owner "ทำ") สถานะ error แทน empty ของตาราง e-voucher: pools, codes, partners (กฎ 25) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `components/evoucher/{pools-table,codes-table,partners-section}.tsx`, `lib/` (helper 401 ถ้าย้าย — กฎ 2), `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/{evoucher-admin-pool-page,evoucher-admin-forms}.spec.ts` | ~180 LOC | 1280×800 | AC-25 | **ADM-16 merge** (ชน `codes-table.tsx`/`partners-section.tsx`), ADM-18/ADM-19 ถ้าเปิดอยู่ (ชนไฟล์ e2e — ตัวที่ merge ทีหลัง rebase); ไม่บล็อก release | ∥ ADM-21b |
+| ADM-21b | (owner "ทำ") สถานะ error แทน empty ของตาราง affiliate (ทุกแท็บ) และ group buy groups/members (กฎ 25) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `components/affiliate/list-table.tsx`, `components/group-buy/{groups-section,group-members}.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/{affiliate-admin-forms,group-buy-admin-pages}.spec.ts` | ~180 LOC | 1280×800 | AC-26 | **ADM-17 merge** (ชน query รายการ affiliate/`affiliate-admin-forms`); ถ้า ADM-21a ย้าย helper 401 ไป `lib/` ก่อน ให้ใช้ตัวนั้น; ไม่บล็อก release | ∥ ADM-21a (ชน `medusa-ui.unit.spec.ts` คนละ test — ตัวที่ merge ทีหลัง rebase); ชน ADM-15 ไม่มี |
+| ADM-22 | (owner "ยืนยันก่อน") qa ตรวจ stack trace ของ loader หน้า pool บน build production (กฎ 26) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `docs/evidence/admin-ui/ADM-22/REPORT.md` (ไม่มีโค้ด); ถ้าพบ → ADM-22b: `routes/evouchers/pools/[id]/page.tsx` + e2e ใน `evoucher-admin-pool-page.spec.ts` (~60 LOC) | qa ล้วน (22b ~60 LOC) | 1280×800 | AC-27 | none; ADM-22b ← ผล qa + ADM-21a (ไฟล์ e2e เดียวกัน); ไม่บล็อก release | ไม่ชน |
+
+### Open questions (รอบ 28)
 none
 
 ## Open questions
