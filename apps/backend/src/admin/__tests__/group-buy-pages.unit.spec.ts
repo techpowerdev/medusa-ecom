@@ -32,6 +32,21 @@ describe("รายการแคมเปญ (spec 08 AC-9)", () => {
     expect(src).not.toMatch(/DataTablePaginationState|useDataTable|onRowClick/)
   })
 
+  // ADM-20 (AC-24, กฎ 24): API ล้มและไม่มีข้อมูล → error ผ่าน emptyState ของ DataTable (คงหัวตาราง + ปุ่ม Create campaign)
+  it("isError && !data แสดง \"Could not load campaigns\" ใน emptyState ของ DataTable ไม่แทนตารางด้วย NoRecords", () => {
+    expect(src).toMatch(/isError && !data/)
+    // prop emptyState ของ <DataTable ... /> (ตั้งแต่ emptyState= จนปิด tag)
+    const emptyState = src.match(/<DataTable\b[\s\S]*?emptyState=([\s\S]*?)\/>/)?.[1] ?? ""
+    expect(emptyState).toMatch(/"Could not load campaigns"/)
+    expect(src).not.toMatch(/\bNoRecords\b/)
+    expect(src).toMatch(/data-testid=\{loadFailed \? "gb-campaigns-error" : undefined\}/)
+  })
+
+  it("401 → throw error ให้ ErrorBoundary ของ dashboard พาไป /login", () => {
+    expect(src).toMatch(/status === 401/)
+    expect(src).toMatch(/throw error/)
+  })
+
   it("export handle.breadcrumb เป็น \"Group buying\" (breadcrumb 2 ระดับร่วมกับหน้ารายละเอียด)", () => {
     expect(src).toMatch(/export const handle\s*=\s*{\s*breadcrumb:\s*\(\)\s*=>\s*"Group buying"/)
   })

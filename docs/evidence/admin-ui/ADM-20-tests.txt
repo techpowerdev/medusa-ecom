@@ -1,0 +1,66 @@
+# ADM-20 (spec 08 AC-24, กฎ 24) — ผล test
+# วันที่: 2026-11-10, node v22.23.3, base origin/develop 11185452
+# backend prod build (medusa start) :9550, DB medusa_b_adm20, Redis db 13 (รอบ green), viewport 1280x800 (locale en-US, Asia/Bangkok)
+
+## Red (ก่อนแก้ page.tsx)
+### jest src/admin/__tests__/group-buy-pages.unit.spec.ts (exit 1)
+    ✓ ใช้ LayoutComposer + DataTable ของ @medusajs/dashboard/components (1 ms)
+    ✓ คลิกแถวด้วย rowHref และหน้าอยู่ใน URL (prefix + usePageOffset) ไม่ถือ state แบ่งหน้าเอง (1 ms)
+    ✕ isError && !data แสดง "Could not load campaigns" ใน emptyState ของ DataTable ไม่แทนตารางด้วย NoRecords
+    ✕ 401 → throw error ให้ ErrorBoundary ของ dashboard พาไป /login (1 ms)
+    ✓ export handle.breadcrumb เป็น "Group buying" (breadcrumb 2 ระดับร่วมกับหน้ารายละเอียด)
+    ✓ ใช้ LayoutComposer, SectionRow, NoRecords ของ @medusajs/dashboard/components และ Header (2 ms)
+    ✓ ฟิลด์รายละเอียดใช้ SectionRow ไม่ใช่ grid เอง
+    ✓ export loader และ handle.breadcrumb (ชื่อแคมเปญ)
+    ✓ คง DataTable ของ @medusajs/ui (ต้องใช้ onRowClick เลือกแถว) แต่ใช้ Header (1 ms)
+    ✓ กันกดซ้ำด้วย useState(createSingleFlight) ไม่มี useRef
+    Expected pattern: /isError && !data/
+    Expected pattern: /status === 401/
+Tests:       2 failed, 8 passed, 10 total
+### playwright e2e/group-buy-admin-pages.spec.ts -g ADM-20 (build ของโค้ดก่อนแก้, exit 1)
+✘  1 [chromium] › e2e/group-buy-admin-pages.spec.ts:185:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 500 → gb-campaigns-error แทน empty state, ปุ่ม Create campaign ยังเปิด modal ได้ (6.6s)
+✘  2 [chromium] › e2e/group-buy-admin-pages.spec.ts:204:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: network ล้ม (route.abort) → gb-campaigns-error และปุ่ม Create campaign ยังเปิด modal ได้ (6.3s)
+✘  3 [chromium] › e2e/group-buy-admin-pages.spec.ts:218:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 401 → ErrorBoundary พาไป /app/login (30.2s)
+✓  4 [chromium] › e2e/group-buy-admin-pages.spec.ts:230:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบสำเร็จแต่ไม่มีแคมเปญ → empty state เดิม ไม่มี gb-campaigns-error (1.5s)
+Error: expect(locator).toBeVisible() failed
+Expected: visible
+Error: element(s) not found
+../../../adm20-pw-red/results/group-buy-admin-pages-ADM--38ade--campaign-ยังเปิด-modal-ได้-chromium/test-failed-1.png
+Error: expect(locator).toBeVisible() failed
+Expected: visible
+Error: element(s) not found
+../../../adm20-pw-red/results/group-buy-admin-pages-ADM--ec247--campaign-ยังเปิด-modal-ได้-chromium/test-failed-1.png
+Error: page.waitForURL: Test timeout of 30000ms exceeded.
+../../../adm20-pw-red/results/group-buy-admin-pages-ADM--5e1c5-rrorBoundary-พาไป-app-login-chromium/test-failed-1.png
+3 failed
+1 passed (46.3s)
+
+## Green
+### jest group-buy-pages.unit.spec.ts (exit 0)
+Tests:       10 passed, 10 total
+### pnpm --filter backend test:unit (exit 0)
+Test Suites: 99 passed, 99 total
+Tests:       1221 passed, 1221 total
+### playwright group-buy-admin-pages + group-buy-admin-form (build หลังแก้, exit 0)
+✓   1 [chromium] › e2e/group-buy-admin-form.spec.ts:104:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (3.8s)
+✓   2 [chromium] › e2e/group-buy-admin-form.spec.ts:186:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (3.7s)
+✓   3 [chromium] › e2e/group-buy-admin-form.spec.ts:240:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (4.7s)
+✓   4 [chromium] › e2e/group-buy-admin-form.spec.ts:297:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (13.0s)
+✓   5 [chromium] › e2e/group-buy-admin-form.spec.ts:366:5 › AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง body เป็น UTC (2.9s)
+✓   6 [chromium] › e2e/group-buy-admin-form.spec.ts:402:7 › ADM-13: หัวตารางรายการแคมเปญ › AC-17: heading และปุ่ม Create campaign อยู่แถวเดียวกันใน gb-campaigns-table และยังเห็นคำเตือน GBT- (1.2s)
+✓   7 [chromium] › e2e/group-buy-admin-pages.spec.ts:55:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL (2.9s)
+✓   8 [chromium] › e2e/group-buy-admin-pages.spec.ts:128:7 › ADM-10: gb_offset ใน URL ที่ผิดรูป › AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp (6.8s)
+✓   9 [chromium] › e2e/group-buy-admin-pages.spec.ts:185:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 500 → gb-campaigns-error แทน empty state, ปุ่ม Create campaign ยังเปิด modal ได้ (2.7s)
+✓  10 [chromium] › e2e/group-buy-admin-pages.spec.ts:204:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: network ล้ม (route.abort) → gb-campaigns-error และปุ่ม Create campaign ยังเปิด modal ได้ (2.6s)
+✓  11 [chromium] › e2e/group-buy-admin-pages.spec.ts:218:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+✓  12 [chromium] › e2e/group-buy-admin-pages.spec.ts:230:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบสำเร็จแต่ไม่มีแคมเปญ → empty state เดิม ไม่มี gb-campaigns-error (1.2s)
+12 passed (49.2s)
+
+## lint / typecheck / build
+pnpm lint: exit 0 (0 errors)
+pnpm typecheck: exit 0
+pnpm --filter backend build (รวม admin): exit 0
+pnpm --filter storefront test:e2e:unit: exit 0 (103 passed)
+
+## ไม่ได้รันในเครื่อง (ให้ CI)
+integration http/modules, e2e ชุดเต็ม, docker-worker-mode
