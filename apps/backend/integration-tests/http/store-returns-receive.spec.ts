@@ -15,6 +15,9 @@ import { createAdminUser } from "../helpers/admin"
 import { shipOrderItems } from "../helpers/ship-order"
 
 jest.setTimeout(240 * 1000)
+// AC-151 (ค่าคอม): affiliate module ต้องมี tokenSecret ตอนบูต — ตั้งค่าของ test เองแบบ affiliate-attribution.spec.ts
+// (ไม่พึ่ง env ของเครื่อง/CI)
+process.env.AFFILIATE_TOKEN_SECRET = "core55-integration-secret"
 
 // CORE-55 (spec 01 กฎข้อ 113, ADR-022): createAndCompleteReturnOrderWorkflow ของ Medusa 2.22.1 เติม location จาก
 // return option ให้เฉพาะ fulfillment ไม่ถึงตัว return → return จากหน้าเว็บมี location_id null และ admin รับของไม่ได้ (500)
@@ -242,14 +245,9 @@ medusaIntegrationTestRunner({
       return data
     }
 
-    const fulfillmentsOf = async (order: Order) => {
-      const { data } = await query().graph({
-        entity: "order",
-        fields: ["fulfillments.id", "fulfillments.location_id"],
-        filters: { id: order.id },
-      })
-      return data[0].fulfillments ?? []
-    }
+    // fulfillment ของ return ถูก link กับ return (ไม่ใช่ order) จึงนับจาก fulfillment module ทั้งระบบ
+    const fulfillmentIds = async () =>
+      (await getContainer().resolve(Modules.FULFILLMENT).listFulfillments({}, { select: ["id"] })).map((f) => f.id).sort()
 
     const levelAtReturnLocation = async () => {
       const [level] = await getContainer()
@@ -365,7 +363,7 @@ medusaIntegrationTestRunner({
 
     it("AC-153: a managed item without a level at the option's location → 400 'This item cannot be returned online', nothing created", async () => {
       const order = await placeOrder(variants.elsewhere)
-      const fulfillments = await fulfillmentsOf(order)
+      const fulfillments = await fulfillmentIds()
       const { status, data } = await requestReturn(order)
       expect({ status, type: data?.type, message: data?.message }).toEqual({
         status: 400,
@@ -373,7 +371,7 @@ medusaIntegrationTestRunner({
         message: "This item cannot be returned online",
       })
       expect(await returnsOf(order)).toEqual([])
-      expect(await fulfillmentsOf(order)).toEqual(fulfillments)
+      expect(await fulfillmentIds()).toEqual(fulfillments)
     })
 
     it("AC-153: an unmanaged item is returned and received at the option's location; inventory does not change", async () => {

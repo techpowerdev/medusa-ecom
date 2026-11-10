@@ -24,11 +24,13 @@ type OrderLine = {
   } | null
 }
 
+// fail-closed: line ที่หาไม่เจอใน order ถือว่าไม่ผ่าน (ปกติ CORE-20b ตอบ 400 ไปก่อนแล้ว)
 const isStockedAt = (line: OrderLine | undefined, locationId: string) =>
-  !line?.variant?.manage_inventory ||
-  (line.variant.inventory_items ?? []).some((ii) =>
-    (ii?.inventory?.location_levels ?? []).some((level) => level?.location_id === locationId)
-  )
+  !!line &&
+  (!line.variant?.manage_inventory ||
+    (line.variant.inventory_items ?? []).some((ii) =>
+      (ii?.inventory?.location_levels ?? []).some((level) => level?.location_id === locationId)
+    ))
 
 // ตัวสุดท้ายของ chain: ผ่าน auth + ownership (CORE-13), override (CORE-16), option (CORE-17/21) และช่วงคืน (CORE-20b) แล้ว
 // อ่านจาก req.validatedBody (ผลของ validateAndTransformBody ของ core ซึ่งทำงานก่อน — ADR-022) ไม่อ่าน req.body.location_id

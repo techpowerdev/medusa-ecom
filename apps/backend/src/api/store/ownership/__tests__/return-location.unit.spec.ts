@@ -137,6 +137,15 @@ describe("assignStoreReturnLocation", () => {
     expect(t.calls[1]).toEqual(expect.objectContaining({ entity: "order", filters: { id: "order_1" } }))
   })
 
+  it("fails closed (400) for a body line that is not a line of the order", async () => {
+    const t = setup(
+      { shipping_option: [option("sloc_return")], order: [{ id: "order_1", items: [line("ordli_1", false, [])] }] },
+      validated(["ordli_missing"])
+    )
+    await expect(t.run()).rejects.toEqual(new MedusaError(MedusaError.Types.INVALID_DATA, RETURN_ITEM_NOT_STOCKED_MESSAGE))
+    expect(t.next).not.toHaveBeenCalled()
+  })
+
   it("fails loudly (not silently null) when core did not validate the body first", async () => {
     const t = setup({ shipping_option: [option("sloc_return")] }, undefined)
     await expect(t.run()).rejects.toThrow(MedusaError)
