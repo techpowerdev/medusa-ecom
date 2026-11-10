@@ -1,0 +1,50 @@
+# EV-16 (AC-46, spec 02 กฎข้อ 32) — ผลการทดสอบ 2026-11-10 (base origin/develop 11185452, Node 22, Postgres 16)
+## RED — integration http: evoucher-order-canceled.spec.ts ก่อนมี subscriber/workflow (exit 1)
+      ✕ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (2153 ms)
+      ✕ is idempotent on a repeated event and never touches a code claimed by another order (2564 ms)
+Tests:       2 failed, 2 total
+  ●  › AC-46 order.canceled releases allocated codes › returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 5
+    + Received  + 5
+
+      Object {
+    -   "allocated_at": null,
+    -   "customer_id": null,
+    -   "order_id": null,
+    -   "order_line_item_id": null,
+    -   "status": "available",
+    +   "allocated_at": 2026-11-10T03:47:58.140Z,
+    +   "customer_id": "cus_01M71S3NWG5CQ9J15KJ6DJ1EJ3",
+    +   "order_id": "order_01M71S3PBE26T882N387PJF2EJ",
+    +   "order_line_item_id": "ordli_01M71S3PBHESX1RFHQQPFG8JCF",
+    +   "status": "allocated",
+      }
+## RED — unit: evoucher-order-canceled.unit.spec.ts (exit 1)
+Cannot find module '../../workflows/evoucher/release-evoucher-codes-for-order' from 'src/subscribers/__tests__/evoucher-order-canceled.unit.spec.ts'
+## GREEN — unit: evoucher-order-canceled.unit.spec.ts (exit 0)
+    ✓ listens to order.canceled (1 ms)
+    ✓ passes only the order id into the workflow (1 ms)
+    ✓ logs the error with the order id and does not throw when the workflow fails
+Tests:       3 passed, 3 total
+## GREEN — integration http: evoucher-order-canceled.spec.ts (exit 0)
+      ✓ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (1522 ms)
+      ✓ is idempotent on a repeated event and never touches a code claimed by another order (1920 ms)
+      ✓ waits for the per-order e-voucher lock held by allocation or resend (2741 ms)
+Tests:       3 passed, 3 total
+## mutation — ตัด acquireLockStep ออกชั่วคราว: test lock ล้มตามคาด (exit 1) แล้วคืนโค้ด
+      ✕ waits for the per-order e-voucher lock held by allocation or resend (3883 ms)
+    Expected: "allocated"
+    Received: "available"
+Tests:       1 failed, 2 skipped, 3 total
+## unit ทั้งหมด (pnpm --filter backend test:unit, exit 0)
+Test Suites: 100 passed, 100 total
+Tests:       1222 passed, 1222 total
+## lint (pnpm lint, exit 0 — 0 errors; warning 2 ตัวของ backend มีอยู่เดิม ไม่ใช่ไฟล์ของ EV-16)
+## typecheck (pnpm typecheck, exit 0)
+## build (pnpm --filter backend build, exit 0)
+info:    Backend build completed successfully (10.04s)
+info:    Frontend build completed successfully (27.21s)
+## ไม่ได้รันในเครื่อง: integration http/modules ชุดเต็ม และ e2e (ให้ CI รัน)
