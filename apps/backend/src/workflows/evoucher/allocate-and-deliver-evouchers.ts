@@ -19,6 +19,7 @@ import { sendEvoucherAdminNotificationsStep } from "./steps/send-evoucher-admin-
 import { resolveDigitalShippingOptionStep } from "./steps/resolve-digital-shipping-option"
 import { buildEvoucherDeliveredNotificationStep } from "./steps/build-evoucher-delivered-notification"
 import { sendEvoucherDeliveredNotificationStep } from "./steps/send-evoucher-delivered-notification"
+import { createEvoucherShipmentsStep } from "./steps/create-evoucher-shipments"
 
 export { EVOUCHER_BACKORDERED_METADATA_KEY } from "./steps/evoucher-order"
 
@@ -33,6 +34,7 @@ export type AllocateAndDeliverEvouchersInput = {
  * flag backordered (ทั้ง line item; ล้าง flag เมื่อส่งมอบได้) + อีเมล admin (กฎข้อ 9) →
  * fulfillment ผ่าน provider digital → อีเมล `evoucher.delivered` (ciphertext, กฎข้อ 16) → สำเร็จจึง mark `delivered`;
  * ส่งล้ม → code คง `allocated` กับ order + แจ้ง admin ให้ resend (กฎข้อ 17)
+ * EV-17 (กฎข้อ 33): ส่งสำเร็จ → shipment แบบ no_notification (ยกเลิก fulfillment ของ code ที่ส่งมอบแล้วไม่ได้) ใต้ lock เดียวกัน
  * Idempotent (AC-7): line item ที่มี code แล้วถูกข้าม; key อีเมลต่อการ claim
  */
 export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
@@ -107,13 +109,20 @@ export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
         lines,
         allocated: claim.allocated,
       })
-      // ขั้นสุดท้ายและไม่ throw: mark `delivered` เฉพาะเมื่อส่งสำเร็จ; ล้ม → คง `allocated` + แจ้ง admin (กฎข้อ 17)
-      sendEvoucherDeliveredNotificationStep({
+      // ไม่ throw: mark `delivered` เฉพาะเมื่อส่งสำเร็จ; ล้ม → คง `allocated` + แจ้ง admin (กฎข้อ 17)
+      const delivery = sendEvoucherDeliveredNotificationStep({
         order,
         notification,
         code_ids: codeIds,
         admin_email: input.admin_email,
       })
+      // กฎข้อ 33d: ไม่ throw — `sent: true` (รวมกรณี mark delivered ล้ม เพราะลูกค้าได้ code แล้ว) → shipment; `sent: false` → ไม่สร้าง
+      const shipmentInput = transform({ order, claim, delivery }, ({ order, claim, delivery }) => ({
+        order_id: order.id,
+        line_item_ids: claim.allocated.map((a) => a.line_item_id),
+        sent: delivery.sent,
+      }))
+      createEvoucherShipmentsStep(shipmentInput)
     })
 
     releaseLockStep({ key: lockKey, ownerId: lockOwnerId })

@@ -1,0 +1,127 @@
+# EV-17 (AC-47, spec 02 กฎข้อ 33c–e, Q14 = ก) — ผลการทดสอบ 2026-11-10 (base origin/develop ed77a829, Node 22, Postgres 16, ไม่มี Redis)
+## RED — unit: create-evoucher-shipments.unit.spec.ts + evoucher-order-canceled.unit.spec.ts ก่อนมีโค้ด (exit 1)
+    Cannot find module '../create-evoucher-shipments' from 'src/workflows/evoucher/steps/__tests__/create-evoucher-shipments.unit.spec.ts'
+Tests:       1 failed, 2 passed, 3 total
+● evoucherOrderCanceledHandler › logs the error with the order id and does not throw when the workflow fails
+
+    expect(received).toMatch(expected)
+
+    Expected pattern: /order_2.*Failed to acquire lock/
+    Received string:  "evoucher: releasing allocated codes of canceled order order_2 failed: [object Object]"
+
+      39 |
+      40 |     expect(logger.error).toHaveBeenCalledTimes(1)
+    > 41 |     expect(String(logger.error.mock.calls[0][0])).toMatch(/order_2.*Failed to acquire lock/)
+         |                                                   ^
+      42 |     expect(String(logger.error.mock.calls[0][0])).not.toContain("[object Object]")
+      43 |   })
+      44 | })
+
+      at Object.toMatch (src/subscribers/__tests__/evoucher-order-canceled.unit.spec.ts:41:51)
+
+Test Suites: 2 failed, 2 total
+Tests:       1 failed, 2 passed, 3 total
+## RED — integration http: evoucher-order-canceled.spec.ts ก่อนมี step สร้าง shipment (exit 1)
+      ✓ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (2038 ms)
+      ✓ is idempotent on a repeated event and never touches a code claimed by another order (2616 ms)
+      ✓ releases the code exactly once when two runs for the same order arrive together (1376 ms)
+      ✓ handles two order.canceled events of the same order delivered together without an error (1496 ms)
+      ✓ cancels an order without e-vouchers without an error (1003 ms)
+      ✓ waits for the per-order e-voucher lock held by allocation or resend (2602 ms)
+      ✕ ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled (867 ms)
+      ✓ creates no shipment when the delivery email fails, so the fulfillment can still be canceled (895 ms)
+      ✕ creates the missing shipment on a successful resend and never a second one on a repeated resend (857 ms)
+      ✕ keeps the allocation and logs an error when creating the shipment fails (757 ms)
+Tests:       3 failed, 7 passed, 10 total
+  ●  › AC-47 delivered codes are shipped without a shipping notification › ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled
+
+    expect(received).not.toBeNull()
+
+    Received: null
+
+      429 |         const fulfillments = await fulfillmentsOf(orderId)
+      430 |         expect(fulfillments).toHaveLength(1)
+    > 431 |         expect(fulfillments[0].shipped_at).not.toBeNull()
+          |                                                ^
+      432 |         await shipped
+      433 |         expect(emitted).toEqual([expect.objectContaining({ id: fulfillments[0].id, no_notification: true })])
+      434 |         expect(await shippedEmails()).toHaveLength(0)
+
+      at Object.toBeNull (integration-tests/http/evoucher-order-canceled.spec.ts:431:48)
+
+  ●  › AC-47 delivered codes are shipped without a shipping notification › creates the missing shipment on a successful resend and never a second one on a repeated resend
+
+    expect(received).not.toBeNull()
+
+    Received: null
+
+      473 |
+      474 |         const [first] = await fulfillmentsOf(orderId)
+    > 475 |         expect(first.shipped_at).not.toBeNull()
+          |                                      ^
+      476 |         const errors = evoucherErrors()
+      477 |
+      478 |         await resendEvoucherEmailWorkflow(container).run({ input: { order_id: orderId } })
+
+      at Object.toBeNull (integration-tests/http/evoucher-order-canceled.spec.ts:475:38)
+
+  ●  › AC-47 delivered codes are shipped without a shipping notification › keeps the allocation and logs an error when creating the shipment fails
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 3
+    + Received  + 1
+
+    - Array [
+    -   StringMatching /ful_01M71ZXDPBTTER5SBZ7Z0ZW80N.*fulfillment provider down/,
+    - ]
+    + Array []
+
+      515 |         const [fulfillment] = await fulfillmentsOf(orderId)
+      516 |         expect(fulfillment).toMatchObject({ shipped_at: null, canceled_at: null })
+    > 517 |         expect(errors()).toEqual([expect.stringMatching(new RegExp(`${fulfillment.id}.*fulfillment provider down`))])
+          |                          ^
+      518 |       })
+      519 |     })
+      520 |   },
+
+      at Object.toEqual (integration-tests/http/evoucher-order-canceled.spec.ts:517:26)
+## GREEN — unit: create-evoucher-shipments.unit.spec.ts + evoucher-order-canceled.unit.spec.ts (exit 0)
+Tests:       8 passed, 8 total
+## GREEN — integration http: evoucher-order-canceled.spec.ts (exit 0)
+      ✓ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (1449 ms)
+      ✓ is idempotent on a repeated event and never touches a code claimed by another order (1811 ms)
+      ✓ releases the code exactly once when two runs for the same order arrive together (1259 ms)
+      ✓ handles two order.canceled events of the same order delivered together without an error (1334 ms)
+      ✓ cancels an order without e-vouchers without an error (792 ms)
+      ✓ waits for the per-order e-voucher lock held by allocation or resend (2654 ms)
+      ✓ ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled (835 ms)
+      ✓ creates no shipment when the delivery email fails, so the fulfillment can still be canceled (818 ms)
+      ✓ creates the missing shipment on a successful resend and never a second one on a repeated resend (750 ms)
+      ✓ keeps the allocation and logs an error when creating the shipment fails (750 ms)
+Tests:       10 passed, 10 total
+## GREEN — integration http ที่ใช้ workflow เดียวกัน: evoucher-allocate.spec.ts + evoucher-resend.spec.ts (exit 0)
+Test Suites: 2 passed, 2 total
+Tests:       26 passed, 26 total
+## mutation (แก้ create-evoucher-shipments.ts ชั่วคราว รันเฉพาะ -t "AC-47" แล้วคืนโค้ด) — ทุกตัว exit 1
+### M1-notification: no_notification: false
+      ✕ ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled (1249 ms)
+      ✕ creates the missing shipment on a successful resend and never a second one on a repeated resend (859 ms)
+Tests:       2 failed, 6 skipped, 2 passed, 10 total
+### M2-skip-shipped: ไม่ข้าม fulfillment ที่ shipped แล้ว
+      ✕ creates the missing shipment on a successful resend and never a second one on a repeated resend (923 ms)
+Tests:       1 failed, 6 skipped, 3 passed, 10 total
+### M3-ignore-sent: ไม่เช็ก sent (อีเมลล้มก็สร้าง shipment)
+      ✕ creates no shipment when the delivery email fails, so the fulfillment can still be canceled (1138 ms)
+      ✕ creates the missing shipment on a successful resend and never a second one on a repeated resend (852 ms)
+Tests:       2 failed, 6 skipped, 2 passed, 10 total
+### M4-throw: throw ต่อเมื่อสร้าง shipment ล้ม
+      ✕ keeps the allocation and logs an error when creating the shipment fails (843 ms)
+Tests:       1 failed, 6 skipped, 3 passed, 10 total
+## unit ทั้งชุด: pnpm --filter backend test:unit (exit 0)
+Test Suites: 103 passed, 103 total
+Tests:       1251 passed, 1251 total
+## pnpm lint (exit 0, backend 0 errors — warning 2 รายการเป็นของไฟล์เดิม) / pnpm typecheck (exit 0) / pnpm --filter backend build (exit 0)
+info:    Backend build completed successfully (5.68s)
+info:    Frontend build completed successfully (14.85s)
+## ไม่ได้รันในเครื่อง: integration http/modules ชุดเต็ม, docker-worker-mode, e2e storefront — ให้ CI

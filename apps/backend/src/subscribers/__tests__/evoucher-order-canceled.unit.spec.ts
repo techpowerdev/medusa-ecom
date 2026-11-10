@@ -32,11 +32,13 @@ describe("evoucherOrderCanceledHandler", () => {
   })
 
   it("logs the error with the order id and does not throw when the workflow fails", async () => {
-    run.mockRejectedValue(new Error("Failed to acquire lock"))
+    // error จาก workflow.run() ไม่ใช่ instanceof Error (เป็น object ที่มี message) — ต้องไม่ log เป็น [object Object]
+    run.mockRejectedValue({ message: "Failed to acquire lock" })
 
     await expect(handle("order_2")).resolves.toBeUndefined()
 
     expect(logger.error).toHaveBeenCalledTimes(1)
     expect(String(logger.error.mock.calls[0][0])).toMatch(/order_2.*Failed to acquire lock/)
+    expect(String(logger.error.mock.calls[0][0])).not.toContain("[object Object]")
   })
 })

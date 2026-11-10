@@ -18,8 +18,13 @@ import { EVOUCHER_MODULE } from "../../src/modules/evoucher"
 import EvoucherModuleService from "../../src/modules/evoucher/service"
 import { allocateAndDeliverEvouchersWorkflow } from "../../src/workflows/evoucher/allocate-and-deliver-evouchers"
 import { releaseEvoucherCodesForOrderWorkflow } from "../../src/workflows/evoucher/release-evoucher-codes-for-order"
+import { resendEvoucherEmailWorkflow } from "../../src/workflows/evoucher/resend-evoucher-email"
 import { evoucherOrderLockKey } from "../../src/workflows/evoucher/steps/evoucher-order"
 import evoucherOrderCanceledHandler from "../../src/subscribers/evoucher-order-canceled"
+import { EmailTemplates } from "../../src/modules/resend/templates"
+
+// provider ของ Notification module ใน test — ให้ provider throw เฉพาะ `evoucher.delivered` (อีเมลล้มตามกฎข้อ 17)
+import localNotificationProvider from "@medusajs/medusa/notification-local"
 
 jest.setTimeout(300 * 1000)
 
@@ -32,6 +37,7 @@ const ADMIN_PASSWORD = "ev16-test-password"
 type Voucher = { variantId: string; poolId: string; inventoryItemId: string }
 
 // EV-16 (spec 02 กฎข้อ 32, AC-46): order.canceled → code `allocated` ของ order กลับเป็น `available`
+// EV-17 (spec 02 กฎข้อ 33, AC-47): อีเมล code สำเร็จ → shipment แบบ no_notification (ยกเลิก fulfillment ของ code ที่ส่งมอบแล้วไม่ได้)
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let container: MedusaContainer
@@ -76,6 +82,10 @@ medusaIntegrationTestRunner({
         password: ADMIN_PASSWORD,
       })
       adminHeaders = { headers: { authorization: `Bearer ${data.token}` } }
+    })
+
+    afterEach(() => {
+      jest.restoreAllMocks()
     })
 
     // pool + import ผ่าน admin route จริง (import ตั้ง stocked ของ inventory level ตามจำนวน code)
@@ -203,8 +213,33 @@ medusaIntegrationTestRunner({
     const availableCount = async (v: Voucher) =>
       (await service.listEvoucherCodes({ pool_id: v.poolId, status: "available" })).length
 
+    // อีเมล `evoucher.delivered` ล้มที่ provider (Notification module บันทึก failure ตามจริง) — อีเมลอื่นส่งปกติ
+    const failDeliveryEmail = () => {
+      const LocalProvider = localNotificationProvider.services[0]
+      const originalSend = LocalProvider.prototype.send
+      return jest.spyOn(LocalProvider.prototype, "send").mockImplementation(async function (
+        this: unknown,
+        notification: { template: string }
+      ) {
+        if (notification.template === "evoucher.delivered") {
+          throw new Error("smtp down")
+        }
+        return originalSend.call(this, notification)
+      })
+    }
+
+    const fulfillmentsOf = async (orderId: string) => {
+      const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+        entity: "order",
+        fields: ["fulfillments.id", "fulfillments.shipped_at", "fulfillments.canceled_at"],
+        filters: { id: orderId },
+      })
+      return (data[0].fulfillments ?? []).filter((f): f is NonNullable<typeof f> => !!f)
+    }
+
     // Given ตาม AC-46: line X (pool PX) มี code `delivered`, line Y (pool PY) มี code `allocated`
-    // (allocation จริงส่งมอบทั้งสอง line แล้วตั้ง code ของ Y กลับเป็น `allocated` แบบอีเมลล้มตามกฎข้อ 17)
+    // (allocation จริงที่อีเมลล้มตามกฎข้อ 17 → ทั้งสอง line `allocated` และ fulfillment ยังไม่ shipped แล้วตั้ง code ของ X
+    // เป็น `delivered` ด้วย updateEvoucherCodes — สภาพของ code ที่ส่งมอบแล้วแต่สร้าง shipment ไม่สำเร็จ ตามกฎข้อ 33d)
     const givenDeliveredAndAllocated = async () => {
       const px = await createVoucher("X-0001\nX-0002\n")
       const py = await createVoucher("Y-0001\nY-0002\n")
@@ -212,18 +247,19 @@ medusaIntegrationTestRunner({
         { variant_id: px.variantId, quantity: 1 },
         { variant_id: py.variantId, quantity: 1 },
       ])
+      const send = failDeliveryEmail()
       await allocateAndDeliverEvouchersWorkflow(container).run({ input: { order_id: orderId } })
-      const lineY = await lineOf(orderId, py.variantId)
-      const [codeY] = await service.listEvoucherCodes({ order_line_item_id: lineY })
-      await service.updateEvoucherCodes({
-        id: codeY.id,
-        status: "allocated",
-        delivered_at: null,
-        delivered_to_email: null,
-      })
+      send.mockRestore()
       const [codeX] = await service.listEvoucherCodes({ order_line_item_id: await lineOf(orderId, px.variantId) })
-      expect(codeX.status).toBe("delivered")
-      return { px, py, orderId, codeX, codeY }
+      await service.updateEvoucherCodes({
+        id: codeX.id,
+        status: "delivered",
+        delivered_at: new Date(),
+        delivered_to_email: "ev16-buyer@example.com",
+      })
+      const [codeY] = await service.listEvoucherCodes({ order_line_item_id: await lineOf(orderId, py.variantId) })
+      expect(codeY.status).toBe("allocated")
+      return { px, py, orderId, codeX: { ...codeX, status: "delivered" }, codeY }
     }
 
     describe("AC-46 order.canceled releases allocated codes", () => {
@@ -363,6 +399,122 @@ medusaIntegrationTestRunner({
         // run นี้ปล่อย lock ของตัวเองแล้ว — owner อื่นถือต่อได้ทันที
         await locking.acquire(evoucherOrderLockKey(orderId), { ownerId: "ev16-next-run", expire: 1 })
         await locking.release(evoucherOrderLockKey(orderId), { ownerId: "ev16-next-run" })
+      })
+    })
+
+    describe("AC-47 delivered codes are shipped without a shipping notification", () => {
+      const shippedEmails = () =>
+        container.resolve(Modules.NOTIFICATION).listNotifications({ template: EmailTemplates.ORDER_SHIPPED })
+
+      it("ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled", async () => {
+        const p = await createVoucher("P-0001\nP-0002\n")
+        const orderId = await placeOrder([{ variant_id: p.variantId, quantity: 2 }])
+        const emitted: unknown[] = []
+        const eventBus = container.resolve(Modules.EVENT_BUS)
+        const emit = eventBus.emit.bind(eventBus)
+        jest.spyOn(eventBus, "emit").mockImplementation(async (event, options) => {
+          for (const e of Array.isArray(event) ? event : [event]) {
+            if (e.name === "shipment.created") {
+              emitted.push(e.data)
+            }
+          }
+          return emit(event, options)
+        })
+        const shipped = TestEventUtils.waitSubscribersExecution("shipment.created", eventBus)
+
+        await allocateAndDeliverEvouchersWorkflow(container).run({ input: { order_id: orderId } })
+
+        const codes = await service.listEvoucherCodes({ order_id: orderId })
+        expect(codes.map((c) => c.status)).toEqual(["delivered", "delivered"])
+        const fulfillments = await fulfillmentsOf(orderId)
+        expect(fulfillments).toHaveLength(1)
+        expect(fulfillments[0].shipped_at).not.toBeNull()
+        await shipped
+        expect(emitted).toEqual([expect.objectContaining({ id: fulfillments[0].id, no_notification: true })])
+        expect(await shippedEmails()).toHaveLength(0)
+        // กฎข้อ 33c: Medusa ไม่ยอมยกเลิก fulfillment ที่ shipped → stock ของ P ไม่เกินจำนวน code ที่ขายได้
+        await expect(
+          cancelOrderFulfillmentWorkflow(container).run({
+            input: { order_id: orderId, fulfillment_id: fulfillments[0].id },
+          })
+        ).rejects.toBeTruthy()
+        expect((await fulfillmentsOf(orderId))[0].canceled_at).toBeNull()
+        expect(await sellable(p)).toBe(await availableCount(p))
+      })
+
+      // กฎข้อ 33e
+      it("creates no shipment when the delivery email fails, so the fulfillment can still be canceled", async () => {
+        const p = await createVoucher("Q-0001\n")
+        const orderId = await placeOrder([{ variant_id: p.variantId, quantity: 1 }])
+        failDeliveryEmail()
+
+        await allocateAndDeliverEvouchersWorkflow(container).run({ input: { order_id: orderId } })
+
+        const [code] = await service.listEvoucherCodes({ order_id: orderId })
+        expect(code.status).toBe("allocated")
+        const [fulfillment] = await fulfillmentsOf(orderId)
+        expect(fulfillment.shipped_at).toBeNull()
+        await cancelOrderFulfillmentWorkflow(container).run({
+          input: { order_id: orderId, fulfillment_id: fulfillment.id },
+        })
+        expect((await fulfillmentsOf(orderId))[0].canceled_at).not.toBeNull()
+      })
+
+      // กฎข้อ 33d: resend ที่สำเร็จสร้าง shipment ที่ยังขาด; resend ซ้ำไม่สร้างซ้ำ
+      it("creates the missing shipment on a successful resend and never a second one on a repeated resend", async () => {
+        const p = await createVoucher("R-0001\nR-0002\n")
+        const orderId = await placeOrder([{ variant_id: p.variantId, quantity: 2 }])
+        const send = failDeliveryEmail()
+        await allocateAndDeliverEvouchersWorkflow(container).run({ input: { order_id: orderId } })
+        send.mockRestore()
+        expect((await fulfillmentsOf(orderId))[0].shipped_at).toBeNull()
+
+        await resendEvoucherEmailWorkflow(container).run({ input: { order_id: orderId } })
+
+        const [first] = await fulfillmentsOf(orderId)
+        expect(first.shipped_at).not.toBeNull()
+        const errors = evoucherErrors()
+
+        await resendEvoucherEmailWorkflow(container).run({ input: { order_id: orderId } })
+
+        expect(errors()).toEqual([])
+        const after = await fulfillmentsOf(orderId)
+        expect(after).toHaveLength(1)
+        expect(new Date(after[0].shipped_at!).getTime()).toBe(new Date(first.shipped_at!).getTime())
+        expect((await service.listEvoucherCodes({ order_id: orderId })).map((c) => c.status)).toEqual([
+          "delivered",
+          "delivered",
+        ])
+        expect(await shippedEmails()).toHaveLength(0)
+      })
+
+      // กฎข้อ 33d: shipment ล้มต้องไม่ compensate allocation (ไม่ยกเลิก fulfillment ไม่ปล่อย code ที่ลูกค้าได้รับอีเมลแล้ว)
+      it("keeps the allocation and logs an error when creating the shipment fails", async () => {
+        const p = await createVoucher("S-0001\nS-0002\n")
+        const orderId = await placeOrder([{ variant_id: p.variantId, quantity: 1 }])
+        const fulfillmentModule = container.resolve(Modules.FULFILLMENT)
+        const update = fulfillmentModule.updateFulfillment.bind(fulfillmentModule)
+        jest.spyOn(fulfillmentModule, "updateFulfillment").mockImplementation((async (
+          id: string,
+          data: { shipped_at?: Date }
+        ) => {
+          if (data.shipped_at) {
+            throw new Error("fulfillment provider down")
+          }
+          return update(id, data as never)
+        }) as never)
+        const errors = evoucherErrors()
+
+        const { result } = await allocateAndDeliverEvouchersWorkflow(container).run({
+          input: { order_id: orderId },
+        })
+
+        expect(result.allocated).toHaveLength(1)
+        const [code] = await service.listEvoucherCodes({ order_id: orderId })
+        expect(code.status).toBe("delivered")
+        const [fulfillment] = await fulfillmentsOf(orderId)
+        expect(fulfillment).toMatchObject({ shipped_at: null, canceled_at: null })
+        expect(errors()).toEqual([expect.stringMatching(new RegExp(`${fulfillment.id}.*fulfillment provider down`))])
       })
     })
   },
