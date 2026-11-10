@@ -35,6 +35,8 @@ export type AllocateAndDeliverEvouchersInput = {
  * fulfillment ผ่าน provider digital → อีเมล `evoucher.delivered` (ciphertext, กฎข้อ 16) → สำเร็จจึง mark `delivered`;
  * ส่งล้ม → code คง `allocated` กับ order + แจ้ง admin ให้ resend (กฎข้อ 17)
  * EV-17 (กฎข้อ 33): ส่งสำเร็จ → shipment แบบ no_notification (ยกเลิก fulfillment ของ code ที่ส่งมอบแล้วไม่ได้) ใต้ lock เดียวกัน
+ * EV-18 (กฎข้อ 34): order ที่ถูกยกเลิกแล้ว (payment.captured มาช้า) → ไม่มี line voucher (resolveEvoucherLinesStep)
+ * จึงไม่ claim/flag/อีเมล/fulfillment และจบสำเร็จ — ตรวจ `status` ที่ query ใต้ lock เดียวกัน
  * Idempotent (AC-7): line item ที่มี code แล้วถูกข้าม; key อีเมลต่อการ claim
  */
 export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
@@ -56,6 +58,7 @@ export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
       entity: "order",
       fields: [
         "id",
+        "status",
         "display_id",
         "email",
         "customer_id",
