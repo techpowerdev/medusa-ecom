@@ -12,7 +12,7 @@
 - docs ของ Medusa ("Restrict Return Creation") แนะนำปิดช่องโหว่ route นี้ด้วย middleware แต่ไม่พูดถึง `location_id`
 
 ## ทางเลือก
-ก. **[เสนอ]** เพิ่ม middleware ตัวสุดท้ายของ `POST /store/returns` อ่าน location จาก return option ที่ผ่าน CORE-17/21 แล้วตั้ง `req.validatedBody.location_id`
+ก. เพิ่ม middleware ตัวสุดท้ายของ `POST /store/returns` อ่าน location จาก return option ที่ผ่าน CORE-17/21 แล้วตั้ง `req.validatedBody.location_id`
    — ข้อดี: โค้ดน้อยที่สุด ใช้ route/workflow ของ core ทั้งหมด ไม่เปิด input ให้ client; ข้อเสีย: พึ่งลำดับ middleware ของ core (ถ้าเปลี่ยน `req.validatedBody` เป็น undefined → 500 ชัดเจน และ integration test ของ AC-150 ล้ม)
 
 ข. สร้าง `src/api/store/returns/route.ts` แทน route ของ core แล้วเรียก workflow พร้อม location
