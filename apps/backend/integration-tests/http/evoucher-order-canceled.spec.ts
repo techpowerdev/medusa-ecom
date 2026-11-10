@@ -19,6 +19,7 @@ import EvoucherModuleService from "../../src/modules/evoucher/service"
 import { allocateAndDeliverEvouchersWorkflow } from "../../src/workflows/evoucher/allocate-and-deliver-evouchers"
 import { releaseEvoucherCodesForOrderWorkflow } from "../../src/workflows/evoucher/release-evoucher-codes-for-order"
 import { evoucherOrderLockKey } from "../../src/workflows/evoucher/steps/evoucher-order"
+import evoucherOrderCanceledHandler from "../../src/subscribers/evoucher-order-canceled"
 
 jest.setTimeout(300 * 1000)
 
@@ -182,6 +183,16 @@ medusaIntegrationTestRunner({
     const cancelOrder = (orderId: string) =>
       andWaitCanceled(() => cancelOrderWorkflow(container).run({ input: { order_id: orderId } }))
 
+    // subscriber กลืน error เป็น log (กฎข้อ 32b) — "ไม่ error" จึงตรวจจาก logger.error ที่ขึ้นต้นด้วย `evoucher:`
+    const evoucherErrors = () => {
+      const spy = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "error")
+      return () => {
+        const lines = spy.mock.calls.map(([line]) => String(line)).filter((line) => line.startsWith("evoucher:"))
+        spy.mockRestore()
+        return lines
+      }
+    }
+
     const sellable = async (v: Voucher) => {
       const [level] = await container
         .resolve(Modules.INVENTORY)
@@ -250,9 +261,14 @@ medusaIntegrationTestRunner({
         const before = await service.listEvoucherCodes({ pool_id: py.poolId }, { order: { id: "ASC" } })
 
         // event ซ้ำของ order A
+        const errors = evoucherErrors()
         await andWaitCanceled(() =>
           container.resolve(Modules.EVENT_BUS).emit({ name: "order.canceled", data: { id: orderId } })
         )
+        expect(errors()).toEqual([])
+        expect(
+          (await releaseEvoucherCodesForOrderWorkflow(container).run({ input: { order_id: orderId } })).result
+        ).toEqual({ released: 0 })
 
         const after = await service.listEvoucherCodes({ pool_id: py.poolId }, { order: { id: "ASC" } })
         expect(after.map((c) => [c.id, c.status, c.order_id, c.allocated_at])).toEqual(
@@ -260,6 +276,71 @@ medusaIntegrationTestRunner({
         )
         const [x] = await service.listEvoucherCodes({ id: codeX.id })
         expect(x).toMatchObject({ status: "delivered", order_id: orderId })
+      })
+
+      it("releases the code exactly once when two runs for the same order arrive together", async () => {
+        const { orderId, codeX, codeY } = await givenDeliveredAndAllocated()
+
+        const runs = await Promise.all([
+          releaseEvoucherCodesForOrderWorkflow(container).run({ input: { order_id: orderId } }),
+          releaseEvoucherCodesForOrderWorkflow(container).run({ input: { order_id: orderId } }),
+        ])
+
+        expect(runs.map(({ result }) => result.released).sort()).toEqual([0, 1])
+        const [y] = await service.listEvoucherCodes({ id: codeY.id })
+        expect(y).toMatchObject({ status: "available", order_id: null, order_line_item_id: null })
+        const [x] = await service.listEvoucherCodes({ id: codeX.id })
+        expect(x).toMatchObject({ status: "delivered", order_id: orderId })
+      })
+
+      it("handles two order.canceled events of the same order delivered together without an error", async () => {
+        const { orderId, codeX, codeY } = await givenDeliveredAndAllocated()
+        const event = { name: "order.canceled", data: { id: orderId } }
+        const errors = evoucherErrors()
+
+        await Promise.all([
+          evoucherOrderCanceledHandler({ event, container } as never),
+          evoucherOrderCanceledHandler({ event, container } as never),
+        ])
+
+        expect(errors()).toEqual([])
+        const [y] = await service.listEvoucherCodes({ id: codeY.id })
+        expect(y).toMatchObject({ status: "available", order_id: null })
+        const [x] = await service.listEvoucherCodes({ id: codeX.id })
+        expect(x).toMatchObject({ status: "delivered", order_id: orderId })
+      })
+
+      it("cancels an order without e-vouchers without an error", async () => {
+        seq += 1
+        const { result } = await createProductsWorkflow(container).run({
+          input: {
+            products: [
+              {
+                title: `Plain product ${seq}`,
+                status: "published",
+                sales_channels: [{ id: salesChannelId }],
+                options: [{ title: "Size", values: ["One"] }],
+                variants: [
+                  {
+                    title: "One",
+                    options: { Size: "One" },
+                    manage_inventory: false,
+                    prices: [{ currency_code: "thb", amount: 300 }],
+                  },
+                ],
+              },
+            ],
+          },
+        })
+        const orderId = await placeOrder([{ variant_id: result[0].variants[0].id, quantity: 1 }])
+        const errors = evoucherErrors()
+
+        await cancelOrder(orderId)
+
+        expect(errors()).toEqual([])
+        expect(
+          (await releaseEvoucherCodesForOrderWorkflow(container).run({ input: { order_id: orderId } })).result
+        ).toEqual({ released: 0 })
       })
 
       // กฎข้อ 32b: ถือ lock `evoucher-order:<order_id>` ร่วมกับ allocation/resend — รอจน run อื่นปล่อย lock

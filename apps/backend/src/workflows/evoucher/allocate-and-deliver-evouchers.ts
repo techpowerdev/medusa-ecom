@@ -43,7 +43,12 @@ export const allocateAndDeliverEvouchersWorkflow = createWorkflow(
     // ไม่ลบ lock ที่ owner อื่นได้ไปหลัง TTL ของ run นี้หมด (release ที่ไม่ระบุ owner ลบ lock ของใครก็ได้)
     // (workflow-export ของ workflows-sdk 2.22.1 ตั้ง `context.transactionId` ให้ทุก run ที่ไม่ได้ระบุเอง)
     const lockOwnerId = transform({ input }, (_, { context }) => `evoucher-allocation:${context.transactionId}`)
-    acquireLockStep({ key: lockKey, ownerId: lockOwnerId, timeout: EVOUCHER_ORDER_LOCK_TIMEOUT, ttl: EVOUCHER_ORDER_LOCK_TTL })
+    acquireLockStep({
+      key: lockKey,
+      ownerId: lockOwnerId,
+      timeout: EVOUCHER_ORDER_LOCK_TIMEOUT,
+      ttl: EVOUCHER_ORDER_LOCK_TTL,
+    })
 
     const { data: orders } = useQueryGraphStep({
       entity: "order",
