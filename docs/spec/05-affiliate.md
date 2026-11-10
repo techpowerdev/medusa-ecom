@@ -7,7 +7,7 @@
 รอบ 20 2026-11-04: AF-18 ☑ #277, qa #277 D-1 (ชื่อละตินยาวไม่มีช่องว่างทำให้ header ของ portal ล้นทุกหน้า) → AF-19, กฎ 43, AC-51;
 รอบ 21 2026-11-04: AF-19 ☑ #286, qa #286 O-1 (ป้าย "รหัสแนะนำ" และรหัสแนะนำถูกตัดบรรทัดใน header) → AF-20, กฎ 44, AC-52;
 รอบ 23 2026-11-05: AF-20 ☑ #295 (train #299); qa #295 O-1 ปิดโดยไม่สร้าง task (กฎ 44(b)); nit review #295 ของ e2e → CORE-51 ของ spec 01; qa #295 O-2 (nav ของร้าน) → CORE-50 ของ spec 01;
-รอบ 27 2026-11-10: AF-21 (qa AF-M-02), กฎ 45, AC-53)
+รอบ 27 2026-11-10: AF-21 (qa AF-M-02), กฎ 45, AC-53; ปิดรอบ 27 2026-11-10: AF-21 ☑ #334, qa #334 → AF-22 (กฎ 46, AC-54))
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -322,6 +322,10 @@ Payout
     (c) ตอบ 400 `invalid_data` ข้อความคงที่ `"This referral code is reserved"` (Medusa นำหน้าด้วย `Invalid request:`) ไม่ต่อค่าจาก input;
     (d) storefront: `affiliateRegister` (`lib/data/affiliate-portal.ts:222`) จับข้อความนี้ด้วย helper pure ใน `lib/util/` แล้วแสดง "รหัสแนะนำนี้เป็นคำสงวน กรุณาเลือกรหัสอื่น" ที่ `affiliate-register-error`; error อื่นคงข้อความเดิม (`FetchError` ไม่มี `code` จึงจับจากข้อความแบบ CORE-20d และมี contract test);
     (e) ไม่ backfill: แถวและลิงก์ `/r/<code>` ที่มีอยู่แล้วทำงานต่อ; AF-M-03 ไม่อยู่ในกฎนี้ (รอ owner)
+46. (ปิดรอบ 27, AF-22 — qa #334; ตามแนว spec 01 กฎข้อ 61/CORE-23b) ฟอร์มสมัครและเข้าสู่ระบบของ portal (`modules/affiliate/components/auth-forms/index.tsx`) ใช้ `<form action={...}>` ของ React 19 ซึ่ง reset ฟอร์มหลัง action แม้ล้ม → หลัง error ผู้ใช้ต้องกรอกใหม่หมด:
+    (a) ทั้งสองฟอร์มใช้ `onSubmit={submitWithoutReset(action)}` (`lib/util/submit-without-reset.ts` ที่มีอยู่) แทน `action=` — หลัง error ทุกช่องคงค่าที่ผู้ใช้กรอก (รวมรหัสผ่าน) และ error แสดงที่ `affiliate-register-error`/`affiliate-login-error` ตามเดิม;
+    (b) กันกดซ้ำ: `useFormStatus` ของ `SubmitButton` ไม่เห็น submit แบบนี้ → ปุ่ม `affiliate-register-submit`/`affiliate-login-submit` disabled + loading จากค่าที่สามของ `useActionState` (เพิ่ม prop เลือกได้ให้ `SubmitButton` หรือใช้ `Button` ของ `@medusajs/ui` ตรงๆ — ไม่เขียน helper ใหม่);
+    (c) สำเร็จแล้ว redirect เข้า portal ตามเดิม; ไม่เปลี่ยนข้อความ, `data-testid`, validation ฝั่ง browser (`pattern`, `required`)
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -468,6 +472,11 @@ Payout
   integration (`affiliate-auth.spec.ts`): `POST /affiliate/register` ด้วยโทเคนใหม่และ `code: "admin"` → 400 `invalid_data`, `message` มี `This referral code is reserved`, ไม่มี affiliate ที่ `code = "admin"`; `code: "admin1"` → 200;
   Vitest: helper คืนข้อความไทย (ตรง regex อักษรไทย) กับ error ที่มีข้อความนี้ และคืนข้อความเดิมกับ error อื่น; contract: ข้อความใน helper ตรงกับใน `validators.ts`;
   e2e (`affiliate-portal.spec.ts`): สมัครด้วย `affiliate-register-code` = `admin` → `affiliate-register-error` visible ข้อความไทย ไม่พาเข้า portal; แก้เป็นรหัสไม่ซ้ำแล้วส่งอีเมลเดิมซ้ำ → เข้า portal สำเร็จ; AC-1..AC-52 ที่เกี่ยวกับ register ยังผ่าน
+- AC-54 (AF-22, กฎ 46) e2e (ต่อจาก `affiliate-portal.spec.ts`, 1280×800 และ 375×812): Given ฟอร์มสมัครกรอก `affiliate-register-name`, `affiliate-register-code` = `admin` (คำสงวนตาม AF-21), `affiliate-register-email`, `affiliate-register-password` When กด `affiliate-register-submit`
+  Then `affiliate-register-error` visible (อักษรไทย) และทั้งสี่ช่อง `toHaveValue` ค่าเดิมที่กรอก — **ล้มบน develop** (ช่องว่าง); When แก้เฉพาะ `affiliate-register-code` เป็นรหัสไม่ซ้ำแล้วกดอีกครั้ง Then เข้า portal (ไม่ต้องกรอกช่องอื่นใหม่);
+  Given ฟอร์มเข้าสู่ระบบกรอกอีเมลที่มีอยู่ + รหัสผ่านผิด When กด `affiliate-login-submit` Then `affiliate-login-error` visible และ `affiliate-login-email` คงค่าเดิม — **ล้มบน develop**;
+  Given request POST ของ server action จาก browser ถูกหน่วงด้วย `page.route` (≥ 1 วินาที) When กดส่ง Then ปุ่ม submit `toBeDisabled()` จนได้ผล และ double-click ส่ง POST ของ action เพียง 1 ครั้ง;
+  static (Playwright `unit` project หรือ Vitest): `auth-forms/index.tsx` ไม่มี `action={` บน `<form` และ import `submitWithoutReset`; AC-53 ยังผ่าน
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -491,6 +500,7 @@ Payout
 - (รอบ 20) e2e (375/639/1280, repeat 3): AC-51 (AF-19)
 - (รอบ 21) e2e (375/639/1280, repeat 3): AC-52 (AF-20)
 - (รอบ 27) unit jest + integration http + Vitest + e2e: AC-53 (AF-21) — เขียน unit jest ให้ล้มบน develop ก่อน (validator ตรวจแค่ regex)
+- (ปิดรอบ 27) e2e + static: AC-54 (AF-22) — เขียน e2e คงค่าหลัง error ให้ล้มบน develop ก่อน
 
 ## Tasks
 | ID | Task | Depends |
@@ -527,7 +537,8 @@ Payout
 | AF-19 | (storefront เล็ก ~50 LOC รวม e2e, รอบ 20 — qa #277 D-1) header ของ portal ไม่ล้นเมื่อชื่อละตินยาวไม่มีช่องว่าง: `min-w-0` + ตัดคำ + test id ชื่อ (กฎ 43) (AC-51) — ไฟล์: `app/[countryCode]/(main)/affiliate/layout.tsx`, e2e (ต่อจาก `e2e/affiliate-profile-overflow.spec.ts` ของ AF-18 หรือไฟล์ใหม่) — ☑ #286 (train #290) | none — **เริ่มได้** (AF-18 ☑ #277); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/layout.tsx`); ไม่บล็อก release |
 | AF-20 | (storefront เล็ก ~50 LOC รวม e2e, รอบ 21 — qa #286 O-1) header ของ portal: ป้าย "รหัสแนะนำ" ไม่ถูกตัดบรรทัด (`whitespace-nowrap` + `affiliate-code-label`) และรหัสแนะนำไม่ถูกตัดที่ `-` เมื่อพอดีบรรทัด โดยกฎ 43 ไม่ถอย (กฎ 44) (AC-52) — ไฟล์: `app/[countryCode]/(main)/affiliate/layout.tsx`, `e2e/affiliate-header-overflow.spec.ts`; viewport 375×812, 639×812 (+ 1280×800 ชื่อสั้น) — ☑ #295 (train #299) | none — **เริ่มได้** (AF-19 ☑ #286); ∥ ทุกตัว (ไม่มี task อื่นแตะ `affiliate/layout.tsx`); ไม่บล็อก release |
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
-| AF-21 | (backend + storefront เล็ก ~90 LOC, รอบ 27 — qa AF-M-02) ปฏิเสธคำสงวนตอน register + ข้อความไทย (กฎ 45) (AC-53) — ไฟล์: `apps/backend/src/api/affiliate/validators.ts` + `__tests__/validators.unit.spec.ts` (ใหม่), `apps/backend/integration-tests/http/affiliate-auth.spec.ts`, `apps/storefront/src/lib/data/affiliate-portal.ts`, `apps/storefront/src/lib/util/` (helper ใหม่) + test, `apps/storefront/e2e/affiliate-portal.spec.ts` | PR spec รอบ 27 merge; ไม่ชน CORE-55/EV-16/ADM-20; ไม่บล็อก release v0.1.0 |
+| AF-21 | (backend + storefront เล็ก ~90 LOC, รอบ 27 — qa AF-M-02) ปฏิเสธคำสงวนตอน register + ข้อความไทย (กฎ 45) (AC-53) — ไฟล์: `apps/backend/src/api/affiliate/validators.ts` + `__tests__/validators.unit.spec.ts` (ใหม่), `apps/backend/integration-tests/http/affiliate-auth.spec.ts`, `apps/storefront/src/lib/data/affiliate-portal.ts`, `apps/storefront/src/lib/util/` (helper ใหม่) + test, `apps/storefront/e2e/affiliate-portal.spec.ts` — ☑ #334 | PR spec รอบ 27 merge; ไม่ชน CORE-55/EV-16/ADM-20; ไม่บล็อก release v0.1.0 |
+| AF-22 | (storefront เล็ก ~80 LOC รวม e2e, ปิดรอบ 27 — qa #334) ฟอร์มสมัคร/เข้าสู่ระบบ portal คงค่าหลัง error (`submitWithoutReset`) + ปุ่มกันกดซ้ำจาก `isPending` (กฎ 46) (AC-54) — ไฟล์: `apps/storefront/src/modules/affiliate/components/auth-forms/index.tsx`, `apps/storefront/src/modules/checkout/components/submit-button/index.tsx` (ถ้าเพิ่ม prop), `apps/storefront/e2e/affiliate-portal.spec.ts`; viewport 1280×800, 375×812 | none — **เริ่มได้** (AF-21 ☑ #334); ∥ ทุกตัว; ไม่บล็อก release v0.1.0 |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
 (รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
@@ -545,6 +556,7 @@ cast `as unknown as` ของ `affiliateNames` ใน `list-table.tsx`, query �
 — กฎ 44(b) อนุญาต (ไม่ตัดเฉพาะเมื่อรหัสพอดีบรรทัด), ค่าที่คัดลอกตรงตัว, ไม่ล้นจอ (qa 240 การวัดผ่าน) และทางเลือกอื่น (`break-all` ตัดกลางกลุ่มตัวอักษร, ย่อตัวอักษร) อ่านยากกว่า;
 nit review #295 ของ e2e (`createActiveAffiliate` เป็น options object, `longCode()` ความกว้างคงที่, `evidenceTarget` ของ AC-52) → CORE-51 ของ spec 01 (e2e hygiene รวมกับ `DESKTOP_BASELINE`);
 qa #295 O-2 (ชื่อร้านใน nav ชิดไอคอนค้นหาที่ 320) → CORE-50 ของ spec 01
+(ปิดรอบ 27, 2026-11-10) merge แล้ว: AF-21 ☑ #334; ใหม่: AF-22 เริ่มได้ (qa #334 — ฟอร์มสมัครล้างค่าหลัง error); AF-M-03 ยังรอ owner
 (รอบ 11, review #146 AF-N2) nit `tryAcquire` ที่ `catch {}` กลืน error ทุกชนิด (ต้องข้ามเฉพาะ lock conflict) และ `.run()` ที่ throw แบบ sync ต้อง release lock — #146 merge แล้ว
 ถ้ายังไม่ได้แก้ ให้ PR ถัดไปที่แตะ maturity job แก้ (ไม่สร้าง task); ข้อสังเกต: entry `pending` ของ order ที่ยกเลิกและยอดสุทธิ = 0 ค้าง `pending` ถาวร (กฎ 5 ห้ามแก้ status ย้อน/ข้าม) และถูกสแกนทุกวันพร้อม log `affiliate_cancel_reconcile_noop`
 — ยอมรับใน v1 (ปริมาณน้อย; ไม่ใช่ยอดที่จ่ายได้) → backlog หลัง v1.0 พร้อม AF-11
