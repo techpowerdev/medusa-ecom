@@ -3,9 +3,9 @@ import crypto from "node:crypto"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import {
   STOREFRONT_COUNTRY as CC,
-  Headers,
   adminHeaders,
   createCustomer,
+  fulfillAndShip,
   placeOrder,
   publishableKey,
   signInAs,
@@ -17,24 +17,6 @@ import { expectThai } from "./support/thai-text"
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-20" } })
 
 const RETURN_OPTION_TYPE_CODE = "standard-return"
-
-async function fulfillAndShip(request: import("@playwright/test").APIRequestContext, admin: Headers, orderId: string) {
-  const { order } = await (
-    await request.get(`${BACKEND_URL}/admin/orders/${orderId}?fields=id,*items`, { headers: admin })
-  ).json()
-  const items = order.items.map((i: { id: string; quantity: number }) => ({ id: i.id, quantity: i.quantity }))
-  const fulfilled = await request.post(`${BACKEND_URL}/admin/orders/${orderId}/fulfillments?fields=id,*fulfillments`, {
-    headers: admin,
-    data: { items },
-  })
-  expect(fulfilled.status(), await fulfilled.text()).toBe(200)
-  const fulfillmentId = (await fulfilled.json()).order.fulfillments[0].id
-  const shipped = await request.post(`${BACKEND_URL}/admin/orders/${orderId}/fulfillments/${fulfillmentId}/shipments`, {
-    headers: admin,
-    data: { items },
-  })
-  expect(shipped.status(), await shipped.text()).toBe(200)
-}
 
 test("AC-65: ลูกค้าขอคืนสินค้าจาก order ที่ส่งแล้ว → return requested ใช้ Standard return; order ที่ยังไม่ fulfill ไม่มีปุ่ม", async ({
   page,
