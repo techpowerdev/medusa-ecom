@@ -219,3 +219,25 @@ export async function placeOrder(
   expect(completed.type, JSON.stringify(completed)).toBe("order")
   return { id: completed.order.id, displayId: completed.order.display_id }
 }
+
+/**
+ * CORE-20/CORE-55: fulfill + mark as shipped ทุก line ของ order ผ่าน admin API ของ Medusa (เหมือน admin กดในหน้า order)
+ * — ลูกค้าขอคืนได้เฉพาะ line ที่ส่งแล้ว (CORE-20b)
+ */
+export async function fulfillAndShip(request: APIRequestContext, admin: Headers, orderId: string) {
+  const { order } = await (
+    await request.get(`${BACKEND_URL}/admin/orders/${orderId}?fields=id,*items`, { headers: admin })
+  ).json()
+  const items = order.items.map((i: { id: string; quantity: number }) => ({ id: i.id, quantity: i.quantity }))
+  const fulfilled = await request.post(`${BACKEND_URL}/admin/orders/${orderId}/fulfillments?fields=id,*fulfillments`, {
+    headers: admin,
+    data: { items },
+  })
+  expect(fulfilled.status(), await fulfilled.text()).toBe(200)
+  const fulfillmentId = (await fulfilled.json()).order.fulfillments[0].id
+  const shipped = await request.post(`${BACKEND_URL}/admin/orders/${orderId}/fulfillments/${fulfillmentId}/shipments`, {
+    headers: admin,
+    data: { items },
+  })
+  expect(shipped.status(), await shipped.text()).toBe(200)
+}

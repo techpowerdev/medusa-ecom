@@ -1,0 +1,160 @@
+# CORE-55 — ผล test (spec 01 กฎข้อ 113, AC-150..154, ADR-022), Node v22.23.3, รันในเครื่อง 2026-11-10
+ฐาน origin/develop 11185452; backend :9520, storefront :8520, DB medusa_b_core55_e2e (e2e), integration runner สร้าง/ลบ DB เอง
+
+## Red 1: integration ใหม่ store-returns-receive.spec.ts บน develop (ยังไม่มี middleware) — exit 1
+        ✕ AC-150: a store return gets location_id from the return option (same as its fulfillment) and stays requested (1119 ms)
+        ✕ AC-151: admin receives 1 item → received, stock +1 at the return location, reserved unchanged, event emitted (1370 ms)
+        ✕ AC-151: receiving the full return of an attributed order appends a proportional reversed (returned) entry (1287 ms)
+        ✓ AC-153: a return option whose fulfillment set has no stock location → 400 invalid_data and no return (931 ms)
+        ✕ AC-153: a managed item without a level at the option's location → 400 'This item cannot be returned online', nothing created (1092 ms)
+        ✕ AC-153: an unmanaged item is returned and received at the option's location; inventory does not change (1899 ms)
+- AC-150: return.location_id = null; AC-151: POST /receive/confirm → 500 (log ของ core: "Cannot receive the Return at location null")
+- AC-153 (option ไม่มี location) ผ่านบน develop อยู่แล้วตามที่ spec ระบุ (test กันถอย)
+
+## Red 2: unit (return-location.unit.spec.ts ใหม่ + chain test ที่แก้) ก่อนมีไฟล์ return-location.ts
+    Cannot find module '../../api/store/ownership/return-location' from 'src/lib/__tests__/store-ownership.unit.spec.ts'
+    Cannot find module '../return-location' from 'src/api/store/ownership/__tests__/return-location.unit.spec.ts'
+    Cannot find module '../return-location' from 'src/api/store/ownership/__tests__/return-window.unit.spec.ts'
+    Test Suites: 3 failed, 3 total
+    Tests:       0 total
+    exit=1
+
+## Red 3: e2e AC-154 บน backend ที่ build จาก develop + test ใหม่ (stash เฉพาะการต่อ middleware) — exit 1
+    ✓  1 [chromium] › e2e/core-20-return-request.spec.ts:22:5 › AC-65: ลูกค้าขอคืนสินค้าจาก order ที่ส่งแล้ว → return requested ใช้ Standard return; order ที่ยังไม่ fulfill ไม่มีปุ่ม (2.8s)
+    ✘  2 [chromium] › e2e/core-55-return-receive.spec.ts:100:5 › AC-154: ลูกค้าขอคืนจากหน้าเว็บ → แอดมินกด Receive items ในหน้า order ได้ → return received และ stock +1 (2.7s)
+    exit=1
+- ล้มที่ assert location_id ของ return (null)
+- probe ชั่วคราว (สำเนา spec ที่ตัด assert location_id ออก ลบทิ้งหลังรัน) เพื่อยืนยันว่า e2e ไปถึงปุ่มในหน้า order ของ Admin จริง:
+    ✘  1 [chromium] › e2e/core-55-red-probe.spec.ts:100:5 › AC-154: ลูกค้าขอคืนจากหน้าเว็บ → แอดมินกด Receive items ในหน้า order ได้ → return received และ stock +1 (3.6s)
+    Error: POST /receive/confirm: {"code":"unknown_error","type":"unknown_error","message":"An unknown error occurred."}
+    Expected: 200
+    Received: 500
+    exit=1
+  backend log: "Cannot receive the Return at location null"
+
+## Green: unit ของ task
+    Test Suites: 3 passed, 3 total
+    Tests:       38 passed, 38 total
+    exit=0
+
+## Green: integration store-returns*.spec.ts (ใหม่ + ของเดิม CORE-13/16/17/20b/21 ไม่แก้) — --verbose
+    PASS integration-tests/http/store-returns-window.spec.ts (14.853 s)
+        ✓ shipped return_window_days + 1 days ago → 400 RETURN_WINDOW_EXPIRED and no return (1062 ms)
+        ✓ shipped 1 day ago → 200 and the return is created (997 ms)
+        ✓ delivered_at takes precedence over shipped_at (1540 ms)
+        ✓ a line that does not require shipping (e-voucher) → 400 RETURN_ITEM_NOT_SHIPPABLE (880 ms)
+        ✓ fulfilled but not shipped yet → 400 RETURN_ITEM_NOT_SHIPPED (876 ms)
+        ✓ an item id that is not a line of the order → 400 and the message does not echo the input (914 ms)
+        ✓ GET /store/orders/:id returns fulfillments.items.line_item_id to the owner only (982 ms)
+        ✓ middleware order: no token → 401, customer B → 404 (ownership runs before this check) (865 ms)
+    PASS integration-tests/http/store-returns-receive.spec.ts (12.043 s)
+        ✓ AC-150: a store return gets location_id from the return option (same as its fulfillment) and stays requested (1024 ms)
+        ✓ AC-151: admin receives 1 item → received, stock +1 at the return location, reserved unchanged, event emitted (1232 ms)
+        ✓ AC-151: receiving the full return of an attributed order appends a proportional reversed (returned) entry (1136 ms)
+        ✓ AC-153: a return option whose fulfillment set has no stock location → 400 invalid_data and no return (741 ms)
+        ✓ AC-153: a managed item without a level at the option's location → 400 'This item cannot be returned online', nothing created (867 ms)
+        ✓ AC-153: an unmanaged item is returned and received at the option's location; inventory does not change (1059 ms)
+    PASS integration-tests/http/store-returns-overrides.spec.ts (11.661 s)
+        ✓ seed has a return shipping option (is_return) that customers can use (173 ms)
+        ✓ owner sending return_shipping.price → 400 invalid_data and no return is created (1326 ms)
+        ✓ owner sending receive_now (true, full quantity) → 400 invalid_data and no return is created (838 ms)
+        ✓ owner sending receive_now (false) → 400 invalid_data and no return is created (998 ms)
+        ✓ owner sending location_id → 400 invalid_data and no return is created (1041 ms)
+        ✓ owner creates a return with the seeded option: price from the option, not received, location from the option (1148 ms)
+    PASS integration-tests/http/store-returns-transfer.spec.ts (8.913 s)
+          ✓ 401 without token, 404 for customer B (no return created), 200 for owner A (464 ms)
+          ✓ an order id that does not exist → 404; no order_id → rejected (not 200) (271 ms)
+          ✓ request/accept/decline/cancel → 404 without token, as B and as A; no transfer change; owner stays A (184 ms)
+    PASS integration-tests/http/store-returns-option.spec.ts (13.082 s)
+        ✓ owner using an outbound option (Standard, is_return=false) → 400 invalid_data and no return is created (953 ms)
+        ✓ owner using a return option disabled in store → 400 invalid_data and no return is created (997 ms)
+        ✓ owner using a return option of a service zone that does not cover the order address → 400 invalid_data and no return is created (980 ms)
+        ✓ owner using an option id that does not exist → 400 invalid_data and no return is created (837 ms)
+        ✓ owner using the seeded return option (Standard return) → 200 and the return is created (967 ms)
+        ✓ owner using a return option whose stock location is not in the order's sales channel → 400 invalid_data (838 ms)
+        ✓ owner whose order has no shipping country_code → 400 invalid_data and no return is created (922 ms)
+        ✓ owner using a missing option id → message does not echo the input and is the same for any id (871 ms)
+    Tests:       31 passed, 31 total
+    exit=0
+
+## Green: e2e (core-55 ใหม่ + core-20 ที่ย้าย fulfillAndShip ไป e2e/support/medusa.ts)
+    ✓  1 [chromium] › e2e/core-20-return-request.spec.ts:22:5 › AC-65: ลูกค้าขอคืนสินค้าจาก order ที่ส่งแล้ว → return requested ใช้ Standard return; order ที่ยังไม่ fulfill ไม่มีปุ่ม (11.2s)
+    ✓  2 [chromium] › e2e/core-55-return-receive.spec.ts:100:5 › AC-154: ลูกค้าขอคืนจากหน้าเว็บ → แอดมินกด Receive items ในหน้า order ได้ → return received และ stock +1 (13.1s)
+    2 passed (15.4s)
+    exit=0
+- รันซ้ำ core-55 + core-20c + core-20d --repeat-each=2 --workers=2:
+    12 passed (22.1s)
+    exit=0
+
+## ชุดอื่นในเครื่อง
+- backend test:unit ทั้งหมด (exit 0):
+    Test Suites: 100 passed, 100 total
+    Tests:       1227 passed, 1227 total
+- pnpm lint exit 0 (warning เดิม 2 ตัวของ backend ไม่เกี่ยวกับ task), pnpm typecheck exit 0
+- pnpm --filter backend build exit 0, storefront playwright --project=unit 103 passed (exit 0)
+- ไม่ได้รัน: integration:http/modules ชุดเต็ม และ e2e ชุดเต็ม (ให้ CI)
+
+## รอบแก้ CI + review #336 (2026-11-10)
+### B1: CI ไม่ตั้ง AFFILIATE_TOKEN_SECRET — ทำซ้ำในเครื่องด้วย env -u AFFILIATE_TOKEN_SECRET (ก่อนแก้, exit 1)
+    ✓ AC-150: a store return gets location_id from the return option (same as its fulfillment) and stays requested (1295 ms)
+    ✓ AC-151: admin receives 1 item → received, stock +1 at the return location, reserved unchanged, event emitted (1547 ms)
+    ✕ AC-151: receiving the full return of an attributed order appends a proportional reversed (returned) entry (181 ms)
+    ✓ AC-153: a return option whose fulfillment set has no stock location → 400 invalid_data and no return (891 ms)
+    ✓ AC-153: a managed item without a level at the option's location → 400 'This item cannot be returned online', nothing created (880 ms)
+    ✓ AC-153: an unmanaged item is returned and received at the option's location; inventory does not change (1056 ms)
+    affiliate token secret is not configured
+    Tests:       1 failed, 5 passed, 6 total
+    exit=1
+แก้: ตั้ง process.env.AFFILIATE_TOKEN_SECRET = "core55-integration-secret" ระดับ module ก่อน medusaIntegrationTestRunner
+(แบบ affiliate-reversal.spec.ts:36 / affiliate-attribution.spec.ts)
+
+### nit 2: line ใน body ที่ไม่อยู่ใน order → fail-closed 400 (unit ใหม่; red ก่อนแก้ return-location.ts)
+    ✕ fails closed (400) for a body line that is not a line of the order
+    Tests:       1 failed, 8 passed, 9 total
+    exit=1
+
+### nit 1: "ไม่มี fulfillment ใหม่" นับจาก listFulfillments ของ fulfillment module ก่อน/หลัง (fulfillment ของ return link กับ return ไม่ใช่ order)
+
+### Green หลังแก้ (env -u AFFILIATE_TOKEN_SECRET -u PORT)
+    PASS integration-tests/http/store-returns-option.spec.ts (16.481 s)
+        ✓ owner using an outbound option (Standard, is_return=false) → 400 invalid_data and no return is created (1140 ms)
+        ✓ owner using a return option disabled in store → 400 invalid_data and no return is created (1522 ms)
+        ✓ owner using a return option of a service zone that does not cover the order address → 400 invalid_data and no return is created (1024 ms)
+        ✓ owner using an option id that does not exist → 400 invalid_data and no return is created (1114 ms)
+        ✓ owner using the seeded return option (Standard return) → 200 and the return is created (1100 ms)
+        ✓ owner using a return option whose stock location is not in the order's sales channel → 400 invalid_data (979 ms)
+        ✓ owner whose order has no shipping country_code → 400 invalid_data and no return is created (1281 ms)
+        ✓ owner using a missing option id → message does not echo the input and is the same for any id (1032 ms)
+    PASS integration-tests/http/store-returns-window.spec.ts (15.696 s)
+        ✓ shipped return_window_days + 1 days ago → 400 RETURN_WINDOW_EXPIRED and no return (1023 ms)
+        ✓ shipped 1 day ago → 200 and the return is created (1316 ms)
+        ✓ delivered_at takes precedence over shipped_at (2069 ms)
+        ✓ a line that does not require shipping (e-voucher) → 400 RETURN_ITEM_NOT_SHIPPABLE (1111 ms)
+        ✓ fulfilled but not shipped yet → 400 RETURN_ITEM_NOT_SHIPPED (781 ms)
+        ✓ an item id that is not a line of the order → 400 and the message does not echo the input (917 ms)
+        ✓ GET /store/orders/:id returns fulfillments.items.line_item_id to the owner only (788 ms)
+        ✓ middleware order: no token → 401, customer B → 404 (ownership runs before this check) (975 ms)
+    PASS integration-tests/http/store-returns-overrides.spec.ts (11.7 s)
+        ✓ seed has a return shipping option (is_return) that customers can use (229 ms)
+        ✓ owner sending return_shipping.price → 400 invalid_data and no return is created (1078 ms)
+        ✓ owner sending receive_now (true, full quantity) → 400 invalid_data and no return is created (889 ms)
+        ✓ owner sending receive_now (false) → 400 invalid_data and no return is created (841 ms)
+        ✓ owner sending location_id → 400 invalid_data and no return is created (985 ms)
+        ✓ owner creates a return with the seeded option: price from the option, not received, location from the option (1134 ms)
+    PASS integration-tests/http/store-returns-transfer.spec.ts (9.387 s)
+          ✓ 401 without token, 404 for customer B (no return created), 200 for owner A (400 ms)
+          ✓ an order id that does not exist → 404; no order_id → rejected (not 200) (286 ms)
+          ✓ request/accept/decline/cancel → 404 without token, as B and as A; no transfer change; owner stays A (226 ms)
+    PASS integration-tests/http/store-returns-receive.spec.ts (13.904 s)
+        ✓ AC-150: a store return gets location_id from the return option (same as its fulfillment) and stays requested (1353 ms)
+        ✓ AC-151: admin receives 1 item → received, stock +1 at the return location, reserved unchanged, event emitted (1506 ms)
+        ✓ AC-151: receiving the full return of an attributed order appends a proportional reversed (returned) entry (1443 ms)
+        ✓ AC-153: a return option whose fulfillment set has no stock location → 400 invalid_data and no return (1008 ms)
+        ✓ AC-153: a managed item without a level at the option's location → 400 'This item cannot be returned online', nothing created (887 ms)
+        ✓ AC-153: an unmanaged item is returned and received at the option's location; inventory does not change (1446 ms)
+    Tests:       31 passed, 31 total
+    exit=0
+- backend test:unit ทั้งหมด exit 0:
+    Test Suites: 100 passed, 100 total
+    Tests:       1228 passed, 1228 total
+- pnpm lint exit 0, pnpm typecheck exit 0
