@@ -2,7 +2,7 @@
 
 สัญลักษณ์: ☐ ยังไม่ทำ · ◐ อยู่ใน PR · ☑ merge เข้า develop แล้ว · 🚀 release แล้ว · ✕ ปิด (owner ไม่ทำ / ไม่ต้องทำ) · ⏸ เลื่อนหลัง v1.0
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
-**รอบ 27 (2026-11-10, เอกสารล้วน) — บั๊กจากการทดสอบจริงบน develop `84b9e610`, สถานะล่าสุด**: **บล็อก release v0.1.0: CORE-55 ☐** (return จากหน้าเว็บรับของไม่ได้; ADR-022 accepted — เริ่มได้หลัง PR spec รอบ 27 merge) · ไม่บล็อก: EV-16 ∥ AF-21 ∥ ADM-20 (เริ่มได้เมื่อ PR รอบนี้ merge, ไม่ชนไฟล์กัน) · follow-up ที่ยังไม่สั่งทำ: ADM-21, ADM-22 · EV-17 (← EV-16) รอ owner ตอบ spec 02 Q14 ·
+**รอบ 27 (2026-11-10, เอกสารล้วน) — บั๊กจากการทดสอบจริงบน develop `84b9e610`, สถานะล่าสุด**: **บล็อก release v0.1.0: CORE-55 ☐** (return จากหน้าเว็บรับของไม่ได้; ADR-022 accepted — เริ่มได้หลัง PR spec รอบ 27 merge) · ไม่บล็อก: EV-16 ∥ AF-21 ∥ ADM-20 (เริ่มได้เมื่อ PR รอบนี้ merge, ไม่ชนไฟล์กัน) · follow-up ที่ยังไม่สั่งทำ: ADM-21, ADM-22 · EV-17 (← EV-16; owner ตอบ Q14 = ก) ·
 **ปิดรอบ 26 (2026-11-09, เอกสารล้วน)**: merge เข้า develop แล้วถึง #328 — #308 เอกสาร sync รอบ 25, CORE-50 #309, CORE-19f #310, ADM-11 #311, CORE-49 #312, ADM-12 #313, CORE-4j #314, ADM-10 #315, ADM-8b #316, OPS-20b #318, OPS-5 #319, EV-7d #320, ADM-13 #321, ADM-9 #322, #323 spec รอบ 26, #324 hotfix ADM-10 (`PageOffsetGate`), OPS-21 #325, EV-15 #326, ADM-14 #327, CORE-51 #328 (#317 draft พิสูจน์ของ CORE-49 ปิดโดยไม่ merge) ·
 เงื่อนไข release v0.1.0 ของรอบ 26 ครบ (OPS-21 ☑, EV-15 ☑) แต่**รอบ 27 เพิ่ม CORE-55** (`develop → main` owner เป็นผู้ merge) · งานที่เหลือ ☐ ไม่บล็อก release: CORE-52, CORE-53, CORE-54, GB-16, OPS-22, OPS-23, OPS-24, ADM-15..19 ·
 ก่อนเปิดร้านจริง: Q-F1 ค่าส่ง ฿10 เป็น placeholder (ข้อ 5) และ spec 06 Q1 ยืนยันบัญชี Stripe ไทย/PromptPay (ข้อ 6) อยู่ใน go-live checklist ของ `docs/ops/production.md`; ลด AC-15 ของ spec 08 กลับเป็น ≤ 2 (Q8) อยู่ใน checklist bump `@medusajs/*` ข้อ 9 ของ spec 07 ·
@@ -193,7 +193,7 @@ EV-7 **แตกรอบ 10** → EV-7a ☑ #155 → EV-7b ☑ #179 ∥ EV-7c �
 **EV-7e ☑ #217** (vouchers แบ่งหน้า, `support_contact`, บล็อก partner บน PDP; AC-43) · **EV-7d ☑ #320** (cart-totals digital-only, redirect ผ่าน `safeCountryCode`; AC-42)
 (รอบ 26) **EV-15 ☑ #326 — เงื่อนไข release v0.1.0** (Medusa 2.22.1 ไม่ลบ shipping method เมื่อเหลือ method เดียว: เก็บค่าส่งจากตะกร้า digital-only — hook `beforeRefreshingPaymentCollection`; กฎข้อ 31, AC-45; ADR-021 accepted)
 (รอบ 27) **EV-16 ☐** (code `allocated` ของ order ที่ยกเลิกกลับเป็น `available`, คง code `delivered`, idempotent, workflow + lock; กฎข้อ 32, AC-46; ไม่บล็อก release v0.1.0) →
-**EV-17 ☐ รอ owner ตอบ Q14** (stock ของ pool เกินเมื่อยกเลิก fulfillment ของ code ที่ส่งมอบแล้ว — ข้อจำกัดที่มีก่อน EV-16; กฎข้อ 33, AC-47; ไม่บล็อก release v0.1.0)
+**EV-17 ☐ เริ่มได้เมื่อ EV-16 merge** (stock ของ pool เกินเมื่อยกเลิก fulfillment ของ code ที่ส่งมอบแล้ว — Q14 = ก: สร้าง shipment `no_notification` หลังอีเมลสำเร็จ, order ที่มี voucher ส่งแล้วยกเลิกไม่ได้; กฎข้อ 33, AC-47; ไม่บล็อก release v0.1.0)
 
 ## M4 Flash sale — **v0.4.0**
 PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ☑ #38 · FS-7 ☑ #53 · PROMO-2 ☑ #50 ·
