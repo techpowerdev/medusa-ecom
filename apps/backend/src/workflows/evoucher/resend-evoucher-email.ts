@@ -54,6 +54,7 @@ export const resendEvoucherEmailWorkflow = createWorkflow(
     const shipmentInput = transform({ input, resend }, ({ input, resend }) => ({
       order_id: input.order_id,
       line_item_ids: resend.allocated.map((a) => a.line_item_id),
+      // คงที่: มาถึงตรงนี้ได้แปลว่าอีเมลสำเร็จ — sendEvoucherResendNotificationStep throw เมื่ออีเมลล้ม (กฎข้อ 33e)
       sent: true,
     }))
     createEvoucherShipmentsStep(shipmentInput)

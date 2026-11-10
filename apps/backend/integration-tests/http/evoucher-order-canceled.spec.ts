@@ -228,6 +228,40 @@ medusaIntegrationTestRunner({
       })
     }
 
+    const orderStatus = async (orderId: string) =>
+      (
+        await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+          entity: "order",
+          fields: ["status"],
+          filters: { id: orderId },
+        })
+      ).data[0].status
+
+    const levelOf = async (v: Voucher) => {
+      const [level] = await container
+        .resolve(Modules.INVENTORY)
+        .listInventoryLevels({ inventory_item_id: v.inventoryItemId, location_id: locationId })
+      return {
+        stocked: MathBN.convert(level.stocked_quantity).toNumber(),
+        reserved: MathBN.convert(level.reserved_quantity).toNumber(),
+      }
+    }
+
+    // route admin ที่ต้องถูกปฏิเสธ — คืนแค่ status/type (ไม่ปล่อย error ของ axios ที่มี circular reference ออกจาก test)
+    const adminRejection = async (path: string) => {
+      let response: { status: number; data: unknown }
+      try {
+        response = await api.post(path, {}, adminHeaders)
+      } catch (error) {
+        const { status, data } = (error as { response?: { status: number; data?: { type?: string } } }).response ?? {}
+        if (!status) {
+          throw new Error(`no response from ${path}: ${(error as Error).message}`)
+        }
+        return { status, type: data?.type }
+      }
+      throw new Error(`${path} expected a 4xx but got ${response.status} ${JSON.stringify(response.data).slice(0, 200)}`)
+    }
+
     const fulfillmentsOf = async (orderId: string) => {
       const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
         entity: "order",
@@ -432,14 +466,28 @@ medusaIntegrationTestRunner({
         await shipped
         expect(emitted).toEqual([expect.objectContaining({ id: fulfillments[0].id, no_notification: true })])
         expect(await shippedEmails()).toHaveLength(0)
-        // กฎข้อ 33c: Medusa ไม่ยอมยกเลิก fulfillment ที่ shipped → stock ของ P ไม่เกินจำนวน code ที่ขายได้
-        await expect(
-          cancelOrderFulfillmentWorkflow(container).run({
-            input: { order_id: orderId, fulfillment_id: fulfillments[0].id },
-          })
-        ).rejects.toBeTruthy()
+        // กฎข้อ 33c: admin ยกเลิก fulfillment ที่ shipped และยกเลิก order ไม่ได้ → stock ของ P ไม่ถูกคืนเกินจำนวน code ที่ขายได้
+        // (เทียบ stocked/reserved กับค่าก่อนยิง — ยกเลิก fulfillment เพิ่มทั้งสองค่าเท่ากัน `stocked − reserved` จึงจับไม่ได้)
+        const before = await levelOf(p)
+        for (const path of [
+          `/admin/orders/${orderId}/fulfillments/${fulfillments[0].id}/cancel`,
+          `/admin/orders/${orderId}/cancel`,
+        ]) {
+          const rejection = await adminRejection(path)
+          expect([path, rejection.status >= 400 && rejection.status < 500, rejection.type]).toEqual([
+            path,
+            true,
+            "not_allowed",
+          ])
+        }
+
+        expect((await service.listEvoucherCodes({ order_id: orderId })).map((c) => c.status)).toEqual([
+          "delivered",
+          "delivered",
+        ])
+        expect(await orderStatus(orderId)).not.toBe("canceled")
         expect((await fulfillmentsOf(orderId))[0].canceled_at).toBeNull()
-        expect(await sellable(p)).toBe(await availableCount(p))
+        expect(await levelOf(p)).toEqual(before)
       })
 
       // กฎข้อ 33e
@@ -458,6 +506,14 @@ medusaIntegrationTestRunner({
           input: { order_id: orderId, fulfillment_id: fulfillment.id },
         })
         expect((await fulfillmentsOf(orderId))[0].canceled_at).not.toBeNull()
+
+        // ยกเลิก order ได้ แล้ว code กลับเป็น `available` ตามกฎข้อ 32 (AC-46)
+        await cancelOrder(orderId)
+
+        expect(await orderStatus(orderId)).toBe("canceled")
+        const [released] = await service.listEvoucherCodes({ id: code.id })
+        expect(released).toMatchObject({ status: "available", order_id: null, order_line_item_id: null })
+        expect(await sellable(p)).toBe(await availableCount(p))
       })
 
       // กฎข้อ 33d: resend ที่สำเร็จสร้าง shipment ที่ยังขาด; resend ซ้ำไม่สร้างซ้ำ

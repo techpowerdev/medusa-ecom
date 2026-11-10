@@ -125,3 +125,37 @@ Tests:       1251 passed, 1251 total
 info:    Backend build completed successfully (5.68s)
 info:    Frontend build completed successfully (14.85s)
 ## ไม่ได้รันในเครื่อง: integration http/modules ชุดเต็ม, docker-worker-mode, e2e storefront — ให้ CI
+
+# รอบ 2 (แก้ตาม review PR #337) — 2026-11-10, merge origin/develop (มี #336 CORE-55) แล้ว
+## RED — unit: short-error.unit.spec.ts ก่อนย้าย shortError ไป modules/evoucher/utils (exit 1)
+    Cannot find module '../utils/short-error' from 'src/modules/evoucher/__tests__/short-error.unit.spec.ts'
+## mutation R1 — ย้อน allocate-and-deliver-evouchers.ts เป็นของ origin/develop (ไม่มี step shipment) รัน -t "AC-47" (exit 1)
+      ✕ ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled (1553 ms)
+      ✕ keeps the allocation and logs an error when creating the shipment fails (964 ms)
+Tests:       2 failed, 6 skipped, 2 passed, 10 total
+## mutation R2 — R1 + ตัด assert shipped_at/no_notification ออก ให้ assert route admin/stock จับเอง (exit 1)
+      ✕ ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled (1419 ms)
+      ✕ keeps the allocation and logs an error when creating the shipment fails (1295 ms)
+Tests:       2 failed, 6 skipped, 2 passed, 10 total
+    /admin/orders/order_01M7225NDEVCV96B4ETVPGJACZ/fulfillments/ful_01M7225NJQ91XQ3KDNX3HK7B46/cancel expected a 4xx but got 200 …
+## GREEN — integration http: evoucher-order-canceled.spec.ts (exit 0)
+      ✓ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (1907 ms)
+      ✓ is idempotent on a repeated event and never touches a code claimed by another order (2629 ms)
+      ✓ releases the code exactly once when two runs for the same order arrive together (1540 ms)
+      ✓ handles two order.canceled events of the same order delivered together without an error (1619 ms)
+      ✓ cancels an order without e-vouchers without an error (937 ms)
+      ✓ waits for the per-order e-voucher lock held by allocation or resend (3740 ms)
+      ✓ ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled (1745 ms)
+      ✓ creates no shipment when the delivery email fails, so the fulfillment can still be canceled (1144 ms)
+      ✓ creates the missing shipment on a successful resend and never a second one on a repeated resend (1029 ms)
+      ✓ keeps the allocation and logs an error when creating the shipment fails (1146 ms)
+Tests:       10 passed, 10 total
+## GREEN — unit ของ task: short-error + subscriber + create-evoucher-shipments (exit 0)
+Tests:       12 passed, 12 total
+## unit ทั้งชุด: pnpm --filter backend test:unit (exit 0)
+Test Suites: 105 passed, 105 total
+Tests:       1264 passed, 1264 total
+## pnpm lint (exit 0; backend 0 errors, warning 2 รายการอยู่ใน json-logger.ts/group-buy/campaign.ts เดิม) / pnpm typecheck (exit 0) / pnpm --filter backend build (exit 0)
+info:    Backend build completed successfully (6.34s)
+info:    Frontend build completed successfully (16.62s)
+## ไม่ได้รันในเครื่อง: integration http/modules ชุดเต็ม, docker-worker-mode, e2e storefront — ให้ CI

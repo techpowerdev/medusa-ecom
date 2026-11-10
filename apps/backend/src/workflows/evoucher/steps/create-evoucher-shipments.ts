@@ -2,7 +2,7 @@ import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import { createOrderShipmentWorkflow } from "@medusajs/medusa/core-flows"
-import { shortError } from "./send-evoucher-delivered-notification"
+import { shortError } from "../../../modules/evoucher/utils/short-error"
 
 type Fulfillment = {
   id: string
@@ -70,6 +70,8 @@ export const createEvoucherShipments = async (
         input: {
           order_id: input.order_id,
           fulfillment_id: fulfillment.id,
+          // `items` บังคับตาม type แต่ Medusa 2.22.1 ใช้แค่ตรวจว่า line มีอยู่ใน order — จำนวนที่ ship คำนวณจาก item ของ
+          // fulfillment เอง (`prepareRegisterShipmentData`) จึงเป็นการ ship ทั้ง fulfillment ไม่ใช่บางส่วน
           items: [...items].map(([id, quantity]) => ({ id, quantity })),
           // shipment-created.ts ข้ามอีเมลจัดส่ง — ลูกค้าได้อีเมล code แล้ว
           no_notification: true,
