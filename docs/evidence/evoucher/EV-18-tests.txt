@@ -1,0 +1,99 @@
+# EV-18 (AC-48, spec 02 กฎข้อ 34) — ผลการทดสอบ 2026-11-10 (base origin/develop 5a7c1bf6, Node 22, Postgres 16, ไม่มี Redis)
+## RED — integration http: evoucher-order-canceled.spec.ts -t AC-48 ก่อนมีโค้ด (exit 1)
+      ✕ resolves without claiming, flagging, emailing or fulfilling (P has available codes) (1648 ms)
+      ✕ resolves without claiming, flagging, emailing or fulfilling (P has no code at all) (1525 ms)
+Tests:       2 failed, 10 skipped, 12 total
+
+  ●  › AC-48 allocation skips an order canceled before allocation › resolves without claiming, flagging, emailing or fulfilling (P has available codes)
+
+    expect(received).toBeUndefined()
+
+    Received: "Order with id order_01M724TB7233V0HW77KK0QKC67 has been canceled."
+
+      485 |         }
+      486 |
+    > 487 |         expect(failure).toBeUndefined()
+          |                         ^
+      488 |         expect(await service.listEvoucherCodes({ order_id: orderId })).toEqual([])
+      489 |         expect(await availableCount(p)).toBe(availableBefore)
+      490 |         expect(await fulfillmentsOf(orderId)).toEqual([])
+
+      at toBeUndefined (integration-tests/http/evoucher-order-canceled.spec.ts:487:25)
+  ●  › AC-48 allocation skips an order canceled before allocation › resolves without claiming, flagging, emailing or fulfilling (P has no code at all)
+  ●  › AC-48 allocation skips an order canceled before allocation › resolves without claiming, flagging, emailing or fulfilling (P has no code at all)
+
+
+    expect(received).toEqual(expected) // deep equality
+    expect(received).toEqual(expected) // deep equality
+
+
+    - Expected  - 0
+    - Expected  - 0
+    + Received  + 1
+    + Received  + 1
+
+
+      Array [
+      Array [
+        "noti_01M724TCWS57S850E82ECNCS2T",
+        "noti_01M724TCWS57S850E82ECNCS2T",
+    +   "noti_01M724TD1SPWKC0R90N0DPDJ38",
+    +   "noti_01M724TD1SPWKC0R90N0DPDJ38",
+      ]
+      ]
+
+
+      489 |         expect(await availableCount(p)).toBe(availableBefore)
+      489 |         expect(await availableCount(p)).toBe(availableBefore)
+      490 |         expect(await fulfillmentsOf(orderId)).toEqual([])
+      490 |         expect(await fulfillmentsOf(orderId)).toEqual([])
+    > 491 |         expect(await notificationIds()).toEqual(notificationsBefore)
+    > 491 |         expect(await notificationIds()).toEqual(notificationsBefore)
+
+## GREEN — integration http: evoucher-order-canceled.spec.ts + evoucher-allocate.spec.ts (AC-2/4/7/27/46/47 เดิม) (exit 0)
+PASS integration-tests/http/evoucher-order-canceled.spec.ts (20.759 s)
+      ✓ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (1392 ms)
+      ✓ is idempotent on a repeated event and never touches a code claimed by another order (1695 ms)
+      ✓ releases the code exactly once when two runs for the same order arrive together (1204 ms)
+      ✓ handles two order.canceled events of the same order delivered together without an error (1320 ms)
+      ✓ cancels an order without e-vouchers without an error (714 ms)
+      ✓ waits for the per-order e-voucher lock held by allocation or resend (2794 ms)
+      ✓ resolves without claiming, flagging, emailing or fulfilling (P has available codes) (861 ms)
+      ✓ resolves without claiming, flagging, emailing or fulfilling (P has no code at all) (786 ms)
+      ✓ ships the fulfillment of a delivered voucher line with no_notification so it can no longer be canceled (917 ms)
+      ✓ creates no shipment when the delivery email fails, so the fulfillment can still be canceled (892 ms)
+      ✓ creates the missing shipment on a successful resend and never a second one on a repeated resend (888 ms)
+      ✓ keeps the allocation and logs an error when creating the shipment fails (874 ms)
+PASS integration-tests/http/evoucher-allocate.spec.ts (24.565 s)
+      ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry (1328 ms)
+      ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method (1171 ms)
+      ✓ does not warn about shipping profile when the voucher product has none (AC-31) (1109 ms)
+      ✓ warns once (but still delivers) when the voucher product has the default shipping profile (AC-31) (1044 ms)
+      ✓ warns once (but still delivers) when the voucher product has the digital shipping profile (AC-31) (1000 ms)
+      ✓ does nothing for an order without voucher items (898 ms)
+      ✓ re-running for the same order allocates no more codes and sends no more emails (987 ms)
+      ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails (980 ms)
+      ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available (865 ms)
+      ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails (1468 ms)
+      ✓ uses a new idempotency key per claim and clears the backordered flag once delivered (1267 ms)
+      ✓ delivers the farthest kept code to a reserved order after the daily job ran (1418 ms)
+      ✓ still prefers a long-lived code over a near-expiry one (949 ms)
+      ✓ gives the last code to only one of two concurrently captured orders and flags the other (1550 ms)
+      ✓ sends one notification to the mailbox and none to the 3 admin users (861 ms)
+      ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged) (861 ms)
+Test Suites: 2 passed, 2 total
+Tests:       28 passed, 28 total
+
+## mutation (รัน -t AC-48 ทีละแบบ แล้วคืนโค้ด)
+1. resolve-evoucher-lines.ts: status === "canceled" → "cancelled" — exit 1, 2 failed (Order ... has been canceled / notification ใหม่)
+2. allocate-and-deliver-evouchers.ts: ลบ "status" ออกจาก fields ของ query — exit 1, 2 failed (เหมือนข้อ 1)
+3. resolve-evoucher-lines.ts: ลบ logger.info — exit 1, 2 failed (log info ที่มี order_id: Received length 0)
+
+## unit: pnpm --filter backend test:unit (exit 0)
+Test Suites: 105 passed, 105 total
+Tests:       1264 passed, 1264 total
+## lint (exit 0): 0 errors, 2 warnings เดิม (json-logger.ts, group-buy/campaign.ts — ไม่เกี่ยวกับ EV-18)
+## typecheck (exit 0)
+## build (exit 0): Backend build completed successfully; Frontend build completed successfully
+
+## ไม่ได้รันในเครื่อง (ให้ CI): integration http/modules ชุดเต็ม, e2e
