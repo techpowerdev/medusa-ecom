@@ -6,7 +6,7 @@ import { EVOUCHER_MODULE } from "../../../modules/evoucher"
 import { EVOUCHER_RESEND_IN_PROGRESS } from "../../../modules/evoucher/errors"
 import EvoucherModuleService, { ClaimCodesForOrderResult } from "../../../modules/evoucher/service"
 import { EvoucherLine, EvoucherOrder, evoucherOrderLockKey } from "./evoucher-order"
-import { shortError } from "./send-evoucher-delivered-notification"
+import { shortError } from "../../../modules/evoucher/utils/short-error"
 
 // lock หมดอายุเองถ้า process ตายกลางทาง (ส่งอีเมลหนึ่งฉบับใช้เวลาไม่กี่วินาที)
 const RESEND_LOCK_TTL = 60

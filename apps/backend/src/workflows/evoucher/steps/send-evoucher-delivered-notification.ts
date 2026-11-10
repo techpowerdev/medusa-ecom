@@ -3,15 +3,9 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import type { CreateNotificationDTO } from "@medusajs/framework/types"
 import { EVOUCHER_MODULE } from "../../../modules/evoucher"
 import EvoucherModuleService from "../../../modules/evoucher/service"
+import { shortError } from "../../../modules/evoucher/utils/short-error"
 import { EmailTemplates } from "../../../modules/resend/templates"
 import { EVOUCHER_NOTIFICATION_TRIGGER, EvoucherOrder } from "./evoucher-order"
-
-// ข้อความ error ในอีเมล admin/log: เฉพาะ message (ไม่ใส่ data ของ notification) ยุบบรรทัดและตัดไม่เกิน 200 ตัวอักษร
-export const shortError = (error: unknown) =>
-  String((error as Error)?.message ?? error)
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 200)
 
 /**
  * ขั้นสุดท้ายของ allocate & deliver — **ไม่ throw** (จึงไม่มี compensation คืน code ที่ลูกค้าอาจได้รับแล้วเข้า pool)

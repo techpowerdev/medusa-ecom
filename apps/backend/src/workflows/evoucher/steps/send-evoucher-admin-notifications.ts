@@ -1,7 +1,7 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import type { CreateNotificationDTO } from "@medusajs/framework/types"
-import { shortError } from "./send-evoucher-delivered-notification"
+import { shortError } from "../../../modules/evoucher/utils/short-error"
 
 /**
  * อีเมลแจ้ง admin (backordered) — **ไม่ throw**: spec 02 "backordered ไม่ทำให้ order ล้มเหลว"
