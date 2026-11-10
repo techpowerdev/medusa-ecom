@@ -105,6 +105,26 @@ medusaIntegrationTestRunner({
         expect(error.response.status).toEqual(400)
       })
 
+      // AF-21 / AC-53 (กฎ 45): คำสงวนสมัครไม่ได้ ข้อความคงที่ ไม่สร้าง affiliate; รหัสอื่นที่ขึ้นต้นเหมือนกันยังสมัครได้
+      it("rejects a reserved affiliate code and accepts a similar non-reserved code (AC-53)", async () => {
+        const { data } = await api.post("/auth/affiliate/emailpass/register", AFFILIATE)
+
+        const error = await api
+          .post("/affiliate/register", { name: "Ann", code: "admin" }, bearer(data.token))
+          .catch((e) => e)
+
+        expect(error.response.status).toEqual(400)
+        expect(error.response.data.type).toEqual("invalid_data")
+        expect(error.response.data.message).toContain("This referral code is reserved")
+        const affiliates = getContainer().resolve<AffiliateModuleService>(AFFILIATE_MODULE)
+        expect(await affiliates.listAffiliates({ code: "admin" })).toHaveLength(0)
+
+        const response = await api.post("/affiliate/register", { name: "Ann", code: "admin1" }, bearer(data.token))
+
+        expect(response.status).toEqual(200)
+        expect(response.data.affiliate.code).toEqual("admin1")
+      })
+
       it("requires authentication to register an affiliate", async () => {
         const error = await api
           .post("/affiliate/register", { name: "Ann", code: "ann" })

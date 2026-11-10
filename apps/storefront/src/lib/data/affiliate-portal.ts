@@ -2,6 +2,7 @@
 
 import { sdk } from "@lib/config"
 import type { PortalTab } from "@lib/util/affiliate-portal"
+import { affiliateRegisterError } from "@lib/util/affiliate-register-error"
 import { cookies as nextCookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { cache } from "react"
@@ -219,8 +220,10 @@ export async function affiliateRegister(_state: AffiliateAuthState, formData: Fo
       headers: { authorization: `Bearer ${token}` },
       body: { name: formData.get("name"), code: formData.get("code") },
     })
-  } catch {
-    return { error: "สมัครไม่สำเร็จ รหัสแนะนำนี้อาจถูกใช้แล้ว หรืออีเมลนี้สมัครแอฟฟิลิเอตไว้แล้ว" }
+  } catch (error) {
+    return {
+      error: affiliateRegisterError(error, "สมัครไม่สำเร็จ รหัสแนะนำนี้อาจถูกใช้แล้ว หรืออีเมลนี้สมัครแอฟฟิลิเอตไว้แล้ว"),
+    }
   }
 
   try {
