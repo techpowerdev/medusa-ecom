@@ -1,0 +1,104 @@
+# EV-16 (AC-46, spec 02 กฎข้อ 32) — ผลการทดสอบ 2026-11-10 (base origin/develop 11185452, Node 22, Postgres 16)
+## RED — integration http: evoucher-order-canceled.spec.ts ก่อนมี subscriber/workflow (exit 1)
+      ✕ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (2153 ms)
+      ✕ is idempotent on a repeated event and never touches a code claimed by another order (2564 ms)
+Tests:       2 failed, 2 total
+  ●  › AC-46 order.canceled releases allocated codes › returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 5
+    + Received  + 5
+
+      Object {
+    -   "allocated_at": null,
+    -   "customer_id": null,
+    -   "order_id": null,
+    -   "order_line_item_id": null,
+    -   "status": "available",
+    +   "allocated_at": 2026-11-10T03:47:58.140Z,
+    +   "customer_id": "cus_01M71S3NWG5CQ9J15KJ6DJ1EJ3",
+    +   "order_id": "order_01M71S3PBE26T882N387PJF2EJ",
+    +   "order_line_item_id": "ordli_01M71S3PBHESX1RFHQQPFG8JCF",
+    +   "status": "allocated",
+      }
+## RED — unit: evoucher-order-canceled.unit.spec.ts (exit 1)
+Cannot find module '../../workflows/evoucher/release-evoucher-codes-for-order' from 'src/subscribers/__tests__/evoucher-order-canceled.unit.spec.ts'
+## GREEN — unit: evoucher-order-canceled.unit.spec.ts (exit 0)
+    ✓ listens to order.canceled (1 ms)
+    ✓ passes only the order id into the workflow (1 ms)
+    ✓ logs the error with the order id and does not throw when the workflow fails
+Tests:       3 passed, 3 total
+## GREEN — integration http: evoucher-order-canceled.spec.ts (exit 0)
+      ✓ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (1522 ms)
+      ✓ is idempotent on a repeated event and never touches a code claimed by another order (1920 ms)
+      ✓ waits for the per-order e-voucher lock held by allocation or resend (2741 ms)
+Tests:       3 passed, 3 total
+## mutation — ตัด acquireLockStep ออกชั่วคราว: test lock ล้มตามคาด (exit 1) แล้วคืนโค้ด
+      ✕ waits for the per-order e-voucher lock held by allocation or resend (3883 ms)
+    Expected: "allocated"
+    Received: "available"
+Tests:       1 failed, 2 skipped, 3 total
+## รอบแก้ตาม review PR #333 (REQUEST CHANGES) 2026-11-10 — เพิ่ม test ของ AC-46 ให้ครบ (โค้ด production ไม่เปลี่ยนพฤติกรรม; ย้าย step ไป steps/release-allocated-evoucher-codes.ts)
+## GREEN — unit: release-allocated-evoucher-codes.unit.spec.ts + evoucher-order-canceled.unit.spec.ts (exit 0)
+    ✓ releases only allocated codes of the order with a conditional update and keeps their original values (2 ms)
+    ✓ changes nothing and returns released 0 when the order has no allocated code
+    ✓ compensation restores the original values only on rows that are still available without an order (1 ms)
+    ✓ compensation does nothing when nothing was released
+    ✓ uses evoucherOrderLockKey(
+    ✓ uses acquireLockStep(
+    ✓ uses releaseLockStep(
+    ✓ acquires the lock before releasing codes and releases it afterwards
+    ✓ listens to order.canceled
+    ✓ passes only the order id into the workflow (1 ms)
+    ✓ logs the error with the order id and does not throw when the workflow fails
+Tests:       11 passed, 11 total
+## GREEN — integration http: evoucher-order-canceled.spec.ts (exit 0)
+      ✓ returns the allocated code of line Y to available, keeps the delivered code of line X and PY stock matches (1560 ms)
+      ✓ is idempotent on a repeated event and never touches a code claimed by another order (1800 ms)
+      ✓ releases the code exactly once when two runs for the same order arrive together (1262 ms)
+      ✓ handles two order.canceled events of the same order delivered together without an error (1210 ms)
+      ✓ cancels an order without e-vouchers without an error (791 ms)
+      ✓ waits for the per-order e-voucher lock held by allocation or resend (2729 ms)
+Tests:       6 passed, 6 total
+## mutation ของ unit (แต่ละข้อทำทีละข้อแล้วคืนโค้ด)
+### M1: compensation ไม่ทำอะไร (return ทันที)
+    ✕ compensation restores the original values only on rows that are still available without an order (3 ms)
+    ✕ compensation does nothing when nothing was released
+Tests:       2 failed, 6 passed, 8 total
+exit=1
+### M2: ตัด acquireLockStep ออกจาก workflow
+    ✕ uses acquireLockStep(
+    ✕ acquires the lock before releasing codes and releases it afterwards (1 ms)
+Tests:       2 failed, 6 passed, 8 total
+exit=1
+### M3: selector ของ compensation เหลือแค่ id
+    ✕ compensation restores the original values only on rows that are still available without an order (3 ms)
+Tests:       1 failed, 7 passed, 8 total
+exit=1
+### คืนโค้ดแล้ว
+Tests:       8 passed, 8 total
+exit=0
+## mutation ของ integration
+### GREEN หลังแก้ test
+Tests:       6 passed, 6 total
+exit=0
+### M4: step throw เมื่อ order ไม่มี code allocated
+      ✕ is idempotent on a repeated event and never touches a code claimed by another order (1926 ms)
+      ✕ releases the code exactly once when two runs for the same order arrive together (1232 ms)
+      ✕ handles two order.canceled events of the same order delivered together without an error (1327 ms)
+      ✕ cancels an order without e-vouchers without an error (788 ms)
+Tests:       4 failed, 2 passed, 6 total
+exit=1
+### M5: ตัด acquireLockStep + เงื่อนไข order_id/status ของ update
+      ✕ releases the code exactly once when two runs for the same order arrive together (909 ms)
+      ✕ waits for the per-order e-voucher lock held by allocation or resend (2362 ms)
+Tests:       2 failed, 4 passed, 6 total
+exit=1
+## unit ทั้งหมด (pnpm --filter backend test:unit, exit 0)
+Test Suites: 101 passed, 101 total
+Tests:       1230 passed, 1230 total
+## lint (pnpm lint, exit 0 — 0 errors; warning 2 ตัวของ backend มีอยู่เดิม ไม่ใช่ไฟล์ของ EV-16)
+## typecheck (pnpm typecheck, exit 0)
+## build (pnpm --filter backend build, exit 0)
+## ไม่ได้รันในเครื่อง: integration http/modules ชุดเต็ม และ e2e (ให้ CI รัน); compensation ทดสอบระดับ unit (mock service) เท่านั้น
