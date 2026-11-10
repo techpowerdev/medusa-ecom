@@ -3,7 +3,8 @@ Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดส
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
-รอบ 26 2026-11-09: แก้ถ้อยคำกฎ 7(b), 14, AC-18; ADM-15..17, กฎ 19–21, AC-19..21; Q8 ตัดสินแล้ว)
+รอบ 26 2026-11-09: แก้ถ้อยคำกฎ 7(b), 14, AC-18; ADM-15..17, กฎ 19–21, AC-19..21; Q8 ตัดสินแล้ว;
+รอบ 27 2026-11-10: ADM-20, กฎ 24, AC-24; follow-up ADM-21, ADM-22)
 Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้งหมดได้ใช้ component, hook, utility และอื่นที่ medusa ให้แล้วหรือยัง ถ้ายังให้วางแผนปรับใช้ตามที่ medusa มีให้ก่อนเป็นฐาน
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
@@ -410,6 +411,38 @@ Out of scope: แก้ `DataTable`/`ActionMenu` ของ dashboard, patch-pack
 (ปิดรอบ 26 สถานะ, 2026-11-09) ADM-8b ☑ #316 · ADM-9 ☑ #322 · ADM-10 ☑ #315 (+ hotfix #324) · ADM-11 ☑ #311 · ADM-12 ☑ #313 · ADM-13 ☑ #321 · ADM-14 ☑ #327; ADM-15, ADM-16, ADM-17, ADM-18, ADM-19 ☐ เริ่มได้ (ไม่บล็อก release)
 
 ### Open questions (ปิดรอบ 26)
+none
+
+## Follow-up รอบ 27 จากการทดสอบจริงบน develop `84b9e610` (2026-11-10 — owner สั่งแก้เฉพาะ ADM-M-10)
+ที่มา: `/app/group-buying` ตอน API ล้มแสดง "No group-buy campaigns yet" เพราะ `routes/group-buying/page.tsx:75` ใช้แค่ `data`/`isLoading` และส่ง `data?.campaigns ?? []` เข้าตาราง (path ย่อจาก `apps/backend/src/admin/`)
+Out of scope: แก้ตารางอื่น (→ ADM-21), error ของ loader หน้า pool (→ ADM-22), backend
+
+### What Medusa already gives us (รอบ 27)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ข้อความ error โดยคงหัวตารางและปุ่มสร้าง | `DataTable` ของ dashboard ไม่มี prop error แต่ `emptyState.empty` (`heading`, `description`) แสดงเมื่อไม่มีแถว และ `heading`/`action` ยังแสดงอยู่ | **ใช้ `emptyState` แสดง error** — ไม่ใช้ `NoRecords` แทนตาราง เพราะจะทำให้ปุ่ม "Create campaign" ใน `action` (ADR-018, ADM-13) หายไปด้วย |
+| error ระดับ route และ 401 | `ErrorBoundary` ของ dashboard (`errorElement` ของ route หลัก) พา 401 ไป `/login`; หน้าอื่นแสดงข้อความทั้งหน้าและ stack trace เมื่อ `NODE_ENV=development` | ใช้เฉพาะ 401 ด้วย `throw error` |
+| retry ของ query | `QueryClient` ของ dashboard `retry: 1` | ใช้ตามเดิม |
+
+### Business rules (รอบ 27)
+24. (ADM-20) หน้า list `/app/group-buying` เมื่อ `listCampaigns` ล้มและไม่มีข้อมูลในมือ (`isError && !data`): (a) คง `PageOffsetGate` + `DataTable` (หัวตารางและปุ่ม "Create campaign" ใน `action` ยังกดได้และเปิด modal ได้) แต่ส่ง `emptyState.empty` = `{ heading: "Could not load campaigns", description: error.message }` แทนข้อความ empty เดิม และห่อด้วย element `data-testid="gb-campaigns-error"` เฉพาะตอนสถานะนี้ (ภายใน `gb-campaigns-table`); (b) HTTP 401 → `throw error` ให้ `ErrorBoundary` พาไป `/login`; (c) empty state เดิมแสดงเฉพาะเมื่อ API สำเร็จและไม่มีแคมเปญ; (d) refetch เบื้องหลังล้มขณะมี `data` คงตารางไว้; (e) `gb-template-warning` คงแสดง ไม่เพิ่มปุ่มลองใหม่ (reload หน้า)
+
+### Acceptance criteria (รอบ 27)
+- AC-24 (ADM-20, กฎ 24) e2e 1280×800 (เพิ่มใน `e2e/group-buy-admin-pages.spec.ts`, `page.route` ของ GET `**/admin/group-buy/campaigns*`): Given ตอบ 500 When เปิด `/app/group-buying` Then `gb-campaigns-error` visible (timeout default), `gb-campaigns-table` ไม่มีข้อความ "No group-buy campaigns yet", `gb-template-warning` visible, และ `getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" })` (ข้อยกเว้นตามกฎ 18) enabled กดแล้ว modal สร้างแคมเปญเปิด — **ล้มบน develop**; ทำซ้ำด้วย `route.abort()`; Given ตอบ 401 Then `page.waitForURL(/\/app\/login/)` แล้ว**จบ test ทันที** (ไม่ตรวจอะไรต่อในหน้า login); Given ตอบ `{ campaigns: [], count: 0, offset: 0, limit: 20 }` Then ข้อความ empty state เดิมแสดงและ `gb-campaigns-error` count 0; Given API ปกติ AC-9/AC-17 ผ่าน; static (`group-buy-pages.unit.spec.ts`): `page.tsx` มี `isError && !data` และ `"Could not load campaigns"` อยู่ใน `emptyState` ของ `DataTable` (ไม่แทนตารางด้วย `NoRecords`)
+
+### Test plan (รอบ 27)
+| ชนิด | AC |
+|---|---|
+| static jest + e2e admin (`locale: "en-US"`, `timezoneId: "Asia/Bangkok"`, 1280×800) | AC-24 — เขียน e2e ให้ล้มบน develop ก่อน |
+
+### Tasks (รอบ 27)
+| Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-20 | (qa ADM-M-10) สถานะ error แทน empty ของหน้า list group buy (กฎ 24) | `routes/group-buying/page.tsx`, `__tests__/group-buy-pages.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-pages.spec.ts` | ~60 LOC | 1280×800 | AC-24 | PR spec รอบ 27 merge; ไม่บล็อก release v0.1.0 | ไม่ชน CORE-55/EV-16/AF-21; **ชน ADM-15** ที่ `__tests__/group-buy-pages.unit.spec.ts` (ADM-15 เพิ่ม test ของกฎ 19c ไฟล์เดียวกัน, คนละ test) → ตัวที่ merge ทีหลัง rebase; ไม่ชน ADM-16 |
+| ADM-21 | (follow-up จากการสำรวจ ADM-20 — ยังไม่สั่งทำ) ตารางอื่นที่ใช้แค่ `data`/`isLoading` จนอาจแสดง empty ตอน API ล้ม: `components/evoucher/pools-table.tsx:45`, `codes-table.tsx:58`, `partners-section.tsx:82`, `components/affiliate/list-table.tsx:22` (Programs/Affiliates/Payouts), `components/group-buy/groups-section.tsx:30`, `group-members.tsx:84` | ตามแถว | — | — | ไม่มี (ต้องเขียน AC ก่อนเริ่ม) | ADM-20, ADM-16 (แตะ `codes-table.tsx`/`partners-section.tsx`), ADM-17 (แตะ `payout-form.tsx` และ query รายการ affiliate); ไม่บล็อก release | — |
+| ADM-22 | (follow-up — ยังไม่สั่งทำ) loader ของหน้า pool (`routes/evouchers/pools/[id]/page.tsx:96`) ล้มแล้ว `ErrorBoundary` แสดง stack trace — source แสดงเฉพาะ `NODE_ENV=development` ต้องยืนยันบน build production ก่อนว่าไม่ใช่ปัญหาจริง | ตามแถว | — | — | ไม่มี (ต้องเขียน AC ก่อนเริ่ม) | none; ไม่บล็อก release | — |
+
+### Open questions (รอบ 27)
 none
 
 ## Open questions

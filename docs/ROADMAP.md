@@ -2,8 +2,9 @@
 
 สัญลักษณ์: ☐ ยังไม่ทำ · ◐ อยู่ใน PR · ☑ merge เข้า develop แล้ว · 🚀 release แล้ว · ✕ ปิด (owner ไม่ทำ / ไม่ต้องทำ) · ⏸ เลื่อนหลัง v1.0
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
-**ปิดรอบ 26 (2026-11-09, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้วถึง #328 — #308 เอกสาร sync รอบ 25, CORE-50 #309, CORE-19f #310, ADM-11 #311, CORE-49 #312, ADM-12 #313, CORE-4j #314, ADM-10 #315, ADM-8b #316, OPS-20b #318, OPS-5 #319, EV-7d #320, ADM-13 #321, ADM-9 #322, #323 spec รอบ 26, #324 hotfix ADM-10 (`PageOffsetGate`), OPS-21 #325, EV-15 #326, ADM-14 #327, CORE-51 #328 (#317 draft พิสูจน์ของ CORE-49 ปิดโดยไม่ merge) ·
-**เงื่อนไข release v0.1.0 ครบ** (OPS-21 ☑, EV-15 ☑; `develop → main` owner เป็นผู้ merge) · งานที่เหลือ ☐ ไม่บล็อก release: CORE-52, CORE-53, CORE-54, GB-16, OPS-22, OPS-23, OPS-24, ADM-15..19 ·
+**รอบ 27 (2026-11-10, เอกสารล้วน) — บั๊กจากการทดสอบจริงบน develop `84b9e610`, สถานะล่าสุด**: **บล็อก release v0.1.0: CORE-55 ☐** (return จากหน้าเว็บรับของไม่ได้; ADR-022 accepted — เริ่มได้หลัง PR spec รอบ 27 merge) · ไม่บล็อก: EV-16 ∥ AF-21 ∥ ADM-20 (เริ่มได้เมื่อ PR รอบนี้ merge, ไม่ชนไฟล์กัน) · follow-up ที่ยังไม่สั่งทำ: ADM-21, ADM-22 · EV-17 (← EV-16; owner ตอบ Q14 = ก) ·
+**ปิดรอบ 26 (2026-11-09, เอกสารล้วน)**: merge เข้า develop แล้วถึง #328 — #308 เอกสาร sync รอบ 25, CORE-50 #309, CORE-19f #310, ADM-11 #311, CORE-49 #312, ADM-12 #313, CORE-4j #314, ADM-10 #315, ADM-8b #316, OPS-20b #318, OPS-5 #319, EV-7d #320, ADM-13 #321, ADM-9 #322, #323 spec รอบ 26, #324 hotfix ADM-10 (`PageOffsetGate`), OPS-21 #325, EV-15 #326, ADM-14 #327, CORE-51 #328 (#317 draft พิสูจน์ของ CORE-49 ปิดโดยไม่ merge) ·
+เงื่อนไข release v0.1.0 ของรอบ 26 ครบ (OPS-21 ☑, EV-15 ☑) แต่**รอบ 27 เพิ่ม CORE-55** (`develop → main` owner เป็นผู้ merge) · งานที่เหลือ ☐ ไม่บล็อก release: CORE-52, CORE-53, CORE-54, GB-16, OPS-22, OPS-23, OPS-24, ADM-15..19 ·
 ก่อนเปิดร้านจริง: Q-F1 ค่าส่ง ฿10 เป็น placeholder (ข้อ 5) และ spec 06 Q1 ยืนยันบัญชี Stripe ไทย/PromptPay (ข้อ 6) อยู่ใน go-live checklist ของ `docs/ops/production.md`; ลด AC-15 ของ spec 08 กลับเป็น ≤ 2 (Q8) อยู่ใน checklist bump `@medusajs/*` ข้อ 9 ของ spec 07 ·
 **รอบ 26 (2026-11-09, เอกสารล้วน)** — follow-up จาก review/qa รอบ 25: **บล็อก release v0.1.0: OPS-21, EV-15** · ไม่บล็อก: OPS-22, CORE-52 (← #320), CORE-53, GB-16, ADM-15 (← #321), ADM-16, ADM-17 (← #322) · OPS-23 (← OPS-20b) · owner ตัดสิน 2026-11-09: Q-O4 = ก, Q8 (spec 08) = ก, Q12 = ก และ Q13 = ก (spec 02; ADR-021 accepted — EV-15 เริ่มได้เมื่อ PR รอบนี้ merge), OPS-22 ปรับประโยคใน `CLAUDE.md` ·
 **สถานะรอบ 25 (2026-11-09)** — merge เข้า develop แล้วถึง #307 (train #307 รอบ 24: CORE-48 #300, CORE-4i-b #305, ADM-7 #301, ADM-5 #302, ADM-8a #304), **ไม่มี PR เปิด** ·
@@ -107,7 +108,8 @@ task ใหม่ ADM-14 (ปุ่มสร้าง Partners/Programs/Payouts 
 | CORE-18 | เนื้อหาร้านไทย placeholder แทนโฆษณา starter + ลบ `product-onboarding-cta` + "Medusa Store" → `STORE_NAME` | ☑ #80 |
 | CORE-7 | Translation module + store locales | ☑ #26 |
 | OPS-1 | Dockerfiles, worker mode, health | ☑ #9 (+ hotfix #18) |
-**Release v0.1.0** — ร้านค้าที่เข้าชมได้, ชำระเงิน manual (เงื่อนไข release แรกที่เปิดให้ลูกค้าจริง: CORE-12 ☑, CORE-12b ☑, CORE-17 ☑, CORE-18 ☑; **รอบ 26 เพิ่ม: OPS-21 ☑ #325, EV-15 ☑ #326** — รายละเอียดด้านล่าง/M3/M7)
+| CORE-55 | (รอบ 27, **บล็อก release v0.1.0**) return จากหน้าเว็บรับของใน Admin ได้: server กำหนด `location_id` จาก return option, ยังห้าม client ส่ง, ปฏิเสธเมื่อหา location/level ไม่ได้ + e2e ผ่านปุ่มจริง (กฎข้อ 113, AC-150..154; ADR-022 accepted) | ☐ เริ่มได้เมื่อ PR spec รอบ 27 merge |
+**Release v0.1.0** — ร้านค้าที่เข้าชมได้, ชำระเงิน manual (เงื่อนไข release แรกที่เปิดให้ลูกค้าจริง: CORE-12 ☑, CORE-12b ☑, CORE-17 ☑, CORE-18 ☑; **รอบ 26 เพิ่ม: OPS-21 ☑ #325, EV-15 ☑ #326; รอบ 27 เพิ่ม: CORE-55 ☐** — รายละเอียดด้านล่าง/M3/M7)
 
 ไม่บล็อก release v0.1.0:
 | Task | งาน | สถานะ |
@@ -190,6 +192,8 @@ EV-7 **แตกรอบ 10** → EV-7a ☑ #155 → EV-7b ☑ #179 ∥ EV-7c �
 (รอบ 13) **EV-N3 ☑ #219** (← #201: ข้อความ resend ไม่มีจุดซ้อนที่ต้นเหตุ backend + test รูปแบบ `ownerId`; AC-44) ∥
 **EV-7e ☑ #217** (vouchers แบ่งหน้า, `support_contact`, บล็อก partner บน PDP; AC-43) · **EV-7d ☑ #320** (cart-totals digital-only, redirect ผ่าน `safeCountryCode`; AC-42)
 (รอบ 26) **EV-15 ☑ #326 — เงื่อนไข release v0.1.0** (Medusa 2.22.1 ไม่ลบ shipping method เมื่อเหลือ method เดียว: เก็บค่าส่งจากตะกร้า digital-only — hook `beforeRefreshingPaymentCollection`; กฎข้อ 31, AC-45; ADR-021 accepted)
+(รอบ 27) **EV-16 ☐** (code `allocated` ของ order ที่ยกเลิกกลับเป็น `available`, คง code `delivered`, idempotent, workflow + lock; กฎข้อ 32, AC-46; ไม่บล็อก release v0.1.0) →
+**EV-17 ☐ เริ่มได้เมื่อ EV-16 merge** (stock ของ pool เกินเมื่อยกเลิก fulfillment ของ code ที่ส่งมอบแล้ว — Q14 = ก: สร้าง shipment `no_notification` หลังอีเมลสำเร็จ, order ที่มี voucher ส่งแล้วยกเลิกไม่ได้; กฎข้อ 33, AC-47; ไม่บล็อก release v0.1.0)
 
 ## M4 Flash sale — **v0.4.0**
 PROMO-1 ☑ #21 (+ #24) · FS-1 ☑ #14 (+ hotfix #22) · FS-3 ☑ #28 · FS-2 ☑ #37 · FS-4 ☑ #32 · FS-5 ☑ #38 · FS-7 ☑ #53 · PROMO-2 ☑ #50 ·
@@ -238,7 +242,8 @@ AF-N3 ☑ #237 (portal: สกุลเงิน, หน้าเกิน, `−
 (รอบ 19) **AF-18 ☑ #277 (train #279)** (qa #265 O-2: หน้า Profile ล้นที่ 375 เมื่ออีเมลยาวไม่มีช่องว่าง → `minmax(0,1fr)` + `break-words`; AC-50) →
 (รอบ 20) **AF-19 ☑ #286 (train #290)** (qa #277 D-1: header ของ portal ล้นทุกหน้าเมื่อชื่อละตินยาวไม่มีช่องว่าง → `min-w-0` + ตัดคำ + `affiliate-header-name`; กฎ 43, AC-51) →
 (รอบ 21) **AF-20 ☑ #295 (train #299)** (qa #286 O-1: ป้าย "รหัสแนะนำ" `whitespace-nowrap` + `affiliate-code-label`, รหัสแนะนำไม่ถูกตัดที่ `-`; กฎ 44, AC-52 — รอบ 23: qa #295 O-1 ปิดโดยไม่สร้าง task, nit e2e → CORE-51) ·
-release v0.6.0 ต้องมี AF-14 (ที่เหลือ ☑ แล้ว; AF-15, AF-16 ควรมี) · owner รอบ 11: Q16 คง `variant_ids` ผ่าน API, Q18 `payout_info` 3 ช่อง
+release v0.6.0 ต้องมี AF-14 (ที่เหลือ ☑ แล้ว; AF-15, AF-16 ควรมี) · owner รอบ 11: Q16 คง `variant_ids` ผ่าน API, Q18 `payout_info` 3 ช่อง ·
+(รอบ 27) **AF-21 ☐** (ปฏิเสธรหัสแนะนำที่เป็นคำสงวนแบบไม่สนตัวพิมพ์ + ข้อความไทย; กฎ 45, AC-53; ไม่รวม AF-M-03; ไม่บล็อก release v0.1.0)
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
 OPS-2 ☑ #27 · OPS-6 ☑ #47 · OPS-3 ☑ #120 (JSON logs + alert `Error running event bus worker`, AC-18) · OPS-3b ⏸ rate limiting · OPS-3c ⏸ Sentry (owner Q-O1/Q-O2 2026-10-27: เลื่อนหลัง v1.0) ·
@@ -280,6 +285,9 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-17 | (รอบ 26, #322) `q` ของ affiliate + `useComboboxData` + error ของรายการ + nit e2e (กฎ 21; AC-21) | ☐ **เริ่มได้** (ADM-9 ☑ #322) |
 | ADM-18 | (ปิดรอบ 26, qa #324) e2e filter + Esc ระหว่าง loader หน่วง — ต้องยืนยันก่อน ไม่ใช่บั๊กที่ยืนยันแล้ว; แก้เฉพาะเมื่อทำซ้ำได้ (กฎ 22; AC-22) | ☐ **เริ่มได้** (ชน ADM-16 ไฟล์ e2e เดียวกัน — ตัวที่ merge ทีหลัง rebase) |
 | ADM-19 | (ปิดรอบ 26, qa/review #327) e2e `partners_offset` ผิดรูปตอนไม่มี partner + REPORT หลัง sync develop (กฎ 23; AC-23) | ☐ **เริ่มได้** |
+| ADM-20 | (รอบ 27, qa ADM-M-10) `/app/group-buying` ตอน API ล้มแสดง `NoRecords` แทน empty state (กฎ 24; AC-24) | ☐ เริ่มได้เมื่อ PR spec รอบ 27 merge |
+| ADM-21 | (รอบ 27, follow-up) ตารางอื่นที่อาจแสดง empty ตอน API ล้ม (ยังไม่มี AC) | ☐ ยังไม่สั่งทำ |
+| ADM-22 | (รอบ 27, follow-up) ยืนยัน stack trace ของ loader หน้า pool บน build production (ยังไม่มี AC) | ☐ ยังไม่สั่งทำ |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -388,6 +396,8 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 - ปิดรอบ 26 (2026-11-09, เอกสารล้วน) → sync ☑ PR #309–#328 (ยกเว้น #317) ใน ROADMAP และ spec 01, 02, 07, 08 · spec 01: กฎข้อ 77 + AC-115 ของ CORE-5d เปลี่ยนเป็นแก้ที่ fixture (ผลสำรวจชื่อ evidence ไม่ตรงราว 80 จุดในกว่า 30 spec, ตามคำตัดสินของ session หลัก), CORE-54 (กฎข้อ 112, AC-149) ·
   spec 05: กฎ 37a/37c, AC-42, AC-44 ใช้ testid/locator ปัจจุบันหลัง ADM-8b/ADM-14 · spec 07: OPS-24 (AC-39) · spec 08: กฎ 13f (`PageOffsetGate` จาก #324), ADM-18 (กฎ 22, AC-22 — ยืนยันก่อน), ADM-19 (กฎ 23, AC-23) ·
   ตรวจ follow-up รอบ 25 ข้อ A–P แล้วมี task/คำตัดสินครบ ไม่เปิดซ้ำ · ไม่มี ADR ใหม่
+- รอบ 27 (2026-11-10, เอกสารล้วน — ทดสอบจริงบน develop `84b9e610`, owner สั่งแก้ 4 ข้อ) → spec 01: return รับของไม่ได้ → CORE-55 (กฎข้อ 113, AC-150..154, ADR-022 accepted ตาม Q-C5) · spec 02: EV-M-29 → EV-16 (กฎข้อ 32, AC-46) · spec 05: AF-M-02 → AF-21 (กฎ 45, AC-53) ·
+  spec 08: ADM-M-10 → ADM-20 (กฎ 24, AC-24), สำรวจพบตารางอื่นและ loader หน้า pool → follow-up ADM-21, ADM-22 (ไม่ขยาย scope) · AF-M-03 ยังรอ owner
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →
