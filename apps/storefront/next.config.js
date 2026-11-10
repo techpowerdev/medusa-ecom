@@ -1,0 +1,79 @@
+const checkEnvVariables = require("./check-env-variables")
+
+checkEnvVariables()
+
+/**
+ * Medusa Cloud-related environment variables
+ */
+const S3_HOSTNAME = process.env.MEDUSA_CLOUD_S3_HOSTNAME
+const S3_PATHNAME = process.env.MEDUSA_CLOUD_S3_PATHNAME
+
+/**
+ * @type {import('next').NextConfig}
+ */
+const nextConfig = {
+  reactStrictMode: true,
+  // OPS-6: image ของ storefront ใช้ .next/standalone (ไม่ต้องก๊อป node_modules ทั้งก้อน)
+  output: "standalone",
+  // OPS-6: ไม่ให้ `next dev` สร้าง AGENTS.md/CLAUDE.md เมื่อตรวจพบ AI agent (เช่น CLAUDECODE=1)
+  agentRules: false,
+  async headers() {
+    return [
+      {
+        source: "/:countryCode/products/:handle",
+        headers: [{ key: "Vary", value: "Accept" }],
+      },
+    ]
+  },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/:countryCode/products/:handle([^/.]+).md",
+          destination: "/:countryCode/products/:handle/markdown",
+        },
+        {
+          source: "/:countryCode/products/:handle([^/.]+)",
+          has: [{ type: "header", key: "accept", value: ".*text/markdown.*" }],
+          destination: "/:countryCode/products/:handle/markdown",
+        },
+      ],
+    }
+  },
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  images: {
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "http",
+        hostname: "localhost",
+      },
+      {
+        protocol: "https",
+        hostname: "*.s3.*.amazonaws.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.s3.amazonaws.com",
+      },
+      ...(S3_HOSTNAME && S3_PATHNAME
+        ? [
+            {
+              protocol: "https",
+              hostname: S3_HOSTNAME,
+              pathname: S3_PATHNAME,
+            },
+          ]
+        : []),
+    ],
+  },
+}
+
+module.exports = nextConfig

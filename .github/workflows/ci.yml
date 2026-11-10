@@ -3,33 +3,86 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
+  # ไม่รันบน push ไป develop: ทุก PR sync กับ develop ล่าสุดและผ่าน CI ก่อน merge ทีละตัว
+  # run หลัง merge จึงทดสอบ tree เดียวกันซ้ำ; push ไป main (release) ยังรันครบทุก job
   push:
-    branches: [develop, main]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # cancel เฉพาะ run ของ PR ที่ push ซ้ำ — release ไป main ห้ามถูก cancel
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  NODE_VERSION: 22
-  PNPM_VERSION: 9
+# เวอร์ชัน Node อ่านจาก .nvmrc และ pnpm อ่านจาก "packageManager" ใน package.json ที่ root
 
 jobs:
+  # จัดกลุ่มไฟล์ที่ PR เปลี่ยน (กติกาอยู่ใน tools/ci/classify-changes.sh):
+  # - code=false (เฉพาะ docs/** และ *.md ทุกที่) → ข้าม backend-suites/backend-tests, docker-worker-mode, storefront-e2e
+  # - backend=false (โค้ดอยู่ใน apps/storefront/** เท่านั้น) → ข้าม backend-suites/backend-tests, docker-worker-mode แต่ยังรัน storefront-e2e
+  # lint-typecheck รันเสมอ (มี test:e2e:unit ตรวจ evidence); push ไป main → ทั้งสองเป็น true เสมอ (รันครบ)
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+      backend: ${{ steps.classify.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: classify
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            printf 'code=true\nbackend=true\n' | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # script คำนวณรายชื่อไฟล์เองด้วย git diff --no-renames (rename นับทั้ง path เดิมและใหม่) และพิมพ์รายชื่อลง log
+          tools/ci/classify-changes.sh "$BASE_SHA...$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
+
   lint-typecheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # OPS-10 (spec 07 AC-14): 30 เคสของกติกา classify-changes.sh — แก้กติกาแล้วไม่แก้เคส = ล้ม
+      - run: tools/ci/classify-changes.test.sh
+      # OPS-10 (AC-15): event ใน docs/ops/production.md "Stripe webhooks" = events= ของ stripe listen ด้านล่าง (แบบเซต)
+      - run: tools/ci/check-stripe-events.test.sh
+      # OPS-16 (AC-27a): ตรวจไฟล์จริงของ repo (default = docs/ops/production.md × ci.yml นี้) แยกจาก test ของ script
+      - run: tools/ci/check-stripe-events.sh
       - uses: pnpm/action-setup@v4
-        with: { version: ${{ env.PNPM_VERSION }} }
       - uses: actions/setup-node@v4
-        with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      # CORE-4a (spec 01 AC-11): unit test ของ storefront (Vitest) ไม่ต้องใช้ DB/server
+      - run: pnpm --filter storefront test:unit
+      # CORE-5b (spec 01 AC-23): กฎ evidence + convention ของ docs/evidence/ (Playwright project `unit` ไม่ต้องใช้ browser)
+      - run: pnpm --filter storefront test:e2e:unit
 
-  backend-tests:
+  # OPS-14: แบ่ง backend tests เป็น job ขนาน (runner + Postgres/Redis service ของตัวเองต่อ job)
+  # integration:http แบ่งด้วย jest --shard (ไฟล์ test ถูกแบ่งตาม hash ของ path; shard รวมกัน = ครบทุกไฟล์
+  # — ตรวจโดย src/__tests__/ci-workflow.unit.spec.ts) แต่ละ shard ยังรันทีละ suite ตาม jest.config.js (กัน heap OOM)
+  backend-suites:
+    name: backend (${{ matrix.suite }})
     runs-on: ubuntu-latest
-    needs: lint-typecheck
+    needs: [lint-typecheck, changes]
+    if: needs.changes.outputs.backend == 'true'
+    strategy:
+      # ไม่ cancel shard อื่นเมื่อ shard หนึ่งล้ม — เห็น failure ครบในรอบเดียว
+      fail-fast: false
+      matrix:
+        include:
+          - { suite: unit-modules, artifact: unit-modules, run: "pnpm --filter backend test:unit && pnpm --filter backend test:integration:modules" }
+          - { suite: http 1/3, artifact: http-1, run: "pnpm --filter backend test:integration:http --shard=1/3" }
+          - { suite: http 2/3, artifact: http-2, run: "pnpm --filter backend test:integration:http --shard=2/3" }
+          - { suite: http 3/3, artifact: http-3, run: "pnpm --filter backend test:integration:http --shard=3/3" }
     services:
       postgres:
         image: postgres:16
@@ -54,23 +107,78 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: ${{ env.PNPM_VERSION }} }
       - uses: actions/setup-node@v4
-        with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter backend test:unit
-      - run: pnpm --filter backend test:integration:modules
-      - run: pnpm --filter backend test:integration:http
+      # OPS-15: เก็บ log ของ test ไว้ให้ขั้นถัดไปนับ — `shell: bash` ระบุชัดให้ Actions รันด้วย
+      # `bash --noprofile --norc -eo pipefail` (exit code ของ jest ไม่หายเพราะ tee)
+      - shell: bash
+        env:
+          TEST_LOG: ${{ runner.temp }}/backend-test.log
+        run: |
+          # { ...; } ครอบทั้งคำสั่ง (unit-modules มี &&) ให้ log ของทุกคำสั่งเข้าไฟล์
+          { ${{ matrix.run }}; } 2>&1 | tee "$TEST_LOG"
+      # OPS-15 (spec 07 AC-26): connection ใน pool ของ app ต้องไม่ถูก DB ปิดใต้เท้า (เคย ~1,400 บรรทัดต่อ run)
+      # ต้นเหตุแก้ใน integration-tests/setup-after-env.ts — ขั้นนี้กันไม่ให้กลับมาอีก
+      - name: OPS-15 นับ log knex ที่ connection ถูกปิด (ต้องเป็น 0)
+        if: ${{ !cancelled() }}
+        env:
+          TEST_LOG: ${{ runner.temp }}/backend-test.log
+        run: |
+          n=$(grep -c "Connection ended unexpectedly" "$TEST_LOG" || true)
+          echo "จำนวนบรรทัด: ${n:-0}"
+          if [ "${n:-0}" -gt 0 ]; then
+            echo "::error::พบ log knex ว่า connection ถูกปิด ${n} บรรทัด (OPS-15 / spec 07 AC-26)"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backend-test-output
+          name: backend-test-output-${{ matrix.artifact }}
           path: apps/backend/test-results/
           if-no-files-found: ignore
 
+  # ชื่อเดิม `backend-tests` คงไว้เป็นตัวรวมผลของทุก shard (check เดิมไม่หาย)
+  # !cancelled(): ถ้าไม่ใส่ job นี้จะถูก SKIPPED เมื่อ shard ล้ม (ดูเหมือนผ่าน) จึงเช็กผลเองแล้ว exit 1
+  # ยังเป็น SKIPPED เมื่อ classify-changes ตัดสิน backend=false (PR เอกสารล้วน / แก้แค่ storefront)
+  backend-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-suites, changes]
+    if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' }}
+    steps:
+      - env:
+          RESULT: ${{ needs.backend-suites.result }}
+        run: |
+          echo "backend-suites: $RESULT"
+          [ "$RESULT" = "success" ] || exit 1
+
+  # OPS-1 AC-1: build backend image แล้วบูตเป็น server + worker จาก image เดียวกัน
+  docker-worker-mode:
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck, changes]
+    if: needs.changes.outputs.backend == 'true'
+    # image ตั้ง NODE_ENV=production → ต้องผ่าน prod guards ของ OPS-7 (AC-13, AC-17; ADR-010 ข้อ 4)
+    env:
+      ALLOW_TEST_PROVIDERS: "true"
+      AFFILIATE_TOKEN_SECRET: ci-docker-worker-mode
+      # OPS-21 (AC-36): guard ตรวจรูปแบบ 64 hex — ค่าปลอมสำหรับ CI ไม่ใช่ secret
+      EVOUCHER_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      STOREFRONT_URL: http://localhost:8000
+    steps:
+      - uses: actions/checkout@v4
+      - run: tools/ops/smoke-worker-mode.sh
+      # OPS-12 (spec 07 AC-19): Redis ของ event bus ถูก pause 30 วินาที → worker ต้องประมวลผล event ต่อได้ (OPS-8 AC-5)
+      # ใช้ image เดียวกับขั้นก่อน (build cache) แต่ compose project/port แยก (ops8test, 9108)
+      - run: tools/ops/smoke-redis-outage.sh
+
   storefront-e2e:
     runs-on: ubuntu-latest
-    needs: backend-tests
+    # OPS-14: รันขนานกับ backend tests — job นี้ build/migrate/seed backend เองบน DB ของตัวเอง ไม่ใช้ artifact
+    # หรือสถานะจาก backend-tests; ถูกข้ามเมื่อ code=false (PR เอกสารล้วน) หรือ lint-typecheck ล้ม
+    needs: [lint-typecheck, changes]
+    if: needs.changes.outputs.code == 'true'
     services:
       postgres:
         image: postgres:16
@@ -89,37 +197,116 @@ jobs:
       NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
       JWT_SECRET: test
       COOKIE_SECRET: test
+      # AF-2: secret ของ cookie `aff` (spec 05) — `medusa start` = production: ไม่ตั้ง = บูตไม่ขึ้น (OPS-7 AC-13)
+      AFFILIATE_TOKEN_SECRET: test
+      # OPS-21 (AC-36): guard ตรวจรูปแบบ 64 hex — ค่าปลอมสำหรับ CI ไม่ใช่ secret (step "Random e-voucher encryption key" สุ่มทับต่อ run)
+      EVOUCHER_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      # OPS-7 (AC-17): production ต้องมี URL http(s) ของ storefront (ลิงก์ในอีเมล GB-4)
+      STOREFRONT_URL: http://localhost:8000
+      # OPS-7 (ADR-010 ข้อ 4): CI ไม่ใช่ prod — ใช้ provider local (ไม่มี Resend key) และ seed เปิด pp_system_default ให้ e2e
+      ALLOW_TEST_PROVIDERS: "true"
+      STORE_CORS: http://localhost:8000
+      ADMIN_CORS: http://localhost:9000
+      AUTH_CORS: http://localhost:9000,http://localhost:8000
+      NEXT_PUBLIC_DEFAULT_REGION: th
+      # CORE-6: admin ที่ seed สร้างให้ e2e ใช้ผ่าน admin API (รหัสผ่านสุ่มต่อ run ใน step ด้านล่าง)
+      SEED_ADMIN_EMAIL: e2e-admin@example.com
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: ${{ env.PNPM_VERSION }} }
       - uses: actions/setup-node@v4
-        with: { node-version: ${{ env.NODE_VERSION }}, cache: pnpm }
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter storefront exec playwright install --with-deps chromium
+      - name: Random admin password for e2e
+        run: |
+          p=$(openssl rand -hex 16)
+          echo "::add-mask::$p"
+          echo "SEED_ADMIN_PASSWORD=$p" >> "$GITHUB_ENV"
+      - name: Random e-voucher encryption key for e2e
+        # EV-5b (AC-19): e2e admin import code + ส่งมอบ e-voucher ต้องมี key (64 hex) — สุ่มต่อ run ไม่ใช่ secret
+        run: |
+          k=$(openssl rand -hex 32)
+          echo "::add-mask::$k"
+          echo "EVOUCHER_ENCRYPTION_KEY=$k" >> "$GITHUB_ENV"
+      # OPS-16 (AC-27b): cache browser ของ Playwright — key ผูกกับเวอร์ชัน @playwright/test ใน pnpm-lock.yaml
+      # (เปลี่ยนเวอร์ชัน = key ใหม่ = ดาวน์โหลด browser ใหม่) system deps (apt) ไม่อยู่ใน cache จึงติดตั้งทุกครั้ง
+      - name: Playwright version (pnpm-lock.yaml)
+        id: playwright-version
+        run: |
+          v=$(sed -nE "s/^  '@playwright\/test@([0-9][^']*)':$/\1/p" pnpm-lock.yaml | head -n1)
+          [ -n "$v" ] || { echo "::error::ไม่พบ @playwright/test ใน pnpm-lock.yaml"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-chromium
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter storefront exec playwright install --with-deps chromium
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter storefront exec playwright install-deps chromium
       - name: Install Stripe CLI
         run: |
           curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg >/dev/null
           echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee /etc/apt/sources.list.d/stripe.list
           sudo apt-get update -qq && sudo apt-get install -y -qq stripe
       - name: Forward Stripe webhooks to backend (cards + PromptPay)
-        env: { STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }} }
+        # PAY-2 (spec 06 AC-10): `stripe listen` รับ --forward-to ได้ปลายทางเดียวต่อ process และ --print-secret
+        # พิมพ์ secret แล้วจบ (ไม่ listen) → ดึง secret ครั้งเดียว แล้วเปิด listener แยกต่อ endpoint (secret เดียวกัน)
+        # skip ได้เฉพาะเมื่อไม่มี secret ทั้งคู่; มีตัวเดียวหรือไม่ใช่ test key → fail (e2e/support/stripe-env.ts ตรวจซ้ำ)
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+          STRIPE_PUBLISHABLE: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
         run: |
-          stripe listen \
-            --forward-to localhost:9000/hooks/payment/stripe_stripe \
-            --forward-to localhost:9000/hooks/payment/stripe-promptpay_stripe \
-            --print-secret > /tmp/whsec.txt 2>/dev/null &
-          sleep 5
-          echo "STRIPE_WEBHOOK_SECRET=$(head -n1 /tmp/whsec.txt)" >> "$GITHUB_ENV"
+          if [ -z "$STRIPE_API_KEY" ] && [ -z "$STRIPE_PUBLISHABLE" ]; then
+            echo "::warning::ไม่มี secret STRIPE_TEST_API_KEY/STRIPE_TEST_PUBLISHABLE_KEY — e2e ของ Stripe (spec 06) จะถูก skip"
+            exit 0
+          fi
+          case "$STRIPE_API_KEY" in sk_test_*) ;; *) echo "::error::STRIPE_TEST_API_KEY ต้องมีและเป็น sk_test_"; exit 1;; esac
+          case "$STRIPE_PUBLISHABLE" in pk_test_*) ;; *) echo "::error::STRIPE_TEST_PUBLISHABLE_KEY ต้องมีและเป็น pk_test_"; exit 1;; esac
+          whsec=$(stripe listen --print-secret)
+          echo "::add-mask::$whsec"
+          echo "STRIPE_WEBHOOK_SECRET=$whsec" >> "$GITHUB_ENV"
+          # Stripe CLI รุ่นใหม่ (apt) บังคับ --events ไม่งั้นจบทันทีด้วย "must specify events to forward"
+          # ต้องตรงกับ docs/ops/production.md หัวข้อ "Stripe webhooks" (OPS-10: tools/ci/check-stripe-events.sh)
+          events=payment_intent.created,payment_intent.processing,payment_intent.requires_action,payment_intent.amount_capturable_updated,payment_intent.partially_funded,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled
+          stripe version
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            nohup stripe listen --skip-update --events "$events" --forward-to "localhost:9000/hooks/payment/$path" \
+              > "/tmp/stripe-listen-$path.log" 2>&1 < /dev/null &
+          done
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            if ! timeout 60 sh -c "until grep -q 'Ready!' /tmp/stripe-listen-$path.log; do sleep 1; done"; then
+              echo "::error::stripe listen ($path) ไม่ Ready ภายใน 60 วินาที"
+              tail -n 50 "/tmp/stripe-listen-$path.log"
+              exit 1
+            fi
+          done
       - run: pnpm --filter backend db:migrate && pnpm --filter backend seed
       - name: Start backend and capture publishable key
         run: |
           pnpm --filter backend build
-          (pnpm --filter backend start &)
-          npx wait-on http://localhost:9000/health
+          # medusa start ต้องรันจาก build output (.medusa/server) เพื่อเสิร์ฟ admin ที่ build แล้ว
+          ln -s ../../node_modules apps/backend/.medusa/server/node_modules
+          (cd apps/backend/.medusa/server && npx medusa start > /tmp/backend.log 2>&1 &)
+          npx wait-on -t 120000 http://localhost:9000/health
           echo "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=$(pnpm --filter backend --silent print-publishable-key)" >> "$GITHUB_ENV"
       - run: pnpm --filter storefront build && (pnpm --filter storefront start &) && npx wait-on http://localhost:8000
-      - run: pnpm --filter storefront test:e2e
+      # project "unit" (กฎ evidence) ไม่ต้องใช้ server — แยกไปเปิดใน CI ตาม backlog (มี *-tests.txt เดิมผิด convention)
+      - run: pnpm --filter storefront test:e2e --project=chromium
+      # PAY-2 (AC-10): payment_intent.succeeded (จาก AC-1/AC-4) ต้องถึงทั้งสอง path และ backend ตอบ 2xx
+      - name: Stripe webhooks reached both endpoints
+        if: env.STRIPE_API_KEY != ''
+        run: |
+          for path in stripe_stripe stripe-promptpay_stripe; do
+            tools/ci/check-stripe-webhooks.sh "/tmp/stripe-listen-$path.log" "http://localhost:9000/hooks/payment/$path"
+          done
+      - if: failure()
+        run: |
+          tail -n 200 /tmp/backend.log 2>/dev/null || echo "(ไม่มี /tmp/backend.log — backend ยังไม่ได้เริ่ม)"
+          tail -n 50 /tmp/stripe-listen-*.log 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

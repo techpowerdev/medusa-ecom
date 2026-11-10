@@ -1,0 +1,73 @@
+# GB-2a test evidence — 2026-10-25 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+### Red (ก่อนเขียนโค้ด)
+campaign-status.unit.spec.ts → FAIL: Cannot find module '../utils/campaign-status'
+template-code.unit.spec.ts   → FAIL: Cannot find module '../utils/template-code'
+group-buy-campaigns.spec.ts เขียนก่อน workflow/route (ยังไม่มี src/workflows/group-buy/*) — ไม่ได้บันทึกผลรันแยกในสถานะ red
+### pnpm lint
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)   # warning เดิมของ storefront ไม่เกี่ยวกับ GB-2a
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit (หลัง merge origin/develop: #32, #36, #40)
+Test Suites: 21 passed, 21 total
+Tests:       173 passed, 173 total
+# เฉพาะ GB-2a:
+PASS src/modules/group_buy/__tests__/campaign-status.unit.spec.ts
+  resolveCampaignStatusTransition
+    ✓ allows draft → active
+    ✓ allows active → ended
+    ✓ treats draft → draft as a no-op
+    ✓ treats active → active as a no-op
+    ✓ treats ended → ended as a no-op
+    ✓ rejects active → draft with NOT_ALLOWED
+    ✓ rejects ended → active with NOT_ALLOWED
+    ✓ rejects ended → draft with NOT_ALLOWED
+    ✓ rejects draft → ended with NOT_ALLOWED
+  assertCampaignPatchAllowed
+    ✓ allows any config field while draft
+    ✓ allows name and pay_within_hours while active
+    ✓ rejects target_value while active
+    ✓ rejects target_type while active
+    ✓ rejects group_mode while active
+    ✓ rejects max_total_orders while active
+    ✓ rejects any change once ended
+  assertCampaignActivatable
+    ✓ passes with a template and a future ends_at
+    ✓ rejects a campaign without a template application method
+    ✓ rejects an ends_at that is missing
+    ✓ rejects an ends_at that is in the past
+    ✓ rejects an ends_at that is equal to now
+PASS src/modules/group_buy/__tests__/template-code.unit.spec.ts
+  generateTemplateCode
+    ✓ returns GBT- followed by 12 upper-case alphanumerics
+    ✓ never starts with the group code prefix GB-
+    ✓ is random across calls
+### integration (http) — เฉพาะไฟล์ของ group buy (ชุดเต็มรันบน CI)
+PASS integration-tests/http/group-buy-campaigns.spec.ts
+    createGroupBuyCampaignWorkflow (AC-20a)
+      ✓ creates a Medusa campaign + draft GBT- template promotion linked to the campaign
+      ✓ template code on a cart with X gives no adjustment; once active it would give X only
+      ✓ rolls back the Medusa campaign and template when the group buy campaign cannot be created
+    deleteGroupBuyCampaignWorkflow rollback
+      ✓ restores the campaign, template, links and Medusa campaign when a later step fails
+    admin API
+      ✓ requires an admin user
+      ✓ creates (returning template_promotion_id), lists, retrieves and updates a draft campaign
+      ✓ rejects an invalid body with 400
+      ✓ returns 404 for an unknown campaign
+      ✓ DELETE on a draft campaign removes the campaign, template, Medusa campaign and links (AC-20a)
+      ✓ DELETE on an active campaign → 400 and nothing is removed (AC-20a)
+    status transitions (AC-21a)
+      ✓ draft → active → ended succeed; active again on active is a no-op 200
+      ✓ rejects active → draft and ended → active with 400
+      ✓ rejects draft → active when the Medusa campaign ends_at has passed
+      ✓ editing target_value of an active campaign → 400; name and pay_within_hours are still editable
+PASS integration-tests/http/group-buy-links.spec.ts   # GB-1 (regression — มี link ใหม่ไปยัง promotion เพิ่ม)
+    ✓ links a group buy campaign to a Medusa promotion campaign
+    ✓ links a group to its Medusa promotion (code GB-<token>)
+    ✓ reads the draft order of a membership through the read-only order_id link
+Tests:       17 passed, 17 total

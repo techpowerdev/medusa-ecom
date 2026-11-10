@@ -1,0 +1,60 @@
+# ADM-2a (spec 08 AC-5) — ผล test
+# วันที่: 2026-11-03, node v24.12.0, base origin/develop 05fec0e
+
+## Red (ก่อนแก้โค้ด): jest src/admin/__tests__/medusa-ui.unit.spec.ts src/admin/lib/__tests__/evoucher-resend.unit.spec.ts
+  ● Header + SectionRow (spec 08 AC-5) › components/common/header.tsx ถูก import อย่างน้อย 2 ไฟล์
+  ● Header + SectionRow (spec 08 AC-5) › widgets/flash-sale-options.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+  ● Header + SectionRow (spec 08 AC-5) › widgets/variant-evoucher-pool.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+  ● resendErrorMessage › collapses repeated full stops
+  ● resendErrorMessage › does not double the full stop when the backend reason ends with one
+Tests:       5 failed, 15 passed, 20 total
+
+## Green (หลังแก้โค้ด): ชุดเดียวกัน --verbose
+PASS src/admin/__tests__/medusa-ui.unit.spec.ts
+  route config icon (spec 08 AC-2)
+    ✓ พบ route ที่ต้องตรวจ
+    ✓ evouchers มี icon ที่ import จาก @medusajs/icons
+    ✓ group-buying มี icon ที่ import จาก @medusajs/icons
+  Header + SectionRow (spec 08 AC-5)
+    ✓ components/common/header.tsx ถูก import อย่างน้อย 2 ไฟล์
+    ✓ widgets/flash-sale-options.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+    ✓ widgets/variant-evoucher-pool.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+  รายการข้อยกเว้นของ AC-4 (spec 08)
+    ✓ components/affiliate/** ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ routes/affiliate/** ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ lib/affiliate* ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ components/group-buy/create-campaign.tsx ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ components/group-buy/groups-section.tsx ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ lib/group-buy-form.ts ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ จับเฉพาะไฟล์ในรายการ
+
+PASS src/admin/lib/__tests__/evoucher-resend.unit.spec.ts
+  canResendEvouchers
+    ✓ is true when any code is delivered or allocated
+    ✓ is false for no codes or only available/void codes
+  resendErrorMessage
+    ✓ drops notification ids and the Notification module prefix
+    ✓ keeps a short backend message as is
+    ✓ does not double the full stop when the backend reason ends with one
+    ✓ collapses repeated full stops
+    ✓ falls back to a generic hint when there is no message
+
+Test Suites: 2 passed, 2 total
+Tests:       20 passed, 20 total
+Snapshots:   0 total
+Time:        0.25 s, estimated 1 s
+
+## pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 74 passed, 74 total
+Tests:       736 passed, 736 total
+
+## pnpm lint && pnpm typecheck: ผ่าน (0 error; warning เดิมของ json-logger.ts และ storefront เท่านั้น)
+## pnpm --filter backend build: Backend build completed successfully / Frontend build completed successfully
+
+## e2e (Playwright, backend medusa start ที่ :9109, --workers=1)
+[chromium] e2e/evoucher-admin-forms.spec.ts — AC-20 (spec 02): passed
+[chromium] e2e/evoucher-admin-resend.spec.ts — AC-19 (spec 02): passed
+[chromium] e2e/evoucher-admin-resend.spec.ts — EV-13 AC-32 + step ใหม่ ADM-2a (ข้อความรูปแบบปัจจุบันของ backend, ไม่มีจุดซ้อน, /try again/i + /log/i): passed
+[chromium] e2e/flash-sale-admin-save.spec.ts — AC-16 (spec 03, ไม่แก้ไฟล์): passed
+[chromium] e2e/flash-sale-admin-widget.spec.ts — AC-5: Total cap ใน widget ตรงกับ API: passed
+5 passed (12.2s)

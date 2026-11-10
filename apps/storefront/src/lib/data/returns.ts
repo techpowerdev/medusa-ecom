@@ -1,0 +1,122 @@
+"use server"
+
+import { sdk } from "@lib/config"
+import {
+  buildReturnRequest,
+  returnableItemsNow,
+  returnErrorMessage,
+  returnWindowDaysOf,
+} from "@lib/util/return-request"
+import { HttpTypes } from "@medusajs/types"
+import { revalidateTag } from "next/cache"
+import { getAuthHeaders, getCacheTag } from "./cookies"
+import { retrieveOrder } from "./orders"
+import { retrieveRegionUncached } from "./regions"
+
+// spec 01 CORE-20 (AC-65): ลูกค้าขอคืนสินค้าผ่าน route ของ Medusa — เหตุผลจาก GET /store/return-reasons,
+// return option จาก GET /store/shipping-options?is_return=true (cart ของ order; core กรอง enabled_in_store ให้)
+// แล้ว POST /store/returns (backend ตรวจ option/ownership/ฟิลด์ต้องห้ามตาม CORE-13/16/17)
+
+/**
+ * return_window_days ของ region ของ order — ไม่ cache (QA #112 D1: admin แก้ metadata ของ region แล้ว storefront
+ * ไม่ถูก revalidate) และใช้ `order.region_id` ไม่ใช่ countryCode ใน URL (review #112, กฎข้อ 60)
+ * region ไม่ตั้งค่า → ค่าเริ่มต้นเดียวกับ backend (CORE-20c); อ่าน region ไม่ได้ = null (ไม่แสดงปุ่ม)
+ */
+export const retrieveReturnWindowDays = async (regionId: string | null | undefined) => {
+  if (!regionId) return null
+  return retrieveRegionUncached(regionId)
+    .then((region) => returnWindowDaysOf(region?.metadata))
+    .catch(() => null)
+}
+
+/** line ที่ขอคืนได้ตอนนี้ (ปุ่ม, หน้า return และ server action ใช้กติกาเดียวกัน ตรวจครั้งเดียวต่อ request) */
+export const retrieveReturnableItems = async (order: HttpTypes.StoreOrder) =>
+  returnableItemsNow(order, await retrieveReturnWindowDays(order.region_id))
+
+export const listReturnReasons = async (): Promise<HttpTypes.StoreReturnReason[]> =>
+  sdk.client
+    .fetch<HttpTypes.StoreReturnReasonListResponse>("/store/return-reasons", {
+      method: "GET",
+      query: { limit: 100, fields: "id,value,label" },
+      headers: { ...(await getAuthHeaders()) },
+      cache: "no-store",
+    })
+    .then(({ return_reasons }) => return_reasons)
+    .catch(() => [])
+
+const retrieveReturnOptionId = async (cartId: string | undefined) => {
+  if (!cartId) return null
+  return sdk.client
+    .fetch<HttpTypes.StoreShippingOptionListResponse>("/store/shipping-options", {
+      method: "GET",
+      query: { cart_id: cartId, is_return: "true", fields: "id" },
+      headers: { ...(await getAuthHeaders()) },
+      cache: "no-store",
+    })
+    .then(({ shipping_options }) => shipping_options[0]?.id ?? null)
+    .catch(() => null)
+}
+
+// CORE-20d (กฎข้อ 66e): ส่งล้ม → คืนค่าที่เลือก (quantity:*/reason:*) ให้ฟอร์มแสดงค่าเดิม (React 19 reset ฟอร์มหลัง action)
+export type ReturnRequestState = {
+  success: boolean
+  error: string | null
+  values?: Record<string, string>
+}
+
+const selectedValues = (formData: FormData) =>
+  Object.fromEntries(
+    Array.from(formData.entries()).flatMap(([key, value]) =>
+      /^(quantity|reason):/.test(key) && typeof value === "string" ? [[key, value]] : []
+    )
+  )
+
+export async function requestReturn(
+  _state: ReturnRequestState,
+  formData: FormData
+): Promise<ReturnRequestState> {
+  const orderId = String(formData.get("order_id") ?? "")
+  const values = selectedValues(formData)
+  const order = await retrieveOrder(orderId).catch(() => null)
+  if (!order) {
+    return { success: false, error: "ไม่พบคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง", values }
+  }
+  // review #112 nit 2: ตรวจกติกาเดียวกับ UI ซ้ำ (เลยหน้าต่าง N วัน / ยังไม่ส่ง / ไม่มี line ที่คืนได้)
+  const returnable = await retrieveReturnableItems(order)
+  if (!returnable.length) {
+    return { success: false, error: "คำสั่งซื้อนี้ไม่สามารถขอคืนสินค้าได้แล้ว", values }
+  }
+
+  const lines = returnable.map(({ item }) => ({
+    id: item.id,
+    quantity: Number(formData.get(`quantity:${item.id}`) ?? 0) || 0,
+    reasonId: String(formData.get(`reason:${item.id}`) ?? ""),
+  }))
+  if (!lines.some((line) => line.quantity > 0)) {
+    return { success: false, error: "กรุณาเลือกจำนวนสินค้าที่ต้องการคืนอย่างน้อย 1 ชิ้น", values }
+  }
+
+  const optionId = await retrieveReturnOptionId(
+    (order as HttpTypes.StoreOrder & { cart?: { id?: string } }).cart?.id
+  )
+  if (!optionId) {
+    return { success: false, error: "ขณะนี้ยังขอคืนสินค้าออนไลน์ไม่ได้ กรุณาติดต่อร้าน", values }
+  }
+
+  try {
+    await sdk.client.fetch("/store/returns", {
+      method: "POST",
+      body: buildReturnRequest({ orderId, optionId, lines }),
+      headers: { ...(await getAuthHeaders()) },
+    })
+  } catch (error) {
+    return {
+      success: false,
+      error: returnErrorMessage(error, "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
+      values,
+    }
+  }
+
+  revalidateTag(await getCacheTag("orders"), { expire: 0 })
+  return { success: true, error: null }
+}

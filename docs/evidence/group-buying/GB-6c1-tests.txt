@@ -1,0 +1,41 @@
+# GB-6c1 test evidence — 2026-10-27 04:08 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose; base origin/develop d86de5c (รวม #106 GB-N1)
+# integration ในเครื่องรันเฉพาะไฟล์ของ task นี้ (ชุดเต็มให้ CI รัน)
+### Red (ก่อนเขียนโค้ด)
+memberships-validator.unit.spec.ts → 8 failed: AdminListGroupBuyMemberships ยังไม่มี (export undefined)
+group-buy-memberships.spec.ts (ยังไม่มี route/middleware) →
+    ✕ AC-34: lists memberships with order + customer email matching the DB (479 ms)
+    ✕ AC-34: limit=1&offset=1 → 1 membership, count=2 (368 ms)
+    ✕ AC-34: limit=101 → 400 (157 ms)
+    ✕ AC-34: limit=0 → 400 (154 ms)
+    ✕ AC-34: offset=-1 → 400 (149 ms)
+    ✕ AC-34: limit=abc → 400 (159 ms)
+    ✓ AC-34: unknown group → 404 (165 ms)
+    ✓ AC-34: no admin token → 401 (161 ms)
+Tests:       6 failed, 2 passed, 8 total
+(404/401 ผ่านตั้งแต่ red เพราะ route ไม่มี = 404 และ /admin/* บังคับ auth = 401 — คงไว้เป็น regression)
+### pnpm --filter backend lint
+0 error
+### pnpm typecheck
+apps/backend: Done / apps/storefront: Done
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully
+### pnpm --filter backend test:unit
+Test Suites: 49 passed, 49 total
+Tests:       493 passed, 493 total
+### unit: src/api/admin/group-buy
+PASS src/api/admin/group-buy/__tests__/memberships-validator.unit.spec.ts
+PASS src/api/admin/group-buy/__tests__/validators.unit.spec.ts
+Test Suites: 2 passed, 2 total
+Tests:       14 passed, 14 total
+### integration-tests/http/group-buy-memberships.spec.ts (หลัง merge origin/develop)
+    ✓ AC-34: lists memberships with order + customer email matching the DB (264 ms)
+    ✓ AC-34: limit=1&offset=1 → 1 membership, count=2 (280 ms)
+    ✓ AC-34: limit=101 → 400 (137 ms)
+    ✓ AC-34: limit=0 → 400 (129 ms)
+    ✓ AC-34: offset=-1 → 400 (184 ms)
+    ✓ AC-34: limit=abc → 400 (142 ms)
+    ✓ AC-34: unknown group → 404 (123 ms)
+    ✓ AC-34: no admin token → 401 (142 ms)
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total

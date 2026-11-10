@@ -1,0 +1,18 @@
+# CORE-19b — ผล test (spec 01 AC-64) 2026-10-27
+# Red (ก่อนแก้ payment/index.tsx): test PromptPay กดทันทีที่ปุ่มพร้อม → ยิง server action สร้าง session 2 ครั้ง (Expected: 1, Received: 2) PI แรกถูก cancel;
+#   unit grep ของ continueToReview ล้มเพราะมี toPass/กดซ้ำ
+# Green: storefront prod build (next build/start) + backend dev, Stripe API จำลองในเครื่อง (ไม่ใช้ key จริง) — flow Stripe จริงตรวจใน CI
+
+Running 8 tests using 4 workers
+  ✓  1 [unit] › e2e/core-19b-continue-to-review.unit.spec.ts:8:5 › AC-64: continueToReview ใน e2e/support/stripe.ts กดครั้งเดียวไม่มี retry (3ms)
+  ✓  3 [chromium] › e2e/core-store.spec.ts:19:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (11.5s)
+  ✓  5 [chromium] › e2e/thai-ui-checkout.spec.ts:21:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (11.2s)
+  ✓  2 [chromium] › e2e/core-4e-checkout-polish.spec.ts:127:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (12.1s)
+  ✓  6 [chromium] › e2e/core-store.spec.ts:59:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (7.3s)
+  ✓  7 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (604ms)
+  ✓  4 [chromium] › e2e/core-19b-continue-to-review.spec.ts:22:5 › AC-64: กด Continue to review ครั้งเดียว 20 รอบ (cart ใหม่ทุกรอบ) → step=review ภายใน 10 วินาที (39.2s)
+  ✓  8 [chromium] › e2e/core-19b-continue-to-review.spec.ts:73:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว (50.2s)
+  8 passed (1.5m)
+
+# pnpm lint && pnpm typecheck: ผ่าน (exit 0)
+# pnpm --filter storefront test:e2e:unit: 30 passed

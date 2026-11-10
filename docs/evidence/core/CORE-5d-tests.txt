@@ -1,0 +1,102 @@
+CORE-5d — evidence เต็มงบแล้ว warn แทน throw และ warn เมื่อไม่มี evidenceTarget (spec 01 กฎข้อ 77, AC-115)
+วันที่ 2026-11-09, Node v22.23.3, ฐาน origin/develop 6b27eb30
+
+== Red 1: พฤติกรรม saveEvidencePng ก่อน implement (npx playwright test --project=unit, exit=1) ==
+(ขั้นนี้ใส่ regex 77e ใหม่ไปแล้ว เคส 77e จึงเขียว — ดู red ของ 77e ใน Red 2; export warnedSpecFiles เป็น stub เพื่อให้ red มาจากพฤติกรรม)
+  ✓   1 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:12:5 › AC-97: e2e ของ AC-88 ไม่ใช้ if (await x.isVisible())
+  ✓   2 [unit] › e2e/support/evidence-save.unit.spec.ts:47:7 › saveEvidencePng (CORE-5c, AC-103) › ไม่ตั้ง evidenceTarget → ไม่เขียนไฟล์และไม่ throw แม้ E2E_SAVE_EVIDENCE=1
+  ✓   3 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if (await x.isVisible()) {
+  ✓   5 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if (await page.getByTestId("x").isVisible()) {
+  ✓   4 [unit] › e2e/support/evidence-save.unit.spec.ts:62:7 › saveEvidencePng (CORE-5c, AC-103) › ไม่ได้เปิด E2E_SAVE_EVIDENCE → ไม่เขียนไฟล์
+  ✓   6 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if (await page.getByTestId("x").first().isVisible()) {
+  ✓   7 [unit] › e2e/support/evidence-save.unit.spec.ts:77:7 › saveEvidencePng (CORE-5c, AC-103) › เขียนเฉพาะในโฟลเดอร์ของ evidenceTarget — โฟลเดอร์ task อื่นไม่เปลี่ยน
+  ✓   8 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if (await page.locator("a").getByRole("button", { name: "y" }).isVisible()) {
+  ✓   9 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if ( await page .getByTestId("x") .isVisible() ) {
+  ✘  10 [unit] › e2e/support/evidence-save.unit.spec.ts:115:7 › saveEvidencePng (CORE-5d, AC-115) › (a) PNG ครบ 5 + ชื่อใหม่ → คืน null ไม่เขียน และ warn 1 ครั้ง
+  ✓  11 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:31:5 › AC-115 (77e): ไม่จับ isVisible ที่อยู่ในตัว block ของ if
+  ✘  12 [unit] › e2e/support/evidence-save.unit.spec.ts:124:7 › saveEvidencePng (CORE-5d, AC-115) › (b) PNG ครบ 5 + ชื่อซ้ำ เนื้อต่าง → ไม่เขียนทับ และ warn 1 ครั้ง
+  ✘  13 [unit] › e2e/support/evidence-save.unit.spec.ts:136:7 › saveEvidencePng (CORE-5d, AC-115) › (d) PNG 4 รูป: ชื่อใหม่ครั้งแรกเขียนได้ ครั้งถัดไปไม่เขียนและ warn
+  ✘  14 [unit] › e2e/support/evidence-save.unit.spec.ts:148:7 › saveEvidencePng (CORE-5d, AC-115) › (e) PNG เกิน 300KB: โฟลเดอร์ครบ 5 → warn ไม่ throw; โฟลเดอร์ < 5 → ยัง throw
+  ✘  15 [unit] › e2e/support/evidence-save.unit.spec.ts:160:7 › saveEvidencePng (CORE-5d, AC-115) › (f) ไม่มี evidenceTarget → warn 1 ครั้งต่อไฟล์ spec และไม่เขียน
+  ✓  16 [unit] › e2e/support/evidence-save.unit.spec.ts:182:7 › saveEvidencePng (CORE-5d, AC-115) › (g) ไม่เปิด E2E_SAVE_EVIDENCE → ไม่ warn ทั้งโฟลเดอร์ครบ 5 และไม่มี target
+  ✓  17 [unit] › e2e/support/evidence-save.unit.spec.ts:198:7 › saveEvidencePng (CORE-5d, AC-115) › กฎข้อ 77b: PNG < 5 รูป เขียนทับชื่อซ้ำได้ และไฟล์ต้องห้ามยัง throw
+  ✘  18 [unit] › e2e/support/evidence-save.unit.spec.ts:212:7 › saveEvidencePng (CORE-5d, AC-115) › static: fixtures.ts ส่ง specFile จาก testInfo.file
+    Error: evidence เกินงบใน <tmp>/docs/evidence/core/CORE-22: มี 6 PNG เกินกำหนด 5 รูป — ใช้ locator.screenshot() หรือ clip ให้เล็กลง หรือลดจำนวนรูป
+    Error: expect(received).toBeNull()
+    Error: evidence เกินงบใน <tmp>/docs/evidence/core/CORE-22: มี 6 PNG เกินกำหนด 5 รูป — ใช้ locator.screenshot() หรือ clip ให้เล็กลง หรือลดจำนวนรูป
+    Error: evidence เกินงบใน <tmp>/docs/evidence/core/CORE-22: มี 6 PNG เกินกำหนด 5 รูป; 01-big.png ขนาด 307201 bytes เกิน 307200 bytes — ใช้ locator.screenshot() หรือ clip ให้เล็กลง หรือลดจำนวนรูป
+    Error: expect(received).toHaveLength(expected)
+    Error: expect(received).toMatch(expected)
+  6 failed
+  12 passed
+
+== Red 2: regex เดิม [^)]* กับเคส 77e (exit=1) ==
+  ✓  1 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:11:5 › AC-97: e2e ของ AC-88 ไม่ใช้ if (await x.isVisible())
+  ✓  2 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:25:7 › AC-115 (77e): จับ if (await x.isVisible()) {
+  ✘  3 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:25:7 › AC-115 (77e): จับ if (await page.getByTestId("x").isVisible()) {
+  ✘  4 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:25:7 › AC-115 (77e): จับ if (await page.getByTestId("x").first().isVisible()) {
+  ✘  5 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:25:7 › AC-115 (77e): จับ if (await page.locator("a").getByRole("button", { name: "y" }).isVisible()) {
+  ✘  6 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:25:7 › AC-115 (77e): จับ if ( await page .getByTestId("x") .isVisible() ) {
+  ✓  7 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:30:5 › AC-115 (77e): ไม่จับ isVisible ที่อยู่ในตัว block ของ if
+    Error: expect(received).toMatch(expected)
+    Error: expect(received).toMatch(expected)
+    Error: expect(received).toMatch(expected)
+    Error: expect(received).toMatch(expected)
+  4 failed
+  3 passed
+
+== Positive control 77e: แทรก if (await page.getByTestId("x").isVisible()) ในส่วน AC-88 ของ core-23-profile-order.spec.ts ชั่วคราว (exit=1, คืนไฟล์ด้วย git checkout แล้ว) ==
+  ✘  1 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:12:5 › AC-97: e2e ของ AC-88 ไม่ใช้ if (await x.isVisible())
+    Error: expect(received).not.toMatch(expected)
+  1 failed
+
+== Green: test ของ task (exit=0) ==
+  ✓   1 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:12:5 › AC-97: e2e ของ AC-88 ไม่ใช้ if (await x.isVisible())
+  ✓   3 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if (await x.isVisible()) {
+  ✓   2 [unit] › e2e/support/evidence-save.unit.spec.ts:47:7 › saveEvidencePng (CORE-5c, AC-103) › ไม่ตั้ง evidenceTarget → ไม่เขียนไฟล์และไม่ throw แม้ E2E_SAVE_EVIDENCE=1
+  ✓   4 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if (await page.getByTestId("x").isVisible()) {
+  ✓   5 [unit] › e2e/support/evidence-save.unit.spec.ts:62:7 › saveEvidencePng (CORE-5c, AC-103) › ไม่ได้เปิด E2E_SAVE_EVIDENCE → ไม่เขียนไฟล์
+  ✓   6 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if (await page.getByTestId("x").first().isVisible()) {
+  ✓   8 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if (await page.locator("a").getByRole("button", { name: "y" }).isVisible()) {
+  ✓   7 [unit] › e2e/support/evidence-save.unit.spec.ts:77:7 › saveEvidencePng (CORE-5c, AC-103) › เขียนเฉพาะในโฟลเดอร์ของ evidenceTarget — โฟลเดอร์ task อื่นไม่เปลี่ยน
+  ✓   9 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:26:7 › AC-115 (77e): จับ if ( await page .getByTestId("x") .isVisible() ) {
+  ✓  10 [unit] › e2e/support/evidence-save.unit.spec.ts:115:7 › saveEvidencePng (CORE-5d, AC-115) › (a) PNG ครบ 5 + ชื่อใหม่ → คืน null ไม่เขียน และ warn 1 ครั้ง
+  ✓  11 [unit] › e2e/core-23b-no-conditional-expect.unit.spec.ts:31:5 › AC-115 (77e): ไม่จับ isVisible ที่อยู่ในตัว block ของ if
+  ✓  12 [unit] › e2e/support/evidence-save.unit.spec.ts:124:7 › saveEvidencePng (CORE-5d, AC-115) › (b) PNG ครบ 5 + ชื่อซ้ำ เนื้อต่าง → ไม่เขียนทับ และ warn 1 ครั้ง
+  ✓  13 [unit] › e2e/support/evidence-save.unit.spec.ts:136:7 › saveEvidencePng (CORE-5d, AC-115) › (d) PNG 4 รูป: ชื่อใหม่ครั้งแรกเขียนได้ ครั้งถัดไปไม่เขียนและ warn
+  ✓  14 [unit] › e2e/support/evidence-save.unit.spec.ts:148:7 › saveEvidencePng (CORE-5d, AC-115) › (e) PNG เกิน 300KB: โฟลเดอร์ครบ 5 → warn ไม่ throw; โฟลเดอร์ < 5 → ยัง throw
+  ✓  15 [unit] › e2e/support/evidence-save.unit.spec.ts:160:7 › saveEvidencePng (CORE-5d, AC-115) › (f) ไม่มี evidenceTarget → warn 1 ครั้งต่อไฟล์ spec และไม่เขียน
+  ✓  16 [unit] › e2e/support/evidence-save.unit.spec.ts:182:7 › saveEvidencePng (CORE-5d, AC-115) › (g) ไม่เปิด E2E_SAVE_EVIDENCE → ไม่ warn ทั้งโฟลเดอร์ครบ 5 และไม่มี target
+  ✓  17 [unit] › e2e/support/evidence-save.unit.spec.ts:198:7 › saveEvidencePng (CORE-5d, AC-115) › กฎข้อ 77b: PNG < 5 รูป เขียนทับชื่อซ้ำได้ และไฟล์ต้องห้ามยัง throw
+  ✓  18 [unit] › e2e/support/evidence-save.unit.spec.ts:212:7 › saveEvidencePng (CORE-5d, AC-115) › static: fixtures.ts ส่ง specFile จาก testInfo.file
+  18 passed
+
+== Green: Playwright project unit ทั้งหมด (exit=0) ==
+  103 passed (701ms)
+
+== e2e/evidence-guard.spec.ts ไม่แก้ไฟล์ (chromium, ไม่ต้องใช้ server, spec ตั้ง E2E_SAVE_EVIDENCE=1 เอง, exit=0) ==
+evidence: apps/storefront/e2e/evidence-guard.spec.ts ไม่ได้ตั้ง evidenceTarget จึงไม่บันทึก PNG ลง docs/evidence
+  ✓  1 [chromium] › e2e/evidence-guard.spec.ts:11:5 › ไม่ตั้ง evidenceTarget: step() และ evidence() ไม่เขียนไฟล์ evidence
+  1 passed
+
+== Static ==
+grep ชื่อ test เดิม "โฟลเดอร์ปลายทางมี PNG ครบงบแล้ว → throw" ใน evidence-save.unit.spec.ts: 0 บรรทัด
+git status --porcelain docs/evidence หลังรันทั้งหมด (ก่อนเพิ่มไฟล์นี้): ว่าง
+git diff --name-only: เฉพาะ 4 ไฟล์ตามแถว task ไม่มี e2e/*.spec.ts อื่น ไม่มี PNG
+
+== Typecheck / lint (storefront) ==
+npx tsc --noEmit: exit=0
+npx eslint .: exit=0 (30 problems (0 errors, 30 warnings); warning เป็นของเดิม ไม่อยู่ในไฟล์ของ task)
+
+== AC-115 ส่วน e2e (QA, head 4723e544, backend + storefront แบบ prod build, Stripe key ปลอม) ==
+ทุกคำสั่งใช้ --project=chromium --workers=1
+E2E_SAVE_EVIDENCE=1 core-22-account-fixes.spec.ts: exit=0, 2 passed, warn "ไม่บันทึก ... มี PNG ครบ 5 รูปแล้ว" 2 บรรทัด
+E2E_SAVE_EVIDENCE=1 affiliate-portal-pages.spec.ts: exit=0, 2 passed, warn "ไม่บันทึก ... มี PNG ครบ 5 รูปแล้ว" 5 บรรทัด
+evidence-guard.spec.ts: exit=0, 1 passed, เห็น warn เมื่อไม่มี evidenceTarget
+negative control (evidence-save.ts จาก 6b27eb30 + core-22 ด้วย E2E_SAVE_EVIDENCE=1): exit=1, 2 failed "evidence เกินงบ" ตามคาด
+git status --porcelain docs/evidence: ว่าง
+sha256 ทุกไฟล์ใต้ docs/evidence (984 ไฟล์) ก่อน/หลังรัน: เท่ากัน
+
+== ไม่ได้รัน ==
+e2e ทั้งชุดด้วย E2E_SAVE_EVIDENCE=1: docs/evidence/README.md ห้าม; ครอบด้วย unit (a)-(e) บน repoRoot ชั่วคราว
+CI รัน e2e ชุดเต็มโดยไม่เปิด E2E_SAVE_EVIDENCE จึงไม่ถึง guard ใหม่

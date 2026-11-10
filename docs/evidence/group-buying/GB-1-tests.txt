@@ -1,0 +1,107 @@
+# GB-1 test evidence — 2026-10-25 16:41 +0700 (รันใหม่หลัง rebase บน develop 94aac09)
+# node v24.12.0 (เครื่องนี้ไม่มี 22.23.4), pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+# spec: docs/spec/04-group-buying.md (ฉบับแก้ตาม ADR-009 ใน PR #12)
+
+
+### pnpm lint (backend)
+apps/backend lint: info:    No lint issues found.
+exit=0
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+exit=0
+### pnpm --filter backend test:unit
+PASS src/__tests__/medusa-config.unit.spec.ts
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/group_buy/__tests__/group-deadline.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+PASS src/modules/group_buy/__tests__/target.unit.spec.ts
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+Test Suites: 6 passed, 6 total
+Tests:       31 passed, 31 total
+exit=0
+### pnpm --filter backend test:integration:modules
+PASS src/modules/group_buy/__tests__/service.spec.ts (11.094 s)
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+PASS src/modules/group_buy/__tests__/group-deadline.unit.spec.ts
+PASS src/modules/group_buy/__tests__/target.unit.spec.ts
+Test Suites: 5 passed, 5 total
+Tests:       44 passed, 44 total
+exit=0
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/order-notifications.spec.ts (24.594 s)
+PASS integration-tests/http/seed.spec.ts (45.237 s)
+PASS integration-tests/http/group-buy-links.spec.ts (44.322 s)
+PASS integration-tests/http/health.spec.ts (24.947 s)
+Test Suites: 4 passed, 4 total
+Tests:       15 passed, 15 total
+exit=0
+
+
+### รอบล่าสุด: rebase บน develop ae8e9fa (PROMO-1, FS-1, EV-1, hotfix #22)
+### pnpm --filter backend test:unit
+PASS src/lib/__tests__/promotion-exclusivity.unit.spec.ts
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+PASS src/__tests__/medusa-config.unit.spec.ts
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+PASS src/__tests__/medusa-config-modules.unit.spec.ts
+PASS src/modules/group_buy/__tests__/target.unit.spec.ts
+PASS src/modules/group_buy/__tests__/group-deadline.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+Test Suites: 9 passed, 9 total
+Tests:       70 passed, 70 total
+exit=0
+### pnpm --filter backend build
+Backend build completed successfully
+Frontend build completed successfully
+exit=0
+# integration (modules/http) ของรอบนี้ใช้ผลจาก CI ของ PR #17 — ในเครื่อง Postgres ที่ใช้ร่วมกับ builder ตัวอื่น
+# เกิดปัญหาชนกันเมื่อรันพร้อมกัน (Connection ended unexpectedly / pg_type duplicate) ส่วน group_buy service.spec ในเครื่องผ่าน 30/30
+
+### รายละเอียดราย test ของ GB-1 (jest --verbose)
+PASS src/modules/group_buy/__tests__/service.spec.ts
+    GroupBuyCampaign
+      ✓ creates a campaign with defaults (status=draft, pay_within_hours=24, nullable limits) (236 ms)
+      ✓ rejects an unknown target_type (60 ms)
+      ✓ rejects an unknown group_mode (46 ms)
+      ✓ rejects an unknown status (47 ms)
+      ✓ rejects non-positive target_value at the database level (46 ms)
+      ✓ rejects non-positive max_total_orders at the database level (50 ms)
+      ✓ rejects non-positive max_units_per_person at the database level (44 ms)
+      ✓ rejects non-positive max_people_per_group at the database level (49 ms)
+      ✓ rejects non-positive team_duration_hours at the database level (46 ms)
+      ✓ rejects non-positive pay_within_hours at the database level (47 ms)
+    GroupBuyGroup
+      ✓ creates an open group with zeroed progress counters (47 ms)
+      ✓ requires a unique join_token (51 ms)
+      ✓ rejects negative progress counters at the database level (44 ms)
+      ✓ lists groups by campaign with the campaign relation (60 ms)
+    GroupBuyMembership
+      ✓ creates a joined membership linked to its group and campaign (47 ms)
+      ✓ allows the same customer to hold several memberships in one group (54 ms)
+      ✓ rejects a second membership for the same order_id (52 ms)
+      ✓ rejects an unknown status and non-positive units (49 ms)
+      ✓ filters memberships of a customer across a campaign (campaign_id, customer_id) (53 ms)
+PASS src/modules/group_buy/__tests__/group-deadline.unit.spec.ts
+  computeGroupEndsAt
+    ✓ uses the campaign ends_at for a pool group (1 ms)
+    ✓ uses created + team_duration_hours for a team when that is earlier
+    ✓ caps a team deadline at the campaign ends_at (1 ms)
+    ✓ falls back to the campaign ends_at when team_duration_hours is not set
+PASS src/modules/group_buy/__tests__/target.unit.spec.ts
+  isTargetReached
+    ✓ target_type=orders target_value=4 → true (1 ms)
+    ✓ target_type=orders target_value=5 → false
+    ✓ target_type=units target_value=9 → true
+    ✓ target_type=units target_value=10 → false
+    ✓ target_type=people target_value=2 → true
+    ✓ target_type=people target_value=3 → false
+    ✓ counts progress above the target as reached
+Tests:       30 passed, 30 total
+PASS integration-tests/http/group-buy-links.spec.ts (5.902 s)
+    ✓ links a group buy campaign to a Medusa promotion campaign (231 ms)
+    ✓ links a group to its Medusa promotion (code GB-<token>) (267 ms)
+    ✓ reads the draft order of a membership through the read-only order_id link (142 ms)
+Tests:       3 passed, 3 total

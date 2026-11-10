@@ -1,0 +1,38 @@
+import { retrieveOrder } from "@lib/data/orders"
+import { retrieveReturnWindowDays } from "@lib/data/returns"
+import { canRequestReturn } from "@lib/util/return-request"
+import OrderDetailsTemplate from "@modules/order/templates/order-details-template"
+import { Metadata } from "next"
+import { notFound } from "next/navigation"
+
+type Props = {
+  params: Promise<{ id: string }>
+}
+
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params
+  const order = await retrieveOrder(params.id).catch(() => null)
+
+  if (!order) {
+    notFound()
+  }
+
+  return {
+    title: `คำสั่งซื้อ #${order.display_id}`,
+    description: `ดูรายละเอียดคำสั่งซื้อของคุณ`,
+  }
+}
+
+export default async function OrderDetailPage(props: Props) {
+  const params = await props.params
+  const order = await retrieveOrder(params.id).catch(() => null)
+
+  if (!order) {
+    notFound()
+  }
+
+  // CORE-20: ปุ่มขอคืนสินค้าเฉพาะ order ที่ส่งแล้วและยังอยู่ใน return_window_days ของ region ของ order
+  const canReturn = canRequestReturn(order, await retrieveReturnWindowDays(order.region_id))
+
+  return <OrderDetailsTemplate order={order} canReturn={canReturn} />
+}

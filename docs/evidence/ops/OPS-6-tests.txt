@@ -1,0 +1,88 @@
+# OPS-6 test evidence — 2026-10-25 20:40 +0700
+# node v22.23.3 (nvm; image ใช้ node 22.23.4), pnpm 12.15.0, next 16.3.8, docker 29.4.2 (Docker Desktop, arm64)
+# backend ชั่วคราวสำหรับ GET /: DB แยก medusa_ops6 (migrate + seed) บน postgres ของ compose, `medusa start` ที่ :9118
+# (DISABLE_MEDUSA_ADMIN=true) — ปิดและ drop DB แล้วหลังเก็บผล
+
+### Red — storefront: vitest src/next-config.test.ts (ก่อนแก้ next.config.js)
+     × ใช้ output: "standalone"
+     × ปิด agentRules
+AssertionError: expected undefined to be 'standalone' // Object.is equality
+AssertionError: expected undefined to be false // Object.is equality
+      Tests  2 failed (2)
+exit=1
+
+### Red — backend: jest src/__tests__/jest-config.unit.spec.ts (ก่อนแก้ jest.config.js)
+    ✕ integration:modules ไม่มีไฟล์ *.unit.spec.*
+    ✓ unit ไม่มีไฟล์ integration ของ module
+    ✓ ทุก *.unit.spec.* ใต้ src ถูกรันใน test:unit ครั้งเดียว
+  unit spec ที่ integration:modules จับซ้ำ (8 ไฟล์):
+    src/modules/digital_fulfillment/__tests__/service.unit.spec.ts
+    src/modules/evoucher/__tests__/crypto.unit.spec.ts
+    src/modules/evoucher/__tests__/csv.unit.spec.ts
+    src/modules/evoucher/__tests__/mask.unit.spec.ts
+    src/modules/group_buy/__tests__/group-deadline.unit.spec.ts
+    src/modules/group_buy/__tests__/target.unit.spec.ts
+    src/modules/resend/__tests__/service.unit.spec.ts
+    src/modules/resend/__tests__/templates.unit.spec.ts
+Tests:       1 failed, 2 passed, 3 total
+exit=1
+
+### AC-7 — ยืนยันชื่อตัวแปร
+generate-agent-files.js เขียนไฟล์เท่านั้น; การตรวจจับ agent อยู่ที่ server/lib/app-info-log.js
+ensureAgentRulesForDev() → telemetry/agent-name.js → compiled/@vercel/detect-agent:
+  if(process.env.CLAUDECODE||process.env.CLAUDE_CODE){ ... isAgent:true }
+start-server.js: `if (initResult.agentRules !== false) { ensureAgentRulesForDev(dir) }`
+→ ใช้ CLAUDECODE=1 ตาม spec (ทุกตัวแปร CLAUDE*/AI_AGENT อื่นถูก unset ก่อนรัน)
+
+### AC-7 positive control — ก่อนแก้ (ไม่มี agentRules): CLAUDECODE=1 pnpm --filter storefront dev -p 8117
+✓ Generated AGENTS.md and CLAUDE.md for AI agents. Set `agentRules: false` in next.config to disable.
+GET / => 200
+apps/storefront/AGENTS.md (678 B), apps/storefront/CLAUDE.md (11 B) ถูกสร้าง → ลบทิ้งแล้ว ไม่ commit
+
+### AC-7 — หลังแก้ (agentRules: false): คำสั่งเดียวกัน
+GET / => 200
+จำนวนไฟล์ AGENTS.md/CLAUDE.md ใน apps/storefront: 0
+log ไม่มีบรรทัด "Generated AGENTS.md" (นับได้ 0)
+
+### Green — pnpm --filter storefront test:unit (vitest run)
+ Test Files  3 passed (3)
+      Tests  24 passed (24)
+exit=0
+
+### Green — pnpm --filter backend test:unit
+PASS src/__tests__/jest-config.unit.spec.ts
+  jest.config.js testMatch (AC-8)
+    ✓ integration:modules ไม่มีไฟล์ *.unit.spec.*
+    ✓ unit ไม่มีไฟล์ integration ของ module
+    ✓ ทุก *.unit.spec.* ใต้ src ถูกรันใน test:unit ครั้งเดียว
+Test Suites: 19 passed, 19 total
+Tests:       149 passed, 149 total
+exit=0
+
+### AC-8 — TEST_TYPE=integration:modules jest --listTests (หลังแก้)
+src/modules/flash_sale/__tests__/reservation.spec.ts
+src/modules/group_buy/__tests__/service.spec.ts
+src/modules/evoucher/__tests__/evoucher-module.spec.ts
+src/modules/flash_sale/__tests__/service.spec.ts
+exit=0
+### AC-8 — TEST_TYPE=unit jest --listTests (หลังแก้): 19 ไฟล์ ทั้งหมดเป็น *.unit.spec.ts ไม่มี integration ของ module
+
+### AC-6 — image storefront (build จาก root; build arg publishable key ของ backend ชั่วคราว, DEFAULT_REGION=th)
+ก่อนแก้: build จาก `git archive origin/develop` (Dockerfile ของ OPS-1, next start + ก๊อป /repo ทั้งก้อน)
+  docker image inspect --format '{{.Size}}' medusa-ecom-storefront:ops6-before → 326440333  (disk usage 1.47GB)
+หลังแก้: Dockerfile ใช้ .next/standalone + .next/static + public, CMD node server.js
+  docker image inspect --format '{{.Size}}' medusa-ecom-storefront:ops6-after  → 94797625   (disk usage 413MB)
+  → เล็กลง ~71% (326.4MB → 94.8MB)
+docker run ops6-after -p 8118:8000 → "▲ Next.js 16.3.8 ... ✓ Ready", GET / => 200, GET /favicon.ico => 200,
+  GET /_next/static/...js => 200, GET /th/store => 200; ไม่ต้องตั้ง env ตอน run (NEXT_PUBLIC_* ฝังตอน build)
+docker run ops6-before -p 8119:8000 → GET / => 200 (baseline)
+ลบ image ops6-before/ops6-after แล้ว
+
+### pnpm --filter storefront start (ใช้ใน job storefront-e2e) กับ output: standalone
+GET / => 200; next แสดง warning: "next start" does not work with "output: standalone" configuration.
+Use "node .next/standalone/server.js" instead. (ยังเสิร์ฟได้ — ดูหมายเหตุใน PR)
+
+### pnpm lint && pnpm typecheck
+backend lint: No lint issues found. storefront: 0 errors, 38 warnings (เดิม ไม่เกี่ยวกับ task นี้)
+typecheck: backend Done, storefront Done
+exit=0

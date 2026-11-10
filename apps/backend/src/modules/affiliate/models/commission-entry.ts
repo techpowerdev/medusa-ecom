@@ -1,0 +1,26 @@
+import { model } from "@medusajs/framework/utils"
+
+// Append-only ledger; a reversal is a separate negative entry
+const CommissionEntry = model
+  .define("affiliate_commission_entry", {
+    id: model.id({ prefix: "affcom" }).primaryKey(),
+    affiliate_id: model.text(),
+    program_id: model.text(),
+    order_id: model.text(),
+    line_item_id: model.text().nullable(),
+    amount: model.bigNumber(),
+    currency: model.text(),
+    status: model.enum(["pending", "approved", "reversed", "paid"]).default("pending"),
+    reason: model.text().nullable(),
+    matures_at: model.dateTime().nullable(),
+  })
+  .indexes([
+    { on: ["affiliate_id", "status", "created_at"] },
+    // maturity job (AF-4): status = 'pending' AND matures_at <= now
+    { on: ["status", "matures_at"] },
+    { on: ["order_id", "line_item_id"], unique: true, where: { status: "pending" } },
+    // OPS-5: reversal / maturity / payout ค้นด้วย order_id ทุกสถานะ — index ข้างบนเป็น partial (pending) ใช้ไม่ได้
+    { on: ["order_id"] },
+  ])
+
+export default CommissionEntry

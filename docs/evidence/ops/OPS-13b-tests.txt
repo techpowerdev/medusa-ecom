@@ -1,0 +1,23 @@
+# OPS-13b (AC-25) — docs/spec/07-scaling-ops.md
+## Red (ก่อนแก้ docs/ops/production.md)
+    ✕ AC-25 ทุกบรรทัดที่พูดถึง ALLOW_TEST_PROVIDERS ... — ข้อ 4 ยังเขียน "ไม่ได้ตั้ง `ALLOW_TEST_PROVIDERS`"
+    ✕ AC-25 ข้อ Q-F1 ... — ไม่มี Settings → Regions → ... Metadata
+Tests:       2 failed, 34 skipped, 36 total
+## Green: prod-guards.unit.spec.ts
+  AC-11 Go-live checklist ใน docs/ops/production.md
+    ✓ มีหัวข้อและอ้างคำสั่ง check:go-live
+    ✓ AC-21 มีข้อ Q-F1: ค่าส่ง Standard / Standard return ยังเป็น placeholder shipping_rate
+    ✓ AC-21 ข้อที่พูดถึงค่าว่างของ ALLOW_TEST_PROVIDERS ระบุว่าไม่ตั้งกับตั้งเป็นค่าว่างนับเหมือนกัน
+    ✓ AC-25 ทุกบรรทัดที่พูดถึง ALLOW_TEST_PROVIDERS ใช้ถ้อยคำเดียวกับข้อ 3 (ไม่ตั้ง / ตั้งเป็นค่าว่าง) (3 ms)
+    ✓ AC-25 ข้อ Q-F1 บอกตำแหน่งแก้ shipping_rate และราคา shipping option ใน admin
+    ✓ AC-21 check:go-live นับ ALLOW_TEST_PROVIDERS ที่ไม่ตั้งกับค่าว่างเหมือนกัน แต่ค่าอื่นทุกค่าไม่ผ่าน (1 ms)
+    ✓ package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec (3 ms)
+Test Suites: 1 passed, 1 total
+Tests:       36 passed, 36 total
+Snapshots:   0 total
+Time:        2.305 s, estimated 3 s
+Ran all test suites matching /src\/__tests__\/prod-guards.unit.spec.ts/i.
+## pnpm --filter backend test:unit (ชุด unit ทั้งหมด)
+Test Suites: 56 passed, 56 total
+Tests:       589 passed, 589 total
+## pnpm lint && pnpm typecheck: ผ่าน

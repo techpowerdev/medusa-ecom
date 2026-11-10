@@ -1,0 +1,24 @@
+# GB-6d test evidence — 2026-10-27 17:20 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 (docker compose); base origin/develop c389cf1
+# e2e ในเครื่องรันเฉพาะไฟล์ของ task นี้ (ชุดเต็มให้ CI รัน); backend medusa start :9202 DB medusa_gb6d Redis db 10, Stripe key ปลอม
+### Red
+group-buy-membership.unit.spec.ts → Membership type: expect(block).not.toMatch(/\btotal\b/) ล้ม (type ยังมี order.total)
+e2e group-buy-admin-members.spec.ts (admin build ก่อนแก้) →
+  AC-41 fail ล้ม: toContainText("succeeded") ล้มภายใน 5 วินาที — แถวยังแสดง open (ไม่ invalidate ตอน error)
+  AC-41 highlight/ปิด/ข้ามหน้า: tr:has([data-testid=gb-group-selected]) Expected 1 Received 0
+  2 failed / 2 passed (AC-35 เดิม)
+### Green: e2e group-buy-admin-members.spec.ts --project=chromium
+  ✓  1 [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย (3.5s)
+  ✓  2 [chromium] › e2e/group-buy-admin-members.spec.ts:148:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request (1.9s)
+  ✓  3 [chromium] › e2e/group-buy-admin-members.spec.ts:181:7 › GB-6d › AC-41: fail ล้มเพราะกลุ่ม succeeded ไปแล้ว → GET กลุ่มใหม่ แถวเป็น succeeded ปุ่มหาย ไม่ต้อง reload (2.2s)
+  ✓  4 [chromium] › e2e/group-buy-admin-members.spec.ts:230:7 › GB-6d › AC-41: แถวที่เลือกมี highlight + ปุ่มปิด; เปลี่ยนหน้าไปหน้าที่ไม่มีแถวที่เลือก → ปิดตาราง membership (2.2s)
+  4 passed (10.6s)
+### pnpm --filter backend test:unit
+Test Suites: 56 passed, 56 total
+Tests:       588 passed, 588 total
+### pnpm lint
+backend: 0 errors (1 warning เดิมที่ src/lib/json-logger.ts) / storefront: 0 errors (31 warnings เดิม)
+### pnpm typecheck
+apps/backend: 0 error / apps/storefront: 0 error
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully

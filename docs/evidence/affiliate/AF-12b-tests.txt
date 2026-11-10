@@ -1,0 +1,45 @@
+# AF-12b — ผลการทดสอบ (2026-10-27)
+
+## unit (jest) src/admin/lib/__tests__/affiliate-account + single-flight
+PASS src/admin/lib/__tests__/single-flight.unit.spec.ts
+  createSingleFlight
+    ✓ ignores calls while the first one is still pending (2 ms)
+    ✓ allows a new call after the previous one settles, even when it failed (4 ms)
+
+PASS src/admin/lib/__tests__/affiliate-account.unit.spec.ts
+  affiliateAction
+    ✓ maps each status to its single action and target status (2 ms)
+  parsePayoutInfo
+    ✓ trims the three fields and returns only those keys
+    ✓ requires every field after trimming
+  payoutInfoForm
+    ✓ prefills from stored payout_info and falls back to empty strings (1 ms)
+
+Test Suites: 2 passed, 2 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        0.627 s, estimated 1 s
+Ran all test suites matching /src\/admin\/lib\/__tests__\/affiliate-account.unit.spec.ts|src\/admin\/lib\/__tests__\/single-flight.unit.spec.ts/i.
+
+## e2e admin (Playwright, chromium) AC-43
+
+Running 1 test using 1 worker
+
+  ✓  1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:40:5 › AC-43: approve dblclick ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (5.0s)
+
+  1 passed (5.6s)
+
+## mutation check: เอา createSingleFlight ออกจากตาราง → e2e ล้ม (dblclick approve ได้ POST 2 ครั้ง) แล้วคืนโค้ด
+
+## typecheck (ไม่มี .medusa/)
+apps/backend typecheck$ tsc --noEmit && tsc --noEmit -p src/admin/tsconfig.json
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+
+## backend test:unit ทั้งชุด
+Test Suites: 63 passed, 63 total
+Tests:       616 passed, 616 total
+
+## lint
+apps/backend: 0 errors, 1 warning (json-logger.ts มีอยู่เดิมบน develop)
+apps/storefront: 0 errors, 31 warnings (มีอยู่เดิม ไม่มีในไฟล์ของ task นี้)

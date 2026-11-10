@@ -1,0 +1,73 @@
+import repeat from "@lib/util/repeat"
+import { HttpTypes } from "@medusajs/types"
+import { Heading, Table } from "@modules/common/components/ui"
+
+import Item from "@modules/cart/components/item"
+import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
+
+type ItemsTemplateProps = {
+  cart?: HttpTypes.StoreCart
+  flashExceeded?: Record<string, number>
+}
+
+const ItemsTemplate = ({ cart, flashExceeded }: ItemsTemplateProps) => {
+  const items = cart?.items
+  return (
+    <div>
+      <div className="pb-3 flex items-center">
+        <Heading
+          className="text-[2rem] leading-[2.75rem]"
+          data-testid="cart-title"
+        >
+          ตะกร้าสินค้า
+        </Heading>
+      </div>
+      {/* CORE-47 (กฎข้อ 105b): < small ตารางเป็น block ให้แถวเป็นการ์ด (grid ใน Item) และซ่อนหัวคอลัมน์ — ≥ small ตารางเดิม */}
+      <Table className="max-small:block">
+        <Table.Header className="border-t-0 max-small:hidden">
+          <Table.Row
+            className="text-ui-fg-subtle txt-medium-plus"
+            data-testid="cart-items-header"
+          >
+            {/* CORE-42 (กฎข้อ 100a): padding < small ตรงกับ cell ของ Item (≥ small คงเดิม) */}
+            <Table.HeaderCell className="!pl-0 pr-2 small:pr-4">
+              สินค้า
+            </Table.HeaderCell>
+            <Table.HeaderCell className="px-2 small:px-4"></Table.HeaderCell>
+            <Table.HeaderCell className="px-2 small:px-4">
+              จำนวน
+            </Table.HeaderCell>
+            <Table.HeaderCell className="hidden small:table-cell">
+              ราคา
+            </Table.HeaderCell>
+            <Table.HeaderCell className="!pr-0 text-right">
+              รวม
+            </Table.HeaderCell>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body className="max-small:block">
+          {items
+            ? items
+                .sort((a, b) => {
+                  return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
+                })
+                .map((item) => {
+                  return (
+                    <Item
+                      key={item.id}
+                      item={item}
+                      currencyCode={cart?.currency_code}
+                      flashRemaining={flashExceeded?.[item.id]}
+                    />
+                  )
+                })
+            : repeat(5).map((i) => {
+                return <SkeletonLineItem key={i} />
+              })}
+        </Table.Body>
+      </Table>
+    </div>
+  )
+}
+
+export default ItemsTemplate

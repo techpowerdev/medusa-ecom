@@ -1,0 +1,103 @@
+# AF-8a — portal affiliate ใน storefront: login/register + หน้า Products (spec 05 AC-9, AC-35, กฎ 17, 29)
+# วันที่ 2026-10-27 · Node 22.23.3 · backend :9193 (DB medusa_af8, Redis db 3) · storefront next start :8193
+
+## Red (ก่อนเขียนโค้ด)
+vitest src/lib/util/affiliate-portal.test.ts src/thai-ui-rule.test.ts → Test Files 2 failed, Tests 4 failed | 66 passed
+  - affiliate-portal.test.ts: ไม่พบ module ./affiliate-portal (ยังไม่มีฟังก์ชัน)
+  - thai-ui-rule.test.ts: 'เปิด rule กับ src/.../affiliate/**' expected undefined to be 2 (ยังไม่เพิ่ม path ใน ESLint)
+
+## Green — unit (vitest) ของ task นี้
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 990 × อัตรา 15 = 148.5 1ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 590 × อัตรา 10 = 59 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 0.1 × อัตรา 5 = 0.01 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 333.33 × อัตรา 12.5 = 41.67 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 100.1 × อัตรา 3 = 3 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > estimateCommission > ราคา 1.15 × อัตรา 50 = 0.58 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > cardPrice > ราคาต่ำสุดของ variant ที่อยู่ในโปรแกรม 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > cardPrice > ไม่มีราคา → null 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > daysUntil > 2026-10-28T10:00:00Z → 1 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > daysUntil > 2026-10-28T09:00:00Z → 1 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > daysUntil > 2026-10-29T10:00:01Z → 3 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > daysUntil > 2026-10-27T09:00:00Z → 0 วัน 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "upcoming" → upcoming 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "active" → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > undefined → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > "x" → active 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalTab > ["upcoming","active"] → active 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/affiliate/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/app/[countryCode]/(main)/affiliate/login/page.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/affiliate/components/product-card/index.tsx (path ในตาราง AC-49) 0ms
+ ✓ src/thai-ui-rule.test.ts > ESLint rule ข้อความไทย (AC-47) > เปิด rule กับ src/modules/affiliate/components/share-button/index.tsx (path ในตาราง AC-49) 0ms
+ Test Files  2 passed (2)
+      Tests  87 passed (87)
+
+## unit storefront ทั้งหมด (vitest)
+ Test Files  29 passed (29)
+      Tests  317 passed (317)
+
+## e2e (Playwright chromium) — e2e/affiliate-portal.spec.ts
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.8s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:130:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (848ms)
+  2 passed (4.4s)
+
+## e2e affiliate เดิมรันร่วม (โปรแกรมของ AF-8a ไม่กระทบ AF-2/AF-3b)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.9s)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:130:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (897ms)
+  ✓  1 [chromium] › e2e/affiliate-tracking.spec.ts:17:5 › AF-2: คลิกลิงก์ affiliate → cookie aff → เพิ่มสินค้าลง cart → metadata.affiliate_token = ค่า cookie (6.0s)
+  ✓  3 [chromium] › e2e/affiliate-last-click.spec.ts:21:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21) (12.3s)
+  4 passed (13.5s)
+
+## Playwright project unit
+  29 passed (855ms)
+
+## pnpm lint && pnpm typecheck → exit 0 (0 errors; warning เดิมของ repo ไม่มีในไฟล์ของ task นี้)
+## next build (storefront) → exit 0: ƒ /[countryCode]/affiliate, ƒ /[countryCode]/affiliate/login
+
+## แก้ตาม review #135 (REQUEST CHANGES รอบ 1) — 2026-10-27
+### Red (เพิ่ม e2e ก่อนแก้โค้ด)
+  ✘  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (8.6s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:132:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (1.8s)
+  ✘  3 [chromium] › e2e/affiliate-portal.spec.ts:158:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (6.5s)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:181:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (1.2s)
+    Error: expect(locator).toContainText(expected) failed
+    Expected substring: "สูงสุด"
+    Received string:    "ได้ประมาณ ฿88.50 ต่อชิ้น"
+    test-results/affiliate-portal-AF-8a-log-57c7c-้า-และแชร์ลิงก์-AC-9-AC-35--chromium/test-failed-1.png
+    Error: affiliate-login-error
+    expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    test-results/affiliate-portal-AF-8a-cus-e9823-ไม่ตั้ง-session-review-135--chromium/test-failed-1.png
+  2 failed
+  2 passed (21.0s)
+  (test suspended ผ่านตั้งแต่ก่อนแก้ — เพิ่มเพื่อครอบ Q6 ด้วย e2e)
+### Green
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (5.6s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:132:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (1.7s)
+  ✓  3 [chromium] › e2e/affiliate-portal.spec.ts:158:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (1.6s)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:181:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (1.2s)
+  4 passed (12.1s)
+vitest storefront: Test Files 30 passed, Tests 324 passed
+pnpm lint && pnpm typecheck → exit 0; next build → exit 0
+
+## แก้ตาม qa #135 D2 (?page=1.5 → 500) — 2026-10-27
+### Red: vitest affiliate-portal.test.ts → portalPage 10 failed (TypeError: portalPage is not a function)
+### Green
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > undefined → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "abc" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "0" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "-3" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1.5" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "2.9" → 2 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "3" → 3 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1e400" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > "1e20" → 1 0ms
+ ✓ src/lib/util/affiliate-portal.test.ts > portalPage > ["2","3"] → 1 0ms
+      Tests  27 passed (27)
+vitest storefront: Test Files 30 passed, Tests 334 passed
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:48:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (2.2s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:140:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (659ms)
+  ✓  3 [chromium] › e2e/affiliate-portal.spec.ts:166:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (653ms)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:189:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (705ms)
+  4 passed (5.5s)
+(e2e test 1 มี step ใหม่: ?page=1.5 และ ?page=abc → 200 พร้อมการ์ด)
+pnpm lint && pnpm typecheck → exit 0; next build → exit 0

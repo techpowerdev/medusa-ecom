@@ -1,0 +1,48 @@
+EV-5c — ผลทดสอบ (2026-10-27, Node 22.23.3, Medusa 2.22.1, base origin/develop 8a8253a)
+
+== Red (ก่อนเขียนโค้ด, -t AC-33) ==
+- 409 ขณะ allocation ถือ lock: resend ไม่ชน lock (key evoucher-resend:<id> คนละ key) → ค้างจน timeout
+- locking provider throw error อื่น: Expected >= 500, Received 409 (catch {} กลืนเป็น 409)
+- update สถานะล้มหลังส่งสำเร็จ: Expected 200, Received 500
+Tests:       3 failed, 6 skipped, 9 total
+
+== integration:http evoucher-resend.spec.ts (Green) ==
+      ✓ sends one new email with the same 2 codes to the order email and leaves the codes unchanged (2352 ms)
+      ✓ returns 400 for an order without delivered or allocated codes (3698 ms)
+      ✓ returns 401 without an admin token (1723 ms)
+      ✓ marks allocated codes delivered and uses a new idempotency key on every resend (1885 ms)
+      ✓ keeps the codes allocated, answers an error and can be retried when the provider still fails (2402 ms)
+      ✓ sends only one email when two resends of the same order arrive together (4728 ms)
+      ✓ answers 409 while allocation holds the order lock and allocation still sends exactly one email (2473 ms)
+      ✓ answers 5xx (not 409) when the locking provider fails for another reason (1842 ms)
+      ✓ answers 200 and logs the order id when the email is sent but the status update fails (1730 ms)
+Tests:       9 passed, 9 total
+
+== integration:http evoucher-allocate.spec.ts (regression ของ allocation ที่ถือ lock) ==
+      ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry (4087 ms)
+      ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method (3307 ms)
+      ✓ does not warn about shipping profile when the voucher product has none (AC-31) (2245 ms)
+      ✓ warns once (but still delivers) when the voucher product has the default shipping profile (AC-31) (2865 ms)
+      ✓ warns once (but still delivers) when the voucher product has the digital shipping profile (AC-31) (4402 ms)
+      ✓ does nothing for an order without voucher items (3936 ms)
+      ✓ re-running for the same order allocates no more codes and sends no more emails (4592 ms)
+      ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails (4307 ms)
+      ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available (3476 ms)
+      ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails (5987 ms)
+      ✓ uses a new idempotency key per claim and clears the backordered flag once delivered (8579 ms)
+      ✓ delivers the farthest kept code to a reserved order after the daily job ran (4119 ms)
+      ✓ still prefers a long-lived code over a near-expiry one (2654 ms)
+      ✓ gives the last code to only one of two concurrently captured orders and flags the other (2163 ms)
+      ✓ sends one notification to the mailbox and none to the 3 admin users (1386 ms)
+      ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged) (1636 ms)
+Tests:       16 passed, 16 total
+
+== unit (test:unit ทั้งหมด) ==
+Test Suites: 62 passed, 62 total
+Tests:       612 passed, 612 total
+
+== pnpm typecheck (worktree ไม่มี .medusa/) ==
+ผ่าน (backend + admin + storefront)
+
+== pnpm lint ==
+0 errors (warning เดิมที่ src/lib/json-logger.ts และ storefront ไม่เกี่ยวกับ task นี้)

@@ -1,0 +1,77 @@
+# CORE-12 — ผล test (รันในเครื่อง 2026-10-25, Node 22.23.3, Postgres 16 จาก docker compose)
+
+## backend: unit — src/lib/__tests__/store-ownership.unit.spec.ts (verbose)
+PASS src/lib/__tests__/store-ownership.unit.spec.ts
+  owner resolvers
+    ✓ cartOwner reads cart.customer_id by id
+    ✓ cartOwner returns null for a missing cart, a cart without customer, or no id (no query)
+    ✓ orderOwner reads order.customer_id
+    ✓ paymentCollectionOwner uses the linked cart, falling back to the linked order
+  assertCartOwner (ADR-013 ข้อ 3 — ใช้ใน route/workflow ของเราเอง เช่น GB-3)
+    ✓ passes for the owner
+    ✓ throws 404 not_found for another customer, a missing cart or a missing customer
+  ensureStoreOwnership
+    ✓ calls next() when the resolved owner is the authenticated customer
+    ✓ throws 404 when the owner differs, is null, or there is no actor
+  storeOwnershipMiddlewares: which id each matcher checks
+    ✓ /store/carts/:id (ALL) → looks up cart
+    ✓ /store/payment-collections (POST) → looks up cart
+    ✓ /store/payment-collections/:id/payment-sessions (ALL) → looks up payment_collection
+    ✓ /store/shipping-options (GET) → looks up cart
+    ✓ /store/shipping-options/:id/calculate (POST) → looks up cart
+    ✓ /store/orders/:id (GET) → looks up order
+    ✓ adds authenticate(customer) to shipping-options and GET /store/orders/:id
+Tests:       15 passed, 15 total
+
+## backend: pnpm --filter backend test:unit (ทั้งชุด)
+Tests:       203 passed, 203 total
+
+## backend: integration http — ทุกไฟล์ที่สร้าง/แก้ cart (รันรวมกัน)
+PASS integration-tests/http/customer-only-store.spec.ts (10.868 s)
+PASS integration-tests/http/flash-sale-active.spec.ts (9.507 s)
+PASS integration-tests/http/flash-sale-limits.spec.ts (48.271 s)
+PASS integration-tests/http/promotion-exclusivity.spec.ts (19.916 s)
+PASS integration-tests/http/store-ownership.spec.ts (16.332 s)
+PASS integration-tests/http/stripe-webhook.spec.ts (56.837 s)
+Tests:       59 passed, 59 total
+
+### store-ownership.spec.ts (ใหม่, AC-34..38) + flash-sale-limits.spec.ts (แก้ให้ complete ด้วย token ของเจ้าของ cart) — verbose
+PASS integration-tests/http/flash-sale-limits.spec.ts (37.906 s)
+    ✓ cart line gets the flash adjustment from the campaign promotion
+    ✓ AC-3 total_cap=10 and 10 units sold → the 11th checkout fails FLASH_SOLD_OUT
+    ✓ AC-9 a failure after the hook reserved → usage, units_sold and the reservation are rolled back
+    ✓ AC-10 completing an already completed cart returns the same order without booking again
+    ✓ AC-11 (b) units_sold=10 with total_cap lowered to 5 → a 1-unit checkout fails FLASH_SOLD_OUT
+    ✓ a cart without flash sale config (plain campaign) completes without booking
+      ✓ (c) a new customer completing 2 units succeeds; usage and units_sold are booked immediately
+      ✓ (a) a customer who already bought 2 units cannot complete 1 more (FLASH_LIMIT_EXCEEDED)
+      ✓ (b) counts the full line quantity (3) even when the promotion discounts max_quantity=1
+      ✓ (a) 50 concurrent checkouts of different customers under total_cap=20 → exactly 20 succeed
+      ✓ (b) one customer, 2 carts × 2 units, per_customer_limit=2, completed concurrently → 1 succeeds
+PASS integration-tests/http/store-ownership.spec.ts (14.973 s)
+      ✓ customer B gets 404 on every cart route of A's cart and the cart does not change
+      ✓ customer A (owner) can still use the same routes
+      ✓ customer B gets 404 and no payment session is created; A gets through
+      ✓ POST /store/payment-collections/:id/payment-sessions/:session_id → 404 for B; A gets through
+      ✓ shipping options require a customer session (401 without token)
+      ✓ GET /store/orders/:id → 401 without token, 404 for B, 200 for A; GET /store/carts/:id → 401 without token
+      ✓ an order id that does not exist → 404
+      ✓ a cart with customer_id null (created through the Cart module) → 404 for any customer
+Tests:       18 passed, 18 total
+
+## storefront e2e (Playwright chromium) — backend :9122 (medusa develop, DB medusa_core12) + storefront :8122 (next build/start)
+  ✓  1 [chromium] › e2e/core-store.spec.ts › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart
+  ✓  2 [chromium] › e2e/core-store.spec.ts › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders
+  ✓  3 [chromium] › e2e/core-store.spec.ts › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที
+  ✓  4 [chromium] › e2e/ui-preset-font.spec.ts › class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter
+  4 passed
+หมายเหตุ: e2e/smoke.spec.ts (หน้า login ของ admin UI) ไม่นับ เพราะในเครื่องรัน backend ด้วย DISABLE_MEDUSA_ADMIN=true
+— ไม่เกี่ยวกับ middleware นี้; CI รันครบทุกไฟล์ log ของ backend ระหว่าง e2e: ทุก request ไป shipping-options และ
+/store/orders/:id ได้ 200
+
+## pnpm lint && pnpm typecheck
+backend: No lint issues found; storefront: 0 errors (warning เดิม 38 รายการ); typecheck ผ่านทั้งสอง app
+
+## หลัง review (nit): store-ownership.spec.ts รันเดี่ยว — calculate ของ A assert 500 unknown_error (ถึง handler), เพิ่ม test session_id
+PASS integration-tests/http/store-ownership.spec.ts
+Tests:       8 passed, 8 total

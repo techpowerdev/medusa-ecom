@@ -1,0 +1,25 @@
+# GB-N3 test evidence — 2026-10-27 20:22 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 (docker compose); base origin/develop d0c2d29
+# e2e ในเครื่องรันเฉพาะไฟล์ของ task นี้ (ชุดเต็มให้ CI รัน); backend medusa start :9227 DB medusa_gbn3 Redis db 13, Stripe key ปลอม
+### Red
+order-route-payment-status.unit.spec.ts ([null, c] และ [null]) → 2 failed: TypeError: Cannot read properties of null (reading 'captured_amount') จาก getLastPaymentStatus
+e2e GB-N3 AC-42 (admin build ก่อนแก้) → td แรกของแถวที่เลือก Received "rgb(255, 255, 255)" (bg-ui-bg-base ของ sticky td) Expected "rgba(0, 0, 0, 0)" (td ที่สอง — สีอยู่ที่ tr)
+### Green: unit order-route-payment-status.unit.spec.ts
+  ✓ กรอง null ออกก่อนคำนวณ payment_status ([null, c])
+  ✓ ไม่มี collection ที่ไม่ใช่ null → not_paid
+### Green: e2e group-buy-admin-members.spec.ts --project=chromium
+  [1/5] [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย
+  [2/5] [chromium] › e2e/group-buy-admin-members.spec.ts:148:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request
+  [3/5] [chromium] › e2e/group-buy-admin-members.spec.ts:181:7 › GB-6d › AC-41: fail ล้มเพราะกลุ่ม succeeded ไปแล้ว → GET กลุ่มใหม่ แถวเป็น succeeded ปุ่มหาย ไม่ต้อง reload
+  [4/5] [chromium] › e2e/group-buy-admin-members.spec.ts:230:7 › GB-6d › AC-41: แถวที่เลือกมี highlight + ปุ่มปิด; เปลี่ยนหน้าไปหน้าที่ไม่มีแถวที่เลือก → ปิดตาราง membership
+  [5/5] [chromium] › e2e/group-buy-admin-members.spec.ts:291:7 › GB-N3 › AC-42: td แรกของแถวที่เลือกสีเดียวกับ td ที่สองและต่างจากแถวที่ไม่ถูกเลือก
+    5 passed (38.5s)
+### pnpm --filter backend test:unit
+Test Suites: 63 passed, 63 total
+Tests:       614 passed, 614 total
+### pnpm lint
+0 errors (warnings เดิมเท่านั้น)
+### pnpm typecheck
+apps/backend: 0 error / apps/storefront: 0 error
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully

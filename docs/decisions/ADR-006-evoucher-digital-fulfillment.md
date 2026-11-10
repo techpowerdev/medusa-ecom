@@ -1,29 +1,29 @@
-# ADR-006 E-voucher = imported partner code pools + Medusa inventory + `digital` fulfillment + notification
+# ADR-006 E-voucher = pool โค้ดที่ import จาก partner + Medusa inventory + fulfillment แบบ `digital` + notification
 
-Status: accepted (owner, 2026-10-25) — revised: vouchers are partners' codes; we never redeem
+สถานะ: อนุมัติแล้ว (เจ้าของโปรเจกต์, 2026-10-25) — ปรับปรุง: voucher เป็นโค้ดของ partner; เราไม่ redeem เอง
 
-## Context
-We resell vouchers from partners (Lotus, Big C, malls, cafés). Partners hand us code
-batches up front; we must deliver exactly one unused code per unit sold, by email, and show
-remaining stock. Redemption happens at the partner.
+## บริบท
+เราขาย voucher ต่อจาก partner (Lotus, Big C, ห้าง, ร้านกาแฟ) partner ส่งชุดโค้ดให้เราล่วงหน้า
+เราต้องส่งโค้ดที่ยังไม่ถูกใช้ให้ครบ 1 โค้ดต่อ 1 หน่วยที่ขาย ทางอีเมล และแสดงสต็อกคงเหลือ
+การ redeem เกิดขึ้นที่ partner
 
-## Options
-1. `evoucher` module with Partner / Pool / Code; pool size drives the variant's Medusa
-   inventory level; codes claimed atomically after payment captured; delivered through the
-   documented digital-products pattern (custom fulfillment provider + Notification).
-2. Store codes in product/variant metadata (no atomic claim, no audit, no masking).
-3. Live-fetch codes from partner APIs at order time (no partner has an API today).
+## ทางเลือก
+1. module `evoucher` ที่มี Partner / Pool / Code; ขนาด pool กำหนด inventory level ของ variant ใน Medusa;
+   claim โค้ดแบบ atomic หลัง payment ถูก capture; ส่งมอบผ่านรูปแบบ digital-products
+   ที่มีเอกสารรองรับ (custom fulfillment provider + Notification)
+2. เก็บโค้ดใน metadata ของ product/variant (ไม่มี atomic claim, ไม่มี audit, ไม่มี masking)
+3. ดึงโค้ดจาก API ของ partner สด ๆ ตอนสั่งซื้อ (ปัจจุบันไม่มี partner รายใดมี API)
 
-## Decision
-Option 1. Inventory stays Medusa's (reservations, "out of stock" in storefront) and is kept
-equal to `available` codes by the import/void workflows. Codes/PINs are encrypted at rest
-and masked in admin; reveal is audited. Option 3 can be added later behind a code-source
-interface without changing the order flow.
+## การตัดสินใจ
+เลือกทางเลือกที่ 1 inventory ยังเป็นของ Medusa (reservations, "สินค้าหมด" บน storefront) และถูกทำให้
+เท่ากับจำนวนโค้ด `available` เสมอโดย workflow import/void โค้ด/PIN ถูกเข้ารหัสตอนเก็บ
+และถูก mask ใน admin; การเปิดดูถูกบันทึก audit ทางเลือกที่ 3 เพิ่มได้ภายหลังผ่าน interface
+code-source โดยไม่ต้องเปลี่ยน order flow
 
-## Consequences
-+ No custom stock logic; Medusa handles oversell prevention at cart level, our atomic
-  claim (`FOR UPDATE SKIP LOCKED`) handles the last-code race.
-+ Refund policy is explicit: delivered codes are not reclaimed.
-− Admin must import batches before selling; low-stock and expiring-code jobs are required.
-− A free "Digital delivery" shipping option (provider `digital`) must exist and the storefront
-  auto-selects it for digital-only carts, so `createOrderFulfillmentWorkflow` can resolve the provider.
+## ผลที่ตามมา
++ ไม่ต้องมี logic สต็อกเอง; Medusa ป้องกัน oversell ที่ระดับ cart ส่วน atomic
+  claim ของเรา (`FOR UPDATE SKIP LOCKED`) จัดการ race ของโค้ดสุดท้าย
++ นโยบาย refund ชัดเจน: โค้ดที่ส่งมอบแล้วจะไม่ถูกเรียกคืน
+− Admin ต้อง import ชุดโค้ดก่อนเปิดขาย; ต้องมี job สำหรับ low-stock และโค้ดใกล้หมดอายุ
+− ต้องมี shipping option "Digital delivery" ฟรี (provider `digital`) และ storefront
+  เลือกให้อัตโนมัติสำหรับ cart ที่มีแต่สินค้าดิจิทัล เพื่อให้ `createOrderFulfillmentWorkflow` resolve provider ได้

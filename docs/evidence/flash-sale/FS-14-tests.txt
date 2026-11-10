@@ -1,0 +1,56 @@
+FS-14 (spec 03 กฎข้อ 19, AC-20) — ผล test ในเครื่อง 2026-10-27 (backend dev :9211 DB medusa_fs14, storefront next build+start :8211)
+
+== unit Vitest (storefront) ==
+
+ RUN  v5.0.5 wt-FS-14/apps/storefront
+
+
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+   Start at  17:46:31
+   Duration  81ms (import 40%, transform 26%, tests 21%, worker 12%)
+
+ Test Files  32 passed (32)
+      Tests  361 passed (361)
+
+== e2e Playwright (chromium) — flash-sale-fs14 + regression flash-sale-fs13 ==
+หมายเหตุ: tmp-fs14-home.spec.ts = สำเนาชั่วคราวของ test หน้าแรก (ไม่ commit) รันหลัง build storefront ใหม่หลังสร้างข้อมูล
+เพราะบน production build หน้าแรกอ่าน collection ด้วย fetch force-cache อายุ 1 ปี (ดูหมายเหตุ fixme ใน spec) — ใน CI test หน้าแรกเป็น fixme
+Running 7 tests using 1 worker
+  ✓  1 [chromium] › e2e/flash-sale-fs13.spec.ts:121:5 › AC-19: การ์ดสินค้าบน PLP (desktop) แสดงราคา flash + ราคาขีดฆ่า (534ms)
+  ✓  2 [chromium] › e2e/flash-sale-fs13.spec.ts:133:5 › AC-19: PDP ที่ 375×812 แถบล่างแสดงราคา flash (2.2s)
+  ✓  3 [chromium] › e2e/flash-sale-fs13.spec.ts:149:5 › AC-19: แคมเปญ sold out → add-product-button disabled และเห็น flash-sold-out (3.9s)
+  ✓  4 [chromium] › e2e/flash-sale-fs14.spec.ts:141:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (630ms)
+  ✓  5 [chromium] › e2e/flash-sale-fs14.spec.ts:164:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (389ms)
+  -  6 [chromium] › e2e/flash-sale-fs14.spec.ts:181:6 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง
+  ✓  7 [chromium] › e2e/tmp-fs14-home.spec.ts:112:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (348ms)
+  1 skipped
+  6 passed (9.4s)
+
+== pnpm lint && pnpm typecheck ==
+exit 0
+
+== AC-20: diff ไม่แตะ apps/backend/src/search/ ==
+git diff origin/develop --name-only | grep -c apps/backend/src/search → 0
+
+== รอบแก้ qa D-1 (#148) 2026-10-27: ราคา flash ล้นการ์ดที่ 375×812 ==
+red (ก่อนแก้, ชื่อสินค้า 'E2E FS14 Rail <run>'):
+  ✘  1 [chromium] › e2e/flash-sale-fs14.spec.ts:182:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (917ms)
+    +   "flash-original-price [168.3125-212.28125] นอกการ์ด [24-175.5]",
+    ../../../fs14-test-results/flash-sale-fs14-AC-20-375×-a2b8a-าร์ดบน-store-search-และ-PLP-chromium/test-failed-1.png
+  1 failed
+green (หลังแก้ flex-wrap บนแถวชื่อ/ราคาของการ์ด + FlashPrice):
+Running 7 tests using 1 worker
+  ✓  1 [chromium] › e2e/flash-sale-fs13.spec.ts:121:5 › AC-19: การ์ดสินค้าบน PLP (desktop) แสดงราคา flash + ราคาขีดฆ่า (499ms)
+  ✓  2 [chromium] › e2e/flash-sale-fs13.spec.ts:133:5 › AC-19: PDP ที่ 375×812 แถบล่างแสดงราคา flash (2.2s)
+  ✓  3 [chromium] › e2e/flash-sale-fs13.spec.ts:149:5 › AC-19: แคมเปญ sold out → add-product-button disabled และเห็น flash-sold-out (3.3s)
+  ✓  4 [chromium] › e2e/flash-sale-fs14.spec.ts:144:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (798ms)
+  ✓  5 [chromium] › e2e/flash-sale-fs14.spec.ts:167:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (347ms)
+  ✓  6 [chromium] › e2e/flash-sale-fs14.spec.ts:182:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (1.2s)
+  -  7 [chromium] › e2e/flash-sale-fs14.spec.ts:231:6 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง
+  1 skipped
+  6 passed (9.5s)
+unit Vitest:
+ Test Files  32 passed (32)
+      Tests  371 passed (371)
+pnpm lint && pnpm typecheck: exit 0; storefront next build ผ่าน

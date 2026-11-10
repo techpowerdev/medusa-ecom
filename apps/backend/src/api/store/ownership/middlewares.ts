@@ -1,0 +1,127 @@
+import {
+  authenticate,
+  type AuthenticatedMedusaRequest,
+  type MedusaNextFunction,
+  type MedusaResponse,
+  type MiddlewareRoute,
+} from "@medusajs/framework/http"
+import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
+import type { RemoteQueryFunction } from "@medusajs/framework/types"
+import {
+  STORE_RESOURCE_NOT_FOUND,
+  assertOwner,
+  cartOwner,
+  orderOwner,
+  paymentCollectionOwner,
+} from "../../../lib/store-ownership"
+import { assignStoreReturnLocation } from "./return-location"
+import { rejectStoreReturnOverrides } from "./return-overrides"
+import { validateStoreReturnShippingOption } from "./return-shipping-option"
+import { validateStoreReturnWindow } from "./return-window"
+
+// CORE-12 (spec 01 "API routes" + กฎ 22, ADR-013 ทางเลือก A): ตรวจเจ้าของ resource บน route ของ Medusa
+// ด้วย defineMiddlewares — ไม่ห่อ route และไม่ใช้ workflow hook
+type OwnerResolver = (req: AuthenticatedMedusaRequest, query: RemoteQueryFunction) => Promise<string | null>
+
+export function ensureStoreOwnership(resolveOwner: OwnerResolver) {
+  return async (req: AuthenticatedMedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) => {
+    const query = req.scope.resolve<RemoteQueryFunction>(ContainerRegistrationKeys.QUERY)
+    assertOwner(await resolveOwner(req, query), req.auth_context?.actor_id)
+    next()
+  }
+}
+
+const customerAuth = authenticate("customer", ["session", "bearer"])
+
+// CORE-20d (spec 01 กฎข้อ 66b): storefront คิดช่วงคืนต่อ line แบบเดียวกับ CORE-20b — ต้องรู้ว่า fulfillment ไหนมี line ใด
+// core จำกัด field ของ GET /store/orders/:id (ไม่มี fulfillments.items) → เปิดเฉพาะ line_item_id ผ่าน `req.allowed` ของ Medusa
+// (validateAndTransformQuery ของ core รวมค่านี้เข้ากับ allowed เดิม) — entry ไม่ระบุ method จึงทำงานก่อน middleware ของ core;
+// การตรวจ auth + ownership ของ GET ด้านล่างยังทำงานก่อน handler (ไม่ใช่เจ้าของ = 404 ไม่มีข้อมูล)
+export function allowOrderFulfillmentLineItems(req: AuthenticatedMedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) {
+  req.allowed = [...(req.allowed ?? []), "fulfillments.items.line_item_id"]
+  next()
+}
+const body = (req: AuthenticatedMedusaRequest) => (req.body ?? {}) as Record<string, unknown>
+
+// CORE-12b (กฎ 28): GET products/product-variants ใช้ query.cart_id คำนวณราคา/ภาษี — ตรวจเฉพาะเมื่อมี key
+// (ไม่มี cart_id = การเรียกดูสาธารณะ) ต้องวางหลัง authenticate แบบ allowUnauthenticated
+export async function ensureQueryCartOwnership(
+  req: AuthenticatedMedusaRequest,
+  _res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  if (!Object.prototype.hasOwnProperty.call(req.query ?? {}, "cart_id")) {
+    return next()
+  }
+  if (!req.auth_context?.actor_id) {
+    throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "Unauthorized")
+  }
+  const query = req.scope.resolve<RemoteQueryFunction>(ContainerRegistrationKeys.QUERY)
+  assertOwner(await cartOwner(query, req.query.cart_id), req.auth_context.actor_id)
+  next()
+}
+
+const optionalCustomerAuth = authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true })
+const productCartRoutes: MiddlewareRoute[] = [
+  "/store/products",
+  "/store/products/:id",
+  "/store/product-variants",
+  "/store/product-variants/:id",
+].map((matcher) => ({ method: ["GET"], matcher, middlewares: [optionalCustomerAuth, ensureQueryCartOwnership] }))
+
+const cartFromPath = ensureStoreOwnership((req, query) => cartOwner(query, req.params.id))
+const cartFromBody = ensureStoreOwnership((req, query) => cartOwner(query, body(req).cart_id))
+
+// `/store/carts*` และ `/store/payment-collections*` มี authenticate จาก CORE-6 แล้ว (matcher ไม่ระบุ method
+// อยู่ใน bucket global ระดับบน จึงทำงานก่อน matcher ด้านล่าง) — shipping-options และ orders/:id ต้องใส่เอง
+export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
+  // ไม่ระบุ method = ทุก method และ express `use` จับ path ลูกด้วย (`/store/carts/:id/*`)
+  { matcher: "/store/carts/:id", middlewares: [cartFromPath] },
+  { method: ["POST"], matcher: "/store/payment-collections", middlewares: [cartFromBody] },
+  {
+    matcher: "/store/payment-collections/:id/payment-sessions",
+    middlewares: [ensureStoreOwnership((req, query) => paymentCollectionOwner(query, req.params.id))],
+  },
+  { matcher: "/store/shipping-options*", middlewares: [customerAuth] },
+  ...productCartRoutes,
+  {
+    method: ["GET"],
+    matcher: "/store/shipping-options",
+    middlewares: [ensureStoreOwnership((req, query) => cartOwner(query, req.query.cart_id))],
+  },
+  { method: ["POST"], matcher: "/store/shipping-options/:id/calculate", middlewares: [cartFromBody] },
+  // ระบุ GET เท่านั้น: transfer routes ใต้ `/store/orders/:id/*` ปิดด้วย matcher ด้านล่าง (CORE-13)
+  {
+    method: ["GET"],
+    matcher: "/store/orders/:id",
+    middlewares: [customerAuth, ensureStoreOwnership((req, query) => orderOwner(query, req.params.id))],
+  },
+  { matcher: "/store/orders/:id", middlewares: [allowOrderFulfillmentLineItems] },
+  // CORE-13 (กฎ 24, AC-39): ตาม guide "Restrict Return Creation" ของ Medusa — core ไม่มี auth บน route นี้
+  // CORE-16: ต่อจาก auth + owner check — ห้าม store ส่ง return_shipping.price / receive_now / location_id (400)
+  // CORE-17: option ต้องเป็น return option ที่เปิดใน store และครอบที่อยู่จัดส่งของ order (400)
+  // CORE-20b: ทุก item ต้องเป็น line ที่ต้องจัดส่ง ส่งแล้ว และอยู่ในช่วง return_window_days ของ region (400)
+  // CORE-55 (ADR-022): ตัวสุดท้าย — ตั้ง location_id ของ return จาก option (400 เมื่อไม่มี location/level)
+  {
+    method: ["POST"],
+    matcher: "/store/returns",
+    middlewares: [
+      customerAuth,
+      ensureStoreOwnership((req, query) => orderOwner(query, body(req).order_id)),
+      rejectStoreReturnOverrides,
+      validateStoreReturnShippingOption,
+      validateStoreReturnWindow,
+      assignStoreReturnLocation,
+    ],
+  },
+  // CORE-13 (owner Q-F3, AC-40): ปิด order transfer ทั้งชุด (request/accept/decline/cancel) — ไม่ระบุ method
+  // จึงอยู่ใน bucket global ของ routes-sorter และทำงานก่อน authenticate แบบระบุ method ของ core (ไม่มี token ก็ได้ 404)
+  {
+    matcher: "/store/orders/:id/transfer",
+    middlewares: [
+      () => {
+        throw new MedusaError(MedusaError.Types.NOT_FOUND, STORE_RESOURCE_NOT_FOUND)
+      },
+    ],
+  },
+]

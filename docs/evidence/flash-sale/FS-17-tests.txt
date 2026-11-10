@@ -1,0 +1,65 @@
+FS-17 (spec 03 กฎข้อ 22, AC-24, AC-20 หน้าแรก; ADR-017 ทางเลือก A) — ผล test ในเครื่อง 2026-10-27
+(backend medusa start :9232 DB medusa_fs17 Redis db 14, storefront next build + next start :8232, Stripe key ปลอม)
+
+== RED: unit Vitest ก่อนแก้ (catalog-revalidate.test.ts — next.revalidate เป็น undefined) ==
+      Tests  8 failed | 1 passed (9)
+ FAIL  src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > getCollectionByHandle มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ FAIL  src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > getCollectionByHandle ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ FAIL  src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listCollections มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ FAIL  src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listCollections ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ FAIL  src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listProducts มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ FAIL  src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listProducts ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+ FAIL  src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listVariantIdsByProduct มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId>
+ FAIL  src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listVariantIdsByProduct ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60
+TypeError: actual value must be number or bigint, received "undefined"
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+== GREEN: unit Vitest หลังแก้ ==
+ ✓ src/lib/data/variant-ids-by-product.test.ts > listVariantIdsByProduct (FS-14) > 24 hit → เรียก GET /store/products 1 ครั้ง ด้วย id[] ทั้งหมดและ fields=id,variants.id 3ms
+ ✓ src/lib/data/variant-ids-by-product.test.ts > listVariantIdsByProduct (FS-14) > id ซ้ำถูกรวม และ limit เท่าจำนวน id (ไม่ถูกตัดที่ค่า default 20 ของ Medusa) 1ms
+ ✓ src/lib/data/variant-ids-by-product.test.ts > listVariantIdsByProduct (FS-14) > ไม่มี hit → ไม่ยิง request 0ms
+ ✓ src/lib/data/variant-ids-by-product.test.ts > listVariantIdsByProduct (FS-14) > request ล้ม → คืน {} (การ์ดแสดงราคาปกติ ไม่ทำให้หน้าพัง) 0ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listCollections ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60 1ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > getCollectionByHandle ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60 0ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listProducts ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60 0ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listVariantIdsByProduct ไม่มี cookie → next.revalidate เป็นตัวเลข ≤ 60 0ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listCollections มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId> 0ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > getCollectionByHandle มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId> 0ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listProducts มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId> 0ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > listVariantIdsByProduct มี cookie → มีทั้ง revalidate และ tag <ชื่อ>-<cacheId> 0ms
+ ✓ src/lib/data/catalog-revalidate.test.ts > catalog fetch revalidate (FS-17, AC-24) > data function ของ /store กับชุด hit ว่าง → ไม่เรียก fetch 0ms
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+
+== unit Vitest ทั้ง storefront ==
+ Test Files  35 passed (35)
+      Tests  393 passed (393)
+
+== RED (negative control): e2e หน้าแรกบน build ที่ไม่มีการแก้ใน lib/data (force-cache ไม่มี revalidate) ==
+rail ของ collection ที่สร้างหลัง storefront เริ่มทำงานไม่ขึ้นภายใน 90 วินาที
+  ✘  1 [chromium] › e2e/flash-sale-fs14.spec.ts:255:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.5m)
+    Error: expect(locator).toHaveCount(expected) failed
+    test-results/flash-sale-fs14-AC-20-rail-6384e-งราคา-flash-การ์ด-Y-ไม่แสดง-chromium/test-failed-1.png
+  1 failed
+
+== GREEN: e2e flash-sale-fs14.spec.ts บน next build && next start (รอบ 1) ==
+  ✓  1 [chromium] › e2e/flash-sale-fs14.spec.ts:169:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.0s)
+  ✓  2 [chromium] › e2e/flash-sale-fs14.spec.ts:192:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (423ms)
+  ✓  3 [chromium] › e2e/flash-sale-fs14.spec.ts:207:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (1.1s)
+  ✓  4 [chromium] › e2e/flash-sale-fs14.spec.ts:255:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.2m)
+  4 passed (1.2m)
+
+== GREEN: e2e flash-sale-fs14.spec.ts (รอบ 2, build ใหม่) ==
+  ✓  1 [chromium] › e2e/flash-sale-fs14.spec.ts:169:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (903ms)
+  ✓  2 [chromium] › e2e/flash-sale-fs14.spec.ts:192:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (357ms)
+  ✓  3 [chromium] › e2e/flash-sale-fs14.spec.ts:207:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (942ms)
+  ✓  4 [chromium] › e2e/flash-sale-fs14.spec.ts:255:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.1m)
+  4 passed (1.1m)
+
+== grep test.fixme ใน e2e ของ FS-14 (ต้องเป็น 0) ==
+0
+
+== pnpm lint && pnpm typecheck ==
+lint: exit 0 (0 error; warning เดิมนอก scope)
+apps/storefront typecheck: Done
+apps/backend typecheck: Done

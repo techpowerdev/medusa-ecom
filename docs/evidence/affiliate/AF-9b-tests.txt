@@ -1,0 +1,41 @@
+# AF-9b test evidence — 2026-10-27 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose
+# รันในเครื่องเฉพาะ affiliate-admin.spec.ts + unit + lint/typecheck/build; ชุดเต็มให้ CI รัน
+### Red (ก่อนแก้ workflow) — -t "AC-27"
+รอบ 1: ลำดับ lock ผิด (cancel ขอเฉพาะ affiliate-payout-paid ก่อน, ไม่มี affiliate-payout:<affiliate_id> ของ cancel)
+    - Expected ["affiliate-payout:aff_…", "affiliate-payout-paid:affpay_…"]
+    + Received ["affiliate-payout-paid:affpay_…", "affiliate-payout:aff_…"]
+รอบ 2 (หลังให้ create มีเวลาทำงานระหว่าง D ถูก soft-delete): create ไม่ถูก block
+    ✕ holds the affiliate payout lock through cancel compensation (AC-27)
+      expect(recreated.status).toEqual(400) — Received: 200  (entry ของ D อยู่ใน payout ใหม่ด้วย หลัง D ถูก restore)
+    ✓ rejects cancelling a payout without an admin token (AC-27)   (regression guard: admin route authenticate อยู่แล้ว)
+### Green — affiliate-admin.spec.ts ทั้งไฟล์
+PASS integration-tests/http/affiliate-admin.spec.ts (14.613 s)
+    ✓ requires an admin user (581 ms)
+    programs CRUD
+      ✓ creates a draft program, lists, publishes and ends it (718 ms)
+      ✓ rejects an invalid window or rate (112 ms)
+      ✓ deletes only draft programs (124 ms)
+    affiliates
+      ✓ lists by status, approves, suspends and sets payout_info (169 ms)
+    ledger, payouts and summary (AC-7)
+      ✓ lists ledger entries filtered by affiliate and status (145 ms)
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid (179 ms)
+      ✓ rolls entries back to approved when marking the payout paid fails (130 ms)
+      ✓ exposes ledger and payouts through Query (127 ms)
+      ✓ serializes concurrent payout creation so entries are paid out once (466 ms)
+      ✓ does not create a payout when the net is zero or negative (Q8) (178 ms)
+      ✓ cancels a draft payout and returns its entries to the pool (AC-19) (370 ms)
+      ✓ refuses to cancel a paid payout and leaves it unchanged (AC-19) (210 ms)
+      ✓ holds the affiliate payout lock through cancel compensation (AC-27) (1350 ms)
+      ✓ rejects cancelling a payout without an admin token (AC-27) (349 ms)
+      ✓ selects entries by rule 19 across payout rounds (AC-20) (386 ms)
+      ✓ filters payable entries in the database (rule 19) (666 ms)
+      ✓ summarizes the ledger per affiliate and status (1069 ms)
+Test Suites: 1 passed, 1 total
+Tests:       18 passed, 18 total
+### pnpm --filter backend test:unit
+Test Suites: 48 passed, 48 total
+Tests:       485 passed, 485 total
+### pnpm lint && pnpm typecheck — ผ่าน (0 errors)
+### pnpm --filter backend build — Backend/Frontend build completed successfully

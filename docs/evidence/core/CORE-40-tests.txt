@@ -1,0 +1,110 @@
+CORE-40 (spec 01 กฎข้อ 98, AC-134) — ผล test บน branch fix/CORE-40-discount-action-race (base origin/develop 023a720), 2026-11-04
+เครื่อง local: backend medusa develop :9401 (DB medusa_core40), storefront next build+start :8401, node v22.23.3
+
+== RED (ก่อนแก้ component) — unit src/core-28-promotion-error.test.ts ==
+     × ลบค้าง → ปุ่มใส่โค้ด disabled และส่งฟอร์มไม่ยิง action; resolve แล้วกดได้ 11ms
+     × ลบสำเร็จด้วย codes: [] โดยไม่ re-render prop (cart ยังมี SAVE10) แล้วใส่ B → ส่ง [B] ไม่มีโค้ดที่ลบ 12ms
+     × ใส่โค้ดค้าง → ทุก remove-discount-button disabled และคลิกไม่ยิง action เพิ่ม 13ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบค้าง → ปุ่มใส่โค้ด disabled และส่งฟอร์มไม่ยิง action; resolve แล้วกดได้
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+ FAIL  src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบสำเร็จด้วย codes: [] โดยไม่ re-render prop (cart ยังมี SAVE10) แล้วใส่ B → ส่ง [B] ไม่มีโค้ดที่ลบ
+AssertionError: expected last "vi.fn()" call to have been called with [ [ 'B' ] ]
+- Expected
++ Received
+ FAIL  src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ใส่โค้ดค้าง → ทุก remove-discount-button disabled และคลิกไม่ยิง action เพิ่ม
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+      Tests  3 failed | 9 passed (12)
+
+== RED (ก่อนแก้ component, storefront build ใหม่) — e2e core-40-discount-action-race ==
+  ✘  1 [chromium] › e2e/core-40-discount-action-race.spec.ts:67:5 › AC-134: ลบโค้ด A ค้าง → ปุ่มใส่โค้ด disabled; ปล่อยแล้วใส่ B → cart มีแค่ B (7.3s)
+    Error: expect(locator).toBeDisabled() failed
+    Expected: disabled
+    Received: enabled
+    test-results/core-40-discount-action-ra-d69ce-่อยแล้วใส่-B-→-cart-มีแค่-B-chromium/test-failed-1.png
+
+== GREEN — unit (vitest) ทั้งชุดของ storefront ==
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > unauthorized → SIGN_IN_AGAIN_MESSAGE 2ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > PROMOTION_NOT_COMBINABLE → ข้อความไทยของ code นั้น 1ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 1ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > สำเร็จแต่ code ไม่อยู่ใน cart (กฎข้อ 63b) → ข้อความใช้โค้ดไม่ได้; อยู่ใน cart → "" 1ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > ลบโค้ด (ไม่มี code ที่ต้องตรวจ) สำเร็จ → "" 0ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > unauthorized → SIGN_IN_AGAIN_MESSAGE 1ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 0ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > สำเร็จ → null 0ms
+ ✓ src/core-4i-ui-results.test.ts > ลบสินค้า (removeLineItem) ใช้ SIGN_IN_AGAIN_MESSAGE เดียวกัน > unauthorized → SIGN_IN_AGAIN_MESSAGE 1ms
+ ✓ src/core-34-remove-promotion-error.test.ts > CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) > ระหว่างรอผลการลบไม่มี promotion-error; ลบสำเร็จแล้วก็ยังไม่มี 39ms
+ ✓ src/core-34-remove-promotion-error.test.ts > CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) > ระหว่างรอไม่มี promotion-error; ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE 7ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: promotion-error เห็นได้แม้ช่องใส่โค้ดปิด (AC-121) > ช่องปิด + ลบโค้ดได้ unauthorized → promotion-error = SIGN_IN_AGAIN_MESSAGE โดยไม่ต้องเปิดช่อง 24ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: promotion-error เห็นได้แม้ช่องใส่โค้ดปิด (AC-121) > ใส่โค้ดที่ใช้ไม่ได้แล้วปิดช่อง → promotion-error ยังมีข้อความ; ลบโค้ดสำเร็จ → ว่าง 12ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: comment ใน e2e core-19c ตรงกับพฤติกรรมหลัง CORE-14g > ไม่มีวลี 'ก่อนถึง action' 0ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > กดสองครั้งใน act เดียว → เรียก applyPromotions ครั้งเดียว; disabled + aria-busy ระหว่างรอ; resolve แล้วกดได้อีก 4ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบล้มแบบ reject → ข้อความไทยเฉพาะการลบ ไม่เท่ากับ PROMOTION_FAILED 2ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบได้ { error: 'failed' } → PROMOTION_REMOVE_FAILED 2ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE 2ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ใส่โค้ดล้ม (failed) → ยังเป็น PROMOTION_FAILED เดิม 4ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบค้าง → ปุ่มใส่โค้ด disabled และส่งฟอร์มไม่ยิง action; resolve แล้วกดได้ 5ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบสำเร็จด้วย codes: [] โดยไม่ re-render prop (cart ยังมี SAVE10) แล้วใส่ B → ส่ง [B] ไม่มีโค้ดที่ลบ 3ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบล้ม (failed) → ใส่ B ครั้งถัดไปส่ง [SAVE10, B] (โค้ดเดิมยังอยู่) 3ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ใส่โค้ดค้าง → ทุก remove-discount-button disabled และคลิกไม่ยิง action เพิ่ม 3ms
+ Test Files  3 passed (3)
+      Tests  23 passed (23)
+ Test Files  82 passed (82)
+      Tests  910 passed (910)
+
+== GREEN — e2e (chromium) โค้ดส่วนลดที่เกี่ยว ==
+  ✓  3 [chromium] › e2e/core-19c-delete-button-error.spec.ts:105:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (2.1s)
+  ✓  5 [chromium] › e2e/core-19c-delete-button-error.spec.ts:123:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1.4s)
+  ✓  4 [chromium] › e2e/core-40-discount-action-race.spec.ts:67:5 › AC-134: ลบโค้ด A ค้าง → ปุ่มใส่โค้ด disabled; ปล่อยแล้วใส่ B → cart มีแค่ B (4.1s)
+  ✓  2 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่ (4.9s)
+  ✓  6 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (1.5s)
+  ✓  1 [chromium] › e2e/core-4g-checkout-polish.spec.ts:66:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect (5.3s)
+  ✓  7 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (935ms)
+  ✓  8 [chromium] › e2e/core-19c-delete-button-error.spec.ts:183:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่ (883ms)
+  8 passed (7.7s)
+
+== lint / typecheck / build ==
+pnpm lint: 0 errors (warnings เดิม ไม่มีในไฟล์ที่แก้)
+pnpm typecheck: ผ่าน (storefront + backend)
+pnpm --filter storefront build: ผ่าน
+
+== รอบแก้ nit จาก review #275 (2026-11-04, หลัง merge origin/develop a88b14d) ==
+-- RED: test ใหม่กับโค้ดก่อนแก้ nit + mutation 'if (latest)' (เงื่อนไขตาม identity ของ prop ถูกตัด) --
+     × ส่งฟอร์มช่องว่าง → ล้าง error ของรอบก่อน และไม่ยิง action (พฤติกรรมเดิมก่อน CORE-40) 1064ms
+      Tests  1 failed | 13 passed (14)
+-- mutation if (latest) --
+     × ลบสำเร็จ (จำ codes: []) แล้ว cart prop refresh เป็น array ใหม่ [SAVE10, X] → ใส่ B ใช้ prop: [SAVE10, X, B] 19ms
+     × ส่งฟอร์มช่องว่าง → ล้าง error ของรอบก่อน และไม่ยิง action (พฤติกรรมเดิมก่อน CORE-40) 1029ms
+AssertionError: expected last "vi.fn()" call to have been called with [ [ 'SAVE10', 'X', 'B' ] ]
+AssertionError: expected 'ใช้โค้ดส่วนลดนี้ไม่ได้ กรุณาตรวจสอบโค…' to be '' // Object.is equality
+      Tests  2 failed | 12 passed (14)
+-- GREEN: unit core-28 + core-34 --
+ ✓ src/core-34-remove-promotion-error.test.ts > CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) > ระหว่างรอผลการลบไม่มี promotion-error; ลบสำเร็จแล้วก็ยังไม่มี 69ms
+ ✓ src/core-34-remove-promotion-error.test.ts > CORE-34: ลบโค้ดส่วนลดล้าง error เดิมก่อนส่ง (AC-128) > ระหว่างรอไม่มี promotion-error; ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE 8ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: promotion-error เห็นได้แม้ช่องใส่โค้ดปิด (AC-121) > ช่องปิด + ลบโค้ดได้ unauthorized → promotion-error = SIGN_IN_AGAIN_MESSAGE โดยไม่ต้องเปิดช่อง 43ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: promotion-error เห็นได้แม้ช่องใส่โค้ดปิด (AC-121) > ใส่โค้ดที่ใช้ไม่ได้แล้วปิดช่อง → promotion-error ยังมีข้อความ; ลบโค้ดสำเร็จ → ว่าง 21ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-28: comment ใน e2e core-19c ตรงกับพฤติกรรมหลัง CORE-14g > ไม่มีวลี 'ก่อนถึง action' 1ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > กดสองครั้งใน act เดียว → เรียก applyPromotions ครั้งเดียว; disabled + aria-busy ระหว่างรอ; resolve แล้วกดได้อีก 3ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบล้มแบบ reject → ข้อความไทยเฉพาะการลบ ไม่เท่ากับ PROMOTION_FAILED 2ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบได้ { error: 'failed' } → PROMOTION_REMOVE_FAILED 2ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ลบได้ unauthorized → SIGN_IN_AGAIN_MESSAGE 2ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-36: ปุ่มลบโค้ดส่วนลดกันคลิกซ้อน + ข้อความล้มเฉพาะการลบ (AC-130) > ใส่โค้ดล้ม (failed) → ยังเป็น PROMOTION_FAILED เดิม 3ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบค้าง → ปุ่มใส่โค้ด disabled และส่งฟอร์มไม่ยิง action; resolve แล้วกดได้ 4ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบสำเร็จด้วย codes: [] โดยไม่ re-render prop (cart ยังมี SAVE10) แล้วใส่ B → ส่ง [B] ไม่มีโค้ดที่ลบ 3ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบล้ม (failed) → ใส่ B ครั้งถัดไปส่ง [SAVE10, B] (โค้ดเดิมยังอยู่) 3ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ลบสำเร็จ (จำ codes: []) แล้ว cart prop refresh เป็น array ใหม่ [SAVE10, X] → ใส่ B ใช้ prop: [SAVE10, X, B] 4ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ส่งฟอร์มช่องว่าง → ล้าง error ของรอบก่อน และไม่ยิง action (พฤติกรรมเดิมก่อน CORE-40) 3ms
+ ✓ src/core-28-promotion-error.test.ts > CORE-40: action โค้ดค้างได้ทีละหนึ่ง + ใส่โค้ดไม่พาโค้ดที่เพิ่งลบกลับมา (AC-134) > ใส่โค้ดค้าง → ทุก remove-discount-button disabled และคลิกไม่ยิง action เพิ่ม 3ms
+ Test Files  2 passed (2)
+      Tests  16 passed (16)
+-- GREEN: unit storefront ทั้งชุด --
+ Test Files  82 passed (82)
+      Tests  912 passed (912)
+-- GREEN: e2e core-40 (build+start :8401, backend :9401) --
+  ✓  1 [chromium] › e2e/core-40-discount-action-race.spec.ts:67:5 › AC-134: ลบโค้ด A ค้าง → ปุ่มใส่โค้ด disabled; ปล่อยแล้วใส่ B → cart มีแค่ B (7.6s)
+  1 passed (9.0s)
+-- pnpm lint: 0 errors; pnpm typecheck: ผ่าน; storefront build: ผ่าน --

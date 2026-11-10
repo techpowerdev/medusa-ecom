@@ -1,0 +1,58 @@
+AF-15 — หลักฐาน test (spec 05 กฎ 39, AC-46) 2026-11-03
+
+## Red (ก่อนแก้โค้ด)
+- integration AC-46: 10 จาก 11 test ใหม่ล้มด้วยสาเหตุที่ถูกต้อง (`null` → 200 ผ่านอยู่แล้วตามพฤติกรรมเดิม) — payout_info ผิดรูปแบบได้ 200 (Expected 400), account_number ไม่ถูกตัด '-', expected_status ได้ 400 (Expected 409) เพราะ validator เดิม .strict() ไม่รู้จัก key
+- unit parsePayoutInfo: 4 test ล้ม — account_number ไม่ถูกตัด '-'/ช่องว่าง และ 9/13 หลัก/มีตัวอักษรผ่าน validator ของฟอร์ม
+
+## Green: integration-tests/http/affiliate-admin.spec.ts (ทั้งไฟล์ รวม regression AF-5/AF-14)
+    ✓ requires an admin user (680 ms)
+      ✓ creates a draft program, lists, publishes and ends it (653 ms)
+      ✓ rejects an invalid window or rate (214 ms)
+      ✓ deletes only draft programs (242 ms)
+      ✓ lists by status, approves, suspends and sets payout_info (211 ms)
+      ✓ filters by id or id[] (AC-45) (165 ms)
+      ✓ stores account_number without dashes or spaces (198 ms)
+      ✓ rejects payout_info with 9 digits (400) and keeps the stored value (154 ms)
+      ✓ rejects payout_info with 13 digits (400) and keeps the stored value (156 ms)
+      ✓ rejects payout_info with letters (400) and keeps the stored value (248 ms)
+      ✓ rejects payout_info with an extra key (400) and keeps the stored value (158 ms)
+      ✓ rejects payout_info with a missing field (400) and keeps the stored value (205 ms)
+      ✓ rejects payout_info with a blank field after trim (400) and keeps the stored value (156 ms)
+      ✓ rejects payout_info with a non-string field (400) and keeps the stored value (181 ms)
+      ✓ clears payout_info with null (141 ms)
+      ✓ returns 409 AFFILIATE_STATUS_CHANGED when expected_status is stale and changes nothing (156 ms)
+      ✓ lets only one of two concurrent approvals with the same expected_status through (142 ms)
+      ✓ lists ledger entries filtered by affiliate and status (136 ms)
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid (218 ms)
+      ✓ rolls entries back to approved when marking the payout paid fails (178 ms)
+      ✓ exposes ledger and payouts through Query (150 ms)
+      ✓ serializes concurrent payout creation so entries are paid out once (491 ms)
+      ✓ does not create a payout when the net is zero or negative (Q8) (235 ms)
+      ✓ cancels a draft payout and returns its entries to the pool (AC-19) (297 ms)
+      ✓ refuses to cancel a paid payout and leaves it unchanged (AC-19) (323 ms)
+      ✓ holds the affiliate payout lock through cancel compensation (AC-27) (1439 ms)
+      ✓ rejects cancelling a payout without an admin token (AC-27) (234 ms)
+      ✓ selects entries by rule 19 across payout rounds (AC-20) (152 ms)
+      ✓ filters payable entries in the database (rule 19) (198 ms)
+      ✓ summarizes the ledger per affiliate and status (151 ms)
+Test Suites: 1 passed, 1 total
+Tests:       30 passed, 30 total
+
+## unit (pnpm --filter backend test:unit — รวม affiliate-account.unit.spec.ts และ error-handler.unit.spec.ts)
+Test Suites: 75 passed, 75 total
+Tests:       744 passed, 744 total
+
+## e2e admin: apps/storefront/e2e/affiliate-admin-affiliates.spec.ts (medusa start จาก build บนเครื่อง)
+Running 2 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:42:5 › AC-43: approve dblclick ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (3.9s)
+  ✓  2 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:161:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (1.5s)
+
+  2 passed (5.9s)
+
+## grep: e2e ของ AF-12b ไม่มี waitForTimeout
+$ grep -c waitForTimeout apps/storefront/e2e/affiliate-admin-affiliates.spec.ts
+0
+
+## pnpm lint && pnpm typecheck && pnpm --filter backend build
+lint: 0 errors (warning 1 รายการเดิมที่ไม่ใช่ไฟล์ของ task นี้); typecheck: ผ่าน; build: ผ่าน

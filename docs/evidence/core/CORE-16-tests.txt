@@ -1,0 +1,83 @@
+# CORE-16 — ผล test (รันในเครื่อง 2026-10-26, Node 22.23.3, Postgres 16 + Redis 7 จาก docker compose)
+
+## ตรวจ source Medusa 2.22.1 (node_modules)
+- `@medusajs/medusa/dist/api/store/returns/validators.js` StorePostReturnsReqSchema: order_id, items[{id,quantity,reason_id,note}],
+  return_shipping{option_id, price?}, note, receive_now?, location_id? (z.object ปกติ → ฟิลด์อื่นถูกตัดทิ้ง เช่น refund_amount)
+- route.js ส่ง `req.validatedBody` ทั้งก้อนเข้า `createAndCompleteReturnOrderWorkflow` (ไม่มี auth ใน core)
+- core-flows `order/workflows/return/create-complete-return.js`:
+  - `return_shipping.price` ≥ 0 → ใช้เป็น amount ของ shipping method แทนราคาของ option
+  - `location_id` → stock location ของ return fulfillment แทน location ของ option และบันทึกใน return
+  - `receive_now: true` → receiveReturnStep รับของคืนทันที (ใช้ `order.items` ทั้งหมด) + emit `order.return_received`
+
+## Red 1 (ก่อนแก้ seed) — seed.spec.ts
+- ไม่มี shipping option `Standard return` (type.code `standard-return`): 3 test ล้ม (Received length: 0)
+- store-returns-overrides.spec.ts ยังรันไม่ได้เพราะไม่มี return option
+
+## Red 2 (seed แล้ว ก่อนเพิ่ม middleware) — store-returns-overrides.spec.ts: 5 failed
+- `return_shipping: { price: 0 }` → **200** สร้าง return ได้ (ควร 400)
+- `receive_now: false` → **200**
+- `receive_now: true` (คืน 1 จาก 2 ชิ้น) → 400 จาก workflow ของ Medusa เอง เพราะ receiveReturnStep ใช้ `order.items` ทั้งหมด
+  ซึ่งเกินจำนวนที่คืน — ตาม source ถ้าคืนครบทุกชิ้น return จะถูกบันทึกว่ารับแล้วทันที (ค่าไปถึง handler)
+- `location_id: "sloc_attacker"` → **404** จาก workflow (ค่าไปถึง handler แล้ว)
+
+## backend: unit — src/api/store/ownership/__tests__/return-overrides.unit.spec.ts + store-ownership.unit.spec.ts
+PASS src/api/store/ownership/__tests__/return-overrides.unit.spec.ts
+  storeReturnOverrides
+    ✓ returns nothing for the fields a customer may send
+    ✓ lists return_shipping.price, receive_now and location_id whenever they are present (any value)
+  rejectStoreReturnOverrides
+    ✓ throws 400 invalid_data naming the fields, without calling next
+    ✓ calls next for a normal return request
+    ✓ is registered on POST /store/returns after the CORE-13 auth + owner check
+PASS src/lib/__tests__/store-ownership.unit.spec.ts (19 tests)
+Tests:       24 passed, 24 total
+
+## backend: pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 32 passed, 32 total
+Tests:       266 passed, 266 total
+
+## backend: integration http — store-returns-overrides (CORE-16) + store-returns-transfer (CORE-13) + store-ownership (CORE-12) + seed
+PASS integration-tests/http/store-returns-overrides.spec.ts
+    ✓ seed has a return shipping option (is_return) that customers can use
+    ✓ owner sending return_shipping.price → 400 invalid_data and no return is created
+    ✓ owner sending receive_now → 400 invalid_data and no return is created
+    ✓ owner sending receive_now (false) → 400 invalid_data and no return is created
+    ✓ owner sending location_id → 400 invalid_data and no return is created
+    ✓ owner creates a return with the seeded option: price from the option, not received, location from the option
+PASS integration-tests/http/store-ownership.spec.ts (8 tests)
+PASS integration-tests/http/store-returns-transfer.spec.ts
+      ✓ 401 without token, 404 for customer B (no return created), 200 for owner A
+      ✓ an order id that does not exist → 404; no order_id → rejected (not 200)
+      ✓ request/accept/decline/cancel → 404 without token, as B and as A; no transfer change; owner stays A
+PASS integration-tests/http/seed.spec.ts
+    ✓ creates shipping options Standard (flat THB) and Digital delivery (free)
+    ✓ creates return option Standard return (is_return, flat THB, manual, at the seeded location)
+    ✓ adds Standard return to a store seeded before CORE-16, once
+    ✓ (อีก 9 test เดิมผ่านทั้งหมด)
+Tests:       29 passed, 29 total
+
+## lint / typecheck / build
+pnpm lint: 0 errors (warning เดิมของ storefront)
+pnpm typecheck: backend Done, storefront Done
+pnpm --filter backend build: Backend + Frontend build completed successfully
+
+## รอบแก้ nit หลัง review (2026-10-26)
+- return-overrides.ts: เช็ก `typeof === "object" && !== null` ก่อนใช้ `in` (body และ return_shipping) — ไม่ throw 500
+- middlewares.ts: rejectStoreReturnOverrides เป็นตัวที่ 3 ของ entry CORE-13 (auth → owner → overrides) ไม่แยก entry
+- store-returns-overrides.spec.ts: แต่ละ case สร้าง order ของตัวเอง; `receive_now: true` คืนครบ 2 ชิ้น; `location_id` = stock location จริง
+- seed: doc ระบุว่าถ้า admin ลบ "Standard return" seed ครั้งถัดไปจะสร้างกลับ
+
+Red (เอา middleware ออกชั่วคราว, order แยกต่อ case): 4 failed — price 0, receive_now true (คืนครบ), receive_now false,
+location_id → ทั้งหมดได้ **200** จาก Medusa (ค่าไปถึง workflow จริง)
+
+Green:
+PASS integration-tests/http/store-returns-overrides.spec.ts
+    ✓ seed has a return shipping option (is_return) that customers can use
+    ✓ owner sending return_shipping.price → 400 invalid_data and no return is created
+    ✓ owner sending receive_now (true, full quantity) → 400 invalid_data and no return is created
+    ✓ owner sending receive_now (false) → 400 invalid_data and no return is created
+    ✓ owner sending location_id → 400 invalid_data and no return is created
+    ✓ owner creates a return with the seeded option: price from the option, not received, location from the option
+PASS store-ownership.spec.ts, store-returns-transfer.spec.ts, seed.spec.ts — Tests: 29 passed, 29 total
+unit: pnpm --filter backend test:unit — 32 suites, 268 passed (ใหม่: non-object body, ลำดับใน entry CORE-13)
+pnpm lint: 0 errors; pnpm typecheck: backend Done, storefront Done (ทั้งก่อนและหลังมี .medusa/types ที่ generate)

@@ -1,0 +1,65 @@
+# CORE-13 — ผล test (รันในเครื่อง 2026-10-26, Node 22.23.3, Postgres 16 + Redis 7 จาก docker compose)
+
+## Red (ก่อนเพิ่ม middleware) — integration-tests/http/store-returns-transfer.spec.ts
+- AC-39: `POST /store/returns` ไม่มี token → ได้ **200** (สร้าง return ได้โดยไม่ล็อกอิน) แทน 401
+- AC-40: `POST /store/orders/:id/transfer/request` ไม่มี token → **401** (authenticate ของ core) แทน 404
+- unit: 4 test ใหม่ล้ม (ไม่มี matcher `/store/returns` และ `/store/orders/:id/transfer`)
+
+## backend: unit — src/lib/__tests__/store-ownership.unit.spec.ts (verbose)
+PASS src/lib/__tests__/store-ownership.unit.spec.ts
+  owner resolvers
+    ✓ cartOwner reads cart.customer_id by id
+    ✓ cartOwner returns null for a missing cart, a cart without customer, or no id (no query)
+    ✓ orderOwner reads order.customer_id
+    ✓ paymentCollectionOwner uses the linked cart, falling back to the linked order
+  assertCartOwner (ADR-013 ข้อ 3 — ใช้ใน route/workflow ของเราเอง เช่น GB-3)
+    ✓ passes for the owner
+    ✓ throws 404 not_found for another customer, a missing cart or a missing customer
+  ensureStoreOwnership
+    ✓ calls next() when the resolved owner is the authenticated customer
+    ✓ throws 404 when the owner differs, is null, or there is no actor
+  storeOwnershipMiddlewares: which id each matcher checks
+    ✓ /store/carts/:id (ALL) → looks up cart
+    ✓ /store/payment-collections (POST) → looks up cart
+    ✓ /store/payment-collections/:id/payment-sessions (ALL) → looks up payment_collection
+    ✓ /store/shipping-options (GET) → looks up cart
+    ✓ /store/shipping-options/:id/calculate (POST) → looks up cart
+    ✓ /store/orders/:id (GET) → looks up order
+    ✓ /store/returns (POST) → looks up order
+    ✓ adds authenticate(customer) to shipping-options and GET /store/orders/:id
+  CORE-13: returns need a customer session; order transfer is disabled
+    ✓ adds authenticate(customer) before the order owner check on POST /store/returns
+    ✓ registers the transfer block without a method so it runs before core authenticate (global bucket)
+    ✓ the transfer block throws 404 for everyone, including the order owner, without querying
+Tests:       19 passed, 19 total
+
+## backend: pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 30 passed, 30 total
+Tests:       239 passed, 239 total
+
+## backend: integration http — store-ownership.spec.ts (CORE-12) + store-returns-transfer.spec.ts (CORE-13)
+PASS integration-tests/http/store-ownership.spec.ts
+    AC-34: cart routes
+      ✓ customer B gets 404 on every cart route of A's cart and the cart does not change
+      ✓ customer A (owner) can still use the same routes
+    AC-35: payment collections and shipping options
+      ✓ customer B gets 404 and no payment session is created; A gets through
+      ✓ POST /store/payment-collections/:id/payment-sessions/:session_id → 404 for B; A gets through
+      ✓ shipping options require a customer session (401 without token)
+    AC-36 / AC-37: orders
+      ✓ GET /store/orders/:id → 401 without token, 404 for B, 200 for A; GET /store/carts/:id → 401 without token
+      ✓ an order id that does not exist → 404
+    AC-38: cart without customer
+      ✓ a cart with customer_id null (created through the Cart module) → 404 for any customer
+PASS integration-tests/http/store-returns-transfer.spec.ts
+    AC-39: POST /store/returns
+      ✓ 401 without token, 404 for customer B (no return created), 200 for owner A
+      ✓ an order id that does not exist → 404; no order_id → rejected (not 200)
+    AC-40: order transfer is disabled
+      ✓ request/accept/decline/cancel → 404 without token, as B and as A; no transfer change; owner stays A
+Tests:       11 passed, 11 total
+
+## lint / typecheck / build
+pnpm lint: 0 errors (warning เดิมของ storefront)
+pnpm typecheck: backend Done, storefront Done
+pnpm --filter backend build: Backend + Frontend build completed successfully

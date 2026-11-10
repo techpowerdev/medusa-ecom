@@ -1,0 +1,67 @@
+EV-N1 — ผลทดสอบ (2026-10-27, Node 22.23.3, base origin/develop 225ff26)
+
+== Red (ก่อนเขียนโค้ด) ==
+- unit expiry.unit.spec.ts: toExpiryCandidates is not a function (2 failed, 10 passed)
+- http evoucher-void-expiry.spec.ts AC-38: Property `listExpiryCandidates` does not exist (ยังนับ near/long ด้วย 2 query: listEvoucherCodes + countCodesByStatus)
+
+== unit: test:unit ทั้งหมด (รวม expiry.unit.spec.ts) ==
+Test Suites: 57 passed, 57 total
+Tests:       591 passed, 591 total
+
+== integration:http evoucher-void-expiry.spec.ts ==
+      ✓ requires an authenticated admin
+      ✓ voids an available code with the reason and decrements variant inventory by 1
+      ✓ rejects a missing reason with 400 and leaves the code untouched
+      ✓ rejects a empty reason with 400 and leaves the code untouched
+      ✓ rejects a blank reason with 400 and leaves the code untouched
+      ✓ returns 409 for a allocated code and changes nothing
+      ✓ returns 409 for a delivered code and changes nothing
+      ✓ returns 409 for a void code and changes nothing
+      ✓ returns 404 for an unknown code
+      ✓ restores the code to available when the inventory adjustment fails (compensation)
+      ✓ sends admin alerts only to EVOUCHER_ADMIN_EMAIL, not to every admin user
+      ✓ logs a warning and skips admin emails when EVOUCHER_ADMIN_EMAIL is not set (job still voids)
+      ✓ is scheduled once a day
+      ✓ AC-5 voids available codes expiring within 7 days with reason 'expiring' and decrements inventory
+      ✓ sends no expiry summary when nothing was voided
+      ✓ keeps other pools going when one pool fails
+      ✓ AC-30 keeps near-expiry codes for reserved orders (farthest first) and reports kept/shortfall per pool
+      ✓ AC-38 counts a code expiring exactly at now + 7 days as long and one 1ms earlier as near, in one query per pool
+      ✓ AC-9 sends one low-stock email per pool per day when available < threshold
+Tests:       19 passed, 19 total
+
+== integration:http evoucher-allocate.spec.ts ==
+      ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry
+      ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method
+      ✓ does not warn about shipping profile when the voucher product has none (AC-31)
+      ✓ warns once (but still delivers) when the voucher product has the default shipping profile (AC-31)
+      ✓ warns once (but still delivers) when the voucher product has the digital shipping profile (AC-31)
+      ✓ does nothing for an order without voucher items
+      ✓ re-running for the same order allocates no more codes and sends no more emails
+      ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails
+      ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available
+      ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails
+      ✓ uses a new idempotency key per claim and clears the backordered flag once delivered
+      ✓ delivers the farthest kept code to a reserved order after the daily job ran
+      ✓ still prefers a long-lived code over a near-expiry one
+      ✓ gives the last code to only one of two concurrently captured orders and flags the other
+      ✓ sends one notification to the mailbox and none to the 3 admin users
+      ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged)
+Tests:       16 passed, 16 total
+
+== integration:http evoucher-pool-guards.spec.ts ==
+      ✓ rejects a product in the digital shipping profile with 400, no pool and an untouched inventory item
+      ✓ rejects a product in the default shipping profile with 400, no pool and an untouched inventory item
+      ✓ accepts the product after the admin clears its shipping profile as the error message says
+      ✓ creates the pool (200) for a product without a shipping profile
+      ✓ rejects a variant whose inventory item is shared with another variant
+      ✓ rejects a variant with two inventory items
+      ✓ rejects a variant whose inventory item has required_quantity > 1
+      ✓ returns 409 EVOUCHER_CODE_RESERVED when all stock is reserved, then voids once a unit is free
+      ✓ lets only one of two concurrent voids through when a single unit is free
+      ✓ fails the whole file with the line number and inserts nothing
+      ✓ sets requires_shipping=true when an empty pool is deleted
+      ✓ backfills pools created before EV-8 to requires_shipping=false, idempotently, leaving other items alone
+Tests:       12 passed, 12 total
+
+== pnpm lint && pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน ==

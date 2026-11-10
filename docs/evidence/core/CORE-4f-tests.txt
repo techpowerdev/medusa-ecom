@@ -1,0 +1,12 @@
+# CORE-4f (AC-98) — ผลการทดสอบ 2026-10-27T10:25:26Z
+
+## e2e (Playwright chromium) — e2e/core-4f-auth-errors.spec.ts
+red control (ก่อนแก้): toHaveValue email ล้ม — Expected อีเมลเดิม, Received ""
+Running 1 test using 1 worker
+  ✓  1 [chromium] › e2e/core-4f-auth-errors.spec.ts:8:5 › AC-98: login รหัสผ่านผิด / สมัครด้วยอีเมลที่มีบัญชีแล้ว → error ไทย และอีเมลยังอยู่ (2.0s)
+  1 passed (2.6s)
+
+## unit (Vitest) — storefront ทั้งชุด
+ Test Files  32 passed (32)
+      Tests  362 passed (362)
+  - src/auth-errors-thai.test.ts: 7 เคส (login/register × 401/500/network + สมัครด้วยอีเมลที่มีบัญชีแล้ว) — ก่อนแก้ล้มทั้ง 7 (ไม่มี email ใน state, register คืนข้อความอังกฤษ), หลังแก้ผ่าน 7/7

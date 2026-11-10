@@ -1,0 +1,80 @@
+EV-4 — allocate & deliver workflow + subscriber payment.captured + email template; อีเมล backordered ถึง EVOUCHER_ADMIN_EMAIL (AC-2, AC-4, AC-7, AC-17 ส่วน backordered)
+Spec: docs/spec/02-evoucher.md, ADR-006
+Branch: feat/EV-4-allocate-deliver (เริ่มบน origin/develop e5c09ac; รอบแก้ review merge origin/develop d3ea48e; re-review รอบ 2 merge origin/develop ล่าสุด)
+วันที่รัน: 2026-10-26, Node v22.23.3, Postgres 16 / Redis 7 (docker compose local), DB สุ่มของ medusa-test-utils
+
+== Red (ก่อนเขียนโค้ด) ==
+test:unit templates.unit.spec.ts (EV-4) → 3 failed: renderEmailTemplate คืน null (ยังไม่มี template evoucher.delivered / evoucher-backordered)
+test:integration:modules claim-codes.spec.ts → 6 failed: TypeError: service.claimCodesForOrder is not a function
+test:integration:http evoucher-allocate.spec.ts → เขียนก่อน workflow แต่ไม่ได้รันแยกในสถานะ red (import workflow ที่ยังไม่มี);
+  รันครั้งแรกหลังเขียน workflow: 1 failed (compensation เมื่ออีเมลล้ม — ดูด้านล่าง), รอบเพิ่ม test cart ผสม: ล้มที่ completeCart
+  เพราะ product ที่มี shipping profile Digital ได้ line item requires_shipping=true (ดูข้อสังเกตใน PR) → ปรับ test ให้ใช้ voucher ไม่มี profile
+mutation check: ตัด `FOR UPDATE SKIP LOCKED` + advisory lock ออก → AC-4 (10 order พร้อมกัน), claim order เดียวกันพร้อมกัน และ race กับ void ล้ม 3 test
+รอบระหว่างทำ: test "email ล้ม" พบ code ค้าง status=allocated หลัง compensation → compensation ของ mark delivered เปลี่ยนเป็น
+conditional (เฉพาะแถวที่ยัง delivered)
+
+== รอบแก้ review / การตัดสินของ owner (red ก่อนแก้) ==
+test:unit resend + notification-providers → 6 failed (template ยังไม่ถอด ciphertext, ไม่มี evoucher-delivery-failed,
+  provider ยังไม่มี option evoucher_encryption_key)
+test:integration:http evoucher-allocate.spec.ts รอบแรกหลังแก้ → "clears the backordered flag" ล้ม: Order module merge metadata
+  (การไม่ส่ง key ไม่ลบ key) → ล้าง flag ด้วยค่า "" แทน
+
+== re-review รอบ 2 ==
+AC-26: provider (local) throw ตอนส่ง evoucher.delivered → เดิม code เป็น delivered (ผิดกฎข้อ 17) → ย้าย mark delivered เข้า send step
+  (ขั้นสุดท้าย ไม่ throw) หลังส่งสำเร็จเท่านั้น; test assert allocated + notification failure เก็บ ciphertext + อีเมล ops 1 ฉบับ
+AC-27: test ใหม่ (pool 1 code, line qty 2 → backordered, available = 1, ไม่มี evoucher.delivered, admin ได้อีเมล backordered)
+
+== re-review รอบ 3 ==
+red: provider throw เฉพาะ evoucher-backordered → workflow ล้ม (sendNotificationsStep ของ core throw) compensate claim ของ line ที่ครบ
+green: ส่งอีเมล admin ด้วย step ที่ไม่ throw (try/catch + logger.error) → line A delivered, line B flag backordered, รันซ้ำไม่ error
+
+== test:unit (templates.unit.spec.ts + resend service.unit.spec.ts + notification-providers.unit.spec.ts) ==
+  ✓ renders every code with PIN, expiry (Thai date), partner logo and how-to-use block  (ciphertext → decrypt ตอน render)
+  ✓ refuses to render codes without a decrypt function
+  ✓ renders the delivery-failed admin alert with the order id
+  ✓ drops a non-http partner logo url
+  ✓ renders the backordered admin alert with order and the short line items
+  ✓ decrypts code and PIN only when rendering the email
+  ✓ fails (notification marked failed) when the evoucher key is not configured
+  ✓ uses the Resend provider ... (option evoucher_encryption_key จาก env)
+Tests: 26 passed, 26 total
+pnpm --filter backend test:unit (หลัง merge develop รอบ re-review 2) → Test Suites: 36 passed; Tests: 315 passed
+
+== test:integration:modules src/modules/evoucher/__tests__/claim-codes.spec.ts ==
+  ✓ claims the earliest-expiring usable codes and records order, line item and customer
+  ✓ backorders the whole line item without touching codes when there are not enough
+  ✓ skips line items that already have codes (AC-7 idempotent)
+  ✓ reports skipped line items whose codes are still only allocated (stuck) but not delivered ones
+  ✓ AC-4 gives each code to exactly one order when many orders claim concurrently
+  ✓ does not allocate the same line item twice when the same order is claimed concurrently
+  ✓ never lets a concurrent void (EV-5) and an allocation both take the same code
+Tests: 7 passed, 7 total
+
+== test:integration:http integration-tests/http/evoucher-allocate.spec.ts ==
+  AC-2 deliver after payment.captured
+    ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry
+    ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method
+    ✓ warns (but still delivers) when a voucher product is not in the Digital shipping profile
+    ✓ does nothing for an order without voucher items
+  AC-7 idempotent
+    ✓ re-running for the same order allocates no more codes and sends no more emails
+    ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails
+    ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available
+    ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails
+    ✓ uses a new idempotency key per claim and clears the backordered flag once delivered
+  AC-4 backordered when no code is left
+    ✓ gives the last code to only one of two concurrently captured orders and flags the other
+  AC-17 backordered admin email goes to EVOUCHER_ADMIN_EMAIL only
+    ✓ sends one notification to the mailbox and none to the 3 admin users
+    ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged)
+Tests: 12 passed, 12 total
+
+== pnpm lint ==
+apps/backend: medusa lint → ไม่มี issue (storefront: 0 errors, warnings เดิมที่ไม่เกี่ยวกับ task นี้)
+
+== pnpm typecheck ==
+apps/backend: tsc --noEmit (+ admin) → Done
+apps/storefront: tsc --noEmit → Done
+
+== pnpm --filter backend build ==
+Backend build completed successfully; Frontend build completed successfully

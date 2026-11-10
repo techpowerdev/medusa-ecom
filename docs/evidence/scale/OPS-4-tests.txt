@@ -1,0 +1,64 @@
+# OPS-4 test evidence — 2026-10-28 00:47 +0700
+# node v22.23.3 (host; image ใช้ node 22.23.4), docker 29.4.2, k6 grafana/k6:2.3.0
+
+### Red — unit (ก่อนมี workflow/script)
+    ENOENT: no such file or directory, open '.../.github/workflows/load-nightly.yml'
+Test Suites: 1 failed, 1 total
+
+### Red — integration-tests/http/load-seed.spec.ts (ก่อนมี seed-load.ts)
+    Cannot find module '../../src/scripts/seed-load' from 'integration-tests/http/load-seed.spec.ts'
+
+### Green — TEST_TYPE=unit jest src/__tests__/load-nightly.unit.spec.ts
+    ✓ workflow แยกไฟล์ รันรายคืน + สั่งเองได้ และไม่อยู่ใน ci.yml (1 ms)
+    ✓ ผล k6 (--summary-export) อัปโหลดเป็น artifact 14 วันแม้ run ล้ม
+    ✓ บูต stack แบบ prod ของ OPS-1 ด้วย provider ทดสอบ และ k6 จาก image ที่ pin เวอร์ชัน (1 ms)
+    ✓ ค่าเริ่มต้นตาม AC-2 (300 คน, cap 100, 500 rps 60 วินาที) และ AC-3 (200 คน, กลุ่ม 10)
+    ✓ tools/load/flash-sale.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว) (1 ms)
+    ✓ tools/load/group-buy-join.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว) (1 ms)
+    ✓ ตรวจผลจาก DB หลังจบ: order ที่มี adjustment ของแคมเปญ, units_sold และสมาชิกกลุ่ม
+Tests:       7 passed, 7 total
+
+### Green — TEST_TYPE=integration:http jest integration-tests/http/load-seed.spec.ts
+PASS integration-tests/http/load-seed.spec.ts (65.861 s)
+    ✓ สร้างลูกค้าตามจำนวนพร้อม token ที่ใช้กับ store API ได้ (ไม่ซ้ำกันระหว่าง flash และ join) (4867 ms)
+    ✓ flash campaign มี config total_cap และ automatic promotion ที่ target variant ของ load (3622 ms)
+    ✓ group buy campaign active + pool group เปิดอยู่ที่ max_people_per_group = groupSize (1316 ms)
+    ✓ production ที่ไม่ได้ตั้ง ALLOW_TEST_PROVIDERS=true → ปฏิเสธ (ไม่สร้างลูกค้ารหัสผ่านที่รู้กันใน prod) (711 ms)
+Tests:       4 passed, 4 total
+
+### pnpm --filter backend test:unit
+Test Suites: 66 passed, 66 total
+Tests:       639 passed, 639 total
+
+### pnpm lint && pnpm typecheck (worktree ไม่มี .medusa/)
+lint: 0 errors (warning ของ seed-load.ts แก้แล้ว; warning ที่เหลือเป็นของไฟล์เดิม) / typecheck: exit 0
+
+### tools/load/run.sh ในเครื่อง — โหลดเล็ก (LOAD_PROJECT=ops4load LOAD_FLASH_CUSTOMERS=30 LOAD_FLASH_TOTAL_CAP=10
+### LOAD_BURST_RATE=20 LOAD_BURST_DURATION=15s LOAD_JOIN_CUSTOMERS=20 LOAD_GROUP_SIZE=5) บน laptop ที่มีงานอื่นรันอยู่
+### latency ไม่มีความหมาย (เครื่องเดียวกับ docker build/test อื่น) — ยืนยันเฉพาะเส้นทางทั้งหมดและ query ตรวจ DB
+## OPS-4 load test (2026-10-27T17:46:01Z)
+
+flash: 30 ลูกค้า, total_cap=10, burst 20 rps × 15s | join: 20 ลูกค้า, กลุ่ม 5 คน
+
+| ตรวจ | คาดหวัง | ได้ | ผล |
+|---|---|---|---|
+| AC-2 order ที่ได้ส่วนลด (DB) | 10 | 10 | PASS |
+| AC-2 units_sold (DB) | 10 | 10 | PASS |
+| AC-2 checkout ที่ได้ 409 FLASH_SOLD_OUT | 20 | 20 | PASS |
+| AC-2 checkout ผลอื่น | 0 | 0 | PASS |
+| AC-2 5xx | 0 | 0 | PASS |
+| AC-3 สมาชิกกลุ่ม (DB) | 5 | 5 | PASS |
+| AC-3 join ผลอื่น (ไม่ใช่ 201/409) | 0 | 0 | PASS |
+| AC-3 5xx | 0 | 0 | PASS |
+
+รายงานอย่างเดียว (ไม่ใช่ gate — Q-O3 a; เป้า p95 < 300ms):
+
+| scenario | p95 (ms) | req/s ทั้ง run | iteration ที่ k6 ทิ้ง | burst non-2xx |
+|---|---|---|---|---|
+| flash burst | 11924.1906908 | 7.503167997103544 | 157 | 0 |
+| flash checkout | 10082.6089301 | - | - | - |
+| group-buy join | 4763.60829785 | - | - | - |
+
+failures: 0
+load test: ผ่าน
+exit=0

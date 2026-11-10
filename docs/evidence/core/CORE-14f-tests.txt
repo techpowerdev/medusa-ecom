@@ -1,0 +1,39 @@
+# CORE-14f — ผลทดสอบ (spec 01 AC-101, กฎข้อ 65)
+# รันในเครื่อง 2026-10-27: backend medusa develop :9215 (DB medusa_core14f, seed), storefront next build+start :8215 (NEXT_PUBLIC_DEFAULT_REGION=th), Node 22
+
+## Red (ก่อนแก้โค้ด)
+- e2e core-14f-pending-card.spec.ts: 4 failed
+  ✘ JS on/off: การ์ด add-variant-pending มี "ยังไม่ได้อยู่ในตะกร้า" (Received: "สินค้าที่เลือกไว้ (ตัวเลือก S) จำนวน 1 ชิ้น ราคาชิ้นละ ฿590 ยังไม่ได้อยู่ในตะกร้าเพิ่มลงตะกร้า")
+  ✘ ฟอร์ม no-JS country_code=zz: ไปจบที่ /th/zz/account (404) ไม่มี add-variant-error
+  ✘ ฟอร์ม no-JS country_code=/evil.example: document response มี 500 (confirmPendingAdd throw)
+- vitest: 5 failed (quantityInCart ยังไม่มี; loginPathForAddToCart(null) ได้ /null/account; confirmPendingAdd throw แทน redirect; zz → /zz/account)
+
+## Green — vitest (login-pending-add.test.ts, pending-add-to-cart.test.ts)
+ Test Files  2 passed (2)
+      Tests  29 passed (29)
+
+## Green — vitest ทั้งชุดของ storefront: 32 files / 376 tests passed
+
+## Green — Playwright core-14f --repeat-each=3 (workers=1)
+  12 passed (10.7s)
+
+## Green — Playwright (chromium, workers=1) core-14f + flow ที่เกี่ยวข้อง (CORE-14b, CORE-14d, thai-ui-account)
+  ✓   1 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (3.9s)
+  ✓   2 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (754ms)
+  ✓   3 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (658ms)
+  ✓   4 [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton (2.8s)
+  ✓   5 [chromium] › e2e/core-14d-cart-after-login.spec.ts:139:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error) (1.0s)
+  ✓   6 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS on) (1.1s)
+  ✓   7 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS off) (1.4s)
+  ✓   8 [chromium] › e2e/core-14d-cart-after-login.spec.ts:218:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่มีปุ่มยืนยัน (496ms)
+  ✓   9 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS เปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS on) (1.0s)
+  ✓  10 [chromium] › e2e/core-14f-pending-card.spec.ts:50:9 › AC-101 (JS ปิด) › AC-101: variant อยู่ใน cart แล้ว qty 2 → การ์ดแสดงจำนวนใน cart ไม่บอกว่ายังไม่อยู่ในตะกร้า (JS off) (806ms)
+  ✓  11 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น zz → ไม่มี 5xx เห็น error ไทย (579ms)
+  ✓  12 [chromium] › e2e/core-14f-pending-card.spec.ts:107:9 › AC-101 ฟอร์ม (JS ปิด) › AC-101: ส่งฟอร์ม add-variant-confirm ที่แก้ country_code เป็น /evil.example → ไม่มี 5xx เห็น error ไทย (481ms)
+  ✓  13 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (335ms)
+  ✓  14 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (794ms)
+  ✓  15 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (241ms)
+  15 passed (17.3s)
+
+## lint / typecheck
+pnpm lint: 0 errors (warning เดิมของ repo; ไฟล์ที่แก้ไม่มี warning) / pnpm typecheck: ผ่าน

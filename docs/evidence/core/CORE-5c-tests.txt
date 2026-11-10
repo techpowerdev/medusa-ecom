@@ -1,0 +1,27 @@
+CORE-5c — evidence เขียนได้เฉพาะโฟลเดอร์ของ evidenceTarget (spec 01 กฎข้อ 67, AC-103)
+วันที่ 2026-10-27, Node v22.23.3, Playwright 1.64.1
+
+== Red (ก่อนแก้ fixture) ==
+    Error: not implemented
+    Error: not implemented
+    Error: not implemented
+    Error: expect(received).toThrow(expected)
+  4 failed
+    Error: ต้องตั้ง test.use({ evidenceTarget: { feature, taskId } }) ก่อนบันทึก evidence
+    test-results/evidence-guard-ไม่ตั้ง-evi-383e4-dence-ไม่เขียนไฟล์-evidence-chromium/test-failed-1.png
+  1 failed
+
+== Green ==
+pnpm --filter storefront test:e2e:unit (project unit ทั้งหมด รวม evidence-save.unit.spec.ts 4 test):
+    35 passed (545ms)
+E2E_SAVE_EVIDENCE=1 playwright test --project=chromium e2e/evidence-guard.spec.ts (ไม่ต้องใช้ server):
+    1 passed (743ms)
+playwright test --project=chromium e2e/evidence-guard.spec.ts (ไม่ตั้ง env):
+    1 passed (481ms)
+git status --porcelain docs/evidence หลังรันทั้งหมด (ไม่นับไฟล์นี้): มีเฉพาะ README.md ที่แก้ใน PR นี้ ไม่มี PNG/REPORT.md ใดเปลี่ยน
+
+pnpm typecheck: รอบแรกล้ม (TS2345 Buffer → BinaryLike ใน crypto.update) แก้เป็น Uint8Array แล้วผ่าน
+pnpm lint: 0 errors (warning เดิมของ develop)
+
+ไม่ได้รัน core-22/core-23 e2e ในเครื่อง (ต้องใช้ backend+storefront) — ส่วน "รันเฉพาะ core-22 แล้วเปลี่ยนเฉพาะ CORE-22/"
+ครอบคลุมด้วย unit "เขียนเฉพาะในโฟลเดอร์ของ evidenceTarget" + "ครบงบแล้ว throw และไม่เปลี่ยน"; ยืนยันกับ server จริงเป็นงานของ qa

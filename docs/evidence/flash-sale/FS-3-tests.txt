@@ -1,0 +1,177 @@
+# FS-3 — ผล test (Node v24.12.0, Medusa 2.22.1, 2026-10-25T10:54Z)
+# ฐาน: origin/develop ae8e9fa
+# ในเครื่องรันเฉพาะ: test:unit ทั้งชุด, integration:modules ของ flash_sale, integration:http ที่เกี่ยวข้อง (flash-sale-limits, promotion-exclusivity AC-8f, flash-sale-module) — integration เต็มชุดรันใน CI
+# Red: ก่อนเขียน hook, flash-sale-limits.spec.ts ล้ม 9/11 (units_sold/usage เป็น 0); mutation check: ปิด compensation → AC-9 ล้ม
+
+PASS src/__tests__/medusa-config.unit.spec.ts
+  medusa-config worker mode
+    ✓ boots as server with admin when MEDUSA_WORKER_MODE=server (583 ms)
+    ✓ boots as worker without admin when MEDUSA_WORKER_MODE=worker (241 ms)
+    ✓ defaults to shared with admin for local dev when env is unset (221 ms)
+PASS src/modules/resend/__tests__/service.unit.spec.ts
+  ResendNotificationProviderService
+    ✓ uses the notification-resend identifier (1 ms)
+    validateOptions
+      ✓ requires api_key (1 ms)
+      ✓ requires from
+      ✓ accepts valid options
+    send
+      ✓ sends the rendered template through the Resend client and returns its id (11 ms)
+      ✓ prefers notification.from over the default sender
+      ✓ throws for an unknown template without calling Resend
+      ✓ throws when Resend returns an error so the notification is marked failed
+PASS src/__tests__/medusa-config-modules.unit.spec.ts
+  medusa-config modules
+    ✓ registers every custom module that has data models (262 ms)
+PASS src/modules/evoucher/__tests__/crypto.unit.spec.ts
+  evoucher crypto
+    parseEncryptionKey
+      ✓ accepts a 64-char hex key (32 bytes) (1 ms)
+      ✓ rejects missing or malformed key undefined
+      ✓ rejects missing or malformed key "" (1 ms)
+      ✓ rejects missing or malformed key "abc"
+      ✓ rejects missing or malformed key "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      ✓ rejects missing or malformed key "588a9f49e7d2f4711491306beffa35a440f75c71bba92e88182a5566e7aba2"
+    round-trip
+      ✓ decrypts what it encrypts (random iv) (3 ms)
+      ✓ decrypts what it encrypts (deterministic iv)
+      ✓ random iv produces a different ciphertext each time
+      ✓ deterministic iv produces the same ciphertext for the same plaintext (unique per pool) (1 ms)
+      ✓ fails on a tampered ciphertext (9 ms)
+      ✓ fails with a different key (1 ms)
+      ✓ rejects an unknown format version
+PASS src/lib/__tests__/promotion-exclusivity.unit.spec.ts
+  promotion exclusivity helpers
+    ✓ exposes the context attribute and error code from ADR-009 (1 ms)
+    exclusiveAutomaticRule
+      ✓ returns the 'ne true' rule on the exclusivity attribute
+      ✓ returns a fresh object each call
+    isExclusiveAutomatic
+      ✓ is true for an automatic promotion with the rule (query shape)
+      ✓ is true for an automatic promotion with the rule (helper shape)
+      ✓ is true when the rule sits among other rules
+      ✓ is false for an automatic promotion without the rule
+      ✓ is false for a code promotion even with the rule
+      ✓ is false when the rule uses another operator or value
+    isGroupBuyCode
+      ✓ matches the GB- prefix only
+    resolvePromoCodes
+      ✓ add: unions existing and input codes without duplicates
+      ✓ defaults to add
+      ✓ remove: drops input codes from existing
+      ✓ replace: keeps only input codes
+    exclusivityPromotionContext
+      ✓ sets the attribute to 'true' when a code is applied
+      ✓ sets the attribute to 'false' (never empty) when no code is applied (1 ms)
+    introducesGroupBuyConflict
+      ✓ rejects adding another code to a GB cart
+      ✓ rejects adding a GB code to a cart with another code
+      ✓ rejects two GB codes
+      ✓ allows a GB code alone or with automatic promotions only
+      ✓ allows non-GB codes together (Medusa default stacking)
+      ✓ does not reject a refresh that introduces no new code
+    hasCompletionConflict
+      ✓ flags an exclusive automatic promotion together with any code
+      ✓ flags GB together with another code
+      ✓ allows valid combinations
+PASS src/lib/__tests__/notification-providers.unit.spec.ts
+  buildNotificationProviders
+    ✓ falls back to Medusa's local provider for email (and feed) when RESEND_API_KEY is missing (1 ms)
+    ✓ treats an empty RESEND_API_KEY as missing
+    ✓ uses the Resend provider for email and keeps local for the admin feed when the key is set
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+  renderEmailTemplate
+    ✓ returns null for an unknown template
+    order-placed
+      ✓ renders subject with display id and an html body with items and THB totals (1 ms)
+      ✓ escapes html in user-controlled values
+    order-shipped
+      ✓ renders subject with display id and lists tracking numbers (1 ms)
+      ✓ renders without tracking labels
+      ✓ drops non-http tracking urls
+PASS src/lib/__tests__/flash-sale-units.unit.spec.ts
+  campaignUnitsInCart
+    ✓ returns nothing for a cart without adjustments (1 ms)
+    ✓ counts the full line quantity, not the discounted max_quantity
+    ✓ sums lines per campaign and sorts by campaign_id
+    ✓ counts a line once per campaign even with several adjustments of that campaign (1 ms)
+    ✓ ignores adjustments of promotions outside any known campaign and null entries
+    ✓ accepts BigNumber-like quantities
+  flashSaleLockKey
+    ✓ namespaces the lock per (campaign_id, customer_id)
+Test Suites: 8 passed, 8 total
+Tests:       66 passed, 66 total
+Time:        2.435 s, estimated 3 s
+PASS src/modules/flash_sale/__tests__/service.spec.ts
+    FlashSaleConfig
+      ✓ creates a config with defaults (units_sold=0, flags off, nullable limits) (193 ms)
+      ✓ stores the flash options set by admin (47 ms)
+      ✓ allows only one config per campaign (50 ms)
+      ✓ rejects invalid units_sold at the database level (39 ms)
+      ✓ rejects invalid per_customer_limit at the database level (38 ms)
+      ✓ rejects invalid total_cap at the database level (37 ms)
+    FlashSaleUsage
+      ✓ creates a usage row with units defaulting to 0 (38 ms)
+      ✓ allows only one usage row per (campaign_id, customer_id) (37 ms)
+      ✓ allows the same customer in other campaigns and other customers in the same campaign (37 ms)
+      ✓ rejects negative units at the database level (45 ms)
+PASS src/modules/flash_sale/__tests__/reservation.spec.ts
+    reserveForCart
+      ✓ reserves usage, units_sold and a reservation row (132 ms)
+      ✓ accumulates usage of the same customer across carts (54 ms)
+      ✓ counts units_sold even when total_cap and per_customer_limit are null (47 ms)
+      ✓ ignores campaigns without a flash sale config (53 ms)
+      ✓ fails FLASH_LIMIT_EXCEEDED when usage + units > per_customer_limit, changing nothing (48 ms)
+      ✓ fails FLASH_LIMIT_EXCEEDED for a new customer whose cart alone exceeds the limit (43 ms)
+      ✓ fails FLASH_SOLD_OUT when units_sold + units > total_cap and rolls back the usage (43 ms)
+      ✓ fails FLASH_SOLD_OUT when total_cap was lowered below units_sold (rule 12) (41 ms)
+      ✓ rolls back every campaign when a later campaign fails (74 ms)
+      ✓ sells exactly total_cap units under concurrent reservations (69 ms)
+    releaseCartReservations (compensation)
+      ✓ returns usage + units_sold and deletes the reservations of the cart; idempotent (49 ms)
+      ✓ does not return units of a reservation that was already released (48 ms)
+      ✓ does nothing for a cart without reservations (36 ms)
+    FlashSaleReservation
+      ✓ allows only one reservation per (cart_id, campaign_id) (55 ms)
+Test Suites: 2 passed, 2 total
+Tests:       24 passed, 24 total
+Time:        2.641 s, estimated 3 s
+PASS integration-tests/http/flash-sale-limits.spec.ts (27.369 s)
+    ✓ cart line gets the flash adjustment from the campaign promotion (722 ms)
+    ✓ AC-3 total_cap=10 and 10 units sold → the 11th checkout fails FLASH_SOLD_OUT (3308 ms)
+    ✓ AC-9 a failure after the hook reserved → usage, units_sold and the reservation are rolled back (1091 ms)
+    ✓ AC-10 completing an already completed cart returns the same order without booking again (650 ms)
+    ✓ AC-11 (b) units_sold=10 with total_cap lowered to 5 → a 1-unit checkout fails FLASH_SOLD_OUT (521 ms)
+    ✓ a cart without flash sale config (plain campaign) completes without booking (642 ms)
+    AC-2 per_customer_limit=2
+      ✓ (c) a new customer completing 2 units succeeds; usage and units_sold are booked immediately (1030 ms)
+      ✓ (a) a customer who already bought 2 units cannot complete 1 more (FLASH_LIMIT_EXCEEDED) (1061 ms)
+      ✓ (b) counts the full line quantity (3) even when the promotion discounts max_quantity=1 (632 ms)
+    AC-7 concurrency
+      ✓ (a) 50 concurrent checkouts of different customers under total_cap=20 → exactly 20 succeed (10469 ms)
+      ✓ (b) one customer, 2 carts × 2 units, per_customer_limit=2, completed concurrently → 1 succeeds (1299 ms)
+PASS integration-tests/http/promotion-exclusivity.spec.ts (12.713 s)
+    ✓ accepts the exclusivity rule (custom attribute, operator ne) via admin API (338 ms)
+    spec 03 AC-8 (code ชนะ flash หลุด)
+      ✓ (d) cart without a code gets F as usual (506 ms)
+      ✓ (d) adding a flash item to a code-free cart applies F (418 ms)
+      ✓ (a) applying SAVE10 to a cart with F → 200, SAVE10 kept, F dropped (376 ms)
+      ✓ (b) adding a flash item to a cart with SAVE10 keeps SAVE10 and no F (514 ms)
+      ✓ (c) removing SAVE10 brings F back (460 ms)
+      ✓ (e) SAVE10 stacks with N (automatic without the rule) (348 ms)
+    spec 04 กฎข้อ 7 (group buy)
+      ✓ rejects GB-* on a cart that already has another code (364 ms)
+      ✓ rejects another code on a cart that has GB-* (387 ms)
+      ✓ rejects GB-* and another code applied together (264 ms)
+      ✓ GB-* wins over F (flash dropped) (365 ms)
+      ✓ GB-* stacks with N; adding items to a GB cart still works (421 ms)
+    completeCartWorkflow backstop
+      ✓ (f) F + SAVE10 on the same cart → complete fails PROMOTION_NOT_COMBINABLE (376 ms)
+      ✓ GB-* + another code on the same cart → complete fails PROMOTION_NOT_COMBINABLE (483 ms)
+      ✓ refresh (add-to-cart) on a cart already holding GB-* + another code does not error (439 ms)
+      ✓ a valid cart (SAVE10 + N) completes into an order (1185 ms)
+PASS integration-tests/http/flash-sale-module.spec.ts (5.565 s)
+    ✓ resolves flash_sale_config together with its Medusa campaign via query.graph (326 ms)
+Test Suites: 3 passed, 3 total
+Tests:       28 passed, 28 total
+Time:        45.715 s, estimated 47 s

@@ -1,0 +1,54 @@
+CORE-4h (spec 01 กฎข้อ 69, AC-105) — ผลทดสอบในเครื่อง 2026-10-27
+
+## Red (ก่อนแก้)
+unit src/core-4h-auth-reason.test.ts: 6 failed | 1 passed
+  - login 401 ไม่มี reason, register 401 ได้ "กรุณาเข้าสู่ระบบอีกครั้ง", signup ไม่คืน fields,
+    confirmEmailVerification คืน "Invalid token", component login แสดงข้อความของ action, register ไม่คง ชื่อ/นามสกุล/เบอร์
+e2e e2e/core-4h-auth-reason.spec.ts: failed ที่ toHaveValue("สมชาย") ของ first-name-input
+  (ขั้น dblclick login ผ่านอยู่แล้วบน build production ในเครื่อง — action 1 ครั้ง; ใส่ guard useSubmitOnce เพิ่มตามกฎข้อ 69c)
+
+## Green (หลังแก้)
+unit (vitest ทั้ง storefront):
+ Test Files  35 passed (35)
+      Tests  391 passed (391)
+
+e2e (next build + next start, backend medusa develop, --project=chromium):
+  ✓  4 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (645ms)
+  ✓  2 [chromium] › e2e/core-4f-auth-errors.spec.ts:8:5 › AC-98: login รหัสผ่านผิด / สมัครด้วยอีเมลที่มีบัญชีแล้ว → error ไทย และอีเมลยังอยู่ (2.8s)
+  ✓  5 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (3.9s)
+  ✓  6 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (969ms)
+  ✓  3 [chromium] › e2e/core-4h-auth-reason.spec.ts:9:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (6.1s)
+  ✓  1 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (7.2s)
+  ✓  7 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (1.6s)
+  ✓  8 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (936ms)
+  8 passed (10.9s)
+  ✓   3 [chromium] › e2e/register-policy-links.spec.ts:6:5 › AC-77: ลิงก์นโยบาย/ข้อกำหนดในฟอร์มสมัครชี้หน้าที่มีจริง (598ms)
+  ✓   2 [chromium] › e2e/core-14c-login-foreign-cart.spec.ts:26:5 › AC-76: login ขณะมี cookie cart ของ customer อื่น → login สำเร็จ, cookie ไม่ชี้ cart ของคนอื่น, cart นั้นยังเป็นของเจ้าของเดิม (2.0s)
+  ✓   1 [chromium] › e2e/core-14-buy-login.spec.ts:38:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (2.6s)
+  ✓   5 [chromium] › e2e/core-14-buy-login.spec.ts:98:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (89ms)
+  ✓   6 [chromium] › e2e/core-14-buy-login.spec.ts:121:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (681ms)
+  ✓   4 [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton (4.4s)
+  ✓   7 [chromium] › e2e/core-14d-cart-after-login.spec.ts:139:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error) (926ms)
+  ✓   8 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS on) (901ms)
+  ✓   9 [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS off) (897ms)
+  ✓  10 [chromium] › e2e/core-14d-cart-after-login.spec.ts:218:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่มีปุ่มยืนยัน (443ms)
+  10 passed (8.2s)
+
+pnpm lint && pnpm typecheck: ผ่าน (exit 0)
+
+## รอบแก้ตาม review #162 — test ของ useSubmitOnce (src/use-submit-once.test.ts)
+Red (แก้ hook/ฟอร์มชั่วคราวแล้วรัน ก่อนคืนค่าเดิม):
+     × submit แรกผ่าน, submit ที่สองก่อน/ระหว่าง action ทำงานถูก preventDefault 15ms
+     × action จบ (isPending → false) แล้ว submit ถัดไปผ่าน — ref ไม่ค้าง 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed (2)
+     × action จบ (isPending → false) แล้ว submit ถัดไปผ่าน — ref ไม่ค้าง 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 1 passed (2)
+     × login ผูก onSubmit ของ useSubmitOnce(isPending) กับ <form> 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 3 passed (4)
+
+Green (vitest ทั้ง storefront):
+ Test Files  36 passed (36)
+      Tests  395 passed (395)

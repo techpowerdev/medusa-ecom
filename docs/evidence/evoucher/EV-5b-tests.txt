@@ -1,0 +1,39 @@
+EV-5b — resendEvoucherEmailWorkflow + POST /admin/evoucher/orders/:id/resend + ปุ่ม resend บน order widget ของ EV-6
+(AC-18, AC-19, AC-28, AC-29; กฎข้อ 16, 17, 19)
+Spec: docs/spec/02-evoucher.md
+Branch: feat/EV-5b-resend-email (เริ่มบน origin/develop eb098e3)
+วันที่รัน: 2026-10-27, Node v22.23.3, Postgres 16 / Redis 7 (docker compose local, Redis db 5), DB medusa_ev5b / medusa_ev5b_it
+
+== Red (ก่อนเขียนโค้ด) ==
+test:integration:http evoucher-resend.spec.ts → 5 failed, 1 passed: route ยังไม่มี → 404 (ข้อ 401 ผ่านอยู่แล้วเพราะ /admin/* บังคับ auth)
+test:unit evoucher-resend.unit.spec.ts → Cannot find module '../evoucher-resend'
+test:unit error-handler.unit.spec.ts → allow-list 409 ยังไม่มี EVOUCHER_RESEND_IN_PROGRESS (อัปเดต expectation)
+
+== Green: test:integration:http evoucher-resend.spec.ts ==
+PASS integration-tests/http/evoucher-resend.spec.ts (15.975 s)
+      ✓ sends one new email with the same 2 codes to the order email and leaves the codes unchanged (1969 ms)
+      ✓ returns 400 for an order without delivered or allocated codes (1159 ms)
+      ✓ returns 401 without an admin token (800 ms)
+      ✓ marks allocated codes delivered and uses a new idempotency key on every resend (849 ms)
+      ✓ keeps the codes allocated, answers an error and can be retried when the provider still fails (808 ms)
+      ✓ sends only one email when two resends of the same order arrive together (2274 ms)
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+
+== Green: test:unit (ชุดเต็ม backend) ==
+Test Suites: 49 passed, 49 total
+Tests:       488 passed, 488 total
+PASS src/api/__tests__/error-handler.unit.spec.ts
+PASS src/admin/lib/__tests__/evoucher-resend.unit.spec.ts
+Tests:       29 passed, 29 total
+
+== e2e (Playwright, chromium) — backend medusa start (NODE_ENV=production) บน :9125 ==
+evoucher-admin-resend.spec.ts
+  ✓ AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ
+  (dblclick → POST /resend 1 ครั้ง, toast "E-voucher email resent with 2 codes", evoucher.delivered ของลูกค้า 1 → 2)
+  1 passed — screenshot: docs/evidence/evoucher/EV-5b/01-resend-success.png
+test:e2e:unit → 29 passed
+
+== lint / typecheck ==
+pnpm lint → 0 errors (backend 0 warnings; storefront 33 warnings เดิม)
+pnpm typecheck → ผ่าน (backend + storefront)

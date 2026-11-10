@@ -1,0 +1,19 @@
+AF-18 — หลักฐาน test (spec 05 กฎ 42, AC-50) 2026-11-04
+
+## Red 1 (ยังไม่แก้ page.tsx): 10/10 ล้ม — getByTestId('affiliate-profile-email') element(s) not found (ยังไม่มี testid)
+
+## Red 2 (เพิ่มเฉพาะ testid ยังไม่แก้ grid): ที่ 375 ล้ม 5/5 — scrollWidth Expected <= 375, Received 685–688; ที่ 1280 ผ่าน 5/5 (regression guard)
+  5 failed
+  5 passed (16.3s)
+
+## Green: npx playwright test e2e/affiliate-profile-overflow.spec.ts --project=chromium --repeat-each=5 (อีเมล local part 52 ตัวคงที่)
+  10 passed (9.4s) — แต่ละ test × 5 รอบ:
+  - [chromium] › affiliate-profile-overflow.spec.ts:31:7 › AC-50 ที่ 375×812 › AC-50: อีเมลยาวไม่มีช่องว่าง → ไม่มี scroll แนวนอน และอีเมลอยู่ในจอครบ
+  - [chromium] › affiliate-profile-overflow.spec.ts:52:5 › AC-50: ที่ 1280 ป้ายอีเมล (<dt>) กับค่า (affiliate-profile-email) ยังอยู่แถวเดียวกัน
+
+## e2e เดิมของ portal (AC-40 Profile, affiliate-default-link-*): affiliate-portal.spec.ts, affiliate-portal-pages.spec.ts, affiliate-portal-polish.spec.ts — ไม่แก้ locator
+  7 passed (10.7s)
+
+## storefront unit (vitest): Test Files 82 passed (82), Tests 906 passed (906)
+## storefront e2e:unit (playwright project unit): 54 passed
+## pnpm lint: 0 errors (warning เดิม 31 ไม่มีในไฟล์ที่แก้); pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน

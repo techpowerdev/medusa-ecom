@@ -1,0 +1,42 @@
+# AF-10 (spec 05 รอบ 9) — maturity job reconcile order ที่ยกเลิกแต่ไม่มี reversal (กฎ 30, AC-36)
+# วันที่: 2026-10-27 11:35 +0700, branch feat/AF-10-cancel-reconcile (จาก origin/develop 5d14fc6), Node v22.23.3
+
+## Red (ก่อนแก้ workflow): AC-36 ล้มด้วยสาเหตุที่ถูกต้อง — entry ของ order ที่ cancel โดย event หายถูก approve
+  ●  › AC-6 maturity › AC-36: a canceled order whose reversal was lost is reversed instead of approved, once; others still approve
+
+    expect(received).toHaveLength(expected)
+
+    Received: 2 entries status "approved" (order ที่ถูกยกเลิก)
+
+## Integration (http): integration-tests/http/affiliate-reversal.spec.ts (Green)
+PASS integration-tests/http/affiliate-reversal.spec.ts (23.767 s)
+    ✓ AC-29: attribution racing a cancel of the same order nets 0 and leaves no unreversed pending entry (2193 ms)
+    AC-5 reversal
+      ✓ a full refund appends a reversed −฿100 entry with matures_at null; net is 0 and the entry is untouched (1161 ms)
+      ✓ AC-31: a partial refund reverses nothing; refunding the rest reverses every line to net 0; redelivery adds nothing (1325 ms)
+      ✓ a refunded payment without an order is a no-op (no lock, no entry) (170 ms)
+      ✓ order.canceled reverses the whole commission (664 ms)
+      ✓ AC-30: returning 1 of 4 reverses −฿25, returning the other 3 reverses −฿75 and the line nets 0 (1272 ms)
+      ✓ AC-30: one return with 1 received + 1 dismissed (damaged) of 4 reverses −฿50 (1105 ms)
+      ✓ AC-29: the reversal of a cancel reads the order only while holding affiliate-attribution:<order_id> (947 ms)
+    AC-6 maturity
+      ✓ hold_days=14: the entry stays pending before 14 days and becomes approved only after (787 ms)
+      ✓ a matured entry whose line is fully reversed is not approved (Q8) (838 ms)
+      ✓ approves matured entries in batches (1019 ms)
+      ✓ the daily job approves entries that matured by now (761 ms)
+      ✓ AC-36: a canceled order whose reversal was lost is reversed instead of approved, once; others still approve (1112 ms)
+    payout with reversals
+      ✓ a full reversal before the hold ends does not reduce the payout (1197 ms)
+      ✓ a reversal after approval is deducted from the payout (982 ms)
+      ✓ AC-28: payouts pick a reversal only once its source line is approved or paid (entry_ids asserted) (184 ms)
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+Snapshots:   0 total
+Time:        23.987 s, estimated 27 s
+
+## Unit: pnpm --filter backend test:unit
+Test Suites: 52 passed, 52 total
+Tests:       535 passed, 535 total
+
+## pnpm lint && pnpm typecheck: ผ่าน (exit 0)
+## pnpm --filter backend build: ผ่าน

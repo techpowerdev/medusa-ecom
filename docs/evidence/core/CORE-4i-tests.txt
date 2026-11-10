@@ -1,0 +1,418 @@
+# CORE-4i — ผลการทดสอบ (spec 01 กฎข้อ 72, AC-110) — 4i-a และ 4i-b เขียนต่อในไฟล์นี้
+
+# ===== 4i-a: helper + applyPromotions/updateLineItem + cart (2026-11-03) =====
+# สภาพแวดล้อม: Node 24.12.0; e2e: backend medusa start (build) :9139, DB medusa_core4i seed ใหม่, Redis db 14,
+# storefront next build+start :8139, Chromium (ไม่มี Stripe key — e2e ของ Stripe ไม่อยู่ในชุดที่รัน)
+
+## Red (ก่อนแก้): unit — ยังไม่มี helper `@lib/util/action-result`, applyPromotions/updateLineItem ยัง throw (ผ่าน medusaError),
+## ยังไม่มี handler submitPromotionCodes/changeLineQuantity, discount-code มี friendlyErrorMessage( ใน catch
+ FAIL  src/lib/util/action-result.test.ts — Error: Cannot find package '@lib/util/action-result'
+ FAIL  applyPromotions > สำเร็จ → { ok: true, codes } — AssertionError: expected [ 'OK10' ] to deeply equal { ok: true, codes: [ 'OK10' ] }
+ FAIL  applyPromotions > SDK throw FetchError 401 → { error } ไม่ throw — promise rejected "Error: Error setting up the request: Unauthorized" { status: 401 }
+ FAIL  applyPromotions > 409 PROMOTION_NOT_COMBINABLE — promise rejected "Error: Error setting up the request: This promotion can't be combined …" { status: 409 }
+ FAIL  updateLineItem > SDK throw … → { error } ไม่ throw (×4), ไม่มี JWT, ไม่มี cart id/line id
+ FAIL  core-4i-ui-results (submitPromotionCodes / changeLineQuantity / removeLineItem = SIGN_IN_AGAIN_MESSAGE) — export ยังไม่มี
+ FAIL  core-4i-static > modules/checkout/components/discount-code/index.tsx ไม่มี friendlyErrorMessage( ใน catch
+      Failed Tests 25 (+ 1 ไฟล์ import ไม่ได้)
+
+## Green: unit ของ task + test เดิมที่แก้ (verbose)
+ ✓ src/delete-button.test.ts > DeleteButton (กฎข้อ 64) > ส่งต่อ data-testid ไปที่ <button> 5ms
+ ✓ src/delete-button.test.ts > DeleteButton (กฎข้อ 64) > ไม่แสดง cart-item-remove-error ก่อนกดลบ 1ms
+ ✓ src/delete-button.test.ts > DeleteButton แยก unauthorized (กฎข้อ 68) > unauthorized กับ failed ได้ข้อความไทยต่างกัน และไม่แจ้ง cart อัปเดต 1ms
+ ✓ src/delete-button.test.ts > DeleteButton แยก unauthorized (กฎข้อ 68) > action reject (เช่น request ของ action ตอบ 500) → ข้อความ fallback เดียวกับ failed 0ms
+ ✓ src/delete-button.test.ts > DeleteButton แยก unauthorized (กฎข้อ 68) > สำเร็จ → ไม่มีข้อความ error และแจ้ง cart อัปเดต 0ms
+    at collectTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/f61e05c0-f1ba-46ab-87ef-6817671555bf/scratchpad/wt-CORE-4i/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_jsdom@30.1.3_vite@7.3.7_@typ_4854ebdf12c7279dad923ef2c74fb477/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:3441:3)
+    at startTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/f61e05c0-f1ba-46ab-87ef-6817671555bf/scratchpad/wt-CORE-4i/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_jsdom@30.1.3_vite@7.3.7_@typ_4854ebdf12c7279dad923ef2c74fb477/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:4190:17)
+    at collectTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/f61e05c0-f1ba-46ab-87ef-6817671555bf/scratchpad/wt-CORE-4i/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_jsdom@30.1.3_vite@7.3.7_@typ_4854ebdf12c7279dad923ef2c74fb477/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:3441:3)
+    at startTests (file:///private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/f61e05c0-f1ba-46ab-87ef-6817671555bf/scratchpad/wt-CORE-4i/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.10.0_@types+node@17.0.21_jsdom@30.1.3_vite@7.3.7_@typ_4854ebdf12c7279dad923ef2c74fb477/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:4190:17)
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > FetchError 401 → { error: "unauthorized" } 2ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > FetchError 403 → { error: "unauthorized" } 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > FetchError 500 → { error: "failed" } 2ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > network → { error: "failed" } 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > ค่าที่ไม่ใช่ object → { error: "failed" } 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > null → { error: "failed" } 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > 409 ที่ code อยู่ในรายการที่ผู้เรียกแยก → คืน code นั้น (FetchError ไม่มี code จึงเทียบข้อความของ backend) 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > code ที่ผู้เรียกไม่ได้ขอแยก → "failed" 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > object ที่มี code (ผลของ fetch ตรง) → คืน code ที่ขอแยก 0ms
+ ✓ src/lib/util/action-result.test.ts > actionFailure (กฎข้อ 72) > 401 ชนะ code เสมอ 0ms
+ ✓ src/lib/util/action-result.test.ts > actionErrorMessage (กฎข้อ 72) > unauthorized → SIGN_IN_AGAIN_MESSAGE 0ms
+ ✓ src/lib/util/action-result.test.ts > actionErrorMessage (กฎข้อ 72) > failed → fallback ของผู้เรียก 0ms
+ ✓ src/lib/util/action-result.test.ts > actionErrorMessage (กฎข้อ 72) > code ของ 409 ที่รู้จัก → ข้อความไทยของ code นั้น 0ms
+ ✓ src/lib/util/action-result.test.ts > settleAction (ฝั่ง client) > action reject → { error: "failed" }; resolve → ผลเดิม 0ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > unauthorized → SIGN_IN_AGAIN_MESSAGE 3ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > PROMOTION_NOT_COMBINABLE → ข้อความไทยของ code นั้น 0ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 1ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > สำเร็จแต่ code ไม่อยู่ใน cart (กฎข้อ 63b) → ข้อความใช้โค้ดไม่ได้; อยู่ใน cart → "" 1ms
+ ✓ src/core-4i-ui-results.test.ts > โค้ดส่วนลด (submitPromotionCodes) > ลบโค้ด (ไม่มี code ที่ต้องตรวจ) สำเร็จ → "" 0ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > unauthorized → SIGN_IN_AGAIN_MESSAGE 0ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 0ms
+ ✓ src/core-4i-ui-results.test.ts > แก้จำนวนในตะกร้า (changeLineQuantity) > สำเร็จ → null 0ms
+ ✓ src/core-4i-ui-results.test.ts > ลบสินค้า (removeLineItem) ใช้ SIGN_IN_AGAIN_MESSAGE เดียวกัน > unauthorized → SIGN_IN_AGAIN_MESSAGE 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > สำเร็จ → { ok: true, codes } เป็น code ที่อยู่ใน cart จริง และ revalidate 29ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 401 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 403 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 500 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw network → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > 409 PROMOTION_NOT_COMBINABLE → { error: "PROMOTION_NOT_COMBINABLE" } 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > ไม่มี JWT (cookie cart ถูกล้างแล้ว) → unauthorized ไม่เรียก SDK 0ms
+ ✓ src/core-4i-cart-actions.test.ts > applyPromotions คืนผลแบบมีโครงสร้าง (AC-110) > ไม่มี cart id → failed ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > สำเร็จ → { ok: true } และ revalidate 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 401 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 403 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw FetchError 500 → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > SDK throw network → { error } ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > ไม่มี JWT → unauthorized ไม่เรียก SDK 0ms
+ ✓ src/core-4i-cart-actions.test.ts > updateLineItem คืนผลแบบมีโครงสร้าง (AC-110) > ไม่มี cart id หรือ line id → failed ไม่ throw 0ms
+ ✓ src/core-4i-cart-actions.test.ts > submitPromotionForm อ่านผลของ applyPromotions (AC-110) > SDK 401 → SIGN_IN_AGAIN_MESSAGE 9ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 401 → friendlyErrorMessage ให้เข้าสู่ระบบใหม่ 1ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 403 → friendlyErrorMessage ให้เข้าสู่ระบบใหม่ 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > FetchError 500 → ข้อความ fallback (ต่างจาก 401) 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > medusaError คง status (AC-99) > setAddresses: SDK 401 → ข้อความให้เข้าสู่ระบบใหม่ (ผ่าน medusaError ของ updateCart) 34ms
+ ✓ src/core-4g-checkout-polish.test.ts > applyPromotions คืน code ที่อยู่ใน cart จริง (กฎข้อ 63b) > Medusa ตอบ 200 แต่ไม่มี code ที่ส่งไป → ไม่อยู่ในผลลัพธ์ 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company null เท่ากับ  0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company undefined เท่ากับ  0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > company null เท่ากับ undefined 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > ไม่มี key เลยเท่ากับค่าว่าง 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > ค่าต่างกันจริงยังไม่เท่ากัน 0ms
+ ✓ src/core-4i-static.test.ts > ตัวตรวจ friendlyErrorMessage ใน catch (AC-110) > พบทั้ง try/catch และ .catch(callback); ไม่นับการเรียกนอก catch 5ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/address-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 5ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/addresses/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 4ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/billing_address/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 4ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/country-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/discount-code/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/error-message/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-container/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 3ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-test/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-wrapper/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-wrapper/stripe-wrapper.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 3ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/open-qr.ts ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/order-delayed.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/qr-panel.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/review/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/shipping-address/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/submit-button/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/templates/checkout-form/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/checkout/templates/checkout-summary/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/cart-item-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/empty-cart-message/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/flash-code-notice/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 2ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/flash-exceeds-remaining/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/item/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/cart/components/sign-in-prompt/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 1ms
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/items.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/preview.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/summary.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch 0ms
+ ✓ src/core-4i-static.test.ts > รายการค้างของ CORE-4i-b ยังเป็นไฟล์ที่มีอยู่จริง > modules/checkout/components/payment/index.tsx 0ms
+ ✓ src/core-4i-static.test.ts > รายการค้างของ CORE-4i-b ยังเป็นไฟล์ที่มีอยู่จริง > modules/checkout/components/payment-button/index.tsx 0ms
+ ✓ src/core-4i-static.test.ts > รายการค้างของ CORE-4i-b ยังเป็นไฟล์ที่มีอยู่จริง > modules/checkout/components/shipping/index.tsx 0ms
+ Test Files  6 passed (6)
+      Tests  87 passed (87)
+
+## ชุดเต็ม storefront unit (pnpm --filter storefront test:unit)
+ Test Files  59 passed (59)
+      Tests  690 passed (690)
+
+## Playwright project unit (pnpm --filter storefront test:e2e:unit)
+  37 passed
+
+## e2e regression (prod build) — AC-99, AC-100, AC-104 (ข้อความเป็น SIGN_IN_AGAIN_MESSAGE), AC-21/AC-22 (spec 03)
+  ✓ core-19c-delete-button-error.spec.ts › AC-100: ทุก line ใน cart dropdown มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button
+  ✓ core-19c-delete-button-error.spec.ts › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่
+  ✓ core-19c-delete-button-error.spec.ts › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย (1280px)
+  ✓ core-19c-delete-button-error.spec.ts › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย (375px)
+  ✓ core-19c-delete-button-error.spec.ts › AC-104: ลบ cookie _medusa_jwt แล้วกดลบ → cart-item-remove-error = SIGN_IN_AGAIN_MESSAGE line ยังอยู่
+  ✓ core-4g-checkout-polish.spec.ts › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect
+  ✓ flash-sale-fs15.spec.ts › AC-21 ×3, AC-22: complete ล้ม 409 FLASH_SOLD_OUT → ข้อความไทยของ code ในขั้น review
+  10 passed (23.3s)
+
+## lint / typecheck (pnpm lint && pnpm typecheck)
+  storefront lint: 0 errors (warning เดิมของ starter เท่านั้น ไม่มีในบรรทัดที่ task นี้แก้)
+  typecheck: storefront Done, backend Done
+
+## แก้ตาม review #222 (เปลี่ยนชื่อไฟล์ evidence ให้ตรง TASK_ID, รายการค้าง 4i-b ต้องยังมี friendlyErrorMessage( ใน catch)
+  storefront test:unit: Test Files 59 passed, Tests 690 passed
+  storefront test:e2e:unit (รวม evidence-budget): 37 passed
+  pnpm lint: 0 errors; pnpm typecheck: Done
+
+# ===== 4i-b: action ชำระเงิน + ผู้เรียก checkout/หน้า pay (spec 01 กฎข้อ 72, AC-110, Q-C2 = (ก)) (2026-11-05) =====
+# สภาพแวดล้อม: Node 22.23.3; e2e: backend medusa start (build) :9481, DB medusa_core4ib seed ใหม่, Redis db 1,
+# storefront next build+start :8481, Chromium, workers=2 (ไม่มี Stripe key — test ที่ต้องใช้ Stripe UI ถูก skip ตามเงื่อนไขของ spec)
+
+## Red (ก่อนแก้): unit ใหม่ 2 ไฟล์ — startPaymentSession ยังไม่มี, initiatePaymentSession/placeOrder/setShippingMethod ยัง throw,
+## renewPromptPaySession คืน { status, message }, handler ของ UI (paymentSessionError/completeOrder/selectShippingMethod/renewPromptPayQr) ยังไม่มี
+ FAIL startPaymentSession > 200/401/409/403/400/500/network — TypeError: startPaymentSession is not a function
+ FAIL initiatePaymentSession > ... — promise rejected "TypeError: Cannot read properties of undefined (reading 'initiatePaymentSession')"
+ FAIL placeOrder > 409 FLASH_SOLD_OUT → { error: FLASH_SOLD_OUT } — คืนข้อความไทยแทน code / error อื่น throw
+ FAIL OrderPay > unauthorized → SIGN_IN_AGAIN_MESSAGE (ไม่มี error), checkout Payment > unauthorized → SIGN_IN_AGAIN_MESSAGE
+  Test Files  2 failed (2)
+       Tests  60 failed | 1 passed (61)
+
+## Green: unit ของ task + test เดิมที่แก้ (verbose)
+ ✓ src/place-order-conflict.test.ts > placeOrder: 409 ตอน complete (FS-15) > FLASH_SOLD_OUT → คืน { error: code } ไม่ throw (ข้อความไทยของ code แปลงที่ UI — actionErrorMessage)
+ ✓ src/place-order-conflict.test.ts > placeOrder: 409 ตอน complete (FS-15) > error อื่น → { error: "failed" } ไม่ throw (ผู้เรียกใช้ข้อความ fallback ของตัวเอง)
+ ✓ src/core-4i-b-payment-actions.test.ts > startPaymentSession (หน้า /account/orders/:id/pay) ผ่าน helper กลาง > 200
+ ✓ src/core-4i-b-payment-actions.test.ts > startPaymentSession (หน้า /account/orders/:id/pay) ผ่าน helper กลาง > 401
+ ✓ src/core-4i-b-payment-actions.test.ts > startPaymentSession (หน้า /account/orders/:id/pay) ผ่าน helper กลาง > 409 PAYMENT_ALREADY_COMPLETED
+ ✓ src/core-4i-b-payment-actions.test.ts > startPaymentSession (หน้า /account/orders/:id/pay) ผ่าน helper กลาง > 409 invalid_state_error (ไม่มี code ของเรา)
+ ✓ src/core-4i-b-payment-actions.test.ts > startPaymentSession (หน้า /account/orders/:id/pay) ผ่าน helper กลาง > 403 (ไม่ใช่ทาง login — กฎข้อ 9 d2)
+ ✓ src/core-4i-b-payment-actions.test.ts > startPaymentSession (หน้า /account/orders/:id/pay) ผ่าน helper กลาง > 400
+ ✓ src/core-4i-b-payment-actions.test.ts > startPaymentSession (หน้า /account/orders/:id/pay) ผ่าน helper กลาง > 500
+ ✓ src/core-4i-b-payment-actions.test.ts > startPaymentSession (หน้า /account/orders/:id/pay) ผ่าน helper กลาง > network
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > 200
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > 401
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > 409 PAYMENT_ALREADY_COMPLETED
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > 409 invalid_state_error (ไม่มี code ของเรา)
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > 403 (ไม่ใช่ทาง login — กฎข้อ 9 d2)
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > 400
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > 500
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > network
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > สำเร็จ → revalidate cart และส่ง data ของกฎข้อ 5 (บัตร = card)
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > ล้ม → ไม่ revalidate
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > cart ยังไม่มี payment collection → สร้างด้วย SDK ก่อน แล้วสร้าง session ใน collection นั้น
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > สร้าง collection ล้ม (FetchError 401) → { error: Error: Unauthorized } ไม่ throw
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > สร้าง collection ล้ม (FetchError 500) → { error: Error: x } ไม่ throw
+ ✓ src/core-4i-b-payment-actions.test.ts > initiatePaymentSession (checkout) ผ่าน helper กลาง — ผลรูปแบบเดียวกับหน้า pay > สร้าง collection ล้ม (network) → { error: TypeError: fetch failed } ไม่ throw
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > 200
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > 401
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > 409 PAYMENT_ALREADY_COMPLETED
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > 409 invalid_state_error (ไม่มี code ของเรา)
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > 403 (ไม่ใช่ทาง login — กฎข้อ 9 d2)
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > 400
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > 500
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > network
+ ✓ src/core-4i-b-payment-actions.test.ts > renewPromptPaySession ผ่าน helper กลาง > ไม่มี payment collection → { error: "failed" } ไม่ยิง request
+ ✓ src/core-4i-b-payment-actions.test.ts > placeOrder คืน { error } แทนการ throw > 409 FLASH_SOLD_OUT → { error: Error: This flash sale is sold out }
+ ✓ src/core-4i-b-payment-actions.test.ts > placeOrder คืน { error } แทนการ throw > 409 PROMOTION_NOT_COMBINABLE → { error: Error: This promotion can't be combined with the promotions already on the cart }
+ ✓ src/core-4i-b-payment-actions.test.ts > placeOrder คืน { error } แทนการ throw > FetchError 401 → { error: Error: Unauthorized }
+ ✓ src/core-4i-b-payment-actions.test.ts > placeOrder คืน { error } แทนการ throw > FetchError 400 → { error: Error: Payment sessions are required }
+ ✓ src/core-4i-b-payment-actions.test.ts > placeOrder คืน { error } แทนการ throw > network → { error: TypeError: fetch failed }
+ ✓ src/core-4i-b-payment-actions.test.ts > placeOrder คืน { error } แทนการ throw > Medusa คืน type cart (ชำระไม่ผ่าน ไม่ได้ order) → { error: "failed" }
+ ✓ src/core-4i-b-payment-actions.test.ts > placeOrder คืน { error } แทนการ throw > ไม่มี cart id → { error: "failed" } ไม่ throw
+ ✓ src/core-4i-b-payment-actions.test.ts > placeOrder คืน { error } แทนการ throw > ได้ order → redirect ของ Next ยัง throw ได้
+ ✓ src/core-4i-b-payment-actions.test.ts > setShippingMethod คืนผลแทนการ throw > สำเร็จ → { ok: true } และ revalidate
+ ✓ src/core-4i-b-payment-actions.test.ts > setShippingMethod คืนผลแทนการ throw > FetchError 401 → { error: Error: Unauthorized }
+ ✓ src/core-4i-b-payment-actions.test.ts > setShippingMethod คืนผลแทนการ throw > FetchError 500 → { error: Error: x }
+ ✓ src/core-4i-b-payment-actions.test.ts > setShippingMethod คืนผลแทนการ throw > network → { error: TypeError: fetch failed }
+ ✓ src/checkout-thai-polish.test.ts > server action ของ checkout ไม่ส่งข้อความอังกฤษของ Medusa ตรง (AC-90) > setAddresses: SDK throw → ข้อความไทย
+ ✓ src/core-4i-static.test.ts > ตัวตรวจ friendlyErrorMessage ใน catch (AC-110) > พบทั้ง try/catch และ .catch(callback); ไม่นับการเรียกนอก catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/address-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/addresses/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/billing_address/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/country-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/discount-code/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/error-message/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-button/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-container/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-test/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-wrapper/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/payment-wrapper/stripe-wrapper.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/checkout-thai-polish.test.ts > server action ของ checkout ไม่ส่งข้อความอังกฤษของ Medusa ตรง (AC-90) > submitPromotionForm: SDK throw → ข้อความไทย
+ ✓ src/checkout-thai-polish.test.ts > server action ของ checkout ไม่ส่งข้อความอังกฤษของ Medusa ตรง (AC-90) > renewPromptPaySession: fetch throw → { error: "failed" } ไม่มีข้อความดิบ
+ ✓ src/checkout-thai-polish.test.ts > server action ของ checkout ไม่ส่งข้อความอังกฤษของ Medusa ตรง (AC-90) > renewPromptPaySession: backend 404 พร้อม message อังกฤษ → { error: "failed" } ไม่มีข้อความดิบ
+ ✓ src/checkout-thai-polish.test.ts > UI ของ checkout (กฎข้อ 54–55) > StripeWrapper ส่ง locale th ให้ <Elements>
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/open-qr.ts ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/order-delayed.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/promptpay-payment/qr-panel.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/review/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/shipping/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/shipping-address/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/components/submit-button/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/templates/checkout-form/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/checkout/templates/checkout-summary/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/components/cart-item-select/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/components/empty-cart-message/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/components/flash-code-notice/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/components/flash-exceeds-remaining/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/components/item/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/components/sign-in-prompt/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/index.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/items.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/preview.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/core-4i-static.test.ts > modules/cart/templates/summary.tsx ไม่แปลง error จาก catch ของ server action (กฎข้อ 72) > ไม่มี friendlyErrorMessage( ใน catch
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > session authorized → จริง (แม้ payment_status ยัง not_paid)
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > session captured → จริง (แม้ payment_status ยัง not_paid)
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > collection authorized → จริง
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > collection partially_authorized → จริง
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > collection partially_captured → จริง
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > collection completed → จริง
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status authorized → จริง
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status partially_authorized → จริง
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status partially_captured → จริง
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status captured → จริง
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status not_paid + collection not_paid + session pending → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status awaiting + collection not_paid + session pending → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status requires_action + collection not_paid + session pending → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status canceled + collection not_paid + session pending → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status refunded + collection not_paid + session pending → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > payment_status partially_refunded + collection not_paid + session pending → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > collection not_paid → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > collection awaiting → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > collection canceled → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > collection failed → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > session pending → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > session requires_more → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > session error → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > session canceled → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > refunded + collection not_paid → เท็จ (admin refund ไม่ใช่ผลของ race)
+ ✓ src/lib/util/order-pay.test.ts > hasPayment > ไม่มี collection → เท็จ
+ ✓ src/lib/util/order-pay.test.ts > paymentSettled > payment_status captured → จริง
+ ✓ src/lib/util/order-pay.test.ts > paymentSettled > collection completed → จริง
+ ✓ src/lib/util/order-pay.test.ts > paymentSettled > { session: 'authorized', …(1) } → เท็จ (ยังต้อง poll ต่อ)
+ ✓ src/lib/util/order-pay.test.ts > paymentSettled > { session: 'captured', …(1) } → เท็จ (ยังต้อง poll ต่อ)
+ ✓ src/lib/util/order-pay.test.ts > paymentSettled > { payment_status: 'authorized' } → เท็จ (ยังต้อง poll ต่อ)
+ ✓ src/lib/util/order-pay.test.ts > paymentSettled > { …(2) } → เท็จ (ยังต้อง poll ต่อ)
+ ✓ src/lib/util/order-pay.test.ts > paymentSettled > { payment_status: 'not_paid' } → เท็จ (ยังต้อง poll ต่อ)
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > awaiting_payment ก่อนเส้นตาย มี collection not_paid → form
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > collection completed → paid
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > payment_status captured → paid
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > membership paid → paid
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > joined (กลุ่มยังไม่สำเร็จ) → waiting
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > cancelled → closed
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > เลย pay_deadline_at → closed
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > ตรงเส้นตายพอดี → closed (now < deadline เท่านั้น)
+ ✓ src/lib/util/order-pay.test.ts > orderPayView > awaiting_payment แต่ไม่มี collection → closed
+ ✓ src/lib/util/order-pay.test.ts > sessionCreateOutcome > ok → created
+ ✓ src/lib/util/order-pay.test.ts > sessionCreateOutcome > PAYMENT_ALREADY_COMPLETED → already-paid
+ ✓ src/lib/util/order-pay.test.ts > sessionCreateOutcome > unauthorized → unauthorized
+ ✓ src/lib/util/order-pay.test.ts > sessionCreateOutcome > failed → check-status
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 200 null → created
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 201 null → created
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 409 PAYMENT_ALREADY_COMPLETED → already-paid
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 401 null → unauthorized
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 500 null → check-status
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 400 null → check-status
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 409 null → check-status
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 409 OTHER → check-status
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 500 PAYMENT_ALREADY_COMPLETED → check-status
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 403 null → check-status
+ ✓ src/lib/util/order-pay.test.ts > paymentSessionResult → sessionCreateOutcome (กฎข้อ 9 d/d2 คงเดิม) > 0 null → check-status
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > redirect_status succeeded → poll GB-8
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > redirect_status processing → poll GB-8
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > redirect_status failed → failed
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > redirect_status requires_payment_method → failed
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > ไม่ครบ/ไม่รู้จัก/ซ้ำ {} → null (แสดงตามข้อ b)
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > ไม่ครบ/ไม่รู้จัก/ซ้ำ {"redirect_status":"succeeded"} → null (แสดงตามข้อ b)
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > ไม่ครบ/ไม่รู้จัก/ซ้ำ {"payment_intent":"pi_x"} → null (แสดงตามข้อ b)
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > ไม่ครบ/ไม่รู้จัก/ซ้ำ {"payment_intent":"pi_x","redirect_status":"canceled"} → null (แสดงตามข้อ b)
+ ✓ src/lib/util/order-pay.test.ts > stripeReturn > ไม่ครบ/ไม่รู้จัก/ซ้ำ {"payment_intent":["pi_x","pi_y"],"redirect_status":["succeeded","failed"]} → null (แสดงตามข้อ b)
+ ✓ src/checkout-thai-polish.test.ts > UI ของ checkout (กฎข้อ 54–55) > ชื่อวิธีชำระพร้อมเพย์เป็น "พร้อมเพย์"
+ ✓ src/checkout-thai-polish.test.ts > UI ของ checkout (กฎข้อ 54–55) > CountrySelect ใช้ placeholder "เลือกประเทศ"
+ ✓ src/checkout-thai-polish.test.ts > UI ของ checkout (กฎข้อ 54–55) > {STORE_NAME} ที่ตามด้วยอักษรไทยใน JSX มีเว้นวรรค
+ ✓ src/payment-session-lock-timeout.test.ts > CORE-19e: ปุ่ม Continue ที่ล็อกรอ session ไม่ค้างถาวร (กฎข้อ 71) > 5 วินาที → router.refresh 1 ครั้งและปุ่มยัง disabled; 10 วินาที → ปุ่มกดได้และเห็น error ไทย
+ ✓ src/payment-session-lock-timeout.test.ts > CORE-19e: ปุ่ม Continue ที่ล็อกรอ session ไม่ค้างถาวร (กฎข้อ 71) > cart ได้ session ที่ 2 วินาที → ปลดล็อกทันที ไม่ refresh และไม่มี error หลัง 10 วินาที
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > เลือกวิธีชำระ → unauthorized แสดง SIGN_IN_AGAIN_MESSAGE
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > เลือกวิธีชำระ → failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > กด Continue → ผลล้มไม่ไปขั้น review และแสดง SIGN_IN_AGAIN_MESSAGE เมื่อ unauthorized
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > กด Continue → สร้าง session สำเร็จ → ไปขั้น review
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > unauthorized → SIGN_IN_AGAIN_MESSAGE
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > FLASH_SOLD_OUT → ข้อความไทยของ code นั้น
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > redirect ไปหน้า confirmed (action ไม่คืนค่า) → null
+ ✓ src/core-4i-b-ui-results.test.ts > ขั้น delivery (selectShippingMethod) อ่านผลของ setShippingMethod > ok → null; unauthorized → SIGN_IN_AGAIN_MESSAGE
+ ✓ src/core-4i-b-ui-results.test.ts > ขั้น delivery (selectShippingMethod) อ่านผลของ setShippingMethod > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน
+ ✓ src/core-4i-b-ui-results.test.ts > QR พร้อมเพย์หมดอายุ (renewPromptPayQr) อ่านผลของ renewPromptPaySession > ok → renewed; PAYMENT_ALREADY_COMPLETED → already-paid
+ ✓ src/core-4i-b-ui-results.test.ts > QR พร้อมเพย์หมดอายุ (renewPromptPayQr) อ่านผลของ renewPromptPaySession > unauthorized → SIGN_IN_AGAIN_MESSAGE; failed/reject → ข้อความ fallback ไทย
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > unauthorized → SIGN_IN_AGAIN_MESSAGE + refresh (layout พาไป login) และไม่อ่าน GB-8
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > PAYMENT_ALREADY_COMPLETED → ทาง poll ของกฎข้อ 9(d) (order-pay-awaiting) ไม่มี error
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > failed → (d2) อ่าน GB-8 1 ครั้ง: ยังไม่ชำระ → order-pay-error ไทย
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > action reject → (d2) อ่าน GB-8 1 ครั้ง: ยังไม่ชำระ → order-pay-error ไทย
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > failed + GB-8 มีการชำระแล้ว → ทาง poll (d) ไม่มี error
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > ok → อ่าน GB-8 ใหม่ ไม่มี error
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > รายการมีแต่ Digital delivery กับ cart ที่ต้องจัดส่ง → delivery-options-empty ภาษาไทย ไม่มี radio ปุ่ม disabled
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > มี Standard ในรายการ → ไม่มี delivery-options-empty
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > cart ค้าง Digital delivery (ถูกกรองออก) → ไม่มี radio ที่ติ๊ก และปุ่ม disabled
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > cart เลือก Standard ไว้ → radio ของ Standard ติ๊ก และปุ่ม enabled
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > ขั้นปิด + method ล่าสุดถูกกรองออก → สรุปไม่มีชื่อและราคาของ method นั้น
+ Test Files  8 passed (8)
+      Tests  177 passed (177)
+
+## unit ทั้งชุดของ storefront (Vitest)
+ Test Files  85 passed (85)
+      Tests  1017 passed (1017)
+ Playwright unit project (test:e2e:unit): 70 passed / 1 failed (evidence-budget — ไฟล์ CORE-4i-b-tests.txt ผิดชื่อ; แก้ในหัวข้อ "แก้ตาม review #305")
+
+## lint / typecheck
+ pnpm lint: 0 errors (31 warnings เดิมของ starter); pnpm typecheck: storefront + backend Done
+
+## e2e บน prod build (next build + next start, medusa build + start) — AC-110 regression: AC-99/AC-100 (core-4g), AC-22 (fs15),
+## AC-19/AC-20 (payments-order-pay — mock ผลของ action ผ่าน paymentSessionResult), AC-7 (skip: ต้องมี Stripe key), AC-120 (core-14g), checkout ทั้ง flow
+  ✓   2 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่
+  ✓   3 [chromium] › e2e/core-41-checkout-first-step.spec.ts:41:5 › AC-135 cart t-shirt ไม่มีที่อยู่: เปิด step=payment/review ตรงๆ → step=address ฟอร์มที่อยู่เปิด
+  ✓   4 [chromium] › e2e/core-41-checkout-first-step.spec.ts:65:5 › AC-135 cart digital-only ไม่มีที่อยู่: เปิด step=review ตรงๆ → step=address ฟอร์มที่อยู่ใบเสร็จเปิด
+  ✓   5 [chromium] › e2e/core-41-checkout-first-step.spec.ts:88:5 › AC-135 regression: cart มีที่อยู่ + Standard เปิด step=payment ตรงๆ → ไม่ถูก redirect
+  ✓   6 [chromium] › e2e/core-41-checkout-first-step.spec.ts:152:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart t-shirt ไม่มีที่อยู่: step=delivery / ไม่มี step / step=foo / step ซ้ำ → step=address
+  ✓   7 [chromium] › e2e/core-41-checkout-first-step.spec.ts:177:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart มีที่อยู่ + Standard: ไม่มี step → step=payment, step=delivery ไม่ถูก redirect
+  ✓   8 [chromium] › e2e/core-41-checkout-first-step.spec.ts:206:7 › CORE-45 step ที่ใช้ไม่ได้ › D-1 cart ใน cache ยังไม่มีที่อยู่ แต่ cart จริงมีแล้ว: step=delivery ไม่เด้งกลับ address
+  ✓   9 [chromium] › e2e/core-41-checkout-first-step.spec.ts:232:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart digital-only มีที่อยู่: step=delivery → step=payment
+  ✓   1 [chromium] › e2e/core-19b-continue-to-review.spec.ts:22:5 › AC-64: กด Continue to review ครั้งเดียว 20 รอบ (cart ใหม่ทุกรอบ) → step=review ภายใน 10 วินาที
+  -  11 [chromium] › e2e/core-19b-continue-to-review.spec.ts:73:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว
+  ✓  10 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า
+  ✓  12 [chromium] › e2e/core-4g-checkout-polish.spec.ts:67:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect
+  ✓  13 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:87:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ
+  ✓  14 [chromium] › e2e/flash-sale-fs15.spec.ts:122:5 › AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 → เตือน + ปุ่ม disabled; เลือก 2 → กดได้
+  ✓  16 [chromium] › e2e/flash-sale-fs15.spec.ts:149:5 › AC-21: show_remaining=false (remaining_units=null) เลือก 3 → ไม่เตือน
+  ✓  15 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:161:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery
+  ✓  17 [chromium] › e2e/flash-sale-fs15.spec.ts:165:5 › AC-21: cart มี line ของสินค้า flash qty 3 ขณะ remaining_units=2 → cart-flash-exceeds-remaining
+  ✓  18 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order
+  ✓  19 [chromium] › e2e/flash-sale-fs15.spec.ts:195:5 › AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkout → ข้อความไทยของ code ในขั้น review
+  ✓  21 [chromium] › e2e/payments-order-pay.spec.ts:130:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › B เปิด URL ของ A → HTTP 404; A เห็นฟอร์มชำระเงิน
+  ✓  20 [chromium] › e2e/group-buy-join.spec.ts:162:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่
+  ✓  22 [chromium] › e2e/payments-order-pay.spec.ts:146:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › joined → order-pay-waiting; cancelled → order-pay-closed (ไม่มีฟอร์ม)
+  ✓  24 [chromium] › e2e/payments-order-pay.spec.ts:160:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › เลย pay_deadline_at → order-pay-closed
+  ✓  23 [chromium] › e2e/group-buy-join.spec.ts:176:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่
+  ✓  26 [chromium] › e2e/group-buy-join.spec.ts:196:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน
+  ✓  27 [chromium] › e2e/group-buy-join.spec.ts:196:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน
+  ✓  28 [chromium] › e2e/group-buy-join.spec.ts:220:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย
+  ✓  29 [chromium] › e2e/group-buy-join.spec.ts:235:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47)
+  -  30 [chromium] › e2e/payments-promptpay-already-paid.spec.ts:37:7 › PromptPay ชำระแล้วตอน QR หมดอายุ (AC-12, AC-12b) › 409 → รอสร้าง order → complete cart ทางสำรอง (webhook ไม่มา) → หน้า order confirmed
+  -  31 [chromium] › e2e/payments-promptpay-already-paid.spec.ts:68:7 › PromptPay ชำระแล้วตอน QR หมดอายุ (AC-12, AC-12b) › complete cart ล้ม → ยังรอสร้าง order และ poll ต่อ → ลองใหม่สำเร็จ
+  -  32 [chromium] › e2e/payments-promptpay-fallback-cap.spec.ts:46:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › complete cart ล้มทุกครั้ง → ยิงรวม ≤ 10 แล้วแสดง promptpay-order-delayed และหยุดยิง
+  -  33 [chromium] › e2e/payments-promptpay-fallback-cap.spec.ts:89:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › เงินถูกคืนระหว่างทางสำรอง → แสดง promptpay-refunded และปุ่มเริ่มชำระใหม่
+  -  34 [chromium] › e2e/payments-promptpay-race.spec.ts:94:5 › AC-11: ชำระ PromptPay สำเร็จแล้วทันทีสร้าง session ใหม่ (หมดอายุ) → ยังได้ order captured ที่อ้าง PI นั้น
+  -  35 [chromium] › e2e/payments.spec.ts:49:5 › AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay']
+  -  36 [chromium] › e2e/payments.spec.ts:91:7 › บัตร (Stripe Elements) › AC-1: บัตร 4242 → order สำเร็จ payment_status=captured
+  -  37 [chromium] › e2e/payments.spec.ts:109:7 › บัตร (Stripe Elements) › AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ
+  -  38 [chromium] › e2e/payments.spec.ts:136:7 › บัตร (Stripe Elements) › AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่
+  -  39 [chromium] › e2e/payments.spec.ts:169:7 › PromptPay (QR + polling) › AC-4: แสดง QR → authorize test payment → webhook → order captured
+  -  40 [chromium] › e2e/payments.spec.ts:226:7 › PromptPay (QR + polling) › AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
+  ✓  41 [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย
+  ✓  25 [chromium] › e2e/payments-order-pay.spec.ts:172:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 409 PAYMENT_ALREADY_COMPLETED → poll GB-8 อย่างเดียว ≤ 10 ครั้ง แล้ว promptpay-order-delayed
+  ✓  42 [chromium] › e2e/payments-order-pay.spec.ts:199:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 500 unknown_error + GB-8 มีการชำระแล้ว → poll จน captured แล้ว order-pay-paid (ไม่มี error)
+  ✓  43 [chromium] › e2e/payments-order-pay.spec.ts:199:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 400 invalid_data + GB-8 มีการชำระแล้ว → poll จน captured แล้ว order-pay-paid (ไม่มี error)
+  ✓  44 [chromium] › e2e/payments-order-pay.spec.ts:231:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 500 unknown_error + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8 1 ครั้ง
+  ✓  45 [chromium] › e2e/payments-order-pay.spec.ts:231:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 400 invalid_data + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8 1 ครั้ง
+  ✓  46 [chromium] › e2e/payments-order-pay.spec.ts:231:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 409 invalid_state_error + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8 1 ครั้ง
+  ✓  47 [chromium] › e2e/payments-order-pay.spec.ts:255:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › d2 ยังไม่ชำระแล้วคลิกบัตรอีกครั้ง → สร้าง session ใหม่ได้ (ฟอร์มเดิมให้ลองใหม่ — qa #189 D-1)
+  ✓  48 [chromium] › e2e/payments-order-pay.spec.ts:290:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 401 → หน้า login และไม่อ่าน GB-8 จาก d2
+  ✓  49 [chromium] › e2e/payments-order-pay.spec.ts:308:7 › หน้าชำระเงินของ order กลุ่ม — กลับจาก redirect ของ Stripe (กฎข้อ 9 d3, AC-20) › redirect_status=succeeded + GB-8 ยัง not_paid → poll GB-8 (ไม่มีฟอร์ม) จน order-pay-paid
+  ✓  50 [chromium] › e2e/payments-order-pay.spec.ts:345:7 › หน้าชำระเงินของ order กลุ่ม — กลับจาก redirect ของ Stripe (กฎข้อ 9 d3, AC-20) › redirect_status=failed → order-pay-error + ฟอร์ม แล้วลองใหม่สำเร็จ → order-pay-paid
+  ✓  51 [chromium] › e2e/payments-order-pay.spec.ts:370:7 › หน้าชำระเงินของ order กลุ่ม — กลับจาก redirect ของ Stripe (กฎข้อ 9 d3, AC-20) › d2 แล้วอ่าน GB-8 ล้ม (500) → order-pay-error ไม่ poll ต่อ; ลองใหม่ได้ 409 PAYMENT_ALREADY_COMPLETED → poll จน paid
+  -  52 [chromium] › e2e/payments-order-pay.spec.ts:403:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร, AC-7 พร้อมเพย์) › บัตร 4242 → order-pay-paid ภายใน 60 วินาที และ payment captured
+  -  53 [chromium] › e2e/payments-order-pay.spec.ts:414:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร, AC-7 พร้อมเพย์) › พร้อมเพย์ → QR → authorize test payment → order-pay-paid และ captured (AC-7)
+  -  54 [chromium] › e2e/payments-order-pay.spec.ts:431:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร, AC-7 พร้อมเพย์) › poll ระหว่างแสดง QR เจอ authorized ที่ยังไม่ captured → order-pay-awaiting แล้ว order-pay-paid (review #203 B2)
+  -  55 [chromium] › e2e/payments-order-pay.spec.ts:453:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร, AC-7 พร้อมเพย์) › กลับจาก redirect ที่ failed แล้วลองใหม่ด้วยบัตร 4242 → order-pay-paid และ captured
+
+  16 skipped
+  39 passed (2.4m)
+
+## หมายเหตุ: ระหว่าง Green พบ core-19b (AC-64) และ thai-ui-checkout ล้ม (review ไม่มี submit-order-button — cart ยังไม่มี payment_collection)
+## develop build เดียวกันผ่าน; สาเหตุ = `cache: "no-store"` ของ fetch ใน createPaymentSession เมื่อเรียกจาก action ของ checkout → เอาออก
+## (POST ไม่ถูก cache อยู่แล้ว) แล้วผ่านทั้งคู่ + unit กันซ้ำ (init.cache undefined)
+
+## แก้ตาม review #305 (4i-b, 2026-11-05) — Node 22.23.3
+## - ย้าย evidence จาก CORE-4i-b-tests.txt (TASK_ID ไม่รับ) มาต่อท้ายไฟล์นี้ และลบไฟล์เดิม
+## - api/payment-return: อ่านผล { error } ของ placeOrder ตรงๆ (ได้ order → redirect ของ Next ส่งต่อด้วย unstable_rethrow) ผลคงเดิม = order_failed
+##   unit ใหม่ใน core-29-active-cart.test.ts (regression guard — โค้ดเดิมก็ได้ order_failed จึงไม่มี red):
+ ✓ payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b) > 409 FLASH_SOLD_OUT → { error } → /cart?error=order_failed
+ ✓ payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b) > 401 → { error } → /cart?error=order_failed
+ ✓ payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b) > 500 → { error } → /cart?error=order_failed
+ ✓ payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b) > cart ไม่ complete (type: cart) → { error } → /cart?error=order_failed
+ ✓ payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b) > ได้ order → redirect ของ Next ถูกส่งต่อ (unstable_rethrow) ไม่กลายเป็น order_failed
+## - JSDoc paymentSessionResult: หมายเหตุ 403 → "failed" (ต่างจาก actionFailure) ตาม Q-C2 / spec 06 กฎข้อ 9 (d2)
+  storefront test:unit: Test Files 85 passed, Tests 1022 passed
+  storefront test:e2e:unit (รวม evidence-budget): 71 passed
+  pnpm lint: 0 errors; pnpm typecheck: Done

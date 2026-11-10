@@ -1,0 +1,20 @@
+{
+  "name": "medusa-ecom",
+  "private": true,
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@medusajs/eslint-plugin": "2.22.1",
+    "eslint": "^9.39.4",
+    "jiti": "^2.7.0",
+    "prettier": "^3.2.5"
+  }
+}

@@ -1,0 +1,82 @@
+"use server"
+
+import { sdk } from "@lib/config"
+import { HttpTypes } from "@medusajs/types"
+import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
+import { getCacheOptions } from "./cookies"
+
+export const listRegions = async () => {
+  const next = {
+    revalidate: CATALOG_REVALIDATE_SECONDS,
+    ...(await getCacheOptions("regions")),
+  }
+
+  return await sdk.client
+    .fetch<{ regions: HttpTypes.StoreRegion[] }>(`/store/regions`, {
+      method: "GET",
+      next,
+      cache: "force-cache",
+    })
+    .then(({ regions }) => regions)
+}
+
+// CORE-20c (กฎข้อ 60): metadata นโยบายของ region (return_window_days ฯลฯ) ที่ admin แก้ต้องมีผลโดยไม่ต้อง redeploy
+// — หน้า /returns, /shipping และ structured data อ่านผ่านตัวนี้ (หน้า force-static ยัง ISR ตาม revalidate ของหน้า)
+export const listRegionsUncached = async () =>
+  sdk.client
+    .fetch<{ regions: HttpTypes.StoreRegion[] }>(`/store/regions`, {
+      method: "GET",
+      cache: "no-store",
+    })
+    .then(({ regions }) => regions)
+
+// CORE-20d (กฎข้อ 66d): region เดียวตาม id (GET /store/regions/:id) แบบไม่ cache — ใช้แทนการ list ทุก region
+// เมื่อหน้ารู้ id อยู่แล้ว (PDP, ปุ่ม/หน้าขอคืนจาก region ของ order)
+export const retrieveRegionUncached = async (id: string) =>
+  sdk.client
+    .fetch<HttpTypes.StoreRegionResponse>(`/store/regions/${id}`, {
+      method: "GET",
+      cache: "no-store",
+    })
+    .then(({ region }) => region)
+
+export const retrieveRegion = async (id: string) => {
+  const next = {
+    revalidate: CATALOG_REVALIDATE_SECONDS,
+    ...(await getCacheOptions(["regions", id].join("-"))),
+  }
+
+  return await sdk.client
+    .fetch<{ region: HttpTypes.StoreRegion }>(`/store/regions/${id}`, {
+      method: "GET",
+      next,
+      cache: "force-cache",
+    })
+    .then(({ region }) => region)
+}
+
+const regionMap = new Map<string, HttpTypes.StoreRegion>()
+
+export const getRegion = async (countryCode: string) => {
+  if (regionMap.has(countryCode)) {
+    return regionMap.get(countryCode)
+  }
+
+  const regions = await listRegions()
+
+  if (!regions) {
+    return null
+  }
+
+  regions.forEach((region) => {
+    region.countries?.forEach((c) => {
+      regionMap.set(c?.iso_2 ?? "", region)
+    })
+  })
+
+  const region = countryCode
+    ? regionMap.get(countryCode)
+    : regionMap.get("us")
+
+  return region
+}

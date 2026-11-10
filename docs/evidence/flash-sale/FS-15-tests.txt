@@ -1,0 +1,97 @@
+# FS-15 — evidence ของ test (spec 03 กฎข้อ 20, AC-21, AC-22) — รันในเครื่อง 2026-10-28
+# storefront: next build + next start (production) :8257, backend: medusa develop :9257 (DB medusa_fs15)
+
+## Red (ก่อนเขียนโค้ด) — unit Vitest
+ FAIL  src/checkout-conflict-contract.test.ts [ src/checkout-conflict-contract.test.ts ]
+Error: Cannot find package '@lib/util/checkout-error' imported from /private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/15778cd3-33ea-4c2c-8eb7-21f4a2e9873a/scratchpad/wt-FS-15/apps/storefront/src/checkout-conflict-contract.test.ts
+ FAIL  src/lib/util/checkout-error.test.ts [ src/lib/util/checkout-error.test.ts ]
+Error: Cannot find module './checkout-error' imported from /private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/15778cd3-33ea-4c2c-8eb7-21f4a2e9873a/scratchpad/wt-FS-15/apps/storefront/src/lib/util/checkout-error.test.ts
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/lib/util/flash-sale.test.ts > flashQtyExceeded (FS-15 กฎข้อ 20a) > จำนวน > remaining_units → คืนจำนวนที่เหลือ; เท่ากับหรือน้อยกว่า → null
+TypeError: flashQtyExceeded is not a function
+ FAIL  src/lib/util/flash-sale.test.ts > flashQtyExceeded (FS-15 กฎข้อ 20a) > remaining_units = null (show_remaining=false หรือไม่มี total_cap) → ไม่เตือน
+TypeError: flashQtyExceeded is not a function
+ FAIL  src/lib/util/flash-sale.test.ts > flashQtyExceeded (FS-15 กฎข้อ 20a) > ไม่มี offer หรือแคมเปญ sold out (FS-13 แสดง flash-sold-out แทน) → null
+TypeError: flashQtyExceeded is not a function
+ FAIL  src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > line ที่มี adjustment ของ automatic promotion และ quantity > remaining_units → map line id → remaining
+TypeError: cartFlashExceeded is not a function
+ FAIL  src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > quantity ≤ remaining_units → ไม่เตือน
+TypeError: cartFlashExceeded is not a function
+ FAIL  src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > line ไม่มี adjustment ของ flash (ไม่มี หรือมีแต่ของ code — code ชนะ ADR-009) → ไม่เตือน
+TypeError: cartFlashExceeded is not a function
+ FAIL  src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > variant นอกแคมเปญ / remaining_units = null / ไม่มีข้อมูล flash → ไม่เตือน
+TypeError: cartFlashExceeded is not a function
+ FAIL  src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > แคมเปญ sold out (remaining 0) → เตือน line นั้น (complete จะล้ม FLASH_SOLD_OUT)
+TypeError: cartFlashExceeded is not a function
+ Test Files  3 failed (3)
+      Tests  8 failed | 16 passed (24)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/place-order-conflict.test.ts > placeOrder: 409 ตอน complete (FS-15) > FLASH_SOLD_OUT → คืน { error } เป็นข้อความไทย ไม่ throw
+      Tests  1 failed | 1 passed (2)
+
+## Green — unit Vitest ของ task นี้
+ ✓ src/lib/util/checkout-error.test.ts > checkoutConflictMessage > map ครบ 3 code: FLASH_SOLD_OUT, FLASH_LIMIT_EXCEEDED, PROMOTION_NOT_COMBINABLE 1ms
+ ✓ src/lib/util/checkout-error.test.ts > checkoutConflictMessage > FLASH_SOLD_OUT: จับคู่ด้วย message ของ backend และด้วย code → ข้อความไทย ไม่มีข้อความอังกฤษของ backend 0ms
+ ✓ src/lib/util/checkout-error.test.ts > checkoutConflictMessage > FLASH_LIMIT_EXCEEDED: จับคู่ด้วย message ของ backend และด้วย code → ข้อความไทย ไม่มีข้อความอังกฤษของ backend 0ms
+ ✓ src/lib/util/checkout-error.test.ts > checkoutConflictMessage > PROMOTION_NOT_COMBINABLE: จับคู่ด้วย message ของ backend และด้วย code → ข้อความไทย ไม่มีข้อความอังกฤษของ backend 0ms
+ ✓ src/lib/util/checkout-error.test.ts > checkoutConflictMessage > ข้อความของแต่ละ code ต่างกันทั้งหมด (FLASH_SOLD_OUT ≠ FLASH_LIMIT_EXCEEDED) 0ms
+ ✓ src/lib/util/checkout-error.test.ts > checkoutConflictMessage > message ที่ medusaError แต่งแล้ว (ตัวใหญ่ + จุดท้าย) ยังจับคู่ได้ 0ms
+ ✓ src/lib/util/checkout-error.test.ts > checkoutConflictMessage > error อื่น / ไม่ใช่ error → null (ผู้เรียกใช้ข้อความเดิม) 0ms
+ ✓ src/checkout-conflict-contract.test.ts > contract: 409 ของ POST /store/carts/:id/complete (FS-3, PROMO-1) > อ่านคู่ code/message จาก backend ได้ครบ 3 code 1ms
+ ✓ src/checkout-conflict-contract.test.ts > contract: 409 ของ POST /store/carts/:id/complete (FS-3, PROMO-1) > map ของ storefront มี code และข้อความตรงกับ backend ทุกตัว 1ms
+ ✓ src/checkout-conflict-contract.test.ts > contract: 409 ของ POST /store/carts/:id/complete (FS-3, PROMO-1) > ทุก code ที่ map อยู่ใน allow-list 409 ของ error-handler (ไม่ถูกเขียนทับเป็นข้อความกลาง) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > คืน campaign + ราคาของ variant ที่อยู่ในแคมเปญ 2ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > variant ที่ไม่อยู่ในแคมเปญ / ไม่มีข้อมูล / ไม่ได้เลือก variant → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > เลย ends_at แล้ว (นาฬิกาฝั่ง browser) → null — หน้าเลิกแสดงราคา flash โดยไม่ต้องโหลดใหม่ 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashOfferForVariant > sold_out ยังคืน offer เพื่อให้หน้าแสดง 'สินค้าหมด' (กฎข้อ 4) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > เหลือน้อยกว่าวัน → HH:MM:SS 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > เกินหนึ่งวัน → N วัน HH:MM:SS (ภาษาไทย) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > countdownLabel > หมดเวลาแล้วหรือไม่มี ends_at → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > cart มี code + สินค้า flash → true 0ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > ไม่มี code (มีแต่ automatic) → false 1ms
+ ✓ src/lib/util/flash-sale.test.ts > hasFlashCodeConflict (AC-8 g) > มี code แต่ไม่มีสินค้า flash ใน cart → false 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashOffer (FS-13) > เลือก variant ที่ราคา flash ต่ำสุดของสินค้า 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashOffer (FS-13) > แคมเปญ sold_out / เลย ends_at / ไม่มี variant ในแคมเปญ → null (การ์ดแสดงราคาปกติ) 0ms
+ ✓ src/lib/util/flash-sale.test.ts > mergeActiveFlashSales (FS-13) > รวม variants ทุกชุดและแคมเปญไม่ซ้ำ id; ชุดที่ล้ม (null) ถูกข้าม 0ms
+ ✓ src/lib/util/flash-sale.test.ts > mergeActiveFlashSales (FS-13) > ทุกชุดล้มหรือไม่มีชุด → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashPrices (FS-14) > map ราคา flash ต่อสินค้า เฉพาะสินค้าที่มี variant ในแคมเปญ 1ms
+ ✓ src/lib/util/flash-sale.test.ts > cardFlashPrices (FS-14) > ไม่มีข้อมูล flash → {} 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashQtyExceeded (FS-15 กฎข้อ 20a) > จำนวน > remaining_units → คืนจำนวนที่เหลือ; เท่ากับหรือน้อยกว่า → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashQtyExceeded (FS-15 กฎข้อ 20a) > remaining_units = null (show_remaining=false หรือไม่มี total_cap) → ไม่เตือน 0ms
+ ✓ src/lib/util/flash-sale.test.ts > flashQtyExceeded (FS-15 กฎข้อ 20a) > ไม่มี offer หรือแคมเปญ sold out (FS-13 แสดง flash-sold-out แทน) → null 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > line ที่มี adjustment ของ automatic promotion และ quantity > remaining_units → map line id → remaining 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > quantity ≤ remaining_units → ไม่เตือน 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > line ไม่มี adjustment ของ flash (ไม่มี หรือมีแต่ของ code — code ชนะ ADR-009) → ไม่เตือน 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > variant นอกแคมเปญ / remaining_units = null / ไม่มีข้อมูล flash → ไม่เตือน 0ms
+ ✓ src/lib/util/flash-sale.test.ts > cartFlashExceeded (FS-15 กฎข้อ 20b) > แคมเปญ sold out (remaining 0) → เตือน line นั้น (complete จะล้ม FLASH_SOLD_OUT) 0ms
+ ✓ src/place-order-conflict.test.ts > placeOrder: 409 ตอน complete (FS-15) > FLASH_SOLD_OUT → คืน { error } เป็นข้อความไทย ไม่ throw 23ms
+ ✓ src/place-order-conflict.test.ts > placeOrder: 409 ตอน complete (FS-15) > error อื่น → throw เหมือนเดิม (ผู้เรียกใช้ข้อความ fallback ของตัวเอง) 1ms
+ Test Files  4 passed (4)
+      Tests  36 passed (36)
+
+## Green — unit Vitest ทั้งชุดของ storefront
+ Test Files  47 passed (47)
+      Tests  470 passed (470)
+
+## Positive control ของ contract test (แก้ข้อความ backend ชั่วคราว 'is sold out' → 'has sold out' แล้ว revert)
+     × map ของ storefront มี code และข้อความตรงกับ backend ทุกตัว 4ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/checkout-conflict-contract.test.ts > contract: 409 ของ POST /store/carts/:id/complete (FS-3, PROMO-1) > map ของ storefront มี code และข้อความตรงกับ backend ทุกตัว
+      Tests  1 failed | 2 passed (3)
+
+## e2e Playwright (chromium) — e2e/flash-sale-fs15.spec.ts
+Running 4 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/flash-sale-fs15.spec.ts:122:5 › AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 → เตือน + ปุ่ม disabled; เลือก 2 → กดได้ (593ms)
+  ✓  2 [chromium] › e2e/flash-sale-fs15.spec.ts:149:5 › AC-21: show_remaining=false (remaining_units=null) เลือก 3 → ไม่เตือน (339ms)
+  ✓  3 [chromium] › e2e/flash-sale-fs15.spec.ts:165:5 › AC-21: cart มี line ของสินค้า flash qty 3 ขณะ remaining_units=2 → cart-flash-exceeds-remaining (2.0s)
+  ✓  4 [chromium] › e2e/flash-sale-fs15.spec.ts:195:5 › AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkout → ข้อความไทยของ code ในขั้น review (3.4s)
+
+  4 passed (8.8s)
+
+## typecheck / lint
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+apps/backend lint: Done
+apps/storefront lint: ✖ 31 problems (0 errors, 31 warnings)
+apps/storefront lint: Done

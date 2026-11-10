@@ -1,0 +1,74 @@
+# GB-14 — ผล test (spec 04 กฎข้อ 35, AC-54) บน base origin/develop e45b046
+# node v22, DB medusa_gb14 (drop โดย runner หลังจบ)
+
+## RED (ก่อนเขียนโค้ด)
+### jest unit: shipping-profile.unit.spec.ts
+FAIL src/modules/group_buy/__tests__/shipping-profile.unit.spec.ts
+    Cannot find module '../utils/shipping-profile' from 'src/modules/group_buy/__tests__/shipping-profile.unit.spec.ts'
+Tests:       28 passed, 28 total
+### vitest: group-join-error.test.ts
+ FAIL  src/lib/util/group-join-error.test.ts > GB_SHIPPING_PROFILE_NOT_COVERED (GB-14) > ข้อความไทยของ code นี้ต่างจากข้อความของทุก code อื่น
+      Tests  3 failed | 9 passed (12)
+### integration http: group-buy-join.spec.ts -t GB-14
+  ●  › shipping profile coverage on join (GB-14, AC-54) › O_dig on a shippable line → 400 not_allowed with the code, nothing created; switching to O_std → 201
+    Expected: 400
+    Received: 201
+  ●  › shipping profile coverage on join (GB-14, AC-54) › cart with both O_std and O_dig → 201
+    Expected length: 2
+    Received length: 1
+    Received array:  ["casm_01M6JF2TG00YJTK55D5PDNPNDZ"]
+# หมายเหตุ: กรณี "มีทั้ง O_std และ O_dig" ล้มเพราะ refreshCartShippingMethods ของ Medusa ลบ method ที่ profile ไม่มี line รองรับ
+#   เมื่อ cart มี > 1 method (ไม่ใช่เพราะโค้ด) → แก้ test ให้เพิ่ม O_dig ด้วย cart module หลังเลือก O_std ผ่าน store API
+# กรณี 35c / requires_shipping=false / GB_GROUP_FULL ผ่านตั้งแต่ RED (เป็น guard ของพฤติกรรมเดิมและลำดับ 409 ก่อน 400)
+
+## GREEN
+### integration http: integration-tests/http/group-buy-join.spec.ts (ทั้งไฟล์)
+      ✓ group_mode=pool → 403 (564 ms)
+      ✓ group_mode=both → 201 team group owned by the caller with its own join_token and ends_at (552 ms)
+      ✓ does not accept kind from the body → 400 (314 ms)
+      ✓ create / join / leave without auth → 401 (238 ms)
+      ✓ store POST /store/group-buy/groups and createGroupWorkflow → 400 code, no new GB- promotion; an existing group still joins 201 (764 ms)
+      ✓ creates a draft order with the GB- discount, a membership and counters (663 ms)
+      ✓ unknown token → 404 (413 ms)
+      ✓ cart with items outside the campaign → 409 GB_ITEMS_NOT_ELIGIBLE (622 ms)
+      ✓ AC-4: max_people_per_group=2 → 3rd person 409; 2nd order of A 201 and progress_people stays 2 (1787 ms)
+      ✓ AC-5: max_units_per_person=1 and qty 2 → 409 (451 ms)
+      ✓ AC-17: max_units_per_person=2 counts non-cancelled memberships only (1528 ms)
+      ✓ AC-13: max_total_orders=5 across 2 groups → 6th join (repeat order too) 409 (2632 ms)
+      ✓ AC-18: a member of G1 joining G2 of the same campaign → 409 GB_ALREADY_IN_OTHER_GROUP (797 ms)
+      ✓ AC-14: SAVE10 on the cart → 409; SAVE10 after joining → 409; flash cart joins with GB- only (1086 ms)
+      ✓ AC-23: Medusa campaign starts_at moved to the future → 400 not_allowed, nothing left behind (578 ms)
+      ✓ AC-23: GB- promotion inactive → 400 GB_DISCOUNT_NOT_APPLIED and the code does not stay on the cart (588 ms)
+      ✓ counter update fails after the membership insert → transaction rolls back (no membership), order canceled, code removed, locks released (1062 ms)
+      ✓ GB-N1 (GB-3c): confirming the freeze order change fails → order change declined, no adjustment left on the draft order (797 ms)
+      ✓ GB-N1 (GB-3c): declining the order change fails too → the confirm error is surfaced and the decline failure is logged (545 ms)
+      ✓ AC-27: joining again with the same cart (same or other group) → 409 GB_CART_ALREADY_JOINED; a new cart → 201 (1113 ms)
+      ✓ campaign row gone while the group remains → 404 instead of a crash (review #68) (617 ms)
+      ✓ AC-24: customer B joining with A's cart → 404 and nothing changes (663 ms)
+        ✓ after joining → 400 not_allowed GB_CART_NOT_COMPLETABLE, cart not completed (1029 ms)
+        ✓ GB-<token> added through Medusa's promotions route without joining → 400 as well (976 ms)
+      ✓ O_dig on a shippable line → 400 not_allowed with the code, nothing created; switching to O_std → 201 (1446 ms)
+      ✓ cart with both O_std and O_dig → 201 (1273 ms)
+      ✓ cart without any shipping method → 201 (rule 35c) (803 ms)
+      ✓ every line requires_shipping = false + O_dig → 201 (1147 ms)
+      ✓ group full and O_dig → 409 GB_GROUP_FULL (409 comes first) (1414 ms)
+      ✓ AC-7: leaving one of two memberships keeps people; the last one decrements people; then join again (1442 ms)
+      ✓ AC-7: after leaving every membership the customer can join another group of the campaign (1215 ms)
+      ✓ AC-25: someone else's / unknown membership → 404; leaving twice → 400 without double decrement (1141 ms)
+      ✓ GB-N1: someone else's membership → 404 without taking the group lock (920 ms)
+      ✓ AC-25: group no longer open → 400 and nothing changes (715 ms)
+      ✓ open group whose ends_at has passed (deadline job not run yet) → 400 and nothing changes (606 ms)
+      ✓ AC-25: cancelling the draft order fails → membership back to joined, counters restored, lock released (869 ms)
+      ✓ AC-8: 20 concurrent joins, max_people_per_group=5 → exactly 5 people (7386 ms)
+      ✓ AC-13: 8 concurrent joins across 2 groups, max_total_orders=5 → exactly 5 (3567 ms)
+      ✓ AC-18: one customer joining G1 and G2 at the same time → exactly one succeeds (847 ms)
+Test Suites: 1 passed, 1 total
+Tests:       39 passed, 39 total
+### pnpm --filter backend test:unit
+Test Suites: 88 passed, 88 total
+Tests:       919 passed, 919 total
+### pnpm --filter storefront test:unit (vitest)
+ Test Files  75 passed (75)
+      Tests  830 passed (830)
+### grep: CHECKOUT_CONFLICTS ใน apps/storefront/src/lib/util/checkout-error.ts มี GB_ = 0 บรรทัด
+### pnpm lint: 0 errors (warning เดิมของ develop) / pnpm typecheck: ผ่าน / pnpm --filter backend build: ผ่าน

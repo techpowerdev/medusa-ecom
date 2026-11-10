@@ -1,0 +1,159 @@
+"use client"
+
+import { MagnifyingGlass } from "@medusajs/icons"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { useCallback, useEffect, useRef, useState } from "react"
+import type { SearchClient } from "instantsearch.js"
+import {
+  Configure,
+  InstantSearch,
+  useHits,
+  useInstantSearch,
+  useSearchBox,
+} from "react-instantsearch"
+
+import useSearchSettled from "@lib/hooks/use-search-settled"
+import useToggleState from "@lib/hooks/use-toggle-state"
+import { PRODUCT_INDEX_NAME, searchClient } from "@lib/search-client"
+import { Text } from "@modules/common/components/ui"
+import SearchDrawer from "./drawer"
+import SearchHit, { ProductHit } from "./hit"
+
+const HITS_PER_PAGE = 12
+const DEBOUNCE_MS = 250
+
+const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
+  const timer = useRef<number | undefined>(undefined)
+
+  const queryHook = useCallback(
+    (nextQuery: string, search: (value: string) => void) => {
+      window.clearTimeout(timer.current)
+      timer.current = window.setTimeout(() => search(nextQuery), DEBOUNCE_MS)
+    },
+    []
+  )
+
+  const { query, refine } = useSearchBox({ queryHook })
+  const { items } = useHits<ProductHit>()
+  // CORE-15b (กฎข้อ 76): catchError — ไม่มีใครรับ error ของ search แล้ว InstantSearch โยนเป็น uncaught (pageerror)
+  // ที่นี่แสดง search-drawer-error แทน และ log 1 บรรทัด (ไม่มี stack) ต่อ error เพื่อ debug
+  const { status, error } = useInstantSearch({ catchError: true })
+  const { isSettled } = useSearchSettled()
+
+  const [inputValue, setInputValue] = useState(query)
+
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  useEffect(() => {
+    if (error) {
+      console.error(`[search-drawer] search request failed: ${error.message}`)
+    }
+  }, [error])
+
+  const hasInput = Boolean(inputValue.trim())
+  const isPending = inputValue.trim() !== query.trim()
+  const hasResults = Boolean(query.trim()) && items.length > 0
+
+  return (
+    <>
+      <div className="flex items-center gap-x-3 border-b border-ui-border-base px-4">
+        <MagnifyingGlass className="shrink-0 text-ui-fg-muted" />
+        <input
+          type="search"
+          value={inputValue}
+          onChange={(event) => {
+            setInputValue(event.target.value)
+            refine(event.target.value)
+          }}
+          placeholder="ค้นหาสินค้า"
+          aria-label="ค้นหาสินค้า"
+          autoFocus
+          className="txt-medium w-full bg-transparent py-4 text-ui-fg-base outline-none placeholder:text-ui-fg-muted"
+          data-testid="search-input"
+        />
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {!hasInput ? (
+          <Text
+            className="px-4 py-6 text-center text-ui-fg-muted"
+            data-testid="search-empty"
+          >
+            พิมพ์เพื่อค้นหาสินค้า
+          </Text>
+        ) : status === "error" ? (
+          <Text
+            className="px-4 py-6 text-center text-ui-fg-error"
+            data-testid="search-drawer-error"
+          >
+            ค้นหาสินค้าไม่สำเร็จ
+          </Text>
+        ) : !isSettled ? (
+          <Text
+            className="px-4 py-6 text-center text-ui-fg-muted"
+            data-testid="search-loading"
+          >
+            กำลังค้นหา&hellip;
+          </Text>
+        ) : hasResults ? (
+          <ul className="py-2" data-testid="search-results">
+            {items.map((hit) => (
+              <SearchHit key={hit.objectID} hit={hit} onNavigate={onNavigate} />
+            ))}
+          </ul>
+        ) : isPending || !query.trim() ? (
+          <Text
+            className="px-4 py-6 text-center text-ui-fg-muted"
+            data-testid="search-loading"
+          >
+            กำลังค้นหา&hellip;
+          </Text>
+        ) : (
+          <Text
+            className="px-4 py-6 text-center text-ui-fg-subtle [overflow-wrap:anywhere]"
+            data-testid="search-no-results"
+          >
+            ไม่พบสินค้าสำหรับ &quot;{query}&quot;
+          </Text>
+        )}
+      </div>
+    </>
+  )
+}
+
+const Search = () => {
+  const { state: isOpen, open, close } = useToggleState()
+  const { countryCode } = useParams<{ countryCode: string }>()
+
+  return (
+    <>
+      {/* A real link so search works without JavaScript; with JS it opens the drawer instead. */}
+      <Link
+        href={`/${countryCode}/search`}
+        onClick={(event) => {
+          event.preventDefault()
+          open()
+        }}
+        aria-label="ค้นหาสินค้า"
+        className="flex items-center hover:text-ui-fg-base"
+        data-testid="nav-search-button"
+      >
+        <MagnifyingGlass />
+      </Link>
+
+      <SearchDrawer isOpen={isOpen} close={close}>
+        <InstantSearch
+          indexName={PRODUCT_INDEX_NAME}
+          searchClient={searchClient as unknown as SearchClient}
+          future={{ preserveSharedStateOnUnmount: true }}
+        >
+          <Configure hitsPerPage={HITS_PER_PAGE} />
+          <SearchPanel onNavigate={close} />
+        </InstantSearch>
+      </SearchDrawer>
+    </>
+  )
+}
+
+export default Search

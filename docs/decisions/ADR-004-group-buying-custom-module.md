@@ -1,26 +1,26 @@
-# ADR-004 Group buying = custom module; draft order at join, pay after success; discount via per-group Promotion code
+# ADR-004 Group buying = module ที่สร้างเอง; สร้าง draft order ตอน join ชำระเงินหลังสำเร็จ; ส่วนลดผ่าน Promotion code ต่อกลุ่ม
 
-Status: accepted (owner, 2026-10-25) — supersedes the earlier "pay-at-join" proposal
+สถานะ: อนุมัติแล้ว (เจ้าของโปรเจกต์, 2026-10-25) — แทนที่ข้อเสนอ "pay-at-join" ก่อนหน้า
 
-## Context
-Group buying needs target gating (orders/units/people), per-group membership and limits,
-pools vs teams, deadline handling. Medusa has no conditional-on-target concept, but it has
-draft orders that can later be paid and converted (the pattern used by Medusa's Quotes example).
+## บริบท
+Group buying ต้องมีการตรวจเป้าหมาย (orders/units/people), การเป็นสมาชิกและ limit ต่อกลุ่ม,
+pool กับ team และการจัดการ deadline Medusa ไม่มีคอนเซ็ปต์ที่ขึ้นกับเป้าหมายแบบนี้ แต่มี
+draft order ที่สามารถชำระเงินและแปลงเป็น order ภายหลังได้ (รูปแบบเดียวกับตัวอย่าง Quotes ของ Medusa)
 
-## Options
-A. Pay discounted price at join (card auth-hold / PromptPay paid); capture or refund at deadline.
-B. Pay full price; refund the difference on success.
-C. **Join creates a draft order (no payment); on success members get a pay link with a
-   payment window; on failure draft orders are cancelled.**
+## ทางเลือก
+A. ชำระราคาที่ลดแล้วตอน join (card auth-hold / PromptPay จ่ายจริง); capture หรือ refund เมื่อถึง deadline
+B. ชำระราคาเต็ม; refund ส่วนต่างเมื่อสำเร็จ
+C. **การ join สร้าง draft order (ยังไม่ชำระเงิน); เมื่อสำเร็จสมาชิกจะได้ pay link พร้อม
+   ช่วงเวลาชำระเงิน; เมื่อล้มเหลว draft order จะถูกยกเลิก**
 
-## Decision
-C (owner's choice). Discount is applied through a unique Medusa promotion code per group and
-frozen in the draft order; payment uses Medusa's order payment-collection flow.
+## การตัดสินใจ
+เลือก C (ตามที่เจ้าของโปรเจกต์เลือก) ส่วนลดใช้ผ่าน Medusa promotion code ที่ไม่ซ้ำกันต่อกลุ่มและ
+ถูกตรึงไว้ใน draft order; การชำระเงินใช้ flow payment-collection ของ order ใน Medusa
 
-## Consequences
-+ No refunds on failure, no Stripe auth-hold time limit, no campaign-length constraint.
-+ No special capture logic in the payment layer (ADR-007 simplified).
-+ Reuses documented Medusa draft-order → payment → convert flow.
-− Some members may not pay after success; mitigated by `pay_within_hours`, reminder email,
-  and admin "members vs paid" view. Fulfillment proceeds for those who pay.
-− Draft orders do not reserve inventory; stock is validated at payment time.
+## ผลที่ตามมา
++ ไม่ต้อง refund เมื่อล้มเหลว, ไม่ติดข้อจำกัดเวลา auth-hold ของ Stripe, ไม่มีข้อจำกัดความยาวแคมเปญ
++ ไม่ต้องมี logic การ capture พิเศษในชั้น payment (ADR-007 เรียบง่ายขึ้น)
++ ใช้ flow draft-order → payment → convert ของ Medusa ที่มีเอกสารรองรับซ้ำได้
+− สมาชิกบางคนอาจไม่ชำระเงินหลังกลุ่มสำเร็จ; บรรเทาด้วย `pay_within_hours`, อีเมลแจ้งเตือน
+  และหน้า admin "สมาชิก vs ชำระแล้ว" การจัดส่งดำเนินต่อสำหรับผู้ที่ชำระเงินแล้ว
+− draft order ไม่จองสต็อก; สต็อกจะถูกตรวจสอบตอนชำระเงิน

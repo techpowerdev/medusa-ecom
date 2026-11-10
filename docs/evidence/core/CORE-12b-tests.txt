@@ -1,0 +1,47 @@
+# CORE-12b — ผล test (รันในเครื่อง 2026-10-26, Node 22.23.3, Postgres 16 จาก docker compose)
+
+## backend: unit — src/api/store/ownership/__tests__/query-cart.unit.spec.ts (verbose)
+PASS src/api/store/ownership/__tests__/query-cart.unit.spec.ts (14.243 s)
+  ensureQueryCartOwnership
+    ✓ passes without auth or query when cart_id is absent (public browsing) (39 ms)
+    ✓ throws 401 when cart_id is present but there is no customer (2 ms)
+    ✓ calls next for the cart owner (2 ms)
+    ✓ throws 404 for another customer's cart
+    ✓ throws 404 for an empty cart_id (1 ms)
+    ✓ throws 404 for an array cart_id
+  storeOwnershipMiddlewares: product routes (CORE-12b)
+    ✓ GET /store/products runs optional customer auth then the query cart check
+    ✓ GET /store/products/:id runs optional customer auth then the query cart check (1 ms)
+    ✓ GET /store/product-variants runs optional customer auth then the query cart check
+    ✓ GET /store/product-variants/:id runs optional customer auth then the query cart check
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Snapshots:   0 total
+Time:        15.082 s
+
+## backend: integration http — Red (ก่อนเพิ่ม middleware)
+FAIL integration-tests/http/store-product-cart-ownership.spec.ts
+      ✕ customer B gets 404 on all 4 routes with A's cart_id (1084 ms)
+      ✓ customer A gets 200 and the same calculated_price as pricing by the cart's region (1512 ms)
+      ✕ gets 401 with cart_id and 200 without cart_id (public browsing unchanged) (663 ms)
+      ✓ customer A with empty cart_id gets 404/400, never 200 or 5xx (515 ms)
+      ✓ customer A with missing cart cart_id gets 404/400, never 200 or 5xx (449 ms)
+      ✓ customer A with array cart_id gets 404/400, never 200 or 5xx (622 ms)
+Tests:       2 failed, 4 passed, 6 total
+(AC-53 ผ่านตั้งแต่ก่อนแก้: core ตอบ 404/400 อยู่แล้ว — test นี้กันไม่ให้ middleware ใหม่ทำให้เป็น 200/5xx)
+
+## backend: integration http — Green (หลังเพิ่ม middleware, รันพร้อม store-ownership.spec.ts ของ CORE-12)
+PASS integration-tests/http/store-product-cart-ownership.spec.ts (51.254 s)
+PASS integration-tests/http/store-ownership.spec.ts (100.053 s)
+Test Suites: 2 passed, 2 total
+Tests:       14 passed, 14 total
+
+## backend: pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 36 passed, 36 total
+Tests:       310 passed, 310 total
+
+## pnpm lint && pnpm typecheck
+ผ่าน (exit 0; lint มีเฉพาะ warning เดิมของ storefront)
+
+## pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully

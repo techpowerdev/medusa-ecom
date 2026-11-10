@@ -1,0 +1,27 @@
+# CORE-2 test evidence — 2026-10-25 15:13 +0700
+# node v24.12.0, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 + Redis 7 จาก docker compose
+### pnpm lint
+apps/backend lint: info:    Linting project...
+apps/backend lint: info:    No lint issues found.
+apps/storefront lint: ✖ 38 problems (0 errors, 38 warnings)
+exit=0
+### pnpm typecheck
+apps/backend typecheck: Done
+apps/storefront typecheck: Done
+exit=0
+### pnpm --filter backend test:unit
+No tests found, exiting with code 0
+exit=0
+### pnpm --filter backend test:integration:modules
+No tests found, exiting with code 0
+exit=0
+### pnpm --filter backend test:integration:http
+PASS integration-tests/http/seed.spec.ts (6.853 s)
+PASS integration-tests/http/health.spec.ts
+Test Suites: 2 passed, 2 total
+Tests:       8 passed, 8 total
+exit=0
+### seed จริงบน DB medusa_core2 (db:migrate → seed → print-publishable-key → seed ซ้ำ)
+pnpm --filter backend seed → 'Seed ร้าน "Thailand" เสร็จแล้ว'; seed ซ้ำ → 'Region "Thailand" มีอยู่แล้ว — ข้ามการ seed ข้อมูลร้าน'
+pnpm --filter backend --silent print-publishable-key → stdout 1 บรรทัด: pk_<64 hex> (ค่า token ไม่บันทึกไว้)
+DB หลัง seed 2 รอบ: region=1, product=2, user=1

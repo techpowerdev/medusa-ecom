@@ -1,0 +1,63 @@
+import { Suspense } from "react"
+
+import { listRegions } from "@lib/data/regions"
+import { STORE_NAME } from "@lib/util/site"
+import { StoreRegion } from "@medusajs/types"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import CartButton from "@modules/layout/components/cart-button"
+import Search from "@modules/layout/components/search"
+import SideMenu from "@modules/layout/components/side-menu"
+
+export default async function Nav() {
+  const regions = await listRegions().then((regions: StoreRegion[]) => regions)
+
+  return (
+    <div className="sticky top-0 inset-x-0 z-50 group">
+      <header className="relative h-16 mx-auto border-b duration-200 bg-white border-ui-border-base">
+        <nav className="content-container px-4 small:px-6 txt-xsmall-plus text-ui-fg-subtle flex items-center justify-between w-full h-full text-small-regular">
+          <div className="flex-1 basis-0 h-full flex items-center">
+            <div className="h-full">
+              <SideMenu regions={regions} storeName={STORE_NAME} />
+            </div>
+          </div>
+
+          <div className="flex items-center h-full">
+            <LocalizedClientLink
+              href="/"
+              className="txt-compact-large-plus small:txt-compact-xlarge-plus whitespace-nowrap hover:text-ui-fg-base uppercase"
+              data-testid="nav-store-link"
+            >
+              {STORE_NAME}
+            </LocalizedClientLink>
+          </div>
+
+          <div className="flex items-center gap-x-3 small:gap-x-6 h-full flex-1 basis-0 justify-end">
+            <Search />
+            <div className="hidden small:flex items-center gap-x-6 h-full">
+              <LocalizedClientLink
+                className="hover:text-ui-fg-base"
+                href="/account"
+                data-testid="nav-account-link"
+              >
+                บัญชี
+              </LocalizedClientLink>
+            </div>
+            <Suspense
+              fallback={
+                <LocalizedClientLink
+                  className="hover:text-ui-fg-base flex gap-2 whitespace-nowrap"
+                  href="/cart"
+                  data-testid="nav-cart-link"
+                >
+                  ตะกร้า (0)
+                </LocalizedClientLink>
+              }
+            >
+              <CartButton />
+            </Suspense>
+          </div>
+        </nav>
+      </header>
+    </div>
+  )
+}

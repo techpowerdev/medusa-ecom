@@ -1,0 +1,27 @@
+PAY-3a (spec 06 กฎข้อ 9c, AC-18; ภาคผนวก ADR-015) — integration ownership + guard × webhook บน payment collection ของ draft order
+วันที่: 2026-10-27  เครื่อง: local (Node 22.23.3), Medusa 2.22.1 + @medusajs/payment-stripe 2.22.1 (Stripe SDK mock เฉพาะ network, key ปลอม)
+ผล: test-only — ผ่านโดยไม่แก้โค้ด production (รันซ้ำ 3 รอบ ผ่านทุกรอบ)
+หมายเหตุ race: ฝั่ง guard ที่แพ้ได้ 400 "Payment with payment_session_id ... already exists" จาก authorizePaymentSession ของ Medusa (non-2xx ตามที่ AC-18 ยอมรับ)
+
+== 1) integration http ==
+$ pnpm --filter backend test:integration:http -- integration-tests/http/payment-session-draft-order.spec.ts
+PASS integration-tests/http/payment-session-draft-order.spec.ts (8.448 s)
+    ✓ AC-18: the draft order's collection is linked to the order and has no cart (372 ms)
+    ✓ AC-18: no token → 401, another customer → 404 without a new session, owner → 200 with a session (624 ms)
+    ✓ AC-18: another customer cannot make the guard ask the provider about the owner's paid session (294 ms)
+    ✓ AC-18: guard together with the captured webhook leaves one live payment, keeps the session and locks on PC.id (383 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+Snapshots:   0 total
+Time:        8.586 s, estimated 11 s
+Ran all test suites matching /integration-tests\/http\/payment-session-draft-order.spec.ts/i.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+== 2) unit ==
+$ pnpm --filter backend test:unit
+Test Suites: 62 passed, 62 total
+Tests:       610 passed, 610 total
+
+== 3) lint / typecheck / build ==
+pnpm lint: 0 errors (warning เดิมของ storefront)  pnpm typecheck: ผ่าน  pnpm --filter backend build: ผ่าน

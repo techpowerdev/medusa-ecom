@@ -1,0 +1,47 @@
+# CORE-9 — ผล test (spec 01 กฎข้อ 15, AC-26..28), Node v22.23.3, รันในเครื่อง 2026-10-25
+
+## Red (ก่อนแก้ PRICE_CURRENCIES/SEARCH_PRICE_CURRENCIES = ["eur","usd"]) — ล้มด้วยสาเหตุที่ถูกต้อง
+- AC-26 backend (src/lib/__tests__/search-pricing.unit.spec.ts): 3 failed — PRICE_CURRENCIES ได้ ["eur","usd"],
+  priceFields มี field _eur/_usd 8 ตัว, toProductPricing({ thb: [...] }) ได้ {} (ไม่มี field _thb)
+- AC-26 storefront (src/lib/search-client.test.ts): 3 failed — SEARCH_PRICE_CURRENCIES = ["eur","usd"],
+  indexedCurrency("THB") ได้ "eur", priceAttribute("min_price","thb") ได้ "min_price_eur"
+- AC-27 (integration-tests/http/search-thb.spec.ts): Expected 990 / Received undefined (hit ไม่มี min_price_thb)
+- AC-28 (e2e/store-thb-price.spec.ts บน /th/store): การ์ด 2 ใบแต่ data-testid="price" = 0 (การ์ดไม่แสดงราคาเลย)
+
+## Green
+
+### pnpm --filter backend test:unit
+Test Suites: 19 passed, 19 total
+Tests:       149 passed, 149 total
+(รวม PASS src/lib/__tests__/search-pricing.unit.spec.ts)
+    ✓ PRICE_CURRENCIES เป็น ['thb'] และเท่ากับ SEARCH_PRICE_CURRENCIES ของ storefront
+    ✓ schema ของ index มีเฉพาะ field ราคา _thb
+    ✓ toProductPricing ได้ min/max/original/on_sale ของ THB และไม่มี field _eur/_usd
+
+### pnpm --filter storefront test:unit (Vitest)
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+(รวม src/lib/search-client.test.ts 3 tests: SEARCH_PRICE_CURRENCIES = ["thb"], indexedCurrency("THB") === "thb",
+ priceAttribute("min_price","thb") === "min_price_thb")
+
+### test:integration:http (เฉพาะ suite ที่เกี่ยว: search-thb + seed)
+PASS integration-tests/http/seed.spec.ts
+PASS integration-tests/http/search-thb.spec.ts
+    ✓ AC-27: query ว่างแบบที่ instantsearch-adapter ส่ง → ทุก hit มี min_price_thb เท่าราคา THB ที่ seed
+Test Suites: 2 passed, 2 total
+Tests:       10 passed, 10 total
+
+### pnpm --filter storefront test:e2e:unit
+19 passed
+
+### e2e (backend :9116 + storefront :8116 บน DB ที่ seed แล้ว, E2E_SAVE_EVIDENCE=1)
+หลังเปลี่ยน schema ของ index ต้องรัน `medusa db:migrate` ("Rebuilt following search indexes") แล้วบูต
+→ log "[Search] Seeding "product" (schema_changed) into "product_v2"" → 2 documents
+  ✓  1 [chromium] › e2e/store-thb-price.spec.ts › AC-28: การ์ดสินค้าทุกใบบน /th/store แสดงราคาเป็น ฿
+  1 passed
+screenshot: docs/evidence/core/CORE-9/01-store-thb-prices.png (฿590, ฿990)
+
+### lint / typecheck / build
+pnpm lint → 0 errors (warning เดิมของ storefront 38 รายการ ไม่เกี่ยวกับ task นี้)
+pnpm typecheck → ผ่าน
+pnpm --filter backend build → Backend/Frontend build completed successfully

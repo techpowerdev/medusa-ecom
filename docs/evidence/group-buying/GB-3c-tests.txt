@@ -1,0 +1,48 @@
+# GB-3c test evidence — 2026-10-26 +0700
+# node v22.23.3, pnpm 12.15.0, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose, Redis db 6
+# หลัง merge origin/develop (201f062, รวม GB-3b #95) — integration ในเครื่องรันเฉพาะไฟล์ group-buy (ชุดเต็มให้ CI รัน)
+# ขอบเขต: spec 04 กฎข้อ 18, AC-36 — summary ของ draft order หลัง join ต้องเท่ากับยอดหลังส่วนลด GB-<token>
+
+### กลไกของ Medusa ที่ใช้ (ตรวจจาก source 2.22.1)
+Order module คำนวณ summary ใหม่เฉพาะตอน apply order change (applyOrderChanges_ → applyChangesToOrder →
+getSummaryFromOrder(order.total)) — createOrderLineItemAdjustments ไม่แตะ summary
+→ freezeDraftOrderAdjustmentsStep ใส่ adjustment ของ cart ผ่าน order change type "edit" ด้วย action
+ITEM_ADJUSTMENTS_REPLACE (แบบเดียวกับ computeDraftOrderAdjustmentsWorkflow ของ Medusa) แล้ว confirmOrderChange
+ไม่เขียนตัวเลข summary เอง; draft order ขึ้น version 2 (adjustment ของ version 1 จาก createOrderWorkflow ถูกแทนที่)
+
+### Red (ก่อนแก้ step) — integration-tests/http/group-buy-draft-order-summary.spec.ts
+✕ AC-36: draft order summary after join equals the discounted total (700 of ฿1,000)
+    expect(received).toEqual(expected)
+    Expected: "700"
+    Received: "1000"
+    at expectAmount (group-buy-draft-order-summary.spec.ts:155) ← summary.current_order_total
+(order.total = 700 อยู่แล้ว แต่ summary ค้างยอดเต็ม ฿1,000)
+
+### Green
+PASS integration-tests/http/group-buy-draft-order-summary.spec.ts
+  ✓ AC-36: draft order summary after join equals the discounted total (700 of ฿1,000)
+    - query.graph: total = summary.current_order_total = summary.pending_difference = 700
+    - GET /admin/orders/:id?fields=id,total,summary คืนค่าเดียวกัน
+    - createOrUpdateOrderPaymentCollectionWorkflow (ไม่ระบุ amount → Medusa ใช้ pending_difference) → amount = 700
+    เทียบด้วย MathBN ที่ทศนิยม THB 2 ตำแหน่ง (ส่วนลด % ของ Medusa ให้ raw total 699.9999999999999999999983)
+
+### Regression (หลัง merge origin/develop)
+pnpm --filter backend test:integration:http group-buy-draft-order-summary group-buy-join group-buy-outcome
+PASS integration-tests/http/group-buy-join.spec.ts      (join + leave ของ GB-3b)
+PASS integration-tests/http/group-buy-outcome.spec.ts   (GB-4 payment collection จาก order.total)
+PASS integration-tests/http/group-buy-draft-order-summary.spec.ts
+Test Suites: 3 passed, 3 total
+Tests:       40 passed, 40 total
+
+### pnpm --filter backend test:unit
+Test Suites: 46 passed, 46 total
+Tests:       447 passed, 447 total
+
+### pnpm lint
+apps/backend lint: No lint issues found. (storefront มี warning เดิม 34 รายการ 0 error ไม่เกี่ยวกับ GB-3c)
+
+### pnpm typecheck
+apps/backend: Done / apps/storefront: Done
+
+### pnpm --filter backend build
+Backend build completed successfully / Frontend build completed successfully

@@ -1,0 +1,231 @@
+"use client"
+
+import { isManual, isStripeLike } from "@lib/constants"
+import { placeOrder } from "@lib/data/cart"
+import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
+import { actionErrorMessage, settleAction } from "@lib/util/action-result"
+import { isPromptPay } from "@lib/util/payment-session"
+import { HttpTypes } from "@medusajs/types"
+import { Button } from "@modules/common/components/ui"
+import { useElements, useStripe } from "@stripe/react-stripe-js"
+import { useParams } from "next/navigation"
+import React, { useState } from "react"
+import ErrorMessage from "../error-message"
+import PromptPayPaymentButton from "../promptpay-payment"
+
+/**
+ * CORE-4i-b (กฎข้อ 72): ยืนยันคำสั่งซื้อแล้วคืนข้อความไทยเมื่อล้ม — 409 ที่รู้จัก (FS-15) → ข้อความของ code,
+ * `unauthorized` → SIGN_IN_AGAIN_MESSAGE; สำเร็จ = redirect ของ Next (ไม่มีผล) → null
+ */
+export const completeOrder = async (order: ReturnType<typeof placeOrder>): Promise<string | null> => {
+  const result = await settleAction(order)
+  return result && "error" in result
+    ? actionErrorMessage(result.error, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
+    : null
+}
+
+type PaymentButtonProps = {
+  cart: HttpTypes.StoreCart
+  /** CORE-35 (กฎข้อ 93): จาก checkout-form — deliveryStepDone กับรายการ option ที่กรองแล้ว */
+  deliveryDone: boolean
+  "data-testid": string
+}
+
+const PaymentButton: React.FC<PaymentButtonProps> = ({
+  cart,
+  deliveryDone,
+  "data-testid": dataTestId,
+}) => {
+  const notReady =
+    !cart ||
+    !cart.shipping_address ||
+    !cart.billing_address ||
+    !cart.email ||
+    !deliveryDone
+
+  const paymentSession = cart.payment_collection?.payment_sessions?.[0]
+
+  switch (true) {
+    case isStripeLike(paymentSession?.provider_id):
+      return (
+        <StripePaymentButton
+          notReady={notReady}
+          cart={cart}
+          data-testid={dataTestId}
+        />
+      )
+    case isPromptPay(paymentSession?.provider_id):
+      return (
+        <PromptPayPaymentButton
+          notReady={notReady}
+          cart={cart}
+          data-testid={dataTestId}
+        />
+      )
+    case isManual(paymentSession?.provider_id):
+      return (
+        <ManualTestPaymentButton
+          cart={cart}
+          notReady={notReady}
+          data-testid={dataTestId}
+        />
+      )
+    default:
+      return <Button disabled>กรุณาเลือกวิธีชำระเงิน</Button>
+  }
+}
+
+const StripePaymentButton = ({
+  cart,
+  notReady,
+  "data-testid": dataTestId,
+}: {
+  cart: HttpTypes.StoreCart
+  notReady: boolean
+  "data-testid"?: string
+}) => {
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const onPaymentCompleted = async () => {
+    // EV-7d (กฎข้อ 28c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
+    const failure = await completeOrder(placeOrder(cart.id, undefined, countryCode as string))
+    if (failure) setErrorMessage(failure)
+    setSubmitting(false)
+  }
+
+  const stripe = useStripe()
+  const elements = useElements()
+  const { countryCode } = useParams()
+
+  const disabled = !stripe || !elements ? true : false
+
+  const handlePayment = async () => {
+    if (!stripe || !elements || !cart) {
+      return
+    }
+
+    setSubmitting(true)
+
+    // AF-3b (กฎ 23): sync cookie `aff` ก่อนยืนยันการชำระ — webhook อาจ complete cart ก่อน placeOrder
+    await syncAffiliateBefore(cart, () =>
+      stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/api/payment-return?cart_id=${cart.id}&country_code=${countryCode}`,
+          payment_method_data: {
+            billing_details: {
+              name:
+                cart.billing_address?.first_name +
+                " " +
+                cart.billing_address?.last_name,
+              address: {
+                city: cart.billing_address?.city ?? undefined,
+                country: cart.billing_address?.country_code ?? undefined,
+                line1: cart.billing_address?.address_1 ?? undefined,
+                line2: cart.billing_address?.address_2 ?? undefined,
+                postal_code: cart.billing_address?.postal_code ?? undefined,
+                state: cart.billing_address?.province ?? undefined,
+              },
+              email: cart.email,
+              phone: cart.billing_address?.phone ?? undefined,
+            },
+          },
+        },
+        // Only leave the site when the selected method actually requires it, so
+        // card payments still complete inline.
+        redirect: "if_required",
+      })
+    ).then(({ error, paymentIntent }) => {
+      if (error) {
+        const pi = error.payment_intent
+
+        if (
+          (pi && pi.status === "requires_capture") ||
+          (pi && pi.status === "succeeded")
+        ) {
+          onPaymentCompleted()
+          return
+        }
+
+        setErrorMessage(error.message || null)
+        setSubmitting(false)
+        return
+      }
+
+      if (
+        paymentIntent.status === "requires_capture" ||
+        paymentIntent.status === "succeeded"
+      ) {
+        onPaymentCompleted()
+        return
+      }
+
+      setSubmitting(false)
+    })
+  }
+
+  return (
+    <>
+      <Button
+        disabled={disabled || notReady}
+        onClick={handlePayment}
+        size="large"
+        isLoading={submitting}
+        data-testid={dataTestId}
+      >
+        ยืนยันคำสั่งซื้อ
+      </Button>
+      <ErrorMessage
+        error={errorMessage}
+        data-testid="stripe-payment-error-message"
+      />
+    </>
+  )
+}
+
+const ManualTestPaymentButton = ({
+  cart,
+  notReady,
+}: {
+  cart: HttpTypes.StoreCart
+  notReady: boolean
+}) => {
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // EV-7c (กฎข้อ 24c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
+  const { countryCode } = useParams()
+
+  const onPaymentCompleted = async () => {
+    // AF-3b (กฎ 23): ส่ง metadata ของ cart ที่อ่านไว้ → placeOrder sync cookie `aff` ก่อน complete
+    const failure = await completeOrder(placeOrder(cart.id, cart.metadata ?? null, countryCode as string))
+    if (failure) setErrorMessage(failure)
+    setSubmitting(false)
+  }
+
+  const handlePayment = () => {
+    setSubmitting(true)
+
+    onPaymentCompleted()
+  }
+
+  return (
+    <>
+      <Button
+        disabled={notReady}
+        isLoading={submitting}
+        onClick={handlePayment}
+        size="large"
+        data-testid="submit-order-button"
+      >
+        ยืนยันคำสั่งซื้อ
+      </Button>
+      <ErrorMessage
+        error={errorMessage}
+        data-testid="manual-payment-error-message"
+      />
+    </>
+  )
+}
+
+export default PaymentButton

@@ -1,0 +1,25 @@
+# FS-2 — สรุปผล test (Node v22.23.3, Medusa 2.22.1, 2026-10-25)
+# ฐาน: origin/develop 586ee9e — log เต็มอยู่ใน CI artifact; integration ชุดเต็มรันใน CI
+
+unit (ทั้งชุด)                      154 passed
+  ใหม่: src/lib/__tests__/flash-sale-release.unit.spec.ts (8) — full/partial refund, หลาย payment, ฿1,000 vs ฿999.99,
+        ฿600 แล้ว ฿400, capture = 0,
+        ไม่มี capture, 300.30 = 100.10 + 200.20 (MathBN บน raw_amount ไม่ใช้ float)
+integration:modules (flash_sale)    33 passed
+  ใหม่: src/modules/flash_sale/__tests__/release.spec.ts (9) — released_at + คืน usage/units_sold,
+        ซ้ำตามลำดับ, 5 call พร้อมกัน, ไม่มี reservation, compensation ของ FS-3 ไม่คืนซ้ำ,
+        restore (compensation ของ FS-2), reserve/release หลาย campaign สลับลำดับพร้อมกันไม่ deadlock
+  regression: reservation.spec.ts (FS-3), service.spec.ts (FS-1)
+integration:http                    19 passed
+  ใหม่: integration-tests/http/flash-sale-release.spec.ts (8)
+    AC-5 order.canceled (2 หน่วย) → usage −2, units_sold −2, released_at มีค่า
+    AC-5 refund เต็มจำนวน → ผลเดียวกัน; refund ขาด 0.01 → ไม่คืน; refund 60% แล้วส่วนที่เหลือ → คืนครั้งเดียวหลังครั้งที่สอง
+    (เกณฑ์เดียวไม่ว่ามาจาก cancel, return หรือคืนด้วยมือ — return ใช้ refundPaymentWorkflow เดียวกัน)
+    AC-6 order.canceled ซ้ำตามลำดับ / ซ้ำพร้อมกัน / refund แล้ว cancel → คืนครั้งเดียว
+    cancel order ที่ไม่มี flash → no-op
+  regression: flash-sale-limits.spec.ts (FS-3, 11)
+lint / typecheck / build            ผ่าน
+
+Red: unit/module ล้มก่อนเขียนโค้ด; เคส 300.30 ล้มกับ implementation float เดิม;
+     test สลับลำดับ campaign ได้ "deadlock detected" ก่อนเรียงตาม campaign_id (3/3 รอบ)
+Mutation: ลบ `released_at IS NULL` → test idempotent (ลำดับ/พร้อมกัน) ล้ม 2

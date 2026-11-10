@@ -1,0 +1,180 @@
+# ADM-7 (spec 08 AC-10, กฎ 5, 8) — ผล test
+# วันที่: 2026-11-05, node v22.23.3, base origin/develop a349676
+
+## Red (ก่อนเขียนโค้ด)
+### jest src/admin/__tests__/medusa-ui.unit.spec.ts + src/admin/lib/__tests__/group-buy-form.unit.spec.ts
+  ✕ pattern ต้องห้าม: lib/group-buy-form.ts (ictToIso), components/group-buy/create-campaign.tsx (datetime-local, useRef(false)) — ลบออกจากข้อยกเว้น AC-4 แล้ว
+  ✕ static AC-10 (6 ข้อ): Form/KeyboundForm/zodResolver raw/noValidate, DatePicker granularity=minute, toCampaignBody→setError + newIdempotencyKey, useState(createSingleFlight), product-picker useProducts, lib z.date()
+  ✕ toCampaignBody › passes the picked Date values to the body as-is (body เดิมเป็น string ICT→ISO)
+  ✕ toCampaignBody › has no ictToIso left in lib/group-buy-form.ts
+  ✕ campaignFormSchema (5 ข้อ) — ยังไม่มี export
+Tests:       15 failed, 97 passed, 112 total
+### playwright group-buy-admin-form (หมายเหตุ) e2e แก้ก่อนแปลง component แต่ไม่ได้ build admin เดิมรันซ้ำ — ช่องเดิมเป็น <input type=datetime-local>
+  ไม่มี role=spinbutton ใน wrapper gb-field-* จึง fillDatePicker ล้มแน่นอน
+
+## Green — jest (verbose เฉพาะไฟล์ที่แตะ)
+PASS src/admin/lib/__tests__/group-buy-form.unit.spec.ts
+  toCampaignBody
+    ✓ builds a body that the admin create validator accepts
+    ✓ maps percentage discount and the single product onto an items application method
+    ✓ sets THB for a fixed discount and keeps the single product scope
+    ✓ rejects a form without a product with a product field error (gb-product-required-error)
+    ✓ has no 'empty = all products' comment left in lib/group-buy-form.ts
+    ✓ passes the picked Date values to the body as-is (serialized as ISO UTC)
+    ✓ has no ictToIso left in lib/group-buy-form.ts (spec 08 rule 5)
+    ✓ sends null start and optional limits as null/omitted when left blank
+    ✓ keeps the tax-inclusive default (spec 04 rule 12) and lets the admin turn it off
+    ✓ rejects an invalid name with a message instead of calling the API
+    ✓ rejects an invalid target value with a message instead of calling the API
+    ✓ rejects an invalid end date with a message instead of calling the API
+    ✓ rejects an invalid end after start with a message instead of calling the API
+    ✓ rejects an invalid end equal to start with a message instead of calling the API
+    ✓ rejects an invalid invalid end date with a message instead of calling the API
+    ✓ rejects an invalid discount value with a message instead of calling the API
+    ✓ rejects an invalid percentage above 100 with a message instead of calling the API
+    ✓ rejects an invalid team duration for team mode with a message instead of calling the API
+    ✓ rejects an invalid whole-number limits with a message instead of calling the API
+    ✓ rejects max_quantity below max_units_per_person with a max_quantity field error
+    ✓ accepts max_quantity vs max_units_per_person when equal
+    ✓ accepts max_quantity vs max_units_per_person when per-person limit left blank
+  selectSingleProduct
+    ✓ first pick
+    ✓ A then B keeps only B
+    ✓ unselect the current one
+    ✓ unselect via false flag
+    ✓ state unchanged keeps the current one
+  isEndsAtPast
+    ✓ ends_at 11:59 ICT → 2026-11-11T04:59:00.000Z
+    ✓ ends_at 12:00 ICT → 2026-11-11T05:00:00.000Z
+    ✓ ends_at 12:01 ICT → 2026-11-11T05:01:00.000Z
+    ✓ ends_at empty → null
+    ✓ ends_at invalid date → Invalid Date
+    ✓ still lets a past end date through to the API (draft campaign)
+  campaignFormSchema
+    ✓ accepts the default form values with Date/null date fields
+    ✓ parses to the same values (raw resolver, parse on submit)
+    ✓ shows 'Invalid date' (not zod's 'Invalid input') for an invalid starts_at
+    ✓ shows 'Invalid date' (not zod's 'Invalid input') for an invalid ends_at
+    ✓ rejects a non-date value for ends_at with 'Invalid date'
+  newIdempotencyKey
+    ✓ makes 1,000 unique UUID v4 keys with only getRandomValues (non-secure context)
+PASS src/admin/__tests__/medusa-ui.unit.spec.ts
+  route config icon (spec 08 AC-2)
+    ✓ พบ route ที่ต้องตรวจ
+    ✓ evouchers มี icon ที่ import จาก @medusajs/icons
+    ✓ group-buying มี icon ที่ import จาก @medusajs/icons
+  Header + SectionRow (spec 08 AC-5)
+    ✓ components/common/header.tsx ถูก import อย่างน้อย 2 ไฟล์
+    ✓ widgets/flash-sale-options.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+    ✓ widgets/variant-evoucher-pool.tsx ใช้ SectionRow จาก @medusajs/dashboard/components แทน Field/Row เอง
+  รายการข้อยกเว้นของ AC-4 (spec 08)
+    ✓ components/affiliate/** ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ routes/affiliate/** ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ lib/affiliate* ยังตรงกับไฟล์ที่มีอยู่ (ไม่ค้างหลังไฟล์ถูกลบ/ย้าย)
+    ✓ จับเฉพาะไฟล์ในรายการ
+  pattern ต้องห้ามของกฎ 4–6 (spec 08 AC-4)
+    ✓ ตรวจไฟล์ที่ ADM-2a/2b ปรับแล้ว
+    ✓ vite-env.d.ts ไม่มี pattern ต้องห้าม
+    ✓ i18n/index.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/client.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher-pool-form.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher-query.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher-resend.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher-status.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/evoucher.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/flash-sale-form.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/form-validation.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/group-buy-campaign.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/group-buy-form.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/group-buy.ts ไม่มี pattern ต้องห้าม
+    ✓ lib/single-flight.ts ไม่มี pattern ต้องห้าม
+    ✓ widgets/flash-sale-options.tsx ไม่มี pattern ต้องห้าม
+    ✓ widgets/order-evouchers.tsx ไม่มี pattern ต้องห้าม
+    ✓ widgets/variant-evoucher-pool.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/common/container.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/common/header.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/codes-table.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/import-codes.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/partners-section.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/evoucher/pools-table.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/group-buy/create-campaign.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/group-buy/group-members.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/group-buy/groups-section.tsx ไม่มี pattern ต้องห้าม
+    ✓ components/group-buy/product-picker.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/evouchers/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/group-buying/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/group-buying/[id]/page.tsx ไม่มี pattern ต้องห้าม
+    ✓ routes/evouchers/pools/[id]/page.tsx ไม่มี pattern ต้องห้าม
+  กันกดซ้ำด้วย createSingleFlight (spec 08 กฎ 4, ADM-2b)
+    ✓ widgets/flash-sale-options.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ widgets/order-evouchers.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ components/group-buy/group-members.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ components/group-buy/groups-section.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ routes/group-buying/[id]/page.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+    ✓ components/evoucher/codes-table.tsx ใช้ useState(createSingleFlight) และไม่มี useRef
+  แสดงวันเวลาด้วย useDate (spec 08 AC-3, ADM-2b)
+    ✓ lib/evoucher.ts ไม่มี formatDate/formatDateTime
+    ✓ lib/group-buy.ts ไม่มี formatDate/formatDateTime
+    ✓ widgets/order-evouchers.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/evoucher/codes-table.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/group-buy/group-members.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ components/group-buy/groups-section.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ routes/group-buying/page.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+    ✓ routes/group-buying/[id]/page.tsx (ผู้เรียกเดิม) ใช้ useDate จาก @medusajs/dashboard/hooks
+  ฟอร์ม pilot ใช้ Form + KeyboundForm + zod (spec 08 AC-6, กฎ 8, ADM-3)
+    ✓ widgets/flash-sale-options.tsx ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState
+    ✓ widgets/variant-evoucher-pool.tsx ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState
+    ✓ lib/flash-sale-form.ts ใช้ optionalInt จาก @medusajs/dashboard/lib (ไม่ import ui/components/hooks — กฎ 2)
+    ✓ lib/evoucher-pool-form.ts ใช้ optionalInt จาก @medusajs/dashboard/lib (ไม่ import ui/components/hooks — กฎ 2)
+  หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)
+    ✓ components/evoucher/pools-table.tsx ใช้ DataTable ของ @medusajs/dashboard/components (แบ่งหน้าใน URL) ไม่ใช่ state เอง
+    ✓ components/evoucher/codes-table.tsx ใช้ DataTable ของ @medusajs/dashboard/components (แบ่งหน้าใน URL) ไม่ใช่ state เอง
+    ✓ codes-table: Reveal ต่อแถวอยู่ใน ActionMenu (trigger evoucher-code-row-actions) และกรองสถานะด้วย filters ของ DataTable
+    ✓ routes/evouchers/page.tsx ใช้ LayoutComposer ของ @medusajs/dashboard/components
+    ✓ routes/evouchers/pools/[id]/page.tsx ใช้ LayoutComposer ของ @medusajs/dashboard/components
+    ✓ หน้า pool ใช้ Header + SectionRow
+    ✓ import-codes ใช้ Header และกันกดซ้ำด้วย useState(createSingleFlight) (useRef ใช้แค่อ้าง input file)
+  ฟอร์มสร้างแคมเปญ group buy ใช้ Form + DatePicker และ product picker ใช้ useProducts (spec 08 AC-10, ADM-7)
+    ✓ create-campaign ใช้ Form/KeyboundForm ของ dashboard + useForm + zodResolver และไม่ถือค่าฟอร์มด้วย useState
+    ✓ create-campaign กรอกวันเวลาด้วย DatePicker granularity=minute ไม่มี datetime-local
+    ✓ create-campaign คง toCampaignBody → form.setError และ idempotency key ของ GB-15 ที่ตั้งตอน openModal
+    ✓ create-campaign กันกดซ้ำด้วย useState(createSingleFlight) และไม่มี useRef
+    ✓ product-picker ใช้ useProducts ของ dashboard ไม่เรียก sdk.admin.product.list เอง และยังเป็น single select (GB-6e)
+    ✓ lib/group-buy-form.ts ใช้ z.date() และไม่ import ui/components/hooks (กฎ 2)
+Test Suites: 2 passed, 2 total
+Tests:       112 passed, 112 total
+Snapshots:   0 total
+Time:        1.436 s, estimated 6 s
+Ran all test suites matching /src\/admin\/lib\/__tests__\/group-buy-form.unit.spec.ts|src\/admin\/__tests__\/medusa-ui.unit.spec.ts/i.
+
+จำนวน test ใน group-buy-form.unit.spec.ts: เดิม 31 → 39 (test ของ ictToIso ถูกแทนด้วย test ที่ส่ง Date; ไม่ลด)
+
+## Green — pnpm --filter backend test:unit (ทั้งชุด)
+Test Suites: 92 passed, 92 total
+Tests:       1026 passed, 1026 total
+
+## Green — playwright group-buy-admin-* บน prod build (medusa start จาก .medusa/server, port 9482, workers=2, locale en-US, timezone Asia/Bangkok)
+  ✓   1 [chromium] › e2e/group-buy-admin-dates.spec.ts:11:5 › AC-3: ends_at ของแคมเปญแสดง Feb 1, 2026 12:30 AM ตามเวลาไทยของ browser
+  ✓   2 [chromium] › e2e/group-buy-admin-detail.spec.ts:69:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม
+  ✓   4 [chromium] › e2e/group-buy-admin-detail.spec.ts:110:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ
+  ✓   3 [chromium] › e2e/group-buy-admin-form.spec.ts:103:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง
+  ✓   5 [chromium] › e2e/group-buy-admin-detail.spec.ts:151:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading
+  ✓   6 [chromium] › e2e/group-buy-admin-form.spec.ts:185:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B]
+  ✓   7 [chromium] › e2e/group-buy-admin-detail.spec.ts:161:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม
+  ✓   8 [chromium] › e2e/group-buy-admin-form.spec.ts:239:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2]
+  ✓   9 [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย
+  ✓  11 [chromium] › e2e/group-buy-admin-members.spec.ts:148:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request
+  ✓  12 [chromium] › e2e/group-buy-admin-members.spec.ts:181:7 › GB-6d › AC-41: fail ล้มเพราะกลุ่ม succeeded ไปแล้ว → GET กลุ่มใหม่ แถวเป็น succeeded ปุ่มหาย ไม่ต้อง reload
+  ✓  10 [chromium] › e2e/group-buy-admin-form.spec.ts:296:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่
+  ✓  13 [chromium] › e2e/group-buy-admin-members.spec.ts:230:7 › GB-6d › AC-41: แถวที่เลือกมี highlight + ปุ่มปิด; เปลี่ยนหน้าไปหน้าที่ไม่มีแถวที่เลือก → ปิดตาราง membership
+  ✓  15 [chromium] › e2e/group-buy-admin-members.spec.ts:291:7 › GB-N3 › AC-42: td แรกของแถวที่เลือกสีเดียวกับ td ที่สองและต่างจากแถวที่ไม่ถูกเลือก
+  ✓  14 [chromium] › e2e/group-buy-admin-form.spec.ts:365:5 › AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง body เป็น UTC
+  ✓  16 [chromium] › e2e/group-buy-admin-pages.spec.ts:55:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL
+  16 passed
+
+## Green — playwright project unit (storefront e2e/support)
+  71 passed
+
+## pnpm typecheck: ผ่าน (storefront + backend + src/admin tsconfig)
+## pnpm lint: 0 errors (warning เดิมใน src/workflows/group-buy/campaign.ts และ storefront — ไม่ใช่ไฟล์ที่ task นี้แตะ)
+## pnpm --filter backend build: ผ่าน (backend + frontend admin)

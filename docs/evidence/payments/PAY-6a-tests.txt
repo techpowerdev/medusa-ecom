@@ -1,0 +1,74 @@
+PAY-6a (spec 06 กฎข้อ 7A, AC-11, AC-12b ฝั่ง backend, AC-13, AC-14; ADR-015 A + ภาคผนวก) — guard ก่อนสร้าง payment session ใหม่
+วันที่: 2026-10-26  เครื่อง: local (Node 22.23.3), Medusa 2.22.1 + @medusajs/payment-stripe 2.22.1
+
+== 1) unit (mock payment module / locking / query) ==
+$ TEST_TYPE=unit npx jest --verbose src/api/store/payment-collections src/api/__tests__/error-handler.unit.spec.ts
+PASS src/api/store/payment-collections/__tests__/stripe-session-guard.unit.spec.ts
+  guardPaidStripeSession (AC-13)
+    ✓ (a) answers 409 PAYMENT_ALREADY_COMPLETED when authorizePaymentSession returns a payment (PI succeeded / requires_capture) (2 ms)
+    ✓ (a) answers 409 PAYMENT_ALREADY_COMPLETED when authorizePaymentSession returns null (PI processing) (1 ms)
+    ✓ (b) answers 409 without calling the provider when the session already has authorized_at
+    ✓ (b) answers 409 without calling the provider when the session already has a payment
+    ✓ (c) lets Medusa create the new session when the PI is not paid (NOT_ALLOWED) (1 ms)
+    ✓ (d) fails closed on any other error (e.g. Stripe unavailable) (2 ms)
+    ✓ (e) skips the provider for a non-Stripe session (pp_system_default)
+    ✓ (e) skips the provider for a Stripe session without a PaymentIntent id (1 ms)
+    ✓ (e) skips the provider for no session
+    ✓ (f) never imports the Stripe SDK (reads PI status through the payment module only)
+    ✓ locks on the cart id of the collection (same key as processPaymentWorkflow) (1 ms)
+    ✓ locks on the payment collection id when the collection has no cart (order payment, ADR-015 appendix)
+PASS src/api/__tests__/error-handler.unit.spec.ts
+  businessErrorHandler
+    ✓ covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void; spec 06 PAY-6) (1 ms)
+    ✓ no route under src/api answers 409 by itself (4 ms)
+    ✓ answers PROMOTION_NOT_COMBINABLE as 409 conflict with our code and message
+    ✓ answers FLASH_LIMIT_EXCEEDED as 409 conflict with our code and message
+    ✓ answers FLASH_SOLD_OUT as 409 conflict with our code and message
+    ✓ answers EVOUCHER_CODE_NOT_AVAILABLE as 409 conflict with our code and message (1 ms)
+    ✓ answers PAYMENT_ALREADY_COMPLETED as 409 conflict with our code and message
+    ✓ decides by our code, not by the error type
+    ✓ keeps the code after the workflow engine serialized the error (plain object, not MedusaError) (2 ms)
+      ✓ CONFLICT without code
+      ✓ CONFLICT with a code that is not ours
+      ✓ serialized CONFLICT without code
+      ✓ NOT_FOUND (1 ms)
+      ✓ INVALID_DATA
+      ✓ NOT_ALLOWED with a code
+      ✓ UNAUTHORIZED
+      ✓ plain Error
+      ✓ zod issues
+      ✓ http-errors (1 ms)
+Tests:       31 passed, 31 total
+
+ชุด unit ทั้งหมด: $ pnpm --filter backend test:unit → Test Suites: 38 passed, Tests: 325 passed
+
+== 2) integration http (medusa-test-utils, Stripe SDK mock เฉพาะ network) ==
+red ก่อนเขียน guard: 8 failed / 6 passed (POST สร้าง session ใหม่ได้ 200 และลบ session ที่ PI succeeded/มี authorized_at แล้ว)
+green:
+$ TEST_TYPE=integration:http npx jest payment-session-guard stripe-webhook store-ownership
+PASS integration-tests/http/store-ownership.spec.ts (12.81 s)
+  ● Console
+PASS integration-tests/http/stripe-webhook.spec.ts (54.99 s)
+  ● Console
+PASS integration-tests/http/payment-session-guard.spec.ts (17.877 s)
+  ● Console
+Test Suites: 3 passed, 3 total
+Tests:       27 passed, 27 total
+
+== 3) e2e AC-11 กับ Stripe test mode จริง (เอา test.fixme ออกแล้ว) ==
+backend `medusa develop -p 9081`, DB medusa_pay6 (migrate + seed), Stripe test key จาก env,
+webhook ผ่าน `stripe listen --events payment_intent.* --forward-to localhost:9081/hooks/payment/stripe-promptpay_stripe`
+$ E2E_BACKEND_URL=http://localhost:9081 npx playwright test e2e/payments-promptpay-race.spec.ts --project=chromium
+
+Running 1 test using 1 worker
+
+  ✓  1 [chromium] › e2e/payments-promptpay-race.spec.ts:94:5 › AC-11: ชำระ PromptPay สำเร็จแล้วทันทีสร้าง session ใหม่ (หมดอายุ) → ยังได้ order captured ที่อ้าง PI นั้น (14.0s)
+
+  1 passed (14.8s)
+
+log ของ backend รอบเดียวกัน (บรรทัดที่เกี่ยวข้อง):
+info:    PAYMENT_ALREADY_COMPLETED: Payment for this payment collection has already been completed
+http:    POST /hooks/payment/stripe-promptpay_stripe ← - (200)   # payment_intent.succeeded → order captured ที่อ้าง PI เดิม
+
+== 4) lint / typecheck / build ==
+pnpm lint → 0 errors (warning เดิมของ storefront) ; pnpm typecheck → ผ่าน ; pnpm --filter backend build → สำเร็จ
