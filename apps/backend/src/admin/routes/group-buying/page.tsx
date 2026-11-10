@@ -1,4 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
+import { FetchError } from "@medusajs/js-sdk"
 import { DataTable, LayoutComposer } from "@medusajs/dashboard/components"
 import { useDate } from "@medusajs/dashboard/hooks"
 import { Users } from "@medusajs/icons"
@@ -72,13 +73,20 @@ const GroupBuyingPage = () => {
   const [count, setCount] = useState<number>()
   const offset = usePageOffset(PREFIX, PAGE_SIZE, { count })
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: [...groupBuyKeys.campaigns, limit, offset],
     queryFn: () => groupBuyApi.listCampaigns({ limit, offset }),
     placeholderData: keepPreviousData,
   })
   useEffect(() => setCount(data?.count), [data?.count])
   const [createOpen, setCreateOpen] = useState(false)
+
+  // spec 08 กฎ 24b: 401 → ErrorBoundary ของ dashboard พาไป /login
+  if (error instanceof FetchError && error.status === 401) {
+    throw error
+  }
+  // กฎ 24a/d: ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
+  const loadFailed = isError && !data
 
   return (
     <LayoutComposer
@@ -95,29 +103,34 @@ const GroupBuyingPage = () => {
                 </Text>
               </div>
               <div data-testid="gb-campaigns-table">
-                {/* backend ไม่รองรับค้นหา (q) → ปิด search */}
-                <PageOffsetGate prefix={PREFIX}>
-                  <DataTable
-                    heading="Group-buy campaigns"
-                    subHeading="Discount and product scope live on each campaign's template promotion (GBT-…); edits apply only to groups created afterwards."
-                    action={{ label: "Create campaign", onClick: () => setCreateOpen(true) }}
-                    data={data?.campaigns ?? []}
-                    columns={columns}
-                    getRowId={(campaign) => campaign.id}
-                    rowCount={data?.count ?? 0}
-                    isLoading={isLoading}
-                    prefix={PREFIX}
-                    pageSize={PAGE_SIZE}
-                    enableSearch={false}
-                    rowHref={(campaign) => `/group-buying/${campaign.id}`}
-                    emptyState={{
-                      empty: {
-                        heading: "No group-buy campaigns yet",
-                        description: "Create a campaign to start selling in groups.",
-                      },
-                    }}
-                  />
-                </PageOffsetGate>
+                {/* กฎ 24a: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัวตาราง + ปุ่ม Create campaign */}
+                <div data-testid={loadFailed ? "gb-campaigns-error" : undefined}>
+                  {/* backend ไม่รองรับค้นหา (q) → ปิด search */}
+                  <PageOffsetGate prefix={PREFIX}>
+                    <DataTable
+                      heading="Group-buy campaigns"
+                      subHeading="Discount and product scope live on each campaign's template promotion (GBT-…); edits apply only to groups created afterwards."
+                      action={{ label: "Create campaign", onClick: () => setCreateOpen(true) }}
+                      data={data?.campaigns ?? []}
+                      columns={columns}
+                      getRowId={(campaign) => campaign.id}
+                      rowCount={data?.count ?? 0}
+                      isLoading={isLoading}
+                      prefix={PREFIX}
+                      pageSize={PAGE_SIZE}
+                      enableSearch={false}
+                      rowHref={(campaign) => `/group-buying/${campaign.id}`}
+                      emptyState={{
+                        empty: loadFailed
+                          ? { heading: "Could not load campaigns", description: error?.message }
+                          : {
+                              heading: "No group-buy campaigns yet",
+                              description: "Create a campaign to start selling in groups.",
+                            },
+                      }}
+                    />
+                  </PageOffsetGate>
+                </div>
               </div>
               <CreateCampaign open={createOpen} onOpenChange={setCreateOpen} />
             </Container>

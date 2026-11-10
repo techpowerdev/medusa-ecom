@@ -1,4 +1,4 @@
-import { APIRequestContext } from "@playwright/test"
+import { APIRequestContext, Page } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
@@ -158,5 +158,85 @@ test.describe("ADM-10: gb_offset ใน URL ที่ผิดรูป", () => 
       await expect(rows.first()).toBeVisible()
       await expect(page.getByTestId("gb-campaigns-table")).not.toContainText("No group-buy campaigns yet")
     })
+  })
+})
+
+// ADM-20 (spec 08 AC-24, กฎ 24): listCampaigns ล้ม → error ใน emptyState ของ DataTable (คงหัวตาราง + ปุ่ม Create campaign)
+// ไม่ใช่ "No group-buy campaigns yet"; 401 → ErrorBoundary ของ dashboard พาไป /login
+test.describe("ADM-20: สถานะ error ของรายการแคมเปญ", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-20" } })
+
+  const CAMPAIGNS_ROUTE = "**/admin/group-buy/campaigns*"
+  const EMPTY_TEXT = "No group-buy campaigns yet"
+
+  async function expectErrorKeepsTable(page: Page) {
+    const table = page.getByTestId("gb-campaigns-table")
+    await expect(page.getByTestId("gb-campaigns-error")).toBeVisible()
+    await expect(table.getByTestId("gb-campaigns-error")).toHaveCount(1)
+    await expect(table).not.toContainText(EMPTY_TEXT)
+    await expect(page.getByTestId("gb-template-warning")).toBeVisible()
+    // spec 08 กฎ 18: ปุ่มใน action ของ DataTable ไม่รับ data-testid → หาด้วย role + ชื่อภายใน wrapper
+    const create = table.getByRole("button", { name: "Create campaign" })
+    await expect(create).toBeEnabled()
+    await create.click()
+    await expect(page.getByTestId("gb-campaign-create-submit")).toBeVisible()
+  }
+
+  test("AC-24: ตอบ 500 → gb-campaigns-error แทน empty state, ปุ่ม Create campaign ยังเปิด modal ได้", async ({
+    page,
+    step,
+    evidence,
+  }) => {
+    await loginAdmin(page)
+    await page.route(CAMPAIGNS_ROUTE, (route) =>
+      route.request().method() === "GET"
+        ? route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
+        : route.continue()
+    )
+    await step("เปิด /app/group-buying ขณะ API ตอบ 500", async () => {
+      await page.goto(`${BACKEND_URL}/app/group-buying`)
+      await expect(page.getByTestId("gb-campaigns-error")).toBeVisible()
+      await evidence("01-list-error-500")
+      await expectErrorKeepsTable(page)
+    })
+  })
+
+  test("AC-24: network ล้ม (route.abort) → gb-campaigns-error และปุ่ม Create campaign ยังเปิด modal ได้", async ({
+    page,
+    step,
+  }) => {
+    await loginAdmin(page)
+    await page.route(CAMPAIGNS_ROUTE, (route) =>
+      route.request().method() === "GET" ? route.abort() : route.continue()
+    )
+    await step("เปิด /app/group-buying ขณะ network ล้ม", async () => {
+      await page.goto(`${BACKEND_URL}/app/group-buying`)
+      await expectErrorKeepsTable(page)
+    })
+  })
+
+  test("AC-24: ตอบ 401 → ErrorBoundary พาไป /app/login", async ({ page }) => {
+    await loginAdmin(page)
+    await page.route(CAMPAIGNS_ROUTE, (route) =>
+      route.request().method() === "GET"
+        ? route.fulfill({ status: 401, json: { type: "unauthorized", message: "Unauthorized" } })
+        : route.continue()
+    )
+    await page.goto(`${BACKEND_URL}/app/group-buying`)
+    // จบ test ทันทีหลังถึงหน้า login (spec 08 AC-24)
+    await page.waitForURL(/\/app\/login/)
+  })
+
+  test("AC-24: ตอบสำเร็จแต่ไม่มีแคมเปญ → empty state เดิม ไม่มี gb-campaigns-error", async ({ page, evidence }) => {
+    await loginAdmin(page)
+    await page.route(CAMPAIGNS_ROUTE, (route) =>
+      route.request().method() === "GET"
+        ? route.fulfill({ status: 200, json: { campaigns: [], count: 0, offset: 0, limit: PAGE_SIZE } })
+        : route.continue()
+    )
+    await page.goto(`${BACKEND_URL}/app/group-buying`)
+    await expect(page.getByTestId("gb-campaigns-table")).toContainText(EMPTY_TEXT)
+    await expect(page.getByTestId("gb-campaigns-error")).toHaveCount(0)
+    await evidence("02-list-empty")
   })
 })
