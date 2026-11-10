@@ -4,7 +4,7 @@ Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดส
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
 รอบ 26 2026-11-09: แก้ถ้อยคำกฎ 7(b), 14, AC-18; ADM-15..17, กฎ 19–21, AC-19..21; Q8 ตัดสินแล้ว;
-รอบ 27 2026-11-10: ADM-20, กฎ 24, AC-24; follow-up ADM-21, ADM-22)
+รอบ 27 2026-11-10: ADM-20, กฎ 24, AC-24; follow-up ADM-21, ADM-22; ปิดรอบ 27 2026-11-10: ADM-20 ☑ #335, ADM-21/22 ยังรอ owner สั่งทำ)
 Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้งหมดได้ใช้ component, hook, utility และอื่นที่ medusa ให้แล้วหรือยัง ถ้ายังให้วางแผนปรับใช้ตามที่ medusa มีให้ก่อนเป็นฐาน
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
@@ -438,7 +438,7 @@ Out of scope: แก้ตารางอื่น (→ ADM-21), error ของ
 ### Tasks (รอบ 27)
 | Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
-| ADM-20 | (qa ADM-M-10) สถานะ error แทน empty ของหน้า list group buy (กฎ 24) | `routes/group-buying/page.tsx`, `__tests__/group-buy-pages.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-pages.spec.ts` | ~60 LOC | 1280×800 | AC-24 | PR spec รอบ 27 merge; ไม่บล็อก release v0.1.0 | ไม่ชน CORE-55/EV-16/AF-21; **ชน ADM-15** ที่ `__tests__/group-buy-pages.unit.spec.ts` (ADM-15 เพิ่ม test ของกฎ 19c ไฟล์เดียวกัน, คนละ test) → ตัวที่ merge ทีหลัง rebase; ไม่ชน ADM-16 |
+| ADM-20 | (qa ADM-M-10) สถานะ error แทน empty ของหน้า list group buy (กฎ 24) | `routes/group-buying/page.tsx`, `__tests__/group-buy-pages.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-pages.spec.ts` — ☑ #335 | ~60 LOC | 1280×800 | AC-24 | PR spec รอบ 27 merge; ไม่บล็อก release v0.1.0 | ไม่ชน CORE-55/EV-16/AF-21; **ชน ADM-15** ที่ `__tests__/group-buy-pages.unit.spec.ts` (ADM-15 เพิ่ม test ของกฎ 19c ไฟล์เดียวกัน, คนละ test) → ตัวที่ merge ทีหลัง rebase; ไม่ชน ADM-16 |
 | ADM-21 | (follow-up จากการสำรวจ ADM-20 — ยังไม่สั่งทำ) ตารางอื่นที่ใช้แค่ `data`/`isLoading` จนอาจแสดง empty ตอน API ล้ม: `components/evoucher/pools-table.tsx:45`, `codes-table.tsx:58`, `partners-section.tsx:82`, `components/affiliate/list-table.tsx:22` (Programs/Affiliates/Payouts), `components/group-buy/groups-section.tsx:30`, `group-members.tsx:84` | ตามแถว | — | — | ไม่มี (ต้องเขียน AC ก่อนเริ่ม) | ADM-20, ADM-16 (แตะ `codes-table.tsx`/`partners-section.tsx`), ADM-17 (แตะ `payout-form.tsx` และ query รายการ affiliate); ไม่บล็อก release | — |
 | ADM-22 | (follow-up — ยังไม่สั่งทำ) loader ของหน้า pool (`routes/evouchers/pools/[id]/page.tsx:96`) ล้มแล้ว `ErrorBoundary` แสดง stack trace — source แสดงเฉพาะ `NODE_ENV=development` ต้องยืนยันบน build production ก่อนว่าไม่ใช่ปัญหาจริง | ตามแถว | — | — | ไม่มี (ต้องเขียน AC ก่อนเริ่ม) | none; ไม่บล็อก release | — |
 

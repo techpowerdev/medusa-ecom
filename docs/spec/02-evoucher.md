@@ -1,6 +1,6 @@
 # 02 E-voucher — ขายต่อ voucher code ของพาร์ทเนอร์ ส่งมอบทางอีเมล
 
-สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด; รอบ 12: EV-14, EV-N2, EV-7d, EV-7e; รอบ 13 2026-11-03: EV-N3 (follow-up #201/#205 — กฎข้อ 30, AC-44), ฟอร์ม partner ตรวจ URL ฝั่ง client → ADM-5 ของ spec 08; รอบ 26 2026-11-09: EV-15 (กฎข้อ 31, AC-45 — **บล็อก release v0.1.0**), แก้ถ้อยคำกฎข้อ 28c; รอบ 27 2026-11-10: EV-16 (กฎข้อ 32, AC-46), EV-17 (กฎข้อ 33, AC-47; owner ตอบ Q14 = ก))
+สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด; รอบ 12: EV-14, EV-N2, EV-7d, EV-7e; รอบ 13 2026-11-03: EV-N3 (follow-up #201/#205 — กฎข้อ 30, AC-44), ฟอร์ม partner ตรวจ URL ฝั่ง client → ADM-5 ของ spec 08; รอบ 26 2026-11-09: EV-15 (กฎข้อ 31, AC-45 — **บล็อก release v0.1.0**), แก้ถ้อยคำกฎข้อ 28c; รอบ 27 2026-11-10: EV-16 (กฎข้อ 32, AC-46), EV-17 (กฎข้อ 33, AC-47; owner ตอบ Q14 = ก); ปิดรอบ 27 2026-11-10: ☑ EV-16 #333, EV-17 #337, เพิ่ม EV-18 (review #333 — กฎข้อ 34, AC-48))
 เป้าหมาย (เจ้าของระบบ): ขาย e-voucher จากพาร์ทเนอร์ (Lotus, Big C, ห้างสรรพสินค้า, คาเฟ่…) เราได้รับ
 coupon code จากพาร์ทเนอร์ล่วงหน้า และส่งมอบ 1 code ต่อ 1 หน่วยที่ขายได้ในรูปแบบดิจิทัล
 (อีเมล) การ redeem เกิดขึ้นที่พาร์ทเนอร์ เราไม่ redeem เอง
@@ -232,6 +232,13 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
     (d) จุดที่สร้าง: step ใหม่ที่**ไม่ throw** (แบบ `sendEvoucherDeliveredNotificationStep`) วางต่อจาก step ส่งอีเมลและก่อน release lock — allocation: ใน `when` เดิม ต่อจาก `sendEvoucherDeliveredNotificationStep` เมื่อผล `sent: true` (`allocate-and-deliver-evouchers.ts:106–111`, ก่อน `releaseLockStep` `:114`); resend: ต่อจาก `sendEvoucherResendNotificationStep` (`resend-evoucher-email.ts:51`, ก่อน `releaseEvoucherResendLockStep` `:53`) ซึ่ง throw เมื่ออีเมลล้มจึงไปไม่ถึง step นี้;
     ห้ามใช้ `createOrderShipmentWorkflow.runAsStep` ตรงๆ ใน allocation — ถ้าล้มจะ compensate ย้อนไปยกเลิก fulfillment และปล่อย code ที่ลูกค้าได้รับอีเมลแล้วกลับเข้า pool; ให้ step เรียก `createOrderShipmentWorkflow(container).run(...)` ใน try/catch แล้ว log error ถ้าล้ม (fulfillment ยังยกเลิกได้ — resend ครั้งถัดไปสร้าง shipment ให้); fulfillment ที่ shipped แล้วข้าม (idempotent);
     (e) อีเมลล้ม → ไม่สร้าง shipment (code คง `allocated` ตามกฎข้อ 17 และยกเลิก order ได้ตามกฎข้อ 32)
+34. (ปิดรอบ 27, EV-18 — review #333; ไม่บล็อก release v0.1.0) allocation ข้าม order ที่ถูกยกเลิกแล้ว:
+    (a) ยืนยันจากโค้ดบน develop: `allocate-and-deliver-evouchers.ts:55–73` query order โดยไม่มี `status`/`canceled_at` และไม่ตรวจการยกเลิกก่อน claim; subscriber `evoucher-payment-captured.ts` ก็ไม่ตรวจ —
+        เกิดได้เมื่อ `payment.captured` ถูกประมวลผลหลัง admin ยกเลิก order (subscriber รันใน worker แบบ async; ยกเลิก order ที่ capture แล้วได้เพราะยังไม่มี fulfillment) ไม่ใช่ flow ปกติ;
+    (b) ผลจริงเบากว่าที่ review ระบุ: เมื่อ claim ได้ `createOrderFulfillmentWorkflow` ของ core throw (`throwIfOrderIsCancelled` — `create-fulfillment.js:43`) แล้ว compensation ของ `claimEvoucherCodesStep` คืน code เป็น `available` จึงไม่มี code ค้างกับ order ที่ยกเลิก
+        แต่ยังมี: workflow ล้มพร้อม error log ทุกครั้ง, `evoucher_backordered` ถูกตั้งบน line ของ order ที่ยกเลิกเมื่อทุก line ขาด code (ไม่ถึงขั้น fulfillment จึงไม่ throw) และอีเมล backordered ถึง admin (กฎข้อ 9) ถูกส่งก่อนถึงจุดที่ throw (อีเมล compensate ไม่ได้);
+    (c) แก้: ภายใต้ lock เดิม query `status` ของ order แล้วถ้า `canceled` → ไม่ claim, ไม่ตั้ง/ล้าง flag, ไม่ส่งอีเมลใดๆ, ไม่สร้าง fulfillment, `logger.info` พร้อม `order_id` และ workflow จบสำเร็จ (ไม่ throw) — ถ้าใช้ `when` ต้องตั้งชื่อคงที่ตาม CLAUDE.md;
+    (d) resend (EV-5b) ไม่ต้องแก้: order ที่ยกเลิกไม่มี code `allocated` เหลือหลัง EV-16
 
 ## Acceptance criteria
 - AC-1 Admin import CSV จำนวน 100 code (ซ้ำ 2 รายการ) → 98 `available`, inventory ของ variant +98,
@@ -378,6 +385,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
   Given อีเมลล้ม (notification provider mock ล้มแบบ AC ของกฎข้อ 17) Then fulfillment ไม่มี `shipped_at`, code คง `allocated`, และยกเลิก fulfillment + order ได้ แล้ว code กลับเป็น `available` ตาม AC-46;
   Given resend สำเร็จบน order ที่อีเมลแรกล้ม Then fulfillment มี `shipped_at` (resend ซ้ำอีกครั้งไม่ error และไม่สร้าง shipment ซ้ำ);
   Given การสร้าง shipment ล้ม (mock `createOrderShipmentWorkflow` ให้ throw) Then allocation ไม่ compensate: code คง `delivered`, fulfillment ยังอยู่ และมี log error; AC-7, AC-27, AC-33, AC-46 ยังผ่าน
+- AC-48 (EV-18, กฎข้อ 34) integration http (ต่อจาก `evoucher-order-canceled.spec.ts`; ใช้ notification provider mock และ spy logger จาก container): Given order ที่จ่ายแล้วมี line voucher qty 2 ของ pool P (P มี code `available` ≥ 2) และถูกยกเลิกด้วย `cancelOrderWorkflow` ก่อน allocation
+  When เรียก `allocateAndDeliverEvouchersWorkflow(container).run({ input: { order_id } })` (จำลอง `payment.captured` ที่มาช้า) Then resolve ไม่ throw, ไม่มี code ที่ `order_id` = order นั้น, จำนวน code `available` ของ P เท่าเดิม, order ไม่มี fulfillment, ไม่มี notification ใหม่ (ทั้ง `evoucher.delivered` และอีเมล backordered ถึง admin),
+  line ไม่มี `metadata.evoucher_backordered` และ logger ได้ข้อความ info ที่มี `order_id` — เคส "P ไม่มี code เลย" ต้อง**ล้มบน develop** (flag + อีเมล backordered); Given order ที่ไม่ถูกยกเลิก Then ผลตาม AC-2/AC-47 เดิม; AC-7, AC-27, AC-46, AC-47 ยังผ่าน
 
 ## Non-functional
 - การ allocate รันใน subscriber (worker) ไม่ใช่ใน request ของ checkout
@@ -404,6 +414,7 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 - (รอบ 26) unit jest + integration http: AC-45 (EV-15)
 - (รอบ 27) unit jest + integration http: AC-46 (EV-16) — เขียน integration ให้ล้มบน develop ก่อน (ไม่มี subscriber ของ `order.canceled` สำหรับ e-voucher)
 - (รอบ 27) integration http: AC-47 (EV-17) — เขียนให้ล้มบน develop ก่อน (fulfillment ของ voucher ไม่มี `shipped_at`)
+- (ปิดรอบ 27) integration http: AC-48 (EV-18) — เขียนเคส pool ไม่มี code ให้ล้มบน develop ก่อน
 
 ## Tasks
 | ID | Task | Depends |
@@ -433,8 +444,9 @@ Links: `evoucher_pool ↔ product_variant`, `evoucher_code ↔ order` (สำห
 | EV-7d | (storefront เล็ก, รอบ 12 — #174) cart-totals ของ digital-only ไม่มีแถวค่าจัดส่ง, digital-only คำนวณฝั่ง server, redirect ทุกวิธีชำระ + `setAddresses` ผ่าน `safeCountryCode` (กฎข้อ 28) (AC-42) — ไฟล์: `modules/common/components/cart-totals`, `lib/data/cart.ts`, component ชำระเงิน — ☑ #320 | EV-7c ☑ (#174), CORE-4i (spec 01 — แตะ `lib/data/cart.ts` action เดียวกัน) |
 | EV-7e | (storefront เล็ก, รอบ 12 — #179) หน้า vouchers แบ่งหน้า + `support_contact`, บล็อก partner บน PDP (โหลด/`v_id`/metadata), ลิงก์ partner เฉพาะ http(s) (กฎข้อ 29) (AC-43) — ไฟล์: `app/[countryCode]/(main)/account/@dashboard/vouchers`, `modules/account` (voucher card), บล็อก partner บน PDP, data function — ☑ #217 | EV-7b ☑ (#179) — **เริ่มได้** (∥ EV-14; ชน PDP กับ CORE-25 ตัวที่ merge ทีหลัง rebase) |
 | EV-15 | (backend เล็ก ~100 LOC รวม test, **บล็อก release v0.1.0**, รอบ 26 — qa รอบ 25; ต้นเหตุตั้งแต่ EV-7c และ Medusa 2.22.1 ไม่ลบ shipping method เมื่อเหลือ method เดียว) ลบ shipping method ที่ค้างเมื่อ cart เหลือแต่ line `requires_shipping=false` ผ่าน hook `beforeRefreshingPaymentCollection` (กฎข้อ 31) (AC-45) — ไฟล์: `src/workflows/hooks/refresh-cart-orphan-shipping.ts` ใหม่ (+ unit), `integration-tests/http/evoucher-orphan-shipping.spec.ts` ใหม่ — ☑ #326 | EV-7c ☑ (#174) — **เริ่มได้เมื่อ PR นี้ (#323, ADR-021) merge**; ∥ ทุกตัว (ไม่ชนไฟล์กับ #320 EV-7d — คนละ layer) |
-| EV-16 | (backend เล็ก ~180 LOC, รอบ 27 — qa EV-M-29) subscriber + workflow ปล่อย code `allocated` ของ order ที่ยกเลิก (กฎข้อ 32) (AC-46) — ไฟล์: `src/subscribers/evoucher-order-canceled.ts` (ใหม่) + unit, `src/workflows/evoucher/release-evoucher-codes-for-order.ts` (ใหม่), `integration-tests/http/evoucher-order-canceled.spec.ts` (ใหม่) | PR spec รอบ 27 merge; ไม่ชน CORE-55/AF-21/ADM-20; ไม่บล็อก release v0.1.0 |
-| EV-17 | (backend เล็ก, รอบ 27 — follow-up review PR #332) stock ของ pool ไม่เกินจำนวน code ที่ขายได้หลังยกเลิก fulfillment ของ code `delivered` (กฎข้อ 33, Q14 = ก: shipment `no_notification` หลังอีเมลสำเร็จ) (AC-47) — ไฟล์: `src/workflows/evoucher/steps/` (step ใหม่ สร้าง shipment แบบไม่ throw) + unit, `src/workflows/evoucher/allocate-and-deliver-evouchers.ts`, `src/workflows/evoucher/resend-evoucher-email.ts`, `integration-tests/http/evoucher-order-canceled.spec.ts` | EV-16 merge (ไฟล์ test เดียวกัน); ไม่บล็อก release v0.1.0 |
+| EV-16 | (backend เล็ก ~180 LOC, รอบ 27 — qa EV-M-29) subscriber + workflow ปล่อย code `allocated` ของ order ที่ยกเลิก (กฎข้อ 32) (AC-46) — ไฟล์: `src/subscribers/evoucher-order-canceled.ts` (ใหม่) + unit, `src/workflows/evoucher/release-evoucher-codes-for-order.ts` (ใหม่), `integration-tests/http/evoucher-order-canceled.spec.ts` (ใหม่) — ☑ #333 | PR spec รอบ 27 merge; ไม่ชน CORE-55/AF-21/ADM-20; ไม่บล็อก release v0.1.0 |
+| EV-17 | (backend เล็ก, รอบ 27 — follow-up review PR #332) stock ของ pool ไม่เกินจำนวน code ที่ขายได้หลังยกเลิก fulfillment ของ code `delivered` (กฎข้อ 33, Q14 = ก: shipment `no_notification` หลังอีเมลสำเร็จ) (AC-47) — ไฟล์: `src/workflows/evoucher/steps/` (step ใหม่ สร้าง shipment แบบไม่ throw) + unit, `src/workflows/evoucher/allocate-and-deliver-evouchers.ts`, `src/workflows/evoucher/resend-evoucher-email.ts`, `integration-tests/http/evoucher-order-canceled.spec.ts` — ☑ #337 | EV-16 merge (ไฟล์ test เดียวกัน); ไม่บล็อก release v0.1.0 |
+| EV-18 | (backend เล็ก ~60 LOC รวม test, ปิดรอบ 27 — review #333) allocation ข้าม order ที่ถูกยกเลิก: ไม่ claim/flag/อีเมล/fulfillment, log info, ไม่ throw (กฎข้อ 34) (AC-48) — ไฟล์: `src/workflows/evoucher/allocate-and-deliver-evouchers.ts` (+ `steps/evoucher-order.ts` type หรือ `steps/resolve-evoucher-lines.ts` ถ้าตรวจที่นั่น), `integration-tests/http/evoucher-order-canceled.spec.ts` | none — **เริ่มได้** (EV-16 ☑ #333, EV-17 ☑ #337); ∥ ทุกตัว; ไม่บล็อก release v0.1.0 |
 EV-3 ∥ EV-2 หลัง EV-1; EV-5 ∥ EV-6 หลัง EV-2; EV-10 ∥ EV-4/EV-9 (EV-10 แตะ `void-evoucher-codes.ts`, `evoucher-pool.ts`, `utils/csv.ts`, migration script — ถ้า EV-9 แตะ
 `evoucher-pool.ts` ร่วม ตัวที่ merge ทีหลัง rebase) และต้อง merge ก่อน release ที่มี EV-7 (backfill); EV-9 หลัง EV-6 (แก้ฟอร์มของ EV-6; ถ้า EV-6 ต้องใช้ link ก่อน ให้รวม link เข้า PR นั้นแทน); EV-5b หลัง EV-4 และ EV-6; EV-11 หลัง EV-4 (∥ EV-5b; แตะไฟล์ allocation เดียวกันได้ — ตัวที่ merge ทีหลัง rebase); EV-12 เริ่มได้ทันที (∥ EV-9/EV-13 — EV-12 แตะ job/workflow void + `claimCodesForOrder` ของ service + template สรุป; ไม่แตะ admin UI);
 EV-13 หลัง EV-5b (#111) (∥ EV-12; ถ้า EV-9 แตะ widget order เดียวกัน ตัวที่ merge ทีหลัง rebase);
@@ -450,6 +462,7 @@ EV-7d หลัง CORE-4i (ซึ่งรอ PAY-3b1/PAY-3b2 ของ spec 06
 (รอบ 25 สถานะ, 2026-11-09) ☑: EV-N2 #201 · EV-7e #217 · EV-N3 #219; CORE-4i ☑ (spec 01 — #222 + #305) → EV-7d เริ่มได้ (Depends เดิม); owner ปิด Q1–Q3 ตามค่าเริ่มต้น
 (รอบ 26, 2026-11-09) EV-15 ☐ **บล็อก release v0.1.0 — เริ่มได้เมื่อ PR นี้ merge** (Q13 = ก, ADR-021); กฎข้อ 28c แก้ถ้อยคำ (ไม่เปลี่ยนพฤติกรรม EV-7d)
 (ปิดรอบ 26, 2026-11-09) EV-7d ☑ #320 · EV-15 ☑ #326
+(ปิดรอบ 27, 2026-11-10) EV-16 ☑ #333 · EV-17 ☑ #337; ใหม่: EV-18 เริ่มได้ทันที (review #333 — กฎข้อ 34)
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 

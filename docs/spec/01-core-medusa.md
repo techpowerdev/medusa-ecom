@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+สถานะ: accepted (ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
 รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
@@ -2159,7 +2159,7 @@ none (ไม่แก้หน้า; ข้อความ error ของก�
   Given order ที่มี attribution ค่าคอม เมื่อรับของครบ Then มี entry ใหม่สถานะ `reversed` เหตุผล `returned` ยอดตามสัดส่วน (กฎ 28c ของ spec 05) — **ล้มบน develop**
 - AC-152 (CORE-55, กฎข้อ 113a) Given ทุกเคส `location_id` เดิมใน `store-returns-overrides.spec.ts` (ค่าใดก็ได้ รวม `null`) When POST Then 400 `invalid_data`, ไม่มี return และ test เดิมผ่านโดยไม่แก้; unit `return-location.unit.spec.ts`: ตั้ง `req.validatedBody.location_id` จาก Query ไม่อ่าน `req.body.location_id` แล้วเรียก `next()`; chain ของ `/store/returns` จบด้วย `validateStoreReturnWindow` → `assignStoreReturnLocation`
 - AC-153 (CORE-55, กฎข้อ 113b–c) Given return option ที่ fulfillment set ไม่มี link กับ location When POST Then 400 `invalid_data` และไม่มี return (test กันถอย — **ผ่านบน develop อยู่แล้ว** ไม่นับเป็น test ที่ต้อง fail ก่อน); Given variant `manage_inventory=true` ที่ไม่มี level ที่ location ของ option (order ผูกกับ level ที่ location อื่น) When POST Then 400 `invalid_data` ข้อความตามกฎข้อ 113c, ไม่มี return และไม่มี fulfillment ใหม่; Given variant `manage_inventory=false` When ขอคืนและรับของครบ Then 200, return มี `location_id`, confirm 200 และ inventory ไม่เปลี่ยน
-- AC-154 (CORE-55) e2e ใหม่ `e2e/core-55-return-receive.spec.ts` (`ADMIN_UI_OPTIONS`, 1280×800, ใช้สินค้าของ test เอง `manage_inventory=true` พร้อม level ที่ location ของ return option ลบใน `afterAll`): Given A มี order ที่ fulfill + ship แล้ว When A ขอคืนผ่านหน้าเว็บ (`order-return-button` → `return-item-quantity` → `return-submit-button`, เห็น `order-return-success`) แล้ว `loginAdmin` เปิด `/app/orders/<id>` คลิก `a[href$="/orders/<id>/returns/<return_id>/receive"]`, รอ POST `/admin/returns/<return_id>/receive` 200, กรอก `input[name="items.0.quantity"]` = 1 แล้ว blur, รอ POST `/receive-items` 200, คลิก `[role="dialog"] button[type="submit"]` Then POST `/receive/confirm` ตอบ 200, `GET /admin/returns/<return_id>` ได้ `status=received` และ `items[0].received_quantity=1`, stock +1, และลิงก์ `.../receive` บนหน้า order หายไป (qa บันทึก ≤ 5 รูปใน `REPORT.md`) — **ล้มบน develop**; หน้า order เป็นของ Medusa ใส่ `data-testid` ไม่ได้ จึงหา element ด้วย attribute แบบ `loginAdmin` ไม่ match ข้อความ
+- AC-154 (CORE-55) e2e ใหม่ `e2e/core-55-return-receive.spec.ts` (`ADMIN_UI_OPTIONS`, 1280×800, ใช้สินค้าของ test เอง `manage_inventory=true` พร้อม level ที่ location ของ return option ลบใน `afterAll`): Given A มี order ที่ fulfill + ship แล้ว When A ขอคืนผ่านหน้าเว็บ (`order-return-button` → `return-item-quantity` → `return-submit-button`, เห็น `order-return-success`) แล้ว `loginAdmin` เปิด `/app/orders/<id>` คลิก `a[href$="/orders/<id>/returns/<return_id>/receive"]` แล้วรอ POST `/admin/returns/<return_id>/receive` 200 และ POST `/admin/returns/<return_id>/receive-items` 200 — **ทั้งสอง request drawer ของ dashboard 2.22.1 ยิงเองตอนเปิด** (`order-receive-return-*.mjs`: `initiateReceiveReturn` แล้ว `addReceiveItems` ด้วยจำนวนเต็มของทุก item ใน return; แก้ถ้อยคำปิดรอบ 27 ตาม nit 3 ของ review #336 — เดิมเขียนว่ากรอกจำนวนแล้ว blur จึงยิง `/receive-items`), ตรวจ `input[name="items.0.quantity"]` มีค่า 1 (return ขอคืน 1 ชิ้น — ไม่ต้องกรอก; การแก้จำนวนแล้ว blur ยิง `/receive-items/<action_id>` ซึ่ง AC นี้ไม่ต้องใช้), คลิก `[role="dialog"] button[type="submit"]` Then POST `/receive/confirm` ตอบ 200, `GET /admin/returns/<return_id>` ได้ `status=received` และ `items[0].received_quantity=1`, stock +1, และลิงก์ `.../receive` บนหน้า order หายไป (qa บันทึก ≤ 5 รูปใน `REPORT.md`) — **ล้มบน develop**; หน้า order เป็นของ Medusa ใส่ `data-testid` ไม่ได้ จึงหา element ด้วย attribute แบบ `loginAdmin` ไม่ match ข้อความ
 
 ### Non-functional (รอบ 27)
 - เพิ่ม query อ่าน 1–2 ครั้งต่อการขอคืน ไม่เพิ่ม infra; ไม่มี concurrency ใหม่ (return ยังสร้างใน workflow ของ core)
@@ -2176,10 +2176,63 @@ TDD: เขียน integration AC-150/151, เคส variant ไม่มี l
 ### Tasks (รอบ 27)
 | ID | Task | ไฟล์ที่แตะ (`apps/backend/` ยกเว้นระบุ) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|----|---------|------|
-| CORE-55 | **บล็อก release v0.1.0** — server กำหนด `location_id` ของ return จาก option + ปฏิเสธเมื่อหา location/level ไม่ได้ (กฎข้อ 113) | `src/api/store/ownership/return-location.ts` (ใหม่) + unit, `src/api/store/ownership/middlewares.ts`, `src/api/store/ownership/__tests__/return-window.unit.spec.ts`, `src/lib/__tests__/store-ownership.unit.spec.ts`, `integration-tests/http/store-returns-receive.spec.ts` (ใหม่), `apps/storefront/e2e/core-55-return-receive.spec.ts` (ใหม่; ถ้าใช้ `fulfillAndShip` ซ้ำให้ย้ายจาก `core-20-return-request.spec.ts` ไป `e2e/support/medusa.ts`) | ~350 LOC | AC-150..154 | PR spec นี้ merge + **ADR-022 accepted**; qa ผ่านปุ่มจริงก่อน merge | ไม่ชน EV-16/AF-21/ADM-20 |
+| CORE-55 | **บล็อก release v0.1.0** — server กำหนด `location_id` ของ return จาก option + ปฏิเสธเมื่อหา location/level ไม่ได้ (กฎข้อ 113) | `src/api/store/ownership/return-location.ts` (ใหม่) + unit, `src/api/store/ownership/middlewares.ts`, `src/api/store/ownership/__tests__/return-window.unit.spec.ts`, `src/lib/__tests__/store-ownership.unit.spec.ts`, `integration-tests/http/store-returns-receive.spec.ts` (ใหม่), `apps/storefront/e2e/core-55-return-receive.spec.ts` (ใหม่; ถ้าใช้ `fulfillAndShip` ซ้ำให้ย้ายจาก `core-20-return-request.spec.ts` ไป `e2e/support/medusa.ts`) — ☑ #336 | ~350 LOC | AC-150..154 | PR spec นี้ merge + **ADR-022 accepted**; qa ผ่านปุ่มจริงก่อน merge | ไม่ชน EV-16/AF-21/ADM-20 |
 
 ### Open questions (รอบ 27)
 - Q-C5 ✅ owner เลือก ADR-022 ทางเลือก ก (middleware ตั้ง `req.validatedBody.location_id` ฝั่ง server) 2026-11-10; ยืนยันแล้วว่าเป็นบั๊กของ Medusa ไม่ใช่การตั้งใจปิด
+
+## Follow-up ปิดรอบ 27 (2026-11-10)
+ที่มา: qa #336 D-1 (CORE-55) — ลูกค้าเปิดสองแท็บแล้วกดขอคืน line qty 1 พร้อมกัน → ได้ return `requested` 2 รายการ; stock ไม่เพิ่มเกิน (รับได้แค่ตัวเดียว) แต่แอดมินเจอ return ค้างที่รับของไม่ได้
+ต้นเหตุ (ตรวจโค้ด 2.22.1): `createAndCompleteReturnOrderWorkflow` ไม่มี `acquireLockStep` และ step ตรวจ (`create-complete-return.js:152–155`) ไม่ตรวจจำนวน — จำนวนที่ขอคืนได้ตรวจใน Order module ตอนคำนวณ action `RETURN_ITEM`
+(`@medusajs/order/dist/utils/actions/return-item.js:28–31`: `fulfilled − (return_requested + received + dismissed)` → 400 `invalid_data`) ซึ่งถูกเมื่อ request มาทีละตัว แต่สอง request ที่อ่าน order พร้อมกันผ่านทั้งคู่
+Status: draft (รอ owner ตอบ Q-C6)
+Out of scope: แก้/patch `@medusajs/core-flows`, return ที่สร้างจาก Admin, ล้าง return ค้างของ dev (spec 02 Q12 — admin ยกเลิกเองได้ที่หน้า order)
+
+### What Medusa already gives us (ปิดรอบ 27)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ตรวจจำนวนที่ขอคืนได้ | Order module action `RETURN_ITEM` (`return-item.js:28–31`) — 400 `invalid_data` เมื่อเกิน | ใช้ตามเดิม — แค่ทำให้ request ของ order เดียวกันวิ่งทีละตัว |
+| lock แบบกระจาย | Locking module (`Modules.LOCKING`, provider Redis ที่ใช้อยู่) + `acquireLockStep`/`releaseLockStep` ของ core-flows | ใช้ตามเดิม (ไม่เพิ่ม infra) |
+| สร้าง return จาก store | `POST /store/returns` + `createAndCompleteReturnOrderWorkflow` | ใช้ตามเดิมหรือห่อด้วย lock — ทางเลือกตาม Q-C6 |
+
+### Data model / Workflows / API routes
+none ใหม่ (ขึ้นกับ Q-C6: ทาง ก = middleware ใหม่ใน chain `/store/returns`; ทาง ข = route override + workflow ห่อ); `POST /store/returns` ผลใหม่คือ request ที่แพ้ race ตอบ 4xx ตามกฎข้อ 114
+
+### Business rules (ปิดรอบ 27)
+114. (CORE-56 — qa #336 D-1; วิธีตาม Q-C6) `POST /store/returns` ของ order เดียวกันต้องไม่สร้าง return เกินจำนวนที่ขอคืนได้แม้ยิงพร้อมกัน:
+    (a) request ของ order เดียวกันถูกทำทีละตัว (lock key `store-return:<order_id>`, `ownerId` ต่อ request, TTL ≥ เวลาของ workflow) — ตัวที่ได้ lock ทีหลังเห็น `return_requested_quantity` ใหม่แล้ว Order module ปฏิเสธเอง (400 `invalid_data`);
+    (b) รอ lock ไม่เกิน timeout สั้น (≤ 5 วินาที) — เกินแล้วตอบ 409 ไม่สร้าง return; error ของ Redis ไม่ถูกกลบเป็น 409 (แบบกฎข้อ 21 ของ spec 02);
+    (c) release lock ทุกทาง (สำเร็จ, 4xx, 5xx, client ตัดการเชื่อมต่อ) และไม่ลบ lock ของ owner อื่น;
+    (d) order คนละใบไม่รอกัน; request ที่ไม่ผ่าน middleware ก่อนหน้า (auth/ownership/option/window/location) ไม่ถือ lock
+
+### Acceptance criteria (ปิดรอบ 27)
+- AC-155 (CORE-56, กฎข้อ 114) integration http ต่อจาก `integration-tests/http/store-returns-receive.spec.ts` (token ลูกค้าเจ้าของ order): Given order ที่มี line `manage_inventory=true` qty 1 fulfill + ship แล้ว When ยิง `POST /store/returns` ขอคืน 1 ชิ้นสองครั้งพร้อมกัน (`Promise.allSettled`, ทำซ้ำ 5 รอบด้วย order ใหม่) Then ทุกรอบได้ 200 หนึ่งตัวและอีกตัว 400 `invalid_data` (หรือ 409 ตามกฎข้อ 114b) — **ล้มบน develop**, `query.graph` ของ return ของ order นั้นมี `status=requested` 1 รายการ และ `items.detail.return_requested_quantity` = 1;
+  Given ยิงทีละครั้ง Then ครั้งที่สอง 400 `invalid_data` (ผ่านบน develop อยู่แล้ว — กันถอย); Given order สองใบของลูกค้าคนเดียวยิงพร้อมกัน Then 200 ทั้งคู่; Given request แรกล้มด้วย 400 (เช่น option ผิด) Then request ถัดไปของ order เดียวกันได้ 200 ทันที (lock ไม่ค้าง);
+  unit: lock ถูก release เมื่อ handler ถัดไป throw และเมื่อ response `close` ก่อน `finish` (ทาง ก) หรือ compensation ของ workflow (ทาง ข); AC-150..153 ยังผ่าน
+
+### Test plan (ปิดรอบ 27)
+| ระดับ | AC |
+|---|---|
+| integration http | AC-155 (เขียนเคสพร้อมกันให้ล้มบน develop ก่อน) |
+| unit jest | AC-155 ส่วน release lock |
+
+### Tasks (ปิดรอบ 27)
+| ID | Task | ไฟล์ที่แตะ (`apps/backend/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-56 | (qa #336 D-1) lock ต่อ order บน `POST /store/returns` กัน return ซ้ำจากสองแท็บ (กฎข้อ 114) | ทาง ก: `src/api/store/ownership/return-lock.ts` (ใหม่) + unit, `src/api/store/ownership/middlewares.ts`, unit ที่ล็อก chain (`return-location.unit.spec.ts:156–159`, `return-window.unit.spec.ts:94–98`, `src/lib/__tests__/store-ownership.unit.spec.ts`); ทาง ข: `src/api/store/returns/route.ts` (override) + `src/workflows/` (ใหม่); ทั้งสองทาง: `integration-tests/http/store-returns-receive.spec.ts` | ~150 LOC | AC-155 | **owner ตอบ Q-C6** (ทาง ข ต้องมี ADR ก่อนตามข้อห้ามข้อ 1 เพราะแทน route ของ core); CORE-55 ☑ #336; ไม่บล็อก release v0.1.0 | ไม่ชนงานที่เปิดอยู่ |
+
+### Open questions (ปิดรอบ 27)
+- Q-C6 (CORE-56, กฎข้อ 114) กัน return ซ้ำจาก `POST /store/returns` ที่ยิงพร้อมกันด้วยทางใด:
+  (ก) **[แนะนำ]** middleware ตัวสุดท้ายของ chain `/store/returns` (ต่อจาก `assignStoreReturnLocation`) ขอ lock `store-return:<order_id>` ผ่าน Locking module แล้ว release เมื่อ response `finish`/`close` — ไม่แทน route ของ core, ใช้ validation จำนวนของ Order module เดิม;
+  ข้อเสีย: lock คร่อมจาก middleware ถึง route handler โดยอาศัย event ของ response (ต้อง test ทางที่ client ตัดการเชื่อมต่อ) และถ้า process ตายต้องรอ TTL
+  (ข) override route `POST /store/returns` ให้เรียก workflow ของเราที่ห่อ `acquireLockStep` → `createAndCompleteReturnOrderWorkflow.runAsStep` → `releaseLockStep` (แบบ lock ของ e-voucher/affiliate) — lock อยู่ใน workflow มี compensation ชัด;
+  ข้อเสีย: แทน route ของ core (ต้องคง validator/response shape เดิม, ตรวจซ้ำทุก bump) จึงต้องเขียน ADR และได้รับอนุมัติก่อน
+  (ค) middleware ปฏิเสธ 409 ถ้า order มี return `requested` อยู่แล้ว (ไม่มี lock) — ง่ายที่สุดแต่ไม่ปิด race (สองแท็บผ่านการตรวจพร้อมกันได้) และห้ามขอคืน line อื่นของ order เดียวกันจนกว่าจะรับของรอบแรก
+  (ง) ยอมรับใน v1 ไม่มี task — admin ยกเลิก return ที่ค้างเองที่หน้า order ของ dashboard (stock ไม่เพี้ยนตามผล qa)
+- Q-C7 (ค่าส่ง — จาก qa รอบ 27, ยังไม่มีที่บันทึก) ราคาเดียวกันแสดงสองค่า: ขั้นเลือกวิธีจัดส่งแสดงราคา option ฿10 (รวม VAT) แต่ `cart-totals` แถว "ค่าจัดส่ง" แสดง `shipping_subtotal` ฿9.35 (ก่อน VAT — ตามกฎข้อ 81b ที่ให้ทุกแถวใช้ฐานก่อนภาษีแล้วบวก `tax_total` ให้รวมได้ `total`) ลูกค้าอาจคิดว่าราคาไม่ตรง:
+  (ก) **[แนะนำ]** แถวยอดรวมใช้ฐานรวม VAT ทั้งชุด: `item_total` ("ยอดรวมสินค้า (รวม VAT)" แบบกฎข้อ 81a), ส่วนลด `discount_total`, ค่าจัดส่ง `shipping_total` (฿10) และแถว "รวม VAT แล้ว" `tax_total` เป็นข้อมูลไม่บวกซ้ำ — แก้กฎข้อ 81b, task storefront เล็ก (`cart-totals` + e2e ยอดรวม) ~80 LOC;
+  (ข) คงตัวเลขเดิม เปลี่ยนป้ายเป็น "ค่าจัดส่ง (ก่อน VAT)" และป้ายขั้นจัดส่งบอกว่า "รวม VAT" — งานน้อยแต่ลูกค้ายังเห็นสองตัวเลข;
+  (ค) คงเดิม — ตัดสินพร้อม Q-F1 (ราคาค่าส่งจริง) ใน go-live checklist
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
