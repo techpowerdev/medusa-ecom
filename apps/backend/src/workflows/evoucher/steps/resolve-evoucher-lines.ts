@@ -6,12 +6,17 @@ import { EvoucherLine, EvoucherOrder, EvoucherOrderItem } from "./evoucher-order
 export const resolveEvoucherLinesStep = createStep(
   "resolve-evoucher-lines",
   async (input: { order: EvoucherOrder }, { container }) => {
+    const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+    // กฎข้อ 34: order ที่ถูกยกเลิกแล้ว → ไม่มี line ให้ allocate (ไม่ claim/flag/อีเมล/fulfillment) และไม่ throw
+    if (input.order.status === "canceled") {
+      logger.info(`evoucher: order ${input.order.id} is canceled — skipping e-voucher allocation`)
+      return new StepResponse([] as EvoucherLine[])
+    }
     const items = (input.order.items ?? []).filter((i): i is EvoucherOrderItem => !!i?.variant_id)
     if (!items.length) {
       return new StepResponse([] as EvoucherLine[])
     }
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
-    const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
     const { data: pools } = await query.graph({
       entity: "evoucher_pool",
       fields: ["id", "name", "variant_id"],
