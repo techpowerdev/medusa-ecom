@@ -253,8 +253,8 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee /etc/apt/sources.list.d/stripe.list
           sudo apt-get update -qq && sudo apt-get install -y -qq stripe
       - name: Forward Stripe webhooks to backend (cards + PromptPay)
-        # PAY-2 (spec 06 AC-10): `stripe listen` รับ --forward-to ได้ปลายทางเดียวต่อ process และ --print-secret
-        # พิมพ์ secret แล้วจบ (ไม่ listen) → ดึง secret ครั้งเดียว แล้วเปิด listener แยกต่อ endpoint (secret เดียวกัน)
+        # PAY-2 (spec 06 AC-10): --print-secret พิมพ์ secret แล้วจบ (ไม่ listen) → ดึง secret ก่อน แล้วเปิด listener
+        # เดียวไป /hooks/payment/stripe_stripe (ADR-023: endpoint เดียวรับ event ของทั้งบัตรและ PromptPay)
         # skip ได้เฉพาะเมื่อไม่มี secret ทั้งคู่; มีตัวเดียวหรือไม่ใช่ test key → fail (e2e/support/stripe-env.ts ตรวจซ้ำ)
         env:
           STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
