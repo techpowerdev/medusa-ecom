@@ -9,7 +9,8 @@ import { useActionState } from "react"
 
 // AF-8a: login/register ของ portal (actor `affiliate`) — ไม่เกี่ยวกับบัญชีลูกค้า
 // AF-22 (spec 05 กฎ 46): ส่งผ่าน submitWithoutReset แทน <form action=> เพื่อคงค่าที่กรอกหลัง error
-// ปุ่มกันกดซ้ำจาก isPending ของ useActionState (useFormStatus ไม่เห็น submit แบบนี้)
+// ปุ่มกันกดซ้ำจาก isPending ของ useActionState โดยตรง — สถานะของ action ที่เรียกจริง ไม่พึ่ง useFormStatus
+// (ซึ่งเห็น pending ได้เฉพาะเมื่อ submit ถูก preventDefault + startTransition ใน event เดียวกัน ดู submit-without-reset.ts)
 export default function AffiliateAuthForms({ countryCode }: { countryCode: string }) {
   const [loginState, loginAction, loginPending] = useActionState(affiliateLogin, null)
   const [registerState, registerAction, registerPending] = useActionState(affiliateRegister, null)
