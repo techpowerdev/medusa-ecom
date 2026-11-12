@@ -118,9 +118,8 @@ Running 1 test using 1 worker
       - Expect "toContainText" locator('[data-testid="affiliate-product-card"][data-handle="sweatshirt"]').getByTestId('affiliate-rate') with timeout 5000ms
       - waiting for locator('[data-testid="affiliate-product-card"][data-handle="sweatshirt"]').getByTestId('affiliate-rate')
         14 × locator resolved to <p class="text-large-semi" data-testid="affiliate-rate">20%</p>
-4:    Error: expect(locator).toContainText(expected) failed
-26:    test-results/affiliate-portal-AF-8a-log-57c7c-้า-และแชร์ลิงก์-AC-9-AC-35--chromium/test-failed-1.png
-34:  1 failed
+    test-results/affiliate-portal-AF-8a-log-57c7c-้า-และแชร์ลิงก์-AC-9-AC-35--chromium/test-failed-1.png
+  1 failed
 
 ### หลังแก้ (ปิดโปรแกรม E2E AF-8 * ที่ยัง published ก่อนสร้างชุดใหม่) — run 1 บน DB ที่มีโปรแกรมเก่าที่ทำให้ล้มข้างบน
 Running 4 tests using 1 worker
