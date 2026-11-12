@@ -17,13 +17,13 @@
   (`.github/workflows/ci.yml:269-286`) ผลคือใน CI ทุก event ถูกประมวลผล**สองรอบ** (หนึ่งรอบต่อ listener)
 
 ### อาการจริงใน prod เมื่อมีสอง endpoint (ตรวจกับโค้ด 2.22.1 — แก้ข้อสันนิษฐานเดิม)
-- route `POST /hooks/payment/:provider` **ไม่ตรวจ signature** แค่ emit event `payment.webhook_received` แล้วตอบ 200 เสมอ
+- route `POST /hooks/payment/:provider` **ไม่ตรวจ signature** แค่ emit event `payment.webhook_received` แล้วตอบ 200 (ตอบ 400 เฉพาะเมื่อ emit ล้ม — route.js:25-27)
   (`@medusajs/medusa/dist/api/hooks/payment/[provider]/route.js:5-30`) → Stripe เห็น 200 ทั้งสอง endpoint **ไม่ retry และไม่ disable endpoint**
   (สอดคล้องกับ ADR-015 บริบทข้อ 4 "Stripe ได้ 200 จึงไม่ส่ง webhook ซ้ำ")
 - การตรวจ signature เกิดใน subscriber แบบ async: core subscriber `payment-webhook-handler` (`@medusajs/medusa/dist/subscribers/payment-webhook.js:13`) throw
   → event bus แบบ Redis retry subscriber ที่ล้มตาม `attempts` (ค่าเริ่มต้น `webhook_retries || 3` ที่ route.js:22; กลไก retry ที่
-  `@medusajs/event-bus-redis/dist/services/event-bus-redis.js:46-106`) แล้วทิ้ง; subscriber `payment-webhook-orphan` ของเรา log warn `skipped` ทุก event
-- endpoint ที่ secret ตรงยังรับ event ของ**ทุก** PI (ทั้งบัตรและ PromptPay) และประมวลผลถูก (ดูการตรวจข้อ 1) → การชำระเงินไม่พัง แต่มี error/warn ทุก event × จำนวน retry
+  `@medusajs/event-bus-redis/dist/services/event-bus-redis.js:46-106`) แล้วทิ้ง; subscriber `payment-webhook-orphan` ของเรา log warn `skipped` ครั้งเดียวต่อ event (return ไม่ throw จึงไม่ retry)
+- endpoint ที่ secret ตรงยังรับ event ของ**ทุก** PI (ทั้งบัตรและ PromptPay) และประมวลผลถูก (ดูการตรวจข้อ 1) → การชำระเงินไม่พัง แต่มี error ของ core subscriber ทุก event × จำนวน retry (+ warn ของ orphan ครั้งเดียวต่อ event)
   ซ่อน error จริง, alert จาก log รก และเปลืองงานของ worker — ถ้าใครตั้ง secret ผิดตัวโดยไม่รู้ ก็ไม่มีอะไรเตือนนอกจาก log
 
 ## การตรวจกับโค้ด Medusa 2.22.1 (node_modules จริง)
@@ -67,7 +67,7 @@
 
 ## ผลที่ตามมา
 - เอกสาร/CI ต้องแก้ตาม task PAY-7 (spec 06): `docs/ops/production.md` (หัวข้อ "Stripe webhooks" + checklist ข้อ 2 + หมายเหตุ `provider` ใน runbook ADR-015),
-  spec 06 บรรทัด 8-9, 36 และ AC-10, comment `medusa-config.ts:67-68`, `ci.yml` (listener เดียว), `docs/design/sequence-diagrams.md:189`,
+  spec 06 บรรทัด 8-9, 36 และ AC-10, comment `medusa-config.ts:67-68`, `ci.yml` (listener เดียว), `docs/design/sequence-diagrams.md:189`, `docs/spec/07-scaling-ops.md:51` ("endpoint ทั้งสอง" → endpoint เดียว),
   comment `STRIPE_WEBHOOK_SECRET` ใน `apps/backend/.env.example:49` (ระบุ endpoint เดียว) — evidence เก่าใน `docs/evidence/payments/` ไม่แก้ (บันทึกประวัติ)
 - ความเสี่ยง: Medusa รุ่นถัดไปอาจเพิ่มการเช็กว่า provider ของ webhook ต้องตรงกับ session → PromptPay ไม่ได้ order (เงินถูกตัด ไม่มี order, alert ของ ADR-015 D ไม่ช่วยเพราะ
   session ยังอยู่) กันด้วย integration test ของ PAY-7 (session PromptPay + webhook path `stripe_stripe` → order 1 รายการ) ที่ต้องผ่านทุกครั้งที่ bump `@medusajs/*`
