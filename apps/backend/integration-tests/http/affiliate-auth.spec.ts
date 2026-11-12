@@ -1,6 +1,6 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { createCustomerAccountWorkflow } from "@medusajs/medusa/core-flows"
-import { Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { AFFILIATE_MODULE } from "../../src/modules/affiliate"
 import type AffiliateModuleService from "../../src/modules/affiliate/service"
 
@@ -123,6 +123,32 @@ medusaIntegrationTestRunner({
 
         expect(response.status).toEqual(200)
         expect(response.data.affiliate.code).toEqual("admin1")
+      })
+
+      // AF-M-03 / AC-15 (กฎ 13, แก้รอบ 28): email มาจาก auth identity เท่านั้น — body ที่ส่ง email → 400 และไม่สร้างแถว
+      it("rejects an email field in the register body and creates no affiliate (AC-15)", async () => {
+        const { data } = await api.post("/auth/affiliate/emailpass/register", AFFILIATE)
+
+        const result = await api
+          .post("/affiliate/register", { name: "Ann", code: "ann", email: "other@example.com" }, bearer(data.token))
+          .then(
+            (res) => new Error(`expected 400 but got ${res.status} ${JSON.stringify(res.data)}`),
+            (e) => ({ status: e.response?.status, body: e.response?.data })
+          )
+        if (result instanceof Error) {
+          throw result
+        }
+
+        expect(result.status).toEqual(400)
+        expect(result.body.type).toEqual("invalid_data")
+        expect(result.body.message).toContain("Unrecognized fields: 'email'")
+        const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
+        const { data: rows } = await query.graph({
+          entity: "affiliate",
+          fields: ["id"],
+          filters: { email: [AFFILIATE.email, "other@example.com"] },
+        })
+        expect(rows).toHaveLength(0)
       })
 
       it("requires authentication to register an affiliate", async () => {
