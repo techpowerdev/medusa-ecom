@@ -48,7 +48,7 @@
      "กลุ่มสำเร็จ" ของ GB-4 (spec 04) — ไม่ตั้ง = GB-4 (#89) ใส่ลิงก์เป็น path อย่างเดียว (ลูกค้ากดจากอีเมลไม่ได้) และ production มีเพียง
      `storefrontUrlWarning` → fail-fast ใน OPS-7 (AC-17)
    - `OPS_ALERT_EMAIL` — mailbox รับ alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` (ADR-015, spec 06 กฎข้อ 7D, PAY-6; แยกจาก `EVOUCHER_ADMIN_EMAIL`)
-   - Stripe webhook endpoint ทั้งสองต้องสมัคร event ตามรายการใน `docs/ops/production.md` หัวข้อ "Stripe webhooks" (OPS-10)
+   - Stripe webhook endpoint เดียว (`/hooks/payment/stripe_stripe`, ADR-023) ต้องสมัคร event ตามรายการใน `docs/ops/production.md` หัวข้อ "Stripe webhooks" (OPS-10)
 10. Runbook ลำดับ release: migrate → รีสตาร์ต backend (server + worker, reindex search ตอนบูต) → ตรวจ index → ปล่อย storefront
     (`docs/ops/production.md` หัวข้อ "ลำดับ release"; spec 01 กฎข้อ 15) — เพิ่มใน docs 2026-10-26 ไม่มี task โค้ด
 11. (รอบ 21 2026-11-04 — qa #285 O-1, หมายเหตุ ไม่มี task) **admin และ store API ของ prod ต้องอยู่หลัง HTTPS**: เมื่อ `NODE_ENV=production` (หรือ staging) Medusa ตั้ง session cookie

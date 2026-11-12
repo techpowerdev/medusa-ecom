@@ -1,0 +1,38 @@
+PAY-7 (spec 06 AC-8, AC-10; ADR-023) — ผลทดสอบในเครื่อง 2026-11-12, Node v22.23.3, base origin/develop 80d46366
+
+## ไม่มีขั้น Red โดยตั้งใจ
+เคส session pp_stripe-promptpay_stripe + webhook POST /hooks/payment/stripe_stripe เป็น regression guard ของ ADR-023 (ตอน bump @medusajs/*)
+ADR-023 ตรวจโค้ด 2.22.1 แล้วว่าผ่านอยู่แล้ว — test นี้ผ่านบนโค้ดปัจจุบันตั้งแต่ครั้งแรก ไม่มีการแก้โค้ด production
+
+## integration (http): stripe-webhook.spec.ts + payment-webhook-orphan.spec.ts
+PASS integration-tests/http/stripe-webhook.spec.ts (54.531 s)
+    ✓ registers Stripe card and PromptPay providers and enables both in region Thailand (194 ms)
+    POST /hooks/payment/stripe_stripe with session pp_stripe_stripe (AC-8, ADR-023)
+      ✓ creates exactly one order with one capture when the same succeeded event is delivered repeatedly (14620 ms)
+      ✓ ignores events with an invalid signature (8703 ms)
+    POST /hooks/payment/stripe_stripe with session pp_stripe-promptpay_stripe (AC-8, ADR-023)
+      ✓ creates exactly one order with one capture when the same succeeded event is delivered repeatedly (14341 ms)
+      ✓ ignores events with an invalid signature (8798 ms)
+PASS integration-tests/http/payment-webhook-orphan.spec.ts (6.861 s)
+      ✓ listens to payment.webhook_received with its own subscriberId (218 ms)
+      ✓ session not found (payment_intent.succeeded) → error log + one email to OPS_ALERT_EMAIL with the PI id (294 ms)
+      ✓ session not found (payment_intent.amount_capturable_updated) → error log + one email to OPS_ALERT_EMAIL with the PI id (173 ms)
+      ✓ session exists → no log and no email (173 ms)
+      ✓ not a captured/authorized action → no log and no email (133 ms)
+      ✓ invalid signature → subscriber does not throw, logs a warning, no alert (134 ms)
+      ✓ OPS_ALERT_EMAIL not set → error log, warn log, no notification (168 ms)
+      ✓ notification provider throws → subscriber does not throw and logs an error (144 ms)
+Test Suites: 2 passed, 2 total
+Tests:       13 passed, 13 total
+
+## unit (backend test:unit)
+Test Suites: 105 passed, 105 total
+Tests:       1264 passed, 1264 total
+
+## tools/ci/check-stripe-events.sh + test
+ok: Stripe webhook events ตรงกัน (8 event)
+check-stripe-events: 9/9 passed
+
+## pnpm lint && pnpm typecheck
+lint: exit 0 (0 errors; warning เดิมของ storefront 30 รายการ ไม่เกี่ยวกับ task)
+typecheck: exit 0
