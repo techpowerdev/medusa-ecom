@@ -18,7 +18,8 @@ export function SubmitButton({
   size?: "small" | "medium" | "large"
   className?: string
   disabled?: boolean
-  /** AF-22: pending จากภายนอก (ค่าที่สามของ useActionState) เมื่อฟอร์มส่งด้วย submitWithoutReset ซึ่ง useFormStatus ไม่เห็น */
+  /** AF-22: pending จากภายนอก (ค่าที่สามของ useActionState) เมื่อฟอร์มส่งด้วย submitWithoutReset — ใช้แทน useFormStatus
+   * เพื่อผูกกับสถานะของ action โดยตรง (useFormStatus เห็น submit แบบนี้ได้ แต่ขึ้นกับกลไก host transition ของ React DOM) */
   isLoading?: boolean
   "data-testid"?: string
 }) {

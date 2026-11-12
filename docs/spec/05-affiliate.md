@@ -327,7 +327,7 @@ Payout
     (e) ไม่ backfill: แถวและลิงก์ `/r/<code>` ที่มีอยู่แล้วทำงานต่อ; AF-M-03 ไม่อยู่ในกฎนี้ (ตัดสินรอบ 28 → กฎ 13/AC-15)
 46. (ปิดรอบ 27, AF-22 — qa #334; ตามแนว spec 01 กฎข้อ 61/CORE-23b) ฟอร์มสมัครและเข้าสู่ระบบของ portal (`modules/affiliate/components/auth-forms/index.tsx`) ใช้ `<form action={...}>` ของ React 19 ซึ่ง reset ฟอร์มหลัง action แม้ล้ม → หลัง error ผู้ใช้ต้องกรอกใหม่หมด:
     (a) ทั้งสองฟอร์มใช้ `onSubmit={submitWithoutReset(action)}` (`lib/util/submit-without-reset.ts` ที่มีอยู่) แทน `action=` — หลัง error ทุกช่องคงค่าที่ผู้ใช้กรอก (รวมรหัสผ่าน) และ error แสดงที่ `affiliate-register-error`/`affiliate-login-error` ตามเดิม;
-    (b) กันกดซ้ำ: `useFormStatus` ของ `SubmitButton` ไม่เห็น submit แบบนี้ → ปุ่ม `affiliate-register-submit`/`affiliate-login-submit` disabled + loading จากค่าที่สามของ `useActionState` (เพิ่ม prop เลือกได้ให้ `SubmitButton` หรือใช้ `Button` ของ `@medusajs/ui` ตรงๆ — ไม่เขียน helper ใหม่);
+    (b) กันกดซ้ำ: ผูกกับสถานะของ action โดยตรงแทน `useFormStatus` ของ `SubmitButton` (ซึ่งเห็น pending ของ submit แบบนี้ได้ก็ต่อเมื่อ React เริ่ม host transition ให้ — เงื่อนไขภายในของ React DOM: `preventDefault()` + transition ใน event เดียวกัน) → ปุ่ม `affiliate-register-submit`/`affiliate-login-submit` disabled + loading จากค่าที่สามของ `useActionState` (เพิ่ม prop เลือกได้ให้ `SubmitButton` หรือใช้ `Button` ของ `@medusajs/ui` ตรงๆ — ไม่เขียน helper ใหม่);
     (c) สำเร็จแล้ว redirect เข้า portal ตามเดิม; ไม่เปลี่ยนข้อความ, `data-testid`, validation ฝั่ง browser (`pattern`, `required`)
 
 ## Acceptance criteria
