@@ -27,6 +27,18 @@ type Intent = Record<string, unknown> & { id: string; amount: number; status: st
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// axios error มี circular reference → ห่อเป็น Error ธรรมดาที่มีแค่ status/body (CLAUDE.md)
+async function call<T = any>(
+  request: () => Promise<{ status: number; data: T }>
+): Promise<{ status: number; data: T }> {
+  try {
+    const { status, data } = await request()
+    return { status, data }
+  } catch (e: any) {
+    throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+  }
+}
+
 function signedWebhook(event: Record<string, unknown>) {
   const payload = JSON.stringify(event)
   const header = new Stripe("sk_test_signing_only").webhooks.generateTestHeaderString({
@@ -59,19 +71,19 @@ medusaIntegrationTestRunner({
       const { data } = await api.get("/store/regions", { headers: { "x-publishable-api-key": pk } })
       regionId = data.regions[0].id
 
-      const { data: reg } = await api.post("/auth/customer/emailpass/register", {
+      const { data: reg } = await call(() => api.post("/auth/customer/emailpass/register", {
         email: CUSTOMER_EMAIL,
         password: CUSTOMER_PASSWORD,
-      })
-      await api.post(
+      }))
+      await call(() => api.post(
         "/store/customers",
         { email: CUSTOMER_EMAIL },
         { headers: { authorization: `Bearer ${reg.token}`, "x-publishable-api-key": pk } }
-      )
-      const { data: login } = await api.post("/auth/customer/emailpass", {
+      ))
+      const { data: login } = await call(() => api.post("/auth/customer/emailpass", {
         email: CUSTOMER_EMAIL,
         password: CUSTOMER_PASSWORD,
-      })
+      }))
       storeHeaders = {
         headers: { authorization: `Bearer ${login.token}`, "x-publishable-api-key": pk },
       }
@@ -103,7 +115,7 @@ medusaIntegrationTestRunner({
 
     async function cartWithSession(providerId: string) {
       const { data: products } = await api.get(`/store/products?region_id=${regionId}`, storeHeaders)
-      const { data: cartRes } = await api.post(
+      const { data: cartRes } = await call(() => api.post(
         "/store/carts",
         {
           region_id: regionId,
@@ -119,18 +131,18 @@ medusaIntegrationTestRunner({
           },
         },
         storeHeaders
-      )
+      ))
       const cartId = cartRes.cart.id
       const { data: options } = await api.get(`/store/shipping-options?cart_id=${cartId}`, storeHeaders)
       const standard = options.shipping_options.find((o) => o.name === "Standard")
-      await api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: standard.id }, storeHeaders)
+      await call(() => api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: standard.id }, storeHeaders))
 
-      const { data: pc } = await api.post("/store/payment-collections", { cart_id: cartId }, storeHeaders)
-      const { data: withSession } = await api.post(
+      const { data: pc } = await call(() => api.post("/store/payment-collections", { cart_id: cartId }, storeHeaders))
+      const { data: withSession } = await call(() => api.post(
         `/store/payment-collections/${pc.payment_collection.id}/payment-sessions`,
         { provider_id: providerId },
         storeHeaders
-      )
+      ))
       const session = withSession.payment_collection.payment_sessions[0]
       return { cartId, session }
     }
@@ -194,8 +206,8 @@ medusaIntegrationTestRunner({
 
         const webhook = signedWebhook(intentEvent("payment_intent.succeeded", succeeded()))
         const deliveries = await Promise.all([
-          api.post(hook, webhook.payload, { headers: webhook.headers }),
-          api.post(hook, webhook.payload, { headers: webhook.headers }),
+          call(() => api.post(hook, webhook.payload, { headers: webhook.headers })),
+          call(() => api.post(hook, webhook.payload, { headers: webhook.headers })),
         ])
         deliveries.forEach((res) => expect(res.status).toEqual(200))
 
@@ -203,7 +215,7 @@ medusaIntegrationTestRunner({
         expect(links).toHaveLength(1)
 
         // Stripe ส่ง event เดิมซ้ำอีกครั้งหลัง order ถูกสร้างแล้ว
-        const late = await api.post(hook, webhook.payload, { headers: webhook.headers })
+        const late = await call(() => api.post(hook, webhook.payload, { headers: webhook.headers }))
         expect(late.status).toEqual(200)
         await sleep(8000)
 
@@ -250,9 +262,9 @@ medusaIntegrationTestRunner({
             metadata: { session_id: session.id },
           })
         )
-        await api.post(hook, payload, {
+        await call(() => api.post(hook, payload, {
           headers: { "content-type": "application/json", "stripe-signature": "t=1,v1=forged" },
-        })
+        }))
         await sleep(8000)
 
         expect(await ordersForCart(cartId)).toHaveLength(0)

@@ -12,7 +12,7 @@ fail=0
 doc() { # <ไฟล์> <event...> → เอกสารที่มีหัวข้อ "Stripe webhooks" และหัวข้ออื่นที่มี bullet event ปน (ต้องไม่ถูกนับ)
   local f=$1
   shift
-  { echo "# Production"; echo "## Stripe webhooks"; echo "endpoint ทั้งสอง:"
+  { echo "# Production"; echo "## Stripe webhooks"; echo "endpoint เดียว:"
     for e in "$@"; do echo "- \`$e\` — คำอธิบาย"; done
     echo "## หัวข้ออื่น"; echo "- \`charge.refunded\` — ไม่ใช่รายการสมัคร"; } > "$f"
 }
