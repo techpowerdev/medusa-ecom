@@ -157,10 +157,13 @@ medusaIntegrationTestRunner({
       return []
     }
 
+    // ADR-023: prod ลงทะเบียน webhook endpoint เดียว (/hooks/payment/stripe_stripe) รับ event ของทั้งบัตรและ PromptPay
+    // เคส PromptPay เป็น regression guard ตอน bump @medusajs/* — ถ้าล้ม = Medusa เริ่มเช็ก provider ของ webhook ให้ตรงกับ session
+    // → หยุด bump แล้วทบทวน ADR-023 (ไม่ทดสอบ path stripe-promptpay_stripe แล้วเพราะห้ามลงทะเบียน)
     describe.each([
       { providerId: "pp_stripe_stripe", hook: "/hooks/payment/stripe_stripe" },
-      { providerId: "pp_stripe-promptpay_stripe", hook: "/hooks/payment/stripe-promptpay_stripe" },
-    ])("POST $hook (AC-8)", ({ providerId, hook }) => {
+      { providerId: "pp_stripe-promptpay_stripe", hook: "/hooks/payment/stripe_stripe" },
+    ])("POST $hook with session $providerId (AC-8, ADR-023)", ({ providerId, hook }) => {
       it("creates exactly one order with one capture when the same succeeded event is delivered repeatedly", async () => {
         const intent: Intent = {
           id: "pi_pay1_test",

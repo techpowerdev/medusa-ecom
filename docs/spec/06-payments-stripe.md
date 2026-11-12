@@ -5,8 +5,9 @@
 การตัดสินใจ: ใช้ Stripe provider ที่มีมากับ Medusa, capture อัตโนมัติ (ADR-007) **ไม่มี custom payment code**
 ข้อยกเว้นที่ owner ยอมรับ: ADR-015 (accepted 2026-10-26) — guard + alert สำหรับ race QR หมดอายุ × จ่ายสำเร็จ (กฎข้อ 7, PAY-6)
 ตรวจสอบแล้ว (เอกสาร Medusa, 2026-10): `@medusajs/medusa/payment-stripe` ลงทะเบียน
-`pp_stripe_stripe` (บัตร) และ `pp_stripe-promptpay_stripe` (PromptPay); webhook อยู่ที่
-`{server}/hooks/payment/stripe_stripe` และ `{server}/hooks/payment/stripe-promptpay_stripe`
+`pp_stripe_stripe` (บัตร) และ `pp_stripe-promptpay_stripe` (PromptPay); Medusa มี webhook route ต่อ provider แต่เราลงทะเบียน
+endpoint **เดียว** `{server}/hooks/payment/stripe_stripe` รับ event ของทั้งบัตรและ PromptPay (ADR-023 — signing secret ต่อ endpoint
+แต่ `STRIPE_WEBHOOK_SECRET` ใส่ได้ค่าเดียว) ห้ามลงทะเบียน `{server}/hooks/payment/stripe-promptpay_stripe`
 
 ## สิ่งที่ Medusa มีให้อยู่แล้ว
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
@@ -33,7 +34,7 @@
   `automaticPaymentMethods: false`
 - Region Thailand: เปิดใช้ทั้งสอง provider
 - Env: `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_KEY`
-- Webhooks (สอง endpoint) ลงทะเบียนใน Stripe dashboard; events: `payment_intent.*`
+- Webhook endpoint เดียว `/hooks/payment/stripe_stripe` ลงทะเบียนใน Stripe dashboard (ADR-023); events: `payment_intent.*`
 
 ## Storefront
 - ขั้นตอนชำระเงินใน checkout: "Card" (Stripe Elements) / "PromptPay" (Stripe.js `confirmPromptPayPayment(clientSecret, …,
@@ -135,9 +136,8 @@
 - AC-8 การส่ง webhook ซ้ำต้องไม่ทำให้ capture/refund ซ้ำ
 - AC-9 สร้าง payment session บัตรจาก checkout → PaymentIntent ใน Stripe test mode (อ่านผ่าน Stripe API/MCP ด้วย id ใน session `data`)
   มี `payment_method_types` เท่ากับ `["card"]`; session PromptPay มี `["promptpay"]`
-- AC-10 ใน CI job `storefront-e2e` webhook ของ Stripe CLI ถึงทั้ง `/hooks/payment/stripe_stripe` และ
-  `/hooks/payment/stripe-promptpay_stripe` (Stripe CLI รับ `--forward-to` ได้ปลายทางเดียวต่อ process — ใช้ listener แยกต่อ endpoint
-  หรือวิธีที่ตรวจกับ docs แล้ว) วัดผลด้วย: AC-1 และ AC-4 ผ่านใน CI และ log ของ backend มี request เข้าทั้งสอง path
+- AC-10 (PAY-7, ADR-023) CI มี listener เดียวไป `/hooks/payment/stripe_stripe`; AC-1 และ AC-4 ผ่าน และ `check-stripe-webhooks.sh`
+  ยืนยัน `payment_intent.succeeded` ถึง path นั้นตอบ 2xx
 - AC-11 (PAY-5, กฎข้อ 7) Given cart ที่มี session PromptPay และ PI อยู่สถานะ `requires_action` When test confirm PI ให้ `succeeded` ผ่าน
   Stripe test API แล้ว**ทันที**เรียกขั้นหมดอายุแบบเดียวกับ storefront (`POST /store/payment-collections/:id/payment-sessions` ด้วย provider
   PromptPay เดิม) Then ภายใน 60 วินาที cart ถูก complete เป็น order ที่ `payment_status=captured` และไม่มี payment ที่ captured ค้างโดยไม่มี

@@ -186,7 +186,7 @@ sequenceDiagram
   participant SF as Storefront
   participant API as Medusa API
   participant ST as Stripe
-  participant WH as /hooks/payment/stripe-promptpay_stripe
+  participant WH as /hooks/payment/stripe_stripe (ADR-023 endpoint เดียว)
 
   C->>SF: เลือก PromptPay
   SF->>API: เริ่ม payment session (pp_stripe-promptpay_stripe)
