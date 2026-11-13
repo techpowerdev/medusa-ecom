@@ -15,6 +15,7 @@ import {
   paymentCollectionOwner,
 } from "../../../lib/store-ownership"
 import { assignStoreReturnLocation } from "./return-location"
+import { lockStoreReturnOrder } from "./return-lock"
 import { rejectStoreReturnOverrides } from "./return-overrides"
 import { validateStoreReturnShippingOption } from "./return-shipping-option"
 import { validateStoreReturnWindow } from "./return-window"
@@ -101,7 +102,8 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
   // CORE-16: ต่อจาก auth + owner check — ห้าม store ส่ง return_shipping.price / receive_now / location_id (400)
   // CORE-17: option ต้องเป็น return option ที่เปิดใน store และครอบที่อยู่จัดส่งของ order (400)
   // CORE-20b: ทุก item ต้องเป็น line ที่ต้องจัดส่ง ส่งแล้ว และอยู่ในช่วง return_window_days ของ region (400)
-  // CORE-55 (ADR-022): ตัวสุดท้าย — ตั้ง location_id ของ return จาก option (400 เมื่อไม่มี location/level)
+  // CORE-55 (ADR-022): ตั้ง location_id ของ return จาก option (400 เมื่อไม่มี location/level)
+  // CORE-56 (กฎ 114): ตัวสุดท้าย — lock ต่อ order จน response จบ กัน return ซ้ำจากสองแท็บ (409 เมื่อรอเกิน 5 วินาที)
   {
     method: ["POST"],
     matcher: "/store/returns",
@@ -112,6 +114,7 @@ export const storeOwnershipMiddlewares: MiddlewareRoute[] = [
       validateStoreReturnShippingOption,
       validateStoreReturnWindow,
       assignStoreReturnLocation,
+      lockStoreReturnOrder,
     ],
   },
   // CORE-13 (owner Q-F3, AC-40): ปิด order transfer ทั้งชุด (request/accept/decline/cancel) — ไม่ระบุ method
