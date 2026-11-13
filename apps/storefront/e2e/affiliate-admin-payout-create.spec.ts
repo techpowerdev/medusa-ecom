@@ -67,8 +67,11 @@ test("AC-44: ฟอร์มสร้าง payout ค่าเริ่มต�
   })
   const row = (id: string) => page.getByRole("row").filter({ hasText: id })
   const save = page.getByTestId("affiliate-payout-save")
+  // ADM-24 (spec 08 กฎ 28b): ตัวเลือกเรียงตามชื่อ ไม่ใช่ใหม่สุดก่อน — ค้นด้วยอีเมล (q) เพื่อไม่ขึ้นกับจำนวน affiliate ใน DB
+  const affiliateField = page.getByTestId("affiliate-payout-field-affiliate_id")
   const pickAffiliate = async (email: string) => {
-    await page.getByTestId("affiliate-payout-field-affiliate_id").click()
+    await affiliateField.click()
+    await affiliateField.fill(email)
     await page.getByRole("option").filter({ hasText: email }).click()
   }
 
@@ -80,11 +83,14 @@ test("AC-44: ฟอร์มสร้าง payout ค่าเริ่มต�
     await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
     await expectDatePicker(page.getByTestId("affiliate-payout-field-period_from"), `${ymd(m - 1)}T00:00`)
     await expectDatePicker(page.getByTestId("affiliate-payout-field-period_to"), `${ymd(m)}T00:00`)
-    await page.getByTestId("affiliate-payout-field-affiliate_id").click()
+    await affiliateField.click()
     const options = page.getByRole("option")
-    await expect(options.filter({ hasText: ann.email })).toHaveCount(1)
-    await expect(options.filter({ hasText: sue.email })).toHaveCount(1)
-    await expect(options.filter({ hasText: pat.email })).toHaveCount(0)
+    for (const [email, count] of [[ann.email, 1], [sue.email, 1], [pat.email, 0]] as const) {
+      const searched = page.waitForResponse((r) => new URL(r.url()).searchParams.get("q") === email)
+      await affiliateField.fill(email)
+      await searched
+      await expect(options.filter({ hasText: email })).toHaveCount(count)
+    }
     await evidence("01-payout-form")
     // ADM-9: ตัวเลือกเป็น Combobox — Escape ปิดทั้ง FocusModal (เดิมปิดแค่ Select) step ถัดไปเลือกจาก popover ที่เปิดอยู่ได้เลย
   })
