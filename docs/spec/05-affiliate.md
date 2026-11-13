@@ -9,7 +9,8 @@
 รอบ 23 2026-11-05: AF-20 ☑ #295 (train #299); qa #295 O-1 ปิดโดยไม่สร้าง task (กฎ 44(b)); nit review #295 ของ e2e → CORE-51 ของ spec 01; qa #295 O-2 (nav ของร้าน) → CORE-50 ของ spec 01;
 รอบ 27 2026-11-10: AF-21 (qa AF-M-02), กฎ 45, AC-53; ปิดรอบ 27 2026-11-10: AF-21 ☑ #334, qa #334 → AF-22 (กฎ 46, AC-54);
 รอบ 28 2026-11-10: AF-22 ☑ #340; AF-M-03 → แก้กฎ 13 + AC-15 ตามพฤติกรรมจริง (owner) ไม่มี task โค้ด;
-รอบ 30 2026-11-13: nit review #347 → AF-23 (test-only, กฎ 47, AC-55 — ☐ พร้อมเริ่ม owner ยังไม่สั่งทำ); follow-up ของ admin affiliate (#360–#362) อยู่ใน ADM-24/25/26 ของ spec 08)
+รอบ 30 2026-11-13: nit review #347 → AF-23 (test-only, กฎ 47, AC-55); follow-up ของ admin affiliate (#360–#362) อยู่ใน ADM-24/25/26 ของ spec 08;
+ปิดรอบ 30/31 2026-11-14: AF-23 ☑ #368 (owner สั่งทำ 2026-11-13); ADM-24 ☑ #375, ADM-25 ☑ #381, ADM-26 ☑ #379 ของ spec 08)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -548,7 +549,7 @@ Payout
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 | AF-21 | (backend + storefront เล็ก ~90 LOC, รอบ 27 — qa AF-M-02) ปฏิเสธคำสงวนตอน register + ข้อความไทย (กฎ 45) (AC-53) — ไฟล์: `apps/backend/src/api/affiliate/validators.ts` + `__tests__/validators.unit.spec.ts` (ใหม่), `apps/backend/integration-tests/http/affiliate-auth.spec.ts`, `apps/storefront/src/lib/data/affiliate-portal.ts`, `apps/storefront/src/lib/util/` (helper ใหม่) + test, `apps/storefront/e2e/affiliate-portal.spec.ts` — ☑ #334 | PR spec รอบ 27 merge; ไม่ชน CORE-55/EV-16/ADM-20; ไม่บล็อก release v0.1.0 |
 | AF-22 | (storefront เล็ก ~80 LOC รวม e2e, ปิดรอบ 27 — qa #334) ฟอร์มสมัคร/เข้าสู่ระบบ portal คงค่าหลัง error (`submitWithoutReset`) + ปุ่มกันกดซ้ำจาก `isPending` (กฎ 46) (AC-54) — ไฟล์: `apps/storefront/src/modules/affiliate/components/auth-forms/index.tsx`, `apps/storefront/src/modules/checkout/components/submit-button/index.tsx` (ถ้าเพิ่ม prop), `apps/storefront/e2e/affiliate-portal.spec.ts`; viewport 1280×800, 375×812 — ☑ #340 | none (AF-21 ☑ #334); ∥ ทุกตัว; ไม่บล็อก release v0.1.0 |
-| AF-23 | (test-only ~15 LOC, รอบ 30 — nit review #347) เคส AC-15 ยืนยันว่า auth identity ไม่ถูกผูก `affiliate_id` (กฎ 47) (AC-55) — ไฟล์: `apps/backend/integration-tests/http/affiliate-auth.spec.ts` — ☑ (owner สั่งทำ 2026-11-13) | none; ∥ ทุกตัว (ADM-24 แตะ `affiliate-admin*.spec.ts` คนละไฟล์); ไม่บล็อก release |
+| AF-23 | (test-only ~15 LOC, รอบ 30 — nit review #347) เคส AC-15 ยืนยันว่า auth identity ไม่ถูกผูก `affiliate_id` (กฎ 47) (AC-55) — ไฟล์: `apps/backend/integration-tests/http/affiliate-auth.spec.ts` — ☑ #368 (owner สั่งทำ 2026-11-13) | none; ∥ ทุกตัว (ADM-24 แตะ `affiliate-admin*.spec.ts` คนละไฟล์); ไม่บล็อก release |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
 (รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
@@ -568,7 +569,7 @@ nit review #295 ของ e2e (`createActiveAffiliate` เป็น options obje
 qa #295 O-2 (ชื่อร้านใน nav ชิดไอคอนค้นหาที่ 320) → CORE-50 ของ spec 01
 (ปิดรอบ 27, 2026-11-10) merge แล้ว: AF-21 ☑ #334; ใหม่: AF-22 เริ่มได้ (qa #334 — ฟอร์มสมัครล้างค่าหลัง error)
 (รอบ 28, 2026-11-10) merge แล้ว: AF-22 ☑ #340; AF-M-03 owner ตัดสิน "แก้ AC-15 ให้ตรงพฤติกรรมจริง" → กฎ 13 + AC-15 แก้ถ้อยคำ (body ที่มี `email` → 400 `invalid_data` ไม่สร้างแถว) ไม่มี task โค้ด
-(รอบ 30, 2026-11-13) ใหม่: AF-23 (nit review #347 — กฎ 47, AC-55) เริ่มได้เมื่อ owner สั่ง; ไม่เปิด task: e2e AF-8a เก็บ `stale` เป็น `Set` กัน id ซ้ำตอนแบ่งหน้า (review #349 — ไม่มีผลตอนนี้ แก้ใน PR ถัดไปที่แตะไฟล์นั้น)
+(รอบ 30, 2026-11-13) ใหม่: AF-23 (nit review #347 — กฎ 47, AC-55) — ☑ #368 (ปิดรอบ 30/31 2026-11-14); ไม่เปิด task: e2e AF-8a เก็บ `stale` เป็น `Set` กัน id ซ้ำตอนแบ่งหน้า (review #349 — ไม่มีผลตอนนี้ แก้ใน PR ถัดไปที่แตะไฟล์นั้น)
 และข้อสังเกตว่า spec อื่นที่สร้างโปรแกรม sweatshirt/`scope: all` > 15% ที่ active พร้อมกันจะกระทบ AF-8a (ระวังตอนเขียน e2e ใหม่)
 (รอบ 11, review #146 AF-N2) nit `tryAcquire` ที่ `catch {}` กลืน error ทุกชนิด (ต้องข้ามเฉพาะ lock conflict) และ `.run()` ที่ throw แบบ sync ต้อง release lock — #146 merge แล้ว
 ถ้ายังไม่ได้แก้ ให้ PR ถัดไปที่แตะ maturity job แก้ (ไม่สร้าง task); ข้อสังเกต: entry `pending` ของ order ที่ยกเลิกและยอดสุทธิ = 0 ค้าง `pending` ถาวร (กฎ 5 ห้ามแก้ status ย้อน/ข้าม) และถูกสแกนทุกวันพร้อม log `affiliate_cancel_reconcile_noop`

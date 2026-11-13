@@ -4,7 +4,12 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**รอบ 30 (2026-11-13, เอกสารล้วน) — สถานะล่าสุด**: owner อนุมัติให้แปลง follow-up ของรอบ 29 (#351–#363) เป็น spec/task → task ใหม่ทั้งหมด ☐ ไม่บล็อก release — **owner สั่งทำทั้งหมด 2026-11-13** (บันทึกในรอบ 31):
+**ปิดรอบ 30/31 (2026-11-14, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): OPS-25 #366, CORE-59 #367, AF-23 #368, CORE-58 #369, OPS-23 #371, CORE-60 #372, ADM-23 #373, ADM-15 #374, ADM-24 #375,
+ADM-18 #377, ADM-26 #379, ADM-19 #380, ADM-25 #381 + เอกสาร #364 (บทเรียน evidence ใน `CLAUDE.md`), #365 (รอบ 30), #370 (รอบ 31), #376 (ADM-18 = ก + แก้ AC-40), #378 (ADM-26 = ก) ·
+ผล OPS-23: คง default pool 10 (ไม่ตั้ง `DATABASE_POOL_MAX`) **ไม่เปิด ADR-020** (`docs/evidence/scale/OPS-23/REPORT.md`) ·
+**พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 (qa ยืนยันบน build production ก่อน — spec 08 กฎ 26, AC-27) · ไม่มี task อื่นค้าง ·
+**รอ owner ตัดสิน** (ไม่มี task id ใหม่ — รายละเอียดหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)" ท้ายไฟล์, กลุ่ม ก): (1) bug int4 ใน campaign (แนะนำเปิด task) · (2) งาน CPU ของ checkout จาก OPS-23 · (3) prompt ก่อนปิดฟอร์มที่ dirty · (4) ป้าย "ก่อนส่วนลด" เมื่อลดแค่ค่าส่ง · (5) ช่องไม่บังคับ/ฟอร์มที่อยู่บัญชีกับ zero-width · (6) ปุ่ม Prev/ลองใหม่เมื่อ error ที่หน้า ≥ 2 ·
+(ประวัติ) **รอบ 30 (2026-11-13, เอกสารล้วน)**: owner อนุมัติให้แปลง follow-up ของรอบ 29 (#351–#363) เป็น spec/task → task ใหม่ทั้งหมด ☐ ไม่บล็อก release — **owner สั่งทำทั้งหมด 2026-11-13** (บันทึกในรอบ 31):
 spec 01 CORE-58 (ที่อยู่ zero-width + `normalize` ที่เดียว) ∥ CORE-59 (e2e hygiene) · spec 05 AF-23 (test-only) · spec 07 OPS-25 (comment CI) · spec 08 ADM-23 ∥ ADM-24 → ADM-25 (← ADM-23) ∥ ADM-26 (← ADM-24; ยืนยันก่อน) ·
 **คำตัดสินของ owner 2026-11-13 (รอบ 31, เอกสารล้วน)**: spec 01 Q-C8 = ก → **CORE-60** (ป้ายแถวแรกของ `cart-totals` เป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เฉพาะเมื่อมีส่วนลด, dropdown คงเดิม — กฎข้อ 118, AC-159; เริ่มได้เมื่อ PR เอกสารรอบ 31 merge) ·
 Q-C9 = ก → ภาคผนวก 2026-11-13 ของ ADR-014 ("VAT" = กลุ่ม "หน่วย/รหัส" ของข้อ 4; `ALLOWED`/`eslint-disable` คงเดิม ไม่มีโค้ด) · ไม่มีคำถามค้างของ owner · ไม่มี ADR ใหม่ ·
@@ -12,7 +17,7 @@ Q-C9 = ก → ภาคผนวก 2026-11-13 ของ ADR-014 ("VAT" = ก�
 (ประวัติ) **ปิดรอบ 29 (2026-11-13, เอกสารล้วน)**: owner สั่งทำต่อ 2026-11-13 ("ตามที่เสนอ") → merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-56 #351, CORE-57 #352, CORE-52 #353,
 OPS-22 #354 (รวมแก้ `CLAUDE.md` 2 จุดที่ owner อนุมัติ), CORE-54 #355, OPS-24 #356, GB-16 #357, CORE-53 #358, ADM-16 #359, ADM-17 #360, ADM-21a #361, ADM-21b #362 (ADM-16/17 ทำเพราะเป็น dependency ของ ADM-21a/21b) + chore #350 (เลิก track `next-env.d.ts` ของ storefront) ·
 **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 (qa ยืนยันบน build production ก่อน — spec 08 กฎ 26, AC-27) ·
-**owner สั่งทำ 2026-11-13 (☐ ไม่บล็อก release)**: CORE-58 ∥ CORE-59 ∥ CORE-60 (← PR เอกสารรอบ 31) · AF-23 · OPS-25 · OPS-23 · ADM-23 ∥ ADM-24 → ADM-25 (← ADM-23) ∥ ADM-26 (← ADM-24) · ADM-15 · ADM-18 · ADM-19 · ไม่มีคำถามค้างของ owner ·
+**owner สั่งทำ 2026-11-13 (☐ ไม่บล็อก release — ☑ ครบในปิดรอบ 30/31)**: CORE-58 ∥ CORE-59 ∥ CORE-60 (← PR เอกสารรอบ 31) · AF-23 · OPS-25 · OPS-23 · ADM-23 ∥ ADM-24 → ADM-25 (← ADM-23) ∥ ADM-26 (← ADM-24) · ADM-15 · ADM-18 · ADM-19 · ไม่มีคำถามค้างของ owner ·
 **ก่อนเปิดร้านจริง (go-live)**: spec 06 Q1 ยืนยันบัญชี Stripe live นิติบุคคลไทย + PromptPay (ข้อ 6 ของ go-live checklist ใน `docs/ops/production.md`), spec 01 Q-F1 ค่าส่ง ฿10 เป็น placeholder (ข้อ 5), smoke test บน production (`check:go-live` + `tools/ops/smoke-*.sh`) ·
 (ประวัติ) **รอบ 28 (2026-11-10, เอกสารล้วน)**: merge เพิ่มหลังปิดรอบ 27: EV-18 #339, AF-22 #340 · **เงื่อนไข release v0.1.0 ครบทุกข้อ** (CORE-12/12b/17/18, OPS-21 #325, EV-15 #326, CORE-55 #336 ☑ — `develop → main` owner เป็นผู้ merge) ·
 **คำตัดสินของ owner รอบ 28 ("ตามที่แนะนำ" ทุกข้อ แต่ยังไม่สั่งทำ)**: Q-C6 = ก (CORE-56 middleware lock — spec 01 กฎข้อ 114), Q-C7 = ก (CORE-57 `cart-totals` ฐานรวม VAT — spec 01 กฎข้อ 115, AC-156), AF-M-03 = แก้ AC-15 ให้ตรงพฤติกรรมจริง (spec 05 กฎ 13; ไม่มี task), ADM-21 = ทำ (แยก ADM-21a/21b — spec 08 กฎ 25, AC-25..26), ADM-22 = ยืนยันก่อน (qa บน build production — spec 08 กฎ 26, AC-27) ·
@@ -186,9 +191,9 @@ task ใหม่ ADM-14 (ปุ่มสร้าง Partners/Programs/Payouts 
 | CORE-54 | (ปิดรอบ 26, test hygiene — nit review #328) `core-46-e2e-hygiene`: หา `longCode` ไม่เจอต้องล้ม ไม่ผ่านเงียบ, ตัวตรวจอาร์กิวเมนต์ไม่รับเกิน 3 ตัว (กฎข้อ 112, AC-149; ไม่บล็อก release; ชน CORE-53 ไฟล์เดียวกัน — ตัวที่ merge ทีหลัง rebase) | ☑ #355 |
 | CORE-56 | (ปิดรอบ 27, qa #336 D-1) lock ต่อ order บน `POST /store/returns` ด้วย middleware ตัวสุดท้ายของ chain (Q-C6 = ก รอบ 28) — สองแท็บขอคืนพร้อมกันได้ return `requested` ซ้ำ (กฎข้อ 114, AC-155; ไม่บล็อก release) | ☑ #351 (owner สั่งทำ 2026-11-13) |
 | CORE-57 | (รอบ 28, Q-C7 = ก) `cart-totals` ใช้ฐานรวม VAT ทั้งชุด — ค่าจัดส่ง ฿10 ตรงกับขั้นเลือกวิธีจัดส่ง, แถวภาษีเป็นข้อมูลไม่บวกซ้ำ (กฎข้อ 115, AC-156; storefront ~80 LOC; ไม่บล็อก release) | ☑ #352 (owner สั่งทำ 2026-11-13) |
-| CORE-58 | (รอบ 30, qa #353 O-1 + re-review #353) ช่องที่อยู่ที่มีแต่อักขระ zero-width (`U+200B` ฯลฯ) ไม่ผ่าน checkout + `normalize` ของข้อความ error เหลือที่เดียว (กฎข้อ 116, AC-157; storefront ~70 LOC; ∥ CORE-59; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner สั่งทำ 2026-11-13 |
-| CORE-59 | (รอบ 30, e2e hygiene — review #355/#358) cleanup `core-4g` ใช้ `expect.soft`, นับ `request.delete(` จาก AST, comment ข้อจำกัด `VALID_AFFILIATE_ARGS` (กฎข้อ 117, AC-158; ~30 LOC; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner สั่งทำ 2026-11-13 |
-| CORE-60 | (รอบ 31, Q-C8 = ก — qa #352) ป้ายแถวแรกของ `cart-totals` เป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เฉพาะเมื่อมีส่วนลด + `data-testid="cart-subtotal-label"`; dropdown คงเดิม (กฎข้อ 118, AC-159; storefront ~30 LOC + e2e ใหม่; ∥ CORE-58 ∥ CORE-59 — คนละไฟล์; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-13 (รอ PR เอกสารรอบ 31 merge) |
+| CORE-58 | (รอบ 30, qa #353 O-1 + re-review #353) ช่องที่อยู่ที่มีแต่อักขระ zero-width (`U+200B` ฯลฯ) ไม่ผ่าน checkout + `normalize` ของข้อความ error เหลือที่เดียว (กฎข้อ 116, AC-157; storefront ~70 LOC; ∥ CORE-59; ไม่บล็อก release) | ☑ #369 (owner สั่งทำ 2026-11-13) |
+| CORE-59 | (รอบ 30, e2e hygiene — review #355/#358) cleanup `core-4g` ใช้ `expect.soft`, นับ `request.delete(` จาก AST, comment ข้อจำกัด `VALID_AFFILIATE_ARGS` (กฎข้อ 117, AC-158; ~30 LOC; ไม่บล็อก release) | ☑ #367 (owner สั่งทำ 2026-11-13) |
+| CORE-60 | (รอบ 31, Q-C8 = ก — qa #352) ป้ายแถวแรกของ `cart-totals` เป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เฉพาะเมื่อมีส่วนลด + `data-testid="cart-subtotal-label"`; dropdown คงเดิม (กฎข้อ 118, AC-159; storefront ~30 LOC + e2e ใหม่; ∥ CORE-58 ∥ CORE-59 — คนละไฟล์; ไม่บล็อก release) | ☑ #372 (owner สั่งทำ 2026-11-13; หลัง PR เอกสารรอบ 31 #370) |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | 🚀 #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | 🚀 #124 ∥ 🚀 #130 |
 | CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | 🚀 #168 |
@@ -272,7 +277,7 @@ release v0.6.0 ต้องมี AF-14 (ที่เหลือ 🚀 แล้
 (รอบ 27) **AF-21 🚀 #334** (ปฏิเสธรหัสแนะนำที่เป็นคำสงวนแบบไม่สนตัวพิมพ์ + ข้อความไทย; กฎ 45, AC-53; ไม่รวม AF-M-03; ไม่บล็อก release v0.1.0) →
 (ปิดรอบ 27) **AF-22 🚀 #340** (qa #334: ฟอร์มสมัคร/เข้าสู่ระบบ portal คงค่าหลัง error ด้วย `submitWithoutReset` + ปุ่มกันกดซ้ำ; กฎ 46, AC-54; ไม่บล็อก release v0.1.0) ·
 (รอบ 28) AF-M-03 owner ตัดสิน: แก้กฎ 13 + AC-15 ให้ตรงพฤติกรรมจริง (body ที่มี `email` → 400 `invalid_data` ไม่สร้างแถว) — ไม่มี task โค้ด ·
-(รอบ 30) **AF-23 ☐ พร้อมเริ่ม — owner สั่งทำ 2026-11-13** (test-only, nit review #347: เคส AC-15 ยืนยันว่า auth identity ไม่ถูกผูก `affiliate_id`; กฎ 47, AC-55; ไม่บล็อก release)
+(รอบ 30) **AF-23 ☑ #368** (owner สั่งทำ 2026-11-13; test-only, nit review #347: เคส AC-15 ยืนยันว่า auth identity ไม่ถูกผูก `affiliate_id`; กฎ 47, AC-55; ไม่บล็อก release)
 
 ## M7 Scale และ hardening — **v1.0.0** 🎯
 OPS-2 🚀 #27 · OPS-6 🚀 #47 · OPS-3 🚀 #120 (JSON logs + alert `Error running event bus worker`, AC-18) · OPS-3b ⏸ rate limiting · OPS-3c ⏸ Sentry (owner Q-O1/Q-O2 2026-10-27: เลื่อนหลัง v1.0) ·
@@ -287,9 +292,9 @@ OPS-5 🚀 #319 (index/migration + runbook backup/restore; AC-4)
 (รอบ 16) **OPS-17b 🚀 #242 — ความปลอดภัย** (scan secret ก่อนพิมพ์ลง job log + redact JWT ใน console ของ k6 + `run.sh:132` `k6-failures.txt` ผ่าน redact (nit review #240); AC-34) →
 (รอบ 17) **OPS-17c 🚀 #253** (stdout/stderr ของ `docker run` k6 ผ่าน redact, static test จับ `JSON.stringify(`, ตัวตรวจไม่ข้ามบรรทัด `grep -q`; AC-35) → OPS-20b (ชน `run.sh`)
 (รอบ 26) **OPS-21 🚀 #325 — เงื่อนไข release v0.1.0** (compose prod ส่ง `EVOUCHER_ENCRYPTION_KEY`/`EVOUCHER_ADMIN_EMAIL`/`OPS_ALERT_EMAIL`/`TZ` + guard บูต; AC-36) ·
-**OPS-22 ☑ #354** (`classify-changes.sh` นับ `docs/ops/**` เป็นโค้ด + แก้ `CLAUDE.md` 2 จุดที่ owner อนุมัติ; AC-37) · OPS-23 ☐ **เริ่มได้ — owner สั่งทำ 2026-11-13** (OPS-20b 🚀 #318; owner Q-O4 = ก 2026-11-09 เทียบ `DATABASE_POOL_MAX` 10/20/40; AC-38; ADR-020 เฉพาะเมื่อเสนอเปลี่ยนค่า prod) ·
+**OPS-22 ☑ #354** (`classify-changes.sh` นับ `docs/ops/**` เป็นโค้ด + แก้ `CLAUDE.md` 2 จุดที่ owner อนุมัติ; AC-37) · **OPS-23 ☑ #371** (owner สั่งทำ 2026-11-13; OPS-20b 🚀 #318; owner Q-O4 = ก 2026-11-09 เทียบ `DATABASE_POOL_MAX` 10/20/40; AC-38 — ผล: pool ไม่ใช่คอขวด server CPU เต็ม ~115% ทุกค่า pool ใหญ่ขึ้นแย่ลง → **คง default 10 ไม่เปิด ADR-020**; `docs/evidence/scale/OPS-23/REPORT.md`) ·
 **OPS-24 ☑ #356** (ปิดรอบ 26, nit review #325: comment `export` ใน `docker-compose.prod.yml` + `.trim()` ของ env อีเมลแจ้งเตือนใน `checkBootEnv`; AC-39; ไม่บล็อก release) ·
-(รอบ 30) **OPS-25 ☐ พร้อมเริ่ม — owner สั่งทำ 2026-11-13** (comment ล้วน, nit review #354: เหตุผลเรื่อง `docs/ops/**` ใน `classify-changes.sh` + "35 เคส" ใน `ci.yml`; AC-40; ไม่บล็อก release)
+(รอบ 30) **OPS-25 ☑ #366** (owner สั่งทำ 2026-11-13; comment ล้วน, nit review #354: เหตุผลเรื่อง `docs/ops/**` ใน `classify-changes.sh` + "35 เคส" ใน `ci.yml`; AC-40; ไม่บล็อก release)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
@@ -310,19 +315,19 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-10 ∥ ADM-11 ∥ ADM-12 | (รอบ 23) offset ใน URL ผ่าน `pageOffset`/`clampOffset` + hook `usePageOffset` (qa #296 O-1/O-2; AC-14) ∥ `initialData` จาก loader + breadcrumb E-vouchers (qa #293 Obs 4; AC-15) ∥ ช่อง number ตรวจ `badInput` (qa #294 Obs 1; AC-16) | 🚀 #315 (+ hotfix #324) ∥ 🚀 #311 ∥ 🚀 #313 |
 | ADM-13 | (รอบ 23) หัวตารางแคมเปญ group buy ใช้ `heading`/`subHeading`/`action` ของ `DataTable`, `CreateCampaign` controlled (qa #293 Obs 1; AC-17) | 🚀 #321 |
 | ADM-14 | (Q7 = ก) ปุ่มสร้างของ Partners/Programs/Payouts เข้า `action` ของ `DataTable` + wrapper testid `evoucher-partners-table`/`affiliate-programs-table`/`affiliate-payouts-table` (spec 08 กฎ 18; AC-18) | 🚀 #327 |
-| ADM-15 | (รอบ 26, รอบ 25 ข้อ D + #321) `create-campaign`: `NumberInput`, focus กลับปุ่มหลังปิด modal, e2e dblclick/`form.reset` (กฎ 19; AC-19) | ☐ **เริ่มได้ — owner สั่งทำ 2026-11-13** (ADM-13 🚀 #321) |
+| ADM-15 | (รอบ 26, รอบ 25 ข้อ D + #321) `create-campaign`: `NumberInput`, focus กลับปุ่มหลังปิด modal, e2e dblclick/`form.reset` (กฎ 19; AC-19) | ☑ #374 (owner สั่งทำ 2026-11-13) |
 | ADM-16 | (รอบ 26, #316/#315) deps คอลัมน์ `codes-table`/`partners-section`, empty state ไม่กระพริบ, static AC-14 (กฎ 20; AC-20) | ☑ #359 |
 | ADM-17 | (รอบ 26, #322) `q` ของ affiliate + `useComboboxData` + error ของรายการ + nit e2e (กฎ 21; AC-21) | ☑ #360 |
-| ADM-18 | (ปิดรอบ 26, qa #324) e2e filter + Esc ระหว่าง loader หน่วง — ต้องยืนยันก่อน ไม่ใช่บั๊กที่ยืนยันแล้ว; แก้เฉพาะเมื่อทำซ้ำได้ (กฎ 22; AC-22) | ☐ **เริ่มได้ — owner สั่งทำ 2026-11-13** (ชน ADM-16 ไฟล์ e2e เดียวกัน — ADM-16 ☑ #359 แล้ว: rebase บน develop) |
-| ADM-19 | (ปิดรอบ 26, qa/review #327) e2e `partners_offset` ผิดรูปตอนไม่มี partner + REPORT หลัง sync develop (กฎ 23; AC-23) | ☐ **เริ่มได้ — owner สั่งทำ 2026-11-13** |
+| ADM-18 | (ปิดรอบ 26, qa #324) e2e filter + Esc ระหว่าง loader หน่วง — ต้องยืนยันก่อน ไม่ใช่บั๊กที่ยืนยันแล้ว; แก้เฉพาะเมื่อทำซ้ำได้ (กฎ 22; AC-22) — ยืนยันแล้ว 2026-11-14 ต้นเหตุ `@medusajs/ui`, owner = ก ยอมรับ → test-only | ☑ #377 (owner สั่งทำ 2026-11-13) |
+| ADM-19 | (ปิดรอบ 26, qa/review #327) e2e `partners_offset` ผิดรูปตอนไม่มี partner + REPORT หลัง sync develop (กฎ 23; AC-23) | ☑ #380 (owner สั่งทำ 2026-11-13) |
 | ADM-20 | (รอบ 27, qa ADM-M-10) `/app/group-buying` ตอน API ล้มแสดง `NoRecords` แทน empty state (กฎ 24; AC-24) | 🚀 #335 |
 | ADM-21a | (รอบ 27 follow-up → รอบ 28 owner "ทำ") สถานะ error แทน empty ของตาราง e-voucher: pools, codes, partners (กฎ 25; AC-25) | ☑ #361 (owner สั่งทำ 2026-11-13) |
 | ADM-21b | (รอบ 27 follow-up → รอบ 28 owner "ทำ") สถานะ error แทน empty ของตาราง affiliate ทุกแท็บ + group buy groups/members (กฎ 25; AC-26) | ☑ #362 (owner สั่งทำ 2026-11-13) |
 | ADM-22 | (รอบ 27 follow-up → รอบ 28 owner "ยืนยันก่อน") qa ตรวจ stack trace ของ loader หน้า pool บน build production — ไม่พบ → ✕ ไม่มีโค้ด; พบ → ADM-22b (กฎ 26; AC-27) | ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) |
-| ADM-23 | (รอบ 30, #359) partners ไม่กระพริบ "No partners on this page" ตอน clamp offset (helper กลางใน `lib/page-offset.ts`) + `PartnerActions` remount เมนู/Edit disabled ระหว่างลบ (กฎ 27; AC-28; ~90 LOC; ∥ ADM-24) | ☐ พร้อมเริ่ม — owner สั่งทำ 2026-11-13 |
-| ADM-24 | (รอบ 30, review #360) `status` หลายค่าใน `GET /admin/affiliate/affiliates` + combobox payout request เดียวเรียงชื่อข้ามหน้า + 401 ไป `/login` + comment `tiebreakById` (กฎ 28; AC-29; ~150 LOC) | ☐ พร้อมเริ่ม — owner สั่งทำ 2026-11-13 |
-| ADM-25 | (รอบ 30, qa/review #361/#362) สถานะ error ของกฎ 24/25: ซ่อนแถบแบ่งหน้า, หัวข้อ "Could not load ledger entries", e2e กฎ 24d อัตโนมัติ (กฎ 29; AC-30; ~220 LOC; ← ADM-23) | ☐ owner สั่งทำ 2026-11-13 (เริ่มเมื่อ ADM-23 merge) |
-| ADM-26 | (รอบ 30, qa #360 O-2 — ยืนยันแล้ว 2026-11-14, owner = ก) ขณะ `Combobox` ขยาย Escape ไม่ปิด `FocusModal` ฟอร์ม payout/program (`onEscapeKeyDown`; Escape ไม่ปิดรายการ — ยอมรับ) (กฎ 30; AC-31; ~40 LOC + e2e; ← ADM-24) | ☐ owner สั่งทำ 2026-11-13 (เริ่มเมื่อ ADM-24 merge) |
+| ADM-23 | (รอบ 30, #359) partners ไม่กระพริบ "No partners on this page" ตอน clamp offset (helper กลางใน `lib/page-offset.ts`) + `PartnerActions` remount เมนู/Edit disabled ระหว่างลบ (กฎ 27; AC-28; ~90 LOC; ∥ ADM-24) | ☑ #373 (owner สั่งทำ 2026-11-13) |
+| ADM-24 | (รอบ 30, review #360) `status` หลายค่าใน `GET /admin/affiliate/affiliates` + combobox payout request เดียวเรียงชื่อข้ามหน้า + 401 ไป `/login` + comment `tiebreakById` (กฎ 28; AC-29; ~150 LOC) | ☑ #375 (owner สั่งทำ 2026-11-13) |
+| ADM-25 | (รอบ 30, qa/review #361/#362) สถานะ error ของกฎ 24/25: ซ่อนแถบแบ่งหน้า, หัวข้อ "Could not load ledger entries", e2e กฎ 24d อัตโนมัติ (กฎ 29; AC-30; ~220 LOC; ← ADM-23) | ☑ #381 (owner สั่งทำ 2026-11-13; หลัง ADM-23 #373) |
+| ADM-26 | (รอบ 30, qa #360 O-2 — ยืนยันแล้ว 2026-11-14, owner = ก) ขณะ `Combobox` ขยาย Escape ไม่ปิด `FocusModal` ฟอร์ม payout/program (`onEscapeKeyDown`; Escape ไม่ปิดรายการ — ยอมรับ) (กฎ 30; AC-31; ~40 LOC + e2e; ← ADM-24) | ☑ #379 (owner สั่งทำ 2026-11-13; หลัง ADM-24 #375) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -456,6 +461,37 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 - รอบ 31 (2026-11-13, เอกสารล้วน — บันทึกคำตัดสินของ owner; ตรวจโค้ดบน develop `fef9b65b`) → spec 01: Q-C8 = ก → แก้กฎข้อ 115c + หมายเหตุ AC-156, หัวข้อ "Follow-up รอบ 31": กฎข้อ 118, AC-159, CORE-60 ·
   Q-C9 = ก → ADR-014 ภาคผนวก 2026-11-13 ("VAT" = หน่วย/รหัสของข้อ 4; ไม่แก้เนื้อหาเดิม, ไม่มีโค้ด) · ROADMAP: owner สั่งทำ 2026-11-13 — CORE-58, CORE-59, CORE-60, AF-23, OPS-25, OPS-23, ADM-15, ADM-18, ADM-19, ADM-23..26 (ADM-22 ยังพักไว้) ·
   แถว task ของ spec 01/05/07/08 สำหรับ task ที่สั่งทำ**ไม่แก้**ในรอบนี้ (builder แก้แถวของตัวเองใน PR — กัน conflict) · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+- ปิดรอบ 30/31 (2026-11-14, เอกสารล้วน) → sync ☑ OPS-25 #366, CORE-59 #367, AF-23 #368, CORE-58 #369, OPS-23 #371, CORE-60 #372, ADM-23 #373, ADM-15 #374, ADM-24 #375, ADM-18 #377, ADM-26 #379, ADM-19 #380, ADM-25 #381
+  ใน ROADMAP และ spec 01, 05, 07, 08 (บรรทัดสถานะ/Status/Out of scope/บรรทัดใต้ตาราง task ที่เคยเขียน "owner ยังไม่สั่งทำ" แก้เป็นปัจจุบัน — ไม่ลบประวัติ) · เอกสารที่ merge ในรอบ: #364, #365, #370, #376, #378 ·
+  แก้ข้อเท็จจริงตาม review/qa (ไม่เปลี่ยนพฤติกรรมที่ต้องได้): spec 01 กฎข้อ 117c (comment ข้อจำกัดมีอยู่ก่อนแล้ว — #367), spec 08 กฎ 22 (หน้าต่างข้อจำกัดนับถึง re-render หลัง URL commit — qa #377), กฎ 30b (radix-ui 1.1.2 → react-dialog 1.1.5 → dismissable-layer 1.1.4 — review #378),
+  AC-31(b) (scope เป็น multi-select ปิดรายการด้วยคลิกนอกรายการ — review #378) · OPS-23: คง default pool 10 ไม่เปิด ADR-020 · follow-up ใหม่ → หัวข้อถัดไป (ไม่เปิด task id ใหม่) · เหลือ: ADM-22 พักไว้ · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+
+## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)
+ที่มา: review/qa ของ #366–#381 (2026-11-13/14) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน
+### ก. ต้องให้ owner ตัดสิน
+1. **[ถาม owner] bug จริง (qa #374 D-1)** `POST /admin/group-buy/campaigns` ค่าเกิน int4 (เช่น `max_total_orders` 2147483648) → 500 `integer out of range` เพราะ validator ยอมถึง `MAX_SAFE_INTEGER` — **แนะนำเปิด task backend ใน spec 04** (จำกัด ≤ 2147483647 → 400 + test) ไม่บล็อกข้อมูล (admin เท่านั้น)
+2. **[ถาม owner] งาน CPU ของ checkout (OPS-23 #371)** server CPU เต็ม ~115% ทุกค่า pool และ (d)/(e) ไม่ลดด้วย pool → ทางที่น่าจะลดคือเพิ่ม CPU ฝั่ง server (หลาย process/replica) หรือลดงาน CPU ต่อ request — เป็น infra/scale ใหม่ ต้องมี AC + ADR (spec 07) ก่อน
+3. **[ถาม owner] prompt ก่อนปิดฟอร์มที่ dirty (qa #379 O-1)** Tab ออกจาก combobox แล้ว Escape → modal ปิดค่าหาย (ตรงกฎ 30c ของ spec 08) — ถ้าต้องการกันต้องเป็นนโยบายใหม่ "ถาม `usePrompt` ก่อนปิด `FocusModal`/`Drawer` เมื่อฟอร์ม dirty" (กระทบทุกฟอร์ม admin)
+4. **[ถาม owner] ป้าย "ยอดรวมสินค้าก่อนส่วนลด" เมื่อลดแค่ค่าส่ง (qa #372)** ตรง spec 01 กฎข้อ 118a/AC-159 (เงื่อนไข `discount_total > 0`) แต่ลูกค้าอาจงงเพราะสินค้าไม่ได้ลด — ทางเลือก: คงเดิม / ใช้เงื่อนไขส่วนลดของสินค้าเท่านั้น
+5. **[ถาม owner] zero-width ที่เหลือ (#369 CORE-58)** ช่องไม่บังคับ (company/province/phone) ยังไม่ตัด zero-width, ฟอร์ม `/account/addresses` และ validation ฝั่ง backend อยู่นอก scope ของกฎข้อ 116 — เสนอ task ต่อ (qa #369 O-2: ช่องที่มีแต่ ZWSP ยังเก็บค่าไว้หลัง error)
+6. **[ถาม owner] error ที่หน้า ≥ 2 (qa #381)** ไม่มีปุ่ม Prev/ลองใหม่ (ปุ่มลองใหม่อยู่นอก scope กฎ 24e ของ spec 08) — UX task ถ้าต้องการ
+### ข. test hygiene / flaky (planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
+- storefront e2e: `group-buy-join.spec.ts:86` flaky 2/4 บน prod build ในเครื่อง → `waitForServerAction` (กฎข้อ 101) (qa #369 O-1) · CI flaky ที่ไม่เกี่ยว PR — `flash-sale-fs19.spec.ts:194` (run 43469877641), `affiliate-admin-forms.spec.ts:47` (run 43475980049): เปิด task ถ้าซ้ำ
+- admin e2e: `evoucher-admin-forms.spec.ts:255` หา partner บนหน้าแรกแต่ GET ไม่กำหนด `order` (review #373) · `group-buy-admin-form` ขั้น Escape ไม่ assert ว่าไม่มี POST เพิ่ม + regex `group-buy-pages.unit.spec.ts:113` แน่นเกิน (review #374) ·
+  `affiliate-admin-payout-create.spec.ts:86-92` `toHaveCount(0)` ผ่านก่อน render → assert response `affiliates=[]` (review #375) · e2e AC-44 (`e2e-af12c-ann/sue`) ไม่ลบข้อมูลหลังจบ (qa #375) ·
+  `evoucher-admin-pool-page.spec.ts:394-400` หน่วง loader inline ซ้ำ `slowLoader` ของ AC-7 (ผู้ใช้ 2 ที่ → helper) และ `:408` RegExp ไม่ escape (review #377) · `statuses.at(-1)` ถูกเฉพาะการเลือกครั้งแรก (qa #377 O-3) ·
+  `PAGINATION_TEXT` ซ้ำ 4 ไฟล์ → `e2e/support/` และ `waitForTimeout(1_000)` ใน test 24d (review #381) · 401 ของแท็บ affiliate programs/affiliates/ledger ยังไม่มี e2e (มีแค่ payouts — qa #381) ·
+  evoucher "Create partner" กด Escape ทันทีหลัง mount ไม่ปิด (race ของ test? ตรวจซ้ำบน develop — qa #379 O-2) · รูป `02-partners-bad-offset-create-modal.png` ถ่ายตอน FocusModal ยัง fade-in (review #380 — evidence merge แล้ว ไม่ต้องแก้)
+- `tools/load/run.sh` ไม่ unset `DATABASE_POOL_MIN` — ค่าค้างใน shell รั่วได้เฉพาะรันในเครื่อง (review #371)
+### ค. UX/พฤติกรรมที่บันทึกไว้ (ยังไม่เสนอ task)
+- ฟอร์ม campaign: ค่าติดลบ/ทศนิยม/0 แสดงเป็น toast ไม่ใช่ใต้ช่อง (ต่างจาก "e") และ 400 จาก backend เป็น toast ข้อความดิบ (qa #374 O-1) · ข้อความ 400 ของ `status` ผิดมาจาก zod union อ่านยาก (qa #375)
+- เมนูต่อแถว `PartnerActions`/`ProgramActions` เปิดแถวอื่นต่อจากแถวเดิมต้องกด Escape 2 ครั้ง (radix popper wrapper ค้าง; `/app/products` ของ Medusa ไม่เป็น — ตรวจต้นเหตุก่อน, มีก่อน #373)
+- หน้า order-completed แถวสินค้าแสดงราคาซ้ำสองชุด (ของเดิม — qa #372) · `total` ใน `data-value` เป็น float ดิบ (เช่น 10.000000000000005) — แนวเดียวกับที่ยอมรับใน spec 01 รอบ 30 (qa #372)
+- ยอมรับ/ข้อจำกัดภายนอก: error ของ query `selectedValue` ใน `useComboboxData` ไม่ถูกส่งออกจาก hook ของ dashboard → 401 ตรงนั้นไม่ไป `/login` (ADM-24) · Safari ไม่ focus ปุ่มตอนคลิกเมาส์จึงไม่คืน focus (คีย์บอร์ดได้ — ADM-15) ·
+  ไม่มี index `affiliate.status`/`name` (backlog รอวัด — review #375)
+### ง. บทเรียนกระบวนการ (session หลักพิจารณาเพิ่มใน `CLAUDE.md`/agent — planner ไม่แตะ)
+- builder ต้องรัน `pnpm --filter storefront test:e2e:unit` ทั้ง project ก่อน push (hygiene test จับ `request.delete` ที่ไม่ตรวจ ok — เคยรายงานว่าผ่านแต่ไม่ได้รัน)
+- harness ไม่ให้ builder เขียน `REPORT.md` เช่นเดียวกับ qa (OPS-23) → ส่งเนื้อหาให้ session หลัก commit
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →
