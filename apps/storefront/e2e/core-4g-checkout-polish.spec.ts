@@ -85,14 +85,15 @@ test("AC-99: โค้ดหมดอายุแสดง promotion-error ไ�
   try {
     await checkout()
   } finally {
+    // CORE-59 (กฎข้อ 117a): expect.soft — ลบ promotion ล้มแล้วยังลบ campaign ต่อ และ error ของ checkout() ไม่ถูกกลบ
     const promotion = await request.delete(`${BACKEND_URL}/admin/promotions/${promo.promotionId}`, {
       headers: admin,
     })
-    expect(promotion.ok(), `ลบ promotion ของ test: ${promotion.status()}`).toBe(true)
+    expect.soft(promotion.ok(), `ลบ promotion ของ test: ${promotion.status()}`).toBe(true)
     const campaign = await request.delete(`${BACKEND_URL}/admin/campaigns/${promo.campaignId}`, {
       headers: admin,
     })
-    expect(campaign.ok(), `ลบ campaign ของ test: ${campaign.status()}`).toBe(true)
+    expect.soft(campaign.ok(), `ลบ campaign ของ test: ${campaign.status()}`).toBe(true)
   }
 
   async function checkout() {
