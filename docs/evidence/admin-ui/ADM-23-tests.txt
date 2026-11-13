@@ -57,3 +57,23 @@
       18 passed (1.7m)
 ### pnpm lint && pnpm typecheck: exit 0
 ### pnpm --filter storefront test:e2e:unit evidence-budget: 1 passed
+
+## แก้ตาม review #373 (2026-11-14) — finally ตรวจ res.ok() ด้วย expect.soft (AC-99 hygiene), merge origin/develop 4b9e488e
+### red: pnpm --filter storefront test:e2e:unit core-4g (ก่อนแก้)
+    ✘ AC-99: request.delete ใน finally ตรวจ .ok() ทุกครั้ง — evoucher-admin-forms.spec.ts
+### green: pnpm --filter storefront test:e2e:unit (ทั้ง project)
+      110 passed (1.2s)
+### green: jest src/admin
+    Tests:       404 passed, 404 total
+### green: playwright evoucher-admin-forms.spec.ts (workers=1)
+      ✓  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (2.6s)
+      ✓  2 [chromium] › e2e/evoucher-admin-forms.spec.ts:152:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.5s)
+      ✓  3 [chromium] › e2e/evoucher-admin-forms.spec.ts:160:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.6s)
+      ✓  4 [chromium] › e2e/evoucher-admin-forms.spec.ts:152:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.5s)
+      ✓  5 [chromium] › e2e/evoucher-admin-forms.spec.ts:160:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.6s)
+      ✓  6 [chromium] › e2e/evoucher-admin-forms.spec.ts:174:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+      ✓  7 [chromium] › e2e/evoucher-admin-forms.spec.ts:174:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+      ✓  8 [chromium] › e2e/evoucher-admin-forms.spec.ts:183:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.3s)
+      ✓  9 [chromium] › e2e/evoucher-admin-forms.spec.ts:207:7 › ADM-23: partners clamp ไม่กระพริบ + เมนูต่อแถว › AC-28: ?partners_offset=99999999 + GET partners หน่วง 800ms → ไม่มี empty ตลอด 2 วินาทีแรก จบหน้าสุดท้าย; Edit แล้ว Escape ไม่ค้าง pointer-events (5.8s)
+      9 passed (25.4s)
+### pnpm lint && pnpm typecheck: exit 0

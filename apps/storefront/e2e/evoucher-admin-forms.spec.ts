@@ -265,7 +265,9 @@ test.describe("ADM-23: partners clamp ไม่กระพริบ + เมน
         await evidence("02-partner-edit-escape-create-opens")
       })
     } finally {
-      await request.delete(`${BACKEND_URL}${PARTNERS_PATH}/${partner.id}`, { headers: admin })
+      // AC-99 (core-4g hygiene): ลบข้อมูลของ test แล้วตรวจ ok() — soft ไม่บัง error เดิมของ test
+      const res = await request.delete(`${BACKEND_URL}${PARTNERS_PATH}/${partner.id}`, { headers: admin })
+      expect.soft(res.ok(), `ลบ partner ของ test: ${res.status()}`).toBe(true)
     }
   })
 })
