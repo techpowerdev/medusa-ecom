@@ -834,3 +834,23 @@ describe("ตาราง admin: ซ่อนแถบแบ่งหน้า�
     )
   })
 })
+
+describe("Escape ขณะ Combobox ขยายไม่ปิด FocusModal ของฟอร์ม affiliate (spec 08 AC-31, กฎ 30c, ADM-26)", () => {
+  it.each(["components/affiliate/payout-form.tsx", "components/affiliate/program-form.tsx"])(
+    "%s: FocusModal.Content ใช้ onEscapeKeyDown={keepModalOpenWhileComboboxExpanded} จาก lib/combobox-escape",
+    (file) => {
+      const src = read(file)
+      expect(src).toMatch(/import \{ keepModalOpenWhileComboboxExpanded \} from "\.\.\/\.\.\/lib\/combobox-escape"/)
+      expect(src).toMatch(/<FocusModal\.Content onEscapeKeyDown=\{keepModalOpenWhileComboboxExpanded\}>/)
+      // คงเงื่อนไขเดิม: ปิดระหว่างบันทึกไม่ได้
+      expect(src).toMatch(/onOpenChange=\{\(open\) => !open && !save\.isPending && onClose\(\)\}/)
+    }
+  )
+
+  it("lib/combobox-escape.ts ตรวจ aria-expanded ของ input combobox และ preventDefault เท่านั้น (ไม่ดัก keydown ระดับ window/document)", () => {
+    const src = read("lib/combobox-escape.ts")
+    expect(src).toContain('[role="combobox"][aria-expanded="true"]')
+    expect(src).toContain("event.preventDefault()")
+    expect(src).not.toMatch(/addEventListener|dispatchEvent|stopPropagation/)
+  })
+})

@@ -175,3 +175,32 @@
 ## pnpm --filter storefront test:e2e:unit
       110 passed (1.0s)
 ## pnpm lint && pnpm typecheck: exit 0
+
+## หลัง merge origin/develop e2c55a54 (#379 ADM-26) — resolve conflict แบบเก็บทั้งสองฝั่ง
+## backend test:unit
+    Test Suites: 109 passed, 109 total
+    Tests:       1359 passed, 1359 total
+## storefront test:e2e:unit
+      110 passed (825ms)
+## playwright affiliate-admin-forms ทั้งไฟล์ (build ใหม่หลัง merge)
+      ✓   1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.6s)
+      ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:122:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.7s)
+      ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:158:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+      ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:216:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (2.6s)
+      ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:249:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (1.8s)
+      ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:316:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (3.0s)
+      ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (2.6s)
+      ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (2.6s)
+      ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (2.5s)
+      ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (2.6s)
+      ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (2.6s)
+      ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (2.6s)
+      ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.6s)
+      ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.5s)
+      ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:386:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.3s)
+      ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:396:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.9s)
+      ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:416:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.5s)
+      ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:493:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal (1.5s)
+      ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:534:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal (1.5s)
+      19 passed (49.3s)
+## pnpm lint && pnpm typecheck: exit 0

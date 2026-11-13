@@ -466,3 +466,107 @@ test.describe("ADM-25: refetch ของตาราง affiliate ล้มข�
     }
   })
 })
+
+// ADM-26 (spec 08 AC-31, กฎ 30): ขณะ Combobox ขยายใน FocusModal Escape ไม่ปิด modal และค่าที่กรอกคงอยู่; ไม่ assert ว่า Escape
+// ปิด listbox (ข้อจำกัดที่ยอมรับ กฎ 30d) — ปิดรายการด้วยการเลือก option / คลิก heading ใน dialog แล้ว Escape ปิด modal ตามเดิม
+// option ของ Combobox และ heading หาด้วย role (ข้อยกเว้นของ testid)
+test.describe("ADM-26: Escape ของ Combobox ใน FocusModal", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-26" } })
+
+  // Date.now() ชนกันได้เมื่อรัน --repeat-each หลาย worker พร้อมกัน
+  const uniqueTag = () => `adm26${Date.now()}${Math.random().toString(36).slice(2, 8)}`
+
+  const openList = async (page: Page, combobox: string) => {
+    await page.getByTestId(combobox).click()
+    await expect(page.getByRole("listbox")).toBeVisible()
+    await expect(page.getByTestId(combobox)).toHaveAttribute("aria-expanded", "true")
+  }
+
+  // รายการปิดแล้ว (listbox ไม่ visible และ input ไม่ขยาย) → Escape ปิด modal
+  const escapeClosesModal = async (page: Page, combobox: string) => {
+    await expect(page.getByRole("listbox")).toBeHidden()
+    await expect(page.getByTestId(combobox)).not.toHaveAttribute("aria-expanded", "true")
+    await page.keyboard.press("Escape")
+    await expect(page.getByRole("dialog")).toBeHidden()
+  }
+
+  test("AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    await adminHeaders(request)
+    const tag = uniqueTag()
+    const combobox = "affiliate-payout-field-affiliate_id"
+    const from = page.getByTestId("affiliate-payout-field-period_from")
+    await sql(
+      `insert into affiliate (id, email, name, code, status, created_at, updated_at)
+       values ($1, $2, $3, $4, 'active', now(), now())`,
+      [`aff_${tag}`, `${tag}@example.com`, `ADM26 ${tag}`, tag],
+    )
+    try {
+      await step("กรอก From แล้วเปิดรายการ affiliate → Escape: dialog ยังเปิดและ From คงค่าที่กรอก", async () => {
+        await openAffiliatePage(page)
+        await page.getByTestId("affiliate-admin-tab-payouts").click()
+        await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
+        await expect(page.getByRole("dialog")).toBeVisible()
+        await fillDatePicker(from, "2026-03-05T09:15")
+        await openList(page, combobox)
+        await page.keyboard.press("Escape")
+        await expect(page.getByRole("dialog")).toBeVisible()
+        await expectDatePicker(from, "2026-03-05T09:15")
+        await evidence("01-payout-escape-keeps-modal")
+      })
+
+      await step("ค้นด้วย tag แล้วเลือก option ปิดรายการ → Escape ปิด modal (พฤติกรรมเดิม)", async () => {
+        // ค้นก่อนเลือก — affiliate ของ test อาจไม่อยู่ในหน้าแรกของตัวเลือกเมื่อ DB มีข้อมูลอื่น
+        await page.getByTestId(combobox).fill(tag)
+        await page.getByRole("option").filter({ hasText: tag }).click()
+        await escapeClosesModal(page, combobox)
+      })
+    } finally {
+      await sql(`delete from affiliate where id = $1`, [`aff_${tag}`])
+    }
+  })
+
+  test("AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    await adminHeaders(request)
+    const tag = uniqueTag()
+    const combobox = "affiliate-program-field-collection_ids"
+    const name = page.getByTestId("affiliate-program-field-name")
+    await sql(
+      `insert into product_collection (id, title, handle, created_at, updated_at) values ($1, $2, $3, now(), now())`,
+      [`pcol_${tag}`, `ADM26 ${tag}`, tag],
+    )
+    try {
+      await step("กรอกชื่อ ปิด all แล้วเปิดรายการ collection → Escape: dialog ยังเปิดและชื่อคงอยู่", async () => {
+        await openAffiliatePage(page)
+        await page.getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" }).click()
+        await expect(page.getByRole("dialog")).toBeVisible()
+        await name.fill(`ADM-26 ${tag}`)
+        await page.getByTestId("affiliate-program-scope-all").click()
+        await openList(page, combobox)
+        await page.keyboard.press("Escape")
+        await expect(page.getByRole("dialog")).toBeVisible()
+        await expect(name).toHaveValue(`ADM-26 ${tag}`)
+        await evidence("02-program-escape-keeps-modal")
+      })
+
+      // scope เป็น multi-select: คลิก option ไม่ปิดรายการ จึงปิดด้วยการคลิก heading ภายใน dialog (review #378)
+      await step("คลิก heading ใน dialog ปิดรายการ → Escape ปิด modal (พฤติกรรมเดิม)", async () => {
+        await page.getByRole("dialog").getByRole("heading", { name: "Create program" }).click()
+        await escapeClosesModal(page, combobox)
+      })
+    } finally {
+      await sql(`delete from product_collection where id = $1`, [`pcol_${tag}`])
+    }
+  })
+})
