@@ -12,6 +12,11 @@ PROJECT="${LOAD_PROJECT:-loadtest}"
 # cleanup รัน `down -v` → ห้ามใช้ชื่อ project ของ dev
 case "$PROJECT" in medusa-ecom*) echo "LOAD_PROJECT=$PROJECT ใช้ไม่ได้ (ชนกับ project ของ dev)" >&2; exit 2 ;; esac
 unset DATABASE_URL REDIS_URL
+# OPS-23 (AC-38): pool ของ pg ของ server/worker ใน load run = LOAD_DB_POOL_MAX (input db_pool_max ของ load-nightly.yml)
+# ว่าง = default ของ Medusa (10) — ไม่รับ DATABASE_POOL_MAX ที่ค้างใน shell เหมือน DATABASE_URL; ตรวจก่อนเรียก docker
+DB_POOL_MAX="${LOAD_DB_POOL_MAX:-}"
+[[ -z "$DB_POOL_MAX" || "$DB_POOL_MAX" =~ ^[1-9][0-9]*$ ]] || { echo "LOAD_DB_POOL_MAX ต้องเป็นจำนวนเต็มบวกหรือว่าง" >&2; exit 2; }
+export DATABASE_POOL_MAX="$DB_POOL_MAX"
 export SERVER_PORT="${SERVER_PORT:-9106}"
 # OPS-17 (AC-28): tag ของ image แยกจาก `local` ของ dev — `compose up --build` จะไม่ tag ทับ image prod-like ในเครื่อง
 export IMAGE_TAG="${IMAGE_TAG:-load}"
@@ -155,6 +160,7 @@ failures=0
   echo
   [ "$FLASH_BURST" = "0" ] && burst_desc="ปิด (LOAD_FLASH_BURST=0)" || burst_desc="$BURST_RATE rps × $BURST_DURATION"
   echo "flash: $FLASH_CUSTOMERS ลูกค้า, total_cap=$TOTAL_CAP, burst $burst_desc | join: $JOIN_CUSTOMERS ลูกค้า, กลุ่ม $GROUP_SIZE คน"
+  echo "pool (OPS-23): DATABASE_POOL_MAX=${DATABASE_POOL_MAX:-ว่าง (default ของ Medusa)}"
   echo "sampler (OPS-20b): docker stats/pg_stat_activity ทุก ${SAMPLE_INTERVAL}s ระหว่าง flash-sale, event-loop/pool ทุก 1s (LOG_LEVEL=$LOG_LEVEL)"
   echo
   echo "| ตรวจ | คาดหวัง | ได้ | ผล |"

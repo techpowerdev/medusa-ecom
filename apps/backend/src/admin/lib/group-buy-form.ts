@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { fieldErrorMap } from "./form-validation"
+import { BAD_NUMBER_INPUT, fieldErrorMap } from "./form-validation"
 
 // GB-6a: แปลงค่าฟอร์ม "Create campaign" เป็น body ของ POST /admin/group-buy/campaigns
 // pure — ไม่ import sdk เพื่อให้ unit test ตรวจกับ validator ของ GB-2a/GB-2c ได้
@@ -10,21 +10,28 @@ export type GroupMode = "pool" | "team" | "both"
 
 const INVALID_DATE = "Invalid date"
 
+const wholeNumberMessage = (label: string) => `${label} must be a whole number greater than 0`
+const DISCOUNT_VALUE_MESSAGE = "Discount value must be a number greater than 0"
+
+// ADM-15 (spec 08 กฎ 19a): ช่องตัวเลขเป็น NumberInput — ค่าที่ไม่ใช่ตัวเลข ("e") มาเป็น BAD_NUMBER_INPUT
+// ปฏิเสธที่ schema ให้ error อยู่ใต้ช่อง (ข้อความเดียวกับ toCampaignBody) ค่าว่างยังผ่านไปให้ toCampaignBody ตัดสิน
+const numberText = (message: string) => z.string().refine((value) => value !== BAD_NUMBER_INPUT, { message })
+
 export const campaignFormSchema = z.object({
   name: z.string(),
   target_type: z.enum(["orders", "units", "people"]),
-  target_value: z.string(),
+  target_value: numberText(wholeNumberMessage("Target")),
   group_mode: z.enum(["pool", "team", "both"]),
-  team_duration_hours: z.string(),
-  max_total_orders: z.string(),
-  max_units_per_person: z.string(),
-  max_people_per_group: z.string(),
-  pay_within_hours: z.string(),
+  team_duration_hours: numberText(wholeNumberMessage("Team duration")),
+  max_total_orders: numberText(wholeNumberMessage("Max total orders")),
+  max_units_per_person: numberText(wholeNumberMessage("Max units per person")),
+  max_people_per_group: numberText(wholeNumberMessage("Max people per group")),
+  pay_within_hours: numberText(wholeNumberMessage("Pay within")),
   starts_at: z.date().nullable(),
   ends_at: z.date().nullable(),
   discount_type: z.enum(["percentage", "fixed"]),
-  discount_value: z.string(),
-  max_quantity: z.string(),
+  discount_value: numberText(DISCOUNT_VALUE_MESSAGE),
+  max_quantity: numberText(wholeNumberMessage("Max quantity")),
   product_id: z.string().nullable(), // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า จาก product picker — บังคับเลือก
   is_tax_inclusive: z.boolean(), // spec 04 กฎข้อ 12
 })
@@ -68,7 +75,7 @@ const intOrNull = (value: string, label: string) => {
   }
   const n = Number(value)
   if (!Number.isInteger(n) || n <= 0) {
-    throw new FormError(`${label} must be a whole number greater than 0`)
+    throw new FormError(wholeNumberMessage(label))
   }
   return n
 }
@@ -123,7 +130,7 @@ const buildBody = (form: CampaignForm) => {
   }
   const value = Number(form.discount_value)
   if (!form.discount_value.trim() || !(value > 0)) {
-    throw new FormError("Discount value must be a number greater than 0")
+    throw new FormError(DISCOUNT_VALUE_MESSAGE)
   }
   if (form.discount_type === "percentage" && value > 100) {
     throw new FormError("Percentage discount cannot exceed 100")

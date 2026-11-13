@@ -149,6 +149,15 @@ medusaIntegrationTestRunner({
           filters: { email: [AFFILIATE.email, "other@example.com"] },
         })
         expect(rows).toHaveLength(0)
+
+        // AF-23 / AC-55 (กฎ 47): identity ของ token ต้องไม่ถูกผูก affiliate แม้ route จะสร้างแถวด้วย email อื่น
+        const { data: identities } = await query.graph({
+          entity: "auth_identity",
+          fields: ["id", "app_metadata", "provider_identities.entity_id"],
+          filters: { provider_identities: { entity_id: AFFILIATE.email } },
+        })
+        expect(identities).toHaveLength(1)
+        expect([undefined, null]).toContain(identities[0].app_metadata?.affiliate_id)
       })
 
       it("requires authentication to register an affiliate", async () => {

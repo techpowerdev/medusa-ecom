@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # OPS-10 (spec 07 AC-14): 30 เคสของกติกา classify-changes.sh — แก้กติกาแล้วไม่แก้เคส = ล้ม
+      # OPS-10 (spec 07 AC-14) + OPS-22 (AC-37): 35 เคสของกติกา classify-changes.sh — แก้กติกาแล้วไม่แก้เคส = ล้ม
       - run: tools/ci/classify-changes.test.sh
       # OPS-10 (AC-15): event ใน docs/ops/production.md "Stripe webhooks" = events= ของ stripe listen ด้านล่าง (แบบเซต)
       - run: tools/ci/check-stripe-events.test.sh
