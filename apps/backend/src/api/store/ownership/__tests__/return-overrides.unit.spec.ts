@@ -74,11 +74,11 @@ describe("rejectStoreReturnOverrides", () => {
     }
   })
 
-  it("runs right after auth + owner check on the CORE-13 POST /store/returns entry (CORE-17 option, CORE-20b window and CORE-55 location follow)", () => {
+  it("runs right after auth + owner check on the CORE-13 POST /store/returns entry (CORE-17 option, CORE-20b window, CORE-55 location and CORE-56 lock follow)", () => {
     const routes = storeOwnershipMiddlewares.filter((r) => r.matcher === "/store/returns")
     expect(routes).toHaveLength(1)
     expect(routes[0].method).toEqual(["POST"])
-    expect(routes[0].middlewares).toHaveLength(6)
+    expect(routes[0].middlewares).toHaveLength(7)
     expect(routes[0].middlewares![2]).toBe(rejectStoreReturnOverrides)
   })
 })
