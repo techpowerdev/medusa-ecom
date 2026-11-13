@@ -1,3 +1,4 @@
+import { affiliateOptionsQuery, AffiliateOptionParams } from "./affiliate-payout"
 import { sdk } from "./client"
 
 // รูปร่าง response ของ admin API affiliate (src/api/admin/affiliate/*, AF-5/AF-9)
@@ -104,13 +105,11 @@ export const deleteProgram = (id: string) =>
   sdk.client.fetch(`/admin/affiliate/programs/${id}`, { method: "DELETE" })
 
 // AF-12c (กฎ 37c): สร้าง payout + mark paid ผ่าน admin API ของ AF-5
-// ADM-17 (spec 08 กฎ 21): params จาก useComboboxData (q/id/limit/offset) ส่งต่อให้ route ตรงๆ
-export type AffiliateOptionParams = { q?: string; id?: string; limit?: number; offset?: number }
-
-export const listAffiliatesByStatus = (status: "active" | "suspended", params: AffiliateOptionParams) =>
+// ADM-17/ADM-24 (spec 08 กฎ 21, 28b): หนึ่งหน้าของตัวเลือก affiliate ในฟอร์ม payout — query จาก affiliateOptionsQuery
+export const listAffiliateOptions = (params: AffiliateOptionParams) =>
   sdk.client.fetch<
     ListResponse<"affiliates", Pick<Affiliate, "id" | "name" | "email" | "status">> & { offset: number; limit: number }
-  >("/admin/affiliate/affiliates", { query: { ...params, status, fields: "id,name,email,status" } })
+  >("/admin/affiliate/affiliates", { query: affiliateOptionsQuery(params) })
 
 export const createPayout = (body: { affiliate_id: string; period_from: Date; period_to: Date }) =>
   sdk.client.fetch<{ payout: Payout }>("/admin/affiliate/payouts", { method: "POST", body })
