@@ -12,7 +12,7 @@ import {
   toast,
   usePrompt,
 } from "@medusajs/ui"
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { evoucherApi, evoucherKeys, Partner, PartnerInput } from "../../lib/evoucher"
@@ -31,6 +31,7 @@ const columnHelper = createDataTableColumnHelper<Partner>()
 const PAGE_SIZE = 20
 // spec 08 กฎ 9: prefix ไม่ซ้ำกับตาราง pools ในหน้าเดียวกัน — หน้าปัจจุบันอยู่ใน URL (`partners_offset`)
 const PREFIX = "partners"
+const DELETE_KEY = ["evoucher", "partner-delete"]
 
 const FIELDS: { name: keyof PartnerFormValues; label: string }[] = [
   { name: "name", label: "Name *" },
@@ -59,11 +60,69 @@ const PartnerFields = () => (
   </div>
 )
 
+/**
+ * ADM-16 (spec 08 กฎ 20a): Edit/Delete ต่อแถวใน ActionMenu — ถือ prompt/mutation ลบของแถวเอง (แบบ `ProgramActions`)
+ * guard `deleteOnce` มาจากตาราง (ตัวเดียวทั้งตาราง) และ Delete disabled ทุกแถวระหว่างลบใดๆ ยังไม่จบ (mutationKey เดียวกัน)
+ */
+const PartnerActions = ({
+  partner,
+  deleteOnce,
+  onEdit,
+}: {
+  partner: Partner
+  deleteOnce: ReturnType<typeof createSingleFlight>
+  onEdit: (partner: Partner) => void
+}) => {
+  const prompt = usePrompt()
+  const queryClient = useQueryClient()
+  const removing = useIsMutating({ mutationKey: DELETE_KEY }) > 0
+  const remove = useMutation({
+    mutationKey: DELETE_KEY,
+    mutationFn: () => evoucherApi.deletePartner(partner.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: evoucherKeys.partners })
+      queryClient.invalidateQueries({ queryKey: evoucherKeys.pools })
+      toast.success("Partner deleted")
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  // guard ครอบทั้ง prompt + request — กด Delete ซ้ำระหว่างรอ prompt/request ไม่ยิงซ้ำ
+  const confirmDelete = () =>
+    deleteOnce(async () => {
+      const ok = await prompt({
+        title: `Delete ${partner.name}?`,
+        description: "Partners that still have pools cannot be deleted.",
+        confirmText: "Delete",
+        cancelText: "Cancel",
+      })
+      if (ok) {
+        await remove.mutateAsync().catch(() => undefined)
+      }
+    })
+
+  return (
+    <ActionMenu
+      groups={[
+        {
+          actions: [
+            { label: "Edit", icon: <PencilSquare />, onClick: () => onEdit(partner) },
+            { label: "Delete", icon: <Trash />, disabled: removing, onClick: confirmDelete },
+          ],
+        },
+      ]}
+    >
+      <IconButton size="small" variant="transparent" data-testid="evoucher-partner-row-actions">
+        <EllipsisHorizontal />
+      </IconButton>
+    </ActionMenu>
+  )
+}
+
 // EV-6: พาร์ทเนอร์ของ e-voucher — ADM-5: DataTable ของ dashboard (แบ่งหน้าใน URL), Edit/Delete ใน ActionMenu,
 // ฟอร์มเป็น Form + zod (สร้าง = FocusModal, แก้ = Drawer แบบ state — ADR-018 Q5)
 export const PartnersSection = () => {
   const queryClient = useQueryClient()
-  const prompt = usePrompt()
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Partner | null>(null)
   // Form.Field ของ dashboard รับ control ที่ค่าก่อน/หลัง submit เป็น type เดียวกัน จึงให้ resolver คืนค่าดิบ (raw)
@@ -101,11 +160,6 @@ export const PartnersSection = () => {
     onSuccess: (_, { id }) => onSuccess(id ? "Partner updated" : "Partner created"),
     onError,
   })
-  const remove = useMutation({
-    mutationFn: (id: string) => evoucherApi.deletePartner(id),
-    onSuccess: () => onSuccess("Partner deleted"),
-    onError,
-  })
 
   // กดซ้ำขณะ modal เปิดอยู่ไม่ล้างค่าที่กรอกไว้ (spec 08 กฎ 18)
   const openCreate = () => {
@@ -114,58 +168,33 @@ export const PartnersSection = () => {
     setCreateOpen(true)
   }
 
-  const { mutateAsync: removePartner, isPending: removing } = remove
-  const columns = useMemo(() => {
-    const openEdit = (partner: Partner) => {
-      form.reset(toPartnerFormValues(partner))
-      setEditing(partner)
-    }
-    // guard ครอบทั้ง prompt + request — กด Delete ซ้ำระหว่างรอ prompt/request ไม่ยิงซ้ำ
-    const confirmDelete = (partner: Partner) =>
-      deleteOnce(async () => {
-        const ok = await prompt({
-          title: `Delete ${partner.name}?`,
-          description: "Partners that still have pools cannot be deleted.",
-          confirmText: "Delete",
-          cancelText: "Cancel",
-        })
-        if (ok) {
-          await removePartner(partner.id).catch(() => undefined)
-        }
+  // `cell` ต้องคงที่ข้าม render: สร้างใหม่ = React mount แถวใหม่และเมนูที่เปิดอยู่ปิดเองตอน refetch
+  // (usePrompt คืนฟังก์ชันใหม่ทุก render จึงอยู่ใน PartnerActions ไม่อยู่ใน deps ของคอลัมน์นี้ — กฎ 20a)
+  const actionsColumn = useMemo(
+    () => {
+      const openEdit = (partner: Partner) => {
+        form.reset(toPartnerFormValues(partner))
+        setEditing(partner)
+      }
+      return columnHelper.display({
+        id: "actions",
+        cell: ({ row }) => <PartnerActions partner={row.original} deleteOnce={deleteOnce} onEdit={openEdit} />,
       })
+    },
+    [form, deleteOnce]
+  )
 
-    return [
+  const columns = useMemo(
+    () => [
       columnHelper.accessor("name", { header: "Name" }),
       columnHelper.accessor("support_contact", {
         header: "Support contact",
         cell: ({ getValue }) => getValue() ?? "-",
       }),
-      columnHelper.display({
-        id: "actions",
-        cell: ({ row }) => (
-          <ActionMenu
-            groups={[
-              {
-                actions: [
-                  { label: "Edit", icon: <PencilSquare />, onClick: () => openEdit(row.original) },
-                  {
-                    label: "Delete",
-                    icon: <Trash />,
-                    disabled: removing,
-                    onClick: () => confirmDelete(row.original),
-                  },
-                ],
-              },
-            ]}
-          >
-            <IconButton size="small" variant="transparent" data-testid="evoucher-partner-row-actions">
-              <EllipsisHorizontal />
-            </IconButton>
-          </ActionMenu>
-        ),
-      }),
-    ]
-  }, [form, prompt, deleteOnce, removePartner, removing])
+      actionsColumn,
+    ],
+    [actionsColumn]
+  )
 
   const submit = form.handleSubmit((values) =>
     submitOnce(() =>

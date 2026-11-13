@@ -233,3 +233,57 @@ test.describe("ADM-10: offset ใน URL ที่ผิดรูป", () => {
     }
   })
 })
+
+// ADM-16 (spec 08 AC-20, กฎ 20b): `?codes_offset=` เกินจำนวนแถว — request แรกได้ 0 แถว (count 60) ก่อน usePageOffset clamp
+// เคยแสดง empty state "Import a CSV to add codes." จนกว่าหน้าที่ clamp แล้วโหลดเสร็จ (qa #315 O-1) → ตารางต้องอยู่ในสถานะ loading แทน
+test.describe("ADM-16: empty state ไม่กระพริบตอน offset เกิน", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-16" } })
+
+  const EMPTY_TEXT = "Import a CSV to add codes."
+  const emptySeen = (page: Page) => page.evaluate(() => (window as unknown as { __emptySeen: number[] }).__emptySeen)
+
+  test("AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const { variantId } = await createVoucher(request, admin, 60)
+    const { pools } = await call(request, admin, `/admin/evoucher/pools?variant_id=${variantId}&limit=1&offset=0`)
+    const poolId: string = pools[0].id
+    const rows = page.getByTestId("evoucher-codes").locator("tbody tr")
+
+    await loginAdmin(page)
+    // MutationObserver บันทึกทุกครั้งที่ DOM เปลี่ยนแล้วมีข้อความ empty state (กระพริบ 1 frame ก็นับ) ตั้งแต่ก่อน script ของหน้า
+    await page.addInitScript((text) => {
+      const w = window as unknown as { __emptySeen: number[] }
+      w.__emptySeen = []
+      new MutationObserver(() => {
+        if (document.body?.textContent?.includes(text)) w.__emptySeen.push(performance.now())
+      }).observe(document, { childList: true, subtree: true, characterData: true })
+    }, EMPTY_TEXT)
+    await page.route(
+      (url) => url.pathname === `/admin/evoucher/pools/${poolId}/codes`,
+      async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 800))
+        await route.continue()
+      }
+    )
+
+    await step("เปิด ?codes_offset=99999999 → 2 วินาทีแรกไม่มี empty state", async () => {
+      await page.goto(`${BACKEND_URL}/app/evouchers/pools/${poolId}?codes_offset=99999999`)
+      await page.waitForTimeout(2_000)
+      expect(await emptySeen(page)).toEqual([])
+    })
+
+    await step("จบที่ codes_offset=50 (หน้าสุดท้าย) 10 แถว และยังไม่เคยมี empty state", async () => {
+      await page.waitForURL((url) => url.searchParams.get("codes_offset") === "50")
+      await expect(rows).toHaveCount(10)
+      await expect(page.getByTestId("evoucher-codes")).not.toContainText(EMPTY_TEXT)
+      expect(await emptySeen(page)).toEqual([])
+      await evidence("01-codes-offset-clamped-no-empty-flash")
+    })
+  })
+})
