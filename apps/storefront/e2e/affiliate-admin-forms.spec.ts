@@ -15,6 +15,7 @@ test.use({
 
 const PROGRAMS = "/admin/affiliate/programs"
 const PAYOUTS = "/admin/affiliate/payouts"
+const AFFILIATES = "/admin/affiliate/affiliates"
 const COUNT = 250
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ Medusa API ใน e2e
@@ -95,13 +96,19 @@ test("AC-12: ปิด all โดยไม่เลือก scope → error ไ
       await expect(save).toBeHidden()
     })
 
-    await step("เปิดแก้โปรแกรม → ฟอร์มมี collection ที่เลือกไว้ แม้อยู่นอกหน้าแรก (Save ไม่ทำ scope หาย)", async () => {
+    await step("เปิดแก้โปรแกรม → option ของ collection นอกหน้าแรกถูกเลือกอยู่ (aria-selected) และ Save ไม่ทำ scope หาย", async () => {
       await (await rowAction(page.getByRole("row").filter({ hasText: `ADM-9 ${tag}` }), "affiliate-program-row-actions", "Edit")).click()
+      // ADM-17 (spec 08 กฎ 21): ตรวจที่ option ใน combobox ไม่ใช่แค่ body ของ POST
+      await field("collection_ids").click()
+      await expect(page.getByRole("option", { name: `ADM9 ${tag} col 249` })).toHaveAttribute("aria-selected", "true")
+      await field("name").click()
+      await expect(page.getByRole("listbox")).toBeHidden()
       await field("name").fill(`ADM-9 ${tag} v2`)
       const updated = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === `${PROGRAMS}/${programId}`)
       await save.click()
-      const body = (await updated).request().postDataJSON()
-      expect(body.scope.collection_ids).toEqual([target])
+      const response = await updated
+      expect(response.status()).toBe(200)
+      expect(response.request().postDataJSON().scope.collection_ids).toEqual([target])
     })
   } finally {
     await sql(`delete from product_collection where id like $1`, [`pcol_${tag}_%`])
@@ -129,7 +136,9 @@ test("AC-12: แก้แค่ชื่อของโปรแกรมที�
       await page.getByTestId("affiliate-program-field-name").fill(`${name} v2`)
       const updated = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === `${PROGRAMS}/${program.id}`)
       await page.getByTestId("affiliate-program-save").click()
-      const body = (await updated).request().postDataJSON()
+      const response = await updated
+      expect(response.status()).toBe(200)
+      const body = response.request().postDataJSON()
       expect(body.name).toBe(`${name} v2`)
       expect(body).not.toHaveProperty("starts_at")
       expect(body).not.toHaveProperty("ends_at")
@@ -146,7 +155,7 @@ test("AC-12: แก้แค่ชื่อของโปรแกรมที�
   }
 })
 
-test("AC-12: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และเลือก affiliate รายที่ 250 ได้", async ({ page, request, step }) => {
+test("AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้", async ({ page, request, step }) => {
   test.setTimeout(120_000)
   await adminHeaders(request)
   const tag = `adm9${Date.now()}`
@@ -160,8 +169,11 @@ test("AC-12: ฟอร์มสร้าง payout ค่าเริ่มต�
   )
   try {
     const posts: Json[] = []
+    const lists: URL[] = []
     page.on("request", (req) => {
-      if (req.method() === "POST" && new URL(req.url()).pathname === PAYOUTS) posts.push(req.postDataJSON())
+      const url = new URL(req.url())
+      if (req.method() === "POST" && url.pathname === PAYOUTS) posts.push(req.postDataJSON())
+      if (req.method() === "GET" && url.pathname === AFFILIATES) lists.push(url)
     })
     // ตามเวลาไทยของ browser (timezoneId) เดือนก่อน [วันที่ 1, วันที่ 1 ของเดือนนี้) เป็น 00:00 ICT
     const ict = new Date(Date.now() + 7 * 60 * 60 * 1000)
@@ -177,9 +189,12 @@ test("AC-12: ฟอร์มสร้าง payout ค่าเริ่มต�
       await expectDatePicker(page.getByTestId("affiliate-payout-field-period_to"), local(m))
     })
 
-    await step("พิมพ์ชื่อรายที่ 250 → เลือกได้ และ POST ส่ง id กับช่วงค่าเริ่มต้นเป็น UTC", async () => {
+    await step("พิมพ์ชื่อรายที่ 250 → ค้นด้วย q (ไม่ดึง limit=200 หลายหน้า) เลือกได้ และ POST ส่ง id กับช่วงค่าเริ่มต้นเป็น UTC", async () => {
       await page.getByTestId("affiliate-payout-field-affiliate_id").fill(`${tag} aff 000`)
       await page.getByRole("option").filter({ hasText: `${tag} aff 000` }).click()
+      // ADM-17 (spec 08 AC-21): ค้นฝั่ง server ด้วย q และไม่มีการดึงทีละ 200 จนครบแบบเดิม
+      expect(lists.some((url) => url.searchParams.get("q") === `${tag} aff 000`)).toBe(true)
+      expect(lists.filter((url) => url.searchParams.get("limit") === "200")).toEqual([])
       const created = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === PAYOUTS)
       await page.getByTestId("affiliate-payout-save").click()
       await created
@@ -194,4 +209,19 @@ test("AC-12: ฟอร์มสร้าง payout ค่าเริ่มต�
   } finally {
     await sql(`delete from affiliate where id like $1`, [`aff_${tag}_%`])
   }
+})
+
+test("AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ)", async ({ page, request, step }) => {
+  test.setTimeout(120_000)
+  await adminHeaders(request)
+  await step("route รายชื่อ affiliate ตอบ 500 → ข้อความ error ใต้ช่อง", async () => {
+    await openAffiliatePage(page)
+    await page.getByTestId("affiliate-admin-tab-payouts").click()
+    await page.route(`${BACKEND_URL}${AFFILIATES}?**`, (route) =>
+      route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ type: "unknown_error", message: "boom" }) }),
+    )
+    await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
+    // react-query ของ dashboard retry ก่อนแสดง error
+    await expect(page.getByTestId("affiliate-payout-options-error")).toContainText(/\S/, { timeout: 30_000 })
+  })
 })

@@ -223,6 +223,57 @@ medusaIntegrationTestRunner({
           .catch((e) => e.response)
         expect(anonymous.status).toEqual(401)
       })
+
+      // ADM-17 (spec 08 กฎ 21, AC-21): q ค้น name/email แบบไม่สนตัวพิมพ์ผ่าน .searchable() ของ DML
+      it("filters by q on name or email, case-insensitive (AC-21)", async () => {
+        const ann = await service.createAffiliates({ email: "ann@shop.test", name: "Ann Lee", code: "ann", status: "active" })
+        const bob = await service.createAffiliates({ email: "bob@lee-mail.test", name: "Bob", code: "bob", status: "suspended" })
+        await service.createAffiliates({ email: "cat@example.com", name: "Cat", code: "cat", status: "active" })
+
+        const ids = async (query: string) => {
+          // axios error มี circular reference — ห่อเป็น Error ธรรมดากัน jest worker crash
+          const res = await api.get(`/admin/affiliate/affiliates?${query}`, { headers }).catch((e) => {
+            throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+          })
+          return { ids: res.data.affiliates.map((a: { id: string }) => a.id).sort(), count: res.data.count }
+        }
+
+        expect(await ids("q=LEE")).toEqual({ ids: [ann.id, bob.id].sort(), count: 2 })
+        expect(await ids("q=SHOP.TEST")).toEqual({ ids: [ann.id], count: 1 })
+        expect(await ids("q=lee&status=suspended")).toEqual({ ids: [bob.id], count: 1 })
+        expect(await ids("q=nobody")).toEqual({ ids: [], count: 0 })
+
+        const anonymous = await api.get("/admin/affiliate/affiliates?q=lee").catch((e) => e.response)
+        expect(anonymous.status).toEqual(401)
+      })
+
+      // ADM-17 qa D-1: bulk import ได้ created_at เท่ากัน — แบ่งหน้าด้วย offset ต้องได้ทุก id ครั้งเดียว (มี id เป็นตัวตัดสิน)
+      it("pages affiliates with identical created_at without duplicates or gaps", async () => {
+        const created = await service.createAffiliates(
+          Array.from({ length: 120 }, (_, i) => ({
+            email: `tie${i}@example.com`,
+            name: `Tie ${String(i).padStart(3, "0")}`,
+            code: `tie${i}`,
+            status: (i % 5 ? "active" : "suspended") as "active",
+          }))
+        )
+        await getContainer()
+          .resolve(ContainerRegistrationKeys.PG_CONNECTION)
+          .raw("update affiliate set created_at = ?", [new Date("2026-01-01T00:00:00Z")])
+
+        const seen: string[] = []
+        for (let offset = 0; offset < created.length; offset += 7) {
+          const res = await api
+            .get(`/admin/affiliate/affiliates?limit=7&offset=${offset}&fields=id`, { headers })
+            .catch((e) => {
+              throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+            })
+          seen.push(...res.data.affiliates.map((a: { id: string }) => a.id))
+        }
+        expect(seen).toHaveLength(created.length)
+        expect(new Set(seen).size).toEqual(created.length)
+        expect([...seen].sort()).toEqual(created.map((a) => a.id).sort())
+      })
     })
 
     // AF-15 (กฎ 39, AC-46): payout_info 3 ช่องแบบ strict + เลขบัญชี 10–12 หลัก (owner Q20) และ expected_status

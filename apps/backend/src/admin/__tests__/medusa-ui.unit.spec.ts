@@ -412,11 +412,19 @@ describe("ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, �
     expect(src).not.toMatch(/\bCheckbox\b/)
   })
 
-  it("ตัวเลือก affiliate เป็น Combobox ที่ดึงครบทุกหน้า (กฎ 11)", () => {
+  it("ตัวเลือก affiliate เป็น Combobox + useComboboxData ค้นด้วย q ทีละหน้า และแสดง error ใต้ช่อง (กฎ 11, 21)", () => {
     const src = read("components/affiliate/payout-form.tsx")
     expect(importsFrom(src, "Combobox", "@medusajs/dashboard/components")).toBe(true)
+    expect(importsFrom(src, "useComboboxData", "@medusajs/dashboard/hooks")).toBe(true)
     expect(src).not.toMatch(/<Select\b/)
-    expect(src).toMatch(/fetchAllAffiliates\(/)
+    expect(src).not.toMatch(/fetchAllAffiliates|useQuery\(/)
+    for (const prop of ["searchValue", "onSearchValueChange", "fetchNextPage", "isFetchingNextPage"]) {
+      expect(src).toMatch(new RegExp(`\\b${prop}=\\{`))
+    }
+    expect(src).toMatch(/selectedValue:/)
+    expect(src).toMatch(/isError/)
+    expect(src).toMatch(/data-testid="affiliate-payout-options-error"/)
+    expect(read("lib/affiliate-payout.ts")).not.toMatch(/fetchAllAffiliates/)
     expect(read("lib/affiliate.ts")).not.toMatch(/limit:\s*200/)
   })
 

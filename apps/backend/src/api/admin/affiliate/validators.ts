@@ -54,7 +54,9 @@ export const AdminListAffiliatePrograms = listParams().extend({
 export const AdminGetAffiliateParams = createFindParams()
 
 // AF-14 (กฎ 38): filter id ค่าเดียวหรือ id[] — รูปเดียวกับ validator ของ Medusa core (เช่น AdminCustomersParams)
+// ADM-17 (spec 08 กฎ 21): q ค้น name/email ผ่าน .searchable() ของ model (combobox ของฟอร์ม payout)
 export const AdminListAffiliates = listParams().extend({
+  q: z.string().optional(),
   id: z.union([z.string(), z.array(z.string())]).optional(),
   status: z.enum(["pending", "active", "suspended"]).optional(),
 })
