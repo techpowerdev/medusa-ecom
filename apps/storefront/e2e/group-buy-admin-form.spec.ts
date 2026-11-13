@@ -15,6 +15,7 @@ type CampaignPost = {
   starts_at?: string | null
   ends_at?: string
   max_units_per_person: number | null
+  max_total_orders?: number | null
   application_method: {
     max_quantity: number
     target_rules?: { attribute: string; operator: string; values: string[] }[]
@@ -427,6 +428,83 @@ test.describe("ADM-13: หัวตารางรายการแคมเป
       const centerY = (box: { y: number; height: number }) => box.y + box.height / 2
       expect(Math.abs(centerY(createBox) - centerY(blockBox))).toBeLessThanOrEqual(8)
       await evidence("01-list-toolbar")
+    })
+  })
+})
+
+// ADM-15 (spec 08 AC-19, กฎ 19): ช่องตัวเลขเป็น NumberInput ("e" ไม่ถือเป็นค่าว่าง), เปิดซ้อนไม่ได้,
+// ปิด modal แล้ว focus กลับปุ่ม "Create campaign" และเปิดใหม่ได้ฟอร์มว่าง + key ใหม่
+test.describe("ADM-15: ฟอร์มสร้างแคมเปญ — NumberInput และ focus", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-15" } })
+
+  test("AC-19: \"e\" ใน Max total orders → error ใต้ช่องไม่ POST, ว่าง → null, dblclick เปิด dialog เดียว, Escape คืน focus, เปิดใหม่ได้ฟอร์มว่าง + key ใหม่", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const token = `ADM15${Date.now()}`
+    const productTitle = `${token} product`
+    await createProduct(request, await adminHeaders(request), productTitle)
+    const posts = campaignPosts(page)
+    const create = page.getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" })
+    const submit = page.getByTestId("gb-campaign-create-submit")
+    const maxTotalOrders = page.getByTestId("gb-field-max_total_orders")
+    const maxTotalOrdersError = page.getByTestId("gb-max-total-orders-error")
+    const submitAndWait200 = async () => {
+      const response = page.waitForResponse(
+        (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
+      )
+      await submit.click()
+      expect((await response).status()).toBe(200)
+      await expect(submit).toHaveCount(0)
+    }
+
+    await step("พิมพ์ \"e\" ใน Max total orders แล้วส่ง → gb-max-total-orders-error และไม่มี POST", async () => {
+      await openCreateForm(page)
+      await fillValidForm(page, `${token} first`)
+      await pickProduct(page, productTitle)
+      await maxTotalOrders.pressSequentially("e")
+      await submit.click()
+      await expect(maxTotalOrdersError).toBeVisible()
+      await expect(maxTotalOrdersError).toHaveText("Max total orders must be a whole number greater than 0")
+      await evidence("01-max-total-orders-error")
+      expect(posts).toHaveLength(0)
+    })
+
+    await step("ล้างช่อง (ว่าง) แล้วส่ง → error หาย POST 1 ครั้ง max_total_orders = null", async () => {
+      await maxTotalOrders.fill("")
+      await expect(maxTotalOrdersError).toHaveCount(0)
+      await submitAndWait200()
+      expect(posts).toHaveLength(1)
+      expect(posts[0]).toHaveProperty("max_total_orders", null)
+    })
+
+    await step("dblclick ปุ่ม Create campaign → dialog 1 ตัว (ไม่เปิดซ้อน)", async () => {
+      await waitToastsGone(page)
+      await create.dblclick()
+      await expect(submit).toBeVisible()
+      await expect(page.getByRole("dialog")).toHaveCount(1)
+    })
+
+    await step("พิมพ์ชื่อแล้วกด Escape → modal ปิด และ focus อยู่ที่ปุ่ม Create campaign", async () => {
+      await page.getByTestId("gb-field-name").fill(`${token} discarded`)
+      await page.keyboard.press("Escape")
+      await expect(page.getByRole("dialog")).toHaveCount(0)
+      await expect(create).toBeFocused()
+      await evidence("02-focus-returned")
+    })
+
+    await step("เปิดใหม่ → ช่องชื่อว่าง และส่งแล้วได้ idempotency_key ใหม่", async () => {
+      await clickCreateCampaign(page)
+      await expect(page.getByTestId("gb-field-name")).toHaveValue("")
+      await fillValidForm(page, `${token} second`)
+      await pickProduct(page, productTitle)
+      await submitAndWait200()
+      expect(posts).toHaveLength(2)
+      expect(posts[1].idempotency_key).toMatch(UUID)
+      expect(posts[1].idempotency_key).not.toBe(posts[0].idempotency_key)
     })
   })
 })
