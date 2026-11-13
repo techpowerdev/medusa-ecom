@@ -14,6 +14,7 @@ import {
   paymentSessionResult,
 } from "@lib/util/action-result"
 import { INSUFFICIENT_INVENTORY, isInsufficientInventory } from "@lib/util/insufficient-inventory"
+import { trimInvisible } from "@lib/util/trim-invisible"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
@@ -522,8 +523,8 @@ const missingRequired = (address: HttpTypes.StoreAddAddress) =>
 
 function addressFrom(formData: FormData, prefix: "shipping_address" | "billing_address") {
   const field = (name: string) => formData.get(`${prefix}.${name}`)
-  // CORE-52 (กฎข้อ 110b): trim ช่องบังคับ — ว่างหลัง trim = ยังไม่ได้กรอก
-  const required = (name: (typeof REQUIRED_ADDRESS_FIELDS)[number]) => String(field(name) ?? "").trim()
+  // CORE-52/CORE-58 (กฎข้อ 110b, 116a): ตัด white space + zero-width ของช่องบังคับ — ว่างหลังตัด = ยังไม่ได้กรอก
+  const required = (name: (typeof REQUIRED_ADDRESS_FIELDS)[number]) => trimInvisible(String(field(name) ?? ""))
   return {
     first_name: required("first_name"),
     last_name: required("last_name"),

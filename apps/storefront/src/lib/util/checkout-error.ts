@@ -20,7 +20,8 @@ export const CHECKOUT_CONFLICTS: { code: string; message: string; text: string }
 ]
 
 // medusaError ทำตัวแรกเป็นตัวใหญ่และต่อ "." ท้ายข้อความ — ตัดออกก่อนเทียบ
-export const normalize = (message: string) => message.replace(/\.$/, "").toLowerCase()
+// CORE-58 (กฎข้อ 116b): ตัวกลางของทุก map ข้อความ error (insufficient-inventory, group-join-error, empty-cart-completion)
+export const normalize = (message: string) => message.trim().replace(/\.$/, "").toLowerCase()
 
 const knownConflict = (error: unknown) => {
   if (typeof error !== "object" || error === null) {

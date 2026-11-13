@@ -290,3 +290,67 @@ for (const viewport of VIEWPORTS) {
     })
   })
 }
+
+// CORE-58 (spec 01 กฎข้อ 116, AC-157): ช่องที่มีแต่อักขระ zero-width ผ่าน `required` ของ browser ได้ — ต้องไม่บันทึกลง cart
+test.describe("CORE-58 อักขระที่มองไม่เห็น 1280x800", () => {
+  test.use({ viewport: VIEWPORTS[0] })
+  const ZWSP = "​"
+
+  test("AC-157 เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart", async ({ page, context, request, baseURL }) => {
+    test.setTimeout(120_000)
+    const pk = await publishableKey(request, await adminHeaders(request))
+    const customer = await createCustomer(request, pk)
+    const { variantId } = await variantOf(request, pk, "t-shirt")
+    const cartId = await cartWithItem(request, pk, customer, variantId)
+    await signedInWithCart(context, baseURL!, customer, cartId)
+
+    await page.goto(`/${CC}/checkout?step=address`)
+    await page.getByTestId("shipping-first-name-input").fill("สมชาย")
+    await page.getByTestId("shipping-last-name-input").fill("ใจดี")
+    await page.getByTestId("shipping-address-input").fill("99 ถนนสุขุมวิท")
+    await page.getByTestId("shipping-postal-code-input").fill("10110")
+    await page.getByTestId("shipping-city-input").fill(ZWSP)
+    await page.getByTestId("shipping-country-select").selectOption(CC)
+    await page.getByTestId("shipping-email-input").fill(customer.email)
+    const saved = waitForServerAction(page, (body) => body.includes(customer.email))
+    await page.getByTestId("submit-address-button").click()
+    await saved
+
+    await expect(page.getByTestId("address-error-message")).toHaveText(THAI)
+    await expect(page).toHaveURL(/step=address/)
+    const { cart } = await call(request, storeHeaders(pk, customer), `/store/carts/${cartId}?fields=id,*shipping_address`)
+    expect(cart.shipping_address?.city ?? null, "ไม่บันทึก U+200B เป็นเขต/อำเภอ").not.toBe(ZWSP)
+  })
+
+  test("AC-157 cart digital-only: เขต/อำเภอใบเสร็จเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart", async ({
+    page,
+    context,
+    request,
+    baseURL,
+  }) => {
+    test.setTimeout(150_000)
+    const admin = await adminHeaders(request)
+    const pk = await publishableKey(request, admin)
+    const customer = await createCustomer(request, pk)
+    const voucher = await createVoucher(request, admin)
+    const cartId = await cartWithItem(request, pk, customer, voucher.variantId)
+    await signedInWithCart(context, baseURL!, customer, cartId)
+
+    await page.goto(`/${CC}/checkout?step=address`)
+    await page.getByTestId("billing-first-name-input").fill("สมชาย")
+    await page.getByTestId("billing-last-name-input").fill("ใจดี")
+    await page.getByTestId("billing-address-input").fill("99 ถนนสุขุมวิท")
+    await page.getByTestId("billing-postal-input").fill("10110")
+    await page.getByTestId("billing-city-input").fill(ZWSP)
+    await page.getByTestId("billing-country-select").selectOption(CC)
+    await page.getByTestId("billing-email-input").fill(customer.email)
+    const saved = waitForServerAction(page, (body) => body.includes(customer.email))
+    await page.getByTestId("submit-address-button").click()
+    await saved
+
+    await expect(page.getByTestId("address-error-message")).toHaveText(THAI)
+    await expect(page).toHaveURL(/step=address/)
+    const { cart } = await call(request, storeHeaders(pk, customer), `/store/carts/${cartId}?fields=id,*billing_address`)
+    expect(cart.billing_address?.city ?? null, "ไม่บันทึก U+200B เป็นเขต/อำเภอ").not.toBe(ZWSP)
+  })
+})
