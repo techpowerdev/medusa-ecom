@@ -18,6 +18,7 @@ import {
   toProgramBody,
 } from "../../lib/affiliate-program-form"
 import { createSingleFlight } from "../../lib/single-flight"
+import { keepModalOpenWhileComboboxExpanded } from "../../lib/combobox-escape"
 import { NumberInput } from "../common/number-input"
 
 // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
@@ -93,6 +94,7 @@ const ScopeFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; prog
  * AF-12a (กฎ 37a): FocusModal สร้าง (program = undefined) หรือแก้โปรแกรม — ส่ง scope ทั้งก้อนโดยคง variant_ids เดิม (Q16)
  * เปิดเมื่อ `open`; component ถูก mount ใหม่ต่อการเปิดแต่ละครั้ง (key) จึงตั้งค่าฟอร์มเริ่มจาก props ได้เลย
  * ADM-9 (spec 08 AC-12, กฎ 8): Form + KeyboundForm ของ dashboard + zod (⌘/Ctrl+Enter ส่งได้); กฎธุรกิจยังอยู่ใน toProgramBody → form.setError
+ * ADM-26 (กฎ 30c): Escape ขณะ Combobox ของ scope ขยายไม่ปิด modal (keepModalOpenWhileComboboxExpanded)
  */
 export const ProgramFormModal = ({ program, onClose }: { program?: Program; onClose: () => void }) => {
   const queryClient = useQueryClient()
@@ -134,7 +136,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
 
   return (
     <FocusModal open onOpenChange={(open) => !open && !save.isPending && onClose()}>
-      <FocusModal.Content>
+      <FocusModal.Content onEscapeKeyDown={keepModalOpenWhileComboboxExpanded}>
         <Form {...form}>
           {/* noValidate: validation เป็นของ zod/toProgramBody (error ใต้ช่อง) ไม่ให้ browser ดัก input number ก่อน */}
           <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">
