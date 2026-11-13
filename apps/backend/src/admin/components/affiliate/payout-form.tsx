@@ -1,14 +1,14 @@
 import { Combobox, Form, KeyboundForm } from "@medusajs/dashboard/components"
+import { useComboboxData } from "@medusajs/dashboard/hooks"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button, DatePicker, FocusModal, Heading, Text, toast } from "@medusajs/ui"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { affiliateKeys, createPayout, listAffiliatesByStatus } from "../../lib/affiliate"
+import { affiliateKeys, AffiliateOptionParams, createPayout, listAffiliatesByStatus } from "../../lib/affiliate"
 import {
   defaultPayoutPeriod,
-  fetchAllAffiliates,
-  mergeAffiliateOptions,
+  mergeAffiliatePages,
   PAYOUT_PARSE_OPTIONS,
   PayoutForm,
   payoutFormSchema,
@@ -16,18 +16,15 @@ import {
 } from "../../lib/affiliate-payout"
 import { createSingleFlight } from "../../lib/single-flight"
 
-// filter status รับค่าเดียว → ยิง active และ suspended แยกแล้วรวมผล; pending ไม่อยู่ในตัวเลือก
-// spec 08 กฎ 11: route ไม่มี `q` จึงดึงครบทุกหน้า แล้วให้ Combobox ค้นหาฝั่ง client (ไม่ตัดที่ 200)
-const useAffiliateOptions = () =>
-  useQuery({
-    queryKey: [...affiliateKeys.list("affiliates"), "payout-options"],
-    queryFn: async () => {
-      const byStatus = (status: "active" | "suspended") =>
-        fetchAllAffiliates((offset, limit) => listAffiliatesByStatus(status, offset, limit))
-      const [active, suspended] = await Promise.all([byStatus("active"), byStatus("suspended")])
-      return mergeAffiliateOptions(active, suspended)
-    },
-  })
+// spec 08 กฎ 21 (ADM-17): ค้นฝั่ง server ด้วย q + แบ่งหน้าด้วย useComboboxData (ไม่ดึงทุกหน้า)
+// filter status รับค่าเดียว → ยิง active และ suspended ด้วย params เดียวกันแล้วรวมเป็นหน้าเดียว; pending ไม่อยู่ในตัวเลือก
+const fetchAffiliateOptions = async (params: AffiliateOptionParams) => {
+  const [active, suspended] = await Promise.all([
+    listAffiliatesByStatus("active", params),
+    listAffiliatesByStatus("suspended", params),
+  ])
+  return mergeAffiliatePages(active, suspended)
+}
 
 // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
 const PERIOD: { key: "period_from" | "period_to"; label: string }[] = [
@@ -38,6 +35,7 @@ const PERIOD: { key: "period_from" | "period_to"; label: string }[] = [
 /**
  * AF-12c (spec 05 กฎ 37c): FocusModal สร้าง payout — ช่วงเริ่มต้น = เดือนก่อนตามเวลาเครื่อง; 400 → toast และไม่มีแถวใหม่
  * ADM-9 (spec 08 AC-12, กฎ 5, 8, 11): Form + KeyboundForm + DatePicker; ตัวเลือก affiliate เป็น Combobox ค้นหาได้
+ * ADM-17 (กฎ 21): ตัวเลือกค้นด้วย q ทีละหน้า (useComboboxData) และแสดง error ใต้ช่องเมื่อ query ล้ม
  */
 export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
   const queryClient = useQueryClient()
@@ -46,7 +44,17 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
     defaultValues: { affiliate_id: "", ...defaultPayoutPeriod(new Date()) },
   })
   const [submitOnce] = useState(createSingleFlight)
-  const options = useAffiliateOptions()
+  // selectedValue: ตัวที่เลือกไว้ต้องอยู่ใน options แม้ค้นคำอื่นหรือปิด popover (label ไม่หาย)
+  const options = useComboboxData({
+    queryKey: [...affiliateKeys.list("affiliates"), "payout-options"],
+    queryFn: fetchAffiliateOptions,
+    getOptions: (data) =>
+      data.affiliates.map((a) => ({
+        value: a.id,
+        label: `${a.name} (${a.email})${a.status === "suspended" ? " — suspended" : ""}`,
+      })),
+    selectedValue: form.watch("affiliate_id") || undefined,
+  })
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
 
@@ -106,13 +114,20 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
                           {...field}
                           onChange={(id?: string) => onChange(id ?? "")}
                           placeholder={options.isLoading ? "Loading..." : "Select an affiliate"}
-                          options={(options.data ?? []).map((a) => ({
-                            value: a.id,
-                            label: `${a.name} (${a.email})${a.status === "suspended" ? " — suspended" : ""}`,
-                          }))}
+                          options={options.options}
+                          searchValue={options.searchValue}
+                          onSearchValueChange={options.onSearchValueChange}
+                          fetchNextPage={options.fetchNextPage}
+                          isFetchingNextPage={options.isFetchingNextPage}
                           data-testid="affiliate-payout-field-affiliate_id"
                         />
                       </Form.Control>
+                      {/* กฎ 21: query ล้มต้องบอกผู้ใช้ ไม่ใช่รายการว่างเงียบ */}
+                      {options.isError && (
+                        <Text size="small" className="text-ui-fg-error" data-testid="affiliate-payout-options-error">
+                          Could not load affiliates: {options.error.message}
+                        </Text>
+                      )}
                       <Form.ErrorMessage data-testid="affiliate-payout-error-affiliate_id" />
                     </Form.Item>
                   )}

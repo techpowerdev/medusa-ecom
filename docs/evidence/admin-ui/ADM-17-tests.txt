@@ -1,0 +1,45 @@
+# ADM-17 (spec 08 AC-21, กฎ 21) — ผล test
+# วันที่: 2026-11-13, node v22.23.3, base origin/develop 3c5fe4f4
+# backend prod build (medusa start) :9117, DB medusa_adm17, Redis db 14, viewport 1280x800 (locale en-US, Asia/Bangkok)
+
+## Red (ก่อนแก้)
+### jest affiliate-payout.unit.spec.ts + medusa-ui.unit.spec.ts (exit 1)
+  ● mergeAffiliatePages › has no next page once both lists fit (count <= offset + limit)
+  ● mergeAffiliatePages › merges both pages and keeps paging until the longer list is exhausted
+  ● ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, กฎ 4, 5, 8, 11, 15, ADM-9) › ตัวเลือก affiliate เป็น Combobox + useComboboxData ค้นด้วย q ทีละหน้า และแสดง error ใต้ช่อง (กฎ 11, 21)
+Tests:       3 failed, 169 passed, 172 total
+### jest integration-tests/http/affiliate-admin.spec.ts -t AC-21 (exit 1)
+  ●  › affiliates › filters by q on name or email, case-insensitive (AC-21)
+    400 {"type":"invalid_data","message":"Invalid request: Unrecognized fields: 'q'"}
+Tests:       1 failed, 30 skipped, 31 total
+### playwright e2e/affiliate-admin-forms.spec.ts (build ของโค้ดก่อนแก้, exit 1)
+  ✓  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (4.7s)
+  ✓  2 [chromium] › e2e/affiliate-admin-forms.spec.ts:122:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (2.6s)
+  ✘  3 [chromium] › e2e/affiliate-admin-forms.spec.ts:158:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (2.4s)
+  ✘  4 [chromium] › e2e/affiliate-admin-forms.spec.ts:214:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (32.6s)
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: true
+    Received: false
+    Error: expect(locator).toContainText(expected) failed
+    Expected pattern: /\S/
+    Error: element(s) not found
+  2 failed
+  2 passed (43.7s)
+
+## Green
+### jest test:unit ทั้งหมด (exit 0)
+Test Suites: 107 passed, 107 total
+Tests:       1280 passed, 1280 total
+### jest integration-tests/http/affiliate-admin.spec.ts ทั้งไฟล์ (exit 0)
+Test Suites: 1 passed, 1 total
+Tests:       31 passed, 31 total
+### playwright e2e/affiliate-admin-forms.spec.ts (exit 0)
+  ✓  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.3s)
+  ✓  2 [chromium] › e2e/affiliate-admin-forms.spec.ts:122:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.9s)
+  ✓  3 [chromium] › e2e/affiliate-admin-forms.spec.ts:158:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (3.0s)
+  ✓  4 [chromium] › e2e/affiliate-admin-forms.spec.ts:214:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (2.7s)
+  4 passed (11.7s)
+### medusa db:generate affiliate
+Skipped. No changes detected in your models.  (.searchable() ไม่เปลี่ยน schema — ไม่มี migration)
+### pnpm lint && pnpm typecheck (exit 0; 0 errors, warning เดิมของ storefront ไม่เกี่ยวกับไฟล์ของ task)
+### pnpm --filter backend build (exit 0)

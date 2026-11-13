@@ -3,9 +3,9 @@ import {
   canCancelPayout,
   canMarkPaid,
   defaultPayoutPeriod,
-  fetchAllAffiliates,
   markPaidBody,
   mergeAffiliateOptions,
+  mergeAffiliatePages,
   toPayoutBody,
 } from "../affiliate-payout"
 
@@ -107,34 +107,24 @@ describe("mergeAffiliateOptions", () => {
   })
 })
 
-// ADM-9 (spec 08 กฎ 11, AC-12): route ไม่มี `q` และ limit สูงสุด 200 — ตัวเลือกของ Combobox ต้องดึงครบทุกหน้า ไม่ตัดที่ 200 เงียบ
-describe("fetchAllAffiliates", () => {
-  const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `aff_${i}` }))
+// ADM-17 (spec 08 กฎ 21): useComboboxData ดึงทีละหน้าด้วย q — active/suspended ยิงด้วย offset เดียวกันแล้วรวมเป็นหน้าเดียว
+describe("mergeAffiliatePages", () => {
+  const aff = (id: string, name: string, status: "active" | "suspended") => ({ id, name, email: `${id}@x.com`, status })
+  const page = (affiliates: ReturnType<typeof aff>[], count: number, offset = 0) => ({ affiliates, count, offset, limit: 10 })
 
-  it("pages through every result at the route's limit of 200", async () => {
-    const all = rows(450)
-    const calls: [number, number][] = []
-    const result = await fetchAllAffiliates(async (offset, limit) => {
-      calls.push([offset, limit])
-      return { affiliates: all.slice(offset, offset + limit), count: all.length }
+  it("merges both pages and keeps paging until the longer list is exhausted", () => {
+    const merged = mergeAffiliatePages(page([aff("a", "Bee", "active")], 25, 10), page([aff("s", "Ann", "suspended")], 3, 10))
+    expect(merged).toEqual({
+      affiliates: [aff("s", "Ann", "suspended"), aff("a", "Bee", "active")],
+      count: 25,
+      offset: 10,
+      limit: 10,
     })
-    expect(calls).toEqual([
-      [0, 200],
-      [200, 200],
-      [400, 200],
-    ])
-    expect(result).toEqual(all)
   })
 
-  it("stops after one request when everything fits", async () => {
-    const fetchPage = jest.fn(async () => ({ affiliates: rows(3), count: 3 }))
-    expect(await fetchAllAffiliates(fetchPage)).toHaveLength(3)
-    expect(fetchPage).toHaveBeenCalledTimes(1)
-  })
-
-  it("stops on an empty page even if count is stale", async () => {
-    const fetchPage = jest.fn(async () => ({ affiliates: [], count: 5 }))
-    expect(await fetchAllAffiliates(fetchPage)).toEqual([])
-    expect(fetchPage).toHaveBeenCalledTimes(1)
+  it("has no next page once both lists fit (count <= offset + limit)", () => {
+    const merged = mergeAffiliatePages(page([], 0), page([aff("s", "Ann", "suspended")], 1))
+    expect(merged.count).toBeLessThanOrEqual(merged.offset + merged.limit)
+    expect(merged.affiliates).toHaveLength(1)
   })
 })

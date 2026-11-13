@@ -223,6 +223,29 @@ medusaIntegrationTestRunner({
           .catch((e) => e.response)
         expect(anonymous.status).toEqual(401)
       })
+
+      // ADM-17 (spec 08 กฎ 21, AC-21): q ค้น name/email แบบไม่สนตัวพิมพ์ผ่าน .searchable() ของ DML
+      it("filters by q on name or email, case-insensitive (AC-21)", async () => {
+        const ann = await service.createAffiliates({ email: "ann@shop.test", name: "Ann Lee", code: "ann", status: "active" })
+        const bob = await service.createAffiliates({ email: "bob@lee-mail.test", name: "Bob", code: "bob", status: "suspended" })
+        await service.createAffiliates({ email: "cat@example.com", name: "Cat", code: "cat", status: "active" })
+
+        const ids = async (query: string) => {
+          // axios error มี circular reference — ห่อเป็น Error ธรรมดากัน jest worker crash
+          const res = await api.get(`/admin/affiliate/affiliates?${query}`, { headers }).catch((e) => {
+            throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+          })
+          return { ids: res.data.affiliates.map((a: { id: string }) => a.id).sort(), count: res.data.count }
+        }
+
+        expect(await ids("q=LEE")).toEqual({ ids: [ann.id, bob.id].sort(), count: 2 })
+        expect(await ids("q=SHOP.TEST")).toEqual({ ids: [ann.id], count: 1 })
+        expect(await ids("q=lee&status=suspended")).toEqual({ ids: [bob.id], count: 1 })
+        expect(await ids("q=nobody")).toEqual({ ids: [], count: 0 })
+
+        const anonymous = await api.get("/admin/affiliate/affiliates?q=lee").catch((e) => e.response)
+        expect(anonymous.status).toEqual(401)
+      })
     })
 
     // AF-15 (กฎ 39, AC-46): payout_info 3 ช่องแบบ strict + เลขบัญชี 10–12 หลัก (owner Q20) และ expected_status
