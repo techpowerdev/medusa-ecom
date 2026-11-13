@@ -109,9 +109,21 @@ test("AC-144 (กฎข้อ 107e): core-25, core-26, fs19 รอ action ด้
  * ส่วนการประกาศ `function createActiveAffiliate(` ไม่นับ
  */
 const AFFILIATE_CALL = /(?<!function )\bcreateActiveAffiliate\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\)/g
-/** 2 ตัวแรกไม่มี object; ตัวที่ 3 (ถ้ามี) เป็น `{...}` และเป็นตัวสุดท้าย */
-const VALID_AFFILIATE_ARGS = /^\s*[^,{]+,\s*[^,{]+(?:,\s*\{[\s\S]*\})?\s*,?\s*$/
+/**
+ * 2 ตัวแรกไม่มี object; ตัวที่ 3 (ถ้ามี) เป็น `{...}` (ปีกกาซ้อนได้ 2 ชั้น) และเป็นตัวสุดท้าย
+ * CORE-54 (กฎข้อ 112b): ปีกกาต้องจับคู่กัน — ไม่ใช้ `[\s\S]*` แบบ greedy ที่เดินข้าม `}` ของ object ตัวแรกไปถึงตัวที่ 4
+ */
+const VALID_AFFILIATE_ARGS = /^\s*[^,{]+,\s*[^,{]+(?:,\s*\{(?:[^{}]|\{[^{}]*\})*\})?\s*,?\s*$/
 const affiliateCalls = (src: string) => Array.from(src.matchAll(AFFILIATE_CALL), (match) => match[1])
+
+/** CORE-54 (กฎข้อ 112a): body ของ `function longCode` ถึง `\n}\n` — หาไม่เจอต้อง throw ไม่คืนสตริงว่างให้ assert ผ่านเงียบ */
+const longCodeBody = (src: string) => {
+  const start = src.indexOf("function longCode")
+  if (start === -1) throw new Error("ไม่พบ function longCode")
+  const end = src.indexOf("\n}\n", start)
+  if (end === -1) throw new Error("ไม่พบจุดจบของ function longCode")
+  return src.slice(start, end)
+}
 
 test("AC-146 (กฎข้อ 109a): DESKTOP_BASELINE ค่าตาราง /cart อยู่ที่ support/cart-layout.ts ไฟล์เดียว และสองไฟล์ cart import จากที่นั่น", () => {
   const home = path.join("support", "cart-layout.ts")
@@ -142,10 +154,21 @@ test("AC-146 (กฎข้อ 109b): ทุกการเรียก createAct
   }
 })
 
+test("AC-149 (กฎข้อ 112b): ตัวตรวจอาร์กิวเมนต์ createActiveAffiliate ปฏิเสธตัวที่ 4 แม้ตัวสุดท้ายเป็น object", () => {
+  expect(VALID_AFFILIATE_ARGS.test("request, admin, { a: 1 }, { b: 2 }")).toBe(false)
+  expect(VALID_AFFILIATE_ARGS.test("request, admin, { a: { b: 1 } }")).toBe(true)
+  expect(VALID_AFFILIATE_ARGS.test('request, await adminHeaders(request), {\n  prefix: "x",\n  name,\n}\n')).toBe(true)
+})
+
+test("AC-149 (กฎข้อ 112a): longCodeBody throw เมื่อหา longCode ไม่เจอ ไม่ผ่านเงียบ", () => {
+  expect(() => longCodeBody("const other = 1")).toThrow()
+  expect(() => longCodeBody("function longCode() {\n  return 1")).toThrow()
+  expect(longCodeBody("function longCode() {\n  return 1\n}\n")).toContain("return 1")
+})
+
 test("AC-146 (กฎข้อ 109c,d): longCode ไม่สุ่มตัวอักษร รูปแบบรหัสคงที่ และ describe ของ AC-52 ตั้ง evidenceTarget เป็น AF-20", () => {
   const src = read("affiliate-header-overflow.spec.ts")
-  const body = src.slice(src.indexOf("function longCode"))
-  expect(body.slice(0, body.indexOf("\n}\n"))).not.toContain("letters(")
+  expect(longCodeBody(src)).not.toContain("letters(")
   expect(src).toMatch(/const LONG_CODE_SHAPE = "[a-z0-9-]{32}"/)
   expect(src).toContain('expect(code.replace(/\\d/g, "0")).toBe(LONG_CODE_SHAPE)')
 
