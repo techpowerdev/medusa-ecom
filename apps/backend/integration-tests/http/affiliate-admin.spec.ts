@@ -246,6 +246,34 @@ medusaIntegrationTestRunner({
         const anonymous = await api.get("/admin/affiliate/affiliates?q=lee").catch((e) => e.response)
         expect(anonymous.status).toEqual(401)
       })
+
+      // ADM-17 qa D-1: bulk import ได้ created_at เท่ากัน — แบ่งหน้าด้วย offset ต้องได้ทุก id ครั้งเดียว (มี id เป็นตัวตัดสิน)
+      it("pages affiliates with identical created_at without duplicates or gaps", async () => {
+        const created = await service.createAffiliates(
+          Array.from({ length: 120 }, (_, i) => ({
+            email: `tie${i}@example.com`,
+            name: `Tie ${String(i).padStart(3, "0")}`,
+            code: `tie${i}`,
+            status: (i % 5 ? "active" : "suspended") as "active",
+          }))
+        )
+        await getContainer()
+          .resolve(ContainerRegistrationKeys.PG_CONNECTION)
+          .raw("update affiliate set created_at = ?", [new Date("2026-01-01T00:00:00Z")])
+
+        const seen: string[] = []
+        for (let offset = 0; offset < created.length; offset += 7) {
+          const res = await api
+            .get(`/admin/affiliate/affiliates?limit=7&offset=${offset}&fields=id`, { headers })
+            .catch((e) => {
+              throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+            })
+          seen.push(...res.data.affiliates.map((a: { id: string }) => a.id))
+        }
+        expect(seen).toHaveLength(created.length)
+        expect(new Set(seen).size).toEqual(created.length)
+        expect([...seen].sort()).toEqual(created.map((a) => a.id).sort())
+      })
     })
 
     // AF-15 (กฎ 39, AC-46): payout_info 3 ช่องแบบ strict + เลขบัญชี 10–12 หลัก (owner Q20) และ expected_status

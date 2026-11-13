@@ -43,3 +43,16 @@ Tests:       31 passed, 31 total
 Skipped. No changes detected in your models.  (.searchable() ไม่เปลี่ยน schema — ไม่มี migration)
 ### pnpm lint && pnpm typecheck (exit 0; 0 errors, warning เดิมของ storefront ไม่เกี่ยวกับไฟล์ของ task)
 ### pnpm --filter backend build (exit 0)
+
+## แก้ตาม qa D-1 (2026-11-13): created_at ซ้ำ → แบ่งหน้าด้วย offset ซ้ำ/หาย
+### Red: jest affiliate-admin.spec.ts -t "identical created_at" (ก่อนเพิ่ม id tiebreaker, exit 1)
+  ●  › affiliates › pages affiliates with identical created_at without duplicates or gaps
+    Expected: 120
+    Received: 113
+Tests:       1 failed, 31 skipped, 32 total
+### Green: jest integration-tests/http/affiliate-admin.spec.ts ทั้งไฟล์ (exit 0)
+Test Suites: 1 passed, 1 total
+Tests:       32 passed, 32 total
+### jest test:unit ทั้งหมด (exit 0)
+Tests:       1280 passed, 1280 total
+### pnpm lint && pnpm typecheck (exit 0), pnpm --filter backend build (exit 0)
