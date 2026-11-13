@@ -34,10 +34,21 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
   return (
     <div data-testid="cart-totals">
       <div className="flex flex-col gap-y-2 txt-medium text-ui-fg-subtle ">
-        <div className="flex items-center justify-between">
-          {/* eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C7 ที่ owner ตัดสิน (spec 01 กฎข้อ 115a) */}
-          <span>ยอดรวมสินค้า (รวม VAT)</span>
-          <span data-testid="cart-subtotal" data-value={original_item_total || 0}>
+        {/* CORE-60 (spec 01 กฎข้อ 118, Q-C8 = ก): มีส่วนลด → บอกว่าเป็นยอดก่อนส่วนลด (เงื่อนไขเดียวกับแถว cart-discount)
+            ป้ายยาวตัดบรรทัดได้ (min-w-0) แต่จำนวนเงินอยู่บรรทัดเดียว (whitespace-nowrap) ที่ 375 */}
+        <div className="flex items-center justify-between gap-x-2">
+          <span className="min-w-0" data-testid="cart-subtotal-label">
+            {discount_total
+              ? // eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นหน่วย/รหัสตามภาคผนวก 2026-11-13 ของ ADR-014 (Q-C9 = ก) ป้ายตามกฎข้อ 118
+                "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)"
+              : // eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C7 ที่ owner ตัดสิน (spec 01 กฎข้อ 115a)
+                "ยอดรวมสินค้า (รวม VAT)"}
+          </span>
+          <span
+            className="whitespace-nowrap"
+            data-testid="cart-subtotal"
+            data-value={original_item_total || 0}
+          >
             {convertToLocale({ amount: original_item_total ?? 0, currency_code })}
           </span>
         </div>

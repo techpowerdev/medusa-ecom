@@ -1,0 +1,84 @@
+# CORE-60 — ผล test (spec 01 กฎข้อ 118, AC-159) — 2026-11-14, node v22.23.3, ในเครื่อง: backend :9310 (medusa develop, DB medusa_core60, Redis db 10), storefront :8310 (next build + next start)
+
+## Red — unit (Vitest) บน cart-totals ของ develop ff502ff1
+      Tests  5 failed | 9 passed (14)
+     × discount_total: 0: ป้ายไม่มีคำว่าก่อนส่วนลด และต่างจากเคสมีส่วนลด 6ms
+     × flash −20%: ค่าจัดส่ง = ราคา option ฿10 ไม่ใช่ shipping_subtotal ฿9.35 และแถวรวมได้ยอดสุทธิ 83ms
+     × flash: ป้ายมีอักษรไทยและคำว่าก่อนส่วนลด ตัวเลขเท่าเดิม 3ms
+     × ส่วนลดค่าส่งอย่างเดียว: ป้ายเท่ากับเคส flash 4ms
+     × ไม่ส่ง discount_total: ป้ายไม่มีคำว่าก่อนส่วนลด และต่างจากเคสมีส่วนลด 4ms
+AssertionError: cart-subtotal-label 1 ตัว: expected [] to have a length of 1 but got +0
+AssertionError: expected [] to have a length of 1 but got +0
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+## Red — e2e core-60 บน storefront ที่ build จาก cart-totals ของ develop (ล้มที่ step (a): ไม่มี cart-subtotal-label ใน cart-totals)
+        14 × locator resolved to 0 elements
+           - unexpected value "0"
+    > 37 |   await expect(label).toHaveCount(1)
+    test-results/core-60-cart-subtotal-labe-e766b-ลขเท่าเดิม-และไม่ล้นที่-375-chromium/test-failed-1.png
+  1 failed
+    [chromium] › e2e/core-60-cart-subtotal-label.spec.ts:44:5 › AC-159: ป้ายแถวแรกของ cart-totals เปลี่ยนเมื่อมีส่วนลด ตัวเลขเท่าเดิม และไม่ล้นที่ 375 
+
+## Green — unit (Vitest) ไฟล์ของ task + ev-7d (ไม่แก้)
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: แถวของ cart-totals ใช้ฐานรวม VAT (AC-156) > flash −20%: ค่าจัดส่ง = ราคา option ฿10 ไม่ใช่ shipping_subtotal ฿9.35 และแถวรวมได้ยอดสุทธิ 29ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: แถวของ cart-totals ใช้ฐานรวม VAT (AC-156) > ส่วนลดค่าส่ง: cart-shipping = ราคา option ก่อนส่วนลด ไม่หักซ้ำกับแถวส่วนลด 1ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: แถวของ cart-totals ใช้ฐานรวม VAT (AC-156) > digital-only ไม่มีค่าจัดส่ง → ไม่มีแถวและคำว่าค่าจัดส่ง ป้ายยังเป็นรวม VAT 1ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: แถวของ cart-totals ใช้ฐานรวม VAT (AC-156) > digital-only ที่ยังมีค่าจัดส่งเก็บจริง → คงแถวค่าจัดส่ง = original_shipping_total 1ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-60: ป้ายแถวแรกบอกว่าเป็นยอดก่อนส่วนลดเมื่อมีส่วนลด (กฎข้อ 118, AC-159) > flash: ป้ายมีอักษรไทยและคำว่าก่อนส่วนลด ตัวเลขเท่าเดิม 2ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-60: ป้ายแถวแรกบอกว่าเป็นยอดก่อนส่วนลดเมื่อมีส่วนลด (กฎข้อ 118, AC-159) > ส่วนลดค่าส่งอย่างเดียว: ป้ายเท่ากับเคส flash 2ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-60: ป้ายแถวแรกบอกว่าเป็นยอดก่อนส่วนลดเมื่อมีส่วนลด (กฎข้อ 118, AC-159) > discount_total: 0: ป้ายไม่มีคำว่าก่อนส่วนลด และต่างจากเคสมีส่วนลด 3ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-60: ป้ายแถวแรกบอกว่าเป็นยอดก่อนส่วนลดเมื่อมีส่วนลด (กฎข้อ 118, AC-159) > ไม่ส่ง discount_total: ป้ายไม่มีคำว่าก่อนส่วนลด และต่างจากเคสมีส่วนลด 3ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: static — ไม่อ้าง field ฐานก่อนภาษีและไม่คำนวณ VAT เอง (กฎข้อ 115c) > ไม่มี item_subtotal 1ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: static — ไม่อ้าง field ฐานก่อนภาษีและไม่คำนวณ VAT เอง (กฎข้อ 115c) > ไม่มี shipping_subtotal 1ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: static — ไม่อ้าง field ฐานก่อนภาษีและไม่คำนวณ VAT เอง (กฎข้อ 115c) > ไม่มี discount_subtotal 0ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: static — ไม่อ้าง field ฐานก่อนภาษีและไม่คำนวณ VAT เอง (กฎข้อ 115c) > ไม่มี 1.07 0ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: static — ไม่อ้าง field ฐานก่อนภาษีและไม่คำนวณ VAT เอง (กฎข้อ 115c) > ไม่มี ไม่รวมภาษี 0ms
+ ✓ src/core-57-cart-totals.test.ts > CORE-57: static — ไม่อ้าง field ฐานก่อนภาษีและไม่คำนวณ VAT เอง (กฎข้อ 115c) > ไม่มี ก่อน VAT 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > CartTotals (กฎข้อ 28a) > digital-only → ไม่มีแถวค่าจัดส่งและไม่มีคำว่าค่าจัดส่งเลย แต่ยังมีภาษี 41ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > CartTotals (กฎข้อ 28a) > cart ผสม → ยังมีแถวค่าจัดส่ง 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > CartTotals (กฎข้อ 28a) > สินค้าจัดส่งล้วน → ยังมีแถวค่าจัดส่ง 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > CartTotals (กฎข้อ 28a) > ไม่รู้รายการสินค้า → ยังมีแถวค่าจัดส่ง 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > CartTotals เมื่อ cart digital-only ยังมีค่าจัดส่งเก็บจริง (review #320) > original_shipping_total > 0 → คงแถวค่าจัดส่ง ไม่ให้ยอดรวมมีเงินที่ไม่มีแถวอธิบาย 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > isDigitalOnlyCart (กฎข้อ 28b) > รับเฉพาะ cart — ผลมาจาก requires_shipping ไม่มี parameter flag 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > cart ใน server เป็น digital-only → ไม่ต้องมี flag จาก form ก็ใช้ที่อยู่ใบกำกับภาษีเป็น shipping_address 633ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > อ่าน cart เฉพาะ requires_shipping ของ line ด้วย token ของลูกค้า 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > client ส่ง digital_only=1 มาแต่ cart ใน server ต้องจัดส่ง → ไม่เชื่อ flag ใช้ flow ปกติ 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > cart กลายเป็น digital-only แต่ฟอร์มเป็นที่อยู่จัดส่ง → ไม่บันทึกที่อยู่ว่าง และแจ้งให้โหลดหน้าใหม่ 2ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > cart กลายเป็นต้องจัดส่งแต่ฟอร์มเป็นที่อยู่ใบกำกับภาษี → ไม่บันทึกที่อยู่ว่าง และแจ้งให้โหลดหน้าใหม่ 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > digital-only: ฟอร์มถูกแบบแต่ที่อยู่ว่าง → ไม่บอกว่าตะกร้าเปลี่ยนแปลง (review #320) 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > ต้องจัดส่ง: ฟอร์มถูกแบบแต่ที่อยู่ว่าง → ไม่บอกว่าตะกร้าเปลี่ยนแปลง (review #320) 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > อ่าน cart แล้ว 401 → ให้เข้าสู่ระบบใหม่ ไม่บันทึกที่อยู่ 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > flow ปกติไป delivery ของ country ใน URL ไม่ใช่ country ของที่อยู่จัดส่ง 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > flow ปกติ country ใน URL ไม่ผ่าน safeCountryCode ("/example.org") → path ภายในร้าน 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > flow ปกติ country ใน URL ไม่ผ่าน safeCountryCode ("//example.org") → path ภายในร้าน 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > flow ปกติ country ใน URL ไม่ผ่าน safeCountryCode ("TH") → path ภายในร้าน 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > setAddresses ตัดสิน digital-only จาก cart ฝั่ง server (กฎข้อ 28b, 28c) > flow ปกติ country ใน URL ไม่ผ่าน safeCountryCode ("") → path ภายในร้าน 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > placeOrder ไม่อ่าน country จาก shipping_address (กฎข้อ 28c) > ใช้ country จาก URL แม้ shipping_address เป็นประเทศอื่น 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > placeOrder ไม่อ่าน country จาก shipping_address (กฎข้อ 28c) > country จาก URL ใช้ไม่ได้ (undefined) → path ภายในร้าน ไม่ fallback ไป shipping_address 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > placeOrder ไม่อ่าน country จาก shipping_address (กฎข้อ 28c) > country จาก URL ใช้ไม่ได้ ("/example.org") → path ภายในร้าน ไม่ fallback ไป shipping_address 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > placeOrder ไม่อ่าน country จาก shipping_address (กฎข้อ 28c) > country จาก URL ใช้ไม่ได้ ("TH") → path ภายในร้าน ไม่ fallback ไป shipping_address 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > static: ทุกทางหลังชำระส่ง country จาก URL ให้ placeOrder (กฎข้อ 28c) > บัตร + manual 2ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > static: ทุกทางหลังชำระส่ง country จาก URL ให้ placeOrder (กฎข้อ 28c) > พร้อมเพย์ 2ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > static: ทุกทางหลังชำระส่ง country จาก URL ให้ placeOrder (กฎข้อ 28c) > redirect กลับจาก Stripe 1ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > static: ทุกทางหลังชำระส่ง country จาก URL ให้ placeOrder (กฎข้อ 28c) > payment-return ผ่าน safeCountryCode ก่อนประกอบ path 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > static: ทุกทางหลังชำระส่ง country จาก URL ให้ placeOrder (กฎข้อ 28c) > lib/data/cart.ts ไม่ประกอบ redirect จาก country ของที่อยู่ และไม่รับ flag digital_only 0ms
+ ✓ src/ev-7d-digital-only-totals.test.ts > static: ทุกทางหลังชำระส่ง country จาก URL ให้ placeOrder (กฎข้อ 28c) > ฟอร์มที่อยู่ทั้งสองแบบส่ง country ของ URL และไม่มี hidden flag 3ms
+ Test Files  2 passed (2)
+      Tests  43 passed (43)
+
+## Green — unit ทั้ง storefront
+ Test Files  98 passed (98)
+      Tests  1145 passed (1145)
+
+## Green — e2e (chromium) core-60 ใหม่ + AC-156 (core-57) + AC-117 (core-26) ไม่แก้
+  ✓  [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (14.7s)
+  ✓  [chromium] › e2e/core-57-cart-totals.spec.ts:62:5 › AC-156: ค่าจัดส่งใน cart-totals = ราคา option ที่เลือก และแถวรวม VAT รวมได้ยอดสุทธิ ที่ /th/cart และขั้น review (23.7s)
+  ✓  [chromium] › e2e/core-60-cart-subtotal-label.spec.ts:44:5 › AC-159: ป้ายแถวแรกของ cart-totals เปลี่ยนเมื่อมีส่วนลด ตัวเลขเท่าเดิม และไม่ล้นที่ 375 (24.4s)
+  ✓  [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที (23.6s)
+  4 passed (48.3s)
+
+## Green — evidence-budget (playwright project unit)
+  ✓  1 [unit] › e2e/evidence-budget.unit.spec.ts:9:5 › โฟลเดอร์ evidence ทุก feature/task อยู่ตาม convention และอยู่ในงบ
+
+## pnpm lint && pnpm typecheck
+exit 0
