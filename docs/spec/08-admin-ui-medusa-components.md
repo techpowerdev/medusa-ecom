@@ -517,7 +517,7 @@ none
 - `apps/backend/src/api/admin/affiliate/middlewares.ts:70` `tiebreakById` แก้แค่ `req.queryConfig.pagination.order` ไม่แก้ `req.listConfig.order` — ไม่มี comment เตือน (re-review #360)
 - สถานะ error ของกฎ 24/25: แถบแบ่งหน้ายังแสดง "0 of 0 results" และ codes หน้า 2 ที่ล้มแสดง "2 of 1 pages" เพราะ `rowCount={data?.count ?? 0}` (qa #361/#362); หัวข้อ error แท็บ Ledger เป็น "Could not load entries" (`components/affiliate/list-table.tsx:103` ใช้ชื่อ resource) ไม่ตรงชื่อแท็บ (review #362); กฎ 24d (refetch ล้มขณะมีข้อมูล) ยังไม่มี e2e อัตโนมัติ (qa #361/#362 ทดสอบมือ); comment กฎ 25 ใน `components/evoucher/pools-table.tsx:60` อยู่ห่างจาก `div` ที่อธิบาย (review #361)
 - `@medusajs/dashboard` 2.22.1 `DataTableProps` มี `enablePagination?: boolean` (`dist/components.d.ts:296`) — ปิดแถบแบ่งหน้าได้โดยไม่สร้างเอง
-- qa #360 O-2: กด Escape ขณะ popover ของ `Combobox` เปิดอยู่ใน `FocusModal` ปิดทั้ง modal และค่าที่กรอกหาย — มาจาก ADM-9 **ยังไม่ทดสอบบน develop** (ฟอร์มที่เข้าเงื่อนไข: `components/affiliate/payout-form.tsx:86`/`:113`, `components/affiliate/program-form.tsx:68`/`:136`)
+- qa #360 O-2: กด Escape ขณะ popover ของ `Combobox` เปิดอยู่ใน `FocusModal` ปิดทั้ง modal และค่าที่กรอกหาย — มาจาก ADM-9 (ยืนยันแล้ว 10/10 บน develop `e994246f` เมื่อ 2026-11-14 — กฎ 30) (ฟอร์มที่เข้าเงื่อนไข: `components/affiliate/payout-form.tsx:86`/`:113`, `components/affiliate/program-form.tsx:68`/`:136`)
 Status: draft (ADM-23..26 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ)
 Out of scope: แก้ `DataTable`/`Combobox`/`usePrompt` ของ dashboard/ui, patch-package, ปุ่มลองใหม่ (กฎ 24e), ตารางนอกกฎ 24/25
 
@@ -528,7 +528,7 @@ Out of scope: แก้ `DataTable`/`Combobox`/`usePrompt` ของ dashboard/u
 | filter หลายค่าใน list route | `validateAndTransformQuery` + `query.graph` filter แบบ array (`status: ["active", "suspended"]` → `$in`) | **extend**: validator ของเราเองรับ array (แบบ `id[]` ของ AF-14) — ไม่มี migration |
 | เรียงตามชื่อฝั่ง server | `order` ของ `validateAndTransformQuery` (`isList`) + `tiebreakById` ของเรา | ใช้ตามเดิม |
 | เมนูต่อแถว + Drawer | `ActionMenu` (dashboard) + แนว `key`/remount ที่ `ProgramActions` ใช้อยู่ | ใช้ตามเดิม — ทำให้ `PartnerActions` เหมือนกัน |
-| Escape ของ popover ใน modal | `Combobox` (dashboard) + `FocusModal.Content` (`onEscapeKeyDown` ของ Radix ส่งผ่าน `@medusajs/ui`) | ยืนยันก่อน (ADM-26) — แก้เฉพาะในโค้ดของเรา |
+| Escape ของ popover ใน modal | `Combobox` (dashboard) + `FocusModal.Content` (`onEscapeKeyDown` ของ Radix ส่งผ่าน `@medusajs/ui`) | **extend** (ADM-26, ยืนยันแล้ว 2026-11-14): `onEscapeKeyDown` กัน modal ปิดขณะ combobox ขยาย — ไม่แก้/ไม่สร้าง `Combobox` (กฎ 30) |
 
 ### Data model / Workflows
 none
@@ -547,8 +547,15 @@ none
     (b) heading error ของแท็บ Ledger (`resource` = `entries`) = "Could not load ledger entries" (แท็บอื่นคง "Could not load <resource>");
     (c) กฎ 24d มี e2e อัตโนมัติอย่างน้อยหนึ่งตารางต่อกลุ่ม (e-voucher, affiliate, group buy): ตารางโหลดสำเร็จแล้ว GET ครั้งถัดไปของรายการเดียวกันล้ม → แถวเดิมยังแสดงและไม่มี testid error;
     (d) comment กฎ 25 ใน `pools-table.tsx` ย้ายไปติด `div` ที่ใส่ testid error
-30. (ADM-26 — qa #360 O-2, **ต้องยืนยันก่อน ไม่ใช่บั๊กที่ยืนยันแล้ว**) ใน `FocusModal` ที่มี `Combobox` (ฟอร์ม payout, ฟอร์ม program): กด Escape ขณะ popover ของ `Combobox` เปิด → ปิดเฉพาะ popover, modal ยังเปิดและค่าที่กรอกคงอยู่; Escape ครั้งถัดไป (popover ปิดแล้ว) ปิด modal ตามเดิม;
-    ทำซ้ำไม่ได้บน develop → ปิดด้วย test กันถอย; ทำซ้ำได้ → แก้เฉพาะในโค้ดของเรา (เช่น `onEscapeKeyDown` ของ `FocusModal.Content` เรียก `preventDefault()` เมื่อ popover เปิด); ต้นเหตุต้องแก้ใน dashboard → หยุดรายงาน planner (ห้าม patch-package)
+30. (ADM-26 — qa #360 O-2; **ยืนยันแล้ว 2026-11-14**, owner ตัดสิน = ก "กันฟอร์มปิด" 2026-11-14) ใน `FocusModal` ที่มี `Combobox` (ฟอร์ม payout `components/affiliate/payout-form.tsx`, ฟอร์ม program `components/affiliate/program-form.tsx` — ทั้งสร้างและแก้):
+    (a) **ผลยืนยัน** (builder, prod build develop `e994246f`): e2e กด Escape ขณะรายการตัวเลือกของ `Combobox` เปิด → ปิดทั้ง modal และค่าที่กรอกหาย ล้ม 10/10 (payout 5/5, program 5/5);
+    (b) **ต้นเหตุ** (อยู่ใน component ของ Medusa — แก้ที่ต้นทางไม่ได้): `FocusModal` ของ `@medusajs/ui` 4.2.8 ใช้ Radix dialog 1.1.4 → `@radix-ui/react-dismissable-layer` 1.1.3 (`dist/index.mjs:59-67`) ดัก Escape ที่ document แบบ capture (`react-use-escape-keydown` 1.1.0 ลงทะเบียนตอน modal mount จึงทำงานก่อน popover)
+        เรียก `onEscapeKeyDown` แล้วถ้าไม่ `defaultPrevented` ก็ `preventDefault()` + `onDismiss()`; `Combobox` ของ `@medusajs/dashboard` 2.22.1 (`chunk-53MXUSIR.mjs:41-58`, `:377`) ใช้ Ariakit 0.7.1 ซึ่งข้าม Escape ที่ `defaultPrevented` แล้ว และ `Combobox` ไม่มี prop `open`/`onOpenChange` ให้ควบคุมรายการ
+        — ลอง `preventDefault()` แล้ว modal ไม่ปิดแต่รายการก็ไม่ปิด, เพิ่ม `input.blur()` รายการยังไม่ปิด; วิธีอื่นเป็น hack;
+    (c) **พฤติกรรมที่ต้องได้**: ขณะ `Combobox` ในฟอร์มขยายอยู่ Escape **ไม่ปิด** `FocusModal` และค่าที่กรอกไม่หาย — ใช้ prop `onEscapeKeyDown` ของ `FocusModal.Content` (ของ Radix ส่งผ่าน `@medusajs/ui`) เรียก `event.preventDefault()` เมื่อ combobox ขยาย
+        ตรวจจาก `aria-expanded="true"` ของ input combobox ภายใน modal นั้น (หรือวิธีเทียบเท่าที่ไม่ hack — ระบุใน PR); เมื่อไม่มี combobox ขยาย Escape ปิด modal ตามเดิม (รวมเงื่อนไข `!save.isPending` เดิมของ `onOpenChange`);
+    (d) **ข้อจำกัดที่ยอมรับ** (owner 2026-11-14): Escape ไม่ปิดรายการตัวเลือก — ผู้ใช้ปิดรายการด้วยการคลิกนอกรายการหรือเลือกค่า; Escape ครั้งถัดไปหลังรายการปิดแล้วปิด modal ตามปกติ;
+    (e) ห้าม patch-package, ห้าม fork/สร้าง `Combobox` เอง, ห้ามดัก keydown ระดับ `window`/`document` หรือจำลอง event ของ Ariakit; ถ้าทำ (c) ด้วย `onEscapeKeyDown` ไม่ได้ → หยุดรายงาน planner
 
 ### Acceptance criteria (รอบ 30)
 - AC-28 (ADM-23, กฎ 27) e2e 1280×800 (ต่อจาก `e2e/evoucher-admin-forms.spec.ts`): Given partner ≥ 1 และ `page.route` หน่วง GET `**/admin/evoucher/partners*` 800ms When เปิด `/app/evouchers?partners_offset=99999999` Then ตลอด 2 วินาทีแรก (MutationObserver นับ) ข้อความ "No partners on this page" ไม่ปรากฏ และจบที่หน้าสุดท้ายที่มีแถว (`partners_offset` ถูก clamp); — **ล้มบน develop**;
@@ -561,13 +568,17 @@ none
 - AC-30 (ADM-25, กฎ 29) e2e 1280×800 (ไฟล์ e2e เดิมของ AC-24/25/26): สำหรับแต่ละตารางของกฎ 29 — Given `page.route` GET รายการตอบ 500 When เปิดหน้า Then testid error visible และภายใน wrapper ของตารางไม่มีข้อความตรง `/\d+ of \d+ (results|pages)/`; Given `?codes_offset=50` และ GET codes ตอบ 500 Then ไม่มี "2 of 1 pages";
   Given แท็บ Ledger ล้ม Then `affiliate-list-error` มี "Could not load ledger entries"; Given ตารางของกลุ่ม e-voucher/affiliate/group buy อย่างละหนึ่งโหลดสำเร็จ (มีแถว) When GET รายการเดียวกันครั้งถัดไปตอบ 500 (ทำให้ refetch ด้วยการ invalidate จาก mutation ของหน้านั้นหรือวิธีที่ระบุใน PR) Then แถวเดิมยัง visible และ testid error count 0 — กฎ 24d;
   Given API ปกติ Then แถบแบ่งหน้ายังแสดง (AC-14 ผ่าน); static (`medusa-ui.unit.spec.ts`/`group-buy-pages.unit.spec.ts`): ตาราง `DataTable` ของ dashboard ทั้ง 5 ไฟล์มี `enablePagination={!loadFailed}` (หรือชื่อตัวแปรเทียบเท่าที่เป็นเงื่อนไข error), `groups-section.tsx`/`group-members.tsx` render `DataTable.Pagination` เฉพาะเมื่อไม่ error; AC-24, AC-25, AC-26 ผ่าน
-- AC-31 (ADM-26, กฎ 30) e2e 1280×800 (เพิ่มใน `e2e/affiliate-admin-forms.spec.ts`): Given ฟอร์ม payout เปิดและกรอกช่วงวันที่แล้ว When คลิก combobox affiliate ให้ popover เปิด (`role="listbox"` visible) แล้ว `keyboard.press("Escape")` Then listbox ปิด, dialog ของ modal ยัง visible และค่าวันที่ยังเป็นค่าที่กรอก; When กด Escape อีกครั้ง Then modal ปิด;
-  ทำซ้ำกับ combobox scope ของฟอร์ม program; ผ่าน `--repeat-each=5` (แนบผลใน evidence) — ล้มบน develop เมื่อใดจึงแก้ตามกฎ 30; AC-12 ผ่าน
+- AC-31 (ADM-26, กฎ 30) e2e 1280×800 (เพิ่มใน `e2e/affiliate-admin-forms.spec.ts`) — **ล้มบน develop `e994246f`** (10/10):
+  (a) ฟอร์ม payout: Given ฟอร์มเปิดและกรอกช่วงวันที่แล้ว When คลิก combobox affiliate จน `role="listbox"` visible แล้ว `keyboard.press("Escape")` Then `getByRole("dialog")` ยัง visible และค่าช่วงวันที่ยังเป็นค่าที่กรอก (`expectDatePicker`);
+      When ปิดรายการด้วยการเลือก option หนึ่ง (หรือคลิกนอกรายการภายใน dialog เช่นที่ heading) จน listbox ไม่ visible และ input combobox มี `aria-expanded` ≠ `"true"` แล้วกด Escape Then dialog ไม่ visible (modal ปิด — พฤติกรรมเดิม);
+  (b) ฟอร์ม program (สร้าง): Given ฟอร์มเปิด กรอกชื่อ program และปิด "all" ให้ช่อง scope แสดง When คลิก combobox scope จน listbox visible แล้วกด Escape Then dialog ยัง visible และชื่อที่กรอกคงอยู่ (`toHaveValue`); When ปิดรายการแบบ (a) แล้วกด Escape Then modal ปิด;
+  ไม่ assert ว่า Escape ปิด listbox (ข้อจำกัดที่ยอมรับ กฎ 30d); ผ่าน `--repeat-each=5` ทั้งสองเคส (แนบผลใน evidence);
+  static (`__tests__/medusa-ui.unit.spec.ts`): `payout-form.tsx` และ `program-form.tsx` ต่างมี `onEscapeKeyDown` ที่ `FocusModal.Content` และมี `aria-expanded` ในเงื่อนไข (หรือชื่อ helper ที่ระบุใน PR); regression AC-12, AC-21, AC-29 ผ่าน
 
 ### Test plan (รอบ 30)
 | ชนิด | AC |
 |---|---|
-| unit jest (lib) + static | AC-28, AC-29 (static), AC-30 (static) |
+| unit jest (lib) + static | AC-28, AC-29 (static), AC-30 (static), AC-31 (static) |
 | integration http | AC-29 |
 | e2e admin (`locale: "en-US"`, `timezoneId: "Asia/Bangkok"`, 1280×800) | AC-28, AC-29, AC-30, AC-31 — เขียน e2e ที่ระบุว่า "ล้มบน develop" ให้ล้มก่อน |
 
@@ -577,7 +588,7 @@ none
 | ADM-23 | (#359, review #359) partners ไม่กระพริบ "No partners on this page" ตอน clamp (helper กลางใน `lib/page-offset.ts`) + `PartnerActions` remount เมนู/Edit disabled ระหว่างลบ (กฎ 27) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `lib/page-offset.ts` (+ `lib/__tests__/page-offset.unit.spec.ts`), `components/evoucher/{partners-section,codes-table}.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/evoucher-admin-forms.spec.ts` | ~90 LOC | 1280×800 | AC-28 | none (ADM-16 ☑ #359, ADM-21a ☑ #361); ไม่บล็อก release | ชน ADM-19 (☐) ที่ `evoucher-admin-forms.spec.ts` และ ADM-25 ที่ `partners-section`/`codes-table`/`medusa-ui.unit.spec.ts` → ตัวที่ merge ทีหลัง rebase; ∥ ADM-24 |
 | ADM-24 | (review/re-review #360) `status` หลายค่าใน `GET /admin/affiliate/affiliates` + combobox request เดียวเรียงชื่อข้ามหน้า + 401 ไป `/login` + comment `tiebreakById` (กฎ 28) — ☑ | `apps/backend/src/api/admin/affiliate/{validators,middlewares}.ts`, `components/affiliate/payout-form.tsx`, `lib/{affiliate,affiliate-payout}.ts` (+ `lib/__tests__/affiliate-payout.unit.spec.ts`), `apps/backend/integration-tests/http/affiliate-admin*.spec.ts`, `apps/storefront/e2e/affiliate-admin-forms.spec.ts` | ~150 LOC | 1280×800 | AC-29 | none (ADM-17 ☑ #360); ไม่บล็อก release | ชน ADM-26 ที่ `payout-form.tsx`/`affiliate-admin-forms.spec.ts` → ADM-24 ก่อน; ∥ ADM-23 |
 | ADM-25 | (qa #361/#362, review #361/#362) สถานะ error: ซ่อนแถบแบ่งหน้า, หัวข้อ Ledger, e2e กฎ 24d อัตโนมัติ, comment `pools-table` (กฎ 29) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `routes/group-buying/page.tsx`, `components/evoucher/{pools-table,codes-table,partners-section}.tsx`, `components/affiliate/list-table.tsx`, `components/group-buy/{groups-section,group-members}.tsx`, `__tests__/{medusa-ui,group-buy-pages}.unit.spec.ts`, `apps/storefront/e2e/{evoucher-admin-pool-page,evoucher-admin-forms,affiliate-admin-forms,group-buy-admin-pages}.spec.ts` | ~220 LOC รวม e2e | 1280×800 | AC-30 | **ADM-23 merge** (ชน `partners-section`/`codes-table`/`medusa-ui.unit.spec.ts`); ไม่บล็อก release | ชน ADM-15 (☐) ที่ `group-buy-pages.unit.spec.ts`, ADM-18/19 (☐) ที่ไฟล์ e2e e-voucher, ADM-24 ที่ `affiliate-admin-forms.spec.ts` → ตัวที่ merge ทีหลัง rebase |
-| ADM-26 | (qa #360 O-2 — **ต้องยืนยันก่อน**) e2e Escape ของ `Combobox` ใน `FocusModal`; แก้เฉพาะเมื่อทำซ้ำได้ (กฎ 30) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts` (+ `components/affiliate/{payout-form,program-form}.tsx` เฉพาะเมื่อ test ล้ม) | ~40 LOC (test); ถ้าต้องแก้ ≤ ~80 LOC | 1280×800 | AC-31 | **ADM-24 merge** (ชน `payout-form.tsx` และไฟล์ e2e); ไม่บล็อก release | ชน ADM-25 ที่ไฟล์ e2e → ตัวที่ merge ทีหลัง rebase |
+| ADM-26 | (qa #360 O-2 — ยืนยันแล้ว 2026-11-14, owner = ก "กันฟอร์มปิด") ขณะ `Combobox` ขยาย Escape ไม่ปิด `FocusModal` ของฟอร์ม payout/program (`onEscapeKeyDown` + `aria-expanded`) + e2e (กฎ 30) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `components/affiliate/{payout-form,program-form}.tsx`, `__tests__/medusa-ui.unit.spec.ts` (static), `apps/storefront/e2e/affiliate-admin-forms.spec.ts` | ~40 LOC + e2e | 1280×800 | AC-31 | **ADM-24 merge** (ชน `payout-form.tsx` และไฟล์ e2e); ไม่บล็อก release | ชน ADM-25 ที่ไฟล์ e2e → ตัวที่ merge ทีหลัง rebase |
 ลำดับ (รอบ 30): ADM-23 ∥ ADM-24 เริ่มได้ทันทีเมื่อ owner สั่ง → ADM-25 (← ADM-23) ∥ ADM-26 (← ADM-24); ไม่มี task ใดบล็อก release
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 30)
@@ -591,6 +602,10 @@ none
 - (backlog เก่า) ลด AC-15 กลับเป็น ≤ 2 หลัง upgrade `@medusajs/dashboard` — อยู่ใน checklist bump ข้อ 9 ของ spec 07 แล้ว (Q8) → ไม่เปิด task
 - (ADM-18, owner = ก 2026-11-14) เลือก filter ของ `evoucher-codes` แล้วกด Esc ก่อน URL commit → filter หาย (ต้นเหตุ `DataTableFilter.onOpenChange` ของ `@medusajs/ui` 4.2.8 — รายละเอียดกฎ 22) ผู้ใช้เลือกใหม่ได้ → ไม่เปิด task และไม่เปิด issue upstream ตอนนี้;
   backlog (ไม่เปิด task): (1) ให้ `loader` ของ `routes/evouchers/pools/[id]/page.tsx` ใช้ค่า cache ของ query ที่มีอยู่แล้วเพื่อลดช่วงเสี่ยง — ต้องแก้ `page.tsx` และไม่ปิดปัญหาทั้งหมด (ถอด loader ยังล้ม 14/20); (2) เปิด issue upstream ที่ `@medusajs/ui` เมื่อ owner ต้องการ; ทบทวนอีกครั้งเมื่อ bump `@medusajs/*`
+- (ADM-26, owner = ก 2026-11-14) Escape ขณะ `Combobox` ขยายใน `FocusModal` ไม่ปิดรายการตัวเลือก (ผู้ใช้คลิกนอก/เลือกค่าเพื่อปิด) — ต้นเหตุลำดับตัวดัก Escape ของ Radix dismissable-layer × Ariakit (กฎ 30b) → ยอมรับใน v1;
+  backlog (ไม่เปิด task): (1) เปิด issue upstream ที่ `@medusajs/ui`/`@medusajs/dashboard` (owner ยังไม่สั่ง); (2) ทบทวนเมื่อ bump `@medusajs/*` — ถ้า Escape ปิดเฉพาะรายการได้เองแล้ว ให้ถอด `onEscapeKeyDown` ของกฎ 30c และปรับ AC-31 ให้ assert ว่า listbox ปิด;
+  (3) ข้อสังเกต (ตรวจ develop `e994246f`): `Combobox` ใน `src/admin/` มีเฉพาะ `components/affiliate/payout-form.tsx` และ `program-form.tsx` (ทั้งคู่อยู่ใน ADM-26); `FocusModal`/`Drawer` อื่น (`widgets/variant-evoucher-pool.tsx`, `widgets/flash-sale-options.tsx`, `components/group-buy/create-campaign.tsx`, `components/evoucher/{partners-section,codes-table}.tsx`, `components/affiliate/payout-info-drawer.tsx`) ไม่มี `Combobox`
+  — ถ้าเพิ่ม `Combobox` ใน `FocusModal`/`Drawer` ใหม่ต้องใช้แนวเดียวกับกฎ 30c (ADM-26 มีผู้ใช้ 2 ที่แล้ว — builder ย้ายเงื่อนไขเป็น helper ใน `lib/` ได้ตาม `CLAUDE.md` ระบุใน PR)
 
 ### Open questions (รอบ 30)
 none
