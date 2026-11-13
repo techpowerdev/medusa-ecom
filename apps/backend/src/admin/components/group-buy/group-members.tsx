@@ -168,7 +168,8 @@ export const GroupMembers = ({
                   : { heading: "No members yet" },
               }}
             />
-            <DataTable.Pagination />
+            {/* spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results") */}
+            {!loadFailed && <DataTable.Pagination />}
           </DataTable>
         </div>
       </div>

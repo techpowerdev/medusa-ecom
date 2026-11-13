@@ -766,7 +766,8 @@ describe("ตาราง e-voucher: สถานะ error แทน empty (spec
 describe("ตาราง affiliate / group buy: สถานะ error แทน empty (spec 08 AC-26, กฎ 25, ADM-21b)", () => {
   // [ไฟล์, testid error, heading error (regex), tag ที่รับ emptyState]
   const ERROR_TABLES: [string, string, string, string][] = [
-    ["components/affiliate/list-table.tsx", "affiliate-list-error", "`Could not load \\$\\{resource\\}`", "DataTable"],
+    // ADM-25 (กฎ 29b): ชื่อใน heading มาจาก LOAD_ERROR_NOUN (แท็บ Ledger = "ledger entries")
+    ["components/affiliate/list-table.tsx", "affiliate-list-error", "`Could not load \\$\\{LOAD_ERROR_NOUN\\[resource\\]\\}`", "DataTable"],
     ["components/group-buy/groups-section.tsx", "gb-groups-error", '"Could not load groups"', "DataTable.Table"],
     ["components/group-buy/group-members.tsx", "gb-memberships-error", '"Could not load members"', "DataTable.Table"],
   ]
@@ -794,5 +795,42 @@ describe("ตาราง affiliate / group buy: สถานะ error แทน
     const src = read("components/affiliate/list-table.tsx")
     expect(src).toMatch(/const \{ data, isLoading, isError, error \} = useQuery\(/)
     expect(src).toMatch(/return \{[^}]*\bloadFailed\b[^}]*\berror\b[^}]*\bresource\b[^}]*\}/)
+  })
+})
+
+// ADM-25 (spec 08 กฎ 29, AC-30): ตอน error (isError && !data) ไม่แสดงแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages")
+// — DataTable ของ dashboard ปิดด้วย enablePagination, DataTable ของ @medusajs/ui ไม่ render DataTable.Pagination
+describe("ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25)", () => {
+  const DASHBOARD_TABLES = [
+    "routes/group-buying/page.tsx",
+    "components/evoucher/pools-table.tsx",
+    "components/evoucher/codes-table.tsx",
+    "components/evoucher/partners-section.tsx",
+    "components/affiliate/list-table.tsx",
+  ]
+  const UI_TABLES = ["components/group-buy/groups-section.tsx", "components/group-buy/group-members.tsx"]
+
+  it.each(DASHBOARD_TABLES)("%s: <DataTable ... enablePagination={!loadFailed} />", (file) => {
+    const tag = read(file).match(/<DataTable\b[\s\S]*?\/>/)?.[0] ?? ""
+    expect(tag).toContain("enablePagination={!loadFailed}")
+  })
+
+  it.each(UI_TABLES)("%s: render DataTable.Pagination เฉพาะเมื่อไม่ error", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/\{!loadFailed && <DataTable\.Pagination \/>\}/)
+    expect(src.match(/<DataTable\.Pagination\b/g)).toHaveLength(1)
+  })
+
+  it("list-table.tsx: heading error ของแท็บ Ledger (resource entries) = \"Could not load ledger entries\" แท็บอื่นคงชื่อ resource", () => {
+    const src = read("components/affiliate/list-table.tsx")
+    expect(src).toMatch(
+      /const LOAD_ERROR_NOUN: Record<Resource, string> = \{\s*programs: "programs",\s*affiliates: "affiliates",\s*entries: "ledger entries",\s*payouts: "payouts",?\s*\}/
+    )
+  })
+
+  it("pools-table.tsx: comment กฎ 25 อยู่ติด div ที่ใส่ testid error (กฎ 29d)", () => {
+    expect(read("components/evoucher/pools-table.tsx")).toMatch(
+      /\/\/ กฎ 25: DataTable ไม่มี prop error[^\n]*\n\s*<div data-testid=\{loadFailed \? "evoucher-pools-error" : undefined\}>/
+    )
   })
 })

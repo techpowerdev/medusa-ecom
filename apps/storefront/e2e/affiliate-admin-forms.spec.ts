@@ -337,13 +337,16 @@ test.describe("ADM-21b: สถานะ error ของตาราง affiliate
   const fail500: Fail = (route) =>
     route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
   const failAbort: Fail = (route) => route.abort()
+  // ADM-25 (spec 08 AC-30, กฎ 29a): ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results")
+  const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
 
   // แท็บ → resource ของ GET (`/admin/affiliate/<resource>`), heading, ข้อความ empty เดิม, wrapper + ปุ่มสร้างใน action (กฎ 18)
+  // `noun` = ชื่อใน heading error (ADM-25 กฎ 29b: แท็บ Ledger = "ledger entries")
   const TABS = [
-    { tab: "programs", resource: "programs", heading: "Programs", empty: "No programs yet", create: ["affiliate-programs-table", "Create program"], shot: "01-programs-error-500" },
-    { tab: "affiliates", resource: "affiliates", heading: "Affiliates", empty: "No affiliates yet" },
-    { tab: "ledger", resource: "entries", heading: "Ledger", empty: "No commission entries yet" },
-    { tab: "payouts", resource: "payouts", heading: "Payouts", empty: "No payouts yet", create: ["affiliate-payouts-table", "Create payout"], shot: "02-payouts-error-500" },
+    { tab: "programs", resource: "programs", noun: "programs", heading: "Programs", empty: "No programs yet", create: ["affiliate-programs-table", "Create program"], shot: "01-programs-error-500" },
+    { tab: "affiliates", resource: "affiliates", noun: "affiliates", heading: "Affiliates", empty: "No affiliates yet" },
+    { tab: "ledger", resource: "entries", noun: "ledger entries", heading: "Ledger", empty: "No commission entries yet" },
+    { tab: "payouts", resource: "payouts", noun: "payouts", heading: "Payouts", empty: "No payouts yet", create: ["affiliate-payouts-table", "Create payout"], shot: "02-payouts-error-500" },
   ] as const
 
   const onGet = (page: Page, resource: string, handle: Fail) =>
@@ -367,8 +370,9 @@ test.describe("ADM-21b: สถานะ error ของตาราง affiliate
         await openTab(page, t.tab)
         const error = page.getByTestId("affiliate-list-error")
         await expect(error).toBeVisible()
-        await expect(error).toContainText(`Could not load ${t.resource}`)
+        await expect(error).toContainText(`Could not load ${t.noun}`)
         await expect(error.getByRole("heading", { name: t.heading })).toBeVisible()
+        await expect(error).not.toContainText(PAGINATION_TEXT)
         await expect(page.locator("body")).not.toContainText(t.empty)
         if ("create" in t) {
           const [wrapper, label] = t.create
@@ -400,6 +404,65 @@ test.describe("ADM-21b: สถานะ error ของตาราง affiliate
       await openTab(page, t.tab)
       await expect(page.locator("body")).toContainText(t.empty)
       await expect(page.getByTestId("affiliate-list-error")).toHaveCount(0)
+    }
+  })
+})
+
+// ADM-25 (spec 08 AC-30, กฎ 29c / 24d): ตาราง Programs โหลดสำเร็จแล้ว refetch ล้ม (invalidate หลัง Delete ที่ API ตอบ 409)
+// → แถวเดิมและแถบแบ่งหน้ายังแสดง ไม่มี affiliate-list-error (เดิม qa #362 ทดสอบมือ)
+test.describe("ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-25" } })
+
+  test("AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error", async ({
+    page,
+    request,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const name = `ADM-25 draft ${Date.now()}`
+    const day = 24 * 60 * 60 * 1000
+    const { program } = await call(request, admin, PROGRAMS, {
+      name,
+      starts_at: new Date(Date.now() + 10 * day).toISOString(),
+      ends_at: new Date(Date.now() + 20 * day).toISOString(),
+      commission_value: 5,
+      scope: { all: true },
+    })
+    try {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/affiliate`)
+      const table = page.getByTestId("affiliate-programs-table")
+      const rows = table.locator("tbody tr")
+      const row = rows.filter({ hasText: name })
+      await expect(row).toHaveCount(1)
+      const before = await rows.count()
+      await expect(table).toContainText(/\d+ of \d+ results/)
+
+      const hits = { n: 0 }
+      await page.route("**/admin/affiliate/programs?*", (route) => {
+        if (route.request().method() !== "GET") return route.continue()
+        hits.n++
+        return route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
+      })
+      await page.route(`**${PROGRAMS}/${program.id}`, (route) =>
+        route.request().method() === "DELETE"
+          ? route.fulfill({ status: 409, json: { type: "not_allowed", message: "ADM-25 forced conflict" } })
+          : route.continue()
+      )
+      await (await rowAction(row, "affiliate-program-row-actions", "Delete")).click()
+      await page.getByRole("button", { name: "Delete program" }).click()
+      // invalidate → refetch ล้ม (retry 1 ของ QueryClient ของ dashboard = 2 request) แล้วรอ render หลัง error
+      await expect.poll(() => hits.n, { timeout: 15_000 }).toBeGreaterThanOrEqual(2)
+      await page.waitForTimeout(1_000)
+      await expect(page.getByTestId("affiliate-list-error")).toHaveCount(0)
+      await expect(rows).toHaveCount(before)
+      await expect(row).toHaveCount(1)
+      await expect(table).toContainText(/\d+ of \d+ results/)
+      await evidence("02-programs-refetch-fail-keeps-rows")
+    } finally {
+      const res = await request.delete(`${BACKEND_URL}${PROGRAMS}/${program.id}`, { headers: admin })
+      expect(res.ok(), `ลบโปรแกรม ${program.id}`).toBe(true)
     }
   })
 })

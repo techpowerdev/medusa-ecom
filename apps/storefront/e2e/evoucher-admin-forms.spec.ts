@@ -114,6 +114,8 @@ test.describe("ADM-21a: สถานะ error ของตาราง pools / p
     route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
   const failAbort: Fail = (route) => route.abort()
   const fail401: Fail = (route) => route.fulfill({ status: 401, json: { type: "unauthorized", message: "Unauthorized" } })
+  // ADM-25 (spec 08 AC-30, กฎ 29a): ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results")
+  const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
 
   // GET รายการเท่านั้น (`pools?…` ไม่ match `/pools/<id>`; POST/DELETE ของ partner ผ่านปกติ)
   const TABLES = {
@@ -130,6 +132,7 @@ test.describe("ADM-21a: สถานะ error ของตาราง pools / p
     await expect(error.getByRole("heading", { name: "E-voucher pools" })).toBeVisible()
     await expect(page.getByTestId("evoucher-partners")).toBeVisible()
     await expect(page.locator("body")).not.toContainText("No voucher pools yet")
+    await expect(error).not.toContainText(PAGINATION_TEXT)
   }
 
   async function expectPartnersError(page: Page) {
@@ -138,6 +141,7 @@ test.describe("ADM-21a: สถานะ error ของตาราง pools / p
     await expect(table.getByTestId("evoucher-partners-error")).toContainText("Could not load partners")
     await expect(table.getByRole("heading", { name: "Partners" })).toBeVisible()
     await expect(page.getByTestId("evoucher-partners-empty")).toHaveCount(0)
+    await expect(table).not.toContainText(PAGINATION_TEXT)
     // spec 08 กฎ 18: ปุ่มใน action ของ DataTable ไม่รับ data-testid → หาด้วย role + ชื่อภายใน wrapper
     const create = table.getByRole("button", { name: "Create partner" })
     await expect(create).toBeEnabled()

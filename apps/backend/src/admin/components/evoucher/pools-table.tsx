@@ -57,8 +57,8 @@ export const PoolsTable = () => {
   // กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
   const loadFailed = isError && !data
 
-  // กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัวตาราง; testid เฉพาะตอนล้ม
   return (
+    // กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัวตาราง; testid เฉพาะตอนล้ม
     <div data-testid={loadFailed ? "evoucher-pools-error" : undefined}>
       <PageOffsetGate prefix={PREFIX}>
         <DataTable
@@ -71,6 +71,8 @@ export const PoolsTable = () => {
           subHeading="Create a pool from a product variant page (Voucher pool widget), then import partner codes here."
           prefix={PREFIX}
           pageSize={PAGE_SIZE}
+          // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
+          enablePagination={!loadFailed}
           enableSearch={false}
           rowHref={(pool) => `/evouchers/pools/${pool.id}`}
           emptyState={{

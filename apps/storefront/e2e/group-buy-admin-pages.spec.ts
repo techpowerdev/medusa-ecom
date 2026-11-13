@@ -12,6 +12,8 @@ test.use({ ...ADMIN_UI_OPTIONS, evidenceTarget: { feature: "admin-ui", taskId: "
 const HOUR = 60 * 60 * 1000
 const BASE = `${BACKEND_URL}/admin/group-buy`
 const PAGE_SIZE = 20
+// ADM-25 (spec 08 AC-30, กฎ 29a): ข้อความของแถบแบ่งหน้า — ตอน error ต้องไม่มี ("0 of 0 results")
+const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
 
 async function tshirtId(request: APIRequestContext, admin: Headers): Promise<string> {
   // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า — ใช้สินค้า seed `t-shirt` ด้วย handle (CORE-46 กฎข้อ 104d)
@@ -174,6 +176,7 @@ test.describe("ADM-20: สถานะ error ของรายการแค�
     await expect(page.getByTestId("gb-campaigns-error")).toBeVisible()
     await expect(table.getByTestId("gb-campaigns-error")).toHaveCount(1)
     await expect(table).not.toContainText(EMPTY_TEXT)
+    await expect(table).not.toContainText(PAGINATION_TEXT)
     await expect(page.getByTestId("gb-template-warning")).toBeVisible()
     // spec 08 กฎ 18: ปุ่มใน action ของ DataTable ไม่รับ data-testid → หาด้วย role + ชื่อภายใน wrapper
     const create = table.getByRole("button", { name: "Create campaign" })
@@ -283,6 +286,7 @@ test.describe("ADM-21b: สถานะ error ของตาราง Groups / 
     await expect(page.getByTestId("gb-groups-error")).toBeVisible()
     await expect(table.getByTestId("gb-groups-error")).toContainText("Could not load groups")
     await expect(table).not.toContainText("No groups yet")
+    await expect(table).not.toContainText(PAGINATION_TEXT)
     await expect(page.getByTestId("gb-create-pool-group")).toBeEnabled()
   }
 
@@ -323,6 +327,7 @@ test.describe("ADM-21b: สถานะ error ของตาราง Groups / 
       await expect(page.getByTestId("gb-memberships-error")).toBeVisible()
       await expect(table.getByTestId("gb-memberships-error")).toContainText("Could not load members")
       await expect(table).not.toContainText("No members yet")
+      await expect(table).not.toContainText(PAGINATION_TEXT)
       await expect(page.getByTestId("gb-memberships-close")).toBeEnabled()
       if (fail === fail500) await evidence("04-members-error-500")
     })
@@ -388,6 +393,7 @@ test.describe("ADM-21b: สถานะ error ของตาราง Groups / 
     await expect(rows).toHaveCount(1)
     await expect(rows.first()).toContainText("Pool ADM-21b")
     await expect(page.getByTestId("gb-groups-table")).not.toContainText("Could not load groups")
+    await expect(page.getByTestId("gb-groups-table")).toContainText(PAGINATION_TEXT)
     await evidence("05-groups-refetch-fail-keeps-rows")
   })
 })
