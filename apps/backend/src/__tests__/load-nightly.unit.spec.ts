@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "fs"
 import path from "path"
+import { parse } from "yaml"
 
 // OPS-4 (spec 07 AC-2, AC-3, Q-O3 a–e): load test รายคืนแยกจาก ci.yml — ความถูกต้องเป็น gate,
 // p95 รายงานอย่างเดียว, k6 pin เวอร์ชัน (ไม่เพิ่ม dependency ใน package.json), ผล k6 เป็น artifact 14 วัน
@@ -57,5 +58,24 @@ describe("OPS-4 load-nightly", () => {
     expect(runner).toMatch(/order_line_item_adjustment/)
     expect(runner).toMatch(/units_sold/)
     expect(runner).toMatch(/group_buy_membership/)
+  })
+})
+
+// OPS-23 (spec 07 AC-38): workflow_dispatch เลือก DATABASE_POOL_MAX ได้ — schedule ไม่มี input → ว่าง = default ของ Medusa
+describe("OPS-23 load-nightly db_pool_max", () => {
+  const workflow = parse(read(".github/workflows/load-nightly.yml")) as {
+    on: { workflow_dispatch: { inputs: Record<string, { type: string; default: string }> } }
+    jobs: { load: { steps: { run?: string; env?: Record<string, string> }[] } }
+  }
+
+  it("มี input db_pool_max (string, ค่าเริ่มต้นว่าง) ส่งเป็น env LOAD_DB_POOL_MAX ให้ run.sh", () => {
+    const input = workflow.on.workflow_dispatch.inputs.db_pool_max
+    expect(input).toMatchObject({ type: "string", default: "" })
+    const step = workflow.jobs.load.steps.find((s) => s.run === "tools/load/run.sh")!
+    expect(step.env?.LOAD_DB_POOL_MAX).toBe("${{ inputs.db_pool_max || '' }}")
+  })
+
+  it("input flash_burst เดิมยังอยู่ (AC-31)", () => {
+    expect(workflow.on.workflow_dispatch.inputs.flash_burst.default).toBe("1")
   })
 })

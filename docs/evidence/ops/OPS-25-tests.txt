@@ -1,0 +1,33 @@
+# OPS-25 (spec 07 AC-40) — 2026-11-13 base origin/develop fef9b65b
+
+## RED (ก่อนแก้ comment) — AC-40 grep check
+ok   - header อ้าง prod-guards
+ok   - header อ้าง ops-runbook
+ok   - header อ้าง backup-runbook
+FAIL - header ยังอ้าง ci-workflow เป็นเหตุผล
+50:      # OPS-10 (spec 07 AC-14): 30 เคสของกติกา classify-changes.sh — แก้กติกาแล้วไม่แก้เคส = ล้ม
+FAIL - ci.yml ยังมี '30 เคส'
+exit=1
+
+## GREEN (หลังแก้) — AC-40 grep check
+ok   - header อ้าง prod-guards
+ok   - header อ้าง ops-runbook
+ok   - header อ้าง backup-runbook
+ok   - header ไม่อ้าง ci-workflow
+ok   - ci.yml ไม่มี '30 เคส'
+exit=0
+
+## tools/ci/classify-changes.test.sh
+classify-changes: 35/35 passed
+
+## tools/ci/check-stripe-events.test.sh + check-stripe-events.sh
+check-stripe-events: 9/9 passed
+ok: Stripe webhook events ตรงกัน (8 event)
+
+## unit (TEST_TYPE=unit): ci-workflow / prod-guards / ops-runbook / backup-runbook .unit.spec.ts
+PASS src/__tests__/ops-runbook.unit.spec.ts
+PASS src/__tests__/backup-runbook.unit.spec.ts
+PASS src/__tests__/ci-workflow.unit.spec.ts (5.101 s)
+PASS src/__tests__/prod-guards.unit.spec.ts (6.275 s)
+Test Suites: 4 passed, 4 total
+Tests:       98 passed, 98 total

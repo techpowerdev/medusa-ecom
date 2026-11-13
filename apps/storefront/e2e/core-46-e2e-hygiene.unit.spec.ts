@@ -134,6 +134,7 @@ const AFFILIATE_CALL = /(?<!function )\bcreateActiveAffiliate\(((?:[^()]|\((?:[^
  * CORE-54 (กฎข้อ 112b): ปีกกาต้องจับคู่กัน — ไม่ใช้ `[\s\S]*` แบบ greedy ที่เดินข้าม `}` ของ object ตัวแรกไปถึงตัวที่ 4
  * ข้อจำกัด (nit review #355): รับปีกกาซ้อนได้แค่ 2 ชั้น และไม่รู้จัก string — `{`/`}`/`,` ใน string หรือ object ซ้อน 3 ชั้น
  * ทำให้ไม่ match → test ล้มให้เห็น (ไม่ผ่านเงียบ) แล้วค่อยขยาย regex เมื่อมีผู้เรียกแบบนั้นจริง
+ * CORE-59 (กฎข้อ 117c): ไม่ต้อง parse string ให้ครบ — tsc (typecheck) จับอาร์กิวเมนต์ที่ผิดรูปอยู่แล้ว
  */
 const VALID_AFFILIATE_ARGS = /^\s*[^,{]+,\s*[^,{]+(?:,\s*\{(?:[^{}]|\{[^{}]*\})*\})?\s*,?\s*$/
 const affiliateCalls = (src: string) => Array.from(src.matchAll(AFFILIATE_CALL), (match) => match[1])

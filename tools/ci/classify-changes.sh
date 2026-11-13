@@ -5,8 +5,9 @@
 # --no-renames: rename ต้องนับทั้ง path เดิมและ path ใหม่ ไม่อย่างนั้นการย้ายไฟล์ backend ไป docs/ หรือ
 # apps/storefront/ หรือเปลี่ยนเป็น .md จะเห็นแค่ path ใหม่แล้วได้ code=false/backend=false
 # - เอกสาร = `docs/**` (รวมไฟล์ทุกชนิดใน docs/evidence/) และ `*.md` ทุกที่ (รวม .claude/**/*.md) → ไม่นับเป็นโค้ด
-#   ยกเว้น `docs/ops/**` (OPS-22, spec 07 AC-37) = โค้ด backend เพราะ unit test (prod-guards/ops-runbook/ci-workflow/
-#   backup-runbook) และ tools/ci/check-stripe-events.sh อ่านไฟล์เหล่านี้ แก้ runbook แล้วต้องรัน test
+#   ยกเว้น `docs/ops/**` (OPS-22, spec 07 AC-37) = โค้ด backend เพราะ unit test prod-guards/ops-runbook/
+#   backup-runbook.unit.spec.ts อ่านไฟล์เหล่านี้ และรันใน job backend-suites เฉพาะเมื่อ backend=true แก้ runbook แล้วต้องรัน test
+#   (tools/ci/check-stripe-events.sh ก็อ่าน docs/ops/production.md แต่รันใน lint-typecheck ทุก PR อยู่แล้ว)
 # - code    = มีไฟล์ที่ไม่ใช่เอกสารอย่างน้อยหนึ่งไฟล์
 # - backend = มีไฟล์โค้ดที่อยู่นอก `apps/storefront/**` (apps/backend, lockfile, package.json ที่ root,
 #             pnpm-workspace.yaml, .nvmrc, .github/workflows, docker-compose*, tools/ และ config ที่ root อื่นๆ)
