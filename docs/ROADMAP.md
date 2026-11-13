@@ -4,7 +4,12 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**รอบ 28 (2026-11-10, เอกสารล้วน) — สถานะล่าสุด**: merge เพิ่มหลังปิดรอบ 27: EV-18 #339, AF-22 #340 · **เงื่อนไข release v0.1.0 ครบทุกข้อ** (CORE-12/12b/17/18, OPS-21 #325, EV-15 #326, CORE-55 #336 ☑ — `develop → main` owner เป็นผู้ merge) ·
+**ปิดรอบ 29 (2026-11-13, เอกสารล้วน) — สถานะล่าสุด**: owner สั่งทำต่อ 2026-11-13 ("ตามที่เสนอ") → merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-56 #351, CORE-57 #352, CORE-52 #353,
+OPS-22 #354 (รวมแก้ `CLAUDE.md` 2 จุดที่ owner อนุมัติ), CORE-54 #355, OPS-24 #356, GB-16 #357, CORE-53 #358, ADM-16 #359, ADM-17 #360, ADM-21a #361, ADM-21b #362 (ADM-16/17 ทำเพราะเป็น dependency ของ ADM-21a/21b) + chore #350 (เลิก track `next-env.d.ts` ของ storefront) ·
+**พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 (qa ยืนยันบน build production ก่อน — spec 08 กฎ 26, AC-27) ·
+**เริ่มได้ ไม่บล็อก release**: OPS-23, ADM-15, ADM-18, ADM-19 (ไม่เหลือ CORE-* ที่ยังไม่ทำ) · ไม่มีคำถามค้างของ owner ·
+**ก่อนเปิดร้านจริง (go-live)**: spec 06 Q1 ยืนยันบัญชี Stripe live นิติบุคคลไทย + PromptPay (ข้อ 6 ของ go-live checklist ใน `docs/ops/production.md`), spec 01 Q-F1 ค่าส่ง ฿10 เป็น placeholder (ข้อ 5), smoke test บน production (`check:go-live` + `tools/ops/smoke-*.sh`) ·
+(ประวัติ) **รอบ 28 (2026-11-10, เอกสารล้วน)**: merge เพิ่มหลังปิดรอบ 27: EV-18 #339, AF-22 #340 · **เงื่อนไข release v0.1.0 ครบทุกข้อ** (CORE-12/12b/17/18, OPS-21 #325, EV-15 #326, CORE-55 #336 ☑ — `develop → main` owner เป็นผู้ merge) ·
 **คำตัดสินของ owner รอบ 28 ("ตามที่แนะนำ" ทุกข้อ แต่ยังไม่สั่งทำ)**: Q-C6 = ก (CORE-56 middleware lock — spec 01 กฎข้อ 114), Q-C7 = ก (CORE-57 `cart-totals` ฐานรวม VAT — spec 01 กฎข้อ 115, AC-156), AF-M-03 = แก้ AC-15 ให้ตรงพฤติกรรมจริง (spec 05 กฎ 13; ไม่มี task), ADM-21 = ทำ (แยก ADM-21a/21b — spec 08 กฎ 25, AC-25..26), ADM-22 = ยืนยันก่อน (qa บน build production — spec 08 กฎ 26, AC-27) ·
 **พักไว้ (☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ)**: CORE-56, CORE-57, ADM-21a, ADM-21b, ADM-22 — ไม่บล็อก release ·
 **เริ่มได้ ไม่บล็อก release**: CORE-52, CORE-53, CORE-54, GB-16, OPS-22, OPS-23, OPS-24, ADM-15, ADM-16, ADM-17, ADM-18, ADM-19 · ไม่มีคำถามค้างของ owner ·
@@ -171,11 +176,11 @@ task ใหม่ ADM-14 (ปุ่มสร้าง Partners/Programs/Payouts 
 | CORE-49 | (รอบ 21, test hygiene — nit review #289 + qa #286/#288) grep test ที่เดียว, regex config เฉพาะ key timeout, `toHaveLength(1)` ติด `handle=`, ตัด `waitForTimeout` ของ affiliate-admin-programs, core-25/26/fs19 ใช้ `waitForServerAction` (กฎข้อ 107, AC-144) | 🚀 #312 |
 | CORE-50 | (รอบ 23, qa #298 O-1 + qa #295 O-2) nav ที่ < 1024 ตั้งแต่ 320: ชื่อร้าน/ค้นหา/"ตะกร้า (n)" ไม่ชิดกัน, "ตะกร้า (n)" บรรทัดเดียว (กฎข้อ 108, AC-145) | 🚀 #309 |
 | CORE-51 | (รอบ 23, test hygiene — nit review #295/#298) `DESKTOP_BASELINE` ใน `e2e/support/`, `createActiveAffiliate` options object, `longCode()` ความกว้างคงที่, `evidenceTarget` AF-20 (กฎข้อ 109, AC-146; ชน ADM-8a/8b/CORE-49 — ตัวที่ merge ทีหลัง rebase) | 🚀 #328 |
-| CORE-52 | (รอบ 26, qa #320 + review #314) checkout: ตะกร้าว่างจากอีกแท็บ → `/cart`, ที่อยู่ช่องว่างไม่ผ่าน, ไม่แสดง section จัดส่งบน order voucher, select ประเทศคงค่าหลัง error (กฎข้อ 110, AC-147; ไม่บล็อก release) | ☐ **เริ่มได้** (EV-7d 🚀 #320) |
-| CORE-53 | (รอบ 26, test hygiene — nit review #312/#314) `setsTimeout`, parser `core-4j`, cleanup `core-4g`/`core-4j` ไม่กลบ error (กฎข้อ 111, AC-148; ไม่บล็อก release) | ☐ **เริ่มได้** |
-| CORE-54 | (ปิดรอบ 26, test hygiene — nit review #328) `core-46-e2e-hygiene`: หา `longCode` ไม่เจอต้องล้ม ไม่ผ่านเงียบ, ตัวตรวจอาร์กิวเมนต์ไม่รับเกิน 3 ตัว (กฎข้อ 112, AC-149; ไม่บล็อก release; ชน CORE-53 ไฟล์เดียวกัน — ตัวที่ merge ทีหลัง rebase) | ☐ **เริ่มได้** |
-| CORE-56 | (ปิดรอบ 27, qa #336 D-1) lock ต่อ order บน `POST /store/returns` ด้วย middleware ตัวสุดท้ายของ chain (Q-C6 = ก รอบ 28) — สองแท็บขอคืนพร้อมกันได้ return `requested` ซ้ำ (กฎข้อ 114, AC-155; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) |
-| CORE-57 | (รอบ 28, Q-C7 = ก) `cart-totals` ใช้ฐานรวม VAT ทั้งชุด — ค่าจัดส่ง ฿10 ตรงกับขั้นเลือกวิธีจัดส่ง, แถวภาษีเป็นข้อมูลไม่บวกซ้ำ (กฎข้อ 115, AC-156; storefront ~80 LOC; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) |
+| CORE-52 | (รอบ 26, qa #320 + review #314) checkout: ตะกร้าว่างจากอีกแท็บ → `/cart`, ที่อยู่ช่องว่างไม่ผ่าน, ไม่แสดง section จัดส่งบน order voucher, select ประเทศคงค่าหลัง error (กฎข้อ 110, AC-147; ไม่บล็อก release) | ☑ #353 |
+| CORE-53 | (รอบ 26, test hygiene — nit review #312/#314) `setsTimeout`, parser `core-4j`, cleanup `core-4g`/`core-4j` ไม่กลบ error (กฎข้อ 111, AC-148; ไม่บล็อก release) | ☑ #358 |
+| CORE-54 | (ปิดรอบ 26, test hygiene — nit review #328) `core-46-e2e-hygiene`: หา `longCode` ไม่เจอต้องล้ม ไม่ผ่านเงียบ, ตัวตรวจอาร์กิวเมนต์ไม่รับเกิน 3 ตัว (กฎข้อ 112, AC-149; ไม่บล็อก release; ชน CORE-53 ไฟล์เดียวกัน — ตัวที่ merge ทีหลัง rebase) | ☑ #355 |
+| CORE-56 | (ปิดรอบ 27, qa #336 D-1) lock ต่อ order บน `POST /store/returns` ด้วย middleware ตัวสุดท้ายของ chain (Q-C6 = ก รอบ 28) — สองแท็บขอคืนพร้อมกันได้ return `requested` ซ้ำ (กฎข้อ 114, AC-155; ไม่บล็อก release) | ☑ #351 (owner สั่งทำ 2026-11-13) |
+| CORE-57 | (รอบ 28, Q-C7 = ก) `cart-totals` ใช้ฐานรวม VAT ทั้งชุด — ค่าจัดส่ง ฿10 ตรงกับขั้นเลือกวิธีจัดส่ง, แถวภาษีเป็นข้อมูลไม่บวกซ้ำ (กฎข้อ 115, AC-156; storefront ~80 LOC; ไม่บล็อก release) | ☑ #352 (owner สั่งทำ 2026-11-13) |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | 🚀 #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | 🚀 #124 ∥ 🚀 #130 |
 | CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | 🚀 #168 |
@@ -242,7 +247,7 @@ GB-N1 🚀 #106 · GB-N2 🚀 #126 (nit `trackSubscribers` คัดลอก `s
 Q22 = (ก) owner 2026-11-04: cart ไม่มีวิธีส่งเลยไม่ถูกปฏิเสธ) →
 (รอบ 17) **GB-N5 🚀 #257** (ตัด `!profile ||`, ขั้น O_dig → O_std ผ่าน Store API, helper admin ของ integration test, ชื่อตัวแปร pool ใน `home-campaigns.test.ts`; AC-55 — รอบ 18 แก้ถ้อยคำกฎข้อ 36b ตาม core-flows จริง) ·
 CORE-30 🚀 #258, CORE-32 🚀 #243, CORE-33 🚀 #255, CORE-35 🚀 #266 (spec 01) ·
-(รอบ 26) **GB-16 ☐** (filter ของ job `group-buy-deadline` รวมสถานะกลุ่ม ให้ใช้ index `(status, pay_deadline_at)`; กฎข้อ 39, AC-59; **เริ่มได้**, ไม่บล็อก release)
+(รอบ 26) **GB-16 ☑ #357** (filter ของ job `group-buy-deadline` รวมสถานะกลุ่ม ให้ใช้ index `(status, pay_deadline_at)`; กฎข้อ 39, AC-59; ไม่บล็อก release)
 
 ## M6 Affiliate — **v0.6.0**
 AF-1 🚀 #11 · AF-2 🚀 #66 · AF-5 🚀 #35 → AF-3 🚀 #77 → (AF-3b 🚀 #119 ∥ AF-4 🚀 #90 ∥ AF-4b 🚀 #91 ∥ AF-7 🚀 #110) → AF-7b 🚀 #122 →
@@ -273,8 +278,8 @@ OPS-5 🚀 #319 (index/migration + runbook backup/restore; AC-4)
 (รอบ 16) **OPS-17b 🚀 #242 — ความปลอดภัย** (scan secret ก่อนพิมพ์ลง job log + redact JWT ใน console ของ k6 + `run.sh:132` `k6-failures.txt` ผ่าน redact (nit review #240); AC-34) →
 (รอบ 17) **OPS-17c 🚀 #253** (stdout/stderr ของ `docker run` k6 ผ่าน redact, static test จับ `JSON.stringify(`, ตัวตรวจไม่ข้ามบรรทัด `grep -q`; AC-35) → OPS-20b (ชน `run.sh`)
 (รอบ 26) **OPS-21 🚀 #325 — เงื่อนไข release v0.1.0** (compose prod ส่ง `EVOUCHER_ENCRYPTION_KEY`/`EVOUCHER_ADMIN_EMAIL`/`OPS_ALERT_EMAIL`/`TZ` + guard บูต; AC-36) ·
-OPS-22 ☐ (`classify-changes.sh` นับ `docs/ops/**` เป็นโค้ด; AC-37; **เริ่มได้**) · OPS-23 ☐ **เริ่มได้** (OPS-20b 🚀 #318; owner Q-O4 = ก 2026-11-09 เทียบ `DATABASE_POOL_MAX` 10/20/40; AC-38; ADR-020 เฉพาะเมื่อเสนอเปลี่ยนค่า prod) ·
-OPS-24 ☐ **เริ่มได้** (ปิดรอบ 26, nit review #325: comment `export` ใน `docker-compose.prod.yml` + `.trim()` ของ env อีเมลแจ้งเตือนใน `checkBootEnv`; AC-39; ไม่บล็อก release)
+**OPS-22 ☑ #354** (`classify-changes.sh` นับ `docs/ops/**` เป็นโค้ด + แก้ `CLAUDE.md` 2 จุดที่ owner อนุมัติ; AC-37) · OPS-23 ☐ **เริ่มได้** (OPS-20b 🚀 #318; owner Q-O4 = ก 2026-11-09 เทียบ `DATABASE_POOL_MAX` 10/20/40; AC-38; ADR-020 เฉพาะเมื่อเสนอเปลี่ยนค่า prod) ·
+**OPS-24 ☑ #356** (ปิดรอบ 26, nit review #325: comment `export` ใน `docker-compose.prod.yml` + `.trim()` ของ env อีเมลแจ้งเตือนใน `checkBootEnv`; AC-39; ไม่บล็อก release)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
@@ -296,13 +301,13 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-13 | (รอบ 23) หัวตารางแคมเปญ group buy ใช้ `heading`/`subHeading`/`action` ของ `DataTable`, `CreateCampaign` controlled (qa #293 Obs 1; AC-17) | 🚀 #321 |
 | ADM-14 | (Q7 = ก) ปุ่มสร้างของ Partners/Programs/Payouts เข้า `action` ของ `DataTable` + wrapper testid `evoucher-partners-table`/`affiliate-programs-table`/`affiliate-payouts-table` (spec 08 กฎ 18; AC-18) | 🚀 #327 |
 | ADM-15 | (รอบ 26, รอบ 25 ข้อ D + #321) `create-campaign`: `NumberInput`, focus กลับปุ่มหลังปิด modal, e2e dblclick/`form.reset` (กฎ 19; AC-19) | ☐ **เริ่มได้** (ADM-13 🚀 #321) |
-| ADM-16 | (รอบ 26, #316/#315) deps คอลัมน์ `codes-table`/`partners-section`, empty state ไม่กระพริบ, static AC-14 (กฎ 20; AC-20) | ☐ **เริ่มได้** |
-| ADM-17 | (รอบ 26, #322) `q` ของ affiliate + `useComboboxData` + error ของรายการ + nit e2e (กฎ 21; AC-21) | ☐ **เริ่มได้** (ADM-9 🚀 #322) |
+| ADM-16 | (รอบ 26, #316/#315) deps คอลัมน์ `codes-table`/`partners-section`, empty state ไม่กระพริบ, static AC-14 (กฎ 20; AC-20) | ☑ #359 |
+| ADM-17 | (รอบ 26, #322) `q` ของ affiliate + `useComboboxData` + error ของรายการ + nit e2e (กฎ 21; AC-21) | ☑ #360 |
 | ADM-18 | (ปิดรอบ 26, qa #324) e2e filter + Esc ระหว่าง loader หน่วง — ต้องยืนยันก่อน ไม่ใช่บั๊กที่ยืนยันแล้ว; แก้เฉพาะเมื่อทำซ้ำได้ (กฎ 22; AC-22) | ☐ **เริ่มได้** (ชน ADM-16 ไฟล์ e2e เดียวกัน — ตัวที่ merge ทีหลัง rebase) |
 | ADM-19 | (ปิดรอบ 26, qa/review #327) e2e `partners_offset` ผิดรูปตอนไม่มี partner + REPORT หลัง sync develop (กฎ 23; AC-23) | ☐ **เริ่มได้** |
 | ADM-20 | (รอบ 27, qa ADM-M-10) `/app/group-buying` ตอน API ล้มแสดง `NoRecords` แทน empty state (กฎ 24; AC-24) | 🚀 #335 |
-| ADM-21a | (รอบ 27 follow-up → รอบ 28 owner "ทำ") สถานะ error แทน empty ของตาราง e-voucher: pools, codes, partners (กฎ 25; AC-25) | ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) · เมื่อสั่งแล้วรอ ADM-16 merge |
-| ADM-21b | (รอบ 27 follow-up → รอบ 28 owner "ทำ") สถานะ error แทน empty ของตาราง affiliate ทุกแท็บ + group buy groups/members (กฎ 25; AC-26) | ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) · เมื่อสั่งแล้วรอ ADM-17 merge |
+| ADM-21a | (รอบ 27 follow-up → รอบ 28 owner "ทำ") สถานะ error แทน empty ของตาราง e-voucher: pools, codes, partners (กฎ 25; AC-25) | ☑ #361 (owner สั่งทำ 2026-11-13) |
+| ADM-21b | (รอบ 27 follow-up → รอบ 28 owner "ทำ") สถานะ error แทน empty ของตาราง affiliate ทุกแท็บ + group buy groups/members (กฎ 25; AC-26) | ☑ #362 (owner สั่งทำ 2026-11-13) |
 | ADM-22 | (รอบ 27 follow-up → รอบ 28 owner "ยืนยันก่อน") qa ตรวจ stack trace ของ loader หน้า pool บน build production — ไม่พบ → ✕ ไม่มีโค้ด; พบ → ADM-22b (กฎ 26; AC-27) | ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
@@ -421,6 +426,9 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   spec 01: Q-C6 = ก (หัวข้อปิดรอบ 27 accepted, ตัดทาง ข จาก CORE-56), Q-C7 = ก → แก้กฎข้อ 81b + หัวข้อ "Follow-up รอบ 28": กฎข้อ 115, AC-156, CORE-57 (ใช้ `original_item_total`/`original_shipping_total` แทน `item_total`/`shipping_total` เพราะ 2.22.1 หักส่วนลดแล้วใน field นั้น — ไม่หักซ้ำกับ `discount_total`) ·
   spec 05: AF-M-03 → แก้กฎ 13 + AC-15 (400 `invalid_data` เมื่อ body มี `email`) ไม่มี task · spec 08: ADM-21 → ADM-21a/21b (กฎ 25, AC-25..26), ADM-22 (กฎ 26, AC-27 — ยืนยันก่อน) ·
   task ใหม่ทั้งหมดพักไว้ (owner ยังไม่สั่งทำ) ไม่บล็อก release v0.1.0 · ไม่มี ADR ใหม่
+- ปิดรอบ 29 (2026-11-13, เอกสารล้วน — owner สั่งทำต่อ "ตามที่เสนอ") → sync ☑ CORE-56 #351, CORE-57 #352, CORE-52 #353, OPS-22 #354, CORE-54 #355, OPS-24 #356, GB-16 #357, CORE-53 #358, ADM-16 #359, ADM-17 #360, ADM-21a #361, ADM-21b #362
+  ใน ROADMAP และ spec 01, 04, 07, 08 (spec คง ☑ ไม่ sync 🚀) · spec 01/08: บันทึกเพิ่มในบรรทัดสถานะ/หัวข้อรอบ 28 ที่เคยเขียน "พักไว้ — owner ยังไม่สั่งทำ" ว่าสั่งทำและ merge แล้ว (ไม่ลบประวัติ) ·
+  เหลือ: ADM-22 พักไว้, OPS-23/ADM-15/ADM-18/ADM-19 เริ่มได้ · ไม่มี task/ADR ใหม่ ไม่เปลี่ยนกฎ/AC/Depends · `CLAUDE.md` ไม่แตะในรอบนี้ (นอกจากที่ OPS-22 #354 แก้ไปแล้ว)
 
 ## ข้อตกลงการทำงานต่อ PR
 planner (เฉพาะเมื่อ spec เปลี่ยน) → builder (TDD, worktree) → qa (e2e + evidence) →

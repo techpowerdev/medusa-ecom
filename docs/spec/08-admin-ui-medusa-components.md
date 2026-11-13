@@ -5,7 +5,8 @@ Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดส
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
 รอบ 26 2026-11-09: แก้ถ้อยคำกฎ 7(b), 14, AC-18; ADM-15..17, กฎ 19–21, AC-19..21; Q8 ตัดสินแล้ว;
 รอบ 27 2026-11-10: ADM-20, กฎ 24, AC-24; follow-up ADM-21, ADM-22; ปิดรอบ 27 2026-11-10: ADM-20 ☑ #335;
-รอบ 28 2026-11-10: owner ตัดสิน ADM-21 = ทำ (แยก ADM-21a/21b, กฎ 25, AC-25..26) และ ADM-22 = ยืนยันก่อน (กฎ 26, AC-27) — ทั้งหมดพักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0)
+รอบ 28 2026-11-10: owner ตัดสิน ADM-21 = ทำ (แยก ADM-21a/21b, กฎ 25, AC-25..26) และ ADM-22 = ยืนยันก่อน (กฎ 26, AC-27) — ทั้งหมดพักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0;
+ปิดรอบ 29 2026-11-13: owner สั่งทำ → ☑ ADM-16 #359, ADM-17 #360 (dependency ของ 21a/21b), ADM-21a #361, ADM-21b #362; ADM-22 ยังพักไว้ — sync สถานะเท่านั้น)
 Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้งหมดได้ใช้ component, hook, utility และอื่นที่ medusa ให้แล้วหรือยัง ถ้ายังให้วางแผนปรับใช้ตามที่ medusa มีให้ก่อนเป็นฐาน
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
@@ -371,8 +372,8 @@ Out of scope: แก้ `DataTable`/`ActionMenu` ของ dashboard, patch-pack
 | Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
 | ADM-15 | (รอบ 25 ข้อ D + #321) `create-campaign.tsx`: `NumberInput`, focus กลับปุ่มหลังปิด modal, e2e dblclick/`form.reset` (กฎ 19) | `components/group-buy/create-campaign.tsx`, `lib/group-buy-form.ts` (ถ้า schema ต้องรู้จัก sentinel), `__tests__/group-buy-pages.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-form.spec.ts` | ~80 LOC | 1280×800 | AC-19 | **ADM-13 (#321) merge** (แตะ `create-campaign.tsx`); ไม่บล็อก release | ชน ADM-14 ไม่มี (คนละไฟล์) |
-| ADM-16 | (#316, #315) deps คอลัมน์ `codes-table`/`partners-section`, empty state ไม่กระพริบตอน offset เกิน, static AC-14 (กฎ 20) | `components/evoucher/{codes-table,partners-section}.tsx`, `components/common/use-page-offset.ts` (ถ้าเพิ่มค่าคืน), `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/evoucher-admin-pool-page.spec.ts` | ~120 LOC | 1280×800 | AC-20 | none — **เริ่มได้** (ADM-5 ☑, ADM-8b ☑, ADM-10 ☑); ไม่บล็อก release | ไม่ชน ADM-15; ถ้า ADM-14 แตะ `partners-section.tsx` ตัวที่ merge ทีหลัง rebase |
-| ADM-17 | (#322) `q` ของ affiliate + `useComboboxData` + error ของรายการ + nit e2e (กฎ 21) | `apps/backend/src/modules/affiliate/models/*` (`.searchable()`), `api/admin/affiliate/validators.ts`, `components/affiliate/payout-form.tsx`, `apps/backend/integration-tests/http/affiliate-admin*.spec.ts`, `apps/storefront/e2e/affiliate-admin-forms.spec.ts` | ~120 LOC | 1280×800 | AC-21 | **ADM-9 (#322) merge** (แก้โค้ดของ PR นั้น); ไม่บล็อก release | ไม่ชน ADM-15/16 |
+| ADM-16 | (#316, #315) deps คอลัมน์ `codes-table`/`partners-section`, empty state ไม่กระพริบตอน offset เกิน, static AC-14 (กฎ 20) — ☑ #359 | `components/evoucher/{codes-table,partners-section}.tsx`, `components/common/use-page-offset.ts` (ถ้าเพิ่มค่าคืน), `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/evoucher-admin-pool-page.spec.ts` | ~120 LOC | 1280×800 | AC-20 | none — **เริ่มได้** (ADM-5 ☑, ADM-8b ☑, ADM-10 ☑); ไม่บล็อก release | ไม่ชน ADM-15; ถ้า ADM-14 แตะ `partners-section.tsx` ตัวที่ merge ทีหลัง rebase |
+| ADM-17 | (#322) `q` ของ affiliate + `useComboboxData` + error ของรายการ + nit e2e (กฎ 21) — ☑ #360 | `apps/backend/src/modules/affiliate/models/*` (`.searchable()`), `api/admin/affiliate/validators.ts`, `components/affiliate/payout-form.tsx`, `apps/backend/integration-tests/http/affiliate-admin*.spec.ts`, `apps/storefront/e2e/affiliate-admin-forms.spec.ts` | ~120 LOC | 1280×800 | AC-21 | **ADM-9 (#322) merge** (แก้โค้ดของ PR นั้น); ไม่บล็อก release | ไม่ชน ADM-15/16 |
 ลำดับ: ADM-16 เริ่มได้ทันที; ADM-15 หลัง #321; ADM-17 หลัง #322; ไม่มี task ใดบล็อก release
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 26)
@@ -447,8 +448,8 @@ Out of scope: แก้ตารางอื่น (→ ADM-21), error ของ
 none
 
 ## Follow-up รอบ 28 (2026-11-10 — เอกสารล้วน: บันทึกคำตัดสินของ owner)
-ที่มา: owner ตอบ "ตามที่แนะนำ" — ADM-21 = ทำ, ADM-22 = ยืนยันก่อน **แต่สั่งว่ายังไม่ต้องทำตอนนี้** → ทุก task ในหัวข้อนี้พักไว้ ไม่บล็อก release v0.1.0 (path ย่อจาก `apps/backend/src/admin/`)
-Status: accepted (ADM-21a/21b/22 พักไว้ — owner ยังไม่สั่งทำ)
+ที่มา: owner ตอบ "ตามที่แนะนำ" — ADM-21 = ทำ, ADM-22 = ยืนยันก่อน **แต่สั่งว่ายังไม่ต้องทำตอนนี้** → ทุก task ในหัวข้อนี้พักไว้ ไม่บล็อก release v0.1.0 (ปิดรอบ 29: owner สั่งทำ ADM-21a/21b 2026-11-13 → ☑ #361/#362; ADM-22 ยังพักไว้) (path ย่อจาก `apps/backend/src/admin/`)
+Status: accepted (ADM-21a/21b/22 พักไว้ — owner ยังไม่สั่งทำ) · ปิดรอบ 29: owner สั่งทำ 2026-11-13 → ADM-21a ☑ #361, ADM-21b ☑ #362; ADM-22 ยังพักไว้
 Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard, patch-package, ปุ่มลองใหม่ (reload หน้า — กฎ 24e), ตารางนอก 6 ไฟล์ข้างล่าง
 
 ### What Medusa already gives us (รอบ 28)
