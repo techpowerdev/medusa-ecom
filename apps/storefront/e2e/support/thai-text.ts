@@ -4,7 +4,8 @@ import { expect, type Page } from "@playwright/test"
 // (ข้อมูลจาก backend เช่น ชื่อสินค้า ไม่ควรถูกส่งเข้ามาตรวจ — เลือก element ที่เป็นข้อความของ storefront เท่านั้น)
 // CORE-18 (กฎข้อ 33): ชื่อ starter (Medusa, Next.js, GitHub) ไม่ได้รับยกเว้นแล้ว — ผู้ใช้ต้องไม่เห็น
 // รายการว่างไว้ก่อน แต่คงกลไกไว้ให้ task อื่น (เช่น CORE-4c/4d) เพิ่มชื่อเฉพาะที่คงเป็นละตินได้ เช่น PromptPay
-const ALLOWED: string[] = []
+// CORE-57 (spec 01 AC-156): ป้าย "ยอดรวมสินค้า (รวม VAT)" / "รวม VAT แล้ว" ของ cart-totals — ตัวย่อภาษีแบบเดียวกับหน่วย/รหัส (ADR-014 ข้อ 4)
+const ALLOWED: string[] = ["VAT"]
 
 export const THAI = /[฀-๿]/
 
