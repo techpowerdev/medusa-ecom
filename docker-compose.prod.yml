@@ -4,6 +4,7 @@
 #   export POSTGRES_PASSWORD=... JWT_SECRET=... COOKIE_SECRET=...   # `openssl rand -hex 32`
 #   export STRIPE_API_KEY=... STRIPE_WEBHOOK_SECRET=...              # PAY-1 (spec 06)
 #   export RESEND_API_KEY=... RESEND_FROM_EMAIL=... AFFILIATE_TOKEN_SECRET=... STOREFRONT_URL=https://...  # OPS-7
+#   export EVOUCHER_ENCRYPTION_KEY=...                             # OPS-21: hex 64 ตัว `openssl rand -hex 32`
 #   docker compose -f docker-compose.prod.yml up -d --build --wait
 #   docker compose -f docker-compose.prod.yml --profile storefront up -d   # ต้องมี publishable key (CORE-2)
 #
