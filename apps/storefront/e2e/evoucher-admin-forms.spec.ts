@@ -275,3 +275,41 @@ test.describe("ADM-23: partners clamp ไม่กระพริบ + เมน
     }
   })
 })
+
+// ADM-19 (spec 08 AC-23, กฎ 23): `?partners_offset=` ผิดรูปตอนไม่มี partner — PageOffsetGate ซ่อนตาราง + ปุ่มใน action
+// จนกว่า usePageOffset จะลบ param ออกจาก URL แล้วต้องกลับมาเอง (ไม่ reload / ไม่แก้ URL ด้วยมือ) — test กันถอย (กฎ 23: ไม่แก้โค้ดถ้าผ่าน)
+test.describe("ADM-19: partners_offset ผิดรูปตอนไม่มี partner", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-19" } })
+
+  for (const offset of ["abc", "-50"]) {
+    test(`AC-23: GET partners ว่าง + ?partners_offset=${offset} → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด`, async ({
+      page,
+      evidence,
+    }) => {
+      await loginAdmin(page)
+      await page.route("**/admin/evoucher/partners*", (route) =>
+        route.request().method() === "GET"
+          ? route.fulfill({ status: 200, json: { partners: [], count: 0, offset: 0, limit: 20 } })
+          : route.continue()
+      )
+      await page.goto(`${BACKEND_URL}/app/evouchers?partners_offset=${offset}`)
+
+      await page.waitForURL((url) => url.pathname === "/app/evouchers" && !url.searchParams.has("partners_offset"))
+      const table = page.getByTestId("evoucher-partners-table")
+      // spec 08 กฎ 18: ปุ่มใน action ของ DataTable หาด้วย role + ชื่อภายใน wrapper
+      const create = table.getByRole("button", { name: "Create partner" })
+      await expect(create).toHaveCount(1)
+      await expect(page.getByTestId("evoucher-partners-empty")).toBeVisible()
+      await expect(table).not.toContainText(/NaN/)
+      expect(new URL(page.url()).searchParams.has("partners_offset")).toBe(false)
+      if (offset === "abc") {
+        await table.scrollIntoViewIfNeeded()
+        await evidence("01-partners-bad-offset-empty")
+      }
+
+      await create.click()
+      await expect(page.getByLabel("Name *", { exact: true })).toBeVisible()
+      if (offset === "abc") await evidence("02-partners-bad-offset-create-modal")
+    })
+  }
+})
