@@ -1,0 +1,95 @@
+# ADM-21b (spec 08 AC-26, กฎ 25) — ผล test
+# วันที่: 2026-11-13, node v22.23.3, base origin/develop f8dc0050
+# backend prod build (medusa build + medusa start) :9122, DB medusa_adm21b, Redis db 13, viewport 1280x800 (locale en-US, Asia/Bangkok)
+
+## Red (ก่อนแก้ component)
+### jest medusa-ui.unit.spec.ts -t ADM-21b (static, exit 1)
+    ✕ components/affiliate/list-table.tsx: isError && !data → affiliate-list-error และ heading error อยู่ใน emptyState (1 ms)
+    ✕ components/group-buy/groups-section.tsx: isError && !data → gb-groups-error และ heading error อยู่ใน emptyState (1 ms)
+    ✕ components/group-buy/group-members.tsx: isError && !data → gb-memberships-error และ heading error อยู่ใน emptyState
+    ✕ components/affiliate/list-table.tsx: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error (1 ms)
+    ✕ components/group-buy/groups-section.tsx: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error
+    ✕ components/group-buy/group-members.tsx: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error
+    ✕ useAffiliateList คืน loadFailed/error/resource ให้ AffiliateListTable (ผู้เรียก spread {...list}) (1 ms)
+Tests:       7 failed, 173 skipped, 180 total
+### playwright -g ADM-21b (build ของโค้ดก่อนแก้, exit 1)
+  ✘   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (6.7s)
+  ✘   1 [chromium] › e2e/group-buy-admin-pages.spec.ts:298:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 500 → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (6.7s)
+  ✘   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (6.3s)
+  ✘   3 [chromium] › e2e/group-buy-admin-pages.spec.ts:312:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 500 หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (6.6s)
+  ✘   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (6.4s)
+  ✘   6 [chromium] › e2e/group-buy-admin-pages.spec.ts:298:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups network ล้ม (route.abort) → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (6.5s)
+  ✘   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (6.4s)
+  ✘   8 [chromium] › e2e/group-buy-admin-pages.spec.ts:312:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships network ล้ม (route.abort) หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (6.6s)
+  ✘   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (6.3s)
+  ✘  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (6.3s)
+  ✘  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (6.3s)
+  ✘  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (6.3s)
+  ✘  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:280:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (30.1s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:290:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.8s)
+  ✘  10 [chromium] › e2e/group-buy-admin-pages.spec.ts:331:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 401 → ErrorBoundary พาไป /app/login (2.0m)
+  ✘  16 [chromium] › e2e/group-buy-admin-pages.spec.ts:341:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 401 → ErrorBoundary พาไป /app/login (2.0m)
+  ✓  17 [chromium] › e2e/group-buy-admin-pages.spec.ts:350:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: groups / memberships ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.8s)
+  ✓  18 [chromium] › e2e/group-buy-admin-pages.spec.ts:367:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error (4.1s)
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeVisible() failed
+  15 failed
+  3 passed (4.6m)
+หมายเหตุ: เคส "รายการว่าง" และ "กฎ 24d" ผ่านบน develop ตามตั้งใจ — เป็น regression guard ของกฎ 24c (empty เดิม) และ 24d
+(ถ้าเขียน loadFailed = isError โดยไม่มี !data test 24d จะล้ม)
+
+## Green
+### pnpm --filter backend test:unit (exit 0)
+Test Suites: 108 passed, 108 total
+Tests:       1308 passed, 1308 total
+### playwright -g ADM-21b (build หลังแก้, E2E_SAVE_EVIDENCE=1, exit 0)
+  ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (2.9s)
+  ✓   1 [chromium] › e2e/group-buy-admin-pages.spec.ts:298:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 500 → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (3.1s)
+  ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (2.6s)
+  ✓   4 [chromium] › e2e/group-buy-admin-pages.spec.ts:312:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 500 หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (2.9s)
+  ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (2.5s)
+  ✓   6 [chromium] › e2e/group-buy-admin-pages.spec.ts:298:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups network ล้ม (route.abort) → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (2.7s)
+  ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (2.5s)
+  ✓   8 [chromium] › e2e/group-buy-admin-pages.spec.ts:312:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships network ล้ม (route.abort) หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (2.8s)
+  ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (2.5s)
+  ✓  10 [chromium] › e2e/group-buy-admin-pages.spec.ts:331:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 401 → ErrorBoundary พาไป /app/login (2.5s)
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (2.5s)
+  ✓  12 [chromium] › e2e/group-buy-admin-pages.spec.ts:341:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 401 → ErrorBoundary พาไป /app/login (2.5s)
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.6s)
+  ✓  14 [chromium] › e2e/group-buy-admin-pages.spec.ts:350:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: groups / memberships ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.8s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:262:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.6s)
+  ✓  16 [chromium] › e2e/group-buy-admin-pages.spec.ts:367:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error (4.2s)
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:280:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+  ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:290:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.7s)
+  18 passed (26.6s)
+### regression: affiliate-admin-*.spec.ts + group-buy-admin-*.spec.ts (workers=2)
+  51 passed / 3 failed — 2 ตัวเป็น ENOENT ของ trace (รัน playwright --project=unit พร้อมกันจน test-results ถูกล้าง) และ AC-43 (affiliate-admin-affiliates:43) แถวหลุดหน้า 1 จาก test อื่นที่สร้าง affiliate ขนานกัน
+### rerun workers=1: affiliate-admin-affiliates.spec.ts + group-buy-admin-pages.spec.ts (exit 0)
+  ✓   1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:43:5 › AC-43: approve ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (8.8s)
+  ✓   2 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:165:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (2.2s)
+  ✓   3 [chromium] › e2e/group-buy-admin-pages.spec.ts:55:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL (3.0s)
+  ✓   4 [chromium] › e2e/group-buy-admin-pages.spec.ts:128:7 › ADM-10: gb_offset ใน URL ที่ผิดรูป › AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp (1.8s)
+  ✓   5 [chromium] › e2e/group-buy-admin-pages.spec.ts:185:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 500 → gb-campaigns-error แทน empty state, ปุ่ม Create campaign ยังเปิด modal ได้ (2.7s)
+  ✓   6 [chromium] › e2e/group-buy-admin-pages.spec.ts:204:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: network ล้ม (route.abort) → gb-campaigns-error และปุ่ม Create campaign ยังเปิด modal ได้ (2.7s)
+  ✓   7 [chromium] › e2e/group-buy-admin-pages.spec.ts:218:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+  ✓   8 [chromium] › e2e/group-buy-admin-pages.spec.ts:230:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบสำเร็จแต่ไม่มีแคมเปญ → empty state เดิม ไม่มี gb-campaigns-error (1.2s)
+  ✓   9 [chromium] › e2e/group-buy-admin-pages.spec.ts:298:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 500 → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (2.6s)
+  ✓  10 [chromium] › e2e/group-buy-admin-pages.spec.ts:312:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 500 หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (2.7s)
+  ✓  11 [chromium] › e2e/group-buy-admin-pages.spec.ts:298:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups network ล้ม (route.abort) → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (2.6s)
+  ✓  12 [chromium] › e2e/group-buy-admin-pages.spec.ts:312:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships network ล้ม (route.abort) หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (2.7s)
+  ✓  13 [chromium] › e2e/group-buy-admin-pages.spec.ts:331:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 401 → ErrorBoundary พาไป /app/login (2.3s)
+  ✓  14 [chromium] › e2e/group-buy-admin-pages.spec.ts:341:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 401 → ErrorBoundary พาไป /app/login (2.4s)
+  ✓  15 [chromium] › e2e/group-buy-admin-pages.spec.ts:350:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: groups / memberships ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.7s)
+  ✓  16 [chromium] › e2e/group-buy-admin-pages.spec.ts:367:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error (4.1s)
+  16 passed (47.1s)
+### pnpm lint (0 errors) && pnpm typecheck (exit 0)

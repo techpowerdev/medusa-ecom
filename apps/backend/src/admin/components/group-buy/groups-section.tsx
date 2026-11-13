@@ -11,6 +11,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useEffect, useMemo, useState } from "react"
 import { Container } from "../common/container"
 import { Header } from "../common/header"
+import { isUnauthorized } from "../../lib/fetch-error"
 import { createSingleFlight } from "../../lib/single-flight"
 import { campaignActions, groupProgress } from "../../lib/group-buy-campaign"
 import { Campaign, Group, groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
@@ -27,7 +28,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
   const limit = pagination.pageSize
   const offset = pagination.pageIndex * limit
 
-  const { data, isLoading, isPlaceholderData } = useQuery({
+  const { data, isLoading, isPlaceholderData, isError, error } = useQuery({
     queryKey: [...groupBuyKeys.groups(campaign.id), limit, offset],
     queryFn: () => groupBuyApi.listGroups(campaign.id, { limit, offset }),
     placeholderData: keepPreviousData,
@@ -99,6 +100,13 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
     onRowClick: (_, g) => setSelectedId(g.id),
   })
 
+  // spec 08 กฎ 25 (24b): 401 → ErrorBoundary ของ dashboard พาไป /login
+  if (isUnauthorized(error)) {
+    throw error
+  }
+  // กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
+  const loadFailed = isError && !data
+
   return (
     <Container>
       <Header
@@ -126,14 +134,19 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
         data-testid="gb-groups-table"
         className="[&_tbody_tr:has([data-testid=gb-group-selected])]:bg-ui-bg-highlight [&_tbody_tr:has([data-testid=gb-group-selected])_td]:!bg-ui-bg-highlight"
       >
-        <DataTable instance={table}>
-          <DataTable.Table
-            emptyState={{
-              empty: { heading: "No groups yet", description: "Pool groups are created here; teams by customers." },
-            }}
-          />
-          <DataTable.Pagination />
-        </DataTable>
+        {/* กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัว + ปุ่ม Create pool group; testid เฉพาะตอนล้ม */}
+        <div data-testid={loadFailed ? "gb-groups-error" : undefined}>
+          <DataTable instance={table}>
+            <DataTable.Table
+              emptyState={{
+                empty: loadFailed
+                  ? { heading: "Could not load groups", description: error?.message }
+                  : { heading: "No groups yet", description: "Pool groups are created here; teams by customers." },
+              }}
+            />
+            <DataTable.Pagination />
+          </DataTable>
+        </div>
       </div>
       {selected && (
         <GroupMembers key={selected.id} group={selected} campaignId={campaign.id} onClose={() => setSelectedId(null)} />

@@ -736,3 +736,39 @@ describe("ตาราง e-voucher: สถานะ error แทน empty (spec
     expect(src).toMatch(/if \(isUnauthorized\(error\)\) \{\s*throw error\s*\}/)
   })
 })
+
+// ADM-21b (spec 08 กฎ 25, AC-26): ตาราง affiliate (ทุกแท็บ) และ group buy groups/members เมื่อ query รายการล้มและไม่มีข้อมูลในมือ
+// → error ผ่าน emptyState ของ DataTable (คงหัวตาราง/ปุ่ม) แทนข้อความ empty เดิม; 401 → throw ให้ ErrorBoundary พาไป /login (กฎ 24b)
+describe("ตาราง affiliate / group buy: สถานะ error แทน empty (spec 08 AC-26, กฎ 25, ADM-21b)", () => {
+  // [ไฟล์, testid error, heading error (regex), tag ที่รับ emptyState]
+  const ERROR_TABLES: [string, string, string, string][] = [
+    ["components/affiliate/list-table.tsx", "affiliate-list-error", "`Could not load \\$\\{resource\\}`", "DataTable"],
+    ["components/group-buy/groups-section.tsx", "gb-groups-error", '"Could not load groups"', "DataTable.Table"],
+    ["components/group-buy/group-members.tsx", "gb-memberships-error", '"Could not load members"', "DataTable.Table"],
+  ]
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+  it.each(ERROR_TABLES)("%s: isError && !data → %s และ heading error อยู่ใน emptyState", (file, testId, heading, tag) => {
+    const src = read(file)
+    expect(src).toMatch(/const loadFailed = isError && !data\b/)
+    // prop emptyState ของ <DataTable ... /> หรือ <DataTable.Table ... /> (ตั้งแต่ emptyState= จนปิด tag) — ไม่แทนตารางด้วย NoRecords
+    const emptyState = src.match(new RegExp(`<${escape(tag)}\\b[\\s\\S]*?emptyState=([\\s\\S]*?)\\/>`))?.[1] ?? ""
+    expect(emptyState).toMatch(
+      new RegExp(`empty:\\s*loadFailed\\s*\\?\\s*\\{\\s*heading:\\s*${heading},\\s*description:\\s*error\\?\\.message\\s*\\}`)
+    )
+    expect(src).toContain(`data-testid={loadFailed ? "${testId}" : undefined}`)
+    expect(src).not.toMatch(/\bNoRecords\b/)
+  })
+
+  it.each(ERROR_TABLES)("%s: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ isUnauthorized \} from "\.\.\/\.\.\/lib\/fetch-error"/)
+    expect(src).toMatch(/if \(isUnauthorized\(error\)\) \{\s*throw error\s*\}/)
+  })
+
+  it("useAffiliateList คืน loadFailed/error/resource ให้ AffiliateListTable (ผู้เรียก spread {...list})", () => {
+    const src = read("components/affiliate/list-table.tsx")
+    expect(src).toMatch(/const \{ data, isLoading, isError, error \} = useQuery\(/)
+    expect(src).toMatch(/return \{[^}]*\bloadFailed\b[^}]*\berror\b[^}]*\bresource\b[^}]*\}/)
+  })
+})

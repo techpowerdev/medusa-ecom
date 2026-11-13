@@ -14,6 +14,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { canSetGroupOutcome, customerLabel, orderAdminPath } from "../../lib/group-buy-campaign"
+import { isUnauthorized } from "../../lib/fetch-error"
 import { Group, groupBuyApi, groupBuyKeys, Membership } from "../../lib/group-buy"
 import { createSingleFlight } from "../../lib/single-flight"
 
@@ -81,7 +82,7 @@ export const GroupMembers = ({
   const limit = pagination.pageSize
   const offset = pagination.pageIndex * limit
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: [...groupBuyKeys.memberships(group.id), limit, offset],
     queryFn: () => groupBuyApi.listMemberships(group.id, { limit, offset }),
     placeholderData: keepPreviousData,
@@ -114,6 +115,13 @@ export const GroupMembers = ({
     isLoading,
     pagination: { state: pagination, onPaginationChange: setPagination },
   })
+
+  // spec 08 กฎ 25 (24b): 401 → ErrorBoundary ของ dashboard พาไป /login
+  if (isUnauthorized(error)) {
+    throw error
+  }
+  // กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
+  const loadFailed = isError && !data
 
   return (
     <div className="flex flex-col">
@@ -150,10 +158,19 @@ export const GroupMembers = ({
         </div>
       </div>
       <div data-testid="gb-memberships-table">
-        <DataTable instance={table}>
-          <DataTable.Table emptyState={{ empty: { heading: "No members yet" } }} />
-          <DataTable.Pagination />
-        </DataTable>
+        {/* กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัว + ปุ่ม; testid เฉพาะตอนล้ม */}
+        <div data-testid={loadFailed ? "gb-memberships-error" : undefined}>
+          <DataTable instance={table}>
+            <DataTable.Table
+              emptyState={{
+                empty: loadFailed
+                  ? { heading: "Could not load members", description: error?.message }
+                  : { heading: "No members yet" },
+              }}
+            />
+            <DataTable.Pagination />
+          </DataTable>
+        </div>
       </div>
     </div>
   )
