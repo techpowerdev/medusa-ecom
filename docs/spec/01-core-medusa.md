@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (ปิดรอบ 29 2026-11-13 — owner สั่งทำงานที่พักไว้: ☑ CORE-56 #351, CORE-57 #352 และ ☑ CORE-52 #353, CORE-53 #358, CORE-54 #355 (sync สถานะเท่านั้น ไม่เปลี่ยนกฎ/AC); รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+สถานะ: accepted (รอบ 30 2026-11-13 — follow-up รอบ 29: CORE-58..59 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ, กฎข้อ 116–117, AC-157..158, คำถาม Q-C8/Q-C9 (หัวข้อ "Follow-up รอบ 30"); ปิดรอบ 29 2026-11-13 — owner สั่งทำงานที่พักไว้: ☑ CORE-56 #351, CORE-57 #352 และ ☑ CORE-52 #353, CORE-53 #358, CORE-54 #355 (sync สถานะเท่านั้น ไม่เปลี่ยนกฎ/AC); รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
 รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
@@ -2291,6 +2291,84 @@ TDD: เขียน unit/e2e ของ AC-156 ให้ล้มบน develop 
 
 ### Open questions (รอบ 28)
 none
+
+## Follow-up รอบ 30 (2026-11-13 — เอกสารล้วน: follow-up จาก review/qa รอบ 29 #351–#363)
+ที่มา: owner อนุมัติให้แปลง follow-up ของรอบ 29 เป็น spec/task (2026-11-13) — ตรวจโค้ดบน develop `8fb44d70` (path ย่อจาก `apps/storefront/`):
+- `src/lib/data/cart.ts:526` `required()` ของ `addressFrom` ใช้ `String.prototype.trim()` ซึ่งไม่ตัด zero-width (`U+200B`, `U+200C`, `U+200D`, `U+2060` ไม่ใช่ white space ตาม ECMAScript; `U+FEFF` ถูกตัดอยู่แล้วแต่รวมไว้ในชุดของกฎข้อ 116a) → ช่องบังคับที่มีแค่ `U+200B` ผ่านกฎข้อ 110b แล้วบันทึกเมือง/เขตที่มองไม่เห็น (qa #353 O-1)
+- `normalize` ของข้อความ error มี 3 สำเนา: `src/lib/util/checkout-error.ts:23` (export — ผู้ใช้ `empty-cart-completion.ts`), `src/lib/util/insufficient-inventory.ts:15`, `src/lib/util/group-join-error.ts:31` (มี `.trim()` เพิ่ม) (re-review #353; มีก่อน CORE-52)
+- `e2e/core-4g-checkout-polish.spec.ts:91`, `:95` cleanup ใน `finally` ใช้ `expect` ธรรมดา → ลบ promotion ล้มแล้ว throw กลบ error ของ `checkout()` และข้ามการลบ campaign (review #358 — ส่วนที่กฎข้อ 111d ทำกับ `core-4j` แล้วแต่ยังไม่ทำกับ `core-4g`)
+- `e2e/core-4j-e2e-hygiene.unit.spec.ts:57` นับ `request.delete(` ด้วย regex บนข้อความของ body จึงนับที่อยู่ใน comment/string ด้วย (review #358)
+- `e2e/core-46-e2e-hygiene.unit.spec.ts:138` `VALID_AFFILIATE_ARGS` รับปีกกาซ้อนได้ 2 ชั้นและไม่รู้จัก string — ไม่มี comment บอกข้อจำกัด (review #355)
+- ป้าย "ยอดรวมสินค้า (รวม VAT)" อยู่สองที่ด้วยตัวเลขต่างความหมาย: dropdown `src/modules/layout/components/cart-dropdown/index.tsx:211` = `item_total` (หลังส่วนลด, กฎข้อ 81a) และ `src/modules/common/components/cart-totals/index.tsx:39` = `original_item_total` (ก่อนส่วนลด, กฎข้อ 115a) — มีส่วนลดแล้วตัวเลขใต้ป้ายเดียวกันต่างกัน (qa #352) → Q-C8
+- `e2e/support/thai-text.ts:8` `ALLOWED = ["VAT"]` (เพิ่มใน CORE-57 #352) ยกเว้นให้ `expectThai` ทุก test ขณะที่ ADR-014 ข้อ 4 ไม่ได้ระบุ "VAT" ไว้ชัด (review #352) → Q-C9
+Status: draft (CORE-58, CORE-59 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ; Q-C8, Q-C9 รอ owner)
+Out of scope: validation ฝั่ง backend ของที่อยู่ (เหมือนรอบ 26), ฟอร์มที่อยู่ในหน้าบัญชี (`/account/addresses`), แก้ป้ายยอดรวมก่อน owner ตอบ Q-C8/Q-C9
+
+### What Medusa already gives us (รอบ 30)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ตรวจช่องที่อยู่ที่มองไม่เห็น | ไม่มี — Store API รับ string อะไรก็ได้ (เหมือนรอบ 26) | ขยาย `setAddresses` (กฎข้อ 110b → 116a) |
+| ยอดรวมของ cart | `item_total`/`original_item_total`/`discount_total` ของ `decorateCartTotals` 2.22.1 (ตารางรอบ 28) | ใช้ตามเดิม — Q-C8 เป็นเรื่องป้าย ไม่ใช่ field |
+| test hygiene | none (test ของเราเอง; `typescript` มีใน devDependencies แล้ว) | — |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 30)
+116. (CORE-58 — qa #353 O-1, re-review #353) (a) ช่องบังคับของ `setAddresses` (กฎข้อ 110b) ถือว่าว่างเมื่อไม่เหลืออักขระหลังตัด white space ของ JS **และ** zero-width `U+200B`, `U+200C`, `U+200D`, `U+2060`, `U+FEFF` → คืน `MISSING_ADDRESS_MESSAGE` ไม่เรียก `updateCart`;
+     ค่าที่ส่งให้ `updateCart` ตัด white space และอักขระชุดนี้ที่หัว/ท้าย (คงอักขระกลางข้อความ) — ทำใน helper pure ของ `src/lib/util/` เพื่อ unit test (ไม่มี dependency ใหม่);
+     (b) `normalize` ของข้อความ error เหลือที่เดียว — `insufficient-inventory.ts` และ `group-join-error.ts` import ตัวเดียวกับ `checkout-error.ts`/`empty-cart-completion.ts` (ตัวกลางรวม `.trim()` ของ `group-join-error` ไว้); ผลของ map และ contract test เดิมไม่เปลี่ยน
+117. (CORE-59 — review #355/#358; ต่อจากกฎข้อ 111) (a) `core-4g-checkout-polish.spec.ts` cleanup ใน `finally` ใช้ `expect.soft` ทั้งสองตัว (ลบ promotion ล้มแล้วยังลบ campaign ต่อ และ error ของ `checkout()` ไม่ถูกกลบ) แบบกฎข้อ 111d;
+     (b) `core-4j-e2e-hygiene.unit.spec.ts` นับ `request.delete(` จาก AST (helper ที่เดินโหนดเดียวกับ `uncheckedDeletes` คืนจำนวน call จริง) แล้ว test AC-111 assert `> 0` จากค่านั้นแทน regex บนข้อความ;
+     (c) comment เหนือ `VALID_AFFILIATE_ARGS` ใน `core-46-e2e-hygiene.unit.spec.ts` ระบุข้อจำกัด: รับ object ซ้อนได้ 2 ชั้น และไม่รู้จัก `{` `}` `,` ใน string (tsc จับอาร์กิวเมนต์ผิดรูปอยู่แล้ว)
+
+### Acceptance criteria (รอบ 30)
+- AC-157 (CORE-58, กฎข้อ 116) Vitest (ไฟล์ใหม่ `src/core-58-address-invisible.test.ts`): helper ของกฎข้อ 116a — `"\u200B"`, `" \u200B\uFEFF "`, `"\u2060"`, `"\u200C\u200D"` → `""`; `"\u200Bวัฒนา\u200B"` → `"วัฒนา"`; `"  วัฒนา "` → `"วัฒนา"`; `"วัฒ\u200Bนา"` → `"วัฒ\u200Bนา"` (คงกลางข้อความ; เขียนเป็น escape ของ JS ใน test);
+  e2e (ต่อจาก `e2e/core-52-checkout-guards.spec.ts`, 1280×800, ลูกค้า login เจ้าของ cart): Given ขั้น address When กรอก `shipping-city-input` เป็น `"\u200B"` (ช่องอื่นถูกต้อง) แล้วส่ง Then `address-error-message` มีอักษรไทย, URL ยังเป็น `step=address`
+  และ `shipping_address.city` ของ `GET /store/carts/:id` (token เจ้าของ cart) ไม่เท่ากับ `"\u200B"` — **ล้มบน develop**; ทำซ้ำกับ `billing-city-input` บน cart digital-only; AC-147 ยังผ่าน;
+  grep: `src/lib/util/insufficient-inventory.ts` และ `src/lib/util/group-join-error.ts` ไม่มี `const normalize =`; Vitest/contract test เดิมของสองไฟล์และ `checkout-conflict-contract` ผ่านโดยไม่แก้ assertion
+- AC-158 (CORE-59, กฎข้อ 117) unit (Playwright `unit` project): helper นับ delete จาก AST กับ fixture ที่มี `request.delete(` อยู่แค่ใน comment และ string → 0, กับ `core-4g-checkout-polish.spec.ts` ฟังก์ชัน `createExpiredPromotion` → ≥ 1; test AC-111 ไม่มี `body.match(/request\.delete\(/g)`;
+  grep: บล็อก `finally` ของ `core-4g-checkout-polish.spec.ts` มี `expect.soft(promotion.ok()` และ `expect.soft(campaign.ok()` และไม่มี `expect(promotion.ok()`/`expect(campaign.ok()` ใน `finally`; comment เหนือ `VALID_AFFILIATE_ARGS` มีคำว่า `string`; e2e `core-4g-*` และ unit AC-111/146/148/149 ผ่าน
+
+### Non-functional (รอบ 30)
+none
+
+### Test plan (รอบ 30)
+| ระดับ | AC |
+|---|---|
+| unit Vitest + e2e storefront | AC-157 (เขียน e2e `U+200B` ให้ล้มบน develop ก่อน) |
+| unit (Playwright `unit` project, grep) | AC-158 |
+
+### Tasks (รอบ 30)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-58 | (storefront เล็ก — qa #353 O-1, re-review #353) ช่องที่อยู่ที่มีแต่อักขระ zero-width ไม่ผ่าน + `normalize` ของข้อความ error เหลือที่เดียว (กฎข้อ 116) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `src/lib/data/cart.ts` (`addressFrom`/`missingRequired`), `src/lib/util/` (helper ใหม่ + ตัวกลาง `normalize`), `src/lib/util/{insufficient-inventory,group-join-error,checkout-error}.ts`, `src/core-58-address-invisible.test.ts` (ใหม่), `e2e/core-52-checkout-guards.spec.ts` | ~70 LOC รวม test | AC-157 | none (CORE-52 ☑ #353); ไม่บล็อก release | ∥ CORE-59 (คนละไฟล์) |
+| CORE-59 | (e2e hygiene — review #355/#358) cleanup `core-4g` ใช้ `expect.soft`, นับ `request.delete(` จาก AST, comment ข้อจำกัด `VALID_AFFILIATE_ARGS` (กฎข้อ 117) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `e2e/core-4g-checkout-polish.spec.ts`, `e2e/core-4j-e2e-hygiene.unit.spec.ts`, `e2e/core-46-e2e-hygiene.unit.spec.ts` | ~30 LOC | AC-158 | none (CORE-53 ☑ #358, CORE-54 ☑ #355); ไม่บล็อก release | ∥ CORE-58 |
+(รอบ 30) CORE-58 ∥ CORE-59 เริ่มได้ทันทีเมื่อ owner สั่ง; ไม่มี task ที่รอ Q-C8/Q-C9 จนกว่า owner ตอบ (ถ้าตอบ (ก)/(ข) ของ Q-C8 หรือ (ข)/(ค) ของ Q-C9 → planner เปิด CORE-60 รอบถัดไป)
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 30)
+- (#353, qa #353) `layout/components/cart-button` อ่าน cart แบบ `force-cache` (`src/lib/data/cart.ts:72`) — ทุก server action ของ storefront revalidate tag ของ cart บน Next server เดียวกัน จำนวนบน nav ค้างได้เฉพาะเมื่อ cart เปลี่ยนนอก storefront (admin/API ตรง) แบบที่ยอมรับแล้วในรอบ 19 (qa #266 Obs 2); qa #353 ล้างตะกร้าจากอีกแท็บแล้วไม่พบค่าค้าง → ไม่เปิด task
+- (qa #352) `data-value` ของ `cart-discount`/`cart-total`/`cart-taxes` มีทศนิยมเกิน 2 ตำแหน่ง — เป็นค่าดิบของ field ตามกฎข้อ 115a (`data-value` = ค่าของ field) และ test เทียบ ±0.01 อยู่แล้ว ข้อความที่แสดงผ่าน `convertToLocale` — ไม่ใช่ defect
+- (review #352) helper `dataValue` ซ้ำใน e2e `core-26-*`/`core-57-*` — ย้ายไป `e2e/support/` เมื่อมีผู้ใช้ที่สาม (CLAUDE.md ข้อห้ามข้อ 3)
+- (review #358) `STRING_OR_COMMENT` ของ `core-46-e2e-hygiene.unit.spec.ts:19` ไม่รู้จัก regex literal — ผู้ใช้เดียว (`setsTimeout` อ่าน config ของ Playwright ที่ไม่มี regex literal) → เปลี่ยนเป็น `ts.createSourceFile` เมื่อมีผู้ใช้ที่สอง
+- (review #351 nit 1) lock ของ `POST /store/returns` (กฎข้อ 114) ปล่อยเมื่อ response `close` แม้ workflow ยังทำอยู่ และ TTL 60s ไม่ต่ออายุ — เป็นข้อเสียที่ระบุไว้แล้วในทาง ก ของ Q-C6 (owner เลือก); ผลที่เหลือคือ client ตัดการเชื่อมต่อ + แท็บสองยิงในช่วงนั้นอาจได้ return `requested` ซ้ำ ซึ่ง admin ยกเลิกได้ที่หน้า order (เท่าทาง ง) — ไม่เปิด task; ทบทวนถ้าพบบน production
+- (#351) integration ของ lock รันบน locking provider แบบ in-memory (integration ไม่ตั้ง `REDIS_URL`) — เหมือน lock ทุกตัวของโปรเจกต์ (flash sale, e-voucher, affiliate); production ใช้ `locking-redis` ผ่าน `src/lib/infra-modules.ts` (ตรวจแล้วรอบ 9) และ job `docker-worker-mode`/load test รันกับ Redis จริง — ไม่เปิด task
+
+### Open questions (รอบ 30)
+- Q-C8 (qa #352 — ถ้อยคำที่ลูกค้าเห็น) ป้าย "ยอดรวมสินค้า (รวม VAT)" อยู่สองที่ด้วยตัวเลขต่างความหมาย: dropdown ตะกร้าบน nav = `item_total` **หลังส่วนลด** (Q-C1 (1) = ก — ให้ตรงราคาต่อ line ที่ dropdown แสดง) และแถวแรกของ `cart-totals` บน `/cart`/checkout = `original_item_total` **ก่อนส่วนลด** (Q-C7 = ก — ให้ "ยอดรวมสินค้า − ส่วนลด + ค่าจัดส่ง = ยอดรวมทั้งสิ้น")
+  เมื่อมีส่วนลด (เช่นเคส AC-117: dropdown ฿4,720 แต่ `/cart` ฿5,900) ลูกค้าเห็นสองตัวเลขใต้ป้ายเดียวกัน — ตัวเลขทั้งสองถูกต้อง ปัญหาคือป้าย:
+  (ก) **[แนะนำ]** `cart-totals` เปลี่ยนป้ายแถวแรกเป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" **เฉพาะเมื่อมีแถวส่วนลด** (`discount_total > 0`); ไม่มีส่วนลดคงป้ายเดิม; dropdown คงเดิม — เหตุผล: ไม่แตะคำตัดสิน Q-C1/Q-C7 และตัวเลข, แถว "ส่วนลด" อยู่ติดกันจึงอ่านเป็นสมการได้ทันที;
+      ผลกระทบ: task storefront เล็ก ~30 LOC (ป้าย + เคสใน unit AC-156 + e2e ป้ายมีอักษรไทย) ป้ายยาวขึ้นต้องตรวจที่ 375 (กฎข้อ 105)
+  (ข) dropdown เปลี่ยนป้ายเป็น "ยอดรวมหลังส่วนลด (รวม VAT)" (ทุกกรณี หรือเฉพาะเมื่อมีส่วนลด) `cart-totals` คงเดิม — ผลกระทบ: แก้ถ้อยคำที่ owner เลือกใน Q-C1, ป้ายยาวขึ้นในกล่อง dropdown, ~20 LOC
+  (ค) ทั้งสองที่ใช้ตัวเลขเดียวกัน — dropdown ใช้ `original_item_total` (กลับไปเป็นปัญหาเดิมของ CORE-26/qa #199 ที่ลูกค้าสับสนราคา) หรือ `cart-totals` ใช้ `item_total` (หักส่วนลดซ้ำกับแถวส่วนลด — ขัดกฎข้อ 115b) — ไม่แนะนำ
+  (ง) คงเดิม ไม่มี task — ผลกระทบ: ลูกค้าที่ใช้โค้ด/flash sale เห็นตัวเลขต่างกันระหว่าง nav กับ `/cart`
+  (ถ้าเลือก (ค) ของ Q-C9 ถ้อยคำในตัวเลือกนี้เปลี่ยน "VAT" เป็นคำไทยตาม Q-C9)
+- Q-C9 (review #352 — ข้อยกเว้นของ ADR-014 ข้อ 4 ซึ่ง accepted แล้ว จึงต้องให้ owner ตัดสิน) "VAT" ในป้ายของกฎข้อ 81a/115a เป็นคำละตินในข้อความ UI ที่ ADR-014 ข้อ 4 ไม่ได้ระบุไว้ชัด (ยกตัวอย่างชื่อแบรนด์ เช่น "PromptPay" และหน่วย/รหัส เช่น `THB`);
+  ปัจจุบันโค้ดใช้ `eslint-disable-next-line no-restricted-syntax` ต่อจุด (3 ที่: `cart-dropdown/index.tsx:212`, `cart-totals/index.tsx:38`, `:75`) และ CORE-57 เพิ่ม `ALLOWED = ["VAT"]` ใน `e2e/support/thai-text.ts` ซึ่งยกเว้นให้ `expectThai` **ทุก test**:
+  (ก) **[แนะนำ]** ยืนยันว่า "VAT" เป็นตัวย่อทางภาษีที่ใช้ทั่วไปในไทย นับอยู่ในกลุ่ม "หน่วย/รหัส" ของข้อ 4 → planner เพิ่มภาคผนวกลงวันที่ใน ADR-014 (เอกสารล้วน ไม่มี task โค้ด; `ALLOWED` และ comment `eslint-disable` คงเดิม) — เหตุผล: ป้ายที่ owner อนุมัติใน Q-C1/Q-C7 ใช้คำนี้อยู่แล้ว และเป็นคำที่ลูกค้าไทยเห็นบนใบเสร็จทั่วไป;
+      ผลกระทบ: `expectThai` จะไม่จับ "VAT" ที่หลุดเข้ามาในข้อความอื่น (ESLint ยังบังคับ `eslint-disable` พร้อมเหตุผลทีละจุด)
+  (ข) ยกเว้นเฉพาะจุด: `expectThai(page, ids, { allow: ["VAT"] })` ใช้เฉพาะ test ของ `cart-totals`/dropdown, `ALLOWED` กลับเป็นว่าง; ADR ไม่แก้ — ผลกระทบ: task e2e เล็ก ~30 LOC
+  (ค) ไม่ยกเว้น: เปลี่ยนป้ายเป็นไทยล้วน (เช่น "ยอดรวมสินค้า (รวมภาษีมูลค่าเพิ่ม)", "รวมภาษีมูลค่าเพิ่มแล้ว") แล้วลบ `ALLOWED`/`eslint-disable` — ผลกระทบ: แก้ถ้อยคำที่ owner อนุมัติใน Q-C1/Q-C7, ป้ายยาวขึ้น (ตรวจ dropdown และ 375), task storefront ~40 LOC
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

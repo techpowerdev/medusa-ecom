@@ -8,7 +8,8 @@
 รอบ 21 2026-11-04: AF-19 ☑ #286, qa #286 O-1 (ป้าย "รหัสแนะนำ" และรหัสแนะนำถูกตัดบรรทัดใน header) → AF-20, กฎ 44, AC-52;
 รอบ 23 2026-11-05: AF-20 ☑ #295 (train #299); qa #295 O-1 ปิดโดยไม่สร้าง task (กฎ 44(b)); nit review #295 ของ e2e → CORE-51 ของ spec 01; qa #295 O-2 (nav ของร้าน) → CORE-50 ของ spec 01;
 รอบ 27 2026-11-10: AF-21 (qa AF-M-02), กฎ 45, AC-53; ปิดรอบ 27 2026-11-10: AF-21 ☑ #334, qa #334 → AF-22 (กฎ 46, AC-54);
-รอบ 28 2026-11-10: AF-22 ☑ #340; AF-M-03 → แก้กฎ 13 + AC-15 ตามพฤติกรรมจริง (owner) ไม่มี task โค้ด)
+รอบ 28 2026-11-10: AF-22 ☑ #340; AF-M-03 → แก้กฎ 13 + AC-15 ตามพฤติกรรมจริง (owner) ไม่มี task โค้ด;
+รอบ 30 2026-11-13: nit review #347 → AF-23 (test-only, กฎ 47, AC-55 — ☐ พร้อมเริ่ม owner ยังไม่สั่งทำ); follow-up ของ admin affiliate (#360–#362) อยู่ใน ADM-24/25/26 ของ spec 08)
 เป้าหมาย (เจ้าของ): โปรแกรม affiliate ที่เปิดค่าคอมมิชชันเป็น **ช่วงเวลา** (แบบแคมเปญ
 เหมือน affiliate "ปักหมุดสินค้า" ของ TikTok/Shopee) ไม่ใช่เปิดถาวร ร้านค้าเดียว ไม่ใช่ marketplace
 การตัดสินใจ: custom module `affiliate` (ADR-005, accepted 2026-10-25) การระบุที่มา (attribution) ผ่านลิงก์ติดตาม → cookie →
@@ -329,6 +330,7 @@ Payout
     (a) ทั้งสองฟอร์มใช้ `onSubmit={submitWithoutReset(action)}` (`lib/util/submit-without-reset.ts` ที่มีอยู่) แทน `action=` — หลัง error ทุกช่องคงค่าที่ผู้ใช้กรอก (รวมรหัสผ่าน) และ error แสดงที่ `affiliate-register-error`/`affiliate-login-error` ตามเดิม;
     (b) กันกดซ้ำ: ผูกกับสถานะของ action โดยตรงแทน `useFormStatus` ของ `SubmitButton` (ซึ่งเห็น pending ของ submit แบบนี้ได้ก็ต่อเมื่อ React เริ่ม host transition ให้ — เงื่อนไขภายในของ React DOM: `preventDefault()` + transition ใน event เดียวกัน) → ปุ่ม `affiliate-register-submit`/`affiliate-login-submit` disabled + loading จากค่าที่สามของ `useActionState` (เพิ่ม prop เลือกได้ให้ `SubmitButton` หรือใช้ `Button` ของ `@medusajs/ui` ตรงๆ — ไม่เขียน helper ใหม่);
     (c) สำเร็จแล้ว redirect เข้า portal ตามเดิม; ไม่เปลี่ยนข้อความ, `data-testid`, validation ฝั่ง browser (`pattern`, `required`)
+47. (รอบ 30, AF-23 — nit review #347; test-only) test ของ AC-15 (body ของ `POST /affiliate/register` มี `email` → 400) ต้องยืนยันด้วยว่า auth identity ของ token นั้น**ไม่ถูกผูก** affiliate (`app_metadata.affiliate_id` ไม่ถูกตั้ง) ไม่ใช่แค่กรองแถว affiliate ด้วย email — กันกรณี route สร้างแถวด้วย email อื่นแล้วผูก identity
 
 ## Acceptance criteria
 - AC-1 เมื่อมีโปรแกรม P ที่ active (10%, สินค้าทั้งหมด, ช่วงเวลาวันนี้) และผู้ซื้อ click
@@ -481,6 +483,8 @@ Payout
   Given ฟอร์มเข้าสู่ระบบกรอกอีเมลที่มีอยู่ + รหัสผ่านผิด When กด `affiliate-login-submit` Then `affiliate-login-error` visible และ `affiliate-login-email` คงค่าเดิม — **ล้มบน develop**;
   Given request POST ของ server action จาก browser ถูกหน่วงด้วย `page.route` (≥ 1 วินาที) When กดส่ง Then ปุ่ม submit `toBeDisabled()` จนได้ผล และ double-click ส่ง POST ของ action เพียง 1 ครั้ง;
   static (Playwright `unit` project หรือ Vitest): `auth-forms/index.tsx` ไม่มี `action={` บน `<form` และ import `submitWithoutReset`; AC-53 ยังผ่าน
+- AC-55 (AF-23, กฎ 47) integration http (`affiliate-auth.spec.ts` เคส AC-15 เดิม): หลังได้ 400 แล้ว `query.graph` ของ entity `auth_identity` (field `id`, `app_metadata`, `provider_identities.entity_id`) ที่มี `provider_identities.entity_id` = อีเมลของ token → มี 1 แถว และ `app_metadata?.affiliate_id` เป็น `undefined`/`null`;
+  ยังตรวจไม่มีแถว affiliate ตามเดิม; positive control ใน PR: เคสสมัครสำเร็จ (`affiliate-auth.spec.ts:43`) ยังเห็น `app_metadata.affiliate_id` ตรง id ที่สร้าง
 
 ## Non-functional
 - Redirect ไม่เขียน DB; < 50ms
@@ -505,6 +509,7 @@ Payout
 - (รอบ 21) e2e (375/639/1280, repeat 3): AC-52 (AF-20)
 - (รอบ 27) unit jest + integration http + Vitest + e2e: AC-53 (AF-21) — เขียน unit jest ให้ล้มบน develop ก่อน (validator ตรวจแค่ regex)
 - (ปิดรอบ 27) e2e + static: AC-54 (AF-22) — เขียน e2e คงค่าหลัง error ให้ล้มบน develop ก่อน
+- (รอบ 30) integration http: AC-55 (AF-23)
 
 ## Tasks
 | ID | Task | Depends |
@@ -543,6 +548,7 @@ Payout
 | AF-9b | follow-up review AF-9 (เล็ก, backend): `cancelPayoutWorkflow` คง lock `affiliate-payout-paid:<payout_id>` และเพิ่ม `affiliate-payout:<affiliate_id>` ตามลำดับตายตัว (กฎ 25) + test บังคับ path compensation ของ cancel + test route ยกเลิกไม่มี token → 401 (AC-27) | AF-9 |
 | AF-21 | (backend + storefront เล็ก ~90 LOC, รอบ 27 — qa AF-M-02) ปฏิเสธคำสงวนตอน register + ข้อความไทย (กฎ 45) (AC-53) — ไฟล์: `apps/backend/src/api/affiliate/validators.ts` + `__tests__/validators.unit.spec.ts` (ใหม่), `apps/backend/integration-tests/http/affiliate-auth.spec.ts`, `apps/storefront/src/lib/data/affiliate-portal.ts`, `apps/storefront/src/lib/util/` (helper ใหม่) + test, `apps/storefront/e2e/affiliate-portal.spec.ts` — ☑ #334 | PR spec รอบ 27 merge; ไม่ชน CORE-55/EV-16/ADM-20; ไม่บล็อก release v0.1.0 |
 | AF-22 | (storefront เล็ก ~80 LOC รวม e2e, ปิดรอบ 27 — qa #334) ฟอร์มสมัคร/เข้าสู่ระบบ portal คงค่าหลัง error (`submitWithoutReset`) + ปุ่มกันกดซ้ำจาก `isPending` (กฎ 46) (AC-54) — ไฟล์: `apps/storefront/src/modules/affiliate/components/auth-forms/index.tsx`, `apps/storefront/src/modules/checkout/components/submit-button/index.tsx` (ถ้าเพิ่ม prop), `apps/storefront/e2e/affiliate-portal.spec.ts`; viewport 1280×800, 375×812 — ☑ #340 | none (AF-21 ☑ #334); ∥ ทุกตัว; ไม่บล็อก release v0.1.0 |
+| AF-23 | (test-only ~15 LOC, รอบ 30 — nit review #347) เคส AC-15 ยืนยันว่า auth identity ไม่ถูกผูก `affiliate_id` (กฎ 47) (AC-55) — ไฟล์: `apps/backend/integration-tests/http/affiliate-auth.spec.ts` — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | none; ∥ ทุกตัว (ADM-24 แตะ `affiliate-admin*.spec.ts` คนละไฟล์); ไม่บล็อก release |
 AF-5 → AF-9 → (AF-6 ∥ AF-9b → AF-N1) ∥ AF-3/AF-4; AF-3 → (AF-3b ∥ AF-4 ∥ AF-4b ∥ AF-7); AF-7 (#110 merge) → AF-7b (PR แยก) → AF-8 (AF-3b ไม่บล็อก AF-8 แต่ต้อง merge ก่อน release v0.6.0);
 AF-10 เริ่มได้ทันที (∥ AF-7b/AF-N1/AF-6; แตะ maturity job/workflow ของ AF-4 เท่านั้น)
 (รอบ 10) สถานะ: AF-3b ☑ #119, AF-7 ☑ #110, AF-7b ☑ #122, AF-9b ☑ #107, AF-10 ☑ #125, AF-N1 ◐ #137 (คิว merge), AF-6 ◐ #138, AF-8a ◐ #135; AF-3c ∥ AF-N2 เริ่มได้ทันที; AF-8 ← AF-N2 (type ของ products)
@@ -562,6 +568,8 @@ nit review #295 ของ e2e (`createActiveAffiliate` เป็น options obje
 qa #295 O-2 (ชื่อร้านใน nav ชิดไอคอนค้นหาที่ 320) → CORE-50 ของ spec 01
 (ปิดรอบ 27, 2026-11-10) merge แล้ว: AF-21 ☑ #334; ใหม่: AF-22 เริ่มได้ (qa #334 — ฟอร์มสมัครล้างค่าหลัง error)
 (รอบ 28, 2026-11-10) merge แล้ว: AF-22 ☑ #340; AF-M-03 owner ตัดสิน "แก้ AC-15 ให้ตรงพฤติกรรมจริง" → กฎ 13 + AC-15 แก้ถ้อยคำ (body ที่มี `email` → 400 `invalid_data` ไม่สร้างแถว) ไม่มี task โค้ด
+(รอบ 30, 2026-11-13) ใหม่: AF-23 (nit review #347 — กฎ 47, AC-55) เริ่มได้เมื่อ owner สั่ง; ไม่เปิด task: e2e AF-8a เก็บ `stale` เป็น `Set` กัน id ซ้ำตอนแบ่งหน้า (review #349 — ไม่มีผลตอนนี้ แก้ใน PR ถัดไปที่แตะไฟล์นั้น)
+และข้อสังเกตว่า spec อื่นที่สร้างโปรแกรม sweatshirt/`scope: all` > 15% ที่ active พร้อมกันจะกระทบ AF-8a (ระวังตอนเขียน e2e ใหม่)
 (รอบ 11, review #146 AF-N2) nit `tryAcquire` ที่ `catch {}` กลืน error ทุกชนิด (ต้องข้ามเฉพาะ lock conflict) และ `.run()` ที่ throw แบบ sync ต้อง release lock — #146 merge แล้ว
 ถ้ายังไม่ได้แก้ ให้ PR ถัดไปที่แตะ maturity job แก้ (ไม่สร้าง task); ข้อสังเกต: entry `pending` ของ order ที่ยกเลิกและยอดสุทธิ = 0 ค้าง `pending` ถาวร (กฎ 5 ห้ามแก้ status ย้อน/ข้าม) และถูกสแกนทุกวันพร้อม log `affiliate_cancel_reconcile_noop`
 — ยอมรับใน v1 (ปริมาณน้อย; ไม่ใช่ยอดที่จ่ายได้) → backlog หลัง v1.0 พร้อม AF-11

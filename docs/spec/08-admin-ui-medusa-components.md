@@ -6,7 +6,8 @@ Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดส
 รอบ 26 2026-11-09: แก้ถ้อยคำกฎ 7(b), 14, AC-18; ADM-15..17, กฎ 19–21, AC-19..21; Q8 ตัดสินแล้ว;
 รอบ 27 2026-11-10: ADM-20, กฎ 24, AC-24; follow-up ADM-21, ADM-22; ปิดรอบ 27 2026-11-10: ADM-20 ☑ #335;
 รอบ 28 2026-11-10: owner ตัดสิน ADM-21 = ทำ (แยก ADM-21a/21b, กฎ 25, AC-25..26) และ ADM-22 = ยืนยันก่อน (กฎ 26, AC-27) — ทั้งหมดพักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0;
-ปิดรอบ 29 2026-11-13: owner สั่งทำ → ☑ ADM-16 #359, ADM-17 #360 (dependency ของ 21a/21b), ADM-21a #361, ADM-21b #362; ADM-22 ยังพักไว้ — sync สถานะเท่านั้น)
+ปิดรอบ 29 2026-11-13: owner สั่งทำ → ☑ ADM-16 #359, ADM-17 #360 (dependency ของ 21a/21b), ADM-21a #361, ADM-21b #362; ADM-22 ยังพักไว้ — sync สถานะเท่านั้น;
+รอบ 30 2026-11-13: follow-up ของ #359–#362 → ADM-23..26, กฎ 27–30, AC-28..31 (หัวข้อ "Follow-up รอบ 30") — ☐ พร้อมเริ่ม owner ยังไม่สั่งทำ; Out of scope เรื่อง backend ข้างล่างมีข้อยกเว้นใน ADM-24 แบบ ADM-17 (route ของเราเอง))
 Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้งหมดได้ใช้ component, hook, utility และอื่นที่ medusa ให้แล้วหรือยัง ถ้ายังให้วางแผนปรับใช้ตามที่ medusa มีให้ก่อนเป็นฐาน
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
@@ -468,7 +469,7 @@ Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard
 | E-voucher pools (`/app/evouchers`) | `components/evoucher/pools-table.tsx` | `**/admin/evoucher/pools?*` (รายการ — ไม่ match `/pools/<id>`) | `evoucher-pools-error` | "Could not load voucher pools" | 21a |
 | Codes (หน้า pool) | `components/evoucher/codes-table.tsx` | `**/admin/evoucher/pools/*/codes*` | `evoucher-codes-error` (ภายใน `evoucher-codes`) | "Could not load codes" | 21a |
 | Partners (`/app/evouchers`) | `components/evoucher/partners-section.tsx` | GET `**/admin/evoucher/partners*` | `evoucher-partners-error` (ภายใน `evoucher-partners-table`; ไม่แสดง `evoucher-partners-empty`) | "Could not load partners" | 21a |
-| Affiliate ทุกแท็บที่ใช้ `useAffiliateList` (programs, affiliates, entries, payouts) | `components/affiliate/list-table.tsx` (`useAffiliateList` คืน `isError`/`error` ด้วย, `AffiliateListTable` แสดง) | `**/admin/affiliate/<resource>?*` ของแท็บนั้น | `affiliate-list-error` | "Could not load <resource>" | 21b |
+| Affiliate ทุกแท็บที่ใช้ `useAffiliateList` (programs, affiliates, entries, payouts) | `components/affiliate/list-table.tsx` (`useAffiliateList` คืน `isError`/`error` ด้วย, `AffiliateListTable` แสดง) | `**/admin/affiliate/<resource>?*` ของแท็บนั้น | `affiliate-list-error` | "Could not load <resource>" — (รอบ 30, กฎ 29b) แท็บ Ledger (`entries`) = "Could not load ledger entries" | 21b |
 | Groups (หน้าแคมเปญ) | `components/group-buy/groups-section.tsx` | `**/admin/group-buy/campaigns/*/groups*` (GET) | `gb-groups-error` (ภายใน `gb-groups-table`) | "Could not load groups" | 21b |
 | Members (ของกลุ่มที่เลือก) | `components/group-buy/group-members.tsx` | `**/admin/group-buy/groups/*/memberships*` | `gb-memberships-error` (ภายใน `gb-memberships-table`) | "Could not load members" | 21b |
 
@@ -500,6 +501,90 @@ Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard
 | ADM-22 | (owner "ยืนยันก่อน") qa ตรวจ stack trace ของ loader หน้า pool บน build production (กฎ 26) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `docs/evidence/admin-ui/ADM-22/REPORT.md` (ไม่มีโค้ด); ถ้าพบ → ADM-22b: `routes/evouchers/pools/[id]/page.tsx` + e2e ใน `evoucher-admin-pool-page.spec.ts` (~60 LOC) | qa ล้วน (22b ~60 LOC) | 1280×800 | AC-27 | none; ADM-22b ← ผล qa + ADM-21a (ไฟล์ e2e เดียวกัน); ไม่บล็อก release | ไม่ชน |
 
 ### Open questions (รอบ 28)
+none
+
+## Follow-up รอบ 30 (2026-11-13 — เอกสารล้วน: follow-up จาก review/qa #359–#362)
+ที่มา: owner อนุมัติให้แปลง follow-up ของรอบ 29 เป็น spec/task (2026-11-13) — ตรวจโค้ดบน develop `8fb44d70` (path ย่อจาก `apps/backend/src/admin/` ยกเว้นระบุ):
+- `components/evoucher/partners-section.tsx:240–251` ไม่มีเงื่อนไข "offset เกินกำลัง clamp" แบบ `codes-table.tsx:121` (`pastLastPage`) → ระหว่าง clamp `partners_offset` แสดง "No partners on this page" กระพริบ (#359 — นอก AC-20)
+- `partners-section.tsx:68–121` `PartnerActions` ไม่มี `key={menuKey}` + `remountMenu()` ก่อนเปิด Drawer แบบ `affiliate/programs-table.tsx:25`, `:56–67` (comment ที่นั่นอธิบาย `pointer-events: none` ค้างบน body) และ Edit ไม่ disabled ระหว่างลบ (review #359)
+- `lib/affiliate-payout.ts:75` `mergeAffiliatePages` รวม active + suspended ของหน้าเดียวกันแล้วเรียงชื่อ — เรียงได้แค่ภายในหน้า เพราะ `status` ของ `GET /admin/affiliate/affiliates` รับค่าเดียว (`apps/backend/src/api/admin/affiliate/validators.ts:61`); 401 ของ query ตัวเลือกแสดงเป็นข้อความใต้ช่องไม่ไป `/login` (review #360)
+- `apps/backend/src/api/admin/affiliate/middlewares.ts:70` `tiebreakById` แก้แค่ `req.queryConfig.pagination.order` ไม่แก้ `req.listConfig.order` — ไม่มี comment เตือน (re-review #360)
+- สถานะ error ของกฎ 24/25: แถบแบ่งหน้ายังแสดง "0 of 0 results" และ codes หน้า 2 ที่ล้มแสดง "2 of 1 pages" เพราะ `rowCount={data?.count ?? 0}` (qa #361/#362); หัวข้อ error แท็บ Ledger เป็น "Could not load entries" (`components/affiliate/list-table.tsx:103` ใช้ชื่อ resource) ไม่ตรงชื่อแท็บ (review #362); กฎ 24d (refetch ล้มขณะมีข้อมูล) ยังไม่มี e2e อัตโนมัติ (qa #361/#362 ทดสอบมือ); comment กฎ 25 ใน `components/evoucher/pools-table.tsx:60` อยู่ห่างจาก `div` ที่อธิบาย (review #361)
+- `@medusajs/dashboard` 2.22.1 `DataTableProps` มี `enablePagination?: boolean` (`dist/components.d.ts:296`) — ปิดแถบแบ่งหน้าได้โดยไม่สร้างเอง
+- qa #360 O-2: กด Escape ขณะ popover ของ `Combobox` เปิดอยู่ใน `FocusModal` ปิดทั้ง modal และค่าที่กรอกหาย — มาจาก ADM-9 **ยังไม่ทดสอบบน develop** (ฟอร์มที่เข้าเงื่อนไข: `components/affiliate/payout-form.tsx:86`/`:113`, `components/affiliate/program-form.tsx:68`/`:136`)
+Status: draft (ADM-23..26 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ)
+Out of scope: แก้ `DataTable`/`Combobox`/`usePrompt` ของ dashboard/ui, patch-package, ปุ่มลองใหม่ (กฎ 24e), ตารางนอกกฎ 24/25
+
+### What Medusa already gives us (รอบ 30)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ซ่อนแถบแบ่งหน้าตอน error | `enablePagination` ของ `DataTable` (dashboard); `DataTable.Pagination` ของ `@medusajs/ui` เป็น component แยก (ไม่ render ได้) | ใช้ตามเดิม |
+| filter หลายค่าใน list route | `validateAndTransformQuery` + `query.graph` filter แบบ array (`status: ["active", "suspended"]` → `$in`) | **extend**: validator ของเราเองรับ array (แบบ `id[]` ของ AF-14) — ไม่มี migration |
+| เรียงตามชื่อฝั่ง server | `order` ของ `validateAndTransformQuery` (`isList`) + `tiebreakById` ของเรา | ใช้ตามเดิม |
+| เมนูต่อแถว + Drawer | `ActionMenu` (dashboard) + แนว `key`/remount ที่ `ProgramActions` ใช้อยู่ | ใช้ตามเดิม — ทำให้ `PartnerActions` เหมือนกัน |
+| Escape ของ popover ใน modal | `Combobox` (dashboard) + `FocusModal.Content` (`onEscapeKeyDown` ของ Radix ส่งผ่าน `@medusajs/ui`) | ยืนยันก่อน (ADM-26) — แก้เฉพาะในโค้ดของเรา |
+
+### Data model / Workflows
+none
+
+### API routes
+`GET /admin/affiliate/affiliates` (ADM-24): `status` รับค่าเดียวหรือ array (`?status[]=active&status[]=suspended`); ค่าอื่นนอก enum → 400 `invalid_data`; response shape เดิม — ข้อยกเว้นของ Out of scope เรื่อง backend ต้น spec แบบ ADM-17 (route ของเราเอง, param เดิม)
+
+### Business rules (รอบ 30)
+27. (ADM-23 — #359, review #359) `components/evoucher/partners-section.tsx`: (a) เงื่อนไข "มีแถว (`count > 0`) แต่หน้านี้ว่าง = offset เกินที่กำลัง clamp" ย้ายเป็น helper pure ใน `lib/page-offset.ts` (ผู้ใช้ 2 ที่ — `codes-table.tsx` และ `partners-section.tsx`) แล้วทั้งสองตารางแสดง loading ในสถานะนั้นแทน empty state;
+    branch "No partners on this page" ที่ไปไม่ถึงแล้วให้ลบ; (b) `PartnerActions` ทำแบบ `ProgramActions`: `ActionMenu key={menuKey}` และ `remountMenu()` ก่อน `onEdit`, Edit disabled ระหว่างลบ (`removing`) เหมือน Delete
+28. (ADM-24 — review/re-review #360) (a) `GET /admin/affiliate/affiliates` รับ `status` หลายค่า (ดู API routes); (b) ตัวเลือก affiliate ของฟอร์ม payout ยิง request เดียวต่อหน้าด้วย `status` = `active`+`suspended` และ `order=name` → รายการเรียงชื่อข้ามหน้าตามลำดับของ API (ไม่เรียงซ้ำฝั่ง client);
+    ลบ `mergeAffiliatePages`/`mergeAffiliateOptions`/`listAffiliatesByStatus` และ test ของมันเมื่อไม่มีผู้ใช้อื่น; (c) query ตัวเลือกได้ 401 → `throw error` ให้ `ErrorBoundary` พาไป `/login` (แนวกฎ 24b); error อื่นคงข้อความใต้ช่อง (กฎ 21);
+    (d) comment ของ `tiebreakById` ระบุว่าแก้เฉพาะ `req.queryConfig.pagination.order` — route ที่อ่าน `req.listConfig.order` จะไม่ได้ tiebreak
+29. (ADM-25 — qa #361/#362, review #361/#362) สถานะ error ของกฎ 24/25 (7 ตาราง: `routes/group-buying/page.tsx`, `components/evoucher/{pools-table,codes-table,partners-section}.tsx`, `components/affiliate/list-table.tsx`, `components/group-buy/{groups-section,group-members}.tsx`):
+    (a) ขณะ `isError && !data` ไม่แสดงแถบแบ่งหน้า — `DataTable` ของ dashboard ส่ง `enablePagination={!loadFailed}`, ตารางของ `@medusajs/ui` ไม่ render `DataTable.Pagination` — จึงไม่มี "0 of 0 results"/"2 of 1 pages"; สถานะปกติแถบแบ่งหน้าคงเดิม;
+    (b) heading error ของแท็บ Ledger (`resource` = `entries`) = "Could not load ledger entries" (แท็บอื่นคง "Could not load <resource>");
+    (c) กฎ 24d มี e2e อัตโนมัติอย่างน้อยหนึ่งตารางต่อกลุ่ม (e-voucher, affiliate, group buy): ตารางโหลดสำเร็จแล้ว GET ครั้งถัดไปของรายการเดียวกันล้ม → แถวเดิมยังแสดงและไม่มี testid error;
+    (d) comment กฎ 25 ใน `pools-table.tsx` ย้ายไปติด `div` ที่ใส่ testid error
+30. (ADM-26 — qa #360 O-2, **ต้องยืนยันก่อน ไม่ใช่บั๊กที่ยืนยันแล้ว**) ใน `FocusModal` ที่มี `Combobox` (ฟอร์ม payout, ฟอร์ม program): กด Escape ขณะ popover ของ `Combobox` เปิด → ปิดเฉพาะ popover, modal ยังเปิดและค่าที่กรอกคงอยู่; Escape ครั้งถัดไป (popover ปิดแล้ว) ปิด modal ตามเดิม;
+    ทำซ้ำไม่ได้บน develop → ปิดด้วย test กันถอย; ทำซ้ำได้ → แก้เฉพาะในโค้ดของเรา (เช่น `onEscapeKeyDown` ของ `FocusModal.Content` เรียก `preventDefault()` เมื่อ popover เปิด); ต้นเหตุต้องแก้ใน dashboard → หยุดรายงาน planner (ห้าม patch-package)
+
+### Acceptance criteria (รอบ 30)
+- AC-28 (ADM-23, กฎ 27) e2e 1280×800 (ต่อจาก `e2e/evoucher-admin-forms.spec.ts`): Given partner ≥ 1 และ `page.route` หน่วง GET `**/admin/evoucher/partners*` 800ms When เปิด `/app/evouchers?partners_offset=99999999` Then ตลอด 2 วินาทีแรก (MutationObserver นับ) ข้อความ "No partners on this page" ไม่ปรากฏ และจบที่หน้าสุดท้ายที่มีแถว (`partners_offset` ถูก clamp); — **ล้มบน develop**;
+  When เปิดเมนู `evoucher-partner-row-actions` กด menuitem "Edit" แล้วปิด Drawer ด้วย Escape Then `page.locator("body")` ไม่มี CSS `pointer-events: none` และปุ่ม "Create partner" ใน `evoucher-partners-table` กดแล้ว modal เปิด;
+  unit (`lib/__tests__/page-offset.unit.spec.ts`): helper ของกฎ 27a คืน true เมื่อ `count` 5 แถว 0, false เมื่อ `count` 0 แถว 0, false เมื่อ `count` 5 แถว 2, false เมื่อยังไม่มี data;
+  static (`__tests__/medusa-ui.unit.spec.ts`): `codes-table.tsx` และ `partners-section.tsx` import helper นั้นจาก `lib/page-offset`, `partners-section.tsx` ไม่มี "No partners on this page", มี `key={menuKey}` ที่ `ActionMenu` และ action Edit มี `disabled: removing`; AC-8, AC-20, AC-23, AC-25 ผ่าน
+- AC-29 (ADM-24, กฎ 28) integration http (`integration-tests/http/affiliate-admin*.spec.ts`): Given affiliate `pending`/`active`/`suspended` ชื่อคละลำดับ When `GET /admin/affiliate/affiliates?status[]=active&status[]=suspended&order=name&limit=2` หน้า 1 และ 2 Then มีเฉพาะ active/suspended, ต่อกันแล้วเรียงตาม `name` ไม่ซ้ำ id;
+  `?status=active` ค่าเดียวยังได้ผลเดิม; `?status[]=foo` → 400 `invalid_data`; e2e (`e2e/affiliate-admin-forms.spec.ts`): When เปิด combobox affiliate ของฟอร์ม payout Then request รายการต่อหน้ามี 1 ตัวที่มีทั้ง `active` และ `suspended` และ `order=name` (ไม่มีคู่ request แยกสถานะ), option ตรงลำดับ `affiliates` ของ response;
+  Given `page.route` GET รายการตัวเลือกตอบ 401 Then `page.waitForURL(/\/app\/login/)` แล้วจบ test; static: `components/affiliate/payout-form.tsx` ไม่มี `mergeAffiliatePages`, `api/admin/affiliate/middlewares.ts` มีคำว่า `listConfig` ใน comment เหนือ `tiebreakById`; AC-12, AC-21 ผ่าน
+- AC-30 (ADM-25, กฎ 29) e2e 1280×800 (ไฟล์ e2e เดิมของ AC-24/25/26): สำหรับแต่ละตารางของกฎ 29 — Given `page.route` GET รายการตอบ 500 When เปิดหน้า Then testid error visible และภายใน wrapper ของตารางไม่มีข้อความตรง `/\d+ of \d+ (results|pages)/`; Given `?codes_offset=50` และ GET codes ตอบ 500 Then ไม่มี "2 of 1 pages";
+  Given แท็บ Ledger ล้ม Then `affiliate-list-error` มี "Could not load ledger entries"; Given ตารางของกลุ่ม e-voucher/affiliate/group buy อย่างละหนึ่งโหลดสำเร็จ (มีแถว) When GET รายการเดียวกันครั้งถัดไปตอบ 500 (ทำให้ refetch ด้วยการ invalidate จาก mutation ของหน้านั้นหรือวิธีที่ระบุใน PR) Then แถวเดิมยัง visible และ testid error count 0 — กฎ 24d;
+  Given API ปกติ Then แถบแบ่งหน้ายังแสดง (AC-14 ผ่าน); static (`medusa-ui.unit.spec.ts`/`group-buy-pages.unit.spec.ts`): ตาราง `DataTable` ของ dashboard ทั้ง 5 ไฟล์มี `enablePagination={!loadFailed}` (หรือชื่อตัวแปรเทียบเท่าที่เป็นเงื่อนไข error), `groups-section.tsx`/`group-members.tsx` render `DataTable.Pagination` เฉพาะเมื่อไม่ error; AC-24, AC-25, AC-26 ผ่าน
+- AC-31 (ADM-26, กฎ 30) e2e 1280×800 (เพิ่มใน `e2e/affiliate-admin-forms.spec.ts`): Given ฟอร์ม payout เปิดและกรอกช่วงวันที่แล้ว When คลิก combobox affiliate ให้ popover เปิด (`role="listbox"` visible) แล้ว `keyboard.press("Escape")` Then listbox ปิด, dialog ของ modal ยัง visible และค่าวันที่ยังเป็นค่าที่กรอก; When กด Escape อีกครั้ง Then modal ปิด;
+  ทำซ้ำกับ combobox scope ของฟอร์ม program; ผ่าน `--repeat-each=5` (แนบผลใน evidence) — ล้มบน develop เมื่อใดจึงแก้ตามกฎ 30; AC-12 ผ่าน
+
+### Test plan (รอบ 30)
+| ชนิด | AC |
+|---|---|
+| unit jest (lib) + static | AC-28, AC-29 (static), AC-30 (static) |
+| integration http | AC-29 |
+| e2e admin (`locale: "en-US"`, `timezoneId: "Asia/Bangkok"`, 1280×800) | AC-28, AC-29, AC-30, AC-31 — เขียน e2e ที่ระบุว่า "ล้มบน develop" ให้ล้มก่อน |
+
+### Tasks (รอบ 30)
+| Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-23 | (#359, review #359) partners ไม่กระพริบ "No partners on this page" ตอน clamp (helper กลางใน `lib/page-offset.ts`) + `PartnerActions` remount เมนู/Edit disabled ระหว่างลบ (กฎ 27) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `lib/page-offset.ts` (+ `lib/__tests__/page-offset.unit.spec.ts`), `components/evoucher/{partners-section,codes-table}.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/evoucher-admin-forms.spec.ts` | ~90 LOC | 1280×800 | AC-28 | none (ADM-16 ☑ #359, ADM-21a ☑ #361); ไม่บล็อก release | ชน ADM-19 (☐) ที่ `evoucher-admin-forms.spec.ts` และ ADM-25 ที่ `partners-section`/`codes-table`/`medusa-ui.unit.spec.ts` → ตัวที่ merge ทีหลัง rebase; ∥ ADM-24 |
+| ADM-24 | (review/re-review #360) `status` หลายค่าใน `GET /admin/affiliate/affiliates` + combobox request เดียวเรียงชื่อข้ามหน้า + 401 ไป `/login` + comment `tiebreakById` (กฎ 28) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `apps/backend/src/api/admin/affiliate/{validators,middlewares}.ts`, `components/affiliate/payout-form.tsx`, `lib/{affiliate,affiliate-payout}.ts` (+ `lib/__tests__/affiliate-payout.unit.spec.ts`), `apps/backend/integration-tests/http/affiliate-admin*.spec.ts`, `apps/storefront/e2e/affiliate-admin-forms.spec.ts` | ~150 LOC | 1280×800 | AC-29 | none (ADM-17 ☑ #360); ไม่บล็อก release | ชน ADM-26 ที่ `payout-form.tsx`/`affiliate-admin-forms.spec.ts` → ADM-24 ก่อน; ∥ ADM-23 |
+| ADM-25 | (qa #361/#362, review #361/#362) สถานะ error: ซ่อนแถบแบ่งหน้า, หัวข้อ Ledger, e2e กฎ 24d อัตโนมัติ, comment `pools-table` (กฎ 29) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `routes/group-buying/page.tsx`, `components/evoucher/{pools-table,codes-table,partners-section}.tsx`, `components/affiliate/list-table.tsx`, `components/group-buy/{groups-section,group-members}.tsx`, `__tests__/{medusa-ui,group-buy-pages}.unit.spec.ts`, `apps/storefront/e2e/{evoucher-admin-pool-page,evoucher-admin-forms,affiliate-admin-forms,group-buy-admin-pages}.spec.ts` | ~220 LOC รวม e2e | 1280×800 | AC-30 | **ADM-23 merge** (ชน `partners-section`/`codes-table`/`medusa-ui.unit.spec.ts`); ไม่บล็อก release | ชน ADM-15 (☐) ที่ `group-buy-pages.unit.spec.ts`, ADM-18/19 (☐) ที่ไฟล์ e2e e-voucher, ADM-24 ที่ `affiliate-admin-forms.spec.ts` → ตัวที่ merge ทีหลัง rebase |
+| ADM-26 | (qa #360 O-2 — **ต้องยืนยันก่อน**) e2e Escape ของ `Combobox` ใน `FocusModal`; แก้เฉพาะเมื่อทำซ้ำได้ (กฎ 30) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts` (+ `components/affiliate/{payout-form,program-form}.tsx` เฉพาะเมื่อ test ล้ม) | ~40 LOC (test); ถ้าต้องแก้ ≤ ~80 LOC | 1280×800 | AC-31 | **ADM-24 merge** (ชน `payout-form.tsx` และไฟล์ e2e); ไม่บล็อก release | ชน ADM-25 ที่ไฟล์ e2e → ตัวที่ merge ทีหลัง rebase |
+ลำดับ (รอบ 30): ADM-23 ∥ ADM-24 เริ่มได้ทันทีเมื่อ owner สั่ง → ADM-25 (← ADM-23) ∥ ADM-26 (← ADM-24); ไม่มี task ใดบล็อก release
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 30)
+- (qa #359) ดับเบิลคลิกปุ่มยืนยันของ `usePrompt` (Medusa): คลิกที่สองตกไปโดน element ใต้ dialog ที่ปิดแล้ว (1/3 รอบไปหน้า pool) แต่ DELETE ยังครั้งเดียว (guard `createSingleFlight` + `useIsMutating`) — พฤติกรรมของ component Medusa ไม่มีผลต่อข้อมูล → ไม่เปิด task (ส่ง upstream ได้ถ้า owner ต้องการ)
+- (review #359) `REVEAL_KEY`/`DELETE_KEY` ไม่ผูก pool/partner — หน้า pool แสดงทีละ pool และ partners ไม่ขึ้นกับ pool ผลจริงคือปุ่มของทุกแถวในตารางเดียว disabled ระหว่าง request ตามเจตนาของกฎ 20a → ไม่เปิด task
+- (qa #360 O-1/O-4) `q` ไม่ escape `%`/`_` (ได้ผลกว้างขึ้น ไม่ใช่ข้อมูลรั่ว — admin เท่านั้น) และ access log บันทึก `q` เต็ม — เหมือน route ของ Medusa core (เช่น `/admin/customers?q=`) → ไม่เปิด task; ทบทวนพร้อมนโยบาย log/PII ตอนทำ OPS-3c
+- (qa #360 O-5) `order=foo`/`order=` ได้ 500 — มาจาก `validateAndTransformQuery` ของ Medusa เหมือน route core, admin เท่านั้น → ไม่เปิด task
+- (review #361) regex static ใน `medusa-ui.unit.spec.ts` ผูกรูปแบบตัวอักษรแน่น — ตั้งใจล็อกรูปแบบ (แนว AC-5..27) ปรับเมื่อ refactor ทำให้ล้ม → ไม่เปิด task
+- (#362) `e2e/affiliate-admin-affiliates.spec.ts:43` (AC-43) เปราะเมื่อ workers > 1 — CI ใช้ `workers: 1` (แนวเดียวกับที่ยอมรับรอบ 20) → ไม่เปิด task
+- (review #362) รูป `04-members-error-500` ของ evidence ADM-21b ตัดไม่เห็น description — evidence merge แล้วและ AC-26 ตรวจด้วย e2e; qa ของ ADM-25 ถ่ายรูปสถานะ error ใหม่ → ไม่เปิด task
+- (backlog เก่า) ลด AC-15 กลับเป็น ≤ 2 หลัง upgrade `@medusajs/dashboard` — อยู่ใน checklist bump ข้อ 9 ของ spec 07 แล้ว (Q8) → ไม่เปิด task
+
+### Open questions (รอบ 30)
 none
 
 ## Open questions

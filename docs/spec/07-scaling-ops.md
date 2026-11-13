@@ -251,6 +251,9 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 - AC-39 (OPS-24, ปิดรอบ 26 — nit review #325; ตรวจบน develop `0d1c678b`: `checkBootEnv` ใน `apps/backend/src/lib/prod-guards.ts:59` ใช้ `!env[name]` แต่ผู้ใช้ค่าจริง `.trim()` ก่อน (`subscribers/evoucher-payment-captured.ts:28`, `jobs/evoucher-daily.ts:40`, `subscribers/group-buy-payment-captured.ts:58`, `subscribers/payment-webhook-orphan.ts:63`) ค่าช่องว่างล้วนจึงไม่ได้ warning ตอนบูตแต่อีเมลถูกข้าม)
   unit (`prod-guards.unit.spec.ts`): Given production ที่ `EVOUCHER_ADMIN_EMAIL: "   "` When `checkBootEnv` Then warnings มีข้อที่มีชื่อตัวแปรนั้น 1 ข้อ (เหมือนไม่ตั้ง) และไม่ throw; ทำซ้ำกับ `OPS_ALERT_EMAIL`; ค่าอีเมลจริง → ไม่มี warning ของตัวนั้น;
   static (อ่าน `docker-compose.prod.yml` เป็นข้อความ): บรรทัด comment `export` ต้นไฟล์มี `EVOUCHER_ENCRYPTION_KEY=`; AC-36 ผ่านโดยไม่แก้
+- AC-40 (OPS-25, รอบ 30 — nit review #354; ตรวจบน develop `8fb44d70`: comment `tools/ci/classify-changes.sh:8–9` ให้เหตุผลว่า `ci-workflow.unit.spec.ts` และ `tools/ci/check-stripe-events.sh` อ่าน `docs/ops/**` แต่ `ci-workflow.unit.spec.ts` อ่านแค่ `ci.yml`/`package.json`
+  และ `check-stripe-events.sh` รันใน `lint-typecheck` ทุก PR อยู่แล้ว (ไม่ขึ้นกับ `code=`) — เหตุผลจริงคือ `prod-guards`/`ops-runbook`/`backup-runbook.unit.spec.ts` ซึ่งรันเฉพาะเมื่อ `code=true`; `.github/workflows/ci.yml:50` comment "30 เคส" แต่ `classify-changes.test.sh` มี 35 เคสหลัง OPS-22)
+  grep: comment หัว `classify-changes.sh` ส่วน `docs/ops/**` มี `prod-guards`, `ops-runbook`, `backup-runbook` และไม่อ้าง `ci-workflow` เป็นเหตุผล; `ci.yml` ไม่มี "30 เคส" (ระบุ 35 หรือไม่ระบุจำนวน); `classify-changes.test.sh` และ `ci-workflow.unit.spec.ts` ผ่านโดยไม่แก้ (เปลี่ยนเฉพาะ comment)
 
 ## Tasks
 | ID | Task | Depends |
@@ -286,6 +289,7 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 | OPS-22 | (เล็ก ~20 LOC, CI, รอบ 26 — follow-up รอบ 25 ข้อ F) `classify-changes.sh` นับ `docs/ops/**` เป็นโค้ด (`code=true`, `backend=true`) เพราะ unit test อ่านไฟล์เหล่านี้ และปรับประโยค "PR เอกสารล้วน" ใน `CLAUDE.md` ให้ยกเว้น `docs/ops/**` ตามคำตัดสิน owner 2026-11-09 (AC-37) — ไฟล์: `tools/ci/classify-changes.sh`, `tools/ci/classify-changes.test.sh`, `CLAUDE.md` — ☑ #354 | none — **เริ่มได้**; ไม่บล็อก release; ควร merge ก่อน PR เอกสารที่แก้ `docs/ops/` (∥ OPS-21: OPS-21 แตะ `docs/ops/production.md` แต่มีไฟล์โค้ดจึงรัน test อยู่แล้ว) |
 | OPS-23 | (วัดผล ไม่แตะโค้ด app, รอบ 26 — load test #318) เทียบ `DATABASE_POOL_MAX` 10/20/40 ใน load-nightly (AC-38) — ไฟล์: `.github/workflows/load-nightly.yml` (`workflow_dispatch` input ถ้ายังไม่มี), `tools/load/run.sh` (ส่งค่า), `docs/evidence/scale/OPS-23/REPORT.md` | OPS-20b ☑ #318 (AC-32) — **เริ่มได้** (owner Q-O4 = ก 2026-11-09); ไม่บล็อก release |
 | OPS-24 | (เล็ก ~15 LOC, ปิดรอบ 26 — nit review #325) comment `export` ต้น `docker-compose.prod.yml` เพิ่ม `EVOUCHER_ENCRYPTION_KEY` + `checkBootEnv` นับค่าช่องว่างล้วนของ `EVOUCHER_ADMIN_EMAIL`/`OPS_ALERT_EMAIL` ว่าไม่ได้ตั้ง (AC-39) — ไฟล์: `docker-compose.prod.yml`, `apps/backend/src/lib/prod-guards.ts`, `apps/backend/src/__tests__/prod-guards.unit.spec.ts` — ☑ #356 | none — **เริ่มได้**; ไม่บล็อก release; ∥ ทุกตัว (ไม่ชน OPS-22, OPS-23) |
+| OPS-25 | (comment ล้วน ~5 LOC, รอบ 30 — nit review #354) เหตุผลใน comment ของ `classify-changes.sh` เรื่อง `docs/ops/**` ให้ตรงไฟล์ที่อ่านจริง + จำนวนเคสใน comment ของ `ci.yml` (AC-40) — ไฟล์: `tools/ci/classify-changes.sh`, `.github/workflows/ci.yml` (เป็นไฟล์โค้ดตาม `classify-changes.sh` → CI รันครบ) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (รอบ 30) | none (OPS-22 ☑ #354); ไม่บล็อก release; ∥ ทุกตัว (OPS-23 แตะ `load-nightly.yml` ไม่ใช่ `ci.yml`) — หรือรวมเข้า PR ถัดไปที่แตะ `ci.yml` แล้วปิด OPS-25 |
 OPS-3 ∥ OPS-6 ∥ OPS-7 ∥ OPS-8 ∥ OPS-9 (OPS-9 แตะเฉพาะ `integration-tests/http/group-buy-campaigns.spec.ts`; OPS-6 แตะ `next.config.js`/Dockerfile/jest config; OPS-7 แตะ `notification-providers.ts`/seed/`ci.yml`;
 OPS-8 แตะ `tools/ops/`/`docs/ops/production.md` — ถ้า CORE-10 merge ก่อน OPS-7 ต้อง rebase ส่วน seed)
 OPS-12 ทำต่อจาก OPS-7 (ไม่ขนานกัน: ชน `ci.yml` job `docker-worker-mode`); ∥ งานอื่น; OPS-13 หลัง OPS-7 (#108) ∥ OPS-12; OPS-3b ∥ OPS-3c หลัง OPS-3 และคำตอบ Q-O1/Q-O2
@@ -306,6 +310,8 @@ OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_PO
 (รอบ 18, 2026-11-04) OPS-17b ☑ #242 (train #248), OPS-17c ☑ #253 (train #256) ; OPS-20a ☑ #204 (merge 2026-11-03) → OPS-20b ☐ **เริ่มได้** (dependency ครบ)
 (รอบ 26, 2026-11-09) OPS-21 ☐ **เริ่มได้ — บล็อก release v0.1.0**; OPS-22 ☐ เริ่มได้; OPS-23 ☐ หลัง OPS-20b
 (ปิดรอบ 26, 2026-11-09) OPS-20b ☑ #318 · OPS-5 ☑ #319 · OPS-21 ☑ #325; OPS-22 ∥ OPS-23 ∥ OPS-24 ☐ เริ่มได้ (ไม่บล็อก release)
+(รอบ 30, 2026-11-13) OPS-22 ☑ #354, OPS-24 ☑ #356 (ปิดรอบ 29); ใหม่: OPS-25 ☐ (nit review #354, AC-40 — owner ยังไม่สั่งทำ); OPS-23 ยังเริ่มได้;
+ไม่เปิด task: integration ของ lock รันบน locking provider แบบ in-memory (#351) — production ใช้ `locking-redis` และ job `docker-worker-mode`/load test รันกับ Redis จริง (รายละเอียด spec 01 หัวข้อ "Follow-up รอบ 30")
 
 ## Open questions (รอบ 26)
 - ~~Q-O4~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เปิด OPS-23 วัดเทียบ `DATABASE_POOL_MAX` 10/20/40 ก่อน แล้วค่อยตัดสินค่าของ prod ใน ADR-020 จากตัวเลขจริง (AC-38)
