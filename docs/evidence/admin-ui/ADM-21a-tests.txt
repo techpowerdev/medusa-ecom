@@ -1,0 +1,107 @@
+# ADM-21a (spec 08 AC-25, กฎ 25) — ผล test
+# วันที่: 2026-11-13, node v22.23.3, base origin/develop 4bbb5b5e
+# backend prod build (medusa start) :9121, DB medusa_adm21a, Redis db 13, viewport 1280x800 (locale en-US, Asia/Bangkok)
+
+## Red (ก่อนแก้ component)
+### jest src/admin (static + lib/fetch-error, exit 1)
+        Cannot find module '../fetch-error' from 'src/admin/lib/__tests__/fetch-error.unit.spec.ts'
+        ✕ 401 → throw error ให้ ErrorBoundary ของ dashboard พาไป /login (2 ms)
+        ✕ components/evoucher/codes-table.tsx: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error (1 ms)
+        ✕ components/evoucher/codes-table.tsx: isError && !data → evoucher-codes-error และ heading error อยู่ใน emptyState ของ DataTable
+        ✕ components/evoucher/partners-section.tsx: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error
+        ✕ components/evoucher/partners-section.tsx: isError && !data → evoucher-partners-error และ heading error อยู่ใน emptyState ของ DataTable
+        ✕ components/evoucher/pools-table.tsx: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error
+        ✕ components/evoucher/pools-table.tsx: isError && !data → evoucher-pools-error และ heading error อยู่ใน emptyState ของ DataTable (1 ms)
+    Tests:       7 failed, 374 passed, 381 total
+### playwright -g ADM-21a (build ของโค้ดก่อนแก้, exit 1)
+  ✘   1 [chromium] › e2e/evoucher-admin-forms.spec.ts:152:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (6.5s)
+  ✘   2 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:317:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง (6.8s)
+  ✘   3 [chromium] › e2e/evoucher-admin-forms.spec.ts:160:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (6.2s)
+  ✘   4 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:326:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error (6.5s)
+  ✘   5 [chromium] › e2e/evoucher-admin-forms.spec.ts:152:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (6.2s)
+  ✘   7 [chromium] › e2e/evoucher-admin-forms.spec.ts:160:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (6.2s)
+  ✘   8 [chromium] › e2e/evoucher-admin-forms.spec.ts:174:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login (30.1s)
+  ✘   9 [chromium] › e2e/evoucher-admin-forms.spec.ts:174:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login (30.2s)
+  ✓  10 [chromium] › e2e/evoucher-admin-forms.spec.ts:183:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.3s)
+  ✘   6 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:332:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login (2.0m)
+  ✓  11 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:341:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error (1.6s)
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    <results>/evoucher-admin-forms-ADM-2-7a9e0-oucher-pools-yet-คงหัวตาราง-chromium/test-failed-1.png
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    <results>/evoucher-admin-forms-ADM-2-54912-่ม-Create-partner-ยังใช้ได้-chromium/test-failed-1.png
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    <results>/evoucher-admin-forms-ADM-2-69cb7-oucher-pools-yet-คงหัวตาราง-chromium/test-failed-1.png
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    <results>/evoucher-admin-forms-ADM-2-e98d5-่ม-Create-partner-ยังใช้ได้-chromium/test-failed-1.png
+    Error: page.waitForURL: Test timeout of 30000ms exceeded.
+    <results>/evoucher-admin-forms-ADM-2-42f73-rrorBoundary-พาไป-app-login-chromium/test-failed-1.png
+    Error: page.waitForURL: Test timeout of 30000ms exceeded.
+    <results>/evoucher-admin-forms-ADM-2-b1422-rrorBoundary-พาไป-app-login-chromium/test-failed-1.png
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    <results>/evoucher-admin-pool-page-A-322e1--แทน-empty-state-คงหัวตาราง-chromium/test-failed-1.png
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    <results>/evoucher-admin-pool-page-A-2ec4d-bort-→-evoucher-codes-error-chromium/test-failed-1.png
+    Error: page.waitForURL: Test timeout of 120000ms exceeded.
+    <results>/evoucher-admin-pool-page-A-87a43-rrorBoundary-พาไป-app-login-chromium/test-failed-1.png
+  9 failed
+  2 passed (2.3m)
+### playwright เคส ?codes_status=void (เพิ่มหลังพบว่า DataTable ใช้ emptyState.filtered เมื่อมี filter — build ก่อนแก้, exit 1)
+  ✘  1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:333:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No codes match" (6.7s)
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    <results>/evoucher-admin-pool-page-A-b8fcf-rror-ไม่ใช่-No-codes-match--chromium/test-failed-1.png
+  1 failed
+หมายเหตุ: เคส "ตอบรายการว่าง" ผ่านบน develop ตามตั้งใจ (กัน regression ของ empty state เดิม — กฎ 24c)
+
+## Green
+### pnpm --filter backend test:unit (exit 0)
+Test Suites: 108 passed, 108 total
+Tests:       1302 passed, 1302 total
+### playwright -g ADM-21a (build หลังแก้, exit 0)
+  ✓   1 [chromium] › e2e/evoucher-admin-forms.spec.ts:152:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.9s)
+  ✓   2 [chromium] › e2e/evoucher-admin-forms.spec.ts:160:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.5s)
+  ✓   3 [chromium] › e2e/evoucher-admin-forms.spec.ts:152:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.5s)
+  ✓   4 [chromium] › e2e/evoucher-admin-forms.spec.ts:160:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.6s)
+  ✓   5 [chromium] › e2e/evoucher-admin-forms.spec.ts:174:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+  ✓   6 [chromium] › e2e/evoucher-admin-forms.spec.ts:174:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+  ✓   7 [chromium] › e2e/evoucher-admin-forms.spec.ts:183:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.2s)
+  ✓   8 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:317:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง (2.8s)
+  ✓   9 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:326:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error (2.7s)
+  ✓  10 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:333:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No codes match" (2.7s)
+  ✓  11 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:348:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login (2.3s)
+  ✓  12 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:357:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error (1.4s)
+  12 passed (29.1s)
+### regression: evoucher-admin-*.spec.ts + group-buy-admin-pages.spec.ts (ADM-20 ใช้ helper ที่ย้าย) (exit 0)
+  ✓   1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (2.5s)
+  ✓   2 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty (2.7s)
+  ✓   3 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ (1.4s)
+  ✓   4 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE (3.0s)
+  ✓   5 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (6.9s)
+  ✓   6 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:139:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp (2.9s)
+  ✓   7 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:205:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ (7.2s)
+  ✓   8 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:245:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว (3.5s)
+  ✓   9 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.1s)
+  ✓  10 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (2.5s)
+  ✓  11 [chromium] › e2e/group-buy-admin-pages.spec.ts:55:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL (3.3s)
+  ✓  12 [chromium] › e2e/group-buy-admin-pages.spec.ts:128:7 › ADM-10: gb_offset ใน URL ที่ผิดรูป › AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp (1.7s)
+  ✓  13 [chromium] › e2e/group-buy-admin-pages.spec.ts:185:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 500 → gb-campaigns-error แทน empty state, ปุ่ม Create campaign ยังเปิด modal ได้ (2.6s)
+  ✓  14 [chromium] › e2e/group-buy-admin-pages.spec.ts:204:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: network ล้ม (route.abort) → gb-campaigns-error และปุ่ม Create campaign ยังเปิด modal ได้ (2.6s)
+  ✓  15 [chromium] › e2e/group-buy-admin-pages.spec.ts:218:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+  ✓  16 [chromium] › e2e/group-buy-admin-pages.spec.ts:230:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบสำเร็จแต่ไม่มีแคมเปญ → empty state เดิม ไม่มี gb-campaigns-error (1.2s)
+  16 passed (50.2s)
+
+## lint / typecheck / build
+pnpm lint: exit 0 (0 errors; warning เดิมของ develop)
+pnpm typecheck: exit 0
+pnpm --filter backend build (รวม admin): exit 0
+pnpm --filter storefront test:e2e:unit: exit 0 (108 passed)
+
+## ไม่ได้รันในเครื่อง (ให้ CI)
+integration http/modules, e2e ชุดเต็ม, docker-worker-mode
+AC-22/AC-23 (ADM-18/19) ยังไม่มี test บน develop — ไม่มีอะไรให้รันซ้ำ

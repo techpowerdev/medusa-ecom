@@ -43,8 +43,9 @@ describe("รายการแคมเปญ (spec 08 AC-9)", () => {
   })
 
   it("401 → throw error ให้ ErrorBoundary ของ dashboard พาไป /login", () => {
-    expect(src).toMatch(/status === 401/)
-    expect(src).toMatch(/throw error/)
+    // ADM-21a: เงื่อนไข 401 ย้ายเป็น helper ใน lib/ (ใช้ ≥ 2 ที่ — กฎ 2)
+    expect(src).toMatch(/import \{ isUnauthorized \} from "\.\.\/\.\.\/lib\/fetch-error"/)
+    expect(src).toMatch(/if \(isUnauthorized\(error\)\) \{\s*throw error\s*\}/)
   })
 
   it("export handle.breadcrumb เป็น \"Group buying\" (breadcrumb 2 ระดับร่วมกับหน้ารายละเอียด)", () => {

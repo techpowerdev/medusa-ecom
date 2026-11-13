@@ -698,3 +698,33 @@ describe("ตาราง e-voucher: คอลัมน์ action คงที�
     expect(src).toMatch(/isLoading=\{isLoading \|\| pastLastPage\}/)
   })
 })
+
+// ADM-21a (spec 08 กฎ 25, AC-25): ตาราง e-voucher เมื่อ query รายการล้มและไม่มีข้อมูลในมือ → error ผ่าน emptyState ของ DataTable
+// (คงหัวตาราง/ปุ่มใน action) แทนข้อความ empty เดิม; 401 → throw ให้ ErrorBoundary ของ dashboard พาไป /login (กฎ 24b)
+describe("ตาราง e-voucher: สถานะ error แทน empty (spec 08 AC-25, กฎ 25, ADM-21a)", () => {
+  const ERROR_TABLES: [string, string, string][] = [
+    ["components/evoucher/pools-table.tsx", "evoucher-pools-error", "Could not load voucher pools"],
+    ["components/evoucher/codes-table.tsx", "evoucher-codes-error", "Could not load codes"],
+    ["components/evoucher/partners-section.tsx", "evoucher-partners-error", "Could not load partners"],
+  ]
+
+  it.each(ERROR_TABLES)("%s: isError && !data → %s และ heading error อยู่ใน emptyState ของ DataTable", (file, testId, heading) => {
+    const src = read(file)
+    expect(src).toMatch(/const loadFailed = isError && !data\b/)
+    // prop emptyState ของ <DataTable ... /> (ตั้งแต่ emptyState= จนปิด tag)
+    const emptyState = src.match(/<DataTable\b[\s\S]*?emptyState=([\s\S]*?)\/>/)?.[1] ?? ""
+    expect(emptyState).toMatch(new RegExp(`loadFailed\\s*\\?\\s*\\{ heading: "${heading}", description: error\\?\\.message \\}`))
+    expect(src).toContain(`data-testid={loadFailed ? "${testId}" : undefined}`)
+  })
+
+  it("codes-table.tsx: มี filter ใน URL (emptyState.filtered) ล้มแล้วแสดง error ด้วย", () => {
+    const src = read("components/evoucher/codes-table.tsx")
+    expect(src).toMatch(/filtered: loadFailed\s*\?\s*\{ heading: "Could not load codes", description: error\?\.message \}/)
+  })
+
+  it.each(ERROR_TABLES)("%s: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ isUnauthorized \} from "\.\.\/\.\.\/lib\/fetch-error"/)
+    expect(src).toMatch(/if \(isUnauthorized\(error\)\) \{\s*throw error\s*\}/)
+  })
+})

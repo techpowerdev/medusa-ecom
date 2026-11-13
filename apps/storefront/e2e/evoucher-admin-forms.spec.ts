@@ -1,4 +1,4 @@
-import { APIRequestContext } from "@playwright/test"
+import { APIRequestContext, Page, Route } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
@@ -101,5 +101,95 @@ test("AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง p
       await expect(page.getByLabel(label, { exact: true })).toBeVisible()
     }
     await evidence("02-pool-form-labels")
+  })
+})
+
+// ADM-21a (spec 08 AC-25, กฎ 25): query รายการของหน้า /app/evouchers ล้มและไม่มีข้อมูลในมือ → error ใน emptyState ของ DataTable
+// (คงหัวตาราง + ปุ่ม Create partner) แทนข้อความ empty เดิม; 401 → ErrorBoundary ของ dashboard พาไป /login
+test.describe("ADM-21a: สถานะ error ของตาราง pools / partners", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-21a" } })
+
+  type Fail = (route: Route) => Promise<void>
+  const fail500: Fail = (route) =>
+    route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
+  const failAbort: Fail = (route) => route.abort()
+  const fail401: Fail = (route) => route.fulfill({ status: 401, json: { type: "unauthorized", message: "Unauthorized" } })
+
+  // GET รายการเท่านั้น (`pools?…` ไม่ match `/pools/<id>`; POST/DELETE ของ partner ผ่านปกติ)
+  const TABLES = {
+    pools: { route: "**/admin/evoucher/pools?*", empty: { pools: [], count: 0, offset: 0, limit: 20 } },
+    partners: { route: "**/admin/evoucher/partners*", empty: { partners: [], count: 0, offset: 0, limit: 20 } },
+  }
+  const onGet = (page: Page, table: keyof typeof TABLES, handle: Fail) =>
+    page.route(TABLES[table].route, (route) => (route.request().method() === "GET" ? handle(route) : route.continue()))
+
+  async function expectPoolsError(page: Page) {
+    const error = page.getByTestId("evoucher-pools-error")
+    await expect(error).toBeVisible()
+    await expect(error).toContainText("Could not load voucher pools")
+    await expect(error.getByRole("heading", { name: "E-voucher pools" })).toBeVisible()
+    await expect(page.getByTestId("evoucher-partners")).toBeVisible()
+    await expect(page.locator("body")).not.toContainText("No voucher pools yet")
+  }
+
+  async function expectPartnersError(page: Page) {
+    const table = page.getByTestId("evoucher-partners-table")
+    await expect(page.getByTestId("evoucher-partners-error")).toBeVisible()
+    await expect(table.getByTestId("evoucher-partners-error")).toContainText("Could not load partners")
+    await expect(table.getByRole("heading", { name: "Partners" })).toBeVisible()
+    await expect(page.getByTestId("evoucher-partners-empty")).toHaveCount(0)
+    // spec 08 กฎ 18: ปุ่มใน action ของ DataTable ไม่รับ data-testid → หาด้วย role + ชื่อภายใน wrapper
+    const create = table.getByRole("button", { name: "Create partner" })
+    await expect(create).toBeEnabled()
+    await create.click()
+    await expect(page.getByLabel("Name *", { exact: true })).toBeVisible()
+  }
+
+  for (const [name, fail] of [
+    ["ตอบ 500", fail500],
+    ["network ล้ม (route.abort)", failAbort],
+  ] as const) {
+    test(`AC-25: GET pools ${name} → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง`, async ({ page, evidence }) => {
+      await loginAdmin(page)
+      await onGet(page, "pools", fail)
+      await page.goto(`${BACKEND_URL}/app/evouchers`)
+      await expectPoolsError(page)
+      if (fail === fail500) await evidence("01-pools-error-500")
+    })
+
+    test(`AC-25: GET partners ${name} → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้`, async ({
+      page,
+      evidence,
+    }) => {
+      await loginAdmin(page)
+      await onGet(page, "partners", fail)
+      await page.goto(`${BACKEND_URL}/app/evouchers`)
+      await expect(page.getByTestId("evoucher-partners-error")).toBeVisible()
+      if (fail === fail500) await evidence("02-partners-error-500")
+      await expectPartnersError(page)
+    })
+  }
+
+  for (const table of ["pools", "partners"] as const) {
+    test(`AC-25: GET ${table} ตอบ 401 → ErrorBoundary พาไป /app/login`, async ({ page }) => {
+      await loginAdmin(page)
+      await onGet(page, table, fail401)
+      await page.goto(`${BACKEND_URL}/app/evouchers`)
+      // จบ test ทันทีหลังถึงหน้า login (spec 08 AC-25)
+      await page.waitForURL(/\/app\/login/)
+    })
+  }
+
+  test("AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error", async ({ page, evidence }) => {
+    await loginAdmin(page)
+    for (const table of ["pools", "partners"] as const) {
+      await onGet(page, table, (route) => route.fulfill({ status: 200, json: TABLES[table].empty }))
+    }
+    await page.goto(`${BACKEND_URL}/app/evouchers`)
+    await expect(page.getByTestId("evoucher-partners-empty")).toBeVisible()
+    await expect(page.locator("body")).toContainText("No voucher pools yet")
+    await expect(page.getByTestId("evoucher-pools-error")).toHaveCount(0)
+    await expect(page.getByTestId("evoucher-partners-error")).toHaveCount(0)
+    await evidence("03-pools-partners-empty")
   })
 })

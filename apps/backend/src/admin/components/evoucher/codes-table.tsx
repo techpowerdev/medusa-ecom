@@ -23,6 +23,7 @@ import {
   STATUS_COLOR,
 } from "../../lib/evoucher"
 import { codesListQuery } from "../../lib/evoucher-query"
+import { isUnauthorized } from "../../lib/fetch-error"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
@@ -102,12 +103,19 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
   const offset = usePageOffset(PREFIX, PAGE_SIZE, { count, resetOn: status })
   const query = codesListQuery(status, offset, PAGE_SIZE)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: [...evoucherKeys.codes(poolId), query],
     queryFn: () => evoucherApi.listCodes(poolId, query),
     placeholderData: keepPreviousData,
   })
   useEffect(() => setCount(data?.count), [data?.count])
+
+  // spec 08 กฎ 25 (24b): 401 → ErrorBoundary ของ dashboard พาไป /login
+  if (isUnauthorized(error)) {
+    throw error
+  }
+  // กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
+  const loadFailed = isError && !data
   // กฎ 20b: มีแถว (count > 0) แต่หน้านี้ว่าง = offset เกินที่ usePageOffset กำลัง clamp (รวม placeholder ระหว่างโหลดหน้าที่ clamp แล้ว)
   // → แสดง loading แทน empty state "Import a CSV" ที่ไม่จริง
   const pastLastPage = !!data && data.count > 0 && data.codes.length === 0
@@ -159,25 +167,33 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
 
   return (
     <Container data-testid="evoucher-codes">
-      <PageOffsetGate prefix={PREFIX}>
-        <DataTable
-          data={data?.codes ?? []}
-          columns={columns}
-          filters={filters}
-          getRowId={(code) => code.id}
-          rowCount={data?.count ?? 0}
-          isLoading={isLoading || pastLastPage}
-          heading="Codes"
-          headingLevel="h2"
-          prefix={PREFIX}
-          pageSize={PAGE_SIZE}
-          enableSearch={false}
-          emptyState={{
-            empty: { heading: "No codes", description: "Import a CSV to add codes." },
-            filtered: { heading: "No codes", description: "No codes match the selected status." },
-          }}
-        />
-      </PageOffsetGate>
+      {/* กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัวตาราง + filter; testid เฉพาะตอนล้ม */}
+      <div data-testid={loadFailed ? "evoucher-codes-error" : undefined}>
+        <PageOffsetGate prefix={PREFIX}>
+          <DataTable
+            data={data?.codes ?? []}
+            columns={columns}
+            filters={filters}
+            getRowId={(code) => code.id}
+            rowCount={data?.count ?? 0}
+            isLoading={isLoading || pastLastPage}
+            heading="Codes"
+            headingLevel="h2"
+            prefix={PREFIX}
+            pageSize={PAGE_SIZE}
+            enableSearch={false}
+            emptyState={{
+              empty: loadFailed
+                ? { heading: "Could not load codes", description: error?.message }
+                : { heading: "No codes", description: "Import a CSV to add codes." },
+              // มี filter ใน URL → DataTable แสดง filtered แทน empty: ล้มแล้วต้องเป็น error เช่นกัน
+              filtered: loadFailed
+                ? { heading: "Could not load codes", description: error?.message }
+                : { heading: "No codes", description: "No codes match the selected status." },
+            }}
+          />
+        </PageOffsetGate>
+      </div>
 
       <Drawer open={!!revealed} onOpenChange={(open) => !open && setRevealed(null)}>
         <Drawer.Content>

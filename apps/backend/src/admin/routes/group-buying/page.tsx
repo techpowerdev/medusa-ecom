@@ -1,5 +1,4 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { FetchError } from "@medusajs/js-sdk"
 import { DataTable, LayoutComposer } from "@medusajs/dashboard/components"
 import { useDate } from "@medusajs/dashboard/hooks"
 import { Users } from "@medusajs/icons"
@@ -11,6 +10,7 @@ import { Container } from "../../components/common/container"
 import { usePageOffset } from "../../components/common/use-page-offset"
 import { PageOffsetGate } from "../../components/common/page-offset-gate"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
+import { isUnauthorized } from "../../lib/fetch-error"
 import {
   Campaign,
   CAMPAIGN_STATUS_COLOR,
@@ -82,7 +82,7 @@ const GroupBuyingPage = () => {
   const [createOpen, setCreateOpen] = useState(false)
 
   // spec 08 กฎ 24b: 401 → ErrorBoundary ของ dashboard พาไป /login
-  if (error instanceof FetchError && error.status === 401) {
+  if (isUnauthorized(error)) {
     throw error
   }
   // กฎ 24a/d: ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
