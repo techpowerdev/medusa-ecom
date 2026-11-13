@@ -17,6 +17,15 @@ const codesRequest = (page: Page, poolId: string, match: (params: URLSearchParam
     return url.pathname === `/admin/evoucher/pools/${poolId}/codes` && match(url.searchParams)
   })
 
+/** หน่วง request `ms` มิลลิวินาทีแล้วส่งต่อ — ใช้กับ GET pool ที่ loader ของหน้า revalidate ทุกครั้งที่ search เปลี่ยน (AC-7, ADM-18) */
+const delayed = (ms: number) => async (route: Route) => {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+  await route.continue()
+}
+
+// spec 08 กฎ 29a: ข้อความของแถบแบ่งหน้า ("1 — 2 of 2 results", "2 of 1 pages")
+const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
+
 test("AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu", async ({
   page,
   request,
@@ -73,10 +82,7 @@ test("AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้า�
     // หน่วง GET pool ที่ loader ของหน้า revalidate ทุกครั้งที่ search เปลี่ยน — เครื่องเร็ว loader เสร็จก่อนจน race ไม่เกิด
     // หน่วงไว้ให้หน้าต่างระหว่าง "loader กำลังโหลด" กับ "URL อัปเดต" กว้างพอเหมือนเครือข่ายจริง
     const isPoolLoader = (url: URL) => url.pathname === `/admin/evoucher/pools/${poolId}`
-    const slowLoader = async (route: { continue: () => Promise<void> }) => {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      await route.continue()
-    }
+    const slowLoader = delayed(800)
     await page.route(isPoolLoader, slowLoader)
     const filtered = codesRequest(page, poolId, (p) => p.get("status") === "delivered" && p.get("offset") === "0")
     // ปุ่ม filter (Funnel) เป็น trigger ของ dropdown ตัวแรกใน toolbar ของตาราง (trigger ต่อแถวอยู่ใน tbody)
@@ -312,6 +318,8 @@ test.describe("ADM-21a: สถานะ error ของตาราง Codes", (
     await expect(codes.getByTestId("evoucher-codes-error")).toContainText("Could not load codes")
     await expect(codes.getByRole("heading", { name: "Codes" })).toBeVisible()
     await expect(codes).not.toContainText(EMPTY_TEXT)
+    // ADM-25 (spec 08 AC-30, กฎ 29a): ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results")
+    await expect(codes).not.toContainText(PAGINATION_TEXT)
   }
 
   test("AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง", async ({ page, request, evidence }) => {
@@ -343,6 +351,22 @@ test.describe("ADM-21a: สถานะ error ของตาราง Codes", (
     )
     await expectCodesError(page)
     await expect(page.getByTestId("evoucher-codes")).not.toContainText("No codes match the selected status.")
+  })
+
+  // ADM-25 (spec 08 AC-30, กฎ 29a): rowCount 0 + หน้า 2 เคยแสดง "2 of 1 pages" (qa #361)
+  test("AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี \"2 of 1 pages\"", async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(120_000)
+    await openPool(
+      page,
+      request,
+      (route) => route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } }),
+      "?codes_offset=50"
+    )
+    await expectCodesError(page)
+    await expect(page.getByTestId("evoucher-codes")).not.toContainText("2 of 1 pages")
   })
 
   test("AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login", async ({ page, request }) => {
@@ -397,13 +421,7 @@ test.describe("ADM-18: filter + Escape ระหว่าง loader หน่ว
         const url = new URL(req.url())
         if (url.pathname === `/admin/evoucher/pools/${poolId}/codes`) statuses.push(url.searchParams.get("status"))
       })
-      await page.route(
-        (url) => url.pathname === `/admin/evoucher/pools/${poolId}`,
-        async (route) => {
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-          await route.continue()
-        }
-      )
+      await page.route((url) => url.pathname === `/admin/evoucher/pools/${poolId}`, delayed(1000))
 
       const option = page.getByRole("listitem").filter({ hasText: new RegExp(`^${STATUS}$`) })
       await codes.locator('button[aria-haspopup="menu"]').first().click()
@@ -423,4 +441,49 @@ test.describe("ADM-18: filter + Escape ระหว่าง loader หน่ว
       expect(statuses.at(-1)).toBe(STATUS)
     })
   }
+})
+
+// ADM-25 (spec 08 AC-30, กฎ 29c / 24d): ตาราง Codes โหลดสำเร็จแล้ว refetch (invalidate หลัง Import CSV) ล้ม
+// → แถวเดิมและแถบแบ่งหน้ายังแสดง ไม่มี evoucher-codes-error (เดิม qa #361 ทดสอบมือ)
+test.describe("ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-25" } })
+
+  test("AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error", async ({
+    page,
+    request,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const { variantId } = await createVoucher(request, admin, 3)
+    const { pools } = await call(request, admin, `/admin/evoucher/pools?variant_id=${variantId}&limit=1&offset=0`)
+    await loginAdmin(page)
+    await page.goto(`${BACKEND_URL}/app/evouchers/pools/${pools[0].id}`)
+    const codes = page.getByTestId("evoucher-codes")
+    const rows = codes.locator("tbody tr")
+    await expect(rows).toHaveCount(3)
+    await expect(codes).toContainText(PAGINATION_TEXT)
+
+    const hits = { n: 0 }
+    await page.route("**/admin/evoucher/pools/*/codes*", (route) => {
+      if (route.request().method() !== "GET") return route.continue()
+      hits.n++
+      return route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
+    })
+    await page.getByLabel("CSV file").setInputFiles({
+      name: "more.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(`ADM25-${Date.now()}-a,1234\n`),
+    })
+    const imported = page.waitForResponse((r) => r.request().method() === "POST" && /\/import$/.test(r.url()))
+    await page.getByRole("button", { name: "Import", exact: true }).click()
+    expect((await imported).status()).toBe(200)
+    // invalidate → refetch ล้ม (retry 1 ของ QueryClient ของ dashboard = 2 request) แล้วรอ render หลัง error
+    await expect.poll(() => hits.n, { timeout: 15_000 }).toBeGreaterThanOrEqual(2)
+    await page.waitForTimeout(1_000)
+    await expect(page.getByTestId("evoucher-codes-error")).toHaveCount(0)
+    await expect(rows).toHaveCount(3)
+    await expect(codes).toContainText(PAGINATION_TEXT)
+    await evidence("01-codes-refetch-fail-keeps-rows")
+  })
 })

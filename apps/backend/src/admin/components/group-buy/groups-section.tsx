@@ -144,7 +144,8 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
                   : { heading: "No groups yet", description: "Pool groups are created here; teams by customers." },
               }}
             />
-            <DataTable.Pagination />
+            {/* spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results") */}
+            {!loadFailed && <DataTable.Pagination />}
           </DataTable>
         </div>
       </div>

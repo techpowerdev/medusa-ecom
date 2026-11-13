@@ -12,6 +12,14 @@ const PAGE_SIZE = 20
 
 type Resource = "programs" | "affiliates" | "entries" | "payouts"
 
+// spec 08 กฎ 29b: ชื่อใน heading error ตามชื่อแท็บ — แท็บ Ledger อ่าน resource `entries`
+const LOAD_ERROR_NOUN: Record<Resource, string> = {
+  programs: "programs",
+  affiliates: "affiliates",
+  entries: "ledger entries",
+  payouts: "payouts",
+}
+
 /**
  * AF-6 / ADM-8a (spec 08 กฎ 9): รายการของแท็บหนึ่งในหน้า Affiliate (เรียง created_at ใหม่สุดก่อนตามค่าเริ่มต้นของ AF-5)
  * หน้าปัจจุบันอยู่ใน URL (`<prefix>_offset`) — DataTable ของ dashboard เขียน, usePageOffset อ่านกลับเพื่อ request (กฎ 13)
@@ -98,9 +106,11 @@ export const AffiliateListTable = <T extends { id: string }>({
           action={action}
           prefix={prefix}
           pageSize={PAGE_SIZE}
+          // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
+          enablePagination={!loadFailed}
           enableSearch={false}
           emptyState={{
-            empty: loadFailed ? { heading: `Could not load ${resource}`, description: error?.message } : { heading: empty },
+            empty: loadFailed ? { heading: `Could not load ${LOAD_ERROR_NOUN[resource]}`, description: error?.message } : { heading: empty },
           }}
         />
       </PageOffsetGate>

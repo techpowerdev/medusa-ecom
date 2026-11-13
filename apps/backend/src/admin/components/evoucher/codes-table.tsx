@@ -181,6 +181,8 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
             headingLevel="h2"
             prefix={PREFIX}
             pageSize={PAGE_SIZE}
+            // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
+            enablePagination={!loadFailed}
             enableSearch={false}
             emptyState={{
               empty: loadFailed

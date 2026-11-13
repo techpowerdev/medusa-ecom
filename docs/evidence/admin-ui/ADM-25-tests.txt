@@ -1,0 +1,206 @@
+# ADM-25 (spec 08 AC-30, กฎ 29) — ผล test
+# วันที่: 2026-11-14, node v22.23.3, base origin/develop 48bcf6f9
+# backend prod build (medusa start จาก .medusa/server) :9307, DB medusa_adm25, Redis db 7, viewport 1280x800 (locale en-US, Asia/Bangkok)
+
+## Red — static jest (medusa-ui.unit.spec.ts ก่อนแก้ component, exit 1)
+      ● ตาราง affiliate / group buy: สถานะ error แทน empty (spec 08 AC-26, กฎ 25, ADM-21b) › components/affiliate/list-table.tsx: isError && !data → affiliate-list-error และ heading error อยู่ใน emptyState
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › routes/group-buying/page.tsx: <DataTable ... enablePagination={!loadFailed} />
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › components/evoucher/pools-table.tsx: <DataTable ... enablePagination={!loadFailed} />
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › components/evoucher/codes-table.tsx: <DataTable ... enablePagination={!loadFailed} />
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › components/evoucher/partners-section.tsx: <DataTable ... enablePagination={!loadFailed} />
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › components/affiliate/list-table.tsx: <DataTable ... enablePagination={!loadFailed} />
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › components/group-buy/groups-section.tsx: render DataTable.Pagination เฉพาะเมื่อไม่ error
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › components/group-buy/group-members.tsx: render DataTable.Pagination เฉพาะเมื่อไม่ error
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › list-table.tsx: heading error ของแท็บ Ledger (resource entries) = "Could not load ledger entries" แท็บอื่นคงชื่อ resource
+      ● ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25) › pools-table.tsx: comment กฎ 25 อยู่ติด div ที่ใส่ testid error (กฎ 29d)
+    Tests:       10 failed, 183 passed, 193 total
+
+## Red — playwright บน build ของโค้ดก่อนแก้ (-g "ADM-20:|ADM-21a:|ADM-21b:|ADM-25:")
+## ล้มที่ข้อความแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages") และ heading Ledger; e2e กฎ 24d ผ่านอยู่แล้ว (พฤติกรรมเดิม — เป็น test กันถอย)
+      ✘   1 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (8.0s)
+      ✘   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (8.3s)
+      ✘   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (8.5s)
+      ✘   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (8.9s)
+      ✘   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (8.8s)
+      ✘   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (9.9s)
+      ✘   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (9.7s)
+      ✘   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (9.9s)
+      ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:386:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (4.4s)
+      ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:396:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (4.8s)
+      ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:416:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.9s)
+      ✘  12 [chromium] › e2e/evoucher-admin-forms.spec.ts:156:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (7.8s)
+      ✘  13 [chromium] › e2e/evoucher-admin-forms.spec.ts:164:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (7.7s)
+      ✘  14 [chromium] › e2e/evoucher-admin-forms.spec.ts:156:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (7.6s)
+      ✘  15 [chromium] › e2e/evoucher-admin-forms.spec.ts:164:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (7.5s)
+      ✓  16 [chromium] › e2e/evoucher-admin-forms.spec.ts:178:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login (2.3s)
+      ✓  17 [chromium] › e2e/evoucher-admin-forms.spec.ts:178:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+      ✓  18 [chromium] › e2e/evoucher-admin-forms.spec.ts:187:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.3s)
+      ✘  19 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:325:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง (8.2s)
+      ✘  20 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:334:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error (8.0s)
+      ✘  21 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:341:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No codes match" (8.0s)
+      ✘  22 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:357:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages" (7.9s)
+      ✓  23 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:372:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login (3.0s)
+      ✓  24 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:381:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error (1.7s)
+      ✓  25 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:451:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error (4.3s)
+      ✘  26 [chromium] › e2e/group-buy-admin-pages.spec.ts:188:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 500 → gb-campaigns-error แทน empty state, ปุ่ม Create campaign ยังเปิด modal ได้ (7.6s)
+      ✘  27 [chromium] › e2e/group-buy-admin-pages.spec.ts:207:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: network ล้ม (route.abort) → gb-campaigns-error และปุ่ม Create campaign ยังเปิด modal ได้ (7.8s)
+      ✓  28 [chromium] › e2e/group-buy-admin-pages.spec.ts:221:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 401 → ErrorBoundary พาไป /app/login (2.6s)
+      ✓  29 [chromium] › e2e/group-buy-admin-pages.spec.ts:233:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบสำเร็จแต่ไม่มีแคมเปญ → empty state เดิม ไม่มี gb-campaigns-error (1.5s)
+      ✘  30 [chromium] › e2e/group-buy-admin-pages.spec.ts:302:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 500 → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (8.3s)
+      ✘  31 [chromium] › e2e/group-buy-admin-pages.spec.ts:316:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 500 หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (8.3s)
+      ✘  32 [chromium] › e2e/group-buy-admin-pages.spec.ts:302:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups network ล้ม (route.abort) → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (8.3s)
+      ✘  33 [chromium] › e2e/group-buy-admin-pages.spec.ts:316:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships network ล้ม (route.abort) หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (8.1s)
+      ✓  34 [chromium] › e2e/group-buy-admin-pages.spec.ts:336:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 401 → ErrorBoundary พาไป /app/login (2.5s)
+      ✓  35 [chromium] › e2e/group-buy-admin-pages.spec.ts:346:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 401 → ErrorBoundary พาไป /app/login (2.6s)
+      ✓  36 [chromium] › e2e/group-buy-admin-pages.spec.ts:355:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: groups / memberships ตอบรายการว่าง → empty state เดิม ไม่มี testid error (2.3s)
+      ✓  37 [chromium] › e2e/group-buy-admin-pages.spec.ts:372:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error (4.4s)
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/affiliate-admin-forms-ADM--fd079--error-แทน-No-programs-yet--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/affiliate-admin-forms-ADM--48f9c--error-แทน-No-programs-yet--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/affiliate-admin-forms-ADM--1637d-rror-แทน-No-affiliates-yet--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/affiliate-admin-forms-ADM--5bbd7-rror-แทน-No-affiliates-yet--chromium/test-failed-1.png
+        Error: expect(locator).toContainText(expected) failed
+        test-results/affiliate-admin-forms-ADM--6cd06--No-commission-entries-yet--chromium/test-failed-1.png
+        Error: expect(locator).toContainText(expected) failed
+        test-results/affiliate-admin-forms-ADM--a3d21--No-commission-entries-yet--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/affiliate-admin-forms-ADM--854d4-t-error-แทน-No-payouts-yet--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/affiliate-admin-forms-ADM--5937f-t-error-แทน-No-payouts-yet--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/evoucher-admin-forms-ADM-2-7a9e0-oucher-pools-yet-คงหัวตาราง-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/evoucher-admin-forms-ADM-2-54912-่ม-Create-partner-ยังใช้ได้-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/evoucher-admin-forms-ADM-2-69cb7-oucher-pools-yet-คงหัวตาราง-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/evoucher-admin-forms-ADM-2-e98d5-่ม-Create-partner-ยังใช้ได้-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/evoucher-admin-pool-page-A-322e1--แทน-empty-state-คงหัวตาราง-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/evoucher-admin-pool-page-A-2ec4d-bort-→-evoucher-codes-error-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/evoucher-admin-pool-page-A-b8fcf-rror-ไม่ใช่-No-codes-match--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/evoucher-admin-pool-page-A-fba4e-s-error-ไม่มี-2-of-1-pages--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/group-buy-admin-pages-ADM--38ade--campaign-ยังเปิด-modal-ได้-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/group-buy-admin-pages-ADM--ec247--campaign-ยังเปิด-modal-ได้-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/group-buy-admin-pages-ADM--e1473-b-create-pool-group-ยังอยู่-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/group-buy-admin-pages-ADM--882c4-error-ไม่มี-No-members-yet--chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/group-buy-admin-pages-ADM--9aa76-b-create-pool-group-ยังอยู่-chromium/test-failed-1.png
+        Error: expect(locator).not.toContainText(expected) failed
+        test-results/group-buy-admin-pages-ADM--b8dbf-error-ไม่มี-No-members-yet--chromium/test-failed-1.png
+      22 failed
+      15 passed (4.1m)
+
+## Green — jest medusa-ui + group-buy-pages
+    Tests:       206 passed, 206 total
+## Green — backend test:unit ทั้งหมด
+    Test Suites: 108 passed, 108 total
+    Tests:       1352 passed, 1352 total
+## Green — playwright 4 ไฟล์เต็ม (evoucher-admin-pool-page, evoucher-admin-forms, affiliate-admin-forms, group-buy-admin-pages)
+      ✓   1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.3s)
+      ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:122:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.6s)
+      ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:158:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+      ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:216:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (2.5s)
+      ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:249:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (1.7s)
+      ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:316:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (2.9s)
+      ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (2.6s)
+      ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (2.5s)
+      ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (2.6s)
+      ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (2.5s)
+      ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (2.6s)
+      ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (2.6s)
+      ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.7s)
+      ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.8s)
+      ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:386:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.5s)
+      ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:396:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.9s)
+      ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:416:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.8s)
+      ✓  18 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (2.7s)
+      ✓  19 [chromium] › e2e/evoucher-admin-forms.spec.ts:156:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.7s)
+      ✓  20 [chromium] › e2e/evoucher-admin-forms.spec.ts:164:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.8s)
+      ✓  21 [chromium] › e2e/evoucher-admin-forms.spec.ts:156:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.5s)
+      ✓  22 [chromium] › e2e/evoucher-admin-forms.spec.ts:164:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.7s)
+      ✓  23 [chromium] › e2e/evoucher-admin-forms.spec.ts:178:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login (2.3s)
+      ✓  24 [chromium] › e2e/evoucher-admin-forms.spec.ts:178:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login (3.0s)
+      ✓  25 [chromium] › e2e/evoucher-admin-forms.spec.ts:187:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.6s)
+      ✓  26 [chromium] › e2e/evoucher-admin-forms.spec.ts:211:7 › ADM-23: partners clamp ไม่กระพริบ + เมนูต่อแถว › AC-28: ?partners_offset=99999999 + GET partners หน่วง 800ms → ไม่มี empty ตลอด 2 วินาทีแรก จบหน้าสุดท้าย; Edit แล้ว Escape ไม่ค้าง pointer-events (6.2s)
+      ✓  27 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:29:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (8.7s)
+      ✓  28 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:145:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp (4.4s)
+      ✓  29 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:211:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ (9.6s)
+      ✓  30 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:251:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว (7.3s)
+      ✓  31 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:325:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง (3.6s)
+      ✓  32 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:334:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error (3.0s)
+      ✓  33 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:341:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No codes match" (3.2s)
+      ✓  34 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:357:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages" (3.5s)
+      ✓  35 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:372:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login (2.8s)
+      ✓  36 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:381:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error (2.0s)
+      ✓  37 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:404:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด (7.6s)
+      ✓  38 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:404:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด (6.9s)
+      ✓  39 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:451:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error (4.6s)
+      ✓  40 [chromium] › e2e/group-buy-admin-pages.spec.ts:57:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL (3.6s)
+      ✓  41 [chromium] › e2e/group-buy-admin-pages.spec.ts:130:7 › ADM-10: gb_offset ใน URL ที่ผิดรูป › AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp (1.9s)
+      ✓  42 [chromium] › e2e/group-buy-admin-pages.spec.ts:188:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 500 → gb-campaigns-error แทน empty state, ปุ่ม Create campaign ยังเปิด modal ได้ (2.7s)
+      ✓  43 [chromium] › e2e/group-buy-admin-pages.spec.ts:207:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: network ล้ม (route.abort) → gb-campaigns-error และปุ่ม Create campaign ยังเปิด modal ได้ (2.6s)
+      ✓  44 [chromium] › e2e/group-buy-admin-pages.spec.ts:221:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+      ✓  45 [chromium] › e2e/group-buy-admin-pages.spec.ts:233:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบสำเร็จแต่ไม่มีแคมเปญ → empty state เดิม ไม่มี gb-campaigns-error (1.1s)
+      ✓  46 [chromium] › e2e/group-buy-admin-pages.spec.ts:302:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 500 → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (2.6s)
+      ✓  47 [chromium] › e2e/group-buy-admin-pages.spec.ts:316:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 500 หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (2.8s)
+      ✓  48 [chromium] › e2e/group-buy-admin-pages.spec.ts:302:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups network ล้ม (route.abort) → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (2.6s)
+      ✓  49 [chromium] › e2e/group-buy-admin-pages.spec.ts:316:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships network ล้ม (route.abort) หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (2.7s)
+      ✓  50 [chromium] › e2e/group-buy-admin-pages.spec.ts:336:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 401 → ErrorBoundary พาไป /app/login (2.3s)
+      ✓  51 [chromium] › e2e/group-buy-admin-pages.spec.ts:346:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 401 → ErrorBoundary พาไป /app/login (2.4s)
+      ✓  52 [chromium] › e2e/group-buy-admin-pages.spec.ts:355:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: groups / memberships ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.6s)
+      ✓  53 [chromium] › e2e/group-buy-admin-pages.spec.ts:372:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error (4.1s)
+      53 passed (3.0m)
+## Green — ADM-25 + AC-30 codes_offset --repeat-each=3
+      ✓  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:416:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (5.0s)
+      ✓  2 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:357:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages" (2.7s)
+      ✓  3 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:451:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error (4.3s)
+      ✓  4 [chromium] › e2e/affiliate-admin-forms.spec.ts:416:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.6s)
+      ✓  5 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:357:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages" (2.7s)
+      ✓  6 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:451:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error (4.7s)
+      ✓  7 [chromium] › e2e/affiliate-admin-forms.spec.ts:416:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.8s)
+      ✓  8 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:357:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages" (2.9s)
+      ✓  9 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:451:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error (4.4s)
+      9 passed (38.0s)
+## pnpm --filter storefront test:e2e:unit
+      110 passed (1.0s)
+## pnpm lint && pnpm typecheck: exit 0
+
+## หลัง merge origin/develop e2c55a54 (#379 ADM-26) — resolve conflict แบบเก็บทั้งสองฝั่ง
+## backend test:unit
+    Test Suites: 109 passed, 109 total
+    Tests:       1359 passed, 1359 total
+## storefront test:e2e:unit
+      110 passed (825ms)
+## playwright affiliate-admin-forms ทั้งไฟล์ (build ใหม่หลัง merge)
+      ✓   1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.6s)
+      ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:122:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.7s)
+      ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:158:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+      ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:216:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (2.6s)
+      ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:249:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (1.8s)
+      ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:316:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (3.0s)
+      ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (2.6s)
+      ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (2.6s)
+      ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (2.5s)
+      ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (2.6s)
+      ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (2.6s)
+      ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (2.6s)
+      ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.6s)
+      ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.5s)
+      ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:386:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.3s)
+      ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:396:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.9s)
+      ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:416:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.5s)
+      ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:493:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal (1.5s)
+      ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:534:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal (1.5s)
+      19 passed (49.3s)
+## pnpm lint && pnpm typecheck: exit 0
