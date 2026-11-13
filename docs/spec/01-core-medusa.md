@@ -2223,7 +2223,7 @@ none ใหม่ — middleware ใหม่ตัวสุดท้ายข�
 ### Tasks (ปิดรอบ 27)
 | ID | Task | ไฟล์ที่แตะ (`apps/backend/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|----|---------|------|
-| CORE-56 | (qa #336 D-1) lock ต่อ order บน `POST /store/returns` กัน return ซ้ำจากสองแท็บ ด้วย middleware (กฎข้อ 114, Q-C6 = ก) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `src/api/store/ownership/return-lock.ts` (ใหม่) + `__tests__/return-lock.unit.spec.ts` (ใหม่), `src/api/store/ownership/middlewares.ts`, unit ที่ล็อก chain (`return-location.unit.spec.ts:156–159`, `return-window.unit.spec.ts:94–100`, `src/lib/__tests__/store-ownership.unit.spec.ts`), `integration-tests/http/store-returns-receive.spec.ts` | ~150 LOC | AC-155 | none (PR spec รอบ 28 merge; CORE-55 ☑ #336); ไม่บล็อก release v0.1.0 | ไม่ชนงานที่เปิดอยู่ |
+| CORE-56 | (qa #336 D-1) lock ต่อ order บน `POST /store/returns` กัน return ซ้ำจากสองแท็บ ด้วย middleware (กฎข้อ 114, Q-C6 = ก) — ☑ PR `feat/CORE-56-store-return-lock` (owner สั่งทำ 2026-11-13) | `src/api/store/ownership/return-lock.ts` (ใหม่) + `__tests__/return-lock.unit.spec.ts` (ใหม่), `src/api/store/ownership/middlewares.ts`, unit ที่ล็อก chain (`return-location.unit.spec.ts:156–159`, `return-window.unit.spec.ts:94–100`, `src/lib/__tests__/store-ownership.unit.spec.ts`), `integration-tests/http/store-returns-receive.spec.ts` | ~150 LOC | AC-155 | none (PR spec รอบ 28 merge; CORE-55 ☑ #336); ไม่บล็อก release v0.1.0 | ไม่ชนงานที่เปิดอยู่ |
 
 ### Open questions (ปิดรอบ 27)
 - ~~Q-C6~~ ✅ owner ตอบ ก 2026-11-10 → กฎข้อ 114a, AC-155, CORE-56 (พักไว้ — owner ยังไม่สั่งทำ); คำถามเดิม (CORE-56, กฎข้อ 114) กัน return ซ้ำจาก `POST /store/returns` ที่ยิงพร้อมกันด้วยทางใด:
