@@ -15,6 +15,7 @@ import {
 } from "../../lib/affiliate-payout"
 import { isUnauthorized } from "../../lib/fetch-error"
 import { createSingleFlight } from "../../lib/single-flight"
+import { keepModalOpenWhileComboboxExpanded } from "../../lib/combobox-escape"
 
 // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
 const PERIOD: { key: "period_from" | "period_to"; label: string }[] = [
@@ -27,6 +28,7 @@ const PERIOD: { key: "period_from" | "period_to"; label: string }[] = [
  * ADM-9 (spec 08 AC-12, กฎ 5, 8, 11): Form + KeyboundForm + DatePicker; ตัวเลือก affiliate เป็น Combobox ค้นหาได้
  * ADM-17 (กฎ 21): ตัวเลือกค้นด้วย q ทีละหน้า (useComboboxData) และแสดง error ใต้ช่องเมื่อ query ล้ม
  * ADM-24 (กฎ 28): request เดียวต่อหน้า เรียงชื่อฝั่ง server; 401 → /login
+ * ADM-26 (กฎ 30c): Escape ขณะ Combobox ขยายไม่ปิด modal (keepModalOpenWhileComboboxExpanded)
  */
 export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
   const queryClient = useQueryClient()
@@ -81,7 +83,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <FocusModal open onOpenChange={(open) => !open && !save.isPending && onClose()}>
-      <FocusModal.Content>
+      <FocusModal.Content onEscapeKeyDown={keepModalOpenWhileComboboxExpanded}>
         <Form {...form}>
           <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">
             <FocusModal.Header>
