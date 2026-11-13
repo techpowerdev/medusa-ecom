@@ -1,0 +1,95 @@
+# CORE-56 — ผล test (spec 01 กฎข้อ 114, AC-155; Q-C6 = ก), Node v22.23.3, รันในเครื่อง 2026-11-13
+ฐาน origin/develop 3bf5b87b; PORT=9156, REDIS_URL db 5, integration runner สร้าง/ลบ DB ชั่วคราวเอง (ชื่อ ulid)
+integration test ใช้ Locking provider in-memory (NODE_ENV=test); provider redis throw ข้อความเดียวกันเมื่อ key ถูกถือ (ตรวจ source @medusajs/locking-redis 2.22.1)
+
+## Red 1: integration AC-155 ใน store-returns-receive.spec.ts บน develop (ยังไม่มี middleware lock) — exit 1
+        ✕ AC-155: two concurrent returns of the same qty-1 line → one 200 and one 400 invalid_data (5 rounds) (1338 ms)
+        ✓ AC-155: sequential returns of the same qty-1 line → second is 400 invalid_data (1258 ms)
+        ✓ AC-155: concurrent returns of two different orders of the same customer → 200 both (1672 ms)
+        ✓ AC-155: a request that fails with 400 does not leave the order locked — the next one gets 200 at once (1113 ms)
+- เคสพร้อมกันล้มรอบแรก: ได้ [200, 200] แทน [200, "400 invalid_data"] (return requested 2 รายการ — ตรง qa #336 D-1)
+- อีกสามเคสผ่านบน develop อยู่แล้วตามที่ spec ระบุ (test กันถอย)
+        - Expected  - 1
+        + Received  + 1
+    
+          Object {
+            "outcomes": Array [
+              200,
+        -     "400 invalid_data",
+        +     200,
+            ],
+            "round": 0,
+
+## Red 2: unit return-lock.unit.spec.ts + chain test ที่แก้ ก่อนมีไฟล์ return-lock.ts — exit 1
+    Cannot find module '../return-lock' from 'src/api/store/ownership/__tests__/return-lock.unit.spec.ts'
+    Cannot find module '../return-lock' from 'src/api/store/ownership/__tests__/return-location.unit.spec.ts'
+    Cannot find module '../return-lock' from 'src/api/store/ownership/__tests__/return-window.unit.spec.ts'
+    Cannot find module '../../api/store/ownership/return-lock' from 'src/lib/__tests__/store-ownership.unit.spec.ts'
+
+## Green: unit ของ task (src/api/store/ownership + store-ownership.unit.spec.ts) — --verbose, exit 0
+    (return-location.unit.spec.ts) ✓ ends with validateStoreReturnWindow → assignStoreReturnLocation → lockStoreReturnOrder
+    lockStoreReturnOrder
+      ✓ acquires store-return:<order_id> with a per-request ownerId and a TTL, then calls next() (1 ms)
+      ✓ releases once with its ownerId when the response finishes (close afterwards does not release again) (1 ms)
+      ✓ releases once when the response closes before finish (client disconnected)
+      ✓ releases once and rethrows when the next handler throws
+      ✓ logs (does not throw) when release fails — the TTL frees the lock (3 ms)
+      ✓ waits while another request of the same order holds the lock, then proceeds (202 ms)
+      ✓ answers 409 (no next, no release) when the lock is still held after the wait timeout (≤ 5s) (105 ms)
+      ✓ does not turn a Redis/Locking error into 409 — rethrows it as is (2 ms)
+      ✓ releases at once and stops when the client disconnected while waiting (6 ms)
+      ✓ fails loudly (no lock) when core did not validate the body first (5 ms)
+    POST /store/returns middleware order (CORE-56)
+      ✓ ends with assignStoreReturnLocation → lockStoreReturnOrder
+    Test Suites: 7 passed, 7 total
+    Tests:       71 passed, 71 total
+
+## Green: integration store-returns*.spec.ts ทั้ง 5 ไฟล์ (ใหม่ + ของเดิม CORE-13/16/17/20b/55) — --verbose, exit 0
+    PASS integration-tests/http/store-returns-option.spec.ts (20.327 s)
+        ✓ owner using an outbound option (Standard, is_return=false) → 400 invalid_data and no return is created (991 ms)
+        ✓ owner using a return option disabled in store → 400 invalid_data and no return is created (948 ms)
+        ✓ owner using a return option of a service zone that does not cover the order address → 400 invalid_data and no return is created (878 ms)
+        ✓ owner using an option id that does not exist → 400 invalid_data and no return is created (783 ms)
+        ✓ owner using the seeded return option (Standard return) → 200 and the return is created (904 ms)
+        ✓ owner using a return option whose stock location is not in the order's sales channel → 400 invalid_data (1674 ms)
+        ✓ owner whose order has no shipping country_code → 400 invalid_data and no return is created (2496 ms)
+        ✓ owner using a missing option id → message does not echo the input and is the same for any id (1534 ms)
+    PASS integration-tests/http/store-returns-window.spec.ts (14.284 s)
+        ✓ shipped return_window_days + 1 days ago → 400 RETURN_WINDOW_EXPIRED and no return (1096 ms)
+        ✓ shipped 1 day ago → 200 and the return is created (1075 ms)
+        ✓ delivered_at takes precedence over shipped_at (1754 ms)
+        ✓ a line that does not require shipping (e-voucher) → 400 RETURN_ITEM_NOT_SHIPPABLE (950 ms)
+        ✓ fulfilled but not shipped yet → 400 RETURN_ITEM_NOT_SHIPPED (929 ms)
+        ✓ an item id that is not a line of the order → 400 and the message does not echo the input (911 ms)
+        ✓ GET /store/orders/:id returns fulfillments.items.line_item_id to the owner only (797 ms)
+        ✓ middleware order: no token → 401, customer B → 404 (ownership runs before this check) (834 ms)
+    PASS integration-tests/http/store-returns-overrides.spec.ts (14.045 s)
+        ✓ seed has a return shipping option (is_return) that customers can use (182 ms)
+        ✓ owner sending return_shipping.price → 400 invalid_data and no return is created (2781 ms)
+        ✓ owner sending receive_now (true, full quantity) → 400 invalid_data and no return is created (2035 ms)
+        ✓ owner sending receive_now (false) → 400 invalid_data and no return is created (926 ms)
+        ✓ owner sending location_id → 400 invalid_data and no return is created (1144 ms)
+        ✓ owner creates a return with the seeded option: price from the option, not received, location from the option (1225 ms)
+    PASS integration-tests/http/store-returns-transfer.spec.ts (10.815 s)
+          ✓ 401 without token, 404 for customer B (no return created), 200 for owner A (466 ms)
+          ✓ an order id that does not exist → 404; no order_id → rejected (not 200) (227 ms)
+          ✓ request/accept/decline/cancel → 404 without token, as B and as A; no transfer change; owner stays A (162 ms)
+    PASS integration-tests/http/store-returns-receive.spec.ts (25.592 s)
+        ✓ AC-150: a store return gets location_id from the return option (same as its fulfillment) and stays requested (2804 ms)
+        ✓ AC-151: admin receives 1 item → received, stock +1 at the return location, reserved unchanged, event emitted (1356 ms)
+        ✓ AC-151: receiving the full return of an attributed order appends a proportional reversed (returned) entry (1528 ms)
+        ✓ AC-153: a return option whose fulfillment set has no stock location → 400 invalid_data and no return (1281 ms)
+        ✓ AC-153: a managed item without a level at the option's location → 400 'This item cannot be returned online', nothing created (1142 ms)
+        ✓ AC-153: an unmanaged item is returned and received at the option's location; inventory does not change (1299 ms)
+        ✓ AC-155: two concurrent returns of the same qty-1 line → one 200 and one 400 invalid_data (5 rounds) (4937 ms)
+        ✓ AC-155: sequential returns of the same qty-1 line → second is 400 invalid_data (1248 ms)
+        ✓ AC-155: concurrent returns of two different orders of the same customer → 200 both (1446 ms)
+        ✓ AC-155: a request that fails with 400 does not leave the order locked — the next one gets 200 at once (1044 ms)
+    Test Suites: 5 passed, 5 total
+    Tests:       35 passed, 35 total
+
+## Green: unit ทั้งชุด (pnpm --filter backend test:unit) — exit 0
+    Test Suites: 106 passed, 106 total
+    Tests:       1275 passed, 1275 total
+
+## pnpm lint && pnpm typecheck && pnpm --filter backend build — exit 0 (0 errors; warning ที่มีอยู่เดิมใน backend/storefront ไม่เกี่ยวกับ task นี้)
