@@ -227,3 +227,29 @@ AssertionError: expected true to be false // Object.is equality
 (skipped = payments-promptpay-fallback-cap ต้องใช้ Stripe test key; spec นี้ abort action complete ที่ network — ไม่ผ่าน path ตะกร้าว่างของ PR)
 
 lint: 0 errors; typecheck storefront/backend ผ่าน; e2e unit 103 passed
+
+######## แก้ตาม review รอบ 3 (CI AC-17 payments-promptpay-fallback-cap.spec.ts:90) ########
+== สาเหตุจาก trace ของ CI run 43375451433 (artifact e2e-evidence) ==
+- network: poll ได้ refunded (POST action 06:24:28.737) → router.refresh() (GET /th/checkout?step=review&_rsc 06:24:28.761)
+- error-context.md หลัง refresh: ยังอยู่หน้า /th/checkout?step=review (ไม่ redirect) แต่ปุ่ม "ชำระด้วยพร้อมเพย์" disabled + ข้อความ
+  "ขณะนี้ชำระด้วยพร้อมเพย์ไม่ได้ กรุณาเลือกวิธีชำระเงินอื่น" ซึ่ง render เฉพาะเมื่อ StripeContext=false (promptpay-payment/index.tsx:63-74)
+  = PaymentWrapper เปลี่ยนจาก StripeWrapper เป็น <div> → React mount children ใหม่ → state refunded หาย
+- ทำไม: guard PAY-6b (backend stripe-session-guard.ts assertNotPaid) เรียก authorizePaymentSession → session พร้อมเพย์เป็น authorized;
+  PaymentWrapper เลือกเฉพาะ status=pending; ก่อน PR หน้า checkout อ่าน cart แบบ force-cache (session ยัง pending ในค่า cache) จึงไม่สลับ
+
+== RED: unit core-52-payment-wrapper-refresh (pending → authorized ต้องยังอยู่ใน Elements) ==
+     × pending → authorized: ยังอยู่ใน Elements และไม่ mount children ใหม่ 64ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected null not to be null
+      Tests  1 failed | 1 passed (2)
+== GREEN ==
+      Tests  2 passed (2)
+ Test Files  97 passed (97)
+      Tests  1131 passed (1131)
+
+== e2e checkout regression ในเครื่อง (prod build) ==
+  -   2 [chromium] › e2e/core-19b-continue-to-review.spec.ts:73:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว
+  -   3 [chromium] › e2e/core-19f-switch-payment-method.spec.ts:20:5 › AC-113: บัตร → พร้อมเพย์ → บัตร แล้วกด Continue 1 ครั้ง → review แสดงบัตรและ cart มี session บัตรเท่านั้น
+  2 skipped
+  30 passed (1.3m)
+(spec AC-17 ต้องใช้ Stripe test key จริง (หน้า authorize ของ Stripe) — ในเครื่องถูก skip; CI ของ push นี้เป็นตัวพิสูจน์)

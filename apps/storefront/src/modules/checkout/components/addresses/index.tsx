@@ -10,7 +10,7 @@ import Input from "@modules/common/components/input"
 import { Heading, Text } from "@modules/common/components/ui"
 import Spinner from "@modules/common/icons/spinner"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
-import React, { useActionState } from "react"
+import { useActionState, type FormEvent } from "react"
 import BillingAddress from "../billing_address"
 import ErrorMessage from "../error-message"
 import ShippingAddress from "../shipping-address"
@@ -47,7 +47,7 @@ const Addresses = ({
   // CORE-52 (กฎข้อ 110d, qa #353 D-1): React 19 reset `<form action>` หลัง action คืนผล — reset ของ browser คืน
   // defaultChecked/defaultSelected/defaultValue ทำให้ checkbox "ใช้ที่อยู่จัดส่ง..." กลับเป็นติ๊กขณะฟอร์มใบเสร็จยังแสดง
   // (ส่งใหม่ได้ same_as_billing=on) — ทุกช่องของฟอร์มนี้คุมด้วย state ของ React จึงยกเลิก reset ทั้งฟอร์ม
-  const keepFormValues = (event: React.FormEvent<HTMLFormElement>) => event.preventDefault()
+  const keepFormValues = (event: FormEvent<HTMLFormElement>) => event.preventDefault()
 
   return (
     <div className="bg-white" data-testid="addresses-section">
