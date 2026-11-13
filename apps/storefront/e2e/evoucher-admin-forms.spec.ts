@@ -193,3 +193,79 @@ test.describe("ADM-21a: สถานะ error ของตาราง pools / p
     await evidence("03-pools-partners-empty")
   })
 })
+
+// ADM-23 (spec 08 AC-28, กฎ 27): `?partners_offset=` เกินจำนวนแถว — request แรกได้ 0 แถว (count > 0) ก่อน usePageOffset clamp
+// เคยแสดง "No partners on this page" กระพริบ (#359) → ตารางอยู่ในสถานะ loading แทน; และ Edit จากเมนูต่อแถวแล้วปิด Drawer
+// ต้องไม่ทิ้ง `pointer-events: none` ค้างบน body (PartnerActions remount เมนูแบบ ProgramActions — review #359)
+test.describe("ADM-23: partners clamp ไม่กระพริบ + เมนูต่อแถว", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-23" } })
+
+  const EMPTY_TEXT = "No partners on this page"
+  const PAGE_SIZE = 20
+  const emptySeen = (page: Page) => page.evaluate(() => (window as unknown as { __emptySeen: number[] }).__emptySeen)
+
+  test("AC-28: ?partners_offset=99999999 + GET partners หน่วง 800ms → ไม่มี empty ตลอด 2 วินาทีแรก จบหน้าสุดท้าย; Edit แล้ว Escape ไม่ค้าง pointer-events", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const name = `000 ADM-23 partner ${Date.now()}`
+    const { partner } = await call(request, admin, PARTNERS_PATH, { name })
+    const rows = page.getByTestId("evoucher-partners-table").locator("tbody tr")
+
+    try {
+      const { count } = await call(request, admin, `${PARTNERS_PATH}?limit=1&offset=0`)
+      const lastPage = Math.floor((count - 1) / PAGE_SIZE) * PAGE_SIZE
+      // usePageOffset: offset 0 = ลบ param ออกจาก URL
+      const expectedParam = lastPage ? String(lastPage) : null
+
+      await loginAdmin(page)
+      // MutationObserver บันทึกทุกครั้งที่ DOM เปลี่ยนแล้วมีข้อความ empty (กระพริบ 1 frame ก็นับ) ตั้งแต่ก่อน script ของหน้า
+      await page.addInitScript((text) => {
+        const w = window as unknown as { __emptySeen: number[] }
+        w.__emptySeen = []
+        new MutationObserver(() => {
+          if (document.body?.textContent?.includes(text)) w.__emptySeen.push(performance.now())
+        }).observe(document, { childList: true, subtree: true, characterData: true })
+      }, EMPTY_TEXT)
+      await page.route(`**${PARTNERS_PATH}*`, async (route) => {
+        if (route.request().method() === "GET") await new Promise((resolve) => setTimeout(resolve, 800))
+        await route.continue()
+      })
+
+      await step("เปิด ?partners_offset=99999999 → 2 วินาทีแรกไม่มี empty", async () => {
+        await page.goto(`${BACKEND_URL}/app/evouchers?partners_offset=99999999`)
+        await page.waitForTimeout(2_000)
+        expect(await emptySeen(page)).toEqual([])
+      })
+
+      await step(`จบที่ partners_offset=${lastPage} (หน้าสุดท้าย) มีแถว และยังไม่เคยมี empty`, async () => {
+        await page.waitForURL((url) => url.searchParams.get("partners_offset") === expectedParam)
+        await expect(rows.first()).toBeVisible()
+        await expect(page.getByTestId("evoucher-partners")).not.toContainText(EMPTY_TEXT)
+        expect(await emptySeen(page)).toEqual([])
+        await evidence("01-partners-offset-clamped-no-empty-flash")
+      })
+
+      await step("เมนูต่อแถว → Edit → Escape ปิด Drawer → body ไม่มี pointer-events: none และ Create partner เปิด modal ได้", async () => {
+        await page.goto(`${BACKEND_URL}/app/evouchers`)
+        const row = page.getByTestId("evoucher-partners-table").locator("tbody tr", { hasText: name })
+        await row.getByTestId("evoucher-partner-row-actions").click()
+        await page.getByRole("menuitem", { name: "Edit" }).click()
+        const drawer = page.getByRole("dialog")
+        await expect(drawer.getByText("Edit partner")).toBeVisible()
+        await page.keyboard.press("Escape")
+        await expect(drawer).toHaveCount(0)
+        await expect(page.locator("body")).not.toHaveCSS("pointer-events", "none")
+        await page.getByTestId("evoucher-partners-table").getByRole("button", { name: "Create partner" }).click()
+        await expect(page.getByLabel("Name *", { exact: true })).toBeVisible()
+        await evidence("02-partner-edit-escape-create-opens")
+      })
+    } finally {
+      await request.delete(`${BACKEND_URL}${PARTNERS_PATH}/${partner.id}`, { headers: admin })
+    }
+  })
+})
