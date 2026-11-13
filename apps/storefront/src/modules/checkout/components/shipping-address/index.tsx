@@ -3,7 +3,7 @@ import { Container } from "@modules/common/components/ui"
 import Checkbox from "@modules/common/components/checkbox"
 import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useMemo, useState } from "react"
 import AddressSelect from "../address-select"
 import CountrySelect from "../country-select"
 
@@ -40,7 +40,7 @@ const ShippingAddress = ({
     "shipping_address.country_code": cart?.shipping_address?.country_code || "",
     "shipping_address.province": cart?.shipping_address?.province || "",
     "shipping_address.phone": cart?.shipping_address?.phone || "",
-    email: cart?.email || "",
+    email: cart?.email || customer?.email || "",
   })
 
   const countriesInRegion = useMemo(
@@ -92,17 +92,17 @@ const ShippingAddress = ({
     customer?.email,
   ])
 
-  useEffect(() => {
-    // Ensure cart is not null and has a shipping_address before setting form data
-    if (cart && cart.shipping_address) {
-      setFormAddress(cart?.shipping_address, cart?.email)
+  // CORE-52 (กฎข้อ 110e): ปรับ state ระหว่าง render เมื่อ key เปลี่ยน (แทน useEffect ที่ต้องปิดกฎ exhaustive-deps) — ค่าตอน mount มาจาก useState ข้างบน
+  const [prevAddressKey, setPrevAddressKey] = useState(savedAddressKey)
+  if (prevAddressKey !== savedAddressKey) {
+    setPrevAddressKey(savedAddressKey)
+    if (cart?.shipping_address) {
+      setFormAddress(cart.shipping_address, cart.email)
     }
-
     if (cart && !cart.email && customer?.email) {
       setFormAddress(undefined, customer.email)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ตั้งใจผูกกับค่าที่บันทึกใน cart (savedAddressKey) ไม่ใช่ object cart
-  }, [savedAddressKey])
+  }
 
   const handleChange = (
     e: React.ChangeEvent<

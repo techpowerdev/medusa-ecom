@@ -116,6 +116,10 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     form.set("email", "a@example.com")
     form.set("billing_address.address_1", "99 ถนนสุขุมวิท")
     form.set("billing_address.country_code", "th")
+    form.set("billing_address.first_name", "สมชาย")
+    form.set("billing_address.last_name", "ใจดี")
+    form.set("billing_address.postal_code", "10110")
+    form.set("billing_address.city", "วัฒนา")
     return form
   }
   const shippingForm = (cc = "th") => {
@@ -124,6 +128,10 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     form.set("email", "a@example.com")
     form.set("shipping_address.address_1", "1 Sukhumvit")
     form.set("shipping_address.country_code", "th")
+    form.set("shipping_address.first_name", "Somchai")
+    form.set("shipping_address.last_name", "Jaidee")
+    form.set("shipping_address.postal_code", "10110")
+    form.set("shipping_address.city", "Bangkok")
     form.set("same_as_billing", "on")
     return form
   }
@@ -185,9 +193,11 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     const data = form()
     data.set(field, "")
 
-    // สำเร็จ = redirect (mock ไม่ throw) จึงไม่มีข้อความคืน
-    expect((await submit(data)) ?? "").not.toMatch(/เปลี่ยนแปลง/)
-    expect(update).toHaveBeenCalledTimes(1)
+    const message = (await submit(data)) ?? ""
+    expect(message).not.toMatch(/เปลี่ยนแปลง/)
+    // CORE-52 (กฎข้อ 110b): ช่องบังคับว่าง → ข้อความให้กรอกให้ครบ ไม่บันทึกทับ cart
+    expect(message).toMatch(/[฀-๿]/)
+    expect(update).not.toHaveBeenCalled()
   })
 
   it("อ่าน cart แล้ว 401 → ให้เข้าสู่ระบบใหม่ ไม่บันทึกที่อยู่", async () => {
