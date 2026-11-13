@@ -2294,7 +2294,7 @@ none
 
 ## Follow-up รอบ 30 (2026-11-13 — เอกสารล้วน: follow-up จาก review/qa รอบ 29 #351–#363)
 ที่มา: owner อนุมัติให้แปลง follow-up ของรอบ 29 เป็น spec/task (2026-11-13) — ตรวจโค้ดบน develop `8fb44d70` (path ย่อจาก `apps/storefront/`):
-- `src/lib/data/cart.ts:526` `required()` ของ `addressFrom` ใช้ `String.prototype.trim()` ซึ่งไม่ตัด zero-width (`U+200B`, `U+200C`, `U+200D`, `U+2060`, `U+FEFF` ไม่ใช่ white space ตาม ECMAScript) → ช่องบังคับที่มีแค่ `U+200B` ผ่านกฎข้อ 110b แล้วบันทึกเมือง/เขตที่มองไม่เห็น (qa #353 O-1)
+- `src/lib/data/cart.ts:526` `required()` ของ `addressFrom` ใช้ `String.prototype.trim()` ซึ่งไม่ตัด zero-width (`U+200B`, `U+200C`, `U+200D`, `U+2060` ไม่ใช่ white space ตาม ECMAScript; `U+FEFF` ถูกตัดอยู่แล้วแต่รวมไว้ในชุดของกฎข้อ 116a) → ช่องบังคับที่มีแค่ `U+200B` ผ่านกฎข้อ 110b แล้วบันทึกเมือง/เขตที่มองไม่เห็น (qa #353 O-1)
 - `normalize` ของข้อความ error มี 3 สำเนา: `src/lib/util/checkout-error.ts:23` (export — ผู้ใช้ `empty-cart-completion.ts`), `src/lib/util/insufficient-inventory.ts:15`, `src/lib/util/group-join-error.ts:31` (มี `.trim()` เพิ่ม) (re-review #353; มีก่อน CORE-52)
 - `e2e/core-4g-checkout-polish.spec.ts:91`, `:95` cleanup ใน `finally` ใช้ `expect` ธรรมดา → ลบ promotion ล้มแล้ว throw กลบ error ของ `checkout()` และข้ามการลบ campaign (review #358 — ส่วนที่กฎข้อ 111d ทำกับ `core-4j` แล้วแต่ยังไม่ทำกับ `core-4g`)
 - `e2e/core-4j-e2e-hygiene.unit.spec.ts:57` นับ `request.delete(` ด้วย regex บนข้อความของ body จึงนับที่อยู่ใน comment/string ด้วย (review #358)
@@ -2323,9 +2323,9 @@ none
      (c) comment เหนือ `VALID_AFFILIATE_ARGS` ใน `core-46-e2e-hygiene.unit.spec.ts` ระบุข้อจำกัด: รับ object ซ้อนได้ 2 ชั้น และไม่รู้จัก `{` `}` `,` ใน string (tsc จับอาร์กิวเมนต์ผิดรูปอยู่แล้ว)
 
 ### Acceptance criteria (รอบ 30)
-- AC-157 (CORE-58, กฎข้อ 116) Vitest (ไฟล์ใหม่ `src/core-58-address-invisible.test.ts`): helper ของกฎข้อ 116a — `"​"`, `" ​﻿ "`, `"⁠"`, `"‌‍"` → `""`; `"​วัฒนา​"` → `"วัฒนา"`; `"  วัฒนา "` → `"วัฒนา"`; `"วัฒ​นา"` → `"วัฒ​นา"` (คงกลางข้อความ);
-  e2e (ต่อจาก `e2e/core-52-checkout-guards.spec.ts`, 1280×800, ลูกค้า login เจ้าของ cart): Given ขั้น address When กรอก `shipping-city-input` เป็น `"​"` (ช่องอื่นถูกต้อง) แล้วส่ง Then `address-error-message` มีอักษรไทย, URL ยังเป็น `step=address`
-  และ `shipping_address.city` ของ `GET /store/carts/:id` (token เจ้าของ cart) ไม่เท่ากับ `"​"` — **ล้มบน develop**; ทำซ้ำกับ `billing-city-input` บน cart digital-only; AC-147 ยังผ่าน;
+- AC-157 (CORE-58, กฎข้อ 116) Vitest (ไฟล์ใหม่ `src/core-58-address-invisible.test.ts`): helper ของกฎข้อ 116a — `"\u200B"`, `" \u200B\uFEFF "`, `"\u2060"`, `"\u200C\u200D"` → `""`; `"\u200Bวัฒนา\u200B"` → `"วัฒนา"`; `"  วัฒนา "` → `"วัฒนา"`; `"วัฒ\u200Bนา"` → `"วัฒ\u200Bนา"` (คงกลางข้อความ; เขียนเป็น escape ของ JS ใน test);
+  e2e (ต่อจาก `e2e/core-52-checkout-guards.spec.ts`, 1280×800, ลูกค้า login เจ้าของ cart): Given ขั้น address When กรอก `shipping-city-input` เป็น `"\u200B"` (ช่องอื่นถูกต้อง) แล้วส่ง Then `address-error-message` มีอักษรไทย, URL ยังเป็น `step=address`
+  และ `shipping_address.city` ของ `GET /store/carts/:id` (token เจ้าของ cart) ไม่เท่ากับ `"\u200B"` — **ล้มบน develop**; ทำซ้ำกับ `billing-city-input` บน cart digital-only; AC-147 ยังผ่าน;
   grep: `src/lib/util/insufficient-inventory.ts` และ `src/lib/util/group-join-error.ts` ไม่มี `const normalize =`; Vitest/contract test เดิมของสองไฟล์และ `checkout-conflict-contract` ผ่านโดยไม่แก้ assertion
 - AC-158 (CORE-59, กฎข้อ 117) unit (Playwright `unit` project): helper นับ delete จาก AST กับ fixture ที่มี `request.delete(` อยู่แค่ใน comment และ string → 0, กับ `core-4g-checkout-polish.spec.ts` ฟังก์ชัน `createExpiredPromotion` → ≥ 1; test AC-111 ไม่มี `body.match(/request\.delete\(/g)`;
   grep: บล็อก `finally` ของ `core-4g-checkout-polish.spec.ts` มี `expect.soft(promotion.ok()` และ `expect.soft(campaign.ok()` และไม่มี `expect(promotion.ok()`/`expect(campaign.ok()` ใน `finally`; comment เหนือ `VALID_AFFILIATE_ARGS` มีคำว่า `string`; e2e `core-4g-*` และ unit AC-111/146/148/149 ผ่าน
@@ -2364,7 +2364,7 @@ none
   (ง) คงเดิม ไม่มี task — ผลกระทบ: ลูกค้าที่ใช้โค้ด/flash sale เห็นตัวเลขต่างกันระหว่าง nav กับ `/cart`
   (ถ้าเลือก (ค) ของ Q-C9 ถ้อยคำในตัวเลือกนี้เปลี่ยน "VAT" เป็นคำไทยตาม Q-C9)
 - Q-C9 (review #352 — ข้อยกเว้นของ ADR-014 ข้อ 4 ซึ่ง accepted แล้ว จึงต้องให้ owner ตัดสิน) "VAT" ในป้ายของกฎข้อ 81a/115a เป็นคำละตินในข้อความ UI ที่ ADR-014 ข้อ 4 ไม่ได้ระบุไว้ชัด (ยกตัวอย่างชื่อแบรนด์ เช่น "PromptPay" และหน่วย/รหัส เช่น `THB`);
-  ปัจจุบันโค้ดใช้ `eslint-disable-next-line no-restricted-syntax` ต่อจุด (2 ที่) และ CORE-57 เพิ่ม `ALLOWED = ["VAT"]` ใน `e2e/support/thai-text.ts` ซึ่งยกเว้นให้ `expectThai` **ทุก test**:
+  ปัจจุบันโค้ดใช้ `eslint-disable-next-line no-restricted-syntax` ต่อจุด (3 ที่: `cart-dropdown/index.tsx:212`, `cart-totals/index.tsx:38`, `:75`) และ CORE-57 เพิ่ม `ALLOWED = ["VAT"]` ใน `e2e/support/thai-text.ts` ซึ่งยกเว้นให้ `expectThai` **ทุก test**:
   (ก) **[แนะนำ]** ยืนยันว่า "VAT" เป็นตัวย่อทางภาษีที่ใช้ทั่วไปในไทย นับอยู่ในกลุ่ม "หน่วย/รหัส" ของข้อ 4 → planner เพิ่มภาคผนวกลงวันที่ใน ADR-014 (เอกสารล้วน ไม่มี task โค้ด; `ALLOWED` และ comment `eslint-disable` คงเดิม) — เหตุผล: ป้ายที่ owner อนุมัติใน Q-C1/Q-C7 ใช้คำนี้อยู่แล้ว และเป็นคำที่ลูกค้าไทยเห็นบนใบเสร็จทั่วไป;
       ผลกระทบ: `expectThai` จะไม่จับ "VAT" ที่หลุดเข้ามาในข้อความอื่น (ESLint ยังบังคับ `eslint-disable` พร้อมเหตุผลทีละจุด)
   (ข) ยกเว้นเฉพาะจุด: `expectThai(page, ids, { allow: ["VAT"] })` ใช้เฉพาะ test ของ `cart-totals`/dropdown, `ALLOWED` กลับเป็นว่าง; ADR ไม่แก้ — ผลกระทบ: task e2e เล็ก ~30 LOC
