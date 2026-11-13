@@ -15,18 +15,18 @@
 | AC | Result | Evidence |
 |----|--------|----------|
 | AC-21 route: `q` ค้น `name`/`email` แบบไม่สนตัวพิมพ์, ใช้ร่วมกับ `status` ได้, ไม่ตรง = 0, ไม่ล็อกอิน = 401 | pass | รอบ 1 ตรวจด้วย curl และรอบ 2 ตรวจซ้ำผ่าน QA-1 ไม่ล็อกอินได้ 401 |
-| AC-21 e2e: ค้นฝั่ง server ด้วย `q`, ไม่มี `limit=200`, เลือกได้และ POST ถูกต้อง | pass | `screenshots/ac21-search-case-insensitive.png`; e2e `affiliate-admin-forms.spec.ts:158` และ QA-1 ผ่านทั้ง 5 รอบ |
-| AC-21 e2e: GET รายชื่อล้ม → error ใต้ช่อง | pass | `screenshots/ac21-options-error.png` (abort ได้ "Could not load affiliates: Failed to fetch" สี rgb(225,29,72)); e2e `:214` (500) ผ่าน |
+| AC-21 e2e: ค้นฝั่ง server ด้วย `q`, ไม่มี `limit=200`, เลือกได้และ POST ถูกต้อง | pass | `ac21-search-case-insensitive.png`; e2e `affiliate-admin-forms.spec.ts:158` และ QA-1 ผ่านทั้ง 5 รอบ |
+| AC-21 e2e: GET รายชื่อล้ม → error ใต้ช่อง | pass | `ac21-options-error.png` (abort ได้ "Could not load affiliates: Failed to fetch" สี rgb(225,29,72)); e2e `:214` (500) ผ่าน |
 | AC-21 nit: option ของ collection นอกหน้าแรกเป็น `aria-selected="true"` + assert 200 | pass | e2e `affiliate-admin-forms.spec.ts:47` และ `:122` ผ่าน |
-| AC-12 (regression): ฟอร์มสร้าง payout ค่าเริ่มต้น, สร้างสำเร็จ, กันกดซ้ำ | pass | `screenshots/ac12-payout-created.png`; QA-6 กด dblclick + click ได้ POST เดียว (200), toast "Payout created", มี payout ใหม่ 1 แถวใน DB |
+| AC-12 (regression): ฟอร์มสร้าง payout ค่าเริ่มต้น, สร้างสำเร็จ, กันกดซ้ำ | pass | `ac12-payout-created.png`; QA-6 กด dblclick + click ได้ POST เดียว (200), toast "Payout created", มี payout ใหม่ 1 แถวใน DB |
 
 ## Checklist ของ PR (1280×800, Affiliate → Payouts → Create payout)
 
 | รายการ | รอบ 1 | รอบ 2 | หมายเหตุ |
 |--------|-------|-------|----------|
 | ค้นชื่อ/อีเมลพิมพ์เล็กใหญ่ปน (`qAsUs pArTnEr 003`, `QAACT-010@QAMAIL`) | pass | pass | ได้ 1 รายการที่ตรง และ request มี `q=` ตามที่พิมพ์ |
-| เลื่อนลงสุดโหลดทุกหน้า (63 active vs 7 suspended, `q=Partner`) | pass | pass | 70 option ไม่ซ้ำไม่หาย; request `offset` 0–60 ทีละ 10 ทั้งสองสถานะ (`screenshots/ac21-scroll-all-pages.png`) |
-| เลื่อนลงสุดเมื่อ `created_at` เท่ากัน (96 active vs 24 suspended, `q=QaTie`) | **fail** | pass | รอบ 1 ได้ 120 option แต่ไม่ซ้ำแค่ 117 (D-1) รอบ 2 ได้ 120 ไม่ซ้ำ 120 ไม่หาย ผ่านทั้ง 5 รอบที่รัน (`screenshots/qa3-tie-fixed.png`) |
+| เลื่อนลงสุดโหลดทุกหน้า (63 active vs 7 suspended, `q=Partner`) | pass | pass | 70 option ไม่ซ้ำไม่หาย; request `offset` 0–60 ทีละ 10 ทั้งสองสถานะ (`ac21-scroll-all-pages.png`) |
+| เลื่อนลงสุดเมื่อ `created_at` เท่ากัน (96 active vs 24 suspended, `q=QaTie`) | **fail** | pass | รอบ 1 ได้ 120 option แต่ไม่ซ้ำแค่ 117 (D-1) รอบ 2 ได้ 120 ไม่ซ้ำ 120 ไม่หาย ผ่านทั้ง 5 รอบที่รัน (`qa3-tie-fixed.png`) |
 | ชื่อที่เลือก (อยู่นอกหน้าแรก) ยังแสดงหลังค้นคำอื่น/ปิด popover | pass | pass | QA-4 |
 | suspended มีป้าย " — suspended", ไม่มี pending | pass | pass | QA-1/QA-2 |
 | บล็อก request รายชื่อ → ข้อความแดงใต้ช่อง (`affiliate-payout-options-error`) | pass | pass | QA-5 |
