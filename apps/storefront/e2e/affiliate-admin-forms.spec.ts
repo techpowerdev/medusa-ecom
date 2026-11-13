@@ -159,7 +159,7 @@ test("AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่�
   test.setTimeout(120_000)
   await adminHeaders(request)
   const tag = `adm9${Date.now()}`
-  // created_at เพิ่มตาม i และ route เรียง -created_at — i = 0 คือรายที่ 250 ที่ limit 200 เดิมตัดทิ้ง
+  // ADM-24: ตัวเลือกเรียงตามชื่อ (order=name) — aff 249 คือรายที่ 250 ที่ limit 200 เดิมตัดทิ้งและไม่อยู่ในหน้าแรก
   await sql(
     `insert into affiliate (id, email, name, code, status, created_at, updated_at)
      select 'aff_' || $1 || '_' || i, $1 || '-' || i || '@example.com', 'ADM9 ' || $1 || ' aff ' || lpad(i::text, 3, '0'),
@@ -190,17 +190,19 @@ test("AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่�
     })
 
     await step("พิมพ์ชื่อรายที่ 250 → ค้นด้วย q (ไม่ดึง limit=200 หลายหน้า) เลือกได้ และ POST ส่ง id กับช่วงค่าเริ่มต้นเป็น UTC", async () => {
-      await page.getByTestId("affiliate-payout-field-affiliate_id").fill(`${tag} aff 000`)
-      await page.getByRole("option").filter({ hasText: `${tag} aff 000` }).click()
+      const searched = page.waitForResponse((r) => new URL(r.url()).searchParams.get("q") === `${tag} aff 249`)
+      await page.getByTestId("affiliate-payout-field-affiliate_id").fill(`${tag} aff 249`)
+      await searched
+      await page.getByRole("option").filter({ hasText: `${tag} aff 249` }).click()
       // ADM-17 (spec 08 AC-21): ค้นฝั่ง server ด้วย q และไม่มีการดึงทีละ 200 จนครบแบบเดิม
-      expect(lists.some((url) => url.searchParams.get("q") === `${tag} aff 000`)).toBe(true)
+      expect(lists.some((url) => url.searchParams.get("q") === `${tag} aff 249`)).toBe(true)
       expect(lists.filter((url) => url.searchParams.get("limit") === "200")).toEqual([])
       const created = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === PAYOUTS)
       await page.getByTestId("affiliate-payout-save").click()
       await created
       expect(posts).toEqual([
         {
-          affiliate_id: `aff_${tag}_0`,
+          affiliate_id: `aff_${tag}_249`,
           period_from: firstOf(m - 1).toISOString(),
           period_to: firstOf(m).toISOString(),
         },
@@ -223,6 +225,106 @@ test("AC-21: GET รายชื่อ affiliate ล้ม → error ใต้�
     await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
     // react-query ของ dashboard retry ก่อนแสดง error
     await expect(page.getByTestId("affiliate-payout-options-error")).toContainText(/\S/, { timeout: 30_000 })
+  })
+})
+
+// ADM-24 (spec 08 AC-29, กฎ 28b/c): ตัวเลือก affiliate ของฟอร์ม payout = request เดียวต่อหน้า (active + suspended, order=name)
+// JS SDK (qs) ส่ง array เป็น status[0]=…&status[1]=… — อ่านค่าจาก searchParams ที่ parse แล้ว ไม่เทียบ string ดิบ
+const statusesOf = (url: URL) =>
+  Array.from(url.searchParams.entries())
+    .filter(([key]) => /^status(\[\d*\])?$/.test(key))
+    .map(([, value]) => value)
+    .sort()
+// request ของรายการตัวเลือก (ไม่ใช่ id[] ของชื่อในตาราง payouts / id ของตัวที่เลือกไว้)
+const isOptionList = (url: URL) =>
+  url.pathname === AFFILIATES && statusesOf(url).length > 0 && !url.searchParams.has("id")
+
+test.describe("ADM-24: ตัวเลือก affiliate ของฟอร์ม payout", () => {
+  const openPayoutForm = async (page: Page) => {
+    await openAffiliatePage(page)
+    await page.getByTestId("affiliate-admin-tab-payouts").click()
+    await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
+  }
+
+  test("AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response", async ({ page, request, step }) => {
+    test.setTimeout(120_000)
+    await adminHeaders(request)
+    const tag = `adm24${Date.now()}`
+    // ชื่อคละลำดับกับ created_at และสถานะ — pending ต้องไม่อยู่ในตัวเลือก
+    const rows = [
+      ["Delta", "active"],
+      ["Alpha", "pending"],
+      ["Bravo", "suspended"],
+      ["Echo", "suspended"],
+      ["Charlie", "active"],
+      ["Foxtrot", "pending"],
+    ] as const
+    for (let i = 0; i < rows.length; i++) {
+      const [name, status] = rows[i]
+      await sql(
+        `insert into affiliate (id, email, name, code, status, created_at, updated_at)
+         values ($1, $2, $3, $4, $5, now() + $6 * interval '1 second', now())`,
+        [`aff_${tag}_${i}`, `${tag}-${i}@example.com`, `${tag} ${name}`, `${tag}-${i}`, status, i],
+      )
+    }
+    try {
+      const lists: URL[] = []
+      page.on("request", (req) => {
+        const url = new URL(req.url())
+        if (req.method() === "GET" && url.pathname === AFFILIATES) lists.push(url)
+      })
+
+      await step("เปิด combobox → รายการต่อหน้าเป็น request เดียวที่มี active+suspended และ order=name", async () => {
+        // useComboboxData ยิงหน้าแรกตั้งแต่ modal เปิด
+        const first = page.waitForResponse((r) => r.request().method() === "GET" && isOptionList(new URL(r.url())))
+        await openPayoutForm(page)
+        await first
+        await page.getByTestId("affiliate-payout-field-affiliate_id").click()
+        await expect(page.getByRole("listbox")).toBeVisible()
+      })
+
+      await step("ค้นด้วย tag → option เรียงตามลำดับ affiliates ของ response (เฉพาะ active/suspended เรียงชื่อ)", async () => {
+        const searched = page.waitForResponse((r) => {
+          const url = new URL(r.url())
+          return r.request().method() === "GET" && isOptionList(url) && url.searchParams.get("q") === tag
+        })
+        await page.getByTestId("affiliate-payout-field-affiliate_id").fill(tag)
+        const body = await (await searched).json()
+        const names = body.affiliates.map((a: Json) => a.name)
+        expect(names).toEqual(["Bravo", "Charlie", "Delta", "Echo"].map((n) => `${tag} ${n}`))
+        const labels = body.affiliates.map(
+          (a: Json) => `${a.name} (${a.email})${a.status === "suspended" ? " — suspended" : ""}`,
+        )
+        await expect(page.getByRole("option")).toHaveText(labels)
+      })
+
+      await step("ทุก request ของรายการ: status = active+suspended ใน request เดียว, order=name, ไม่มี request แยกสถานะ", async () => {
+        const optionLists = lists.filter(isOptionList)
+        expect(optionLists.length).toBeGreaterThan(0)
+        for (const url of optionLists) {
+          expect(statusesOf(url)).toEqual(["active", "suspended"])
+          expect(url.searchParams.get("order")).toBe("name")
+        }
+        // request ที่มี status แค่ค่าเดียว (คู่ request แบบเดิม) ต้องไม่มี
+        expect(lists.filter((url) => statusesOf(url).length === 1)).toEqual([])
+      })
+    } finally {
+      await sql(`delete from affiliate where id like $1`, [`aff_${tag}_%`])
+    }
+  })
+
+  test("AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login", async ({ page, request }) => {
+    test.setTimeout(120_000)
+    await adminHeaders(request)
+    await loginAdmin(page)
+    await page.route(`${BACKEND_URL}${AFFILIATES}?**`, (route) =>
+      route.request().method() === "GET" && isOptionList(new URL(route.request().url()))
+        ? route.fulfill({ status: 401, json: { type: "unauthorized", message: "Unauthorized" } })
+        : route.continue(),
+    )
+    await openPayoutForm(page)
+    // จบ test ทันทีหลังถึงหน้า login (spec 08 AC-29)
+    await page.waitForURL(/\/app\/login/)
   })
 })
 

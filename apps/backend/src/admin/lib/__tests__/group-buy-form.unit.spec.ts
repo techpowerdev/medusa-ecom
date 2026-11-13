@@ -12,6 +12,7 @@ import {
   toCampaignBody,
   type CampaignForm,
 } from "../group-buy-form"
+import { BAD_NUMBER_INPUT } from "../form-validation"
 
 // GB-6a: ฟอร์มสร้างแคมเปญใน admin → body ของ POST /admin/group-buy/campaigns (validator ของ GB-2a/GB-2c)
 // ADM-7 (spec 08 กฎ 5, AC-10): วันเวลามาจาก DatePicker เป็น Date (ตาม timezone ของเครื่อง) — fixture ระบุ offset ไทยให้ผลตายตัว
@@ -194,6 +195,26 @@ describe("campaignFormSchema", () => {
 
   it("rejects a non-date value for ends_at with 'Invalid date'", () => {
     expect(messageOf({ ends_at: "2026-11-12T00:00" as unknown as Date }, "ends_at")).toBe("Invalid date")
+  })
+
+  // ADM-15 (spec 08 กฎ 19a): NumberInput ส่ง BAD_NUMBER_INPUT เมื่อพิมพ์ค่าที่ไม่ใช่ตัวเลข ("e") — error ใต้ช่องนั้น
+  // (ข้อความเดียวกับ toCampaignBody) ไม่ถือเป็น "ว่าง" และไม่ไปจบที่ toast
+  it.each([
+    ["target_value", "Target must be a whole number greater than 0"],
+    ["discount_value", "Discount value must be a number greater than 0"],
+    ["max_quantity", "Max quantity must be a whole number greater than 0"],
+    ["team_duration_hours", "Team duration must be a whole number greater than 0"],
+    ["max_total_orders", "Max total orders must be a whole number greater than 0"],
+    ["max_units_per_person", "Max units per person must be a whole number greater than 0"],
+    ["max_people_per_group", "Max people per group must be a whole number greater than 0"],
+    ["pay_within_hours", "Pay within must be a whole number greater than 0"],
+  ] as const)("rejects BAD_NUMBER_INPUT in %s with the field's message", (field, message) => {
+    const issues = parse({ [field]: BAD_NUMBER_INPUT }).error?.issues ?? []
+    expect(issues.map((i) => [i.path[0], i.message])).toEqual([[field, message]])
+  })
+
+  it("still accepts an empty optional number field (blank = not set)", () => {
+    expect(parse({ max_total_orders: "" }).success).toBe(true)
   })
 })
 

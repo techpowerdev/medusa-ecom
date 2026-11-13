@@ -53,15 +53,16 @@ export const AdminListAffiliatePrograms = listParams().extend({
 
 export const AdminGetAffiliateParams = createFindParams()
 
+const affiliateStatus = z.enum(["pending", "active", "suspended"])
+
 // AF-14 (กฎ 38): filter id ค่าเดียวหรือ id[] — รูปเดียวกับ validator ของ Medusa core (เช่น AdminCustomersParams)
 // ADM-17 (spec 08 กฎ 21): q ค้น name/email ผ่าน .searchable() ของ model (combobox ของฟอร์ม payout)
+// ADM-24 (spec 08 กฎ 28a): status ค่าเดียวหรือ status[] (query.graph แปลง array เป็น $in)
 export const AdminListAffiliates = listParams().extend({
   q: z.string().optional(),
   id: z.union([z.string(), z.array(z.string())]).optional(),
-  status: z.enum(["pending", "active", "suspended"]).optional(),
+  status: z.union([affiliateStatus, z.array(affiliateStatus)]).optional(),
 })
-
-const affiliateStatus = z.enum(["pending", "active", "suspended"])
 const requiredText = z.string().trim().min(1)
 
 // AF-15 (กฎ 39a, owner Q18/Q20): null หรือ 3 ช่องนี้เท่านั้น; account_number เก็บค่าที่ตัด `-`/ช่องว่างแล้ว

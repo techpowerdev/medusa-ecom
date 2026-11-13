@@ -67,6 +67,8 @@ const PAYOUT_FIELDS = [
 
 // ADM-17 qa D-1: order ของ Medusa รับ field เดียว — created_at ซ้ำ (bulk import) ทำให้ offset ข้าม/ซ้ำแถว
 // จึงต่อ id (ทิศเดียวกับ field แรก) เป็นตัวตัดสินที่คงที่ให้ทุก list route ของ affiliate
+// ADM-24 (spec 08 กฎ 28d): แก้เฉพาะ req.queryConfig.pagination.order — route ที่อ่าน req.listConfig.order
+// (เช่นส่งต่อให้ service list ตรงๆ) จะไม่ได้ tiebreak; route list ของ affiliate ทุกตัวใช้ queryConfig.pagination
 const tiebreakById = (req: MedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) => {
   const pagination = req.queryConfig?.pagination
   const order = pagination?.order as Record<string, unknown> | undefined

@@ -1,0 +1,58 @@
+# ADM-18 (spec 08 AC-22, กฎ 22) — ผล test
+# วันที่: 2026-11-14, node v22.23.3, base origin/develop 4b9e488e
+# prod build: medusa build + medusa start (.medusa/server), chromium, locale en-US, Asia/Bangkok, 1280x800
+
+## ข้อมูลอ้างอิง: ยืนยันบั๊กก่อนคำตัดสิน owner (AC-22 ฉบับเดิม — กด Escape ทันทีโดยไม่รอ URL, base fef9b65b)
+หน่วง GET pool 1000ms + Esc ทันที --repeat-each=10:   ล้ม 18/20 (หน้าแรก 10/10, codes_offset=50 8/10) — URL ไม่มี codes_status
+ไม่หน่วง loader + Esc ทันที --repeat-each=10:          ล้ม 18/20
+ถอด export loader ของหน้า pool ชั่วคราว (ไม่ commit):   ล้ม 14/20 → ต้นเหตุไม่ใช่ loader ของเรา
+หน่วง 1000ms + รอ 300ms แล้ว Esc --repeat-each=5:      ล้ม 10/10
+หน่วง 1000ms + รอ 1500ms แล้ว Esc --repeat-each=5:     ผ่าน 10/10
+ต้นเหตุ: DataTableFilter.onOpenChange ของ @medusajs/ui ถอด filter เมื่อ popover ปิดขณะ hasValue (อ่านจาก URL) ยังเป็นเท็จ
+→ owner = ก ยอมรับใน v1 (2026-11-14, PR #376); AC-22 ใหม่รอจน URL มีค่า filter ก่อนกด Escape (test-only ไม่แก้โค้ด admin)
+  ตัวอย่างข้อความล้มของ test เดิม:
+    Expected: "void"   Received: null   (expect.poll ของ codes_status หลังกด Escape)
+
+## Green: AC-22 --repeat-each=10 (pnpm --filter storefront exec playwright test e2e/evoucher-admin-pool-page.spec.ts -g ADM-18 --repeat-each=10)
+  ✓   4 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   3 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   2 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   5 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   6 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   7 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   8 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   9 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  10 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  11 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  12 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  13 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  14 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  15 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  16 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  17 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  18 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  19 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  20 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  20 passed (48.0s)
+
+## Green: ทั้งไฟล์ e2e/evoucher-admin-pool-page.spec.ts (AC-7, AC-14, AC-20, AC-25, AC-22)
+  ✓   1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu
+  ✓   2 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:139:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp
+  ✓   3 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:205:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ
+  ✓   4 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:245:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว
+  ✓   5 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:317:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง
+  ✓   6 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:326:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error
+  ✓   7 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:333:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No codes match"
+  ✓   8 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:348:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓   9 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:357:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error
+  ✓  10 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  11 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:380:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  11 passed (51.8s)
+
+## pnpm --filter storefront test:e2e:unit (ทั้ง project unit)
+  110 passed (981ms)
+
+## lint/typecheck
+pnpm lint: 0 errors (warning 28 รายการเดิม ไม่มีในไฟล์ที่แตะ)
+pnpm typecheck: ผ่าน

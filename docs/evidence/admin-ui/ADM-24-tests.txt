@@ -1,0 +1,78 @@
+# ADM-24 (spec 08 AC-29, กฎ 28) — ผล test
+# วันที่: 2026-11-14, node v22.23.3, base origin/develop fef9b65b
+# backend medusa develop :9306, DB medusa_adm24, Redis db 6, viewport 1280x800 (locale en-US, Asia/Bangkok)
+
+## Red (ก่อนแก้)
+### jest affiliate-payout.unit.spec.ts (exit 1)
+### jest integration-tests/http/affiliate-admin.spec.ts -t AC-29 (exit 1)
+      ✕ filters by several statuses and orders by name across pages (AC-29) (339 ms)
+    400 {"type":"invalid_data","message":"Invalid request: Expected: 'pending, active, suspended' for field 'status', but got: 'active,suspended'"}
+Tests:       1 failed, 32 skipped, 33 total
+### playwright e2e/affiliate-admin-forms.spec.ts -g ADM-24 (โค้ด admin ก่อนแก้ + validator ใหม่, exit 1)
+  ✘  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:247:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (9.4s)
+  ✘  2 [chromium] › e2e/affiliate-admin-forms.spec.ts:312:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (2.0m)
+    Error: expect(received).toEqual(expected) // deep equality
+    Error: page.waitForURL: Test timeout of 120000ms exceeded.
+  2 failed
+    -   "adm241794588796359 Bravo",
+    -   "adm241794588796359 Echo",
+
+## Green
+### jest test:unit ทั้งหมด (exit 0)
+Test Suites: 108 passed, 108 total
+Tests:       1311 passed, 1311 total
+### jest integration-tests/http/affiliate-admin.spec.ts ทั้งไฟล์ (exit 0)
+    ✓ requires an admin user (333 ms)
+      ✓ creates a draft program, lists, publishes and ends it (445 ms)
+      ✓ rejects an invalid window or rate (143 ms)
+      ✓ deletes only draft programs (157 ms)
+      ✓ lists by status, approves, suspends and sets payout_info (166 ms)
+      ✓ filters by id or id[] (AC-45) (149 ms)
+      ✓ filters by q on name or email, case-insensitive (AC-21) (199 ms)
+      ✓ pages affiliates with identical created_at without duplicates or gaps (222 ms)
+      ✓ filters by several statuses and orders by name across pages (AC-29) (169 ms)
+      ✓ stores account_number without dashes or spaces (178 ms)
+      ✓ rejects payout_info with 9 digits (400) and keeps the stored value (141 ms)
+      ✓ rejects payout_info with 13 digits (400) and keeps the stored value (141 ms)
+      ✓ rejects payout_info with letters (400) and keeps the stored value (160 ms)
+      ✓ rejects payout_info with an extra key (400) and keeps the stored value (196 ms)
+      ✓ rejects payout_info with a missing field (400) and keeps the stored value (148 ms)
+      ✓ rejects payout_info with a blank field after trim (400) and keeps the stored value (150 ms)
+      ✓ rejects payout_info with a non-string field (400) and keeps the stored value (173 ms)
+      ✓ clears payout_info with null (136 ms)
+      ✓ returns 409 AFFILIATE_STATUS_CHANGED when expected_status is stale and changes nothing (147 ms)
+      ✓ lets only one of two concurrent approvals with the same expected_status through (195 ms)
+      ✓ lists ledger entries filtered by affiliate and status (159 ms)
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid (163 ms)
+      ✓ rolls entries back to approved when marking the payout paid fails (164 ms)
+      ✓ exposes ledger and payouts through Query (130 ms)
+      ✓ serializes concurrent payout creation so entries are paid out once (470 ms)
+      ✓ does not create a payout when the net is zero or negative (Q8) (194 ms)
+      ✓ cancels a draft payout and returns its entries to the pool (AC-19) (197 ms)
+      ✓ refuses to cancel a paid payout and leaves it unchanged (AC-19) (236 ms)
+      ✓ holds the affiliate payout lock through cancel compensation (AC-27) (1391 ms)
+      ✓ rejects cancelling a payout without an admin token (AC-27) (193 ms)
+      ✓ selects entries by rule 19 across payout rounds (AC-20) (178 ms)
+      ✓ filters payable entries in the database (rule 19) (161 ms)
+      ✓ summarizes the ledger per affiliate and status (160 ms)
+Tests:       33 passed, 33 total
+### playwright e2e/affiliate-admin-forms.spec.ts + affiliate-admin-payout-create.spec.ts (exit 0)
+  ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (12.3s)
+  ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:122:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (9.6s)
+  ✓   1 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:32:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (23.5s)
+  ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:158:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (8.6s)
+  ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:216:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (5.9s)
+  ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:249:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (7.3s)
+  ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:316:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (8.1s)
+  ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:364:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (4.6s)
+  ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:364:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (5.3s)
+  ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:364:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (5.7s)
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:364:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (7.3s)
+  ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:364:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (5.4s)
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:364:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (5.9s)
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:364:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (5.2s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:364:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (4.1s)
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:382:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (3.4s)
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:392:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (6.4s)
+  17 passed (1.9m)
+### pnpm lint (0 errors) / typecheck backend+storefront (exit 0) / pnpm --filter backend build (exit 0)
