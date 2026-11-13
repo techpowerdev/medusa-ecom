@@ -6,6 +6,8 @@ node_modules/
 dist/
 build/
 .next/
+# Next.js สร้างใหม่เองทุกครั้งที่รัน dev/build (path ต่างกันระหว่าง dev กับ build จึงเปลี่ยนไปมา)
+next-env.d.ts
 .medusa/
 out/
 
