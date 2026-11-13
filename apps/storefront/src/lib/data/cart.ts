@@ -3,6 +3,7 @@
 import { sdk } from "@lib/config"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isDigitalOnlyCart, safeCountryCode } from "@lib/util/digital-checkout"
+import { isEmptyCartCompletion } from "@lib/util/empty-cart-completion"
 import medusaError from "@lib/util/medusa-error"
 import {
   ActionError,
@@ -458,6 +459,10 @@ export async function submitPromotionForm(
   }
 }
 
+const REQUIRED_ADDRESS_FIELDS = ["first_name", "last_name", "address_1", "postal_code", "city"] as const
+const MISSING_ADDRESS_MESSAGE =
+  "กรุณากรอกชื่อ นามสกุล ที่อยู่ รหัสไปรษณีย์ และเขต/อำเภอให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)"
+
 // TODO: Pass a POJO instead of a form entity here
 export async function setAddresses(currentState: unknown, formData: FormData) {
   if (!formData) {
@@ -512,10 +517,6 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   )
 }
 
-const REQUIRED_ADDRESS_FIELDS = ["first_name", "last_name", "address_1", "postal_code", "city"] as const
-const MISSING_ADDRESS_MESSAGE =
-  "กรุณากรอกชื่อ นามสกุล ที่อยู่ รหัสไปรษณีย์ และเขต/อำเภอให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)"
-
 const missingRequired = (address: HttpTypes.StoreAddAddress) =>
   REQUIRED_ADDRESS_FIELDS.some((field) => !address[field])
 
@@ -548,14 +549,6 @@ export async function syncCartAffiliate(
   await syncCartAffiliateToken(cartId, cartMetadata, {
     ...(await getAuthHeaders()),
   })
-}
-
-// Medusa 2.22.1 `validateCartItemsStep` (core-flows/dist/cart/steps/validate-cart-items.js) ตอบ 400 ข้อความคงที่นี้
-// `FetchError` ของ js-sdk ไม่มี code จึงจับคู่ข้อความ (แบบ `insufficient-inventory.ts`)
-const EMPTY_CART_COMPLETION = "cannot complete a cart with no items"
-const isEmptyCartCompletion = (error: unknown) => {
-  const { status, message } = (error ?? {}) as { status?: unknown; message?: unknown }
-  return status === 400 && typeof message === "string" && message.replace(/\.$/, "").toLowerCase() === EMPTY_CART_COMPLETION
 }
 
 const PLACE_ORDER_CONFLICTS = ["FLASH_SOLD_OUT", "FLASH_LIMIT_EXCEEDED", "PROMOTION_NOT_COMBINABLE"] as const

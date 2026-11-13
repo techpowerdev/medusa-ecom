@@ -171,3 +171,59 @@ AssertionError: expected "vi.fn()" to be called with arguments: [ undefined, und
 == lint / typecheck (root) ==
 pnpm lint: 0 errors (warnings เดิมของ repo; cart.ts ลดลง 1 จาก as any ที่เอาออก)
 pnpm typecheck: apps/storefront Done, apps/backend Done
+
+######## แก้ตาม qa #353 D-1 + nit review (รอบ 2) ########
+== RED: unit — checkbox same_as_billing หลัง form.reset() ==
+     × ไม่ติ๊กใช้ที่อยู่จัดส่ง → reset แล้ว checkbox ยังไม่ติ๊ก และค่าที่พิมพ์ในฟอร์มใบเสร็จไม่หาย 46ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected true to be false // Object.is equality
+      Tests  1 failed | 3 passed (4)
+
+== RED: e2e ใบเสร็จแยก error แล้วแก้ส่งใหม่ (ก่อนแก้) ==
+  ✘  1 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800) (6.9s)
+  ✘  2 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812) (6.8s)
+    Expected: not checked
+    Received: checked
+    Expected: not checked
+    Received: checked
+  2 failed
+
+== GREEN: unit ใหม่ core-52 ==
+ Test Files  2 passed (2)
+      Tests  33 passed (33)
+== GREEN: unit ทั้งหมดของ storefront ==
+ Test Files  96 passed (96)
+      Tests  1129 passed (1129)
+
+== GREEN: e2e core-52 (12 = 6 test × 2 viewport) ==
+  ✓   1 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800) (5.2s)
+  ✓   2 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800) (4.5s)
+  ✓   3 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (2.2s)
+  ✓   4 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800) (2.7s)
+  ✓   5 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (2.7s)
+  ✓   6 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800) (6.4s)
+  ✓   7 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812) (4.7s)
+  ✓   8 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812) (3.4s)
+  ✓   9 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (2.1s)
+  ✓  10 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812) (2.8s)
+  ✓  11 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (2.7s)
+  ✓  12 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812) (7.0s)
+  12 passed (48.8s)
+
+== QA spec ของ qa #353 (QA-7, QA-10) บน build ที่แก้แล้ว ==
+  ✘  1 [chromium] › e2e/qa-tmp/qa-edge.spec.ts:252:7 › QA ที่อยู่ช่องว่าง › QA-7 billing (ไม่ติ๊กใช้ที่อยู่จัดส่ง): ทุกช่องบังคับเป็นช่องว่าง → error ไทย ค่าคงอยู่ billing select คงค่า (5.1s)
+  ✓  2 [chromium] › e2e/qa-tmp/qa-edge.spec.ts:320:7 › QA ที่อยู่ช่องว่าง › QA-10 ไม่ติ๊กใช้ที่อยู่จัดส่ง → error ครั้งแรก → แก้แล้วส่งใหม่ → billing ต้องเป็นค่าที่กรอก (3.4s)
+    Received: {"address_1": null, "address_2": null, "city": null, "company": null, "country_code": "th", "created_at": "2026-11-13T05:55:28.439Z", "customer_id": null, "deleted_at": null, "first_name": null, "id": "caaddr_01M79QKAHQM91KN7C3D6K25H25", "last_name": null, "metadata": null, "phone": null, "postal_code": null, "province": null, "updated_at": "2026-11-13T05:55:28.439Z"}
+  1 failed
+  1 passed (10.1s)
+(QA-7 ผ่านทุก assertion ใน loop — checkbox ไม่ติ๊ก, ค่าคงอยู่, select คงค่า; ล้มที่บรรทัดท้าย expect(cart.shipping_address).toBeNull()
+ เพราะ Medusa สร้าง shipping_address {country_code: th} ให้เองตอนสร้าง cart ใน region ประเทศเดียว — ทุกช่องบังคับยังเป็น null = ไม่บันทึก)
+
+== GREEN: e2e regression checkout ==
+  -  29 [chromium] › e2e/payments-promptpay-fallback-cap.spec.ts:47:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › complete cart ล้มทุกครั้ง → ยิงรวม ≤ 10 แล้วแสดง promptpay-order-delayed และหยุดยิง
+  -  30 [chromium] › e2e/payments-promptpay-fallback-cap.spec.ts:90:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › เงินถูกคืนระหว่างทางสำรอง → แสดง promptpay-refunded และปุ่มเริ่มชำระใหม่
+  2 skipped
+  31 passed (1.3m)
+(skipped = payments-promptpay-fallback-cap ต้องใช้ Stripe test key; spec นี้ abort action complete ที่ network — ไม่ผ่าน path ตะกร้าว่างของ PR)
+
+lint: 0 errors; typecheck storefront/backend ผ่าน; e2e unit 103 passed

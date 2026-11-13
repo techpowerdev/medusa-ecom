@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => ({ get: (k: string) => (k === "step" ? "address" : null) }),
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => "/th/checkout",
+  useParams: () => ({ countryCode: "th" }),
+}))
+vi.mock("@lib/data/cart", () => ({ setAddresses: vi.fn() }))
 
 // CORE-52 (spec 01 กฎข้อ 110d–e, AC-147): select ประเทศคงค่าที่เลือกเมื่อ form ถูก reset (React 19 reset `<form action>`
 // หลัง action คืน error) และ ShippingAddress sync จาก cart เมื่อที่อยู่ที่บันทึกเปลี่ยน (แบบปรับ state ระหว่าง render)
@@ -101,5 +109,37 @@ describe("ShippingAddress sync จากที่อยู่ใน cart (กฎ
   it("cart ไม่มีอีเมล → ใช้อีเมลของลูกค้า", async () => {
     await render(cart("วัฒนา", ""), { email: "c@example.com", addresses: [] })
     expect(value("shipping-email-input")).toBe("c@example.com")
+  })
+})
+
+// qa #353 D-1: React 19 reset `<form action>` หลัง setAddresses คืน error → checkbox "ใช้ที่อยู่จัดส่งเป็นที่อยู่ใบเสร็จ"
+// กลับเป็น defaultChecked (ติ๊ก) ขณะฟอร์มใบเสร็จยังแสดง → ส่งใหม่ได้ same_as_billing=on ที่อยู่ใบเสร็จที่กรอกหายเงียบ
+describe("ฟอร์มที่อยู่หลัง form.reset() (กฎข้อ 110d, qa #353 D-1)", () => {
+  const cart = {
+    id: "cart_1",
+    email: "a@example.com",
+    region,
+    items: [{ id: "item_1", requires_shipping: true }],
+    shipping_address: { first_name: "สมชาย", address_1: "1", city: "วัฒนา", country_code: "th" },
+    billing_address: { first_name: "สมชาย", address_1: "1", city: "วัฒนา", country_code: "th" },
+  }
+  const input = (testId: string) => container.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!
+
+  it("ไม่ติ๊กใช้ที่อยู่จัดส่ง → reset แล้ว checkbox ยังไม่ติ๊ก และค่าที่พิมพ์ในฟอร์มใบเสร็จไม่หาย", async () => {
+    const { default: Addresses } = await import("@modules/checkout/components/addresses")
+    await act(async () => {
+      root.render(createElement(Addresses, { cart, customer: null } as never))
+    })
+    expect(input("billing-address-checkbox").checked).toBe(true)
+
+    await act(async () => input("billing-address-checkbox").click())
+    expect(input("billing-address-checkbox").checked).toBe(false)
+    const email = input("shipping-email-input")
+    expect(email.value).toBe("a@example.com")
+
+    act(() => container.querySelector("form")!.reset())
+
+    expect(input("billing-address-checkbox").checked).toBe(false)
+    expect(input("billing-first-name-input")).not.toBeNull()
   })
 })

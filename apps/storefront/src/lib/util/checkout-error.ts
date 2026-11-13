@@ -20,7 +20,7 @@ export const CHECKOUT_CONFLICTS: { code: string; message: string; text: string }
 ]
 
 // medusaError ทำตัวแรกเป็นตัวใหญ่และต่อ "." ท้ายข้อความ — ตัดออกก่อนเทียบ
-const normalize = (message: string) => message.replace(/\.$/, "").toLowerCase()
+export const normalize = (message: string) => message.replace(/\.$/, "").toLowerCase()
 
 const knownConflict = (error: unknown) => {
   if (typeof error !== "object" || error === null) {
