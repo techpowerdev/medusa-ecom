@@ -13,7 +13,7 @@ import {
   usePrompt,
 } from "@medusajs/ui"
 import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useReducer, useState } from "react"
 import { useForm } from "react-hook-form"
 import { evoucherApi, evoucherKeys, Partner, PartnerInput } from "../../lib/evoucher"
 import {
@@ -23,6 +23,7 @@ import {
   toPartnerFormValues,
 } from "../../lib/evoucher-partner-form"
 import { isUnauthorized } from "../../lib/fetch-error"
+import { isPastLastPage } from "../../lib/page-offset"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
@@ -77,6 +78,9 @@ const PartnerActions = ({
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   const removing = useIsMutating({ mutationKey: DELETE_KEY }) > 0
+  // เปิด Drawer จาก menuitem: mount เมนูใหม่ใน commit เดียวกัน (แบบ ProgramActions) — ไม่งั้น Radix ของเมนูกับ Drawer
+  // คืนค่า pointer-events ของ body สลับกันจนค้าง `none` หลังปิด Drawer (spec 08 กฎ 27b)
+  const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
   const remove = useMutation({
     mutationKey: DELETE_KEY,
     mutationFn: () => evoucherApi.deletePartner(partner.id),
@@ -104,10 +108,19 @@ const PartnerActions = ({
 
   return (
     <ActionMenu
+      key={menuKey}
       groups={[
         {
           actions: [
-            { label: "Edit", icon: <PencilSquare />, onClick: () => onEdit(partner) },
+            {
+              label: "Edit",
+              icon: <PencilSquare />,
+              disabled: removing,
+              onClick: () => {
+                remountMenu()
+                onEdit(partner)
+              },
+            },
             { label: "Delete", icon: <Trash />, disabled: removing, onClick: confirmDelete },
           ],
         },
@@ -152,6 +165,8 @@ export const PartnersSection = () => {
   }
   // กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
   const loadFailed = isError && !data
+  // กฎ 27a: offset เกินที่ usePageOffset กำลัง clamp → loading แทน empty state
+  const pastLastPage = isPastLastPage(data?.count, data?.partners.length)
 
   const onSuccess = (message: string) => {
     queryClient.invalidateQueries({ queryKey: evoucherKeys.partners })
@@ -230,7 +245,7 @@ export const PartnersSection = () => {
               columns={columns}
               getRowId={(partner) => partner.id}
               rowCount={data?.count ?? 0}
-              isLoading={isLoading}
+              isLoading={isLoading || pastLastPage}
               heading="Partners"
               headingLevel="h2"
               action={{ label: "Create partner", onClick: openCreate }}
@@ -240,15 +255,13 @@ export const PartnersSection = () => {
               emptyState={{
                 empty: loadFailed
                   ? { heading: "Could not load partners", description: error?.message }
-                  : data?.count === 0
-                    ? {
-                        custom: (
-                          <div data-testid="evoucher-partners-empty">
-                            <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
-                          </div>
-                        ),
-                      }
-                    : { heading: "No partners on this page" },
+                  : {
+                      custom: (
+                        <div data-testid="evoucher-partners-empty">
+                          <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
+                        </div>
+                      ),
+                    },
               }}
             />
           </PageOffsetGate>
