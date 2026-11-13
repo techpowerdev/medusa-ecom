@@ -15,11 +15,19 @@ const walk = (dir: string): string[] =>
   })
 const files = walk(E2E)
 
-/** CORE-49 (กฎข้อ 107b): ห้ามเฉพาะ**การตั้งค่า** key timeout (ตัด comment ออกก่อน — คำว่า timeout ใน comment ไม่นับ) */
-const setsTimeout = (config: string) =>
-  /\b(timeout|actionTimeout|navigationTimeout)["']?\s*:/.test(
-    config.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+/** CORE-53 (กฎข้อ 111a): string literal (คงไว้) หรือ comment (ตัดทิ้ง) — จับ string ก่อน จึงไม่ตัด `/*` หรือ `//` ที่อยู่ใน string */
+const STRING_OR_COMMENT = /("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g
+const TIMEOUT_KEY = "(?:timeout|actionTimeout|navigationTimeout)"
+/**
+ * CORE-49 (กฎข้อ 107b): ห้ามเฉพาะ**การตั้งค่า** key timeout (ตัด comment ออกก่อน — คำว่า timeout ใน comment ไม่นับ)
+ * CORE-53 (กฎข้อ 111a): นับ shorthand `{ timeout }` ด้วย (key ตามด้วย `,` หรือ `}`)
+ */
+const setsTimeout = (config: string) => {
+  const code = config.replace(STRING_OR_COMMENT, (_match, literal: string | undefined) => literal ?? "")
+  return (
+    new RegExp(`\\b${TIMEOUT_KEY}["']?\\s*:`).test(code) || new RegExp(`[{,]\\s*${TIMEOUT_KEY}\\s*[,}]`).test(code)
   )
+}
 
 /** CORE-49 (กฎข้อ 107c): บรรทัดที่มี `/admin/products?handle=` แล้ว `toHaveLength(1)` ภายใน 3 บรรทัดถัดไป */
 const SEED_COUNT_NEXT_TO_FETCH = /\/admin\/products\?handle=[^\n]*\n(?:[^\n]*\n){0,2}[^\n]*toHaveLength\(1\)/
@@ -79,6 +87,18 @@ test("AC-144 (กฎข้อ 107b): regex ของ config ตรวจเฉ�
   }
 })
 
+test("AC-148 (กฎข้อ 111a): setsTimeout จับ shorthand และไม่ตัด /* ที่อยู่ใน string", () => {
+  for (const config of ["{ timeout }", "{ use: { actionTimeout } }", "{ expect: { timeout, other: 1 } }", "{ use: { navigationTimeout, } }"]) {
+    expect(setsTimeout(config), config).toBe(true)
+  }
+  expect(setsTimeout('const a="/*"; export default { timeout: 1 }')).toBe(true)
+  expect(setsTimeout("const a = '/*'; const b = `*/`; export default { actionTimeout: 1 }")).toBe(true)
+  expect(setsTimeout('const url = "http://x"; export default { timeout: 1 }')).toBe(true)
+  // comment ทั้งสองแบบ (รวม `//` ท้ายบรรทัด) ยังไม่นับ
+  expect(setsTimeout("export default { retries: 0 } // timeout: 1\n/* { timeout } */")).toBe(false)
+  expect(setsTimeout('const timeoutMs = 1; export default { name: "timeout" }')).toBe(false)
+})
+
 test("AC-140: ไฟล์ที่แตะไม่มี waitForTimeout / force", () => {
   for (const name of [
     path.join("support", "stripe.ts"),
@@ -112,6 +132,8 @@ const AFFILIATE_CALL = /(?<!function )\bcreateActiveAffiliate\(((?:[^()]|\((?:[^
 /**
  * 2 ตัวแรกไม่มี object; ตัวที่ 3 (ถ้ามี) เป็น `{...}` (ปีกกาซ้อนได้ 2 ชั้น) และเป็นตัวสุดท้าย
  * CORE-54 (กฎข้อ 112b): ปีกกาต้องจับคู่กัน — ไม่ใช้ `[\s\S]*` แบบ greedy ที่เดินข้าม `}` ของ object ตัวแรกไปถึงตัวที่ 4
+ * ข้อจำกัด (nit review #355): รับปีกกาซ้อนได้แค่ 2 ชั้น และไม่รู้จัก string — `{`/`}`/`,` ใน string หรือ object ซ้อน 3 ชั้น
+ * ทำให้ไม่ match → test ล้มให้เห็น (ไม่ผ่านเงียบ) แล้วค่อยขยาย regex เมื่อมีผู้เรียกแบบนั้นจริง
  */
 const VALID_AFFILIATE_ARGS = /^\s*[^,{]+,\s*[^,{]+(?:,\s*\{(?:[^{}]|\{[^{}]*\})*\})?\s*,?\s*$/
 const affiliateCalls = (src: string) => Array.from(src.matchAll(AFFILIATE_CALL), (match) => match[1])

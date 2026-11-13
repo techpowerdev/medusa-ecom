@@ -666,3 +666,43 @@ describe("ปุ่มสร้างของ Partners/Programs/Payouts อย�
     expect(read(PARTNERS)).toMatch(/const openCreate = \(\) => \{\s*if \(createOpen\) return/)
   })
 })
+
+// ADM-16 (spec 08 กฎ 20, AC-20): ตาราง e-voucher — `cell` ของปุ่มต่อแถวคงที่ข้าม render (ต้นแบบ programs-table.tsx),
+// empty state ไม่กระพริบระหว่าง offset เกินยังไม่ถูก clamp และ static ของ AC-14
+describe("ตาราง e-voucher: คอลัมน์ action คงที่ + offset (spec 08 AC-20, กฎ 20, ADM-16)", () => {
+  const ROW_ACTIONS: [string, string][] = [
+    ["components/evoucher/codes-table.tsx", "CodesTable"],
+    ["components/evoucher/partners-section.tsx", "PartnersSection"],
+  ]
+
+  it.each(ROW_ACTIONS)("%s: actionsColumn memo แยกที่ deps ไม่มี prompt/getFullDate และ columns ใช้ actionsColumn", (file) => {
+    const src = read(file)
+    const start = src.indexOf("const actionsColumn = useMemo(")
+    expect(start).toBeGreaterThan(-1)
+    const deps = src.slice(start).match(/\n {4}\[([^\]]*)\],?\n {2}\)/)
+    expect(deps).not.toBeNull()
+    expect(deps![1]).not.toMatch(/\b(prompt|getFullDate)\b/)
+    const columns = src.slice(src.indexOf("const columns = useMemo("))
+    expect(src).toContain("const columns = useMemo(")
+    expect(columns).toMatch(/^\s+actionsColumn,$/m)
+  })
+
+  it.each(ROW_ACTIONS)("%s: usePrompt อยู่เฉพาะใน component ต่อแถว ไม่อยู่ใน %s", (file, main) => {
+    const src = read(file)
+    const mainStart = src.indexOf(`export const ${main} = `)
+    expect(mainStart).toBeGreaterThan(-1)
+    expect(src.slice(mainStart)).not.toMatch(/\busePrompt\(/)
+    expect(src.slice(0, mainStart)).toMatch(/\n(?:export )?const \w+Actions = [^]*?\busePrompt\(\)/)
+  })
+
+  it("use-page-offset.ts แก้ URL แบบ replace: true และ codes-table.tsx reset ด้วย resetOn: status (AC-14)", () => {
+    expect(read("components/common/use-page-offset.ts")).toMatch(/\{\s*replace:\s*true\s*\}/)
+    expect(read("components/evoucher/codes-table.tsx")).toMatch(/usePageOffset\(PREFIX, PAGE_SIZE, \{[^}]*\bresetOn:\s*status\b/)
+  })
+
+  it("codes-table.tsx: หน้าที่เกินจำนวนแถว (count > 0 แต่ไม่มีแถว) แสดง loading ไม่ใช่ empty state", () => {
+    const src = read("components/evoucher/codes-table.tsx")
+    expect(src).not.toMatch(/isLoading=\{isLoading\}/)
+    expect(src).toMatch(/isLoading=\{isLoading \|\| pastLastPage\}/)
+  })
+})
