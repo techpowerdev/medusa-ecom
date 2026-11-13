@@ -12,7 +12,7 @@ const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8")
 const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url")
 const fakeJwt = () => `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ actor_id: "cus_1" })}.c2lnbmF0dXJl`
 
-type Run = { status: number | null; stdout: string; stderr: string; imageTag: string; outDir: string }
+type Run = { status: number | null; stdout: string; stderr: string; imageTag: string; poolMax: string; outDir: string }
 type Files = Record<string, string>
 
 /**
@@ -27,12 +27,13 @@ function runStopped(env: Record<string, string>, { stale = {}, written = {} }: {
     writeFileSync(path.join(staging, name), text)
   }
   const record = path.join(bin, "image-tag.txt")
+  const poolRecord = path.join(bin, "pool-max.txt") // OPS-23: DATABASE_POOL_MAX ที่ compose ได้รับ
   // OUT ต้องเป็น path relative กับ cwd (run.sh ใช้ $(pwd)/$LOAD_OUT) — อยู่ใต้ tools/load/out ที่ gitignore แล้ว
   const outRel = `tools/load/out/unit-ops17-${process.pid}-${Date.now()}`
   const outDir = path.join(ROOT, outRel)
   writeFileSync(
     path.join(bin, "docker"),
-    `#!/bin/sh\nprintf '%s' "\${IMAGE_TAG-<unset>}" > "${record}"\ncase " $* " in *" up "*) cp -R "${staging}/." "${outDir}/" ;; esac\nexit 1\n`
+    `#!/bin/sh\nprintf '%s' "\${IMAGE_TAG-<unset>}" > "${record}"\nprintf '%s' "\${DATABASE_POOL_MAX-<unset>}" > "${poolRecord}"\ncase " $* " in *" up "*) cp -R "${staging}/." "${outDir}/" ;; esac\nexit 1\n`
   )
   chmodSync(path.join(bin, "docker"), 0o755)
   mkdirSync(outDir, { recursive: true })
@@ -46,8 +47,9 @@ function runStopped(env: Record<string, string>, { stale = {}, written = {} }: {
     env: { ...base, PATH: `${bin}:${process.env.PATH}`, LOAD_OUT: outRel, LOAD_PROJECT: "loadtest-unit-ops17", ...env },
   })
   const imageTag = existsSync(record) ? readFileSync(record, "utf8") : ""
+  const poolMax = existsSync(poolRecord) ? readFileSync(poolRecord, "utf8") : "<docker-not-called>"
   rmSync(bin, { recursive: true, force: true })
-  return { status: r.status, stdout: r.stdout, stderr: r.stderr, imageTag, outDir }
+  return { status: r.status, stdout: r.stdout, stderr: r.stderr, imageTag, poolMax, outDir }
 }
 
 const JWT_RE = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./
@@ -66,6 +68,39 @@ describe("OPS-17 AC-28 run.sh IMAGE_TAG", () => {
     const r = runStopped({ IMAGE_TAG: "ci-123" })
     dirs.push(r.outDir)
     expect(r.imageTag).toBe("ci-123")
+  })
+})
+
+// OPS-23 (spec 07 AC-38): เทียบ DATABASE_POOL_MAX ใน load-nightly — run.sh ส่ง LOAD_DB_POOL_MAX เป็น DATABASE_POOL_MAX ให้ compose
+// ไม่ส่ง = ว่าง (default ของ Medusa; ไม่รับค่าที่ค้างใน shell เหมือน DATABASE_URL) และค่าที่ไม่ใช่จำนวนเต็มบวกหยุดก่อนเรียก docker
+describe("OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX", () => {
+  const dirs: string[] = []
+  afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })))
+
+  it.each(["10", "20", "40"])("LOAD_DB_POOL_MAX=%s → compose ได้ DATABASE_POOL_MAX เดียวกัน", (v) => {
+    const r = runStopped({ LOAD_DB_POOL_MAX: v })
+    dirs.push(r.outDir)
+    expect(r.poolMax).toBe(v)
+  })
+
+  it("ไม่ส่ง LOAD_DB_POOL_MAX → DATABASE_POOL_MAX ว่าง (default ของ Medusa) แม้ shell มีค่าค้าง", () => {
+    const r = runStopped({ DATABASE_POOL_MAX: "99" })
+    dirs.push(r.outDir)
+    expect(r.poolMax).toBe("")
+  })
+
+  it.each(["abc", "0", "-5", "20; rm -rf /", "1.5"])("LOAD_DB_POOL_MAX=%j → exit 2 ก่อนเรียก docker", (v) => {
+    const r = runStopped({ LOAD_DB_POOL_MAX: v })
+    dirs.push(r.outDir)
+    expect(r.status).toBe(2)
+    expect(r.stderr).toContain("LOAD_DB_POOL_MAX")
+    expect(r.poolMax).toBe("<docker-not-called>")
+  })
+
+  it("report.md บันทึกค่า pool ของ run (เทียบ run ได้จาก artifact)", () => {
+    const runner = read("tools/load/run.sh")
+    const report = runner.slice(runner.indexOf("## OPS-4 load test"), runner.indexOf('} >"$OUT/report.md"'))
+    expect(report).toContain("DATABASE_POOL_MAX=")
   })
 })
 
