@@ -146,7 +146,9 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - builder push ครั้งเดียวเมื่อพร้อมเปิด PR (ไม่ push ระหว่างทาง) และแก้ตาม review ให้ครบแล้ว push ครั้งเดียว — ทุก push รัน CI
   ชุดเต็มและ cancel run ก่อนหน้า
 - `develop` แดง (ตามนิยามด้านบน) → สั่ง builder ทุกตัวหยุด push จน hotfix merge (PR ที่ push ช่วงนั้นแดงเพราะ develop ไม่ใช่เพราะตัวเอง)
-- session หลัก commit `REPORT.md` รวมกับการ sync develop ใน push เดียว
+- session หลัก commit `REPORT.md` รวมกับการ sync develop ใน push เดียว — screenshot วางข้าง `REPORT.md` ใน
+  `docs/evidence/<feature>/<task-id>/` ตรงๆ (ห้ามโฟลเดอร์ย่อย เช่น `screenshots/`) และรัน
+  `pnpm --filter storefront test:e2e:unit evidence-budget` ก่อน push evidence ทุกครั้ง (เคยทำ CI ของ #360 แดง)
 - CI ข้าม job หนักให้อัตโนมัติ: PR เอกสารล้วนรันแค่ `lint-typecheck` (ยกเว้น `docs/ops/**` ซึ่งนับเป็นโค้ด backend เพราะ unit test อ่านไฟล์เหล่านี้); PR ที่แก้แค่ `apps/storefront/**` ข้าม `backend-tests`/`docker-worker-mode`
   (กติกาใน `tools/ci/classify-changes.sh`) push ไป `main` รันครบเสมอ
 - PR ที่แก้หลัง APPROVE (หรือหลัง REQUEST CHANGES) ต้อง re-review สั้นๆ ก่อน merge; หลัง rebase ใช้ `git range-diff`
