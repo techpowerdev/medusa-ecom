@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (รอบ 30 2026-11-13 — follow-up รอบ 29: CORE-58..59 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ, กฎข้อ 116–117, AC-157..158, คำถาม Q-C8/Q-C9 (หัวข้อ "Follow-up รอบ 30"); ปิดรอบ 29 2026-11-13 — owner สั่งทำงานที่พักไว้: ☑ CORE-56 #351, CORE-57 #352 และ ☑ CORE-52 #353, CORE-53 #358, CORE-54 #355 (sync สถานะเท่านั้น ไม่เปลี่ยนกฎ/AC); รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+สถานะ: accepted (รอบ 31 2026-11-13 — owner ตอบ Q-C8 = ก (กฎข้อ 118, AC-159, CORE-60 ☐ owner สั่งทำแล้ว; หมายเหตุในกฎข้อ 115c/AC-156) และ Q-C9 = ก (ภาคผนวก 2026-11-13 ของ ADR-014 ไม่มีโค้ด) (หัวข้อ "Follow-up รอบ 31"); รอบ 30 2026-11-13 — follow-up รอบ 29: CORE-58..59 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ, กฎข้อ 116–117, AC-157..158, คำถาม Q-C8/Q-C9 (หัวข้อ "Follow-up รอบ 30"); ปิดรอบ 29 2026-11-13 — owner สั่งทำงานที่พักไว้: ☑ CORE-56 #351, CORE-57 #352 และ ☑ CORE-52 #353, CORE-53 #358, CORE-54 #355 (sync สถานะเท่านั้น ไม่เปลี่ยนกฎ/AC); รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
 รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
@@ -2260,13 +2260,13 @@ none
     (b) แถวที่บวก/ลบรวมได้ยอดสุทธิ: `original_item_total − discount_total + original_shipping_total = total` (±0.01; `credit_line_total` = 0 ใน v1) —
         **ไม่ใช้ `item_total`/`shipping_total` ตามถ้อยคำของตัวเลือก ก ตรงตัว** เพราะใน 2.22.1 ทั้งสองหักส่วนลดแล้ว แต่ `discount_total` รวมส่วนลดเดียวกันอีก จะหักซ้ำเมื่อมีโปรโมชัน/flash (เช่นเคส AC-117)
         หรือส่วนลดค่าส่ง; เมื่อไม่มีส่วนลด ค่าเท่ากัน (`original_item_total = item_total`, `original_shipping_total = shipping_total`) ตรงตามเจตนาของ owner;
-    (c) cart digital-only (spec 02 กฎข้อ 28a) ยังซ่อนแถวค่าจัดส่งเมื่อไม่มีค่าจัดส่งเก็บจริง — เงื่อนไขใช้ `original_shipping_total` แทน `shipping_subtotal`; ป้ายแถวสินค้าเป็น "ยอดรวมสินค้า (รวม VAT)" ทุกกรณี —
+    (c) cart digital-only (spec 02 กฎข้อ 28a) ยังซ่อนแถวค่าจัดส่งเมื่อไม่มีค่าจัดส่งเก็บจริง — เงื่อนไขใช้ `original_shipping_total` แทน `shipping_subtotal`; ป้ายแถวสินค้าเป็น "ยอดรวมสินค้า (รวม VAT)" ทุกกรณี (**แก้รอบ 31, Q-C8 = ก owner 2026-11-13**: เมื่อ `discount_total > 0` ใช้ป้ายตามกฎข้อ 118 — ตัวเลข/field คงเดิม) —
         ใน `cart-totals` ไม่มีคำ "ไม่รวมภาษี"/"ก่อน VAT" และ source ไม่อ้าง `item_subtotal`, `shipping_subtotal`, `discount_subtotal` หรือ `1.07`;
     (d) dropdown ของตะกร้า (กฎข้อ 81a) ไม่เปลี่ยน
 
 ### Acceptance criteria (รอบ 28)
 - AC-156 (CORE-57, กฎข้อ 115) unit (Vitest `renderToStaticMarkup` — ไฟล์ใหม่ `src/core-57-cart-totals.test.ts`): Given totals `{ currency_code: "thb", original_item_total: 5900, item_total: 4720, discount_total: 1180, original_shipping_total: 10, shipping_total: 10, tax_total: 309.44, total: 4730, item_subtotal: 5514.02, shipping_subtotal: 9.35 }`
-  Then `cart-subtotal` `data-value="5900"`, `cart-discount` `data-value="1180"`, `cart-shipping` `data-value="10"`, `cart-taxes` `data-value="309.44"`, `cart-total` `data-value="4730"`, HTML มีป้าย "ยอดรวมสินค้า (รวม VAT)" และ "รวม VAT แล้ว" และไม่มี "ไม่รวมภาษี";
+  Then `cart-subtotal` `data-value="5900"`, `cart-discount` `data-value="1180"`, `cart-shipping` `data-value="10"`, `cart-taxes` `data-value="309.44"`, `cart-total` `data-value="4730"`, HTML มีป้าย "ยอดรวมสินค้า (รวม VAT)" และ "รวม VAT แล้ว" และไม่มี "ไม่รวมภาษี" (**แก้รอบ 31**: fixture นี้มีส่วนลด → ป้ายแถวแรกตรวจตาม AC-159 แทน "ยอดรวมสินค้า (รวม VAT)"; assertion อื่นคงเดิม);
   Given ส่วนลดค่าส่ง (`original_shipping_total: 10, shipping_total: 0, discount_total: 10`, ไม่มีส่วนลด line) Then `cart-shipping` `data-value="10"` และ subtotal − discount + shipping = total;
   Given cart digital-only ที่ `original_shipping_total` = 0 Then ไม่มี `cart-shipping` และไม่มีคำ "ค่าจัดส่ง"; Given digital-only ที่ `original_shipping_total` = 10 Then มี `cart-shipping` `data-value="10"` (แทนเคส review #320 เดิมใน `ev-7d-digital-only-totals.test.ts` — แก้ test เดิมให้ใช้ field ใหม่);
   static (อ่าน source): `cart-totals/index.tsx` ไม่มี `item_subtotal`, `shipping_subtotal`, `discount_subtotal`, `1.07`;
@@ -2355,7 +2355,7 @@ none
 - (#351) integration ของ lock รันบน locking provider แบบ in-memory (integration ไม่ตั้ง `REDIS_URL`) — เหมือน lock ทุกตัวของโปรเจกต์ (flash sale, e-voucher, affiliate); production ใช้ `locking-redis` ผ่าน `src/lib/infra-modules.ts` (ตรวจแล้วรอบ 9) และ job `docker-worker-mode`/load test รันกับ Redis จริง — ไม่เปิด task
 
 ### Open questions (รอบ 30)
-- Q-C8 (qa #352 — ถ้อยคำที่ลูกค้าเห็น) ป้าย "ยอดรวมสินค้า (รวม VAT)" อยู่สองที่ด้วยตัวเลขต่างความหมาย: dropdown ตะกร้าบน nav = `item_total` **หลังส่วนลด** (Q-C1 (1) = ก — ให้ตรงราคาต่อ line ที่ dropdown แสดง) และแถวแรกของ `cart-totals` บน `/cart`/checkout = `original_item_total` **ก่อนส่วนลด** (Q-C7 = ก — ให้ "ยอดรวมสินค้า − ส่วนลด + ค่าจัดส่ง = ยอดรวมทั้งสิ้น")
+- ~~Q-C8~~ ✅ owner ตอบ ก 2026-11-13 → กฎข้อ 118, AC-159, CORE-60 ในหัวข้อ "Follow-up รอบ 31" (owner สั่งทำแล้ว 2026-11-13); คำถามเดิม (qa #352 — ถ้อยคำที่ลูกค้าเห็น) ป้าย "ยอดรวมสินค้า (รวม VAT)" อยู่สองที่ด้วยตัวเลขต่างความหมาย: dropdown ตะกร้าบน nav = `item_total` **หลังส่วนลด** (Q-C1 (1) = ก — ให้ตรงราคาต่อ line ที่ dropdown แสดง) และแถวแรกของ `cart-totals` บน `/cart`/checkout = `original_item_total` **ก่อนส่วนลด** (Q-C7 = ก — ให้ "ยอดรวมสินค้า − ส่วนลด + ค่าจัดส่ง = ยอดรวมทั้งสิ้น")
   เมื่อมีส่วนลด (เช่นเคส AC-117: dropdown ฿4,720 แต่ `/cart` ฿5,900) ลูกค้าเห็นสองตัวเลขใต้ป้ายเดียวกัน — ตัวเลขทั้งสองถูกต้อง ปัญหาคือป้าย:
   (ก) **[แนะนำ]** `cart-totals` เปลี่ยนป้ายแถวแรกเป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" **เฉพาะเมื่อมีแถวส่วนลด** (`discount_total > 0`); ไม่มีส่วนลดคงป้ายเดิม; dropdown คงเดิม — เหตุผล: ไม่แตะคำตัดสิน Q-C1/Q-C7 และตัวเลข, แถว "ส่วนลด" อยู่ติดกันจึงอ่านเป็นสมการได้ทันที;
       ผลกระทบ: task storefront เล็ก ~30 LOC (ป้าย + เคสใน unit AC-156 + e2e ป้ายมีอักษรไทย) ป้ายยาวขึ้นต้องตรวจที่ 375 (กฎข้อ 105)
@@ -2363,12 +2363,69 @@ none
   (ค) ทั้งสองที่ใช้ตัวเลขเดียวกัน — dropdown ใช้ `original_item_total` (กลับไปเป็นปัญหาเดิมของ CORE-26/qa #199 ที่ลูกค้าสับสนราคา) หรือ `cart-totals` ใช้ `item_total` (หักส่วนลดซ้ำกับแถวส่วนลด — ขัดกฎข้อ 115b) — ไม่แนะนำ
   (ง) คงเดิม ไม่มี task — ผลกระทบ: ลูกค้าที่ใช้โค้ด/flash sale เห็นตัวเลขต่างกันระหว่าง nav กับ `/cart`
   (ถ้าเลือก (ค) ของ Q-C9 ถ้อยคำในตัวเลือกนี้เปลี่ยน "VAT" เป็นคำไทยตาม Q-C9)
-- Q-C9 (review #352 — ข้อยกเว้นของ ADR-014 ข้อ 4 ซึ่ง accepted แล้ว จึงต้องให้ owner ตัดสิน) "VAT" ในป้ายของกฎข้อ 81a/115a เป็นคำละตินในข้อความ UI ที่ ADR-014 ข้อ 4 ไม่ได้ระบุไว้ชัด (ยกตัวอย่างชื่อแบรนด์ เช่น "PromptPay" และหน่วย/รหัส เช่น `THB`);
+- ~~Q-C9~~ ✅ owner ตอบ ก 2026-11-13 → ภาคผนวก 2026-11-13 ของ ADR-014 ("VAT" นับอยู่ในกลุ่ม "หน่วย/รหัส" ของข้อ 4) ไม่มี task โค้ด — `ALLOWED` ของ `e2e/support/thai-text.ts` และ `eslint-disable` 3 จุดคงเดิม (หัวข้อ "Follow-up รอบ 31"); คำถามเดิม (review #352 — ข้อยกเว้นของ ADR-014 ข้อ 4 ซึ่ง accepted แล้ว จึงต้องให้ owner ตัดสิน) "VAT" ในป้ายของกฎข้อ 81a/115a เป็นคำละตินในข้อความ UI ที่ ADR-014 ข้อ 4 ไม่ได้ระบุไว้ชัด (ยกตัวอย่างชื่อแบรนด์ เช่น "PromptPay" และหน่วย/รหัส เช่น `THB`);
   ปัจจุบันโค้ดใช้ `eslint-disable-next-line no-restricted-syntax` ต่อจุด (3 ที่: `cart-dropdown/index.tsx:212`, `cart-totals/index.tsx:38`, `:75`) และ CORE-57 เพิ่ม `ALLOWED = ["VAT"]` ใน `e2e/support/thai-text.ts` ซึ่งยกเว้นให้ `expectThai` **ทุก test**:
   (ก) **[แนะนำ]** ยืนยันว่า "VAT" เป็นตัวย่อทางภาษีที่ใช้ทั่วไปในไทย นับอยู่ในกลุ่ม "หน่วย/รหัส" ของข้อ 4 → planner เพิ่มภาคผนวกลงวันที่ใน ADR-014 (เอกสารล้วน ไม่มี task โค้ด; `ALLOWED` และ comment `eslint-disable` คงเดิม) — เหตุผล: ป้ายที่ owner อนุมัติใน Q-C1/Q-C7 ใช้คำนี้อยู่แล้ว และเป็นคำที่ลูกค้าไทยเห็นบนใบเสร็จทั่วไป;
       ผลกระทบ: `expectThai` จะไม่จับ "VAT" ที่หลุดเข้ามาในข้อความอื่น (ESLint ยังบังคับ `eslint-disable` พร้อมเหตุผลทีละจุด)
   (ข) ยกเว้นเฉพาะจุด: `expectThai(page, ids, { allow: ["VAT"] })` ใช้เฉพาะ test ของ `cart-totals`/dropdown, `ALLOWED` กลับเป็นว่าง; ADR ไม่แก้ — ผลกระทบ: task e2e เล็ก ~30 LOC
   (ค) ไม่ยกเว้น: เปลี่ยนป้ายเป็นไทยล้วน (เช่น "ยอดรวมสินค้า (รวมภาษีมูลค่าเพิ่ม)", "รวมภาษีมูลค่าเพิ่มแล้ว") แล้วลบ `ALLOWED`/`eslint-disable` — ผลกระทบ: แก้ถ้อยคำที่ owner อนุมัติใน Q-C1/Q-C7, ป้ายยาวขึ้น (ตรวจ dropdown และ 375), task storefront ~40 LOC
+
+## Follow-up รอบ 31 (2026-11-13 — เอกสารล้วน: บันทึกคำตัดสินของ owner Q-C8/Q-C9)
+ที่มา: owner ตอบ Q-C8 = (ก) และ Q-C9 = (ก) ของหัวข้อ "Follow-up รอบ 30" (2026-11-13) และสั่งทำ CORE-60 — ตรวจโค้ดบน develop `fef9b65b` (path ย่อจาก `apps/storefront/`):
+`src/modules/common/components/cart-totals/index.tsx:39` ป้ายแถวแรกเป็น `<span>` ไม่มี `data-testid` (dropdown มี `cart-subtotal-label` ที่ `cart-dropdown/index.tsx:209`);
+assertion ป้ายแถวแรกที่ fixture มีส่วนลดมีที่เดียว: `src/core-57-cart-totals.test.ts:48` (`:83` และ `src/ev-7d-digital-only-totals.test.ts:67`, `:78`, `:100` ไม่มีส่วนลด — ผ่านต่อโดยไม่แก้);
+e2e ที่ assert ป้ายเป็นข้อความตรงตัวคือของ dropdown (`e2e/core-26-cart-dropdown-total.spec.ts:181`) ซึ่งไม่เปลี่ยน
+Status: accepted (Q-C8 = ก, Q-C9 = ก owner 2026-11-13; CORE-60 owner สั่งทำแล้ว 2026-11-13)
+Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คงเดิม), ตัวเลข/field ของ `cart-totals` (กฎข้อ 115 คงเดิม), `order-summary` ของหน้าบัญชี (ไม่ใช้ `cart-totals`), แก้ `ALLOWED`/`eslint-disable` เดิม (Q-C9 = ก)
+
+### What Medusa already gives us (รอบ 31)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| รู้ว่ามีส่วนลด | `discount_total` ของ `decorateCartTotals` 2.22.1 (อยู่ใน default fields ของ store cart/order — ตารางรอบ 28) | ใช้ตามเดิม — เงื่อนไขเดียวกับแถว `cart-discount` ที่มีอยู่ |
+| ป้ายยอดรวม | `cart-totals` ของ Medusa Next.js Starter (ขยายแล้วใน CORE-57) | ขยาย — ป้ายตามเงื่อนไข + `data-testid` ของป้าย |
+| ข้อยกเว้น "VAT" (Q-C9) | none (กติกาของโปรเจกต์ — ADR-014) | เอกสารล้วน: ภาคผนวก 2026-11-13 ของ ADR-014 |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 31)
+118. (CORE-60 — Q-C8 = ก owner 2026-11-13, qa #352; ต่อจากกฎข้อ 115a/c) ป้ายแถวแรกของ `cart-totals` (ทุกที่ที่ใช้: `/cart`, checkout, order-completed ที่ส่ง `order`):
+     (a) เมื่อ `discount_total > 0` (เงื่อนไขเดียวกับที่ render `cart-discount`) ป้ายเป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)"; เมื่อ `discount_total` เป็น 0/null/undefined คง "ยอดรวมสินค้า (รวม VAT)";
+     (b) element ของป้ายมี `data-testid="cart-subtotal-label"` (ชื่อเดียวกับป้ายของ dropdown — test หาภายใน `cart-totals` เสมอ เพราะ dropdown อาจอยู่ใน DOM ของหน้าเดียวกัน);
+     (c) ไม่เปลี่ยน: `cart-subtotal` (`original_item_total`, `data-value`), แถวอื่น, ลำดับแถว และ dropdown (กฎข้อ 81a); "VAT" ในป้ายใหม่ใช้ `eslint-disable-next-line no-restricted-syntax` พร้อมเหตุผลอ้างภาคผนวก 2026-11-13 ของ ADR-014 (Q-C9 = ก) —
+         ไม่แก้ `ALLOWED` ของ `e2e/support/thai-text.ts` และป้ายไม่มี "ก่อน VAT"/"ไม่รวมภาษี" (static ของ AC-156 ยังผ่าน);
+     (d) ที่ 375×812 (กฎข้อ 105 — `/cart` < small) ป้ายที่ยาวขึ้นตัดบรรทัดได้ แต่จำนวนเงิน `cart-subtotal` อยู่บรรทัดเดียว ไม่ทับป้าย และไม่ล้นจอ (วิธีทำเลือกใน PR เช่น `whitespace-nowrap` ที่จำนวนเงิน + `min-w-0` ที่ป้าย)
+
+### Acceptance criteria (รอบ 31)
+- AC-159 (CORE-60, กฎข้อ 118) unit (Vitest — ต่อใน `src/core-57-cart-totals.test.ts`; อ่านข้อความของ `cart-subtotal-label` จาก HTML ของ `renderToStaticMarkup`):
+  Given fixture flash ของ AC-156 (`discount_total: 1180`) Then มี `cart-subtotal-label` 1 ตัว ข้อความมีอักษรไทย (`/[฀-๿]/`) และมีคำ "ก่อนส่วนลด", `cart-subtotal` `data-value="5900"` (เท่าเดิม) — แทน assertion `toContain("ยอดรวมสินค้า (รวม VAT)")` ของเคสนี้บรรทัดเดียว;
+  Given ส่วนลดค่าส่งอย่างเดียว (fixture ที่สองของ AC-156, `discount_total: 10`) Then ป้ายเท่ากับของเคส flash; Given `discount_total: 0` และ Given ไม่ส่ง `discount_total` Then มี `cart-subtotal-label` 1 ตัว ข้อความไม่มี "ก่อนส่วนลด" และไม่เท่ากับป้ายของเคสมีส่วนลด;
+  assertion อื่นของ AC-156 และ `src/ev-7d-digital-only-totals.test.ts` ผ่านโดยไม่แก้; static ของ AC-156 (ไม่มี "ก่อน VAT"/"ไม่รวมภาษี") ยังผ่าน — unit เคสมีส่วนลด**ล้มบน develop** (ไม่มี testid ของป้าย);
+  e2e ใหม่ `e2e/core-60-cart-subtotal-label.spec.ts` (`evidenceTarget` `CORE-60`; ลูกค้า login เจ้าของ cart; หาด้วย `getByTestId("cart-totals").getByTestId(...)` เท่านั้น ไม่ match ประโยคไทยตรงตัว):
+  (a) 1280×800 Given cart จาก `cartReadyForPayment` ที่ `discount_total` ของ `GET /store/carts/:id` = 0 (assert ก่อน) When เปิด `/th/cart` Then `cart-discount` count 0 และเก็บข้อความ `cart-subtotal-label` เป็น A — มีอักษรไทย และ `latinWordsOutsideAllowList(A)` ว่าง;
+  (b) When admin สร้าง promotion โค้ดของ test (`is_automatic: false`, percentage `target_type: "order"` แบบ `e2e/core-42-cart-voucher-layout.spec.ts`) แล้วใช้กับ cart ผ่าน `POST /store/carts/:id/promotions` (token เจ้าของ cart) จน API ได้ `discount_total > 0` แล้ว reload `/th/cart`
+  Then `cart-discount` visible, ข้อความ `cart-subtotal-label` = B มีอักษรไทย, `latinWordsOutsideAllowList(B)` ว่าง และ B ≠ A, `cart-subtotal` `data-value` = `original_item_total` ของ API (±0.01) และ `cart-subtotal − cart-discount + cart-shipping = cart-total` (±0.01);
+  (c) When ไปขั้น review (`pp_system_default` + `continueToReview` แบบ AC-156) Then ข้อความ `cart-subtotal-label` ใน `cart-totals` = B;
+  (d) 375×812 `/th/cart` (cart เดียวกัน) Then `document.documentElement.scrollWidth ≤ 375`, `getBoundingClientRect().right ≤ 375` ของ `cart-subtotal-label` และ `cart-subtotal`, กล่องของทั้งสองไม่ซ้อนกัน (intersection = 0) และ `cart-subtotal` มี `getClientRects().length === 1` (บรรทัดเดียว);
+  cleanup: ลบ promotion ใน `finally` ด้วย `deleteAllThenExpectOk` (หรือ `expect.soft` แบบกฎข้อ 111d) ไม่กลบ error ของ test; evidence ≤ 5 PNG (a)–(d); AC-156 (`e2e/core-57-cart-totals.spec.ts`) และ AC-117 (`e2e/core-26-cart-dropdown-total.spec.ts`) ยังผ่านโดยไม่แก้
+
+### Non-functional (รอบ 31)
+none (แสดงผลล้วน ไม่มี request เพิ่ม)
+
+### Test plan (รอบ 31)
+| ระดับ | AC |
+|---|---|
+| unit (Vitest) | AC-159 (เขียนเคสมีส่วนลดให้ล้มบน develop ก่อน) |
+| e2e storefront | AC-159 (a)–(d) (+ AC-156, AC-117 ยังผ่าน) |
+
+### Tasks (รอบ 31)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-60 | (storefront เล็ก — Q-C8 = ก, qa #352) ป้ายแถวแรกของ `cart-totals` เป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เฉพาะเมื่อมีส่วนลด + `data-testid="cart-subtotal-label"` (กฎข้อ 118) — ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-13 (รอ PR เอกสารนี้ merge) | `src/modules/common/components/cart-totals/index.tsx`, `src/core-57-cart-totals.test.ts` (แทน assertion `:48` + เคส AC-159), e2e ใหม่ `e2e/core-60-cart-subtotal-label.spec.ts` | ~30 LOC โค้ด + unit; e2e ใหม่ ~100 LOC | AC-159 | PR เอกสารรอบ 31 (branch `docs/round-31-owner-decisions`) merge; CORE-57 ☑ #352; ไม่บล็อก release | ไม่ชน — ∥ CORE-58 (แตะ `src/lib/data/cart.ts`, `src/lib/util/*`, `e2e/core-52-checkout-guards.spec.ts`) ∥ CORE-59 (แตะ `e2e/core-4g-*`, `e2e/core-4j-*`, `e2e/core-46-*`) |
+(รอบ 31) CORE-60 ไม่ใช้ไฟล์ร่วมกับ CORE-58/CORE-59 จึงทำขนานกันได้; Q-C9 = ก ไม่มี task
+
+### Open questions (รอบ 31)
+none
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
