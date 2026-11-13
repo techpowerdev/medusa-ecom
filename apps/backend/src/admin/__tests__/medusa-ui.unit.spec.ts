@@ -707,6 +707,30 @@ describe("ตาราง e-voucher: คอลัมน์ action คงที�
   })
 })
 
+// ADM-23 (spec 08 กฎ 27, AC-28): เงื่อนไข "offset เกินกำลัง clamp" เป็น helper กลางใน lib/page-offset (codes + partners)
+// และ PartnerActions remount เมนูก่อนเปิด Drawer แบบ ProgramActions + Edit disabled ระหว่างลบ
+describe("partners: clamp ไม่กระพริบ + PartnerActions แบบ ProgramActions (spec 08 AC-28, กฎ 27, ADM-23)", () => {
+  const PARTNERS = "components/evoucher/partners-section.tsx"
+
+  it.each(["components/evoucher/codes-table.tsx", PARTNERS])("%s: ใช้ isPastLastPage ของ lib/page-offset และแสดง loading", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ isPastLastPage \} from "\.\.\/\.\.\/lib\/page-offset"/)
+    expect(src).toMatch(/const pastLastPage = isPastLastPage\(/)
+    expect(src).toMatch(/isLoading=\{isLoading \|\| pastLastPage\}/)
+  })
+
+  it("partners-section.tsx ไม่มี branch \"No partners on this page\"", () => {
+    expect(read(PARTNERS)).not.toContain("No partners on this page")
+  })
+
+  it("PartnerActions: ActionMenu key={menuKey}, remountMenu() ก่อน onEdit และ Edit disabled: removing", () => {
+    const src = read(PARTNERS)
+    expect(src).toMatch(/<ActionMenu\s+key=\{menuKey\}/)
+    expect(src).toMatch(/const \[menuKey, remountMenu\] = useReducer\(/)
+    expect(src).toMatch(/label: "Edit",[^}]*disabled: removing,[^}]*onClick: \(\) => \{\s*remountMenu\(\)\s*onEdit\(partner\)/)
+  })
+})
+
 // ADM-21a (spec 08 กฎ 25, AC-25): ตาราง e-voucher เมื่อ query รายการล้มและไม่มีข้อมูลในมือ → error ผ่าน emptyState ของ DataTable
 // (คงหัวตาราง/ปุ่มใน action) แทนข้อความ empty เดิม; 401 → throw ให้ ErrorBoundary ของ dashboard พาไป /login (กฎ 24b)
 describe("ตาราง e-voucher: สถานะ error แทน empty (spec 08 AC-25, กฎ 25, ADM-21a)", () => {

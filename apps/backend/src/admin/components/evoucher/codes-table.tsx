@@ -24,6 +24,7 @@ import {
 } from "../../lib/evoucher"
 import { codesListQuery } from "../../lib/evoucher-query"
 import { isUnauthorized } from "../../lib/fetch-error"
+import { isPastLastPage } from "../../lib/page-offset"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
@@ -116,9 +117,8 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
   }
   // กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
   const loadFailed = isError && !data
-  // กฎ 20b: มีแถว (count > 0) แต่หน้านี้ว่าง = offset เกินที่ usePageOffset กำลัง clamp (รวม placeholder ระหว่างโหลดหน้าที่ clamp แล้ว)
-  // → แสดง loading แทน empty state "Import a CSV" ที่ไม่จริง
-  const pastLastPage = !!data && data.count > 0 && data.codes.length === 0
+  // กฎ 20b/27a: offset เกินที่ usePageOffset กำลัง clamp → แสดง loading แทน empty state "Import a CSV" ที่ไม่จริง
+  const pastLastPage = isPastLastPage(data?.count, data?.codes.length)
 
   // `cell` ต้องคงที่ข้าม render: สร้างใหม่ = React mount แถวใหม่และเมนูที่เปิดอยู่ปิดเองตอน refetch
   // (usePrompt/useDate คืนฟังก์ชันใหม่ทุก render จึงไม่อยู่ใน deps ของคอลัมน์นี้ — กฎ 20a)
