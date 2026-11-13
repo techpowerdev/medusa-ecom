@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test"
+import { APIRequestContext, Page, Route } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { call, createVoucher, placeCapturedOrder, waitDelivered } from "./support/evoucher"
@@ -285,5 +285,82 @@ test.describe("ADM-16: empty state ไม่กระพริบตอน offse
       expect(await emptySeen(page)).toEqual([])
       await evidence("01-codes-offset-clamped-no-empty-flash")
     })
+  })
+})
+
+// ADM-21a (spec 08 AC-25, กฎ 25): GET codes ของหน้า pool ล้มและไม่มีข้อมูลในมือ → error ใน emptyState ของ DataTable
+// (คงหัวตาราง Codes) แทน "Import a CSV to add codes."; 401 → ErrorBoundary ของ dashboard พาไป /login
+test.describe("ADM-21a: สถานะ error ของตาราง Codes", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-21a" } })
+
+  const CODES_ROUTE = "**/admin/evoucher/pools/*/codes*"
+  const EMPTY_TEXT = "Import a CSV to add codes."
+  type Fail = (route: Route) => Promise<void>
+
+  async function openPool(page: Page, request: APIRequestContext, handle: Fail, search = "") {
+    const admin = await adminHeaders(request)
+    const { variantId } = await createVoucher(request, admin, 2)
+    const { pools } = await call(request, admin, `/admin/evoucher/pools?variant_id=${variantId}&limit=1&offset=0`)
+    await loginAdmin(page)
+    await page.route(CODES_ROUTE, (route) => (route.request().method() === "GET" ? handle(route) : route.continue()))
+    await page.goto(`${BACKEND_URL}/app/evouchers/pools/${pools[0].id}${search}`)
+  }
+
+  async function expectCodesError(page: Page) {
+    const codes = page.getByTestId("evoucher-codes")
+    await expect(page.getByTestId("evoucher-codes-error")).toBeVisible()
+    await expect(codes.getByTestId("evoucher-codes-error")).toContainText("Could not load codes")
+    await expect(codes.getByRole("heading", { name: "Codes" })).toBeVisible()
+    await expect(codes).not.toContainText(EMPTY_TEXT)
+  }
+
+  test("AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง", async ({ page, request, evidence }) => {
+    test.setTimeout(120_000)
+    await openPool(page, request, (route) =>
+      route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
+    )
+    await expectCodesError(page)
+    await evidence("04-codes-error-500")
+  })
+
+  test("AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error", async ({ page, request }) => {
+    test.setTimeout(120_000)
+    await openPool(page, request, (route) => route.abort())
+    await expectCodesError(page)
+  })
+
+  // DataTable แสดง emptyState.filtered แทน empty เมื่อมี filter ใน URL → error ต้องแทนข้อความ filtered ด้วย
+  test("AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ \"No codes match\"", async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(120_000)
+    await openPool(
+      page,
+      request,
+      (route) => route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } }),
+      "?codes_status=void"
+    )
+    await expectCodesError(page)
+    await expect(page.getByTestId("evoucher-codes")).not.toContainText("No codes match the selected status.")
+  })
+
+  test("AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login", async ({ page, request }) => {
+    test.setTimeout(120_000)
+    await openPool(page, request, (route) =>
+      route.fulfill({ status: 401, json: { type: "unauthorized", message: "Unauthorized" } })
+    )
+    // จบ test ทันทีหลังถึงหน้า login (spec 08 AC-25)
+    await page.waitForURL(/\/app\/login/)
+  })
+
+  test("AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error", async ({ page, request, evidence }) => {
+    test.setTimeout(120_000)
+    await openPool(page, request, (route) =>
+      route.fulfill({ status: 200, json: { codes: [], count: 0, offset: 0, limit: 50 } })
+    )
+    await expect(page.getByTestId("evoucher-codes")).toContainText(EMPTY_TEXT)
+    await expect(page.getByTestId("evoucher-codes-error")).toHaveCount(0)
+    await evidence("05-codes-empty")
   })
 })

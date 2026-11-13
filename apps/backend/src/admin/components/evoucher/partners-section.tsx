@@ -22,6 +22,7 @@ import {
   type PartnerFormValues,
   toPartnerFormValues,
 } from "../../lib/evoucher-partner-form"
+import { isUnauthorized } from "../../lib/fetch-error"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
@@ -138,12 +139,19 @@ export const PartnersSection = () => {
   const [count, setCount] = useState<number>()
   const offset = usePageOffset(PREFIX, PAGE_SIZE, { count })
   const query = { limit: PAGE_SIZE, offset }
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: [...evoucherKeys.partners, query],
     queryFn: () => evoucherApi.listPartners(query),
     placeholderData: keepPreviousData,
   })
   useEffect(() => setCount(data?.count), [data?.count])
+
+  // spec 08 กฎ 25 (24b): 401 → ErrorBoundary ของ dashboard พาไป /login
+  if (isUnauthorized(error)) {
+    throw error
+  }
+  // กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
+  const loadFailed = isError && !data
 
   const onSuccess = (message: string) => {
     queryClient.invalidateQueries({ queryKey: evoucherKeys.partners })
@@ -214,33 +222,37 @@ export const PartnersSection = () => {
     <Container data-testid="evoucher-partners">
       {/* spec 08 กฎ 18: `action` ของ DataTable ใส่ data-testid ไม่ได้ — e2e หาปุ่มด้วย role + ชื่อภายใน wrapper นี้ */}
       <div data-testid="evoucher-partners-table">
-        <PageOffsetGate prefix={PREFIX}>
-          <DataTable
-            data={data?.partners ?? []}
-            columns={columns}
-            getRowId={(partner) => partner.id}
-            rowCount={data?.count ?? 0}
-            isLoading={isLoading}
-            heading="Partners"
-            headingLevel="h2"
-            action={{ label: "Create partner", onClick: openCreate }}
-            prefix={PREFIX}
-            pageSize={PAGE_SIZE}
-            enableSearch={false}
-            emptyState={{
-              empty:
-                data?.count === 0
-                  ? {
-                      custom: (
-                        <div data-testid="evoucher-partners-empty">
-                          <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
-                        </div>
-                      ),
-                    }
-                  : { heading: "No partners on this page" },
-            }}
-          />
-        </PageOffsetGate>
+        {/* กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัวตาราง + ปุ่ม Create partner; testid เฉพาะตอนล้ม */}
+        <div data-testid={loadFailed ? "evoucher-partners-error" : undefined}>
+          <PageOffsetGate prefix={PREFIX}>
+            <DataTable
+              data={data?.partners ?? []}
+              columns={columns}
+              getRowId={(partner) => partner.id}
+              rowCount={data?.count ?? 0}
+              isLoading={isLoading}
+              heading="Partners"
+              headingLevel="h2"
+              action={{ label: "Create partner", onClick: openCreate }}
+              prefix={PREFIX}
+              pageSize={PAGE_SIZE}
+              enableSearch={false}
+              emptyState={{
+                empty: loadFailed
+                  ? { heading: "Could not load partners", description: error?.message }
+                  : data?.count === 0
+                    ? {
+                        custom: (
+                          <div data-testid="evoucher-partners-empty">
+                            <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
+                          </div>
+                        ),
+                      }
+                    : { heading: "No partners on this page" },
+              }}
+            />
+          </PageOffsetGate>
+        </div>
       </div>
 
       <FocusModal open={createOpen} onOpenChange={setCreateOpen}>
