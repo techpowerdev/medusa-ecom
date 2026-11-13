@@ -55,26 +55,13 @@ export const markPaidBody = (reference: string): { reference?: string } => {
   return trimmed ? { reference: trimmed } : {}
 }
 
-export type AffiliateOption = Pick<Affiliate, "id" | "name" | "email" | "status">
+// ADM-24 (spec 08 กฎ 28b): params ของ useComboboxData (q/id/limit/offset) + active และ suspended ใน request เดียว
+// เรียงชื่อฝั่ง server (order=name, tiebreak ด้วย id) → รายการเรียงชื่อข้ามหน้า ไม่เรียงซ้ำฝั่ง client; pending ไม่อยู่ในตัวเลือก
+export type AffiliateOptionParams = { q?: string; id?: string; limit?: number; offset?: number }
 
-// filter status ของ GET /admin/affiliate/affiliates รับค่าเดียว → ยิง active และ suspended แยกแล้วรวมผล (ไม่ซ้ำ id)
-export const mergeAffiliateOptions = (...lists: AffiliateOption[][]) => {
-  const byId = new Map<string, AffiliateOption>()
-  for (const affiliate of lists.flat()) {
-    if (!byId.has(affiliate.id)) {
-      byId.set(affiliate.id, affiliate)
-    }
-  }
-  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name))
-}
-
-type AffiliatePage = { affiliates: AffiliateOption[]; count: number; offset: number; limit: number }
-
-// ADM-17 (spec 08 กฎ 21): หนึ่งหน้าของ useComboboxData = active + suspended ที่ q/offset/limit เดียวกัน
-// count = รายการที่ยาวกว่า → useComboboxData ขอหน้าถัดไปจนทั้งสองรายการหมด (ไม่ข้าม ไม่ซ้ำ)
-export const mergeAffiliatePages = (active: AffiliatePage, suspended: AffiliatePage): AffiliatePage => ({
-  affiliates: mergeAffiliateOptions(active.affiliates, suspended.affiliates),
-  count: Math.max(active.count, suspended.count),
-  offset: active.offset,
-  limit: active.limit,
+export const affiliateOptionsQuery = (params: AffiliateOptionParams) => ({
+  ...params,
+  status: ["active", "suspended"] as Affiliate["status"][],
+  order: "name",
+  fields: "id,name,email,status",
 })

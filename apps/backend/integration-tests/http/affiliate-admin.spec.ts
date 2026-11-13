@@ -274,6 +274,46 @@ medusaIntegrationTestRunner({
         expect(new Set(seen).size).toEqual(created.length)
         expect([...seen].sort()).toEqual(created.map((a) => a.id).sort())
       })
+
+      // ADM-24 (spec 08 กฎ 28a, AC-29): status หลายค่า + order=name → ตัวเลือกของฟอร์ม payout เรียงชื่อข้ามหน้าด้วย request เดียว
+      it("filters by several statuses and orders by name across pages (AC-29)", async () => {
+        const make = (code: string, name: string, status: string) =>
+          service.createAffiliates({ email: `${code}@example.com`, name, code, status: status as "active" })
+        await make("p1", "Aaron", "pending")
+        const dora = await make("s1", "Dora", "suspended")
+        const bea = await make("a1", "Bea", "active")
+        await make("p2", "Cole", "pending")
+        const evan = await make("a2", "Evan", "active")
+        const cara = await make("s2", "Cara", "suspended")
+
+        const get = async (query: string) =>
+          api.get(`/admin/affiliate/affiliates?${query}`, { headers }).catch((e) => {
+            throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+          })
+
+        const pages: { id: string; name: string; status: string }[] = []
+        for (const offset of [0, 2, 4]) {
+          const res = await get(`status[]=active&status[]=suspended&order=name&limit=2&offset=${offset}`)
+          expect(res.data.count).toEqual(4)
+          pages.push(...res.data.affiliates)
+        }
+        expect(pages.map((a) => a.name)).toEqual(["Bea", "Cara", "Dora", "Evan"])
+        expect(pages.map((a) => a.id)).toEqual([bea.id, cara.id, dora.id, evan.id])
+        expect(new Set(pages.map((a) => a.status))).toEqual(new Set(["active", "suspended"]))
+
+        // รูปที่ JS SDK (qs) ส่ง: status[0]=…&status[1]=…
+        const indexed = await get("status[0]=active&status[1]=suspended&order=name")
+        expect(indexed.data.affiliates.map((a) => a.id)).toEqual([bea.id, cara.id, dora.id, evan.id])
+
+        const single = await get("status=active&order=name")
+        expect(single.data.affiliates.map((a) => a.id)).toEqual([bea.id, evan.id])
+
+        const invalid = await api
+          .get("/admin/affiliate/affiliates?status[]=foo", { headers })
+          .catch((e) => ({ status: e.response?.status, data: e.response?.data }))
+        expect(invalid.status).toEqual(400)
+        expect(invalid.data.type).toEqual("invalid_data")
+      })
     })
 
     // AF-15 (กฎ 39, AC-46): payout_info 3 ช่องแบบ strict + เลขบัญชี 10–12 หลัก (owner Q20) และ expected_status
