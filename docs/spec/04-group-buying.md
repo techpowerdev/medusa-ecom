@@ -850,6 +850,8 @@ GB-14 ☐ เริ่มได้ (∥ ทุกตัว, Q-C4 = ข) — GB-1
 e2e `group-buy-admin-detail.spec.ts`/`group-buy-admin-dates.spec.ts` ที่ดึง `/admin/products?limit=1` แก้ใน CORE-46 ของ spec 01 (กฎข้อ 104d — e2e hygiene กลุ่มเดียวกัน)
 (รอบ 21, 2026-11-04) merge แล้ว: GB-15 ☑ #285 (train #290); qa #285 O-1 (`medusa start` ตั้ง session cookie ของ admin เป็น `Secure` → login ผ่าน http ที่ไม่ใช่ localhost ไม่ติด)
 เป็นข้อกำหนดของ prod ไม่ใช่ bug ของ GB-15 → บันทึกใน spec 07 Deliverables ข้อ 11 (ไม่มี task); assertion `toHaveLength(1)` ข้าง `handle=` ของสองไฟล์ข้างบนเข้มขึ้นใน CORE-49 ของ spec 01
+(รอบ 30, 2026-11-13) GB-16 ☑ #357 (ปิดรอบ 29); ไม่เปิด task: index ของ `group_buy_membership` ที่ขึ้นต้นด้วย `status` หรือ partial `WHERE status = 'awaiting_payment'` (review #357) — มี index `(group_id, status)` อยู่แล้วและ job `group-buy-deadline`
+กรองด้วยกลุ่ม `succeeded` ผ่าน index `(status, pay_deadline_at)` ของกลุ่ม (กฎข้อ 39) → รอวัดบน production ก่อน (แนวเดียวกับ GIN index ของ spec 05 Non-functional); เปิด task เมื่อ `EXPLAIN` บน prod แสดง seq scan ของ membership ที่มีผลจริง
 
 ## Open questions
 - ~~**Q22**~~ **ตัดสินแล้ว (owner 2026-11-04 รอบ 17) = (ก)** → กฎข้อ 35c เป็นกฎปกติ (cart ไม่มี shipping method เลย → ไม่ตรวจ) ไม่มี task เพิ่ม — คำถามเดิม: (รอบ 16b, GB-14 กฎข้อ 35c) join ด้วย cart ที่มี line ต้องจัดส่งแต่**ไม่มี shipping method เลย**ควรถูกปฏิเสธด้วยไหม (แบบ `validateShippingStep` ของ Medusa):
