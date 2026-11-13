@@ -1,4 +1,4 @@
-import { APIRequestContext, Page } from "@playwright/test"
+import { APIRequestContext, Page, Route } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
@@ -238,5 +238,156 @@ test.describe("ADM-20: สถานะ error ของรายการแค�
     await expect(page.getByTestId("gb-campaigns-table")).toContainText(EMPTY_TEXT)
     await expect(page.getByTestId("gb-campaigns-error")).toHaveCount(0)
     await evidence("02-list-empty")
+  })
+})
+
+// ADM-21b (spec 08 AC-26, กฎ 25): GET groups / memberships ของหน้าแคมเปญล้มและไม่มีข้อมูลในมือ → error ใน emptyState ของ
+// DataTable (คงหัวตาราง + gb-create-pool-group) แทน "No groups yet"/"No members yet"; 401 → ErrorBoundary พาไป /login;
+// refetch ล้มขณะมีข้อมูล (กฎ 24d) → คงตารางเดิม
+test.describe("ADM-21b: สถานะ error ของตาราง Groups / Members", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-21b" } })
+
+  type Fail = (route: Route) => Promise<void>
+  const fail500: Fail = (route) =>
+    route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
+  const failAbort: Fail = (route) => route.abort()
+  const fail401: Fail = (route) => route.fulfill({ status: 401, json: { type: "unauthorized", message: "Unauthorized" } })
+
+  const GROUPS_ROUTE = "**/admin/group-buy/campaigns/*/groups*"
+  const MEMBERSHIPS_ROUTE = "**/admin/group-buy/groups/*/memberships*"
+
+  /** GET ที่ match → handle (POST ผ่านปกติ); นับจำนวน GET ที่ถูกจัดการ */
+  async function onGet(page: Page, glob: string, handle: Fail) {
+    const hits = { n: 0 }
+    await page.route(glob, (route) => {
+      if (route.request().method() !== "GET") return route.continue()
+      hits.n++
+      return handle(route)
+    })
+    return hits
+  }
+
+  /** แคมเปญ pool ที่ active (มีปุ่ม gb-create-pool-group) + pool group 1 กลุ่ม */
+  async function activePoolCampaign(request: APIRequestContext) {
+    const admin = await adminHeaders(request)
+    const id = await createCampaign(request, admin, await tshirtId(request, admin), `ADM-21b ${Date.now()}`)
+    const activate = await request.post(`${BASE}/campaigns/${id}/status`, { headers: admin, data: { status: "active" } })
+    expect(activate.status(), `activate: ${await activate.text()}`).toBe(200)
+    const group = await request.post(`${BASE}/campaigns/${id}/groups`, { headers: admin, data: { name: "Pool ADM-21b" } })
+    expect(group.status(), `create pool group: ${await group.text()}`).toBe(201)
+    return id
+  }
+
+  async function expectGroupsError(page: Page) {
+    const table = page.getByTestId("gb-groups-table")
+    await expect(page.getByTestId("gb-groups-error")).toBeVisible()
+    await expect(table.getByTestId("gb-groups-error")).toContainText("Could not load groups")
+    await expect(table).not.toContainText("No groups yet")
+    await expect(page.getByTestId("gb-create-pool-group")).toBeEnabled()
+  }
+
+  async function openMembers(page: Page, id: string) {
+    await page.goto(`${BACKEND_URL}/app/group-buying/${id}`)
+    await page.getByTestId("gb-groups-table").locator("tbody tr").first().click()
+  }
+
+  for (const [name, fail] of [
+    ["ตอบ 500", fail500],
+    ["network ล้ม (route.abort)", failAbort],
+  ] as const) {
+    test(`AC-26: GET groups ${name} → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่`, async ({
+      page,
+      request,
+      evidence,
+    }) => {
+      test.setTimeout(120_000)
+      const id = await activePoolCampaign(request)
+      await loginAdmin(page)
+      await onGet(page, GROUPS_ROUTE, fail)
+      await page.goto(`${BACKEND_URL}/app/group-buying/${id}`)
+      await expectGroupsError(page)
+      if (fail === fail500) await evidence("03-groups-error-500")
+    })
+
+    test(`AC-26: GET memberships ${name} หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet"`, async ({
+      page,
+      request,
+      evidence,
+    }) => {
+      test.setTimeout(120_000)
+      const id = await activePoolCampaign(request)
+      await loginAdmin(page)
+      await onGet(page, MEMBERSHIPS_ROUTE, fail)
+      await openMembers(page, id)
+      const table = page.getByTestId("gb-memberships-table")
+      await expect(page.getByTestId("gb-memberships-error")).toBeVisible()
+      await expect(table.getByTestId("gb-memberships-error")).toContainText("Could not load members")
+      await expect(table).not.toContainText("No members yet")
+      await expect(page.getByTestId("gb-memberships-close")).toBeEnabled()
+      if (fail === fail500) await evidence("04-members-error-500")
+    })
+  }
+
+  test("AC-26: GET groups ตอบ 401 → ErrorBoundary พาไป /app/login", async ({ page, request }) => {
+    test.setTimeout(120_000)
+    const id = await activePoolCampaign(request)
+    await loginAdmin(page)
+    await onGet(page, GROUPS_ROUTE, fail401)
+    await page.goto(`${BACKEND_URL}/app/group-buying/${id}`)
+    // จบ test ทันทีหลังถึงหน้า login (spec 08 AC-26)
+    await page.waitForURL(/\/app\/login/)
+  })
+
+  test("AC-26: GET memberships ตอบ 401 → ErrorBoundary พาไป /app/login", async ({ page, request }) => {
+    test.setTimeout(120_000)
+    const id = await activePoolCampaign(request)
+    await loginAdmin(page)
+    await onGet(page, MEMBERSHIPS_ROUTE, fail401)
+    await openMembers(page, id)
+    await page.waitForURL(/\/app\/login/)
+  })
+
+  test("AC-26: groups / memberships ตอบรายการว่าง → empty state เดิม ไม่มี testid error", async ({ page, request }) => {
+    test.setTimeout(120_000)
+    const id = await activePoolCampaign(request)
+    await loginAdmin(page)
+    // กลุ่มใหม่ยังไม่มีสมาชิก → memberships ว่างจริงจาก API
+    await openMembers(page, id)
+    await expect(page.getByTestId("gb-memberships-table")).toContainText("No members yet")
+    await expect(page.getByTestId("gb-memberships-error")).toHaveCount(0)
+    await onGet(page, GROUPS_ROUTE, (route) =>
+      route.fulfill({ status: 200, json: { groups: [], count: 0, offset: 0, limit: 20 } })
+    )
+    await page.reload()
+    await expect(page.getByTestId("gb-groups-table")).toContainText("No groups yet")
+    await expect(page.getByTestId("gb-groups-error")).toHaveCount(0)
+  })
+
+  // กฎ 24d (nit review #361): refetch เบื้องหลังล้มขณะมี data → คงแถวเดิม ไม่แสดง error
+  test("กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error", async ({
+    page,
+    request,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const id = await activePoolCampaign(request)
+    await loginAdmin(page)
+    await page.goto(`${BACKEND_URL}/app/group-buying/${id}`)
+    const rows = page.getByTestId("gb-groups-table").locator("tbody tr")
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first()).toContainText("Pool ADM-21b")
+
+    const hits = await onGet(page, GROUPS_ROUTE, fail500)
+    const post = page.waitForResponse((r) => r.request().method() === "POST" && /\/groups$/.test(r.url()))
+    await page.getByTestId("gb-create-pool-group").click()
+    expect((await post).status()).toBe(201)
+    // invalidate → refetch ล้ม (retry 1 ของ QueryClient ของ dashboard = 2 request) แล้วรอ render หลัง error
+    await expect.poll(() => hits.n, { timeout: 15_000 }).toBeGreaterThanOrEqual(2)
+    await page.waitForTimeout(1_000)
+    await expect(page.getByTestId("gb-groups-error")).toHaveCount(0)
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first()).toContainText("Pool ADM-21b")
+    await expect(page.getByTestId("gb-groups-table")).not.toContainText("Could not load groups")
+    await evidence("05-groups-refetch-fail-keeps-rows")
   })
 })

@@ -1,4 +1,4 @@
-import { APIRequestContext, Page } from "@playwright/test"
+import { APIRequestContext, Page, Route } from "@playwright/test"
 import { Client } from "pg"
 
 import { ADMIN_UI_OPTIONS, expectDatePicker, fillDatePicker, loginAdmin, rowAction } from "./support/admin"
@@ -223,5 +223,81 @@ test("AC-21: GET รายชื่อ affiliate ล้ม → error ใต้�
     await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
     // react-query ของ dashboard retry ก่อนแสดง error
     await expect(page.getByTestId("affiliate-payout-options-error")).toContainText(/\S/, { timeout: 30_000 })
+  })
+})
+
+// ADM-21b (spec 08 AC-26, กฎ 25): GET รายการของแท็บ affiliate ล้มและไม่มีข้อมูลในมือ → affiliate-list-error ใน emptyState ของ
+// DataTable (คงหัวตาราง + ปุ่มสร้างใน action) แทนข้อความ empty เดิม; 401 → ErrorBoundary ของ dashboard พาไป /login
+test.describe("ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-21b" } })
+
+  type Fail = (route: Route) => Promise<void>
+  const fail500: Fail = (route) =>
+    route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
+  const failAbort: Fail = (route) => route.abort()
+
+  // แท็บ → resource ของ GET (`/admin/affiliate/<resource>`), heading, ข้อความ empty เดิม, wrapper + ปุ่มสร้างใน action (กฎ 18)
+  const TABS = [
+    { tab: "programs", resource: "programs", heading: "Programs", empty: "No programs yet", create: ["affiliate-programs-table", "Create program"], shot: "01-programs-error-500" },
+    { tab: "affiliates", resource: "affiliates", heading: "Affiliates", empty: "No affiliates yet" },
+    { tab: "ledger", resource: "entries", heading: "Ledger", empty: "No commission entries yet" },
+    { tab: "payouts", resource: "payouts", heading: "Payouts", empty: "No payouts yet", create: ["affiliate-payouts-table", "Create payout"], shot: "02-payouts-error-500" },
+  ] as const
+
+  const onGet = (page: Page, resource: string, handle: Fail) =>
+    page.route(`**/admin/affiliate/${resource}?*`, (route) =>
+      route.request().method() === "GET" ? handle(route) : route.continue()
+    )
+
+  const openTab = async (page: Page, tab: string) => {
+    await page.goto(`${BACKEND_URL}/app/affiliate`)
+    await page.getByTestId(`affiliate-admin-tab-${tab}`).click()
+  }
+
+  for (const t of TABS) {
+    for (const [name, fail] of [
+      ["ตอบ 500", fail500],
+      ["network ล้ม (route.abort)", failAbort],
+    ] as const) {
+      test(`AC-26: แท็บ ${t.tab} GET ${t.resource} ${name} → affiliate-list-error แทน "${t.empty}"`, async ({ page, evidence }) => {
+        await loginAdmin(page)
+        await onGet(page, t.resource, fail)
+        await openTab(page, t.tab)
+        const error = page.getByTestId("affiliate-list-error")
+        await expect(error).toBeVisible()
+        await expect(error).toContainText(`Could not load ${t.resource}`)
+        await expect(error.getByRole("heading", { name: t.heading })).toBeVisible()
+        await expect(page.locator("body")).not.toContainText(t.empty)
+        if ("create" in t) {
+          const [wrapper, label] = t.create
+          await expect(page.getByTestId(wrapper).getByRole("button", { name: label })).toBeEnabled()
+        }
+        if (fail === fail500 && "shot" in t) await evidence(t.shot)
+      })
+    }
+  }
+
+  test("AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login", async ({ page }) => {
+    await loginAdmin(page)
+    await onGet(page, "payouts", (route) =>
+      route.fulfill({ status: 401, json: { type: "unauthorized", message: "Unauthorized" } })
+    )
+    await openTab(page, "payouts")
+    // จบ test ทันทีหลังถึงหน้า login (spec 08 AC-26)
+    await page.waitForURL(/\/app\/login/)
+  })
+
+  test("AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error", async ({ page }) => {
+    await loginAdmin(page)
+    for (const t of TABS) {
+      await onGet(page, t.resource, (route) =>
+        route.fulfill({ status: 200, json: { [t.resource]: [], count: 0, offset: 0, limit: 20 } })
+      )
+    }
+    for (const t of TABS) {
+      await openTab(page, t.tab)
+      await expect(page.locator("body")).toContainText(t.empty)
+      await expect(page.getByTestId("affiliate-list-error")).toHaveCount(0)
+    }
   })
 })
