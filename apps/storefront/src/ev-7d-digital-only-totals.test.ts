@@ -55,7 +55,7 @@ describe("CartTotals (กฎข้อ 28a)", () => {
     const CartTotals = (await import("@modules/common/components/cart-totals")).default
     return renderToStaticMarkup(
       createElement(CartTotals, {
-        totals: { currency_code: "thb", item_subtotal: 500, total: 500, tax_total: 32.71, items },
+        totals: { currency_code: "thb", original_item_total: 500, total: 500, tax_total: 32.71, items },
       })
     )
   }
@@ -64,7 +64,7 @@ describe("CartTotals (กฎข้อ 28a)", () => {
     const html = await render([voucher, voucher])
     expect(html).not.toContain("ค่าจัดส่ง")
     expect(html).not.toContain('data-testid="cart-shipping"')
-    expect(html).toContain("ไม่รวมภาษี")
+    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
     expect(html).toContain('data-testid="cart-taxes"')
   })
 
@@ -75,28 +75,29 @@ describe("CartTotals (กฎข้อ 28a)", () => {
   ])("%s → ยังมีแถวค่าจัดส่ง", async (_, items) => {
     const html = await render(items)
     expect(html).toContain('data-testid="cart-shipping"')
-    expect(html).toContain("ไม่รวมค่าจัดส่งและภาษี")
+    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
   })
 })
 
 describe("CartTotals เมื่อ cart digital-only ยังมีค่าจัดส่งเก็บจริง (review #320)", () => {
   // voucher + t-shirt เลือก Standard แล้วลบ t-shirt: Medusa 2.22.1 ไม่ลบ shipping method — ยอดรวมยังรวมค่าจัดส่ง
-  it("shipping_subtotal > 0 → คงแถวค่าจัดส่ง ไม่ให้ยอดรวมมีเงินที่ไม่มีแถวอธิบาย", async () => {
+  // CORE-57 (กฎข้อ 115c): เงื่อนไขและค่าของแถวใช้ original_shipping_total (รวม VAT = ราคา option)
+  it("original_shipping_total > 0 → คงแถวค่าจัดส่ง ไม่ให้ยอดรวมมีเงินที่ไม่มีแถวอธิบาย", async () => {
     const CartTotals = (await import("@modules/common/components/cart-totals")).default
     const html = renderToStaticMarkup(
       createElement(CartTotals, {
         totals: {
           currency_code: "thb",
-          item_subtotal: 467.29,
-          shipping_subtotal: 9.35,
+          original_item_total: 500,
+          original_shipping_total: 10,
           total: 510,
           items: [voucher],
         },
       })
     )
     expect(html).toContain('data-testid="cart-shipping"')
-    expect(html).toContain('data-value="9.35"')
-    expect(html).toContain("ไม่รวมค่าจัดส่งและภาษี")
+    expect(html).toMatch(/data-testid="cart-shipping"[^>]*data-value="10"/)
+    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
   })
 })
 

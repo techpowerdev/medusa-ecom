@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # OPS-10 (spec 07 AC-14): test ของ tools/ci/classify-changes.sh — 30 เคส (25 โหมด stdin + 5 rename โหมด git range)
+# OPS-22 (spec 07 AC-37): +5 เคส `docs/ops/**` นับเป็นโค้ด (unit test อ่านไฟล์เหล่านี้) — รวม 35 เคส
 # รันใน job `lint-typecheck` ของ ci.yml; แก้กติกาใน script แล้วต้องแก้เคสที่นี่ด้วย (ไม่งั้น test ล้ม)
 # CLASSIFY=<path> ใช้ทดสอบ script อื่น (positive control: ชี้ไปที่สำเนาที่แก้กติกาแล้ว test ต้องล้ม)
 set -uo pipefail
@@ -60,13 +61,19 @@ stdin_case "prefix trap apps/storefront-legacy" true/true apps/storefront-legacy
 check "diff ว่าง (กันพลาด)" true/true "$(printf '' | result "$classify")"
 stdin_case "path มีช่องว่างใน docs/" false/false "docs/design/a b.md"
 
+# --- OPS-22 (AC-37): docs/ops/** เป็นโค้ด (4 เคส stdin) ---
+stdin_case "docs/ops/ (runbook ที่ unit test อ่าน)" true/true docs/ops/production.md
+stdin_case "docs/ops/ + spec" true/true docs/ops/production.md docs/spec/01.md
+stdin_case "prefix trap docs/evidence/ops/ ยังเป็นเอกสาร" false/false docs/evidence/ops/OPS-22-tests.txt
+stdin_case "prefix trap docs/ops-notes/ ยังเป็นเอกสาร" false/false docs/ops-notes/a.md
+
 # --- โหมด git range กับ rename (5 เคส): --no-renames ต้องนับทั้ง path เดิมและ path ใหม่ ---
 repo=$(mktemp -d "${TMPDIR:-/tmp}/ops10-classify.XXXXXX")
 trap 'rm -rf "$repo"' EXIT
 g() { git -C "$repo" -c user.name=ops10 -c user.email=ops10@example.com -c commit.gpgsign=false "$@" >/dev/null; }
 g init -q
-mkdir -p "$repo/apps/backend/src" "$repo/apps/storefront/src" "$repo/docs"
-for f in apps/backend/src/a.ts apps/backend/src/b.ts apps/backend/src/c.ts docs/d.md apps/storefront/src/e.ts; do
+mkdir -p "$repo/apps/backend/src" "$repo/apps/storefront/src" "$repo/docs/ops"
+for f in apps/backend/src/a.ts apps/backend/src/b.ts apps/backend/src/c.ts docs/d.md apps/storefront/src/e.ts docs/ops/a.md; do
   printf 'line one of %s\nline two\nline three\n' "$(basename "$f")" > "$repo/$f"
 done
 g add -A
@@ -87,8 +94,9 @@ rename_case "rename backend → storefront" true/true apps/backend/src/b.ts apps
 rename_case "rename .ts → .md" true/true apps/backend/src/c.ts apps/backend/src/c.md
 rename_case "rename docs → docs" false/false docs/d.md docs/archive/d.md
 rename_case "rename storefront → storefront" true/false apps/storefront/src/e.ts apps/storefront/src/lib/e.ts
+rename_case "rename docs/ops → docs/archive (OPS-22)" true/true docs/ops/a.md docs/archive/a.md
 
 total=$((pass + fail))
 echo "classify-changes: $pass/$total passed"
-[ "$total" -eq 30 ] || { echo "FAIL - จำนวนเคสต้องเป็น 30 (ได้ $total)"; exit 1; }
+[ "$total" -eq 35 ] || { echo "FAIL - จำนวนเคสต้องเป็น 35 (ได้ $total)"; exit 1; }
 [ "$fail" -eq 0 ]
