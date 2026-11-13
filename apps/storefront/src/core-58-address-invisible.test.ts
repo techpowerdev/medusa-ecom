@@ -9,13 +9,13 @@ import { trimInvisible } from "@lib/util/trim-invisible"
 // (b) `normalize` ของข้อความ error เหลือที่เดียว (รวม `.trim()` ของ group-join-error)
 describe("trimInvisible (กฎข้อ 116a)", () => {
   it.each([
-    ["​", ""],
-    [" ​﻿ ", ""],
-    ["⁠", ""],
-    ["‌‍", ""],
-    ["​วัฒนา​", "วัฒนา"],
+    ["\u200B", ""],
+    [" \u200B\uFEFF ", ""],
+    ["\u2060", ""],
+    ["\u200C\u200D", ""],
+    ["\u200Bวัฒนา\u200B", "วัฒนา"],
     ["  วัฒนา ", "วัฒนา"],
-    ["วัฒ​นา", "วัฒ​นา"],
+    ["วัฒ\u200Bนา", "วัฒ\u200Bนา"],
   ])("%j → %j", (input, expected) => {
     expect(trimInvisible(input)).toBe(expected)
   })
