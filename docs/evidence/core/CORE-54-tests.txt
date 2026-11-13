@@ -1,0 +1,35 @@
+CORE-54 (spec 01 กฎข้อ 112, AC-149) — e2e test hygiene: longCodeBody throw เมื่อหาไม่เจอ, ตัวตรวจอาร์กิวเมนต์ createActiveAffiliate จับคู่ปีกกา
+ฐาน: origin/develop 3bf5b87b, Node v22.23.3, รันใน apps/storefront ด้วย npx (exit code อ่านจากคำสั่งโดยตรง ไม่ผ่าน pipe)
+
+=== RED: npx playwright test --project=unit e2e/core-46-e2e-hygiene.unit.spec.ts (exit=1, เพิ่ม test ก่อนแก้โค้ด) ===
+    [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:145:5 › AC-149 (กฎข้อ 112b): ตัวตรวจอาร์กิวเมนต์ createActiveAffiliate ปฏิเสธตัวที่ 4 แม้ตัวสุดท้ายเป็น object 
+    [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:151:5 › AC-149 (กฎข้อ 112a): longCodeBody throw เมื่อหา longCode ไม่เจอ ไม่ผ่านเงียบ 
+  12 passed (1.1s)
+  2 failed
+  สาเหตุ: 112b — VALID_AFFILIATE_ARGS.test("request, admin, { a: 1 }, { b: 2 }") Expected: false Received: true
+          112a — ReferenceError: longCodeBody is not defined
+
+=== GREEN: npx playwright test --project=unit e2e/core-46-e2e-hygiene.unit.spec.ts (exit=0) ===
+  ✓   1 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:27:5 › AC-140: ทุกไฟล์ใน e2e/**/*.ts ไม่มี add-product-button click() ตามด้วย toBeEnabled() (ยกเว้น comment กฎข้อ 101a) (206ms)
+  ✓   2 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:41:5 › AC-140 (กฎข้อ 104a): checkoutToPayment ใส่ตะกร้าด้วย addToCartFromPdp (1ms)
+  ✓   3 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:47:5 › AC-140 (กฎข้อ 104b): comment เรื่อง timeout ใน server-action.ts อ้าง docs ของ playwright.dev (6ms)
+  ✓   4 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:51:5 › AC-140 (กฎข้อ 104c): core-19a และ core-24 ไม่อ่าน headers()["next-action"] เอง แต่ใช้ isAddToCartBody (2ms)
+  ✓   5 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:59:5 › AC-140 (กฎข้อ 104d): e2e ไม่มี admin/products?limit=1 และสามไฟล์ใช้ handle= พร้อม assert จำนวน 1 (12ms)
+  ✓   6 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:71:5 › AC-140/AC-144 (กฎข้อ 107b): playwright.config.ts ไม่ตั้ง timeout/expect.timeout/actionTimeout/navigationTimeout (2ms)
+  ✓   7 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:75:5 › AC-144 (กฎข้อ 107b): regex ของ config ตรวจเฉพาะการตั้งค่า — comment ที่มีคำว่า timeout ไม่ทำให้ล้ม (2ms)
+  ✓   8 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:82:5 › AC-140: ไฟล์ที่แตะไม่มี waitForTimeout / force (3ms)
+  ✓   9 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:98:5 › AC-144 (กฎข้อ 107e): core-25, core-26, fs19 รอ action ด้วย waitForServerAction(page, isAddToCartBody) ไม่อ่าน headers()["next-action"] เอง (1ms)
+  ✓  10 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:128:5 › AC-146 (กฎข้อ 109a): DESKTOP_BASELINE ค่าตาราง /cart อยู่ที่ support/cart-layout.ts ไฟล์เดียว และสองไฟล์ cart import จากที่นั่น (7ms)
+  ✓  11 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:137:5 › AC-146 (กฎข้อ 109b): ทุกการเรียก createActiveAffiliate มีอาร์กิวเมนต์ไม่เกิน 3 ตัว และตัวที่ 3 เป็น options object (26ms)
+  ✓  12 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:157:5 › AC-149 (กฎข้อ 112b): ตัวตรวจอาร์กิวเมนต์ createActiveAffiliate ปฏิเสธตัวที่ 4 แม้ตัวสุดท้ายเป็น object (1ms)
+  ✓  13 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:163:5 › AC-149 (กฎข้อ 112a): longCodeBody throw เมื่อหา longCode ไม่เจอ ไม่ผ่านเงียบ (1ms)
+  ✓  14 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:169:5 › AC-146 (กฎข้อ 109c,d): longCode ไม่สุ่มตัวอักษร รูปแบบรหัสคงที่ และ describe ของ AC-52 ตั้ง evidenceTarget เป็น AF-20 (2ms)
+  14 passed (1.1s)
+
+=== Playwright project unit ทั้งหมด (exit=0) ===
+  105 passed (2.0s)
+
+=== npx tsc --noEmit (exit=0) ===
+
+=== pnpm lint && pnpm typecheck (root) ===
+lint: 0 errors (30 warnings เดิมใน storefront ไม่เกี่ยวกับไฟล์นี้); typecheck: backend + storefront Done
