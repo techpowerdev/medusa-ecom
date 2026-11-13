@@ -8,6 +8,7 @@
 spec 01 CORE-58 (ที่อยู่ zero-width + `normalize` ที่เดียว) ∥ CORE-59 (e2e hygiene) · spec 05 AF-23 (test-only) · spec 07 OPS-25 (comment CI) · spec 08 ADM-23 ∥ ADM-24 → ADM-25 (← ADM-23) ∥ ADM-26 (← ADM-24; ยืนยันก่อน) ·
 **คำตัดสินของ owner 2026-11-13 (รอบ 31, เอกสารล้วน)**: spec 01 Q-C8 = ก → **CORE-60** (ป้ายแถวแรกของ `cart-totals` เป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เฉพาะเมื่อมีส่วนลด, dropdown คงเดิม — กฎข้อ 118, AC-159; เริ่มได้เมื่อ PR เอกสารรอบ 31 merge) ·
 Q-C9 = ก → ภาคผนวก 2026-11-13 ของ ADR-014 ("VAT" = กลุ่ม "หน่วย/รหัส" ของข้อ 4; `ALLOWED`/`eslint-disable` คงเดิม ไม่มีโค้ด) · ไม่มีคำถามค้างของ owner · ไม่มี ADR ใหม่ ·
+**คำตัดสินของ owner 2026-11-14 (เอกสารล้วน)**: ADM-18 = ก — Esc ก่อน URL commit ทำ filter ของ `evoucher-codes` หาย (ต้นเหตุ `@medusajs/ui` 4.2.8) ยอมรับใน v1, ไม่เปิด issue upstream; ADM-18 เป็น test-only (AC-22 รอ URL commit ก่อนกด Esc — spec 08 กฎ 22) · แก้ข้อเท็จจริง spec 07 AC-40 (unit test ที่อ่าน `docs/ops/**` รันเมื่อ `backend=true`) ·
 (ประวัติ) **ปิดรอบ 29 (2026-11-13, เอกสารล้วน)**: owner สั่งทำต่อ 2026-11-13 ("ตามที่เสนอ") → merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-56 #351, CORE-57 #352, CORE-52 #353,
 OPS-22 #354 (รวมแก้ `CLAUDE.md` 2 จุดที่ owner อนุมัติ), CORE-54 #355, OPS-24 #356, GB-16 #357, CORE-53 #358, ADM-16 #359, ADM-17 #360, ADM-21a #361, ADM-21b #362 (ADM-16/17 ทำเพราะเป็น dependency ของ ADM-21a/21b) + chore #350 (เลิก track `next-env.d.ts` ของ storefront) ·
 **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 (qa ยืนยันบน build production ก่อน — spec 08 กฎ 26, AC-27) ·
