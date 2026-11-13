@@ -57,20 +57,6 @@ export const markPaidBody = (reference: string): { reference?: string } => {
 
 export type AffiliateOption = Pick<Affiliate, "id" | "name" | "email" | "status">
 
-// ADM-9 (spec 08 กฎ 11): route ไม่มี `q` และ limit สูงสุด 200 — ดึงครบทุกหน้าแล้วให้ Combobox ค้นหาฝั่ง client ไม่ตัดรายการเงียบ
-export const fetchAllAffiliates = async <T>(
-  fetchPage: (offset: number, limit: number) => Promise<{ affiliates: T[]; count: number }>,
-): Promise<T[]> => {
-  const all: T[] = []
-  for (;;) {
-    const { affiliates, count } = await fetchPage(all.length, 200)
-    all.push(...affiliates)
-    if (!affiliates.length || all.length >= count) {
-      return all
-    }
-  }
-}
-
 // filter status ของ GET /admin/affiliate/affiliates รับค่าเดียว → ยิง active และ suspended แยกแล้วรวมผล (ไม่ซ้ำ id)
 export const mergeAffiliateOptions = (...lists: AffiliateOption[][]) => {
   const byId = new Map<string, AffiliateOption>()
@@ -81,3 +67,14 @@ export const mergeAffiliateOptions = (...lists: AffiliateOption[][]) => {
   }
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
+
+type AffiliatePage = { affiliates: AffiliateOption[]; count: number; offset: number; limit: number }
+
+// ADM-17 (spec 08 กฎ 21): หนึ่งหน้าของ useComboboxData = active + suspended ที่ q/offset/limit เดียวกัน
+// count = รายการที่ยาวกว่า → useComboboxData ขอหน้าถัดไปจนทั้งสองรายการหมด (ไม่ข้าม ไม่ซ้ำ)
+export const mergeAffiliatePages = (active: AffiliatePage, suspended: AffiliatePage): AffiliatePage => ({
+  affiliates: mergeAffiliateOptions(active.affiliates, suspended.affiliates),
+  count: Math.max(active.count, suspended.count),
+  offset: active.offset,
+  limit: active.limit,
+})

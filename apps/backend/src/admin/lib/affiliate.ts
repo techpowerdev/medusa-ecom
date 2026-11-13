@@ -103,12 +103,14 @@ export const updateProgram = (id: string, body: Partial<ProgramBody>) =>
 export const deleteProgram = (id: string) =>
   sdk.client.fetch(`/admin/affiliate/programs/${id}`, { method: "DELETE" })
 
-// AF-12c (กฎ 37c): สร้าง payout + mark paid ผ่าน admin API ของ AF-5 (ไม่แก้ backend)
-export const listAffiliatesByStatus = (status: "active" | "suspended", offset: number, limit: number) =>
-  sdk.client.fetch<ListResponse<"affiliates", Pick<Affiliate, "id" | "name" | "email" | "status">>>(
-    "/admin/affiliate/affiliates",
-    { query: { status, limit, offset, fields: "id,name,email,status" } },
-  )
+// AF-12c (กฎ 37c): สร้าง payout + mark paid ผ่าน admin API ของ AF-5
+// ADM-17 (spec 08 กฎ 21): params จาก useComboboxData (q/id/limit/offset) ส่งต่อให้ route ตรงๆ
+export type AffiliateOptionParams = { q?: string; id?: string; limit?: number; offset?: number }
+
+export const listAffiliatesByStatus = (status: "active" | "suspended", params: AffiliateOptionParams) =>
+  sdk.client.fetch<
+    ListResponse<"affiliates", Pick<Affiliate, "id" | "name" | "email" | "status">> & { offset: number; limit: number }
+  >("/admin/affiliate/affiliates", { query: { ...params, status, fields: "id,name,email,status" } })
 
 export const createPayout = (body: { affiliate_id: string; period_from: Date; period_to: Date }) =>
   sdk.client.fetch<{ payout: Payout }>("/admin/affiliate/payouts", { method: "POST", body })
