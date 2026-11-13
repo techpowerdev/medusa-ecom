@@ -48,7 +48,11 @@ export default async function groupBuyDeadlineJob(container: MedusaContainer) {
   }
 
   // GB-5: ตรวจซ้ำใต้ lock ของ membership ใน workflow (ข้าม order ที่มีเงินเข้าแล้ว)
-  const expiredFilters = { status: "awaiting_payment" as const, group: { pay_deadline_at: { $lte: now } } }
+  // GB-16 (กฎข้อ 39): pay_deadline_at มีเฉพาะกลุ่ม succeeded — ใส่ status ให้ใช้ index (status, pay_deadline_at)
+  const expiredFilters = {
+    status: "awaiting_payment" as const,
+    group: { status: "succeeded" as const, pay_deadline_at: { $lte: now } },
+  }
   const [, expiredCount] = await service.listAndCountGroupBuyMemberships(expiredFilters, { select: ["id"], take: 1 })
   const expired = await service.listGroupBuyMemberships(expiredFilters, {
     select: ["id"],
