@@ -1,0 +1,145 @@
+# GB-16 — ผลทดสอบ (2026-11-13) spec 04 กฎข้อ 39 / AC-59
+
+## RED (ก่อนแก้ src/jobs/group-buy-deadline.ts)
+FAIL src/jobs/__tests__/group-buy-deadline.unit.spec.ts
+  group-buy-deadline job — expired membership filter
+    ✕ filters by group status succeeded and pay_deadline_at <= now (8 ms)
+  ● group-buy-deadline job — expired membership filter › filters by group status succeeded and pay_deadline_at <= now
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+    - Expected
+    + Received
+      Object {
+        "group": Object {
+          "pay_deadline_at": Object {
+    -       "$lte": Any<Date>,
+    +       "$lte": 2026-11-13T05:12:03.590Z,
+          },
+    -     "status": "succeeded",
+        },
+        "status": "awaiting_payment",
+      },
+      {"select": ["id"], "take": 1},
+    Number of calls: 1
+      41 |       group: { status: "succeeded", pay_deadline_at: { $lte: expect.any(Date) } },
+      42 |     }
+    > 43 |     expect(service.listAndCountGroupBuyMemberships).toHaveBeenCalledWith(expected, expect.anything())
+         |                                                     ^
+      44 |     expect(service.listGroupBuyMemberships).toHaveBeenCalledWith(expected, expect.anything())
+      45 |     const now = service.listGroupBuyMemberships.mock.calls[0][0].group.pay_deadline_at.$lte as Date
+      46 |     expect(now.getTime()).toBeGreaterThanOrEqual(before)
+      at Object.toHaveBeenCalledWith (src/jobs/__tests__/group-buy-deadline.unit.spec.ts:43:53)
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+
+## GREEN unit: pnpm --filter backend test:unit
+Test Suites: 106 passed, 106 total
+Tests:       1265 passed, 1265 total
+(รวม src/jobs/__tests__/group-buy-deadline.unit.spec.ts 1 passed)
+
+## integration (ไม่แก้ assertion): group-buy-payment.spec.ts + group-buy-outcome.spec.ts (Redis db 2)
+PASS integration-tests/http/group-buy-payment.spec.ts (148.814 s)
+PASS integration-tests/http/group-buy-outcome.spec.ts (145.451 s)
+Test Suites: 2 passed, 2 total
+Tests:       20 passed, 20 total
+
+## lint + typecheck: pnpm lint && pnpm typecheck → exit 0 (storefront lint 0 errors, 30 warnings เดิม)
+
+## EXPLAIN ANALYZE (หลักฐาน ไม่ใช่เกณฑ์ผ่าน) — DB ชั่วคราว schema จริงของ group_buy_group/group_buy_membership
+# ข้อมูลสังเคราะห์: กลุ่ม 50k (succeeded 15k, failed 30k, open 5k), membership 250k (awaiting_payment 2,143)
+# SQL ประมาณรูปที่ MikroORM สร้าง (LEFT JOIN group_buy_group) เวลาวัดมี noise เพราะเครื่องรัน integration พร้อมกัน — ดู plan เป็นหลัก
+=== filter: g.pay_deadline_at <= now() ===
+                                                    QUERY PLAN                                                     
+-------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=169.361..177.840 rows=50 loops=1)
+   ->  Nested Loop (actual time=169.359..177.833 rows=50 loops=1)
+         ->  Gather Merge (actual time=169.081..174.669 rows=50 loops=1)
+               Workers Planned: 2
+               Workers Launched: 2
+               ->  Sort (actual time=150.345..150.367 rows=365 loops=3)
+                     Sort Key: m.joined_at
+                     Sort Method: quicksort  Memory: 105kB
+                     Worker 0:  Sort Method: quicksort  Memory: 51kB
+                     Worker 1:  Sort Method: quicksort  Memory: 55kB
+                     ->  Parallel Seq Scan on group_buy_membership m (actual time=0.569..148.325 rows=714 loops=3)
+                           Filter: ((deleted_at IS NULL) AND (status = 'awaiting_payment'::text))
+                           Rows Removed by Filter: 82619
+         ->  Index Scan using group_buy_group_pkey on group_buy_group g (actual time=0.063..0.063 rows=1 loops=50)
+               Index Cond: (id = m.group_id)
+               Filter: ((deleted_at IS NULL) AND (pay_deadline_at <= now()))
+ Planning Time: 16.911 ms
+ Execution Time: 177.923 ms
+(18 rows)
+
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate (actual time=72.869..75.321 rows=1 loops=1)
+   ->  Gather (actual time=72.711..75.317 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate (actual time=60.766..60.768 rows=1 loops=3)
+               ->  Hash Join (actual time=48.791..60.716 rows=714 loops=3)
+                     Hash Cond: (m.group_id = g.id)
+                     ->  Parallel Seq Scan on group_buy_membership m (actual time=0.016..11.625 rows=714 loops=3)
+                           Filter: ((deleted_at IS NULL) AND (status = 'awaiting_payment'::text))
+                           Rows Removed by Filter: 82619
+                     ->  Hash (actual time=48.428..48.429 rows=15000 loops=3)
+                           Buckets: 16384  Batches: 1  Memory Usage: 697kB
+                           ->  Seq Scan on group_buy_group g (actual time=0.014..44.513 rows=15000 loops=3)
+                                 Filter: ((deleted_at IS NULL) AND (pay_deadline_at <= now()))
+                                 Rows Removed by Filter: 35000
+ Planning Time: 2.871 ms
+ Execution Time: 75.444 ms
+(17 rows)
+
+=== filter: g.status = 'succeeded' and g.pay_deadline_at <= now() ===
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=32.762..38.364 rows=50 loops=1)
+   ->  Gather Merge (actual time=32.760..38.358 rows=50 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Sort (actual time=27.952..27.956 rows=50 loops=3)
+               Sort Key: m.joined_at
+               Sort Method: top-N heapsort  Memory: 28kB
+               Worker 0:  Sort Method: top-N heapsort  Memory: 29kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 30kB
+               ->  Hash Join (actual time=13.428..27.737 rows=714 loops=3)
+                     Hash Cond: (m.group_id = g.id)
+                     ->  Parallel Seq Scan on group_buy_membership m (actual time=0.025..13.778 rows=714 loops=3)
+                           Filter: ((deleted_at IS NULL) AND (status = 'awaiting_payment'::text))
+                           Rows Removed by Filter: 82619
+                     ->  Hash (actual time=13.331..13.332 rows=15000 loops=3)
+                           Buckets: 16384 (originally 8192)  Batches: 1 (originally 1)  Memory Usage: 697kB
+                           ->  Bitmap Heap Scan on group_buy_group g (actual time=6.133..9.701 rows=15000 loops=3)
+                                 Recheck Cond: ((status = 'succeeded'::text) AND (pay_deadline_at <= now()) AND (deleted_at IS NULL))
+                                 Heap Blocks: exact=758
+                                 ->  Bitmap Index Scan on "IDX_group_buy_group_status_pay_deadline_at" (actual time=6.035..6.035 rows=15000 loops=3)
+                                       Index Cond: ((status = 'succeeded'::text) AND (pay_deadline_at <= now()))
+ Planning Time: 1.574 ms
+ Execution Time: 38.496 ms
+(23 rows)
+
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate (actual time=97.838..102.086 rows=1 loops=1)
+   ->  Gather (actual time=97.690..102.081 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate (actual time=81.944..81.946 rows=1 loops=3)
+               ->  Hash Join (actual time=37.057..81.867 rows=714 loops=3)
+                     Hash Cond: (m.group_id = g.id)
+                     ->  Parallel Seq Scan on group_buy_membership m (actual time=0.029..43.392 rows=714 loops=3)
+                           Filter: ((deleted_at IS NULL) AND (status = 'awaiting_payment'::text))
+                           Rows Removed by Filter: 82619
+                     ->  Hash (actual time=36.772..36.773 rows=15000 loops=3)
+                           Buckets: 16384 (originally 8192)  Batches: 1 (originally 1)  Memory Usage: 697kB
+                           ->  Bitmap Heap Scan on group_buy_group g (actual time=5.388..25.978 rows=15000 loops=3)
+                                 Recheck Cond: ((status = 'succeeded'::text) AND (pay_deadline_at <= now()) AND (deleted_at IS NULL))
+                                 Heap Blocks: exact=758
+                                 ->  Bitmap Index Scan on "IDX_group_buy_group_status_pay_deadline_at" (actual time=5.320..5.320 rows=15000 loops=3)
+                                       Index Cond: ((status = 'succeeded'::text) AND (pay_deadline_at <= now()))
+ Planning Time: 4.824 ms
+ Execution Time: 102.220 ms
+(19 rows)
+

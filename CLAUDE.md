@@ -125,7 +125,7 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - merge ทีละตัว: ก่อน merge แต่ละ PR ต้อง merge `origin/develop` เข้า branch ของ PR (sync) แล้วรอ CI ของ PR นั้นเขียว
   — CI ไม่รันบน push ไป `develop` แล้ว (ทดสอบ tree เดียวกับ PR ที่ sync แล้วซ้ำ) ด่าน "develop เขียว" จึงคือ PR ที่ sync
   กับ develop ล่าสุดและ CI เขียว; ถ้าสิ่งที่ develop เปลี่ยนนับจาก merge-base เป็นเอกสารล้วนตามนิยามของ
-  `tools/ci/classify-changes.sh` (`code=false`) ไม่ต้อง sync ใหม่
+  `tools/ci/classify-changes.sh` (`code=false`; `docs/ops/**` ไม่นับเป็นเอกสาร) ไม่ต้อง sync ใหม่
 - PR สองตัวที่เขียวแยกกันอาจพังเมื่อรวมกัน (เช่น test สร้าง cart แบบ guest × PR ที่บังคับ login) → หลัง merge ตัวหนึ่ง
   ให้ merge `origin/develop` เข้า PR ถัดไปแล้วรอ CI ใหม่บน base ล่าสุด โดยเฉพาะเมื่อ PR ที่เพิ่ง merge เปลี่ยนกติกากลาง
   (auth, middleware, error handler, hook) — `gh pr merge` ไม่ re-run CI ให้
@@ -147,7 +147,7 @@ pnpm --filter storefront build && pnpm --filter storefront start
   ชุดเต็มและ cancel run ก่อนหน้า
 - `develop` แดง (ตามนิยามด้านบน) → สั่ง builder ทุกตัวหยุด push จน hotfix merge (PR ที่ push ช่วงนั้นแดงเพราะ develop ไม่ใช่เพราะตัวเอง)
 - session หลัก commit `REPORT.md` รวมกับการ sync develop ใน push เดียว
-- CI ข้าม job หนักให้อัตโนมัติ: PR เอกสารล้วนรันแค่ `lint-typecheck`; PR ที่แก้แค่ `apps/storefront/**` ข้าม `backend-tests`/`docker-worker-mode`
+- CI ข้าม job หนักให้อัตโนมัติ: PR เอกสารล้วนรันแค่ `lint-typecheck` (ยกเว้น `docs/ops/**` ซึ่งนับเป็นโค้ด backend เพราะ unit test อ่านไฟล์เหล่านี้); PR ที่แก้แค่ `apps/storefront/**` ข้าม `backend-tests`/`docker-worker-mode`
   (กติกาใน `tools/ci/classify-changes.sh`) push ไป `main` รันครบเสมอ
 - PR ที่แก้หลัง APPROVE (หรือหลัง REQUEST CHANGES) ต้อง re-review สั้นๆ ก่อน merge; หลัง rebase ใช้ `git range-diff`
 

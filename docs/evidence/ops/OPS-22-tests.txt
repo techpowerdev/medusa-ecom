@@ -1,0 +1,83 @@
+# OPS-22 (spec 07 AC-37) — tools/ci/classify-changes.test.sh
+# commit ฐาน: 3bf5b87b วันที่ 2026-11-13
+
+## RED: test ใหม่ + script เดิม (ก่อนแก้ classify-changes.sh)
+ok   - spec ใน docs/ → false/false
+ok   - README.md ที่ root → false/false
+ok   - .claude/agents/*.md → false/false
+ok   - CLAUDE.md + ROADMAP → false/false
+ok   - png/txt ใน docs/evidence/ → false/false
+ok   - .md ใน apps/backend → false/false
+ok   - backend → true/true
+ok   - เอกสาร + backend → true/true
+ok   - storefront ล้วน → true/false
+ok   - storefront + เอกสาร → true/false
+ok   - package.json ของ storefront → true/false
+ok   - storefront + backend → true/true
+ok   - ไฟล์ CI (.github/workflows) → true/true
+ok   - PR template (.md ใน .github) → false/false
+ok   - lockfile → true/true
+ok   - package.json ที่ root → true/true
+ok   - pnpm-workspace.yaml → true/true
+ok   - .nvmrc → true/true
+ok   - docker-compose.prod.yml → true/true
+ok   - tools/ops → true/true
+ok   - eslint.config.ts ที่ root → true/true
+ok   - .mdx ไม่ใช่ .md → true/true
+ok   - prefix trap apps/storefront-legacy → true/true
+ok   - diff ว่าง (กันพลาด) → true/true
+ok   - path มีช่องว่างใน docs/ → false/false
+FAIL - docs/ops/ (runbook ที่ unit test อ่าน) → ได้ false/false คาด true/true
+FAIL - docs/ops/ + spec → ได้ false/false คาด true/true
+ok   - prefix trap docs/evidence/ops/ ยังเป็นเอกสาร → false/false
+ok   - prefix trap docs/ops-notes/ ยังเป็นเอกสาร → false/false
+ok   - rename backend → docs/ → true/true
+ok   - rename backend → storefront → true/true
+ok   - rename .ts → .md → true/true
+ok   - rename docs → docs → false/false
+ok   - rename storefront → storefront → true/false
+FAIL - rename docs/ops → docs/archive (OPS-22) → ได้ false/false คาด true/true
+classify-changes: 32/35 passed
+exit=1
+
+## GREEN: หลังแก้
+ok   - spec ใน docs/ → false/false
+ok   - README.md ที่ root → false/false
+ok   - .claude/agents/*.md → false/false
+ok   - CLAUDE.md + ROADMAP → false/false
+ok   - png/txt ใน docs/evidence/ → false/false
+ok   - .md ใน apps/backend → false/false
+ok   - backend → true/true
+ok   - เอกสาร + backend → true/true
+ok   - storefront ล้วน → true/false
+ok   - storefront + เอกสาร → true/false
+ok   - package.json ของ storefront → true/false
+ok   - storefront + backend → true/true
+ok   - ไฟล์ CI (.github/workflows) → true/true
+ok   - PR template (.md ใน .github) → false/false
+ok   - lockfile → true/true
+ok   - package.json ที่ root → true/true
+ok   - pnpm-workspace.yaml → true/true
+ok   - .nvmrc → true/true
+ok   - docker-compose.prod.yml → true/true
+ok   - tools/ops → true/true
+ok   - eslint.config.ts ที่ root → true/true
+ok   - .mdx ไม่ใช่ .md → true/true
+ok   - prefix trap apps/storefront-legacy → true/true
+ok   - diff ว่าง (กันพลาด) → true/true
+ok   - path มีช่องว่างใน docs/ → false/false
+ok   - docs/ops/ (runbook ที่ unit test อ่าน) → true/true
+ok   - docs/ops/ + spec → true/true
+ok   - prefix trap docs/evidence/ops/ ยังเป็นเอกสาร → false/false
+ok   - prefix trap docs/ops-notes/ ยังเป็นเอกสาร → false/false
+ok   - rename backend → docs/ → true/true
+ok   - rename backend → storefront → true/true
+ok   - rename .ts → .md → true/true
+ok   - rename docs → docs → false/false
+ok   - rename storefront → storefront → true/false
+ok   - rename docs/ops → docs/archive (OPS-22) → true/true
+classify-changes: 35/35 passed
+exit=0
+
+## pnpm lint && pnpm typecheck
+exit=0 (lint ผ่าน, apps/backend + apps/storefront typecheck: Done)
