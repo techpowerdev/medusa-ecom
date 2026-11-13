@@ -2287,7 +2287,7 @@ TDD: เขียน unit/e2e ของ AC-156 ให้ล้มบน develop 
 ### Tasks (รอบ 28)
 | ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|----|---------|------|
-| CORE-57 | (storefront เล็ก — Q-C7 = ก) `cart-totals` ใช้ฐานรวม VAT ทั้งชุด ค่าจัดส่งตรงกับราคา option (กฎข้อ 115) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `src/modules/common/components/cart-totals/index.tsx`, `src/core-57-cart-totals.test.ts` (ใหม่), `src/ev-7d-digital-only-totals.test.ts`, `e2e/core-26-cart-dropdown-total.spec.ts` (step `/th/cart`), e2e ใหม่ `e2e/core-57-cart-totals.spec.ts` | ~80 LOC | AC-156 | none (PR spec รอบ 28 merge); ไม่บล็อก release v0.1.0 | ∥ CORE-56 (คนละ app) |
+| CORE-57 | (storefront เล็ก — Q-C7 = ก) `cart-totals` ใช้ฐานรวม VAT ทั้งชุด ค่าจัดส่งตรงกับราคา option (กฎข้อ 115) + `e2e/support/thai-text.ts` (`ALLOWED` = `VAT` ให้ `expectThai` ผ่านกับป้ายของกฎข้อ 115a) — ☑ (owner สั่งทำ 2026-11-13; PR ของ CORE-57) | `src/modules/common/components/cart-totals/index.tsx`, `src/core-57-cart-totals.test.ts` (ใหม่), `src/ev-7d-digital-only-totals.test.ts`, `e2e/core-26-cart-dropdown-total.spec.ts` (step `/th/cart`), e2e ใหม่ `e2e/core-57-cart-totals.spec.ts` | ~80 LOC | AC-156 | none (PR spec รอบ 28 merge); ไม่บล็อก release v0.1.0 | ∥ CORE-56 (คนละ app) |
 
 ### Open questions (รอบ 28)
 none
