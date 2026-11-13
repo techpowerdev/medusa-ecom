@@ -1,0 +1,40 @@
+# AF-23 (spec 05 กฎ 47, AC-55) — integration http: apps/backend/integration-tests/http/affiliate-auth.spec.ts
+# คำสั่ง: pnpm --filter backend test:integration:http integration-tests/http/affiliate-auth.spec.ts
+
+## Red (mutation ชั่วคราว ไม่ commit): validator รับ email + route ผูก app_metadata.affiliate_id แล้วคืน 400 'Unrecognized fields: 'email'' โดยไม่สร้างแถว affiliate
+## assertion เดิม (400, ข้อความ, ไม่มีแถว affiliate) ผ่านหมด — ล้มที่ assertion ใหม่ของ AC-55 เท่านั้น
+FAIL integration-tests/http/affiliate-auth.spec.ts (10.748 s)
+      ✓ registers an affiliate as pending without creating a customer (432 ms)
+      ✓ logs in at /auth/affiliate/emailpass and reads /affiliate/me (505 ms)
+      ✓ returns has_payout_info for payout_info {"bank_name": "x"} as true without payout_info (AC-39) (281 ms)
+      ✓ returns has_payout_info for payout_info null as false without payout_info (AC-39) (257 ms)
+      ✓ returns has_payout_info for payout_info {} as false without payout_info (AC-39) (287 ms)
+      ✓ rejects registering twice with the same auth identity (272 ms)
+      ✓ rejects a duplicate affiliate code (292 ms)
+      ✓ rejects a reserved affiliate code and accepts a similar non-reserved code (AC-53) (208 ms)
+      ✕ rejects an email field in the register body and creates no affiliate (AC-15) (215 ms)
+      ✓ requires authentication to register an affiliate (156 ms)
+      ✓ returns 401 on /affiliate/me without a token (131 ms)
+      ✓ returns 401 on /affiliate/me for a customer token (267 ms)
+      ✓ does not let a customer token register as an affiliate (246 ms)
+    Expected value: "aff_mutation"
+    Received array: [undefined, null]
+      at Object.toContain (integration-tests/http/affiliate-auth.spec.ts:160:35)
+Tests:       1 failed, 12 passed, 13 total
+
+## Green (โค้ดจริง หลังคืน mutation) — positive control: เคส 'registers an affiliate as pending...' (listAuthIdentities ด้วย app_metadata.affiliate_id) ยังผ่าน
+PASS integration-tests/http/affiliate-auth.spec.ts (18.984 s)
+      ✓ registers an affiliate as pending without creating a customer (637 ms)
+      ✓ logs in at /auth/affiliate/emailpass and reads /affiliate/me (728 ms)
+      ✓ returns has_payout_info for payout_info {"bank_name": "x"} as true without payout_info (AC-39) (336 ms)
+      ✓ returns has_payout_info for payout_info null as false without payout_info (AC-39) (332 ms)
+      ✓ returns has_payout_info for payout_info {} as false without payout_info (AC-39) (312 ms)
+      ✓ rejects registering twice with the same auth identity (310 ms)
+      ✓ rejects a duplicate affiliate code (424 ms)
+      ✓ rejects a reserved affiliate code and accepts a similar non-reserved code (AC-53) (308 ms)
+      ✓ rejects an email field in the register body and creates no affiliate (AC-15) (283 ms)
+      ✓ requires authentication to register an affiliate (160 ms)
+      ✓ returns 401 on /affiliate/me without a token (178 ms)
+      ✓ returns 401 on /affiliate/me for a customer token (393 ms)
+      ✓ does not let a customer token register as an affiliate (363 ms)
+Tests:       13 passed, 13 total
