@@ -403,3 +403,63 @@ test.describe("ADM-21b: สถานะ error ของตาราง affiliate
     }
   })
 })
+
+// ADM-26 (spec 08 AC-31, กฎ 30): Escape ขณะ popover ของ Combobox เปิดใน FocusModal → ปิดเฉพาะ popover (modal + ค่าที่กรอกคงอยู่);
+// Escape ครั้งถัดไปปิด modal ตามเดิม — option ของ Combobox หาด้วย role (ข้อยกเว้นของ testid)
+test.describe("ADM-26: Escape ของ Combobox ใน FocusModal", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-26" } })
+
+  const escapeClosesOnlyPopover = async (page: Page, combobox: string, date: string, value: string) => {
+    const dialog = page.getByRole("dialog")
+    await fillDatePicker(page.getByTestId(date), value)
+    await page.getByTestId(combobox).click()
+    await expect(page.getByRole("listbox")).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(page.getByRole("listbox")).toBeHidden()
+    await expect(dialog).toBeVisible()
+    await expectDatePicker(page.getByTestId(date), value)
+    await page.keyboard.press("Escape")
+    await expect(dialog).toBeHidden()
+  }
+
+  test("AC-31: ฟอร์ม payout — Escape ครั้งแรกปิดแค่ listbox ของ affiliate, ครั้งที่สองปิด modal", async ({ page, request, step }) => {
+    test.setTimeout(120_000)
+    await adminHeaders(request)
+    const tag = `adm26${Date.now()}`
+    await sql(
+      `insert into affiliate (id, email, name, code, status, created_at, updated_at)
+       values ($1, $2, $3, $4, 'active', now(), now())`,
+      [`aff_${tag}`, `${tag}@example.com`, `ADM26 ${tag}`, tag],
+    )
+    try {
+      await step("เปิดฟอร์ม payout กรอก From แล้วเปิด/ปิด combobox ด้วย Escape", async () => {
+        await openAffiliatePage(page)
+        await page.getByTestId("affiliate-admin-tab-payouts").click()
+        await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
+        await escapeClosesOnlyPopover(page, "affiliate-payout-field-affiliate_id", "affiliate-payout-field-period_from", "2026-03-05T09:15")
+      })
+    } finally {
+      await sql(`delete from affiliate where id = $1`, [`aff_${tag}`])
+    }
+  })
+
+  test("AC-31: ฟอร์ม program — Escape ครั้งแรกปิดแค่ listbox ของ scope collection, ครั้งที่สองปิด modal", async ({ page, request, step }) => {
+    test.setTimeout(120_000)
+    await adminHeaders(request)
+    const tag = `adm26${Date.now()}`
+    await sql(
+      `insert into product_collection (id, title, handle, created_at, updated_at) values ($1, $2, $3, now(), now())`,
+      [`pcol_${tag}`, `ADM26 ${tag}`, tag],
+    )
+    try {
+      await step("เปิดฟอร์ม program ปิด all กรอก starts_at แล้วเปิด/ปิด combobox ด้วย Escape", async () => {
+        await openAffiliatePage(page)
+        await page.getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" }).click()
+        await page.getByTestId("affiliate-program-scope-all").click()
+        await escapeClosesOnlyPopover(page, "affiliate-program-field-collection_ids", "affiliate-program-field-starts_at", "2026-12-01T08:30")
+      })
+    } finally {
+      await sql(`delete from product_collection where id = $1`, [`pcol_${tag}`])
+    }
+  })
+})
