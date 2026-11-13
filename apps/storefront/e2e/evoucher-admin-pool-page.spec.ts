@@ -364,3 +364,63 @@ test.describe("ADM-21a: สถานะ error ของตาราง Codes", (
     await evidence("05-codes-empty")
   })
 })
+
+// ADM-18 (spec 08 AC-22, กฎ 22): เลือก filter สถานะขณะ loader ของหน้า pool ถูกหน่วง 1000ms (router revalidate loader ทุกครั้ง
+// ที่ search เปลี่ยน) รอจน URL มีค่า filter แล้วจึงกด Escape → ค่าต้องคงอยู่ใน URL และ request /codes ล่าสุด
+// ทำทั้งจากหน้าแรกและหน้า 2 (ทางที่ usePageOffset ต้องลบ codes_offset)
+// ไม่ทดสอบการกด Esc ก่อน URL commit: filter หายเพราะ DataTableFilter.onOpenChange ของ @medusajs/ui — ข้อจำกัดที่ยอมรับใน v1
+test.describe("ADM-18: filter + Escape ระหว่าง loader หน่วง", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-18" } })
+
+  const STATUS = "void"
+  // DataTable ของ dashboard เก็บค่า filter ใน URL เป็น JSON (`codes_status=%22void%22`)
+  const urlStatus = (page: Page) => new URL(page.url()).searchParams.get("codes_status")
+
+  for (const search of ["", "?codes_offset=50"]) {
+    test(`AC-22: เลือก status=${STATUS} รอ URL แล้ว Escape (เปิดที่ ${search || "หน้าแรก"}) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด`, async ({
+      page,
+      request,
+    }) => {
+      test.setTimeout(120_000)
+      const admin = await adminHeaders(request)
+      const { variantId } = await createVoucher(request, admin, 60)
+      const { pools } = await call(request, admin, `/admin/evoucher/pools?variant_id=${variantId}&limit=1&offset=0`)
+      const poolId: string = pools[0].id
+      const codes = page.getByTestId("evoucher-codes")
+
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/evouchers/pools/${poolId}${search}`)
+      await expect(codes.locator("tbody tr")).toHaveCount(search ? 10 : 50)
+
+      const statuses: (string | null)[] = []
+      page.on("request", (req) => {
+        const url = new URL(req.url())
+        if (url.pathname === `/admin/evoucher/pools/${poolId}/codes`) statuses.push(url.searchParams.get("status"))
+      })
+      await page.route(
+        (url) => url.pathname === `/admin/evoucher/pools/${poolId}`,
+        async (route) => {
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+          await route.continue()
+        }
+      )
+
+      const option = page.getByRole("listitem").filter({ hasText: new RegExp(`^${STATUS}$`) })
+      await codes.locator('button[aria-haspopup="menu"]').first().click()
+      await page.getByRole("menuitem", { name: "Status" }).click()
+      await option.click()
+      await expect.poll(() => urlStatus(page)).toBe(JSON.stringify(STATUS))
+      await page.keyboard.press("Escape")
+
+      await expect(option).toHaveCount(0)
+      await expect.poll(() => urlStatus(page)).toBe(JSON.stringify(STATUS))
+      await expect(page).not.toHaveURL(/codes_offset=/)
+      await expect.poll(() => statuses.at(-1)).toBe(STATUS)
+      await expect(codes).toContainText("No codes match the selected status.")
+      // หลัง loader ที่หน่วงเสร็จแล้ว filter ยังไม่หลุด (ไม่มี request ใหม่ที่ไม่มี status)
+      await page.waitForTimeout(1_500)
+      expect(urlStatus(page)).toBe(JSON.stringify(STATUS))
+      expect(statuses.at(-1)).toBe(STATUS)
+    })
+  }
+})
