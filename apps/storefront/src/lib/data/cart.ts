@@ -484,36 +484,22 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
 
     // EV-7c (spec 02 กฎข้อ 24b): cart digital-only กรอกเฉพาะที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี แล้วใช้เป็น
     // shipping_address ด้วย เพื่อให้ Tax module ของ Medusa คำนวณ VAT จากที่อยู่ — ข้ามขั้น delivery
-    if (digitalOnly) {
-      const address = billingAddressFrom(formData)
-      await updateCart({
-        email: formData.get("email"),
-        billing_address: address,
-        shipping_address: address,
-      } as HttpTypes.StoreUpdateCart)
-    } else {
-      const data = {
-        shipping_address: {
-          first_name: formData.get("shipping_address.first_name"),
-          last_name: formData.get("shipping_address.last_name"),
-          address_1: formData.get("shipping_address.address_1"),
-          address_2: "",
-          company: formData.get("shipping_address.company"),
-          postal_code: formData.get("shipping_address.postal_code"),
-          city: formData.get("shipping_address.city"),
-          country_code: formData.get("shipping_address.country_code"),
-          province: formData.get("shipping_address.province"),
-          phone: formData.get("shipping_address.phone"),
-        },
-        email: formData.get("email"),
-      } as any
+    const shippingAddress = digitalOnly ? null : addressFrom(formData, "shipping_address")
+    const billingAddress =
+      shippingAddress && formData.get("same_as_billing") === "on"
+        ? shippingAddress
+        : addressFrom(formData, "billing_address")
 
-      const sameAsBilling = formData.get("same_as_billing")
-      if (sameAsBilling === "on") data.billing_address = data.shipping_address
-
-      if (sameAsBilling !== "on") data.billing_address = billingAddressFrom(formData)
-      await updateCart(data)
+    // CORE-52 (กฎข้อ 110b): ช่องบังคับที่เป็นช่องว่างล้วนผ่าน `required` ของ browser ได้ — ไม่บันทึกทับ cart
+    if ([shippingAddress, billingAddress].some((address) => address && missingRequired(address))) {
+      return MISSING_ADDRESS_MESSAGE
     }
+
+    await updateCart({
+      email: formData.get("email"),
+      shipping_address: shippingAddress ?? billingAddress,
+      billing_address: billingAddress,
+    } as HttpTypes.StoreUpdateCart)
   } catch (e: unknown) {
     // CORE-4e (กฎข้อ 55): message ของ Medusa เป็นอังกฤษ — แสดงข้อความไทย
     return friendlyErrorMessage(e, "บันทึกที่อยู่ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง")
@@ -526,18 +512,28 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   )
 }
 
-function billingAddressFrom(formData: FormData) {
+const REQUIRED_ADDRESS_FIELDS = ["first_name", "last_name", "address_1", "postal_code", "city"] as const
+const MISSING_ADDRESS_MESSAGE =
+  "กรุณากรอกชื่อ นามสกุล ที่อยู่ รหัสไปรษณีย์ และเขต/อำเภอให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)"
+
+const missingRequired = (address: HttpTypes.StoreAddAddress) =>
+  REQUIRED_ADDRESS_FIELDS.some((field) => !address[field])
+
+function addressFrom(formData: FormData, prefix: "shipping_address" | "billing_address") {
+  const field = (name: string) => formData.get(`${prefix}.${name}`)
+  // CORE-52 (กฎข้อ 110b): trim ช่องบังคับ — ว่างหลัง trim = ยังไม่ได้กรอก
+  const required = (name: (typeof REQUIRED_ADDRESS_FIELDS)[number]) => String(field(name) ?? "").trim()
   return {
-    first_name: formData.get("billing_address.first_name"),
-    last_name: formData.get("billing_address.last_name"),
-    address_1: formData.get("billing_address.address_1"),
+    first_name: required("first_name"),
+    last_name: required("last_name"),
+    address_1: required("address_1"),
     address_2: "",
-    company: formData.get("billing_address.company"),
-    postal_code: formData.get("billing_address.postal_code"),
-    city: formData.get("billing_address.city"),
-    country_code: formData.get("billing_address.country_code"),
-    province: formData.get("billing_address.province"),
-    phone: formData.get("billing_address.phone"),
+    company: field("company"),
+    postal_code: required("postal_code"),
+    city: required("city"),
+    country_code: field("country_code"),
+    province: field("province"),
+    phone: field("phone"),
   } as HttpTypes.StoreAddAddress
 }
 
@@ -552,6 +548,14 @@ export async function syncCartAffiliate(
   await syncCartAffiliateToken(cartId, cartMetadata, {
     ...(await getAuthHeaders()),
   })
+}
+
+// Medusa 2.22.1 `validateCartItemsStep` (core-flows/dist/cart/steps/validate-cart-items.js) ตอบ 400 ข้อความคงที่นี้
+// `FetchError` ของ js-sdk ไม่มี code จึงจับคู่ข้อความ (แบบ `insufficient-inventory.ts`)
+const EMPTY_CART_COMPLETION = "cannot complete a cart with no items"
+const isEmptyCartCompletion = (error: unknown) => {
+  const { status, message } = (error ?? {}) as { status?: unknown; message?: unknown }
+  return status === 400 && typeof message === "string" && message.replace(/\.$/, "").toLowerCase() === EMPTY_CART_COMPLETION
 }
 
 const PLACE_ORDER_CONFLICTS = ["FLASH_SOLD_OUT", "FLASH_LIMIT_EXCEEDED", "PROMOTION_NOT_COMBINABLE"] as const
@@ -590,6 +594,12 @@ export async function placeOrder(
   try {
     cartRes = await sdk.store.cart.complete(id, {}, headers)
   } catch (error) {
+    // CORE-52 (กฎข้อ 110a): ตะกร้าถูกล้างจากอีกแท็บ — Medusa ไม่สร้าง order; พาไปหน้าตะกร้าแทนข้อความ error
+    if (isEmptyCartCompletion(error)) {
+      revalidateTag(await getCacheTag("carts"), { expire: 0 })
+      const cartCountry = safeCountryCode(countryCode)
+      redirect(`${cartCountry ? `/${cartCountry}` : ""}/cart`)
+    }
     // FS-15 (spec 03 กฎข้อ 20c) / CORE-4i-b (กฎข้อ 72): 409 ที่รู้จักคืนเป็น code — UI แปลงเป็นข้อความไทยด้วย actionErrorMessage
     return actionFailure(error, PLACE_ORDER_CONFLICTS)
   }

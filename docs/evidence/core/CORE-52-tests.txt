@@ -1,0 +1,173 @@
+CORE-52 (spec 01 กฎข้อ 110, AC-147) — ผล test
+base: origin/develop 3bf5b87b; Medusa 2.22.1; storefront prod build (next build + next start :8152); backend medusa develop :9152 (DB medusa_core52)
+
+== RED: unit (ก่อนแก้) ==
+     × ที่อยู่จัดส่ง first_name = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 80ms
+     × ที่อยู่จัดส่ง last_name = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 1ms
+     × ที่อยู่จัดส่ง address_1 = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 1ms
+     × ที่อยู่จัดส่ง postal_code = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 0ms
+     × ที่อยู่จัดส่ง city = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 1ms
+     × ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) first_name = "\t " → ไม่เรียก updateCart 0ms
+     × ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) last_name = "\t " → ไม่เรียก updateCart 0ms
+     × ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) address_1 = "\t " → ไม่เรียก updateCart 0ms
+     × ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) postal_code = "\t " → ไม่เรียก updateCart 1ms
+     × ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) city = "\t " → ไม่เรียก updateCart 0ms
+     × digital-only first_name = " " → ไม่เรียก updateCart 0ms
+     × digital-only last_name = " " → ไม่เรียก updateCart 0ms
+     × digital-only address_1 = " " → ไม่เรียก updateCart 1ms
+     × digital-only postal_code = " " → ไม่เรียก updateCart 0ms
+     × digital-only city = " " → ไม่เรียก updateCart 0ms
+     × ช่องบังคับมีช่องว่างหน้า/หลัง → ส่งค่าที่ trim แล้ว 1ms
+     × → redirect /<countryCode>/cart 5ms
+     × country ใน URL ไม่ผ่าน safeCountryCode → /cart ภายในร้าน 1ms
+     × items = [] → redirect /th/cart 12ms
+     × ไม่มี items → redirect /th/cart 29ms
+     × voucher ล้วน (shipping_methods = []) → ไม่ render 40ms
+     × voucher ล้วน (ไม่มี shipping_methods) → ไม่ render 1ms
+     × ไม่มี eslint-disable 1ms
+     × คงค่า value ที่ควบคุมอยู่ ไม่กลับไปตัวเลือกแรก 87ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 24 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  2 failed (2)
+      Tests  24 failed | 6 passed (30)
+   1 AssertionError: expected '  วัฒนา  ' to be 'วัฒนา' // Object.is equality
+   1 AssertionError: expected '<div><h2 class="font-semibold text-2x…' to be '' // Object.is equality
+   2 AssertionError: expected 'REDIRECT /th/checkout?step=delivery' to match /[฀-๿]/
+   1 AssertionError: expected 'REDIRECT /th/checkout?step=payment' to match /[฀-๿]/
+   1 AssertionError: expected 'import { HttpTypes } from "@medusajs/…' not to match /eslint-disable/
+   1 AssertionError: expected 'sg' to be 'th' // Object.is equality
+   2 AssertionError: promise resolved "{ error: 'failed' }" instead of rejecting
+   2 AssertionError: promise resolved "{ …(8) }" instead of rejecting
+
+== RED: unit fresh read ของหน้า checkout/cart (เพิ่มหลังพบ e2e reload ล้มจาก data cache) ==
+     × อ่าน cart แบบ fresh (ไม่ใช้ data cache)
+     × หลัง redirect จาก checkout แสดงตะกร้าว่างจริง ไม่ใช่ cart เดิมจาก data cache
+AssertionError: expected "vi.fn()" to be called with arguments: [ undefined, undefined, …(1) ]
+
+== RED: e2e core-52 รอบแรก (โค้ดแก้แล้ว แต่หน้า checkout ยังอ่าน cart แบบ force-cache) ==
+  ✘   1 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800) (7.9s)
+  ✓   2 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800) (1.9s)
+  ✘   3 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (6.2s)
+  ✓   4 [chromium] › e2e/core-52-checkout-guards.spec.ts:176:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (1.5s)
+  ✘   5 [chromium] › e2e/core-52-checkout-guards.spec.ts:210:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800) (7.1s)
+  ✘   6 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812) (7.9s)
+  ✓   7 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812) (2.7s)
+  ✘   8 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (6.1s)
+  ✓   9 [chromium] › e2e/core-52-checkout-guards.spec.ts:176:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (1.4s)
+  ✘  10 [chromium] › e2e/core-52-checkout-guards.spec.ts:210:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812) (6.8s)
+    Expected pattern: /\/th\/cart$/
+    Received string:  "http://localhost:8152/th/checkout?step=review"
+    Expected pattern: /\/th\/cart$/
+    Received string:  "http://localhost:8152/th/checkout?step=review"
+  6 failed
+  4 passed (51.9s)
+(test เขต/อำเภอ shipping และ voucher order ล้มรอบนี้เพราะ precondition ของ test เอง — shipping_address.country_code ถูก Medusa ตั้งเป็น th ตอนสร้าง cart และหน้า order details ไม่มี payment-details-heading — แก้ที่ test)
+
+== RED: e2e select ประเทศ (ย้อน country-select เป็นของ develop ชั่วคราว) ==
+  ✓  1 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (1.4s)
+  ✘  2 [chromium] › e2e/core-52-checkout-guards.spec.ts:175:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (6.2s)
+  ✓  3 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (1.5s)
+  ✘  4 [chromium] › e2e/core-52-checkout-guards.spec.ts:175:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (6.5s)
+    Expected: "th"
+    Received: ""
+    Expected: "th"
+    Received: ""
+  2 failed
+  2 passed (16.9s)
+
+== GREEN: unit ใหม่ (vitest --reporter=verbose) ==
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่จัดส่ง first_name = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 17ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่จัดส่ง last_name = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่จัดส่ง address_1 = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่จัดส่ง postal_code = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่จัดส่ง city = "   " → ข้อความไทย ไม่เรียก updateCart ไม่ redirect 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) first_name = "\t " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) last_name = "\t " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) address_1 = "\t " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) postal_code = "\t " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ที่อยู่ใบเสร็จ (ไม่ใช้ที่อยู่เดียวกัน) city = "\t " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > digital-only first_name = " " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > digital-only last_name = " " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > digital-only address_1 = " " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > digital-only postal_code = " " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > digital-only city = " " → ไม่เรียก updateCart 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > ช่องบังคับมีช่องว่างหน้า/หลัง → ส่งค่าที่ trim แล้ว 0ms
+ ✓ src/core-52-checkout-guards.test.ts > setAddresses: ช่องบังคับที่เป็นช่องว่างล้วน (กฎข้อ 110b) > digital-only ที่อยู่ครบ → ยังบันทึกและไปขั้น payment 0ms
+ ✓ src/core-52-checkout-guards.test.ts > placeOrder บน cart ที่ไม่มี item (กฎข้อ 110a) > → redirect /<countryCode>/cart 1ms
+ ✓ src/core-52-checkout-guards.test.ts > placeOrder บน cart ที่ไม่มี item (กฎข้อ 110a) > country ใน URL ไม่ผ่าน safeCountryCode → /cart ภายในร้าน 0ms
+ ✓ src/core-52-checkout-guards.test.ts > placeOrder บน cart ที่ไม่มี item (กฎข้อ 110a) > 400 อื่น → ยังคืน { error: "failed" } 3ms
+ ✓ src/core-52-checkout-guards.test.ts > หน้า /checkout ของ cart ที่ไม่มี item (กฎข้อ 110a) > items = [] → redirect /th/cart 7ms
+ ✓ src/core-52-checkout-guards.test.ts > หน้า /checkout ของ cart ที่ไม่มี item (กฎข้อ 110a) > ไม่มี items → redirect /th/cart 1ms
+ ✓ src/core-52-checkout-guards.test.ts > หน้า /checkout ของ cart ที่ไม่มี item (กฎข้อ 110a) > มี item → render หน้า checkout 1ms
+ ✓ src/core-52-checkout-guards.test.ts > หน้า /checkout ของ cart ที่ไม่มี item (กฎข้อ 110a) > อ่าน cart แบบ fresh (ไม่ใช้ data cache) 1ms
+ ✓ src/core-52-checkout-guards.test.ts > หน้า /cart อ่าน cart แบบ fresh (กฎข้อ 110a) > หลัง redirect จาก checkout แสดงตะกร้าว่างจริง ไม่ใช่ cart เดิมจาก data cache 1ms
+ ✓ src/core-52-checkout-guards.test.ts > ShippingDetails ของ order ที่ไม่มี shipping_methods (กฎข้อ 110c) > voucher ล้วน (shipping_methods = []) → ไม่ render 6ms
+ ✓ src/core-52-checkout-guards.test.ts > ShippingDetails ของ order ที่ไม่มี shipping_methods (กฎข้อ 110c) > voucher ล้วน (ไม่มี shipping_methods) → ไม่ render 0ms
+ ✓ src/core-52-checkout-guards.test.ts > ShippingDetails ของ order ที่ไม่มี shipping_methods (กฎข้อ 110c) > มี shipping method → ยังมี shipping-details-heading 14ms
+ ✓ src/core-52-checkout-guards.test.ts > shipping-address ไม่มี eslint-disable (กฎข้อ 110e) > ไม่มี eslint-disable 0ms
+ ✓ src/core-52-address-form-state.test.ts > CountrySelect หลัง form.reset() (กฎข้อ 110d) > คงค่า value ที่ควบคุมอยู่ ไม่กลับไปตัวเลือกแรก 48ms
+ ✓ src/core-52-address-form-state.test.ts > ShippingAddress sync จากที่อยู่ใน cart (กฎข้อ 110e, 73b) > ที่อยู่ที่บันทึกเปลี่ยน → ฟอร์มแสดงค่าใหม่ 93ms
+ ✓ src/core-52-address-form-state.test.ts > ShippingAddress sync จากที่อยู่ใน cart (กฎข้อ 110e, 73b) > cart ไม่มีอีเมล → ใช้อีเมลของลูกค้า 4ms
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+
+== GREEN: unit ทั้งหมดของ storefront ==
+ Test Files  96 passed (96)
+      Tests  1128 passed (1128)
+
+== GREEN: e2e core-52 (E2E_SAVE_EVIDENCE=1) ==
+  ✓   1 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800) (2.3s)
+  ✓   2 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800) (2.9s)
+  ✓   3 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (2.4s)
+  ✓   4 [chromium] › e2e/core-52-checkout-guards.spec.ts:175:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (1.3s)
+  ✓   5 [chromium] › e2e/core-52-checkout-guards.spec.ts:210:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800) (2.2s)
+  ✓   6 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812) (1.9s)
+  ✓   7 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812) (1.6s)
+  ✓   8 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (1.0s)
+  ✓   9 [chromium] › e2e/core-52-checkout-guards.spec.ts:175:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (1.1s)
+  ✓  10 [chromium] › e2e/core-52-checkout-guards.spec.ts:210:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812) (2.3s)
+  10 passed (19.8s)
+
+== GREEN: e2e checkout ที่เกี่ยวข้อง (regression รวม AC-42 ev-7d, AC-111 core-4j) ==
+  ✓   1 [chromium] › e2e/core-19b-continue-to-review.spec.ts:22:5 › AC-64: กด Continue to review ครั้งเดียว 20 รอบ (cart ใหม่ทุกรอบ) → step=review ภายใน 10 วินาที (25.6s)
+  -   2 [chromium] › e2e/core-19b-continue-to-review.spec.ts:73:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว
+  ✓   3 [chromium] › e2e/core-29-restore-cart.spec.ts:142:5 › AC-122: ลบ JWT → login ใหม่ได้ตะกร้าเดิม; cart ที่ complete แล้วไม่ถูกกู้; key อื่นใน metadata ยังอยู่ (4.5s)
+  ✓   4 [chromium] › e2e/core-29-restore-cart.spec.ts:192:5 › AC-122: active_cart_id ของ A ชี้ cart ของ B → login สำเร็จ ไม่มี cookie cart และ cart ของ B ยังเป็นของ B (1.1s)
+  ✓   5 [chromium] › e2e/core-29-restore-cart.spec.ts:217:5 › AC-122: browser มี cookie cart D ของ A อยู่แล้วตอน login → cookie ยังเป็น D (ไม่ทับด้วย active_cart_id) (1.2s)
+  ✓   6 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px) (952ms)
+  ✓   7 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px) (923ms)
+  ✓   8 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว (5.7s)
+  ✓   9 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280 (3.7s)
+  ✓  10 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280 (1.5s)
+  ✓  11 [chromium] › e2e/core-41-checkout-first-step.spec.ts:41:5 › AC-135 cart t-shirt ไม่มีที่อยู่: เปิด step=payment/review ตรงๆ → step=address ฟอร์มที่อยู่เปิด (1.3s)
+  ✓  12 [chromium] › e2e/core-41-checkout-first-step.spec.ts:65:5 › AC-135 cart digital-only ไม่มีที่อยู่: เปิด step=review ตรงๆ → step=address ฟอร์มที่อยู่ใบเสร็จเปิด (1.3s)
+  ✓  13 [chromium] › e2e/core-41-checkout-first-step.spec.ts:88:5 › AC-135 regression: cart มีที่อยู่ + Standard เปิด step=payment ตรงๆ → ไม่ถูก redirect (1.6s)
+  ✓  14 [chromium] › e2e/core-41-checkout-first-step.spec.ts:152:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart t-shirt ไม่มีที่อยู่: step=delivery / ไม่มี step / step=foo / step ซ้ำ → step=address (1.6s)
+  ✓  15 [chromium] › e2e/core-41-checkout-first-step.spec.ts:177:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart มีที่อยู่ + Standard: ไม่มี step → step=payment, step=delivery ไม่ถูก redirect (1.6s)
+  ✓  16 [chromium] › e2e/core-41-checkout-first-step.spec.ts:206:7 › CORE-45 step ที่ใช้ไม่ได้ › D-1 cart ใน cache ยังไม่มีที่อยู่ แต่ cart จริงมีแล้ว: step=delivery ไม่เด้งกลับ address (1.6s)
+  ✓  17 [chromium] › e2e/core-41-checkout-first-step.spec.ts:232:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart digital-only มีที่อยู่: step=delivery → step=payment (1.4s)
+  ✓  18 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (5.5s)
+  ✓  19 [chromium] › e2e/core-4g-checkout-polish.spec.ts:69:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect (4.8s)
+  ✓  20 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด (2.1s)
+  ✓  21 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:109:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px) (495ms)
+  ✓  22 [chromium] › e2e/core-store.spec.ts:20:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (3.5s)
+  ✓  23 [chromium] › e2e/core-store.spec.ts:60:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (6.0s)
+  ✓  24 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (533ms)
+  ✓  25 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:87:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ (2.1s)
+  ✓  26 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:163:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery (3.2s)
+  ✓  27 [chromium] › e2e/ev-7d-digital-only-totals.spec.ts:18:5 › AC-42: cart digital-only ไม่มีค่าจัดส่งใน cart-totals ที่ /cart และขั้น review (1.7s)
+  ✓  28 [chromium] › e2e/ev-7d-digital-only-totals.spec.ts:72:5 › AC-42: cart ผสม voucher + สินค้าจัดส่ง ยังมีแถวค่าจัดส่ง (3.0s)
+  ✓  29 [chromium] › e2e/evoucher-storefront.spec.ts:16:5 › AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไทย ส่วนสินค้าปกติไม่มี (2.6s)
+  ✓  30 [chromium] › e2e/evoucher-storefront.spec.ts:40:5 › AC-6 + AC-36: บัตรกำนัลของฉันแสดงเฉพาะ code ของตนเอง พร้อมปุ่มคัดลอก (1.9s)
+  ✓  31 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (523ms)
+  ✓  32 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (4.3s)
+  ✓  33 [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (6.4s)
+  1 skipped
+  32 passed (1.8m)
+(skipped = PromptPay ของ core-19b ต้องใช้ Stripe test key — ไม่มีในเครื่อง ให้ CI พิสูจน์)
+
+== e2e unit project (กฎ evidence/hygiene) ==
+  103 passed (717ms)
+
+== lint / typecheck (root) ==
+pnpm lint: 0 errors (warnings เดิมของ repo; cart.ts ลดลง 1 จาก as any ที่เอาออก)
+pnpm typecheck: apps/storefront Done, apps/backend Done
