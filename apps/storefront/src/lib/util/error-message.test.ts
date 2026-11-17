@@ -71,6 +71,10 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }))
 describe("action ของ lib/data/customer.ts ห่อ error โดยไม่มี Error: (AC-81)", () => {
   const form = new FormData()
   form.set("addressId", "addr_1")
+  // CORE-63 (กฎข้อ 121b): ช่องบังคับว่าง → ไม่เรียก Store API — กรอกให้ครบเพื่อทดสอบ error ของ API
+  for (const field of ["first_name", "last_name", "address_1", "postal_code", "city"]) {
+    form.set(field, "x")
+  }
 
   // CORE-4h (กฎข้อ 69d): ไม่ส่งข้อความดิบอีกต่อไป — ได้ข้อความไทยผ่าน friendlyErrorMessage (ไม่มี "Error:")
   it("confirmEmailVerification → ข้อความไทย ไม่ใช่ข้อความดิบ", async () => {
