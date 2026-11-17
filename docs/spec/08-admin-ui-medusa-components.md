@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (รอบ 34 2026-11-18: owner สั่งเปิด ADM-29 (กฎ 33, AC-34 — tag ตัวอักษร + assert จำนวนผลใน test payout ตามกฎ 32f) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 34"; กฎ 32f แก้ถ้อยคำ; ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -714,8 +714,9 @@ Status: done (ปิดรอบ 33 2026-11-18 — ADM-28 ☑ #393; owner สั
     (d) ถ้า trace ทั้งสอง run หมดอายุ/อ่านไม่ได้ และทำซ้ำในเครื่องไม่ได้ (รันตาม AC-33 แล้วผ่านครบ) → **ไม่แก้ test** หยุดและรายงาน planner/owner พร้อมผลที่รัน (ห้ามแก้ตามการเดา);
     (e) ไม่แก้ test อื่นในไฟล์ (รวม AC-31 ของ ADM-26 และ e2e ของ ADM-27) นอกจาก helper ที่ test นี้ใช้ร่วม และไม่เปลี่ยน testid เดิม;
     (f) (บทเรียนปิดรอบ 33 — ใช้กับ e2e/integration ใหม่ทุกตัว) test ที่ค้นด้วย `q` ของ Medusa (หรือ route ของเราที่ใช้ `q` แบบเดียวกัน) **ห้ามใช้ tag/ค่าไม่ซ้ำที่มีตัวเลขซึ่งอาจชนกับคำค้น** (เช่น `Date.now()` ดิบคู่กับคำค้นที่มีเลข) —
-        เพราะ `q` แยกคำด้วยช่องว่างแล้ว AND ทีละคำ ให้ใช้ tag ตัวอักษร (เช่นแปลงตัวเลขเป็น a–j) และ assert จำนวนผลของ response ที่ `q` ตรง (`count === 1`) ก่อนหา option เพื่อให้ล้มเร็วพร้อมสาเหตุ;
-        test ที่ยังมีจุดอ่อนนี้: payout ใน `affiliate-admin-forms.spec.ts` (`"<tag> aff 249"`) — ROADMAP "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)" ข้อ ก (2)
+        เพราะ `q` แยกคำด้วยช่องว่างแล้ว AND ทีละคำ ให้ใช้ tag ตัวอักษร (เช่นแปลงตัวเลขเป็น a–j) และรอ response ที่ `q` ตรงแล้ว **assert จำนวนผลที่คาด (เช่น `count === 1`) ก่อนใช้ผลการค้น** (หา option, เลือกแถว, อ่าน id ฯลฯ) เพื่อให้ล้มเร็วพร้อมสาเหตุ
+        (แก้ถ้อยคำรอบ 34 — nit review #394: เดิมเขียนเฉพาะ "ก่อนหา option");
+        test ที่ยังมีจุดอ่อนนี้: payout ใน `affiliate-admin-forms.spec.ts` (`"<tag> aff 249"`) → ADM-29 (กฎ 33, AC-34 — หัวข้อ "Follow-up รอบ 34")
 
 ### Acceptance criteria (รอบ 33)
 - AC-33 (ADM-28, กฎ 32) `docs/evidence/admin-ui/ADM-28-tests.txt` มี: run id ที่อ่าน trace, บรรทัด/action ที่ค้างพร้อม call log, ข้อสรุปสาเหตุ (H ใด) — **ไม่มีข้อนี้ = ไม่ผ่าน**;
@@ -732,6 +733,50 @@ Status: done (ปิดรอบ 33 2026-11-18 — ADM-28 ☑ #393; owner สั
 | Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
 | ADM-28 | (owner 2026-11-17 — CI #373/#388) หาสาเหตุ flaky ของ AC-12 ตัวแรก (`affiliate-admin-forms.spec.ts:47`) จาก trace ของ run 44071909424 ก่อน artifact หมดอายุ (~2026-12-01) แล้วแก้ตามสาเหตุ ห้ามแก้แค่เพิ่ม timeout (กฎ 32) — ☑ #393 (สาเหตุ: คำค้น `q` ของ Medusa แยกคำแล้ว AND — tag ตัวเลขที่มี "249" ทำให้ตรงทั้ง 250 รายการ; แก้ฝั่ง test) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts` (+ `e2e/support/admin.ts` ถ้าต้องใช้ helper ร่วม), `e2e/core-46-e2e-hygiene.unit.spec.ts`, `docs/evidence/admin-ui/ADM-28-tests.txt`; เฉพาะเมื่อสาเหตุอยู่ในโค้ดของเรา: `components/affiliate/program-form.tsx` (≤ ~50 LOC) | test ~40 LOC (+ ≤ ~50 LOC ถ้าแก้โค้ด) | 1280×800 | AC-33 | PR เอกสารรอบ 33 merge; ไม่บล็อก release; **เริ่มเร็ว** (trace หมดอายุ) | ∥ CORE-64 (spec 01) — ไฟล์ร่วมที่เป็นไปได้: `e2e/core-46-e2e-hygiene.unit.spec.ts` ถ้า CORE-64 เลือกเพิ่ม unit ของ AC-163(c) ในไฟล์นี้ → ตัวที่ merge ทีหลัง merge `origin/develop` (คนละ test) |
+
+## Follow-up รอบ 34 (2026-11-18 — owner สั่งเปิด task แก้ test payout)
+Status: accepted (owner สั่งทำ 2026-11-18 — ADM-29 ☐ พร้อมเริ่ม รอ PR เอกสารรอบ 34 merge; ไม่บล็อก release)
+ที่มา: ROADMAP "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)" ข้อ ก (2) + ข้อ ข (nit review #393/#394) ·
+อาการที่คาด (ยังไม่เคยล้มใน CI — จุดอ่อนแบบเดียวกับ ADM-28): test "AC-12/AC-21: ฟอร์มสร้าง payout …" ใน `apps/storefront/e2e/affiliate-admin-forms.spec.ts:167` ใช้ tag `adm9${Date.now()}` (`:170`) และคำค้น `"<tag> aff 249"` (`:202–205`);
+`name`/`email` ของ affiliate เป็น `.searchable()` (`apps/backend/src/modules/affiliate/models/affiliate.ts:7–8`) และ `q` ของ Medusa 2.22.1 แยกคำแล้ว AND `ILIKE` ทีละคำ → ถ้า tag มี "249" ทั้ง 250 รายตรง, `aff 249` ไม่อยู่หน้าแรก → `click` option รอจน timeout 120s (โอกาส ~1% ต่อ run) ·
+static ของ ADM-28 (`e2e/core-46-e2e-hygiene.unit.spec.ts:241–250`) ตรวจแค่ว่าไม่มีข้อความ `adm9${Date.now()}` ใน test AC-12 ตัวแรก — tag ตัวเลขรูปอื่นยังผ่าน และไม่ครอบ test payout
+
+### What Medusa already gives us (รอบ 34)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ค้น affiliate ฝั่ง server | `q` ของ `GET /admin/affiliate/affiliates` (free-text filter ของ Medusa บน field `.searchable()`) + response `count` | ใช้ตามเดิม — แก้ฝั่ง test เท่านั้น |
+| ตัวเลือก affiliate ในฟอร์ม payout | `useComboboxData` + `Combobox` ของ `@medusajs/dashboard` (กฎ 11, 28) | ใช้ตามเดิม — ไม่แตะ `src/admin/` |
+
+### Data model / Workflows / API routes / Admin UI
+none
+
+### Business rules (รอบ 34)
+33. (ADM-29 — owner 2026-11-18; ใช้กฎ 32f กับ test payout) แก้ test "AC-12/AC-21: ฟอร์มสร้าง payout …" ของ `e2e/affiliate-admin-forms.spec.ts` ฝั่ง test เท่านั้น:
+    (a) tag ไม่มีตัวเลข: แปลงตัวเลขของ `Date.now()` เป็นตัวอักษร a–j แบบเดียวกับ AC-12 ตัวแรก (`:57`) — ผู้ใช้ครบ 2 ที่แล้ว จะย้ายเป็น helper ร่วมใน `e2e/support/` ก็ได้ (ไม่บังคับ;
+        ถ้าย้ายให้ AC-12 ตัวแรกเปลี่ยนเฉพาะบรรทัดประกาศ tag ไปเรียก helper); ค่าอื่นที่อิง tag (`aff_<tag>_%` ใน `finally`, `affiliate_id` ที่คาด) ต้องยังตรงกัน;
+    (b) รอ response ของ `GET /admin/affiliate/affiliates` ที่ pathname ตรงและ `q` ตรงกับคำค้น (เดิมตรวจแค่ `q` — `:202`) แล้ว assert `count` = 1 (ข้อความ assert มีคำค้น) **ก่อน**หา/คลิก option;
+    (c) ห้ามเพิ่ม `test.setTimeout`/timeout ต่อ action ที่ยาวขึ้น/`waitForTimeout`/`retries`/`test.fixme`/`skip` และห้ามแก้ `playwright.config.ts` (กฎ 32c ใช้ด้วย);
+    (d) static ใน `e2e/core-46-e2e-hygiene.unit.spec.ts` ปรับ test ของ AC-33 (หรือเพิ่ม test ใหม่ที่แทนส่วนนั้น) ให้ตรวจ **"tag ไม่มีตัวเลข"** ครอบทั้งสอง test (AC-12 ตัวแรก และ payout) — ตรวจผลจริง ไม่ใช่แค่ไม่มีข้อความเดิม:
+        ดึงนิพจน์ `const tag = …` จาก body ของแต่ละ test แล้ว (1) ถ้ามี `Date.now()` ต้องผ่าน `.replace(/\d/g, …)` ในนิพจน์เดียวกัน หรือ (2) ถ้าใช้ helper ร่วม → unit เรียก helper จริงหลายครั้งแล้ว `expect(tag).not.toMatch(/\d/)` และตรวจว่าทั้งสอง body เรียก helper นั้น;
+        และ body ทั้งสองมี `searchParams.get("q")` คู่กับ assert `.count` เป็น `toBe(1)`; ส่วนตรวจ `waitForTimeout`/`setTimeout ≤ 120_000` เดิมคงไว้และใช้กับ test payout ด้วย;
+    (e) ไม่แก้ test อื่นในไฟล์ (AC-12 ตัวที่สอง, AC-21 ตัวอื่น, AC-29, AC-31, ADM-27) และไม่เปลี่ยน testid; ไม่แตะ `src/admin/` และ backend
+
+### Acceptance criteria (รอบ 34)
+- AC-34 (ADM-29, กฎ 33)
+  (a) red ก่อนแก้: static ของกฎ 33d รันบนไฟล์เดิมแล้วล้ม (test payout ยังใช้ `adm9${Date.now()}`); และ e2e test payout ที่แก้แล้วแต่**บังคับ tag ชั่วคราวให้มี "249"** (เช่นต่อท้าย `249` ในเครื่องเท่านั้น ไม่ commit) ล้ม**เร็ว**ที่ assert `count` (ได้ 250 ไม่ใช่ 1 — ข้อความมีคำค้น) ไม่ใช่ timeout ของ test — แนบผลทั้งสองใน `docs/evidence/admin-ui/ADM-29-tests.txt`;
+  (b) green: `pnpm --filter storefront test:e2e:unit` ผ่านทั้ง project; e2e บน prod build (`pnpm --filter storefront build && start` แบบ CI, `workers=1`):
+      `pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts -g "ฟอร์มสร้าง payout" --repeat-each=20` ผ่าน 20/20 (ไม่ใส่ `--` หน้า argument — AC-160 ของ spec 01) และ test อื่นในไฟล์ผ่าน 1 รอบ — แนบผลใน `ADM-29-tests.txt`;
+  (c) diff ไม่มี `playwright.config.ts`, `src/admin/`, `apps/backend/`; ไม่มี `waitForTimeout`/`retries`/`skip`/`fixme` ใหม่ (ตรวจโดย static ของ (b) + reviewer)
+
+### Test plan (รอบ 34)
+| ชนิด | AC |
+|---|---|
+| static (Playwright `unit` project) + e2e admin `--repeat-each=20` บน prod build | AC-34 — test-only ไม่แตะ `src/admin/` → ไม่ต้องมี qa REPORT (แบบ ADM-28) |
+
+### Tasks (รอบ 34)
+| Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-29 | (owner 2026-11-18 — ROADMAP ปิดรอบ 33 ข้อ ก (2) + nit review #393/#394) test payout ใน `affiliate-admin-forms.spec.ts` ใช้ tag ตัวอักษร + รอ response `q` แล้ว assert `count` = 1 ก่อนใช้ผล; static ตรวจ "tag ไม่มีตัวเลข" ครอบทั้ง AC-12 ตัวแรกและ payout (กฎ 33) — ☐ พร้อมเริ่ม (owner สั่งทำแล้ว 2026-11-18; รอ PR เอกสารรอบ 34 merge) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts`, `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts` (+ `e2e/support/*.ts` ถ้าแยก helper tag), `docs/evidence/admin-ui/ADM-29-tests.txt` | test-only ~15–30 LOC | 1280×800 | AC-34 | PR เอกสารรอบ 34 merge; ไม่บล็อก release | ไม่มี task อื่นที่เปิดอยู่แตะไฟล์เหล่านี้ |
 
 ## Open questions
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task
