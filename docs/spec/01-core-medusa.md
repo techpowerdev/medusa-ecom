@@ -2555,7 +2555,7 @@ none
   `integration-tests/http/group-buy-groups.spec.ts:467–479` control ของ AC-20c ของ spec 04) **คงไว้** — เป็น test ของพฤติกรรมฝั่ง `false` ไม่ใช่ promotion ของร้าน
 - ไม่มีที่เก็บคู่มือ admin ในโปรเจกต์ (`docs/ops/**` เป็น runbook ฝั่ง ops ที่ unit test อ่านและนับเป็นโค้ด backend ใน `tools/ci/classify-changes.sh`) → คู่มือใหม่ที่ `docs/guides/admin-promotions.md` (เอกสารล้วน)
 
-Status: draft (รอบ 33 2026-11-17 — CORE-64 ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge))
+Status: draft (รอบ 33 2026-11-17 — CORE-64 ☑ (owner สั่งทำ 2026-11-17))
 Out of scope: โค้ดบังคับ/เตือนเมื่อ fixed ไม่ได้ตั้ง `is_tax_inclusive` (widget/middleware — Q-C11), แก้/patch ฟอร์ม promotion ของ dashboard, เปลี่ยน promotion ที่มีอยู่แล้วใน DB, แก้ test ฝั่ง `false` ที่ระบุข้างบน, ลบเบอร์โทร (กฎข้อ 121b — ยอมรับ), แถวค่าจัดส่งเมื่อลด 100% (กฎข้อ 115 — ยอมรับ)
 
 ### What Medusa already gives us (รอบ 33)
@@ -2610,7 +2610,7 @@ none
 ### Tasks (รอบ 33)
 | ID | Task | ไฟล์ที่แตะ | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|----|---------|------|
-| CORE-64 | (owner (1) = ก 2026-11-17, qa #384 O-1) promotion fixed ตั้ง `is_tax_inclusive: true` เสมอ: ยืนยันด้วย integration + e2e ว่าลดเท่าที่ตั้ง (% ไม่กระทบ), คู่มือ admin, qa สร้างผ่าน dashboard จริง — ไม่แก้โค้ดใต้ `src/` (กฎข้อ 122) — ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) | `apps/backend/integration-tests/http/core-64-promotion-tax-inclusive.spec.ts` (ใหม่), `apps/storefront/e2e/core-64-promotion-fixed-vat.spec.ts` (ใหม่), `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts` (หรือ unit ใหม่ — AC-163(c)), `docs/guides/admin-promotions.md` (ใหม่) | integration ~120 LOC + e2e ~80 LOC + คู่มือ ~40 บรรทัด | AC-163 | PR เอกสารรอบ 33 merge; ไม่บล็อก release | ∥ ADM-28 (spec 08 — แตะแค่ `e2e/affiliate-admin-forms.spec.ts` (+ `e2e/support/admin.ts` ถ้าจำเป็น)); `core-46-e2e-hygiene.unit.spec.ts` ไม่มี task อื่นที่เปิดแตะ |
+| CORE-64 | (owner (1) = ก 2026-11-17, qa #384 O-1) promotion fixed ตั้ง `is_tax_inclusive: true` เสมอ: ยืนยันด้วย integration + e2e ว่าลดเท่าที่ตั้ง (% ไม่กระทบ), คู่มือ admin, qa สร้างผ่าน dashboard จริง — ไม่แก้โค้ดใต้ `src/` (กฎข้อ 122) — ☑ (owner สั่งทำ 2026-11-17; AC-163(c) ใช้ไฟล์ unit ใหม่ `e2e/core-64-admin-promotions-guide.unit.spec.ts`) | `apps/backend/integration-tests/http/core-64-promotion-tax-inclusive.spec.ts` (ใหม่), `apps/storefront/e2e/core-64-promotion-fixed-vat.spec.ts` (ใหม่), `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts` (หรือ unit ใหม่ — AC-163(c)), `docs/guides/admin-promotions.md` (ใหม่) | integration ~120 LOC + e2e ~80 LOC + คู่มือ ~40 บรรทัด | AC-163 | PR เอกสารรอบ 33 merge; ไม่บล็อก release | ∥ ADM-28 (spec 08 — แตะแค่ `e2e/affiliate-admin-forms.spec.ts` (+ `e2e/support/admin.ts` ถ้าจำเป็น)); `core-46-e2e-hygiene.unit.spec.ts` ไม่มี task อื่นที่เปิดแตะ |
 (รอบ 33) CORE-64 ∥ ADM-28 (spec 08) เริ่มขนานกันได้ ไม่มีไฟล์ร่วม; CORE-64 มี qa (AC-163(d)); ADM-28 เป็น test-only (ไม่ต้องมี qa REPORT) — ลำดับ merge ที่แนะนำ: ADM-28 → CORE-64 (ลด flaky ใน CI ของตัวถัดไป)
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 33)
