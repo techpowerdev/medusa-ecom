@@ -1,6 +1,6 @@
 import { APIRequestContext, Page, Route } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
+import { ADMIN_UI_OPTIONS, PAGINATION_TEXT, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { adminHeaders, Headers } from "./support/medusa"
 
@@ -114,8 +114,6 @@ test.describe("ADM-21a: สถานะ error ของตาราง pools / p
     route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
   const failAbort: Fail = (route) => route.abort()
   const fail401: Fail = (route) => route.fulfill({ status: 401, json: { type: "unauthorized", message: "Unauthorized" } })
-  // ADM-25 (spec 08 AC-30, กฎ 29a): ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results")
-  const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
 
   // GET รายการเท่านั้น (`pools?…` ไม่ match `/pools/<id>`; POST/DELETE ของ partner ผ่านปกติ)
   const TABLES = {
