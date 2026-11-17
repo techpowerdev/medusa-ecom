@@ -5,6 +5,8 @@ import {
   INVALID_CREDENTIALS_MESSAGE,
   friendlyErrorMessage,
 } from "@lib/util/error-message"
+import { MISSING_ADDRESS_MESSAGE, missingRequiredAddress } from "@lib/util/address-required"
+import { trimInvisible } from "@lib/util/trim-invisible"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
@@ -476,6 +478,21 @@ export async function transferCart(): Promise<boolean> {
   return kept
 }
 
+// CORE-63 (กฎข้อ 121b): ตัด white space + zero-width หัว/ท้ายของทุกช่องข้อความ; country_code มาจาก select ไม่แตะ
+const text = (formData: FormData, name: string) => trimInvisible(String(formData.get(name) ?? ""))
+
+const addressFields = (formData: FormData) => ({
+  first_name: text(formData, "first_name"),
+  last_name: text(formData, "last_name"),
+  company: text(formData, "company"),
+  address_1: text(formData, "address_1"),
+  address_2: text(formData, "address_2"),
+  city: text(formData, "city"),
+  postal_code: text(formData, "postal_code"),
+  province: text(formData, "province"),
+  country_code: formData.get("country_code") as string,
+})
+
 export const addCustomerAddress = async (
   currentState: Record<string, unknown>,
   formData: FormData
@@ -484,18 +501,15 @@ export const addCustomerAddress = async (
   const isDefaultShipping = (currentState.isDefaultShipping as boolean) || false
 
   const address = {
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    company: formData.get("company") as string,
-    address_1: formData.get("address_1") as string,
-    address_2: formData.get("address_2") as string,
-    city: formData.get("city") as string,
-    postal_code: formData.get("postal_code") as string,
-    province: formData.get("province") as string,
-    country_code: formData.get("country_code") as string,
-    phone: formData.get("phone") as string,
+    ...addressFields(formData),
+    phone: text(formData, "phone"),
     is_default_billing: isDefaultBilling,
     is_default_shipping: isDefaultShipping,
+  }
+
+  // CORE-63 (กฎข้อ 121b): ช่องบังคับที่มีแต่ white space/zero-width ผ่าน `required` ของ browser ได้ — ไม่เรียก Store API
+  if (missingRequiredAddress(address)) {
+    return { success: false, error: MISSING_ADDRESS_MESSAGE }
   }
 
   const headers = {
@@ -546,19 +560,13 @@ export const updateCustomerAddress = async (
     return { success: false, error: "ไม่พบที่อยู่ที่ต้องการแก้ไข" }
   }
 
-  const address = {
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    company: formData.get("company") as string,
-    address_1: formData.get("address_1") as string,
-    address_2: formData.get("address_2") as string,
-    city: formData.get("city") as string,
-    postal_code: formData.get("postal_code") as string,
-    province: formData.get("province") as string,
-    country_code: formData.get("country_code") as string,
-  } as HttpTypes.StoreUpdateCustomerAddress
+  const address = addressFields(formData) as HttpTypes.StoreUpdateCustomerAddress
 
-  const phone = formData.get("phone") as string
+  if (missingRequiredAddress(address)) {
+    return { success: false, error: MISSING_ADDRESS_MESSAGE }
+  }
+
+  const phone = text(formData, "phone")
 
   if (phone) {
     address.phone = phone

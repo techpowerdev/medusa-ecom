@@ -129,6 +129,51 @@ medusaIntegrationTestRunner({
         expect(badRate.status).toEqual(400)
       })
 
+      // GB-17 (spec 04 กฎข้อ 40 (ข), AC-60 c): เพดาน 36500 วัน (และต่ำกว่า int4) → 400 invalid_data ไม่ถึง DB
+      describe.each(["attribution_window_days", "hold_days"])("%s limit (AC-60)", (field) => {
+        it.each([2147483648, 36501])("create or update with %s → 400 invalid_data; nothing changes", async (value) => {
+          const created = await api.post(
+            "/admin/affiliate/programs",
+            { ...programBody, attribution_window_days: 7, hold_days: 14 },
+            { headers }
+          )
+          const id = created.data.program.id
+
+          const createErr = await api
+            .post("/admin/affiliate/programs", { ...programBody, [field]: value }, { headers })
+            .catch((e) => e.response)
+          expect(createErr.status).toEqual(400)
+          expect(createErr.data.type).toEqual("invalid_data")
+          expect(createErr.data.message).toContain(field)
+          expect(JSON.stringify(createErr.data)).not.toContain("integer out of range")
+          const list = await api.get("/admin/affiliate/programs", { headers })
+          expect(list.data.count).toEqual(1)
+
+          const updateErr = await api
+            .post(`/admin/affiliate/programs/${id}`, { [field]: value }, { headers })
+            .catch((e) => e.response)
+          expect(updateErr.status).toEqual(400)
+          expect(updateErr.data.type).toEqual("invalid_data")
+          expect(JSON.stringify(updateErr.data)).not.toContain("integer out of range")
+          const fetched = await api.get(`/admin/affiliate/programs/${id}`, { headers })
+          expect(fetched.data.program).toEqual(
+            expect.objectContaining({ attribution_window_days: 7, hold_days: 14 })
+          )
+        })
+      })
+
+      it("accepts attribution_window_days and hold_days = 36500 (AC-60)", async () => {
+        const created = await api.post(
+          "/admin/affiliate/programs",
+          { ...programBody, attribution_window_days: 36500, hold_days: 36500 },
+          { headers }
+        )
+        expect(created.status).toEqual(200)
+        expect(created.data.program).toEqual(
+          expect.objectContaining({ attribution_window_days: 36500, hold_days: 36500 })
+        )
+      })
+
       it("deletes only draft programs", async () => {
         const draft = await api.post("/admin/affiliate/programs", programBody, { headers })
         const deleted = await api.delete(

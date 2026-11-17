@@ -178,6 +178,50 @@ medusaIntegrationTestRunner({
       expect(partnerInUse.status).toBe(400)
     })
 
+    // GB-17 (spec 04 กฎข้อ 40, AC-60 d): low_stock_threshold ลง column integer (int4) → เกิน 2147483647 ได้ 400
+    it("rejects low_stock_threshold = 2147483648 on create and update (400 invalid_data); accepts 2147483647", async () => {
+      const poolId = await createPool()
+      const { data: existing } = await api.get(`/admin/evoucher/pools/${poolId}`, { headers })
+      const poolCount = async () =>
+        (await api.get("/admin/evoucher/pools", { headers })).data.count
+
+      const createErr = await api
+        .post(
+          "/admin/evoucher/pools",
+          {
+            partner_id: existing.pool.partner.id,
+            variant_id: variantId,
+            name: "Too big",
+            how_to_use: "x",
+            low_stock_threshold: 2147483648,
+          },
+          { headers }
+        )
+        .catch((e) => e.response)
+      expect(createErr.status).toBe(400)
+      expect(createErr.data.type).toBe("invalid_data")
+      expect(createErr.data.message).toContain("low_stock_threshold")
+      expect(JSON.stringify(createErr.data)).not.toContain("integer out of range")
+      expect(await poolCount()).toBe(1)
+
+      const updateErr = await api
+        .post(`/admin/evoucher/pools/${poolId}`, { low_stock_threshold: 2147483648 }, { headers })
+        .catch((e) => e.response)
+      expect(updateErr.status).toBe(400)
+      expect(updateErr.data.type).toBe("invalid_data")
+      expect(JSON.stringify(updateErr.data)).not.toContain("integer out of range")
+      const unchanged = await api.get(`/admin/evoucher/pools/${poolId}`, { headers })
+      expect(unchanged.data.pool.low_stock_threshold).toBe(20)
+
+      const ok = await api.post(
+        `/admin/evoucher/pools/${poolId}`,
+        { low_stock_threshold: 2147483647 },
+        { headers }
+      )
+      expect(ok.status).toBe(200)
+      expect(ok.data.pool.low_stock_threshold).toBe(2147483647)
+    })
+
     it("AC-1 imports 100 codes with 2 duplicates → 98 available, inventory +98", async () => {
       const poolId = await createPool()
       const codes = Array.from({ length: 98 }, (_, i) => `LOTUS-${1000 + i}`)
