@@ -237,3 +237,14 @@ test("AC-160 (กฎข้อ 119c): AC-44 ลบข้อมูลที่ส�
   ).length
   expect(checked).toBe(deletes)
 })
+
+test("AC-33 (spec 08 กฎ 32, ADM-28): AC-12 ตัวแรกของ affiliate-admin-forms ไม่ใช้ tag ที่มีตัวเลข ไม่มี waitForTimeout และ setTimeout ≤ 120_000", () => {
+  const body = testBody(read("affiliate-admin-forms.spec.ts"), "AC-12: ปิด all โดยไม่เลือก scope")
+  // ต้นเหตุ (trace run 44071909424, 43475980049): q ของ Medusa แยกคำแล้ว AND — tag `adm9${Date.now()}` ที่มี "249" ทำให้ทั้ง 250 รายการตรง
+  expect(body).not.toContain("adm9${Date.now()}")
+  expect(body).toContain('searchParams.get("q")')
+  expect(body).not.toContain("waitForTimeout")
+  const timeouts = Array.from(body.matchAll(/test\.setTimeout\(([\d_]+)\)/g), ([, value]) => Number(value.replace(/_/g, "")))
+  expect(timeouts.length).toBeGreaterThan(0)
+  for (const value of timeouts) expect(value).toBeLessThanOrEqual(120_000)
+})

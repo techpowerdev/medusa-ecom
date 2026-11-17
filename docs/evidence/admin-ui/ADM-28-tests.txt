@@ -1,0 +1,128 @@
+# ADM-28 (spec 08 AC-33, กฎ 32) — หาสาเหตุ flaky AC-12 ตัวแรก (e2e/affiliate-admin-forms.spec.ts:47) และผล test
+# วันที่: 2026-11-17, node v22.23.3, base origin/develop 4a3f5665
+# backend prod build (medusa build + medusa start จาก .medusa/server) :9302, DB medusa_adm28, Redis db 2, CI=1 (workers=1), viewport 1280x800
+# test นี้เป็น admin ล้วน (ไปที่ BACKEND_URL/app เท่านั้น) จึงไม่ได้ start storefront ในเครื่อง
+
+## 1. trace ที่อ่าน (กฎ 32a)
+- run 44071909424 (#388) attempt 1 — artifact 14325142995 `e2e-evidence` (หมดอายุ 2026-12-01) ไฟล์
+  test-results/affiliate-admin-forms-AC-1-48996-…-chromium/{trace.zip,error-context.md,test-failed-1.png}
+- run 43475980049 (#373) — artifact 14064014592 (หมดอายุ 2026-11-27) ไฟล์ชุดเดียวกัน
+- เทียบ: run 44071909424 attempt 2 (ผ่าน) — artifact 14326523287
+  (ดึงเฉพาะไฟล์ของ test นี้ด้วย HTTP Range จาก zip ~1 GB; วางใน scratchpad ไม่ commit)
+
+## 2. action ที่ค้าง + call log (เหมือนกันทั้งสอง run)
+- step "พิมพ์ชื่อ collection ลำดับที่ 250 …" — `fill` ที่ :86 สำเร็จ (57426→57487 ms)
+- ค้างที่ :87 `page.getByRole("option").filter({ hasText: "<tag> col 249" }).click()` (callId nora@2096, run 44071909424)
+  call log ทั้งหมดมีบรรทัดเดียว:  waiting for getByRole('option').filter({ hasText: 'adm91794914249944 col 249' })
+  → ไม่มี after จน "Test timeout of 120000ms exceeded." (option ไม่เคย render — ไม่ใช่ not stable/detached)
+- save.click() :90 / await created :91 ไม่ได้เริ่ม
+
+## 3. request GET /admin/collections ใน trace (จาก *.network + body ใน resources/)
+run 44071909424 attempt 1 (ล้ม) tag = adm91794914249944
+  GET /admin/collections?limit=10&offset=0&fields=id,title                     200  22ms  count=251 (สินค้าแนะนำ, col 000, 001, 010, 100…105)
+  GET /admin/collections?q=adm91794914249944%20col%20249&limit=10&offset=0&…   200   8ms  count=250 (col 000, 001, 010, 100…106) ← ไม่มี col 249
+run 43475980049 (ล้ม) tag = adm91794592249544
+  GET /admin/collections?q=adm91794592249544%20col%20249&limit=10&offset=0&…   200  10ms  count=250 (col 000, 001, 010, 100…106) ← ไม่มี col 249
+run 44071909424 attempt 2 (ผ่าน) tag = adm91794916297599
+  GET /admin/collections?q=adm91794916297599%20col%20249&limit=10&offset=0&…   200        count=1  (col 249)
+- มี request `q` ออกไปจริง 1 ครั้ง ตอบ 200 เร็ว ไม่มี retry/error ใน console (มีแค่ debug ของ SDK)
+
+## 4. DOM ของ listbox ตอนค้าง (error-context.md run 44071909424)
+  combobox "Collections" [expanded] [active] [invalid]: adm91794914249944 col 249
+  listbox: option "ADM9 adm91794914249944 col 000", "… col 001", "… col 010", "… col 100" … "… col 106" (10 รายการ = หน้าแรกของผล q)
+  → รายการเปิดอยู่และแสดงผลของ q ที่ถูกต้องตามที่ server ตอบ (ไม่ใช่ผลเก่าค้างจาก keepPreviousData)
+
+## 5. ข้อสรุปสาเหตุ
+- ไม่ใช่ H1a (request ไม่ช้า/ไม่ล้ม และ list = ผลของ q จริง), ไม่ใช่ H1b (option เป้าหมายไม่เคยมี), ไม่ใช่ H2 (รายการเปิดและมี request q)
+- **H3 (ข้อมูลเกินจากการค้นหา) แบบที่ spec ไม่ได้คาด — ต้นเหตุอยู่ใน test (ข้อมูลทดสอบ)**:
+  `q` ของ Medusa 2.22.1 (`@medusajs/utils/dist/dal/mikro-orm/mikro-orm-free-text-search-filter.js:74–110`) แยกคำด้วย `/\s+/`
+  แล้ว AND `$or: [{field: {$ilike: "%คำ%"}}]` ทีละคำ — คำค้น "<tag> col 249" จึงเป็น 3 คำ; tag ของ test คือ `adm9${Date.now()}`
+  และทั้งสอง run ที่ล้ม tag มี "249" อยู่ในตัวเลข (17949142**49**944, 1794592**249**544) → คำ "249" ตรงทุก 250 รายการ (ใน title และ handle)
+  → server ตอบ count=250 เรียงตาม id แบบ string (pcol_<tag>_0, _1, _10, _100 …) col 249 ไม่อยู่ใน 10 รายการแรก
+  และ test ไม่ scroll ให้โหลดหน้าถัดไป → click รอจน timeout ของ test 120s (playwright.config ไม่ตั้ง actionTimeout)
+- โอกาสเกิด ≈ 1% ต่อ run (เลข 13 หลักมี "249" ติดกัน) สอดคล้องกับที่ล้ม 2 ครั้งในหลายสิบ run
+- ไม่ใช่ปัญหาใน `program-form.tsx` หรือใน `@medusajs/dashboard` (Combobox/useComboboxData ทำงานถูกต้องตามผลที่ได้) — ไม่แตะ src/admin/
+
+## 6. การแก้ (test-only, กฎ 32b)
+- tag ของ test นี้แปลงตัวเลขของ Date.now() เป็นตัวอักษร a–j → มีแค่ชื่อ/handle ของ collection เป้าหมายที่มี "249"
+- รอ `GET /admin/collections` ที่ `q` ตรงกับคำที่พิมพ์ (waitForResponse) แล้ว assert `count === 1` ก่อนหา option
+  → ถ้าข้อมูลชนอีก ล้มทันทีพร้อมจำนวนจริง แทนการรอ 2 นาที
+- ไม่เพิ่ม timeout/waitForTimeout/retries/skip; playwright.config.ts ไม่เปลี่ยน; ไม่แตะ test อื่นในไฟล์
+
+## 7. Red — ทำซ้ำอาการบน develop 4a3f5665 (บังคับ tag ให้มี "249": `adm9249${Date.now()}` ชั่วคราว แล้ว revert)
+### pnpm test:e2e e2e/affiliate-admin-forms.spec.ts -g "ปิด all โดยไม่เลือก scope" --project=chromium
+  ✘  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.0m)
+  1) [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง › พิมพ์ชื่อ collection ลำดับที่ 250 → เลือกได้, POST มี id นั้นและ starts_at เป็นเวลาไทย 
+    Test timeout of 120000ms exceeded.
+    test-results/affiliate-admin-forms-AC-1-48996-rts-at-ตีความตามเวลาเครื่อง-chromium/test-failed-1.png
+  1 failed
+[ELIFECYCLE] Command failed with exit code 1.
+
+### static (unit project) ก่อนแก้ test — ล้มที่ tag เดิม
+    > 244 |   expect(body).not.toContain("adm9${Date.now()}")
+  1 failed
+    [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:241:5 › AC-33 (spec 08 กฎ 32, ADM-28): AC-12 ตัวแรกของ affiliate-admin-forms ไม่ใช้ tag ที่มีตัวเลข ไม่มี waitForTimeout และ setTimeout ≤ 120_000 
+
+## 8. Green — หลังแก้
+### คำสั่งเดียวกับ Red บนโค้ดที่แก้ โดยบังคับให้ตัวเลขของ timestamp ขึ้นต้นด้วย "249" ชั่วคราว (`249${Date.now()}` ก่อนแปลง) แล้ว revert
+  ✓  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.2s)
+  1 passed (4.0s)
+
+### ตรวจว่า assertion ใหม่ล้มเร็วเมื่อข้อมูลชน (บังคับ tag ตัวเลข `adm9249${Date.now()}` ชั่วคราว แล้ว revert) — ล้มใน 2.3s ไม่ใช่ 2 นาที
+  ✘  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.3s)
+    Error: GET /admin/collections?q=adm92491794931029039 col 249
+    Expected: 1
+    Received: 250
+
+### AC-33: pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts -g "ปิด all โดยไม่เลือก scope" --repeat-each=20 --project=chromium (prod build, workers=1)
+  ✓   1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.3s)
+  ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.9s)
+  ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.3s)
+  ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.9s)
+  ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.3s)
+  ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.0s)
+  ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.3s)
+  ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.0s)
+  ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.1s)
+  ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.1s)
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.2s)
+  ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.0s)
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.0s)
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.3s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.9s)
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.8s)
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.6s)
+  ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.7s)
+  ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.7s)
+  ✓  20 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.8s)
+  20 passed (1.1m)
+
+### test อื่นทั้งไฟล์ (AC-12 ตัวที่สอง, AC-31, AC-24d ฯลฯ): pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts --project=chromium
+  ✓   1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.8s)
+  ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:131:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.6s)
+  ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.7s)
+  ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:225:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (2.5s)
+  ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:258:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (1.7s)
+  ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:325:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (2.9s)
+  ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:374:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (2.5s)
+  ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:374:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (2.5s)
+  ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:374:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (2.4s)
+  ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:374:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (2.5s)
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:374:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (2.5s)
+  ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:374:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (2.5s)
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:374:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.6s)
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:374:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.5s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:393:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:403:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.7s)
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:423:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.5s)
+  ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:502:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal (1.5s)
+  ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:543:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal (1.7s)
+  19 passed (47.1s)
+
+### static: pnpm --filter storefront test:e2e:unit (ทั้ง project รวม AC-33 ใน core-46-e2e-hygiene.unit.spec.ts)
+  ✓   32 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:241:5 › AC-33 (spec 08 กฎ 32, ADM-28): AC-12 ตัวแรกของ affiliate-admin-forms ไม่ใช้ tag ที่มีตัวเลข ไม่มี waitForTimeout และ setTimeout ≤ 120_000 (1ms)
+  115 passed (1.3s)
+
+### pnpm lint && pnpm typecheck
+lint: 0 errors (warning เดิม 28 รายการ ไม่มีในไฟล์ที่แตะ); typecheck: ผ่าน
+### playwright.config.ts: `git diff --quiet origin/develop -- apps/storefront/playwright.config.ts` → ไม่เปลี่ยน
