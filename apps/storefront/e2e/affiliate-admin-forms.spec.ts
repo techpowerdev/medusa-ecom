@@ -51,7 +51,11 @@ test("AC-12: ปิด all โดยไม่เลือก scope → error ไ
 }) => {
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const tag = `adm9${Date.now()}`
+  // ADM-28 (spec 08 กฎ 32; trace run 44071909424, 43475980049): `q` ของ Medusa แยกคำด้วยช่องว่างแล้ว AND `ILIKE %คำ%` ทีละคำ —
+  // tag ที่เป็นเลข `Date.now()` และบังเอิญมี "249" ทำให้คำ "249" ตรงทั้ง 250 รายการ → col 249 ไม่อยู่หน้าแรก (10 รายการ) จน timeout
+  // จึงแปลงตัวเลขของ tag เป็นตัวอักษร a–j: มีแค่ชื่อ/handle ของ collection เป้าหมายที่มี "249"
+  const tag = `adm${String(Date.now()).replace(/\d/g, (digit) => "abcdefghij"[Number(digit)])}`
+  const term = `${tag} col 249`
   const target = `pcol_${tag}_249`
   await sql(
     `insert into product_collection (id, title, handle, created_at, updated_at)
@@ -83,8 +87,13 @@ test("AC-12: ปิด all โดยไม่เลือก scope → error ไ
     })
 
     await step("พิมพ์ชื่อ collection ลำดับที่ 250 → เลือกได้, POST มี id นั้นและ starts_at เป็นเวลาไทย", async () => {
-      await field("collection_ids").fill(`${tag} col 249`)
-      await page.getByRole("option").filter({ hasText: `${tag} col 249` }).click()
+      const searched = page.waitForResponse(
+        (r) => new URL(r.url()).pathname === "/admin/collections" && new URL(r.url()).searchParams.get("q") === term,
+      )
+      await field("collection_ids").fill(term)
+      // ผลค้นหาต้องเหลือรายการเดียว — ถ้า tag ชนกับคำค้นอีก ล้มที่นี่พร้อมจำนวนจริงแทนการรอ option จน timeout
+      expect((await (await searched).json()).count, `GET /admin/collections?q=${term}`).toBe(1)
+      await page.getByRole("option").filter({ hasText: term }).click()
       await expect(page.getByTestId("affiliate-program-error-collection_ids")).toBeHidden()
       const created = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === PROGRAMS)
       await save.click()
