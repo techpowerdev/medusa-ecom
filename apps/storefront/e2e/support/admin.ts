@@ -6,6 +6,9 @@ import { BACKEND_URL, expect } from "./fixtures"
 
 export const ADMIN_LOGIN_URL = `${BACKEND_URL}/app/login`
 
+/** spec 08 กฎ 29a: ข้อความของแถบแบ่งหน้าของ `DataTable` ("1 — 2 of 2 results", "2 of 1 pages") — ตอน error ต้องไม่มี ("0 of 0 results") */
+export const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
+
 /**
  * ใส่ใน test.use ของ e2e ที่เปิด admin UI: backend ที่ `medusa start` (production) ตั้ง session cookie
  * ของ admin เป็น Secure และเชื่อ proxy (trust proxy 1) — CI/local เป็น http จึงจำลอง proxy ที่ terminate TLS
