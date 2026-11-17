@@ -15,6 +15,7 @@ import {
 } from "@lib/util/action-result"
 import { INSUFFICIENT_INVENTORY, isInsufficientInventory } from "@lib/util/insufficient-inventory"
 import { trimInvisible } from "@lib/util/trim-invisible"
+import { MISSING_ADDRESS_MESSAGE, missingRequiredAddress } from "@lib/util/address-required"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
@@ -460,10 +461,6 @@ export async function submitPromotionForm(
   }
 }
 
-const REQUIRED_ADDRESS_FIELDS = ["first_name", "last_name", "address_1", "postal_code", "city"] as const
-const MISSING_ADDRESS_MESSAGE =
-  "กรุณากรอกชื่อ นามสกุล ที่อยู่ รหัสไปรษณีย์ และเขต/อำเภอให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)"
-
 // TODO: Pass a POJO instead of a form entity here
 export async function setAddresses(currentState: unknown, formData: FormData) {
   if (!formData) {
@@ -497,7 +494,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         : addressFrom(formData, "billing_address")
 
     // CORE-52 (กฎข้อ 110b): ช่องบังคับที่เป็นช่องว่างล้วนผ่าน `required` ของ browser ได้ — ไม่บันทึกทับ cart
-    if ([shippingAddress, billingAddress].some((address) => address && missingRequired(address))) {
+    if ([shippingAddress, billingAddress].some((address) => address && missingRequiredAddress(address))) {
       return MISSING_ADDRESS_MESSAGE
     }
 
@@ -518,24 +515,22 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   )
 }
 
-const missingRequired = (address: HttpTypes.StoreAddAddress) =>
-  REQUIRED_ADDRESS_FIELDS.some((field) => !address[field])
-
 function addressFrom(formData: FormData, prefix: "shipping_address" | "billing_address") {
   const field = (name: string) => formData.get(`${prefix}.${name}`)
-  // CORE-52/CORE-58 (กฎข้อ 110b, 116a): ตัด white space + zero-width ของช่องบังคับ — ว่างหลังตัด = ยังไม่ได้กรอก
-  const required = (name: (typeof REQUIRED_ADDRESS_FIELDS)[number]) => trimInvisible(String(field(name) ?? ""))
+  // CORE-52/CORE-58/CORE-63 (กฎข้อ 110b, 116a, 121a): ตัด white space + zero-width ทุกช่องข้อความ — ช่องบังคับว่างหลังตัด = ยังไม่ได้กรอก,
+  // ช่องไม่บังคับว่างหลังตัดส่ง ""; country_code มาจาก select ไม่แตะ
+  const text = (name: string) => trimInvisible(String(field(name) ?? ""))
   return {
-    first_name: required("first_name"),
-    last_name: required("last_name"),
-    address_1: required("address_1"),
+    first_name: text("first_name"),
+    last_name: text("last_name"),
+    address_1: text("address_1"),
     address_2: "",
-    company: field("company"),
-    postal_code: required("postal_code"),
-    city: required("city"),
+    company: text("company"),
+    postal_code: text("postal_code"),
+    city: text("city"),
     country_code: field("country_code"),
-    province: field("province"),
-    phone: field("phone"),
+    province: text("province"),
+    phone: text("phone"),
   } as HttpTypes.StoreAddAddress
 }
 
