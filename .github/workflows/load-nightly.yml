@@ -19,6 +19,12 @@ on:
         description: "DATABASE_POOL_MAX: ว่าง = default ของ Medusa (10), เช่น 10 / 20 / 40"
         type: string
         default: ""
+      # OPS-26 (spec 07 AC-41): จำนวน process ของ server (`medusa start --cluster`) — 1 = เดิม; schedule ไม่มี input → 1
+      server_processes:
+        description: "server process: 1 = เดิม (ค่าเริ่มต้น), 2 = medusa start --cluster 2 (เฉพาะ server)"
+        type: choice
+        options: ["1", "2"]
+        default: "1"
 
 permissions:
   contents: read
@@ -37,6 +43,7 @@ jobs:
         env:
           LOAD_FLASH_BURST: ${{ inputs.flash_burst || '1' }}
           LOAD_DB_POOL_MAX: ${{ inputs.db_pool_max || '' }}
+          LOAD_SERVER_PROCESSES: ${{ inputs.server_processes || '1' }}
       - name: Upload k6 results
         if: always()
         uses: actions/upload-artifact@v4

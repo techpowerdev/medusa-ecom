@@ -1,0 +1,6 @@
+# OPS-26 (docs/spec/07-scaling-ops.md AC-41): override ของ load run เท่านั้น — run.sh เพิ่มไฟล์นี้เมื่อ LOAD_SERVER_PROCESSES > 1
+# `--servers` เท่ากับ `--cluster` → ทุก process ได้ MEDUSA_WORKER_MODE=server (ไม่ใส่ = Medusa ตั้งเป็น shared)
+# ไม่ใช้กับ worker และไม่แตะ docker-compose.prod.yml ของ prod
+services:
+  server:
+    command: ["start", "--cluster", "${LOAD_SERVER_PROCESSES}", "--servers", "${LOAD_SERVER_PROCESSES}"]
