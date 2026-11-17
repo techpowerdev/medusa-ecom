@@ -153,3 +153,86 @@ test("AC-159: ป้ายแถวแรกของ cart-totals เปลี�
     await deleteAllThenExpectOk(request, admin, [promotionId && `/admin/promotions/${promotionId}`])
   }
 })
+
+// CORE-62: spec 01 AC-161 (กฎข้อ 120) — ส่วนลดเฉพาะค่าส่ง ราคาสินค้าไม่ลด → ป้ายแถวแรกคงป้ายเมื่อไม่มีส่วนลด แต่ยังมีแถวส่วนลด
+test.describe("CORE-62", () => {
+  test.use({ evidenceTarget: { feature: "core", taskId: "CORE-62" } })
+
+  test("AC-161: ส่วนลดค่าส่งอย่างเดียว ป้ายแถวแรกเท่ากับเมื่อไม่มีส่วนลด และแถวรวมได้ยอดสุทธิ", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(150_000)
+    const admin = await adminHeaders(request)
+    const pk = await publishableKey(request, admin)
+    const customer: Customer = await createCustomer(request, pk)
+    const cartId = await cartReadyForPayment(request, pk, customer)
+    const store = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
+    const getCart = async () =>
+      (await ok(await request.get(`${BACKEND_URL}/store/carts/${cartId}`, { headers: store }), "get cart")).cart
+    await signInAs(context, baseURL!, customer)
+    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+
+    let promotionId: string | undefined
+    try {
+      const totals = page.getByTestId("cart-totals")
+      let withoutDiscount = ""
+
+      await step("ไม่มีส่วนลด: เก็บป้ายแถวแรกเป็น A", async () => {
+        expect(Number((await getCart()).discount_total), "discount_total ก่อนใช้โค้ด").toBe(0)
+        await page.goto(`/${CC}/cart`)
+        await expect(totals).toBeVisible()
+        await expect(totals.getByTestId("cart-discount")).toHaveCount(0)
+        withoutDiscount = await subtotalLabel(page)
+      })
+
+      await step("ใช้โค้ดลดค่าส่ง 100%: มีแถวส่วนลด ป้าย = A และแถวรวมได้ยอดสุทธิ", async () => {
+        const code = `CORE62${Date.now()}${crypto.randomInt(1e6)}`
+        const created = await request.post(`${BACKEND_URL}/admin/promotions`, {
+          headers: admin,
+          data: {
+            code,
+            type: "standard",
+            status: "active",
+            is_automatic: false,
+            application_method: { type: "percentage", target_type: "shipping_methods", allocation: "across", value: 100 },
+          },
+        })
+        expect(created.ok(), `create promotion: ${await created.text()}`).toBe(true)
+        promotionId = (await created.json()).promotion.id
+        await ok(
+          await request.post(`${BACKEND_URL}/store/carts/${cartId}/promotions`, {
+            headers: store,
+            data: { promo_codes: [code] },
+          }),
+          "apply promotion"
+        )
+        const cart = await getCart()
+        expect(Number(cart.discount_total), "discount_total หลังใช้โค้ด").toBeGreaterThan(0)
+        // เกณฑ์เดียวกับกฎข้อ 120a — ราคาสินค้าไม่ลด
+        expect(
+          Math.abs(Number(cart.original_item_total) - Number(cart.item_total)),
+          "|original_item_total − item_total|"
+        ).toBeLessThanOrEqual(0.005)
+
+        await page.reload()
+        await expect(totals.getByTestId("cart-discount")).toBeVisible()
+        expect(await subtotalLabel(page)).toBe(withoutDiscount)
+
+        const rows =
+          (await dataValue(totals.getByTestId("cart-subtotal"))) -
+          (await dataValue(totals.getByTestId("cart-discount"))) +
+          (await dataValue(totals.getByTestId("cart-shipping")))
+        const grand = await dataValue(totals.getByTestId("cart-total"))
+        expect(Math.abs(rows - grand), `rows=${rows} total=${grand}`).toBeLessThanOrEqual(0.01)
+        await evidence("01-cart-shipping-discount-label")
+      })
+    } finally {
+      await deleteAllThenExpectOk(request, admin, [promotionId && `/admin/promotions/${promotionId}`])
+    }
+  })
+})
