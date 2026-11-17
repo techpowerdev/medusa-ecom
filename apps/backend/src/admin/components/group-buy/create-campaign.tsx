@@ -17,6 +17,7 @@ import {
 } from "../../lib/group-buy-form"
 import { createSingleFlight } from "../../lib/single-flight"
 import { NumberInput } from "../common/number-input"
+import { useConfirmDiscard } from "../common/use-confirm-discard"
 import { ProductPicker } from "./product-picker"
 
 type TextKey = {
@@ -128,6 +129,12 @@ export const CreateCampaign = ({
   )
 
   const endsAt = form.watch("ends_at")
+  // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด (เงื่อนไขเดิม)
+  const confirmClose = useConfirmDiscard({
+    isDirty: form.formState.isDirty,
+    isPending: create.isPending,
+    onClose: () => onOpenChange(false),
+  })
 
   const textField = ({ key, label, numeric, hint }: TextField) => (
     <Form.Field
@@ -152,7 +159,7 @@ export const CreateCampaign = ({
   )
 
   return (
-    <FocusModal open={open} onOpenChange={(o) => !create.isPending && onOpenChange(o)}>
+    <FocusModal open={open} onOpenChange={confirmClose}>
       <FocusModal.Content
         // onOpenAutoFocus ยิงก่อน focus ย้ายเข้า modal — activeElement ยังเป็นปุ่มที่กดเปิด
         onOpenAutoFocus={() => setOpener(document.activeElement instanceof HTMLElement ? document.activeElement : null)}

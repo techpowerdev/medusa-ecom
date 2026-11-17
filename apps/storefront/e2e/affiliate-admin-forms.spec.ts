@@ -483,10 +483,12 @@ test.describe("ADM-26: Escape ของ Combobox ใน FocusModal", () => {
   }
 
   // รายการปิดแล้ว (listbox ไม่ visible และ input ไม่ขยาย) → Escape ปิด modal
+  // ADM-27 (กฎ 31a): ฟอร์มกรอกแล้ว (dirty) จึงถามก่อนปิด — ยืนยัน "Leave" แล้ว modal ปิด
   const escapeClosesModal = async (page: Page, combobox: string) => {
     await expect(page.getByRole("listbox")).toBeHidden()
     await expect(page.getByTestId(combobox)).not.toHaveAttribute("aria-expanded", "true")
     await page.keyboard.press("Escape")
+    await page.getByRole("alertdialog").getByRole("button", { name: "Leave" }).click()
     await expect(page.getByRole("dialog")).toBeHidden()
   }
 

@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { NumberInput } from "../components/common/number-input"
+import { useConfirmDiscard } from "../components/common/use-confirm-discard"
 import { sdk } from "../lib/client"
 import {
   FLASH_SALE_PARSE_OPTIONS,
@@ -79,6 +80,13 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
   const totalCap = optionalPositiveInt.safeParse(form.watch("total_cap")).data
   const capBelowSold = typeof totalCap === "number" && totalCap <= unitsSold
 
+  // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด
+  const confirmClose = useConfirmDiscard({
+    isDirty: form.formState.isDirty,
+    isPending: save.isPending,
+    onClose: () => setOpen(false),
+  })
+
   const openEditor = () => {
     form.reset(toFlashSaleFormValues(config))
     setOpen(true)
@@ -142,7 +150,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
         ))
       )}
 
-      <Drawer open={open} onOpenChange={setOpen}>
+      <Drawer open={open} onOpenChange={confirmClose}>
         <Drawer.Content>
           {/* noValidate: validation ทั้งหมดเป็นของ zod (error ใต้ช่อง) ไม่ให้ browser ดัก min ของ input number ก่อน */}
           <Form {...form}>

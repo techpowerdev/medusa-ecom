@@ -1,0 +1,142 @@
+# ADM-27 (spec 08 AC-32, กฎ 31) — ผล test
+# วันที่: 2026-11-17, node v22.23.3, base origin/develop a0d0d5f9
+# backend prod build (medusa build + medusa start จาก .medusa/server) :9305, DB medusa_adm27, Redis db 5, viewport 1280x800 (locale en-US, Asia/Bangkok)
+
+## Red (ก่อนแก้)
+### playwright e2e/admin-form-discard-prompt.spec.ts บนโค้ด admin ของ develop a0d0d5f9 — 5/5 ล้ม (ไม่มี alertdialog)
+### (รุ่นแรกหา dialog ของฟอร์มด้วย getByRole("dialog"); ภายหลังเปลี่ยนเป็น includeHidden เพราะ alertdialog ตั้ง aria-hidden ให้ส่วนอื่น — สาเหตุที่ล้มบน develop ไม่เปลี่ยน)
+  ✘  1 [chromium] › e2e/admin-form-discard-prompt.spec.ts:78:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (6.5s)
+  ✘  2 [chromium] › e2e/admin-form-discard-prompt.spec.ts:78:7 › AC-32: ฟอร์มสร้างแคมเปญ — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (6.3s)
+  ✘  3 [chromium] › e2e/admin-form-discard-prompt.spec.ts:78:7 › AC-32: ฟอร์มสร้าง program — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (6.3s)
+  ✘  4 [chromium] › e2e/admin-form-discard-prompt.spec.ts:123:5 › AC-32: Drawer แก้ partner — กรอกแล้วคลิกปุ่ม close ของ Drawer → alertdialog; Escape 2 ครั้งติดกันที่ฟอร์มสร้าง → alertdialog ตัวเดียว; บันทึกสำเร็จไม่ถาม (6.9s)
+  ✘  5 [chromium] › e2e/admin-form-discard-prompt.spec.ts:185:5 › AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d) (6.5s)
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
+    Error: element(s) not found
+    > 94 |       await expect(alert(page)).toBeVisible()
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
+    Error: element(s) not found
+    > 94 |       await expect(alert(page)).toBeVisible()
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
+    Error: element(s) not found
+    > 94 |       await expect(alert(page)).toBeVisible()
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
+    Error: element(s) not found
+    > 147 |       await expect(alert(page)).toBeVisible()
+
+### jest medusa-ui.unit.spec.ts -t "ADM-2[67]" บน source ของ develop (ไม่มี hook) — 12 ล้ม
+    ✕ components/affiliate/payout-form.tsx: FocusModal.Content ใช้ onEscapeKeyDown={keepModalOpenWhileComboboxExpanded} จาก lib/combobox-escape (1 ms)
+    ✕ components/affiliate/program-form.tsx: FocusModal.Content ใช้ onEscapeKeyDown={keepModalOpenWhileComboboxExpanded} จาก lib/combobox-escape (1 ms)
+    ✓ lib/combobox-escape.ts ตรวจ aria-expanded ของ input combobox และ preventDefault เท่านั้น (ไม่ดัก keydown ระดับ window/document)
+    ✕ widgets/variant-evoucher-pool.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose} (1 ms)
+    ✕ widgets/flash-sale-options.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✕ components/affiliate/payout-form.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose} (1 ms)
+    ✕ components/affiliate/program-form.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✕ components/affiliate/payout-info-drawer.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✕ components/group-buy/create-campaign.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose} (1 ms)
+    ✕ components/evoucher/partners-section.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✕ partners-section.tsx: modal สร้างและ Drawer แก้ใช้ handler เดียวกัน
+    ✕ hook ใช้ usePrompt ของ @medusajs/ui + ถ้อยคำของ dashboard, กันระหว่างบันทึกและ prompt ซ้อน
+    ✕ ไม่มีสำเนาข้อความ prompt ในไฟล์อื่นของ src/admin (hook กลางตัวเดียว) (4 ms)
+Tests:       12 failed, 194 skipped, 1 passed, 207 total
+
+## Green (หลังแก้)
+### jest src/admin (unit + static)
+Test Suites: 20 passed, 20 total
+Tests:       446 passed, 446 total
+    ✓ components/affiliate/payout-form.tsx: FocusModal.Content ใช้ onEscapeKeyDown={keepModalOpenWhileComboboxExpanded} จาก lib/combobox-escape (1 ms)
+    ✓ components/affiliate/program-form.tsx: FocusModal.Content ใช้ onEscapeKeyDown={keepModalOpenWhileComboboxExpanded} จาก lib/combobox-escape
+    ✓ lib/combobox-escape.ts ตรวจ aria-expanded ของ input combobox และ preventDefault เท่านั้น (ไม่ดัก keydown ระดับ window/document)
+    ✓ widgets/variant-evoucher-pool.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose} (1 ms)
+    ✓ widgets/flash-sale-options.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✓ components/affiliate/payout-form.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✓ components/affiliate/program-form.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✓ components/affiliate/payout-info-drawer.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose} (1 ms)
+    ✓ components/group-buy/create-campaign.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✓ components/evoucher/partners-section.tsx: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}
+    ✓ partners-section.tsx: modal สร้างและ Drawer แก้ใช้ handler เดียวกัน
+    ✓ hook ใช้ usePrompt ของ @medusajs/ui + ถ้อยคำของ dashboard, กันระหว่างบันทึกและ prompt ซ้อน (1 ms)
+    ✓ ไม่มีสำเนาข้อความ prompt ในไฟล์อื่นของ src/admin (hook กลางตัวเดียว) (1 ms)
+Tests:       195 skipped, 13 passed, 208 total
+
+### playwright e2e ใหม่ --repeat-each=5 --workers=2
+  25 passed (40.2s)
+
+### playwright e2e admin ที่เกี่ยวข้อง (workers=1): admin-form-discard-prompt, affiliate-admin-{forms,programs,affiliates,payout-create}, evoucher-admin-{forms,partners,pool-page}, group-buy-admin-form, admin-form-pilot, flash-sale-admin-{save,widget}
+  ✓   1 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.7s)
+  ✓   2 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้างแคมเปญ — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.8s)
+  ✓   3 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง program — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.2s)
+  ✓   4 [chromium] › e2e/admin-form-discard-prompt.spec.ts:124:5 › AC-32: Drawer แก้ partner — กรอกแล้วคลิกปุ่ม close ของ Drawer → alertdialog; Escape 2 ครั้งติดกันที่ฟอร์มสร้าง → alertdialog ตัวเดียว; บันทึกสำเร็จไม่ถาม (2.7s)
+  ✓   5 [chromium] › e2e/admin-form-discard-prompt.spec.ts:186:5 › AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d) (1.7s)
+  ✓   6 [chromium] › e2e/admin-form-pilot.spec.ts:23:5 › AC-6: drawer flash sale — Total cap 0 แสดง error ไม่ POST; dblclick Save และ Meta+Enter = POST 1 ครั้ง (2.4s)
+  ✓   7 [chromium] › e2e/admin-form-pilot.spec.ts:109:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง (2.0s)
+  ✓   8 [chromium] › e2e/admin-form-pilot.spec.ts:189:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › drawer flash sale — Total cap / Per-customer limit = e, 1e → error ไม่ POST; ล้างช่องแล้ว Save → total_cap null (2.0s)
+  ✓   9 [chromium] › e2e/admin-form-pilot.spec.ts:248:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › modal Create pool — Face value / Low-stock threshold = e → error ใต้ช่องและไม่มี POST (1.8s)
+  ✓  10 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:43:5 › AC-43: approve ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (8.9s)
+  ✓  11 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:165:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (3.2s)
+  ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (3.1s)
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:122:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.5s)
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:158:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.7s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:216:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (2.5s)
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:249:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (1.7s)
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:316:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (2.9s)
+  ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (2.5s)
+  ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (2.5s)
+  ✓  20 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (2.5s)
+  ✓  21 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (2.4s)
+  ✓  22 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (2.5s)
+  ✓  23 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (2.5s)
+  ✓  24 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.5s)
+  ✓  25 [chromium] › e2e/affiliate-admin-forms.spec.ts:367:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.5s)
+  ✓  26 [chromium] › e2e/affiliate-admin-forms.spec.ts:386:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+  ✓  27 [chromium] › e2e/affiliate-admin-forms.spec.ts:396:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.6s)
+  ✓  28 [chromium] › e2e/affiliate-admin-forms.spec.ts:416:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.5s)
+  ✓  29 [chromium] › e2e/affiliate-admin-forms.spec.ts:495:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal (1.6s)
+  ✓  30 [chromium] › e2e/affiliate-admin-forms.spec.ts:536:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal (1.7s)
+  ✓  31 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:32:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (7.2s)
+  ✓  32 [chromium] › e2e/affiliate-admin-programs.spec.ts:26:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (3.7s)
+  ✓  33 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (2.3s)
+  ✓  34 [chromium] › e2e/evoucher-admin-forms.spec.ts:156:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.5s)
+  ✓  35 [chromium] › e2e/evoucher-admin-forms.spec.ts:164:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.5s)
+  ✓  36 [chromium] › e2e/evoucher-admin-forms.spec.ts:156:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.5s)
+  ✓  37 [chromium] › e2e/evoucher-admin-forms.spec.ts:164:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.5s)
+  ✓  38 [chromium] › e2e/evoucher-admin-forms.spec.ts:178:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+  ✓  39 [chromium] › e2e/evoucher-admin-forms.spec.ts:178:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+  ✓  40 [chromium] › e2e/evoucher-admin-forms.spec.ts:187:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.3s)
+  ✓  41 [chromium] › e2e/evoucher-admin-forms.spec.ts:211:7 › ADM-23: partners clamp ไม่กระพริบ + เมนูต่อแถว › AC-28: ?partners_offset=99999999 + GET partners หน่วง 800ms → ไม่มี empty ตลอด 2 วินาทีแรก จบหน้าสุดท้าย; Edit แล้ว Escape ไม่ค้าง pointer-events (5.6s)
+  ✓  42 [chromium] › e2e/evoucher-admin-forms.spec.ts:285:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=abc → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด (1.3s)
+  ✓  43 [chromium] › e2e/evoucher-admin-forms.spec.ts:285:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=-50 → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด (1.1s)
+  ✓  44 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty (2.7s)
+  ✓  45 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ (1.3s)
+  ✓  46 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE (2.9s)
+  ✓  47 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:29:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (7.2s)
+  ✓  48 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:145:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp (2.8s)
+  ✓  49 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:211:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ (7.3s)
+  ✓  50 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:251:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว (3.6s)
+  ✓  51 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:325:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง (2.7s)
+  ✓  52 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:334:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error (2.7s)
+  ✓  53 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:341:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No codes match" (2.6s)
+  ✓  54 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:357:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages" (2.6s)
+  ✓  55 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:372:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login (2.5s)
+  ✓  56 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:381:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error (1.4s)
+  ✓  57 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:404:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด (6.6s)
+  ✓  58 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:404:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด (6.6s)
+  ✓  59 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:451:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error (4.2s)
+  ✓  60 [chromium] › e2e/flash-sale-admin-save.spec.ts:10:5 › AC-16: dblclick Save ส่ง POST config ครั้งเดียว และ Save ซ้ำได้หลัง response กลับ (2.5s)
+  ✓  61 [chromium] › e2e/flash-sale-admin-widget.spec.ts:9:5 › AC-5: widget flash sale ที่บันทึกแล้วแสดงค่า Total cap ตรงกับ API (1.1s)
+  ✓  62 [chromium] › e2e/group-buy-admin-form.spec.ts:105:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (3.1s)
+  ✓  63 [chromium] › e2e/group-buy-admin-form.spec.ts:187:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.7s)
+  ✓  64 [chromium] › e2e/group-buy-admin-form.spec.ts:241:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.9s)
+  ✓  65 [chromium] › e2e/group-buy-admin-form.spec.ts:298:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (12.7s)
+  ✓  66 [chromium] › e2e/group-buy-admin-form.spec.ts:367:5 › AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง body เป็น UTC (2.8s)
+  ✓  67 [chromium] › e2e/group-buy-admin-form.spec.ts:403:7 › ADM-13: หัวตารางรายการแคมเปญ › AC-17: heading และปุ่ม Create campaign อยู่แถวเดียวกันใน gb-campaigns-table และยังเห็นคำเตือน GBT- (1.1s)
+  ✓  68 [chromium] › e2e/group-buy-admin-form.spec.ts:440:7 › ADM-15: ฟอร์มสร้างแคมเปญ — NumberInput และ focus › AC-19: "e" ใน Max total orders → error ใต้ช่องไม่ POST, ว่าง → null, dblclick เปิด dialog เดียว, Escape คืน focus, เปิดใหม่ได้ฟอร์มว่าง + key ใหม่ (9.3s)
+  68 passed (3.6m)
+
+### storefront playwright --project=unit
+  111 passed
+
+### pnpm lint (0 errors; warning เดิมของ develop) / pnpm typecheck (ผ่าน)

@@ -842,8 +842,9 @@ describe("Escape ขณะ Combobox ขยายไม่ปิด FocusModal �
       const src = read(file)
       expect(src).toMatch(/import \{ keepModalOpenWhileComboboxExpanded \} from "\.\.\/\.\.\/lib\/combobox-escape"/)
       expect(src).toMatch(/<FocusModal\.Content onEscapeKeyDown=\{keepModalOpenWhileComboboxExpanded\}>/)
-      // คงเงื่อนไขเดิม: ปิดระหว่างบันทึกไม่ได้
-      expect(src).toMatch(/onOpenChange=\{\(open\) => !open && !save\.isPending && onClose\(\)\}/)
+      // คงเงื่อนไขเดิม: ปิดระหว่างบันทึกไม่ได้ — ADM-27 ย้ายเงื่อนไขเข้า useConfirmDiscard (กฎ 31c)
+      expect(src).toMatch(/useConfirmDiscard\(\{ isDirty: form\.formState\.isDirty, isPending: save\.isPending, onClose \}\)/)
+      expect(src).toContain("<FocusModal open onOpenChange={confirmClose}>")
     }
   )
 
@@ -852,5 +853,49 @@ describe("Escape ขณะ Combobox ขยายไม่ปิด FocusModal �
     expect(src).toContain('[role="combobox"][aria-expanded="true"]')
     expect(src).toContain("event.preventDefault()")
     expect(src).not.toMatch(/addEventListener|dispatchEvent|stopPropagation/)
+  })
+})
+
+describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก่อนปิดเมื่อ dirty (spec 08 AC-32, กฎ 31, ADM-27)", () => {
+  const FORMS = [
+    "widgets/variant-evoucher-pool.tsx",
+    "widgets/flash-sale-options.tsx",
+    "components/affiliate/payout-form.tsx",
+    "components/affiliate/program-form.tsx",
+    "components/affiliate/payout-info-drawer.tsx",
+    "components/group-buy/create-campaign.tsx",
+    "components/evoucher/partners-section.tsx",
+  ]
+
+  it.each(FORMS)("%s: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ useConfirmDiscard \} from "(\.\.\/common|\.\.\/components\/common)\/use-confirm-discard"/)
+    expect(src).toMatch(/useConfirmDiscard\(\{\s*isDirty: form\.formState\.isDirty,/)
+    // ทุกทางปิด (Escape / close / Cancel ที่เป็น Drawer.Close / คลิกนอก) ผ่าน onOpenChange ตัวเดียว
+    expect(src).toMatch(/<(FocusModal|Drawer) open(=\{[^}]+\})? onOpenChange=\{confirmClose\}>/)
+    expect(src).not.toMatch(/onOpenChange=\{(setOpen|setCreateOpen)\}/)
+    expect(src).not.toMatch(/addEventListener\("keydown"|beforeunload|useBlocker/)
+  })
+
+  it("partners-section.tsx: modal สร้างและ Drawer แก้ใช้ handler เดียวกัน", () => {
+    expect(read("components/evoucher/partners-section.tsx").match(/onOpenChange=\{confirmClose\}/g)).toHaveLength(2)
+  })
+
+  it("hook ใช้ usePrompt ของ @medusajs/ui + ถ้อยคำของ dashboard, กันระหว่างบันทึกและ prompt ซ้อน", () => {
+    const src = read("components/common/use-confirm-discard.ts")
+    expect(src).toMatch(/import \{ usePrompt \} from "@medusajs\/ui"/)
+    expect(src).toContain('"Are you sure you want to leave this form?"')
+    expect(src).toContain('"You have unsaved changes that will be lost if you exit this form."')
+    expect(src).toMatch(/if \(open \|\| isPending\) return/)
+    // prompt ไม่ซ้อน: คำขอปิดระหว่าง prompt เปิดอยู่ถูกข้ามด้วย createSingleFlight (กฎ 31c)
+    expect(src).toContain("const [askOnce] = useState(createSingleFlight)")
+    expect(src).not.toMatch(/addEventListener|beforeunload|useBlocker/)
+  })
+
+  it("ไม่มีสำเนาข้อความ prompt ในไฟล์อื่นของ src/admin (hook กลางตัวเดียว)", () => {
+    const copies = adminFiles.filter(
+      (file) => !file.includes("__tests__") && read(file).includes("Are you sure you want to leave this form?")
+    )
+    expect(copies).toEqual(["components/common/use-confirm-discard.ts"])
   })
 })
