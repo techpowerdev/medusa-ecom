@@ -136,7 +136,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
   )
 
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด (เงื่อนไขเดิม)
-  const confirmClose = useConfirmDiscard({ isDirty: form.formState.isDirty, isPending: save.isPending, onClose })
+  const confirmClose = useConfirmDiscard({ form, isPending: save.isPending, onClose })
 
   return (
     <FocusModal open onOpenChange={confirmClose}>

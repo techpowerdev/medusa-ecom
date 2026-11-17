@@ -230,7 +230,7 @@ export const PartnersSection = () => {
 
   // ADM-27 (spec 08 กฎ 31): ฟอร์มเดียวของ modal สร้างและ Drawer แก้ — dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด
   const confirmClose = useConfirmDiscard({
-    isDirty: form.formState.isDirty,
+    form,
     isPending: save.isPending,
     onClose: () => {
       setCreateOpen(false)

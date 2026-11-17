@@ -843,7 +843,7 @@ describe("Escape ขณะ Combobox ขยายไม่ปิด FocusModal �
       expect(src).toMatch(/import \{ keepModalOpenWhileComboboxExpanded \} from "\.\.\/\.\.\/lib\/combobox-escape"/)
       expect(src).toMatch(/<FocusModal\.Content onEscapeKeyDown=\{keepModalOpenWhileComboboxExpanded\}>/)
       // คงเงื่อนไขเดิม: ปิดระหว่างบันทึกไม่ได้ — ADM-27 ย้ายเงื่อนไขเข้า useConfirmDiscard (กฎ 31c)
-      expect(src).toMatch(/useConfirmDiscard\(\{ isDirty: form\.formState\.isDirty, isPending: save\.isPending, onClose \}\)/)
+      expect(src).toMatch(/useConfirmDiscard\(\{ form, isPending: save\.isPending, onClose \}\)/)
       expect(src).toContain("<FocusModal open onOpenChange={confirmClose}>")
     }
   )
@@ -867,10 +867,10 @@ describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก�
     "components/evoucher/partners-section.tsx",
   ]
 
-  it.each(FORMS)("%s: import useConfirmDiscard จาก components/common และส่ง isDirty ของฟอร์ม + onOpenChange={confirmClose}", (file) => {
+  it.each(FORMS)("%s: import useConfirmDiscard จาก components/common และส่ง form (isDirty/isSubmitting) + onOpenChange={confirmClose}", (file) => {
     const src = read(file)
     expect(src).toMatch(/import \{ useConfirmDiscard \} from "(\.\.\/common|\.\.\/components\/common)\/use-confirm-discard"/)
-    expect(src).toMatch(/useConfirmDiscard\(\{\s*isDirty: form\.formState\.isDirty,/)
+    expect(src).toMatch(/useConfirmDiscard\(\{\s*form,/)
     // ทุกทางปิด (Escape / close / Cancel ที่เป็น Drawer.Close / คลิกนอก) ผ่าน onOpenChange ตัวเดียว
     expect(src).toMatch(/<(FocusModal|Drawer) open(=\{[^}]+\})? onOpenChange=\{confirmClose\}>/)
     expect(src).not.toMatch(/onOpenChange=\{(setOpen|setCreateOpen)\}/)
@@ -886,9 +886,14 @@ describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก�
     expect(src).toMatch(/import \{ usePrompt \} from "@medusajs\/ui"/)
     expect(src).toContain('"Are you sure you want to leave this form?"')
     expect(src).toContain('"You have unsaved changes that will be lost if you exit this form."')
-    expect(src).toMatch(/if \(open \|\| isPending\) return/)
-    // prompt ไม่ซ้อน: คำขอปิดระหว่าง prompt เปิดอยู่ถูกข้ามด้วย createSingleFlight (กฎ 31c)
-    expect(src).toContain("const [askOnce] = useState(createSingleFlight)")
+    // qa #389 D-1 (กฎ 31c): ช่วงหลังกด Save ก่อน isPending render ถือว่ากำลังบันทึก (isSubmitting ของ react-hook-form)
+    // และตัดสินใจหลัง event เดิมจบด้วยค่าล่าสุด (ref) ไม่ใช่ค่าใน closure ตอนกด
+    expect(src).toContain("form.formState.isSubmitting")
+    expect(src).toMatch(/const \{ busy, isDirty, onClose \} = latest\.current/)
+    expect(src).toMatch(/if \(busy\) return/)
+    // nit review #389: setTimeout มี cleanup ตอน unmount; prompt ไม่ซ้อนอาศัย dedupe ของ usePrompt (ไม่มี flag ซ้ำ)
+    expect(src).toMatch(/useEffect\(\(\) => \(\) => clearTimeout\(timer\.current\), \[\]\)/)
+    expect(src).not.toContain("createSingleFlight")
     expect(src).not.toMatch(/addEventListener|beforeunload|useBlocker/)
   })
 

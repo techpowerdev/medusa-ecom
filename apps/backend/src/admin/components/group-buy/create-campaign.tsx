@@ -131,7 +131,7 @@ export const CreateCampaign = ({
   const endsAt = form.watch("ends_at")
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด (เงื่อนไขเดิม)
   const confirmClose = useConfirmDiscard({
-    isDirty: form.formState.isDirty,
+    form,
     isPending: create.isPending,
     onClose: () => onOpenChange(false),
   })

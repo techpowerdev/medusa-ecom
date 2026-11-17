@@ -82,7 +82,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
 
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด
   const confirmClose = useConfirmDiscard({
-    isDirty: form.formState.isDirty,
+    form,
     isPending: save.isPending,
     onClose: () => setOpen(false),
   })

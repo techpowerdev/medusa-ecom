@@ -231,3 +231,37 @@ Tests:       446 passed, 446 total
   ✓  80 [chromium] › e2e/group-buy-admin-pages.spec.ts:370:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error (4.1s)
   80 passed (4.5m)
 ### pnpm lint (0 errors) / pnpm typecheck (ผ่าน)
+
+## แก้ตาม qa #389 D-1 + nit review (2026-11-17, base develop 36af193f)
+### Red: e2e "กด Save แล้ว Escape ทันที" (หน่วง POST 3s, Save + Escape ใน task เดียว) บนโค้ด PR ก่อนแก้ --repeat-each=3 — 3/3 ล้ม (alertdialog ค้าง)
+  ✘  1 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง (6.5s)
+  ✘  2 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง (6.4s)
+  ✘  3 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง (6.4s)
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 0
+    Received: 1
+    > 262 |       await expect(alert(page)).toHaveCount(0)
+    test-results/admin-form-discard-prompt--87160-อร์มปิดโดยไม่มี-prompt-ค้าง-chromium/test-failed-1.png
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 0
+    Received: 1
+    > 262 |       await expect(alert(page)).toHaveCount(0)
+    test-results/admin-form-discard-prompt--87160-อร์มปิดโดยไม่มี-prompt-ค้าง-chromium-repeat1/test-failed-1.png
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 0
+    Received: 1
+    > 262 |       await expect(alert(page)).toHaveCount(0)
+    test-results/admin-form-discard-prompt--87160-อร์มปิดโดยไม่มี-prompt-ค้าง-chromium-repeat2/test-failed-1.png
+  3 failed
+### Red: static jest -t "ADM-2[67]" (hook รับ form + isSubmitting, cleanup timer, ไม่มี createSingleFlight) — 10 ล้ม
+Tests:       10 failed, 195 skipped, 3 passed, 208 total
+### Green: jest src/admin
+Test Suites: 20 passed, 20 total
+Tests:       446 passed, 446 total
+### Green: admin-form-discard-prompt --repeat-each=5 --workers=2
+  30 passed (50.9s)
+### Green: storefront --project=unit
+  114 passed (722ms)
+### Green: e2e admin (workers=1) affiliate-admin-{forms,programs,affiliates}, evoucher-admin-{forms,pool-page,partners}, group-buy-admin-{form,pages}, admin-form-pilot, flash-sale-admin-save
+  75 passed (3.8m)
+### pnpm lint (0 errors) / pnpm typecheck (ผ่าน)

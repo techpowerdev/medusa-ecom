@@ -78,7 +78,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
     })
   )
 
-  const confirmClose = useConfirmDiscard({ isDirty: form.formState.isDirty, isPending: save.isPending, onClose })
+  const confirmClose = useConfirmDiscard({ form, isPending: save.isPending, onClose })
 
   // spec 08 กฎ 28c (แนวกฎ 24b): 401 → ErrorBoundary ของ dashboard พาไป /login; error อื่นแสดงใต้ช่อง (กฎ 21)
   if (isUnauthorized(options.error)) {

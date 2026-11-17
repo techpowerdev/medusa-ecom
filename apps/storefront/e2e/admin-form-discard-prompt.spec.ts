@@ -80,7 +80,6 @@ for (const c of CASES) {
     page,
     request,
     step,
-    evidence,
   }) => {
     test.setTimeout(120_000)
     await adminHeaders(request)
@@ -96,7 +95,6 @@ for (const c of CASES) {
       await expect(alert(page)).toContainText("Are you sure you want to leave this form?")
       await expect(alert(page)).toContainText("You have unsaved changes that will be lost if you exit this form.")
       await expect(form(page)).toBeVisible()
-      if (c === CASES[0]) await evidence("01-partner-discard-prompt")
     })
 
     await step("ยกเลิก prompt → ฟอร์มยังเปิดและค่าคงอยู่", async () => {
@@ -143,7 +141,7 @@ test("AC-32: Drawer แก้ partner — กรอกแล้วคลิก�
       const drawer = form(page)
       await expect(drawer.getByText("Edit partner")).toBeVisible()
       await drawer.getByLabel("Name *", { exact: true }).fill(`${name} v2`)
-      // ปุ่ม X ของ Drawer.Header (@medusajs/ui) ไม่มีชื่อ/testid — อยู่ถัดจาก kbd "esc"
+      // ปุ่ม X ของ Drawer.Header (@medusajs/ui 4.2.8) ไม่มีชื่อ/testid — อยู่ถัดจาก kbd "esc"; ตรวจโครงสร้างนี้ใหม่เมื่อ bump @medusajs/*
       await drawer.locator("kbd + button").click()
       await expect(alert(page)).toBeVisible()
       await expect(drawer).toBeVisible()
@@ -155,7 +153,7 @@ test("AC-32: Drawer แก้ partner — กรอกแล้วคลิก�
     await step("ฟอร์มสร้าง partner dirty → Escape 2 ครั้งติดกัน → alertdialog 1 ตัว", async () => {
       await page.getByTestId("evoucher-partners-table").getByRole("button", { name: "Create partner" }).click()
       await form(page).getByLabel("Name *", { exact: true }).fill(`${name} new`)
-      // กดสองครั้งใน tick เดียวกัน (ก่อน prompt render) — ทดสอบ in-flight flag ไม่ให้เปิด prompt ซ้อน (กฎ 31c)
+      // กดสองครั้งใน tick เดียวกัน (ก่อน prompt render) — prompt ไม่ซ้อน (กฎ 31c)
       await page.evaluate(() => {
         for (let i = 0; i < 2; i++) {
           document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))
@@ -187,7 +185,6 @@ test("AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไ
   page,
   request,
   step,
-  evidence,
 }) => {
   test.setTimeout(120_000)
   await adminHeaders(request)
@@ -221,11 +218,62 @@ test("AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไ
       await expect(page.getByRole("listbox")).toBeHidden()
       await page.keyboard.press("Escape")
       await expect(alert(page)).toBeVisible()
-      await evidence("02-payout-discard-prompt")
       await confirmPrompt(page)
       await expect(form(page)).toHaveCount(0)
     })
   } finally {
     await sql(`delete from affiliate where id = $1`, [`aff_${tag}`])
+  }
+})
+
+// qa #389 D-1 (กฎ 31c): Escape ทันทีหลังกด Save (ก่อน isPending ของ react-query render) ต้องไม่เปิด prompt —
+// ไม่งั้นบันทึกสำเร็จแล้วฟอร์มปิดแต่ prompt ค้าง; หน่วง POST 3 วินาทีและกด Save + Escape ใน task เดียวกัน
+test("AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง", async ({
+  page,
+  request,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const admin = await adminHeaders(request)
+  const name = `ADM-27 save-escape ${uniqueTag()}`
+  let createdId = ""
+  try {
+    await step("หน่วง POST partners 3s → กรอก Name → Save + Escape ใน task เดียว → ระหว่างรอไม่มี alertdialog", async () => {
+      let posted: () => void = () => {}
+      const held = new Promise<void>((resolve) => (posted = resolve))
+      await page.route(`**${PARTNERS_PATH}`, async (route) => {
+        if (route.request().method() !== "POST") return route.continue()
+        posted()
+        await new Promise((resolve) => setTimeout(resolve, 3000))
+        await route.continue()
+      })
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/evouchers`)
+      await page.getByTestId("evoucher-partners-table").getByRole("button", { name: "Create partner" }).click()
+      await form(page).getByLabel("Name *", { exact: true }).fill(name)
+      const saved = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === PARTNERS_PATH)
+      await page.evaluate(() => {
+        const save = document.querySelector<HTMLButtonElement>('[role="dialog"] button[type="submit"]')
+        if (!save) throw new Error("ไม่พบปุ่ม Save ใน dialog")
+        save.click()
+        document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))
+      })
+      await held
+      await expect(alert(page)).toHaveCount(0)
+      await expect(form(page)).toBeVisible()
+      const response = await saved
+      expect(response.status()).toBe(200)
+      createdId = (await response.json()).partner.id
+    })
+
+    await step("บันทึกสำเร็จ → ฟอร์มปิดและไม่มี alertdialog ค้าง", async () => {
+      await expect(form(page)).toHaveCount(0)
+      await expect(alert(page)).toHaveCount(0)
+    })
+  } finally {
+    if (createdId) {
+      const del = await request.delete(`${BACKEND_URL}${PARTNERS_PATH}/${createdId}`, { headers: admin })
+      expect.soft(del.ok(), `ลบ partner ของ test ${createdId}: ${del.status()}`).toBe(true)
+    }
   }
 })

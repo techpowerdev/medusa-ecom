@@ -67,7 +67,7 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
   )
 
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่าง Save/Clear ไม่ปิด
-  const confirmClose = useConfirmDiscard({ isDirty: form.formState.isDirty, isPending: pending, onClose })
+  const confirmClose = useConfirmDiscard({ form, isPending: pending, onClose })
 
   return (
     <Drawer open onOpenChange={confirmClose}>

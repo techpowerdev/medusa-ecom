@@ -70,7 +70,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
 
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด และยืนยันแล้วล้างค่า (เปิดใหม่ฟอร์มว่าง); ระหว่างบันทึกไม่ปิด
   const confirmClose = useConfirmDiscard({
-    isDirty: form.formState.isDirty,
+    form,
     isPending: create.isPending,
     onClose: () => {
       setOpen(false)
