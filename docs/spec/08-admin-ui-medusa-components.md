@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -614,6 +614,68 @@ none
 
 ### Open questions (รอบ 30)
 none
+
+## Follow-up รอบ 32 (2026-11-17 — Q9 = ก, Q10 = ก owner 2026-11-17)
+Status: accepted (owner สั่งทำ ADM-27 2026-11-17) · Out of scope: ย้ายไป `RouteFocusModal`/`RouteDrawer` (Q5 คงเดิม), แก้/patch `usePrompt`/`FocusModal`/`Drawer` ของ Medusa, Drawer ที่ไม่ใช่ฟอร์ม (`components/evoucher/codes-table.tsx` reveal code), ปุ่ม Prev/ลองใหม่ของตาราง error (Q10 = ก)
+
+### What Medusa already gives us (รอบ 32)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ถามก่อนทิ้งฟอร์มที่แก้แล้ว | `RouteModalForm` (dashboard) — `useBlocker` เฉพาะ modal แบบ route; ไม่มี export สำหรับ `FocusModal`/`Drawer` แบบ state (ตรวจ 2.22.1 `dist/components.d.ts:483–537`) | **custom เล็ก** ตาม "Custom Component Guides": hook กลางที่ใช้ `usePrompt` ของ `@medusajs/ui` + ถ้อยคำเดียวกับ dashboard |
+| กล่องยืนยัน | `usePrompt` (`@medusajs/ui`) | ใช้ตามเดิม |
+| รู้ว่าฟอร์มถูกแก้ | `formState.isDirty` ของ react-hook-form (ผ่าน `Form` ของ dashboard) | ใช้ตามเดิม |
+
+### Business rules (รอบ 32)
+31. (ADM-27 — Q9 = ก owner 2026-11-17, qa #379 O-1) ฟอร์มใน `FocusModal`/`Drawer` แบบ state (Q5) ทั้ง 7 จุด — `widgets/variant-evoucher-pool.tsx`, `widgets/flash-sale-options.tsx`, `components/affiliate/{payout-form,program-form,payout-info-drawer}.tsx`,
+    `components/group-buy/create-campaign.tsx`, `components/evoucher/partners-section.tsx` (สร้าง + แก้):
+    (a) ปิดด้วยทางใดก็ได้ (Escape, ปุ่ม close/Cancel, คลิกนอก — ทุกทางที่ผ่าน `onOpenChange(false)`) ขณะ `form.formState.isDirty` → แสดง `usePrompt` title "Are you sure you want to leave this form?" description "You have unsaved changes that will be lost if you exit this form."
+        (ถ้อยคำ `unsavedChangesTitle`/`unsavedChangesDescription` ของ dashboard; ปุ่มยืนยัน/ยกเลิกตาม default ของ `usePrompt` หรือ "Leave"/"Continue editing" — ระบุใน PR); ยืนยัน → ปิดและค่าหาย, ยกเลิก → modal ยังเปิดและค่าคงอยู่; ไม่ dirty → ปิดทันทีเหมือนเดิม;
+    (b) hook กลางตัวเดียว (เช่น `useConfirmDiscard(isDirty)` คืน handler สำหรับ `onOpenChange`) ใน `components/common/` (ผู้ใช้ 7 ที่ — `CLAUDE.md` ข้อ 1) ไม่มีสำเนาใน form ใด;
+        ฟอร์มที่ไม่ได้ใช้ react-hook-form (ถ้ามี) ส่งเงื่อนไข dirty ที่เทียบเท่า (ค่าปัจจุบัน ≠ ค่าเริ่มต้น) — ระบุใน PR;
+    (c) **กันกดซ้ำ**: ขณะบันทึก (`isPending` ของ mutation เดิม) การปิดยังถูกกันตามเงื่อนไขเดิม (`!save.isPending` ฯลฯ) และไม่แสดง prompt; ขณะ prompt เปิดอยู่ คำขอปิดซ้ำ (Escape/คลิกซ้ำ) ไม่เปิด prompt ซ้อน (in-flight flag);
+        หลังบันทึกสำเร็จฟอร์มปิดโดยไม่ถาม (reset หรือเช็ก `isSubmitSuccessful`/state ปิดของ handler เดิม);
+    (d) **ADM-26 (กฎ 30c) คงเดิม**: ขณะ `Combobox` ขยาย `onEscapeKeyDown` ยัง `preventDefault()` ก่อน → Escape ไม่ถึง `onOpenChange` จึงไม่เกิด prompt; Escape ครั้งถัดไปหลังรายการปิดแล้วเข้ากฎ (a);
+    (e) ห้ามดัก keydown ที่ `window`/`document`, ห้าม `beforeunload`/router blocker (ไม่ใช่ route modal), ห้ามแก้ testid เดิม
+
+### Acceptance criteria (รอบ 32)
+- AC-32 (ADM-27, กฎ 31) e2e 1280×800 (ไฟล์ใหม่ `e2e/admin-form-discard-prompt.spec.ts`, `evidenceTarget` `ADM-27`; `locale: "en-US"`, `timezoneId: "Asia/Bangkok"`) — **ล้มบน develop**:
+  สำหรับฟอร์มสร้าง partner (`evoucher-partners-table` → "Create partner"), ฟอร์มสร้างแคมเปญ (`gb-campaign-create`) และฟอร์ม program (สร้าง): Given ฟอร์มเปิดและกรอกช่องข้อความหนึ่งช่อง When `keyboard.press("Escape")`
+  Then `getByRole("alertdialog")` visible และ dialog ของฟอร์มยัง visible; When กดปุ่มยกเลิกของ prompt Then alertdialog ไม่ visible, ฟอร์มยังเปิด และค่าที่กรอกคงอยู่ (`toHaveValue`); When Escape อีกครั้งแล้วกดยืนยัน Then ฟอร์มปิด และเปิดใหม่ช่องว่าง;
+  Given ฟอร์มเปิดแต่ยังไม่กรอก When Escape Then ฟอร์มปิดโดยไม่มี alertdialog; Given ฟอร์ม Drawer แก้ partner กรอกแล้วคลิกปุ่ม close ของ Drawer Then มี alertdialog;
+  Given ฟอร์ม payout dirty และ `Combobox` ขยาย When Escape Then ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d — AC-31 ยังผ่าน);
+  Given ฟอร์มสร้าง partner dirty When กด Escape 2 ครั้งติดกัน Then alertdialog มี 1 ตัว (`toHaveCount(1)`); Given บันทึกสำเร็จ Then ไม่มี alertdialog;
+  static (`__tests__/medusa-ui.unit.spec.ts`): ไฟล์ทั้ง 7 import hook จาก `components/common/` และ hook ใช้ `usePrompt` จาก `@medusajs/ui`, ไม่มี `addEventListener("keydown"` ในไฟล์เหล่านี้;
+  e2e เดิมที่ปิดฟอร์มที่กรอกแล้วด้วย Escape/close ปรับให้ยืนยัน prompt (ระบุรายการใน PR) และ AC-7..31 ที่เกี่ยวข้องผ่าน
+
+### Test plan (รอบ 32)
+| ชนิด | AC |
+|---|---|
+| static jest + e2e admin (1280×800) | AC-32 (เขียน e2e ให้ล้มบน develop ก่อน; qa ถ่ายรูป prompt ≤ 2 PNG) |
+
+### Tasks (รอบ 32)
+| Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-27 | (Q9 = ก owner 2026-11-17, qa #379 O-1) ถามยืนยันด้วย `usePrompt` ก่อนปิดฟอร์มที่ dirty ใน `FocusModal`/`Drawer` แบบ state 7 จุด ผ่าน hook กลาง (กฎ 31) — ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) | `components/common/` (hook ใหม่), `widgets/{variant-evoucher-pool,flash-sale-options}.tsx`, `components/affiliate/{payout-form,program-form,payout-info-drawer}.tsx`, `components/group-buy/create-campaign.tsx`, `components/evoucher/partners-section.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/admin-form-discard-prompt.spec.ts` (ใหม่) + e2e เดิมที่ปิดฟอร์ม dirty (เช่น `affiliate-admin-{forms,programs}`, `evoucher-admin-{forms,pool-page}`, `group-buy-admin-form`) | ~250 LOC รวม e2e — ถ้าเกิน ~400 แบ่ง **ADM-27a** (hook + ฟอร์ม affiliate/group buy + e2e) → **ADM-27b** (ฟอร์ม e-voucher/flash sale + e2e) | 1280×800 | AC-32 | PR เอกสารรอบ 32 merge; ADM-26 ☑ #379; ไม่บล็อก release | ชน CORE-61 (spec 01) ที่ `e2e/{affiliate-admin-forms,evoucher-admin-forms,evoucher-admin-pool-page}.spec.ts`/`e2e/support/admin.ts` (CORE-61 แก้แค่บรรทัด import `PAGINATION_TEXT`) → **แนะนำ CORE-61 merge ก่อน** แล้ว ADM-27 rebase; ∥ GB-17 (`src/api/`), CORE-62, CORE-63, OPS-26 |
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 32)
+- (Q10 = ก owner 2026-11-17, qa #381) ตารางที่ error ขณะอยู่หน้า ≥ 2 ไม่มีปุ่ม Prev/ลองใหม่ — reload หรือกดเมนูด้านข้าง (URL ไม่มี offset → หน้า 1) แก้ได้, ตรงกับหน้า list ของ Medusa ที่ไม่มี retry; กฎ 24e/29a คงเดิม
+
+## Open questions (รอบ 32 — 2026-11-17)
+ที่มา: ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)" ข้อ (3), (6) — ตรวจโค้ดบน develop `a9fec926` และ `@medusajs/dashboard` 2.22.1 / `@medusajs/ui` 4.2.8 ที่ติดตั้ง (path ย่อจาก `apps/backend/src/admin/`)
+- ~~**Q9**~~ ✅ **owner ตอบ ก 2026-11-17** → กฎ 31, AC-32, ADM-27 (หัวข้อ "Follow-up รอบ 32"); คำถามเดิม: (qa #379 O-1) ฟอร์มที่กรอกแล้ว (dirty) ปิดด้วย Escape/ปุ่มปิด/คลิกนอก → ค่าหายโดยไม่ถาม (ตรงกฎ 30c — ADM-26 กันเฉพาะตอน `Combobox` ขยาย); Medusa มี pattern นี้**เฉพาะ modal แบบ route**:
+  `RouteModalForm` (export จาก `@medusajs/dashboard/components`, ใช้ผ่าน `RouteFocusModal.Form`/`RouteDrawer.Form`) ใช้ `useBlocker` ของ react-router บล็อกการออกจาก route เมื่อ `isDirty` แล้วถาม "Are you sure you want to leave this form?"
+  / "You have unsaved changes that will be lost if you exit this form." (`dist/chunk-GXJ5J364.mjs:80`, คำแปล `unsavedChangesTitle`/`unsavedChangesDescription`) — ไม่มี export สำหรับ `FocusModal`/`Drawer` แบบ state ที่เราใช้ตาม Q5;
+  ฟอร์มที่เข้าข่าย 7 จุด: `widgets/variant-evoucher-pool.tsx`, `widgets/flash-sale-options.tsx` (Drawer), `components/affiliate/{payout-form,program-form}.tsx`, `components/affiliate/payout-info-drawer.tsx`, `components/group-buy/create-campaign.tsx`, `components/evoucher/partners-section.tsx` (สร้าง + แก้):
+  (ก) **[แนะนำ]** คง `FocusModal`/`Drawer` แบบ state (Q5) แล้วถาม `usePrompt` ของ `@medusajs/ui` ก่อนปิดเมื่อ `form.formState.isDirty` และไม่ได้กำลังบันทึก — ใช้ถ้อยคำเดียวกับ dashboard; ทำเป็น hook เดียวใน `components/common/` (ผู้ใช้ 7 ที่ — ตาม "Custom Component Guides" เพราะ dashboard ไม่ export ตัวนี้) ต่อกับ `onOpenChange` เดิม (และ `onEscapeKeyDown` ของ ADM-26 ยังทำงานก่อน);
+      เหตุผล: พฤติกรรมเหมือนหน้า admin หลักของ Medusa โดยไม่กลับคำตัดสิน Q5; ผลกระทบ: ~150 LOC + e2e ใหม่ (dirty → Escape → prompt → ยกเลิกแล้วค่าคงอยู่ / ยืนยันแล้วปิด) และต้องแก้ e2e เดิมที่ปิดฟอร์มที่กรอกแล้วด้วย Escape (แตกเป็น 2 PR ตาม module ถ้าเกิน ~400 LOC)
+  (ข) ย้ายฟอร์มไปใช้ `RouteFocusModal`/`RouteDrawer` + `RouteModalForm` ของ Medusa (ได้ prompt อัตโนมัติ) — **กลับคำตัดสิน Q5 ของ owner และต้องแก้ ADR-018**; ผลกระทบ: ทุกฟอร์มต้องมี route ของตัวเอง (URL เปลี่ยน, state ที่ส่งเข้าฟอร์มต้องอ่านจาก URL/loader), e2e ฟอร์มเกือบทั้งหมดต้องแก้ ~400+ LOC หลาย PR
+  (ค) คงเดิม ไม่มี task — ผลกระทบ: admin ที่กด Escape/คลิกนอกโดยไม่ตั้งใจต้องกรอกใหม่ (ไม่มีข้อมูลเสียหาย — ยังไม่ได้บันทึก)
+- ~~**Q10**~~ ✅ **owner ตอบ ก 2026-11-17 (คงเดิม)** → บันทึกใน "ยอมรับใน v1 (รอบ 32)" ไม่มี task; คำถามเดิม: (qa #381) ตารางที่ error ขณะอยู่หน้า ≥ 2 (`?<prefix>_offset=` > 0) ไม่มีปุ่ม Prev/ลองใหม่ เพราะ ADM-25 ซ่อนแถบแบ่งหน้าตอน `isError && !data` (กฎ 29a) และกฎ 24e ไม่มีปุ่มลองใหม่ (reload หน้า);
+  Medusa: `DataTable` ของ dashboard/`@medusajs/ui` ไม่มี error state/ปุ่ม retry — หน้า list ของ Medusa เองโยน error ให้ `ErrorBoundary` (ไม่มี retry); `emptyState.empty.custom` (ReactNode, `@medusajs/ui` `blocks/data-table/types.d.ts:319`) ใส่ปุ่มได้โดยไม่สร้างตารางเอง;
+  `QueryClient` ของ dashboard `retry: 1` อยู่แล้ว:
+  (ก) **[แนะนำ]** คงเดิม ไม่มี task — เหตุผล: เกิดเฉพาะเมื่อ API ล้มตอนอยู่หน้า ≥ 2 แล้ว refetch ล้มซ้ำ, reload หรือกดเมนูด้านข้าง (URL ไม่มี offset → หน้า 1) แก้ได้ทันที และตรงกับหน้า list ของ Medusa ที่ไม่มี retry; ผลกระทบ: ไม่มีงาน
+  (ข) ปุ่ม "Back to first page" ใน `emptyState.empty.custom` เฉพาะตอน error และ offset > 0 (ล้าง `<prefix>_offset` ผ่าน `useQueryParams`/search params) ทั้ง 7 ตารางของกฎ 29 — ผลกระทบ: ~150 LOC + e2e (testid ปุ่มใหม่ต่อตาราง), แก้กฎ 24e/29
+  (ค) ปุ่ม "Try again" (`refetch()`) ทุกตารางตอน error + ข้อ (ข) — ผลกระทบ: ~200 LOC + e2e, ต้องกันกดซ้ำระหว่าง refetch (`isFetching`), แก้กฎ 24e
 
 ## Open questions
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task

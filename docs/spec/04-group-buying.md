@@ -26,7 +26,8 @@ AC-52 ใช้ e2e admin ดัก network ด้วย `page.route` แทน 
 รอบ 19 2026-11-04: GB-13 ☑ #259, GB-N6 ☑ #269 (ข้อ (a) ปิดโดย #259), nit review #269 → GB-N7 (comment ของ assertion) — กฎข้อ 38, AC-57;
 รอบ 20 2026-11-04: GB-N7 ☑ #274, owner เลือกทาง (ก) ให้ key ของฟอร์มสร้างแคมเปญใช้ `crypto.getRandomValues` (admin ที่เปิดผ่าน http เปิดฟอร์มไม่ได้เพราะ `crypto.randomUUID()`
 มีเฉพาะ secure context) → GB-15 — กฎข้อ 33d แก้, AC-58;
-รอบ 21 2026-11-04: GB-15 ☑ #285, qa #285 O-1 (cookie `Secure` ของ admin บน prod) → หมายเหตุ spec 07 Deliverables ข้อ 11 ไม่มี task)
+รอบ 21 2026-11-04: GB-15 ☑ #285, qa #285 O-1 (cookie `Secure` ของ admin บน prod) → หมายเหตุ spec 07 Deliverables ข้อ 11 ไม่มี task;
+รอบ 32 2026-11-17: qa #374 D-1 (ค่าเกิน int4 ใน `POST /admin/group-buy/campaigns` ได้ 500) → GB-17 ครอบ admin route ของ flash sale/e-voucher/affiliate ที่มีปัญหาเดียวกัน — กฎข้อ 40, AC-60; owner สั่งทำ 2026-11-17)
 เป้าหมาย (เจ้าของ): แคมเปญที่มีกำหนดเวลา โดยส่วนลดจะมีผลก็ต่อเมื่อถึงเป้าหมายที่กำหนดเท่านั้น
 เป้าหมายอาจเป็น **จำนวนออเดอร์ (orders)**, **จำนวนชิ้น (units)** หรือ **จำนวนคน (people)** ข้อจำกัด: จำนวนออเดอร์รวม,
 จำนวนชิ้นต่อคน, จำนวนคนต่อกลุ่ม กลุ่มมีสองแบบคือ **pool** ที่ admin สร้าง หรือ **team** ที่ลูกค้าสร้างเอง
@@ -66,6 +67,7 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | exclusivity ของ promotion | ไม่มี native (ตรวจ 2.22.1); มี hook `validate` / `setPromotionContext` บน `updateCartPromotionsWorkflow` | ขยาย — ทำครั้งเดียวใน PROMO-1 (ADR-009) |
 | (รอบ 16) กันสร้างแคมเปญซ้ำเมื่อยิงซ้ำ/พร้อมกัน | admin API ของ Medusa ไม่มี idempotency key; Medusa campaign มี `campaign_identifier` ที่ผู้สร้างกำหนดได้ + Locking module (`acquireLockStep`/`releaseLockStep`) | ขยาย — key ของผู้เรียกใส่ใน `campaign_identifier` + lock ต่อ key (กฎข้อ 33, Q21 = ก owner 2026-11-04) ไม่เพิ่ม model/infra |
 | (รอบ 16b, Q-C4 = ข) วิธีส่งของ cart ที่ join ต้องครอบ shipping profile ของสินค้า | `validateShippingStep` (`@medusajs/medusa/core-flows`, id `validate-shipping`, `core-flows/src/cart/steps/validate-shipping.ts` 2.22.1) ที่ `completeCartWorkflow` เรียกด้วย cart (`completeCartFields` มี `items.variant.product.shipping_profile.id`) + `shipping_option` ที่ query ด้วย `useQueryGraphStep({ entity: "shipping_option", fields: ["id", "shipping_profile_id"], filters: { id: <shipping_option_id ของ shipping_methods> } })` — join ไม่ผ่าน complete cart จึงไม่ถูกตรวจ | ขยาย — **ไม่เรียก step นี้ตรง** เพราะ (1) throw `INVALID_DATA` ข้อความทั่วไปไม่มี code (storefront แยกจาก 400 อื่นไม่ได้ — ต้องมี `GB_*` ตามที่ owner สั่ง) และ (2) ล้มเมื่อไม่มี shipping method เลย ซึ่งขัดกับข้อยกเว้นกฎข้อ 35c; ใช้ **field/query ชุดเดียวกับ Medusa** และกฎเทียบ profile แบบเดียวกันใน helper pure (กฎข้อ 35) |
+| (รอบ 32) ปฏิเสธจำนวนเต็มที่เกิน column `integer` ก่อนถึง DB | `validateAndTransformBody` + zod ของ Medusa (`@medusajs/framework/zod`) คืน 400 `invalid_data` เมื่อ schema ไม่ผ่าน; `model.number()` ของ DML สร้าง column `integer` (int4 — ตรวจใน migration ของ 4 module) แต่ zod `.int()` ยอมถึง `Number.MAX_SAFE_INTEGER`; validator ของ Medusa core ไม่มีเพดาน int4 ให้ใช้ซ้ำ | ขยาย — เพิ่ม `.max(INT4_MAX)` ใน validator ของเราเอง (กฎข้อ 40) ไม่แก้ model/migration |
 | (รอบ 16) นับถอยหลัง / ราคา variant บนหน้า | `countdownLabel` (`lib/util/flash-sale.ts` เดิม), `calculated_price` ของ variant จาก `GET /store/products` (region) ที่หน้าโหลดอยู่แล้ว | ใช้ตามเดิม (กฎข้อ 32) — ไม่ยิง API เพิ่ม |
 
 ## ดีไซน์หลัก: สร้าง draft order ตอนเข้าร่วม ชำระเงินเมื่อสำเร็จ
@@ -513,6 +515,21 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     (`createPromotionsWorkflow`) ไม่ใช่ล้มที่ zod validator ของ route (ถ้าล้มที่ zod จะไม่พิสูจน์การปล่อย lock); ไม่แก้ assertion/logic
 39. (รอบ 26, GB-16 — performance, follow-up รอบ 25) job `group-buy-deadline` กรอง membership ที่หมดเวลาด้วย `group: { status: "succeeded", pay_deadline_at: { $lte: now } }` เพื่อให้ใช้ index `(status, pay_deadline_at)` ของกลุ่ม (วัดได้ 50–65ms ต่อรอบเมื่อกรองแค่ `pay_deadline_at`);
     ไม่เปลี่ยนพฤติกรรม: `pay_deadline_at` ถูกตั้งเฉพาะตอนกลุ่ม `succeeded` (`workflows/group-buy/group-outcome.ts:100`) และ membership `awaiting_payment` มีเฉพาะในกลุ่มนั้น
+40. (รอบ 32, GB-17 — qa #374 D-1; owner สั่งทำ 2026-11-17) field จำนวนเต็มใน body ของ admin route ที่ลง column `integer` (int4) ต้องถูกจำกัด **≤ 2147483647** ที่ zod validator ของ route
+    → ค่าที่เกินได้ **400 `invalid_data`** ไม่ถึง DB (ปัจจุบันได้ 500 `integer out of range` เพราะ `.int()` ยอมถึง `MAX_SAFE_INTEGER`); ค่าคงที่ `INT4_MAX = 2147483647` อยู่ที่เดียว
+    (เช่น `apps/backend/src/lib/int4.ts` — ผู้ใช้ 4 module); ขอบล่าง, `nullish`/`optional`, ค่าเริ่มต้น และ field อื่นคงเดิม — รายการที่ตรวจบน develop `a9fec926` (validator ↔ column `integer` ใน migration):
+
+| route (POST) | validator (`apps/backend/src/api/admin/…`) | field |
+|---|---|---|
+| `/admin/group-buy/campaigns`, `/admin/group-buy/campaigns/:id` | `group-buy/validators.ts` `configFields` (`AdminCreateGroupBuyCampaign`, `AdminUpdateGroupBuyCampaign`) | `target_value`, `max_total_orders`, `max_units_per_person`, `max_people_per_group`, `team_duration_hours`, `pay_within_hours` |
+| `/admin/flash-sales/:campaign_id/config` | `flash-sales/validators.ts` `AdminUpsertFlashSaleConfig` | `per_customer_limit`, `total_cap` |
+| `/admin/affiliate/programs`, `/admin/affiliate/programs/:id` | `affiliate/validators.ts` `programFields` | `attribution_window_days`, `hold_days` |
+| `/admin/evoucher/pools`, `/admin/evoucher/pools/:id` | `evoucher/validators.ts` `poolFields` | `low_stock_threshold` |
+
+    นอกขอบเขต: `limit`/`offset` ของ query (มี `max` แล้ว หรือ `OFFSET` ของ Postgres เป็น bigint), field เงินที่เป็น `bigNumber` (`face_value`, `commission_value`, `cap_per_order`),
+    ข้อความ error ใต้ช่องของฟอร์ม admin (400 แสดงเป็น toast ตามเดิม — ROADMAP กลุ่ม ค)
+    (ข) (spec 05 Q21 = ก owner 2026-11-17) affiliate program: `hold_days` และ `attribution_window_days` จำกัด **≤ 36500** (100 ปี — เพดานทางเทคนิคกัน `matures_at` เป็น Invalid Date ไม่ใช่กฎธุรกิจ) แทนเพดาน int4 ของสอง field นี้
+    → เกินได้ 400 `invalid_data`; ค่าคงที่อยู่ใน `affiliate/validators.ts` หรือ `src/lib/int4.ts` (เลือกใน PR) ที่เดียว
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -746,6 +763,14 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
   diff ของ PR ไม่แตะ `apps/backend/src/api/` และ `package.json`; e2e admin ของ AC-52 (body มี `idempotency_key` รูป UUID, key เดิมเมื่อ submit ซ้ำ, key ใหม่เมื่อเปิดฟอร์มใหม่) และ AC-56 ผ่านโดยไม่แก้ assertion
 - AC-59 (GB-16, กฎข้อ 39) unit (mock service ของ job): `listAndCountGroupBuyMemberships`/`listGroupBuyMemberships` ถูกเรียกด้วย filter ที่ `group` มี `status: "succeeded"` และ `pay_deadline_at.$lte`; integration ที่มีอยู่ `group-buy-payment.spec.ts`, `group-buy-outcome.spec.ts` (AC-10) ผ่านโดยไม่แก้ assertion;
   แนบผล `EXPLAIN` ของ query ก่อน/หลังใน PR (เป็นหลักฐาน ไม่ใช่เกณฑ์ผ่าน — planner เลือก plan ตามปริมาณข้อมูล)
+- AC-60 (GB-17, กฎข้อ 40) integration http (admin JWT จาก `integration-tests/helpers/admin.ts`) — เขียนให้**ล้มบน develop** ก่อน (ได้ 500):
+  (a) `group-buy-campaigns.spec.ts`: Given body สร้างแคมเปญที่ถูกต้อง When `POST /admin/group-buy/campaigns` โดยแทน**ทีละ field** ของตารางกฎข้อ 40 ด้วย `2147483648` Then 400, `type` = `invalid_data`, message มีชื่อ field นั้น และ `query.graph` ของ `group_buy_campaign` ไม่มีแคมเปญเพิ่ม;
+      `max_total_orders` และ `pay_within_hours` (field ที่ไม่มีกฎข้าม field) = `2147483647` Then 200 และค่าที่อ่านกลับจาก `GET /admin/group-buy/campaigns/:id` = `2147483647`; `POST /admin/group-buy/campaigns/:id` (แคมเปญ `draft`) ด้วย `max_total_orders: 2147483648` → 400 `invalid_data` และค่าเดิมไม่เปลี่ยน;
+  (b) `flash-sale-admin-config.spec.ts`: `per_customer_limit`/`total_cap` = `2147483648` → 400 `invalid_data` (config เดิมไม่เปลี่ยน), `2147483647` → 200;
+  (c) `affiliate-admin.spec.ts`: สร้าง program ด้วย `attribution_window_days` หรือ `hold_days` = `2147483648` และ = `36501` (ทีละ field) → 400 `invalid_data` ไม่มี program เพิ่ม; update ด้วยค่าเดียวกัน → 400 และค่าเดิมไม่เปลี่ยน;
+      ทั้งสอง field = `36500` → 200 (กฎข้อ 40 (ข));
+  (d) `evoucher-admin.spec.ts`: สร้าง/แก้ pool ด้วย `low_stock_threshold: 2147483648` → 400 `invalid_data` ไม่มี pool เพิ่ม/ค่าเดิมไม่เปลี่ยน, `2147483647` → 200;
+  ทุกเคส response ไม่มีข้อความ `integer out of range`; unit (jest): `INT4_MAX === 2147483647`; integration เดิมของ 4 ไฟล์ผ่านโดยไม่แก้ assertion
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -781,6 +806,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - (รอบ 18) e2e admin (repeat) + integration (http) + grep: AC-56 (GB-N6)
 - (รอบ 19) grep + suite เดิม: AC-57 (GB-N7)
 - (รอบ 20) unit jest + grep + e2e admin เดิม: AC-58 (GB-15); qa (ไม่ใช่ AC): เปิด admin ผ่าน http ที่ไม่ใช่ localhost (เช่น IP ของเครื่องใน LAN) แล้วกด `gb-campaign-create` → ฟอร์มเปิดและสร้างแคมเปญได้
+- (รอบ 32) integration (http) 4 ไฟล์ + unit jest: AC-60 (GB-17) — ไม่มี UI จึงไม่ต้องมี qa/screenshot; แนบผล test ใน `docs/evidence/group-buying/GB-17-tests.txt`
 
 ## Tasks
 | ID | Task | Depends |
@@ -821,6 +847,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-N7 | (test-only comment ~2 LOC, รอบ 19 — nit review #269) comment เหนือ assertion ข้อความ "percentage number between 0 and 100" ว่ายืนยันการล้มหลัง lock ไม่ใช่ที่ zod (กฎข้อ 38; AC-57) — ไฟล์: `backend/integration-tests/http/group-buy-campaigns.spec.ts` — ☑ #274 | none — **เริ่มได้** (GB-N6 ☑ #269); ∥ ทุกตัว; ไม่บล็อก release — ถ้ามี PR อื่นแตะไฟล์นี้ก่อน รวมเข้า PR นั้นได้แล้วปิด GB-N7 |
 | GB-15 | (admin เล็ก ~40 LOC รวม test, รอบ 20 — owner เลือกทาง (ก) 2026-11-04) key ของฟอร์มสร้างแคมเปญสร้างด้วย `crypto.getRandomValues` ผ่าน helper `newIdempotencyKey()` (รูป UUID v4) แทน `crypto.randomUUID()` ที่ใช้ไม่ได้บน http (กฎข้อ 33d; AC-58) — ไฟล์: `src/admin/lib/group-buy-form.ts` (+ `src/admin/lib/__tests__/group-buy-form.unit.spec.ts`), `src/admin/components/group-buy/create-campaign.tsx` (`openModal` + comment ~49); ไม่แตะ backend/`package.json` — ☑ #285 (train #290) | none — **เริ่มได้** (GB-13 ☑ #259); ∥ ทุกตัว; ชน `create-campaign.tsx` กับ ADM-7 (spec 08, ☐) ตัวที่ merge ทีหลัง rebase; **ควรมีก่อน release v0.5.0** (admin ที่เปิดผ่าน http สร้างแคมเปญไม่ได้เลย) |
 | GB-16 | (backend เล็ก ~20 LOC, รอบ 26 — follow-up รอบ 25) filter ของ job `group-buy-deadline` รวมสถานะกลุ่ม `succeeded` ให้ใช้ index `(status, pay_deadline_at)` (กฎข้อ 39; AC-59) — ไฟล์: `src/jobs/group-buy-deadline.ts` (+ unit) — ☑ #357 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release |
+| GB-17 | (backend เล็ก ~150 LOC รวม test, รอบ 32 — qa #374 D-1) จำกัดจำนวนเต็มที่ลง column `integer` ≤ 2147483647 ใน validator ของ admin route group buy/flash sale/affiliate/e-voucher → 400 `invalid_data` แทน 500 + `hold_days`/`attribution_window_days` ≤ 36500 (กฎข้อ 40; AC-60) — ไฟล์ (`apps/backend/`): `src/lib/int4.ts` ใหม่ (+ unit), `src/api/admin/{group-buy,flash-sales,affiliate,evoucher}/validators.ts`, `integration-tests/http/{group-buy-campaigns,flash-sale-admin-config,affiliate-admin,evoucher-admin}.spec.ts` — ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) | PR เอกสารรอบ 32 merge; ไม่บล็อก release; ∥ CORE-61, CORE-62, CORE-63 (spec 01 — storefront ล้วน ไม่ชนไฟล์), ∥ ADM-27 (spec 08 — แตะ `src/admin/` ไม่ใช่ `src/api/`), ∥ OPS-26; รวมเพดาน `hold_days`/`attribution_window_days` ≤ 36500 (spec 05 Q21 = ก owner 2026-11-17, กฎข้อ 40 (ข), +~10 LOC) |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
 GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
@@ -852,6 +879,7 @@ e2e `group-buy-admin-detail.spec.ts`/`group-buy-admin-dates.spec.ts` ที่�
 เป็นข้อกำหนดของ prod ไม่ใช่ bug ของ GB-15 → บันทึกใน spec 07 Deliverables ข้อ 11 (ไม่มี task); assertion `toHaveLength(1)` ข้าง `handle=` ของสองไฟล์ข้างบนเข้มขึ้นใน CORE-49 ของ spec 01
 (รอบ 30, 2026-11-13) GB-16 ☑ #357 (ปิดรอบ 29); ไม่เปิด task: index ของ `group_buy_membership` ที่ขึ้นต้นด้วย `status` หรือ partial `WHERE status = 'awaiting_payment'` (review #357) — มี index `(group_id, status)` อยู่แล้วและ job `group-buy-deadline`
 กรองด้วยกลุ่ม `succeeded` ผ่าน index `(status, pay_deadline_at)` ของกลุ่ม (กฎข้อ 39) → รอวัดบน production ก่อน (แนวเดียวกับ GIN index ของ spec 05 Non-functional); เปิด task เมื่อ `EXPLAIN` บน prod แสดง seq scan ของ membership ที่มีผลจริง
+(รอบ 32, 2026-11-17) GB-17 ☐ (owner สั่งทำ 2026-11-17 — เริ่มเมื่อ PR เอกสารรอบ 32 merge) ∥ ทุกตัว; ตรวจโค้ดบน develop `a9fec926`: validator ทั้ง 4 module ใช้ `.int()` ไม่มีเพดาน, column ทั้งหมดในตารางกฎข้อ 40 เป็น `integer` ใน migration
 
 ## Open questions
 - ~~**Q22**~~ **ตัดสินแล้ว (owner 2026-11-04 รอบ 17) = (ก)** → กฎข้อ 35c เป็นกฎปกติ (cart ไม่มี shipping method เลย → ไม่ตรวจ) ไม่มี task เพิ่ม — คำถามเดิม: (รอบ 16b, GB-14 กฎข้อ 35c) join ด้วย cart ที่มี line ต้องจัดส่งแต่**ไม่มี shipping method เลย**ควรถูกปฏิเสธด้วยไหม (แบบ `validateShippingStep` ของ Medusa):
