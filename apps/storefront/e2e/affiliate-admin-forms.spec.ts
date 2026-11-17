@@ -167,7 +167,9 @@ test("AC-12: แก้แค่ชื่อของโปรแกรมที�
 test("AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้", async ({ page, request, step }) => {
   test.setTimeout(120_000)
   await adminHeaders(request)
-  const tag = `adm9${Date.now()}`
+  // ADM-29 (spec 08 กฎ 33): tag ตัวอักษรแบบ AC-12 ตัวแรก — `q` แยกคำแล้ว AND ทีละคำ tag ตัวเลขที่มี "249" จะตรงทั้ง 250 ราย
+  const tag = `adm${String(Date.now()).replace(/\d/g, (digit) => "abcdefghij"[Number(digit)])}`
+  const term = `${tag} aff 249`
   // ADM-24: ตัวเลือกเรียงตามชื่อ (order=name) — aff 249 คือรายที่ 250 ที่ limit 200 เดิมตัดทิ้งและไม่อยู่ในหน้าแรก
   await sql(
     `insert into affiliate (id, email, name, code, status, created_at, updated_at)
@@ -199,12 +201,15 @@ test("AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่�
     })
 
     await step("พิมพ์ชื่อรายที่ 250 → ค้นด้วย q (ไม่ดึง limit=200 หลายหน้า) เลือกได้ และ POST ส่ง id กับช่วงค่าเริ่มต้นเป็น UTC", async () => {
-      const searched = page.waitForResponse((r) => new URL(r.url()).searchParams.get("q") === `${tag} aff 249`)
-      await page.getByTestId("affiliate-payout-field-affiliate_id").fill(`${tag} aff 249`)
-      await searched
-      await page.getByRole("option").filter({ hasText: `${tag} aff 249` }).click()
+      const searched = page.waitForResponse(
+        (r) => new URL(r.url()).pathname === AFFILIATES && new URL(r.url()).searchParams.get("q") === term,
+      )
+      await page.getByTestId("affiliate-payout-field-affiliate_id").fill(term)
+      // ผลค้นหาต้องเหลือรายเดียว — ถ้า tag ชนกับคำค้นอีก ล้มที่นี่พร้อมจำนวนจริงแทนการรอ option จน timeout
+      expect((await (await searched).json()).count, `GET ${AFFILIATES}?q=${term}`).toBe(1)
+      await page.getByRole("option").filter({ hasText: term }).click()
       // ADM-17 (spec 08 AC-21): ค้นฝั่ง server ด้วย q และไม่มีการดึงทีละ 200 จนครบแบบเดิม
-      expect(lists.some((url) => url.searchParams.get("q") === `${tag} aff 249`)).toBe(true)
+      expect(lists.some((url) => url.searchParams.get("q") === term)).toBe(true)
       expect(lists.filter((url) => url.searchParams.get("limit") === "200")).toEqual([])
       const created = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === PAYOUTS)
       await page.getByTestId("affiliate-payout-save").click()

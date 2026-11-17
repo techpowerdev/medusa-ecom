@@ -1,0 +1,81 @@
+# ADM-29 (spec 08 AC-34, กฎ 33) — test payout ของ affiliate-admin-forms ใช้ tag ตัวอักษร + assert count = 1 ของผล q
+# วันที่: 2026-11-18, node v22.23.3, base origin/develop 8945f184
+# backend prod build (medusa build + medusa start จาก .medusa/server) :9302, DB medusa_adm29, Redis db 2, CI=1 (workers=1), viewport 1280x800
+# test นี้เป็น admin ล้วน (ไปที่ BACKEND_URL/app เท่านั้น) จึงไม่ได้ start storefront ในเครื่อง
+
+## 1. Red (AC-34a)
+### static (unit project) — test AC-33/AC-34 ใหม่ใน core-46-e2e-hygiene.unit.spec.ts รันบน affiliate-admin-forms.spec.ts เดิม
+### pnpm --filter storefront test:e2e:unit core-46 -g "AC-34"
+    Error: AC-12/AC-21: ฟอร์มสร้าง payout
+    Expected substring: ".replace(/\\d/g,"
+    Received string:    "`adm9${Date.now()}`"
+    > 255 |     if (expression.includes("Date.now()")) expect(expression, prefix).toContain(".replace(/\\d/g,")
+  1 failed
+    [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:248:5 › AC-33/AC-34 (spec 08 กฎ 32, 33; ADM-28, ADM-29): AC-12 ตัวแรกและ payout ของ affiliate-admin-forms ใช้ tag ไม่มีตัวเลข, assert count = 1 ของผล q, ไม่มี waitForTimeout และ setTimeout ≤ 120_000 
+
+### e2e test payout ที่แก้แล้ว แต่บังคับ tag ชั่วคราวให้มี "249" (ต่อท้าย `249` หลัง tag ตัวอักษร ในเครื่องเท่านั้น แล้ว revert ไม่ commit)
+### pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts -g "ฟอร์มสร้าง payout" --project=chromium
+### → ล้มเร็ว 2.0s ที่ assert count (ได้ 250 ไม่ใช่ 1; ข้อความมีคำค้น) ไม่ใช่ timeout 120s ของ test
+  ✘  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (2.0s)
+    Error: GET /admin/affiliate/affiliates?q=admbhjejdhjhjheg249 aff 249
+    Expected: 1
+    Received: 250
+    > 209 |       expect((await (await searched).json()).count, `GET ${AFFILIATES}?q=${term}`).toBe(1)
+  1 failed
+
+## 2. Green (AC-34b)
+### pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts -g "ฟอร์มสร้าง payout" --repeat-each=20 (prod build, workers=1; ไม่มี `--` หน้า argument)
+  ✓   1 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.9s)
+  ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (2.1s)
+  ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.9s)
+  ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.9s)
+  ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (2.1s)
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (2.0s)
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (2.1s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.9s)
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.9s)
+  ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.8s)
+  ✓  20 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.9s)
+  20 passed (45.1s)
+
+### test อื่นทั้งไฟล์ 1 รอบ: pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts --project=chromium
+  ✓   1 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.8s)
+  ✓   2 [chromium] › e2e/affiliate-admin-forms.spec.ts:131:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.7s)
+  ✓   3 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.7s)
+  ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:230:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (2.5s)
+  ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:263:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (1.7s)
+  ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:330:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (3.1s)
+  ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (2.6s)
+  ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (2.5s)
+  ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (2.5s)
+  ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (2.5s)
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (2.7s)
+  ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (2.5s)
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.5s)
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.5s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:398:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:408:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.6s)
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:428:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.5s)
+  ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:507:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal (1.6s)
+  ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:548:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal (1.7s)
+  19 passed (47.8s)
+
+### static: pnpm --filter storefront test:e2e:unit (ทั้ง project รวม AC-33/AC-34 ใน core-46-e2e-hygiene.unit.spec.ts)
+  ✓   32 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:248:5 › AC-33/AC-34 (spec 08 กฎ 32, 33; ADM-28, ADM-29): AC-12 ตัวแรกและ payout ของ affiliate-admin-forms ใช้ tag ไม่มีตัวเลข, assert count = 1 ของผล q, ไม่มี waitForTimeout และ setTimeout ≤ 120_000 (2ms)
+  116 passed (1.2s)
+
+### pnpm lint && pnpm typecheck
+lint: 0 errors (warning เดิม 28+2 รายการ ไม่มีในไฟล์ที่แตะ — `eslint` สองไฟล์ที่แตะไม่มี warning); typecheck: ผ่าน
+
+## 3. AC-34c
+- `git diff --stat origin/develop` ไม่มี playwright.config.ts, apps/backend/, src/admin/
+- ไม่เพิ่ม waitForTimeout/retries/skip/fixme/setTimeout ใหม่ (test payout คง test.setTimeout(120_000) เดิม; static ตรวจ ≤ 120_000)

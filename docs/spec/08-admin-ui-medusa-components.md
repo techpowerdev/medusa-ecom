@@ -776,7 +776,7 @@ none
 ### Tasks (รอบ 34)
 | Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
-| ADM-29 | (owner 2026-11-18 — ROADMAP ปิดรอบ 33 ข้อ ก (2) + nit review #393/#394) test payout ใน `affiliate-admin-forms.spec.ts` ใช้ tag ตัวอักษร + รอ response `q` แล้ว assert `count` = 1 ก่อนใช้ผล; static ตรวจ "tag ไม่มีตัวเลข" ครอบทั้ง AC-12 ตัวแรกและ payout (กฎ 33) — ☐ พร้อมเริ่ม (owner สั่งทำแล้ว 2026-11-18; รอ PR เอกสารรอบ 34 merge) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts`, `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts` (+ `e2e/support/*.ts` ถ้าแยก helper tag), `docs/evidence/admin-ui/ADM-29-tests.txt` | test-only ~15–30 LOC | 1280×800 | AC-34 | PR เอกสารรอบ 34 merge; ไม่บล็อก release | ไม่มี task อื่นที่เปิดอยู่แตะไฟล์เหล่านี้ |
+| ADM-29 | (owner 2026-11-18 — ROADMAP ปิดรอบ 33 ข้อ ก (2) + nit review #393/#394) test payout ใน `affiliate-admin-forms.spec.ts` ใช้ tag ตัวอักษร + รอ response `q` แล้ว assert `count` = 1 ก่อนใช้ผล; static ตรวจ "tag ไม่มีตัวเลข" ครอบทั้ง AC-12 ตัวแรกและ payout (กฎ 33) — ☑ (tag ตัวอักษร a–j + assert `count` = 1 ของ `GET /admin/affiliate/affiliates?q=` ก่อนเลือก option; static ประเมินนิพจน์ tag จริงครอบทั้งสอง test) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts`, `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts` (+ `e2e/support/*.ts` ถ้าแยก helper tag), `docs/evidence/admin-ui/ADM-29-tests.txt` | test-only ~15–30 LOC | 1280×800 | AC-34 | PR เอกสารรอบ 34 merge; ไม่บล็อก release | ไม่มี task อื่นที่เปิดอยู่แตะไฟล์เหล่านี้ |
 
 ## Open questions
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task
