@@ -20,9 +20,9 @@
    - Method = Promotion code แล้วกรอก Code
    - Status = **Draft** ไว้ก่อน (ตรวจค่าให้ครบก่อนเปิดใช้)
    - **เปิดสวิตช์ "Does promotion include taxes?"**
-   - เลือกสกุลเงิน THB (เงื่อนไข Currency Code) และกรอก Promotion Value เป็นจำนวนเงินที่ต้องการลด (เช่น 100)
+   - เลือกสกุลเงิน **"Thai Baht"** (เงื่อนไข Currency Code) และกรอก Promotion Value เป็นจำนวนเงินที่ต้องการลด (เช่น 100)
    - "Amount off products": กำหนด Maximum Quantity และเงื่อนไขสินค้าตามแคมเปญ
-4. แท็บ **Campaign** (ถ้ามี) แล้วกด Save
+4. กด **Continue** ที่แท็บ Details เพื่อไปแท็บ **Campaign** (ค่าเริ่มต้น "Without Campaign") แล้วกด Save
 
 ## ตรวจก่อนเปิดใช้
 1. เปิดหน้า detail ของ promotion ที่สร้าง → แถว **"Tax Inclusive"** ต้องเป็น **True**
@@ -32,7 +32,7 @@
 ## สร้างแล้วแต่ลืมเปิดสวิตช์
 หน้า detail แสดง "Tax Inclusive" = False → เมนู ⋯ → Edit (Edit Promotion Details) → เปิด "Does promotion include taxes?" → Save
 แล้วตรวจหน้า detail ซ้ำว่าเป็น True
-หมายเหตุ: ฟอร์ม Edit แสดงสวิตช์เฉพาะเมื่อ Value Type เป็น Amount — ถ้าเปลี่ยนเป็น Percentage ระบบจะตั้งกลับเป็นปิดเอง
+หมายเหตุ: ฟอร์ม Edit แสดงสวิตช์เฉพาะเมื่อ Value Type เป็น **"Fixed amount"** — ถ้าเปลี่ยนเป็น Percentage ระบบจะตั้งกลับเป็นปิดเอง
 
 ## ส่วนลดแบบอื่น
 - **Percentage off product / Percentage off order**: ไม่ต้องตั้ง (ฟอร์มไม่แสดงสวิตช์) — % ของราคารวม VAT ได้ผลเท่ากันทั้งสองฐาน (สินค้า ฿1,070 ลด 10% = ฿107)
