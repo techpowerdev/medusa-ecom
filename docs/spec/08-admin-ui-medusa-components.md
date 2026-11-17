@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -616,7 +616,7 @@ none
 none
 
 ## Follow-up รอบ 32 (2026-11-17 — Q9 = ก, Q10 = ก owner 2026-11-17)
-Status: accepted (owner สั่งทำ ADM-27 2026-11-17) · Out of scope: ย้ายไป `RouteFocusModal`/`RouteDrawer` (Q5 คงเดิม), แก้/patch `usePrompt`/`FocusModal`/`Drawer` ของ Medusa, Drawer ที่ไม่ใช่ฟอร์ม (`components/evoucher/codes-table.tsx` reveal code), ปุ่ม Prev/ลองใหม่ของตาราง error (Q10 = ก)
+Status: done (ปิดรอบ 32 2026-11-17 — ADM-27 ☑ #389; owner สั่งทำ 2026-11-17) · Out of scope: ย้ายไป `RouteFocusModal`/`RouteDrawer` (Q5 คงเดิม), แก้/patch `usePrompt`/`FocusModal`/`Drawer` ของ Medusa, Drawer ที่ไม่ใช่ฟอร์ม (`components/evoucher/codes-table.tsx` reveal code), ปุ่ม Prev/ลองใหม่ของตาราง error (Q10 = ก)
 
 ### What Medusa already gives us (รอบ 32)
 | Need | Medusa provides | Use as-is / extend / custom |
@@ -655,7 +655,7 @@ Status: accepted (owner สั่งทำ ADM-27 2026-11-17) · Out of scope: �
 ### Tasks (รอบ 32)
 | Task | งาน | ไฟล์ที่แตะ (`apps/backend/src/admin/` ยกเว้นระบุ) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
-| ADM-27 | (Q9 = ก owner 2026-11-17, qa #379 O-1) ถามยืนยันด้วย `usePrompt` ก่อนปิดฟอร์มที่ dirty ใน `FocusModal`/`Drawer` แบบ state 7 จุด ผ่าน hook กลาง (กฎ 31) — ☑ | `components/common/` (hook ใหม่), `widgets/{variant-evoucher-pool,flash-sale-options}.tsx`, `components/affiliate/{payout-form,program-form,payout-info-drawer}.tsx`, `components/group-buy/create-campaign.tsx`, `components/evoucher/partners-section.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/admin-form-discard-prompt.spec.ts` (ใหม่) + e2e เดิมที่ปิดฟอร์ม dirty (เช่น `affiliate-admin-{forms,programs}`, `evoucher-admin-{forms,pool-page}`, `group-buy-admin-form`) | ~250 LOC รวม e2e — ถ้าเกิน ~400 แบ่ง **ADM-27a** (hook + ฟอร์ม affiliate/group buy + e2e) → **ADM-27b** (ฟอร์ม e-voucher/flash sale + e2e) | 1280×800 | AC-32 | PR เอกสารรอบ 32 merge; ADM-26 ☑ #379; ไม่บล็อก release | ชน CORE-61 (spec 01) ที่ `e2e/{affiliate-admin-forms,evoucher-admin-forms,evoucher-admin-pool-page}.spec.ts`/`e2e/support/admin.ts` (CORE-61 แก้แค่บรรทัด import `PAGINATION_TEXT`) → **แนะนำ CORE-61 merge ก่อน** แล้ว ADM-27 rebase; ∥ GB-17 (`src/api/`), CORE-62, CORE-63, OPS-26 |
+| ADM-27 | (Q9 = ก owner 2026-11-17, qa #379 O-1) ถามยืนยันด้วย `usePrompt` ก่อนปิดฟอร์มที่ dirty ใน `FocusModal`/`Drawer` แบบ state 7 จุด ผ่าน hook กลาง (กฎ 31) — ☑ #389 | `components/common/` (hook ใหม่), `widgets/{variant-evoucher-pool,flash-sale-options}.tsx`, `components/affiliate/{payout-form,program-form,payout-info-drawer}.tsx`, `components/group-buy/create-campaign.tsx`, `components/evoucher/partners-section.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/admin-form-discard-prompt.spec.ts` (ใหม่) + e2e เดิมที่ปิดฟอร์ม dirty (เช่น `affiliate-admin-{forms,programs}`, `evoucher-admin-{forms,pool-page}`, `group-buy-admin-form`) | ~250 LOC รวม e2e — ถ้าเกิน ~400 แบ่ง **ADM-27a** (hook + ฟอร์ม affiliate/group buy + e2e) → **ADM-27b** (ฟอร์ม e-voucher/flash sale + e2e) | 1280×800 | AC-32 | PR เอกสารรอบ 32 merge; ADM-26 ☑ #379; ไม่บล็อก release | ชน CORE-61 (spec 01) ที่ `e2e/{affiliate-admin-forms,evoucher-admin-forms,evoucher-admin-pool-page}.spec.ts`/`e2e/support/admin.ts` (CORE-61 แก้แค่บรรทัด import `PAGINATION_TEXT`) → **แนะนำ CORE-61 merge ก่อน** แล้ว ADM-27 rebase; ∥ GB-17 (`src/api/`), CORE-62, CORE-63, OPS-26 |
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 32)
 - (Q10 = ก owner 2026-11-17, qa #381) ตารางที่ error ขณะอยู่หน้า ≥ 2 ไม่มีปุ่ม Prev/ลองใหม่ — reload หรือกดเมนูด้านข้าง (URL ไม่มี offset → หน้า 1) แก้ได้, ตรงกับหน้า list ของ Medusa ที่ไม่มี retry; กฎ 24e/29a คงเดิม

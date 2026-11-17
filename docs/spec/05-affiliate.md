@@ -1,6 +1,6 @@
 # 05 Affiliate — ค่าคอมมิชชันแบบมีช่วงเวลากำหนด
 
-สถานะ: in-progress (รอบ 32 2026-11-17: Q21 = ก owner 2026-11-17 — `hold_days`/`attribution_window_days` ≤ 36500 ทำใน GB-17 ของ spec 04 กฎข้อ 40 (ข) (หัวข้อ "Open questions (รอบ 32)"); AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31; รอบ 9 2026-10-27: payouts/paging ของ portal, กฎ 29–30, AC-32..36, AF-7b/AF-10/AF-N1;
+สถานะ: in-progress (ปิดรอบ 32 2026-11-17: เพดาน `hold_days`/`attribution_window_days` ≤ 36500 merge แล้วใน GB-17 ☑ #387 (spec 04); รอบ 32 2026-11-17: Q21 = ก owner 2026-11-17 — `hold_days`/`attribution_window_days` ≤ 36500 ทำใน GB-17 ของ spec 04 กฎข้อ 40 (ข) (หัวข้อ "Open questions (รอบ 32)"); AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31; รอบ 9 2026-10-27: payouts/paging ของ portal, กฎ 29–30, AC-32..36, AF-7b/AF-10/AF-N1;
 รอบ 11 2026-10-27: admin UI แบบเขียนได้ AF-12a/b/c (owner), นิยาม AF-8a/8b/8c, `has_payout_info` AF-13, ชื่อ affiliate ใน admin AF-14 (owner Q17), กฎ 33–38, AC-39..45;
 รอบ 12 2026-10-28: AF-15, AF-N3, AF-16, กฎ 39–41, AC-46..48; รอบ 13 2026-11-03: token ว่างของ AF-16 #197 → AF-17 (กฎ 41b แก้, AC-49), nit AF-14 #187 → ADM-8a ของ spec 08;
 รอบ 19 2026-11-04: qa #265 O-2 (หน้า Profile ล้นที่ 375 เมื่ออีเมลยาว) → AF-18, กฎ 42, AC-50;
