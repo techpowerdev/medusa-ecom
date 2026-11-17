@@ -4,9 +4,12 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**ปิดรอบ 32 (2026-11-17, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-62 #384, OPS-26 #385, CORE-63 #386, GB-17 #387, CORE-61 #388, ADM-27 #389 + เอกสาร #383 (รอบ 32) ·
+**รอบ 33 (2026-11-17, เอกสารล้วน) — สถานะล่าสุด**: owner ตัดสินกลุ่ม ก (1)–(5) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" ครบ 2026-11-17 ·
+**☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge, ไม่บล็อก release)**: CORE-64 (spec 01 — promotion fixed `is_tax_inclusive: true` เสมอ + คู่มือ + integration/e2e) ∥ ADM-28 (spec 08 — หาสาเหตุ flaky AC-12 จาก trace; **เริ่มเร็ว** artifact ของ run 44071909424 หมดอายุราว 2026-12-01) — ไม่มีไฟล์ร่วม (ยกเว้นอาจแตะ `e2e/core-46-e2e-hygiene.unit.spec.ts` ทั้งคู่ คนละ test); ลำดับ merge ที่แนะนำ ADM-28 → CORE-64 ·
+ยอมรับใน v1 (ไม่มี task): (2) ลบเบอร์โทรในหน้าบัญชีไม่ได้ (spec 01 กฎข้อ 121b), (5) ลดค่าส่ง 100% แสดงแยก (กฎข้อ 115) · (3) OPS-26 หยุด → วัดบน staging เป็นรายการก่อน go-live (spec 07) · **คำถามใหม่ถึง owner**: spec 01 Q-C11 (กันลืมเปิด `is_tax_inclusive` เพิ่มจากคู่มือไหม — ไม่บล็อก CORE-64) · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
+(ประวัติ) **ปิดรอบ 32 (2026-11-17, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-62 #384, OPS-26 #385, CORE-63 #386, GB-17 #387, CORE-61 #388, ADM-27 #389 + เอกสาร #383 (รอบ 32) ·
 ผล OPS-26: 2 process ลด median checkout ~13% แต่ไม่เกินความแปรปรวน (ค่าละ 1 run, runner 4 vCPU ร่วมกับ k6) → ไม่เปลี่ยนวิธี deploy prod **ไม่เปิด ADR-024** (`docs/evidence/scale/OPS-26/REPORT.md`; spec 07 กฎ (d) แก้เป็น 10 × (n + 1)) ·
-**พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 · **รอ owner ตัดสิน**: กลุ่ม ก (1)–(5) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" ท้ายไฟล์ · ไม่มี task id ใหม่ ·
+**พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 · **รอ owner ตัดสิน**: กลุ่ม ก (1)–(5) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" ท้ายไฟล์ (**ตัดสินครบในรอบ 33**) · ไม่มี task id ใหม่ ·
 (ประวัติ) **ปิดรอบ 30/31 (2026-11-14, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): OPS-25 #366, CORE-59 #367, AF-23 #368, CORE-58 #369, OPS-23 #371, CORE-60 #372, ADM-23 #373, ADM-15 #374, ADM-24 #375,
 ADM-18 #377, ADM-26 #379, ADM-19 #380, ADM-25 #381 + เอกสาร #364 (บทเรียน evidence ใน `CLAUDE.md`), #365 (รอบ 30), #370 (รอบ 31), #376 (ADM-18 = ก + แก้ AC-40), #378 (ADM-26 = ก) ·
 ผล OPS-23: คง default pool 10 (ไม่ตั้ง `DATABASE_POOL_MAX`) **ไม่เปิด ADR-020** (`docs/evidence/scale/OPS-23/REPORT.md`) ·
@@ -24,7 +27,8 @@ Q-C9 = ก → ภาคผนวก 2026-11-13 ของ ADR-014 ("VAT" = ก�
 OPS-22 #354 (รวมแก้ `CLAUDE.md` 2 จุดที่ owner อนุมัติ), CORE-54 #355, OPS-24 #356, GB-16 #357, CORE-53 #358, ADM-16 #359, ADM-17 #360, ADM-21a #361, ADM-21b #362 (ADM-16/17 ทำเพราะเป็น dependency ของ ADM-21a/21b) + chore #350 (เลิก track `next-env.d.ts` ของ storefront) ·
 **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 (qa ยืนยันบน build production ก่อน — spec 08 กฎ 26, AC-27) ·
 **owner สั่งทำ 2026-11-13 (☐ ไม่บล็อก release — ☑ ครบในปิดรอบ 30/31)**: CORE-58 ∥ CORE-59 ∥ CORE-60 (← PR เอกสารรอบ 31) · AF-23 · OPS-25 · OPS-23 · ADM-23 ∥ ADM-24 → ADM-25 (← ADM-23) ∥ ADM-26 (← ADM-24) · ADM-15 · ADM-18 · ADM-19 · ไม่มีคำถามค้างของ owner ·
-**ก่อนเปิดร้านจริง (go-live)**: spec 06 Q1 ยืนยันบัญชี Stripe live นิติบุคคลไทย + PromptPay (ข้อ 6 ของ go-live checklist ใน `docs/ops/production.md`), spec 01 Q-F1 ค่าส่ง ฿10 เป็น placeholder (ข้อ 5), smoke test บน production (`check:go-live` + `tools/ops/smoke-*.sh`) ·
+**ก่อนเปิดร้านจริง (go-live)**: spec 06 Q1 ยืนยันบัญชี Stripe live นิติบุคคลไทย + PromptPay (ข้อ 6 ของ go-live checklist ใน `docs/ops/production.md`), spec 01 Q-F1 ค่าส่ง ฿10 เป็น placeholder (ข้อ 5), smoke test บน production (`check:go-live` + `tools/ops/smoke-*.sh`),
+(รอบ 33, owner (3) = ก) วัด checkout แบบ OPS-26/AC-41 ซ้ำบน staging ที่แยก k6 ออกจาก stack แล้วตัดสินจำนวน server process/replica (staging ต้องมี ADR ก่อน; เปลี่ยนวิธี deploy → ADR-024 — spec 07 ท้ายหัวข้อ "Follow-up รอบ 32") ·
 (ประวัติ) **รอบ 28 (2026-11-10, เอกสารล้วน)**: merge เพิ่มหลังปิดรอบ 27: EV-18 #339, AF-22 #340 · **เงื่อนไข release v0.1.0 ครบทุกข้อ** (CORE-12/12b/17/18, OPS-21 #325, EV-15 #326, CORE-55 #336 ☑ — `develop → main` owner เป็นผู้ merge) ·
 **คำตัดสินของ owner รอบ 28 ("ตามที่แนะนำ" ทุกข้อ แต่ยังไม่สั่งทำ)**: Q-C6 = ก (CORE-56 middleware lock — spec 01 กฎข้อ 114), Q-C7 = ก (CORE-57 `cart-totals` ฐานรวม VAT — spec 01 กฎข้อ 115, AC-156), AF-M-03 = แก้ AC-15 ให้ตรงพฤติกรรมจริง (spec 05 กฎ 13; ไม่มี task), ADM-21 = ทำ (แยก ADM-21a/21b — spec 08 กฎ 25, AC-25..26), ADM-22 = ยืนยันก่อน (qa บน build production — spec 08 กฎ 26, AC-27) ·
 **พักไว้ (☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ)**: CORE-56, CORE-57, ADM-21a, ADM-21b, ADM-22 — ไม่บล็อก release ·
@@ -203,6 +207,7 @@ task ใหม่ ADM-14 (ปุ่มสร้าง Partners/Programs/Payouts 
 | CORE-61 | (รอบ 32, e2e hygiene — qa #369 O-1, qa/review #375, review #381, CI flaky fs19) test A ของ `group-buy-join` รอ server action (`waitForServerAction`), `PAGINATION_TEXT` ที่ `e2e/support/admin.ts` ที่เดียว, AC-44 ลบข้อมูล `e2e-af12c-*` + ตรวจ response ของ `pat`, fs19 `:245` เฉพาะเมื่อ log ยืนยัน (กฎข้อ 119, AC-160; test-only ~100 LOC; ∥ CORE-62 ∥ GB-17; ไม่บล็อก release) | ☑ #388 (fs19 ไม่แก้ — log ล้มที่ `:199`) |
 | CORE-62 | (รอบ 32, owner ตัดสิน 2026-11-17 — qa #372) ป้ายแถวแรกของ `cart-totals` เป็น "ก่อนส่วนลด" เฉพาะเมื่อราคาสินค้าลดจริง (`original_item_total − item_total > 0.005`); ลดแค่ค่าส่งใช้ป้ายเดิม (กฎข้อ 120 + ภาคผนวกกฎข้อ 118a, AC-161; storefront ~20 LOC + unit + e2e; ∥ CORE-61 ∥ CORE-63 ∥ GB-17; ไม่บล็อก release) | ☑ #384 |
 | CORE-63 | (รอบ 32, Q-C10 = ก owner 2026-11-17 — #369) `trimInvisible` ทุกช่องที่อยู่ของ checkout (รวมช่องไม่บังคับ) และฟอร์ม `/account/addresses`; ช่องบังคับว่างหลังตัด → ข้อความไทยไม่เรียก API; ยอมรับ qa #369 O-2 (กฎข้อ 121, AC-162; storefront ~80 LOC + unit + e2e; ไม่ชน CORE-62/CORE-61; ไม่บล็อก release) | ☑ #386 |
+| CORE-64 | (รอบ 33, owner (1) = ก "ให้ลดตามที่ตั้งเป๊ะ" 2026-11-17 — qa #384 O-1) promotion fixed ตั้ง `is_tax_inclusive: true` เสมอ (สวิตช์ "Does promotion include taxes?" ของ dashboard 2.22.1 มีอยู่แล้ว ค่าเริ่มต้นปิด): integration fixed ฿100 → `discount_total` 100 (items + order, control `false`, % ไม่กระทบ), e2e `/th/cart`, คู่มือ `docs/guides/admin-promotions.md`, qa สร้างผ่าน dashboard จริง — ไม่แก้โค้ดใต้ `src/` (กฎข้อ 122, AC-163; integration ~120 + e2e ~80 LOC + คู่มือ; ∥ ADM-28; Q-C11 ไม่บล็อก; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | 🚀 #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | 🚀 #124 ∥ 🚀 #130 |
 | CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | 🚀 #168 |
@@ -340,6 +345,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-25 | (รอบ 30, qa/review #361/#362) สถานะ error ของกฎ 24/25: ซ่อนแถบแบ่งหน้า, หัวข้อ "Could not load ledger entries", e2e กฎ 24d อัตโนมัติ (กฎ 29; AC-30; ~220 LOC; ← ADM-23) | ☑ #381 (owner สั่งทำ 2026-11-13; หลัง ADM-23 #373) |
 | ADM-26 | (รอบ 30, qa #360 O-2 — ยืนยันแล้ว 2026-11-14, owner = ก) ขณะ `Combobox` ขยาย Escape ไม่ปิด `FocusModal` ฟอร์ม payout/program (`onEscapeKeyDown`; Escape ไม่ปิดรายการ — ยอมรับ) (กฎ 30; AC-31; ~40 LOC + e2e; ← ADM-24) | ☑ #379 (owner สั่งทำ 2026-11-13; หลัง ADM-24 #375) |
 | ADM-27 | (รอบ 32, Q9 = ก owner 2026-11-17 — qa #379 O-1) ถามยืนยันด้วย `usePrompt` ก่อนปิดฟอร์มที่ dirty ใน `FocusModal`/`Drawer` แบบ state 7 จุด ผ่าน hook กลางใน `components/common/`; กันกดซ้ำ/prompt ซ้อน; `onEscapeKeyDown` ของ ADM-26 ยังทำงานก่อน (กฎ 31; AC-32; ~250 LOC รวม e2e — เกิน ~400 แบ่ง ADM-27a/27b; ← CORE-61 แนะนำ merge ก่อนเพราะชนไฟล์ e2e) | ☑ #389 |
+| ADM-28 | (รอบ 33, owner สั่ง 2026-11-17 — CI flaky #373 run 43475980049, #388 run 44071909424) หาสาเหตุ timeout 2 นาทีของ AC-12 ตัวแรก (`affiliate-admin-forms.spec.ts:47`, step "พิมพ์ชื่อ collection ลำดับที่ 250") จาก trace ก่อน artifact หมดอายุ (~2026-12-01) แล้วแก้ตามสาเหตุ — ห้ามแก้แค่เพิ่ม timeout; trace อ่านไม่ได้และทำซ้ำไม่ได้ → หยุดรายงาน (กฎ 32; AC-33 `--repeat-each=20`; test ~40 LOC (+ ≤ ~50 ถ้าแก้ `program-form.tsx`); ∥ CORE-64; **เริ่มเร็ว**) | ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -490,20 +496,28 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   แก้ข้อเท็จจริง (ไม่เปลี่ยนพฤติกรรมที่ต้องได้): spec 01 กฎข้อ 120a หมายเหตุ guard `discount_total` ที่โค้ดมี (review #384), AC-160 คำสั่งไม่มี `--` (#388 — มี `--` แล้วรันทั้ง suite),
   อักขระ zero-width ดิบใน spec 01 AC-162 และ `docs/evidence/core/CORE-58/REPORT.md`, `docs/evidence/core/CORE-52/REPORT.md` เป็น escape `\uXXXX` ·
   follow-up ใหม่ → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" (ไม่เปิด task id ใหม่) · เหลือ: ADM-22 พักไว้ · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+- รอบ 33 (2026-11-17, เอกสารล้วน — บันทึกคำตัดสินของ owner ต่อกลุ่ม ก ของ follow-up ปิดรอบ 32; ตรวจโค้ดบน develop `1c55193f` และ `@medusajs/dashboard` 2.22.1) →
+  spec 01: (1) = ก → หัวข้อ "Follow-up รอบ 33": กฎข้อ 122, AC-163, CORE-64 (ฟอร์ม promotion ของ dashboard มีสวิตช์ `is_tax_inclusive` สำหรับ template fixed อยู่แล้ว ค่าเริ่มต้น `false`; โค้ดของเราไม่มีจุดสร้าง promotion fixed ที่ต้องแก้ — group buy ตั้ง `true` อยู่แล้ว) + คำถาม Q-C11 ·
+  (2) = ข → กฎข้อ 121b หมายเหตุยอมรับใน v1 · (5) คงเดิม → ยอมรับใน v1 (กฎข้อ 115) · spec 01 "ยอมรับ (รอบ 32)" ข้อ flaky AC-12 ชี้ไป ADM-28 ·
+  spec 08: (4) → หัวข้อ "Follow-up รอบ 33": สมมติฐาน H1–H3, กฎ 32, AC-33, ADM-28 · spec 07: (3) = ก → รายการก่อน go-live ท้ายหัวข้อ "Follow-up รอบ 32" + checklist bump ข้อ 10 ·
+  ROADMAP: บรรทัดสถานะ, แถว CORE-64/ADM-28, รายการ go-live, ทำเครื่องหมาย "แปลงแล้ว" ในหัวข้อ follow-up ปิดรอบ 32 · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)
 ที่มา: review/qa/CI ของ #383–#389 (2026-11-17) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน
+**(รอบ 33, 2026-11-17) แปลงแล้ว — กลุ่ม ก ตัดสินครบ**: (1) = ก → CORE-64 (spec 01 กฎข้อ 122, AC-163; คำถามต่อ Q-C11) · (2) = ข คงเดิม → ยอมรับใน v1 (spec 01 กฎข้อ 121b, ไม่มี task) ·
+(3) = ก หยุด → รายการก่อน go-live (spec 07 ท้าย "Follow-up รอบ 32", ROADMAP "ก่อนเปิดร้านจริง"; ไม่มี task) · (4) → ADM-28 (spec 08 กฎ 32, AC-33) · (5) คงเดิม → ยอมรับใน v1 (spec 01 กฎข้อ 115, ไม่มี task);
+กลุ่ม ข/ค/ง ยังไม่มี task (คงไว้ด้านล่าง)
 ### ก. ต้องให้ owner ตัดสิน
-1. **[ถาม owner] (สำคัญ) promotion แบบ fixed บนสินค้าราคารวม VAT ได้ส่วนลดต่างจากที่ตั้ง ~7% (qa #384 O-1)** Medusa คิดจำนวน fixed เป็นยอด**ก่อน VAT** ตาม `is_tax_inclusive` ของ promotion (ค่าเริ่มต้น false)
+1. **[owner ตัดสิน ก 2026-11-17 → CORE-64]** **(สำคัญ) promotion แบบ fixed บนสินค้าราคารวม VAT ได้ส่วนลดต่างจากที่ตั้ง ~7% (qa #384 O-1)** Medusa คิดจำนวน fixed เป็นยอด**ก่อน VAT** ตาม `is_tax_inclusive` ของ promotion (ค่าเริ่มต้น false)
    ขณะที่ราคาในร้านรวม VAT → `discount_total` ที่ลูกค้าเห็นไม่เท่าจำนวนที่ admin ตั้ง — กระทบการตั้งโปรจริงทุกตัว · **แนะนำ**: ร้านตั้ง promotion แบบ fixed ด้วย `is_tax_inclusive: true` เสมอ
    (ตั้งค่า ไม่สร้างของใหม่) แล้วเปิด task เล็กใน spec 01/03: ตรวจว่า form promotion ของ dashboard 2.22.1 ตั้งค่านี้ได้หรือไม่ + บันทึกในคู่มือ ops + e2e ตรวจยอดส่วนลดเท่าที่ตั้ง (percentage ไม่กระทบ)
-2. **[ถาม owner] ลบเบอร์โทรในหน้าบัญชีไม่ได้ (qa #386 O-2)** ล้างช่อง phone แล้วบันทึก → เบอร์เดิมยังอยู่แต่ขึ้นว่าบันทึกสำเร็จ (ตรงกฎข้อ 121b ของ spec 01 ที่คงพฤติกรรมเดิม "ไม่ส่ง key") ·
+2. **[owner ตัดสิน ข คงเดิม 2026-11-17 → ยอมรับใน v1]** **ลบเบอร์โทรในหน้าบัญชีไม่ได้ (qa #386 O-2)** ล้างช่อง phone แล้วบันทึก → เบอร์เดิมยังอยู่แต่ขึ้นว่าบันทึกสำเร็จ (ตรงกฎข้อ 121b ของ spec 01 ที่คงพฤติกรรมเดิม "ไม่ส่ง key") ·
    **แนะนำ**: ให้ลบได้ — ส่ง `phone: ""` เมื่อผู้ใช้ล้างช่อง (แก้กฎข้อ 121b; storefront ~10 LOC + unit + e2e 1 เคส)
-3. **[ถาม owner] OPS-26 ต่อหรือหยุด** ผล 1 vs 2 process บน runner ร่วมแยกผลไม่ออก (spec 07 "ผล OPS-26") — ทางเลือก: หยุดแค่นี้ / วัดบน staging ที่แยก k6 ออกจาก stack / profile CPU ต่อ request ของ checkout (Q-O5 ทาง ข) ·
+3. **[owner ตัดสิน ก หยุด 2026-11-17 → รายการก่อน go-live]** **OPS-26 ต่อหรือหยุด** ผล 1 vs 2 process บน runner ร่วมแยกผลไม่ออก (spec 07 "ผล OPS-26") — ทางเลือก: หยุดแค่นี้ / วัดบน staging ที่แยก k6 ออกจาก stack / profile CPU ต่อ request ของ checkout (Q-O5 ทาง ข) ·
    **แนะนำ**: หยุดแค่นี้ แล้ววัดบน staging เป็นข้อหนึ่งของ go-live (ตอนนี้ไม่มี staging; gate ความถูกต้องผ่านทุก run, p95 เป็น "รายงานอย่างเดียว" ตาม Q-O3 a)
-4. **[ถาม owner] flaky `affiliate-admin-forms.spec.ts:47` AC-12 เกิดซ้ำครั้งที่ 2** (#373 run 43475980049; #388 run 44071909424 ขั้น "พิมพ์ชื่อ collection ลำดับที่ 250" timeout 2 นาที) — spec 01 รอบ 32 ตกลงว่า "เปิด task เมื่อเกิดซ้ำ" ·
+4. **[owner สั่งเปิด task 2026-11-17 → ADM-28]** **flaky `affiliate-admin-forms.spec.ts:47` AC-12 เกิดซ้ำครั้งที่ 2** (#373 run 43475980049; #388 run 44071909424 ขั้น "พิมพ์ชื่อ collection ลำดับที่ 250" timeout 2 นาที) — spec 01 รอบ 32 ตกลงว่า "เปิด task เมื่อเกิดซ้ำ" ·
    **แนะนำ**: เปิด task test-only หาสาเหตุ (อ่าน trace/log ของ run 44071909424 ก่อน artifact หมดอายุ 14 วัน) — ไม่บล็อก release แต่ทำให้ CI ของ PR อื่นแดงสุ่ม
-5. **[ถาม owner] ลดค่าส่ง 100% แสดง "ค่าจัดส่ง ฿10" + "ส่วนลด −฿10" แยกกัน (qa #384 O-2)** ตรงกฎข้อ 115 ของ spec 01 (แถวค่าส่งใช้ `original_shipping_total`, ส่วนลดรวมใน `discount_total`) ยอดรวมถูก ·
+5. **[owner ตัดสิน คงเดิม 2026-11-17 → ยอมรับใน v1]** **ลดค่าส่ง 100% แสดง "ค่าจัดส่ง ฿10" + "ส่วนลด −฿10" แยกกัน (qa #384 O-2)** ตรงกฎข้อ 115 ของ spec 01 (แถวค่าส่งใช้ `original_shipping_total`, ส่วนลดรวมใน `discount_total`) ยอดรวมถูก ·
    ทางเลือก: คงเดิม / แสดงแถวค่าจัดส่งเป็น "ฟรี" เมื่อส่วนลดค่าส่งเท่าค่าส่ง · **แนะนำ**: คงเดิม (สูตร subtotal − ส่วนลด + ค่าส่ง = ยอดรวม ตรวจได้ทุกแถว; เปลี่ยนแล้วต้องแยกส่วนลดค่าส่งออกจาก `discount_total`)
 ### ข. test hygiene / nit (planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
 - (review #387) `evoucher-admin.spec` เคส 2147483647 → 200 ทดสอบเฉพาะ update (AC-60(d) เขียนทั้งสร้าง/แก้) · affiliate update ไม่ assert ชื่อ field ใน error

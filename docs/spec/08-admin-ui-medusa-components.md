@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -676,6 +676,53 @@ Status: done (ปิดรอบ 32 2026-11-17 — ADM-27 ☑ #389; owner สั
   (ก) **[แนะนำ]** คงเดิม ไม่มี task — เหตุผล: เกิดเฉพาะเมื่อ API ล้มตอนอยู่หน้า ≥ 2 แล้ว refetch ล้มซ้ำ, reload หรือกดเมนูด้านข้าง (URL ไม่มี offset → หน้า 1) แก้ได้ทันที และตรงกับหน้า list ของ Medusa ที่ไม่มี retry; ผลกระทบ: ไม่มีงาน
   (ข) ปุ่ม "Back to first page" ใน `emptyState.empty.custom` เฉพาะตอน error และ offset > 0 (ล้าง `<prefix>_offset` ผ่าน `useQueryParams`/search params) ทั้ง 7 ตารางของกฎ 29 — ผลกระทบ: ~150 LOC + e2e (testid ปุ่มใหม่ต่อตาราง), แก้กฎ 24e/29
   (ค) ปุ่ม "Try again" (`refetch()`) ทุกตารางตอน error + ข้อ (ข) — ผลกระทบ: ~200 LOC + e2e, ต้องกันกดซ้ำระหว่าง refetch (`isFetching`), แก้กฎ 24e
+
+## Follow-up รอบ 33 (2026-11-17 — owner สั่งเปิด task หาสาเหตุ flaky AC-12)
+ที่มา: ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" ข้อ (4) — owner 2026-11-17 "เปิด task หาสาเหตุ"; spec 01 รอบ 32 ตกลงว่า "เปิด task เมื่อเกิดซ้ำ" ·
+อาการ: `apps/storefront/e2e/affiliate-admin-forms.spec.ts:47` (AC-12, ADM-9) ล้มใน CI 2 ครั้ง — #373 run 43475980049 และ #388 run 44071909424 — ทั้งคู่ timeout 2 นาที (`test.setTimeout(120_000)` `:52`) ใน step "พิมพ์ชื่อ collection ลำดับที่ 250" (`:85–97`) ·
+อ่าน test บน develop `1c55193f` (path ย่อจาก `apps/storefront/`; โค้ด admin ย่อจาก `apps/backend/src/admin/`) — **สมมติฐานเบื้องต้น (ยังไม่ยืนยันด้วย trace)**:
+- H1 (น่าจะที่สุด) action ที่ค้างคือ `page.getByRole("option").filter({ hasText: … }).click()` (`:87` — ข้อความ `<tag> col 249`): `playwright.config.ts` ไม่ตั้ง `actionTimeout` (มีแค่ `retries: 0`, `workers: 1` ใน CI) → action รอจน timeout ของ test 120s
+  ซึ่งตรงกับอาการ "timeout 2m ที่ step นี้" (ถ้า expect ของ `:88`/`:96` ค้าง จะล้มที่ 5s ของ expect timeout ไม่ใช่ 2 นาที) → option ที่มีข้อความนั้น**ไม่เคย render** หรือ render แต่ click ไม่สำเร็จจน timeout
+- H1a รายการยังเป็นผลของ query ก่อนค้นหา: `useComboboxData` 2.22.1 (`@medusajs/dashboard/src/hooks/use-combobox-data.tsx:48`, `:74–91`) debounce ค่าค้นหาแล้วใช้ `useInfiniteQuery` ที่ `placeholderData: keepPreviousData` + `pageSize` 10 —
+  ถ้า request ค้นหา (`GET /admin/collections?q=…`) ช้า/ล้ม (retry 1 ของ `QueryClient`) หรือ `fill` ครั้งเดียวไม่ทำให้ค่า debounce เปลี่ยน รายการจะค้างที่ 10 ตัวแรก (collection ลำดับที่ 250 ไม่อยู่ในนั้น)
+- H1b option render แล้วแต่ถูก re-render/detach ซ้ำ: `Combobox` ของ dashboard เรียก `fetchNextPage` เมื่อ sentinel ท้ายรายการเข้ามาในจอ — ขณะผลเก่า (มีหน้าถัดไป) ยังแสดงอยู่อาจโหลดหน้าเพิ่มต่อเนื่อง ทำให้ element "not stable/detached" จน timeout
+- H2 `fill` ที่ `affiliate-program-field-collection_ids` (`:86`; testid ที่ `components/affiliate/program-form.tsx:82`) ไม่ทำให้รายการเปิด (เช่น focus ยังอยู่ที่ปุ่ม Save หลัง error ของ step แรก `:80–81`) — ถ้าเป็นแบบนี้ trace จะแสดงว่าไม่มี request `q=` ออกไปเลย
+- H3 ข้อมูลเกิน: `product_collection` ที่ test อื่น/run ก่อนไม่ลบ ทำให้ `q` ได้ผลหลายตัว — น่าจะน้อย (`tag` มี `Date.now()` และ `finally` ลบ `pcol_<tag>_%` `:114`)
+
+### What Medusa already gives us (รอบ 33)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ค้นหา/แบ่งหน้าใน combobox | `useComboboxData` + `Combobox` (`@medusajs/dashboard`) — ตามกฎ 11 | ใช้ตามเดิม — ห้าม patch; ถ้าต้นเหตุอยู่ใน Medusa ให้แก้ฝั่ง test (รอสัญญาณที่ถูกต้อง) และบันทึก |
+| ค้นหา collection ฝั่ง server | `GET /admin/collections?q=` | ใช้ตามเดิม |
+| วิเคราะห์ test ที่ล้ม | Playwright trace (CI artifact 14 วัน — `CLAUDE.md` ข้อ 6) | ใช้ตามเดิม |
+
+### Business rules (รอบ 33)
+32. (ADM-28 — owner 2026-11-17, ROADMAP ปิดรอบ 32 ข้อ (4)) แก้ flaky ของ test AC-12 ตัวแรกใน `e2e/affiliate-admin-forms.spec.ts:47` ตาม**สาเหตุที่ยืนยันแล้ว**:
+    (a) builder ดาวน์โหลดและอ่าน trace/report ของ run ที่ล้ม (`gh run download 44071909424`, และ 43475980049 ถ้ายังไม่หมดอายุ — artifact เก็บ 14 วันนับจากวันที่ run — ประมาณราว 2026-12-01 สำหรับ 44071909424 ตรวจวันหมดอายุจริงด้วย `gh api repos/{owner}/{repo}/actions/runs/<id>/artifacts`) **ก่อนแก้** แล้วระบุใน PR และ `docs/evidence/admin-ui/ADM-28-tests.txt`:
+        action/assertion ที่ค้าง (บรรทัด), call log ของ Playwright ตอนค้าง, request `GET /admin/collections` (มี `q` ไหม, status, เวลา, จำนวนผล) และ DOM ของ listbox ตอนค้าง — แล้วระบุว่าสมมติฐานใด (H1–H3 หรืออื่น) ถูก;
+    (b) แก้ตามสาเหตุ: ถ้าอยู่ใน test → ให้ test รอสัญญาณจริง (เช่น `waitForResponse` ของ `GET /admin/collections` ที่ `q` ตรงกับค่าที่พิมพ์ก่อนหา option, หรือเปิดรายการให้ชัดก่อนพิมพ์) แบบเดียวกับ test อื่นในไฟล์;
+        ถ้าอยู่ในโค้ด admin ของเรา (`components/affiliate/program-form.tsx`) → แก้ในโค้ดพร้อม test ที่ล้มก่อน (≤ ~50 LOC; เกินนั้นหยุดและรายงาน planner);
+        ถ้าอยู่ใน `@medusajs/dashboard`/`@medusajs/ui` → ห้าม patch แก้ฝั่ง test ให้รอสถานะที่ถูกต้องพร้อม comment อ้าง trace แล้วบันทึกเป็นข้อจำกัดภายนอกใน PR;
+    (c) **ห้าม**แก้แค่เพิ่ม timeout: ห้ามเพิ่ม `test.setTimeout`, timeout ต่อ action/expect ที่ยาวขึ้น, `waitForTimeout`, `retries`/`actionTimeout`/timeout ระดับ `playwright.config.ts`, `test.fixme`/`skip`;
+        อนุญาตใส่ timeout ต่อ action ที่**สั้นลง**เพื่อให้ล้มเร็วและเห็นจุดค้าง (ใส่คู่กับการแก้ตามสาเหตุเท่านั้น);
+    (d) ถ้า trace ทั้งสอง run หมดอายุ/อ่านไม่ได้ และทำซ้ำในเครื่องไม่ได้ (รันตาม AC-33 แล้วผ่านครบ) → **ไม่แก้ test** หยุดและรายงาน planner/owner พร้อมผลที่รัน (ห้ามแก้ตามการเดา);
+    (e) ไม่แก้ test อื่นในไฟล์ (รวม AC-31 ของ ADM-26 และ e2e ของ ADM-27) นอกจาก helper ที่ test นี้ใช้ร่วม และไม่เปลี่ยน testid เดิม
+
+### Acceptance criteria (รอบ 33)
+- AC-33 (ADM-28, กฎ 32) `docs/evidence/admin-ui/ADM-28-tests.txt` มี: run id ที่อ่าน trace, บรรทัด/action ที่ค้างพร้อม call log, ข้อสรุปสาเหตุ (H ใด) — **ไม่มีข้อนี้ = ไม่ผ่าน**;
+  e2e บน prod build (`pnpm --filter storefront build && start` แบบ CI, `workers=1`): `pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts -g "ปิด all โดยไม่เลือก scope" --repeat-each=20` ผ่าน 20/20 (แนบผลใน `ADM-28-tests.txt`; ไม่ใส่ `--` หน้า argument — ดู AC-160 ของ spec 01);
+  ถ้าทำซ้ำอาการได้ในเครื่อง (เช่นด้วย `--repeat-each=20` บน develop หรือจำลองสาเหตุที่พบด้วย `page.route` หน่วง/ล้ม request ค้นหา) → แนบผลที่ล้มบน develop และผ่านหลังแก้ด้วยคำสั่งเดียวกัน;
+  static (Playwright `unit` project ต่อใน `e2e/core-46-e2e-hygiene.unit.spec.ts`): body ของ test นี้ไม่มี `waitForTimeout` และ `test.setTimeout(` มีค่าไม่เกิน 120_000; `playwright.config.ts` ไม่เปลี่ยน; test อื่นในไฟล์ (AC-12 ตัวที่สอง, AC-31, AC-24d) ผ่าน
+
+### Test plan (รอบ 33)
+| ชนิด | AC |
+|---|---|
+| วิเคราะห์ trace + e2e admin `--repeat-each=20` + static | AC-33 (test-only หรือแก้โค้ด admin ≤ ~50 LOC ตามกฎ 32b — ไม่ต้องมี qa REPORT ถ้าไม่แตะ `src/admin/`; แตะ `src/admin/` → qa ตรวจ combobox ของฟอร์ม program) |
+
+### Tasks (รอบ 33)
+| Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-28 | (owner 2026-11-17 — CI #373/#388) หาสาเหตุ flaky ของ AC-12 ตัวแรก (`affiliate-admin-forms.spec.ts:47`) จาก trace ของ run 44071909424 ก่อน artifact หมดอายุ (~2026-12-01) แล้วแก้ตามสาเหตุ ห้ามแก้แค่เพิ่ม timeout (กฎ 32) — ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts` (+ `e2e/support/admin.ts` ถ้าต้องใช้ helper ร่วม), `e2e/core-46-e2e-hygiene.unit.spec.ts`, `docs/evidence/admin-ui/ADM-28-tests.txt`; เฉพาะเมื่อสาเหตุอยู่ในโค้ดของเรา: `components/affiliate/program-form.tsx` (≤ ~50 LOC) | test ~40 LOC (+ ≤ ~50 LOC ถ้าแก้โค้ด) | 1280×800 | AC-33 | PR เอกสารรอบ 33 merge; ไม่บล็อก release; **เริ่มเร็ว** (trace หมดอายุ) | ∥ CORE-64 (spec 01) — ไฟล์ร่วมที่เป็นไปได้: `e2e/core-46-e2e-hygiene.unit.spec.ts` ถ้า CORE-64 เลือกเพิ่ม unit ของ AC-163(c) ในไฟล์นี้ → ตัวที่ merge ทีหลัง merge `origin/develop` (คนละ test) |
 
 ## Open questions
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task

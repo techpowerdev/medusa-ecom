@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (ปิดรอบ 32 2026-11-17: ☑ OPS-26 #385 — AC-41 สรุปไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024, แก้กฎ (d) เป็น 10 × (n + 1) และข้อเท็จจริง `--cluster` ของ 2.22.1; รอบ 32 2026-11-17: Q-O5 = ก owner 2026-11-17 → OPS-26 (AC-41) วัด server 1 vs 2 process — หัวข้อ "Follow-up รอบ 32"; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
+สถานะ: draft (รอบ 33 2026-11-17: owner ตัดสิน OPS-26 ต่อ = ก หยุด วัดบน staging เป็นรายการก่อน go-live (ท้ายหัวข้อ "Follow-up รอบ 32"), checklist bump ข้อ 10 (สวิตช์ `is_tax_inclusive` ของ dashboard — spec 01 CORE-64); ปิดรอบ 32 2026-11-17: ☑ OPS-26 #385 — AC-41 สรุปไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024, แก้กฎ (d) เป็น 10 × (n + 1) และข้อเท็จจริง `--cluster` ของ 2.22.1; รอบ 32 2026-11-17: Q-O5 = ก owner 2026-11-17 → OPS-26 (AC-41) วัด server 1 vs 2 process — หัวข้อ "Follow-up รอบ 32"; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -83,6 +83,8 @@ PR/ADR ที่ bump เวอร์ชันต้องติ๊กครบ�
 8. (รอบ 12, builder CORE-4h) ข้อความ `Identity with email already exists` ของ auth emailpass ที่ storefront ใช้แยก "อีเมลซ้ำ" ตอนสมัคร (spec 01 กฎข้อ 69) ยังเหมือนเดิม — หรือ
    Medusa มี code แยกแล้ว (ให้เปลี่ยนไปใช้ code); `convertDraftOrderWorkflow` ยัง emit event ที่ GB-10 ฟัง (spec 04 กฎข้อ 26)
 9. (รอบ 26, owner Q8 ของ spec 08 = ก 2026-11-09) ถ้า `@medusajs/dashboard` เวอร์ชันใหม่แก้ปัญหา `createRouteMap` ผูก loader ซ้ำแล้ว (upstream ตามที่ระบุใน #311) ให้ลดเกณฑ์ AC-15 ของ spec 08 กลับเป็น ≤ 2 ใน PR ที่ bump — ไม่มี task ล่วงหน้า
+10. (รอบ 33, spec 01 กฎข้อ 122 / CORE-64) ฟอร์มสร้าง/แก้ promotion ของ `@medusajs/dashboard` ยังมีสวิตช์ `is_tax_inclusive` ("Does promotion include taxes?") สำหรับ template fixed
+    (`routes/promotions/promotion-create/components/create-promotion-form/templates.ts`, `create-promotion-form.tsx`) และค่าเริ่มต้นยังเป็นแบบเดิม — ถ้าเปลี่ยน แก้คู่มือ `docs/guides/admin-promotions.md` ใน PR ที่ bump; AC-163(a) ของ spec 01 ผ่าน
 
 ## Acceptance criteria
 - AC-1 Backend boot เป็น `server` และ `worker` ได้จาก image เดียวกัน; scheduled jobs รันเฉพาะบน worker
@@ -343,6 +345,10 @@ static (unit ที่มีอยู่ของ `tools/load` หรือ grep
 ที่เปลี่ยนชัดคือ CPU ของ server (~117% → ~216%) และรอ pool ต่อ process (ลดครึ่ง) → **ไม่เปลี่ยนวิธี deploy prod และไม่เปิด ADR-024** (เลขยังว่าง; Deliverables ข้อ 2 "prod: 2× server" คงเดิม);
 ข้อเท็จจริงของ 2.22.1 ที่พบ (ต้องบันทึกใน ADR ถ้าจะใช้ `--cluster` ใน prod): (1) `--cluster <n>` ต้องคู่ `--servers <n>` — ไม่ใส่ = process ลูกเป็น `workerMode` `shared` (รัน subscriber/job ด้วย) เพราะ primary ส่ง `workerMode` ทับ `MEDUSA_WORKER_MODE`;
 (2) process ที่ตายแล้ว primary fork ใหม่แต่ไม่บูต (`start.js:311–314`) → จำนวน process ที่รับ request ลดลงเงียบๆ จนกว่าจะ restart container; งานต่อ (วัดบน staging แยก k6 / profile CPU ของ checkout) รอ owner — ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)"
+
+**(รอบ 33, 2026-11-17) owner ตัดสินข้อ (3) = ก "หยุด วัดตอนมี staging"**: OPS-26 จบที่ผลข้างบน ไม่มี task ต่อตอนนี้ (ไม่ profile CPU — Q-O5 ทาง ข ไม่ทำ) ·
+**รายการก่อนเปิดร้าน (go-live)**: เมื่อมี staging (ต้องมี ADR ก่อน — OPS-19/AC-30) วัด checkout แบบ AC-41 ซ้ำบน staging ที่ k6 อยู่คนละเครื่องกับระบบ เทียบจำนวน server process/replica ที่จะใช้จริง
+แล้วตัดสินวิธี deploy (ถ้าเปลี่ยนจาก Deliverables ข้อ 2 → ADR-024 proposed) — ไม่ต้องเพิ่มใน `docs/ops/production.md` จนกว่าจะมี ADR staging (บันทึกที่นี่และ ROADMAP "ก่อนเปิดร้านจริง")
 
 ## Open questions (รอบ 32)
 - ~~**Q-O5**~~ ✅ **owner ตอบ ก 2026-11-17** → OPS-26 (หัวข้อ "Follow-up รอบ 32"); คำถามเดิม: (OPS-23 #371 — `docs/evidence/scale/OPS-23/REPORT.md` ข้อสรุป 1–3) server CPU เต็ม ~115% (100 = 1 core) ทุกค่า pool, Postgres ~28%, (d)/(e) ของ checkout ไม่ลดด้วย pool → คอขวดคือ CPU ของ server process เดียว;
