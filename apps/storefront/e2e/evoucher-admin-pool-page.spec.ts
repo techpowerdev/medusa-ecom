@@ -1,6 +1,6 @@
 import { APIRequestContext, Page, Route } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
+import { ADMIN_UI_OPTIONS, PAGINATION_TEXT, loginAdmin } from "./support/admin"
 import { call, createVoucher, placeCapturedOrder, waitDelivered } from "./support/evoucher"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { adminHeaders, createCustomer, publishableKey } from "./support/medusa"
@@ -23,8 +23,6 @@ const delayed = (ms: number) => async (route: Route) => {
   await route.continue()
 }
 
-// spec 08 กฎ 29a: ข้อความของแถบแบ่งหน้า ("1 — 2 of 2 results", "2 of 1 pages")
-const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
 
 test("AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu", async ({
   page,

@@ -1,7 +1,7 @@
 import { APIRequestContext, Page, Route } from "@playwright/test"
 import { Client } from "pg"
 
-import { ADMIN_UI_OPTIONS, expectDatePicker, fillDatePicker, loginAdmin, rowAction } from "./support/admin"
+import { ADMIN_UI_OPTIONS, PAGINATION_TEXT, expectDatePicker, fillDatePicker, loginAdmin, rowAction } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
 
@@ -337,8 +337,6 @@ test.describe("ADM-21b: สถานะ error ของตาราง affiliate
   const fail500: Fail = (route) =>
     route.fulfill({ status: 500, json: { type: "unknown_error", message: "An unknown error occurred." } })
   const failAbort: Fail = (route) => route.abort()
-  // ADM-25 (spec 08 AC-30, กฎ 29a): ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results")
-  const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
 
   // แท็บ → resource ของ GET (`/admin/affiliate/<resource>`), heading, ข้อความ empty เดิม, wrapper + ปุ่มสร้างใน action (กฎ 18)
   // `noun` = ชื่อใน heading error (ADM-25 กฎ 29b: แท็บ Ledger = "ledger entries")

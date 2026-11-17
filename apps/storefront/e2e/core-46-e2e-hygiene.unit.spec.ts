@@ -200,3 +200,40 @@ test("AC-146 (กฎข้อ 109c,d): longCode ไม่สุ่มตัว�
   for (const block of ac52) expect(block).toContain('taskId: "AF-20"')
   expect(src).toContain('test.use({ evidenceTarget: { feature: "affiliate", taskId: "AF-19" } })')
 })
+
+/** CORE-61 (กฎข้อ 119a): body ของ test ที่ชื่อขึ้นต้นด้วย `prefix` ถึง `test(` ตัวถัดไป — หาไม่เจอต้อง throw ไม่ผ่านเงียบ */
+const testBody = (src: string, prefix: string) => {
+  const start = src.indexOf(`test("${prefix}`)
+  if (start === -1) throw new Error(`ไม่พบ test "${prefix}`)
+  const next = src.slice(start + 1).search(/\n\s*test\(/)
+  return next === -1 ? src.slice(start) : src.slice(start, start + 1 + next)
+}
+
+test("AC-160 (กฎข้อ 119a): test A ของ group-buy-join รอ server action ของ prepare และ join ด้วย waitForServerAction ไม่มี waitForTimeout", () => {
+  expect(() => testBody("const x = 1", "A:")).toThrow()
+  const body = testBody(read("group-buy-join.spec.ts"), "A:")
+  expect(body.match(/waitForServerAction\(/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
+  expect(body).not.toContain("waitForTimeout")
+})
+
+test("AC-160 (กฎข้อ 119b): const PAGINATION_TEXT ประกาศที่ support/admin.ts ที่เดียว และ 4 ไฟล์ admin import จากที่นั่น", () => {
+  expect(files.filter((name) => read(name).includes("const PAGINATION_TEXT"))).toEqual([path.join("support", "admin.ts")])
+  for (const name of [
+    "affiliate-admin-forms.spec.ts",
+    "group-buy-admin-pages.spec.ts",
+    "evoucher-admin-pool-page.spec.ts",
+    "evoucher-admin-forms.spec.ts",
+  ]) {
+    expect(read(name), name).toMatch(/import\s*\{[^}]*\bPAGINATION_TEXT\b[^}]*\}\s*from\s*"\.\/support\/admin"/)
+  }
+})
+
+test("AC-160 (กฎข้อ 119c): AC-44 ลบข้อมูลที่สร้างใน finally และไม่มี request.delete( ที่ไม่ตรวจ ok", () => {
+  const src = read("affiliate-admin-payout-create.spec.ts")
+  expect(src).toMatch(/\bfinally\s*\{/)
+  const deletes = src.match(/request\.delete\(/g)?.length ?? 0
+  const checked = Array.from(src.matchAll(/const (\w+) = await request\.delete\(/g)).filter(([, name]) =>
+    src.includes(`${name}.ok()`)
+  ).length
+  expect(checked).toBe(deletes)
+})

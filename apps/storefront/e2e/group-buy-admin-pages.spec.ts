@@ -1,6 +1,6 @@
 import { APIRequestContext, Page, Route } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
+import { ADMIN_UI_OPTIONS, PAGINATION_TEXT, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { adminHeaders, Headers } from "./support/medusa"
 
@@ -12,8 +12,6 @@ test.use({ ...ADMIN_UI_OPTIONS, evidenceTarget: { feature: "admin-ui", taskId: "
 const HOUR = 60 * 60 * 1000
 const BASE = `${BACKEND_URL}/admin/group-buy`
 const PAGE_SIZE = 20
-// ADM-25 (spec 08 AC-30, กฎ 29a): ข้อความของแถบแบ่งหน้า — ตอน error ต้องไม่มี ("0 of 0 results")
-const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
 
 async function tshirtId(request: APIRequestContext, admin: Headers): Promise<string> {
   // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า — ใช้สินค้า seed `t-shirt` ด้วย handle (CORE-46 กฎข้อ 104d)

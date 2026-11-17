@@ -79,3 +79,17 @@ describe("OPS-23 load-nightly db_pool_max", () => {
     expect(workflow.on.workflow_dispatch.inputs.flash_burst.default).toBe("1")
   })
 })
+
+// OPS-26 (spec 07 AC-41): workflow_dispatch เลือกจำนวน server process — schedule ไม่มี input → 1 (nightly เดิม)
+describe("OPS-26 load-nightly server_processes", () => {
+  const workflow = parse(read(".github/workflows/load-nightly.yml")) as {
+    on: { workflow_dispatch: { inputs: Record<string, { type: string; default: string; options?: string[] }> } }
+    jobs: { load: { steps: { run?: string; env?: Record<string, string> }[] } }
+  }
+
+  it("มี input server_processes (choice 1/2, ค่าเริ่มต้น 1) ส่งเป็น env LOAD_SERVER_PROCESSES ให้ run.sh", () => {
+    expect(workflow.on.workflow_dispatch.inputs.server_processes).toMatchObject({ type: "choice", default: "1", options: ["1", "2"] })
+    const step = workflow.jobs.load.steps.find((s) => s.run === "tools/load/run.sh")!
+    expect(step.env?.LOAD_SERVER_PROCESSES).toBe("${{ inputs.server_processes || '1' }}")
+  })
+})

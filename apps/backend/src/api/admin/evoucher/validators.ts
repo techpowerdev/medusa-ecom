@@ -1,5 +1,6 @@
 import { z } from "@medusajs/framework/zod"
 import { createFindParams } from "@medusajs/medusa/api/utils/validators"
+import { INT4_MAX } from "../../../lib/int4"
 
 export const AdminListEvoucherParams = createFindParams()
 
@@ -28,7 +29,8 @@ const poolFields = {
   how_to_use: z.string().min(1),
   face_value: z.number().nonnegative().nullish(),
   validity_note: z.string().nullish(),
-  low_stock_threshold: z.number().int().nonnegative().optional(),
+  // GB-17 (spec 04 กฎข้อ 40): column integer (int4)
+  low_stock_threshold: z.number().int().nonnegative().max(INT4_MAX).optional(),
 }
 
 export const AdminCreateEvoucherPool = z.object({

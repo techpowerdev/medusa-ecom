@@ -1,0 +1,103 @@
+CORE-61 (spec 01 กฎข้อ 119, AC-160) — e2e hygiene/flaky (test-only ไม่แตะ src/)
+ฐาน: origin/develop a0d0d5f9, Node v22.23.3, backend prod (medusa start .medusa/server) :9302 + storefront prod build (next start) :8302, DB medusa_core61, Redis db 2
+
+=== fs19 (กฎข้อ 119d): gh run view 43469877641 --log-failed (job storefront-e2e) ===
+09.1498335Z   1) [chromium] › e2e/flash-sale-fs19.spec.ts:194:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก › แถบล่างแสดงเต็ม (opacity 1) ขณะปุ่มหลักอยู่ใต้ขอบจอ 
+09.1499718Z 
+09.1499985Z     Test timeout of 30000ms exceeded.
+09.1500250Z 
+09.1500584Z     Error: page.screenshot: Target page, context or browser has been closed
+09.1501044Z 
+09.1501205Z        at support/fixtures.ts:37
+09.1501429Z 
+09.1501626Z       35 |           if (page.url() !== "about:blank") {
+09.1502158Z       36 |             await testInfo.attach(`step-${index} ${title}`, {
+09.1502706Z     > 37 |               body: await page.screenshot(),
+09.1503123Z          |                                ^
+09.1503543Z       38 |               contentType: "image/png",
+09.1503927Z       39 |             })
+09.1504221Z       40 |           }
+09.1504819Z         at /home/runner/work/medusa-ecom/medusa-ecom/apps/storefront/e2e/support/fixtures.ts:37:32
+09.1505715Z         at /home/runner/work/medusa-ecom/medusa-ecom/apps/storefront/e2e/support/fixtures.ts:31:7
+09.1506561Z         at /home/runner/work/medusa-ecom/medusa-ecom/apps/storefront/e2e/flash-sale-fs19.spec.ts:199:3
+09.1507003Z 
+→ ล้มที่ step แรก ("แถบล่างแสดงเต็ม (opacity 1) ..." :199, Test timeout 30000ms) ไม่ใช่ expect.poll ที่ :245 → ไม่แก้ e2e/flash-sale-fs19.spec.ts (เปิด task เมื่อเกิดซ้ำ)
+
+=== RED (unit): npx playwright test --project=unit e2e/core-46-e2e-hygiene.unit.spec.ts -g AC-160 (เขียน test ก่อนแก้, exit=1) ===
+  ✘  1 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:212:5 › AC-160 (กฎข้อ 119a): test A ของ group-buy-join รอ server action ของ prepare และ join ด้วย waitForServerAction ไม่มี waitForTimeout (4ms)
+  ✘  2 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:219:5 › AC-160 (กฎข้อ 119b): const PAGINATION_TEXT ประกาศที่ support/admin.ts ที่เดียว และ 4 ไฟล์ admin import จากที่นั่น (21ms)
+  ✘  3 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:231:5 › AC-160 (กฎข้อ 119c): AC-44 ลบข้อมูลที่สร้างใน finally และไม่มี request.delete( ที่ไม่ตรวจ ok (4ms)
+    Error: expect(received).toBeGreaterThanOrEqual(expected)
+    Expected: >= 2
+    Received:    0
+    Error: expect(received).toEqual(expected) // deep equality
+    - Expected  - 1
+    + Received  + 4
+    Error: expect(received).toMatch(expected)
+    Expected pattern: /\bfinally\s*\{/
+    Received string:  "import { APIRequestContext } from \"@playwright/test\"·
+  3 failed
+
+=== ก่อนแก้ (e2e test A บน prod build): --repeat-each=5 --workers=1 → ผ่าน 5/5 (เครื่องว่างไม่ล้ม) ===
+  5 passed (50.1s)
+=== ก่อนแก้ ภายใต้โหลด: --repeat-each=8 --workers=4 → ล้ม 4/8 ที่ assertion เดียวกับ qa #369 O-1 ===
+  ✘  8 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  ✘  6 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  ✘  5 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  ✘  7 [chromium] › e2e/group-buy-join.spec.ts:86:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+    Error: expect(page).toHaveURL(expected) failed
+    Timeout: 5000ms
+    > 116 |     await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders$`))
+    test-results/group-buy-join-join-จากหน้-60c51-ม่ถูกแตะ-aff-ลง-draft-order-chromium-repeat4/test-failed-1.png
+    Error: expect(page).toHaveURL(expected) failed
+    Timeout: 5000ms
+    > 116 |     await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders$`))
+    test-results/group-buy-join-join-จากหน้-60c51-ม่ถูกแตะ-aff-ลง-draft-order-chromium-repeat5/test-failed-1.png
+    Error: expect(page).toHaveURL(expected) failed
+    Timeout: 5000ms
+    > 116 |     await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders$`))
+    test-results/group-buy-join-join-จากหน้-60c51-ม่ถูกแตะ-aff-ลง-draft-order-chromium-repeat6/test-failed-1.png
+    Error: expect(locator).toBeVisible() failed
+    Timeout: 5000ms
+    Error: element(s) not found
+    > 106 |     await expect(shipping).toBeVisible()
+    test-results/group-buy-join-join-จากหน้-60c51-ม่ถูกแตะ-aff-ลง-draft-order-chromium-repeat7/test-failed-1.png
+  4 failed
+  4 passed (27.6s)
+
+=== GREEN (unit): core-46 ทั้งไฟล์ exit=0 ===
+  18 passed (469ms)
+  18 passed (469ms)
+=== GREEN (unit): npx playwright test --project=unit (ทั้ง project รวม evidence-budget, core-4j กฎข้อ 111) exit=0 ===
+  113 passed (1.2s)
+
+=== AC-160: pnpm --filter storefront test:e2e e2e/group-buy-join.spec.ts -g "A:" --repeat-each=5 (prod build) exit=0 ===
+(หมายเหตุ: รูป "test:e2e -- <args>" ใน AC ทำให้ pnpm ส่ง "--" ต่อให้ playwright ซึ่งไม่รับ path หลัง "--" → รันทั้ง suite จึงรันแบบไม่มี "--")
+$ playwright test e2e/group-buy-join.spec.ts -g A: --repeat-each=5
+Running 5 tests using 4 workers
+  ✓  4 [chromium] › e2e/group-buy-join.spec.ts:87:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  ✓  3 [chromium] › e2e/group-buy-join.spec.ts:87:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  ✓  2 [chromium] › e2e/group-buy-join.spec.ts:87:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  ✓  1 [chromium] › e2e/group-buy-join.spec.ts:87:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  ✓  5 [chromium] › e2e/group-buy-join.spec.ts:87:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  5 passed (12.8s)
+=== หลังแก้ ภายใต้โหลด: --repeat-each=8 --workers=4 exit=0 ===
+  8 passed (22.1s)
+
+=== AC-44 (spec 05) + group-buy-join ทั้งไฟล์ --workers=1 exit=0 ===
+  ✓  1 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:54:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → 
+  ✓  2 [chromium] › e2e/group-buy-join.spec.ts:87:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, car
+  ✓  3 [chromium] › e2e/group-buy-join.spec.ts:170:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่ (3
+  ✓  4 [chromium] › e2e/group-buy-join.spec.ts:184:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใ
+  ✓  5 [chromium] › e2e/group-buy-join.spec.ts:204:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี
+  ✓  6 [chromium] › e2e/group-buy-join.spec.ts:204:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ
+  ✓  7 [chromium] › e2e/group-buy-join.spec.ts:228:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแ
+  ✓  8 [chromium] › e2e/group-buy-join.spec.ts:243:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/car
+  8 passed (46.1s)
+หลังจบ (query DB เดียวกัน): affiliate code e2e-af12c-* = 0, affiliate_commission_entry order_e2e_af12c = 0, affiliate_program 'E2E AF-12c%' = 0
+
+=== ไฟล์ที่ import PAGINATION_TEXT (AC-30 ของ spec 08): affiliate-admin-forms, group-buy-admin-pages, evoucher-admin-pool-page, evoucher-admin-forms --workers=1 exit=0 ===
+  57 passed (3.2m)
+
+=== pnpm lint && pnpm typecheck: ผ่าน (lint 0 errors; warning เดิม ไม่มีในไฟล์ที่แตะ) ===
+=== playwright.config.ts: ไม่เปลี่ยน (git diff ว่าง) ===

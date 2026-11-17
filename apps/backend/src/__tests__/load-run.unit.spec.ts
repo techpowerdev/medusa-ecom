@@ -2,6 +2,7 @@ import { spawnSync } from "child_process"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs"
 import { tmpdir } from "os"
 import path from "path"
+import { parse } from "yaml"
 
 // OPS-17 (spec 07 AC-28): tools/load/run.sh ใช้ image tag ของ load test เอง (ไม่ทับ image `local` ของ dev)
 // + follow-up review #220 (OPS-17a, AC-33): cleanup() พิมพ์ report ลง job log แล้วตรวจ JWT ใน OUT แม้ script หยุดกลางทาง
@@ -12,7 +13,18 @@ const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8")
 const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url")
 const fakeJwt = () => `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ actor_id: "cus_1" })}.c2lnbmF0dXJl`
 
-type Run = { status: number | null; stdout: string; stderr: string; imageTag: string; poolMax: string; outDir: string }
+type Run = {
+  status: number | null
+  stdout: string
+  stderr: string
+  imageTag: string
+  poolMax: string
+  outDir: string
+  /** OPS-26: argument ของ `docker` ตอน `compose up` + env ที่ compose ได้รับ (ไม่เรียก docker = "<docker-not-called>") */
+  upArgs: string
+  poolMin: string
+  serverProcesses: string
+}
 type Files = Record<string, string>
 
 /**
@@ -28,12 +40,13 @@ function runStopped(env: Record<string, string>, { stale = {}, written = {} }: {
   }
   const record = path.join(bin, "image-tag.txt")
   const poolRecord = path.join(bin, "pool-max.txt") // OPS-23: DATABASE_POOL_MAX ที่ compose ได้รับ
+  const upRecord = path.join(bin, "up.txt") // OPS-26: argument ของ compose up / DATABASE_POOL_MIN / LOAD_SERVER_PROCESSES
   // OUT ต้องเป็น path relative กับ cwd (run.sh ใช้ $(pwd)/$LOAD_OUT) — อยู่ใต้ tools/load/out ที่ gitignore แล้ว
   const outRel = `tools/load/out/unit-ops17-${process.pid}-${Date.now()}`
   const outDir = path.join(ROOT, outRel)
   writeFileSync(
     path.join(bin, "docker"),
-    `#!/bin/sh\nprintf '%s' "\${IMAGE_TAG-<unset>}" > "${record}"\nprintf '%s' "\${DATABASE_POOL_MAX-<unset>}" > "${poolRecord}"\ncase " $* " in *" up "*) cp -R "${staging}/." "${outDir}/" ;; esac\nexit 1\n`
+    `#!/bin/sh\nprintf '%s' "\${IMAGE_TAG-<unset>}" > "${record}"\nprintf '%s' "\${DATABASE_POOL_MAX-<unset>}" > "${poolRecord}"\ncase " $* " in *" up "*) cp -R "${staging}/." "${outDir}/"; printf '%s\\n%s\\n%s' "$*" "\${DATABASE_POOL_MIN-<unset>}" "\${LOAD_SERVER_PROCESSES-<unset>}" > "${upRecord}" ;; esac\nexit 1\n`
   )
   chmodSync(path.join(bin, "docker"), 0o755)
   mkdirSync(outDir, { recursive: true })
@@ -48,8 +61,11 @@ function runStopped(env: Record<string, string>, { stale = {}, written = {} }: {
   })
   const imageTag = existsSync(record) ? readFileSync(record, "utf8") : ""
   const poolMax = existsSync(poolRecord) ? readFileSync(poolRecord, "utf8") : "<docker-not-called>"
+  const [upArgs, poolMin, serverProcesses] = existsSync(upRecord)
+    ? readFileSync(upRecord, "utf8").split("\n")
+    : ["<docker-not-called>", "<docker-not-called>", "<docker-not-called>"]
   rmSync(bin, { recursive: true, force: true })
-  return { status: r.status, stdout: r.stdout, stderr: r.stderr, imageTag, poolMax, outDir }
+  return { status: r.status, stdout: r.stdout, stderr: r.stderr, imageTag, poolMax, outDir, upArgs, poolMin, serverProcesses }
 }
 
 const JWT_RE = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./
@@ -101,6 +117,59 @@ describe("OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX", () => {
     const runner = read("tools/load/run.sh")
     const report = runner.slice(runner.indexOf("## OPS-4 load test"), runner.indexOf('} >"$OUT/report.md"'))
     expect(report).toContain("DATABASE_POOL_MAX=")
+  })
+})
+
+// OPS-26 (spec 07 AC-41): เทียบ server 1 vs 2 process — n > 1 เพิ่ม override ให้ container server รัน
+// `start --cluster <n> --servers <n>` (ทุก process คง MEDUSA_WORKER_MODE=server); n = 1/ว่าง = คำสั่ง compose เดิมทุกตัวอักษร
+describe("OPS-26 AC-41 run.sh LOAD_SERVER_PROCESSES", () => {
+  const dirs: string[] = []
+  afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })))
+  const ORIGINAL_UP = "compose -p loadtest-unit-ops17 -f docker-compose.prod.yml up -d --build --wait server worker"
+
+  it.each<Record<string, string>>([{}, { LOAD_SERVER_PROCESSES: "" }, { LOAD_SERVER_PROCESSES: "1" }])("%j → compose up เดิมทุกตัวอักษร (ไม่มี --cluster)", (env) => {
+    const r = runStopped(env)
+    dirs.push(r.outDir)
+    expect(r.upArgs).toBe(ORIGINAL_UP)
+    expect(r.upArgs).not.toContain("cluster")
+  })
+
+  it("LOAD_SERVER_PROCESSES=2 → เพิ่ม override ของ server และส่ง n ให้ compose", () => {
+    const r = runStopped({ LOAD_SERVER_PROCESSES: "2" })
+    dirs.push(r.outDir)
+    expect(r.upArgs).toBe(
+      "compose -p loadtest-unit-ops17 -f docker-compose.prod.yml -f tools/load/server-cluster.yml up -d --build --wait server worker"
+    )
+    expect(r.serverProcesses).toBe("2")
+  })
+
+  it("override แตะเฉพาะ command ของ server: start --cluster n --servers n (ไม่ใช้กับ worker)", () => {
+    const override = parse(read("tools/load/server-cluster.yml")) as { services: Record<string, { command?: string[] }> }
+    expect(Object.keys(override.services)).toEqual(["server"])
+    expect(override.services.server).toEqual({
+      command: ["start", "--cluster", "${LOAD_SERVER_PROCESSES}", "--servers", "${LOAD_SERVER_PROCESSES}"],
+    })
+  })
+
+  it.each(["0", "abc", "-1", "2; rm -rf /", "1.5"])("LOAD_SERVER_PROCESSES=%j → exit 2 ก่อนเรียก docker", (v) => {
+    const r = runStopped({ LOAD_SERVER_PROCESSES: v })
+    dirs.push(r.outDir)
+    expect(r.status).toBe(2)
+    expect(r.stderr).toContain("LOAD_SERVER_PROCESSES")
+    expect(r.upArgs).toBe("<docker-not-called>")
+  })
+
+  it("report.md บันทึกจำนวน process ที่สั่งและที่บูตจริง (นับจาก log ของ server)", () => {
+    const runner = read("tools/load/run.sh")
+    const report = runner.slice(runner.indexOf("## OPS-4 load test"), runner.indexOf('} >"$OUT/report.md"'))
+    expect(report).toContain("server processes (OPS-26): ")
+    expect(runner).toMatch(/compose logs[^\n]*server[^\n]*\| grep -c "Server is ready on port"/)
+  })
+
+  it("review #371: DATABASE_POOL_MIN ที่ค้างใน shell ไม่ถึง compose (ว่าง = default ของ Medusa)", () => {
+    const r = runStopped({ DATABASE_POOL_MIN: "7" })
+    dirs.push(r.outDir)
+    expect(r.poolMin).toBe("<unset>")
   })
 })
 

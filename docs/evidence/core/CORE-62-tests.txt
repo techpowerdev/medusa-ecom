@@ -1,0 +1,32 @@
+# CORE-62 (spec 01 กฎข้อ 120, AC-161) — ผล test 2026-11-17
+
+## Red (develop a0d0d5f9 + test ใหม่, ก่อนแก้ cart-totals)
+$ npx vitest run src/core-57-cart-totals.test.ts
+     × ส่วนลดค่าส่งอย่างเดียว: ป้ายไม่มีคำว่าก่อนส่วนลด เท่ากับเคสไม่มีส่วนลด และยังมีแถวส่วนลด 3ms
+     × ไม่ส่ง original_item_total/item_total: ป้ายไม่มีคำว่าก่อนส่วนลด 1ms
+     × ไม่ส่ง item_total: ป้ายไม่มีคำว่าก่อนส่วนลด 1ms
+     × item_total เป็น null: ป้ายไม่มีคำว่าก่อนส่วนลด 0ms
+     × ผลต่างเป็นเศษ float ≤ 0.005: ป้ายไม่มีคำว่าก่อนส่วนลด 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/core-57-cart-totals.test.ts > CORE-60: ป้ายแถวแรกบอกว่าเป็นยอดก่อนส่วนลดเมื่อมีส่วนลด (กฎข้อ 118, AC-159) > ส่วนลดค่าส่งอย่างเดียว: ป้ายไม่มีคำว่าก่อนส่วนลด เท่ากับเคสไม่มีส่วนลด และยังมีแถวส่วนลด
+ FAIL  src/core-57-cart-totals.test.ts > CORE-62: ป้าย ก่อนส่วนลด เฉพาะเมื่อราคาสินค้าลดจริง (กฎข้อ 120, AC-161) > ไม่ส่ง original_item_total/item_total: ป้ายไม่มีคำว่าก่อนส่วนลด
+ FAIL  src/core-57-cart-totals.test.ts > CORE-62: ป้าย ก่อนส่วนลด เฉพาะเมื่อราคาสินค้าลดจริง (กฎข้อ 120, AC-161) > ไม่ส่ง item_total: ป้ายไม่มีคำว่าก่อนส่วนลด
+ FAIL  src/core-57-cart-totals.test.ts > CORE-62: ป้าย ก่อนส่วนลด เฉพาะเมื่อราคาสินค้าลดจริง (กฎข้อ 120, AC-161) > item_total เป็น null: ป้ายไม่มีคำว่าก่อนส่วนลด
+ FAIL  src/core-57-cart-totals.test.ts > CORE-62: ป้าย ก่อนส่วนลด เฉพาะเมื่อราคาสินค้าลดจริง (กฎข้อ 120, AC-161) > ผลต่างเป็นเศษ float ≤ 0.005: ป้ายไม่มีคำว่าก่อนส่วนลด
+      Tests  5 failed | 14 passed (19)
+
+## Green — unit
+$ npx vitest run src/core-57-cart-totals.test.ts src/ev-7d-digital-only-totals.test.ts
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+$ npx vitest run (ทั้ง storefront)
+ Test Files  99 passed (99)
+      Tests  1160 passed (1160)
+
+## Green — e2e (prod build: backend :9303, storefront :8303, DB medusa_core62)
+$ npx playwright test --project=chromium e2e/core-60-cart-subtotal-label.spec.ts
+  ✓  1 [chromium] › e2e/core-60-cart-subtotal-label.spec.ts:44:5 › AC-159: ป้ายแถวแรกของ cart-totals เปลี่ยนเมื่อมีส่วนลด ตัวเลขเท่าเดิม และไม่ล้นที่ 375 (9.1s)
+  ✓  2 [chromium] › e2e/core-60-cart-subtotal-label.spec.ts:161:7 › CORE-62 › AC-161: ส่วนลดค่าส่งอย่างเดียว ป้ายแถวแรกเท่ากับเมื่อไม่มีส่วนลด และแถวรวมได้ยอดสุทธิ (2.4s)
+  2 passed (13.3s)
+$ npx playwright test --project=unit
+  110 passed (1.7s)
