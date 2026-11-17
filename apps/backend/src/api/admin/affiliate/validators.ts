@@ -10,6 +10,9 @@ const listParams = () =>
 
 const id = z.string().min(1)
 
+// GB-17 (spec 04 กฎข้อ 40 (ข), spec 05 Q21): 100 ปี — เพดานทางเทคนิคกัน matures_at เป็น Invalid Date (ต่ำกว่า int4)
+const MAX_DAYS = 36500
+
 const ProgramScope = z
   .object({
     all: z.boolean().optional(),
@@ -26,9 +29,9 @@ const programFields = {
   announce_text: z.string().nullish(),
   commission_value: z.number().positive().max(100),
   scope: ProgramScope,
-  attribution_window_days: z.number().int().min(1).optional(),
+  attribution_window_days: z.number().int().min(1).max(MAX_DAYS).optional(),
   cap_per_order: z.number().positive().nullish(),
-  hold_days: z.number().int().min(0).optional(),
+  hold_days: z.number().int().min(0).max(MAX_DAYS).optional(),
 }
 
 // Window is [starts_at, ends_at) (rule 10); "ended" is reached through an update only

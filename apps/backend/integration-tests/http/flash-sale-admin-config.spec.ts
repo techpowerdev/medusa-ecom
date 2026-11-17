@@ -206,6 +206,30 @@ medusaIntegrationTestRunner({
       expect(limitErr.status).toEqual(400)
     })
 
+    // GB-17 (spec 04 กฎข้อ 40, AC-60 b): column integer (int4) — เกิน 2147483647 → 400 ไม่ถึง DB
+    it.each(["per_customer_limit", "total_cap"])(
+      "POST %s = 2147483648 → 400 invalid_data and the config is unchanged; 2147483647 → 200",
+      async (field) => {
+        await api.post(configUrl(), { per_customer_limit: 2, total_cap: 100 }, { headers })
+        const service: FlashSaleModuleService = getContainer().resolve(FLASH_SALE_MODULE)
+
+        const err = await api
+          .post(configUrl(), { [field]: 2147483648 }, { headers })
+          .catch((e) => e.response)
+        expect(err.status).toEqual(400)
+        expect(err.data.type).toEqual("invalid_data")
+        expect(err.data.message).toContain(field)
+        expect(JSON.stringify(err.data)).not.toContain("integer out of range")
+        const [unchanged] = await service.listFlashSaleConfigs({ campaign_id: campaignId })
+        expect(unchanged).toEqual(expect.objectContaining({ per_customer_limit: 2, total_cap: 100 }))
+
+        const ok = await api.post(configUrl(), { [field]: 2147483647 }, { headers })
+        expect(ok.status).toEqual(200)
+        const [saved] = await service.listFlashSaleConfigs({ campaign_id: campaignId })
+        expect(saved[field as "total_cap"]).toEqual(2147483647)
+      }
+    )
+
     it("returns 404 for an unknown campaign and does not create a config", async () => {
       const err = await api
         .post("/admin/flash-sales/procamp_missing/config", { per_customer_limit: 2 }, { headers })
