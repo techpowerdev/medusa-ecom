@@ -4,13 +4,16 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**ปิดรอบ 33 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-28 #393, CORE-64 #392 + เอกสาร #391 (รอบ 33) ·
+**รอบ 34 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: owner ตัดสินข้อ ก (1)–(2) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)" ครบ 2026-11-18 ·
+spec 01 Q-C11 = ก → คู่มือ + test ของ CORE-64 อย่างเดียว (ไม่มี task) · **owner สั่งทำ 2026-11-18 (☐ พร้อมเริ่ม — รอ PR เอกสารรอบ 34 merge, ไม่บล็อก release)**: ADM-29 (spec 08 กฎ 33, AC-34 — test payout ใช้ tag ตัวอักษร + assert `count` = 1; static "tag ไม่มีตัวเลข" ครอบสอง test; test-only) ·
+spec 08 กฎ 32f แก้ถ้อยคำเป็น "assert จำนวนผลก่อนใช้ผลการค้น" (nit review #394) · **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 · ไม่มีคำถามค้างของ owner · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
+(ประวัติ) **ปิดรอบ 33 (2026-11-18, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-28 #393, CORE-64 #392 + เอกสาร #391 (รอบ 33) ·
 ผล ADM-28: สาเหตุ flaky AC-12 ยืนยันจาก trace ทั้งสอง run — tag `adm9${Date.now()}` บังเอิญมีเลข "249" และ `q` ของ Medusa 2.22.1 แยกคำด้วยช่องว่างแล้ว AND ILIKE → "<tag> col 249" ตรงทั้ง 250 collection; แก้ tag เป็นตัวอักษร + assert `count === 1` (test-only; บทเรียนใน spec 08 กฎ 32f) ·
 ผล CORE-64: dashboard 2.22.1 มีสวิตช์ "Does promotion include taxes?" (ค่าเริ่มต้นปิด) เปิดแล้ว fixed ลดตรงจำนวนที่ตั้ง — คู่มือ `docs/guides/admin-promotions.md` ·
-**รอ owner ตัดสิน**: spec 01 Q-C11 (ยังค้าง) และข้อ [แนะนำเปิด task] ในหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)" ท้ายไฟล์ · **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 · ไม่มี task id ใหม่ · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
+**รอ owner ตัดสิน ณ ปิดรอบ 33** (**ตอบครบในรอบ 34**): spec 01 Q-C11 และข้อ [แนะนำเปิด task] ในหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)" ท้ายไฟล์ · **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 · ไม่มี task id ใหม่ ·
 (ประวัติ) **รอบ 33 (2026-11-17, เอกสารล้วน)**: owner ตัดสินกลุ่ม ก (1)–(5) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" ครบ 2026-11-17 ·
 **owner สั่งทำ 2026-11-17 (☐ พร้อมเริ่ม — ☑ ครบในปิดรอบ 33)**: CORE-64 (spec 01 — promotion fixed `is_tax_inclusive: true` เสมอ + คู่มือ + integration/e2e) ∥ ADM-28 (spec 08 — หาสาเหตุ flaky AC-12 จาก trace; **เริ่มเร็ว** artifact ของ run 44071909424 หมดอายุราว 2026-12-01) — ไม่มีไฟล์ร่วม (ยกเว้นอาจแตะ `e2e/core-46-e2e-hygiene.unit.spec.ts` ทั้งคู่ คนละ test); ลำดับ merge ที่แนะนำ ADM-28 → CORE-64 ·
-ยอมรับใน v1 (ไม่มี task): (2) ลบเบอร์โทรในหน้าบัญชีไม่ได้ (spec 01 กฎข้อ 121b), (5) ลดค่าส่ง 100% แสดงแยก (กฎข้อ 115) · (3) OPS-26 หยุด → วัดบน staging เป็นรายการก่อน go-live (spec 07) · **คำถามใหม่ถึง owner**: spec 01 Q-C11 (กันลืมเปิด `is_tax_inclusive` เพิ่มจากคู่มือไหม — ไม่บล็อก CORE-64) · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
+ยอมรับใน v1 (ไม่มี task): (2) ลบเบอร์โทรในหน้าบัญชีไม่ได้ (spec 01 กฎข้อ 121b), (5) ลดค่าส่ง 100% แสดงแยก (กฎข้อ 115) · (3) OPS-26 หยุด → วัดบน staging เป็นรายการก่อน go-live (spec 07) · **คำถามใหม่ถึง owner**: spec 01 Q-C11 (กันลืมเปิด `is_tax_inclusive` เพิ่มจากคู่มือไหม — ไม่บล็อก CORE-64) · ไม่มี ADR ใหม่ ·
 (ประวัติ) **ปิดรอบ 32 (2026-11-17, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-62 #384, OPS-26 #385, CORE-63 #386, GB-17 #387, CORE-61 #388, ADM-27 #389 + เอกสาร #383 (รอบ 32) ·
 ผล OPS-26: 2 process ลด median checkout ~13% แต่ไม่เกินความแปรปรวน (ค่าละ 1 run, runner 4 vCPU ร่วมกับ k6) → ไม่เปลี่ยนวิธี deploy prod **ไม่เปิด ADR-024** (`docs/evidence/scale/OPS-26/REPORT.md`; spec 07 กฎ (d) แก้เป็น 10 × (n + 1)) ·
 **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 · **รอ owner ตัดสิน**: กลุ่ม ก (1)–(5) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" ท้ายไฟล์ (**ตัดสินครบในรอบ 33**) · ไม่มี task id ใหม่ ·
@@ -350,6 +353,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-26 | (รอบ 30, qa #360 O-2 — ยืนยันแล้ว 2026-11-14, owner = ก) ขณะ `Combobox` ขยาย Escape ไม่ปิด `FocusModal` ฟอร์ม payout/program (`onEscapeKeyDown`; Escape ไม่ปิดรายการ — ยอมรับ) (กฎ 30; AC-31; ~40 LOC + e2e; ← ADM-24) | ☑ #379 (owner สั่งทำ 2026-11-13; หลัง ADM-24 #375) |
 | ADM-27 | (รอบ 32, Q9 = ก owner 2026-11-17 — qa #379 O-1) ถามยืนยันด้วย `usePrompt` ก่อนปิดฟอร์มที่ dirty ใน `FocusModal`/`Drawer` แบบ state 7 จุด ผ่าน hook กลางใน `components/common/`; กันกดซ้ำ/prompt ซ้อน; `onEscapeKeyDown` ของ ADM-26 ยังทำงานก่อน (กฎ 31; AC-32; ~250 LOC รวม e2e — เกิน ~400 แบ่ง ADM-27a/27b; ← CORE-61 แนะนำ merge ก่อนเพราะชนไฟล์ e2e) | ☑ #389 |
 | ADM-28 | (รอบ 33, owner สั่ง 2026-11-17 — CI flaky #373 run 43475980049, #388 run 44071909424) หาสาเหตุ timeout 2 นาทีของ AC-12 ตัวแรก (`affiliate-admin-forms.spec.ts:47`, step "พิมพ์ชื่อ collection ลำดับที่ 250") จาก trace ก่อน artifact หมดอายุ (~2026-12-01) แล้วแก้ตามสาเหตุ — ห้ามแก้แค่เพิ่ม timeout; trace อ่านไม่ได้และทำซ้ำไม่ได้ → หยุดรายงาน (กฎ 32; AC-33 `--repeat-each=20`; test ~40 LOC (+ ≤ ~50 ถ้าแก้ `program-form.tsx`); ∥ CORE-64; **เริ่มเร็ว**) | ☑ #393 (สาเหตุ: tag ตัวเลขชนคำค้น `q` — แก้ฝั่ง test) |
+| ADM-29 | (รอบ 34, owner สั่ง 2026-11-18 — ROADMAP ปิดรอบ 33 ข้อ ก (2) + nit review #393/#394) test payout ใน `affiliate-admin-forms.spec.ts` (tag `adm9${Date.now()}` `:170`, คำค้น `"<tag> aff 249"` `:202–205`) มีจุดอ่อนเดียวกับ ADM-28 → tag ตัวอักษร + รอ response `q` แล้ว assert `count` = 1 ก่อนใช้ผล; static ใน `core-46-e2e-hygiene.unit.spec.ts` ตรวจ "tag ไม่มีตัวเลข" ครอบทั้ง AC-12 ตัวแรกและ payout; ห้ามเพิ่ม timeout/retries/skip/แก้ `playwright.config.ts` (กฎ 33; AC-34 red ด้วย tag ที่มี "249" + `--repeat-each=20`; test-only ~15–30 LOC; ← PR เอกสารรอบ 34) | ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-18 (รอ PR เอกสารนี้ merge) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -509,17 +513,22 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   spec 08: บันทึกสาเหตุจริงของ ADM-28 (H3 แบบที่ไม่ได้คาด — `q` แยกคำ × tag ตัวเลข) + บทเรียนกฎ 32f (e2e ที่ใช้ `q` ห้ามใช้ tag ที่มีตัวเลขชนกับคำค้น) ·
   spec 01: ผล CORE-64 (สวิตช์ของ dashboard ใช้ได้ ลดตรงเป๊ะ; คู่มือ `docs/guides/admin-promotions.md`), Q-C11 ยังค้าง ·
   follow-up ใหม่ → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)" (ไม่เปิด task id ใหม่) · เหลือ: ADM-22 พักไว้ · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+- รอบ 34 (2026-11-18, เอกสารล้วน — บันทึกคำตัดสินของ owner ต่อกลุ่ม ก ของ follow-up ปิดรอบ 33 + nit review #393/#394) →
+  spec 01: Q-C11 = ก (คู่มือ + test ของ CORE-64 อย่างเดียว ไม่มี task) — ทำเครื่องหมายตอบแล้วใน Open questions รอบ 33 + บรรทัดสถานะ ·
+  spec 08: หัวข้อ "Follow-up รอบ 34": กฎ 33, AC-34, ADM-29 (test payout tag ตัวอักษร + assert `count` = 1; static "tag ไม่มีตัวเลข" ครอบ AC-12 ตัวแรกและ payout — ข้อ ข nit #393) · กฎ 32f แก้ถ้อยคำ "assert จำนวนผลก่อนใช้ผลการค้น" (nit #394) ·
+  ROADMAP: บรรทัดสถานะ, แถว ADM-29, ลบวลี "ADR-024 ยังว่าง" ที่ซ้ำในบรรทัดประวัติรอบ 33 (nit #394), ทำเครื่องหมาย "แปลงแล้ว" ในหัวข้อ follow-up ปิดรอบ 33 · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)
 ที่มา: review/qa/CI ของ #391–#393 (2026-11-17/18) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน
+**(รอบ 34, 2026-11-18) แปลงแล้ว — กลุ่ม ก ตัดสินครบ**: (1) Q-C11 = ก → คู่มือ + test อย่างเดียว (spec 01; ไม่มี task) · (2) → ADM-29 (spec 08 กฎ 33, AC-34) · กลุ่ม ข (static ของ ADM-28) → รวมใน ADM-29 (กฎ 33d); กลุ่ม ค คงไว้ด้านล่าง
 ### ก. ต้องให้ owner ตัดสิน
-1. **[ถาม owner] Q-C11 (spec 01 — ยังค้างจากรอบ 33)** กันลืมเปิดสวิตช์ `is_tax_inclusive` ของ promotion fixed เพิ่มจากคู่มือไหม:
+1. **[owner ตัดสิน ก 2026-11-18 → ไม่มี task]** Q-C11 (spec 01 — ยังค้างจากรอบ 33)** กันลืมเปิดสวิตช์ `is_tax_inclusive` ของ promotion fixed เพิ่มจากคู่มือไหม:
    (ก) **[แนะนำ]** คู่มือ + test ของ CORE-64 อย่างเดียว (ไม่มีงานเพิ่ม) · (ข) widget เตือนที่หน้า detail ของ promotion (~60 LOC + e2e) · (ค) middleware ตอบ 400 บน `POST /admin/promotions(/:id)` (~100 LOC + integration + ADR; แตะ `src/api/middlewares.ts`)
-2. **[แนะนำเปิด task — ถาม owner ว่าสั่งทำไหม]** **test payout ใน `apps/storefront/e2e/affiliate-admin-forms.spec.ts` มีจุดอ่อนเดียวกับ ADM-28** (test "AC-12/AC-21: ฟอร์มสร้าง payout … ค้น affiliate รายที่ 250 ด้วย q" — tag `adm9${Date.now()}` `:170`, ค้น `"<tag> aff 249"` `:202–205`):
+2. **[owner สั่งเปิด task 2026-11-18 → ADM-29]** **test payout ใน `apps/storefront/e2e/affiliate-admin-forms.spec.ts` มีจุดอ่อนเดียวกับ ADM-28** (test "AC-12/AC-21: ฟอร์มสร้าง payout … ค้น affiliate รายที่ 250 ด้วย q" — tag `adm9${Date.now()}` `:170`, ค้น `"<tag> aff 249"` `:202–205`):
    `name`/`email` ของ affiliate เป็น `.searchable()` และ `q` แยกคำแล้ว AND → tag ที่บังเอิญมี "249" ทำให้ทั้ง 250 รายตรง, `aff 249` ไม่อยู่หน้าแรก → timeout 2 นาที (โอกาส ~1% ต่อ run) ·
    **แนะนำ**: แก้แบบเดียวกับ ADM-28 (tag ตัวอักษร + assert `count === 1` ของ response ที่ `q` ตรง) test-only ~15 LOC + static ใน `e2e/core-46-e2e-hygiene.unit.spec.ts`; ไม่บล็อก release
 ### ข. test hygiene / nit (planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
-- (#393) static test ของ ADM-28 (`e2e/core-46-e2e-hygiene.unit.spec.ts:~244`) ตรวจแค่ว่าไม่มีข้อความเดิม `adm9${Date.now()}` — ไม่ได้ตรวจว่า tag ไม่มีตัวเลข (เขียน tag ตัวเลขรูปอื่นแล้วยังผ่าน) → ถ้าทำข้อ ก (2) ให้ตรวจแบบ "มีการแปลงตัวเลขเป็นตัวอักษร"/`count === 1` ครอบทั้งสอง test
+- **[รวมใน ADM-29 — รอบ 34]** (#393) static test ของ ADM-28 (`e2e/core-46-e2e-hygiene.unit.spec.ts:~244`) ตรวจแค่ว่าไม่มีข้อความเดิม `adm9${Date.now()}` — ไม่ได้ตรวจว่า tag ไม่มีตัวเลข (เขียน tag ตัวเลขรูปอื่นแล้วยังผ่าน) → ถ้าทำข้อ ก (2) ให้ตรวจแบบ "มีการแปลงตัวเลขเป็นตัวอักษร"/`count === 1` ครอบทั้งสอง test
 ### ค. ค้างจากรอบก่อน (ไม่มี task)
 - ก่อน go-live: Stripe live นิติบุคคลไทย + PromptPay (spec 06 Q1), ค่าส่งจริงแทน ฿10 placeholder (spec 01 Q-F1), smoke test บน production, วัด OPS-26 ซ้ำบน staging (spec 07) — ดูบรรทัด "ก่อนเปิดร้านจริง (go-live)" ด้านบน
 - ADM-22 พักไว้ (owner ยังไม่สั่งทำ) · กลุ่ม ข/ค/ง ของหัวข้อปิดรอบ 32 และ 30/31 ข้างล่างยังคงอยู่
