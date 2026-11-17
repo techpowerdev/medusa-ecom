@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -689,6 +689,12 @@ Status: done (ปิดรอบ 32 2026-11-17 — ADM-27 ☑ #389; owner สั
 - H2 `fill` ที่ `affiliate-program-field-collection_ids` (`:86`; testid ที่ `components/affiliate/program-form.tsx:82`) ไม่ทำให้รายการเปิด (เช่น focus ยังอยู่ที่ปุ่ม Save หลัง error ของ step แรก `:80–81`) — ถ้าเป็นแบบนี้ trace จะแสดงว่าไม่มี request `q=` ออกไปเลย
 - H3 ข้อมูลเกิน: `product_collection` ที่ test อื่น/run ก่อนไม่ลบ ทำให้ `q` ได้ผลหลายตัว — น่าจะน้อย (`tag` มี `Date.now()` และ `finally` ลบ `pcol_<tag>_%` `:114`)
 
+Status: done (ปิดรอบ 33 2026-11-18 — ADM-28 ☑ #393; owner สั่งทำ 2026-11-17)
+**ผล ADM-28 (ยืนยันจาก trace ของ run 44071909424 และ 43475980049 — `docs/evidence/admin-ui/ADM-28-tests.txt`)**: ไม่ใช่ H1a/H1b/H2 — เป็น **H3 แบบที่ไม่ได้คาด (ต้นเหตุอยู่ในข้อมูลทดสอบ)**:
+`q` ของ Medusa 2.22.1 (`@medusajs/utils` `mikro-orm-free-text-search-filter.js:74–110`) แยกคำค้นด้วยช่องว่างแล้ว AND `ILIKE "%คำ%"` ทีละคำ; tag `adm9${Date.now()}` ของทั้งสอง run ที่ล้มบังเอิญมีเลข "249"
+→ คำค้น "<tag> col 249" ตรงทั้ง 250 collection (`count=250`), col 249 ไม่อยู่ใน 10 รายการแรกของ `Combobox` → `click` รอจน timeout ของ test 120s (option ไม่เคย render) — `useComboboxData`/`Combobox` ของ dashboard และ `program-form.tsx` ทำงานถูก;
+แก้ฝั่ง test: แปลงตัวเลขของ tag เป็นตัวอักษร a–j + รอ response ของ `GET /admin/collections` ที่ `q` ตรงแล้ว assert `count === 1` ก่อนหา option (ข้อมูลชนอีกจะล้มใน ~2s พร้อมจำนวนจริง) — ไม่เพิ่ม timeout, `playwright.config.ts` ไม่เปลี่ยน
+
 ### What Medusa already gives us (รอบ 33)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
@@ -706,7 +712,10 @@ Status: done (ปิดรอบ 32 2026-11-17 — ADM-27 ☑ #389; owner สั
     (c) **ห้าม**แก้แค่เพิ่ม timeout: ห้ามเพิ่ม `test.setTimeout`, timeout ต่อ action/expect ที่ยาวขึ้น, `waitForTimeout`, `retries`/`actionTimeout`/timeout ระดับ `playwright.config.ts`, `test.fixme`/`skip`;
         อนุญาตใส่ timeout ต่อ action ที่**สั้นลง**เพื่อให้ล้มเร็วและเห็นจุดค้าง (ใส่คู่กับการแก้ตามสาเหตุเท่านั้น);
     (d) ถ้า trace ทั้งสอง run หมดอายุ/อ่านไม่ได้ และทำซ้ำในเครื่องไม่ได้ (รันตาม AC-33 แล้วผ่านครบ) → **ไม่แก้ test** หยุดและรายงาน planner/owner พร้อมผลที่รัน (ห้ามแก้ตามการเดา);
-    (e) ไม่แก้ test อื่นในไฟล์ (รวม AC-31 ของ ADM-26 และ e2e ของ ADM-27) นอกจาก helper ที่ test นี้ใช้ร่วม และไม่เปลี่ยน testid เดิม
+    (e) ไม่แก้ test อื่นในไฟล์ (รวม AC-31 ของ ADM-26 และ e2e ของ ADM-27) นอกจาก helper ที่ test นี้ใช้ร่วม และไม่เปลี่ยน testid เดิม;
+    (f) (บทเรียนปิดรอบ 33 — ใช้กับ e2e/integration ใหม่ทุกตัว) test ที่ค้นด้วย `q` ของ Medusa (หรือ route ของเราที่ใช้ `q` แบบเดียวกัน) **ห้ามใช้ tag/ค่าไม่ซ้ำที่มีตัวเลขซึ่งอาจชนกับคำค้น** (เช่น `Date.now()` ดิบคู่กับคำค้นที่มีเลข) —
+        เพราะ `q` แยกคำด้วยช่องว่างแล้ว AND ทีละคำ ให้ใช้ tag ตัวอักษร (เช่นแปลงตัวเลขเป็น a–j) และ assert จำนวนผลของ response ที่ `q` ตรง (`count === 1`) ก่อนหา option เพื่อให้ล้มเร็วพร้อมสาเหตุ;
+        test ที่ยังมีจุดอ่อนนี้: payout ใน `affiliate-admin-forms.spec.ts` (`"<tag> aff 249"`) — ROADMAP "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)" ข้อ ก (2)
 
 ### Acceptance criteria (รอบ 33)
 - AC-33 (ADM-28, กฎ 32) `docs/evidence/admin-ui/ADM-28-tests.txt` มี: run id ที่อ่าน trace, บรรทัด/action ที่ค้างพร้อม call log, ข้อสรุปสาเหตุ (H ใด) — **ไม่มีข้อนี้ = ไม่ผ่าน**;
@@ -722,7 +731,7 @@ Status: done (ปิดรอบ 32 2026-11-17 — ADM-27 ☑ #389; owner สั
 ### Tasks (รอบ 33)
 | Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
-| ADM-28 | (owner 2026-11-17 — CI #373/#388) หาสาเหตุ flaky ของ AC-12 ตัวแรก (`affiliate-admin-forms.spec.ts:47`) จาก trace ของ run 44071909424 ก่อน artifact หมดอายุ (~2026-12-01) แล้วแก้ตามสาเหตุ ห้ามแก้แค่เพิ่ม timeout (กฎ 32) — ☑ (สาเหตุ: คำค้น `q` ของ Medusa แยกคำแล้ว AND — tag ตัวเลขที่มี "249" ทำให้ตรงทั้ง 250 รายการ; แก้ฝั่ง test) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts` (+ `e2e/support/admin.ts` ถ้าต้องใช้ helper ร่วม), `e2e/core-46-e2e-hygiene.unit.spec.ts`, `docs/evidence/admin-ui/ADM-28-tests.txt`; เฉพาะเมื่อสาเหตุอยู่ในโค้ดของเรา: `components/affiliate/program-form.tsx` (≤ ~50 LOC) | test ~40 LOC (+ ≤ ~50 LOC ถ้าแก้โค้ด) | 1280×800 | AC-33 | PR เอกสารรอบ 33 merge; ไม่บล็อก release; **เริ่มเร็ว** (trace หมดอายุ) | ∥ CORE-64 (spec 01) — ไฟล์ร่วมที่เป็นไปได้: `e2e/core-46-e2e-hygiene.unit.spec.ts` ถ้า CORE-64 เลือกเพิ่ม unit ของ AC-163(c) ในไฟล์นี้ → ตัวที่ merge ทีหลัง merge `origin/develop` (คนละ test) |
+| ADM-28 | (owner 2026-11-17 — CI #373/#388) หาสาเหตุ flaky ของ AC-12 ตัวแรก (`affiliate-admin-forms.spec.ts:47`) จาก trace ของ run 44071909424 ก่อน artifact หมดอายุ (~2026-12-01) แล้วแก้ตามสาเหตุ ห้ามแก้แค่เพิ่ม timeout (กฎ 32) — ☑ #393 (สาเหตุ: คำค้น `q` ของ Medusa แยกคำแล้ว AND — tag ตัวเลขที่มี "249" ทำให้ตรงทั้ง 250 รายการ; แก้ฝั่ง test) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts` (+ `e2e/support/admin.ts` ถ้าต้องใช้ helper ร่วม), `e2e/core-46-e2e-hygiene.unit.spec.ts`, `docs/evidence/admin-ui/ADM-28-tests.txt`; เฉพาะเมื่อสาเหตุอยู่ในโค้ดของเรา: `components/affiliate/program-form.tsx` (≤ ~50 LOC) | test ~40 LOC (+ ≤ ~50 LOC ถ้าแก้โค้ด) | 1280×800 | AC-33 | PR เอกสารรอบ 33 merge; ไม่บล็อก release; **เริ่มเร็ว** (trace หมดอายุ) | ∥ CORE-64 (spec 01) — ไฟล์ร่วมที่เป็นไปได้: `e2e/core-46-e2e-hygiene.unit.spec.ts` ถ้า CORE-64 เลือกเพิ่ม unit ของ AC-163(c) ในไฟล์นี้ → ตัวที่ merge ทีหลัง merge `origin/develop` (คนละ test) |
 
 ## Open questions
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task
