@@ -488,7 +488,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 - ปิดรอบ 32 (2026-11-17, เอกสารล้วน) → sync ☑ CORE-62 #384, OPS-26 #385, CORE-63 #386, GB-17 #387, CORE-61 #388, ADM-27 #389 ใน ROADMAP และ spec 01, 04, 07, 08 (+ บรรทัดสถานะ spec 05 เรื่อง Q21) · เอกสารที่ merge ในรอบ: #383 ·
   OPS-26: ไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 (เลขยังว่าง); spec 07 กฎ (d) แก้เป็น 10 × (n + 1) (รวม worker — nit review #383), ข้อเท็จจริง `--cluster` ของ 2.22.1 (ต้องคู่ `--servers`; fork ใหม่ไม่บูต `start.js:311–314` — review #385) ·
   แก้ข้อเท็จจริง (ไม่เปลี่ยนพฤติกรรมที่ต้องได้): spec 01 กฎข้อ 120a หมายเหตุ guard `discount_total` ที่โค้ดมี (review #384), AC-160 คำสั่งไม่มี `--` (#388 — มี `--` แล้วรันทั้ง suite),
-  อักขระ zero-width ดิบใน spec 01 AC-162 และ `docs/evidence/core/CORE-58/REPORT.md`, `docs/evidence/core/CORE-52/REPORT.md` เป็น escape `\u{XXXX}` ·
+  อักขระ zero-width ดิบใน spec 01 AC-162 และ `docs/evidence/core/CORE-58/REPORT.md`, `docs/evidence/core/CORE-52/REPORT.md` เป็น escape `\uXXXX` ·
   follow-up ใหม่ → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" (ไม่เปิด task id ใหม่) · เหลือ: ADM-22 พักไว้ · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)
@@ -519,7 +519,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 - (review #385) `medusa start --cluster` ของ 2.22.1 ต้องคู่ `--servers` และ fork ใหม่ตอน process ตายไม่บูต (`start.js:311–314`) — บันทึกใน spec 07 แล้ว; ถ้าจะใช้ใน prod ต้องอยู่ใน ADR
 ### ง. บทเรียนกระบวนการ (session หลักพิจารณาเพิ่มใน `CLAUDE.md`/agent — planner ไม่แตะ)
 - เครื่องมือ Write/Edit แปลง escape แบบ backslash-u สี่หลักใน markdown เป็นอักขระ zero-width ดิบ (เกิดใน CORE-58 REPORT และ AC-162) → สแกนอักขระ U+200B/200C/200D/2060/FEFF ก่อน commit (perl);
-  รูป `\u{XXXX}` ผ่านเครื่องมือได้โดยไม่ถูกแปลง (ใช้ในปิดรอบ 32)
+  เขียนผ่าน Write/Edit ด้วยรูป `\u{XXXX}` (ไม่ถูกแปลง) แล้วใช้ perl แปลงเป็นรูปสี่หลักภายหลัง (ทำในปิดรอบ 32) หรือแก้ด้วย perl โดยตรง
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)
 ที่มา: review/qa ของ #366–#381 (2026-11-13/14) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน
