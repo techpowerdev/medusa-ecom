@@ -1,0 +1,72 @@
+# CORE-63 (spec 01 กฎข้อ 121, AC-162) — ผล test
+
+## Red — บน develop a0d0d5f9 (ก่อนแก้โค้ด): src/core-63-address-invisible.test.ts 18/18 ล้ม
+⎯⎯⎯⎯⎯⎯ Failed Tests 18 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/core-63-address-invisible.test.ts > setAddresses: ช่องไม่บังคับ (กฎข้อ 121a) > company/province/phone ที่มีแต่ zero-width → ส่ง ""
+AssertionError: expected '\u200B' to be '' // Object.is equality
+ FAIL  src/core-63-address-invisible.test.ts > setAddresses: ช่องไม่บังคับ (กฎข้อ 121a) > zero-width หัว/ท้ายของช่องไม่บังคับถูกตัด คงข้อความกลาง
+AssertionError: expected '\u200Bบริษัท\u200B' to be 'บริษัท' // Object.is equality
+ FAIL  src/core-63-address-invisible.test.ts > addCustomerAddress (กฎข้อ 121b) > first_name = ZWSP → ข้อความไทย ไม่เรียก createAddress
+ FAIL  src/core-63-address-invisible.test.ts > addCustomerAddress (กฎข้อ 121b) > last_name = ZWSP → ข้อความไทย ไม่เรียก createAddress
+ FAIL  src/core-63-address-invisible.test.ts > addCustomerAddress (กฎข้อ 121b) > address_1 = ZWSP → ข้อความไทย ไม่เรียก createAddress
+ FAIL  src/core-63-address-invisible.test.ts > addCustomerAddress (กฎข้อ 121b) > postal_code = ZWSP → ข้อความไทย ไม่เรียก createAddress
+ FAIL  src/core-63-address-invisible.test.ts > addCustomerAddress (กฎข้อ 121b) > city = ZWSP → ข้อความไทย ไม่เรียก createAddress
+AssertionError: expected true to be false // Object.is equality
+ FAIL  src/core-63-address-invisible.test.ts > addCustomerAddress (กฎข้อ 121b) > ช่องว่างล้วน (white space) ก็ไม่เรียก createAddress
+AssertionError: expected true to be false // Object.is equality
+ FAIL  src/core-63-address-invisible.test.ts > addCustomerAddress (กฎข้อ 121b) > ทุกช่องถูกต้องแต่มี ZWSP หัว/ท้าย → createAddress ได้ค่าที่ตัดแล้ว
+AssertionError: expected { first_name: '\u200Bสมชาย\ufeff', …(11) } to match object { first_name: 'สมชาย', …(9) }
+ FAIL  src/core-63-address-invisible.test.ts > updateCustomerAddress (กฎข้อ 121b) > first_name = ZWSP → ข้อความไทย ไม่เรียก updateAddress
+ FAIL  src/core-63-address-invisible.test.ts > updateCustomerAddress (กฎข้อ 121b) > last_name = ZWSP → ข้อความไทย ไม่เรียก updateAddress
+ FAIL  src/core-63-address-invisible.test.ts > updateCustomerAddress (กฎข้อ 121b) > address_1 = ZWSP → ข้อความไทย ไม่เรียก updateAddress
+ FAIL  src/core-63-address-invisible.test.ts > updateCustomerAddress (กฎข้อ 121b) > postal_code = ZWSP → ข้อความไทย ไม่เรียก updateAddress
+ FAIL  src/core-63-address-invisible.test.ts > updateCustomerAddress (กฎข้อ 121b) > city = ZWSP → ข้อความไทย ไม่เรียก updateAddress
+AssertionError: expected true to be false // Object.is equality
+ FAIL  src/core-63-address-invisible.test.ts > updateCustomerAddress (กฎข้อ 121b) > ทุกช่องถูกต้องแต่มี ZWSP หัว/ท้าย → updateAddress ได้ค่าที่ตัดแล้ว
+AssertionError: expected { first_name: '\u200Bสมชาย\ufeff', …(9) } to match object { first_name: 'สมชาย', …(9) }
+ FAIL  src/core-63-address-invisible.test.ts > updateCustomerAddress (กฎข้อ 121b) > phone ว่างหลังตัด → ไม่ส่ง key phone (คงพฤติกรรมเดิม)
+AssertionError: expected { first_name: 'สมชาย', …(9) } to not have property "phone"
+ FAIL  src/core-63-address-invisible.test.ts > ค่าคงที่ของช่องบังคับอยู่ที่เดียว (กฎข้อ 121b) > const REQUIRED_ADDRESS_FIELDS มีไฟล์เดียวใต้ src/lib/util/
+ FAIL  src/core-63-address-invisible.test.ts > ค่าคงที่ของช่องบังคับอยู่ที่เดียว (กฎข้อ 121b) > const MISSING_ADDRESS_MESSAGE มีไฟล์เดียวใต้ src/lib/util/
+AssertionError: expected 'lib/data/cart.ts' to match /^lib\/util\//util\
+      Tests  18 failed (18)
+
+## Green — หลังแก้
+## Vitest — src/core-63-address-invisible.test.ts
+ RUN  v5.0.5 <worktree>/apps/storefront
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  15:11:26
+   Duration  594ms (tests 82%, transform 12%, import 5%, worker 1%)
+
+## Vitest ทั้งชุด
+ Test Files  100 passed (100)
+      Tests  1173 passed (1173)
+
+## Playwright e2e (prod build, 1280x800)
+evidence: ไม่บันทึก 01-add-address-failed-keeps-values.png เพราะ <worktree>/docs/evidence/core/CORE-23c มี PNG ครบ 5 รูปแล้ว
+  ✓   3 [chromium] › e2e/core-23c-account-forms.spec.ts:61:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (2.2s)
+  ✓   1 [chromium] › e2e/core-63-address-invisible.spec.ts:43:7 › AC-162 › เพิ่มที่อยู่: เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึก; แก้เป็นค่าจริง → บันทึก (3.5s)
+  ✓   4 [chromium] › e2e/core-23c-account-forms.spec.ts:95:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (1.5s)
+  ✓   2 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800) (5.3s)
+evidence: ไม่บันทึก 02-billing-network-failed-inline-error.png เพราะ <worktree>/docs/evidence/core/CORE-23c มี PNG ครบ 5 รูปแล้ว
+  ✓   5 [chromium] › e2e/core-23c-account-forms.spec.ts:140:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย (1.8s)
+  ✓   7 [chromium] › e2e/core-23c-account-forms.spec.ts:183:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์ (1.4s)
+  ✓   8 [chromium] › e2e/core-23c-account-forms.spec.ts:202:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact (1.6s)
+  ✓   6 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800) (4.6s)
+  ✓   9 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (3.1s)
+  ✓  10 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800) (2.1s)
+  ✓  11 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (2.7s)
+  ✓  12 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800) (3.7s)
+  ✓  13 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812) (2.3s)
+  ✓  14 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812) (5.7s)
+  ✓  15 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (1.5s)
+  ✓  16 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812) (2.0s)
+  ✓  17 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (3.0s)
+  ✓  18 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812) (5.6s)
+  ✓  19 [chromium] › e2e/core-52-checkout-guards.spec.ts:299:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (1.5s)
+  ✓  20 [chromium] › e2e/core-52-checkout-guards.spec.ts:327:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 cart digital-only: เขต/อำเภอใบเสร็จเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (2.3s)
+  20 passed (47.4s)
+
+## Playwright unit project
+  110 passed (5.0s)

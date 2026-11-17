@@ -5,8 +5,10 @@ import {
   AdminCreatePromotionRule,
 } from "@medusajs/medusa/api/admin/promotions/validators"
 import { SINGLE_PRODUCT_MESSAGE, singleProductIdOf } from "../../../modules/group_buy/utils/single-product"
+import { INT4_MAX } from "../../../lib/int4"
 
-const positiveInt = z.number().int().positive()
+// GB-17 (กฎข้อ 40): ทุก field ที่ใช้ตัวนี้ลง column integer (int4)
+const positiveInt = z.number().int().positive().max(INT4_MAX)
 
 const configFields = {
   name: z.string().trim().min(1),

@@ -688,5 +688,61 @@ medusaIntegrationTestRunner({
         expect((await graphCampaign(created.id)).status).toEqual("draft")
       })
     })
+
+    // GB-17 (กฎข้อ 40, AC-60 a): field ที่ลง column integer (int4) เกิน 2147483647 → 400 invalid_data ไม่ถึง DB
+    describe("int4 limits (AC-60)", () => {
+      const TOO_BIG = 2147483648
+      const INT4_MAX = 2147483647
+
+      const campaignCount = async () => {
+        const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
+        const { data } = await query.graph({ entity: "group_buy_campaign", fields: ["id"] })
+        return data.length
+      }
+
+      it.each([
+        "target_value",
+        "max_total_orders",
+        "max_units_per_person",
+        "max_people_per_group",
+        "team_duration_hours",
+        "pay_within_hours",
+      ])("POST with %s = 2147483648 → 400 invalid_data; nothing is created", async (field) => {
+        const before = await campaignCount()
+        const response = await api
+          .post("/admin/group-buy/campaigns", campaignInput({ [field]: TOO_BIG }), headers)
+          .catch((e) => e.response)
+
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(response.data.message).toContain(field)
+        expect(JSON.stringify(response.data)).not.toContain("integer out of range")
+        expect(await campaignCount()).toEqual(before)
+      })
+
+      it("max_total_orders and pay_within_hours = 2147483647 → 200 and read back unchanged", async () => {
+        const created = await createViaApi({ max_total_orders: INT4_MAX, pay_within_hours: INT4_MAX })
+
+        const fetched = await api.get(`/admin/group-buy/campaigns/${created.id}`, headers)
+        expect(fetched.data.campaign).toEqual(
+          expect.objectContaining({ max_total_orders: INT4_MAX, pay_within_hours: INT4_MAX })
+        )
+      })
+
+      it("updating a draft with max_total_orders = 2147483648 → 400 invalid_data; value unchanged", async () => {
+        const created = await createViaApi({ max_total_orders: 10 })
+
+        const response = await api
+          .post(`/admin/group-buy/campaigns/${created.id}`, { max_total_orders: TOO_BIG }, headers)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(response.data.message).toContain("max_total_orders")
+        expect(JSON.stringify(response.data)).not.toContain("integer out of range")
+
+        const fetched = await api.get(`/admin/group-buy/campaigns/${created.id}`, headers)
+        expect(fetched.data.campaign.max_total_orders).toEqual(10)
+      })
+    })
   },
 })

@@ -1,0 +1,180 @@
+GB-17 — spec 04 กฎข้อ 40 (รวม (ข)), AC-60 — ผล test (base develop a0d0d5f9, node 22.23.3)
+
+== RED (test ใหม่ก่อนแก้ validator) ==
+-- unit src/lib/__tests__/int4.unit.spec.ts: Cannot find module '../int4' (ยังไม่มีไฟล์)
+-- integration-tests/http/flash-sale-admin-config.spec.ts
+✕ POST per_customer_limit = 2147483648 → 400 invalid_data and the config is unchanged; 2147483647 → 200
+✕ POST total_cap = 2147483648 → 400 invalid_data and the config is unchanged; 2147483647 → 200
+Expected: 400
+Received: 500
+Expected: 400
+Received: 500
+Tests:       2 failed, 8 passed, 10 total
+(log ของ server มี 'integer out of range': 4 บรรทัด)
+-- integration-tests/http/affiliate-admin.spec.ts
+✕ create or update with 2147483648 → 400 invalid_data; nothing changes
+✕ create or update with 36501 → 400 invalid_data; nothing changes
+✕ create or update with 2147483648 → 400 invalid_data; nothing changes
+✕ create or update with 36501 → 400 invalid_data; nothing changes
+Expected: 400
+Received: 500
+Expected: 400
+Received: 200
+Expected: 400
+Received: 500
+Expected: 400
+Received: 200
+Tests:       4 failed, 34 passed, 38 total
+(log ของ server มี 'integer out of range': 6 บรรทัด)
+-- integration-tests/http/evoucher-admin.spec.ts
+✕ rejects low_stock_threshold = 2147483648 on create and update (400 invalid_data); accepts 2147483647
+Expected: 400
+Received: 500
+Tests:       1 failed, 13 passed, 14 total
+(log ของ server มี 'integer out of range': 2 บรรทัด)
+-- integration-tests/http/group-buy-campaigns.spec.ts
+✕ POST with target_value = 2147483648 → 400 invalid_data; nothing is created
+✕ POST with max_total_orders = 2147483648 → 400 invalid_data; nothing is created
+✕ POST with max_units_per_person = 2147483648 → 400 invalid_data; nothing is created
+✕ POST with max_people_per_group = 2147483648 → 400 invalid_data; nothing is created
+✕ POST with team_duration_hours = 2147483648 → 400 invalid_data; nothing is created
+✕ POST with pay_within_hours = 2147483648 → 400 invalid_data; nothing is created
+✕ updating a draft with max_total_orders = 2147483648 → 400 invalid_data; value unchanged
+Expected: 400
+Received: 500
+Expected: 400
+Received: 500
+Expected: 400
+Received: 500
+Expected: 400
+Received: 500
+Expected: 400
+Received: 500
+Expected: 400
+Received: 500
+Expected: 400
+Received: 500
+Tests:       7 failed, 32 passed, 39 total
+(log ของ server มี 'integer out of range': 14 บรรทัด)
+
+== GREEN (หลังแก้) ==
+-- integration-tests/http/flash-sale-admin-config.spec.ts
+✓ GET before any config returns null config and warns about automatic promotions without the rule
+✓ POST creates the config and adds the exclusivity rule to every automatic promotion of the campaign
+✓ POST is idempotent: saving again updates the same config and never duplicates the rule
+✓ concurrent POSTs on a new config (double-click Save) all return 200 with one config and one rule per promotion
+✓ AC-11 (a): POST total_cap=5 while units_sold=10 → 200 and units_sold stays 10
+✓ rejects units_sold and invalid limits in the body (400)
+✓ POST per_customer_limit = 2147483648 → 400 invalid_data and the config is unchanged; 2147483647 → 200
+✓ POST total_cap = 2147483648 → 400 invalid_data and the config is unchanged; 2147483647 → 200
+✓ returns 404 for an unknown campaign and does not create a config
+✓ requires an authenticated admin user (401)
+Tests:       10 passed, 10 total
+(log ของ server มี 'integer out of range': 0 บรรทัด)
+-- integration-tests/http/affiliate-admin.spec.ts
+✓ requires an admin user
+✓ creates a draft program, lists, publishes and ends it
+✓ rejects an invalid window or rate
+✓ accepts attribution_window_days and hold_days = 36500 (AC-60)
+✓ deletes only draft programs
+✓ create or update with 2147483648 → 400 invalid_data; nothing changes
+✓ create or update with 36501 → 400 invalid_data; nothing changes
+✓ create or update with 2147483648 → 400 invalid_data; nothing changes
+✓ create or update with 36501 → 400 invalid_data; nothing changes
+✓ lists by status, approves, suspends and sets payout_info
+✓ filters by id or id[] (AC-45)
+✓ filters by q on name or email, case-insensitive (AC-21)
+✓ pages affiliates with identical created_at without duplicates or gaps
+✓ filters by several statuses and orders by name across pages (AC-29)
+✓ stores account_number without dashes or spaces
+✓ rejects payout_info with 9 digits (400) and keeps the stored value
+✓ rejects payout_info with 13 digits (400) and keeps the stored value
+✓ rejects payout_info with letters (400) and keeps the stored value
+✓ rejects payout_info with an extra key (400) and keeps the stored value
+✓ rejects payout_info with a missing field (400) and keeps the stored value
+✓ rejects payout_info with a blank field after trim (400) and keeps the stored value
+✓ rejects payout_info with a non-string field (400) and keeps the stored value
+✓ clears payout_info with null
+✓ returns 409 AFFILIATE_STATUS_CHANGED when expected_status is stale and changes nothing
+✓ lets only one of two concurrent approvals with the same expected_status through
+✓ lists ledger entries filtered by affiliate and status
+✓ creates a draft payout of approved + reversed entries, then marks it paid
+✓ rolls entries back to approved when marking the payout paid fails
+✓ exposes ledger and payouts through Query
+✓ serializes concurrent payout creation so entries are paid out once
+✓ does not create a payout when the net is zero or negative (Q8)
+✓ cancels a draft payout and returns its entries to the pool (AC-19)
+✓ refuses to cancel a paid payout and leaves it unchanged (AC-19)
+✓ holds the affiliate payout lock through cancel compensation (AC-27)
+✓ rejects cancelling a payout without an admin token (AC-27)
+✓ selects entries by rule 19 across payout rounds (AC-20)
+✓ filters payable entries in the database (rule 19)
+✓ summarizes the ledger per affiliate and status
+Tests:       38 passed, 38 total
+(log ของ server มี 'integer out of range': 0 บรรทัด)
+-- integration-tests/http/evoucher-admin.spec.ts
+✓ requires an authenticated admin
+✓ creates, updates, lists and deletes partners
+✓ creates a pool for an existing variant and rejects unknown variants
+✓ rejects low_stock_threshold = 2147483648 on create and update (400 invalid_data); accepts 2147483647
+✓ AC-1 imports 100 codes with 2 duplicates → 98 available, inventory +98
+✓ skips codes that already exist in the pool on re-import
+✓ stores only v1: ciphertext (never plaintext) for code and pin
+✓ rejects an invalid CSV without inserting anything
+✓ rolls back the inserted batch when the inventory adjustment fails
+✓ removes earlier chunks when a later insert chunk fails (no orphan rows)
+✓ refuses to delete a pool that has codes
+✓ checks EVOUCHER_ENCRYPTION_KEY before touching data
+✓ AC-8 lists codes masked and reveals the real value with an audit row
+✓ returns 404 when revealing an unknown code and writes no audit
+Tests:       14 passed, 14 total
+(log ของ server มี 'integer out of range': 0 บรรทัด)
+-- integration-tests/http/group-buy-campaigns.spec.ts
+✓ creates a Medusa campaign + draft GBT- template promotion linked to the campaign
+✓ template code on a cart with X gives no adjustment; once active it would give X only
+✓ rolls back the Medusa campaign and template when the group buy campaign cannot be created
+✓ restores the campaign, template, links and Medusa campaign when a later step fails
+✓ requires an admin user
+✓ creates (returning template_promotion_id), lists, retrieves and updates a draft campaign
+✓ rejects an invalid body with 400
+✓ template is_tax_inclusive defaults to true, keeps false, and rejects a non-boolean (AC-20c)
+✓ returns 404 for an unknown campaign
+✓ DELETE on a draft campaign removes the campaign, template, Medusa campaign and links (AC-20a)
+✓ DELETE on an active campaign → 400 and nothing is removed (AC-20a)
+✓ draft → active → ended succeed; active again on active is a no-op 200
+✓ rejects active → draft and ended → active with 400
+✓ rejects draft → active when the Medusa campaign ends_at has passed
+✓ editing target_value of an active campaign → 400; name and pay_within_hours are still editable
+✓ two concurrent POSTs with key K → both 200 with the same campaign; one of each is created
+✓ POST K again later (different body) → 200 same id, nothing new; key K2 → a new campaign
+✓ no key twice → two campaigns (previous behaviour)
+✓ key with a space → 400 invalid_data; nothing is created
+✓ key 129 characters → 400 invalid_data; nothing is created
+✓ key 7 characters → 400 invalid_data; nothing is created
+✓ accepts a 128-character key
+✓ POST K that fails after the lock → error, nothing left; POST K again → 200 without waiting for the lock TTL
+✓ createGroupBuyCampaignWorkflow called directly and concurrently with the same key → one campaign
+✓ POST with one product → 200
+✓ POST with two products → 400 invalid_data with the code; no Medusa campaign/promotion is created
+✓ POST with values: [] → 400 invalid_data with the code; no Medusa campaign/promotion is created
+✓ POST with no items.product.id rule → 400 invalid_data with the code; no Medusa campaign/promotion is created
+✓ POST with a variant-level scope → 400 invalid_data with the code; no Medusa campaign/promotion is created
+✓ createGroupBuyCampaignWorkflow called directly with two products → same code; nothing is created
+✓ draft whose template was edited to two products via the Promotion module → activate 400, still draft
+✓ POST with target_value = 2147483648 → 400 invalid_data; nothing is created
+✓ POST with max_total_orders = 2147483648 → 400 invalid_data; nothing is created
+✓ POST with max_units_per_person = 2147483648 → 400 invalid_data; nothing is created
+✓ POST with max_people_per_group = 2147483648 → 400 invalid_data; nothing is created
+✓ POST with team_duration_hours = 2147483648 → 400 invalid_data; nothing is created
+✓ POST with pay_within_hours = 2147483648 → 400 invalid_data; nothing is created
+✓ max_total_orders and pay_within_hours = 2147483647 → 200 and read back unchanged
+✓ updating a draft with max_total_orders = 2147483648 → 400 invalid_data; value unchanged
+Tests:       39 passed, 39 total
+(log ของ server มี 'integer out of range': 0 บรรทัด)
+
+-- unit src/lib/__tests__/int4.unit.spec.ts: ผ่าน (รวมใน test:unit)
+-- pnpm --filter backend test:unit
+Test Suites: 110 passed, 110 total
+Tests:       1360 passed, 1360 total
+
+-- pnpm lint: 0 errors | pnpm typecheck: ผ่าน | pnpm --filter backend build: ผ่าน | pnpm --filter storefront test:e2e:unit: 110 passed

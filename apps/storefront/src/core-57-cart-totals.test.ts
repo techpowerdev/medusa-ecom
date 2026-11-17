@@ -121,8 +121,12 @@ describe("CORE-60: ป้ายแถวแรกบอกว่าเป็น�
     expect(value(html, "cart-subtotal")).toBe(5900)
   })
 
-  it("ส่วนลดค่าส่งอย่างเดียว: ป้ายเท่ากับเคส flash", () => {
-    expect(labelOf(SHIPPING_DISCOUNT).label).toBe(labelOf(FLASH).label)
+  // CORE-62 (กฎข้อ 120, AC-161): แทนเคส "ป้ายเท่ากับเคส flash" ของ AC-159 — ส่วนลดค่าส่งอย่างเดียวใช้ป้ายเดิม
+  it("ส่วนลดค่าส่งอย่างเดียว: ป้ายไม่มีคำว่าก่อนส่วนลด เท่ากับเคสไม่มีส่วนลด และยังมีแถวส่วนลด", () => {
+    const { html, label } = labelOf(SHIPPING_DISCOUNT)
+    expect(label).not.toContain("ก่อนส่วนลด")
+    expect(label).toBe(labelOf({ ...SHIPPING_DISCOUNT, discount_total: 0, shipping_total: 10 }).label)
+    expect(value(html, "cart-discount")).toBe(10)
   })
 
   it.each([
@@ -133,6 +137,27 @@ describe("CORE-60: ป้ายแถวแรกบอกว่าเป็น�
     expect(label).toMatch(/[฀-๿]/)
     expect(label).not.toContain("ก่อนส่วนลด")
     expect(label).not.toBe(labelOf(FLASH).label)
+  })
+})
+
+describe("CORE-62: ป้าย ก่อนส่วนลด เฉพาะเมื่อราคาสินค้าลดจริง (กฎข้อ 120, AC-161)", () => {
+  const labelOf = (totals: Totals) => {
+    const labels = subtotalLabels(render(totals))
+    expect(labels, "cart-subtotal-label 1 ตัว").toHaveLength(1)
+    return labels[0]
+  }
+
+  it("flash (original_item_total 5900, item_total 4720): ป้ายมีคำว่าก่อนส่วนลด", () => {
+    expect(labelOf(FLASH)).toContain("ก่อนส่วนลด")
+  })
+
+  it.each([
+    ["ไม่ส่ง original_item_total/item_total", { ...FLASH, original_item_total: undefined, item_total: undefined }],
+    ["ไม่ส่ง item_total", { ...FLASH, item_total: undefined }],
+    ["item_total เป็น null", { ...FLASH, item_total: null }],
+    ["ผลต่างเป็นเศษ float ≤ 0.005", { ...FLASH, item_total: 5899.996 }],
+  ])("%s: ป้ายไม่มีคำว่าก่อนส่วนลด", (_, totals) => {
+    expect(labelOf(totals)).not.toContain("ก่อนส่วนลด")
   })
 })
 
