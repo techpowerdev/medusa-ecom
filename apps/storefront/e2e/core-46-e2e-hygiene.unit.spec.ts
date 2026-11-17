@@ -238,13 +238,29 @@ test("AC-160 (กฎข้อ 119c): AC-44 ลบข้อมูลที่ส�
   expect(checked).toBe(deletes)
 })
 
-test("AC-33 (spec 08 กฎ 32, ADM-28): AC-12 ตัวแรกของ affiliate-admin-forms ไม่ใช้ tag ที่มีตัวเลข ไม่มี waitForTimeout และ setTimeout ≤ 120_000", () => {
-  const body = testBody(read("affiliate-admin-forms.spec.ts"), "AC-12: ปิด all โดยไม่เลือก scope")
-  // ต้นเหตุ (trace run 44071909424, 43475980049): q ของ Medusa แยกคำแล้ว AND — tag `adm9${Date.now()}` ที่มี "249" ทำให้ทั้ง 250 รายการตรง
-  expect(body).not.toContain("adm9${Date.now()}")
-  expect(body).toContain('searchParams.get("q")')
-  expect(body).not.toContain("waitForTimeout")
-  const timeouts = Array.from(body.matchAll(/test\.setTimeout\(([\d_]+)\)/g), ([, value]) => Number(value.replace(/_/g, "")))
-  expect(timeouts.length).toBeGreaterThan(0)
-  for (const value of timeouts) expect(value).toBeLessThanOrEqual(120_000)
+/** ADM-29 (spec 08 กฎ 33d): นิพจน์ของ `const tag = …` ใน body ของ test — หาไม่เจอต้อง throw ไม่ผ่านเงียบ */
+const tagExpression = (body: string) => {
+  const match = body.match(/const tag = ([^\n]+)\n/)
+  if (!match) throw new Error("ไม่พบ const tag = …")
+  return match[1].trim()
+}
+
+test("AC-33/AC-34 (spec 08 กฎ 32, 33; ADM-28, ADM-29): AC-12 ตัวแรกและ payout ของ affiliate-admin-forms ใช้ tag ไม่มีตัวเลข, assert count = 1 ของผล q, ไม่มี waitForTimeout และ setTimeout ≤ 120_000", () => {
+  const src = read("affiliate-admin-forms.spec.ts")
+  expect(() => tagExpression("const x = 1\n")).toThrow()
+  for (const prefix of ["AC-12: ปิด all โดยไม่เลือก scope", "AC-12/AC-21: ฟอร์มสร้าง payout"]) {
+    const body = testBody(src, prefix)
+    // ต้นเหตุ (ADM-28 trace run 44071909424, 43475980049): q ของ Medusa แยกคำแล้ว AND — tag ตัวเลขที่มี "249" ทำให้ทั้ง 250 รายการตรง
+    const expression = tagExpression(body)
+    if (expression.includes("Date.now()")) expect(expression, prefix).toContain(".replace(/\\d/g,")
+    // ตรวจผลจริง: ประเมินนิพจน์จากไฟล์ test ของเราเอง (ใช้แค่ String/Date.now) หลายครั้งแล้วต้องไม่มีตัวเลข
+    const evaluate = new Function(`return ${expression}`) as () => string
+    for (let i = 0; i < 5; i++) expect(evaluate(), prefix).not.toMatch(/\d/)
+    expect(body, prefix).toContain('searchParams.get("q")')
+    expect(body, prefix).toMatch(/\.count\b[^\n]*\)\.toBe\(1\)/)
+    expect(body, prefix).not.toContain("waitForTimeout")
+    const timeouts = Array.from(body.matchAll(/test\.setTimeout\(([\d_]+)\)/g), ([, value]) => Number(value.replace(/_/g, "")))
+    expect(timeouts.length, prefix).toBeGreaterThan(0)
+    for (const value of timeouts) expect(value, prefix).toBeLessThanOrEqual(120_000)
+  }
 })
