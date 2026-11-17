@@ -4,10 +4,13 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**ปิดรอบ 30/31 (2026-11-14, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): OPS-25 #366, CORE-59 #367, AF-23 #368, CORE-58 #369, OPS-23 #371, CORE-60 #372, ADM-23 #373, ADM-15 #374, ADM-24 #375,
+**ปิดรอบ 32 (2026-11-17, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-62 #384, OPS-26 #385, CORE-63 #386, GB-17 #387, CORE-61 #388, ADM-27 #389 + เอกสาร #383 (รอบ 32) ·
+ผล OPS-26: 2 process ลด median checkout ~13% แต่ไม่เกินความแปรปรวน (ค่าละ 1 run, runner 4 vCPU ร่วมกับ k6) → ไม่เปลี่ยนวิธี deploy prod **ไม่เปิด ADR-024** (`docs/evidence/scale/OPS-26/REPORT.md`; spec 07 กฎ (d) แก้เป็น 10 × (n + 1)) ·
+**พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 · **รอ owner ตัดสิน**: กลุ่ม ก (1)–(5) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" ท้ายไฟล์ · ไม่มี task id ใหม่ ·
+(ประวัติ) **ปิดรอบ 30/31 (2026-11-14, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): OPS-25 #366, CORE-59 #367, AF-23 #368, CORE-58 #369, OPS-23 #371, CORE-60 #372, ADM-23 #373, ADM-15 #374, ADM-24 #375,
 ADM-18 #377, ADM-26 #379, ADM-19 #380, ADM-25 #381 + เอกสาร #364 (บทเรียน evidence ใน `CLAUDE.md`), #365 (รอบ 30), #370 (รอบ 31), #376 (ADM-18 = ก + แก้ AC-40), #378 (ADM-26 = ก) ·
 ผล OPS-23: คง default pool 10 (ไม่ตั้ง `DATABASE_POOL_MAX`) **ไม่เปิด ADR-020** (`docs/evidence/scale/OPS-23/REPORT.md`) ·
-**รอบ 32 (2026-11-17, เอกสารล้วน) — owner อนุมัติ "ตามที่เสนอ"**: **owner สั่งทำ 2026-11-17 (☐ พร้อมเริ่ม — รอ PR เอกสารรอบ 32 merge, ไม่บล็อก release)**: GB-17 (spec 04 — int4 ใน admin validator 4 module + `hold_days`/`attribution_window_days` ≤ 36500) ∥ CORE-61 (spec 01 — e2e hygiene/flaky) ∥ CORE-62 (spec 01 — ป้าย "ก่อนส่วนลด" เฉพาะราคาสินค้าลดจริง; owner ตัดสินข้อ (4) เอง) ∥ CORE-63 (spec 01 — zero-width ช่องที่อยู่ที่เหลือ) ∥ ADM-27 (spec 08 — prompt ก่อนปิดฟอร์ม dirty) ∥ OPS-26 (spec 07 — วัด server 1 vs 2 process) ·
+(ประวัติ) **รอบ 32 (2026-11-17, เอกสารล้วน) — owner อนุมัติ "ตามที่เสนอ"**: **owner สั่งทำ 2026-11-17 (☐ พร้อมเริ่ม — รอ PR เอกสารรอบ 32 merge, ไม่บล็อก release — ☑ ครบในปิดรอบ 32)**: GB-17 (spec 04 — int4 ใน admin validator 4 module + `hold_days`/`attribution_window_days` ≤ 36500) ∥ CORE-61 (spec 01 — e2e hygiene/flaky) ∥ CORE-62 (spec 01 — ป้าย "ก่อนส่วนลด" เฉพาะราคาสินค้าลดจริง; owner ตัดสินข้อ (4) เอง) ∥ CORE-63 (spec 01 — zero-width ช่องที่อยู่ที่เหลือ) ∥ ADM-27 (spec 08 — prompt ก่อนปิดฟอร์ม dirty) ∥ OPS-26 (spec 07 — วัด server 1 vs 2 process) ·
 ชนไฟล์กันคู่เดียว: CORE-61 × ADM-27 (ไฟล์ e2e admin 3 ไฟล์ + `e2e/support/admin.ts`) → **CORE-61 merge ก่อน** แล้ว ADM-27 rebase; ลำดับ merge ที่แนะนำ: GB-17 → CORE-61 → CORE-62 → CORE-63 → ADM-27; OPS-26 อิสระ (เป็น run วัดผล) ·
 **คำตัดสินของ owner 2026-11-17 (คำถามรอบ 32 ตอบครบ)**: spec 07 Q-O5 = ก → OPS-26 · spec 08 Q9 = ก → ADM-27 · spec 01 Q-C10 = ก → CORE-63 · spec 08 Q10 = ก (คงเดิม ไม่มี task) · spec 05 Q21 = ก → รวมใน GB-17 · ไม่มีคำถามค้างของ owner ·
 **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 (qa ยืนยันบน build production ก่อน — spec 08 กฎ 26, AC-27) ·
@@ -197,9 +200,9 @@ task ใหม่ ADM-14 (ปุ่มสร้าง Partners/Programs/Payouts 
 | CORE-58 | (รอบ 30, qa #353 O-1 + re-review #353) ช่องที่อยู่ที่มีแต่อักขระ zero-width (`U+200B` ฯลฯ) ไม่ผ่าน checkout + `normalize` ของข้อความ error เหลือที่เดียว (กฎข้อ 116, AC-157; storefront ~70 LOC; ∥ CORE-59; ไม่บล็อก release) | ☑ #369 (owner สั่งทำ 2026-11-13) |
 | CORE-59 | (รอบ 30, e2e hygiene — review #355/#358) cleanup `core-4g` ใช้ `expect.soft`, นับ `request.delete(` จาก AST, comment ข้อจำกัด `VALID_AFFILIATE_ARGS` (กฎข้อ 117, AC-158; ~30 LOC; ไม่บล็อก release) | ☑ #367 (owner สั่งทำ 2026-11-13) |
 | CORE-60 | (รอบ 31, Q-C8 = ก — qa #352) ป้ายแถวแรกของ `cart-totals` เป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เฉพาะเมื่อมีส่วนลด + `data-testid="cart-subtotal-label"`; dropdown คงเดิม (กฎข้อ 118, AC-159; storefront ~30 LOC + e2e ใหม่; ∥ CORE-58 ∥ CORE-59 — คนละไฟล์; ไม่บล็อก release) | ☑ #372 (owner สั่งทำ 2026-11-13; หลัง PR เอกสารรอบ 31 #370) |
-| CORE-61 | (รอบ 32, e2e hygiene — qa #369 O-1, qa/review #375, review #381, CI flaky fs19) test A ของ `group-buy-join` รอ server action (`waitForServerAction`), `PAGINATION_TEXT` ที่ `e2e/support/admin.ts` ที่เดียว, AC-44 ลบข้อมูล `e2e-af12c-*` + ตรวจ response ของ `pat`, fs19 `:245` เฉพาะเมื่อ log ยืนยัน (กฎข้อ 119, AC-160; test-only ~100 LOC; ∥ CORE-62 ∥ GB-17; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) |
-| CORE-62 | (รอบ 32, owner ตัดสิน 2026-11-17 — qa #372) ป้ายแถวแรกของ `cart-totals` เป็น "ก่อนส่วนลด" เฉพาะเมื่อราคาสินค้าลดจริง (`original_item_total − item_total > 0.005`); ลดแค่ค่าส่งใช้ป้ายเดิม (กฎข้อ 120 + ภาคผนวกกฎข้อ 118a, AC-161; storefront ~20 LOC + unit + e2e; ∥ CORE-61 ∥ CORE-63 ∥ GB-17; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) |
-| CORE-63 | (รอบ 32, Q-C10 = ก owner 2026-11-17 — #369) `trimInvisible` ทุกช่องที่อยู่ของ checkout (รวมช่องไม่บังคับ) และฟอร์ม `/account/addresses`; ช่องบังคับว่างหลังตัด → ข้อความไทยไม่เรียก API; ยอมรับ qa #369 O-2 (กฎข้อ 121, AC-162; storefront ~80 LOC + unit + e2e; ไม่ชน CORE-62/CORE-61; ไม่บล็อก release) | ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) |
+| CORE-61 | (รอบ 32, e2e hygiene — qa #369 O-1, qa/review #375, review #381, CI flaky fs19) test A ของ `group-buy-join` รอ server action (`waitForServerAction`), `PAGINATION_TEXT` ที่ `e2e/support/admin.ts` ที่เดียว, AC-44 ลบข้อมูล `e2e-af12c-*` + ตรวจ response ของ `pat`, fs19 `:245` เฉพาะเมื่อ log ยืนยัน (กฎข้อ 119, AC-160; test-only ~100 LOC; ∥ CORE-62 ∥ GB-17; ไม่บล็อก release) | ☑ #388 (fs19 ไม่แก้ — log ล้มที่ `:199`) |
+| CORE-62 | (รอบ 32, owner ตัดสิน 2026-11-17 — qa #372) ป้ายแถวแรกของ `cart-totals` เป็น "ก่อนส่วนลด" เฉพาะเมื่อราคาสินค้าลดจริง (`original_item_total − item_total > 0.005`); ลดแค่ค่าส่งใช้ป้ายเดิม (กฎข้อ 120 + ภาคผนวกกฎข้อ 118a, AC-161; storefront ~20 LOC + unit + e2e; ∥ CORE-61 ∥ CORE-63 ∥ GB-17; ไม่บล็อก release) | ☑ #384 |
+| CORE-63 | (รอบ 32, Q-C10 = ก owner 2026-11-17 — #369) `trimInvisible` ทุกช่องที่อยู่ของ checkout (รวมช่องไม่บังคับ) และฟอร์ม `/account/addresses`; ช่องบังคับว่างหลังตัด → ข้อความไทยไม่เรียก API; ยอมรับ qa #369 O-2 (กฎข้อ 121, AC-162; storefront ~80 LOC + unit + e2e; ไม่ชน CORE-62/CORE-61; ไม่บล็อก release) | ☑ #386 |
 | CORE-20 | หน้าขอคืนสินค้าจาก order detail | 🚀 #112 |
 | CORE-20b ∥ CORE-20c | backend บังคับช่วงคืน N วัน + กัน line ไม่ต้องจัดส่ง (AC-95) ∥ storefront: window จาก region ของ order, `shipped_quantity`, ไม่ `force-cache` (AC-96) | 🚀 #124 ∥ 🚀 #130 |
 | CORE-20d | (รอบ 10) ค่าเริ่มต้น window ตรง backend ทุกหน้า, window ต่อ line, map error code + contract test, `GET /store/regions/:id` (AC-102) | 🚀 #168 |
@@ -267,7 +270,7 @@ Q22 = (ก) owner 2026-11-04: cart ไม่มีวิธีส่งเลย
 (รอบ 17) **GB-N5 🚀 #257** (ตัด `!profile ||`, ขั้น O_dig → O_std ผ่าน Store API, helper admin ของ integration test, ชื่อตัวแปร pool ใน `home-campaigns.test.ts`; AC-55 — รอบ 18 แก้ถ้อยคำกฎข้อ 36b ตาม core-flows จริง) ·
 CORE-30 🚀 #258, CORE-32 🚀 #243, CORE-33 🚀 #255, CORE-35 🚀 #266 (spec 01) ·
 (รอบ 26) **GB-16 ☑ #357** (filter ของ job `group-buy-deadline` รวมสถานะกลุ่ม ให้ใช้ index `(status, pay_deadline_at)`; กฎข้อ 39, AC-59; ไม่บล็อก release)
-(รอบ 32) **GB-17 ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge)** (qa #374 D-1: จำนวนเต็มที่ลง column `integer` ≤ 2147483647 ใน validator ของ admin route group buy/flash sale/affiliate/e-voucher → 400 `invalid_data` แทน 500 + `hold_days`/`attribution_window_days` ≤ 36500 (spec 05 Q21 = ก owner 2026-11-17); กฎข้อ 40, AC-60; backend ~160 LOC; ∥ CORE-61 ∥ CORE-62; ไม่บล็อก release)
+(รอบ 32) **GB-17 ☑ #387** (owner สั่งทำ 2026-11-17) (qa #374 D-1: จำนวนเต็มที่ลง column `integer` ≤ 2147483647 ใน validator ของ admin route group buy/flash sale/affiliate/e-voucher → 400 `invalid_data` แทน 500 + `hold_days`/`attribution_window_days` ≤ 36500 (spec 05 Q21 = ก owner 2026-11-17); กฎข้อ 40, AC-60; backend ~160 LOC; ∥ CORE-61 ∥ CORE-62; ไม่บล็อก release)
 
 ## M6 Affiliate — **v0.6.0**
 AF-1 🚀 #11 · AF-2 🚀 #66 · AF-5 🚀 #35 → AF-3 🚀 #77 → (AF-3b 🚀 #119 ∥ AF-4 🚀 #90 ∥ AF-4b 🚀 #91 ∥ AF-7 🚀 #110) → AF-7b 🚀 #122 →
@@ -301,7 +304,7 @@ OPS-5 🚀 #319 (index/migration + runbook backup/restore; AC-4)
 (รอบ 26) **OPS-21 🚀 #325 — เงื่อนไข release v0.1.0** (compose prod ส่ง `EVOUCHER_ENCRYPTION_KEY`/`EVOUCHER_ADMIN_EMAIL`/`OPS_ALERT_EMAIL`/`TZ` + guard บูต; AC-36) ·
 **OPS-22 ☑ #354** (`classify-changes.sh` นับ `docs/ops/**` เป็นโค้ด + แก้ `CLAUDE.md` 2 จุดที่ owner อนุมัติ; AC-37) · **OPS-23 ☑ #371** (owner สั่งทำ 2026-11-13; OPS-20b 🚀 #318; owner Q-O4 = ก 2026-11-09 เทียบ `DATABASE_POOL_MAX` 10/20/40; AC-38 — ผล: pool ไม่ใช่คอขวด server CPU เต็ม ~115% ทุกค่า pool ใหญ่ขึ้นแย่ลง → **คง default 10 ไม่เปิด ADR-020**; `docs/evidence/scale/OPS-23/REPORT.md`) ·
 **OPS-24 ☑ #356** (ปิดรอบ 26, nit review #325: comment `export` ใน `docker-compose.prod.yml` + `.trim()` ของ env อีเมลแจ้งเตือนใน `checkBootEnv`; AC-39; ไม่บล็อก release) ·
-(รอบ 32) **OPS-26 ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge)** (Q-O5 = ก: input `server_processes` ของ load-nightly → `medusa start --cluster <n>` วัด 1 vs 2 process แบบ OPS-23; AC-41; ~40 LOC + REPORT ไม่แตะโค้ด app; ADR-024 เฉพาะเมื่อผลให้เปลี่ยนวิธี deploy prod; ไม่บล็อก release)
+(รอบ 32) **OPS-26 ☑ #385** (owner สั่งทำ 2026-11-17; ผล: ไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 — `docs/evidence/scale/OPS-26/REPORT.md`) (Q-O5 = ก: input `server_processes` ของ load-nightly → `medusa start --cluster <n>` วัด 1 vs 2 process แบบ OPS-23; AC-41; ~40 LOC + REPORT ไม่แตะโค้ด app; ADR-024 เฉพาะเมื่อผลให้เปลี่ยนวิธี deploy prod; ไม่บล็อก release)
 (รอบ 30) **OPS-25 ☑ #366** (owner สั่งทำ 2026-11-13; comment ล้วน, nit review #354: เหตุผลเรื่อง `docs/ops/**` ใน `classify-changes.sh` + "35 เคส" ใน `ci.yml`; AC-40; ไม่บล็อก release)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
@@ -336,7 +339,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-24 | (รอบ 30, review #360) `status` หลายค่าใน `GET /admin/affiliate/affiliates` + combobox payout request เดียวเรียงชื่อข้ามหน้า + 401 ไป `/login` + comment `tiebreakById` (กฎ 28; AC-29; ~150 LOC) | ☑ #375 (owner สั่งทำ 2026-11-13) |
 | ADM-25 | (รอบ 30, qa/review #361/#362) สถานะ error ของกฎ 24/25: ซ่อนแถบแบ่งหน้า, หัวข้อ "Could not load ledger entries", e2e กฎ 24d อัตโนมัติ (กฎ 29; AC-30; ~220 LOC; ← ADM-23) | ☑ #381 (owner สั่งทำ 2026-11-13; หลัง ADM-23 #373) |
 | ADM-26 | (รอบ 30, qa #360 O-2 — ยืนยันแล้ว 2026-11-14, owner = ก) ขณะ `Combobox` ขยาย Escape ไม่ปิด `FocusModal` ฟอร์ม payout/program (`onEscapeKeyDown`; Escape ไม่ปิดรายการ — ยอมรับ) (กฎ 30; AC-31; ~40 LOC + e2e; ← ADM-24) | ☑ #379 (owner สั่งทำ 2026-11-13; หลัง ADM-24 #375) |
-| ADM-27 | (รอบ 32, Q9 = ก owner 2026-11-17 — qa #379 O-1) ถามยืนยันด้วย `usePrompt` ก่อนปิดฟอร์มที่ dirty ใน `FocusModal`/`Drawer` แบบ state 7 จุด ผ่าน hook กลางใน `components/common/`; กันกดซ้ำ/prompt ซ้อน; `onEscapeKeyDown` ของ ADM-26 ยังทำงานก่อน (กฎ 31; AC-32; ~250 LOC รวม e2e — เกิน ~400 แบ่ง ADM-27a/27b; ← CORE-61 แนะนำ merge ก่อนเพราะชนไฟล์ e2e) | ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) |
+| ADM-27 | (รอบ 32, Q9 = ก owner 2026-11-17 — qa #379 O-1) ถามยืนยันด้วย `usePrompt` ก่อนปิดฟอร์มที่ dirty ใน `FocusModal`/`Drawer` แบบ state 7 จุด ผ่าน hook กลางใน `components/common/`; กันกดซ้ำ/prompt ซ้อน; `onEscapeKeyDown` ของ ADM-26 ยังทำงานก่อน (กฎ 31; AC-32; ~250 LOC รวม e2e — เกิน ~400 แบ่ง ADM-27a/27b; ← CORE-61 แนะนำ merge ก่อนเพราะชนไฟล์ e2e) | ☑ #389 |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -482,6 +485,41 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md` ·
   **owner ตอบคำถามครบ 2026-11-17 (PR เดียวกัน #383)**: Q-O5 = ก → OPS-26 (spec 07 หัวข้อ "Follow-up รอบ 32", AC-41) · Q9 = ก → ADM-27 (spec 08 กฎ 31, AC-32) · Q-C10 = ก → CORE-63 (spec 01 กฎข้อ 121, AC-162) · Q10 = ก คงเดิม (spec 08 ยอมรับใน v1) ·
   Q21 = ก → GB-17 ขยาย (spec 04 กฎข้อ 40 (ข), AC-60 (c)) · แก้ nit review #383: แถว CORE-62 เงื่อนไข `> 0.005`, AC-161 เงื่อนไขก่อนเริ่ม `|ผลต่าง| ≤ 0.005`, spec 05 ค่าประมาณ 99,979,000 วัน
+- ปิดรอบ 32 (2026-11-17, เอกสารล้วน) → sync ☑ CORE-62 #384, OPS-26 #385, CORE-63 #386, GB-17 #387, CORE-61 #388, ADM-27 #389 ใน ROADMAP และ spec 01, 04, 07, 08 (+ บรรทัดสถานะ spec 05 เรื่อง Q21) · เอกสารที่ merge ในรอบ: #383 ·
+  OPS-26: ไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 (เลขยังว่าง); spec 07 กฎ (d) แก้เป็น 10 × (n + 1) (รวม worker — nit review #383), ข้อเท็จจริง `--cluster` ของ 2.22.1 (ต้องคู่ `--servers`; fork ใหม่ไม่บูต `start.js:311–314` — review #385) ·
+  แก้ข้อเท็จจริง (ไม่เปลี่ยนพฤติกรรมที่ต้องได้): spec 01 กฎข้อ 120a หมายเหตุ guard `discount_total` ที่โค้ดมี (review #384), AC-160 คำสั่งไม่มี `--` (#388 — มี `--` แล้วรันทั้ง suite),
+  อักขระ zero-width ดิบใน spec 01 AC-162 และ `docs/evidence/core/CORE-58/REPORT.md`, `docs/evidence/core/CORE-52/REPORT.md` เป็น escape `\u{XXXX}` ·
+  follow-up ใหม่ → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" (ไม่เปิด task id ใหม่) · เหลือ: ADM-22 พักไว้ · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+
+## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)
+ที่มา: review/qa/CI ของ #383–#389 (2026-11-17) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน
+### ก. ต้องให้ owner ตัดสิน
+1. **[ถาม owner] (สำคัญ) promotion แบบ fixed บนสินค้าราคารวม VAT ได้ส่วนลดต่างจากที่ตั้ง ~7% (qa #384 O-1)** Medusa คิดจำนวน fixed เป็นยอด**ก่อน VAT** ตาม `is_tax_inclusive` ของ promotion (ค่าเริ่มต้น false)
+   ขณะที่ราคาในร้านรวม VAT → `discount_total` ที่ลูกค้าเห็นไม่เท่าจำนวนที่ admin ตั้ง — กระทบการตั้งโปรจริงทุกตัว · **แนะนำ**: ร้านตั้ง promotion แบบ fixed ด้วย `is_tax_inclusive: true` เสมอ
+   (ตั้งค่า ไม่สร้างของใหม่) แล้วเปิด task เล็กใน spec 01/03: ตรวจว่า form promotion ของ dashboard 2.22.1 ตั้งค่านี้ได้หรือไม่ + บันทึกในคู่มือ ops + e2e ตรวจยอดส่วนลดเท่าที่ตั้ง (percentage ไม่กระทบ)
+2. **[ถาม owner] ลบเบอร์โทรในหน้าบัญชีไม่ได้ (qa #386 O-2)** ล้างช่อง phone แล้วบันทึก → เบอร์เดิมยังอยู่แต่ขึ้นว่าบันทึกสำเร็จ (ตรงกฎข้อ 121b ของ spec 01 ที่คงพฤติกรรมเดิม "ไม่ส่ง key") ·
+   **แนะนำ**: ให้ลบได้ — ส่ง `phone: ""` เมื่อผู้ใช้ล้างช่อง (แก้กฎข้อ 121b; storefront ~10 LOC + unit + e2e 1 เคส)
+3. **[ถาม owner] OPS-26 ต่อหรือหยุด** ผล 1 vs 2 process บน runner ร่วมแยกผลไม่ออก (spec 07 "ผล OPS-26") — ทางเลือก: หยุดแค่นี้ / วัดบน staging ที่แยก k6 ออกจาก stack / profile CPU ต่อ request ของ checkout (Q-O5 ทาง ข) ·
+   **แนะนำ**: หยุดแค่นี้ แล้ววัดบน staging เป็นข้อหนึ่งของ go-live (ตอนนี้ไม่มี staging; gate ความถูกต้องผ่านทุก run, p95 เป็น "รายงานอย่างเดียว" ตาม Q-O3 a)
+4. **[ถาม owner] flaky `affiliate-admin-forms.spec.ts:47` AC-12 เกิดซ้ำครั้งที่ 2** (#373 run 43475980049; #388 run 44071909424 ขั้น "พิมพ์ชื่อ collection ลำดับที่ 250" timeout 2 นาที) — spec 01 รอบ 32 ตกลงว่า "เปิด task เมื่อเกิดซ้ำ" ·
+   **แนะนำ**: เปิด task test-only หาสาเหตุ (อ่าน trace/log ของ run 44071909424 ก่อน artifact หมดอายุ 14 วัน) — ไม่บล็อก release แต่ทำให้ CI ของ PR อื่นแดงสุ่ม
+5. **[ถาม owner] ลดค่าส่ง 100% แสดง "ค่าจัดส่ง ฿10" + "ส่วนลด −฿10" แยกกัน (qa #384 O-2)** ตรงกฎข้อ 115 ของ spec 01 (แถวค่าส่งใช้ `original_shipping_total`, ส่วนลดรวมใน `discount_total`) ยอดรวมถูก ·
+   ทางเลือก: คงเดิม / แสดงแถวค่าจัดส่งเป็น "ฟรี" เมื่อส่วนลดค่าส่งเท่าค่าส่ง · **แนะนำ**: คงเดิม (สูตร subtotal − ส่วนลด + ค่าส่ง = ยอดรวม ตรวจได้ทุกแถว; เปลี่ยนแล้วต้องแยกส่วนลดค่าส่งออกจาก `discount_total`)
+### ข. test hygiene / nit (planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
+- (review #387) `evoucher-admin.spec` เคส 2147483647 → 200 ทดสอบเฉพาะ update (AC-60(d) เขียนทั้งสร้าง/แก้) · affiliate update ไม่ assert ชื่อ field ใน error
+- (review #388) `evoucher-admin-pool-page.spec.ts:25-26` บรรทัดว่างซ้ำ · `sql()` ใน e2e มี ≥ 3 สำเนา → `e2e/support/` · unit ของกฎข้อ 119c vacuous (ผ่านได้แม้ไม่มีโค้ดที่ตรวจ)
+- (#388) fs19 ล้มใน run 43469877641 ที่ `:199` (timeout 30s ไม่ใช่ `:245`) — ไม่แก้ใน CORE-61; เปิด task ถ้าล้มซ้ำ
+- (review #385) `tools/load/run.sh` comment `SERVER_READY` "รวมที่ cluster fork ใหม่" ไม่ตรง 2.22.1 (fork ใหม่ไม่บูต) → แก้ comment
+- (review #384) comment `itemDiscounted` ใน `cart-totals/index.tsx` ระบุเพิ่มว่า guard `discount_total` ไม่เปลี่ยนพฤติกรรมกับข้อมูลจริง (spec แก้แล้วในกฎข้อ 120a)
+- (review #383) ADM-27: ปุ่ม Cancel ที่เรียก `setOpen(false)` ตรงต้องผ่าน hook — ตรวจว่า #389 ครอบทุกฟอร์มหรือยัง · (qa #389 O-5) ปิดฟอร์มระหว่างบันทึกของ create campaign/pool/payout/program ยังไม่มี e2e
+- ข้อที่เหลือของกลุ่ม ข ในหัวข้อปิดรอบ 30/31 ข้างล่าง (ที่ไม่ได้รวมใน CORE-61) ยังคงอยู่
+### ค. ข้อจำกัด/พฤติกรรมที่บันทึกไว้ (ยังไม่เสนอ task)
+- (qa #389 O-2/O-3) Radix: คลิกนอกทันทีหลัง "Continue editing" หรือระหว่าง animation เปิด ถูกเพิกเฉย 1 ครั้ง (ปลอดภัย — ฟอร์มไม่ปิด)
+- (#386) checkout digital-only ส่ง `company`/`province`/`phone` เป็น `""` แทน `null` (ตรงกฎข้อ 121a)
+- (review #385) `medusa start --cluster` ของ 2.22.1 ต้องคู่ `--servers` และ fork ใหม่ตอน process ตายไม่บูต (`start.js:311–314`) — บันทึกใน spec 07 แล้ว; ถ้าจะใช้ใน prod ต้องอยู่ใน ADR
+### ง. บทเรียนกระบวนการ (session หลักพิจารณาเพิ่มใน `CLAUDE.md`/agent — planner ไม่แตะ)
+- เครื่องมือ Write/Edit แปลง escape แบบ backslash-u สี่หลักใน markdown เป็นอักขระ zero-width ดิบ (เกิดใน CORE-58 REPORT และ AC-162) → สแกนอักขระ U+200B/200C/200D/2060/FEFF ก่อน commit (perl);
+  รูป `\u{XXXX}` ผ่านเครื่องมือได้โดยไม่ถูกแปลง (ใช้ในปิดรอบ 32)
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)
 ที่มา: review/qa ของ #366–#381 (2026-11-13/14) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน

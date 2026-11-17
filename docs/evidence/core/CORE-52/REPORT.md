@@ -60,4 +60,4 @@ e2e ของ PR (`core-52-checkout-guards`, `ev-7c`, `ev-7d`, `core-4j`): **18 
 | 1 (`7a66b1bd`) | D-1 | major | ไม่ติ๊ก "ใช้ที่อยู่จัดส่งเป็นที่อยู่สำหรับออกใบเสร็จ" → กรอกใบเสร็จมีช่องว่างล้วน → error; React 19 reset `<form action>` ทำให้ checkbox กลับเป็นติ๊ก (DOM) ขณะฟอร์มใบเสร็จยังแสดง → แก้แล้วส่งใหม่ได้ `same_as_billing=on` → ที่อยู่ใบเสร็จที่กรอกหายเงียบ (expected billing.city=`บางรัก`, actual = ค่าของ shipping) | แก้แล้วใน `7345ca1b` (`onReset` preventDefault) — ยืนยันด้วย QA-7, QA-10, `:177` |
 | 2 (`7345ca1b`) | — | — | ไม่พบ defect ใหม่ | — |
 
-ข้อสังเกต (ไม่ใช่ defect ตาม spec): O-1 เขต/อำเภอเป็น U+200B ล้วนผ่าน validation (`String.trim()` ไม่ตัด ZWSP) → cart บันทึก city=`"​"` และไปขั้น delivery ได้ — เสนอเป็น follow-up
+ข้อสังเกต (ไม่ใช่ defect ตาม spec): O-1 เขต/อำเภอเป็น U+200B ล้วนผ่าน validation (`String.trim()` ไม่ตัด ZWSP) → cart บันทึก city=`"\u200B"` และไปขั้น delivery ได้ — เสนอเป็น follow-up
