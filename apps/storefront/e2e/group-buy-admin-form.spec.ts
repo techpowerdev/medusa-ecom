@@ -488,9 +488,10 @@ test.describe("ADM-15: ฟอร์มสร้างแคมเปญ — Numb
       await expect(page.getByRole("dialog")).toHaveCount(1)
     })
 
-    await step("พิมพ์ชื่อแล้วกด Escape → modal ปิด และ focus อยู่ที่ปุ่ม Create campaign", async () => {
+    await step("พิมพ์ชื่อแล้วกด Escape → ยืนยันทิ้งฟอร์ม (ADM-27) → modal ปิด และ focus อยู่ที่ปุ่ม Create campaign", async () => {
       await page.getByTestId("gb-field-name").fill(`${token} discarded`)
       await page.keyboard.press("Escape")
+      await page.getByRole("alertdialog").getByRole("button", { name: "Leave" }).click()
       await expect(page.getByRole("dialog")).toHaveCount(0)
       await expect(create).toBeFocused()
       await evidence("02-focus-returned")

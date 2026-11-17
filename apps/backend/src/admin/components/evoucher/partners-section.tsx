@@ -28,6 +28,7 @@ import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
 import { PageOffsetGate } from "../common/page-offset-gate"
+import { useConfirmDiscard } from "../common/use-confirm-discard"
 
 const columnHelper = createDataTableColumnHelper<Partner>()
 const PAGE_SIZE = 20
@@ -227,6 +228,16 @@ export const PartnersSection = () => {
     )
   )
 
+  // ADM-27 (spec 08 กฎ 31): ฟอร์มเดียวของ modal สร้างและ Drawer แก้ — dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด
+  const confirmClose = useConfirmDiscard({
+    form,
+    isPending: save.isPending,
+    onClose: () => {
+      setCreateOpen(false)
+      setEditing(null)
+    },
+  })
+
   const saveButton = (
     <Button size="small" type="submit" disabled={save.isPending} isLoading={save.isPending}>
       Save
@@ -270,7 +281,7 @@ export const PartnersSection = () => {
         </div>
       </div>
 
-      <FocusModal open={createOpen} onOpenChange={setCreateOpen}>
+      <FocusModal open={createOpen} onOpenChange={confirmClose}>
         <FocusModal.Content>
           {/* noValidate: validation ทั้งหมดเป็นของ zod (error ใต้ช่อง) */}
           <Form {...form}>
@@ -289,7 +300,7 @@ export const PartnersSection = () => {
         </FocusModal.Content>
       </FocusModal>
 
-      <Drawer open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+      <Drawer open={!!editing} onOpenChange={confirmClose}>
         <Drawer.Content>
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">
