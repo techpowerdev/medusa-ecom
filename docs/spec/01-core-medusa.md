@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (ปิดรอบ 32 2026-11-17 — ☑ CORE-61 #388, CORE-62 #384, CORE-63 #386 (sync สถานะ + แก้ข้อเท็จจริง: หมายเหตุ guard `discount_total` ในกฎข้อ 120a, คำสั่งของ AC-160 ไม่มี `--`, อักขระ zero-width ดิบใน AC-162 เป็น escape; follow-up ใหม่อยู่ใน ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)"); รอบ 32 2026-11-17 — owner สั่งทำ CORE-61 (e2e hygiene, กฎข้อ 119, AC-160) และ CORE-62 (ป้าย "ก่อนส่วนลด" เฉพาะราคาสินค้าลดจริง — ภาคผนวกกฎข้อ 118a, กฎข้อ 120, AC-161) ☐ พร้อมเริ่ม; Q-C10 = ก owner 2026-11-17 → CORE-63 (zero-width ช่องที่อยู่ที่เหลือ, กฎข้อ 121, AC-162) (หัวข้อ "Follow-up รอบ 32"); ปิดรอบ 30/31 2026-11-14 — ☑ CORE-58 #369, CORE-59 #367, CORE-60 #372 (sync สถานะ + แก้ข้อเท็จจริงกฎข้อ 117c ตาม #367; follow-up ใหม่อยู่ใน ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)"); รอบ 31 2026-11-13 — owner ตอบ Q-C8 = ก (กฎข้อ 118, AC-159, CORE-60 ☐ owner สั่งทำแล้ว; หมายเหตุในกฎข้อ 115c/AC-156) และ Q-C9 = ก (ภาคผนวก 2026-11-13 ของ ADR-014 ไม่มีโค้ด) (หัวข้อ "Follow-up รอบ 31"); รอบ 30 2026-11-13 — follow-up รอบ 29: CORE-58..59 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ, กฎข้อ 116–117, AC-157..158, คำถาม Q-C8/Q-C9 (หัวข้อ "Follow-up รอบ 30"); ปิดรอบ 29 2026-11-13 — owner สั่งทำงานที่พักไว้: ☑ CORE-56 #351, CORE-57 #352 และ ☑ CORE-52 #353, CORE-53 #358, CORE-54 #355 (sync สถานะเท่านั้น ไม่เปลี่ยนกฎ/AC); รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+สถานะ: accepted (รอบ 33 2026-11-17 — owner ตัดสิน follow-up ปิดรอบ 32: (1) = ก → CORE-64 (promotion fixed `is_tax_inclusive: true` เสมอ + คู่มือ + test, กฎข้อ 122, AC-163) ☐ พร้อมเริ่ม — owner สั่งทำแล้ว; (2) = ข และ (5) คงเดิม → ยอมรับใน v1 (กฎข้อ 121b, 115); คำถามใหม่ Q-C11 (หัวข้อ "Follow-up รอบ 33"); ปิดรอบ 32 2026-11-17 — ☑ CORE-61 #388, CORE-62 #384, CORE-63 #386 (sync สถานะ + แก้ข้อเท็จจริง: หมายเหตุ guard `discount_total` ในกฎข้อ 120a, คำสั่งของ AC-160 ไม่มี `--`, อักขระ zero-width ดิบใน AC-162 เป็น escape; follow-up ใหม่อยู่ใน ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)"); รอบ 32 2026-11-17 — owner สั่งทำ CORE-61 (e2e hygiene, กฎข้อ 119, AC-160) และ CORE-62 (ป้าย "ก่อนส่วนลด" เฉพาะราคาสินค้าลดจริง — ภาคผนวกกฎข้อ 118a, กฎข้อ 120, AC-161) ☐ พร้อมเริ่ม; Q-C10 = ก owner 2026-11-17 → CORE-63 (zero-width ช่องที่อยู่ที่เหลือ, กฎข้อ 121, AC-162) (หัวข้อ "Follow-up รอบ 32"); ปิดรอบ 30/31 2026-11-14 — ☑ CORE-58 #369, CORE-59 #367, CORE-60 #372 (sync สถานะ + แก้ข้อเท็จจริงกฎข้อ 117c ตาม #367; follow-up ใหม่อยู่ใน ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)"); รอบ 31 2026-11-13 — owner ตอบ Q-C8 = ก (กฎข้อ 118, AC-159, CORE-60 ☐ owner สั่งทำแล้ว; หมายเหตุในกฎข้อ 115c/AC-156) และ Q-C9 = ก (ภาคผนวก 2026-11-13 ของ ADR-014 ไม่มีโค้ด) (หัวข้อ "Follow-up รอบ 31"); รอบ 30 2026-11-13 — follow-up รอบ 29: CORE-58..59 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ, กฎข้อ 116–117, AC-157..158, คำถาม Q-C8/Q-C9 (หัวข้อ "Follow-up รอบ 30"); ปิดรอบ 29 2026-11-13 — owner สั่งทำงานที่พักไว้: ☑ CORE-56 #351, CORE-57 #352 และ ☑ CORE-52 #353, CORE-53 #358, CORE-54 #355 (sync สถานะเท่านั้น ไม่เปลี่ยนกฎ/AC); รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
 รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
@@ -2480,7 +2480,7 @@ none
      (a) `setAddresses` (`src/lib/data/cart.ts` `addressFrom`): ช่องไม่บังคับ `company`, `province`, `phone` ผ่าน `trimInvisible` ด้วย — ว่างหลังตัดส่ง `""`; `country_code` ไม่แตะ (ค่าจาก select); ช่องบังคับคงกฎข้อ 116a;
      (b) ฟอร์มที่อยู่ในหน้าบัญชี — `addCustomerAddress`/`updateCustomerAddress` (`src/lib/data/customer.ts`; ผู้เรียก: `modules/account/components/address-card/{add-address,edit-address-modal}.tsx`, `profile-billing-address/index.tsx`):
          ทุกช่องข้อความผ่าน `trimInvisible`; ช่องบังคับชุดเดียวกับ checkout (`first_name`, `last_name`, `address_1`, `postal_code`, `city` — ย้าย `REQUIRED_ADDRESS_FIELDS` และ `MISSING_ADDRESS_MESSAGE` จาก `cart.ts` ไป `src/lib/util/` ที่เดียว (ผู้ใช้ 2 ที่ และ `cart.ts`/`customer.ts` เป็น `"use server"` ซึ่ง export ได้เฉพาะ async function))
-         ว่างหลังตัด → คืน `{ success: false, error: <ข้อความไทยเดียวกับ MISSING_ADDRESS_MESSAGE> }` **ไม่เรียก** Store API; `phone` ของ `updateCustomerAddress` ที่ว่างหลังตัดคงพฤติกรรมเดิม (ไม่ส่ง key);
+         ว่างหลังตัด → คืน `{ success: false, error: <ข้อความไทยเดียวกับ MISSING_ADDRESS_MESSAGE> }` **ไม่เรียก** Store API; `phone` ของ `updateCustomerAddress` ที่ว่างหลังตัดคงพฤติกรรมเดิม (ไม่ส่ง key) — **รอบ 33: owner (2) = ข คงเดิม 2026-11-17 → ยอมรับใน v1 ว่าล้างช่องแล้วเบอร์เดิมยังอยู่ (qa #386 O-2)**;
      (c) (qa #369 O-2 — ยอมรับ) หลัง error ช่องที่ผู้ใช้พิมพ์ยังแสดงค่าเดิม ไม่ล้างให้;
      (d) ไม่แตะ backend/`src/api/middlewares.ts` (ทาง ข ของ Q-C10 ไม่ทำ) และไม่เปลี่ยนข้อความ/ป้ายอื่น
 
@@ -2527,7 +2527,7 @@ none
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 32)
 - (review #381) `waitForTimeout(1_000)` หลัง refetch ล้มใน e2e กฎ 24d (`e2e/evoucher-admin-pool-page.spec.ts:483`, `e2e/group-buy-admin-pages.spec.ts:391`, `e2e/affiliate-admin-forms.spec.ts:456`) — เป็นหน้าต่างของ negative assertion
   ("ไม่มี testid error") หลัง request ล้มครบ 2 ครั้งแล้ว ไม่มีเงื่อนไขบวกให้รอแทน → คงไว้ (comment ในโค้ดอธิบายอยู่แล้ว)
-- (CI run 43475980049) `e2e/affiliate-admin-forms.spec.ts:47` AC-12 ล้มครั้งเดียว ไม่พบสาเหตุในโค้ด test → เปิด task เมื่อเกิดซ้ำ (แนบ log/trace)
+- (CI run 43475980049) `e2e/affiliate-admin-forms.spec.ts:47` AC-12 ล้มครั้งเดียว ไม่พบสาเหตุในโค้ด test → เปิด task เมื่อเกิดซ้ำ (แนบ log/trace) — **เกิดซ้ำแล้ว (#388 run 44071909424) → รอบ 33 owner สั่งเปิด ADM-28 (spec 08 กฎ 32, AC-33)**
 
 ### Open questions (รอบ 32)
 - ~~**Q-C10**~~ ✅ **owner ตอบ ก 2026-11-17** → กฎข้อ 121, AC-162, CORE-63 (storefront ล้วน; qa #369 O-2 ยอมรับ); คำถามเดิม: (#369 CORE-58 + qa #369 O-2 — ขอบเขตของกฎข้อ 116 เดิม) อักขระ zero-width ที่ยังเหลือ: ช่อง**ไม่บังคับ**ของ `setAddresses` (`company`/`province`/`phone` — `src/lib/data/cart.ts:533–538` ส่งค่าดิบ) และฟอร์มที่อยู่ในหน้าบัญชี
@@ -2538,6 +2538,92 @@ none
       เพิ่ม middleware บน route core ของ Medusa (แตะ `src/api/middlewares.ts` — จุดที่เคย conflict), ข้อความ 400 ต้อง map เป็นไทย
   (ค) คงเดิม ไม่มี task — ผลกระทบ: ที่อยู่ในหน้าบัญชีที่เป็นช่องว่าง/zero-width ล้วนบันทึกได้ แล้วเมื่อเลือกใช้ตอน checkout จะถูกกฎข้อ 116 ปฏิเสธ (ลูกค้าต้องแก้ที่ checkout)
 - (บันทึก) ข้อ (4) ของ follow-up ปิดรอบ 30/31 (ป้าย "ก่อนส่วนลด" เมื่อลดแค่ค่าส่ง) **owner ตัดสินแล้ว 2026-11-17** ไม่เป็นคำถาม → กฎข้อ 120, CORE-62
+
+## Follow-up รอบ 33 (2026-11-17 — เอกสารล้วน: คำตัดสินของ owner ต่อ follow-up ปิดรอบ 32)
+ที่มา: ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" กลุ่ม ก — owner ตัดสิน 2026-11-17: (1) = ก "ให้ลดตามที่ตั้งเป๊ะ" → CORE-64 (หัวข้อนี้); (2) = ข คงเดิม → ยอมรับใน v1 (ข้างล่าง);
+(3) = ก หยุด วัดตอนมี staging → spec 07 (รายการก่อน go-live); (4) = เปิด task หาสาเหตุ → ADM-28 (spec 08 กฎ 32, AC-33); (5) = คงเดิม → ยอมรับใน v1 (ข้างล่าง) ·
+ตรวจโค้ดบน develop `1c55193f` และ `@medusajs/dashboard` 2.22.1 ที่ติดตั้ง (path ย่อจาก `node_modules/@medusajs/dashboard/src/routes/promotions/`):
+- **ฟอร์มสร้าง promotion ของ dashboard ตั้ง `is_tax_inclusive` ได้แล้ว**: สวิตช์ "Does promotion include taxes?" (`promotions.form.taxInclusive.title`, คำอธิบาย "Enable this field to apply the promotion after taxes")
+  render เมื่อ template ไม่ซ่อน field นี้ (`promotion-create/components/create-promotion-form/create-promotion-form.tsx:602–634`) และส่งใน body ของ `POST /admin/promotions` (`:98`, `:160`);
+  template ที่**แสดง**สวิตช์ = แบบ fixed ทั้งสอง — `amount_off_products` และ `amount_off_order` (`create-promotion-form/templates.ts:3–11`, `:38–70`);
+  template ที่**ซ่อน** = `percentage_off_product`, `percentage_off_order`, `buy_get`, `shipping_discount` (`templates.ts:13–36`); **ค่าเริ่มต้น `false`** (`create-promotion-form.tsx:59`) → admin ต้องเปิดเองทุกครั้ง
+- ฟอร์มแก้ (`promotion-edit-details/components/edit-promotion-form/edit-promotion-details-form.tsx:204–212`) แสดงสวิตช์เฉพาะ `value_type === "fixed"` และ `type === "standard"` และตั้งกลับเป็น `false` เมื่อไม่ใช่ fixed (`:107–111`);
+  หน้า detail แสดงค่า "Tax Inclusive" True/False (`promotion-detail/components/promotion-general-section/promotion-general-section.tsx:192`) → admin ตรวจย้อนหลังได้โดยไม่ต้องสร้างอะไรเพิ่ม
+- promotion ที่โค้ดของเราสร้าง: group buy ตั้ง `is_tax_inclusive` ค่าเริ่มต้น `true` อยู่แล้ว (spec 04 กฎข้อ 12 — `src/api/admin/group-buy/validators.ts:42`, `src/workflows/group-buy/campaign.ts:229`, `src/admin/lib/group-buy-form.ts:61`);
+  `src/scripts/seed.ts` ไม่สร้าง promotion; `src/scripts/seed-load.ts:98–117` สร้างแบบ percentage (ไม่กระทบ); flash sale ไม่มีโค้ดสร้าง promotion (admin สร้างใน dashboard — ADR-003);
+  e2e ของ storefront ที่สร้าง promotion (`e2e/**` ผ่าน `POST /admin/promotions`) เป็น percentage ทั้งหมด; integration ที่ตั้ง fixed + `false` โดยตั้งใจ (`integration-tests/http/flash-sale-active.spec.ts:131–148` `FS4FIXED100` ตรวจ preview ฝั่ง `false`,
+  `integration-tests/http/group-buy-groups.spec.ts:467–479` control ของ AC-20c ของ spec 04) **คงไว้** — เป็น test ของพฤติกรรมฝั่ง `false` ไม่ใช่ promotion ของร้าน
+- ไม่มีที่เก็บคู่มือ admin ในโปรเจกต์ (`docs/ops/**` เป็น runbook ฝั่ง ops ที่ unit test อ่านและนับเป็นโค้ด backend ใน `tools/ci/classify-changes.sh`) → คู่มือใหม่ที่ `docs/guides/admin-promotions.md` (เอกสารล้วน)
+
+Status: draft (รอบ 33 2026-11-17 — CORE-64 ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge))
+Out of scope: โค้ดบังคับ/เตือนเมื่อ fixed ไม่ได้ตั้ง `is_tax_inclusive` (widget/middleware — Q-C11), แก้/patch ฟอร์ม promotion ของ dashboard, เปลี่ยน promotion ที่มีอยู่แล้วใน DB, แก้ test ฝั่ง `false` ที่ระบุข้างบน, ลบเบอร์โทร (กฎข้อ 121b — ยอมรับ), แถวค่าจัดส่งเมื่อลด 100% (กฎข้อ 115 — ยอมรับ)
+
+### What Medusa already gives us (รอบ 33)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ส่วนลด fixed ที่เป็นยอดรวม VAT | field `is_tax_inclusive` ของ promotion (Promotion module) — Medusa คิดจำนวน fixed บนฐานรวมภาษีเมื่อ `true` (ยืนยันแล้วใน spec 04 AC-20c: fixed ฿100 บนสินค้า ฿1,070 → `cart.total` ลด 100 พอดี) | ใช้ตามเดิม — ตั้งค่า ไม่มีโค้ด |
+| ตั้งค่าผ่าน admin | สวิตช์ "Does promotion include taxes?" ในฟอร์มสร้าง/แก้ promotion ของ `@medusajs/dashboard` 2.22.1 (เฉพาะ fixed — ดูข้อเท็จจริงข้างบน) + ค่า "Tax Inclusive" ในหน้า detail | ใช้ตามเดิม — คู่มือบอกให้เปิดทุกครั้ง |
+| ส่วนลด percentage | Medusa คิด % บนฐานตาม `is_tax_inclusive` แต่สัดส่วนเท่ากันทั้งสองฐาน (dashboard ซ่อนสวิตช์ของ template percentage) | ใช้ตามเดิม — ไม่ต้องตั้ง |
+| คู่มือ admin | none | custom — เอกสาร `docs/guides/admin-promotions.md` |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 33)
+122. (CORE-64 — owner ตัดสิน (1) = ก 2026-11-17, qa #384 O-1) promotion แบบ **fixed** (`application_method.type: "fixed"` ทั้ง `target_type` `items` และ `order`) ของร้านตั้ง `is_tax_inclusive: true` **เสมอ** เพราะราคา THB ของร้านรวม VAT (seed) —
+     ส่วนลดที่ลูกค้าเห็น (`discount_total`) จึงเท่าจำนวนที่ admin ตั้งพอดี; percentage/buy-get/ส่วนลดค่าส่งไม่ต้องตั้ง:
+     (a) admin ตั้งผ่านสวิตช์ "Does promotion include taxes?" ของ dashboard (ค่าเริ่มต้นปิด — ต้องเปิดเองทุกครั้ง) และตรวจที่หน้า detail ว่า "Tax Inclusive" = True — ไม่มีโค้ด admin ใหม่;
+     (b) คู่มือ `docs/guides/admin-promotions.md` (ภาษาไทย, ชื่อปุ่ม/ป้ายของ dashboard คงอังกฤษตามจริง): ขั้นสร้าง promotion แบบ fixed (template "Amount off products"/"Amount off order") เปิดสวิตช์นี้, ตรวจ "Tax Inclusive" = True ก่อนเปลี่ยนสถานะเป็น active,
+         promotion ที่สร้างแล้วแต่ลืมเปิด → แก้ด้วยฟอร์มแก้ (Edit details) ได้, percentage ไม่ต้องตั้ง (สวิตช์ไม่แสดง), ใช้กับ promotion ของ flash sale (ADR-003) ด้วย; group buy ตั้งให้อัตโนมัติ (spec 04 กฎข้อ 12);
+         ตัวอย่างตัวเลข: สินค้า ฿1,070 รวม VAT + fixed ฿100 — เปิด → ลด ฿100, ปิด → ลด ~฿107;
+     (c) โค้ดของเราที่สร้าง promotion fixed ในอนาคต (script/workflow/e2e helper ที่ไม่ได้ตั้งใจทดสอบฝั่ง `false`) ต้องส่ง `is_tax_inclusive: true` — ตอนนี้ไม่มีจุดที่ต้องแก้ (ดูข้อเท็จจริงข้างบน) → CORE-64 **ไม่แก้โค้ดใต้ `src/`**;
+     (d) ถ้าระหว่างทำพบว่า `discount_total` ไม่เท่าจำนวนที่ตั้งแม้ `is_tax_inclusive: true` (เกิน ±0.01) → หยุดและรายงาน planner (ห้ามคำนวณชดเชยเอง)
+- (ยอมรับใน v1 — owner (2) = ข คงเดิม 2026-11-17, qa #386 O-2) **กฎข้อ 121b คงเดิม**: ล้างช่อง phone ของที่อยู่ในหน้าบัญชีแล้วบันทึก → ไม่ส่ง key `phone` เบอร์เดิมยังอยู่แม้ขึ้นว่าบันทึกสำเร็จ — ไม่มี task
+- (ยอมรับใน v1 — owner (5) คงเดิม 2026-11-17, qa #384 O-2) **กฎข้อ 115 คงเดิม**: ส่วนลดค่าส่ง 100% แสดง "ค่าจัดส่ง ฿10" (`original_shipping_total`) และ "ส่วนลด −฿10" แยกกัน — สูตร subtotal − ส่วนลด + ค่าส่ง = ยอดรวม ตรวจได้ทุกแถว; ไม่มี task
+
+### Acceptance criteria (รอบ 33)
+- AC-163 (CORE-64, กฎข้อ 122)
+  (a) integration (`apps/backend/integration-tests/http/core-64-promotion-tax-inclusive.spec.ts` ใหม่; region THB ราคารวม VAT + tax rate 7% แบบ fixture ของ AC-20c spec 04; cart สร้างและแก้ด้วย token ของลูกค้าเจ้าของ cart — `integration-tests/helpers/customer.ts`):
+      Given สินค้าราคา ฿1,070 (รวม VAT) qty 1 When admin `POST /admin/promotions` แบบ fixed 100 THB `target_type: "items"`, `allocation: "each"`, `is_tax_inclusive: true` (รูป body เดียวกับที่ฟอร์ม dashboard ส่ง) แล้ว `POST /store/carts/:id/promotions` ด้วยโค้ดนั้น
+      Then `discount_total` = 100 (±0.01) และ `total` ลดลงจากก่อนใส่โค้ด 100 (±0.01);
+      Given แบบเดียวกันแต่ `target_type: "order"`, `allocation: "across"` Then `discount_total` = 100 (±0.01);
+      control: fixed 100 items ที่ `is_tax_inclusive: false` Then `|discount_total − 100| > 1` (พฤติกรรมที่ qa #384 O-1 พบ — ยืนยันว่า test แยกสองฝั่งได้);
+      percentage 10 ของ items ที่ไม่ส่ง `is_tax_inclusive` และที่ส่ง `true` Then `discount_total` = 107 (±0.01) ทั้งคู่ (10% ของราคารวม VAT — % ไม่กระทบ);
+      ข้อมูลที่ test สร้างอยู่ใน `beforeEach`/ใน test (DB reset ทุก test); error ของ axios ห่อเป็น `Error` ที่มีแค่ status/body
+  (b) e2e storefront (`apps/storefront/e2e/core-64-promotion-fixed-vat.spec.ts` ใหม่, `evidenceTarget` `{ feature: "core", taskId: "CORE-64" }`, 1280×800, ลูกค้า login เจ้าของ cart, หาภายใน `getByTestId("cart-totals")`):
+      Given cart ที่มีสินค้า seed (ราคารวม VAT) และเลือกวิธีจัดส่งแล้ว (helper เดิม เช่น `cartReadyForPayment`) When admin สร้าง promotion fixed 100 items `is_tax_inclusive: true` โค้ดของ test แล้วใช้กับ cart ผ่าน `POST /store/carts/:id/promotions` และ reload `/th/cart`
+      Then `cart-discount` `data-value` = 100 (±0.01) และ `cart-subtotal − cart-discount + cart-shipping = cart-total` (±0.01); cleanup promotion ใน `finally` ด้วย `deleteAllThenExpectOk` (กฎข้อ 111); evidence ≤ 2 PNG
+  (c) คู่มือ: `docs/guides/admin-promotions.md` มีอยู่, มีคำ "Does promotion include taxes?", "Tax Inclusive", "Amount off products", "Amount off order" และอักษรไทย (`/[฀-๿]/`) — ตรวจด้วย unit (Playwright `unit` project ต่อใน `e2e/core-46-e2e-hygiene.unit.spec.ts` หรือไฟล์ unit ใหม่ของ CORE-64 — เลือกใน PR)
+  (d) qa (Playwright MCP — หลักฐาน ไม่ใช่ test ใน CI): สร้าง promotion "Amount off products" ฿100 ผ่านหน้า `/app/promotions/create` ของ dashboard โดยเปิดสวิตช์ตามคู่มือ แล้ว `GET /admin/promotions/:id` ได้ `is_tax_inclusive: true` และหน้า detail แสดง "Tax Inclusive" True;
+      ใช้ promotion นั้นกับ cart แล้ว `/th/cart` แสดง `cart-discount` = 100; หน้า core ของ dashboard ไม่มี `data-testid` และเราแก้ไม่ได้ → qa หา element ด้วย role/label เฉพาะขั้นนี้ (บันทึกใน REPORT); รูป ≤ 3 PNG (`docs/evidence/core/CORE-64/REPORT.md`)
+
+### Non-functional (รอบ 33)
+none
+
+### Test plan (รอบ 33)
+| ระดับ | AC |
+|---|---|
+| integration (`test:integration:http`) | AC-163(a) — เคส `true` ผ่านบน develop ได้ทันที (Medusa ทำอยู่แล้ว) จึงไม่มีขั้น "ล้มก่อน" ของโค้ด; ขั้น "ล้มก่อน" คือ control `false` ต้องแยกจากเคส `true` (ลองสลับค่าแล้ว test ต้องล้ม — ระบุใน PR) |
+| e2e storefront + unit (Playwright) | AC-163(b), (c) |
+| qa (manual ผ่าน MCP) | AC-163(d) — มี REPORT |
+
+### Tasks (รอบ 33)
+| ID | Task | ไฟล์ที่แตะ | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-64 | (owner (1) = ก 2026-11-17, qa #384 O-1) promotion fixed ตั้ง `is_tax_inclusive: true` เสมอ: ยืนยันด้วย integration + e2e ว่าลดเท่าที่ตั้ง (% ไม่กระทบ), คู่มือ admin, qa สร้างผ่าน dashboard จริง — ไม่แก้โค้ดใต้ `src/` (กฎข้อ 122) — ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) | `apps/backend/integration-tests/http/core-64-promotion-tax-inclusive.spec.ts` (ใหม่), `apps/storefront/e2e/core-64-promotion-fixed-vat.spec.ts` (ใหม่), `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts` (หรือ unit ใหม่ — AC-163(c)), `docs/guides/admin-promotions.md` (ใหม่) | integration ~120 LOC + e2e ~80 LOC + คู่มือ ~40 บรรทัด | AC-163 | PR เอกสารรอบ 33 merge; ไม่บล็อก release | ∥ ADM-28 (spec 08 — แตะแค่ `e2e/affiliate-admin-forms.spec.ts` (+ `e2e/support/admin.ts` ถ้าจำเป็น)); `core-46-e2e-hygiene.unit.spec.ts` ไม่มี task อื่นที่เปิดแตะ |
+(รอบ 33) CORE-64 ∥ ADM-28 (spec 08) เริ่มขนานกันได้ ไม่มีไฟล์ร่วม; CORE-64 มี qa (AC-163(d)); ADM-28 เป็น test-only (ไม่ต้องมี qa REPORT) — ลำดับ merge ที่แนะนำ: ADM-28 → CORE-64 (ลด flaky ใน CI ของตัวถัดไป)
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 33)
+- (owner (2) = ข 2026-11-17) ลบเบอร์โทรในที่อยู่ของหน้าบัญชีไม่ได้ — กฎข้อ 121b คงเดิม (ดู Business rules รอบ 33)
+- (owner (5) คงเดิม 2026-11-17) ส่วนลดค่าส่ง 100% แสดงแถวค่าจัดส่งและส่วนลดแยกกัน — กฎข้อ 115 คงเดิม
+- (ADR) ไม่มี ADR ใหม่: ใช้ field/ฟอร์มของ Medusa ตามเดิม ไม่มีทางเลือกที่ต้องตัดสินนอกจาก Q-C11
+
+### Open questions (รอบ 33)
+- **Q-C11** (CORE-64 — ไม่บล็อก CORE-64) ฟอร์มสร้าง promotion ของ dashboard ตั้ง `is_tax_inclusive` ค่าเริ่มต้น `false` (`create-promotion-form.tsx:59`) → ถ้า admin ลืมเปิดสวิตช์ ส่วนลด fixed จะคลาดไป ~7% โดยไม่มีอะไรเตือน; ต้องการกันเพิ่มจากคู่มือไหม:
+  (ก) **[แนะนำ]** คู่มือ + test ของ CORE-64 เท่านั้น — เหตุผล: ใช้ของ Medusa ตามเดิม, หน้า detail แสดง "Tax Inclusive" ให้ตรวจก่อนเปิดใช้, ฟอร์มสร้างเริ่มที่สถานะ draft จึงมีจังหวะตรวจก่อน active; ผลกระทบ: ไม่มีงานเพิ่ม, พึ่งวินัยของ admin
+  (ข) widget ที่ zone `promotion.details.before` ของ dashboard แสดง `Alert` (`@medusajs/ui`) เมื่อ promotion เป็น fixed และ `is_tax_inclusive` = false (ไม่บล็อก) — ผลกระทบ: task admin ~60 LOC + e2e (หน้า detail ของ Medusa — widget ของเรามี `data-testid` ได้), เตือนหลังสร้างเท่านั้น
+  (ค) middleware ของเราบน `POST /admin/promotions` และ `POST /admin/promotions/:id` ปฏิเสธ 400 เมื่อ fixed และ `is_tax_inclusive` ไม่ใช่ `true` — ผลกระทบ: ~100 LOC + integration, แตะ `src/api/middlewares.ts` (จุดที่เคย conflict), ข้อความ error ใน dashboard เป็น toast ข้อความดิบ,
+      ต้องจัดการกรณีแก้ `value_type` ผ่าน route อื่นของ promotion ด้วย และบล็อก promotion ฝั่ง `false` ที่ test ตั้งใจสร้าง (ต้องแก้ test เดิม) — ควรมี ADR เพราะเปลี่ยนพฤติกรรมของ route core
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม
