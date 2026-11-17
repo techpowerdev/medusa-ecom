@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (รอบ 32 2026-11-17: คำถาม Q9 (prompt ก่อนปิดฟอร์มที่ dirty), Q10 (error ที่หน้า ≥ 2) — ไม่มี task จนกว่า owner ตอบ; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -614,6 +614,23 @@ none
 
 ### Open questions (รอบ 30)
 none
+
+## Open questions (รอบ 32 — 2026-11-17)
+ที่มา: ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)" ข้อ (3), (6) — ตรวจโค้ดบน develop `a9fec926` และ `@medusajs/dashboard` 2.22.1 / `@medusajs/ui` 4.2.8 ที่ติดตั้ง (path ย่อจาก `apps/backend/src/admin/`)
+- **Q9** (qa #379 O-1) ฟอร์มที่กรอกแล้ว (dirty) ปิดด้วย Escape/ปุ่มปิด/คลิกนอก → ค่าหายโดยไม่ถาม (ตรงกฎ 30c — ADM-26 กันเฉพาะตอน `Combobox` ขยาย); Medusa มี pattern นี้**เฉพาะ modal แบบ route**:
+  `RouteModalForm` (export จาก `@medusajs/dashboard/components`, ใช้ผ่าน `RouteFocusModal.Form`/`RouteDrawer.Form`) ใช้ `useBlocker` ของ react-router บล็อกการออกจาก route เมื่อ `isDirty` แล้วถาม "Are you sure you want to leave this form?"
+  / "You have unsaved changes that will be lost if you exit this form." (`dist/chunk-GXJ5J364.mjs:80`, คำแปล `unsavedChangesTitle`/`unsavedChangesDescription`) — ไม่มี export สำหรับ `FocusModal`/`Drawer` แบบ state ที่เราใช้ตาม Q5;
+  ฟอร์มที่เข้าข่าย 7 จุด: `widgets/variant-evoucher-pool.tsx`, `widgets/flash-sale-options.tsx` (Drawer), `components/affiliate/{payout-form,program-form}.tsx`, `components/affiliate/payout-info-drawer.tsx`, `components/group-buy/create-campaign.tsx`, `components/evoucher/partners-section.tsx` (สร้าง + แก้):
+  (ก) **[แนะนำ]** คง `FocusModal`/`Drawer` แบบ state (Q5) แล้วถาม `usePrompt` ของ `@medusajs/ui` ก่อนปิดเมื่อ `form.formState.isDirty` และไม่ได้กำลังบันทึก — ใช้ถ้อยคำเดียวกับ dashboard; ทำเป็น hook เดียวใน `components/common/` (ผู้ใช้ 7 ที่ — ตาม "Custom Component Guides" เพราะ dashboard ไม่ export ตัวนี้) ต่อกับ `onOpenChange` เดิม (และ `onEscapeKeyDown` ของ ADM-26 ยังทำงานก่อน);
+      เหตุผล: พฤติกรรมเหมือนหน้า admin หลักของ Medusa โดยไม่กลับคำตัดสิน Q5; ผลกระทบ: ~150 LOC + e2e ใหม่ (dirty → Escape → prompt → ยกเลิกแล้วค่าคงอยู่ / ยืนยันแล้วปิด) และต้องแก้ e2e เดิมที่ปิดฟอร์มที่กรอกแล้วด้วย Escape (แตกเป็น 2 PR ตาม module ถ้าเกิน ~400 LOC)
+  (ข) ย้ายฟอร์มไปใช้ `RouteFocusModal`/`RouteDrawer` + `RouteModalForm` ของ Medusa (ได้ prompt อัตโนมัติ) — **กลับคำตัดสิน Q5 ของ owner และต้องแก้ ADR-018**; ผลกระทบ: ทุกฟอร์มต้องมี route ของตัวเอง (URL เปลี่ยน, state ที่ส่งเข้าฟอร์มต้องอ่านจาก URL/loader), e2e ฟอร์มเกือบทั้งหมดต้องแก้ ~400+ LOC หลาย PR
+  (ค) คงเดิม ไม่มี task — ผลกระทบ: admin ที่กด Escape/คลิกนอกโดยไม่ตั้งใจต้องกรอกใหม่ (ไม่มีข้อมูลเสียหาย — ยังไม่ได้บันทึก)
+- **Q10** (qa #381) ตารางที่ error ขณะอยู่หน้า ≥ 2 (`?<prefix>_offset=` > 0) ไม่มีปุ่ม Prev/ลองใหม่ เพราะ ADM-25 ซ่อนแถบแบ่งหน้าตอน `isError && !data` (กฎ 29a) และกฎ 24e ไม่มีปุ่มลองใหม่ (reload หน้า);
+  Medusa: `DataTable` ของ dashboard/`@medusajs/ui` ไม่มี error state/ปุ่ม retry — หน้า list ของ Medusa เองโยน error ให้ `ErrorBoundary` (ไม่มี retry); `emptyState.empty.custom` (ReactNode, `@medusajs/ui` `blocks/data-table/types.d.ts:319`) ใส่ปุ่มได้โดยไม่สร้างตารางเอง;
+  `QueryClient` ของ dashboard `retry: 1` อยู่แล้ว:
+  (ก) **[แนะนำ]** คงเดิม ไม่มี task — เหตุผล: เกิดเฉพาะเมื่อ API ล้มตอนอยู่หน้า ≥ 2 แล้ว refetch ล้มซ้ำ, reload หรือกดเมนูด้านข้าง (URL ไม่มี offset → หน้า 1) แก้ได้ทันที และตรงกับหน้า list ของ Medusa ที่ไม่มี retry; ผลกระทบ: ไม่มีงาน
+  (ข) ปุ่ม "Back to first page" ใน `emptyState.empty.custom` เฉพาะตอน error และ offset > 0 (ล้าง `<prefix>_offset` ผ่าน `useQueryParams`/search params) ทั้ง 7 ตารางของกฎ 29 — ผลกระทบ: ~150 LOC + e2e (testid ปุ่มใหม่ต่อตาราง), แก้กฎ 24e/29
+  (ค) ปุ่ม "Try again" (`refetch()`) ทุกตารางตอน error + ข้อ (ข) — ผลกระทบ: ~200 LOC + e2e, ต้องกันกดซ้ำระหว่าง refetch (`isFetching`), แก้กฎ 24e
 
 ## Open questions
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task

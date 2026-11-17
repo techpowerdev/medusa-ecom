@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
+สถานะ: draft (รอบ 32 2026-11-17: คำถาม Q-O5 งาน CPU ของ checkout — ไม่มี task จนกว่า owner ตอบ; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -313,6 +313,19 @@ OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_PO
 (รอบ 30, 2026-11-13) OPS-22 ☑ #354, OPS-24 ☑ #356 (ปิดรอบ 29); ใหม่: OPS-25 ☐ (nit review #354, AC-40 — owner ยังไม่สั่งทำ); OPS-23 ยังเริ่มได้;
 ไม่เปิด task: integration ของ lock รันบน locking provider แบบ in-memory (#351) — production ใช้ `locking-redis` และ job `docker-worker-mode`/load test รันกับ Redis จริง (รายละเอียด spec 01 หัวข้อ "Follow-up รอบ 30")
 (ปิดรอบ 30/31, 2026-11-14) OPS-25 ☑ #366, OPS-23 ☑ #371 — ผล AC-38 (`docs/evidence/scale/OPS-23/REPORT.md`): คง default pool 10 ไม่เปิด ADR-020 (เลข ADR-020 ยังว่าง); ข้อเสนอเพิ่ม CPU ฝั่ง server/ลดงาน CPU ต่อ request ของ checkout รอ owner (ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)")
+
+(รอบ 32, 2026-11-17) งาน CPU ของ checkout จากผล OPS-23 → **Q-O5** (ยังไม่มี task id); เลข ADR-024 สงวนไว้ถ้าผลนำไปสู่การเปลี่ยน topology ของ prod (ยังไม่เขียน — ไม่จำเป็นจนกว่าจะมีตัวเลข)
+
+## Open questions (รอบ 32)
+- **Q-O5** (OPS-23 #371 — `docs/evidence/scale/OPS-23/REPORT.md` ข้อสรุป 1–3) server CPU เต็ม ~115% (100 = 1 core) ทุกค่า pool, Postgres ~28%, (d)/(e) ของ checkout ไม่ลดด้วย pool → คอขวดคือ CPU ของ server process เดียว;
+  ตรวจแล้ว (develop `a9fec926`): spec นี้**รองรับ horizontal scale อยู่แล้ว** (ตาราง Medusa "Server แบบ stateless; flag `--cluster`", Deliverables ข้อ 2 "prod: 2× server") และ `medusa start` ของ 2.22.1 มี `--cluster` (fork process ตามจำนวน — `@medusajs/medusa/dist/commands/start.js:175–313`)
+  แต่ load-nightly บูต `server` 1 container 1 process (`tools/load/run.sh:100`, `docker-compose.prod.yml`) จึงยังไม่เคยวัดแบบที่ prod จะรัน; runner มาตรฐาน 4 vCPU ใช้ร่วมกับ k6/Postgres/Redis/worker (ข้อจำกัดของ Q-O3 a):
+  (ก) **[แนะนำ]** OPS-26 วัดก่อนตัดสิน: เพิ่ม input `server_processes` (ค่าเริ่มต้น 1 = เดิม) ใน `load-nightly.yml` → `run.sh` ส่ง `--cluster <n>` ให้ container `server` (ไม่เพิ่ม service/infra — ใช้ flag ของ Medusa ที่ spec ระบุไว้แล้ว)
+      แล้วเทียบ 1 vs 2 process ด้วยรูปแบบ AC-38 (gate AC-2/AC-3 ต้องผ่าน, (a)–(e), CPU, event-loop) — เหตุผล: ตอบได้ว่า scale-out ที่ Deliverables ข้อ 2 วางไว้ลด checkout ได้จริงไหมด้วยตัวเลขก่อนลงแรง profile;
+      ผลกระทบ: task ops ~40 LOC + REPORT (แบบ OPS-23), ไม่แตะโค้ด app; ถ้าผลให้เปลี่ยนวิธี deploy prod (เช่นใช้ `--cluster` ใน image แทน/คู่กับ replica) → ADR-024 proposed; ข้อจำกัด: 4 vCPU ร่วมกับ k6 อาจทำให้ผล 2 process ต่ำกว่าจริง
+  (ข) profile ก่อน: รัน load-nightly ด้วย `node --cpu-prof` (หรือ `--prof`) บน server ช่วง checkout แล้วระบุงาน CPU ต่อ request (เช่น workflow/serialization/คำนวณ totals) เพื่อเปิด task ลดงาน — ผลกระทบ: task ops ~50 LOC + วิเคราะห์ profile,
+      task แก้จริงตามมาอาจแตะ workflow ของ checkout/hook (ความเสี่ยงสูงกว่า) และอาจพบว่าเป็นงานภายใน Medusa ที่แก้ไม่ได้
+  (ค) คงเดิมจนก่อนเปิดร้าน — gate ความถูกต้องผ่านทุก run (0 5xx, ไม่ oversell); เป้า p95 < 300ms ของ v1.0 ยังเป็น "รายงานอย่างเดียว" จนมี staging (Q-O3 a) — ผลกระทบ: ไม่มีงานตอนนี้; ความเสี่ยงเรื่องความเร็ว checkout ช่วง flash sale ย้ายไปตอนตั้ง prod จริง
 
 ## Open questions (รอบ 26)
 - ~~Q-O4~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เปิด OPS-23 วัดเทียบ `DATABASE_POOL_MAX` 10/20/40 ก่อน แล้วค่อยตัดสินค่าของ prod ใน ADR-020 จากตัวเลขจริง (AC-38)

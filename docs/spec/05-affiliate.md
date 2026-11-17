@@ -1,6 +1,6 @@
 # 05 Affiliate — ค่าคอมมิชชันแบบมีช่วงเวลากำหนด
 
-สถานะ: in-progress (AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31; รอบ 9 2026-10-27: payouts/paging ของ portal, กฎ 29–30, AC-32..36, AF-7b/AF-10/AF-N1;
+สถานะ: in-progress (รอบ 32 2026-11-17: คำถาม Q21 เพดาน `hold_days` (หัวข้อ "Open questions (รอบ 32)") — validator ของ program ถูกจำกัด int4 ใน GB-17 ของ spec 04 กฎข้อ 40; AF-1 = PR #11; รอบ 7 2026-10-26: กฎ 19 แก้, กฎ 27–28, AC-28..31; รอบ 9 2026-10-27: payouts/paging ของ portal, กฎ 29–30, AC-32..36, AF-7b/AF-10/AF-N1;
 รอบ 11 2026-10-27: admin UI แบบเขียนได้ AF-12a/b/c (owner), นิยาม AF-8a/8b/8c, `has_payout_info` AF-13, ชื่อ affiliate ใน admin AF-14 (owner Q17), กฎ 33–38, AC-39..45;
 รอบ 12 2026-10-28: AF-15, AF-N3, AF-16, กฎ 39–41, AC-46..48; รอบ 13 2026-11-03: token ว่างของ AF-16 #197 → AF-17 (กฎ 41b แก้, AC-49), nit AF-14 #187 → ADM-8a ของ spec 08;
 รอบ 19 2026-11-04: qa #265 O-2 (หน้า Profile ล้นที่ 375 เมื่ออีเมลยาว) → AF-18, กฎ 42, AC-50;
@@ -599,6 +599,15 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
   approved/paid แล้ว — แก้ 2026-10-26, AC-28) ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
 - Q9 (2026-10-25, AF-9) ยกเลิก payout `draft` = soft-delete (ไม่เพิ่มสถานะ `cancelled`)
 - กฎ 20 ให้ตรงกับโค้ดของ PR #35 (`draft → ended` ตรงได้)
+
+## Open questions (รอบ 32 — 2026-11-17)
+- **Q21** (planner รอบ 32 พบระหว่างตรวจ GB-17 — spec 04 กฎข้อ 40; ตรวจ develop `a9fec926`) `hold_days` ที่ผ่าน validator (`apps/backend/src/api/admin/affiliate/validators.ts:31` `.int().min(0)`) แต่ใหญ่เกิน ~99,900,000 วัน
+  ทำให้ `matures_at: new Date(now + entry.hold_days * DAY_MS)` (`src/workflows/affiliate/attribute-order.ts:206`) เป็น Invalid Date (เกิน `Date` สูงสุด 8.64e15 ms) → workflow attribution ของ order ที่อยู่ในโปรแกรมนั้นล้มตอนบันทึก entry (order ไม่กระทบ แต่ affiliate ไม่ได้ค่าคอม และพบตอนมี order แล้วเท่านั้น);
+  GB-17 จำกัดที่ int4 (2147483647) ซึ่งยังใหญ่กว่านี้ (`attribution_window_days` ไม่สร้าง `Date` จึงไม่มีปัญหานี้):
+  (ก) **[แนะนำ]** เพดานทางเทคนิค `hold_days ≤ 36500` (100 ปี) และ `attribution_window_days ≤ 36500` ใน validator → 400 `invalid_data` — เหตุผล: ค่าจริงทางธุรกิจไม่ถึงหลักร้อยวัน ตัวเลขนี้แค่กันข้อมูลพัง ไม่จำกัดการใช้งาน;
+      ผลกระทบ: +~10 LOC + เคส integration ใน `affiliate-admin.spec.ts` รวมใน GB-17 (ไฟล์เดียวกัน) ถ้าตอบก่อน GB-17 เริ่ม ไม่งั้นเปิด AF-24 แยก (~30 LOC)
+  (ข) เพดานทางธุรกิจที่ owner กำหนด (เช่น `hold_days ≤ 365`) — ผลกระทบ: ขนาดเท่า (ก) แต่เป็นกฎธุรกิจใหม่ที่ admin รู้สึกได้ ต้องบอกในฟอร์ม
+  (ค) คงแค่ int4 ของ GB-17 — ผลกระทบ: ไม่มีงานเพิ่ม; admin กรอกค่าเกิน ~99.9 ล้านวันได้แล้ว attribution ล้มเงียบ (admin เท่านั้น โอกาสต่ำ)
 
 ## Open questions (รอบ 12 — ปิดแล้ว)
 - ~~Q19~~ ตัดสินแล้ว (owner 2026-10-28): **(ข) ให้ค่าคอม** → กฎ 41, AF-16, spec 04 กฎข้อ 27; คำถามเดิม (review #185 GB-5) order ของ group buy **ไม่ได้ค่าคอม affiliate** ในทางปฏิบัติ: attribution (AF-3) อ่าน `cart.metadata.affiliate_token` แต่ draft order ของกลุ่มสร้างด้วย
