@@ -10,6 +10,7 @@ type CartTotalsProps = {
     tax_total?: number | null
     currency_code: string
     original_item_total?: number | null
+    item_total?: number | null
     original_shipping_total?: number | null
     discount_total?: number | null
     items?: { requires_shipping?: boolean | null }[] | null
@@ -22,6 +23,7 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
     total,
     tax_total,
     original_item_total,
+    item_total,
     original_shipping_total,
     discount_total,
   } = totals
@@ -30,16 +32,23 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
   // EV-7d (spec 02 กฎข้อ 28a): cart digital-only ไม่มีการจัดส่ง — ไม่แสดงแถวและคำว่าค่าจัดส่ง
   // ยกเว้นยังมีค่าจัดส่งเก็บจริง (ลบสินค้าจัดส่งออกแล้ว Medusa ไม่ลบ shipping method) — ยอดรวมต้องมีแถวอธิบาย
   const noShippingCharge = isDigitalOnlyCart(totals) && !original_shipping_total
+  // CORE-62 (spec 01 กฎข้อ 120): "ก่อนส่วนลด" เฉพาะเมื่อราคาสินค้าลดจริง (ส่วนลดค่าส่งอย่างเดียวคงป้ายเดิม)
+  // 0.005 กันเศษ float; ไม่มี field → ถือว่าไม่ลด; คง discount_total ร่วมด้วยเพื่อให้ป้ายสอดคล้องกับแถว cart-discount
+  const itemDiscounted =
+    !!discount_total &&
+    original_item_total != null &&
+    item_total != null &&
+    original_item_total - item_total > 0.005
 
   return (
     <div data-testid="cart-totals">
       <div className="flex flex-col gap-y-2 txt-medium text-ui-fg-subtle ">
-        {/* CORE-60 (spec 01 กฎข้อ 118, Q-C8 = ก): มีส่วนลด → บอกว่าเป็นยอดก่อนส่วนลด (เงื่อนไขเดียวกับแถว cart-discount)
+        {/* CORE-60 (spec 01 กฎข้อ 118, Q-C8 = ก): ราคาสินค้าลด → บอกว่าเป็นยอดก่อนส่วนลด (เงื่อนไขตามกฎข้อ 120 — CORE-62)
             ป้ายยาวตัดบรรทัดได้ (min-w-0) แต่จำนวนเงินอยู่บรรทัดเดียว (whitespace-nowrap) ที่ 375 */}
         <div className="flex items-center justify-between gap-x-2">
           <span className="min-w-0" data-testid="cart-subtotal-label">
-            {discount_total
-              ? // eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นหน่วย/รหัสตามภาคผนวก 2026-11-13 ของ ADR-014 (Q-C9 = ก) ป้ายตามกฎข้อ 118
+            {itemDiscounted
+              ? // eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นหน่วย/รหัสตามภาคผนวก 2026-11-13 ของ ADR-014 (Q-C9 = ก) ป้ายตามกฎข้อ 118/120
                 "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)"
               : // eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C7 ที่ owner ตัดสิน (spec 01 กฎข้อ 115a)
                 "ยอดรวมสินค้า (รวม VAT)"}
