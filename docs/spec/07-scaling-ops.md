@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (รอบ 32 2026-11-17: คำถาม Q-O5 งาน CPU ของ checkout — ไม่มี task จนกว่า owner ตอบ; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
+สถานะ: draft (รอบ 32 2026-11-17: Q-O5 = ก owner 2026-11-17 → OPS-26 (AC-41) วัด server 1 vs 2 process — หัวข้อ "Follow-up รอบ 32"; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -314,10 +314,30 @@ OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_PO
 ไม่เปิด task: integration ของ lock รันบน locking provider แบบ in-memory (#351) — production ใช้ `locking-redis` และ job `docker-worker-mode`/load test รันกับ Redis จริง (รายละเอียด spec 01 หัวข้อ "Follow-up รอบ 30")
 (ปิดรอบ 30/31, 2026-11-14) OPS-25 ☑ #366, OPS-23 ☑ #371 — ผล AC-38 (`docs/evidence/scale/OPS-23/REPORT.md`): คง default pool 10 ไม่เปิด ADR-020 (เลข ADR-020 ยังว่าง); ข้อเสนอเพิ่ม CPU ฝั่ง server/ลดงาน CPU ต่อ request ของ checkout รอ owner (ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)")
 
-(รอบ 32, 2026-11-17) งาน CPU ของ checkout จากผล OPS-23 → **Q-O5** (ยังไม่มี task id); เลข ADR-024 สงวนไว้ถ้าผลนำไปสู่การเปลี่ยน topology ของ prod (ยังไม่เขียน — ไม่จำเป็นจนกว่าจะมีตัวเลข)
+(รอบ 32, 2026-11-17) งาน CPU ของ checkout จากผล OPS-23 → Q-O5 = ก (owner 2026-11-17) → **OPS-26** ☐ (AC-41); เลข ADR-024 สงวนไว้เฉพาะเมื่อผลทำให้ต้องเปลี่ยนวิธี deploy prod (ยังไม่เขียน)
+
+## Follow-up รอบ 32 (2026-11-17 — Q-O5 = ก)
+Status: accepted (owner สั่งทำ OPS-26 2026-11-17) · Out of scope: แก้โค้ด app/`medusa-config.ts`/ค่า pool, เปลี่ยน `docker-compose.prod.yml` ของ prod (ยกเว้นส่งค่าเข้า command ผ่าน env ของ load run), profile CPU (Q-O5 ทาง ข ไม่ทำ)
+
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| หลาย server process ในเครื่องเดียว | `medusa start --cluster <n>` 2.22.1 (`@medusajs/medusa/dist/commands/start.js:175–313` — fork ตามจำนวน, primary fork ใหม่เมื่อลูกตาย) | ใช้ตามเดิม — ส่ง flag จาก load run เท่านั้น |
+| วัด checkout/CPU/event-loop/pool | sampler + `checkout-timing.md`/`saturation.md` ของ OPS-20b/OPS-23 (ของเรา) | ใช้ตามเดิม — ต้องรวมค่าจากทุก process (ดูกฎ) |
+
+**กฎ (OPS-26)**: (a) `load-nightly.yml` มี `workflow_dispatch` input `server_processes` (ค่าเริ่มต้น `1`); `tools/load/run.sh` ส่งไปให้ container `server` รัน `medusa start --cluster <n>` เมื่อ n > 1 และคงคำสั่งเดิมทุกตัวอักษรเมื่อ n = 1 (nightly ตามตารางไม่เปลี่ยน);
+`--cluster` ใช้กับ `server` เท่านั้น ไม่ใช้กับ `worker`; (b) report บันทึกบรรทัด `server processes (OPS-26): <n>` และยืนยันจำนวน process จริง (เช่น `ps` ใน container หรือ log บูตของแต่ละ process); (c) sampler ของ server ที่ใช้ event-loop/pool ต่อ process รายงานแยกต่อ process หรือรวม (ระบุใน REPORT) — CPU ของ container รวมทุก process;
+(d) ค่า pool ต่อ process คง default 10 (ผลของ OPS-23) → connection รวม = 10 × n ต้องไม่เกิน `max_connections` 100 ของ Postgres; (e) ไม่เพิ่ม package/service; (f) ถ้าผลชี้ว่าควรเปลี่ยนวิธี deploy prod (เช่นใช้ `--cluster` ใน image แทน/คู่กับ replica ตาม Deliverables ข้อ 2) → ADR-024 สถานะ proposed แยก (เลขนี้เท่านั้น) — ไม่แก้ prod ใน PR นี้
+
+**AC-41 (OPS-26)** run `load-nightly` ด้วย `-f flash_burst=1 -f server_processes=1` และ `-f server_processes=2` บน commit เดียวกัน (ทีละ run ตาม concurrency group): gate AC-2/AC-3/AC-33 ผ่านทั้งสอง run (`failures: 0`, ไม่มี 5xx, ไม่ oversell);
+`docs/evidence/scale/OPS-26/REPORT.md` รูปแบบเดียวกับ OPS-23: ตาราง run/artifact, (a)–(e) median/p95 ของ AC-31, ตาราง AC-32 (CPU server, event-loop ต่อ process, รอ pool, connection) และข้อสรุปว่า (d)/(e)/(a) ลดหรือไม่ พร้อมข้อจำกัด (runner 4 vCPU ใช้ร่วมกับ k6);
+static (unit ที่มีอยู่ของ `tools/load` หรือ grep ใน CI): `run.sh` ไม่ใส่ `--cluster` เมื่อค่าเป็น 1/ว่าง; ไม่มีไฟล์ใต้ `apps/` เปลี่ยน; มี ADR-024 เฉพาะเมื่อข้อสรุปเสนอเปลี่ยนวิธี deploy
+
+| Task | งาน | ไฟล์ | ขนาด | Depends | ชนกับ |
+|---|---|---|---|---|---|
+| OPS-26 | (Q-O5 = ก owner 2026-11-17) วัด load-nightly server 1 vs 2 process ด้วย `--cluster` (AC-41) — ☐ พร้อมเริ่ม — owner สั่งทำแล้ว 2026-11-17 (รอ PR เอกสารนี้ merge) | `.github/workflows/load-nightly.yml`, `tools/load/run.sh` (+ sampler ถ้าต้องรวมหลาย process), `docs/evidence/scale/OPS-26/REPORT.md` | ~40 LOC + REPORT | PR เอกสารรอบ 32 merge; OPS-23 ☑ #371; ไม่บล็อก release | ไม่ชน task อื่นที่เปิด (GB-17/CORE-61..63/ADM-27 ไม่แตะ `tools/load/`); รวม nit `tools/load/run.sh` ไม่ unset `DATABASE_POOL_MIN` (review #371) ได้ถ้าเล็ก |
 
 ## Open questions (รอบ 32)
-- **Q-O5** (OPS-23 #371 — `docs/evidence/scale/OPS-23/REPORT.md` ข้อสรุป 1–3) server CPU เต็ม ~115% (100 = 1 core) ทุกค่า pool, Postgres ~28%, (d)/(e) ของ checkout ไม่ลดด้วย pool → คอขวดคือ CPU ของ server process เดียว;
+- ~~**Q-O5**~~ ✅ **owner ตอบ ก 2026-11-17** → OPS-26 (หัวข้อ "Follow-up รอบ 32"); คำถามเดิม: (OPS-23 #371 — `docs/evidence/scale/OPS-23/REPORT.md` ข้อสรุป 1–3) server CPU เต็ม ~115% (100 = 1 core) ทุกค่า pool, Postgres ~28%, (d)/(e) ของ checkout ไม่ลดด้วย pool → คอขวดคือ CPU ของ server process เดียว;
   ตรวจแล้ว (develop `a9fec926`): spec นี้**รองรับ horizontal scale อยู่แล้ว** (ตาราง Medusa "Server แบบ stateless; flag `--cluster`", Deliverables ข้อ 2 "prod: 2× server") และ `medusa start` ของ 2.22.1 มี `--cluster` (fork process ตามจำนวน — `@medusajs/medusa/dist/commands/start.js:175–313`)
   แต่ load-nightly บูต `server` 1 container 1 process (`tools/load/run.sh:100`, `docker-compose.prod.yml`) จึงยังไม่เคยวัดแบบที่ prod จะรัน; runner มาตรฐาน 4 vCPU ใช้ร่วมกับ k6/Postgres/Redis/worker (ข้อจำกัดของ Q-O3 a):
   (ก) **[แนะนำ]** OPS-26 วัดก่อนตัดสิน: เพิ่ม input `server_processes` (ค่าเริ่มต้น 1 = เดิม) ใน `load-nightly.yml` → `run.sh` ส่ง `--cluster <n>` ให้ container `server` (ไม่เพิ่ม service/infra — ใช้ flag ของ Medusa ที่ spec ระบุไว้แล้ว)
