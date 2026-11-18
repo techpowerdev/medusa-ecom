@@ -1,0 +1,77 @@
+# ADM-30 (spec 08 AC-35, กฎ 34; spec 01 กฎข้อ 119c) — static ของ e2e ต้องล้มเมื่อสิ่งที่ตรวจหายไป
+# วันที่: 2026-11-18, node v22.23.3, base origin/develop 8425a53f
+# e2e: backend prod build (NODE_ENV=production medusa build + medusa start จาก .medusa/server) :9322, DB medusa_adm30, Redis db 4, workers=1
+# test เป็น admin ล้วน (BACKEND_URL/app) จึงไม่ได้ start storefront; STRIPE_API_KEY เป็นค่าปลอม sk_test_fake (ไม่ใช้ secret จริง)
+
+## 0. static เดิม (develop 8425a53f) vacuous — ผ่านทั้งที่สำเนาในเครื่องถูก mutate (ไม่ commit):
+##    affiliate-admin-forms.spec.ts: comment assert count ทั้งสองจุด + ตัด pathname === ออกจาก predicate ทั้งสอง
+##    affiliate-admin-payout-create.spec.ts: ลบ softSql "ลบ affiliate ของ test" ออกจาก finally
+### pnpm exec playwright test --project=unit core-46-e2e-hygiene -g "119c|AC-33/AC-34"
+  Running 2 tests using 1 worker
+    ✓  1 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:231:5 › AC-160 (กฎข้อ 119c): AC-44 ลบข้อมูลที่สร้างใน finally และไม่มี request.delete( ที่ไม่ตรวจ ok (2ms)
+    ✓  2 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:248:5 › AC-33/AC-34 (spec 08 กฎ 32, 33; ADM-28, ADM-29): AC-12 ตัวแรกและ payout ของ affiliate-admin-forms ใช้ tag ไม่มีตัวเลข, assert count = 1 ของผล q, ไม่มี waitForTimeout และ setTimeout ≤ 120_000 (4ms)
+    2 passed (277ms)
+
+## 1. Red (AC-35a) — self-check ใหม่ เมื่อ helper ใช้ตรรกะ static เดิม (แทนชั่วคราวในเครื่อง แล้วคืน)
+### pnpm exec playwright test --project=unit core-46-e2e-hygiene -g "AC-35|119c|AC-33"
+    1) [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:273:5 › AC-35 (spec 08 กฎ 34d) self-check: finally ที่ไม่มี softSql ลบ affiliate หรือ finally ของ helper นอก test ไม่ผ่าน 
+      Error: expect(received).not.toEqual(expected) // deep equality
+      Expected: not []
+    2) [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:319:5 › AC-35 (spec 08 กฎ 34a, 34b) self-check: assert count ที่ถูก comment หรือ predicate ที่ไม่เทียบ pathname ไม่ผ่าน 
+      Error: expect(received).not.toEqual(expected) // deep equality
+      Expected: not []
+    2 failed
+    2 passed (1.0s)
+
+## 1b. Red — static ใหม่ (ตรรกะจริง) บน affiliate-admin-forms.spec.ts เดิม: predicate สร้าง new URL( สองครั้ง (กฎ 34c)
+    1) [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:333:5 › AC-33/AC-34/AC-35 (spec 08 กฎ 32, 33, 34; ADM-28, ADM-29, ADM-30): AC-12 ตัวแรกและ payout ของ affiliate-admin-forms ใช้ tag ไม่มีตัวเลข, assert count = 1 ของผล q และ predicate เทียบ pathname (ไม่นับ comment), ไม่มี waitForTimeout และ setTimeout ≤ 120_000 
+      Error: AC-12: ปิด all โดยไม่เลือก scope
+      +   "predicate ต้องสร้าง new URL( ครั้งเดียว: (r) => new URL(r.url()).pathname === \"/admin/collections\" && new URL(r.url()).searchParams.get(\"q\") === term,",
+    1 failed
+    3 passed (387ms)
+
+## 2. static ใหม่บนสำเนาในเครื่องที่ถูก mutate (ไม่ commit) → ล้มทุกกรณี
+  ## M1: comment บรรทัด assert count ใน affiliate-admin-forms.spec.ts (สำเนาในเครื่อง ไม่ commit)
+      Error: AC-12: ปิด all โดยไม่เลือก scope
+      +   "ไม่มี assert .count … toBe(1) ของผล q",
+    1 failed
+  ## M2: predicate ไม่เทียบ pathname ใน affiliate-admin-forms.spec.ts (สำเนาในเครื่อง)
+      Error: AC-12: ปิด all โดยไม่เลือก scope
+      +   "predicate ไม่เทียบ pathname ===: (r) => {
+    1 failed
+  ## M3: ลบ softSql ที่ลบ affiliate ใน finally ของ affiliate-admin-payout-create.spec.ts (สำเนาในเครื่อง)
+      Error: expect(received).toEqual(expected) // deep equality
+      +   "softSql ใน finally ลบ affiliate_payout → affiliate_commission_entry → affiliate_program — ต้องเป็น affiliate_payout → affiliate_commission_entry → affiliate → affiliate_program",
+    1 failed
+
+## 3. Green (AC-35b)
+### pnpm --filter storefront test:e2e:unit (ทั้ง project)
+    118 passed (1.0s)
+### pnpm lint && pnpm typecheck → 0 errors (warning เดิม 28 ไม่มีในไฟล์ที่แตะ; eslint 2 ไฟล์ที่แตะ = 0 problem)
+### pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts --project=chromium --workers=1 (prod build; ไม่มี -- หน้า argument)
+  [1/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง
+  [2/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:132:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด
+  [3/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:168:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้
+  [4/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:232:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ)
+  [5/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:265:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response
+  [6/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:332:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login
+  [7/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet"
+  [8/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet"
+  [9/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet"
+  [10/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet"
+  [11/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet"
+  [12/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet"
+  [13/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet"
+  [14/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet"
+  [15/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:400:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login
+  [16/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:410:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error
+  [17/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:430:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error
+  [18/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:509:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal
+  [19/19] [chromium] › e2e/affiliate-admin-forms.spec.ts:550:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal
+    19 passed (1.2m)
+
+## 4. AC-35c: git diff --stat origin/develop (ไม่มี src/admin/, apps/backend/, playwright.config.ts; ไม่มี waitForTimeout/retries/skip/fixme ใหม่)
+   apps/storefront/e2e/affiliate-admin-forms.spec.ts  | 14 ++--
+   .../e2e/core-46-e2e-hygiene.unit.spec.ts           | 94 ++++++++++++++++++++--
+   2 files changed, 97 insertions(+), 11 deletions(-)
+  grep ของบรรทัดที่เพิ่ม: 1 ครั้ง
