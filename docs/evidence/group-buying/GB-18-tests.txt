@@ -1,0 +1,100 @@
+GB-18 — spec 04 กฎข้อ 41, AC-61 (ส่วนลด fixed ≥ ราคาฐานต่ำสุดของ variant → 400 invalid_data ตอนสร้างแคมเปญ)
+base: origin/develop e9352c91, 2026-11-18, Node 22.23.3
+
+== RED (ก่อนแก้ workflow) ==
+-- unit: pnpm --filter backend test:unit src/modules/group_buy/__tests__/fixed-discount.unit.spec.ts
+Cannot find module '../utils/fixed-discount' → Test Suites: 1 failed (helper ยังไม่มี)
+-- integration: pnpm --filter backend test:integration:http integration-tests/http/group-buy-campaigns.spec.ts -t AC-61
+FAIL integration-tests/http/group-buy-campaigns.spec.ts (12.661 s)
+      ✕ fixed thb 500 → 400 invalid_data with the lowest variant price; nothing is created (1093 ms)
+      ✕ fixed thb 1000 → 400 invalid_data with the lowest variant price; nothing is created (658 ms)
+      ✕ fixed usd 20 → 400 invalid_data with the lowest variant price; nothing is created (314 ms)
+      ✓ fixed thb 499.99 (price list THB 100 is ignored) → 200 (329 ms)
+      ✓ fixed usd 19 → 200 (294 ms)
+      ✓ percentage 100 → 200 (417 ms)
+      ✕ allocation across is compared with the unit price too: 500 → 400, 499.99 → 200 (414 ms)
+      ✕ a failed request with idempotency_key K, then K again with 499.99 → 200 and one campaign is created (445 ms)
+  ●  › fixed discount vs lowest variant price (AC-61) › fixed thb 500 → 400 invalid_data with the lowest variant price; nothing is created
+    Expected: 400
+    Received: 200
+  ●  › fixed discount vs lowest variant price (AC-61) › fixed thb 1000 → 400 invalid_data with the lowest variant price; nothing is created
+    Expected: 400
+    Received: 200
+  ●  › fixed discount vs lowest variant price (AC-61) › fixed usd 20 → 400 invalid_data with the lowest variant price; nothing is created
+    Expected: 400
+    Received: 200
+  ●  › fixed discount vs lowest variant price (AC-61) › allocation across is compared with the unit price too: 500 → 400, 499.99 → 200
+    Expected: 400
+    Received: 200
+  ●  › fixed discount vs lowest variant price (AC-61) › a failed request with idempotency_key K, then K again with 499.99 → 200 and one campaign is created
+    Expected: 400
+    Received: 200
+Tests:       5 failed, 39 skipped, 3 passed, 47 total
+
+== GREEN ==
+-- unit: fixed-discount.unit.spec.ts
+    ✓ ไม่มีราคา → null
+    ✓ ไม่มีราคาฐานในสกุลนั้น → null
+    ✓ กรองสกุลเงินแบบไม่สนตัวพิมพ์ และคืนราคาต่ำสุด (1 ms)
+    ✓ ข้ามราคาที่มี price_list_id (เช่น sale)
+    ✓ ข้ามรายการที่เป็น null และไม่มี amount
+    ✓ ทศนิยมเทียบด้วย MathBN: 499.98 ผ่าน, 499.99 และ 500 ไม่ผ่าน (2 ms)
+    ✓ กรองสกุลเงินไม่สนตัวพิมพ์ (USD 20)
+    ✓ allocation across เทียบกับราคาต่อหน่วยเช่นเดียวกับ each (1 ms)
+    ✓ ไม่ตรวจ: percentage
+    ✓ ไม่ตรวจ: fixed ที่ไม่มี currency_code
+    ✓ ไม่ตรวจ: fixed ในสกุลที่ไม่มีราคาฐาน
+Tests:       11 passed, 11 total
+-- unit ทั้งหมดของ backend: Test Suites: 111 passed, 111 total / Tests: 1483 passed, 1483 total
+-- integration: group-buy-campaigns.spec.ts (ทั้งไฟล์)
+PASS integration-tests/http/group-buy-campaigns.spec.ts (36.614 s)
+      ✓ creates a Medusa campaign + draft GBT- template promotion linked to the campaign (800 ms)
+      ✓ template code on a cart with X gives no adjustment; once active it would give X only (1293 ms)
+      ✓ rolls back the Medusa campaign and template when the group buy campaign cannot be created (429 ms)
+      ✓ restores the campaign, template, links and Medusa campaign when a later step fails (387 ms)
+      ✓ requires an admin user (313 ms)
+      ✓ creates (returning template_promotion_id), lists, retrieves and updates a draft campaign (354 ms)
+      ✓ rejects an invalid body with 400 (274 ms)
+      ✓ template is_tax_inclusive defaults to true, keeps false, and rejects a non-boolean (AC-20c) (417 ms)
+      ✓ returns 404 for an unknown campaign (272 ms)
+      ✓ DELETE on a draft campaign removes the campaign, template, Medusa campaign and links (AC-20a) (325 ms)
+      ✓ DELETE on an active campaign → 400 and nothing is removed (AC-20a) (322 ms)
+      ✓ draft → active → ended succeed; active again on active is a no-op 200 (358 ms)
+      ✓ rejects active → draft and ended → active with 400 (323 ms)
+      ✓ rejects draft → active when the Medusa campaign ends_at has passed (408 ms)
+      ✓ editing target_value of an active campaign → 400; name and pay_within_hours are still editable (482 ms)
+      ✓ two concurrent POSTs with key K → both 200 with the same campaign; one of each is created (647 ms)
+      ✓ POST K again later (different body) → 200 same id, nothing new; key K2 → a new campaign (506 ms)
+      ✓ no key twice → two campaigns (previous behaviour) (502 ms)
+      ✓ key with a space → 400 invalid_data; nothing is created (287 ms)
+      ✓ key 129 characters → 400 invalid_data; nothing is created (282 ms)
+      ✓ key 7 characters → 400 invalid_data; nothing is created (311 ms)
+      ✓ accepts a 128-character key (395 ms)
+      ✓ POST K that fails after the lock → error, nothing left; POST K again → 200 without waiting for the lock TTL (491 ms)
+      ✓ createGroupBuyCampaignWorkflow called directly and concurrently with the same key → one campaign (783 ms)
+      ✓ POST with one product → 200 (631 ms)
+      ✓ POST with two products → 400 invalid_data with the code; no Medusa campaign/promotion is created (586 ms)
+      ✓ POST with values: [] → 400 invalid_data with the code; no Medusa campaign/promotion is created (451 ms)
+      ✓ POST with no items.product.id rule → 400 invalid_data with the code; no Medusa campaign/promotion is created (467 ms)
+      ✓ POST with a variant-level scope → 400 invalid_data with the code; no Medusa campaign/promotion is created (486 ms)
+      ✓ createGroupBuyCampaignWorkflow called directly with two products → same code; nothing is created (493 ms)
+      ✓ draft whose template was edited to two products via the Promotion module → activate 400, still draft (1105 ms)
+      ✓ fixed thb 500 → 400 invalid_data with the lowest variant price; nothing is created (767 ms)
+      ✓ fixed thb 1000 → 400 invalid_data with the lowest variant price; nothing is created (1477 ms)
+      ✓ fixed usd 20 → 400 invalid_data with the lowest variant price; nothing is created (682 ms)
+      ✓ fixed thb 499.99 (price list THB 100 is ignored) → 200 (560 ms)
+      ✓ fixed usd 19 → 200 (844 ms)
+      ✓ percentage 100 → 200 (528 ms)
+      ✓ allocation across is compared with the unit price too: 500 → 400, 499.99 → 200 (704 ms)
+      ✓ a failed request with idempotency_key K, then K again with 499.99 → 200 and one campaign is created (900 ms)
+      ✓ POST with target_value = 2147483648 → 400 invalid_data; nothing is created (532 ms)
+      ✓ POST with max_total_orders = 2147483648 → 400 invalid_data; nothing is created (463 ms)
+      ✓ POST with max_units_per_person = 2147483648 → 400 invalid_data; nothing is created (613 ms)
+      ✓ POST with max_people_per_group = 2147483648 → 400 invalid_data; nothing is created (589 ms)
+      ✓ POST with team_duration_hours = 2147483648 → 400 invalid_data; nothing is created (425 ms)
+      ✓ POST with pay_within_hours = 2147483648 → 400 invalid_data; nothing is created (551 ms)
+      ✓ max_total_orders and pay_within_hours = 2147483647 → 200 and read back unchanged (349 ms)
+      ✓ updating a draft with max_total_orders = 2147483648 → 400 invalid_data; value unchanged (407 ms)
+Tests:       47 passed, 47 total
+
+-- pnpm lint: 0 errors | pnpm typecheck: ผ่าน | pnpm --filter backend build: Backend/Frontend build completed successfully
