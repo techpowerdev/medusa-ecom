@@ -528,7 +528,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | `/admin/evoucher/pools`, `/admin/evoucher/pools/:id` | `evoucher/validators.ts` `poolFields` | `low_stock_threshold` |
 
     นอกขอบเขต: `limit`/`offset` ของ query (มี `max` แล้ว หรือ `OFFSET` ของ Postgres เป็น bigint), field เงินที่เป็น `bigNumber` (`face_value`, `commission_value`, `cap_per_order`),
-    ข้อความ error ใต้ช่องของฟอร์ม admin (400 แสดงเป็น toast ตามเดิม — ROADMAP กลุ่ม ค)
+    ข้อความ error ใต้ช่องของฟอร์ม admin (400 แสดงเป็น toast ตามเดิม — ROADMAP กลุ่ม ค; (รอบ 36 ส่วนที่ 2, 2026-11-18) ฟอร์ม Create campaign ตรวจ ≤ 2147483647 ใต้ช่องก่อนส่ง → ADM-32 spec 08 กฎ 36)
     (ข) (spec 05 Q21 = ก owner 2026-11-17) affiliate program: `hold_days` และ `attribution_window_days` จำกัด **≤ 36500** (100 ปี — เพดานทางเทคนิคกัน `matures_at` เป็น Invalid Date ไม่ใช่กฎธุรกิจ) แทนเพดาน int4 ของสอง field นี้
     → เกินได้ 400 `invalid_data`; ค่าคงที่อยู่ใน `affiliate/validators.ts` หรือ `src/lib/int4.ts` (เลือกใน PR) ที่เดียว
 
