@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (รอบ 35 2026-11-18: ☑ ADM-22 ผลตรวจ (qa, ไม่มี PR — `docs/evidence/admin-ui/ADM-22/REPORT.md`) = เข้ากฎ 26b แต่สาเหตุระดับ build (`medusa build` ไม่ตั้ง `NODE_ENV` = admin แบบ development ทุกหน้า) → owner เลือกแก้ที่การ build → OPS-27 (spec 07 AC-42), ADM-22b ไม่เปิด (✕) — หมายเหตุใต้กฎ 26 และแถว ADM-22 ของหัวข้อ "Follow-up รอบ 28"; ปิดรอบ 34 2026-11-18: ☑ ADM-29 #396 — หัวข้อ "Follow-up รอบ 34" done; ADM-22 ยังพักไว้; รอบ 34 2026-11-18: owner สั่งเปิด ADM-29 (กฎ 33, AC-34 — tag ตัวอักษร + assert จำนวนผลใน test payout ตามกฎ 32f) — หัวข้อ "Follow-up รอบ 34"; กฎ 32f แก้ถ้อยคำ; ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (รอบ 36 2026-11-18: follow-up ปิดรอบ 34/35 → ADM-30 (กฎ 34, AC-35 — static ของ e2e ที่ผ่านได้แม้ไม่มีสิ่งที่ตรวจ) ∥ ADM-31 (กฎ 35, AC-36 — `FocusModal.Title` ของ `@medusajs/ui` ในฟอร์ม `FocusModal` ทั้ง 5 จุด) ☐ รอ owner สั่งทำ — หัวข้อ "Follow-up รอบ 36"; รอบ 35 2026-11-18: ☑ ADM-22 ผลตรวจ (qa, ไม่มี PR — `docs/evidence/admin-ui/ADM-22/REPORT.md`) = เข้ากฎ 26b แต่สาเหตุระดับ build (`medusa build` ไม่ตั้ง `NODE_ENV` = admin แบบ development ทุกหน้า) → owner เลือกแก้ที่การ build → OPS-27 (spec 07 AC-42), ADM-22b ไม่เปิด (✕) — หมายเหตุใต้กฎ 26 และแถว ADM-22 ของหัวข้อ "Follow-up รอบ 28"; ปิดรอบ 34 2026-11-18: ☑ ADM-29 #396 — หัวข้อ "Follow-up รอบ 34" done; ADM-22 ยังพักไว้; รอบ 34 2026-11-18: owner สั่งเปิด ADM-29 (กฎ 33, AC-34 — tag ตัวอักษร + assert จำนวนผลใน test payout ตามกฎ 32f) — หัวข้อ "Follow-up รอบ 34"; กฎ 32f แก้ถ้อยคำ; ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -784,6 +784,72 @@ none
 | Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
 | ADM-29 | (owner 2026-11-18 — ROADMAP ปิดรอบ 33 ข้อ ก (2) + nit review #393/#394) test payout ใน `affiliate-admin-forms.spec.ts` ใช้ tag ตัวอักษร + รอ response `q` แล้ว assert `count` = 1 ก่อนใช้ผล; static ตรวจ "tag ไม่มีตัวเลข" ครอบทั้ง AC-12 ตัวแรกและ payout (กฎ 33) — ☑ #396 (tag ตัวอักษร a–j + assert `count` = 1 ของ `GET /admin/affiliate/affiliates?q=` ก่อนเลือก option; static ประเมินนิพจน์ tag จริงครอบทั้งสอง test) | `apps/storefront/e2e/affiliate-admin-forms.spec.ts`, `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts` (+ `e2e/support/*.ts` ถ้าแยก helper tag), `docs/evidence/admin-ui/ADM-29-tests.txt` | test-only ~15–30 LOC | 1280×800 | AC-34 | PR เอกสารรอบ 34 merge; ไม่บล็อก release | ไม่มี task อื่นที่เปิดอยู่แตะไฟล์เหล่านี้ |
+
+## Follow-up รอบ 36 (2026-11-18 — planner รวบ follow-up ปิดรอบ 34/35 + review #388)
+Status: draft (☐ รอ owner สั่งทำ — test hygiene + a11y ไม่เปลี่ยน business rule/หน้าตา; ไม่บล็อก release) · Out of scope: รวม `sql()`/`new Client` ของ e2e เป็น helper กลาง (ดูหมายเหตุท้ายกฎ 34),
+เพิ่ม `FocusModal.Description`/`Drawer.Description` (คำเตือน `Missing Description` เป็น `console.warn` ของ Radix — เพิ่มข้อความต้องตัดสิน UX), ย้ายไป `RouteFocusModal` (Q5 คงเดิม), แก้ `@medusajs/ui`
+
+ที่มา (ตรวจบน develop `14837f04`):
+- review #396 (ROADMAP ปิดรอบ 34 ข้อ ข): static ของกฎ 33d (`apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts:248–266`) match `/\.count\b[^\n]*\)\.toBe\(1\)/` (`:260`) และ `searchParams.get("q")` (`:259`) บน body ดิบ —
+  บรรทัด assert ที่ถูก comment (`// expect(…count…).toBe(1)`) ยังผ่าน; ไม่บังคับว่า predicate ของ `waitForResponse` ตรวจ `pathname` (กฎ 33b ตรวจโดย reviewer อย่างเดียว);
+  predicate ใน `affiliate-admin-forms.spec.ts:90–92` และ `:204–206` สร้าง `new URL(r.url())` สองครั้ง
+- review #388 (ROADMAP ปิดรอบ 32 ข้อ ข "unit ของกฎข้อ 119c vacuous") — ยังเป็นจริง: static ของ spec 01 กฎข้อ 119c (`core-46-e2e-hygiene.unit.spec.ts:231–239`) ตรวจ `/\bfinally\s*\{/` ทั้งไฟล์ —
+  ตรงกับ `finally` ของ helper `sql()` (`affiliate-admin-payout-create.spec.ts:39`) อยู่แล้ว; และไฟล์นี้ไม่มี `request.delete(` (cleanup ใช้ `softSql` `:198–206`) → `deletes` = `checked` = 0 ผ่านเสมอ แม้ลบ cleanup ทิ้งทั้งหมด
+- qa #399 O-1: console error ของ Radix "`DialogContent` requires a `DialogTitle`" ตอนเปิด Create partner — ทุก `FocusModal` ของเราใช้ `<Heading>` ธรรมดาเป็นหัวข้อ (เช่น `partners-section.tsx:294`) โดยไม่มี `FocusModal.Title` (5 จุด:
+  `components/evoucher/partners-section.tsx:285`, `components/affiliate/program-form.tsx:143`, `components/affiliate/payout-form.tsx:90`, `components/group-buy/create-campaign.tsx:163`, `widgets/variant-evoucher-pool.tsx:155`)
+  → dialog ไม่มีชื่อสำหรับ screen reader; `Drawer` ทุกตัวมี `Drawer.Title` อยู่แล้ว (`flash-sale-options.tsx:159`, `codes-table.tsx:203`, `payout-info-drawer.tsx:78`, `partners-section.tsx:308`)
+
+### What Medusa already gives us (รอบ 36)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ชื่อของ dialog (a11y) | `FocusModal.Title` ของ `@medusajs/ui` 4.2.8 (`focus-modal.d.ts:34` — `RadixDialog.Title` รับ `asChild`) | ใช้ตามเดิม — ห่อ `Heading` เดิมด้วย `asChild` ไม่สร้าง wrapper/component ใหม่ (ลำดับ ADR-018: primitive ของ `@medusajs/ui`; dashboard ไม่ export ตัวแทนสำหรับ modal แบบ state — Q5) |
+| ตรวจ static/ e2e | Playwright `unit` project + jest ของ `src/admin/__tests__` (ของเรา) | ใช้ตามเดิม |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 36)
+34. (ADM-30 — test-only; review #396, #388) static ใน `e2e/core-46-e2e-hygiene.unit.spec.ts` ต้องล้มเมื่อสิ่งที่ตรวจหายไป:
+    (a) กฎ 33d: ตัด comment (`// …` ถึงท้ายบรรทัด และ `/* … */`) ออกจาก body ของ test ก่อน match — assert `.count … toBe(1)` หรือ `searchParams.get("q")` ที่ถูก comment ไว้ต้องทำให้ static ล้ม;
+        มี self-check ด้วย body ตัวอย่างในไฟล์ unit (แบบ `expect(() => testBody("const x = 1", …)).toThrow()` ที่ `:213`) ว่า body ที่ assert ถูก comment ไว้ไม่ผ่าน;
+    (b) กฎ 33b อัตโนมัติ: ใน body ของทั้งสอง test (AC-12 ตัวแรก, payout) predicate ของ `waitForResponse` ที่มี `searchParams.get("q")` ต้องมีการเทียบ `pathname ===` ใน predicate เดียวกัน (self-check: predicate ที่ไม่มี pathname ไม่ผ่าน);
+    (c) `e2e/affiliate-admin-forms.spec.ts` predicate ทั้งสอง (`:90–92`, `:204–206`) สร้าง `new URL(r.url())` ครั้งเดียวต่อการเรียก — สิ่งที่ตรวจเท่าเดิม (pathname + `q`);
+    (d) static ของ spec 01 กฎข้อ 119c: ตรวจ**เฉพาะ `finally` ของ test AC-44** (ไม่ใช่ทั้งไฟล์) ว่ามี `softSql(` ที่ลบ `affiliate_payout` → `affiliate_commission_entry` → `affiliate` → `affiliate_program` ตามลำดับนี้ และ `expect.soft(` ของจำนวน affiliate ที่เหลือ;
+        คงการตรวจ `request.delete(` ที่ไม่ตรวจ `ok()` ไว้ (ใช้เมื่อมี delete); self-check: `finally` ที่ไม่มี `softSql` ลบ `affiliate` ไม่ผ่าน;
+    (e) ห้ามเพิ่ม `waitForTimeout`/timeout/`retries`/`skip`/`fixme`; ไม่แตะ `src/admin/`, `apps/backend/`, `playwright.config.ts`; ไม่แก้ test อื่นในไฟล์ e2e
+    — หมายเหตุ: `sql()` แบบ `new Client` มีสำเนาใน e2e ~15 ไฟล์ (ไม่ใช่ 3 ตามที่ review #388 นับ) → รวมเป็น helper กลางแตะไฟล์กว้างและไม่แก้บั๊ก จึงไม่อยู่ใน ADM-30 (backlog — ROADMAP)
+35. (ADM-31 — a11y; qa #399 O-1) ทุก `FocusModal` ใต้ `src/admin/` มี `FocusModal.Title` ของ `@medusajs/ui` ห่อ heading เดิมด้วย `asChild` (เช่น `<FocusModal.Title asChild><Heading>Create partner</Heading></FocusModal.Title>`):
+    (a) ข้อความ, ระดับ heading, className และตำแหน่งเท่าเดิม — หน้าตาไม่เปลี่ยน; ไม่เปลี่ยน testid/label;
+    (b) dialog มี accessible name (`aria-labelledby` ชี้ id ของ heading) และ Radix ไม่ log `console.error` ที่มีคำ `DialogTitle`;
+    (c) ไม่สร้าง component/hook ใหม่; ไม่แตะ `Drawer` (มี `Drawer.Title` แล้ว) และ `usePrompt` ของ Medusa;
+    (d) พฤติกรรม Escape/prompt ของกฎ 30, 31 และกันกดซ้ำคงเดิม — e2e admin เดิมผ่านโดยไม่แก้;
+    (e) `FocusModal` ใหม่ในอนาคตต้องมี `FocusModal.Title` (static ของ AC-36a บังคับ)
+
+### Acceptance criteria (รอบ 36)
+- AC-35 (ADM-30, กฎ 34)
+  (a) red: self-check ของกฎ 34a/34b/34d (body ตัวอย่างที่ assert ถูก comment, predicate ไม่มี pathname, `finally` ไม่มี cleanup) — static แบบเดิม (`:231–239`, `:248–266`) **ผ่าน**ตัวอย่างเหล่านี้ (vacuous) และแบบใหม่ล้ม;
+      แสดงใน `docs/evidence/admin-ui/ADM-30-tests.txt`: รัน static แบบใหม่บน**สำเนาในเครื่อง**ของ `affiliate-admin-forms.spec.ts` ที่ comment บรรทัด assert `count` (ไม่ commit) → ล้ม; สำเนาของ `affiliate-admin-payout-create.spec.ts` ที่ลบ `softSql` ลบ `affiliate` ออก → ล้ม;
+  (b) green: `pnpm --filter storefront test:e2e:unit` ผ่านทั้ง project; `pnpm --filter storefront test:e2e e2e/affiliate-admin-forms.spec.ts` บน prod build (แบบ CI, `workers=1`) ผ่าน 1 รอบ (ไม่ใส่ `--` หน้า argument — spec 01 AC-160);
+  (c) diff ไม่มี `src/admin/`, `apps/backend/`, `playwright.config.ts`; ไม่มี `waitForTimeout`/`retries`/`skip`/`fixme` ใหม่
+- AC-36 (ADM-31, กฎ 35)
+  (a) static ใน `apps/backend/src/admin/__tests__/medusa-ui.unit.spec.ts` — **ล้มบน develop `14837f04`** (0/5): ทุกไฟล์ใต้ `src/admin/` ที่มี `<FocusModal.Content` มี `<FocusModal.Title` จำนวนเท่ากับ `<FocusModal.Content` และ `FocusModal.Title` มี `asChild`;
+  (b) e2e ใหม่ `e2e/admin-dialog-title.spec.ts` (`evidenceTarget` `ADM-31`, 1280×800, `locale: "en-US"`, `timezoneId: "Asia/Bangkok"`) — **ล้มบน develop**: เปิดฟอร์ม Create partner (`/app/evouchers`), Create program และ Create payout (`/app/affiliate`), Create campaign (`/app/group-buying`)
+      ด้วยปุ่มตามกฎ 7c/18 แล้วหา dialog จาก testid ของ element ในฟอร์ม (`locator("xpath=ancestor::*[@role='dialog']")` — ไม่หาด้วยข้อความ) → `toHaveAccessibleName(/\S/)`;
+      และ `console` type `error` ที่มีคำ `DialogTitle` ตลอด test = 0 (เก็บด้วย `page.on("console")`); `widgets/variant-evoucher-pool.tsx` ครอบด้วย (a) เท่านั้น;
+  (c) e2e admin เดิม (`evoucher-admin-forms`, `affiliate-admin-forms`, `affiliate-admin-payout-create`, `group-buy-admin-form`, `admin-form-discard-prompt`, `evoucher-admin-pool-page`) ผ่านโดยไม่แก้ (CI `storefront-e2e`);
+  (d) qa REPORT `docs/evidence/admin-ui/ADM-31/REPORT.md`: ฟอร์มทั้ง 4 หน้าตาเท่าเดิม (screenshot ≤ 2), console ไม่มี error `DialogTitle`, accessible name ของ dialog ตรงหัวข้อของฟอร์ม (ตรวจโดย qa — ไม่ใช้เป็น locator)
+
+### Test plan (รอบ 36)
+| ชนิด | AC |
+|---|---|
+| static (Playwright `unit` project) + self-check + e2e admin 1 รอบบน prod build | AC-35 — test-only ไม่แตะ `src/admin/` → ไม่ต้องมี qa REPORT (แบบ ADM-28/29) |
+| unit static (jest `src/admin/__tests__`) + e2e ใหม่ + e2e admin เดิมใน CI + qa | AC-36 |
+
+### Tasks (รอบ 36)
+| Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-30 | (รอบ 36 — review #396, #388) static ของกฎ 33 ตัด comment ก่อน match + บังคับ `pathname` ใน predicate; static ของ spec 01 กฎข้อ 119c ตรวจ `finally` ของ AC-44 จริง; `new URL` ครั้งเดียวใน predicate (กฎ 34) | `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts`, `apps/storefront/e2e/affiliate-admin-forms.spec.ts`, `docs/evidence/admin-ui/ADM-30-tests.txt` | test-only ~50–80 LOC | 1280×800 | AC-35 | PR เอกสารรอบ 36 merge; ไม่บล็อก release | ∥ ADM-31, OPS-28, OPS-29 (ไม่มีไฟล์ร่วม) |
+| ADM-31 | (รอบ 36 — qa #399 O-1) `FocusModal.Title asChild` ห่อ heading ของฟอร์ม `FocusModal` 5 จุด + static + e2e accessible name/console (กฎ 35) | `src/admin/components/evoucher/partners-section.tsx`, `src/admin/components/affiliate/program-form.tsx`, `src/admin/components/affiliate/payout-form.tsx`, `src/admin/components/group-buy/create-campaign.tsx`, `src/admin/widgets/variant-evoucher-pool.tsx`, `src/admin/__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/admin-dialog-title.spec.ts` (ใหม่), `docs/evidence/admin-ui/ADM-31/REPORT.md` (qa — session หลัก commit) | ~20 LOC โค้ด + ~80 LOC test | 1280×800 | AC-36 | PR เอกสารรอบ 36 merge; ไม่บล็อก release | ∥ ADM-30, OPS-28, OPS-29 (ไม่มีไฟล์ร่วม) |
 
 ## Open questions
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task
