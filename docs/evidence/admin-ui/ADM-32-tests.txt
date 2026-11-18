@@ -1,0 +1,56 @@
+ADM-32 (spec 08 กฎ 36, AC-37) — ผล test ในเครื่อง 2026-11-18
+backend: prod build (NODE_ENV=production medusa build → medusa start) port 9329, DB medusa_adm32, Redis db 11; chromium 1280x800 en-US Asia/Bangkok
+
+== RED (ก่อนแก้ — test ใหม่บนโค้ดของ develop 5229df55) ==
+-- unit: jest src/admin/lib/__tests__/group-buy-form.unit.spec.ts (37 ล้ม = 7 ช่อง x 5 ค่า + discount_value -10/0)
+   7       ✕ rejects -1 under the field
+   5       ✕ rejects 0 under the field
+   2       ✕ rejects 0 under the field (1 ms)
+   7       ✕ rejects 1.5 under the field
+   6       ✕ rejects 2147483648 above INT4_MAX with the limit in the message
+   1       ✕ rejects 2147483648 above INT4_MAX with the limit in the message (1 ms)
+   6       ✕ rejects 99999999999999999999 above INT4_MAX with the limit in the message
+   1       ✕ rejects 99999999999999999999 above INT4_MAX with the limit in the message (1 ms)
+   1     ✕ rejects discount_value -10 under the field
+   1     ✕ rejects discount_value 0 under the field
+   1 Tests:       37 failed, 70 passed, 107 total
+
+-- e2e: group-buy-admin-form.spec.ts -g ADM-32 (AC-37b ล้มตามคาด; AC-37c ผ่านบน develop เพราะ toast ของ 400 คือพฤติกรรมที่ต้องคงไว้ — spec ไม่กำหนดให้ล้ม)
+  ✘  1 [chromium] › e2e/group-buy-admin-form.spec.ts:529:7 › ADM-32: error ใต้ช่องตัวเลขของฟอร์มสร้างแคมเปญ › AC-37b: max_total_orders -1/1.5/0/2147483648/99999999999999999999, target_value -3, discount_value -10 → error ใต้ช่องไม่ POST; 2147483647 → POST 200 (6.9s)
+  ✓  2 [chromium] › e2e/group-buy-admin-form.spec.ts:597:7 › ADM-32: error ใต้ช่องตัวเลขของฟอร์มสร้างแคมเปญ › AC-37c: 400 ที่ schema ไม่ครอบ → toast ข้อความของ backend 1 ตัว ไม่มี error ใต้ช่อง และ modal ยังเปิด (1.9s)
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByTestId('gb-max-total-orders-error')
+    Expected: visible
+    Error: element(s) not found
+    test-results/group-buy-admin-form-ADM-3-035a3--POST-2147483647-→-POST-200-chromium/test-failed-1.png
+  1 failed
+  1 passed (9.7s)
+
+== GREEN (หลังแก้) ==
+-- unit group-buy-form.unit.spec.ts
+Test Suites: 1 passed, 1 total
+Tests:       107 passed, 107 total
+-- pnpm --filter backend test:unit: Test Suites 110 passed, Tests 1461 passed
+-- pnpm lint: 0 errors; pnpm typecheck: ผ่าน; pnpm --filter storefront test:e2e:unit: 119 passed
+
+-- e2e (prod build): group-buy-admin-form + admin-form-discard-prompt + admin-dialog-title (AC-37d)
+  ✓   1 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create partner — dialog มี accessible name และไม่มี console error DialogTitle (1.3s)
+  ✓   2 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create program — dialog มี accessible name และไม่มี console error DialogTitle (1.2s)
+  ✓   3 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create payout — dialog มี accessible name และไม่มี console error DialogTitle (1.2s)
+  ✓   4 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create campaign — dialog มี accessible name และไม่มี console error DialogTitle (1.2s)
+  ✓   5 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.5s)
+  ✓   6 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้างแคมเปญ — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.6s)
+  ✓   7 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง program — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.1s)
+  ✓   8 [chromium] › e2e/admin-form-discard-prompt.spec.ts:122:5 › AC-32: Drawer แก้ partner — กรอกแล้วคลิกปุ่ม close ของ Drawer → alertdialog; Escape 2 ครั้งติดกันที่ฟอร์มสร้าง → alertdialog ตัวเดียว; บันทึกสำเร็จไม่ถาม (2.9s)
+  ✓   9 [chromium] › e2e/admin-form-discard-prompt.spec.ts:184:5 › AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d) (1.7s)
+  ✓  10 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง (4.5s)
+  ✓  11 [chromium] › e2e/group-buy-admin-form.spec.ts:105:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (2.5s)
+  ✓  12 [chromium] › e2e/group-buy-admin-form.spec.ts:187:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (2.7s)
+  ✓  13 [chromium] › e2e/group-buy-admin-form.spec.ts:241:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (2.9s)
+  ✓  14 [chromium] › e2e/group-buy-admin-form.spec.ts:298:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (8.5s)
+  ✓  15 [chromium] › e2e/group-buy-admin-form.spec.ts:367:5 › AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง body เป็น UTC (2.9s)
+  ✓  16 [chromium] › e2e/group-buy-admin-form.spec.ts:403:7 › ADM-13: หัวตารางรายการแคมเปญ › AC-17: heading และปุ่ม Create campaign อยู่แถวเดียวกันใน gb-campaigns-table และยังเห็นคำเตือน GBT- (1.3s)
+  ✓  17 [chromium] › e2e/group-buy-admin-form.spec.ts:440:7 › ADM-15: ฟอร์มสร้างแคมเปญ — NumberInput และ focus › AC-19: "e" ใน Max total orders → error ใต้ช่องไม่ POST, ว่าง → null, dblclick เปิด dialog เดียว, Escape คืน focus, เปิดใหม่ได้ฟอร์มว่าง + key ใหม่ (9.5s)
+  ✓  18 [chromium] › e2e/group-buy-admin-form.spec.ts:529:7 › ADM-32: error ใต้ช่องตัวเลขของฟอร์มสร้างแคมเปญ › AC-37b: max_total_orders -1/1.5/0/2147483648/99999999999999999999, target_value -3, discount_value -10 → error ใต้ช่องไม่ POST; 2147483647 → POST 200 (3.4s)
+  ✓  19 [chromium] › e2e/group-buy-admin-form.spec.ts:597:7 › ADM-32: error ใต้ช่องตัวเลขของฟอร์มสร้างแคมเปญ › AC-37c: 400 ที่ schema ไม่ครอบ → toast ข้อความของ backend 1 ตัว ไม่มี error ใต้ช่อง และ modal ยังเปิด (2.5s)
+  19 passed (59.3s)

@@ -218,6 +218,58 @@ describe("campaignFormSchema", () => {
   })
 })
 
+// ADM-32 (spec 08 กฎ 36, AC-37a): รูปค่าของช่องจำนวนเต็ม (> 0, ≤ INT4_MAX) และ discount_value (> 0) ตรวจที่ schema
+// → error ใต้ช่อง (Form.ErrorMessage) แทน toast ของ toCampaignBody / ข้อความ 400 ดิบของ backend (GB-17)
+describe("campaignFormSchema — ADM-32 field shape", () => {
+  const INTEGER_FIELDS = [
+    "target_value",
+    "team_duration_hours",
+    "max_total_orders",
+    "max_units_per_person",
+    "max_people_per_group",
+    "pay_within_hours",
+    "max_quantity",
+  ] as const
+  const issuesAt = (field: string, value: string) => {
+    const result = campaignFormSchema.safeParse({ ...emptyCampaignForm(), [field]: value }, CAMPAIGN_PARSE_OPTIONS)
+    return { success: result.success, issues: (result.error?.issues ?? []).filter((i) => i.path[0] === field) }
+  }
+
+  describe.each(INTEGER_FIELDS)("%s", (field) => {
+    it.each(["-1", "1.5", "0"])("rejects %s under the field", (value) => {
+      const { success, issues } = issuesAt(field, value)
+      expect(success).toBe(false)
+      expect(issues).toHaveLength(1)
+      expect(issues[0].path).toEqual([field])
+      expect(issues[0].message).toMatch(/must be a whole number greater than 0$/)
+    })
+
+    it.each(["2147483648", "99999999999999999999"])("rejects %s above INT4_MAX with the limit in the message", (value) => {
+      const { success, issues } = issuesAt(field, value)
+      expect(success).toBe(false)
+      expect(issues).toHaveLength(1)
+      expect(issues[0].path).toEqual([field])
+      expect(issues[0].message).toContain("2147483647")
+    })
+
+    it.each(["1", "2147483647", ""])("accepts %s", (value) => {
+      expect(issuesAt(field, value).issues).toEqual([])
+    })
+  })
+
+  it.each(["-10", "0"])("rejects discount_value %s under the field", (value) => {
+    const { success, issues } = issuesAt("discount_value", value)
+    expect(success).toBe(false)
+    expect(issues.map((i) => [i.path, i.message])).toEqual([
+      [["discount_value"], "Discount value must be a number greater than 0"],
+    ])
+  })
+
+  it("accepts a decimal discount_value 0.5", () => {
+    expect(issuesAt("discount_value", "0.5").issues).toEqual([])
+  })
+})
+
 // GB-15 (AC-58, กฎข้อ 33d): key ของฟอร์มต้องสร้างได้บนหน้า http (ไม่มี crypto.randomUUID — มีแค่ getRandomValues)
 describe("newIdempotencyKey", () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "crypto")

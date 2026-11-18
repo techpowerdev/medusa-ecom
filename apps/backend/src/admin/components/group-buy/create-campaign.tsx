@@ -63,6 +63,13 @@ const INPUTS: TextField[] = [
 const ERROR_TESTIDS: Partial<Record<keyof CampaignForm, string>> = {
   max_quantity: "gb-max-quantity-error",
   max_total_orders: "gb-max-total-orders-error", // ADM-15 (AC-19)
+  // ADM-32 (spec 08 กฎ 36c): รูปค่าของช่องตัวเลขแสดงใต้ช่อง
+  target_value: "gb-target-value-error",
+  team_duration_hours: "gb-team-duration-hours-error",
+  max_units_per_person: "gb-max-units-per-person-error",
+  max_people_per_group: "gb-max-people-per-group-error",
+  pay_within_hours: "gb-pay-within-hours-error",
+  discount_value: "gb-discount-value-error",
 }
 
 // GB-6a: สร้างแคมเปญ (status draft) — ส่วนลด/scope ไปอยู่ที่ promotion ต้นแบบ (ADR-011)
