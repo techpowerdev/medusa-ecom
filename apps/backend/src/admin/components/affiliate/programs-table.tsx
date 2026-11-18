@@ -127,7 +127,9 @@ export const ProgramsTable = () => {
         id: "rate",
         header: "Commission",
       }),
-      program.accessor("hold_days", { header: "Hold days" }),
+      // spec 08 กฎ 41c (ADM-37, Q12 = ก): คอลัมน์สุดท้ายเป็น auto (ไม่มี width) รับความกว้างส่วนเกินที่จอกว้าง — ไม่งั้นทุก td ได้ width 150
+      // (ค่าเริ่มต้นของ tanstack) ผลรวมน้อยกว่าตาราง w-full แล้ว Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
+      program.accessor("hold_days", { header: "Hold days", size: undefined }),
     ],
     [actionsColumn, getFullDate],
   )

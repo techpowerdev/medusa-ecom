@@ -76,8 +76,14 @@ export async function insertApprovedEntry(
 /**
  * ADM-8a (spec 08 AC-11): payout `draft` หลายแถวใส่ตรงใน DB ให้แท็บ Payouts มีมากกว่า 1 หน้า (entry_ids ว่าง — ใช้ดูรายการ/แบ่งหน้าเท่านั้น)
  * created_at ใหม่สุดก่อน (`createdAt` ของแถวแรก) คืน id ตามลำดับที่ตารางแสดง
+ * ADM-37 (spec 08 AC-42a2): `reference` ใส่ให้ทุกแถว (ค่าเริ่มต้น null) — payout draft ที่มี reference ยาวยังมีปุ่ม `…` (paid ไม่มี — กฎ 10)
  */
-export async function insertDraftPayouts(affiliateId: string, count: number, createdAt: Date) {
+export async function insertDraftPayouts(
+  affiliateId: string,
+  count: number,
+  createdAt: Date,
+  { reference = null }: { reference?: string | null } = {},
+) {
   const db = new Client({ connectionString: process.env.DATABASE_URL })
   await db.connect()
   const ids: string[] = []
@@ -87,9 +93,9 @@ export async function insertDraftPayouts(affiliateId: string, count: number, cre
       const at = new Date(createdAt.getTime() - i * 1000)
       await db.query(
         `insert into affiliate_payout
-           (id, affiliate_id, amount, raw_amount, currency, period_from, period_to, status, entry_ids, created_at, updated_at)
-         values ($1, $2, 1, '{"value":"1","precision":20}', 'thb', $3, $3, 'draft', '{}', $3, $3)`,
-        [id, affiliateId, at],
+           (id, affiliate_id, amount, raw_amount, currency, period_from, period_to, status, entry_ids, reference, created_at, updated_at)
+         values ($1, $2, 1, '{"value":"1","precision":20}', 'thb', $3, $3, 'draft', '{}', $4, $3, $3)`,
+        [id, affiliateId, at, reference],
       )
       ids.push(id)
     }

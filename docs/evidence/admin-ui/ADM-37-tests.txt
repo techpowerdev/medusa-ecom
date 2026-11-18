@@ -1,0 +1,148 @@
+# ADM-37 (spec 08 กฎ 41, AC-42) — ผล test
+# เครื่อง local: backend prod build (`NODE_ENV=production pnpm --filter backend build` + `medusa start` ใน .medusa/server แบบ CI)
+# port 9344, DB medusa_adm37, Redis db 14, Playwright chromium, CI=1 (workers=1)
+# Q12 = ก (owner 2026-11-19): คอลัมน์สุดท้ายเป็น auto (`size: undefined`) — programs "Hold days" (`hold_days`), affiliates "Joined" (`created_at`),
+# payouts "Payout" (`id`); คอลัมน์ actions คงขนาดเดิม (size ค่าเริ่มต้น 150) และ meta `___truncateTooltip: false` เดิม
+
+## RED — develop dccf7a7d (โค้ด admin ของ develop + e2e ใหม่ของ AC-42a): admin-table-long-text.spec.ts
+# AC-40a เดิม 2 ตัว + partners 1920 (regression) ผ่านอยู่แล้ว; AC-42a1/a2 ล้มที่ความกว้างเนื้อหา cell (Received = px)
+  ✓  1 [chromium] › e2e/admin-table-long-text.spec.ts:200:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.6s)
+  ✓  2 [chromium] › e2e/admin-table-long-text.spec.ts:216:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.4s)
+  ✘  3 [chromium] › e2e/admin-table-long-text.spec.ts:288:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ (1.2s)
+  ✘  4 [chromium] › e2e/admin-table-long-text.spec.ts:313:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ (1.3s)
+  ✘  5 [chromium] › e2e/admin-table-long-text.spec.ts:329:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ (1.3s)
+  ✘  6 [chromium] › e2e/admin-table-long-text.spec.ts:344:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  7 [chromium] › e2e/admin-table-long-text.spec.ts:365:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ (1.2s)
+    Error: เนื้อหา cell Affiliate
+    Received:    2587.609375
+    test-results/admin-table-long-text-ADM--d6035-ltip-ชื่อ-อีเมล-ปุ่ม-…-ในจอ-chromium/test-failed-1.png
+    Error: เนื้อหา cell Program
+    Received:    338.484375
+    test-results/admin-table-long-text-ADM--1aa69-ชื่อยาว-≤-250px-ปุ่ม-…-ในจอ-chromium/test-failed-1.png
+    Error: เนื้อหา cell Name
+    Received:    342.703125
+    test-results/admin-table-long-text-ADM--67a86-ีเมลยาว-≤-250px-ปุ่ม-…-ในจอ-chromium/test-failed-1.png
+    Error: เนื้อหา cell Affiliate
+    Received:    2580.109375
+    test-results/admin-table-long-text-ADM--f29c0-nce-ยาว-≤-250px-ปุ่ม-…-ในจอ-chromium/test-failed-1.png
+  4 failed
+  3 passed (13.2s)
+
+## RED ขั้นที่ 2 — หลังตั้ง size/maxSize + คอลัมน์ auto แต่ยังไม่ใส่ {" "} ใน AffiliateCell (กฎ 41b): tooltip เป็น "ชื่ออีเมล" ติดกัน
+  ✓  1 [chromium] › e2e/admin-table-long-text.spec.ts:200:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.6s)
+  ✓  2 [chromium] › e2e/admin-table-long-text.spec.ts:216:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.4s)
+  ✘  3 [chromium] › e2e/admin-table-long-text.spec.ts:288:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ (6.5s)
+  ✓  4 [chromium] › e2e/admin-table-long-text.spec.ts:313:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ (1.2s)
+  ✓  5 [chromium] › e2e/admin-table-long-text.spec.ts:329:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ (1.2s)
+  ✓  6 [chromium] › e2e/admin-table-long-text.spec.ts:344:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ (1.3s)
+  ✓  7 [chromium] › e2e/admin-table-long-text.spec.ts:365:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+    Error: expect(locator).toHaveText(expected) failed
+    test-results/admin-table-long-text-ADM--d6035-ltip-ชื่อ-อีเมล-ปุ่ม-…-ในจอ-chromium/test-failed-1.png
+  1 failed
+  6 passed (17.6s)
+    Expected: "adm35-mwmht0z4236906 ชื่อยาวมากLongNameชื่อยา …(ตัด)
+    Received: "adm35-mwmht0z4236906 ชื่อยาวมากLongNameชื่อยา …(ตัด)
+#   ท้าย Expected: "…ชื่อยาว a37-…@long-domain-…" / ท้าย Received: "…ชื่อยาวa37-…@long-domain-…" (ไม่มีช่องว่าง)
+
+## ชุด admin เต็ม (สะสมข้อมูลใน DB ก่อนรันซ้ำ) — e2e/admin-* e2e/affiliate-admin-* e2e/evoucher-admin-* (workers=1)
+  2 failed
+  94 passed (4.5m)
+# 2 ตัวที่ล้ม = affiliate-admin-forms.spec.ts:381 (network ล้ม) และ :400 (401) — ENOENT ของ trace ใน test-results/.playwright-artifacts
+# เพราะรัน `test:e2e:unit` พร้อมกันในโฟลเดอร์เดียวกัน (ไม่ใช่ assertion) — รันซ้ำทันทีบน build เดียวกัน:
+  ✓  1 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.8s)
+  ✓  2 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.5s)
+  ✓  3 [chromium] › e2e/affiliate-admin-forms.spec.ts:400:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.2s)
+  3 passed (8.1s)
+
+## AC-42b — admin-table-long-text.spec.ts ทั้งไฟล์ + admin-row-menu-escape.spec.ts --repeat-each=5 (prod build, workers=1, DB ที่มีข้อมูลสะสม)
+  ✓   1 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓   2 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓   3 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓   4 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.6s)
+  ✓   5 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.4s)
+  ✓   6 [chromium] › e2e/admin-table-long-text.spec.ts:200:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.4s)
+  ✓   7 [chromium] › e2e/admin-table-long-text.spec.ts:216:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.7s)
+  ✓   8 [chromium] › e2e/admin-table-long-text.spec.ts:288:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ (1.5s)
+  ✓   9 [chromium] › e2e/admin-table-long-text.spec.ts:313:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+  ✓  10 [chromium] › e2e/admin-table-long-text.spec.ts:329:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  11 [chromium] › e2e/admin-table-long-text.spec.ts:344:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  12 [chromium] › e2e/admin-table-long-text.spec.ts:365:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ (1.2s)
+  ✓  13 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.0s)
+  ✓  14 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  15 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  16 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.4s)
+  ✓  17 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  18 [chromium] › e2e/admin-table-long-text.spec.ts:200:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.5s)
+  ✓  19 [chromium] › e2e/admin-table-long-text.spec.ts:216:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.6s)
+  ✓  20 [chromium] › e2e/admin-table-long-text.spec.ts:288:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ (1.8s)
+  ✓  21 [chromium] › e2e/admin-table-long-text.spec.ts:313:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+  ✓  22 [chromium] › e2e/admin-table-long-text.spec.ts:329:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  23 [chromium] › e2e/admin-table-long-text.spec.ts:344:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  24 [chromium] › e2e/admin-table-long-text.spec.ts:365:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+  ✓  25 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  26 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.1s)
+  ✓  27 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (2.8s)
+  ✓  28 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  29 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  30 [chromium] › e2e/admin-table-long-text.spec.ts:200:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.4s)
+  ✓  31 [chromium] › e2e/admin-table-long-text.spec.ts:216:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.6s)
+  ✓  32 [chromium] › e2e/admin-table-long-text.spec.ts:288:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ (1.6s)
+  ✓  33 [chromium] › e2e/admin-table-long-text.spec.ts:313:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+  ✓  34 [chromium] › e2e/admin-table-long-text.spec.ts:329:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ (1.3s)
+  ✓  35 [chromium] › e2e/admin-table-long-text.spec.ts:344:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  36 [chromium] › e2e/admin-table-long-text.spec.ts:365:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+  ✓  37 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.1s)
+  ✓  38 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.1s)
+  ✓  39 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (2.9s)
+  ✓  40 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  41 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  42 [chromium] › e2e/admin-table-long-text.spec.ts:200:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.4s)
+  ✓  43 [chromium] › e2e/admin-table-long-text.spec.ts:216:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.5s)
+  ✓  44 [chromium] › e2e/admin-table-long-text.spec.ts:288:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ (1.6s)
+  ✓  45 [chromium] › e2e/admin-table-long-text.spec.ts:313:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+  ✓  46 [chromium] › e2e/admin-table-long-text.spec.ts:329:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  47 [chromium] › e2e/admin-table-long-text.spec.ts:344:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  48 [chromium] › e2e/admin-table-long-text.spec.ts:365:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+  ✓  49 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.1s)
+  ✓  50 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  51 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  52 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  53 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  54 [chromium] › e2e/admin-table-long-text.spec.ts:200:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.4s)
+  ✓  55 [chromium] › e2e/admin-table-long-text.spec.ts:216:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.6s)
+  ✓  56 [chromium] › e2e/admin-table-long-text.spec.ts:288:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ (1.5s)
+  ✓  57 [chromium] › e2e/admin-table-long-text.spec.ts:313:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ (1.1s)
+  ✓  58 [chromium] › e2e/admin-table-long-text.spec.ts:329:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ (1.5s)
+  ✓  59 [chromium] › e2e/admin-table-long-text.spec.ts:344:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+  ✓  60 [chromium] › e2e/admin-table-long-text.spec.ts:365:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ (1.2s)
+  60 passed (2.4m)
+
+## AC-42b — static ของ AC-38a (apps/backend/src/admin/__tests__/medusa-ui.unit.spec.ts -t "AC-38")
+    ✓ self-check: object ที่ไม่มี meta หรือ meta เป็น true ไม่ผ่าน, ที่มี ___truncateTooltip: false ผ่าน
+    ✓ พบคอลัมน์ actions อย่างน้อย 5 จุด (กัน vacuous)
+    ✓ components/affiliate/affiliates-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✓ components/affiliate/payouts-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✓ components/affiliate/programs-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✓ components/evoucher/codes-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✓ components/evoucher/partners-section.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+Tests:       224 skipped, 7 passed, 231 total
+
+## วัดในหน้า admin จริง (probe ชั่วคราว ไม่ commit) — แถวแรกของแต่ละตารางมีข้อความยาว (ชื่อ program 370 ตัว / affiliate ชื่อ 370 + อีเมล ~99 /
+## payout ของ affiliate ชื่อยาว + reference 370 ตัว); tds = ความกว้าง td (px) ตามลำดับคอลัมน์; gapAfterButton = ระยะจากขอบขวาปุ่ม … ถึงขอบขวา td ของปุ่ม
+### 1920×1080 — ที่ทำ (Q12 = ก: คอลัมน์สุดท้าย auto)
+programs   table 1576  tds [Program 298, Status 150, actions 150, Starts 160, Ends 160, Commission 150, Hold days 507]  ปุ่ม right 758, ช่องว่างหลังปุ่ม 122
+affiliates table 1576  tds [Name 298, Email 274, Code 246, Status 150, actions 150, Joined 458]  ปุ่ม right 1278, ช่องว่างหลังปุ่ม 122
+payouts    table 1576  tds [Status 131, actions 119, Affiliate 274, Amount 126, Period 202, Paid at 159, Reference 274, Payout 291]  ปุ่ม right 441, ช่องว่างหลังปุ่ม 91
+### 1920×1080 — จำลอง Q12 ข (ใน DOM: ล้าง width ของ td actions, ตั้ง width 150px ที่คอลัมน์สุดท้าย) — ข้อมูลประกอบคำตอบ Q12
+programs   tds [298, 150, actions 507, 160, 160, 150, 150]  ช่องว่างหลังปุ่ม 479 (กลางตาราง)
+affiliates tds [298, 274, 246, 150, actions 449, 159]  ช่องว่างหลังปุ่ม 421 (กลางตาราง)
+payouts    tds [150, actions 76, 274, 150, 202, 159, 274, 291]  ช่องว่างหลังปุ่ม 48 (ตารางกว้างพอดีเนื้อหา ไม่มีส่วนเกินมาก)
+### 1280×800 — ที่ทำ
+programs   table 1036  tds [298, 116, 94, 160, 160, 122, 86]  ปุ่ม right 674
+affiliates table 1097  tds [298, 274, 246, 69, 52, 159]  ปุ่ม right 1147 (ตารางกว้างกว่ากล่อง — qa #416 O-2 out of scope; ปุ่มยังในจอ)
+payouts    table 1414  tds [88, 52, Affiliate 274, 74, 202, 159, Reference 274, 291]  ปุ่ม right 348 (ก่อนแก้ cell Affiliate ~2587 — RED ด้านบน)
+
+## อื่น ๆ
+- pnpm lint && pnpm typecheck: ผ่าน
+- pnpm --filter backend test:unit: Test Suites 111 passed, Tests 1493 passed
+- pnpm --filter storefront test:e2e:unit: 122 passed (รวม evidence-budget และ hygiene)

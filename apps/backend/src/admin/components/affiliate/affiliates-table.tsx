@@ -145,8 +145,11 @@ export const AffiliatesTable = () => {
         ),
       }),
       actionsColumn,
+      // spec 08 กฎ 41c (ADM-37, Q12 = ก): คอลัมน์สุดท้ายเป็น auto (ไม่มี width) รับความกว้างส่วนเกินที่จอกว้าง — ไม่งั้นทุก td ได้ width 150
+      // (ค่าเริ่มต้นของ tanstack) ผลรวมน้อยกว่าตาราง w-full แล้ว Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
       columnHelper.accessor("created_at", {
         header: "Joined",
+        size: undefined,
         cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
     ],
