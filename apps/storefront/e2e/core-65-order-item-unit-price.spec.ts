@@ -1,7 +1,8 @@
 import crypto from "node:crypto"
 
-import { APIRequestContext, APIResponse, Locator, Page } from "@playwright/test"
+import { APIRequestContext, Page } from "@playwright/test"
 
+import { expectAmounts } from "./support/amounts"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import {
@@ -10,6 +11,7 @@ import {
   Headers,
   adminHeaders,
   createCustomer,
+  ok,
   placeOrder,
   publishableKey,
   signInAs,
@@ -28,23 +30,6 @@ const VIEWPORTS = [
 
 // screenshot สำคัญ ≤ 4 รูป (AC-164f): qty 1 ลด/ไม่ลด และ qty 2 ลด ที่ 1280 + qty 1 ลด ที่ 375
 const EVIDENCE = new Set(["qty1-discount-1280", "qty1-plain-1280", "qty2-discount-1280", "qty1-discount-375"])
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ API ใน e2e
-const ok = async (res: APIResponse, what: string): Promise<any> => {
-  expect(res.status(), `${what}: ${await res.text()}`).toBe(200)
-  return res.json()
-}
-
-/**
- * จำนวน element = จำนวนค่าที่คาด (รวมที่ซ่อน) และทุกตัว visible พร้อมตัวเลขใกล้ค่าที่คาดตามลำดับ
- * CORE-66 (กฎข้อ 124e, nit review #406): ตัดอักขระที่ไม่ใช่ตัวเลข/จุดแล้วเทียบด้วย toBeCloseTo(…, 2) แทนการปัด 2 ตำแหน่ง
- */
-async function expectAmounts(el: Locator, expected: number[], what: string) {
-  await expect(el, `${what} count`).toHaveCount(expected.length)
-  const shown = (await el.filter({ visible: true }).allTextContents()).map((t) => Number(t.replace(/[^0-9.]/g, "")))
-  expect(shown, `${what} visible`).toHaveLength(expected.length)
-  expected.forEach((value, i) => expect(shown[i], `${what} [${i}]`).toBeCloseTo(value, 2))
-}
 
 type Line = { quantity: number; total: number; original_total: number }
 

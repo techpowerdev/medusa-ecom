@@ -1,0 +1,73 @@
+# CORE-67 — ผล test (spec 01 กฎข้อ 125, AC-166) — 2026-11-18, node v22.23.3, ในเครื่อง: backend :9339 (medusa develop, DB medusa_core67, Redis db 9), storefront :8339 (next dev)
+
+## Red — unit AC-166a บน develop 2e056cf6 (ยังไม่มี src/lib/util/line-item-compare-at.ts)
+FAIL  src/lib/util/line-item-compare-at.test.ts — Failed to resolve import "./line-item-compare-at"
+      1| import { describe, expect, it } from "vitest"
+      2|
+      3| import { lineReferenceTotal } from "./line-item-compare-at"
+       | ^
+      4|
+      5| // spec 01 กฎข้อ 125a / AC-166a (CORE-67): ยอดอ้างอิงก่อนลดของทั้ง lin…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  21:57:03
+   Duration  82ms (worker 97%, environment 3%)
+
+
+## Red — e2e AC-166b ฉบับสุดท้ายบน LineItemPrice/LineItemUnitPrice ของ develop 2e056cf6 — ตรวจจาก Store API ผ่าน (line มี compare_at_unit_price = 500 ทั้ง cart และ order ด้วย fields ของ storefront) แต่ /cart ของ S1 ไม่มี product-original-price
+Running 1 test using 1 worker
+  ✘  1 [chromium] › e2e/core-67-sale-price-strikethrough.spec.ts:110:5 › AC-166b: price list แบบ sale แสดงราคาเดิม (compare_at_unit_price) ขีดฆ่าใน /cart, preview และ order-completed ไม่ซ้อนกับ promotion (9.3s)
+  1) [chromium] › e2e/core-67-sale-price-strikethrough.spec.ts:110:5 › AC-166b: price list แบบ sale แสดงราคาเดิม (compare_at_unit_price) ขีดฆ่าใน /cart, preview และ order-completed ไม่ซ้อนกับ promotion › (b1)/(b3) /cart ของ S1 ที่ 1280: ราคาเดิมขีดฆ่าจาก compare_at_unit_price 
+    Error: product-original-price = ref count
+    expect(locator).toHaveCount(expected) failed
+    Locator:  getByTestId('cart-container').getByTestId('product-row').getByTestId('product-original-price')
+    Expected: 1
+    Received: 0
+    Timeout:  5000ms
+    Call log:
+      - product-original-price = ref count getByTestId('cart-container').getByTestId('product-row').getByTestId('product-original-price') with timeout 5000ms
+      - waiting for getByTestId('cart-container').getByTestId('product-row').getByTestId('product-original-price')
+        14 × locator resolved to 0 elements
+           - unexpected value "0"
+       at support/amounts.ts:20
+      18 | /** จำนวน element = จำนวนค่าที่คาด (รวมที่ซ่อน) และทุกตัว visible พร้อมตัวเลขใกล้ค่าที่คาดตามลำดับ ([] = ไม่มี element) */
+      19 | export async function expectAmounts(el: Locator, expected: number[], what: string) {
+    > 20 |   await expect(el, `${what} count`).toHaveCount(expected.length)
+         |                                     ^
+      21 |   const shown = (await el.filter({ visible: true }).allTextContents()).map(amountOf)
+      22 |   expect(shown, `${what} visible`).toHaveLength(expected.length)
+      23 |   expected.forEach((value, i) => expectAmountClose(shown[i], value, `${what} [${i}]`))
+        at expectAmounts (wt-CORE-67/apps/storefront/e2e/support/amounts.ts:20:37)
+        at expectRow (wt-CORE-67/apps/storefront/e2e/core-67-sale-price-strikethrough.spec.ts:72:22)
+        at wt-CORE-67/apps/storefront/e2e/core-67-sale-price-strikethrough.spec.ts:199:9
+        at wt-CORE-67/apps/storefront/e2e/support/fixtures.ts:33:11
+        at wt-CORE-67/apps/storefront/e2e/support/fixtures.ts:31:7
+        at wt-CORE-67/apps/storefront/e2e/core-67-sale-price-strikethrough.spec.ts:195:7
+  1 failed
+    [chromium] › e2e/core-67-sale-price-strikethrough.spec.ts:110:5 › AC-166b: price list แบบ sale แสดงราคาเดิม (compare_at_unit_price) ขีดฆ่าใน /cart, preview และ order-completed ไม่ซ้อนกับ promotion 
+
+## Green — unit AC-166a
+ ✓ src/lib/util/line-item-compare-at.test.ts (7 tests)
+ storefront test:unit ทั้งชุด: Test Files 101 passed (101) · Tests 1185 passed (1185)
+
+## Green — e2e ใหม่ + e2e เดิมที่เกี่ยวข้อง (--workers=1; core-65/66 ใช้ helper ร่วม e2e/support/amounts.ts)
+  ✓  1 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (2.9s)
+  ✓  2 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (19.1s)
+  ✓  3 [chromium] › e2e/core-64-promotion-fixed-vat.spec.ts:29:5 › AC-163(b): ส่วนลด fixed ฿100 แบบรวม VAT แสดงในตะกร้าเป็น 100 พอดี และแถวรวมได้ยอดสุทธิ (1.4s)
+  ✓  4 [chromium] › e2e/core-65-order-item-unit-price.spec.ts:75:5 › AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375 (8.3s)
+  ✓  5 [chromium] › e2e/core-66-checkout-preview-unit-price.spec.ts:78:5 › AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375; /cart คงเดิม (6.1s)
+  ✓  6 [chromium] › e2e/core-67-sale-price-strikethrough.spec.ts:110:5 › AC-166b: price list แบบ sale แสดงราคาเดิม (compare_at_unit_price) ขีดฆ่าใน /cart, preview และ order-completed ไม่ซ้อนกับ promotion (5.4s)
+  ✓  7 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (3.1s)
+  ✓  8 [chromium] › e2e/thai-ui-cart-order.spec.ts:91:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (5.1s)
+  8 passed (52.7s)
+
+## ตรวจอื่น
+- storefront test:e2e:unit: 120 passed
+- pnpm lint: 0 errors (warning 28/2 เท่ากับ develop — ไม่มี warning ในไฟล์ที่แตะ)
+- pnpm typecheck: ผ่าน (storefront + backend)
+- pnpm --filter storefront build: ผ่าน
+- ไม่ต้องแก้ lib/data/{cart,orders}.ts: `*items` ส่ง compare_at_unit_price มาแล้ว (e2e ตรวจก่อน assert UI)
