@@ -228,14 +228,65 @@ test("AC-160 (กฎข้อ 119b): const PAGINATION_TEXT ประกาศท
   }
 })
 
-test("AC-160 (กฎข้อ 119c): AC-44 ลบข้อมูลที่สร้างใน finally และไม่มี request.delete( ที่ไม่ตรวจ ok", () => {
+/** ADM-30 (spec 08 กฎ 34a): ตัด comment ออก (คง string literal) ก่อน match — assert ที่ถูก comment ไว้ไม่นับ */
+const stripComments = (code: string) => code.replace(STRING_OR_COMMENT, (_match, literal: string | undefined) => literal ?? "")
+
+/** ADM-30: เนื้อในของวงเล็บที่เปิดที่ `start` (นับคู่ `open`/`close`) — หาวงเล็บปิดไม่เจอต้อง throw ไม่ผ่านเงียบ */
+const balanced = (code: string, start: number, open: string, close: string) => {
+  let depth = 0
+  for (let i = start; i < code.length; i++) {
+    if (code[i] === open) depth++
+    else if (code[i] === close && --depth === 0) return code.slice(start + 1, i)
+  }
+  throw new Error(`ไม่พบ ${close} ที่ปิด ${open} ตำแหน่ง ${start}`)
+}
+
+const AC44_CLEANUP = ["affiliate_payout", "affiliate_commission_entry", "affiliate", "affiliate_program"]
+
+/** ADM-30 (spec 08 กฎ 34d; spec 01 กฎข้อ 119c): ปัญหาของ `finally` ใน body ของ test AC-44 — ไม่ดู `finally` ของ helper นอก test */
+const ac44FinallyProblems = (body: string) => {
+  const code = stripComments(body)
+  const at = code.search(/\bfinally\s*\{/)
+  if (at === -1) return ["ไม่พบ finally ใน test AC-44"]
+  const block = balanced(code, code.indexOf("{", at), "{", "}")
+  const deleted = Array.from(block.matchAll(/softSql\("[^"]*",\s*"delete from (\w+)/g), ([, table]) => table)
+  const problems: string[] = []
+  if (deleted.join() !== AC44_CLEANUP.join()) {
+    problems.push(`softSql ใน finally ลบ ${deleted.join(" → ") || "(ไม่มี)"} — ต้องเป็น ${AC44_CLEANUP.join(" → ")}`)
+  }
+  if (!/softSql\("[^"]*",\s*"select count\(\*\)[^"]*from affiliate\b/.test(block)) problems.push("ไม่นับ affiliate ที่เหลือด้วย softSql")
+  if (!/expect\.soft\([^\n]*\.count\b[^\n]*\)\.toBe\(0\)/.test(block)) problems.push("ไม่มี expect.soft(… count …).toBe(0)")
+  return problems
+}
+
+test("AC-160 (กฎข้อ 119c; spec 08 กฎ 34d): finally ของ test AC-44 ลบ payout → entry → affiliate → program ด้วย softSql + expect.soft จำนวนที่เหลือ และไม่มี request.delete( ที่ไม่ตรวจ ok", () => {
   const src = read("affiliate-admin-payout-create.spec.ts")
-  expect(src).toMatch(/\bfinally\s*\{/)
+  expect(ac44FinallyProblems(testBody(src, "AC-44:"))).toEqual([])
   const deletes = src.match(/request\.delete\(/g)?.length ?? 0
   const checked = Array.from(src.matchAll(/const (\w+) = await request\.delete\(/g)).filter(([, name]) =>
     src.includes(`${name}.ok()`)
   ).length
   expect(checked).toBe(deletes)
+})
+
+test("AC-35 (spec 08 กฎ 34d) self-check: finally ที่ไม่มี softSql ลบ affiliate หรือ finally ของ helper นอก test ไม่ผ่าน", () => {
+  const cleanup = [
+    'softSql("a", "delete from affiliate_payout where affiliate_id = any($1)", [ids])',
+    'softSql("b", "delete from affiliate_commission_entry where order_id = $1", [o, ids])',
+    'softSql("c", "delete from affiliate where id = any($1)", [ids])',
+    'softSql("d", "delete from affiliate_program where id = any($1)", [programIds])',
+    'const left = await softSql("e", "select count(*)::int as count from affiliate where id = any($1)", [ids])',
+    'expect.soft(left[0]?.count, "x").toBe(0)',
+  ]
+  const sample = (lines: string[]) => `test("AC-44: x", async () => {\n  try {\n    run()\n  } finally {\n    ${lines.join("\n    ")}\n  }\n})\n`
+  expect(ac44FinallyProblems(sample(cleanup))).toEqual([])
+  const noAffiliate = sample(cleanup.filter((line) => !line.includes('"c"')))
+  expect(noAffiliate).toMatch(/\bfinally\s*\{/) // static เดิมของกฎข้อ 119c ผ่านตัวอย่างนี้ (vacuous)
+  expect(ac44FinallyProblems(noAffiliate)).not.toEqual([])
+  expect(ac44FinallyProblems(sample(cleanup.map((line) => (line.includes('"c"') ? `// ${line}` : line))))).not.toEqual([])
+  expect(ac44FinallyProblems(sample([cleanup[1], cleanup[0], ...cleanup.slice(2)]))).not.toEqual([])
+  expect(ac44FinallyProblems(sample(cleanup.slice(0, 4)))).not.toEqual([])
+  expect(ac44FinallyProblems('test("AC-44: x", async () => {\n  run()\n})\n')).toEqual(["ไม่พบ finally ใน test AC-44"])
 })
 
 /** ADM-29 (spec 08 กฎ 33d): นิพจน์ของ `const tag = …` ใน body ของ test — หาไม่เจอต้อง throw ไม่ผ่านเงียบ */
@@ -245,7 +296,41 @@ const tagExpression = (body: string) => {
   return match[1].trim()
 }
 
-test("AC-33/AC-34 (spec 08 กฎ 32, 33; ADM-28, ADM-29): AC-12 ตัวแรกและ payout ของ affiliate-admin-forms ใช้ tag ไม่มีตัวเลข, assert count = 1 ของผล q, ไม่มี waitForTimeout และ setTimeout ≤ 120_000", () => {
+/** ADM-30 (spec 08 กฎ 34a, 34b): ปัญหาของการค้นด้วย q ใน body ของ test — ตัด comment ก่อน แล้วทุก predicate ของ
+ * `waitForResponse` ที่ตรวจ `searchParams.get("q")` ต้องเทียบ `pathname ===` และสร้าง `new URL(` ครั้งเดียว; ต้อง assert count = 1 */
+const searchProblems = (body: string) => {
+  const code = stripComments(body)
+  const predicates: string[] = []
+  for (let at = code.indexOf("waitForResponse("); at !== -1; at = code.indexOf("waitForResponse(", at + 1)) {
+    const predicate = balanced(code, at + "waitForResponse".length, "(", ")")
+    if (predicate.includes('searchParams.get("q")')) predicates.push(predicate)
+  }
+  const problems = predicates.length === 0 ? ['ไม่พบ waitForResponse ที่ตรวจ searchParams.get("q")'] : []
+  for (const predicate of predicates) {
+    if (!/\bpathname\s*===/.test(predicate)) problems.push(`predicate ไม่เทียบ pathname ===: ${predicate.trim()}`)
+    if (predicate.match(/new URL\(/g)?.length !== 1) problems.push(`predicate ต้องสร้าง new URL( ครั้งเดียว: ${predicate.trim()}`)
+  }
+  if (!/\.count\b[^\n]*\)\.toBe\(1\)/.test(code)) problems.push("ไม่มี assert .count … toBe(1) ของผล q")
+  return problems
+}
+
+test("AC-35 (spec 08 กฎ 34a, 34b) self-check: assert count ที่ถูก comment หรือ predicate ที่ไม่เทียบ pathname ไม่ผ่าน", () => {
+  const predicate = '(r) => {\n  const url = new URL(r.url())\n  return url.pathname === AFFILIATES && url.searchParams.get("q") === term\n}'
+  const count = 'expect((await (await searched).json()).count, `GET ${AFFILIATES}?q=${term}`).toBe(1)'
+  const sample = (p: string, c: string) => `const searched = page.waitForResponse(\n${p},\n)\nawait fill(term)\n${c}\n`
+  expect(searchProblems(sample(predicate, count))).toEqual([])
+  const commented = sample(predicate, `// ${count}`)
+  expect(commented).toMatch(/\.count\b[^\n]*\)\.toBe\(1\)/) // static เดิมของกฎ 33d ผ่านตัวอย่างนี้ (vacuous)
+  expect(searchProblems(commented)).not.toEqual([])
+  expect(searchProblems(sample(predicate, `/* ${count} */`))).not.toEqual([])
+  expect(searchProblems(sample(`// ${predicate.replace(/\n/g, "\n// ")}`, count))).not.toEqual([])
+  expect(searchProblems(sample('(r) => new URL(r.url()).searchParams.get("q") === term', count))).not.toEqual([])
+  const twice = '(r) => new URL(r.url()).pathname === AFFILIATES && new URL(r.url()).searchParams.get("q") === term'
+  expect(searchProblems(sample(twice, count))).not.toEqual([])
+  expect(() => searchProblems("page.waitForResponse((r) => r.ok()")).toThrow()
+})
+
+test("AC-33/AC-34/AC-35 (spec 08 กฎ 32, 33, 34; ADM-28, ADM-29, ADM-30): AC-12 ตัวแรกและ payout ของ affiliate-admin-forms ใช้ tag ไม่มีตัวเลข, assert count = 1 ของผล q และ predicate เทียบ pathname (ไม่นับ comment), ไม่มี waitForTimeout และ setTimeout ≤ 120_000", () => {
   const src = read("affiliate-admin-forms.spec.ts")
   expect(() => tagExpression("const x = 1\n")).toThrow()
   for (const prefix of ["AC-12: ปิด all โดยไม่เลือก scope", "AC-12/AC-21: ฟอร์มสร้าง payout"]) {
@@ -256,8 +341,7 @@ test("AC-33/AC-34 (spec 08 กฎ 32, 33; ADM-28, ADM-29): AC-12 ตัวแร
     // ตรวจผลจริง: ประเมินนิพจน์จากไฟล์ test ของเราเอง (ใช้แค่ String/Date.now) หลายครั้งแล้วต้องไม่มีตัวเลข
     const evaluate = new Function(`return ${expression}`) as () => string
     for (let i = 0; i < 5; i++) expect(evaluate(), prefix).not.toMatch(/\d/)
-    expect(body, prefix).toContain('searchParams.get("q")')
-    expect(body, prefix).toMatch(/\.count\b[^\n]*\)\.toBe\(1\)/)
+    expect(searchProblems(body), prefix).toEqual([])
     expect(body, prefix).not.toContain("waitForTimeout")
     const timeouts = Array.from(body.matchAll(/test\.setTimeout\(([\d_]+)\)/g), ([, value]) => Number(value.replace(/_/g, "")))
     expect(timeouts.length, prefix).toBeGreaterThan(0)
