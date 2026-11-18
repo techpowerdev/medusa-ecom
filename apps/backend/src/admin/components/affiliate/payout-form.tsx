@@ -17,6 +17,7 @@ import { isUnauthorized } from "../../lib/fetch-error"
 import { createSingleFlight } from "../../lib/single-flight"
 import { keepModalOpenWhileComboboxExpanded } from "../../lib/combobox-escape"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
+import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
 const PERIOD: { key: "period_from" | "period_to"; label: string }[] = [
@@ -78,6 +79,8 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
     })
   )
 
+  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด
+  const restoreFocus = useRestoreOpenerFocus()
   const confirmClose = useConfirmDiscard({ form, isPending: save.isPending, onClose })
 
   // spec 08 กฎ 28c (แนวกฎ 24b): 401 → ErrorBoundary ของ dashboard พาไป /login; error อื่นแสดงใต้ช่อง (กฎ 21)
@@ -87,7 +90,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <FocusModal open onOpenChange={confirmClose}>
-      <FocusModal.Content onEscapeKeyDown={keepModalOpenWhileComboboxExpanded}>
+      <FocusModal.Content {...restoreFocus} onEscapeKeyDown={keepModalOpenWhileComboboxExpanded}>
         <Form {...form}>
           <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">
             <FocusModal.Header>

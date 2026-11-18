@@ -29,6 +29,7 @@ import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
 import { PageOffsetGate } from "../common/page-offset-gate"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
+import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 const columnHelper = createDataTableColumnHelper<Partner>()
 const PAGE_SIZE = 20
@@ -230,6 +231,8 @@ export const PartnersSection = () => {
     )
   )
 
+  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด
+  const restoreFocus = useRestoreOpenerFocus()
   // ADM-27 (spec 08 กฎ 31): ฟอร์มเดียวของ modal สร้างและ Drawer แก้ — dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด
   const confirmClose = useConfirmDiscard({
     form,
@@ -290,7 +293,7 @@ export const PartnersSection = () => {
       </div>
 
       <FocusModal open={createOpen} onOpenChange={confirmClose}>
-        <FocusModal.Content>
+        <FocusModal.Content {...restoreFocus}>
           {/* noValidate: validation ทั้งหมดเป็นของ zod (error ใต้ช่อง) */}
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
