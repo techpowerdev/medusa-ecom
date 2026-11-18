@@ -35,16 +35,15 @@ const ok = async (res: APIResponse, what: string): Promise<any> => {
   return res.json()
 }
 
-/** ตัวเลขของทุก element ที่ match (ตัดอักขระที่ไม่ใช่ตัวเลข/จุด) ปัด 2 ตำแหน่ง — ไม่มี element = [] */
-const amounts = async (el: Locator) =>
-  (await el.allTextContents()).map((t) => round2(Number(t.replace(/[^0-9.]/g, ""))))
-
-const round2 = (n: number) => Math.round(n * 100) / 100
-
-/** จำนวน element = จำนวนค่าที่คาด (รวมที่ซ่อน) และทุกตัว visible พร้อมตัวเลขตรงตามลำดับ */
+/**
+ * จำนวน element = จำนวนค่าที่คาด (รวมที่ซ่อน) และทุกตัว visible พร้อมตัวเลขใกล้ค่าที่คาดตามลำดับ
+ * CORE-66 (กฎข้อ 124e, nit review #406): ตัดอักขระที่ไม่ใช่ตัวเลข/จุดแล้วเทียบด้วย toBeCloseTo(…, 2) แทนการปัด 2 ตำแหน่ง
+ */
 async function expectAmounts(el: Locator, expected: number[], what: string) {
   await expect(el, `${what} count`).toHaveCount(expected.length)
-  expect(await amounts(el.filter({ visible: true })), what).toEqual(expected.map(round2))
+  const shown = (await el.filter({ visible: true }).allTextContents()).map((t) => Number(t.replace(/[^0-9.]/g, "")))
+  expect(shown, `${what} visible`).toHaveLength(expected.length)
+  expected.forEach((value, i) => expect(shown[i], `${what} [${i}]`).toBeCloseTo(value, 2))
 }
 
 type Line = { quantity: number; total: number; original_total: number }
@@ -104,6 +103,8 @@ test("AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไ
   await signInAs(context, baseURL!, customer)
 
   let promotionId: string | undefined
+  // CORE-66 (กฎข้อ 124e): order ที่สร้างถูกยกเลิกใน finally (ก่อนลบ promotion) — เก็บ id ทันทีที่สร้าง
+  const orderIds: string[] = []
   try {
     const code = `CORE65${Date.now()}${crypto.randomInt(1e6)}`
     const created = await request.post(`${BACKEND_URL}/admin/promotions`, {
@@ -138,6 +139,7 @@ test("AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไ
           quantity: c.quantity,
           promoCode: c.discounted ? code : undefined,
         })
+        orderIds.push(id)
         const line = await orderLine(request, store, id)
         expect(line.quantity).toBe(c.quantity)
         expect(line.total < line.original_total, `${c.name}: ลดราคาจริงตาม case`).toBe(c.discounted)
@@ -165,6 +167,9 @@ test("AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไ
       await expectRow(page, "order-details-container", orders["qty1-discount"].line, true)
     })
   } finally {
-    await deleteAllThenExpectOk(request, admin, [promotionId && `/admin/promotions/${promotionId}`])
+    await deleteAllThenExpectOk(request, admin, [
+      ...orderIds.map((id) => `POST /admin/orders/${id}/cancel`),
+      promotionId && `/admin/promotions/${promotionId}`,
+    ])
   }
 })
