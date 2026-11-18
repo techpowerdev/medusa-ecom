@@ -1,0 +1,170 @@
+# ADM-35 (spec 08 กฎ 39, AC-40) — ผล test
+# เครื่อง local: backend prod build (`NODE_ENV=production pnpm --filter backend build` + `medusa start` ใน .medusa/server แบบ CI)
+# port 9341, DB medusa_adm35, Redis db 11, Playwright chromium, CI=1 (workers=1), viewport 1280×800
+# การตีความ (ตามคำตัดสิน session หลัก 2026-11-18): หาแถวด้วย offset ของหน้าผ่าน admin API + `<prefix>_offset` ใน URL
+# (ตารางปิดช่องค้นหา q); จำกัดด้วย size/maxSize ของ column def (เนื้อหา 250px: คอลัมน์แรก 298, คอลัมน์อื่น 274 — td เป็น border-box)
+
+## RED — develop e1973af0 (โค้ด admin ของ develop + e2e ฉบับสุดท้ายหลังแก้ qa #416 D-1): admin-table-long-text.spec.ts
+# ยังล้มที่แนวนอน — บรรทัด 72 `await expect(button).toBeInViewport()` (หลังเลื่อนแนวตั้งที่บรรทัด 71); test อยู่ที่บรรทัด 151 (partners), 174 (programs)
+  ✘  1 [chromium] › e2e/admin-table-long-text.spec.ts:151:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม 
+  ✘  2 [chromium] › e2e/admin-table-long-text.spec.ts:174:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม 
+    Error: expect(locator).toBeInViewport() failed
+    Expected: in viewport
+    Received: viewport ratio 0
+        at expectLongRowContained (e2e/admin-table-long-text.spec.ts:67:3)
+        at expectTable (e2e/admin-table-long-text.spec.ts:148:3)
+    test-results/admin-table-long-text-AC-4-d9dd3-…-ออกนอกจอ-tooltip-ชื่อเต็ม-chromium/test-failed-1.png
+    Error: expect(locator).toBeInViewport() failed
+    Expected: in viewport
+    Received: viewport ratio 0
+        at expectLongRowContained (e2e/admin-table-long-text.spec.ts:67:3)
+        at expectTable (e2e/admin-table-long-text.spec.ts:148:3)
+    test-results/admin-table-long-text-AC-4-c2f8d-…-ออกนอกจอ-tooltip-ชื่อเต็ม-chromium/test-failed-1.png
+  2 failed
+
+## วัดในหน้า admin จริง (probe ชั่วคราว ไม่ commit): ชื่อ 370 ตัวอักษร (และ support contact ~300 ตัวใน partners) ความกว้าง td (px) ตามลำดับคอลัมน์
+### ก่อนแก้ (develop)
+partners  table 4839px  cells [name 2643, support 2144, actions 52]  ปุ่ม … right = 5047 (นอกจอ 1280)
+programs  table 3269px  cells [name 2640, status 64, actions 52, starts 166, ends 161, rate 100, …86]  ปุ่ม … right = 2964 (นอกจอ)
+### หลังแก้ ขั้นแรก (size/maxSize ทุกคอลัมน์ข้อความ)
+partners  table 1036px  cells [428, 393, 215] — ตาราง 3 คอลัมน์ ผลรวม width < ตาราง w-full → Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน max-width
+programs  table 1036px  cells [298, 95, 88, 166, 161, 118, 109]  ปุ่ม … right = 653
+### หลังแก้ (คอลัมน์ actions ของ partners ไม่ตั้ง width = auto รับส่วนเกิน)
+partners  table 1036px  cells [298, 274, 464]  ปุ่ม … right = 832 (ในจอ)
+programs  table 1036px  cells [298, 95, 88, 166, 161, 118, 109]  ปุ่ม … right = 653 (ในจอ)
+แถวชื่อสั้นในทั้งสองตาราง: ข้อความเต็ม (scrollWidth ≤ clientWidth ของ element ที่ TruncatedCell ห่อ)
+
+## GREEN — e2e ใหม่ (AC-40a) — รอบแรกของ PR (8d77ae1e, DB ใหม่; เลขบรรทัดของ test ฉบับนั้น — ผลของฉบับสุดท้ายดูหัวข้อ qa #416 D-1 ด้านล่าง)
+  ✓  1 [chromium] › e2e/admin-table-long-text.spec.ts:138:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.9s)
+  ✓  2 [chromium] › e2e/admin-table-long-text.spec.ts:161:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (2.6s)
+  2 passed (6.0s)
+
+## AC-40b — admin-row-menu-escape.spec.ts --repeat-each=5 (prod build, workers=1) — รอบแรกของ PR (8d77ae1e); ฉบับสุดท้ายรันซ้ำ: หัวข้อ D-1 green
+  ✓   1 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓   2 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓   3 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (2.9s)
+  ✓   4 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.4s)
+  ✓   5 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓   6 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.1s)
+  ✓   7 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓   8 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓   9 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  10 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.1s)
+  ✓  11 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.1s)
+  ✓  12 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.1s)
+  ✓  13 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (3.0s)
+  ✓  14 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  15 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.0s)
+  ✓  16 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  17 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  18 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (2.9s)
+  ✓  19 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  20 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  21 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  22 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.2s)
+  ✓  23 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (2.8s)
+  ✓  24 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.3s)
+  ✓  25 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.0s)
+  25 passed (1.4m)
+
+## AC-40c — e2e admin เดิมที่ใช้ตาราง 4 ตัวนี้ (+ ADM-34 return focus, dialog title, discard prompt) — รอบแรกของ PR (8d77ae1e)
+  ✓   1 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create partner — dialog มี accessible name และไม่มี console error DialogTitle (1.2s)
+  ✓   2 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create program — dialog มี accessible name และไม่มี console error DialogTitle (1.1s)
+  ✓   3 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create payout — dialog มี accessible name และไม่มี console error DialogTitle (1.1s)
+  ✓   4 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create campaign — dialog มี accessible name และไม่มี console error DialogTitle (1.1s)
+  ✓   5 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create partner — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด (1.2s)
+  ✓   6 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create program — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด (1.1s)
+  ✓   7 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create payout — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด (1.2s)
+  ✓   8 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create campaign — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด (1.3s)
+  ✓   9 [chromium] › e2e/admin-modal-return-focus.spec.ts:104:5 › AC-39b: Create pool (หน้า variant ที่ยังไม่มี pool) — Escape ปิดแล้ว focus กลับปุ่ม (1.5s)
+  ✓  10 [chromium] › e2e/admin-modal-return-focus.spec.ts:139:5 › AC-39b: Create partner — บันทึกสำเร็จแล้ว focus กลับปุ่ม Create partner (1.4s)
+  ✓  11 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create partner — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด (1.5s)
+  ✓  12 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create program — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด (1.3s)
+  ✓  13 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:43:5 › AC-43: approve ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (5.9s)
+  ✓  14 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:162:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (2.4s)
+  ✓  15 [chromium] › e2e/affiliate-admin-payout-create.spec.ts:54:5 › AC-44: ฟอร์มสร้าง payout ค่าเริ่มต้นเดือนก่อน, dblclick ยิง POST ครั้งเดียว, ไม่มี entry → toast, mark paid พร้อม/ไม่พร้อม reference (7.3s)
+  ✓  16 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, ยืนยันแล้วยิง DELETE ครั้งเดียว (3.8s)
+  ✓  17 [chromium] › e2e/affiliate-admin-programs.spec.ts:26:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (3.6s)
+  ✓  18 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:56:5 › AC-13: menuitem Approve กดซ้ำระหว่างรอ response → POST 1 ครั้ง และ badge เป็น active โดยไม่ reload (3.2s)
+  ✓  19 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:116:5 › AC-13: Cancel ของ payout กำลังส่ง → เปิดเมนูแถวเดียวกัน menuitem Mark paid disabled จนการยกเลิกจบ (2.9s)
+  ✓  20 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:198:5 › AC-13: Delete โปรแกรม draft — คลิกซ้ำใน tick เดียวได้ prompt เดียว, ระหว่าง DELETE ค้าง Edit/Delete disabled, DELETE 1 ครั้ง (2.0s)
+  ✓  21 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (2.2s)
+  ✓  22 [chromium] › e2e/evoucher-admin-forms.spec.ts:154:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.4s)
+  ✓  23 [chromium] › e2e/evoucher-admin-forms.spec.ts:162:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.5s)
+  ✓  24 [chromium] › e2e/evoucher-admin-forms.spec.ts:154:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง (2.4s)
+  ✓  25 [chromium] › e2e/evoucher-admin-forms.spec.ts:162:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้ (2.5s)
+  ✓  26 [chromium] › e2e/evoucher-admin-forms.spec.ts:176:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+  ✓  27 [chromium] › e2e/evoucher-admin-forms.spec.ts:176:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login (2.0s)
+  ✓  28 [chromium] › e2e/evoucher-admin-forms.spec.ts:185:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.1s)
+  ✓  29 [chromium] › e2e/evoucher-admin-forms.spec.ts:209:7 › ADM-23: partners clamp ไม่กระพริบ + เมนูต่อแถว › AC-28: ?partners_offset=99999999 + GET partners หน่วง 800ms → ไม่มี empty ตลอด 2 วินาทีแรก จบหน้าสุดท้าย; Edit แล้ว Escape ไม่ค้าง pointer-events (5.6s)
+  ✓  30 [chromium] › e2e/evoucher-admin-forms.spec.ts:283:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=abc → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด (1.2s)
+  ✓  31 [chromium] › e2e/evoucher-admin-forms.spec.ts:283:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=-50 → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด (1.1s)
+  ✓  32 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty (2.6s)
+  ✓  33 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ (1.3s)
+  ✓  34 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE (3.2s)
+  34 passed (1.4m)
+  ✓   1 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.5s)
+  ✓   2 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้างแคมเปญ — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.5s)
+  ✓   3 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง program — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.1s)
+  ✓   4 [chromium] › e2e/admin-form-discard-prompt.spec.ts:122:5 › AC-32: Drawer แก้ partner — กรอกแล้วคลิกปุ่ม close ของ Drawer → alertdialog; Escape 2 ครั้งติดกันที่ฟอร์มสร้าง → alertdialog ตัวเดียว; บันทึกสำเร็จไม่ถาม (2.8s)
+  ✓   5 [chromium] › e2e/admin-form-discard-prompt.spec.ts:184:5 › AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d) (1.7s)
+  ✓   6 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง (4.7s)
+  ✓   7 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Partners — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน evoucher-partners-table และเปิด modal เดิม (1.2s)
+  ✓   8 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Programs — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-programs-table และเปิด modal เดิม (1.3s)
+  ✓   9 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Payouts — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-payouts-table และเปิด modal เดิม (1.2s)
+  ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (2.5s)
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:132:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (1.5s)
+  ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:168:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (1.6s)
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:232:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (2.4s)
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:265:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (1.6s)
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:332:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (2.8s)
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (2.4s)
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (2.4s)
+  ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (2.4s)
+  ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (2.5s)
+  ✓  20 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (2.4s)
+  ✓  21 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (2.4s)
+  ✓  22 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (2.5s)
+  ✓  23 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (2.5s)
+  ✓  24 [chromium] › e2e/affiliate-admin-forms.spec.ts:400:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (2.1s)
+  ✓  25 [chromium] › e2e/affiliate-admin-forms.spec.ts:410:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (2.5s)
+  ✓  26 [chromium] › e2e/affiliate-admin-forms.spec.ts:430:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (4.5s)
+  ✓  27 [chromium] › e2e/affiliate-admin-forms.spec.ts:509:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal (1.5s)
+  ✓  28 [chromium] › e2e/affiliate-admin-forms.spec.ts:550:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal (1.7s)
+  ✓  29 [chromium] › e2e/affiliate-admin-names.spec.ts:31:5 › AC-45: Ledger/Payouts แสดงชื่อและอีเมลของ affiliate ด้วย request id[] 1 ครั้งต่อหน้า (2.5s)
+  ✓  30 [chromium] › e2e/affiliate-admin-payouts.spec.ts:29:5 › AC-26: เฉพาะ payout draft มีปุ่มยกเลิก, ยกเลิกกล่องยืนยันไม่ยิง request, ยืนยันแล้วยิง DELETE ครั้งเดียว (3.9s)
+  ✓  31 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า (3.6s)
+  31 passed (1.3m)
+
+## unit / static / lint / typecheck
+pnpm --filter backend exec jest src/admin/__tests__ → Test Suites: 3 passed; Tests: 252 passed (รวม nit review #413: ไม่มี onOpenAutoFocus/onCloseAutoFocus ที่ FocusModal.Content)
+pnpm --filter storefront test:e2e:unit → 122 passed
+pnpm lint → 0 errors (warning เดิม ไม่มีในไฟล์ที่แตะ)
+pnpm typecheck → ผ่าน (storefront, backend + admin tsconfig)
+
+## qa #416 D-1 (test-only) — red → green บน DB ที่ข้อมูลสะสม (test ฉบับ PR เดิม 8d77ae1e → ฉบับแก้)
+### อาการ 1: ตาราง partners อยู่ใต้ตาราง pools — pool สะสมดันแถวลงใต้จอแนวตั้ง
+red: รันชุด admin-*, affiliate-admin-*, evoucher-admin-* (workers=1) → 126 passed แล้ว admin-table-long-text --repeat-each=5 บน DB เดิม
+  partners 5/5 ✘ expect(locator).toBeInViewport() (ratio 0, แถวอยู่ใต้จอ) — programs 5/5 ✓
+แก้: cell ชื่อ (คอลัมน์แรก) scrollIntoView({ block: "center", inline: "start" }) — เลื่อนแนวตั้งเท่านั้น ไม่ใช้ scrollIntoViewIfNeeded ของปุ่ม
+  (จะเลื่อนแนวนอนตามปุ่ม) แล้วยังตรวจ scrollLeft === 0 และ x + width ≤ 1280 — develop ยังล้มที่แนวนอน (หัวข้อ RED ข้างบน)
+### อาการ 2: page.mouse.move(0, 0, { steps: 5 }) ผ่าน sidebar → tooltip "Products G then P" ค้าง → getByRole("tooltip") toHaveCount(0) ล้ม
+สาเหตุ: หลัง tooltip ของ cell ปิด TooltipProvider อยู่ในช่วงข้าม delay — ผ่าน nav item แล้ว tooltip เปิดทันที; ถ้า pointermove หลังออกจาก nav
+  เหลือครั้งเดียว (จุดตัดของเส้นทางขึ้นกับตำแหน่งแถว = ข้อมูลใน DB) Radix ไม่ปิด — ในเครื่องรันทั้งชุด 2 รอบไม่เกิดเอง จึงทำซ้ำด้วย probe ชั่วคราว (ไม่ commit):
+  hover ชื่อยาว → เลื่อนเมาส์ไปกลาง nav "Products" (steps 5) → ขั้นเดียวไป (0,0)
+  [เดิม]  getByRole("tooltip") toHaveCount(0): 3/3 ✘ Expected 0 Received 1
+  [ใหม่]  tooltip ของ cell เท่านั้น (filter ข้อความชื่อเต็ม) + ย้ายเมาส์ในเนื้อหาหน้า: 3/3 ✓
+แก้: ตรวจเฉพาะ tooltip ของ cell (getByRole("tooltip").filter({ hasText: ชื่อเต็ม })) ทั้งตอน hover และตอนปิด; ย้ายเมาส์ในคอลัมน์เดิมไปทิศตรงข้ามกับ tooltip
+  (Radix วางเหนือ cell หรือพลิกลงล่างเมื่อที่ไม่พอ — ทางที่มุ่งไปหา tooltip อยู่ใน grace area และ tooltip hover ได้ จึงเปิดค้าง: ลองไปหัวตาราง/ลงล่างตายตัว
+  แล้วล้ม 5/5 ใน partners/programs ตามลำดับ ก่อนได้วิธีนี้) — ไม่มีการเพิ่ม timeout/รอเวลา
+### green (โค้ด PR + e2e ฉบับแก้, DB เดิมที่สะสม)
+admin-table-long-text --repeat-each=5 (หลังรันชุดเต็มสะสมข้อมูล) → 10 passed
+ชุด admin-*, affiliate-admin-*, evoucher-admin-* (workers=1 รวม admin-table-long-text) → 126 passed
+admin-table-long-text + admin-row-menu-escape --repeat-each=5 → 35 passed
+ตรวจไฟล์: test ใน admin-table-long-text มี 2 ตัว (partners, programs) ใช้ helper เดียวกัน (expectLongRowContained) — แก้ครบทั้งคู่;
+  ตาราง affiliates/payouts ไม่มีใน e2e นี้ (qa ตรวจ AC-40d)
+
+## nit review #416 — static restoreUsage ตัดแท็ก <FocusModal.Content ที่ > ตัวแรกนอก {}
+red: self-check `<FocusModal.Content {...restoreFocus} onEscapeKeyDown={(e) => e} onCloseAutoFocus={noop}>` → Expected withHandler 0, Received 1
+green: contentProps() นับวงเล็บ {} (แบบ balanced()) + restoreUsage ไม่นับ Content ที่ตั้ง on(Open|Close)AutoFocus เอง
+  pnpm --filter backend exec jest src/admin/__tests__ → 3 suites, 252 passed; pnpm --filter backend test:unit → 110 suites, 1482 passed

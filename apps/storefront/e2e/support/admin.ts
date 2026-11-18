@@ -1,6 +1,7 @@
-import { Locator, Page } from "@playwright/test"
+import { APIRequestContext, Locator, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect } from "./fixtures"
+import type { Headers } from "./medusa"
 
 // OPS-11 (spec 07 AC-16): login admin UI + header proxy ของ e2e admin อยู่ที่นี่ที่เดียว
 
@@ -83,14 +84,46 @@ export async function rowAction(row: Locator, trigger: string, name: string) {
 }
 
 /**
+ * ADM-35 (spec 08 กฎ 39d): รอ animation/transition ของ element และลูกทั้งหมดเล่นจบ (ไม่ใช่การรอเวลา) — ถ้าไม่มี animation อยู่ resolve ทันที
+ * animation/transition ที่ถูกยกเลิก (เช่น transition ของ focus ring เมื่อ Radix คืน focus ซ้ำ) reject ด้วย AbortError = ไม่ได้เล่นอยู่แล้ว จึงนับว่าจบ
+ */
+export async function animationsSettled(locator: Locator) {
+  await locator.evaluate((el) =>
+    Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined)))
+  )
+}
+
+/**
  * ADM-33 (spec 08 กฎ 37c): รอ `ActionMenu` ที่เปิดอยู่ (1 ตัว) เล่น animation เปิดจบ — Escape ที่กดทันทีที่เมนูโผล่ (< 1 frame)
  * Radix ยังไม่รับ เมนูจึงค้าง (วัดบน prod build: กดทันที 7/12 ค้าง, รอ animation จบ 0/12) ซึ่งคนกดไม่ทันขนาดนั้น — ไม่ใช่ timeout ตายตัว
+ * เมนูที่ไม่มี animation (เช่นเปิด prefers-reduced-motion หรือเล่นจบแล้ว) resolve ทันทีหลังพบเมนู 1 ตัว (ADM-35 กฎ 39d)
  */
 export async function waitMenuOpened(page: Page) {
   const menu = page.getByRole("menu")
   await expect(menu).toHaveCount(1)
-  // animation/transition ที่ถูกยกเลิก (เช่น transition ของ focus ring) reject ด้วย AbortError = ไม่ได้เล่นอยู่แล้ว จึงนับว่าจบ
-  await menu.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined))))
+  await animationsSettled(menu)
+}
+
+/**
+ * ADM-35 (spec 08 กฎ 39d — ตามคำตัดสิน session หลัก 2026-11-18): offset ของหน้าใน `DataTable` ที่มีแถว `id` — ไล่หน้าผ่าน admin API
+ * ด้วยขนาดหน้าและลำดับเดียวกับตาราง (`query` = query ที่หน้า admin ส่ง เช่น `order=name`) แล้วเปิดหน้านั้นด้วย `<prefix>_offset` ใน URL
+ * แทนการพึ่งว่าแถวเรียงอยู่หน้าแรก (ตารางเหล่านี้ปิดช่องค้นหา `q`)
+ */
+export async function pageOffsetOf(
+  request: APIRequestContext,
+  admin: Headers,
+  { path, key, id, pageSize = 20, query = "" }: { path: string; key: string; id: string; pageSize?: number; query?: string }
+) {
+  for (let offset = 0; ; offset += pageSize) {
+    const res = await request.get(`${BACKEND_URL}${path}?limit=${pageSize}&offset=${offset}&fields=id${query ? `&${query}` : ""}`, {
+      headers: admin,
+    })
+    expect(res.ok(), `GET ${path}: ${await res.text()}`).toBe(true)
+    const body = await res.json()
+    const rows: { id: string }[] = body[key]
+    if (rows.some((row) => row.id === id)) return offset
+    if (offset + pageSize >= body.count) throw new Error(`pageOffsetOf: ไม่พบ ${id} ใน ${path} (count ${body.count})`)
+  }
 }
 
 /**
