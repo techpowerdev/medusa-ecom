@@ -1,6 +1,7 @@
 # 04 Group buying — ส่วนลดแบบมีเป้าหมายและจำกัดเวลา
 
-สถานะ: draft (ปรับดีไซน์ 2026-10-25 ตามความต้องการของเจ้าของ: ใช้ flow แบบ draft order เหมือนตัวอย่าง Quotes ของ Medusa;
+สถานะ: in-progress (รอบ 37 2026-11-18: owner ตัดสินข้อ ก (1) ของ ROADMAP ปิดรอบ 36 = ก "backend ตอบ 400 เมื่อส่วนลด fixed ≥ ราคาของ variant" (รับทราบว่ากันได้แค่ตอนสร้าง) → GB-18 ☐ owner สั่งทำแล้ว — กฎข้อ 41, AC-61, คำถาม Q23 (กันตอนแก้ผ่าน hook ของ Medusa — ไม่บล็อก GB-18);
+เดิม: draft (ปรับดีไซน์ 2026-10-25 ตามความต้องการของเจ้าของ: ใช้ flow แบบ draft order เหมือนตัวอย่าง Quotes ของ Medusa;
 ปรับ membership หลายออเดอร์ต่อคน + exclusivity ตาม ADR-009; 2026-10-25 แก้ความกำกวมที่ GB-2 พบ:
 ส่วนลดระดับแคมเปญเก็บใน promotion ต้นแบบตาม ADR-011, สถานะแคมเปญ, error mapping, แบ่ง GB-2 เป็น GB-2a/GB-2b และแบ่ง scope กับ GB-3;
 2026-10-26 รอบ 6: แยก GB-6 เป็น GB-6a/6b/6c + route membership ของ admin, nit review #68/#75 — กฎข้อ 14d–17, AC-29..35;
@@ -69,6 +70,8 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | (รอบ 16) กันสร้างแคมเปญซ้ำเมื่อยิงซ้ำ/พร้อมกัน | admin API ของ Medusa ไม่มี idempotency key; Medusa campaign มี `campaign_identifier` ที่ผู้สร้างกำหนดได้ + Locking module (`acquireLockStep`/`releaseLockStep`) | ขยาย — key ของผู้เรียกใส่ใน `campaign_identifier` + lock ต่อ key (กฎข้อ 33, Q21 = ก owner 2026-11-04) ไม่เพิ่ม model/infra |
 | (รอบ 16b, Q-C4 = ข) วิธีส่งของ cart ที่ join ต้องครอบ shipping profile ของสินค้า | `validateShippingStep` (`@medusajs/medusa/core-flows`, id `validate-shipping`, `core-flows/src/cart/steps/validate-shipping.ts` 2.22.1) ที่ `completeCartWorkflow` เรียกด้วย cart (`completeCartFields` มี `items.variant.product.shipping_profile.id`) + `shipping_option` ที่ query ด้วย `useQueryGraphStep({ entity: "shipping_option", fields: ["id", "shipping_profile_id"], filters: { id: <shipping_option_id ของ shipping_methods> } })` — join ไม่ผ่าน complete cart จึงไม่ถูกตรวจ | ขยาย — **ไม่เรียก step นี้ตรง** เพราะ (1) throw `INVALID_DATA` ข้อความทั่วไปไม่มี code (storefront แยกจาก 400 อื่นไม่ได้ — ต้องมี `GB_*` ตามที่ owner สั่ง) และ (2) ล้มเมื่อไม่มี shipping method เลย ซึ่งขัดกับข้อยกเว้นกฎข้อ 35c; ใช้ **field/query ชุดเดียวกับ Medusa** และกฎเทียบ profile แบบเดียวกันใน helper pure (กฎข้อ 35) |
 | (รอบ 32) ปฏิเสธจำนวนเต็มที่เกิน column `integer` ก่อนถึง DB | `validateAndTransformBody` + zod ของ Medusa (`@medusajs/framework/zod`) คืน 400 `invalid_data` เมื่อ schema ไม่ผ่าน; `model.number()` ของ DML สร้าง column `integer` (int4 — ตรวจใน migration ของ 4 module) แต่ zod `.int()` ยอมถึง `Number.MAX_SAFE_INTEGER`; validator ของ Medusa core ไม่มีเพดาน int4 ให้ใช้ซ้ำ | ขยาย — เพิ่ม `.max(INT4_MAX)` ใน validator ของเราเอง (กฎข้อ 40) ไม่แก้ model/migration |
+| (รอบ 37) ส่วนลด fixed ต้องไม่ทำให้ได้สินค้าฟรี | Promotion module 2.22.1 **คุม adjustment ไม่ให้เกินยอดของ line** อยู่แล้ว: `calculateAdjustmentAmountFromPromotion` (`@medusajs/utils` `dist/totals/promotion/index.js:117–129` `MathBN.min(promotionValue, applicableAmount)`; `across` `:13–20`) → ยอดไม่ติดลบ แต่ส่วนลด ≥ ราคาทำให้ line เป็น 0 (ฟรี); validator `AdminCreateApplicationMethod` ไม่มีเพดานเทียบราคา; ราคา variant อ่านได้ด้วย `query.graph` (`variants.prices.*` ผ่าน link product_variant ↔ price_set) | ขยาย — step ตรวจใน `createGroupBuyCampaignWorkflow` (กฎข้อ 41) ไม่แก้ validator/route ของ Medusa |
+| (รอบ 37, Q23) กันตอนแก้ส่วนลดที่หน้า promotion ของ Medusa | `updatePromotionsWorkflow` (ที่ `POST /admin/promotions/:id` ใช้ — `@medusajs/medusa` `dist/api/admin/promotions/[id]/route.js:26`) มี hook `promotionsUpdated` หลัง `updatePromotionsStep` (`core-flows/dist/promotion/workflows/update-promotions.js:80–86`); handler ที่ throw ทำให้ workflow ล้มและ compensation ของ step คืนค่าเดิม (`steps/update-promotions.js:35–42`) | ยังไม่ทำ — รอ owner ตอบ Q23 |
 | (รอบ 16) นับถอยหลัง / ราคา variant บนหน้า | `countdownLabel` (`lib/util/flash-sale.ts` เดิม), `calculated_price` ของ variant จาก `GET /store/products` (region) ที่หน้าโหลดอยู่แล้ว | ใช้ตามเดิม (กฎข้อ 32) — ไม่ยิง API เพิ่ม |
 
 ## ดีไซน์หลัก: สร้าง draft order ตอนเข้าร่วม ชำระเงินเมื่อสำเร็จ
@@ -531,6 +534,17 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
     ข้อความ error ใต้ช่องของฟอร์ม admin (400 แสดงเป็น toast ตามเดิม — ROADMAP กลุ่ม ค; (รอบ 36 ส่วนที่ 2, 2026-11-18) ฟอร์ม Create campaign ตรวจ ≤ 2147483647 ใต้ช่องก่อนส่ง → ADM-32 spec 08 กฎ 36)
     (ข) (spec 05 Q21 = ก owner 2026-11-17) affiliate program: `hold_days` และ `attribution_window_days` จำกัด **≤ 36500** (100 ปี — เพดานทางเทคนิคกัน `matures_at` เป็น Invalid Date ไม่ใช่กฎธุรกิจ) แทนเพดาน int4 ของสอง field นี้
     → เกินได้ 400 `invalid_data`; ค่าคงที่อยู่ใน `affiliate/validators.ts` หรือ `src/lib/int4.ts` (เลือกใน PR) ที่เดียว
+41. (รอบ 37, GB-18 — qa #408 O-1; **owner ตัดสิน ก 2026-11-18** และรับทราบข้อจำกัด (f)) `createGroupBuyCampaignWorkflow` ปฏิเสธส่วนลด **fixed** ที่ไม่น้อยกว่าราคาของ variant ที่ร่วมแคมเปญ:
+    (a) เมื่อ `application_method.type === "fixed"` และมี `currency_code`: product id จาก `singleProductIdOf(target_rules)` (กฎข้อ 30a) → อ่านราคาด้วย `query.graph` entity `product` fields `variants.prices.amount`, `variants.prices.currency_code`, `variants.prices.price_list_id`
+        → `minPrice` = ราคาต่ำสุดของ**ทุก variant** ในสกุล `currency_code` (เทียบแบบไม่สนตัวพิมพ์) เฉพาะราคาฐาน (`price_list_id` เป็น null — รวมราคาที่มี rule ของ region); คำนวณด้วย `MathBN` ใน pure helper `src/modules/group_buy/utils/` (+ unit)
+    (b) `MathBN.gte(value, minPrice)` → `MedusaError(INVALID_DATA, …)` ข้อความมี `lowest variant price` + ตัวเลขทั้งสองและสกุลเงิน → **400 `invalid_data`**; `value < minPrice` → ผ่าน (พฤติกรรมเดิม)
+    (c) ไม่ตรวจ (พฤติกรรมเดิม): `percentage` (เพดาน 100 ของ Medusa เดิม), fixed ที่ไม่มี `currency_code` (ให้ validation ของ Medusa ตัดสินตามเดิม), สินค้าที่ไม่มีราคาฐานในสกุลนั้นเลย
+    (d) ตรวจใน step ใหม่ที่รัน**ก่อน** `acquireLockStep` และก่อนสร้างอะไร (แบบ `validateSingleProductScopeStep` — ไม่เขียนจึงไม่มี compensation); รันทุก request รวม `idempotency_key` เดิม
+        (retry ด้วย body เดิมเมื่อราคาไม่เปลี่ยนได้ผลเดิม — AC-52/56 ผ่านโดยไม่แก้)
+    (e) ไม่แตะ: zod validator ของ route (ต้องอ่าน DB), `AdminUpdateGroupBuyCampaign` (ไม่มีช่องส่วนลด), ฟอร์ม admin (400 แสดงเป็น toast ตาม spec 08 กฎ 36e), route/workflow ของ Medusa
+    (f) ข้อจำกัด (owner รับทราบ 2026-11-18): กันได้**เฉพาะตอนสร้างแคมเปญ** — ไม่ครอบการแก้ `value` ที่หน้า promotion ของ Medusa (ต้นแบบ `GBT-*` หรือ `GB-<token>` ของกลุ่ม),
+        การเปลี่ยนราคา variant หลังสร้าง และราคาใน price list (เช่น sale) → ทางกันตอนแก้อยู่ใน Q23
+    (g) ข้อเท็จจริงที่ตรวจแล้ว: Medusa 2.22.1 ไม่ให้ adjustment เกินยอดของ line (ดูตาราง "สิ่งที่ Medusa มีให้อยู่แล้ว" รอบ 37) → ยอดไม่ติดลบ ความเสียหายสูงสุดคือ line เป็น 0 (ได้ของฟรี) ซึ่งกฎนี้กันตอนสร้าง
 
 ## Acceptance criteria
 - AC-1 เมื่อมีแคมเปญ (เป้าหมาย 3 ออเดอร์, −30%) และลูกค้าที่ login แล้ว 3 คนเข้าร่วม pool P แล้ว
@@ -772,6 +786,14 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
       ทั้งสอง field = `36500` → 200 (กฎข้อ 40 (ข));
   (d) `evoucher-admin.spec.ts`: สร้าง/แก้ pool ด้วย `low_stock_threshold: 2147483648` → 400 `invalid_data` ไม่มี pool เพิ่ม/ค่าเดิมไม่เปลี่ยน, `2147483647` → 200;
   ทุกเคส response ไม่มีข้อความ `integer out of range`; unit (jest): `INT4_MAX === 2147483647`; integration เดิมของ 4 ไฟล์ผ่านโดยไม่แก้ assertion
+- AC-61 (GB-18, กฎข้อ 41) integration http `group-buy-campaigns.spec.ts` (admin JWT จาก `integration-tests/helpers/admin.ts`) — เขียนให้**ล้มบน develop** ก่อน (ได้ 200):
+  Given สินค้า P (variant V1 ราคาฐาน THB 1000, V2 ราคาฐาน THB 500 และ USD 20) และ price list `type: "sale"` `status: "active"` ที่ตั้ง V1 = THB 100
+  (a) When `POST /admin/group-buy/campaigns` scope P, fixed `currency_code: "thb"` `value: 500` Then 400, `type` = `invalid_data`, message มี `lowest variant price` และ `500`;
+      `query.graph` ของ `group_buy_campaign`, `promotion` และ `campaign` จำนวนเท่าก่อน request; `value: 1000` → 400 เช่นกัน;
+  (b) `value: 499.99` → 200 (price list THB 100 ไม่นับ — กฎข้อ 41a); fixed `currency_code: "usd"` `value: 20` → 400, `value: 19` → 200; `percentage` `value: 100` → 200 (กฎข้อ 41c);
+  (c) request ที่ล้มด้วย `idempotency_key` K แล้วส่ง K ใหม่ด้วย `value: 499.99` → 200 และสร้างแคมเปญ 1 ตัว;
+  (d) unit (jest) ของ helper ราคาต่ำสุด: ไม่มีราคา → null, กรองสกุลเงินไม่สนตัวพิมพ์, ข้าม `price_list_id` ที่ไม่ null, ค่าทศนิยม (`499.99` vs `500`) เทียบด้วย `MathBN`;
+  (e) integration/unit เดิม (`group-buy-*.spec.ts`, `seed-load`, e2e ที่สร้างแคมเปญ fixed) ผ่านโดยไม่แก้ assertion — ถ้า fixture ใดตั้ง fixed ≥ ราคาของสินค้า ให้แก้**ข้อมูล** fixture (ไม่ใช่ assertion) และระบุใน PR
 
 ## Non-functional
 - ตัวนับเป็นแบบ denormalized ปรับภายใต้ lock ของกลุ่ม; index: group `(status, ends_at)`, `join_token` (unique),
@@ -808,6 +830,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 - (รอบ 19) grep + suite เดิม: AC-57 (GB-N7)
 - (รอบ 20) unit jest + grep + e2e admin เดิม: AC-58 (GB-15); qa (ไม่ใช่ AC): เปิด admin ผ่าน http ที่ไม่ใช่ localhost (เช่น IP ของเครื่องใน LAN) แล้วกด `gb-campaign-create` → ฟอร์มเปิดและสร้างแคมเปญได้
 - (รอบ 32) integration (http) 4 ไฟล์ + unit jest: AC-60 (GB-17) — ไม่มี UI จึงไม่ต้องมี qa/screenshot; แนบผล test ใน `docs/evidence/group-buying/GB-17-tests.txt`
+- (รอบ 37) integration (http) + unit jest: AC-61 (GB-18) — ไม่มี UI ใหม่ (400 เป็น toast เดิมของฟอร์ม) จึงไม่ต้องมี qa; แนบผล red/green ใน `docs/evidence/group-buying/GB-18-tests.txt`
 
 ## Tasks
 | ID | Task | Depends |
@@ -849,6 +872,7 @@ Links: `group_buy_group ↔ promotion`, `group_buy_campaign ↔ promotion_campai
 | GB-15 | (admin เล็ก ~40 LOC รวม test, รอบ 20 — owner เลือกทาง (ก) 2026-11-04) key ของฟอร์มสร้างแคมเปญสร้างด้วย `crypto.getRandomValues` ผ่าน helper `newIdempotencyKey()` (รูป UUID v4) แทน `crypto.randomUUID()` ที่ใช้ไม่ได้บน http (กฎข้อ 33d; AC-58) — ไฟล์: `src/admin/lib/group-buy-form.ts` (+ `src/admin/lib/__tests__/group-buy-form.unit.spec.ts`), `src/admin/components/group-buy/create-campaign.tsx` (`openModal` + comment ~49); ไม่แตะ backend/`package.json` — ☑ #285 (train #290) | none — **เริ่มได้** (GB-13 ☑ #259); ∥ ทุกตัว; ชน `create-campaign.tsx` กับ ADM-7 (spec 08, ☐) ตัวที่ merge ทีหลัง rebase; **ควรมีก่อน release v0.5.0** (admin ที่เปิดผ่าน http สร้างแคมเปญไม่ได้เลย) |
 | GB-16 | (backend เล็ก ~20 LOC, รอบ 26 — follow-up รอบ 25) filter ของ job `group-buy-deadline` รวมสถานะกลุ่ม `succeeded` ให้ใช้ index `(status, pay_deadline_at)` (กฎข้อ 39; AC-59) — ไฟล์: `src/jobs/group-buy-deadline.ts` (+ unit) — ☑ #357 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release |
 | GB-17 | (backend เล็ก ~150 LOC รวม test, รอบ 32 — qa #374 D-1) จำกัดจำนวนเต็มที่ลง column `integer` ≤ 2147483647 ใน validator ของ admin route group buy/flash sale/affiliate/e-voucher → 400 `invalid_data` แทน 500 + `hold_days`/`attribution_window_days` ≤ 36500 (กฎข้อ 40; AC-60) — ไฟล์ (`apps/backend/`): `src/lib/int4.ts` ใหม่ (+ unit), `src/api/admin/{group-buy,flash-sales,affiliate,evoucher}/validators.ts`, `integration-tests/http/{group-buy-campaigns,flash-sale-admin-config,affiliate-admin,evoucher-admin}.spec.ts` — ☑ #387 (owner สั่งทำ 2026-11-17) | PR เอกสารรอบ 32 merge; ไม่บล็อก release; ∥ CORE-61, CORE-62, CORE-63 (spec 01 — storefront ล้วน ไม่ชนไฟล์), ∥ ADM-27 (spec 08 — แตะ `src/admin/` ไม่ใช่ `src/api/`), ∥ OPS-26; รวมเพดาน `hold_days`/`attribution_window_days` ≤ 36500 (spec 05 Q21 = ก owner 2026-11-17, กฎข้อ 40 (ข), +~10 LOC) |
+| GB-18 | (backend เล็ก ~60 LOC + ~150 LOC test, รอบ 37 — qa #408 O-1; owner ก 2026-11-18) ปฏิเสธส่วนลด fixed ที่ ≥ ราคาฐานต่ำสุดของ variant ในสกุลเงินของส่วนลด ตอนสร้างแคมเปญ → 400 `invalid_data` (กฎข้อ 41; AC-61) — ไฟล์ (`apps/backend/`): `src/workflows/group-buy/campaign.ts` (step ใหม่ก่อน `acquireLockStep`), `src/modules/group_buy/utils/<ชื่อ helper>.ts` ใหม่ (+ `src/modules/group_buy/__tests__/*.unit.spec.ts`), `integration-tests/http/group-buy-campaigns.spec.ts`, fixture ที่ต้องแก้ข้อมูลตาม AC-61e (ถ้ามี), `docs/evidence/group-buying/GB-18-tests.txt`; red→green: AC-61a–c ได้ 200 บน develop → 400; ไม่มี qa | PR เอกสารรอบ 37 merge; ไม่บล็อก release; ∥ ทุก task ของรอบ 37 (CORE-66/67 storefront, ADM-34–36 `src/admin/` — ไม่มีไฟล์ร่วม) |
 GB-1 → GB-2a → GB-2b → (GB-2c ∥ GB-6a → GB-6b ∥ (GB-3 → GB-4 → GB-5 → GB-7)); GB-6c หลัง GB-6b และ GB-4; GB-3 ต้องรอ PROMO-2 (spec 03) และ CORE-12 (spec 01) merge ด้วย
 GB-6b/GB-6c เป็น e2e admin ตัวที่สองขึ้นไป (ต่อจาก FS-10) → ใช้ helper ร่วมของ OPS-11 (spec 07); ถ้า OPS-11 ยังไม่ merge ตัวที่เริ่มก่อนรวม OPS-11 เข้า PR ของตัวเอง
 GB-3b ∥ GB-4 หลัง GB-3 (GB-3b แตะ workflow/route leave แยกไฟล์; ถ้าแตะ `utils/join.ts`/`errors.ts` ร่วมกัน ตัวที่ merge ทีหลัง rebase);
@@ -882,8 +906,15 @@ e2e `group-buy-admin-detail.spec.ts`/`group-buy-admin-dates.spec.ts` ที่�
 กรองด้วยกลุ่ม `succeeded` ผ่าน index `(status, pay_deadline_at)` ของกลุ่ม (กฎข้อ 39) → รอวัดบน production ก่อน (แนวเดียวกับ GIN index ของ spec 05 Non-functional); เปิด task เมื่อ `EXPLAIN` บน prod แสดง seq scan ของ membership ที่มีผลจริง
 (รอบ 32, 2026-11-17) GB-17 ☐ (owner สั่งทำ 2026-11-17 — เริ่มเมื่อ PR เอกสารรอบ 32 merge) ∥ ทุกตัว; ตรวจโค้ดบน develop `a9fec926`: validator ทั้ง 4 module ใช้ `.int()` ไม่มีเพดาน, column ทั้งหมดในตารางกฎข้อ 40 เป็น `integer` ใน migration
 (ปิดรอบ 32, 2026-11-17) GB-17 ☑ #387
+(รอบ 37, 2026-11-18) GB-18 ☐ (owner สั่งทำ 2026-11-18 — เริ่มเมื่อ PR เอกสารรอบ 37 merge) ∥ ทุกตัว; ตรวจบน develop `99a52afb`: `campaign.ts` ไม่มีการเทียบส่วนลดกับราคา, `validators.ts` ใช้ `AdminCreateApplicationMethod` ของ Medusa ตรง
 
 ## Open questions
+- **Q23** (รอบ 37, GB-18 กฎข้อ 41f — ไม่บล็อก GB-18) กันส่วนลด fixed ≥ ราคาตอน**แก้**ที่หน้า promotion ของ Medusa ด้วยไหม — Medusa มีจุดขยายให้แล้วโดยไม่ต้อง reinvent:
+  handler ของ `updatePromotionsWorkflow.hooks.promotionsUpdated` ที่ throw ทำให้ `POST /admin/promotions/:id` ล้มและ compensation ของ `updatePromotionsStep` คืนค่าเดิม (ตรวจ source 2.22.1 — ตาราง "สิ่งที่ Medusa มีให้อยู่แล้ว" รอบ 37)
+  (ก) **[Recommended]** คงข้อจำกัดตามที่ owner รับทราบ 2026-11-18 — เหตุผล: การแก้ส่วนลดที่หน้า promotion เป็นงานตั้งใจของ admin, hook กันได้แค่ `value` (ไม่ครอบการเปลี่ยนราคา variant/price list หลังสร้าง), ไม่มีงานเพิ่ม;
+  (ข) GB-19: handler `promotionsUpdated` ตรวจ promotion ที่เป็นต้นแบบ/โค้ดกลุ่มของ group buy (link กับแคมเปญ หรือ code `GBT-*`/`GB-*`) ด้วยกฎข้อ 41a–b เดียวกัน → 400 และค่าเดิมไม่เปลี่ยน
+      ~100 LOC + integration; error ใน dashboard เป็น toast ข้อความดิบ; `createHook` มี handler ได้ตัวเดียว (ยังไม่มีผู้ใช้ hook นี้ — ตรวจแล้วบน `99a52afb`);
+  (ค) (ข) + hook ของ workflow ราคา variant/price list — ครอบมากขึ้นแต่แตะ flow หลักของสินค้า ~300 LOC ไม่แนะนำใน v1
 - ~~**Q22**~~ **ตัดสินแล้ว (owner 2026-11-04 รอบ 17) = (ก)** → กฎข้อ 35c เป็นกฎปกติ (cart ไม่มี shipping method เลย → ไม่ตรวจ) ไม่มี task เพิ่ม — คำถามเดิม: (รอบ 16b, GB-14 กฎข้อ 35c) join ด้วย cart ที่มี line ต้องจัดส่งแต่**ไม่มี shipping method เลย**ควรถูกปฏิเสธด้วยไหม (แบบ `validateShippingStep` ของ Medusa):
   (ก) **[แนะนำใน v1]** ไม่ปฏิเสธ (พฤติกรรมเดิม) — storefront (GB-7a2) บังคับเลือกวิธีส่งก่อน join อยู่แล้ว; ปิดเฉพาะช่องที่ qa #238 พบ (วิธีส่งผิด profile) ใน GB-14 ~150 LOC;
   (ข) ปฏิเสธด้วย code เดียวกัน — ตรงกับ Medusa ครบ แต่ต้องแก้ผู้เรียก join ที่ไม่ตั้งวิธีส่งทั้งหมด (integration http ~9 ไฟล์ของ group buy/affiliate, `e2e/support/group-buy.ts`,
