@@ -1,0 +1,47 @@
+# CORE-65 — ผล test (spec 01 กฎข้อ 123, AC-164) — 2026-11-18, node v22.23.3, ในเครื่อง: backend :9326 (medusa develop, DB medusa_core65, Redis db 8), storefront :8326
+
+## Red — e2e core-65 บน Item ของ develop 3e4a3d82 (next dev) — ล้มที่ order-completed qty1-discount ที่ 1280: มี product-unit-price ในแถว qty 1
+Running 1 test using 1 worker
+  ✘  1 [chromium] › e2e/core-65-order-item-unit-price.spec.ts:88:5 › AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375 (10.4s)
+  1) [chromium] › e2e/core-65-order-item-unit-price.spec.ts:88:5 › AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375 › order-completed qty1-discount ที่ 1280 
+    Error: product-unit-price = total / quantity count
+    expect(locator).toHaveCount(expected) failed
+    Locator:  getByTestId('order-complete-container').getByTestId('product-row').getByTestId('product-unit-price')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+    Call log:
+      - product-unit-price = total / quantity count getByTestId('order-complete-container').getByTestId('product-row').getByTestId('product-unit-price') with timeout 5000ms
+      - waiting for getByTestId('order-complete-container').getByTestId('product-row').getByTestId('product-unit-price')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+      41 | /** จำนวน element = จำนวนค่าที่คาด (รวมที่ซ่อน) และทุกตัว visible พร้อมตัวเลขตรงตามลำดับ */
+      42 | async function expectAmounts(el: Locator, expected: number[], what: string) {
+    > 43 |   await expect(el, `${what} count`).toHaveCount(expected.length)
+         |                                     ^
+      44 |   expect(await amounts(el.filter({ visible: true })), what).toEqual(expected.map(round2))
+      45 | }
+      46 |
+    test-results/core-65-order-item-unit-pr-8ac57-อหน่วย-รวม-ที่-1280-และ-375-chromium/test-failed-1.png
+  1 failed
+    [chromium] › e2e/core-65-order-item-unit-price.spec.ts:88:5 › AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375 
+
+## Green — e2e core-65 หลังแก้ (next build + next start)
+  ✓  1 [chromium] › e2e/core-65-order-item-unit-price.spec.ts:91:5 › AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375 (7.5s)
+  1 passed (8.1s)
+
+## e2e ตะกร้าเดิม (ไม่แก้) — AC-164(e)
+  ✓  1 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:85:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (4.5s)
+  ✓  3 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:242:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (3.6s)
+  ✓  2 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:125:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน (10.1s)
+  3 passed (10.9s)
+
+## pnpm --filter storefront test:e2e:unit
+118 passed (900ms)
+
+## pnpm --filter storefront test:unit
+Test Files  100 passed (100)
+Tests  1178 passed (1178)
+
+## pnpm lint && pnpm typecheck && pnpm --filter storefront build
+lint: exit 0, typecheck: exit 0, build: exit 0
