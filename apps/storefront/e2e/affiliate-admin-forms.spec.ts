@@ -87,9 +87,10 @@ test("AC-12: ปิด all โดยไม่เลือก scope → error ไ
     })
 
     await step("พิมพ์ชื่อ collection ลำดับที่ 250 → เลือกได้, POST มี id นั้นและ starts_at เป็นเวลาไทย", async () => {
-      const searched = page.waitForResponse(
-        (r) => new URL(r.url()).pathname === "/admin/collections" && new URL(r.url()).searchParams.get("q") === term,
-      )
+      const searched = page.waitForResponse((r) => {
+        const url = new URL(r.url())
+        return url.pathname === "/admin/collections" && url.searchParams.get("q") === term
+      })
       await field("collection_ids").fill(term)
       // ผลค้นหาต้องเหลือรายการเดียว — ถ้า tag ชนกับคำค้นอีก ล้มที่นี่พร้อมจำนวนจริงแทนการรอ option จน timeout
       expect((await (await searched).json()).count, `GET /admin/collections?q=${term}`).toBe(1)
@@ -201,9 +202,10 @@ test("AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่�
     })
 
     await step("พิมพ์ชื่อรายที่ 250 → ค้นด้วย q (ไม่ดึง limit=200 หลายหน้า) เลือกได้ และ POST ส่ง id กับช่วงค่าเริ่มต้นเป็น UTC", async () => {
-      const searched = page.waitForResponse(
-        (r) => new URL(r.url()).pathname === AFFILIATES && new URL(r.url()).searchParams.get("q") === term,
-      )
+      const searched = page.waitForResponse((r) => {
+        const url = new URL(r.url())
+        return url.pathname === AFFILIATES && url.searchParams.get("q") === term
+      })
       await page.getByTestId("affiliate-payout-field-affiliate_id").fill(term)
       // ผลค้นหาต้องเหลือรายเดียว — ถ้า tag ชนกับคำค้นอีก ล้มที่นี่พร้อมจำนวนจริงแทนการรอ option จน timeout
       expect((await (await searched).json()).count, `GET ${AFFILIATES}?q=${term}`).toBe(1)
