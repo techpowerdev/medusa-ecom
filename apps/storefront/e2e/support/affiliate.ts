@@ -43,6 +43,7 @@ export async function createActiveAffiliate(
 /**
  * entry `approved` ของ affiliate ใส่ตรงใน DB (CI ตั้ง DATABASE_URL ให้ job e2e): การได้ entry approved ผ่าน flow จริง
  * ต้องรอ maturity job รายวัน (AF-4) ซึ่ง e2e สั่งรันไม่ได้ — payout สร้าง/จ่าย/ยกเลิกผ่าน admin API และ UI จริง
+ * คืน id ของ entry (ADM-38 ใช้หาหน้าที่แถวอยู่ด้วย `pageOffsetOf`; ผู้เรียกเดิมไม่ใช้ค่าคืน)
  */
 export async function insertApprovedEntry(
   affiliateId: string,
@@ -51,6 +52,7 @@ export async function insertApprovedEntry(
   createdAt: Date,
   amount = "100",
 ) {
+  const id = `affcom_e2e${crypto.randomBytes(6).toString("hex")}`
   const db = new Client({ connectionString: process.env.DATABASE_URL })
   await db.connect()
   try {
@@ -59,7 +61,7 @@ export async function insertApprovedEntry(
          (id, affiliate_id, program_id, order_id, amount, raw_amount, currency, status, created_at, updated_at)
        values ($1, $2, $3, $4, $6, $7, 'thb', 'approved', $5, $5)`,
       [
-        `affcom_e2e${crypto.randomBytes(6).toString("hex")}`,
+        id,
         affiliateId,
         programId,
         orderId,
@@ -71,6 +73,7 @@ export async function insertApprovedEntry(
   } finally {
     await db.end()
   }
+  return id
 }
 
 /**

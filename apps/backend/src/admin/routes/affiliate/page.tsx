@@ -35,8 +35,12 @@ const LedgerTable = () => {
         header: "Created",
         cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
+      // spec 08 กฎ 42a (ADM-38): เนื้อหา 250px แบบกฎ 41a (ไม่ใช่คอลัมน์แรก: 250 + pr-6 = 274) — ชื่อ/อีเมลยาวถูกตัดที่ขอบ cell
+      // และมี tooltip "ชื่อ อีเมล" ของ TruncatedCell จาก AffiliateCell เดิม (กฎ 41b/42b)
       entry.accessor("affiliate_id", {
         header: "Affiliate",
+        size: 274,
+        maxSize: 274,
         cell: ({ row }) => <AffiliateCell row={row.original} />,
       }),
       entry.accessor("order_id", { header: "Order" }),
@@ -45,8 +49,11 @@ const LedgerTable = () => {
         id: "amount",
         header: "Amount",
       }),
+      // spec 08 กฎ 42c (ADM-38): คอลัมน์สุดท้ายเป็นคอลัมน์ auto (ไม่มี width) รับความกว้างส่วนเกินของตาราง w-full
+      // — ไม่งั้น Chrome แจกส่วนเกินตามสัดส่วนให้คอลัมน์ Affiliate จนเกิน 250px (แบบกฎ 41c, Q12 = ก)
       entry.accessor("status", {
         header: "Status",
+        size: undefined,
         cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
       }),
     ],
@@ -54,14 +61,17 @@ const LedgerTable = () => {
   )
 
   return (
-    <AffiliateListTable
-      {...list}
-      rows={rows}
-      columns={columns}
-      heading="Ledger"
-      subHeading="Commission entries, newest first."
-      empty="No commission entries yet"
-    />
+    // spec 08 กฎ 42d (ADM-38): wrapper testid แบบอีก 3 ตาราง ให้ e2e หาแถวภายในตาราง Ledger
+    <div data-testid="affiliate-ledger-table">
+      <AffiliateListTable
+        {...list}
+        rows={rows}
+        columns={columns}
+        heading="Ledger"
+        subHeading="Commission entries, newest first."
+        empty="No commission entries yet"
+      />
+    </div>
   )
 }
 

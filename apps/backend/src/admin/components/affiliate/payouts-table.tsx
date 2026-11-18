@@ -134,9 +134,10 @@ export const PayoutsTable = () => {
         ),
       }),
       actionsColumn,
-      // AF-14: ชื่อ/อีเมล affiliate ถัดจากปุ่ม เพื่อให้อยู่ในจอที่ 1280px
-      // spec 08 กฎ 41a (ADM-37): เนื้อหา 250px แบบกฎ 39 (ไม่ใช่คอลัมน์แรก: 250 + pr-6 = 274) — ชื่อ/อีเมลยาวถูกตัดที่ขอบ cell
-      // และมี tooltip ของ TruncatedCell (AffiliateCell ห้ามตัดที่ลูกเอง — กฎ 41b)
+      // ตำแหน่ง (AF-14): ชื่อ/อีเมล affiliate ถัดจากปุ่ม เพื่อให้อยู่ในจอที่ 1280px
+      //
+      // ความกว้าง (spec 08 กฎ 41a, ADM-37): เนื้อหา 250px แบบกฎ 39 (ไม่ใช่คอลัมน์แรก: 250 + pr-6 = 274) — ชื่อ/อีเมลยาวถูกตัด
+      // ที่ขอบ cell และมี tooltip ของ TruncatedCell (AffiliateCell ห้ามตัดที่ลูกเอง — กฎ 41b)
       columnHelper.accessor("affiliate_id", {
         header: "Affiliate",
         size: 274,
