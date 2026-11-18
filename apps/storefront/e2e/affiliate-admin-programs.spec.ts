@@ -1,6 +1,6 @@
 import { APIRequestContext } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, fillDatePicker, loginAdmin, rowAction } from "./support/admin"
+import { ADMIN_UI_OPTIONS, animationsSettled, fillDatePicker, loginAdmin, rowAction } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
 
@@ -129,7 +129,7 @@ test("AC-42: สร้างด้วย dblclick ยิง POST ครั้ง
     await (await rowAction(created, "affiliate-program-row-actions", "Delete")).click()
     // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence (CORE-49 กฎข้อ 107d)
     await expect(dialog).toBeVisible()
-    await dialog.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
+    await animationsSettled(dialog)
     await evidence("04-delete-prompt")
     await dialog.getByRole("button", { name: "Delete program" }).click()
     await expect(created).toHaveCount(0)

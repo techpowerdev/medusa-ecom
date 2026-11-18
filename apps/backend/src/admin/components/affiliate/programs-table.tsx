@@ -106,7 +106,10 @@ export const ProgramsTable = () => {
 
   const columns = useMemo(
     () => [
-      program.accessor("name", { header: "Program" }),
+      // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
+      // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
+      // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
+      program.accessor("name", { header: "Program", size: 298, maxSize: 298 }),
       program.accessor("status", {
         header: "Status",
         cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,

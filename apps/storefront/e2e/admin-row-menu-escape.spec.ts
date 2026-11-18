@@ -1,6 +1,6 @@
 import { APIRequestContext, Locator, Page } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, loginAdmin, waitMenuOpened } from "./support/admin"
+import { ADMIN_UI_OPTIONS, loginAdmin, pageOffsetOf, waitMenuOpened } from "./support/admin"
 import { createActiveAffiliate, insertDraftPayouts } from "./support/affiliate"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { call, createVoucher } from "./support/evoucher"
@@ -72,9 +72,17 @@ test("AC-38: e-voucher partners — Escape ครั้งเดียวปิ�
   const run = tag()
   const ids: string[] = []
   try {
-    for (const n of [1, 2]) ids.push((await post(request, admin, "/admin/evoucher/partners", { name: `Partner ${run} ${n}` })).partner.id)
+    const create = async (n: number) => ids.push((await post(request, admin, "/admin/evoucher/partners", { name: `Partner ${run} ${n}` })).partner.id)
+    for (const n of [1, 2]) await create(n)
+    // ADM-35 (กฎ 39d): ตารางเรียงตามชื่อและปิดช่องค้นหา `q` → หาหน้าที่แถวอยู่ผ่าน admin API แล้วเปิดด้วย `partners_offset` (ไม่พึ่งหน้าแรก)
+    const offsetOf = (id: string) =>
+      pageOffsetOf(request, admin, { path: "/admin/evoucher/partners", key: "partners", query: "order=name", id })
+    // สองแถวติดกันแต่อาจคร่อมรอยต่อหน้า → เพิ่ม "… 0" ที่เรียงก่อนแถว 1 ดันแถว 1 ไปหน้าเดียวกับแถว 2
+    if ((await offsetOf(ids[0])) !== (await offsetOf(ids[1]))) await create(0)
+    const offset = await offsetOf(ids[1])
+    expect(await offsetOf(ids[0]), "แถว 1 และ 2 อยู่หน้าเดียวกัน").toBe(offset)
     await loginAdmin(page)
-    await page.goto(`${BACKEND_URL}/app/evouchers`)
+    await page.goto(`${BACKEND_URL}/app/evouchers${offset ? `?partners_offset=${offset}` : ""}`)
     await expectRowMenuEscape(page, taggedRows(page, "evoucher-partners-table", run), "evoucher-partner-row-actions", step)
   } finally {
     await deleteAllThenExpectOk(request, admin, ids.map((id) => `/admin/evoucher/partners/${id}`))
@@ -128,7 +136,8 @@ test("AC-38: affiliate affiliates — Escape ครั้งเดียวป�
   await loginAdmin(page)
   await page.goto(`${BACKEND_URL}/app/affiliate`)
   await page.getByTestId("affiliate-admin-tab-affiliates").click()
-  await expectRowMenuEscape(page, page.locator("tbody tr", { hasText: run }), "affiliate-row-actions", step)
+  // ADM-35 (กฎ 39d): หาแถวภายใน wrapper ของตาราง affiliates (ไม่ใช้ tbody tr ทั้งหน้า)
+  await expectRowMenuEscape(page, taggedRows(page, "affiliate-affiliates-table", run), "affiliate-row-actions", step)
 })
 
 test("AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว", async ({ page, request, step }) => {

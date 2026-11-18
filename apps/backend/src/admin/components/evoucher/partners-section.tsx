@@ -205,6 +205,10 @@ export const PartnersSection = () => {
         id: "actions",
         // spec 08 กฎ 37: ไม่ห่อด้วย tooltip ของ TruncatedCell — tooltip ที่เปิดเมื่อ focus กลับมาที่ trigger กิน Escape แรกของ ActionMenu
         meta: { ___truncateTooltip: false },
+        // spec 08 กฎ 39 (ADM-35): ทุก td ได้ width จาก size (ค่าเริ่มต้น 150 ของ tanstack) — ตารางนี้มี 3 คอลัมน์ ผลรวมน้อยกว่าความกว้าง
+        // ของตาราง w-full → Chrome แจกส่วนเกินให้ทุกคอลัมน์ตามสัดส่วนโดยไม่สน max-width (ชื่อกว้าง 428px) — ไม่ตั้ง width ที่คอลัมน์นี้
+        // ให้เป็นคอลัมน์ auto ที่รับส่วนเกินแทน (ปุ่มยังชิดซ้ายของคอลัมน์)
+        size: undefined,
         cell: ({ row }) => <PartnerActions partner={row.original} deleteOnce={deleteOnce} onEdit={openEdit} />,
       })
     },
@@ -213,9 +217,14 @@ export const PartnersSection = () => {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("name", { header: "Name" }),
+      // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
+      // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
+      // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
+      columnHelper.accessor("name", { header: "Name", size: 298, maxSize: 298 }),
       columnHelper.accessor("support_contact", {
         header: "Support contact",
+        size: 274,
+        maxSize: 274,
         cell: ({ getValue }) => getValue() ?? "-",
       }),
       actionsColumn,

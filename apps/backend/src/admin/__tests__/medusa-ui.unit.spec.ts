@@ -1031,6 +1031,10 @@ describe("FocusModal คืน focus ให้ปุ่มที่เปิด�
     expect(src).toMatch(/\buseRestoreOpenerFocus\(/)
     const { contents, withHandler } = restoreUsage(src)
     expect(withHandler).toBe(contents)
+    // nit review #413 (ADM-35): handler ที่ตั้งเองหลัง spread จะทับ handler ของ hook — ห้ามตั้ง onOpenAutoFocus/onCloseAutoFocus ที่ Content
+    for (const [, props] of src.matchAll(/<FocusModal\.Content\b([^>]*)>/g)) {
+      expect(props).not.toMatch(/\bon(Open|Close)AutoFocus=/)
+    }
   })
 
   it("ไม่มี onCloseAutoFocus={( แบบ inline ใน src/admin (logic อยู่ใน hook กลางตัวเดียว)", () => {
