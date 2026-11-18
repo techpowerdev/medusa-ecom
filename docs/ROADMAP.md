@@ -4,7 +4,13 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**รอบ 39 (2026-11-19, เอกสารล้วน) — สถานะล่าสุด**: owner ตอบข้อ ก ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 38)" 2026-11-19 = **ก แก้แบบ ADM-37** (รวม nit กลุ่ม ข ของ review #418) ·
+**ปิดรอบ 39 (2026-11-19, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-38 #421 + เอกสาร #420 (รอบ 39) ·
+ผล ADM-38: ตาราง Ledger คอลัมน์ Affiliate td 274px (เนื้อหา 250px) คง tooltip "ชื่อ อีเมล" ของ `TruncatedCell`, คอลัมน์สุดท้าย Status เป็น auto → เห็น Status โดยไม่เลื่อนแนวนอน (qa ที่ 1280: ตาราง 3163px → 1036px, Status right 3395 → 1268px; Status auto 174/334/734px ที่ 1280/1440/1920) ·
+red 3 ขั้น: (1) develop + wrapper testid ล้มที่เนื้อหา cell Affiliate 2589.5px (ไม่ใช่ locator) → (2) + `size`/`maxSize` ยังล้ม 261.9/409.1px → (3) + Status auto green; `--repeat-each=5` 45/45, ชุด admin เต็ม 98/98; reviewer APPROVE + CI เขียว; qa REPORT defect ไม่พบ ·
+หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 38)": ข้อ ก ☑ ครบ (ADM-38 #421) · ข/ค ที่ยังไม่มี task คงไว้ ·
+ไม่มี PR เปิด · ไม่มีงานพักไว้ · ไม่มี task ที่ owner สั่งค้าง · ไม่มีคำถาม owner ค้าง · follow-up ใหม่ (hygiene/backlog/บทเรียน — ไม่มีข้อที่ต้องให้ owner ตัดสิน) → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 39)" ·
+ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ที่เหลือคือ go-live — ดูบรรทัด "ก่อนเปิดร้านจริง (go-live)" ·
+(ประวัติ) **รอบ 39 (2026-11-19, เอกสารล้วน)**: owner ตอบข้อ ก ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 38)" 2026-11-19 = **ก แก้แบบ ADM-37** (รวม nit กลุ่ม ข ของ review #418) ·
 **owner สั่งทำ 2026-11-19 (☐; ไม่บล็อก release; เริ่มได้เมื่อ PR เอกสารรอบ 39 merge)**: **ADM-38** (spec 08 หัวข้อ "Follow-up รอบ 39" กฎ 42, AC-43 — ตาราง Ledger คอลัมน์ Affiliate `size`/`maxSize` 274 คง tooltip "ชื่อ อีเมล" ของ `TruncatedCell`,
 คอลัมน์สุดท้าย Status เป็น auto, wrapper testid `affiliate-ledger-table`, e2e 1280/1920 + `tag()` prefix ต่อ task + แยก comment AF-14/กฎ 41a ใน payouts; qa) ·
 ไม่มี PR เปิด · ไม่มีงานพักไว้ · ไม่มีคำถาม owner ใหม่ · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ที่เหลือก่อน go-live ดูบรรทัด "ก่อนเปิดร้านจริง (go-live)" ·
@@ -424,7 +430,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-35 | (รอบ 37, owner สั่งทำ 2026-11-18 — qa #409 O-1) คอลัมน์ข้อความอิสระของ partners/programs/affiliates/payouts จำกัดความกว้างเนื้อหา 250px แบบ `ProductCell` ของ dashboard ด้วย className/column option คง tooltip ของ `TruncatedCell` → ปุ่ม `…` อยู่ในจอที่ 1280 + nit review/qa #409 ของ e2e (กฎ 39; AC-40; ~15 LOC + ~160 LOC test; qa; **← ADM-34** `partners-section.tsx`) | ☑ #416 (`size`/`maxSize` 298/274; qa D-1 test-only แก้ใน PR; O-1/O-3 → ADM-37) |
 | ADM-36 | (รอบ 37, owner สั่งทำ 2026-11-18 — qa #409 O-2) Escape ในเฟรมแรกที่เมนูต่อแถวโผล่: ด่านวัด (probe `MutationObserver` 20 ครั้ง) เทียบ customer groups ของ Medusa (`DataTable` แบบเดียวกัน — ไม่ใช่ `/app/products`) → แก้เฉพาะเมื่อเป็นจุดต่างในโค้ดเรา; upstream → หยุด ไม่มี PR แล้วถาม owner spec 08 Q11 (กฎ 40; AC-41; ด่านวัด ~80 LOC, ทาง B ≤ ~150 LOC; qa เฉพาะทาง B; **← ADM-35** — ด่านวัดเริ่มได้ทันที) | ☑ ผลวัด 2026-11-19 (owner สั่งทำ 2026-11-18; ไม่มี PR — `docs/evidence/admin-ui/ADM-36-tests.txt`): ทาง (A) customer groups ของ Medusa ทิ้ง Escape เฟรมแรก 19/20 เท่ากับ programs 20/20 → owner Q11 = ก ปิดข้อนี้ ไม่มีโค้ด |
 | ADM-37 | (รอบ 38 / ปิดรอบ 37, owner สั่งทำ 2026-11-19 ก "ทำแบบ ADM-35" — qa #416 O-1/O-3, builder #416) คอลัมน์ Affiliate ของ payouts (`AffiliateCell`) `size`/`maxSize` 274 คง tooltip ของ `TruncatedCell` (+ `{" "}` ระหว่างชื่อกับอีเมล) และคอลัมน์ auto รับความกว้างส่วนเกินใน programs/affiliates/payouts (actions `size: undefined` หรือคอลัมน์สุดท้ายตาม Q12) → คอลัมน์ข้อความ ≤ 250px ที่ 1280 และ 1920 (spec 08 กฎ 41; AC-42; ~10 LOC + ~130 LOC test; qa; ← PR เอกสารปิดรอบ 37) | ☑ #418 (owner สั่งทำ 2026-11-19; Q12 = ก — คอลัมน์สุดท้ายเป็น auto; qa defect ไม่พบ; O-1/O-2 → follow-up ปิดรอบ 38) |
-| ADM-38 | (รอบ 39, owner สั่งทำ 2026-11-19 ก "แก้แบบ ADM-37" — qa #418 O-2 + nit review #418) ตาราง Ledger คอลัมน์ Affiliate (`AffiliateCell`) `size`/`maxSize` 274 คง tooltip "ชื่อ อีเมล" ของ `TruncatedCell` + คอลัมน์สุดท้าย Status `size: undefined` + wrapper testid `affiliate-ledger-table` → คอลัมน์ Affiliate ≤ 250px และเห็น Status โดยไม่เลื่อนแนวนอนที่ 1280/1920; รวม `tag()` prefix ต่อ task ใน `admin-table-long-text.spec.ts` และแยก comment AF-14/กฎ 41a ใน `payouts-table.tsx` (spec 08 กฎ 42; AC-43 — red ขั้น (1) = develop + เฉพาะ wrapper testid แล้วล้มที่เนื้อหา cell Affiliate > 250.5 ไม่ใช่ที่ locator/timeout, (2) + `size`/`maxSize` บันทึกผลวัด 1280/1920, (3) + Status auto = green; ~10 LOC + ~90 LOC test; qa; ← PR เอกสารรอบ 39) | ☐ owner สั่งทำ 2026-11-19 |
+| ADM-38 | (รอบ 39, owner สั่งทำ 2026-11-19 ก "แก้แบบ ADM-37" — qa #418 O-2 + nit review #418) ตาราง Ledger คอลัมน์ Affiliate (`AffiliateCell`) `size`/`maxSize` 274 คง tooltip "ชื่อ อีเมล" ของ `TruncatedCell` + คอลัมน์สุดท้าย Status `size: undefined` + wrapper testid `affiliate-ledger-table` → คอลัมน์ Affiliate ≤ 250px และเห็น Status โดยไม่เลื่อนแนวนอนที่ 1280/1920; รวม `tag()` prefix ต่อ task ใน `admin-table-long-text.spec.ts` และแยก comment AF-14/กฎ 41a ใน `payouts-table.tsx` (spec 08 กฎ 42; AC-43 — red ขั้น (1) = develop + เฉพาะ wrapper testid แล้วล้มที่เนื้อหา cell Affiliate > 250.5 ไม่ใช่ที่ locator/timeout, (2) + `size`/`maxSize` บันทึกผลวัด 1280/1920, (3) + Status auto = green; ~10 LOC + ~90 LOC test; qa; ← PR เอกสารรอบ 39) | ☑ #421 (owner สั่งทำ 2026-11-19; red 3 ขั้น → green; qa defect ไม่พบ; O-1 + nit review → follow-up ปิดรอบ 39) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -628,20 +634,43 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 - รอบ 39 (2026-11-19, เอกสารล้วน — owner ตอบข้อ ก ของหัวข้อปิดรอบ 38 = ก "แก้แบบ ADM-37"; ตรวจกับโค้ดบน develop `c0ec084e`) →
   spec 08: Status ต้นไฟล์ (คง in-progress), หัวข้อใหม่ "Follow-up รอบ 39" — กฎ 42, AC-43, ADM-38; Out of scope ของรอบ 38 ชี้ไป ADM-38; nit review #419 ข้อ 1 (AC-42 "96/96; วัดที่ 1280/1440/1920") ·
   ROADMAP: บรรทัดสถานะ (ปิดรอบ 38 → ประวัติ), แถว ADM-38, ทำเครื่องหมายข้อ ก (1) และ ข ข้อแรกของหัวข้อปิดรอบ 38 · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+- ปิดรอบ 39 (2026-11-19, เอกสารล้วน) → sync ☑ ADM-38 #421 · เอกสารที่ merge ในรอบ: #420 · ไม่มีคำตอบ owner ใหม่ ·
+  spec 08: Status ต้นไฟล์ (คง in-progress) + หัวข้อ "Follow-up รอบ 39" → done, ☑ AC-43 พร้อมผล red 3 ขั้นและผลวัด qa 1280/1440/1920, แถว ADM-38 ·
+  ROADMAP: บรรทัดสถานะ (รอบ 39 → ประวัติ), แถว ADM-38, ทำเครื่องหมายหัวข้อปิดรอบ 38 ว่าข้อ ก ครบ, หัวข้อใหม่ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 39)" (ไม่เปิด task id ใหม่) ·
+  ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+
+## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 39)
+ที่มา: review/qa/builder ของ #420–#421 (2026-11-19) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · ไม่มีข้อใดบล็อก release
+### ก. ต้องให้ owner ตัดสิน
+ไม่มี — ไม่มีคำถาม owner ในรอบนี้
+### ข. test hygiene / nit (planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
+- (review #421) `e2e/admin-table-long-text.spec.ts` type `Table` ให้ `trigger` เป็น optional (AC-43a) ทำให้ต้องใช้ non-null assertion `!` 6 ที่ในผู้เรียกเดิมที่มีปุ่ม `…` → แยก type เช่น `RowMenuTable` (มี `trigger` บังคับ) กับตารางที่ไม่มีเมนู
+- (review #421) `docs/evidence/admin-ui/ADM-38-tests.txt` ขั้น (2): probe วัดเนื้อหา cell Affiliate 264.0/414.2px แต่ test ล้มที่ 261.875/409.0625px — ไม่ได้อธิบายส่วนต่าง (ข้อมูลคนละชุดหรือจังหวะวัดต่างกัน) → ครั้งหน้าบันทึกเหตุผลหรือวัดด้วย helper เดียวกับ test
+- (review #421) `apps/storefront/e2e/support/affiliate.ts:46` comment "ผู้เรียกเดิมไม่ใช้ค่าคืน" จะล้าสมัยเมื่อมีผู้เรียกใช้ id ที่คืน (ADM-38 ใช้แล้ว) → แก้ถ้อยคำเมื่อแตะไฟล์ครั้งถัดไป
+- ข ของหัวข้อปิดรอบ 38 และก่อนหน้าที่ยังไม่มี task คงไว้
+### ค. backlog / ไม่ทำ (พร้อมเหตุผล)
+- (qa #421 O-1 — ข้อสังเกต ไม่ใช่ defect) tooltip ของชื่อ 370 ตัวอักษรสูงมาก บังหลายแถวที่ 1280 (อ่านได้ครบ — เดียวกับ qa #418 O-3 / #416 O-4) · hover cell ถัดไปทันทีหลัง tooltip นี้ไม่เปิด tooltip ใหม่ภายใน 5 วินาที
+  แต่บนหน้าที่เพิ่งโหลดเปิดถูกต้อง — น่าจะเป็น grace area ของ Radix หรือ cell ถูก tooltip บัง (แบบ qa #416 O-5) ไม่ได้มาจาก ADM-38 → ไม่ทำ (ไม่ patch library)
+- ค้างจากรอบก่อน: ก่อน go-live (Stripe live นิติบุคคลไทย + PromptPay — spec 06 Q1, ค่าส่งจริงแทน ฿10 — spec 01 Q-F1, smoke test บน production, วัด OPS-26 ซ้ำบน staging) · กลุ่ม ข/ค ของหัวข้อปิดรอบ 38 และก่อนหน้าที่ยังไม่มี task คงไว้
+### ง. บทเรียนกระบวนการ (session หลักพิจารณาเพิ่มใน `CLAUDE.md`/agent — planner ไม่แตะ)
+- (builder #421) ตาราง `DataTable` ที่ไม่มีคอลัมน์ auto ตั้งแค่ `size`/`maxSize` ของคอลัมน์ข้อความยังเกิน 250px ได้แม้ที่ 1280 (ขั้น (2): 261.9px) — ทุก td ได้ width ผลรวมน้อยกว่าตาราง `w-full` แล้ว Chrome แจกส่วนเกินตามสัดส่วน
+  → spec ที่จำกัดความกว้างคอลัมน์ต้องกำหนดคอลัมน์ auto คู่กันเสมอ ไม่ใช่เฉพาะจอกว้าง
+- (review #420) red ขั้นแรกของ AC ต้องไม่ล้มที่ locator ที่ task จะเพิ่มเอง (เช่น wrapper testid ที่ develop ยังไม่มี) — ให้ red ขั้นแรก = develop + เฉพาะ locator นั้น แล้วล้มที่ assertion ของพฤติกรรม (qa #421 รันบน develop ตรงๆ จึงล้มที่ locator — ใช้เป็นหลักฐาน red ไม่ได้)
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 38)
 ที่มา: review/qa/builder ของ #417–#418 (2026-11-19) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน · ไม่มีข้อใดบล็อก release
+**(ปิดรอบ 39, 2026-11-19) ☑**: ADM-38 #421 — ข้อ ก (1) และ ข ข้อแรกปิด (หัวข้อนี้ข้อ ก ครบ) · ข/ค ที่ยังไม่มี task คงไว้
 **(รอบ 39, 2026-11-19) แปลงแล้ว**: ข้อ ก (1) owner ก → **ADM-38** (spec 08 กฎ 42, AC-43) · ข้อ ข ข้อแรก (review #418: `tag()` prefix, comment AF-14/กฎ 41a) รวมเข้า ADM-38 (กฎ 42f) · ข/ค ที่เหลือคงไว้
 **แก้ในปิดรอบ 38 แล้ว (ไม่ต้องมี task)**: Q12 = ก บันทึกใน spec 08 กฎ 41c + แก้ตัวเลขช่องว่าง (review #417 ข้อ 1, review #418) · cart S2 ของ CORE-67 เพิ่มในข้อ cleanup ของหัวข้อปิดรอบ 37 กลุ่ม ข (review #417 ข้อ 2) ·
 ข้อความ "☑ ครบในปิดรอบ 37"/"ตอบครบในปิดรอบ 37" ย้ายจากบรรทัดประวัติรอบ 37 ไปบรรทัดสถานะปิดรอบ 38 (review #417 ข้อ 3)
 ### ก. ต้องให้ owner ตัดสิน
-1. **[รอบ 39: owner ก 2026-11-19 → ADM-38 ☐]** **[ถาม owner] ตาราง Ledger คอลัมน์ Affiliate กว้างตามข้อความ (qa #418 O-2)** `routes/affiliate/page.tsx` `LedgerTable` (คอลัมน์ Created, Affiliate (`AffiliateCell` ร่วมกับ payouts), Order, Amount, Status — ไม่มีคอลัมน์ actions/เมนูต่อแถว)
+1. **[ปิดรอบ 39: owner ก 2026-11-19 → ADM-38 ☑ #421]** **[ถาม owner] ตาราง Ledger คอลัมน์ Affiliate กว้างตามข้อความ (qa #418 O-2)** `routes/affiliate/page.tsx` `LedgerTable` (คอลัมน์ Created, Affiliate (`AffiliateCell` ร่วมกับ payouts), Order, Amount, Status — ไม่มีคอลัมน์ actions/เมนูต่อแถว)
    ไม่ตั้ง `size`/`maxSize` → affiliate ชื่อยาวทำให้คอลัมน์ Affiliate 2600px (ตาราง 3203px) ทุกความกว้างจอทั้งบน develop และ #418 → ต้องเลื่อนแนวนอนจึงเห็น Status (ไม่มีปุ่มถูกดันออกนอกจอ — spec 08 รอบ 38 ตัดไว้นอก scope) ·
    ทางเลือก: (ก) ทำแบบ ADM-37: คอลัมน์ `affiliate_id` `size`/`maxSize` 274 (tooltip "ชื่อ อีเมล" ของ `TruncatedCell` ได้จาก `{" "}` ของ #418 อยู่แล้ว) + คอลัมน์สุดท้าย Status `size: undefined` (แบบกฎ 41c) + e2e 1280/1920 ใน `admin-table-long-text.spec.ts` + qa
    ~5 LOC โค้ด + ~60 LOC test · (ข) คงเดิม — Ledger เป็นตารางอ่านอย่างเดียว ข้อมูลชื่อยาว 370 ตัวเป็นกรณีทดสอบ ไม่ใช่ข้อมูลจริงทั่วไป ·
    **Recommended: (ก)** — งานเล็ก ใช้ column option ของ `DataTable` แบบเดียวกับอีก 4 ตาราง (ไม่สร้าง component) ทำให้ทุกตารางของหน้า affiliate สม่ำเสมอ; ทำพร้อม nit ข้อ ข ในไฟล์ `admin-table-long-text.spec.ts` ได้ในครั้งเดียว
 ### ข. test hygiene / nit (planner จัดเป็น task เล็กได้เมื่อ owner สั่ง — ถ้า ก (1) = ก ให้รวมเข้า task นั้น)
-- **[รอบ 39: รวมเข้า ADM-38 — spec 08 กฎ 42f]** (review #418) `e2e/admin-table-long-text.spec.ts:23` `tag()` ใช้ prefix `adm35-` กับข้อมูลของ ADM-37 ด้วย → แยก/เปลี่ยนเป็น `adm37-` สำหรับ describe ของ ADM-37 · `components/affiliate/payouts-table.tsx:137–139` comment AF-14 เดิมติดกับ comment ใหม่ของกฎ 41a →
+- **[ปิดรอบ 39: ☑ ใน ADM-38 #421 — spec 08 กฎ 42f]** (review #418) `e2e/admin-table-long-text.spec.ts:23` `tag()` ใช้ prefix `adm35-` กับข้อมูลของ ADM-37 ด้วย → แยก/เปลี่ยนเป็น `adm37-` สำหรับ describe ของ ADM-37 · `components/affiliate/payouts-table.tsx:137–139` comment AF-14 เดิมติดกับ comment ใหม่ของกฎ 41a →
   แยกบรรทัด/จัดลำดับให้อ่านง่าย · comment กฎ 41c ซ้ำ 3 ไฟล์ — reviewer ยอมรับ ไม่ทำ
 - (qa #418 O-1 — ข้อสังเกต ไม่ใช่ defect) payouts ที่ 1920 คอลัมน์สุดท้าย "Payout" ไม่รับส่วนเกินเพราะตารางกว้างพอดีเนื้อหา (293px) ส่วนเกินไปที่ Status/actions/Amount ที่ยังไม่ถึง 150 → ช่องว่างหลังปุ่ม 90–91px (ที่ 1280 = 24px) ไม่เกินความกว้างเริ่มต้นของคอลัมน์ actions — ยอมรับตามกฎ 41c ไม่ทำ
 - (builder #418) ที่ 1280 ตาราง payouts 1414px, affiliates 1097px กว้างกว่ากล่อง (qa #416 O-2 — นอก scope, ปุ่มยังในจอ) คงไว้
