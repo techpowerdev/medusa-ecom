@@ -1,0 +1,62 @@
+# CORE-66 — ผล test (spec 01 กฎข้อ 124, AC-165) — 2026-11-18, node v22.23.3, ในเครื่อง: backend :9335 (medusa develop, DB medusa_core66, Redis db 4), storefront :8335 (next build + next start)
+
+## Red — e2e ฉบับสุดท้าย (core-66 ใหม่ + core-65 ที่แก้ตามกฎข้อ 124e) บน cart Item ของ develop e9352c91 — core-66 ล้มที่ preview qty1-discount ที่ 1280: มี product-unit-price ในแถว qty 1
+Running 2 tests using 2 workers
+  ✘  2 [chromium] › e2e/core-66-checkout-preview-unit-price.spec.ts:90:5 › AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375; /cart คงเดิม (12.5s)
+  ✓  1 [chromium] › e2e/core-65-order-item-unit-price.spec.ts:90:5 › AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375 (13.8s)
+  1) [chromium] › e2e/core-66-checkout-preview-unit-price.spec.ts:90:5 › AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375; /cart คงเดิม › checkout preview qty1-discount ที่ 1280 
+    Error: product-unit-price = total / quantity count
+    expect(locator).toHaveCount(expected) failed
+    Locator:  getByTestId('items-table').getByTestId('product-row').getByTestId('product-unit-price')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+    Call log:
+      - product-unit-price = total / quantity count getByTestId('items-table').getByTestId('product-row').getByTestId('product-unit-price') with timeout 5000ms
+      - waiting for getByTestId('items-table').getByTestId('product-row').getByTestId('product-unit-price')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+      38 | /** จำนวน element = จำนวนค่าที่คาด (รวมที่ซ่อน) และทุกตัว visible พร้อมตัวเลขใกล้ค่าที่คาดตามลำดับ (±0.005) */
+      39 | async function expectAmounts(el: Locator, expected: number[], what: string) {
+    > 40 |   await expect(el, `${what} count`).toHaveCount(expected.length)
+         |                                     ^
+      41 |   const shown = (await el.filter({ visible: true }).allTextContents()).map((t) => Number(t.replace(/[^0-9.]/g, "")))
+      42 |   expect(shown, `${what} visible`).toHaveLength(expected.length)
+      43 |   expected.forEach((value, i) => expect(shown[i], `${what} [${i}]`).toBeCloseTo(value, 2))
+        at expectAmounts (wt-CORE-66/apps/storefront/e2e/core-66-checkout-preview-unit-price.spec.ts:40:37)
+        at expectPreviewRow (wt-CORE-66/apps/storefront/e2e/core-66-checkout-preview-unit-price.spec.ts:76:9)
+        at wt-CORE-66/apps/storefront/e2e/core-66-checkout-preview-unit-price.spec.ts:156:11
+        at wt-CORE-66/apps/storefront/e2e/support/fixtures.ts:33:11
+        at wt-CORE-66/apps/storefront/e2e/support/fixtures.ts:31:7
+        at wt-CORE-66/apps/storefront/e2e/core-66-checkout-preview-unit-price.spec.ts:152:9
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../core66-results-red3/core-66-checkout-preview-u-ea0d5-ี่-1280-และ-375-cart-คงเดิม-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+    Error Context: ../../../core66-results-red3/core-66-checkout-preview-u-ea0d5-ี่-1280-และ-375-cart-คงเดิม-chromium/error-context.md
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../core66-results-red3/core-66-checkout-preview-u-ea0d5-ี่-1280-และ-375-cart-คงเดิม-chromium/trace.zip
+    Usage:
+        npx playwright show-trace ../../../core66-results-red3/core-66-checkout-preview-u-ea0d5-ี่-1280-และ-375-cart-คงเดิม-chromium/trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  1 failed
+    [chromium] › e2e/core-66-checkout-preview-unit-price.spec.ts:90:5 › AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375; /cart คงเดิม 
+  1 passed (14.8s)
+
+## Green — หลังแก้ + e2e ตะกร้าเดิม (core-42, core-47 ไม่แก้) — AC-165(e)
+Running 5 tests using 4 workers
+  ✓  4 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:85:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม (9.2s)
+  ✓  2 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:125:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน (12.3s)
+  ✓  5 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:242:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม (3.8s)
+  ✓  3 [chromium] › e2e/core-66-checkout-preview-unit-price.spec.ts:90:5 › AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375; /cart คงเดิม (17.8s)
+  ✓  1 [chromium] › e2e/core-65-order-item-unit-price.spec.ts:90:5 › AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375 (19.5s)
+  5 passed (20.8s)
+
+## pnpm --filter storefront test:e2e:unit
+  120 passed (1.2s)
+
+## storefront vitest (test:unit)
+ Test Files  100 passed (100)
+      Tests  1178 passed (1178)
+
+## lint / typecheck / build (storefront)
+pnpm --filter storefront lint: exit 0; pnpm --filter storefront typecheck: exit 0; next build: ผ่าน
