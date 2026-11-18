@@ -4,7 +4,10 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**รอบ 35 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: owner สั่งทำ ADM-22 2026-11-18 → qa ตรวจบน build production (develop `9cd0770d`, ไม่มี PR) **☑ ผลตรวจ** (`docs/evidence/admin-ui/ADM-22/REPORT.md`): เข้า spec 08 กฎ 26b — หน้า error ของ admin แสดง "Error Details (Development Mode)" + stack
+**ปิดรอบ 35 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): OPS-27 #399 + เอกสาร #398 (รอบ 35) ·
+ผล OPS-27: Dockerfile/CI/คำสั่ง prod-like ใน `CLAUDE.md` build ด้วย `NODE_ENV=production` (placeholder ของ guard inline เฉพาะบรรทัด build — Q-O6 = ก) → admin bundle ไม่มี "Development Mode" (เล็กลง ~336KB), qa ซ้ำ AC-27 ไม่มี stack ทุกเคส, image รันโดยไม่มี env ยังล้มที่ guard ·
+ไม่มี PR เปิด · ไม่มีคำถามค้างของ owner · ไม่มีงานพักไว้ · follow-up → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 35)" ท้ายไฟล์ ·
+(ประวัติ) **รอบ 35 (2026-11-18, เอกสารล้วน)**: owner สั่งทำ ADM-22 2026-11-18 → qa ตรวจบน build production (develop `9cd0770d`, ไม่มี PR) **☑ ผลตรวจ** (`docs/evidence/admin-ui/ADM-22/REPORT.md`): เข้า spec 08 กฎ 26b — หน้า error ของ admin แสดง "Error Details (Development Mode)" + stack
 แต่สาเหตุระดับ build (`medusa build` ตั้ง `NODE_ENV=development` เองเมื่อไม่มีค่า → ฝังใน admin bundle ทุกหน้า) · **owner ตัดสินข้อ ก "แก้ที่การ build" 2026-11-18** → ADM-22 ไม่พักแล้ว, **ADM-22b ✕ ไม่เปิด** ·
 **owner สั่งทำ 2026-11-18 (☐ พร้อมเริ่มหลัง PR เอกสารรอบ 35 merge)**: OPS-27 (spec 07 หัวข้อ "Follow-up รอบ 35", AC-42 — `NODE_ENV=production` เฉพาะขั้น build ใน Dockerfile + CI + คำสั่ง prod-like ใน `CLAUDE.md`; ขั้นตรวจ bundle/image ใน CI; qa ซ้ำ AC-27 บน build ใหม่) ·
 **owner ตอบแล้ว 2026-11-18**: spec 07 Q-O6 = ก — `medusa build` โหลด `medusa-config.ts` ทำให้ guard (ADR-010/OPS-7/OPS-21) throw ใน stage build ของ Dockerfile ที่ไม่มี env → ก: placeholder inline เฉพาะบรรทัด build (ไม่มี `ALLOW_TEST_PROVIDERS`, ไม่แตะ guard/ADR) · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
@@ -325,7 +328,7 @@ OPS-5 🚀 #319 (index/migration + runbook backup/restore; AC-4)
 **OPS-24 ☑ #356** (ปิดรอบ 26, nit review #325: comment `export` ใน `docker-compose.prod.yml` + `.trim()` ของ env อีเมลแจ้งเตือนใน `checkBootEnv`; AC-39; ไม่บล็อก release) ·
 (รอบ 32) **OPS-26 ☑ #385** (owner สั่งทำ 2026-11-17; ผล: ไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 — `docs/evidence/scale/OPS-26/REPORT.md`) (Q-O5 = ก: input `server_processes` ของ load-nightly → `medusa start --cluster <n>` วัด 1 vs 2 process แบบ OPS-23; AC-41; ~40 LOC + REPORT ไม่แตะโค้ด app; ADR-024 เฉพาะเมื่อผลให้เปลี่ยนวิธี deploy prod; ไม่บล็อก release)
 (รอบ 30) **OPS-25 ☑ #366** (owner สั่งทำ 2026-11-13; comment ล้วน, nit review #354: เหตุผลเรื่อง `docs/ops/**` ใน `classify-changes.sh` + "35 เคส" ใน `ci.yml`; AC-40; ไม่บล็อก release)
-(รอบ 35) **OPS-27 ☐** (owner ข้อ ก "แก้ที่การ build" + สั่งทำ 2026-11-18 — ผล qa ADM-22: admin ถูก build แบบ development): `NODE_ENV=production` เฉพาะขั้น build ใน `apps/backend/Dockerfile` (+ placeholder ของ guard inline ตาม Q-O6 ก) และ step build ของ `storefront-e2e`,
+(รอบ 35) **OPS-27 ☑ #399** (owner ข้อ ก "แก้ที่การ build" + สั่งทำ 2026-11-18 — ผล qa ADM-22: admin ถูก build แบบ development): `NODE_ENV=production` เฉพาะขั้น build ใน `apps/backend/Dockerfile` (+ placeholder ของ guard inline ตาม Q-O6 ก) และ step build ของ `storefront-e2e`,
 ขั้นตรวจ "Development Mode" ใน bundle/image ใน CI, คำสั่ง prod-like ใน `CLAUDE.md` (owner อนุมัติ), static ใน `ci-workflow.unit.spec.ts`, qa ซ้ำ AC-27 ของ spec 08 บน build ใหม่ (AC-42; ~70 LOC + REPORT `docs/evidence/scale/OPS-27/`; Depends none — หลัง PR เอกสารรอบ 35 merge (Q-O6 = ก owner 2026-11-18); ไม่บล็อก release)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
@@ -534,6 +537,16 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   spec 07: หัวข้อ "Follow-up รอบ 35" — ตารางที่ build backend (Dockerfile, `ci.yml`, `CLAUDE.md`; ทางผ่าน Dockerfile ไม่ต้องแก้; `docs/ops/**`/`release-gate.yml` ไม่มีคำสั่ง build), กฎ OPS-27 (a)–(e), AC-42 (a)–(d), test plan, task OPS-27, Q-O6;
   แก้ข้อเท็จจริงของคำสั่งงาน: handler `build` อยู่ที่ `@medusajs/cli` `create-cli.js:540–541` (`:182` คือ `db:setup`) · พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard throw ใน stage build ที่ไม่มี env → กฎ (b) placeholder + Q-O6 ·
   ROADMAP: บรรทัดสถานะ, แถว ADM-22, OPS-27 ใน M7 · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md` (บรรทัดคำสั่ง prod-like → builder แก้ใน OPS-27 ตามที่ owner อนุมัติ)
+
+## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 35)
+ที่มา: review/qa ของ #398–#399 (2026-11-18) — **ยังไม่เปิด task id** · ไม่มีข้อที่ต้องให้ owner ตัดสิน
+### ข. test hygiene / nit (ไม่เร่ง — planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
+- (review #399) `.github/workflows/ci.yml` ขั้นตรวจ "Development Mode" ใน `docker-worker-mode` และ `storefront-e2e` ใช้ `if grep ...; then exit 1` → ผ่านเงียบเมื่อ grep คืน 2 (อ่านไฟล์ไม่ได้) ควร fail เมื่อ rc ≠ 1; static ใน `ci-workflow.unit.spec.ts` ไม่ตรวจว่า step fail จริง
+- (builder/qa/review #399) ไฟล์ test ที่ compile แล้ว (`src/__tests__/*.unit.spec.js`) ติดไปใน `.medusa/server` และ image ที่ `/app/src/__tests__/` (มีมาก่อน OPS-27) → ตัดออกจาก output build/image; ระวังคำ `build-only` ใต้ `src/` ทำให้ขั้นตรวจ image แดง
+- (qa #399 O-1) console error ของ Radix "`DialogContent` requires a `DialogTitle`" ในฟอร์ม Create partner (`FocusModal`) — a11y มีอยู่เดิม
+- (review #398) REPORT ADM-22 ใช้ Node 22.23.3 แต่ Dockerfile pin 22.23.4 — ไม่มีผล ไม่ต้องแก้
+### ค. ค้างจากรอบก่อน (ไม่มี task)
+- ก่อน go-live: Stripe live นิติบุคคลไทย + PromptPay (spec 06 Q1), ค่าส่งจริงแทน ฿10 placeholder (spec 01 Q-F1), smoke test บน production, วัด OPS-26 ซ้ำบน staging · กลุ่ม ข ของหัวข้อปิดรอบ 34 และหัวข้อก่อนหน้ายังคงอยู่
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 34)
 ที่มา: review ของ #395–#396 (2026-11-18) — **ยังไม่เปิด task id** · ไม่มีข้อที่ต้องให้ owner ตัดสิน
