@@ -127,6 +127,8 @@ export const AffiliateCell = ({
   row.affiliate ? (
     <div className="flex flex-col" data-testid="affiliate-row-affiliate">
       <Text size="small">{row.affiliate.name}</Text>
+      {/* spec 08 กฎ 41b (ADM-37): tooltip ของ TruncatedCell ใช้ textContent — ช่องว่างให้เป็น "ชื่อ อีเมล" (ลูกของ flex ไม่ render ช่องว่างนี้) */}
+      {" "}
       <Text size="small" className="text-ui-fg-subtle">
         {row.affiliate.email}
       </Text>
