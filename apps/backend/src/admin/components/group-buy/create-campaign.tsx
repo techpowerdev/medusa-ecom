@@ -18,6 +18,7 @@ import {
 import { createSingleFlight } from "../../lib/single-flight"
 import { NumberInput } from "../common/number-input"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
+import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 import { ProductPicker } from "./product-picker"
 
 type TextKey = {
@@ -95,9 +96,6 @@ export const CreateCampaign = ({
   // GB-13 (กฎข้อ 33d): key เดียวต่อการเปิดฟอร์ม — submit ซ้ำหลัง network ล้มได้แคมเปญเดิม
   // ตั้งเมื่อ open เปลี่ยน false → true เท่านั้นด้วย newIdempotencyKey (GB-15: getRandomValues ใช้ได้ทั้ง http/https — ไม่ใช้ API ที่มีเฉพาะ secure context)
   const [idempotencyKey, setIdempotencyKey] = useState("")
-  // ADM-15 (spec 08 กฎ 19b): ไม่มี FocusModal.Trigger (ปุ่มอยู่ใน action ของ DataTable) — Radix คืน focus ให้ trigger ไม่ได้
-  // จึงจำ element ที่ focus อยู่ตอนเปิด (ปุ่ม "Create campaign") แล้วคืน focus เองตอนปิด
-  const [opener, setOpener] = useState<HTMLElement | null>(null)
 
   // กดปุ่มเปิดซ้ำขณะเปิดอยู่ open ไม่เปลี่ยน → key เดิม (spec 08 กฎ 18)
   useEffect(() => {
@@ -136,6 +134,8 @@ export const CreateCampaign = ({
   )
 
   const endsAt = form.watch("ends_at")
+  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด
+  const restoreFocus = useRestoreOpenerFocus()
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด (เงื่อนไขเดิม)
   const confirmClose = useConfirmDiscard({
     form,
@@ -167,16 +167,7 @@ export const CreateCampaign = ({
 
   return (
     <FocusModal open={open} onOpenChange={confirmClose}>
-      <FocusModal.Content
-        // onOpenAutoFocus ยิงก่อน focus ย้ายเข้า modal — activeElement ยังเป็นปุ่มที่กดเปิด
-        onOpenAutoFocus={() => setOpener(document.activeElement instanceof HTMLElement ? document.activeElement : null)}
-        onCloseAutoFocus={(e) => {
-          if (opener?.isConnected) {
-            e.preventDefault()
-            opener.focus()
-          }
-        }}
-      >
+      <FocusModal.Content {...restoreFocus}>
         <Form {...form}>
           {/* noValidate: validation เป็นของ zod/toCampaignBody (error ใต้ช่อง) ไม่ให้ browser ดัก input number ก่อน */}
           <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">

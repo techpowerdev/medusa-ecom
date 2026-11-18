@@ -106,11 +106,12 @@ describe("ฟอร์มสร้างแคมเปญ (spec 08 AC-19, ก�
     expect(src).toMatch(/max_total_orders: "gb-max-total-orders-error"/)
   })
 
-  it("ปิด modal แล้วคืน focus ให้ปุ่มที่เปิด (onOpenAutoFocus จำ, onCloseAutoFocus คืน) ไม่ใช้ useRef", () => {
-    // props ของ <FocusModal.Content ...> (ถึง <Form ตัวแรกข้างใน — props มี arrow function จึงตัดที่ ">" ไม่ได้)
-    const content = src.match(/<FocusModal\.Content\b([\s\S]*?)<Form\b/)?.[1] ?? ""
-    expect(content).toMatch(/\bonOpenAutoFocus=/)
-    expect(content).toMatch(/\bonCloseAutoFocus=\{\(e\) => \{[\s\S]*?e\.preventDefault\(\)[\s\S]*?\.focus\(\)/)
+  it("ปิด modal แล้วคืน focus ให้ปุ่มที่เปิดด้วย hook useRestoreOpenerFocus (spec 08 กฎ 19b → กฎ 38d) ไม่ใช่ inline", () => {
+    const content = src.match(/<FocusModal\.Content\b([^>]*)>/)?.[1] ?? ""
+    expect(src).toMatch(/import \{ useRestoreOpenerFocus \} from "\.\.\/common\/use-restore-opener-focus"/)
+    expect(src).toMatch(/\bconst restoreFocus = useRestoreOpenerFocus\(\)/)
+    expect(content).toContain("{...restoreFocus}")
+    expect(src).not.toMatch(/\bonOpenAutoFocus=|\bonCloseAutoFocus=/)
     expect(src).not.toMatch(/\buseRef\b/)
   })
 })

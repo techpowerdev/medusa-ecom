@@ -21,6 +21,7 @@ import { createSingleFlight } from "../../lib/single-flight"
 import { keepModalOpenWhileComboboxExpanded } from "../../lib/combobox-escape"
 import { NumberInput } from "../common/number-input"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
+import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
 const DATES: { key: "starts_at" | "ends_at"; label: string }[] = [
@@ -135,12 +136,14 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
     })
   )
 
+  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด
+  const restoreFocus = useRestoreOpenerFocus()
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด (เงื่อนไขเดิม)
   const confirmClose = useConfirmDiscard({ form, isPending: save.isPending, onClose })
 
   return (
     <FocusModal open onOpenChange={confirmClose}>
-      <FocusModal.Content onEscapeKeyDown={keepModalOpenWhileComboboxExpanded}>
+      <FocusModal.Content {...restoreFocus} onEscapeKeyDown={keepModalOpenWhileComboboxExpanded}>
         <Form {...form}>
           {/* noValidate: validation เป็นของ zod/toProgramBody (error ใต้ช่อง) ไม่ให้ browser ดัก input number ก่อน */}
           <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">

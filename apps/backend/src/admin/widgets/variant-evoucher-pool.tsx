@@ -10,6 +10,7 @@ import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { NumberInput } from "../components/common/number-input"
 import { useConfirmDiscard } from "../components/common/use-confirm-discard"
+import { useRestoreOpenerFocus } from "../components/common/use-restore-opener-focus"
 import { evoucherApi, evoucherKeys } from "../lib/evoucher"
 import {
   POOL_FORM_DEFAULTS,
@@ -68,6 +69,8 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     )
   )
 
+  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด
+  const restoreFocus = useRestoreOpenerFocus()
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด และยืนยันแล้วล้างค่า (เปิดใหม่ฟอร์มว่าง); ระหว่างบันทึกไม่ปิด
   const confirmClose = useConfirmDiscard({
     form,
@@ -152,7 +155,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
       )}
 
       <FocusModal open={open} onOpenChange={confirmClose}>
-        <FocusModal.Content>
+        <FocusModal.Content {...restoreFocus}>
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
               <FocusModal.Header>

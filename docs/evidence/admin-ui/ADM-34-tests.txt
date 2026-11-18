@@ -1,0 +1,65 @@
+# ADM-34 (spec 08 AC-39, กฎ 38) — useRestoreOpenerFocus: ปิด FocusModal แล้ว focus กลับปุ่มที่เปิด (5 ฟอร์ม) + nit #404/#409
+# วันที่: 2026-11-18, node v22.23.3, base origin/develop e9352c91
+# backend prod build (NODE_ENV=production medusa build + medusa start จาก .medusa/server) :9336, DB medusa_adm34, Redis db 5, workers=1, viewport 1280x800
+# red = admin bundle ของ develop (ก่อนแก้โค้ด production) รัน test ชุดเดียวกัน; e2e admin ล้วน ไม่ได้ start storefront
+
+## 1. Red
+### AC-39a static + group-buy-pages (jest src/admin/__tests__/medusa-ui.unit.spec.ts group-buy-pages.unit.spec.ts) → ล้ม 8 (5 ไฟล์ FocusModal 0/5 + ไม่มี inline + hook + กฎ 19b เดิม)
+    ● ฟอร์มสร้างแคมเปญ (spec 08 AC-19, กฎ 19) › ปิด modal แล้วคืน focus ให้ปุ่มที่เปิดด้วย hook useRestoreOpenerFocus (spec 08 กฎ 19b → กฎ 38d) ไม่ใช่ inline
+    ● FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34) › widgets/variant-evoucher-pool.tsx: เรียก useRestoreOpenerFocus( และทุก <FocusModal.Content ได้ handler ของ hook
+    ● FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34) › components/affiliate/payout-form.tsx: เรียก useRestoreOpenerFocus( และทุก <FocusModal.Content ได้ handler ของ hook
+    ● FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34) › components/affiliate/program-form.tsx: เรียก useRestoreOpenerFocus( และทุก <FocusModal.Content ได้ handler ของ hook
+    ● FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34) › components/evoucher/partners-section.tsx: เรียก useRestoreOpenerFocus( และทุก <FocusModal.Content ได้ handler ของ hook
+    ● FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34) › components/group-buy/create-campaign.tsx: เรียก useRestoreOpenerFocus( และทุก <FocusModal.Content ได้ handler ของ hook
+    ● FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34) › ไม่มี onCloseAutoFocus={( แบบ inline ใน src/admin (logic อยู่ใน hook กลางตัวเดียว)
+    ● FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34) › hook จำ activeElement ตอนเปิดด้วย useState และคืน focus เมื่อ element ยังอยู่ใน DOM
+  Tests:       8 failed, 235 passed, 243 total
+### nit #409 (กฎ 38e): optsOut เดิม `[^}]*` กับ `meta: { a: { b: 1 }, ___truncateTooltip: false }` → false (ตัวใหม่แบบ balanced → true ใน self-check)
+
+### AC-39b e2e (playwright test e2e/admin-modal-return-focus.spec.ts) → ล้ม 7/8 activeElement = BODY (Create campaign ผ่านอยู่แล้ว — คงเป็น regression)
+  ✘  1 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create partner — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✘  2 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create program — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✘  3 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create payout — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓  4 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create campaign — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✘  5 [chromium] › e2e/admin-modal-return-focus.spec.ts:104:5 › AC-39b: Create pool (หน้า variant ที่ยังไม่มี pool) — Escape ปิดแล้ว focus กลับปุ่ม
+  ✘  6 [chromium] › e2e/admin-modal-return-focus.spec.ts:139:5 › AC-39b: Create partner — บันทึกสำเร็จแล้ว focus กลับปุ่ม Create partner
+  ✘  7 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create partner — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด
+  ✘  8 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create program — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด
+    Expected: "opener"
+    Received: "BODY"
+    Expected: "opener"
+    Received: "BODY"
+    Expected: "opener"
+    Received: "BODY"
+    Expected: "opener"
+    Received: "BODY"
+    Expected: "opener"
+    Received: "BODY"
+    Expected: "opener"
+    Received: "BODY"
+    Expected: "opener"
+    Received: "BODY"
+  7 failed
+  1 passed (1.1m)
+
+## 2. Green (หลังแก้)
+### static: Tests: 244 passed, 244 total (medusa-ui.unit.spec.ts + group-buy-pages.unit.spec.ts)
+### e2e ใหม่ + e2e admin เดิมของ AC-39c (admin-dialog-title, admin-form-discard-prompt, evoucher-admin-forms, affiliate-admin-forms, affiliate-admin-payout-create, group-buy-admin-form) ไม่แก้ assertion
+  ✓  11 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create partner — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓  12 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create program — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓  13 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create payout — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓  14 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create campaign — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓  15 [chromium] › e2e/admin-modal-return-focus.spec.ts:104:5 › AC-39b: Create pool (หน้า variant ที่ยังไม่มี pool) — Escape ปิดแล้ว focus กลับปุ่ม
+  ✓  16 [chromium] › e2e/admin-modal-return-focus.spec.ts:139:5 › AC-39b: Create partner — บันทึกสำเร็จแล้ว focus กลับปุ่ม Create partner
+  ✓  17 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create partner — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด
+  ✓  18 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create program — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด
+  58 passed (2.9m)
+  (e2e admin เดิม 50 test ผ่านทั้งหมด — รายชื่อเต็มอยู่ใน playwright report)
+### admin-modal-return-focus --repeat-each=3 → 24 passed
+
+## 3. ชุดอื่น
+pnpm lint → exit 0 (0 error; warning ที่มีอยู่เดิมไม่มีจากไฟล์ที่แตะ)
+pnpm typecheck → exit 0
+pnpm --filter backend test:unit → Test Suites: 110 passed; Tests: 1482 passed
+pnpm --filter backend build (NODE_ENV=production) → exit 0
+playwright --project=unit (storefront e2e:unit ทั้ง project) → 121 passed
