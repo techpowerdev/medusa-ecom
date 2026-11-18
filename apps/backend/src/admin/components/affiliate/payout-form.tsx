@@ -105,7 +105,9 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
             </FocusModal.Header>
             <FocusModal.Body className="flex justify-center overflow-auto py-16">
               <div className="flex w-full max-w-lg flex-col gap-y-4">
-                <Heading>Create payout</Heading>
+                <FocusModal.Title asChild>
+                  <Heading>Create payout</Heading>
+                </FocusModal.Title>
                 <Form.Field
                   control={form.control}
                   name="affiliate_id"

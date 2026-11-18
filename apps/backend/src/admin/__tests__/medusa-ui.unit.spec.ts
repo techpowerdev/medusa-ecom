@@ -904,3 +904,28 @@ describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก�
     expect(copies).toEqual(["components/common/use-confirm-discard.ts"])
   })
 })
+
+describe("ทุก FocusModal มี FocusModal.Title asChild ห่อ heading เดิม (spec 08 AC-36a, กฎ 35, ADM-31)", () => {
+  const withContent = adminFiles.filter((file) => read(file).includes("<FocusModal.Content"))
+  const count = (src: string, re: RegExp) => src.match(re)?.length ?? 0
+
+  it("พบไฟล์ FocusModal ครบ 5 จุดที่รู้จัก (FocusModal ใหม่ในอนาคตถูกตรวจด้วย test ถัดไปอัตโนมัติ)", () => {
+    expect(withContent).toEqual(
+      expect.arrayContaining([
+        "components/evoucher/partners-section.tsx",
+        "components/affiliate/program-form.tsx",
+        "components/affiliate/payout-form.tsx",
+        "components/group-buy/create-campaign.tsx",
+        "widgets/variant-evoucher-pool.tsx",
+      ])
+    )
+  })
+
+  it.each(withContent)("%s: <FocusModal.Title asChild> ห่อ <Heading> จำนวนเท่ากับ <FocusModal.Content", (file) => {
+    const src = read(file)
+    const contents = count(src, /<FocusModal\.Content\b/g)
+    expect(count(src, /<FocusModal\.Title\b/g)).toBe(contents)
+    // asChild ทุกตัว: Radix ใส่ id ให้ Heading เดิม (aria-labelledby) โดยไม่เพิ่ม element/สไตล์ (กฎ 35a)
+    expect(count(src, /<FocusModal\.Title asChild>\s*<Heading\b[^>]*>[^<]*(\{[^}]*\}[^<]*)*<\/Heading>\s*<\/FocusModal\.Title>/g)).toBe(contents)
+  })
+})

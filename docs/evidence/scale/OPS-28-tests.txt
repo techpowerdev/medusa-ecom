@@ -1,0 +1,156 @@
+# OPS-28 (spec 07 AC-43) — ผล test
+
+## AC-43a Red — tools/ci/assert-absent.test.sh บน develop 8425a53f (ยังไม่มี assert-absent.sh)
+$ tools/ci/assert-absent.test.sh
+FAIL - ไม่พบ (ไฟล์เดียว) → ได้ exit 127 คาด 0 (output: sh: <repo>/tools/ci/assert-absent.sh: No such file or directory)
+FAIL - ไม่พบ (directory แบบ recursive) → ได้ exit 127 คาด 0 (output: sh: <repo>/tools/ci/assert-absent.sh: No such file or directory)
+FAIL - พบใน directory → output มีชื่อไฟล์ → output ไม่มี '<tmp>/hit/sub/bad.js' (output: sh: <repo>/tools/ci/assert-absent.sh: No such file or directory)
+assert-absent: 0/12 passed (0 skipped)
+exit=1
+(… เคสที่เหลือ FAIL แบบเดียวกัน: No such file or directory)
+
+## AC-43a Green — macOS (BSD grep, uid ≠ 0)
+$ tools/ci/assert-absent.test.sh
+ok   - ไม่พบ (ไฟล์เดียว) → exit 0
+ok   - ไม่พบ (directory แบบ recursive) → exit 0
+ok   - พบใน directory → output มีชื่อไฟล์ → exit 1
+ok   - พบ (ไฟล์ระบุตรง) → output มีชื่อไฟล์ → exit 1
+ok   - path ไม่มีอยู่ (เช่น glob ไม่ตรงจนเป็นตัวอักษร) → exit 2
+ok   - path ไม่มีอยู่ปนกับไฟล์ที่ไม่พบ → exit 2
+ok   - ข้อความอยู่เฉพาะใต้ node_modules/ → exit 0
+ok   - หลายไฟล์ที่ไม่มีข้อความ → exit 0
+ok   - ไม่ส่ง path → exit 2
+ok   - ข้อความว่าง → exit 2
+ok   - ไฟล์อ่านไม่ได้ (chmod 000) ใน directory → exit 2
+ok   - ไฟล์อ่านไม่ได้ (chmod 000) ระบุตรง → exit 2
+assert-absent: 12/12 passed (0 skipped)
+exit=0
+
+## AC-43a Green — debian:bookworm-slim (dash + GNU grep เหมือน image node:*-bookworm-slim) uid 1000 และ uid 0
+$ docker run --rm --user 1000 -v $PWD/tools/ci:/r/tools/ci:ro debian:bookworm-slim bash /r/tools/ci/assert-absent.test.sh | tail -2
+ok   - ไฟล์อ่านไม่ได้ (chmod 000) ระบุตรง → exit 2
+assert-absent: 12/12 passed (0 skipped)
+$ docker run --rm --user 0 -v $PWD/tools/ci:/r/tools/ci:ro debian:bookworm-slim bash /r/tools/ci/assert-absent.test.sh | tail -2
+skip - ไฟล์อ่านไม่ได้ (chmod 000): uid = 0 อ่านได้เสมอ จึงข้ามเคสนี้
+assert-absent: 10/10 passed (1 skipped)
+
+## AC-43b Red — static (test ฉบับสุดท้าย × ci.yml ของ develop 8425a53f)
+$ TEST_TYPE=unit jest --verbose src/__tests__/ci-workflow.unit.spec.ts -t OPS-28
+    ✕ ไม่มี run ใดในทุก job ที่ใช้รูป `if grep` / `if ! grep`
+    ✕ docker-worker-mode: step ตรวจ image mount tools/ci แบบ read-only แล้วเรียก assert-absent.sh กับ Development Mode และคำ placeholder
+    ✕ storefront-e2e: เรียก assert-absent.sh กับ Development Mode หลังบรรทัด build และก่อน medusa start
+    ✕ OPS-15: ขั้นนับไม่ใช้ `|| true` และตรวจว่ามีไฟล์ $TEST_LOG ก่อนนับ
+    ✕ lint-typecheck: รัน tools/ci/assert-absent.test.sh
+Tests:       5 failed, 20 skipped, 25 total
+
+## AC-43b Green — static ทั้งไฟล์ (OPS-14/15/12/16/27 เดิมผ่านโดยไม่แก้)
+$ TEST_TYPE=unit jest --verbose src/__tests__/ci-workflow.unit.spec.ts
+  OPS-14 ci.yml
+    ✓ storefront-e2e ไม่รอ job ของ backend tests (รันขนาน)
+    ✓ integration:http แบ่ง shard ใน matrix และ shard รวมกันครบทุกไฟล์ไม่ซ้ำ
+    ✓ ยังรัน test:unit และ test:integration:modules ใน CI
+    ✓ job backend-tests เป็นตัวรวมผลที่รอทุก shard และ fail เมื่อ shard ไม่ success
+  OPS-15 ci.yml นับ log connection ของ knex
+    ✓ ขั้นรัน test เขียน log ลงไฟล์ (shell: bash = -eo pipefail คง exit code ของ jest)
+    ✓ มีขั้นนับที่รันแม้ test ล้ม และ exit 1 เมื่อจำนวน > 0
+    ✓ สตริงที่นับไม่อยู่ในโค้ดส่วนอื่น (ไม่แก้ด้วยการกรอง/ปิด log)
+  OPS-12 ci.yml รัน smoke-redis-outage.sh
+    ✓ มีขั้นรัน tools/ops/smoke-redis-outage.sh หลัง tools/ops/smoke-worker-mode.sh
+    ✓ ขั้น smoke-redis-outage ไม่ถูกข้ามหรือกลืนผล (ไม่มี if, continue-on-error หรือ || true)
+  OPS-16 ci.yml ตรวจ Stripe events ตัวจริง
+    ✓ มีขั้นรัน tools/ci/check-stripe-events.sh (ไม่มี argument = docs/ops/production.md × ci.yml)
+  OPS-16 ci.yml cache browser ของ Playwright
+    ✓ cache โฟลเดอร์ ms-playwright ด้วย key ที่มีเวอร์ชันจาก step ที่อ่าน pnpm-lock.yaml
+    ✓ step อ่านเวอร์ชันได้ค่าเดียวกับ @playwright/test ของ storefront
+    ✓ cache miss → install --with-deps; cache hit → install-deps เท่านั้น (หลัง restore cache)
+  OPS-27 build backend ด้วย NODE_ENV=production
+    ✓ Dockerfile stage build: บรรทัด RUN ที่ build backend ตั้ง NODE_ENV=production inline ก่อน pnpm
+    ✓ Dockerfile: pnpm install และ deploy --prod ไม่ได้รับ NODE_ENV; stage base/build ไม่มี ENV/ARG NODE_ENV
+    ✓ Dockerfile: placeholder ของ guard อยู่ในบรรทัด build (ข้อความมีคำ placeholder) และไม่มีตัวแปรปิด guard ของ provider ทดสอบ
+    ✓ Dockerfile stage runtime: ENV NODE_ENV=production และไม่มีคำ placeholder
+    ✓ ci.yml storefront-e2e: build backend ด้วย NODE_ENV=production เฉพาะบรรทัดนั้น (job env ไม่มี NODE_ENV) แล้วตรวจ bundle ก่อน medusa start
+    ✓ ci.yml docker-worker-mode: ตรวจ image ว่า admin ไม่มี Development Mode และไม่มีคำ placeholder (หลัง build image)
+    ✓ CLAUDE.md: คำสั่ง prod-like build ด้วย NODE_ENV=production
+  OPS-28 ขั้นตรวจใน ci.yml ล้มเมื่อ grep error (fail-closed)
+    ✓ ไม่มี run ใดในทุก job ที่ใช้รูป `if grep` / `if ! grep`
+    ✓ docker-worker-mode: step ตรวจ image mount tools/ci แบบ read-only แล้วเรียก assert-absent.sh กับ Development Mode และคำ placeholder
+    ✓ storefront-e2e: เรียก assert-absent.sh กับ Development Mode หลังบรรทัด build และก่อน medusa start
+    ✓ OPS-15: ขั้นนับไม่ใช้ `|| true` และตรวจว่ามีไฟล์ $TEST_LOG ก่อนนับ
+    ✓ lint-typecheck: รัน tools/ci/assert-absent.test.sh
+Tests:       25 passed, 25 total
+
+## AC-43c red/green ในเครื่อง — เนื้อ step เดิม vs ใหม่ (script ชั่วคราวใน scratchpad ดึง step OPS-15 ใหม่จาก ci.yml ด้วย yaml)
+## (1) storefront-e2e / docker-worker-mode: ขั้นตรวจ "ต้องไม่พบ"
+--- เนื้อ step เดิม (develop 8425a53f) path ของ assets ไม่มีอยู่ (ตัด ls ออก — จำลองกรณี grep error ที่ ls ไม่กัน)
+grep: /nonexistent/assets/*.js: No such file or directory
+exit=0
+--- เนื้อ step เดิม: grep -r ที่ path ไม่มีอยู่ (บรรทัด build-only ของ docker-worker-mode; ls ไม่ครอบบรรทัดนี้)
+grep: /nonexistent/app: No such file or directory
+OK (ผ่านเงียบ)
+exit=0
+--- เนื้อ step เดิม: directory มีไฟล์อ่านไม่ได้ (b.js มีคำนี้แต่ chmod 000)
+grep: <tmp>/b.js: Permission denied
+OK (ผ่านเงียบ)
+exit=0
+--- แบบใหม่ (tools/ci/assert-absent.sh) ทั้ง 3 กรณี
+grep: /nonexistent/assets/*.js: No such file or directory
+::error::ตรวจ "Development Mode" ไม่ได้ (grep exit 2 — path ไม่มี/อ่านไม่ได้) — ไม่ถือว่าไม่พบ
+exit=2
+grep: /nonexistent/app: No such file or directory
+::error::ตรวจ "build-only" ไม่ได้ (grep exit 2 — path ไม่มี/อ่านไม่ได้) — ไม่ถือว่าไม่พบ
+exit=2
+grep: <tmp>/b.js: Permission denied
+::error::ตรวจ "build-only" ไม่ได้ (grep exit 2 — path ไม่มี/อ่านไม่ได้) — ไม่ถือว่าไม่พบ
+exit=2
+
+## (2) OPS-15: นับ log ของ test
+--- เนื้อ step เดิม: $TEST_LOG ไม่มีอยู่
+grep: /nonexistent/backend-test.log: No such file or directory
+จำนวนบรรทัด: 0
+exit=0
+--- เนื้อ step ใหม่ (ดึงจาก ci.yml): $TEST_LOG ไม่มีอยู่
+::error::ไม่มี log ของ test (/nonexistent/backend-test.log) — ขั้นรัน test ไม่ได้รัน (ขั้นก่อนหน้าเช่น pnpm install ล้มก่อน) จึงนับไม่ได้: ดูสาเหตุที่ขั้นที่ล้มก่อนหน้า ไม่ใช่ปัญหา connection ใหม่ (OPS-15)
+exit=1
+--- step ใหม่: log มีอยู่ นับได้ 0
+จำนวนบรรทัด: 0
+exit=0
+--- step ใหม่: log อ่านไม่ได้
+grep: <tmp>: Permission denied
+::error::อ่าน log ของ test (<tmp>) ไม่ได้ (grep exit 2) — นับไม่ได้ ไม่ถือว่าเป็น 0 (OPS-15)
+exit=1
+--- step ใหม่: log มี 1 บรรทัด
+จำนวนบรรทัด: 1
+::error::พบ log knex ว่า connection ถูกปิด 1 บรรทัด (OPS-15 / spec 07 AC-26)
+exit=1
+## (3) build จริงในเครื่อง (NODE_ENV=production pnpm --filter backend build) → แบบใหม่
+จำนวนไฟล์ assets: 348
+OK ไม่พบ "Development Mode" ใน 348 path (apps/backend/.medusa/server/public/admin/assets/add-campaign-promotions-IUQHZ5QA-BWGgp0MX.js …)
+exit=0
+--- positive control: build เดียวกันแต่ค้นข้อความที่มีจริงใน bundle ("createRoot") → ต้องล้ม
+::error::พบ "createRoot" ในไฟล์ข้างบน
+exit=1
+
+## (4) image จริง (docker build -f apps/backend/Dockerfile . → ops28-backend:local) — เนื้อ step ใหม่ของ docker-worker-mode (รันเป็น user node)
+node
+OK ไม่พบ "Development Mode" ใน 348 path (/app/public/admin/assets/add-campaign-promotions-IUQHZ5QA-BbiVUIZ
+OK ไม่พบ "build-only" ใน 1 path (/app …)
+OK admin bundle เป็น production และไม่มี placeholder ใน /app
+exit=0
+--- positive control ใน image: ข้อความที่มีอยู่จริงใน /app ("medusa-config") → ต้องล้ม
+(พบ 13 ไฟล์)
+::error::พบ "medusa-config" ในไฟล์ข้างบน
+exit=1
+--- glob ไม่ตรงใน image (assets/*.mjs ไม่มี) → ต้องล้ม
+grep: /app/public/admin/assets/*.mjs: No such file or directory
+::error::ตรวจ "Development Mode" ไม่ได้ (grep exit 2 — path ไม่มี/อ่านไม่ได้) — ไม่ถือว่าไม่พบ
+exit=2
+
+## ชุดอื่นที่รันในเครื่อง
+pnpm lint: exit 0
+pnpm typecheck: exit 0
+pnpm --filter backend test:unit: Test Suites: 110 passed, 110 total / Tests:       1396 passed, 1396 total
+pnpm --filter storefront test:e2e:unit:  116 passed (1.1s)
+tools/ci/classify-changes.test.sh: classify-changes: 35/35 passed
+tools/ci/check-stripe-events.test.sh: check-stripe-events: 9/9 passed
+
+## AC-43d — CI ของ PR (lint-typecheck, docker-worker-mode, storefront-e2e, backend-tests) ดูที่ checks ของ PR

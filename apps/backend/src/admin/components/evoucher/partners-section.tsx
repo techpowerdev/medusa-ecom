@@ -239,7 +239,13 @@ export const PartnersSection = () => {
   })
 
   const saveButton = (
-    <Button size="small" type="submit" disabled={save.isPending} isLoading={save.isPending}>
+    <Button
+      size="small"
+      type="submit"
+      disabled={save.isPending}
+      isLoading={save.isPending}
+      data-testid="evoucher-partner-save"
+    >
       Save
     </Button>
   )
@@ -291,7 +297,9 @@ export const PartnersSection = () => {
               </FocusModal.Header>
               <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
                 <div className="flex w-full max-w-lg flex-col gap-y-6">
-                  <Heading>Create partner</Heading>
+                  <FocusModal.Title asChild>
+                    <Heading>Create partner</Heading>
+                  </FocusModal.Title>
                   <PartnerFields />
                 </div>
               </FocusModal.Body>
