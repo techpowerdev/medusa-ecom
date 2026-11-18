@@ -6,7 +6,7 @@
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
 **ปิดรอบ 36 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-30 #402, OPS-28 #403, ADM-31 #404, CORE-65 #406, OPS-29 #407, ADM-32 #408, ADM-33 #409 + เอกสาร #401 (รอบ 36), #405 (รอบ 36 ส่วนที่ 2) ·
 ผล: ขั้นตรวจ "ต้องไม่พบ" ใน CI เป็น fail-closed (`tools/ci/assert-absent.sh` — เดิมผ่านเงียบ exit 0 เมื่อ path ไม่มี, ใหม่ exit 2) และ step OPS-15 ล้มเมื่อไม่มี log · image ไม่มีไฟล์ test (`__tests__` 23 → 0 directory, `*.spec.js` 97 → 0) ·
-static ของ e2e ล้มเมื่อสิ่งที่ตรวจหาย (mutation M1–M3) · ฟอร์ม `FocusModal` 5 จุดมี accessible name ไม่มี console error `DialogTitle` (หน้าตาต่าง 0 px) · error รูปค่าของช่องตัวเลขในฟอร์ม Create campaign อยู่ใต้ช่อง ·
+static ของ e2e ล้มเมื่อสิ่งที่ตรวจหาย (mutation M1–M3) · ฟอร์ม `FocusModal` 5 จุด (6 ฟอร์ม) มี accessible name ไม่มี console error `DialogTitle` (หน้าตาต่าง 0 px) · error รูปค่าของช่องตัวเลขในฟอร์ม Create campaign อยู่ใต้ช่อง ·
 เมนูต่อแถว 5 ตารางปิดด้วย Escape ครั้งเดียว (qa 30/30; develop ค้าง 19/30) · แถว qty 1 ของ order ไม่มีราคาต่อหน่วย · ทุก task reviewer APPROVE + CI เขียว; งาน UI มี qa REPORT defect ไม่พบ ·
 ไม่มี PR เปิด · ไม่มีงานพักไว้ · **รอ owner ตัดสิน (ไม่บล็อก release)**: กลุ่ม ก (1)–(5) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 36)" ท้ายไฟล์ · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ที่เหลือก่อน go-live ดูบรรทัด "ก่อนเปิดร้านจริง (go-live)" ·
 (ประวัติ) **รอบ 36 ส่วนที่ 2 (2026-11-18, เอกสารล้วน)**: owner ตอบข้อ UX กลุ่ม ค ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)" = **ข "ตรวจซ้ำบน develop แล้วเปิด task เฉพาะข้อที่ยังจริง"** → qa ตรวจบน develop `8425a53f` (prod build) และ
@@ -570,7 +570,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   ROADMAP: บรรทัดสถานะ, แถว CORE-65 ในตาราง CORE, ADM-32/33 ในตาราง Admin UI, ทำเครื่องหมายกลุ่ม ค ในหัวข้อ follow-up ปิดรอบ 30/31 ว่า triage แล้ว · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
 - ปิดรอบ 36 (2026-11-18, เอกสารล้วน) → sync ☑ ADM-30 #402, OPS-28 #403, ADM-31 #404, CORE-65 #406, OPS-29 #407, ADM-32 #408, ADM-33 #409 ใน ROADMAP และ spec 07, 08, 01 · เอกสารที่ merge ในรอบ: #401, #405 ·
   spec 07: Status ต้นไฟล์ + หัวข้อ "Follow-up รอบ 36" → done พร้อมผล OPS-28/OPS-29, ☑ ที่ AC-43/AC-44 และแถว task ·
-  spec 08: Status ต้นไฟล์ (→ accepted ไม่มี task เปิดค้าง), หัวข้อ "Follow-up รอบ 36" และ "ส่วนที่ 2" → done พร้อมผล ADM-30–33 + ข้อสังเกต qa, แถว task; แก้ nit review #401 (path `widgets/flash-sale-options.tsx`, เลขบรรทัดชี้ `FocusModal.Content`) ·
+  spec 08: Status ต้นไฟล์ (คง in-progress ตาม convention ของไฟล์ — ไม่มี task เปิดค้าง), หัวข้อ "Follow-up รอบ 36" และ "ส่วนที่ 2" → done พร้อมผล ADM-30–33 + ข้อสังเกต qa, แถว task; แก้ nit review #401 (path `widgets/flash-sale-options.tsx`, เลขบรรทัดชี้ `FocusModal.Content`) ·
   spec 01: Status ต้นไฟล์ + หัวข้อ "Follow-up รอบ 36 ส่วนที่ 2" → done พร้อมผล CORE-65, แถว task (แก้ "PR ที่เปิดอยู่ #402–#404" ตาม review #405), หมายเหตุใต้กฎข้อ 119 ☑ #402 ·
   ROADMAP: บรรทัดสถานะ (รอบ 36 ส่วนที่ 2 → ประวัติ; แก้ "ไม่ชน ADM-30 #402" ตาม review #405), แถว task ทั้ง 7, follow-up ใหม่ → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 36)" (ไม่เปิด task id ใหม่) ·
   ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
@@ -579,7 +579,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 ที่มา: review/qa/builder ของ #401–#409 (2026-11-18) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน · ไม่มีข้อใดบล็อก release
 ### ก. ต้องให้ owner ตัดสิน
 1. **[ถาม owner] เพดานส่วนลด fixed ของแคมเปญ group buy (qa #408 O-1)** `discount_value` แบบ fixed ไม่มีเพดานทั้งใน `campaignFormSchema` (spec 08 กฎ 36b กำหนดแค่ > 0) และ validator ของ backend → ใส่ `99999999999999999999` แล้ว backend ตอบ 200 สร้างแคมเปญส่วนลด 1e20 THB ได้จริง (admin เท่านั้น; แคมเปญเริ่มที่ `draft`; percentage มีเพดาน 100 อยู่แล้ว) ·
-   ทางเลือก: (ก) backend ตอบ 400 เมื่อส่วนลด fixed ≥ ราคาของ variant ที่ร่วมแคมเปญ (ตรวจใน workflow สร้าง/แก้แคมเปญ; error แสดงเป็น toast ตาม spec 08 กฎ 36e) ~80 LOC + integration ·
+   ทางเลือก: (ก) backend ตอบ 400 เมื่อส่วนลด fixed ≥ ราคาของ variant ที่ร่วมแคมเปญ (ตรวจใน workflow สร้างแคมเปญ — ข้อจำกัด: `AdminUpdateGroupBuyCampaign` ไม่มีช่องส่วนลด และส่วนลดแก้ได้ที่หน้า promotion ของ Medusa ตรงๆ จึงกันได้แค่ตอนสร้าง ถ้าต้องกันตอนแก้ด้วยต้องหาจุดของ Medusa เช่น hook ของ promotion; error แสดงเป็น toast ตาม spec 08 กฎ 36e) ~80 LOC + integration ·
    (ข) เพดานคงที่ใน schema ของฟอร์มและ validator (เช่น ≤ `INT4_MAX` หรือค่าที่ owner กำหนด) ~20 LOC + unit — กันพิมพ์ผิดหลักใหญ่ได้ แต่ไม่กันส่วนลดเท่าราคาสินค้า · (ค) คงเดิม ·
    **Recommended: (ก)** — ความเสียหายจริงคือส่วนลด ≥ ราคา = ได้สินค้าฟรี ซึ่ง (ข) กันไม่ได้; ตอนวางแผนต้องตรวจว่า promotion ของ Medusa 2.22.1 จำกัด adjustment ไม่ให้เกินยอดของ line หรือไม่ (ถ้าไม่จำกัด ยอดอาจติดลบ ซึ่งทำให้ข้อนี้เร่งขึ้น)
 2. **[ถาม owner] preview ในขั้น review ของ checkout แถว qty 1 ยังแสดงราคาซ้ำ (qa #406 O-1)** CORE-65 แก้เฉพาะ `Item` ของ order; preview (`modules/cart/templates/preview.tsx` `items-table` → `cart/components/item` `type="preview"`) คงตามกฎข้อ 123d ของ spec 01 →
