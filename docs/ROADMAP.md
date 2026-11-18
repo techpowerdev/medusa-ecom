@@ -4,7 +4,13 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**ปิดรอบ 35 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): OPS-27 #399 + เอกสาร #398 (รอบ 35) ·
+**รอบ 36 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: owner สั่ง "ให้ planner เริ่มรอบ 36" → planner รวบ follow-up ของหัวข้อปิดรอบ 30/31–35 ท้ายไฟล์ (ตรวจกับโค้ดบน develop `14837f04`) เป็น task hygiene 4 ตัว
+**(☐ เสนอ — รอ owner สั่งทำ; ไม่บล็อก release)**: **OPS-28** (spec 07 AC-43 — ขั้นตรวจ "ต้องไม่พบ" ใน CI ล้มเมื่อ grep error ไม่ผ่านเงียบ, `tools/ci/assert-absent.sh` + test, step OPS-15 ล้มเมื่อไม่มี log) →
+**OPS-29** (spec 07 AC-44 — `.dockerignore` ตัด `__tests__` ไม่ให้ไฟล์ test ที่ compile แล้วเข้า image + ขั้นตรวจ image; ← OPS-28 เพราะ step เดียวกันของ `ci.yml`) ∥
+**ADM-30** (spec 08 กฎ 34, AC-35 — static ของ e2e ที่ผ่านได้แม้ไม่มีสิ่งที่ตรวจ: comment ไม่นับ, บังคับ `pathname`, `finally` ของ AC-44 จริง; test-only) ∥
+**ADM-31** (spec 08 กฎ 35, AC-36 — `FocusModal.Title asChild` ของ `@medusajs/ui` ในฟอร์ม `FocusModal` 5 จุด แก้ console error `DialogTitle` + dialog ไม่มีชื่อ; qa REPORT) ·
+ทำขนานได้: OPS-28 ∥ ADM-30 ∥ ADM-31 (ไม่มีไฟล์ร่วม); OPS-29 หลัง OPS-28 merge · ไม่มีคำถามบังคับของ owner (ข้อ UX ที่ค้างอยู่เป็นทางเลือก — ดูหัวข้อ follow-up ปิดรอบ 30/31 ข้อ ค) · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
+(ประวัติ) **ปิดรอบ 35 (2026-11-18, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): OPS-27 #399 + เอกสาร #398 (รอบ 35) ·
 ผล OPS-27: Dockerfile/CI/คำสั่ง prod-like ใน `CLAUDE.md` build ด้วย `NODE_ENV=production` (placeholder ของ guard inline เฉพาะบรรทัด build — Q-O6 = ก) → admin bundle ไม่มี "Development Mode" (เล็กลง ~336KB), qa ซ้ำ AC-27 ไม่มี stack ทุกเคส, image รันโดยไม่มี env ยังล้มที่ guard ·
 ไม่มี PR เปิด · ไม่มีคำถามค้างของ owner · ไม่มีงานพักไว้ · follow-up → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 35)" ท้ายไฟล์ ·
 (ประวัติ) **รอบ 35 (2026-11-18, เอกสารล้วน)**: owner สั่งทำ ADM-22 2026-11-18 → qa ตรวจบน build production (develop `9cd0770d`, ไม่มี PR) **☑ ผลตรวจ** (`docs/evidence/admin-ui/ADM-22/REPORT.md`): เข้า spec 08 กฎ 26b — หน้า error ของ admin แสดง "Error Details (Development Mode)" + stack
@@ -330,6 +336,8 @@ OPS-5 🚀 #319 (index/migration + runbook backup/restore; AC-4)
 (รอบ 30) **OPS-25 ☑ #366** (owner สั่งทำ 2026-11-13; comment ล้วน, nit review #354: เหตุผลเรื่อง `docs/ops/**` ใน `classify-changes.sh` + "35 เคส" ใน `ci.yml`; AC-40; ไม่บล็อก release)
 (รอบ 35) **OPS-27 ☑ #399** (owner ข้อ ก "แก้ที่การ build" + สั่งทำ 2026-11-18 — ผล qa ADM-22: admin ถูก build แบบ development): `NODE_ENV=production` เฉพาะขั้น build ใน `apps/backend/Dockerfile` (+ placeholder ของ guard inline ตาม Q-O6 ก) และ step build ของ `storefront-e2e`,
 ขั้นตรวจ "Development Mode" ใน bundle/image ใน CI, คำสั่ง prod-like ใน `CLAUDE.md` (owner อนุมัติ), static ใน `ci-workflow.unit.spec.ts`, qa ซ้ำ AC-27 ของ spec 08 บน build ใหม่ (AC-42; ~70 LOC + REPORT `docs/evidence/scale/OPS-27/`; Depends none — หลัง PR เอกสารรอบ 35 merge (Q-O6 = ก owner 2026-11-18); ไม่บล็อก release)
+(รอบ 36) **OPS-28 ☐** (review #399 — รอ owner สั่งทำ): ขั้นตรวจ "ต้องไม่พบ" 3 จุดใน `ci.yml` (`Development Mode`/`build-only`) ผ่านเฉพาะเมื่อ grep คืน 1 ผ่าน `tools/ci/assert-absent.sh` (+ `.test.sh` ใน `lint-typecheck`), step OPS-15 ล้มเมื่อไม่มี log, static ใน `ci-workflow.unit.spec.ts` (AC-43; ~120 LOC; Depends PR เอกสารรอบ 36; ไม่บล็อก release) →
+**OPS-29 ☐** (builder/qa/review #399 — รอ owner สั่งทำ): `.dockerignore` ตัด `apps/backend/src/**/__tests__` → image ไม่มี `/app/src/**/__tests__` + ขั้นตรวจ image ใน `docker-worker-mode` (AC-44; ~40 LOC; ← OPS-28; ไม่แก้ `tsconfig.json` เพื่อให้ typecheck ยังครอบไฟล์ test)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
@@ -366,6 +374,8 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-27 | (รอบ 32, Q9 = ก owner 2026-11-17 — qa #379 O-1) ถามยืนยันด้วย `usePrompt` ก่อนปิดฟอร์มที่ dirty ใน `FocusModal`/`Drawer` แบบ state 7 จุด ผ่าน hook กลางใน `components/common/`; กันกดซ้ำ/prompt ซ้อน; `onEscapeKeyDown` ของ ADM-26 ยังทำงานก่อน (กฎ 31; AC-32; ~250 LOC รวม e2e — เกิน ~400 แบ่ง ADM-27a/27b; ← CORE-61 แนะนำ merge ก่อนเพราะชนไฟล์ e2e) | ☑ #389 |
 | ADM-28 | (รอบ 33, owner สั่ง 2026-11-17 — CI flaky #373 run 43475980049, #388 run 44071909424) หาสาเหตุ timeout 2 นาทีของ AC-12 ตัวแรก (`affiliate-admin-forms.spec.ts:47`, step "พิมพ์ชื่อ collection ลำดับที่ 250") จาก trace ก่อน artifact หมดอายุ (~2026-12-01) แล้วแก้ตามสาเหตุ — ห้ามแก้แค่เพิ่ม timeout; trace อ่านไม่ได้และทำซ้ำไม่ได้ → หยุดรายงาน (กฎ 32; AC-33 `--repeat-each=20`; test ~40 LOC (+ ≤ ~50 ถ้าแก้ `program-form.tsx`); ∥ CORE-64; **เริ่มเร็ว**) | ☑ #393 (สาเหตุ: tag ตัวเลขชนคำค้น `q` — แก้ฝั่ง test) |
 | ADM-29 | (รอบ 34, owner สั่ง 2026-11-18 — ROADMAP ปิดรอบ 33 ข้อ ก (2) + nit review #393/#394) test payout ใน `affiliate-admin-forms.spec.ts` (tag `adm9${Date.now()}` `:170`, คำค้น `"<tag> aff 249"` `:202–205`) มีจุดอ่อนเดียวกับ ADM-28 → tag ตัวอักษร + รอ response `q` แล้ว assert `count` = 1 ก่อนใช้ผล; static ใน `core-46-e2e-hygiene.unit.spec.ts` ตรวจ "tag ไม่มีตัวเลข" ครอบทั้ง AC-12 ตัวแรกและ payout; ห้ามเพิ่ม timeout/retries/skip/แก้ `playwright.config.ts` (กฎ 33; AC-34 red ด้วย tag ที่มี "249" + `--repeat-each=20`; test-only ~15–30 LOC; ← PR เอกสารรอบ 34) | ☑ #396 (red: tag มี "249" ล้มใน 2.0s ที่ `count` = 250; green 20/20) |
+| ADM-30 | (รอบ 36 — review #396, #388) static ของ e2e ต้องล้มเมื่อสิ่งที่ตรวจหาย: กฎ 33d ตัด comment ก่อน match + self-check, บังคับ `pathname ===` ใน predicate ที่ตรวจ `q`, `new URL` ครั้งเดียวใน predicate, static ของ spec 01 กฎข้อ 119c ตรวจ `finally` ของ AC-44 (ลำดับ `softSql` + `expect.soft`) แทนทั้งไฟล์ (กฎ 34; AC-35; test-only ~50–80 LOC; ∥ ADM-31/OPS-28) | ☐ เสนอ — รอ owner สั่งทำ |
+| ADM-31 | (รอบ 36 — qa #399 O-1) `FocusModal.Title asChild` ห่อ `Heading` เดิมในฟอร์ม `FocusModal` 5 จุด (partner, program, payout, campaign, variant pool) → dialog มี accessible name และไม่มี console error `DialogTitle`; static ใน `medusa-ui.unit.spec.ts` + e2e `admin-dialog-title.spec.ts` + qa (กฎ 35; AC-36; ~20 LOC + ~80 LOC test; ∥ ADM-30/OPS-28) | ☐ เสนอ — รอ owner สั่งทำ |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -537,9 +547,15 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   spec 07: หัวข้อ "Follow-up รอบ 35" — ตารางที่ build backend (Dockerfile, `ci.yml`, `CLAUDE.md`; ทางผ่าน Dockerfile ไม่ต้องแก้; `docs/ops/**`/`release-gate.yml` ไม่มีคำสั่ง build), กฎ OPS-27 (a)–(e), AC-42 (a)–(d), test plan, task OPS-27, Q-O6;
   แก้ข้อเท็จจริงของคำสั่งงาน: handler `build` อยู่ที่ `@medusajs/cli` `create-cli.js:540–541` (`:182` คือ `db:setup`) · พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard throw ใน stage build ที่ไม่มี env → กฎ (b) placeholder + Q-O6 ·
   ROADMAP: บรรทัดสถานะ, แถว ADM-22, OPS-27 ใน M7 · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md` (บรรทัดคำสั่ง prod-like → builder แก้ใน OPS-27 ตามที่ owner อนุมัติ)
+- รอบ 36 (2026-11-18, เอกสารล้วน — owner สั่ง "ให้ planner เริ่มรอบ 36"; triage follow-up ปิดรอบ 30/31–35 + บันทึกของ session หลัก ตรวจกับโค้ดบน develop `14837f04`) →
+  spec 07: หัวข้อ "Follow-up รอบ 36" — ที่มา (`ci.yml:179–180`, `:302` `if grep` ผ่านเมื่อ rc ≥ 2; พบเพิ่ม: step OPS-15 `:130` `|| true` ผ่านเมื่อไม่มี log; `Compiler` ของ Medusa 2.22.1 ไม่ข้าม `__tests__` → ~100 ไฟล์ test เข้า `/app`), กฎ OPS-28/OPS-29, AC-43, AC-44, task OPS-28 → OPS-29 ·
+  spec 08: หัวข้อ "Follow-up รอบ 36" — กฎ 34 (ADM-30), กฎ 35 (ADM-31), AC-35, AC-36 · spec 01: หมายเหตุใต้กฎข้อ 119 (static ของ (c) vacuous → ADM-30) ·
+  ROADMAP: บรรทัดสถานะ, แถว OPS-28/29 ใน M7, ADM-30/31 ในตาราง Admin UI, ทำเครื่องหมายในหัวข้อ follow-up ปิดรอบ 30/31–35 ว่าข้อไหนเป็น task/ปิด/backlog · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 35)
 ที่มา: review/qa ของ #398–#399 (2026-11-18) — **ยังไม่เปิด task id** · ไม่มีข้อที่ต้องให้ owner ตัดสิน
+**(รอบ 36, 2026-11-18) แปลงแล้ว**: ข้อ ข (1) → OPS-28 (spec 07 AC-43; รวม step OPS-15 ที่ผ่านเมื่อไม่มี log — พบเพิ่ม) · (2) → OPS-29 (AC-44) · (3) → ADM-31 (spec 08 กฎ 35 — ไม่ใช่แค่ Create partner: ทุก `FocusModal` 5 จุดไม่มี `FocusModal.Title`) · (4) ✕ ปิด (ไม่มีผล) ·
+nit #398 (แถว OPS-27 ใน spec 07 Depends เขียน "owner รับทราบ Q-O6") แก้แล้วในปิดรอบ 35 · บทเรียน "Redis ในเครื่องมี db 0–15" → ของ session หลัก (ไม่ใช่ task)
 ### ข. test hygiene / nit (ไม่เร่ง — planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
 - (review #399) `.github/workflows/ci.yml` ขั้นตรวจ "Development Mode" ใน `docker-worker-mode` และ `storefront-e2e` ใช้ `if grep ...; then exit 1` → ผ่านเงียบเมื่อ grep คืน 2 (อ่านไฟล์ไม่ได้) ควร fail เมื่อ rc ≠ 1; static ใน `ci-workflow.unit.spec.ts` ไม่ตรวจว่า step fail จริง
 - (builder/qa/review #399) ไฟล์ test ที่ compile แล้ว (`src/__tests__/*.unit.spec.js`) ติดไปใน `.medusa/server` และ image ที่ `/app/src/__tests__/` (มีมาก่อน OPS-27) → ตัดออกจาก output build/image; ระวังคำ `build-only` ใต้ `src/` ทำให้ขั้นตรวจ image แดง
@@ -550,6 +566,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 34)
 ที่มา: review ของ #395–#396 (2026-11-18) — **ยังไม่เปิด task id** · ไม่มีข้อที่ต้องให้ owner ตัดสิน
+**(รอบ 36, 2026-11-18) แปลงแล้ว**: ข้อ ข ทั้ง 3 ข้อ → ADM-30 (spec 08 กฎ 34a/34b/34c, AC-35)
 ### ข. test hygiene / nit (ไม่เร่ง — planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
 - (review #396) static `e2e/core-46-e2e-hygiene.unit.spec.ts:259` regex `.count … .toBe(1)` ผ่านแม้บรรทัด assert ถูก comment ไว้ → ตัดบรรทัดที่ขึ้นต้นด้วย `//` ก่อน match
 - (review #396) static ไม่บังคับว่า predicate ของ `waitForResponse` ตรวจ `pathname === AFFILIATES` (กฎ 33b ตรวจโดย reviewer อย่างเดียว)
@@ -579,6 +596,10 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 **(รอบ 33, 2026-11-17) แปลงแล้ว — กลุ่ม ก ตัดสินครบ**: (1) = ก → CORE-64 (spec 01 กฎข้อ 122, AC-163; คำถามต่อ Q-C11) · (2) = ข คงเดิม → ยอมรับใน v1 (spec 01 กฎข้อ 121b, ไม่มี task) ·
 (3) = ก หยุด → รายการก่อน go-live (spec 07 ท้าย "Follow-up รอบ 32", ROADMAP "ก่อนเปิดร้านจริง"; ไม่มี task) · (4) → ADM-28 (spec 08 กฎ 32, AC-33) · (5) คงเดิม → ยอมรับใน v1 (spec 01 กฎข้อ 115, ไม่มี task);
 กลุ่ม ข/ค/ง ยังไม่มี task (คงไว้ด้านล่าง)
+**(รอบ 36, 2026-11-18) triage กลุ่ม ข**: "unit ของกฎข้อ 119c vacuous" (#388) → ADM-30 (spec 08 กฎ 34d — ยืนยันบน `14837f04`: ผ่านแม้ลบ cleanup) ·
+ที่เหลือ **เก็บ backlog ไม่เปิด task** — `sql()` มีสำเนา ~15 ไฟล์ (ไม่ใช่ 3) รวมแล้วแตะไฟล์กว้างโดยไม่แก้บั๊ก; fs19 ล้มครั้งเดียว (run 43469877641 — ข้อ `:194` ของหัวข้อปิดรอบ 30/31 คือ run เดียวกัน) ไม่เกิดซ้ำ → เปิดเมื่อซ้ำ;
+comment `SERVER_READY` ใน `tools/load/run.sh` + unset `DATABASE_POOL_MIN` (review #371) → รวมกับ PR ถัดไปที่แตะ `tools/load/run.sh`; comment `itemDiscounted`, บรรทัดว่างซ้ำ, test 2147483647 ของ e-voucher create/ชื่อ field ของ affiliate update → รวมกับ PR ถัดไปที่แตะไฟล์นั้น;
+ADM-27 ปุ่ม Cancel/ปิดระหว่างบันทึก (#383/qa #389 O-5) — ยังไม่มีอาการที่ทำซ้ำได้ → backlog · กลุ่ม ค/ง คงเดิม
 ### ก. ต้องให้ owner ตัดสิน
 1. **[owner ตัดสิน ก 2026-11-17 → CORE-64]** **(สำคัญ) promotion แบบ fixed บนสินค้าราคารวม VAT ได้ส่วนลดต่างจากที่ตั้ง ~7% (qa #384 O-1)** Medusa คิดจำนวน fixed เป็นยอด**ก่อน VAT** ตาม `is_tax_inclusive` ของ promotion (ค่าเริ่มต้น false)
    ขณะที่ราคาในร้านรวม VAT → `discount_total` ที่ลูกค้าเห็นไม่เท่าจำนวนที่ admin ตั้ง — กระทบการตั้งโปรจริงทุกตัว · **แนะนำ**: ร้านตั้ง promotion แบบ fixed ด้วย `is_tax_inclusive: true` เสมอ
@@ -613,6 +634,9 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 `tools/load/run.sh` ไม่ unset `DATABASE_POOL_MIN` (review #371) → รวมใน OPS-26 ได้ถ้าเล็ก;
 กลุ่ม ข: `group-buy-join.spec.ts:86`, fs19, `PAGINATION_TEXT`, AC-44 (`e2e-af12c-*` + `toHaveCount(0)` ของ `pat`) → CORE-61; `affiliate-admin-forms.spec.ts:47` และ `waitForTimeout(1_000)` ของกฎ 24d → ยอมรับ/รอเกิดซ้ำ (spec 01 รอบ 32);
 ข้อที่เหลือของกลุ่ม ข/ค/ง ยังไม่มี task (คงไว้ด้านล่าง)
+**(รอบ 36, 2026-11-18) triage ข้อที่เหลือ**: กลุ่ม ข ที่เหลือ (`evoucher-admin-forms.spec.ts:255` ไม่กำหนด `order`, Escape ของ `group-buy-admin-form` ไม่ assert POST, regex `group-buy-pages.unit.spec.ts:113`, `slowLoader` ซ้ำ/RegExp ไม่ escape, `statuses.at(-1)`,
+401 ของแท็บ affiliate อื่น, Escape ทันทีหลัง mount ของ Create partner) → **เก็บ backlog** — ยังไม่เคยล้มใน CI และไม่ใช่ static ที่ผ่านเงียบ; เปิด task เมื่อล้มหรือเมื่อ PR แตะไฟล์นั้น ·
+กลุ่ม ค (UX) → **ทางเลือกของ owner** (ไม่บล็อก): ไม่เปิด task จนกว่า owner สั่ง — แนะนำเก็บไว้จนมี feedback ของผู้ใช้จริงหลัง go-live; ถ้าจะทำก่อน planner ต้องตรวจซ้ำบน develop ล่าสุดก่อน (ข้อสังเกตบันทึกก่อน ADM-15/ADM-24 ซึ่งแก้ฟอร์มไปแล้ว) · กลุ่ม ง คงเดิม
 ### ก. ต้องให้ owner ตัดสิน
 1. **[ถาม owner] bug จริง (qa #374 D-1)** `POST /admin/group-buy/campaigns` ค่าเกิน int4 (เช่น `max_total_orders` 2147483648) → 500 `integer out of range` เพราะ validator ยอมถึง `MAX_SAFE_INTEGER` — **แนะนำเปิด task backend ใน spec 04** (จำกัด ≤ 2147483647 → 400 + test) ไม่บล็อกข้อมูล (admin เท่านั้น)
 2. **[ถาม owner] งาน CPU ของ checkout (OPS-23 #371)** server CPU เต็ม ~115% ทุกค่า pool และ (d)/(e) ไม่ลดด้วย pool → ทางที่น่าจะลดคือเพิ่ม CPU ฝั่ง server (หลาย process/replica) หรือลดงาน CPU ต่อ request — เป็น infra/scale ใหม่ ต้องมี AC + ADR (spec 07) ก่อน

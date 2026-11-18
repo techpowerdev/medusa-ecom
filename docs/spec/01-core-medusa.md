@@ -2469,6 +2469,8 @@ none
      (d) `e2e/flash-sale-fs19.spec.ts:194`: builder อ่าน log/trace ของ run 43469877641 (artifact หมดอายุ → อ่าน log ของ job) ถ้าจุดที่ล้มคือ `:245` → ลบ `expect.poll(barHidden, { timeout: 100 … })` (การรอให้ sampler จบใช้ `__fs19.done` ที่ `:247` และเกณฑ์ ≤ 100ms ตรวจที่ `:258` อยู่แล้ว);
          ถ้าล้มที่อื่นหรืออ่าน log ไม่ได้ → ไม่แก้ไฟล์นี้ บันทึกใน PR (เปิด task เมื่อเกิดซ้ำ);
      (e) ห้ามเพิ่ม `waitForTimeout`, `expect.timeout`/`timeout` ระดับ config และห้ามแตะโค้ดใต้ `src/`
+     (หมายเหตุ รอบ 36, 2026-11-18 — review #388: static ของ (c) ใน `e2e/core-46-e2e-hygiene.unit.spec.ts:231–239` ผ่านได้แม้ไม่มี cleanup — `finally` ตรงกับ helper `sql()` และไฟล์ไม่มี `request.delete(` แล้ว →
+     แก้ใน ADM-30 (spec 08 กฎ 34d, AC-35) ให้ตรวจ `finally` ของ test AC-44 จริง; พฤติกรรมที่ต้องได้ของ (c) ไม่เปลี่ยน)
 120. (CORE-62 — owner ตัดสิน 2026-11-17, qa #372; แทนเงื่อนไขของกฎข้อ 118a ตามภาคผนวก 2026-11-17) ป้ายแถวแรกของ `cart-totals` (`cart-subtotal-label`; ทุกที่ที่ใช้: `/cart`, checkout, order-completed):
      (a) "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เมื่อ**ส่วนลดระดับสินค้า** `original_item_total − item_total > 0.005` (กันเศษ float — ค่าดิบของ field ตามกฎข้อ 115a); ไม่มี field ใด field หนึ่ง/เป็น null → ถือว่าไม่ลด;
          (หมายเหตุ ปิดรอบ 32 ตาม review #384: โค้ดที่ merge (`itemDiscounted` ใน `cart-totals/index.tsx`) ต้องมี `discount_total` truthy ร่วมด้วย เพื่อให้ป้ายสอดคล้องกับการ render แถว `cart-discount` —
