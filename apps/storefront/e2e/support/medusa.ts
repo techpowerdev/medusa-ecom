@@ -121,8 +121,9 @@ const storeHeaders = (pk: string, customer: Customer): Headers => ({
   "x-publishable-api-key": pk,
 })
 
+/** status 200 แล้วคืน body (CORE-67: export ให้ spec ใช้ร่วม — เดิมซ้ำใน core-65/66) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ store API ใน e2e
-const ok = async (res: APIResponse, what: string): Promise<any> => {
+export const ok = async (res: APIResponse, what: string): Promise<any> => {
   expect(res.status(), `${what}: ${await res.text()}`).toBe(200)
   return res.json()
 }
@@ -206,8 +207,17 @@ export async function placeOrder(
   customer: Customer,
   options: CartOptions = {}
 ): Promise<{ id: string; displayId: number }> {
+  return completeCart(request, pk, customer, await cartReadyForPayment(request, pk, customer, options))
+}
+
+/** CORE-67: จ่ายด้วย manual payment ของ seed แล้ว complete cart ที่พร้อมจ่าย (จาก `cartReadyForPayment`) คืน id + display_id */
+export async function completeCart(
+  request: APIRequestContext,
+  pk: string,
+  customer: Customer,
+  cartId: string
+): Promise<{ id: string; displayId: number }> {
   const headers = storeHeaders(pk, customer)
-  const cartId = await cartReadyForPayment(request, pk, customer, options)
   const { payment_collection } = await ok(
     await request.post(`${BACKEND_URL}/store/payment-collections`, {
       headers,
