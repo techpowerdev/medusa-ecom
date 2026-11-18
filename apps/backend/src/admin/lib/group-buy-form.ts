@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { INT4_MAX } from "../../lib/int4"
 import { BAD_NUMBER_INPUT, fieldErrorMap } from "./form-validation"
 
 // GB-6a: แปลงค่าฟอร์ม "Create campaign" เป็น body ของ POST /admin/group-buy/campaigns
@@ -15,23 +16,37 @@ const DISCOUNT_VALUE_MESSAGE = "Discount value must be a number greater than 0"
 
 // ADM-15 (spec 08 กฎ 19a): ช่องตัวเลขเป็น NumberInput — ค่าที่ไม่ใช่ตัวเลข ("e") มาเป็น BAD_NUMBER_INPUT
 // ปฏิเสธที่ schema ให้ error อยู่ใต้ช่อง (ข้อความเดียวกับ toCampaignBody) ค่าว่างยังผ่านไปให้ toCampaignBody ตัดสิน
-const numberText = (message: string) => z.string().refine((value) => value !== BAD_NUMBER_INPUT, { message })
+// ADM-32 (spec 08 กฎ 36): รูปค่า (จำนวนเต็ม > 0 และ ≤ INT4_MAX ของ column int4 — GB-17; discount > 0) ตรวจที่นี่ด้วย
+// ให้ error อยู่ใต้ช่องแทน toast — issue เดียวต่อช่อง (ข้อความแรกที่เข้าเงื่อนไข)
+const numberText = (issueOf: (n: number) => string | null, badInput: string) =>
+  z.string().superRefine((value, ctx) => {
+    const message = value === BAD_NUMBER_INPUT ? badInput : value.trim() ? issueOf(Number(value)) : null
+    if (message) ctx.addIssue({ code: "custom", message })
+  })
+
+const wholeNumberText = (label: string) =>
+  numberText((n) => {
+    if (!Number.isInteger(n) || n <= 0) return wholeNumberMessage(label)
+    return n > INT4_MAX ? `${label} must be at most ${INT4_MAX}` : null
+  }, wholeNumberMessage(label))
+
+const discountText = numberText((n) => (n > 0 ? null : DISCOUNT_VALUE_MESSAGE), DISCOUNT_VALUE_MESSAGE)
 
 export const campaignFormSchema = z.object({
   name: z.string(),
   target_type: z.enum(["orders", "units", "people"]),
-  target_value: numberText(wholeNumberMessage("Target")),
+  target_value: wholeNumberText("Target"),
   group_mode: z.enum(["pool", "team", "both"]),
-  team_duration_hours: numberText(wholeNumberMessage("Team duration")),
-  max_total_orders: numberText(wholeNumberMessage("Max total orders")),
-  max_units_per_person: numberText(wholeNumberMessage("Max units per person")),
-  max_people_per_group: numberText(wholeNumberMessage("Max people per group")),
-  pay_within_hours: numberText(wholeNumberMessage("Pay within")),
+  team_duration_hours: wholeNumberText("Team duration"),
+  max_total_orders: wholeNumberText("Max total orders"),
+  max_units_per_person: wholeNumberText("Max units per person"),
+  max_people_per_group: wholeNumberText("Max people per group"),
+  pay_within_hours: wholeNumberText("Pay within"),
   starts_at: z.date().nullable(),
   ends_at: z.date().nullable(),
   discount_type: z.enum(["percentage", "fixed"]),
-  discount_value: numberText(DISCOUNT_VALUE_MESSAGE),
-  max_quantity: numberText(wholeNumberMessage("Max quantity")),
+  discount_value: discountText,
+  max_quantity: wholeNumberText("Max quantity"),
   product_id: z.string().nullable(), // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า จาก product picker — บังคับเลือก
   is_tax_inclusive: z.boolean(), // spec 04 กฎข้อ 12
 })

@@ -191,7 +191,17 @@ jobs:
             set -eu
             sh /ci/assert-absent.sh "Development Mode" /app/public/admin/assets/*.js
             sh /ci/assert-absent.sh "build-only" /app
-            echo "OK admin bundle เป็น production และไม่มี placeholder ใน /app"
+            # OPS-29 (AC-44): ไม่มีไฟล์ test ที่ compile แล้ว — find error ล้มด้วย set -e (ไม่ผ่าน pipe)
+            # และ path ที่ตรวจต้องมีจริง (กันตรวจผิดที่แล้วผ่าน)
+            test -d /app/src/api || { echo "::error::ไม่มี /app/src/api ใน image — path ที่ตรวจผิด (OPS-29)"; exit 1; }
+            test -d /app/src/modules || { echo "::error::ไม่มี /app/src/modules ใน image — path ที่ตรวจผิด (OPS-29)"; exit 1; }
+            found=$(find /app -path /app/node_modules -prune -o -name __tests__ -print -o -name "*.spec.js" -print)
+            if [ -n "$found" ]; then
+              echo "::error::image มีไฟล์ test ที่ compile แล้ว (OPS-29):"
+              echo "$found"
+              exit 1
+            fi
+            echo "OK admin bundle เป็น production ไม่มี placeholder และไม่มีไฟล์ test ใน /app"
           '
       # OPS-12 (spec 07 AC-19): Redis ของ event bus ถูก pause 30 วินาที → worker ต้องประมวลผล event ต่อได้ (OPS-8 AC-5)
       # ใช้ image เดียวกับขั้นก่อน (build cache) แต่ compose project/port แยก (ops8test, 9108)
