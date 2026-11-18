@@ -4,22 +4,28 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**ปิดรอบ 37 (2026-11-19, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-66 #412, ADM-34 #413, GB-18 #414, CORE-67 #415, ADM-35 #416 + เอกสาร #411 (รอบ 37) ·
+**ปิดรอบ 38 (2026-11-19, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-37 #418 + เอกสาร #417 (ปิดรอบ 37) ·
+ผล ADM-37: คอลัมน์ Affiliate ของ payouts จำกัด 274px คง tooltip ของ `TruncatedCell` เป็น "ชื่อ อีเมล" (ตาราง payouts 3744px → 1418px ที่ 1280 — qa) · คอลัมน์ข้อความของ programs/affiliates/payouts ≤ 250px ที่ 1920 โดยคอลัมน์สุดท้ายรับส่วนเกิน
+(**owner ตอบ spec 08 Q12 = ก 2026-11-19** — ช่องว่างหลังปุ่ม `…` 122/122/91px แทน 479/421px ของทาง ข) · red 4/7 → green, `--repeat-each=5` 60/60; reviewer APPROVE + CI เขียว; qa REPORT defect ไม่พบ ·
+ยกจากบรรทัดประวัติรอบ 37 (nit review #417 ข้อ 3): task ของรอบ 37 ☑ ครบในปิดรอบ 37 (GB-18, CORE-66, CORE-67, ADM-34, ADM-35; ADM-36 ☑ ผลวัด) และคำถามของรอบ 37 ตอบครบในปิดรอบ 37 (Q23 = ก, Q11 = ก) ·
+ไม่มี PR เปิด · ไม่มีงานพักไว้ · ไม่มี task ที่ owner สั่งค้าง · **คำถาม owner (ไม่บล็อก release)**: ตาราง Ledger คอลัมน์ Affiliate กว้าง 2600px (qa #418 O-2 — Recommended ก ทำแบบ ADM-37) → ข้อ ก ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 38)" ท้ายไฟล์ ·
+ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ที่เหลือก่อน go-live ดูบรรทัด "ก่อนเปิดร้านจริง (go-live)" ·
+(ประวัติ) **ปิดรอบ 37 (2026-11-19, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): CORE-66 #412, ADM-34 #413, GB-18 #414, CORE-67 #415, ADM-35 #416 + เอกสาร #411 (รอบ 37) ·
 ผล: ส่วนลด fixed ≥ ราคาฐานต่ำสุดของ variant ตอนสร้างแคมเปญ → 400 `invalid_data` (red 5 เคสได้ 200 → green 47/47) · preview ของ checkout แถว qty 1 ไม่มีราคาต่อหน่วย · price list แบบ sale แสดงราคาขีดฆ่าจาก `compare_at_unit_price` ตัวเดียวแม้มี promotion ·
 ปิด `FocusModal` 5 ฟอร์มแล้ว focus กลับปุ่มที่เปิด (hook `useRestoreOpenerFocus`; qa 30/30) · ข้อความยาวใน 4 ตารางไม่ดันปุ่ม `…` ออกนอกจอ (ตาราง partners 4839px → 1036px ที่ 1280; tooltip ของ Medusa คงอยู่) · ทุก PR reviewer APPROVE + CI เขียว; งาน UI มี qa REPORT defect ไม่พบ (D-1 test-only ของ #416 แก้ใน PR) ·
 **ADM-36 ☑ ผลวัด (ไม่มี PR โค้ด — `docs/evidence/admin-ui/ADM-36-tests.txt`)**: Escape เฟรมแรกถูกทิ้งเหมือนกันที่ customer groups ของ Medusa (19/20) และ programs ของเรา (20/20) = ทาง (A) → **owner ตอบ spec 08 Q11 = ก 2026-11-19 ปิดข้อนี้** ·
 **owner ตอบแล้ว 2026-11-19**: spec 04 Q23 = ก (คงข้อจำกัด GB-18 กันได้แค่ตอนสร้าง — ไม่เปิด GB-19) · สรุปยอด `cart-totals` กับราคาขีดฆ่าของ price list ไม่ตรงกัน (qa #415 O-1) = คงเดิม (หมายเหตุใต้กฎข้อ 125f ของ spec 01) ·
 **owner สั่งทำ 2026-11-19 (☐; ไม่บล็อก release; เริ่มได้เมื่อ PR เอกสารปิดรอบ 37 merge)**: **ADM-37** (spec 08 หัวข้อ "Follow-up รอบ 38" กฎ 41, AC-42 — คอลัมน์ Affiliate ของ payouts จำกัด 250px คง tooltip ของ `TruncatedCell` + คอลัมน์ auto รับความกว้างส่วนเกินใน programs/affiliates/payouts ให้คอลัมน์ข้อความ ≤ 250px ที่ 1920; qa) ·
 ไม่มี PR เปิด · ไม่มีงานพักไว้ · **คำถาม owner (ไม่บล็อก ADM-37)**: spec 08 Q12 (คอลัมน์ auto = คอลัมน์สุดท้ายแทน actions ที่อยู่กลางตาราง — Recommended ก) · follow-up ใหม่ → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 37)" ท้ายไฟล์ ·
-ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ที่เหลือก่อน go-live ดูบรรทัด "ก่อนเปิดร้านจริง (go-live)" ·
+ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
 (ประวัติ) **รอบ 37 (2026-11-18, เอกสารล้วน)**: owner ตัดสินข้อ ก (1)–(5) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 36)" ครบ 2026-11-18 = **ทำทุกข้อ** (1 = ก, 2 = ข, 3 ทำ, 4 ทำ, 5 ทำ) ·
-**owner สั่งทำ 2026-11-18 (☐; ไม่บล็อก release; เริ่มได้เมื่อ PR เอกสารรอบ 37 merge — ☑ ครบในปิดรอบ 37, ADM-36 ☑ ผลวัด)**: **GB-18** (spec 04 กฎข้อ 41, AC-61 — backend ตอบ 400 เมื่อส่วนลด fixed ≥ ราคาฐานต่ำสุดของ variant ตอนสร้างแคมเปญ; ไม่มี qa) ∥
+**owner สั่งทำ 2026-11-18 (☐; ไม่บล็อก release; เริ่มได้เมื่อ PR เอกสารรอบ 37 merge)**: **GB-18** (spec 04 กฎข้อ 41, AC-61 — backend ตอบ 400 เมื่อส่วนลด fixed ≥ ราคาฐานต่ำสุดของ variant ตอนสร้างแคมเปญ; ไม่มี qa) ∥
 **CORE-66** (spec 01 กฎข้อ 124, AC-165 — preview ของ checkout แถว qty 1 ไม่มีราคาต่อหน่วย; qa) → **CORE-67** (spec 01 กฎข้อ 125, AC-166 — ราคาขีดฆ่าจาก `compare_at_unit_price` ของ price list แบบ sale ใน cart/preview/dropdown/order ไม่ซ้อน promotion; qa) ∥
 **ADM-34** (spec 08 กฎ 38, AC-39 — ปิด `FocusModal` ที่เปิดจากปุ่มแล้ว focus กลับปุ่ม, hook ใน `components/common/` ผู้ใช้ 5 ที่; qa) → **ADM-35** (spec 08 กฎ 39, AC-40 — ข้อความยาวใน `DataTable` ไม่ดันปุ่ม `…` ออกนอกจอ คง tooltip ของ Medusa + nit #409; qa) →
 **ADM-36** (spec 08 กฎ 40, AC-41 — Escape เฟรมแรก: ด่านวัดเทียบ customer groups ของ Medusa ก่อน; upstream → หยุดแล้วถาม Q11) · ลำดับ: CORE-66 → CORE-67 (`e2e/support/medusa.ts` + ความคาดหวังของ preview); ADM-34 → ADM-35 (`partners-section.tsx`) → ADM-36 (ไฟล์ตาราง + `admin-row-menu-escape.spec.ts`);
 สามสายขนานกันได้ (GB-18 ∥ สาย CORE ∥ สาย ADM — ไม่มีไฟล์ร่วม) · รวม nit กลุ่ม ข ที่แตะไฟล์เดียวกัน: review #406 → CORE-66, review #404 + `optsOut` #409 → ADM-34, review/qa #409 ที่เหลือ → ADM-35 ·
 ข้อเท็จจริงที่ตรวจ: Medusa 2.22.1 คุม adjustment ไม่ให้เกินยอดของ line (ยอดไม่ติดลบ แต่ส่วนลด ≥ ราคา = ของฟรี); `/app/products` ใช้ `_DataTable` คนละ implementation — ตัวเทียบของ ADM-36 คือ customer groups ·
-ไม่มี PR เปิด · ไม่มีงานพักไว้ · **คำถาม owner (ไม่บล็อก task ใด)**: spec 04 Q23 (กันส่วนลดตอนแก้ที่หน้า promotion ผ่าน hook `promotionsUpdated` — Recommended ก คงข้อจำกัด); spec 08 Q11 (ถามเฉพาะเมื่อ ADM-36 ได้ทาง A) (**ตอบครบในปิดรอบ 37: Q23 = ก, Q11 = ก**) ·
+ไม่มี PR เปิด · ไม่มีงานพักไว้ · **คำถาม owner (ไม่บล็อก task ใด)**: spec 04 Q23 (กันส่วนลดตอนแก้ที่หน้า promotion ผ่าน hook `promotionsUpdated` — Recommended ก คงข้อจำกัด); spec 08 Q11 (ถามเฉพาะเมื่อ ADM-36 ได้ทาง A) ·
 ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
 (ประวัติ) **ปิดรอบ 36 (2026-11-18, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-30 #402, OPS-28 #403, ADM-31 #404, CORE-65 #406, OPS-29 #407, ADM-32 #408, ADM-33 #409 + เอกสาร #401 (รอบ 36), #405 (รอบ 36 ส่วนที่ 2) ·
 ผล: ขั้นตรวจ "ต้องไม่พบ" ใน CI เป็น fail-closed (`tools/ci/assert-absent.sh` — เดิมผ่านเงียบ exit 0 เมื่อ path ไม่มี, ใหม่ exit 2) และ step OPS-15 ล้มเมื่อไม่มี log · image ไม่มีไฟล์ test (`__tests__` 23 → 0 directory, `*.spec.js` 97 → 0) ·
@@ -413,7 +419,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-34 | (รอบ 37, owner สั่งทำ 2026-11-18 — qa #404 O-1) hook `useRestoreOpenerFocus` (`components/common/`, ผู้ใช้ 5 ที่) คืน focus ให้ปุ่มที่เปิด `FocusModal` เมื่อปิด — partner, program, payout, pool + create-campaign ย้ายจาก inline (กฎ 19b เดิม); static + e2e `admin-modal-return-focus` + nit review #404/`optsOut` #409 (กฎ 38; AC-39; ~40 LOC + ~150 LOC test; qa; ∥ GB-18/CORE-66/67) | ☑ #413 (owner สั่งทำ 2026-11-18; qa 30/30 defect ไม่พบ) |
 | ADM-35 | (รอบ 37, owner สั่งทำ 2026-11-18 — qa #409 O-1) คอลัมน์ข้อความอิสระของ partners/programs/affiliates/payouts จำกัดความกว้างเนื้อหา 250px แบบ `ProductCell` ของ dashboard ด้วย className/column option คง tooltip ของ `TruncatedCell` → ปุ่ม `…` อยู่ในจอที่ 1280 + nit review/qa #409 ของ e2e (กฎ 39; AC-40; ~15 LOC + ~160 LOC test; qa; **← ADM-34** `partners-section.tsx`) | ☑ #416 (`size`/`maxSize` 298/274; qa D-1 test-only แก้ใน PR; O-1/O-3 → ADM-37) |
 | ADM-36 | (รอบ 37, owner สั่งทำ 2026-11-18 — qa #409 O-2) Escape ในเฟรมแรกที่เมนูต่อแถวโผล่: ด่านวัด (probe `MutationObserver` 20 ครั้ง) เทียบ customer groups ของ Medusa (`DataTable` แบบเดียวกัน — ไม่ใช่ `/app/products`) → แก้เฉพาะเมื่อเป็นจุดต่างในโค้ดเรา; upstream → หยุด ไม่มี PR แล้วถาม owner spec 08 Q11 (กฎ 40; AC-41; ด่านวัด ~80 LOC, ทาง B ≤ ~150 LOC; qa เฉพาะทาง B; **← ADM-35** — ด่านวัดเริ่มได้ทันที) | ☑ ผลวัด 2026-11-19 (owner สั่งทำ 2026-11-18; ไม่มี PR — `docs/evidence/admin-ui/ADM-36-tests.txt`): ทาง (A) customer groups ของ Medusa ทิ้ง Escape เฟรมแรก 19/20 เท่ากับ programs 20/20 → owner Q11 = ก ปิดข้อนี้ ไม่มีโค้ด |
-| ADM-37 | (รอบ 38 / ปิดรอบ 37, owner สั่งทำ 2026-11-19 ก "ทำแบบ ADM-35" — qa #416 O-1/O-3, builder #416) คอลัมน์ Affiliate ของ payouts (`AffiliateCell`) `size`/`maxSize` 274 คง tooltip ของ `TruncatedCell` (+ `{" "}` ระหว่างชื่อกับอีเมล) และคอลัมน์ auto รับความกว้างส่วนเกินใน programs/affiliates/payouts (actions `size: undefined` หรือคอลัมน์สุดท้ายตาม Q12) → คอลัมน์ข้อความ ≤ 250px ที่ 1280 และ 1920 (spec 08 กฎ 41; AC-42; ~10 LOC + ~130 LOC test; qa; ← PR เอกสารปิดรอบ 37) | ☐ (owner สั่งทำ 2026-11-19) |
+| ADM-37 | (รอบ 38 / ปิดรอบ 37, owner สั่งทำ 2026-11-19 ก "ทำแบบ ADM-35" — qa #416 O-1/O-3, builder #416) คอลัมน์ Affiliate ของ payouts (`AffiliateCell`) `size`/`maxSize` 274 คง tooltip ของ `TruncatedCell` (+ `{" "}` ระหว่างชื่อกับอีเมล) และคอลัมน์ auto รับความกว้างส่วนเกินใน programs/affiliates/payouts (actions `size: undefined` หรือคอลัมน์สุดท้ายตาม Q12) → คอลัมน์ข้อความ ≤ 250px ที่ 1280 และ 1920 (spec 08 กฎ 41; AC-42; ~10 LOC + ~130 LOC test; qa; ← PR เอกสารปิดรอบ 37) | ☑ #418 (owner สั่งทำ 2026-11-19; Q12 = ก — คอลัมน์สุดท้ายเป็น auto; qa defect ไม่พบ; O-1/O-2 → follow-up ปิดรอบ 38) |
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
@@ -610,18 +616,48 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
   spec 08: Status ต้นไฟล์ + หัวข้อ "Follow-up รอบ 37" → done, ถ้อยคำกฎ 39a (`size`/`maxSize` 298/274, actions ของ partners `size: undefined`), 39d + AC-40a (หาหน้าด้วย admin API + `<prefix>_offset` แทน `q`), กฎ 40d (ผลวัด ADM-36 ทาง A), nit review #411 (2)(3)(5),
   ☑ AC-39/40/41 และแถว task, Q11 ตัดสินแล้ว; หัวข้อใหม่ "Follow-up รอบ 38" — กฎ 41, AC-42, ADM-37, Q12 ·
   ROADMAP: บรรทัดสถานะ (รอบ 37 → ประวัติ), แถว task ทั้ง 6 + ADM-37, ทำเครื่องหมายหัวข้อปิดรอบ 36, หัวข้อใหม่ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 37)" · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+- ปิดรอบ 38 (2026-11-19, เอกสารล้วน) → sync ☑ ADM-37 #418 · เอกสารที่ merge ในรอบ: #417 · คำตอบ owner 2026-11-19: spec 08 Q12 = ก (คอลัมน์สุดท้ายเป็น auto) ·
+  spec 08: Status ต้นไฟล์ (คง in-progress) + หัวข้อ "Follow-up รอบ 38" → done, กฎ 41c (คอลัมน์สุดท้าย `hold_days`/`created_at`/`id` แทน actions + ผลวัด), ☑ AC-42 และแถว ADM-37, Q12 ตัดสินแล้ว + แก้ตัวเลข ~290px เป็นผลวัด (review #417) ·
+  ROADMAP: บรรทัดสถานะ (ปิดรอบ 37 → ประวัติ; ย้ายข้อความ ☑/ตอบครบที่ต่อท้ายบรรทัดประวัติรอบ 37 มาไว้บรรทัดสถานะใหม่ — review #417 ข้อ 3), แถว ADM-37, cart S2 ของ CORE-67 ในหัวข้อปิดรอบ 37 กลุ่ม ข (review #417 ข้อ 2),
+  หัวข้อใหม่ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 38)" (ไม่เปิด task id ใหม่) · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+
+## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 38)
+ที่มา: review/qa/builder ของ #417–#418 (2026-11-19) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน · ไม่มีข้อใดบล็อก release
+**แก้ในปิดรอบ 38 แล้ว (ไม่ต้องมี task)**: Q12 = ก บันทึกใน spec 08 กฎ 41c + แก้ตัวเลขช่องว่าง (review #417 ข้อ 1, review #418) · cart S2 ของ CORE-67 เพิ่มในข้อ cleanup ของหัวข้อปิดรอบ 37 กลุ่ม ข (review #417 ข้อ 2) ·
+ข้อความ "☑ ครบในปิดรอบ 37"/"ตอบครบในปิดรอบ 37" ย้ายจากบรรทัดประวัติรอบ 37 ไปบรรทัดสถานะปิดรอบ 38 (review #417 ข้อ 3)
+### ก. ต้องให้ owner ตัดสิน
+1. **[ถาม owner] ตาราง Ledger คอลัมน์ Affiliate กว้างตามข้อความ (qa #418 O-2)** `routes/affiliate/page.tsx` `LedgerTable` (คอลัมน์ Created, Affiliate (`AffiliateCell` ร่วมกับ payouts), Order, Amount, Status — ไม่มีคอลัมน์ actions/เมนูต่อแถว)
+   ไม่ตั้ง `size`/`maxSize` → affiliate ชื่อยาวทำให้คอลัมน์ Affiliate 2600px (ตาราง 3203px) ทุกความกว้างจอทั้งบน develop และ #418 → ต้องเลื่อนแนวนอนจึงเห็น Status (ไม่มีปุ่มถูกดันออกนอกจอ — spec 08 รอบ 38 ตัดไว้นอก scope) ·
+   ทางเลือก: (ก) ทำแบบ ADM-37: คอลัมน์ `affiliate_id` `size`/`maxSize` 274 (tooltip "ชื่อ อีเมล" ของ `TruncatedCell` ได้จาก `{" "}` ของ #418 อยู่แล้ว) + คอลัมน์สุดท้าย Status `size: undefined` (แบบกฎ 41c) + e2e 1280/1920 ใน `admin-table-long-text.spec.ts` + qa
+   ~5 LOC โค้ด + ~60 LOC test · (ข) คงเดิม — Ledger เป็นตารางอ่านอย่างเดียว ข้อมูลชื่อยาว 370 ตัวเป็นกรณีทดสอบ ไม่ใช่ข้อมูลจริงทั่วไป ·
+   **Recommended: (ก)** — งานเล็ก ใช้ column option ของ `DataTable` แบบเดียวกับอีก 4 ตาราง (ไม่สร้าง component) ทำให้ทุกตารางของหน้า affiliate สม่ำเสมอ; ทำพร้อม nit ข้อ ข ในไฟล์ `admin-table-long-text.spec.ts` ได้ในครั้งเดียว
+### ข. test hygiene / nit (planner จัดเป็น task เล็กได้เมื่อ owner สั่ง — ถ้า ก (1) = ก ให้รวมเข้า task นั้น)
+- (review #418) `e2e/admin-table-long-text.spec.ts:23` `tag()` ใช้ prefix `adm35-` กับข้อมูลของ ADM-37 ด้วย → แยก/เปลี่ยนเป็น `adm37-` สำหรับ describe ของ ADM-37 · `components/affiliate/payouts-table.tsx:137–139` comment AF-14 เดิมติดกับ comment ใหม่ของกฎ 41a →
+  แยกบรรทัด/จัดลำดับให้อ่านง่าย · comment กฎ 41c ซ้ำ 3 ไฟล์ — reviewer ยอมรับ ไม่ทำ
+- (qa #418 O-1 — ข้อสังเกต ไม่ใช่ defect) payouts ที่ 1920 คอลัมน์สุดท้าย "Payout" ไม่รับส่วนเกินเพราะตารางกว้างพอดีเนื้อหา (293px) ส่วนเกินไปที่ Status/actions/Amount ที่ยังไม่ถึง 150 → ช่องว่างหลังปุ่ม 90–91px (ที่ 1280 = 24px) ไม่เกินความกว้างเริ่มต้นของคอลัมน์ actions — ยอมรับตามกฎ 41c ไม่ทำ
+- (builder #418) ที่ 1280 ตาราง payouts 1414px, affiliates 1097px กว้างกว่ากล่อง (qa #416 O-2 — นอก scope, ปุ่มยังในจอ) คงไว้
+- ข ของหัวข้อปิดรอบ 37 และ 36 ที่ยังไม่มี task คงไว้
+### ค. backlog / ไม่ทำ (พร้อมเหตุผล)
+- (qa #418 O-3) tooltip ชื่อไทยปนอังกฤษไม่มีช่องว่างสูงมาก อ่านได้ครบ — เดียวกับ qa #416 O-4 ไม่ทำ
+- ค้างจากรอบก่อน: ก่อน go-live (Stripe live นิติบุคคลไทย + PromptPay — spec 06 Q1, ค่าส่งจริงแทน ฿10 — spec 01 Q-F1, smoke test บน production, วัด OPS-26 ซ้ำบน staging) · กลุ่ม ข/ค ของหัวข้อปิดรอบ 37 และก่อนหน้าที่ยังไม่มี task คงไว้
+### ง. บทเรียนกระบวนการ (session หลักพิจารณาเพิ่มใน `CLAUDE.md`/agent — planner ไม่แตะ)
+- ห้ามรัน `pnpm --filter storefront test:e2e:unit` พร้อมกับ e2e chromium ในโฟลเดอร์ `apps/storefront` เดียวกัน — trace ใน `test-results/.playwright-artifacts` ชนกัน (ENOENT) ทำให้ e2e ล้มโดยไม่ใช่ assertion
+  (builder #418: `affiliate-admin-forms.spec.ts:381`/`:400` ล้มแล้วรันซ้ำผ่าน 3/3 — `ADM-37-tests.txt`); เพิ่มใน builder-common แล้ว (session หลัก) — รันทีละชุด
+- คำถามที่ให้ตัวเลขประกอบการตัดสินใจ (เช่น Q12 ~290px) ควรระบุว่าเป็นค่าประมาณหรือผลวัด และวัดจริงก่อนถ้าทำได้ — ค่าประมาณส่วนเกินของคอลัมน์ต่างจากช่องว่างที่ผู้ใช้เห็น (479/421px)
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 37)
 ที่มา: review/qa/builder ของ #411–#416 และผลวัด ADM-36 (2026-11-18/19) — **ยังไม่เปิด task id** (ยกเว้น ADM-37 ที่ owner สั่งแล้ว) · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน · ไม่มีข้อใดบล็อก release
+**(ปิดรอบ 38, 2026-11-19) ☑**: ADM-37 #418 (Q12 = ก) — ข้อ ก (1) ปิด · ข/ค ที่ยังไม่มี task คงไว้
 **แปลงแล้วในปิดรอบ 37**: qa #416 O-1/O-3 + builder #416 → **ADM-37** (spec 08 กฎ 41, AC-42; owner ก 2026-11-19) · qa #415 O-1 → owner คงเดิม (spec 01 หมายเหตุใต้กฎข้อ 125f) · ADM-36 ทาง (A) → Q11 = ก ปิด ·
 แก้ถ้อยคำ spec แล้ว: ADM-35 กฎ 39a/39d/AC-40a (session หลัก 2026-11-18), tolerance กฎข้อ 124e (review #412/#415), review #411 nit (2)(3)(4)(5), review #414 (กฎข้อ 41i) — ไม่ต้องมี task · review #413 (static `restoreUsage` ไม่จับ handler หลัง spread และ `[^>]*` ตัดที่ `=>`) แก้แล้วใน #416 (ตัดแท็กแบบนับวงเล็บ `{}` — `ADM-35-tests.txt`) ·
 review #411 nit (1) (ห้ามปิด ADM-36 จาก probe `MutationObserver` ลำพัง) ทำตามแล้ว — ผลวัดใช้การกดจริงแบบ qa #409 (0/16/50/100ms) ประกอบ
 ### ก. ต้องให้ owner ตัดสิน
-1. **[ถาม owner] spec 08 Q12 — คอลัมน์ไหนรับความกว้างส่วนเกินใน ADM-37** คอลัมน์ actions อยู่กลางตารางใน programs/affiliates/payouts (ต่างจาก partners ที่อยู่ท้าย) ถ้าเป็น auto ที่ 1920 จะมีช่องว่าง ~290px ระหว่างปุ่ม `…` กับคอลัมน์ถัดไป ·
+1. **[ปิดรอบ 38: owner ก 2026-11-19 → ADM-37 ☑ #418]** **[ถาม owner] spec 08 Q12 — คอลัมน์ไหนรับความกว้างส่วนเกินใน ADM-37** คอลัมน์ actions อยู่กลางตารางใน programs/affiliates/payouts (ต่างจาก partners ที่อยู่ท้าย) ถ้าเป็น auto ที่ 1920 จะมีช่องว่างระหว่างปุ่ม `…` กับคอลัมน์ถัดไป
+   (ปิดรอบ 38 แก้ตัวเลขตาม review #417: เดิม "~290px" — ผลวัดจริงใน `ADM-37-tests.txt` ทาง ข programs 479px, affiliates 421px; ทาง ก 122/122/91px) ·
    ทางเลือก: (ก) คอลัมน์สุดท้ายของแต่ละตารางเป็น auto แทน · (ข) actions เป็น auto ตามที่สั่ง · **Recommended: (ก)** — ช่องว่างไปอยู่ท้ายตารางแบบ partners ขนาดงานเท่ากัน AC เดิมใช้ได้ทั้งสองทาง; ไม่บล็อก ADM-37 (ไม่ตอบ = ทาง ข)
 ### ข. test hygiene / nit (planner จัดเป็น task เล็กได้เมื่อ owner สั่ง)
 - (qa #412 O-2) ระหว่าง `updateLineItem` ของ Medusa GET เห็น `quantity` ใหม่แต่ adjustment เก่าชั่วครู่ → e2e ที่อ่านยอดหลังเปลี่ยน qty ต้องอ่านซ้ำจนนิ่ง (`toPass`) — ใช้เป็นแนวทางของ e2e ใหม่ (ยังไม่มี test ที่ล้มเพราะข้อนี้)
-- (builder #412) cart ที่ e2e ของ CORE-66 สร้างไม่ถูกลบ · (review #408 เดิม) e2e AC-37b/c สร้างสินค้าไม่ลบ — รวมเป็นงาน cleanup ของ e2e ได้
+- (builder #412) cart ที่ e2e ของ CORE-66 สร้างไม่ถูกลบ · (review #417, เพิ่มในปิดรอบ 38) cart S2 ของ e2e CORE-67 (`core-67-sale-price-strikethrough.spec.ts`) ก็ไม่ถูกลบ · (review #408 เดิม) e2e AC-37b/c สร้างสินค้าไม่ลบ — รวมเป็นงาน cleanup ของ e2e ได้
 - (review #414) test "fixed thb 499.99 (price list THB 100 is ignored)" ผ่านบน develop ด้วย (spec 04 กฎข้อ 41i) → แก้ชื่อ/comment ว่าเป็นการกันไว้ก่อน · AC-61 ใช้ headers ที่สร้างเองแทน `integration-tests/helpers/admin.ts`
 - (review #415) `src/lib/util/line-item-compare-at.ts:15` ตรวจ `typeof === "number"` — ถ้า API ส่งจำนวนเงินเป็น string จะ fallback เป็นพฤติกรรมเดิมเงียบ ๆ (ควรใช้ `Number(...)` + `isFinite` หรือ test ครอบ) · e2e ของ CORE-67 ไม่ครอบ dropdown/375 (qa ครอบแล้ว)
 - ข ของหัวข้อปิดรอบ 36 ที่ยังไม่มี task (review #407, #403, #402 ×2, builder #402 prettier, review #408) คงไว้
