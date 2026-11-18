@@ -289,3 +289,51 @@ describe("OPS-27 build backend ด้วย NODE_ENV=production", () => {
     expect(lines[0]).toMatch(/NODE_ENV=production pnpm --filter backend build/)
   })
 })
+
+// OPS-28 (AC-43b): ขั้นตรวจ "ต้องไม่พบ" ต้อง fail-closed — `if grep …` ถือ grep error (rc ≥ 2) เป็น "ไม่พบ" แล้วผ่านเงียบ
+// จึงใช้ tools/ci/assert-absent.sh (ผ่านเฉพาะ rc 1) ทั้ง 3 จุด และขั้นนับของ OPS-15 ล้มเมื่อไม่มี log
+describe("OPS-28 ขั้นตรวจใน ci.yml ล้มเมื่อ grep error (fail-closed)", () => {
+  const PLACEHOLDER = ["build", "only"].join("-")
+  const callsAssertAbsent = (run: string | undefined, text: string) =>
+    (run ?? "").split("\n").some((l) => /assert-absent\.sh\b/.test(l) && l.includes(`"${text}"`))
+
+  it("ไม่มี run ใดในทุก job ที่ใช้รูป `if grep` / `if ! grep`", () => {
+    const runs = Object.values(jobs).flatMap((job) => [
+      ...(job.steps ?? []).map((s) => s.run ?? ""),
+      ...matrixRuns(job),
+    ])
+    expect(runs.length).toBeGreaterThan(0)
+    expect(runs.filter((r) => /\bif\s+!?\s*grep\b/.test(r))).toEqual([])
+  })
+
+  it("docker-worker-mode: step ตรวจ image mount tools/ci แบบ read-only แล้วเรียก assert-absent.sh กับ Development Mode และคำ placeholder", () => {
+    const step = stepsOf("docker-worker-mode").find((s) => /medusa-ecom-backend:local/.test(s.run ?? ""))
+    expect(step?.run).toMatch(/-v\s+"?\$(PWD|\{?GITHUB_WORKSPACE\}?)\/tools\/ci:\/ci:ro"?/)
+    expect(callsAssertAbsent(step?.run, "Development Mode")).toBe(true)
+    expect(callsAssertAbsent(step?.run, PLACEHOLDER)).toBe(true)
+    expectUnconditional(step)
+  })
+
+  it("storefront-e2e: เรียก assert-absent.sh กับ Development Mode หลังบรรทัด build และก่อน medusa start", () => {
+    const step = stepsOf("storefront-e2e").find((s) => /pnpm --filter backend build/.test(s.run ?? ""))
+    const lines = (step?.run ?? "").split("\n")
+    const build = lines.findIndex((l) => /pnpm --filter backend build/.test(l))
+    const check = lines.findIndex((l) => callsAssertAbsent(l, "Development Mode"))
+    const start = lines.findIndex((l) => /medusa start/.test(l))
+    expect(build).toBeGreaterThanOrEqual(0)
+    expect(check).toBeGreaterThan(build)
+    expect(start).toBeGreaterThan(check)
+  })
+
+  it("OPS-15: ขั้นนับไม่ใช้ `|| true` และตรวจว่ามีไฟล์ $TEST_LOG ก่อนนับ", () => {
+    const run = stepsOf("backend-suites").find((s) => /OPS-15/.test(s.name ?? ""))?.run ?? ""
+    expect(run).not.toMatch(/\|\|\s*true/)
+    const exists = run.search(/\[\s+(!\s+)?-[efrs]\s+"\$TEST_LOG"\s+\]/)
+    expect(exists).toBeGreaterThanOrEqual(0)
+    expect(exists).toBeLessThan(run.search(/grep -c/))
+  })
+
+  it("lint-typecheck: รัน tools/ci/assert-absent.test.sh", () => {
+    expect(runIndex(stepsOf("lint-typecheck"), "tools/ci/assert-absent.test.sh")).toBeGreaterThanOrEqual(0)
+  })
+})

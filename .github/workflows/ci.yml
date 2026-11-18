@@ -53,6 +53,8 @@ jobs:
       - run: tools/ci/check-stripe-events.test.sh
       # OPS-16 (AC-27a): ตรวจไฟล์จริงของ repo (default = docs/ops/production.md × ci.yml นี้) แยกจาก test ของ script
       - run: tools/ci/check-stripe-events.sh
+      # OPS-28 (AC-43a): ขั้นตรวจ "ต้องไม่พบ" ล้มเมื่อพบ หรือ grep error (path ไม่มี/อ่านไม่ได้) — ไม่ผ่านเงียบ
+      - run: tools/ci/assert-absent.test.sh
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -126,10 +128,20 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           TEST_LOG: ${{ runner.temp }}/backend-test.log
+        # OPS-28 (AC-43): ไม่มี log / grep error → ล้ม (เดิม `|| true` ทำให้นับเป็น 0 แล้วผ่านเงียบ)
         run: |
-          n=$(grep -c "Connection ended unexpectedly" "$TEST_LOG" || true)
-          echo "จำนวนบรรทัด: ${n:-0}"
-          if [ "${n:-0}" -gt 0 ]; then
+          if [ ! -e "$TEST_LOG" ]; then
+            echo "::error::ไม่มี log ของ test ($TEST_LOG) — ขั้นรัน test ไม่ได้รัน (ขั้นก่อนหน้าเช่น pnpm install ล้มก่อน) จึงนับไม่ได้: ดูสาเหตุที่ขั้นที่ล้มก่อนหน้า ไม่ใช่ปัญหา connection ใหม่ (OPS-15)"
+            exit 1
+          fi
+          rc=0
+          n=$(grep -c "Connection ended unexpectedly" "$TEST_LOG") || rc=$?
+          if [ "$rc" -ge 2 ]; then
+            echo "::error::อ่าน log ของ test ($TEST_LOG) ไม่ได้ (grep exit $rc) — นับไม่ได้ ไม่ถือว่าเป็น 0 (OPS-15)"
+            exit 1
+          fi
+          echo "จำนวนบรรทัด: ${n}"
+          if [ "${n}" -gt 0 ]; then
             echo "::error::พบ log knex ว่า connection ถูกปิด ${n} บรรทัด (OPS-15 / spec 07 AC-26)"
             exit 1
           fi
@@ -171,13 +183,14 @@ jobs:
       - run: tools/ops/smoke-worker-mode.sh
       # OPS-27 (spec 07 AC-42b): image ที่ smoke-worker-mode.sh build (compose: medusa-ecom-backend:local) มี admin แบบ production
       # และ placeholder ของขั้น build (คำ build-only) ไม่ถูกฝังใน output
+      # OPS-28 (AC-43): ตรวจด้วย tools/ci/assert-absent.sh (mount read-only ไม่ COPY เข้า image) — พบ/ตรวจไม่ได้ = ล้ม
+      # glob ของ assets ขยายใน sh ของ container: ไม่มีไฟล์ → path ตัวอักษร → grep error → ล้ม
       - name: Backend image has production admin bundle (OPS-27)
         run: |
-          docker run --rm --entrypoint sh medusa-ecom-backend:local -c '
+          docker run --rm -v "$PWD/tools/ci:/ci:ro" --entrypoint sh medusa-ecom-backend:local -c '
             set -eu
-            ls /app/public/admin/assets/*.js >/dev/null 2>&1 || { echo "::error::ไม่มี /app/public/admin/assets/*.js ใน image"; exit 1; }
-            if grep -lF "Development Mode" /app/public/admin/assets/*.js; then echo "::error::admin ใน image ถูก build แบบ development"; exit 1; fi
-            if grep -rlF --exclude-dir=node_modules "build-only" /app; then echo "::error::พบ placeholder build-only ใน /app"; exit 1; fi
+            sh /ci/assert-absent.sh "Development Mode" /app/public/admin/assets/*.js
+            sh /ci/assert-absent.sh "build-only" /app
             echo "OK admin bundle เป็น production และไม่มี placeholder ใน /app"
           '
       # OPS-12 (spec 07 AC-19): Redis ของ event bus ถูก pause 30 วินาที → worker ต้องประมวลผล event ต่อได้ (OPS-8 AC-5)
@@ -297,9 +310,8 @@ jobs:
         run: |
           # OPS-27 (spec 07 AC-42): ไม่ตั้ง NODE_ENV = medusa build ได้ admin แบบ development — ตั้งเฉพาะบรรทัดนี้ (job env ไม่มี NODE_ENV)
           NODE_ENV=production pnpm --filter backend build
-          assets=apps/backend/.medusa/server/public/admin/assets
-          ls "$assets"/*.js >/dev/null 2>&1 || { echo "::error::ไม่มี $assets/*.js หลัง build"; exit 1; }
-          if grep -lF "Development Mode" "$assets"/*.js; then echo "::error::admin ถูก build แบบ development"; exit 1; fi
+          # OPS-28 (AC-43): พบ หรือตรวจไม่ได้ (ไม่มีไฟล์ assets/*.js → glob เป็นตัวอักษร → grep error) = ล้ม
+          tools/ci/assert-absent.sh "Development Mode" apps/backend/.medusa/server/public/admin/assets/*.js
           # medusa start ต้องรันจาก build output (.medusa/server) เพื่อเสิร์ฟ admin ที่ build แล้ว
           ln -s ../../node_modules apps/backend/.medusa/server/node_modules
           (cd apps/backend/.medusa/server && npx medusa start > /tmp/backend.log 2>&1 &)
