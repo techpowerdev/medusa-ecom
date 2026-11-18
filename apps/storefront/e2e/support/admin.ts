@@ -83,12 +83,23 @@ export async function rowAction(row: Locator, trigger: string, name: string) {
 }
 
 /**
- * ปิด `ActionMenu` ที่เปิดอยู่โดยไม่เลือก — Escape ครั้งแรกหลังเปิดเมนูบางครั้งไม่ปิด (วัดใน admin 2.22.1) จึงกดซ้ำจนเมนูหาย
+ * ADM-33 (spec 08 กฎ 37c): รอ `ActionMenu` ที่เปิดอยู่ (1 ตัว) เล่น animation เปิดจบ — Escape ที่กดทันทีที่เมนูโผล่ (< 1 frame)
+ * Radix ยังไม่รับ เมนูจึงค้าง (วัดบน prod build: กดทันที 7/12 ค้าง, รอ animation จบ 0/12) ซึ่งคนกดไม่ทันขนาดนั้น — ไม่ใช่ timeout ตายตัว
+ */
+export async function waitMenuOpened(page: Page) {
+  const menu = page.getByRole("menu")
+  await expect(menu).toHaveCount(1)
+  // animation/transition ที่ถูกยกเลิก (เช่น transition ของ focus ring) reject ด้วย AbortError = ไม่ได้เล่นอยู่แล้ว จึงนับว่าจบ
+  await menu.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined))))
+}
+
+/**
+ * ปิด `ActionMenu` ที่เปิดอยู่โดยไม่เลือก — Escape ครั้งเดียว (spec 08 กฎ 37c: เดิมวนกดซ้ำเพราะ tooltip ของ `TruncatedCell` ใน
+ * `DataTable` กิน Escape แรก; ADM-33 ปิด tooltip ในคอลัมน์ actions แล้ว — ถ้าล้มที่นี่ ให้ตรวจ meta `___truncateTooltip` ของคอลัมน์นั้น)
  * ระหว่างเมนูเปิด Radix ซ่อนส่วนอื่นจาก accessibility tree (`getByRole("row")` หาไม่เจอ) ต้องปิดก่อนหาแถวถัดไป
  */
 export async function closeRowMenu(page: Page) {
-  await expect(async () => {
-    await page.keyboard.press("Escape")
-    await expect(page.getByRole("menu")).toHaveCount(0, { timeout: 1_000 })
-  }).toPass({ timeout: 10_000 })
+  await waitMenuOpened(page)
+  await page.keyboard.press("Escape")
+  await expect(page.getByRole("menu")).toHaveCount(0)
 }

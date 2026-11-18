@@ -202,6 +202,8 @@ export const PartnersSection = () => {
       }
       return columnHelper.display({
         id: "actions",
+        // spec 08 กฎ 37: ไม่ห่อด้วย tooltip ของ TruncatedCell — tooltip ที่เปิดเมื่อ focus กลับมาที่ trigger กิน Escape แรกของ ActionMenu
+        meta: { ___truncateTooltip: false },
         cell: ({ row }) => <PartnerActions partner={row.original} deleteOnce={deleteOnce} onEdit={openEdit} />,
       })
     },

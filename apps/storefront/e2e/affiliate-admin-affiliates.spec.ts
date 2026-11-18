@@ -55,9 +55,10 @@ test("AC-43: approve ยิงครั้งเดียว, suspend ผ่า�
   page.on("request", (req) => {
     if (req.method() === "POST" && new URL(req.url()).pathname === path) posts.push(req.postDataJSON())
   })
-  // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence (ไม่หน่วงเวลาตายตัว)
+  // ให้ animation ของกล่องยืนยันจบก่อนถ่าย evidence (ไม่หน่วงเวลาตายตัว) — transition ที่ถูกยกเลิก (focus ring ของปุ่มเมื่อ Radix
+  // คืน focus ซ้ำหลังเมนูปิด) reject ด้วย AbortError = ไม่ได้เล่นอยู่แล้ว จึงนับว่าจบ (ADM-33: ไม่มี tooltip ของ cell แล้วเจอบ่อยขึ้น)
   const settled = (locator: Locator) =>
-    locator.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
+    locator.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined))))
   const row = page.getByRole("row").filter({ hasText: ann.code })
   const status = row.getByTestId("affiliate-status")
   const action = (name: string) => rowAction(row, "affiliate-row-actions", name)

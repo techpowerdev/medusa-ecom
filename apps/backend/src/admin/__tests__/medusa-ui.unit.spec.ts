@@ -929,3 +929,58 @@ describe("ทุก FocusModal มี FocusModal.Title asChild ห่อ heading
     expect(count(src, /<FocusModal\.Title asChild>\s*<Heading\b[^>]*>[^<]*(\{[^}]*\}[^<]*)*<\/Heading>\s*<\/FocusModal\.Title>/g)).toBe(contents)
   })
 })
+
+// spec 08 AC-38a, กฎ 37 (ADM-33): `TruncatedCell` ของ `DataTable` (@medusajs/ui 4.2.8) ห่อทุก cell ด้วย `Tooltip` ที่ซ่อนแต่ยัง mount
+// — tooltip ของคอลัมน์ actions เปิดเมื่อ focus กลับมาที่ trigger แล้วกิน Escape แรกของ `ActionMenu` → ทุกคอลัมน์ actions ต้อง opt-out
+describe("คอลัมน์ actions ของ DataTable ปิด tooltip ของ cell (spec 08 AC-38a, กฎ 37, ADM-33)", () => {
+  /** object ของ `.display({ ... })` ทุกตัว (นับวงเล็บปีกกาจนปิด) — คืนข้อความใน `{}` */
+  const displayObjects = (src: string) => {
+    const found: string[] = []
+    for (let i = src.indexOf(".display({"); i !== -1; i = src.indexOf(".display({", i + 1)) {
+      const start = src.indexOf("{", i)
+      let depth = 0
+      for (let j = start; j < src.length; j++) {
+        if (src[j] === "{") depth++
+        else if (src[j] === "}" && --depth === 0) {
+          found.push(src.slice(start, j + 1))
+          break
+        }
+      }
+    }
+    return found
+  }
+  const isActions = (obj: string) => /\bid:\s*["']actions["']/.test(obj)
+  const optsOut = (obj: string) => /\bmeta:\s*{[^}]*\b___truncateTooltip:\s*false\b/.test(obj)
+
+  const actionColumns = adminFiles.flatMap((file) =>
+    displayObjects(read(file))
+      .filter(isActions)
+      .map((obj) => [file, obj] as const)
+  )
+
+  it("self-check: object ที่ไม่มี meta หรือ meta เป็น true ไม่ผ่าน, ที่มี ___truncateTooltip: false ผ่าน", () => {
+    const sample = `x.display({ id: "actions", cell: () => <A /> }) y.display({ id: "actions", meta: { ___truncateTooltip: true }, cell: () => null })`
+    const objects = displayObjects(sample)
+    expect(objects).toHaveLength(2)
+    expect(objects.every(isActions)).toBe(true)
+    expect(objects.some(optsOut)).toBe(false)
+    expect(optsOut(displayObjects(`c.display({ id: "actions", meta: { ___truncateTooltip: false }, cell: () => null })`)[0])).toBe(true)
+  })
+
+  it("พบคอลัมน์ actions อย่างน้อย 5 จุด (กัน vacuous)", () => {
+    expect(actionColumns.map(([file]) => file)).toEqual(
+      expect.arrayContaining([
+        "components/evoucher/partners-section.tsx",
+        "components/evoucher/codes-table.tsx",
+        "components/affiliate/programs-table.tsx",
+        "components/affiliate/affiliates-table.tsx",
+        "components/affiliate/payouts-table.tsx",
+      ])
+    )
+    expect(actionColumns.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it.each(actionColumns)("%s: .display({ id: \"actions\" }) มี meta: { ___truncateTooltip: false }", (_file, obj) => {
+    expect(optsOut(obj)).toBe(true)
+  })
+})
