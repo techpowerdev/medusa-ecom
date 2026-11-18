@@ -206,3 +206,86 @@ describe("OPS-16 ci.yml cache browser ของ Playwright", () => {
     expect(onHit?.run).not.toMatch(/playwright install(?!-deps)/)
   })
 })
+
+// OPS-27 (AC-42a): `medusa build` ที่ไม่ตั้ง NODE_ENV ได้ admin แบบ development (stack trace ในหน้า error — qa ADM-22)
+// → ตั้ง NODE_ENV=production เฉพาะขั้น build (Dockerfile, CI, คำสั่ง prod-like ใน CLAUDE.md); install/deploy ไม่เปลี่ยน
+// Dockerfile: guard ตอนโหลด config ได้ placeholder inline ในบรรทัด build เท่านั้น (Q-O6 = ก) ไม่ปิด guard ของ provider ทดสอบ
+describe("OPS-27 build backend ด้วย NODE_ENV=production", () => {
+  const dockerfile = readFileSync(path.join(BACKEND_DIR, "Dockerfile"), "utf8")
+  /** คำสั่ง Dockerfile แบบ logical line (รวมบรรทัดที่ต่อด้วย `\`, ตัด comment) แยกตาม stage */
+  const stages: Record<string, string[]> = {}
+  let stage = ""
+  for (const line of dockerfile.replace(/\\\r?\n/g, " ").split("\n")) {
+    const text = line.trim()
+    if (!text || text.startsWith("#")) continue
+    const from = /^FROM\s+\S+\s+AS\s+(\S+)/i.exec(text)
+    if (from) stage = from[1]
+    ;(stages[stage] ??= []).push(text)
+  }
+  const runs = (name: string, pattern: RegExp) =>
+    (stages[name] ?? []).filter((l) => /^RUN\s/.test(l) && pattern.test(l))
+  const [buildRun] = runs("build", /pnpm --filter @dtc\/backend build/)
+  // คำ placeholder ประกอบจากส่วนย่อย: test นี้ถูก compile ลง /app ของ image และ CI ตรวจว่า /app ไม่มีคำนี้ (AC-42b)
+  const PLACEHOLDER = ["build", "only"].join("-")
+
+  it("Dockerfile stage build: บรรทัด RUN ที่ build backend ตั้ง NODE_ENV=production inline ก่อน pnpm", () => {
+    expect(runs("build", /pnpm --filter @dtc\/backend build/)).toHaveLength(1)
+    expect(buildRun).toMatch(/^RUN\s+(\S+=\S+\s+)*NODE_ENV=production\s+(\S+=\S+\s+)*pnpm --filter @dtc\/backend build/)
+  })
+
+  it("Dockerfile: pnpm install และ deploy --prod ไม่ได้รับ NODE_ENV; stage base/build ไม่มี ENV/ARG NODE_ENV", () => {
+    const install = runs("build", /pnpm install/)
+    const deploy = runs("build", /deploy --prod/)
+    expect(install).toHaveLength(1)
+    expect(deploy).toHaveLength(1)
+    for (const l of [...install, ...deploy]) expect(l).not.toMatch(/NODE_ENV/)
+    for (const name of ["base", "build"]) {
+      expect(stages[name]?.length).toBeGreaterThan(0)
+      expect(stages[name].filter((l) => /^(ENV|ARG)\s/i.test(l) && /NODE_ENV/.test(l))).toEqual([])
+    }
+  })
+
+  it("Dockerfile: placeholder ของ guard อยู่ในบรรทัด build (ข้อความมีคำ placeholder) และไม่มีตัวแปรปิด guard ของ provider ทดสอบ", () => {
+    const value = (name: string) => new RegExp(`(?:^|\\s)${name}=(\\S+)`).exec(buildRun ?? "")?.[1]
+    for (const name of ["AFFILIATE_TOKEN_SECRET", "RESEND_API_KEY", "RESEND_FROM_EMAIL"]) {
+      expect(value(name)).toContain(PLACEHOLDER)
+    }
+    expect(value("STOREFRONT_URL")).toMatch(new RegExp(`^http://[^/\\s]*${PLACEHOLDER}[^/\\s]*\\.invalid/?$`))
+    expect(value("EVOUCHER_ENCRYPTION_KEY")).toMatch(/^[0-9a-f]{64}$/)
+    // AC-42a(1): ทั้งไฟล์ (รวม comment) ไม่มีชื่อตัวแปรนี้ — มีเฉพาะใน CI (ADR-010 ข้อ 4)
+    expect(dockerfile).not.toMatch(/ALLOW_TEST_PROVIDERS/)
+  })
+
+  it("Dockerfile stage runtime: ENV NODE_ENV=production และไม่มีคำ placeholder", () => {
+    expect(stages.runtime).toContain("ENV NODE_ENV=production")
+    expect(stages.runtime.join("\n")).not.toContain(PLACEHOLDER)
+  })
+
+  it("ci.yml storefront-e2e: build backend ด้วย NODE_ENV=production เฉพาะบรรทัดนั้น (job env ไม่มี NODE_ENV) แล้วตรวจ bundle ก่อน medusa start", () => {
+    const job = jobs["storefront-e2e"] as Job & { env?: Record<string, string> }
+    expect(job.env ?? {}).not.toHaveProperty("NODE_ENV")
+    const step = stepsOf("storefront-e2e").find((s) => /pnpm --filter backend build/.test(s.run ?? ""))
+    const lines = (step?.run ?? "").split("\n").map((l) => l.trim())
+    const build = lines.findIndex((l) => /pnpm --filter backend build/.test(l))
+    expect(lines[build]).toMatch(/^NODE_ENV=production pnpm --filter backend build/)
+    const check = lines.findIndex((l) => /Development Mode/.test(l))
+    const start = lines.findIndex((l) => /medusa start/.test(l))
+    expect(check).toBeGreaterThan(build)
+    expect(start).toBeGreaterThan(check)
+  })
+
+  it("ci.yml docker-worker-mode: ตรวจ image ว่า admin ไม่มี Development Mode และไม่มีคำ placeholder (หลัง build image)", () => {
+    const steps = stepsOf("docker-worker-mode")
+    const worker = runIndex(steps, "tools/ops/smoke-worker-mode.sh")
+    const idx = steps.findIndex((s) => /Development Mode/.test(s.run ?? "") && (s.run ?? "").includes(PLACEHOLDER))
+    expect(idx).toBeGreaterThan(worker)
+    expectUnconditional(steps[idx])
+  })
+
+  it("CLAUDE.md: คำสั่ง prod-like build ด้วย NODE_ENV=production", () => {
+    const claude = readFileSync(path.join(REPO_DIR, "CLAUDE.md"), "utf8")
+    const lines = claude.split("\n").filter((l) => /# prod-like/.test(l))
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toMatch(/NODE_ENV=production pnpm --filter backend build/)
+  })
+})

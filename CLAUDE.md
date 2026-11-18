@@ -100,7 +100,7 @@ pnpm --filter backend test:integration:modules
 pnpm --filter storefront test:e2e    # Playwright, screenshots → docs/evidence/
 pnpm lint && pnpm typecheck
 pnpm --filter backend db:migrate && pnpm --filter backend seed
-pnpm --filter backend build && pnpm --filter backend start   # prod-like
+NODE_ENV=production pnpm --filter backend build && pnpm --filter backend start   # prod-like (build ไม่ตั้ง NODE_ENV = admin แบบ development)
 pnpm --filter storefront build && pnpm --filter storefront start
 ```
 
