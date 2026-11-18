@@ -1,0 +1,100 @@
+# OPS-29 (spec 07 AC-44) — ผล test
+
+## AC-44a Red — static (ci-workflow.unit.spec.ts) บน develop 8b587a8c ก่อนแก้ .dockerignore/ci.yml
+$ TEST_TYPE=unit npx jest src/__tests__/ci-workflow.unit.spec.ts -t "OPS-29|OPS-28"
+✓ ไม่มี run ใดในทุก job ที่ใช้รูป `if grep` / `if ! grep` (2 ms)
+✓ docker-worker-mode: step ตรวจ image mount tools/ci แบบ read-only แล้วเรียก assert-absent.sh กับ Development Mode และคำ placeholder (1 ms)
+✓ storefront-e2e: เรียก assert-absent.sh กับ Development Mode หลังบรรทัด build และก่อน medusa start
+✓ OPS-15: ขั้นนับไม่ใช้ `|| true` และตรวจว่ามีไฟล์ $TEST_LOG ก่อนนับ
+✓ lint-typecheck: รัน tools/ci/assert-absent.test.sh
+✓ OPS-15: เนื้อ step ล้มเมื่อ grep คืน rc ≥ 2 หรือไม่มี log; log ว่างผ่าน; พบข้อความล้ม (30 ms)
+✕ .dockerignore ตัด __tests__ ใต้ apps/backend/src และ apps/backend/integration-tests ออกจาก build context (1 ms)
+✓ tsconfig.json ของ backend: exclude ไม่มี __tests__/spec (typecheck ยังตรวจไฟล์ test) (1 ms)
+✕ docker-worker-mode: step ตรวจ image ตรวจ __tests__/*.spec.js ใน /app (ยกเว้น node_modules) และยืนยันว่า /app/src/api, /app/src/modules มีอยู่
+Expected value: "apps/backend/src/**/__tests__"
+Received array: ["**/node_modules", "**/.medusa", "**/.next", "**/.env", "**/.env.*", "!**/.env.example", ".git", ".claude", "docs", "tools", …]
+Expected pattern: /find \/app\b[^\n]*-path \/app\/node_modules -prune/
+Received string:  "docker run --rm -v \"$PWD/tools/ci:/ci:ro\" --entrypoint sh medusa-ecom-backend:local -c '
+Tests:       2 failed, 20 skipped, 7 passed, 29 total
+
+## nit review #403 — test เนื้อ step OPS-15 (grep rc ≥ 2 ต้องล้ม) จับ mutation ได้จริง
+(ลบบล็อก `if [ "$rc" -ge 2 ]` ออกจาก ci.yml ชั่วคราว — ไม่ commit)
+✕ OPS-15: เนื้อ step ล้มเมื่อ grep คืน rc ≥ 2 หรือไม่มี log; log ว่างผ่าน; พบข้อความล้ม (9 ms)
+Expected: not 0
+Tests:       1 failed, 28 skipped, 29 total
+
+## AC-44a Green
+✓ ไม่มี run ใดในทุก job ที่ใช้รูป `if grep` / `if ! grep` (2 ms)
+✓ docker-worker-mode: step ตรวจ image mount tools/ci แบบ read-only แล้วเรียก assert-absent.sh กับ Development Mode และคำ placeholder (2 ms)
+✓ storefront-e2e: เรียก assert-absent.sh กับ Development Mode หลังบรรทัด build และก่อน medusa start (1 ms)
+✓ OPS-15: ขั้นนับไม่ใช้ `|| true` และตรวจว่ามีไฟล์ $TEST_LOG ก่อนนับ (3 ms)
+✓ lint-typecheck: รัน tools/ci/assert-absent.test.sh
+✓ OPS-15: เนื้อ step ล้มเมื่อ grep คืน rc ≥ 2 หรือไม่มี log; log ว่างผ่าน; พบข้อความล้ม (29 ms)
+✓ .dockerignore ตัด __tests__ ใต้ apps/backend/src และ apps/backend/integration-tests ออกจาก build context (1 ms)
+✓ tsconfig.json ของ backend: exclude ไม่มี __tests__/spec (typecheck ยังตรวจไฟล์ test)
+✓ docker-worker-mode: step ตรวจ image ตรวจ __tests__/*.spec.js ใน /app (ยกเว้น node_modules) และยืนยันว่า /app/src/api, /app/src/modules มีอยู่
+Tests:       20 skipped, 9 passed, 29 total
+
+## AC-44b image เดิม (develop 8b587a8c) vs ใหม่ — docker build -f apps/backend/Dockerfile .
+## คำสั่งนับ: docker run --rm --entrypoint sh <image> -c 'find /app -path /app/node_modules -prune -o -type d -name __tests__ -print | wc -l'
+== image before (medusa-ecom-backend:ops29-before)
+__tests__ dirs: 23
+*.spec.js files: 97
+integration-tests: 1
+/app/src/api มีอยู่
+/app/src/modules มีอยู่
+size bytes: 149052480
+/app ไม่รวม node_modules (du -sk): 13960 KB
+== image after (medusa-ecom-backend:ops29-after)
+__tests__ dirs: 0
+*.spec.js files: 0
+integration-tests: 0
+/app/src/api มีอยู่
+/app/src/modules มีอยู่
+size bytes: 148827048
+/app ไม่รวม node_modules (du -sk): 12644 KB
+ส่วนต่างขนาด image: 225432 bytes (/app ไม่รวม node_modules ลด 1316 KB)
+
+## AC-44b เนื้อ step ใหม่ของ docker-worker-mode (อ่านจาก ci.yml ด้วย yaml, เปลี่ยนชื่อ image เท่านั้น) × image
+(รายชื่อไฟล์ test ของ image เดิมตัดออก 120 บรรทัด; ข้อความ ::error:: ของเคส apix พิมพ์ path เดิมเพราะ sed แก้เฉพาะ test -d)
+== CI step ใหม่ × image before (develop เดิม)
+OK ไม่พบ "Development Mode" ใน 348 path (/app/public/admin/assets/add-campaign-promotions-IUQHZ5QA-C2MdWr3F.js …)
+OK ไม่พบ "build-only" ใน 1 path (/app …)
+::error::image มีไฟล์ test ที่ compile แล้ว (OPS-29):
+exit=1
+== CI step ใหม่ × image after
+OK ไม่พบ "Development Mode" ใน 348 path (/app/public/admin/assets/add-campaign-promotions-IUQHZ5QA-DwD0GaPo.js …)
+OK ไม่พบ "build-only" ใน 1 path (/app …)
+OK admin bundle เป็น production ไม่มี placeholder และไม่มีไฟล์ test ใน /app
+exit=0
+== fail-closed: path ที่ยืนยันผิด (/app/src/api → /app/src/apix) × image after
+OK ไม่พบ "Development Mode" ใน 348 path (/app/public/admin/assets/add-campaign-promotions-IUQHZ5QA-DwD0GaPo.js …)
+OK ไม่พบ "build-only" ใน 1 path (/app …)
+::error::ไม่มี /app/src/api ใน image — path ที่ตรวจผิด (OPS-29)
+exit=1
+== fail-closed: find error (find /app → find /nonexistent) × image after
+OK ไม่พบ "Development Mode" ใน 348 path (/app/public/admin/assets/add-campaign-promotions-IUQHZ5QA-DwD0GaPo.js …)
+OK ไม่พบ "build-only" ใน 1 path (/app …)
+find: '/nonexistent': No such file or directory
+exit=1
+
+## AC-44b image ใหม่ยังล้มที่ guard เมื่อไม่มี env เหมือนเดิม (docker run --rm <image> start)
+image เดิม และ image ใหม่ ได้ error เดียวกัน:
+Error in loading config: ต้องตั้ง AFFILIATE_TOKEN_SECRET, STOREFRONT_URL ใน production — ... at checkBootEnv (/app/src/lib/prod-guards.js:46:43)
+
+## AC-44b image ใหม่บูตได้ (env ปลอม, DB medusa_ops29, Redis db 10, port 9328)
+db:migrate rc=0 (Migration scripts completed)
+server (MEDUSA_WORKER_MODE=server): GET /health = 200, GET /app/ = 200, GET /store/products = 400 not_allowed (route ของ src/api โหลด), log error 0 บรรทัด
+worker (MEDUSA_WORKER_MODE=worker, DISABLE_MEDUSA_ADMIN=true): Server is ready on port: 9000
+
+## AC-44b typecheck ยังตรวจไฟล์ test (ใส่ type error ชั่วคราวใน src/lib/__tests__/search-pricing.unit.spec.ts — ไม่ commit)
+$ pnpm --filter backend typecheck → exit 1
+src/lib/__tests__/search-pricing.unit.spec.ts(52,7): error TS2322: Type 'string' is not assignable to type 'number'.
+
+## ชุดในเครื่อง
+$ pnpm --filter backend test:unit
+Test Suites: 110 passed, 110 total
+Tests:       1400 passed, 1400 total
+$ pnpm lint && pnpm typecheck → exit 0
+
+AC-44c: ดู CI ของ PR (docker-worker-mode: smoke worker mode + ตรวจ image + smoke-redis-outage.sh)
