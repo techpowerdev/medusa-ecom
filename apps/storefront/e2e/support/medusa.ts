@@ -113,7 +113,8 @@ export async function shippingOptionId(
   return option.id
 }
 
-type CartOptions = { quantity?: number; country?: string; variant?: string }
+/** CORE-65: `promoCode` = โค้ดโปรโมชันที่ใช้กับ cart ก่อนจ่าย (ผู้เรียกสร้าง/ลบ promotion เอง) */
+type CartOptions = { quantity?: number; country?: string; variant?: string; promoCode?: string }
 
 const storeHeaders = (pk: string, customer: Customer): Headers => ({
   authorization: `Bearer ${customer.token}`,
@@ -134,7 +135,7 @@ export async function cartReadyForPayment(
   request: APIRequestContext,
   pk: string,
   customer: Customer,
-  { quantity = 1, country = STOREFRONT_COUNTRY, variant }: CartOptions = {}
+  { quantity = 1, country = STOREFRONT_COUNTRY, variant, promoCode }: CartOptions = {}
 ): Promise<string> {
   const headers = storeHeaders(pk, customer)
 
@@ -155,6 +156,15 @@ export async function cartReadyForPayment(
     }),
     "add line item"
   )
+  if (promoCode) {
+    await ok(
+      await request.post(`${BACKEND_URL}/store/carts/${cart.id}/promotions`, {
+        headers,
+        data: { promo_codes: [promoCode] },
+      }),
+      "apply promotion"
+    )
+  }
   const address = {
     first_name: "Somchai",
     last_name: "Jaidee",
