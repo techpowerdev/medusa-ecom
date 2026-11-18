@@ -26,7 +26,8 @@ import {
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
 import { assertCampaignPatchAllowed } from "../../modules/group_buy/utils/campaign-status"
-import { assertSingleProductScope } from "../../modules/group_buy/utils/single-product"
+import { assertFixedDiscountBelowPrice, type VariantPrice } from "../../modules/group_buy/utils/fixed-discount"
+import { assertSingleProductScope, singleProductIdOf } from "../../modules/group_buy/utils/single-product"
 import { generateTemplateCode } from "../../modules/group_buy/utils/template-code"
 import { loadGroupBuyCampaign } from "./load-campaign"
 
@@ -171,6 +172,30 @@ export const validateSingleProductScopeStep = createStep(
   }
 )
 
+// spec 04 กฎข้อ 41: ส่วนลด fixed ต้องต่ำกว่าราคาฐานต่ำสุดของ variant ในสกุลเดียวกัน — อ่านอย่างเดียว ไม่มี compensation
+// รันก่อน acquireLockStep ทุก request (รวม idempotency_key เดิม — กฎข้อ 41d); กันได้เฉพาะตอนสร้าง (กฎข้อ 41f)
+export const validateFixedDiscountBelowVariantPriceStep = createStep(
+  "validate-fixed-discount-below-variant-price",
+  async (input: Pick<CreateGroupBuyCampaignInput, "application_method">, { container }) => {
+    const method = input.application_method
+    const productId = singleProductIdOf(method?.target_rules)
+    if (method?.type !== "fixed" || !method.currency_code || !productId) {
+      return new StepResponse(undefined)
+    }
+    const query = container.resolve(ContainerRegistrationKeys.QUERY)
+    const { data: products } = await query.graph({
+      entity: "product",
+      fields: ["variants.prices.amount", "variants.prices.currency_code", "variants.prices.price_list_id"],
+      filters: { id: productId },
+    })
+    // variants.prices มาจาก link ของ Medusa (product variant ↔ price set) — type ที่ generate ไม่มีตอน build จึงระบุรูปเอง
+    const variants = (products[0]?.variants ?? []) as ({ prices?: (VariantPrice | null)[] | null } | null)[]
+    const prices = variants.flatMap((variant) => variant?.prices ?? [])
+    assertFixedDiscountBelowPrice(method, prices)
+    return new StepResponse(undefined)
+  }
+)
+
 // spec 04 กฎข้อ 33b: Medusa campaign ที่ campaign_identifier = group-buy-<key> → แคมเปญของเราผ่าน link (อ่านอย่างเดียว)
 export const findGroupBuyCampaignByKeyStep = createStep(
   "find-group-buy-campaign-by-key",
@@ -202,6 +227,7 @@ export const createGroupBuyCampaignWorkflow = createWorkflow(
   "create-group-buy-campaign",
   function (input: CreateGroupBuyCampaignInput) {
     validateSingleProductScopeStep(input)
+    validateFixedDiscountBelowVariantPriceStep(input)
 
     // กฎข้อ 33b: lock ต่อ key แล้วค่อยหา — request พร้อมกันด้วย key เดียวกันเห็นแคมเปญที่ตัวแรกสร้าง
     // ไม่มี key → [] (acquire/release lock step ของ Medusa ข้ามเมื่อไม่มี key)

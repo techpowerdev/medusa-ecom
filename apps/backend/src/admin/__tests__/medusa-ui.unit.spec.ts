@@ -841,7 +841,8 @@ describe("Escape ขณะ Combobox ขยายไม่ปิด FocusModal �
     (file) => {
       const src = read(file)
       expect(src).toMatch(/import \{ keepModalOpenWhileComboboxExpanded \} from "\.\.\/\.\.\/lib\/combobox-escape"/)
-      expect(src).toMatch(/<FocusModal\.Content onEscapeKeyDown=\{keepModalOpenWhileComboboxExpanded\}>/)
+      // ADM-34 (กฎ 38b): props อื่น (handler ของ useRestoreOpenerFocus) อยู่ร่วมได้ — onEscapeKeyDown เดิมต้องคงอยู่
+      expect(src).toMatch(/<FocusModal\.Content\b[^>]*\bonEscapeKeyDown=\{keepModalOpenWhileComboboxExpanded\}[^>]*>/)
       // คงเงื่อนไขเดิม: ปิดระหว่างบันทึกไม่ได้ — ADM-27 ย้ายเงื่อนไขเข้า useConfirmDiscard (กฎ 31c)
       expect(src).toMatch(/useConfirmDiscard\(\{ form, isPending: save\.isPending, onClose \}\)/)
       expect(src).toContain("<FocusModal open onOpenChange={confirmClose}>")
@@ -909,7 +910,7 @@ describe("ทุก FocusModal มี FocusModal.Title asChild ห่อ heading
   const withContent = adminFiles.filter((file) => read(file).includes("<FocusModal.Content"))
   const count = (src: string, re: RegExp) => src.match(re)?.length ?? 0
 
-  it("พบไฟล์ FocusModal ครบ 5 จุดที่รู้จัก (FocusModal ใหม่ในอนาคตถูกตรวจด้วย test ถัดไปอัตโนมัติ)", () => {
+  it("พบไฟล์ FocusModal อย่างน้อย 5 จุดที่รู้จัก (FocusModal ใหม่ในอนาคตถูกตรวจด้วย test ถัดไปอัตโนมัติ)", () => {
     expect(withContent).toEqual(
       expect.arrayContaining([
         "components/evoucher/partners-section.tsx",
@@ -926,7 +927,7 @@ describe("ทุก FocusModal มี FocusModal.Title asChild ห่อ heading
     const contents = count(src, /<FocusModal\.Content\b/g)
     expect(count(src, /<FocusModal\.Title\b/g)).toBe(contents)
     // asChild ทุกตัว: Radix ใส่ id ให้ Heading เดิม (aria-labelledby) โดยไม่เพิ่ม element/สไตล์ (กฎ 35a)
-    expect(count(src, /<FocusModal\.Title asChild>\s*<Heading\b[^>]*>[^<]*(\{[^}]*\}[^<]*)*<\/Heading>\s*<\/FocusModal\.Title>/g)).toBe(contents)
+    expect(count(src, /<FocusModal\.Title asChild>\s*<Heading\b[^>]*>[^<]*<\/Heading>\s*<\/FocusModal\.Title>/g)).toBe(contents)
   })
 })
 
@@ -950,7 +951,20 @@ describe("คอลัมน์ actions ของ DataTable ปิด tooltip �
     return found
   }
   const isActions = (obj: string) => /\bid:\s*["']actions["']/.test(obj)
-  const optsOut = (obj: string) => /\bmeta:\s*{[^}]*\b___truncateTooltip:\s*false\b/.test(obj)
+  /** ข้อความใน `{}` ที่เริ่มที่ `start` (นับวงเล็บจนปิด แบบ `balanced()` ของ e2e/core-46-e2e-hygiene.unit.spec.ts) */
+  const balanced = (src: string, start: number) => {
+    let depth = 0
+    for (let i = start; i < src.length; i++) {
+      if (src[i] === "{") depth++
+      else if (src[i] === "}" && --depth === 0) return src.slice(start + 1, i)
+    }
+    return ""
+  }
+  // nit review #409 (กฎ 38e): object ทั้งก้อนของ `meta` (ไม่ใช้ `[^}]*` ที่หยุดที่ `}` ของ object ซ้อน)
+  const optsOut = (obj: string) => {
+    const at = obj.search(/\bmeta:\s*{/)
+    return at !== -1 && /\b___truncateTooltip:\s*false\b/.test(balanced(obj, obj.indexOf("{", at)))
+  }
 
   const actionColumns = adminFiles.flatMap((file) =>
     displayObjects(read(file))
@@ -965,6 +979,9 @@ describe("คอลัมน์ actions ของ DataTable ปิด tooltip �
     expect(objects.every(isActions)).toBe(true)
     expect(objects.some(optsOut)).toBe(false)
     expect(optsOut(displayObjects(`c.display({ id: "actions", meta: { ___truncateTooltip: false }, cell: () => null })`)[0])).toBe(true)
+    // meta ที่มี object ซ้อนก่อน ___truncateTooltip ยังผ่าน; ___truncateTooltip นอก meta ไม่ผ่าน
+    expect(optsOut(`{ id: "actions", meta: { a: { b: 1 }, ___truncateTooltip: false }, cell: () => null }`)).toBe(true)
+    expect(optsOut(`{ id: "actions", meta: { a: { b: 1 } }, x: { ___truncateTooltip: false } }`)).toBe(false)
   })
 
   it("พบคอลัมน์ actions อย่างน้อย 5 จุด (กัน vacuous)", () => {
@@ -982,5 +999,49 @@ describe("คอลัมน์ actions ของ DataTable ปิด tooltip �
 
   it.each(actionColumns)("%s: .display({ id: \"actions\" }) มี meta: { ___truncateTooltip: false }", (_file, obj) => {
     expect(optsOut(obj)).toBe(true)
+  })
+})
+
+// spec 08 AC-39a, กฎ 38 (ADM-34): FocusModal แบบ state ไม่มี FocusModal.Trigger → Radix คืน focus ให้ปุ่มที่เปิดไม่ได้ (activeElement = BODY)
+// ทุก <FocusModal.Content ต้องได้ handler ของ useRestoreOpenerFocus (spread) — ไม่มี onCloseAutoFocus แบบ inline เหลือ
+describe("FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34)", () => {
+  /** จำนวน <FocusModal.Content ทั้งหมด และจำนวนที่ props มี `{...<ตัวแปรที่ได้จาก useRestoreOpenerFocus()>}` */
+  const restoreUsage = (src: string) => {
+    const names = Array.from(src.matchAll(/\bconst (\w+) = useRestoreOpenerFocus\(\)/g), ([, name]) => name)
+    const contents = Array.from(src.matchAll(/<FocusModal\.Content\b([^>]*)>/g), ([, props]) => props)
+    const withHandler = contents.filter((props) => names.some((name) => props.includes(`{...${name}}`)))
+    return { contents: contents.length, withHandler: withHandler.length }
+  }
+  const withContent = adminFiles.filter((file) => read(file).includes("<FocusModal.Content"))
+
+  it("self-check: Content ที่ไม่มี handler หรือไม่ได้เรียก hook ไม่ผ่าน, ที่ spread ผลของ hook ผ่าน", () => {
+    expect(restoreUsage(`<FocusModal.Content onEscapeKeyDown={x}>`)).toEqual({ contents: 1, withHandler: 0 })
+    expect(restoreUsage(`<FocusModal.Content {...restoreFocus}>`)).toEqual({ contents: 1, withHandler: 0 })
+    expect(
+      restoreUsage(`const restoreFocus = useRestoreOpenerFocus()\n<FocusModal.Content {...restoreFocus} onEscapeKeyDown={x}>`)
+    ).toEqual({ contents: 1, withHandler: 1 })
+  })
+
+  it("พบไฟล์ที่มี <FocusModal.Content อย่างน้อย 5 ไฟล์ (กัน vacuous)", () => {
+    expect(withContent.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it.each(withContent)("%s: เรียก useRestoreOpenerFocus( และทุก <FocusModal.Content ได้ handler ของ hook", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/\buseRestoreOpenerFocus\(/)
+    const { contents, withHandler } = restoreUsage(src)
+    expect(withHandler).toBe(contents)
+  })
+
+  it("ไม่มี onCloseAutoFocus={( แบบ inline ใน src/admin (logic อยู่ใน hook กลางตัวเดียว)", () => {
+    expect(adminFiles.filter((file) => read(file).includes("onCloseAutoFocus={("))).toEqual([])
+  })
+
+  it("hook จำ activeElement ตอนเปิดด้วย useState และคืน focus เมื่อ element ยังอยู่ใน DOM", () => {
+    const src = read("components/common/use-restore-opener-focus.ts")
+    expect(src).toMatch(/\buseState<HTMLElement \| null>\(null\)/)
+    expect(src).toMatch(/document\.activeElement instanceof HTMLElement/)
+    expect(src).toMatch(/if \(opener\?\.isConnected\) \{\s*e\.preventDefault\(\)\s*opener\.focus\(\)/)
+    expect(src).not.toMatch(/\buseRef\b/)
   })
 })
