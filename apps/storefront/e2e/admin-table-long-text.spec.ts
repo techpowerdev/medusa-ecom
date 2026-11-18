@@ -1,7 +1,7 @@
 import { APIRequestContext, Locator, Page } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin, pageOffsetOf, waitMenuOpened } from "./support/admin"
-import { createActiveAffiliate, insertDraftPayouts } from "./support/affiliate"
+import { createActiveAffiliate, insertApprovedEntry, insertDraftPayouts } from "./support/affiliate"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders } from "./support/medusa"
@@ -20,7 +20,8 @@ test.use({
 const VIEWPORT_WIDTH = 1280
 const CONTENT_MAX = 250
 const DAY = 24 * 60 * 60 * 1000
-const tag = () => `adm35-${Date.now().toString(36)}${Math.floor(Math.random() * 1e6)}`
+/** run tag ไม่ซ้ำต่อ run — prefix ต่อ task (ADM-35 `adm35`, ADM-37 `adm37`, ADM-38 `adm38` — กฎ 42f) */
+const tag = (prefix: string) => `${prefix}-${Date.now().toString(36)}${Math.floor(Math.random() * 1e6)}`
 type Step = (title: string, body: () => Promise<void>) => Promise<void>
 
 /** ชื่อยาว 370 ตัวอักษร ไทยปนอังกฤษ — หลัง run tag เป็นช่วงไม่มีช่องว่างยาว ≥ 100 ตัว (ตัดบรรทัดไม่ได้) */
@@ -32,6 +33,19 @@ async function post(request: APIRequestContext, admin: Headers, path: string, da
   const res = await request.post(`${BACKEND_URL}${path}`, { headers: admin, data })
   expect(res.status(), `POST ${path}: ${await res.text()}`).toBe(200)
   return res.json()
+}
+
+/** อีเมล ≥ 80 ตัวอักษร — ยาวที่โดเมน (local part ≤ 64 ตาม RFC); `prefix` = prefix ของ task (กฎ 42f) */
+const longEmail = (code: string, prefix: string) => `${code}@${`long-domain-${prefix}-`.repeat(2)}x.${"y".repeat(30)}.example.com`
+
+/** affiliate active ชื่อ 370 ตัวอักษร + อีเมล ≥ 80 ตัวอักษร — `prefix` ของ run tag/โดเมน (เช่น `adm37`) และ `code` (เช่น `a37`) ต่อ task (กฎ 42f) */
+async function createLongAffiliate(request: APIRequestContext, admin: Headers, { prefix, code: codePrefix }: { prefix: string; code: string }) {
+  const name = longName(tag(prefix))
+  const code = `${codePrefix}-${Date.now().toString(36)}${Math.floor(Math.random() * 1e6)}`
+  const email = longEmail(code, prefix)
+  expect(email.length).toBeGreaterThanOrEqual(80)
+  const { id } = await createActiveAffiliate(request, admin, { name, code, email })
+  return { id, name, email }
 }
 
 /** เนื้อหาของ td (ไม่รวม padding) และ element ที่ `TruncatedCell` ห่อ (div `.truncate` ตัวแรกใน td) */
@@ -124,7 +138,8 @@ type Table = {
   url: string
   prefix: string
   testid: string
-  trigger: string
+  /** testid ของปุ่ม `…` ต่อแถว (ตาราง Ledger ไม่มีเมนูต่อแถว) */
+  trigger?: string
   /** แท็บที่ต้องคลิกก่อนเห็นตาราง (ถ้ามี) */
   tab?: string
 }
@@ -160,6 +175,13 @@ const PAYOUTS: Table = {
   trigger: "affiliate-payout-row-actions",
   tab: "affiliate-admin-tab-payouts",
 }
+const LEDGER: Table = {
+  api: { path: "/admin/affiliate/entries", key: "entries" },
+  url: "/app/affiliate",
+  prefix: "ledger",
+  testid: "affiliate-ledger-table",
+  tab: "affiliate-admin-tab-ledger",
+}
 
 /** โปรแกรม draft: ลบได้ใน finally (โปรแกรม published/ended ลบไม่ได้) — คืน id */
 async function createDraftProgram(request: APIRequestContext, admin: Headers, name: string): Promise<string> {
@@ -194,13 +216,13 @@ async function expectTable(
   await open(shortId)
   await expectShortRowFull(table, short, step)
   await open(longId)
-  await expectLongRowContained(page, { table, trigger: t.trigger, long, step })
+  await expectLongRowContained(page, { table, trigger: t.trigger!, long, step })
 }
 
 test("AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม", async ({ page, request, step, evidence }) => {
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const long = longName(tag())
+  const long = longName(tag("adm35"))
   const short = shortName()
   const ids: string[] = []
   try {
@@ -216,7 +238,7 @@ test("AC-40a: e-voucher partners — ชื่อยาวไม่ดันป�
 test("AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม", async ({ page, request, step, evidence }) => {
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const long = longName(tag())
+  const long = longName(tag("adm35"))
   const short = shortName()
   const ids: string[] = []
   try {
@@ -237,19 +259,9 @@ test("AC-40a: affiliate programs — ชื่อยาวไม่ดันป�
 test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ", () => {
   test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-37" } })
 
-  /** อีเมล ≥ 80 ตัวอักษร — ยาวที่โดเมน (local part ≤ 64 ตาม RFC) */
-  const longEmail = (code: string) => `${code}@${"long-domain-adm37-".repeat(2)}x.${"y".repeat(30)}.example.com`
   /** reference ของ payout ≥ 300 ตัวอักษร ไทยปนอังกฤษ */
   const longReference = (run: string) => `${run} ${"เลขอ้างอิงยาวLongReference".repeat(20)}`.slice(0, 320)
-
-  async function createLongAffiliate(request: APIRequestContext, admin: Headers) {
-    const name = longName(tag())
-    const code = `a37-${Date.now().toString(36)}${Math.floor(Math.random() * 1e6)}`
-    const email = longEmail(code)
-    expect(email.length).toBeGreaterThanOrEqual(80)
-    const { id } = await createActiveAffiliate(request, admin, { name, code, email })
-    return { id, name, email }
-  }
+  const AFFILIATE_PREFIX = { prefix: "adm37", code: "a37" }
 
   /** แถวข้อความยาว: เนื้อหาทุก cell ข้อความ ≤ 250px และถูกตัดจริง, ปุ่ม `…` ในจอโดยไม่เลื่อนแนวนอน */
   async function expectCellsCapped(
@@ -288,12 +300,12 @@ test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ท�
   test("AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip \"ชื่อ อีเมล\", ปุ่ม … ในจอ", async ({ page, request, step, evidence }) => {
     test.setTimeout(120_000)
     const admin = await adminHeaders(request)
-    const affiliate = await createLongAffiliate(request, admin)
+    const affiliate = await createLongAffiliate(request, admin, AFFILIATE_PREFIX)
     const ids = await insertDraftPayouts(affiliate.id, 1, new Date())
     try {
       await loginAdmin(page)
       const { table, row, affiliateCell } = await openPayoutRow(page, request, admin, ids[0], affiliate.name)
-      await expectCellsCapped(page, { table, row, cells: [["Affiliate", affiliateCell]], trigger: PAYOUTS.trigger, step })
+      await expectCellsCapped(page, { table, row, cells: [["Affiliate", affiliateCell]], trigger: PAYOUTS.trigger!, step })
       await step("hover cell Affiliate ที่ถูกตัด → tooltip ของ TruncatedCell เป็น \"ชื่อ อีเมล\" (กฎ 41b)", async () => {
         // tooltip ของ cell นี้เท่านั้น — sidebar มี tooltip ของตัวเอง
         const tooltip = page.getByRole("tooltip").filter({ hasText: affiliate.name })
@@ -313,14 +325,14 @@ test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ท�
     test("AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ", async ({ page, request, step }) => {
       test.setTimeout(120_000)
       const admin = await adminHeaders(request)
-      const name = longName(tag())
+      const name = longName(tag("adm37"))
       const id = await createDraftProgram(request, admin, name)
       try {
         await loginAdmin(page)
         await openTableAt(page, request, admin, PROGRAMS, id)
         const table = page.getByTestId(PROGRAMS.testid)
         const row = table.locator("tbody tr", { hasText: name })
-        await expectCellsCapped(page, { table, row, cells: [["Program", row.locator("td").first()]], trigger: PROGRAMS.trigger, step })
+        await expectCellsCapped(page, { table, row, cells: [["Program", row.locator("td").first()]], trigger: PROGRAMS.trigger!, step })
       } finally {
         await deleteAllThenExpectOk(request, admin, [`/admin/affiliate/programs/${id}`])
       }
@@ -329,7 +341,7 @@ test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ท�
     test("AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ", async ({ page, request, step }) => {
       test.setTimeout(120_000)
       const admin = await adminHeaders(request)
-      const affiliate = await createLongAffiliate(request, admin)
+      const affiliate = await createLongAffiliate(request, admin, AFFILIATE_PREFIX)
       await loginAdmin(page)
       await openTableAt(page, request, admin, AFFILIATES, affiliate.id)
       const table = page.getByTestId(AFFILIATES.testid)
@@ -338,14 +350,14 @@ test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ท�
         ["Name", row.locator("td").first()],
         ["Email", row.locator("td").filter({ hasText: affiliate.email })],
       ]
-      await expectCellsCapped(page, { table, row, cells, trigger: AFFILIATES.trigger, step })
+      await expectCellsCapped(page, { table, row, cells, trigger: AFFILIATES.trigger!, step })
     })
 
     test("AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ", async ({ page, request, step, evidence }) => {
       test.setTimeout(120_000)
       const admin = await adminHeaders(request)
-      const affiliate = await createLongAffiliate(request, admin)
-      const reference = longReference(tag())
+      const affiliate = await createLongAffiliate(request, admin, AFFILIATE_PREFIX)
+      const reference = longReference(tag("adm37"))
       // draft: payout ที่ paid ไม่มีปุ่ม … (กฎ 10)
       const ids = await insertDraftPayouts(affiliate.id, 1, new Date(), { reference })
       try {
@@ -355,7 +367,7 @@ test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ท�
           ["Affiliate", affiliateCell],
           ["Reference", row.locator("td").filter({ hasText: reference })],
         ]
-        await expectCellsCapped(page, { table, row, cells, trigger: PAYOUTS.trigger, step })
+        await expectCellsCapped(page, { table, row, cells, trigger: PAYOUTS.trigger!, step })
         await evidence("02-payouts-long-text-1920")
       } finally {
         await deleteAllThenExpectOk(request, admin, ids.map((id) => `/admin/affiliate/payouts/${id}`))
@@ -365,8 +377,8 @@ test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ท�
     test("AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ", async ({ page, request, step }) => {
       test.setTimeout(120_000)
       const admin = await adminHeaders(request)
-      const name = longName(tag())
-      const support = longName(tag())
+      const name = longName(tag("adm37"))
+      const support = longName(tag("adm37"))
       const { partner } = await post(request, admin, "/admin/evoucher/partners", { name, support_contact: support })
       try {
         await loginAdmin(page)
@@ -377,9 +389,89 @@ test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ท�
           ["Name", row.locator("td").first()],
           ["Support contact", row.locator("td").filter({ hasText: support })],
         ]
-        await expectCellsCapped(page, { table, row, cells, trigger: PARTNERS.trigger, step })
+        await expectCellsCapped(page, { table, row, cells, trigger: PARTNERS.trigger!, step })
       } finally {
         await deleteAllThenExpectOk(request, admin, [`/admin/evoucher/partners/${partner.id}`])
+      }
+    })
+  })
+})
+
+// ADM-38 (spec 08 AC-43, กฎ 42): ตาราง Ledger (ไม่มีเมนูต่อแถว) คอลัมน์ Affiliate ≤ 250px ทุกความกว้างจอ (qa #418 O-2)
+// เดิมไม่มี size/maxSize → ชื่อ affiliate ยาวทำให้คอลัมน์ Affiliate ~2600px ต้องเลื่อนแนวนอนจึงเห็น Status (คอลัมน์สุดท้าย)
+// entry ใส่ตรงใน DB (ledger อ่านอย่างเดียว ไม่มี API ลบ — spec 05 กฎ 5) และ affiliate ไม่มี API ลบ → คงไว้แบบ e2e AF-14/ADM-8a เดิม;
+// โปรแกรม draft (program_id ของ entry — ไม่มี FK) ลบใน finally
+test.describe("ADM-38: Ledger คอลัมน์ Affiliate ≤ 250px ทุกความกว้างจอ", () => {
+  test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-38" } })
+
+  /** affiliate ชื่อ/อีเมลยาว + entry approved 1 แถว (`order_id` สั้นไม่ซ้ำต่อ run) → เปิดหน้าของแถวในแท็บ Ledger */
+  async function openLongLedgerRow(page: Page, request: APIRequestContext, admin: Headers, programId: string) {
+    const affiliate = await createLongAffiliate(request, admin, { prefix: "adm38", code: "a38" })
+    const orderId = `order_${tag("adm38")}`
+    const entryId = await insertApprovedEntry(affiliate.id, programId, orderId, new Date())
+    await loginAdmin(page)
+    await openTableAt(page, request, admin, LEDGER, entryId)
+    const table = page.getByTestId(LEDGER.testid)
+    const row = table.locator("tbody tr", { hasText: orderId })
+    const affiliateCell = row.locator("td").filter({ has: page.getByTestId("affiliate-row-affiliate") })
+    // รอชื่อโหลด (ก่อนโหลดแสดง affiliate_id)
+    await expect(affiliateCell).toContainText(affiliate.name, { timeout: 30_000 })
+    return { affiliate, table, row, affiliateCell, status: row.locator("td").last() }
+  }
+
+  /** เนื้อหา cell Affiliate ≤ 250px และถูกตัดจริง, td Status (คอลัมน์สุดท้าย) ในจอโดยไม่เลื่อนแนวนอน */
+  async function expectLedgerRowCapped(
+    page: Page,
+    { table, row, affiliateCell, status, step }: { table: Locator; row: Locator; affiliateCell: Locator; status: Locator; step: Step }
+  ) {
+    await step("เนื้อหา cell Affiliate ≤ 250px และ td Status อยู่ในจอโดยไม่เลื่อนแนวนอน", async () => {
+      // qa #416 D-1: เลื่อนเฉพาะแนวตั้งด้วย td แรกของแถว (ชิดซ้ายของตาราง) + inline "start" — ไม่เลื่อนกล่องเลื่อนแนวนอน
+      await row.locator("td").first().evaluate((td) => td.scrollIntoView({ block: "center", inline: "start" }))
+      const metrics = await cellMetrics(affiliateCell)
+      expect(metrics.content, "เนื้อหา cell Affiliate").toBeLessThanOrEqual(CONTENT_MAX + 0.5)
+      // ข้อความถูกตัดจริง (กัน test ผ่านเพราะข้อความไม่ยาวพอ)
+      expect(metrics.scrollWidth, "cell Affiliate ถูกตัด").toBeGreaterThan(metrics.clientWidth)
+      await expect(status).toBeInViewport()
+      expect(await tableScrollLeft(table)).toBe(0)
+      const box = await status.boundingBox()
+      expect(box, "boundingBox ของ td Status").not.toBeNull()
+      expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+    })
+  }
+
+  test("AC-43a1: Ledger 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip \"ชื่อ อีเมล\", เห็น Status", async ({ page, request, step, evidence }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const programId = await createDraftProgram(request, admin, `ADM-38 ${tag("adm38")}`)
+    try {
+      const { affiliate, table, row, affiliateCell, status } = await openLongLedgerRow(page, request, admin, programId)
+      await expectLedgerRowCapped(page, { table, row, affiliateCell, status, step })
+      await step("hover cell Affiliate ที่ถูกตัด → tooltip ของ TruncatedCell เป็น \"ชื่อ อีเมล\" (กฎ 41b)", async () => {
+        // tooltip ของ cell นี้เท่านั้น — sidebar มี tooltip ของตัวเอง; hover ตรงไปที่ cell (qa #416 O-5)
+        const tooltip = page.getByRole("tooltip").filter({ hasText: affiliate.name })
+        await affiliateCell.locator(".truncate").first().hover()
+        await expect(tooltip).toBeVisible()
+        await expect(tooltip).toHaveText(`${affiliate.name} ${affiliate.email}`)
+      })
+      await evidence("01-ledger-long-affiliate-1280")
+    } finally {
+      await deleteAllThenExpectOk(request, admin, [`/admin/affiliate/programs/${programId}`])
+    }
+  })
+
+  test.describe("1920×1080", () => {
+    test.use({ viewport: { width: 1920, height: 1080 } })
+
+    test("AC-43a2: Ledger 1920 — คอลัมน์ Affiliate ≤ 250px, เห็น Status", async ({ page, request, step, evidence }) => {
+      test.setTimeout(120_000)
+      const admin = await adminHeaders(request)
+      const programId = await createDraftProgram(request, admin, `ADM-38 ${tag("adm38")}`)
+      try {
+        const { table, row, affiliateCell, status } = await openLongLedgerRow(page, request, admin, programId)
+        await expectLedgerRowCapped(page, { table, row, affiliateCell, status, step })
+        await evidence("02-ledger-long-affiliate-1920")
+      } finally {
+        await deleteAllThenExpectOk(request, admin, [`/admin/affiliate/programs/${programId}`])
       }
     })
   })
