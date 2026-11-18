@@ -159,7 +159,9 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
             </FocusModal.Header>
             <FocusModal.Body className="flex justify-center overflow-auto py-16">
               <div className="flex w-full max-w-lg flex-col gap-y-4">
-                <Heading>{program ? "Edit program" : "Create program"}</Heading>
+                <FocusModal.Title asChild>
+                  <Heading>{program ? "Edit program" : "Create program"}</Heading>
+                </FocusModal.Title>
                 <Form.Field
                   control={form.control}
                   name="name"
