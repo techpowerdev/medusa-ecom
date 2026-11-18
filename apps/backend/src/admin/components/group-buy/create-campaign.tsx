@@ -188,7 +188,9 @@ export const CreateCampaign = ({
             </FocusModal.Header>
             <FocusModal.Body className="flex justify-center overflow-auto py-16">
               <div className="flex w-full max-w-lg flex-col gap-y-4">
-                <Heading>Create group-buy campaign</Heading>
+                <FocusModal.Title asChild>
+                  <Heading>Create group-buy campaign</Heading>
+                </FocusModal.Title>
                 <Text size="small" className="text-ui-fg-subtle">
                   The campaign starts as draft. Activate it from the campaign page when ready.
                 </Text>

@@ -164,7 +164,9 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
               </FocusModal.Header>
               <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
                 <div className="flex w-full max-w-lg flex-col gap-y-4">
-                  <Heading>Create voucher pool for {variant.title}</Heading>
+                  <FocusModal.Title asChild>
+                    <Heading>Create voucher pool for {variant.title}</Heading>
+                  </FocusModal.Title>
                   <Form.Field
                     control={form.control}
                     name="partner_id"
