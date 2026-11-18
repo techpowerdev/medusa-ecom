@@ -36,11 +36,14 @@ const Item = ({ item, currencyCode }: ItemProps) => {
             <Text className="text-ui-fg-muted">
               <span data-testid="product-quantity">{item.quantity}</span>x{" "}
             </Text>
-            <LineItemUnitPrice
-              item={item}
-              style="tight"
-              currencyCode={currencyCode}
-            />
+            {/* CORE-65 (spec 01 กฎข้อ 123): ชิ้นเดียว ราคาต่อหน่วย = ราคารวม → ไม่แสดงซ้ำ */}
+            {item.quantity > 1 && (
+              <LineItemUnitPrice
+                item={item}
+                style="tight"
+                currencyCode={currencyCode}
+              />
+            )}
           </span>
 
           <LineItemPrice
