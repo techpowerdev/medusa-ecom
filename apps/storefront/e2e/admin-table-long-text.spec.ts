@@ -60,9 +60,15 @@ async function expectLongRowContained(page: Page, { table, trigger, long, step }
   const row = table.locator("tbody tr", { hasText: long })
   const button = row.getByTestId(trigger)
   const cell = row.locator("td").first()
+  // tooltip ของ TruncatedCell ของแถวนี้ (ข้อความคือชื่อเต็ม) — ไม่ใช้ getByRole("tooltip") ทั้งหน้า (sidebar มี tooltip ของตัวเอง)
+  const cellTooltip = page.getByRole("tooltip").filter({ hasText: long })
   await expect(button).toBeVisible({ timeout: 30_000 })
 
   await step("แถวชื่อยาว: ปุ่ม … อยู่ในจอโดยไม่เลื่อนแนวนอน และเนื้อหา cell ชื่อกว้าง ≤ 250px", async () => {
+    // qa #416 D-1: ตาราง partners อยู่ใต้ตาราง pools — ข้อมูลสะสมใน DB ดันแถวลงใต้จอ → เลื่อนเฉพาะแนวตั้งให้แถวเข้าจอ
+    // ด้วย cell ชื่อ (คอลัมน์แรก ชิดซ้ายของตาราง) + inline "start" — ไม่เลื่อนกล่องเลื่อนแนวนอนของตาราง (scrollLeft ยังต้องเป็น 0 ข้างล่าง)
+    // ห้ามใช้ scrollIntoViewIfNeeded ของปุ่ม: จะเลื่อนแนวนอนตามปุ่มจน develop ผ่านโดยไม่ได้แก้
+    await cell.evaluate((td) => td.scrollIntoView({ block: "center", inline: "start" }))
     await expect(button).toBeInViewport()
     expect(await tableScrollLeft(table)).toBe(0)
     const box = await button.boundingBox()
@@ -76,15 +82,22 @@ async function expectLongRowContained(page: Page, { table, trigger, long, step }
 
   await step("hover ชื่อที่ถูกตัด → tooltip ของ TruncatedCell แสดงชื่อเต็ม", async () => {
     await cell.locator(".truncate").first().hover()
-    const tooltip = page.getByRole("tooltip")
-    await expect(tooltip).toBeVisible()
-    await expect(tooltip).toHaveText(long)
+    await expect(cellTooltip).toBeVisible()
+    await expect(cellTooltip).toHaveText(long)
   })
 
   await step("คลิก … → เมนู 1 ตัว → Escape ครั้งเดียวปิด (กฎ 37)", async () => {
-    // ออกจากชื่อหลายจังหวะ: Radix Tooltip เปิดค้างใน "grace area" ระหว่างทางไป tooltip จนกว่าจะมี pointermove นอกพื้นที่นั้น
-    await page.mouse.move(0, 0, { steps: 5 })
-    await expect(page.getByRole("tooltip")).toHaveCount(0)
+    // qa #416 D-1: ไม่ไป (0,0) — เส้นทางผ่าน sidebar เปิด tooltip ของเมนู ("Products G then P") ทันที (provider ข้าม delay
+    // หลัง tooltip ของ cell เพิ่งปิด) และค้างได้ จึงตรวจเฉพาะ tooltip ของ cell นี้ และย้ายเมาส์ในคอลัมน์เดิม (ในเนื้อหาหน้า)
+    // ไปทิศตรงข้ามกับ tooltip (Radix วางเหนือ cell หรือพลิกลงล่างเมื่อที่ไม่พอ) — ทางที่มุ่งไปหา tooltip อยู่ใน "grace area"
+    // และตัว tooltip hover ได้ Radix จึงเปิดค้าง; หลายจังหวะ = มี pointermove หลังออกจาก cell (ไม่ใช่การรอเวลา)
+    const box = await cell.boundingBox()
+    const tip = await cellTooltip.locator("..").boundingBox()
+    expect(box, "boundingBox ของ cell ชื่อ").not.toBeNull()
+    expect(tip, "boundingBox ของ tooltip").not.toBeNull()
+    const away = tip!.y + tip!.height / 2 < box!.y + box!.height / 2 ? 1 : -1
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2 + away * box!.height * 2, { steps: 5 })
+    await expect(cellTooltip).toHaveCount(0)
     await button.click()
     await waitMenuOpened(page)
     await page.keyboard.press("Escape")

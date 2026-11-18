@@ -1005,11 +1005,31 @@ describe("คอลัมน์ actions ของ DataTable ปิด tooltip �
 // spec 08 AC-39a, กฎ 38 (ADM-34): FocusModal แบบ state ไม่มี FocusModal.Trigger → Radix คืน focus ให้ปุ่มที่เปิดไม่ได้ (activeElement = BODY)
 // ทุก <FocusModal.Content ต้องได้ handler ของ useRestoreOpenerFocus (spread) — ไม่มี onCloseAutoFocus แบบ inline เหลือ
 describe("FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34)", () => {
-  /** จำนวน <FocusModal.Content ทั้งหมด และจำนวนที่ props มี `{...<ตัวแปรที่ได้จาก useRestoreOpenerFocus()>}` */
+  /**
+   * props ของทุก `<FocusModal.Content ...>` — ตัดแท็กที่ `>` ตัวแรกนอก `{}` (นับวงเล็บแบบ `balanced()` ข้างบน)
+   * ไม่ใช้ `[^>]*` ที่หยุดที่ `>` ของ `=>` ใน arrow function (nit review #416)
+   */
+  const contentProps = (src: string) =>
+    Array.from(src.matchAll(/<FocusModal\.Content\b/g), (m) => {
+      const start = m.index + m[0].length
+      let depth = 0
+      for (let i = start; i < src.length; i++) {
+        if (src[i] === "{") depth++
+        else if (src[i] === "}") depth--
+        else if (src[i] === ">" && depth === 0) return src.slice(start, i)
+      }
+      return src.slice(start)
+    })
+  /**
+   * จำนวน <FocusModal.Content ทั้งหมด และจำนวนที่ props มี `{...<ตัวแปรที่ได้จาก useRestoreOpenerFocus()>}`
+   * โดยไม่ตั้ง onOpenAutoFocus/onCloseAutoFocus เองทับ handler ของ hook (nit review #413)
+   */
   const restoreUsage = (src: string) => {
     const names = Array.from(src.matchAll(/\bconst (\w+) = useRestoreOpenerFocus\(\)/g), ([, name]) => name)
-    const contents = Array.from(src.matchAll(/<FocusModal\.Content\b([^>]*)>/g), ([, props]) => props)
-    const withHandler = contents.filter((props) => names.some((name) => props.includes(`{...${name}}`)))
+    const contents = contentProps(src)
+    const withHandler = contents.filter(
+      (props) => names.some((name) => props.includes(`{...${name}}`)) && !/\bon(Open|Close)AutoFocus=/.test(props)
+    )
     return { contents: contents.length, withHandler: withHandler.length }
   }
   const withContent = adminFiles.filter((file) => read(file).includes("<FocusModal.Content"))
@@ -1020,6 +1040,12 @@ describe("FocusModal คืน focus ให้ปุ่มที่เปิด�
     expect(
       restoreUsage(`const restoreFocus = useRestoreOpenerFocus()\n<FocusModal.Content {...restoreFocus} onEscapeKeyDown={x}>`)
     ).toEqual({ contents: 1, withHandler: 1 })
+    // nit review #416: props มี `=>` (ตัว `>` ใน arrow function) ต้องไม่ตัดแท็กก่อนถึง handler ที่ทับ hook
+    expect(
+      restoreUsage(
+        `const restoreFocus = useRestoreOpenerFocus()\n<FocusModal.Content {...restoreFocus} onEscapeKeyDown={(e) => e} onCloseAutoFocus={noop}>`
+      )
+    ).toEqual({ contents: 1, withHandler: 0 })
   })
 
   it("พบไฟล์ที่มี <FocusModal.Content อย่างน้อย 5 ไฟล์ (กัน vacuous)", () => {
@@ -1032,7 +1058,7 @@ describe("FocusModal คืน focus ให้ปุ่มที่เปิด�
     const { contents, withHandler } = restoreUsage(src)
     expect(withHandler).toBe(contents)
     // nit review #413 (ADM-35): handler ที่ตั้งเองหลัง spread จะทับ handler ของ hook — ห้ามตั้ง onOpenAutoFocus/onCloseAutoFocus ที่ Content
-    for (const [, props] of src.matchAll(/<FocusModal\.Content\b([^>]*)>/g)) {
+    for (const props of contentProps(src)) {
       expect(props).not.toMatch(/\bon(Open|Close)AutoFocus=/)
     }
   })
