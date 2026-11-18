@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (ปิดรอบ 34 2026-11-18: ☑ ADM-29 #396 — หัวข้อ "Follow-up รอบ 34" done; ADM-22 ยังพักไว้; รอบ 34 2026-11-18: owner สั่งเปิด ADM-29 (กฎ 33, AC-34 — tag ตัวอักษร + assert จำนวนผลใน test payout ตามกฎ 32f) — หัวข้อ "Follow-up รอบ 34"; กฎ 32f แก้ถ้อยคำ; ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (รอบ 35 2026-11-18: ☑ ADM-22 ผลตรวจ (qa, ไม่มี PR — `docs/evidence/admin-ui/ADM-22/REPORT.md`) = เข้ากฎ 26b แต่สาเหตุระดับ build (`medusa build` ไม่ตั้ง `NODE_ENV` = admin แบบ development ทุกหน้า) → owner เลือกแก้ที่การ build → OPS-27 (spec 07 AC-42), ADM-22b ไม่เปิด (✕) — หมายเหตุใต้กฎ 26 และแถว ADM-22 ของหัวข้อ "Follow-up รอบ 28"; ปิดรอบ 34 2026-11-18: ☑ ADM-29 #396 — หัวข้อ "Follow-up รอบ 34" done; ADM-22 ยังพักไว้; รอบ 34 2026-11-18: owner สั่งเปิด ADM-29 (กฎ 33, AC-34 — tag ตัวอักษร + assert จำนวนผลใน test payout ตามกฎ 32f) — หัวข้อ "Follow-up รอบ 34"; กฎ 32f แก้ถ้อยคำ; ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -460,7 +460,7 @@ none
 
 ## Follow-up รอบ 28 (2026-11-10 — เอกสารล้วน: บันทึกคำตัดสินของ owner)
 ที่มา: owner ตอบ "ตามที่แนะนำ" — ADM-21 = ทำ, ADM-22 = ยืนยันก่อน **แต่สั่งว่ายังไม่ต้องทำตอนนี้** → ทุก task ในหัวข้อนี้พักไว้ ไม่บล็อก release v0.1.0 (ปิดรอบ 29: owner สั่งทำ ADM-21a/21b 2026-11-13 → ☑ #361/#362; ADM-22 ยังพักไว้) (path ย่อจาก `apps/backend/src/admin/`)
-Status: accepted (ADM-21a/21b/22 พักไว้ — owner ยังไม่สั่งทำ) · ปิดรอบ 29: owner สั่งทำ 2026-11-13 → ADM-21a ☑ #361, ADM-21b ☑ #362; ADM-22 ยังพักไว้
+Status: accepted (ADM-21a/21b/22 พักไว้ — owner ยังไม่สั่งทำ) · ปิดรอบ 29: owner สั่งทำ 2026-11-13 → ADM-21a ☑ #361, ADM-21b ☑ #362; ADM-22 ยังพักไว้ · รอบ 35 2026-11-18: ADM-22 ☑ ผลตรวจ (owner สั่งทำ 2026-11-18) → แก้ที่ build (OPS-27 spec 07), ADM-22b ✕ — หัวข้อนี้ done
 Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard, patch-package, ปุ่มลองใหม่ (reload หน้า — กฎ 24e), ตารางนอก 6 ไฟล์ข้างล่าง
 
 ### What Medusa already gives us (รอบ 28)
@@ -468,7 +468,7 @@ Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard
 |---|---|---|
 | ข้อความ error โดยคงหัวตาราง/ปุ่มสร้าง | `emptyState.empty` (`heading`, `description`) ของ `DataTable` (dashboard) และ `DataTable.Table` (`@medusajs/ui` — `groups-section`, `group-members`) | ใช้ตามเดิม — แนวเดียวกับกฎ 24a (ADM-20) |
 | 401 → `/login` | `ErrorBoundary` ของ dashboard | ใช้ตามเดิมด้วย `throw error` (กฎ 24b); เงื่อนไข 401 ที่ใช้ ≥ 2 ที่ย้ายเป็น helper pure ใน `lib/` ได้ตามกฎ 2 |
-| หน้า error ของ loader | `ErrorBoundary` ของ dashboard (`errorElement` ของ route หลัก) — แสดง stack เฉพาะ `NODE_ENV=development` ตาม source | ใช้ตามเดิม — ADM-22 ยืนยันบน build production ก่อน |
+| หน้า error ของ loader | `ErrorBoundary` ของ dashboard (`errorElement` ของ route หลัก) — แสดง stack เฉพาะ `NODE_ENV=development` ตาม source | ใช้ตามเดิม — ADM-22 ยืนยันบน build production ก่อน (รอบ 35: ยังใช้ตามเดิม — เงื่อนไขคือ admin ต้อง build ด้วย `NODE_ENV=production` → OPS-27 spec 07) |
 
 ### Business rules (รอบ 28)
 25. (ADM-21a/21b — owner "ทำ" 2026-11-10) ตารางทั้ง 6 ไฟล์ทำตามกฎ 24a–d เมื่อ query รายการล้มและไม่มีข้อมูลในมือ (`isError && !data`): ส่ง `emptyState.empty` = `{ heading: <ข้อความในตาราง>, description: error.message }`
@@ -486,6 +486,10 @@ Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard
 26. (ADM-22 — owner "ยืนยันก่อน" 2026-11-10) loader ของ `routes/evouchers/pools/[id]/page.tsx` ล้ม (ไม่ใช่ 401) บน **build production** (`pnpm --filter backend build && pnpm --filter backend start`):
     (a) ถ้าหน้าที่แสดงไม่มี stack trace/path ของ source → ปิด ADM-22 (✕) ไม่มีโค้ด บันทึกผลใน `docs/evidence/admin-ui/ADM-22/REPORT.md`;
     (b) ถ้าพบ → เปิด task แก้ (ADM-22b) ในโค้ดของเรา: loader คืน `undefined` เมื่อ fetch ล้ม (ยกเว้น 401 ที่ยัง throw) แล้วหน้าแสดง error จาก `useQuery` ของ pool (`evoucher-pool-error`) แทน `ErrorBoundary`; ห้าม patch dashboard
+    **ผล (รอบ 35, 2026-11-18 — qa บน develop `9cd0770d`, `docs/evidence/admin-ui/ADM-22/REPORT.md`)**: เข้า (b) จริง — 500/abort/404 × full load/client navigation ตรง regex ของ AC-27 ("Error Details (Development Mode)" + stack), 401 ไป `/app/login` ผ่าน;
+    แต่สาเหตุอยู่ระดับ build ไม่ใช่ loader: `medusa build` ตั้ง `NODE_ENV=development` เองเมื่อไม่มีค่า (`@medusajs/cli` 2.22.1 `dist/create-cli.js:541`) และค่านี้ถูกฝังใน admin bundle — build ด้วย `NODE_ENV=production` ไม่มี stack ทุกเคส (กระทบทุกหน้า admin รวมหน้าของ Medusa)
+    → **owner เลือกแก้ที่การ build (2026-11-18)**: OPS-27 (spec 07 หัวข้อ "Follow-up รอบ 35", AC-42 — ซ้ำ AC-27 บน build ใหม่); **ADM-22b ไม่เปิด (✕)** — ไม่แก้ loader หน้า pool, ไม่ patch dashboard;
+    คำสั่ง build ในวงเล็บของกฎนี้คงไว้เป็นประวัติ — คำสั่ง prod-like ที่ถูกต้องดู `CLAUDE.md` หลัง OPS-27
 
 ### Acceptance criteria (รอบ 28)
 - AC-25 (ADM-21a, กฎ 25) e2e 1280×800 (เพิ่มใน `e2e/evoucher-admin-pool-page.spec.ts` และ `e2e/evoucher-admin-forms.spec.ts`): สำหรับแต่ละแถว 21a ของตารางกฎ 25 — Given `page.route` GET ตามแถวตอบ 500 When เปิดหน้า Then testid error visible (timeout default), ข้อความ empty เดิมของตารางนั้นไม่ปรากฏ ("No voucher pools yet", "Import a CSV to add codes.", `evoucher-partners-empty` count 0), heading ของตาราง visible และปุ่ม "Create partner" ภายใน `evoucher-partners-table` enabled (ข้อยกเว้นกฎ 18) — **ล้มบน develop**; ทำซ้ำด้วย `route.abort()`;
@@ -496,6 +500,7 @@ Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard
   Given 401 Then ไป `/app/login` แล้วจบ test; Given รายการว่าง Then empty state เดิม และ testid error count 0; AC-11, AC-13, AC-21 ยังผ่าน; static: `list-table.tsx`, `groups-section.tsx`, `group-members.tsx` มี `isError && !data` และ heading error อยู่ใน `emptyState`
 - AC-27 (ADM-22, กฎ 26) qa บน build production (1280×800, `locale: "en-US"`, `timezoneId: "Asia/Bangkok"`): Given pool P และ `page.route` GET `**/admin/evoucher/pools/<P>` (loader) ตอบ 500 When เปิด `/app/evouchers/pools/<P>` Then ข้อความของหน้าไม่ตรง regex `/\bat \S+ \(|\.(tsx?|m?js):\d+/` (ไม่มี stack/path) → ปิด ADM-22 ✕ พร้อม REPORT;
   ถ้าตรง → AC-27b (เงื่อนไขของ ADM-22b): หลังแก้ เคสเดียวกันแสดง `evoucher-pool-error` และไม่ตรง regex เดิม, 401 ไป `/app/login`, loader สำเร็จ AC-15 (spec 08) ยังผ่าน
+  (รอบ 35, 2026-11-18) ผล: ตรง regex บน build เดิม → AC-27b **ไม่ใช้** (ADM-22b ✕ — กฎ 26 ผลรอบ 35); เคสของ AC-27 ถูกตรวจซ้ำบน build ใหม่ใน spec 07 AC-42c (OPS-27)
 
 ### Test plan (รอบ 28)
 | ชนิด | AC |
@@ -508,7 +513,7 @@ Out of scope: backend, แก้ `DataTable`/`ErrorBoundary` ของ dashboard
 |---|---|---|---|---|---|---|---|
 | ADM-21a | (owner "ทำ") สถานะ error แทน empty ของตาราง e-voucher: pools, codes, partners (กฎ 25) — ☑ #361 (owner สั่งทำ 2026-11-13) | `components/evoucher/{pools-table,codes-table,partners-section}.tsx`, `lib/` (helper 401 ถ้าย้าย — กฎ 2), `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/{evoucher-admin-pool-page,evoucher-admin-forms}.spec.ts` | ~180 LOC | 1280×800 | AC-25 | **ADM-16 merge** (ชน `codes-table.tsx`/`partners-section.tsx`), ADM-18/ADM-19 ถ้าเปิดอยู่ (ชนไฟล์ e2e — ตัวที่ merge ทีหลัง rebase); ไม่บล็อก release | ∥ ADM-21b |
 | ADM-21b | (owner "ทำ") สถานะ error แทน empty ของตาราง affiliate (ทุกแท็บ) และ group buy groups/members (กฎ 25) — ☑ #362 (owner สั่งทำ 2026-11-13) | `components/affiliate/list-table.tsx`, `components/group-buy/{groups-section,group-members}.tsx`, `__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/{affiliate-admin-forms,group-buy-admin-pages}.spec.ts` | ~180 LOC | 1280×800 | AC-26 | **ADM-17 merge** (ชน query รายการ affiliate/`affiliate-admin-forms`); ถ้า ADM-21a ย้าย helper 401 ไป `lib/` ก่อน ให้ใช้ตัวนั้น; ไม่บล็อก release | ∥ ADM-21a (ชน `medusa-ui.unit.spec.ts` คนละ test — ตัวที่ merge ทีหลัง rebase); ชน ADM-15 ไม่มี |
-| ADM-22 | (owner "ยืนยันก่อน") qa ตรวจ stack trace ของ loader หน้า pool บน build production (กฎ 26) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `docs/evidence/admin-ui/ADM-22/REPORT.md` (ไม่มีโค้ด); ถ้าพบ → ADM-22b: `routes/evouchers/pools/[id]/page.tsx` + e2e ใน `evoucher-admin-pool-page.spec.ts` (~60 LOC) | qa ล้วน (22b ~60 LOC) | 1280×800 | AC-27 | none; ADM-22b ← ผล qa + ADM-21a (ไฟล์ e2e เดียวกัน); ไม่บล็อก release | ไม่ชน |
+| ADM-22 | (owner "ยืนยันก่อน") qa ตรวจ stack trace ของ loader หน้า pool บน build production (กฎ 26) — ~~☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10)~~ → **☑ ผลตรวจ 2026-11-18** (owner สั่งทำ 2026-11-18; ไม่มี PR — `docs/evidence/admin-ui/ADM-22/REPORT.md`): เข้า 26b แต่สาเหตุระดับ build → owner แก้ที่ build = OPS-27 (spec 07, AC-42); **ADM-22b ✕ ไม่เปิด** | `docs/evidence/admin-ui/ADM-22/REPORT.md` (ไม่มีโค้ด); ถ้าพบ → ADM-22b: `routes/evouchers/pools/[id]/page.tsx` + e2e ใน `evoucher-admin-pool-page.spec.ts` (~60 LOC) | qa ล้วน (22b ~60 LOC) | 1280×800 | AC-27 | none; ADM-22b ← ผล qa + ADM-21a (ไฟล์ e2e เดียวกัน); ไม่บล็อก release | ไม่ชน |
 
 ### Open questions (รอบ 28)
 none

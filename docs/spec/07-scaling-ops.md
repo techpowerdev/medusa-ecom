@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (รอบ 33 2026-11-17: owner ตัดสิน OPS-26 ต่อ = ก หยุด วัดบน staging เป็นรายการก่อน go-live (ท้ายหัวข้อ "Follow-up รอบ 32"), checklist bump ข้อ 10 (สวิตช์ `is_tax_inclusive` ของ dashboard — spec 01 CORE-64); ปิดรอบ 32 2026-11-17: ☑ OPS-26 #385 — AC-41 สรุปไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024, แก้กฎ (d) เป็น 10 × (n + 1) และข้อเท็จจริง `--cluster` ของ 2.22.1; รอบ 32 2026-11-17: Q-O5 = ก owner 2026-11-17 → OPS-26 (AC-41) วัด server 1 vs 2 process — หัวข้อ "Follow-up รอบ 32"; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
+สถานะ: draft (รอบ 35 2026-11-18: ผล qa ADM-22 (spec 08) — `medusa build` ที่ไม่ตั้ง `NODE_ENV` ได้ admin แบบ development (stack trace ในหน้า error) → owner ตัดสินข้อ ก "แก้ที่การ build" → OPS-27 (AC-42) ตั้ง `NODE_ENV=production` เฉพาะขั้น build ใน Dockerfile + CI + คำสั่ง prod-like ใน `CLAUDE.md` — หัวข้อ "Follow-up รอบ 35", Q-O6 = ก owner 2026-11-18 (วิธีให้ build ผ่าน guard ตอนโหลด config); รอบ 33 2026-11-17: owner ตัดสิน OPS-26 ต่อ = ก หยุด วัดบน staging เป็นรายการก่อน go-live (ท้ายหัวข้อ "Follow-up รอบ 32"), checklist bump ข้อ 10 (สวิตช์ `is_tax_inclusive` ของ dashboard — spec 01 CORE-64); ปิดรอบ 32 2026-11-17: ☑ OPS-26 #385 — AC-41 สรุปไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024, แก้กฎ (d) เป็น 10 × (n + 1) และข้อเท็จจริง `--cluster` ของ 2.22.1; รอบ 32 2026-11-17: Q-O5 = ก owner 2026-11-17 → OPS-26 (AC-41) วัด server 1 vs 2 process — หัวข้อ "Follow-up รอบ 32"; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -320,6 +320,8 @@ OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_PO
 
 (ปิดรอบ 32, 2026-11-17) OPS-26 ☑ #385 — ผล AC-41: ไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 (ดู "ผล OPS-26" ในหัวข้อ "Follow-up รอบ 32")
 
+(รอบ 35, 2026-11-18) ผล qa ADM-22 → owner ข้อ ก "แก้ที่การ build" → **OPS-27** ☐ (AC-42; owner สั่งทำ 2026-11-18) — เริ่มได้หลัง PR เอกสารรอบ 35 merge (owner ตอบ Q-O6 = ก 2026-11-18) (หัวข้อ "Follow-up รอบ 35")
+
 ## Follow-up รอบ 32 (2026-11-17 — Q-O5 = ก)
 Status: done (ปิดรอบ 32 2026-11-17 — OPS-26 ☑ #385; owner สั่งทำ 2026-11-17) · Out of scope: แก้โค้ด app/`medusa-config.ts`/ค่า pool, เปลี่ยน `docker-compose.prod.yml` ของ prod (ยกเว้นส่งค่าเข้า command ผ่าน env ของ load run), profile CPU (Q-O5 ทาง ข ไม่ทำ)
 
@@ -349,6 +351,80 @@ static (unit ที่มีอยู่ของ `tools/load` หรือ grep
 **(รอบ 33, 2026-11-17) owner ตัดสินข้อ (3) = ก "หยุด วัดตอนมี staging"**: OPS-26 จบที่ผลข้างบน ไม่มี task ต่อตอนนี้ (ไม่ profile CPU — Q-O5 ทาง ข ไม่ทำ) ·
 **รายการก่อนเปิดร้าน (go-live)**: เมื่อมี staging (ต้องมี ADR ก่อน — OPS-19/AC-30) วัด checkout แบบ AC-41 ซ้ำบน staging ที่ k6 อยู่คนละเครื่องกับระบบ เทียบจำนวน server process/replica ที่จะใช้จริง
 แล้วตัดสินวิธี deploy (ถ้าเปลี่ยนจาก Deliverables ข้อ 2 → ADR-024 proposed) — ไม่ต้องเพิ่มใน `docs/ops/production.md` จนกว่าจะมี ADR staging (บันทึกที่นี่และ ROADMAP "ก่อนเปิดร้านจริง")
+
+## Follow-up รอบ 35 (2026-11-18 — ผล qa ADM-22: admin ถูก build แบบ development)
+Status: accepted (owner ตัดสินข้อ ก "แก้ที่การ build" 2026-11-18 และสั่งทำ OPS-27 ☐) · Out of scope: แก้ loader หน้า pool (ADM-22b ไม่เปิด — spec 08 กฎ 26), patch `@medusajs/dashboard`/`@medusajs/cli`, แก้ `ErrorBoundary`,
+แก้ guard (`src/lib/prod-guards.ts`, `src/lib/notification-providers.ts`, `medusa-config.ts`), แก้ script `build` ใน `apps/backend/package.json`, infra/service/dependency ใหม่, แก้ `docs/ops/**`
+
+ที่มา: qa ADM-22 บน develop `9cd0770d` (`docs/evidence/admin-ui/ADM-22/REPORT.md` D-1): build ตามคำสั่งเดิมแล้ว `ErrorBoundary` ของ admin แสดง "Error Details (Development Mode)" + stack (500/abort/404 × full load/client navigation);
+build ด้วย `NODE_ENV=production` ไม่มี stack ทุกเคส และ bundle เล็กลง ~336KB — ผลระดับ build กระทบทุกหน้า admin (รวมหน้าของ Medusa) ตรวจ source ของ dependency ที่ pin 2.22.1 เพิ่ม (planner):
+- `@medusajs/cli` `dist/create-cli.js:540–541` handler ของ `build`: `process.env.NODE_ENV = process.env.NODE_ENV || "development"` (ของ `start` `:519–520` ใช้ `production`) → vite ฝังค่า development ลง bundle; ตั้ง `NODE_ENV=production` ตอน `medusa start` ไม่มีผล
+  (แก้ข้อเท็จจริงในคำสั่งงาน: บรรทัด `:182` คือ handler ของ `db:setup` ไม่ใช่ `build`)
+- **ข้อควรระวังของ Dockerfile**: `medusa build` (`@medusajs/medusa/dist/commands/build.js:10`) เรียก `initializeContainer` → โหลด `medusa-config.ts` → `checkBootEnv` และ `buildNotificationProviders` ทำงาน
+  เมื่อ `NODE_ENV=production` แต่ไม่มี env ที่ guard ต้องการ → throw → `configLoader` สั่ง `process.exit(1)` (`@medusajs/framework/dist/config/loader.js:10–16`, `:31–32`) — stage `build` ของ Dockerfile ไม่มี env เหล่านี้
+  (`docker-compose.prod.yml:20–22` ไม่ส่ง build args) ดังนั้น**ตั้งแค่ `NODE_ENV=production` แล้ว image build ล้ม** → กฎ (b) และ Q-O6; job `storefront-e2e` ของ CI มี env ครบที่ระดับ job อยู่แล้ว (`ci.yml:192–213`)
+
+ที่ build backend (ตรวจ develop `9cd0770d`):
+| ที่ | build อย่างไร | `NODE_ENV` ตอน build | OPS-27 |
+|---|---|---|---|
+| `apps/backend/Dockerfile:18` stage `build` | `RUN pnpm --filter @dtc/backend build` | ไม่ตั้ง (`ENV NODE_ENV=production` อยู่ stage `runtime` `:23`) | แก้ (กฎ a, b) |
+| `.github/workflows/ci.yml:287` job `storefront-e2e` step "Start backend and capture publishable key" | `pnpm --filter backend build` | ไม่ตั้ง (env ระดับ job ไม่มี `NODE_ENV`) | แก้ (กฎ c) |
+| `CLAUDE.md:103` หัวข้อ Commands | `pnpm --filter backend build && pnpm --filter backend start   # prod-like` | ไม่ตั้ง | แก้เฉพาะบรรทัดนี้ (กฎ d — owner อนุมัติ 2026-11-18) |
+| `docker-compose.prod.yml:20–22`, job `docker-worker-mode` ของ `ci.yml` (ผ่าน `tools/ops/smoke-worker-mode.sh:37`, `tools/ops/smoke-redis-outage.sh:45,50`), `tools/load/run.sh:107` (`load-nightly.yml`) | `compose ... --build` → Dockerfile | ตาม Dockerfile | ไม่แก้ — ได้ผลผ่าน Dockerfile |
+| `apps/backend/package.json:16` `"build": "medusa build"` | script ของ Medusa ที่ builder ใช้ตรวจ build ในเครื่อง | ไม่ตั้ง | ไม่แก้ — ตั้งที่ผู้เรียก (ถ้าบังคับใน script, build ในเครื่องที่ไม่มี env ของ guard จะล้ม) |
+| `docs/ops/**`, `.github/workflows/release-gate.yml`, Deliverables ของ spec นี้ | ไม่มีคำสั่ง build backend | — | ไม่แก้ |
+| spec 08 กฎ 26 (คำสั่งเดิมในวงเล็บ) | ประวัติของ ADM-22 | — | ไม่แก้เนื้อหาเดิม (หมายเหตุรอบ 35 ใน spec 08) |
+
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| โหมด build ของ admin | `medusa build` ใช้ `NODE_ENV` ที่ผู้เรียกตั้ง (ไม่ตั้ง = development) | ใช้ตามเดิม — ตั้ง `NODE_ENV=production` ที่ผู้เรียก |
+| ซ่อน stack ในหน้า error | `ErrorBoundary` ของ dashboard แสดง stack เฉพาะ `NODE_ENV === "development"` | ใช้ตามเดิม |
+| guard env ตอนโหลด config | ของเรา (ADR-010, OPS-7/21/24) | ใช้ตามเดิม ไม่แก้ — stage build ส่ง placeholder (กฎ b) |
+
+**ไม่เขียน ADR**: ไม่มีทางเลือกเชิงสถาปัตยกรรมใหม่ — เป็นการแก้ค่า build ให้ตรงกับที่ image ตั้งใจอยู่แล้ว (stage `runtime` เป็น production) โดย guard ของ ADR-010 ไม่เปลี่ยนความหมาย และ placeholder อยู่แค่ใน process ของ build;
+ถ้า owner เลือกทาง ข/ค ของ Q-O6 (เปลี่ยน guard หรือ config) จึงต้องมี ADR (ADR-024 ยังว่าง)
+
+**กฎ (OPS-27)**: (a) Dockerfile stage `build`: บรรทัด `RUN` ที่รัน `pnpm --filter @dtc/backend build` ตั้ง `NODE_ENV=production` แบบ inline ในคำสั่งนั้น — ห้ามใช้ `ENV`/`ARG` ตั้ง `NODE_ENV` ใน stage `base`/`build`;
+`RUN pnpm install --frozen-lockfile` (`:15`, ต้องได้ devDependencies) และ `RUN pnpm ... deploy --prod` (`:20`) ไม่ได้รับ `NODE_ENV=production`; stage `runtime` คง `ENV NODE_ENV=production`;
+(b) (Q-O6 = ก — owner 2026-11-18) env ที่ guard ต้องมีตอนโหลด config ใน production ส่งเป็น placeholder **inline ในบรรทัด build เดียวกันเท่านั้น** — ณ `9cd0770d`: `AFFILIATE_TOKEN_SECRET`, `STOREFRONT_URL` (URL `http://` โดเมน `.invalid`), `EVOUCHER_ENCRYPTION_KEY` (64 hex),
+`RESEND_API_KEY`, `RESEND_FROM_EMAIL`; ค่าที่เป็นข้อความมีคำ `build-only` และไม่ใช่ secret จริง; **ห้ามมี `ALLOW_TEST_PROVIDERS` ใน Dockerfile** (คงเจตนา ADR-010 ข้อ 4 — ตัวแปรนี้มีเฉพาะใน CI);
+placeholder ไม่อยู่ใน stage `runtime` และไม่ถูกฝังใน output ของ build (ค่าจริงมาจาก env ตอนรัน container — guard ตอนบูตทำงานเหมือนเดิม); comment ใน Dockerfile อ้าง spec 07 OPS-27;
+ถ้า build ยังล้มด้วย placeholder ชุดนี้ (เช่น provider ตรวจรูปแบบ key ตอน build) → หยุดรายงาน ห้ามสลับไปใช้ `ALLOW_TEST_PROVIDERS` หรือแก้ guard เอง;
+(c) `ci.yml` job `storefront-e2e` step "Start backend and capture publishable key": คำสั่ง build เป็น `NODE_ENV=production pnpm --filter backend build` (env ระดับ job คงเดิม ไม่เพิ่ม `NODE_ENV` ระดับ job — step อื่นเช่น `db:migrate`/`seed` ไม่เปลี่ยนโหมด)
+แล้วตรวจ bundle (AC-42b) ก่อน `medusa start`; job `docker-worker-mode` ตรวจ image ที่ build แล้ว (AC-42b) — ไม่เพิ่ม job ใหม่;
+(d) `CLAUDE.md` แก้เฉพาะบรรทัดคำสั่ง prod-like เป็น `NODE_ENV=production pnpm --filter backend build && pnpm --filter backend start   # prod-like` (คง comment `# prod-like`; อธิบายสั้นๆ ต่อท้ายได้) — `medusa start` ตั้ง production เองอยู่แล้ว (`create-cli.js:520`) ห้ามแตะส่วนอื่นของ `CLAUDE.md`;
+(e) ไม่เพิ่ม package/service; ไม่แก้โค้ด app
+
+**AC-42 (OPS-27)** (a) static ใน `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` (describe ใหม่ "OPS-27"; `ci.yml` อ่านด้วย `yaml` แบบเดิม, Dockerfile/`CLAUDE.md` อ่านเป็นข้อความ) — **ล้มบน develop `9cd0770d` ก่อนแก้** (แสดง red ใน PR):
+(1) Dockerfile: ภายใน stage `build` (จาก `FROM ... AS build` ถึง `FROM` ถัดไป) บรรทัด `RUN` ที่มี `pnpm --filter @dtc/backend build` มี `NODE_ENV=production` ก่อน `pnpm`; บรรทัด `RUN` ที่มี `pnpm install` และ `deploy --prod` ไม่มี `NODE_ENV`;
+stage `base`/`build` ไม่มีบรรทัด `ENV`/`ARG` ที่มี `NODE_ENV`; stage `runtime` มี `ENV NODE_ENV=production` และไม่มีคำ `build-only`; ทั้งไฟล์ไม่มี `ALLOW_TEST_PROVIDERS`;
+(2) `ci.yml` job `storefront-e2e`: step ที่ `run` มี `pnpm --filter backend build` → บรรทัดนั้นขึ้นต้นด้วย `NODE_ENV=production ` และ job-level `env` ไม่มี `NODE_ENV`; (3) `CLAUDE.md` บรรทัดที่มี `# prod-like` มี `NODE_ENV=production pnpm --filter backend build`
+(ข้อจำกัด: PR เอกสารล้วนที่แก้ `CLAUDE.md` ไม่รัน test นี้ตาม `classify-changes.sh` — test จับได้ใน PR โค้ดถัดไป ยอมรับ);
+(b) bundle: job `storefront-e2e` หลัง build — มีไฟล์ `apps/backend/.medusa/server/public/admin/assets/*.js` อย่างน้อย 1 ไฟล์ และไม่มีไฟล์ใดมีข้อความ `Development Mode` (ไม่ผ่าน = step ล้มพร้อมข้อความ error);
+job `docker-worker-mode` — ใน image backend ที่ build แล้ว `/app/public/admin/assets/*.js` มีอย่างน้อย 1 ไฟล์และไม่มี `Development Mode`, และ `/app` (ยกเว้น `node_modules`) ไม่มีคำ `build-only`;
+PR แสดงผลในเครื่อง red/green: build แบบเดิมนับไฟล์ที่มี `Development Mode` ได้ ≥ 1, build ใหม่ได้ 0;
+(c) qa บน build จากคำสั่ง prod-like ใหม่ (กฎ d) แล้ว `medusa start` จาก `.medusa/server` แบบ REPORT ADM-22 (1280×800, `locale: "en-US"`, `timezoneId: "Asia/Bangkok"`, header `x-forwarded-proto: https`): ซ้ำ AC-27 ของ spec 08 —
+`page.route` GET `/admin/evoucher/pools/<P>` (loader) ตอบ 500 / `route.abort()` / 404 × (เปิดหน้าตรง, คลิกจากรายการ pool) → `innerText` และ `textContent` ของหน้าไม่ตรง regex `/\bat \S+ \(|\.(tsx?|m?js):\d+/` และไม่มี "Development Mode";
+ตอบ 401 (ทั้งสองทาง) → URL เป็น `/app/login`; control: หน้า pool ปกติเห็นชื่อ pool; หน้าของ Medusa 1 หน้า (`/app/products/prod_ops27_missing`) ไม่ตรง regex เดิม — REPORT `docs/evidence/scale/OPS-27/REPORT.md` (≤ 5 PNG);
+(d) job `storefront-e2e` (`--project=chromium` ทั้งชุด รวม e2e admin) และ `docker-worker-mode` เขียวบน PR (image build ผ่าน guard ด้วย placeholder ตามกฎ b); builder รันในเครื่องบน build ใหม่อย่างน้อย
+`e2e/evoucher-admin-pool-page.spec.ts`, `e2e/admin-form-pilot.spec.ts`, `e2e/affiliate-admin-forms.spec.ts` (ระบุผลใน PR); `prod-guards.unit.spec.ts` และ test อื่นของ `ci.yml` ผ่านโดยไม่แก้
+
+| ชนิด | AC |
+|---|---|
+| unit static (jest — `ci-workflow.unit.spec.ts`) เขียนให้ล้มก่อน | AC-42a |
+| ขั้นตรวจใน CI (`storefront-e2e`, `docker-worker-mode`) + red/green ในเครื่อง | AC-42b |
+| qa Playwright บน build production ใหม่ | AC-42c |
+| e2e ชุดเต็มใน CI + e2e admin ในเครื่อง | AC-42d |
+
+| Task | งาน | ไฟล์ | ขนาด | Depends | ชนกับ |
+|---|---|---|---|---|---|
+| OPS-27 | (owner ข้อ ก 2026-11-18 — ผล qa ADM-22) build backend ด้วย `NODE_ENV=production` เฉพาะขั้น build ใน Dockerfile (+ placeholder ของ guard — กฎ b) และ CI + ขั้นตรวจ bundle/image + คำสั่ง prod-like ใน `CLAUDE.md` (AC-42) — ☐ (owner สั่งทำ 2026-11-18; มี UI ผล → ต้องมี qa REPORT) | `apps/backend/Dockerfile`, `.github/workflows/ci.yml` (step build ของ `storefront-e2e` + ขั้นตรวจใน `docker-worker-mode`), `CLAUDE.md` (บรรทัดคำสั่ง prod-like เท่านั้น — owner อนุมัติ), `apps/backend/src/__tests__/ci-workflow.unit.spec.ts`, `docs/evidence/scale/OPS-27/REPORT.md` (qa — session หลัก commit) | ~70 LOC + REPORT | none (PR เอกสารรอบ 35 merge; owner รับทราบ Q-O6); ไม่บล็อก release | ไม่ชน task ที่เปิดอยู่ (ไม่มี PR เปิด ณ 2026-11-18) |
+
+## Open questions (รอบ 35)
+- **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):
+  (ก) **[แนะนำ]** placeholder inline เฉพาะบรรทัด build ของ Dockerfile (กฎ b; ไม่มี `ALLOW_TEST_PROVIDERS`) — ไม่แตะโค้ด app/guard/ADR; ผลกระทบ: guard env ตัวใหม่ในอนาคตต้องเพิ่ม placeholder ที่ Dockerfile ด้วย (ลืม → job `docker-worker-mode` แดงทันที ไม่หลุดเงียบ), บรรทัด build ยาวขึ้น ~5 ตัวแปร
+  (ข) ให้ guard ข้ามตอน `medusa build` (ตรวจ argv หรือตัวแปรใหม่) — Dockerfile สั้น แต่เพิ่มทางปิด guard ใหม่: ต้องแก้ ADR-010 (ภาคผนวก) + `prod-guards.ts`/`notification-providers.ts` + test; เสี่ยงตัวแปรที่ปิด guard หลุดไปตอนรันจริง
+  (ค) บังคับ `process.env.NODE_ENV` ของ admin ผ่าน `admin.vite` ใน `medusa-config.ts` — ไม่ต้องตั้ง env ที่ใด แต่ vite/plugin-react ยังถือว่าเป็น development (bundle อาจผสม dev/prod) และไม่ตรงกับคำตัดสินข้อ ก → ต้องมี ADR
 
 ## Open questions (รอบ 32)
 - ~~**Q-O5**~~ ✅ **owner ตอบ ก 2026-11-17** → OPS-26 (หัวข้อ "Follow-up รอบ 32"); คำถามเดิม: (OPS-23 #371 — `docs/evidence/scale/OPS-23/REPORT.md` ข้อสรุป 1–3) server CPU เต็ม ~115% (100 = 1 core) ทุกค่า pool, Postgres ~28%, (d)/(e) ของ checkout ไม่ลดด้วย pool → คอขวดคือ CPU ของ server process เดียว;

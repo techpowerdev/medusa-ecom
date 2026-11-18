@@ -4,7 +4,11 @@
 `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12) · บันทึกประวัติของแต่ละรอบคงสัญลักษณ์ ณ วันที่บันทึก
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**ปิดรอบ 34 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-29 #396 + เอกสาร #395 (รอบ 34) ·
+**รอบ 35 (2026-11-18, เอกสารล้วน) — สถานะล่าสุด**: owner สั่งทำ ADM-22 2026-11-18 → qa ตรวจบน build production (develop `9cd0770d`, ไม่มี PR) **☑ ผลตรวจ** (`docs/evidence/admin-ui/ADM-22/REPORT.md`): เข้า spec 08 กฎ 26b — หน้า error ของ admin แสดง "Error Details (Development Mode)" + stack
+แต่สาเหตุระดับ build (`medusa build` ตั้ง `NODE_ENV=development` เองเมื่อไม่มีค่า → ฝังใน admin bundle ทุกหน้า) · **owner ตัดสินข้อ ก "แก้ที่การ build" 2026-11-18** → ADM-22 ไม่พักแล้ว, **ADM-22b ✕ ไม่เปิด** ·
+**owner สั่งทำ 2026-11-18 (☐ พร้อมเริ่มหลัง PR เอกสารรอบ 35 merge)**: OPS-27 (spec 07 หัวข้อ "Follow-up รอบ 35", AC-42 — `NODE_ENV=production` เฉพาะขั้น build ใน Dockerfile + CI + คำสั่ง prod-like ใน `CLAUDE.md`; ขั้นตรวจ bundle/image ใน CI; qa ซ้ำ AC-27 บน build ใหม่) ·
+**owner ตอบแล้ว 2026-11-18**: spec 07 Q-O6 = ก — `medusa build` โหลด `medusa-config.ts` ทำให้ guard (ADR-010/OPS-7/OPS-21) throw ใน stage build ของ Dockerfile ที่ไม่มี env → ก: placeholder inline เฉพาะบรรทัด build (ไม่มี `ALLOW_TEST_PROVIDERS`, ไม่แตะ guard/ADR) · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) ·
+(ประวัติ) **ปิดรอบ 34 (2026-11-18, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-29 #396 + เอกสาร #395 (รอบ 34) ·
 ผล ADM-29: test payout ใช้ tag ตัวอักษร + assert `count` = 1 ของผล `q` (red: tag ที่บังคับให้มี "249" ล้มใน 2.0s ที่ `count` = 250 ไม่ใช่ timeout; green `--repeat-each=20` 20/20; static ครอบ AC-12 ตัวแรก + payout) ·
 **พักไว้ (☐ — owner ยังไม่สั่งทำ)**: ADM-22 · ไม่มีคำถามค้างของ owner · ไม่มี task id ใหม่ · follow-up → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 34)" ท้ายไฟล์ ·
 (ประวัติ) **รอบ 34 (2026-11-18, เอกสารล้วน)**: owner ตัดสินข้อ ก (1)–(2) ของหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)" ครบ 2026-11-18 ·
@@ -321,6 +325,8 @@ OPS-5 🚀 #319 (index/migration + runbook backup/restore; AC-4)
 **OPS-24 ☑ #356** (ปิดรอบ 26, nit review #325: comment `export` ใน `docker-compose.prod.yml` + `.trim()` ของ env อีเมลแจ้งเตือนใน `checkBootEnv`; AC-39; ไม่บล็อก release) ·
 (รอบ 32) **OPS-26 ☑ #385** (owner สั่งทำ 2026-11-17; ผล: ไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 — `docs/evidence/scale/OPS-26/REPORT.md`) (Q-O5 = ก: input `server_processes` ของ load-nightly → `medusa start --cluster <n>` วัด 1 vs 2 process แบบ OPS-23; AC-41; ~40 LOC + REPORT ไม่แตะโค้ด app; ADR-024 เฉพาะเมื่อผลให้เปลี่ยนวิธี deploy prod; ไม่บล็อก release)
 (รอบ 30) **OPS-25 ☑ #366** (owner สั่งทำ 2026-11-13; comment ล้วน, nit review #354: เหตุผลเรื่อง `docs/ops/**` ใน `classify-changes.sh` + "35 เคส" ใน `ci.yml`; AC-40; ไม่บล็อก release)
+(รอบ 35) **OPS-27 ☐** (owner ข้อ ก "แก้ที่การ build" + สั่งทำ 2026-11-18 — ผล qa ADM-22: admin ถูก build แบบ development): `NODE_ENV=production` เฉพาะขั้น build ใน `apps/backend/Dockerfile` (+ placeholder ของ guard inline ตาม Q-O6 ก) และ step build ของ `storefront-e2e`,
+ขั้นตรวจ "Development Mode" ใน bundle/image ใน CI, คำสั่ง prod-like ใน `CLAUDE.md` (owner อนุมัติ), static ใน `ci-workflow.unit.spec.ts`, qa ซ้ำ AC-27 ของ spec 08 บน build ใหม่ (AC-42; ~70 LOC + REPORT `docs/evidence/scale/OPS-27/`; Depends none — หลัง PR เอกสารรอบ 35 merge (Q-O6 = ก owner 2026-11-18); ไม่บล็อก release)
 
 hotfix/chore: #46 (test FS-4 × CORE-6), #52 (jest integration heap OOM), #59 (ลด CI ซ้ำซ้อน — ตัด push ไป develop)
 
@@ -349,7 +355,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | ADM-20 | (รอบ 27, qa ADM-M-10) `/app/group-buying` ตอน API ล้มแสดง `NoRecords` แทน empty state (กฎ 24; AC-24) | 🚀 #335 |
 | ADM-21a | (รอบ 27 follow-up → รอบ 28 owner "ทำ") สถานะ error แทน empty ของตาราง e-voucher: pools, codes, partners (กฎ 25; AC-25) | ☑ #361 (owner สั่งทำ 2026-11-13) |
 | ADM-21b | (รอบ 27 follow-up → รอบ 28 owner "ทำ") สถานะ error แทน empty ของตาราง affiliate ทุกแท็บ + group buy groups/members (กฎ 25; AC-26) | ☑ #362 (owner สั่งทำ 2026-11-13) |
-| ADM-22 | (รอบ 27 follow-up → รอบ 28 owner "ยืนยันก่อน") qa ตรวจ stack trace ของ loader หน้า pool บน build production — ไม่พบ → ✕ ไม่มีโค้ด; พบ → ADM-22b (กฎ 26; AC-27) | ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) |
+| ADM-22 | (รอบ 27 follow-up → รอบ 28 owner "ยืนยันก่อน") qa ตรวจ stack trace ของ loader หน้า pool บน build production — ไม่พบ → ✕ ไม่มีโค้ด; พบ → ADM-22b (กฎ 26; AC-27) | ☑ ผลตรวจ 2026-11-18 (owner สั่งทำ 2026-11-18; ไม่มี PR — `docs/evidence/admin-ui/ADM-22/REPORT.md`): พบ stack แต่สาเหตุระดับ build → owner แก้ที่ build = **OPS-27** (M7, spec 07 AC-42); ADM-22b ✕ ไม่เปิด |
 | ADM-23 | (รอบ 30, #359) partners ไม่กระพริบ "No partners on this page" ตอน clamp offset (helper กลางใน `lib/page-offset.ts`) + `PartnerActions` remount เมนู/Edit disabled ระหว่างลบ (กฎ 27; AC-28; ~90 LOC; ∥ ADM-24) | ☑ #373 (owner สั่งทำ 2026-11-13) |
 | ADM-24 | (รอบ 30, review #360) `status` หลายค่าใน `GET /admin/affiliate/affiliates` + combobox payout request เดียวเรียงชื่อข้ามหน้า + 401 ไป `/login` + comment `tiebreakById` (กฎ 28; AC-29; ~150 LOC) | ☑ #375 (owner สั่งทำ 2026-11-13) |
 | ADM-25 | (รอบ 30, qa/review #361/#362) สถานะ error ของกฎ 24/25: ซ่อนแถบแบ่งหน้า, หัวข้อ "Could not load ledger entries", e2e กฎ 24d อัตโนมัติ (กฎ 29; AC-30; ~220 LOC; ← ADM-23) | ☑ #381 (owner สั่งทำ 2026-11-13; หลัง ADM-23 #373) |
@@ -523,6 +529,11 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 - ปิดรอบ 34 (2026-11-18, เอกสารล้วน) → sync ☑ ADM-29 #396 ใน ROADMAP และ spec 08 (Status ต้นไฟล์ + Status หัวข้อ "Follow-up รอบ 34" → done พร้อมผลจาก `ADM-29-tests.txt`) · เอกสารที่ merge ในรอบ: #395 ·
   ROADMAP: แก้ `**` เกินในข้อ ก (1) ของหัวข้อ follow-up ปิดรอบ 33 (nit review #395) · follow-up ใหม่ → หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 34)" (ไม่เปิด task id ใหม่) ·
   เหลือ: ADM-22 พักไว้ · ไม่มี ADR ใหม่ · ไม่แตะ `docs/ops/**` และ `CLAUDE.md`
+- รอบ 35 (2026-11-18, เอกสารล้วน — ผล qa ADM-22 + คำตัดสินของ owner ข้อ ก "แก้ที่การ build") →
+  spec 08: Status ต้นไฟล์, Status หัวข้อ "Follow-up รอบ 28" (→ done), ผลใต้กฎ 26 และ AC-27 (เข้า 26b แต่สาเหตุระดับ build; AC-27b ไม่ใช้), แถว ADM-22 (☑ ผลตรวจ, ADM-22b ✕), แถว `ErrorBoundary` ในตาราง Medusa ของรอบ 28 — เพิ่มหมายเหตุลงวันที่ ไม่ลบเนื้อหาเดิม ·
+  spec 07: หัวข้อ "Follow-up รอบ 35" — ตารางที่ build backend (Dockerfile, `ci.yml`, `CLAUDE.md`; ทางผ่าน Dockerfile ไม่ต้องแก้; `docs/ops/**`/`release-gate.yml` ไม่มีคำสั่ง build), กฎ OPS-27 (a)–(e), AC-42 (a)–(d), test plan, task OPS-27, Q-O6;
+  แก้ข้อเท็จจริงของคำสั่งงาน: handler `build` อยู่ที่ `@medusajs/cli` `create-cli.js:540–541` (`:182` คือ `db:setup`) · พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard throw ใน stage build ที่ไม่มี env → กฎ (b) placeholder + Q-O6 ·
+  ROADMAP: บรรทัดสถานะ, แถว ADM-22, OPS-27 ใน M7 · ไม่มี ADR ใหม่ (ADR-024 ยังว่าง) · ไม่แตะ `docs/ops/**` และ `CLAUDE.md` (บรรทัดคำสั่ง prod-like → builder แก้ใน OPS-27 ตามที่ owner อนุมัติ)
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 34)
 ที่มา: review ของ #395–#396 (2026-11-18) — **ยังไม่เปิด task id** · ไม่มีข้อที่ต้องให้ owner ตัดสิน
@@ -533,6 +544,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 ### ค. ค้างจากรอบก่อน (ไม่มี task)
 - ก่อน go-live: Stripe live นิติบุคคลไทย + PromptPay (spec 06 Q1), ค่าส่งจริงแทน ฿10 placeholder (spec 01 Q-F1), smoke test บน production, วัด OPS-26 ซ้ำบน staging (spec 07) — ดูบรรทัด "ก่อนเปิดร้านจริง (go-live)" ด้านบน
 - ADM-22 พักไว้ (owner ยังไม่สั่งทำ) · กลุ่ม ข/ค/ง ของหัวข้อปิดรอบ 32 และ 30/31 ข้างล่างยังคงอยู่
+  — (รอบ 35, 2026-11-18) ADM-22 ไม่พักแล้ว: ☑ ผลตรวจ → OPS-27 (spec 07), ADM-22b ✕; กลุ่ม ข ข้างบนยังไม่มี task
 
 ## follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 33)
 ที่มา: review/qa/CI ของ #391–#393 (2026-11-17/18) — **ยังไม่เปิด task id** planner รอบถัดไปแปลงเป็น spec/task เมื่อ owner สั่ง · **[ถาม owner]** = ต้องให้ owner ตัดสินก่อน
