@@ -1,5 +1,5 @@
 # 08 Admin UI ใช้ component, hook และ utility ของ Medusa (ADM)
-Status: in-progress (รอบ 36 2026-11-18: follow-up ปิดรอบ 34/35 → ADM-30 (กฎ 34, AC-35 — static ของ e2e ที่ผ่านได้แม้ไม่มีสิ่งที่ตรวจ) ∥ ADM-31 (กฎ 35, AC-36 — `FocusModal.Title` ของ `@medusajs/ui` ในฟอร์ม `FocusModal` ทั้ง 5 จุด) ☐ รอ owner สั่งทำ — หัวข้อ "Follow-up รอบ 36"; รอบ 35 2026-11-18: ☑ ADM-22 ผลตรวจ (qa, ไม่มี PR — `docs/evidence/admin-ui/ADM-22/REPORT.md`) = เข้ากฎ 26b แต่สาเหตุระดับ build (`medusa build` ไม่ตั้ง `NODE_ENV` = admin แบบ development ทุกหน้า) → owner เลือกแก้ที่การ build → OPS-27 (spec 07 AC-42), ADM-22b ไม่เปิด (✕) — หมายเหตุใต้กฎ 26 และแถว ADM-22 ของหัวข้อ "Follow-up รอบ 28"; ปิดรอบ 34 2026-11-18: ☑ ADM-29 #396 — หัวข้อ "Follow-up รอบ 34" done; ADM-22 ยังพักไว้; รอบ 34 2026-11-18: owner สั่งเปิด ADM-29 (กฎ 33, AC-34 — tag ตัวอักษร + assert จำนวนผลใน test payout ตามกฎ 32f) — หัวข้อ "Follow-up รอบ 34"; กฎ 32f แก้ถ้อยคำ; ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
+Status: in-progress (รอบ 36 ส่วนที่ 2 2026-11-18: owner ตอบข้อ UX กลุ่ม ค ของ ROADMAP ปิดรอบ 30/31 = ข "ตรวจซ้ำบน develop แล้วเปิด task เฉพาะข้อที่ยังจริง" → ADM-32 (กฎ 36, AC-37 — error ของช่องจำนวนในฟอร์ม Create campaign อยู่ใต้ช่อง) ∥ ADM-33 (กฎ 37, AC-38 — เมนูต่อแถวใน `DataTable` ปิดด้วย Escape ครั้งเดียว) ☐ owner สั่งทำแล้ว (ทั้งคู่ ← ADM-31) — หัวข้อ "Follow-up รอบ 36 ส่วนที่ 2"; รอบ 36 2026-11-18: follow-up ปิดรอบ 34/35 → ADM-30 (กฎ 34, AC-35 — static ของ e2e ที่ผ่านได้แม้ไม่มีสิ่งที่ตรวจ) ∥ ADM-31 (กฎ 35, AC-36 — `FocusModal.Title` ของ `@medusajs/ui` ในฟอร์ม `FocusModal` ทั้ง 5 จุด) ☐ รอ owner สั่งทำ — หัวข้อ "Follow-up รอบ 36"; รอบ 35 2026-11-18: ☑ ADM-22 ผลตรวจ (qa, ไม่มี PR — `docs/evidence/admin-ui/ADM-22/REPORT.md`) = เข้ากฎ 26b แต่สาเหตุระดับ build (`medusa build` ไม่ตั้ง `NODE_ENV` = admin แบบ development ทุกหน้า) → owner เลือกแก้ที่การ build → OPS-27 (spec 07 AC-42), ADM-22b ไม่เปิด (✕) — หมายเหตุใต้กฎ 26 และแถว ADM-22 ของหัวข้อ "Follow-up รอบ 28"; ปิดรอบ 34 2026-11-18: ☑ ADM-29 #396 — หัวข้อ "Follow-up รอบ 34" done; ADM-22 ยังพักไว้; รอบ 34 2026-11-18: owner สั่งเปิด ADM-29 (กฎ 33, AC-34 — tag ตัวอักษร + assert จำนวนผลใน test payout ตามกฎ 32f) — หัวข้อ "Follow-up รอบ 34"; กฎ 32f แก้ถ้อยคำ; ปิดรอบ 33 2026-11-18: ☑ ADM-28 #393 — สาเหตุจริง: tag ตัวเลขของ test ชนคำค้น `q` ที่ Medusa แยกคำแล้ว AND (กฎ 32f บทเรียน); ADM-22 ยังพักไว้; รอบ 33 2026-11-17: owner สั่งเปิด ADM-28 (กฎ 32, AC-33 — หาสาเหตุ flaky AC-12 จาก trace) ☐ พร้อมเริ่ม — หัวข้อ "Follow-up รอบ 33"; ปิดรอบ 32 2026-11-17: ☑ ADM-27 #389 (sync สถานะเท่านั้น); ADM-22 ยังพักไว้; รอบ 32 2026-11-17: Q9 = ก → ADM-27 (กฎ 31, AC-32 — prompt ก่อนปิดฟอร์มที่ dirty), Q10 = ก (คงเดิม ไม่มี task) owner 2026-11-17 — หัวข้อ "Follow-up รอบ 32"; owner 2026-10-28 — ADR-018 accepted, Q1–Q6 ตัดสินแล้ว; รอบ 13 2026-11-03: เพิ่มขอบเขต ADM-5 (ตรวจ URL ของ partner — follow-up EV-14 #195) และ ADM-8a (nit AF-14 #187) ใน AC-8/AC-11;
 รอบ 23 2026-11-05: ADM-1/2a/2b/3/4/6 ☑ (ADM-3 #294, ADM-4 #296, ADM-6 #293 ผ่าน train #299), ADM-5/7/8a กำลังทำ; follow-up ของ qa/review #293/#294/#296 → ADM-10..13, กฎ 13–17, AC-14..17,
 ร่าง issue upstream ของ `DataTable` (หัวข้อ "Follow-up รอบ 23"), คำถาม Q7;
 2026-11-05 owner ตอบ Q7 = (ก): ปุ่มใน `action` ของ `DataTable` เป็นข้อยกเว้นที่สองของการหาด้วย testid — กฎ 7c, 18, ADM-13 ปลดล็อก, task ใหม่ ADM-14, AC-18;
@@ -850,6 +850,90 @@ none
 |---|---|---|---|---|---|---|---|
 | ADM-30 | (รอบ 36 — review #396, #388) static ของกฎ 33 ตัด comment ก่อน match + บังคับ `pathname` ใน predicate; static ของ spec 01 กฎข้อ 119c ตรวจ `finally` ของ AC-44 จริง; `new URL` ครั้งเดียวใน predicate (กฎ 34) | `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts`, `apps/storefront/e2e/affiliate-admin-forms.spec.ts`, `docs/evidence/admin-ui/ADM-30-tests.txt` | test-only ~50–80 LOC | 1280×800 | AC-35 | PR เอกสารรอบ 36 merge; ไม่บล็อก release | ∥ ADM-31, OPS-28, OPS-29 (ไม่มีไฟล์ร่วม) |
 | ADM-31 | (รอบ 36 — qa #399 O-1) `FocusModal.Title asChild` ห่อ heading ของฟอร์ม `FocusModal` 5 จุด + static + e2e accessible name/console (กฎ 35) | `src/admin/components/evoucher/partners-section.tsx`, `src/admin/components/affiliate/program-form.tsx`, `src/admin/components/affiliate/payout-form.tsx`, `src/admin/components/group-buy/create-campaign.tsx`, `src/admin/widgets/variant-evoucher-pool.tsx`, `src/admin/__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/admin-dialog-title.spec.ts` (ใหม่), `docs/evidence/admin-ui/ADM-31/REPORT.md` (qa — session หลัก commit) | ~20 LOC โค้ด + ~80 LOC test | 1280×800 | AC-36 | PR เอกสารรอบ 36 merge; ไม่บล็อก release | ∥ ADM-30, OPS-28, OPS-29 (ไม่มีไฟล์ร่วม) |
+
+## Follow-up รอบ 36 ส่วนที่ 2 (2026-11-18 — owner ตอบข้อ UX กลุ่ม ค = ข "ตรวจซ้ำบน develop แล้วเปิด task เฉพาะข้อที่ยังจริง")
+Status: accepted (☐ owner สั่งทำแล้ว 2026-11-18 ตามคำตอบ ข; ไม่บล็อก release) · Out of scope: ย้ายกฎข้าม field/ช่องบังคับว่างของฟอร์ม campaign (Name, End date, Team duration เมื่อ team/both, Percentage > 100) จาก toast ไปใต้ช่อง,
+parse ข้อความ 400 ของ backend เข้า field, ข้อความ 400 ของ `status` ที่มาจาก zod union (ปิด — ดู "ไม่เปิด task" ข้างล่าง), แก้/patch `@medusajs/ui`, เปิด issue upstream
+ที่มา: ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)" กลุ่ม ค — qa ตรวจซ้ำบน develop `8425a53f` (prod build, 2026-11-18): ข้อ 1 (ฟอร์ม campaign) และข้อ 3 (Escape 2 ครั้ง) **ยังจริง**; ข้อ 2 ปิด; ข้อ 4 → spec 01 CORE-65; ข้อ 5 ปิด
+- ข้อ 1: `max_total_orders` = `-1`/`1.5`/`0` → ไม่มี POST แต่ error เป็น toast ใต้ช่องไม่มี error (`aria-invalid="false"`; ค่า "e" ได้ error ใต้ช่องตามกฎ 19a); `target_value` `-3`, `discount_value` `-10` เป็น toast เช่นกัน;
+  `2147483648` → backend 400 (GB-17) toast ข้อความดิบ; `99999999999999999999` → toast สองท่อน — ต้นเหตุ: `lib/group-buy-form.ts:18` `numberText` ตรวจแค่ `BAD_NUMBER_INPUT`, `:72–80` `intOrNull` throw `FormError` ไม่ระบุ field, `:64` `FormField` มีแค่ `max_quantity`/`product`;
+  `components/group-buy/create-campaign.tsx:115–122` error อื่นไป toast, `:109` toast ข้อความ API
+- ข้อ 3: เปิดเมนูต่อแถว → Escape → เปิดเมนูแถวเดิม/แถวอื่นอีก (หรือ focus ปุ่ม + Enter) → Escape 1 ครั้งเมนูยังเปิดและ body `pointer-events: none` — 6/6 ที่ partners และ programs (`/app/products` ของ Medusa ปิดใน 1 ครั้ง);
+  ต้นเหตุ (ตรวจ source `@medusajs/ui` 4.2.8 แล้ว): `dist/esm/blocks/data-table/components/data-table-table.js:322–356` `renderAlignedCell` ห่อทุก cell ด้วย `TruncatedCell` (`Tooltip` ที่ `hidden` แต่ยัง mount)
+  เว้นแต่ `meta.___truncateTooltip === false` (`:327`); tooltip เปิดเมื่อ focus กลับมาที่ปุ่ม trigger แล้วรับ Escape แรก (ตรงกับ ADM-23 REPORT O-1 "`[data-radix-popper-content-wrapper]` ค้าง 1 ตัว");
+  option สาธารณะ `truncateTooltip` มีเฉพาะ `accessor` (`utils/create-data-table-column-helper.js:10–14`) ส่วน `display` ส่ง def ตรงให้ tanstack → ตั้งผ่าน `meta` (`DataTableTruncatableColumnDefMeta` ใน `types.d.ts:71–73`)
+
+### What Medusa already gives us (รอบ 36 ส่วนที่ 2)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| error ใต้ช่อง + `aria-invalid` | `Form`/`Form.Field`/`Form.Control`/`Form.ErrorMessage` ของ `@medusajs/dashboard/components` + `zodResolver` (ใช้อยู่แล้วใน `create-campaign.tsx`) | ใช้ตามเดิม — ย้ายเงื่อนไขรูปค่าเข้า `campaignFormSchema` อย่างเดียว ไม่สร้าง component |
+| เพดาน int4 | `INT4_MAX` ของเรา (`apps/backend/src/lib/int4.ts`, GB-17) | ใช้ค่าเดิม (admin import จาก `src/lib`/`src/modules` อยู่แล้ว เช่น `lib/affiliate-account.ts:2`) — ไม่ประกาศค่าใหม่ |
+| error ที่ไม่ผูกช่อง | `toast` ของ `@medusajs/ui` (แบบหน้าของ Medusa) | ใช้ตามเดิมสำหรับ 400 ที่ schema ไม่ครอบ |
+| ปิด tooltip ของ cell | `meta.___truncateTooltip: false` ของ `DataTable` `@medusajs/ui` 4.2.8 (opt-out ที่ Medusa ออกแบบไว้ "for cells that manage their own overflow" — `types.d.ts:63–69`) | ใช้ตามเดิมในคอลัมน์ actions — ไม่ patch library ไม่ห่อ column helper |
+| เมนูต่อแถว | `ActionMenu` ของ `@medusajs/dashboard/components` | ใช้ตามเดิม |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 36 ส่วนที่ 2)
+36. (ADM-32 — owner ข 2026-11-18; qa รอบ 36 ข้อ 1, เดิม qa #374 O-1) ฟอร์ม Create campaign แสดง error **รูปค่า**ของช่องตัวเลขใต้ช่อง:
+    (a) `campaignFormSchema` (`lib/group-buy-form.ts`): ช่องจำนวนเต็ม 7 ช่อง (`target_value`, `team_duration_hours`, `max_total_orders`, `max_units_per_person`, `max_people_per_group`, `pay_within_hours`, `max_quantity`)
+        เมื่อค่าไม่ว่าง ต้อง `Number.isInteger(n) && n > 0` (ไม่เช่นนั้นข้อความเดิม `wholeNumberMessage(label)`) และ `n ≤ INT4_MAX` จาก `src/lib/int4.ts`
+        (ไม่เช่นนั้น `` `${label} must be at most ${INT4_MAX}` ``); `BAD_NUMBER_INPUT` คงข้อความเดิม (กฎ 19a); ค่าว่างยังผ่าน schema — ช่องบังคับตัดสินใน `toCampaignBody` ตามเดิม;
+    (b) `discount_value` เมื่อไม่ว่างต้อง `> 0` (ทศนิยมได้) ไม่เช่นนั้น `DISCOUNT_VALUE_MESSAGE` ใต้ช่อง;
+    (c) แสดงด้วย `Form.ErrorMessage` ที่มีอยู่ (ช่องได้ `aria-invalid="true"` จาก `Form.Control`); testid: คง `gb-max-quantity-error`, `gb-max-total-orders-error` และเพิ่ม
+        `gb-target-value-error`, `gb-team-duration-hours-error`, `gb-max-units-per-person-error`, `gb-max-people-per-group-error`, `gb-pay-within-hours-error`, `gb-discount-value-error` ใน `ERROR_TESTIDS`;
+        error ใต้ช่องไม่ส่ง POST และไม่มี toast;
+    (d) `toCampaignBody` คงการตรวจเดิม (unit เดิมผ่านโดยไม่แก้ assertion); กฎข้าม field/ช่องบังคับว่างคงช่องทางเดิม (Out of scope);
+    (e) 400 จาก backend คง `toast.error(e.message)` ใน `onError` (`create-campaign.tsx:109`) — ไม่ parse ข้อความ backend;
+    (f) ไม่สร้าง component/hook ใหม่, ไม่แตะ backend (validator ของ GB-17 ครอบแล้ว), ไม่เปลี่ยน testid เดิม/label
+37. (ADM-33 — owner ข 2026-11-18; qa รอบ 36 ข้อ 3, เดิม ADM-23 REPORT O-1, ADM-8b) เมนู `ActionMenu` ในคอลัมน์ actions ของ `DataTable` ปิดด้วย Escape **ครั้งเดียว**ทุกครั้ง:
+    (a) คอลัมน์ `display` ที่ `id: "actions"` ทั้ง 5 ตาราง (ตรวจบน develop `8425a53f` — ทุก `ActionMenu` ใน `DataTable` ของเรา):
+        `components/evoucher/partners-section.tsx:203`, `components/evoucher/codes-table.tsx:127`, `components/affiliate/programs-table.tsx:96`, `components/affiliate/affiliates-table.tsx:122`, `components/affiliate/payouts-table.tsx:111`
+        ใส่ `meta: { ___truncateTooltip: false }` แบบ inline + comment อ้างกฎนี้ (ไม่สร้าง helper/wrapper; `ActionMenu` ใน `components/common/header.tsx:45` ไม่อยู่ใน `DataTable` — ไม่แตะ); คอลัมน์ accessor คง tooltip เดิม;
+    (b) หน้าตา/ตำแหน่งปุ่มเท่าเดิม; testid ของ trigger, กันกดซ้ำ, `cell` คงที่ข้าม render (กฎ 20a) และ remount เมนูระหว่างลบ (กฎ 27) คงเดิม;
+    (c) `closeRowMenu` (`apps/storefront/e2e/support/admin.ts:89–94`): หลังแก้ ถ้า e2e ของ AC-38(b) และ spec ที่เรียก `closeRowMenu` (`affiliate-admin-row-actions`, `affiliate-admin-affiliates`) ผ่าน `--repeat-each=10` ด้วย Escape ครั้งเดียว
+        → เปลี่ยนเป็นกด Escape ครั้งเดียวแล้ว `expect(page.getByRole("menu")).toHaveCount(0)` (ไม่วน `toPass`) และแก้ comment; ถ้าไม่ผ่าน → คง `toPass` และบันทึกสาเหตุที่เหลือ (เช่นจังหวะ animation ใน ADM-8b REPORT) ใน comment และ `ADM-33-tests.txt`;
+        ห้ามเพิ่ม `waitForTimeout`/timeout/`retries`/`skip`/`fixme`;
+    (d) `ActionMenu` ในคอลัมน์ของ `DataTable` ที่เพิ่มในอนาคตต้องมี meta นี้ (static ของ AC-38a บังคับ) — bump `@medusajs/ui` ต้องตรวจว่าชื่อ `___truncateTooltip` ยังใช้ได้ (e2e ของ AC-38b จะล้มถ้าไม่ได้)
+
+### Acceptance criteria (รอบ 36 ส่วนที่ 2)
+- AC-37 (ADM-32, กฎ 36)
+  (a) unit jest `src/admin/lib/__tests__/group-buy-form.unit.spec.ts` — **ล้มบน develop**: ทุกช่องของกฎ 36a ค่า `-1`, `1.5`, `0`, `2147483648`, `99999999999999999999` →
+      `campaignFormSchema.safeParse({ ...emptyCampaignForm(), [field]: v }, CAMPAIGN_PARSE_OPTIONS)` ไม่สำเร็จและมี issue ที่ `path` = `[field]` (สองค่าหลังข้อความมี `2147483647`);
+      `"1"`, `"2147483647"`, `""` → ไม่มี issue ที่ path นั้น; `discount_value` `-10`, `0` → issue ที่ `["discount_value"]`, `0.5` → ไม่มี; unit เดิมของ `toCampaignBody` ผ่านโดยไม่แก้ assertion;
+  (b) e2e test ใหม่ใน `e2e/group-buy-admin-form.spec.ts` (`evidenceTarget` `ADM-32`, 1280×800, `locale: "en-US"`, `timezoneId: "Asia/Bangkok"`) — **ล้มบน develop**: กรอกฟอร์มที่ถูกต้องครบ (helper เดิมของไฟล์) แล้วแทน `max_total_orders` ทีละค่าตาม (a) แล้วส่ง →
+      `gb-max-total-orders-error` visible, `gb-field-max_total_orders` มี `aria-invalid="true"`, `[data-sonner-toast]` count 0, POST `/admin/group-buy/campaigns` 0 ครั้ง (นับด้วย `page.on("request")`);
+      `target_value` `-3` → `gb-target-value-error`; `discount_value` `-10` → `gb-discount-value-error` (POST 0 ครั้งทุกกรณี); สุดท้าย `max_total_orders` = `2147483647` → POST 1 ครั้ง body `max_total_orders` = 2147483647 และ response 200 (ลบแคมเปญที่สร้างใน `finally` ตาม pattern เดิมของไฟล์);
+  (c) e2e: 400 ที่ schema ไม่ครอบยังเป็น toast — `page.route` ดัก `POST` `/admin/group-buy/campaigns` ตอบ 400 `{ type: "invalid_data", message: "<ข้อความของ test>" }` → `[data-sonner-toast]` ที่มีข้อความของ test = 1,
+      ใน dialog ไม่มี element ที่ testid ขึ้นต้น `gb-` และลงท้าย `-error` ที่ visible, `gb-campaign-create-submit` ยัง visible (modal ไม่ปิด);
+  (d) e2e admin เดิม (`group-buy-admin-form` test อื่น, `admin-form-discard-prompt`, `admin-dialog-title` ของ ADM-31) ผ่านโดยไม่แก้ assertion (CI `storefront-e2e`);
+  (e) qa REPORT `docs/evidence/admin-ui/ADM-32/REPORT.md`: error ใต้ช่องของ `max_total_orders` (`-1` และ `2147483648`) และ toast ของ 400 — screenshot ≤ 2
+- AC-38 (ADM-33, กฎ 37)
+  (a) static jest ใน `src/admin/__tests__/medusa-ui.unit.spec.ts` — **ล้มบน develop** (0/5): ทุกไฟล์ใต้ `src/admin/` (ไม่รวม `__tests__`) ทุก `.display({` ที่มี `id: "actions"` มี `___truncateTooltip: false` ใน object เดียวกัน
+      และจำนวนที่พบ ≥ 5 (กัน vacuous); self-check: object ตัวอย่างที่ไม่มี meta ไม่ผ่าน;
+  (b) e2e ใหม่ `e2e/admin-row-menu-escape.spec.ts` (`evidenceTarget` `ADM-33`, 1280×800, `locale: "en-US"`, `timezoneId: "Asia/Bangkok"`) — **ล้มบน develop**: ทั้ง 5 ตาราง (partners และ codes ของ e-voucher, programs/affiliates/payouts ของ affiliate)
+      สร้างข้อมูล ≥ 1 แถวผ่าน admin API; ขั้น: คลิก trigger (testid เดิมในแถว) → `getByRole("menu")` 1 → Escape → 0 → คลิก trigger เดิมอีกครั้ง → 1 → **Escape ครั้งเดียว** → `getByRole("menu")` 0 ภายใน 2s
+      และ `document.body.style.pointerEvents` ≠ `"none"`; และทางคีย์บอร์ด: `focus()` trigger + Enter → 1 → Escape ครั้งเดียว → 0; ขั้นที่ตรวจห้ามใช้ `toPass`/Escape ซ้ำ; ลบข้อมูลใน `finally` ด้วยการตรวจ `ok()` (กฎข้อ 119 ของ spec 01);
+  (c) `pnpm --filter storefront test:e2e e2e/admin-row-menu-escape.spec.ts --repeat-each=10` บน prod build (แบบ CI, `workers=1`) ผ่าน 10/10 และผลของกฎ 37c (`closeRowMenu` แบบครั้งเดียวผ่าน 10/10 หรือเหตุผลที่คงไว้) — แนบใน `docs/evidence/admin-ui/ADM-33-tests.txt`;
+  (d) e2e admin เดิมที่เปิดเมนูต่อแถว (`affiliate-admin-row-actions`, `affiliate-admin-affiliates`, `evoucher-admin-forms`, `evoucher-admin-pool-page`) ผ่าน (CI);
+  (e) qa REPORT `docs/evidence/admin-ui/ADM-33/REPORT.md`: ทำซ้ำขั้นของ qa รอบ 36 (6 ครั้งต่อตาราง partners/programs) → Escape ครั้งเดียวปิดทุกครั้ง; tooltip ของคอลัมน์ข้อความยาว (เช่นชื่อ partner) ยังขึ้นเมื่อ hover — screenshot ≤ 2
+
+### Test plan (รอบ 36 ส่วนที่ 2)
+| ชนิด | AC |
+|---|---|
+| unit (jest `src/admin`) + e2e admin + qa | AC-37 |
+| static (jest `src/admin/__tests__`) + e2e ใหม่ `--repeat-each=10` + e2e admin เดิมใน CI + qa | AC-38 |
+
+### Tasks (รอบ 36 ส่วนที่ 2)
+| Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
+|---|---|---|---|---|---|---|---|
+| ADM-32 | (owner ข 2026-11-18 — qa รอบ 36 ข้อ 1) ฟอร์ม Create campaign: เงื่อนไขจำนวนเต็ม > 0 และ ≤ `INT4_MAX` ของ 7 ช่อง + `discount_value` > 0 เข้า `campaignFormSchema` → error ใต้ช่อง; 400 อื่นคง toast (กฎ 36) | `apps/backend/src/admin/lib/group-buy-form.ts`, `apps/backend/src/admin/components/group-buy/create-campaign.tsx` (`ERROR_TESTIDS`), `apps/backend/src/admin/lib/__tests__/group-buy-form.unit.spec.ts`, `apps/storefront/e2e/group-buy-admin-form.spec.ts`, `docs/evidence/admin-ui/ADM-32/REPORT.md` (qa — session หลัก commit) | ~30 LOC โค้ด + ~120 LOC test | 1280×800 | AC-37 | PR เอกสารรอบ 36 ส่วนที่ 2 merge; **ADM-31 (#404) merge** (`create-campaign.tsx` ร่วม); ไม่บล็อก release | ∥ ADM-33, CORE-65 (ไม่มีไฟล์ร่วม); ADM-30 #402/OPS-28 #403 ไม่ชน |
+| ADM-33 | (owner ข 2026-11-18 — qa รอบ 36 ข้อ 3) `meta: { ___truncateTooltip: false }` ในคอลัมน์ actions 5 ตาราง + static + e2e Escape ครั้งเดียว + `closeRowMenu` ตามผลวัด (กฎ 37) | `apps/backend/src/admin/components/evoucher/partners-section.tsx`, `.../evoucher/codes-table.tsx`, `.../affiliate/programs-table.tsx`, `.../affiliate/affiliates-table.tsx`, `.../affiliate/payouts-table.tsx`, `apps/backend/src/admin/__tests__/medusa-ui.unit.spec.ts`, `apps/storefront/e2e/admin-row-menu-escape.spec.ts` (ใหม่), `apps/storefront/e2e/support/admin.ts`, `docs/evidence/admin-ui/ADM-33-tests.txt`, `docs/evidence/admin-ui/ADM-33/REPORT.md` (qa — session หลัก commit) | ~10 LOC โค้ด + ~150 LOC test | 1280×800 | AC-38 | PR เอกสารรอบ 36 ส่วนที่ 2 merge; **ADM-31 (#404) merge** (`partners-section.tsx`, `medusa-ui.unit.spec.ts` ร่วม); ไม่บล็อก release | ∥ ADM-32, CORE-65 (ไม่มีไฟล์ร่วม); ADM-30 #402/OPS-28 #403 ไม่ชน |
+
+### ไม่เปิด task (รอบ 36 ส่วนที่ 2)
+- (qa รอบ 36 ข้อ 2, เดิม qa #375) ข้อความ 400 ของ `status` ที่มาจาก zod union อ่านยาก — จริงที่ API แต่ UI ของเราส่งค่าที่ผิดไม่ได้ (เลือกจากรายการ) และ `/admin/products` ของ Medusa ให้ข้อความรูปเดียวกันทุกตัวอักษร (พฤติกรรม upstream) → ปิด ไม่มี task
+- (qa รอบ 36 ข้อ 5) `data-value` ของยอดใน `cart-totals` เป็น float ดิบ → ยอมรับแล้วใน spec 01 หัวข้อ "Follow-up รอบ 30" (ค่าดิบตามกฎข้อ 115a, test เทียบ ±0.01) → ปิด ไม่มี task
 
 ## Open questions
 - ~~Q8~~ ตัดสินแล้ว (owner 2026-11-09): **(ก)** เพิ่มข้อ "ลดเกณฑ์ AC-15 กลับเป็น ≤ 2 ถ้า upstream แก้" ใน checklist bump `@medusajs/*` ของ spec 07 (ข้อ 9) — ไม่เปิด task
