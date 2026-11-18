@@ -1131,14 +1131,19 @@ none
     (b) tooltip "ชื่อ อีเมล" ของ `TruncatedCell` มาจาก `AffiliateCell` เดิม (กฎ 41b) — **ไม่แก้ `AffiliateCell`**; ถ้า (a) กับ tooltip จริงพร้อมกันไม่ได้ → **หยุดและรายงาน planner** (ไม่สร้าง component, ไม่ใช้ `title`, ไม่ patch library);
     (c) คอลัมน์สุดท้าย `status` ("Status") `size: undefined` (คอลัมน์ auto รับความกว้างส่วนเกิน — แบบกฎ 41c, Q12 = ก) + comment อ้างกฎนี้;
     (d) ห่อ `AffiliateListTable` ของ `LedgerTable` ด้วย `<div data-testid="affiliate-ledger-table">` (แบบอีก 3 ตาราง — กฎ 39d) ให้ e2e หาแถวภายในตาราง — เพิ่ม testid ใหม่เท่านั้น ไม่เปลี่ยน testid เดิม (`affiliate-row-affiliate`, `affiliate-list-error`, `affiliate-admin-tab-ledger`);
+        ไม่ใช้ `getByRole("tabpanel")` แทน เพราะ (1) สม่ำเสมอกับอีก 3 ตารางที่ e2e หาด้วย wrapper testid (`affiliate-programs-table`/`-affiliates-`/`-payouts-`)
+        และ (2) Radix Tabs (`@radix-ui/react-tabs` 1.1.2 `dist/index.mjs:161–172`) render `role="tabpanel"` ครบทุกแท็บ (แท็บที่ไม่ active เป็น `hidden` และไม่มีลูก)
+        locator `tabpanel` ที่ resolve ก่อนแท็บ Ledger active จะชี้ panel ของ Programs (แท็บเริ่มต้น) — ไม่ผูกกับตาราง Ledger;
     (e) คงเดิม: `useDate`/`getLocaleAmount`/`Badge`, ไม่สร้าง component/helper ใหม่ (column option inline แบบ payouts);
     (f) (nit review #418 — test/comment-only) `tag()` ของ `admin-table-long-text.spec.ts` รับ prefix ต่อ task: ข้อมูลของ ADM-35 คง `adm35-`, describe ADM-37 ใช้ `adm37-`, describe ADM-38 ใช้ `adm38-`;
+        helper `createLongAffiliate` และ `longEmail` (ตอนนี้อยู่ใน describe ของ ADM-37 `admin-table-long-text.spec.ts:241–252` ฝัง prefix `a37-`/`adm37`) ย้ายขึ้นระดับไฟล์และรับ prefix ต่อ task เช่นเดียวกัน
+        (ADM-37 คง `a37-`/`adm37`, ADM-38 ใช้ `a38-`/`adm38`) — ADM-37 ยังผ่านโดยไม่แก้ assertion;
         comment ที่ `payouts-table.tsx:137–139` แยก AF-14 (ตำแหน่งคอลัมน์ถัดจากปุ่ม) กับกฎ 41a (ความกว้าง/tooltip) ให้อ่านแยกกันได้ — ไม่เปลี่ยนโค้ด; comment กฎ 41c ที่ซ้ำ 3 ไฟล์คงไว้ (reviewer #418 ยอมรับ)
 
 ### Acceptance criteria (รอบ 39)
 - AC-43 (ADM-38, กฎ 42)
-  (a) e2e ใน `e2e/admin-table-long-text.spec.ts` — `test.describe` ใหม่ที่ `test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-38" } })` (`locale: "en-US"`, `timezoneId: "Asia/Bangkok"` จาก `ADMIN_UI_OPTIONS`) — **ล้มบน develop**:
-      ข้อมูล: affiliate ชื่อ 370 ตัวอักษร (`longName`) + อีเมล ≥ 80 ตัวอักษร (helper `createLongAffiliate` เดิม) และ entry approved 1 แถว `order_id` สั้นไม่ซ้ำต่อ run (`insertApprovedEntry` แก้ให้คืน id ของ entry — ผู้เรียกเดิมไม่ต้องแก้;
+  (a) e2e ใน `e2e/admin-table-long-text.spec.ts` — `test.describe` ใหม่ที่ `test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-38" } })` (`locale: "en-US"`, `timezoneId: "Asia/Bangkok"` จาก `ADMIN_UI_OPTIONS`) — **ล้มบน develop + เฉพาะ (d)** (wrapper testid ยังไม่มีบน develop — ดู red ขั้น (1) ข้างล่าง):
+      ข้อมูล: affiliate ชื่อ 370 ตัวอักษร (`longName`) + อีเมล ≥ 80 ตัวอักษร (helper `createLongAffiliate` ที่ย้ายขึ้นระดับไฟล์และรับ prefix `adm38` ตามกฎ 42f) และ entry approved 1 แถว `order_id` สั้นไม่ซ้ำต่อ run (`insertApprovedEntry` แก้ให้คืน id ของ entry — ผู้เรียกเดิมไม่ต้องแก้;
       `program_id` = โปรแกรม draft จาก `createDraftProgram` ที่ลบใน `finally` ด้วยการตรวจ `ok()`; entry/affiliate ไม่มี API ลบ — คงไว้แบบ e2e AF-14/ADM-8a เดิม) →
       เปิดหน้าด้วย `pageOffsetOf` (`/admin/affiliate/entries`, key `entries`, ลำดับเริ่มต้นของ API) + `?ledger_offset=` แล้วคลิก `affiliate-admin-tab-ledger`; หาแถวภายใน `affiliate-ledger-table` ด้วย `order_id`;
       **ไม่ขึ้นกับข้อมูลใน DB**: เลื่อนแนวตั้งก่อนด้วย td แรกของแถว `scrollIntoView({ block: "center", inline: "start" })` (qa #416 D-1) แล้วจึงตรวจแนวนอน; ไม่ใช้ `scrollIntoViewIfNeeded` ของ cell ท้าย; เส้นทางเมาส์ไม่ผ่าน sidebar (hover ตรงไปที่ cell — qa #416 O-5);
@@ -1146,7 +1151,12 @@ none
            `scrollLeft` ของกล่องเลื่อนของตาราง = 0 และ `x + width` ของ td Status ≤ 1280; hover `.truncate` ของ cell Affiliate → `getByRole("tooltip").filter({ hasText: ชื่อ })` visible และ `` toHaveText(`${ชื่อ} ${อีเมล}`) ``;
       (a2) 1920×1080: ข้อมูลชุดเดียวกัน (สร้างใหม่ใน test นั้น) → เนื้อหา cell Affiliate ≤ 250.5px และถูกตัดจริง, td Status `toBeInViewport()`, `scrollLeft` = 0;
       ใช้ helper เดิมของไฟล์ (`cellMetrics`, `tableScrollLeft`, `openTableAt` — ปรับ type `Table` ให้ `trigger` เป็น optional ได้) ห้ามเพิ่ม `waitForTimeout`/timeout/`retries`/`skip`/`fixme`;
-      red→green ต้องแนบ: (1) develop ล้มทั้ง a1/a2 ที่เนื้อหา cell Affiliate (~2580px); (2) หลังใส่ (a) อย่างเดียวที่ 1920 — บันทึกความกว้างเนื้อหา cell Affiliate ก่อนใส่ (c) (คาดว่าเกิน 250 เพราะ Chrome แจกส่วนเกินตามสัดส่วน — ถ้าไม่เกินให้บันทึกตัวเลขและเหตุผล); (3) green;
+      red→green ต้องแนบ 3 ขั้น (ไม่ vacuous):
+      (1) develop + **เฉพาะ (d)** wrapper testid → a1 และ a2 ล้มที่ `cellMetrics().content` ของ cell Affiliate > 250.5 (~2580px) — ที่ 1280 บันทึกด้วยว่า Status `toBeInViewport` หรือ `x + width` ≤ 1280 ล้ม;
+          **ห้ามล้มที่การหา locator หรือ timeout** (ถ้าล้มแบบนั้น = red ไม่นับ ให้แก้ test ก่อน);
+      (2) + (a) → บันทึกผลวัดที่ 1280 (เนื้อหา cell Affiliate, td Status อยู่ในจอหรือไม่, `x + width` ของ Status, `scrollLeft`) และที่ 1920 (เนื้อหา cell Affiliate ก่อนใส่ (c) —
+          คาดว่าเกิน 250 เพราะ Chrome แจกส่วนเกินตามสัดส่วน; ถ้าไม่เกินให้บันทึกตัวเลขและเหตุผล);
+      (3) + (c) → green;
   (b) `admin-table-long-text.spec.ts` ทั้งไฟล์ `--repeat-each=5` บน prod build (แบบ CI, `workers=1`) ผ่าน หลังแก้ `tag()` ตามกฎ 42f — แนบใน `docs/evidence/admin-ui/ADM-38-tests.txt` พร้อม red ของ (a);
   (c) e2e admin เดิมที่ใช้ตาราง Ledger (`affiliate-admin-names`, `affiliate-admin-tables`, กรณี ledger ของ `affiliate-admin-forms` (error state กฎ 29)) และผู้เรียก `insertApprovedEntry` อื่นผ่านโดยไม่แก้ assertion (CI `storefront-e2e`);
   (d) qa REPORT `docs/evidence/admin-ui/ADM-38/REPORT.md`: Ledger ชื่อ affiliate ยาวที่ 1280 (ถูกตัด, tooltip "ชื่อ อีเมล", เห็น Status โดยไม่เลื่อนแนวนอน) และที่ 1920 (คอลัมน์ Affiliate ≤ 250px, ส่วนเกินอยู่ท้ายตาราง);
@@ -1160,7 +1170,7 @@ none
 ### Tasks (รอบ 39)
 | Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
-| ADM-38 | (owner สั่งทำ 2026-11-19 ก "แก้แบบ ADM-37" — qa #418 O-2 + nit review #418) Ledger คอลัมน์ Affiliate `size`/`maxSize` 274 + คอลัมน์สุดท้าย Status `size: undefined` + wrapper testid `affiliate-ledger-table` + `tag()` prefix ต่อ task + แยก comment AF-14/กฎ 41a ใน payouts (กฎ 42); red→green: AC-43a ล้มบน develop (เนื้อหา cell Affiliate ~2580px ทั้ง 1280/1920); qa | `apps/backend/src/admin/routes/affiliate/page.tsx`, `apps/backend/src/admin/components/affiliate/payouts-table.tsx` (comment เท่านั้น), `apps/storefront/e2e/admin-table-long-text.spec.ts`, `apps/storefront/e2e/support/affiliate.ts` (`insertApprovedEntry` คืน id), `docs/evidence/admin-ui/ADM-38-tests.txt`, `docs/evidence/admin-ui/ADM-38/REPORT.md` (qa — session หลัก commit) | ~10 LOC โค้ด + ~90 LOC test | 1280×800, 1920×1080 | AC-43 | PR เอกสารรอบ 39 merge; ไม่บล็อก release | ไม่มี PR เปิด — ไม่ชน |
+| ADM-38 | (owner สั่งทำ 2026-11-19 ก "แก้แบบ ADM-37" — qa #418 O-2 + nit review #418) Ledger คอลัมน์ Affiliate `size`/`maxSize` 274 + คอลัมน์สุดท้าย Status `size: undefined` + wrapper testid `affiliate-ledger-table` + `tag()` prefix ต่อ task + แยก comment AF-14/กฎ 41a ใน payouts (กฎ 42); red→green 3 ขั้น: (1) develop + เฉพาะ wrapper (d) → AC-43a ล้มที่เนื้อหา cell Affiliate > 250.5 (~2580px) ทั้ง 1280/1920 (ห้ามล้มที่ locator/timeout), (2) + (a) บันทึกผลวัด 1280 (Status) และ 1920, (3) + (c) green; `createLongAffiliate`/`longEmail` ขึ้นระดับไฟล์รับ prefix ต่อ task; qa | `apps/backend/src/admin/routes/affiliate/page.tsx`, `apps/backend/src/admin/components/affiliate/payouts-table.tsx` (comment เท่านั้น), `apps/storefront/e2e/admin-table-long-text.spec.ts`, `apps/storefront/e2e/support/affiliate.ts` (`insertApprovedEntry` คืน id), `docs/evidence/admin-ui/ADM-38-tests.txt`, `docs/evidence/admin-ui/ADM-38/REPORT.md` (qa — session หลัก commit) | ~10 LOC โค้ด + ~90 LOC test | 1280×800, 1920×1080 | AC-43 | PR เอกสารรอบ 39 merge; ไม่บล็อก release | ไม่มี PR เปิด — ไม่ชน |
 
 ## Open questions
 - ~~**Q12**~~ **ตัดสินแล้ว (owner 2026-11-19 ก่อน ADM-37 เริ่ม) = (ก)** คอลัมน์สุดท้ายเป็น auto — ทำแล้วใน ADM-37 #418 (กฎ 41c) — คำถามเดิม:
