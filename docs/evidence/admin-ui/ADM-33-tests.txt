@@ -1,0 +1,83 @@
+# ADM-33 (spec 08 AC-38, กฎ 37) — meta ___truncateTooltip: false ในคอลัมน์ actions 5 ตาราง + Escape ครั้งเดียว
+# วันที่: 2026-11-18, node v22.23.3, base origin/develop 5229df55 (merge 3b8a3d0b ก่อน push)
+# backend prod build (NODE_ENV=production medusa build + medusa start จาก .medusa/server) :9330, DB medusa_adm33, Redis db 12, CI=1 (workers=1), viewport 1280x800
+# red = server จาก worktree origin/develop (admin bundle เดิม) รัน test ชุดเดียวกัน; e2e admin ล้วน ไม่ได้ start storefront
+
+## 1. Red (โค้ด admin ของ develop)
+### AC-38a static: TEST_TYPE=unit jest src/admin/__tests__/medusa-ui.unit.spec.ts -t ADM-33 → ล้ม 5/5 (self-check + นับ ≥ 5 ผ่าน)
+    ✓ self-check: object ที่ไม่มี meta หรือ meta เป็น true ไม่ผ่าน, ที่มี ___truncateTooltip: false ผ่าน (1 ms)
+    ✓ พบคอลัมน์ actions อย่างน้อย 5 จุด (กัน vacuous)
+    ✕ components/affiliate/affiliates-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false } (1 ms)
+    ✕ components/affiliate/payouts-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✕ components/affiliate/programs-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false } (1 ms)
+    ✕ components/evoucher/codes-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✕ components/evoucher/partners-section.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+Tests:       5 failed, 214 skipped, 2 passed, 221 total
+
+### AC-38b e2e: playwright test e2e/admin-row-menu-escape.spec.ts → ล้ม 5/5 ที่ getByRole("menu") toHaveCount(0) หลัง Escape ครั้งเดียว
+### (4 ตาราง ค้างตอนเปิดแถวเดิมซ้ำ; partners ค้างตอนเปิดแถวที่สอง — สอดคล้องกับ qa รอบ 36 "แถวเดิม/แถวอื่น")
+  ✘  1 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว (4.6s)
+  ✘  2 [chromium] › e2e/admin-row-menu-escape.spec.ts:85:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว (3.6s)
+  ✘  3 [chromium] › e2e/admin-row-menu-escape.spec.ts:95:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว (3.4s)
+  ✘  4 [chromium] › e2e/admin-row-menu-escape.spec.ts:122:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว (3.7s)
+  ✘  5 [chromium] › e2e/admin-row-menu-escape.spec.ts:134:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว (3.6s)
+    Error: expect(locator).toHaveCount(expected) failed
+    Error: expect(locator).toHaveCount(expected) failed
+    Error: expect(locator).toHaveCount(expected) failed
+    Error: expect(locator).toHaveCount(expected) failed
+    Error: expect(locator).toHaveCount(expected) failed
+  5 failed
+
+### กฎ 37c: closeRowMenu แบบ Escape ครั้งเดียว บน develop → ล้ม 4/5 test (affiliate-admin-row-actions 3, affiliate-admin-affiliates 1)
+  ✘  1 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:43:5 › AC-43: approve ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน (6.6s)
+  ✓  2 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:166:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch (2.4s)
+  ✘  3 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:56:5 › AC-13: menuitem Approve กดซ้ำระหว่างรอ response → POST 1 ครั้ง และ badge เป็น active โดยไม่ reload (6.4s)
+  ✘  4 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:116:5 › AC-13: Cancel ของ payout กำลังส่ง → เปิดเมนูแถวเดียวกัน menuitem Mark paid disabled จนการยกเลิกจบ (6.6s)
+  ✘  5 [chromium] › e2e/affiliate-admin-row-actions.spec.ts:198:5 › AC-13: Delete โปรแกรม draft — คลิกซ้ำใน tick เดียวได้ prompt เดียว, ระหว่าง DELETE ค้าง Edit/Delete disabled, DELETE 1 ครั้ง (6.7s)
+    Error: expect(locator).toHaveCount(expected) failed
+    Error: expect(locator).toHaveCount(expected) failed
+    Error: expect(locator).toHaveCount(expected) failed
+    Error: expect(locator).toHaveCount(expected) failed
+  4 failed
+  1 passed (30.3s)
+
+## 2. Green
+### AC-38a static → 7 passed
+    ✓ self-check: object ที่ไม่มี meta หรือ meta เป็น true ไม่ผ่าน, ที่มี ___truncateTooltip: false ผ่าน (1 ms)
+    ✓ พบคอลัมน์ actions อย่างน้อย 5 จุด (กัน vacuous)
+    ✓ components/affiliate/affiliates-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✓ components/affiliate/payouts-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false } (1 ms)
+    ✓ components/affiliate/programs-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✓ components/evoucher/codes-table.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+    ✓ components/evoucher/partners-section.tsx: .display({ id: "actions" }) มี meta: { ___truncateTooltip: false }
+Tests:       214 skipped, 7 passed, 221 total
+
+### AC-38c: playwright test e2e/admin-row-menu-escape.spec.ts --repeat-each=10 (หลัง merge origin/develop)
+  10 [chromium] › e2e/admin-row-menu-escape.spec.ts:122:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว
+  10 [chromium] › e2e/admin-row-menu-escape.spec.ts:134:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว
+  10 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว
+  10 [chromium] › e2e/admin-row-menu-escape.spec.ts:85:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว
+  10 [chromium] › e2e/admin-row-menu-escape.spec.ts:95:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว
+  50 passed (2.9m)
+
+### กฎ 37c: closeRowMenu = waitMenuOpened + Escape ครั้งเดียว + toHaveCount(0) (ไม่วน toPass) --repeat-each=10
+### affiliate-admin-row-actions + affiliate-admin-affiliates (ก่อน merge):
+  50 passed (3.0m)
+### affiliate-admin-affiliates หลัง merge origin/develop:
+  20 passed (1.5m)
+
+### AC-38d e2e admin เดิม 1 รอบ: evoucher-admin-forms, evoucher-admin-pool-page, affiliate-admin-programs, affiliate-admin-payouts
+  26 passed (1.5m)
+
+## 3. สิ่งที่วัดระหว่างทำ (เหตุผลของ waitMenuOpened)
+- probe บน build ที่แก้แล้ว 12 รอบต่อแบบ: กด Escape ทันทีที่ role=menu โผล่ → ค้าง 4–7/12; รอ 50 ms → 0/12; รอ animation ของเมนูจบ (getAnimations().finished) → 0/12; รอ 2 rAF → 0/12
+  = Escape ที่มาก่อนเมนูพร้อม (< 1 frame) Radix ไม่รับ (คนกดไม่ทันขนาดนั้น) — แยกจากบั๊ก tooltip ที่ค้างแม้รอ 300 ms (qa รอบ 36 6/6)
+  → waitMenuOpened (support/admin.ts) รอ animation ของเมนูจบก่อน Escape (ไม่ใช่ waitForTimeout); ใช้ทั้งใน e2e ใหม่และ closeRowMenu
+- probe สลับแถวบน develop: [แถว0,0,1,0,0,1,1] partners .  .  X  X  .  X  . / affiliates X . X X . X . — หลังแก้ . ทั้งหมดทั้งสองตาราง (popper wrapper ค้าง 1 → 0)
+- หลังแก้ settled() ของ affiliate-admin-affiliates ล้ม 3–9/10 ด้วย AbortError: transition box-shadow (focus ring) ของปุ่ม Cancel ใน prompt
+  ถูกยกเลิกเมื่อ Radix คืน focus ซ้ำหลังเมนูปิด (focus จบใน dialog ที่ปุ่ม Cancel ตามเดิม — ผู้ใช้ไม่เห็นต่าง) → นับ animation ที่ถูกยกเลิกว่าจบ (.catch) แล้วผ่าน 10/10
+
+## 4. อื่นๆ (หลัง merge origin/develop)
+- backend test:unit: Tests: 1409 passed, 1409 total
+- storefront test:e2e:unit (playwright unit project): 120 passed (804ms)
+- pnpm lint: exit 0 (warning เดิม ไม่มีในไฟล์ที่แตะ); pnpm typecheck: exit 0
