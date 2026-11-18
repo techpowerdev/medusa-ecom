@@ -11,3 +11,7 @@ tools
 **/coverage
 **/test-results
 **/playwright-report
+# OPS-29 (spec 07 AC-44): Compiler ของ Medusa ไม่ข้าม __tests__ → ไฟล์ test ถูก compile เข้า image
+# ตัดที่ build context แทนการแก้ tsconfig.json (typecheck ใช้ไฟล์เดียวกัน)
+apps/backend/src/**/__tests__
+apps/backend/integration-tests

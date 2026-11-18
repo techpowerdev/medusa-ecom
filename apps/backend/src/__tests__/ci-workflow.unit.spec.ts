@@ -1,5 +1,5 @@
-import { execFileSync } from "child_process"
-import { mkdtempSync, readFileSync, rmSync } from "fs"
+import { execFileSync, spawnSync } from "child_process"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs"
 import os from "os"
 import path from "path"
 import { parse } from "yaml"
@@ -225,7 +225,8 @@ describe("OPS-27 build backend ด้วย NODE_ENV=production", () => {
   const runs = (name: string, pattern: RegExp) =>
     (stages[name] ?? []).filter((l) => /^RUN\s/.test(l) && pattern.test(l))
   const [buildRun] = runs("build", /pnpm --filter @dtc\/backend build/)
-  // คำ placeholder ประกอบจากส่วนย่อย: test นี้ถูก compile ลง /app ของ image และ CI ตรวจว่า /app ไม่มีคำนี้ (AC-42b)
+  // คำ placeholder ประกอบจากส่วนย่อย: CI ตรวจว่า /app ของ image ไม่มีคำนี้ (AC-42b) — หลัง OPS-29 ไฟล์ test ไม่เข้า image แล้ว
+  // แต่ .medusa/server ของ build ในเครื่อง/CI ยังมีไฟล์ test ที่ compile แล้ว จึงคงการประกอบคำไว้
   const PLACEHOLDER = ["build", "only"].join("-")
 
   it("Dockerfile stage build: บรรทัด RUN ที่ build backend ตั้ง NODE_ENV=production inline ก่อน pnpm", () => {
@@ -335,5 +336,76 @@ describe("OPS-28 ขั้นตรวจใน ci.yml ล้มเมื่อ 
 
   it("lint-typecheck: รัน tools/ci/assert-absent.test.sh", () => {
     expect(runIndex(stepsOf("lint-typecheck"), "tools/ci/assert-absent.test.sh")).toBeGreaterThanOrEqual(0)
+  })
+
+  // nit review #403: รันเนื้อ step จริงด้วย shell default ของ Actions (`bash -e`) — grep error (rc ≥ 2) ต้องล้ม ไม่นับเป็น 0
+  it("OPS-15: เนื้อ step ล้มเมื่อ grep คืน rc ≥ 2 หรือไม่มี log; log ว่างผ่าน; พบข้อความล้ม", () => {
+    const step = stepsOf("backend-suites").find((s) => /OPS-15/.test(s.name ?? ""))
+    expect(step?.shell).toBeUndefined()
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "ops29-ops15-"))
+    const runWith = (testLog: string) => {
+      const r = spawnSync("bash", ["-e", "-c", step?.run ?? "exit 1"], {
+        env: { ...process.env, TEST_LOG: testLog },
+        encoding: "utf8",
+      })
+      return { status: r.status, out: `${r.stdout}${r.stderr}` }
+    }
+    try {
+      const dir = path.join(tmp, "dir.log")
+      mkdirSync(dir) // grep -c กับ directory → rc 2
+      const empty = path.join(tmp, "empty.log")
+      writeFileSync(empty, "PASS a.spec.ts\n")
+      const bad = path.join(tmp, "bad.log")
+      // ข้อความที่นับอ่านจาก step (ห้ามเขียนตรงในโค้ด — test OPS-15 ตรวจว่ามีเฉพาะใน ci.yml)
+      const counted = /grep -c "([^"]+)"/.exec(step?.run ?? "")?.[1]
+      expect(counted).toBeDefined()
+      writeFileSync(bad, `${counted}\n`)
+
+      const grepError = runWith(dir)
+      expect(grepError.status).not.toBe(0)
+      expect(grepError.out).toContain("::error::")
+      const missing = runWith(path.join(tmp, "missing.log"))
+      expect(missing.status).not.toBe(0)
+      expect(missing.out).toContain("::error::")
+      expect(runWith(empty).status).toBe(0)
+      expect(runWith(bad).status).not.toBe(0)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+})
+
+// OPS-29 (AC-44a): Compiler ของ Medusa ไม่ข้าม `__tests__` → ไฟล์ test ถูก compile ลง .medusa/server แล้วเข้า image
+// แก้ที่ build context (.dockerignore) ไม่แตะ tsconfig.json (typecheck ใช้ร่วม) และ CI ตรวจ image แบบ fail-closed
+describe("OPS-29 image ไม่มีไฟล์ test ที่ compile แล้ว", () => {
+  const dockerignore = readFileSync(path.join(REPO_DIR, ".dockerignore"), "utf8")
+    .split("\n")
+    .map((l) => l.trim())
+  const imageStep = () => stepsOf("docker-worker-mode").find((s) => /medusa-ecom-backend:local/.test(s.run ?? ""))
+
+  it(".dockerignore ตัด __tests__ ใต้ apps/backend/src และ apps/backend/integration-tests ออกจาก build context", () => {
+    expect(dockerignore).toContain("apps/backend/src/**/__tests__")
+    expect(dockerignore).toContain("apps/backend/integration-tests")
+  })
+
+  it("tsconfig.json ของ backend: exclude ไม่มี __tests__/spec (typecheck ยังตรวจไฟล์ test)", () => {
+    const tsconfig = readFileSync(path.join(BACKEND_DIR, "tsconfig.json"), "utf8")
+    const exclude = /"exclude"\s*:\s*\[([^\]]*)\]/.exec(tsconfig)?.[1]
+    expect(exclude).toBeDefined()
+    expect(exclude).toMatch(/node_modules/)
+    expect(exclude).not.toMatch(/__tests__|spec/)
+  })
+
+  it("docker-worker-mode: step ตรวจ image ตรวจ __tests__/*.spec.js ใน /app (ยกเว้น node_modules) และยืนยันว่า /app/src/api, /app/src/modules มีอยู่", () => {
+    const run = imageStep()?.run ?? ""
+    expect(run).toMatch(/find \/app\b[^\n]*-path \/app\/node_modules -prune/)
+    expect(run).toMatch(/-name __tests__/)
+    expect(run).toMatch(/-name "\*\.spec\.js"/)
+    expect(run).toMatch(/test -d \/app\/src\/api\b/)
+    expect(run).toMatch(/test -d \/app\/src\/modules\b/)
+    // fail-closed: ผล find เก็บด้วย command substitution ตรงๆ (set -e ล้มเมื่อ find error) ไม่ผ่าน pipe ที่กลืน exit code
+    expect(run).toMatch(/set -eu/)
+    expect(run).toMatch(/=\$\(find \/app\b[^)|]*\)/)
+    expectUnconditional(imageStep())
   })
 })
