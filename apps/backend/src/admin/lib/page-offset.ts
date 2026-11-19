@@ -19,3 +19,8 @@ export const clampOffset = (offset: number, count: number, pageSize: number): nu
   }
   return offset >= count ? Math.floor((count - 1) / pageSize) * pageSize : offset
 }
+
+// ADM-23 (spec 08 กฎ 27a): มีแถว (count > 0) แต่หน้านี้ว่าง = offset เกินที่ usePageOffset กำลัง clamp
+// (รวม placeholder ระหว่างโหลดหน้าที่ clamp แล้ว) → ตารางแสดง loading แทน empty state ที่ไม่จริง; ยังไม่มี data = false
+export const isPastLastPage = (count: number | undefined, rows: number | undefined): boolean =>
+  !!count && count > 0 && rows === 0

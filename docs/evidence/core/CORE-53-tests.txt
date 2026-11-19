@@ -1,0 +1,53 @@
+CORE-53 (spec 01 กฎข้อ 111, AC-148) — e2e test hygiene: setsTimeout จับ shorthand + ไม่ตัด /* ใน string, functionBody/ตัวตรวจ .ok() ของ core-4j ใช้ parser ของ typescript, ข้อความ cleanup core-4g, cleanup core-4j ใช้ expect.soft
+ฐาน: origin/develop 3c5fe4f4, Node v22.23.3, รันใน apps/storefront ด้วย npx (exit code อ่านจากคำสั่งโดยตรง ไม่ผ่าน pipe)
+
+=== RED 111a: npx playwright test --project=unit e2e/core-46-e2e-hygiene.unit.spec.ts (exit=1, เพิ่ม test ก่อนแก้โค้ด) ===
+  ✘   8 [unit] › AC-148 (กฎข้อ 111a): setsTimeout จับ shorthand และไม่ตัด /* ที่อยู่ใน string
+    Error: { timeout }  Expected: true  Received: false
+  1 failed / 14 passed
+
+=== RED 111b: npx playwright test --project=unit e2e/core-4j-e2e-hygiene.unit.spec.ts (exit=1, เพิ่ม test ก่อนแก้โค้ด) ===
+  ✘  2 [unit] › AC-148 (กฎข้อ 111b): functionBody หา body ได้แม้ function ไม่มี return type และมี `{`/`):` ใน parameter
+    Error: expect(received).toBe(expected)  - Expected - 4  + Received + 1   (functionBody เดิมคืน body ผิดเพราะอาศัย indexOf("):"))
+  ✘  3 [unit] › AC-148 (กฎข้อ 111b): positive control — .ok() ที่อยู่แค่ใน comment/string ไม่นับว่าตรวจแล้ว
+    ReferenceError: uncheckedDeletes is not defined   (ตัวตรวจเดิมเป็น regex บนข้อความ — `// expect(res.ok())` ใน comment ก็ match)
+  2 failed / 1 passed
+
+=== POSITIVE CONTROL บนไฟล์จริง: comment `expect(cleanup.ok())` ใน createExpiredPromotion ของ core-4g ชั่วคราว (exit=1, คืนไฟล์แล้ว) ===
+  ✘  1 [unit] › AC-111: createExpiredPromotion ตรวจ ok() ของการลบ campaign
+    - Expected - 1  + Received + 3   +   "cleanup.ok() ไม่ถูกตรวจ",
+  1 failed / 2 passed
+
+=== GREEN: npx playwright test --project=unit e2e/core-46-e2e-hygiene.unit.spec.ts e2e/core-4j-e2e-hygiene.unit.spec.ts (exit=0) ===
+  ✓   1 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:35:5 › AC-140: ทุกไฟล์ใน e2e/**/*.ts ไม่มี add-product-button click() ตามด้วย toBeEnabled() (ยกเว้น comment กฎข้อ 101a) (24ms)
+  ✓   2 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:49:5 › AC-140 (กฎข้อ 104a): checkoutToPayment ใส่ตะกร้าด้วย addToCartFromPdp (3ms)
+  ✓   3 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:55:5 › AC-140 (กฎข้อ 104b): comment เรื่อง timeout ใน server-action.ts อ้าง docs ของ playwright.dev (1ms)
+  ✓   4 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:59:5 › AC-140 (กฎข้อ 104c): core-19a และ core-24 ไม่อ่าน headers()["next-action"] เอง แต่ใช้ isAddToCartBody (1ms)
+  ✓   5 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:67:5 › AC-140 (กฎข้อ 104d): e2e ไม่มี admin/products?limit=1 และสามไฟล์ใช้ handle= พร้อม assert จำนวน 1 (12ms)
+  ✓   7 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:79:5 › AC-140/AC-144 (กฎข้อ 107b): playwright.config.ts ไม่ตั้ง timeout/expect.timeout/actionTimeout/navigationTimeout (1ms)
+  ✓   8 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:83:5 › AC-144 (กฎข้อ 107b): regex ของ config ตรวจเฉพาะการตั้งค่า — comment ที่มีคำว่า timeout ไม่ทำให้ล้ม (1ms)
+  ✓   6 [unit] › e2e/core-4j-e2e-hygiene.unit.spec.ts:55:5 › AC-111: createExpiredPromotion ตรวจ ok() ของการลบ campaign (22ms)
+  ✓   9 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:90:5 › AC-148 (กฎข้อ 111a): setsTimeout จับ shorthand และไม่ตัด /* ที่อยู่ใน string (1ms)
+  ✓  10 [unit] › e2e/core-4j-e2e-hygiene.unit.spec.ts:62:5 › AC-148 (กฎข้อ 111b): functionBody หา body ได้แม้ function ไม่มี return type และมี `{`/`):` ใน parameter (1ms)
+  ✓  11 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:102:5 › AC-140: ไฟล์ที่แตะไม่มี waitForTimeout / force (3ms)
+  ✓  12 [unit] › e2e/core-4j-e2e-hygiene.unit.spec.ts:73:5 › AC-148 (กฎข้อ 111b): positive control — .ok() ที่อยู่แค่ใน comment/string ไม่นับว่าตรวจแล้ว (3ms)
+  ✓  13 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:118:5 › AC-144 (กฎข้อ 107e): core-25, core-26, fs19 รอ action ด้วย waitForServerAction(page, isAddToCartBody) ไม่อ่าน headers()["next-action"] เอง (1ms)
+  ✓  14 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:150:5 › AC-146 (กฎข้อ 109a): DESKTOP_BASELINE ค่าตาราง /cart อยู่ที่ support/cart-layout.ts ไฟล์เดียว และสองไฟล์ cart import จากที่นั่น (6ms)
+  ✓  15 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:159:5 › AC-146 (กฎข้อ 109b): ทุกการเรียก createActiveAffiliate มีอาร์กิวเมนต์ไม่เกิน 3 ตัว และตัวที่ 3 เป็น options object (9ms)
+  ✓  16 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:179:5 › AC-149 (กฎข้อ 112b): ตัวตรวจอาร์กิวเมนต์ createActiveAffiliate ปฏิเสธตัวที่ 4 แม้ตัวสุดท้ายเป็น object (0ms)
+  ✓  17 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:185:5 › AC-149 (กฎข้อ 112a): longCodeBody throw เมื่อหา longCode ไม่เจอ ไม่ผ่านเงียบ (1ms)
+  ✓  18 [unit] › e2e/core-46-e2e-hygiene.unit.spec.ts:191:5 › AC-146 (กฎข้อ 109c,d): longCode ไม่สุ่มตัวอักษร รูปแบบรหัสคงที่ และ describe ของ AC-52 ตั้ง evidenceTarget เป็น AF-20 (1ms)
+  18 passed (705ms)
+
+=== Playwright project unit ทั้งหมด (exit=0) ===
+  108 passed (1.0s)
+
+=== grep (AC-148) ===
+apps/storefront/e2e/core-4g-checkout-polish.spec.ts:66:      `ลบ campaign หลังสร้าง promotion ไม่สำเร็จ: ${cleanup.status()} (create promotion: ${await promotion.text()})`
+apps/storefront/e2e/core-4j-checkout-discount-address.spec.ts:70:    expect.soft(res.ok(), `ลบ promotion ของ test: ${res.status()}`).toBe(true)
+
+=== pnpm lint && pnpm typecheck (exit=0; lint 0 errors, warning เดิมไม่อยู่ในไฟล์ที่แตะ) ===
+
+=== e2e core-4g-*, core-4j-* (chromium) ===
+ไม่ได้รันในเครื่อง (ต้องใช้ backend + storefront + seed) — การเปลี่ยนเป็นข้อความ assert และ expect → expect.soft ใน cleanup เท่านั้น
+ให้ job storefront-e2e ของ CI เป็นหลักฐาน

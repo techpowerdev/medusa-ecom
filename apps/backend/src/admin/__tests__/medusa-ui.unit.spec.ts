@@ -412,11 +412,19 @@ describe("ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, �
     expect(src).not.toMatch(/\bCheckbox\b/)
   })
 
-  it("ตัวเลือก affiliate เป็น Combobox ที่ดึงครบทุกหน้า (กฎ 11)", () => {
+  it("ตัวเลือก affiliate เป็น Combobox + useComboboxData ค้นด้วย q ทีละหน้า และแสดง error ใต้ช่อง (กฎ 11, 21)", () => {
     const src = read("components/affiliate/payout-form.tsx")
     expect(importsFrom(src, "Combobox", "@medusajs/dashboard/components")).toBe(true)
+    expect(importsFrom(src, "useComboboxData", "@medusajs/dashboard/hooks")).toBe(true)
     expect(src).not.toMatch(/<Select\b/)
-    expect(src).toMatch(/fetchAllAffiliates\(/)
+    expect(src).not.toMatch(/fetchAllAffiliates|useQuery\(/)
+    for (const prop of ["searchValue", "onSearchValueChange", "fetchNextPage", "isFetchingNextPage"]) {
+      expect(src).toMatch(new RegExp(`\\b${prop}=\\{`))
+    }
+    expect(src).toMatch(/selectedValue:/)
+    expect(src).toMatch(/isError/)
+    expect(src).toMatch(/data-testid="affiliate-payout-options-error"/)
+    expect(read("lib/affiliate-payout.ts")).not.toMatch(/fetchAllAffiliates/)
     expect(read("lib/affiliate.ts")).not.toMatch(/limit:\s*200/)
   })
 
@@ -656,5 +664,414 @@ describe("ปุ่มสร้างของ Partners/Programs/Payouts อย�
     expect(read(PROGRAMS)).toMatch(/setModal\(\(\w+\) => \w+ \?\? \{ program: null,/)
     expect(read(PAYOUTS)).toMatch(/setCreating\(\(\w+\) => \w+ \?\? Date\.now\(\)\)/)
     expect(read(PARTNERS)).toMatch(/const openCreate = \(\) => \{\s*if \(createOpen\) return/)
+  })
+})
+
+// ADM-16 (spec 08 กฎ 20, AC-20): ตาราง e-voucher — `cell` ของปุ่มต่อแถวคงที่ข้าม render (ต้นแบบ programs-table.tsx),
+// empty state ไม่กระพริบระหว่าง offset เกินยังไม่ถูก clamp และ static ของ AC-14
+describe("ตาราง e-voucher: คอลัมน์ action คงที่ + offset (spec 08 AC-20, กฎ 20, ADM-16)", () => {
+  const ROW_ACTIONS: [string, string][] = [
+    ["components/evoucher/codes-table.tsx", "CodesTable"],
+    ["components/evoucher/partners-section.tsx", "PartnersSection"],
+  ]
+
+  it.each(ROW_ACTIONS)("%s: actionsColumn memo แยกที่ deps ไม่มี prompt/getFullDate และ columns ใช้ actionsColumn", (file) => {
+    const src = read(file)
+    const start = src.indexOf("const actionsColumn = useMemo(")
+    expect(start).toBeGreaterThan(-1)
+    const deps = src.slice(start).match(/\n {4}\[([^\]]*)\],?\n {2}\)/)
+    expect(deps).not.toBeNull()
+    expect(deps![1]).not.toMatch(/\b(prompt|getFullDate)\b/)
+    const columns = src.slice(src.indexOf("const columns = useMemo("))
+    expect(src).toContain("const columns = useMemo(")
+    expect(columns).toMatch(/^\s+actionsColumn,$/m)
+  })
+
+  it.each(ROW_ACTIONS)("%s: usePrompt อยู่เฉพาะใน component ต่อแถว ไม่อยู่ใน %s", (file, main) => {
+    const src = read(file)
+    const mainStart = src.indexOf(`export const ${main} = `)
+    expect(mainStart).toBeGreaterThan(-1)
+    expect(src.slice(mainStart)).not.toMatch(/\busePrompt\(/)
+    expect(src.slice(0, mainStart)).toMatch(/\n(?:export )?const \w+Actions = [^]*?\busePrompt\(\)/)
+  })
+
+  it("use-page-offset.ts แก้ URL แบบ replace: true และ codes-table.tsx reset ด้วย resetOn: status (AC-14)", () => {
+    expect(read("components/common/use-page-offset.ts")).toMatch(/\{\s*replace:\s*true\s*\}/)
+    expect(read("components/evoucher/codes-table.tsx")).toMatch(/usePageOffset\(PREFIX, PAGE_SIZE, \{[^}]*\bresetOn:\s*status\b/)
+  })
+
+  it("codes-table.tsx: หน้าที่เกินจำนวนแถว (count > 0 แต่ไม่มีแถว) แสดง loading ไม่ใช่ empty state", () => {
+    const src = read("components/evoucher/codes-table.tsx")
+    expect(src).not.toMatch(/isLoading=\{isLoading\}/)
+    expect(src).toMatch(/isLoading=\{isLoading \|\| pastLastPage\}/)
+  })
+})
+
+// ADM-23 (spec 08 กฎ 27, AC-28): เงื่อนไข "offset เกินกำลัง clamp" เป็น helper กลางใน lib/page-offset (codes + partners)
+// และ PartnerActions remount เมนูก่อนเปิด Drawer แบบ ProgramActions + Edit disabled ระหว่างลบ
+describe("partners: clamp ไม่กระพริบ + PartnerActions แบบ ProgramActions (spec 08 AC-28, กฎ 27, ADM-23)", () => {
+  const PARTNERS = "components/evoucher/partners-section.tsx"
+
+  it.each(["components/evoucher/codes-table.tsx", PARTNERS])("%s: ใช้ isPastLastPage ของ lib/page-offset และแสดง loading", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ isPastLastPage \} from "\.\.\/\.\.\/lib\/page-offset"/)
+    expect(src).toMatch(/const pastLastPage = isPastLastPage\(/)
+    expect(src).toMatch(/isLoading=\{isLoading \|\| pastLastPage\}/)
+  })
+
+  it("partners-section.tsx ไม่มี branch \"No partners on this page\"", () => {
+    expect(read(PARTNERS)).not.toContain("No partners on this page")
+  })
+
+  it("PartnerActions: ActionMenu key={menuKey}, remountMenu() ก่อน onEdit และ Edit disabled: removing", () => {
+    const src = read(PARTNERS)
+    expect(src).toMatch(/<ActionMenu\s+key=\{menuKey\}/)
+    expect(src).toMatch(/const \[menuKey, remountMenu\] = useReducer\(/)
+    expect(src).toMatch(/label: "Edit",[^}]*disabled: removing,[^}]*onClick: \(\) => \{\s*remountMenu\(\)\s*onEdit\(partner\)/)
+  })
+})
+
+// ADM-21a (spec 08 กฎ 25, AC-25): ตาราง e-voucher เมื่อ query รายการล้มและไม่มีข้อมูลในมือ → error ผ่าน emptyState ของ DataTable
+// (คงหัวตาราง/ปุ่มใน action) แทนข้อความ empty เดิม; 401 → throw ให้ ErrorBoundary ของ dashboard พาไป /login (กฎ 24b)
+describe("ตาราง e-voucher: สถานะ error แทน empty (spec 08 AC-25, กฎ 25, ADM-21a)", () => {
+  const ERROR_TABLES: [string, string, string][] = [
+    ["components/evoucher/pools-table.tsx", "evoucher-pools-error", "Could not load voucher pools"],
+    ["components/evoucher/codes-table.tsx", "evoucher-codes-error", "Could not load codes"],
+    ["components/evoucher/partners-section.tsx", "evoucher-partners-error", "Could not load partners"],
+  ]
+
+  it.each(ERROR_TABLES)("%s: isError && !data → %s และ heading error อยู่ใน emptyState ของ DataTable", (file, testId, heading) => {
+    const src = read(file)
+    expect(src).toMatch(/const loadFailed = isError && !data\b/)
+    // prop emptyState ของ <DataTable ... /> (ตั้งแต่ emptyState= จนปิด tag)
+    const emptyState = src.match(/<DataTable\b[\s\S]*?emptyState=([\s\S]*?)\/>/)?.[1] ?? ""
+    expect(emptyState).toMatch(new RegExp(`loadFailed\\s*\\?\\s*\\{ heading: "${heading}", description: error\\?\\.message \\}`))
+    expect(src).toContain(`data-testid={loadFailed ? "${testId}" : undefined}`)
+  })
+
+  it("codes-table.tsx: มี filter ใน URL (emptyState.filtered) ล้มแล้วแสดง error ด้วย", () => {
+    const src = read("components/evoucher/codes-table.tsx")
+    expect(src).toMatch(/filtered: loadFailed\s*\?\s*\{ heading: "Could not load codes", description: error\?\.message \}/)
+  })
+
+  it.each(ERROR_TABLES)("%s: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ isUnauthorized \} from "\.\.\/\.\.\/lib\/fetch-error"/)
+    expect(src).toMatch(/if \(isUnauthorized\(error\)\) \{\s*throw error\s*\}/)
+  })
+})
+
+// ADM-21b (spec 08 กฎ 25, AC-26): ตาราง affiliate (ทุกแท็บ) และ group buy groups/members เมื่อ query รายการล้มและไม่มีข้อมูลในมือ
+// → error ผ่าน emptyState ของ DataTable (คงหัวตาราง/ปุ่ม) แทนข้อความ empty เดิม; 401 → throw ให้ ErrorBoundary พาไป /login (กฎ 24b)
+describe("ตาราง affiliate / group buy: สถานะ error แทน empty (spec 08 AC-26, กฎ 25, ADM-21b)", () => {
+  // [ไฟล์, testid error, heading error (regex), tag ที่รับ emptyState]
+  const ERROR_TABLES: [string, string, string, string][] = [
+    // ADM-25 (กฎ 29b): ชื่อใน heading มาจาก LOAD_ERROR_NOUN (แท็บ Ledger = "ledger entries")
+    ["components/affiliate/list-table.tsx", "affiliate-list-error", "`Could not load \\$\\{LOAD_ERROR_NOUN\\[resource\\]\\}`", "DataTable"],
+    ["components/group-buy/groups-section.tsx", "gb-groups-error", '"Could not load groups"', "DataTable.Table"],
+    ["components/group-buy/group-members.tsx", "gb-memberships-error", '"Could not load members"', "DataTable.Table"],
+  ]
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+  it.each(ERROR_TABLES)("%s: isError && !data → %s และ heading error อยู่ใน emptyState", (file, testId, heading, tag) => {
+    const src = read(file)
+    expect(src).toMatch(/const loadFailed = isError && !data\b/)
+    // prop emptyState ของ <DataTable ... /> หรือ <DataTable.Table ... /> (ตั้งแต่ emptyState= จนปิด tag) — ไม่แทนตารางด้วย NoRecords
+    const emptyState = src.match(new RegExp(`<${escape(tag)}\\b[\\s\\S]*?emptyState=([\\s\\S]*?)\\/>`))?.[1] ?? ""
+    expect(emptyState).toMatch(
+      new RegExp(`empty:\\s*loadFailed\\s*\\?\\s*\\{\\s*heading:\\s*${heading},\\s*description:\\s*error\\?\\.message\\s*\\}`)
+    )
+    expect(src).toContain(`data-testid={loadFailed ? "${testId}" : undefined}`)
+    expect(src).not.toMatch(/\bNoRecords\b/)
+  })
+
+  it.each(ERROR_TABLES)("%s: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ isUnauthorized \} from "\.\.\/\.\.\/lib\/fetch-error"/)
+    expect(src).toMatch(/if \(isUnauthorized\(error\)\) \{\s*throw error\s*\}/)
+  })
+
+  it("useAffiliateList คืน loadFailed/error/resource ให้ AffiliateListTable (ผู้เรียก spread {...list})", () => {
+    const src = read("components/affiliate/list-table.tsx")
+    expect(src).toMatch(/const \{ data, isLoading, isError, error \} = useQuery\(/)
+    expect(src).toMatch(/return \{[^}]*\bloadFailed\b[^}]*\berror\b[^}]*\bresource\b[^}]*\}/)
+  })
+})
+
+// ADM-25 (spec 08 กฎ 29, AC-30): ตอน error (isError && !data) ไม่แสดงแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages")
+// — DataTable ของ dashboard ปิดด้วย enablePagination, DataTable ของ @medusajs/ui ไม่ render DataTable.Pagination
+describe("ตาราง admin: ซ่อนแถบแบ่งหน้าตอน error (spec 08 AC-30, กฎ 29, ADM-25)", () => {
+  const DASHBOARD_TABLES = [
+    "routes/group-buying/page.tsx",
+    "components/evoucher/pools-table.tsx",
+    "components/evoucher/codes-table.tsx",
+    "components/evoucher/partners-section.tsx",
+    "components/affiliate/list-table.tsx",
+  ]
+  const UI_TABLES = ["components/group-buy/groups-section.tsx", "components/group-buy/group-members.tsx"]
+
+  it.each(DASHBOARD_TABLES)("%s: <DataTable ... enablePagination={!loadFailed} />", (file) => {
+    const tag = read(file).match(/<DataTable\b[\s\S]*?\/>/)?.[0] ?? ""
+    expect(tag).toContain("enablePagination={!loadFailed}")
+  })
+
+  it.each(UI_TABLES)("%s: render DataTable.Pagination เฉพาะเมื่อไม่ error", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/\{!loadFailed && <DataTable\.Pagination \/>\}/)
+    expect(src.match(/<DataTable\.Pagination\b/g)).toHaveLength(1)
+  })
+
+  it("list-table.tsx: heading error ของแท็บ Ledger (resource entries) = \"Could not load ledger entries\" แท็บอื่นคงชื่อ resource", () => {
+    const src = read("components/affiliate/list-table.tsx")
+    expect(src).toMatch(
+      /const LOAD_ERROR_NOUN: Record<Resource, string> = \{\s*programs: "programs",\s*affiliates: "affiliates",\s*entries: "ledger entries",\s*payouts: "payouts",?\s*\}/
+    )
+  })
+
+  it("pools-table.tsx: comment กฎ 25 อยู่ติด div ที่ใส่ testid error (กฎ 29d)", () => {
+    expect(read("components/evoucher/pools-table.tsx")).toMatch(
+      /\/\/ กฎ 25: DataTable ไม่มี prop error[^\n]*\n\s*<div data-testid=\{loadFailed \? "evoucher-pools-error" : undefined\}>/
+    )
+  })
+})
+
+describe("Escape ขณะ Combobox ขยายไม่ปิด FocusModal ของฟอร์ม affiliate (spec 08 AC-31, กฎ 30c, ADM-26)", () => {
+  it.each(["components/affiliate/payout-form.tsx", "components/affiliate/program-form.tsx"])(
+    "%s: FocusModal.Content ใช้ onEscapeKeyDown={keepModalOpenWhileComboboxExpanded} จาก lib/combobox-escape",
+    (file) => {
+      const src = read(file)
+      expect(src).toMatch(/import \{ keepModalOpenWhileComboboxExpanded \} from "\.\.\/\.\.\/lib\/combobox-escape"/)
+      // ADM-34 (กฎ 38b): props อื่น (handler ของ useRestoreOpenerFocus) อยู่ร่วมได้ — onEscapeKeyDown เดิมต้องคงอยู่
+      expect(src).toMatch(/<FocusModal\.Content\b[^>]*\bonEscapeKeyDown=\{keepModalOpenWhileComboboxExpanded\}[^>]*>/)
+      // คงเงื่อนไขเดิม: ปิดระหว่างบันทึกไม่ได้ — ADM-27 ย้ายเงื่อนไขเข้า useConfirmDiscard (กฎ 31c)
+      expect(src).toMatch(/useConfirmDiscard\(\{ form, isPending: save\.isPending, onClose \}\)/)
+      expect(src).toContain("<FocusModal open onOpenChange={confirmClose}>")
+    }
+  )
+
+  it("lib/combobox-escape.ts ตรวจ aria-expanded ของ input combobox และ preventDefault เท่านั้น (ไม่ดัก keydown ระดับ window/document)", () => {
+    const src = read("lib/combobox-escape.ts")
+    expect(src).toContain('[role="combobox"][aria-expanded="true"]')
+    expect(src).toContain("event.preventDefault()")
+    expect(src).not.toMatch(/addEventListener|dispatchEvent|stopPropagation/)
+  })
+})
+
+describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก่อนปิดเมื่อ dirty (spec 08 AC-32, กฎ 31, ADM-27)", () => {
+  const FORMS = [
+    "widgets/variant-evoucher-pool.tsx",
+    "widgets/flash-sale-options.tsx",
+    "components/affiliate/payout-form.tsx",
+    "components/affiliate/program-form.tsx",
+    "components/affiliate/payout-info-drawer.tsx",
+    "components/group-buy/create-campaign.tsx",
+    "components/evoucher/partners-section.tsx",
+  ]
+
+  it.each(FORMS)("%s: import useConfirmDiscard จาก components/common และส่ง form (isDirty/isSubmitting) + onOpenChange={confirmClose}", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ useConfirmDiscard \} from "(\.\.\/common|\.\.\/components\/common)\/use-confirm-discard"/)
+    expect(src).toMatch(/useConfirmDiscard\(\{\s*form,/)
+    // ทุกทางปิด (Escape / close / Cancel ที่เป็น Drawer.Close / คลิกนอก) ผ่าน onOpenChange ตัวเดียว
+    expect(src).toMatch(/<(FocusModal|Drawer) open(=\{[^}]+\})? onOpenChange=\{confirmClose\}>/)
+    expect(src).not.toMatch(/onOpenChange=\{(setOpen|setCreateOpen)\}/)
+    expect(src).not.toMatch(/addEventListener\("keydown"|beforeunload|useBlocker/)
+  })
+
+  it("partners-section.tsx: modal สร้างและ Drawer แก้ใช้ handler เดียวกัน", () => {
+    expect(read("components/evoucher/partners-section.tsx").match(/onOpenChange=\{confirmClose\}/g)).toHaveLength(2)
+  })
+
+  it("hook ใช้ usePrompt ของ @medusajs/ui + ถ้อยคำของ dashboard, กันระหว่างบันทึกและ prompt ซ้อน", () => {
+    const src = read("components/common/use-confirm-discard.ts")
+    expect(src).toMatch(/import \{ usePrompt \} from "@medusajs\/ui"/)
+    expect(src).toContain('"Are you sure you want to leave this form?"')
+    expect(src).toContain('"You have unsaved changes that will be lost if you exit this form."')
+    // qa #389 D-1 (กฎ 31c): ช่วงหลังกด Save ก่อน isPending render ถือว่ากำลังบันทึก (isSubmitting ของ react-hook-form)
+    // และตัดสินใจหลัง event เดิมจบด้วยค่าล่าสุด (ref) ไม่ใช่ค่าใน closure ตอนกด
+    expect(src).toContain("form.formState.isSubmitting")
+    expect(src).toMatch(/const \{ busy, isDirty, onClose \} = latest\.current/)
+    expect(src).toMatch(/if \(busy\) return/)
+    // nit review #389: setTimeout มี cleanup ตอน unmount; prompt ไม่ซ้อนอาศัย dedupe ของ usePrompt (ไม่มี flag ซ้ำ)
+    expect(src).toMatch(/useEffect\(\(\) => \(\) => clearTimeout\(timer\.current\), \[\]\)/)
+    expect(src).not.toContain("createSingleFlight")
+    expect(src).not.toMatch(/addEventListener|beforeunload|useBlocker/)
+  })
+
+  it("ไม่มีสำเนาข้อความ prompt ในไฟล์อื่นของ src/admin (hook กลางตัวเดียว)", () => {
+    const copies = adminFiles.filter(
+      (file) => !file.includes("__tests__") && read(file).includes("Are you sure you want to leave this form?")
+    )
+    expect(copies).toEqual(["components/common/use-confirm-discard.ts"])
+  })
+})
+
+describe("ทุก FocusModal มี FocusModal.Title asChild ห่อ heading เดิม (spec 08 AC-36a, กฎ 35, ADM-31)", () => {
+  const withContent = adminFiles.filter((file) => read(file).includes("<FocusModal.Content"))
+  const count = (src: string, re: RegExp) => src.match(re)?.length ?? 0
+
+  it("พบไฟล์ FocusModal อย่างน้อย 5 จุดที่รู้จัก (FocusModal ใหม่ในอนาคตถูกตรวจด้วย test ถัดไปอัตโนมัติ)", () => {
+    expect(withContent).toEqual(
+      expect.arrayContaining([
+        "components/evoucher/partners-section.tsx",
+        "components/affiliate/program-form.tsx",
+        "components/affiliate/payout-form.tsx",
+        "components/group-buy/create-campaign.tsx",
+        "widgets/variant-evoucher-pool.tsx",
+      ])
+    )
+  })
+
+  it.each(withContent)("%s: <FocusModal.Title asChild> ห่อ <Heading> จำนวนเท่ากับ <FocusModal.Content", (file) => {
+    const src = read(file)
+    const contents = count(src, /<FocusModal\.Content\b/g)
+    expect(count(src, /<FocusModal\.Title\b/g)).toBe(contents)
+    // asChild ทุกตัว: Radix ใส่ id ให้ Heading เดิม (aria-labelledby) โดยไม่เพิ่ม element/สไตล์ (กฎ 35a)
+    expect(count(src, /<FocusModal\.Title asChild>\s*<Heading\b[^>]*>[^<]*<\/Heading>\s*<\/FocusModal\.Title>/g)).toBe(contents)
+  })
+})
+
+// spec 08 AC-38a, กฎ 37 (ADM-33): `TruncatedCell` ของ `DataTable` (@medusajs/ui 4.2.8) ห่อทุก cell ด้วย `Tooltip` ที่ซ่อนแต่ยัง mount
+// — tooltip ของคอลัมน์ actions เปิดเมื่อ focus กลับมาที่ trigger แล้วกิน Escape แรกของ `ActionMenu` → ทุกคอลัมน์ actions ต้อง opt-out
+describe("คอลัมน์ actions ของ DataTable ปิด tooltip ของ cell (spec 08 AC-38a, กฎ 37, ADM-33)", () => {
+  /** object ของ `.display({ ... })` ทุกตัว (นับวงเล็บปีกกาจนปิด) — คืนข้อความใน `{}` */
+  const displayObjects = (src: string) => {
+    const found: string[] = []
+    for (let i = src.indexOf(".display({"); i !== -1; i = src.indexOf(".display({", i + 1)) {
+      const start = src.indexOf("{", i)
+      let depth = 0
+      for (let j = start; j < src.length; j++) {
+        if (src[j] === "{") depth++
+        else if (src[j] === "}" && --depth === 0) {
+          found.push(src.slice(start, j + 1))
+          break
+        }
+      }
+    }
+    return found
+  }
+  const isActions = (obj: string) => /\bid:\s*["']actions["']/.test(obj)
+  /** ข้อความใน `{}` ที่เริ่มที่ `start` (นับวงเล็บจนปิด แบบ `balanced()` ของ e2e/core-46-e2e-hygiene.unit.spec.ts) */
+  const balanced = (src: string, start: number) => {
+    let depth = 0
+    for (let i = start; i < src.length; i++) {
+      if (src[i] === "{") depth++
+      else if (src[i] === "}" && --depth === 0) return src.slice(start + 1, i)
+    }
+    return ""
+  }
+  // nit review #409 (กฎ 38e): object ทั้งก้อนของ `meta` (ไม่ใช้ `[^}]*` ที่หยุดที่ `}` ของ object ซ้อน)
+  const optsOut = (obj: string) => {
+    const at = obj.search(/\bmeta:\s*{/)
+    return at !== -1 && /\b___truncateTooltip:\s*false\b/.test(balanced(obj, obj.indexOf("{", at)))
+  }
+
+  const actionColumns = adminFiles.flatMap((file) =>
+    displayObjects(read(file))
+      .filter(isActions)
+      .map((obj) => [file, obj] as const)
+  )
+
+  it("self-check: object ที่ไม่มี meta หรือ meta เป็น true ไม่ผ่าน, ที่มี ___truncateTooltip: false ผ่าน", () => {
+    const sample = `x.display({ id: "actions", cell: () => <A /> }) y.display({ id: "actions", meta: { ___truncateTooltip: true }, cell: () => null })`
+    const objects = displayObjects(sample)
+    expect(objects).toHaveLength(2)
+    expect(objects.every(isActions)).toBe(true)
+    expect(objects.some(optsOut)).toBe(false)
+    expect(optsOut(displayObjects(`c.display({ id: "actions", meta: { ___truncateTooltip: false }, cell: () => null })`)[0])).toBe(true)
+    // meta ที่มี object ซ้อนก่อน ___truncateTooltip ยังผ่าน; ___truncateTooltip นอก meta ไม่ผ่าน
+    expect(optsOut(`{ id: "actions", meta: { a: { b: 1 }, ___truncateTooltip: false }, cell: () => null }`)).toBe(true)
+    expect(optsOut(`{ id: "actions", meta: { a: { b: 1 } }, x: { ___truncateTooltip: false } }`)).toBe(false)
+  })
+
+  it("พบคอลัมน์ actions อย่างน้อย 5 จุด (กัน vacuous)", () => {
+    expect(actionColumns.map(([file]) => file)).toEqual(
+      expect.arrayContaining([
+        "components/evoucher/partners-section.tsx",
+        "components/evoucher/codes-table.tsx",
+        "components/affiliate/programs-table.tsx",
+        "components/affiliate/affiliates-table.tsx",
+        "components/affiliate/payouts-table.tsx",
+      ])
+    )
+    expect(actionColumns.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it.each(actionColumns)("%s: .display({ id: \"actions\" }) มี meta: { ___truncateTooltip: false }", (_file, obj) => {
+    expect(optsOut(obj)).toBe(true)
+  })
+})
+
+// spec 08 AC-39a, กฎ 38 (ADM-34): FocusModal แบบ state ไม่มี FocusModal.Trigger → Radix คืน focus ให้ปุ่มที่เปิดไม่ได้ (activeElement = BODY)
+// ทุก <FocusModal.Content ต้องได้ handler ของ useRestoreOpenerFocus (spread) — ไม่มี onCloseAutoFocus แบบ inline เหลือ
+describe("FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34)", () => {
+  /**
+   * props ของทุก `<FocusModal.Content ...>` — ตัดแท็กที่ `>` ตัวแรกนอก `{}` (นับวงเล็บแบบ `balanced()` ข้างบน)
+   * ไม่ใช้ `[^>]*` ที่หยุดที่ `>` ของ `=>` ใน arrow function (nit review #416)
+   */
+  const contentProps = (src: string) =>
+    Array.from(src.matchAll(/<FocusModal\.Content\b/g), (m) => {
+      const start = m.index + m[0].length
+      let depth = 0
+      for (let i = start; i < src.length; i++) {
+        if (src[i] === "{") depth++
+        else if (src[i] === "}") depth--
+        else if (src[i] === ">" && depth === 0) return src.slice(start, i)
+      }
+      return src.slice(start)
+    })
+  /**
+   * จำนวน <FocusModal.Content ทั้งหมด และจำนวนที่ props มี `{...<ตัวแปรที่ได้จาก useRestoreOpenerFocus()>}`
+   * โดยไม่ตั้ง onOpenAutoFocus/onCloseAutoFocus เองทับ handler ของ hook (nit review #413)
+   */
+  const restoreUsage = (src: string) => {
+    const names = Array.from(src.matchAll(/\bconst (\w+) = useRestoreOpenerFocus\(\)/g), ([, name]) => name)
+    const contents = contentProps(src)
+    const withHandler = contents.filter(
+      (props) => names.some((name) => props.includes(`{...${name}}`)) && !/\bon(Open|Close)AutoFocus=/.test(props)
+    )
+    return { contents: contents.length, withHandler: withHandler.length }
+  }
+  const withContent = adminFiles.filter((file) => read(file).includes("<FocusModal.Content"))
+
+  it("self-check: Content ที่ไม่มี handler หรือไม่ได้เรียก hook ไม่ผ่าน, ที่ spread ผลของ hook ผ่าน", () => {
+    expect(restoreUsage(`<FocusModal.Content onEscapeKeyDown={x}>`)).toEqual({ contents: 1, withHandler: 0 })
+    expect(restoreUsage(`<FocusModal.Content {...restoreFocus}>`)).toEqual({ contents: 1, withHandler: 0 })
+    expect(
+      restoreUsage(`const restoreFocus = useRestoreOpenerFocus()\n<FocusModal.Content {...restoreFocus} onEscapeKeyDown={x}>`)
+    ).toEqual({ contents: 1, withHandler: 1 })
+    // nit review #416: props มี `=>` (ตัว `>` ใน arrow function) ต้องไม่ตัดแท็กก่อนถึง handler ที่ทับ hook
+    expect(
+      restoreUsage(
+        `const restoreFocus = useRestoreOpenerFocus()\n<FocusModal.Content {...restoreFocus} onEscapeKeyDown={(e) => e} onCloseAutoFocus={noop}>`
+      )
+    ).toEqual({ contents: 1, withHandler: 0 })
+  })
+
+  it("พบไฟล์ที่มี <FocusModal.Content อย่างน้อย 5 ไฟล์ (กัน vacuous)", () => {
+    expect(withContent.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it.each(withContent)("%s: เรียก useRestoreOpenerFocus( และทุก <FocusModal.Content ได้ handler ของ hook", (file) => {
+    const src = read(file)
+    expect(src).toMatch(/\buseRestoreOpenerFocus\(/)
+    const { contents, withHandler } = restoreUsage(src)
+    expect(withHandler).toBe(contents)
+    // nit review #413 (ADM-35): handler ที่ตั้งเองหลัง spread จะทับ handler ของ hook — ห้ามตั้ง onOpenAutoFocus/onCloseAutoFocus ที่ Content
+    for (const props of contentProps(src)) {
+      expect(props).not.toMatch(/\bon(Open|Close)AutoFocus=/)
+    }
+  })
+
+  it("ไม่มี onCloseAutoFocus={( แบบ inline ใน src/admin (logic อยู่ใน hook กลางตัวเดียว)", () => {
+    expect(adminFiles.filter((file) => read(file).includes("onCloseAutoFocus={("))).toEqual([])
+  })
+
+  it("hook จำ activeElement ตอนเปิดด้วย useState และคืน focus เมื่อ element ยังอยู่ใน DOM", () => {
+    const src = read("components/common/use-restore-opener-focus.ts")
+    expect(src).toMatch(/\buseState<HTMLElement \| null>\(null\)/)
+    expect(src).toMatch(/document\.activeElement instanceof HTMLElement/)
+    expect(src).toMatch(/if \(opener\?\.isConnected\) \{\s*e\.preventDefault\(\)\s*opener\.focus\(\)/)
+    expect(src).not.toMatch(/\buseRef\b/)
   })
 })

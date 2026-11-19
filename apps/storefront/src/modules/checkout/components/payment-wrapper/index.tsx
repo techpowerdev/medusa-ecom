@@ -5,7 +5,7 @@ import React from "react"
 import StripeWrapper from "./stripe-wrapper"
 import { HttpTypes } from "@medusajs/types"
 import { isStripeLike } from "@lib/constants"
-import { isPromptPay } from "@lib/util/payment-session"
+import { isPromptPay, promptPaySession } from "@lib/util/payment-session"
 
 type PaymentWrapperProps = {
   // PAY-3b: รับ session ตรง (ไม่ผูกกับ cart) — ใช้ร่วมกับหน้าชำระเงินของ order (payment collection ของ draft order)
@@ -26,9 +26,10 @@ const stripePromise = stripeKey
   : null
 
 const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ paymentSessions, children }) => {
-  const paymentSession = paymentSessions?.find(
-    (s) => s.status === "pending"
-  )
+  // CORE-52 (review #353): พร้อมเพย์ที่ guard/webhook authorize แล้ว (PAY-6b) ยังอยู่ใน Elements เดิม — หน้า checkout อ่าน cart
+  // แบบ fresh (กฎข้อ 110a) ถ้าสลับเป็น `<div>` React จะ mount children ใหม่ state คืนเงิน/รอ order ของ promptpay-payment หาย
+  const paymentSession =
+    paymentSessions?.find((s) => s.status === "pending") ?? promptPaySession(paymentSessions)
 
   // PAY-2: PromptPay ก็ใช้ Stripe.js (confirmPromptPayPayment) ผ่าน Elements เดียวกัน
   if (

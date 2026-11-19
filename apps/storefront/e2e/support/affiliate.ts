@@ -43,6 +43,7 @@ export async function createActiveAffiliate(
 /**
  * entry `approved` ของ affiliate ใส่ตรงใน DB (CI ตั้ง DATABASE_URL ให้ job e2e): การได้ entry approved ผ่าน flow จริง
  * ต้องรอ maturity job รายวัน (AF-4) ซึ่ง e2e สั่งรันไม่ได้ — payout สร้าง/จ่าย/ยกเลิกผ่าน admin API และ UI จริง
+ * คืน id ของ entry (ADM-38 ใช้หาหน้าที่แถวอยู่ด้วย `pageOffsetOf`; ผู้เรียกเดิมไม่ใช้ค่าคืน)
  */
 export async function insertApprovedEntry(
   affiliateId: string,
@@ -51,6 +52,7 @@ export async function insertApprovedEntry(
   createdAt: Date,
   amount = "100",
 ) {
+  const id = `affcom_e2e${crypto.randomBytes(6).toString("hex")}`
   const db = new Client({ connectionString: process.env.DATABASE_URL })
   await db.connect()
   try {
@@ -59,7 +61,7 @@ export async function insertApprovedEntry(
          (id, affiliate_id, program_id, order_id, amount, raw_amount, currency, status, created_at, updated_at)
        values ($1, $2, $3, $4, $6, $7, 'thb', 'approved', $5, $5)`,
       [
-        `affcom_e2e${crypto.randomBytes(6).toString("hex")}`,
+        id,
         affiliateId,
         programId,
         orderId,
@@ -71,13 +73,20 @@ export async function insertApprovedEntry(
   } finally {
     await db.end()
   }
+  return id
 }
 
 /**
  * ADM-8a (spec 08 AC-11): payout `draft` หลายแถวใส่ตรงใน DB ให้แท็บ Payouts มีมากกว่า 1 หน้า (entry_ids ว่าง — ใช้ดูรายการ/แบ่งหน้าเท่านั้น)
  * created_at ใหม่สุดก่อน (`createdAt` ของแถวแรก) คืน id ตามลำดับที่ตารางแสดง
+ * ADM-37 (spec 08 AC-42a2): `reference` ใส่ให้ทุกแถว (ค่าเริ่มต้น null) — payout draft ที่มี reference ยาวยังมีปุ่ม `…` (paid ไม่มี — กฎ 10)
  */
-export async function insertDraftPayouts(affiliateId: string, count: number, createdAt: Date) {
+export async function insertDraftPayouts(
+  affiliateId: string,
+  count: number,
+  createdAt: Date,
+  { reference = null }: { reference?: string | null } = {},
+) {
   const db = new Client({ connectionString: process.env.DATABASE_URL })
   await db.connect()
   const ids: string[] = []
@@ -87,9 +96,9 @@ export async function insertDraftPayouts(affiliateId: string, count: number, cre
       const at = new Date(createdAt.getTime() - i * 1000)
       await db.query(
         `insert into affiliate_payout
-           (id, affiliate_id, amount, raw_amount, currency, period_from, period_to, status, entry_ids, created_at, updated_at)
-         values ($1, $2, 1, '{"value":"1","precision":20}', 'thb', $3, $3, 'draft', '{}', $3, $3)`,
-        [id, affiliateId, at],
+           (id, affiliate_id, amount, raw_amount, currency, period_from, period_to, status, entry_ids, reference, created_at, updated_at)
+         values ($1, $2, 1, '{"value":"1","precision":20}', 'thb', $3, $3, 'draft', '{}', $4, $3, $3)`,
+        [id, affiliateId, at, reference],
       )
       ids.push(id)
     }

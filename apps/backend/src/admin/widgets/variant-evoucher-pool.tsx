@@ -9,6 +9,8 @@ import { useForm } from "react-hook-form"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { NumberInput } from "../components/common/number-input"
+import { useConfirmDiscard } from "../components/common/use-confirm-discard"
+import { useRestoreOpenerFocus } from "../components/common/use-restore-opener-focus"
 import { evoucherApi, evoucherKeys } from "../lib/evoucher"
 import {
   POOL_FORM_DEFAULTS,
@@ -66,6 +68,18 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
       create.mutateAsync(poolFormSchema.parse(values, POOL_PARSE_OPTIONS)).catch(() => undefined)
     )
   )
+
+  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด
+  const restoreFocus = useRestoreOpenerFocus()
+  // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด และยืนยันแล้วล้างค่า (เปิดใหม่ฟอร์มว่าง); ระหว่างบันทึกไม่ปิด
+  const confirmClose = useConfirmDiscard({
+    form,
+    isPending: create.isPending,
+    onClose: () => {
+      setOpen(false)
+      form.reset(POOL_FORM_DEFAULTS)
+    },
+  })
 
   // ช่องตัวเลขผ่าน NumberInput ของกลาง (ADM-12, spec 08 กฎ 15) — "e" ไม่ถูกถือเป็นค่าว่าง/ค่า default
   const field = (name: "name" | "face_value" | "validity_note" | "low_stock_threshold", label: string, numeric = false) => (
@@ -140,8 +154,8 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
         </>
       )}
 
-      <FocusModal open={open} onOpenChange={setOpen}>
-        <FocusModal.Content>
+      <FocusModal open={open} onOpenChange={confirmClose}>
+        <FocusModal.Content {...restoreFocus}>
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
               <FocusModal.Header>
@@ -153,7 +167,9 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
               </FocusModal.Header>
               <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
                 <div className="flex w-full max-w-lg flex-col gap-y-4">
-                  <Heading>Create voucher pool for {variant.title}</Heading>
+                  <FocusModal.Title asChild>
+                    <Heading>Create voucher pool for {variant.title}</Heading>
+                  </FocusModal.Title>
                   <Form.Field
                     control={form.control}
                     name="partner_id"

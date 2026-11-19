@@ -1,5 +1,7 @@
-// spec 08 AC-9 (ADM-6) static: หน้า group buy ใช้ของ Medusa — LayoutComposer, Header, DataTable ของ dashboard (rowHref),
-// SectionRow + NoRecords + loader/breadcrumb; groups-section คง DataTable ของ ui แต่ใช้ Header + createSingleFlight
+// spec 08 AC-9 (ADM-6) static: หน้า group buy ใช้ของ Medusa — รายการ: LayoutComposer + DataTable ของ dashboard (rowHref)
+// หัวตารางใช้ heading/subHeading/action ของ DataTable ไม่ใช่ Header (ADM-13); รายละเอียด: Header + SectionRow + NoRecords
+// + loader/breadcrumb; groups-section คง DataTable ของ ui แต่ใช้ Header + createSingleFlight
+// ADM-15 (AC-19, กฎ 19): ฟอร์มสร้างแคมเปญใช้ NumberInput และคืน focus ให้ปุ่มที่เปิด modal
 import { readFileSync } from "fs"
 import { join } from "path"
 
@@ -9,6 +11,7 @@ const read = (file: string) => readFileSync(join(ADMIN_DIR, file), "utf8")
 const LIST = "routes/group-buying/page.tsx"
 const DETAIL = "routes/group-buying/[id]/page.tsx"
 const GROUPS = "components/group-buy/groups-section.tsx"
+const CREATE_CAMPAIGN = "components/group-buy/create-campaign.tsx"
 
 const importsFrom = (src: string, name: string, from: string) =>
   new RegExp(`import\\s*{[^}]*\\b${name}\\b[^}]*}\\s*from\\s*["']${from.replace(/\//g, "\\/")}["']`).test(src)
@@ -43,8 +46,9 @@ describe("รายการแคมเปญ (spec 08 AC-9)", () => {
   })
 
   it("401 → throw error ให้ ErrorBoundary ของ dashboard พาไป /login", () => {
-    expect(src).toMatch(/status === 401/)
-    expect(src).toMatch(/throw error/)
+    // ADM-21a: เงื่อนไข 401 ย้ายเป็น helper ใน lib/ (ใช้ ≥ 2 ที่ — กฎ 2)
+    expect(src).toMatch(/import \{ isUnauthorized \} from "\.\.\/\.\.\/lib\/fetch-error"/)
+    expect(src).toMatch(/if \(isUnauthorized\(error\)\) \{\s*throw error\s*\}/)
   })
 
   it("export handle.breadcrumb เป็น \"Group buying\" (breadcrumb 2 ระดับร่วมกับหน้ารายละเอียด)", () => {
@@ -84,6 +88,30 @@ describe("ตารางกลุ่ม (spec 08 AC-9)", () => {
 
   it("กันกดซ้ำด้วย useState(createSingleFlight) ไม่มี useRef", () => {
     expect(src).toMatch(/useState\(createSingleFlight\)/)
+    expect(src).not.toMatch(/\buseRef\b/)
+  })
+})
+
+describe("ฟอร์มสร้างแคมเปญ (spec 08 AC-19, กฎ 19)", () => {
+  const src = read(CREATE_CAMPAIGN)
+
+  it("ช่องตัวเลขใช้ NumberInput ของกลาง — ไม่มี type: \"number\" หรือ type={...} ที่ Input", () => {
+    expect(importsFrom(src, "NumberInput", "../common/number-input")).toBe(true)
+    expect(src).toMatch(/<NumberInput\b/)
+    expect(src).not.toMatch(/type: "number"/)
+    expect(src).not.toMatch(/<Input\b[^>]*\btype=/)
+  })
+
+  it("error ใต้ช่อง Max total orders มี testid gb-max-total-orders-error", () => {
+    expect(src).toMatch(/max_total_orders: "gb-max-total-orders-error"/)
+  })
+
+  it("ปิด modal แล้วคืน focus ให้ปุ่มที่เปิดด้วย hook useRestoreOpenerFocus (spec 08 กฎ 19b → กฎ 38d) ไม่ใช่ inline", () => {
+    const content = src.match(/<FocusModal\.Content\b([^>]*)>/)?.[1] ?? ""
+    expect(src).toMatch(/import \{ useRestoreOpenerFocus \} from "\.\.\/common\/use-restore-opener-focus"/)
+    expect(src).toMatch(/\bconst restoreFocus = useRestoreOpenerFocus\(\)/)
+    expect(content).toContain("{...restoreFocus}")
+    expect(src).not.toMatch(/\bonOpenAutoFocus=|\bonCloseAutoFocus=/)
     expect(src).not.toMatch(/\buseRef\b/)
   })
 })

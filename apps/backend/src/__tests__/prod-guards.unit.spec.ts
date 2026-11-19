@@ -240,6 +240,31 @@ describe("AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข
   })
 })
 
+describe("AC-39 อีเมลแจ้งเตือนที่เป็นช่องว่างล้วน + comment export ต้น docker-compose.prod.yml (OPS-24)", () => {
+  it.each(["EVOUCHER_ADMIN_EMAIL", "OPS_ALERT_EMAIL"])(
+    "production with %s of spaces only does not throw and returns one warning naming it",
+    (name) => {
+      let warnings: string[] = []
+      expect(() => {
+        warnings = checkBootEnv({ ...PROD, [name]: "   " })
+      }).not.toThrow()
+      expect(warnings.filter((m) => m.includes(name))).toHaveLength(1)
+    }
+  )
+
+  it.each(["EVOUCHER_ADMIN_EMAIL", "OPS_ALERT_EMAIL"])("production with a real %s does not warn about it", (name) => {
+    expect(checkBootEnv(PROD).filter((m) => m.includes(name))).toHaveLength(0)
+  })
+
+  it("the leading `export` comment lines of docker-compose.prod.yml include EVOUCHER_ENCRYPTION_KEY=", () => {
+    const lines = readFileSync(path.join(repoRoot, "docker-compose.prod.yml"), "utf8").split(/\r?\n/)
+    const header = lines.slice(0, lines.findIndex((line) => !line.startsWith("#")))
+    const exports = header.filter((line) => /^#\s+export\s/.test(line))
+    expect(exports.length).toBeGreaterThan(0)
+    expect(exports.some((line) => line.includes("EVOUCHER_ENCRYPTION_KEY="))).toBe(true)
+  })
+})
+
 type CiJob = { env?: Record<string, unknown>; steps?: { run?: string }[] }
 
 /** env ระดับ job (ค่าเป็น string) + คำสั่ง `run:` ของทุก step ของแต่ละ job ใน ci.yml — OPS-17 (AC-28): parse ด้วย `yaml` แบบ ci-workflow.unit.spec.ts */

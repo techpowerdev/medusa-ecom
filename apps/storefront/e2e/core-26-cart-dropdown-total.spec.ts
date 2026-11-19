@@ -183,7 +183,8 @@ test("AC-117: dropdown แสดง item_total หลังส่วนลด fl
     await evidence("01-dropdown-item-total")
   })
 
-  await step("/th/cart: ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง + ภาษี = ยอดรวมทั้งสิ้น (±0.01)", async () => {
+  // CORE-57 (กฎข้อ 115b): แถวรวม VAT ทั้งชุด — แถว "รวม VAT แล้ว" (cart-taxes) เป็นข้อมูลไม่บวกซ้ำ
+  await step("/th/cart: ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง = ยอดรวมทั้งสิ้น (±0.01)", async () => {
     await page.goto(`/${CC}/cart`)
     const totals = page.getByTestId("cart-totals")
     await expect(totals).toBeVisible()
@@ -192,8 +193,7 @@ test("AC-117: dropdown แสดง item_total หลังส่วนลด fl
     const rows =
       (await dataValue(totals.getByTestId("cart-subtotal"))) -
       (await dataValue(discount)) +
-      (await dataValue(totals.getByTestId("cart-shipping"))) +
-      (await dataValue(totals.getByTestId("cart-taxes")))
+      (await dataValue(totals.getByTestId("cart-shipping")))
     const grand = await dataValue(totals.getByTestId("cart-total"))
     expect(Math.abs(rows - grand), `rows=${rows} total=${grand}`).toBeLessThanOrEqual(0.01)
     expect(grand).toBeCloseTo(cart.total, 2)

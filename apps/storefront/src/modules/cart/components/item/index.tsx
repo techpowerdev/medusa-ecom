@@ -167,12 +167,17 @@ const Item = ({
         >
           {type === "preview" && (
             <span className="flex gap-x-1 ">
-              <Text className="text-ui-fg-muted">{item.quantity}x </Text>
-              <LineItemUnitPrice
-                item={item}
-                style="tight"
-                currencyCode={currencyCode}
-              />
+              <Text className="text-ui-fg-muted">
+                <span data-testid="product-quantity">{item.quantity}</span>x{" "}
+              </Text>
+              {/* CORE-66 (spec 01 กฎข้อ 124): preview ชิ้นเดียว ราคาต่อหน่วย = ราคารวม → ไม่แสดงซ้ำ; /cart (type="full") คงเดิม */}
+              {item.quantity > 1 && (
+                <LineItemUnitPrice
+                  item={item}
+                  style="tight"
+                  currencyCode={currencyCode}
+                />
+              )}
             </span>
           )}
           <LineItemPrice

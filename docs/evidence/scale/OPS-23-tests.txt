@@ -1,0 +1,62 @@
+# OPS-23 — ผล test (spec 07 AC-38)
+
+## Red (ก่อนแก้ run.sh/load-nightly.yml)
+Tests:       11 failed, 17 passed, 28 total
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › LOAD_DB_POOL_MAX="-5" → exit 2 ก่อนเรียก docker
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › LOAD_DB_POOL_MAX="0" → exit 2 ก่อนเรียก docker
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › LOAD_DB_POOL_MAX="1.5" → exit 2 ก่อนเรียก docker
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › LOAD_DB_POOL_MAX="20; rm -rf /" → exit 2 ก่อนเรียก docker
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › LOAD_DB_POOL_MAX="abc" → exit 2 ก่อนเรียก docker
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › LOAD_DB_POOL_MAX=10 → compose ได้ DATABASE_POOL_MAX เดียวกัน
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › LOAD_DB_POOL_MAX=20 → compose ได้ DATABASE_POOL_MAX เดียวกัน
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › LOAD_DB_POOL_MAX=40 → compose ได้ DATABASE_POOL_MAX เดียวกัน
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › report.md บันทึกค่า pool ของ run (เทียบ run ได้จาก artifact)
+● OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX › ไม่ส่ง LOAD_DB_POOL_MAX → DATABASE_POOL_MAX ว่าง (default ของ Medusa) แม้ shell มีค่าค้าง
+● OPS-23 load-nightly db_pool_max › มี input db_pool_max (string, ค่าเริ่มต้นว่าง) ส่งเป็น env LOAD_DB_POOL_MAX ให้ run.sh
+
+## Green — test ของ task (load-*.unit.spec.ts)
+PASS src/__tests__/load-run.unit.spec.ts
+  OPS-17 AC-28 run.sh IMAGE_TAG
+    ✓ ไม่ส่ง IMAGE_TAG → compose ได้ IMAGE_TAG=load (ไม่ใช่ local ของ dev)
+    ✓ ส่ง IMAGE_TAG มา → ใช้ค่าที่ส่ง
+  OPS-23 AC-38 run.sh LOAD_DB_POOL_MAX → DATABASE_POOL_MAX
+    ✓ LOAD_DB_POOL_MAX=10 → compose ได้ DATABASE_POOL_MAX เดียวกัน
+    ✓ LOAD_DB_POOL_MAX=20 → compose ได้ DATABASE_POOL_MAX เดียวกัน
+    ✓ LOAD_DB_POOL_MAX=40 → compose ได้ DATABASE_POOL_MAX เดียวกัน
+    ✓ ไม่ส่ง LOAD_DB_POOL_MAX → DATABASE_POOL_MAX ว่าง (default ของ Medusa) แม้ shell มีค่าค้าง
+    ✓ LOAD_DB_POOL_MAX="abc" → exit 2 ก่อนเรียก docker
+    ✓ LOAD_DB_POOL_MAX="0" → exit 2 ก่อนเรียก docker
+    ✓ LOAD_DB_POOL_MAX="-5" → exit 2 ก่อนเรียก docker
+    ✓ LOAD_DB_POOL_MAX="20; rm -rf /" → exit 2 ก่อนเรียก docker
+    ✓ LOAD_DB_POOL_MAX="1.5" → exit 2 ก่อนเรียก docker
+    ✓ report.md บันทึกค่า pool ของ run (เทียบ run ได้จาก artifact)
+  OPS-17 (review #220) cleanup() ของ run.sh เมื่อ script หยุดกลางทาง
+    ✓ ตรวจ OUT แล้วลบไฟล์ที่มี JWT/setup_data, พิมพ์ report ที่เหลือลง job log และคง exit code เดิม (≠ 0)
+    ✓ review #235: report.md มี JWT → scan ลบก่อนพิมพ์ JWT ไม่หลุดลง job log (stdout/stderr)
+    ✓ review #235 nit: report ของ run ก่อนใน OUT ถูกล้างตอนเริ่ม — cleanup ไม่พิมพ์ report เก่า
+    ✓ scan มาก่อน cat ทั้งใน cleanup() และทางปกติ (job log/GITHUB_STEP_SUMMARY) และ scan ใน cleanup ไม่ทำให้ cleanup ล้ม
+  OPS-17 AC-28 grep
+    ✓ seed-load.ts ไม่มี cast (as unknown as / as any / as CreateGroupBuyCampaignInput)
+    ✓ prod-guards.unit.spec.ts อ่าน ci.yml ด้วย parse ของ yaml ไม่วนบรรทัด (ไม่มีตัวแปรสถานะ inEnv)
+    ✓ lock-timing.js ไม่มี indexOf (ลำดับคิวของ hold_rank_corr ใช้ Map — O(n))
+PASS src/__tests__/load-nightly.unit.spec.ts
+  OPS-4 load-nightly
+    ✓ workflow แยกไฟล์ รันรายคืน + สั่งเองได้ และไม่อยู่ใน ci.yml
+    ✓ ผล k6 (--summary-export) อัปโหลดเป็น artifact 14 วันแม้ run ล้ม
+    ✓ บูต stack แบบ prod ของ OPS-1 ด้วย provider ทดสอบ และ k6 จาก image ที่ pin เวอร์ชัน
+    ✓ ค่าเริ่มต้นตาม AC-2 (300 คน, cap 100, 500 rps 60 วินาที) และ AC-3 (200 คน, กลุ่ม 10)
+    ✓ tools/load/flash-sale.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว)
+    ✓ tools/load/group-buy-join.js: 5xx = 0 เป็น threshold (gate) และไม่มี threshold ของ p95 (รายงานอย่างเดียว)
+    ✓ ตรวจผลจาก DB หลังจบ: order ที่มี adjustment ของแคมเปญ, units_sold และสมาชิกกลุ่ม
+  OPS-23 load-nightly db_pool_max
+    ✓ มี input db_pool_max (string, ค่าเริ่มต้นว่าง) ส่งเป็น env LOAD_DB_POOL_MAX ให้ run.sh
+    ✓ input flash_burst เดิมยังอยู่ (AC-31)
+Test Suites: 2 passed, 2 total
+Tests:       28 passed, 28 total
+
+## unit ทั้ง backend
+Test Suites: 108 passed, 108 total
+Tests:       1320 passed, 1320 total
+
+## lint/typecheck
+pnpm lint && pnpm typecheck: exit 0

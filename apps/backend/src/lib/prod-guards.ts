@@ -55,8 +55,9 @@ export const checkBootEnv = (env: Env): string[] => {
     // AC-36 (OPS-21): กุญแจ e-voucher ผิด = import/reveal/อีเมล voucher ล้มตอนใช้งาน จึงหยุดตั้งแต่บูต (throw ข้อความมีชื่อตัวแปร ไม่มีค่ากุญแจ)
     parseEncryptionKey(env.EVOUCHER_ENCRYPTION_KEY)
     // ไม่บังคับ (spec 02 กฎข้อ 9, ADR-015): อีเมลแจ้งเตือนถูกข้ามพร้อม warn
+    // AC-39 (OPS-24): ผู้ใช้ค่า `.trim()` ก่อน ค่าช่องว่างล้วนจึงนับว่าไม่ได้ตั้ง
     for (const name of ["EVOUCHER_ADMIN_EMAIL", "OPS_ALERT_EMAIL"]) {
-      if (!env[name]) {
+      if (!env[name]?.trim()) {
         warnings.push(`${name} is not set — admin/ops alert emails are skipped`)
       }
     }

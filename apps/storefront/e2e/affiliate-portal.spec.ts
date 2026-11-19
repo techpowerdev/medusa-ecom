@@ -46,6 +46,31 @@ async function createProgram(
   expect(res.status(), `create program ${data.name}: ${await res.text()}`).toBe(200)
 }
 
+const PROGRAM_PREFIX = "E2E AF-8 "
+
+// รันซ้ำบน DB เดิมได้: โปรแกรมของ run ก่อนยัง published และเมื่อเวลาผ่านไป U2 (20%) จะ active แซง P3 ของ run นี้
+// → ปิด (ended, กฎ 10 — published ลบไม่ได้) ทุกโปรแกรม `E2E AF-8 *` ที่ยัง published ก่อนสร้างชุดใหม่
+async function endPreviousRunPrograms(request: APIRequestContext, admin: Headers) {
+  const stale: string[] = []
+  for (let offset = 0; ; offset += 200) {
+    const res = await request.get(
+      `${BACKEND_URL}/admin/affiliate/programs?status=published&limit=200&offset=${offset}&fields=id,name`,
+      { headers: admin }
+    )
+    expect(res.status(), `list programs: ${await res.text()}`).toBe(200)
+    const { programs, count } = (await res.json()) as { programs: { id: string; name: string }[]; count: number }
+    stale.push(...programs.filter((p) => p.name.startsWith(PROGRAM_PREFIX)).map((p) => p.id))
+    if (programs.length === 0 || offset + programs.length >= count) break
+  }
+  for (const id of stale) {
+    const res = await request.post(`${BACKEND_URL}/admin/affiliate/programs/${id}`, {
+      headers: admin,
+      data: { status: "ended" },
+    })
+    expect(res.status(), `end program ${id}: ${await res.text()}`).toBe(200)
+  }
+}
+
 test("AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35)", async ({
   page,
   context,
@@ -59,15 +84,16 @@ test("AF-8a: login → แท็บได้ค่าคอมตอนนี้
   const x = await variantIds(request, pk, X)
   const y = await variantIds(request, pk, Y)
   const run = crypto.randomBytes(3).toString("hex")
-  const p3 = `E2E AF-8 P3 ${run}`
+  const p3 = `${PROGRAM_PREFIX}P3 ${run}`
 
   await step("โปรแกรมตาม AC-34: X อยู่ใน P1/P2/P3 และ U1/U2; Y M อยู่ใน P1, Y L อยู่ใน P2", async () => {
+    await endPreviousRunPrograms(request, admin)
     const xAll = Object.values(x)
-    await createProgram(request, admin, { name: `E2E AF-8 P1 ${run}`, startsIn: -DAY, endsIn: 2 * DAY, rate: 10, variants: [...xAll, y.M] })
-    await createProgram(request, admin, { name: `E2E AF-8 P2 ${run}`, startsIn: -3 * DAY, endsIn: 2 * DAY, rate: 15, variants: [...xAll, y.L] })
+    await createProgram(request, admin, { name: `${PROGRAM_PREFIX}P1 ${run}`, startsIn: -DAY, endsIn: 2 * DAY, rate: 10, variants: [...xAll, y.M] })
+    await createProgram(request, admin, { name: `${PROGRAM_PREFIX}P2 ${run}`, startsIn: -3 * DAY, endsIn: 2 * DAY, rate: 15, variants: [...xAll, y.L] })
     await createProgram(request, admin, { name: p3, startsIn: -60_000, endsIn: 2 * DAY, rate: 15, variants: xAll })
-    await createProgram(request, admin, { name: `E2E AF-8 U1 ${run}`, startsIn: DAY, endsIn: 5 * DAY, rate: 5, variants: xAll })
-    await createProgram(request, admin, { name: `E2E AF-8 U2 ${run}`, startsIn: 2 * DAY, endsIn: 5 * DAY, rate: 20, variants: xAll })
+    await createProgram(request, admin, { name: `${PROGRAM_PREFIX}U1 ${run}`, startsIn: DAY, endsIn: 5 * DAY, rate: 5, variants: xAll })
+    await createProgram(request, admin, { name: `${PROGRAM_PREFIX}U2 ${run}`, startsIn: 2 * DAY, endsIn: 5 * DAY, rate: 20, variants: xAll })
   })
 
   await step("ยังไม่ login → ไปหน้า login ของ portal (ไม่ใช่ login ของ customer)", async () => {

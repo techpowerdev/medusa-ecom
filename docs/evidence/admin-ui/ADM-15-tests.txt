@@ -1,0 +1,39 @@
+# ADM-15 (spec 08 AC-19, กฎ 19) — ผล test
+# วันที่: 2026-11-14, node v22.23.3, base origin/develop fef9b65b
+
+## Red (ก่อนเขียนโค้ด)
+### jest group-buy-pages.unit.spec.ts + lib/__tests__/group-buy-form.unit.spec.ts
+    ✕ rejects BAD_NUMBER_INPUT in target_value with the field's message (1 ms)
+    ✕ rejects BAD_NUMBER_INPUT in discount_value with the field's message (1 ms)
+    ✕ rejects BAD_NUMBER_INPUT in max_quantity with the field's message
+    ✕ rejects BAD_NUMBER_INPUT in team_duration_hours with the field's message (1 ms)
+    ✕ rejects BAD_NUMBER_INPUT in max_total_orders with the field's message
+    ✕ rejects BAD_NUMBER_INPUT in max_units_per_person with the field's message
+    ✕ rejects BAD_NUMBER_INPUT in max_people_per_group with the field's message
+    ✕ rejects BAD_NUMBER_INPUT in pay_within_hours with the field's message
+    ✕ ช่องตัวเลขใช้ NumberInput ของกลาง — ไม่มี type: "number" หรือ type={...} ที่ Input (1 ms)
+    ✕ error ใต้ช่อง Max total orders มี testid gb-max-total-orders-error
+    ✕ ปิด modal แล้วคืน focus ให้ปุ่มที่เปิด (onOpenAutoFocus จำ, onCloseAutoFocus คืน) ไม่ใช้ useRef (1 ms)
+Tests:       11 failed, 50 passed, 61 total
+### playwright e2e/group-buy-admin-form.spec.ts -g AC-19 (prod build ของ create-campaign.tsx + group-buy-form.ts ก่อนแก้)
+  ✘ AC-19 ... ล้มที่ step แรก: getByTestId('gb-max-total-orders-error') toBeVisible — element(s) not found
+### พิสูจน์ว่า assertion focus ล้มได้ (spec ชั่วคราว ไม่ commit: dblclick → Escape → toBeFocused บน build เดิม)
+  Error: expect(locator).toBeFocused() failed — Expected: focused, Received: inactive
+
+## Green — jest ทั้ง backend (test:unit)
+Test Suites: 108 passed, 108 total
+Tests:       1320 passed, 1320 total
+
+## Green — playwright (prod build, viewport 1280×800 ของ AC-19) e2e/group-buy-admin-form.spec.ts ทั้งไฟล์
+  ✓  1 [chromium] › e2e/group-buy-admin-form.spec.ts:105:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (5.8
+  ✓  2 [chromium] › e2e/group-buy-admin-form.spec.ts:187:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (9.2s)
+  ✓  3 [chromium] › e2e/group-buy-admin-form.spec.ts:241:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (13.3s)
+  ✓  4 [chromium] › e2e/group-buy-admin-form.spec.ts:298:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (23.0s)
+  ✓  5 [chromium] › e2e/group-buy-admin-form.spec.ts:367:5 › AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง body เป็น UTC (8.5s)
+  ✓  6 [chromium] › e2e/group-buy-admin-form.spec.ts:403:7 › ADM-13: หัวตารางรายการแคมเปญ › AC-17: heading และปุ่ม Create campaign อยู่แถวเดียวกันใน gb-campaigns-table และยังเห็นคำเตือน GBT- (3.3s)
+  ✓  7 [chromium] › e2e/group-buy-admin-form.spec.ts:440:7 › ADM-15: ฟอร์มสร้างแคมเปญ — NumberInput และ focus › AC-19: "e" ใน Max total orders → error ใต้ช่องไม่ POST, ว่าง → null, dblclick เปิด dialo
+  7 passed (1.5m)
+
+## lint / typecheck
+pnpm lint: exit 0
+pnpm typecheck: exit 0

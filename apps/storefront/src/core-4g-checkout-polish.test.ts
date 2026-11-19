@@ -72,6 +72,11 @@ describe("medusaError คง status (AC-99)", () => {
     const form = new FormData()
     form.set("shipping_address.address_1", "1 Sukhumvit")
     form.set("shipping_address.country_code", "th")
+    // CORE-52 (กฎข้อ 110b): ช่องบังคับครบ — ให้ถึง updateCart ที่ test นี้ทดสอบ
+    form.set("shipping_address.first_name", "Somchai")
+    form.set("shipping_address.last_name", "Jaidee")
+    form.set("shipping_address.postal_code", "10110")
+    form.set("shipping_address.city", "Bangkok")
     form.set("same_as_billing", "on")
     expect(await setAddresses(null, form)).toBe(SIGN_IN_AGAIN_MESSAGE)
   })

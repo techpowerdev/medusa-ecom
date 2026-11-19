@@ -108,9 +108,14 @@ seed (`pnpm --filter backend seed`) ใน production เปิดเฉพา�
 backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDERS=true` จะ log warn หนึ่งครั้งตอนบูต (`[medusa-config] ALLOW_TEST_PROVIDERS=true in production ...`, OPS-13)
 
 ## Stripe webhooks
-สร้าง webhook endpoint ใน Stripe Dashboard สองตัว (ต่อ environment) — หนึ่งตัวต่อ provider ของ Medusa:
-`https://<backend>/hooks/payment/stripe_stripe` (บัตร) และ `https://<backend>/hooks/payment/stripe-promptpay_stripe` (PromptPay)
-ทั้งสองสมัคร event ชุดเดียวกันตามรายการด้านล่าง = event ที่ `getWebhookActionAndData` ของ `@medusajs/payment-stripe` 2.22.1 จัดการ
+สร้าง webhook endpoint ใน Stripe Dashboard **ตัวเดียว** ต่อ environment: `https://<backend>/hooks/payment/stripe_stripe`
+รับ event ของทั้งบัตร (`pp_stripe_stripe`) และ PromptPay (`pp_stripe-promptpay_stripe`) แล้วตั้ง `STRIPE_WEBHOOK_SECRET` = signing secret ของ endpoint นี้ (ADR-023)
+**ห้าม**ลงทะเบียน `/hooks/payment/stripe-promptpay_stripe` แม้ตาราง provider ใน Medusa docs จะแสดง URL ต่อ provider — เหตุผล: Stripe ออก signing secret
+คนละค่าต่อ endpoint แต่ `@medusajs/payment-stripe` ทุก provider ตรวจ signature ด้วย `STRIPE_WEBHOOK_SECRET` ค่าเดียว endpoint ที่สองจึงตรวจ signature ไม่ผ่านทุก event
+(error ใน log × retry ของ event bus) ส่วน Stripe กรอง event ตาม payment method ไม่ได้อยู่แล้ว และ Medusa ประมวลผล event ด้วย `metadata.session_id`
+ไม่ดู provider ของ path — event PromptPay ที่เข้า `stripe_stripe` จึง authorize/capture ผ่าน provider PromptPay ตามเดิม (กันด้วย integration test
+`stripe-webhook.spec.ts`, PAY-7 — ต้องผ่านทุกครั้งที่ bump `@medusajs/*`)
+endpoint สมัคร event ตามรายการด้านล่าง = event ที่ `getWebhookActionAndData` ของ `@medusajs/payment-stripe` 2.22.1 จัดการ
 (event อื่นได้ `not_supported` — สมัครเกินไม่พังแต่เปลือง request) ทุก event ต้องมี `metadata.session_id` ที่ Medusa ใส่ตอนสร้าง PaymentIntent
 ไม่งั้นถูกนับเป็น `not_supported`
 - `payment_intent.created` — pending (หรือ pending authorization เมื่อเป็น async payment method)
@@ -128,7 +133,9 @@ backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDER
 ## Go-live checklist
 ทำครบทุกข้อก่อนเปิดร้านจริง และรันข้อ 4 ซ้ำหลังแก้ตั้งค่า payment ใน admin ทุกครั้ง (D1 ไม่กัน admin เปิด manual payment เองภายหลัง)
 1. env ของ server และ worker ครบตามหัวข้อ "Prod guards" และ `docs/spec/07-scaling-ops.md` ข้อ 9 (`TZ=UTC`, `EVOUCHER_ENCRYPTION_KEY`, `EVOUCHER_ADMIN_EMAIL`, `OPS_ALERT_EMAIL` ฯลฯ — `docker-compose.prod.yml` ส่งให้ทั้ง migrate/server/worker)
-2. `STRIPE_API_KEY` เป็น live key และ `STRIPE_WEBHOOK_SECRET` มาจาก webhook endpoint ของ live mode (สมัคร event ตามหัวข้อ "Stripe webhooks")
+2. `STRIPE_API_KEY` เป็น live key และ `STRIPE_WEBHOOK_SECRET` มาจาก webhook endpoint `https://<backend>/hooks/payment/stripe_stripe` ของ live mode
+   ซึ่งเป็น endpoint **เดียว**ของ backend นี้ (สมัคร event ตามหัวข้อ "Stripe webhooks", ADR-023) — environment ที่เคยสร้าง endpoint
+   `stripe-promptpay_stripe` ไว้ ให้ลบใน Dashboard
 3. `ALLOW_TEST_PROVIDERS` ต้องไม่มีค่า — "ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" (`ALLOW_TEST_PROVIDERS=`) นับเหมือนกัน (ผ่าน); ค่าใด ๆ ที่ไม่ว่าง
    (รวม `false`, `0`) `check:go-live` นับว่าไม่ผ่าน
 4. รันบน container ของ server หรือ worker (env เดียวกับ production):
@@ -141,6 +148,11 @@ backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDER
 5. ค่าส่ง placeholder (Q-F1 ใน `docs/spec/01-core-medusa.md` ยังไม่ตัดสิน): seed ตั้งราคา shipping option "Standard" และ return option "Standard return" จาก `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`) = 10 THB placeholder — owner ตัดสินค่าจริงแล้วแก้ใน admin ก่อนเปิดร้าน (ราคาของ shipping option "Standard" และ "Standard return" แก้ที่ Settings → Locations & Shipping → location → service zone → shipping option นั้น → Edit prices; `shipping_rate` ที่หน้า storefront แสดงแก้ที่ Settings → Regions → region นั้น → Metadata — แก้ทั้งสองที่ให้ตรงกัน)
 6. บัญชี Stripe (live) เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (spec 06 Q1 — owner ยังไม่ยืนยัน 2026-11-09; ระหว่างนี้ใช้ test mode) — ตรวจใน Stripe Dashboard → Settings → Payment methods ว่า PromptPay เป็น "On" ก่อนเปิดร้าน
 7. เปิด backup รายวันของ Postgres และซ้อม restore สำเร็จตาม `docs/ops/database.md` หัวข้อ "Backup และ restore ของ Postgres" (spec 07 AC-4) — เก็บ `EVOUCHER_ENCRYPTION_KEY` ใน secret manager แยกจาก backup
+8. ตรวจ webhook endpoint เดียวด้วยมือ (ADR-023 — `check:go-live` ไม่เรียก Stripe API) บน staging/test mode ก่อน แล้วตรวจรายการ endpoint ซ้ำใน live:
+   (1) Stripe Dashboard → Developers → Webhooks มี endpoint ของ backend นี้ตัวเดียวคือ `/hooks/payment/stripe_stripe`;
+   (2) จ่ายพร้อมเพย์ (confirm PI ใน test mode) → ได้ order `payment_status=captured`; (3) จ่ายบัตร `4242…` → ได้ order;
+   (4) log ของ server/worker ไม่มี `An error occurred in constructWebhookEvent` และไม่มี `payment-webhook-orphan: skipped`;
+   (5) Dashboard แสดง delivery ของ endpoint ตอบ 200
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
@@ -162,6 +174,8 @@ subscriber `apps/backend/src/subscribers/payment-webhook-orphan.ts` เขีย
 `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` (มี `provider`, `session_id`, `amount`, `payment_intent`) และส่งอีเมลหา `OPS_ALERT_EMAIL`
 (ไม่ตั้ง env = มีแต่ log พร้อม warning — ตั้งค่าใน env ของ server และ worker) Medusa ลบ session แบบ hard delete จึงไม่มี
 `payment_collection_id`/`cart_id` ใน alert — ใช้อีเมลลูกค้าใน Stripe แทน
+`provider` ใน alert คือ path ของ webhook endpoint (`stripe_stripe` เสมอ — ADR-023) ไม่ใช่ provider ของ session อย่าใช้ตัดสินว่าเป็นบัตรหรือ PromptPay
+— ดู `payment_method_types` ของ PI ใน Stripe Dashboard จากค่า `payment_intent`
 1. ค้นหา PI ใน Stripe dashboard ด้วยค่า `payment_intent` จาก alert (account และ mode ให้ตรงกับ environment) ตรวจว่า `succeeded`,
    จำนวนเงิน และ `metadata.session_id` ตรงกับ alert จดอีเมลลูกค้าจาก billing details — ดู Refunds ของ PI ก่อนเสมอ (PI ยังแสดง `succeeded`
    แม้ refund ครบแล้ว) ถ้า refund ครบแล้ว ข้ามข้อ 3 ไปแจ้งลูกค้าและบันทึก incident

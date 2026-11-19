@@ -2,6 +2,7 @@ import { DEFAULT_REGION_STORE_POLICIES } from "../../../../lib/region-store-poli
 import { storeOwnershipMiddlewares } from "../middlewares"
 import { validateStoreReturnShippingOption } from "../return-shipping-option"
 import { assignStoreReturnLocation } from "../return-location"
+import { lockStoreReturnOrder } from "../return-lock"
 import {
   RETURN_ITEM_NOT_SHIPPABLE,
   RETURN_ITEM_NOT_SHIPPED,
@@ -92,10 +93,11 @@ describe("storeReturnWindowError", () => {
 })
 
 describe("POST /store/returns middleware order", () => {
-  // CORE-55 (กฎข้อ 113a): assignStoreReturnLocation ต่อท้ายเป็นตัวสุดท้าย (ตั้ง location หลังผ่านการตรวจทั้งหมด)
+  // CORE-55 (กฎข้อ 113a): assignStoreReturnLocation ตั้ง location หลังผ่านการตรวจทั้งหมด
+  // CORE-56 (กฎข้อ 114a): ตามด้วย lockStoreReturnOrder เป็นตัวสุดท้าย
   it("runs the return window check after the CORE-17/21 option check, right before assignStoreReturnLocation", () => {
     const chain = storeOwnershipMiddlewares.find((m) => m.matcher === "/store/returns")!.middlewares!
     expect(chain.indexOf(validateStoreReturnWindow)).toBe(chain.indexOf(validateStoreReturnShippingOption) + 1)
-    expect(chain.slice(-2)).toEqual([validateStoreReturnWindow, assignStoreReturnLocation])
+    expect(chain.slice(-3)).toEqual([validateStoreReturnWindow, assignStoreReturnLocation, lockStoreReturnOrder])
   })
 })

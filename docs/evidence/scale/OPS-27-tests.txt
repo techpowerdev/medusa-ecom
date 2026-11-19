@@ -1,0 +1,176 @@
+# OPS-27 (spec 07 AC-42) — ผล test
+
+## AC-42a Red (test ฉบับสุดท้าย × Dockerfile / ci.yml / CLAUDE.md ของ develop a7be88de)
+$ TEST_TYPE=unit jest --verbose src/__tests__/ci-workflow.unit.spec.ts -t OPS-27
+    ✕ Dockerfile stage build: บรรทัด RUN ที่ build backend ตั้ง NODE_ENV=production inline ก่อน pnpm
+    ✓ Dockerfile: pnpm install และ deploy --prod ไม่ได้รับ NODE_ENV; stage base/build ไม่มี ENV/ARG NODE_ENV
+    ✕ Dockerfile: placeholder ของ guard อยู่ในบรรทัด build (ข้อความมีคำ placeholder) และไม่มีตัวแปรปิด guard ของ provider ทดสอบ
+    ✓ Dockerfile stage runtime: ENV NODE_ENV=production และไม่มีคำ placeholder
+    ✕ ci.yml storefront-e2e: build backend ด้วย NODE_ENV=production เฉพาะบรรทัดนั้น (job env ไม่มี NODE_ENV) แล้วตรวจ bundle ก่อน medusa start
+    ✕ ci.yml docker-worker-mode: ตรวจ image ว่า admin ไม่มี Development Mode และไม่มีคำ placeholder (หลัง build image)
+    ✕ CLAUDE.md: คำสั่ง prod-like build ด้วย NODE_ENV=production
+Tests:       5 failed, 13 skipped, 2 passed, 20 total
+(สองข้อที่ผ่านตั้งแต่ red เป็น regression guard: install/deploy --prod ไม่ได้รับ NODE_ENV และ stage runtime คงเดิม)
+
+## AC-42a Green (+ prod-guards.unit.spec.ts ผ่านโดยไม่แก้)
+$ TEST_TYPE=unit jest --verbose src/__tests__/ci-workflow.unit.spec.ts src/__tests__/prod-guards.unit.spec.ts
+  OPS-14 ci.yml
+    ✓ storefront-e2e ไม่รอ job ของ backend tests (รันขนาน)
+    ✓ integration:http แบ่ง shard ใน matrix และ shard รวมกันครบทุกไฟล์ไม่ซ้ำ
+    ✓ ยังรัน test:unit และ test:integration:modules ใน CI
+    ✓ job backend-tests เป็นตัวรวมผลที่รอทุก shard และ fail เมื่อ shard ไม่ success
+  OPS-15 ci.yml นับ log connection ของ knex
+    ✓ ขั้นรัน test เขียน log ลงไฟล์ (shell: bash = -eo pipefail คง exit code ของ jest)
+    ✓ มีขั้นนับที่รันแม้ test ล้ม และ exit 1 เมื่อจำนวน > 0
+    ✓ สตริงที่นับไม่อยู่ในโค้ดส่วนอื่น (ไม่แก้ด้วยการกรอง/ปิด log)
+  OPS-12 ci.yml รัน smoke-redis-outage.sh
+    ✓ มีขั้นรัน tools/ops/smoke-redis-outage.sh หลัง tools/ops/smoke-worker-mode.sh
+    ✓ ขั้น smoke-redis-outage ไม่ถูกข้ามหรือกลืนผล (ไม่มี if, continue-on-error หรือ || true)
+  OPS-16 ci.yml ตรวจ Stripe events ตัวจริง
+    ✓ มีขั้นรัน tools/ci/check-stripe-events.sh (ไม่มี argument = docs/ops/production.md × ci.yml)
+  OPS-16 ci.yml cache browser ของ Playwright
+    ✓ cache โฟลเดอร์ ms-playwright ด้วย key ที่มีเวอร์ชันจาก step ที่อ่าน pnpm-lock.yaml
+    ✓ step อ่านเวอร์ชันได้ค่าเดียวกับ @playwright/test ของ storefront
+    ✓ cache miss → install --with-deps; cache hit → install-deps เท่านั้น (หลัง restore cache)
+  OPS-27 build backend ด้วย NODE_ENV=production
+    ✓ Dockerfile stage build: บรรทัด RUN ที่ build backend ตั้ง NODE_ENV=production inline ก่อน pnpm
+    ✓ Dockerfile: pnpm install และ deploy --prod ไม่ได้รับ NODE_ENV; stage base/build ไม่มี ENV/ARG NODE_ENV
+    ✓ Dockerfile: placeholder ของ guard อยู่ในบรรทัด build (ข้อความมีคำ placeholder) และไม่มีตัวแปรปิด guard ของ provider ทดสอบ
+    ✓ Dockerfile stage runtime: ENV NODE_ENV=production และไม่มีคำ placeholder
+    ✓ ci.yml storefront-e2e: build backend ด้วย NODE_ENV=production เฉพาะบรรทัดนั้น (job env ไม่มี NODE_ENV) แล้วตรวจ bundle ก่อน medusa start
+    ✓ ci.yml docker-worker-mode: ตรวจ image ว่า admin ไม่มี Development Mode และไม่มีคำ placeholder (หลัง build image)
+    ✓ CLAUDE.md: คำสั่ง prod-like build ด้วย NODE_ENV=production
+  AC-9 buildNotificationProviders ใน production (ADR-010)
+    ✓ throws naming RESEND_API_KEY when missing
+    ✓ throws naming RESEND_FROM_EMAIL when missing
+    ✓ throws naming RESEND_API_KEY, RESEND_FROM_EMAIL when missing
+    ✓ ALLOW_TEST_PROVIDERS=true keeps the local provider for email
+    ✓ other values of ALLOW_TEST_PROVIDERS do not disable the guard
+    ✓ outside production keeps the local fallback
+    ✓ production with both values uses Resend
+  AC-10 payment providers ที่ seed เปิดให้ region Thailand
+    ✓ production without ALLOW_TEST_PROVIDERS → Stripe only
+    ✓ production with ALLOW_TEST_PROVIDERS=true and non-production → includes pp_system_default
+  AC-13 / AC-17 boot guards ใน medusa-config
+    ✓ boots in production when everything is set
+    ✓ AC-13 production without AFFILIATE_TOKEN_SECRET throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="" throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="shop.example.com" throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="ftp://shop.example.com" throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="https://" throws with the variable name
+    ✓ AC-17 production with STOREFRONT_URL="http://exa mple.com" throws with the variable name
+    ✓ ALLOW_TEST_PROVIDERS does not disable the AFFILIATE_TOKEN_SECRET / STOREFRONT_URL guards
+    ✓ outside production warns once per missing variable at boot
+    ✓ outside production with both set does not warn
+    ✓ AC-20 production with ALLOW_TEST_PROVIDERS=true still boots and warns exactly once
+    ✓ AC-20 production without the variable does not warn about ALLOW_TEST_PROVIDERS
+    ✓ AC-20 production with an empty value does not warn about ALLOW_TEST_PROVIDERS
+    ✓ AC-20 development with ALLOW_TEST_PROVIDERS=true does not warn about ALLOW_TEST_PROVIDERS
+  AC-36 EVOUCHER_ENCRYPTION_KEY / อีเมลแจ้งเตือนตอนบูต (OPS-21)
+    ✓ (b) production with EVOUCHER_ENCRYPTION_KEY="" throws with the variable name
+    ✓ (b) production with EVOUCHER_ENCRYPTION_KEY="abc" throws with the variable name
+    ✓ (b) production with EVOUCHER_ENCRYPTION_KEY="zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz" throws with the variable name
+    ✓ (b) production with EVOUCHER_ENCRYPTION_KEY="ababababababababababababababababababababababababababababababab" throws with the variable name
+    ✓ (b) ALLOW_TEST_PROVIDERS=true does not disable the key guard
+    ✓ (b) production with a valid 64 hex key does not throw
+    ✓ (c) production without EVOUCHER_ADMIN_EMAIL does not throw and returns one warning naming it
+    ✓ (c) production without OPS_ALERT_EMAIL does not throw and returns one warning naming it
+    ✓ (c) production without either email returns one warning per variable
+    ✓ (d) development without the three variables does not throw
+  AC-36 docker-compose.prod.yml ส่ง env ของ e-voucher เข้า backend (OPS-21)
+    ✓ (a) x-backend-env passes EVOUCHER_ENCRYPTION_KEY from the shell
+    ✓ (a) x-backend-env passes EVOUCHER_ADMIN_EMAIL from the shell
+    ✓ (a) x-backend-env passes OPS_ALERT_EMAIL from the shell
+    ✓ (a) TZ is the constant UTC
+    ✓ (a) service migrate receives all four
+    ✓ (a) service server receives all four
+    ✓ (a) service worker receives all four
+  AC-39 อีเมลแจ้งเตือนที่เป็นช่องว่างล้วน + comment export ต้น docker-compose.prod.yml (OPS-24)
+    ✓ production with EVOUCHER_ADMIN_EMAIL of spaces only does not throw and returns one warning naming it
+    ✓ production with OPS_ALERT_EMAIL of spaces only does not throw and returns one warning naming it
+    ✓ production with a real EVOUCHER_ADMIN_EMAIL does not warn about it
+    ✓ production with a real OPS_ALERT_EMAIL does not warn about it
+    ✓ the leading `export` comment lines of docker-compose.prod.yml include EVOUCHER_ENCRYPTION_KEY=
+  AC-13 / AC-17 ci.yml และ .env.example
+    ✓ finds the production-mode jobs
+    ✓ every production-mode job sets AFFILIATE_TOKEN_SECRET
+    ✓ every production-mode job sets STOREFRONT_URL
+    ✓ every production-mode job sets EVOUCHER_ENCRYPTION_KEY
+    ✓ every production-mode job sets ALLOW_TEST_PROVIDERS=true (ADR-010 ข้อ 4)
+    ✓ STOREFRONT_URL in CI is an http(s) URL
+    ✓ AC-36 (e) EVOUCHER_ENCRYPTION_KEY in CI passes parseEncryptionKey
+    ✓ AC-36 (e) tools/ops/smoke-worker-mode.sh generates EVOUCHER_ENCRYPTION_KEY like AFFILIATE_TOKEN_SECRET
+    ✓ AC-36 (e) tools/ops/smoke-redis-outage.sh generates EVOUCHER_ENCRYPTION_KEY like AFFILIATE_TOKEN_SECRET
+    ✓ AC-36 (e) tools/load/run.sh generates EVOUCHER_ENCRYPTION_KEY like AFFILIATE_TOKEN_SECRET
+    ✓ apps/backend/.env.example has a STOREFRONT_URL= line
+  AC-11 Go-live checklist ใน docs/ops/production.md
+    ✓ AC-36 (f) หัวข้อ Prod guards และ Go-live checklist ระบุ EVOUCHER_ENCRYPTION_KEY
+    ✓ มีหัวข้อและอ้างคำสั่ง check:go-live
+    ✓ AC-21 มีข้อ Q-F1: ค่าส่ง Standard / Standard return ยังเป็น placeholder shipping_rate
+    ✓ AC-21 ข้อที่พูดถึงค่าว่างของ ALLOW_TEST_PROVIDERS ระบุว่าไม่ตั้งกับตั้งเป็นค่าว่างนับเหมือนกัน
+    ✓ AC-25 ทุกบรรทัดที่พูดถึง ALLOW_TEST_PROVIDERS ใช้ถ้อยคำเดียวกับข้อ 3 (ไม่ตั้ง / ตั้งเป็นค่าว่าง)
+    ✓ AC-25 ข้อ Q-F1 บอกตำแหน่งแก้ shipping_rate และราคา shipping option ใน admin
+    ✓ AC-21 check:go-live นับ ALLOW_TEST_PROVIDERS ที่ไม่ตั้งกับค่าว่างเหมือนกัน แต่ค่าอื่นทุกค่าไม่ผ่าน
+    ✓ package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec
+Tests:       84 passed, 84 total
+
+## AC-42b red/green ในเครื่อง (bundle admin ของ medusa build — assets = apps/backend/.medusa/server/public/admin/assets)
+$ pnpm --filter backend build                      # แบบเดิม ไม่ตั้ง NODE_ENV
+js=348 ไฟล์ที่มี "Development Mode"=1 ขนาด assets 10668 KB
+$ NODE_ENV=production pnpm --filter backend build  # แบบใหม่ ด้วย env ระดับ job ของ storefront-e2e (รวม REDIS_URL, ALLOW_TEST_PROVIDERS=true)
+js=348 ไฟล์ที่มี "Development Mode"=0 ขนาด assets 10332 KB (เล็กลง 336 KB)
+
+## AC-42b image (Dockerfile ใหม่ — build ผ่าน guard ด้วย placeholder กฎ b)
+$ docker build -f apps/backend/Dockerfile -t medusa-ecom-backend:ops27 .   # ไม่มี env ของ guard ใน shell / build args
+exit=0
+$ (สคริปต์เดียวกับ step "Backend image has production admin bundle (OPS-27)" ของ ci.yml กับ tag ops27)
+OK admin bundle เป็น production และไม่มี placeholder ใน /app
+js ใน /app/public/admin/assets = 348
+$ docker run --rm medusa-ecom-backend:ops27 start   # ไม่ส่ง env → guard ตอนบูตยังทำงาน (placeholder ไม่อยู่ใน runtime)
+exit=1 "ต้องตั้ง AFFILIATE_TOKEN_SECRET, STOREFRONT_URL ใน production"
+
+## AC-42d e2e admin ในเครื่องบน build ใหม่ (NODE_ENV=production pnpm --filter backend build → medusa start จาก .medusa/server port 9316)
+$ npx playwright test --project=chromium e2e/evoucher-admin-pool-page.spec.ts e2e/admin-form-pilot.spec.ts e2e/affiliate-admin-forms.spec.ts --workers=1
+  ✓   1 [chromium] › e2e/admin-form-pilot.spec.ts:23:5 › AC-6: drawer flash sale — Total cap 0 แสดง error ไม่ POST; dblclick Save และ Meta+Enter = POST 1 ครั้ง
+  ✓   2 [chromium] › e2e/admin-form-pilot.spec.ts:109:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง
+  ✓   3 [chromium] › e2e/admin-form-pilot.spec.ts:189:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › drawer flash sale — Total cap / Per-customer limit = e, 1e → error ไม่ POST; ล้างช่อง
+  ✓   4 [chromium] › e2e/admin-form-pilot.spec.ts:248:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › modal Create pool — Face value / Low-stock threshold = e → error ใต้ช่องและไม่มี POST
+  ✓   5 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง
+  ✓   6 [chromium] › e2e/affiliate-admin-forms.spec.ts:131:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด
+  ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:167:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้
+  ✓   8 [chromium] › e2e/affiliate-admin-forms.spec.ts:230:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ)
+  ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:263:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ r
+  ✓  10 [chromium] › e2e/affiliate-admin-forms.spec.ts:330:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet"
+  ✓  12 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน
+  ✓  13 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliate
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error
+  ✓  15 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entri
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "N
+  ✓  17 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet"
+  ✓  18 [chromium] › e2e/affiliate-admin-forms.spec.ts:379:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "
+  ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:398:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓  20 [chromium] › e2e/affiliate-admin-forms.spec.ts:408:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error
+  ✓  21 [chromium] › e2e/affiliate-admin-forms.spec.ts:428:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแส
+  ✓  22 [chromium] › e2e/affiliate-admin-forms.spec.ts:507:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก
+  ✓  23 [chromium] › e2e/affiliate-admin-forms.spec.ts:548:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ป
+  ✓  24 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:27:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu
+  ✓  25 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:143:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp
+  ✓  26 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:209:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ
+  ✓  27 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:249:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินา
+  ✓  28 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:323:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง
+  ✓  29 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:332:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error
+  ✓  30 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:339:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No cod
+  ✓  31 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:355:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages"
+  ✓  32 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:370:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓  33 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:379:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error
+  ✓  34 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:402:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน U
+  ✓  35 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:402:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status ค
+  ✓  36 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:449:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-c
+  36 passed (1.8m)
+
+## อื่นๆ
+pnpm lint = 0, pnpm typecheck = 0
+pnpm --filter backend test:unit: Test Suites: 110 passed, 110 total; Tests:       1391 passed, 1391 total
+pnpm --filter storefront test:e2e:unit: 116 passed (935ms)
+ชุดเต็ม storefront-e2e และ docker-worker-mode → CI ของ PR

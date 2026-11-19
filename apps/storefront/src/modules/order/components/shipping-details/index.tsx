@@ -9,6 +9,11 @@ type ShippingDetailsProps = {
 }
 
 const ShippingDetails = ({ order }: ShippingDetailsProps) => {
+  // CORE-52 (กฎข้อ 110c): order voucher ล้วนไม่มีการจัดส่ง — ไม่แสดง section นี้ (หน้า confirmed และรายละเอียด order)
+  if (!order.shipping_methods?.length) {
+    return null
+  }
+
   return (
     <div>
       <Heading

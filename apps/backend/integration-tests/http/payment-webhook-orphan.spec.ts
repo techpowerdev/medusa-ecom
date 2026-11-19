@@ -21,7 +21,8 @@ const stripeSdkPath = require.resolve("stripe", {
 const Stripe = require(stripeSdkPath)
 
 const OPS_EMAIL = "ops@x.test"
-const PROVIDER = "stripe-promptpay_stripe"
+// ADR-023: endpoint เดียว → provider ใน event = path ของ endpoint (stripe_stripe) ไม่ใช่ provider ของ session
+const PROVIDER = "stripe_stripe"
 const INTENT_ID = "pi_pay6b_orphan"
 
 type EventData = { provider: string; payload: Record<string, unknown> }

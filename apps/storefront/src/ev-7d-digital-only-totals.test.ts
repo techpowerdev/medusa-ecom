@@ -55,7 +55,7 @@ describe("CartTotals (กฎข้อ 28a)", () => {
     const CartTotals = (await import("@modules/common/components/cart-totals")).default
     return renderToStaticMarkup(
       createElement(CartTotals, {
-        totals: { currency_code: "thb", item_subtotal: 500, total: 500, tax_total: 32.71, items },
+        totals: { currency_code: "thb", original_item_total: 500, total: 500, tax_total: 32.71, items },
       })
     )
   }
@@ -64,7 +64,7 @@ describe("CartTotals (กฎข้อ 28a)", () => {
     const html = await render([voucher, voucher])
     expect(html).not.toContain("ค่าจัดส่ง")
     expect(html).not.toContain('data-testid="cart-shipping"')
-    expect(html).toContain("ไม่รวมภาษี")
+    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
     expect(html).toContain('data-testid="cart-taxes"')
   })
 
@@ -75,28 +75,29 @@ describe("CartTotals (กฎข้อ 28a)", () => {
   ])("%s → ยังมีแถวค่าจัดส่ง", async (_, items) => {
     const html = await render(items)
     expect(html).toContain('data-testid="cart-shipping"')
-    expect(html).toContain("ไม่รวมค่าจัดส่งและภาษี")
+    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
   })
 })
 
 describe("CartTotals เมื่อ cart digital-only ยังมีค่าจัดส่งเก็บจริง (review #320)", () => {
   // voucher + t-shirt เลือก Standard แล้วลบ t-shirt: Medusa 2.22.1 ไม่ลบ shipping method — ยอดรวมยังรวมค่าจัดส่ง
-  it("shipping_subtotal > 0 → คงแถวค่าจัดส่ง ไม่ให้ยอดรวมมีเงินที่ไม่มีแถวอธิบาย", async () => {
+  // CORE-57 (กฎข้อ 115c): เงื่อนไขและค่าของแถวใช้ original_shipping_total (รวม VAT = ราคา option)
+  it("original_shipping_total > 0 → คงแถวค่าจัดส่ง ไม่ให้ยอดรวมมีเงินที่ไม่มีแถวอธิบาย", async () => {
     const CartTotals = (await import("@modules/common/components/cart-totals")).default
     const html = renderToStaticMarkup(
       createElement(CartTotals, {
         totals: {
           currency_code: "thb",
-          item_subtotal: 467.29,
-          shipping_subtotal: 9.35,
+          original_item_total: 500,
+          original_shipping_total: 10,
           total: 510,
           items: [voucher],
         },
       })
     )
     expect(html).toContain('data-testid="cart-shipping"')
-    expect(html).toContain('data-value="9.35"')
-    expect(html).toContain("ไม่รวมค่าจัดส่งและภาษี")
+    expect(html).toMatch(/data-testid="cart-shipping"[^>]*data-value="10"/)
+    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
   })
 })
 
@@ -115,6 +116,10 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     form.set("email", "a@example.com")
     form.set("billing_address.address_1", "99 ถนนสุขุมวิท")
     form.set("billing_address.country_code", "th")
+    form.set("billing_address.first_name", "สมชาย")
+    form.set("billing_address.last_name", "ใจดี")
+    form.set("billing_address.postal_code", "10110")
+    form.set("billing_address.city", "วัฒนา")
     return form
   }
   const shippingForm = (cc = "th") => {
@@ -123,6 +128,10 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     form.set("email", "a@example.com")
     form.set("shipping_address.address_1", "1 Sukhumvit")
     form.set("shipping_address.country_code", "th")
+    form.set("shipping_address.first_name", "Somchai")
+    form.set("shipping_address.last_name", "Jaidee")
+    form.set("shipping_address.postal_code", "10110")
+    form.set("shipping_address.city", "Bangkok")
     form.set("same_as_billing", "on")
     return form
   }
@@ -184,9 +193,11 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     const data = form()
     data.set(field, "")
 
-    // สำเร็จ = redirect (mock ไม่ throw) จึงไม่มีข้อความคืน
-    expect((await submit(data)) ?? "").not.toMatch(/เปลี่ยนแปลง/)
-    expect(update).toHaveBeenCalledTimes(1)
+    const message = (await submit(data)) ?? ""
+    expect(message).not.toMatch(/เปลี่ยนแปลง/)
+    // CORE-52 (กฎข้อ 110b): ช่องบังคับว่าง → ข้อความให้กรอกให้ครบ ไม่บันทึกทับ cart
+    expect(message).toMatch(/[฀-๿]/)
+    expect(update).not.toHaveBeenCalled()
   })
 
   it("อ่าน cart แล้ว 401 → ให้เข้าสู่ระบบใหม่ ไม่บันทึกที่อยู่", async () => {

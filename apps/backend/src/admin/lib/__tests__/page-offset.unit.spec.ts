@@ -1,4 +1,4 @@
-import { clampOffset, isMalformedOffset, pageOffset } from "../page-offset"
+import { clampOffset, isMalformedOffset, isPastLastPage, pageOffset } from "../page-offset"
 
 // ADM-10 (spec 08 กฎ 13a, AC-14): `<prefix>_offset` ใน URL ผู้ใช้แก้เองได้ — ค่าที่ไม่ใช่จำนวนเต็มบวกใช้หน้าแรก
 // และค่าอื่นปัดลงเป็นต้นหน้า (DataTable ของ dashboard คำนวณหน้าจาก offset / pageSize)
@@ -42,5 +42,18 @@ describe("isMalformedOffset", () => {
 
   it.each([null, "0", "50", "75", "99999999"])("%p → false", (raw) => {
     expect(isMalformedOffset(raw)).toBe(false)
+  })
+})
+
+// ADM-23 (spec 08 กฎ 27a, AC-28): มีแถว (count > 0) แต่หน้านี้ว่าง = offset เกินที่ usePageOffset กำลัง clamp
+// → ตารางแสดง loading แทน empty state (ผู้ใช้: codes-table, partners-section)
+describe("isPastLastPage", () => {
+  it.each([
+    [5, 0, true],
+    [0, 0, false],
+    [5, 2, false],
+    [undefined, undefined, false],
+  ] as const)("count %p แถว %p → %p", (count, rows, expected) => {
+    expect(isPastLastPage(count, rows)).toBe(expected)
   })
 })

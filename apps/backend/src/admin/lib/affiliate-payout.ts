@@ -55,29 +55,13 @@ export const markPaidBody = (reference: string): { reference?: string } => {
   return trimmed ? { reference: trimmed } : {}
 }
 
-export type AffiliateOption = Pick<Affiliate, "id" | "name" | "email" | "status">
+// ADM-24 (spec 08 กฎ 28b): params ของ useComboboxData (q/id/limit/offset) + active และ suspended ใน request เดียว
+// เรียงชื่อฝั่ง server (order=name, tiebreak ด้วย id) → รายการเรียงชื่อข้ามหน้า ไม่เรียงซ้ำฝั่ง client; pending ไม่อยู่ในตัวเลือก
+export type AffiliateOptionParams = { q?: string; id?: string; limit?: number; offset?: number }
 
-// ADM-9 (spec 08 กฎ 11): route ไม่มี `q` และ limit สูงสุด 200 — ดึงครบทุกหน้าแล้วให้ Combobox ค้นหาฝั่ง client ไม่ตัดรายการเงียบ
-export const fetchAllAffiliates = async <T>(
-  fetchPage: (offset: number, limit: number) => Promise<{ affiliates: T[]; count: number }>,
-): Promise<T[]> => {
-  const all: T[] = []
-  for (;;) {
-    const { affiliates, count } = await fetchPage(all.length, 200)
-    all.push(...affiliates)
-    if (!affiliates.length || all.length >= count) {
-      return all
-    }
-  }
-}
-
-// filter status ของ GET /admin/affiliate/affiliates รับค่าเดียว → ยิง active และ suspended แยกแล้วรวมผล (ไม่ซ้ำ id)
-export const mergeAffiliateOptions = (...lists: AffiliateOption[][]) => {
-  const byId = new Map<string, AffiliateOption>()
-  for (const affiliate of lists.flat()) {
-    if (!byId.has(affiliate.id)) {
-      byId.set(affiliate.id, affiliate)
-    }
-  }
-  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name))
-}
+export const affiliateOptionsQuery = (params: AffiliateOptionParams) => ({
+  ...params,
+  status: ["active", "suspended"] as Affiliate["status"][],
+  order: "name",
+  fields: "id,name,email,status",
+})

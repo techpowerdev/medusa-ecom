@@ -1,6 +1,6 @@
 # 01 Core commerce — สิ่งที่ Medusa v2 มีให้เราอยู่แล้ว
 
-สถานะ: accepted (รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
+สถานะ: in-progress (ปิดรอบ 37 2026-11-19 — ☑ CORE-66 #412: preview ของ checkout แถว qty 1 ไม่มีราคาต่อหน่วย; ☑ CORE-67 #415: ราคาขีดฆ่าจาก `compare_at_unit_price` ของ price list แบบ sale ไม่ซ้อน promotion; qa ผ่านทั้งคู่ defect ไม่พบ; owner 2026-11-19 คงสรุปยอด `cart-totals` ตามกฎข้อ 125f (หมายเหตุใต้กฎ) — หัวข้อ "Follow-up รอบ 37" done; ไม่มี task เปิดค้างใน spec นี้; รอบ 37 2026-11-18 — owner ตัดสินข้อ ก (2) และ (4) ของ ROADMAP ปิดรอบ 36: preview ของ checkout แถว qty 1 = ข → CORE-66 (กฎข้อ 124, AC-165), price list แบบ sale แสดงราคาขีดฆ่าใน cart/order = ทำ → CORE-67 (กฎข้อ 125, AC-166; ← CORE-66) ☐ owner สั่งทำแล้ว — หัวข้อ "Follow-up รอบ 37"; ปิดรอบ 36 2026-11-18 — ☑ CORE-65 #406: แถว qty 1 ของหน้า order-completed และ account order details ไม่มีราคาต่อหน่วย, qty ≥ 2 คงเดิม; qa ผ่าน defect ไม่พบ — หัวข้อ "Follow-up รอบ 36 ส่วนที่ 2" done; ข้อสังเกต qa (preview ขั้น checkout review, price list sale ไม่ขีดฆ่า) อยู่ใน ROADMAP follow-up ปิดรอบ 36; รอบ 36 ส่วนที่ 2 2026-11-18 — owner ตอบข้อ UX กลุ่ม ค ของ ROADMAP ปิดรอบ 30/31 = ข (ตรวจซ้ำแล้วเปิดเฉพาะข้อที่ยังจริง) และตัดสินราคาซ้ำในหน้า order-completed = ก "ซ่อนราคาต่อหน่วยเมื่อ quantity === 1" → CORE-65 (กฎข้อ 123, AC-164) ☐ owner สั่งทำแล้ว — หัวข้อ "Follow-up รอบ 36 ส่วนที่ 2"; รอบ 34 2026-11-18 — owner ตอบ Q-C11 = ก: คู่มือ + test ของ CORE-64 อย่างเดียว ไม่มี task; ปิดรอบ 33 2026-11-18 — ☑ CORE-64 #392: สวิตช์ "Does promotion include taxes?" ของ dashboard 2.22.1 (ค่าเริ่มต้นปิด) เปิดแล้ว fixed ลดตรงจำนวนที่ตั้ง, คู่มือ `docs/guides/admin-promotions.md`; Q-C11 ยังค้าง; รอบ 33 2026-11-17 — owner ตัดสิน follow-up ปิดรอบ 32: (1) = ก → CORE-64 (promotion fixed `is_tax_inclusive: true` เสมอ + คู่มือ + test, กฎข้อ 122, AC-163) owner สั่งทำแล้ว; (2) = ข และ (5) คงเดิม → ยอมรับใน v1 (กฎข้อ 121b, 115); คำถามใหม่ Q-C11 (หัวข้อ "Follow-up รอบ 33"); ปิดรอบ 32 2026-11-17 — ☑ CORE-61 #388, CORE-62 #384, CORE-63 #386 (sync สถานะ + แก้ข้อเท็จจริง: หมายเหตุ guard `discount_total` ในกฎข้อ 120a, คำสั่งของ AC-160 ไม่มี `--`, อักขระ zero-width ดิบใน AC-162 เป็น escape; follow-up ใหม่อยู่ใน ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)"); รอบ 32 2026-11-17 — owner สั่งทำ CORE-61 (e2e hygiene, กฎข้อ 119, AC-160) และ CORE-62 (ป้าย "ก่อนส่วนลด" เฉพาะราคาสินค้าลดจริง — ภาคผนวกกฎข้อ 118a, กฎข้อ 120, AC-161) ☐ พร้อมเริ่ม; Q-C10 = ก owner 2026-11-17 → CORE-63 (zero-width ช่องที่อยู่ที่เหลือ, กฎข้อ 121, AC-162) (หัวข้อ "Follow-up รอบ 32"); ปิดรอบ 30/31 2026-11-14 — ☑ CORE-58 #369, CORE-59 #367, CORE-60 #372 (sync สถานะ + แก้ข้อเท็จจริงกฎข้อ 117c ตาม #367; follow-up ใหม่อยู่ใน ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)"); รอบ 31 2026-11-13 — owner ตอบ Q-C8 = ก (กฎข้อ 118, AC-159, CORE-60 ☐ owner สั่งทำแล้ว; หมายเหตุในกฎข้อ 115c/AC-156) และ Q-C9 = ก (ภาคผนวก 2026-11-13 ของ ADR-014 ไม่มีโค้ด) (หัวข้อ "Follow-up รอบ 31"); รอบ 30 2026-11-13 — follow-up รอบ 29: CORE-58..59 ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ, กฎข้อ 116–117, AC-157..158, คำถาม Q-C8/Q-C9 (หัวข้อ "Follow-up รอบ 30"); ปิดรอบ 29 2026-11-13 — owner สั่งทำงานที่พักไว้: ☑ CORE-56 #351, CORE-57 #352 และ ☑ CORE-52 #353, CORE-53 #358, CORE-54 #355 (sync สถานะเท่านั้น ไม่เปลี่ยนกฎ/AC); รอบ 28 2026-11-10 — owner ตอบ Q-C6 = ก (CORE-56 accepted, ตัดทาง ข) และ Q-C7 = ก (แก้กฎข้อ 81b, กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28") — CORE-56/CORE-57 พักไว้ owner ยังไม่สั่งทำ ไม่บล็อก release v0.1.0; ปิดรอบ 27 2026-11-10 — ☑ CORE-55 #336 (เงื่อนไข release v0.1.0 ครบ), แก้ถ้อยคำ AC-154 ตาม review #336, เพิ่ม CORE-56 (กฎข้อ 114, AC-155 — รอ Q-C6), คำถาม Q-C6, Q-C7; รอบ 27 2026-11-10 — CORE-55, กฎข้อ 113, AC-150..154, ADR-022 accepted; ปิดรอบ 26 2026-11-09 — ☑ CORE-4j #314, CORE-19f #310, CORE-49 #312, CORE-50 #309, CORE-51 #328; แก้กฎข้อ 77 + AC-115 ของ CORE-5d, เพิ่ม CORE-54; รอบ 25 2026-11-09 — sync สถานะ: CORE-4i (#222 + #305), CORE-9b/9c/10c/15b/23c/25/26/48 ☑, owner ยืนยัน Q-F1 คง ฿10 placeholder; follow-up ล่าสุด: รอบ 23 2026-11-05 — CORE-50..51, กฎข้อ 108–109, AC-145..146 (หัวข้อ "Follow-up รอบ 23"), CORE-47 ☑ #298 (train #299), qa #298 O-2 และ qa #295 O-1 ปิดโดยไม่สร้าง task;
 รอบ 21 2026-11-04 — CORE-47..49, กฎข้อ 105–107, AC-141..144 (หัวข้อ "Follow-up รอบ 21"), CORE-44..46 ☑, แก้ถ้อยคำกฎข้อ 103 ตาม D-1 ของ qa #288 (กฎข้อ 103e, AC-141 ☑ ครอบโดย test ที่ merge แล้ว);
 รอบ 20 2026-11-04 — CORE-44..46, กฎข้อ 102–104, AC-138..140 (หัวข้อ "Follow-up รอบ 20"), CORE-40..43 ☑, ขยายกฎข้อ 99 ไป `step=delivery`/ไม่มี step (ถอนข้อ "ยอมรับใน v1" ของรอบ 19); รอบ 19 2026-11-04 — CORE-40..43, กฎข้อ 98–101, AC-134..137 (หัวข้อ "Follow-up รอบ 19"), CORE-29/35..39 ☑, กฎข้อ 96b ปิดโดยไม่แก้โค้ด, escape ตัว pipe ในเซลล์ตาราง; รอบ 18 2026-11-04 — CORE-35..39, กฎข้อ 93–97, AC-129..133 (หัวข้อ "Follow-up รอบ 18"); รอบ 17 2026-11-04 — CORE-33 (ไม่มีวิธีส่งหลังกรอง/method ค้าง, ← #243), CORE-34 (`removePromotionCode` ล้าง error, ← #241), กฎข้อ 91–92, AC-127..128,
 หมายเหตุทาง (b) ของ CORE-32 ในกฎข้อ 89; รอบ 16b 2026-11-04 — owner ตัดสิน Q-C3 = B (ADR-019 accepted), Q-C4 = (ข) → ตรวจ shipping profile ตอน join ใน spec 04 GB-14, nit review #240 ของกฎข้อ 86e/87 และ Depends ของ CORE-28/29, CORE-28b (comment e2e core-14g หลัง CORE-28 #241) กฎข้อ 90, AC-126;
@@ -1179,7 +1179,7 @@ none
     (ยอดก่อนส่วนลด, ส่วนลด, ค่าจัดส่ง, ภาษี) ต้องรวมได้ `total` (±0.01) — ใช้ field ฐานภาษีเดียวกัน (`item_subtotal − discount_subtotal + shipping_subtotal + tax_total = total` — ไม่ใช้ `subtotal`
     ของ cart เพราะใน Medusa v2 รวม `shipping_subtotal` แล้ว จะนับค่าส่งซ้ำกับแถวค่าจัดส่ง) ถ้าปัจจุบันไม่รวมกันได้ให้แก้ใน task เดียวกัน
     — **(แก้รอบ 28, Q-C7 = ก owner 2026-11-10) ฐานของแถวเปลี่ยนจาก "ก่อนภาษี" เป็น "รวม VAT ทั้งชุด" ตามกฎข้อ 115 (CORE-57); หลักการ "แถวที่บวก/ลบรวมได้ `total`" คงเดิม
-    แต่แถวภาษีกลายเป็นข้อมูลไม่บวกซ้ำ — จนกว่า CORE-57 merge โค้ดยังเป็นตามถ้อยคำเดิมของข้อนี้**;
+    แต่แถวภาษีกลายเป็นข้อมูลไม่บวกซ้ำ — จนกว่า CORE-57 merge โค้ดยังเป็นตามถ้อยคำเดิมของข้อนี้** (ปิดรอบ 29: CORE-57 ☑ #352 — ใช้ฐานตามกฎข้อ 115 แล้ว);
     (c) dropdown ที่เปิดเองหลังจำนวนชิ้นเปลี่ยน (เช่นกดเพิ่มบน PDP) ต้องปิดเองภายใน 5 วินาที**แม้ mouse ค้างอยู่ใต้ panel ตั้งแต่ตอนเปิด** (panel เปิดทับปุ่มที่ลูกค้าเพิ่งกด — review #199:
     ค้างเปิดทับคอลัมน์ขวาของ PDP จน e2e ต้อง `dispatchEvent`) — การชี้ที่ `nav-cart-link` ยังเปิดค้างได้ตามเดิมของ starter (Q-C1 (2) = (ก), owner 2026-11-03); (d) (review #199 CORE-25)
     unit ของ PDP มีกรณีเปลี่ยน `product.id` (render สินค้าใหม่พร้อม `v_id` ของสินค้าใหม่) → option เป็นของ variant ตาม `v_id` ใหม่ ไม่ค้างค่าของสินค้าเดิม; (e) (review #202) comment
@@ -2081,8 +2081,8 @@ none
 ### Tasks (follow-up รอบ 26)
 | ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|------|----|---------|------|
-| CORE-52 | (storefront, qa #320 + review #314) checkout: ตะกร้าว่างจากอีกแท็บ → `/cart`, ที่อยู่ช่องว่างไม่ผ่าน, ไม่แสดง section จัดส่งบน order voucher, select ประเทศคงค่าหลัง error, เลิก `eslint-disable` (กฎข้อ 110) | `src/app/[countryCode]/(checkout)/checkout/page.tsx`, `src/lib/data/cart.ts` (`setAddresses`, `placeOrder`), `src/modules/order/components/shipping-details/index.tsx` (หรือ template ผู้เรียก), `src/modules/checkout/components/{shipping-address,billing_address,country-select}/index.tsx`, e2e ใหม่ | ~200 LOC รวม e2e | 1280×800, 375×812 | AC-147 | **#320 (EV-7d) merge** (แตะ `lib/data/cart.ts`, ฟอร์มที่อยู่เดียวกัน); ไม่บล็อก release | ไม่ชน ADM-*, OPS-21; ชน CORE-19f/CORE-4j ถ้ามี PR แตะ `cart.ts` อยู่ — ตัวที่ merge ทีหลัง rebase |
-| CORE-53 | (e2e hygiene, nit review #312/#314) `setsTimeout`, parser `core-4j`, ข้อความ cleanup `core-4g`, cleanup `core-4j` ไม่กลบ error (กฎข้อ 111) | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-4j-e2e-hygiene.unit.spec.ts`, `e2e/core-4g-checkout-polish.spec.ts`, `e2e/core-4j-checkout-discount-address.spec.ts` | ~60 LOC | ไม่มี UI ใหม่ | AC-148 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release | ไม่ชน CORE-52 (คนละไฟล์) |
+| CORE-52 | (storefront, qa #320 + review #314) checkout: ตะกร้าว่างจากอีกแท็บ → `/cart`, ที่อยู่ช่องว่างไม่ผ่าน, ไม่แสดง section จัดส่งบน order voucher, select ประเทศคงค่าหลัง error, เลิก `eslint-disable` (กฎข้อ 110) — ☑ #353 | `src/app/[countryCode]/(checkout)/checkout/page.tsx`, `src/lib/data/cart.ts` (`setAddresses`, `placeOrder`), `src/modules/order/components/shipping-details/index.tsx` (หรือ template ผู้เรียก), `src/modules/checkout/components/{shipping-address,billing_address,country-select}/index.tsx`, e2e ใหม่ | ~200 LOC รวม e2e | 1280×800, 375×812 | AC-147 | **#320 (EV-7d) merge** (แตะ `lib/data/cart.ts`, ฟอร์มที่อยู่เดียวกัน); ไม่บล็อก release | ไม่ชน ADM-*, OPS-21; ชน CORE-19f/CORE-4j ถ้ามี PR แตะ `cart.ts` อยู่ — ตัวที่ merge ทีหลัง rebase |
+| CORE-53 | (e2e hygiene, nit review #312/#314) `setsTimeout`, parser `core-4j`, ข้อความ cleanup `core-4g`, cleanup `core-4j` ไม่กลบ error (กฎข้อ 111) — ☑ #358 | `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/core-4j-e2e-hygiene.unit.spec.ts`, `e2e/core-4g-checkout-polish.spec.ts`, `e2e/core-4j-checkout-discount-address.spec.ts` | ~60 LOC | ไม่มี UI ใหม่ | AC-148 | none — **เริ่มได้**; ∥ ทุกตัว; ไม่บล็อก release | ไม่ชน CORE-52 (คนละไฟล์) |
 (รอบ 26) CORE-53 เริ่มได้ทันที; CORE-52 หลัง #320 (ปิดรอบ 26: #320 merge แล้ว CORE-52 เริ่มได้)
 
 ### ยอมรับใน v1 / ไม่เปิด task (รอบ 26)
@@ -2113,7 +2113,7 @@ none (grep test ใน e2e ของเราเอง)
 ### Tasks (ปิดรอบ 26)
 | ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|----|---------|------|
-| CORE-54 | (e2e hygiene, nit review #328) ตัวตรวจใน `core-46-e2e-hygiene` ไม่ผ่านเงียบเมื่อหา `longCode` ไม่เจอ และไม่รับอาร์กิวเมนต์เกิน 3 ตัว (กฎข้อ 112) | `e2e/core-46-e2e-hygiene.unit.spec.ts` | ~20 LOC | AC-149 | none — **เริ่มได้**; ไม่บล็อก release | ชน CORE-53 ที่ไฟล์เดียวกัน (คนละ test) → ตัวที่ merge ทีหลัง rebase |
+| CORE-54 | (e2e hygiene, nit review #328) ตัวตรวจใน `core-46-e2e-hygiene` ไม่ผ่านเงียบเมื่อหา `longCode` ไม่เจอ และไม่รับอาร์กิวเมนต์เกิน 3 ตัว (กฎข้อ 112) — ☑ #355 | `e2e/core-46-e2e-hygiene.unit.spec.ts` | ~20 LOC | AC-149 | none — **เริ่มได้**; ไม่บล็อก release | ชน CORE-53 ที่ไฟล์เดียวกัน (คนละ test) → ตัวที่ merge ทีหลัง rebase |
 
 ### Open questions (ปิดรอบ 26)
 none
@@ -2187,7 +2187,7 @@ TDD: เขียน integration AC-150/151, เคส variant ไม่มี l
 ที่มา: qa #336 D-1 (CORE-55) — ลูกค้าเปิดสองแท็บแล้วกดขอคืน line qty 1 พร้อมกัน → ได้ return `requested` 2 รายการ; stock ไม่เพิ่มเกิน (รับได้แค่ตัวเดียว) แต่แอดมินเจอ return ค้างที่รับของไม่ได้
 ต้นเหตุ (ตรวจโค้ด 2.22.1): `createAndCompleteReturnOrderWorkflow` ไม่มี `acquireLockStep` และ step ตรวจ (`create-complete-return.js:152–155`) ไม่ตรวจจำนวน — จำนวนที่ขอคืนได้ตรวจใน Order module ตอนคำนวณ action `RETURN_ITEM`
 (`@medusajs/order/dist/utils/actions/return-item.js:28–31`: `fulfilled − (return_requested + received + dismissed)` → 400 `invalid_data`) ซึ่งถูกเมื่อ request มาทีละตัว แต่สอง request ที่อ่าน order พร้อมกันผ่านทั้งคู่
-Status: accepted (owner ตอบ Q-C6 = ก 2026-11-10; CORE-56 พักไว้ — owner ยังไม่สั่งทำ)
+Status: accepted (owner ตอบ Q-C6 = ก 2026-11-10; CORE-56 พักไว้ — owner ยังไม่สั่งทำ) · ปิดรอบ 29: owner สั่งทำ 2026-11-13 → CORE-56 ☑ #351
 Out of scope: แก้/patch `@medusajs/core-flows`, override route `POST /store/returns`, return ที่สร้างจาก Admin, ล้าง return ค้างของ dev (spec 02 Q12 — admin ยกเลิกเองได้ที่หน้า order)
 
 ### What Medusa already gives us (ปิดรอบ 27)
@@ -2209,7 +2209,7 @@ none ใหม่ — middleware ใหม่ตัวสุดท้ายข�
     (d) order คนละใบไม่รอกัน; request ที่ไม่ผ่าน middleware ก่อนหน้า (auth/ownership/option/window/location) ไม่ถือ lock
 
 ### Acceptance criteria (ปิดรอบ 27)
-- AC-155 (CORE-56, กฎข้อ 114) integration http ต่อจาก `integration-tests/http/store-returns-receive.spec.ts` (token ลูกค้าเจ้าของ order): Given order ที่มี line `manage_inventory=true` qty 1 fulfill + ship แล้ว When ยิง `POST /store/returns` ขอคืน 1 ชิ้นสองครั้งพร้อมกัน (`Promise.allSettled`, ทำซ้ำ 5 รอบด้วย order ใหม่) Then ทุกรอบได้ 200 หนึ่งตัวและอีกตัว 400 `invalid_data` (หรือ 409 ตามกฎข้อ 114b) — **ล้มบน develop**, `query.graph` ของ return ของ order นั้นมี `status=requested` 1 รายการ และ `items.detail.return_requested_quantity` = 1;
+- AC-155 (CORE-56, กฎข้อ 114) integration http ต่อจาก `integration-tests/http/store-returns-receive.spec.ts` (token ลูกค้าเจ้าของ order): Given order ที่มี line `manage_inventory=true` qty 1 fulfill + ship แล้ว When ยิง `POST /store/returns` ขอคืน 1 ชิ้นสองครั้งพร้อมกัน (`Promise.allSettled`, ทำซ้ำ 5 รอบด้วย order ใหม่) Then ทุกรอบได้ 200 หนึ่งตัวและอีกตัว 400 `invalid_data` (หรือ 409 ตามกฎข้อ 114b) — **ล้มบน develop**, `query.graph` ของ entity `return` (filter `order_id`) มี `status=requested` 1 รายการ และ `query.graph` ของ entity `order` field `items.detail.return_requested_quantity` ของ line นั้น = 1 (field อยู่ที่ `OrderItem` ของ Order module 2.22.1 ไม่ใช่ `ReturnItem` — path เดียวกับ `src/workflows/affiliate/reverse-commission.ts:75` ซึ่งอ่าน `return_received_quantity` — คนละ field);
   Given ยิงทีละครั้ง Then ครั้งที่สอง 400 `invalid_data` (ผ่านบน develop อยู่แล้ว — กันถอย); Given order สองใบของลูกค้าคนเดียวยิงพร้อมกัน Then 200 ทั้งคู่; Given request แรกล้มด้วย 400 (เช่น option ผิด) Then request ถัดไปของ order เดียวกันได้ 200 ทันที (lock ไม่ค้าง);
   unit (`return-lock.unit.spec.ts`): lock ถูก release เมื่อ handler ถัดไป throw, เมื่อ response `finish`, และเมื่อ response `close` ก่อน `finish` (client ตัดการเชื่อมต่อ) — release ครั้งเดียวด้วย `ownerId` ของ request นั้น;
   chain ของ `/store/returns` จบด้วย `assignStoreReturnLocation` → middleware lock; AC-150..153 ยังผ่าน
@@ -2223,24 +2223,24 @@ none ใหม่ — middleware ใหม่ตัวสุดท้ายข�
 ### Tasks (ปิดรอบ 27)
 | ID | Task | ไฟล์ที่แตะ (`apps/backend/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|----|---------|------|
-| CORE-56 | (qa #336 D-1) lock ต่อ order บน `POST /store/returns` กัน return ซ้ำจากสองแท็บ ด้วย middleware (กฎข้อ 114, Q-C6 = ก) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `src/api/store/ownership/return-lock.ts` (ใหม่) + `__tests__/return-lock.unit.spec.ts` (ใหม่), `src/api/store/ownership/middlewares.ts`, unit ที่ล็อก chain (`return-location.unit.spec.ts:156–159`, `return-window.unit.spec.ts:94–98`, `src/lib/__tests__/store-ownership.unit.spec.ts`), `integration-tests/http/store-returns-receive.spec.ts` | ~150 LOC | AC-155 | none (PR spec รอบ 28 merge; CORE-55 ☑ #336); ไม่บล็อก release v0.1.0 | ไม่ชนงานที่เปิดอยู่ |
+| CORE-56 | (qa #336 D-1) lock ต่อ order บน `POST /store/returns` กัน return ซ้ำจากสองแท็บ ด้วย middleware (กฎข้อ 114, Q-C6 = ก) — ☑ #351 (owner สั่งทำ 2026-11-13) | `src/api/store/ownership/return-lock.ts` (ใหม่) + `__tests__/return-lock.unit.spec.ts` (ใหม่), `src/api/store/ownership/middlewares.ts`, unit ที่ล็อก chain (`return-location.unit.spec.ts:156–159`, `return-window.unit.spec.ts:94–100`, `src/lib/__tests__/store-ownership.unit.spec.ts`), `integration-tests/http/store-returns-receive.spec.ts` | ~150 LOC | AC-155 | none (PR spec รอบ 28 merge; CORE-55 ☑ #336); ไม่บล็อก release v0.1.0 | ไม่ชนงานที่เปิดอยู่ |
 
 ### Open questions (ปิดรอบ 27)
-- ~~Q-C6~~ ✅ owner ตอบ ก 2026-11-10 → กฎข้อ 114a, AC-155, CORE-56 (พักไว้ — owner ยังไม่สั่งทำ); คำถามเดิม (CORE-56, กฎข้อ 114) กัน return ซ้ำจาก `POST /store/returns` ที่ยิงพร้อมกันด้วยทางใด:
+- ~~Q-C6~~ ✅ owner ตอบ ก 2026-11-10 → กฎข้อ 114a, AC-155, CORE-56 (พักไว้ — owner ยังไม่สั่งทำ; ปิดรอบ 29: ☑ #351); คำถามเดิม (CORE-56, กฎข้อ 114) กัน return ซ้ำจาก `POST /store/returns` ที่ยิงพร้อมกันด้วยทางใด:
   (ก) **[แนะนำ]** middleware ตัวสุดท้ายของ chain `/store/returns` (ต่อจาก `assignStoreReturnLocation`) ขอ lock `store-return:<order_id>` ผ่าน Locking module แล้ว release เมื่อ response `finish`/`close` — ไม่แทน route ของ core, ใช้ validation จำนวนของ Order module เดิม;
   ข้อเสีย: lock คร่อมจาก middleware ถึง route handler โดยอาศัย event ของ response (ต้อง test ทางที่ client ตัดการเชื่อมต่อ) และถ้า process ตายต้องรอ TTL
   (ข) override route `POST /store/returns` ให้เรียก workflow ของเราที่ห่อ `acquireLockStep` → `createAndCompleteReturnOrderWorkflow.runAsStep` → `releaseLockStep` (แบบ lock ของ e-voucher/affiliate) — lock อยู่ใน workflow มี compensation ชัด;
   ข้อเสีย: แทน route ของ core (ต้องคง validator/response shape เดิม, ตรวจซ้ำทุก bump) จึงต้องเขียน ADR และได้รับอนุมัติก่อน
   (ค) middleware ปฏิเสธ 409 ถ้า order มี return `requested` อยู่แล้ว (ไม่มี lock) — ง่ายที่สุดแต่ไม่ปิด race (สองแท็บผ่านการตรวจพร้อมกันได้) และห้ามขอคืน line อื่นของ order เดียวกันจนกว่าจะรับของรอบแรก
   (ง) ยอมรับใน v1 ไม่มี task — admin ยกเลิก return ที่ค้างเองที่หน้า order ของ dashboard (stock ไม่เพี้ยนตามผล qa)
-- ~~Q-C7~~ ✅ owner ตอบ ก 2026-11-10 → กฎข้อ 81b (แก้), กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28" (พักไว้ — owner ยังไม่สั่งทำ); คำถามเดิม (ค่าส่ง — จาก qa รอบ 27) ราคาเดียวกันแสดงสองค่า: ขั้นเลือกวิธีจัดส่งแสดงราคา option ฿10 (รวม VAT) แต่ `cart-totals` แถว "ค่าจัดส่ง" แสดง `shipping_subtotal` ฿9.35 (ก่อน VAT — ตามกฎข้อ 81b ที่ให้ทุกแถวใช้ฐานก่อนภาษีแล้วบวก `tax_total` ให้รวมได้ `total`) ลูกค้าอาจคิดว่าราคาไม่ตรง:
+- ~~Q-C7~~ ✅ owner ตอบ ก 2026-11-10 → กฎข้อ 81b (แก้), กฎข้อ 115, AC-156, CORE-57 ในหัวข้อ "Follow-up รอบ 28" (พักไว้ — owner ยังไม่สั่งทำ; ปิดรอบ 29: ☑ #352); คำถามเดิม (ค่าส่ง — จาก qa รอบ 27) ราคาเดียวกันแสดงสองค่า: ขั้นเลือกวิธีจัดส่งแสดงราคา option ฿10 (รวม VAT) แต่ `cart-totals` แถว "ค่าจัดส่ง" แสดง `shipping_subtotal` ฿9.35 (ก่อน VAT — ตามกฎข้อ 81b ที่ให้ทุกแถวใช้ฐานก่อนภาษีแล้วบวก `tax_total` ให้รวมได้ `total`) ลูกค้าอาจคิดว่าราคาไม่ตรง:
   (ก) **[แนะนำ]** แถวยอดรวมใช้ฐานรวม VAT ทั้งชุด: `item_total` ("ยอดรวมสินค้า (รวม VAT)" แบบกฎข้อ 81a), ส่วนลด `discount_total`, ค่าจัดส่ง `shipping_total` (฿10) และแถว "รวม VAT แล้ว" `tax_total` เป็นข้อมูลไม่บวกซ้ำ — แก้กฎข้อ 81b, task storefront เล็ก (`cart-totals` + e2e ยอดรวม) ~80 LOC;
   (ข) คงตัวเลขเดิม เปลี่ยนป้ายเป็น "ค่าจัดส่ง (ก่อน VAT)" และป้ายขั้นจัดส่งบอกว่า "รวม VAT" — งานน้อยแต่ลูกค้ายังเห็นสองตัวเลข;
   (ค) คงเดิม — ตัดสินพร้อม Q-F1 (ราคาค่าส่งจริง) ใน go-live checklist
 
 ## Follow-up รอบ 28 (2026-11-10 — เอกสารล้วน: บันทึกคำตัดสินของ owner)
-ที่มา: owner ตอบ "ตามที่แนะนำ" ทุกข้อ — Q-C6 = ก (หัวข้อปิดรอบ 27 → accepted), Q-C7 = ก (หัวข้อนี้) **แต่สั่งว่ายังไม่ต้องทำตอนนี้** → CORE-56 และ CORE-57 พักไว้ ไม่บล็อก release v0.1.0
-Status: accepted (CORE-57 พักไว้ — owner ยังไม่สั่งทำ)
+ที่มา: owner ตอบ "ตามที่แนะนำ" ทุกข้อ — Q-C6 = ก (หัวข้อปิดรอบ 27 → accepted), Q-C7 = ก (หัวข้อนี้) **แต่สั่งว่ายังไม่ต้องทำตอนนี้** → CORE-56 และ CORE-57 พักไว้ ไม่บล็อก release v0.1.0 (ปิดรอบ 29: owner สั่งทำ 2026-11-13 → CORE-56 ☑ #351, CORE-57 ☑ #352)
+Status: accepted (CORE-57 พักไว้ — owner ยังไม่สั่งทำ) · ปิดรอบ 29: owner สั่งทำ 2026-11-13 → CORE-57 ☑ #352
 Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คงเดิม), ราคาค่าส่งจริง (Q-F1 — go-live checklist), หน้า order ในบัญชีลูกค้า (`order-summary` — ไม่ใช้ `cart-totals`), credit line/gift card (v1 ไม่มี)
 
 ### What Medusa already gives us (รอบ 28)
@@ -2260,17 +2260,17 @@ none
     (b) แถวที่บวก/ลบรวมได้ยอดสุทธิ: `original_item_total − discount_total + original_shipping_total = total` (±0.01; `credit_line_total` = 0 ใน v1) —
         **ไม่ใช้ `item_total`/`shipping_total` ตามถ้อยคำของตัวเลือก ก ตรงตัว** เพราะใน 2.22.1 ทั้งสองหักส่วนลดแล้ว แต่ `discount_total` รวมส่วนลดเดียวกันอีก จะหักซ้ำเมื่อมีโปรโมชัน/flash (เช่นเคส AC-117)
         หรือส่วนลดค่าส่ง; เมื่อไม่มีส่วนลด ค่าเท่ากัน (`original_item_total = item_total`, `original_shipping_total = shipping_total`) ตรงตามเจตนาของ owner;
-    (c) cart digital-only (spec 02 กฎข้อ 28a) ยังซ่อนแถวค่าจัดส่งเมื่อไม่มีค่าจัดส่งเก็บจริง — เงื่อนไขใช้ `original_shipping_total` แทน `shipping_subtotal`; ป้ายแถวสินค้าเป็น "ยอดรวมสินค้า (รวม VAT)" ทุกกรณี —
+    (c) cart digital-only (spec 02 กฎข้อ 28a) ยังซ่อนแถวค่าจัดส่งเมื่อไม่มีค่าจัดส่งเก็บจริง — เงื่อนไขใช้ `original_shipping_total` แทน `shipping_subtotal`; ป้ายแถวสินค้าเป็น "ยอดรวมสินค้า (รวม VAT)" ทุกกรณี (**แก้รอบ 31, Q-C8 = ก owner 2026-11-13**: เมื่อ `discount_total > 0` ใช้ป้ายตามกฎข้อ 118 — ตัวเลข/field คงเดิม) —
         ใน `cart-totals` ไม่มีคำ "ไม่รวมภาษี"/"ก่อน VAT" และ source ไม่อ้าง `item_subtotal`, `shipping_subtotal`, `discount_subtotal` หรือ `1.07`;
     (d) dropdown ของตะกร้า (กฎข้อ 81a) ไม่เปลี่ยน
 
 ### Acceptance criteria (รอบ 28)
 - AC-156 (CORE-57, กฎข้อ 115) unit (Vitest `renderToStaticMarkup` — ไฟล์ใหม่ `src/core-57-cart-totals.test.ts`): Given totals `{ currency_code: "thb", original_item_total: 5900, item_total: 4720, discount_total: 1180, original_shipping_total: 10, shipping_total: 10, tax_total: 309.44, total: 4730, item_subtotal: 5514.02, shipping_subtotal: 9.35 }`
-  Then `cart-subtotal` `data-value="5900"`, `cart-discount` `data-value="1180"`, `cart-shipping` `data-value="10"`, `cart-taxes` `data-value="309.44"`, `cart-total` `data-value="4730"`, HTML มีป้าย "ยอดรวมสินค้า (รวม VAT)" และ "รวม VAT แล้ว" และไม่มี "ไม่รวมภาษี";
+  Then `cart-subtotal` `data-value="5900"`, `cart-discount` `data-value="1180"`, `cart-shipping` `data-value="10"`, `cart-taxes` `data-value="309.44"`, `cart-total` `data-value="4730"`, HTML มีป้าย "ยอดรวมสินค้า (รวม VAT)" และ "รวม VAT แล้ว" และไม่มี "ไม่รวมภาษี" (**แก้รอบ 31**: fixture นี้มีส่วนลด → ป้ายแถวแรกตรวจตาม AC-159 แทน "ยอดรวมสินค้า (รวม VAT)"; assertion อื่นคงเดิม);
   Given ส่วนลดค่าส่ง (`original_shipping_total: 10, shipping_total: 0, discount_total: 10`, ไม่มีส่วนลด line) Then `cart-shipping` `data-value="10"` และ subtotal − discount + shipping = total;
   Given cart digital-only ที่ `original_shipping_total` = 0 Then ไม่มี `cart-shipping` และไม่มีคำ "ค่าจัดส่ง"; Given digital-only ที่ `original_shipping_total` = 10 Then มี `cart-shipping` `data-value="10"` (แทนเคส review #320 เดิมใน `ev-7d-digital-only-totals.test.ts` — แก้ test เดิมให้ใช้ field ใหม่);
   static (อ่าน source): `cart-totals/index.tsx` ไม่มี `item_subtotal`, `shipping_subtotal`, `discount_subtotal`, `1.07`;
-  e2e (1280×800, ลูกค้า login, ใช้ shipping option ที่ seed ราคา ฿10): Given cart ที่เลือกวิธีจัดส่งแล้ว When เปิด `/th/cart` และขั้น review ของ checkout Then `cart-shipping` `data-value` = 10 = `original_shipping_total` ของ `GET /store/carts/:id` = ราคาที่ขั้นเลือกวิธีจัดส่งแสดง (`data-value` ของ option ที่เลือก หรือ `amount` ของ option จาก API ถ้าไม่มี),
+  e2e (1280×800, ลูกค้า login, ใช้ shipping option ที่ seed ราคา ฿10 — **เงื่อนไข**: option นั้นใน `GET /store/shipping-options?cart_id=` มี `is_tax_inclusive: true` (จาก `is_calculated_price_tax_inclusive` ของราคา — `list-shipping-options-for-cart.js:276–277` ของ core-flows 2.22.1; seed ตั้ง `is_tax_inclusive: true` ที่ region และ currency THB) e2e assert เงื่อนไขนี้ก่อนและเทียบกับ `amount` ของ option ไม่ hardcode 10; ถ้า Q-F1 เปลี่ยน seed จนราคาค่าส่งไม่รวม VAT จะได้ `original_shipping_total` = `amount` + VAT ≠ ราคา option → ทบทวนกฎข้อ 115a ก่อน ไม่แก้ test ให้ผ่าน): Given cart ที่เลือกวิธีจัดส่งแล้ว When เปิด `/th/cart` และขั้น review ของ checkout Then `cart-shipping` `data-value` = `amount` ของ option (seed: 10) = `original_shipping_total` ของ `GET /store/carts/:id` = ราคาที่ขั้นเลือกวิธีจัดส่งแสดง (`data-value` ของ option ที่เลือก หรือ `amount` ของ option จาก API ถ้าไม่มี),
   `cart-subtotal − cart-discount + cart-shipping` = `cart-total` (±0.01) และ `cart-total` = `total` ของ API; step "/th/cart" ของ `e2e/core-26-cart-dropdown-total.spec.ts` (AC-117 — flash) ใช้สูตรเดียวกัน (ไม่บวก `cart-taxes`) และยังผ่าน; ป้ายใน `cart-totals` มีอักษรไทย (`expectThai` ของ `thai-ui-cart-order.spec.ts` ยังผ่าน)
 
 ### Non-functional (รอบ 28)
@@ -2287,10 +2287,473 @@ TDD: เขียน unit/e2e ของ AC-156 ให้ล้มบน develop 
 ### Tasks (รอบ 28)
 | ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
 |----|------|------|------|----|---------|------|
-| CORE-57 | (storefront เล็ก — Q-C7 = ก) `cart-totals` ใช้ฐานรวม VAT ทั้งชุด ค่าจัดส่งตรงกับราคา option (กฎข้อ 115) — ☐ พร้อมเริ่ม — owner ยังไม่สั่งทำ (พักไว้ 2026-11-10) | `src/modules/common/components/cart-totals/index.tsx`, `src/core-57-cart-totals.test.ts` (ใหม่), `src/ev-7d-digital-only-totals.test.ts`, `e2e/core-26-cart-dropdown-total.spec.ts` (step `/th/cart`), e2e ใหม่ `e2e/core-57-cart-totals.spec.ts` | ~80 LOC | AC-156 | none (PR spec รอบ 28 merge); ไม่บล็อก release v0.1.0 | ∥ CORE-56 (คนละ app) |
+| CORE-57 | (storefront เล็ก — Q-C7 = ก) `cart-totals` ใช้ฐานรวม VAT ทั้งชุด ค่าจัดส่งตรงกับราคา option (กฎข้อ 115) + `e2e/support/thai-text.ts` (`ALLOWED` = `VAT` ให้ `expectThai` ผ่านกับป้ายของกฎข้อ 115a) — ☑ #352 (owner สั่งทำ 2026-11-13) | `src/modules/common/components/cart-totals/index.tsx`, `src/core-57-cart-totals.test.ts` (ใหม่), `src/ev-7d-digital-only-totals.test.ts`, `e2e/core-26-cart-dropdown-total.spec.ts` (step `/th/cart`), e2e ใหม่ `e2e/core-57-cart-totals.spec.ts` | ~80 LOC | AC-156 | none (PR spec รอบ 28 merge); ไม่บล็อก release v0.1.0 | ∥ CORE-56 (คนละ app) |
 
 ### Open questions (รอบ 28)
 none
+
+## Follow-up รอบ 30 (2026-11-13 — เอกสารล้วน: follow-up จาก review/qa รอบ 29 #351–#363)
+ที่มา: owner อนุมัติให้แปลง follow-up ของรอบ 29 เป็น spec/task (2026-11-13) — ตรวจโค้ดบน develop `8fb44d70` (path ย่อจาก `apps/storefront/`):
+- `src/lib/data/cart.ts:526` `required()` ของ `addressFrom` ใช้ `String.prototype.trim()` ซึ่งไม่ตัด zero-width (`U+200B`, `U+200C`, `U+200D`, `U+2060` ไม่ใช่ white space ตาม ECMAScript; `U+FEFF` ถูกตัดอยู่แล้วแต่รวมไว้ในชุดของกฎข้อ 116a) → ช่องบังคับที่มีแค่ `U+200B` ผ่านกฎข้อ 110b แล้วบันทึกเมือง/เขตที่มองไม่เห็น (qa #353 O-1)
+- `normalize` ของข้อความ error มี 3 สำเนา: `src/lib/util/checkout-error.ts:23` (export — ผู้ใช้ `empty-cart-completion.ts`), `src/lib/util/insufficient-inventory.ts:15`, `src/lib/util/group-join-error.ts:31` (มี `.trim()` เพิ่ม) (re-review #353; มีก่อน CORE-52)
+- `e2e/core-4g-checkout-polish.spec.ts:91`, `:95` cleanup ใน `finally` ใช้ `expect` ธรรมดา → ลบ promotion ล้มแล้ว throw กลบ error ของ `checkout()` และข้ามการลบ campaign (review #358 — ส่วนที่กฎข้อ 111d ทำกับ `core-4j` แล้วแต่ยังไม่ทำกับ `core-4g`)
+- `e2e/core-4j-e2e-hygiene.unit.spec.ts:57` นับ `request.delete(` ด้วย regex บนข้อความของ body จึงนับที่อยู่ใน comment/string ด้วย (review #358)
+- `e2e/core-46-e2e-hygiene.unit.spec.ts:138` `VALID_AFFILIATE_ARGS` รับปีกกาซ้อนได้ 2 ชั้นและไม่รู้จัก string — ไม่มี comment บอกข้อจำกัด (review #355)
+- ป้าย "ยอดรวมสินค้า (รวม VAT)" อยู่สองที่ด้วยตัวเลขต่างความหมาย: dropdown `src/modules/layout/components/cart-dropdown/index.tsx:211` = `item_total` (หลังส่วนลด, กฎข้อ 81a) และ `src/modules/common/components/cart-totals/index.tsx:39` = `original_item_total` (ก่อนส่วนลด, กฎข้อ 115a) — มีส่วนลดแล้วตัวเลขใต้ป้ายเดียวกันต่างกัน (qa #352) → Q-C8
+- `e2e/support/thai-text.ts:8` `ALLOWED = ["VAT"]` (เพิ่มใน CORE-57 #352) ยกเว้นให้ `expectThai` ทุก test ขณะที่ ADR-014 ข้อ 4 ไม่ได้ระบุ "VAT" ไว้ชัด (review #352) → Q-C9
+Status: done (CORE-58 ☑ #369, CORE-59 ☑ #367 — owner สั่งทำ 2026-11-13; Q-C8 = ก, Q-C9 = ก owner 2026-11-13 → หัวข้อ "Follow-up รอบ 31")
+Out of scope: validation ฝั่ง backend ของที่อยู่ (เหมือนรอบ 26), ฟอร์มที่อยู่ในหน้าบัญชี (`/account/addresses`), ป้ายยอดรวม (ทำใน CORE-60 รอบ 31)
+
+### What Medusa already gives us (รอบ 30)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ตรวจช่องที่อยู่ที่มองไม่เห็น | ไม่มี — Store API รับ string อะไรก็ได้ (เหมือนรอบ 26) | ขยาย `setAddresses` (กฎข้อ 110b → 116a) |
+| ยอดรวมของ cart | `item_total`/`original_item_total`/`discount_total` ของ `decorateCartTotals` 2.22.1 (ตารางรอบ 28) | ใช้ตามเดิม — Q-C8 เป็นเรื่องป้าย ไม่ใช่ field |
+| test hygiene | none (test ของเราเอง; `typescript` มีใน devDependencies แล้ว) | — |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 30)
+116. (CORE-58 — qa #353 O-1, re-review #353) (a) ช่องบังคับของ `setAddresses` (กฎข้อ 110b) ถือว่าว่างเมื่อไม่เหลืออักขระหลังตัด white space ของ JS **และ** zero-width `U+200B`, `U+200C`, `U+200D`, `U+2060`, `U+FEFF` → คืน `MISSING_ADDRESS_MESSAGE` ไม่เรียก `updateCart`;
+     ค่าที่ส่งให้ `updateCart` ตัด white space และอักขระชุดนี้ที่หัว/ท้าย (คงอักขระกลางข้อความ) — ทำใน helper pure ของ `src/lib/util/` เพื่อ unit test (ไม่มี dependency ใหม่);
+     (b) `normalize` ของข้อความ error เหลือที่เดียว — `insufficient-inventory.ts` และ `group-join-error.ts` import ตัวเดียวกับ `checkout-error.ts`/`empty-cart-completion.ts` (ตัวกลางรวม `.trim()` ของ `group-join-error` ไว้); ผลของ map และ contract test เดิมไม่เปลี่ยน
+117. (CORE-59 — review #355/#358; ต่อจากกฎข้อ 111) (a) `core-4g-checkout-polish.spec.ts` cleanup ใน `finally` ใช้ `expect.soft` ทั้งสองตัว (ลบ promotion ล้มแล้วยังลบ campaign ต่อ และ error ของ `checkout()` ไม่ถูกกลบ) แบบกฎข้อ 111d;
+     (b) `core-4j-e2e-hygiene.unit.spec.ts` นับ `request.delete(` จาก AST (helper ที่เดินโหนดเดียวกับ `uncheckedDeletes` คืนจำนวน call จริง) แล้ว test AC-111 assert `> 0` จากค่านั้นแทน regex บนข้อความ;
+     (c) comment เหนือ `VALID_AFFILIATE_ARGS` ใน `core-46-e2e-hygiene.unit.spec.ts` ระบุข้อจำกัด: รับ object ซ้อนได้ 2 ชั้น และไม่รู้จัก `{` `}` `,` ใน string (tsc จับอาร์กิวเมนต์ผิดรูปอยู่แล้ว)
+         (**แก้ข้อเท็จจริง ปิดรอบ 30/31** ตาม #367: develop มี comment ข้อจำกัดอยู่แล้วก่อน CORE-59 — CORE-59 เติมเฉพาะประโยคเรื่อง tsc)
+
+### Acceptance criteria (รอบ 30)
+- AC-157 (CORE-58, กฎข้อ 116) Vitest (ไฟล์ใหม่ `src/core-58-address-invisible.test.ts`): helper ของกฎข้อ 116a — `"\u200B"`, `" \u200B\uFEFF "`, `"\u2060"`, `"\u200C\u200D"` → `""`; `"\u200Bวัฒนา\u200B"` → `"วัฒนา"`; `"  วัฒนา "` → `"วัฒนา"`; `"วัฒ\u200Bนา"` → `"วัฒ\u200Bนา"` (คงกลางข้อความ; เขียนเป็น escape ของ JS ใน test);
+  e2e (ต่อจาก `e2e/core-52-checkout-guards.spec.ts`, 1280×800, ลูกค้า login เจ้าของ cart): Given ขั้น address When กรอก `shipping-city-input` เป็น `"\u200B"` (ช่องอื่นถูกต้อง) แล้วส่ง Then `address-error-message` มีอักษรไทย, URL ยังเป็น `step=address`
+  และ `shipping_address.city` ของ `GET /store/carts/:id` (token เจ้าของ cart) ไม่เท่ากับ `"\u200B"` — **ล้มบน develop**; ทำซ้ำกับ `billing-city-input` บน cart digital-only; AC-147 ยังผ่าน;
+  grep: `src/lib/util/insufficient-inventory.ts` และ `src/lib/util/group-join-error.ts` ไม่มี `const normalize =`; Vitest/contract test เดิมของสองไฟล์และ `checkout-conflict-contract` ผ่านโดยไม่แก้ assertion
+- AC-158 (CORE-59, กฎข้อ 117) unit (Playwright `unit` project): helper นับ delete จาก AST กับ fixture ที่มี `request.delete(` อยู่แค่ใน comment และ string → 0, กับ `core-4g-checkout-polish.spec.ts` ฟังก์ชัน `createExpiredPromotion` → ≥ 1; test AC-111 ไม่มี `body.match(/request\.delete\(/g)`;
+  grep: บล็อก `finally` ของ `core-4g-checkout-polish.spec.ts` มี `expect.soft(promotion.ok()` และ `expect.soft(campaign.ok()` และไม่มี `expect(promotion.ok()`/`expect(campaign.ok()` ใน `finally`; comment เหนือ `VALID_AFFILIATE_ARGS` มีคำว่า `string`; e2e `core-4g-*` และ unit AC-111/146/148/149 ผ่าน
+
+### Non-functional (รอบ 30)
+none
+
+### Test plan (รอบ 30)
+| ระดับ | AC |
+|---|---|
+| unit Vitest + e2e storefront | AC-157 (เขียน e2e `U+200B` ให้ล้มบน develop ก่อน) |
+| unit (Playwright `unit` project, grep) | AC-158 |
+
+### Tasks (รอบ 30)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-58 | (storefront เล็ก — qa #353 O-1, re-review #353) ช่องที่อยู่ที่มีแต่อักขระ zero-width ไม่ผ่าน + `normalize` ของข้อความ error เหลือที่เดียว (กฎข้อ 116) — ☑ #369 (owner สั่งทำ 2026-11-13) | `src/lib/data/cart.ts` (`addressFrom`/`missingRequired`), `src/lib/util/` (helper ใหม่ + ตัวกลาง `normalize`), `src/lib/util/{insufficient-inventory,group-join-error,checkout-error}.ts`, `src/core-58-address-invisible.test.ts` (ใหม่), `e2e/core-52-checkout-guards.spec.ts` | ~70 LOC รวม test | AC-157 | none (CORE-52 ☑ #353); ไม่บล็อก release | ∥ CORE-59 (คนละไฟล์) |
+| CORE-59 | (e2e hygiene — review #355/#358) cleanup `core-4g` ใช้ `expect.soft`, นับ `request.delete(` จาก AST, comment ข้อจำกัด `VALID_AFFILIATE_ARGS` (กฎข้อ 117) — ☑ #367 (owner สั่งทำ 2026-11-13) | `e2e/core-4g-checkout-polish.spec.ts`, `e2e/core-4j-e2e-hygiene.unit.spec.ts`, `e2e/core-46-e2e-hygiene.unit.spec.ts` | ~30 LOC | AC-158 | none (CORE-53 ☑ #358, CORE-54 ☑ #355); ไม่บล็อก release | ∥ CORE-58 |
+(รอบ 30) CORE-58 ∥ CORE-59 ทำขนานกันแล้ว (☑ #369, ☑ #367); Q-C8 = ก → CORE-60 ในหัวข้อ "Follow-up รอบ 31" (☑ #372); Q-C9 = ก ไม่มี task
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 30)
+- (#353, qa #353) `layout/components/cart-button` อ่าน cart แบบ `force-cache` (`src/lib/data/cart.ts:72`) — ทุก server action ของ storefront revalidate tag ของ cart บน Next server เดียวกัน จำนวนบน nav ค้างได้เฉพาะเมื่อ cart เปลี่ยนนอก storefront (admin/API ตรง) แบบที่ยอมรับแล้วในรอบ 19 (qa #266 Obs 2); qa #353 ล้างตะกร้าจากอีกแท็บแล้วไม่พบค่าค้าง → ไม่เปิด task
+- (qa #352) `data-value` ของ `cart-discount`/`cart-total`/`cart-taxes` มีทศนิยมเกิน 2 ตำแหน่ง — เป็นค่าดิบของ field ตามกฎข้อ 115a (`data-value` = ค่าของ field) และ test เทียบ ±0.01 อยู่แล้ว ข้อความที่แสดงผ่าน `convertToLocale` — ไม่ใช่ defect
+- (review #352) helper `dataValue` ซ้ำใน e2e `core-26-*`/`core-57-*` — ย้ายไป `e2e/support/` เมื่อมีผู้ใช้ที่สาม (CLAUDE.md ข้อห้ามข้อ 3)
+- (review #358) `STRING_OR_COMMENT` ของ `core-46-e2e-hygiene.unit.spec.ts:19` ไม่รู้จัก regex literal — ผู้ใช้เดียว (`setsTimeout` อ่าน config ของ Playwright ที่ไม่มี regex literal) → เปลี่ยนเป็น `ts.createSourceFile` เมื่อมีผู้ใช้ที่สอง
+- (review #351 nit 1) lock ของ `POST /store/returns` (กฎข้อ 114) ปล่อยเมื่อ response `close` แม้ workflow ยังทำอยู่ และ TTL 60s ไม่ต่ออายุ — เป็นข้อเสียที่ระบุไว้แล้วในทาง ก ของ Q-C6 (owner เลือก); ผลที่เหลือคือ client ตัดการเชื่อมต่อ + แท็บสองยิงในช่วงนั้นอาจได้ return `requested` ซ้ำ ซึ่ง admin ยกเลิกได้ที่หน้า order (เท่าทาง ง) — ไม่เปิด task; ทบทวนถ้าพบบน production
+- (#351) integration ของ lock รันบน locking provider แบบ in-memory (integration ไม่ตั้ง `REDIS_URL`) — เหมือน lock ทุกตัวของโปรเจกต์ (flash sale, e-voucher, affiliate); production ใช้ `locking-redis` ผ่าน `src/lib/infra-modules.ts` (ตรวจแล้วรอบ 9) และ job `docker-worker-mode`/load test รันกับ Redis จริง — ไม่เปิด task
+
+### Open questions (รอบ 30)
+- ~~Q-C8~~ ✅ owner ตอบ ก 2026-11-13 → กฎข้อ 118, AC-159, CORE-60 ในหัวข้อ "Follow-up รอบ 31" (☑ #372); คำถามเดิม (qa #352 — ถ้อยคำที่ลูกค้าเห็น) ป้าย "ยอดรวมสินค้า (รวม VAT)" อยู่สองที่ด้วยตัวเลขต่างความหมาย: dropdown ตะกร้าบน nav = `item_total` **หลังส่วนลด** (Q-C1 (1) = ก — ให้ตรงราคาต่อ line ที่ dropdown แสดง) และแถวแรกของ `cart-totals` บน `/cart`/checkout = `original_item_total` **ก่อนส่วนลด** (Q-C7 = ก — ให้ "ยอดรวมสินค้า − ส่วนลด + ค่าจัดส่ง = ยอดรวมทั้งสิ้น")
+  เมื่อมีส่วนลด (เช่นเคส AC-117: dropdown ฿4,720 แต่ `/cart` ฿5,900) ลูกค้าเห็นสองตัวเลขใต้ป้ายเดียวกัน — ตัวเลขทั้งสองถูกต้อง ปัญหาคือป้าย:
+  (ก) **[แนะนำ]** `cart-totals` เปลี่ยนป้ายแถวแรกเป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" **เฉพาะเมื่อมีแถวส่วนลด** (`discount_total > 0`); ไม่มีส่วนลดคงป้ายเดิม; dropdown คงเดิม — เหตุผล: ไม่แตะคำตัดสิน Q-C1/Q-C7 และตัวเลข, แถว "ส่วนลด" อยู่ติดกันจึงอ่านเป็นสมการได้ทันที;
+      ผลกระทบ: task storefront เล็ก ~30 LOC (ป้าย + เคสใน unit AC-156 + e2e ป้ายมีอักษรไทย) ป้ายยาวขึ้นต้องตรวจที่ 375 (กฎข้อ 105)
+  (ข) dropdown เปลี่ยนป้ายเป็น "ยอดรวมหลังส่วนลด (รวม VAT)" (ทุกกรณี หรือเฉพาะเมื่อมีส่วนลด) `cart-totals` คงเดิม — ผลกระทบ: แก้ถ้อยคำที่ owner เลือกใน Q-C1, ป้ายยาวขึ้นในกล่อง dropdown, ~20 LOC
+  (ค) ทั้งสองที่ใช้ตัวเลขเดียวกัน — dropdown ใช้ `original_item_total` (กลับไปเป็นปัญหาเดิมของ CORE-26/qa #199 ที่ลูกค้าสับสนราคา) หรือ `cart-totals` ใช้ `item_total` (หักส่วนลดซ้ำกับแถวส่วนลด — ขัดกฎข้อ 115b) — ไม่แนะนำ
+  (ง) คงเดิม ไม่มี task — ผลกระทบ: ลูกค้าที่ใช้โค้ด/flash sale เห็นตัวเลขต่างกันระหว่าง nav กับ `/cart`
+  (ถ้าเลือก (ค) ของ Q-C9 ถ้อยคำในตัวเลือกนี้เปลี่ยน "VAT" เป็นคำไทยตาม Q-C9)
+- ~~Q-C9~~ ✅ owner ตอบ ก 2026-11-13 → ภาคผนวก 2026-11-13 ของ ADR-014 ("VAT" นับอยู่ในกลุ่ม "หน่วย/รหัส" ของข้อ 4) ไม่มี task โค้ด — `ALLOWED` ของ `e2e/support/thai-text.ts` และ `eslint-disable` 3 จุดคงเดิม (หัวข้อ "Follow-up รอบ 31"); คำถามเดิม (review #352 — ข้อยกเว้นของ ADR-014 ข้อ 4 ซึ่ง accepted แล้ว จึงต้องให้ owner ตัดสิน) "VAT" ในป้ายของกฎข้อ 81a/115a เป็นคำละตินในข้อความ UI ที่ ADR-014 ข้อ 4 ไม่ได้ระบุไว้ชัด (ยกตัวอย่างชื่อแบรนด์ เช่น "PromptPay" และหน่วย/รหัส เช่น `THB`);
+  ปัจจุบันโค้ดใช้ `eslint-disable-next-line no-restricted-syntax` ต่อจุด (3 ที่: `cart-dropdown/index.tsx:212`, `cart-totals/index.tsx:38`, `:75`) และ CORE-57 เพิ่ม `ALLOWED = ["VAT"]` ใน `e2e/support/thai-text.ts` ซึ่งยกเว้นให้ `expectThai` **ทุก test**:
+  (ก) **[แนะนำ]** ยืนยันว่า "VAT" เป็นตัวย่อทางภาษีที่ใช้ทั่วไปในไทย นับอยู่ในกลุ่ม "หน่วย/รหัส" ของข้อ 4 → planner เพิ่มภาคผนวกลงวันที่ใน ADR-014 (เอกสารล้วน ไม่มี task โค้ด; `ALLOWED` และ comment `eslint-disable` คงเดิม) — เหตุผล: ป้ายที่ owner อนุมัติใน Q-C1/Q-C7 ใช้คำนี้อยู่แล้ว และเป็นคำที่ลูกค้าไทยเห็นบนใบเสร็จทั่วไป;
+      ผลกระทบ: `expectThai` จะไม่จับ "VAT" ที่หลุดเข้ามาในข้อความอื่น (ESLint ยังบังคับ `eslint-disable` พร้อมเหตุผลทีละจุด)
+  (ข) ยกเว้นเฉพาะจุด: `expectThai(page, ids, { allow: ["VAT"] })` ใช้เฉพาะ test ของ `cart-totals`/dropdown, `ALLOWED` กลับเป็นว่าง; ADR ไม่แก้ — ผลกระทบ: task e2e เล็ก ~30 LOC
+  (ค) ไม่ยกเว้น: เปลี่ยนป้ายเป็นไทยล้วน (เช่น "ยอดรวมสินค้า (รวมภาษีมูลค่าเพิ่ม)", "รวมภาษีมูลค่าเพิ่มแล้ว") แล้วลบ `ALLOWED`/`eslint-disable` — ผลกระทบ: แก้ถ้อยคำที่ owner อนุมัติใน Q-C1/Q-C7, ป้ายยาวขึ้น (ตรวจ dropdown และ 375), task storefront ~40 LOC
+
+## Follow-up รอบ 31 (2026-11-13 — เอกสารล้วน: บันทึกคำตัดสินของ owner Q-C8/Q-C9)
+ที่มา: owner ตอบ Q-C8 = (ก) และ Q-C9 = (ก) ของหัวข้อ "Follow-up รอบ 30" (2026-11-13) และสั่งทำ CORE-60 — ตรวจโค้ดบน develop `fef9b65b` (path ย่อจาก `apps/storefront/`):
+`src/modules/common/components/cart-totals/index.tsx:39` ป้ายแถวแรกเป็น `<span>` ไม่มี `data-testid` (dropdown มี `cart-subtotal-label` ที่ `cart-dropdown/index.tsx:209`);
+assertion ป้ายแถวแรกที่ fixture มีส่วนลดมีที่เดียว: `src/core-57-cart-totals.test.ts:48` (`:83` และ `src/ev-7d-digital-only-totals.test.ts:67`, `:78`, `:100` ไม่มีส่วนลด — ผ่านต่อโดยไม่แก้);
+e2e ที่ assert ป้ายเป็นข้อความตรงตัวคือของ dropdown (`e2e/core-26-cart-dropdown-total.spec.ts:181`) ซึ่งไม่เปลี่ยน
+Status: done (Q-C8 = ก, Q-C9 = ก owner 2026-11-13; CORE-60 ☑ #372)
+Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คงเดิม), ตัวเลข/field ของ `cart-totals` (กฎข้อ 115 คงเดิม), `order-summary` ของหน้าบัญชี (ไม่ใช้ `cart-totals`), แก้ `ALLOWED`/`eslint-disable` เดิม (Q-C9 = ก)
+
+### What Medusa already gives us (รอบ 31)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| รู้ว่ามีส่วนลด | `discount_total` ของ `decorateCartTotals` 2.22.1 (อยู่ใน default fields ของ store cart/order — ตารางรอบ 28) | ใช้ตามเดิม — เงื่อนไขเดียวกับแถว `cart-discount` ที่มีอยู่ |
+| ป้ายยอดรวม | `cart-totals` ของ Medusa Next.js Starter (ขยายแล้วใน CORE-57) | ขยาย — ป้ายตามเงื่อนไข + `data-testid` ของป้าย |
+| ข้อยกเว้น "VAT" (Q-C9) | none (กติกาของโปรเจกต์ — ADR-014) | เอกสารล้วน: ภาคผนวก 2026-11-13 ของ ADR-014 |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 31)
+118. (CORE-60 — Q-C8 = ก owner 2026-11-13, qa #352; ต่อจากกฎข้อ 115a/c) ป้ายแถวแรกของ `cart-totals` (ทุกที่ที่ใช้: `/cart`, checkout, order-completed ที่ส่ง `order`):
+     (a) เมื่อ `discount_total > 0` (เงื่อนไขเดียวกับที่ render `cart-discount`) ป้ายเป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)"; เมื่อ `discount_total` เป็น 0/null/undefined คง "ยอดรวมสินค้า (รวม VAT)";
+         **(ภาคผนวก 2026-11-17 — owner ตัดสิน, qa #372; แทนเงื่อนไขของข้อ (a) ข้างบน — ทำใน CORE-62 กฎข้อ 120)** ป้าย "ก่อนส่วนลด" ใช้เฉพาะเมื่อ**ราคาสินค้าลดจริง** (ส่วนลดระดับสินค้า > 0);
+         ส่วนลดเฉพาะค่าส่งใช้ป้ายเดิม "ยอดรวมสินค้า (รวม VAT)"; แถว `cart-discount`, ตัวเลข, ข้อ (b)–(d) และ dropdown ไม่เปลี่ยน
+     (b) element ของป้ายมี `data-testid="cart-subtotal-label"` (ชื่อเดียวกับป้ายของ dropdown — test หาภายใน `cart-totals` เสมอ เพราะ dropdown อาจอยู่ใน DOM ของหน้าเดียวกัน);
+     (c) ไม่เปลี่ยน: `cart-subtotal` (`original_item_total`, `data-value`), แถวอื่น, ลำดับแถว และ dropdown (กฎข้อ 81a); "VAT" ในป้ายใหม่ใช้ `eslint-disable-next-line no-restricted-syntax` พร้อมเหตุผลอ้างภาคผนวก 2026-11-13 ของ ADR-014 (Q-C9 = ก) —
+         ไม่แก้ `ALLOWED` ของ `e2e/support/thai-text.ts` และป้ายไม่มี "ก่อน VAT"/"ไม่รวมภาษี" (static ของ AC-156 ยังผ่าน);
+     (d) ที่ 375×812 (กฎข้อ 105 — `/cart` < small) ป้ายที่ยาวขึ้นตัดบรรทัดได้ แต่จำนวนเงิน `cart-subtotal` อยู่บรรทัดเดียว ไม่ทับป้าย และไม่ล้นจอ (วิธีทำเลือกใน PR เช่น `whitespace-nowrap` ที่จำนวนเงิน + `min-w-0` ที่ป้าย)
+
+### Acceptance criteria (รอบ 31)
+- AC-159 (CORE-60, กฎข้อ 118) unit (Vitest — ต่อใน `src/core-57-cart-totals.test.ts`; อ่านข้อความของ `cart-subtotal-label` จาก HTML ของ `renderToStaticMarkup`):
+  Given fixture flash ของ AC-156 (`discount_total: 1180`) Then มี `cart-subtotal-label` 1 ตัว ข้อความมีอักษรไทย (`/[฀-๿]/`) และมีคำ "ก่อนส่วนลด", `cart-subtotal` `data-value="5900"` (เท่าเดิม) — แทน assertion `toContain("ยอดรวมสินค้า (รวม VAT)")` ของเคสนี้บรรทัดเดียว;
+  Given ส่วนลดค่าส่งอย่างเดียว (fixture ที่สองของ AC-156, `discount_total: 10`) Then ป้ายเท่ากับของเคส flash (**ภาคผนวก 2026-11-17: เคสนี้ถูกแทนด้วย AC-161 ของ CORE-62 — ป้ายเดิม**); Given `discount_total: 0` และ Given ไม่ส่ง `discount_total` Then มี `cart-subtotal-label` 1 ตัว ข้อความไม่มี "ก่อนส่วนลด" และไม่เท่ากับป้ายของเคสมีส่วนลด;
+  assertion อื่นของ AC-156 และ `src/ev-7d-digital-only-totals.test.ts` ผ่านโดยไม่แก้; static ของ AC-156 (ไม่มี "ก่อน VAT"/"ไม่รวมภาษี") ยังผ่าน — unit เคสมีส่วนลด**ล้มบน develop** (ไม่มี testid ของป้าย);
+  e2e ใหม่ `e2e/core-60-cart-subtotal-label.spec.ts` (`evidenceTarget` `CORE-60`; ลูกค้า login เจ้าของ cart; หาด้วย `getByTestId("cart-totals").getByTestId(...)` เท่านั้น ไม่ match ประโยคไทยตรงตัว):
+  (a) 1280×800 Given cart จาก `cartReadyForPayment` ที่ `discount_total` ของ `GET /store/carts/:id` = 0 (assert ก่อน) When เปิด `/th/cart` Then `cart-discount` count 0 และเก็บข้อความ `cart-subtotal-label` เป็น A — มีอักษรไทย และ `latinWordsOutsideAllowList(A)` ว่าง;
+  (b) When admin สร้าง promotion โค้ดของ test (`is_automatic: false`, percentage `target_type: "order"` แบบ `e2e/core-42-cart-voucher-layout.spec.ts`) แล้วใช้กับ cart ผ่าน `POST /store/carts/:id/promotions` (token เจ้าของ cart) จน API ได้ `discount_total > 0` แล้ว reload `/th/cart`
+  Then `cart-discount` visible, ข้อความ `cart-subtotal-label` = B มีอักษรไทย, `latinWordsOutsideAllowList(B)` ว่าง และ B ≠ A, `cart-subtotal` `data-value` = `original_item_total` ของ API (±0.01) และ `cart-subtotal − cart-discount + cart-shipping = cart-total` (±0.01);
+  (c) When ไปขั้น review (`pp_system_default` + `continueToReview` แบบ AC-156) Then ข้อความ `cart-subtotal-label` ใน `cart-totals` = B;
+  (d) 375×812 `/th/cart` (cart เดียวกัน) Then `document.documentElement.scrollWidth ≤ 375`, `getBoundingClientRect().right ≤ 375` ของ `cart-subtotal-label` และ `cart-subtotal`, กล่องของทั้งสองไม่ซ้อนกัน (intersection = 0) และ `cart-subtotal` มี `getClientRects().length === 1` (บรรทัดเดียว);
+  cleanup: ลบ promotion ใน `finally` ด้วย `deleteAllThenExpectOk` (หรือ `expect.soft` แบบกฎข้อ 111d) ไม่กลบ error ของ test; evidence ≤ 5 PNG (a)–(d); AC-156 (`e2e/core-57-cart-totals.spec.ts`) และ AC-117 (`e2e/core-26-cart-dropdown-total.spec.ts`) ยังผ่านโดยไม่แก้
+
+### Non-functional (รอบ 31)
+none (แสดงผลล้วน ไม่มี request เพิ่ม)
+
+### Test plan (รอบ 31)
+| ระดับ | AC |
+|---|---|
+| unit (Vitest) | AC-159 (เขียนเคสมีส่วนลดให้ล้มบน develop ก่อน) |
+| e2e storefront | AC-159 (a)–(d) (+ AC-156, AC-117 ยังผ่าน) |
+
+### Tasks (รอบ 31)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-60 | (storefront เล็ก — Q-C8 = ก, qa #352) ป้ายแถวแรกของ `cart-totals` เป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เฉพาะเมื่อมีส่วนลด + `data-testid="cart-subtotal-label"` (กฎข้อ 118) — ☑ #372 (owner สั่งทำ 2026-11-13) | `src/modules/common/components/cart-totals/index.tsx`, `src/core-57-cart-totals.test.ts` (แทน assertion `:48` + เคส AC-159), e2e ใหม่ `e2e/core-60-cart-subtotal-label.spec.ts` | ~30 LOC โค้ด + unit; e2e ใหม่ ~100 LOC | AC-159 | PR เอกสารรอบ 31 (#370) merge; CORE-57 ☑ #352; ไม่บล็อก release | ไม่ชน — ∥ CORE-58 (แตะ `src/lib/data/cart.ts`, `src/lib/util/*`, `e2e/core-52-checkout-guards.spec.ts`) ∥ CORE-59 (แตะ `e2e/core-4g-*`, `e2e/core-4j-*`, `e2e/core-46-*`) |
+(รอบ 31) CORE-60 ไม่ใช้ไฟล์ร่วมกับ CORE-58/CORE-59 จึงทำขนานกันได้; Q-C9 = ก ไม่มี task
+
+### Open questions (รอบ 31)
+none
+
+## Follow-up รอบ 32 (2026-11-17 — เอกสารล้วน: follow-up ของปิดรอบ 30/31)
+ที่มา: ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)" — owner อนุมัติ 2026-11-17 "ตามที่เสนอ" และตัดสินข้อ (4) เอง; ตรวจโค้ดบน develop `a9fec926` (path ย่อจาก `apps/storefront/`):
+- `e2e/group-buy-join.spec.ts:86` test A ล้ม 2/4 บน prod build ในเครื่อง ที่ `group-shipping-option` `toBeVisible()` (`:106`) และ `toHaveURL(/account/orders$/)` (`:116`) ด้วย timeout default 5s (qa #369 O-1, `docs/evidence/core/CORE-58/REPORT.md`) —
+  ทั้งสองจุดรอผลของ server action: ปุ่ม `group-shipping-load` เรียก `prepareGroupCart({ countryCode, addressId, items })` และปุ่ม `group-join-button` เรียก `setShippingMethod` → `syncCartAffiliate` → `joinGroupBuy(token, cartId)` แล้ว `router.push` ไป `/account/orders`
+  (`src/modules/group-buy/components/group-page/group-join.tsx:88`, `:102`, `:108`, `:115`) — test ยังไม่ใช้ `waitForServerAction` (กฎข้อ 101)
+- `PAGINATION_TEXT = /\d+ of \d+ (results|pages)/` ประกาศซ้ำ 4 ไฟล์: `e2e/affiliate-admin-forms.spec.ts:341`, `e2e/group-buy-admin-pages.spec.ts:16`, `e2e/evoucher-admin-pool-page.spec.ts:27`, `e2e/evoucher-admin-forms.spec.ts:118` (review #381)
+- `e2e/affiliate-admin-payout-create.spec.ts` (AC-44 ของ spec 05) สร้าง affiliate `e2e-af12c-ann/sue/pat` + program + entry + payout แล้วไม่ลบ (qa #375); `:88-92` เคส `pat` (count 0) ผ่านได้ก่อนรายการ render — ไม่ได้ตรวจ response ว่า `affiliates` ว่าง (review #375);
+  ไม่มี DELETE affiliate ใน admin API → ลบด้วย SQL แบบ `e2e/affiliate-admin-forms.spec.ts:212`
+- `e2e/flash-sale-fs19.spec.ts:194` ล้มใน CI ครั้งเดียว (run 43469877641): ในโค้ดมีจุดที่ไวต่อเวลา — `:245` `expect.poll(barHidden, { timeout: 100, intervals: [5] })` วัดผ่าน round-trip ของ `page.evaluate` (CDP) ขณะที่ข้อกำหนดเดียวกัน
+  (แถบซ่อน ≤ 100ms หลัง scroll) ตรวจแล้วจาก timestamp ของ rAF ในหน้า (`:258`) — ยังไม่ยืนยันว่าเป็นจุดที่ล้ม (ต้องอ่าน log ของ run)
+- `e2e/affiliate-admin-forms.spec.ts:47` (AC-12 ของ spec 08) ล้มใน CI ครั้งเดียว (run 43475980049): อ่านโค้ดแล้ว**ไม่พบสาเหตุชัด** (ทุกขั้นรอ response/element จริง) → ไม่รวมใน task; เปิด task เมื่อเกิดซ้ำ
+- `src/modules/common/components/cart-totals/index.tsx:41` ป้ายแถวแรกใช้ `discount_total` เป็นเงื่อนไข → ส่วนลดค่าส่งอย่างเดียวก็ได้ป้าย "ก่อนส่วนลด" (qa #372); `decorateCartTotals` 2.22.1 (`@medusajs/utils` `dist/totals/cart/index.js:132–148`)
+  ตั้ง `item_total` (หักส่วนลดแล้ว), `original_item_total`, `item_discount_total`, `shipping_discount_total` แยกกัน; default fields ของ store cart มี `item_discount_total`/`original_item_total` (`api/store/carts/query-config.js:26–27`)
+  และของ store order มี `item_total`/`original_item_total`; fixture ของ `src/core-57-cart-totals.test.ts` มี `original_item_total`/`item_total` (`:33–34`, `:46–47`) แต่ไม่มี `item_discount_total`
+Status: done (ปิดรอบ 32 2026-11-17 — ☑ CORE-61 #388, CORE-62 #384, CORE-63 #386; owner สั่งทำ 2026-11-17; Q-C10 = ก owner 2026-11-17)
+Out of scope: validation ของที่อยู่ฝั่ง backend (Q-C10 ทาง ข ไม่ทำ), เปลี่ยน `playwright.config.ts`/timeout ระดับ config, `waitForTimeout(1_000)` ของ e2e กฎ 24d ใน 3 ไฟล์ admin (ดู "ยอมรับ" ข้างล่าง), ตัวเลข/แถวอื่นของ `cart-totals`, dropdown (กฎข้อ 81a)
+
+### What Medusa already gives us (รอบ 32)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| รอผลของ server action ใน e2e | none (Next.js) — helper ของเรา `waitForServerAction` (`e2e/support/server-action.ts`, CORE-43) | ใช้ตามเดิม |
+| รู้ว่าราคาสินค้าลดจริง | `original_item_total` และ `item_total` (หักส่วนลดแล้ว) ของ `decorateCartTotals` 2.22.1 — มีทั้งใน default fields ของ cart และ order; `item_discount_total` มีใน cart | ใช้ตามเดิม — ผลต่างของสอง field (มีใน fixture และ payload ของทุกที่ที่ใช้ `cart-totals`) |
+| ป้ายยอดรวม | `cart-totals` ของ Medusa Next.js Starter (ขยายแล้วใน CORE-57/60) | ขยาย — เปลี่ยนเงื่อนไขของป้าย |
+| ตัด zero-width ในที่อยู่ (CORE-63) | ไม่มี — Store API (`/store/carts/:id`, `/store/customers/me/addresses`) รับ string อะไรก็ได้; ฟอร์มที่อยู่ในหน้าบัญชีเป็นของ starter | ขยาย data function ของ starter ด้วย `trimInvisible` ของ CORE-58 (กฎข้อ 121) |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 32)
+119. (CORE-61 — e2e hygiene: qa #369 O-1, qa/review #375, review #381; ต่อจากกฎข้อ 101/117) test-only ไม่เปลี่ยนพฤติกรรมของแอป:
+     (a) `e2e/group-buy-join.spec.ts` test A รอผลจริงของ action: เริ่ม `waitForServerAction(page, body ที่มี addressIds[1])` **ก่อน** dblclick `group-shipping-load` แล้ว await (status 200) ก่อน assert `group-shipping-option`;
+         เริ่ม `waitForServerAction(page, body ที่มี ctx.token)` (action `joinGroupBuy`) **ก่อน** dblclick `group-join-button` แล้ว await (200) ก่อน `toHaveURL` —
+         `toHaveURL` หลังจากนั้นใช้ timeout ต่อ assertion ได้ 1 จุดพร้อม comment (navigation ฝั่ง server หลัง `router.push` — กฎข้อ 101b); builder อ่าน trace/รันซ้ำก่อนแก้และระบุ assertion ที่ล้มจริงใน PR; ใช้ helper ตัวเดียวกันกับ test อื่นในไฟล์นี้ที่กด 2 ปุ่มเดียวกันใน happy path ถ้ามี;
+     (b) `PAGINATION_TEXT` export จาก `e2e/support/admin.ts` ที่เดียว แล้ว 4 ไฟล์ข้างบน import (ผู้ใช้ 4 ที่);
+     (c) `e2e/affiliate-admin-payout-create.spec.ts`: ลบข้อมูลที่ test สร้าง (payout, commission entry ของ `order_e2e_af12c`, affiliate 3 ราย, program) ใน `finally` ด้วย SQL ตามลำดับ FK ห่อ `expect.soft`
+         ไม่กลบ error ของ test; เคส `pat` ตรวจ response ของ `searched` ว่า `affiliates` เป็น array ว่างก่อน `toHaveCount(0)` (ann/sue ตรวจว่ามี email นั้นใน response)
+     (d) `e2e/flash-sale-fs19.spec.ts:194`: builder อ่าน log/trace ของ run 43469877641 (artifact หมดอายุ → อ่าน log ของ job) ถ้าจุดที่ล้มคือ `:245` → ลบ `expect.poll(barHidden, { timeout: 100 … })` (การรอให้ sampler จบใช้ `__fs19.done` ที่ `:247` และเกณฑ์ ≤ 100ms ตรวจที่ `:258` อยู่แล้ว);
+         ถ้าล้มที่อื่นหรืออ่าน log ไม่ได้ → ไม่แก้ไฟล์นี้ บันทึกใน PR (เปิด task เมื่อเกิดซ้ำ);
+     (e) ห้ามเพิ่ม `waitForTimeout`, `expect.timeout`/`timeout` ระดับ config และห้ามแตะโค้ดใต้ `src/`
+     (หมายเหตุ รอบ 36, 2026-11-18 — review #388: static ของ (c) ใน `e2e/core-46-e2e-hygiene.unit.spec.ts:231–239` ผ่านได้แม้ไม่มี cleanup — `finally` ตรงกับ helper `sql()` และไฟล์ไม่มี `request.delete(` แล้ว →
+     แก้ใน ADM-30 (spec 08 กฎ 34d, AC-35) ให้ตรวจ `finally` ของ test AC-44 จริง; พฤติกรรมที่ต้องได้ของ (c) ไม่เปลี่ยน — ☑ #402 ปิดรอบ 36: static ใหม่ล้มเมื่อลบ `softSql` ที่ลบ `affiliate` ออกจาก `finally`)
+120. (CORE-62 — owner ตัดสิน 2026-11-17, qa #372; แทนเงื่อนไขของกฎข้อ 118a ตามภาคผนวก 2026-11-17) ป้ายแถวแรกของ `cart-totals` (`cart-subtotal-label`; ทุกที่ที่ใช้: `/cart`, checkout, order-completed):
+     (a) "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เมื่อ**ส่วนลดระดับสินค้า** `original_item_total − item_total > 0.005` (กันเศษ float — ค่าดิบของ field ตามกฎข้อ 115a); ไม่มี field ใด field หนึ่ง/เป็น null → ถือว่าไม่ลด;
+         (หมายเหตุ ปิดรอบ 32 ตาม review #384: โค้ดที่ merge (`itemDiscounted` ใน `cart-totals/index.tsx`) ต้องมี `discount_total` truthy ร่วมด้วย เพื่อให้ป้ายสอดคล้องกับการ render แถว `cart-discount` —
+         ไม่เปลี่ยนพฤติกรรมกับข้อมูลจริงของ Medusa 2.22.1 เพราะ `original_item_total > item_total` เกิดจากส่วนลดซึ่งนับรวมใน `discount_total` เสมอ)
+     (b) นอกนั้น (รวมส่วนลดเฉพาะค่าส่ง `discount_total > 0` แต่ `original_item_total === item_total`) ใช้ "ยอดรวมสินค้า (รวม VAT)";
+     (c) ไม่เปลี่ยน: การ render แถว `cart-discount` (ยังใช้ `discount_total`), ตัวเลขทุกแถว/`data-value`, กฎข้อ 118b–d, dropdown; helper เงื่อนไขเป็น pure function ใน `src/lib/util/` (ทดสอบด้วย unit) หรือ inline ในคอมโพเนนต์ — เลือกใน PR
+     ถ้าระหว่างทำพบว่า payload ของที่ใดไม่มี `item_total`/`original_item_total` → หยุดและรายงาน planner (ห้ามคำนวณยอดเอง — กฎข้อ 81)
+121. (CORE-63 — Q-C10 = ก owner 2026-11-17; ขยายกฎข้อ 116 ที่เดิมครอบเฉพาะช่องบังคับของ checkout) storefront ล้วน ใช้ `trimInvisible` (`src/lib/util/trim-invisible.ts`) ตัว**เดิม** ไม่สร้าง helper ใหม่:
+     (a) `setAddresses` (`src/lib/data/cart.ts` `addressFrom`): ช่องไม่บังคับ `company`, `province`, `phone` ผ่าน `trimInvisible` ด้วย — ว่างหลังตัดส่ง `""`; `country_code` ไม่แตะ (ค่าจาก select); ช่องบังคับคงกฎข้อ 116a;
+     (b) ฟอร์มที่อยู่ในหน้าบัญชี — `addCustomerAddress`/`updateCustomerAddress` (`src/lib/data/customer.ts`; ผู้เรียก: `modules/account/components/address-card/{add-address,edit-address-modal}.tsx`, `profile-billing-address/index.tsx`):
+         ทุกช่องข้อความผ่าน `trimInvisible`; ช่องบังคับชุดเดียวกับ checkout (`first_name`, `last_name`, `address_1`, `postal_code`, `city` — ย้าย `REQUIRED_ADDRESS_FIELDS` และ `MISSING_ADDRESS_MESSAGE` จาก `cart.ts` ไป `src/lib/util/` ที่เดียว (ผู้ใช้ 2 ที่ และ `cart.ts`/`customer.ts` เป็น `"use server"` ซึ่ง export ได้เฉพาะ async function))
+         ว่างหลังตัด → คืน `{ success: false, error: <ข้อความไทยเดียวกับ MISSING_ADDRESS_MESSAGE> }` **ไม่เรียก** Store API; `phone` ของ `updateCustomerAddress` ที่ว่างหลังตัดคงพฤติกรรมเดิม (ไม่ส่ง key) — **รอบ 33: owner (2) = ข คงเดิม 2026-11-17 → ยอมรับใน v1 ว่าล้างช่องแล้วเบอร์เดิมยังอยู่ (qa #386 O-2)**;
+     (c) (qa #369 O-2 — ยอมรับ) หลัง error ช่องที่ผู้ใช้พิมพ์ยังแสดงค่าเดิม ไม่ล้างให้;
+     (d) ไม่แตะ backend/`src/api/middlewares.ts` (ทาง ข ของ Q-C10 ไม่ทำ) และไม่เปลี่ยนข้อความ/ป้ายอื่น
+
+### Acceptance criteria (รอบ 32)
+- AC-160 (CORE-61, กฎข้อ 119) e2e: `pnpm --filter storefront test:e2e e2e/group-buy-join.spec.ts -g "A:" --repeat-each=5` บน prod build
+  (แก้ปิดรอบ 32 ตาม #388: เดิมเขียนมี `--` ซึ่ง pnpm ส่ง `--` ต่อให้ playwright แล้ว argument หลังจากนั้นไม่ถูกใช้เป็นตัวกรอง → รันทั้ง suite) ผ่าน 5/5 (แนบใน `docs/evidence/core/CORE-61-tests.txt`), AC-44 (spec 05) และ test ที่ import `PAGINATION_TEXT` (AC-30 ของ spec 08) ผ่าน;
+  หลัง AC-44 จบ query `select count(*) from affiliate where id = any($1)` (id ทั้ง 3) = 0 (assert ใน `finally` ด้วย `expect.soft`);
+  unit (Playwright `unit` project — ต่อใน `e2e/core-46-e2e-hygiene.unit.spec.ts`): body ของ test A ใน `group-buy-join.spec.ts` มี `waitForServerAction(` ≥ 2 ครั้งและไม่มี `waitForTimeout`;
+  `const PAGINATION_TEXT` ปรากฏใน `e2e/**/*.ts` ที่ไฟล์ `e2e/support/admin.ts` เท่านั้น; `affiliate-admin-payout-create.spec.ts` มี `finally` และไม่มี `request.delete(` ที่ไม่ตรวจ ok (hygiene ของกฎข้อ 111 ผ่าน);
+  `playwright.config.ts` ไม่เปลี่ยน; ถ้าแก้ fs19 (กฎข้อ 119d) PR ระบุบรรทัดที่ล้มจาก log และ AC-26 ของ fs19 ผ่าน `--repeat-each=5`
+- AC-161 (CORE-62, กฎข้อ 120) unit (Vitest — `src/core-57-cart-totals.test.ts`): Given fixture ส่วนลดค่าส่งอย่างเดียว (`discount_total: 10`, `original_item_total: 590`, `item_total: 590`) Then `cart-subtotal-label` 1 ตัว ข้อความไม่มี "ก่อนส่วนลด"
+  และเท่ากับป้ายของเคส `discount_total: 0`, แถว `cart-discount` ยังแสดง `data-value="10"` — **ล้มบน develop** (แทน assertion เคสค่าส่งของ AC-159 บรรทัดเดียว); Given fixture flash (`original_item_total: 5900`, `item_total: 4720`) Then ป้ายมี "ก่อนส่วนลด" (เดิม);
+  Given `original_item_total`/`item_total` ไม่ส่ง Then ป้ายไม่มี "ก่อนส่วนลด"; assertion อื่นของ AC-156/AC-159 และ `src/ev-7d-digital-only-totals.test.ts` ผ่านโดยไม่แก้;
+  e2e (ต่อใน `e2e/core-60-cart-subtotal-label.spec.ts`, 1280×800, ลูกค้า login เจ้าของ cart, หาภายใน `getByTestId("cart-totals")`): Given cart จาก `cartReadyForPayment` When admin สร้าง promotion โค้ดของ test ที่ลด**ค่าส่ง**
+  (`application_method.target_type: "shipping_methods"`, percentage 100 หรือจำนวนที่ ≤ ค่าส่ง) ใช้กับ cart ผ่าน `POST /store/carts/:id/promotions` จน API ได้ `discount_total > 0` และ `|original_item_total − item_total| ≤ 0.005` (assert ก่อน — เกณฑ์เดียวกับกฎข้อ 120a) แล้ว reload `/th/cart`
+  Then `cart-discount` visible, ข้อความ `cart-subtotal-label` = A ของ AC-159(a) (ป้ายเมื่อไม่มีส่วนลด) และ `cart-subtotal − cart-discount + cart-shipping = cart-total` (±0.01); cleanup promotion ใน `finally` แบบ AC-159; AC-159 (a)–(d) ยังผ่าน; evidence ≤ 2 PNG ใหม่
+- AC-162 (CORE-63, กฎข้อ 121) unit (Vitest — ไฟล์ใหม่ `src/core-63-address-invisible.test.ts`; mock `sdk.store.customer.createAddress`/`updateAddress` และ `updateCart`):
+  (a) `setAddresses` ด้วย `company`/`province`/`phone` = `"\u200B"` (ช่องบังคับถูกต้อง) → `updateCart` ได้สามช่องนั้นเป็น `""`; `"\u200Bบริษัท\u200B"` → `"บริษัท"`;
+  (b) `addCustomerAddress` ด้วย `city` = `"\u200B"` → คืน `success: false` และ `error` มีอักษรไทย (เท่ากับ `MISSING_ADDRESS_MESSAGE`) และ `createAddress` ไม่ถูกเรียก; ทุกช่องถูกต้องแต่มี ZWSP หัว/ท้าย → `createAddress` ได้ค่าที่ตัดแล้ว;
+  (c) `updateCustomerAddress` แบบเดียวกับ (b) กับ `updateAddress` — **(a)–(c) ล้มบน develop**;
+  grep: `const REQUIRED_ADDRESS_FIELDS` และ `const MISSING_ADDRESS_MESSAGE` ปรากฏใน `src/` ที่ไฟล์เดียวใต้ `src/lib/util/`; AC-157 (Vitest + e2e) ผ่านโดยไม่แก้ assertion;
+  e2e (ไฟล์ใหม่ `e2e/core-63-address-invisible.spec.ts`, `evidenceTarget` `CORE-63`, 1280×800, ลูกค้า login): Given `/th/account/addresses` When `add-address-button` กรอกช่องถูกต้องยกเว้น `city-input` = `"\u200B"` แล้ว `save-button`
+  Then `address-error` มีอักษรไทย, modal ยังเปิด และ `GET /store/customers/me/addresses` (token ลูกค้า) จำนวนไม่เพิ่ม; When แก้ `city-input` เป็นค่าจริงแล้วบันทึก Then จำนวนเพิ่ม 1; evidence ≤ 2 PNG; cleanup ลบที่อยู่ที่สร้างด้วย `request.delete` ที่ตรวจ ok
+
+### Non-functional (รอบ 32)
+none
+
+### Test plan (รอบ 32)
+| ระดับ | AC |
+|---|---|
+| unit (Playwright `unit` project) + e2e `--repeat-each=5` | AC-160 (test-only — ไม่ต้องมี qa REPORT; แนบผลใน `CORE-61-tests.txt`) |
+| unit (Vitest) + e2e storefront | AC-161 (เขียนเคสค่าส่งให้ล้มบน develop ก่อน; qa ถ่ายรูป `/cart` ที่ลดแค่ค่าส่ง) |
+| unit (Vitest) + e2e storefront | AC-162 (เขียน unit (a)–(c) ให้ล้มบน develop ก่อน; qa ถ่ายรูปข้อความ error ในหน้าบัญชี) |
+
+### Tasks (รอบ 32)
+| ID | Task | ไฟล์ที่แตะ (`apps/storefront/`) | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-61 | (e2e hygiene — qa #369 O-1, qa/review #375, review #381, CI flaky fs19) test A ของ group join รอ server action, `PAGINATION_TEXT` ที่เดียว, AC-44 ลบข้อมูล + ตรวจ response ของ `pat`, fs19 `:245` ถ้า log ยืนยัน (กฎข้อ 119) — ☑ #388 (owner สั่งทำ 2026-11-17; fs19 ไม่แก้ — log run 43469877641 ล้มที่ step แรก `:199` ไม่ใช่ `:245`) | `e2e/group-buy-join.spec.ts`, `e2e/support/admin.ts`, `e2e/{affiliate-admin-forms,group-buy-admin-pages,evoucher-admin-pool-page,evoucher-admin-forms}.spec.ts` (import อย่างเดียว), `e2e/affiliate-admin-payout-create.spec.ts`, `e2e/core-46-e2e-hygiene.unit.spec.ts`, `e2e/flash-sale-fs19.spec.ts` (เงื่อนไข 119d) | ~100 LOC | AC-160 | PR เอกสารรอบ 32 merge; ไม่บล็อก release | ∥ CORE-62, CORE-63 (คนละไฟล์), ∥ GB-17 (backend), ∥ OPS-26; **ชน ADM-27** (spec 08) ที่ `e2e/{affiliate-admin-forms,evoucher-admin-forms,evoucher-admin-pool-page}.spec.ts`/`e2e/support/admin.ts` → CORE-61 merge ก่อน แล้ว ADM-27 rebase |
+| CORE-62 | (storefront เล็ก — owner ตัดสิน 2026-11-17, qa #372) ป้าย "ก่อนส่วนลด" เฉพาะเมื่อราคาสินค้าลดจริง ส่วนลดค่าส่งอย่างเดียวใช้ป้ายเดิม (กฎข้อ 120, ภาคผนวกกฎข้อ 118a) — ☑ #384 (owner สั่งทำ 2026-11-17) | `src/modules/common/components/cart-totals/index.tsx`, `src/core-57-cart-totals.test.ts`, `e2e/core-60-cart-subtotal-label.spec.ts` (+ `src/lib/util/` ถ้าแยก helper) | ~20 LOC + unit; e2e +~50 LOC | AC-161 | PR เอกสารรอบ 32 merge; CORE-60 ☑ #372; ไม่บล็อก release | ∥ CORE-61 (ไม่มีไฟล์ร่วม — CORE-61 ไม่แตะ `core-60-*`/`core-57-*`/`cart-totals`), ∥ GB-17 |
+| CORE-63 | (storefront เล็ก — Q-C10 = ก owner 2026-11-17, #369 CORE-58) zero-width ในช่องที่อยู่ไม่บังคับของ checkout + ฟอร์มที่อยู่หน้าบัญชี ใช้ `trimInvisible` เดิม, ช่องบังคับว่างหลังตัด → ข้อความไทยไม่เรียก API (กฎข้อ 121) — ☑ #386 (owner สั่งทำ 2026-11-17) | `src/lib/data/{cart,customer}.ts`, `src/lib/util/` (ย้าย `REQUIRED_ADDRESS_FIELDS`/`MISSING_ADDRESS_MESSAGE`), `src/core-63-address-invisible.test.ts` (ใหม่), `e2e/core-63-address-invisible.spec.ts` (ใหม่) | ~80 LOC + unit; e2e ~70 LOC | AC-162 | PR เอกสารรอบ 32 merge; CORE-58 ☑ #369; ไม่บล็อก release | ไม่ชน CORE-62 (`cart-totals`/`core-57`/`core-60`) และ CORE-61 (ไฟล์ e2e อื่น); `src/lib/data/cart.ts` ไม่มี task อื่นแตะ → ∥ ทุกตัว |
+(รอบ 32) CORE-61 ∥ CORE-62 ∥ CORE-63 ∥ GB-17 (spec 04) ∥ ADM-27 (spec 08) ∥ OPS-26 (spec 07) เริ่มขนานกันได้ — ไฟล์ชนกันคู่เดียว CORE-61 × ADM-27 (ไฟล์ e2e admin) ให้ CORE-61 merge ก่อน; มี UI: CORE-62, CORE-63 (ต้องผ่าน qa);
+ลำดับ merge ที่แนะนำ: GB-17 → CORE-61 → CORE-62 → CORE-63 → ADM-27, OPS-26 อิสระ (เล็กไปใหญ่; CORE-61 เปลี่ยนแค่ test จึง merge ก่อนตัวที่มี UI เพื่อลด flaky ใน CI ของตัวถัดไป)
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 32)
+- (review #381) `waitForTimeout(1_000)` หลัง refetch ล้มใน e2e กฎ 24d (`e2e/evoucher-admin-pool-page.spec.ts:483`, `e2e/group-buy-admin-pages.spec.ts:391`, `e2e/affiliate-admin-forms.spec.ts:456`) — เป็นหน้าต่างของ negative assertion
+  ("ไม่มี testid error") หลัง request ล้มครบ 2 ครั้งแล้ว ไม่มีเงื่อนไขบวกให้รอแทน → คงไว้ (comment ในโค้ดอธิบายอยู่แล้ว)
+- (CI run 43475980049) `e2e/affiliate-admin-forms.spec.ts:47` AC-12 ล้มครั้งเดียว ไม่พบสาเหตุในโค้ด test → เปิด task เมื่อเกิดซ้ำ (แนบ log/trace) — **เกิดซ้ำแล้ว (#388 run 44071909424) → รอบ 33 owner สั่งเปิด ADM-28 (spec 08 กฎ 32, AC-33)**
+
+### Open questions (รอบ 32)
+- ~~**Q-C10**~~ ✅ **owner ตอบ ก 2026-11-17** → กฎข้อ 121, AC-162, CORE-63 (storefront ล้วน; qa #369 O-2 ยอมรับ); คำถามเดิม: (#369 CORE-58 + qa #369 O-2 — ขอบเขตของกฎข้อ 116 เดิม) อักขระ zero-width ที่ยังเหลือ: ช่อง**ไม่บังคับ**ของ `setAddresses` (`company`/`province`/`phone` — `src/lib/data/cart.ts:533–538` ส่งค่าดิบ) และฟอร์มที่อยู่ในหน้าบัญชี
+  (`addCustomerAddress`/`updateCustomerAddress` ใน `src/lib/data/customer.ts:479`, `:538` ไม่ตัดแม้แต่ white space — ช่องบังคับที่เป็นช่องว่างล้วนผ่าน `required` ของ browser ได้) ส่วน Store API ของ Medusa รับ string อะไรก็ได้:
+  (ก) **[แนะนำ]** storefront ล้วน: ทุกช่องของ `setAddresses` ผ่าน `trimInvisible` (ช่องไม่บังคับที่ว่างหลังตัดส่ง `""`), ฟอร์ม `/account/addresses` ตัดแบบเดียวกันและช่องบังคับว่างหลังตัด → ข้อความไทยแบบ `MISSING_ADDRESS_MESSAGE` ไม่เรียก API;
+      qa #369 O-2 (ช่องที่มีแต่ ZWSP ยังแสดงค่าที่พิมพ์หลัง error) ยอมรับ — ฟอร์มคงค่าที่ผู้ใช้พิมพ์ตามปกติ — เหตุผล: ใช้ helper เดิมของ CORE-58, ทุกทางที่ลูกค้าบันทึกที่อยู่ผ่าน storefront ถูกครอบ; ผลกระทบ: task storefront ~80 LOC + unit + e2e หน้าบัญชี 1 เคส
+  (ข) (ก) + validation ฝั่ง backend: middleware ของเราบน `POST /store/carts/:id` และ `/store/customers/me/addresses*` ปฏิเสธช่องบังคับที่ว่างหลังตัด → 400 — ครอบ client อื่นนอก storefront; ผลกระทบ: +~150 LOC + integration test,
+      เพิ่ม middleware บน route core ของ Medusa (แตะ `src/api/middlewares.ts` — จุดที่เคย conflict), ข้อความ 400 ต้อง map เป็นไทย
+  (ค) คงเดิม ไม่มี task — ผลกระทบ: ที่อยู่ในหน้าบัญชีที่เป็นช่องว่าง/zero-width ล้วนบันทึกได้ แล้วเมื่อเลือกใช้ตอน checkout จะถูกกฎข้อ 116 ปฏิเสธ (ลูกค้าต้องแก้ที่ checkout)
+- (บันทึก) ข้อ (4) ของ follow-up ปิดรอบ 30/31 (ป้าย "ก่อนส่วนลด" เมื่อลดแค่ค่าส่ง) **owner ตัดสินแล้ว 2026-11-17** ไม่เป็นคำถาม → กฎข้อ 120, CORE-62
+
+## Follow-up รอบ 33 (2026-11-17 — เอกสารล้วน: คำตัดสินของ owner ต่อ follow-up ปิดรอบ 32)
+ที่มา: ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)" กลุ่ม ก — owner ตัดสิน 2026-11-17: (1) = ก "ให้ลดตามที่ตั้งเป๊ะ" → CORE-64 (หัวข้อนี้); (2) = ข คงเดิม → ยอมรับใน v1 (ข้างล่าง);
+(3) = ก หยุด วัดตอนมี staging → spec 07 (รายการก่อน go-live); (4) = เปิด task หาสาเหตุ → ADM-28 (spec 08 กฎ 32, AC-33); (5) = คงเดิม → ยอมรับใน v1 (ข้างล่าง) ·
+ตรวจโค้ดบน develop `1c55193f` และ `@medusajs/dashboard` 2.22.1 ที่ติดตั้ง (path ย่อจาก `node_modules/@medusajs/dashboard/src/routes/promotions/`):
+- **ฟอร์มสร้าง promotion ของ dashboard ตั้ง `is_tax_inclusive` ได้แล้ว**: สวิตช์ "Does promotion include taxes?" (`promotions.form.taxInclusive.title`, คำอธิบาย "Enable this field to apply the promotion after taxes")
+  render เมื่อ template ไม่ซ่อน field นี้ (`promotion-create/components/create-promotion-form/create-promotion-form.tsx:602–634`) และส่งใน body ของ `POST /admin/promotions` (`:98`, `:160`);
+  template ที่**แสดง**สวิตช์ = แบบ fixed ทั้งสอง — `amount_off_products` และ `amount_off_order` (`create-promotion-form/templates.ts:3–11`, `:38–70`);
+  template ที่**ซ่อน** = `percentage_off_product`, `percentage_off_order`, `buy_get`, `shipping_discount` (`templates.ts:13–36`); **ค่าเริ่มต้น `false`** (`create-promotion-form.tsx:59`) → admin ต้องเปิดเองทุกครั้ง
+- ฟอร์มแก้ (`promotion-edit-details/components/edit-promotion-form/edit-promotion-details-form.tsx:204–212`) แสดงสวิตช์เฉพาะ `value_type === "fixed"` และ `type === "standard"` และตั้งกลับเป็น `false` เมื่อไม่ใช่ fixed (`:107–111`);
+  หน้า detail แสดงค่า "Tax Inclusive" True/False (`promotion-detail/components/promotion-general-section/promotion-general-section.tsx:192`) → admin ตรวจย้อนหลังได้โดยไม่ต้องสร้างอะไรเพิ่ม
+- promotion ที่โค้ดของเราสร้าง: group buy ตั้ง `is_tax_inclusive` ค่าเริ่มต้น `true` อยู่แล้ว (spec 04 กฎข้อ 12 — `src/api/admin/group-buy/validators.ts:42`, `src/workflows/group-buy/campaign.ts:229`, `src/admin/lib/group-buy-form.ts:61`);
+  `src/scripts/seed.ts` ไม่สร้าง promotion; `src/scripts/seed-load.ts:98–117` สร้างแบบ percentage (ไม่กระทบ); flash sale ไม่มีโค้ดสร้าง promotion (admin สร้างใน dashboard — ADR-003);
+  e2e ของ storefront ที่สร้าง promotion (`e2e/**` ผ่าน `POST /admin/promotions`) เป็น percentage ทั้งหมด; integration ที่ตั้ง fixed + `false` โดยตั้งใจ (`integration-tests/http/flash-sale-active.spec.ts:131–148` `FS4FIXED100` ตรวจ preview ฝั่ง `false`,
+  `integration-tests/http/group-buy-groups.spec.ts:467–479` control ของ AC-20c ของ spec 04) **คงไว้** — เป็น test ของพฤติกรรมฝั่ง `false` ไม่ใช่ promotion ของร้าน
+- ไม่มีที่เก็บคู่มือ admin ในโปรเจกต์ (`docs/ops/**` เป็น runbook ฝั่ง ops ที่ unit test อ่านและนับเป็นโค้ด backend ใน `tools/ci/classify-changes.sh`) → คู่มือใหม่ที่ `docs/guides/admin-promotions.md` (เอกสารล้วน)
+
+Status: done (ปิดรอบ 33 2026-11-18 — CORE-64 ☑ #392; owner สั่งทำ 2026-11-17; รอบ 34: Q-C11 = ก owner 2026-11-18 — คู่มือ + test อย่างเดียว ไม่มี task)
+**ผล CORE-64 (#392)**: ยืนยันด้วย integration + e2e + qa ผ่าน dashboard จริง — สวิตช์ "Does promotion include taxes?" ของ `@medusajs/dashboard` 2.22.1 (ค่าเริ่มต้นปิด) เปิดแล้ว promotion fixed ลดตรงจำนวนที่ตั้ง (`discount_total` = 100 ทั้ง items/order),
+ปิดไว้คลาด ~7% ตามที่ qa #384 O-1 พบ, percentage ไม่กระทบ; ไม่แก้โค้ดใต้ `src/`; คู่มือ admin `docs/guides/admin-promotions.md` (evidence `docs/evidence/core/CORE-64/REPORT.md`)
+Out of scope: โค้ดบังคับ/เตือนเมื่อ fixed ไม่ได้ตั้ง `is_tax_inclusive` (widget/middleware — Q-C11 = ก ไม่ทำ), แก้/patch ฟอร์ม promotion ของ dashboard, เปลี่ยน promotion ที่มีอยู่แล้วใน DB, แก้ test ฝั่ง `false` ที่ระบุข้างบน, ลบเบอร์โทร (กฎข้อ 121b — ยอมรับ), แถวค่าจัดส่งเมื่อลด 100% (กฎข้อ 115 — ยอมรับ)
+
+### What Medusa already gives us (รอบ 33)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ส่วนลด fixed ที่เป็นยอดรวม VAT | field `is_tax_inclusive` ของ promotion (Promotion module) — Medusa คิดจำนวน fixed บนฐานรวมภาษีเมื่อ `true` (ยืนยันแล้วใน spec 04 AC-20c: fixed ฿100 บนสินค้า ฿1,070 → `cart.total` ลด 100 พอดี) | ใช้ตามเดิม — ตั้งค่า ไม่มีโค้ด |
+| ตั้งค่าผ่าน admin | สวิตช์ "Does promotion include taxes?" ในฟอร์มสร้าง/แก้ promotion ของ `@medusajs/dashboard` 2.22.1 (เฉพาะ fixed — ดูข้อเท็จจริงข้างบน) + ค่า "Tax Inclusive" ในหน้า detail | ใช้ตามเดิม — คู่มือบอกให้เปิดทุกครั้ง |
+| ส่วนลด percentage | Medusa คิด % บนฐานตาม `is_tax_inclusive` แต่สัดส่วนเท่ากันทั้งสองฐาน (dashboard ซ่อนสวิตช์ของ template percentage) | ใช้ตามเดิม — ไม่ต้องตั้ง |
+| คู่มือ admin | none | custom — เอกสาร `docs/guides/admin-promotions.md` |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 33)
+122. (CORE-64 — owner ตัดสิน (1) = ก 2026-11-17, qa #384 O-1) promotion แบบ **fixed** (`application_method.type: "fixed"` ทั้ง `target_type` `items` และ `order`) ของร้านตั้ง `is_tax_inclusive: true` **เสมอ** เพราะราคา THB ของร้านรวม VAT (seed) —
+     ส่วนลดที่ลูกค้าเห็น (`discount_total`) จึงเท่าจำนวนที่ admin ตั้งพอดี; percentage/buy-get/ส่วนลดค่าส่งไม่ต้องตั้ง:
+     (a) admin ตั้งผ่านสวิตช์ "Does promotion include taxes?" ของ dashboard (ค่าเริ่มต้นปิด — ต้องเปิดเองทุกครั้ง) และตรวจที่หน้า detail ว่า "Tax Inclusive" = True — ไม่มีโค้ด admin ใหม่;
+     (b) คู่มือ `docs/guides/admin-promotions.md` (ภาษาไทย, ชื่อปุ่ม/ป้ายของ dashboard คงอังกฤษตามจริง): ขั้นสร้าง promotion แบบ fixed (template "Amount off products"/"Amount off order") เปิดสวิตช์นี้, ตรวจ "Tax Inclusive" = True ก่อนเปลี่ยนสถานะเป็น active,
+         promotion ที่สร้างแล้วแต่ลืมเปิด → แก้ด้วยฟอร์มแก้ (Edit details) ได้, percentage ไม่ต้องตั้ง (สวิตช์ไม่แสดง), ใช้กับ promotion ของ flash sale (ADR-003) ด้วย; group buy ตั้งให้อัตโนมัติ (spec 04 กฎข้อ 12);
+         ตัวอย่างตัวเลข: สินค้า ฿1,070 รวม VAT + fixed ฿100 — เปิด → ลด ฿100, ปิด → ลด ~฿107;
+     (c) โค้ดของเราที่สร้าง promotion fixed ในอนาคต (script/workflow/e2e helper ที่ไม่ได้ตั้งใจทดสอบฝั่ง `false`) ต้องส่ง `is_tax_inclusive: true` — ตอนนี้ไม่มีจุดที่ต้องแก้ (ดูข้อเท็จจริงข้างบน) → CORE-64 **ไม่แก้โค้ดใต้ `src/`**;
+     (d) ถ้าระหว่างทำพบว่า `discount_total` ไม่เท่าจำนวนที่ตั้งแม้ `is_tax_inclusive: true` (เกิน ±0.01) → หยุดและรายงาน planner (ห้ามคำนวณชดเชยเอง)
+- (ยอมรับใน v1 — owner (2) = ข คงเดิม 2026-11-17, qa #386 O-2) **กฎข้อ 121b คงเดิม**: ล้างช่อง phone ของที่อยู่ในหน้าบัญชีแล้วบันทึก → ไม่ส่ง key `phone` เบอร์เดิมยังอยู่แม้ขึ้นว่าบันทึกสำเร็จ — ไม่มี task
+- (ยอมรับใน v1 — owner (5) คงเดิม 2026-11-17, qa #384 O-2) **กฎข้อ 115 คงเดิม**: ส่วนลดค่าส่ง 100% แสดง "ค่าจัดส่ง ฿10" (`original_shipping_total`) และ "ส่วนลด −฿10" แยกกัน — สูตร subtotal − ส่วนลด + ค่าส่ง = ยอดรวม ตรวจได้ทุกแถว; ไม่มี task
+
+### Acceptance criteria (รอบ 33)
+- AC-163 (CORE-64, กฎข้อ 122)
+  (a) integration (`apps/backend/integration-tests/http/core-64-promotion-tax-inclusive.spec.ts` ใหม่; region THB ราคารวม VAT + tax rate 7% แบบ fixture ของ AC-20c spec 04; cart สร้างและแก้ด้วย token ของลูกค้าเจ้าของ cart — `integration-tests/helpers/customer.ts`):
+      Given สินค้าราคา ฿1,070 (รวม VAT) qty 1 When admin `POST /admin/promotions` แบบ fixed 100 THB `target_type: "items"`, `allocation: "each"`, `is_tax_inclusive: true` (รูป body เดียวกับที่ฟอร์ม dashboard ส่ง) แล้ว `POST /store/carts/:id/promotions` ด้วยโค้ดนั้น
+      Then `discount_total` = 100 (±0.01) และ `total` ลดลงจากก่อนใส่โค้ด 100 (±0.01);
+      Given แบบเดียวกันแต่ `target_type: "order"`, `allocation: "across"` Then `discount_total` = 100 (±0.01);
+      control: fixed 100 items ที่ `is_tax_inclusive: false` Then `|discount_total − 100| > 1` (พฤติกรรมที่ qa #384 O-1 พบ — ยืนยันว่า test แยกสองฝั่งได้);
+      percentage 10 ของ items ที่ไม่ส่ง `is_tax_inclusive` และที่ส่ง `true` Then `discount_total` = 107 (±0.01) ทั้งคู่ (10% ของราคารวม VAT — % ไม่กระทบ);
+      ข้อมูลที่ test สร้างอยู่ใน `beforeEach`/ใน test (DB reset ทุก test); error ของ axios ห่อเป็น `Error` ที่มีแค่ status/body
+  (b) e2e storefront (`apps/storefront/e2e/core-64-promotion-fixed-vat.spec.ts` ใหม่, `evidenceTarget` `{ feature: "core", taskId: "CORE-64" }`, 1280×800, ลูกค้า login เจ้าของ cart, หาภายใน `getByTestId("cart-totals")`):
+      Given cart ที่มีสินค้า seed (ราคารวม VAT) และเลือกวิธีจัดส่งแล้ว (helper เดิม เช่น `cartReadyForPayment`) When admin สร้าง promotion fixed 100 items `is_tax_inclusive: true` โค้ดของ test แล้วใช้กับ cart ผ่าน `POST /store/carts/:id/promotions` และ reload `/th/cart`
+      Then `cart-discount` `data-value` = 100 (±0.01) และ `cart-subtotal − cart-discount + cart-shipping = cart-total` (±0.01); cleanup promotion ใน `finally` ด้วย `deleteAllThenExpectOk` (กฎข้อ 111); evidence ≤ 2 PNG
+  (c) คู่มือ: `docs/guides/admin-promotions.md` มีอยู่, มีคำ "Does promotion include taxes?", "Tax Inclusive", "Amount off products", "Amount off order" และอักษรไทย (`/[฀-๿]/`) — ตรวจด้วย unit (Playwright `unit` project ต่อใน `e2e/core-46-e2e-hygiene.unit.spec.ts` หรือไฟล์ unit ใหม่ของ CORE-64 — เลือกใน PR)
+  (d) qa (Playwright MCP — หลักฐาน ไม่ใช่ test ใน CI): สร้าง promotion "Amount off products" ฿100 ผ่านหน้า `/app/promotions/create` ของ dashboard โดยเปิดสวิตช์ตามคู่มือ แล้ว `GET /admin/promotions/:id` ได้ `is_tax_inclusive: true` และหน้า detail แสดง "Tax Inclusive" True;
+      ใช้ promotion นั้นกับ cart แล้ว `/th/cart` แสดง `cart-discount` = 100; หน้า core ของ dashboard ไม่มี `data-testid` และเราแก้ไม่ได้ → qa หา element ด้วย role/label เฉพาะขั้นนี้ (บันทึกใน REPORT); รูป ≤ 3 PNG (`docs/evidence/core/CORE-64/REPORT.md`)
+
+### Non-functional (รอบ 33)
+none
+
+### Test plan (รอบ 33)
+| ระดับ | AC |
+|---|---|
+| integration (`test:integration:http`) | AC-163(a) — เคส `true` ผ่านบน develop ได้ทันที (Medusa ทำอยู่แล้ว) จึงไม่มีขั้น "ล้มก่อน" ของโค้ด; ขั้น "ล้มก่อน" คือ control `false` ต้องแยกจากเคส `true` (ลองสลับค่าแล้ว test ต้องล้ม — ระบุใน PR) |
+| e2e storefront + unit (Playwright) | AC-163(b), (c) |
+| qa (manual ผ่าน MCP) | AC-163(d) — มี REPORT |
+
+### Tasks (รอบ 33)
+| ID | Task | ไฟล์ที่แตะ | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-64 | (owner (1) = ก 2026-11-17, qa #384 O-1) promotion fixed ตั้ง `is_tax_inclusive: true` เสมอ: ยืนยันด้วย integration + e2e ว่าลดเท่าที่ตั้ง (% ไม่กระทบ), คู่มือ admin, qa สร้างผ่าน dashboard จริง — ไม่แก้โค้ดใต้ `src/` (กฎข้อ 122) — ☑ #392 (owner สั่งทำ 2026-11-17; AC-163(c) ใช้ไฟล์ unit ใหม่ `e2e/core-64-admin-promotions-guide.unit.spec.ts`) | `apps/backend/integration-tests/http/core-64-promotion-tax-inclusive.spec.ts` (ใหม่), `apps/storefront/e2e/core-64-promotion-fixed-vat.spec.ts` (ใหม่), `apps/storefront/e2e/core-46-e2e-hygiene.unit.spec.ts` (หรือ unit ใหม่ — AC-163(c)), `docs/guides/admin-promotions.md` (ใหม่) | integration ~120 LOC + e2e ~80 LOC + คู่มือ ~40 บรรทัด | AC-163 | PR เอกสารรอบ 33 merge; ไม่บล็อก release | ∥ ADM-28 (spec 08 — แตะแค่ `e2e/affiliate-admin-forms.spec.ts` (+ `e2e/support/admin.ts` ถ้าจำเป็น)); `core-46-e2e-hygiene.unit.spec.ts` ไม่มี task อื่นที่เปิดแตะ |
+(รอบ 33) CORE-64 ∥ ADM-28 (spec 08) เริ่มขนานกันได้ ไม่มีไฟล์ร่วม; CORE-64 มี qa (AC-163(d)); ADM-28 เป็น test-only (ไม่ต้องมี qa REPORT) — ลำดับ merge ที่แนะนำ: ADM-28 → CORE-64 (ลด flaky ใน CI ของตัวถัดไป)
+
+### ยอมรับใน v1 / ไม่เปิด task (รอบ 33)
+- (owner (2) = ข 2026-11-17) ลบเบอร์โทรในที่อยู่ของหน้าบัญชีไม่ได้ — กฎข้อ 121b คงเดิม (ดู Business rules รอบ 33)
+- (owner (5) คงเดิม 2026-11-17) ส่วนลดค่าส่ง 100% แสดงแถวค่าจัดส่งและส่วนลดแยกกัน — กฎข้อ 115 คงเดิม
+- (ADR) ไม่มี ADR ใหม่: ใช้ field/ฟอร์มของ Medusa ตามเดิม ไม่มีทางเลือกที่ต้องตัดสินนอกจาก Q-C11
+
+### Open questions (รอบ 33)
+- ~~Q-C11~~ ✅ owner ตอบ ก 2026-11-18 (รอบ 34) → คู่มือ `docs/guides/admin-promotions.md` + test ของ CORE-64 อย่างเดียว ไม่มี task ไม่มี ADR (ทาง ข/ค ไม่ทำ); คำถามเดิม (CORE-64 — ไม่บล็อก CORE-64) ฟอร์มสร้าง promotion ของ dashboard ตั้ง `is_tax_inclusive` ค่าเริ่มต้น `false` (`create-promotion-form.tsx:59`) → ถ้า admin ลืมเปิดสวิตช์ ส่วนลด fixed จะคลาดไป ~7% โดยไม่มีอะไรเตือน; ต้องการกันเพิ่มจากคู่มือไหม:
+  (ก) **[แนะนำ]** คู่มือ + test ของ CORE-64 เท่านั้น — เหตุผล: ใช้ของ Medusa ตามเดิม, หน้า detail แสดง "Tax Inclusive" ให้ตรวจก่อนเปิดใช้, ฟอร์มสร้างเริ่มที่สถานะ draft จึงมีจังหวะตรวจก่อน active; ผลกระทบ: ไม่มีงานเพิ่ม, พึ่งวินัยของ admin
+  (ข) widget ที่ zone `promotion.details.before` ของ dashboard แสดง `Alert` (`@medusajs/ui`) เมื่อ promotion เป็น fixed และ `is_tax_inclusive` = false (ไม่บล็อก) — ผลกระทบ: task admin ~60 LOC + e2e (หน้า detail ของ Medusa — widget ของเรามี `data-testid` ได้), เตือนหลังสร้างเท่านั้น
+  (ค) middleware ของเราบน `POST /admin/promotions` และ `POST /admin/promotions/:id` ปฏิเสธ 400 เมื่อ fixed และ `is_tax_inclusive` ไม่ใช่ `true` — ผลกระทบ: ~100 LOC + integration, แตะ `src/api/middlewares.ts` (จุดที่เคย conflict), ข้อความ error ใน dashboard เป็น toast ข้อความดิบ,
+      ต้องจัดการกรณีแก้ `value_type` ผ่าน route อื่นของ promotion ด้วย และบล็อก promotion ฝั่ง `false` ที่ test ตั้งใจสร้าง (ต้องแก้ test เดิม) — ควรมี ADR เพราะเปลี่ยนพฤติกรรมของ route core
+
+## Follow-up รอบ 36 ส่วนที่ 2 (2026-11-18 — owner ตัดสินราคาซ้ำในหน้า order-completed)
+Status: done (ปิดรอบ 36 2026-11-18 — CORE-65 ☑ #406; owner สั่งทำ 2026-11-18; ไม่บล็อก release) · Out of scope: หน้า cart/checkout (`LineItemUnitPrice` ในตะกร้าคงเดิม — กฎข้อ 105c, AC-142), แก้ `LineItemUnitPrice`/`LineItemPrice` เอง, รูปแบบเงิน, `data-value` float ของ `cart-totals` (ยอมรับแล้วใน "Follow-up รอบ 30")
+ที่มา: ROADMAP "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)" กลุ่ม ค (qa #372) — owner ตอบ ข "ตรวจซ้ำบน develop" 2026-11-18; qa ตรวจบน develop `8425a53f` (prod build) **ยังจริง** ที่ 1280 และ 375:
+qty 1 ลด 10% แสดง "1x ~~฿590~~ ฿531 ~~฿590~~ ฿531", ไม่ลดแสดง "1x ฿590 ฿590", qty 2 ไม่ซ้ำ (ต่อหน่วย vs รวม) — ต้นเหตุ `apps/storefront/src/modules/order/components/item/index.tsx:39–50` แสดง `LineItemUnitPrice` คู่ `LineItemPrice` เสมอ (ของ Medusa Next.js starter)
+**คำตัดสินของ owner 2026-11-18 = ก**: ซ่อนราคาต่อหน่วยเมื่อ `quantity === 1`; ≥ 2 ชิ้นคงแสดงต่อหน่วย + รวมเหมือนเดิม (ทางที่ไม่เลือก: ราคาต่อหน่วยไม่ขีดฆ่า ขีดฆ่าเฉพาะราคารวม)
+**ผล CORE-65 (☑ #406; qa `docs/evidence/core/CORE-65/REPORT.md`)**: e2e `core-65-order-item-unit-price.spec.ts` ผ่าน (order 4 ใบ × 1280/375 + account details) — red/green อยู่ใน PR #406 (nit review: log red รันบน test ฉบับก่อนสุดท้าย);
+qa บน prod build: order ผ่าน UI จริง qty ผสม 1/1/2/3 → ซ่อนราคาต่อหน่วยเฉพาะแถว qty 1 (ลด/ไม่ลด/ลด 100%/เศษสตางค์), ที่ 375 ไม่ล้น, หน้า cart และ preview ขั้น review ของ checkout ไม่ถูกแตะ (กฎ 123d), e2e ตะกร้าเดิมผ่านโดยไม่แก้; defect ไม่พบ ·
+ข้อสังเกต qa → ROADMAP follow-up ปิดรอบ 36: preview ขั้น checkout review แถว qty 1 ยังแสดงราคาซ้ำ (O-1 — ตรงกฎ 123d), price list แบบ sale ไม่มีราคาขีดฆ่าแม้มี `compare_at_unit_price` (O-2 — มีบน develop), โค้ดใช้ `quantity > 1` ผลเท่ากับ `=== 1` (O-3)
+
+### What Medusa already gives us (รอบ 36 ส่วนที่ 2)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ราคาต่อหน่วย/รวมของ line ใน order | `LineItemUnitPrice`, `LineItemPrice` ของ Medusa Next.js starter (`modules/common/components/…`) + `item.total`/`original_total`/`quantity` ของ Store API | ใช้ตามเดิม — เงื่อนไขการแสดงที่ `Item` ของ order อย่างเดียว ไม่แก้สอง component |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 36 ส่วนที่ 2)
+123. (CORE-65 — owner ก 2026-11-18) `modules/order/components/item/index.tsx` (`Item` ของ order — ใช้ทั้งหน้า order-completed และ `/account/orders/details/[id]` ผ่าน `components/items`):
+     (a) `item.quantity === 1` → ไม่ render `LineItemUnitPrice` (ไม่มี `product-unit-price`/`product-unit-original-price` ในแถว); คง `product-quantity` ("1x") และ `LineItemPrice` (`product-price` และ `product-original-price` เมื่อลด);
+     (b) `quantity ≥ 2` → เหมือนเดิมทุกอย่าง (ต่อหน่วย + รวม);
+     (c) หน้าตาส่วนอื่นของแถวคงเดิม และไม่ล้นแนวนอนที่ 375;
+     (d) ไม่แตะหน้า cart/checkout และ `LineItemUnitPrice`/`LineItemPrice` — หน้า account order details เปลี่ยนตามไปด้วยเพราะใช้ `Item` ตัวเดียวกัน (สอดคล้องกัน ไม่ใช่ขอบเขตใหม่)
+         — **(รอบ 37)** preview ของ checkout ใช้กฎ (a) ด้วยตามคำตัดสิน owner 2026-11-18 (กฎข้อ 124, CORE-66); หน้า `/cart` คงตามข้อนี้
+
+### Acceptance criteria (รอบ 36 ส่วนที่ 2)
+- AC-164 (CORE-65, กฎข้อ 123) e2e ใหม่ `apps/storefront/e2e/core-65-order-item-unit-price.spec.ts` (`evidenceTarget` `{ feature: "core", taskId: "CORE-65" }`, ลูกค้า login เจ้าของ order) — **ล้มบน develop**:
+  Given order 4 ใบผ่าน `placeOrder` ของ `e2e/support/medusa.ts` (เพิ่ม option promotion ใน `CartOptions` ได้): {ไม่ลด, ลด 10% แบบ percentage ของ items} × {qty 1, qty 2}
+  When เปิดหน้า order-completed ของแต่ละใบที่ 1280×800 และ 375×812 Then ภายใน `getByTestId("order-complete-container")` → `getByTestId("product-row")` 1 แถว:
+  (a) qty 1: `product-unit-price` และ `product-unit-original-price` count 0; `product-price` 1 visible และตัวเลขเท่ากับ `item.total` ของ order จาก API (±0.01); ลด → `product-original-price` 1 visible (เท่ากับ `original_total`), ไม่ลด → 0;
+  (b) qty 2: `product-unit-price` 1 visible (= `total / 2`) และ `product-price` 1 visible; ลด → `product-unit-original-price` 1 และ `product-original-price` 1; ไม่ลด → ทั้งสอง 0;
+  (c) `product-quantity` แสดงจำนวนของ line ทุกกรณี; ที่ 375 `document.documentElement.scrollWidth ≤ 375`;
+  (d) หน้า `/account/orders/details/<id>` ของ order qty 1 แบบลด ที่ 1280: ภายใน `order-details-container` เป็นไปตาม (a);
+  (e) หาด้วย `data-testid` เท่านั้น (ตัวเลขเทียบหลังตัดอักขระที่ไม่ใช่ตัวเลข/จุด) ไม่ match ป้ายข้อความ; e2e ของตะกร้าเดิม (`core-47-cart-375-long-title`, `core-42-cart-voucher-layout`) ผ่านโดยไม่แก้; ลบ promotion ที่สร้างใน `finally` ด้วยการตรวจ `ok()` (กฎข้อ 119);
+  (f) qa REPORT `docs/evidence/core/CORE-65/REPORT.md`: แถวสินค้า qty 1 ลด/ไม่ลด และ qty 2 ลด ที่ 1280 และ 375 — screenshot ≤ 4
+
+### Test plan (รอบ 36 ส่วนที่ 2)
+| ระดับ | AC |
+|---|---|
+| e2e storefront (Playwright) + e2e ตะกร้าเดิมใน CI | AC-164(a)–(e) |
+| qa (manual ผ่าน MCP) | AC-164(f) — มี REPORT |
+
+### Tasks (รอบ 36 ส่วนที่ 2)
+| ID | Task | ไฟล์ที่แตะ | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-65 | (owner ก 2026-11-18 — qa #372, ตรวจซ้ำรอบ 36) `Item` ของ order ไม่แสดงราคาต่อหน่วยเมื่อ `quantity === 1`; ≥ 2 คงเดิม (กฎข้อ 123) — ☑ #406 (owner สั่งทำ 2026-11-18; qa ผ่าน defect ไม่พบ) | `apps/storefront/src/modules/order/components/item/index.tsx`, `apps/storefront/e2e/core-65-order-item-unit-price.spec.ts` (ใหม่), `apps/storefront/e2e/support/medusa.ts` (option promotion ถ้าจำเป็น), `docs/evidence/core/CORE-65/REPORT.md` (qa — session หลัก commit) | ~10 LOC โค้ด + ~150 LOC e2e | AC-164 | PR เอกสารรอบ 36 ส่วนที่ 2 merge; ไม่บล็อก release | ∥ ADM-32, ADM-33 (spec 08) ไม่มีไฟล์ร่วม; ณ ตอนเปิด task (#405 merge) PR ที่เปิดอยู่คือ OPS-28 #403, ADM-31 #404 (ADM-30 #402 merge แล้ว) — ไม่มีไฟล์ร่วม |
+
+## Follow-up รอบ 37 (2026-11-18 — owner ตัดสินข้อ ก (2) และ (4) ของ ROADMAP "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 36)")
+Status: done (ปิดรอบ 37 2026-11-19 — CORE-66 ☑ #412, CORE-67 ☑ #415; owner สั่งทำ 2026-11-18; ไม่บล็อก release) · Out of scope: หน้า `/cart` แถว qty 1 (คงราคาต่อหน่วยตามกฎข้อ 123d/105c), ราคาบนหน้าสินค้า/การ์ดสินค้า (starter ใช้ `calculated_price` อยู่แล้ว),
+หน้า group buy, แถว `cart-subtotal` ของ `cart-totals` (กฎข้อ 118/120 คงเดิม), รูปแบบเงิน, แก้/patch โค้ดของ Medusa
+ที่มา (ตรวจบน develop `99a52afb`):
+- qa #406 O-1: `modules/cart/templates/preview.tsx:34–39` (checkout summary ทุก step) render `cart/components/item` `type="preview"` ซึ่งแสดง `LineItemUnitPrice` คู่ `LineItemPrice` เสมอ (`item/index.tsx:168–182`) → แถว qty 1 ราคาซ้ำ (ลดแล้วขีดฆ่าซ้ำสองชุด)
+- qa #406 O-2: `order_line_item.compare_at_unit_price` = 500 แต่ `LineItemPrice` (`common/components/line-item-price/index.tsx:17–20`) และ `LineItemUnitPrice` (`line-item-unit-price/index.tsx:16–18`) เทียบแค่ `total` กับ `original_total` → ราคาจาก price list แบบ sale ไม่มีราคาขีดฆ่า;
+  ผู้ใช้สอง component: `cart/components/item` (หน้า `/cart` + preview), `order/components/item` (order-completed + account order details), `layout/components/cart-dropdown/index.tsx:186` (`LineItemPrice` อย่างเดียว)
+**คำตัดสินของ owner 2026-11-18**: (2) = ข "ใช้กฎข้อ 123a เฉพาะ `type="preview"` หน้า cart คงเดิม"; (4) = ทำ (แม้ข้อแนะนำเดิมคือคงเดิม) — ใช้ `compare_at_unit_price` ที่ Medusa เก็บไว้ และไม่ซ้อนกับการขีดฆ่าจาก promotion
+
+### What Medusa already gives us (รอบ 37)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ราคาก่อน sale ของ line | `compare_at_unit_price` ของ cart/order line item — core-flows 2.22.1 ตั้งให้เมื่อ `calculated_price.price_list_type === "sale"` และ `original_amount ≠ calculated_amount` (`cart/utils/prepare-line-item-data.js:15–22`) แล้วคัดลอกลง order | ใช้ตามเดิม — อ่าน field ที่มีอยู่ ไม่คำนวณราคาเดิมเอง |
+| field ใน payload ของ storefront | `*items` ใน `retrieveCart` (`lib/data/cart.ts:53`) และ `retrieveOrder` (`lib/data/orders.ts:20`) ขยายทุก column ของ line item | ใช้ตามเดิม — builder ยืนยันใน e2e ว่า field มาจริง; ถ้าไม่มาเพิ่ม `+items.compare_at_unit_price` ใน fields (ไม่เพิ่ม route) |
+| ราคาต่อหน่วย/รวม + ขีดฆ่า | `LineItemUnitPrice`/`LineItemPrice` ของ Medusa Next.js starter | ขยาย — เปลี่ยนแหล่ง "ราคาเดิม" ผ่าน pure helper เดียว (ผู้ใช้ 2 component) ไม่สร้าง component ใหม่ |
+
+### Data model / Workflows / API routes
+none
+
+### Business rules (รอบ 37)
+124. (CORE-66 — owner ข 2026-11-18; qa #406 O-1) `modules/cart/components/item/index.tsx` เมื่อ `type="preview"` (checkout summary):
+     (a) `item.quantity === 1` → ไม่ render `LineItemUnitPrice` (ในแถวไม่มี `product-unit-price`/`product-unit-original-price`); คงจำนวน ("1x") และ `LineItemPrice` (`product-price`, `product-original-price` เมื่อลด);
+     (b) `quantity ≥ 2` → เหมือนเดิม (ต่อหน่วย + รวม);
+     (c) ตัวเลขจำนวนในแถว preview ห่อด้วย `data-testid="product-quantity"` (แบบ `order/components/item:37`) — ข้อความที่เห็นเท่าเดิม;
+     (d) `type="full"` (หน้า `/cart`) ไม่เปลี่ยนทุกพิกเซล (คอลัมน์ราคาต่อหน่วยของ qty 1 ยังอยู่ — กฎข้อ 105c, AC-142); ไม่แตะ `LineItemUnitPrice`/`LineItemPrice`;
+     (e) (nit review #406 — แตะไฟล์ e2e ของ CORE-65 เท่านั้น) `e2e/core-65-order-item-unit-price.spec.ts` เทียบตัวเลขด้วย `toBeCloseTo(…, 2)` แทนการปัด 2 ตำแหน่ง และยกเลิก order ที่สร้างใน `finally`
+         ผ่าน `POST /admin/orders/:id/cancel` ด้วยการตรวจ `ok()` (กฎข้อ 119)
+         — **(ปิดรอบ 37 แก้ถ้อยคำ — review #412/#415)** "`toBeCloseTo(…, 2)`" ในข้อนี้และ AC-165/AC-166 หมายถึงเทียบได้ไม่เกินการปัดแสดงผล 2 ตำแหน่ง:
+         ใช้ `expectAmounts`/`expectAmountClose` ของ `e2e/support/amounts.ts` (CORE-67 #415 ย้ายจาก core-65/66) ที่ยอม `|actual − expected| ≤ 0.005 + 1e-6`
+         (`toBeCloseTo(v, 2)` ของ Playwright ต้องต่าง < 0.005 จึงล้มเมื่อค่าจริงลงท้าย .xx5 พอดี — ไม่ใช้ `toBeCloseTo` ตรงในเคสราคาอีก)
+125. (CORE-67 — owner สั่งทำ 2026-11-18; qa #406 O-2) ราคาขีดฆ่าของ line ใช้ `compare_at_unit_price` เมื่อมี (ทุกที่ที่ใช้ `LineItemPrice`/`LineItemUnitPrice`: `/cart`, preview ของ checkout, cart dropdown, order-completed, account order details):
+     (a) pure helper ใน `src/lib/util/` (เช่น `line-item-compare-at.ts` + `.test.ts`) คืน "ยอดอ้างอิงก่อนลด" ของทั้ง line:
+         ถ้า `compare_at_unit_price` เป็นตัวเลข, `unit_price > 0` และ `compare_at_unit_price − unit_price > 0.005` → `compare_at_unit_price × original_total ÷ unit_price`
+         (= ราคาเดิมต่อหน่วย × จำนวน ปรับฐานภาษีเดียวกับ `original_total` — ราคารวม VAT ได้ `compare_at × quantity`); นอกนั้น → `original_total ?? 0` (พฤติกรรมเดิม);
+     (b) `LineItemPrice`: ราคาขีดฆ่า (`product-original-price`) = ยอดอ้างอิงของ (a); แสดงเมื่อ `total` น้อยกว่ายอดอ้างอิงเกิน 0.005; % ของ style `default` คิดจากยอดอ้างอิง; ราคาปัจจุบัน (`product-price`) = `total` เดิม;
+     (c) `LineItemUnitPrice`: ราคาขีดฆ่าต่อหน่วย (`product-unit-original-price`) = ยอดอ้างอิง ÷ `quantity`; ราคาต่อหน่วย = `total ÷ quantity` เดิม;
+     (d) **ไม่ซ้อน**: line ที่มีทั้ง sale และ promotion มีราคาขีดฆ่า**ตัวเดียว**ต่อ component (= ยอดอ้างอิงจาก `compare_at_unit_price`) และราคาปัจจุบันคือ `total` หลังทุกส่วนลด;
+     (e) line ที่ไม่มี `compare_at_unit_price` (หรือไม่มากกว่า `unit_price`) แสดงเหมือนเดิมทุกตัวเลข — e2e ตะกร้า/order เดิมผ่านโดยไม่แก้;
+     (f) ไม่แตะ `cart-totals` (แถว subtotal ยังเป็น `original_item_total` ของ Medusa — กฎข้อ 81/118/120), ไม่คำนวณยอดจาก `variant.calculated_price` เอง, ไม่เพิ่ม route; กฎข้อ 123/124 (ซ่อนราคาต่อหน่วยเมื่อ qty 1) ยังใช้
+         — **หมายเหตุ (ปิดรอบ 37 — qa #415 O-1; owner ตัดสิน 2026-11-19 = คงเดิม)**: แถวสินค้าแบบ sale ขีดฆ่าจากราคาเดิม (เช่น ฿1,000 สำหรับ ฿500 × 2) แต่แถวแรกของ `cart-totals`
+           ("ยอดรวมสินค้าก่อนส่วนลด" — กฎข้อ 118/120) เป็น `original_item_total` ของ Medusa ซึ่งคิดจากราคา price list แล้ว (฿900) — ส่วนต่างของ sale จึงไม่อยู่ในสรุปยอด
+           และป้าย "ก่อนส่วนลด" ขึ้นเฉพาะเมื่อมีส่วนลดจาก promotion; ยอมรับตามนี้ ไม่มี task (ไม่คำนวณยอดเองจาก `compare_at_unit_price`); ข้อสังเกตเดิมคง: ที่ < `small` หน้า `/cart` ซ่อนคอลัมน์ราคาต่อหน่วยทุก qty (qa #415 O-2 — พฤติกรรมของ starter)
+
+### Acceptance criteria (รอบ 37)
+- AC-165 (CORE-66, กฎข้อ 124) ☑ #412 (a–f ผ่าน: red บน develop `e9352c91` — preview แถว qty 1 มี `product-unit-price` 1 (คาด 0) → green core-66 + core-65 (หลังแก้ตามกฎข้อ 124e) + core-42/core-47 5/5; qa ที่ 1280/375 defect ไม่พบ — `docs/evidence/core/CORE-66-tests.txt`, `CORE-66/REPORT.md`) e2e ใหม่ `apps/storefront/e2e/core-66-checkout-preview-unit-price.spec.ts` (`evidenceTarget` `{ feature: "core", taskId: "CORE-66" }`, ลูกค้า login เจ้าของ cart) — **ล้มบน develop**:
+  Given cart 4 ใบ {ไม่ลด, ลด 10% แบบ percentage ของ items} × {qty 1, qty 2} (ใช้ helper เดิมของ `e2e/support/medusa.ts`) When เปิด `/<cc>/checkout` ที่ 1280×800 และ 375×812 Then ภายใน `getByTestId("items-table")` → `product-row` 1 แถว:
+  (a) qty 1: `product-unit-price` และ `product-unit-original-price` count 0; `product-price` 1 visible = `item.total` จาก Store API (`toBeCloseTo(…, 2)`); ลด → `product-original-price` 1 (= `original_total`), ไม่ลด → 0;
+  (b) qty 2: `product-unit-price` 1 (= `total / 2`) และ `product-price` 1; ลด → `product-unit-original-price` 1 และ `product-original-price` 1;
+  (c) `product-quantity` แสดงจำนวนของ line; ที่ 375 `document.documentElement.scrollWidth ≤ 375`;
+  (d) `/<cc>/cart` ของ cart qty 1 แบบลด ที่ 1280: `product-unit-price` 1 visible (หน้า cart ไม่เปลี่ยน — กฎข้อ 124d);
+  (e) หาด้วย `data-testid` เท่านั้น; e2e เดิม (`core-47-cart-375-long-title`, `core-42-cart-voucher-layout`, `core-65-order-item-unit-price` หลังแก้ตามกฎข้อ 124e) ผ่าน; ลบ promotion ใน `finally` ด้วยการตรวจ `ok()`;
+  (f) qa REPORT `docs/evidence/core/CORE-66/REPORT.md`: แถว preview qty 1 ลด/ไม่ลด และ qty 2 ลด ที่ 1280 และ 375 — screenshot ≤ 3
+- AC-166 (CORE-67, กฎข้อ 125) ☑ #415 (a–d ผ่าน: red — unit หา `./line-item-compare-at` ไม่เจอ, e2e `/cart` ของ S1 ไม่มี `product-original-price` (0 คาด 1) แม้ Store API ส่ง `compare_at_unit_price` = 500 → green unit 7/7, e2e ใหม่ + เดิม 8/8;
+  ไม่ต้องแก้ `lib/data/{cart,orders}.ts`; qa: sale ล้วน/sale + promotion ขีดฆ่าตัวเดียวทุกหน้า, defect ไม่พบ — `docs/evidence/core/CORE-67-tests.txt`, `CORE-67/REPORT.md`)
+  (a) unit Vitest ของ helper — ล้มก่อนมีโค้ด: ไม่มี `compare_at_unit_price` → `original_total`; `{ unit_price: 450, compare_at_unit_price: 500, quantity: 2, original_total: 900 }` → 1000;
+      compare ≤ unit (`450`/`450`, `450`/`449.999`) → `original_total`; ฐานไม่รวมภาษี `{ unit_price: 100, compare_at_unit_price: 120, quantity: 1, original_total: 107 }` → 128.4 (±0.001); `unit_price` 0 → `original_total`; field เป็น null/undefined → `original_total ?? 0`;
+  (b) e2e ใหม่ `apps/storefront/e2e/core-67-sale-price-strikethrough.spec.ts` (`evidenceTarget` CORE-67) — **ล้มบน develop**: Given สินค้าที่ variant ราคาฐาน THB 500 และ price list `type: "sale"` `status: "active"` (admin API) ตั้ง THB 450;
+      cart ของลูกค้า: S1 = sale qty 1, S2 = sale qty 2, SP = sale + promotion 10% ของ items qty 1; ก่อน assert UI ตรวจจาก Store API (fields เดียวกับ storefront) ว่า line มี `compare_at_unit_price` = 500 (ถ้าไม่มี → เพิ่ม field ตามตาราง "What Medusa already gives us" แล้วจึงผ่าน)
+      Then ค่าที่คาด `ref = compare_at_unit_price × original_total ÷ unit_price` จาก API (`toBeCloseTo(…, 2)`):
+      (b1) `/<cc>/cart` 1280: S2 `product-unit-original-price` = `ref / 2`, `product-unit-price` = `total / 2`, `product-original-price` = `ref`, `product-price` = `total`;
+      (b2) checkout preview (`items-table`): S1 ไม่มีราคาต่อหน่วย (กฎข้อ 124), `product-original-price` 1 = `ref`; S2 มีทั้งต่อหน่วยและรวม;
+      (b3) SP: ทุกหน้าที่ตรวจ (`/cart`, preview, order-completed หลัง `placeOrder`) มี `product-original-price` **1** ตัวต่อแถว = `ref` (500 ไม่ใช่ 450) และ `product-price` = `total` (หลัง promotion);
+      (b4) order-completed ของ S1 (`order-complete-container`): `product-original-price` 1 = `ref`, `product-price` = `total`;
+      (b5) ลบ price list, promotion และยกเลิก order ใน `finally` ด้วยการตรวจ `ok()` (กฎข้อ 119); หาด้วย `data-testid` เท่านั้น;
+  (c) e2e เดิมของตะกร้า/checkout/order (รวม `core-65`, `core-66`, `core-64-promotion-fixed-vat`) ผ่านโดยไม่แก้ assertion (CI `storefront-e2e`);
+  (d) qa REPORT `docs/evidence/core/CORE-67/REPORT.md`: sale ล้วน และ sale + promotion ใน `/cart`, preview, order-completed (1280 และ 375 อย่างน้อยหน้าละ 1 จุด) + cart dropdown ของ sale — screenshot ≤ 5
+
+### Test plan (รอบ 37)
+| ระดับ | AC |
+|---|---|
+| e2e storefront + e2e เดิมใน CI + qa | AC-165 |
+| unit Vitest + e2e storefront + e2e เดิมใน CI + qa | AC-166 |
+
+### Tasks (รอบ 37)
+| ID | Task | ไฟล์ที่แตะ | ขนาด | AC | Depends | ชนกับงานที่กำลังทำ |
+|----|------|------|------|----|---------|------|
+| CORE-66 | (owner ข 2026-11-18 — qa #406 O-1) preview ของ checkout ไม่แสดงราคาต่อหน่วยเมื่อ qty 1; หน้า cart คงเดิม + nit review #406 ใน e2e ของ CORE-65 (กฎข้อ 124); red→green: AC-165a ล้มบน develop (`product-unit-price` 1 ในแถว qty 1); qa — ☑ #412 (owner สั่งทำ 2026-11-18; qa ผ่าน defect ไม่พบ) | `apps/storefront/src/modules/cart/components/item/index.tsx`, `apps/storefront/e2e/core-66-checkout-preview-unit-price.spec.ts` (ใหม่), `apps/storefront/e2e/core-65-order-item-unit-price.spec.ts`, `apps/storefront/e2e/support/medusa.ts` (ถ้าต้องมี helper cart), `docs/evidence/core/CORE-66/REPORT.md` (qa — session หลัก commit) | ~10 LOC โค้ด + ~150 LOC e2e | AC-165 | PR เอกสารรอบ 37 merge; ไม่บล็อก release | ∥ GB-18 (spec 04), ADM-34–36 (spec 08) — ไม่มีไฟล์ร่วม |
+| CORE-67 | (owner สั่งทำ 2026-11-18 — qa #406 O-2) ราคาขีดฆ่าจาก `compare_at_unit_price` (price list แบบ sale) ใน cart/preview/dropdown/order ไม่ซ้อนกับ promotion (กฎข้อ 125); red→green: unit AC-166a และ e2e AC-166b ล้มบน develop (ไม่มี `product-original-price` ของ S1); qa — ☑ #415 (หลัง CORE-66 #412; helper `e2e/support/amounts.ts` ใช้ร่วม core-65/66/67; qa ผ่าน defect ไม่พบ) | `apps/storefront/src/lib/util/line-item-compare-at.ts` (ใหม่ + `.test.ts`), `apps/storefront/src/modules/common/components/line-item-price/index.tsx`, `apps/storefront/src/modules/common/components/line-item-unit-price/index.tsx`, `apps/storefront/src/lib/data/{cart,orders}.ts` (เฉพาะถ้า field ไม่มาใน payload), `apps/storefront/e2e/core-67-sale-price-strikethrough.spec.ts` (ใหม่), `apps/storefront/e2e/support/medusa.ts` (helper price list ถ้าจำเป็น), `docs/evidence/core/CORE-67/REPORT.md` (qa — session หลัก commit) | ~40 LOC โค้ด + ~60 LOC unit + ~200 LOC e2e | AC-166 | **CORE-66 merge** (e2e ของ preview ตามกฎข้อ 124 + `e2e/support/medusa.ts` ร่วม); ไม่บล็อก release | ∥ GB-18, ADM-34–36 — ไม่มีไฟล์ร่วม |
 
 หมายเหตุจาก CORE-1:
 - CORE-2: seed ต้องใส่ metadata ของ store/region ที่ storefront อ่าน (key และค่า default ตาม

@@ -27,6 +27,18 @@ type Intent = Record<string, unknown> & { id: string; amount: number; status: st
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// axios error มี circular reference → ห่อเป็น Error ธรรมดาที่มีแค่ status/body (CLAUDE.md)
+async function call<T = any>(
+  request: () => Promise<{ status: number; data: T }>
+): Promise<{ status: number; data: T }> {
+  try {
+    const { status, data } = await request()
+    return { status, data }
+  } catch (e: any) {
+    throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+  }
+}
+
 function signedWebhook(event: Record<string, unknown>) {
   const payload = JSON.stringify(event)
   const header = new Stripe("sk_test_signing_only").webhooks.generateTestHeaderString({
@@ -56,22 +68,30 @@ medusaIntegrationTestRunner({
     beforeAll(async () => {
       await seedThailand({ container: getContainer(), args: [] })
       pk = await getPublishableKey(getContainer())
-      const { data } = await api.get("/store/regions", { headers: { "x-publishable-api-key": pk } })
+      const { data } = await call(() =>
+        api.get("/store/regions", { headers: { "x-publishable-api-key": pk } })
+      )
       regionId = data.regions[0].id
 
-      const { data: reg } = await api.post("/auth/customer/emailpass/register", {
-        email: CUSTOMER_EMAIL,
-        password: CUSTOMER_PASSWORD,
-      })
-      await api.post(
-        "/store/customers",
-        { email: CUSTOMER_EMAIL },
-        { headers: { authorization: `Bearer ${reg.token}`, "x-publishable-api-key": pk } }
+      const { data: reg } = await call(() =>
+        api.post("/auth/customer/emailpass/register", {
+          email: CUSTOMER_EMAIL,
+          password: CUSTOMER_PASSWORD,
+        })
       )
-      const { data: login } = await api.post("/auth/customer/emailpass", {
-        email: CUSTOMER_EMAIL,
-        password: CUSTOMER_PASSWORD,
-      })
+      await call(() =>
+        api.post(
+          "/store/customers",
+          { email: CUSTOMER_EMAIL },
+          { headers: { authorization: `Bearer ${reg.token}`, "x-publishable-api-key": pk } }
+        )
+      )
+      const { data: login } = await call(() =>
+        api.post("/auth/customer/emailpass", {
+          email: CUSTOMER_EMAIL,
+          password: CUSTOMER_PASSWORD,
+        })
+      )
       storeHeaders = {
         headers: { authorization: `Bearer ${login.token}`, "x-publishable-api-key": pk },
       }
@@ -92,9 +112,11 @@ medusaIntegrationTestRunner({
     })
 
     it("registers Stripe card and PromptPay providers and enables both in region Thailand", async () => {
-      const { data } = await api.get(`/store/payment-providers?region_id=${regionId}`, {
-        headers: { "x-publishable-api-key": pk },
-      })
+      const { data } = await call(() =>
+        api.get(`/store/payment-providers?region_id=${regionId}`, {
+          headers: { "x-publishable-api-key": pk },
+        })
+      )
       const ids = data.payment_providers.map((p) => p.id)
       expect(ids).toEqual(
         expect.arrayContaining(["pp_stripe_stripe", "pp_stripe-promptpay_stripe"])
@@ -102,34 +124,46 @@ medusaIntegrationTestRunner({
     })
 
     async function cartWithSession(providerId: string) {
-      const { data: products } = await api.get(`/store/products?region_id=${regionId}`, storeHeaders)
-      const { data: cartRes } = await api.post(
-        "/store/carts",
-        {
-          region_id: regionId,
-          email: CUSTOMER_EMAIL,
-          items: [{ variant_id: products.products[0].variants[0].id, quantity: 1 }],
-          shipping_address: {
-            first_name: "Somchai",
-            last_name: "Jaidee",
-            address_1: "1 Sukhumvit Rd",
-            city: "Bangkok",
-            postal_code: "10110",
-            country_code: "th",
+      const { data: products } = await call(() =>
+        api.get(`/store/products?region_id=${regionId}`, storeHeaders)
+      )
+      const { data: cartRes } = await call(() =>
+        api.post(
+          "/store/carts",
+          {
+            region_id: regionId,
+            email: CUSTOMER_EMAIL,
+            items: [{ variant_id: products.products[0].variants[0].id, quantity: 1 }],
+            shipping_address: {
+              first_name: "Somchai",
+              last_name: "Jaidee",
+              address_1: "1 Sukhumvit Rd",
+              city: "Bangkok",
+              postal_code: "10110",
+              country_code: "th",
+            },
           },
-        },
-        storeHeaders
+          storeHeaders
+        )
       )
       const cartId = cartRes.cart.id
-      const { data: options } = await api.get(`/store/shipping-options?cart_id=${cartId}`, storeHeaders)
+      const { data: options } = await call(() =>
+        api.get(`/store/shipping-options?cart_id=${cartId}`, storeHeaders)
+      )
       const standard = options.shipping_options.find((o) => o.name === "Standard")
-      await api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: standard.id }, storeHeaders)
+      await call(() =>
+        api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: standard.id }, storeHeaders)
+      )
 
-      const { data: pc } = await api.post("/store/payment-collections", { cart_id: cartId }, storeHeaders)
-      const { data: withSession } = await api.post(
-        `/store/payment-collections/${pc.payment_collection.id}/payment-sessions`,
-        { provider_id: providerId },
-        storeHeaders
+      const { data: pc } = await call(() =>
+        api.post("/store/payment-collections", { cart_id: cartId }, storeHeaders)
+      )
+      const { data: withSession } = await call(() =>
+        api.post(
+          `/store/payment-collections/${pc.payment_collection.id}/payment-sessions`,
+          { provider_id: providerId },
+          storeHeaders
+        )
       )
       const session = withSession.payment_collection.payment_sessions[0]
       return { cartId, session }
@@ -157,10 +191,13 @@ medusaIntegrationTestRunner({
       return []
     }
 
+    // ADR-023: prod ลงทะเบียน webhook endpoint เดียว (/hooks/payment/stripe_stripe) รับ event ของทั้งบัตรและ PromptPay
+    // เคส PromptPay เป็น regression guard ตอน bump @medusajs/* — ถ้าล้ม = Medusa เริ่มเช็ก provider ของ webhook ให้ตรงกับ session
+    // → หยุด bump แล้วทบทวน ADR-023 (ไม่ทดสอบ path stripe-promptpay_stripe แล้วเพราะห้ามลงทะเบียน)
     describe.each([
       { providerId: "pp_stripe_stripe", hook: "/hooks/payment/stripe_stripe" },
-      { providerId: "pp_stripe-promptpay_stripe", hook: "/hooks/payment/stripe-promptpay_stripe" },
-    ])("POST $hook (AC-8)", ({ providerId, hook }) => {
+      { providerId: "pp_stripe-promptpay_stripe", hook: "/hooks/payment/stripe_stripe" },
+    ])("POST $hook with session $providerId (AC-8, ADR-023)", ({ providerId, hook }) => {
       it("creates exactly one order with one capture when the same succeeded event is delivered repeatedly", async () => {
         const intent: Intent = {
           id: "pi_pay1_test",
@@ -191,8 +228,8 @@ medusaIntegrationTestRunner({
 
         const webhook = signedWebhook(intentEvent("payment_intent.succeeded", succeeded()))
         const deliveries = await Promise.all([
-          api.post(hook, webhook.payload, { headers: webhook.headers }),
-          api.post(hook, webhook.payload, { headers: webhook.headers }),
+          call(() => api.post(hook, webhook.payload, { headers: webhook.headers })),
+          call(() => api.post(hook, webhook.payload, { headers: webhook.headers })),
         ])
         deliveries.forEach((res) => expect(res.status).toEqual(200))
 
@@ -200,14 +237,13 @@ medusaIntegrationTestRunner({
         expect(links).toHaveLength(1)
 
         // Stripe ส่ง event เดิมซ้ำอีกครั้งหลัง order ถูกสร้างแล้ว
-        const late = await api.post(hook, webhook.payload, { headers: webhook.headers })
+        const late = await call(() => api.post(hook, webhook.payload, { headers: webhook.headers }))
         expect(late.status).toEqual(200)
         await sleep(8000)
 
         expect(await ordersForCart(cartId)).toHaveLength(1)
-        const { data: storeOrder } = await api.get(
-          `/store/orders/${links[0].order_id}?fields=id,payment_status`,
-          storeHeaders
+        const { data: storeOrder } = await call(() =>
+          api.get(`/store/orders/${links[0].order_id}?fields=id,payment_status`, storeHeaders)
         )
         expect(storeOrder.order.payment_status).toEqual("captured")
 
@@ -247,9 +283,11 @@ medusaIntegrationTestRunner({
             metadata: { session_id: session.id },
           })
         )
-        await api.post(hook, payload, {
-          headers: { "content-type": "application/json", "stripe-signature": "t=1,v1=forged" },
-        })
+        await call(() =>
+          api.post(hook, payload, {
+            headers: { "content-type": "application/json", "stripe-signature": "t=1,v1=forged" },
+          })
+        )
         await sleep(8000)
 
         expect(await ordersForCart(cartId)).toHaveLength(0)

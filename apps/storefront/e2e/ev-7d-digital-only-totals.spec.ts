@@ -48,6 +48,8 @@ test("AC-42: cart digital-only ไม่มีค่าจัดส่งใน 
     await page.getByTestId("billing-last-name-input").fill("ใจดี")
     await page.getByTestId("billing-address-input").fill("99 ถนนสุขุมวิท")
     await page.getByTestId("billing-postal-input").fill("10110")
+    // CORE-52 (spec 01 กฎข้อ 110b): เขต/อำเภอเป็นช่องบังคับของที่อยู่ใบกำกับภาษีด้วย
+    await page.getByTestId("billing-city-input").fill("วัฒนา")
     await page.getByTestId("billing-country-select").selectOption(CC)
     await page.getByTestId("billing-email-input").fill(customer.email)
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))

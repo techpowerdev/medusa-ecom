@@ -1,4 +1,7 @@
 import {
+  MedusaNextFunction,
+  MedusaRequest,
+  MedusaResponse,
   MiddlewareRoute,
   validateAndTransformBody,
   validateAndTransformQuery,
@@ -62,8 +65,24 @@ const PAYOUT_FIELDS = [
   "created_at",
 ]
 
-const list = (schema: Parameters<typeof validateAndTransformQuery>[0], defaults: string[]) =>
-  validateAndTransformQuery(schema, { defaults, isList: true, defaultLimit: 50 })
+// ADM-17 qa D-1: order ของ Medusa รับ field เดียว — created_at ซ้ำ (bulk import) ทำให้ offset ข้าม/ซ้ำแถว
+// จึงต่อ id (ทิศเดียวกับ field แรก) เป็นตัวตัดสินที่คงที่ให้ทุก list route ของ affiliate
+// ADM-24 (spec 08 กฎ 28d): แก้เฉพาะ req.queryConfig.pagination.order — route ที่อ่าน req.listConfig.order
+// (เช่นส่งต่อให้ service list ตรงๆ) จะไม่ได้ tiebreak; route list ของ affiliate ทุกตัวใช้ queryConfig.pagination
+const tiebreakById = (req: MedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) => {
+  const pagination = req.queryConfig?.pagination
+  const order = pagination?.order as Record<string, unknown> | undefined
+  if (pagination && order && !("id" in order)) {
+    const first = Object.values(order)[0]
+    pagination.order = { ...order, id: typeof first === "string" ? first : "DESC" }
+  }
+  next()
+}
+
+const list = (schema: Parameters<typeof validateAndTransformQuery>[0], defaults: string[]) => [
+  validateAndTransformQuery(schema, { defaults, isList: true, defaultLimit: 50 }),
+  tiebreakById,
+]
 const retrieve = (defaults: string[]) =>
   validateAndTransformQuery(AdminGetAffiliateParams, { defaults, isList: false })
 
@@ -71,7 +90,7 @@ export const adminAffiliateMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
     matcher: "/admin/affiliate/programs",
-    middlewares: [list(AdminListAffiliatePrograms, PROGRAM_FIELDS)],
+    middlewares: [...list(AdminListAffiliatePrograms, PROGRAM_FIELDS)],
   },
   {
     method: ["POST"],
@@ -91,7 +110,7 @@ export const adminAffiliateMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
     matcher: "/admin/affiliate/affiliates",
-    middlewares: [list(AdminListAffiliates, AFFILIATE_FIELDS)],
+    middlewares: [...list(AdminListAffiliates, AFFILIATE_FIELDS)],
   },
   {
     method: ["GET"],
@@ -106,12 +125,12 @@ export const adminAffiliateMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
     matcher: "/admin/affiliate/entries",
-    middlewares: [list(AdminListCommissionEntries, ENTRY_FIELDS)],
+    middlewares: [...list(AdminListCommissionEntries, ENTRY_FIELDS)],
   },
   {
     method: ["GET"],
     matcher: "/admin/affiliate/payouts",
-    middlewares: [list(AdminListPayouts, PAYOUT_FIELDS)],
+    middlewares: [...list(AdminListPayouts, PAYOUT_FIELDS)],
   },
   {
     method: ["POST"],

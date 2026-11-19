@@ -101,3 +101,40 @@ vitest storefront: Test Files 30 passed, Tests 334 passed
   4 passed (5.5s)
 (e2e test 1 มี step ใหม่: ?page=1.5 และ ?page=abc → 200 พร้อมการ์ด)
 pnpm lint && pnpm typecheck → exit 0; next build → exit 0
+
+## hygiene 2026-11-12 (chore/hygiene-storefront-2026-11-12) — e2e AF-8a รันซ้ำบน DB เดิมได้ (idempotent)
+# DB medusa_hyg_sf (seed ครั้งเดียว), backend :9072, storefront :8072, --workers=1, -g "AF-8a"
+
+### ก่อนแก้: รันซ้ำทันทีผ่าน แต่เมื่อโปรแกรม E2E AF-8 ของ run ก่อนมีอายุ > 2 วัน (จำลองด้วยการเลื่อน starts_at/ends_at -2 วัน 1 ชม.) → U2 20% ของ run ก่อน active แซง P3
+Running 1 test using 1 worker
+  ✘  1 [chromium] › e2e/affiliate-portal.spec.ts:49:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (6.0s)
+  1) [chromium] › e2e/affiliate-portal.spec.ts:49:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) › AC-35: X มีการ์ดเดียว 15% ของ P3 ยอดประมาณการ ฿148.50 และไม่มี 'สูงสุด' 
+    Error: expect(locator).toContainText(expected) failed
+    Locator: locator('[data-testid="affiliate-product-card"][data-handle="sweatshirt"]').getByTestId('affiliate-rate')
+    Expected substring: "15%"
+    Received string:    "20%"
+    Timeout: 5000ms
+    Call log:
+      - Expect "toContainText" locator('[data-testid="affiliate-product-card"][data-handle="sweatshirt"]').getByTestId('affiliate-rate') with timeout 5000ms
+      - waiting for locator('[data-testid="affiliate-product-card"][data-handle="sweatshirt"]').getByTestId('affiliate-rate')
+        14 × locator resolved to <p class="text-large-semi" data-testid="affiliate-rate">20%</p>
+    test-results/affiliate-portal-AF-8a-log-57c7c-้า-และแชร์ลิงก์-AC-9-AC-35--chromium/test-failed-1.png
+  1 failed
+
+### หลังแก้ (ปิดโปรแกรม E2E AF-8 * ที่ยัง published ก่อนสร้างชุดใหม่) — run 1 บน DB ที่มีโปรแกรมเก่าที่ทำให้ล้มข้างบน
+Running 4 tests using 1 worker
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:74:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (1.6s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:167:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (583ms)
+  ✓  3 [chromium] › e2e/affiliate-portal.spec.ts:223:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (484ms)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:246:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (464ms)
+  4 passed (3.8s)
+
+### หลังแก้ — run 2 ติดกันบน DB เดิม (เลื่อนวันโปรแกรมของ run 1 อีก -2 วัน 1 ชม. ก่อนรัน)
+Running 4 tests using 1 worker
+  ✓  1 [chromium] › e2e/affiliate-portal.spec.ts:74:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (1.4s)
+  ✓  2 [chromium] › e2e/affiliate-portal.spec.ts:167:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (633ms)
+  ✓  3 [chromium] › e2e/affiliate-portal.spec.ts:223:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (480ms)
+  ✓  4 [chromium] › e2e/affiliate-portal.spec.ts:246:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (486ms)
+  4 passed (3.4s)
+
+### ทั้งไฟล์ affiliate-portal.spec.ts: 9 passed; pnpm lint && pnpm typecheck: ผ่าน; storefront build: ผ่าน; test:e2e:unit: 103 passed

@@ -5,8 +5,9 @@
 การตัดสินใจ: ใช้ Stripe provider ที่มีมากับ Medusa, capture อัตโนมัติ (ADR-007) **ไม่มี custom payment code**
 ข้อยกเว้นที่ owner ยอมรับ: ADR-015 (accepted 2026-10-26) — guard + alert สำหรับ race QR หมดอายุ × จ่ายสำเร็จ (กฎข้อ 7, PAY-6)
 ตรวจสอบแล้ว (เอกสาร Medusa, 2026-10): `@medusajs/medusa/payment-stripe` ลงทะเบียน
-`pp_stripe_stripe` (บัตร) และ `pp_stripe-promptpay_stripe` (PromptPay); webhook อยู่ที่
-`{server}/hooks/payment/stripe_stripe` และ `{server}/hooks/payment/stripe-promptpay_stripe`
+`pp_stripe_stripe` (บัตร) และ `pp_stripe-promptpay_stripe` (PromptPay); Medusa มี webhook route ต่อ provider แต่เราลงทะเบียน
+endpoint **เดียว** `{server}/hooks/payment/stripe_stripe` รับ event ของทั้งบัตรและ PromptPay (ADR-023 — signing secret ต่อ endpoint
+แต่ `STRIPE_WEBHOOK_SECRET` ใส่ได้ค่าเดียว) ห้ามลงทะเบียน `{server}/hooks/payment/stripe-promptpay_stripe`
 
 ## สิ่งที่ Medusa มีให้อยู่แล้ว
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
@@ -33,7 +34,7 @@
   `automaticPaymentMethods: false`
 - Region Thailand: เปิดใช้ทั้งสอง provider
 - Env: `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_KEY`
-- Webhooks (สอง endpoint) ลงทะเบียนใน Stripe dashboard; events: `payment_intent.*`
+- Webhook endpoint เดียว `/hooks/payment/stripe_stripe` ลงทะเบียนใน Stripe dashboard (ADR-023); events: `payment_intent.*`
 
 ## Storefront
 - ขั้นตอนชำระเงินใน checkout: "Card" (Stripe Elements) / "PromptPay" (Stripe.js `confirmPromptPayPayment(clientSecret, …,
@@ -135,9 +136,8 @@
 - AC-8 การส่ง webhook ซ้ำต้องไม่ทำให้ capture/refund ซ้ำ
 - AC-9 สร้าง payment session บัตรจาก checkout → PaymentIntent ใน Stripe test mode (อ่านผ่าน Stripe API/MCP ด้วย id ใน session `data`)
   มี `payment_method_types` เท่ากับ `["card"]`; session PromptPay มี `["promptpay"]`
-- AC-10 ใน CI job `storefront-e2e` webhook ของ Stripe CLI ถึงทั้ง `/hooks/payment/stripe_stripe` และ
-  `/hooks/payment/stripe-promptpay_stripe` (Stripe CLI รับ `--forward-to` ได้ปลายทางเดียวต่อ process — ใช้ listener แยกต่อ endpoint
-  หรือวิธีที่ตรวจกับ docs แล้ว) วัดผลด้วย: AC-1 และ AC-4 ผ่านใน CI และ log ของ backend มี request เข้าทั้งสอง path
+- AC-10 (PAY-7, ADR-023) CI มี listener เดียวไป `/hooks/payment/stripe_stripe`; AC-1 และ AC-4 ผ่าน และ `check-stripe-webhooks.sh`
+  ยืนยัน `payment_intent.succeeded` ถึง path นั้นตอบ 2xx
 - AC-11 (PAY-5, กฎข้อ 7) Given cart ที่มี session PromptPay และ PI อยู่สถานะ `requires_action` When test confirm PI ให้ `succeeded` ผ่าน
   Stripe test API แล้ว**ทันที**เรียกขั้นหมดอายุแบบเดียวกับ storefront (`POST /store/payment-collections/:id/payment-sessions` ด้วย provider
   PromptPay เดิม) Then ภายใน 60 วินาที cart ถูก complete เป็น order ที่ `payment_status=captured` และไม่มี payment ที่ captured ค้างโดยไม่มี
@@ -236,6 +236,8 @@
 | PAY-6a | (◐ #82, แยกรอบ 6) ADR-015 A ฝั่ง backend: guard บน `POST /store/payment-collections/:id/payment-sessions` ตามกฎข้อ 7A (`authorizePaymentSession` เท่านั้น ไม่เรียก Stripe ตรง, lock `cart_id`/`payment_collection_id`, 409 `PAYMENT_ALREADY_COMPLETED` ผ่าน PROMO-2) + guard หลัง ownership ของ CORE-12 + เปิด test AC-11 จาก `test.fixme` + integration complete cart idempotent (AC-11, AC-13 a–g, AC-14, AC-12b ส่วน backend = integration complete cart หลัง guard) + integration race ตาม "หมายเหตุ (รอบ 6)" ด้านล่าง — **ไม่รวม** storefront (AC-12 และ AC-12b ส่วน storefront อยู่ใน PAY-6b) | PAY-5 (#65), PROMO-2 |
 | PAY-6b | (แยกรอบ 6) storefront: poll ต่อเมื่อได้ `PAYMENT_ALREADY_COMPLETED` และเรียก complete cart เป็นทางสำรอง (AC-12, AC-12b ส่วน storefront) + ADR-015 D: subscriber `src/subscribers/payment-webhook-orphan.ts` (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล `OPS_ALERT_EMAIL`) + `OPS_ALERT_EMAIL` ใน `.env.example` + runbook ใน `docs/ops/production.md` (กฎข้อ 7D; หัวข้อ fail closed ต้องใช้วิธีที่ตรวจแล้วว่ามีจริง — ดู "ความเสี่ยงที่ยอมรับเพิ่ม" รอบ 7) (AC-15, AC-16) — ถ้าเกิน ~400 LOC แยก storefront (6b1) กับ alert + runbook (6b2) ทำขนานกันได้; **รอบ 8**: PAY-6b2 (#97) รวม AC-16b (runbook ใหม่) และ script `apps/backend/src/scripts/refund-orphan-payment.ts` + integration test (AC-16c) — ☑ #97 (6b2), #98 (6b1) | PAY-6a |
 | PAY-6c | (storefront เล็ก, รอบ 9, review #98) เพดานการลองซ้ำของทางสำรอง + UI กรณีเงินถูกคืนโดย `compensatePaymentIfNeededStep` (กฎข้อ 8, AC-17) — ข้อความไทยตรงในโค้ด | PAY-6b ☑ (#97/#98), CORE-4e (spec 01 — แตะ `promptpay-payment`/`renewPromptPaySession` เดียวกัน; CORE-4e ← CORE-4d #109) |
+| PAY-7 | (เล็ก, เอกสาร + CI + test) Stripe webhook endpoint เดียว `/hooks/payment/stripe_stripe` ตาม ADR-023: (1) integration ใน `stripe-webhook.spec.ts` เพิ่มกรณี session `pp_stripe-promptpay_stripe` + event `payment_intent.succeeded` ที่ POST เข้า `/hooks/payment/stripe_stripe` (ส่งซ้ำ) → order 1 รายการ `payment_status=captured`, capture 1 ครั้ง (ขยาย AC-8); (2) `ci.yml` เหลือ `stripe listen` process เดียว forward ไป `stripe_stripe` และขั้นตรวจ `check-stripe-webhooks.sh` ครั้งเดียว; (3) แก้ AC-10 เป็น "CI มี listener เดียวไป `/hooks/payment/stripe_stripe`; AC-1 และ AC-4 ผ่าน และ `check-stripe-webhooks.sh` ยืนยัน `payment_intent.succeeded` ถึง path นั้นตอบ 2xx" และแก้บรรทัด 8-9, 36 ของ spec นี้; (4) `docs/ops/production.md` หัวข้อ "Stripe webhooks" (endpoint เดียว + เหตุผล secret ต่อ endpoint, คง bullet event ไว้ให้ OPS-10), checklist ข้อ 2 + ข้อใหม่ verify ตาม ADR-023 "ผลที่ตามมา", หมายเหตุใน runbook ADR-015 ว่า `provider` ใน alert = path ของ endpoint; (5) comment `medusa-config.ts:67-68`, `apps/backend/.env.example:49`, `docs/design/sequence-diagrams.md:189`, `docs/spec/07-scaling-ops.md:51` ("endpoint ทั้งสอง" → endpoint เดียว; AC-15 ของ spec 07 ไม่ต้องแก้); (6) test: ตัดสินว่าเก็บเคส path `stripe-promptpay_stripe` เดิมใน `stripe-webhook.spec.ts:162` หรือแทนด้วยเคสใหม่ และเปลี่ยน `PROVIDER` ใน `integration-tests/http/payment-webhook-orphan.spec.ts:24` เป็น `stripe_stripe`; test ข้อ (1) ผ่านบนโค้ดปัจจุบันโดยตั้งใจ (regression guard ตอน bump ไม่ใช่ red-first — ระบุใน PR) — `check-stripe-events.sh` ไม่ต้องแก้ | ADR-023 (accepted 2026-11-12) |
+(2026-11-12) PAY-7 เริ่มได้หลัง PR ของ ADR-023 merge ทำขนานกับ task อื่นได้ (ไม่แตะโค้ด production) — ต้อง merge ก่อนสร้าง webhook endpoint ใน Stripe Dashboard ของ staging/prod
 PAY-3 ∥ PAY-4 ∥ PAY-5 หลัง PAY-2 (PAY-5 แตะ `promptpay-payment` เดียวกับที่ PAY-3 นำไปใช้ซ้ำ — merge PAY-5 ก่อน PAY-3 ถ้าทำพร้อมกัน ให้ rebase)
 (รอบ 10) PAY-3a เริ่มได้ทันที (∥ GB-8, PAY-6c); PAY-3b หลัง GB-8 + PAY-3a + PAY-6c; GB-5 (spec 04) พึ่ง PAY-3a ไม่ใช่ PAY-3b
 (รอบ 11) สถานะ: PAY-6c ☑ #136, GB-8 ☑ #145 → PAY-3b เหลือรอ PAY-3a; ข้อสังเกตจาก review/qa #136

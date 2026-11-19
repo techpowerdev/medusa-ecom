@@ -11,7 +11,8 @@ export const metadata: Metadata = {
 }
 
 export default async function Cart() {
-  const cart = await retrieveCart().catch((error) => {
+  // CORE-52 (กฎข้อ 110a): fresh — ปลายทางของ checkout ที่พบตะกร้าว่าง ต้องไม่แสดง item เดิมจาก data cache
+  const cart = await retrieveCart(undefined, undefined, { fresh: true }).catch((error) => {
     console.error(error)
     return notFound()
   })

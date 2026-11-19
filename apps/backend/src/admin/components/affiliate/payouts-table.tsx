@@ -110,6 +110,8 @@ export const PayoutsTable = () => {
     () =>
       columnHelper.display({
         id: "actions",
+        // spec 08 กฎ 37: ไม่ห่อด้วย tooltip ของ TruncatedCell — tooltip ที่เปิดเมื่อ focus กลับมาที่ trigger กิน Escape แรกของ ActionMenu
+        meta: { ___truncateTooltip: false },
         cell: ({ row }) => (
           <PayoutActions
             payout={row.original}
@@ -132,9 +134,14 @@ export const PayoutsTable = () => {
         ),
       }),
       actionsColumn,
-      // AF-14: ชื่อ/อีเมล affiliate ถัดจากปุ่ม เพื่อให้อยู่ในจอที่ 1280px
+      // ตำแหน่ง (AF-14): ชื่อ/อีเมล affiliate ถัดจากปุ่ม เพื่อให้อยู่ในจอที่ 1280px
+      //
+      // ความกว้าง (spec 08 กฎ 41a, ADM-37): เนื้อหา 250px แบบกฎ 39 (ไม่ใช่คอลัมน์แรก: 250 + pr-6 = 274) — ชื่อ/อีเมลยาวถูกตัด
+      // ที่ขอบ cell และมี tooltip ของ TruncatedCell (AffiliateCell ห้ามตัดที่ลูกเอง — กฎ 41b)
       columnHelper.accessor("affiliate_id", {
         header: "Affiliate",
+        size: 274,
+        maxSize: 274,
         cell: ({ row }) => <AffiliateCell row={row.original} />,
       }),
       columnHelper.accessor((row) => getLocaleAmount(castNumber(row.amount), row.currency), {
@@ -152,8 +159,18 @@ export const PayoutsTable = () => {
           return value ? getFullDate({ date: value, includeTime: true }) : "-"
         },
       }),
-      columnHelper.accessor("reference", { header: "Reference", cell: ({ getValue }) => getValue() ?? "-" }),
-      columnHelper.accessor("id", { header: "Payout" }),
+      // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
+      // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
+      // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
+      columnHelper.accessor("reference", {
+        header: "Reference",
+        size: 274,
+        maxSize: 274,
+        cell: ({ getValue }) => getValue() ?? "-",
+      }),
+      // spec 08 กฎ 41c (ADM-37, Q12 = ก): คอลัมน์สุดท้ายเป็น auto (ไม่มี width) รับความกว้างส่วนเกินที่จอกว้าง — ไม่งั้นทุก td ได้ width 150
+      // (ค่าเริ่มต้นของ tanstack) ผลรวมน้อยกว่าตาราง w-full แล้ว Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
+      columnHelper.accessor("id", { header: "Payout", size: undefined }),
     ],
     [actionsColumn, getFullDate],
   )

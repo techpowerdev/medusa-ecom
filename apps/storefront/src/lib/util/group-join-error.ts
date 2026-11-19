@@ -1,4 +1,5 @@
 import type { ActionError } from "./action-result"
+import { normalize } from "./checkout-error"
 import { SIGN_IN_AGAIN_MESSAGE } from "./error-message"
 
 // GB-7a2a (spec 04 กฎข้อ 29f, 30a): error ของ join/สร้างกลุ่ม → ข้อความไทยใน helper เดียว (หน้ากลุ่ม GB-7a2 + ปุ่มสร้างทีม GB-7c)
@@ -26,9 +27,6 @@ export const GROUP_JOIN_CODES = Object.keys(CODES) as GroupJoinCode[]
 
 const CLOSED_MESSAGE = "กลุ่มหรือแคมเปญนี้ปิดรับแล้ว"
 const FAILED_MESSAGE = "เข้าร่วมไม่สำเร็จ กรุณาลองใหม่"
-
-// medusaError ทำตัวแรกเป็นตัวใหญ่และต่อ "." ท้ายข้อความ — ตัดออกก่อนเทียบ
-const normalize = (message: string) => message.trim().replace(/\.$/, "").toLowerCase()
 
 /** code ที่รู้จักของ error (FetchError หรือ `{ status, code, message }`); ไม่รู้จัก → null */
 export function groupJoinErrorCode(error: unknown): GroupJoinCode | null {

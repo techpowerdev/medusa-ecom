@@ -95,6 +95,8 @@ export const ProgramsTable = () => {
     () =>
       program.display({
         id: "actions",
+        // spec 08 กฎ 37: ไม่ห่อด้วย tooltip ของ TruncatedCell — tooltip ที่เปิดเมื่อ focus กลับมาที่ trigger กิน Escape แรกของ ActionMenu
+        meta: { ___truncateTooltip: false },
         cell: ({ row }) => (
           <ProgramActions row={row.original} onEdit={(p) => setModal({ program: p, opened: Date.now() })} />
         ),
@@ -104,7 +106,10 @@ export const ProgramsTable = () => {
 
   const columns = useMemo(
     () => [
-      program.accessor("name", { header: "Program" }),
+      // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
+      // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
+      // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
+      program.accessor("name", { header: "Program", size: 298, maxSize: 298 }),
       program.accessor("status", {
         header: "Status",
         cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
@@ -122,7 +127,9 @@ export const ProgramsTable = () => {
         id: "rate",
         header: "Commission",
       }),
-      program.accessor("hold_days", { header: "Hold days" }),
+      // spec 08 กฎ 41c (ADM-37, Q12 = ก): คอลัมน์สุดท้ายเป็น auto (ไม่มี width) รับความกว้างส่วนเกินที่จอกว้าง — ไม่งั้นทุก td ได้ width 150
+      // (ค่าเริ่มต้นของ tanstack) ผลรวมน้อยกว่าตาราง w-full แล้ว Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
+      program.accessor("hold_days", { header: "Hold days", size: undefined }),
     ],
     [actionsColumn, getFullDate],
   )

@@ -12,8 +12,8 @@ import {
   toast,
   usePrompt,
 } from "@medusajs/ui"
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useMemo, useState } from "react"
+import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useMemo, useReducer, useState } from "react"
 import { useForm } from "react-hook-form"
 import { evoucherApi, evoucherKeys, Partner, PartnerInput } from "../../lib/evoucher"
 import {
@@ -22,15 +22,20 @@ import {
   type PartnerFormValues,
   toPartnerFormValues,
 } from "../../lib/evoucher-partner-form"
+import { isUnauthorized } from "../../lib/fetch-error"
+import { isPastLastPage } from "../../lib/page-offset"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
 import { PageOffsetGate } from "../common/page-offset-gate"
+import { useConfirmDiscard } from "../common/use-confirm-discard"
+import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 const columnHelper = createDataTableColumnHelper<Partner>()
 const PAGE_SIZE = 20
 // spec 08 กฎ 9: prefix ไม่ซ้ำกับตาราง pools ในหน้าเดียวกัน — หน้าปัจจุบันอยู่ใน URL (`partners_offset`)
 const PREFIX = "partners"
+const DELETE_KEY = ["evoucher", "partner-delete"]
 
 const FIELDS: { name: keyof PartnerFormValues; label: string }[] = [
   { name: "name", label: "Name *" },
@@ -59,11 +64,81 @@ const PartnerFields = () => (
   </div>
 )
 
+/**
+ * ADM-16 (spec 08 กฎ 20a): Edit/Delete ต่อแถวใน ActionMenu — ถือ prompt/mutation ลบของแถวเอง (แบบ `ProgramActions`)
+ * guard `deleteOnce` มาจากตาราง (ตัวเดียวทั้งตาราง) และ Delete disabled ทุกแถวระหว่างลบใดๆ ยังไม่จบ (mutationKey เดียวกัน)
+ */
+const PartnerActions = ({
+  partner,
+  deleteOnce,
+  onEdit,
+}: {
+  partner: Partner
+  deleteOnce: ReturnType<typeof createSingleFlight>
+  onEdit: (partner: Partner) => void
+}) => {
+  const prompt = usePrompt()
+  const queryClient = useQueryClient()
+  const removing = useIsMutating({ mutationKey: DELETE_KEY }) > 0
+  // เปิด Drawer จาก menuitem: mount เมนูใหม่ใน commit เดียวกัน (แบบ ProgramActions) — ไม่งั้น Radix ของเมนูกับ Drawer
+  // คืนค่า pointer-events ของ body สลับกันจนค้าง `none` หลังปิด Drawer (spec 08 กฎ 27b)
+  const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
+  const remove = useMutation({
+    mutationKey: DELETE_KEY,
+    mutationFn: () => evoucherApi.deletePartner(partner.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: evoucherKeys.partners })
+      queryClient.invalidateQueries({ queryKey: evoucherKeys.pools })
+      toast.success("Partner deleted")
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  // guard ครอบทั้ง prompt + request — กด Delete ซ้ำระหว่างรอ prompt/request ไม่ยิงซ้ำ
+  const confirmDelete = () =>
+    deleteOnce(async () => {
+      const ok = await prompt({
+        title: `Delete ${partner.name}?`,
+        description: "Partners that still have pools cannot be deleted.",
+        confirmText: "Delete",
+        cancelText: "Cancel",
+      })
+      if (ok) {
+        await remove.mutateAsync().catch(() => undefined)
+      }
+    })
+
+  return (
+    <ActionMenu
+      key={menuKey}
+      groups={[
+        {
+          actions: [
+            {
+              label: "Edit",
+              icon: <PencilSquare />,
+              disabled: removing,
+              onClick: () => {
+                remountMenu()
+                onEdit(partner)
+              },
+            },
+            { label: "Delete", icon: <Trash />, disabled: removing, onClick: confirmDelete },
+          ],
+        },
+      ]}
+    >
+      <IconButton size="small" variant="transparent" data-testid="evoucher-partner-row-actions">
+        <EllipsisHorizontal />
+      </IconButton>
+    </ActionMenu>
+  )
+}
+
 // EV-6: พาร์ทเนอร์ของ e-voucher — ADM-5: DataTable ของ dashboard (แบ่งหน้าใน URL), Edit/Delete ใน ActionMenu,
 // ฟอร์มเป็น Form + zod (สร้าง = FocusModal, แก้ = Drawer แบบ state — ADR-018 Q5)
 export const PartnersSection = () => {
   const queryClient = useQueryClient()
-  const prompt = usePrompt()
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Partner | null>(null)
   // Form.Field ของ dashboard รับ control ที่ค่าก่อน/หลัง submit เป็น type เดียวกัน จึงให้ resolver คืนค่าดิบ (raw)
@@ -79,12 +154,21 @@ export const PartnersSection = () => {
   const [count, setCount] = useState<number>()
   const offset = usePageOffset(PREFIX, PAGE_SIZE, { count })
   const query = { limit: PAGE_SIZE, offset }
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: [...evoucherKeys.partners, query],
     queryFn: () => evoucherApi.listPartners(query),
     placeholderData: keepPreviousData,
   })
   useEffect(() => setCount(data?.count), [data?.count])
+
+  // spec 08 กฎ 25 (24b): 401 → ErrorBoundary ของ dashboard พาไป /login
+  if (isUnauthorized(error)) {
+    throw error
+  }
+  // กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
+  const loadFailed = isError && !data
+  // กฎ 27a: offset เกินที่ usePageOffset กำลัง clamp → loading แทน empty state
+  const pastLastPage = isPastLastPage(data?.count, data?.partners.length)
 
   const onSuccess = (message: string) => {
     queryClient.invalidateQueries({ queryKey: evoucherKeys.partners })
@@ -101,11 +185,6 @@ export const PartnersSection = () => {
     onSuccess: (_, { id }) => onSuccess(id ? "Partner updated" : "Partner created"),
     onError,
   })
-  const remove = useMutation({
-    mutationFn: (id: string) => evoucherApi.deletePartner(id),
-    onSuccess: () => onSuccess("Partner deleted"),
-    onError,
-  })
 
   // กดซ้ำขณะ modal เปิดอยู่ไม่ล้างค่าที่กรอกไว้ (spec 08 กฎ 18)
   const openCreate = () => {
@@ -114,58 +193,44 @@ export const PartnersSection = () => {
     setCreateOpen(true)
   }
 
-  const { mutateAsync: removePartner, isPending: removing } = remove
-  const columns = useMemo(() => {
-    const openEdit = (partner: Partner) => {
-      form.reset(toPartnerFormValues(partner))
-      setEditing(partner)
-    }
-    // guard ครอบทั้ง prompt + request — กด Delete ซ้ำระหว่างรอ prompt/request ไม่ยิงซ้ำ
-    const confirmDelete = (partner: Partner) =>
-      deleteOnce(async () => {
-        const ok = await prompt({
-          title: `Delete ${partner.name}?`,
-          description: "Partners that still have pools cannot be deleted.",
-          confirmText: "Delete",
-          cancelText: "Cancel",
-        })
-        if (ok) {
-          await removePartner(partner.id).catch(() => undefined)
-        }
+  // `cell` ต้องคงที่ข้าม render: สร้างใหม่ = React mount แถวใหม่และเมนูที่เปิดอยู่ปิดเองตอน refetch
+  // (usePrompt คืนฟังก์ชันใหม่ทุก render จึงอยู่ใน PartnerActions ไม่อยู่ใน deps ของคอลัมน์นี้ — กฎ 20a)
+  const actionsColumn = useMemo(
+    () => {
+      const openEdit = (partner: Partner) => {
+        form.reset(toPartnerFormValues(partner))
+        setEditing(partner)
+      }
+      return columnHelper.display({
+        id: "actions",
+        // spec 08 กฎ 37: ไม่ห่อด้วย tooltip ของ TruncatedCell — tooltip ที่เปิดเมื่อ focus กลับมาที่ trigger กิน Escape แรกของ ActionMenu
+        meta: { ___truncateTooltip: false },
+        // spec 08 กฎ 39 (ADM-35): ทุก td ได้ width จาก size (ค่าเริ่มต้น 150 ของ tanstack) — ตารางนี้มี 3 คอลัมน์ ผลรวมน้อยกว่าความกว้าง
+        // ของตาราง w-full → Chrome แจกส่วนเกินให้ทุกคอลัมน์ตามสัดส่วนโดยไม่สน max-width (ชื่อกว้าง 428px) — ไม่ตั้ง width ที่คอลัมน์นี้
+        // ให้เป็นคอลัมน์ auto ที่รับส่วนเกินแทน (ปุ่มยังชิดซ้ายของคอลัมน์)
+        size: undefined,
+        cell: ({ row }) => <PartnerActions partner={row.original} deleteOnce={deleteOnce} onEdit={openEdit} />,
       })
+    },
+    [form, deleteOnce]
+  )
 
-    return [
-      columnHelper.accessor("name", { header: "Name" }),
+  const columns = useMemo(
+    () => [
+      // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
+      // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
+      // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
+      columnHelper.accessor("name", { header: "Name", size: 298, maxSize: 298 }),
       columnHelper.accessor("support_contact", {
         header: "Support contact",
+        size: 274,
+        maxSize: 274,
         cell: ({ getValue }) => getValue() ?? "-",
       }),
-      columnHelper.display({
-        id: "actions",
-        cell: ({ row }) => (
-          <ActionMenu
-            groups={[
-              {
-                actions: [
-                  { label: "Edit", icon: <PencilSquare />, onClick: () => openEdit(row.original) },
-                  {
-                    label: "Delete",
-                    icon: <Trash />,
-                    disabled: removing,
-                    onClick: () => confirmDelete(row.original),
-                  },
-                ],
-              },
-            ]}
-          >
-            <IconButton size="small" variant="transparent" data-testid="evoucher-partner-row-actions">
-              <EllipsisHorizontal />
-            </IconButton>
-          </ActionMenu>
-        ),
-      }),
-    ]
-  }, [form, prompt, deleteOnce, removePartner, removing])
+      actionsColumn,
+    ],
+    [actionsColumn]
+  )
 
   const submit = form.handleSubmit((values) =>
     submitOnce(() =>
@@ -175,8 +240,26 @@ export const PartnersSection = () => {
     )
   )
 
+  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด
+  const restoreFocus = useRestoreOpenerFocus()
+  // ADM-27 (spec 08 กฎ 31): ฟอร์มเดียวของ modal สร้างและ Drawer แก้ — dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด
+  const confirmClose = useConfirmDiscard({
+    form,
+    isPending: save.isPending,
+    onClose: () => {
+      setCreateOpen(false)
+      setEditing(null)
+    },
+  })
+
   const saveButton = (
-    <Button size="small" type="submit" disabled={save.isPending} isLoading={save.isPending}>
+    <Button
+      size="small"
+      type="submit"
+      disabled={save.isPending}
+      isLoading={save.isPending}
+      data-testid="evoucher-partner-save"
+    >
       Save
     </Button>
   )
@@ -185,37 +268,41 @@ export const PartnersSection = () => {
     <Container data-testid="evoucher-partners">
       {/* spec 08 กฎ 18: `action` ของ DataTable ใส่ data-testid ไม่ได้ — e2e หาปุ่มด้วย role + ชื่อภายใน wrapper นี้ */}
       <div data-testid="evoucher-partners-table">
-        <PageOffsetGate prefix={PREFIX}>
-          <DataTable
-            data={data?.partners ?? []}
-            columns={columns}
-            getRowId={(partner) => partner.id}
-            rowCount={data?.count ?? 0}
-            isLoading={isLoading}
-            heading="Partners"
-            headingLevel="h2"
-            action={{ label: "Create partner", onClick: openCreate }}
-            prefix={PREFIX}
-            pageSize={PAGE_SIZE}
-            enableSearch={false}
-            emptyState={{
-              empty:
-                data?.count === 0
-                  ? {
+        {/* กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัวตาราง + ปุ่ม Create partner; testid เฉพาะตอนล้ม */}
+        <div data-testid={loadFailed ? "evoucher-partners-error" : undefined}>
+          <PageOffsetGate prefix={PREFIX}>
+            <DataTable
+              data={data?.partners ?? []}
+              columns={columns}
+              getRowId={(partner) => partner.id}
+              rowCount={data?.count ?? 0}
+              isLoading={isLoading || pastLastPage}
+              heading="Partners"
+              headingLevel="h2"
+              action={{ label: "Create partner", onClick: openCreate }}
+              prefix={PREFIX}
+              pageSize={PAGE_SIZE}
+              // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
+              enablePagination={!loadFailed}
+              enableSearch={false}
+              emptyState={{
+                empty: loadFailed
+                  ? { heading: "Could not load partners", description: error?.message }
+                  : {
                       custom: (
                         <div data-testid="evoucher-partners-empty">
                           <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
                         </div>
                       ),
-                    }
-                  : { heading: "No partners on this page" },
-            }}
-          />
-        </PageOffsetGate>
+                    },
+              }}
+            />
+          </PageOffsetGate>
+        </div>
       </div>
 
-      <FocusModal open={createOpen} onOpenChange={setCreateOpen}>
-        <FocusModal.Content>
+      <FocusModal open={createOpen} onOpenChange={confirmClose}>
+        <FocusModal.Content {...restoreFocus}>
           {/* noValidate: validation ทั้งหมดเป็นของ zod (error ใต้ช่อง) */}
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
@@ -224,7 +311,9 @@ export const PartnersSection = () => {
               </FocusModal.Header>
               <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
                 <div className="flex w-full max-w-lg flex-col gap-y-6">
-                  <Heading>Create partner</Heading>
+                  <FocusModal.Title asChild>
+                    <Heading>Create partner</Heading>
+                  </FocusModal.Title>
                   <PartnerFields />
                 </div>
               </FocusModal.Body>
@@ -233,7 +322,7 @@ export const PartnersSection = () => {
         </FocusModal.Content>
       </FocusModal>
 
-      <Drawer open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+      <Drawer open={!!editing} onOpenChange={confirmClose}>
         <Drawer.Content>
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">

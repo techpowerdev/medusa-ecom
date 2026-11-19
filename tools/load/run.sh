@@ -11,7 +11,19 @@ set -euo pipefail
 PROJECT="${LOAD_PROJECT:-loadtest}"
 # cleanup รัน `down -v` → ห้ามใช้ชื่อ project ของ dev
 case "$PROJECT" in medusa-ecom*) echo "LOAD_PROJECT=$PROJECT ใช้ไม่ได้ (ชนกับ project ของ dev)" >&2; exit 2 ;; esac
-unset DATABASE_URL REDIS_URL
+unset DATABASE_URL REDIS_URL DATABASE_POOL_MIN # review #371: pool min ที่ค้างใน shell ไม่เข้า stack ของ load run
+# OPS-23 (AC-38): pool ของ pg ของ server/worker ใน load run = LOAD_DB_POOL_MAX (input db_pool_max ของ load-nightly.yml)
+# ว่าง = default ของ Medusa (10) — ไม่รับ DATABASE_POOL_MAX ที่ค้างใน shell เหมือน DATABASE_URL; ตรวจก่อนเรียก docker
+DB_POOL_MAX="${LOAD_DB_POOL_MAX:-}"
+[[ -z "$DB_POOL_MAX" || "$DB_POOL_MAX" =~ ^[1-9][0-9]*$ ]] || { echo "LOAD_DB_POOL_MAX ต้องเป็นจำนวนเต็มบวกหรือว่าง" >&2; exit 2; }
+export DATABASE_POOL_MAX="$DB_POOL_MAX"
+# OPS-26 (AC-41): จำนวน process ของ container server — n > 1 เพิ่ม override (tools/load/server-cluster.yml) ให้รัน
+# `medusa start --cluster n --servers n` (--servers คง MEDUSA_WORKER_MODE=server ทุก process ไม่ให้เป็น shared); worker คงเดิม
+# n = 1/ว่าง = คำสั่ง compose เดิมทุกตัวอักษร; pool ต่อ process ตาม DATABASE_POOL_MAX → connection รวม = pool × (n + 1 worker)
+export LOAD_SERVER_PROCESSES="${LOAD_SERVER_PROCESSES:-1}"
+[[ "$LOAD_SERVER_PROCESSES" =~ ^[1-9][0-9]*$ ]] || { echo "LOAD_SERVER_PROCESSES ต้องเป็นจำนวนเต็มบวก" >&2; exit 2; }
+COMPOSE_FILES=(-f docker-compose.prod.yml)
+[ "$LOAD_SERVER_PROCESSES" = 1 ] || COMPOSE_FILES+=(-f tools/load/server-cluster.yml)
 export SERVER_PORT="${SERVER_PORT:-9106}"
 # OPS-17 (AC-28): tag ของ image แยกจาก `local` ของ dev — `compose up --build` จะไม่ tag ทับ image prod-like ในเครื่อง
 export IMAGE_TAG="${IMAGE_TAG:-load}"
@@ -39,7 +51,7 @@ K6_IMAGE="grafana/k6:2.3.0"
 OUT="$(pwd)/${LOAD_OUT:-tools/load/out}"
 DATA="$(mktemp -d)" # token ของลูกค้าทดสอบ — ไม่อยู่ใน OUT (artifact)
 
-compose() { docker compose -p "$PROJECT" -f docker-compose.prod.yml "$@"; }
+compose() { docker compose -p "$PROJECT" "${COMPOSE_FILES[@]}" "$@"; }
 REPORTED=""
 REPORTS=(report.md lock-timing.md checkout-timing.md saturation.md)
 
@@ -139,6 +151,8 @@ MEMBERS="$(sql "SELECT count(DISTINCT customer_id) FROM group_buy_membership
 
 # OPS-18 (AC-29): ดึง log ของ server+worker ทุก run แล้วสรุปเวลารอ/ถือ lock — log เต็มอยู่ใน DATA (ไม่เข้า artifact)
 compose logs --no-color --no-log-prefix server worker >"$DATA/backend.log" 2>&1 || true
+# OPS-26 (AC-41 b): process ของ server ที่บูตจริง (รวมที่ cluster fork ใหม่เมื่อ process ตาย) — นับเฉพาะ log ของ server
+SERVER_READY="$(compose logs --no-color --no-log-prefix server 2>/dev/null | grep -c "Server is ready on port" || true)"
 node tools/load/lock-timing.js "$DATA/backend.log" "$OUT/lock-timing.jsonl" >"$OUT/lock-timing.md" \
   || echo "lock-timing: สรุปไม่สำเร็จ (ไม่ใช่ gate)" >"$OUT/lock-timing.md"
 # OPS-20a (AC-31): ช่วงเวลา (a)–(e) ต่อ checkout จาก console ของ k6 + log debug ของ middleware/hook
@@ -155,6 +169,8 @@ failures=0
   echo
   [ "$FLASH_BURST" = "0" ] && burst_desc="ปิด (LOAD_FLASH_BURST=0)" || burst_desc="$BURST_RATE rps × $BURST_DURATION"
   echo "flash: $FLASH_CUSTOMERS ลูกค้า, total_cap=$TOTAL_CAP, burst $burst_desc | join: $JOIN_CUSTOMERS ลูกค้า, กลุ่ม $GROUP_SIZE คน"
+  echo "pool (OPS-23): DATABASE_POOL_MAX=${DATABASE_POOL_MAX:-ว่าง (default ของ Medusa)}"
+  echo "server processes (OPS-26): $LOAD_SERVER_PROCESSES (บูตจริงตาม log \"Server is ready on port\" ของ server: ${SERVER_READY:-0})"
   echo "sampler (OPS-20b): docker stats/pg_stat_activity ทุก ${SAMPLE_INTERVAL}s ระหว่าง flash-sale, event-loop/pool ทุก 1s (LOG_LEVEL=$LOG_LEVEL)"
   echo
   echo "| ตรวจ | คาดหวัง | ได้ | ผล |"

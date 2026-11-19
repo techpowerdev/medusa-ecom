@@ -66,7 +66,8 @@ test("AC-111: โค้ดมีช่องว่างหัวท้ายใ
     await run()
   } finally {
     const res = await request.delete(`${BACKEND_URL}/admin/promotions/${promo.promotionId}`, { headers: admin })
-    expect(res.ok(), `ลบ promotion ของ test: ${res.status()}`).toBe(true)
+    // CORE-53 (กฎข้อ 111d): soft — cleanup ล้มต้องไม่กลบ error ของ run()
+    expect.soft(res.ok(), `ลบ promotion ของ test: ${res.status()}`).toBe(true)
   }
 
   async function run() {

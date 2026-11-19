@@ -1,6 +1,11 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
-import { ContainerRegistrationKeys, Modules, PromotionActions } from "@medusajs/framework/utils"
-import { createCartWorkflow, updateCartPromotionsWorkflow } from "@medusajs/medusa/core-flows"
+import { ContainerRegistrationKeys, Modules, ProductStatus, PromotionActions } from "@medusajs/framework/utils"
+import {
+  createCartWorkflow,
+  createPriceListsWorkflow,
+  createProductsWorkflow,
+  updateCartPromotionsWorkflow,
+} from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import { GROUP_BUY_MODULE } from "../../src/modules/group_buy"
 import type GroupBuyModuleService from "../../src/modules/group_buy/service"
@@ -686,6 +691,202 @@ medusaIntegrationTestRunner({
         expect(response.data.type).toEqual("not_allowed")
         expect(response.data.message).toContain(CODE)
         expect((await graphCampaign(created.id)).status).toEqual("draft")
+      })
+    })
+
+    // GB-18 (กฎข้อ 41, AC-61): ส่วนลด fixed ที่ ≥ ราคาฐานต่ำสุดของ variant ในสกุลเดียวกัน → 400 invalid_data ตอนสร้างแคมเปญ
+    describe("fixed discount vs lowest variant price (AC-61)", () => {
+      let productPId: string
+
+      // V1 THB 1000, V2 THB 500 + USD 20; price list sale (active) ตั้ง V1 = THB 100 — ราคาใน price list ไม่นับ (กฎข้อ 41a)
+      beforeEach(async () => {
+        const container = getContainer()
+        const { result } = await createProductsWorkflow(container).run({
+          input: {
+            products: [
+              {
+                title: "GB-18 product P",
+                handle: "gb18-product-p",
+                status: ProductStatus.PUBLISHED,
+                options: [{ title: "Size", values: ["V1", "V2"] }],
+                variants: [
+                  {
+                    title: "V1",
+                    options: { Size: "V1" },
+                    manage_inventory: false,
+                    prices: [{ currency_code: "thb", amount: 1000 }],
+                  },
+                  {
+                    title: "V2",
+                    options: { Size: "V2" },
+                    manage_inventory: false,
+                    prices: [
+                      { currency_code: "thb", amount: 500 },
+                      { currency_code: "usd", amount: 20 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        })
+        productPId = result[0].id
+        const v1 = must(result[0].variants?.find((v) => v.title === "V1"), "V1")
+        await createPriceListsWorkflow(container).run({
+          input: {
+            price_lists_data: [
+              {
+                title: "GB-18 sale",
+                description: "V1 THB 100",
+                // ไม่ส่ง type — input ของ createPriceListsWorkflow ไม่มี field นี้; Medusa ตั้ง type = "sale" เป็นค่าเริ่มต้น
+                status: "active",
+                prices: [{ variant_id: v1.id, currency_code: "thb", amount: 100 }],
+              },
+            ],
+          },
+        })
+      })
+
+      const fixed = (value: number, currency_code = "thb", allocation: "each" | "across" = "each") =>
+        ({
+          type: "fixed",
+          target_type: "items",
+          allocation,
+          // Medusa ไม่ให้ตั้ง max_quantity เมื่อ allocation = across
+          ...(allocation === "each" ? { max_quantity: 10 } : {}),
+          value,
+          currency_code,
+          target_rules: [{ attribute: "items.product.id", operator: "in", values: [productPId] }],
+        }) as CreateGroupBuyCampaignInput["application_method"]
+
+      const counts = async () => {
+        const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
+        const count = async (entity: string) => (await query.graph({ entity, fields: ["id"] })).data.length
+        return {
+          groupBuyCampaigns: await count("group_buy_campaign"),
+          promotions: await count("promotion"),
+          campaigns: await count("campaign"),
+        }
+      }
+
+      const post = (body: Record<string, unknown>) =>
+        api.post("/admin/group-buy/campaigns", body, headers).catch((e) => {
+          // ห่อ error ของ axios (circular) เป็น response ธรรมดา
+          if (!e.response) {
+            throw new Error(`create campaign: ${e.message}`)
+          }
+          return { status: e.response.status as number, data: e.response.data }
+        })
+
+      it.each([
+        ["thb", 500],
+        ["thb", 1000],
+        ["usd", 20],
+      ])("fixed %s %d → 400 invalid_data with the lowest variant price; nothing is created", async (currency, value) => {
+        const before = await counts()
+        const response = await post(campaignInput({ application_method: fixed(value, currency) }))
+
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(response.data.message).toContain("lowest variant price")
+        expect(response.data.message).toContain(String(value))
+        expect(await counts()).toEqual(before)
+      })
+
+      it.each([
+        ["fixed thb 499.99 (price list THB 100 is ignored)", () => fixed(499.99)],
+        ["fixed usd 19", () => fixed(19, "usd")],
+        [
+          "percentage 100",
+          () =>
+            ({
+              ...fixed(100),
+              type: "percentage",
+              currency_code: undefined,
+            }) as CreateGroupBuyCampaignInput["application_method"],
+        ],
+      ])("%s → 200", async (_, method) => {
+        const response = await post(campaignInput({ application_method: method() }))
+        expect(response.status).toEqual(200)
+      })
+
+      // ตั้งใจ (review #411): allocation "across" เทียบกับราคาต่อหน่วยเหมือน "each" (เข้มกว่าจำเป็นสำหรับ across — กฎข้อ 41)
+      it("allocation across is compared with the unit price too: 500 → 400, 499.99 → 200", async () => {
+        expect((await post(campaignInput({ application_method: fixed(500, "thb", "across") }))).status).toEqual(400)
+        expect((await post(campaignInput({ application_method: fixed(499.99, "thb", "across") }))).status).toEqual(200)
+      })
+
+      it("a failed request with idempotency_key K, then K again with 499.99 → 200 and one campaign is created", async () => {
+        const key = "gb18-fixed-retry-01"
+        const before = await counts()
+        const failed = await post({ ...campaignInput({ application_method: fixed(500) }), idempotency_key: key })
+        expect(failed.status).toEqual(400)
+        expect(await counts()).toEqual(before)
+
+        const ok = await post({ ...campaignInput({ application_method: fixed(499.99) }), idempotency_key: key })
+        expect(ok.status).toEqual(200)
+        expect(await counts()).toEqual({
+          groupBuyCampaigns: before.groupBuyCampaigns + 1,
+          promotions: before.promotions + 1,
+          campaigns: before.campaigns + 1,
+        })
+        expect((await graphCampaign(ok.data.campaign.id)).campaign.campaign_identifier).toEqual(`group-buy-${key}`)
+      })
+    })
+
+    // GB-17 (กฎข้อ 40, AC-60 a): field ที่ลง column integer (int4) เกิน 2147483647 → 400 invalid_data ไม่ถึง DB
+    describe("int4 limits (AC-60)", () => {
+      const TOO_BIG = 2147483648
+      const INT4_MAX = 2147483647
+
+      const campaignCount = async () => {
+        const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
+        const { data } = await query.graph({ entity: "group_buy_campaign", fields: ["id"] })
+        return data.length
+      }
+
+      it.each([
+        "target_value",
+        "max_total_orders",
+        "max_units_per_person",
+        "max_people_per_group",
+        "team_duration_hours",
+        "pay_within_hours",
+      ])("POST with %s = 2147483648 → 400 invalid_data; nothing is created", async (field) => {
+        const before = await campaignCount()
+        const response = await api
+          .post("/admin/group-buy/campaigns", campaignInput({ [field]: TOO_BIG }), headers)
+          .catch((e) => e.response)
+
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(response.data.message).toContain(field)
+        expect(JSON.stringify(response.data)).not.toContain("integer out of range")
+        expect(await campaignCount()).toEqual(before)
+      })
+
+      it("max_total_orders and pay_within_hours = 2147483647 → 200 and read back unchanged", async () => {
+        const created = await createViaApi({ max_total_orders: INT4_MAX, pay_within_hours: INT4_MAX })
+
+        const fetched = await api.get(`/admin/group-buy/campaigns/${created.id}`, headers)
+        expect(fetched.data.campaign).toEqual(
+          expect.objectContaining({ max_total_orders: INT4_MAX, pay_within_hours: INT4_MAX })
+        )
+      })
+
+      it("updating a draft with max_total_orders = 2147483648 → 400 invalid_data; value unchanged", async () => {
+        const created = await createViaApi({ max_total_orders: 10 })
+
+        const response = await api
+          .post(`/admin/group-buy/campaigns/${created.id}`, { max_total_orders: TOO_BIG }, headers)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(response.data.message).toContain("max_total_orders")
+        expect(JSON.stringify(response.data)).not.toContain("integer out of range")
+
+        const fetched = await api.get(`/admin/group-buy/campaigns/${created.id}`, headers)
+        expect(fetched.data.campaign.max_total_orders).toEqual(10)
       })
     })
   },

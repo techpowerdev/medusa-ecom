@@ -1,11 +1,12 @@
-import { AdminCreatePayout, AdminMarkPayoutPaid } from "../../../api/admin/affiliate/validators"
+import { readFileSync } from "fs"
+import { join } from "path"
+import { AdminCreatePayout, AdminListAffiliates, AdminMarkPayoutPaid } from "../../../api/admin/affiliate/validators"
 import {
+  affiliateOptionsQuery,
   canCancelPayout,
   canMarkPaid,
   defaultPayoutPeriod,
-  fetchAllAffiliates,
   markPaidBody,
-  mergeAffiliateOptions,
   toPayoutBody,
 } from "../affiliate-payout"
 
@@ -99,42 +100,54 @@ describe("markPaidBody", () => {
   })
 })
 
-describe("mergeAffiliateOptions", () => {
-  it("combines the active and suspended lists, de-duplicated by id and sorted by name", () => {
-    const a = { id: "aff_a", name: "Bee", email: "b@x.com", status: "active" as const }
-    const s = { id: "aff_s", name: "Ann", email: "a@x.com", status: "suspended" as const }
-    expect(mergeAffiliateOptions([a], [s, { ...a, status: "suspended" }])).toEqual([s, a])
+// ADM-24 (spec 08 กฎ 28b): ตัวเลือก affiliate ของฟอร์ม payout = request เดียวต่อหน้า (active + suspended) เรียงชื่อฝั่ง server
+describe("affiliateOptionsQuery", () => {
+  it("adds status active+suspended, order=name and fields to the useComboboxData params", () => {
+    expect(affiliateOptionsQuery({ q: "ann", limit: 10, offset: 20 })).toEqual({
+      q: "ann",
+      limit: 10,
+      offset: 20,
+      status: ["active", "suspended"],
+      order: "name",
+      fields: "id,name,email,status",
+    })
+  })
+
+  it("is accepted by the AdminListAffiliates validator (status as an array)", () => {
+    const parsed = AdminListAffiliates.safeParse(affiliateOptionsQuery({ id: "aff_1", limit: 1 }))
+    expect(parsed.success).toBe(true)
   })
 })
 
-// ADM-9 (spec 08 กฎ 11, AC-12): route ไม่มี `q` และ limit สูงสุด 200 — ตัวเลือกของ Combobox ต้องดึงครบทุกหน้า ไม่ตัดที่ 200 เงียบ
-describe("fetchAllAffiliates", () => {
-  const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `aff_${i}` }))
-
-  it("pages through every result at the route's limit of 200", async () => {
-    const all = rows(450)
-    const calls: [number, number][] = []
-    const result = await fetchAllAffiliates(async (offset, limit) => {
-      calls.push([offset, limit])
-      return { affiliates: all.slice(offset, offset + limit), count: all.length }
-    })
-    expect(calls).toEqual([
-      [0, 200],
-      [200, 200],
-      [400, 200],
-    ])
-    expect(result).toEqual(all)
+// ADM-24 (spec 08 กฎ 28a, API routes): status ค่าเดียวหรือ array; ค่านอก enum → 400
+describe("AdminListAffiliates status", () => {
+  it("accepts a single status or an array of statuses", () => {
+    expect(AdminListAffiliates.parse({ status: "active" }).status).toEqual("active")
+    expect(AdminListAffiliates.parse({ status: ["active", "suspended"] }).status).toEqual(["active", "suspended"])
   })
 
-  it("stops after one request when everything fits", async () => {
-    const fetchPage = jest.fn(async () => ({ affiliates: rows(3), count: 3 }))
-    expect(await fetchAllAffiliates(fetchPage)).toHaveLength(3)
-    expect(fetchPage).toHaveBeenCalledTimes(1)
+  it("rejects values outside the enum", () => {
+    expect(AdminListAffiliates.safeParse({ status: ["foo"] }).success).toBe(false)
+    expect(AdminListAffiliates.safeParse({ status: ["active", "foo"] }).success).toBe(false)
+    expect(AdminListAffiliates.safeParse({ status: "foo" }).success).toBe(false)
+  })
+})
+
+// ADM-24 (spec 08 AC-29 static, กฎ 28b–d)
+describe("ADM-24 static", () => {
+  const src = (path: string) => readFileSync(join(__dirname, "../..", path), "utf8")
+
+  it("payout-form ไม่รวมผลสองสถานะฝั่ง client และ 401 → throw ให้ ErrorBoundary พาไป /login", () => {
+    const form = src("components/affiliate/payout-form.tsx")
+    expect(form).not.toMatch(/mergeAffiliatePages|listAffiliatesByStatus/)
+    expect(form).toMatch(/if \(isUnauthorized\(options\.error\)\) \{\s*throw options\.error/)
+    expect(src("lib/affiliate-payout.ts")).not.toMatch(/mergeAffiliate/)
   })
 
-  it("stops on an empty page even if count is stale", async () => {
-    const fetchPage = jest.fn(async () => ({ affiliates: [], count: 5 }))
-    expect(await fetchAllAffiliates(fetchPage)).toEqual([])
-    expect(fetchPage).toHaveBeenCalledTimes(1)
+  it("comment เหนือ tiebreakById เตือนว่าไม่แก้ req.listConfig.order", () => {
+    const middlewares = src("../api/admin/affiliate/middlewares.ts")
+    const head = middlewares.slice(0, middlewares.indexOf("const tiebreakById"))
+    const comment = head.slice(head.lastIndexOf("\n\n"))
+    expect(comment).toMatch(/listConfig/)
   })
 })

@@ -15,6 +15,7 @@ type CampaignPost = {
   starts_at?: string | null
   ends_at?: string
   max_units_per_person: number | null
+  max_total_orders?: number | null
   application_method: {
     max_quantity: number
     target_rules?: { attribute: string; operator: string; values: string[] }[]
@@ -427,6 +428,205 @@ test.describe("ADM-13: หัวตารางรายการแคมเป
       const centerY = (box: { y: number; height: number }) => box.y + box.height / 2
       expect(Math.abs(centerY(createBox) - centerY(blockBox))).toBeLessThanOrEqual(8)
       await evidence("01-list-toolbar")
+    })
+  })
+})
+
+// ADM-15 (spec 08 AC-19, กฎ 19): ช่องตัวเลขเป็น NumberInput ("e" ไม่ถือเป็นค่าว่าง), เปิดซ้อนไม่ได้,
+// ปิด modal แล้ว focus กลับปุ่ม "Create campaign" และเปิดใหม่ได้ฟอร์มว่าง + key ใหม่
+test.describe("ADM-15: ฟอร์มสร้างแคมเปญ — NumberInput และ focus", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-15" } })
+
+  test("AC-19: \"e\" ใน Max total orders → error ใต้ช่องไม่ POST, ว่าง → null, dblclick เปิด dialog เดียว, Escape คืน focus, เปิดใหม่ได้ฟอร์มว่าง + key ใหม่", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const token = `ADM15${Date.now()}`
+    const productTitle = `${token} product`
+    await createProduct(request, await adminHeaders(request), productTitle)
+    const posts = campaignPosts(page)
+    const create = page.getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" })
+    const submit = page.getByTestId("gb-campaign-create-submit")
+    const maxTotalOrders = page.getByTestId("gb-field-max_total_orders")
+    const maxTotalOrdersError = page.getByTestId("gb-max-total-orders-error")
+    const submitAndWait200 = async () => {
+      const response = page.waitForResponse(
+        (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
+      )
+      await submit.click()
+      expect((await response).status()).toBe(200)
+      await expect(submit).toHaveCount(0)
+    }
+
+    await step("พิมพ์ \"e\" ใน Max total orders แล้วส่ง → gb-max-total-orders-error และไม่มี POST", async () => {
+      await openCreateForm(page)
+      await fillValidForm(page, `${token} first`)
+      await pickProduct(page, productTitle)
+      await maxTotalOrders.pressSequentially("e")
+      await submit.click()
+      await expect(maxTotalOrdersError).toBeVisible()
+      await expect(maxTotalOrdersError).toHaveText("Max total orders must be a whole number greater than 0")
+      await evidence("01-max-total-orders-error")
+      expect(posts).toHaveLength(0)
+    })
+
+    await step("ล้างช่อง (ว่าง) แล้วส่ง → error หาย POST 1 ครั้ง max_total_orders = null", async () => {
+      await maxTotalOrders.fill("")
+      await expect(maxTotalOrdersError).toHaveCount(0)
+      await submitAndWait200()
+      expect(posts).toHaveLength(1)
+      expect(posts[0]).toHaveProperty("max_total_orders", null)
+    })
+
+    await step("dblclick ปุ่ม Create campaign → dialog 1 ตัว (ไม่เปิดซ้อน)", async () => {
+      await waitToastsGone(page)
+      await create.dblclick()
+      await expect(submit).toBeVisible()
+      await expect(page.getByRole("dialog")).toHaveCount(1)
+    })
+
+    await step("พิมพ์ชื่อแล้วกด Escape → ยืนยันทิ้งฟอร์ม (ADM-27) → modal ปิด และ focus อยู่ที่ปุ่ม Create campaign", async () => {
+      await page.getByTestId("gb-field-name").fill(`${token} discarded`)
+      await page.keyboard.press("Escape")
+      await page.getByRole("alertdialog").getByRole("button", { name: "Leave" }).click()
+      await expect(page.getByRole("dialog")).toHaveCount(0)
+      await expect(create).toBeFocused()
+      await evidence("02-focus-returned")
+    })
+
+    await step("เปิดใหม่ → ช่องชื่อว่าง และส่งแล้วได้ idempotency_key ใหม่", async () => {
+      await clickCreateCampaign(page)
+      await expect(page.getByTestId("gb-field-name")).toHaveValue("")
+      await fillValidForm(page, `${token} second`)
+      await pickProduct(page, productTitle)
+      await submitAndWait200()
+      expect(posts).toHaveLength(2)
+      expect(posts[1].idempotency_key).toMatch(UUID)
+      expect(posts[1].idempotency_key).not.toBe(posts[0].idempotency_key)
+    })
+  })
+})
+
+// ADM-32 (spec 08 AC-37, กฎ 36): รูปค่าของช่องตัวเลข (ติดลบ/ทศนิยม/0/เกิน int4) เป็น error ใต้ช่อง — ไม่ใช่ toast และไม่ POST;
+// 400 ที่ schema ไม่ครอบยังเป็น toast
+test.describe("ADM-32: error ใต้ช่องตัวเลขของฟอร์มสร้างแคมเปญ", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, evidenceTarget: { feature: "admin-ui", taskId: "ADM-32" } })
+
+  const toasts = (page: Page) => page.locator("[data-sonner-toast]")
+
+  /** ส่งฟอร์มแล้วตรวจว่า error อยู่ใต้ช่อง (aria-invalid) ไม่มี toast และไม่มี POST */
+  async function expectFieldError(page: Page, posts: CampaignPost[], key: string, errorTestId: string) {
+    await page.getByTestId("gb-campaign-create-submit").click()
+    await expect(page.getByTestId(errorTestId)).toBeVisible()
+    await expect(page.getByTestId(`gb-field-${key}`)).toHaveAttribute("aria-invalid", "true")
+    await expect(toasts(page)).toHaveCount(0)
+    expect(posts).toHaveLength(0)
+  }
+
+  test("AC-37b: max_total_orders -1/1.5/0/2147483648/99999999999999999999, target_value -3, discount_value -10 → error ใต้ช่องไม่ POST; 2147483647 → POST 200", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const token = `ADM32${Date.now()}`
+    const productTitle = `${token} product`
+    await createProduct(request, admin, productTitle)
+    const posts = campaignPosts(page)
+    const maxTotalOrders = page.getByTestId("gb-field-max_total_orders")
+    const maxTotalOrdersError = page.getByTestId("gb-max-total-orders-error")
+    const created: string[] = []
+
+    try {
+      await step("กรอกฟอร์มที่ถูกต้องครบ", async () => {
+        await openCreateForm(page)
+        await fillValidForm(page, `${token} campaign`)
+        await pickProduct(page, productTitle)
+      })
+
+      for (const value of ["-1", "1.5", "0", "2147483648", "99999999999999999999"]) {
+        await step(`max_total_orders = ${value} แล้วส่ง → gb-max-total-orders-error, aria-invalid, ไม่มี toast/POST`, async () => {
+          await maxTotalOrders.fill("")
+          await expect(maxTotalOrdersError).toHaveCount(0)
+          await maxTotalOrders.fill(value)
+          await expectFieldError(page, posts, "max_total_orders", "gb-max-total-orders-error")
+          if (value === "-1") await evidence("01-max-total-orders-negative")
+          if (value === "2147483648") await evidence("02-max-total-orders-above-int4")
+        })
+      }
+
+      await step("target_value = -3 → gb-target-value-error ไม่มี POST", async () => {
+        await maxTotalOrders.fill("")
+        await page.getByTestId("gb-field-target_value").fill("-3")
+        await expectFieldError(page, posts, "target_value", "gb-target-value-error")
+        await page.getByTestId("gb-field-target_value").fill("3")
+      })
+
+      await step("discount_value = -10 → gb-discount-value-error ไม่มี POST", async () => {
+        await page.getByTestId("gb-field-discount_value").fill("-10")
+        await expectFieldError(page, posts, "discount_value", "gb-discount-value-error")
+        await page.getByTestId("gb-field-discount_value").fill("10")
+      })
+
+      await step("max_total_orders = 2147483647 → POST 1 ครั้ง body 2147483647 และ 200", async () => {
+        await maxTotalOrders.fill("2147483647")
+        const response = page.waitForResponse(
+          (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
+        )
+        await page.getByTestId("gb-campaign-create-submit").click()
+        const res = await response
+        expect(res.status()).toBe(200)
+        created.push((await res.json()).campaign.id)
+        expect(posts).toHaveLength(1)
+        expect(posts[0].max_total_orders).toBe(2147483647)
+        await expect(page.getByTestId("gb-campaign-create-submit")).toHaveCount(0)
+      })
+    } finally {
+      for (const id of created) {
+        const del = await request.delete(`${BACKEND_URL}${CAMPAIGNS_PATH}/${id}`, { headers: admin })
+        expect.soft(del.ok(), `ลบแคมเปญของ test ${id}: ${del.status()}`).toBe(true)
+      }
+    }
+  })
+
+  test("AC-37c: 400 ที่ schema ไม่ครอบ → toast ข้อความของ backend 1 ตัว ไม่มี error ใต้ช่อง และ modal ยังเปิด", async ({
+    page,
+    request,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(90_000)
+    const token = `ADM32toast${Date.now()}`
+    const productTitle = `${token} product`
+    const message = `ADM-32 backend rejected ${token}`
+    await createProduct(request, await adminHeaders(request), productTitle)
+    await page.route(`**${CAMPAIGNS_PATH}`, async (route) => {
+      if (route.request().method() !== "POST") return route.continue()
+      await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ type: "invalid_data", message }) })
+    })
+
+    await step("กรอกฟอร์มที่ถูกต้องแล้วส่ง → backend ตอบ 400", async () => {
+      await openCreateForm(page)
+      await fillValidForm(page, `${token} campaign`)
+      await pickProduct(page, productTitle)
+      const response = page.waitForResponse(
+        (res) => res.request().method() === "POST" && new URL(res.url()).pathname === CAMPAIGNS_PATH
+      )
+      await page.getByTestId("gb-campaign-create-submit").click()
+      expect((await response).status()).toBe(400)
+    })
+
+    await step("toast ข้อความของ test 1 ตัว ไม่มี gb-*-error ที่ visible ใน dialog และปุ่ม submit ยังอยู่", async () => {
+      await expect(toasts(page).filter({ hasText: message })).toHaveCount(1)
+      const fieldErrors = page.getByRole("dialog").locator('[data-testid^="gb-"][data-testid$="-error"]')
+      await expect(fieldErrors.filter({ visible: true })).toHaveCount(0)
+      await expect(page.getByTestId("gb-campaign-create-submit")).toBeVisible()
+      await evidence("03-backend-400-toast")
     })
   })
 })

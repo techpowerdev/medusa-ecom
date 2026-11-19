@@ -15,7 +15,16 @@ COPY apps/backend/package.json apps/backend/
 RUN pnpm install --frozen-lockfile --filter @dtc/backend
 COPY apps/backend apps/backend
 # medusa build → apps/backend/.medusa/server (backend ที่ compile แล้ว + admin build)
-RUN pnpm --filter @dtc/backend build
+# OPS-27 (docs/spec/07-scaling-ops.md AC-42): NODE_ENV=production เฉพาะบรรทัดนี้ — ไม่ตั้ง = admin แบบ development
+# (stack trace ในหน้า error); build โหลด medusa-config → prod guard ต้องมี env จึงส่ง placeholder inline
+# ของ process build เท่านั้น (ไม่ใช่ secret, ไม่อยู่ใน stage runtime) ค่าจริงมาจาก env ตอนรัน container
+RUN NODE_ENV=production \
+    AFFILIATE_TOKEN_SECRET=build-only-placeholder \
+    STOREFRONT_URL=http://build-only.invalid \
+    EVOUCHER_ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000 \
+    RESEND_API_KEY=build-only-placeholder \
+    RESEND_FROM_EMAIL=build-only@example.invalid \
+    pnpm --filter @dtc/backend build
 # production dependencies ตาม lockfile แยกออกมาเป็น directory เดี่ยว
 RUN pnpm --filter @dtc/backend deploy --prod --legacy /deploy
 

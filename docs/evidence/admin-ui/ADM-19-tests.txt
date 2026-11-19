@@ -1,0 +1,36 @@
+# ADM-19 (spec 08 AC-23, กฎ 23) — ผล test
+# วันที่: 2026-11-14, node v22.23.3, base origin/develop 48bcf6f9
+# backend prod build (medusa build + medusa start) :9305, DB medusa_adm19, Redis db 5, chromium 1280x800 (locale en-US, Asia/Bangkok)
+# test-only (กฎ 23: ไม่แก้โค้ดถ้า test ผ่าน) — test ผ่านบน develop ตั้งแต่แรก จึงเป็น regression guard; พิสูจน์ว่าจับบั๊กได้ด้วย mutation ด้านล่าง
+
+## Red (mutation ชั่วคราว ไม่ commit): usePageOffset ไม่แก้ URL เมื่อ offset ผิดรูป
+## components/common/use-page-offset.ts: `if (raw === target)` → `if (raw === target || isMalformedOffset(raw))` → PageOffsetGate ไม่เปิด ตาราง/ปุ่มไม่กลับมา
+  ✘  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:281:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=abc → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด (20.1s)
+  ✘  2 [chromium] › e2e/evoucher-admin-forms.spec.ts:281:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=-50 → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด (20.1s)
+    Error: page.waitForURL: Test timeout of 20000ms exceeded.
+    waiting for navigation until "load"
+    test-results/evoucher-admin-forms-ADM-1-8efc5-ี-NaN-กดปุ่มแล้ว-modal-เปิด-chromium/test-failed-1.png
+    Error: page.waitForURL: Test timeout of 20000ms exceeded.
+    waiting for navigation until "load"
+    test-results/evoucher-admin-forms-ADM-1-15d53-ี-NaN-กดปุ่มแล้ว-modal-เปิด-chromium/test-failed-1.png
+  2 failed
+
+## mutation ที่ test ไม่จับ (ข้อมูลอ้างอิง): ข้ามการแก้ URL เฉพาะเมื่อ count === 0 → ผ่าน 2/2
+## เพราะ usePageOffset แก้ URL ตั้งแต่ render แรก (count ยัง undefined) ก่อน response ว่างมาถึง — ไม่ใช่เส้นทางของบั๊กนี้
+
+## Green (pnpm --filter storefront exec playwright test e2e/evoucher-admin-forms.spec.ts -g ADM-19 --project=chromium)
+  ✓  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:281:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=abc → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด (1.9s)
+  ✓  2 [chromium] › e2e/evoucher-admin-forms.spec.ts:281:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=-50 → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด (1.3s)
+  2 passed (3.9s)
+
+## --repeat-each=5
+  10 passed (11.0s)
+
+## ทั้งไฟล์ evoucher-admin-forms.spec.ts + evoucher-admin-partners.spec.ts (AC-8, AC-20, AC-25, AC-28, AC-23)
+  14 passed (30.1s)
+
+## pnpm --filter storefront test:e2e:unit (ทั้ง project รวม evidence-budget/hygiene)
+  110 passed (825ms)
+
+## pnpm lint && pnpm typecheck
+exit 0 / exit 0

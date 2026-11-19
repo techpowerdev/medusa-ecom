@@ -10,6 +10,9 @@ const listParams = () =>
 
 const id = z.string().min(1)
 
+// GB-17 (spec 04 กฎข้อ 40 (ข), spec 05 Q21): 100 ปี — เพดานทางเทคนิคกัน matures_at เป็น Invalid Date (ต่ำกว่า int4)
+const MAX_DAYS = 36500
+
 const ProgramScope = z
   .object({
     all: z.boolean().optional(),
@@ -26,9 +29,9 @@ const programFields = {
   announce_text: z.string().nullish(),
   commission_value: z.number().positive().max(100),
   scope: ProgramScope,
-  attribution_window_days: z.number().int().min(1).optional(),
+  attribution_window_days: z.number().int().min(1).max(MAX_DAYS).optional(),
   cap_per_order: z.number().positive().nullish(),
-  hold_days: z.number().int().min(0).optional(),
+  hold_days: z.number().int().min(0).max(MAX_DAYS).optional(),
 }
 
 // Window is [starts_at, ends_at) (rule 10); "ended" is reached through an update only
@@ -53,13 +56,16 @@ export const AdminListAffiliatePrograms = listParams().extend({
 
 export const AdminGetAffiliateParams = createFindParams()
 
-// AF-14 (กฎ 38): filter id ค่าเดียวหรือ id[] — รูปเดียวกับ validator ของ Medusa core (เช่น AdminCustomersParams)
-export const AdminListAffiliates = listParams().extend({
-  id: z.union([z.string(), z.array(z.string())]).optional(),
-  status: z.enum(["pending", "active", "suspended"]).optional(),
-})
-
 const affiliateStatus = z.enum(["pending", "active", "suspended"])
+
+// AF-14 (กฎ 38): filter id ค่าเดียวหรือ id[] — รูปเดียวกับ validator ของ Medusa core (เช่น AdminCustomersParams)
+// ADM-17 (spec 08 กฎ 21): q ค้น name/email ผ่าน .searchable() ของ model (combobox ของฟอร์ม payout)
+// ADM-24 (spec 08 กฎ 28a): status ค่าเดียวหรือ status[] (query.graph แปลง array เป็น $in)
+export const AdminListAffiliates = listParams().extend({
+  q: z.string().optional(),
+  id: z.union([z.string(), z.array(z.string())]).optional(),
+  status: z.union([affiliateStatus, z.array(affiliateStatus)]).optional(),
+})
 const requiredText = z.string().trim().min(1)
 
 // AF-15 (กฎ 39a, owner Q18/Q20): null หรือ 3 ช่องนี้เท่านั้น; account_number เก็บค่าที่ตัด `-`/ช่องว่างแล้ว

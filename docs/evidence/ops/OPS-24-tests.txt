@@ -1,0 +1,18 @@
+# OPS-24 (AC-39) ผลทดสอบ — 2026-11-13
+
+## Red (ก่อนแก้โค้ด): prod-guards.unit.spec.ts -t AC-39
+  ● AC-39 อีเมลแจ้งเตือนที่เป็นช่องว่างล้วน + comment export ต้น docker-compose.prod.yml (OPS-24) › production with EVOUCHER_ADMIN_EMAIL of spaces only does not throw and returns one warning naming it
+  ● AC-39 อีเมลแจ้งเตือนที่เป็นช่องว่างล้วน + comment export ต้น docker-compose.prod.yml (OPS-24) › production with OPS_ALERT_EMAIL of spaces only does not throw and returns one warning naming it
+  ● AC-39 อีเมลแจ้งเตือนที่เป็นช่องว่างล้วน + comment export ต้น docker-compose.prod.yml (OPS-24) › the leading `export` comment lines of docker-compose.prod.yml include EVOUCHER_ENCRYPTION_KEY=
+Tests:       3 failed, 59 skipped, 2 passed, 64 total
+
+## Green (หลังแก้): prod-guards.unit.spec.ts ทั้งไฟล์ (AC-36 ผ่านโดยไม่แก้)
+Test Suites: 1 passed, 1 total
+Tests:       64 passed, 64 total
+
+## pnpm --filter backend test:unit
+Test Suites: 105 passed, 105 total
+Tests:       1269 passed, 1269 total
+
+## pnpm lint && pnpm typecheck
+lint: 0 errors (exit 0); typecheck backend + admin + storefront: Done (exit 0)

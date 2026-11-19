@@ -227,11 +227,11 @@ medusaIntegrationTestRunner({
       return order
     }
 
-    const requestReturn = (order: Order, optionId = returnOptionId) =>
+    const requestReturn = (order: Order, optionId = returnOptionId, quantity = 1) =>
       responseOf(
         api.post(
           "/store/returns",
-          { order_id: order.id, items: [{ id: order.itemId, quantity: 1 }], return_shipping: { option_id: optionId } },
+          { order_id: order.id, items: [{ id: order.itemId, quantity }], return_shipping: { option_id: optionId } },
           owner
         )
       )
@@ -384,6 +384,56 @@ medusaIntegrationTestRunner({
       expect(await receive(created.id, order.itemId)).toEqual([200, 200, 200])
       expect((await returnsOf(order))[0].status).toEqual("received")
       expect(await totalStocked()).toEqual(before)
+    })
+
+    // CORE-56 (spec 01 กฎข้อ 114, Q-C6 = ก): สองแท็บกดขอคืน line เดียวกันพร้อมกัน → return ได้ตัวเดียว
+    const requestedOf = async (order: Order) =>
+      (await returnsOf(order)).filter((r) => r.status === "requested").length
+    const returnRequestedQuantity = async (order: Order) => {
+      const { data } = await query().graph({
+        entity: "order",
+        fields: ["items.id", "items.detail.return_requested_quantity"],
+        filters: { id: order.id },
+      })
+      const item = data[0].items!.find((i) => i!.id === order.itemId)!
+      return Number(item.detail!.return_requested_quantity)
+    }
+    const outcome = (r: { status?: number; data?: { type?: string } }) =>
+      r.status === 200 ? 200 : `${r.status} ${r.data?.type}`
+
+    it("AC-155: two concurrent returns of the same qty-1 line → one 200 and one 400 invalid_data (5 rounds)", async () => {
+      for (let round = 0; round < 5; round++) {
+        const order = await placeOrder(variants.managed)
+        const results = await Promise.allSettled([requestReturn(order), requestReturn(order)])
+        const outcomes = results.map((r) => (r.status === "fulfilled" ? outcome(r.value) : `rejected ${r.reason}`))
+        expect({ round, outcomes: [...outcomes].sort() }).toEqual({ round, outcomes: [200, "400 invalid_data"] })
+        expect(await requestedOf(order)).toEqual(1)
+        expect(await returnRequestedQuantity(order)).toEqual(1)
+      }
+    })
+
+    it("AC-155: sequential returns of the same qty-1 line → second is 400 invalid_data", async () => {
+      const order = await placeOrder(variants.managed)
+      expect(outcome(await requestReturn(order))).toEqual(200)
+      expect(outcome(await requestReturn(order))).toEqual("400 invalid_data")
+      expect(await requestedOf(order)).toEqual(1)
+    })
+
+    it("AC-155: concurrent returns of two different orders of the same customer → 200 both", async () => {
+      const [first, second] = [await placeOrder(variants.managed), await placeOrder(variants.managed)]
+      const results = await Promise.all([requestReturn(first), requestReturn(second)])
+      expect(results.map(outcome)).toEqual([200, 200])
+      expect([await requestedOf(first), await requestedOf(second)]).toEqual([1, 1])
+    })
+
+    it("AC-155: a request that fails with 400 does not leave the order locked — the next one gets 200 at once", async () => {
+      const order = await placeOrder(variants.managed)
+      // ผ่าน middleware ทุกตัว (ถือ lock แล้ว) แต่ Order module ปฏิเสธจำนวนเกิน
+      expect(outcome(await requestReturn(order, returnOptionId, 2))).toEqual("400 invalid_data")
+      const started = Date.now()
+      expect(outcome(await requestReturn(order))).toEqual(200)
+      expect(Date.now() - started).toBeLessThan(5000)
+      expect(await requestedOf(order)).toEqual(1)
     })
   },
 })

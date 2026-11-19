@@ -1,0 +1,65 @@
+# CORE-64 (spec 01 กฎข้อ 122, AC-163) — ผล test
+
+กฎข้อ 122d: discount_total ของ fixed + is_tax_inclusive: true = 100.00 พอดี (ไม่เกิน ±0.01) ทั้ง items/each และ order/across → ไม่ต้องหยุดรายงาน
+ไม่มีโค้ดใต้ src/ — เคสฝั่ง true ผ่านบน develop 4a3f5665 ได้ทันที (พฤติกรรมของ Medusa) ขั้น red จึงพิสูจน์ว่า test แยกสองฝั่งได้
+
+## Red 1 — integration: สลับค่า is_tax_inclusive (true↔false) ในสำเนาชั่วคราวของ spec → 3 เคส fixed ล้มด้วยจำนวนเงิน (107 แทน 100 / ต่าง 0 แทน >1)
+      ✕ Amount off products: fixed 100 items/each → discount_total = 100 และ total ลด 100 (987 ms)
+      ✕ Amount off order: fixed 100 order/across → discount_total = 100 และ total ลด 100 (826 ms)
+      ✕ control: fixed 100 items ที่ is_tax_inclusive: false → |discount_total − 100| > 1 (qa #384 O-1) (599 ms)
+      ✓ percentage 10 items ที่ไม่ส่ง is_tax_inclusive → discount_total = 107 (566 ms)
+      ✓ percentage 10 items ที่ส่ง is_tax_inclusive: true → discount_total = 107 (578 ms)
+    Expected: 100
+    Received: 107
+    Expected precision:    2
+    Expected difference: < 0.005
+    Received difference:   7
+    > 140 |         expect(r.discountTotal).toBeCloseTo(100, 2)
+    Expected: 100
+    Received: 107
+    Expected precision:    2
+    Expected difference: < 0.005
+    Received difference:   7
+    > 147 |         expect(r.discountTotal).toBeCloseTo(100, 2)
+    Expected: > 1
+    Received:   0
+    > 154 |         expect(Math.abs(r.discountTotal - 100)).toBeGreaterThan(1)
+Tests:       3 failed, 2 passed, 5 total
+
+## Red 2 — e2e AC-163(b): สำเนาชั่วคราวที่สร้าง promotion ด้วย is_tax_inclusive: false (prod build, :9301/:8301)
+  ✘  1 [chromium] › e2e/core-64-swapped-tmp.spec.ts:29:5 › AC-163(b): ส่วนลด fixed ฿100 แบบรวม VAT แสดงในตะกร้าเป็น 100 พอดี และแถวรวมได้ยอดสุทธิ (1.0s)
+    Error: discount_total=107
+    Expected: <= 0.01
+    Received:    7
+  1 failed
+
+## Red 3 — unit AC-163(c) ก่อนเขียนคู่มือ (docs/guides/admin-promotions.md ยังไม่มี)
+  ✘   18 [unit] › e2e/core-64-admin-promotions-guide.unit.spec.ts:15:5 › AC-163(c): docs/guides/admin-promotions.md มีอยู่ เป็นภาษาไทย และอ้างป้ายของ dashboard ครบ (4ms)
+    Error: docs/guides/admin-promotions.md
+    Expected: true
+    Received: false
+  1 failed
+
+## Green — integration: pnpm --filter backend test:integration:http integration-tests/http/core-64-promotion-tax-inclusive.spec.ts
+PASS integration-tests/http/core-64-promotion-tax-inclusive.spec.ts (10.531 s)
+      ✓ Amount off products: fixed 100 items/each → discount_total = 100 และ total ลด 100 (1076 ms)
+      ✓ Amount off order: fixed 100 order/across → discount_total = 100 และ total ลด 100 (773 ms)
+      ✓ control: fixed 100 items ที่ is_tax_inclusive: false → |discount_total − 100| > 1 (qa #384 O-1) (573 ms)
+      ✓ percentage 10 items ที่ไม่ส่ง is_tax_inclusive → discount_total = 107 (553 ms)
+      ✓ percentage 10 items ที่ส่ง is_tax_inclusive: true → discount_total = 107 (587 ms)
+Tests:       5 passed, 5 total
+
+## Green — e2e: playwright test --project=chromium e2e/core-64-promotion-fixed-vat.spec.ts (prod build: medusa start :9301 + next start :8301, DB medusa_core64, Redis db 1)
+  ✓  1 [chromium] › e2e/core-64-promotion-fixed-vat.spec.ts:29:5 › AC-163(b): ส่วนลด fixed ฿100 แบบรวม VAT แสดงในตะกร้าเป็น 100 พอดี และแถวรวมได้ยอดสุทธิ (1.4s)
+  1 passed (1.8s)
+
+## Green — pnpm --filter storefront test:e2e:unit (ทั้ง project)
+  ✓   19 [unit] › e2e/core-64-admin-promotions-guide.unit.spec.ts:15:5 › AC-163(c): docs/guides/admin-promotions.md มีอยู่ เป็นภาษาไทย และอ้างป้ายของ dashboard ครบ (1ms)
+  115 passed (722ms)
+
+## Green — pnpm --filter backend test:unit
+Test Suites: 110 passed, 110 total
+Tests:       1384 passed, 1384 total
+
+## pnpm lint && pnpm typecheck
+lint: 0 errors (warning เดิมของ storefront ไม่เกี่ยวกับไฟล์ของ task นี้) · typecheck: ผ่านทั้ง backend + storefront

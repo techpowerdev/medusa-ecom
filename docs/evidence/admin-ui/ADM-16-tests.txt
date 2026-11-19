@@ -1,0 +1,47 @@
+# ADM-16 (spec 08 AC-20, กฎ 20) — ผล test
+# วันที่: 2026-11-13, node v22.23.3, base origin/develop 3c5fe4f4
+
+## Red (ก่อนเขียนโค้ด)
+### jest __tests__/medusa-ui.unit.spec.ts -t ADM-16
+(ข้อ use-page-offset replace: true / resetOn: status ผ่านตั้งแต่ก่อนแก้ — เป็น static ของพฤติกรรม AC-14 ที่มีอยู่แล้ว กฎ 20c)
+    ✕ components/evoucher/codes-table.tsx: actionsColumn memo แยกที่ deps ไม่มี prompt/getFullDate และ columns ใช้ actionsColumn (1 ms)
+    ✕ components/evoucher/partners-section.tsx: actionsColumn memo แยกที่ deps ไม่มี prompt/getFullDate และ columns ใช้ actionsColumn (1 ms)
+    ✕ components/evoucher/codes-table.tsx: usePrompt อยู่เฉพาะใน component ต่อแถว ไม่อยู่ใน CodesTable
+    ✕ components/evoucher/partners-section.tsx: usePrompt อยู่เฉพาะใน component ต่อแถว ไม่อยู่ใน PartnersSection (1 ms)
+    ✓ use-page-offset.ts แก้ URL แบบ replace: true และ codes-table.tsx reset ด้วย resetOn: status (AC-14)
+    ✕ codes-table.tsx: หน้าที่เกินจำนวนแถว (count > 0 แต่ไม่มีแถว) แสดง loading ไม่ใช่ empty state
+Tests:       5 failed, 159 skipped, 1 passed, 165 total
+
+### playwright e2e/evoucher-admin-pool-page.spec.ts -g ADM-16 (prod build ของโค้ดก่อนแก้, 1280x800)
+Running 1 test using 1 worker
+  ✘  1 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:244:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว (4.5s)
+  1) [chromium] › e2e/evoucher-admin-pool-page.spec.ts:244:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว › เปิด ?codes_offset=99999999 → 2 วินาทีแรกไม่มี empty state 
+    Error: expect(received).toEqual(expected) // deep equality
+    - Expected  - 1
+    + Received  + 4
+    - Array []
+    + Array [
+    +   1418,
+    +   1449.800000011921,
+    + ]
+      275 |       await page.goto(`${BACKEND_URL}/app/evouchers/pools/${poolId}?codes_offset=99999999`)
+
+## Green — jest ทั้ง backend (test:unit)
+Test Suites: 107 passed, 107 total
+Tests:       1287 passed, 1287 total
+
+## Green — playwright (prod build) ไฟล์ e-voucher admin ที่แตะ codes-table/partners-section (AC-7, AC-8, AC-14, AC-20)
+  ✓  1 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel (8.0s)
+  ✓  2 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:20:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu (18.6s)
+  ✓  3 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:139:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp (7.9s)
+  ✓  4 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:205:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ (11.8s)
+  ✓  5 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:245:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว (5.1s)
+  5 passed (47.3s)
+  ✓  1 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty (8.8s)
+  ✓  2 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้ (4.0s)
+  ✓  3 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE (9.0s)
+  3 passed (28.1s)
+
+## lint/typecheck
+pnpm lint: 0 errors (warning เท่าเดิมก่อนแก้ 36 บรรทัด)
+pnpm typecheck: ผ่าน

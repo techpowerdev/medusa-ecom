@@ -60,7 +60,11 @@ async function createExpiredPromotion(
   if (!promotion.ok()) {
     // CORE-4j (กฎข้อ 73d): cleanup ที่ล้มเงียบทิ้ง campaign ค้าง — ตรวจผลของการลบด้วย
     const cleanup = await request.delete(`${BACKEND_URL}/admin/campaigns/${campaignId}`, { headers: admin })
-    expect(cleanup.ok(), `ลบ campaign หลังสร้าง promotion ไม่สำเร็จ: ${cleanup.status()}`).toBe(true)
+    // CORE-53 (กฎข้อ 111c): ข้อความรวมสาเหตุที่สร้าง promotion ไม่สำเร็จ — cleanup ล้มแล้วยังเห็นต้นเหตุ
+    expect(
+      cleanup.ok(),
+      `ลบ campaign หลังสร้าง promotion ไม่สำเร็จ: ${cleanup.status()} (create promotion: ${await promotion.text()})`
+    ).toBe(true)
   }
   expect(promotion.ok(), `create promotion: ${await promotion.text()}`).toBe(true)
   return { code, campaignId, promotionId: (await promotion.json()).promotion.id }
@@ -81,14 +85,15 @@ test("AC-99: โค้ดหมดอายุแสดง promotion-error ไ�
   try {
     await checkout()
   } finally {
+    // CORE-59 (กฎข้อ 117a): expect.soft — ลบ promotion ล้มแล้วยังลบ campaign ต่อ และ error ของ checkout() ไม่ถูกกลบ
     const promotion = await request.delete(`${BACKEND_URL}/admin/promotions/${promo.promotionId}`, {
       headers: admin,
     })
-    expect(promotion.ok(), `ลบ promotion ของ test: ${promotion.status()}`).toBe(true)
+    expect.soft(promotion.ok(), `ลบ promotion ของ test: ${promotion.status()}`).toBe(true)
     const campaign = await request.delete(`${BACKEND_URL}/admin/campaigns/${promo.campaignId}`, {
       headers: admin,
     })
-    expect(campaign.ok(), `ลบ campaign ของ test: ${campaign.status()}`).toBe(true)
+    expect.soft(campaign.ok(), `ลบ campaign ของ test: ${campaign.status()}`).toBe(true)
   }
 
   async function checkout() {

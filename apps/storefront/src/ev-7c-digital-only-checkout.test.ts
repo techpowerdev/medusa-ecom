@@ -363,6 +363,10 @@ describe("setAddresses แบบ digital-only (กฎข้อ 24b)", () => {
     form.set("checkout_country_code", "th")
     form.set("shipping_address.country_code", "th")
     form.set("shipping_address.address_1", "1 Sukhumvit")
+    form.set("shipping_address.first_name", "Somchai")
+    form.set("shipping_address.last_name", "Jaidee")
+    form.set("shipping_address.postal_code", "10110")
+    form.set("shipping_address.city", "Bangkok")
     form.set("same_as_billing", "on")
 
     await setAddresses(null, form)

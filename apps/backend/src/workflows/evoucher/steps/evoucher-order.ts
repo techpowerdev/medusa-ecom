@@ -1,3 +1,5 @@
+import type { OrderStatus } from "@medusajs/framework/utils"
+
 // type ร่วมของ step ใน allocate-and-deliver-evouchers (EV-4)
 export type EvoucherOrderItem = {
   id: string
@@ -10,8 +12,8 @@ export type EvoucherOrderItem = {
 
 export type EvoucherOrder = {
   id: string
-  /** กฎข้อ 34: `canceled` → allocation ข้าม order นี้ */
-  status?: string | null
+  /** กฎข้อ 34: `OrderStatus.CANCELED` → allocation ข้าม order นี้ */
+  status?: OrderStatus | null
   display_id?: number | null
   email?: string | null
   customer_id?: string | null

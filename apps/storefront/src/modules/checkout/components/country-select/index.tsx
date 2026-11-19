@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react"
+import { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef } from "react"
 
 import NativeSelect, {
   NativeSelectProps,
@@ -29,6 +29,16 @@ const CountrySelect = forwardRef<
       label: country.display_name,
     }))
   }, [region])
+
+  // CORE-52 (กฎข้อ 110d): React 19 reset `<form action>` หลัง action คืนผล (เช่น setAddresses คืน error) — reset ของ
+  // browser เลือก option ตาม `defaultSelected` ไม่ใช่ `value` ที่ React ควบคุม จึงตั้ง defaultSelected ให้ตรงค่าปัจจุบัน
+  const { value } = props
+  useLayoutEffect(() => {
+    if (value === undefined || !innerRef.current) return
+    for (const option of Array.from(innerRef.current.options)) {
+      option.defaultSelected = option.value === String(value)
+    }
+  }, [value, countryOptions])
 
   return (
     <NativeSelect

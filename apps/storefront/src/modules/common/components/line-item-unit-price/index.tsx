@@ -1,3 +1,4 @@
+import { lineReferenceTotal } from "@lib/util/line-item-compare-at"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@modules/common/components/ui"
@@ -14,8 +15,9 @@ const LineItemUnitPrice = ({
   currencyCode,
 }: LineItemUnitPriceProps) => {
   const total = item.total ?? 0
-  const original_total = item.original_total ?? 0
-  const hasReducedPrice = total < original_total
+  // CORE-67 (กฎข้อ 125c): ราคาเดิมต่อหน่วย = ยอดอ้างอิงของ line ÷ quantity
+  const original_total = lineReferenceTotal(item)
+  const hasReducedPrice = original_total - total > 0.005
 
   const percentage_diff = Math.round(
     ((original_total - total) / original_total) * 100

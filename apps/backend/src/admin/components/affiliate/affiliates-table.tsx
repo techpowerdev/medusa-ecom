@@ -121,6 +121,8 @@ export const AffiliatesTable = () => {
     () =>
       columnHelper.display({
         id: "actions",
+        // spec 08 กฎ 37: ไม่ห่อด้วย tooltip ของ TruncatedCell — tooltip ที่เปิดเมื่อ focus กลับมาที่ trigger กิน Escape แรกของ ActionMenu
+        meta: { ___truncateTooltip: false },
         cell: ({ row }) => <AffiliateActions affiliate={row.original} onEditPayoutInfo={setEditing} />,
       }),
     [],
@@ -128,8 +130,11 @@ export const AffiliatesTable = () => {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("name", { header: "Name" }),
-      columnHelper.accessor("email", { header: "Email" }),
+      // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
+      // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
+      // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
+      columnHelper.accessor("name", { header: "Name", size: 298, maxSize: 298 }),
+      columnHelper.accessor("email", { header: "Email", size: 274, maxSize: 274 }),
       columnHelper.accessor("code", { header: "Code" }),
       columnHelper.accessor("status", {
         header: "Status",
@@ -140,8 +145,11 @@ export const AffiliatesTable = () => {
         ),
       }),
       actionsColumn,
+      // spec 08 กฎ 41c (ADM-37, Q12 = ก): คอลัมน์สุดท้ายเป็น auto (ไม่มี width) รับความกว้างส่วนเกินที่จอกว้าง — ไม่งั้นทุก td ได้ width 150
+      // (ค่าเริ่มต้นของ tanstack) ผลรวมน้อยกว่าตาราง w-full แล้ว Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
       columnHelper.accessor("created_at", {
         header: "Joined",
+        size: undefined,
         cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
     ],
@@ -150,13 +158,16 @@ export const AffiliatesTable = () => {
 
   return (
     <>
-      <AffiliateListTable
-        {...list}
-        columns={columns}
-        heading="Affiliates"
-        subHeading="Approve applicants and manage payout info."
-        empty="No affiliates yet"
-      />
+      {/* spec 08 กฎ 39d: e2e หาแถวภายในตารางนี้ (ไม่ใช้ tbody tr ทั้งหน้า) */}
+      <div data-testid="affiliate-affiliates-table">
+        <AffiliateListTable
+          {...list}
+          columns={columns}
+          heading="Affiliates"
+          subHeading="Approve applicants and manage payout info."
+          empty="No affiliates yet"
+        />
+      </div>
       {editing && (
         <PayoutInfoDrawer
           key={editing.id}

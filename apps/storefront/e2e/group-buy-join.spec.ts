@@ -5,6 +5,7 @@ import { groupJoinActionMessage } from "../src/lib/util/group-join-error"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { addAddresses, cartWithItems, joinWith, poolGroup, type PoolGroupCtx } from "./support/group-buy"
 import { STOREFRONT_COUNTRY as CC, createCustomer, signInAs, type Customer } from "./support/medusa"
+import { waitForServerAction } from "./support/server-action"
 import { expectThai } from "./support/thai-text"
 
 // GB-7a2 (spec 04 กฎข้อ 14c, 27, 29c–f, 31; AC-28 ส่วน e2e, AC-47): join จากหน้ากลุ่มด้วย cart ใหม่หลาย line
@@ -100,8 +101,11 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     await addVariant(page, "M", 1)
     await expect(page.getByTestId("group-selection-item")).toHaveCount(2)
     await page.getByTestId("group-address-select").selectOption(addressIds[1])
+    // CORE-61 (spec 01 กฎข้อ 119a): รอผลจริงของ prepareGroupCart (body มี id ของที่อยู่ H2) ก่อนหา option วิธีส่ง
+    const prepared = waitForServerAction(page, (body) => body.includes(`"addressId":"${addressIds[1]}"`))
     // dblclick: สร้าง cart ใหม่ครั้งเดียว (in-flight flag)
     await page.getByTestId("group-shipping-load").dblclick()
+    expect((await prepared).status(), "server action ของ prepareGroupCart").toBe(200)
     const shipping = page.getByTestId("group-shipping-option")
     await expect(shipping).toBeVisible()
     // qa #238 D1: ไม่เลือกวิธีส่งให้ (ตัวแรกอาจเป็น Digital delivery ฿0 — spec 02 กฎ 8) → ยังกด join ไม่ได้จนกว่าลูกค้าเลือกเอง
@@ -112,8 +116,12 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     await shipping.selectOption(optionId)
 
     const actions = await recordActions(page)
+    // CORE-61 (กฎข้อ 119a): รอ joinGroupBuy(token, cartId) — action เดียวของชุดที่ argument แรกเป็น token ของกลุ่ม
+    const joined = waitForServerAction(page, (body) => body.startsWith(`["${ctx.token}",`))
     await page.getByTestId("group-join-button").dblclick()
-    await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders$`))
+    expect((await joined).status(), "server action ของ joinGroupBuy").toBe(200)
+    // navigation หลัง router.push render /account/orders ฝั่ง server (กฎข้อ 101b) — เครื่องโหลดสูงเกิน 5s ได้
+    await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders$`), { timeout: 15_000 })
     // join ชุดเดียว: setShippingMethod + syncCartAffiliate (กฎข้อ 27) + joinGroupBuy — dblclick ไม่ยิงชุดที่สอง
     expect(actions.filter((u) => u.includes(`/g/${ctx.token}`))).toHaveLength(3)
 

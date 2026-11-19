@@ -1,0 +1,39 @@
+CORE-59 (spec 01 กฎข้อ 117, AC-158) — e2e hygiene: cleanup core-4g ใช้ expect.soft, นับ request.delete( จาก AST, comment ข้อจำกัด VALID_AFFILIATE_ARGS
+ฐาน: origin/develop fef9b65b, Node v22.23.3, รันใน apps/storefront ด้วย npx
+
+=== RED: npx playwright test --project=unit e2e/core-4j-e2e-hygiene.unit.spec.ts (exit=1, เพิ่ม test ก่อนแก้โค้ด; deleteCalls ขั้นแรกนับด้วย regex บนข้อความแบบเดิม) ===
+  1) [unit] › e2e/core-4j-e2e-hygiene.unit.spec.ts:110:5 › AC-158 (กฎข้อ 117b): นับ request.delete( จาก AST — ที่อยู่แค่ใน comment/string ไม่นับ 
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: 0
+    Received: 3
+      116 |     "}",
+      117 |   ].join("\n")
+    > 118 |   expect(deleteCalls(src, "cleanup")).toBe(0)
+          |                                       ^
+      119 |   expect(deleteCalls(source, "createExpiredPromotion")).toBeGreaterThanOrEqual(1)
+--
+  2) [unit] › e2e/core-4j-e2e-hygiene.unit.spec.ts:122:5 › AC-158 (กฎข้อ 117a): cleanup ใน finally ของ core-4g ใช้ expect.soft — ลบ promotion ล้มแล้วยังลบ campaign ต่อ 
+    Error: expect(received).toContain(expected) // indexOf
+    Expected value: "expect.soft(promotion.ok()"
+    Received array: ["expect(promotion.ok()", "expect(campaign.ok()"]
+      122 | test("AC-158 (กฎข้อ 117a): cleanup ใน finally ของ core-4g ใช้ expect.soft — ลบ promotion ล้มแล้วยังลบ campaign ต่อ", () => {
+      123 |   const calls = finallyExpects(source)
+    > 124 |   expect(calls).toContain("expect.soft(promotion.ok()")
+          |                 ^
+      125 |   expect(calls).toContain("expect.soft(campaign.ok()")
+  2 failed / 3 passed
+
+=== GREEN: core-4j + core-46 unit (AC-111/146/148/149/158) exit=0 ===
+  20 passed
+
+=== GREEN: npx playwright test --project=unit (ทั้ง project) exit=0 ===
+  110 passed (690ms)
+
+=== grep ===
+body.match(/request\.delete\(/g) ใน core-4j: 0
+92:    expect.soft(promotion.ok(), `ลบ promotion ของ test: ${promotion.status()}`).toBe(true)
+96:    expect.soft(campaign.ok(), `ลบ campaign ของ test: ${campaign.status()}`).toBe(true)
+
+=== pnpm lint && pnpm typecheck: ผ่าน (lint 0 errors; warning เดิม ไม่มีในไฟล์ที่แตะ) ===
+
+e2e core-4g-* (ต้องใช้ backend+storefront): ให้ job storefront-e2e ของ CI พิสูจน์ — การแก้มีแค่ expect → expect.soft ใน finally

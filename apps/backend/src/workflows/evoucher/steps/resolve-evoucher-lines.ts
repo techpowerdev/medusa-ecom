@@ -1,5 +1,5 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, OrderStatus } from "@medusajs/framework/utils"
 import { EvoucherLine, EvoucherOrder, EvoucherOrderItem } from "./evoucher-order"
 
 // line item ของ order ที่ variant มี EvoucherPool (กฎข้อ 1)
@@ -8,7 +8,7 @@ export const resolveEvoucherLinesStep = createStep(
   async (input: { order: EvoucherOrder }, { container }) => {
     const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
     // กฎข้อ 34: order ที่ถูกยกเลิกแล้ว → ไม่มี line ให้ allocate (ไม่ claim/flag/อีเมล/fulfillment) และไม่ throw
-    if (input.order.status === "canceled") {
+    if (input.order.status === OrderStatus.CANCELED) {
       logger.info(`evoucher: order ${input.order.id} is canceled — skipping e-voucher allocation`)
       return new StepResponse([] as EvoucherLine[])
     }

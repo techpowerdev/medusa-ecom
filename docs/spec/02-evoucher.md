@@ -464,6 +464,7 @@ EV-7d หลัง CORE-4i (ซึ่งรอ PAY-3b1/PAY-3b2 ของ spec 06
 (ปิดรอบ 26, 2026-11-09) EV-7d ☑ #320 · EV-15 ☑ #326
 (ปิดรอบ 27, 2026-11-10) EV-16 ☑ #333 · EV-17 ☑ #337; ใหม่: EV-18 เริ่มได้ทันที (review #333 — กฎข้อ 34)
 (รอบ 28, 2026-11-10) EV-18 ☑ #339
+(รอบ 30, 2026-11-13) ไม่เปิด task: `allocate-and-deliver-evouchers.ts:77` แปลงผล `query.graph` เป็น `EvoucherOrder` ด้วย `as unknown as` (review #347) จึง typecheck ไม่ได้ตรวจว่า field เช่น `status` มีจริง — field ถูกตรวจด้วย integration ของ EV-16/EV-18 อยู่แล้ว; แก้ให้ใช้ type ที่ generate จาก `query.graph` ใน PR ถัดไปที่แตะไฟล์นั้น
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 

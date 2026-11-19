@@ -3,6 +3,7 @@ import type { MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusaj
 import { assignStoreReturnLocation, RETURN_ITEM_NOT_STOCKED_MESSAGE } from "../return-location"
 import { storeOwnershipMiddlewares } from "../middlewares"
 import { validateStoreReturnWindow } from "../return-window"
+import { lockStoreReturnOrder } from "../return-lock"
 
 // CORE-55 (spec 01 กฎข้อ 113, ADR-022): location ของ return จากหน้าเว็บมาจาก return option ฝั่ง server
 type Rows = { shipping_option?: unknown[]; order?: unknown[] }
@@ -154,8 +155,9 @@ describe("assignStoreReturnLocation", () => {
 })
 
 describe("POST /store/returns middleware order (CORE-55)", () => {
-  it("ends with validateStoreReturnWindow → assignStoreReturnLocation", () => {
+  // CORE-56 (กฎข้อ 114a): lockStoreReturnOrder ต่อท้ายเป็นตัวสุดท้าย
+  it("ends with validateStoreReturnWindow → assignStoreReturnLocation → lockStoreReturnOrder", () => {
     const chain = storeOwnershipMiddlewares.find((m) => m.matcher === "/store/returns")!.middlewares!
-    expect(chain.slice(-2)).toEqual([validateStoreReturnWindow, assignStoreReturnLocation])
+    expect(chain.slice(-3)).toEqual([validateStoreReturnWindow, assignStoreReturnLocation, lockStoreReturnOrder])
   })
 })
