@@ -228,6 +228,7 @@ Payout
     (variant ที่ไม่อยู่ในโปรแกรมนั้นไม่ถูกนำมาคิด) — AF-8 ห้ามคำนวณอัตราใหม่ที่ storefront
     (c) dedupe ทำใน API ก่อน paging (`count` = จำนวนสินค้าไม่ซ้ำ) ไม่ทำที่ storefront
     (d) ยอดประมาณการ ฿ บนการ์ด = ราคาปัจจุบัน × อัตราใน (a)/(b) ปัด 2 ตำแหน่ง half-up (กฎ 11) ไม่รวม cap
+        **(แก้รอบ 40 — owner 2026-11-21 "แสดงตามยอดจริง")** "ราคาปัจจุบัน" = ราคา**ก่อน VAT** (ฐานเดียวกับการคิดค่าคอมจริง) — กฎ 48a
 30. (รอบ 9, AF-10 — follow-up review #90) ตาข่ายกันพลาดของ reversal จาก cancel: reversal ของ AF-4 retry ใต้ lock ได้ราว 40 วินาที ถ้า DB ล่มนานกว่านั้น event หายและ entry
     `pending` ของ order ที่ยกเลิกจะถูก approve → maturity job รายวัน (AF-4) ก่อน approve ให้อ่าน `order.status` ของ entry ที่ครบกำหนด; order `canceled` และยอดสุทธิของ line > 0
     → สร้าง reversal ตามกฎ 28a (ใต้ lock `affiliate-attribution:<order_id>` ตามกฎ 27, idempotent กับ reversal ที่ subscriber สร้าง) แทนการ approve และ log warn `affiliate_cancel_reconciled`
@@ -249,7 +250,7 @@ Payout
     จาก `GET /affiliate/me/programs` แสดงชื่อ, อัตรา, วันที่, ป้าย active/upcoming, `announce_text`), Earnings (`/affiliate/earnings`: ยอดรวมต่อสถานะจาก `GET /affiliate/me/earnings`
     ใน `affiliate-earnings-pending|approved|paid|reversed` เป็น ฿ — (แก้ตาม review #152) API รวมยอด `GROUP BY status` (`summarizeCommissionEntries`) จึงคืนแถว `reversed`
     **แยก** เป็นยอดติดลบ และ `markPayoutPaid` เปลี่ยนเฉพาะ `approved → paid` (reversed ไม่ย้ายสถานะ) → แสดงแถว `affiliate-earnings-reversed` ตามค่าที่ API ให้ (ติดลบ, ข้อความไทยอธิบายว่าเป็นยอด
-    ที่ถูกหักจากการยกเลิก/คืนเงิน) แยกจากสามสถานะ; storefront **ไม่**คำนวณหักลบหรือรวมยอดเอง (ไม่ทำคณิตเงินที่ storefront); สถานะที่ API ไม่คืนแถวแสดง ฿0), Payouts (`/affiliate/payouts`: แถว `affiliate-payout-row`
+    ที่ถูกหักจากการยกเลิก/คืนเงิน) แยกจากสามสถานะ **(แก้รอบ 40 — owner 2026-11-21: `pending` เป็นยอดสุทธิหลังหัก reversal ของ entry ที่ยัง pending และแถว reversed เหลือเฉพาะ reversal ของ entry ที่ approved/paid แล้ว — คำนวณใน API, กฎ 48b)**; storefront **ไม่**คำนวณหักลบหรือรวมยอดเอง (ไม่ทำคณิตเงินที่ storefront); สถานะที่ API ไม่คืนแถวแสดง ฿0), Payouts (`/affiliate/payouts`: แถว `affiliate-payout-row`
     จาก `GET /affiliate/me/payouts` แสดงงวด, ยอด, สถานะ, `paid_at` — ไม่มี `reference` ตาม Q14), Profile (`/affiliate/profile`: ชื่อ, อีเมล, code, `affiliate-default-link` =
     `{storefront}/r/{code}` พร้อมปุ่มคัดลอก, `affiliate-payout-info-status` จาก `has_payout_info` ตามกฎ 34); สิทธิ์ตาม Q6: route ที่ API ตอบ 403 (เช่น `suspended` เปิด Products/Programs,
     `pending` เปิดหน้าใดนอกจาก Profile) → แสดง `affiliate-status-notice` ข้อความไทยตามสถานะ ไม่ใช่หน้า error; ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (ADR-014)
@@ -599,6 +600,33 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
   approved/paid แล้ว — แก้ 2026-10-26, AC-28) ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
 - Q9 (2026-10-25, AF-9) ยกเลิก payout `draft` = soft-delete (ไม่เพิ่มสถานะ `cancelled`)
 - กฎ 20 ให้ตรงกับโค้ดของ PR #35 (`draft → ended` ตรงได้)
+
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual O3 + เฟส 7; owner "แสดงตามยอดจริง")
+ที่มา: portal ประมาณค่าคอม ฿59 (คิดจากราคารวม VAT) แต่ได้จริง ฿55.14 (ก่อน VAT); Earnings "รอตรวจสอบ" แสดงยอดก่อนหัก reversal; B-1 (refund ขณะมี return ค้างไม่ reverse ค่าคอม) แก้ที่ spec 06 PAY-8
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| ราคาก่อน VAT ของ variant | `calculated_price.calculated_amount_without_tax` เมื่อขอ `variants.calculated_price` พร้อม tax context (region + `country_code`) ใน `query.graph`/Store API — builder ยืนยันชื่อ field ใน 2.22.1 | ใช้ตามเดิม ไม่คำนวณ VAT เอง |
+| รวมยอด | `summarizeCommissionEntries` ของ module เรา | ขยาย (กฎ 48b) |
+
+### Business rules (รอบ 40)
+48. (AF-24) (a) `GET /affiliate/products` คืนยอดประมาณการต่อการ์ดจากราคา**ก่อน VAT** (field ของ Medusa ตามตาราง) × อัตรา ปัด 2 ตำแหน่ง half-up ด้วย `MathBN` — คำนวณใน API (storefront ไม่ทำคณิตเงิน);
+    ป้ายบนการ์ด "ค่าคอมโดยประมาณ (คิดจากราคาก่อน VAT)"; ไม่มีราคาก่อน VAT (เช่นไม่มี tax rate) → ใช้ราคาที่ได้และป้ายเดิม
+    (b) `GET /affiliate/me/earnings`: `pending` = ผลรวม entry `pending` + ผลรวม entry `reversed` ที่ `(order_id, line_item_id)` ตรงกับ entry ที่ยัง `pending` (ยอดติดลบ) — ไม่ต่ำกว่า 0 ต่อ line;
+    `reversed` = เฉพาะ reversal ที่ไม่ได้ถูกนับใน `pending`; ผลรวมทุกแถวเท่ากับก่อนแก้ (ไม่มีเงินหาย/ซ้ำ); `approved`/`paid` ไม่เปลี่ยน; ข้อความใต้ `affiliate-earnings-pending` "หักรายการยกเลิก/คืนเงินแล้ว"
+
+### Acceptance criteria (รอบ 40)
+- AC-56 (AF-24, กฎ 48a) integration http — **ล้มบน develop** ก่อน: สินค้าราคา ฿590 (รวม VAT 7%) โปรแกรม 10% → การ์ดได้ประมาณการ = `round(590 / 1.07 × 0.10, 2)` = 55.14 (ตรงกับ entry จริงเมื่อซื้อ 1 ชิ้นใน e2e เดียวกัน);
+  storefront (unit Vitest) แสดงค่าจาก API ไม่คำนวณเอง
+- AC-57 (AF-24, กฎ 48b) integration: entry pending ฿100 ของ line L + reversal −฿100 ของ L → `pending=0`, `reversed=0`; entry approved ฿50 ของ line M + reversal −฿50 → `approved=50`, `reversed=−50`;
+  ผลรวม pending+approved+paid+reversed เท่ากับผลรวม `amount` ทุก entry (ล้มบน develop ที่ `pending=100`, `reversed=−100`)
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| AF-24 | ประมาณการค่าคอมจากราคาก่อน VAT + `pending` สุทธิหลัง reversal (กฎ 48); qa | `src/api/affiliate/products/route.ts`, `src/modules/affiliate/service.ts` (`summarizeCommissionEntries`), storefront `modules/affiliate/**` (ป้าย), test | ~100 LOC + ~200 LOC test | AC-56, AC-57 | PR เอกสารรอบ 40 | — |
+(หมายเหตุ: AF-24 เคยถูกอ้างเป็นเลขสำรองใน Q21 รอบ 32 แต่ไม่ได้ใช้ — Q21 รวมใน GB-17 แล้ว จึงใช้เลขนี้)
 
 ## Open questions (รอบ 32 — 2026-11-17)
 - ~~**Q21**~~ ✅ **owner ตอบ ก 2026-11-17** → `hold_days` และ `attribution_window_days` ≤ 36500 รวมใน GB-17 (spec 04 กฎข้อ 40 (ข), AC-60 (c)); คำถามเดิม:

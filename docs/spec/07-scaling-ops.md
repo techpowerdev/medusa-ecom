@@ -55,7 +55,10 @@
     เป็น `{ sameSite: "lax", secure: true }` เป็นค่า default (`resolveSessionCookieSecurity` ใน `@medusajs/framework` http express loader; ตั้งทับได้ด้วย `projectConfig.cookieOptions`
     ตั้งแต่ v2.8.5 — https://docs.medusajs.com/learn/configurations/medusa-config) → login admin ผ่าน http ที่ไม่ใช่ localhost ไม่ติด (qa #285 ทำซ้ำด้วย `medusa start` บน 2.22.1);
     loader ตั้ง `app.set("trust proxy", 1)` แล้ว จึง terminate TLS ที่ reverse proxy/load balancer ชั้นเดียวได้ (proxy ต้องส่ง `X-Forwarded-Proto: https`);
-    **ห้าม**ตั้ง `cookieOptions.secure: false` ใน `medusa-config.ts` ที่ commit — ทดสอบแบบ prod ในเครื่องให้เปิดผ่าน `localhost` (หรือ tunnel HTTPS)
+    **ห้าม**ตั้ง `cookieOptions.secure: false` ใน `medusa-config.ts` ที่ commit — ~~ทดสอบแบบ prod ในเครื่องให้เปิดผ่าน `localhost` (หรือ tunnel HTTPS)~~
+    **(แก้รอบ 40 — OPS-M-12 ของการทดสอบ manual 2026-11-20 พิสูจน์ว่าผิด)** prod build ผ่าน `http://localhost` ก็ login admin ไม่ได้ (server ไม่ส่ง `Set-Cookie` เพราะ cookie `secure` และ request ไม่ใช่ https)
+    → ทดสอบแบบ prod ในเครื่องต้องเข้า admin ผ่าน **HTTPS** (tunnel/reverse proxy ที่มี TLS) **หรือ** reverse proxy ที่ส่ง header `X-Forwarded-Proto: https` มาที่ server (อาศัย `trust proxy` ข้างต้น);
+    `http://localhost` ตรงไปที่ `:9000` ใช้ไม่ได้ — คู่มือ/แผนทดสอบที่อ้างข้อนี้ต้องแก้ตาม (OPS-30 แก้ `docs/ops/production.md`)
     (ข้อมูล default มาจาก source ของ medusajs/medusa branch develop — ตอน bump `@medusajs/*` ให้ตรวจซ้ำตาม checklist ด้านล่าง)
 
 ## ความเสี่ยงที่ติดตาม (2026-10-26)
@@ -493,6 +496,36 @@ step ตรวจ image ของ `docker-worker-mode` มีการตรว�
 |---|---|---|---|---|---|
 | OPS-28 | (รอบ 36 — review #399) ขั้นตรวจ "ต้องไม่พบ" ใน CI ล้มเมื่อ grep error (fail-closed) ผ่าน `tools/ci/assert-absent.sh` + test ของ script + step OPS-15 ล้มเมื่อไม่มี log (AC-43) — ☑ #403 (owner สั่งทำ 2026-11-18; ผลใน `docs/evidence/scale/OPS-28-tests.txt`) | `.github/workflows/ci.yml` (step ตรวจ image ของ `docker-worker-mode`, step build ของ `storefront-e2e`, step OPS-15, step ใหม่ใน `lint-typecheck`), `tools/ci/assert-absent.sh`, `tools/ci/assert-absent.test.sh`, `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` | ~120 LOC | PR เอกสารรอบ 36 merge; ไม่บล็อก release | ∥ ADM-30, ADM-31 (spec 08 — ไม่มีไฟล์ร่วม); OPS-29 ต่อจากตัวนี้ |
 | OPS-29 | (รอบ 36 — builder/qa/review #399) ไม่มีไฟล์ test ที่ compile แล้วใน image: `.dockerignore` ตัด `__tests__` + ขั้นตรวจ image ใน CI (AC-44) — ☑ #407 (owner สั่งทำ 2026-11-18; หลัง OPS-28 #403; ผลใน `docs/evidence/scale/OPS-29-tests.txt`) | `.dockerignore`, `.github/workflows/ci.yml` (step ตรวจ image ของ `docker-worker-mode`), `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` (+ `apps/backend/Dockerfile` เฉพาะเมื่อกฎ OPS-29 e ต้องใช้) | ~40 LOC | **OPS-28** (step เดียวกันของ `ci.yml` + describe ในไฟล์ static เดียวกัน); ไม่บล็อก release | ∥ ADM-30, ADM-31 |
+
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual เฟส 2/4/9 บน v0.2.0; owner สั่งแก้ใน release เดียว)
+ที่มา: OPS-M-06 (prod ไม่มี access log — compose ตั้ง `LOG_LEVEL=info` แต่ access log ของ Medusa ออกที่ระดับ `http`; ขัด `docs/ops/production.md:79`), OPS-M-12 (Deliverables ข้อ 11 — แก้แล้วในรอบนี้),
+log หลอก ops (`Error was thrown trying to refund payment … [object Object]` + `recreate a payment session … Invalid string billing_details` ทั้งที่คืนเงินสำเร็จ — ต้นเหตุ Medusa `compensatePaymentIfNeededStep`, ดู ADR-025 บริบท),
+migrate พิมพ์ warning ซ้ำ 3 รอบ + `worker_mode:"server"` ตอน migrate, prod seed สร้าง publishable key 2 ตัว
+**เลข ADR**: ADR-024 ที่หัวข้อ "Follow-up รอบ 32" สงวนไว้สำหรับการเปลี่ยนวิธี deploy prod ถูกใช้ในรอบ 40 แล้ว (group buy — ADR-024) → ADR ของวิธี deploy/staging ในอนาคตใช้**เลขว่างถัดไป (ADR-027)** แทนทุกที่ที่อ้าง ADR-024 ในหัวข้อรอบ 32/35
+owner อนุมัติ (2026-11-21) ให้ task ของรอบนี้แก้ `docs/ops/**` ในเรื่อง LOG_LEVEL/HTTPS (OPS-30) — task อื่นที่แตะ runbook (GB-21, OPS-32) แก้หัวข้อของตัวเองตามปกติ
+
+### Acceptance criteria (รอบ 40)
+- AC-45 (OPS-30) (a) `docker-compose.prod.yml` ตั้ง `LOG_LEVEL: ${LOG_LEVEL:-http}`; unit ใน `load-lock-timing.unit.spec.ts:150-152` และ `instrumentation.unit.spec.ts` ที่ยึดค่า `info` แก้เป็น `http` (sampler ยังไม่สร้าง timer ที่ `http` — ผลเดิมของ `saturation-sampler.unit.spec.ts`);
+  (b) `docs/ops/production.md` หัวข้อ Alerts ระบุว่า access log ต้องใช้ `LOG_LEVEL=http` (ค่าเริ่มต้นของ compose) และเตือนว่า `info` จะไม่มี access log; หัวข้อ go-live/คำสั่ง prod-like ระบุ HTTPS หรือ `X-Forwarded-Proto: https` ตาม Deliverables ข้อ 11;
+  (c) `docker-worker-mode` (CI) ยืนยันว่ามีบรรทัด access log (`request_id`, `status`) จาก server หลังยิง `GET /health` 1 ครั้ง (ล้มบน develop); unit อ่านไฟล์ตรวจ (a)(b)
+- AC-46 (OPS-31) (a) `pnpm --filter backend db:migrate` ของ image prod พิมพ์ warning แต่ละข้อความ**ครั้งเดียว** และไม่มี `worker_mode:"server"` ในบรรทัดของขั้น migrate (builder หาที่มา — ถ้าเป็นพฤติกรรมของ Medusa ที่โหลด config หลายรอบ ให้แก้ที่โค้ดเรา เช่น guard/log ใน `medusa-config.ts` ที่รันซ้ำ; ทำไม่ได้โดยไม่ patch Medusa → บันทึกใน PR และ `docs/ops/production.md` ว่าเป็นของ Medusa แล้วปิดข้อ (a));
+  (b) prod seed (ใน image) รันบน DB ว่าง **2 ครั้ง** → มี publishable key ที่ไม่ revoke **1** ตัวชื่อ "Storefront" ผูก sales channel ของร้าน (ล้มบน develop ที่ได้ 2 ตัว) และ `print-publishable-key` คืนตัวนั้น
+- AC-47 (OPS-32) (a) เมื่อ `completeCartWorkflow` ล้มหลัง capture (handler `completeCartWorkflow.hooks.validate` throw หรือ step หลัง hook ล้ม) backend log **warn** 1 บรรทัดขึ้นต้น `CART_COMPLETION_FAILED_AFTER_PAYMENT`
+  พร้อม `cart_id`, `payment_session_id`, `code` และข้อความ "Medusa refunds automatically; a following 'Error was thrown trying to refund payment' line comes from re-creating the payment session — verify refunds via GET /admin/payments/:id"
+  (integration ด้วย mock provider: flash เกินสิทธิ์หลัง capture → มีบรรทัดนี้ 1 ครั้ง และ payment มี refund 1 รายการ); (b) `docs/ops/production.md` หัวข้อใหม่ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ" ระบุสองข้อความของ Medusa,
+  วิธีตรวจ (`GET /admin/payments/:id` → `refunds`, PI ใน Stripe), และ "ห้าม refund ซ้ำด้วยมือ" (unit runbook grep คำสำคัญ); (c) PR body มีร่าง issue upstream (refund แล้ว recreate session ด้วย `data` เดิม + log `[object Object]`) — session หลักถาม owner ก่อนเปิด
+
+### Checklist ตอน bump `@medusajs/*` — เพิ่ม (รอบ 40)
+11. `compensatePaymentIfNeededStep`/`refundPaymentAndRecreatePaymentSessionWorkflow` ยัง refund แล้ว recreate ด้วย `data` เดิม และไม่สร้าง collection ใหม่ (ADR-025, OPS-32 ข้อความ log)
+12. `refundPaymentWorkflow` ยัง refund ก่อนสร้าง credit line (B-1 — ถ้า upstream แก้แล้ว พิจารณาถอด middleware ของ PAY-8)
+13. route ใหม่ใต้ `/admin/promotions/:id/*` อยู่ใต้ matcher ของ GB-25 (ADR-026); error/ข้อความของ Medusa ที่ FS-22 (สต็อกไม่พอ) และ CORE-73 (`Identity with email already exists`) ใช้ตัดสินยังเหมือนเดิม
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| OPS-30 | `LOG_LEVEL=http` ค่าเริ่มต้นของ compose prod + เอกสาร access log/HTTPS (owner อนุมัติแก้ `docs/ops/**`) + ขั้นตรวจ access log ใน CI | `docker-compose.prod.yml`, `docs/ops/production.md`, `apps/backend/src/__tests__/{load-lock-timing,instrumentation}.unit.spec.ts`, `.github/workflows/ci.yml` (`docker-worker-mode`), `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` | ~30 LOC + ~60 LOC test | AC-45 | PR เอกสารรอบ 40 | `docs/ops/production.md` (GB-21, OPS-32 คนละหัวข้อ — ตัวหลัง sync) |
+| OPS-31 | warning ซ้ำตอน migrate + publishable key เดียวใน prod seed | `apps/backend/medusa-config.ts` หรือ guard ที่ log, `apps/backend/src/scripts/seed*.ts`, test | ~60 LOC + ~100 LOC test | AC-46 | PR เอกสารรอบ 40 | `medusa-config.ts` (เก็บทั้งสองฝั่งถ้า conflict — CLAUDE.md) |
+| OPS-32 | log ชัดเมื่อ complete ล้มหลังจ่าย + runbook + ร่าง issue upstream | `apps/backend/src/workflows/hooks/complete-cart-validate.ts`, `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, integration | ~40 LOC + ~120 LOC test | AC-47 | PR เอกสารรอบ 40 | `complete-cart-validate.ts` (ไม่มี task อื่นในรอบนี้), `production.md` |
 
 ## Open questions (รอบ 35)
 - **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):
