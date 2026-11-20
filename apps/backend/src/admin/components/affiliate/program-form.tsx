@@ -105,6 +105,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
     resolver: zodResolver(programFormSchema, PROGRAM_PARSE_OPTIONS, { raw: true }),
     defaultValues: program ? programToForm(program) : emptyProgramForm(),
   })
+  // กฎ 43 (ADM-39): สำเร็จแล้ว hold lock จน component ถูกถอด (ปิด) — เปิดใหม่ mount ใหม่ (key) จึงได้ lock ใหม่ ไม่ต้อง release
   const [submitOnce] = useState(createSingleFlight)
   const all = form.watch("all")
   const variantCount = form.watch("variant_ids").length
@@ -132,7 +133,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
         form.setError(result.field, { message: result.error })
         return
       }
-      await save.mutateAsync(result.body).catch(() => undefined)
+      await save.mutateAsync(result.body).then(submitOnce.hold, () => undefined)
     })
   )
 

@@ -34,6 +34,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     resolver: zodResolver(poolFormSchema, POOL_PARSE_OPTIONS, { raw: true }),
     defaultValues: POOL_FORM_DEFAULTS,
   })
+  // กฎ 43 (ADM-39): สำเร็จแล้ว hold ระหว่าง modal กำลังปิด — release ตอนเปิดใหม่
   const [submitOnce] = useState(createSingleFlight)
 
   const { data, isLoading, isError, error } = useQuery({
@@ -65,7 +66,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   // กฎข้อ 11 (spec 02): dblclick / ⌘+Enter ซ้ำก่อน isPending เป็น true → POST ครั้งเดียว; error แสดงผ่าน onError แล้ว
   const submit = form.handleSubmit((values) =>
     submitOnce(() =>
-      create.mutateAsync(poolFormSchema.parse(values, POOL_PARSE_OPTIONS)).catch(() => undefined)
+      create.mutateAsync(poolFormSchema.parse(values, POOL_PARSE_OPTIONS)).then(submitOnce.hold, () => undefined)
     )
   )
 
@@ -115,7 +116,14 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
               ? [
                   {
                     type: "button",
-                    props: { variant: "secondary", onClick: () => setOpen(true), children: "Create pool" },
+                    props: {
+                      variant: "secondary",
+                      onClick: () => {
+                        submitOnce.release()
+                        setOpen(true)
+                      },
+                      children: "Create pool",
+                    },
                   },
                 ]
               : []
