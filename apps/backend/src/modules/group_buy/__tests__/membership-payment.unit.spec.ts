@@ -4,6 +4,8 @@ import {
   memberPaymentAmount,
   paidWithoutOrderAlertKey,
   paymentCapturedAction,
+  refundBalance,
+  refundResult,
   shouldSendPaidWithoutOrderAlert,
   shouldExpireMembershipPayment,
 } from "../utils/membership-payment"
@@ -106,5 +108,34 @@ describe("convertedOrderAction", () => {
     ["cancelled", false, ["completed"], "noop"],
   ] as const)("membership %s + is_draft_order=%s + collections %j → %s", (status, isDraft, collections, expected) => {
     expect(convertedOrderAction(status, isDraft, [...collections])).toEqual(expected)
+  })
+})
+
+// GB-21 กฎข้อ 44 (ADR-024 c): ยอดคงเหลือ = captured − refunded ด้วย MathBN จาก raw_* และผลตัดสินจากยอดคงเหลือที่อ่านใหม่
+describe("refundBalance", () => {
+  const raw = (value: string) => ({ raw_amount: { value, precision: 20 } })
+
+  it("subtracts refunds from captures with raw amounts (no float error: 300.30 − 100.10 − 200.20 = 0)", () => {
+    expect(MathBN.eq(refundBalance([raw("300.30")], [raw("100.10"), raw("200.20")]), 0)).toBe(true)
+  })
+
+  it("full balance when nothing is refunded; 0 when nothing is captured", () => {
+    expect(MathBN.eq(refundBalance([raw("700.05")], []), "700.05")).toBe(true)
+    expect(MathBN.eq(refundBalance(null, undefined), 0)).toBe(true)
+  })
+
+  it("falls back to amount when raw_amount is missing", () => {
+    expect(MathBN.eq(refundBalance([{ amount: 500 }], [{ amount: 200 }]), 300)).toBe(true)
+  })
+})
+
+describe("refundResult", () => {
+  it.each([
+    ["0", "refunded"],
+    ["-0.001", "refunded"],
+    ["0.01", "refund_failed"],
+    ["700", "refund_failed"],
+  ] as const)("balance %s → %s", (balance, expected) => {
+    expect(refundResult(MathBN.convert(balance))).toEqual(expected)
   })
 })

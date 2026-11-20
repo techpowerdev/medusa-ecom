@@ -7,8 +7,10 @@ import { EmailTemplates } from "../modules/resend/templates"
 import {
   paidWithoutOrderAlertKey,
   type PaidWithoutOrderReason,
+  type RefundResult,
   shouldSendPaidWithoutOrderAlert,
 } from "../modules/group_buy/utils/membership-payment"
+import { refundCancelledMembershipPayment } from "../workflows/group-buy/refund-cancelled-membership"
 import {
   confirmGroupBuyMembershipPaymentWorkflow,
   loadMembership,
@@ -25,6 +27,8 @@ type PaidWithoutOrder = {
   payment_id: string
   amount?: string
   error?: string
+  // GB-21 กฎข้อ 44: เฉพาะเหตุ membership_cancelled — ผลการคืนเงินอัตโนมัติ
+  refund_result?: RefundResult
 }
 
 // workflow engine คืน error ที่ serialize แล้ว (ไม่ใช่ instance ของ Error) — อ่าน message ตรงๆ
@@ -33,8 +37,11 @@ const errorMessage = (error: unknown) => (error as { message?: string } | null)?
 // กฎข้อ 25: อ่านสถานะใหม่ก่อน — ไม่ใช่เงินค้างแล้ว (เช่น order แปลงสำเร็จ/membership paid) → log info ไม่ส่ง
 // ยังค้าง → log error + อีเมลหา OPS_ALERT_EMAIL (idempotency key ต่อ membership + เหตุ — event ซ้ำไม่ส่งซ้ำ) ไม่ทำให้ subscriber ล้ม
 // กฎข้อ 25 (e): อ่านสถานะใหม่ล้ม → fail-open ส่ง alert ต่อ (alert ซ้ำ/ผิดดีกว่าเงินค้างเงียบ — runbook มีขั้นตรวจก่อน refund)
+// GB-21 กฎข้อ 44 (ADR-024 c): `membership_cancelled` ที่อ่านใหม่แล้วยัง cancelled → คืนเงินอัตโนมัติก่อนส่ง alert (alert มี refund_result)
+// อ่านใหม่ล้ม (fail-open) → ไม่คืนเงิน แต่ refund_result ยังมาจากยอดคงเหลือจริง (refund_failed = ops ต้องตรวจ/คืนเอง)
 async function alertPaidWithoutOrder(container: MedusaContainer, alert: PaidWithoutOrder) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+  let confirmed = false
   try {
     const current = await loadMembership(container, alert.membership_id)
     const state = { membership_status: current.status, is_draft_order: !!current.order?.is_draft_order }
@@ -45,14 +52,20 @@ async function alertPaidWithoutOrder(container: MedusaContainer, alert: PaidWith
       )
       return
     }
+    confirmed = true
   } catch (error) {
     logger.warn(
       `${GROUP_BUY_PAID_WITHOUT_ORDER}: re-reading membership_id=${alert.membership_id} failed — sending the alert anyway: ${errorMessage(error)}`
     )
   }
+  if (alert.reason === "membership_cancelled") {
+    const refund = await refundCancelledMembershipPayment(container, alert.payment_id, confirmed)
+    alert = { ...alert, ...refund, error: [alert.error, refund.error].filter(Boolean).join("; ") || undefined }
+  }
   logger.error(
     `${GROUP_BUY_PAID_WITHOUT_ORDER} reason=${alert.reason} membership_id=${alert.membership_id} ` +
-      `order_id=${alert.order_id} payment_id=${alert.payment_id} amount=${alert.amount} error=${alert.error ?? ""} ` +
+      `order_id=${alert.order_id} payment_id=${alert.payment_id} amount=${alert.amount} ` +
+      `refund_result=${alert.refund_result ?? ""} error=${alert.error ?? ""} ` +
       `— ดู runbook "group buy: เงินเข้าแต่ไม่มี order"`
   )
   const to = process.env.OPS_ALERT_EMAIL?.trim()
@@ -113,7 +126,7 @@ export default async function groupBuyPaymentCapturedHandler({
       error: errors.map((e) => errorMessage(e.error)).join("; "),
     })
   } else if (result.action === "orphan") {
-    // capture มาหลัง membership ถูกยกเลิก (เช่นพร้อมเพย์จ่ายช้ากว่า job หมดเวลา) — ไม่มี refund อัตโนมัติสำหรับ capture ที่มาหลังยกเลิก
+    // capture มาหลัง membership ถูกยกเลิก (เช่นพร้อมเพย์จ่ายช้ากว่า job หมดเวลา) — `cancelled` คืนเงินอัตโนมัติก่อน alert (GB-21)
     await alertPaidWithoutOrder(container, { ...alert, reason: `membership_${result.membership_status}` as const })
   }
 }

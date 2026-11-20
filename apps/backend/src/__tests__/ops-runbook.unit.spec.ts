@@ -122,6 +122,22 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
     expect(gb).toContain("/app/orders/<order_id>")
   })
 
+  // GB-21 กฎข้อ 44 (AC-63 e): membership_cancelled คืนเงินอัตโนมัติ — alert บอกผล refunded/refund_failed และให้ตรวจ refunds ก่อนปิด/คืนซ้ำ
+  it("กรณี group buy: อธิบายผล refunded/refund_failed ของการคืนเงินอัตโนมัติ และให้ตรวจ GET /admin/payments", () => {
+    const gb = subsection(body!, GB_TITLE)
+    for (const word of ["refunded", "refund_failed", "GET /admin/payments", "Refunded: group buy membership cancelled"]) {
+      expect(gb).toContain(word)
+    }
+  })
+
+  // GB-21 (review แผนรอบ 40): POST /admin/payments/:id/refund บน draft order ที่ยกเลิกอาจคืนเงินที่ provider สำเร็จแล้วแต่ route ตอบ error
+  it("กรณี group buy: refund ผ่าน admin ตอบ error → ตรวจยอดคืนใน payment/Stripe ก่อนคืนซ้ำ", () => {
+    const gb = subsection(body!, GB_TITLE)
+    expect(gb).toContain("throwIfOrderIsCancelled")
+    expect(gb).toMatch(/ตอบ error[^\n]*ห้ามกดคืนซ้ำ/)
+    expect(gb).toContain("Refunds ของ PI")
+  })
+
   // GB-10 กฎข้อ 25 (f) (AC-44 รอบ 13): ขอบเนื้อหาจบก่อนหัวข้อ ### ถัดไป — ขั้นตรวจที่อยู่ในหัวข้อถัดไปไม่นับ
   it("หัวข้อ group buy ตัดถึงหัวข้อถัดไป: ขั้นตรวจที่อยู่นอกหัวข้อไม่นับ (fixture) และหัวข้อจริงไม่มีหัวข้ออื่นปน", () => {
     const fixture = [
