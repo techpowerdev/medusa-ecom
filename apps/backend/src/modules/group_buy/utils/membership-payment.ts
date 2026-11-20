@@ -46,6 +46,18 @@ export const shouldExpireMembershipPayment = (
   new Date(payDeadlineAt).getTime() <= now.getTime() &&
   collectionStatuses.every((s) => UNPAID.has(s))
 
+// GB-20 กฎข้อ 42 (ADR-024 a): สร้าง payment session ได้เฉพาะ membership ที่รอชำระ ก่อน pay_deadline_at และ collection ยังไม่ถูกยกเลิก
+export const isGroupBuyPaymentOpen = (
+  status: MembershipStatus,
+  payDeadlineAt: string | Date | null | undefined,
+  now: Date,
+  collectionStatus: string
+) =>
+  status === "awaiting_payment" &&
+  !!payDeadlineAt &&
+  now.getTime() < new Date(payDeadlineAt).getTime() &&
+  collectionStatus !== "canceled"
+
 // กฎข้อ 25 (GB-9): alert เงินค้าง GROUP_BUY_PAID_WITHOUT_ORDER — `convert_failed` หรือ `membership_<สถานะตอน capture>`
 export type PaidWithoutOrderReason = "convert_failed" | `membership_${MembershipStatus}`
 

@@ -1,6 +1,7 @@
 import { MathBN } from "@medusajs/framework/utils"
 import {
   convertedOrderAction,
+  isGroupBuyPaymentOpen,
   memberPaymentAmount,
   paidWithoutOrderAlertKey,
   paymentCapturedAction,
@@ -106,5 +107,24 @@ describe("convertedOrderAction", () => {
     ["cancelled", false, ["completed"], "noop"],
   ] as const)("membership %s + is_draft_order=%s + collections %j → %s", (status, isDraft, collections, expected) => {
     expect(convertedOrderAction(status, isDraft, [...collections])).toEqual(expected)
+  })
+})
+
+// GB-20 กฎข้อ 42 (ADR-024 a): สร้าง payment session ได้เฉพาะ awaiting_payment ก่อน deadline และ collection ไม่ canceled
+describe("isGroupBuyPaymentOpen", () => {
+  const now = new Date("2026-11-21T10:00:00.000Z")
+  const before = "2026-11-21T10:00:01.000Z"
+  it.each([
+    ["awaiting_payment", before, "not_paid", true],
+    ["awaiting_payment", before, "awaiting", true],
+    ["awaiting_payment", "2026-11-21T10:00:00.000Z", "not_paid", false],
+    ["awaiting_payment", "2026-11-21T09:00:00.000Z", "not_paid", false],
+    ["awaiting_payment", null, "not_paid", false],
+    ["awaiting_payment", before, "canceled", false],
+    ["cancelled", before, "not_paid", false],
+    ["joined", before, "not_paid", false],
+    ["paid", before, "completed", false],
+  ] as const)("membership %s, deadline %s, collection %s → %s", (status, deadline, collection, expected) => {
+    expect(isGroupBuyPaymentOpen(status, deadline, now, collection)).toBe(expected)
   })
 })
