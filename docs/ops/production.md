@@ -78,6 +78,10 @@ log ของ backend เป็น JSON บรรทัดละหนึ่ง 
 `worker_mode` (`server` / `worker` / `shared`) จาก env `MEDUSA_WORKER_MODE` ของ container นั้น `LOG_LEVEL`/`LOG_FILE` ใช้ได้ตามเดิม
 access log ของ HTTP (`request_id`, `status`, `duration` — จาก header `x-request-id` หรือ uuid ที่ Medusa สร้าง) Medusa เขียนเองโดยไม่ผ่าน
 logger นี้ จึงไม่มี `worker_mode` (มีเฉพาะบน server อยู่แล้ว)
+access log ออกที่ระดับ `http` → ต้องใช้ `LOG_LEVEL=http` (ค่าเริ่มต้นของ `docker-compose.prod.yml` ตั้งแต่ OPS-30) หรือละเอียดกว่า (`debug`);
+ตั้ง `LOG_LEVEL=info` (หรือ `warn`/`error`) จะไม่มี access log เลย (OPS-M-06)
+Medusa ไม่เขียน access log ของ `/health` ทุกระดับ (healthcheck ของ compose/load balancer จึงไม่ท่วม log) — ทดสอบว่ามี access log ด้วย route อื่น
+เช่น `GET /admin/users/me` ไม่มี token (ได้ 401; CI ตรวจใน job `docker-worker-mode`)
 
 | alert | เงื่อนไข (ตั้งใน log shipper / log platform ที่ใช้) | ระดับ | ขั้นตอนตอบสนอง |
 |---|---|---|---|
@@ -153,6 +157,11 @@ endpoint สมัคร event ตามรายการด้านล่า�
    (2) จ่ายพร้อมเพย์ (confirm PI ใน test mode) → ได้ order `payment_status=captured`; (3) จ่ายบัตร `4242…` → ได้ order;
    (4) log ของ server/worker ไม่มี `An error occurred in constructWebhookEvent` และไม่มี `payment-webhook-orphan: skipped`;
    (5) Dashboard แสดง delivery ของ endpoint ตอบ 200
+9. admin และ store API เข้าผ่าน **HTTPS** เท่านั้น (spec 07 Deliverables ข้อ 11): `NODE_ENV=production` ตั้ง session cookie เป็น `Secure`
+   → request ที่ไม่ใช่ https ไม่ได้ `Set-Cookie` และ login admin ไม่ติด; terminate TLS ที่ reverse proxy/load balancer ชั้นเดียวได้
+   (Medusa ตั้ง `trust proxy` = 1) โดย proxy ต้องส่ง header `X-Forwarded-Proto: https` มาที่ server; ห้ามตั้ง `cookieOptions.secure: false`
+   ทดสอบแบบ prod-like ในเครื่อง (`docker-compose.prod.yml` หรือ `medusa start` ของ build production) ก็เช่นกัน: เข้าผ่าน tunnel/reverse proxy ที่มี TLS
+   หรือ proxy ที่ส่ง `X-Forwarded-Proto: https` — เปิด `http://localhost:9000` ตรง ๆ จะ login admin ไม่ได้ (OPS-M-12)
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
