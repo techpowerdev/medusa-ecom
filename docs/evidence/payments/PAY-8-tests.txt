@@ -1,0 +1,37 @@
+# PAY-8 — ผล test (รันในเครื่อง 2026-11-21, Node 22.23.3, Postgres 16 จาก docker compose, Redis db 1)
+# spec 06 กฎข้อ 10, AC-21 (bug B-1) — provider = pp_system_default ที่ spy `refundPayment` (ไม่เรียก Stripe)
+# DB ของ integration test สร้าง/ลบโดย medusaIntegrationTestRunner เอง
+
+## Red — pnpm --filter backend test:integration:http admin-refund-guard (โค้ด develop 73148c83 + test ใหม่)
+FAIL integration-tests/http/admin-refund-guard.spec.ts
+    ✕ AC-21a: blocks a refund while a return request is not confirmed, before the provider is called
+    ✕ AC-21b: blocks a refund while an order edit is pending
+    ✓ AC-21c: after the return request is canceled the refund goes through once with a credit line and payment.refunded
+    ✓ AC-21d: an order without an order change refunds as before (AC-6)
+  ● AC-21a / AC-21b
+    expect(jest.fn()).not.toHaveBeenCalled()
+    Expected number of calls: 0
+    Received number of calls: 1
+  → ยืนยัน B-1: route ตอบ 400 แต่ provider ถูกเรียกคืนเงินแล้ว 1 ครั้ง
+  (รอบแรกที่ assert type ก่อน: Expected "not_allowed" Received "invalid_data" = error "already has an existing
+   active order change" จาก createOrderRefundCreditLinesWorkflow หลังคืนเงินไปแล้ว)
+Tests:       2 failed, 2 passed, 4 total
+
+## Red — pnpm --filter backend test:unit active-order-change
+  Cannot find module '../active-order-change' → Test Suites: 1 failed
+
+## Green — pnpm --filter backend test:integration:http admin-refund-guard
+PASS integration-tests/http/admin-refund-guard.spec.ts (12.442 s)
+    ✓ AC-21a: blocks a refund while a return request is not confirmed, before the provider is called (1418 ms)
+    ✓ AC-21b: blocks a refund while an order edit is pending (1191 ms)
+    ✓ AC-21c: after the return request is canceled the refund goes through once with a credit line and payment.refunded (1238 ms)
+    ✓ AC-21d: an order without an order change refunds as before (AC-6) (1043 ms)
+Tests:       4 passed, 4 total
+
+## Green — pnpm --filter backend test:unit
+  active-order-change.unit.spec.ts: 4 passed
+  Test Suites: 112 passed, 112 total — Tests: 1497 passed, 1497 total
+
+## pnpm --filter backend build — ผ่าน
+## pnpm --filter storefront test:e2e:unit — 122 passed
+## pnpm lint && pnpm typecheck — ผ่าน (0 error; warning เดิมที่ไม่เกี่ยวกับไฟล์ของ task)
