@@ -1178,7 +1178,7 @@ none
 ## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual เฟส 2/7/8 บน v0.2.0; owner สั่งแก้ใน release เดียว)
 ที่มา: ADM-B1 (ADM-M-14 ไม่ผ่าน — Create partner ดับเบิลคลิกเว้น 80–150ms หรือ ⌘+Enter/Save ซ้ำระหว่าง `FocusModal` กำลังปิด → POST 2 ครั้ง partner ซ้ำ; ขัด CLAUDE.md กฎกันกดซ้ำ),
 หน้า Affiliates ไม่มีช่องค้นหา (200+ ราย), ตาราง Payouts กว้าง 1417px ที่ 1280/1440, ฟอร์ม program แสดง error ทีละช่อง
-**ข้อเท็จจริงที่ตรวจบน develop `87cb20df` (แก้ข้อมูลใน brief)**: backend `GET /admin/affiliate/affiliates` **รับ `q` แล้ว** (ADM-17, `validators.ts:62-65` — `.searchable()` name/email) และ list ทุกตัวของ affiliate มี `tiebreakById` (ADM-24, `middlewares.ts:72-85`)
+**ข้อเท็จจริงที่ตรวจบน develop `87cb20df` (แก้ข้อมูลใน brief)**: backend `GET /admin/affiliate/affiliates` **รับ `q` แล้ว** (ADM-17, `validators.ts:62-65` — `.searchable()` name/email) และ list ทุกตัวของ affiliate มี `tiebreakById` (ADM-24, `apps/backend/src/api/admin/affiliate/middlewares.ts:72-85`)
 → งานค้นหาเป็นฝั่ง UI อย่างเดียว และไม่ต้องแก้การเรียงของ Affiliates; การเรียงที่ต้องแก้คือ e-voucher (spec 02 EV-19)
 ไม่ทำ (owner 2026-11-21): ฟอร์ม Refund ของ Medusa ค่าเริ่มต้นยอดเต็ม (ของ dashboard core), ป้าย "(ICT)" บนเครื่อง UTC (เครื่องแอดมินตั้งเวลาไทย — ADR-018), หน้า order แสดงราคารวม VAT
 

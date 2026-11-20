@@ -2813,12 +2813,12 @@ Out of scope: หน้า order ใน admin แสดงราคารวม 
 |----|------|------|------|----|---------|------|
 | CORE-68 | แบ่งหน้า order ในหน้า account (กฎข้อ 126); qa | `apps/storefront/src/lib/data/orders.ts`, `app/[countryCode]/(main)/account/@dashboard/{page,orders/page}.tsx`, `modules/account/components/order-overview`, e2e | ~60 LOC + ~120 LOC test | AC-167 | PR เอกสารรอบ 40 | `orders/page.tsx` (GB-22 แตะรายการ group — คนละ component; ตัวหลัง sync) |
 | CORE-69 | `?step=review` ไม่มี payment session → `step=payment` (กฎข้อ 127); qa | `modules/checkout/templates/checkout-form` / util step ของ CORE-45, e2e | ~30 LOC + ~80 LOC test | AC-168 | PR เอกสารรอบ 40 | ขั้น review (FS-21 ปุ่ม disabled — คนละ condition; ตัวหลัง sync) |
-| CORE-70 | ค้นหาให้ผลตรงกันทุกที่ + `/store?q=` (กฎข้อ 128); qa | `apps/storefront/src/lib/search-client.ts`, `app/[countryCode]/(main)/search/page.tsx`, `modules/store/templates/index.tsx`, `modules/layout/components/search/*`, backend config index ถ้าต้อง, e2e | ~120 LOC + ~150 LOC test | AC-169 | PR เอกสารรอบ 40 (Q-C12 default ก) | — |
+| CORE-70 | ค้นหาให้ผลตรงกันทุกที่ + `/store?q=` (กฎข้อ 128); qa | `apps/storefront/src/lib/search-client.ts`, `app/[countryCode]/(main)/search/page.tsx`, `modules/store/templates/index.tsx`, `modules/layout/components/search/*`, backend config index ถ้าต้อง, e2e | ~120 LOC + ~150 LOC test | AC-169 | PR เอกสารรอบ 40 (Q-C12 = ก ☑) | — |
 | CORE-71 | ข้อความคืนสินค้าเมื่อ location ไม่มีของ (กฎข้อ 129); qa | `modules/account/components/return*` / action ของ return, helper error, test | ~30 LOC + ~80 LOC test | AC-170 | PR เอกสารรอบ 40 | — |
 | CORE-72 | ตะกร้าไม่กระพริบ "(0)" (กฎข้อ 130); qa | `modules/layout/components/cart-button*`/`nav`, e2e | ~20 LOC + ~60 LOC test | AC-171 | PR เอกสารรอบ 40 | — |
 | CORE-73 | สมัครด้วยอีเมลที่มีบัญชี → "อีเมลนี้มีบัญชีแล้ว" ไม่ login ให้ (กฎข้อ 131); qa | `apps/storefront/src/lib/data/customer.ts`, `modules/account/components/register`, test | ~40 LOC + ~120 LOC test | AC-172 | PR เอกสารรอบ 40 | — |
 | CORE-74 | ไม่ส่ง `order-placed` ให้ order ที่ยกเลิกแล้ว (กฎข้อ 132) | `apps/backend/src/subscribers/order-placed*.ts`, integration | ~15 LOC + ~80 LOC test | AC-173 | PR เอกสารรอบ 40 | — |
 
 ### Open questions (รอบ 40)
-- **Q-C12** (CORE-70, ไม่บล็อก — มีค่าเริ่มต้น) กลไกค้นหาเดียวที่ใช้ทุกที่: (ก) **[Recommended]** `POST /store/search` (index ของ Medusa — `/store` ใช้อยู่แล้วพร้อม facet/ราคา; แก้ config ให้ค้น "shirt" เจอ);
+- ~~**Q-C12**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** `POST /store/search` ทุกหน้า (กฎข้อ 128) — คำถามเดิม: (CORE-70) กลไกค้นหาเดียวที่ใช้ทุกที่: (ก) **[Recommended]** `POST /store/search` (index ของ Medusa — `/store` ใช้อยู่แล้วพร้อม facet/ราคา; แก้ config ให้ค้น "shirt" เจอ);
   (ข) `GET /store/products?q=` (core ILIKE — หน้า `/search` ใช้อยู่) ทุกที่ — ต้องเขียน `/store` ใหม่โดยไม่มี facet ของ index (~300 LOC) ไม่แนะนำ

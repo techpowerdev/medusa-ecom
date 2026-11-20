@@ -1,6 +1,6 @@
 # ADR-026 group buy: ล็อกส่วนลดของกลุ่ม — สมาชิกทุกคนในกลุ่มเดียวกันได้ส่วนลดเท่ากัน
 
-สถานะ: **proposed** (planner รอบ 40, 2026-11-21 — owner ตัดสิน "ล็อกส่วนลดตอน join" 2026-11-21; การตีความรอยืนยัน — spec 04 Q24)
+สถานะ: **accepted** (owner อนุมัติ 2026-11-21 — ทางเลือก 1; spec 04 Q24 = ก "ล็อก `GB-<token>` ตลอดอายุกลุ่ม")
 เกี่ยวข้อง: ADR-011 (promotion ต้นแบบ + clone ต่อกลุ่ม), spec 04 กฎข้อ 5, 12, 28e และ Q5 (แก้ต้นแบบมีผลเฉพาะกลุ่มใหม่ ไม่ล็อกการแก้ต้นแบบ), Q23 (ไม่ทำ hook `promotionsUpdated`), task GB-25
 
 ## บริบท
@@ -20,6 +20,9 @@
 ## การตัดสินใจ (เสนอ: ทางเลือก 1)
 - ล็อก**ตลอดอายุกลุ่ม** (ทุกสถานะ — กลุ่ม `succeeded`/`failed` แก้ไม่ได้เช่นกัน เพราะ draft order อ้างส่วนลดนั้น) ตั้งแต่สร้างกลุ่ม ไม่ใช่ตั้งแต่ join คนแรก — ง่ายและตรวจได้
 - ข้อยกเว้น: ไม่มี (admin ที่ต้องการเปลี่ยนส่วนลดให้แก้ต้นแบบแล้วสร้างกลุ่มใหม่ หรือ fail กลุ่มเดิมผ่านปุ่มของ GB-6c)
+- (review #425) route ของ **campaign** ของ Medusa ที่กระทบส่วนลดของกลุ่มอยู่ในขอบเขตด้วย: `POST /admin/campaigns/:id/promotions` (เพิ่ม/ถอด promotion) ที่มี promotion `GB-*` → 400;
+  `POST /admin/campaigns/:id` (วัน/budget) ของ campaign ที่ผูก `group_buy_campaign` ที่ไม่ใช่ `draft` → 400 (เปลี่ยน `ends_at` ทำให้ deadline ของกลุ่มเดิมขัดกฎข้อ 2/10 ของ spec 04);
+  `DELETE /admin/campaigns/:id` ของ campaign ดังกล่าว → 400
 - อ่าน link ด้วย `query.graph` ครั้งเดียวต่อ request (entity link `group_buy_group` ↔ `promotion`) ไม่เพิ่ม model/migration
 
 ## ผลที่ตามมา

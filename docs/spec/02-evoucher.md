@@ -483,7 +483,7 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
 ### Business rules (รอบ 40)
 35. (EV-19 — EV-M-12) `GET /admin/evoucher/pools/:id/codes` เรียง `{ created_at: "ASC", id: "ASC" }` (`route.ts:35`) — แบ่งหน้าแล้วได้ code ครบไม่ซ้ำแม้ `created_at` เท่ากันทั้ง batch;
     ตรวจ route list อื่นของ module e-voucher (pools, partners) ที่เรียงด้วย field เดียวแล้วเพิ่ม `id` แบบเดียวกัน (affiliate มี `tiebreakById` แล้ว — ADM-24)
-36. (EV-20 — owner อนุมัติปุ่มลบ + กติกาที่เสนอ) `deleteEvoucherPoolWorkflow` ขยายจาก "เฉพาะ pool ว่าง" เป็น "**ลบได้เมื่อไม่มี code ที่เคยถูกส่ง/จองให้ลูกค้า**":
+36. (EV-20 — owner อนุมัติปุ่มลบ + **ยืนยันกติกานี้ 2026-11-21**: ลบได้เมื่อยังไม่มีรหัสถูกส่ง, code `available`/`void` ลบตาม, stock ลด, prompt ยืนยัน) `deleteEvoucherPoolWorkflow` ขยายจาก "เฉพาะ pool ว่าง" เป็น "**ลบได้เมื่อไม่มี code ที่เคยถูกส่ง/จองให้ลูกค้า**":
     (a) มี code สถานะ `allocated`/`delivered` หรือมี `order_id` อย่างน้อย 1 → 400 `not_allowed` "Pool has codes that were allocated or delivered to customers; it cannot be deleted";
     (b) ไม่เช่นนั้น: soft-delete code ทั้งหมดของ pool (`available`/`void`) → ลด `stocked_quantity` ของ inventory level ของ variant ลงเท่าจำนวน code `available` (workflow ของ Medusa + compensation)
         → ขั้นเดิมของกฎข้อ 15 (`requires_shipping=true`) → ลบ pool; compensation คืนทุกขั้น; ใต้ lock เดียวกับ import/allocation ของ pool (กัน allocate ระหว่างลบ)

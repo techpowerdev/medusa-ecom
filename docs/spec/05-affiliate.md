@@ -607,7 +607,7 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
-| ราคาก่อน VAT ของ variant | `calculated_price.calculated_amount_without_tax` เมื่อขอ `variants.calculated_price` พร้อม tax context (region + `country_code`) ใน `query.graph`/Store API — builder ยืนยันชื่อ field ใน 2.22.1 | ใช้ตามเดิม ไม่คำนวณ VAT เอง |
+| ราคาก่อน VAT ของ variant | `calculated_price.calculated_amount_without_tax` — **ไม่ได้มาจาก `query.graph` ตรงๆ** แต่ Store API เติมให้ผ่าน helper `wrapVariantsWithTaxPrices` (`@medusajs/medusa/dist/api/store/products/helpers.js`) จาก tax context (region + `country_code`) — review #425 | ใช้ helper นี้ (หรืออ่านผ่าน Store API) ไม่คำนวณ VAT เอง |
 | รวมยอด | `summarizeCommissionEntries` ของ module เรา | ขยาย (กฎ 48b) |
 
 ### Business rules (รอบ 40)

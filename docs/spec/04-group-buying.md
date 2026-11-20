@@ -1,6 +1,6 @@
 # 04 Group buying — ส่วนลดแบบมีเป้าหมายและจำกัดเวลา
 
-สถานะ: in-progress (รอบ 40 2026-11-21: การทดสอบ manual → GB-20..GB-25 ☐ หัวข้อ "Follow-up รอบ 40" กฎข้อ 42–49, AC-62..67, ADR-024/ADR-026 proposed, Q24–Q25; GB-19 ไม่ใช้ (เคยเสนอใน Q23);
+สถานะ: in-progress (รอบ 40 2026-11-21: การทดสอบ manual → GB-20..GB-25 ☐ หัวข้อ "Follow-up รอบ 40" กฎข้อ 42–49, AC-62..67, ADR-024/ADR-026 accepted 2026-11-21, Q24 = ก / Q25 อนุมัติ; GB-19 ไม่ใช้ (เคยเสนอใน Q23);
 ปิดรอบ 37 2026-11-19: ☑ GB-18 #414 (AC-61); Q23 = ก (owner 2026-11-19) คงข้อจำกัดของกฎข้อ 41f — ไม่เปิด GB-19; ไม่มี task เปิดค้างใน spec นี้;
 รอบ 37 2026-11-18: owner ตัดสินข้อ ก (1) ของ ROADMAP ปิดรอบ 36 = ก "backend ตอบ 400 เมื่อส่วนลด fixed ≥ ราคาของ variant" (รับทราบว่ากันได้แค่ตอนสร้าง) → GB-18 ☐ owner สั่งทำแล้ว — กฎข้อ 41, AC-61, คำถาม Q23 (กันตอนแก้ผ่าน hook ของ Medusa — ไม่บล็อก GB-18);
 เดิม: draft (ปรับดีไซน์ 2026-10-25 ตามความต้องการของเจ้าของ: ใช้ flow แบบ draft order เหมือนตัวอย่าง Quotes ของ Medusa;
@@ -64,7 +64,7 @@ draft order จะถูกยกเลิกและแจ้งสมาช�
 | กล่องยืนยัน / toast ใน admin | `usePrompt`, `toast` ของ `@medusajs/ui` | ใช้ตามเดิม (GB-6b, GB-6c) |
 | lock ข้าม request/step | Locking module (Redis, spec 07) + `acquireLockStep` / `releaseLockStep` | ใช้ตามเดิม (ADR-009) |
 | ops แปลง draft order เองหลังเงินเข้า | `@medusajs/draft-order` 2.22.1 (ปุ่ม Convert ใน admin) + `POST /admin/draft-orders/:id/convert-to-order` → `convertDraftOrderWorkflow` (ตรวจโดย re-review #185) | ใช้ตามเดิม — เราเพิ่มแค่การอัปเดต membership หลังแปลง (GB-10, กฎข้อ 26) |
-| refund payment ของ draft/order ที่ยกเลิก | `POST /admin/payments/:id/refund` (`refundPaymentWorkflow` ไม่ปฏิเสธ draft/order ยกเลิก — re-review #185) | ใช้ตามเดิมใน runbook (กฎข้อ 25) — ไม่ refund อัตโนมัติ (owner Q13 = ก); **รอบ 40**: เงินที่เข้าหลัง membership `cancelled` refund อัตโนมัติด้วย workflow นี้ (กฎข้อ 44, ADR-024) |
+| refund payment ของ draft/order ที่ยกเลิก | `POST /admin/payments/:id/refund` (`refundPaymentWorkflow` ไม่ปฏิเสธ draft/order ยกเลิก — re-review #185) | ใช้ตามเดิมใน runbook (กฎข้อ 25) — ไม่ refund อัตโนมัติ (owner Q13 = ก); **รอบ 40**: เงินที่เข้าหลัง membership `cancelled` refund อัตโนมัติด้วย `refundPaymentsWorkflow` (ไม่ใช่ workflow นี้ — credit line ล้มบน order ที่ยกเลิก; กฎข้อ 44, ADR-024) |
 | (รอบ 14) ผู้เยี่ยมชมดูแคมเปญ/กลุ่มที่เปิดอยู่ (ไม่ login) | **ไม่มี** — Store API ไม่มี route ของ promotion/campaign (`/store/promotions*` ไม่มีใน 2.22.1; code `GBT-*`/`GB-*` ต้องไม่รั่ว) และข้อมูลกลุ่มอยู่ใน module ของเรา | custom route อ่านอย่างเดียว 2 ตัว (GB-11, กฎข้อ 28) อ่านผ่าน `query.graph` + link เดิม; ไม่เพิ่ม link/model |
 | (รอบ 14) ข้อมูลสินค้า/ราคาในขอบเขตแคมเปญบน storefront | `GET /store/products?id[]=...` ของ Medusa (ราคาตาม region, publishable key) | ใช้ตามเดิม — GB-11 คืนแค่ `product_id` (รอบ 15: สินค้าเดียวต่อแคมเปญ, กฎข้อ 30) ไม่คืนข้อมูลสินค้าซ้ำ |
 | (รอบ 14, Q19) ที่อยู่/วิธีส่งของ cart ใหม่ที่ใช้ join | ที่อยู่ที่ลูกค้าบันทึก (`customer.addresses`), `POST /store/carts/:id` (ที่อยู่), `GET /store/shipping-options?cart_id=`, `POST /store/carts/:id/shipping-methods`; `createGroupDraftOrderStep` คัดลอกที่อยู่/วิธีส่งจาก cart ลง draft order อยู่แล้ว | ใช้ตามเดิมผ่าน data function ของ starter (`retrieveCustomer`, `listCartShippingMethods`, `setShippingMethod`) — ไม่มี backend เพิ่ม (กฎข้อ 29c) |
@@ -918,26 +918,29 @@ e2e `group-buy-admin-detail.spec.ts`/`group-buy-admin-dates.spec.ts` ที่�
 
 ## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual 2026-11 เฟส 2/6 บน v0.2.0; owner สั่งแก้ทั้งหมดใน release เดียวก่อน go-live)
 ที่มา: GB-BUG-1 (จ่ายได้หลังสิทธิ์ถูกยกเลิก — เงิน), order ที่จ่ายแล้วแต่ยังเป็น draft แสดงปุ่มชำระ/"หมดเวลาชำระเงิน", และคำตัดสิน owner ข้อ (ก)–(ง) ของ group buy
-ADR: **ADR-024** (proposed — guard + ยกเลิก PI + คืนเงินอัตโนมัติ), **ADR-026** (proposed — ล็อกส่วนลดของกลุ่ม)
+ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คืนเงินอัตโนมัติ; ฉบับแก้ตาม review #425), **ADR-026** (accepted 2026-11-21 — ล็อกส่วนลดของกลุ่ม)
 
-### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40)
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40 — แก้ตาม review #425)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
-| ยกเลิก PaymentIntent ที่ค้างของ collection | `deletePaymentSessionsWorkflow` (core-flows 2.22.1 — ลบ session ผ่าน provider → Stripe provider cancel PI) | ใช้ตามเดิม best-effort (กฎข้อ 43) |
-| ปิด payment collection | `cancelPaymentCollectionWorkflow` (เปลี่ยนสถานะ + cancel payment ที่ยังไม่ capture; **ไม่ลบ session**) | ใช้ต่อจาก `deletePaymentSessionsWorkflow` |
-| คืนเงิน payment ของ draft/order ที่ยกเลิก | `refundPaymentWorkflow` | ใช้ตามเดิม (กฎข้อ 44) — ไม่เรียก Stripe ตรง |
-| กันแก้ promotion | ไม่มี lock ต่อ promotion ใน Medusa; admin route `/admin/promotions/:id*` | ขยาย: middleware ของเรา (ADR-026, กฎข้อ 48) |
+| ยกเลิก PaymentIntent ที่ค้างของ collection | `deletePaymentSessionsWorkflow` (core-flows 2.22.1 — ลบ session ผ่าน provider → Stripe `deletePayment` cancel PI; **กลืน error เมื่อ PI `succeeded`** `payment-stripe/dist/core/stripe-base.js:203-208` แล้ว hard-delete session) | ใช้ตามเดิม best-effort (กฎข้อ 43) |
+| ปิด payment collection | `cancelOrderWorkflow` ตั้ง payment collection ทุกชุดของ order เป็น `canceled` อยู่แล้ว (`order/workflows/cancel-order.js:145-152`) แต่**ไม่ลบ session** | ใช้ตามเดิม — **ไม่**เรียก `cancelPaymentCollectionWorkflow` ซ้ำ (throw "already canceled") |
+| คืนเงิน payment ของ draft order ที่ยกเลิก | `refundPaymentsWorkflow` (ไม่สร้าง credit line — ที่ `refund-orphan-payment.ts` ใช้); **ไม่ใช้** `refundPaymentWorkflow` เพราะ refund ที่ provider ก่อนแล้ว credit line `throwIfOrderIsCancelled` (`create-order-refund-credit-lines.js:14-15`) | ใช้ตามเดิม (กฎข้อ 44) — ไม่เรียก Stripe ตรง |
+| กันแก้ promotion | ไม่มี lock ต่อ promotion ใน Medusa; admin route `/admin/promotions/:id*` และ `/admin/campaigns/:id`, `/admin/campaigns/:id/promotions` | ขยาย: middleware ของเรา (ADR-026, กฎข้อ 48) |
 | zod validator ของ admin route | `validateAndTransformBody` + `.refine` | ใช้ตามเดิม (กฎข้อ 46) |
 
 ### Business rules (รอบ 40)
 42. (GB-20 — GB-BUG-1, ADR-024 a) middleware บน `POST /store/payment-collections/:id/payment-sessions` (หลัง ownership, ก่อน `guardPaidStripeSession`): collection ที่ผูก order ซึ่งมี
     `metadata.group_buy_membership_id` → membership ต้อง `awaiting_payment` และ `now < group.pay_deadline_at` และ collection ไม่ `canceled` มิฉะนั้น 400 code `GB_PAYMENT_CLOSED`
     (ไม่เรียก provider, ไม่สร้าง session); collection ที่ไม่ผูก order ของ group buy → `next()` ทันที (อ่าน `query.graph` ≤ 1 ครั้งต่อ request)
-43. (GB-20 — ADR-024 b) job หมดเวลาชำระ (และทุกเส้นทางที่ตั้ง membership ที่มี payment collection เป็น `cancelled`) หลัง `cancelOrderWorkflow`: `deletePaymentSessionsWorkflow` กับ session ที่ไม่ใช่
-    `authorized`/`captured` แล้ว `cancelPaymentCollectionWorkflow` — best-effort: error → `logger.warn` ขึ้นต้น `GROUP_BUY_SESSION_CANCEL_FAILED` (membership/order ยังยกเลิกตามเดิม); ไม่มี collection → noop
+43. (GB-20 — ADR-024 b) job หมดเวลาชำระ (และทุกเส้นทางที่ตั้ง membership ที่มี payment collection เป็น `cancelled`) หลัง `cancelOrderWorkflow` (ซึ่งตั้ง collection `canceled` ให้แล้ว):
+    `deletePaymentSessionsWorkflow` กับ session ของ collection ที่ยังไม่มี payment — **ไม่เรียก** `cancelPaymentCollectionWorkflow`; best-effort: error → `logger.warn` ขึ้นต้น `GROUP_BUY_SESSION_CANCEL_FAILED`
+    (membership/order ยังยกเลิกตามเดิม); ไม่มี collection/session → noop;
+    **race ที่ยอมรับ (ADR-024 ผลที่ตามมา):** PI จ่ายสำเร็จก่อนลบ session แต่ webhook มาหลังลบ → ไม่มี `payment.captured` → ตกตาข่าย ADR-015 D (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND`) และ ops คืนเงินด้วยมือ
 44. (GB-21 — ADR-024 c; แทนส่วน "ไม่ refund อัตโนมัติ" ของ Q13 เฉพาะกรณีนี้) subscriber `payment.captured` ที่ตัดสิน `orphan` และอ่านสถานะใหม่แล้ว membership ยัง `cancelled`:
-    `refundPaymentWorkflow` ยอดคงเหลือ (captured − refunded ด้วย `MathBN`) `note: "Refunded: group buy membership cancelled"` ใต้ lock `group_buy:refund:<payment_id>`;
-    ยอดคงเหลือ ≤ 0 → noop + log info; จากนั้นส่ง alert `GROUP_BUY_PAID_WITHOUT_ORDER` ที่มี `refund_result` (`refunded` / `refund_failed` + ข้อความ error) — refund ล้มไม่ throw ออกจาก subscriber;
+    ใต้ lock `group_buy:refund:<payment_id>` ยอดคงเหลือ (captured − refunded ด้วย `MathBN` จาก `raw_*`) ≤ 0 → noop + log info; ไม่เช่นนั้น **`refundPaymentsWorkflow`** ยอดคงเหลือ
+    `note: "Refunded: group buy membership cancelled"` (ไม่ใช้ `refundPaymentWorkflow` — ดูตารางข้างบน); **ผล `refund_result` ตัดสินจากการอ่าน `payment.refunds` ใหม่หลัง workflow จบหรือ throw**
+    (คงเหลือ 0 → `refunded` แม้ workflow throw — log warn พร้อม error; คงเหลือ > 0 → `refund_failed`) ไม่ใช่จาก exception; จากนั้นส่ง alert `GROUP_BUY_PAID_WITHOUT_ORDER` ที่มี `refund_result` — ไม่ throw ออกจาก subscriber;
     `convert_failed` คงตามกฎข้อ 25 (manual); runbook "group buy: เงินเข้าแต่ไม่มี order" เพิ่มขั้น "ถ้า alert บอก `refunded` ตรวจ refund ใน `GET /admin/payments/:id` แล้วปิด incident"
 45. (GB-22 — storefront) (a) `orderPayView`: membership `cancelled` → **`closed` เสมอ** แม้ collection `completed`/payment captured และถ้ามี payment (predicate "มีการชำระแล้ว") แสดง `order-pay-refund-notice`
     ข้อความไทย "สิทธิ์นี้ถูกยกเลิกแล้ว หากมีการตัดเงิน ระบบคืนเงินเต็มจำนวนให้อัตโนมัติ (ตามรอบของธนาคาร)"; ได้ 400 `GB_PAYMENT_CLOSED` ตอนสร้าง session → อ่าน GB-8 ใหม่แล้ว render `order-pay-closed`;
@@ -948,19 +951,23 @@ ADR: **ADR-024** (proposed — guard + ยกเลิก PI + คืนเง�
 47. (GB-23/GB-24 — owner (ค)) ลิงก์ที่ลูกค้าเห็นมี country code: `pay_url` ในอีเมล = `${STOREFRONT_URL}/th/account/orders/<id>/pay` (constant `STOREFRONT_COUNTRY_CODE = "th"` ที่เดียวใน backend — ร้านไทยอย่างเดียว ADR-014)
     และตรวจ URL อื่นในอีเมลที่สร้างจาก `STOREFRONT_URL` ให้เติมเหมือนกัน; `groupSharePath` ของ storefront = `/<cc>/g/<token>` (cc จากหน้าปัจจุบัน)
 48. (GB-25 — owner (ง), ADR-026) middleware บน `/admin/promotions/:id` และ `/admin/promotions/:id/*` (POST/DELETE): promotion ที่ผูก `group_buy_group` → 400 `not_allowed` ข้อความอังกฤษตาม ADR-026;
-    promotion อื่น (รวมต้นแบบ `GBT-*` — Q5) → `next()`; เส้นทางภายใน (`createGroupWorkflow`, ลบแคมเปญ `draft`) ไม่ผ่าน route จึงไม่กระทบ
+    promotion อื่น (รวมต้นแบบ `GBT-*` — Q5) → `next()`; เส้นทางภายใน (`createGroupWorkflow`, ลบแคมเปญ `draft`) ไม่ผ่าน route จึงไม่กระทบ;
+    (review #425 nit) **campaign ของ Medusa**: `POST /admin/campaigns/:id/promotions` ที่ถอด/เพิ่ม promotion `GB-*` → 400 แบบเดียวกัน;
+    `POST /admin/campaigns/:id` (วัน/budget) ของ campaign ที่ผูก `group_buy_campaign` → 400 เมื่อแคมเปญ group buy ไม่ใช่ `draft` (เปลี่ยน `ends_at` ทำให้กลุ่มเดิมผิดกฎข้อ 2/10 — แก้ที่ admin ของ group buy แทน)
 49. (GB-24 — owner (ข)) หน้ากลุ่ม `/<cc>/g/<token>`: `campaign.starts_at > now` → ไม่แสดงฟอร์ม join/ตัวเลือกสินค้า/ปุ่มสร้างทีม แสดง `group-starts-at` "เริ่ม <วันเวลาไทย>" (backend ปฏิเสธอยู่แล้วตามกฎข้อ 10)
 
 ### Acceptance criteria (รอบ 40)
 - AC-62 (GB-20, กฎข้อ 42–43) integration http (mock Stripe provider ที่นับ `deletePayment`/`initiatePayment`) — **ล้มบน develop** ก่อน:
   (a) membership `awaiting_payment` เลย `pay_deadline_at` (job ยังไม่รัน) When เจ้าของ `POST .../payment-sessions` Then 400 code `GB_PAYMENT_CLOSED` และ provider ไม่ถูกเรียก;
   (b) membership `cancelled` → 400 แบบ (a); (c) membership `awaiting_payment` ก่อน deadline → 200 (regression AC-18 ของ spec 06); (d) collection ของ cart ปกติ → พฤติกรรมเดิม;
-  (e) รัน job หมดเวลาชำระกับ membership ที่มี session `pending` Then provider `deletePayment` ถูกเรียก 1 ครั้ง, collection `canceled`, membership `cancelled`;
-  (f) provider `deletePayment` throw → membership/order ยังถูกยกเลิก และมี log warn `GROUP_BUY_SESSION_CANCEL_FAILED`
-- AC-63 (GB-21, กฎข้อ 44) integration (mock provider + mock notification) — **ล้มบน develop** ก่อน:
-  (a) membership `cancelled` แล้วรัน `processPaymentWorkflow` action `captured` ของ session เดิม Then payment มี refund 1 รายการเท่ายอดที่ capture, note ตามกฎ, alert 1 ฉบับที่มี `refunded`;
-  (b) ส่ง event `payment.captured` ซ้ำ 2 ครั้งพร้อมกัน → refund รวม = ยอดที่ capture (ไม่เกิน), provider `refundPayment` 1 ครั้ง; (c) provider refund throw → subscriber ไม่ throw, alert มี `refund_failed`;
-  (d) `convert_failed` → ไม่มี refund (พฤติกรรมเดิม AC-43/44); (e) unit runbook: หัวข้อ "group buy: เงินเข้าแต่ไม่มี order" มีคำว่า `refunded` และ `GET /admin/payments`
+  (e) รัน job หมดเวลาชำระกับ membership ที่มี session `pending` Then provider `deletePayment` ถูกเรียก 1 ครั้งและ session ของ collection ถูกลบ (**ล้มบน develop** — session ยังอยู่) — membership `cancelled`, collection `canceled` (ผลเดิมของ `cancelOrderWorkflow`), **ไม่มี** log warn `GROUP_BUY_SESSION_CANCEL_FAILED`;
+  (f) provider `deletePayment` throw → membership/order ยังถูกยกเลิก และมี log warn `GROUP_BUY_SESSION_CANCEL_FAILED` 1 บรรทัด;
+  (g) (regression race ที่ยอมรับ) หลัง (e) ส่ง webhook `payment_intent.succeeded` ของ session ที่ถูกลบ (mock payload ผ่าน `payment.webhook_received`) Then มี log error `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` และ notification ถึง `OPS_ALERT_EMAIL` 1 ฉบับ (AC-15 ของ spec 06) และไม่มี payment/refund ถูกสร้าง
+- AC-63 (GB-21, กฎข้อ 44) integration (mock **provider** + mock notification; **ไม่ mock workflow ของ Medusa**) — **ล้มบน develop** ก่อน:
+  (a) draft order ของกลุ่มที่ถูกยกเลิกจริงด้วยเส้นทางของ job (`cancelOrderWorkflow`) แล้วรัน `processPaymentWorkflow` action `captured` ของ session เดิม Then payment มี refund 1 รายการเท่ายอดที่ capture, note ตามกฎ, alert 1 ฉบับที่มี `refunded`;
+  (b) ส่ง event `payment.captured` ซ้ำ 2 ครั้งพร้อมกัน → refund รวม = ยอดที่ capture (ไม่เกิน), provider `refundPayment` 1 ครั้ง; (c) provider refund throw (ไม่มี refund ถูกบันทึก) → subscriber ไม่ throw, alert มี `refund_failed`;
+  (c2) workflow throw **หลัง** provider คืนเงินและบันทึก refund แล้ว (จำลองด้วย step/hook ที่ throw หลังบันทึก หรือพิสูจน์จาก source ว่าเป็นไปไม่ได้กับ `refundPaymentsWorkflow` แล้วบันทึกใน PR) → alert มี `refunded` **ไม่ใช่** `refund_failed`;
+  (d) `convert_failed` → ไม่มี refund (พฤติกรรมเดิม AC-43/44); (e) unit runbook: หัวข้อ "group buy: เงินเข้าแต่ไม่มี order" มีคำว่า `refunded`, `refund_failed` และ `GET /admin/payments`
 - AC-64 (GB-22, กฎข้อ 45) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน:
   (a) unit `orderPayView`: membership `cancelled` + collection `completed` → `closed`; `awaiting_payment` + ก่อน deadline + collection `completed` → `paid` (เดิม);
   (b) unit `groupBuyMembershipView`: `awaiting_payment` + `payment_status=captured` + เลย deadline → `processing`; ไม่มี payment + เลย deadline → `expired` (เดิม);
@@ -972,7 +979,8 @@ ADR: **ADR-024** (proposed — guard + ยกเลิก PI + คืนเง�
   (b) `group-share-link` มี path `/th/g/<token>`; unit `groupSharePath("th", t)` = `/th/g/<t>`
 - AC-67 (GB-25, กฎข้อ 48) integration http — **ล้มบน develop** ก่อน: (a) promotion `GB-<token>` ของกลุ่ม `POST /admin/promotions/:id { application_method: { value: 50 } }` → 400 ข้อความมี `locked` และค่าเดิมไม่เปลี่ยน;
   (b) `POST /admin/promotions/:id/rules/batch`, `/target-rules/batch` และ `DELETE /admin/promotions/:id` ของ promotion เดียวกัน → 400; (c) ต้นแบบ `GBT-*` และ promotion ปกติแก้ได้ (200);
-  (d) สร้างกลุ่มใหม่หลังแก้ต้นแบบได้ส่วนลดใหม่ (regression Q5); (e) ลบแคมเปญ `draft` ยังสำเร็จ (regression)
+  (d) สร้างกลุ่มใหม่หลังแก้ต้นแบบได้ส่วนลดใหม่ (regression Q5); (e) ลบแคมเปญ `draft` ยังสำเร็จ (regression);
+  (f) `POST /admin/campaigns/:id/promotions { remove: [<GB-* id>] }` → 400; `POST /admin/campaigns/:id { ends_at }` ของ campaign ที่ผูกแคมเปญ group buy `active` → 400; campaign ที่ไม่เกี่ยวกับ group buy → 200
 
 ### Test plan (รอบ 40)
 | ระดับ | AC |
@@ -985,19 +993,20 @@ ADR: **ADR-024** (proposed — guard + ยกเลิก PI + คืนเง�
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | GB-20 | (GB-BUG-1 — เงิน) guard `GB_PAYMENT_CLOSED` + ยกเลิก session/collection ตอนหมดเวลาชำระ (กฎข้อ 42–43) | `src/api/store/payment-collections/group-buy-payment-guard.ts` (ใหม่), `src/api/middlewares.ts`, `src/jobs/group-buy-deadline.ts` หรือ workflow ที่ job เรียก, `src/workflows/group-buy/*` (helper ยกเลิก session), `src/api/error-handler.ts` (ถ้า 400 ไม่คง code), test integration | ~150 LOC + ~250 LOC test | AC-62 | ADR-024 accepted | `middlewares.ts` (PAY-8, PAY-9, GB-25) |
-| GB-21 | (เงิน) คืนเงินอัตโนมัติเมื่อเงินเข้าหลัง membership ยกเลิก + alert มีผล refund + runbook (กฎข้อ 44) | `src/subscribers/group-buy-payment-captured.ts`, `src/modules/group_buy/utils/membership-payment.ts`, `src/workflows/group-buy/refund-cancelled-membership.ts` (ใหม่), `src/modules/resend/templates.ts`, `docs/ops/production.md` (หัวข้อ runbook เดิม), `src/__tests__/ops-runbook.unit.spec.ts`, test integration | ~150 LOC + ~250 LOC test | AC-63 | ADR-024 accepted, **PAY-8** (helper `active-order-change`) | `templates.ts` (GB-23 แตะ pay_url — คนละฟังก์ชัน) |
+| GB-21 | (เงิน) คืนเงินอัตโนมัติเมื่อเงินเข้าหลัง membership ยกเลิก + alert มีผล refund + runbook (กฎข้อ 44) | `src/subscribers/group-buy-payment-captured.ts`, `src/modules/group_buy/utils/membership-payment.ts`, `src/workflows/group-buy/refund-cancelled-membership.ts` (ใหม่), `src/modules/resend/templates.ts`, `docs/ops/production.md` (หัวข้อ runbook เดิม), `src/__tests__/ops-runbook.unit.spec.ts`, test integration | ~150 LOC + ~250 LOC test | AC-63 | ADR-024 accepted ☑ (ใช้ `refundPaymentsWorkflow` — ไม่พึ่ง PAY-8 แล้ว) | `templates.ts` (GB-23 แตะ pay_url — คนละฟังก์ชัน) |
 | GB-22 | (storefront) หน้า pay ไม่หลอกว่า "ชำระแล้ว" เมื่อสิทธิ์ยกเลิก + รายการ account แสดง "กำลังยืนยัน" เมื่อจ่ายแล้วแต่ยังเป็น draft + GB-8 รายการคืน `payment_status` (กฎข้อ 45) | `apps/storefront/src/lib/util/order-pay.ts` (+ test), `apps/storefront/src/lib/util/group-buy-orders.ts` (+ test), component หน้า pay/รายการ account, `apps/backend/src/api/store/customers/me/group-buy/memberships/route.ts` (+ integration), e2e | ~120 LOC + ~200 LOC test | AC-64 | **GB-20** (code `GB_PAYMENT_CLOSED`) | — |
 | GB-23 | (backend เล็ก) `max_units_per_person ≤ max_quantity` ที่ API + `pay_url` มี `/th` (กฎข้อ 46–47) | `src/api/admin/group-buy/validators.ts`, `src/workflows/group-buy/campaign.ts`, `src/workflows/group-buy/group-outcome.ts`, constant ใน `src/lib/`, test | ~60 LOC + ~120 LOC test | AC-65 | PR เอกสารรอบ 40 | — |
 | GB-24 | (storefront) แคมเปญยังไม่เริ่มซ่อนฟอร์ม join + ลิงก์แชร์ `/th/g/<token>` (กฎข้อ 47, 49); qa | `apps/storefront/src/lib/util/group-page.ts` (+ test), `modules/group-buy/components/group-page/*`, e2e | ~60 LOC + ~120 LOC test | AC-66 | PR เอกสารรอบ 40 | — |
 | GB-25 | ล็อกส่วนลดของกลุ่ม — middleware กันแก้ promotion `GB-*` ที่ admin route (กฎข้อ 48) | `src/api/admin/promotions/group-buy-lock.ts` (ใหม่), `src/api/middlewares.ts`, test integration | ~70 LOC + ~180 LOC test | AC-67 | ADR-026 accepted, owner ตอบ Q24 | `middlewares.ts` |
 
-ลำดับ: GB-20 → (GB-21 ← PAY-8) ∥ GB-22; GB-23 ∥ GB-24 ∥ GB-25 อิสระ (GB-25 sync `middlewares.ts` หลัง GB-20)
+ลำดับ: GB-20 → GB-22; GB-21 อิสระ (หลัง ADR-024 accepted); GB-23 ∥ GB-24 ∥ GB-25 อิสระ (GB-25 sync `middlewares.ts` หลัง GB-20)
+GB-22 ขยาย allow-list ของ GB-8 (`order.payment_status`) — บันทึกเป็นภาคผนวก 2026-11-21 ใน ADR-016 แล้ว
 
 ## Open questions
-- **Q24** (รอบ 40, ADR-026) "ล็อกส่วนลดตอน join" ตีความว่า **ส่วนลดของกลุ่ม (`GB-<token>`) แก้ไม่ได้ตลอดอายุกลุ่ม** เพื่อให้สมาชิกกลุ่มเดียวกันได้ส่วนลดเท่ากัน (ส่วนลดของแต่ละคนถูก freeze ใน draft order ตอน join อยู่แล้ว — กฎข้อ 5)
+- ~~**Q24**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** ล็อก `GB-<token>` ตลอดอายุกลุ่ม (ADR-026 accepted) → GB-25 — คำถามเดิม: (รอบ 40, ADR-026) "ล็อกส่วนลดตอน join" ตีความว่า **ส่วนลดของกลุ่ม (`GB-<token>`) แก้ไม่ได้ตลอดอายุกลุ่ม** เพื่อให้สมาชิกกลุ่มเดียวกันได้ส่วนลดเท่ากัน (ส่วนลดของแต่ละคนถูก freeze ใน draft order ตอน join อยู่แล้ว — กฎข้อ 5)
   และต้นแบบ `GBT-*` ยังแก้ได้ (มีผลเฉพาะกลุ่มใหม่ — Q5): (ก) **[Recommended]** ตามนี้ — middleware กัน admin route (ADR-026 ทางเลือก 1) ~70 LOC;
   (ข) ล็อกตั้งแต่สมาชิกคนแรก join (ก่อนนั้นแก้ได้) — เพิ่มเงื่อนไขนับ membership; (ค) ไม่กันการแก้ แต่ join ตรวจกับ snapshot แล้วปฏิเสธ (ADR-026 ทางเลือก 2)
-- **Q25** (รอบ 40, ADR-024) อนุมัติ ADR-024 (guard + ยกเลิก PI + คืนเงินอัตโนมัติ) — GB-20/GB-21 เริ่มไม่ได้จนกว่าจะ accepted
+- ~~**Q25**~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-024** (ฉบับแก้ตาม review #425) → GB-20/GB-21 เริ่มได้เมื่อ PR เอกสารรอบ 40 merge
 - ~~**Q23**~~ **ตัดสินแล้ว (owner 2026-11-19 ปิดรอบ 37) = (ก)** คงข้อจำกัดของกฎข้อ 41f ไม่มี task — คำถามเดิม: (รอบ 37, GB-18 กฎข้อ 41f — ไม่บล็อก GB-18) กันส่วนลด fixed ≥ ราคาตอน**แก้**ที่หน้า promotion ของ Medusa ด้วยไหม — Medusa มีจุดขยายให้แล้วโดยไม่ต้อง reinvent:
   handler ของ `updatePromotionsWorkflow.hooks.promotionsUpdated` ที่ throw ทำให้ `POST /admin/promotions/:id` ล้มและ compensation ของ `updatePromotionsStep` คืนค่าเดิม (ตรวจ source 2.22.1 — ตาราง "สิ่งที่ Medusa มีให้อยู่แล้ว" รอบ 37)
   (ก) **[Recommended]** คงข้อจำกัดตามที่ owner รับทราบ 2026-11-18 — เหตุผล: การแก้ส่วนลดที่หน้า promotion เป็นงานตั้งใจของ admin, hook กันได้แค่ `value` (ไม่ครอบการเปลี่ยนราคา variant/price list หลังสร้าง), ไม่มีงานเพิ่ม;

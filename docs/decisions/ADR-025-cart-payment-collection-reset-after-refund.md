@@ -1,6 +1,6 @@
 # ADR-025 แยก payment collection ใหม่ให้ cart ที่ถูกคืนเงินอัตโนมัติก่อนชำระซ้ำ
 
-สถานะ: **proposed** (planner รอบ 40, 2026-11-21)
+สถานะ: **accepted** (owner อนุมัติ 2026-11-21 — ทางเลือก 2; spec 06 Q10)
 เกี่ยวข้อง: ADR-013, ADR-015 (+ ภาคผนวก 2), spec 06 กฎข้อ 7, 8, 11 (รอบ 40), task PAY-9; spec 03 (flash เกินสิทธิ์), spec 02 (แย่ง voucher ใบสุดท้าย)
 
 ## บริบท
@@ -35,4 +35,4 @@ cart เดิม (ที่อยู่ วิธีส่ง โค้ดส�
 - order ที่ได้หลังจ่ายซ้ำมีเฉพาะ collection ใหม่ → `payment_status` ถูกต้อง
 - storefront ต้องจัดการ code ใหม่ 1 จุด (helper เดียวของ CORE-4i) และ e2e ต้องจำลอง "คืนเงินแล้วจ่ายซ้ำ"
 - ถ้า bump Medusa แล้ว `compensatePaymentIfNeededStep` เปลี่ยนพฤติกรรม (เช่นสร้าง collection ใหม่เอง) → ทบทวน ADR นี้ (เพิ่มในเช็กลิสต์ bump ของ spec 07)
-- รายงาน upstream (refund แล้ว recreate session ด้วย `data` เดิม + payment ที่คืนค้างใน collection) — session หลักถาม owner ก่อนเปิด issue
+- รายงาน upstream (refund แล้ว recreate session ด้วย `data` เดิม + payment ที่คืนค้างใน collection) — **owner อนุมัติให้เปิด issue 2026-11-21** (session หลักเปิด; ร่างอยู่ใน PR ของ OPS-32)

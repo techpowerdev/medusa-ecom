@@ -297,8 +297,9 @@ follow-up (ไม่ใช่ task บังคับ — ทำในงาน�
     (b) order มี `order_change` ที่ `status ∈ {pending, requested}` (return/claim/exchange/order edit ที่ค้าง) → throw `MedusaError(NOT_ALLOWED, "Cannot refund while this order has an active return, claim, exchange or edit. Confirm or cancel it first.")`
         → **400** ก่อนเรียก provider (ไม่มี refund ใน Stripe, payment ไม่เปลี่ยน); ไม่มี → `next()`;
     (c) ข้อความอังกฤษ (admin) ห้ามเรียก Stripe ตรง; ไม่แตะ `refundPaymentWorkflow`; ลงทะเบียนใน admin middlewares ของเรา (ไฟล์ใหม่ `src/api/admin/payments/middlewares.ts` spread เข้า `middlewares.ts`)
-    (d) เส้นทาง refund อัตโนมัติของเรา (ADR-024 ข้อ c) ตรวจเงื่อนไขเดียวกันด้วย helper เดียว (draft order ที่ยกเลิกไม่มี order change — เป็นการกันไว้ก่อน)
-11. (PAY-9 — O-2, ADR-025 proposed) payment collection ของ **cart** ที่ยังไม่มี order และมี payment ที่ capture แล้วถูกคืนครบ (`MathBN` จาก `raw_*`) เมื่อลูกค้าสร้าง session ใหม่
+    (d) (แก้ตาม review #425) เส้นทาง refund อัตโนมัติของ group buy (ADR-024 ข้อ c) ใช้ `refundPaymentsWorkflow` ที่ไม่สร้าง credit line จึงไม่ผ่าน route นี้และไม่ต้องใช้ helper นี้
+    (e) รายงาน upstream เรื่อง `refundPaymentWorkflow` คืนเงินก่อนสร้าง credit line — **owner อนุมัติให้เปิด issue 2026-11-21** (session หลักเปิด; ร่างอยู่ใน PR body ของ PAY-8)
+11. (PAY-9 — O-2, ADR-025 accepted 2026-11-21) payment collection ของ **cart** ที่ยังไม่มี order และมี payment ที่ capture แล้วถูกคืนครบ (`MathBN` จาก `raw_*`) เมื่อลูกค้าสร้าง session ใหม่
     (`POST /store/payment-collections/:id/payment-sessions`) → dismiss link cart ↔ collection (workflow + compensation, lock `cart_id`) แล้วตอบ **409** `{ type: "conflict", code: "PAYMENT_COLLECTION_RESET", message }`
     (code ใน allow-list ของ PROMO-2); storefront (`initiatePaymentSession`) ได้ code นี้ → อ่าน cart ใหม่ แล้วเรียกซ้ำ **1 ครั้ง** (สร้าง collection ใหม่ด้วย route ของ Medusa) — ครั้งที่สองยังได้ code เดิม → error ไทยทั่วไป;
     collection ที่ผูก order, ไม่มี payment, หรือมี payment ที่ยังไม่คืนครบ → `next()` (พฤติกรรมเดิม); ลำดับ middleware ตาม ADR-025
@@ -323,14 +324,14 @@ follow-up (ไม่ใช่ task บังคับ — ทำในงาน�
 ### Tasks (รอบ 40)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| PAY-8 | (B-1 — เงิน) middleware กัน refund ของ admin เมื่อ order มี active order change (กฎข้อ 10) + helper ตรวจ order change ใช้ร่วม GB-21 + ร่าง issue upstream ใน PR body (ไม่เปิดเอง) | `apps/backend/src/api/admin/payments/middlewares.ts` (ใหม่), `apps/backend/src/lib/active-order-change.ts` (ใหม่ + unit), `apps/backend/src/api/middlewares.ts`, `integration-tests/http/admin-refund-guard.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-21 | PR เอกสารรอบ 40 merge | `middlewares.ts` (GB-20, PAY-9, GB-25) |
-| PAY-9 | (O-2 — เงิน, ADR-025 ต้อง accepted) reset collection ของ cart ที่ถูกคืนเงิน (กฎข้อ 11) + storefront เรียก `initiatePaymentSession` ซ้ำ 1 ครั้งเมื่อได้ `PAYMENT_COLLECTION_RESET` | `apps/backend/src/api/store/payment-collections/refunded-collection-reset.ts` (ใหม่), `apps/backend/src/workflows/payment/reset-cart-payment-collection.ts` (ใหม่), `apps/backend/src/api/middlewares.ts`, `apps/backend/src/api/error-handler.ts` (allow-list), `apps/storefront/src/lib/data/cart.ts`, test integration + `apps/storefront/e2e/pay-9-refunded-cart-repay.spec.ts` | ~180 LOC + ~250 LOC test | AC-22 | **GB-20** (ลำดับ middleware บน route เดียวกัน), ADR-025 accepted | `middlewares.ts`, `cart.ts` (FS-22 แตะ error map ของ checkout — คนละฟังก์ชัน) |
+| PAY-8 | (B-1 — เงิน) middleware กัน refund ของ admin เมื่อ order มี active order change (กฎข้อ 10) + ร่าง issue upstream ใน PR body (owner อนุมัติเปิดแล้ว — session หลักเปิด) | `apps/backend/src/api/admin/payments/middlewares.ts` (ใหม่), `apps/backend/src/lib/active-order-change.ts` (ใหม่ + unit), `apps/backend/src/api/middlewares.ts`, `integration-tests/http/admin-refund-guard.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-21 | PR เอกสารรอบ 40 merge | `middlewares.ts` (GB-20, PAY-9, GB-25) |
+| PAY-9 | (O-2 — เงิน, ADR-025 accepted 2026-11-21) reset collection ของ cart ที่ถูกคืนเงิน (กฎข้อ 11) + storefront เรียก `initiatePaymentSession` ซ้ำ 1 ครั้งเมื่อได้ `PAYMENT_COLLECTION_RESET` | `apps/backend/src/api/store/payment-collections/refunded-collection-reset.ts` (ใหม่), `apps/backend/src/workflows/payment/reset-cart-payment-collection.ts` (ใหม่), `apps/backend/src/api/middlewares.ts`, `apps/backend/src/api/error-handler.ts` (allow-list), `apps/storefront/src/lib/data/cart.ts`, test integration + `apps/storefront/e2e/pay-9-refunded-cart-repay.spec.ts` | ~180 LOC + ~250 LOC test | AC-22 | **GB-20** (ลำดับ middleware บน route เดียวกัน), ADR-025 accepted ☑ | `middlewares.ts`, `cart.ts` (FS-22 แตะ error map ของ checkout — คนละฟังก์ชัน) |
 
 ลำดับ: PAY-8 ∥ GB-20 (คนละ route แต่ไฟล์ `middlewares.ts` ร่วม — ตัวที่ merge ทีหลัง sync) → PAY-9 (หลัง GB-20)
 
 ## Open questions
-- Q10 (รอบ 40) อนุมัติ ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน — ทางเลือก 2) — PAY-9 เริ่มไม่ได้จนกว่าจะ accepted;
-  ทางเลือกอื่นใน ADR: storefront สร้าง cart ใหม่ (ไม่ครอบ client อื่น)
+- ~~Q10~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-025 ทางเลือก 2** → PAY-9 เริ่มได้หลัง GB-20; คำถามเดิม (รอบ 40): อนุมัติ ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน)
+  หรือให้ storefront สร้าง cart ใหม่ (ไม่ครอบ client อื่น)
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
   — (2026-11-09, รอบ 25) owner **ยังไม่ยืนยัน**: ใช้ Stripe test mode ต่อไป; การยืนยันนี้เป็นข้อ 6 ใน "Go-live checklist" ของ `docs/ops/production.md` (ต้องทำก่อนเปิดร้านจริง) — ไม่มี task
 - ~~Q2~~ ตัดสินแล้ว (owner, 2026-10-25): production ห้าม `pp_system_default` แบบ D1 ของ ADR-010 (seed + `check:go-live`;

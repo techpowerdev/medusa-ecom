@@ -6,8 +6,9 @@
 **release v0.2.0 แล้ว (2026-11-19)** — PR #423 `develop → main` (merge commit `e274d387`, tag `v0.2.0`): ทุก task ในตาราง milestone/Admin UI ที่เคยเป็น ☑ เปลี่ยนเป็น 🚀 (บรรทัดประวัติคงสัญลักษณ์ ณ วันที่บันทึก) · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
 **รอบ 40 (2026-11-21, เอกสารล้วน) — สถานะล่าสุด**: owner ทดสอบ manual เฟส 1–9 บน v0.2.0 (develop `87cb20df`) แล้วสั่งแก้ทั้งหมดใน **release เดียว (เสนอ v0.3.0) ก่อน go-live** →
-30 task ☐ ในหัวข้อ "Release v0.3.0 — แก้จากการทดสอบ manual 2026-11" ด้านล่าง (spec 01–08 หัวข้อ "Follow-up รอบ 40") · **ADR ใหม่ proposed**: ADR-024 (GB กัน + ยกเลิก PI + คืนเงินอัตโนมัติ), ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน),
-ADR-026 (ล็อกส่วนลดของกลุ่ม) · **คำถาม owner**: spec 04 Q24 (ตีความ "ล็อกส่วนลด"), Q25 (= อนุมัติ ADR-024), spec 06 Q10 (= อนุมัติ ADR-025), spec 01 Q-C12 (กลไกค้นหา — มีค่าเริ่มต้น ไม่บล็อก) ·
+30 task ☐ ในหัวข้อ "Release v0.3.0 — แก้จากการทดสอบ manual 2026-11" ด้านล่าง (spec 01–08 หัวข้อ "Follow-up รอบ 40") · **ADR ใหม่ accepted (owner 2026-11-21)**: ADR-024 (GB กัน + ยกเลิก PI + คืนเงินอัตโนมัติ — ฉบับแก้ตาม review #425), ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน),
+ADR-026 (ล็อกส่วนลดของกลุ่ม) + ภาคผนวก ADR-016 (allow-list `payment_status`) · **owner ตอบครบ 2026-11-21**: spec 04 Q24 = ก, Q25 อนุมัติ, spec 06 Q10 อนุมัติ, spec 01 Q-C12 = ก, กฎลบ pool (spec 02 กฎ 36) ยืนยัน,
+เปิด issue upstream ทั้งสองเรื่องได้ (session หลักเปิด; ร่างอยู่ใน PAY-8/OPS-32) · ไม่มีคำถามค้าง ·
 เลข ADR สำหรับ staging/เปลี่ยนวิธี deploy (เดิมอ้าง ADR-024) เลื่อนเป็นเลขว่างถัดไป (ADR-027) · ไม่มี PR เปิด (นอกจาก PR เอกสารรอบนี้) ·
 (ประวัติ) **ปิดรอบ 39 (2026-11-19, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — รอ release ถัดไปหลัง v0.1.0): ADM-38 #421 + เอกสาร #420 (รอบ 39) ·
 ผล ADM-38: ตาราง Ledger คอลัมน์ Affiliate td 274px (เนื้อหา 250px) คง tooltip "ชื่อ อีเมล" ของ `TruncatedCell`, คอลัมน์สุดท้าย Status เป็น auto → เห็น Status โดยไม่เลื่อนแนวนอน (qa ที่ 1280: ตาราง 3163px → 1036px, Status right 3395 → 1268px; Status auto 174/334/734px ที่ 1280/1440/1920) ·
@@ -440,14 +441,14 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 
 ## Release v0.3.0 — แก้จากการทดสอบ manual 2026-11 (รอบ 40, owner สั่ง 2026-11-21 — ต้องครบก่อน go-live)
 ที่มา: การทดสอบ manual เฟส 1–9 บน v0.2.0 (2026-11-20) · owner: รวมทั้งหมดใน release เดียวแล้วค่อย go-live · เลข v0.3.0 = release ถัดจาก v0.2.0 (ป้าย v0.3.0–v1.0 ของ M3–M7 ด้านบนเป็นแผนเดิมก่อนรวม release — ไม่ผูกกับเลขนี้)
-เงื่อนไข release: ทุกแถวด้านล่าง ☑ + ADR-024/025/026 accepted · ไม่มี task ใดแก้ `CLAUDE.md`/`.claude/agents/*`
+เงื่อนไข release: ทุกแถวด้านล่าง ☑ (ADR-024/025/026 accepted แล้ว 2026-11-21) · ไม่มี task ใดแก้ `CLAUDE.md`/`.claude/agents/*`
 | ลำดับ | Task | spec | งาน | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|---|
 | 1 | PAY-8 | 06 | **เงิน (B-1)** กัน refund ของ admin เมื่อ order มี return/claim/exchange/edit ค้าง (+ ร่าง issue upstream) | PR เอกสารรอบ 40 | — | ☐ |
-| 1 | GB-20 | 04 | **เงิน (GB-BUG-1)** guard `GB_PAYMENT_CLOSED` + ยกเลิก session/collection ตอนหมดเวลาชำระ | ADR-024 accepted | — | ☐ |
-| 2 | GB-21 | 04 | **เงิน** คืนเงินอัตโนมัติเมื่อเงินเข้าหลังสิทธิ์ยกเลิก + alert + runbook | ADR-024, PAY-8 | — | ☐ |
+| 1 | GB-20 | 04 | **เงิน (GB-BUG-1)** guard `GB_PAYMENT_CLOSED` + ลบ session ที่ค้าง (cancel PI) ตอนหมดเวลาชำระ | PR เอกสารรอบ 40 | — | ☐ |
+| 1 | GB-21 | 04 | **เงิน** คืนเงินอัตโนมัติ (`refundPaymentsWorkflow`) เมื่อเงินเข้าหลังสิทธิ์ยกเลิก + alert + runbook | PR เอกสารรอบ 40 | — | ☐ |
 | 2 | GB-22 | 04 | **เงิน (UI)** หน้า pay ไม่ขึ้น "ชำระแล้ว" เมื่อยกเลิก + รายการ account "กำลังยืนยัน" เมื่อจ่ายแล้วแต่ยัง draft | GB-20 | ✓ | ☐ |
-| 2 | PAY-9 | 06 | **เงิน (O-2)** reset payment collection ของ cart ที่ถูกคืนเงินก่อนจ่ายซ้ำ | GB-20, ADR-025 accepted | ✓ | ☐ |
+| 2 | PAY-9 | 06 | **เงิน (O-2)** reset payment collection ของ cart ที่ถูกคืนเงินก่อนจ่ายซ้ำ | GB-20 | ✓ | ☐ |
 | 3 | ADM-39 | 08 | (ADM-B1) ฟอร์มสร้างทุกตัวใน admin ไม่ยิงซ้ำระหว่าง modal ปิด | PR เอกสารรอบ 40 | ✓ | ☐ |
 | 3 | EV-19 | 02 | (EV-M-12) `id` เป็น key เรียงรองของรายการ code | PR เอกสารรอบ 40 | — | ☐ |
 | 4 | ADM-40 ∥ ADM-41 ∥ ADM-42 | 08 | ค้นหา Affiliates (UI) ∥ Payouts ไม่ล้น 1280/1440 ∥ error ทุกช่องในฟอร์ม program | ADM-39 | ✓ | ☐ |
@@ -456,20 +457,20 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | 4 | FS-20 → FS-21 | 03 | route สิทธิ์ flash ที่เหลือ → PDP/cart/review จำกัดจำนวน + เตือนก่อนจ่าย | FS-21 ← FS-20 | FS-21 ✓ | ☐ |
 | 4 | FS-22 | 03 | ข้อความ "คืนเงินอัตโนมัติแล้ว" เมื่อแพ้ race flash/e-voucher | PR เอกสารรอบ 40 | ✓ | ☐ |
 | 4 | GB-23 ∥ GB-24 | 04 | API ตรวจ `max_units_per_person ≤ max_quantity` + `pay_url` มี `/th` ∥ แคมเปญยังไม่เริ่มซ่อน join + ลิงก์แชร์ `/th/g/` | PR เอกสารรอบ 40 | GB-24 ✓ | ☐ |
-| 4 | GB-25 | 04 | ล็อกส่วนลดของกลุ่ม (middleware `/admin/promotions/:id*`) | ADR-026 accepted + Q24 | — | ☐ |
+| 4 | GB-25 | 04 | ล็อกส่วนลดของกลุ่ม (middleware `/admin/promotions/:id*` + `/admin/campaigns/:id*`) | PR เอกสารรอบ 40 (sync `middlewares.ts`) | — | ☐ |
 | 4 | AF-24 | 05 | ประมาณการค่าคอมก่อน VAT + pending สุทธิหลัง reversal | PR เอกสารรอบ 40 | ✓ | ☐ |
 | 4 | CORE-68 … CORE-74 | 01 | แบ่งหน้า order ∥ `step=review` → `step=payment` ∥ ค้นหาผลตรงกัน + `/store?q=` ∥ ข้อความคืนสินค้าไม่มี stock ∥ ตะกร้าไม่กระพริบ (0) ∥ สมัครด้วยอีเมลที่มีบัญชี ∥ ไม่ส่ง order-placed ของ order ที่ยกเลิก | PR เอกสารรอบ 40 | 68–73 ✓, 74 — | ☐ |
 | 4 | OPS-30 ∥ OPS-31 ∥ OPS-32 | 07 | `LOG_LEVEL=http` + เอกสาร HTTPS ∥ warning ซ้ำตอน migrate + publishable key เดียว ∥ log ชัดเมื่อ complete ล้มหลังจ่าย + runbook | PR เอกสารรอบ 40 | — | ☐ |
 
-**critical path (เงินก่อน)**: PR เอกสารรอบ 40 → owner accept ADR-024/025/026 + ตอบ Q24 → PAY-8 ∥ GB-20 → (GB-21, GB-22, PAY-9) → ADM-39 → EV-19 → ที่เหลือ
+**critical path (เงินก่อน)**: PR เอกสารรอบ 40 → PAY-8 ∥ GB-20 ∥ GB-21 → (GB-22, PAY-9 หลัง GB-20) → ADM-39 → EV-19 → ที่เหลือ
 **ไฟล์ร่วมที่ต้องเรียง merge** (ตัวที่ merge ทีหลัง merge `origin/develop` แล้วรอ CI ใหม่):
 - `apps/backend/src/api/middlewares.ts`: PAY-8 → GB-20 → PAY-9 → GB-25 (ลำดับ middleware บน `POST /store/payment-collections/:id/payment-sessions` ตาม ADR-025: ownership → GB guard → reset → `guardPaidStripeSession`)
 - `apps/storefront/src/lib/data/cart.ts`: PAY-9 ∥ FS-22 (คนละฟังก์ชัน)
 - admin `affiliate/*`, `evoucher/*` ที่ใช้ `createSingleFlight`: ADM-39 ก่อน ADM-40/41/42, EV-21 (EV-22 ถ้าแตะ `order-evouchers.tsx`)
 - `docs/ops/production.md`: GB-21, OPS-30, OPS-32 (คนละหัวข้อ)
 - ขั้น review ของ checkout: CORE-69 ∥ FS-21; หน้า account orders: CORE-68 ∥ GB-22
-**ทำขนานได้ทันทีหลัง PR เอกสาร merge (ไม่รอ ADR)**: PAY-8, ADM-39, EV-19, EV-20, EV-22, FS-20, FS-22, GB-23, GB-24, AF-24, CORE-68..74, OPS-30..32 (จำกัด builder พร้อมกันตามเครื่อง — CLAUDE.md)
-**รายงาน upstream (ถาม owner ก่อนเปิด issue สาธารณะ)**: B-1 `refundPaymentWorkflow` refund ก่อน credit line (PAY-8), `compensatePaymentIfNeededStep` recreate session ด้วย `data` เดิม + log `[object Object]` (OPS-32/ADR-025)
+**ทำขนานได้ทันทีหลัง PR เอกสาร merge**: PAY-8, GB-20, GB-21, GB-25 (sync `middlewares.ts` ตามลำดับข้างบน), ADM-39, EV-19, EV-20, EV-22, FS-20, FS-22, GB-23, GB-24, AF-24, CORE-68..74, OPS-30..32 (จำกัด builder พร้อมกันตามเครื่อง — CLAUDE.md)
+**รายงาน upstream (owner อนุมัติเปิด issue 2026-11-21 — session หลักเปิด)**: B-1 `refundPaymentWorkflow` refund ก่อน credit line (PAY-8), `compensatePaymentIfNeededStep` recreate session ด้วย `data` เดิม + log `[object Object]` (OPS-32/ADR-025)
 **ไม่ทำ (owner 2026-11-21 — พฤติกรรมที่ยอมรับ)**: ฟอร์ม Refund ของ Medusa ค่าเริ่มต้นยอดเต็ม (dashboard core), ป้าย "(ICT)" บนเครื่อง UTC (เครื่องแอดมินตั้งเวลาไทย — ADR-018), หน้า order admin แสดงราคารวม VAT
 **ก่อน go-live (เพิ่มจากการทดสอบ — config ไม่ใช่ task)**: ตั้ง `OPS_ALERT_EMAIL`, `EVOUCHER_ADMIN_EMAIL`, `RESEND_API_KEY` (เฟส 3b/4); เก็บกวาดข้อมูลทดสอบใน DB dev ตามบันทึกการทดสอบ (ไม่เกี่ยวกับ prod)
 
