@@ -468,6 +468,49 @@ EV-7d หลัง CORE-4i (ซึ่งรอ PAY-3b1/PAY-3b2 ของ spec 06
 EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส่วน backordered); EV-8 ∥ EV-4/EV-5/EV-6 หลัง EV-3 (EV-8 ต้องไม่ขัดกับกลไก checkout digital ที่ EV-3
 ส่งมอบ — ถ้า EV-3 ตั้ง `requires_shipping=false` ให้แล้ว ส่วนนั้นของ EV-8 เหลือเพียง test ของ AC-11)
 
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual เฟส 2/4/8; owner สั่งแก้ใน release เดียว)
+ที่มา: EV-M-12 (แบ่งหน้า code ซ้ำ/หาย), ไม่มีปุ่มลบ pool ใน admin + pool ว่างขึ้น "Low stock", admin มองไม่เห็นธง `evoucher_backordered` (`GET /admin/orders/:id?fields=*items` คืน `items[].metadata` = `{}`),
+ผู้แพ้ race voucher ใบสุดท้าย → ข้อความอยู่ใน spec 03 กฎข้อ 27 (FS-22)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| ลำดับการแบ่งหน้าที่คงที่ | `pagination.order` ของ `listAndCount`/`query.graph` รับหลาย key | เพิ่ม `id` เป็น key รอง (กฎข้อ 35) |
+| ลด stock ของ inventory item | `adjustInventoryLevelsStep` / `updateInventoryLevelsWorkflow` (core-flows) | ใช้ตามเดิมพร้อม compensation (กฎข้อ 36) |
+| prompt ยืนยัน / ปุ่มต่อแถว / toast ใน admin | `usePrompt`, `toast` ของ `@medusajs/ui`; `ActionMenu` ของ `@medusajs/dashboard/components` | ใช้ตามเดิม (กฎข้อ 37) — ไม่สร้างเอง |
+| widget หน้า order | injection zone `order.details.after` / `order.details.side.after` ของ admin; `StatusBadge` ของ `@medusajs/ui`; `SectionRow` ของ dashboard | ใช้ตามเดิม (กฎข้อ 38) |
+
+### Business rules (รอบ 40)
+35. (EV-19 — EV-M-12) `GET /admin/evoucher/pools/:id/codes` เรียง `{ created_at: "ASC", id: "ASC" }` (`route.ts:35`) — แบ่งหน้าแล้วได้ code ครบไม่ซ้ำแม้ `created_at` เท่ากันทั้ง batch;
+    ตรวจ route list อื่นของ module e-voucher (pools, partners) ที่เรียงด้วย field เดียวแล้วเพิ่ม `id` แบบเดียวกัน (affiliate มี `tiebreakById` แล้ว — ADM-24)
+36. (EV-20 — owner อนุมัติปุ่มลบ + **ยืนยันกติกานี้ 2026-11-21**: ลบได้เมื่อยังไม่มีรหัสถูกส่ง, code `available`/`void` ลบตาม, stock ลด, prompt ยืนยัน) `deleteEvoucherPoolWorkflow` ขยายจาก "เฉพาะ pool ว่าง" เป็น "**ลบได้เมื่อไม่มี code ที่เคยถูกส่ง/จองให้ลูกค้า**":
+    (a) มี code สถานะ `allocated`/`delivered` หรือมี `order_id` อย่างน้อย 1 → 400 `not_allowed` "Pool has codes that were allocated or delivered to customers; it cannot be deleted";
+    (b) ไม่เช่นนั้น: soft-delete code ทั้งหมดของ pool (`available`/`void`) → ลด `stocked_quantity` ของ inventory level ของ variant ลงเท่าจำนวน code `available` (workflow ของ Medusa + compensation)
+        → ขั้นเดิมของกฎข้อ 15 (`requires_shipping=true`) → ลบ pool; compensation คืนทุกขั้น; ใต้ lock เดียวกับ import/allocation ของ pool (กัน allocate ระหว่างลบ)
+    (c) `low_stock` = `code ทั้งหมด > 0` **และ** `available < low_stock_threshold`; route คืน `total_codes` เพิ่ม; pool ที่ไม่มี code เลยไม่ขึ้น "Low stock" (แก้ AC-15: pool ว่าง → `low_stock=false`)
+37. (EV-21 — admin UI) หน้า pool (`routes/evouchers/pools/[id]`) และตาราง pools: ปุ่ม Delete ใน `ActionMenu` → `usePrompt` ยืนยัน (ระบุจำนวน code ที่จะถูกลบ) → ลบ → toast + กลับรายการ;
+    400 ของข้อ 36a → toast ข้อความจาก API; ปุ่มกันกดซ้ำ (disable ระหว่างส่ง + single-flight ตามกฎ ADM-39 ของ spec 08); badge "No codes" (`StatusBadge` สีเทา) เมื่อ `total_codes = 0` แทน "Low stock"
+38. (EV-22 — owner) admin เห็นธง backordered ของ line: (a) builder หาสาเหตุที่ `GET /admin/orders/:id?fields=*items` คืน `items[].metadata` ว่างทั้งที่ DB มี `evoucher_backordered=true`
+    (บันทึกใน PR ว่าเขียนลงตาราง/entity ไหน — เช่น `order_line_item.metadata` vs `order_item`/cart line); แก้ให้ธงอยู่ใน field ที่ Admin API ของ Medusa คืนจริง ถ้าแก้ที่ต้นทางไม่ได้โดยไม่ patch Medusa
+        → route อ่านของเรา `GET /admin/evoucher/orders/:id/codes` (มีอยู่แล้ว) คืน `backordered_line_item_ids`;
+    (b) widget หน้า order (zone `order.details.side.after` หรือ widget e-voucher เดิม `order-evouchers.tsx`) แสดง `StatusBadge` "Backordered — codes pending" ต่อ line ที่ค้าง (`evoucher-backordered-badge`)
+
+### Acceptance criteria (รอบ 40)
+- AC-49 (EV-19, กฎข้อ 35) integration http — **ล้มบน develop** ก่อน: import 30 code ใน batch เดียว (created_at เท่ากัน — ตั้งด้วย SQL ใน test ถ้าจำเป็น) แล้วอ่าน `limit=10` ทีละหน้า 3 หน้า → ได้ id ไม่ซ้ำ 30 รายการ
+- AC-50 (EV-20, กฎข้อ 36) integration — **ล้มบน develop** ก่อน: (a) pool ที่มี code `available` 5 + `void` 1 ไม่มี order → DELETE 200, code ทั้ง 6 ถูก soft-delete, inventory level ของ variant ลดลง 5, `requires_shipping=true`;
+  (b) pool ที่มี code `delivered` 1 → 400 ข้อความตาม 36a ทุกอย่างคงเดิม; (c) step ลด stock ล้ม (mock) → code/pool คืนครบ; (d) pool ว่าง → `low_stock=false`, `total_codes=0`; pool 5 available threshold 20 → `low_stock=true` (AC-15 เดิม)
+- AC-51 (EV-21, กฎข้อ 37) e2e admin: ลบ pool ที่ไม่มีการส่ง → prompt แสดงจำนวน code → ยืนยัน → toast และ pool หายจากตาราง; dblclick ปุ่มยืนยัน → DELETE 1 ครั้ง (นับ request);
+  pool ที่มี code ส่งแล้ว → toast error และ pool ยังอยู่; pool ใหม่ไม่มี code → เห็น badge "No codes" ไม่เห็น "Low stock"; menuitem หาด้วย role + ชื่อ (ADR-018)
+- AC-52 (EV-22, กฎข้อ 38) integration + e2e admin: order ที่ pool หมดตอน capture (backordered) → API ตามข้อ 38a คืนธงของ line นั้น (ล้มบน develop); หน้า order ใน admin เห็น `evoucher-backordered-badge` 1 ตัวต่อ line ที่ค้าง; หลัง resend สำเร็จ badge หาย
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| EV-19 | (EV-M-12) `id` เป็น key เรียงรองของรายการ code (+ list อื่นของ e-voucher) (กฎข้อ 35) | `src/api/admin/evoucher/pools/[id]/codes/route.ts`, route list อื่นถ้าพบ, integration | ~10 LOC + ~80 LOC test | AC-49 | PR เอกสารรอบ 40 | — |
+| EV-20 | (backend) ลบ pool ที่ยังไม่ส่ง code + ลด stock + `low_stock`/`total_codes` (กฎข้อ 36) | `src/workflows/evoucher/evoucher-pool.ts`, `src/api/admin/evoucher/pools/*`, test | ~120 LOC + ~200 LOC test | AC-50 | PR เอกสารรอบ 40 | — |
+| EV-21 | (admin UI) ปุ่ม Delete + prompt + badge "No codes" (กฎข้อ 37); qa | `src/admin/routes/evouchers/pools/[id]/page.tsx`, `src/admin/components/evoucher/pools-table.tsx`, `src/admin/lib/evoucher.ts`, e2e admin | ~90 LOC + ~150 LOC test | AC-51 | **EV-20**, **ADM-39** (single-flight แบบใหม่) | `pools-table.tsx` |
+| EV-22 | ธง backordered เห็นใน admin (หาสาเหตุ metadata ว่าง + badge) (กฎข้อ 38); qa | `src/subscribers/evoucher-payment-captured.ts` หรือ workflow allocation, `src/api/admin/evoucher/orders/[id]/codes/route.ts`, `src/admin/widgets/order-evouchers.tsx`, test | ~80 LOC + ~150 LOC test | AC-52 | PR เอกสารรอบ 40 | `order-evouchers.tsx` (ADM-39 ถ้าแตะ single-flight ในไฟล์นี้ — ตัวหลัง sync) |
+
 ## คำถามที่ยังเปิดอยู่
 - ~~Q14~~ ตัดสินแล้ว (owner 2026-11-10): **(ก)** — กฎข้อ 33c–e, AC-47, EV-17; คำถามเดิม (รอบ 27, EV-17 กฎข้อ 33) ป้องกัน stock เกินเมื่อยกเลิก fulfillment ของ code ที่ส่งมอบแล้วด้วยทางใด:
   (ก) **[เลือก]** หลังส่งอีเมลสำเร็จ (allocation และ resend) สร้าง shipment ของ fulfillment นั้นด้วย `createOrderShipmentWorkflow` แบบ `no_notification: true` (subscriber `shipment-created.ts:9` จึงไม่ส่งอีเมลจัดส่ง) → Medusa ไม่ยอมยกเลิก fulfillment ที่ shipped และจึงยกเลิก order นั้นไม่ได้

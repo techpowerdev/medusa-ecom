@@ -2760,3 +2760,65 @@ none
   `apps/backend/src/lib/region-store-policies.ts` เช่น `return_window_days`, `shipping_rate`) ลงใน region ที่สร้าง
   เพราะ migration script `region-store-policies.ts` เติมให้เฉพาะ region ที่มีอยู่แล้วตอน `db:migrate`
 - CORE-6: ต้องลบ `if: ${{ false }}` ของ job `storefront-e2e` ใน `.github/workflows/ci.yml` เพื่อเปิด e2e ใน CI
+
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual เฟส 3a/9 บน v0.2.0; owner สั่งแก้ทั้งหมดใน release เดียวก่อน go-live)
+Status: draft (☐ ทุก task)
+Goal (owner's words): แก้ bug/UX ที่เจอในการทดสอบ manual — "10 ข้อ + ทุกข้อที่ต้องตัดสิน" รวมใน release เดียวแล้วค่อย go-live; owner 2026-11-21 เพิ่มเรื่องที่เคยเป็น follow-up ให้ทำในแผนเดียวกัน
+Out of scope: หน้า order ใน admin แสดงราคารวม VAT, ฟอร์ม Refund ของ Medusa ค่าเริ่มต้นยอดเต็ม, ป้าย (ICT) บนเครื่อง UTC (owner ไม่ทำ — พฤติกรรมที่ยอมรับ); แผนทดสอบ manual (Claude Docs) session หลักแก้เอง
+งานรอบ 40 ใน spec อื่น: spec 02 EV-19..22, spec 03 FS-20..22, spec 04 GB-20..25, spec 05 AF-24, spec 06 PAY-8..9, spec 07 OPS-30..32, spec 08 ADM-39..42
+
+### What Medusa already gives us (รอบ 40)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| รายการ order แบ่งหน้า | `GET /store/orders?limit&offset` คืน `count` (starter `listOrders(limit, offset)`) | ใช้ตามเดิม — เพิ่มแค่ UI แบ่งหน้า (กฎข้อ 126) |
+| ค้นหาสินค้า | `POST /store/search` (index + `@medusajs/instantsearch-adapter` — drawer, `/store`) และ `GET /store/products?q=` (หน้า `/search`) — **สองกลไก ผลต่างกัน** | ใช้ `/store/search` ทุกที่ (กฎข้อ 128, Q-C12) |
+| routing ของ InstantSearch | `routing`/`stateMapping` ของ `react-instantsearch` | ใช้ตามเดิม map `?q=` (กฎข้อ 128) |
+| ตรวจตัวตนที่มีอยู่ | `POST /auth/customer/emailpass/register` → 401 `Identity with email already exists`; token จาก login มี `actor_id` เมื่อมี customer แล้ว | ใช้ตามเดิม (กฎข้อ 131) |
+| สถานะ order ก่อนส่งอีเมล | `query.graph` entity `order` field `status` | ใช้ตามเดิม (กฎข้อ 132) |
+
+### Business rules (รอบ 40)
+126. (CORE-68) หน้า `/<cc>/account/orders` แสดง order ปกติหน้าละ 10 พร้อมแบ่งหน้าจาก `count` ของ Medusa (`orders-pagination`, `?page=` 1-based, หน้าเกินจำนวน → หน้าสุดท้าย) ใช้ component แบ่งหน้าเดิมของ starter (`modules/store/components/pagination`) ไม่สร้างใหม่;
+     หน้า overview ของ account คง 5 ล่าสุด + ลิงก์ "ดูทั้งหมด"; รายการ group buy (GB-8) คงเดิม
+127. (CORE-69) `?step=review` (หรือ step ใดที่ข้อมูลก่อนหน้ายังไม่ครบ) เมื่อ cart ยังไม่มี payment session ที่ใช้ได้ → redirect ไป `step=payment` (ขั้นแรกที่ยังไม่เสร็จ — ขยายกฎของ CORE-45 ให้ครอบขั้นชำระเงิน) ไม่ค้างหน้า review ที่ไม่มีปุ่ม
+128. (CORE-70 — owner "ผลตรงกัน + `/store` รับ `?q=`") (a) drawer, หน้า `/<cc>/search?q=` และ `/<cc>/store?q=` ใช้ `POST /store/search` เดียวกัน (adapter/`searchClient` เดิม) ด้วยพารามิเตอร์เดียวกัน → ผลชุดเดียวกัน;
+     builder หาสาเหตุที่ drawer ค้น "shirt" ไม่เจอ (เช่น `match_strategy`, field ที่ index, การตัดคำ) แล้วแก้ที่ config ของ index/adapter ไม่ใช่ทำ fallback ไป `GET /store/products?q`;
+     (b) `/store?q=<คำ>` ตั้งคำค้นเริ่มต้นของ InstantSearch (map `q` ↔ `product[query]` ใน `stateMapping`) และ URL ของ `/store` หลังพิมพ์ใช้ `q`; (c) หน้า `/search` คง SEO ปัจจุบัน (`robots: noindex`)
+129. (CORE-71) คืนสินค้าแล้วล้มเพราะ stock location ไม่มีของ (error ของ Medusa ที่ builder ระบุ type/code จริง) → ข้อความไทย "ไม่สามารถสร้างคำขอคืนสินค้านี้ทางเว็บได้ กรุณาติดต่อร้าน" + ลิงก์ `/contact` (`return-contact-store`) แทน "ลองใหม่"; error อื่นคงเดิม
+130. (CORE-72) ลิงก์ตะกร้าใน nav ไม่แสดง "(0)" ระหว่างโหลด: render แรกแสดง "ตะกร้า" ไม่มีตัวเลข (`aria-busy="true"`) จนรู้จำนวนจริง; ตะกร้าว่างจริงจึงแสดง "(0)"
+131. (CORE-73 — owner 2026-11-21 แทนพฤติกรรมเดิมของ starter ที่ login ให้เงียบๆ) สมัครด้วยอีเมลที่มี**บัญชีลูกค้าแล้ว** (register ได้ `Identity with email already exists` แล้ว login ด้วยรหัสที่กรอกได้ token ที่มี `actor_id`)
+     → **ไม่**ตั้ง cookie/session, ไม่สร้าง customer, แสดง `register-email-exists` "อีเมลนี้มีบัญชีแล้ว" + ลิงก์ไปหน้าเข้าสู่ระบบ (`register-login-link`) คงค่าที่กรอก (กฎข้อ 69b);
+     รหัสผิด → ข้อความเดียวกัน (ไม่บอกว่ารหัสถูก/ผิด); identity มีอยู่แต่**ยังไม่มี customer** (เช่นอีเมลเดียวกับบัญชี affiliate — `actor_id` ว่าง) → พฤติกรรมเดิม (ผูก customer ใหม่) — เทียบข้อความ Medusa ตามเดิมพร้อมเช็กลิสต์ bump (spec 07 ข้อ 13)
+132. (CORE-74 — owner) subscriber ที่ส่งอีเมล `order-placed` อ่าน `order.status` ใหม่ก่อนส่ง: `canceled` → ไม่ส่ง + log info `order_placed_email_skipped_canceled` (กรณี event ค้างใน queue ขณะ worker หยุดแล้ว order ถูกยกเลิกก่อน worker กลับมา);
+     สถานะอื่นส่งตามเดิม (รวม order ที่มาจาก group buy — spec 04 กฎข้อ 9)
+
+### Acceptance criteria (รอบ 40)
+- AC-167 (CORE-68, กฎข้อ 126) e2e: ลูกค้าที่มี 12 order → หน้า 1 มี 10 แถว, `orders-pagination` ไปหน้า 2 ได้ 2 แถว (order เก่าสุดอยู่หน้า 2) — ล้มบน develop (ไม่มีหน้า 2); unit ของการคำนวณ offset/page
+- AC-168 (CORE-69, กฎข้อ 127) e2e: cart ที่มีที่อยู่ + วิธีส่งแต่ไม่มี payment session เปิด `/th/checkout?step=review` → URL เป็น `step=payment` ภายใน 5 วินาที และเห็นตัวเลือกการชำระเงิน (ล้มบน develop)
+- AC-169 (CORE-70, กฎข้อ 128) e2e (สินค้า tag ตัวอักษร 2 ชิ้นชื่อมีคำเดียวกัน + 1 ชิ้นไม่มี): คำค้นเดียวกันได้ชุด product handle เดียวกันจาก drawer, `/th/search?q=`, `/th/store?q=` (เทียบ set);
+  seed "shirt" ใน drawer ได้ ≥ 1 ผล (ล้มบน develop); เปิด `/th/store?q=<คำ>` → ช่องค้นหามีคำนั้นและผลถูกกรอง (ล้มบน develop)
+- AC-170 (CORE-71, กฎข้อ 129) e2e route mock + unit: error stock location ของการคืน → เห็น `return-contact-store` (อักษรไทย + ลิงก์ `/contact`) ไม่เห็นข้อความ "ลองใหม่"; error อื่น → ข้อความเดิม
+- AC-171 (CORE-72, กฎข้อ 130) e2e: หน่วง request cart 2 วินาที (route mock) ลูกค้าที่มี 2 ชิ้น → ระหว่างรอ `nav-cart-link` ไม่มีข้อความ "(0)" และหลังโหลดเป็น "(2)"; ตะกร้าว่าง → "(0)"
+- AC-172 (CORE-73, กฎข้อ 131) e2e + unit (mock SDK): สมัครด้วยอีเมลลูกค้าที่มีอยู่ + รหัสถูก → อยู่หน้าสมัคร เห็น `register-email-exists` + `register-login-link`, ไม่มี cookie `_medusa_jwt` (ล้มบน develop — login ให้); รหัสผิด → ข้อความเดียวกัน;
+  integration/unit: identity ของ affiliate ที่ยังไม่มี customer สมัครเป็นลูกค้าได้ (regression)
+- AC-173 (CORE-74, กฎข้อ 132) integration (mock notification): emit `order.placed` ของ order ที่ `canceled` แล้ว → ไม่มี notification `order-placed` และมี log info; order ปกติ → 1 ฉบับ (ล้มบน develop)
+
+### Test plan (รอบ 40)
+| ระดับ | AC |
+|---|---|
+| e2e + unit Vitest (+ qa สำหรับงาน UI) | AC-167, AC-168, AC-169, AC-170, AC-171, AC-172 |
+| integration (mock notification) | AC-173 |
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| CORE-68 | แบ่งหน้า order ในหน้า account (กฎข้อ 126); qa | `apps/storefront/src/lib/data/orders.ts`, `app/[countryCode]/(main)/account/@dashboard/{page,orders/page}.tsx`, `modules/account/components/order-overview`, e2e | ~60 LOC + ~120 LOC test | AC-167 | PR เอกสารรอบ 40 | `orders/page.tsx` (GB-22 แตะรายการ group — คนละ component; ตัวหลัง sync) |
+| CORE-69 | `?step=review` ไม่มี payment session → `step=payment` (กฎข้อ 127); qa | `modules/checkout/templates/checkout-form` / util step ของ CORE-45, e2e | ~30 LOC + ~80 LOC test | AC-168 | PR เอกสารรอบ 40 | ขั้น review (FS-21 ปุ่ม disabled — คนละ condition; ตัวหลัง sync) |
+| CORE-70 | ค้นหาให้ผลตรงกันทุกที่ + `/store?q=` (กฎข้อ 128); qa | `apps/storefront/src/lib/search-client.ts`, `app/[countryCode]/(main)/search/page.tsx`, `modules/store/templates/index.tsx`, `modules/layout/components/search/*`, backend config index ถ้าต้อง, e2e | ~120 LOC + ~150 LOC test | AC-169 | PR เอกสารรอบ 40 (Q-C12 = ก ☑) | — |
+| CORE-71 | ข้อความคืนสินค้าเมื่อ location ไม่มีของ (กฎข้อ 129); qa | `modules/account/components/return*` / action ของ return, helper error, test | ~30 LOC + ~80 LOC test | AC-170 | PR เอกสารรอบ 40 | — |
+| CORE-72 | ตะกร้าไม่กระพริบ "(0)" (กฎข้อ 130); qa | `modules/layout/components/cart-button*`/`nav`, e2e | ~20 LOC + ~60 LOC test | AC-171 | PR เอกสารรอบ 40 | — |
+| CORE-73 | สมัครด้วยอีเมลที่มีบัญชี → "อีเมลนี้มีบัญชีแล้ว" ไม่ login ให้ (กฎข้อ 131); qa | `apps/storefront/src/lib/data/customer.ts`, `modules/account/components/register`, test | ~40 LOC + ~120 LOC test | AC-172 | PR เอกสารรอบ 40 | — |
+| CORE-74 | ไม่ส่ง `order-placed` ให้ order ที่ยกเลิกแล้ว (กฎข้อ 132) | `apps/backend/src/subscribers/order-placed*.ts`, integration | ~15 LOC + ~80 LOC test | AC-173 | PR เอกสารรอบ 40 | — |
+
+### Open questions (รอบ 40)
+- ~~**Q-C12**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** `POST /store/search` ทุกหน้า (กฎข้อ 128) — คำถามเดิม: (CORE-70) กลไกค้นหาเดียวที่ใช้ทุกที่: (ก) **[Recommended]** `POST /store/search` (index ของ Medusa — `/store` ใช้อยู่แล้วพร้อม facet/ราคา; แก้ config ให้ค้น "shirt" เจอ);
+  (ข) `GET /store/products?q=` (core ILIKE — หน้า `/search` ใช้อยู่) ทุกที่ — ต้องเขียน `/store` ใหม่โดยไม่มี facet ของ index (~300 LOC) ไม่แนะนำ

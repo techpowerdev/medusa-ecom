@@ -46,3 +46,7 @@ E. **ไม่มี route: storefront เก็บ `client_secret` จาก re
 + ไม่แตะ route/workflow ของ Medusa
 − store route ใหม่ 2 ตัวที่ต้องรักษา + 1 query.graph ต่อ request
 − ถ้าภายหลังมี draft order ที่ไม่ใช่ group buy ต้องชำระผ่านหน้าเดียวกัน ต้องขยาย route หรือ ADR ใหม่
+
+## ภาคผนวก 2026-11-21 (รอบ 40 — GB-22, review #425 nit)
+route รายการ `GET /store/customers/me/group-buy/memberships` เพิ่ม `order.payment_status` ใน allow-list (spec 04 กฎข้อ 45b) เพื่อให้หน้า account แยก "จ่ายแล้วแต่ยังเป็น draft" ออกจาก "หมดเวลาชำระเงิน" —
+เป็นสถานะของ order ของผู้เรียกเอง (route รายตัวคืน field นี้อยู่แล้ว) ไม่ใช่ข้อมูลของ provider จึงอยู่ในขอบเขตของการตัดสินใจเดิม (ข้อ 3 ไม่คืน `data` ของ provider ยังคงเดิม); ไม่เปลี่ยนการตัดสินใจอื่น

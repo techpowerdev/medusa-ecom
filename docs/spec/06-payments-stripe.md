@@ -280,7 +280,58 @@ follow-up (ไม่ใช่ task บังคับ — ทำในงาน�
 - (รอบ 8) nit review #82 ของ PAY-6a (ย้าย constant `PAYMENT_ALREADY_COMPLETED` ไปไฟล์ errors, comment ใน test guard × webhook ว่าฝั่งที่แพ้ได้ 409/non-2xx ถือว่าผ่าน — รอบ 12: 400 `invalid_data` เมื่อ cancel สำเร็จ, 500 `unknown_error` กับ Stripe จริง)
   รวมในงานเล็ก GB-N1 (spec 04)
 
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual 2026-11 บน v0.2.0; owner สั่งแก้ก่อน go-live ใน release เดียว)
+ที่มา: เฟส 5 B-1 (refund ขณะมี order change ค้าง), O-2 (order #69 `payment_status=refunded` ทั้งที่จ่ายแล้ว), log หลอก ops (ดู spec 07 OPS-32)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| refund ของ admin | `POST /admin/payments/:id/refund` → `refundPaymentWorkflow` (2.22.1) — **แต่** refund Stripe ก่อน (`refund-payment.js:138`) แล้ว `createOrderRefundCreditLinesWorkflow` (`:183`) ล้มเมื่อ order มี active order change → admin เห็น 400 แต่เงินคืนจริง, ไม่ emit `payment.refunded` (`:188`) → `flash-sale-release.ts`/`affiliate-reversal.ts` ไม่ทำงาน | ขยาย: middleware กันก่อนเข้า route (กฎข้อ 10) — ไม่ patch workflow ของ Medusa; รายงาน upstream (session หลักถาม owner ก่อนเปิด issue) |
+| อ่าน order change ที่ค้าง | entity `order_change` (`status` `pending`/`requested` = active — ค่าเดียวกับที่ Medusa ใช้ตรวจ "already has an existing active order change") ผ่าน `query.graph` | ใช้ตามเดิม |
+| link payment → order | `payment.payment_collection` + link `order_payment_collection` | ใช้ตามเดิมผ่าน `query.graph` |
+| payment collection ของ cart | link `cart_payment_collection`, `POST /store/payment-collections` (storefront สร้างเองเมื่อ cart ไม่มี) | ใช้ตามเดิม (ADR-025) — dismiss link ด้วย workflow ของเรา + compensation |
+
+### Business rules (รอบ 40)
+10. (PAY-8 — B-1; owner "กันที่ backend" 2026-11-21) middleware บน `POST /admin/payments/:id/refund` (หลัง auth ของ admin ที่ Medusa ใส่ให้):
+    (a) หา order ของ payment (`payment.payment_collection` → `order_payment_collection`); ไม่มี order → `next()` (พฤติกรรมเดิม — script `refund-orphan-payment.ts` ใช้ `refundPaymentsWorkflow` ไม่ผ่าน route นี้อยู่แล้ว);
+    (b) order มี `order_change` ที่ `status ∈ {pending, requested}` (return/claim/exchange/order edit ที่ค้าง) → throw `MedusaError(NOT_ALLOWED, "Cannot refund while this order has an active return, claim, exchange or edit. Confirm or cancel it first.")`
+        → **400** ก่อนเรียก provider (ไม่มี refund ใน Stripe, payment ไม่เปลี่ยน); ไม่มี → `next()`;
+    (c) ข้อความอังกฤษ (admin) ห้ามเรียก Stripe ตรง; ไม่แตะ `refundPaymentWorkflow`; ลงทะเบียนใน admin middlewares ของเรา (ไฟล์ใหม่ `src/api/admin/payments/middlewares.ts` spread เข้า `middlewares.ts`)
+    (d) (แก้ตาม review #425) เส้นทาง refund อัตโนมัติของ group buy (ADR-024 ข้อ c) ใช้ `refundPaymentsWorkflow` ที่ไม่สร้าง credit line จึงไม่ผ่าน route นี้และไม่ต้องใช้ helper นี้
+    (e) รายงาน upstream เรื่อง `refundPaymentWorkflow` คืนเงินก่อนสร้าง credit line — **owner อนุมัติให้เปิด issue 2026-11-21** (session หลักเปิด; ร่างอยู่ใน PR body ของ PAY-8)
+11. (PAY-9 — O-2, ADR-025 accepted 2026-11-21) payment collection ของ **cart** ที่ยังไม่มี order และมี payment ที่ capture แล้วถูกคืนครบ (`MathBN` จาก `raw_*`) เมื่อลูกค้าสร้าง session ใหม่
+    (`POST /store/payment-collections/:id/payment-sessions`) → dismiss link cart ↔ collection (workflow + compensation, lock `cart_id`) แล้วตอบ **409** `{ type: "conflict", code: "PAYMENT_COLLECTION_RESET", message }`
+    (code ใน allow-list ของ PROMO-2); storefront (`initiatePaymentSession`) ได้ code นี้ → อ่าน cart ใหม่ แล้วเรียกซ้ำ **1 ครั้ง** (สร้าง collection ใหม่ด้วย route ของ Medusa) — ครั้งที่สองยังได้ code เดิม → error ไทยทั่วไป;
+    collection ที่ผูก order, ไม่มี payment, หรือมี payment ที่ยังไม่คืนครบ → `next()` (พฤติกรรมเดิม); ลำดับ middleware ตาม ADR-025
+
+### Acceptance criteria (รอบ 40)
+- AC-21 (PAY-8, กฎข้อ 10) integration http (admin JWT, mock Stripe provider ที่นับการเรียก `refundPayment`) — **ล้มบน develop** ก่อน:
+  (a) order captured ฿600 + return request ที่ยังไม่ confirm (`POST /admin/returns` + request) When `POST /admin/payments/:id/refund { amount: 100 }` Then 400 ข้อความมี `active return`, provider ไม่ถูกเรียก, `refunds` ของ payment ว่าง, `order.summary.refunded_total` = 0;
+  (b) order edit ที่ค้าง (`POST /admin/order-edits`) → 400 แบบ (a); (c) ยกเลิก return request แล้ว refund ฿100 → 200, `payment_status = partially_refunded`, credit line 1 รายการ และ event `payment.refunded` ถูก emit 1 ครั้ง (spy event bus);
+  (d) order ที่ไม่มี order change → 200 (regression ของ AC-6)
+- AC-22 (PAY-9, กฎข้อ 11) integration http + e2e — **ล้มบน develop** ก่อน:
+  (a) integration: cart ที่ collection มี payment captured ฿X แล้วถูกคืนครบด้วย `refundPaymentsWorkflow` (จำลองผลของ `compensatePaymentIfNeededStep`) When เจ้าของ cart `POST .../payment-sessions` Then 409 code `PAYMENT_COLLECTION_RESET`,
+      link `cart_payment_collection` ของ cart ว่าง, collection เดิมยังอยู่พร้อม refund; ยิงซ้ำพร้อมกัน 2 request → ทั้งคู่ 409 code เดิม ไม่มี error 5xx; หลัง `POST /store/payment-collections { cart_id }` + สร้าง session + complete → order มี payment collection **1** ชุด (ชุดใหม่) และ `payment_status = captured`;
+  (b) collection ที่มี payment captured ยังไม่คืน → ไม่ถูก reset (ผล AC-13 เดิม); collection ของ order (group buy) → ไม่ถูก reset;
+  (c) e2e (Stripe test mode): ลูกค้าซื้อ flash เกินสิทธิ์ด้วยบัตร → ถูกคืนเงิน → ลดจำนวนแล้วจ่ายใหม่ใน cart เดิม → หน้า order confirmed; `GET /admin/orders/:id` ได้ `payment_status = captured` และ payment collection 1 ชุด (แทน #69)
+
+### Test plan (รอบ 40)
+| ระดับ | AC |
+|---|---|
+| integration http (mock provider) | AC-21 |
+| integration http + e2e Stripe test mode | AC-22 |
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| PAY-8 | (B-1 — เงิน) middleware กัน refund ของ admin เมื่อ order มี active order change (กฎข้อ 10) + ร่าง issue upstream ใน PR body (owner อนุมัติเปิดแล้ว — session หลักเปิด) | `apps/backend/src/api/admin/payments/middlewares.ts` (ใหม่), `apps/backend/src/lib/active-order-change.ts` (ใหม่ + unit), `apps/backend/src/api/middlewares.ts`, `integration-tests/http/admin-refund-guard.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-21 | PR เอกสารรอบ 40 merge | `middlewares.ts` (GB-20, PAY-9, GB-25) |
+| PAY-9 | (O-2 — เงิน, ADR-025 accepted 2026-11-21) reset collection ของ cart ที่ถูกคืนเงิน (กฎข้อ 11) + storefront เรียก `initiatePaymentSession` ซ้ำ 1 ครั้งเมื่อได้ `PAYMENT_COLLECTION_RESET` | `apps/backend/src/api/store/payment-collections/refunded-collection-reset.ts` (ใหม่), `apps/backend/src/workflows/payment/reset-cart-payment-collection.ts` (ใหม่), `apps/backend/src/api/middlewares.ts`, `apps/backend/src/api/error-handler.ts` (allow-list), `apps/storefront/src/lib/data/cart.ts`, test integration + `apps/storefront/e2e/pay-9-refunded-cart-repay.spec.ts` | ~180 LOC + ~250 LOC test | AC-22 | **GB-20** (ลำดับ middleware บน route เดียวกัน), ADR-025 accepted ☑ | `middlewares.ts`, `cart.ts` (FS-22 แตะ error map ของ checkout — คนละฟังก์ชัน) |
+
+ลำดับ: PAY-8 ∥ GB-20 (คนละ route แต่ไฟล์ `middlewares.ts` ร่วม — ตัวที่ merge ทีหลัง sync) → PAY-9 (หลัง GB-20)
+
 ## Open questions
+- ~~Q10~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-025 ทางเลือก 2** → PAY-9 เริ่มได้หลัง GB-20; คำถามเดิม (รอบ 40): อนุมัติ ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน)
+  หรือให้ storefront สร้าง cart ใหม่ (ไม่ครอบ client อื่น)
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
   — (2026-11-09, รอบ 25) owner **ยังไม่ยืนยัน**: ใช้ Stripe test mode ต่อไป; การยืนยันนี้เป็นข้อ 6 ใน "Go-live checklist" ของ `docs/ops/production.md` (ต้องทำก่อนเปิดร้านจริง) — ไม่มี task
 - ~~Q2~~ ตัดสินแล้ว (owner, 2026-10-25): production ห้าม `pp_system_default` แบบ D1 ของ ADR-010 (seed + `check:go-live`;
