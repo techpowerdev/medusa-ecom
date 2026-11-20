@@ -4,6 +4,7 @@ import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
 import { adminFlashSaleMiddlewares } from './admin/flash-sales/middlewares'
 import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
+import { adminPaymentMiddlewares } from './admin/payments/middlewares'
 import { storeEvoucherMiddlewares } from './store/evouchers/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
 import { storeGroupBuyMiddlewares } from './store/group-buy/middlewares'
@@ -38,6 +39,8 @@ export default defineMiddlewares({
     ...adminAffiliateMiddlewares,
     ...adminGroupBuyMiddlewares,
     ...storeGroupBuyMiddlewares,
+    // PAY-8 (spec 06 กฎข้อ 10): กัน refund ของ admin เมื่อ order มี active order change (B-1)
+    ...adminPaymentMiddlewares,
     // CORE-6 (spec 01 "ไม่มี guest"): cart + checkout ต้องมี customer ที่ล็อกอิน (AC-6)
     {
       matcher: '/store/carts*',
