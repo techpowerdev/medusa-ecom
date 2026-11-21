@@ -206,33 +206,39 @@ describe("renewPromptPaySession ผ่าน helper กลาง", () => {
   })
 })
 
-describe("placeOrder คืน { error } แทนการ throw", () => {
+// CORE-76 (กฎข้อ 134 a2): placeOrder คืน `{ kind }` จาก placeOrderOutcome (allow-list)
+describe("placeOrder คืน { kind } แทนการ throw", () => {
   const place = async () => (await import("@lib/data/cart")).placeOrder("cart_1")
 
   it.each([
-    ["409 FLASH_SOLD_OUT", new FetchError("This flash sale is sold out", "Conflict", 409), "FLASH_SOLD_OUT"],
+    ["409 FLASH_SOLD_OUT", new FetchError("This flash sale is sold out", "Conflict", 409), { kind: "refunded", code: "FLASH_SOLD_OUT" }],
     [
       "409 PROMOTION_NOT_COMBINABLE",
       new FetchError("This promotion can't be combined with the promotions already on the cart", "Conflict", 409),
-      "PROMOTION_NOT_COMBINABLE",
+      { kind: "refunded", code: "PROMOTION_NOT_COMBINABLE" },
     ],
-    ["FetchError 401", new FetchError("Unauthorized", "Unauthorized", 401), "unauthorized"],
-    ["FetchError 400", new FetchError("Payment sessions are required", "Bad Request", 400), "failed"],
-    ["network", new TypeError("fetch failed"), "failed"],
-  ])("%s → { error: %s }", async (_label, error, expected) => {
+    [
+      "409 CART_COMPLETION_IN_PROGRESS",
+      new FetchError("Cart is already being completed by another request", "Conflict", 409),
+      { kind: "processing" },
+    ],
+    ["FetchError 401", new FetchError("Unauthorized", "Unauthorized", 401), { kind: "unauthorized" }],
+    ["FetchError 400", new FetchError("Payment sessions are required", "Bad Request", 400), { kind: "failed" }],
+    ["network", new TypeError("fetch failed"), { kind: "failed" }],
+  ])("%s → %o", async (_label, error, expected) => {
     complete.mockRejectedValueOnce(error)
-    await expect(place()).resolves.toEqual({ error: expected })
+    await expect(place()).resolves.toEqual(expected)
   })
 
-  it("Medusa คืน type cart (ชำระไม่ผ่าน ไม่ได้ order) → { error: \"failed\" }", async () => {
+  it("Medusa คืน type cart (ชำระไม่ผ่าน ไม่ได้ order) → { kind: \"failed\" }", async () => {
     complete.mockResolvedValueOnce({ type: "cart", cart: { id: "cart_1" }, error: { message: "x" } })
-    await expect(place()).resolves.toEqual({ error: "failed" })
+    await expect(place()).resolves.toEqual({ kind: "failed" })
   })
 
-  it("ไม่มี cart id → { error: \"failed\" } ไม่ throw", async () => {
+  it("ไม่มี cart id → { kind: \"failed\" } ไม่ throw", async () => {
     getCartId.mockResolvedValueOnce(undefined)
     const { placeOrder } = await import("@lib/data/cart")
-    await expect(placeOrder()).resolves.toEqual({ error: "failed" })
+    await expect(placeOrder()).resolves.toEqual({ kind: "failed" })
   })
 
   it("ได้ order → redirect ของ Next ยัง throw ได้", async () => {

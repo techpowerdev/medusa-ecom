@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { errorHandler as medusaErrorHandler } from "@medusajs/framework/http"
 import { MedusaError, serializeError } from "@medusajs/framework/utils"
 import { BUSINESS_CONFLICT_CODES, businessErrorHandler } from "../error-handler"
+import { CART_COMPLETION_IN_PROGRESS, CART_COMPLETION_IN_PROGRESS_MESSAGE } from "../store/carts/errors"
 
 // PROMO-2 (spec 03 กฎข้อ 13, AC-12): code ธุรกิจของเรา → 409 { type: "conflict", code, message }
 // error อื่นต้องได้ผลเหมือน errorHandler เดิมของ Medusa ทุกอย่าง (ใช้ handler ของ Medusa เป็นตัวเทียบ)
@@ -47,6 +48,7 @@ describe("businessErrorHandler", () => {
         "GB_ITEMS_NOT_ELIGIBLE",
         "GB_CART_ALREADY_JOINED",
         "AFFILIATE_STATUS_CHANGED",
+        "CART_COMPLETION_IN_PROGRESS",
       ].sort()
     )
     // spec 04 กฎข้อ 5: GB_DISCOUNT_NOT_APPLIED เป็น 400 not_allowed ไม่ใช่ 409
@@ -93,6 +95,34 @@ describe("businessErrorHandler", () => {
     expect(run(businessErrorHandler, error)).toEqual({
       status: 409,
       body: { type: "conflict", code: "FLASH_SOLD_OUT", message: "This flash sale is sold out" },
+    })
+  })
+
+  // CORE-76 (spec 01 กฎข้อ 134 a2 — session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76): route complete ของ Medusa
+  // throw CONFLICT ไม่มี code ข้อความนี้ แล้ว errorHandler ของ Medusa เขียนทับเป็นข้อความกลาง → storefront แยกไม่ได้
+  describe("Medusa's 'cart is already being completed' 409 (CORE-76)", () => {
+    it.each([
+      ["MedusaError from the complete route", new MedusaError(MedusaError.Types.CONFLICT, CART_COMPLETION_IN_PROGRESS_MESSAGE)],
+      ["serialized", serializeError(new MedusaError(MedusaError.Types.CONFLICT, CART_COMPLETION_IN_PROGRESS_MESSAGE))],
+    ])("%s → 409 with code CART_COMPLETION_IN_PROGRESS and the original message", (_name, error) => {
+      expect(run(businessErrorHandler, error)).toEqual({
+        status: 409,
+        body: { type: "conflict", code: CART_COMPLETION_IN_PROGRESS, message: CART_COMPLETION_IN_PROGRESS_MESSAGE },
+      })
+    })
+
+    it("same message with another type is not mapped (falls back to Medusa)", () => {
+      const error = new MedusaError(MedusaError.Types.NOT_ALLOWED, CART_COMPLETION_IN_PROGRESS_MESSAGE)
+      expect(run(businessErrorHandler, error)).toEqual(run(medusa, error))
+    })
+
+    // contract: ข้อความต้องตรงกับ source ของ @medusajs/medusa ที่ติดตั้ง — bump แล้วข้อความเปลี่ยน → test นี้ล้ม (spec 07 ข้อ 17)
+    it("message equals the CONFLICT thrown by @medusajs/medusa POST /store/carts/:id/complete", () => {
+      const pkg = require.resolve("@medusajs/medusa/package.json")
+      const source = readFileSync(join(pkg, "..", "dist/api/store/carts/[id]/complete/route.js"), "utf8")
+      const match = source.match(/MedusaError\.Types\.CONFLICT,\s*"([^"]+)"/)
+      expect(match).not.toBeNull()
+      expect(match![1]).toBe(CART_COMPLETION_IN_PROGRESS_MESSAGE)
     })
   })
 

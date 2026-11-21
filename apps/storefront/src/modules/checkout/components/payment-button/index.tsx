@@ -3,36 +3,95 @@
 import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
-import { actionErrorMessage, settleAction } from "@lib/util/action-result"
-import { REFUNDED_NOTICE, refundedAfterPayment } from "@lib/util/checkout-error"
-import { isPromptPay } from "@lib/util/payment-session"
+import { PROMPTPAY_FALLBACK_MAX_REQUESTS, PROMPTPAY_POLL_MS, isPromptPay } from "@lib/util/payment-session"
+import {
+  CheckoutNotice,
+  PROCESSING_NOTICE,
+  PlaceOrderOutcome,
+  checkoutNotice,
+} from "@lib/util/place-order-outcome"
 import { HttpTypes } from "@medusajs/types"
 import { Button, Text } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
-import { useParams } from "next/navigation"
-import React, { useState } from "react"
+import { useParams, useRouter } from "next/navigation"
+import React, { useEffect, useRef, useState } from "react"
 import ErrorMessage from "../error-message"
 import PromptPayPaymentButton from "../promptpay-payment"
+import PromptPayOrderDelayed from "../promptpay-payment/order-delayed"
 
 /**
- * CORE-4i-b (กฎข้อ 72): ยืนยันคำสั่งซื้อแล้วคืนข้อความไทยเมื่อล้ม — 409 ที่รู้จัก (FS-15) → ข้อความของ code,
- * `unauthorized` → SIGN_IN_AGAIN_MESSAGE; สำเร็จ = redirect ของ Next (ไม่มีผล) → null
- * FS-22 (spec 03 กฎข้อ 27): `paid` = ตัดเงินแล้วก่อน complete → โควตา/สต็อกหมดได้ REFUNDED_NOTICE แทน "ลองใหม่"
+ * CORE-4i-b (กฎข้อ 72) / CORE-76 (กฎข้อ 134 a2): ผลของ placeOrder — สำเร็จ = redirect ของ Next (ไม่มีผล) → null,
+ * action ที่ reject เอง (request ของ action ล้ม) → `failed`
  */
-export const completeOrder = async (order: ReturnType<typeof placeOrder>, paid = false): Promise<string | null> => {
-  const result = await settleAction(order)
-  if (!result || !("error" in result)) return null
-  return refundedAfterPayment(result.error, paid)
-    ? REFUNDED_NOTICE
-    : actionErrorMessage(result.error, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
+export const completeOrder = async (order: ReturnType<typeof placeOrder>): Promise<PlaceOrderOutcome | null> =>
+  (await order.catch((): PlaceOrderOutcome => ({ kind: "failed" }))) ?? null
+
+type Shown = CheckoutNotice | { kind: "delayed" }
+
+/**
+ * CORE-76: ยืนยันคำสั่งซื้อแล้วแสดงผลจาก kind (ไม่เทียบข้อความ): `unauthorized` → หน้า login `/<cc>/account` (ไม่มี return_to —
+ * readReturnTo ไม่รับ path ของ checkout); `processing` → อ่านซ้ำทุก PROMPTPAY_POLL_MS ด้วย placeOrder (cart ที่ complete แล้วได้ order
+ * เดิม → หน้า confirmed) รวมไม่เกิน PROMPTPAY_FALLBACK_MAX_REQUESTS ครั้ง (กลไก PAY-6b/6c) แล้ว `paid` → ติดต่อร้าน, ไม่ได้ตัดเงิน → ข้อความ fallback
+ * `paid` = ตัดเงินแล้วก่อน complete (บัตรหลัง PaymentIntent succeeded/requires_capture — FS-22);
+ * `order(retry)` = เรียก placeOrder ของปุ่ม (retry = รอบอ่านซ้ำของ processing)
+ */
+const usePlaceOrder = (paid: boolean, order: (retry: boolean) => ReturnType<typeof placeOrder>) => {
+  const router = useRouter()
+  const { countryCode } = useParams()
+  const [shown, setShown] = useState<Shown | null>(null)
+  const attempts = useRef(0)
+
+  const place = async () => {
+    attempts.current++
+    const outcome = await completeOrder(order(attempts.current > 1))
+    if (!outcome) return
+    if (outcome.kind === "unauthorized") {
+      router.push(`/${countryCode}/account`)
+      return
+    }
+    const next = checkoutNotice(outcome, paid)
+    if (next.kind === "processing" && attempts.current >= PROMPTPAY_FALLBACK_MAX_REQUESTS) {
+      setShown(paid ? { kind: "delayed" } : checkoutNotice({ kind: "failed" }, paid))
+      return
+    }
+    setShown(next)
+  }
+
+  useEffect(() => {
+    if (shown?.kind !== "processing") return
+    const timer = setTimeout(() => place(), PROMPTPAY_POLL_MS)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown])
+
+  const start = () => {
+    attempts.current = 0
+    setShown(null)
+    return place()
+  }
+
+  return { shown, setShown, start, busy: shown?.kind === "processing" || shown?.kind === "delayed" }
 }
 
-/** FS-22: แจ้งว่าคืนเงินแล้ว (ไม่ใช่ error สีแดงให้ลองใหม่) */
-const RefundedNotice = () => (
-  <Text role="alert" className="pt-2 txt-medium text-ui-fg-base" data-testid="checkout-refunded-notice">
-    {REFUNDED_NOTICE}
-  </Text>
-)
+/** FS-22/CORE-76: notice คืนเงิน, กำลังดำเนินการ และติดต่อร้านเป็น state ของตัวเอง; ข้อความ error ใช้ ErrorMessage เดิม */
+const PlaceOrderNotice = ({ shown, errorTestId }: { shown: Shown | null; errorTestId: string }) => {
+  if (shown?.kind === "refunded") {
+    return (
+      <Text role="alert" className="pt-2 txt-medium text-ui-fg-base" data-testid="checkout-refunded-notice">
+        {shown.text}
+      </Text>
+    )
+  }
+  if (shown?.kind === "processing") {
+    return (
+      <Text aria-live="polite" className="pt-2 txt-medium text-ui-fg-base" data-testid="checkout-processing-notice">
+        {PROCESSING_NOTICE}
+      </Text>
+    )
+  }
+  if (shown?.kind === "delayed") return <PromptPayOrderDelayed />
+  return <ErrorMessage error={shown?.kind === "error" ? shown.text : null} data-testid={errorTestId} />
+}
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -99,19 +158,19 @@ const StripePaymentButton = ({
   "data-testid"?: string
 }) => {
   const [submitting, setSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // EV-7d (กฎข้อ 28c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
+  const { countryCode } = useParams()
+  const placeAfterPayment = () => placeOrder(cart.id, undefined, countryCode as string)
+  // placeOrder ถูกเรียกหลัง PaymentIntent succeeded/requires_capture เท่านั้น → เงินถูกตัดแล้ว (FS-22)
+  const { shown, setShown, start, busy } = usePlaceOrder(true, placeAfterPayment)
 
   const onPaymentCompleted = async () => {
-    // EV-7d (กฎข้อ 28c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
-    // placeOrder ถูกเรียกหลัง PaymentIntent succeeded/requires_capture เท่านั้น → เงินถูกตัดแล้ว (FS-22)
-    const failure = await completeOrder(placeOrder(cart.id, undefined, countryCode as string), true)
-    if (failure) setErrorMessage(failure)
+    await start()
     setSubmitting(false)
   }
 
   const stripe = useStripe()
   const elements = useElements()
-  const { countryCode } = useParams()
 
   const disabled = !stripe || !elements ? true : false
 
@@ -163,7 +222,7 @@ const StripePaymentButton = ({
           return
         }
 
-        setErrorMessage(error.message || null)
+        setShown(error.message ? { kind: "error", text: error.message } : null)
         setSubmitting(false)
         return
       }
@@ -183,22 +242,15 @@ const StripePaymentButton = ({
   return (
     <>
       <Button
-        disabled={disabled || notReady}
+        disabled={disabled || notReady || busy}
         onClick={handlePayment}
         size="large"
-        isLoading={submitting}
+        isLoading={submitting || shown?.kind === "processing"}
         data-testid={dataTestId}
       >
         ยืนยันคำสั่งซื้อ
       </Button>
-      {errorMessage === REFUNDED_NOTICE ? (
-        <RefundedNotice />
-      ) : (
-        <ErrorMessage
-          error={errorMessage}
-          data-testid="stripe-payment-error-message"
-        />
-      )}
+      <PlaceOrderNotice shown={shown} errorTestId="stripe-payment-error-message" />
     </>
   )
 }
@@ -211,14 +263,16 @@ const ManualTestPaymentButton = ({
   notReady: boolean
 }) => {
   const [submitting, setSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   // EV-7c (กฎข้อ 24c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
   const { countryCode } = useParams()
+  // AF-3b (กฎ 23): ส่ง metadata ของ cart ที่อ่านไว้ → placeOrder sync cookie `aff` ก่อน complete;
+  // รอบอ่านซ้ำของ processing ไม่ sync อีก (sync แล้วตอนกดครั้งแรก — cart อาจ complete แล้ว)
+  const placeManual = (retry: boolean) => placeOrder(cart.id, retry ? undefined : (cart.metadata ?? null), countryCode as string)
+  // manual payment ไม่มีการตัดเงิน → refunded แสดงข้อความของ code / สต็อกไม่พอ (CORE-76 กฎข้อ 134a)
+  const { shown, start, busy } = usePlaceOrder(false, placeManual)
 
   const onPaymentCompleted = async () => {
-    // AF-3b (กฎ 23): ส่ง metadata ของ cart ที่อ่านไว้ → placeOrder sync cookie `aff` ก่อน complete
-    const failure = await completeOrder(placeOrder(cart.id, cart.metadata ?? null, countryCode as string))
-    if (failure) setErrorMessage(failure)
+    await start()
     setSubmitting(false)
   }
 
@@ -231,18 +285,15 @@ const ManualTestPaymentButton = ({
   return (
     <>
       <Button
-        disabled={notReady}
-        isLoading={submitting}
+        disabled={notReady || busy}
+        isLoading={submitting || shown?.kind === "processing"}
         onClick={handlePayment}
         size="large"
         data-testid="submit-order-button"
       >
         ยืนยันคำสั่งซื้อ
       </Button>
-      <ErrorMessage
-        error={errorMessage}
-        data-testid="manual-payment-error-message"
-      />
+      <PlaceOrderNotice shown={shown} errorTestId="manual-payment-error-message" />
     </>
   )
 }
