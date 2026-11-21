@@ -23,7 +23,8 @@
 
 ## การตัดสินใจ (owner 2026-11-21: 2 + 3)
 - ทำทางเลือก 2 เป็น helper เดียว (ไม่สร้าง abstraction อื่น) และเปิด issue upstream (3); เมื่อ bump แล้ว `FetchError` มี `code` → ย้ายกลับไปใช้ SDK แล้วลบ helper (เพิ่มในเช็กลิสต์ bump ของ spec 07)
-- แบ่งงาน: CORE-82 = helper + กลุ่ม checkout/cart/payment; CORE-83 = account/returns/auth; CORE-84 = group buy/flash/affiliate — แต่ละ PR ลบ map ข้อความและ contract test ของกลุ่มนั้นเปลี่ยนเป็นเทียบ code
+- storefront มี client ทางที่สองอยู่แล้ว: `createPaymentSession` (`apps/storefront/src/lib/data/payment.ts`) ที่ `fetch` ตรงด้วยเหตุผลเดียวกัน (`FetchError` ไม่มี `code`) — CORE-82 ย้ายตัวนี้เข้า `medusa-fetch.ts` ด้วย (ไม่ให้มีสามทาง; review #467)
+- แบ่งงาน: CORE-82 = helper + กลุ่ม checkout/cart/payment (รวม `createPaymentSession`); CORE-83 = account/returns/auth; CORE-84 = group buy/flash/affiliate — แต่ละ PR ลบ map ข้อความและ contract test ของกลุ่มนั้นเปลี่ยนเป็นเทียบ code
 - Medusa core error ที่**ไม่มี** code (เช่น `Not enough stock available …`, `Identity with email already exists`) ยังเทียบ `type` + ข้อความตามเดิม (ไม่มีทางอื่น) — บันทึกเป็นข้อยกเว้นใน helper
 
 ## ผลที่ตามมา

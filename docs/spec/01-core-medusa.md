@@ -2843,8 +2843,11 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
 134. (CORE-76 — รวม review #464 ข้อ 2) ข้อความที่ "ลองใหม่" ไม่ช่วย: (a) complete ด้วย manual payment (ไม่มีการตัดเงิน) ล้มด้วยสต็อกไม่พอ (`isOutOfStockAtCompletion` ของ FS-22) → แสดง `INSUFFICIENT_INVENTORY_MESSAGE`
      (`lib/util/insufficient-inventory.ts` — บอกให้ลดจำนวน) แทนข้อความทั่วไป และไม่มีคำ "คืนเงิน";
      (a2) ขั้น review ทางบัตร: notice คืนเงิน (`checkout-refunded-notice`) เป็น **state ของตัวเอง** (เช่น `{ kind: "refunded" }` จาก `placeOrder`) ไม่ผูกกับการเทียบ `errorMessage === REFUNDED_NOTICE`;
-         หลัง PaymentIntent `succeeded`/`requires_capture` ถ้า complete ถูกปฏิเสธด้วย 4xx **ใดๆ** (workflow ล้มหลัง capture → Medusa คืนเงิน — ADR-025 บริบท) → notice คืนเงินเดียวกัน (ไม่ใช่ "ลองใหม่");
-         network error/5xx/timeout (ยังไม่รู้ว่าได้ order ไหม) → พฤติกรรมเดิม;
+         หลัง PaymentIntent `succeeded`/`requires_capture` จัดผลของ complete เป็น kind ด้วย **allow-list** (pure helper เดียว `placeOrderOutcome` — แก้ตาม review #467: "4xx ใดๆ" กว้างเกิน):
+         `refunded` = เฉพาะ error ที่รู้แน่ว่า workflow ล้มหลัง capture แล้ว Medusa คืนเงิน — `FLASH_LIMIT_EXCEEDED`, `FLASH_SOLD_OUT`, code อื่นใน `CHECKOUT_CONFLICTS` ของ hook complete และสต็อกไม่พอ (`isOutOfStockAtCompletion`);
+         `processing` = 409 "Cart is already being completed by another request" (webhook กำลัง complete cart นี้ — ปกติได้ order) → อ่าน cart/order ใหม่: มี order → ไปหน้า order confirmed, ยังไม่มี → ข้อความ `checkout-processing-notice` "กำลังดำเนินการคำสั่งซื้อ กรุณารอสักครู่" แล้วอ่านซ้ำตามกลไก poll เดิมของ PAY-6b (ไม่ใช่ notice คืนเงิน);
+         `unauthorized` = 401 (session หมดอายุ) → พาไป login ใหม่ตามกลไกเดิมของ CORE-4i-b (ไม่ใช่ notice คืนเงิน);
+         error อื่น / network / 5xx / timeout → พฤติกรรมเดิม; PAY-11 และ PAY-12 ใช้ helper เดียวกันนี้ (spec 06 กฎข้อ 13–14);
      (b) คืนสินค้าได้ 400 ข้อความ `NO_LOCATION_MESSAGE` ("Return shipping option has no stock location" — `apps/backend/src/api/store/ownership/return-location.ts:11`) → แสดง `return-contact-store` แบบกฎข้อ 129
      (export ข้อความจาก backend เป็น constant แล้ว contract test เทียบกับ storefront แบบ `RETURN_NOT_STOCKED`)
 135. (CORE-77) ลิงก์ตะกร้าใน nav เมื่ออ่าน cart **ล้ม** (throw/reject ของ server action หรือ fetch) → ป้าย "ตะกร้า" ไม่มีตัวเลข และ**ไม่มี** `aria-busy` (ไม่ค้างสถานะโหลด), ลิงก์ยังพาไป `/cart`;
@@ -2871,11 +2874,13 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
      builder หาสาเหตุ (อ่าน count จาก key ไหนของผล facet ของ `POST /store/search`) แล้วแก้ให้ตัวเลขที่หัว = จำนวนสินค้าในผลปัจจุบันที่มีค่าใดค่าหนึ่งของ option นั้น;
      ถ้าผลของ index ไม่มีตัวเลขนี้ → ไม่แสดงตัวเลขที่หัว (ไม่คำนวณเองจากผลรวมค่าย่อย เพราะสินค้าหนึ่งมีหลายค่า)
 144. (CORE-88 — Q-C15 = ก owner ตัดสิน 2026-11-21) คำค้นสั้น (เช่น 2 อักขระ "ขา") ไม่คืนสินค้าทั้ง catalog เพราะ `search_text` มีค่า option (เช่น "ขนาด:F") ที่ word_similarity ≈ 0.33 > เกณฑ์ 0.3 ของ `typo_tolerance` (CORE-75):
-     `searchClient` ส่ง `typo_tolerance` **เฉพาะ**คำค้นที่ trim แล้วยาว ≥ 3 อักขระ (นับ grapheme ด้วย `Intl.Segmenter` — สระ/วรรณยุกต์ไทยไม่นับแยก); สั้นกว่า → ส่ง body แบบก่อน CORE-75 (ยอมรับ: คำ 2 อักขระกลางคำไทยไม่เจอ); ทุกหน้า (drawer, `/search`, `/store`) ใช้ helper เดียว
+     `searchClient` ส่ง `typo_tolerance` **เฉพาะ**คำค้นที่ trim แล้วยาว ≥ 3 อักขระ (นับ **code point** ด้วย `[...q].length` — "ขา" = 2, "ยืด" = 3; แก้ตาม review #467: นับ grapheme ได้ "ยืด" = 2 ทำให้ AC-174 regress); สั้นกว่า → ส่ง body แบบก่อน CORE-75 (ยอมรับ: คำ 2 อักขระกลางคำไทยไม่เจอ); ทุกหน้า (drawer, `/search`, `/store`) ใช้ helper เดียว
 
 ### Acceptance criteria (รอบ 41)
 - AC-175 (CORE-76, กฎข้อ 134) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน: (a) complete ของ manual payment ตอบ 400 `Not enough stock available for item …` → ข้อความ = `INSUFFICIENT_INVENTORY_MESSAGE` ไม่มีคำ "คืนเงิน"; ทางบัตร → `checkout-refunded-notice` (regression FS-22);
-  (a2) unit: ผลของ `placeOrder` ทางบัตรที่ได้ 400 ข้อความอื่น (เช่น `not_allowed` ที่ไม่รู้จัก) → kind `refunded`; 500/network → ไม่ใช่ `refunded`; component แสดง notice จาก kind ไม่ใช่จากข้อความ (static: ไม่มี `=== REFUNDED_NOTICE`);
+  (a2) unit `placeOrderOutcome`: `FLASH_SOLD_OUT`/`FLASH_LIMIT_EXCEEDED`/สต็อกไม่พอ → `refunded`; 400 `not_allowed` ที่ไม่อยู่ใน allow-list → **ไม่ใช่** `refunded` (พฤติกรรมเดิม); 409 "Cart is already being completed by another request" → `processing`; 401 → `unauthorized`; 500/network → ไม่ใช่ `refunded`;
+       e2e route mock: 409 already-being-completed แล้ว order มีอยู่ → URL เป็นหน้า order confirmed ภายใน 10 วินาที, order ยังไม่มี → เห็น `checkout-processing-notice` ไม่เห็น `checkout-refunded-notice`; 401 → ไปหน้า login (ไม่เห็น `checkout-refunded-notice`);
+       component แสดง notice จาก kind ไม่ใช่จากข้อความ (static: ไม่มี `=== REFUNDED_NOTICE`);
   (b) `POST /store/returns` ตอบ 400 ข้อความ `NO_LOCATION_MESSAGE` → เห็น `return-contact-store` ไม่มีคำ "ลองใหม่"; contract test ข้อความ backend = storefront
 - AC-176 (CORE-77, กฎข้อ 135) e2e route mock: ให้การอ่าน cart ของ nav ล้ม (500) → ภายใน 5 วินาที `nav-cart-link` มีข้อความ "ตะกร้า" ไม่มีวงเล็บตัวเลขและไม่มี attribute `aria-busy` (ล้มบน develop — ค้าง `aria-busy`); เลิก mock แล้วไปหน้าอื่น → เห็นจำนวนจริง; นับ request อ่าน cart ≤ 2 ต่อการเปลี่ยนหน้า
 - AC-177 (CORE-78, กฎข้อ 136) e2e + unit: ลูกค้า 12 order + membership กลุ่ม 1 → หน้า 1 เห็นส่วนกลุ่ม, `?page=2` ไม่เห็น (ล้มบน develop+CORE-68); ลูกค้าที่มีแต่ membership กลุ่ม → overview เห็นลิงก์ "ดูทั้งหมด";
@@ -2891,7 +2896,7 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
 - AC-183 (CORE-86, กฎข้อ 142) unit/static: คำนำหน้าของสอง spec ต่างกันและไม่เป็น substring กัน; รันสอง spec พร้อมกัน `--workers=2 --repeat-each=3` ผ่าน
 - AC-184 (CORE-87, กฎข้อ 143) e2e (สินค้า tag 2 ชิ้นมี option "ขนาด" ค่า F/L) + unit ของ helper ที่อ่าน facet: หัว facet "ขนาด" ไม่มี "(0)" — ตัวเลข (ถ้ามี) = 2 ตามผลปัจจุบัน (ล้มบน develop+CORE-75)
 - AC-185 (CORE-88, กฎข้อ 144) integration `POST /store/search` body เดียวกับ storefront บน seed: คำค้น 2 อักขระที่ไม่อยู่ในชื่อสินค้าใด (เช่น "ขา" กับ seed ที่ไม่มีคำนี้) → 0 hit (ล้มบน develop+CORE-75);
-  regression AC-174 ("ยืด", "สเวตเตอร์", "ยีนส์"/"ขายาว") ยังผ่าน; unit: "ขา" → body ไม่มี `typo_tolerance`, "ยีนส์"/"ยืด" (3 grapheme ขึ้นไป) → มี
+  regression AC-174 ("ยืด", "สเวตเตอร์", "ยีนส์"/"ขายาว") ยังผ่าน; unit: "ขา" และ "  ขา  " (trim แล้ว 2 code point) → body ไม่มี `typo_tolerance`; "ยืด" (3 code point), "ยีนส์" และทุกคำของ AC-174 → มี
 
 ### Test plan (รอบ 41)
 | ระดับ | AC |
@@ -2903,16 +2908,15 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| CORE-76 | ข้อความสต็อกไม่พอของ manual payment + notice คืนเงินเป็น state ของตัวเอง (รวม 4xx อื่นหลังตัดบัตร) + คืนสินค้า `NO_LOCATION_MESSAGE` → ติดต่อร้าน (กฎข้อ 134); qa | `apps/storefront/src/lib/data/cart.ts` (`placeOrder`), `apps/storefront/src/lib/util/{checkout-error,insufficient-inventory,return-request}.ts`, `modules/checkout/components/payment-button`, `apps/backend/src/api/store/ownership/return-location.ts` (export constant), test | ~70 LOC + ~150 LOC test | AC-175 | **FS-22 (#464)** | `cart.ts`/`checkout-error.ts` (PAY-11, PAY-12 — ตัวหลัง sync) |
+| CORE-76 | ข้อความสต็อกไม่พอของ manual payment + notice คืนเงินเป็น state ของตัวเอง (allow-list `refunded`/`processing`/`unauthorized` ด้วย `placeOrderOutcome`) + คืนสินค้า `NO_LOCATION_MESSAGE` → ติดต่อร้าน (กฎข้อ 134); qa | `apps/storefront/src/lib/data/cart.ts` (`placeOrder`), `apps/storefront/src/lib/util/{checkout-error,insufficient-inventory,return-request}.ts`, `modules/checkout/components/payment-button`, `apps/backend/src/api/store/ownership/return-location.ts` (export constant), test | ~70 LOC + ~150 LOC test | AC-175 | **FS-22 (#464)** | `cart.ts`/`checkout-error.ts` (PAY-11, PAY-12 — ตัวหลัง sync) |
 | CORE-77 | ป้ายตะกร้าไม่ค้างเมื่ออ่าน cart ล้ม (กฎข้อ 135); qa | `modules/layout/components/cart-dropdown/index.tsx`, `modules/layout/templates/nav/index.tsx`, e2e | ~30 LOC + ~80 LOC test | AC-176 | **hotfix `fix/nav-cart-link-duplicate`** (ไฟล์เดียวกัน) | nav/cart-dropdown |
 | CORE-78 | orders ของ account: กลุ่มเฉพาะหน้า 1 + "ดูทั้งหมด" + a11y ของ `Pagination` + helper แบ่งหน้าเดียว (กฎข้อ 136); qa | `app/[countryCode]/(main)/account/@dashboard/{page,orders/page,vouchers/page}.tsx`, `modules/store/components/pagination`, `lib/util/{pagination,orders-pagination,evoucher}.ts`, test | ~90 LOC + ~150 LOC test | AC-177 | **CORE-68 (#462)** | `orders/page.tsx` |
 | CORE-79 | ปุ่ม `register-login-link` ≥ 44px + เติมอีเมลในฟอร์ม login (กฎข้อ 137); qa | `modules/account/{templates/login-template.tsx,components/register,components/login}`, e2e | ~30 LOC + ~60 LOC test | AC-178 | PR เอกสารรอบ 41 | — |
 | CORE-80 | middleware อีเมลตัวเล็กฝั่ง backend (กฎข้อ 138) | `apps/backend/src/lib/normalize-email.ts` (+ unit), `apps/backend/src/api/middlewares.ts` (หรือไฟล์ middleware ย่อยที่ spread), integration | ~50 LOC + ~150 LOC test | AC-179 | PR เอกสารรอบ 41 (Q-C13 = ก ☑) | `middlewares.ts` (GB-26, OPS-34 — sync) |
 | CORE-81 | script แปลงอีเมลเก่าเป็นตัวเล็ก dry-run/`--apply` + ตรวจชน (กฎข้อ 139) + บรรทัด go-live checklist ใส่คำสั่งจริง | `apps/backend/src/scripts/lowercase-emails.ts`, `apps/backend/src/workflows/lowercase-emails.ts`, `docs/ops/production.md` (Go-live ข้อ 11), integration | ~150 LOC + ~200 LOC test | AC-180 | **CORE-80** (ใช้ `normalizeEmail`) | `production.md` (OPS-33, EV-25 คนละบรรทัด) |
-| CORE-82..84 | จับ error ด้วย code ตาม ADR-028 แบ่งตามกลุ่ม helper: 82 = checkout/cart/payment, 83 = account/returns/auth, 84 = group buy/flash/affiliate (กฎข้อ 140); qa ต่อ PR | ตาม ADR-028 | ≤ ~350 LOC ต่อ PR | AC-181 | ADR-028 accepted ☑ (owner 2026-11-21); 82 ← CORE-76, PAY-11, PAY-12; 83 ← CORE-76, CORE-79; 84 ← FS-23, GB-27 | helper error ทุกกลุ่ม — ทำหลัง task หน้าร้านอื่นที่แตะ helper เดียวกัน |
+| CORE-82..84 | จับ error ด้วย code ตาม ADR-028 แบ่งตามกลุ่ม helper: 82 = checkout/cart/payment, 83 = account/returns/auth, 84 = group buy/flash/affiliate (กฎข้อ 140); qa ต่อ PR | ตาม ADR-028 | ≤ ~350 LOC ต่อ PR | AC-181 | ADR-028 accepted ☑ (owner 2026-11-21); 82 ← CORE-76, PAY-11, PAY-12; 83 ← **CORE-82**, CORE-76, CORE-79; 84 ← **CORE-83**, FS-23, GB-27 | helper error ทุกกลุ่ม — ทำหลัง task หน้าร้านอื่นที่แตะ helper เดียวกัน |
 | CORE-85 | `/th/contact` ข้อมูลติดต่อจริง (กฎข้อ 141); qa | `app/[countryCode]/(main)/contact/page.tsx`, e2e | ~40 LOC + ~40 LOC test | AC-182 | **owner ส่งข้อมูลติดต่อ** | — |
 | CORE-86 | e2e hygiene คำนำหน้าคำค้นของ core-75 กับ fs14 (กฎข้อ 142) | `apps/storefront/e2e/core-75-thai-substring-search.spec.ts`, `e2e/flash-sale-fs14.spec.ts`, `e2e/support/*` | ~20 LOC | AC-183 | **CORE-75 (#465)** | `flash-sale-fs14.spec.ts` (FS-23 ถ้าแตะ — ไม่คาดว่าแตะ) |
-
 | CORE-87 | หัว facet `/store` ไม่แสดงจำนวนผิด (กฎข้อ 143); qa | `modules/store/components/store-refinements/*`, test | ~20 LOC + ~80 LOC test | AC-184 | **CORE-75 (#465)** | `store-refinements` (CORE-88 ถ้าแตะ) |
 | CORE-88 | ส่ง `typo_tolerance` เฉพาะคำค้น ≥ 3 อักขระ (กฎข้อ 144) | `apps/storefront/src/lib/search-client.ts` (+ unit), integration `search-thai-substring` | ~10 LOC + ~100 LOC test | AC-185 | **CORE-75 (#465)** (Q-C15 = ก ☑) | `search-client.ts` |
 

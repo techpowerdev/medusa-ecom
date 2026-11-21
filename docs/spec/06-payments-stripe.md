@@ -345,10 +345,12 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
 12. (PAY-10 — Q-P11 = ก owner ตัดสิน 2026-11-21) widget `order.details.before` (`src/admin/widgets/order-refund-blocked.tsx`): เมื่อ order มี order change `status ∈ {pending, requested}` (`useOrderChanges` — ค่าเดียวกับ middleware ของ PAY-8 กฎข้อ 10b)
     แสดง `Alert` (variant warning, testid `order-refund-blocked`) ข้อความอังกฤษ "Refunds are blocked while this order has an active return, claim, exchange or edit. Confirm or cancel it first." + ชนิดของ change ที่ค้าง;
     ไม่มี change ค้าง → ไม่ render อะไร; ไม่แตะปุ่ม Refund ของ Medusa (ยังกดได้ แล้ว middleware ของ PAY-8 ตอบ 400 ข้อความเดียวกันเป็น toast)
-13. (PAY-11 — ต่อจาก FS-22, spec 03 กฎข้อ 27/29) PromptPay ทางสำรอง `finish()` ได้ผล `placeOrder` แบบ "คืนเงิน" (kind `refunded` ของ CORE-76: `FLASH_*`/`OUT_OF_STOCK`/4xx หลังจ่ายแล้ว) → หยุด poll ทันที
+13. (PAY-11 — ต่อจาก FS-22, spec 03 กฎข้อ 27/29) PromptPay ทางสำรอง `finish()` จัดผลด้วย helper `placeOrderOutcome` ของ CORE-76 (allow-list — spec 01 กฎข้อ 134 a2):
+    `processing` (409 already being completed) → poll ต่อตามเดิม; `unauthorized` (401) → login ใหม่ตามเดิม; kind `refunded` (`FLASH_*`/สต็อกไม่พอ/code ของ hook ใน allow-list) → หยุด poll ทันที
     แล้วแสดง `promptpay-refunded` ข้อความตามกฎข้อ 27 ของ spec 03 (บอกเหตุผล "สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน… คืนเงินเต็มจำนวนให้อัตโนมัติ") แทนการค้าง "กำลังสร้างคำสั่งซื้อ";
     poll ได้ `refunded` โดยไม่รู้เหตุ → ข้อความเดิมของ PAY-6c; network/5xx → poll ต่อตามเดิม (PAY-6b)
-14. (PAY-12) `/api/payment-return` (redirect off-site — 3DS/PromptPay redirect): `placeOrder` ได้ kind `refunded` → `/<cc>/cart?error=refunded`; error อื่น → `order_failed` (เดิม); ปฏิเสธ → `payment_failed` (เดิม);
+14. (PAY-12) `/api/payment-return` (redirect off-site — 3DS/PromptPay redirect) ใช้ `placeOrderOutcome` เดียวกัน: kind `refunded` → `/<cc>/cart?error=refunded`;
+    `processing` → อ่าน order ของ cart: มี → หน้า order confirmed, ยังไม่มี → `/<cc>/checkout?step=review` (กลไก poll ของ PAY-6b); `unauthorized` → หน้า login พร้อม return path เดิม; error อื่น → `order_failed` (เดิม); ปฏิเสธ → `payment_failed` (เดิม);
     หน้า `/<cc>/cart` อ่าน `error` ∈ {`refunded`, `order_failed`, `payment_failed`} แล้วแสดง `cart-error-notice` ข้อความไทยต่อค่า (`refunded` = ข้อความกฎข้อ 27 spec 03; `order_failed` = "สร้างคำสั่งซื้อไม่สำเร็จ หากมีการตัดเงิน ระบบจะคืนเงินให้อัตโนมัติ กรุณาตรวจสอบตะกร้าแล้วสั่งใหม่";
     `payment_failed` = "ชำระเงินไม่สำเร็จ กรุณาเลือกวิธีชำระเงินอีกครั้ง"); ค่าอื่น → ไม่แสดง (ไม่ render ค่าจาก URL ตรง)
 15. (PAY-13 — test hygiene) e2e `pay-9-refunded-cart-repay.spec.ts` ขั้นจ่ายใหม่: รอ `sessionIntentId` ไม่ว่างด้วย `expect.poll` (หรือรอ response ของ `POST .../payment-sessions` ที่ 2xx) ก่อนใช้ค่า;
@@ -356,8 +358,8 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
 
 ### Acceptance criteria (รอบ 41)
 - AC-23 (PAY-10, กฎข้อ 12) e2e admin: order ที่มี return request ค้าง → เห็น `order-refund-blocked` (ข้อความมี `active return`); ยกเลิก return request แล้ว reload → ไม่เห็น; order ปกติ → ไม่เห็น
-- AC-24 (PAY-11, กฎข้อ 13) unit Vitest (logic ของ finish/poll เป็น pure helper) + e2e route mock: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → ภายใน 5 วินาทีเห็น `promptpay-refunded` มีคำ "คืนเงิน" และไม่เห็น `promptpay-awaiting-order`; ไม่มี request poll เพิ่มหลังนั้น (ล้มบน develop+FS-22 — ค้าง awaiting)
-- AC-25 (PAY-12, กฎข้อ 14) unit ของ route (แบบ `core-29-active-cart.test.ts:187-214`) + e2e: placeOrder kind `refunded` → location `/th/cart?error=refunded`; เปิด `/th/cart?error=refunded|order_failed|payment_failed` → `cart-error-notice` อักษรไทยตามค่า; `?error=<script>` → ไม่แสดง (ล้มบน develop — หน้า cart ไม่อ่าน `error`)
+- AC-24 (PAY-11, กฎข้อ 13) unit Vitest (logic ของ finish/poll เป็น pure helper) + e2e route mock: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → ภายใน 5 วินาทีเห็น `promptpay-refunded` มีคำ "คืนเงิน" และไม่เห็น `promptpay-awaiting-order`; ไม่มี request poll เพิ่มหลังนั้น (ล้มบน develop+FS-22 — ค้าง awaiting); 409 already-being-completed → ยัง poll และไม่เห็น `promptpay-refunded`
+- AC-25 (PAY-12, กฎข้อ 14) unit ของ route (แบบ `core-29-active-cart.test.ts:187-214`) + e2e: placeOrder kind `refunded` → location `/th/cart?error=refunded`; 409 already-being-completed + order มีแล้ว → หน้า order confirmed (ไม่ใช่ `error=refunded`); 401 → หน้า login; เปิด `/th/cart?error=refunded|order_failed|payment_failed` → `cart-error-notice` อักษรไทยตามค่า; `?error=<script>` → ไม่แสดง (ล้มบน develop — หน้า cart ไม่อ่าน `error`)
 - AC-26 (PAY-13, กฎข้อ 15) e2e `pay-9-refunded-cart-repay` `--repeat-each=5` ผ่านในเครื่อง/CI; static: ไม่มี `waitForTimeout` ใหม่ และ assertion ของ AC-22c เท่าเดิม (นับ `expect(` ของ step เดิมไม่ลด)
 
 ### Tasks (รอบ 41)

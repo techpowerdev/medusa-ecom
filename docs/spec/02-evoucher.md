@@ -546,7 +546,7 @@ order ก่อน EV-22 (เช่น #66) มีธงแค่ใน `order_l
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| EV-23 | route Retry allocation (กฎข้อ 39) | `src/api/admin/evoucher/orders/[id]/allocate/route.ts` (ใหม่), middleware/validator ของ admin evoucher, integration | ~60 LOC + ~180 LOC test | AC-53 | PR เอกสารรอบ 41 | — |
+| EV-23 | route Retry allocation (กฎข้อ 39) | `src/api/admin/evoucher/orders/[id]/allocate/route.ts` (ใหม่), middleware/validator ของ admin evoucher, integration | ~60 LOC + ~180 LOC test | AC-53 | PR เอกสารรอบ 41 | `src/api/middlewares.ts` ถ้าลงทะเบียน middleware ที่นี่ (GB-26, CORE-80, OPS-34 — ตัวหลัง sync) |
 | EV-24 | ปุ่ม Retry allocation ใน widget order (กฎข้อ 40); qa | `src/admin/widgets/order-evouchers.tsx`, `src/admin/lib/evoucher.ts`, e2e admin | ~50 LOC + ~100 LOC test | AC-54 | **EV-23** | `order-evouchers.tsx` |
 | EV-25 | script backfill ธง backordered (กฎข้อ 41) + บรรทัด go-live | `src/scripts/backfill-evoucher-backordered-flags.ts`, `src/workflows/evoucher/steps/update-evoucher-backordered-flags.ts` (export helper), `docs/ops/production.md` (Go-live ข้อ 12), integration | ~60 LOC + ~100 LOC test | AC-55 | PR เอกสารรอบ 41 | `production.md` (CORE-81, OPS-33 คนละบรรทัด) |
 

@@ -513,7 +513,7 @@ spec 08 กฎ 41a/41c/43/44/45, spec 07 เช็กลิสต์ bump ข้
 **critical path (เงิน/PII ก่อน)**: PR เอกสารรอบ 41 → OPS-33 ∥ EV-23 ∥ EV-25 ∥ PAY-10 ∥ CORE-80 → (#464 merge) CORE-76 → PAY-11 ∥ PAY-12 ∥ FS-24 → CORE-81 → ที่เหลือ → CORE-82..84 ปิดท้าย
 **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง merge `origin/develop` แล้วรอ CI ใหม่):
 - `apps/storefront/src/lib/data/cart.ts` + `lib/util/checkout-error.ts`/`insufficient-inventory.ts`: FS-22 → CORE-76 → (PAY-11 ∥ PAY-12) → CORE-82
-- `apps/backend/src/api/middlewares.ts`: GB-25 → GB-26, CORE-80, OPS-34 (ย้าย matcher) — เก็บทั้งสองฝั่งเมื่อ conflict (CLAUDE.md)
+- `apps/backend/src/api/middlewares.ts`: GB-25 → GB-26, CORE-80, OPS-34 (ย้าย matcher), EV-23 (middleware/validator ของ route allocate ถ้าลงไฟล์นี้) — เก็บทั้งสองฝั่งเมื่อ conflict (CLAUDE.md)
 - `docs/ops/production.md`: CORE-81 (Go-live ข้อ 11), EV-25 (ข้อ 12), OPS-33 (ข้อ 13 + หมายเหตุ OPS-32) — คนละบรรทัด
 - `src/admin/components/affiliate/program-form.tsx`: ADM-44 → ADM-46; `src/admin/lib/single-flight.ts`: ADM-46 (EV-24 ใช้อย่างเดียว — ถ้า ADM-46 merge ก่อน EV-24 sync)
 - `src/admin/widgets/order-evouchers.tsx`: EV-24 เท่านั้น; `apps/storefront/e2e/admin-table-long-text.spec.ts`: ADM-45
