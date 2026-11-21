@@ -155,6 +155,13 @@ test.describe("หน้า account: จ่ายแล้วแต่ยัง�
     await expect(row.getByTestId("group-pay-deadline")).toHaveCount(0)
     await expectThai(page, ["group-order-processing"])
     await evidence("01-account-group-processing")
+
+    // session หลักตัดสิน 2026-11-21 (qa #444): หน้า pay ของ order เดียวกันต้องบอกข้อความเดียวกัน ไม่ใช่ "ชำระเงินเรียบร้อยแล้ว"
+    const label = (await row.getByTestId("group-order-processing").textContent())!.trim()
+    await page.goto(`/${CC}/account/orders/${ctx.orderId}/pay`)
+    await expect(page.getByTestId("order-pay-processing")).toHaveText(label)
+    await expect(page.getByTestId("order-pay-paid")).toHaveCount(0)
+    await expect(page.getByTestId("order-pay-form")).toHaveCount(0)
   })
 })
 

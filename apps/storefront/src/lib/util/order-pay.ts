@@ -53,20 +53,25 @@ export const paymentSettled = ({ order }: GroupBuyOrder) =>
 export const payableCollection = ({ order }: GroupBuyOrder) =>
   order.payment_collections.find((c) => c.status !== "completed")
 
-export type OrderPayView = "paid" | "form" | "waiting" | "closed"
+export type OrderPayView = "paid" | "processing" | "form" | "waiting" | "closed"
 
 /**
  * กฎข้อ 9 (b): ฟอร์มเฉพาะ awaiting_payment + now < pay_deadline_at + มี collection ที่ยังไม่ completed
  * GB-22 (spec 04 กฎข้อ 45a): membership `cancelled` → closed เสมอ แม้ collection completed (เงินเข้าหลังยกเลิกถูกคืนอัตโนมัติ — GB-21)
+ * GB-22 (session หลักตัดสิน 2026-11-21): paid = membership `paid` (แปลง order แล้ว) เท่านั้น; เงินเข้าแล้วแต่ยังเป็น draft → processing
+ * ข้อความเดียวกับหน้าบัญชี (กฎข้อ 45b)
  */
 export function orderPayView(data: GroupBuyOrder, nowMs: number): OrderPayView {
   if (data.membership.status === "cancelled") return "closed"
-  if (data.membership.status === "paid" || paymentSettled(data)) return "paid"
+  if (data.membership.status === "paid") return "paid"
+  if (paymentSettled(data)) return "processing"
   if (data.membership.status === "joined") return "waiting"
   const deadline = data.group.pay_deadline_at ? Date.parse(data.group.pay_deadline_at) : NaN
   const open = data.membership.status === "awaiting_payment" && nowMs < deadline
   return open && payableCollection(data) ? "form" : "closed"
 }
+
+export const PROCESSING_MESSAGE = "ได้รับเงินแล้ว กำลังยืนยันคำสั่งซื้อ"
 
 export const REFUND_NOTICE_MESSAGE = "สิทธิ์นี้ถูกยกเลิกแล้ว หากมีการตัดเงิน ระบบคืนเงินเต็มจำนวนให้อัตโนมัติ (ตามรอบของธนาคาร)"
 

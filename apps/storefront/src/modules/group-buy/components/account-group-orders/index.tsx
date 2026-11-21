@@ -1,7 +1,7 @@
 import { formatDate, formatDateTime } from "@lib/util/date"
 import { GroupBuyMembership, GroupBuyMembershipView, groupBuyMembershipView } from "@lib/util/group-buy-orders"
 import { convertToLocale } from "@lib/util/money"
-import { REFUND_NOTICE_MESSAGE } from "@lib/util/order-pay"
+import { PROCESSING_MESSAGE, REFUND_NOTICE_MESSAGE } from "@lib/util/order-pay"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Button } from "@modules/common/components/ui"
 import LeaveGroupButton from "./leave-button"
@@ -67,7 +67,7 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
         ) : view.kind === "processing" ? (
           // GB-22 (spec 04 กฎข้อ 45b): ได้รับเงินแล้วแต่ order ยังเป็น draft — ไม่มีปุ่มชำระ
           <span className="text-small-semi" data-testid="group-order-processing">
-            ได้รับเงินแล้ว กำลังยืนยันคำสั่งซื้อ
+            {PROCESSING_MESSAGE}
           </span>
         ) : (
           <span className="text-small-semi" data-testid="group-order-status" data-status={view.kind}>

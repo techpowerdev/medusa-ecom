@@ -129,16 +129,20 @@ describe("orderPayView", () => {
     expect(orderPayView(data(), NOW)).toBe("form")
   })
 
-  it("collection completed → paid", () => {
-    expect(orderPayView(data({ collection: "completed" }), NOW)).toBe("paid")
+  // GB-22 (session หลักตัดสิน 2026-11-21, เจตนากฎข้อ 45b): เงินเข้าแล้วแต่ membership ยัง awaiting_payment (draft ยังไม่แปลง/convert_failed)
+  // → processing ข้อความเดียวกับหน้าบัญชี; "ชำระเงินเรียบร้อยแล้ว" เฉพาะ membership paid (แปลง order แล้ว)
+  it("awaiting_payment + collection completed → processing", () => {
+    expect(orderPayView(data({ collection: "completed" }), NOW)).toBe("processing")
   })
 
-  it("payment_status captured → paid", () => {
-    expect(orderPayView(data({ payment_status: "captured" }), NOW)).toBe("paid")
+  it("awaiting_payment + payment_status captured → processing (แม้เลยเส้นตาย)", () => {
+    expect(orderPayView(data({ payment_status: "captured" }), NOW)).toBe("processing")
+    expect(orderPayView(data({ payment_status: "captured", deadline: EARLIER }), NOW)).toBe("processing")
   })
 
   it("membership paid → paid", () => {
     expect(orderPayView(data({ membership: "paid" }), NOW)).toBe("paid")
+    expect(orderPayView(data({ membership: "paid", collection: "completed", payment_status: "captured" }), NOW)).toBe("paid")
   })
 
   it("joined (กลุ่มยังไม่สำเร็จ) → waiting", () => {
@@ -170,8 +174,8 @@ describe("orderPayView", () => {
     expect(orderPayView(data({ membership: "cancelled", ...opts }), NOW)).toBe("closed")
   })
 
-  it("awaiting_payment ก่อนเส้นตาย + collection completed → paid (เดิม)", () => {
-    expect(orderPayView(data({ collection: "completed" }), NOW)).toBe("paid")
+  it("awaiting_payment ก่อนเส้นตาย + collection completed → processing (ไม่ใช่ paid — session หลักตัดสิน 2026-11-21)", () => {
+    expect(orderPayView(data({ collection: "completed" }), NOW)).toBe("processing")
   })
 })
 

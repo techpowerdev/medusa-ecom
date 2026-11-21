@@ -13,6 +13,7 @@ import {
   hasPayment,
   orderPayView,
   payableCollection,
+  PROCESSING_MESSAGE,
   REFUND_NOTICE_MESSAGE,
   sessionCreateOutcome,
   showRefundNotice,
@@ -34,7 +35,10 @@ const CARD = "pp_stripe_stripe"
 const PROMPTPAY = "pp_stripe-promptpay_stripe"
 const PAY_FAILED = "ชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
 
-/** หยุดรอ/poll เมื่อชำระแล้ว หรือสิทธิ์ถูกยกเลิก (GB-22 กฎข้อ 45a — ไม่แสดง "กำลังยืนยัน" ให้สิทธิ์ที่ยกเลิก) */
+/**
+ * หยุดรอ/poll เมื่อแปลง order แล้ว (membership paid) หรือสิทธิ์ถูกยกเลิก (GB-22 กฎข้อ 45a — ไม่แสดง "กำลังยืนยัน" ให้สิทธิ์ที่ยกเลิก)
+ * `processing` (เงินเข้าแล้ว ยังเป็น draft) poll ต่อจนครบเพดาน แล้วคงข้อความ processing
+ */
 const done = (d: GroupBuyOrder, nowMs: number) => d.membership.status === "cancelled" || orderPayView(d, nowMs) === "paid"
 
 /** `redirect` = ผลของ `stripeReturn` จาก query ที่ Stripe แนบมาตอนกลับหน้านี้ (กฎข้อ 9 d3) */
@@ -66,7 +70,8 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
   const session = collection?.payment_sessions.find((s) => s.status === "pending")
   const [selected, setSelected] = useState(session?.provider_id ?? "")
   const computed = orderPayView(data, now)
-  const view = closed && computed !== "paid" ? "closed" : computed
+  // เงินเข้าแล้ว (processing) บอกตามจริงแม้ guard ปฏิเสธการสร้าง session ใหม่
+  const view = closed && computed !== "paid" && computed !== "processing" ? "closed" : computed
   // สิทธิ์ปิดแน่นอน (ยกเลิกแล้ว/guard ปฏิเสธ) — แสดงก่อนสถานะรอยืนยัน
   const final = view === "closed" && (closed || data.membership.status === "cancelled")
 
@@ -211,6 +216,11 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
         </Text>
       ) : final ? (
         <OrderPayClosed refund={showRefundNotice(data)} />
+      ) : view === "processing" ? (
+        // GB-22 (session หลักตัดสิน 2026-11-21): ข้อความเดียวกับ group-order-processing ของหน้าบัญชี
+        <Text className="txt-medium-plus text-ui-fg-base" aria-live="polite" data-testid="order-pay-processing">
+          {PROCESSING_MESSAGE}
+        </Text>
       ) : delayed ? (
         <PromptPayOrderDelayed />
       ) : awaiting ? (
