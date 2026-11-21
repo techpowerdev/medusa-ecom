@@ -5,6 +5,7 @@ import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
 import { adminFlashSaleMiddlewares } from './admin/flash-sales/middlewares'
 import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
 import { adminPaymentMiddlewares } from './admin/payments/middlewares'
+import { adminPromotionLockMiddlewares } from './admin/promotions/group-buy-lock'
 import { storeEvoucherMiddlewares } from './store/evouchers/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
 import { storeGroupBuyMiddlewares } from './store/group-buy/middlewares'
@@ -43,6 +44,8 @@ export default defineMiddlewares({
     ...storeGroupBuyMiddlewares,
     // PAY-8 (spec 06 กฎข้อ 10): กัน refund ของ admin เมื่อ order มี active order change (B-1)
     ...adminPaymentMiddlewares,
+    // GB-25 (spec 04 กฎข้อ 48, ADR-026): ล็อก promotion `GB-<token>` ของกลุ่ม + campaign ของแคมเปญ group buy ที่ไม่ใช่ draft
+    ...adminPromotionLockMiddlewares,
     // CORE-6 (spec 01 "ไม่มี guest"): cart + checkout ต้องมี customer ที่ล็อกอิน (AC-6)
     {
       matcher: '/store/carts*',
