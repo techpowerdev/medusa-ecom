@@ -164,3 +164,27 @@ describe("AC-18 หัวข้อ Alerts ใน docs/ops/production.md", () => 
     expect(body).toContain("restart worker")
   })
 })
+
+// OPS-32: spec 07 AC-47 (b) — log ของ Medusa ที่ดูเหมือนคืนเงินล้มทั้งที่คืนสำเร็จ (complete ล้มหลัง capture)
+describe("AC-47 runbook log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const body = section(doc, "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ (OPS-32)")
+
+  it('มีหัวข้อ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ (OPS-32)"', () => {
+    expect(body).not.toBeNull()
+  })
+
+  it("ระบุ warn ของเรา และสองข้อความของ Medusa", () => {
+    expect(body).toContain("CART_COMPLETION_FAILED_AFTER_PAYMENT")
+    expect(body).toContain("Error was thrown trying to refund payment")
+    expect(body).toContain("[object Object]")
+    expect(body).toContain("recreate a payment session")
+    expect(body).toContain("Invalid string")
+  })
+
+  it("วิธีตรวจ: refunds ของ GET /admin/payments/:id และ PI ใน Stripe dashboard; ห้าม refund ซ้ำด้วยมือ", () => {
+    for (const word of ["GET /admin/payments/", "refunds", "Refunded due to cart completion failure", "Stripe dashboard", "ห้าม refund ซ้ำด้วยมือ"]) {
+      expect(body).toContain(word)
+    }
+  })
+})

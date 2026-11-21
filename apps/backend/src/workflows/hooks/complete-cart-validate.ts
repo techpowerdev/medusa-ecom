@@ -9,10 +9,16 @@ import {
   releaseFlashSaleForCart,
   reserveFlashSaleForCart,
 } from "./flash-sale-reservation"
+import { STEP_AFTER_VALIDATE_FAILED, warnIfCompletionFailedAfterPayment } from "./paid-completion-failure"
+
+type ValidateCompensation = { reservation?: FlashSaleReservationRef; cart_id: string; payment_session_ids: string[] }
+
+const paymentSessionIds = (cart: { payment_collection?: { payment_sessions?: ({ id: string } | null)[] | null } | null }) =>
+  (cart.payment_collection?.payment_sessions ?? []).flatMap((session) => (session ? [session.id] : []))
 
 // handler รวมของ completeCartWorkflow.hooks.validate (spec 03 กฎข้อ 8 — hook หนึ่งตัวมี handler ได้ตัวเดียว)
 // ลำดับ: check ที่อ่านอย่างเดียวก่อน check ที่เขียนข้อมูล; check ใหม่ในอนาคตเพิ่มในไฟล์นี้
-completeCartWorkflow.hooks.validate<FlashSaleReservationRef | undefined>(
+completeCartWorkflow.hooks.validate<ValidateCompensation | undefined>(
   async ({ cart }, { container }) => {
     // OPS-20a (spec 07 AC-31): เวลาต้น/ท้าย handler รวม = ท้าย (b), ช่วง (c), ต้น (d) — debug เท่านั้น
     const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -33,19 +39,28 @@ completeCartWorkflow.hooks.validate<FlashSaleReservationRef | undefined>(
       // 2. FS-3: per-customer limit + total cap ภายใต้ lock, transaction เดียว
       const reservation = await reserveFlashSaleForCart(container, cart as FlashSaleCartLike)
 
-      return new StepResponse(undefined, reservation)
+      return new StepResponse(undefined, { reservation, cart_id: cart.id, payment_session_ids: paymentSessionIds(cart) })
     } catch (e) {
       outcome = (e as { code?: string })?.code || "ERROR"
+      // OPS-32: hook ล้ม → compensation ของ hook ไม่รัน จึง warn ที่นี่ (ก่อน compensatePaymentIfNeededStep ของ Medusa)
+      await warnIfCompletionFailedAfterPayment(container, { cart_id: cart.id, payment_session_ids: paymentSessionIds(cart), code: outcome })
       throw e
     } finally {
       logCheckoutPhase(logger, { phase: "hook", cart_id: cart.id, started_at: startedAt, ended_at: Date.now(), outcome })
     }
   },
-  // compensation เป็นของส่วน FS-3 เท่านั้น: step หลัง hook ล้ม → คืน usage + units_sold และลบ reservation
-  async (reservation: FlashSaleReservationRef | undefined, { container }) => {
-    if (!reservation) {
+  // step หลัง hook ล้ม → OPS-32 warn ถ้าจ่ายแล้ว (ก่อน compensation ของ Medusa ที่ refund) + FS-3 คืน usage + units_sold และลบ reservation
+  async (data: ValidateCompensation | undefined, { container }) => {
+    if (!data) {
       return
     }
-    await releaseFlashSaleForCart(container, reservation)
+    await warnIfCompletionFailedAfterPayment(container, {
+      cart_id: data.cart_id,
+      payment_session_ids: data.payment_session_ids,
+      code: STEP_AFTER_VALIDATE_FAILED,
+    })
+    if (data.reservation) {
+      await releaseFlashSaleForCart(container, data.reservation)
+    }
   }
 )
