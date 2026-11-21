@@ -1,0 +1,56 @@
+CORE-80 — middleware อีเมลตัวเล็กฝั่ง backend (spec 01 กฎข้อ 138, AC-179)
+base: origin/develop fd39a681 — วันที่ 2026-11-21 — node v22.23.3
+
+== RED (ก่อนเขียนโค้ด) ==
+-- unit: ไม่มี module normalize-email --
+    Cannot find module '../normalize-email' from 'src/lib/__tests__/normalize-email.unit.spec.ts'
+    Cannot find module '../normalize-email' from 'src/api/__tests__/normalize-email.unit.spec.ts'
+Test Suites: 2 failed, 2 total
+Tests:       0 total
+-- integration http: core-80-normalize-email.spec.ts บน middlewares.ts ของ develop --
+      ✕ stores the identity in lowercase and logs in with any casing (496 ms)
+      ✕ rejects a second register that differs only by casing (603 ms)
+      ✕ resets the password through a mixed-case identifier (339 ms)
+      ✕ creates the store customer with a lowercase email (294 ms)
+      ✕ lowercases the email on create and update without touching other fields (219 ms)
+      ✕ stores the identity and affiliate in lowercase and logs in with any casing (250 ms)
+      ✓ keeps the admin identity as sent (429 ms)
+Tests:       6 failed, 1 passed, 7 total
+สาเหตุ (ตัวอย่าง): entity_id ได้ "Foo.Bar@Example.COM" แทน "foo.bar@example.com"; register ซ้ำต่างตัวพิมพ์ได้ 200 (สร้าง identity ใหม่);
+reset-password ไม่ emit auth.password_reset; customer.email = "A@B.CO"; ส่วน /auth/user คงตัวพิมพ์ตามส่ง (ผ่านตั้งแต่แรกตาม Q-C13 = ก)
+
+== GREEN ==
+-- unit: normalize-email (lib + middleware) --
+PASS src/api/__tests__/normalize-email.unit.spec.ts
+    ✓ lowercases email and identifier without touching other fields (2 ms)
+    ✓ also normalizes validatedBody when a validator already ran (1 ms)
+    ✓ leaves non-object bodies and non-string fields alone (undefined) (1 ms)
+    ✓ leaves non-object bodies and non-string fields alone (null)
+    ✓ leaves non-object bodies and non-string fields alone ("A@B.CO")
+    ✓ leaves non-object bodies and non-string fields alone ({"email": 42, "identifier": null}) (1 ms)
+    ✓ covers customer + affiliate emailpass and customer create/update routes
+    ✓ does not touch the admin user actor
+PASS src/lib/__tests__/normalize-email.unit.spec.ts
+    ✓ normalizes "Foo.Bar@Example.COM" to "foo.bar@example.com"
+    ✓ normalizes "  A@B.CO 
+    ✓ normalizes "already@lower.co" to "already@lower.co"
+    ✓ normalizes "" to ""
+Tests:       12 passed, 12 total
+-- integration http: integration-tests/http/core-80-normalize-email.spec.ts --
+      ✓ stores the identity in lowercase and logs in with any casing (445 ms)
+      ✓ rejects a second register that differs only by casing (438 ms)
+      ✓ resets the password through a mixed-case identifier (636 ms)
+      ✓ creates the store customer with a lowercase email (234 ms)
+      ✓ lowercases the email on create and update without touching other fields (174 ms)
+      ✓ stores the identity and affiliate in lowercase and logs in with any casing (288 ms)
+      ✓ keeps the admin identity as sent (191 ms)
+Tests:       7 passed, 7 total
+-- backend unit ชุดเต็ม (--maxWorkers=2 --workerIdleMemoryLimit=700MB เพราะเครื่องโหลดสูง) --
+Test Suites: 123 passed, 123 total
+Tests:       1681 passed, 1681 total
+-- pnpm lint && pnpm typecheck: ผ่าน (exit 0) --
+-- pnpm --filter backend build: ผ่าน --
+info:    Backend build completed successfully (42.40s)
+info:    Frontend build completed successfully (94.10s)
+-- pnpm --filter storefront test:e2e:unit --
+  131 passed (2.5s)
