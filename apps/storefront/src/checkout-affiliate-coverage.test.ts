@@ -27,7 +27,7 @@ const POLL_ALLOW_LIST: Record<string, string> = {
  * (กฎ 31c บังคับให้ manual ส่ง metadata; จุดอื่นต้องอยู่ใน allow-list พร้อมเหตุผล)
  */
 const PLACE_ORDER_ALLOW_LIST: Record<string, string> = {
-  "payment-button/index.tsx#StripePaymentButton.onPaymentCompleted":
+  "payment-button/index.tsx#StripePaymentButton.placeAfterPayment":
     "เรียกหลัง stripe.confirmPayment สำเร็จ ซึ่งอยู่ใน syncAffiliateBefore แล้ว (กฎ 31a) — cart ถูก sync ก่อนเริ่มชำระ",
   "promptpay-payment/index.tsx#PromptPayCheckout.finish":
     "ทางสำรองหลังชำระพร้อมเพย์แล้ว (webhook complete cart ไปแล้ว) — sync เกิดก่อน retrievePaymentIntent/confirm ใน showQr (กฎ 31b)",

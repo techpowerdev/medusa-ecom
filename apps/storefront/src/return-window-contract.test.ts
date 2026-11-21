@@ -2,7 +2,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
-import { DEFAULT_RETURN_WINDOW_DAYS, RETURN_ERRORS, RETURN_NOT_STOCKED } from "@lib/util/return-request"
+import { DEFAULT_RETURN_WINDOW_DAYS, RETURN_ERRORS, RETURN_NO_LOCATION, RETURN_NOT_STOCKED } from "@lib/util/return-request"
 
 // CORE-20d (spec 01 กฎข้อ 66a/66c, AC-102): contract กับ backend ของ CORE-20b — อ่าน source ของ backend ตรง
 // `FetchError` ของ js-sdk เก็บแค่ message ไม่มี `code` → storefront จับคู่ด้วยข้อความคงที่ของ backend
@@ -46,6 +46,17 @@ describe("contract: error location ไม่มีของ (CORE-55)", () => {
     )
     expect(match, "RETURN_ITEM_NOT_STOCKED_MESSAGE ใน return-location.ts").not.toBeNull()
     expect(RETURN_NOT_STOCKED.message).toBe(match![1])
+  })
+})
+
+// CORE-76 (spec 01 กฎข้อ 134b, AC-175b): ข้อความคงที่เมื่อ return option ไม่มี stock location (CORE-55 กฎข้อ 113b)
+describe("contract: error return option ไม่มี stock location (CORE-55)", () => {
+  it("ข้อความที่ storefront จับคู่ตรงกับ RETURN_NO_LOCATION_MESSAGE ของ backend", () => {
+    const match = read("api/store/ownership/return-location.ts").match(
+      /export const RETURN_NO_LOCATION_MESSAGE = "([^"]+)"/
+    )
+    expect(match, "RETURN_NO_LOCATION_MESSAGE ใน return-location.ts").not.toBeNull()
+    expect(RETURN_NO_LOCATION.message).toBe(match![1])
   })
 })
 

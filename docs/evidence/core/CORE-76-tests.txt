@@ -1,0 +1,43 @@
+# CORE-76 — ผลทดสอบ (spec 01 กฎข้อ 134, AC-175) — 2026-11-22 (เครื่อง builder, Node 22.23.3)
+
+## RED ก่อนแก้ (test เขียนก่อนโค้ด)
+### backend: apps/backend/src/api/__tests__/error-handler.unit.spec.ts (มีแค่ constants ยังไม่แก้ handler)
+    ✕ covers our 409 codes (spec 03 PROMOTION_NOT_COMBINABLE, FLASH_*; spec 02 void + reserved + resend lock; spec 04 GB_*; spec 06 PAY-6 + PAY-9; spec 05 AF-15) (9 ms)
+      ✕ MedusaError from the complete route → 409 with code CART_COMPLETION_IN_PROGRESS and the original message (4 ms)
+      ✕ serialized → 409 with code CART_COMPLETION_IN_PROGRESS and the original message (1 ms)
+Tests:       3 failed, 30 passed, 33 total
+
+### storefront: vitest (place-order-outcome, core-76 UI, FS-22, placeOrder, return)
+      Tests  15 failed | 128 passed (143)
+     × 400 Return shipping option has no stock location → contactStore + ข้อความไทยไม่มี ลองใหม่ 5ms
+     × 400 อื่น → ยังคืน { kind: "failed" } 6ms
+     × 409 CART_COMPLETION_IN_PROGRESS → [Error: Cart is already being completed by another request] 1ms
+     × 409 FLASH_SOLD_OUT → [Error: This flash sale is sold out] 4ms
+     × 409 PROMOTION_NOT_COMBINABLE → [Error: This promotion can't be combined with the promotions already on the cart] 1ms
+     × CORE-76 (กฎข้อ 134b): 400 + RETURN_NO_LOCATION_MESSAGE ของ backend → true 9ms
+     × FLASH_SOLD_OUT → คืน { kind: refunded, code } ไม่ throw 84ms
+     × FS-22 (spec 03 กฎข้อ 27): 400 สต็อกไม่พอตอน reserveInventory → refunded OUT_OF_STOCK 1ms
+     × FetchError 400 → [Error: Payment sessions are required] 0ms
+     × FetchError 401 → [Error: Unauthorized] 1ms
+     × Medusa คืน type cart (ชำระไม่ผ่าน ไม่ได้ order) → { kind: "failed" } 0ms
+     × error อื่น → { kind: "failed" } ไม่ throw (ผู้เรียกใช้ข้อความ fallback ของตัวเอง) 1ms
+     × network → [TypeError: fetch failed] 0ms
+     × ข้อความที่ storefront จับคู่ตรงกับ RETURN_NO_LOCATION_MESSAGE ของ backend 5ms
+     × ไม่มี cart id → { kind: "failed" } ไม่ throw 0ms
+ FAIL  src/core-4i-b-ui-results.test.ts [ src/core-4i-b-ui-results.test.ts ]
+ FAIL  src/core-76-place-order-outcome-ui.test.ts [ src/core-76-place-order-outcome-ui.test.ts ]
+ FAIL  src/fs-22-refunded-notice.test.ts [ src/fs-22-refunded-notice.test.ts ]
+ FAIL  src/lib/util/place-order-outcome.test.ts [ src/lib/util/place-order-outcome.test.ts ]
+ Test Files  10 failed | 1 passed (11)
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+
+## GREEN หลังแก้
+backend error-handler + ownership/return-location: 85 passed (85)
+backend test:unit ทั้งชุด: Test Suites 120 passed / 121; Tests 1673 passed, 1 failed = return-lock.unit.spec.ts timeout 5000ms ตอนเครื่องโหลดสูง (ไฟล์นี้ไม่ได้แตะ) — รันเดี่ยว 11 passed (11)
+storefront test:unit ทั้งชุด: Test Files 108 passed (108); Tests 1329 passed (1329)
+storefront test:e2e:unit: 131 passed
+e2e chromium (backend :9186 medusa develop, storefront :8186 next start, manual payment — ไม่มี Stripe key):
+  e2e/core-76-place-order-outcome.spec.ts: 4 passed (a manual สต็อกหมดจริง, a2 409+order → confirmed ≤10s, a2 409 ไม่มี order → processing notice, a2 401 → /th/account)
+  regression: flash-sale-fs15, core-52-checkout-guards, core-71-return-contact-store: 20 passed
+pnpm lint: 0 errors (warning เดิม); pnpm typecheck: ผ่าน; NODE_ENV=production pnpm --filter backend build: สำเร็จ
+e2e ทางบัตรจริง (fs-22-refunded-notice.spec.ts) ต้องใช้ Stripe test key — ให้ CI พิสูจน์

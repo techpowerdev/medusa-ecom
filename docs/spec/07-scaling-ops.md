@@ -564,7 +564,9 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
     → อาการ O-2 (#69) กลับมา: characterization test `integration-tests/http/payment-collection-reset.spec.ts` (~`:256`) จะล้ม → ทบทวน ADR-025 (ภาคผนวก 2026-11-21) ก่อน merge bump
 15. (CORE-75/CORE-88) `typo_tolerance` ของ `POST /store/search` และเกณฑ์ similarity ใน provider ยังเหมือนเดิม (AC-174, AC-185 ผ่าน); `json-logger.ts` redact ยังครอบข้อความ recreate session ของเวอร์ชันใหม่ (AC-48b)
 16. (ADR-028) ถ้า `FetchError` ของ `@medusajs/js-sdk` เก็บ `code`/`type` แล้ว → ย้ายผู้เรียก `lib/data/medusa-fetch.ts` กลับไปใช้ SDK แล้วลบ helper; ไม่งั้นตรวจว่า header ของ helper ยังเท่ากับของ SDK (unit AC-181a)
-17. (CORE-76) ข้อความ 409 ไม่มี code "Cart is already being completed by another request" ของ `POST /store/carts/:id/complete` (`@medusajs/medusa` `dist/api/store/carts/[id]/complete/route.js`) ยังเหมือนเดิม — contract test ของ CORE-76 ล้ม = ตรวจที่นี่และ kind `processing` ของ `placeOrderOutcome`
+17. (CORE-76) ข้อความ 409 ไม่มี code "Cart is already being completed by another request" ของ `POST /store/carts/:id/complete` (`@medusajs/medusa` `dist/api/store/carts/[id]/complete/route.js`) ยังเหมือนเดิม
+    และ `errorHandler` ของ Medusa ยังเขียนทับข้อความ CONFLICT — contract test ฝั่ง backend (`src/api/__tests__/error-handler.unit.spec.ts`) ล้ม = แก้ `CART_COMPLETION_IN_PROGRESS_MESSAGE` (`src/api/store/carts/errors.ts`)
+    และ map ของ storefront (`lib/util/place-order-outcome.ts`) ให้ตรง แล้วตรวจ kind `processing` ของ `placeOrderOutcome` (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76)
 
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |

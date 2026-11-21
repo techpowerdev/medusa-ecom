@@ -77,17 +77,17 @@ export async function GET(req: NextRequest) {
   }
 
   // CORE-4i-b (กฎข้อ 72): placeOrder ได้ order → redirect ไปหน้า confirmed (throw ของ Next — unstable_rethrow ส่งต่อ);
-  // ไม่ได้ order (409, cart ไม่ complete, 401/403, network) → คืน { error } ไม่ throw
+  // ไม่ได้ order (409, cart ไม่ complete, 401/403, network) → คืน { kind } ไม่ throw (CORE-76; แยกทางตาม kind = PAY-12)
   // error ที่ไม่คาด (เช่นอ่าน cookie ล้ม) นับเป็น "failed" — ผลเหมือนกันคือกลับไปหน้า cart
-  const { error } = await placeOrder(cartId, undefined, countryCode).catch(
+  const outcome = await placeOrder(cartId, undefined, countryCode).catch(
     (thrown: unknown): PlaceOrderResult => {
       unstable_rethrow(thrown)
       console.error(thrown)
-      return { error: "failed" }
+      return { kind: "failed" }
     }
   )
 
   // ทุก error (รวม code 409 และ unauthorized) → order_failed ข้อความเดียวที่หน้า cart
-  console.error("payment-return: cart not converted into an order", error)
+  console.error("payment-return: cart not converted into an order", outcome)
   return NextResponse.redirect(`${origin}${prefix}/cart?error=order_failed`)
 }

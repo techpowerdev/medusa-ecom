@@ -112,9 +112,13 @@ export const RETURN_NOT_STOCKED = {
   text: "ไม่สามารถสร้างคำขอคืนสินค้านี้ทางเว็บได้ กรุณาติดต่อร้าน",
 }
 
+// CORE-76 (spec 01 กฎข้อ 134b): return option ไม่มี stock location (`RETURN_NO_LOCATION_MESSAGE` ของ CORE-55) — ลองใหม่ไม่ช่วยเช่นกัน
+export const RETURN_NO_LOCATION = { message: "Return shipping option has no stock location" }
+
+/** 400 ที่ให้ลูกค้าติดต่อร้าน (`RETURN_NOT_STOCKED.text`): location ไม่มีของ หรือ option ไม่มี location */
 export const isReturnNotStockedError = (error: unknown) => {
   const { status, message } = (typeof error === "object" && error ? error : {}) as { status?: unknown; message?: unknown }
-  return status === 400 && message === RETURN_NOT_STOCKED.message
+  return status === 400 && (message === RETURN_NOT_STOCKED.message || message === RETURN_NO_LOCATION.message)
 }
 
 export const returnErrorMessage = (error: unknown, fallback: string) => {

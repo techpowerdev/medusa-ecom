@@ -238,6 +238,11 @@ describe("isReturnNotStockedError", () => {
     expect(isReturnNotStockedError(fetchError("This item cannot be returned online"))).toBe(true)
   })
 
+  it("CORE-76 (กฎข้อ 134b): 400 + RETURN_NO_LOCATION_MESSAGE ของ backend → true", () => {
+    expect(isReturnNotStockedError(fetchError("Return shipping option has no stock location"))).toBe(true)
+    expect(isReturnNotStockedError(fetchError("Return shipping option has no stock location", 500))).toBe(false)
+  })
+
   it("error อื่น (ข้อความอื่น, 401, ข้อความเดียวกันแต่ไม่ใช่ 400, ไม่ใช่ object) → false", () => {
     expect(isReturnNotStockedError(fetchError("The return window for this order has expired"))).toBe(false)
     expect(isReturnNotStockedError(fetchError("Unauthorized", 401))).toBe(false)

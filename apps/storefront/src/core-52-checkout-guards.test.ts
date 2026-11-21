@@ -157,9 +157,9 @@ describe("placeOrder บน cart ที่ไม่มี item (กฎข้อ 
     await expect(place("//example.org")).rejects.toThrow("REDIRECT /cart")
   })
 
-  it("400 อื่น → ยังคืน { error: \"failed\" }", async () => {
+  it("400 อื่น → ยังคืน { kind: \"failed\" }", async () => {
     complete.mockRejectedValueOnce(new FetchError("Payment sessions are required", "Bad Request", 400))
-    await expect(place("th")).resolves.toEqual({ error: "failed" })
+    await expect(place("th")).resolves.toEqual({ kind: "failed" })
     expect(redirect).not.toHaveBeenCalled()
   })
 })
