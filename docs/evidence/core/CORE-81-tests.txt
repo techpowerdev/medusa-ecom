@@ -1,0 +1,104 @@
+CORE-81 (spec 01 กฎข้อ 139, AC-180) — script แปลงอีเมลเดิมเป็นตัวเล็ก
+base: origin/develop 80ff2a4a (หลัง #470 CORE-80)
+
+== RED: unit (script ยังไม่มี planLowercase จริง — stub)
+    ✕ lists only rows whose email changes when lowercased (3 ms)
+    ✕ reports rows that end up equal under the same unique key
+    ✓ does not collide across a different second key (has_account / provider)
+    ✕ keeps rows that must not be converted but still checks them for collisions
+    ✓ is idempotent once everything is lowercase
+Tests:       3 failed, 2 passed, 5 total
+
+== RED: integration http (stub ที่ไม่ทำอะไร)
+      ✕ prints the rows without writing, applies through the workflow, then finds nothing (10706 ms)
+      ✕ converts affiliate identities but never admin identities (Q-C13 = ก) (13084 ms)
+      ✕ stops with a non-zero exit and changes nothing under each unique index (5979 ms)
+      ✕ restores every original value when the second step fails (7165 ms)
+  ●  › dry-run and apply › prints the rows without writing, applies through the workflow, then finds nothing
+    Expected substring: "01M7ZHYS25HTANSYZEC62SCPQZ"
+    Received string:    ""
+  ●  › dry-run and apply › converts affiliate identities but never admin identities (Q-C13 = ก)
+    - Expected  - 1
+    + Received  + 1
+  ●  › collisions › stops with a non-zero exit and changes nothing under each unique index
+    Expected length: 2
+    Received length: 0
+    Received array:  []
+  ●  › compensation › restores every original value when the second step fails
+    Received promise resolved instead of rejected
+Tests:       4 failed, 4 total
+
+== GREEN: unit src/scripts/__tests__/lowercase-emails.unit.spec.ts
+    ✓ lists only rows whose email changes when lowercased
+    ✓ reports rows that end up equal under the same unique key
+    ✓ does not collide across a different second key (has_account / provider)
+    ✓ keeps rows that must not be converted but still checks them for collisions
+    ✓ is idempotent once everything is lowercase
+Tests:       5 passed, 5 total
+
+== GREEN: integration-tests/http/core-81-lowercase-emails.spec.ts
+      ✓ prints the rows without writing, applies through the workflow, then finds nothing (12580 ms)
+      ✓ converts affiliate identities but never admin identities (Q-C13 = ก) (22676 ms)
+      ✓ stops with a non-zero exit and changes nothing under each unique index (4357 ms)
+      ✓ restores every original value when the second step fails (4049 ms)
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+
+== backend test:unit ทั้งชุด
+Test Suites: 124 passed, 124 total
+Tests:       1686 passed, 1686 total
+
+== medusa exec จริงบน DB ของ builder (customer 3 แถว: Twin@X.co, twin@x.co [has_account เท่ากัน], Solo@X.co)
+$ npx medusa exec ./src/scripts/lowercase-emails.ts --apply  -> error: Unknown argument: apply (yargs strict) จึงใช้คำ apply
+$ ... lowercase-emails.ts apply  -> 'ชน customers: cus_core81a, cus_core81b' + exit=1, DB ไม่เปลี่ยน
+(ลบ cus_core81b ด้วยมือ)
+$ ... lowercase-emails.ts        -> customers ต้องแปลง 2 แถว (cus_core81a, cus_core81c) dry-run exit=0
+$ ... lowercase-emails.ts apply  -> แปลงแล้ว 2 แถว exit=0
+$ ... lowercase-emails.ts        -> ไม่มีแถวที่ต้องแปลง (0 ทุกตาราง) exit=0
+
+== lint / typecheck / build
+pnpm lint: 0 errors (warning เดิมของไฟล์อื่น ไม่มีในไฟล์ของ CORE-81)
+pnpm typecheck: ผ่าน
+pnpm --filter backend build: Backend build completed successfully
+pnpm --filter storefront test:e2e:unit: 131 passed
+
+== แก้ตาม review #475 (nit 1–2)
+-- RED (ก่อนแก้: listProviderIdentities ไม่เห็นแถว soft-delete; error ของ DB มีอีเมล)
+      ✕ counts them when checking collisions without converting them (439 ms)
+    unique violation during apply
+      ✕ provider_identities: rethrows without the email (595 ms)
+      ✕ customers: rethrows without the email (190 ms)
+    compensation
+      ○ skipped restores every original value when the second step fails
+
+  ●  › soft-deleted identities › counts them when checking collisions without converting them
+
+    Provider identity with entity_id: <email>, provider: emailpass, already exists.
+
+--
+  ●  › unique violation during apply › provider_identities: rethrows without the email
+
+    expect(received).toContain(expected) // indexOf
+
+--
+  ●  › unique violation during apply › customers: rethrows without the email
+
+    expect(received).toContain(expected) // indexOf
+
+--
+Tests:       3 failed, 4 skipped, 7 total
+Snapshots:   0 total
+Time:        7.952 s, estimated 88 s
+Ran all test suites matching /integration-tests\/http\/core-81-lowercase-emails.spec.ts/i with tests matching "soft-deleted|unique violation".
+
+-- GREEN integration-tests/http/core-81-lowercase-emails.spec.ts
+      ✓ prints the rows without writing, applies through the workflow, then finds nothing (747 ms)
+      ✓ converts affiliate identities but never admin identities (Q-C13 = ก) (541 ms)
+      ✓ stops with a non-zero exit and changes nothing under each unique index (676 ms)
+      ✓ counts them when checking collisions without converting them (274 ms)
+      ✓ provider_identities: rethrows without the email (525 ms)
+      ✓ customers: rethrows without the email (267 ms)
+      ✓ restores every original value when the second step fails (346 ms)
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+-- backend test:unit 124 suites / 1686 passed; lint/typecheck/build/storefront test:e2e:unit (131) ผ่าน

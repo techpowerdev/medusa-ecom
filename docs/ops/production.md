@@ -165,8 +165,17 @@ endpoint สมัคร event ตามรายการด้านล่า�
    หรือ proxy ที่ส่ง `X-Forwarded-Proto: https` — เปิด `http://localhost:9000` ตรง ๆ จะ login admin ไม่ได้ (OPS-M-12)
 10. Postgres ของ prod ต้องมี `LC_CTYPE` ที่ไม่ใช่ `C`/`POSIX` (เช่น `en_US.utf8` หรือ `th_TH.utf8`) — `pg_trgm` ทิ้งอักษรไทยเมื่อ `LC_CTYPE=C` ทำให้ค้นคำไทยกลางคำไม่เจอ (CORE-75); `check:go-live` ตรวจข้อนี้ให้อัตโนมัติ (`datctype` ของ DB ปัจจุบันเป็น `C`/`POSIX` → FAIL — OPS-33, owner ยืนยัน 2026-11-21) หรือตรวจเองด้วย:
     `psql "$DATABASE_URL" -c "SELECT datname, datctype FROM pg_database WHERE datname = current_database();"` — เป็น `C` → สร้าง DB ใหม่ด้วย locale ที่ถูกแล้ว restore (ตั้งที่ `initdb`/`CREATE DATABASE … LC_CTYPE`)
-11. แปลงอีเมลเดิมเป็นตัวเล็กก่อนเปิดร้าน (บัญชีที่สร้างก่อนแปลงอีเมลจะ login ไม่ได้ — CORE-73/CORE-80): รัน script dry-run → แก้คู่ที่ชนด้วยมือ (ถ้ามี) → `--apply` → dry-run ซ้ำได้ 0 แถว
-    (คำสั่งเต็มเติมใน PR ของ CORE-81)
+11. แปลงอีเมลเดิมเป็นตัวเล็กก่อนเปิดร้าน (บัญชีที่สร้างก่อนแปลงอีเมลจะ login ไม่ได้ — CORE-73/CORE-80; CORE-81) รันบน container ของ server หรือ worker:
+    ```bash
+    npx medusa exec ./src/scripts/lowercase-emails.ts          # dry-run: พิมพ์จำนวน + id ที่ต้องแปลงต่อตาราง ไม่แก้ข้อมูล
+    npx medusa exec ./src/scripts/lowercase-emails.ts apply    # แปลงผ่าน workflow (ล้มกลางทาง → คืนค่าเดิมครบ)
+    npx medusa exec ./src/scripts/lowercase-emails.ts          # ต้องได้ 0 แถวทุกตาราง
+    ```
+    ใช้คำ `apply` (ไม่มีขีด) — `medusa exec` ปฏิเสธ flag ที่ไม่รู้จัก (`--apply` → `Unknown argument`); แปลงเฉพาะ `customer.email`, `affiliate.email`
+    และ identity `emailpass` ที่ผูก customer/affiliate — identity ของแอดมินไม่แตะ (Q-C13 = ก); พิมพ์เฉพาะ id ไม่พิมพ์อีเมล
+    ถ้าพิมพ์ `ชน <ตาราง>: <id>, <id>` และ exit ≠ 0 = มีอีเมลที่ต่างกันแค่ตัวพิมพ์ภายใต้ unique เดิม (`provider_identity (entity_id, provider)`,
+    `customer (email, has_account)`, `affiliate.email`; identity ที่ soft-delete แล้วนับด้วยเพราะ index นี้ไม่ใช่ partial) — script ไม่แก้อะไรและไม่รวมบัญชีเอง: owner ตัดสินว่าเก็บบัญชีไหนแล้วแก้คู่ที่ชนด้วยมือก่อนรันใหม่;
+    apply ล้มด้วย `ชน unique index ระหว่าง apply` (มีคนสมัครแทรก) = workflow คืนค่าเดิมทุกตารางแล้ว — รัน dry-run ใหม่
 12. backfill ธง `evoucher_backordered` ของ order ก่อน EV-22: dry-run → `--apply` → dry-run ซ้ำได้ 0 แถว (คำสั่งเต็มเติมใน PR ของ EV-25)
 13. log ของ prod ไม่มี PII: ยืนยันว่า image มี OPS-33 (redact ใน `json-logger.ts`) แล้วค้น log ของ log platform ด้วยอีเมลลูกค้าทดสอบที่จ่ายแล้วถูกคืนเงิน (บรรทัด `recreate a payment session`) — ต้องไม่พบ
 14. วัดเวลา `POST /store/search` (body เดียวกับ storefront, คำค้นไทย 2–3 คำ + คำว่าง) กับ catalog ขนาดจริงบน DB ของ prod/staging แล้วบันทึก p95 — ถ้าสินค้าเกิน ~10,000 รายการ
