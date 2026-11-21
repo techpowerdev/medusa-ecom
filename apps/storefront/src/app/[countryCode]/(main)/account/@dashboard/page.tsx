@@ -22,7 +22,8 @@ export default async function OverviewTemplate({
 }: Props) {
   const { countryCode } = await params
   const customer = await retrieveCustomer().catch(() => null)
-  const orders = (await listOrders().catch(() => null)) || null
+  // CORE-68 (กฎข้อ 126): overview แสดง 5 ล่าสุด + ลิงก์ "ดูทั้งหมด" ไปหน้า /account/orders ที่แบ่งหน้า
+  const orders = (await listOrders(5).catch(() => null))?.orders ?? null
 
   if (!customer) {
     notFound()

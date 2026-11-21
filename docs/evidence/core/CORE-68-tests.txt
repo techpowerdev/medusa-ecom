@@ -1,0 +1,57 @@
+# CORE-68 — ผล test (spec 01 กฎข้อ 126, AC-167) — 2026-11-21, node v22.23.3, ในเครื่อง: backend :9168 (medusa start จาก build, DB medusa_core68, Redis db 3), storefront :8168 (next build + next start)
+
+## Red — unit Vitest ก่อนมี src/lib/util/orders-pagination.ts (develop cd9a80c3) — ล้มเพราะไม่มี module
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/lib/util/orders-pagination.test.ts [ src/lib/util/orders-pagination.test.ts ]
+Error: Cannot find module './orders-pagination' imported from apps/storefront/src/lib/util/orders-pagination.test.ts
+ Test Files  1 failed (1)
+      Tests  no tests
+
+## Red — e2e core-68 บนหน้า account orders ของ develop cd9a80c3 — ล้มเพราะไม่มี orders-pagination (มีแค่ 10 ใบล่าสุด ไม่มีหน้า 2)
+  ✘  1 [chromium] › e2e/core-68-orders-pagination.spec.ts:21:5 › AC-167: ลูกค้า 12 order → หน้า 1 มี 10 แถว, หน้า 2 มี 2 แถว (เก่าสุดอยู่หน้า 2), หน้าเกิน → หน้าสุดท้าย (15.1s)
+  ✓  2 [chromium] › e2e/core-68-orders-pagination.spec.ts:95:5 › AC-167: order ≤ 10 ใบ → ไม่แสดง orders-pagination (1.4s)
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByTestId('orders-pagination')
+    Expected: visible
+    Error: element(s) not found
+    > 50 |       await expect(pagination).toBeVisible()
+    test-results/core-68-orders-pagination--7d922-้า-2-หน้าเกิน-→-หน้าสุดท้าย-chromium/test-failed-1.png
+  1 failed
+  1 passed (17.4s)
+
+## Green — unit Vitest orders-pagination
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+
+## Green — e2e core-68
+  ✓  1 [chromium] › e2e/core-68-orders-pagination.spec.ts:21:5 › AC-167: ลูกค้า 12 order → หน้า 1 มี 10 แถว, หน้า 2 มี 2 แถว (เก่าสุดอยู่หน้า 2), หน้าเกิน → หน้าสุดท้าย (10.0s)
+  ✓  2 [chromium] › e2e/core-68-orders-pagination.spec.ts:95:5 › AC-167: order ≤ 10 ใบ → ไม่แสดง orders-pagination (1.1s)
+  2 passed (11.6s)
+
+## Regression — e2e หน้า account ที่เกี่ยวข้อง (group-buy-account-orders ของ GB-7b/GB-22, core-22, core-23, core-23b, thai-ui-account); 2 test ที่ skip ต้องใช้ Stripe test key (CI รัน)
+  ✓   4 [chromium] › e2e/core-23-profile-order.spec.ts:42:5 › AC-85: ล้างช่องเบอร์แล้วบันทึก → phone ว่าง และแสดง ยังไม่ได้ระบุ (1.2s)
+  ✓   5 [chromium] › e2e/core-23-profile-order.spec.ts:74:5 › AC-86, AC-89: อีเมลอ่านอย่างเดียว และ ยังไม่ได้ระบุ ชิดแนวเดียวกับค่าชื่อ (778ms)
+  ✓   3 [chromium] › e2e/group-buy-account-orders.spec.ts:42:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › joined → รอกลุ่ม + ออกจากกลุ่ม (ยืนยันก่อน) → ยกเลิก และ membership cancelled (2.3s)
+  ✓   1 [chromium] › e2e/core-22-account-fixes.spec.ts:18:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (3.2s)
+  ✓   2 [chromium] › e2e/core-23b-account-progress.spec.ts:17:5 › AC-97: คลิกเมนู orders → account-nav-pending แสดงก่อนหน้าใหม่ (3.2s)
+  ✓   7 [chromium] › e2e/group-buy-account-orders.spec.ts:72:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › กลุ่มสำเร็จระหว่างเปิดหน้าอยู่ แล้วกดออก → error ไทย และรายการแสดงสถานะใหม่ (ชำระเงินภายใน) (1.7s)
+  ✓   9 [chromium] › e2e/core-23b-account-progress.spec.ts:56:5 › AC-97: บันทึกเบอร์โทรล้ม (500) → input ยังเป็นค่าที่พิมพ์ (808ms)
+  ✓   8 [chromium] › e2e/core-22-account-fixes.spec.ts:67:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (844ms)
+  ✓   6 [chromium] › e2e/core-23-profile-order.spec.ts:106:5 › AC-87: order ที่ไม่มีอยู่ และ order ของ customer อื่น ตอบ HTTP 404 (2.5s)
+  ✓  11 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (417ms)
+  ✓  12 [chromium] › e2e/core-23-profile-order.spec.ts:128:5 › AC-88: token หายระหว่างบันทึกเบอร์ → ไม่มี error ดิบของ React และแสดงข้อความไทย (747ms)
+  ✓  13 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (971ms)
+  ✓  10 [chromium] › e2e/group-buy-account-orders.spec.ts:95:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › awaiting_payment → ชำระเงินภายใน <deadline> และลิงก์ไปหน้าชำระเงินของ PAY-3b (1.6s)
+  ✓  14 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (208ms)
+  ✓  15 [chromium] › e2e/group-buy-account-orders.spec.ts:121:7 › หน้า account: จ่ายแล้วแต่ยังเป็น draft (GB-22) › awaiting_payment + captured → group-order-processing ไม่มีลิงก์ชำระ (5.4s)
+  2 skipped
+  15 passed (11.7s)
+
+## storefront test:unit (Vitest ทั้งชุด)
+ Test Files  104 passed (104)
+      Tests  1250 passed (1250)
+
+## storefront test:e2e:unit (project unit ทั้งชุด)
+  126 passed (923ms)
+
+## pnpm lint — exit 0; pnpm typecheck — storefront ผ่าน, backend ผ่านเมื่อไม่มี .medusa/types ที่ build ในเครื่องสร้าง (เหมือน CI ที่ typecheck ก่อน build)

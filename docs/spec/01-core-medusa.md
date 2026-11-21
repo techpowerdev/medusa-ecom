@@ -2792,7 +2792,7 @@ Out of scope: หน้า order ใน admin แสดงราคารวม 
      สถานะอื่นส่งตามเดิม (รวม order ที่มาจาก group buy — spec 04 กฎข้อ 9)
 
 ### Acceptance criteria (รอบ 40)
-- AC-167 (CORE-68, กฎข้อ 126) e2e: ลูกค้าที่มี 12 order → หน้า 1 มี 10 แถว, `orders-pagination` ไปหน้า 2 ได้ 2 แถว (order เก่าสุดอยู่หน้า 2) — ล้มบน develop (ไม่มีหน้า 2); unit ของการคำนวณ offset/page
+- ☑ AC-167 (CORE-68, กฎข้อ 126) e2e: ลูกค้าที่มี 12 order → หน้า 1 มี 10 แถว, `orders-pagination` ไปหน้า 2 ได้ 2 แถว (order เก่าสุดอยู่หน้า 2) — ล้มบน develop (ไม่มีหน้า 2); unit ของการคำนวณ offset/page
 - ☑ AC-168 (CORE-69, กฎข้อ 127) e2e: cart ที่มีที่อยู่ + วิธีส่งแต่ไม่มี payment session เปิด `/th/checkout?step=review` → URL เป็น `step=payment` ภายใน 5 วินาที และเห็นตัวเลือกการชำระเงิน (ล้มบน develop)
 - ☑ AC-169 (CORE-70, กฎข้อ 128) e2e (สินค้า tag ตัวอักษร 2 ชิ้นชื่อมีคำเดียวกัน + 1 ชิ้นไม่มี): คำค้นเดียวกันได้ชุด product handle เดียวกันจาก drawer, `/th/search?q=`, `/th/store?q=` (เทียบ set);
   seed "shirt" ใน drawer ได้ ≥ 1 ผล (ล้มบน develop); เปิด `/th/store?q=<คำ>` → ช่องค้นหามีคำนั้นและผลถูกกรอง (ล้มบน develop)
