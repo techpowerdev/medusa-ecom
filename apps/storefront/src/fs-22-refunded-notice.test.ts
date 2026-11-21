@@ -5,8 +5,8 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { CHECKOUT_CONFLICTS, OUT_OF_STOCK, REFUNDED_NOTICE } from "@lib/util/checkout-error"
-import { SIGN_IN_AGAIN_MESSAGE } from "@lib/util/error-message"
 import { isOutOfStockAtCompletion } from "@lib/util/insufficient-inventory"
+import { PROMOTION_REFUNDED_NOTICE } from "@lib/util/place-order-outcome"
 
 // FS-22 (spec 03 กฎข้อ 27, AC-29): complete cart ล้มหลังตัดเงินด้วยเหตุโควตา/สต็อกหมด → `checkout-refunded-notice`
 // "คืนเงินเต็มจำนวนอัตโนมัติ" แทน "ลองใหม่" — เฉพาะทางที่เงินถูกตัดแล้วจริง (บัตร: placeOrder หลัง PaymentIntent succeeded)
@@ -19,7 +19,7 @@ const NOT_ENOUGH = "Not enough stock available for item iitem_01ABC at location 
 const placeOrder = vi.fn()
 const confirmPayment = vi.fn()
 
-vi.mock("next/navigation", () => ({ useParams: () => ({ countryCode: "th" }) }))
+vi.mock("next/navigation", () => ({ useParams: () => ({ countryCode: "th" }), useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("@lib/data/cart", () => ({ placeOrder: (...a: unknown[]) => placeOrder(...a) }))
 vi.mock("@lib/util/checkout-affiliate", () => ({
   syncAffiliateBefore: (_cart: unknown, step: () => Promise<unknown>) => step(),
@@ -62,43 +62,8 @@ describe("ข้อความ checkout-refunded-notice", () => {
   })
 })
 
-describe("completeOrder(order, paid)", () => {
-  beforeEach(() => vi.clearAllMocks())
-  const complete = async (paid: boolean) => (await payButton()).completeOrder(placeOrder(), paid)
-
-  it.each(["FLASH_SOLD_OUT", "FLASH_LIMIT_EXCEEDED", OUT_OF_STOCK])("ตัดเงินแล้ว + %s → REFUNDED_NOTICE", async (code) => {
-    placeOrder.mockResolvedValueOnce({ error: code })
-    await expect(complete(true)).resolves.toBe(REFUNDED_NOTICE)
-  })
-
-  it.each(["FLASH_SOLD_OUT", "FLASH_LIMIT_EXCEEDED"])("ยังไม่ตัดเงิน (manual) + %s → ข้อความเดิมของ code", async (code) => {
-    placeOrder.mockResolvedValueOnce({ error: code })
-    await expect(complete(false)).resolves.toBe(text(code))
-  })
-
-  it("ยังไม่ตัดเงิน + OUT_OF_STOCK → ไม่บอกว่าคืนเงิน", async () => {
-    placeOrder.mockResolvedValueOnce({ error: OUT_OF_STOCK })
-    const message = await complete(false)
-    expect(message).toMatch(THAI)
-    expect(message).not.toContain("คืนเงิน")
-  })
-
-  it.each([
-    ["unauthorized", SIGN_IN_AGAIN_MESSAGE],
-    ["PROMOTION_NOT_COMBINABLE", text("PROMOTION_NOT_COMBINABLE")],
-  ])("ตัดเงินแล้ว + %s → ข้อความเดิม", async (code, expected) => {
-    placeOrder.mockResolvedValueOnce({ error: code })
-    await expect(complete(true)).resolves.toBe(expected)
-  })
-
-  it("ตัดเงินแล้ว + failed → ข้อความ fallback เดิม (ไม่ใช่ REFUNDED_NOTICE)", async () => {
-    placeOrder.mockResolvedValueOnce({ error: "failed" })
-    const failed = await complete(true)
-    expect(failed).not.toBe(REFUNDED_NOTICE)
-    expect(failed).toContain("ลองใหม่")
-  })
-})
-
+// CORE-76 (spec 01 กฎข้อ 134 a2): การจัดผล → kind/ข้อความย้ายไป pure helper `placeOrderOutcome`/`checkoutNotice`
+// (`lib/util/place-order-outcome.test.ts`) — placeOrder คืน `{ kind }` ปุ่มแสดง notice จาก kind
 describe("ปุ่มยืนยันคำสั่งซื้อในขั้น review", () => {
   let container: HTMLDivElement
   let root: Root
@@ -139,7 +104,7 @@ describe("ปุ่มยืนยันคำสั่งซื้อในข�
   it.each(["FLASH_LIMIT_EXCEEDED", "FLASH_SOLD_OUT", OUT_OF_STOCK])(
     "บัตร: complete ล้ม %s → checkout-refunded-notice ไม่มี error ลองใหม่",
     async (code) => {
-      placeOrder.mockResolvedValueOnce({ error: code })
+      placeOrder.mockResolvedValueOnce({ kind: "refunded", code })
       await renderAndSubmit("pp_stripe_stripe")
       expect(byTestId("checkout-refunded-notice")?.textContent).toBe(REFUNDED_NOTICE)
       expect(byTestId("stripe-payment-error-message")).toBeNull()
@@ -147,15 +112,23 @@ describe("ปุ่มยืนยันคำสั่งซื้อในข�
     }
   )
 
+  // CORE-76 (session หลักตัดสิน 2026-11-21): PROMOTION_NOT_COMBINABLE หลังตัดบัตรเป็น kind refunded แต่ใช้ข้อความของตัวเอง
+  it("บัตร: PROMOTION_NOT_COMBINABLE → checkout-refunded-notice ข้อความคืนเงินของโปรโมชัน", async () => {
+    placeOrder.mockResolvedValueOnce({ kind: "refunded", code: "PROMOTION_NOT_COMBINABLE" })
+    await renderAndSubmit("pp_stripe_stripe")
+    expect(byTestId("checkout-refunded-notice")?.textContent).toBe(PROMOTION_REFUNDED_NOTICE)
+    expect(byTestId("stripe-payment-error-message")).toBeNull()
+  })
+
   it("บัตร: error อื่น → stripe-payment-error-message เดิม ไม่มี notice", async () => {
-    placeOrder.mockResolvedValueOnce({ error: "failed" })
+    placeOrder.mockResolvedValueOnce({ kind: "failed" })
     await renderAndSubmit("pp_stripe_stripe")
     expect(byTestId("checkout-refunded-notice")).toBeNull()
     expect(byTestId("stripe-payment-error-message")?.textContent).toMatch(THAI)
   })
 
   it("manual: FLASH_SOLD_OUT → ข้อความเดิมของ code ไม่มี notice (ไม่มีการตัดเงิน)", async () => {
-    placeOrder.mockResolvedValueOnce({ error: "FLASH_SOLD_OUT" })
+    placeOrder.mockResolvedValueOnce({ kind: "refunded", code: "FLASH_SOLD_OUT" })
     await renderAndSubmit("pp_system_default")
     expect(byTestId("checkout-refunded-notice")).toBeNull()
     expect(byTestId("manual-payment-error-message")?.textContent).toBe(text("FLASH_SOLD_OUT"))

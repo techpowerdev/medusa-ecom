@@ -184,7 +184,7 @@ describe("payment-return ตั้ง cookie cart (กฎข้อ 86a)", () => 
   })
 })
 
-// CORE-4i-b (กฎข้อ 72): placeOrder คืน { error } แทนการ throw — route อ่านผลแล้ว redirect order_failed เหมือนเดิม
+// CORE-4i-b (กฎข้อ 72): placeOrder คืน { kind } (CORE-76) แทนการ throw — route อ่านผลแล้ว redirect order_failed เหมือนเดิม
 describe("payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b)", () => {
   const succeededRequest = () =>
     new NextRequest(
@@ -203,7 +203,7 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
     ["401", () => cartComplete.mockRejectedValue(new FetchError("x", "Unauthorized", 401))],
     ["500", () => cartComplete.mockRejectedValue(new FetchError("x", "Internal Server Error", 500))],
     ["cart ไม่ complete (type: cart)", () => cartComplete.mockResolvedValue({ type: "cart", cart: {}, error: { message: "declined" } })],
-  ])("%s → { error } → /cart?error=order_failed", async (_label, arrange) => {
+  ])("%s → { kind } → /cart?error=order_failed", async (_label, arrange) => {
     arrange()
     const { GET } = await import("./app/api/payment-return/route")
     const res = await GET(succeededRequest())
