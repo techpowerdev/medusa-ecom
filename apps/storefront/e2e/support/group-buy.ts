@@ -107,7 +107,10 @@ export type TeamGroupCtx = { admin: Headers; pk: string; variantId: string; regi
  * GB-7a1 (AC-16a): แคมเปญ team `target_type=people` (`target_value`) + ทีมที่ลูกค้าคนแรกสร้างผ่าน store route (GB-3)
  * — สร้างทีมอย่างเดียว ไม่ join (กฎข้อ 29g); สมาชิกเข้าร่วมด้วย `joinAsNewCustomer`
  */
-export async function teamGroup(request: APIRequestContext, targetValue: number): Promise<TeamGroupCtx> {
+export async function teamGroup(
+  request: APIRequestContext,
+  targetValue: number
+): Promise<TeamGroupCtx & { promotionCampaignId: string }> {
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
   const { productId, variantId } = await variantOf(request, pk, "t-shirt")
@@ -147,7 +150,9 @@ export async function teamGroup(request: APIRequestContext, targetValue: number)
   )
   const { regions } = await ok(await request.get(`${BACKEND_URL}/store/regions`, { headers: { "x-publishable-api-key": pk } }), "regions")
   const region = regions.find((r: { countries: { iso_2: string }[] }) => r.countries.some((c) => c.iso_2 === STOREFRONT_COUNTRY))
-  return { admin, pk, variantId, regionId: region.id, groupId: group.id, token: group.join_token }
+  // GB-24: id ของ Medusa campaign (ช่วงเวลา starts_at/ends_at ของแคมเปญ — ADR-004)
+  const promotionCampaignId: string = campaign.campaign.id
+  return { admin, pk, variantId, regionId: region.id, groupId: group.id, token: group.join_token, promotionCampaignId }
 }
 
 /** ลูกค้าใหม่ join กลุ่มด้วย cart ของตัวเอง (membership `joined`) */
