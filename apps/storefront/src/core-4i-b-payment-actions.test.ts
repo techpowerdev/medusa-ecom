@@ -191,6 +191,62 @@ describe("initiatePaymentSession — 409 PAYMENT_COLLECTION_RESET", () => {
   })
 })
 
+// PAY-14 (spec 06 กฎข้อ 16 a2, AC-27 d): สร้าง session ระหว่าง compensation ถือ lock cart_id → guard ได้ 404 (session ชั่วคราวถูกลบ)
+// → อ่าน collection ปัจจุบันของ cart แล้วลองซ้ำ 1 ครั้ง; การลองซ้ำได้ PAYMENT_COLLECTION_RESET → ลองซ้ำตามกฎข้อ 11 อีก 1 ครั้ง
+describe("initiatePaymentSession — 404 ระหว่าง compensation (PAY-14)", () => {
+  const status = (code: number, body: unknown = {}) => new Response(JSON.stringify(body), { status: code })
+  const reset = () => status(409, { type: "conflict", code: "PAYMENT_COLLECTION_RESET", message: "x" })
+  const calls = () => (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map(([url]) => url)
+
+  it("404 → reads the cart's current collection and retries once → ok", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(status(404, { type: "not_found" })).mockResolvedValueOnce(status(200)))
+    fetchSdk.mockResolvedValueOnce({ payment_collection: { id: "pay_col_1" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ ok: true })
+    expect(fetchSdk).toHaveBeenCalledWith("/store/payment-collections", expect.objectContaining({ body: { cart_id: "cart_1" } }))
+    expect(calls()).toEqual([
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+    ])
+  })
+
+  it("404 then PAYMENT_COLLECTION_RESET → new collection → ok (3 requests)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(status(404)).mockResolvedValueOnce(reset()).mockResolvedValueOnce(status(200))
+    )
+    fetchSdk
+      .mockResolvedValueOnce({ payment_collection: { id: "pay_col_1" } })
+      .mockResolvedValueOnce({ payment_collection: { id: "pay_col_new" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ ok: true })
+    expect(calls()).toEqual([
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+      "http://backend/store/payment-collections/pay_col_new/payment-sessions",
+    ])
+  })
+
+  it("404 twice → { error: failed } without a third attempt", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(status(404)))
+    fetchSdk.mockResolvedValue({ payment_collection: { id: "pay_col_1" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ error: "failed" })
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("renewPromptPaySession does not retry a 404 → { error: failed }", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(status(404)))
+    const { renewPromptPaySession } = await import("@lib/data/cart")
+
+    await expect(renewPromptPaySession(cartWithCollection, PROMPTPAY)).resolves.toEqual({ error: "failed" })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("renewPromptPaySession ผ่าน helper กลาง", () => {
   it.each(sessionCases)("%s", async (_label, arrange, expected) => {
     arrange()

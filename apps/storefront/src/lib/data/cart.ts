@@ -297,19 +297,28 @@ export async function setShippingMethod({
   return { ok: true }
 }
 
+/** PAY-14 (spec 06 กฎข้อ 16 a2): 404 = collection ถูกถอดแล้ว หรือ session ที่ guard อ่านไว้ถูก compensation ลบระหว่างรอ lock `cart_id` */
+const PAYMENT_SESSION_NOT_FOUND = "PAYMENT_SESSION_NOT_FOUND"
+
 /**
  * สร้าง session ผ่าน `createPaymentSession` แล้ว revalidate cart เมื่อสำเร็จ (ผลผ่าน helper กลางของ Q-C2)
- * PAY-9: 409 `PAYMENT_COLLECTION_RESET` → revalidate cart แล้วคืนเป็น code แยกให้ `initiatePaymentSession` ลองซ้ำ
+ * PAY-9: 409 `PAYMENT_COLLECTION_RESET` / PAY-14: 404 → revalidate cart แล้วคืนเป็น code แยกให้ `initiatePaymentSession` ลองซ้ำ
  */
 async function createCartPaymentSession(
   collectionId: string,
   providerId: string
-): Promise<PaymentSessionResult | typeof PAYMENT_COLLECTION_RESET> {
+): Promise<PaymentSessionResult | typeof PAYMENT_COLLECTION_RESET | typeof PAYMENT_SESSION_NOT_FOUND> {
   const res = await createPaymentSession(collectionId, providerId)
-  if (res.status === 409 && res.code === PAYMENT_COLLECTION_RESET) {
+  const retry =
+    res.status === 409 && res.code === PAYMENT_COLLECTION_RESET
+      ? PAYMENT_COLLECTION_RESET
+      : res.status === 404
+        ? PAYMENT_SESSION_NOT_FOUND
+        : null
+  if (retry) {
     // cart ใน cache ยังชี้ collection ที่ถูกถอดแล้ว (ยิงซ้ำ = 404 จาก ownership) → revalidate ทันทีไม่ว่าการลองซ้ำจะสำเร็จหรือไม่
     revalidateTag(await getCacheTag("carts"), { expire: 0 })
-    return PAYMENT_COLLECTION_RESET
+    return retry
   }
   const result = paymentSessionResult(res)
   if ("ok" in result) {
@@ -337,23 +346,31 @@ async function cartPaymentCollectionId(cartId: string): Promise<string | { error
  * data ของกฎข้อ 5 (บัตร = card) ใส่ใน `createPaymentSession`; cart ที่ยังไม่มี collection สร้างก่อนด้วย route ของ Medusa (แบบ js-sdk)
  * PAY-9 (spec 06 กฎข้อ 11, ADR-025): 409 `PAYMENT_COLLECTION_RESET` = backend ถอด collection ที่ถูกคืนเงินออกจาก cart แล้ว
  * → ขอ collection ปัจจุบันของ cart จาก route ของ Medusa (ไม่มี = สร้างใหม่) แล้วลองซ้ำ **1 ครั้ง**; ได้ code เดิมอีก → `"failed"`
+ * PAY-14 (spec 06 กฎข้อ 16 a2 — ทางที่เลือกแทนการแก้ guard): 404 ทำแบบเดียวกัน — การลองซ้ำผ่าน reset middleware ด้วยสถานะหลัง compensation
  */
 export async function initiatePaymentSession(
   cart: HttpTypes.StoreCart,
   { provider_id }: Pick<HttpTypes.StoreInitializePaymentSession, "provider_id">
 ): Promise<PaymentSessionResult> {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const collectionId = (attempt === 0 && cart.payment_collection?.id) || (await cartPaymentCollectionId(cart.id))
-    if (typeof collectionId !== "string") {
-      return collectionId
+  // PAY-14: 404 และ PAYMENT_COLLECTION_RESET ลองซ้ำได้อย่างละ 1 ครั้ง (404 → reset → session ใหม่ = 3 request)
+  const retried = new Set<string>()
+  let collectionId = cart.payment_collection?.id
+  for (;;) {
+    const id = collectionId ?? (await cartPaymentCollectionId(cart.id))
+    if (typeof id !== "string") {
+      return id
     }
-    const result = await createCartPaymentSession(collectionId, provider_id)
-    if (result !== PAYMENT_COLLECTION_RESET) {
+    const result = await createCartPaymentSession(id, provider_id)
+    if (typeof result !== "string") {
       return result
     }
+    if (retried.has(result)) {
+      console.error("payment session failed: retried twice", result, cart.id)
+      return { error: "failed" }
+    }
+    retried.add(result)
+    collectionId = undefined
   }
-  console.error("payment session failed: collection reset twice", cart.id)
-  return { error: "failed" }
 }
 
 /**
@@ -369,7 +386,7 @@ export async function renewPromptPaySession(
     return { error: "failed" }
   }
   const result = await createCartPaymentSession(collectionId, providerId)
-  return result === PAYMENT_COLLECTION_RESET ? { error: "failed" } : result
+  return typeof result === "string" ? { error: "failed" } : result
 }
 
 /**
