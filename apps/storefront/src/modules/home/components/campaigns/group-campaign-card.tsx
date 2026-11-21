@@ -3,8 +3,8 @@ import { groupDiscountValue, groupSharePath } from "@lib/util/group-page"
 import { canCreateTeam, firstPool, groupDiscountedAmount, poolProgress, type ActiveGroupBuyCampaign } from "@lib/util/home-campaigns"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import Link from "next/link"
 import Countdown from "@modules/common/components/countdown"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "@modules/products/components/thumbnail"
 import CreateTeamButton from "./create-team-button"
 
@@ -70,13 +70,13 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
             </span>{" "}
             {progress.unit}
           </span>
-          <LocalizedClientLink
-            href={groupSharePath(pool.join_token)}
+          <Link
+            href={groupSharePath(countryCode, pool.join_token)}
             className="text-small-regular text-ui-fg-interactive underline"
             data-testid="group-pool-link"
           >
             เข้าร่วมกลุ่มเปิด
-          </LocalizedClientLink>
+          </Link>
         </div>
       )}
       {canCreateTeam(campaign) && <CreateTeamButton campaignId={campaign.id} countryCode={countryCode} />}

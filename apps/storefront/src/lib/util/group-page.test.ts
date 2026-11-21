@@ -4,6 +4,7 @@ import {
   addToSelection,
   groupDiscountValue,
   groupJoinable,
+  groupNotStarted,
   groupProgress,
   groupSharePath,
   removeFromSelection,
@@ -90,8 +91,23 @@ describe("groupDiscountValue", () => {
 })
 
 describe("groupSharePath", () => {
-  it("ลิงก์แชร์ /g/<token> (middleware เติม country เอง — กฎข้อ 29b)", () => {
-    expect(groupSharePath("ab c")).toBe("/g/ab%20c")
+  // GB-24 (กฎข้อ 47, AC-66b): ลิงก์แชร์มี country code ของหน้าปัจจุบัน
+  it("ลิงก์แชร์ /<cc>/g/<token>", () => {
+    expect(groupSharePath("th", "tok_1")).toBe("/th/g/tok_1")
+    expect(groupSharePath("th", "ab c")).toBe("/th/g/ab%20c")
+  })
+})
+
+// GB-24 (กฎข้อ 49, AC-66a): แคมเปญที่ยังไม่ถึง starts_at ซ่อนฟอร์ม join
+describe("groupNotStarted", () => {
+  const now = Date.parse("2026-11-04T10:00:00Z")
+  it("starts_at ในอนาคต → true", () => {
+    expect(groupNotStarted(campaign({ starts_at: "2026-11-04T10:00:01Z" }), now)).toBe(true)
+  })
+  it("starts_at ถึงแล้ว/ผ่านแล้ว หรือไม่มี → false", () => {
+    expect(groupNotStarted(campaign({ starts_at: "2026-11-04T10:00:00Z" }), now)).toBe(false)
+    expect(groupNotStarted(campaign({ starts_at: "2026-11-03T10:00:00Z" }), now)).toBe(false)
+    expect(groupNotStarted(campaign({ starts_at: null }), now)).toBe(false)
   })
 })
 
