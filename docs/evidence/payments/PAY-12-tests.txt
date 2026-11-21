@@ -81,3 +81,17 @@
      Test Files  109 passed (109)
           Tests  1352 passed (1352)
     test:e2e:unit 131 passed; lint 0 errors; typecheck ผ่าน; next build ผ่าน
+
+# session หลักตัดสิน #481: อ่าน cart ล้มด้วย 5xx/network → /th/checkout?step=review (ไม่ใช่ payment_failed)
+
+## RED 5 — unit ก่อนแก้ (core-29-active-cart.test.ts)
+         × อ่าน cart ล้มด้วย 500 → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 4ms
+         × อ่าน cart ล้มด้วย 503 → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 0ms
+         × อ่าน cart ล้มด้วย network (TypeError ไม่มี status) → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 0ms
+     Test Files  1 failed (1)
+          Tests  3 failed | 32 passed (35)
+
+## GREEN — storefront vitest ทั้งชุด
+     Test Files  109 passed (109)
+          Tests  1355 passed (1355)
+    test:e2e:unit 131 passed; lint 0 errors; typecheck ผ่าน; next build ผ่าน

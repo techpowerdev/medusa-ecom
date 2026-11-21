@@ -51,6 +51,11 @@ export async function GET(req: NextRequest) {
   if (read.status === 401 || read.status === 403) {
     return signIn()
   }
+  // session หลักตัดสิน (#481): 5xx/network = ไม่รู้ผลการชำระ → ไม่บอกว่าล้ม; ขั้น review ทำ placeOrder/poll ต่อ (PAY-6b)
+  // payment_failed เหลือเฉพาะที่รู้แน่ว่าไม่ได้จ่าย/ข้อมูลไม่ตรง (ไม่มี param, ไม่มี session/secret ไม่ตรง, 4xx อื่น, redirect_status=failed)
+  if (!read.cart && (typeof read.status !== "number" || read.status >= 500)) {
+    return NextResponse.redirect(`${origin}${prefix}/checkout?step=review`)
+  }
   const { cart } = read
 
   const paymentSession = cart?.payment_collection?.payment_sessions?.find(

@@ -276,8 +276,22 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
     expectNoSecret(location)
   })
 
-  it("อ่าน cart ล้มแบบอื่น (500) → payment_failed เหมือนเดิม", async () => {
-    fetch.mockRejectedValue(new FetchError("x", "Internal Server Error", 500))
+  // session หลักตัดสิน (#481): ไม่รู้ผลการชำระจริง → ไม่บอกว่าชำระไม่สำเร็จ; ไปขั้น review ให้ placeOrder/poll (PAY-6b) ทำต่อ
+  it.each([
+    ["500", () => new FetchError("x", "Internal Server Error", 500)],
+    ["503", () => new FetchError("x", "Service Unavailable", 503)],
+    ["network (TypeError ไม่มี status)", () => new TypeError("fetch failed")],
+  ])("อ่าน cart ล้มด้วย %s → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete", async (_label, error) => {
+    fetch.mockRejectedValue(error())
+    const { GET } = await import("./app/api/payment-return/route")
+    const location = (await GET(succeededRequest())).headers.get("location")
+    expect(location).toBe("http://shop.test/th/checkout?step=review")
+    expectNoSecret(location)
+    expect(cartComplete).not.toHaveBeenCalled()
+  })
+
+  it("อ่าน cart ได้ 404 (cart_id ไม่ใช่ของลูกค้า/ไม่มีอยู่) → payment_failed เหมือนเดิม", async () => {
+    fetch.mockRejectedValue(new FetchError("x", "Not Found", 404))
     const { GET } = await import("./app/api/payment-return/route")
     expect((await GET(succeededRequest())).headers.get("location")).toBe("http://shop.test/th/cart?error=payment_failed")
   })
