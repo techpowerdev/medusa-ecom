@@ -6,10 +6,11 @@ import {
   when,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import type { CreateNotificationDTO, MedusaContainer } from "@medusajs/framework/types"
 import {
   acquireLockStep,
+  capturePaymentWorkflow,
   convertDraftOrderWorkflow,
   deletePaymentSessionsWorkflow,
   releaseLockStep,
@@ -19,7 +20,10 @@ import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
 import {
   convertedOrderAction,
+  type MembershipPaymentCheckDecision,
+  membershipPaymentCheckDecision,
   type MembershipStatus,
+  type PaymentSessionCheck,
   paymentCapturedAction,
   shouldExpireMembershipPayment,
 } from "../../modules/group_buy/utils/membership-payment"
@@ -249,5 +253,147 @@ export const expireGroupBuyMembershipPaymentWorkflow = createWorkflow(
     })
     releaseLockStep({ key })
     return new WorkflowResponse(result.members)
+  }
+)
+
+// GB-20b กฎข้อ 50 (ADR-024 ภาคผนวก 2026-11-21): ก่อน job หมดเวลาชำระยกเลิก ตรวจทุก session ของ collection ที่ provider
+// ด้วย paymentModule.authorizePaymentSession (ไม่ใช้ authorizePaymentSessionStep — กลืน error ของ provider และ compensation ยกเลิก payment)
+export const GROUP_BUY_PAYMENT_CHECK_FAILED = "GROUP_BUY_PAYMENT_CHECK_FAILED"
+export const GROUP_BUY_PAYMENT_CHECK_GAVE_UP = "GROUP_BUY_PAYMENT_CHECK_GAVE_UP"
+
+type SessionCheck = PaymentSessionCheck & { session_id: string; payment_id?: string; error?: string }
+export type MembershipPaymentCheckResult = {
+  membership_id: string
+  order_id: string | null
+  pay_deadline_at: string | null
+  decision: MembershipPaymentCheckDecision
+  payment_id: string | null
+  sessions: SessionCheck[]
+}
+
+async function checkSession(container: MedusaContainer, session: any): Promise<SessionCheck> {
+  const payment = container.resolve(Modules.PAYMENT)
+  const base = { session_id: session.id as string }
+  try {
+    // ไม่ส่ง shared context ของ step (review #440 nit 2): module เปิด manager เอง (@InjectManager ไม่ใช่ transaction)
+    // การ update session ก่อน throw NOT_ALLOWED จึงไม่ถูก rollback และอ่านกลับได้ด้านล่าง
+    const paid = await payment.authorizePaymentSession(session.id, {})
+    return paid ? { ...base, outcome: "payment", existing: !!session.payment?.id, payment_id: paid.id } : { ...base, outcome: "pending" }
+  } catch (error) {
+    if (!(MedusaError.isMedusaError(error) && (error as MedusaError).type === MedusaError.Types.NOT_ALLOWED)) {
+      return { ...base, outcome: "error", error: (error as Error)?.message ?? String(error) }
+    }
+  }
+  try {
+    const stored = await payment.retrievePaymentSession(session.id, { select: ["status", "data"] })
+    return { ...base, outcome: "not_allowed", status: (stored.data as { status?: string } | null)?.status }
+  } catch (error) {
+    return { ...base, outcome: "error", error: (error as Error)?.message ?? String(error) }
+  }
+}
+
+export const checkMembershipPaymentStep = createStep(
+  "check-group-buy-membership-payment",
+  async (input: MembershipPaymentInput, { container }) => {
+    const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+      entity: "group_buy_membership",
+      fields: [
+        "id",
+        "status",
+        "order_id",
+        "group.pay_deadline_at",
+        "order.payment_collections.payment_sessions.id",
+        "order.payment_collections.payment_sessions.payment.id",
+      ],
+      filters: { id: input.membership_id },
+    })
+    const m = data[0] as any
+    const deadline = m?.group?.pay_deadline_at ? new Date(m.group.pay_deadline_at).toISOString() : null
+    const result: MembershipPaymentCheckResult = {
+      membership_id: input.membership_id,
+      order_id: m?.order_id ?? null,
+      pay_deadline_at: deadline,
+      decision: "skip",
+      payment_id: null,
+      sessions: [],
+    }
+    // ตรวจซ้ำจาก snapshot ของ job: ไม่ได้รอชำระแล้ว (เช่น webhook ตั้ง paid) → ไม่เรียก provider
+    if (m?.status !== "awaiting_payment" || !deadline) {
+      return new StepResponse(result)
+    }
+    const sessions = (m.order?.payment_collections ?? [])
+      .flatMap((c: any) => c?.payment_sessions ?? [])
+      .filter(Boolean)
+    for (const session of sessions) {
+      result.sessions.push(await checkSession(container, session))
+    }
+    result.decision = membershipPaymentCheckDecision(result.sessions, deadline, new Date())
+    const paid = result.sessions.filter((s) => s.outcome === "payment")
+    result.payment_id = (paid.find((s) => s.outcome === "payment" && !s.existing) ?? paid[0])?.payment_id ?? null
+
+    const detail = () =>
+      `membership_id=${result.membership_id} order_id=${result.order_id} pay_deadline_at=${deadline} sessions=` +
+      result.sessions
+        .map((s) => `${s.session_id}:${s.outcome}${"status" in s && s.status ? `(${s.status})` : ""}${s.error ? `(${s.error})` : ""}`)
+        .join(",")
+    const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+    if (result.decision === "retry") {
+      logger.warn(`${GROUP_BUY_PAYMENT_CHECK_FAILED} ${detail()} — retry next run`)
+    } else if (result.decision === "give_up") {
+      logger.error(`${GROUP_BUY_PAYMENT_CHECK_GAVE_UP} ${detail()} — cancelling; check the PaymentIntent in Stripe (ADR-015 D)`)
+    }
+    return new StepResponse(result)
+  }
+)
+
+// alert give-up ถึง OPS_ALERT_EMAIL แบบ best-effort: ไม่ตั้ง env → warn แล้วข้าม; ส่งล้ม → log error ไม่ทำให้ job ล้ม
+export const alertPaymentCheckGaveUpStep = createStep(
+  "alert-group-buy-payment-check-gave-up",
+  async (result: MembershipPaymentCheckResult, { container }) => {
+    const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+    const to = process.env.OPS_ALERT_EMAIL?.trim()
+    if (!to) {
+      logger.warn(`${GROUP_BUY_PAYMENT_CHECK_GAVE_UP}: OPS_ALERT_EMAIL is not set — skipping the ops alert email`)
+      return new StepResponse(undefined)
+    }
+    try {
+      await container.resolve(Modules.NOTIFICATION).createNotifications({
+        to,
+        channel: "email",
+        template: EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP,
+        data: {
+          membership_id: result.membership_id,
+          order_id: result.order_id,
+          pay_deadline_at: result.pay_deadline_at,
+          sessions: result.sessions.map((s) => s.session_id).join(", "),
+          error: result.sessions.map((s) => s.error ?? ("status" in s ? s.status : undefined) ?? s.outcome).join("; "),
+        },
+        resource_id: result.order_id ?? undefined,
+        resource_type: "order",
+        idempotency_key: `${EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP}-${result.membership_id}`,
+      })
+    } catch (error) {
+      logger.error(`${GROUP_BUY_PAYMENT_CHECK_GAVE_UP}: OPS_ALERT_EMAIL send failed: ${(error as Error)?.message ?? error}`)
+    }
+    return new StepResponse(undefined)
+  }
+)
+
+// paid → capturePaymentWorkflow ของ Medusa (idempotent เมื่อ captured_at มีแล้ว; emit payment.captured → GB-5 ตั้ง paid + แปลง order)
+// job เรียก expire เฉพาะ unpaid/give_up
+export const checkGroupBuyMembershipPaymentWorkflow = createWorkflow(
+  "check-group-buy-membership-payment",
+  function (input: MembershipPaymentInput) {
+    const result = checkMembershipPaymentStep(input)
+    const paymentId = transform({ result }, ({ result }) => result.payment_id as string)
+    when("capture-group-buy-paid-session", { result }, ({ result }) => result.decision === "paid").then(() => {
+      capturePaymentWorkflow
+        .runAsStep({ input: { payment_id: paymentId } })
+        .config({ name: "capture-group-buy-paid-payment" })
+    })
+    when("alert-group-buy-payment-check-gave-up", { result }, ({ result }) => result.decision === "give_up").then(() => {
+      alertPaymentCheckGaveUpStep(result)
+    })
+    return new WorkflowResponse(result)
   }
 )
