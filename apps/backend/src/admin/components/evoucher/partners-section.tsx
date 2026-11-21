@@ -148,6 +148,7 @@ export const PartnersSection = () => {
     defaultValues: toPartnerFormValues(),
   })
   // spec 02 กฎข้อ 11 / spec 08 กฎ 4: dblclick / ⌘+Enter ซ้ำก่อน isPending เป็น true → request ครั้งเดียว
+  // กฎ 43 (ADM-39): สำเร็จแล้ว lock ค้าง (hold) ระหว่าง modal/Drawer กำลังปิด — ปล่อย (release) ตอนเปิดฟอร์มใหม่
   const [submitOnce] = useState(createSingleFlight)
   const [deleteOnce] = useState(createSingleFlight)
 
@@ -190,6 +191,7 @@ export const PartnersSection = () => {
   const openCreate = () => {
     if (createOpen) return
     form.reset(toPartnerFormValues())
+    submitOnce.release()
     setCreateOpen(true)
   }
 
@@ -199,6 +201,7 @@ export const PartnersSection = () => {
     () => {
       const openEdit = (partner: Partner) => {
         form.reset(toPartnerFormValues(partner))
+        submitOnce.release()
         setEditing(partner)
       }
       return columnHelper.display({
@@ -212,7 +215,7 @@ export const PartnersSection = () => {
         cell: ({ row }) => <PartnerActions partner={row.original} deleteOnce={deleteOnce} onEdit={openEdit} />,
       })
     },
-    [form, deleteOnce]
+    [form, deleteOnce, submitOnce]
   )
 
   const columns = useMemo(
@@ -236,7 +239,7 @@ export const PartnersSection = () => {
     submitOnce(() =>
       save
         .mutateAsync({ id: editing?.id, body: partnerFormSchema.parse(values, PARTNER_PARSE_OPTIONS) })
-        .catch(() => undefined)
+        .then(submitOnce.hold, () => undefined)
     )
   )
 
