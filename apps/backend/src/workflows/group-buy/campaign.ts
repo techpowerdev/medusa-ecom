@@ -26,6 +26,7 @@ import {
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
 import { assertCampaignPatchAllowed } from "../../modules/group_buy/utils/campaign-status"
+import { assertMaxUnitsWithinMaxQuantity } from "../../modules/group_buy/utils/max-units"
 import { assertFixedDiscountBelowPrice, type VariantPrice } from "../../modules/group_buy/utils/fixed-discount"
 import { assertSingleProductScope, singleProductIdOf } from "../../modules/group_buy/utils/single-product"
 import { generateTemplateCode } from "../../modules/group_buy/utils/template-code"
@@ -94,6 +95,14 @@ export const updateGroupBuyCampaignStep = createStep(
       select: ["id", "status", ...CONFIG_FIELDS],
     })
     assertCampaignPatchAllowed(previous.status, patch)
+    // spec 04 กฎข้อ 46: max_quantity แก้ผ่าน body นี้ไม่ได้ — อ่านจากต้นแบบ
+    if (patch.max_units_per_person != null) {
+      const loaded = await loadGroupBuyCampaign(container, id)
+      assertMaxUnitsWithinMaxQuantity(
+        patch.max_units_per_person,
+        loaded.promotion?.application_method?.max_quantity
+      )
+    }
 
     const campaign = await service.updateGroupBuyCampaigns({ id, ...patch })
     const restore = Object.fromEntries(Object.keys(patch).map((key) => [key, previous[key]]))
