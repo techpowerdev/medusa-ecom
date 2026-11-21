@@ -60,3 +60,26 @@ Tests:       1558 passed, 1558 total
   124 passed (1.3s)
 
 ## pnpm lint / pnpm typecheck: exit 0 / exit 0
+
+# แก้ตาม qa #446 (session หลักตัดสิน 2026-11-21): order ที่ canceled ไม่แสดง badge
+## RED — unit evoucher-backordered.unit.spec.ts (signature ใหม่รับ order + เคส canceled)
+Tests:       3 failed, 3 total
+## RED — e2e (widget เดิม, backend prod build :9152)
+  ✓  1 [chromium] › e2e/evoucher-admin-backordered.spec.ts:33:5 › AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว (2.7s)
+  ✘  2 [chromium] › e2e/evoucher-admin-backordered.spec.ts:83:5 › AC-52: order ที่ยกเลิกแล้วแม้ line ยังมีธง backordered → ไม่มี evoucher-backordered-badge (7.1s)
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 0
+    Received: 1
+  1 failed
+  1 passed (10.5s)
+## GREEN — e2e backordered + evoucher-admin-resend --repeat-each=2
+  ✓  1 [chromium] › e2e/evoucher-admin-backordered.spec.ts:33:5 › AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว (2.6s)
+  ✓  2 [chromium] › e2e/evoucher-admin-backordered.spec.ts:83:5 › AC-52: order ที่ยกเลิกแล้วแม้ line ยังมีธง backordered → ไม่มี evoucher-backordered-badge (2.1s)
+  ✓  3 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.0s)
+  ✓  4 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (2.9s)
+  ✓  5 [chromium] › e2e/evoucher-admin-backordered.spec.ts:33:5 › AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว (2.1s)
+  ✓  6 [chromium] › e2e/evoucher-admin-backordered.spec.ts:83:5 › AC-52: order ที่ยกเลิกแล้วแม้ line ยังมีธง backordered → ไม่มี evoucher-backordered-badge (2.0s)
+  ✓  7 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.0s)
+  ✓  8 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (2.4s)
+  8 passed (19.3s)
+## GREEN — unit src/admin: 536 passed; storefront test:e2e:unit 124 passed; lint/typecheck exit 0

@@ -6,7 +6,11 @@ export type CodeStatus = (typeof CODE_STATUSES)[number]
 // backend เขียนธงลง order_item ด้วย จึงอยู่ใน `items[].metadata` ของ Admin API; ล้างแล้ว key หาย
 const BACKORDERED_KEY = "evoucher_backordered"
 
-/** line ของ order ที่ยังไม่ได้ code (backordered) */
-export const backorderedItems = <T extends { metadata?: Record<string, unknown> | null }>(
-  items: T[] | null | undefined
-) => (items ?? []).filter((item) => item.metadata?.[BACKORDERED_KEY] === true)
+/** line ของ order ที่ยังไม่ได้ code (backordered) — order ที่ยกเลิกแล้วไม่รอ code จึงไม่นับ (qa #446) */
+export const backorderedItems = <T extends { metadata?: Record<string, unknown> | null }>(order: {
+  status?: string
+  items?: T[] | null
+}) =>
+  order.status === "canceled"
+    ? []
+    : (order.items ?? []).filter((item) => item.metadata?.[BACKORDERED_KEY] === true)

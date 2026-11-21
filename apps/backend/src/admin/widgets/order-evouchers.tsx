@@ -35,8 +35,8 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
   })
   const onResend = () => resendOnce(() => resend.mutateAsync().catch(() => undefined))
 
-  // EV-22 (กฎข้อ 38b): line ที่ backordered ยังไม่มี code — ต้องเห็น widget แม้ order ไม่มี code เลย
-  const backordered = backorderedItems(order.items)
+  // EV-22 (กฎข้อ 38b): line ที่ backordered ยังไม่มี code — ต้องเห็น widget แม้ order ไม่มี code เลย (order canceled ไม่แสดง)
+  const backordered = backorderedItems(order)
 
   // order ที่ไม่มี voucher ไม่ต้องแสดงอะไร (แต่ API ล้มต้องแสดง error ไม่ใช่ซ่อนเงียบ)
   if (!isLoading && !isError && !data?.codes.length && !backordered.length) {

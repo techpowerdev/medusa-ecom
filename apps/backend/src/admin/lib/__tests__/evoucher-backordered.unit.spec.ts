@@ -10,11 +10,17 @@ describe("backorderedItems", () => {
       { id: "d", metadata: { evoucher_backordered: "" } },
       { id: "e" },
     ]
-    expect(backorderedItems(items).map((i) => i.id)).toEqual(["a"])
+    expect(backorderedItems({ status: "completed", items }).map((i) => i.id)).toEqual(["a"])
   })
 
   it("handles an order without items", () => {
-    expect(backorderedItems(undefined)).toEqual([])
-    expect(backorderedItems(null)).toEqual([])
+    expect(backorderedItems({ status: "pending", items: undefined })).toEqual([])
+    expect(backorderedItems({ status: "pending", items: null })).toEqual([])
+  })
+
+  // qa #446 (session หลักตัดสิน 2026-11-21): order ที่ยกเลิกแล้วไม่ต้องรอ code — ธงที่ค้างอยู่ไม่ขึ้น badge
+  it("returns nothing for a canceled order even when lines are still flagged", () => {
+    const items = [{ id: "a", metadata: { evoucher_backordered: true } }]
+    expect(backorderedItems({ status: "canceled", items })).toEqual([])
   })
 })
