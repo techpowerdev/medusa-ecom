@@ -1,0 +1,42 @@
+EV-20 (spec 02 กฎข้อ 36, AC-50) — ผล test 2026-11-21 (Node 22, Postgres 16, Redis db 7)
+
+== RED (โค้ดเดิมบน origin/develop) ==
+-- unit: src/modules/evoucher/__tests__/stats.unit.spec.ts
+Tests:       3 failed, 4 passed, 7 total
+   (isPoolLowStock/totalCodes ยังไม่มี)
+-- integration: evoucher-pool-guards.spec.ts -t AC-50
+      ✕ (a) soft-deletes every available/void code, lowers stock by the available count and restores requires_shipping
+      ✕ (b) refuses (400) when a code is delivered and changes nothing
+      ✕ (b) refuses (400) when a code is void with an order_id and changes nothing
+      ✓ (c) restores the codes and the pool when the stock adjustment fails
+      ✕ (d) reports total_codes and low_stock=false for a pool without codes
+      ✓ never deletes a code that a concurrent allocation claimed
+Tests:       4 failed, 12 skipped, 2 passed, 18 total
+   (c)/race ผ่านบนโค้ดเดิมโดยปริยายเพราะโค้ดเดิมปฏิเสธการลบ pool ที่มี code ทุกกรณี
+   (a) Expected: 200 Received: 400; (d) ไม่มี total_codes และ pool ว่างได้ low_stock=true
+
+== GREEN ==
+-- unit ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 112 passed, 112 total
+Tests:       1500 passed, 1500 total
+-- integration: evoucher-pool-guards + evoucher-admin + evoucher-admin-ui
+Test Suites: 3 passed, 3 total
+Tests:       37 passed, 37 total
+-- integration: evoucher-allocate + evoucher-void-expiry (import ถือ lock ของ pool แล้ว)
+Test Suites: 2 passed, 2 total
+Tests:       35 passed, 35 total
+
+-- pnpm lint && pnpm typecheck: ผ่าน (0 error)
+-- pnpm --filter backend build: ผ่าน
+-- pnpm --filter storefront test:e2e:unit: 122 passed
+
+== รอบแก้ตาม session หลักตัดสิน 2026-11-21 (reservation guard + job low-stock) ==
+-- RED (โค้ดก่อนแก้รอบนี้)
+      ✕ (e) refuses (400) while stock is reserved by orders awaiting payment or code delivery and changes nothing
+    Expected: 400 Received: 200
+      ✕ daily job › does not send a low-stock alert for a pool without any codes (ได้อีเมลของ pool ว่างเพิ่ม 1 ฉบับ)
+-- GREEN
+-- integration: evoucher-pool-guards + void-expiry + admin + admin-ui + allocate
+Test Suites: 5 passed, 5 total
+Tests:       74 passed, 74 total
+-- unit 1500 passed (112 suites); lint/typecheck/build ผ่าน; storefront test:e2e:unit 122 passed
