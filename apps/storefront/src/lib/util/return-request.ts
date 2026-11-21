@@ -105,6 +105,18 @@ export const RETURN_ERRORS: { code: string; message: string; text: string }[] = 
   },
 ]
 
+// CORE-71 (spec 01 กฎข้อ 129): CORE-55 (`return-location.ts`) ตอบ 400 invalid_data ข้อความคงที่ (ไม่มี code) เมื่อ location
+// ของ return option ไม่มี inventory level ของสินค้า — ลองใหม่ไม่ช่วย จึงให้ลูกค้าติดต่อร้าน (contract test ตรวจข้อความกับ backend)
+export const RETURN_NOT_STOCKED = {
+  message: "This item cannot be returned online",
+  text: "ไม่สามารถสร้างคำขอคืนสินค้านี้ทางเว็บได้ กรุณาติดต่อร้าน",
+}
+
+export const isReturnNotStockedError = (error: unknown) => {
+  const { status, message } = (typeof error === "object" && error ? error : {}) as { status?: unknown; message?: unknown }
+  return status === 400 && message === RETURN_NOT_STOCKED.message
+}
+
 export const returnErrorMessage = (error: unknown, fallback: string) => {
   const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown }
   const known = RETURN_ERRORS.find((e) => e.code === code || e.message === message)

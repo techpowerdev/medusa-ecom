@@ -1,0 +1,35 @@
+# CORE-71 test evidence — 2026-11-21 13:26 +0700
+# node v22.23.3, Next dev :8171, Medusa develop :9171 (DB medusa_core71 seed ของโปรเจกต์), Playwright chromium
+
+### RED unit (ก่อนแก้) — npx vitest run src/lib/util/return-request.test.ts src/return-request-action.test.ts src/return-window-contract.test.ts
+      Tests  5 failed | 33 passed (38)
+ FAIL  src/lib/util/return-request.test.ts > isReturnNotStockedError > error อื่น (ข้อความอื่น, 401, ข้อความเดียวกันแต่ไม่ใช่ 400, ไม่ใช่ object) → false
+ FAIL  src/lib/util/return-request.test.ts > isReturnNotStockedError > ข้อความที่ลูกค้าเห็นเป็นไทยและบอกให้ติดต่อร้าน ไม่บอกให้ลองใหม่
+ Test Files  3 failed (3)
+TypeError: Cannot read properties of undefined (reading 'text')
+TypeError: isReturnNotStockedError is not a function
+
+### RED e2e (form ของ develop + action ใหม่) — playwright test e2e/core-71-return-contact-store.spec.ts --project=chromium
+    Locator: getByTestId('return-contact-store')
+    Expected: visible
+    Error: element(s) not found
+    test-results/core-71-return-contact-sto-69626-งก์-contact-ไม่เห็น-ลองใหม่-chromium/test-failed-1.png
+  1 failed
+    [chromium] › e2e/core-71-return-contact-store.spec.ts:61:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error location ไม่มีของ → เห็น return-contact-store (ไทย + ลิงก์ /contact) ไม่เห็น ลองใหม่ 
+  1 passed (51.5s)
+
+### GREEN e2e — playwright test e2e/core-71-return-contact-store.spec.ts --project=chromium
+  ✓  1 [chromium] › e2e/core-71-return-contact-store.spec.ts:61:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error location ไม่มีของ → เห็น return-contact-store (ไทย + ลิงก์ /contact) ไม่เห็น ลองใหม่ (14.1s)
+  ✓  2 [chromium] › e2e/core-71-return-contact-store.spec.ts:92:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error อื่น → ข้อความเดิม (return-error) ไม่มี return-contact-store (7.8s)
+  2 passed (24.4s)
+
+### GREEN unit — pnpm --filter storefront test:unit
+ Test Files  103 passed (103)
+      Tests  1206 passed (1206)
+
+### pnpm --filter storefront test:e2e:unit
+  123 passed (1.8s)
+
+### pnpm lint && pnpm typecheck (typecheck ไม่มี apps/backend/.medusa เหมือน CI)
+lint: ผ่าน (0 errors)
+typecheck: ผ่าน
