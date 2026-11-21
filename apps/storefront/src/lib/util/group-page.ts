@@ -72,8 +72,13 @@ export const GROUP_STATUS_LABEL: Record<PublicGroupBuyGroup["status"], string> =
   failed: "กลุ่มไม่ครบเป้าหมาย",
 }
 
-/** ลิงก์แชร์ — middleware เติม country ให้ `/g/<token>` เอง (กฎข้อ 29b) */
-export const groupSharePath = (token: string) => `/g/${encodeURIComponent(token)}`
+/** ลิงก์แชร์ `/<cc>/g/<token>` — cc ของหน้าปัจจุบัน (กฎข้อ 29b, 47) */
+export const groupSharePath = (countryCode: string, token: string) =>
+  `/${countryCode}/g/${encodeURIComponent(token)}`
+
+/** GB-24 (กฎข้อ 49): แคมเปญยังไม่ถึง `starts_at` — ซ่อนฟอร์ม join (backend ปฏิเสธอยู่แล้วตามกฎข้อ 10) */
+export const groupNotStarted = (campaign: Pick<PublicGroupBuyCampaign, "starts_at">, now: number) =>
+  !!campaign.starts_at && Date.parse(campaign.starts_at) > now
 
 /** GB-7a2 (กฎข้อ 29e): ปุ่ม join และลิงก์แชร์ — กลุ่ม `open` และยังไม่เลย `ends_at` (job อาจยังไม่ตัดสินกลุ่มที่หมดเวลา) */
 export const groupJoinable = (group: Pick<PublicGroupBuyGroup, "status" | "ends_at">, now: number) =>

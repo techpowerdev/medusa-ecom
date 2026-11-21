@@ -1,0 +1,52 @@
+# GB-24 (spec 04 กฎข้อ 47, 49; AC-66) — ผล test ในเครื่อง 2026-11-21
+# backend dev :9125 (DB medusa_gb24, Redis db 9) + storefront next dev :8125
+
+## RED (ก่อนแก้โค้ด) — unit Vitest src/lib/util/group-page.test.ts
+      Tests  3 failed | 15 passed (18)
+ FAIL  src/lib/util/group-page.test.ts > groupNotStarted > starts_at ถึงแล้ว/ผ่านแล้ว หรือไม่มี → false
+ FAIL  src/lib/util/group-page.test.ts > groupNotStarted > starts_at ในอนาคต → true
+TypeError: groupNotStarted is not a function
+
+## RED (ก่อนแก้โค้ด) — e2e chromium e2e/group-buy-not-started.spec.ts
+  1) (a) ล้มที่ spec.ts:38 `expect(getByTestId("group-starts-at")).toContainText(...)` — element ไม่มี (หน้ายังแสดงฟอร์ม join)
+    test-results/group-buy-not-started-หน้า-550ed-in-แสดงเวลาเริ่มเป็นภาษาไทย-chromium/test-failed-1.png
+  2) [chromium] › e2e/group-buy-not-started.spec.ts:46:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (b) แคมเปญเริ่มแล้ว → group-share-link เป็น /th/g/<token> และมีฟอร์ม join 
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: "/th/g/B2WR5X58Z0ZI"
+    Received: "/g/B2WR5X58Z0ZI"
+    test-results/group-buy-not-started-หน้า-a6f1e--th-g-token-และมีฟอร์ม-join-chromium/test-failed-1.png
+  2 failed
+    [chromium] › e2e/group-buy-not-started.spec.ts:32:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (a) starts_at ในอนาคต → ไม่มีฟอร์ม join แสดงเวลาเริ่มเป็นภาษาไทย 
+    [chromium] › e2e/group-buy-not-started.spec.ts:46:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (b) แคมเปญเริ่มแล้ว → group-share-link เป็น /th/g/<token> และมีฟอร์ม join 
+
+## GREEN — unit Vitest (storefront ทั้งหมด)
+ Test Files  101 passed (101)
+      Tests  1187 passed (1187)
+ ✓ src/lib/util/group-page.test.ts > groupSharePath > ลิงก์แชร์ /<cc>/g/<token> 0ms
+ ✓ src/lib/util/group-page.test.ts > groupNotStarted > starts_at ในอนาคต → true 0ms
+ ✓ src/lib/util/group-page.test.ts > groupNotStarted > starts_at ถึงแล้ว/ผ่านแล้ว หรือไม่มี → false 0ms
+
+## GREEN — e2e chromium (AC-66 + regression หน้ากลุ่ม/หน้าแรก/join)
+✓   4 [chromium] › e2e/group-buy-not-started.spec.ts:32:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (a) starts_at ในอนาคต → ไม่มีฟอร์ม join แสดงเวลาเริ่มเป็นภาษาไทย
+✓   5 [chromium] › e2e/group-buy-not-started.spec.ts:46:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (b) แคมเปญเริ่มแล้ว → group-share-link เป็น /th/g/<token> และมีฟอร์ม join
+✓   3 [chromium] › e2e/group-buy-join.spec.ts:87:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order
+✓   1 [chromium] › e2e/group-buy-group-page.spec.ts:17:7 › หน้ากลุ่ม (AC-16a) › ไม่ login: จำนวนสมาชิก ความคืบหน้า นับถอยหลัง ลิงก์แชร์ และ reload หลังคนที่ 3 join
+✓   6 [chromium] › e2e/group-buy-join.spec.ts:170:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่
+✓   7 [chromium] › e2e/group-buy-group-page.spec.ts:60:7 › หน้ากลุ่ม (AC-16a) › 375px: ไม่เลื่อนแนวนอน
+✓   9 [chromium] › e2e/group-buy-group-page.spec.ts:71:7 › หน้ากลุ่ม (AC-16a) › token ไม่มีจริง → หน้าไม่พบ
+✓   8 [chromium] › e2e/group-buy-join.spec.ts:184:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่
+✓  10 [chromium] › e2e/group-buy-join.spec.ts:204:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน
+✓  11 [chromium] › e2e/group-buy-join.spec.ts:204:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน
+✓  12 [chromium] › e2e/group-buy-join.spec.ts:228:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย
+✓  13 [chromium] › e2e/group-buy-join.spec.ts:243:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47)
+✓   2 [chromium] › e2e/group-buy-home-campaigns.spec.ts:175:5 › AC-48: การ์ด group buy 2 แบบ + การ์ด flash บนหน้าแรก ข้อความไทย (1.2m)
+✓  14 [chromium] › e2e/group-buy-home-campaigns.spec.ts:209:5 › AC-48: login แล้ว dblclick สร้างทีม → POST ครั้งเดียว ไปหน้าทีมใหม่ที่มีลิงก์แชร์ ไม่ join อัตโนมัติ
+✓  15 [chromium] › e2e/group-buy-home-campaigns.spec.ts:237:5 › AC-48: ยังไม่ login กดสร้างทีม → หน้า login และไม่สร้างทีม
+✓  16 [chromium] › e2e/group-buy-home-campaigns.spec.ts:247:5 › 375px: การ์ดแคมเปญไม่ทำให้หน้าเลื่อนแนวนอน
+✓  17 [chromium] › e2e/group-buy-home-campaigns.spec.ts:257:5 › AC-48: POST สร้างทีมตอบ 400 (ต้นแบบถูกแก้เป็น 2 สินค้า) → group-create-team-error ไทย ไม่เปลี่ยนหน้า
+17 passed (1.4m)
+
+## e2e unit project
+  122 passed (2.0s)
+
+## pnpm lint / typecheck / storefront build: ผ่าน (lint 0 errors; ไม่มี warning ในไฟล์ที่แตะ)
