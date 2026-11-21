@@ -1,8 +1,8 @@
-import { Page } from "@playwright/test"
+import { APIRequestContext, Page } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
-import { adminHeaders, createCustomer, fulfillAndShip, placeOrder, publishableKey } from "./support/medusa"
+import { Headers, adminHeaders, createCustomer, fulfillAndShip, ok, placeOrder, publishableKey } from "./support/medusa"
 
 // PAY-10 (spec 06 กฎข้อ 12, AC-23): widget เตือนว่า refund ถูกกันเมื่อ order มี order change ค้าง (pending/requested — ค่าเดียวกับ
 // middleware ของ PAY-8) ไม่แตะปุ่ม Refund ของ Medusa; order ไม่ต้องจ่ายด้วย Stripe (widget ดูแค่ order change) จึงใช้ manual payment ของ seed
@@ -27,7 +27,27 @@ async function openOrder(page: Page, order: Order) {
   await expect(page.getByRole("heading", { level: 1, name: `#${order.displayId}`, exact: true })).toBeVisible()
 }
 
-test("AC-23: เริ่ม return ผ่าน UI → widget ขึ้นเองในจอแรก; Cancel Return ในหน้า order → หายเองไม่ต้อง reload; reload/order ปกติไม่เห็น", async ({
+/** return request ที่ค้างจริง (ยังไม่ confirm) ผ่าน admin API — เส้นทางเดียวกับ PAY-8 integration */
+async function requestReturn(request: APIRequestContext, admin: Headers, orderId: string): Promise<string> {
+  const { order } = await ok(
+    await request.get(`${BACKEND_URL}/admin/orders/${orderId}?fields=id,*items`, { headers: admin }),
+    "admin order"
+  )
+  const created = await ok(
+    await request.post(`${BACKEND_URL}/admin/returns`, { headers: admin, data: { order_id: orderId } }),
+    "create return"
+  )
+  await ok(
+    await request.post(`${BACKEND_URL}/admin/returns/${created.return.id}/request-items`, {
+      headers: admin,
+      data: { items: [{ id: order.items[0].id, quantity: 1 }] },
+    }),
+    "request return items"
+  )
+  return created.return.id
+}
+
+test("AC-23: เริ่ม return ผ่าน UI → widget ขึ้นเอง, ปิดฟอร์ม/Cancel Return → หายเองไม่ต้อง reload; return ค้างอยู่ในจอแรก; reload/order ปกติไม่เห็น", async ({
   page,
   request,
   step,
@@ -47,29 +67,41 @@ test("AC-23: เริ่ม return ผ่าน UI → widget ขึ้นเ�
     await expect(page.getByTestId(WIDGET)).toHaveCount(0)
   })
 
-  let returnId = ""
-  await step("เริ่ม return ผ่านหน้า Create Return ของ Medusa แล้วปิด (Esc) → กลับหน้า order เห็น widget เองโดยไม่ reload", async () => {
+  // hotfix (develop แดงหลัง #471): หน้า Create Return ของ Medusa ยกเลิก return request เมื่อปิดฟอร์มโดยไม่ submit
+  // (`RouteFocusModal.Form` onClose → `cancelReturnRequest`, order-create-return-NNDQSKD3.mjs:947-951) แต่เฉพาะเมื่อฟอร์ม mount แล้ว —
+  // test เดิมกด Esc แข่งกับการ mount ฟอร์ม จึงบางครั้ง return ถูกยกเลิก (widget หายถูกต้อง) แล้ว step reload ล้ม
+  // → รอสัญญาณที่แน่นอน: ฟอร์ม mount (heading "Create Return") ก่อนตรวจ widget และรอ DELETE ของการยกเลิกก่อนตรวจว่า widget หาย
+  await step("เริ่ม return ผ่านหน้า Create Return ของ Medusa → widget บนหน้า order (ใต้ modal) ขึ้นเองโดยไม่ reload", async () => {
     const created = page.waitForResponse(
       (res) => res.request().method() === "POST" && new URL(res.url()).pathname === "/admin/returns"
     )
     await page.goto(`${BACKEND_URL}/app/orders/${order.id}/returns`)
-    const res = await created
-    expect(res.status()).toBe(200)
-    returnId = (await res.json()).return.id
-    await expect(page.getByRole("dialog")).toBeVisible()
-    await page.keyboard.press("Escape")
-    await expect(page).toHaveURL(new RegExp(`/orders/${order.id}$`))
-
+    expect((await created).status()).toBe(200)
+    await expect(page.getByRole("heading", { level: 1, name: "Create Return" })).toBeVisible()
     const widget = page.getByTestId(WIDGET)
-    await expect(widget).toBeVisible()
+    await expect(widget).toBeAttached()
     await expect(widget).toContainText("active return")
-    await expect(page.getByTestId(`${WIDGET}-types`)).toContainText("return")
+    await expect(page.getByTestId(`${WIDGET}-types`)).toContainText("return request")
   })
 
-  await step("reload → widget อยู่ในจอแรก (1280×720) โดยไม่ต้อง scroll", async () => {
+  await step("ปิดฟอร์ม (Esc) → Medusa ยกเลิก return request → widget หายเองโดยไม่ reload", async () => {
+    const canceled = page.waitForResponse(
+      (res) => res.request().method() === "DELETE" && /^\/admin\/returns\/[^/]+\/request$/.test(new URL(res.url()).pathname)
+    )
+    await page.keyboard.press("Escape")
+    expect((await canceled).status()).toBe(200)
+    await expect(page).toHaveURL(new RegExp(`/orders/${order.id}$`))
+    await expect(page.getByRole("heading", { level: 1, name: `#${order.displayId}`, exact: true })).toBeVisible()
+    await expect(page.getByTestId(WIDGET)).toHaveCount(0)
+  })
+
+  let returnId = ""
+  await step("return request ค้าง (admin API) → เปิดหน้า order → widget อยู่ในจอแรก (1280×720) โดยไม่ต้อง scroll", async () => {
+    returnId = await requestReturn(request, admin, order.id)
     await openOrder(page, order)
     const widget = page.getByTestId(WIDGET)
     await expect(widget).toBeVisible()
+    await expect(widget).toContainText("active return")
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
     await expect(widget).toBeInViewport({ ratio: 1 })
     await widget.scrollIntoViewIfNeeded()
