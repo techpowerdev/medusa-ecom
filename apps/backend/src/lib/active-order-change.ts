@@ -3,7 +3,7 @@ import { OrderChangeStatus } from "@medusajs/framework/utils"
 
 // PAY-8 (spec 06 กฎข้อ 10a/b): order change ที่ "active" = status เดียวกับที่ order module ของ Medusa 2.22.1
 // ใช้ปฏิเสธการสร้าง order change ใหม่ ("already has an existing active order change")
-const ACTIVE_ORDER_CHANGE_STATUSES = [OrderChangeStatus.PENDING, OrderChangeStatus.REQUESTED]
+export const ACTIVE_ORDER_CHANGE_STATUSES = [OrderChangeStatus.PENDING, OrderChangeStatus.REQUESTED]
 
 export type ActiveOrderChange = { id: string; change_type: string | null; status: string; order_id: string }
 

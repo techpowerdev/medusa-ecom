@@ -1,0 +1,33 @@
+# PAY-10 (spec 06 กฎข้อ 12, AC-23) — ผลทดสอบในเครื่อง 2026-11-21
+# backend medusa develop :9184, DB medusa_pay10 (seed), node 22
+
+## RED 1 — unit ก่อนมี helper
+    Cannot find module '../order-refund-blocked' from 'src/admin/lib/__tests__/order-refund-blocked.unit.spec.ts'
+Test Suites: 1 failed, 1 total
+
+## RED 2 — e2e ก่อนมี widget
+    TimeoutError: page.waitForResponse: Timeout 30000ms exceeded while waiting for event "response"
+      14 | /** เปิดหน้า order แล้วรอ request order change ของ widget (`status` = pending/requested) ตอบ 200 — ไม่เห็น widget จึงแปลว่าไม่มี change ค้างจริง */
+
+## RED 3 — widget ใช้ useOrderChanges ของ dashboard (queryKey ไม่รวม query → cache ชน timeline → หน้า order crash)
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByRole('heading', { name: '#6' })
+    Expected: visible
+    Timeout: 5000ms
+
+## GREEN — unit: src/admin/lib/__tests__/order-refund-blocked.unit.spec.ts (4 tests) + backend test:unit ทั้งชุด
+Test Suites: 122 passed, 122 total
+Tests:       1675 passed, 1675 total
+
+## GREEN — e2e chromium apps/storefront/e2e/pay-10-refund-blocked-widget.spec.ts
+Running 1 test using 1 worker
+[1/1] [chromium] › e2e/pay-10-refund-blocked-widget.spec.ts:52:5 › AC-23: order ที่มี return request ค้างเห็น widget เตือน refund ถูกกัน; ยกเลิก return แล้ว reload ไม่เห็น; order ปกติไม่เห็น
+  1 passed (27.6s)
+
+## storefront test:e2e:unit
+  131 passed (2.2s)
+
+## lint (0 errors), typecheck ผ่าน, NODE_ENV=production pnpm --filter backend build ผ่าน
+apps/storefront typecheck: Done
+apps/backend typecheck: Done
+Frontend build completed successfully (79.31s)

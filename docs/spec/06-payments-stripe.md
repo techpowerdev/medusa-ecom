@@ -371,7 +371,7 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
     (d) ถ้าเรียก `stripe.retrievePaymentIntent` ใน component ของขั้น payment ให้เพิ่มข้อยกเว้นที่ระบุเหตุผลใน `checkout-affiliate-coverage.test.ts` (test นี้ตรวจจุดที่เรียก Stripe ก่อน sync cookie `aff` — AF-3b)
 
 ### Acceptance criteria (รอบ 41)
-- AC-23 (PAY-10, กฎข้อ 12) e2e admin: order ที่มี return request ค้าง → เห็น `order-refund-blocked` (ข้อความมี `active return`); ยกเลิก return request แล้ว reload → ไม่เห็น; order ปกติ → ไม่เห็น
+- ☑ AC-23 (PAY-10, กฎข้อ 12) e2e admin: order ที่มี return request ค้าง → เห็น `order-refund-blocked` (ข้อความมี `active return`); ยกเลิก return request แล้ว reload → ไม่เห็น; order ปกติ → ไม่เห็น
 - AC-24 (PAY-11, กฎข้อ 13) unit Vitest (logic ของ finish/poll เป็น pure helper) + e2e route mock: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → ภายใน 5 วินาทีเห็น `promptpay-refunded` มีคำ "คืนเงิน" และไม่เห็น `promptpay-awaiting-order`; ไม่มี request poll เพิ่มหลังนั้น (ล้มบน develop+FS-22 — ค้าง awaiting); 409 already-being-completed → ยัง poll และไม่เห็น `promptpay-refunded`
 - AC-25 (PAY-12, กฎข้อ 14) unit ของ route (แบบ `core-29-active-cart.test.ts:187-214`) + e2e: placeOrder kind `refunded` → location `/th/cart?error=refunded`; 409 already-being-completed + order มีแล้ว → หน้า order confirmed (ไม่ใช่ `error=refunded`); 401 → หน้า login; เปิด `/th/cart?error=refunded|order_failed|payment_failed` → `cart-error-notice` อักษรไทยตามค่า; `?error=<script>` → ไม่แสดง (ล้มบน develop — หน้า cart ไม่อ่าน `error`)
 - AC-27 (PAY-14, กฎข้อ 16) unit Vitest (helper ตัดสิน "PI จบแล้ว → reset") + e2e (Stripe test mode หรือ route mock ที่ให้ cart คืน session `pending` ชี้ PI ที่ `succeeded`/`canceled` แล้ว) — **ล้มบน develop** ก่อน:
