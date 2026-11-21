@@ -1,0 +1,47 @@
+# EV-19 (AC-49, spec 02 กฎข้อ 35) — ผลการทดสอบ 2026-11-21 (base origin/develop 73148c83, Node 22, Postgres 16, Redis db 5)
+
+## RED — integration http: evoucher-pagination-order.spec.ts บนโค้ดของ develop (exit 1)
+✓ AC-49: pages through 30 codes of one import batch (limit=10) with no duplicate or missing id (1129 ms)
+✕ AC-49: pages through 100 codes of one import batch (limit=10) with no duplicate or missing id (933 ms)
+✓ pages through pools with equal created_at () with no duplicate or missing id (1135 ms)
+✕ pages through pools with equal created_at (?order=created_at) with no duplicate or missing id (1264 ms)
+✕ pages through pools with equal created_at (?order=-created_at) with no duplicate or missing id (1239 ms)
+✓ pages through partners sharing a name and created_at () with no duplicate or missing id (981 ms)
+✕ pages through partners sharing a name and created_at (?order=name) with no duplicate or missing id (1050 ms)
+●  › AC-49: pages through 100 codes of one import batch (limit=10) with no duplicate or missing id
+Expected: 100
+Received: 97
+●  › pages through pools with equal created_at (?order=created_at) with no duplicate or missing id
+Expected: 30
+Received: 29
+●  › pages through pools with equal created_at (?order=-created_at) with no duplicate or missing id
+●  › pages through partners sharing a name and created_at (?order=name) with no duplicate or missing id
+Expected: 50
+Received: 47
+Tests:       4 failed, 3 passed, 7 total
+
+หมายเหตุ: 30 code / limit 10 ตามตัวเลขของ AC-49 ไม่ล้มบน develop — Postgres ใช้ top-N heapsort (ลำดับของแถวที่ key เท่ากันเปลี่ยน)
+เฉพาะเมื่อแถวที่ตรง filter > 2 × (offset + limit); 30/10 จึงคงเคสไว้เป็น regression และเพิ่ม 100 code / limit 10 (import batch เดียว) ที่ล้มจริง
+
+## GREEN — integration http: evoucher-pagination-order.spec.ts หลังแก้
+✓ AC-49: pages through 30 codes of one import batch (limit=10) with no duplicate or missing id (1559 ms)
+✓ AC-49: pages through 100 codes of one import batch (limit=10) with no duplicate or missing id (2174 ms)
+✓ pages through pools with equal created_at () with no duplicate or missing id (2843 ms)
+✓ pages through pools with equal created_at (?order=created_at) with no duplicate or missing id (2497 ms)
+✓ pages through pools with equal created_at (?order=-created_at) with no duplicate or missing id (1982 ms)
+✓ pages through partners sharing a name and created_at () with no duplicate or missing id (1547 ms)
+✓ pages through partners sharing a name and created_at (?order=name) with no duplicate or missing id (1762 ms)
+Tests:       7 passed, 7 total
+
+## suite ที่เกี่ยวข้อง (integration http) หลังแก้
+PASS integration-tests/http/affiliate-admin.spec.ts (22.799 s)
+PASS integration-tests/http/evoucher-admin.spec.ts (31.299 s)
+PASS integration-tests/http/evoucher-admin-ui.spec.ts (13.624 s)
+Tests:       58 passed, 58 total
+
+## unit (backend test:unit) หลังแก้
+Test Suites: 111 passed, 111 total
+Tests:       1493 passed, 1493 total
+
+## pnpm lint && pnpm typecheck
+ผ่าน (exit 0; lint มีเฉพาะ warning เดิมของ storefront)

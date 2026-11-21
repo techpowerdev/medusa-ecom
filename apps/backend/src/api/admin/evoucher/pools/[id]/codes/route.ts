@@ -5,6 +5,7 @@ import EvoucherModuleService from "../../../../../../modules/evoucher/service"
 import { maskCodes } from "../../../helpers"
 import { AdminListEvoucherCodesParams } from "../../../validators"
 
+// EV-19 (กฎ 35): id เป็น key รอง — code ของ import batch เดียวมี created_at เท่ากัน
 // AC-8: คืน code แบบ masked เท่านั้น; ค่าจริงดูได้ที่ GET /admin/evoucher/codes/:id/reveal (มี audit)
 export async function GET(
   req: AuthenticatedMedusaRequest<unknown, AdminListEvoucherCodesParams>,
@@ -32,7 +33,7 @@ export async function GET(
       "created_at",
     ],
     filters: { pool_id: req.params.id, ...(status ? { status } : {}) },
-    pagination: { take: limit, skip: offset, order: { created_at: "ASC" } },
+    pagination: { take: limit, skip: offset, order: { created_at: "ASC", id: "ASC" } },
   })
 
   const codes = await maskCodes(service, data)
