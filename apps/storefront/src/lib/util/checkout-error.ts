@@ -42,3 +42,19 @@ export const checkoutConflictMessage = (error: unknown): string | null =>
 /** CORE-4i (กฎข้อ 72): code ของ 409 ที่รู้จัก (จาก `code` หรือข้อความคงที่ของ backend); error อื่น → null */
 export const checkoutConflictCode = (error: unknown): string | null =>
   knownConflict(error)?.code ?? null
+
+// FS-22 (spec 03 กฎข้อ 27): complete ล้มเพราะสต็อก inventory ไม่พอ (ผู้แพ้ race ของ e-voucher ใบสุดท้าย/สินค้าชิ้นสุดท้าย)
+// placeOrder คืน code นี้จาก `isOutOfStockAtCompletion` (ไม่อยู่ใน CHECKOUT_CONFLICTS — error ของ Medusa ไม่ใช่ 409 ของเรา)
+export const OUT_OF_STOCK = "OUT_OF_STOCK"
+
+export const REFUNDED_NOTICE =
+  "สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน ระบบคืนเงินเต็มจำนวนให้อัตโนมัติแล้ว (เข้าบัญชีตามรอบของธนาคาร) กรุณาปรับตะกร้าแล้วสั่งใหม่"
+
+const SOLD_OUT_DURING_PAYMENT: string[] = ["FLASH_SOLD_OUT", "FLASH_LIMIT_EXCEEDED", OUT_OF_STOCK]
+
+/**
+ * FS-22: ผลล้มของ placeOrder ที่ควรบอกว่าคืนเงินแล้ว — เฉพาะเมื่อผู้เรียกตัดเงินไปแล้ว (`paid`: บัตรหลัง PaymentIntent succeeded)
+ * Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็มจำนวนเองเมื่อ payment ถูก capture (ไม่ตรวจสถานะ refund จริง — กฎข้อ 27)
+ */
+export const refundedAfterPayment = (error: string, paid: boolean): boolean =>
+  paid && SOLD_OUT_DURING_PAYMENT.includes(error)

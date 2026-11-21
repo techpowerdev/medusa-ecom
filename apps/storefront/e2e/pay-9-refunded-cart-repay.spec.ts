@@ -159,10 +159,12 @@ test("AC-22c: ใช้สิทธิ์ flash จาก cart อื่นร�
 
   await step("กดสั่งซื้อ → Stripe capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED (ข้อความไทย)", async () => {
     await page.getByTestId("submit-order-button").click()
-    // FS-22 อาจแทน error ด้วย checkout-refunded-notice — test นี้ตรวจแค่ว่า complete ล้มและยังอยู่หน้า checkout
-    const failure = page.getByTestId("stripe-payment-error-message").or(page.getByTestId("checkout-refunded-notice"))
+    // FS-22 (spec 03 กฎข้อ 27, AC-29): ตัดเงินแล้ว → แจ้งว่าคืนเงินอัตโนมัติ ไม่ใช่ error ให้ลองใหม่
+    const failure = page.getByTestId("checkout-refunded-notice")
     await expect(failure).toBeVisible({ timeout: 60_000 })
     await expect(failure).toHaveText(/[\u0E00-\u0E7F]/)
+    await expect(failure).toContainText("คืนเงิน")
+    await expect(page.getByTestId("stripe-payment-error-message")).toHaveCount(0)
     await expect(page).toHaveURL(/\/checkout/)
     await evidence("01-flash-limit-after-card-payment")
   })

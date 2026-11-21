@@ -44,6 +44,13 @@ describe("placeOrder: 409 ตอน complete (FS-15)", () => {
     await expect(place()).resolves.toEqual({ error: "FLASH_SOLD_OUT" })
   })
 
+  it("FS-22 (spec 03 กฎข้อ 27): 400 สต็อกไม่พอตอน reserveInventory → { error: \"OUT_OF_STOCK\" }", async () => {
+    complete.mockRejectedValueOnce(
+      fetchError("Not enough stock available for item iitem_1 at location sloc_1", 400)
+    )
+    await expect(place()).resolves.toEqual({ error: "OUT_OF_STOCK" })
+  })
+
   it("error อื่น → { error: \"failed\" } ไม่ throw (ผู้เรียกใช้ข้อความ fallback ของตัวเอง)", async () => {
     complete.mockRejectedValueOnce(fetchError("Payment sessions are required", 400))
     await expect(place()).resolves.toEqual({ error: "failed" })

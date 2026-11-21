@@ -4,9 +4,10 @@ import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
+import { REFUNDED_NOTICE, refundedAfterPayment } from "@lib/util/checkout-error"
 import { isPromptPay } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@modules/common/components/ui"
+import { Button, Text } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import { useParams } from "next/navigation"
 import React, { useState } from "react"
@@ -16,13 +17,22 @@ import PromptPayPaymentButton from "../promptpay-payment"
 /**
  * CORE-4i-b (กฎข้อ 72): ยืนยันคำสั่งซื้อแล้วคืนข้อความไทยเมื่อล้ม — 409 ที่รู้จัก (FS-15) → ข้อความของ code,
  * `unauthorized` → SIGN_IN_AGAIN_MESSAGE; สำเร็จ = redirect ของ Next (ไม่มีผล) → null
+ * FS-22 (spec 03 กฎข้อ 27): `paid` = ตัดเงินแล้วก่อน complete → โควตา/สต็อกหมดได้ REFUNDED_NOTICE แทน "ลองใหม่"
  */
-export const completeOrder = async (order: ReturnType<typeof placeOrder>): Promise<string | null> => {
+export const completeOrder = async (order: ReturnType<typeof placeOrder>, paid = false): Promise<string | null> => {
   const result = await settleAction(order)
-  return result && "error" in result
-    ? actionErrorMessage(result.error, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
-    : null
+  if (!result || !("error" in result)) return null
+  return refundedAfterPayment(result.error, paid)
+    ? REFUNDED_NOTICE
+    : actionErrorMessage(result.error, "ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
 }
+
+/** FS-22: แจ้งว่าคืนเงินแล้ว (ไม่ใช่ error สีแดงให้ลองใหม่) */
+const RefundedNotice = () => (
+  <Text role="alert" className="pt-2 txt-medium text-ui-fg-base" data-testid="checkout-refunded-notice">
+    {REFUNDED_NOTICE}
+  </Text>
+)
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -93,7 +103,8 @@ const StripePaymentButton = ({
 
   const onPaymentCompleted = async () => {
     // EV-7d (กฎข้อ 28c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
-    const failure = await completeOrder(placeOrder(cart.id, undefined, countryCode as string))
+    // placeOrder ถูกเรียกหลัง PaymentIntent succeeded/requires_capture เท่านั้น → เงินถูกตัดแล้ว (FS-22)
+    const failure = await completeOrder(placeOrder(cart.id, undefined, countryCode as string), true)
     if (failure) setErrorMessage(failure)
     setSubmitting(false)
   }
@@ -180,10 +191,14 @@ const StripePaymentButton = ({
       >
         ยืนยันคำสั่งซื้อ
       </Button>
-      <ErrorMessage
-        error={errorMessage}
-        data-testid="stripe-payment-error-message"
-      />
+      {errorMessage === REFUNDED_NOTICE ? (
+        <RefundedNotice />
+      ) : (
+        <ErrorMessage
+          error={errorMessage}
+          data-testid="stripe-payment-error-message"
+        />
+      )}
     </>
   )
 }
