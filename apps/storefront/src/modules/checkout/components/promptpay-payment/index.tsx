@@ -7,6 +7,7 @@ import {
 } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
+import { promptPayFinishAction } from "@lib/util/promptpay-finish"
 import {
   PAYMENT_ALREADY_COMPLETED,
   PROMPTPAY_POLL_MS,
@@ -37,6 +38,9 @@ type Props = {
 type Qr = { image: string; deadline: number }
 
 const PAY_WITH_PROMPTPAY = "ชำระด้วยพร้อมเพย์"
+// PAY-6c: poll เห็นว่าเงินถูกคืนโดยไม่รู้เหตุ
+const REFUNDED_UNKNOWN_REASON =
+  "ชำระไม่สำเร็จ เงินจะคืนเข้าบัญชีของคุณตามรอบของธนาคาร กดเริ่มชำระใหม่เพื่อรับคิวอาร์โค้ดใหม่"
 
 /**
  * CORE-4i-b (กฎข้อ 72): สร้าง session พร้อมเพย์ใหม่ตอน QR หมดอายุ — 409 `PAYMENT_ALREADY_COMPLETED` → already-paid (PAY-6b),
@@ -87,7 +91,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   const [expired, setExpired] = useState(false)
   // PAY-6c (กฎข้อ 8): ทางสำรองครบเพดานแล้วยังไม่มี order / เงินถูกคืนโดย Medusa ระหว่างทางสำรอง
   const [delayed, setDelayed] = useState(false)
-  const [refunded, setRefunded] = useState(false)
+  // ข้อความของ `promptpay-refunded` (PAY-11: เหตุจาก placeOrder ของทางสำรอง / PAY-6c: ไม่รู้เหตุ)
+  const [refunded, setRefunded] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const finishing = useRef(false)
@@ -123,23 +128,36 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     return true
   }, [giveUp])
 
+  // เงินถูกคืน (หรือจะถูกคืน) → หยุดทางสำรอง (awaitingOrder=false ล้าง timer poll; poll ที่ค้างอยู่ได้ "wait") แล้วโหลด cart ใหม่
+  // Medusa คืนเงินและสร้าง session ใหม่ให้ (refundPaymentAndRecreatePaymentSessionWorkflow) → ให้เริ่มชำระใหม่
+  const stopRefunded = useCallback((text: string) => {
+    completeFallback.current = false
+    setAwaitingOrder(false)
+    setError(null)
+    setRefunded(text)
+    router.refresh()
+  }, [router])
+
   const finish = useCallback(async () => {
     if (finishing.current) return
     if (!takeFallbackSlot("complete")) return
     finishing.current = true
+    let action = promptPayFinishAction(null)
     try {
       // cart ถูก complete โดย webhook แล้ว — complete ซ้ำได้ order เดิมแล้ว redirect ไปหน้า confirmed
       // EV-7d (กฎข้อ 28c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
-      const res = await placeOrder(cart.id, undefined, countryCode as string)
-      // FS-15: ผลล้มที่ placeOrder คืนเป็นค่า → จัดการเหมือน error เดิมของทางสำรองนี้ (poll ต่อ — แยกตาม kind = PAY-11)
-      if (res) throw new Error(res.kind)
+      // PAY-11 (กฎข้อ 13): ผลล้มที่ placeOrder คืนเป็นค่า → แยกตาม kind ของ placeOrderOutcome (CORE-76)
+      action = promptPayFinishAction(await placeOrder(cart.id, undefined, countryCode as string))
     } catch {
-      // เช่นรอ lock ของ completeCartWorkflow ไม่ทัน — poll รอบถัดไปจะลองใหม่ (order มีอยู่แล้ว)
-      setError("ได้รับชำระเงินแล้ว ระบบกำลังสร้างคำสั่งซื้อของคุณ กรุณารอสักครู่…")
+      // network — poll รอบถัดไปจะลองใหม่
     } finally {
       finishing.current = false
     }
-  }, [cart.id, countryCode, takeFallbackSlot])
+    if (action.kind === "refunded") return stopRefunded(action.text)
+    if (action.kind === "unauthorized") return router.push(`/${countryCode}/account`)
+    // เช่นรอ lock ของ completeCartWorkflow ไม่ทัน (CART_COMPLETION_IN_PROGRESS) — poll รอบถัดไปจะลองใหม่ (order มีอยู่แล้ว)
+    setError("ได้รับชำระเงินแล้ว ระบบกำลังสร้างคำสั่งซื้อของคุณ กรุณารอสักครู่…")
+  }, [cart.id, countryCode, takeFallbackSlot, stopRefunded, router])
 
   // PAY-6b (spec 06 กฎข้อ 7A, AC-12b): ชำระแล้วแต่ยังไม่มี order → poll ต่อ และเรียก complete cart ของ Medusa เป็นทางสำรอง
   // (กรณี webhook ไม่มาหรือ complete จาก webhook ล้ม) complete ล้ม → finish แสดงข้อความแล้ว poll รอบถัดไปลองใหม่เมื่อ cart complete
@@ -182,7 +200,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     setSubmitting(true)
     setError(null)
     setExpired(false)
-    setRefunded(false)
+    setRefunded(null)
 
     // AF-3b (กฎ 23): order สร้างโดย webhook หลังสแกน → sync cookie `aff` ก่อนทั้ง QR เดิม (requires_action) และการ confirm ใหม่ใน openQr
     const current = await syncAffiliateBefore(cart, () => stripe.retrievePaymentIntent(clientSecret))
@@ -223,13 +241,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       if (action === "complete") {
         finish()
       } else if (action === "refunded") {
-        // Medusa คืนเงินแล้วและสร้าง session ใหม่ให้ (refundPaymentAndRecreatePaymentSessionWorkflow) → โหลด cart ใหม่แล้วให้เริ่มชำระใหม่
         clearInterval(timer)
-        completeFallback.current = false
-        setAwaitingOrder(false)
-        setError(null)
-        setRefunded(true)
-        router.refresh()
+        stopRefunded(REFUNDED_UNKNOWN_REASON)
       } else if (action === "fail") {
         clearInterval(timer)
         setQr(null)
@@ -238,7 +251,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       }
     }, PROMPTPAY_POLL_MS)
     return () => clearInterval(timer)
-  }, [polling, cart.id, finish, takeFallbackSlot, router])
+  }, [polling, cart.id, finish, takeFallbackSlot, stopRefunded])
 
   if (delayed) {
     return <PromptPayOrderDelayed />
@@ -268,7 +281,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     <>
       {refunded && (
         <Text className="txt-medium text-ui-fg-subtle mb-2" data-testid="promptpay-refunded">
-          ชำระไม่สำเร็จ เงินจะคืนเข้าบัญชีของคุณตามรอบของธนาคาร กดเริ่มชำระใหม่เพื่อรับคิวอาร์โค้ดใหม่
+          {refunded}
         </Text>
       )}
       {expired && (
