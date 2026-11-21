@@ -70,15 +70,24 @@ const Overview = ({ customer, orders }: OverviewProps) => {
             </div>
 
             <div className="flex flex-col gap-y-4">
-              <div className="flex items-center gap-x-2">
+              <div className="flex items-center justify-between gap-x-2">
                 <h3 className="text-large-semi">คำสั่งซื้อล่าสุด</h3>
+                {orders && orders.length > 0 && (
+                  <LocalizedClientLink
+                    href="/account/orders"
+                    className="text-small-regular text-ui-fg-interactive hover:underline"
+                    data-testid="overview-orders-view-all"
+                  >
+                    ดูทั้งหมด
+                  </LocalizedClientLink>
+                )}
               </div>
               <ul
                 className="flex flex-col gap-y-4"
                 data-testid="orders-wrapper"
               >
                 {orders && orders.length > 0 ? (
-                  orders.slice(0, 5).map((order) => {
+                  orders.map((order) => {
                     return (
                       <li
                         key={order.id}

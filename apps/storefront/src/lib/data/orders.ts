@@ -40,6 +40,7 @@ export const listOrders = async (
   }
 
   // CORE-20c (กฎข้อ 60): ไม่ cache แบบเดียวกับ retrieveOrder — สถานะ return/การส่งเปลี่ยนจากฝั่ง admin
+  // CORE-68 (กฎข้อ 126): คืน count ของ Medusa ด้วย — หน้า /account/orders ใช้แบ่งหน้า
   return sdk.client
     .fetch<HttpTypes.StoreOrderListResponse>(`/store/orders`, {
       method: "GET",
@@ -53,6 +54,6 @@ export const listOrders = async (
       headers,
       cache: "no-store",
     })
-    .then(({ orders }) => orders)
+    .then(({ orders, count }) => ({ orders, count }))
     .catch((err) => medusaError(err))
 }
