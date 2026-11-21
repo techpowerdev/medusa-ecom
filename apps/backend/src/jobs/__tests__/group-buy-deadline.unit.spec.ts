@@ -9,6 +9,7 @@ jest.mock("../../workflows/group-buy/group-outcome", () => ({
   succeedGroupWorkflow: jest.fn(),
 }))
 jest.mock("../../workflows/group-buy/membership-payment", () => ({
+  checkGroupBuyMembershipPaymentWorkflow: jest.fn(),
   expireGroupBuyMembershipPaymentWorkflow: jest.fn(),
 }))
 

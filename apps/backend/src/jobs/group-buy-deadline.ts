@@ -11,7 +11,10 @@ import {
 } from "../modules/group_buy/utils/group-outcome"
 import { setGroupBuyCampaignStatusWorkflow } from "../workflows/group-buy/campaign-status"
 import { failGroupWorkflow, succeedGroupWorkflow } from "../workflows/group-buy/group-outcome"
-import { expireGroupBuyMembershipPaymentWorkflow } from "../workflows/group-buy/membership-payment"
+import {
+  checkGroupBuyMembershipPaymentWorkflow,
+  expireGroupBuyMembershipPaymentWorkflow,
+} from "../workflows/group-buy/membership-payment"
 
 // spec 04 Non-functional: ≤ 50 กลุ่มต่อรอบ
 const BATCH = 50
@@ -60,8 +63,15 @@ export default async function groupBuyDeadlineJob(container: MedusaContainer) {
     skip: deadlineBatchSkip(expiredCount, BATCH, tick),
     order: { joined_at: "ASC" },
   })
+  // GB-20b กฎข้อ 50: ตรวจสถานะที่ provider ก่อน — paid = capture (ไม่ expire), retry/skip = รอบถัดไป, unpaid/give_up = expire
   for (const membership of expired) {
     try {
+      const { result: check } = await checkGroupBuyMembershipPaymentWorkflow(container).run({
+        input: { membership_id: membership.id },
+      })
+      if (check.decision !== "unpaid" && check.decision !== "give_up") {
+        continue
+      }
       await expireGroupBuyMembershipPaymentWorkflow(container).run({ input: { membership_id: membership.id } })
     } catch (error) {
       logger.error(`group-buy-deadline: failed to expire membership ${membership.id}: ${(error as Error).message}`)
