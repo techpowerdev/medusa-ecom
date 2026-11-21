@@ -502,17 +502,18 @@ spec 08 กฎ 41a/41c/43/44/45, spec 07 เช็กลิสต์ bump ข้
 | B | CORE-77 | 01 | ป้ายตะกร้าไม่ค้างเมื่อโหลด cart ล้ม | hotfix `fix/nav-cart-link-duplicate` | ✓ | ☐ |
 | B | CORE-86 ∥ CORE-87 | 01 | e2e prefix core-75×fs14 ∥ หัว facet `/store` ไม่แสดง "(0)" ผิด | CORE-75 (#465) | CORE-87 ✓ | ☐ |
 | C | PAY-11 ∥ PAY-12 | 06 | **เงิน (UI)** PromptPay ทางสำรองไม่ค้าง + บอกเหตุ ∥ `/api/payment-return` → `error=refunded` + cart อ่าน `error` | FS-22, CORE-76 | ✓ | ☐ |
+| C | PAY-14 | 06 | (owner สั่ง 2026-11-21, review #468) ขั้น payment ไม่ติด session ชั่วคราวที่ชี้ PI จบแล้ว — สร้าง session ใหม่อัตโนมัติ/คลิกตัวเลือกเดิมได้, ไม่โชว์ error อังกฤษของ Stripe, ไม่ confirm PI เดิม | CORE-76 | ✓ | ☐ |
 | C | FS-24 | 03 | e2e race จริงทางบัตร (Stripe test mode) แทน route mock | FS-22, CORE-76 | — | ☐ |
 | A | PAY-10 | 06 | widget `order.details.before` แจ้ง refund ถูกกัน (Q-P11 = ก owner ตัดสิน 2026-11-21) | PAY-8 (#426) | ✓ | ☐ |
 | A | CORE-80 → CORE-81 | 01 | อีเมลตัวเล็กฝั่ง backend (เฉพาะ customer + affiliate — Q-C13 = ก owner 2026-11-21) → script แปลงอีเมลเก่า (dry-run, ตรวจชน) | CORE-81 ← CORE-80 | — | ☐ |
 | B | CORE-88 | 01 | ส่ง `typo_tolerance` เฉพาะคำค้น ≥ 3 อักขระ (Q-C15 = ก owner 2026-11-21) | CORE-75 (#465) | — | ☐ |
 | owner | CORE-85 | 01 | `/th/contact` ข้อมูลจริง | **owner ส่งข้อมูลติดต่อ** | ✓ | ☐ |
-| ท้าย | CORE-82 → CORE-83 → CORE-84 | 01 | จับ error ด้วย code ตาม ADR-028 (accepted owner 2026-11-21 — 3 PR ปิดท้ายรอบ + issue upstream): checkout/payment → account/returns/auth → group buy/flash/affiliate | task หน้าร้านที่แตะ helper เดียวกัน (82 ← CORE-76, PAY-11, PAY-12; 83 ← CORE-79, CORE-82; 84 ← FS-23, GB-27, CORE-83) | ✓ | ☐ |
+| ท้าย | CORE-82 → CORE-83 → CORE-84 | 01 | จับ error ด้วย code ตาม ADR-028 (accepted owner 2026-11-21 — 3 PR ปิดท้ายรอบ + issue upstream): checkout/payment → account/returns/auth → group buy/flash/affiliate | task หน้าร้านที่แตะ helper เดียวกัน (82 ← CORE-76, PAY-11, PAY-12, PAY-14; 83 ← CORE-79, CORE-82; 84 ← FS-23, GB-27, CORE-83) | ✓ | ☐ |
 
 **owner ตัดสิน 2026-11-21**: Q-P11 = ก, Q-C13 = ก, Q-C14 = อนุมัติ ADR-028, Q-C15 = ก — เหลือรอเฉพาะข้อมูลติดต่อของ CORE-85; **issue upstream** (session หลักเปิด): js-sdk `FetchError` ไม่เก็บ `code`/`type` (ADR-028)
-**critical path (เงิน/PII ก่อน)**: PR เอกสารรอบ 41 → OPS-33 ∥ EV-23 ∥ EV-25 ∥ PAY-10 ∥ CORE-80 → (#464 merge) CORE-76 → PAY-11 ∥ PAY-12 ∥ FS-24 → CORE-81 → ที่เหลือ → CORE-82..84 ปิดท้าย
+**critical path (เงิน/PII ก่อน)**: PR เอกสารรอบ 41 → OPS-33 ∥ EV-23 ∥ EV-25 ∥ PAY-10 ∥ CORE-80 → (#464 merge) CORE-76 → PAY-11 ∥ PAY-12 ∥ PAY-14 ∥ FS-24 → CORE-81 → ที่เหลือ → CORE-82..84 ปิดท้าย
 **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง merge `origin/develop` แล้วรอ CI ใหม่):
-- `apps/storefront/src/lib/data/cart.ts` + `lib/util/checkout-error.ts`/`insufficient-inventory.ts`: FS-22 → CORE-76 → (PAY-11 ∥ PAY-12) → CORE-82
+- `apps/storefront/src/lib/data/cart.ts` + `lib/util/checkout-error.ts`/`insufficient-inventory.ts`: FS-22 → CORE-76 → (PAY-11 ∥ PAY-12 ∥ PAY-14 — PAY-14 แตะ `modules/checkout/components/payment` ด้วย) → CORE-82
 - `apps/backend/src/api/middlewares.ts`: GB-25 → GB-26, CORE-80, OPS-34 (ย้าย matcher), EV-23 (middleware/validator ของ route allocate ถ้าลงไฟล์นี้) — เก็บทั้งสองฝั่งเมื่อ conflict (CLAUDE.md)
 - `docs/ops/production.md`: CORE-81 (Go-live ข้อ 11), EV-25 (ข้อ 12), OPS-33 (ข้อ 13 + หมายเหตุ OPS-32) — คนละบรรทัด
 - `src/admin/components/affiliate/program-form.tsx`: ADM-44 → ADM-46; `src/admin/lib/single-flight.ts`: ADM-46 (EV-24 ใช้อย่างเดียว — ถ้า ADM-46 merge ก่อน EV-24 sync)

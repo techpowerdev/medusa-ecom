@@ -2827,7 +2827,7 @@ Out of scope: หน้า order ใน admin แสดงราคารวม 
 Status: draft (☐ ทุก task)
 Goal (owner's words): "ทุกข้อทำใน release v0.3.0" — ข้อความที่ลองใหม่ไม่ช่วย, ป้ายตะกร้าค้าง, หน้า orders ของ account, ปุ่ม login บนมือถือ, อีเมลตัวเล็กฝั่ง backend + แปลงข้อมูลเก่า,
 จับ error ด้วย code, หน้า `/th/contact` ข้อมูลจริง, e2e hygiene
-Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป็น hotfix `fix/nav-cart-link-duplicate` — session หลัก 2026-11-21); งานรอบ 41 ใน spec อื่น: 02 EV-23..25, 03 FS-23..24, 04 GB-26..28, 05 AF-25..26, 06 PAY-10..13, 07 OPS-33..34, 08 ADM-43..46
+Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป็น hotfix `fix/nav-cart-link-duplicate` — session หลัก 2026-11-21); งานรอบ 41 ใน spec อื่น: 02 EV-23..25, 03 FS-23..24, 04 GB-26..28, 05 AF-25..26, 06 PAY-10..14, 07 OPS-33..34, 08 ADM-43..46
 เลขกฎ/AC ต่อจาก CORE-75 (#465 — กฎข้อ 133, AC-174)
 
 ### What Medusa already gives us (รอบ 41)
@@ -2914,7 +2914,7 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
 | CORE-79 | ปุ่ม `register-login-link` ≥ 44px + เติมอีเมลในฟอร์ม login (กฎข้อ 137); qa | `modules/account/{templates/login-template.tsx,components/register,components/login}`, e2e | ~30 LOC + ~60 LOC test | AC-178 | PR เอกสารรอบ 41 | — |
 | CORE-80 | middleware อีเมลตัวเล็กฝั่ง backend (กฎข้อ 138) | `apps/backend/src/lib/normalize-email.ts` (+ unit), `apps/backend/src/api/middlewares.ts` (หรือไฟล์ middleware ย่อยที่ spread), integration | ~50 LOC + ~150 LOC test | AC-179 | PR เอกสารรอบ 41 (Q-C13 = ก ☑) | `middlewares.ts` (GB-26, OPS-34 — sync) |
 | CORE-81 | script แปลงอีเมลเก่าเป็นตัวเล็ก dry-run/`--apply` + ตรวจชน (กฎข้อ 139) + บรรทัด go-live checklist ใส่คำสั่งจริง | `apps/backend/src/scripts/lowercase-emails.ts`, `apps/backend/src/workflows/lowercase-emails.ts`, `docs/ops/production.md` (Go-live ข้อ 11), integration | ~150 LOC + ~200 LOC test | AC-180 | **CORE-80** (ใช้ `normalizeEmail`) | `production.md` (OPS-33, EV-25 คนละบรรทัด) |
-| CORE-82..84 | จับ error ด้วย code ตาม ADR-028 แบ่งตามกลุ่ม helper: 82 = checkout/cart/payment, 83 = account/returns/auth, 84 = group buy/flash/affiliate (กฎข้อ 140); qa ต่อ PR | ตาม ADR-028 | ≤ ~350 LOC ต่อ PR | AC-181 | ADR-028 accepted ☑ (owner 2026-11-21); 82 ← CORE-76, PAY-11, PAY-12; 83 ← **CORE-82**, CORE-76, CORE-79; 84 ← **CORE-83**, FS-23, GB-27 | helper error ทุกกลุ่ม — ทำหลัง task หน้าร้านอื่นที่แตะ helper เดียวกัน |
+| CORE-82..84 | จับ error ด้วย code ตาม ADR-028 แบ่งตามกลุ่ม helper: 82 = checkout/cart/payment, 83 = account/returns/auth, 84 = group buy/flash/affiliate (กฎข้อ 140); qa ต่อ PR | ตาม ADR-028 | ≤ ~350 LOC ต่อ PR | AC-181 | ADR-028 accepted ☑ (owner 2026-11-21); 82 ← CORE-76, PAY-11, PAY-12, PAY-14; 83 ← **CORE-82**, CORE-76, CORE-79; 84 ← **CORE-83**, FS-23, GB-27 | helper error ทุกกลุ่ม — ทำหลัง task หน้าร้านอื่นที่แตะ helper เดียวกัน |
 | CORE-85 | `/th/contact` ข้อมูลติดต่อจริง (กฎข้อ 141); qa | `app/[countryCode]/(main)/contact/page.tsx`, e2e | ~40 LOC + ~40 LOC test | AC-182 | **owner ส่งข้อมูลติดต่อ** | — |
 | CORE-86 | e2e hygiene คำนำหน้าคำค้นของ core-75 กับ fs14 (กฎข้อ 142) | `apps/storefront/e2e/core-75-thai-substring-search.spec.ts`, `e2e/flash-sale-fs14.spec.ts`, `e2e/support/*` | ~20 LOC | AC-183 | **CORE-75 (#465)** | `flash-sale-fs14.spec.ts` (FS-23 ถ้าแตะ — ไม่คาดว่าแตะ) |
 | CORE-87 | หัว facet `/store` ไม่แสดงจำนวนผิด (กฎข้อ 143); qa | `modules/store/components/store-refinements/*`, test | ~20 LOC + ~80 LOC test | AC-184 | **CORE-75 (#465)** | `store-refinements` (CORE-88 ถ้าแตะ) |
