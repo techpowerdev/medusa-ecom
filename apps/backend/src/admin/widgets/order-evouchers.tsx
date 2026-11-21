@@ -1,13 +1,14 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useDate } from "@medusajs/dashboard/hooks"
 import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
-import { Badge, Table, Text, toast } from "@medusajs/ui"
+import { Badge, StatusBadge, Table, Text, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { evoucherApi, evoucherKeys, STATUS_COLOR } from "../lib/evoucher"
 import { canResendEvouchers, resendErrorMessage } from "../lib/evoucher-resend"
+import { backorderedItems } from "../lib/evoucher-status"
 import { createSingleFlight } from "../lib/single-flight"
 
 // EV-6: ส่วน "E-vouchers" บนหน้า order — code ของ order แบบ masked
@@ -34,8 +35,11 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
   })
   const onResend = () => resendOnce(() => resend.mutateAsync().catch(() => undefined))
 
+  // EV-22 (กฎข้อ 38b): line ที่ backordered ยังไม่มี code — ต้องเห็น widget แม้ order ไม่มี code เลย
+  const backordered = backorderedItems(order.items)
+
   // order ที่ไม่มี voucher ไม่ต้องแสดงอะไร (แต่ API ล้มต้องแสดง error ไม่ใช่ซ่อนเงียบ)
-  if (!isLoading && !isError && !data?.codes.length) {
+  if (!isLoading && !isError && !data?.codes.length && !backordered.length) {
     return null
   }
 
@@ -61,6 +65,16 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
             : []
         }
       />
+      {backordered.map((item) => (
+        <div key={item.id} className="flex items-center justify-between gap-x-4 px-6 py-4">
+          <Text size="small" leading="compact" className="truncate">
+            {item.title}
+          </Text>
+          <StatusBadge color="orange" data-testid="evoucher-backordered-badge" className="shrink-0">
+            Backordered — codes pending
+          </StatusBadge>
+        </div>
+      ))}
       {isLoading ? (
         <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
           Loading…
@@ -69,7 +83,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
         <Text size="small" leading="compact" className="text-ui-fg-error px-6 py-4">
           Could not load e-vouchers: {error.message}
         </Text>
-      ) : (
+      ) : !data?.codes.length ? null : (
         // EV-13 (AC-32): ตารางกว้างกว่าคอลัมน์ของหน้า → เลื่อนแนวนอนภายใน widget แทนการล้นขอบ
         <div className="overflow-x-auto">
           <Table>
@@ -83,7 +97,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {data!.codes.map((code) => (
+              {data.codes.map((code) => (
                 <Table.Row key={code.id}>
                   <Table.Cell>{code.pool?.name ?? "-"}</Table.Cell>
                   <Table.Cell className="font-mono">{code.code}</Table.Cell>

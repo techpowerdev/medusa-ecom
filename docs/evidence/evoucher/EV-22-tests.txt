@@ -1,0 +1,62 @@
+# EV-22 (AC-52, spec 02 กฎข้อ 38) — ผลการทดสอบ 2026-11-21 (base origin/develop 611afec1, Node 22, Postgres 16, Redis db 5)
+## สาเหตุ (กฎข้อ 38a): ธงอยู่ใน order_line_item.metadata แต่ Admin API คืน items[].metadata = order_item.metadata ?? line_item.metadata (transform-order ของ @medusajs/order 2.22.1); order_item.metadata = {} → ได้ {}
+## RED — integration http: evoucher-allocate.spec.ts -t AC-52 ก่อนแก้ step (exit 1)
+      ✕ AC-52 exposes the backordered flag on GET /admin/orders/:id?fields=*items and clears it after allocation (1294 ms)
+Tests:       1 failed, 16 skipped, 17 total
+  ●  › AC-7 idempotent › AC-52 exposes the backordered flag on GET /admin/orders/:id?fields=*items and clears it after allocation
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 3
+    + Received  + 1
+
+    - Object {
+    -   "evoucher_backordered": true,
+    - }
+    + Object {}
+
+## RED — unit: evoucher-backordered.unit.spec.ts ก่อนมี backorderedItems
+Tests:       2 failed, 2 total
+
+## GREEN — integration http: evoucher-allocate.spec.ts ทั้งไฟล์
+      ✓ delivers 2 codes for qty 2 in one customer email with codes, PIN, how-to-use and expiry (1222 ms)
+      ✓ fulfils vouchers via Digital delivery even when a mixed order only has the Standard method (1310 ms)
+      ✓ does not warn about shipping profile when the voucher product has none (AC-31) (944 ms)
+      ✓ warns once (but still delivers) when the voucher product has the default shipping profile (AC-31) (1004 ms)
+      ✓ warns once (but still delivers) when the voucher product has the digital shipping profile (AC-31) (904 ms)
+      ✓ does nothing for an order without voucher items (727 ms)
+      ✓ re-running for the same order allocates no more codes and sends no more emails (1087 ms)
+      ✓ AC-26 keeps the codes allocated to the order and alerts EVOUCHER_ADMIN_EMAIL when the provider fails (1088 ms)
+      ✓ AC-27 backorders a qty-2 line when the pool has 1 code and leaves that code available (696 ms)
+      ✓ still delivers the complete line and keeps the backordered flag when the admin backordered email fails (854 ms)
+      ✓ uses a new idempotency key per claim and clears the backordered flag once delivered (1007 ms)
+      ✓ AC-52 exposes the backordered flag on GET /admin/orders/:id?fields=*items and clears it after allocation (1262 ms)
+      ✓ AC-52 sets the flag without creating an order change or a new order version (681 ms)
+      ✓ delivers the farthest kept code to a reserved order after the daily job ran (1207 ms)
+      ✓ still prefers a long-lived code over a near-expiry one (799 ms)
+      ✓ gives the last code to only one of two concurrently captured orders and flags the other (1410 ms)
+      ✓ sends one notification to the mailbox and none to the 3 admin users (829 ms)
+      ✓ logs a warning and sends nothing when EVOUCHER_ADMIN_EMAIL is not set (order still flagged) (793 ms)
+Tests:       18 passed, 18 total
+
+## GREEN — e2e admin (chromium, backend prod build :9152): evoucher-admin-backordered.spec.ts
+  ✓  1 [chromium] › e2e/evoucher-admin-backordered.spec.ts:11:5 › AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว (3.5s)
+  1 passed (4.1s)
+
+## regression e2e: backordered + evoucher-admin-resend --repeat-each=2
+  ✓  1 [chromium] › e2e/evoucher-admin-backordered.spec.ts:11:5 › AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว (2.5s)
+  ✓  2 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (2.4s)
+  ✓  3 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (2.7s)
+  ✓  4 [chromium] › e2e/evoucher-admin-backordered.spec.ts:11:5 › AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว (2.1s)
+  ✓  5 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (1.9s)
+  ✓  6 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (2.6s)
+  6 passed (15.3s)
+
+## unit backend ทั้งชุด
+Test Suites: 116 passed, 116 total
+Tests:       1558 passed, 1558 total
+
+## storefront test:e2e:unit
+  124 passed (1.3s)
+
+## pnpm lint / pnpm typecheck: exit 0 / exit 0
