@@ -26,6 +26,8 @@ type Step = (title: string, body: () => Promise<void>) => Promise<void>
 
 /** ชื่อยาว 370 ตัวอักษร ไทยปนอังกฤษ — หลัง run tag เป็นช่วงไม่มีช่องว่างยาว ≥ 100 ตัว (ตัดบรรทัดไม่ได้) */
 const longName = (run: string) => `${run} ${"ชื่อยาวมากLongName".repeat(30)}`.slice(0, 370)
+/** reference ของ payout ≥ 300 ตัวอักษร ไทยปนอังกฤษ (ADM-37, ADM-41) */
+const longReference = (run: string) => `${run} ${"เลขอ้างอิงยาวLongReference".repeat(20)}`.slice(0, 320)
 /** ชื่อสั้น ≤ 20 ตัวอักษร (ไม่ถูกตัด) */
 const shortName = () => `S-${Math.random().toString(36).slice(2, 10)}`
 
@@ -259,8 +261,6 @@ test("AC-40a: affiliate programs — ชื่อยาวไม่ดันป�
 test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ", () => {
   test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-37" } })
 
-  /** reference ของ payout ≥ 300 ตัวอักษร ไทยปนอังกฤษ */
-  const longReference = (run: string) => `${run} ${"เลขอ้างอิงยาวLongReference".repeat(20)}`.slice(0, 320)
   const AFFILIATE_PREFIX = { prefix: "adm37", code: "a37" }
 
   /** แถวข้อความยาว: เนื้อหาทุก cell ข้อความ ≤ 250px และถูกตัดจริง, ปุ่ม `…` ในจอโดยไม่เลื่อนแนวนอน */
@@ -475,4 +475,87 @@ test.describe("ADM-38: Ledger คอลัมน์ Affiliate ≤ 250px ทุ�
       }
     })
   })
+})
+
+// ADM-41 (spec 08 AC-46, กฎ 45): ตาราง Payouts ทั้งตารางไม่ล้นแนวนอนที่ 1280 และ 1440 (การทดสอบ manual เฟส 8: ตารางกว้าง 1417px
+// ต้องเลื่อนในตาราง) — ADM-37 จำกัดเฉพาะคอลัมน์ Affiliate/Reference แต่ผลรวมของทุกคอลัมน์ยังเกินกล่อง
+// วัดที่กล่องเลื่อนของ `DataTable` (div `overflow-auto` ภายใน wrapper `affiliate-payouts-table`) ด้วย: wrapper เองอยู่ใต้ div
+// `overflow-hidden` ของ DataTable จึง `scrollWidth` เท่ากับ `clientWidth` เสมอ (assert อย่างเดียวจะผ่านแม้ตารางล้น)
+test.describe("ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440", () => {
+  test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-41" } })
+
+  /** scrollWidth/clientWidth ของ wrapper และของกล่องเลื่อนตัวแรกระหว่าง table กับ wrapper */
+  const overflowOf = (wrapper: Locator) =>
+    wrapper.evaluate((el) => {
+      let box: HTMLElement | null = el.querySelector("table")
+      for (box = box?.parentElement ?? null; box && box !== el; box = box.parentElement) {
+        if (["auto", "scroll"].includes(getComputedStyle(box).overflowX)) break
+      }
+      const scroller = box && box !== el ? box : null
+      return {
+        wrapper: { scrollWidth: el.scrollWidth, clientWidth: el.clientWidth },
+        scroller: scroller ? { scrollWidth: scroller.scrollWidth, clientWidth: scroller.clientWidth } : null,
+        table: el.querySelector("table")?.getBoundingClientRect().width ?? -1,
+      }
+    })
+
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    test.describe(`${viewport.width}×${viewport.height}`, () => {
+      test.use({ viewport })
+
+      test(`AC-46: payouts ${viewport.width} — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม`, async ({ page, request, step, evidence }) => {
+        test.setTimeout(120_000)
+        const admin = await adminHeaders(request)
+        const affiliate = await createLongAffiliate(request, admin, { prefix: "adm41", code: "a41" })
+        // แถวที่ใกล้ข้อมูลจริง: reference ยาว (ถูกตัดที่ maxSize), period หลายวัน, id ยาวเท่า id จริง — draft เพื่อให้มีปุ่ม … (กฎ 10)
+        const ids = await insertDraftPayouts(affiliate.id, 1, new Date(), { reference: longReference(tag("adm41")), periodDays: 45 })
+        try {
+          await loginAdmin(page)
+          await openTableAt(page, request, admin, PAYOUTS, ids[0])
+          const table = page.getByTestId(PAYOUTS.testid)
+          const row = table.locator("tbody tr", { hasText: ids[0] })
+          const affiliateCell = row.locator("td").filter({ has: page.getByTestId("affiliate-row-affiliate") })
+          // รอชื่อโหลด (ก่อนโหลดแสดง affiliate_id) — ความกว้างวัดหลังข้อความจริงอยู่ใน cell
+          await expect(affiliateCell).toContainText(affiliate.name, { timeout: 30_000 })
+
+          await step("ตาราง Payouts ไม่ล้นแนวนอน (scrollWidth ≤ clientWidth + 1)", async () => {
+            const o = await overflowOf(table)
+            expect(o.scroller, "กล่องเลื่อนของ DataTable ภายใน wrapper").not.toBeNull()
+            expect(o.wrapper.scrollWidth, `wrapper ${JSON.stringify(o)}`).toBeLessThanOrEqual(o.wrapper.clientWidth + 1)
+            expect(o.scroller!.scrollWidth, `กล่องเลื่อน ${JSON.stringify(o)}`).toBeLessThanOrEqual(o.scroller!.clientWidth + 1)
+            expect(await tableScrollLeft(table)).toBe(0)
+          })
+
+          await step("ปุ่ม … ของทุกแถวอยู่ในจอแนวนอน", async () => {
+            const buttons = table.getByTestId(PAYOUTS.trigger!)
+            // อย่างน้อยแถวของ test นี้ (draft) — กัน vacuous
+            expect(await buttons.count()).toBeGreaterThanOrEqual(1)
+            for (const button of await buttons.all()) {
+              const box = await button.boundingBox()
+              expect(box, "boundingBox ของปุ่ม …").not.toBeNull()
+              expect(box!.x).toBeGreaterThanOrEqual(0)
+              expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width)
+            }
+          })
+
+          await step("hover cell Affiliate ที่ถูกตัด → tooltip ของ TruncatedCell แสดงชื่อเต็ม", async () => {
+            await row.locator("td").first().evaluate((td) => td.scrollIntoView({ block: "center", inline: "start" }))
+            const metrics = await cellMetrics(affiliateCell)
+            // ข้อความถูกตัดจริง (กัน tooltip ไม่ขึ้นเพราะชื่อไม่ยาวพอ)
+            expect(metrics.scrollWidth, "cell Affiliate ถูกตัด").toBeGreaterThan(metrics.clientWidth)
+            const tooltip = page.getByRole("tooltip").filter({ hasText: affiliate.name })
+            await affiliateCell.locator(".truncate").first().hover()
+            await expect(tooltip).toBeVisible()
+            await expect(tooltip).toHaveText(`${affiliate.name} ${affiliate.email}`)
+          })
+          await evidence(`01-payouts-fit-${viewport.width}`)
+        } finally {
+          await deleteAllThenExpectOk(request, admin, ids.map((id) => `/admin/affiliate/payouts/${id}`))
+        }
+      })
+    })
+  }
 })
