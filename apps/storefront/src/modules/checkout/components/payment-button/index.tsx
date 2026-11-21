@@ -28,15 +28,19 @@ type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
   /** CORE-35 (กฎข้อ 93): จาก checkout-form — deliveryStepDone กับรายการ option ที่กรองแล้ว */
   deliveryDone: boolean
+  /** FS-21 (spec 03 กฎข้อ 26b): เกินสิทธิ์ flash ต่อคน → disable เหมือนยังไม่พร้อม */
+  blocked?: boolean
   "data-testid": string
 }
 
 const PaymentButton: React.FC<PaymentButtonProps> = ({
   cart,
   deliveryDone,
+  blocked = false,
   "data-testid": dataTestId,
 }) => {
   const notReady =
+    blocked ||
     !cart ||
     !cart.shipping_address ||
     !cart.billing_address ||

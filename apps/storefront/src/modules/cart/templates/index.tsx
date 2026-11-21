@@ -10,11 +10,14 @@ const CartTemplate = ({
   cart,
   customer,
   flashExceeded,
+  flashCustomerLimit,
 }: {
   cart: HttpTypes.StoreCart | null
   customer: HttpTypes.StoreCustomer | null
   /** FS-15 (กฎข้อ 20b): line id → remaining_units ของ line ที่จำนวนเกินโควตา flash */
   flashExceeded?: Record<string, number>
+  /** FS-21 (กฎข้อ 26b): line id → สิทธิ์ flash ที่เหลือของลูกค้า เมื่อจำนวนรวมในแคมเปญเกิน */
+  flashCustomerLimit?: Record<string, number>
 }) => {
   return (
     <div className="py-12">
@@ -29,7 +32,11 @@ const CartTemplate = ({
                   <Divider />
                 </>
               )}
-              <ItemsTemplate cart={cart} flashExceeded={flashExceeded} />
+              <ItemsTemplate
+                cart={cart}
+                flashExceeded={flashExceeded}
+                flashCustomerLimit={flashCustomerLimit}
+              />
             </div>
             <div className="relative" data-testid="cart-summary-column">
               <div className="flex flex-col gap-y-8 sticky top-12">
