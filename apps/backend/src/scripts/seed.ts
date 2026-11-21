@@ -18,6 +18,7 @@ import {
   createShippingProfilesWorkflow,
   createStockLocationsWorkflow,
   createTaxRegionsWorkflow,
+  updateApiKeysWorkflow,
   updateShippingOptionsWorkflow,
   createUserAccountWorkflow,
   linkSalesChannelsToApiKeyWorkflow,
@@ -317,22 +318,43 @@ async function ensureShippingOptions(
   }
 }
 
-/** publishable key ตาม title (ไม่นับ key ที่ถูก revoke) */
+/** title ของ publishable key ที่ Medusa สร้างเองตอนบูตเมื่อยังไม่มี publishable key (core-flows `createDefaultsWorkflow`) */
+const MEDUSA_DEFAULT_KEY_TITLE = "Default Publishable API Key"
+
+/**
+ * publishable key ตาม title (ไม่นับ key ที่ถูก revoke)
+ * OPS-31 (AC-46b): DB ใหม่มี key ของ Medusa อยู่แล้วก่อน seed (สร้างตอน migrate/บูต) → ใช้ตัวนั้นเป็น "Storefront"
+ * (เปลี่ยนชื่อ token เดิม) แทนการสร้างตัวที่สอง; ไม่มีทั้งสองตัวจึงสร้างใหม่
+ */
 async function ensurePublishableKey(container: Container, salesChannelId: string) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data } = await query.graph({
     entity: "api_key",
-    fields: ["id", "revoked_at"],
-    filters: { type: "publishable", title: STOREFRONT_KEY_TITLE },
+    fields: ["id", "title", "revoked_at", "sales_channels.id"],
+    filters: { type: "publishable", title: [STOREFRONT_KEY_TITLE, MEDUSA_DEFAULT_KEY_TITLE] },
   })
-  if (data.some((k) => !k.revoked_at)) {
+  const active = data.filter((k) => !k.revoked_at)
+  if (active.some((k) => k.title === STOREFRONT_KEY_TITLE)) {
     return
   }
-  const { result } = await createApiKeysWorkflow(container).run({
-    input: { api_keys: [{ title: STOREFRONT_KEY_TITLE, type: "publishable", created_by: "" }] },
-  })
+  const medusaDefault = active.find((k) => k.title === MEDUSA_DEFAULT_KEY_TITLE)
+  let keyId: string
+  if (medusaDefault) {
+    await updateApiKeysWorkflow(container).run({
+      input: { selector: { id: medusaDefault.id }, update: { title: STOREFRONT_KEY_TITLE } },
+    })
+    keyId = medusaDefault.id
+    if (medusaDefault.sales_channels?.some((sc) => sc?.id === salesChannelId)) {
+      return
+    }
+  } else {
+    const { result } = await createApiKeysWorkflow(container).run({
+      input: { api_keys: [{ title: STOREFRONT_KEY_TITLE, type: "publishable", created_by: "" }] },
+    })
+    keyId = result[0].id
+  }
   await linkSalesChannelsToApiKeyWorkflow(container).run({
-    input: { id: result[0].id, add: [salesChannelId] },
+    input: { id: keyId, add: [salesChannelId] },
   })
 }
 
