@@ -2798,7 +2798,7 @@ Out of scope: หน้า order ใน admin แสดงราคารวม 
   seed "shirt" ใน drawer ได้ ≥ 1 ผล (ล้มบน develop); เปิด `/th/store?q=<คำ>` → ช่องค้นหามีคำนั้นและผลถูกกรอง (ล้มบน develop)
 - AC-170 (CORE-71, กฎข้อ 129) e2e route mock + unit: error stock location ของการคืน → เห็น `return-contact-store` (อักษรไทย + ลิงก์ `/contact`) ไม่เห็นข้อความ "ลองใหม่"; error อื่น → ข้อความเดิม
 - AC-171 (CORE-72, กฎข้อ 130) e2e: หน่วง request cart 2 วินาที (route mock) ลูกค้าที่มี 2 ชิ้น → ระหว่างรอ `nav-cart-link` ไม่มีข้อความ "(0)" และหลังโหลดเป็น "(2)"; ตะกร้าว่าง → "(0)"
-- AC-172 (CORE-73, กฎข้อ 131) e2e + unit (mock SDK): สมัครด้วยอีเมลลูกค้าที่มีอยู่ + รหัสถูก → อยู่หน้าสมัคร เห็น `register-email-exists` + `register-login-link`, ไม่มี cookie `_medusa_jwt` (ล้มบน develop — login ให้); รหัสผิด → ข้อความเดียวกัน;
+- ☑ AC-172 (CORE-73, กฎข้อ 131) e2e + unit (mock SDK): สมัครด้วยอีเมลลูกค้าที่มีอยู่ + รหัสถูก → อยู่หน้าสมัคร เห็น `register-email-exists` + `register-login-link`, ไม่มี cookie `_medusa_jwt` (ล้มบน develop — login ให้); รหัสผิด → ข้อความเดียวกัน;
   integration/unit: identity ของ affiliate ที่ยังไม่มี customer สมัครเป็นลูกค้าได้ (regression)
 - AC-173 (CORE-74, กฎข้อ 132) integration (mock notification): emit `order.placed` ของ order ที่ `canceled` แล้ว → ไม่มี notification `order-placed` และมี log info; order ปกติ → 1 ฉบับ (ล้มบน develop)
 

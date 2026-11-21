@@ -14,7 +14,7 @@ vi.mock("@lib/config", () => ({
     },
   },
 }))
-vi.mock("@lib/data/cookies", () => ({ setPendingCustomer: vi.fn() }))
+vi.mock("@lib/data/cookies", () => ({ setPendingCustomer: vi.fn(), removePendingCustomer: vi.fn() }))
 vi.mock("@lib/data/cart", () => ({ addToCart: vi.fn() }))
 vi.mock("@lib/util/server-cart", () => ({}))
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }))

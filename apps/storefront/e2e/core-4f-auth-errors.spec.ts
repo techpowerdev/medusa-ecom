@@ -28,7 +28,7 @@ test("AC-98: login รหัสผ่านผิด / สมัครด้ว�
     await evidence("01-login-wrong-password")
   })
 
-  await step("สมัครด้วยอีเมลที่มีบัญชีแล้ว → register-error ไทย, อีเมลยังอยู่", async () => {
+  await step("สมัครด้วยอีเมลที่มีบัญชีแล้ว → register-email-exists ไทย (CORE-73), อีเมลยังอยู่", async () => {
     await page.getByTestId("register-button").click()
     const form = page.getByTestId("register-page")
     await expect(form).toBeVisible()
@@ -37,7 +37,7 @@ test("AC-98: login รหัสผ่านผิด / สมัครด้ว�
     await form.getByTestId("email-input").fill(customer.email)
     await form.getByTestId("password-input").fill(`${customer.password}-other`)
     await form.getByTestId("register-button").click()
-    const error = page.getByTestId("register-error")
+    const error = page.getByTestId("register-email-exists")
     await expect(error).toBeVisible()
     const text = (await error.textContent()) ?? ""
     expect(text).toMatch(THAI)

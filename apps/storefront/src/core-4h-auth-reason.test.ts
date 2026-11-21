@@ -20,7 +20,7 @@ vi.mock("@lib/config", () => ({
     },
   },
 }))
-vi.mock("@lib/data/cookies", () => ({ setPendingCustomer: vi.fn() }))
+vi.mock("@lib/data/cookies", () => ({ setPendingCustomer: vi.fn(), removePendingCustomer: vi.fn() }))
 vi.mock("@lib/data/cart", () => ({ addToCart: vi.fn() }))
 vi.mock("@lib/util/server-cart", () => ({}))
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }))
@@ -78,7 +78,7 @@ describe("CORE-4h: reason ของ login และข้อความขอ�
     const { signup } = await import("@lib/data/customer")
     const error = ((await signup(null, form())) as { error: string }).error
     expect(error).toMatch(THAI)
-    expect(error).not.toContain("มีบัญชีอยู่แล้ว")
+    expect(error).not.toContain("มีบัญชีแล้ว")
     expect(error).toContain("สมัครสมาชิกไม่สำเร็จ")
     expect(authLogin).not.toHaveBeenCalled()
   })
@@ -95,7 +95,7 @@ describe("CORE-4h: reason ของ login และข้อความขอ�
       email: EMAIL,
       fields: { first_name: "สมชาย", last_name: "ใจดี", phone: "0812345678" },
     })
-    expect((result as { error: string }).error).toContain("มีบัญชีอยู่แล้ว")
+    expect((result as { error: string }).error).toContain("มีบัญชีแล้ว")
   })
 
   it("verify-account: token ไม่ถูกต้อง → error ไทย ไม่ใช่ข้อความดิบ (กฎข้อ 69d)", async () => {
