@@ -65,3 +65,17 @@ Tests:       1 failed, 1690 passed, 1691 total
 ## storefront test:e2e:unit
   131 passed (1.5s)
 ## lint 0 errors, typecheck ผ่าน, NODE_ENV=production pnpm --filter backend build ผ่าน
+
+# hotfix หลัง #471 (develop แดง — CI run 44936176327 ล้มที่ spec:72 step reload)
+## RED — ทำซ้ำได้ทุกครั้ง: รอฟอร์ม Create Return mount ก่อน Esc (Medusa ยกเลิก return request เมื่อปิดฟอร์ม) → step reload ล้มที่บรรทัดเดียวกับ CI
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByTestId('order-refund-blocked')
+    Expected: visible
+    Timeout: 5000ms
+
+## GREEN — e2e ใหม่ (รอฟอร์ม mount / DELETE ของการยกเลิก เป็นสัญญาณ)
+--repeat-each=5:
+  5 passed (19.5s)
+--repeat-each=10 --workers=1:
+  10 passed (49.3s)
+storefront test:e2e:unit 131 passed; storefront lint 0 errors; typecheck ผ่าน
