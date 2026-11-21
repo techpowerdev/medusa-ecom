@@ -1209,7 +1209,7 @@ none
   (c) API ตอบ 500 (route mock) → กด Save ได้อีกและ POST ครั้งที่ 2 เกิด; (d) เปิดฟอร์มใหม่หลังสร้างสำเร็จ → Save กดได้; unit jest ของ helper ครอบ hold/release/error; นับ request ด้วย `page.on("request")`
 - AC-45 (ADM-40, กฎ 44) ☑ (red บน develop `cb934dac`: ไม่มีช่องค้นหาในตาราง Affiliates → green `--repeat-each=3` 3/3 รวม reset offset จากหน้า 2 และ empty state "No results"; หลัง reload ต้องคลิกแท็บ Affiliates เพราะแท็บไม่อยู่ใน URL; `docs/evidence/admin-ui/ADM-40-tests.txt`) e2e admin: affiliate 3 ราย (tag ตัวอักษรตามกฎ 33) พิมพ์ชื่อหนึ่งราย → รอ response ที่ `pathname === "/admin/affiliate/affiliates"` และ `q` ตรง แล้ว assert `count` = 1 และตารางมี 1 แถว; URL มี `affiliates_q`; reload แล้วผลคงเดิม; ล้างช่อง → แถวกลับ
 - AC-46 (ADM-41, กฎ 45) e2e admin ที่ 1280×800 และ 1440×900 ด้วย payout ที่ affiliate ชื่อยาว 370 ตัว: wrapper `affiliate-payouts-table` `scrollWidth ≤ clientWidth + 1`, ปุ่ม `…` ของทุกแถวอยู่ในจอ, tooltip ยังแสดงชื่อเต็ม (ล้มบน develop: 1417px)
-- AC-47 (ADM-42, กฎ 46) e2e admin: ฟอร์ม Create program ว่าง + `ends_at < starts_at` กด Save ครั้งเดียว → error ใต้ช่อง name, commission, ends_at และ scope พร้อมกัน (นับ `Form.ErrorMessage` ที่มองเห็น ≥ 4) และไม่มี POST (ล้มบน develop ที่เห็นทีละช่อง)
+- AC-47 (ADM-42, กฎ 46) ☑ (red บน develop `0e5295de` เห็นแค่ error ของ name → green: error 4 ช่องพร้อมกัน ไม่มี POST, `--repeat-each=3` 3/3; unit `toProgramBody` คืน error ทุกช่อง; `docs/evidence/admin-ui/ADM-42-tests.txt`) e2e admin: ฟอร์ม Create program ว่าง + `ends_at < starts_at` กด Save ครั้งเดียว → error ใต้ช่อง name, commission, ends_at และ scope พร้อมกัน (นับ `Form.ErrorMessage` ที่มองเห็น ≥ 4) และไม่มี POST (ล้มบน develop ที่เห็นทีละช่อง)
 
 ### Test plan (รอบ 40)
 | ระดับ | AC |

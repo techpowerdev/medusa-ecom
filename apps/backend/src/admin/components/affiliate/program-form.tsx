@@ -95,7 +95,7 @@ const ScopeFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; prog
 /**
  * AF-12a (กฎ 37a): FocusModal สร้าง (program = undefined) หรือแก้โปรแกรม — ส่ง scope ทั้งก้อนโดยคง variant_ids เดิม (Q16)
  * เปิดเมื่อ `open`; component ถูก mount ใหม่ต่อการเปิดแต่ละครั้ง (key) จึงตั้งค่าฟอร์มเริ่มจาก props ได้เลย
- * ADM-9 (spec 08 AC-12, กฎ 8): Form + KeyboundForm ของ dashboard + zod (⌘/Ctrl+Enter ส่งได้); กฎธุรกิจยังอยู่ใน toProgramBody → form.setError
+ * ADM-9 (spec 08 AC-12, กฎ 8): Form + KeyboundForm ของ dashboard + zod (⌘/Ctrl+Enter ส่งได้); กฎธุรกิจยังอยู่ใน toProgramBody → form.setError ทุกช่องที่ผิด (ADM-42)
  * ADM-26 (กฎ 30c): Escape ขณะ Combobox ของ scope ขยายไม่ปิด modal (keepModalOpenWhileComboboxExpanded)
  */
 export const ProgramFormModal = ({ program, onClose }: { program?: Program; onClose: () => void }) => {
@@ -129,8 +129,9 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
   const handleSubmit = form.handleSubmit((values) =>
     submitOnce(async () => {
       const result = toProgramBody(values)
-      if ("error" in result) {
-        form.setError(result.field, { message: result.error })
+      if ("errors" in result) {
+        // ADM-42 (spec 08 กฎ 46): ทุกช่องที่ผิดพร้อมกันในการกดครั้งเดียว — focus ช่องแรกที่ผิด
+        result.errors.forEach(({ field, message }, i) => form.setError(field, { message }, { shouldFocus: i === 0 }))
         return
       }
       await save.mutateAsync(result.body).then(submitOnce.hold, () => undefined)
