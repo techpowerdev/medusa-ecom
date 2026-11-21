@@ -113,4 +113,24 @@ describe("searchProductIds (CORE-70)", () => {
       search_options: { match_strategy: "last" },
     })
   })
+
+  // CORE-75 (spec 01 กฎข้อ 133, AC-174): ทุกหน้าส่ง typo_tolerance ของ Medusa (pg_trgm word_similarity) → คำไทยกลางคำเจอ
+  it("ส่ง search_options.typo_tolerance: true ทุก request", async () => {
+    const fetch = vi.mocked(sdk.client.fetch)
+    fetch.mockClear()
+    fetch.mockResolvedValueOnce({
+      results: [{ hits: [], metadata: { skip: 0, take: 24, count: 0 } }],
+    })
+
+    await searchProductIds("ยืด", 24)
+
+    const [, init] = fetch.mock.calls[0] as [
+      string,
+      { body: { queries: { search_options?: Record<string, unknown> }[] } },
+    ]
+    expect(init.body.queries[0].search_options).toEqual({
+      match_strategy: "last",
+      typo_tolerance: true,
+    })
+  })
 })

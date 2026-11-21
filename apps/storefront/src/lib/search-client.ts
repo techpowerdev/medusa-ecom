@@ -47,6 +47,9 @@ export const { searchClient } = createInstantSearchAdapter({
   additionalSearchParameters: {
     search_options: {
       match_strategy: "last",
+      // CORE-75 (spec 01 กฎข้อ 133): ชื่อไทยไม่เว้นวรรคเป็น lexeme เดียว ค้นได้แค่คำนำหน้า — typo tolerance ของ
+      // `@medusajs/search-postgres` เพิ่ม `word_similarity(q, search_text) > 0.3` (pg_trgm) จึงเจอคำกลาง/ท้ายคำ
+      typo_tolerance: true,
     },
   },
   // Range widgets read `facets_stats`, which the adapter only produces for
