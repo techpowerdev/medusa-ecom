@@ -1,0 +1,97 @@
+# CORE-75 (spec 01 กฎข้อ 133, AC-174) — ผล test 2026-11-21 (local: backend :9170 medusa develop, storefront :8170 next dev, DB medusa_core75, Postgres 16 LC_CTYPE en_US.utf8)
+
+## RED (develop f1d5888f — search_options เดิม { match_strategy: "last" })
+### integration: integration-tests/http/search-thai-substring.spec.ts
+    ✕ AC-174: คำไทยกลางคำ/ท้ายคำ/คำนำหน้าเจอสินค้าที่ตรง และคำที่ไม่เกี่ยวไม่เจอ (946 ms)
+    - Expected  - 12
+    + Received  +  4
+        "กางเกง": Array [
+    -   "ขายาว": Array [
+    -     "e2e-core75-pants",
+    -   ],
+    -   "ยีนส์": Array [
+    -     "e2e-core75-pants",
+    -   ],
+    -   "ยืด": Array [
+    -     "t-shirt",
+    -   ],
+    +   "ขายาว": Array [],
+    +   "ยีนส์": Array [],
+    +   "ยืด": Array [],
+        "รองเท้า": Array [],
+    -   "สเวตเตอร์": Array [
+    -     "sweatshirt",
+    -   ],
+    +   "สเวตเตอร์": Array [],
+        "หมวก": Array [],
+        "เสื้อ": Array [
+### Vitest: src/lib/search-client.test.ts
+     × ส่ง search_options.typo_tolerance: true ทุก request 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected { match_strategy: 'last' } to deeply equal { match_strategy: 'last', …(1) }
+- Expected
++ Received
+-   "typo_tolerance": true,
+      Tests  1 failed | 9 passed (10)
+### e2e chromium: e2e/core-75-thai-substring-search.spec.ts (รันทีละ test)
+    test-results/core-75-thai-substring-sea-d7abf-th-search-q-และ-th-store-q--chromium/test-failed-1.png
+  1 failed
+    [chromium] › e2e/core-75-thai-substring-search.spec.ts:98:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= 
+    Error: element(s) not found
+      - Expect "toBeVisible" getByTestId('search-results') with timeout 10000ms
+    test-results/core-75-thai-substring-sea-45474--ยืด-เจอสินค้า-seed-t-shirt-chromium/test-failed-1.png
+  1 failed
+    [chromium] › e2e/core-75-thai-substring-search.spec.ts:126:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt 
+
+## GREEN (feat/CORE-75-thai-substring-search)
+integration: search-thai-substring + search-handle — Tests: 2 passed
+Vitest search-client.test.ts: 10 passed; Vitest ทั้ง project:
+ Test Files  104 passed (104)
+      Tests  1269 passed (1269)
+### e2e chromium: core-75 + core-70
+  ✓  2 [chromium] › e2e/core-70-unified-search.spec.ts:95:5 › AC-169: คำค้นเดียวกันได้ชุดสินค้าเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (4.3s)
+  ✓  1 [chromium] › e2e/core-75-thai-substring-search.spec.ts:98:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (4.3s)
+  ✓  4 [chromium] › e2e/core-75-thai-substring-search.spec.ts:126:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt (1.2s)
+  ✓  3 [chromium] › e2e/core-70-unified-search.spec.ts:124:5 › AC-169: พิมพ์คำค้นใน /th/store → URL ใช้ q (1.4s)
+  ✓  5 [chromium] › e2e/core-70-unified-search.spec.ts:135:5 › AC-169: drawer ค้น "shirt" ได้สินค้า seed อย่างน้อย 1 ชิ้น และตรงกับ /th/search?q=shirt (1.6s)
+  5 passed (8.9s)
+### e2e ที่เกี่ยวข้อง (flash-sale-fs14, core-15, core-15b, thai-ui-pages, store-thb-price, core-19a)
+รอบแรก: 18 passed, 2 failed — fs14 AC-25 (คำค้น "ไม่มีสินค้านี้ <run>" / "<titleX> ราคาปกติ" ได้ผลใกล้เคียงจาก X ที่มี run เดียวกัน → ปรับคำค้นใน spec นี้) + core-19a AC-62 (nav-cart-link 2 ตัว — ไม่เกี่ยวกับการค้นหา)
+  ✘   4 [chromium] › e2e/flash-sale-fs14.spec.ts:201:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (1.1s)
+    test-results/flash-sale-fs14-AC-20-375×-a2b8a-าร์ดบน-store-search-และ-PLP-chromium/test-failed-1.png
+  1 failed
+  10 passed (39.0s)
+  ✘   3 [chromium] › e2e/flash-sale-fs14.spec.ts:163:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (0ms)
+  1 failed
+  10 passed (1.3m)
+  ✘   8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (976ms)
+  ✘  12 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:214:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (872ms)
+    test-results/core-19a-nav-cart-search-A-9dd87-ใช่-data-cache-ของ-Next-th--chromium/test-failed-1.png
+    test-results/core-19a-nav-cart-search-v-ee9ef-ว่าง-ไม่ล้นจอ-ไม่ล้น-drawer-chromium/test-failed-1.png
+  2 failed
+  11 passed (51.0s)
+  13 passed (1.1m)
+(หลังปรับ fs14: รันซ้ำ --repeat-each=3 และรอบสุดท้าย fs14+19a 13 passed; ที่ล้มเป็นครั้งคราวใน next dev: fs14 375px race การ์ด re-render, 19a AC-62/AC-63 — รอบถัดไปผ่าน)
+playwright project unit: 127 passed; backend unit: 1653 passed; lint 0 errors; typecheck ผ่าน; storefront build ผ่าน
+
+## เวลา query (สินค้า 1,002 รายการใน index, 20 ครั้ง/คำ หลัง warm-up, POST /store/search take 12)
+| คำค้น | typo | count | server ms (median/p95) | HTTP ms (median) |
+|---|---|---|---|---|
+| ยืด | ปิด | 0 | 4/5 | 6.0 |
+| ยืด | เปิด | 1 | 31/38 | 38.7 |
+| ยีนส์ | ปิด | 0 | 3/4 | 8.2 |
+| ยีนส์ | เปิด | 100 | 32/35 | 39.9 |
+| ขายาว | ปิด | 0 | 3/4 | 6.9 |
+| ขายาว | เปิด | 200 | 34/36 | 41.2 |
+| เสื้อ | ปิด | 302 | 4/5 | 9.5 |
+| เสื้อ | เปิด | 302 | 28/33 | 35.3 |
+| shirt | ปิด | 1 | 4/4 | 7.4 |
+| shirt | เปิด | 2 | 30/32 | 37.4 |
+| หมวกแก๊ปสีดำ | ปิด | 10 | 4/4 | 8.4 |
+| หมวกแก๊ปสีดำ | เปิด | 100 | 34/37 | 41.5 |
+| zzzz-no-such | ปิด | 0 | 3/5 | 6.6 |
+| zzzz-no-such | เปิด | 0 | 31/33 | 38.9 |
+
+## pg_trgm กับ LC_CTYPE (DB ชั่วคราว)
+LC_CTYPE=C: word_similarity('ยืด','เสื้อยืด medusa') = 0, show_trgm('ยืด') = {} (ทิ้งอักษรไทย)
+LC_CTYPE=C.UTF-8 / en_US.utf8: 'ยืด' vs 'เสื้อยืด medusa' 0.5, vs 'เสื้อยืดคอกลม' 0.25 (กลางคำ ≤3 อักขระ ไม่ผ่าน 0.3), 'ยีนส์' vs 'กางเกงยีนส์ขาสั้น' 0.6

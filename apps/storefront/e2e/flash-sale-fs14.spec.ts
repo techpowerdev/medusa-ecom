@@ -27,6 +27,8 @@ let run: string
 let campaignId: string
 let promotionId: string
 let titleX: string
+// CORE-75 (spec 01 กฎข้อ 133): ค้นหาแบบ word_similarity — คำเฉพาะของ Y เป็นอักษรไทยล้วน (ไม่มีตัวเลขของ run ที่ X มีด้วย)
+let tagY: string
 let handleX: string
 let handleY: string
 let collectionHandle: string
@@ -113,7 +115,8 @@ test.beforeAll(async ({ request }) => {
   handleX = `e2e-fs14-x-${run}`
   handleY = `e2e-fs14-y-${run}`
   const x = await createProduct(titleX, handleX, `FS14-X-${run}`)
-  await createProduct(`${titleX} ราคาปกติ`, handleY, `FS14-Y-${run}`)
+  tagY = run.replace(/\d/g, (d) => "กขคงจฉชซญด"[Number(d)])
+  await createProduct(`${titleX} ราคาปกติ ${tagY}`, handleY, `FS14-Y-${run}`)
 
   const { campaign } = await post("/admin/campaigns", {
     name: `FS-14 ${run}`,
@@ -314,7 +317,8 @@ test("AC-25: /store ค้นใหม่ → ข้อมูล flash ยิง
 
   let before = 0
   await step("ค้นคำที่ไม่พบสินค้า: แสดง no-products", async () => {
-    await search.fill(`ไม่มีสินค้านี้ ${run}`)
+    // ไม่มี trigram ร่วมกับสินค้าใดเลย (CORE-75: เดิมใช้ run ซึ่งชื่อ X/Y มีด้วย → ผลใกล้เคียงหลุดมา)
+    await search.fill("zzzz-no-such-product-fs14")
     await expect(page.getByTestId("no-products")).toBeVisible({
       timeout: 15_000,
     })
@@ -324,7 +328,7 @@ test("AC-25: /store ค้นใหม่ → ข้อมูล flash ยิง
   await step(
     "ค้น Y (ไม่ตรง X): ข้อมูล flash ยิง 1 ครั้งด้วย variant ของ Y เท่านั้น",
     async () => {
-      await search.fill(`${titleX} ราคาปกติ`)
+      await search.fill(`ราคาปกติ ${tagY}`)
       await expect(card(page, handleY)).toHaveCount(1, { timeout: 15_000 })
       await expect(card(page, handleX)).toHaveCount(0)
       // รอ request ที่อาจตามมา (ชุด variant ของ Y ต้องตามหลัง listVariantIdsByProduct)

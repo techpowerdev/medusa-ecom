@@ -1,22 +1,43 @@
 import { Metadata } from "next"
 
 import OrderOverview from "@modules/account/components/order-overview"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { listOrders } from "@lib/data/orders"
 import { listGroupBuyMemberships } from "@lib/data/group-buy"
 import { showOrdersEmptyState } from "@lib/util/group-buy-orders"
+import { ORDERS_PAGE_SIZE, ordersPage, ordersTotalPages } from "@lib/util/orders-pagination"
 import AccountGroupOrders from "@modules/group-buy/components/account-group-orders"
+import { Pagination } from "@modules/store/components/pagination"
 
 export const metadata: Metadata = {
   title: "คำสั่งซื้อ",
   description: "ภาพรวมคำสั่งซื้อที่ผ่านมาของคุณ",
 }
 
-export default async function Orders() {
-  const [orders, groupOrders] = await Promise.all([listOrders(), listGroupBuyMemberships()])
+type Props = {
+  params: Promise<{ countryCode: string }>
+  searchParams: Promise<{ page?: string | string[] }>
+}
 
-  if (!orders) {
+export default async function Orders(props: Props) {
+  // CORE-68 (กฎข้อ 126): ?page= 1-based หน้าละ 10 จาก count ของ Medusa
+  const { page, offset } = ordersPage((await props.searchParams).page)
+  const [list, groupOrders] = await Promise.all([
+    listOrders(ORDERS_PAGE_SIZE, offset),
+    listGroupBuyMemberships(),
+  ])
+
+  if (!list) {
     notFound()
+  }
+
+  const { orders, count } = list
+  const totalPages = ordersTotalPages(count)
+  // หน้าเกินจำนวน → หน้าสุดท้าย
+  if (page > totalPages) {
+    const { countryCode } = await props.params
+    const last = totalPages > 1 ? `?page=${totalPages}` : ""
+    redirect(`/${countryCode}/account/orders${last}`)
   }
 
   return (
@@ -34,6 +55,9 @@ export default async function Orders() {
       {(orders.length > 0 || showOrdersEmptyState(orders, groupOrders)) && (
         <div>
           <OrderOverview orders={orders} />
+          {totalPages > 1 && (
+            <Pagination page={page} totalPages={totalPages} data-testid="orders-pagination" />
+          )}
         </div>
       )}
     </div>

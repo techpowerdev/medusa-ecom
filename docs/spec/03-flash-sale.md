@@ -407,6 +407,13 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
     builder ระบุ `type`/`code` จริงของ 2.22.1; ถ้าต้องเทียบข้อความให้เพิ่มในเช็กลิสต์ bump ของ spec 07) → error ใน helper เดียวของ CORE-4i แสดง `checkout-refunded-notice` ข้อความไทย
     "สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน ระบบคืนเงินเต็มจำนวนให้อัตโนมัติแล้ว (เข้าบัญชีตามรอบของธนาคาร) กรุณาปรับตะกร้าแล้วสั่งใหม่" แทน "ลองใหม่"
     (ไม่ตรวจสถานะ refund จริง — Medusa refund เสมอเมื่อ capture แล้ว; เคสที่ยังไม่ capture ข้อความยังถูกเพราะไม่มีการตัดเงิน — ใช้ถ้อยคำ "หากมีการตัดเงิน" ถ้า builder ยืนยันว่าแยกไม่ได้)
+    (FS-22 builder) error จริงของ 2.22.1: `FLASH_*` = 409 `conflict` ของ hook เรา (ข้อความคงที่ใน `CHECKOUT_CONFLICTS`); สต็อกไม่พอตอน complete = 400 `not_allowed` **ไม่มี code**
+    ข้อความ "Not enough stock available for item <id> at location <id>" จาก `reserveInventoryStep` → `ensureInventoryAvailability` ของ `@medusajs/inventory` (EV-M-22 ได้ข้อความนี้)
+    เทียบ prefix ใน `isOutOfStockAtCompletion` (`lib/util/insufficient-inventory.ts`, รวม `insufficient_inventory` ของ CORE-48) แล้ว `placeOrder` คืน `OUT_OF_STOCK`;
+    แยกได้ว่าตัดเงินแล้วหรือไม่จากทางชำระ: ปุ่มบัตรเรียก `placeOrder` หลัง PaymentIntent `succeeded`/`requires_capture` เท่านั้น (`capture: true`) → notice;
+    manual payment (และกรณี backend กันก่อนจ่าย ซึ่งไม่ถึง `placeOrder`) → ข้อความเดิมของ code จึงไม่ใช้ถ้อยคำ "หากมีการตัดเงิน";
+    พร้อมเพย์ยังใช้ `promptpay-refunded` ของ PAY-6c (บอกว่าคืนเงินแล้วเมื่อ Medusa refund) ไม่เปลี่ยนใน FS-22 — ทางสำรอง `finish` ที่ได้ `FLASH_*`/`OUT_OF_STOCK` ยังแสดง
+    "กำลังสร้างคำสั่งซื้อ" จนสถานะเป็น refunded (เสนอเป็น task ต่อ); `/api/payment-return` (redirect off-site) ยังพาไป `/cart?error=order_failed` ซึ่งหน้า cart ยังไม่อ่าน (เสนอเป็น task ต่อ)
 
 ### Acceptance criteria (รอบ 40)
 - AC-27 (FS-20, กฎข้อ 25) integration http — **ล้มบน develop** ก่อน (404): แคมเปญ `per_customer_limit=2` ลูกค้าซื้อไปแล้ว 1 ชิ้น → `remaining_for_customer=1`, `used_units=1`; ลูกค้าอื่น → 2;
@@ -430,6 +437,39 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
 | FS-20 | (backend) route สิทธิ์ flash ที่เหลือของลูกค้า (กฎข้อ 25) | `apps/backend/src/api/store/customers/me/flash-sales/allowance/route.ts` (ใหม่), helper ใน `src/modules/flash_sale/utils/`, validator/middleware ใน `src/api/store/flash-sales/` (hook `flash-sale-reservation.ts` ไม่เปลี่ยน — session หลักตัดสิน 2026-11-21), test | ~90 LOC + ~150 LOC test | AC-27 | PR เอกสารรอบ 40 | — |
 | FS-21 | (storefront) PDP/cart/review จำกัดจำนวนตามสิทธิ์ที่เหลือ + เตือนก่อนจ่าย (กฎข้อ 26); qa | `apps/storefront/src/lib/data/flash-sales.ts`, PDP `product-actions`, `modules/cart/components/item`, ขั้น review ของ checkout, e2e `fs-21-customer-limit.spec.ts` | ~150 LOC + ~200 LOC test | AC-28 | **FS-20** | `product-actions` (CORE ไม่มีงานร่วม) |
 | FS-22 | (storefront) ข้อความ "คืนเงินอัตโนมัติแล้ว" เมื่อแพ้ race flash/e-voucher หลังชำระ (กฎข้อ 27); qa | `apps/storefront/src/lib/util/friendly-error*.ts` / helper ของ CORE-4i, component ขั้น review, test | ~50 LOC + ~120 LOC test | AC-29 | PR เอกสารรอบ 40 | `lib/data/cart.ts` ร่วมกับ PAY-9 (คนละฟังก์ชัน — ตัวหลัง sync) |
+
+## Follow-up รอบ 41 (2026-11-21 — owner: PDP นับของในตะกร้า + คนไม่ login เห็นจำกัดต่อคน)
+ที่มา: qa FS-21 — PDP แสดงสิทธิ์ที่เหลือโดยไม่หักจำนวนที่อยู่ในตะกร้าแล้ว (ตะกร้า/review ยังกัน) และ FS-4 ไม่คืน `per_customer_limit` จึงไม่แสดงให้คนไม่ login;
+ทางชำระ PromptPay/3DS ที่แพ้ race (ต่อจาก FS-22) อยู่ใน spec 06 PAY-11/PAY-12
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 41)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| จำนวนใน cart | cart ของ starter (`retrieveCart`) | ใช้ตามเดิม (กฎข้อ 28b) |
+| limit ต่อคนของแคมเปญ | **ไม่มี** — `FlashSaleConfig.per_customer_limit` ของ module เรา | ขยาย response ของ FS-4 (กฎข้อ 28a) |
+
+### Business rules (รอบ 41)
+28. (FS-23) (a) `GET /store/flash-sales/active` คืน `per_customer_limit: number | null` ต่อแคมเปญ (ค่าของแคมเปญ ไม่ใช่ข้อมูลลูกค้า — route ยังสาธารณะตามเดิม, cache เดิม);
+    (b) PDP ลูกค้าที่ไม่ login และแคมเปญจำกัด → `flash-customer-limit` "จำกัด N ชิ้นต่อคน" (ไม่มีส่วน "เหลือสิทธิ์"); ไม่เรียก route ของ FS-20;
+    (c) PDP ลูกค้าที่ login: สิทธิ์ที่แสดง/จำนวนสูงสุด = `max(0, remaining_for_customer − จำนวนรวมของ line ในตะกร้าที่ variant อยู่ในแคมเปญเดียวกัน)` (แคมเปญของ line จาก `campaign_id` ใน response ของ FS-20 — ส่ง variant ของ line ในตะกร้าไปใน `variant_ids` ด้วย แบ่งชุดตาม FS-21);
+        = 0 → ปุ่มเพิ่มตะกร้า disabled + `flash-customer-limit-reached` ข้อความไทยบอกว่าสิทธิ์ที่เหลืออยู่ในตะกร้าแล้ว; ข้อความ `flash-customer-limit` แสดงจำนวนที่หักแล้ว; การคำนวณเป็น pure helper (unit)
+29. (FS-24 — review #464 ข้อ 1; แก้ความเข้าใจของกฎข้อ 27) `FLASH_*`/สต็อกไม่พอล้ม**ก่อน** authorize ใน `completeCartWorkflow` ที่ storefront เรียก — เงินที่ถูกตัดจึงถูกคืนในเส้นทางของ webhook
+    (`processPaymentWorkflow` → complete ล้ม → compensation คืนเงิน) ไม่ใช่ใน request ของ storefront → `checkout-refunded-notice` อาจขึ้น**ก่อน** refund จริงไม่กี่วินาที (ข้อความ "คืนเงิน…อัตโนมัติ" ยังถูก — ไม่เปลี่ยนถ้อยคำ);
+    runbook หัวข้อ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ" ระบุว่าลูกค้าอาจเห็นข้อความก่อน refund ปรากฏใน Stripe (แก้แล้วใน PR เอกสารรอบ 41);
+    test ของกฎข้อ 27 ส่วนทางบัตรต้องเป็น race จริงกับ Stripe test mode (แทน route mock — route mock คงไว้เฉพาะ unit/กรณีที่จำลองไม่ได้)
+
+### Acceptance criteria (รอบ 41)
+- AC-30 (FS-23, กฎข้อ 28) integration + unit + e2e — **ล้มบน develop** ก่อน: (a) integration: `GET /store/flash-sales/active` มี `per_customer_limit` = ค่าที่ตั้ง (null เมื่อไม่จำกัด) ไม่ต้องมี token;
+  (b) e2e ไม่ login: PDP ของแคมเปญ limit 2 เห็น `flash-customer-limit` มีเลข 2 และอักษรไทย; (c) e2e login limit 2 ไม่เคยซื้อ มีของในตะกร้า 1 ชิ้น → PDP เลือกได้สูงสุด 1; ตะกร้ามี 2 → ปุ่มเพิ่มตะกร้า disabled + `flash-customer-limit-reached`;
+  (d) unit helper ครอบ: ไม่มีของในตะกร้า, ของในตะกร้าคนละแคมเปญ (ไม่หัก), หลาย variant ในแคมเปญเดียว, ผลไม่ติดลบ
+- AC-31 (FS-24, กฎข้อ 29 — แทนส่วน e2e route mock ทางบัตรของ AC-29) e2e Stripe test mode (แบบ AC-22c ของ spec 06): สองลูกค้าแย่ง flash ชิ้นสุดท้าย (cap 1) ด้วยบัตร `4242…` —
+  ผู้แพ้เห็น `checkout-refunded-notice` (อักษรไทย) และภายใน 30 วินาที `GET /admin/payments/:id` ของผู้แพ้มี refund เต็มจำนวน; ไม่มี order ของผู้แพ้; ผู้ชนะได้ order; ห้าม `waitForTimeout`/เพิ่ม retries (poll ด้วย `expect.poll`)
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| FS-23 | FS-4 คืน `per_customer_limit` + PDP หักจำนวนในตะกร้า + คนไม่ login เห็นจำกัดต่อคน (กฎข้อ 28); qa | `apps/backend/src/api/store/flash-sales/active/route.ts`, `apps/storefront/src/lib/data/flash-sales.ts`, `lib/util/` helper สิทธิ์, PDP `product-actions`, test | ~80 LOC + ~200 LOC test | AC-30 | PR เอกสารรอบ 41 (FS-21 ☑) | `product-actions` |
+| FS-24 | (test) e2e race จริงทางบัตรของกฎข้อ 27 กับ Stripe test mode (กฎข้อ 29) | `apps/storefront/e2e/fs-24-card-race-refund.spec.ts` (ใหม่), `e2e/support/*` | ~150 LOC test | AC-31 | **FS-22 (#464)**, CORE-76 (notice เป็น state) | — |
 
 ## คำถามที่ยังเปิดอยู่
 - คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน

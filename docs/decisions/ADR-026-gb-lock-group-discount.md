@@ -29,3 +29,9 @@
 - สมาชิกกลุ่มเดียวกันได้ส่วนลดเท่ากันเสมอ; หน้า promotion ของ Medusa admin แสดง toast error เมื่อพยายามแก้ `GB-*`
 - admin แก้สถานะ promotion `GB-*` (เช่น deactivate) ไม่ได้ — ต้องปิดกลุ่มผ่านหน้า Group buying
 - route ของ Medusa ที่เพิ่มในเวอร์ชันถัดไปต้องตรวจว่าอยู่ใต้ matcher (เพิ่มในเช็กลิสต์ bump ของ spec 07)
+
+## ภาคผนวก 2026-11-21 (planner รอบ 41 — owner สั่ง "ล็อก campaign ของแคมเปญ group buy ไม่ให้เพิ่ม/ถอด `GBT-*` หรือ promotion อื่น")
+- ขยายข้อ campaign ด้านบน: `POST /admin/campaigns/:id/promotions` ของ campaign ที่ผูก `group_buy_campaign` → 400 **ทุกกรณี** (เพิ่มหรือถอด promotion ใดก็ได้ ทุกสถานะของแคมเปญ) ไม่ใช่เฉพาะ `GB-*` —
+  เหตุผล: ต้นแบบ `GBT-*` ถูกผูกกับ campaign โดย workflow ของเรา; ถอดต้นแบบ/ใส่ promotion อื่นทำให้ส่วนลดหรืองบของ campaign ไม่ตรงกับหน้า Group buying; การแก้ส่วนลดของต้นแบบยังทำได้ที่ promotion (Q5)
+- clone `GB-<token>` ใช้ campaign id จาก link `group_buy_campaign.campaign` แทน `template.campaign_id` — link เป็น source of truth ของความเป็นเจ้าของ; ต้นแบบที่ไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่มไม่ได้ (`invalid_data`)
+- ไม่มีทางเลือกใหม่ให้ตัดสิน (owner สั่งแล้ว) — spec 04 กฎข้อ 51, GB-26
