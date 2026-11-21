@@ -92,3 +92,23 @@ describe("isBuyReturnPath", () => {
     expect(isBuyReturnPath("/th")).toBe(false)
   })
 })
+
+// PAY-12 (review/qa #481 D-1): session หมดอายุระหว่าง 3DS → login แล้วกลับขั้น review ของ checkout (ไม่ส่ง client_secret)
+describe("readReturnTo — ขั้น review ของ checkout (PAY-12)", () => {
+  it("รับเฉพาะ /<cc>/checkout?step=review", () => {
+    expect(readReturnTo(form({ [RETURN_TO_PARAM]: "/th/checkout?step=review" }))).toBe("/th/checkout?step=review")
+  })
+
+  it("ค่าอื่นของ checkout → null", () => {
+    for (const value of [
+      "/th/checkout",
+      "/th/checkout?step=payment",
+      "/th/checkout?step=review&payment_intent_client_secret=sec_1",
+      "/th/checkout?step=review#x",
+      "//evil.example/th/checkout?step=review",
+      "/TH/checkout?step=review",
+    ]) {
+      expect(readReturnTo(form({ [RETURN_TO_PARAM]: value })), value).toBeNull()
+    }
+  })
+})

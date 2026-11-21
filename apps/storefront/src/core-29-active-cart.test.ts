@@ -241,12 +241,45 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
     expect(res.headers.get("location")).toBe("http://shop.test/th/cart?error=order_failed")
   })
 
-  it.each([401, 403])("%s → หน้า login พร้อม return path เดิม (ไม่ใช่ order_failed)", async (status) => {
+  // review/qa #481 D-1: ห้ามส่ง client_secret ไปใน return_to → return path = ขั้น review (readReturnTo รับ) ไม่ใช่ URL ของ route นี้
+  const REVIEW_LOGIN = "http://shop.test/th/account?return_to=%2Fth%2Fcheckout%3Fstep%3Dreview"
+  const expectNoSecret = (location: string | null) => {
+    expect(location).not.toContain("sec_1")
+    expect(decodeURIComponent(location ?? "")).not.toContain("payment_intent_client_secret")
+  }
+
+  it.each([401, 403])("complete ตอบ %s → หน้า login กลับขั้น review (ไม่มี client_secret ใน URL)", async (status) => {
     cartComplete.mockRejectedValue(new FetchError("x", "Unauthorized", status))
     const { GET } = await import("./app/api/payment-return/route")
-    const location = new URL((await GET(succeededRequest())).headers.get("location")!)
-    expect(`${location.origin}${location.pathname}`).toBe("http://shop.test/th/account")
-    expect(location.searchParams.get("return_to")).toBe(SUCCEEDED_PATH)
+    const location = (await GET(succeededRequest())).headers.get("location")
+    expect(location).toBe(REVIEW_LOGIN)
+    expectNoSecret(location)
+  })
+
+  it.each([401, 403])(
+    "session หมดอายุ: อ่าน cart ตอบ %s → หน้า login (ไม่ใช่ payment_failed) และไม่ complete",
+    async (status) => {
+      fetch.mockRejectedValue(new FetchError("x", "Unauthorized", status))
+      const { GET } = await import("./app/api/payment-return/route")
+      const location = (await GET(succeededRequest())).headers.get("location")
+      expect(location).toBe(REVIEW_LOGIN)
+      expectNoSecret(location)
+      expect(cartComplete).not.toHaveBeenCalled()
+    }
+  )
+
+  it("session หมดอายุและไม่มี country_code → /account ไม่มี return_to และไม่มี client_secret", async () => {
+    fetch.mockRejectedValue(new FetchError("x", "Unauthorized", 401))
+    const { GET } = await import("./app/api/payment-return/route")
+    const location = (await GET(new NextRequest(`http://shop.test${SUCCEEDED_PATH.replace("&country_code=th", "")}`))).headers.get("location")
+    expect(location).toBe("http://shop.test/account")
+    expectNoSecret(location)
+  })
+
+  it("อ่าน cart ล้มแบบอื่น (500) → payment_failed เหมือนเดิม", async () => {
+    fetch.mockRejectedValue(new FetchError("x", "Internal Server Error", 500))
+    const { GET } = await import("./app/api/payment-return/route")
+    expect((await GET(succeededRequest())).headers.get("location")).toBe("http://shop.test/th/cart?error=payment_failed")
   })
 
   it("409 CART_COMPLETION_IN_PROGRESS + order มีแล้ว → หน้า order confirmed (ไม่ใช่ error=refunded)", async () => {

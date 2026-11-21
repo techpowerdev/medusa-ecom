@@ -48,3 +48,36 @@
     131 passed
 
 ## lint (0 errors), typecheck ผ่าน, storefront next build ผ่าน
+
+# แก้ตาม qa #481 D-1 (2026-11-22): 401/403 ตอนอ่าน cart/complete → login + return_to=/th/checkout?step=review ไม่มี client_secret
+
+## RED 3 — unit ก่อนแก้ D-1 (core-29-active-cart.test.ts + login-return.test.ts)
+         × รับเฉพาะ /<cc>/checkout?step=review 3ms
+         × complete ตอบ 401 → หน้า login กลับขั้น review (ไม่มี client_secret ใน URL) 4ms
+         × complete ตอบ 403 → หน้า login กลับขั้น review (ไม่มี client_secret ใน URL) 2ms
+         × session หมดอายุ: อ่าน cart ตอบ 401 → หน้า login (ไม่ใช่ payment_failed) และไม่ complete 1ms
+         × session หมดอายุ: อ่าน cart ตอบ 403 → หน้า login (ไม่ใช่ payment_failed) และไม่ complete 1ms
+         × session หมดอายุและไม่มี country_code → /account ไม่มี return_to และไม่มี client_secret 1ms
+     Test Files  2 failed (2)
+          Tests  6 failed | 36 passed (42)
+
+## RED 4 — e2e D-1 บนโค้ดก่อนแก้ (ไม่มี jwt → ไปหน้า cart?error=payment_failed ไม่ใช่ login)
+      ✘  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:78:5 › AC-25 (D-1): session หมดอายุ → login โดยไม่มี client_secret แล้วกลับขั้น review (7.3s)
+      1) [chromium] › e2e/pay-12-cart-error-notice.spec.ts:78:5 › AC-25 (D-1): session หมดอายุ → login โดยไม่มี client_secret แล้วกลับขั้น review › (a) ไม่มี jwt → หน้า login ไม่ใช่ cart?error=payment_failed 
+        Error: expect(locator).toBeVisible() failed
+        Locator: getByTestId('login-page')
+        Expected: visible
+        Timeout: 5000ms
+        Error: element(s) not found
+        Call log:
+
+## GREEN — e2e chromium e2e/pay-12-cart-error-notice.spec.ts (2 tests)
+    Running 2 tests using 1 worker
+      ✓  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:19:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก (3.0s)
+      ✓  2 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:78:5 › AC-25 (D-1): session หมดอายุ → login โดยไม่มี client_secret แล้วกลับขั้น review (3.2s)
+      2 passed (7.5s)
+
+## GREEN — storefront vitest ทั้งชุด
+     Test Files  109 passed (109)
+          Tests  1352 passed (1352)
+    test:e2e:unit 131 passed; lint 0 errors; typecheck ผ่าน; next build ผ่าน

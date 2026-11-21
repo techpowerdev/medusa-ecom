@@ -72,3 +72,57 @@ test("AC-25: cart-error-notice ภาษาไทยต่อค่า error แ
     await evidence("02-cart-error-unknown-hidden")
   })
 })
+
+// review/qa #481 D-1: session หมดอายุระหว่าง 3DS แล้วกลับมาที่ /api/payment-return (succeeded) → หน้า login (ไม่ใช่ payment_failed)
+// และ client_secret ไม่หลุดไปใน URL/HTML ของหน้า login; login แล้วกลับขั้น review เพื่อจบ flow
+test("AC-25 (D-1): session หมดอายุ → login โดยไม่มี client_secret แล้วกลับขั้น review", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const SECRET = "sec_pay12_should_not_leak"
+  const admin = await adminHeaders(request)
+  const pk = await publishableKey(request, admin)
+  const customer = await createCustomer(request, pk)
+  const cartId = await cartReadyForPayment(request, pk, customer)
+  const returnPath = `/api/payment-return?${new URLSearchParams({
+    cart_id: cartId,
+    country_code: CC,
+    payment_intent: "pi_pay12_expired",
+    payment_intent_client_secret: SECRET,
+    redirect_status: "succeeded",
+  })}`
+  const expectLoginWithoutSecret = async () => {
+    await expect(page.getByTestId("login-page")).toBeVisible()
+    expect(page.url()).not.toContain(SECRET)
+    expect(decodeURIComponent(page.url())).not.toContain("payment_intent_client_secret")
+    expect(new URL(page.url()).pathname).toBe(`/${CC}/account`)
+    expect(new URL(page.url()).searchParams.get("return_to")).toBe(`/${CC}/checkout?step=review`)
+    const html = await page.content()
+    expect(html).not.toContain(SECRET)
+    expect(html).not.toContain("payment_intent_client_secret")
+  }
+
+  await step("(a) ไม่มี jwt → หน้า login ไม่ใช่ cart?error=payment_failed", async () => {
+    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+    await page.goto(returnPath)
+    await expectLoginWithoutSecret()
+  })
+
+  await step("(b) jwt เสีย → หน้า login; login แล้วกลับ /th/checkout?step=review", async () => {
+    await context.addCookies([
+      { name: "_medusa_jwt", value: "expired.invalid.token", url: baseURL! },
+      { name: "_medusa_cart_id", value: cartId, url: baseURL! },
+    ])
+    await page.goto(returnPath)
+    await expectLoginWithoutSecret()
+    await page.getByTestId("email-input").fill(customer.email)
+    await page.getByTestId("password-input").fill(customer.password)
+    await page.getByTestId("sign-in-button").click()
+    await expect(page).toHaveURL((url) => url.pathname === `/${CC}/checkout` && url.search === "?step=review")
+  })
+})
+

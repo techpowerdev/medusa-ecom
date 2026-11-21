@@ -3,7 +3,7 @@ import { placeOrder, PlaceOrderResult } from "@lib/data/cart"
 import { setCartCookie } from "@lib/data/active-cart"
 import { getAuthHeaders } from "@lib/data/cookies"
 import { safeCountryCode } from "@lib/util/digital-checkout"
-import { RETURN_TO_PARAM } from "@lib/util/login-return"
+import { loginPathForReturn } from "@lib/util/login-return"
 import { HttpTypes } from "@medusajs/types"
 import { unstable_rethrow } from "next/navigation"
 import { NextRequest, NextResponse } from "next/server"
@@ -25,20 +25,33 @@ export async function GET(req: NextRequest) {
   const prefix = countryCode ? `/${countryCode}` : ""
   const rejected = () =>
     NextResponse.redirect(`${origin}${prefix}/cart?error=payment_failed`)
+  // PAY-12 (กฎข้อ 14; review/qa #481 D-1): session หมดอายุ → login แล้วกลับขั้น review — ผลการชำระยังไม่รู้จึงไม่บอกว่าล้ม;
+  // ห้ามส่ง URL ของ route นี้เป็น return_to (มี payment_intent_client_secret) ไม่มี country → /account เฉยๆ
+  const signIn = () =>
+    NextResponse.redirect(
+      `${origin}${countryCode ? loginPathForReturn(countryCode, `/${countryCode}/checkout?step=review`) : "/account"}`
+    )
 
   if (!cartId || !paymentIntent || !paymentIntentClientSecret) {
     return rejected()
   }
 
-  const cart = await sdk.client
+  const read = await sdk.client
     .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, {
       method: "GET",
       query: { fields: "payment_collection.payment_sessions.data" },
       headers: { ...(await getAuthHeaders()) },
       cache: "no-store",
     })
-    .then(({ cart }) => cart)
-    .catch(() => null)
+    .then(
+      ({ cart }) => ({ cart, status: 200 as unknown }),
+      (error: { status?: unknown } | null) => ({ cart: null, status: error?.status })
+    )
+
+  if (read.status === 401 || read.status === 403) {
+    return signIn()
+  }
+  const { cart } = read
 
   const paymentSession = cart?.payment_collection?.payment_sessions?.find(
     (session) => session.data?.id === paymentIntent
@@ -93,8 +106,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}${prefix}/cart?error=refunded`)
   }
   if (outcome.kind === "unauthorized") {
-    const login = new URLSearchParams({ [RETURN_TO_PARAM]: `${req.nextUrl.pathname}${req.nextUrl.search}` })
-    return NextResponse.redirect(`${origin}${prefix}/account?${login}`)
+    return signIn()
   }
   if (outcome.kind === "processing") {
     // อ่าน order ของ cart: complete ซ้ำของ Medusa คืน order เดิมเมื่อมี link order_cart แล้ว (completeCartWorkflow 2.22.1)
