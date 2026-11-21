@@ -8,6 +8,7 @@ import {
   cartReadyForPayment,
   createCustomer,
   ok,
+  placeOrder,
   publishableKey,
   signInAs,
 } from "./support/medusa"
@@ -21,8 +22,10 @@ import {
   sessionIntentId,
 } from "./support/stripe"
 
-// PAY-9 (spec 06 กฎข้อ 11, AC-22 c, ADR-025 — O-2 #69): ซื้อ flash เกินสิทธิ์ด้วยบัตร → Medusa คืนเงินอัตโนมัติ
-// → ลดจำนวนแล้วจ่ายใหม่ใน cart เดิม → order มี payment collection ชุดใหม่ชุดเดียว และ payment_status = captured (ไม่ใช่ refunded)
+// PAY-9 (spec 06 กฎข้อ 11, AC-22 c, ADR-025 — O-2 #69): ลูกค้าอยู่หน้า review (ปุ่มกดได้ — ผ่านด่าน UI ของ FS-21 กฎข้อ 26b)
+// แล้วใช้สิทธิ์ flash จาก cart อื่นผ่าน API (แบบสองแท็บ) → กดสั่งด้วยบัตร → capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED
+// → Medusa คืนเงินอัตโนมัติ → admin เพิ่มสิทธิ์ต่อคน → จ่ายใหม่ใน cart เดิม → order มี payment collection ชุดใหม่ชุดเดียว
+// และ payment_status = captured (ไม่ใช่ refunded)
 // Stripe test mode จริง; สร้างสินค้า/แคมเปญเฉพาะของ test นี้และปิดแคมเปญเมื่อจบ; หา element ด้วย data-testid (ADR-014)
 test.use({ evidenceTarget: { feature: "payments", taskId: "PAY-9" } })
 
@@ -98,8 +101,18 @@ test.beforeAll(async ({ request }) => {
       target_rules: [{ attribute: "items.product.id", operator: "in", values: [product.id] }],
     },
   })
-  await post(`/admin/flash-sales/${campaignId}/config`, { per_customer_limit: 1, total_cap: 50, show_countdown: true })
+  await setLimit(request, 1)
 })
+
+async function setLimit(request: APIRequestContext, perCustomerLimit: number) {
+  await ok(
+    await request.post(`${BACKEND_URL}/admin/flash-sales/${campaignId}/config`, {
+      headers: admin,
+      data: { per_customer_limit: perCustomerLimit, total_cap: 50, show_countdown: true },
+    }),
+    "flash sale config"
+  )
+}
 
 test.afterAll(async ({ request }) => {
   if (campaignId) {
@@ -113,7 +126,7 @@ test.afterAll(async ({ request }) => {
   }
 })
 
-test("AC-22c: flash เกินสิทธิ์ด้วยบัตร → คืนเงิน → ลดจำนวนแล้วจ่ายใหม่ใน cart เดิม → order captured มี payment collection ชุดเดียว", async ({
+test("AC-22c: ใช้สิทธิ์ flash จาก cart อื่นระหว่างอยู่หน้า review → จ่ายด้วยบัตรแล้วถูกคืนเงิน → จ่ายใหม่ใน cart เดิม → order captured มี payment collection ชุดเดียว", async ({
   page,
   context,
   request,
@@ -124,17 +137,27 @@ test("AC-22c: flash เกินสิทธิ์ด้วยบัตร → �
   test.setTimeout(240_000)
   const customer = await createCustomer(request, pk)
   await signInAs(context, baseURL!, customer)
-  const cartId = await cartReadyForPayment(request, pk, customer, { variant: variantId, quantity: 2 })
+  const cartId = await cartReadyForPayment(request, pk, customer, { variant: variantId, quantity: 1 })
   await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
   expect(await cartIdOf(context)).toBe(cartId)
 
   let firstIntent = ""
-  await step("จ่ายด้วยบัตร 4242 ขณะ cart มี 2 ชิ้น (สิทธิ์ 1) → complete ล้ม FLASH_LIMIT_EXCEEDED (ข้อความไทย)", async () => {
+  await step("cart 1 ชิ้น (สิทธิ์ 1) ไปถึงขั้น review ด้วยบัตร 4242 → ปุ่มสั่งซื้อกดได้", async () => {
     await page.goto(`/${CC}/checkout?step=payment`)
     await page.getByTestId(`payment-option-${CARD_PROVIDER}`).click()
     firstIntent = await sessionIntentId(request, pk, customer, cartId, CARD_PROVIDER)
     await fillCard(page, "4242424242424242")
     await continueToReview(page)
+    await expect(page.getByTestId("review-flash-exceeds-customer-limit")).toHaveCount(0)
+    await expect(page.getByTestId("submit-order-button")).toBeEnabled()
+  })
+
+  await step("ลูกค้าคนเดิมใช้สิทธิ์ 1 ชิ้นจาก cart อื่นผ่าน API (แบบสองแท็บ) ขณะหน้า review เปิดค้าง", async () => {
+    await placeOrder(request, pk, customer, { variant: variantId, quantity: 1 })
+    expect(await cartIdOf(context)).toBe(cartId) // cookie ของ browser ยังเป็น cart เดิม
+  })
+
+  await step("กดสั่งซื้อ → Stripe capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED (ข้อความไทย)", async () => {
     await page.getByTestId("submit-order-button").click()
     // FS-22 อาจแทน error ด้วย checkout-refunded-notice — test นี้ตรวจแค่ว่า complete ล้มและยังอยู่หน้า checkout
     const failure = page.getByTestId("stripe-payment-error-message").or(page.getByTestId("checkout-refunded-notice"))
@@ -150,10 +173,8 @@ test("AC-22c: flash เกินสิทธิ์ด้วยบัตร → �
       .toEqual(["succeeded"])
   })
 
-  await step("ลดจำนวนเหลือ 1 ใน /th/cart", async () => {
-    await page.goto(`/${CC}/cart`)
-    await page.getByTestId("product-select-button").selectOption("1")
-    await expect(page.getByTestId("product-select-button")).toHaveValue("1")
+  await step("admin เพิ่มสิทธิ์ต่อคนเป็น 2 (คืนสิทธิ์ให้ cart เดิมจ่ายได้ — ด่าน FS-21 ไม่ปิดปุ่ม)", async () => {
+    await setLimit(request, 2)
   })
 
   await step("จ่ายใหม่ด้วยบัตรใน cart เดิม → หน้า order confirmed", async () => {
@@ -165,6 +186,7 @@ test("AC-22c: flash เกินสิทธิ์ด้วยบัตร → �
       .not.toBe(firstIntent)
     await fillCard(page, "4242424242424242")
     await continueToReview(page)
+    await expect(page.getByTestId("submit-order-button")).toBeEnabled()
     await page.getByTestId("submit-order-button").click()
     await expect(page.getByTestId("order-complete-container")).toBeVisible({ timeout: 60_000 })
     await evidence("02-repay-order-confirmed")

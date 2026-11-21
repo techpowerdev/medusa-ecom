@@ -85,3 +85,9 @@ unit backend ที่เกี่ยว (refunded-payments, payment-collections
   (ชุดเต็มรอบนี้ return-lock.unit.spec.ts ล้มด้วย timeout 471 วิ ตอนเครื่องรับโหลดหนัก load ~8.5 — รันแยกผ่าน; ชุดเต็มให้ CI รัน)
 vitest storefront: Test Files 103 passed, Tests 1204 passed; playwright --project=unit: 123 passed
 typecheck backend + storefront: ผ่าน; lint: 0 errors
+
+## รอบแก้ review #445 ครั้งที่ 2 (e2e AC-22c ล้มบน CI run 44879093475 หลัง FS-21)
+สาเหตุ: FS-21 (spec 03 กฎข้อ 26b) ปิด submit-order-button เมื่อ cart มี flash เกินสิทธิ์ต่อคน → test เดิม (cart 2 ชิ้น สิทธิ์ 1) กดสั่งไม่ได้ → timeout 240s
+แก้: cart 1 ชิ้น สิทธิ์ 1 ไปถึง review (ปุ่มกดได้) → ลูกค้าคนเดิมใช้สิทธิ์จาก cart อื่นผ่าน API → กดสั่ง → capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED
+     → คืนเงิน → admin เพิ่มสิทธิ์เป็น 2 → จ่ายใหม่ใน cart เดิม; แก้ถ้อยคำ AC-22c ใน spec 06 ให้ตรง
+ในเครื่อง: playwright --list พบ 1 test, tsc/eslint ผ่าน, playwright --project=unit 125 passed; ไม่มี Stripe key → ต้องให้ CI พิสูจน์
