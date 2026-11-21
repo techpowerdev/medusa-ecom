@@ -15,6 +15,7 @@ import {
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 import { registerCustomer } from "../helpers/customer"
+import { createAdminUser } from "../helpers/admin"
 import { FLASH_SALE_MODULE } from "../../src/modules/flash_sale"
 import type FlashSaleModuleService from "../../src/modules/flash_sale/service"
 import { CART_COMPLETION_FAILED_AFTER_PAYMENT } from "../../src/workflows/hooks/paid-completion-failure"
@@ -233,6 +234,87 @@ medusaIntegrationTestRunner({
       expect(lines[0]).toContain("code=STEP_AFTER_VALIDATE_FAILED")
       const payments = await paymentsOf(collectionId)
       expect(payments[0].refunds).toHaveLength(1)
+    })
+
+    // hotfix PAY-9 (spec 06 AC-22c e2e): สัญญาณที่ e2e ใช้รอให้ compensation ของ Medusa จบ — ยืนยันลำดับจาก source 2.22.1
+    // refundPayment_ บันทึก refund ก่อนเรียก Stripe; recreate session ด้วย data เดิมสร้างแถว pending (PI เดิม) ก่อนเรียก Stripe;
+    // execution ของ complete-cart (store: true) เป็นสถานะจบหลัง compensation ทั้งหมด (รวม recreate รอบสองของ deletePaymentSessionsStep)
+    it("PAY-9 hotfix: ระหว่าง compensation execution ของ complete-cart ยังไม่จบแม้ refund ถูกบันทึกแล้ว; จบแล้วไม่มี session ที่อ้าง PI เดิม", async () => {
+      await flashLimitOne()
+      const { cartId, collectionId, session } = await readyCart(2, "pp_stripe_stripe")
+      const firstIntent = (session.data as { id: string }).id
+      const admin = await createAdminUser(container, `pay9-hotfix-${seq}@example.com`)
+      const startedAt = new Date(Date.now() - 60_000).toISOString()
+
+      const gate = () => {
+        let open!: () => void
+        let reached!: () => void
+        const opened = new Promise<void>((r) => (open = r))
+        const arrived = new Promise<void>((r) => (reached = r))
+        return { open, arrived, wait: async () => (reached(), opened) }
+      }
+      const atRefund = gate()
+      const atRecreate = gate()
+      jest.spyOn(Stripe.resources.Refunds.prototype, "create").mockImplementation(async (params: any) => {
+        await atRefund.wait()
+        return { id: `re_pay9_${++seq}`, object: "refund", amount: params.amount }
+      })
+      const createIntent = jest.spyOn(PaymentIntents, "create").mockImplementation(async (params: any) => {
+        if (params.payment_method && typeof params.payment_method === "object") {
+          await atRecreate.wait()
+          throw new Error(`Invalid string: ${JSON.stringify(params.payment_method)}`)
+        }
+        return { id: `pi_pay9_${++seq}`, object: "payment_intent", amount: params.amount, currency: "thb", status: "requires_payment_method" }
+      })
+
+      const snapshot = async () => {
+        const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+          entity: "payment_collection",
+          fields: ["payments.refunds.id", "payment_sessions.status", "payment_sessions.data"],
+          filters: { id: collectionId },
+        })
+        // query string เดียวกับ e2e pay-9-refunded-cart-repay.spec.ts
+        const res = await api.get(
+          "/admin/workflows-executions?workflow_id=complete-cart&fields=id,state,context" +
+            `&created_at[$gte]=${encodeURIComponent(startedAt)}`,
+          { headers: admin.headers }
+        )
+        const executions = (res.data.workflow_executions as { state: string; context?: any }[])
+          .filter((e) => e.context?.data?.payload?.id === cartId)
+          .map((e) => e.state)
+        return {
+          refunds: data[0].payments.flatMap((p: any) => p.refunds ?? []).length,
+          sessions: data[0].payment_sessions.map((s: any) => [s.status, s.data?.id]),
+          executions,
+        }
+      }
+
+      const run = captured(session)
+
+      await atRefund.arrived
+      // e2e เดิมเห็น Stripe refund แล้วถือว่าจบ: Medusa บันทึก refund แล้ว session เดิมยัง authorized แต่ compensation ยังไม่จบ
+      expect(await snapshot()).toEqual({
+        refunds: 1,
+        sessions: [["authorized", firstIntent]],
+        executions: ["waiting_to_compensate"],
+      })
+      atRefund.open()
+
+      await atRecreate.arrived
+      // session ชั่วคราวที่ recreate ด้วย data เดิม = pending + PI เดิม (หน้า checkout ถือเป็น session ที่ใช้อยู่)
+      const during = await snapshot()
+      expect(during.sessions).toContainEqual(["pending", firstIntent])
+      expect(during.executions).toEqual(["waiting_to_compensate"])
+      atRecreate.open()
+
+      await run
+      const after = await snapshot()
+      expect(after.executions).toEqual(["reverted"])
+      expect(after.refunds).toBe(1)
+      expect(after.sessions.filter(([, id]: [string, string]) => id === firstIntent)).toEqual([])
+      // recreate ด้วย PI เดิม: รอบ createPaymentSessionStep + รอบ compensation ของ deletePaymentSessionsStep
+      const recreated = createIntent.mock.calls.filter(([p]: any[]) => p.payment_method && typeof p.payment_method === "object")
+      expect(recreated).toHaveLength(2)
     })
 
     it("complete ล้มก่อนมีการชำระ (ยังไม่ capture) → ไม่มี warn นี้", async () => {

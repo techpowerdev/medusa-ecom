@@ -93,38 +93,41 @@ typecheck backend + storefront: ผ่าน; lint: 0 errors
 ในเครื่อง: playwright --list พบ 1 test, tsc/eslint ผ่าน, playwright --project=unit 125 passed; ไม่มี Stripe key → ต้องให้ CI พิสูจน์
 
 
-# hotfix PAY-9 (AC-22c) e2e ล้มเป็นครั้งคราว — evidence (2026-11-21T13:11Z)
+# hotfix PAY-9 (AC-22c) e2e ล้มเป็นครั้งคราว — evidence (รอบแก้ตาม review #468, 2026-11-21T13:56Z)
 
-## CI ที่ล้ม (attempt 1; rerun ผ่าน) — pay-9-refunded-cart-repay.spec.ts step 'จ่ายใหม่ด้วยบัตรใน cart เดิม'
-- run 44896944640 (#463), 44897048477 (#464), 44902940179 (#466): support/stripe.ts:90 payment session pp_stripe_stripe ได้ "" เกิน 15s
+## CI ที่ล้ม — pay-9-refunded-cart-repay.spec.ts step 'จ่ายใหม่ด้วยบัตรใน cart เดิม' → support/stripe.ts:90 ได้ "" เกิน 15s
+- attempt 1 ของ run 44896944640 (#463), 44897048477 (#464), 44902940179 (#466); run 44907726201 (#468 รอบแรก — เงื่อนไขรอเดิมผิด)
 
-## timeline จาก trace ของ CI (run 44902940179 attempt 1) — GET /store/carts ของ test
-12:45:22.984  Stripe refunds ของ PI แรก = [succeeded] → step 4 ผ่าน
-12:45:23.201  page.goto /th/checkout?step=payment (render ระหว่าง compensation ของ Medusa)
-12:45:23.455  collection completed, sessions = [authorized pi_3UeDfI...]   (Medusa ยังไม่จบ)
-12:45:23.657  collection completed, sessions = [pending pi_3UeDfI...]      (session ชั่วคราวของ recreate ด้วย data เดิม)
-12:45:23.976  collection completed, sessions = []                          (Stripe ปฏิเสธ recreate → ลบแถว)
-run 44896944640: goto 11:30:19.095 หลัง refund 11:30:18.818 → screenshot: radio บัตรถูกเลือกไว้แล้ว + Stripe Elements
-'This PaymentIntent is in a terminal state' และไม่มี POST server action หลัง click (คลิก radio ที่เลือกอยู่ไม่เรียก onChange)
+## timeline จาก trace ของ CI (GET /store/carts และ /admin/payments ของ test)
+run 44902940179: 22.984 Stripe refund ✓ → 23.201 goto payment → 23.455 [authorized PI1] → 23.657 [pending PI1] → 23.976 []
+run 44907726201: 16.217 admin payments: capture 810 + refund 810 บันทึกแล้ว; 16.228 [authorized PI1] → helper รอบแรกตัดสินว่าจบ
+                 16.366 goto payment → ไม่มี server action หลังคลิก (radio บัตรถูกเลือกจาก session pending ชั่วคราว) → 16.993 []
 
-## red — unit test ของเงื่อนไขรอ (ก่อนเขียน helper)
-$ npx playwright test --project=unit e2e/support/refund-settled.unit.spec.ts
-Error: Cannot find module './refund-settled'
+## ยืนยันลำดับของ Medusa 2.22.1 ด้วย integration test (Stripe mock เฉพาะ network, gate ที่ Refunds.create และ recreate)
+$ DB_HOST=localhost DB_USERNAME=medusa DB_PASSWORD=medusa pnpm --filter backend test:integration:http integration-tests/http/complete-after-payment-log.spec.ts
+    ✓ flash เกินสิทธิ์หลัง capture → warn 1 บรรทัด (cart_id, payment_session_id, code) ก่อน log ของ Medusa และคืนเงิน 1 รายการ (1287 ms)
+    ✓ step หลัง hook validate ล้มหลัง capture → warn 1 บรรทัด และคืนเงิน 1 รายการ (1244 ms)
+    ✓ PAY-9 hotfix: ระหว่าง compensation execution ของ complete-cart ยังไม่จบแม้ refund ถูกบันทึกแล้ว; จบแล้วไม่มี session ที่อ้าง PI เดิม (919 ms)
+    ✓ complete ล้มก่อนมีการชำระ (ยังไม่ capture) → ไม่มี warn นี้ (778 ms)
+Tests:       4 passed, 4 total
+- ตอนเรียก Stripe refund: refunds=1, sessions=[authorized PI1], execution complete-cart = waiting_to_compensate
+- ตอน recreate: มี [pending PI1]; execution ยัง waiting_to_compensate
+- จบ: execution = reverted, ไม่มี session ที่อ้าง PI1, recreate ด้วย PI1 = 2 ครั้ง (createPaymentSessionStep + compensation ของ deletePaymentSessionsStep)
+
+## red — unit test ของสัญญาณใหม่ (ก่อนเขียน helper)
+$ npx playwright test --project=unit e2e/support/cart-completion.unit.spec.ts
+Error: Cannot find module './cart-completion'
 Require stack:
-- apps/storefront/e2e/support/refund-settled.unit.spec.ts
+- apps/storefront/e2e/support/cart-completion.unit.spec.ts
 
 ## green
-$ npx playwright test --project=unit e2e/support/refund-settled.unit.spec.ts
-Running 5 tests using 1 worker
-  ✓  1 [unit] › e2e/support/refund-settled.unit.spec.ts:10:5 › webhook ยังไม่สร้าง payment → ยังไม่จบ (2ms)
-  ✓  2 [unit] › e2e/support/refund-settled.unit.spec.ts:14:5 › Stripe คืนแล้วแต่ Medusa ยังไม่บันทึก refund (session เดิม authorized — 12:45:23.455) → ยังไม่จบ (0ms)
-  ✓  3 [unit] › e2e/support/refund-settled.unit.spec.ts:18:5 › บันทึก refund แล้วแต่ session ชั่วคราวของ recreate ยังรอชำระ (pending, PI เดิม — 12:45:23.657) → ยังไม่จบ (0ms)
-  ✓  4 [unit] › e2e/support/refund-settled.unit.spec.ts:23:5 › คืนครบและไม่มี session ที่รอชำระ (12:45:23.976) → จบ (0ms)
-  ✓  5 [unit] › e2e/support/refund-settled.unit.spec.ts:28:5 › คืนไม่ครบหรือไม่เคย capture → ยังไม่จบ (1ms)
-  5 passed (273ms)
-
-$ pnpm --filter storefront test:e2e:unit  (รันซ้ำหลังย้าย evidence มาไฟล์นี้)
-  132 passed
+$ npx playwright test --project=unit e2e/support/cart-completion.unit.spec.ts
+Running 4 tests using 1 worker
+  ✓  1 [unit] › e2e/support/cart-completion.unit.spec.ts:10:5 › ยังไม่มี execution ของ cart นี้ → ยังไม่จบ (3ms)
+  ✓  2 [unit] › e2e/support/cart-completion.unit.spec.ts:15:5 › Stripe คืนเงินแล้วแต่ compensation ยังทำงาน (waiting_to_compensate) → ยังไม่จบ (1ms)
+  ✓  3 [unit] › e2e/support/cart-completion.unit.spec.ts:19:5 › complete ของ storefront จบแล้ว แต่ complete ที่ webhook สั่งยังไม่จบ → ยังไม่จบ (1ms)
+  ✓  4 [unit] › e2e/support/cart-completion.unit.spec.ts:25:5 › ทุก execution ของ cart นี้อยู่ในสถานะจบ → จบ (execution ของ cart อื่นไม่นับ) (2ms)
+  4 passed (272ms)
 
 $ npx playwright test --project=chromium --list e2e/pay-9-refunded-cart-repay.spec.ts
 Total: 1 test in 1 file

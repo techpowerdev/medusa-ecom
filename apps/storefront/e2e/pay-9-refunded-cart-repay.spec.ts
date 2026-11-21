@@ -22,7 +22,7 @@ import {
   fillCard,
   sessionIntentId,
 } from "./support/stripe"
-import { MedusaPaymentAmounts, medusaRefundSettled } from "./support/refund-settled"
+import { WorkflowExecution, cartCompletionSettled } from "./support/cart-completion"
 
 // PAY-9 (spec 06 กฎข้อ 11, AC-22 c, ADR-025 — O-2 #69): ลูกค้าอยู่หน้า review (ปุ่มกดได้ — ผ่านด่าน UI ของ FS-21 กฎข้อ 26b)
 // แล้วใช้สิทธิ์ flash จาก cart อื่นผ่าน API (แบบสองแท็บ) → กดสั่งด้วยบัตร → capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED
@@ -145,13 +145,17 @@ test("AC-22c: ใช้สิทธิ์ flash จาก cart อื่นร�
 
   let firstIntent = ""
   let firstSessionId = ""
+  // ขอบล่างของ execution ที่อ่าน (เผื่อนาฬิกา DB/runner ต่างกัน — ตัดผิด = poll ไม่จบแล้วล้ม ไม่ใช่ผ่านเงียบ)
+  const startedAt = new Date(Date.now() - 60_000).toISOString()
   await step("cart 1 ชิ้น (สิทธิ์ 1) ไปถึงขั้น review ด้วยบัตร 4242 → ปุ่มสั่งซื้อกดได้", async () => {
     await page.goto(`/${CC}/checkout?step=payment`)
     await page.getByTestId(`payment-option-${CARD_PROVIDER}`).click()
     firstIntent = await sessionIntentId(request, pk, customer, cartId, CARD_PROVIDER)
-    firstSessionId = (await cartPaymentState(request, pk, customer, cartId)).sessions.find(
+    const firstSession = (await cartPaymentState(request, pk, customer, cartId)).sessions.find(
       (s) => s.provider_id === CARD_PROVIDER
-    )!.id
+    )
+    expect(firstSession, `session ${CARD_PROVIDER} ของ cart ${cartId}`).toBeTruthy()
+    firstSessionId = firstSession!.id
     await fillCard(page, "4242424242424242")
     await continueToReview(page)
     await expect(page.getByTestId("review-flash-exceeds-customer-limit")).toHaveCount(0)
@@ -177,18 +181,32 @@ test("AC-22c: ใช้สิทธิ์ flash จาก cart อื่นร�
     await expect
       .poll(async () => (await stripeRefunds(request, firstIntent)).map((r) => r.status), { timeout: 60_000 })
       .toEqual(["succeeded"])
-    // Stripe มี refund ก่อน Medusa ทำ compensation จบ (บันทึก refund → recreate session ด้วย PI เดิมแล้วลบทิ้ง — ADR-025)
-    // ถ้าไปหน้า payment ช่วงนั้น checkout เห็น session ชั่วคราวเป็นของจริง (run 44896944640/44902940179) → รอสถานะของ Medusa
-    const medusaState = async () => {
-      const { payments } = await ok(
-        await request.get(`${BACKEND_URL}/admin/payments?payment_session_id=${firstSessionId}`, { headers: admin }),
-        "admin payments"
-      )
-      const { sessions } = await cartPaymentState(request, pk, customer, cartId)
-      const payment = payments[0] as MedusaPaymentAmounts | undefined
-      return { settled: medusaRefundSettled(payment, sessions), payment, sessions: sessions.map((s) => s.status) }
-    }
-    await expect.poll(medusaState, { timeout: 60_000 }).toMatchObject({ settled: true })
+    // Stripe/Medusa มี refund ก่อน compensation ของ Medusa จบ: ยัง recreate session ด้วย PI เดิม 2 รอบ (แถว pending ชั่วคราว)
+    // ถ้าไปหน้า payment ช่วงนั้น checkout เลือก session ชั่วคราวไว้ (CI run 44896944640/44902940179/44907726201)
+    // → รอ execution ของ complete-cart ของ cart นี้จบทุกตัว (ดู support/cart-completion.ts)
+    const executions = async (): Promise<WorkflowExecution[]> =>
+      (
+        await ok(
+          await request.get(
+            `${BACKEND_URL}/admin/workflows-executions?workflow_id=complete-cart&fields=id,state,context` +
+              `&created_at[$gte]=${encodeURIComponent(startedAt)}`,
+            { headers: admin }
+          ),
+          "admin workflow executions"
+        )
+      ).workflow_executions
+    await expect
+      .poll(async () => cartCompletionSettled(await executions(), cartId), { timeout: 60_000 })
+      .toBe(true)
+    // หลัง compensation จบ: Medusa บันทึก refund 1 รายการ และไม่เหลือ session ที่อ้าง PI แรก (ไม่ poll — ต้องเป็นจริงทันที)
+    const { payments } = await ok(
+      await request.get(`${BACKEND_URL}/admin/payments?payment_session_id=${firstSessionId}`, { headers: admin }),
+      "admin payments"
+    )
+    expect(payments).toHaveLength(1)
+    expect(payments[0].refunds).toEqual([expect.objectContaining({ note: "Refunded due to cart completion failure" })])
+    const { sessions } = await cartPaymentState(request, pk, customer, cartId)
+    expect(sessions.filter((s) => s.data?.id === firstIntent)).toEqual([])
   })
 
   await step("admin เพิ่มสิทธิ์ต่อคนเป็น 2 (คืนสิทธิ์ให้ cart เดิมจ่ายได้ — ด่าน FS-21 ไม่ปิดปุ่ม)", async () => {
@@ -199,9 +217,8 @@ test("AC-22c: ใช้สิทธิ์ flash จาก cart อื่นร�
     await page.goto(`/${CC}/checkout?step=payment`)
     await page.getByTestId(`payment-option-${CARD_PROVIDER}`).click()
     // collection เดิมถูกถอด (409 PAYMENT_COLLECTION_RESET) storefront สร้าง collection ใหม่แล้วได้ PaymentIntent ใหม่
-    await expect
-      .poll(() => sessionIntentId(request, pk, customer, cartId, CARD_PROVIDER), { timeout: 30_000 })
-      .not.toBe(firstIntent)
+    // (ไม่มี session ที่อ้าง PI แรกแล้ว — PI ที่ sessionIntentId รอเจอจึงเป็นของ session ใหม่)
+    expect(await sessionIntentId(request, pk, customer, cartId, CARD_PROVIDER)).not.toBe(firstIntent)
     await fillCard(page, "4242424242424242")
     await continueToReview(page)
     await expect(page.getByTestId("submit-order-button")).toBeEnabled()
