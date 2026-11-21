@@ -29,3 +29,14 @@ Tests:       35 passed, 35 total
 -- pnpm lint && pnpm typecheck: ผ่าน (0 error)
 -- pnpm --filter backend build: ผ่าน
 -- pnpm --filter storefront test:e2e:unit: 122 passed
+
+== รอบแก้ตาม session หลักตัดสิน 2026-11-21 (reservation guard + job low-stock) ==
+-- RED (โค้ดก่อนแก้รอบนี้)
+      ✕ (e) refuses (400) while stock is reserved by orders awaiting payment or code delivery and changes nothing
+    Expected: 400 Received: 200
+      ✕ daily job › does not send a low-stock alert for a pool without any codes (ได้อีเมลของ pool ว่างเพิ่ม 1 ฉบับ)
+-- GREEN
+-- integration: evoucher-pool-guards + void-expiry + admin + admin-ui + allocate
+Test Suites: 5 passed, 5 total
+Tests:       74 passed, 74 total
+-- unit 1500 passed (112 suites); lint/typecheck/build ผ่าน; storefront test:e2e:unit 122 passed

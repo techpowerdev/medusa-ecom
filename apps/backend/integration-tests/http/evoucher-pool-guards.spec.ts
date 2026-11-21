@@ -365,6 +365,8 @@ medusaIntegrationTestRunner({
     // EV-20 (spec 02 กฎข้อ 36): ลบ pool ได้เมื่อยังไม่มี code ถูกส่ง/จองให้ลูกค้า → code ลบตาม + stock ลด
     describe("AC-50 deleting a pool whose codes were never issued (rule 36)", () => {
       const NOT_ALLOWED = "Pool has codes that were allocated or delivered to customers; it cannot be deleted"
+      const RESERVED =
+        "Pool has orders awaiting payment or code delivery (reserved stock); it cannot be deleted until they are completed or canceled"
 
       const deletePool = (poolId: string) =>
         api.delete(`/admin/evoucher/pools/${poolId}`, adminHeaders).catch((e) => e.response)
@@ -417,6 +419,29 @@ medusaIntegrationTestRunner({
         expect(await level(inventoryItemId)).toEqual({ stocked: 5, reserved: 0 })
         expect(await requiresShipping(inventoryItemId)).toBe(false)
         expect(await poolsOf(variantId)).toHaveLength(1)
+      })
+
+      // session หลักตัดสิน 2026-11-21: reservation ค้าง = order ที่รอชำระ/รอส่งรหัสจาก pool นี้ → ลบไม่ได้ (แบบกฎข้อ 12)
+      it("(e) refuses (400) while stock is reserved by orders awaiting payment or code delivery and changes nothing", async () => {
+        const { poolId, inventoryItemId, variantId } = await poolWithUnissuedCodes()
+        const inventory = container.resolve(Modules.INVENTORY)
+        const [reservation] = await inventory.createReservationItems([
+          { inventory_item_id: inventoryItemId, location_id: locationId, quantity: 1 },
+        ])
+
+        const res = await deletePool(poolId)
+
+        expect(res.status).toBe(400)
+        expect(res.data).toMatchObject({ type: "not_allowed", message: RESERVED })
+        const codes = await codesOf(poolId)
+        expect(codes).toHaveLength(6)
+        expect(codes.some((c) => c.deleted_at)).toBe(false)
+        expect(await level(inventoryItemId)).toEqual({ stocked: 5, reserved: 1 })
+        expect(await requiresShipping(inventoryItemId)).toBe(false)
+        expect(await poolsOf(variantId)).toHaveLength(1)
+
+        await inventory.deleteReservationItems([reservation.id])
+        expect((await deletePool(poolId)).status).toBe(200)
       })
 
       it("(c) restores the codes and the pool when the stock adjustment fails", async () => {
