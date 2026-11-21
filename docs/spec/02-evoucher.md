@@ -538,7 +538,7 @@ order ก่อน EV-22 (เช่น #66) มีธงแค่ใน `order_l
     → ค่าเริ่มต้น dry-run พิมพ์ order/line id; `--apply` เขียนธงลง `order_item` ด้วยวิธีเดียวกับ EV-22 (helper ร่วม — export จาก step เดิม ไม่ copy) ไม่แตะ line ที่ไม่มีธง; รันซ้ำ → 0 แถว; เพิ่มบรรทัด go-live checklist พร้อมคำสั่งจริง
 
 ### Acceptance criteria (รอบ 41)
-- AC-53 (EV-23, กฎข้อ 39) integration http — **ล้มบน develop** (404 route): order backordered (pool ว่างตอน capture) → import code → POST → 200 `allocated_line_item_ids` มี line นั้น, code `delivered`, อีเมลลูกค้า 1 ฉบับ, ธงถูกล้าง;
+- AC-53 ☑ (EV-23, กฎข้อ 39) integration http — **ล้มบน develop** (404 route): order backordered (pool ว่างตอน capture) → import code → POST → 200 `allocated_line_item_ids` มี line นั้น, code `delivered`, อีเมลลูกค้า 1 ฉบับ, ธงถูกล้าง;
   ยิงพร้อมกัน 2 request → code ถูก claim ตามจำนวนเดียว อีเมลลูกค้า 1 ฉบับ ทั้งคู่ 200; ยังไม่ import → 200 `backordered_line_item_ids` และอีเมล admin ไม่เพิ่ม; order `canceled` → 400; ไม่มี token admin → 401
 - AC-54 (EV-24, กฎข้อ 40) e2e admin: order backordered เห็น `evoucher-retry-allocation`; dblclick → POST 1 ครั้ง (นับ request); หลัง import code กด → toast และ `evoucher-backordered-badge` หาย; order ที่ไม่มี line ค้าง → ไม่เห็นปุ่ม
 - AC-55 (EV-25, กฎข้อ 41) integration: order ที่ตั้งธงเฉพาะใน `order_line_item.metadata` (จำลองข้อมูลก่อน EV-22) → dry-run พิมพ์ 1 แถว DB ไม่เปลี่ยน; `--apply` → `GET /admin/orders/:id?fields=*items` คืน `items[].metadata.evoucher_backordered = true`; รันซ้ำ → 0; line ที่ไม่มีธงไม่ถูกแตะ

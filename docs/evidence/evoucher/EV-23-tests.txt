@@ -1,0 +1,30 @@
+# EV-23 (AC-53) — ผลการทดสอบ 2026-11-21
+## integration http: evoucher-retry-allocation.spec.ts — red ก่อนแก้ (route ยังไม่มี → 404)
+      ✕ allocates and delivers the backordered line after codes are imported and clears the flag (3613 ms)
+      ✕ claims codes only once and sends one customer email for two concurrent requests (3805 ms)
+      ✕ returns the still-backordered line without another admin email when no codes were imported (2879 ms)
+      ✕ returns an empty result (noop) when no line is backordered (3003 ms)
+      ✕ rejects a canceled order with 400 not_allowed (2038 ms)
+      ✕ rejects an order without e-voucher lines with 400 not_allowed (1986 ms)
+      ✓ returns 404 for an unknown order (854 ms)
+      ✓ returns 401 without an admin token (456 ms)
+Test Suites: 1 failed, 1 total
+Tests:       6 failed, 2 passed, 8 total
+## integration http: evoucher-retry-allocation.spec.ts — green หลังแก้ (Postgres 16)
+PASS integration-tests/http/evoucher-retry-allocation.spec.ts (48.083 s)
+      ✓ allocates and delivers the backordered line after codes are imported and clears the flag (5259 ms)
+      ✓ claims codes only once and sends one customer email for two concurrent requests (4614 ms)
+      ✓ returns the still-backordered line without another admin email when no codes were imported (2209 ms)
+      ✓ returns an empty result (noop) when no line is backordered (2868 ms)
+      ✓ rejects a canceled order with 400 not_allowed (3687 ms)
+      ✓ rejects an order without e-voucher lines with 400 not_allowed (2345 ms)
+      ✓ returns 404 for an unknown order (1420 ms)
+      ✓ returns 401 without an admin token (811 ms)
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+## unit ทั้งหมด (pnpm --filter backend test:unit)
+Test Suites: 121 passed, 121 total
+Tests:       1669 passed, 1669 total
+## storefront test:e2e:unit
+131 passed
+## pnpm lint && pnpm typecheck: ผ่าน (0 errors); pnpm --filter backend build: ผ่าน
