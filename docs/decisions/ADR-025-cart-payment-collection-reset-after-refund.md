@@ -36,3 +36,9 @@ cart เดิม (ที่อยู่ วิธีส่ง โค้ดส�
 - storefront ต้องจัดการ code ใหม่ 1 จุด (helper เดียวของ CORE-4i) และ e2e ต้องจำลอง "คืนเงินแล้วจ่ายซ้ำ"
 - ถ้า bump Medusa แล้ว `compensatePaymentIfNeededStep` เปลี่ยนพฤติกรรม (เช่นสร้าง collection ใหม่เอง) → ทบทวน ADR นี้ (เพิ่มในเช็กลิสต์ bump ของ spec 07)
 - รายงาน upstream (refund แล้ว recreate session ด้วย `data` เดิม + payment ที่คืนค้างใน collection) — **owner อนุมัติให้เปิด issue 2026-11-21** (session หลักเปิด; ร่างอยู่ใน PR ของ OPS-32)
+
+## ภาคผนวก 2026-11-21 (planner รอบ 41 — PAY-9 D-1, ไม่เปลี่ยนการตัดสินใจ)
+- middleware ของ ADR นี้ reset เฉพาะ collection ที่ "มี payment ที่คืนครบ" — ปัจจุบันเป็นจริงเพราะ recreate session ของ Medusa **ล้ม** (#17948) collection จึงไม่มี session ใหม่
+- ถ้า upstream แก้ medusajs/medusa#17948 แล้ว recreate สำเร็จ: collection เดิมได้ session ใหม่ที่ไม่มี payment → storefront ไม่เรียก `POST .../payment-sessions` ใหม่ → middleware ไม่ทำงาน → จ่ายใหม่ใน collection เดิม = O-2 (#69) กลับมา
+- กัน: characterization test `apps/backend/integration-tests/http/payment-collection-reset.spec.ts` (~`:256`) ล้มเมื่อพฤติกรรมเปลี่ยน + เช็กลิสต์ bump ของ spec 07 ข้อ 14 — PR ที่ bump ต้องทบทวน ADR นี้ (เช่นย้ายการ reset ไปตอน complete) ก่อน merge
+- collection เดิมที่ถูกถอด link ไม่มีเจ้าของ (ไม่ผูก cart/order) — หลักฐานการคืนเงินดูจาก payment/refund (`docs/ops/production.md` หัวข้อ OPS-32)

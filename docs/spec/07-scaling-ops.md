@@ -528,6 +528,46 @@ owner อนุมัติ (2026-11-21) ให้ task ของรอบนี
 | OPS-31 | warning ซ้ำตอน migrate + publishable key เดียวใน prod seed | `apps/backend/medusa-config.ts` หรือ guard ที่ log, `apps/backend/src/scripts/seed*.ts`, test | ~60 LOC + ~100 LOC test | AC-46 | PR เอกสารรอบ 40 | `medusa-config.ts` (เก็บทั้งสองฝั่งถ้า conflict — CLAUDE.md) |
 | OPS-32 | log ชัดเมื่อ complete ล้มหลังจ่าย + runbook + ร่าง issue upstream | `apps/backend/src/workflows/hooks/complete-cart-validate.ts`, `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, integration | ~40 LOC + ~120 LOC test | AC-47 | PR เอกสารรอบ 40 | `complete-cart-validate.ts` (ไม่มี task อื่นในรอบนี้), `production.md` |
 
+## Follow-up รอบ 41 (2026-11-21 — owner: redact PII + hygiene + เอกสาร go-live ใน release v0.3.0)
+ที่มา: OPS-32 #438 (log Medusa `recreate a payment session … Invalid string: {…}` มีชื่อ/อีเมล/เบอร์/ที่อยู่ของลูกค้า), CORE-71 builder (typecheck ในเครื่องล้มเมื่อมี `apps/backend/.medusa/types`),
+nits review รอบ 40 (#428, #429, #431, #432, #433, #434), PAY-9 D-1 (#17948), qa #465 (เวลา query ของการค้นหา)
+**แก้แล้วใน PR เอกสารรอบ 41 (owner อนุมัติแก้ `docs/ops/**` 2026-11-21)**: `docs/ops/production.md` — `worker_mode: "migrate"` (OPS-31), runbook collection ที่ถูกถอด link หลัง PAY-9, หมายเหตุเวลา refund ของ FS-22,
+Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเมลตัวเล็ก, backfill ธง backordered, redact PII, เวลา query ค้นหากับ catalog จริง)
+
+### What Medusa already gives us (รอบ 41)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| logger ของ prod | `logger` ใน `medusa-config.ts` → `json-logger.ts` ของเรา (winston format เดียวกับ Medusa — OPS-3) — log ของ Medusa core (รวมบรรทัด recreate session) ผ่าน logger นี้ | extend: format redact ใน chain เดิม (กฎข้อ 15) — ไม่เพิ่ม log shipper/infra |
+| redact ใน winston | `winston.format((info) => …)` ที่ใช้อยู่แล้ว | ใช้ตามเดิม |
+
+### Business rules (รอบ 41)
+15. (OPS-33) format `redactPii` ใน `json-logger.ts` (ก่อน `json()`) แทนค่า PII ใน `message`, `stack` และ field string อื่นของ log ด้วย `[REDACTED]`:
+    (a) ทุกสตริงรูปอีเมล; (b) ค่าของ key `email`, `phone`, `name`, `first_name`, `last_name`, `company`, `address_1`, `address_2`, `line1`, `line2`, `city`, `province`, `state`, `postal_code` ในข้อความรูป JSON/JS object (`"key":"value"` และ `key: 'value'`);
+    (c) เบอร์โทรไทย (`0` + 8–9 หลัก, `+66…`) ; ไม่แตะ id (`cart_…`, `pay_…`, `pi_…`), `request_id`, จำนวนเงิน; pure function + unit จากตัวอย่างบรรทัดจริงที่ integration ของ OPS-32 (`complete-after-payment-log.spec.ts`) สร้าง;
+    development (logger ของ Medusa เดิม) ไม่เปลี่ยน; runbook หัวข้อ OPS-32 แก้หมายเหตุ "อย่าแปะ log นี้" เป็น "ข้อมูล billing ถูก redact แล้ว (OPS-33)"
+16. (OPS-34 — hygiene backend รวม) (a) `apps/backend/tsconfig.json` exclude `.medusa/**` → `pnpm typecheck` ในเครื่องผ่านแม้มี `.medusa/types` (CI เดิมผ่านอยู่แล้ว);
+    (b) #428: assertion ของ test refund นับ order transaction ของ refund = 1 และนับเฉพาะ refund ที่สำเร็จ; (c) #429: ลบ session ทีละ id และ `query.graph` อยู่นอก try (พฤติกรรมเดิม);
+    (d) #431: assertion log แคบลงเป็นบรรทัดที่ขึ้นต้นด้วย prefix ที่ตรวจ; (e) #432: comment ระดับ log ของ saturation-sampler ตรงกับโค้ด; (f) #433: test ลำดับ `not_allowed` vs `invalid_data` ตรงกับ validator;
+    (g) #434: matcher `/store/customers/me/*` ของ flash ย้ายจาก `api/store/flash-sales/middlewares.ts` ไปไฟล์ middleware ของ path นั้น (พฤติกรรมเดิม); (h) test ยิงพร้อมกันของ PAY-9 ไม่ flake 404 (รอ link/collection ด้วยสัญญาณจริง)
+    — ไม่เปลี่ยนพฤติกรรม production ยกเว้นที่ระบุ; ห้ามเพิ่ม timeout/retries
+
+### Acceptance criteria (รอบ 41)
+- AC-48 (OPS-33, กฎข้อ 15) unit + integration — **ล้มบน develop** ก่อน: (a) unit `redactPii` กับข้อความตัวอย่างจริงของบรรทัด recreate session → ไม่มีอีเมล/ชื่อ/เบอร์/ที่อยู่ของ fixture เหลือ, `pay_…`/`cart_…` ยังอยู่;
+  (b) integration (แบบ AC-47a) ด้วยลูกค้าชื่อ/อีเมล/เบอร์/ที่อยู่ที่ tag ไว้ → stream ของ logger prod ไม่มีค่า tag ใดเลย และยังมีบรรทัด `CART_COMPLETION_FAILED_AFTER_PAYMENT` พร้อม `cart_id`; (c) logger development ไม่ redact (regression)
+- AC-49 (OPS-34, กฎข้อ 16) (a) สร้าง `apps/backend/.medusa/types/*.d.ts` จำลองที่ขัดกับ test แล้ว `pnpm --filter backend typecheck` ผ่าน; (b)–(h) test ที่แก้ผ่าน `--repeat-each`/รันซ้ำ 3 รอบ; static: ไม่มี `setTimeout`/`retries` ใหม่ใน test ที่แก้
+
+### Checklist ตอน bump `@medusajs/*` — เพิ่ม (รอบ 41)
+14. (PAY-9 D-1 — **สำคัญ**) ถ้า upstream แก้ medusajs/medusa#17948 แล้ว `compensatePaymentIfNeededStep` สร้าง session ใหม่ได้สำเร็จ → collection เดิมมี session ใหม่ที่ไม่มี payment → guard ของ PAY-9 ไม่ reset
+    → อาการ O-2 (#69) กลับมา: characterization test `integration-tests/http/payment-collection-reset.spec.ts` (~`:256`) จะล้ม → ทบทวน ADR-025 (ภาคผนวก 2026-11-21) ก่อน merge bump
+15. (CORE-75/CORE-88) `typo_tolerance` ของ `POST /store/search` และเกณฑ์ similarity ใน provider ยังเหมือนเดิม (AC-174, AC-185 ผ่าน); `json-logger.ts` redact ยังครอบข้อความ recreate session ของเวอร์ชันใหม่ (AC-48b)
+16. (ADR-028) ถ้า `FetchError` ของ `@medusajs/js-sdk` เก็บ `code`/`type` แล้ว → ย้ายผู้เรียก `lib/data/medusa-fetch.ts` กลับไปใช้ SDK แล้วลบ helper; ไม่งั้นตรวจว่า header ของ helper ยังเท่ากับของ SDK (unit AC-181a)
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| OPS-33 | redact PII ใน logger prod (กฎข้อ 15) + แก้หมายเหตุ runbook + บรรทัด go-live ข้อ 13 | `apps/backend/src/lib/json-logger.ts`, `src/lib/redact-pii.ts` (+ unit), integration, `docs/ops/production.md` | ~60 LOC + ~150 LOC test | AC-48 | PR เอกสารรอบ 41 | `production.md` (CORE-81, EV-25 คนละบรรทัด) |
+| OPS-34 | hygiene backend รวม (กฎข้อ 16) | `apps/backend/tsconfig.json`, test ตาม (b)–(h), `api/store/flash-sales/middlewares.ts` | ~40 LOC + ~150 LOC test | AC-49 | PR เอกสารรอบ 41 | `middlewares.ts` ถ้าย้าย matcher (CORE-80, GB-26 — ตัวหลัง sync) |
+
 ## Open questions (รอบ 35)
 - **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):
   (ก) **[แนะนำ]** placeholder inline เฉพาะบรรทัด build ของ Dockerfile (กฎ b; ไม่มี `ALLOW_TEST_PROVIDERS`) — ไม่แตะโค้ด app/guard/ADR; ผลกระทบ: guard env ตัวใหม่ในอนาคตต้องเพิ่ม placeholder ที่ Dockerfile ด้วย (ลืม → job `docker-worker-mode` แดงทันที ไม่หลุดเงียบ), บรรทัด build ยาวขึ้น ~5 ตัวแปร

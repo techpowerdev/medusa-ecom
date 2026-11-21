@@ -607,7 +607,7 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
-| ราคาก่อน VAT ของ variant | `calculated_price.calculated_amount_without_tax` — **ไม่ได้มาจาก `query.graph` ตรงๆ** แต่ Store API เติมให้ผ่าน helper `wrapVariantsWithTaxPrices` (`@medusajs/medusa/dist/api/store/products/helpers.js`) จาก tax context (region + `country_code`) — review #425 | ใช้ helper นี้ (หรืออ่านผ่าน Store API) ไม่คำนวณ VAT เอง |
+| ราคาก่อน VAT ของ variant | `calculated_price.calculated_amount_without_tax` — **ไม่ได้มาจาก `query.graph` ตรงๆ** แต่ Store API เติมให้ผ่าน helper `wrapProductsWithTaxPrices` (`@medusajs/medusa/api/store/products/helpers` — แก้ชื่อรอบ 41 ตามที่ AF-24 ใช้จริง `src/api/affiliate/products/route.ts:4`) จาก tax context (region + `country_code`) — review #425 | ใช้ helper นี้ (หรืออ่านผ่าน Store API) ไม่คำนวณ VAT เอง |
 | รวมยอด | `summarizeCommissionEntries` ของ module เรา | ขยาย (กฎ 48b) |
 
 ### Business rules (รอบ 40)
@@ -627,6 +627,29 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 |----|------|------|------|----|---------|------|
 | AF-24 | ประมาณการค่าคอมจากราคาก่อน VAT + `pending` สุทธิหลัง reversal (กฎ 48); qa | `src/api/affiliate/products/route.ts`, `src/modules/affiliate/service.ts` (`summarizeCommissionEntries`), storefront `modules/affiliate/**` (ป้าย), test | ~100 LOC + ~200 LOC test | AC-56, AC-57 | PR เอกสารรอบ 40 | — |
 (หมายเหตุ: AF-24 เคยถูกอ้างเป็นเลขสำรองใน Q21 รอบ 32 แต่ไม่ได้ใช้ — Q21 รวมใน GB-17 แล้ว จึงใช้เลขนี้)
+
+## Follow-up รอบ 41 (2026-11-21 — owner: รายงาน admin ใช้ pending สุทธิแบบ portal + ลิงก์แชร์มี `/th`)
+ที่มา: review #439 (AF-24 — `GET /admin/affiliate/reports/summary` ยังรวมแบบเดิม), GB-23 เสนอ (`share_url` ของ `GET /affiliate/products` = `<STOREFRONT_URL>/r/<code>?…` ไม่มี country)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 41)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| ยอดสุทธิ | `summarizeCommissionEntries({ net_pending_reversals: true })` ของ module เรา (AF-24) | ใช้ตามเดิม (กฎ 49) |
+| country ของลิงก์ | constant `STOREFRONT_COUNTRY_CODE` (`src/lib/storefront.ts`, GB-23); route `/[countryCode]/r/[code]` ของ storefront เติม country ให้ `to` เอง (`affiliateLandingPath`) | ใช้ตามเดิม (กฎ 50) |
+
+### Business rules (รอบ 41)
+49. (AF-25) `GET /admin/affiliate/reports/summary` ใช้ `net_pending_reversals: true` แบบเดียวกับ `GET /affiliate/me/earnings` (กฎ 48b) → `pending`/`reversed` ของ affiliate เดียวกันในช่วงเดียวกันเท่ากับ portal; ผลรวมทุกสถานะเท่าเดิม
+50. (AF-26) `share_url` = `<STOREFRONT_URL>/<STOREFRONT_COUNTRY_CODE>/r/<code>?to=/products/<handle>` (`to` คงไม่มี country — route ของ storefront เติมเอง); `STOREFRONT_URL` ไม่ตั้ง → path สัมพัทธ์ `/th/r/<code>?…`
+
+### Acceptance criteria (รอบ 41)
+- AC-58 (AF-25, กฎ 49) integration http — **ล้มบน develop** ก่อน: ข้อมูลแบบ AC-57 → admin summary ของ affiliate นั้น `pending=0`, `reversed=0` สำหรับ line L และเท่ากับผลของ `/affiliate/me/earnings` ทุกสถานะ (ล้มบน develop ที่ `pending=100`, `reversed=−100`)
+- AC-59 (AF-26, กฎ 50) unit `shareUrl` + integration: `share_url` match `^https?://[^/]+/th/r/<code>\?to=/products/<handle>$`; ไม่ตั้ง env → `/th/r/<code>?to=…` (แก้ assertion เดิม `portal.unit.spec.ts:55,59`)
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| AF-25 | admin summary ใช้ pending สุทธิ (กฎ 49) | `src/api/admin/affiliate/reports/summary/route.ts`, integration | ~5 LOC + ~80 LOC test | AC-58 | PR เอกสารรอบ 41 | — |
+| AF-26 | `share_url` มี `/th` (กฎ 50) | `src/modules/affiliate/utils/portal.ts`, unit + integration | ~5 LOC + ~40 LOC test | AC-59 | PR เอกสารรอบ 41 | — |
 
 ## Open questions (รอบ 32 — 2026-11-17)
 - ~~**Q21**~~ ✅ **owner ตอบ ก 2026-11-17** → `hold_days` และ `attribution_window_days` ≤ 36500 รวมใน GB-17 (spec 04 กฎข้อ 40 (ข), AC-60 (c)); คำถามเดิม:

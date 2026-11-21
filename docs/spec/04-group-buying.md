@@ -1031,6 +1031,41 @@ ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คื
 ลำดับ: GB-20 → GB-22; GB-20 (#435) → GB-20b (∥ GB-22); GB-21 อิสระ (หลัง ADR-024 accepted); GB-23 ∥ GB-24 ∥ GB-25 อิสระ (GB-25 sync `middlewares.ts` หลัง GB-20)
 GB-22 ขยาย allow-list ของ GB-8 (`order.payment_status`) — บันทึกเป็นภาคผนวก 2026-11-21 ใน ADR-016 แล้ว
 
+## Follow-up รอบ 41 (2026-11-21 — owner: ทุกข้อใน release v0.3.0)
+ที่มา: owner ล็อก campaign ของแคมเปญ group buy ทั้งหมด (ต่อจาก GB-25) + review เสนอให้ clone `GB-*` ใช้ campaign จาก link; qa GB-24 (นับถอยหลัง "เหลือเวลา" ขึ้นตอนแคมเปญยังไม่เริ่ม); nits review #447 (GB-20b)
+ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเขตล็อก campaign)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 41)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| campaign ของแคมเปญ group buy | link `group_buy_campaign ↔ campaign` ของเรา (อ่านด้วย `query.graph`) | ใช้ตามเดิม (กฎข้อ 51) |
+| เพิ่ม/ถอด promotion ของ campaign | `POST /admin/campaigns/:id/promotions` ของ Medusa | ขยาย middleware ของ GB-25 (กฎข้อ 51a) |
+| นับถอยหลัง | `Countdown` ของเรา (`modules/common/components/countdown`) | ใช้ตามเดิม (กฎข้อ 52) |
+
+### Business rules (รอบ 41)
+51. (GB-26 — ADR-026 ภาคผนวก) (a) `POST /admin/campaigns/:id/promotions` ของ campaign ที่ผูก `group_buy_campaign` → 400 `not_allowed` **ทุกกรณี** (เพิ่มหรือถอด promotion ใดก็ได้ — `GBT-*`, `GB-*`, promotion อื่น)
+    ไม่ขึ้นกับสถานะแคมเปญ (ต้นแบบ/โค้ดกลุ่มถูกสร้างและผูกโดย workflow ของเราที่ไม่ผ่าน route นี้); campaign ที่ไม่ผูก → `next()`; ข้อความอังกฤษ "This campaign belongs to a group-buy campaign; its promotions are managed by Group buying.";
+    (b) `buildGroupPromotionInput` (`modules/group_buy/utils/group-promotion.ts:54`) ใช้ `campaign_id` ของ Medusa campaign ที่อ่านจาก link `group_buy_campaign.campaign` ของแคมเปญที่กลุ่มสังกัด แทน `template.campaign_id`
+        (ต้นแบบที่ไม่ได้อยู่ใน campaign ของแคมเปญ → workflow สร้างกลุ่ม throw `invalid_data` ไม่สร้าง promotion — กันข้อมูลเพี้ยนจากการแก้ก่อนมีล็อก)
+52. (GB-27 — qa GB-24) หน้ากลุ่มเมื่อ `campaign.starts_at > now` (กฎข้อ 49) → ไม่ render `group-countdown` ("เหลือเวลา"); แสดงเฉพาะ `group-starts-at`; เมื่อเริ่มแล้ว (โหลดหน้าใหม่) แสดงนับถอยหลังตามเดิม
+53. (GB-28 — nits review #447 ของ GB-20b) (a) อีเมล alert `GROUP_BUY_PAYMENT_CHECK_GAVE_UP` ถูกส่งก่อน expire → ข้อความต้องไม่บอกว่า "ยกเลิกสิทธิ์แล้ว" (ใช้ "กำลังยกเลิกสิทธิ์ — ตรวจผลใน admin");
+    (b) log เมื่อ `checkGroupBuyMembershipPaymentWorkflow` ล้ม ต้องไม่ใช้ข้อความ `failed to expire membership` (แยกข้อความ check กับ expire); (c) ชื่อ workflow กับ step ไม่ซ้ำกัน;
+    (d) test idempotency ของอีเมล give-up พิสูจน์จริง (รันสองรอบ → notification 1 ฉบับ จากการนับใน notification module ไม่ใช่ mock ของ step); (e) membership ที่ผล `skip`/`retry` ไม่กิน slot ของ batch (รอบเดียวยังประมวลผล membership ที่เลือกได้ครบตาม batch size)
+
+### Acceptance criteria (รอบ 41)
+- AC-69 (GB-26, กฎข้อ 51) integration http — **ล้มบน develop+GB-25** ก่อน: (a) campaign ของแคมเปญ group buy `draft` และ `active`: `POST /admin/campaigns/:id/promotions { add: [<promotion ปกติ>] }` → 400; `{ remove: [<GBT-* id>] }` → 400; ค่าเดิมไม่เปลี่ยน;
+  campaign อื่น → 200 (regression); (b) unit `buildGroupPromotionInput` ใช้ campaign id ที่ส่งเข้ามา (จาก link) แม้ `template.campaign_id` ต่าง; integration: สร้างกลุ่ม → promotion `GB-*` อยู่ใน campaign ของ link; regression AC-67 ผ่าน
+- AC-70 (GB-27, กฎข้อ 52) e2e (setup แบบ AC-66a): `/th/g/<token>` ของแคมเปญที่ยังไม่เริ่ม → ไม่มี `group-countdown`, มี `group-starts-at` (ล้มบน develop); แคมเปญที่เริ่มแล้ว → มี `group-countdown`
+- AC-71 (GB-28, กฎข้อ 53) integration + unit: (a) ข้อความ alert give-up ไม่มีคำ "ยกเลิกสิทธิ์แล้ว"; (b) mock check workflow throw → log ไม่มี `failed to expire membership`; (c) static ชื่อ workflow ≠ ชื่อ step;
+  (d) job รอบ give-up สองรอบ → notification ถึง `OPS_ALERT_EMAIL` 1 ฉบับ (นับจาก notification module); (e) batch size N มี membership `retry` 1 + ที่เลือกได้ N → รอบเดียวประมวลผลที่เลือกได้ N ราย
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| GB-26 | ล็อกการเพิ่ม/ถอด promotion ของ campaign group buy + clone ใช้ campaign จาก link (กฎข้อ 51) | `src/api/admin/promotions/group-buy-lock.ts` (ของ GB-25), `src/modules/group_buy/utils/group-promotion.ts` (+ unit), `src/workflows/group-buy/*` (สร้างกลุ่ม), integration | ~50 LOC + ~150 LOC test | AC-69 | **GB-25 (#463)** | `group-buy-lock.ts`, `middlewares.ts` |
+| GB-27 | ซ่อนนับถอยหลังเมื่อแคมเปญยังไม่เริ่ม (กฎข้อ 52); qa | `modules/group-buy/components/group-page/index.tsx`, `lib/util/group-page.ts` (+ test), e2e | ~10 LOC + ~50 LOC test | AC-70 | PR เอกสารรอบ 41 (GB-24 ☑) | `group-page/index.tsx` |
+| GB-28 | nits GB-20b: ข้อความ alert/log, ชื่อ workflow, idempotency อีเมล, batch slot (กฎข้อ 53) | `src/workflows/group-buy/membership-payment.ts`, `src/jobs/group-buy-deadline.ts`, `src/modules/resend/templates.ts`, test | ~40 LOC + ~120 LOC test | AC-71 | PR เอกสารรอบ 41 (GB-20b ☑) | `templates.ts` |
+
 ## Open questions
 - ~~**Q24**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** ล็อก `GB-<token>` ตลอดอายุกลุ่ม (ADR-026 accepted) → GB-25 — คำถามเดิม: (รอบ 40, ADR-026) "ล็อกส่วนลดตอน join" ตีความว่า **ส่วนลดของกลุ่ม (`GB-<token>`) แก้ไม่ได้ตลอดอายุกลุ่ม** เพื่อให้สมาชิกกลุ่มเดียวกันได้ส่วนลดเท่ากัน (ส่วนลดของแต่ละคนถูก freeze ใน draft order ตอน join อยู่แล้ว — กฎข้อ 5)
   และต้นแบบ `GBT-*` ยังแก้ได้ (มีผลเฉพาะกลุ่มใหม่ — Q5): (ก) **[Recommended]** ตามนี้ — middleware กัน admin route (ADR-026 ทางเลือก 1) ~70 LOC;

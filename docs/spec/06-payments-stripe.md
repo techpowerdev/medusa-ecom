@@ -329,6 +329,53 @@ follow-up (ไม่ใช่ task บังคับ — ทำในงาน�
 
 ลำดับ: PAY-8 ∥ GB-20 (คนละ route แต่ไฟล์ `middlewares.ts` ร่วม — ตัวที่ merge ทีหลัง sync) → PAY-9 (หลัง GB-20)
 
+## Follow-up รอบ 41 (2026-11-21 — owner: ทุกข้อใน release v0.3.0)
+ที่มา: review #426 (PAY-8 — admin เห็น toast 400 หลังกด Refund), FS-22 builder/review #464 (PromptPay `finish` ค้าง "กำลังสร้างคำสั่งซื้อ"; `/api/payment-return` ส่ง `/cart?error=order_failed` แต่หน้า cart ไม่อ่าน),
+qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ flaky — `sessionIntentId` ได้ `""` ระหว่าง Stripe ตอบ 500)
+
+### What Medusa already gives us (รอบ 41)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ปุ่ม Refund ของหน้า order | `@medusajs/dashboard` 2.22.1 `order-detail` — action `to: /orders/:id/refund?paymentId=…`, `disabled: !payment.captured_at \|\| !!payment.canceled_at \|\| totalRefunded >= payment.amount` (`dist/order-detail-ERHRK6W3.mjs:2420-2423`) — **ไม่มีจุดขยาย** ให้ซ่อน/ปิดจาก extension | ซ่อน/ปิดไม่ได้โดยไม่ patch → widget แจ้งเตือน (Q-P11 = ก owner ตัดสิน 2026-11-21) |
+| อ่าน order change ที่ค้าง | `useOrderChanges(id, query)` ของ `@medusajs/dashboard/hooks` (`dist/hooks.d.ts:910`) | ใช้ตามเดิม (กฎข้อ 12) |
+| แจ้งเตือนใน widget | injection zone `order.details.before`, `Alert`/`Container` ของ `@medusajs/ui` | ใช้ตามเดิม |
+| ทาง redirect ของ 3DS/PromptPay | route ของ starter `/api/payment-return` + `placeOrder` | ขยาย (กฎข้อ 14) |
+
+### Business rules (รอบ 41)
+12. (PAY-10 — Q-P11 = ก owner ตัดสิน 2026-11-21) widget `order.details.before` (`src/admin/widgets/order-refund-blocked.tsx`): เมื่อ order มี order change `status ∈ {pending, requested}` (`useOrderChanges` — ค่าเดียวกับ middleware ของ PAY-8 กฎข้อ 10b)
+    แสดง `Alert` (variant warning, testid `order-refund-blocked`) ข้อความอังกฤษ "Refunds are blocked while this order has an active return, claim, exchange or edit. Confirm or cancel it first." + ชนิดของ change ที่ค้าง;
+    ไม่มี change ค้าง → ไม่ render อะไร; ไม่แตะปุ่ม Refund ของ Medusa (ยังกดได้ แล้ว middleware ของ PAY-8 ตอบ 400 ข้อความเดียวกันเป็น toast)
+13. (PAY-11 — ต่อจาก FS-22, spec 03 กฎข้อ 27/29) PromptPay ทางสำรอง `finish()` ได้ผล `placeOrder` แบบ "คืนเงิน" (kind `refunded` ของ CORE-76: `FLASH_*`/`OUT_OF_STOCK`/4xx หลังจ่ายแล้ว) → หยุด poll ทันที
+    แล้วแสดง `promptpay-refunded` ข้อความตามกฎข้อ 27 ของ spec 03 (บอกเหตุผล "สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน… คืนเงินเต็มจำนวนให้อัตโนมัติ") แทนการค้าง "กำลังสร้างคำสั่งซื้อ";
+    poll ได้ `refunded` โดยไม่รู้เหตุ → ข้อความเดิมของ PAY-6c; network/5xx → poll ต่อตามเดิม (PAY-6b)
+14. (PAY-12) `/api/payment-return` (redirect off-site — 3DS/PromptPay redirect): `placeOrder` ได้ kind `refunded` → `/<cc>/cart?error=refunded`; error อื่น → `order_failed` (เดิม); ปฏิเสธ → `payment_failed` (เดิม);
+    หน้า `/<cc>/cart` อ่าน `error` ∈ {`refunded`, `order_failed`, `payment_failed`} แล้วแสดง `cart-error-notice` ข้อความไทยต่อค่า (`refunded` = ข้อความกฎข้อ 27 spec 03; `order_failed` = "สร้างคำสั่งซื้อไม่สำเร็จ หากมีการตัดเงิน ระบบจะคืนเงินให้อัตโนมัติ กรุณาตรวจสอบตะกร้าแล้วสั่งใหม่";
+    `payment_failed` = "ชำระเงินไม่สำเร็จ กรุณาเลือกวิธีชำระเงินอีกครั้ง"); ค่าอื่น → ไม่แสดง (ไม่ render ค่าจาก URL ตรง)
+15. (PAY-13 — test hygiene) e2e `pay-9-refunded-cart-repay.spec.ts` ขั้นจ่ายใหม่: รอ `sessionIntentId` ไม่ว่างด้วย `expect.poll` (หรือรอ response ของ `POST .../payment-sessions` ที่ 2xx) ก่อนใช้ค่า;
+    Stripe ตอบ 5xx ชั่วคราว → ลองสร้าง session ใหม่ตามทางที่ผู้ใช้ทำได้ (เช่นเลือกวิธีชำระอีกครั้ง) ไม่เกิน 2 ครั้ง; **ห้าม**ลดสิ่งที่ตรวจ (AC-22c ทุกข้อคงเดิม), ห้าม `waitForTimeout`/`retries`/เพิ่ม timeout ระดับ config
+
+### Acceptance criteria (รอบ 41)
+- AC-23 (PAY-10, กฎข้อ 12) e2e admin: order ที่มี return request ค้าง → เห็น `order-refund-blocked` (ข้อความมี `active return`); ยกเลิก return request แล้ว reload → ไม่เห็น; order ปกติ → ไม่เห็น
+- AC-24 (PAY-11, กฎข้อ 13) unit Vitest (logic ของ finish/poll เป็น pure helper) + e2e route mock: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → ภายใน 5 วินาทีเห็น `promptpay-refunded` มีคำ "คืนเงิน" และไม่เห็น `promptpay-awaiting-order`; ไม่มี request poll เพิ่มหลังนั้น (ล้มบน develop+FS-22 — ค้าง awaiting)
+- AC-25 (PAY-12, กฎข้อ 14) unit ของ route (แบบ `core-29-active-cart.test.ts:187-214`) + e2e: placeOrder kind `refunded` → location `/th/cart?error=refunded`; เปิด `/th/cart?error=refunded|order_failed|payment_failed` → `cart-error-notice` อักษรไทยตามค่า; `?error=<script>` → ไม่แสดง (ล้มบน develop — หน้า cart ไม่อ่าน `error`)
+- AC-26 (PAY-13, กฎข้อ 15) e2e `pay-9-refunded-cart-repay` `--repeat-each=5` ผ่านในเครื่อง/CI; static: ไม่มี `waitForTimeout` ใหม่ และ assertion ของ AC-22c เท่าเดิม (นับ `expect(` ของ step เดิมไม่ลด)
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| PAY-10 | widget แจ้งว่า refund ถูกกันเมื่อมี order change ค้าง (กฎข้อ 12); qa | `apps/backend/src/admin/widgets/order-refund-blocked.tsx` (ใหม่), e2e admin | ~50 LOC + ~80 LOC test | AC-23 | PR เอกสารรอบ 41 (Q-P11 = ก ☑), PAY-8 (#426) | — |
+| PAY-11 | PromptPay ทางสำรองหยุดค้างและบอกเหตุคืนเงิน (กฎข้อ 13); qa | `modules/checkout/components/promptpay-payment/index.tsx`, `lib/util/promptpay*.ts` (+ test), e2e | ~50 LOC + ~120 LOC test | AC-24 | **FS-22 (#464)**, **CORE-76** (kind `refunded`) | `cart.ts`/`checkout-error.ts` |
+| PAY-12 | `/api/payment-return` → `error=refunded` + หน้า cart อ่าน `error` (กฎข้อ 14); qa | `app/api/payment-return/route.ts`, `app/[countryCode]/(main)/cart/page.tsx`/`modules/cart/templates`, `lib/util/cart-error.ts` (+ test), e2e | ~60 LOC + ~120 LOC test | AC-25 | **FS-22 (#464)**, **CORE-76** | `cart.ts` (ไม่แก้ — ใช้ผลของ CORE-76) |
+| PAY-13 | (test hygiene) e2e pay-9 จ่ายใหม่ไม่ flaky (กฎข้อ 15) | `apps/storefront/e2e/pay-9-refunded-cart-repay.spec.ts` | ~30 LOC | AC-26 | PR เอกสารรอบ 41 | — |
+
+ลำดับ: PAY-13 ∥ PAY-10 อิสระ; CORE-76 → (PAY-11 ∥ PAY-12)
+
+### Open questions (รอบ 41)
+- ~~**Q-P11**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** widget `order.details.before` แจ้งเตือน (กฎข้อ 12) — คำถามเดิม: (PAY-10) owner สั่ง "ซ่อน/ปิดปุ่ม Refund เมื่อมี order change ค้าง" แต่ปุ่มเป็นของหน้า order ใน `@medusajs/dashboard` (เงื่อนไข disabled ฝังใน `order-detail` — ไม่มี injection/override ให้ extension):
+  (ก) **[Recommended]** widget เตือนเหนือหน้า order (กฎข้อ 12) + toast 400 ของ PAY-8 ที่มีอยู่ — ไม่แตะ library, ~50 LOC; ปุ่มยังกดได้แต่เงินไม่ถูกคืนผิด (backend กันแล้ว)
+  (ข) patch `@medusajs/dashboard` ด้วย `pnpm patch` ให้ disabled เมื่อมี change ค้าง — ซ่อนจริง แต่ขัด ADR-018 (ห้าม patch library) ต้องมี ADR ใหม่และตรวจซ้ำทุก bump
+  (ค) ไม่ทำ — คง toast 400 ของ PAY-8
+
 ## Open questions
 - ~~Q10~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-025 ทางเลือก 2** → PAY-9 เริ่มได้หลัง GB-20; คำถามเดิม (รอบ 40): อนุมัติ ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน)
   หรือให้ storefront สร้าง cart ใหม่ (ไม่ครอบ client อื่น)

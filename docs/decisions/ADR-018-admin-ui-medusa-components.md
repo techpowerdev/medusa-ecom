@@ -150,3 +150,9 @@ context ของ ui เช่น `TooltipProvider` ข้ามสำเนา�
   แถว #14 ของตารางตรวจ (`programs-table.tsx` "→ `action` ของ `DataTable` หรือ Header") ให้อ่านเป็น "→ `action` ของ `DataTable`" (ADM-14)
 - ถ้า `@medusajs/dashboard` เวอร์ชันที่ bump ในอนาคตส่งต่อ `data-testid` ใน `action` ได้ ให้ PR ที่ bump กลับไปใช้ testid ที่ปุ่มและตัดข้อยกเว้นนี้ (แก้ CLAUDE.md ด้วย)
 - CLAUDE.md (หัวข้อ Language และข้อห้ามข้อ 1) แก้ประโยคข้อยกเว้นให้ตรงกันใน PR เดียวกับหมายเหตุนี้ (owner อนุญาต 2026-11-05)
+
+## ภาคผนวก 2026-11-21 — ข้อยกเว้นที่ 3: searchbox ของ `DataTable` (owner อนุมัติ 2026-11-21 ตาม review ADM-40)
+- บริบท: ช่องค้นหาของ `DataTable` (`search` ของ dashboard/`DataTable.Search` ของ `@medusajs/ui`) ไม่รับ `data-testid` เหมือนปุ่มใน `action` (หมายเหตุ (2))
+- การตัดสินใจ: e2e หาช่องค้นหาด้วย `page.getByTestId("<wrapper ของตาราง>").getByRole("searchbox")` — ข้อยกเว้น**ที่ 3** ของการหาด้วย testid (ต่อจาก menuitem ของ `ActionMenu` และปุ่มใน `action`)
+- ผล: spec 08 กฎ 44 แก้ testid `affiliates-search` (ไม่มีจริง) เป็น locator นี้; ตารางที่จะมีช่องค้นหาในอนาคตใช้แบบเดียวกัน; CLAUDE.md หัวข้อ Language แก้ประโยคข้อยกเว้นเป็นสามข้อ (session หลักแก้ — owner อนุมัติ 2026-11-21)
+- ถ้า bump แล้ว search ส่งต่อ `data-testid` ได้ → กลับไปใช้ testid และตัดข้อยกเว้นนี้
