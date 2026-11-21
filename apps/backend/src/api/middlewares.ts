@@ -12,6 +12,7 @@ import { businessErrorHandler } from './error-handler'
 import { storeOwnershipMiddlewares } from './store/ownership/middlewares'
 import { guardPaidStripeSession } from './store/payment-collections/stripe-session-guard'
 import { guardGroupBuyPaymentWindow } from './store/payment-collections/group-buy-payment-guard'
+import { resetRefundedCartPaymentCollection } from './store/payment-collections/refunded-collection-reset'
 import { checkoutPhaseTiming } from './store/carts/checkout-phase-timing'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
@@ -55,10 +56,11 @@ export default defineMiddlewares({
     ...storeOwnershipMiddlewares,
     // PAY-6 (spec 06 กฎข้อ 7A, ADR-015): ระบุ method จึงรันหลัง auth + ownership ที่ไม่ระบุ method (ADR-013, AC-13g)
     // GB-20 (spec 04 กฎข้อ 42, ADR-024 a): guard ช่วงชำระของ group buy ก่อน guardPaidStripeSession — ลำดับตาม ADR-025
+    // PAY-9 (spec 06 กฎข้อ 11, ADR-025): reset collection ของ cart ที่ถูกคืนเงินครบ — หลัง GB guard ก่อน guardPaidStripeSession
     {
       method: ['POST'],
       matcher: '/store/payment-collections/:id/payment-sessions',
-      middlewares: [guardGroupBuyPaymentWindow, guardPaidStripeSession],
+      middlewares: [guardGroupBuyPaymentWindow, resetRefundedCartPaymentCollection, guardPaidStripeSession],
     },
     // OPS-20a (spec 07 AC-31): เวลาเข้า/finish ของ complete (log debug เฉพาะ load run) — หลัง auth + ownership แบบเดียวกับ PAY-6
     {
