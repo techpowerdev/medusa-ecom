@@ -12,6 +12,7 @@ type Opts = {
   ends_at?: string | null
   pay_deadline_at?: string | null
   is_draft_order?: boolean
+  payment_status?: string
 }
 
 const membership = ({
@@ -20,6 +21,7 @@ const membership = ({
   ends_at = LATER,
   pay_deadline_at = null,
   is_draft_order = true,
+  payment_status = "not_paid",
 }: Opts = {}): GroupBuyMembership => ({
   id: "gbmem_1",
   status,
@@ -28,7 +30,7 @@ const membership = ({
   order_id: "order_1",
   group: { id: "gbgrp_1", status: group, ends_at, pay_deadline_at, join_token: "tok" },
   campaign: { id: "gbcmp_1", name: "แคมเปญ" },
-  order: { id: "order_1", display_id: 7, status: "pending", is_draft_order, currency_code: "thb", total: 630 },
+  order: { id: "order_1", display_id: 7, status: "pending", is_draft_order, currency_code: "thb", total: 630, payment_status },
 })
 
 describe("groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / ชำระเงินภายใน / ชำระแล้ว / ยกเลิก)", () => {
@@ -73,8 +75,39 @@ describe("groupBuyMembershipView (spec 04 Storefront: รอกลุ่ม / �
     expect(groupBuyMembershipView(membership({ status: "cancelled", group: "failed" }), NOW)).toEqual({
       kind: "cancelled",
       canLeave: false,
+      refundNotice: false,
     })
   })
+
+  // GB-22 (spec 04 กฎข้อ 45b, AC-64b): จ่ายแล้วแต่ยังเป็น draft (แปลงไม่สำเร็จ/รอ subscriber) → กำลังยืนยัน ไม่ใช่ปุ่มชำระ/หมดเวลา
+  it.each(["captured", "authorized", "partially_captured"])(
+    "awaiting_payment + payment_status %s → processing ทั้งก่อนและหลังเส้นตาย",
+    (payment_status) => {
+      for (const pay_deadline_at of [EARLIER, LATER, null]) {
+        const m = membership({ status: "awaiting_payment", group: "succeeded", pay_deadline_at, payment_status })
+        expect(groupBuyMembershipView(m, NOW)).toEqual({ kind: "processing", canLeave: false })
+      }
+    }
+  )
+
+  it.each(["not_paid", "awaiting", "canceled", "refunded"])(
+    "awaiting_payment + payment_status %s เลยเส้นตาย → expired (เดิม)",
+    (payment_status) => {
+      const m = membership({ status: "awaiting_payment", group: "succeeded", pay_deadline_at: EARLIER, payment_status })
+      expect(groupBuyMembershipView(m, NOW).kind).toBe("expired")
+    }
+  )
+
+  it.each(["captured", "authorized", "partially_captured", "refunded", "partially_refunded"])(
+    "cancelled + payment_status %s → cancelled พร้อมข้อความคืนเงิน",
+    (payment_status) => {
+      expect(groupBuyMembershipView(membership({ status: "cancelled", payment_status }), NOW)).toEqual({
+        kind: "cancelled",
+        canLeave: false,
+        refundNotice: true,
+      })
+    }
+  )
 
   it("กลุ่ม/order เป็น null (ข้อมูลหาย) ไม่ throw", () => {
     const m = { ...membership({ status: "awaiting_payment" }), order: null }

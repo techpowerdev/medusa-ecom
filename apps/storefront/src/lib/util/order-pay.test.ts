@@ -5,8 +5,10 @@ import { paymentSessionResult } from "./action-result"
 import {
   GroupBuyOrder,
   hasPayment,
+  orderPaySessionResult,
   orderPayView,
   paymentSettled,
+  showRefundNotice,
   sessionCreateOutcome,
   stripeReturn,
 } from "./order-pay"
@@ -127,16 +129,20 @@ describe("orderPayView", () => {
     expect(orderPayView(data(), NOW)).toBe("form")
   })
 
-  it("collection completed → paid", () => {
-    expect(orderPayView(data({ collection: "completed" }), NOW)).toBe("paid")
+  // GB-22 (session หลักตัดสิน 2026-11-21, เจตนากฎข้อ 45b): เงินเข้าแล้วแต่ membership ยัง awaiting_payment (draft ยังไม่แปลง/convert_failed)
+  // → processing ข้อความเดียวกับหน้าบัญชี; "ชำระเงินเรียบร้อยแล้ว" เฉพาะ membership paid (แปลง order แล้ว)
+  it("awaiting_payment + collection completed → processing", () => {
+    expect(orderPayView(data({ collection: "completed" }), NOW)).toBe("processing")
   })
 
-  it("payment_status captured → paid", () => {
-    expect(orderPayView(data({ payment_status: "captured" }), NOW)).toBe("paid")
+  it("awaiting_payment + payment_status captured → processing (แม้เลยเส้นตาย)", () => {
+    expect(orderPayView(data({ payment_status: "captured" }), NOW)).toBe("processing")
+    expect(orderPayView(data({ payment_status: "captured", deadline: EARLIER }), NOW)).toBe("processing")
   })
 
   it("membership paid → paid", () => {
     expect(orderPayView(data({ membership: "paid" }), NOW)).toBe("paid")
+    expect(orderPayView(data({ membership: "paid", collection: "completed", payment_status: "captured" }), NOW)).toBe("paid")
   })
 
   it("joined (กลุ่มยังไม่สำเร็จ) → waiting", () => {
@@ -158,6 +164,37 @@ describe("orderPayView", () => {
   it("awaiting_payment แต่ไม่มี collection → closed", () => {
     expect(orderPayView(data({ collections: false }), NOW)).toBe("closed")
   })
+
+  // GB-22 (spec 04 กฎข้อ 45a, AC-64a — GB-BUG-1 ก): สิทธิ์ยกเลิกแล้วต้องไม่บอกว่า "ชำระเงินเรียบร้อยแล้ว"
+  it.each([
+    { collection: "completed" },
+    { payment_status: "captured" },
+    { payment_status: "captured", collection: "completed", session: "captured" },
+  ])("cancelled + %o → closed (ไม่ใช่ paid)", (opts) => {
+    expect(orderPayView(data({ membership: "cancelled", ...opts }), NOW)).toBe("closed")
+  })
+
+  it("awaiting_payment ก่อนเส้นตาย + collection completed → processing (ไม่ใช่ paid — session หลักตัดสิน 2026-11-21)", () => {
+    expect(orderPayView(data({ collection: "completed" }), NOW)).toBe("processing")
+  })
+})
+
+// GB-22 (กฎข้อ 45a): ข้อความคืนเงินเฉพาะสิทธิ์ที่ยกเลิกและมีการชำระแล้ว (predicate hasPayment)
+describe("showRefundNotice", () => {
+  it.each([{ collection: "completed" }, { session: "authorized" }, { payment_status: "captured" }])(
+    "cancelled + %o → จริง",
+    (opts) => {
+      expect(showRefundNotice(data({ membership: "cancelled", ...opts }))).toBe(true)
+    }
+  )
+
+  it("cancelled ไม่มีการชำระ → เท็จ", () => {
+    expect(showRefundNotice(data({ membership: "cancelled", session: "pending" }))).toBe(false)
+  })
+
+  it.each(["awaiting_payment", "paid"])("%s + มีการชำระ → เท็จ", (membership) => {
+    expect(showRefundNotice(data({ membership, collection: "completed" }))).toBe(false)
+  })
 })
 
 // spec 06 กฎข้อ 9 (d)/(d2): ไม่ดู status code อื่นนอกจาก 409 + code ของเรา และ 401
@@ -177,6 +214,26 @@ describe("sessionCreateOutcome", () => {
 
   it("failed → check-status", () => {
     expect(sessionCreateOutcome({ error: "failed" })).toBe("check-status")
+  })
+
+  it("GB_PAYMENT_CLOSED → closed (GB-22 กฎข้อ 45a)", () => {
+    expect(sessionCreateOutcome({ error: "GB_PAYMENT_CLOSED" })).toBe("closed")
+  })
+})
+
+// GB-22 (spec 04 กฎข้อ 45a): 400 GB_PAYMENT_CLOSED ของ guard GB-20 → closed; อื่นๆ ตาม helper กลางเดิม
+describe("orderPaySessionResult → sessionCreateOutcome", () => {
+  it.each([
+    [400, "GB_PAYMENT_CLOSED", "closed"],
+    [200, null, "created"],
+    [409, "PAYMENT_ALREADY_COMPLETED", "already-paid"],
+    [401, null, "unauthorized"],
+    [400, "invalid_data", "check-status"],
+    [409, "GB_PAYMENT_CLOSED", "check-status"],
+    [500, "GB_PAYMENT_CLOSED", "check-status"],
+  ] as const)("%i %s → %s", (status, code, outcome) => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    expect(sessionCreateOutcome(orderPaySessionResult({ status, code }))).toBe(outcome)
   })
 })
 

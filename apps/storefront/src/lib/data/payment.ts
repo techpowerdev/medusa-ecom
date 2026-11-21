@@ -2,7 +2,7 @@
 
 import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
 import { paymentSessionData } from "@lib/util/payment-session"
-import { PaymentSessionResult, paymentSessionResult } from "@lib/util/action-result"
+import { OrderPaySessionResult, orderPaySessionResult } from "@lib/util/order-pay"
 import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
@@ -69,6 +69,7 @@ export async function createPaymentSession(
  * CORE-4i-b (spec 01 กฎข้อ 72, Q-C2 = (ก)): action ที่หน้า `/account/orders/:id/pay` เรียก — ผลของ `createPaymentSession`
  * ผ่าน helper กลาง รูปแบบเดียวกับ `initiatePaymentSession` ของ checkout (`{ ok: true } | { error }`)
  */
-export async function startPaymentSession(collectionId: string, providerId: string): Promise<PaymentSessionResult> {
-  return paymentSessionResult(await createPaymentSession(collectionId, providerId))
+export async function startPaymentSession(collectionId: string, providerId: string): Promise<OrderPaySessionResult> {
+  // GB-22 (spec 04 กฎข้อ 45a): + 400 `GB_PAYMENT_CLOSED` ของ guard GB-20
+  return orderPaySessionResult(await createPaymentSession(collectionId, providerId))
 }
