@@ -15,6 +15,7 @@ import { guardPaidStripeSession } from './store/payment-collections/stripe-sessi
 import { guardGroupBuyPaymentWindow } from './store/payment-collections/group-buy-payment-guard'
 import { resetRefundedCartPaymentCollection } from './store/payment-collections/refunded-collection-reset'
 import { checkoutPhaseTiming } from './store/carts/checkout-phase-timing'
+import { normalizeEmailMiddlewares } from './normalize-email'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
 // the route narrows it to published products in the key's sales channels.
@@ -32,6 +33,8 @@ export default defineMiddlewares({
         }),
       ],
     },
+    // CORE-80 (spec 01 กฎข้อ 138): อีเมลตัวเล็กก่อนถึง auth/customer route ของ Medusa (customer + affiliate เท่านั้น)
+    ...normalizeEmailMiddlewares,
     // Affiliate portal: separate `affiliate` actor type (spec 05, AC-12, AC-18, กฎ 18, Q6)
     ...affiliatePortalMiddlewares,
     ...adminEvoucherMiddlewares,
