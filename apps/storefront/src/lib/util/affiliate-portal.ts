@@ -22,17 +22,6 @@ export const portalPage = (value: string | string[] | undefined): number => {
 export const pageOutOfRange = (page: number, limit: number, count: number): boolean =>
   page > 1 && (page - 1) * limit >= count
 
-/**
- * กฎ 29d: ราคาปัจจุบัน × อัตรา% ปัด 2 ตำแหน่งแบบ half-up (กฎ 11) ไม่รวม cap
- * คิดเป็นจำนวนเต็ม (สตางค์ × อัตราคูณ 10^4) เพื่อไม่ให้ float ปัดผิด เช่น 1.15 × 50% = 0.575 → 0.58
- */
-export const estimateCommission = (price: number, rate: number): number => {
-  const satang = Math.round(price * 100)
-  const rateScaled = Math.round(rate * 10_000)
-  const scale = 100 * 10_000
-  return Math.floor((satang * rateScaled + scale / 2) / scale) / 100
-}
-
 const variantPrices = (variants: VariantPrice[]) =>
   variants.flatMap(({ calculated_price: p }) =>
     p && typeof p.calculated_amount === "number" && p.currency_code

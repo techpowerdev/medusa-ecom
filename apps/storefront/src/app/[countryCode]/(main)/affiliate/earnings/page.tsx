@@ -16,6 +16,7 @@ const LABEL = {
 } as const
 
 // AF-8b (กฎ 33): ยอดต่อสถานะตามแถวของ `GET /affiliate/me/earnings` — ไม่คำนวณเงินที่ storefront
+// AF-24 กฎ 48b: API หัก reversal ของ entry ที่ยัง pending ใน pending แล้ว (reversed เหลือของ approved/paid)
 export default async function AffiliateEarningsPage({ params }: { params: Promise<{ countryCode: string }> }) {
   const { countryCode } = await params
   const affiliate = await getAffiliate()
@@ -51,6 +52,11 @@ export default async function AffiliateEarningsPage({ params }: { params: Promis
                   {portalAmount(m)}
                 </dd>
               ))}
+              {status === "pending" && (
+                <dd className="text-small-regular text-ui-fg-subtle" data-testid="affiliate-earnings-pending-note">
+                  หักรายการยกเลิก/คืนเงินแล้ว
+                </dd>
+              )}
               {status === "reversed" && (
                 <dd className="text-small-regular text-ui-fg-subtle" data-testid="affiliate-earnings-reversed-note">
                   ยอดที่ถูกหักจากคำสั่งซื้อที่ยกเลิกหรือคืนเงิน แสดงแยกจากยอดอื่น
