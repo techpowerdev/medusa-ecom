@@ -75,3 +75,19 @@ export function shouldSendPaidWithoutOrderAlert(
 // membership เดียวเจอได้ทั้งสองเหตุ → key ต่อ membership + เหตุ
 export const paidWithoutOrderAlertKey = (membershipId: string, reason: PaidWithoutOrderReason) =>
   `${membershipId}:${reason}`
+
+// GB-21 กฎข้อ 44 (ADR-024 c): ยอดที่ยังคืนได้ = captured − refunded (MathBN จาก raw_* — ห้าม float)
+type RawAmountRow = { raw_amount?: unknown; amount?: unknown } | null
+const sumRaw = (rows: RawAmountRow[] | null | undefined) =>
+  (rows ?? []).reduce(
+    (total, row) => MathBN.add(total, MathBN.convert((row?.raw_amount ?? row?.amount ?? 0) as BigNumberInput)),
+    MathBN.convert(0)
+  )
+
+export const refundBalance = (captures: RawAmountRow[] | null | undefined, refunds: RawAmountRow[] | null | undefined) =>
+  MathBN.sub(sumRaw(captures), sumRaw(refunds))
+
+// ผลตัดสินจากยอดคงเหลือที่อ่านใหม่หลังคืนเงิน (ไม่ใช่จาก exception)
+export type RefundResult = "refunded" | "refund_failed"
+export const refundResult = (balance: BigNumberInput): RefundResult =>
+  MathBN.lte(balance, 0) ? "refunded" : "refund_failed"

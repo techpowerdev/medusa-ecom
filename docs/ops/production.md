@@ -241,14 +241,22 @@ subscriber `apps/backend/src/subscribers/group-buy-payment-captured.ts` (GB-5, s
 payment มีอยู่ใน Medusa และผูกกับ draft order ของกลุ่มแล้ว จึง refund ผ่าน admin ของ Medusa ได้ (`POST /admin/payments/<payment_id>/refund` /
 ปุ่ม Refund ในหน้า order) — **ห้าม refund ใน Stripe dashboard** และห้ามใช้ script `refund-orphan-payment` (script ปฏิเสธ payment ที่ผูก order)
 ก่อน refund ทุกครั้งดู `refunds` จาก `GET /admin/payments/<payment_id>` ถ้า refund ครบแล้วข้ามขั้น refund
+- **order ที่ถูกยกเลิกแล้ว** (`reason=membership_cancelled`): route/ปุ่ม Refund ของ admin (`refundPaymentWorkflow`) คืนเงินที่ provider **ก่อน** แล้วจึงสร้าง credit line
+  ซึ่งล้มด้วย `throwIfOrderIsCancelled` — ถ้า route ตอบ error **ห้ามกดคืนซ้ำ** ให้ตรวจยอดคืนก่อนเสมอ: `refunds` ใน `GET /admin/payments/<payment_id>`
+  และ Refunds ของ PI ใน Stripe dashboard (ดูอย่างเดียว) ถ้ายอดคืนครบแล้วถือว่าคืนสำเร็จ บันทึกใน incident
 - `reason=convert_failed` — capture ครบแต่ `convertDraftOrderWorkflow` ล้ม (ส่วนใหญ่สต็อกไม่พอ ดู `error`) membership ยังเป็น `awaiting_payment`,
   order ยังเป็น draft และ job หมดเวลาจะไม่ยกเลิก (collection `completed`) ไม่มีการลองใหม่อัตโนมัติ
   1. เติมสต็อกได้ → เติมใน admin → Inventory แล้วแปลงด้วย Medusa admin: Draft Orders → order นั้น → Convert to order
      (`POST /admin/draft-orders/<order_id>/convert-to-order`) จากนั้นตรวจว่า order อยู่ใน Orders และ fulfill ตามปกติ — membership ของกลุ่มยังแสดง
      `awaiting_payment` (ยังไม่มีทางอัปเดตจาก admin — follow-up ใน spec 04) ให้จดใน incident
   2. เติมสต็อกไม่ได้ → refund เต็มจำนวนตามวิธีด้านบน ห้าม convert หลัง refund
-- `reason=membership_cancelled` — capture มาหลัง membership ถูกยกเลิก (หมดเวลาชำระ) order ถูกยกเลิกแล้วหรือกำลังถูกยกเลิก: ถ้า capture เกิดก่อน
-  `cancelOrderWorkflow` ทำงาน Medusa refund ให้เองแล้ว — ดู `refunds` ก่อน ถ้ายังไม่ refund ให้ refund เต็มจำนวนตามวิธีด้านบน ห้ามคืนสถานะ membership เอง
+- `reason=membership_cancelled` — capture มาหลัง membership ถูกยกเลิก (หมดเวลาชำระ) order ถูกยกเลิกแล้วหรือกำลังถูกยกเลิก
+  subscriber **คืนเงินอัตโนมัติก่อนส่ง alert** (GB-21, ADR-024 c — `refundPaymentsWorkflow` ของ Medusa ยอดคงเหลือ note `Refunded: group buy membership cancelled`)
+  และ alert มี `refund_result` ที่ตัดสินจาก `refunds` ที่อ่านใหม่หลังคืนเงิน ห้ามคืนสถานะ membership เอง
+  1. `refund_result=refunded` — ตรวจ `refunds` ใน `GET /admin/payments/<payment_id>` ว่ายอดคืนรวมเท่ายอดที่ capture (มี note ข้างบน) แล้วแจ้งลูกค้าและปิด incident ไม่ต้อง refund เพิ่ม
+  2. `refund_failed` (เช่น Stripe ล่ม — log warn `group-buy-refund` มีสาเหตุ) — ตรวจ `refunds` ก่อนเสมอ (เงินอาจถูกคืนไปแล้วบางส่วนหรือทั้งหมด)
+     แล้ว refund ยอดที่เหลือตามวิธีด้านบนและข้อ **order ที่ถูกยกเลิกแล้ว** (route อาจตอบ error ทั้งที่คืนเงินสำเร็จ)
+  3. ไม่มี `refund_result` ในเหตุนี้ = subscriber เวอร์ชันก่อน GB-21 — ทำแบบข้อ 2
 แล้วแจ้งลูกค้า (อีเมลของ order) ว่าแปลงเป็นคำสั่งซื้อแล้ว/คืนเงินแล้ว และบันทึก incident (membership, order, payment, จำนวนเงิน, `reason`, การดำเนินการ, ผู้ทำ)
 
 ## ตรวจสอบ

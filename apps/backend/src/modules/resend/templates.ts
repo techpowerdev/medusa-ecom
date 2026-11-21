@@ -410,7 +410,12 @@ const renderGroupBuyPaidWithoutOrder = (data: Record<string, unknown>): Rendered
     row("Payment", data.payment_id) +
     row("Amount (THB)", data.amount) +
     row("Error", data.error) +
+    // GB-21 กฎข้อ 44: membership_cancelled คืนเงินอัตโนมัติ — refunded = ตรวจแล้วปิด incident, refund_failed = ทำตาม runbook
+    (data.refund_result ? row("Refund result", data.refund_result) : "") +
     `</ul>` +
+    (data.refund_result
+      ? `<p>ตรวจ refunds ใน <code>GET /admin/payments/${escapeHtml(data.payment_id)}</code> ก่อนดำเนินการ</p>`
+      : "") +
     `<p>ทำตาม runbook "group buy: เงินเข้าแต่ไม่มี order" ใน docs/ops/production.md</p>`
   return { subject, html: layout(subject, body) }
 }

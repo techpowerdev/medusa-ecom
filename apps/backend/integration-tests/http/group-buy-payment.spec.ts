@@ -1,7 +1,12 @@
 import { medusaIntegrationTestRunner, TestEventUtils } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, MathBN, Modules, PaymentActions, ProductStatus } from "@medusajs/framework/utils"
 import type { OrderDetailDTO } from "@medusajs/framework/types"
-import { createProductsWorkflow, getLastPaymentStatus, processPaymentWorkflow } from "@medusajs/medusa/core-flows"
+import {
+  cancelOrderWorkflow,
+  createProductsWorkflow,
+  getLastPaymentStatus,
+  processPaymentWorkflow,
+} from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 import { registerCustomer, storeHeadersFor } from "../helpers/customer"
@@ -13,6 +18,7 @@ import groupBuyDeadlineJob from "../../src/jobs/group-buy-deadline"
 import { confirmGroupBuyMembershipPaymentWorkflow } from "../../src/workflows/group-buy/membership-payment"
 import { GROUP_BUY_MODULE } from "../../src/modules/group_buy"
 import type GroupBuyModuleService from "../../src/modules/group_buy/service"
+import groupBuyPaymentCapturedHandler from "../../src/subscribers/group-buy-payment-captured"
 
 jest.setTimeout(240 * 1000)
 
@@ -445,6 +451,162 @@ medusaIntegrationTestRunner({
       expect(kept.status).toEqual("pending")
       expect(kept.is_draft_order).toBe(false)
       expect(kept.payment_status).toEqual("captured")
+    })
+    // GB-21 กฎข้อ 44 (ADR-024 c, AC-63): เงินเข้าหลัง membership ถูกยกเลิก → คืนเงินอัตโนมัติด้วย refundPaymentsWorkflow ของ Medusa
+    // (ไม่ mock workflow — mock เฉพาะ provider `pp_system_default` และ notification เป็น local ของ test)
+    describe("GB-21: refund a payment captured after the membership was cancelled", () => {
+      const REFUND_NOTE = "Refunded: group buy membership cancelled"
+      const payments = () => getContainer().resolve(Modules.PAYMENT)
+      // provider จริงที่ Payment module เรียก (refundPaymentFromProvider_) — spy ที่ชั้น provider ไม่ใช่ workflow
+      const provider = () => (payments() as any).paymentProviderService_.retrieveProvider(PROVIDER)
+
+      afterEach(() => {
+        jest.restoreAllMocks()
+      })
+
+      // session ถูกสร้างก่อนหมดเวลา แล้วถูกยกเลิกด้วยเส้นทางเดียวกับ job หมดเวลาชำระ (membership cancelled + cancelOrderWorkflow)
+      // เรียก cancelOrderWorkflow ตรงแทน job เพื่อให้ session เดิมยังอยู่ (GB-20 ลบ session ใน job — race ที่ ADR-024 ยอมรับ)
+      async function cancelledWithOpenSession() {
+        const { joined } = await succeededGroup(1)
+        const [member] = joined
+        const collection = (await orderOf(member.order_id)).payment_collections[0]
+        const { data } = await api.post(
+          `/store/payment-collections/${collection.id}/payment-sessions`,
+          { provider_id: PROVIDER },
+          member.headers
+        )
+        const session = data.payment_collection.payment_sessions[0]
+        await groupBuy().updateGroupBuyMemberships({ id: member.membership_id, status: "cancelled" })
+        await cancelOrderWorkflow(getContainer()).run({ input: { order_id: member.order_id } })
+        const order = await orderOf(member.order_id)
+        expect(order.status).toEqual("canceled")
+        expect(order.payment_collections[0].status).toEqual("canceled")
+        return { member, session }
+      }
+
+      const capture = async (session: { id: string; amount: unknown }) => {
+        const captured = TestEventUtils.waitSubscribersExecution("payment.captured", eventBus())
+        await processPaymentWorkflow(getContainer()).run({
+          input: { action: PaymentActions.SUCCESSFUL, data: { session_id: session.id, amount: session.amount as number } },
+        })
+        await captured
+      }
+
+      const paymentOf = async (sessionId: string) => {
+        const { data } = await query().graph({
+          entity: "payment",
+          fields: ["id", "captures.raw_amount", "refunds.raw_amount", "refunds.note"],
+          filters: { payment_session_id: sessionId },
+        })
+        return data[0] as any
+      }
+
+      const alertOf = async (orderId: string) =>
+        getContainer()
+          .resolve(Modules.NOTIFICATION)
+          .listNotifications({ template: "group-buy-paid-without-order", resource_id: orderId })
+
+      const sumRaw = (rows: { raw_amount: unknown }[]) =>
+        rows.reduce((total, r) => MathBN.add(total, MathBN.convert(r.raw_amount as any)), MathBN.convert(0))
+
+      it("AC-63 (a): cancelled draft order captured later → one refund of the captured amount with the note, alert says refunded", async () => {
+        const { member, session } = await cancelledWithOpenSession()
+        const refund = jest.spyOn(provider(), "refundPayment")
+
+        await capture(session)
+
+        const payment = await paymentOf(session.id)
+        expect(payment.refunds).toHaveLength(1)
+        expect(MathBN.eq(sumRaw(payment.refunds), sumRaw(payment.captures))).toBe(true)
+        expect(MathBN.gt(sumRaw(payment.captures), 0)).toBe(true)
+        expect(payment.refunds[0].note).toEqual(REFUND_NOTE)
+        expect(refund).toHaveBeenCalledTimes(1)
+        expect((await membershipOf(member.membership_id)).status).toEqual("cancelled")
+        const alerts = await alertOf(member.order_id)
+        expect(alerts).toHaveLength(1)
+        expect(alerts[0].data).toEqual(
+          expect.objectContaining({ reason: "membership_cancelled", payment_id: payment.id, refund_result: "refunded" })
+        )
+      })
+
+      it("AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once", async () => {
+        const { member, session } = await cancelledWithOpenSession()
+        // capture ผ่าน Payment module (ไม่ emit event) แล้วเรียก subscriber พร้อมกัน 2 ครั้ง = event ซ้ำที่มาพร้อมกัน
+        await payments().authorizePaymentSession(session.id, {})
+        const { id: paymentId } = await paymentOf(session.id)
+        await payments().capturePayment({ payment_id: paymentId })
+        const refund = jest.spyOn(provider(), "refundPayment")
+        const handle = () =>
+          groupBuyPaymentCapturedHandler({
+            event: { name: "payment.captured", data: { id: paymentId } },
+            container: getContainer(),
+          } as any)
+
+        await Promise.all([handle(), handle()])
+
+        const payment = await paymentOf(session.id)
+        expect(payment.refunds).toHaveLength(1)
+        expect(MathBN.eq(sumRaw(payment.refunds), sumRaw(payment.captures))).toBe(true)
+        expect(refund).toHaveBeenCalledTimes(1)
+        const alerts = await alertOf(member.order_id)
+        expect(alerts).toHaveLength(1)
+        expect(alerts[0].data).toEqual(expect.objectContaining({ refund_result: "refunded" }))
+      })
+
+      it("AC-63 (c): provider refund throws (nothing recorded) → subscriber does not throw, alert says refund_failed", async () => {
+        const { member, session } = await cancelledWithOpenSession()
+        jest.spyOn(provider(), "refundPayment").mockRejectedValue(new Error("provider down"))
+
+        await capture(session)
+
+        const payment = await paymentOf(session.id)
+        expect(payment.refunds ?? []).toHaveLength(0)
+        const alerts = await alertOf(member.order_id)
+        expect(alerts).toHaveLength(1)
+        expect(alerts[0].data).toEqual(expect.objectContaining({ refund_result: "refund_failed" }))
+      })
+
+      it("AC-63 (c2): workflow throws after the provider refunded and the refund was recorded → alert says refunded, warn logged", async () => {
+        const { member, session } = await cancelledWithOpenSession()
+        // addOrderTransactionStep ของ refundPaymentsWorkflow ทำงานหลัง refundPaymentsStep (refund ที่ provider + บันทึกแล้ว)
+        // ล้มเฉพาะ transaction ของ refund — capture-payment-workflow ใช้ step เดียวกันกับ reference "capture"
+        const orders = getContainer().resolve(Modules.ORDER)
+        const addTransactions = orders.addOrderTransactions.bind(orders)
+        jest.spyOn(orders, "addOrderTransactions").mockImplementation((async (data: any, ...rest: any[]) => {
+          if ([data].flat().some((trx: { reference?: string }) => trx.reference === "refund")) {
+            throw new Error("order transaction failed")
+          }
+          return (addTransactions as any)(data, ...rest)
+        }) as any)
+        const warn = jest.spyOn(logger(), "warn")
+
+        await capture(session)
+
+        const payment = await paymentOf(session.id)
+        expect(payment.refunds).toHaveLength(1)
+        const alerts = await alertOf(member.order_id)
+        expect(alerts).toHaveLength(1)
+        expect(alerts[0].data).toEqual(expect.objectContaining({ refund_result: "refunded" }))
+        expect(loggedWith(warn, "order transaction failed")).toBe(true)
+      })
+
+      it("AC-63 (d): convert_failed → no refund (manual, AC-43/44 unchanged)", async () => {
+        const inventory = getContainer().resolve(Modules.INVENTORY)
+        await inventory.createInventoryLevels(await stockedVariantLevels(1))
+        const { joined } = await succeededGroup(1, {}, variantStocked)
+        const [member] = joined
+        await inventory.updateInventoryLevels(await stockedVariantLevels(0))
+        const refund = jest.spyOn(provider(), "refundPayment")
+
+        const session = await pay(member, ["payment.captured"])
+
+        expect((await paymentOf(session.id)).refunds ?? []).toHaveLength(0)
+        expect(refund).not.toHaveBeenCalled()
+        const alerts = await alertOf(member.order_id)
+        expect(alerts).toHaveLength(1)
+        expect(alerts[0].data).toEqual(expect.objectContaining({ reason: "convert_failed" }))
+        expect((alerts[0].data as Record<string, unknown>).refund_result).toBeUndefined()
+      })
     })
   },
 })
