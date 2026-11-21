@@ -16,8 +16,8 @@ describe("instrumentation.ts register() (OPS-20b)", () => {
     expect(spy).not.toHaveBeenCalled()
   })
 
-  it("LOG_LEVEL=info (ค่าเริ่มต้นของ compose prod) → ไม่สร้าง interval", () => {
-    process.env.LOG_LEVEL = "info"
+  it.each(["http", "info"])("LOG_LEVEL=%s (http = ค่าเริ่มต้นของ compose prod — OPS-30) → ไม่สร้าง interval", (level) => {
+    process.env.LOG_LEVEL = level
     const spy = jest.spyOn(global, "setInterval")
     register()
     expect(spy).not.toHaveBeenCalled()

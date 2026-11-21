@@ -1,0 +1,50 @@
+# ADM-39 (spec 08 กฎ 43, AC-44 — bug ADM-B1) ผล test 2026-11-21 บน develop 73148c83 (backend prod build ในเครื่อง port 9139)
+
+## RED 1 — unit helper ก่อนแก้ (hold/release ยังไม่มี)
+    TypeError: run.hold is not a function
+    TypeError: run.release is not a function
+Tests:       3 failed, 4 passed, 7 total
+
+## RED 2 — e2e admin-create-double-submit.spec.ts บน admin ของ develop (ก่อนแก้)
+  ✘  1 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create partner (backend จริง — ADM-B1) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (1.6s)
+  ✓  2 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create program (backend จริง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (3.1s)
+  ✓  3 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (3.0s)
+  ✘  4 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create campaign (mock สำเร็จ — แคมเปญลบผ่าน API ไม่ได้) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (2.8s)
+  ✓  5 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (4.5s)
+  ✘  6 [chromium] › e2e/admin-create-double-submit.spec.ts:325:5 › AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้ (1.4s)
+  ✓  7 [chromium] › e2e/admin-create-double-submit.spec.ts:386:5 › AC-44: Import codes (หน้า pool) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; เลือกไฟล์ใหม่ import ได้ (1.8s)
+    Expected length: 1
+    Received length: 2
+    Received array:  ["http://localhost:9139/admin/evoucher/partners", "http://localhost:9139/admin/evoucher/partners"]
+    # admin-create-double-submit-93257-กดใหม่ได้-เปิดใหม่-Save-ได้-chromium/test-failed-1.png
+    Expected length: 1
+    Received length: 2
+    Received array:  ["http://localhost:9139/admin/group-buy/campaigns", "http://localhost:9139/admin/group-buy/campaigns"]
+    # admin-create-double-submit-6ce0c-กดใหม่ได้-เปิดใหม่-Save-ได้-chromium/test-failed-1.png
+    Expected length: 1
+    Received length: 2
+    Received array:  ["http://localhost:9139/admin/group-buy/campaigns/gbcamp_01M7XDY2WWYBVFSV79EKC6V88M/groups", "http://localhost:9139/admin/group-buy/campaigns/gbcamp_01M7XDY2WWYBVFSV79EKC6V88M/groups"]
+    # admin-create-double-submit-265fd-ด้-คลิกแยกครั้งใหม่สร้างได้-chromium/test-failed-1.png
+  3 failed
+  4 passed (20.0s)
+
+## RED 3 — ขั้น (b) แยก (สำเนาชั่วคราวที่ตัดขั้น (a) ออก รันแล้วลบ)
+Create campaign ล้มที่ (b): Expected length 1, Received length 2 (POST /admin/group-buy/campaigns 2 ครั้ง — ⌘/Ctrl+Enter ระหว่าง modal ปิด)
+partner/program ผ่านขั้น (b) บน develop (ล้มที่ (c) เพียงเพราะตัวนับรวม POST ของขั้น (a) ที่ตัดออก — ไม่ใช่ bug)
+
+## GREEN — e2e ใหม่หลังแก้ --repeat-each=3 --workers=1
+  21 passed (1.3m)
+
+## GREEN — e2e admin เดิมที่แตะฟอร์มเหล่านี้ (10 ไฟล์: modal-return-focus, form-discard-prompt, form-pilot, affiliate-admin-programs/payout-create/forms, group-buy-admin-form/detail, evoucher-admin-pool-page/forms)
+  76 passed (2.2m)
+
+## GREEN — backend test:unit (รวม single-flight.unit.spec.ts 7 เคส)
+Test Suites: 111 passed, 111 total
+Tests:       1498 passed, 1498 total
+
+## GREEN — storefront test:e2e:unit
+  123 passed (1.6s)
+
+## lint / typecheck
+pnpm lint: exit 0
+pnpm typecheck: exit 0

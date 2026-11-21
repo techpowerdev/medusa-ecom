@@ -1,0 +1,46 @@
+GB-21 — spec 04 กฎข้อ 44, AC-63 (คืนเงินอัตโนมัติเมื่อเงินเข้าหลัง membership ยกเลิก + alert มี refund_result + runbook; ADR-024 c)
+base: origin/develop 73148c83, 2026-11-21, Node 22.23.3 (mock provider pp_system_default — spy ที่ชั้น provider; ไม่ mock workflow ของ Medusa)
+
+== RED (ก่อนแก้โค้ด) ==
+-- unit: membership-payment / templates / ops-runbook
+  ● refundBalance (3 เคส), refundResult (4 เคส) — helper ยังไม่ export
+  ● renders refund_result=refunded / refund_failed in the paid-without-order ops alert — ไม่มีแถว refund_result
+  ● runbook: อธิบายผล refunded/refund_failed …, refund ผ่าน admin ตอบ error → ตรวจยอดคืนก่อนคืนซ้ำ — ไม่มีข้อความ
+  Tests: 11 failed, 78 passed, 89 total
+-- integration: test:integration:http integration-tests/http/group-buy-payment.spec.ts -t GB-21
+    ●  › GB-21: refund a payment captured after the membership was cancelled › AC-63 (a): cancelled draft order captured later → one refund of the captured amount with the note, alert says refunded
+    ●  › GB-21: refund a payment captured after the membership was cancelled › AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once
+    ●  › GB-21: refund a payment captured after the membership was cancelled › AC-63 (c): provider refund throws (nothing recorded) → subscriber does not throw, alert says refund_failed
+    ●  › GB-21: refund a payment captured after the membership was cancelled › AC-63 (c2): workflow throws after the provider refunded and the refund was recorded → alert says refunded, warn logged
+        Expected length: 1
+        Received length: 0
+        Expected length: 1
+        Received length: 0
+        -   "refund_result": "refund_failed",
+        > 566 |         expect(alerts[0].data).toEqual(expect.objectContaining({ refund_result: "refund_failed" }))
+        Expected length: 1
+        Received length: 0
+  Tests:       4 failed, 9 skipped, 1 passed, 14 total
+  (AC-63 d ผ่านบน develop — regression ของพฤติกรรมเดิม)
+
+== GREEN ==
+-- integration: group-buy-payment.spec.ts (ทั้งไฟล์)
+    ✓ AC-44: convert failed (out of stock) → ops restocks and converts via admin → membership paid; order.placed again is a no-op (12041 ms)
+    ✓ AC-44: admin converts while the collection is not completed → membership unchanged, info logged (15742 ms)
+    ✓ AC-44: normal GB-5 path (capture → paid → convert → order.placed) → GB-10 subscriber is a no-op under the membership lock; order-placed email still sent (7115 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (7395 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (9082 ms)
+    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (6112 ms)
+    ✓ out of stock at convert: convertDraftOrderWorkflow fails → membership compensated back to awaiting_payment, order stays draft (8008 ms)
+    ✓ orphan: payment captured after the membership was cancelled → ops alert once, membership stays cancelled (5103 ms)
+    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (5386 ms)
+      ✓ AC-63 (a): cancelled draft order captured later → one refund of the captured amount with the note, alert says refunded (4311 ms)
+      ✓ AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once (4571 ms)
+      ✓ AC-63 (c): provider refund throws (nothing recorded) → subscriber does not throw, alert says refund_failed (4481 ms)
+      ✓ AC-63 (c2): workflow throws after the provider refunded and the refund was recorded → alert says refunded, warn logged (7769 ms)
+      ✓ AC-63 (d): convert_failed → no refund (manual, AC-43/44 unchanged) (8097 ms)
+  Tests:       14 passed, 14 total
+-- unit: pnpm --filter backend test:unit
+  Test Suites: 111 passed, 111 total
+  Tests:       1504 passed, 1504 total
+-- pnpm lint && pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน; pnpm --filter storefront test:e2e:unit: 122 passed

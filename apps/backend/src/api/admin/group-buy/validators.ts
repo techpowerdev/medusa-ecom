@@ -6,6 +6,7 @@ import {
 } from "@medusajs/medusa/api/admin/promotions/validators"
 import { SINGLE_PRODUCT_MESSAGE, singleProductIdOf } from "../../../modules/group_buy/utils/single-product"
 import { INT4_MAX } from "../../../lib/int4"
+import { isMaxUnitsWithinMaxQuantity, MAX_UNITS_MESSAGE } from "../../../modules/group_buy/utils/max-units"
 
 // GB-17 (กฎข้อ 40): ทุก field ที่ใช้ตัวนี้ลง column integer (int4)
 const positiveInt = z.number().int().positive().max(INT4_MAX)
@@ -50,6 +51,11 @@ export const AdminCreateGroupBuyCampaign = z
   .refine((c) => !c.starts_at || c.starts_at < c.ends_at, {
     message: "ends_at must be after starts_at",
     path: ["ends_at"],
+  })
+  // spec 04 กฎข้อ 46: update ตรวจกฎเดียวกันใน updateGroupBuyCampaignStep (อ่าน max_quantity จากต้นแบบ)
+  .refine((c) => isMaxUnitsWithinMaxQuantity(c.max_units_per_person, c.application_method.max_quantity), {
+    message: MAX_UNITS_MESSAGE,
+    path: ["max_units_per_person"],
   })
 export type AdminCreateGroupBuyCampaign = z.infer<typeof AdminCreateGroupBuyCampaign>
 

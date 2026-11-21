@@ -39,6 +39,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
     resolver: zodResolver(payoutFormSchema, PAYOUT_PARSE_OPTIONS, { raw: true }),
     defaultValues: { affiliate_id: "", ...defaultPayoutPeriod(new Date()) },
   })
+  // กฎ 43 (ADM-39): สำเร็จแล้ว hold lock จน component ถูกถอด (ปิด) — เปิดใหม่ mount ใหม่ (render ตามเงื่อนไข) จึงได้ lock ใหม่ ไม่ต้อง release
   const [submitOnce] = useState(createSingleFlight)
   // selectedValue: ตัวที่เลือกไว้ต้องอยู่ใน options แม้ค้นคำอื่นหรือปิด popover (label ไม่หาย)
   const options = useComboboxData({
@@ -75,7 +76,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
         form.setError(result.field, { message: result.error })
         return
       }
-      await save.mutateAsync(result.body).catch(() => undefined)
+      await save.mutateAsync(result.body).then(submitOnce.hold, () => undefined)
     })
   )
 

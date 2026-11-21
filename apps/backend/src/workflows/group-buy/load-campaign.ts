@@ -9,7 +9,11 @@ export type LoadedGroupBuyCampaign = {
   campaign?: { id: string; ends_at?: string | Date | null } | null
   promotion?: {
     id: string
-    application_method?: { id: string; target_rules?: ScopeRule[] | null } | null
+    application_method?: {
+      id: string
+      max_quantity?: number | null
+      target_rules?: ScopeRule[] | null
+    } | null
   } | null
 }
 
@@ -28,6 +32,7 @@ export async function loadGroupBuyCampaign(
       "campaign.ends_at",
       "promotion.id",
       "promotion.application_method.id",
+      "promotion.application_method.max_quantity",
       "promotion.application_method.target_rules.attribute",
       "promotion.application_method.target_rules.operator",
       "promotion.application_method.target_rules.values.value",

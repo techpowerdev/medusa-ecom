@@ -145,8 +145,8 @@ describe("ADM-24 static", () => {
   })
 
   it("comment เหนือ tiebreakById เตือนว่าไม่แก้ req.listConfig.order", () => {
-    const middlewares = src("../api/admin/affiliate/middlewares.ts")
-    const head = middlewares.slice(0, middlewares.indexOf("const tiebreakById"))
+    const middlewares = src("../lib/tiebreak-by-id.ts")
+    const head = middlewares.slice(0, middlewares.indexOf("export const tiebreakById"))
     const comment = head.slice(head.lastIndexOf("\n\n"))
     expect(comment).toMatch(/listConfig/)
   })

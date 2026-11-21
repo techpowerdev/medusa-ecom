@@ -203,6 +203,48 @@ jobs:
             fi
             echo "OK admin bundle เป็น production ไม่มี placeholder และไม่มีไฟล์ test ใน /app"
           '
+      # OPS-30 (spec 07 AC-45c): server ที่ LOG_LEVEL ค่าเริ่มต้นของ docker-compose.prod.yml ต้องเขียน access log (request_id, status)
+      # ยิง GET /admin/users/me ไม่มี token (401) — Medusa ข้าม access log ของ /health เสมอ จึงใช้ตรวจไม่ได้
+      # smoke-worker-mode.sh ตั้ง LOG_LEVEL=debug เอง จึงแยก project/port (ops30test, 9130); grep error = ล้ม (OPS-28)
+      - name: Server มี access log ที่ LOG_LEVEL ค่าเริ่มต้นของ compose (OPS-30)
+        shell: bash
+        env:
+          ACCESS_LOG_PROJECT: ops30test
+          SERVER_PORT: "9130"
+        run: |
+          set -euo pipefail
+          unset LOG_LEVEL DATABASE_URL REDIS_URL
+          export POSTGRES_PASSWORD="$(openssl rand -hex 16)" JWT_SECRET="$(openssl rand -hex 32)" COOKIE_SECRET="$(openssl rand -hex 32)"
+          export STRIPE_API_KEY=sk_test_dummy STRIPE_WEBHOOK_SECRET=whsec_dummy
+          compose() { docker compose -p "$ACCESS_LOG_PROJECT" -f docker-compose.prod.yml "$@"; }
+          # คง exit code ของขั้นตรวจ (cleanup ล้มไม่เปลี่ยนผล)
+          trap 'rc=$?; set +e; compose down -v --remove-orphans >/dev/null 2>&1; exit $rc' EXIT
+          compose up -d --wait server
+          echo "LOG_LEVEL ของ server: $(compose exec -T server printenv LOG_LEVEL)"
+          status=$(compose exec -T server node -e "fetch('http://localhost:9000/admin/users/me').then(r=>console.log(r.status),()=>console.log('ERR'))")
+          if [ "$status" != 401 ]; then
+            echo "::error::GET /admin/users/me ไม่มี token ได้ $status ไม่ใช่ 401 (OPS-30)"
+            exit 1
+          fi
+          log="$RUNNER_TEMP/ops30-server.log"
+          n=0
+          for _ in $(seq 1 10); do
+            compose logs --no-color --no-log-prefix server > "$log"
+            rc=0
+            n=$(grep -c -E '"request_id":"[^"]+".*"path":"/admin/users/me".*"status":401' "$log") || rc=$?
+            if [ "$rc" -ge 2 ]; then
+              echo "::error::อ่าน log ของ server ($log) ไม่ได้ (grep exit $rc) — ตรวจ access log ไม่ได้ (OPS-30)"
+              exit 1
+            fi
+            [ "$n" -ge 1 ] && break
+            sleep 1
+          done
+          if [ "$n" -lt 1 ]; then
+            echo "::error::ไม่พบ access log ของ GET /admin/users/me (request_id, status 401) — LOG_LEVEL ค่าเริ่มต้นของ compose ต้องเป็น http (OPS-30)"
+            tail -n 20 "$log"
+            exit 1
+          fi
+          echo "OK access log: $(grep -m1 -E '"path":"/admin/users/me"' "$log")"
       # OPS-12 (spec 07 AC-19): Redis ของ event bus ถูก pause 30 วินาที → worker ต้องประมวลผล event ต่อได้ (OPS-8 AC-5)
       # ใช้ image เดียวกับขั้นก่อน (build cache) แต่ compose project/port แยก (ops8test, 9108)
       - run: tools/ops/smoke-redis-outage.sh
