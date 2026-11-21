@@ -238,12 +238,71 @@ describe("checkoutRedirectStep(step, cart, options) — step ที่ใช้�
     const first = checkoutStep(cart, options)
     const expected = first === "payment" ? null : first
     expect(checkoutRedirectStep("payment", cart, options)).toBe(expected)
-    expect(checkoutRedirectStep("review", cart, options)).toBe(expected)
+    // CORE-69 (กฎข้อ 127): fixture เหล่านี้ไม่มี payment session → review ที่ผ่านขั้น delivery แล้วไป payment
+    expect(checkoutRedirectStep("review", cart, options)).toBe(expected ?? "payment")
   })
 
   it("payment/review + มีที่อยู่ + method ค้าง → delivery (AC-129)", () => {
     expect(checkoutRedirectStep("payment", fixtures["มีที่อยู่ + method ค้าง"], filtered)).toBe("delivery")
     expect(checkoutRedirectStep("review", fixtures["มีที่อยู่ + method ค้าง"], filtered)).toBe("delivery")
+  })
+
+  // CORE-69 (spec 01 กฎข้อ 127, AC-168): review ต้องมี payment session ที่ใช้ได้ ไม่งั้นไป payment (ขั้นแรกที่ยังไม่เสร็จ)
+  const sessionOf = (status: string) => ({ payment_collection: { payment_sessions: [{ id: "ps_1", status }] } })
+  const withSession = (name: string, status = "pending") =>
+    ({ ...fixtures[name], ...sessionOf(status) }) as unknown as HttpTypes.StoreCart
+  const reviewFixtures: Record<string, HttpTypes.StoreCart> = {
+    ...fixtures,
+    "มีที่อยู่ + Standard + session pending": withSession("มีที่อยู่ + Standard"),
+    "มีที่อยู่ + Standard + session authorized": withSession("มีที่อยู่ + Standard", "authorized"),
+    "มีที่อยู่ + Standard + session canceled": withSession("มีที่อยู่ + Standard", "canceled"),
+    "digital-only มีที่อยู่ + session pending": withSession("digital-only มีที่อยู่"),
+    "ไม่มีที่อยู่ + session pending": withSession("ไม่มีที่อยู่"),
+  }
+
+  it.each([
+    ["มีที่อยู่ + Standard", filtered],
+    ["digital-only มีที่อยู่", []],
+  ] as const)("review + %s แต่ไม่มี payment session → payment (กฎข้อ 127)", (name, options) => {
+    expect(checkoutRedirectStep("review", fixtures[name], [...options])).toBe("payment")
+  })
+
+  it("review + มี payment_collection แต่ session ถูกยกเลิก (ไม่ใช่ pending/authorized) → payment", () => {
+    expect(checkoutRedirectStep("review", reviewFixtures["มีที่อยู่ + Standard + session canceled"], filtered)).toBe(
+      "payment"
+    )
+  })
+
+  it.each([
+    ["มีที่อยู่ + Standard + session pending", filtered],
+    ["มีที่อยู่ + Standard + session authorized", filtered],
+    ["digital-only มีที่อยู่ + session pending", []],
+  ] as const)("review + %s → ไม่ redirect", (name, options) => {
+    expect(checkoutRedirectStep("review", reviewFixtures[name], [...options])).toBeNull()
+  })
+
+  it("review + ไม่มีที่อยู่ แม้มี session → address (ขั้นก่อนหน้ามาก่อน)", () => {
+    expect(checkoutRedirectStep("review", reviewFixtures["ไม่มีที่อยู่ + session pending"], filtered)).toBe("address")
+  })
+
+  it("review + gift card จนยอดเป็น 0 (ไม่มี session) → ไม่ redirect (เงื่อนไขเดียวกับ Review ของ starter)", () => {
+    const giftCard = { ...fixtures["มีที่อยู่ + Standard"], gift_cards: [{ id: "gc_1" }], total: 0 }
+    expect(checkoutRedirectStep("review", giftCard as unknown as HttpTypes.StoreCart, filtered)).toBeNull()
+  })
+
+  it("payment + ไม่มี session → ไม่ redirect (ขั้นที่ต้องเลือกวิธีชำระ)", () => {
+    expect(checkoutRedirectStep("payment", fixtures["มีที่อยู่ + Standard"], filtered)).toBeNull()
+  })
+
+  it("ทุก fixture (รวม session) × ทุก step: ปลายทางของ redirect ไม่ redirect ซ้ำ (ไม่วน)", () => {
+    for (const [name, cart] of Object.entries(reviewFixtures)) {
+      for (const step of steps) {
+        const target = checkoutRedirectStep(step, cart, optionsOf(name))
+        if (target !== null) {
+          expect(checkoutRedirectStep(target, cart, optionsOf(name)), `${name} / ${step} → ${target}`).toBeNull()
+        }
+      }
+    }
   })
 
   it("ทุก fixture × ทุก step: ปลายทางของ redirect ไม่ redirect ซ้ำ (ไม่วน)", () => {
@@ -299,6 +358,17 @@ describe("checkoutRedirectWithLatest(step, cart, optionsFor, loadLatest) — ต
   it("อ่าน cart ล่าสุดไม่ได้ (null) → ใช้ผลจาก cart เดิม", async () => {
     const result = await checkoutRedirectWithLatest("delivery", stale, optionsFor, vi.fn().mockResolvedValue(null))
     expect(result).toEqual({ redirectStep: "address", cart: stale, options: [standard] })
+  })
+
+  it("CORE-69: review + cart ใน cache ยังไม่มี session แต่ cart ล่าสุดมีแล้ว → ไม่ redirect และใช้ cart ล่าสุด", async () => {
+    const paid = {
+      ...ready,
+      payment_collection: { payment_sessions: [{ id: "ps_1", status: "pending" }] },
+    } as unknown as HttpTypes.StoreCart
+    const loadLatest = vi.fn().mockResolvedValue(paid)
+    const result = await checkoutRedirectWithLatest("review", ready, optionsFor, loadLatest)
+    expect(result).toEqual({ redirectStep: null, cart: paid, options: [standard] })
+    expect(loadLatest).toHaveBeenCalledTimes(1)
   })
 })
 
