@@ -2790,6 +2790,11 @@ Out of scope: หน้า order ใน admin แสดงราคารวม 
      รหัสผิด → ข้อความเดียวกัน (ไม่บอกว่ารหัสถูก/ผิด); identity มีอยู่แต่**ยังไม่มี customer** (เช่นอีเมลเดียวกับบัญชี affiliate — `actor_id` ว่าง) → พฤติกรรมเดิม (ผูก customer ใหม่) — เทียบข้อความ Medusa ตามเดิมพร้อมเช็กลิสต์ bump (spec 07 ข้อ 13)
 132. (CORE-74 — owner) subscriber ที่ส่งอีเมล `order-placed` อ่าน `order.status` ใหม่ก่อนส่ง: `canceled` → ไม่ส่ง + log info `order_placed_email_skipped_canceled` (กรณี event ค้างใน queue ขณะ worker หยุดแล้ว order ถูกยกเลิกก่อน worker กลับมา);
      สถานะอื่นส่งตามเดิม (รวม order ที่มาจาก group buy — spec 04 กฎข้อ 9)
+133. (CORE-75 — owner ตัดสิน 2026-11-21 หลัง review #459) ค้นคำไทยที่อยู่กลาง/ท้ายชื่อสินค้าได้ทุกหน้า: ทุก request ของ `searchClient` (drawer, `/<cc>/search`, `/<cc>/store`)
+     ส่ง `search_options.typo_tolerance: true` ของ Medusa — `@medusajs/search-postgres` เพิ่มเงื่อนไข `word_similarity(q, search_text) > 0.3` (pg_trgm ที่ migration ของ provider เปิดไว้) จาก lexeme เดียวของชื่อไทยที่ไม่เว้นวรรค;
+     ไม่เพิ่ม infra/tokenizer ไทย; ทุกหน้ายังได้ผลชุดเดียวกัน (กฎข้อ 128); ข้อแลกที่ยอมรับ: ผลใกล้เคียงหลุดมาได้ (จัดอันดับต่ำกว่าคำที่ตรง) และเป็น seq scan ต่อ query;
+     ข้อจำกัดที่ยอมรับ (วัดจริง): คำค้นสั้น ≤ 3 อักขระที่อยู่**กลาง**คำ (มีอักษรต่อทั้งหน้าและหลัง เช่น "ยืด" ใน "เสื้อยืดคอกลม") ได้ similarity 0.25 จึงไม่เจอ — ท้ายคำ ("เสื้อยืด Medusa") และคำ ≥ 4 อักขระเจอ;
+     ฐานข้อมูลต้องมี `LC_CTYPE` ที่รู้จักอักษรไทย (เช่น `en_US.utf8`/`C.UTF-8`) — `LC_CTYPE=C` ทำให้ pg_trgm ทิ้งอักษรไทยทั้งหมด (ค้นไทยกลางคำไม่ได้เลย)
 
 ### Acceptance criteria (รอบ 40)
 - AC-167 (CORE-68, กฎข้อ 126) e2e: ลูกค้าที่มี 12 order → หน้า 1 มี 10 แถว, `orders-pagination` ไปหน้า 2 ได้ 2 แถว (order เก่าสุดอยู่หน้า 2) — ล้มบน develop (ไม่มีหน้า 2); unit ของการคำนวณ offset/page
@@ -2801,11 +2806,15 @@ Out of scope: หน้า order ใน admin แสดงราคารวม 
 - ☑ AC-172 (CORE-73, กฎข้อ 131) e2e + unit (mock SDK): สมัครด้วยอีเมลลูกค้าที่มีอยู่ + รหัสถูก → อยู่หน้าสมัคร เห็น `register-email-exists` + `register-login-link`, ไม่มี cookie `_medusa_jwt` (ล้มบน develop — login ให้); รหัสผิด → ข้อความเดียวกัน;
   integration/unit: identity ของ affiliate ที่ยังไม่มี customer สมัครเป็นลูกค้าได้ (regression)
 - AC-173 (CORE-74, กฎข้อ 132) integration (mock notification): emit `order.placed` ของ order ที่ `canceled` แล้ว → ไม่มี notification `order-placed` และมี log info; order ปกติ → 1 ฉบับ (ล้มบน develop)
+- ☑ AC-174 (CORE-75, กฎข้อ 133) integration (`POST /store/search` ด้วย body เดียวกับ storefront, seed + สินค้า "กางเกงยีนส์ขายาว"): "ยืด" → t-shirt, "สเวตเตอร์" → sweatshirt, "ยีนส์"/"ขายาว" → กางเกง (ล้มก่อนแก้),
+  คำนำหน้า "เสื้อ"/"กางเกง" ไม่ถดถอย, "หมวก"/"รองเท้า" ไม่เจอ, "เสื้อ ยืด" อันดับแรกคือ t-shirt; Vitest: adapter ส่ง `typo_tolerance: true`;
+  e2e: คำไทยเฉพาะ run กลางชื่อ 2 ชิ้น + 1 ชิ้นไม่มี → drawer, `/th/search?q=`, `/th/store?q=` ได้ชุดเดียวกัน (ล้มบน develop); เวลา query กับสินค้า ~1000 รายการอยู่ใน PR
 
 ### Test plan (รอบ 40)
 | ระดับ | AC |
 |---|---|
-| e2e + unit Vitest (+ qa สำหรับงาน UI) | AC-167, AC-168, AC-169, AC-170, AC-171, AC-172 |
+| e2e + unit Vitest (+ qa สำหรับงาน UI) | AC-167, AC-168, AC-169, AC-170, AC-171, AC-172, AC-174 |
+| integration (`POST /store/search`) | AC-174 |
 | integration (mock notification) | AC-173 |
 
 ### Tasks (รอบ 40)
@@ -2818,6 +2827,7 @@ Out of scope: หน้า order ใน admin แสดงราคารวม 
 | CORE-72 | ตะกร้าไม่กระพริบ "(0)" (กฎข้อ 130); qa | `modules/layout/components/cart-button*`/`nav`, e2e | ~20 LOC + ~60 LOC test | AC-171 | PR เอกสารรอบ 40 | — |
 | CORE-73 | สมัครด้วยอีเมลที่มีบัญชี → "อีเมลนี้มีบัญชีแล้ว" ไม่ login ให้ (กฎข้อ 131); qa | `apps/storefront/src/lib/data/customer.ts`, `modules/account/components/register`, test | ~40 LOC + ~120 LOC test | AC-172 | PR เอกสารรอบ 40 | — |
 | CORE-74 | ไม่ส่ง `order-placed` ให้ order ที่ยกเลิกแล้ว (กฎข้อ 132) | `apps/backend/src/subscribers/order-placed*.ts`, integration | ~15 LOC + ~80 LOC test | AC-173 | PR เอกสารรอบ 40 | — |
+| CORE-75 | ค้นคำไทยกลาง/ท้ายคำได้ทุกหน้าด้วย `typo_tolerance` ของ Medusa (กฎข้อ 133 — owner ตัดสิน 2026-11-21); qa | `apps/storefront/src/lib/search-client.ts`, integration `search-thai-substring`, e2e (+ ปรับคำค้นของ `flash-sale-fs14` ที่อาศัยการไม่มีผลใกล้เคียง) | ~5 LOC + ~250 LOC test | AC-174 | CORE-70 (#459 ☑) | — |
 
 ### Open questions (รอบ 40)
 - ~~**Q-C12**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** `POST /store/search` ทุกหน้า (กฎข้อ 128) — คำถามเดิม: (CORE-70) กลไกค้นหาเดียวที่ใช้ทุกที่: (ก) **[Recommended]** `POST /store/search` (index ของ Medusa — `/store` ใช้อยู่แล้วพร้อม facet/ราคา; แก้ config ให้ค้น "shirt" เจอ);
