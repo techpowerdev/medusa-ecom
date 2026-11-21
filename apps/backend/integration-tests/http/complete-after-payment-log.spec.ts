@@ -1,4 +1,5 @@
 import path from "path"
+import { Writable } from "stream"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, MedusaError, Modules, PaymentActions } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
@@ -19,6 +20,7 @@ import { createAdminUser } from "../helpers/admin"
 import { FLASH_SALE_MODULE } from "../../src/modules/flash_sale"
 import type FlashSaleModuleService from "../../src/modules/flash_sale/service"
 import { CART_COMPLETION_FAILED_AFTER_PAYMENT } from "../../src/workflows/hooks/paid-completion-failure"
+import { buildJsonLogger } from "../../src/lib/json-logger"
 
 jest.setTimeout(240 * 1000)
 
@@ -147,21 +149,23 @@ medusaIntegrationTestRunner({
       await flashSale.createFlashSaleConfigs({ campaign_id: campaign.id, per_customer_limit: 1 })
     }
 
-    async function readyCart(quantity: number, providerId: string) {
+    type Buyer = { email: string; first_name: string; last_name: string; address_1: string; city: string; postal_code: string }
+    async function readyCart(quantity: number, providerId: string, buyer?: Buyer) {
       seq += 1
-      const customer = await registerCustomer(api, pk, `ops32-${seq}@example.com`, "ops32-password")
+      const { email, ...address } = buyer ?? {
+        email: `ops32-${seq}@example.com`,
+        first_name: "Test",
+        last_name: "Buyer",
+        address_1: "1 Test Rd",
+        city: "Bangkok",
+        postal_code: "10110",
+      }
+      const customer = await registerCustomer(api, pk, email, "ops32-password")
       const { result: cart } = await createCartWorkflow(container).run({
         input: {
           region_id: regionId,
           customer_id: customer.customerId,
-          shipping_address: {
-            first_name: "Test",
-            last_name: "Buyer",
-            address_1: "1 Test Rd",
-            city: "Bangkok",
-            postal_code: "10110",
-            country_code: "th",
-          },
+          shipping_address: { ...address, country_code: "th" },
           items: [{ variant_id: variantId, quantity }],
         },
       })
@@ -315,6 +319,69 @@ medusaIntegrationTestRunner({
       // recreate ด้วย PI เดิม: รอบ createPaymentSessionStep + รอบ compensation ของ deletePaymentSessionsStep
       const recreated = createIntent.mock.calls.filter(([p]: any[]) => p.payment_method && typeof p.payment_method === "object")
       expect(recreated).toHaveLength(2)
+    })
+
+    // OPS-33 (spec 07 กฎข้อ 15 รอบ 41, AC-48 b/c): บรรทัด recreate a payment session ของ Medusa มี billing_details ของลูกค้า
+    it("AC-48b logger ของ prod ไม่มีชื่อ/อีเมล/เบอร์/ที่อยู่ของลูกค้า แต่ยังมี CART_COMPLETION_FAILED_AFTER_PAYMENT พร้อม cart_id", async () => {
+      const lines: string[] = []
+      const stream = new Writable({
+        write(chunk, _encoding, callback) {
+          lines.push(...chunk.toString().split("\n").filter(Boolean))
+          callback()
+        },
+      })
+      // logger เดียวกับที่ medusa-config ส่งให้ Medusa ใน production — ใน test LOGGER คือ singleton ของ framework จึงส่งต่อเข้าไป
+      const prod = buildJsonLogger({ NODE_ENV: "production", LOG_LEVEL: "debug" }, stream)!
+      warn.mockImplementation((message: string) => prod.warn(message))
+      error.mockImplementation((message: string, err?: Error) => prod.error(message, err))
+      jest.spyOn(logger, "info").mockImplementation((message: string) => prod.info(message))
+
+      const tag = {
+        email: "pii-tag-qz@example.com",
+        first_name: "Piifirstqz",
+        last_name: "Piilastqz",
+        address_1: "77 Piistreetqz",
+        city: "Piicityqz",
+        postal_code: "10999",
+      }
+      const phone = "0891234567"
+      // Stripe คืน payment_method พร้อม billing_details ที่ลูกค้ากรอก → Medusa ส่งกลับไปตอน recreate session แล้ว log ทั้งก้อน
+      jest.spyOn(PaymentIntents, "retrieve").mockImplementation(async (id: string) => ({
+        id,
+        object: "payment_intent",
+        currency: "thb",
+        status: "succeeded",
+        payment_method: {
+          id: "pm_ops33",
+          object: "payment_method",
+          billing_details: {
+            name: `${tag.first_name} ${tag.last_name}`,
+            email: tag.email,
+            phone,
+            address: { line1: tag.address_1, city: tag.city, postal_code: tag.postal_code, country: "TH" },
+          },
+        },
+      }))
+      await flashLimitOne()
+      const { cartId, session } = await readyCart(2, "pp_stripe_stripe", tag)
+
+      await captured(session)
+
+      // AC-48c: logger ของ Medusa ได้ PII จริง (fixture ถึง log) — redact เกิดใน json-logger ของ prod เท่านั้น
+      const medusaRaw = error.mock.calls.map((c) => String(c[0])).join("\n")
+      for (const value of [tag.email, tag.first_name, phone, tag.address_1]) {
+        expect(medusaRaw).toContain(value)
+      }
+
+      const text = lines.join("\n")
+      expect(text).toContain("recreate a payment session")
+      for (const value of [...Object.values(tag), phone]) {
+        expect(text).not.toContain(value)
+      }
+      const markers = lines
+        .map((line) => JSON.parse(line).message as string)
+        .filter((message) => message.startsWith(CART_COMPLETION_FAILED_AFTER_PAYMENT))
+      expect(markers).toEqual([expect.stringContaining(`cart_id=${cartId}`)])
     })
 
     it("complete ล้มก่อนมีการชำระ (ยังไม่ capture) → ไม่มี warn นี้", async () => {
