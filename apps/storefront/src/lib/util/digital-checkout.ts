@@ -43,16 +43,32 @@ export function checkoutStep(cart: CheckoutCart, options?: { id: string }[]) {
   return deliveryStepDone(cart, options) ? "payment" : "delivery"
 }
 
+/** CORE-69 (กฎข้อ 127): cart ที่ใช้ตัดสินขั้น review ต้องมี payment_collection/total ด้วย */
+type ReviewCart = CheckoutCart &
+  Partial<Pick<HttpTypes.StoreCart, "payment_collection" | "total">>
+
+/**
+ * CORE-69 (spec 01 กฎข้อ 127): ขั้น payment เสร็จ = มี payment session ที่ใช้ได้ (`pending` แบบ activeSession ของ Payment
+ * หรือ `authorized` ที่ complete ได้เลย) หรือจ่ายด้วย gift card จนยอดเป็น 0 (เงื่อนไขเดียวกับ Review/Payment ของ starter)
+ */
+export function paymentStepDone(cart: ReviewCart) {
+  const giftCards = (cart as { gift_cards?: unknown[] }).gift_cards
+  if ((giftCards?.length ?? 0) > 0 && cart.total === 0) return true
+  return (cart.payment_collection?.payment_sessions ?? []).some(
+    (session) => session.status === "pending" || session.status === "authorized"
+  )
+}
+
 /**
  * CORE-45 (spec 01 กฎข้อ 103): step ใน URL ที่ใช้ไม่ได้ → คืน step ปลายทาง (= `checkoutStep(cart, options)`) ไม่งั้น `null`
  * - ไม่มี step / ไม่ใช่ address|delivery|payment|review แบบตรงตัว → ขั้นแรกที่ยังไม่เสร็จ
  * - address → ไม่ redirect เสมอ; delivery → redirect เมื่อยังไม่มีที่อยู่ หรือ cart digital-only (ไม่มีขั้น delivery)
- * - payment/review → กฎข้อ 99 (ขั้นก่อนหน้ายังไม่เสร็จ)
+ * - payment/review → กฎข้อ 99 (ขั้นก่อนหน้ายังไม่เสร็จ); review ที่ยังไม่มี payment session ที่ใช้ได้ → payment (กฎข้อ 127)
  * ปลายทาง address/delivery(มีที่อยู่)/payment(พร้อมจ่าย) ไม่เข้าเงื่อนไขซ้ำ จึงไม่วน
  */
 export function checkoutRedirectStep(
   step: string | undefined,
-  cart: CheckoutCart,
+  cart: ReviewCart,
   options?: { id: string }[]
 ): "address" | "delivery" | "payment" | null {
   const first = checkoutStep(cart, options)
@@ -62,8 +78,9 @@ export function checkoutRedirectStep(
     case "delivery":
       return first === "address" || isDigitalOnlyCart(cart) ? first : null
     case "payment":
-    case "review":
       return first === "payment" ? null : first
+    case "review":
+      return first === "payment" && paymentStepDone(cart) ? null : first
     default:
       return first
   }
@@ -74,7 +91,7 @@ export function checkoutRedirectStep(
  * ถ้าเชื่อค่านั้น กฎข้อ 103b จะเด้งกลับ address → เมื่อ `checkoutRedirectStep` บอกให้ redirect ให้อ่าน cart ล่าสุด (`loadLatest`)
  * แล้วตัดสินซ้ำ (คืน cart/options ที่ใช้ตัดสินเพื่อ render ต่อ); ไม่ redirect = ไม่อ่าน cart เพิ่ม; อ่านไม่ได้ = ใช้ผลจาก cart เดิม
  */
-export async function checkoutRedirectWithLatest<C extends CheckoutCart>(
+export async function checkoutRedirectWithLatest<C extends ReviewCart>(
   step: string | undefined,
   cart: C,
   optionsFor: (cart: C) => { id: string }[],

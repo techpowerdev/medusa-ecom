@@ -1,0 +1,56 @@
+# CORE-69 — ผล test (spec 01 กฎข้อ 127, AC-168) — 2026-11-21, node v22.23.3, ในเครื่อง: backend :9169 (medusa develop, DB medusa_core69, Redis db 5), storefront :8169 (next dev)
+
+## Red — unit (Vitest) src/ev-7c-digital-only-checkout.test.ts บน develop 0e5295de (checkoutRedirectStep ยังไม่ตรวจ payment session)
+     × payment/review + มีที่อยู่ + Standard → ผลเดียวกับกฎข้อ 99 (AC-135) 4ms
+     × payment/review + digital-only มีที่อยู่ → ผลเดียวกับกฎข้อ 99 (AC-135) 0ms
+     × review + มีที่อยู่ + Standard แต่ไม่มี payment session → payment (กฎข้อ 127) 0ms
+     × review + digital-only มีที่อยู่ แต่ไม่มี payment session → payment (กฎข้อ 127) 0ms
+     × review + มี payment_collection แต่ session ถูกยกเลิก (ไม่ใช่ pending/authorized) → payment 0ms
+     × CORE-69: review + cart ใน cache ยังไม่มี session แต่ cart ล่าสุดมีแล้ว → ไม่ redirect และใช้ cart ล่าสุด 2ms
+ Tests  6 failed | 63 passed (69)
+
+## Red — e2e AC-168 บน lib/util/digital-checkout.ts ของ develop 0e5295de (URL ค้าง step=review)
+    Error: expect(page).toHaveURL(expected) failed
+    Expected pattern: /[?&]step=payment(&|$)/
+    Received string:  "http://localhost:8169/th/checkout?step=review"
+    test-results/core-69-review-without-pay-7a1d6-ent-เห็นตัวเลือกการชำระเงิน-chromium/test-failed-1.png
+  2 failed
+  1 passed (46.2s)
+
+## Green — unit (Vitest) ทั้ง storefront
+ Test Files  103 passed (103)
+      Tests  1211 passed (1211)  (src/ev-7c-digital-only-checkout.test.ts 70 passed — รวม test gift card ที่เพิ่มหลังรอบ e2e)
+
+## Green — e2e chromium: core-69 (ใหม่) + core-41 + core-52 + core-19b (regression ของ redirect/ขั้น review)
+  ✓   3 [chromium] › e2e/core-41-checkout-first-step.spec.ts:41:5 › AC-135 cart t-shirt ไม่มีที่อยู่: เปิด step=payment/review ตรงๆ → step=address ฟอร์มที่อยู่เปิด (11.7s)
+  ✓   2 [chromium] › e2e/core-69-review-without-payment.spec.ts:52:7 › AC-168 cart มีที่อยู่ + Standard, ไม่มี payment collection: เปิด step=review → step=payment เห็นตัวเลือกการชำระเงิน (16.9s)
+  ✓   5 [chromium] › e2e/core-41-checkout-first-step.spec.ts:65:5 › AC-135 cart digital-only ไม่มีที่อยู่: เปิด step=review ตรงๆ → step=address ฟอร์มที่อยู่ใบเสร็จเปิด (26.3s)
+  ✓   4 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800) (38.9s)
+  ✓   6 [chromium] › e2e/core-69-review-without-payment.spec.ts:52:7 › AC-168 cart มีที่อยู่ + Standard, มี payment collection แต่ไม่มี session: เปิด step=review → step=payment เห็นตัวเลือกการชำระเงิน (29.5s)
+  ✓   7 [chromium] › e2e/core-41-checkout-first-step.spec.ts:88:5 › AC-135 regression: cart มีที่อยู่ + Standard เปิด step=payment ตรงๆ → ไม่ถูก redirect (14.8s)
+  ✓   8 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800) (23.4s)
+  ✓   9 [chromium] › e2e/core-69-review-without-payment.spec.ts:75:5 › AC-168 regression: cart มี session ของ manual payment เปิด step=review → อยู่ที่ review และปุ่มสั่งซื้อพร้อม (17.6s)
+  ✓  10 [chromium] › e2e/core-41-checkout-first-step.spec.ts:152:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart t-shirt ไม่มีที่อยู่: step=delivery / ไม่มี step / step=foo / step ซ้ำ → step=address (12.6s)
+  ✓  11 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (3.9s)
+  ✓  13 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800) (6.3s)
+  ✓  12 [chromium] › e2e/core-41-checkout-first-step.spec.ts:177:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart มีที่อยู่ + Standard: ไม่มี step → step=payment, step=delivery ไม่ถูก redirect (9.0s)
+  ✓  14 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (6.6s)
+  ✓  15 [chromium] › e2e/core-41-checkout-first-step.spec.ts:206:7 › CORE-45 step ที่ใช้ไม่ได้ › D-1 cart ใน cache ยังไม่มีที่อยู่ แต่ cart จริงมีแล้ว: step=delivery ไม่เด้งกลับ address (5.7s)
+  ✓  17 [chromium] › e2e/core-41-checkout-first-step.spec.ts:232:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart digital-only มีที่อยู่: step=delivery → step=payment (3.9s)
+  ✓  16 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800) (23.4s)
+  ✓  18 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812) (8.1s)
+  ✓  19 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812) (8.9s)
+  ✓  20 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (5.4s)
+  ✓  21 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812) (8.7s)
+  ✓  22 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (5.0s)
+  ✓  23 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812) (20.1s)
+  ✓  24 [chromium] › e2e/core-52-checkout-guards.spec.ts:299:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (11.2s)
+  ✓  25 [chromium] › e2e/core-52-checkout-guards.spec.ts:327:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 cart digital-only: เขต/อำเภอใบเสร็จเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (10.5s)
+  ✓   1 [chromium] › e2e/core-19b-continue-to-review.spec.ts:22:5 › AC-64: กด Continue to review ครั้งเดียว 20 รอบ (cart ใหม่ทุกรอบ) → step=review ภายใน 10 วินาที (3.5m)
+  -  26 [chromium] › e2e/core-19b-continue-to-review.spec.ts:73:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว
+  1 skipped
+  25 passed (3.7m)
+
+## อื่นๆ
+pnpm --filter storefront test:e2e:unit → 123 passed
+pnpm lint → 0 error; pnpm typecheck → 0 error (backend ตรวจหลังลบ .medusa/ ที่ medusa develop generate ในเครื่อง)
