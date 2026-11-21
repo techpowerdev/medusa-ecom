@@ -21,3 +21,27 @@ export default function CartFlashExceedsRemaining({
     </p>
   )
 }
+
+/**
+ * FS-21 (spec 03 กฎข้อ 26b, AC-28 c): จำนวนรวมของ line flash ในแคมเปญเดียวกันเกินสิทธิ์ต่อคนที่เหลือ — เตือนก่อนจ่าย
+ * (ขั้น review disable ปุ่มสั่งซื้อ; ด่านจริงคือ hook ตอน complete)
+ */
+export function CartFlashExceedsCustomerLimit({
+  remaining,
+}: {
+  remaining?: number
+}) {
+  if (remaining == null) {
+    return null
+  }
+  return (
+    <p
+      className="txt-small text-ui-fg-error w-full"
+      data-testid="cart-flash-exceeds-customer-limit"
+    >
+      {remaining > 0
+        ? `สิทธิ์ราคาแฟลชเซลของคุณเหลือ ${remaining} ชิ้น (รวมทุกรายการในแคมเปญนี้) กรุณาลดจำนวนก่อนสั่งซื้อ`
+        : "คุณใช้สิทธิ์ราคาแฟลชเซลครบแล้ว กรุณาลบสินค้านี้ออกก่อนสั่งซื้อ"}
+    </p>
+  )
+}

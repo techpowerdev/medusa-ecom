@@ -240,6 +240,19 @@ medusaIntegrationTestRunner({
         expect(emails.map((e) => e.to)).toEqual([OPS_EMAIL, OPS_EMAIL])
       })
 
+      // EV-20 (กฎข้อ 36c — session หลักตัดสิน 2026-11-21): job ใช้นิยาม low stock เดียวกับ route — pool ที่ไม่มี code เลยไม่ถูกแจ้ง
+      it("does not send a low-stock alert for a pool without any codes", async () => {
+        const empty = await createPool("Empty 500", { low_stock_threshold: 5 })
+        const low = await createPool("Low 500", { low_stock_threshold: 5 })
+        await importCsv(low.poolId, "LOW-1\n")
+
+        await evoucherDailyJob(getContainer())
+
+        const alerts = await listEmails("evoucher-low-stock")
+        expect(alerts.map((e) => e.resource_id)).toEqual([low.poolId])
+        expect(alerts.map((e) => e.resource_id)).not.toContain(empty.poolId)
+      })
+
       it("logs a warning and skips admin emails when EVOUCHER_ADMIN_EMAIL is not set (job still voids)", async () => {
         delete process.env.EVOUCHER_ADMIN_EMAIL
         const { poolId, inventoryItemId } = await createPool("Lotus 500", { low_stock_threshold: 5 })

@@ -205,7 +205,7 @@ describe("หน้า /cart อ่าน cart แบบ fresh (กฎข้อ 
     vi.resetModules()
     vi.doMock("@lib/data/cart", () => ({ retrieveCart: (...a: unknown[]) => retrieveCartData(...a) }))
     vi.doMock("@lib/data/customer", () => ({ retrieveCustomer: vi.fn().mockResolvedValue(null) }))
-    vi.doMock("@lib/data/flash-sales", () => ({ getCartFlashExceeded: vi.fn().mockResolvedValue({}) }))
+    vi.doMock("@lib/data/flash-sales", () => ({ getCartFlashChecks: vi.fn().mockResolvedValue({ remaining: {}, customerLimit: {} }) }))
     vi.doMock("@modules/cart/templates", () => ({ default: () => null }))
     retrieveCartData.mockResolvedValue({ id: "cart_1", items: [] })
     const { default: Cart } = await import("./app/[countryCode]/(main)/cart/page")

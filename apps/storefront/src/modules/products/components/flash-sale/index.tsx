@@ -1,6 +1,7 @@
 "use client"
 
-import { getActiveFlashSales } from "@lib/data/flash-sales"
+import { getActiveFlashSales, getProductFlash } from "@lib/data/flash-sales"
+import type { FlashAllowance } from "@lib/util/flash-allowance"
 import {
   type ActiveFlashSales,
   type CardFlash,
@@ -28,13 +29,15 @@ type FlashOfferState = { offer: FlashOffer | null; now: number }
  * ใช้ร่วมกันระหว่างกล่อง flash, ปุ่มเพิ่มลง cart (disable เมื่อ sold_out, กฎข้อ 18) และแถบล่างบนมือถือ
  * FS-16 (กฎข้อ 21a): `loading` = request flash ของชุด variant ปัจจุบันยังไม่ตอบ (สำเร็จหรือ error) — HTML ฝั่ง server
  * (ฟอร์ม no-JS) ไม่อยู่ในสถานะรอ จึงนับเฉพาะหลัง hydrate
+ * FS-21 (กฎข้อ 26a): `allowances` = สิทธิ์ต่อคนที่เหลือของ variant ในแคมเปญ (ไม่ login → []) — รอทั้งสอง request ก่อนปลด `loading`
  */
 export function useFlashOffer(
   product: HttpTypes.StoreProduct,
   region: HttpTypes.StoreRegion,
   variant?: HttpTypes.StoreProductVariant
-): FlashOfferState & { loading: boolean } {
+): FlashOfferState & { loading: boolean; allowances: FlashAllowance[] } {
   const [data, setData] = useState<ActiveFlashSales | null>(null)
+  const [allowances, setAllowances] = useState<FlashAllowance[]>([])
   const [answeredKey, setAnsweredKey] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const hydrated = useSyncExternalStore(noopSubscribe, isClient, isServer)
@@ -44,11 +47,12 @@ export function useFlashOffer(
     let alive = true
     const ids = (product.variants ?? []).map((v) => v.id)
     // server action ล้ม (เช่น 500) → reject: ถือว่าไม่มีข้อมูล flash แล้วปลดสถานะรอ ไม่ค้างปุ่ม
-    getActiveFlashSales(region.id, ids)
-      .catch(() => null)
+    getProductFlash(region.id, ids)
+      .catch(() => ({ data: null, allowances: [] }))
       .then((res) => {
         if (alive) {
-          setData(res)
+          setData(res.data)
+          setAllowances(res.allowances)
           setAnsweredKey(key)
         }
       })
@@ -69,7 +73,7 @@ export function useFlashOffer(
     return () => clearInterval(timer)
   }, [ticking])
 
-  return { offer, now, loading: hydrated && answeredKey !== key }
+  return { offer, now, loading: hydrated && answeredKey !== key, allowances }
 }
 
 const noopSubscribe = () => () => {}

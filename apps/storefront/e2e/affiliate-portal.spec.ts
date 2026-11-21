@@ -111,11 +111,13 @@ test("AF-8a: login → แท็บได้ค่าคอมตอนนี้
     await expectThai(page, ["affiliate-tab-earning", "affiliate-tab-upcoming"])
   })
 
-  await step("AC-35: X มีการ์ดเดียว 15% ของ P3 ยอดประมาณการ ฿148.50 และไม่มี 'สูงสุด'", async () => {
+  // AF-24 กฎ 48a: ประมาณการจากราคาก่อน VAT — round(990 / 1.07 × 15%, 2) = ฿138.79 (เดิม ฿148.50 จากราคารวม VAT)
+  await step("AC-35: X มีการ์ดเดียว 15% ของ P3 ยอดประมาณการ ฿138.79 (ก่อน VAT) และไม่มี 'สูงสุด'", async () => {
     const card = page.locator(`[data-testid="affiliate-product-card"][data-handle="${X}"]`)
     await expect(card).toHaveCount(1)
     await expect(card.getByTestId("affiliate-rate")).toContainText("15%")
-    await expect(card.getByTestId("affiliate-estimate")).toContainText("฿148.50")
+    await expect(card.getByTestId("affiliate-estimate")).toContainText("฿138.79")
+    await expect(card.getByTestId("affiliate-estimate-basis")).toHaveText(THAI)
     await expect(card.getByTestId("affiliate-program-name")).toHaveText(p3)
     await expect(card.getByTestId("affiliate-program-dates")).toBeVisible()
     await expect(card.getByTestId("affiliate-rate-varies")).toHaveCount(0)

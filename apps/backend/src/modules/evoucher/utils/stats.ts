@@ -26,3 +26,13 @@ export function toStatusCounts(
 export function isLowStock(available: number, threshold: number): boolean {
   return available < threshold
 }
+
+/** จำนวน code ทุกสถานะของ pool (EV-20) */
+export function totalCodes(counts: EvoucherCodeCounts): number {
+  return EVOUCHER_CODE_STATUSES.reduce((sum, status) => sum + counts[status], 0)
+}
+
+/** EV-20 (กฎข้อ 36c): pool ที่ไม่มี code เลยไม่นับเป็น low-stock (admin แสดง "No codes" แทน) */
+export function isPoolLowStock(counts: EvoucherCodeCounts, threshold: number): boolean {
+  return totalCodes(counts) > 0 && isLowStock(counts.available, threshold)
+}

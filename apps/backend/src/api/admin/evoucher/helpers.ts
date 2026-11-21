@@ -1,6 +1,6 @@
 import EvoucherModuleService from "../../../modules/evoucher/service"
 import { maskSecret } from "../../../modules/evoucher/utils/mask"
-import { isLowStock } from "../../../modules/evoucher/utils/stats"
+import { isPoolLowStock, totalCodes } from "../../../modules/evoucher/utils/stats"
 
 type PoolRow = { id: string; low_stock_threshold: number }
 
@@ -12,7 +12,7 @@ export const withPoolCountFields = (fields: string[] = []) => [
   ...new Set([...fields, ...POOL_COUNT_FIELDS]),
 ]
 
-/** เติม `code_counts` (ต่อสถานะ) และ `low_stock` ให้ pool สำหรับหน้า admin (EV-6) */
+/** เติม `code_counts` (ต่อสถานะ), `total_codes` และ `low_stock` ให้ pool สำหรับหน้า admin (EV-6, EV-20) */
 export async function withCodeCounts<T extends PoolRow>(
   service: EvoucherModuleService,
   pools: T[]
@@ -21,7 +21,8 @@ export async function withCodeCounts<T extends PoolRow>(
   return pools.map((pool) => ({
     ...pool,
     code_counts: counts[pool.id],
-    low_stock: isLowStock(counts[pool.id].available, pool.low_stock_threshold),
+    total_codes: totalCodes(counts[pool.id]),
+    low_stock: isPoolLowStock(counts[pool.id], pool.low_stock_threshold),
   }))
 }
 
