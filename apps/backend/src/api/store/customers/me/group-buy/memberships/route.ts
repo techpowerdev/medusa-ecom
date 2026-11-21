@@ -1,5 +1,7 @@
 import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import type { OrderDetailDTO } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { getLastPaymentStatus } from "@medusajs/medusa/core-flows"
 
 type Row = {
   campaign_id: string
@@ -26,6 +28,11 @@ const FIELDS = [
   "order.is_draft_order",
   "order.currency_code",
   "order.total",
+  // GB-22 (spec 04 กฎข้อ 45b): ใช้คำนวณ payment_status ด้วย helper ของ Medusa แบบ route รายตัว (ไม่คืน collection ใน response)
+  "order.payment_collections.amount",
+  "order.payment_collections.status",
+  "order.payment_collections.captured_amount",
+  "order.payment_collections.refunded_amount",
 ]
 
 // GB-8 (spec 04 API รอบ 10, กฎข้อ 21, ADR-016): membership ของผู้เรียกเท่านั้น ใหม่สุดก่อน (รวม cancelled) — อ่านอย่างเดียว
@@ -64,6 +71,11 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
           is_draft_order: order.is_draft_order,
           currency_code: order.currency_code,
           total: order.total,
+          // ADR-016 ภาคผนวก 2026-11-21: กรอง null ก่อนคำนวณแบบเดียวกับ route รายตัว (กฎข้อ 24b)
+          payment_status: getLastPaymentStatus({
+            ...order,
+            payment_collections: ((order.payment_collections as unknown[] | undefined) ?? []).filter(Boolean),
+          } as unknown as OrderDetailDTO),
         }
       : null,
   }))

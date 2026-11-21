@@ -1,6 +1,6 @@
 import { APIRequestContext, BrowserContext, Page, Route } from "@playwright/test"
 
-import { paymentSessionResult } from "../src/lib/util/action-result"
+import { orderPaySessionResult } from "../src/lib/util/order-pay"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { GroupBuyOrderCtx, groupBuyOrder, leaveGroup } from "./support/group-buy"
 import { createCustomer, signInAs, STOREFRONT_COUNTRY as CC } from "./support/medusa"
@@ -15,7 +15,7 @@ const NEED_UI = "ต้องตั้ง STRIPE_API_KEY (sk_test_) + NEXT_PUBLI
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- response ของ GB-8 ที่ mock แก้บาง field
 type Gb8 = any
-type Payment = { payment_status?: string; collection?: string; session?: string }
+type Payment = { payment_status?: string; collection?: string; session?: string; membership?: string }
 
 const payPath = (orderId: string) => `/${CC}/account/orders/${orderId}/pay`
 
@@ -26,7 +26,10 @@ async function openPay(page: Page, context: BrowserContext, baseURL: string, ctx
 
 /** query ที่ Stripe แนบมาตอน redirect กลับ (กฎข้อ 9 d3) */
 const stripeReturnQuery = (status: string) => `?payment_intent=pi_x&payment_intent_client_secret=pi_x_secret&redirect_status=${status}`
-const CAPTURED: Payment = { payment_status: "captured", collection: "completed", session: "authorized" }
+/** capture แล้วและ subscriber แปลง order แล้ว (membership paid) — GB-22: order-pay-paid เฉพาะกรณีนี้ */
+const CAPTURED: Payment = { payment_status: "captured", collection: "completed", session: "authorized", membership: "paid" }
+/** GB-22: เงินเข้าแล้วแต่ยังเป็น draft (subscriber ยังไม่แปลง/convert_failed) — membership ยัง awaiting_payment */
+const CAPTURED_DRAFT: Payment = { payment_status: "captured", collection: "completed", session: "authorized" }
 const NOT_PAID: Payment = { payment_status: "not_paid", collection: "not_paid", session: "pending" }
 /** ช่วงที่ processPaymentWorkflow ของ Medusa authorize แล้วแต่ยังไม่ capture (คนละ step) */
 const AUTHORIZED: Payment = { payment_status: "authorized", collection: "authorized", session: "authorized" }
@@ -34,8 +37,9 @@ const AUTHORIZED: Payment = { payment_status: "authorized", collection: "authori
 const NO_MORE_POLL_MS = 2 * 3_000 + 1_000
 
 /** แก้สถานะการชำระใน response ของ GB-8 (collection แรก) */
-function withPayment(body: Gb8, { payment_status, collection, session }: Payment): Gb8 {
+function withPayment(body: Gb8, { payment_status, collection, session, membership }: Payment): Gb8 {
   const pc = body.order.payment_collections[0]
+  if (membership) body.membership.status = membership
   if (payment_status) body.order.payment_status = payment_status
   if (collection) pc.status = collection
   if (session) {
@@ -61,7 +65,7 @@ async function fulfillResult(route: Route, fn: (result: Gb8) => Gb8) {
 
 type Mock = {
   /**
-   * response ของ Medusa (`status` + `code`) ที่ createPaymentSession ได้ — action คืนผลผ่าน `paymentSessionResult` (CORE-4i-b);
+   * response ของ Medusa (`status` + `code`) ที่ createPaymentSession ได้ — action คืนผลผ่าน `orderPaySessionResult` (CORE-4i-b, GB-22);
    * ฟังก์ชัน = ผลของครั้งที่ n (undefined = ผลจริง)
    */
   create?: { status: number; code: string | null } | ((n: number) => { status: number; code: string | null } | undefined)
@@ -91,7 +95,7 @@ async function mockActions(page: Page, orderId: string, mock: Mock) {
         await mock.beforeCreate?.()
         const result = typeof mock.create === "function" ? mock.create(log.created) : mock.create
         const mocked = result && log.created <= (mock.createTimes ?? Infinity)
-        return mocked ? fulfillResult(route, () => paymentSessionResult(result)) : route.fallback()
+        return mocked ? fulfillResult(route, () => orderPaySessionResult(result)) : route.fallback()
       }
       if (!log.created && !mock.fromStart) return route.fallback()
       if (body === JSON.stringify([orderId])) {
@@ -210,7 +214,7 @@ test.describe("หน้าชำระเงินของ order กลุ่�
         create: { status, code },
         // ครั้งแรก (อ่านหลัง error) ยังไม่ captured; ครั้งถัดไป captured (review #184: หยุดเมื่อ captured เท่านั้น)
         gb8: (n, body) =>
-          withPayment(body, n === 1 ? first : { payment_status: "captured", collection: "completed", session: "authorized" }),
+          withPayment(body, n === 1 ? first : CAPTURED),
       })
       await page.getByTestId(`payment-option-${CARD_PROVIDER}`).click()
       await expect(page.getByTestId("order-pay-paid")).toBeVisible({ timeout: 30_000 })
@@ -394,6 +398,87 @@ test.describe("หน้าชำระเงินของ order กลุ่�
     expect(log.created).toBe(2)
     expect(log.gb8).toBeLessThanOrEqual(11)
     expectNoCartComplete(log)
+  })
+})
+
+// GB-22 (spec 04 กฎข้อ 45a, AC-64c — GB-BUG-1 ก): สิทธิ์ยกเลิกแล้วต้องไม่บอกว่า "ชำระเงินเรียบร้อยแล้ว"
+test.describe("หน้าชำระเงินของ order กลุ่ม — สิทธิ์ปิดแล้ว (GB-22)", () => {
+  test.use({ evidenceTarget: { feature: "group-buying", taskId: "GB-22" } })
+
+  test("กลับจาก redirect แล้ว GB-8 ตอบ cancelled + captured → order-pay-closed + order-pay-refund-notice ไม่ใช่ order-pay-paid", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    test.setTimeout(60_000)
+    const ctx = await groupBuyOrder(request, true)
+    const log = await mockActions(page, ctx.orderId, {
+      fromStart: true,
+      gb8: (_n, body) => withPayment(body, { ...CAPTURED_DRAFT, membership: "cancelled" }),
+    })
+    await openPay(page, context, baseURL!, ctx, stripeReturnQuery("succeeded"))
+    await expect(page.getByTestId("order-pay-closed")).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId("order-pay-refund-notice")).toBeVisible()
+    await expect(page.getByTestId("order-pay-paid")).toHaveCount(0)
+    await expect(page.getByTestId("order-pay-awaiting")).toHaveCount(0)
+    await expect(page.getByTestId("order-pay-form")).toHaveCount(0)
+    await expectThai(page, ["order-pay-closed", "order-pay-refund-notice"])
+    await page.waitForTimeout(NO_MORE_POLL_MS)
+    expect(log.gb8, "หยุด poll เมื่อสิทธิ์ถูกยกเลิก").toBe(1)
+    await evidence("02-order-pay-cancelled-refund-notice")
+  })
+
+  // session หลักตัดสิน 2026-11-21: ข้อความตรงกับ group-order-processing ของหน้าบัญชี
+  test("GB-8 ตอบ awaiting_payment + captured (ยังเป็น draft) → order-pay-processing ไม่ใช่ order-pay-paid และคงอยู่หลังครบเพดาน poll", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    test.setTimeout(90_000)
+    const ctx = await groupBuyOrder(request, true)
+    const log = await mockActions(page, ctx.orderId, {
+      fromStart: true,
+      gb8: (_n, body) => withPayment(body, CAPTURED_DRAFT),
+    })
+    await openPay(page, context, baseURL!, ctx, stripeReturnQuery("succeeded"))
+    await expect(page.getByTestId("order-pay-processing")).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId("order-pay-paid")).toHaveCount(0)
+    await expect(page.getByTestId("order-pay-form")).toHaveCount(0)
+    await expectThai(page, ["order-pay-processing"])
+    // poll ต่อจนครบเพดาน (รอ subscriber แปลง order) แล้วคงข้อความเดิม ไม่เปลี่ยนเป็น promptpay-order-delayed
+    await expect.poll(() => log.gb8, { timeout: 60_000 }).toBe(10)
+    await page.waitForTimeout(NO_MORE_POLL_MS)
+    expect(log.gb8, "หยุดยิงหลังครบเพดาน").toBe(10)
+    await expect(page.getByTestId("order-pay-processing")).toBeVisible()
+    await expect(page.getByTestId("promptpay-order-delayed")).toHaveCount(0)
+    expectNoCartComplete(log)
+    await evidence("04-order-pay-processing")
+  })
+
+  test("สร้าง session ได้ 400 GB_PAYMENT_CLOSED → อ่าน GB-8 ใหม่แล้ว order-pay-closed (ไม่มีฟอร์ม/error)", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    const ctx = await groupBuyOrder(request, true)
+    await openPay(page, context, baseURL!, ctx)
+    // GB-8 ยังตอบตามจริง (awaiting_payment ก่อนเส้นตาย) — หน้าต้องเชื่อ guard ของ backend
+    const log = await mockActions(page, ctx.orderId, { create: { status: 400, code: "GB_PAYMENT_CLOSED" } })
+    await page.getByTestId(`payment-option-${CARD_PROVIDER}`).click()
+    await expect(page.getByTestId("order-pay-closed")).toBeVisible()
+    await expect(page.getByTestId("order-pay-form")).toHaveCount(0)
+    await expect(page.getByTestId("order-pay-error")).toHaveCount(0)
+    await expect(page.getByTestId("order-pay-refund-notice")).toHaveCount(0)
+    await expectThai(page, ["order-pay-closed"])
+    expect(log.created).toBe(1)
+    expect(log.gb8).toBe(1)
+    await evidence("03-order-pay-gb-payment-closed")
   })
 })
 

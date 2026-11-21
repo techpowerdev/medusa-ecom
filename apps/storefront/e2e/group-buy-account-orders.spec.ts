@@ -1,8 +1,9 @@
 import { APIRequestContext, BrowserContext, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
-import { GroupBuyOrderCtx, groupBuyOrder } from "./support/group-buy"
-import { signInAs, STOREFRONT_COUNTRY as CC } from "./support/medusa"
+import { deleteAllThenExpectOk, expectNoneLeft } from "./support/cleanup"
+import { GroupBuyOrderCtx, STOCKED_HANDLE_PREFIX, groupBuyOrder, setStock, stockedProduct } from "./support/group-buy"
+import { adminHeaders, signInAs, STOREFRONT_COUNTRY as CC } from "./support/medusa"
 import { CARD_PROVIDER, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, authorizePromptPay, fillCard } from "./support/stripe"
 import { expectThai } from "./support/thai-text"
 
@@ -109,6 +110,69 @@ test.describe("หน้า account: คำสั่งซื้อแบบก�
     await row.getByTestId("group-order-pay-link").click()
     await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders/${ctx.orderId}/pay$`))
     await expect(page.getByTestId("order-pay-form")).toBeVisible()
+  })
+})
+
+// GB-22 (spec 04 กฎข้อ 45b, AC-64d): จ่ายแล้วแต่แปลง draft order ไม่สำเร็จ (สต็อกหมดตอน convert — convert_failed ของกฎข้อ 25)
+// → membership ยัง awaiting_payment + payment_status captured → "กำลังยืนยัน" ไม่มีปุ่มชำระ
+test.describe("หน้า account: จ่ายแล้วแต่ยังเป็น draft (GB-22)", () => {
+  test.use({ evidenceTarget: { feature: "group-buying", taskId: "GB-22" } })
+
+  test("awaiting_payment + captured → group-order-processing ไม่มีลิงก์ชำระ", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const product = await stockedProduct(request, admin, 1)
+    // review #444: สินค้าของ test ต้องไม่ค้างใน catalog ของ spec ถัดไป/screenshot (spec 03 กฎข้อ 23b, spec 01 กฎข้อ 66)
+    try {
+      const ctx = await groupBuyOrder(request, true, product.handle)
+      await setStock(request, admin, product, 0)
+      const collectionId = (await gb8(request, ctx)).order.payment_collections[0].id
+      const paid = await request.post(`${BACKEND_URL}/admin/payment-collections/${collectionId}/mark-as-paid`, {
+        headers: admin,
+        data: { order_id: ctx.orderId },
+      })
+      expect(paid.status(), await paid.text()).toBe(200)
+      // subscriber ของ GB-5 แปลง order ล้ม (สต็อก 0) → compensation คืน awaiting_payment; รอให้สถานะนิ่ง 2 รอบติดกัน
+      let stable = 0
+      await expect
+        .poll(
+          async () => {
+            const m = await membershipOf(request, ctx)
+            stable = m.status === "awaiting_payment" && m.order.payment_status === "captured" ? stable + 1 : 0
+            return stable
+          },
+          { timeout: 30_000, intervals: [1_000] }
+        )
+        .toBeGreaterThanOrEqual(3)
+
+      await openOrders(page, context, baseURL!, ctx)
+      const row = card(page, ctx)
+      await expect(row.getByTestId("group-order-processing")).toBeVisible()
+      await expect(row.getByTestId("group-order-pay-link")).toHaveCount(0)
+      await expect(row.getByTestId("group-pay-deadline")).toHaveCount(0)
+      await expectThai(page, ["group-order-processing"])
+      await evidence("01-account-group-processing")
+
+      // session หลักตัดสิน 2026-11-21 (qa #444): หน้า pay ของ order เดียวกันต้องบอกข้อความเดียวกัน ไม่ใช่ "ชำระเงินเรียบร้อยแล้ว"
+      const label = (await row.getByTestId("group-order-processing").textContent())!.trim()
+      await page.goto(`/${CC}/account/orders/${ctx.orderId}/pay`)
+      await expect(page.getByTestId("order-pay-processing")).toHaveText(label)
+      await expect(page.getByTestId("order-pay-paid")).toHaveCount(0)
+      await expect(page.getByTestId("order-pay-form")).toHaveCount(0)
+
+      // review #444 nit: convert ล้มจริง — membership ยังรอชำระและ order ยังเป็น draft หลังตรวจ UI
+      expect((await membershipOf(request, ctx)).status).toBe("awaiting_payment")
+      expect((await gb8(request, ctx)).order.is_draft_order).toBe(true)
+    } finally {
+      await deleteAllThenExpectOk(request, admin, [`/admin/products/${product.productId}`])
+      await expectNoneLeft(request, admin, product.run, STOCKED_HANDLE_PREFIX)
+    }
   })
 })
 

@@ -31,11 +31,14 @@ export type GroupBuyOrderCtx = {
   orderId: string
 }
 
-/** ลูกค้าใหม่ join กลุ่ม (membership `joined`); `succeed` → admin succeed กลุ่ม (GB-4 สร้าง payment collection, `awaiting_payment`) */
-export async function groupBuyOrder(request: APIRequestContext, succeed: boolean): Promise<GroupBuyOrderCtx> {
+/**
+ * ลูกค้าใหม่ join กลุ่ม (membership `joined`); `succeed` → admin succeed กลุ่ม (GB-4 สร้าง payment collection, `awaiting_payment`)
+ * `handle` = สินค้าของแคมเปญ (ค่าเริ่มต้น t-shirt ของ seed)
+ */
+export async function groupBuyOrder(request: APIRequestContext, succeed: boolean, handle = "t-shirt"): Promise<GroupBuyOrderCtx> {
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
-  const { productId, variantId } = await variantOf(request, pk, "t-shirt")
+  const { productId, variantId } = await variantOf(request, pk, handle)
   const base = `${BACKEND_URL}/admin/group-buy`
   const { campaign } = await ok(
     await request.post(`${base}/campaigns`, {
@@ -267,5 +270,59 @@ export async function joinWith(
     }),
     "join",
     201
+  )
+}
+
+export type StockedProduct = { run: string; productId: string; handle: string; inventoryItemId: string; locationId: string }
+
+/** prefix ของ handle สินค้าที่ `stockedProduct` สร้าง (ใช้กับ `expectNoneLeft`) */
+export const STOCKED_HANDLE_PREFIX = "gb22-"
+
+/**
+ * GB-22: สินค้าของ test เอง (manage_inventory, stock ตามที่กำหนด) — แก้ stock ได้โดยไม่กระทบ test อื่นที่ใช้ seed
+ * ผู้เรียกต้องลบใน `finally` (`DELETE /admin/products/<productId>` ผ่าน `deleteAllThenExpectOk` — spec 03 กฎข้อ 23b)
+ */
+export async function stockedProduct(request: APIRequestContext, admin: Headers, stock: number): Promise<StockedProduct> {
+  const run = `${Date.now()}${Math.floor(Math.random() * 1e6)}`
+  const handle = `${STOCKED_HANDLE_PREFIX}${run}`
+  const get = async (path: string) => ok(await request.get(`${BACKEND_URL}${path}`, { headers: admin }), path)
+  const { sales_channels } = await get("/admin/sales-channels?name=Default%20Sales%20Channel")
+  const { stock_locations } = await get("/admin/stock-locations?limit=1")
+  const { shipping_profiles } = await get("/admin/shipping-profiles?type=default")
+  const { product } = await ok(
+    await request.post(`${BACKEND_URL}/admin/products`, {
+      headers: admin,
+      data: {
+        title: `GB-22 ${handle}`,
+        handle,
+        status: "published",
+        shipping_profile_id: shipping_profiles[0].id,
+        sales_channels: [{ id: sales_channels[0].id }],
+        options: [{ title: "Size", values: ["One"] }],
+        variants: [{ title: "One", options: { Size: "One" }, manage_inventory: true, prices: [{ currency_code: "thb", amount: 500 }] }],
+      },
+    }),
+    "create product"
+  )
+  const { variant } = await get(`/admin/products/${product.id}/variants/${product.variants[0].id}?fields=inventory_items.inventory_item_id`)
+  const inventoryItemId: string = variant.inventory_items[0].inventory_item_id
+  const locationId: string = stock_locations[0].id
+  await ok(
+    await request.post(`${BACKEND_URL}/admin/inventory-items/${inventoryItemId}/location-levels`, {
+      headers: admin,
+      data: { location_id: locationId, stocked_quantity: stock },
+    }),
+    "create level"
+  )
+  return { run, productId: product.id, handle, inventoryItemId, locationId }
+}
+
+export async function setStock(request: APIRequestContext, admin: Headers, p: StockedProduct, stock: number) {
+  await ok(
+    await request.post(`${BACKEND_URL}/admin/inventory-items/${p.inventoryItemId}/location-levels/${p.locationId}`, {
+      headers: admin,
+      data: { stocked_quantity: stock },
+    }),
+    "update level"
   )
 }
