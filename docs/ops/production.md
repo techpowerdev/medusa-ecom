@@ -78,6 +78,10 @@ log ของ backend เป็น JSON บรรทัดละหนึ่ง 
 `worker_mode` (`server` / `worker` / `shared`) จาก env `MEDUSA_WORKER_MODE` ของ container นั้น `LOG_LEVEL`/`LOG_FILE` ใช้ได้ตามเดิม
 access log ของ HTTP (`request_id`, `status`, `duration` — จาก header `x-request-id` หรือ uuid ที่ Medusa สร้าง) Medusa เขียนเองโดยไม่ผ่าน
 logger นี้ จึงไม่มี `worker_mode` (มีเฉพาะบน server อยู่แล้ว)
+access log ออกที่ระดับ `http` → ต้องใช้ `LOG_LEVEL=http` (ค่าเริ่มต้นของ `docker-compose.prod.yml` ตั้งแต่ OPS-30) หรือละเอียดกว่า (`debug`);
+ตั้ง `LOG_LEVEL=info` (หรือ `warn`/`error`) จะไม่มี access log เลย (OPS-M-06)
+Medusa ไม่เขียน access log ของ `/health` ทุกระดับ (healthcheck ของ compose/load balancer จึงไม่ท่วม log) — ทดสอบว่ามี access log ด้วย route อื่น
+เช่น `GET /admin/users/me` ไม่มี token (ได้ 401; CI ตรวจใน job `docker-worker-mode`)
 
 | alert | เงื่อนไข (ตั้งใน log shipper / log platform ที่ใช้) | ระดับ | ขั้นตอนตอบสนอง |
 |---|---|---|---|
@@ -153,6 +157,11 @@ endpoint สมัคร event ตามรายการด้านล่า�
    (2) จ่ายพร้อมเพย์ (confirm PI ใน test mode) → ได้ order `payment_status=captured`; (3) จ่ายบัตร `4242…` → ได้ order;
    (4) log ของ server/worker ไม่มี `An error occurred in constructWebhookEvent` และไม่มี `payment-webhook-orphan: skipped`;
    (5) Dashboard แสดง delivery ของ endpoint ตอบ 200
+9. admin และ store API เข้าผ่าน **HTTPS** เท่านั้น (spec 07 Deliverables ข้อ 11): `NODE_ENV=production` ตั้ง session cookie เป็น `Secure`
+   → request ที่ไม่ใช่ https ไม่ได้ `Set-Cookie` และ login admin ไม่ติด; terminate TLS ที่ reverse proxy/load balancer ชั้นเดียวได้
+   (Medusa ตั้ง `trust proxy` = 1) โดย proxy ต้องส่ง header `X-Forwarded-Proto: https` มาที่ server; ห้ามตั้ง `cookieOptions.secure: false`
+   ทดสอบแบบ prod-like ในเครื่อง (`docker-compose.prod.yml` หรือ `medusa start` ของ build production) ก็เช่นกัน: เข้าผ่าน tunnel/reverse proxy ที่มี TLS
+   หรือ proxy ที่ส่ง `X-Forwarded-Proto: https` — เปิด `http://localhost:9000` ตรง ๆ จะ login admin ไม่ได้ (OPS-M-12)
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
@@ -241,14 +250,22 @@ subscriber `apps/backend/src/subscribers/group-buy-payment-captured.ts` (GB-5, s
 payment มีอยู่ใน Medusa และผูกกับ draft order ของกลุ่มแล้ว จึง refund ผ่าน admin ของ Medusa ได้ (`POST /admin/payments/<payment_id>/refund` /
 ปุ่ม Refund ในหน้า order) — **ห้าม refund ใน Stripe dashboard** และห้ามใช้ script `refund-orphan-payment` (script ปฏิเสธ payment ที่ผูก order)
 ก่อน refund ทุกครั้งดู `refunds` จาก `GET /admin/payments/<payment_id>` ถ้า refund ครบแล้วข้ามขั้น refund
+- **order ที่ถูกยกเลิกแล้ว** (`reason=membership_cancelled`): route/ปุ่ม Refund ของ admin (`refundPaymentWorkflow`) คืนเงินที่ provider **ก่อน** แล้วจึงสร้าง credit line
+  ซึ่งล้มด้วย `throwIfOrderIsCancelled` — ถ้า route ตอบ error **ห้ามกดคืนซ้ำ** ให้ตรวจยอดคืนก่อนเสมอ: `refunds` ใน `GET /admin/payments/<payment_id>`
+  และ Refunds ของ PI ใน Stripe dashboard (ดูอย่างเดียว) ถ้ายอดคืนครบแล้วถือว่าคืนสำเร็จ บันทึกใน incident
 - `reason=convert_failed` — capture ครบแต่ `convertDraftOrderWorkflow` ล้ม (ส่วนใหญ่สต็อกไม่พอ ดู `error`) membership ยังเป็น `awaiting_payment`,
   order ยังเป็น draft และ job หมดเวลาจะไม่ยกเลิก (collection `completed`) ไม่มีการลองใหม่อัตโนมัติ
   1. เติมสต็อกได้ → เติมใน admin → Inventory แล้วแปลงด้วย Medusa admin: Draft Orders → order นั้น → Convert to order
      (`POST /admin/draft-orders/<order_id>/convert-to-order`) จากนั้นตรวจว่า order อยู่ใน Orders และ fulfill ตามปกติ — membership ของกลุ่มยังแสดง
      `awaiting_payment` (ยังไม่มีทางอัปเดตจาก admin — follow-up ใน spec 04) ให้จดใน incident
   2. เติมสต็อกไม่ได้ → refund เต็มจำนวนตามวิธีด้านบน ห้าม convert หลัง refund
-- `reason=membership_cancelled` — capture มาหลัง membership ถูกยกเลิก (หมดเวลาชำระ) order ถูกยกเลิกแล้วหรือกำลังถูกยกเลิก: ถ้า capture เกิดก่อน
-  `cancelOrderWorkflow` ทำงาน Medusa refund ให้เองแล้ว — ดู `refunds` ก่อน ถ้ายังไม่ refund ให้ refund เต็มจำนวนตามวิธีด้านบน ห้ามคืนสถานะ membership เอง
+- `reason=membership_cancelled` — capture มาหลัง membership ถูกยกเลิก (หมดเวลาชำระ) order ถูกยกเลิกแล้วหรือกำลังถูกยกเลิก
+  subscriber **คืนเงินอัตโนมัติก่อนส่ง alert** (GB-21, ADR-024 c — `refundPaymentsWorkflow` ของ Medusa ยอดคงเหลือ note `Refunded: group buy membership cancelled`)
+  และ alert มี `refund_result` ที่ตัดสินจาก `refunds` ที่อ่านใหม่หลังคืนเงิน ห้ามคืนสถานะ membership เอง
+  1. `refund_result=refunded` — ตรวจ `refunds` ใน `GET /admin/payments/<payment_id>` ว่ายอดคืนรวมเท่ายอดที่ capture (มี note ข้างบน) แล้วแจ้งลูกค้าและปิด incident ไม่ต้อง refund เพิ่ม
+  2. `refund_failed` (เช่น Stripe ล่ม — log warn `group-buy-refund` มีสาเหตุ) — ตรวจ `refunds` ก่อนเสมอ (เงินอาจถูกคืนไปแล้วบางส่วนหรือทั้งหมด)
+     แล้ว refund ยอดที่เหลือตามวิธีด้านบนและข้อ **order ที่ถูกยกเลิกแล้ว** (route อาจตอบ error ทั้งที่คืนเงินสำเร็จ)
+  3. ไม่มี `refund_result` ในเหตุนี้ = subscriber เวอร์ชันก่อน GB-21 — ทำแบบข้อ 2
 แล้วแจ้งลูกค้า (อีเมลของ order) ว่าแปลงเป็นคำสั่งซื้อแล้ว/คืนเงินแล้ว และบันทึก incident (membership, order, payment, จำนวนเงิน, `reason`, การดำเนินการ, ผู้ทำ)
 
 ## ตรวจสอบ

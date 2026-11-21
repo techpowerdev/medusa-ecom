@@ -1,0 +1,40 @@
+# CORE-74 test evidence — 2026-11-21 04:45 +0700
+# node v22.23.3, @medusajs/medusa 2.22.1, Postgres 16 จาก docker compose (DB สุ่มของ medusa-test-utils)
+
+### RED (ก่อนแก้ subscriber) — pnpm --filter backend test:integration:http integration-tests/http/order-notifications.spec.ts -t "order.placed"
+        ✓ sends an order-placed email to the order's email with the order data (572 ms)
+        ✓ respects order.no_notification (AC-33) (951 ms)
+        ✕ skips the order-placed email when the order is already canceled (AC-173) (419 ms)
+        ✓ does not send the same order-placed email twice (290 ms)
+        ○ skipped sends an order-shipped email with tracking labels (AC-2)
+        ○ skipped skips the email when no fulfillment item matches the order (CORE-11)
+        ○ skipped skips the email when the shipment was created with no_notification
+    Expected length: 0
+    Received length: 1
+      at Object.toHaveLength (integration-tests/http/order-notifications.spec.ts:123:94)
+Tests:       1 failed, 3 skipped, 3 passed, 7 total
+
+### GREEN — pnpm --filter backend test:integration:http integration-tests/http/order-notifications.spec.ts
+        ✓ sends an order-placed email to the order's email with the order data (409 ms)
+        ✓ respects order.no_notification (AC-33) (500 ms)
+        ✓ skips the order-placed email when the order is already canceled (AC-173) (286 ms)
+        ✓ does not send the same order-placed email twice (214 ms)
+        ✓ sends an order-shipped email with tracking labels (AC-2) (219 ms)
+        ✓ skips the email when no fulfillment item matches the order (CORE-11) (211 ms)
+        ✓ skips the email when the shipment was created with no_notification (206 ms)
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+
+### pnpm --filter backend test:unit
+Test Suites: 111 passed, 111 total
+Tests:       1493 passed, 1493 total
+
+### pnpm lint && pnpm typecheck
+lint exit=0
+typecheck exit=0
+
+### pnpm --filter backend build
+exit=0
+
+### pnpm --filter storefront test:e2e:unit
+122 passed

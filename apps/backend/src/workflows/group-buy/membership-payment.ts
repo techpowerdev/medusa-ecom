@@ -11,6 +11,7 @@ import type { CreateNotificationDTO, MedusaContainer } from "@medusajs/framework
 import {
   acquireLockStep,
   convertDraftOrderWorkflow,
+  deletePaymentSessionsWorkflow,
   releaseLockStep,
   sendNotificationsStep,
 } from "@medusajs/medusa/core-flows"
@@ -195,6 +196,46 @@ export const expireMembershipPaymentStep = createStep(
   }
 )
 
+// GB-20 กฎข้อ 43 (ADR-024 b): หลัง cancelOrderWorkflow (ตั้ง collection `canceled` ให้แล้ว) ลบ session ที่ยังไม่มี payment
+// ผ่าน workflow ของ Medusa → provider deletePayment (Stripe cancel PI) ไม่ให้ PI เดิมจ่ายได้หลังสิทธิ์ถูกยกเลิก
+// best-effort: ล้ม → warn แล้วไปต่อ (membership/order ยกเลิกแล้ว); ไม่เรียก cancelPaymentCollectionWorkflow (throw "already canceled")
+export const GROUP_BUY_SESSION_CANCEL_FAILED = "GROUP_BUY_SESSION_CANCEL_FAILED"
+
+export const deleteMemberPaymentSessionsStep = createStep(
+  "delete-member-payment-sessions",
+  async (members: Member[], { container }) => {
+    const { data: orders } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+      entity: "order",
+      fields: [
+        "id",
+        "payment_collections.payment_sessions.id",
+        "payment_collections.payment_sessions.authorized_at",
+        "payment_collections.payment_sessions.payment.id",
+      ],
+      filters: { id: members.map((m) => m.order_id) },
+    })
+    for (const order of orders as any[]) {
+      const ids: string[] = (order.payment_collections ?? [])
+        .flatMap((c: any) => c?.payment_sessions ?? [])
+        .filter((s: any) => s && !s.authorized_at && !s.payment)
+        .map((s: any) => s.id)
+      if (!ids.length) {
+        continue
+      }
+      try {
+        await deletePaymentSessionsWorkflow(container).run({ input: { ids } })
+      } catch (error) {
+        container
+          .resolve(ContainerRegistrationKeys.LOGGER)
+          .warn(
+            `${GROUP_BUY_SESSION_CANCEL_FAILED} order=${order.id} sessions=${ids.join(",")}: ${(error as Error)?.message ?? error}`
+          )
+      }
+    }
+    return new StepResponse(undefined)
+  }
+)
+
 export const expireGroupBuyMembershipPaymentWorkflow = createWorkflow(
   "expire-group-buy-membership-payment",
   function (input: MembershipPaymentInput) {
@@ -203,6 +244,7 @@ export const expireGroupBuyMembershipPaymentWorkflow = createWorkflow(
     const result = expireMembershipPaymentStep(input)
     when("cancel-expired-group-buy-order", { result }, ({ result }) => result.members.length > 0).then(() => {
       cancelMemberOrdersStep(result.members)
+      deleteMemberPaymentSessionsStep(result.members)
       sendNotificationsStep(result.notifications)
     })
     releaseLockStep({ key })

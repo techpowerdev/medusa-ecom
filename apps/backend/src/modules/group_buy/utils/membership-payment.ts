@@ -46,6 +46,18 @@ export const shouldExpireMembershipPayment = (
   new Date(payDeadlineAt).getTime() <= now.getTime() &&
   collectionStatuses.every((s) => UNPAID.has(s))
 
+// GB-20 กฎข้อ 42 (ADR-024 a): สร้าง payment session ได้เฉพาะ membership ที่รอชำระ ก่อน pay_deadline_at และ collection ยังไม่ถูกยกเลิก
+export const isGroupBuyPaymentOpen = (
+  status: MembershipStatus,
+  payDeadlineAt: string | Date | null | undefined,
+  now: Date,
+  collectionStatus: string
+) =>
+  status === "awaiting_payment" &&
+  !!payDeadlineAt &&
+  now.getTime() < new Date(payDeadlineAt).getTime() &&
+  collectionStatus !== "canceled"
+
 // กฎข้อ 25 (GB-9): alert เงินค้าง GROUP_BUY_PAID_WITHOUT_ORDER — `convert_failed` หรือ `membership_<สถานะตอน capture>`
 export type PaidWithoutOrderReason = "convert_failed" | `membership_${MembershipStatus}`
 
@@ -63,3 +75,19 @@ export function shouldSendPaidWithoutOrderAlert(
 // membership เดียวเจอได้ทั้งสองเหตุ → key ต่อ membership + เหตุ
 export const paidWithoutOrderAlertKey = (membershipId: string, reason: PaidWithoutOrderReason) =>
   `${membershipId}:${reason}`
+
+// GB-21 กฎข้อ 44 (ADR-024 c): ยอดที่ยังคืนได้ = captured − refunded (MathBN จาก raw_* — ห้าม float)
+type RawAmountRow = { raw_amount?: unknown; amount?: unknown } | null
+const sumRaw = (rows: RawAmountRow[] | null | undefined) =>
+  (rows ?? []).reduce(
+    (total, row) => MathBN.add(total, MathBN.convert((row?.raw_amount ?? row?.amount ?? 0) as BigNumberInput)),
+    MathBN.convert(0)
+  )
+
+export const refundBalance = (captures: RawAmountRow[] | null | undefined, refunds: RawAmountRow[] | null | undefined) =>
+  MathBN.sub(sumRaw(captures), sumRaw(refunds))
+
+// ผลตัดสินจากยอดคงเหลือที่อ่านใหม่หลังคืนเงิน (ไม่ใช่จาก exception)
+export type RefundResult = "refunded" | "refund_failed"
+export const refundResult = (balance: BigNumberInput): RefundResult =>
+  MathBN.lte(balance, 0) ? "refunded" : "refund_failed"

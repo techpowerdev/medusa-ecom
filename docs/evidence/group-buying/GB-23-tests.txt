@@ -1,0 +1,37 @@
+# GB-23 — ผลทดสอบ (spec 04 กฎข้อ 46–47, AC-65) 2026-11-21
+
+## Red (ก่อนแก้โค้ด)
+### unit src/modules/group_buy/__tests__/max-units.unit.spec.ts
+Cannot find module '../utils/max-units' — Test Suites: 1 failed
+### integration-tests/http/group-buy-campaigns.spec.ts -t AC-65
+      ✕ POST max_quantity=2, max_units_per_person=3 → 400 invalid_data; nothing is created (960 ms)
+      ✓ POST max_quantity=2, max_units_per_person=2 → 200 (687 ms)
+      ✓ POST max_quantity=2, max_units_per_person=1 → 200 (386 ms)
+      ✓ POST without max_units_per_person → 200 (317 ms)
+      ✓ POST without max_quantity (allocation across) and max_units_per_person=50 → 200 (304 ms)
+      ✕ updating a draft so max_units_per_person exceeds the template max_quantity → 400; value unchanged (439 ms)
+    Expected: 400
+    Received: 200
+    Expected: 400
+    Received: 200
+Tests:       2 failed, 47 skipped, 4 passed, 53 total
+### integration-tests/http/group-buy-outcome.spec.ts -t "AC-1: 3 logged-in"
+      ✕ AC-1: 3 logged-in customers join pool P → succeeded, payment collection = discounted draft total, email with pay link (3085 ms)
+    -   "pay_url": StringMatching /\/th\/account\/orders\/order_01M7XEKR2SEDV367G1RVDSC44B\/pay$/,
+    +   "pay_url": "/account/orders/order_01M7XEKR2SEDV367G1RVDSC44B/pay",
+Tests:       1 failed, 10 skipped, 11 total
+
+## Green
+### unit max-units.unit.spec.ts: Tests: 10 passed, 10 total
+### integration http (group-buy-campaigns.spec.ts + group-buy-outcome.spec.ts)
+PASS integration-tests/http/group-buy-outcome.spec.ts (27.88 s)
+PASS integration-tests/http/group-buy-campaigns.spec.ts (54.517 s)
+Test Suites: 2 passed, 2 total
+Tests:       64 passed, 64 total
+### pnpm --filter backend test:unit
+Test Suites: 112 passed, 112 total
+Tests:       1503 passed, 1503 total
+### pnpm --filter storefront test:e2e:unit
+  122 passed (1.4s)
+### pnpm lint && pnpm typecheck: ผ่าน (exit 0)
+### pnpm --filter backend build: ผ่าน

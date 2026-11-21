@@ -15,6 +15,7 @@ import {
   releaseLockStep,
   sendNotificationsStep,
 } from "@medusajs/medusa/core-flows"
+import { STOREFRONT_COUNTRY_CODE } from "../../lib/storefront"
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import { GB_DEADLINE_OUTCOME_CHANGED } from "../../modules/group_buy/errors"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
@@ -209,7 +210,7 @@ export const buildGroupOutcomeNotificationsStep = createStep(
           data: {
             order,
             ...(input.outcome === "succeeded" && {
-              pay_url: `${storefront}/account/orders/${m.order_id}/pay`,
+              pay_url: `${storefront}/${STOREFRONT_COUNTRY_CODE}/account/orders/${m.order_id}/pay`,
               pay_deadline_at: input.pay_deadline_at ? new Date(input.pay_deadline_at).toISOString() : null,
             }),
           },

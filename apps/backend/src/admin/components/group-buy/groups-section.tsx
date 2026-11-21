@@ -53,7 +53,12 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
     },
     onError: (e: Error) => toast.error(e.message),
   })
-  const onCreatePool = () => createOnce(() => createPool.mutateAsync().catch(() => undefined))
+  // กฎ 43 (ADM-39): ปุ่มนี้ไม่มี modal ให้ hold lock จนปิด และสร้าง pool group เพิ่มได้ตั้งใจ — คลิกที่สองของดับเบิลคลิก
+  // (detail ≥ 2 แม้ response กลับมาก่อน) ไม่สร้างซ้ำ; คลิกแยกครั้งใหม่สร้างได้ตามเดิม
+  const onCreatePool = (e: { detail: number }) => {
+    if (e.detail > 1) return
+    createOnce(() => createPool.mutateAsync().catch(() => undefined))
+  }
 
   const columns = useMemo(
     () => [

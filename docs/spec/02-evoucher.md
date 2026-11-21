@@ -496,7 +496,8 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
     (b) widget หน้า order (zone `order.details.side.after` หรือ widget e-voucher เดิม `order-evouchers.tsx`) แสดง `StatusBadge` "Backordered — codes pending" ต่อ line ที่ค้าง (`evoucher-backordered-badge`)
 
 ### Acceptance criteria (รอบ 40)
-- AC-49 (EV-19, กฎข้อ 35) integration http — **ล้มบน develop** ก่อน: import 30 code ใน batch เดียว (created_at เท่ากัน — ตั้งด้วย SQL ใน test ถ้าจำเป็น) แล้วอ่าน `limit=10` ทีละหน้า 3 หน้า → ได้ id ไม่ซ้ำ 30 รายการ
+- AC-49 (EV-19, กฎข้อ 35) integration http — **ล้มบน develop** ก่อน: import **100** code ใน batch เดียว (created_at เท่ากัน — ตั้งด้วย SQL ใน test ถ้าจำเป็น) แล้วอ่าน `limit=10` ทีละหน้า 10 หน้า → ได้ id ไม่ซ้ำ 100 รายการ
+  (แก้ตาม review รอบ 40: 30 แถวไม่พอให้ล้มบน develop — Postgres สลับลำดับแถวที่ค่า sort เท่ากันให้เห็นเมื่อจำนวนแถว > 2×(offset+limit) ซึ่งเปลี่ยนแผนเป็น top-N heapsort)
 - AC-50 (EV-20, กฎข้อ 36) integration — **ล้มบน develop** ก่อน: (a) pool ที่มี code `available` 5 + `void` 1 ไม่มี order → DELETE 200, code ทั้ง 6 ถูก soft-delete, inventory level ของ variant ลดลง 5, `requires_shipping=true`;
   (b) pool ที่มี code `delivered` 1 → 400 ข้อความตาม 36a ทุกอย่างคงเดิม; (c) step ลด stock ล้ม (mock) → code/pool คืนครบ; (d) pool ว่าง → `low_stock=false`, `total_codes=0`; pool 5 available threshold 20 → `low_stock=true` (AC-15 เดิม)
 - AC-51 (EV-21, กฎข้อ 37) e2e admin: ลบ pool ที่ไม่มีการส่ง → prompt แสดงจำนวน code → ยืนยัน → toast และ pool หายจากตาราง; dblclick ปุ่มยืนยัน → DELETE 1 ครั้ง (นับ request);

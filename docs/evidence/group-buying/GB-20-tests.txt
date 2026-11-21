@@ -1,0 +1,57 @@
+GB-20 — spec 04 กฎข้อ 42–43, AC-62, ADR-024 (a)(b) — GB-BUG-1: guard GB_PAYMENT_CLOSED + ลบ payment session ตอนหมดเวลาชำระ
+base: origin/develop 73148c83, 2026-11-21, Node 22.23.3
+
+== RED (บน develop ก่อนแก้) ==
+-- unit: test:unit group-buy-payment-guard.unit.spec.ts + membership-payment.unit.spec.ts
+    Cannot find module '../group-buy-payment-guard' from 'src/api/store/payment-collections/__tests__/group-buy-payment-guard.unit.spec.ts'
+    TypeError: (0 , _membershippayment.isGroupBuyPaymentOpen) is not a function
+Test Suites: 2 failed, 2 total
+Tests:       9 failed, 41 passed, 50 total
+-- integration: test:integration:http integration-tests/http/group-buy-payment-closed.spec.ts
+    ✕ (a) awaiting_payment past pay_deadline_at (job not run yet) → 400 GB_PAYMENT_CLOSED, provider not called (2029 ms)
+    ✕ (b) membership cancelled → 400 GB_PAYMENT_CLOSED, provider not called (1437 ms)
+    ✓ (c) awaiting_payment before the deadline → 200 with a Stripe session (regression spec 06 AC-18) (848 ms)
+    ✓ (d) collection of a normal cart → unchanged behaviour (200) (612 ms)
+    ✕ (e) payment-deadline job deletes the pending session through the provider; membership cancelled, collection canceled (1299 ms)
+    ✕ (f) provider deletePayment throws → membership/order still cancelled, one warn GROUP_BUY_SESSION_CANCEL_FAILED (909 ms)
+    ✕ (g) accepted race: webhook payment_intent.succeeded for the deleted session → PAYMENT_WEBHOOK_SESSION_NOT_FOUND + one ops email, no payment/refund (1113 ms)
+Tests:       5 failed, 2 passed, 7 total
+  ●  › (a) awaiting_payment past pay_deadline_at (job not run yet) → 400 GB_PAYMENT_CLOSED, provider not called
+    Expected: 400
+    Received: 200
+  ●  › (b) membership cancelled → 400 GB_PAYMENT_CLOSED, provider not called
+    Expected: 400
+    Received: 200
+  ●  › (e) payment-deadline job deletes the pending session through the provider; membership cancelled, collection canceled
+    Expected number of calls: 1
+    Received number of calls: 0
+  ●  › (f) provider deletePayment throws → membership/order still cancelled, one warn GROUP_BUY_SESSION_CANCEL_FAILED
+    Expected number of calls: >= 1
+    Received number of calls:    0
+  ●  › (g) accepted race: webhook payment_intent.succeeded for the deleted session → PAYMENT_WEBHOOK_SESSION_NOT_FOUND + one ops email, no payment/refund
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+== GREEN (หลังแก้) ==
+-- integration: group-buy-payment-closed.spec.ts
+PASS integration-tests/http/group-buy-payment-closed.spec.ts (34.537 s)
+    ✓ (a) awaiting_payment past pay_deadline_at (job not run yet) → 400 GB_PAYMENT_CLOSED, provider not called (2990 ms)
+    ✓ (b) membership cancelled → 400 GB_PAYMENT_CLOSED, provider not called (2484 ms)
+    ✓ (c) awaiting_payment before the deadline → 200 with a Stripe session (regression spec 06 AC-18) (1781 ms)
+    ✓ (d) collection of a normal cart → unchanged behaviour (200) (955 ms)
+    ✓ (e) payment-deadline job deletes the pending session through the provider; membership cancelled, collection canceled (2812 ms)
+    ✓ (f) provider deletePayment throws → membership/order still cancelled, one warn GROUP_BUY_SESSION_CANCEL_FAILED (2954 ms)
+    ✓ (g) accepted race: webhook payment_intent.succeeded for the deleted session → PAYMENT_WEBHOOK_SESSION_NOT_FOUND + one ops email, no payment/refund (2487 ms)
+Tests:       7 passed, 7 total
+   (log ของเคส f) {"level":"warn","message":"GROUP_BUY_SESSION_CANCEL_FAILED order=order_01M7XD05S5PD0HYZK9DQMJEPYA sessions=payses_01M7XD06681R3FQWHFMM6FP7JW: Could not delete all payment sessions","timestamp":"2026-11-21 04:15:04","worker_mode":"shared"}
+-- regression integration: group-buy-payment.spec.ts + payment-session-draft-order.spec.ts
+PASS integration-tests/http/group-buy-payment.spec.ts (23.223 s)
+PASS integration-tests/http/payment-session-draft-order.spec.ts (13.762 s)
+Tests:       13 passed, 13 total
+-- unit (ทั้งชุด): pnpm --filter backend test:unit
+Test Suites: 112 passed, 112 total
+Tests:       1515 passed, 1515 total
+-- pnpm lint: 0 errors (warning เดิม 2 รายการใน json-logger.ts / campaign.ts ไม่ใช่ของ task นี้)
+-- pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
+-- pnpm --filter storefront test:e2e:unit: 122 passed
