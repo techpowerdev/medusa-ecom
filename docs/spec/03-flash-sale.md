@@ -391,9 +391,11 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
 | จำนวนสินค้าใน PDP/cart | `product-quantity-select` (CORE-24), `updateLineItem` ของ starter | ใช้ตามเดิม |
 
 ### Business rules (รอบ 40)
-25. (FS-20) `GET /store/customers/me/flash-sales/allowance?variant_ids[]=` (ต้อง login, อ่านอย่างเดียว, `Cache-Control: private, no-store`, ≤ 100 variant) → 200
+25. (FS-20) `GET /store/customers/me/flash-sales/allowance?region_id=&variant_ids[]=` (ต้อง login, อ่านอย่างเดียว, `Cache-Control: private, no-store`; `region_id` บังคับ, `variant_ids` 1–24 ตัวเท่า FS-4 เกิน/ขาด → 400 — FS-21 ส่งเป็นชุดถ้าเกิน) → 200
     `{ allowances: [{ variant_id, campaign_id, per_customer_limit: number | null, used_units: number, remaining_for_customer: number | null }] }` เฉพาะ variant ที่อยู่ในแคมเปญ flash active ณ `now`;
-    `remaining_for_customer = max(0, per_customer_limit − used_units)` (null เมื่อไม่จำกัด) คำนวณใน pure helper เดียวกับที่ `reserveFlashSaleForCart` ใช้นิยาม "ใช้ไปแล้ว" (ไม่ copy สูตร); ไม่ login → 401
+    `remaining_for_customer = max(0, per_customer_limit − used_units)` (null เมื่อไม่จำกัด) โดย `used_units` = `FlashSaleUsage.units` ของ (campaign, customer) หรือ 0 คำนวณใน pure helper `src/modules/flash_sale/utils/allowance.ts` (route ใช้ที่เดียว);
+    variant ↔ campaign ให้ Promotion module ตัดสินผ่าน `listActiveFlashSalesStep` + `previewFlashPricesStep` ของ FS-4 (ไม่ประเมิน target rule เอง, ADR-003) จึงต้องมี `region_id`;
+    ไม่เพิ่ม query ใน hook ตอน complete — SQL atomic ใน `reserveForCart` ยังเป็นด่านจริง; ไม่ login → 401 (session หลักตัดสิน 2026-11-21)
 26. (FS-21 — storefront) (a) PDP: ลูกค้าที่ login และ variant มี `remaining_for_customer` ไม่ null → ตัวเลือกจำนวนสูงสุด = `min(remaining_for_customer, remaining_units ถ้ามี)`; ถ้า = 0 ปุ่มเพิ่มตะกร้า disabled
     พร้อม `flash-customer-limit-reached` "คุณใช้สิทธิ์ราคา flash ครบแล้ว"; ข้อความ `flash-customer-limit` "จำกัด N ชิ้นต่อคน (เหลือสิทธิ์ M ชิ้น)" แสดงเสมอเมื่อจำกัด;
     (b) cart + ขั้น review ของ checkout: line flash ที่ `quantity > remaining_for_customer` (รวมจำนวนของ line อื่นในแคมเปญเดียวกัน) แสดง `cart-flash-exceeds-customer-limit` ข้อความไทยบอกจำนวนที่ซื้อได้
@@ -405,7 +407,7 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
 
 ### Acceptance criteria (รอบ 40)
 - AC-27 (FS-20, กฎข้อ 25) integration http — **ล้มบน develop** ก่อน (404): แคมเปญ `per_customer_limit=2` ลูกค้าซื้อไปแล้ว 1 ชิ้น → `remaining_for_customer=1`, `used_units=1`; ลูกค้าอื่น → 2;
-  ไม่มี limit → `null`; variant นอกแคมเปญไม่อยู่ใน response; ไม่มี token → 401; หลัง cancel order ที่คืนโควตา (FS-2) → กลับเป็น 2
+  ไม่มี limit → `null`; variant นอกแคมเปญไม่อยู่ใน response; ไม่มี token → 401; ไม่มี `region_id` / ไม่มี `variant_ids` / เกิน 24 → 400; หลัง cancel order ที่คืนโควตา (FS-2) → กลับเป็น 2
 - AC-28 (FS-21, กฎข้อ 26) e2e (ลูกค้า login เจ้าของ cart) — **ล้มบน develop** ก่อน: (a) limit 1 ยังไม่เคยซื้อ → PDP เลือกจำนวนได้สูงสุด 1 และเห็น `flash-customer-limit`;
   (b) ซื้อครบแล้ว → `add-product-button` disabled + `flash-customer-limit-reached`; (c) cart มี line flash qty 2 (เพิ่มก่อนแคมเปญเริ่ม/ผ่าน API) → `/th/cart` มี `cart-flash-exceeds-customer-limit`
   และขั้น review ปุ่ม `submit-order-button` disabled ไม่มี request `POST /store/carts/*/complete`; แก้จำนวนเป็น 1 → ปุ่มกดได้; หาด้วย `data-testid` + ตรวจอักษรไทย
@@ -422,7 +424,7 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
 ### Tasks (รอบ 40)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| FS-20 | (backend) route สิทธิ์ flash ที่เหลือของลูกค้า (กฎข้อ 25) | `apps/backend/src/api/store/customers/me/flash-sales/allowance/route.ts` (ใหม่), helper ใน `src/modules/flash_sale/utils/`, `src/workflows/hooks/flash-sale-reservation.ts` (ใช้ helper เดียวกัน), test | ~90 LOC + ~150 LOC test | AC-27 | PR เอกสารรอบ 40 | — |
+| FS-20 | (backend) route สิทธิ์ flash ที่เหลือของลูกค้า (กฎข้อ 25) | `apps/backend/src/api/store/customers/me/flash-sales/allowance/route.ts` (ใหม่), helper ใน `src/modules/flash_sale/utils/`, validator/middleware ใน `src/api/store/flash-sales/` (hook `flash-sale-reservation.ts` ไม่เปลี่ยน — session หลักตัดสิน 2026-11-21), test | ~90 LOC + ~150 LOC test | AC-27 | PR เอกสารรอบ 40 | — |
 | FS-21 | (storefront) PDP/cart/review จำกัดจำนวนตามสิทธิ์ที่เหลือ + เตือนก่อนจ่าย (กฎข้อ 26); qa | `apps/storefront/src/lib/data/flash-sales.ts`, PDP `product-actions`, `modules/cart/components/item`, ขั้น review ของ checkout, e2e `fs-21-customer-limit.spec.ts` | ~150 LOC + ~200 LOC test | AC-28 | **FS-20** | `product-actions` (CORE ไม่มีงานร่วม) |
 | FS-22 | (storefront) ข้อความ "คืนเงินอัตโนมัติแล้ว" เมื่อแพ้ race flash/e-voucher หลังชำระ (กฎข้อ 27); qa | `apps/storefront/src/lib/util/friendly-error*.ts` / helper ของ CORE-4i, component ขั้น review, test | ~50 LOC + ~120 LOC test | AC-29 | PR เอกสารรอบ 40 | `lib/data/cart.ts` ร่วมกับ PAY-9 (คนละฟังก์ชัน — ตัวหลัง sync) |
 
