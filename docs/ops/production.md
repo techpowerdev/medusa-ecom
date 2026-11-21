@@ -148,7 +148,7 @@ endpoint สมัคร event ตามรายการด้านล่า�
    pnpm --filter backend check:go-live      # ใน image: npx medusa exec ./src/scripts/check-go-live.ts
    ```
    ตรวจ `NODE_ENV=production`, `ALLOW_TEST_PROVIDERS` ไม่มีค่า ("ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" นับเหมือนกัน ตามข้อ 3), `STRIPE_API_KEY` ไม่ว่างและไม่ขึ้นต้นด้วย `sk_test_`/`rk_test_`,
-   และไม่มี region ใดเปิด `pp_system_default` — ไม่ผ่านข้อใดพิมพ์ `check:go-live FAIL ...` ทีละข้อและ exit code ≠ 0; ผ่านครบ exit 0
+   ไม่มี region ใดเปิด `pp_system_default` และ `datctype` ของ DB ไม่เป็น `C`/`POSIX` (ข้อ 10) — ไม่ผ่านข้อใดพิมพ์ `check:go-live FAIL ...` ทีละข้อและ exit code ≠ 0; ผ่านครบ exit 0
    (region ที่ seed สร้างก่อน OPS-7 หรือ admin เปิดเองยังมี `pp_system_default` → ปิดใน admin → Settings → Regions แล้วรันใหม่)
 5. ค่าส่ง placeholder (Q-F1 ใน `docs/spec/01-core-medusa.md` ยังไม่ตัดสิน): seed ตั้งราคา shipping option "Standard" และ return option "Standard return" จาก `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`) = 10 THB placeholder — owner ตัดสินค่าจริงแล้วแก้ใน admin ก่อนเปิดร้าน (ราคาของ shipping option "Standard" และ "Standard return" แก้ที่ Settings → Locations & Shipping → location → service zone → shipping option นั้น → Edit prices; `shipping_rate` ที่หน้า storefront แสดงแก้ที่ Settings → Regions → region นั้น → Metadata — แก้ทั้งสองที่ให้ตรงกัน)
 6. บัญชี Stripe (live) เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (spec 06 Q1 — owner ยังไม่ยืนยัน 2026-11-09; ระหว่างนี้ใช้ test mode) — ตรวจใน Stripe Dashboard → Settings → Payment methods ว่า PromptPay เป็น "On" ก่อนเปิดร้าน
@@ -163,7 +163,7 @@ endpoint สมัคร event ตามรายการด้านล่า�
    (Medusa ตั้ง `trust proxy` = 1) โดย proxy ต้องส่ง header `X-Forwarded-Proto: https` มาที่ server; ห้ามตั้ง `cookieOptions.secure: false`
    ทดสอบแบบ prod-like ในเครื่อง (`docker-compose.prod.yml` หรือ `medusa start` ของ build production) ก็เช่นกัน: เข้าผ่าน tunnel/reverse proxy ที่มี TLS
    หรือ proxy ที่ส่ง `X-Forwarded-Proto: https` — เปิด `http://localhost:9000` ตรง ๆ จะ login admin ไม่ได้ (OPS-M-12)
-10. Postgres ของ prod ต้องมี `LC_CTYPE` ที่ไม่ใช่ `C`/`POSIX` (เช่น `en_US.utf8` หรือ `th_TH.utf8`) — `pg_trgm` ทิ้งอักษรไทยเมื่อ `LC_CTYPE=C` ทำให้ค้นคำไทยกลางคำไม่เจอ (CORE-75):
+10. Postgres ของ prod ต้องมี `LC_CTYPE` ที่ไม่ใช่ `C`/`POSIX` (เช่น `en_US.utf8` หรือ `th_TH.utf8`) — `pg_trgm` ทิ้งอักษรไทยเมื่อ `LC_CTYPE=C` ทำให้ค้นคำไทยกลางคำไม่เจอ (CORE-75); `check:go-live` ตรวจข้อนี้ให้อัตโนมัติ (`datctype` ของ DB ปัจจุบันเป็น `C`/`POSIX` → FAIL — OPS-33, owner ยืนยัน 2026-11-21) หรือตรวจเองด้วย:
     `psql "$DATABASE_URL" -c "SELECT datname, datctype FROM pg_database WHERE datname = current_database();"` — เป็น `C` → สร้าง DB ใหม่ด้วย locale ที่ถูกแล้ว restore (ตั้งที่ `initdb`/`CREATE DATABASE … LC_CTYPE`)
 11. แปลงอีเมลเดิมเป็นตัวเล็กก่อนเปิดร้าน (บัญชีที่สร้างก่อนแปลงอีเมลจะ login ไม่ได้ — CORE-73/CORE-80): รัน script dry-run → แก้คู่ที่ชนด้วยมือ (ถ้ามี) → `--apply` → dry-run ซ้ำได้ 0 แถว
     (คำสั่งเต็มเติมใน PR ของ CORE-81)

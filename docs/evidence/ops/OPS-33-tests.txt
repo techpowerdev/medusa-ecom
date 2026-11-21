@@ -1,0 +1,54 @@
+# OPS-33 — redact PII ใน logger prod + check:go-live ตรวจ datctype (spec 07 กฎข้อ 15 รอบ 41, AC-48 a–d)
+# 2026-11-21 worktree feat/OPS-33-redact-pii-log (base origin/develop fd39a681), Node 22.23.3
+
+## RED (ก่อนแก้: redactPii = identity, check:go-live ยังไม่ตรวจ datctype, production.md ข้อ 10 ยังไม่แก้)
+### unit: redact-pii.unit.spec.ts + prod-guards.unit.spec.ts
+● AC-11 Go-live checklist ใน docs/ops/production.md › AC-48d check:go-live ล้มเมื่อ datctype ของ DB ปัจจุบันเป็น C พร้อมเหตุผล
+● AC-11 Go-live checklist ใน docs/ops/production.md › AC-48d check:go-live ล้มเมื่อ datctype ของ DB ปัจจุบันเป็น POSIX พร้อมเหตุผล
+● AC-11 Go-live checklist ใน docs/ops/production.md › AC-48d ข้อ 10 ของ Go-live checklist บอกว่า check:go-live ตรวจ datctype ให้อัตโนมัติ
+● redactPii (OPS-33, AC-48a) › บรรทัด recreate a payment session → ไม่มีชื่อ/อีเมล/เบอร์/ที่อยู่เหลือ แต่ id ยังอยู่ครบ
+● redactPii (OPS-33, AC-48a) › อีเมลทุกที่ในข้อความ (ไม่ต้องมี key)
+● redactPii (OPS-33, AC-48a) › ค่าของ key ในรูป JS object (util.inspect) และ Ruby hash
+● redactPii (OPS-33, AC-48a) › เบอร์โทรไทยที่มีขอบเขต (0812345678)
+● redactPii (OPS-33, AC-48a) › เบอร์โทรไทยที่มีขอบเขต (021234567)
+● redactPii (OPS-33, AC-48a) › เบอร์โทรไทยที่มีขอบเขต (+66812345678)
+● redactPii (OPS-33, AC-48a) › เบอร์โทรไทยที่มีขอบเขต (ต้นสตริง)
+● json-logger ของ prod redact PII (OPS-33, AC-48a/c) › message, stack/cause และ field อื่นของ log ไม่มี PII แต่มี worker_mode, level และ id ครบ
+● json-logger ของ prod redact PII (OPS-33, AC-48a/c) › ไม่แก้ object ของผู้เรียก (redact บนสำเนา)
+Tests:       12 failed, 72 passed, 84 total
+
+### integration: complete-after-payment-log.spec.ts -t AC-48b
+✕ AC-48b logger ของ prod ไม่มีชื่อ/อีเมล/เบอร์/ที่อยู่ของลูกค้า แต่ยังมี CART_COMPLETION_FAILED_AFTER_PAYMENT พร้อม cart_id (2830 ms)
+Expected substring: not "pii-tag-qz@example.com"
+Tests:       1 failed, 4 skipped, 5 total
+
+## GREEN
+### unit (แยกไฟล์ที่แตะ)
+PASS src/lib/__tests__/json-logger.unit.spec.ts (9.199 s)
+PASS src/lib/__tests__/redact-pii.unit.spec.ts
+✓ message, stack/cause และ field อื่นของ log ไม่มี PII แต่มี worker_mode, level และ id ครบ (11 ms)
+✓ ไม่แก้ object ของผู้เรียก (redact บนสำเนา) (1 ms)
+✓ AC-48c development → undefined (Medusa ใช้ logger เดิมซึ่งไม่ redact)
+Tests:       24 passed, 24 total
+PASS src/__tests__/prod-guards.unit.spec.ts (75.338 s)
+✓ AC-21 check:go-live นับ ALLOW_TEST_PROVIDERS ที่ไม่ตั้งกับค่าว่างเหมือนกัน แต่ค่าอื่นทุกค่าไม่ผ่าน (3 ms)
+✓ AC-48d check:go-live ล้มเมื่อ datctype ของ DB ปัจจุบันเป็น C พร้อมเหตุผล (2 ms)
+✓ AC-48d check:go-live ล้มเมื่อ datctype ของ DB ปัจจุบันเป็น POSIX พร้อมเหตุผล (1 ms)
+✓ AC-48d datctype en_US.utf8 ผ่าน
+✓ AC-48d datctype th_TH.UTF-8 ผ่าน
+✓ AC-48d datctype C.UTF-8 ผ่าน
+✓ AC-48d ข้อ 10 ของ Go-live checklist บอกว่า check:go-live ตรวจ datctype ให้อัตโนมัติ
+PASS src/__tests__/ops-runbook.unit.spec.ts
+Tests:       95 passed, 95 total
+
+### integration (complete-after-payment-log.spec.ts + prod-guards.spec.ts)
+PASS integration-tests/http/complete-after-payment-log.spec.ts (46.521 s)
+PASS integration-tests/http/prod-guards.spec.ts (41.092 s)
+Tests:       11 passed, 11 total
+
+### ชุดเต็ม unit: 118/122 ไฟล์ PASS ในรอบ runInBand เดียว; 4 ไฟล์ที่เหลือ (prod-guards, ops-runbook, json-logger, redact-pii) PASS เมื่อรันแยกด้านบน
+(prod-guards → json-logger ใน process เดียวกันช้า/ค้างเกิน 160s ทั้งบน origin/develop และ branch นี้ — ไม่ใช่ผลของ OPS-33)
+
+### lint / typecheck / build
+pnpm lint: 0 errors; pnpm typecheck: Done (backend + admin + storefront); pnpm --filter backend build: exit 0
+pnpm --filter storefront test:e2e:unit: 131 passed
