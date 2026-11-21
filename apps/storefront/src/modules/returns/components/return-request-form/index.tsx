@@ -112,10 +112,20 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
               </li>
             ))}
           </ul>
-          {state.error && (
-            <Text className="txt-medium text-rose-500" data-testid="return-error">
-              {state.error}
+          {state.contactStore ? (
+            // CORE-71 (กฎข้อ 129): location ไม่มีของ — ลองใหม่ไม่ช่วย ให้ติดต่อร้าน
+            <Text className="txt-medium text-rose-500" data-testid="return-contact-store">
+              {state.error}{" "}
+              <LocalizedClientLink href="/contact" className="underline" data-testid="return-contact-store-link">
+                ไปหน้าติดต่อร้าน
+              </LocalizedClientLink>
             </Text>
+          ) : (
+            state.error && (
+              <Text className="txt-medium text-rose-500" data-testid="return-error">
+                {state.error}
+              </Text>
+            )
           )}
           <div className="flex gap-x-4 items-center">
             <Button type="submit" disabled={isPending} isLoading={isPending} data-testid="return-submit-button">
