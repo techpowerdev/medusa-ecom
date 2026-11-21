@@ -7,8 +7,8 @@ import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/util
 // → return จากหน้าเว็บมี location_id null และ admin รับของไม่ได้ ตั้ง location ของ option ลง req.validatedBody
 // (route ของ core ส่งค่านี้เข้า workflow ตรงๆ) — client ยังส่ง location_id ไม่ได้ (CORE-16); ถ้า upstream แก้แล้วให้ลบไฟล์นี้
 export const RETURN_ITEM_NOT_STOCKED_MESSAGE = "This item cannot be returned online"
-// กฎข้อ 37: ข้อความคงที่ ไม่ต่อ id จาก input
-const NO_LOCATION_MESSAGE = "Return shipping option has no stock location"
+// กฎข้อ 37: ข้อความคงที่ ไม่ต่อ id จาก input; CORE-76 (กฎข้อ 134b): storefront จับคู่ข้อความนี้ (contract test ฝั่ง storefront)
+export const RETURN_NO_LOCATION_MESSAGE = "Return shipping option has no stock location"
 
 type ReturnBody = {
   order_id: string
@@ -50,7 +50,7 @@ export async function assignStoreReturnLocation(req: MedusaRequest, _res: Medusa
   const locationId = options[0]?.service_zone?.fulfillment_set?.location?.id
   if (!locationId) {
     // 113b: CORE-21 และ core ปฏิเสธก่อนแล้ว — กันกรณี location ถูกถอดระหว่าง request
-    throw new MedusaError(MedusaError.Types.INVALID_DATA, NO_LOCATION_MESSAGE)
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, RETURN_NO_LOCATION_MESSAGE)
   }
 
   // 113c: ตรวจต่อ line ตอนขอคืน (core ตรวจตอน confirm และผ่านเมื่อ line ใด line หนึ่งมี level)

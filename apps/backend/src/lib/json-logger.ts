@@ -3,6 +3,7 @@ import { Reporter } from "@medusajs/cli/dist/reporter"
 import { createRequire } from "module"
 import type { Writable } from "stream"
 import winston from "winston"
+import { redactValue } from "./redact-pii"
 
 type Env = Record<string, string | undefined>
 
@@ -37,6 +38,13 @@ export function buildJsonLogger(env: Env, stream?: Writable, argv: string[] = pr
       winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
       winston.format.errors({ stack: true }),
       winston.format.splat(),
+      // OPS-33 (spec 07 กฎข้อ 15 รอบ 41): redact PII ใน message/stack/field อื่นก่อนเขียน JSON — development ไม่ผ่านทางนี้
+      winston.format((info) => {
+        for (const key of Object.keys(info)) {
+          info[key] = redactValue(info[key], key)
+        }
+        return info
+      })(),
       winston.format.json()
     ),
     transports,

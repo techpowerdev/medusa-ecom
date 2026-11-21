@@ -149,25 +149,28 @@ describe("checkout ขั้นชำระเงิน (Payment) อ่าน�
   })
 })
 
+// CORE-76 (กฎข้อ 134 a2): completeOrder คืน kind ของ placeOrder (unauthorized → หน้า login — ดู core-76-place-order-outcome-ui)
 describe("ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder", () => {
   const complete = async () => (await import("@modules/checkout/components/payment-button")).completeOrder(placeOrder())
+  const notice = async (paid = false) =>
+    (await import("@lib/util/place-order-outcome")).checkoutNotice((await complete())! as never, paid)
 
-  it("unauthorized → SIGN_IN_AGAIN_MESSAGE", async () => {
-    placeOrder.mockResolvedValueOnce({ error: "unauthorized" })
-    await expect(complete()).resolves.toBe(SIGN_IN_AGAIN_MESSAGE)
+  it("unauthorized → kind unauthorized", async () => {
+    placeOrder.mockResolvedValueOnce({ kind: "unauthorized" })
+    await expect(complete()).resolves.toEqual({ kind: "unauthorized" })
   })
 
-  it("FLASH_SOLD_OUT → ข้อความไทยของ code นั้น", async () => {
-    placeOrder.mockResolvedValueOnce({ error: "FLASH_SOLD_OUT" })
-    await expect(complete()).resolves.toBe(SOLD_OUT.text)
+  it("FLASH_SOLD_OUT (manual) → ข้อความไทยของ code นั้น", async () => {
+    placeOrder.mockResolvedValueOnce({ kind: "refunded", code: "FLASH_SOLD_OUT" })
+    await expect(notice()).resolves.toEqual({ kind: "error", text: SOLD_OUT.text })
   })
 
   it("failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน", async () => {
-    placeOrder.mockResolvedValueOnce({ error: "failed" })
-    const failed = await complete()
+    placeOrder.mockResolvedValueOnce({ kind: "failed" })
+    const failed = await notice()
     placeOrder.mockRejectedValueOnce(REJECTED)
-    await expect(complete()).resolves.toBe(failed)
-    expect(failed).toMatch(THAI)
+    await expect(notice()).resolves.toEqual(failed)
+    expect(failed).toMatchObject({ kind: "error", text: expect.stringMatching(THAI) })
   })
 
   it("redirect ไปหน้า confirmed (action ไม่คืนค่า) → null", async () => {
