@@ -21,6 +21,8 @@ export type GroupBuyMembership = {
     is_draft_order: boolean
     currency_code: string
     total: number
+    /** GB-22 (spec 04 กฎข้อ 45b, ADR-016 ภาคผนวก 2026-11-21) */
+    payment_status: string
   } | null
 }
 
@@ -28,14 +30,21 @@ export type GroupBuyMembershipView =
   | { kind: "waiting"; canLeave: boolean }
   | { kind: "pay"; deadline: string; canLeave: false }
   | { kind: "expired"; canLeave: false }
+  | { kind: "processing"; canLeave: false }
   | { kind: "paid"; canLeave: false; orderDetails: boolean }
-  | { kind: "cancelled"; canLeave: false }
+  | { kind: "cancelled"; canLeave: false; refundNotice: boolean }
+
+/** ได้รับเงินแล้วแต่ order ยังเป็น draft (subscriber ยังไม่แปลง/แปลงไม่สำเร็จ) — กฎข้อ 45b */
+const RECEIVED = ["captured", "authorized", "partially_captured"]
+/** สิทธิ์ยกเลิกที่มีการชำระ (รวมที่คืนเงินแล้ว — GB-21) → ข้อความคืนเงินแบบหน้า pay */
+const PAID_BEFORE_CANCEL = [...RECEIVED, "refunded", "partially_refunded"]
 
 const before = (iso: string | null | undefined, nowMs: number) => !!iso && nowMs < Date.parse(iso)
 
 /**
  * สถานะที่แสดง: รอกลุ่ม (joined) / ชำระเงินภายใน <deadline> (awaiting_payment ก่อน `pay_deadline_at` — ตรงกับฟอร์มของหน้า pay, spec 06 กฎข้อ 9b) /
  * หมดเวลาชำระเงิน (awaiting_payment ที่เลย deadline แต่ job ยังไม่ยกเลิก) / ชำระแล้ว / ยกเลิก
+ * GB-22 (กฎข้อ 45b): awaiting_payment ที่ได้รับเงินแล้ว → กำลังยืนยัน (ไม่มีปุ่มชำระ ไม่กลายเป็นหมดเวลา)
  * ออกจากกลุ่มได้เฉพาะ joined + กลุ่ม open + ยังไม่หมดเวลา (spec 04 กฎข้อ 13 — backend ตัดสินซ้ำอยู่แล้ว)
  */
 export function groupBuyMembershipView(m: GroupBuyMembership, nowMs: number): GroupBuyMembershipView {
@@ -43,6 +52,7 @@ export function groupBuyMembershipView(m: GroupBuyMembership, nowMs: number): Gr
     case "joined":
       return { kind: "waiting", canLeave: m.group?.status === "open" && before(m.group.ends_at, nowMs) }
     case "awaiting_payment": {
+      if (RECEIVED.includes(m.order?.payment_status ?? "")) return { kind: "processing", canLeave: false }
       const deadline = m.group?.pay_deadline_at
       return deadline && before(deadline, nowMs)
         ? { kind: "pay", deadline, canLeave: false }
@@ -52,7 +62,7 @@ export function groupBuyMembershipView(m: GroupBuyMembership, nowMs: number): Gr
       // แปลงเป็น order ปกติแล้ว (GB-5/GB-10) → หน้า order detail ของ Medusa อ่านได้
       return { kind: "paid", canLeave: false, orderDetails: m.order?.is_draft_order === false }
     default:
-      return { kind: "cancelled", canLeave: false }
+      return { kind: "cancelled", canLeave: false, refundNotice: PAID_BEFORE_CANCEL.includes(m.order?.payment_status ?? "") }
   }
 }
 

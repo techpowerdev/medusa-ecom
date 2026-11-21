@@ -13,7 +13,9 @@ import {
   hasPayment,
   orderPayView,
   payableCollection,
+  REFUND_NOTICE_MESSAGE,
   sessionCreateOutcome,
+  showRefundNotice,
   StripeReturn,
 } from "@lib/util/order-pay"
 import { PROMPTPAY_POLL_MS, promptPayFallbackAllowed } from "@lib/util/payment-session"
@@ -32,6 +34,9 @@ const CARD = "pp_stripe_stripe"
 const PROMPTPAY = "pp_stripe-promptpay_stripe"
 const PAY_FAILED = "ชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
 
+/** หยุดรอ/poll เมื่อชำระแล้ว หรือสิทธิ์ถูกยกเลิก (GB-22 กฎข้อ 45a — ไม่แสดง "กำลังยืนยัน" ให้สิทธิ์ที่ยกเลิก) */
+const done = (d: GroupBuyOrder, nowMs: number) => d.membership.status === "cancelled" || orderPayView(d, nowMs) === "paid"
+
 /** `redirect` = ผลของ `stripeReturn` จาก query ที่ Stripe แนบมาตอนกลับหน้านี้ (กฎข้อ 9 d3) */
 type Props = { initial: GroupBuyOrder; email: string; redirect: StripeReturn; serverNow: number }
 
@@ -46,7 +51,9 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
   const [busy, setBusy] = useState(false)
   // (d3) กลับจาก redirect: succeeded/processing → poll GB-8 ทันทีโดยไม่แสดงฟอร์ม; failed → error + ฟอร์มตามข้อ (b)
   const [error, setError] = useState<string | null>(redirect === "failed" ? PAY_FAILED : null)
-  const [awaiting, setAwaiting] = useState(redirect === "poll" && orderPayView(initial, serverNow) !== "paid")
+  const [awaiting, setAwaiting] = useState(redirect === "poll" && !done(initial, serverNow))
+  // GB-22 (กฎข้อ 45a): guard GB-20 ตอบ 400 GB_PAYMENT_CLOSED → ปิดฟอร์มแม้ GB-8 ยังดูเหมือนชำระได้ (เช่น collection canceled)
+  const [closed, setClosed] = useState(false)
   const [expired, setExpired] = useState(false)
   const [delayed, setDelayed] = useState(false)
   const [cardReady, setCardReady] = useState(false)
@@ -58,7 +65,10 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
   const collection = payableCollection(data)
   const session = collection?.payment_sessions.find((s) => s.status === "pending")
   const [selected, setSelected] = useState(session?.provider_id ?? "")
-  const view = orderPayView(data, now)
+  const computed = orderPayView(data, now)
+  const view = closed && computed !== "paid" ? "closed" : computed
+  // สิทธิ์ปิดแน่นอน (ยกเลิกแล้ว/guard ปฏิเสธ) — แสดงก่อนสถานะรอยืนยัน
+  const final = view === "closed" && (closed || data.membership.status === "cancelled")
 
   // นาฬิกาของ browser: ครั้งแรกหลัง hydrate แล้วทุก 30 วินาที (เลยเส้นตายระหว่างเปิดหน้า → ปิดฟอร์ม)
   useEffect(() => {
@@ -103,7 +113,7 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
       const next = await read()
       if (!active) return
       // review #184: หยุดเมื่อ captured / collection completed เท่านั้น — authorized ยังรอต่อ
-      if (next && orderPayView(next, Date.now()) === "paid") return setAwaiting(false)
+      if (next && done(next, Date.now())) return setAwaiting(false)
       timer = setTimeout(tick, PROMPTPAY_POLL_MS)
     }
     timer = setTimeout(tick, PROMPTPAY_POLL_MS)
@@ -132,6 +142,9 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
       const outcome = sessionCreateOutcome(await settleAction(startPaymentSession(collection.id, providerId)))
       if (outcome === "created") {
         if (!(await read())) fail()
+      } else if (outcome === "closed") {
+        await read()
+        setClosed(true)
       } else if (outcome === "already-paid") {
         awaitCapture()
       } else if (outcome === "unauthorized") {
@@ -196,6 +209,8 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
         <Text className="txt-medium-plus text-ui-fg-base" data-testid="order-pay-paid">
           ชำระเงินเรียบร้อยแล้ว ขอบคุณที่ร่วมซื้อกลุ่มกับเรา
         </Text>
+      ) : final ? (
+        <OrderPayClosed refund={showRefundNotice(data)} />
       ) : delayed ? (
         <PromptPayOrderDelayed />
       ) : awaiting ? (
@@ -207,9 +222,7 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
           กลุ่มของคุณยังไม่สำเร็จ เมื่อกลุ่มครบเป้าหมายเราจะส่งอีเมลแจ้งให้ชำระเงิน
         </Text>
       ) : view === "closed" ? (
-        <Text className="txt-medium text-ui-fg-subtle" data-testid="order-pay-closed">
-          คำสั่งซื้อนี้ชำระเงินไม่ได้แล้ว เนื่องจากหมดเวลาชำระเงินหรือถูกยกเลิก
-        </Text>
+        <OrderPayClosed refund={false} />
       ) : (
         <PaymentWrapper
           key={session?.data.client_secret ?? "none"}
@@ -254,6 +267,19 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
     </div>
   )
 }
+
+const OrderPayClosed = ({ refund }: { refund: boolean }) => (
+  <>
+    <Text className="txt-medium text-ui-fg-subtle" data-testid="order-pay-closed">
+      คำสั่งซื้อนี้ชำระเงินไม่ได้แล้ว เนื่องจากหมดเวลาชำระเงินหรือถูกยกเลิก
+    </Text>
+    {refund && (
+      <Text className="txt-medium text-ui-fg-base" data-testid="order-pay-refund-notice">
+        {REFUND_NOTICE_MESSAGE}
+      </Text>
+    )}
+  </>
+)
 
 type PayButtonProps = {
   selected: string

@@ -5,8 +5,10 @@ import { paymentSessionResult } from "./action-result"
 import {
   GroupBuyOrder,
   hasPayment,
+  orderPaySessionResult,
   orderPayView,
   paymentSettled,
+  showRefundNotice,
   sessionCreateOutcome,
   stripeReturn,
 } from "./order-pay"
@@ -158,6 +160,37 @@ describe("orderPayView", () => {
   it("awaiting_payment แต่ไม่มี collection → closed", () => {
     expect(orderPayView(data({ collections: false }), NOW)).toBe("closed")
   })
+
+  // GB-22 (spec 04 กฎข้อ 45a, AC-64a — GB-BUG-1 ก): สิทธิ์ยกเลิกแล้วต้องไม่บอกว่า "ชำระเงินเรียบร้อยแล้ว"
+  it.each([
+    { collection: "completed" },
+    { payment_status: "captured" },
+    { payment_status: "captured", collection: "completed", session: "captured" },
+  ])("cancelled + %o → closed (ไม่ใช่ paid)", (opts) => {
+    expect(orderPayView(data({ membership: "cancelled", ...opts }), NOW)).toBe("closed")
+  })
+
+  it("awaiting_payment ก่อนเส้นตาย + collection completed → paid (เดิม)", () => {
+    expect(orderPayView(data({ collection: "completed" }), NOW)).toBe("paid")
+  })
+})
+
+// GB-22 (กฎข้อ 45a): ข้อความคืนเงินเฉพาะสิทธิ์ที่ยกเลิกและมีการชำระแล้ว (predicate hasPayment)
+describe("showRefundNotice", () => {
+  it.each([{ collection: "completed" }, { session: "authorized" }, { payment_status: "captured" }])(
+    "cancelled + %o → จริง",
+    (opts) => {
+      expect(showRefundNotice(data({ membership: "cancelled", ...opts }))).toBe(true)
+    }
+  )
+
+  it("cancelled ไม่มีการชำระ → เท็จ", () => {
+    expect(showRefundNotice(data({ membership: "cancelled", session: "pending" }))).toBe(false)
+  })
+
+  it.each(["awaiting_payment", "paid"])("%s + มีการชำระ → เท็จ", (membership) => {
+    expect(showRefundNotice(data({ membership, collection: "completed" }))).toBe(false)
+  })
 })
 
 // spec 06 กฎข้อ 9 (d)/(d2): ไม่ดู status code อื่นนอกจาก 409 + code ของเรา และ 401
@@ -177,6 +210,26 @@ describe("sessionCreateOutcome", () => {
 
   it("failed → check-status", () => {
     expect(sessionCreateOutcome({ error: "failed" })).toBe("check-status")
+  })
+
+  it("GB_PAYMENT_CLOSED → closed (GB-22 กฎข้อ 45a)", () => {
+    expect(sessionCreateOutcome({ error: "GB_PAYMENT_CLOSED" })).toBe("closed")
+  })
+})
+
+// GB-22 (spec 04 กฎข้อ 45a): 400 GB_PAYMENT_CLOSED ของ guard GB-20 → closed; อื่นๆ ตาม helper กลางเดิม
+describe("orderPaySessionResult → sessionCreateOutcome", () => {
+  it.each([
+    [400, "GB_PAYMENT_CLOSED", "closed"],
+    [200, null, "created"],
+    [409, "PAYMENT_ALREADY_COMPLETED", "already-paid"],
+    [401, null, "unauthorized"],
+    [400, "invalid_data", "check-status"],
+    [409, "GB_PAYMENT_CLOSED", "check-status"],
+    [500, "GB_PAYMENT_CLOSED", "check-status"],
+  ] as const)("%i %s → %s", (status, code, outcome) => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    expect(sessionCreateOutcome(orderPaySessionResult({ status, code }))).toBe(outcome)
   })
 })
 

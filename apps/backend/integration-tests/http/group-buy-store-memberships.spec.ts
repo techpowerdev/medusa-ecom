@@ -1,7 +1,7 @@
 import path from "path"
 import { medusaIntegrationTestRunner, TestEventUtils } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, MathBN, Modules } from "@medusajs/framework/utils"
-import { convertDraftOrderWorkflow, createCartWorkflow } from "@medusajs/medusa/core-flows"
+import { convertDraftOrderWorkflow, createCartWorkflow, markPaymentCollectionAsPaid } from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
 import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 import {
@@ -207,6 +207,33 @@ medusaIntegrationTestRunner({
           const db = await dbOrder(m.order_id)
           expect(MathBN.eq(row.order.total, plain(db.total))).toBe(true)
         }
+      })
+
+      // GB-22 (spec 04 กฎข้อ 45b, AC-64e, ADR-016 ภาคผนวก 2026-11-21): order ในรายการ = allow-list ใหม่ (เพิ่ม payment_status)
+      it("GB-22: order keys = allow-list (+ payment_status); not_paid before payment", async () => {
+        const res = await get(LIST)
+        expect(res.status).toEqual(200)
+        for (const row of res.data.memberships) {
+          expect(Object.keys(row.order).sort()).toEqual(
+            ["currency_code", "display_id", "id", "is_draft_order", "payment_status", "status", "total"].sort(),
+          )
+          expect(row.order.payment_status).toEqual("not_paid")
+        }
+      })
+
+      it("GB-22: payment_status captured after the collection is paid", async () => {
+        const container = getContainer()
+        await succeedGroupWorkflow(container).run({ input: { group_id: groupId } })
+        const collectionId = (await dbOrder(m1.order_id)).payment_collections[0].id
+        const captured = TestEventUtils.waitSubscribersExecution("payment.captured", container.resolve(Modules.EVENT_BUS))
+        await markPaymentCollectionAsPaid(container).run({
+          input: { payment_collection_id: collectionId, order_id: m1.order_id },
+        })
+        await captured
+        const res = await get(LIST)
+        expect(res.status).toEqual(200)
+        const row = res.data.memberships.find((m: any) => m.id === m1.id)
+        expect(row.order.payment_status).toEqual("captured")
       })
 
       it("AC-38: limit=1&offset=1 → 1 membership, count=2", async () => {
