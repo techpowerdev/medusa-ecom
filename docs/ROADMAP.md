@@ -5,6 +5,9 @@
 แต่ละแถว = 1 PR เข้า `develop` แถวที่ทำคู่ขนานได้มีเครื่องหมาย ∥ และ builder หลายตัวสร้างพร้อมกันได้
 **release v0.2.0 แล้ว (2026-11-19)** — PR #423 `develop → main` (merge commit `e274d387`, tag `v0.2.0`): ทุก task ในตาราง milestone/Admin UI ที่เคยเป็น ☑ เปลี่ยนเป็น 🚀 (บรรทัดประวัติคงสัญลักษณ์ ณ วันที่บันทึก) · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
+**รอบ 40b (2026-11-21, เอกสารล้วน)**: owner ไม่ยอมรับ race ของ GB-20 (จ่ายก่อน deadline แต่ webhook มาช้า → ถูกยกเลิก) → เพิ่ม **GB-20b** (ตรวจสถานะ PI ก่อนยกเลิก — ADR-024 ภาคผนวก, spec 04 กฎข้อ 50/AC-68) หลัง GB-20 (#435) ในตาราง v0.3.0 ·
+แก้ nit review: spec 02 AC-49 (100 code), spec 08 กฎ 43 (pool group ไม่มี modal)
+
 **รอบ 40 (2026-11-21, เอกสารล้วน) — สถานะล่าสุด**: owner ทดสอบ manual เฟส 1–9 บน v0.2.0 (develop `87cb20df`) แล้วสั่งแก้ทั้งหมดใน **release เดียว (เสนอ v0.3.0) ก่อน go-live** →
 30 task ☐ ในหัวข้อ "Release v0.3.0 — แก้จากการทดสอบ manual 2026-11" ด้านล่าง (spec 01–08 หัวข้อ "Follow-up รอบ 40") · **ADR ใหม่ accepted (owner 2026-11-21)**: ADR-024 (GB กัน + ยกเลิก PI + คืนเงินอัตโนมัติ — ฉบับแก้ตาม review #425), ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน),
 ADR-026 (ล็อกส่วนลดของกลุ่ม) + ภาคผนวก ADR-016 (allow-list `payment_status`) · **owner ตอบครบ 2026-11-21**: spec 04 Q24 = ก, Q25 อนุมัติ, spec 06 Q10 อนุมัติ, spec 01 Q-C12 = ก, กฎลบ pool (spec 02 กฎ 36) ยืนยัน,
@@ -449,6 +452,7 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | 1 | GB-21 | 04 | **เงิน** คืนเงินอัตโนมัติ (`refundPaymentsWorkflow`) เมื่อเงินเข้าหลังสิทธิ์ยกเลิก + alert + runbook | PR เอกสารรอบ 40 | — | ☐ |
 | 2 | GB-22 | 04 | **เงิน (UI)** หน้า pay ไม่ขึ้น "ชำระแล้ว" เมื่อยกเลิก + รายการ account "กำลังยืนยัน" เมื่อจ่ายแล้วแต่ยัง draft | GB-20 | ✓ | ☐ |
 | 2 | PAY-9 | 06 | **เงิน (O-2)** reset payment collection ของ cart ที่ถูกคืนเงินก่อนจ่ายซ้ำ | GB-20 | ✓ | ☐ |
+| 2 | GB-20b | 04 | **เงิน (รอบ 40b — owner ไม่ยอมรับ race ของ GB-20)** job ตรวจสถานะ PI ที่ provider ก่อนยกเลิก: จ่ายแล้วได้ order / ยังไม่จ่ายยกเลิก / ตรวจไม่ได้ลองใหม่ ≤ 15 นาที + alert (กฎข้อ 50, AC-68, ADR-024 ภาคผนวก) | GB-20 (#435 merge) | — | ☐ |
 | 3 | ADM-39 | 08 | (ADM-B1) ฟอร์มสร้างทุกตัวใน admin ไม่ยิงซ้ำระหว่าง modal ปิด | PR เอกสารรอบ 40 | ✓ | ☐ |
 | 3 | EV-19 | 02 | (EV-M-12) `id` เป็น key เรียงรองของรายการ code | PR เอกสารรอบ 40 | — | ☐ |
 | 4 | ADM-40 ∥ ADM-41 ∥ ADM-42 | 08 | ค้นหา Affiliates (UI) ∥ Payouts ไม่ล้น 1280/1440 ∥ error ทุกช่องในฟอร์ม program | ADM-39 | ✓ | ☐ |
@@ -462,7 +466,8 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 | 4 | CORE-68 … CORE-74 | 01 | แบ่งหน้า order ∥ `step=review` → `step=payment` ∥ ค้นหาผลตรงกัน + `/store?q=` ∥ ข้อความคืนสินค้าไม่มี stock ∥ ตะกร้าไม่กระพริบ (0) ∥ สมัครด้วยอีเมลที่มีบัญชี ∥ ไม่ส่ง order-placed ของ order ที่ยกเลิก | PR เอกสารรอบ 40 | 68–73 ✓, 74 — | ☐ |
 | 4 | OPS-30 ∥ OPS-31 ∥ OPS-32 | 07 | `LOG_LEVEL=http` + เอกสาร HTTPS ∥ warning ซ้ำตอน migrate + publishable key เดียว ∥ log ชัดเมื่อ complete ล้มหลังจ่าย + runbook | PR เอกสารรอบ 40 | — | ☐ |
 
-**critical path (เงินก่อน)**: PR เอกสารรอบ 40 → PAY-8 ∥ GB-20 ∥ GB-21 → (GB-22, PAY-9 หลัง GB-20) → ADM-39 → EV-19 → ที่เหลือ
+**critical path (เงินก่อน)**: PR เอกสารรอบ 40 → PAY-8 ∥ GB-20 ∥ GB-21 → (GB-22, PAY-9, **GB-20b** หลัง GB-20 — train #435 merge) → ADM-39 → EV-19 → ที่เหลือ
+- `apps/backend/src/jobs/group-buy-deadline.ts` + `src/workflows/group-buy/membership-payment.ts`: GB-20 (#435) → GB-20b; `src/modules/resend/templates.ts`: GB-21, GB-23, GB-20b (คนละ template)
 **ไฟล์ร่วมที่ต้องเรียง merge** (ตัวที่ merge ทีหลัง merge `origin/develop` แล้วรอ CI ใหม่):
 - `apps/backend/src/api/middlewares.ts`: PAY-8 → GB-20 → PAY-9 → GB-25 (ลำดับ middleware บน `POST /store/payment-collections/:id/payment-sessions` ตาม ADR-025: ownership → GB guard → reset → `guardPaidStripeSession`)
 - `apps/storefront/src/lib/data/cart.ts`: PAY-9 ∥ FS-22 (คนละฟังก์ชัน)
