@@ -91,3 +91,47 @@ typecheck backend + storefront: ผ่าน; lint: 0 errors
 แก้: cart 1 ชิ้น สิทธิ์ 1 ไปถึง review (ปุ่มกดได้) → ลูกค้าคนเดิมใช้สิทธิ์จาก cart อื่นผ่าน API → กดสั่ง → capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED
      → คืนเงิน → admin เพิ่มสิทธิ์เป็น 2 → จ่ายใหม่ใน cart เดิม; แก้ถ้อยคำ AC-22c ใน spec 06 ให้ตรง
 ในเครื่อง: playwright --list พบ 1 test, tsc/eslint ผ่าน, playwright --project=unit 125 passed; ไม่มี Stripe key → ต้องให้ CI พิสูจน์
+
+
+# hotfix PAY-9 (AC-22c) e2e ล้มเป็นครั้งคราว — evidence (2026-11-21T13:11Z)
+
+## CI ที่ล้ม (attempt 1; rerun ผ่าน) — pay-9-refunded-cart-repay.spec.ts step 'จ่ายใหม่ด้วยบัตรใน cart เดิม'
+- run 44896944640 (#463), 44897048477 (#464), 44902940179 (#466): support/stripe.ts:90 payment session pp_stripe_stripe ได้ "" เกิน 15s
+
+## timeline จาก trace ของ CI (run 44902940179 attempt 1) — GET /store/carts ของ test
+12:45:22.984  Stripe refunds ของ PI แรก = [succeeded] → step 4 ผ่าน
+12:45:23.201  page.goto /th/checkout?step=payment (render ระหว่าง compensation ของ Medusa)
+12:45:23.455  collection completed, sessions = [authorized pi_3UeDfI...]   (Medusa ยังไม่จบ)
+12:45:23.657  collection completed, sessions = [pending pi_3UeDfI...]      (session ชั่วคราวของ recreate ด้วย data เดิม)
+12:45:23.976  collection completed, sessions = []                          (Stripe ปฏิเสธ recreate → ลบแถว)
+run 44896944640: goto 11:30:19.095 หลัง refund 11:30:18.818 → screenshot: radio บัตรถูกเลือกไว้แล้ว + Stripe Elements
+'This PaymentIntent is in a terminal state' และไม่มี POST server action หลัง click (คลิก radio ที่เลือกอยู่ไม่เรียก onChange)
+
+## red — unit test ของเงื่อนไขรอ (ก่อนเขียน helper)
+$ npx playwright test --project=unit e2e/support/refund-settled.unit.spec.ts
+Error: Cannot find module './refund-settled'
+Require stack:
+- apps/storefront/e2e/support/refund-settled.unit.spec.ts
+
+## green
+$ npx playwright test --project=unit e2e/support/refund-settled.unit.spec.ts
+Running 5 tests using 1 worker
+  ✓  1 [unit] › e2e/support/refund-settled.unit.spec.ts:10:5 › webhook ยังไม่สร้าง payment → ยังไม่จบ (2ms)
+  ✓  2 [unit] › e2e/support/refund-settled.unit.spec.ts:14:5 › Stripe คืนแล้วแต่ Medusa ยังไม่บันทึก refund (session เดิม authorized — 12:45:23.455) → ยังไม่จบ (0ms)
+  ✓  3 [unit] › e2e/support/refund-settled.unit.spec.ts:18:5 › บันทึก refund แล้วแต่ session ชั่วคราวของ recreate ยังรอชำระ (pending, PI เดิม — 12:45:23.657) → ยังไม่จบ (0ms)
+  ✓  4 [unit] › e2e/support/refund-settled.unit.spec.ts:23:5 › คืนครบและไม่มี session ที่รอชำระ (12:45:23.976) → จบ (0ms)
+  ✓  5 [unit] › e2e/support/refund-settled.unit.spec.ts:28:5 › คืนไม่ครบหรือไม่เคย capture → ยังไม่จบ (1ms)
+  5 passed (273ms)
+
+$ pnpm --filter storefront test:e2e:unit  (รันซ้ำหลังย้าย evidence มาไฟล์นี้)
+  132 passed
+
+$ npx playwright test --project=chromium --list e2e/pay-9-refunded-cart-repay.spec.ts
+Total: 1 test in 1 file
+(ในเครื่องไม่มี Stripe test key → e2e นี้ skip; พิสูจน์ใน CI ของ PR)
+
+$ pnpm lint && pnpm typecheck
+apps/backend lint: ✖ 6 problems (0 errors, 6 warnings)
+apps/storefront lint: ✖ 28 problems (0 errors, 28 warnings)
+apps/storefront typecheck: Done
+apps/backend typecheck: Done

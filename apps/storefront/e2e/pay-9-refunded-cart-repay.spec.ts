@@ -17,10 +17,12 @@ import {
   HAS_STRIPE_UI,
   STRIPE_SECRET,
   cartIdOf,
+  cartPaymentState,
   continueToReview,
   fillCard,
   sessionIntentId,
 } from "./support/stripe"
+import { MedusaPaymentAmounts, medusaRefundSettled } from "./support/refund-settled"
 
 // PAY-9 (spec 06 กฎข้อ 11, AC-22 c, ADR-025 — O-2 #69): ลูกค้าอยู่หน้า review (ปุ่มกดได้ — ผ่านด่าน UI ของ FS-21 กฎข้อ 26b)
 // แล้วใช้สิทธิ์ flash จาก cart อื่นผ่าน API (แบบสองแท็บ) → กดสั่งด้วยบัตร → capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED
@@ -142,10 +144,14 @@ test("AC-22c: ใช้สิทธิ์ flash จาก cart อื่นร�
   expect(await cartIdOf(context)).toBe(cartId)
 
   let firstIntent = ""
+  let firstSessionId = ""
   await step("cart 1 ชิ้น (สิทธิ์ 1) ไปถึงขั้น review ด้วยบัตร 4242 → ปุ่มสั่งซื้อกดได้", async () => {
     await page.goto(`/${CC}/checkout?step=payment`)
     await page.getByTestId(`payment-option-${CARD_PROVIDER}`).click()
     firstIntent = await sessionIntentId(request, pk, customer, cartId, CARD_PROVIDER)
+    firstSessionId = (await cartPaymentState(request, pk, customer, cartId)).sessions.find(
+      (s) => s.provider_id === CARD_PROVIDER
+    )!.id
     await fillCard(page, "4242424242424242")
     await continueToReview(page)
     await expect(page.getByTestId("review-flash-exceeds-customer-limit")).toHaveCount(0)
@@ -171,6 +177,18 @@ test("AC-22c: ใช้สิทธิ์ flash จาก cart อื่นร�
     await expect
       .poll(async () => (await stripeRefunds(request, firstIntent)).map((r) => r.status), { timeout: 60_000 })
       .toEqual(["succeeded"])
+    // Stripe มี refund ก่อน Medusa ทำ compensation จบ (บันทึก refund → recreate session ด้วย PI เดิมแล้วลบทิ้ง — ADR-025)
+    // ถ้าไปหน้า payment ช่วงนั้น checkout เห็น session ชั่วคราวเป็นของจริง (run 44896944640/44902940179) → รอสถานะของ Medusa
+    const medusaState = async () => {
+      const { payments } = await ok(
+        await request.get(`${BACKEND_URL}/admin/payments?payment_session_id=${firstSessionId}`, { headers: admin }),
+        "admin payments"
+      )
+      const { sessions } = await cartPaymentState(request, pk, customer, cartId)
+      const payment = payments[0] as MedusaPaymentAmounts | undefined
+      return { settled: medusaRefundSettled(payment, sessions), payment, sessions: sessions.map((s) => s.status) }
+    }
+    await expect.poll(medusaState, { timeout: 60_000 }).toMatchObject({ settled: true })
   })
 
   await step("admin เพิ่มสิทธิ์ต่อคนเป็น 2 (คืนสิทธิ์ให้ cart เดิมจ่ายได้ — ด่าน FS-21 ไม่ปิดปุ่ม)", async () => {
