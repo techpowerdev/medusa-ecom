@@ -141,3 +141,15 @@ e2e chromium (payments-order-pay + group-buy-account-orders):
   6 skipped
   21 passed (2.7m)
 e2e project unit: 123 passed; lint 0 error; typecheck ผ่าน
+
+## รอบแก้ตาม review #444 (test hygiene): ลบสินค้าของ test ใน finally + assert convert ล้มจริง
+e2e chromium group-buy-account-orders.spec.ts:
+  ✓  1 [chromium] › e2e/group-buy-account-orders.spec.ts:42:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › joined → รอกลุ่ม + ออกจากกลุ่ม (ยืนยันก่อน) → ยกเลิก และ membership cancelled
+  ✓  2 [chromium] › e2e/group-buy-account-orders.spec.ts:72:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › กลุ่มสำเร็จระหว่างเปิดหน้าอยู่ แล้วกดออก → error ไทย และรายการแสดงสถานะใหม่ (ชำระเงินภายใน)
+  ✓  3 [chromium] › e2e/group-buy-account-orders.spec.ts:95:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › awaiting_payment → ชำระเงินภายใน <deadline> และลิงก์ไปหน้าชำระเงินของ PAY-3b
+  ✓  4 [chromium] › e2e/group-buy-account-orders.spec.ts:121:7 › หน้า account: จ่ายแล้วแต่ยังเป็น draft (GB-22) › awaiting_payment + captured → group-order-processing ไม่มีลิงก์ชำระ
+  -  5 [chromium] › e2e/group-buy-account-orders.spec.ts:182:7 › หน้า account → หน้าชำระเงิน — Stripe test mode (AC-2, AC-16 พร้อมเพย์) › AC-2: บัตร 4242 จากลิงก์ในหน้า account → order ปกติ captured, membership paid และรายการแสดงชำระแล้ว
+  -  6 [chromium] › e2e/group-buy-account-orders.spec.ts:214:7 › หน้า account → หน้าชำระเงิน — Stripe test mode (AC-2, AC-16 พร้อมเพย์) › AC-16: พร้อมเพย์จากลิงก์ในหน้า account → QR → authorize test payment → order-pay-paid
+  2 skipped
+  4 passed (40.5s)
+หลังรัน: product handle gb22-* ที่ยังไม่ถูกลบใน DB = 0; e2e project unit 123 passed; lint 0 error; typecheck ผ่าน

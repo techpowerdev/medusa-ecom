@@ -273,11 +273,18 @@ export async function joinWith(
   )
 }
 
-export type StockedProduct = { handle: string; inventoryItemId: string; locationId: string }
+export type StockedProduct = { run: string; productId: string; handle: string; inventoryItemId: string; locationId: string }
 
-/** GB-22: สินค้าของ test เอง (manage_inventory, stock ตามที่กำหนด) — แก้ stock ได้โดยไม่กระทบ test อื่นที่ใช้ seed */
+/** prefix ของ handle สินค้าที่ `stockedProduct` สร้าง (ใช้กับ `expectNoneLeft`) */
+export const STOCKED_HANDLE_PREFIX = "gb22-"
+
+/**
+ * GB-22: สินค้าของ test เอง (manage_inventory, stock ตามที่กำหนด) — แก้ stock ได้โดยไม่กระทบ test อื่นที่ใช้ seed
+ * ผู้เรียกต้องลบใน `finally` (`DELETE /admin/products/<productId>` ผ่าน `deleteAllThenExpectOk` — spec 03 กฎข้อ 23b)
+ */
 export async function stockedProduct(request: APIRequestContext, admin: Headers, stock: number): Promise<StockedProduct> {
-  const handle = `gb22-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+  const run = `${Date.now()}${Math.floor(Math.random() * 1e6)}`
+  const handle = `${STOCKED_HANDLE_PREFIX}${run}`
   const get = async (path: string) => ok(await request.get(`${BACKEND_URL}${path}`, { headers: admin }), path)
   const { sales_channels } = await get("/admin/sales-channels?name=Default%20Sales%20Channel")
   const { stock_locations } = await get("/admin/stock-locations?limit=1")
@@ -307,7 +314,7 @@ export async function stockedProduct(request: APIRequestContext, admin: Headers,
     }),
     "create level"
   )
-  return { handle, inventoryItemId, locationId }
+  return { run, productId: product.id, handle, inventoryItemId, locationId }
 }
 
 export async function setStock(request: APIRequestContext, admin: Headers, p: StockedProduct, stock: number) {
