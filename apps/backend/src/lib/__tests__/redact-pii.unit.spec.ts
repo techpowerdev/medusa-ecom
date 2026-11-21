@@ -1,5 +1,5 @@
 import { Writable } from "stream"
-import { redactPii } from "../redact-pii"
+import { redactPii, redactValue } from "../redact-pii"
 import { buildJsonLogger } from "../json-logger"
 
 // OPS-33 (spec 07 กฎข้อ 15 รอบ 41, AC-48 a/c): log ของ prod ต้องไม่มี PII ของลูกค้า แต่ id/จำนวนเงินยังอยู่ครบ
@@ -92,6 +92,54 @@ describe("redactPii (OPS-33, AC-48a)", () => {
       `${PAYMENT_ID} ${CART_ID} ${INTENT_ID} order_01K0812345678Z amount=1999 raw_amount 0.15 ` +
       "request_id=0b7c1e2a-0812-4a5b-9c3d-012345678901 2026-11-21 11:24:37 08123456789012"
     expect(redactPii(text)).toBe(text)
+  })
+
+  // review #473: จำนวนเงิน BigNumber (raw_amount precision 20) และชื่อไฟล์ต้องไม่ถูกแตะ
+  it("ทศนิยมยาวและชื่อไฟล์ที่มี @ ไม่ถูกตัด", () => {
+    const text = "raw_amount 0.0812345678 rate=1.0666666667 icon image@2x.png logo@3x.webp"
+    expect(redactPii(text)).toBe(text)
+  })
+
+  it("key PII ไม่สนตัวพิมพ์ และค่าที่เป็นตัวเลขใต้ key PII ถูก redact", () => {
+    expect(redactPii(`{"Email":"x","Name":"Somchai","postal_code":10110, phone: 812345678, amount: 1999}`)).toBe(
+      `{"Email":"[REDACTED]","Name":"[REDACTED]","postal_code":[REDACTED], phone: [REDACTED], amount: 1999}`
+    )
+  })
+
+  // review #473 (blocker): EMAIL เดิม backtrack แบบ O(n²) กับช่วง [A-Za-z0-9._%+-] ยาว → block event loop ทุกบรรทัด log
+  // (errorHandler ของ Medusa log `req.path` ของ client ที่ไม่ login ได้) — วัดขนาดงาน ไม่ใช่ timeout เข้มงวด
+  it.each([
+    ["a ติดกัน 100k ตัว", "a".repeat(100_000)],
+    ["404 ของ id ยาว", `Error 404 at /store/products/prod_${"A".repeat(16_000)}: Product with id: prod_${"A".repeat(16_000)} was not found`],
+    ["จุดและขีดติดกัน 100k ตัว", "a.b-".repeat(25_000)],
+  ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
+    const started = performance.now()
+    expect(redactPii(text)).toBe(text)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+})
+
+describe("redactValue (review #473)", () => {
+  it("key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII", () => {
+    expect(redactValue({ Email: "a", postal_code: 10110, phone: 812345678, quantity: 2 })).toEqual({
+      Email: "[REDACTED]",
+      postal_code: "[REDACTED]",
+      phone: "[REDACTED]",
+      quantity: 2,
+    })
+  })
+
+  it("Error และ Map ที่ส่งเป็น meta ถูก redact (ไม่หลุดเป็นค่าเดิม)", () => {
+    const err = Object.assign(new Error("buyer somchai.jaidee@example.co.th"), { email: "somchai.jaidee@example.co.th" })
+    const out = redactValue({ err, extra: new Map([["email", "somchai.jaidee@example.co.th"], ["id", CART_ID]]) })
+    const text = JSON.stringify(out)
+
+    expect(text).not.toContain("somchai.jaidee@example.co.th")
+    expect(out).toEqual({
+      err: expect.objectContaining({ message: "buyer [REDACTED]", stack: expect.stringContaining("buyer [REDACTED]"), email: "[REDACTED]" }),
+      extra: { email: "[REDACTED]", id: CART_ID },
+    })
+    expect(err.message).toBe("buyer somchai.jaidee@example.co.th")
   })
 })
 

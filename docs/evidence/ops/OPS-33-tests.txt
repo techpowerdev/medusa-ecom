@@ -52,3 +52,28 @@ Tests:       11 passed, 11 total
 ### lint / typecheck / build
 pnpm lint: 0 errors; pnpm typecheck: Done (backend + admin + storefront); pnpm --filter backend build: exit 0
 pnpm --filter storefront test:e2e:unit: 131 passed
+
+## รอบแก้ review #473 (2026-11-22)
+### RED (โค้ดเดิม)
+✕ ทศนิยมยาวและชื่อไฟล์ที่มี @ ไม่ถูกตัด (2 ms)
+✕ key PII ไม่สนตัวพิมพ์ และค่าที่เป็นตัวเลขใต้ key PII ถูก redact (1 ms)
+✕ ข้อความยาว (a ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (11417 ms)
+✕ ข้อความยาว (404 ของ id ยาว) redact เสร็จเร็ว (ไม่ quadratic) (595 ms)
+✕ ข้อความยาว (จุดและขีดติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (11673 ms)
+✕ key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII (2 ms)
+✕ Error และ Map ที่ส่งเป็น meta ถูก redact (ไม่หลุดเป็นค่าเดิม)
+Tests:       7 failed, 12 passed, 19 total
+
+### GREEN
+✓ ทศนิยมยาวและชื่อไฟล์ที่มี @ ไม่ถูกตัด
+✓ key PII ไม่สนตัวพิมพ์ และค่าที่เป็นตัวเลขใต้ key PII ถูก redact
+✓ ข้อความยาว (a ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+✓ ข้อความยาว (404 ของ id ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+✓ ข้อความยาว (จุดและขีดติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+✓ key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII
+✓ Error และ Map ที่ส่งเป็น meta ถูก redact (ไม่หลุดเป็นค่าเดิม) (4 ms)
+Tests:       31 passed, 31 total
+PASS integration-tests/http/complete-after-payment-log.spec.ts (11.862 s)
+Tests:       5 passed, 5 total
+bench (tsx): 'a'×200k 2ms, 'a@'×100k 2ms, '"name":"'×30k 6ms, 'a.b@c'×40k 2ms
+lint 0 errors (warning json-logger.ts:2 มีอยู่เดิมบน develop), backend typecheck ผ่าน

@@ -546,6 +546,8 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
     (c) เบอร์โทรไทย (`0` + 8–9 หลัก, `+66…`) ที่มีขอบเขตเป็นอักขระที่ไม่ใช่ตัวอักษร/ตัวเลขทั้งสองข้าง (lookbehind/lookahead `[^A-Za-z0-9]` หรือต้น/ท้ายสตริง — ไม่ตัดเลขที่อยู่กลาง ULID เช่น `pay_01…`/`cart_01…`);
     ไม่แตะ id (`cart_…`, `pay_…`, `pi_…`), `request_id`, จำนวนเงิน; pure function + unit จากตัวอย่างบรรทัดจริงที่ integration ของ OPS-32 (`complete-after-payment-log.spec.ts`) สร้าง;
     development (logger ของ Medusa เดิม) ไม่เปลี่ยน; หมายเหตุ "ถูกแทนด้วย `[REDACTED]`" ใน runbook หัวข้อ OPS-32 แก้แล้วใน PR เอกสารรอบ 41 — OPS-33 แค่ตรวจว่าถ้อยคำยังตรงกับผลจริง
+    (review #473) regex ต้องทำงานแบบ linear กับข้อความยาว (อีเมล: เริ่ม match เฉพาะต้นช่วง + จำกัดความยาว local ≤ 64/label ≤ 63 — unit 100k ตัวอักษร);
+    key ใน (b) เทียบแบบไม่สนตัวพิมพ์และรวมค่าตัวเลข; เบอร์ใน (c) ไม่อยู่หลัง `.` (ทศนิยมของจำนวนเงิน); ไม่นับชื่อไฟล์ `image@2x.png` เป็นอีเมล; `Error`/`Map` ใน meta ถูก redact
     (d) (owner ยืนยัน 2026-11-21) `check:go-live` (`src/scripts/check-go-live.ts`) ตรวจ `datctype` ของ DB ปัจจุบัน (`pg_database` ของ `current_database()`) — เป็น `C` หรือ `POSIX` → FAIL
     พร้อมเหตุผล (pg_trgm ทิ้งอักษรไทยทั้งหมด `show_trgm('สเวตเตอร์')` ได้ `{}` → ค้นไทยกลางคำของ CORE-75 ใช้ไม่ได้); Go-live ข้อ 10 ของ `docs/ops/production.md` บอกว่าตรวจให้อัตโนมัติ
 16. (OPS-34 — hygiene backend รวม) (a) `apps/backend/tsconfig.json` exclude `.medusa/**` → `pnpm typecheck` ในเครื่องผ่านแม้มี `.medusa/types` (CI เดิมผ่านอยู่แล้ว);
