@@ -30,7 +30,8 @@ const recordNavCartLink = (page: Page) =>
   page.addInitScript(() => {
     const seen: { text: string; busy: string | null }[] = []
     ;(window as unknown as { __core72Seen: typeof seen }).__core72Seen = seen
-    const SELECTOR = '[data-testid="nav-cart-link"]'
+    // fallback ของ Suspense ใช้ testid nav-cart-link-loading (ไม่ซ้อนกับตัวจริงระหว่าง stream) — ต้องไม่แสดง "(0)" เช่นกัน
+    const SELECTOR = '[data-testid="nav-cart-link"], [data-testid="nav-cart-link-loading"]'
     const push = (el: Element) => seen.push({ text: el.textContent ?? "", busy: el.getAttribute("aria-busy") })
     const visit = (node: Node) => {
       if (!(node instanceof Element)) return
@@ -127,3 +128,51 @@ test('AC-171: ตะกร้าว่างจริง (ไม่มี cart) 
     await expect(page.getByTestId("nav-cart-link")).not.toHaveAttribute("aria-busy", "true")
   })
 })
+
+/**
+ * นับ `[data-testid="nav-cart-link"]` ทั้ง document ทุก mutation ตั้งแต่เริ่ม parse — ช่วง stream Suspense ของ nav
+ * fallback ยังอยู่ขณะ content จริงมาถึงใน `<div hidden id="S:n">` (ก่อน `$RC` ของ React สลับ) locator ของ Playwright
+ * นับ element ที่ซ่อนด้วย จึงชน strict mode (hotfix: CI ของ #464/#465 ล้มที่ core-50/core-26 "resolved to 2 elements")
+ */
+const recordNavCartLinkCount = (page: Page) =>
+  page.addInitScript(() => {
+    const counts: number[] = []
+    ;(window as unknown as { __navCartCounts: number[] }).__navCartCounts = counts
+    new MutationObserver(() => {
+      counts.push(document.querySelectorAll('[data-testid="nav-cart-link"]').length)
+    }).observe(document, { childList: true, subtree: true })
+  })
+
+const countIn = (html: string) => html.split('data-testid="nav-cart-link"').length - 1
+
+// /store ไม่ cache หน้า → Suspense ของ CartButton stream (HTML แรกมี fallback + content ใน div hidden ครบทั้งคู่)
+for (const path of [`/${CC}`, `/${CC}/store`]) {
+  test(`hotfix nav-cart-link: ${path} มี element ที่ testid nav-cart-link เพียงตัวเดียวทุกขณะระหว่าง stream`, async ({
+    page,
+    request,
+    baseURL,
+    step,
+  }) => {
+    // ไม่มี cart cookie → CartButton ได้ null และ CartDropdown โหลด cart ใน browser (aria-busy เหมือนใน log CI)
+    const { customer } = await customerWithCart(request, 0)
+    await signInAs(page.context(), baseURL!, customer)
+    await recordNavCartLinkCount(page)
+
+    let html = ""
+    await step("HTML ที่ stream มาทั้งก้อนมี nav-cart-link ตัวเดียว (fallback ใช้ testid อื่น)", async () => {
+      const res = await page.goto(path)
+      html = await res!.text()
+      expect.soft(countIn(html), "จำนวน nav-cart-link ใน HTML").toBe(1)
+    })
+
+    await step('หลังโหลด nav-cart-link = "ตะกร้า (0)"', async () => {
+      await expect(page.getByTestId("nav-cart-link")).toHaveText("ตะกร้า (0)", { timeout: 15_000 })
+    })
+
+    await step("ทุก mutation ตั้งแต่ load นับ nav-cart-link ได้ไม่เกิน 1", async () => {
+      const counts = await page.evaluate(() => (window as unknown as { __navCartCounts: number[] }).__navCartCounts)
+      expect(counts.length, "MutationObserver ทำงาน").toBeGreaterThan(0)
+      expect(Math.max(...counts), JSON.stringify(counts.filter((c) => c !== 1).slice(0, 20))).toBeLessThanOrEqual(1)
+    })
+  })
+}
