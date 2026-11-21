@@ -2845,7 +2845,8 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
      (a2) ขั้น review ทางบัตร: notice คืนเงิน (`checkout-refunded-notice`) เป็น **state ของตัวเอง** (เช่น `{ kind: "refunded" }` จาก `placeOrder`) ไม่ผูกกับการเทียบ `errorMessage === REFUNDED_NOTICE`;
          หลัง PaymentIntent `succeeded`/`requires_capture` จัดผลของ complete เป็น kind ด้วย **allow-list** (pure helper เดียว `placeOrderOutcome` — แก้ตาม review #467: "4xx ใดๆ" กว้างเกิน):
          `refunded` = เฉพาะ error ที่รู้แน่ว่า workflow ล้มหลัง capture แล้ว Medusa คืนเงิน — `FLASH_LIMIT_EXCEEDED`, `FLASH_SOLD_OUT`, code อื่นใน `CHECKOUT_CONFLICTS` ของ hook complete และสต็อกไม่พอ (`isOutOfStockAtCompletion`);
-         `processing` = 409 "Cart is already being completed by another request" (webhook กำลัง complete cart นี้ — ปกติได้ order) → อ่าน cart/order ใหม่: มี order → ไปหน้า order confirmed, ยังไม่มี → ข้อความ `checkout-processing-notice` "กำลังดำเนินการคำสั่งซื้อ กรุณารอสักครู่" แล้วอ่านซ้ำตามกลไก poll เดิมของ PAY-6b (ไม่ใช่ notice คืนเงิน);
+         `processing` = 409 "Cart is already being completed by another request" (webhook กำลัง complete cart นี้ — ปกติได้ order; error นี้ของ Medusa **ไม่มี code** —
+         เก็บข้อความเป็น constant ที่เดียวพร้อม contract test เทียบกับ `@medusajs/medusa` `dist/api/store/carts/[id]/complete/route.js` และอยู่ในเช็กลิสต์ bump ของ spec 07 ข้อ 17) → อ่าน cart/order ใหม่: มี order → ไปหน้า order confirmed, ยังไม่มี → ข้อความ `checkout-processing-notice` "กำลังดำเนินการคำสั่งซื้อ กรุณารอสักครู่" แล้วอ่านซ้ำตามกลไก poll เดิมของ PAY-6b (ไม่ใช่ notice คืนเงิน);
          `unauthorized` = 401 (session หมดอายุ) → พาไป login ใหม่ตามกลไกเดิมของ CORE-4i-b (ไม่ใช่ notice คืนเงิน);
          error อื่น / network / 5xx / timeout → พฤติกรรมเดิม; PAY-11 และ PAY-12 ใช้ helper เดียวกันนี้ (spec 06 กฎข้อ 13–14);
      (b) คืนสินค้าได้ 400 ข้อความ `NO_LOCATION_MESSAGE` ("Return shipping option has no stock location" — `apps/backend/src/api/store/ownership/return-location.ts:11`) → แสดง `return-contact-store` แบบกฎข้อ 129
@@ -2870,7 +2871,7 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
 141. (CORE-85 — owner ส่งข้อมูลติดต่อ) หน้า `/<cc>/contact` แสดงช่องทางติดต่อจริงที่ owner ส่ง (อย่างน้อย 1 ช่องทางเป็นลิงก์ `mailto:`/`tel:`/URL — testid `contact-channel` ต่อช่องทาง) ไม่มีเนื้อหาตัวอย่างของ starter
 142. (CORE-86 — e2e hygiene, session หลัก 2026-11-21) `e2e/core-75-thai-substring-search.spec.ts` (~`:47`) และ `e2e/flash-sale-fs14.spec.ts` (~`:118`) ใช้ตารางแปลงเลขเป็นอักษรไทยชุดเดียวกัน → คำค้นชนกันเมื่อรันหลาย worker;
      แต่ละ spec ใช้คำนำหน้าคงที่ของตัวเองที่ไม่เป็น substring ของอีกตัว (helper ร่วมใน `e2e/support/` รับ prefix ได้ถ้ามีผู้ใช้ 2 ที่) — ไม่เปลี่ยนสิ่งที่ test ตรวจ
-143. (CORE-87 — qa #465) หน้า `/<cc>/store` หัวของ facet option (เช่น "ขนาด") ต้องไม่แสดงจำนวนที่ขัดกับค่าย่อย (เคสที่เจอ: หัว "ขนาด (0)" แต่ค่าย่อย F 3, L 2):
+143. (CORE-87 — qa #465; owner ยืนยันให้ทำ 2026-11-21) หน้า `/<cc>/store` หัวของ facet option (เช่น "ขนาด") ต้องไม่แสดงจำนวนที่ขัดกับค่าย่อย (เคสที่เจอ: หัว "ขนาด (0)" แต่ค่าย่อย F 3, L 2):
      builder หาสาเหตุ (อ่าน count จาก key ไหนของผล facet ของ `POST /store/search`) แล้วแก้ให้ตัวเลขที่หัว = จำนวนสินค้าในผลปัจจุบันที่มีค่าใดค่าหนึ่งของ option นั้น;
      ถ้าผลของ index ไม่มีตัวเลขนี้ → ไม่แสดงตัวเลขที่หัว (ไม่คำนวณเองจากผลรวมค่าย่อย เพราะสินค้าหนึ่งมีหลายค่า)
 144. (CORE-88 — Q-C15 = ก owner ตัดสิน 2026-11-21) คำค้นสั้น (เช่น 2 อักขระ "ขา") ไม่คืนสินค้าทั้ง catalog เพราะ `search_text` มีค่า option (เช่น "ขนาด:F") ที่ word_similarity ≈ 0.33 > เกณฑ์ 0.3 ของ `typo_tolerance` (CORE-75):
@@ -2880,7 +2881,7 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
 - AC-175 (CORE-76, กฎข้อ 134) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน: (a) complete ของ manual payment ตอบ 400 `Not enough stock available for item …` → ข้อความ = `INSUFFICIENT_INVENTORY_MESSAGE` ไม่มีคำ "คืนเงิน"; ทางบัตร → `checkout-refunded-notice` (regression FS-22);
   (a2) unit `placeOrderOutcome`: `FLASH_SOLD_OUT`/`FLASH_LIMIT_EXCEEDED`/สต็อกไม่พอ → `refunded`; 400 `not_allowed` ที่ไม่อยู่ใน allow-list → **ไม่ใช่** `refunded` (พฤติกรรมเดิม); 409 "Cart is already being completed by another request" → `processing`; 401 → `unauthorized`; 500/network → ไม่ใช่ `refunded`;
        e2e route mock: 409 already-being-completed แล้ว order มีอยู่ → URL เป็นหน้า order confirmed ภายใน 10 วินาที, order ยังไม่มี → เห็น `checkout-processing-notice` ไม่เห็น `checkout-refunded-notice`; 401 → ไปหน้า login (ไม่เห็น `checkout-refunded-notice`);
-       component แสดง notice จาก kind ไม่ใช่จากข้อความ (static: ไม่มี `=== REFUNDED_NOTICE`);
+       component แสดง notice จาก kind ไม่ใช่จากข้อความ (static: ไม่มี `=== REFUNDED_NOTICE`); contract test: constant ข้อความ "Cart is already being completed by another request" ตรงกับ source ของ `@medusajs/medusa` ที่ติดตั้ง;
   (b) `POST /store/returns` ตอบ 400 ข้อความ `NO_LOCATION_MESSAGE` → เห็น `return-contact-store` ไม่มีคำ "ลองใหม่"; contract test ข้อความ backend = storefront
 - AC-176 (CORE-77, กฎข้อ 135) e2e route mock: ให้การอ่าน cart ของ nav ล้ม (500) → ภายใน 5 วินาที `nav-cart-link` มีข้อความ "ตะกร้า" ไม่มีวงเล็บตัวเลขและไม่มี attribute `aria-busy` (ล้มบน develop — ค้าง `aria-busy`); เลิก mock แล้วไปหน้าอื่น → เห็นจำนวนจริง; นับ request อ่าน cart ≤ 2 ต่อการเปลี่ยนหน้า
 - AC-177 (CORE-78, กฎข้อ 136) e2e + unit: ลูกค้า 12 order + membership กลุ่ม 1 → หน้า 1 เห็นส่วนกลุ่ม, `?page=2` ไม่เห็น (ล้มบน develop+CORE-68); ลูกค้าที่มีแต่ membership กลุ่ม → overview เห็นลิงก์ "ดูทั้งหมด";

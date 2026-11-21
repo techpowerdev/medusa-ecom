@@ -559,11 +559,12 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
 - AC-49 (OPS-34, กฎข้อ 16 รอบ 41) (a) สร้าง `apps/backend/.medusa/types/*.d.ts` จำลองที่ขัดกับ test แล้ว `pnpm --filter backend typecheck` ผ่าน; (b)–(h) test ที่แก้ผ่าน `--repeat-each`/รันซ้ำ 3 รอบ; static: ไม่มี `setTimeout`/`retries` ใหม่ใน test ที่แก้
 
 ### Checklist ตอน bump `@medusajs/*` — เพิ่ม (รอบ 41)
-(เลขข้อด้านล่างต่อจากเช็กลิสต์ bump ข้อ 1–13 — คนละชุดกับ "กฎข้อ 15–16 รอบ 41" ข้างบน; อ้างเป็น "เช็กลิสต์ bump ข้อ 14–16")
+(เลขข้อด้านล่างต่อจากเช็กลิสต์ bump ข้อ 1–13 — คนละชุดกับ "กฎข้อ 15–16 รอบ 41" ข้างบน; อ้างเป็น "เช็กลิสต์ bump ข้อ 14–17")
 14. (PAY-9 D-1 — **สำคัญ**) ถ้า upstream แก้ medusajs/medusa#17948 แล้ว `compensatePaymentIfNeededStep` สร้าง session ใหม่ได้สำเร็จ → collection เดิมมี session ใหม่ที่ไม่มี payment → guard ของ PAY-9 ไม่ reset
     → อาการ O-2 (#69) กลับมา: characterization test `integration-tests/http/payment-collection-reset.spec.ts` (~`:256`) จะล้ม → ทบทวน ADR-025 (ภาคผนวก 2026-11-21) ก่อน merge bump
 15. (CORE-75/CORE-88) `typo_tolerance` ของ `POST /store/search` และเกณฑ์ similarity ใน provider ยังเหมือนเดิม (AC-174, AC-185 ผ่าน); `json-logger.ts` redact ยังครอบข้อความ recreate session ของเวอร์ชันใหม่ (AC-48b)
 16. (ADR-028) ถ้า `FetchError` ของ `@medusajs/js-sdk` เก็บ `code`/`type` แล้ว → ย้ายผู้เรียก `lib/data/medusa-fetch.ts` กลับไปใช้ SDK แล้วลบ helper; ไม่งั้นตรวจว่า header ของ helper ยังเท่ากับของ SDK (unit AC-181a)
+17. (CORE-76) ข้อความ 409 ไม่มี code "Cart is already being completed by another request" ของ `POST /store/carts/:id/complete` (`@medusajs/medusa` `dist/api/store/carts/[id]/complete/route.js`) ยังเหมือนเดิม — contract test ของ CORE-76 ล้ม = ตรวจที่นี่และ kind `processing` ของ `placeOrderOutcome`
 
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |

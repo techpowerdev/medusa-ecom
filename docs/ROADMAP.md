@@ -510,7 +510,7 @@ spec 08 กฎ 41a/41c/43/44/45, spec 07 เช็กลิสต์ bump ข้
 | owner | CORE-85 | 01 | `/th/contact` ข้อมูลจริง | **owner ส่งข้อมูลติดต่อ** | ✓ | ☐ |
 | ท้าย | CORE-82 → CORE-83 → CORE-84 | 01 | จับ error ด้วย code ตาม ADR-028 (accepted owner 2026-11-21 — 3 PR ปิดท้ายรอบ + issue upstream): checkout/payment → account/returns/auth → group buy/flash/affiliate | task หน้าร้านที่แตะ helper เดียวกัน (82 ← CORE-76, PAY-11, PAY-12, PAY-14; 83 ← CORE-79, CORE-82; 84 ← FS-23, GB-27, CORE-83) | ✓ | ☐ |
 
-**owner ตัดสิน 2026-11-21**: Q-P11 = ก, Q-C13 = ก, Q-C14 = อนุมัติ ADR-028, Q-C15 = ก — เหลือรอเฉพาะข้อมูลติดต่อของ CORE-85; **issue upstream** (session หลักเปิด): js-sdk `FetchError` ไม่เก็บ `code`/`type` (ADR-028)
+**owner ตัดสิน 2026-11-21**: Q-P11 = ก, Q-C13 = ก, Q-C14 = อนุมัติ ADR-028, Q-C15 = ก; owner ยืนยัน (2026-11-21 ตาม review #467) ให้ทำ **CORE-87** (หัว facet `/store`) และ **Go-live ข้อ 14** (วัด p95 ของ `POST /store/search` กับ catalog จริง เกิน ~10k สินค้าหรือ p95 > 300ms ต้องมี ADR) รวมถึงรับทราบ Go-live ข้อ 10 (`LC_CTYPE`); PAY-14 owner สั่งเพิ่ม 2026-11-21 (review #468) — เหลือรอเฉพาะข้อมูลติดต่อของ CORE-85; **issue upstream** (session หลักเปิด): js-sdk `FetchError` ไม่เก็บ `code`/`type` (ADR-028)
 **critical path (เงิน/PII ก่อน)**: PR เอกสารรอบ 41 → OPS-33 ∥ EV-23 ∥ EV-25 ∥ PAY-10 ∥ CORE-80 → (#464 merge) CORE-76 → PAY-11 ∥ PAY-12 ∥ PAY-14 ∥ FS-24 → CORE-81 → ที่เหลือ → CORE-82..84 ปิดท้าย
 **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง merge `origin/develop` แล้วรอ CI ใหม่):
 - `apps/storefront/src/lib/data/cart.ts` + `lib/util/checkout-error.ts`/`insufficient-inventory.ts`: FS-22 → CORE-76 → (PAY-11 ∥ PAY-12 ∥ PAY-14 — PAY-14 แตะ `modules/checkout/components/payment` ด้วย) → CORE-82
