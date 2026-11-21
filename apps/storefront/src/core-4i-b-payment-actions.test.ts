@@ -134,6 +134,59 @@ describe("initiatePaymentSession (checkout) ผ่าน helper กลาง —
   })
 })
 
+// PAY-9 (spec 06 กฎข้อ 11, AC-22, ADR-025): collection เดิมถูกคืนเงินครบแล้ว backend ถอด link → สร้าง collection ใหม่แล้วลองซ้ำ 1 ครั้ง
+describe("initiatePaymentSession — 409 PAYMENT_COLLECTION_RESET", () => {
+  const reset = () => new Response(JSON.stringify({ type: "conflict", code: "PAYMENT_COLLECTION_RESET", message: "x" }), { status: 409 })
+  const ok = () => new Response(JSON.stringify({ payment_collection: {} }), { status: 200 })
+  const calls = () => (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map(([url]) => url)
+
+  it("creates a new collection for the cart (Medusa route) and retries once → ok", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reset()).mockResolvedValueOnce(ok()))
+    fetchSdk.mockResolvedValueOnce({ payment_collection: { id: "pay_col_new" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ ok: true })
+
+    expect(fetchSdk).toHaveBeenCalledTimes(1)
+    expect(fetchSdk).toHaveBeenCalledWith(
+      "/store/payment-collections",
+      expect.objectContaining({ method: "POST", body: { cart_id: "cart_1" } })
+    )
+    expect(calls()).toEqual([
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+      "http://backend/store/payment-collections/pay_col_new/payment-sessions",
+    ])
+    expect(revalidateTag).toHaveBeenCalledWith("carts-t", { expire: 0 })
+  })
+
+  it("the retry gets PAYMENT_COLLECTION_RESET again → { error: failed } without a third attempt", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reset()).mockResolvedValueOnce(reset()))
+    fetchSdk.mockResolvedValueOnce({ payment_collection: { id: "pay_col_new" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ error: "failed" })
+    expect(fetchSdk).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("creating the new collection fails → error from the shared helper", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reset()))
+    fetchSdk.mockRejectedValueOnce(new FetchError("Unauthorized", "Unauthorized", 401))
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ error: "unauthorized" })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("renewPromptPaySession does not retry (QR renewal keeps its collection) → { error: failed }", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reset()))
+    const { renewPromptPaySession } = await import("@lib/data/cart")
+
+    await expect(renewPromptPaySession(cartWithCollection, PROMPTPAY)).resolves.toEqual({ error: "failed" })
+    expect(fetchSdk).not.toHaveBeenCalled()
+  })
+})
+
 describe("renewPromptPaySession ผ่าน helper กลาง", () => {
   it.each(sessionCases)("%s", async (_label, arrange, expected) => {
     arrange()

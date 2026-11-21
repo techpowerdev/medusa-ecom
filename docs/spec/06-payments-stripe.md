@@ -309,7 +309,7 @@ follow-up (ไม่ใช่ task บังคับ — ทำในงาน�
   (a) order captured ฿600 + return request ที่ยังไม่ confirm (`POST /admin/returns` + request) When `POST /admin/payments/:id/refund { amount: 100 }` Then 400 ข้อความมี `active return`, provider ไม่ถูกเรียก, `refunds` ของ payment ว่าง, `order.summary.refunded_total` = 0;
   (b) order edit ที่ค้าง (`POST /admin/order-edits`) → 400 แบบ (a); (c) ยกเลิก return request แล้ว refund ฿100 → 200, `payment_status = partially_refunded`, credit line 1 รายการ และ event `payment.refunded` ถูก emit 1 ครั้ง (spy event bus);
   (d) order ที่ไม่มี order change → 200 (regression ของ AC-6)
-- AC-22 (PAY-9, กฎข้อ 11) integration http + e2e — **ล้มบน develop** ก่อน:
+- ☑ AC-22 (PAY-9, กฎข้อ 11) integration http + e2e — **ล้มบน develop** ก่อน:
   (a) integration: cart ที่ collection มี payment captured ฿X แล้วถูกคืนครบด้วย `refundPaymentsWorkflow` (จำลองผลของ `compensatePaymentIfNeededStep`) When เจ้าของ cart `POST .../payment-sessions` Then 409 code `PAYMENT_COLLECTION_RESET`,
       link `cart_payment_collection` ของ cart ว่าง, collection เดิมยังอยู่พร้อม refund; ยิงซ้ำพร้อมกัน 2 request → ทั้งคู่ 409 code เดิม ไม่มี error 5xx; หลัง `POST /store/payment-collections { cart_id }` + สร้าง session + complete → order มี payment collection **1** ชุด (ชุดใหม่) และ `payment_status = captured`;
   (b) collection ที่มี payment captured ยังไม่คืน → ไม่ถูก reset (ผล AC-13 เดิม); collection ของ order (group buy) → ไม่ถูก reset;

@@ -83,6 +83,8 @@ export function promptPayPollState(cart: PollableCart): PromptPayPollState {
 
 /** code ของ guard ฝั่ง backend (spec 06 กฎข้อ 7A): session เดิมชำระแล้ว ไม่ถูกลบ */
 export const PAYMENT_ALREADY_COMPLETED = "PAYMENT_ALREADY_COMPLETED"
+/** PAY-9 (spec 06 กฎข้อ 11, ADR-025): collection ของ cart ถูกคืนเงินครบ backend ถอด link แล้ว → สร้าง collection ใหม่แล้วลองซ้ำ 1 ครั้ง */
+export const PAYMENT_COLLECTION_RESET = "PAYMENT_COLLECTION_RESET"
 
 /**
  * ผลของการสร้าง session ใหม่ตอน QR หมดอายุที่ไม่สำเร็จ: 409 + code `PAYMENT_ALREADY_COMPLETED` = ชำระแล้ว → poll ต่อและ complete cart
