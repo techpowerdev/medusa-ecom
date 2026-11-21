@@ -337,12 +337,14 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
 | ปุ่ม Refund ของหน้า order | `@medusajs/dashboard` 2.22.1 `order-detail` — action `to: /orders/:id/refund?paymentId=…`, `disabled: !payment.captured_at \|\| !!payment.canceled_at \|\| totalRefunded >= payment.amount` (`dist/order-detail-ERHRK6W3.mjs:2420-2423`) — **ไม่มีจุดขยาย** ให้ซ่อน/ปิดจาก extension | ซ่อน/ปิดไม่ได้โดยไม่ patch → widget แจ้งเตือน (Q-P11 = ก owner ตัดสิน 2026-11-21) |
-| อ่าน order change ที่ค้าง | `useOrderChanges(id, query)` ของ `@medusajs/dashboard/hooks` (`dist/hooks.d.ts:910`) | ใช้ตามเดิม (กฎข้อ 12) |
+| อ่าน order change ที่ค้าง | `useOrderPreview(id)` ของ `@medusajs/dashboard/hooks` (`dist/hooks.d.ts:779`) — `order.order_change` = active change (`getActiveOrderChange_` ของ order module: status pending/requested); หน้า order เรียกแบบเดียวกันจึงใช้ cache ร่วม และ mutation ของ return/claim/exchange/edit invalidate `preview(id)`. **ไม่ใช้** `useOrderChanges` (2.22.1: queryKey `changes(id)` ไม่รวม query → cache ชนกับ timeline จนหน้า order crash และ mutation เหล่านั้นไม่ invalidate key นี้ — review/qa #471) | ใช้ตามเดิม ห้ามส่ง query (กฎข้อ 12) |
 | แจ้งเตือนใน widget | injection zone `order.details.before`, `Alert`/`Container` ของ `@medusajs/ui` | ใช้ตามเดิม |
+| ตำแหน่ง widget บนหน้า order | dashboard 2.22.1 ทิ้ง suffix `.before`/`.after` (`getWidgetsForSections`) แล้ววาง widget ต่อท้ายคอลัมน์หลัก (ใต้ Payments) — ตำแหน่งปรับได้ด้วย layout configuration ของ zone (`id` ใน `defineWidgetConfig` + system default ของ Settings module `setSystemDefaultLayoutConfiguration`; แอดมินปรับเองได้ด้วย "Customize layout") | ขยาย: migration script ตั้ง default layout ของ `order.details` ให้ widget ขึ้นบนสุด (กฎข้อ 12) |
 | ทาง redirect ของ 3DS/PromptPay | route ของ starter `/api/payment-return` + `placeOrder` | ขยาย (กฎข้อ 14) |
 
 ### Business rules (รอบ 41)
-12. (PAY-10 — Q-P11 = ก owner ตัดสิน 2026-11-21) widget `order.details.before` (`src/admin/widgets/order-refund-blocked.tsx`): เมื่อ order มี order change `status ∈ {pending, requested}` (`useOrderChanges` — ค่าเดียวกับ middleware ของ PAY-8 กฎข้อ 10b)
+12. (PAY-10 — Q-P11 = ก owner ตัดสิน 2026-11-21) widget `order.details.before` (`src/admin/widgets/order-refund-blocked.tsx`): เมื่อ order มี order change `status ∈ {pending, requested}` (`order_change` ของ `useOrderPreview(id)` ไม่ส่ง query — ค่าเดียวกับ middleware ของ PAY-8 กฎข้อ 10b; ขึ้น/หายเองเมื่อแอดมินเริ่ม/ยกเลิก/confirm change บนหน้าเดียวกันโดยไม่ reload;
+    ขึ้นบนสุดของคอลัมน์หลักในจอแรกผ่าน default layout ของ zone `order.details` ที่ migration script `src/migration-scripts/order-refund-blocked-layout.ts` ตั้ง — ไม่ทับตำแหน่งที่แอดมินกำหนดเอง; แอดมินที่บันทึก layout ส่วนตัวไว้ก่อนจะเห็นตาม layout ของตัวเอง)
     แสดง `Alert` (variant warning, testid `order-refund-blocked`) ข้อความอังกฤษ "Refunds are blocked while this order has an active return, claim, exchange or edit. Confirm or cancel it first." + ชนิดของ change ที่ค้าง;
     ไม่มี change ค้าง → ไม่ render อะไร; ไม่แตะปุ่ม Refund ของ Medusa (ยังกดได้ แล้ว middleware ของ PAY-8 ตอบ 400 ข้อความเดียวกันเป็น toast)
 13. (PAY-11 — ต่อจาก FS-22, spec 03 กฎข้อ 27/29) PromptPay ทางสำรอง `finish()` จัดผลด้วย helper `placeOrderOutcome` ของ CORE-76 (allow-list — spec 01 กฎข้อ 134 a2):
@@ -371,7 +373,8 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
     (d) ถ้าเรียก `stripe.retrievePaymentIntent` ใน component ของขั้น payment ให้เพิ่มข้อยกเว้นที่ระบุเหตุผลใน `checkout-affiliate-coverage.test.ts` (test นี้ตรวจจุดที่เรียก Stripe ก่อน sync cookie `aff` — AF-3b)
 
 ### Acceptance criteria (รอบ 41)
-- ☑ AC-23 (PAY-10, กฎข้อ 12) e2e admin: order ที่มี return request ค้าง → เห็น `order-refund-blocked` (ข้อความมี `active return`); ยกเลิก return request แล้ว reload → ไม่เห็น; order ปกติ → ไม่เห็น
+- ☑ AC-23 (PAY-10, กฎข้อ 12) e2e admin: order ที่มี return request ค้าง → เห็น `order-refund-blocked` (ข้อความมี `active return`); ยกเลิก return request แล้ว reload → ไม่เห็น; order ปกติ → ไม่เห็น;
+  (review/qa #471) เริ่ม return ผ่านหน้า Create Return ของ Medusa แล้วปิด → widget ขึ้นเองโดยไม่ reload; กด Cancel Return ในหน้า order → หายเองโดยไม่ reload; ที่ 1280×720 widget อยู่ในจอแรกเต็มกล่องโดยไม่ scroll
 - AC-24 (PAY-11, กฎข้อ 13) unit Vitest (logic ของ finish/poll เป็น pure helper) + e2e route mock: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → ภายใน 5 วินาทีเห็น `promptpay-refunded` มีคำ "คืนเงิน" และไม่เห็น `promptpay-awaiting-order`; ไม่มี request poll เพิ่มหลังนั้น (ล้มบน develop+FS-22 — ค้าง awaiting); 409 already-being-completed → ยัง poll และไม่เห็น `promptpay-refunded`
 - AC-25 (PAY-12, กฎข้อ 14) unit ของ route (แบบ `core-29-active-cart.test.ts:187-214`) + e2e: placeOrder kind `refunded` → location `/th/cart?error=refunded`; 409 already-being-completed + order มีแล้ว → หน้า order confirmed (ไม่ใช่ `error=refunded`); 401 → หน้า login; เปิด `/th/cart?error=refunded|order_failed|payment_failed` → `cart-error-notice` อักษรไทยตามค่า; `?error=<script>` → ไม่แสดง (ล้มบน develop — หน้า cart ไม่อ่าน `error`)
 - AC-27 (PAY-14, กฎข้อ 16) unit Vitest (helper ตัดสิน "PI จบแล้ว → reset") + e2e (Stripe test mode หรือ route mock ที่ให้ cart คืน session `pending` ชี้ PI ที่ `succeeded`/`canceled` แล้ว) — **ล้มบน develop** ก่อน:
