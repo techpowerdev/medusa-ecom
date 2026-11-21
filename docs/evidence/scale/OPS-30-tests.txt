@@ -1,0 +1,33 @@
+# OPS-30 (spec 07 AC-45) — ผล test
+
+## AC-45a/b/c Red — static บน develop 73148c83 (แก้ test ก่อน ยังไม่แก้ compose/docs/ci.yml)
+$ TEST_TYPE=unit npx jest src/__tests__/{load-lock-timing,instrumentation,ops-runbook,ci-workflow}
+  ● OPS-30 docker-worker-mode ตรวจ access log ของ server › มี step หลัง smoke-worker-mode.sh ที่รันทุกครั้ง (ไม่มี if/continue-on-error/|| true)
+  ● OPS-30 docker-worker-mode ตรวจ access log ของ server › ใช้ LOG_LEVEL ค่าเริ่มต้นของ docker-compose.prod.yml (unset และไม่ตั้งค่าเองที่ step/job)
+  ● OPS-30 docker-worker-mode ตรวจ access log ของ server › ยิง GET /admin/users/me ไม่มี token ต้องได้ 401 และไม่ใช้ /health
+  ● OPS-30 docker-worker-mode ตรวจ access log ของ server › หาบรรทัด access log ที่มี request_id, path และ status 401 แบบ fail-closed (grep error = ล้ม) แล้ว down -v
+  ● AC-45b access log และ HTTPS ใน docs/ops/production.md › หัวข้อ Alerts: access log ต้องใช้ LOG_LEVEL=http (ค่าเริ่มต้นของ compose) และเตือนว่า info ไม่มี access log
+  ● AC-45b access log และ HTTPS ใน docs/ops/production.md › หัวข้อ Go-live checklist: admin/API ผ่าน HTTPS หรือ proxy ที่ส่ง X-Forwarded-Proto: https และ http://localhost ตรงไป :9000 login ไม่ได้
+  ● OPS-18 run.sh เก็บ log ของ load run › ตั้ง LOG_LEVEL=debug เฉพาะ load run และค่าเริ่มต้นของ compose prod เป็น http (OPS-30 — access log)
+Tests:       7 failed, 59 passed, 66 total
+
+## AC-45c Red — step CI ใหม่ (ดึงจาก ci.yml) รันในเครื่องกับ compose ค่าเริ่มต้นเดิม LOG_LEVEL:-info
+(project r40ops30, port 9330, env ปลอมแบบ CI job docker-worker-mode)
+LOG_LEVEL ของ server: info
+::error::ไม่พบ access log ของ GET /admin/users/me (request_id, status 401) — LOG_LEVEL ค่าเริ่มต้นของ compose ต้องเป็น http (OPS-30)
+exit=1
+
+## AC-45c Green — compose ค่าเริ่มต้น LOG_LEVEL:-http
+LOG_LEVEL ของ server: http
+OK access log: {"level":"http","client_ip":"::ffff:127.0.0.1","request_id":"88f9ee3d-1749-45bd-8f27-f6c6895b5243","http_version":"1.1","method":"GET","path":"/admin/users/me","status":401,"response_size":"26","request_size":0,"duration":4.956,"referrer":"-","user_agent":"node","timestamp":"2026-11-20T21:45:29.126Z"}
+exit=0
+
+## AC-45a/b/c Green — static
+Tests:       66 passed, 66 total
+
+## ชุดอื่นในเครื่อง
+pnpm lint && pnpm typecheck: ผ่าน
+pnpm --filter backend test:unit: Test Suites 110 passed, 1 failed / Tests 1499 passed, 1 failed
+  - ล้ม: src/__tests__/pg-pool-reset.unit.spec.ts (timeoutMs 300 ms ของ test ขณะเครื่อง load ~8 — ไม่เกี่ยวกับไฟล์ที่ task นี้แตะ)
+  - รันไฟล์นั้นซ้ำเดี่ยว: Tests 8 passed, 8 total
+pnpm --filter storefront test:e2e:unit: 122 passed

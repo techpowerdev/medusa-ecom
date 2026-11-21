@@ -505,7 +505,7 @@ migrate พิมพ์ warning ซ้ำ 3 รอบ + `worker_mode:"server"` �
 owner อนุมัติ (2026-11-21) ให้ task ของรอบนี้แก้ `docs/ops/**` ในเรื่อง LOG_LEVEL/HTTPS (OPS-30) — task อื่นที่แตะ runbook (GB-21, OPS-32) แก้หัวข้อของตัวเองตามปกติ
 
 ### Acceptance criteria (รอบ 40)
-- AC-45 (OPS-30) (a) `docker-compose.prod.yml` ตั้ง `LOG_LEVEL: ${LOG_LEVEL:-http}`; unit ใน `load-lock-timing.unit.spec.ts:150-152` และ `instrumentation.unit.spec.ts` ที่ยึดค่า `info` แก้เป็น `http` (sampler ยังไม่สร้าง timer ที่ `http` — ผลเดิมของ `saturation-sampler.unit.spec.ts`);
+- AC-45 (OPS-30) ☑ (a–c ผ่าน: static red 7 เคส → green 66/66; step CI ในเครื่อง compose `info` ล้ม exit 1 → `http` ผ่าน มีบรรทัด `"path":"/admin/users/me","status":401`; ผลใน `docs/evidence/scale/OPS-30-tests.txt`) (a) `docker-compose.prod.yml` ตั้ง `LOG_LEVEL: ${LOG_LEVEL:-http}`; unit ใน `load-lock-timing.unit.spec.ts:150-152` และ `instrumentation.unit.spec.ts` ที่ยึดค่า `info` แก้เป็น `http` (sampler ยังไม่สร้าง timer ที่ `http` — ผลเดิมของ `saturation-sampler.unit.spec.ts`);
   (b) `docs/ops/production.md` หัวข้อ Alerts ระบุว่า access log ต้องใช้ `LOG_LEVEL=http` (ค่าเริ่มต้นของ compose) และเตือนว่า `info` จะไม่มี access log; หัวข้อ go-live/คำสั่ง prod-like ระบุ HTTPS หรือ `X-Forwarded-Proto: https` ตาม Deliverables ข้อ 11;
   (c) `docker-worker-mode` (CI) ยืนยันว่ามีบรรทัด access log (`request_id`, `status`) จาก server หลังยิง **`GET /admin/users/me` ไม่มี token (ได้ 401)** หรือ `GET /store/regions` พร้อม publishable key 1 ครั้ง
       (ล้มบน develop) — **ห้ามใช้ `/health`** เพราะ Medusa ข้าม access log ของ `/health` เสมอ (`framework/dist/http/express-loader.js:21,108-113` — review #425); unit อ่านไฟล์ตรวจ (a)(b)

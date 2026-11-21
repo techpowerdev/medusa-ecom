@@ -39,7 +39,8 @@ x-backend-env: &backend-env
   STORE_CORS: ${STORE_CORS:-http://localhost:8000}
   ADMIN_CORS: ${ADMIN_CORS:-http://localhost:9000}
   AUTH_CORS: ${AUTH_CORS:-http://localhost:9000,http://localhost:8000}
-  LOG_LEVEL: ${LOG_LEVEL:-info}
+  # OPS-30: access log ของ Medusa (request_id, status) ออกที่ระดับ http — `info` จะไม่มี access log
+  LOG_LEVEL: ${LOG_LEVEL:-http}
   # OPS-7 prod guards (image = NODE_ENV=production): ขาดตัวใดตัวหนึ่ง → server/worker/migrate บูตไม่ขึ้น
   # GB-4: URL http(s) ของ storefront สำหรับลิงก์ชำระเงินในอีเมล group buy (AC-17)
   STOREFRONT_URL: ${STOREFRONT_URL:-}

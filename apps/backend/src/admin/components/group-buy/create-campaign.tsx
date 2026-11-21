@@ -92,6 +92,7 @@ export const CreateCampaign = ({
     defaultValues: emptyCampaignForm(),
   })
   // spec 08 กฎ 4: dblclick / ⌘+Enter ซ้ำผ่าน validation พร้อมกันได้ — createSingleFlight ให้ POST ครั้งเดียว
+  // กฎ 43 (ADM-39): สำเร็จแล้ว hold ระหว่าง modal กำลังปิด — release ตอนเปิดใหม่ (effect ด้านล่าง)
   const [submitOnce] = useState(createSingleFlight)
   // GB-13 (กฎข้อ 33d): key เดียวต่อการเปิดฟอร์ม — submit ซ้ำหลัง network ล้มได้แคมเปญเดิม
   // ตั้งเมื่อ open เปลี่ยน false → true เท่านั้นด้วย newIdempotencyKey (GB-15: getRandomValues ใช้ได้ทั้ง http/https — ไม่ใช้ API ที่มีเฉพาะ secure context)
@@ -102,7 +103,8 @@ export const CreateCampaign = ({
     if (!open) return
     setIdempotencyKey(newIdempotencyKey())
     form.reset(emptyCampaignForm())
-  }, [open, form])
+    submitOnce.release()
+  }, [open, form, submitOnce])
 
   const create = useMutation({
     mutationFn: groupBuyApi.createCampaign,
@@ -129,7 +131,7 @@ export const CreateCampaign = ({
       }
       // key ตั้งตอน modal เปิดจึงมีเสมอ; ถ้าว่างไม่ส่ง field (backend ไม่รับ key ว่าง)
       const body: CampaignBody = idempotencyKey ? { ...result.body, idempotency_key: idempotencyKey } : result.body
-      await create.mutateAsync(body).catch(() => undefined)
+      await create.mutateAsync(body).then(submitOnce.hold, () => undefined)
     })
   )
 

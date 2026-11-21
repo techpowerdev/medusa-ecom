@@ -12,6 +12,7 @@ export const ImportCodes = ({ poolId }: { poolId: string }) => {
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<ImportResult | null>(null)
+  // กฎ 43 (ADM-39): สำเร็จแล้ว hold จนเลือกไฟล์ใหม่ (release) — คลิกซ้ำหลัง response ไม่ import ไฟล์เดิมซ้ำ
   const [importOnce] = useState(createSingleFlight)
 
   const upload = useMutation({
@@ -46,13 +47,16 @@ export const ImportCodes = ({ poolId }: { poolId: string }) => {
           accept=".csv,text/csv"
           aria-label="CSV file"
           className="txt-compact-small text-ui-fg-subtle"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            importOnce.release()
+            setFile(e.target.files?.[0] ?? null)
+          }}
         />
         <Button
           size="small"
           disabled={!file}
           isLoading={upload.isPending}
-          onClick={() => file && importOnce(() => upload.mutateAsync(file).catch(() => undefined))}
+          onClick={() => file && importOnce(() => upload.mutateAsync(file).then(importOnce.hold, () => undefined))}
         >
           Import
         </Button>

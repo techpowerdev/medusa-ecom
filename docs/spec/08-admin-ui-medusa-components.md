@@ -1205,7 +1205,7 @@ none
     400 จาก API ที่ map เข้าช่องได้ → ใต้ช่อง ที่เหลือ → toast (แบบกฎ 36e)
 
 ### Acceptance criteria (รอบ 40)
-- AC-44 (ADM-39, กฎ 43) e2e admin — **ล้มบน develop** ก่อน (partner ซ้ำ 2 แถว): ทุกฟอร์มในกฎ 43: (a) dblclick Save เว้น 100ms → POST 1 ครั้ง; (b) Save แล้วกด ⌘/Ctrl+Enter ซ้ำทันทีหลัง response ระหว่าง modal ปิด → POST 1 ครั้ง;
+- AC-44 (ADM-39, กฎ 43) ☑ (a–d ผ่าน: red บน develop `73148c83` partner POST 2 ครั้ง, campaign 2 (ทั้ง (a) และ (b)), pool group 2 → green 7/7, `--repeat-each=3` 21/21; unit helper 7/7; `docs/evidence/admin-ui/ADM-39-tests.txt`) e2e admin — **ล้มบน develop** ก่อน (partner ซ้ำ 2 แถว): ทุกฟอร์มในกฎ 43: (a) dblclick Save เว้น 100ms → POST 1 ครั้ง; (b) Save แล้วกด ⌘/Ctrl+Enter ซ้ำทันทีหลัง response ระหว่าง modal ปิด → POST 1 ครั้ง;
   (c) API ตอบ 500 (route mock) → กด Save ได้อีกและ POST ครั้งที่ 2 เกิด; (d) เปิดฟอร์มใหม่หลังสร้างสำเร็จ → Save กดได้; unit jest ของ helper ครอบ hold/release/error; นับ request ด้วย `page.on("request")`
 - AC-45 (ADM-40, กฎ 44) e2e admin: affiliate 3 ราย (tag ตัวอักษรตามกฎ 33) พิมพ์ชื่อหนึ่งราย → รอ response ที่ `pathname === "/admin/affiliate/affiliates"` และ `q` ตรง แล้ว assert `count` = 1 และตารางมี 1 แถว; URL มี `affiliates_q`; reload แล้วผลคงเดิม; ล้างช่อง → แถวกลับ
 - AC-46 (ADM-41, กฎ 45) e2e admin ที่ 1280×800 และ 1440×900 ด้วย payout ที่ affiliate ชื่อยาว 370 ตัว: wrapper `affiliate-payouts-table` `scrollWidth ≤ clientWidth + 1`, ปุ่ม `…` ของทุกแถวอยู่ในจอ, tooltip ยังแสดงชื่อเต็ม (ล้มบน develop: 1417px)

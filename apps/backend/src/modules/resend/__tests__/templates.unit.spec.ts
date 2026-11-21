@@ -299,6 +299,20 @@ describe("renderEmailTemplate", () => {
       expect(email!.html).toContain("group buy: เงินเข้าแต่ไม่มี order")
     })
 
+    // GB-21 กฎข้อ 44: alert เหตุ membership_cancelled มีผลการคืนเงินอัตโนมัติ
+    it.each(["refunded", "refund_failed"])("renders refund_result=%s in the paid-without-order ops alert", (result) => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER, {
+        reason: "membership_cancelled",
+        membership_id: "gbmem_01",
+        order_id: "order_01",
+        payment_id: "pay_01",
+        amount: "700",
+        refund_result: result,
+      })
+      expect(email!.html).toContain(`<b>${result}</b>`)
+      expect(email!.html).toContain("GET /admin/payments/pay_01")
+    })
+
     // GB-5 (AC-10): อีเมล "หมดเวลาชำระเงิน"
     it("renders the payment-expired email in Thai with the order number", () => {
       const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAYMENT_EXPIRED, { order: data.order })

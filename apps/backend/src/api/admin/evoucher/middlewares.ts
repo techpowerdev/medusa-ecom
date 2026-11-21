@@ -4,6 +4,7 @@ import {
   validateAndTransformQuery,
 } from "@medusajs/framework/http"
 import multer from "multer"
+import { tiebreakById } from "../../../lib/tiebreak-by-id"
 import {
   AdminCreateEvoucherPartner,
   AdminCreateEvoucherPool,
@@ -35,6 +36,9 @@ const POOL_FIELDS = [
   "partner.name",
 ]
 
+// EV-19 (spec 02 กฎ 35): list ที่แบ่งหน้าเรียงคงที่ — ไม่ส่ง order → created_at, และมี id เป็น key รองเสมอ
+const stableOrder = tiebreakById({ created_at: "ASC" })
+
 export const adminEvoucherMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
@@ -44,6 +48,7 @@ export const adminEvoucherMiddlewares: MiddlewareRoute[] = [
         defaults: PARTNER_FIELDS,
         isList: true,
       }),
+      stableOrder,
     ],
   },
   {
@@ -74,6 +79,7 @@ export const adminEvoucherMiddlewares: MiddlewareRoute[] = [
         defaults: POOL_FIELDS,
         isList: true,
       }),
+      stableOrder,
     ],
   },
   {

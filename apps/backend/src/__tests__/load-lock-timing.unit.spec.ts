@@ -147,9 +147,9 @@ describe("OPS-18 summarizeLockTimings", () => {
 describe("OPS-18 run.sh เก็บ log ของ load run", () => {
   const runner = read("tools/load/run.sh")
 
-  it("ตั้ง LOG_LEVEL=debug เฉพาะ load run และค่าเริ่มต้นของ compose prod ยังเป็น info", () => {
+  it("ตั้ง LOG_LEVEL=debug เฉพาะ load run และค่าเริ่มต้นของ compose prod เป็น http (OPS-30 — access log)", () => {
     expect(runner).toMatch(/^export LOG_LEVEL="\$\{LOG_LEVEL:-debug\}"/m)
-    expect(read("docker-compose.prod.yml")).toContain("LOG_LEVEL: ${LOG_LEVEL:-info}")
+    expect(read("docker-compose.prod.yml")).toContain("LOG_LEVEL: ${LOG_LEVEL:-http}")
   })
 
   it("ดึง log ของ server+worker ทุก run (ไม่ใช่แค่ตอนล้ม) แล้วสรุปลง tools/load/out", () => {

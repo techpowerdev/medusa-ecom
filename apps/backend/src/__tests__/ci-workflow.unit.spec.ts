@@ -409,3 +409,37 @@ describe("OPS-29 image ไม่มีไฟล์ test ที่ compile แล
     expectUnconditional(imageStep())
   })
 })
+
+// OPS-30 (spec 07 AC-45c): server ที่ LOG_LEVEL ค่าเริ่มต้นของ compose prod ต้องเขียน access log
+// ยิง route ที่ไม่ใช่ /health (Medusa ข้าม access log ของ /health เสมอ) แล้วหาบรรทัดที่มี request_id + status
+describe("OPS-30 docker-worker-mode ตรวจ access log ของ server", () => {
+  const steps = stepsOf("docker-worker-mode")
+  const idx = steps.findIndex((s) => /\/admin\/users\/me/.test(s.run ?? ""))
+  const run = steps[idx]?.run ?? ""
+
+  it("มี step หลัง smoke-worker-mode.sh ที่รันทุกครั้ง (ไม่มี if/continue-on-error/|| true)", () => {
+    expect(idx).toBeGreaterThan(runIndex(steps, "tools/ops/smoke-worker-mode.sh"))
+    expectUnconditional(steps[idx])
+  })
+
+  it("ใช้ LOG_LEVEL ค่าเริ่มต้นของ docker-compose.prod.yml (unset และไม่ตั้งค่าเองที่ step/job)", () => {
+    expect(run).toMatch(/\bunset\b[^\n]*\bLOG_LEVEL\b/)
+    expect(run).not.toMatch(/LOG_LEVEL=/)
+    expect(steps[idx]?.env ?? {}).not.toHaveProperty("LOG_LEVEL")
+    expect((jobs["docker-worker-mode"] as { env?: Record<string, string> }).env ?? {}).not.toHaveProperty("LOG_LEVEL")
+    expect(run).toMatch(/-f docker-compose\.prod\.yml/)
+  })
+
+  it("ยิง GET /admin/users/me ไม่มี token ต้องได้ 401 และไม่ใช้ /health", () => {
+    expect(run).not.toMatch(/\/health/)
+    expect(run).not.toMatch(/authorization|x-publishable-api-key/i)
+    expect(run).toMatch(/!= 401/)
+  })
+
+  it("หาบรรทัด access log ที่มี request_id, path และ status 401 แบบ fail-closed (grep error = ล้ม) แล้ว down -v", () => {
+    expect(run).toMatch(/grep -c -E '"request_id":[^']*"path":"\/admin\/users\/me"[^']*"status":401'/)
+    expect(run).toMatch(/-ge 2/)
+    expect(run).toMatch(/exit 1/)
+    expect(run).toMatch(/trap [^\n]*down -v/)
+  })
+})
