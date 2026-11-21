@@ -63,3 +63,37 @@ describe("requestReturn เมื่อ backend ปฏิเสธ (CORE-20d)", 
     expect(fetchMock).toHaveBeenCalledWith("/store/returns", expect.objectContaining({ method: "POST" }))
   })
 })
+
+// CORE-71 (spec 01 กฎข้อ 129, AC-170): location ของ return option ไม่มีของ → ข้อความติดต่อร้าน + ธง contactStore
+describe("requestReturn เมื่อ location ไม่มีของ (CORE-71)", () => {
+  const backendRejects = (message: string, status = 400) =>
+    fetchMock.mockReset().mockImplementation(async (url: string) => {
+      if (url.startsWith("/store/regions/")) return { region: { id: "reg_1", metadata: {} } }
+      if (url === "/store/shipping-options") return { shipping_options: [{ id: "so_return" }] }
+      if (url === "/store/returns") throw new FetchError(message, "Bad Request", status)
+      throw new Error(`unexpected ${url}`)
+    })
+
+  beforeEach(() => {
+    retrieveOrder.mockReset().mockResolvedValue(ORDER)
+  })
+
+  it("400 This item cannot be returned online → contactStore + ข้อความไทยไม่มี ลองใหม่ และคืนค่าที่เลือก", async () => {
+    backendRejects("This item cannot be returned online")
+    const result = await submit()
+    expect(result).toMatchObject({
+      success: false,
+      contactStore: true,
+      error: "ไม่สามารถสร้างคำขอคืนสินค้านี้ทางเว็บได้ กรุณาติดต่อร้าน",
+    })
+    expect(result.error).not.toContain("ลองใหม่")
+    expect(result.values).toEqual({ "quantity:L1": "2", "reason:L1": "rr_damaged", "quantity:L2": "0" })
+  })
+
+  it("error อื่น → ข้อความเดิม ไม่มี contactStore", async () => {
+    backendRejects("Something else")
+    const result = await submit()
+    expect(result.error).toBe("ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
+    expect(result.contactStore).toBeFalsy()
+  })
+})

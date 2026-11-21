@@ -3,6 +3,8 @@
 import { sdk } from "@lib/config"
 import {
   buildReturnRequest,
+  isReturnNotStockedError,
+  RETURN_NOT_STOCKED,
   returnableItemsNow,
   returnErrorMessage,
   returnWindowDaysOf,
@@ -58,9 +60,11 @@ const retrieveReturnOptionId = async (cartId: string | undefined) => {
 }
 
 // CORE-20d (กฎข้อ 66e): ส่งล้ม → คืนค่าที่เลือก (quantity:*/reason:*) ให้ฟอร์มแสดงค่าเดิม (React 19 reset ฟอร์มหลัง action)
+// CORE-71 (กฎข้อ 129): contactStore = ลองใหม่ไม่ช่วย ฟอร์มแสดงลิงก์ติดต่อร้านแทนข้อความ error
 export type ReturnRequestState = {
   success: boolean
   error: string | null
+  contactStore?: boolean
   values?: Record<string, string>
 }
 
@@ -110,6 +114,9 @@ export async function requestReturn(
       headers: { ...(await getAuthHeaders()) },
     })
   } catch (error) {
+    if (isReturnNotStockedError(error)) {
+      return { success: false, error: RETURN_NOT_STOCKED.text, contactStore: true, values }
+    }
     return {
       success: false,
       error: returnErrorMessage(error, "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"),
