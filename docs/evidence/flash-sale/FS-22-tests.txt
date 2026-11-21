@@ -1,0 +1,65 @@
+# FS-22 (spec 03 กฎข้อ 27, AC-29) — ผล test
+
+## Red (ก่อนแก้โค้ด, develop f1d5888f)
+$ npx vitest run src/fs-22-refunded-notice.test.ts src/place-order-conflict.test.ts
+     × FS-22 (spec 03 กฎข้อ 27): 400 สต็อกไม่พอตอน reserveInventory → { error: "OUT_OF_STOCK" } 7ms
+     × 400 ข้อความ reserveInventory ของ Medusa → true 2ms
+     × FetchError ของ js-sdk → true 1ms
+     × 400 insufficient_inventory (confirmInventory) → true 0ms
+     × 409 ข้อความเดียวกัน → false 0ms
+     × 400 ข้อความอื่น → false 0ms
+     × null → false 0ms
+     × string → false 0ms
+     × อักษรไทย มีคำว่า คืนเงิน ไม่มี ลองใหม่ 1ms
+     × ตัดเงินแล้ว + FLASH_SOLD_OUT → REFUNDED_NOTICE 40ms
+     × ตัดเงินแล้ว + FLASH_LIMIT_EXCEEDED → REFUNDED_NOTICE 1ms
+     × ตัดเงินแล้ว + undefined → REFUNDED_NOTICE 1ms
+     × บัตร: complete ล้ม FLASH_LIMIT_EXCEEDED → checkout-refunded-notice ไม่มี error ลองใหม่ 45ms
+     × บัตร: complete ล้ม FLASH_SOLD_OUT → checkout-refunded-notice ไม่มี error ลองใหม่ 23ms
+     × บัตร: complete ล้ม undefined → checkout-refunded-notice ไม่มี error ลองใหม่ 13ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/fs-22-refunded-notice.test.ts > isOutOfStockAtCompletion (สต็อก inventory ไม่พอตอน complete) > 400 ข้อความ reserveInventory ของ Medusa → true
+ FAIL  src/fs-22-refunded-notice.test.ts > isOutOfStockAtCompletion (สต็อก inventory ไม่พอตอน complete) > FetchError ของ js-sdk → true
+ FAIL  src/fs-22-refunded-notice.test.ts > isOutOfStockAtCompletion (สต็อก inventory ไม่พอตอน complete) > 400 insufficient_inventory (confirmInventory) → true
+TypeError: isOutOfStockAtCompletion is not a function
+ FAIL  src/fs-22-refunded-notice.test.ts > isOutOfStockAtCompletion (สต็อก inventory ไม่พอตอน complete) > 409 ข้อความเดียวกัน → false
+ FAIL  src/fs-22-refunded-notice.test.ts > isOutOfStockAtCompletion (สต็อก inventory ไม่พอตอน complete) > 400 ข้อความอื่น → false
+ FAIL  src/fs-22-refunded-notice.test.ts > isOutOfStockAtCompletion (สต็อก inventory ไม่พอตอน complete) > null → false
+ FAIL  src/fs-22-refunded-notice.test.ts > isOutOfStockAtCompletion (สต็อก inventory ไม่พอตอน complete) > string → false
+TypeError: isOutOfStockAtCompletion is not a function
+ FAIL  src/fs-22-refunded-notice.test.ts > ข้อความ checkout-refunded-notice > อักษรไทย มีคำว่า คืนเงิน ไม่มี ลองใหม่
+TypeError: .toMatch() expects to receive a string, but got undefined
+ FAIL  src/fs-22-refunded-notice.test.ts > completeOrder(order, paid) > ตัดเงินแล้ว + FLASH_SOLD_OUT → REFUNDED_NOTICE
+AssertionError: expected 'สินค้าแฟลชเซลในตะกร้าขายครบจำนวนแล้ว …' to be undefined // Object.is equality
+ FAIL  src/fs-22-refunded-notice.test.ts > completeOrder(order, paid) > ตัดเงินแล้ว + FLASH_LIMIT_EXCEEDED → REFUNDED_NOTICE
+AssertionError: expected 'จำนวนสินค้าแฟลชเซลเกินสิทธิ์ที่ซื้อได…' to be undefined // Object.is equality
+ FAIL  src/fs-22-refunded-notice.test.ts > completeOrder(order, paid) > ตัดเงินแล้ว + undefined → REFUNDED_NOTICE
+AssertionError: expected 'ยืนยันคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม…' to be undefined // Object.is equality
+ FAIL  src/fs-22-refunded-notice.test.ts > ปุ่มยืนยันคำสั่งซื้อในขั้น review > บัตร: complete ล้ม FLASH_LIMIT_EXCEEDED → checkout-refunded-notice ไม่มี error ลองใหม่
+AssertionError: expected <div …(2)><span></span></div> to be null
+ FAIL  src/fs-22-refunded-notice.test.ts > ปุ่มยืนยันคำสั่งซื้อในขั้น review > บัตร: complete ล้ม FLASH_SOLD_OUT → checkout-refunded-notice ไม่มี error ลองใหม่
+AssertionError: expected <div …(2)><span></span></div> to be null
+ FAIL  src/fs-22-refunded-notice.test.ts > ปุ่มยืนยันคำสั่งซื้อในขั้น review > บัตร: complete ล้ม undefined → checkout-refunded-notice ไม่มี error ลองใหม่
+AssertionError: expected <div …(2)><span></span></div> to be null
+ FAIL  src/place-order-conflict.test.ts > placeOrder: 409 ตอน complete (FS-15) > FS-22 (spec 03 กฎข้อ 27): 400 สต็อกไม่พอตอน reserveInventory → { error: "OUT_OF_STOCK" }
+Test Files 2 failed (2) / Tests 15 failed | 10 passed (25)
+(ชื่อ test "undefined" = `OUT_OF_STOCK` ที่ยังไม่ export ตอน red)
+
+## Green
+$ npx vitest run src/fs-22-refunded-notice.test.ts src/place-order-conflict.test.ts
+ Test Files  2 passed (2)
+      Tests  25 passed (25)
+
+$ pnpm --filter storefront test:unit
+ Test Files  105 passed (105)
+      Tests  1291 passed (1291)
+
+$ pnpm --filter storefront test:e2e:unit
+  127 passed (1.9s)
+
+$ pnpm lint && pnpm typecheck  → 0 errors (warning เดิม 28 ไม่มีจากไฟล์ใหม่)
+
+## e2e (Stripe test mode จริง — ให้ CI พิสูจน์; ในเครื่องไม่มี key test)
+- e2e/fs-22-refunded-notice.spec.ts: AC-29 (a) สต็อกชิ้นสุดท้าย + ตรวจ refund ใน Stripe, (b) FLASH_SOLD_OUT
+- e2e/pay-9-refunded-cart-repay.spec.ts: FLASH_LIMIT_EXCEEDED บังคับ checkout-refunded-notice
+- e2e/flash-sale-fs15.spec.ts AC-22: manual payment ไม่มี checkout-refunded-notice

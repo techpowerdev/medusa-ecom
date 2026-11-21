@@ -24,3 +24,20 @@ export const isInsufficientInventory = (error: unknown): boolean => {
     (code === CODE || (typeof message === "string" && normalize(message) === normalize(MESSAGE)))
   )
 }
+
+// FS-22 (spec 03 กฎข้อ 27): ตอน complete cart, `reserveInventoryStep` ของ completeCartWorkflow 2.22.1 ล้มด้วย 400 `not_allowed`
+// ไม่มี code ข้อความ "Not enough stock available for item <id> at location <id>" (`ensureInventoryAvailability` ของ
+// `@medusajs/inventory`) — เทียบ prefix; ข้อความเปลี่ยนตอน bump → spec 07 checklist ข้อ 13
+const RESERVE_PREFIX = "not enough stock available for item "
+
+/** 400 ของ Medusa ที่สต็อกไม่พอตอน complete cart (reserveInventory หรือ confirmInventory); อื่นๆ → false */
+export const isOutOfStockAtCompletion = (error: unknown): boolean => {
+  if (isInsufficientInventory(error)) {
+    return true
+  }
+  const { status, message } = (typeof error === "object" && error !== null ? error : {}) as {
+    status?: unknown
+    message?: unknown
+  }
+  return status === 400 && typeof message === "string" && normalize(message).startsWith(RESERVE_PREFIX)
+}

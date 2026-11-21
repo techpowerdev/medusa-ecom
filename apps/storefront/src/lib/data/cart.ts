@@ -13,7 +13,8 @@ import {
   actionFailure,
   paymentSessionResult,
 } from "@lib/util/action-result"
-import { INSUFFICIENT_INVENTORY, isInsufficientInventory } from "@lib/util/insufficient-inventory"
+import { INSUFFICIENT_INVENTORY, isInsufficientInventory, isOutOfStockAtCompletion } from "@lib/util/insufficient-inventory"
+import { OUT_OF_STOCK } from "@lib/util/checkout-error"
 import { trimInvisible } from "@lib/util/trim-invisible"
 import { MISSING_ADDRESS_MESSAGE, missingRequiredAddress } from "@lib/util/address-required"
 import { HttpTypes } from "@medusajs/types"
@@ -576,7 +577,9 @@ export async function syncCartAffiliate(
 
 const PLACE_ORDER_CONFLICTS = ["FLASH_SOLD_OUT", "FLASH_LIMIT_EXCEEDED", "PROMOTION_NOT_COMBINABLE"] as const
 // สำเร็จ = redirect ของ Next (throw) จึงไม่มีผล ok
-export type PlaceOrderResult = { error: ActionError<(typeof PLACE_ORDER_CONFLICTS)[number]> }
+export type PlaceOrderResult = {
+  error: ActionError<(typeof PLACE_ORDER_CONFLICTS)[number] | typeof OUT_OF_STOCK>
+}
 
 /**
  * Places an order for a cart. If no cart ID is provided, it will use the cart ID from the cookies.
@@ -615,6 +618,10 @@ export async function placeOrder(
       revalidateTag(await getCacheTag("carts"), { expire: 0 })
       const cartCountry = safeCountryCode(countryCode)
       redirect(`${cartCountry ? `/${cartCountry}` : ""}/cart`)
+    }
+    // FS-22 (spec 03 กฎข้อ 27): สต็อกหมดระหว่างชำระ (เช่นแพ้ race e-voucher ใบสุดท้าย) — UI บอกว่าคืนเงินแล้วถ้าตัดเงินไปแล้ว
+    if (isOutOfStockAtCompletion(error)) {
+      return { error: OUT_OF_STOCK }
     }
     // FS-15 (spec 03 กฎข้อ 20c) / CORE-4i-b (กฎข้อ 72): 409 ที่รู้จักคืนเป็น code — UI แปลงเป็นข้อความไทยด้วย actionErrorMessage
     return actionFailure(error, PLACE_ORDER_CONFLICTS)

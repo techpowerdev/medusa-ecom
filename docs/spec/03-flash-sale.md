@@ -407,6 +407,13 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
     builder ระบุ `type`/`code` จริงของ 2.22.1; ถ้าต้องเทียบข้อความให้เพิ่มในเช็กลิสต์ bump ของ spec 07) → error ใน helper เดียวของ CORE-4i แสดง `checkout-refunded-notice` ข้อความไทย
     "สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน ระบบคืนเงินเต็มจำนวนให้อัตโนมัติแล้ว (เข้าบัญชีตามรอบของธนาคาร) กรุณาปรับตะกร้าแล้วสั่งใหม่" แทน "ลองใหม่"
     (ไม่ตรวจสถานะ refund จริง — Medusa refund เสมอเมื่อ capture แล้ว; เคสที่ยังไม่ capture ข้อความยังถูกเพราะไม่มีการตัดเงิน — ใช้ถ้อยคำ "หากมีการตัดเงิน" ถ้า builder ยืนยันว่าแยกไม่ได้)
+    (FS-22 builder) error จริงของ 2.22.1: `FLASH_*` = 409 `conflict` ของ hook เรา (ข้อความคงที่ใน `CHECKOUT_CONFLICTS`); สต็อกไม่พอตอน complete = 400 `not_allowed` **ไม่มี code**
+    ข้อความ "Not enough stock available for item <id> at location <id>" จาก `reserveInventoryStep` → `ensureInventoryAvailability` ของ `@medusajs/inventory` (EV-M-22 ได้ข้อความนี้)
+    เทียบ prefix ใน `isOutOfStockAtCompletion` (`lib/util/insufficient-inventory.ts`, รวม `insufficient_inventory` ของ CORE-48) แล้ว `placeOrder` คืน `OUT_OF_STOCK`;
+    แยกได้ว่าตัดเงินแล้วหรือไม่จากทางชำระ: ปุ่มบัตรเรียก `placeOrder` หลัง PaymentIntent `succeeded`/`requires_capture` เท่านั้น (`capture: true`) → notice;
+    manual payment (และกรณี backend กันก่อนจ่าย ซึ่งไม่ถึง `placeOrder`) → ข้อความเดิมของ code จึงไม่ใช้ถ้อยคำ "หากมีการตัดเงิน";
+    พร้อมเพย์ยังใช้ `promptpay-refunded` ของ PAY-6c (บอกว่าคืนเงินแล้วเมื่อ Medusa refund) ไม่เปลี่ยนใน FS-22 — ทางสำรอง `finish` ที่ได้ `FLASH_*`/`OUT_OF_STOCK` ยังแสดง
+    "กำลังสร้างคำสั่งซื้อ" จนสถานะเป็น refunded (เสนอเป็น task ต่อ); `/api/payment-return` (redirect off-site) ยังพาไป `/cart?error=order_failed` ซึ่งหน้า cart ยังไม่อ่าน (เสนอเป็น task ต่อ)
 
 ### Acceptance criteria (รอบ 40)
 - AC-27 (FS-20, กฎข้อ 25) integration http — **ล้มบน develop** ก่อน (404): แคมเปญ `per_customer_limit=2` ลูกค้าซื้อไปแล้ว 1 ชิ้น → `remaining_for_customer=1`, `used_units=1`; ลูกค้าอื่น → 2;
