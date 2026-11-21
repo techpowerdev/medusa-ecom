@@ -507,7 +507,7 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
   (e) reservation ค้าง 1 → 400 ข้อความตาม 36d ทุกอย่างคงเดิม, ลบ reservation แล้วลบได้; (f) job รายวันไม่ส่ง low-stock ของ pool ที่ไม่มี code
 - AC-51 (EV-21, กฎข้อ 37) e2e admin: ลบ pool ที่ไม่มีการส่ง → prompt แสดงจำนวน code → ยืนยัน → toast และ pool หายจากตาราง; dblclick ปุ่มยืนยัน → DELETE 1 ครั้ง (นับ request);
   pool ที่มี code ส่งแล้ว → toast error และ pool ยังอยู่; pool ใหม่ไม่มี code → เห็น badge "No codes" ไม่เห็น "Low stock"; menuitem หาด้วย role + ชื่อ (ADR-018)
-- AC-52 (EV-22, กฎข้อ 38) integration + e2e admin: order ที่ pool หมดตอน capture (backordered) → API ตามข้อ 38a คืนธงของ line นั้น (ล้มบน develop); หน้า order ใน admin เห็น `evoucher-backordered-badge` 1 ตัวต่อ line ที่ค้าง; หลัง resend สำเร็จ badge หาย
+- AC-52 (EV-22, กฎข้อ 38) integration + e2e admin: order ที่ pool หมดตอน capture (backordered) → API ตามข้อ 38a คืนธงของ line นั้น (ล้มบน develop); หน้า order ใน admin เห็น `evoucher-backordered-badge` 1 ตัวต่อ line ที่ค้าง; หลัง allocation สำเร็จ (ธงถูกล้าง) badge หาย — integration รัน allocate workflow ซ้ำหลัง import code (session หลักตัดสิน 2026-11-21: resend ของ EV-5b ไม่ allocate ใหม่ ข้อความเดิม "หลัง resend สำเร็จ" จึงอ้างพฤติกรรมที่ไม่มีจริง; ปุ่ม "Retry allocation" เป็นข้อเสนอให้ owner ตัดสินแยก)
 
 ### Tasks (รอบ 40)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |

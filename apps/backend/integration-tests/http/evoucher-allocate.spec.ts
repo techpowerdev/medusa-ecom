@@ -577,6 +577,59 @@ medusaIntegrationTestRunner({
         const after = (await orderOf(orderId)).items!.find((i) => i!.variant_id === b.variantId)!
         expect(after.metadata?.evoucher_backordered).toBeFalsy()
       })
+
+      // EV-22 (AC-52, กฎข้อ 38a): Admin API ของ Medusa คืน `items[].metadata` จาก order_item (detail) ก่อน line item
+      // ธงต้องอยู่ใน field ที่หน้า order ของ dashboard (`*items`) เห็นจริง
+      it("AC-52 exposes the backordered flag on GET /admin/orders/:id?fields=*items and clears it after allocation", async () => {
+        const a = await createVoucher("AA-1\n")
+        const b = await createVoucher("BB-1\n")
+        const { orderId } = await placeOrder([
+          { variant_id: a.variantId, quantity: 1 },
+          { variant_id: b.variantId, quantity: 1 },
+        ])
+        await voidCode(b.poolId)
+        const adminItems = async () => {
+          const { data } = await api.get(`/admin/orders/${orderId}?fields=*items`, adminHeaders)
+          const order = data.order as {
+            items: { variant_id: string; metadata: Record<string, unknown> | null }[]
+          }
+          const byVariant = (variantId: string) => order.items.find((i) => i.variant_id === variantId)!
+          return { lineA: byVariant(a.variantId), lineB: byVariant(b.variantId) }
+        }
+        await allocateAndDeliverEvouchersWorkflow(container).run({
+          input: { order_id: orderId, admin_email: OPS_EMAIL },
+        })
+
+        const flagged = await adminItems()
+        expect(flagged.lineB.metadata).toMatchObject({ evoucher_backordered: true })
+        expect(flagged.lineA.metadata?.evoucher_backordered).toBeFalsy()
+
+        await api.post(`/admin/evoucher/pools/${b.poolId}/import`, csvForm("BB-2\n"), adminHeaders)
+        await allocateAndDeliverEvouchersWorkflow(container).run({
+          input: { order_id: orderId, admin_email: OPS_EMAIL },
+        })
+
+        const cleared = await adminItems()
+        expect(cleared.lineB.metadata?.evoucher_backordered).toBeFalsy()
+        expect((await orderOf(orderId)).items!.every((i) => !i!.metadata?.evoucher_backordered)).toBe(true)
+      })
+
+      // ธงเขียนตรงลง order_item — ไม่สร้าง order change/version ใหม่ (test ก่อนหน้า: fulfillment ของ line A สร้าง version ใหม่ที่คัดลอกธงของ line B ต่อ)
+      it("AC-52 sets the flag without creating an order change or a new order version", async () => {
+        const b = await createVoucher("SOLO-1\n")
+        const { orderId } = await placeOrder([{ variant_id: b.variantId, quantity: 1 }])
+        await voidCode(b.poolId)
+        const orderModule = container.resolve(Modules.ORDER)
+        const versionOf = async () => (await orderModule.retrieveOrder(orderId, { select: ["version"] })).version
+        const before = { version: await versionOf(), changes: (await orderModule.listOrderChanges({ order_id: orderId })).length }
+
+        await allocateAndDeliverEvouchersWorkflow(container).run({ input: { order_id: orderId } })
+
+        expect(await versionOf()).toBe(before.version)
+        expect(await orderModule.listOrderChanges({ order_id: orderId })).toHaveLength(before.changes)
+        const { data } = await api.get(`/admin/orders/${orderId}?fields=*items`, adminHeaders)
+        expect(data.order.items[0].metadata).toMatchObject({ evoucher_backordered: true })
+      })
     })
 
     // EV-12 (กฎข้อ 2 ข้อยกเว้น): code ที่ job รายวันเว้นไว้ให้ order ที่จองแล้วถูกส่งมอบได้ ไกลสุดก่อน

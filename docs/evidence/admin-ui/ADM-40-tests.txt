@@ -1,0 +1,40 @@
+# ADM-40 (spec 08 กฎ 44, AC-45) ผล test 2026-11-21 บน develop cb934dac (backend prod build `NODE_ENV=production medusa build` ในเครื่อง port 9140, workers=1)
+
+## RED 1 — e2e affiliate-admin-search.spec.ts บน admin ของ develop (ก่อนแก้)
+  ✘  1 [chromium] › e2e/affiliate-admin-search.spec.ts:26:5 › AC-45: ค้นหาชื่อ affiliate → q ไปที่ API, เหลือ 1 แถว, อยู่ใน URL และคงหลัง reload; ล้างช่อง → แถวกลับ (6.5s)
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByTestId('affiliate-affiliates-table').getByRole('searchbox')
+    Expected: visible
+    Error: element(s) not found
+  1 failed
+(สาเหตุถูกต้อง: list-table.tsx ตั้ง enableSearch={false} — ตาราง Affiliates ไม่มีช่องค้นหา)
+
+## RED 2 — static jest (medusa-ui.unit.spec.ts) ก่อนแก้
+    ✕ ค้นหา affiliates: q จาก useQueryParams + useDebouncedSearch ของ dashboard, reset offset ด้วย usePageOffset, เปิดเฉพาะแท็บ Affiliates
+    Expected: true
+    Received: false
+Tests:       1 failed, 231 skipped, 232 total
+
+## GREEN — e2e ใหม่หลังแก้ --repeat-each=3 --workers=1
+  ✓  1 [chromium] › e2e/affiliate-admin-search.spec.ts:26:5 › AC-45: … (16.7s)
+  ✓  2 [chromium] › e2e/affiliate-admin-search.spec.ts:26:5 › AC-45: … (9.9s)
+  ✓  3 [chromium] › e2e/affiliate-admin-search.spec.ts:26:5 › AC-45: … (10.2s)
+  3 passed (41.8s)
+ขั้นที่ตรวจ: affiliate 3 ราย (tag ตัวอักษรตามกฎ 33) + ตัวเติม 20 ราย → อยู่หน้า 2 (`affiliates_offset=20`) แล้วพิมพ์ชื่อ →
+response `pathname === /admin/affiliate/affiliates` ที่ `q` ตรงและ `offset=0`, `count` = 1, ตาราง 1 แถว, URL มี `affiliates_q` ไม่มี `affiliates_offset`;
+reload → `affiliates_q` คงอยู่, คลิกแท็บ Affiliates (แท็บไม่อยู่ใน URL — เดิม) → response q เดิม count 1, ช่องค้นหามีค่าเดิม, 1 แถว;
+คำค้นไม่ตรงใคร → "No results" (empty state filtered ของ DataTable) ไม่ใช่ "No affiliates yet"; ล้างช่อง → request ไม่มี q, แถวกลับครบ, URL ไม่มี `affiliates_q`
+
+## GREEN — e2e admin เดิมที่ใช้ list-table / ตาราง affiliate (9 ไฟล์: affiliate-admin-affiliates/tables/row-actions/names/payouts/programs/forms, admin-table-long-text, admin-row-menu-escape)
+  42 passed (3.1m)
+
+## GREEN — static jest src/admin (หลังแก้; diff แตะเฉพาะ src/admin — backend test:unit ชุดเต็มให้ CI รัน: เครื่องมี jest ของ agent อื่น 6 ชุดพร้อมกัน ~1 suite/นาที จึงหยุดหลัง 22 suite ผ่าน ไม่มี FAIL)
+Test Suites: 20 passed, 20 total
+Tests:       534 passed, 534 total
+
+## GREEN — storefront test:e2e:unit (ทั้ง project)
+  124 passed (2.2s)
+
+## lint / typecheck
+pnpm lint: exit 0 (storefront 0 errors — warning เดิม)
+pnpm typecheck: exit 0

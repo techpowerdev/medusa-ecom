@@ -19,6 +19,8 @@ export const EmailTemplates = {
   GROUP_BUY_PAYMENT_EXPIRED: "group-buy-payment-expired",
   // GB-5 (spec 06 กฎข้อ 7D): อีเมลถึง OPS_ALERT_EMAIL เมื่อเงินเข้าแต่ไม่มี order ของ group buy ที่ใช้ได้
   GROUP_BUY_PAID_WITHOUT_ORDER: "group-buy-paid-without-order",
+  // GB-20b (spec 04 กฎข้อ 50 d): อีเมลถึง OPS_ALERT_EMAIL เมื่อตรวจสถานะการชำระที่ provider ไม่ได้จนเลยเพดาน 15 นาที
+  GROUP_BUY_PAYMENT_CHECK_GAVE_UP: "group-buy-payment-check-gave-up",
 } as const
 
 /** EV-4: code/PIN ใน notification.data เป็น ciphertext — provider ส่งฟังก์ชันถอดรหัสมาตอน render */
@@ -420,6 +422,23 @@ const renderGroupBuyPaidWithoutOrder = (data: Record<string, unknown>): Rendered
   return { subject, html: layout(subject, body) }
 }
 
+// GB-20b กฎข้อ 50 (d): ข้อมูลจาก alertPaymentCheckGaveUpStep ใน src/workflows/group-buy/membership-payment.ts
+const renderGroupBuyPaymentCheckGaveUp = (data: Record<string, unknown>): RenderedEmail => {
+  const subject = `[ด่วน] GROUP_BUY_PAYMENT_CHECK_GAVE_UP: ตรวจสถานะการชำระไม่ได้ ยกเลิก order ${String(data.order_id ?? "")}`
+  const row = (label: string, value: unknown) => `<li>${label}: <b>${escapeHtml(value)}</b></li>`
+  const body =
+    `<h1 style="font-size:20px">group buy: ตรวจสถานะการชำระที่ provider ไม่ได้จนเลยเพดาน ระบบยกเลิกสิทธิ์แล้ว</h1>` +
+    `<ul>` +
+    row("Membership", data.membership_id) +
+    row("Order (draft)", data.order_id) +
+    row("Pay deadline", data.pay_deadline_at) +
+    row("Payment sessions", data.sessions) +
+    row("Error", data.error) +
+    `</ul>` +
+    `<p>ตรวจ PaymentIntent ใน Stripe ถ้าลูกค้าจ่ายแล้ว ทำตาม runbook "เงินถูกตัดแต่ไม่มี order (ADR-015)" ใน docs/ops/production.md</p>`
+  return { subject, html: layout(subject, body) }
+}
+
 const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderContext) => RenderedEmail> = {
   [EmailTemplates.ORDER_PLACED]: renderOrderPlaced,
   [EmailTemplates.ORDER_SHIPPED]: renderOrderShipped,
@@ -433,6 +452,7 @@ const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderCont
   [EmailTemplates.GROUP_BUY_FAILED]: renderGroupBuyFailed,
   [EmailTemplates.GROUP_BUY_PAYMENT_EXPIRED]: renderGroupBuyPaymentExpired,
   [EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER]: renderGroupBuyPaidWithoutOrder,
+  [EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP]: renderGroupBuyPaymentCheckGaveUp,
 }
 
 export const renderEmailTemplate = (

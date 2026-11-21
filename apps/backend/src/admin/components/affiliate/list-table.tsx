@@ -1,4 +1,5 @@
 import { DataTable } from "@medusajs/dashboard/components"
+import { useDebouncedSearch, useQueryParams } from "@medusajs/dashboard/hooks"
 import { DataTableColumnDef, Text } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
@@ -24,20 +25,43 @@ const LOAD_ERROR_NOUN: Record<Resource, string> = {
  * AF-6 / ADM-8a (spec 08 กฎ 9): รายการของแท็บหนึ่งในหน้า Affiliate (เรียง created_at ใหม่สุดก่อนตามค่าเริ่มต้นของ AF-5)
  * หน้าปัจจุบันอยู่ใน URL (`<prefix>_offset`) — DataTable ของ dashboard เขียน, usePageOffset อ่านกลับเพื่อ request (กฎ 13)
  */
-export const useAffiliateList = <T extends { id: string }>(resource: Resource, prefix: string) => {
+export const useAffiliateList = <T extends { id: string }>(
+  resource: Resource,
+  prefix: string,
+  { searchable = false }: { searchable?: boolean } = {},
+) => {
   const [count, setCount] = useState<number>()
-  const offset = usePageOffset(prefix, PAGE_SIZE, { count })
+  // ADM-40 (spec 08 กฎ 44): ช่องค้นหาของ DataTable เขียน `<prefix>_q` ลง URL ทุกตัวอักษร → request ใช้ค่าที่ debounce แล้ว
+  // (useDebouncedSearch ของ dashboard เริ่มจากค่าว่าง จึงไม่ยิง request จนค่า debounce ตามทัน URL — reload ไม่ยิงรายการที่ไม่กรองก่อน)
+  const { q: urlQuery } = useQueryParams(["q"], prefix)
+  const typed = (searchable && urlQuery) || ""
+  const { onSearchValueChange, query: q } = useDebouncedSearch()
+  useEffect(() => onSearchValueChange(typed), [typed, onSearchValueChange])
+  const settled = (q ?? "") === typed
+  // คำค้นเปลี่ยน → กลับหน้าแรก (ผู้เขียน offset ลง URL ตัวเดียว — กฎ 13c)
+  const offset = usePageOffset(prefix, PAGE_SIZE, { count, resetOn: typed })
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: [...affiliateKeys.list(resource), PAGE_SIZE, offset],
-    queryFn: () => listAffiliateResource<Resource, T>(resource, { limit: PAGE_SIZE, offset }),
+    queryKey: [...affiliateKeys.list(resource), PAGE_SIZE, offset, q],
+    queryFn: () => listAffiliateResource<Resource, T>(resource, { limit: PAGE_SIZE, offset, ...(q ? { q } : {}) }),
     placeholderData: keepPreviousData,
+    enabled: settled,
   })
   useEffect(() => setCount(data?.count), [data?.count])
   // spec 08 กฎ 25 (24a/d): ล้มและไม่มีข้อมูลในมือเท่านั้นจึงแสดง error (refetch เบื้องหลังล้มขณะมี data คงตารางไว้)
   const loadFailed = isError && !data
 
-  return { rows: data?.[resource] ?? [], count: data?.count ?? 0, isLoading, prefix, loadFailed, error, resource }
+  return {
+    rows: data?.[resource] ?? [],
+    count: data?.count ?? 0,
+    // รอ debounce ครั้งแรก (query ยังปิดอยู่) = กำลังโหลด ไม่ใช่ "ไม่พบผล"
+    isLoading: isLoading || (!settled && !data),
+    prefix,
+    loadFailed,
+    error,
+    resource,
+    searchable,
+  }
 }
 
 /** AF-14 (spec 05 กฎ 38): แถวมี affiliate_id → ดึงชื่อ/อีเมลของแถวในหน้านี้ 1 request แล้วแนบเป็น `row.affiliate` */
@@ -69,6 +93,8 @@ type Props<T extends { id: string }> = {
   subHeading?: string
   action?: { label: string; onClick: () => void }
   empty: string
+  /** ADM-40 (กฎ 44): แสดงช่องค้นหาของ DataTable (`<prefix>_q`) — ใช้ได้เฉพาะ resource ที่ backend รับ `q` (affiliates — ADM-17) */
+  searchable?: boolean
 }
 
 export const AffiliateListTable = <T extends { id: string }>({
@@ -84,13 +110,14 @@ export const AffiliateListTable = <T extends { id: string }>({
   loadFailed,
   error,
   resource,
+  searchable = false,
 }: Props<T>) => {
   // spec 08 กฎ 25 (24b): 401 → ErrorBoundary ของ dashboard พาไป /login
   if (isUnauthorized(error)) {
     throw error
   }
   // กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัวตาราง + ปุ่มใน action; testid เฉพาะตอนล้ม
-  // backend ไม่รองรับค้นหา (q) → ปิด search
+  // ค้นหา (q) เปิดเฉพาะ resource ที่ backend รองรับ (ผู้เรียกส่ง searchable)
   return (
     <div data-testid={loadFailed ? "affiliate-list-error" : undefined}>
       <PageOffsetGate prefix={prefix}>
@@ -108,9 +135,12 @@ export const AffiliateListTable = <T extends { id: string }>({
           pageSize={PAGE_SIZE}
           // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
           enablePagination={!loadFailed}
-          enableSearch={false}
+          // ตอน error ไม่มีช่องค้นหา (แบบแถบแบ่งหน้า) — DataTable จึงแสดง empty (error) ไม่ใช่ filtered แม้ URL มีคำค้น
+          enableSearch={searchable && !loadFailed}
           emptyState={{
             empty: loadFailed ? { heading: `Could not load ${LOAD_ERROR_NOUN[resource]}`, description: error?.message } : { heading: empty },
+            // ADM-40: ผลค้นหาว่าง = ข้อความ "ไม่พบผล" ของ dashboard (en: general.noResultsTitle/noResultsMessage) ไม่ใช่ข้อความตารางว่าง
+            filtered: { heading: "No results", description: "Try changing the filters or search query" },
           }}
         />
       </PageOffsetGate>
