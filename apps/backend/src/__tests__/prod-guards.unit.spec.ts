@@ -350,6 +350,15 @@ describe("AC-13 / AC-17 ci.yml และ .env.example", () => {
   })
 })
 
+/** container ปลอมของ goLiveFailures: ไม่มี region และ DB ปัจจุบันมี datctype ตามที่ให้ */
+function fakeContainer(datctype: string) {
+  const services: Record<string, unknown> = {
+    query: { graph: async () => ({ data: [] }) },
+    __pg_connection__: { raw: async () => ({ rows: [{ datctype }] }) },
+  }
+  return { resolve: (key: string) => services[key] } as unknown as MedusaContainer
+}
+
 describe("AC-11 Go-live checklist ใน docs/ops/production.md", () => {
   const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
   const lines = doc.split(/\r?\n/)
@@ -402,7 +411,7 @@ describe("AC-11 Go-live checklist ใน docs/ops/production.md", () => {
   })
 
   it("AC-21 check:go-live นับ ALLOW_TEST_PROVIDERS ที่ไม่ตั้งกับค่าว่างเหมือนกัน แต่ค่าอื่นทุกค่าไม่ผ่าน", async () => {
-    const container = { resolve: () => ({ graph: async () => ({ data: [] }) }) } as unknown as MedusaContainer
+    const container = fakeContainer("en_US.utf8")
     const env = { NODE_ENV: "production", STRIPE_API_KEY: "sk_live_from_env" }
     const flagged = async (value?: string) =>
       (await goLiveFailures(container, { ...env, ALLOW_TEST_PROVIDERS: value })).some((f) => f.includes("ALLOW_TEST_PROVIDERS"))
@@ -411,6 +420,25 @@ describe("AC-11 Go-live checklist ใน docs/ops/production.md", () => {
     expect(await flagged("")).toBe(false)
     expect(await flagged("true")).toBe(true)
     expect(await flagged("false")).toBe(true)
+  })
+
+  // OPS-33 (spec 07 AC-48d — owner ยืนยัน 2026-11-21): pg_trgm ทิ้งอักษรไทยเมื่อ LC_CTYPE เป็น C/POSIX → ค้นไทยกลางคำ (CORE-75) ใช้ไม่ได้
+  it.each([["C"], ["POSIX"]])("AC-48d check:go-live ล้มเมื่อ datctype ของ DB ปัจจุบันเป็น %s พร้อมเหตุผล", async (datctype) => {
+    const failures = await goLiveFailures(fakeContainer(datctype), { NODE_ENV: "production", STRIPE_API_KEY: "sk_live_from_env" })
+
+    expect(failures).toEqual([expect.stringContaining(`datctype ของฐานข้อมูลเป็น ${datctype}`)])
+    expect(failures[0]).toContain("pg_trgm")
+    expect(failures[0]).toContain("ภาษาไทย")
+  })
+
+  it.each([["en_US.utf8"], ["th_TH.UTF-8"], ["C.UTF-8"]])("AC-48d datctype %s ผ่าน", async (datctype) => {
+    expect(await goLiveFailures(fakeContainer(datctype), { NODE_ENV: "production", STRIPE_API_KEY: "sk_live_from_env" })).toEqual([])
+  })
+
+  it("AC-48d ข้อ 10 ของ Go-live checklist บอกว่า check:go-live ตรวจ datctype ให้อัตโนมัติ", () => {
+    const item = body.split("\n").find((line) => /^10\. /.test(line)) ?? ""
+    expect(item).toContain("LC_CTYPE")
+    expect(item).toContain("`check:go-live` ตรวจข้อนี้ให้อัตโนมัติ")
   })
 
   it("package.json ของ backend มี script check:go-live ที่รันผ่าน medusa exec", () => {

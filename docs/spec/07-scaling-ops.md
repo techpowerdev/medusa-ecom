@@ -546,6 +546,10 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
     (c) เบอร์โทรไทย (`0` + 8–9 หลัก, `+66…`) ที่มีขอบเขตเป็นอักขระที่ไม่ใช่ตัวอักษร/ตัวเลขทั้งสองข้าง (lookbehind/lookahead `[^A-Za-z0-9]` หรือต้น/ท้ายสตริง — ไม่ตัดเลขที่อยู่กลาง ULID เช่น `pay_01…`/`cart_01…`);
     ไม่แตะ id (`cart_…`, `pay_…`, `pi_…`), `request_id`, จำนวนเงิน; pure function + unit จากตัวอย่างบรรทัดจริงที่ integration ของ OPS-32 (`complete-after-payment-log.spec.ts`) สร้าง;
     development (logger ของ Medusa เดิม) ไม่เปลี่ยน; หมายเหตุ "ถูกแทนด้วย `[REDACTED]`" ใน runbook หัวข้อ OPS-32 แก้แล้วใน PR เอกสารรอบ 41 — OPS-33 แค่ตรวจว่าถ้อยคำยังตรงกับผลจริง
+    (review #473) regex ต้องทำงานแบบ linear กับข้อความยาว (อีเมล: เริ่ม match เฉพาะต้นช่วง + จำกัดความยาว local ≤ 64/label ≤ 63 — unit 100k ตัวอักษร);
+    key ใน (b) เทียบแบบไม่สนตัวพิมพ์และรวมค่าตัวเลข; เบอร์ใน (c) ไม่อยู่หลัง `.` (ทศนิยมของจำนวนเงิน); ไม่นับชื่อไฟล์ `image@2x.png` เป็นอีเมล; `Error`/`Map` ใน meta ถูก redact
+    (d) (owner ยืนยัน 2026-11-21) `check:go-live` (`src/scripts/check-go-live.ts`) ตรวจ `datctype` ของ DB ปัจจุบัน (`pg_database` ของ `current_database()`) — เป็น `C` หรือ `POSIX` → FAIL
+    พร้อมเหตุผล (pg_trgm ทิ้งอักษรไทยทั้งหมด `show_trgm('สเวตเตอร์')` ได้ `{}` → ค้นไทยกลางคำของ CORE-75 ใช้ไม่ได้); Go-live ข้อ 10 ของ `docs/ops/production.md` บอกว่าตรวจให้อัตโนมัติ
 16. (OPS-34 — hygiene backend รวม) (a) `apps/backend/tsconfig.json` exclude `.medusa/**` → `pnpm typecheck` ในเครื่องผ่านแม้มี `.medusa/types` (CI เดิมผ่านอยู่แล้ว);
     (b) #428: assertion ของ test refund นับ order transaction ของ refund = 1 และนับเฉพาะ refund ที่สำเร็จ; (c) #429: ลบ session ทีละ id และ `query.graph` อยู่นอก try (พฤติกรรมเดิม);
     (d) #431: assertion log แคบลงเป็นบรรทัดที่ขึ้นต้นด้วย prefix ที่ตรวจ; (e) #432: comment ระดับ log ของ saturation-sampler ตรงกับโค้ด; (f) #433: test ลำดับ `not_allowed` vs `invalid_data` ตรงกับ validator;
@@ -553,9 +557,11 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
     — ไม่เปลี่ยนพฤติกรรม production ยกเว้นที่ระบุ; ห้ามเพิ่ม timeout/retries
 
 ### Acceptance criteria (รอบ 41)
-- AC-48 (OPS-33, กฎข้อ 15 รอบ 41) unit + integration — **ล้มบน develop** ก่อน: (a) unit `redactPii` กับข้อความตัวอย่างจริงของบรรทัด recreate session → ไม่มีอีเมล/ชื่อ/เบอร์/ที่อยู่ของ fixture เหลือ, `pay_…`/`cart_…` ยังอยู่ครบ
+- AC-48 (OPS-33, กฎข้อ 15 รอบ 41) ☑ (a–d ผ่าน: unit red 12 → green, integration AC-48b red 1 → green) unit + integration — **ล้มบน develop** ก่อน: (a) unit `redactPii` กับข้อความตัวอย่างจริงของบรรทัด recreate session → ไม่มีอีเมล/ชื่อ/เบอร์/ที่อยู่ของ fixture เหลือ, `pay_…`/`cart_…` ยังอยู่ครบ
   (fixture มี id ที่มีเลขติดกัน ≥ 9 หลัก เช่น `pay_01M70812345678XYZ` → ไม่ถูกตัด);
-  (b) integration (แบบ AC-47a) ด้วยลูกค้าชื่อ/อีเมล/เบอร์/ที่อยู่ที่ tag ไว้ → stream ของ logger prod ไม่มีค่า tag ใดเลย และยังมีบรรทัด `CART_COMPLETION_FAILED_AFTER_PAYMENT` พร้อม `cart_id`; (c) logger development ไม่ redact (regression)
+  (b) integration (แบบ AC-47a) ด้วยลูกค้าชื่อ/อีเมล/เบอร์/ที่อยู่ที่ tag ไว้ → stream ของ logger prod ไม่มีค่า tag ใดเลย และยังมีบรรทัด `CART_COMPLETION_FAILED_AFTER_PAYMENT` พร้อม `cart_id`; (c) logger development ไม่ redact (regression);
+  (d) (owner ยืนยัน 2026-11-21, กฎข้อ 15 d) unit — **ล้มบน develop** ก่อน: `goLiveFailures` เมื่อ `datctype` เป็น `C`/`POSIX` → มีข้อ FAIL ที่บอก `datctype`, `pg_trgm` และภาษาไทย; `en_US.utf8`/`th_TH.UTF-8` ผ่าน;
+  Go-live ข้อ 10 มีข้อความ "`check:go-live` ตรวจข้อนี้ให้อัตโนมัติ"; integration `prod-guards.spec.ts` (ผ่านครบ) รัน query `datctype` กับ DB จริง
 - AC-49 (OPS-34, กฎข้อ 16 รอบ 41) (a) สร้าง `apps/backend/.medusa/types/*.d.ts` จำลองที่ขัดกับ test แล้ว `pnpm --filter backend typecheck` ผ่าน; (b)–(h) test ที่แก้ผ่าน `--repeat-each`/รันซ้ำ 3 รอบ; static: ไม่มี `setTimeout`/`retries` ใหม่ใน test ที่แก้
 
 ### Checklist ตอน bump `@medusajs/*` — เพิ่ม (รอบ 41)
@@ -569,7 +575,7 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| OPS-33 | redact PII ใน logger prod (กฎข้อ 15 รอบ 41) + ตรวจถ้อยคำหมายเหตุ runbook/go-live ข้อ 13 ที่ PR เอกสารรอบ 41 เขียนไว้ | `apps/backend/src/lib/json-logger.ts`, `src/lib/redact-pii.ts` (+ unit), integration, `docs/ops/production.md` | ~60 LOC + ~150 LOC test | AC-48 | PR เอกสารรอบ 41 | `production.md` (CORE-81, EV-25 คนละบรรทัด) |
+| OPS-33 | redact PII ใน logger prod (กฎข้อ 15 รอบ 41) + ตรวจถ้อยคำหมายเหตุ runbook/go-live ข้อ 13 ที่ PR เอกสารรอบ 41 เขียนไว้ + `check:go-live` ตรวจ `datctype` (กฎข้อ 15 d — owner ยืนยัน 2026-11-21) | `apps/backend/src/lib/json-logger.ts`, `src/lib/redact-pii.ts` (+ unit), `src/scripts/check-go-live.ts`, integration, `docs/ops/production.md` | ~60 LOC + ~150 LOC test | AC-48 | PR เอกสารรอบ 41 | `production.md` (CORE-81, EV-25 คนละบรรทัด) |
 | OPS-34 | hygiene backend รวม (กฎข้อ 16 รอบ 41) | `apps/backend/tsconfig.json`, test ตาม (b)–(h), `api/store/flash-sales/middlewares.ts` | ~40 LOC + ~150 LOC test | AC-49 | PR เอกสารรอบ 41 | `middlewares.ts` ถ้าย้าย matcher (CORE-80, GB-26 — ตัวหลัง sync) |
 
 ## Open questions (รอบ 35)
