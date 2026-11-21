@@ -3,7 +3,11 @@
 import type { SearchClient } from "instantsearch.js"
 import { Configure, InstantSearch } from "react-instantsearch"
 
-import { PRODUCT_INDEX_NAME, searchClient } from "@lib/search-client"
+import {
+  PRODUCT_INDEX_NAME,
+  searchClient,
+  storeStateMapping,
+} from "@lib/search-client"
 import StoreHits from "@modules/store/components/store-hits"
 import StoreRefinements from "@modules/store/components/store-refinements"
 import StoreSearchBox from "@modules/store/components/store-search-box"
@@ -27,7 +31,8 @@ const StoreTemplate = ({
         <InstantSearch
           indexName={PRODUCT_INDEX_NAME}
           searchClient={searchClient as unknown as SearchClient}
-          routing
+          // CORE-70 (spec 01 กฎข้อ 128b): `?q=` ↔ คำค้นของ index
+          routing={{ stateMapping: storeStateMapping }}
           future={{ preserveSharedStateOnUnmount: true }}
         >
           <Configure hitsPerPage={PRODUCT_LIMIT} />

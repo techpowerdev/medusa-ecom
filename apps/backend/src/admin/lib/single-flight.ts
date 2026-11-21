@@ -6,6 +6,8 @@
  * ADM-39 (spec 08 กฎ 43): ฟอร์มสร้างที่ปิด `FocusModal` หลังสำเร็จ — ปุ่ม Save และ ⌘/Ctrl+Enter ยังทำงานได้ระหว่างแอนิเมชันปิด
  * จึงเรียก `hold()` ใน `fn` เมื่อ request สำเร็จ: lock ค้างไว้แม้ `fn` จบแล้ว จนกว่าจะ `release()` ตอนเปิดฟอร์มใหม่
  * (`fn` ล้มหรือจบโดยไม่ `hold()` เช่น validation ฝั่ง client = ปล่อยทันที ลองใหม่ได้)
+ *
+ * EV-21 D1 (qa #454): `isPending()` = `fn` ยังไม่จบ — ตาราง pools ใช้กันคลิกแถว (rowHref) ระหว่าง prompt/การลบ
  */
 export const createSingleFlight = () => {
   let pending = false
@@ -28,5 +30,6 @@ export const createSingleFlight = () => {
     release: () => {
       held = false
     },
+    isPending: () => pending,
   })
 }

@@ -222,6 +222,22 @@ medusaIntegrationTestRunner({
       })
     })
 
+    // OPS-31 AC-46b (spec 07): Medusa สร้าง "Default Publishable API Key" ตอนบูต (createDefaultsWorkflow) ก่อน seed →
+    // seed ใช้ key นั้นเป็น "Storefront" แทนการสร้างตัวที่สอง; รันซ้ำแล้วยังมี key ใช้งานได้ตัวเดียว
+    it("AC-46b leaves exactly one active publishable key, titled Storefront and linked to the store sales channel", async () => {
+      await seedThailand({ container: getContainer(), args: [] })
+
+      const { data: keys } = await query().graph({
+        entity: "api_key",
+        fields: ["id", "title", "token", "revoked_at", "sales_channels.name"],
+        filters: { type: "publishable" },
+      })
+      const active = keys.filter((k) => !k.revoked_at)
+      expect(active.map((k) => k.title)).toEqual([STOREFRONT_KEY_TITLE])
+      expect(active[0].sales_channels?.map((sc) => sc?.name)).toEqual(["Default Sales Channel"])
+      expect(await getPublishableKey(getContainer())).toEqual(active[0].token)
+    })
+
     it("stocks every sample variant at the seeded location", async () => {
       const { data } = await api.get(
         "/admin/inventory-items?fields=id,*location_levels",

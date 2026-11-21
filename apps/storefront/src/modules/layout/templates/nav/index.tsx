@@ -48,8 +48,10 @@ export default async function Nav() {
                   className="hover:text-ui-fg-base flex gap-2 whitespace-nowrap"
                   href="/cart"
                   data-testid="nav-cart-link"
+                  aria-busy="true"
                 >
-                  ตะกร้า (0)
+                  {/* CORE-72 (กฎข้อ 130): ยังไม่รู้จำนวน — ไม่แสดง "(0)" */}
+                  ตะกร้า
                 </LocalizedClientLink>
               }
             >

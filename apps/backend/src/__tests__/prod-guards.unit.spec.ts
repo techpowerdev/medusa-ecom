@@ -143,6 +143,27 @@ describe("AC-13 / AC-17 boot guards ใน medusa-config", () => {
     expect(messages.filter((m) => m.includes("STOREFRONT_URL"))).toHaveLength(1)
   })
 
+  // OPS-31 AC-46a: `medusa db:migrate` fork process ลูก (db:migrate:search, db:migrate:scripts) ที่สืบทอด env แล้วโหลด
+  // medusa-config ใหม่ → warning ต้องออกครั้งเดียวทั้ง process tree (โหลดซ้ำด้วย env เดิม = process ลูก)
+  it("AC-46a loading the config again with the inherited env (forked migrate child) does not repeat warnings", () => {
+    loadConfig({ ...PROD, EVOUCHER_ADMIN_EMAIL: "", OPS_ALERT_EMAIL: "" })
+    loadConfig({ ...PROD, EVOUCHER_ADMIN_EMAIL: "", OPS_ALERT_EMAIL: "" })
+    loadConfig({ ...PROD, EVOUCHER_ADMIN_EMAIL: "", OPS_ALERT_EMAIL: "" })
+
+    const messages = warn.mock.calls.map((call) => String(call[0]))
+    expect(messages).toEqual([
+      "[medusa-config] EVOUCHER_ADMIN_EMAIL is not set — admin/ops alert emails are skipped",
+      "[medusa-config] OPS_ALERT_EMAIL is not set — admin/ops alert emails are skipped",
+    ])
+  })
+
+  it("AC-46a guards still throw in a forked child even after the parent warned", () => {
+    loadConfig({ ...PROD, OPS_ALERT_EMAIL: "" })
+    expect(() => loadConfig({ ...PROD, OPS_ALERT_EMAIL: "", AFFILIATE_TOKEN_SECRET: "" })).toThrow(
+      "AFFILIATE_TOKEN_SECRET"
+    )
+  })
+
   it("outside production with both set does not warn", () => {
     loadConfig({ NODE_ENV: "development", AFFILIATE_TOKEN_SECRET: "x", STOREFRONT_URL: "http://localhost:8000" })
     expect(warn).not.toHaveBeenCalled()

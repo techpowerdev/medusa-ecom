@@ -3,6 +3,7 @@
 import { sdk } from "@lib/config"
 import type { PortalTab } from "@lib/util/affiliate-portal"
 import { affiliateRegisterError } from "@lib/util/affiliate-register-error"
+import { normalizeEmail } from "@lib/util/normalize-email"
 import { cookies as nextCookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { cache } from "react"
@@ -167,7 +168,7 @@ const portalPath = (formData: FormData) => `/${formData.get("countryCode")}/affi
 export async function affiliateLogin(_state: AffiliateAuthState, formData: FormData): Promise<AffiliateAuthState> {
   let token: string
   try {
-    token = await login(String(formData.get("email")), String(formData.get("password")))
+    token = await login(normalizeEmail(formData.get("email")), String(formData.get("password")))
   } catch (error) {
     return {
       error: statusOf(error) === 401 ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" : "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
@@ -193,7 +194,7 @@ export async function affiliateLogin(_state: AffiliateAuthState, formData: FormD
  * → login ใหม่เพื่อได้ token ที่มี actor_id; อีเมลที่มี identity อยู่แล้ว (เช่น เป็น customer) ใช้รหัสผ่านเดิม login แทน
  */
 export async function affiliateRegister(_state: AffiliateAuthState, formData: FormData): Promise<AffiliateAuthState> {
-  const email = String(formData.get("email"))
+  const email = normalizeEmail(formData.get("email"))
   const password = String(formData.get("password"))
   const failed = { error: "สมัครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }
 
