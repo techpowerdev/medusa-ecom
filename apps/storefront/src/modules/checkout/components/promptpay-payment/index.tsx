@@ -131,8 +131,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       // cart ถูก complete โดย webhook แล้ว — complete ซ้ำได้ order เดิมแล้ว redirect ไปหน้า confirmed
       // EV-7d (กฎข้อ 28c): หน้า confirmed ใช้ country ของ URL ปัจจุบัน
       const res = await placeOrder(cart.id, undefined, countryCode as string)
-      // FS-15: 409 ที่ placeOrder คืนเป็นค่า → จัดการเหมือน error เดิมของทางสำรองนี้ (poll ต่อ)
-      if (res && "error" in res) throw new Error(res.error)
+      // FS-15: ผลล้มที่ placeOrder คืนเป็นค่า → จัดการเหมือน error เดิมของทางสำรองนี้ (poll ต่อ — แยกตาม kind = PAY-11)
+      if (res) throw new Error(res.kind)
     } catch {
       // เช่นรอ lock ของ completeCartWorkflow ไม่ทัน — poll รอบถัดไปจะลองใหม่ (order มีอยู่แล้ว)
       setError("ได้รับชำระเงินแล้ว ระบบกำลังสร้างคำสั่งซื้อของคุณ กรุณารอสักครู่…")
