@@ -397,6 +397,18 @@ describe("ตาราง affiliate ใช้ของ Medusa (spec 08 AC-2, AC-
   it("หน้า affiliate ใช้ Header ของ components/common", () => {
     expect(read("routes/affiliate/page.tsx")).toMatch(/from\s*["'](?:\.{1,2}\/)+components\/common\/header["']/)
   })
+
+  // ADM-40 (spec 08 กฎ 44, AC-45): ช่องค้นหาของ DataTable ของ dashboard (`<prefix>_q` ใน URL) — ไม่สร้าง input/debounce เอง
+  it("ค้นหา affiliates: q จาก useQueryParams + useDebouncedSearch ของ dashboard, reset offset ด้วย usePageOffset, เปิดเฉพาะแท็บ Affiliates", () => {
+    const src = read("components/affiliate/list-table.tsx")
+    expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(importsFrom(src, "useDebouncedSearch", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).toMatch(/usePageOffset\(prefix, PAGE_SIZE, \{ count, resetOn: [a-z]+ \}\)/)
+    expect(src).not.toMatch(/<(Input|input)\b/)
+    expect(src).toMatch(/enableSearch=\{searchable && !loadFailed\}/)
+    const searchables = TABLES.filter((f) => /useAffiliateList[^(]*\([^)]*\{ searchable: true \}/.test(read(f)))
+    expect(searchables).toEqual(["components/affiliate/affiliates-table.tsx"])
+  })
 })
 
 describe("ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, กฎ 4, 5, 8, 11, 15, ADM-9)", () => {

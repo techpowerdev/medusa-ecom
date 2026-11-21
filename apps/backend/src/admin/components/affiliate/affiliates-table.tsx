@@ -112,7 +112,7 @@ const AffiliateActions = ({
 // AF-12b (spec 05 กฎ 37b, AC-43): แท็บ Affiliates — approve/suspend/reactivate + ข้อมูลรับเงิน
 export const AffiliatesTable = () => {
   const { getFullDate } = useDate()
-  const list = useAffiliateList<AdminAffiliate>("affiliates", "affiliates")
+  const list = useAffiliateList<AdminAffiliate>("affiliates", "affiliates", { searchable: true })
   const [editing, setEditing] = useState<AdminAffiliate | null>(null)
   const update = useUpdateAffiliate()
 
