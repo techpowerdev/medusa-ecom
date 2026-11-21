@@ -4,6 +4,8 @@ import {
   buildReturnRequest,
   canRequestReturn,
   DEFAULT_RETURN_WINDOW_DAYS,
+  isReturnNotStockedError,
+  RETURN_NOT_STOCKED,
   lineReceivedAt,
   returnableItems,
   returnableItemsNow,
@@ -224,6 +226,29 @@ describe("returnErrorMessage", () => {
   it("401 → ให้เข้าสู่ระบบใหม่, error อื่น → fallback (ไม่ส่งข้อความอังกฤษของ Medusa)", () => {
     expect(returnErrorMessage(fetchError("Unauthorized", 401), FALLBACK)).toBe("กรุณาเข้าสู่ระบบอีกครั้ง")
     expect(returnErrorMessage(fetchError("Something else"), FALLBACK)).toBe(FALLBACK)
+  })
+})
+
+// CORE-71 (spec 01 กฎข้อ 129, AC-170): backend (CORE-55) ปฏิเสธเมื่อ location ของ return option ไม่มี inventory level
+// → ลองใหม่ไม่ช่วย ต้องบอกให้ติดต่อร้าน; error อื่นไม่เข้ากรณีนี้
+describe("isReturnNotStockedError", () => {
+  const fetchError = (message: string, status = 400) => Object.assign(new Error(message), { status })
+
+  it("400 + ข้อความคงที่ของ backend → true", () => {
+    expect(isReturnNotStockedError(fetchError("This item cannot be returned online"))).toBe(true)
+  })
+
+  it("error อื่น (ข้อความอื่น, 401, ข้อความเดียวกันแต่ไม่ใช่ 400, ไม่ใช่ object) → false", () => {
+    expect(isReturnNotStockedError(fetchError("The return window for this order has expired"))).toBe(false)
+    expect(isReturnNotStockedError(fetchError("Unauthorized", 401))).toBe(false)
+    expect(isReturnNotStockedError(fetchError("This item cannot be returned online", 500))).toBe(false)
+    expect(isReturnNotStockedError(null)).toBe(false)
+    expect(isReturnNotStockedError("This item cannot be returned online")).toBe(false)
+  })
+
+  it("ข้อความที่ลูกค้าเห็นเป็นไทยและบอกให้ติดต่อร้าน ไม่บอกให้ลองใหม่", () => {
+    expect(RETURN_NOT_STOCKED.text).toBe("ไม่สามารถสร้างคำขอคืนสินค้านี้ทางเว็บได้ กรุณาติดต่อร้าน")
+    expect(RETURN_NOT_STOCKED.text).not.toContain("ลองใหม่")
   })
 })
 
