@@ -47,7 +47,7 @@ test("AC-105: dblclick login = action 1 ครั้ง, สมัครล้�
     await form.getByTestId("phone-input").fill("0812345678")
     await form.getByTestId("password-input").fill(`${customer.password}-other`)
     await form.getByTestId("register-button").click()
-    const error = page.getByTestId("register-error")
+    const error = page.getByTestId("register-email-exists")
     await expect(error).toBeVisible()
     expect((await error.textContent()) ?? "").toMatch(THAI)
     await expect(form.getByTestId("first-name-input")).toHaveValue("สมชาย")
