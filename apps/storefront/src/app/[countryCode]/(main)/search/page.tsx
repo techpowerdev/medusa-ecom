@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { getCardFlashPrices } from "@lib/data/flash-card-prices"
 import { listProducts } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
+import { searchProductIds } from "@lib/search-client"
 import ProductPreview from "@modules/products/components/product-preview"
 import SearchForm from "@modules/search/components/search-form"
 
@@ -34,12 +35,22 @@ export default async function SearchPage(props: Props) {
     notFound()
   }
 
-  const { response } = query
+  // CORE-70 (spec 01 กฎข้อ 128a): ผลมาจาก `POST /store/search` (adapter เดียวกับ drawer และ /store) แล้วดึงรายละเอียดสินค้า
+  // ตาม id ด้วย `GET /store/products` (ราคาของ region + variant id สำหรับราคา flash) เรียงตามลำดับผลค้นหา
+  const { ids, count } = query
+    ? await searchProductIds(query, RESULT_LIMIT)
+    : { ids: [], count: 0 }
+  const { response: listed } = ids.length
     ? await listProducts({
         countryCode,
-        queryParams: { q: query, limit: RESULT_LIMIT },
+        queryParams: { id: ids, limit: ids.length },
       })
-    : { response: { products: [], count: 0 } }
+    : { response: { products: [] } }
+  const rank = new Map(ids.map((id, index) => [id, index]))
+  const products = [...listed.products].sort(
+    (a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0)
+  )
+  const response = { products, count }
 
   // FS-14 (spec 03 กฎข้อ 19): หน้านี้ dynamic และผลมาจาก `GET /store/products` (มี variant id อยู่แล้ว) → ราคา flash ฝั่ง server แบบ PLP
   const flashPrices = await getCardFlashPrices(region.id, response.products)

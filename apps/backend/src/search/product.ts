@@ -47,7 +47,9 @@ const productFields = search.define({
   sales_channel_ids: search.keyword().array().filterable().retrievable(false),
   title: search.text().searchable({ weight: 3 }).sortable().retrievable(),
   description: search.text().searchable({ weight: 1 }),
-  handle: search.keyword().retrievable(),
+  // CORE-70 (spec 01 กฎข้อ 128): ค้น handle ด้วยแบบ `GET /store/products?q=` ของ Medusa — ชื่อสินค้าไทย
+  // คำอังกฤษ (เช่น "shirt" ของ `t-shirt`) มักอยู่ใน handle เท่านั้น
+  handle: search.keyword().searchable({ weight: 1 }).retrievable(),
   // Returned on hits only: never filtered, sorted or faceted on.
   thumbnail: search.keyword().retrievable(),
   created_at: search.date().sortable().retrievable(),
