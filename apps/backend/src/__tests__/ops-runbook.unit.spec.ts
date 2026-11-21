@@ -180,3 +180,23 @@ describe("AC-18 หัวข้อ Alerts ใน docs/ops/production.md", () => 
     expect(body).toContain("restart worker")
   })
 })
+
+// OPS-30: spec 07 AC-45b — access log ของ Medusa ออกที่ระดับ `http` และ admin prod ต้องอยู่หลัง HTTPS (Deliverables ข้อ 11)
+describe("AC-45b access log และ HTTPS ใน docs/ops/production.md", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const alerts = section(doc, "Alerts") ?? ""
+  const goLive = section(doc, "Go-live checklist") ?? ""
+
+  it("หัวข้อ Alerts: access log ต้องใช้ LOG_LEVEL=http (ค่าเริ่มต้นของ compose) และเตือนว่า info ไม่มี access log", () => {
+    expect(alerts).toContain("`LOG_LEVEL=http`")
+    expect(alerts).toMatch(/ค่าเริ่มต้นของ `docker-compose\.prod\.yml`/)
+    expect(alerts).toMatch(/`LOG_LEVEL=info`[^\n]*ไม่มี access log/)
+    expect(alerts).toMatch(/`\/health`/)
+  })
+
+  it("หัวข้อ Go-live checklist: admin/API ผ่าน HTTPS หรือ proxy ที่ส่ง X-Forwarded-Proto: https และ http://localhost ตรงไป :9000 login ไม่ได้", () => {
+    expect(goLive).toMatch(/HTTPS/)
+    expect(goLive).toContain("X-Forwarded-Proto: https")
+    expect(goLive).toMatch(/`http:\/\/localhost:9000`[^\n]*login admin ไม่ได้/)
+  })
+})
