@@ -167,7 +167,10 @@ endpoint สมัคร event ตามรายการด้านล่า�
     `psql "$DATABASE_URL" -c "SELECT datname, datctype FROM pg_database WHERE datname = current_database();"` — เป็น `C` → สร้าง DB ใหม่ด้วย locale ที่ถูกแล้ว restore (ตั้งที่ `initdb`/`CREATE DATABASE … LC_CTYPE`)
 11. แปลงอีเมลเดิมเป็นตัวเล็กก่อนเปิดร้าน (บัญชีที่สร้างก่อนแปลงอีเมลจะ login ไม่ได้ — CORE-73/CORE-80): รัน script dry-run → แก้คู่ที่ชนด้วยมือ (ถ้ามี) → `--apply` → dry-run ซ้ำได้ 0 แถว
     (คำสั่งเต็มเติมใน PR ของ CORE-81)
-12. backfill ธง `evoucher_backordered` ของ order ก่อน EV-22: dry-run → `--apply` → dry-run ซ้ำได้ 0 แถว (คำสั่งเต็มเติมใน PR ของ EV-25)
+12. backfill ธง `evoucher_backordered` ของ order ก่อน EV-22 (badge backordered ใน admin ไม่ขึ้นถ้าไม่รัน — EV-25): ใน container ของ backend (`apps/backend`)
+    `npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts` (dry-run พิมพ์ order/line ที่จะแก้) →
+    `npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts apply` (log จำนวนก่อน/เขียน/หลัง — หลังต้องเป็น 0) → dry-run ซ้ำได้ `พบ 0 line`
+    (ใช้คำ `apply` ไม่ใช่ `--apply` — `medusa exec` เป็น yargs strict ปฏิเสธ option ที่ไม่รู้จักด้วย `Unknown argument`)
 13. log ของ prod ไม่มี PII: ยืนยันว่า image มี OPS-33 (redact ใน `json-logger.ts`) แล้วค้น log ของ log platform ด้วยอีเมลลูกค้าทดสอบที่จ่ายแล้วถูกคืนเงิน (บรรทัด `recreate a payment session`) — ต้องไม่พบ
 14. วัดเวลา `POST /store/search` (body เดียวกับ storefront, คำค้นไทย 2–3 คำ + คำว่าง) กับ catalog ขนาดจริงบน DB ของ prod/staging แล้วบันทึก p95 — ถ้าสินค้าเกิน ~10,000 รายการ
     (หรือ p95 เกิน 300ms) ต้องเขียน ADR เรื่องวิธีค้นหา (index/ provider) ก่อนเปิดร้าน (qa #465 — `typo_tolerance` ใช้ similarity ของ `pg_trgm` ทั้งตาราง)
