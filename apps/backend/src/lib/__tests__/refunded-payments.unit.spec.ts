@@ -1,4 +1,4 @@
-import { isFullyRefundedCollection } from "../refunded-payments"
+import { hasUnpaidSession, isFullyRefundedCollection } from "../refunded-payments"
 
 // PAY-9 (spec 06 กฎข้อ 11, ADR-025): collection ที่ payment ทุกตัว (ไม่นับที่ถูกยกเลิก) capture แล้วถูกคืนครบ — MathBN จาก raw_amount
 const raw = (value: string) => ({ raw_amount: { value, precision: 20 } })
@@ -26,5 +26,18 @@ describe("isFullyRefundedCollection", () => {
   it("tolerates null relations from query.graph", () => {
     expect(isFullyRefundedCollection(null)).toBe(false)
     expect(isFullyRefundedCollection([null, { captures: null, refunds: null }] as any)).toBe(false)
+  })
+})
+
+// review #445 (เงิน): session ที่ยังไม่มี payment อาจเป็นการจ่ายที่ webhook ยังไม่มา — ห้าม reset
+describe("hasUnpaidSession", () => {
+  it.each([
+    ["no sessions", [], false],
+    ["null relation", null, false],
+    ["only sessions that already have a payment", [{ id: "ps_1", payment: { id: "pay_1" } }], false],
+    ["a session without a payment (any provider)", [{ id: "ps_1", payment: { id: "pay_1" } }, { id: "ps_2", payment: null }], true],
+    ["a session whose payment relation is missing", [{ id: "ps_2" }], true],
+  ])("%s → %s", (_label, sessions, expected) => {
+    expect(hasUnpaidSession(sessions as any)).toBe(expected)
   })
 })

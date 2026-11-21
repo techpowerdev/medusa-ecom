@@ -1,11 +1,8 @@
 import type { MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import type { RemoteQueryFunction } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
-import { isFullyRefundedCollection, type RefundablePayment } from "../../../lib/refunded-payments"
-import {
-  RESET_COLLECTION_FIELDS,
-  resetCartPaymentCollectionWorkflow,
-} from "../../../workflows/payment/reset-cart-payment-collection"
+import { RESET_COLLECTION_FIELDS, isResettableCollection } from "../../../lib/refunded-payments"
+import { resetCartPaymentCollectionWorkflow } from "../../../workflows/payment/reset-cart-payment-collection"
 import { PAYMENT_COLLECTION_RESET } from "./errors"
 
 const collectionReset = () =>
@@ -18,7 +15,8 @@ const collectionReset = () =>
 // PAY-9 (spec 06 กฎข้อ 11, ADR-025 — O-2): payment ที่ compensatePaymentIfNeededStep คืนเงินแล้วยังค้างใน collection ของ cart
 // → ถ้าจ่ายใหม่ใน collection เดิม order จะมี payment ที่คืนแล้วปนอยู่ (payment_status = refunded)
 // ลำดับ: ownership (ADR-013) → GB guard (ADR-024) → middleware นี้ → guardPaidStripeSession (ADR-015 — session ที่คืนแล้วทำให้ตอบ
-// PAYMENT_ALREADY_COMPLETED ผิด) — collection ของ order, ไม่มี payment หรือยังมี payment ที่คืนไม่ครบ → next()
+// PAYMENT_ALREADY_COMPLETED ผิด) — collection ของ order, ไม่มี payment, ยังมี payment ที่คืนไม่ครบ หรือมี session ที่ยังรอ payment
+// (อาจจ่ายแล้ว webhook ยังไม่มา — review #445) → next()
 export async function resetRefundedCartPaymentCollection(
   req: MedusaRequest,
   _res: MedusaResponse,
@@ -31,7 +29,7 @@ export async function resetRefundedCartPaymentCollection(
     filters: { id: req.params.id },
   })
   const collection = data[0]
-  if (!collection || collection.order?.id || !isFullyRefundedCollection(collection.payments as RefundablePayment[])) {
+  if (!isResettableCollection(collection)) {
     return next()
   }
 

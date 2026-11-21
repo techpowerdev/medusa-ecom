@@ -55,3 +55,33 @@ pnpm lint: 0 errors (warning เดิม 3 backend / 28 storefront); pnpm typec
 ในเครื่องไม่มี Stripe key → skip; พิสูจน์บน CI + qa
 ### build
 pnpm --filter backend build: ผ่าน
+
+## รอบแก้หลัง APPROVE (2026-11-21 — คำขอของ session หลัก + qa D-1)
+### RED
+integration (implementation เดิม ใน worktree ชั่วคราว + test ใหม่):
+    ✕ (b) refunded collection that still has a session without a payment (paid, webhook not yet arrived) → not reset (11933 ms)
+    Expected: not "PAYMENT_COLLECTION_RESET" (ได้ PAYMENT_COLLECTION_RESET — reset ทั้งที่มี session ที่ยังรอ payment)
+unit backend: hasUnpaidSession is not a function (6 failed); middleware ไม่ข้ามเมื่อมี session รอ payment
+vitest storefront:
+     × the retry gets PAYMENT_COLLECTION_RESET again → { error: failed } without a third attempt 3ms
+     × creating the new collection fails → error from the shared helper 1ms
+     × renewPromptPaySession does not retry (QR renewal keeps its collection) → { error: failed } 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  3 failed | 44 passed (47)
+### GREEN
+PASS integration-tests/http/payment-collection-reset.spec.ts (43.591 s)
+    ✓ (a) refunded cart collection → 409 PAYMENT_COLLECTION_RESET, link dismissed, old collection keeps its refund (3054 ms)
+    ✓ (a) O-2 state: compensation deleted the refunded session → still reset (guardPaidStripeSession would let it through) (3788 ms)
+    ✓ (a) two concurrent requests both get 409 PAYMENT_COLLECTION_RESET without 5xx (3245 ms)
+    ✓ (a) after the reset the cart pays with a new collection → order has 1 collection and payment_status captured (3196 ms)
+    ✓ (b) captured payment not refunded → not reset (PAY-6 guard answers PAYMENT_ALREADY_COMPLETED as in AC-13) (3790 ms)
+    ✓ (b) refunded collection that still has a session without a payment (paid, webhook not yet arrived) → not reset (2069 ms)
+    ✓ (D-1) Medusa recreate succeeds after the refund → pending session in the old collection → not reset (2127 ms)
+    ✓ (b) order collection (group buy) fully refunded → not reset (819 ms)
+Tests:       8 passed, 8 total
+PASS integration-tests/http/payment-session-guard.spec.ts (52.265 s)
+(D-1) เป็น characterization test: recreate สำเร็จ → ไม่ reset (อ้าง medusajs/medusa#17948)
+unit backend ที่เกี่ยว (refunded-payments, payment-collections, error-handler, workflows, return-lock): 15 suites / 146 passed
+  (ชุดเต็มรอบนี้ return-lock.unit.spec.ts ล้มด้วย timeout 471 วิ ตอนเครื่องรับโหลดหนัก load ~8.5 — รันแยกผ่าน; ชุดเต็มให้ CI รัน)
+vitest storefront: Test Files 103 passed, Tests 1204 passed; playwright --project=unit: 123 passed
+typecheck backend + storefront: ผ่าน; lint: 0 errors

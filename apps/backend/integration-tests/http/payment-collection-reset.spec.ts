@@ -4,6 +4,7 @@ import { Modules } from "@medusajs/framework/utils"
 import {
   createOrderPaymentCollectionWorkflow,
   createOrderWorkflow,
+  refundPaymentAndRecreatePaymentSessionWorkflow,
   refundPaymentsWorkflow,
 } from "@medusajs/medusa/core-flows"
 import seedThailand from "../../src/scripts/seed"
@@ -228,6 +229,60 @@ medusaIntegrationTestRunner({
       const res = await newSession(collectionId, PROMPTPAY)
       expect(res.status).toEqual(409)
       expect(res.data.code).toEqual("PAYMENT_ALREADY_COMPLETED")
+      expect(await cartCollectionIds(cartId)).toEqual([collectionId])
+    })
+
+    it("(b) refunded collection that still has a session without a payment (paid, webhook not yet arrived) → not reset", async () => {
+      const { cartId, collectionId, session } = await cartWithSession()
+      await refundAll(await pay(session))
+      // session ใหม่ที่ลูกค้าอาจจ่ายแล้วแต่ webhook ยังไม่มา (สร้างตรงที่ payment module — route ของ Medusa จะลบ session เดิม)
+      const pending = await getContainer()
+        .resolve(Modules.PAYMENT)
+        .createPaymentSession(collectionId, { provider_id: CARD, amount: session.amount, currency_code: "thb", data: {} })
+
+      const res = await newSession(collectionId)
+      expect(res.data?.code).not.toEqual("PAYMENT_COLLECTION_RESET")
+      expect(await cartCollectionIds(cartId)).toEqual([collectionId])
+      const { data } = await query().graph({
+        entity: "payment_collection",
+        fields: ["payment_sessions.id"],
+        filters: { id: collectionId },
+      })
+      expect(data[0].payment_sessions.map((s) => s?.id)).toContain(pending.id)
+    })
+
+    // characterization test (qa #445 D-1 — session หลักตัดสิน 2026-11-21 ให้คงพฤติกรรมนี้):
+    // ถ้า recreate ใน compensatePaymentIfNeededStep สำเร็จ (ทำได้กับ pp_system_default; กับ Stripe ใน 2.22.1 ล้มเสมอ —
+    // medusajs/medusa#17948) collection เดิมจะมี session ใหม่ที่ไม่มี payment → guard ของ review #445 ไม่ reset
+    // → จ่ายใหม่ใน collection เดิม = อาการ O-2/#69 กลับมา; test นี้ล้มเมื่อพฤติกรรมเปลี่ยน → ทบทวน ADR-025 เมื่อ bump Medusa/#17948 ถูกแก้
+    it("(D-1) Medusa recreate succeeds after the refund → pending session in the old collection → not reset", async () => {
+      const { cartId, collectionId, session } = await cartWithSession("pp_system_default")
+      const paymentModule = getContainer().resolve(Modules.PAYMENT)
+      const payment = await paymentModule.authorizePaymentSession(session.id, {})
+      await paymentModule.capturePayment({ payment_id: payment!.id })
+
+      // input แบบเดียวกับ compensatePaymentIfNeededStep (core-flows 2.22.1 cart/steps/compensate-payment-if-needed.js)
+      await refundPaymentAndRecreatePaymentSessionWorkflow(getContainer()).run({
+        input: {
+          payment_collection_id: collectionId,
+          provider_id: "pp_system_default",
+          customer_id: ownerId,
+          data: session.data ?? {},
+          amount: session.amount,
+          payment_id: payment!.id,
+          note: "Refunded due to cart completion failure",
+        },
+      })
+      const { data: before } = await query().graph({
+        entity: "payment_collection",
+        fields: ["payment_sessions.id", "payment_sessions.payment.id", "payments.refunds.id"],
+        filters: { id: collectionId },
+      })
+      expect(before[0].payments[0].refunds).toHaveLength(1)
+      expect(before[0].payment_sessions.some((s) => !s?.payment?.id)).toBe(true)
+
+      const res = await newSession(collectionId, "pp_system_default")
+      expect(res.data?.code).not.toEqual("PAYMENT_COLLECTION_RESET")
       expect(await cartCollectionIds(cartId)).toEqual([collectionId])
     })
 

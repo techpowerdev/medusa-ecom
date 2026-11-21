@@ -167,6 +167,8 @@ describe("initiatePaymentSession — 409 PAYMENT_COLLECTION_RESET", () => {
     await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ error: "failed" })
     expect(fetchSdk).toHaveBeenCalledTimes(1)
     expect(fetch).toHaveBeenCalledTimes(2)
+    // review #445: cart ใน cache ยังชี้ collection เดิม (ถอดแล้ว → 404) — revalidate ทันทีแม้ลองซ้ำไม่สำเร็จ
+    expect(revalidateTag).toHaveBeenCalledWith("carts-t", { expire: 0 })
   })
 
   it("creating the new collection fails → error from the shared helper", async () => {
@@ -176,6 +178,7 @@ describe("initiatePaymentSession — 409 PAYMENT_COLLECTION_RESET", () => {
 
     await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ error: "unauthorized" })
     expect(fetch).toHaveBeenCalledTimes(1)
+    expect(revalidateTag).toHaveBeenCalledWith("carts-t", { expire: 0 })
   })
 
   it("renewPromptPaySession does not retry (QR renewal keeps its collection) → { error: failed }", async () => {
@@ -184,6 +187,7 @@ describe("initiatePaymentSession — 409 PAYMENT_COLLECTION_RESET", () => {
 
     await expect(renewPromptPaySession(cartWithCollection, PROMPTPAY)).resolves.toEqual({ error: "failed" })
     expect(fetchSdk).not.toHaveBeenCalled()
+    expect(revalidateTag).toHaveBeenCalledWith("carts-t", { expire: 0 })
   })
 })
 

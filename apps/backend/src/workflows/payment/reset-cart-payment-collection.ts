@@ -6,7 +6,7 @@ import {
   releaseLockStep,
   useQueryGraphStep,
 } from "@medusajs/medusa/core-flows"
-import { isFullyRefundedCollection, type RefundablePayment } from "../../lib/refunded-payments"
+import { RESET_COLLECTION_FIELDS, isResettableCollection } from "../../lib/refunded-payments"
 
 export type ResetCartPaymentCollectionInput = { cart_id: string; payment_collection_id: string }
 
@@ -14,21 +14,11 @@ export type ResetCartPaymentCollectionInput = { cart_id: string; payment_collect
 const LOCK_TIMEOUT_SECONDS = 30
 const LOCK_TTL_SECONDS = 30
 
-export const RESET_COLLECTION_FIELDS = [
-  "id",
-  "cart.id",
-  "order.id",
-  "payments.id",
-  "payments.canceled_at",
-  "payments.captures.raw_amount",
-  "payments.refunds.raw_amount",
-]
-
 /**
  * PAY-9 (spec 06 กฎข้อ 11, ADR-025): ถอด link cart ↔ payment collection ที่ถูกคืนเงินครบและยังไม่มี order
  * เพื่อให้ cart สร้าง collection ใหม่ด้วย route ของ Medusa — collection เดิมคงอยู่เป็นหลักฐาน (ไม่ลบ ไม่ refund ไม่เรียก provider)
  * ตรวจซ้ำภายใต้ lock `cart_id`; compensation ของ `dismissRemoteLinkStep` สร้าง link คืน
- * `reset` = collection นี้ถูกคืนครบและไม่ผูก order (รวมกรณี request ก่อนหน้าถอด link ไปแล้ว — idempotent)
+ * `reset` = collection นี้ถูกคืนครบ ไม่ผูก order และไม่มี session ที่ยังรอ payment (รวมกรณี request ก่อนหน้าถอด link ไปแล้ว — idempotent)
  */
 export const resetCartPaymentCollectionWorkflow = createWorkflow(
   "reset-cart-payment-collection",
@@ -43,10 +33,7 @@ export const resetCartPaymentCollectionWorkflow = createWorkflow(
     })
     const state = transform({ collections, input }, ({ collections, input }) => {
       const collection = collections[0]
-      const reset =
-        !!collection &&
-        !collection.order?.id &&
-        isFullyRefundedCollection(collection.payments as RefundablePayment[])
+      const reset = isResettableCollection(collection)
       return { reset, linked: reset && collection.cart?.id === input.cart_id }
     })
 

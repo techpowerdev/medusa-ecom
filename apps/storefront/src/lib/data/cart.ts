@@ -298,7 +298,7 @@ export async function setShippingMethod({
 
 /**
  * สร้าง session ผ่าน `createPaymentSession` แล้ว revalidate cart เมื่อสำเร็จ (ผลผ่าน helper กลางของ Q-C2)
- * PAY-9: 409 `PAYMENT_COLLECTION_RESET` คืนเป็น code แยกให้ `initiatePaymentSession` ลองซ้ำ (helper กลางแปลงเป็น `"failed"`)
+ * PAY-9: 409 `PAYMENT_COLLECTION_RESET` → revalidate cart แล้วคืนเป็น code แยกให้ `initiatePaymentSession` ลองซ้ำ
  */
 async function createCartPaymentSession(
   collectionId: string,
@@ -306,6 +306,8 @@ async function createCartPaymentSession(
 ): Promise<PaymentSessionResult | typeof PAYMENT_COLLECTION_RESET> {
   const res = await createPaymentSession(collectionId, providerId)
   if (res.status === 409 && res.code === PAYMENT_COLLECTION_RESET) {
+    // cart ใน cache ยังชี้ collection ที่ถูกถอดแล้ว (ยิงซ้ำ = 404 จาก ownership) → revalidate ทันทีไม่ว่าการลองซ้ำจะสำเร็จหรือไม่
+    revalidateTag(await getCacheTag("carts"), { expire: 0 })
     return PAYMENT_COLLECTION_RESET
   }
   const result = paymentSessionResult(res)

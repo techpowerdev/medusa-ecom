@@ -40,6 +40,16 @@ describe("resetRefundedCartPaymentCollection", () => {
     ["cart collection without payments", { id: "pay_col_1", cart: { id: "cart_1" }, order: null, payments: [] }],
     ["cart collection with a captured payment not refunded (AC-22 b)", { id: "pay_col_1", cart: { id: "cart_1" }, order: null, payments: capturedOnly }],
     ["order collection (group buy) fully refunded (AC-22 b)", { id: "pay_col_1", cart: null, order: { id: "order_1" }, payments: refunded }],
+    [
+      "cart collection fully refunded but with a session not yet paid (webhook may still come — review #445)",
+      {
+        id: "pay_col_1",
+        cart: { id: "cart_1" },
+        order: null,
+        payments: refunded,
+        payment_sessions: [{ id: "ps_old", payment: { id: "pay_1" } }, { id: "ps_new", payment: null }],
+      },
+    ],
   ])("%s → next() without the workflow", async (_label, collection) => {
     const { call, next, run } = setup(collection)
     await call()
