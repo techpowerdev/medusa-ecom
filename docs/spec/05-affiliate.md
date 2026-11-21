@@ -617,9 +617,9 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
     `reversed` = เฉพาะ reversal ที่ไม่ได้ถูกนับใน `pending`; ผลรวมทุกแถวเท่ากับก่อนแก้ (ไม่มีเงินหาย/ซ้ำ); `approved`/`paid` ไม่เปลี่ยน; ข้อความใต้ `affiliate-earnings-pending` "หักรายการยกเลิก/คืนเงินแล้ว"
 
 ### Acceptance criteria (รอบ 40)
-- AC-56 (AF-24, กฎ 48a) integration http — **ล้มบน develop** ก่อน: สินค้าราคา ฿590 (รวม VAT 7%) โปรแกรม 10% → การ์ดได้ประมาณการ = `round(590 / 1.07 × 0.10, 2)` = 55.14 (ตรงกับ entry จริงเมื่อซื้อ 1 ชิ้นใน e2e เดียวกัน);
+- ☑ AC-56 (AF-24, กฎ 48a) integration http — **ล้มบน develop** ก่อน: สินค้าราคา ฿590 (รวม VAT 7%) โปรแกรม 10% → การ์ดได้ประมาณการ = `round(590 / 1.07 × 0.10, 2)` = 55.14 (ตรงกับ entry จริงเมื่อซื้อ 1 ชิ้นใน e2e เดียวกัน);
   storefront (unit Vitest) แสดงค่าจาก API ไม่คำนวณเอง
-- AC-57 (AF-24, กฎ 48b) integration: entry pending ฿100 ของ line L + reversal −฿100 ของ L → `pending=0`, `reversed=0`; entry approved ฿50 ของ line M + reversal −฿50 → `approved=50`, `reversed=−50`;
+- ☑ AC-57 (AF-24, กฎ 48b) integration: entry pending ฿100 ของ line L + reversal −฿100 ของ L → `pending=0`, `reversed=0`; entry approved ฿50 ของ line M + reversal −฿50 → `approved=50`, `reversed=−50`;
   ผลรวม pending+approved+paid+reversed เท่ากับผลรวม `amount` ทุก entry (ล้มบน develop ที่ `pending=100`, `reversed=−100`)
 
 ### Tasks (รอบ 40)

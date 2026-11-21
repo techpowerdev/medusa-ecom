@@ -26,7 +26,7 @@ const DAY = 24 * 60 * 60 * 1000
 // complete cart ผ่าน completeCartWorkflow ตรง (ทดสอบ attribution ไม่ใช่ auth ของ store route)
 // ราคา THB รวม VAT 7% (seed) → 1,070 = ฿1,000 ไม่รวมภาษี, 535 = ฿500
 medusaIntegrationTestRunner({
-  testSuite: ({ getContainer, dbConnection }) => {
+  testSuite: ({ api, getContainer, dbConnection }) => {
     let container: MedusaContainer
     let affiliates: AffiliateModuleService
     let regionId: string
@@ -34,6 +34,7 @@ medusaIntegrationTestRunner({
     let variantIn: string
     let variantOut: string
     let variant1000: string
+    let variant590: string
     let collectionId: string
     let seq = 0
 
@@ -81,7 +82,7 @@ medusaIntegrationTestRunner({
       const eventBus = container.resolve(Modules.EVENT_BUS)
       const indexed = Promise.all(
         ["product.created", "product-variant.created"].map((name) =>
-          TestEventUtils.waitSubscribersExecution(name, eventBus, { triggerCount: 3 })
+          TestEventUtils.waitSubscribersExecution(name, eventBus, { triggerCount: 4 })
         )
       )
       const { result } = await createProductsWorkflow(container).run({
@@ -90,11 +91,12 @@ medusaIntegrationTestRunner({
             product("af3-in-c", 535, collectionId),
             product("af3-not-c", 1070),
             product("af3-1000", 1070),
+            product("af3-590", 590),
           ],
         },
       })
       await indexed
-      ;[variantIn, variantOut, variant1000] = result.map((p) => p.variants[0].id)
+      ;[variantIn, variantOut, variant1000, variant590] = result.map((p) => p.variants[0].id)
     })
 
     const createAffiliate = (code: string, email = `${code}@example.com`) =>
@@ -207,6 +209,34 @@ medusaIntegrationTestRunner({
       const matures = entries[0].matures_at!.getTime()
       expect(matures).toBeGreaterThanOrEqual(before + 14 * DAY)
       expect(matures).toBeLessThanOrEqual(Date.now() + 14 * DAY)
+    })
+
+    // AF-24 (spec 05 กฎ 48a): portal ประมาณค่าคอมจากราคาก่อน VAT — ตรงกับ entry จริงของการซื้อ 1 ชิ้น
+    it("AC-56: the portal estimate for ฿590 incl. 7% VAT at 10% is 55.14, the same as the real entry", async () => {
+      const credentials = { email: "af24-ann@example.com", password: "affiliate-password" }
+      const { data: registered } = await api.post("/auth/affiliate/emailpass/register", credentials)
+      const bearer = (token: string) => ({ headers: { authorization: `Bearer ${token}` } })
+      const { data: created } = await api.post(
+        "/affiliate/register",
+        { name: "af24", code: "af24" },
+        bearer(registered.token)
+      )
+      await affiliates.updateAffiliates({ id: created.affiliate.id, status: "active" })
+      const { data: login } = await api.post("/auth/affiliate/emailpass", credentials)
+      await createProgram({ scope: { variant_ids: [variant590] } })
+
+      const { data } = await api.get("/affiliate/products?status=active", bearer(login.token)).catch((e) => {
+        throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+      })
+      expect(data.products).toHaveLength(1)
+      expect(data.products[0].estimate).toEqual({ amount: 55.14, currency_code: "thb", excludes_tax: true })
+
+      const { orderId } = await placeOrder({
+        items: [{ variant_id: variant590, quantity: 1 }],
+        token: await tokenFor(created.affiliate.id),
+      })
+      const [entry] = await entriesOf(orderId)
+      expect(entry.amount).toEqual(data.products[0].estimate.amount)
     })
 
     it("AC-2: without an active program the attribution has program_id null and no entry", async () => {
