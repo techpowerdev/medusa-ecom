@@ -5,12 +5,15 @@ import { writeEvoucherBackorderedFlag } from "../workflows/evoucher/steps/update
 
 // EV-25 (spec 02 กฎข้อ 41): order ก่อน EV-22 มีธง backordered แค่ใน order_line_item.metadata แต่ Admin API คืน
 // `items[].metadata` จาก order_item ก่อน → badge ไม่ขึ้น script นี้เขียนธงลง order_item ด้วย helper เดียวกับ EV-22
-// ใช้: `npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts` (dry-run) แล้วเพิ่ม `--apply` เพื่อเขียนจริง
+// ใช้: `npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts` (dry-run) แล้วเพิ่มคำ `apply` ท้ายคำสั่งเพื่อเขียนจริง
+// (`medusa exec` ของ @medusajs/cli เป็น yargs `.strict()` — `--apply` ถูกปฏิเสธ `Unknown argument` ก่อนโหลด script; รับ `--apply` ไว้ด้วยเมื่อเรียก function ตรง)
 
 const BATCH = 100
 
 type BackfillLine = { order_id: string; display_id?: number | null; line_item_id: string; metadata: Record<string, unknown> }
 
+// shape ภายในของ formatOrder ใน @medusajs/order (`dist/utils/transform-order.js:40-41` ของ 2.22.1: `line_item_metadata` = order_line_item,
+// `detail` = order_item) — ไม่อยู่ใน OrderDTO จึง cast; ต้องตรวจใหม่ทุกครั้งที่ bump @medusajs/*
 type ListedItem = {
   id: string
   line_item_metadata?: Record<string, unknown> | null
@@ -57,7 +60,7 @@ export async function backfillEvoucherBackorderedFlags(
 }
 
 export default async function backfillEvoucherBackorderedFlagsScript({ container, args }: ExecArgs) {
-  const apply = (args ?? []).includes("--apply")
+  const apply = (args ?? []).some((arg) => arg === "apply" || arg === "--apply")
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const result = await backfillEvoucherBackorderedFlags(container, { apply })
   for (const line of result.lines) {
@@ -66,6 +69,6 @@ export default async function backfillEvoucherBackorderedFlagsScript({ container
   logger.info(
     apply
       ? `backfill-evoucher-backordered: ก่อน ${result.lines.length} line, เขียนธง ${result.applied} line, หลัง ${result.remaining} line`
-      : `backfill-evoucher-backordered: dry-run พบ ${result.lines.length} line (ยังไม่เขียน — รันซ้ำพร้อม --apply)`
+      : `backfill-evoucher-backordered: dry-run พบ ${result.lines.length} line (ยังไม่เขียน — รันซ้ำพร้อมคำ apply)`
   )
 }

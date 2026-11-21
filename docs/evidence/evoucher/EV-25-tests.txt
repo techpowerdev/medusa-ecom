@@ -37,3 +37,40 @@ Tests:       1669 passed, 1669 total
 
 ## lint / typecheck / build
 pnpm lint: 0 errors (warning เดิมของ develop); pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
+
+## แก้ตาม review #476 (2026-11-22)
+
+### RED — test ส่ง args: ["apply"] ตามที่ medusa exec ส่งจริง (โค้ดเดิมรับแค่ "--apply")
+      ✕ dry-run lists the legacy line only, apply exposes the flag on the admin API, and a rerun finds 0 (463 ms)
+      ✓ reports the before/after counts of apply (444 ms)
+Tests:       1 failed, 1 passed, 2 total
+
+### GREEN
+PASS integration-tests/http/evoucher-backfill-backordered.spec.ts (6.937 s)
+    AC-55 script backfill-evoucher-backordered-flags
+      ✓ dry-run lists the legacy line only, apply exposes the flag on the admin API, and a rerun finds 0 (480 ms)
+      ✓ reports the before/after counts of apply (424 ms)
+Tests:       2 passed, 2 total
+
+### medusa exec จริงบน DB ในเครื่อง (medusa_ev25 หลัง db:migrate; order จำลองก่อน EV-22 ด้วย script ชั่วคราวที่ไม่ commit)
+seed: order #1 (order_01M7ZQTVG5EXEQWQQRSWX0272K) legacy line ordli_01M7ZQTVG6J7DSMBS3XR4GRBGM
+$ npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts 
+info:    Executing script at ./src/scripts/backfill-evoucher-backordered-flags.ts...
+info:    backfill-evoucher-backordered: order #1 (order_01M7ZQTVG5EXEQWQQRSWX0272K) line ordli_01M7ZQTVG6J7DSMBS3XR4GRBGM
+info:    backfill-evoucher-backordered: dry-run พบ 1 line (ยังไม่เขียน — รันซ้ำพร้อมคำ apply)
+(exit 0)
+$ npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts --apply
+error:   Unknown argument: apply
+(exit 1)
+$ npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts apply
+info:    Executing script at ./src/scripts/backfill-evoucher-backordered-flags.ts...
+info:    backfill-evoucher-backordered: order #1 (order_01M7ZQTVG5EXEQWQQRSWX0272K) line ordli_01M7ZQTVG6J7DSMBS3XR4GRBGM
+info:    backfill-evoucher-backordered: ก่อน 1 line, เขียนธง 1 line, หลัง 0 line
+(exit 0)
+$ npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts 
+info:    Executing script at ./src/scripts/backfill-evoucher-backordered-flags.ts...
+info:    backfill-evoucher-backordered: dry-run พบ 0 line (ยังไม่เขียน — รันซ้ำพร้อมคำ apply)
+(exit 0)
+DB หลัง apply (order_line_item.metadata | order_item.metadata):
+Voucher A|{"evoucher_backordered": true}|{"evoucher_backordered": true}
+Voucher B|{"note": "keep"}|{"note": "keep"}

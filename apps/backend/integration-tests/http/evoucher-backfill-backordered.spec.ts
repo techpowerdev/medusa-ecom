@@ -7,7 +7,7 @@ import { createAdminUser } from "../helpers/admin"
 jest.setTimeout(120 * 1000)
 
 // EV-25 (spec 02 กฎข้อ 41, AC-55): order ก่อน EV-22 มีธง `evoucher_backordered` แค่ใน order_line_item.metadata
-// → script `medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts [--apply]` เขียนธงลง order_item ด้วย helper เดียวกับ EV-22
+// → script `medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts [apply]` เขียนธงลง order_item ด้วย helper เดียวกับ EV-22
 
 type AdminItem = { id: string; metadata: Record<string, unknown> | null }
 
@@ -70,9 +70,9 @@ medusaIntegrationTestRunner({
         expect(printed.some((m) => m.includes(`order #${displayId} (${orderId})`))).toBe(true)
         expect((await adminItems(orderId)).get(lineA)!.metadata?.evoucher_backordered).toBeFalsy()
 
-        // --apply: ธงขึ้นใน GET /admin/orders/:id?fields=*items; line ที่ไม่มีธงไม่ถูกแตะ
+        // apply (คำที่ medusa exec ส่งมาใน args จริง — yargs strict ปฏิเสธ `--apply`): ธงขึ้นใน GET /admin/orders/:id?fields=*items; line ที่ไม่มีธงไม่ถูกแตะ
         const write = jest.spyOn(container.resolve(Modules.ORDER), "updateOrderItem")
-        await backfillScript({ container, args: ["--apply"] })
+        await backfillScript({ container, args: ["apply"] })
         const after = await adminItems(orderId)
         expect(after.get(lineA)!.metadata).toMatchObject({ evoucher_backordered: true })
         expect(after.get(lineB)!.metadata).toEqual(before.get(lineB)!.metadata)
@@ -86,7 +86,7 @@ medusaIntegrationTestRunner({
         expect(write).toHaveBeenCalledTimes(1)
       })
 
-      it("reports the before/after counts of --apply", async () => {
+      it("reports the before/after counts of apply", async () => {
         const first = await legacyBackorderedOrder(container)
         const second = await legacyBackorderedOrder(container)
 
