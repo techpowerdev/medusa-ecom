@@ -32,7 +32,7 @@ import { syncCartAffiliateToken } from "./affiliate"
 import { getLocale } from "./locale-actions"
 import { createPaymentSession } from "./payment"
 import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
-import { PromptPayPollState, promptPayPollState } from "@lib/util/payment-session"
+import { PAYMENT_COLLECTION_RESET, PromptPayPollState, promptPayPollState } from "@lib/util/payment-session"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -296,42 +296,68 @@ export async function setShippingMethod({
   return { ok: true }
 }
 
-/** สร้าง session ผ่าน `createPaymentSession` แล้ว revalidate cart เมื่อสำเร็จ (ผลผ่าน helper กลางของ Q-C2) */
-async function createCartPaymentSession(collectionId: string, providerId: string): Promise<PaymentSessionResult> {
-  const result = paymentSessionResult(await createPaymentSession(collectionId, providerId))
+/**
+ * สร้าง session ผ่าน `createPaymentSession` แล้ว revalidate cart เมื่อสำเร็จ (ผลผ่าน helper กลางของ Q-C2)
+ * PAY-9: 409 `PAYMENT_COLLECTION_RESET` → revalidate cart แล้วคืนเป็น code แยกให้ `initiatePaymentSession` ลองซ้ำ
+ */
+async function createCartPaymentSession(
+  collectionId: string,
+  providerId: string
+): Promise<PaymentSessionResult | typeof PAYMENT_COLLECTION_RESET> {
+  const res = await createPaymentSession(collectionId, providerId)
+  if (res.status === 409 && res.code === PAYMENT_COLLECTION_RESET) {
+    // cart ใน cache ยังชี้ collection ที่ถูกถอดแล้ว (ยิงซ้ำ = 404 จาก ownership) → revalidate ทันทีไม่ว่าการลองซ้ำจะสำเร็จหรือไม่
+    revalidateTag(await getCacheTag("carts"), { expire: 0 })
+    return PAYMENT_COLLECTION_RESET
+  }
+  const result = paymentSessionResult(res)
   if ("ok" in result) {
     revalidateTag(await getCacheTag("carts"), { expire: 0 })
   }
   return result
 }
 
+/** collection ของ cart ด้วย `POST /store/payment-collections` ของ Medusa (คืน collection ที่ผูกกับ cart อยู่ หรือสร้างใหม่ — แบบ js-sdk) */
+async function cartPaymentCollectionId(cartId: string): Promise<string | { error: ActionError }> {
+  try {
+    const { payment_collection } = await sdk.client.fetch<HttpTypes.StorePaymentCollectionResponse>(
+      `/store/payment-collections`,
+      { method: "POST", headers: { ...(await getAuthHeaders()) }, body: { cart_id: cartId } }
+    )
+    return payment_collection.id
+  } catch (error) {
+    return actionFailure(error)
+  }
+}
+
 /**
  * CORE-4i-b (กฎข้อ 72, Q-C2 = (ก)): ผลรูปแบบเดียวกับหน้า `/account/orders/:id/pay` — ใช้ `createPaymentSession` (fetch ตรง)
  * แทน `sdk.store.payment.initiatePaymentSession` เพราะ `FetchError` ไม่เก็บ `code` ของ 409 `PAYMENT_ALREADY_COMPLETED`;
  * data ของกฎข้อ 5 (บัตร = card) ใส่ใน `createPaymentSession`; cart ที่ยังไม่มี collection สร้างก่อนด้วย route ของ Medusa (แบบ js-sdk)
+ * PAY-9 (spec 06 กฎข้อ 11, ADR-025): 409 `PAYMENT_COLLECTION_RESET` = backend ถอด collection ที่ถูกคืนเงินออกจาก cart แล้ว
+ * → ขอ collection ปัจจุบันของ cart จาก route ของ Medusa (ไม่มี = สร้างใหม่) แล้วลองซ้ำ **1 ครั้ง**; ได้ code เดิมอีก → `"failed"`
  */
 export async function initiatePaymentSession(
   cart: HttpTypes.StoreCart,
   { provider_id }: Pick<HttpTypes.StoreInitializePaymentSession, "provider_id">
 ): Promise<PaymentSessionResult> {
-  let collectionId = cart.payment_collection?.id
-  if (!collectionId) {
-    try {
-      const { payment_collection } = await sdk.client.fetch<HttpTypes.StorePaymentCollectionResponse>(
-        `/store/payment-collections`,
-        { method: "POST", headers: { ...(await getAuthHeaders()) }, body: { cart_id: cart.id } }
-      )
-      collectionId = payment_collection.id
-    } catch (error) {
-      return actionFailure(error)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const collectionId = (attempt === 0 && cart.payment_collection?.id) || (await cartPaymentCollectionId(cart.id))
+    if (typeof collectionId !== "string") {
+      return collectionId
+    }
+    const result = await createCartPaymentSession(collectionId, provider_id)
+    if (result !== PAYMENT_COLLECTION_RESET) {
+      return result
     }
   }
-  return createCartPaymentSession(collectionId, provider_id)
+  console.error("payment session failed: collection reset twice", cart.id)
+  return { error: "failed" }
 }
 
 /**
  * PAY-6b (spec 06 กฎข้อ 7A, AC-12): สร้าง session PromptPay ใหม่ตอน QR หมดอายุ — 409 `PAYMENT_ALREADY_COMPLETED` (ชำระไปแล้ว)
- * เป็น code ที่ผู้เรียกแยกทาง (CORE-4i-b: ผลผ่าน helper กลาง)
+ * เป็น code ที่ผู้เรียกแยกทาง (CORE-4i-b: ผลผ่าน helper กลาง); PAY-9 `PAYMENT_COLLECTION_RESET` ไม่ลองซ้ำ → `"failed"`
  */
 export async function renewPromptPaySession(
   cart: HttpTypes.StoreCart,
@@ -341,7 +367,8 @@ export async function renewPromptPaySession(
   if (!collectionId) {
     return { error: "failed" }
   }
-  return createCartPaymentSession(collectionId, providerId)
+  const result = await createCartPaymentSession(collectionId, providerId)
+  return result === PAYMENT_COLLECTION_RESET ? { error: "failed" } : result
 }
 
 /**

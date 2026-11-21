@@ -72,3 +72,17 @@ describe("createSingleFlight hold/release", () => {
     await first
   })
 })
+
+// EV-21 D1 (qa #454): ตาราง pools อ่านสถานะ pending เพื่อไม่นำทางจากคลิกแถวระหว่าง prompt/การลบ
+describe("createSingleFlight isPending", () => {
+  it("is true only while fn is running", async () => {
+    const run = createSingleFlight()
+    expect(run.isPending()).toBe(false)
+    let release!: () => void
+    const done = run(() => new Promise<void>((resolve) => (release = resolve)))
+    expect(run.isPending()).toBe(true)
+    release()
+    await done
+    expect(run.isPending()).toBe(false)
+  })
+})

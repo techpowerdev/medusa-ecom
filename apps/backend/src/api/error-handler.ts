@@ -9,7 +9,7 @@ import {
 } from "../modules/evoucher/errors"
 import { FLASH_LIMIT_EXCEEDED, FLASH_SOLD_OUT } from "../modules/flash_sale/errors"
 import { GB_CONFLICT_CODES } from "../modules/group_buy/errors"
-import { PAYMENT_ALREADY_COMPLETED } from "./store/payment-collections/errors"
+import { PAYMENT_ALREADY_COMPLETED, PAYMENT_COLLECTION_RESET } from "./store/payment-collections/errors"
 
 // PROMO-2 (spec 03 กฎข้อ 13): errorHandler ของ Medusa 2.22.1 เขียนทับ code/message ของ CONFLICT เป็น
 // `invalid_state_error` + ข้อความกลาง → error ที่มี code ใน allow-list นี้ตอบ 409 { type: "conflict", code, message } เอง
@@ -24,6 +24,7 @@ export const BUSINESS_CONFLICT_CODES: ReadonlySet<string> = new Set([
   EVOUCHER_RESEND_IN_PROGRESS, // EV-5b
   ...GB_CONFLICT_CODES,
   PAYMENT_ALREADY_COMPLETED, // PAY-6 (spec 06 กฎข้อ 7A)
+  PAYMENT_COLLECTION_RESET, // PAY-9 (spec 06 กฎข้อ 11)
   AFFILIATE_STATUS_CHANGED, // AF-15 (spec 05 กฎ 39b)
 ])
 

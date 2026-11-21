@@ -209,6 +209,37 @@ describe("หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)
     expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+components\/common\/header["']/)
   })
 
+  // EV-21 (spec 02 กฎข้อ 37): ลบ pool จาก ActionMenu ทั้งหน้า pool และตาราง pools — prompt/toast ของ @medusajs/ui,
+  // กันกดซ้ำด้วย single-flight และ badge "No codes" เป็น StatusBadge สีเทา
+  it.each([
+    ["routes/evouchers/pools/[id]/page.tsx", "evoucher-pool-actions"],
+    ["components/evoucher/pools-table.tsx", "evoucher-pool-row-actions"],
+  ])("%s: Delete อยู่ใน ActionMenu (trigger %s) ผ่าน PoolDeleteMenu + useState(createSingleFlight)", (file, testid) => {
+    const src = read(file)
+    expect(src).toContain(`data-testid="${testid}"`)
+    expect(src).toMatch(/<PoolDeleteMenu\b/)
+    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    expect(src).toMatch(/<PoolStockBadge\b/)
+  })
+
+  // D1 (qa #454): คลิกที่สองของ dblclick ปุ่มยืนยันทะลุไปโดนแถว (rowHref) — ตารางกันการนำทางระหว่างลบ/คลิกต่อเนื่อง
+  it("pools-table.tsx กันคลิกแถวด้วย onClickCapture (event.detail > 1 หรือ deleteOnce.isPending())", () => {
+    const src = read("components/evoucher/pools-table.tsx")
+    expect(src).toMatch(/onClickCapture=\{/)
+    expect(src).toMatch(/\.detail > 1/)
+    expect(src).toMatch(/deleteOnce\.isPending\(\)/)
+  })
+
+  it("components/evoucher/pool-delete.tsx ใช้ ActionMenu + usePrompt + toast + StatusBadge ของ Medusa และ createSingleFlight", () => {
+    const src = read("components/evoucher/pool-delete.tsx")
+    expect(importsFrom(src, "ActionMenu", "@medusajs/dashboard/components")).toBe(true)
+    expect(importsFrom(src, "usePrompt", "@medusajs/ui")).toBe(true)
+    expect(importsFrom(src, "toast", "@medusajs/ui")).toBe(true)
+    expect(importsFrom(src, "StatusBadge", "@medusajs/ui")).toBe(true)
+    expect(src).toMatch(/StatusBadge color="grey"/)
+    expect(src).toMatch(/createSingleFlight/)
+  })
+
   it("import-codes ใช้ Header และกันกดซ้ำด้วย useState(createSingleFlight) (useRef ใช้แค่อ้าง input file)", () => {
     const src = read("components/evoucher/import-codes.tsx")
     expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+common\/header["']/)

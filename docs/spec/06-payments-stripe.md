@@ -309,11 +309,11 @@ follow-up (ไม่ใช่ task บังคับ — ทำในงาน�
   (a) order captured ฿600 + return request ที่ยังไม่ confirm (`POST /admin/returns` + request) When `POST /admin/payments/:id/refund { amount: 100 }` Then 400 ข้อความมี `active return`, provider ไม่ถูกเรียก, `refunds` ของ payment ว่าง, `order.summary.refunded_total` = 0;
   (b) order edit ที่ค้าง (`POST /admin/order-edits`) → 400 แบบ (a); (c) ยกเลิก return request แล้ว refund ฿100 → 200, `payment_status = partially_refunded`, credit line 1 รายการ และ event `payment.refunded` ถูก emit 1 ครั้ง (spy event bus);
   (d) order ที่ไม่มี order change → 200 (regression ของ AC-6)
-- AC-22 (PAY-9, กฎข้อ 11) integration http + e2e — **ล้มบน develop** ก่อน:
+- ☑ AC-22 (PAY-9, กฎข้อ 11) integration http + e2e — **ล้มบน develop** ก่อน:
   (a) integration: cart ที่ collection มี payment captured ฿X แล้วถูกคืนครบด้วย `refundPaymentsWorkflow` (จำลองผลของ `compensatePaymentIfNeededStep`) When เจ้าของ cart `POST .../payment-sessions` Then 409 code `PAYMENT_COLLECTION_RESET`,
       link `cart_payment_collection` ของ cart ว่าง, collection เดิมยังอยู่พร้อม refund; ยิงซ้ำพร้อมกัน 2 request → ทั้งคู่ 409 code เดิม ไม่มี error 5xx; หลัง `POST /store/payment-collections { cart_id }` + สร้าง session + complete → order มี payment collection **1** ชุด (ชุดใหม่) และ `payment_status = captured`;
   (b) collection ที่มี payment captured ยังไม่คืน → ไม่ถูก reset (ผล AC-13 เดิม); collection ของ order (group buy) → ไม่ถูก reset;
-  (c) e2e (Stripe test mode): ลูกค้าซื้อ flash เกินสิทธิ์ด้วยบัตร → ถูกคืนเงิน → ลดจำนวนแล้วจ่ายใหม่ใน cart เดิม → หน้า order confirmed; `GET /admin/orders/:id` ได้ `payment_status = captured` และ payment collection 1 ชุด (แทน #69)
+  (c) e2e (Stripe test mode): ลูกค้าอยู่ขั้น review ของ cart flash 1 ชิ้น (สิทธิ์ 1 — ปุ่มสั่งซื้อกดได้ ผ่านด่าน UI ของ FS-21 spec 03 กฎข้อ 26b) แล้วใช้สิทธิ์จาก cart อื่นผ่าน API (แบบสองแท็บ) → กดสั่งด้วยบัตร → capture แล้ว complete ล้ม `FLASH_LIMIT_EXCEEDED` → ถูกคืนเงิน → admin เพิ่มสิทธิ์ต่อคนแล้วจ่ายใหม่ใน cart เดิม → หน้า order confirmed (แก้ถ้อยคำ 2026-11-21 review #445: เดิม "ซื้อเกินสิทธิ์แล้วลดจำนวน" ซึ่ง FS-21 ปิดปุ่มสั่งซื้อก่อนตัดเงินแล้ว); `GET /admin/orders/:id` ได้ `payment_status = captured` และ payment collection 1 ชุด (แทน #69)
 
 ### Test plan (รอบ 40)
 | ระดับ | AC |

@@ -1,0 +1,71 @@
+# CORE-72 (spec 01 กฎข้อ 130, AC-171) — ผล test
+base: origin/develop 026d3027; prod build (next build/start :8172, backend medusa start :9172)
+
+## Red (ก่อนแก้ — โค้ด develop)
+$ npx playwright test --project=chromium e2e/core-72-cart-count-no-flash.spec.ts
+Running 2 tests using 1 worker
+  ✘  1 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:93:5 › AC-171: ลูกค้ามี 2 ชิ้น + cart โหลดช้า 2 วินาที → ระหว่างรอไม่มี "(0)" หลังโหลดเป็น "(2)" (5.8s)
+  ✓  2 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:119:5 › AC-171: ตะกร้าว่างจริง (ไม่มี cart) → แสดง "ตะกร้า (0)" หลังโหลด (774ms)
+  1) [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:93:5 › AC-171: ลูกค้ามี 2 ชิ้น + cart โหลดช้า 2 วินาที → ระหว่างรอไม่มี "(0)" หลังโหลดเป็น "(2)" › ทุกค่าที่เคยแสดงตั้งแต่ load ไม่มี "(0)"; ก่อนรู้จำนวนเป็น "ตะกร้า" + aria-busy="true" 
+    Error: [{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (0)","busy":null},{"text":"ตะกร้า (2)","busy":null}]
+    expect(received).toEqual(expected) // deep equality
+    - Expected  -  1
+    + Received  + 46
+  ...(diff ตัดออก)
+    ../../../CORE-72-results-red/core-72-cart-count-no-flas-540ea-างรอไม่มี-0-หลังโหลดเป็น-2--chromium/test-failed-1.png
+  1 failed
+  1 passed (8.0s)
+
+## Green (หลังแก้)
+$ npx playwright test --project=chromium e2e/core-72-cart-count-no-flash.spec.ts --repeat-each=3
+Running 6 tests using 3 workers
+  ✓  3 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:93:5 › AC-171: ลูกค้ามี 2 ชิ้น + cart โหลดช้า 2 วินาที → ระหว่างรอไม่มี "(0)" หลังโหลดเป็น "(2)" (5.9s)
+  ✓  2 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:93:5 › AC-171: ลูกค้ามี 2 ชิ้น + cart โหลดช้า 2 วินาที → ระหว่างรอไม่มี "(0)" หลังโหลดเป็น "(2)" (5.9s)
+  ✓  1 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:93:5 › AC-171: ลูกค้ามี 2 ชิ้น + cart โหลดช้า 2 วินาที → ระหว่างรอไม่มี "(0)" หลังโหลดเป็น "(2)" (5.9s)
+  ✓  4 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:121:5 › AC-171: ตะกร้าว่างจริง (ไม่มี cart) → แสดง "ตะกร้า (0)" หลังโหลด (4.9s)
+  ✓  5 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:121:5 › AC-171: ตะกร้าว่างจริง (ไม่มี cart) → แสดง "ตะกร้า (0)" หลังโหลด (4.9s)
+  ✓  6 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:121:5 › AC-171: ตะกร้าว่างจริง (ไม่มี cart) → แสดง "ตะกร้า (0)" หลังโหลด (4.9s)
+  6 passed (11.4s)
+
+## e2e ที่เกี่ยวกับ nav-cart-link (หลังแก้)
+  ✓   1 [chromium] › e2e/core-19c-delete-button-error.spec.ts:105:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button (3.8s)
+  ✓   3 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (5.3s)
+  ✓   5 [chromium] › e2e/core-19c-delete-button-error.spec.ts:123:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (3.9s)
+  ✓   2 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (6.2s)
+  ✓   6 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (6.1s)
+  ✓   7 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px) (4.4s)
+  ✓   4 [chromium] › e2e/core-29-restore-cart.spec.ts:142:5 › AC-122: ลบ JWT → login ใหม่ได้ตะกร้าเดิม; cart ที่ complete แล้วไม่ถูกกู้; key อื่นใน metadata ยังอยู่ (12.7s)
+  ✓  10 [chromium] › e2e/core-19c-delete-button-error.spec.ts:156:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px) (1.9s)
+  ✓  11 [chromium] › e2e/core-29-restore-cart.spec.ts:192:5 › AC-122: active_cart_id ของ A ชี้ cart ของ B → login สำเร็จ ไม่มี cookie cart และ cart ของ B ยังเป็นของ B (1.9s)
+  ✓  12 [chromium] › e2e/core-19c-delete-button-error.spec.ts:183:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่ (2.0s)
+  ✓   9 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (5.3s)
+  ✓  13 [chromium] › e2e/core-29-restore-cart.spec.ts:217:5 › AC-122: browser มี cookie cart D ของ A อยู่แล้วตอน login → cookie ยังเป็น D (ไม่ทับด้วย active_cart_id) (3.5s)
+  ✓  14 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (730ms)
+  ✓  17 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (383ms)
+  ✓  15 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (2.5s)
+  ✓  18 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (398ms)
+  ✓  20 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (486ms)
+  ✘  21 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (555ms)
+  ✓  16 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (3.3s)
+  ✓  22 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (441ms)
+  ✓  19 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (3.8s)
+  ✓   8 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (23.1s)
+  ✓  23 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (10.7s)
+  ✓  24 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.0s)
+  ✓  25 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:214:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (660ms)
+    Expected: <= 1
+    Received:    1.265625
+    ../../../CORE-72-results-related/core-50-nav-narrow-AC-145--5c6d7-ดง-ตำแหน่ง-ขนาดเท่า-develop-chromium/test-failed-1.png
+  1 failed
+  24 passed (40.3s)
+หมายเหตุ: core-50 1280×800 ล้มที่ nav-menu-button width 1.27px บน macOS — ตาม comment ใน spec นั้น baseline วัดบน Linux (CI) ไม่เกี่ยวกับ nav-cart-link
+
+## Vitest storefront
+ Test Files  103 passed (103)
+      Tests  1200 passed (1200)
+
+## Playwright project unit
+  125 passed (1.4s)
+
+## lint / typecheck
+pnpm lint: exit 0; pnpm --filter storefront typecheck: exit 0; backend typecheck: exit 0 (รันโดยไม่มี .medusa/types ที่ build ในเครื่องสร้าง — แบบเดียวกับ CI)

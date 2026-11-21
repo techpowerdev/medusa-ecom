@@ -28,8 +28,12 @@ const CartDropdown = ({
   cart?: HttpTypes.StoreCart | null
 }) => {
   // Statically rendered pages can't read the cart cookie, so the cart is loaded in the browser.
-  const [clientCart, setClientCart] = useState<HttpTypes.StoreCart | null>(null)
+  // CORE-72 (กฎข้อ 130): `undefined` = ยังโหลดไม่เสร็จ (ไม่รู้จำนวน) ต่างจาก `null` = ไม่มี cart จริง
+  const [clientCart, setClientCart] = useState<
+    HttpTypes.StoreCart | null | undefined
+  >(undefined)
   const cartState = serverCart ?? clientCart
+  const loading = cartState === undefined
   const [activeTimer, setActiveTimer] = useState<NodeJS.Timer | undefined>(
     undefined
   )
@@ -113,7 +117,10 @@ const CartDropdown = ({
             className="hover:text-ui-fg-base whitespace-nowrap"
             href="/cart"
             data-testid="nav-cart-link"
-          >{`ตะกร้า (${totalItems})`}</LocalizedClientLink>
+            aria-busy={loading || undefined}
+          >
+            {loading ? "ตะกร้า" : `ตะกร้า (${totalItems})`}
+          </LocalizedClientLink>
         </PopoverButton>
         <Transition
           show={cartDropdownOpen}
