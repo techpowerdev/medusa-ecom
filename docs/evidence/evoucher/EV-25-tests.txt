@@ -1,0 +1,39 @@
+# EV-25 — ผลทดสอบ (2026-11-22, worktree บน develop fd39a681)
+
+## RED (script stub ที่ไม่ทำอะไร — ก่อนเขียนโค้ดจริง)
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    > 67 |         expect(printed.filter((m) => m.includes(lineA))).toHaveLength(1)
+
+
+  ●  › AC-55 script backfill-evoucher-backordered-flags › reports the before/after counts of --apply
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 0
+
+    > 94 |         expect(result.applied).toBe(2)
+
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+
+## GREEN — integration-tests/http/evoucher-backfill-backordered.spec.ts
+PASS integration-tests/http/evoucher-backfill-backordered.spec.ts (5.918 s)
+    AC-55 script backfill-evoucher-backordered-flags
+      ✓ dry-run lists the legacy line only, apply exposes the flag on the admin API, and a rerun finds 0 (352 ms)
+      ✓ reports the before/after counts of --apply (314 ms)
+Tests:       2 passed, 2 total
+
+## regression — integration http ทั้งชุด (รวม evoucher-allocate AC-52 ที่ใช้ helper ที่ export)
+Tests:       692 passed, 692 total
+
+## unit (backend)
+Test Suites: 121 passed, 121 total
+Tests:       1669 passed, 1669 total
+
+## lint / typecheck / build
+pnpm lint: 0 errors (warning เดิมของ develop); pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน
