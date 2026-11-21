@@ -1193,8 +1193,10 @@ none
 ### Business rules (รอบ 40)
 43. (ADM-39 — ADM-B1) กันกดซ้ำของฟอร์ม**สร้าง**ทุกตัวใน `src/admin/` ที่ปิด `FocusModal` หลังสำเร็จ: lock ไม่ถูกปล่อยเมื่อ request สำเร็จ แต่ค้างจน modal ปิด (unmount/`open=false`) แล้ว reset ตอนเปิดใหม่;
     request ล้ม → ปล่อยทันที (ลองใหม่ได้); ปุ่ม Save `disabled` + ⌘/Ctrl+Enter ผ่าน lock เดียวกัน; แก้ที่ helper เดียว `admin/lib/single-flight.ts` (เช่น option `holdOnSuccess` หรือ `release()` ที่เรียกตอนปิด)
-    ไม่ copy ต่อฟอร์ม — ครอบ: partner (`partners-section.tsx`), program (`program-form.tsx`/`programs-table.tsx`), payout (`payout-form.tsx`), campaign (`create-campaign.tsx`), pool group (`groups-section.tsx`),
-    variant pool (`variant-evoucher-pool.tsx`), import codes (`import-codes.tsx`) และฟอร์มสร้างอื่นที่ builder พบด้วย grep `createSingleFlight` (รายการใน PR พร้อมเหตุผลของตัวที่ไม่ต้องแก้ — เช่น prompt ที่ไม่ใช่ modal)
+    ไม่ copy ต่อฟอร์ม — ครอบ: partner (`partners-section.tsx`), program (`program-form.tsx`/`programs-table.tsx`), payout (`payout-form.tsx`), campaign (`create-campaign.tsx`),
+    variant pool (`variant-evoucher-pool.tsx`), import codes (`import-codes.tsx`) และฟอร์มสร้างอื่นที่ builder พบด้วย grep `createSingleFlight` (รายการใน PR พร้อมเหตุผลของตัวที่ไม่ต้องแก้ — เช่น prompt ที่ไม่ใช่ modal);
+    **pool group (`groups-section.tsx`)** เป็นปุ่มสร้างที่ไม่มี modal (แก้ตาม review รอบ 40 ให้ตรงกับ ADM-39): lock เฉพาะระหว่าง request in-flight (ปล่อยเมื่อ response กลับ) + ข้ามคลิกที่สองของดับเบิลคลิก
+    (`event.detail ≥ 2`) — คลิกแยกครั้งหลัง response กลับสร้าง group เพิ่มได้ตามตั้งใจ (AC-44 (a) ใช้กับปุ่มนี้; (b)/(d) ไม่เกี่ยว)
 44. (ADM-40) ตาราง Affiliates (`affiliates-table.tsx`) มีช่องค้นหาของ `DataTable` (`affiliates-search`) → ส่ง `q` (debounce ตาม helper ของ dashboard) + reset offset เป็น 0 + เก็บใน URL (`affiliates_q`) แบบ offset ของ ADM-10;
     ผลว่าง → empty state ของ "ไม่พบผล" ของ Medusa (ไม่ใช่ "No affiliates"); ข้อความอังกฤษ
 45. (ADM-41) ตาราง Payouts ไม่ล้นแนวนอนที่ 1280 และ 1440 (`scrollWidth ≤ clientWidth` ของ wrapper `affiliate-payouts-table`) — ลดคอลัมน์ข้อความด้วย `size`/`maxSize` + คอลัมน์ auto ตามบทเรียนรอบ 39

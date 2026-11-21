@@ -1,6 +1,7 @@
 # 04 Group buying — ส่วนลดแบบมีเป้าหมายและจำกัดเวลา
 
-สถานะ: in-progress (รอบ 40 2026-11-21: การทดสอบ manual → GB-20..GB-25 ☐ หัวข้อ "Follow-up รอบ 40" กฎข้อ 42–49, AC-62..67, ADR-024/ADR-026 accepted 2026-11-21, Q24 = ก / Q25 อนุมัติ; GB-19 ไม่ใช้ (เคยเสนอใน Q23);
+สถานะ: in-progress (รอบ 40b 2026-11-21: owner ไม่ยอมรับ race ของกฎข้อ 43 → GB-20b ☐ กฎข้อ 50, AC-68, ADR-024 ภาคผนวก 2026-11-21;
+รอบ 40 2026-11-21: การทดสอบ manual → GB-20..GB-25 ☐ หัวข้อ "Follow-up รอบ 40" กฎข้อ 42–49, AC-62..67, ADR-024/ADR-026 accepted 2026-11-21, Q24 = ก / Q25 อนุมัติ; GB-19 ไม่ใช้ (เคยเสนอใน Q23);
 ปิดรอบ 37 2026-11-19: ☑ GB-18 #414 (AC-61); Q23 = ก (owner 2026-11-19) คงข้อจำกัดของกฎข้อ 41f — ไม่เปิด GB-19; ไม่มี task เปิดค้างใน spec นี้;
 รอบ 37 2026-11-18: owner ตัดสินข้อ ก (1) ของ ROADMAP ปิดรอบ 36 = ก "backend ตอบ 400 เมื่อส่วนลด fixed ≥ ราคาของ variant" (รับทราบว่ากันได้แค่ตอนสร้าง) → GB-18 ☐ owner สั่งทำแล้ว — กฎข้อ 41, AC-61, คำถาม Q23 (กันตอนแก้ผ่าน hook ของ Medusa — ไม่บล็อก GB-18);
 เดิม: draft (ปรับดีไซน์ 2026-10-25 ตามความต้องการของเจ้าของ: ใช้ flow แบบ draft order เหมือนตัวอย่าง Quotes ของ Medusa;
@@ -918,7 +919,7 @@ e2e `group-buy-admin-detail.spec.ts`/`group-buy-admin-dates.spec.ts` ที่�
 
 ## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual 2026-11 เฟส 2/6 บน v0.2.0; owner สั่งแก้ทั้งหมดใน release เดียวก่อน go-live)
 ที่มา: GB-BUG-1 (จ่ายได้หลังสิทธิ์ถูกยกเลิก — เงิน), order ที่จ่ายแล้วแต่ยังเป็น draft แสดงปุ่มชำระ/"หมดเวลาชำระเงิน", และคำตัดสิน owner ข้อ (ก)–(ง) ของ group buy
-ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คืนเงินอัตโนมัติ; ฉบับแก้ตาม review #425), **ADR-026** (accepted 2026-11-21 — ล็อกส่วนลดของกลุ่ม)
+ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คืนเงินอัตโนมัติ; ฉบับแก้ตาม review #425; ภาคผนวก 2026-11-21 ตรวจสถานะที่ provider ก่อนยกเลิก → GB-20b), **ADR-026** (accepted 2026-11-21 — ล็อกส่วนลดของกลุ่ม)
 
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40 — แก้ตาม review #425)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
@@ -926,6 +927,7 @@ ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คื
 | ยกเลิก PaymentIntent ที่ค้างของ collection | `deletePaymentSessionsWorkflow` (core-flows 2.22.1 — ลบ session ผ่าน provider → Stripe `deletePayment` cancel PI; **กลืน error เมื่อ PI `succeeded`** `payment-stripe/dist/core/stripe-base.js:203-208` แล้ว hard-delete session) | ใช้ตามเดิม best-effort (กฎข้อ 43) |
 | ปิด payment collection | `cancelOrderWorkflow` ตั้ง payment collection ทุกชุดของ order เป็น `canceled` อยู่แล้ว (`order/workflows/cancel-order.js:145-152`) แต่**ไม่ลบ session** | ใช้ตามเดิม — **ไม่**เรียก `cancelPaymentCollectionWorkflow` ซ้ำ (throw "already canceled") |
 | คืนเงิน payment ของ draft order ที่ยกเลิก | `refundPaymentsWorkflow` (ไม่สร้าง credit line — ที่ `refund-orphan-payment.ts` ใช้); **ไม่ใช้** `refundPaymentWorkflow` เพราะ refund ที่ provider ก่อนแล้ว credit line `throwIfOrderIsCancelled` (`create-order-refund-credit-lines.js:14-15`) | ใช้ตามเดิม (กฎข้อ 44) — ไม่เรียก Stripe ตรง |
+| ตรวจสถานะ PI ก่อนยกเลิก (GB-20b) | ไม่มี method อ่านสถานะอย่างเดียวที่เป็นสาธารณะ (`getStatus` อยู่ใน `PaymentProviderService` ภายใน — `payment-provider.js:59-62`); `paymentModule.authorizePaymentSession` (`payment-module.js:224-280`) อ่านผ่าน provider และสร้าง payment เมื่อจ่ายแล้ว; `capturePaymentWorkflow` emit `payment.captured` (`capture-payment.js:53-56`) idempotent เมื่อ `captured_at` มีแล้ว | ขยาย: step ของเราเรียก `authorizePaymentSession` (แบบ guard ADR-015 A — ไม่ใช้ `authorizePaymentSessionStep` เพราะกลืน error ของ provider และ compensation ยกเลิก payment) แล้ว `capturePaymentWorkflow` เมื่อจ่ายแล้ว (กฎข้อ 50, ADR-024 ภาคผนวก) |
 | กันแก้ promotion | ไม่มี lock ต่อ promotion ใน Medusa; admin route `/admin/promotions/:id*` และ `/admin/campaigns/:id`, `/admin/campaigns/:id/promotions` | ขยาย: middleware ของเรา (ADR-026, กฎข้อ 48) |
 | zod validator ของ admin route | `validateAndTransformBody` + `.refine` | ใช้ตามเดิม (กฎข้อ 46) |
 
@@ -936,7 +938,7 @@ ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คื
 43. (GB-20 — ADR-024 b) job หมดเวลาชำระ (และทุกเส้นทางที่ตั้ง membership ที่มี payment collection เป็น `cancelled`) หลัง `cancelOrderWorkflow` (ซึ่งตั้ง collection `canceled` ให้แล้ว):
     `deletePaymentSessionsWorkflow` กับ session ของ collection ที่ยังไม่มี payment — **ไม่เรียก** `cancelPaymentCollectionWorkflow`; best-effort: error → `logger.warn` ขึ้นต้น `GROUP_BUY_SESSION_CANCEL_FAILED`
     (membership/order ยังยกเลิกตามเดิม); ไม่มี collection/session → noop;
-    **race ที่ยอมรับ (ADR-024 ผลที่ตามมา):** PI จ่ายสำเร็จก่อนลบ session แต่ webhook มาหลังลบ → ไม่มี `payment.captured` → ตกตาข่าย ADR-015 D (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND`) และ ops คืนเงินด้วยมือ
+    ~~race ที่ยอมรับ~~ (owner 2026-11-21 ไม่ยอมรับ → ปิดด้วยกฎข้อ 50 / GB-20b — ADR-024 ภาคผนวก 2026-11-21): ที่เหลือคือ PI สำเร็จในช่วงมิลลิวินาทีระหว่างตรวจกับลบ session → ตกตาข่าย ADR-015 D (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND`)
 44. (GB-21 — ADR-024 c; แทนส่วน "ไม่ refund อัตโนมัติ" ของ Q13 เฉพาะกรณีนี้) subscriber `payment.captured` ที่ตัดสิน `orphan` และอ่านสถานะใหม่แล้ว membership ยัง `cancelled`:
     ใต้ lock `group_buy:refund:<payment_id>` ยอดคงเหลือ (captured − refunded ด้วย `MathBN` จาก `raw_*`) ≤ 0 → noop + log info; ไม่เช่นนั้น **`refundPaymentsWorkflow`** ยอดคงเหลือ
     `note: "Refunded: group buy membership cancelled"` (ไม่ใช้ `refundPaymentWorkflow` — ดูตารางข้างบน); **ผล `refund_result` ตัดสินจากการอ่าน `payment.refunds` ใหม่หลัง workflow จบหรือ throw**
@@ -955,6 +957,13 @@ ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คื
     (review #425 nit) **campaign ของ Medusa**: `POST /admin/campaigns/:id/promotions` ที่ถอด/เพิ่ม promotion `GB-*` → 400 แบบเดียวกัน;
     `POST /admin/campaigns/:id` (วัน/budget) ของ campaign ที่ผูก `group_buy_campaign` → 400 เมื่อแคมเปญ group buy ไม่ใช่ `draft` (เปลี่ยน `ends_at` ทำให้กลุ่มเดิมผิดกฎข้อ 2/10 — แก้ที่ admin ของ group buy แทน)
 49. (GB-24 — owner (ข)) หน้ากลุ่ม `/<cc>/g/<token>`: `campaign.starts_at > now` → ไม่แสดงฟอร์ม join/ตัวเลือกสินค้า/ปุ่มสร้างทีม แสดง `group-starts-at` "เริ่ม <วันเวลาไทย>" (backend ปฏิเสธอยู่แล้วตามกฎข้อ 10)
+50. (GB-20b — ADR-024 ภาคผนวก 2026-11-21, owner ไม่ยอมรับ race ของกฎข้อ 43) job หมดเวลาชำระ **ก่อน** `expireGroupBuyMembershipPaymentWorkflow` ของ membership ที่เลือกได้:
+    workflow ใหม่ `checkGroupBuyMembershipPaymentWorkflow` ตรวจทุก session ของ collection ของ order ที่ยังไม่มี payment ด้วย `paymentModule.authorizePaymentSession` (เรียกใน step ของเรา ไม่มี compensation ที่ยกเลิก payment) แล้วตัดสินรวม (pure helper ใน `modules/group_buy/utils/membership-payment.ts`):
+    (a) **`paid`** — session ใดคืน payment → `capturePaymentWorkflow.runAsStep({ payment_id })` ใน `when("capture-group-buy-paid-session", …)` (ชื่อคงที่) → `payment.captured` → GB-5 ตั้ง `paid` + แปลง order; job **ไม่**เรียก expire รอบนี้;
+    (b) **`unpaid`** — ทุก session throw `MedusaError` `NOT_ALLOWED` หรือไม่มี session (ไม่เรียก provider) → expire ตามเดิม (กฎข้อ 43);
+    (c) **`retry`** — error อื่น หรือได้ `null` (`pending_authorization`) และ `now − pay_deadline_at < 15 นาที` (constant `GROUP_BUY_PAYMENT_CHECK_GIVE_UP_MINUTES = 15`) → ไม่ expire ไม่ลบ session + `logger.warn` บรรทัดเดียวขึ้นต้น `GROUP_BUY_PAYMENT_CHECK_FAILED`;
+    (d) **`give_up`** — แบบ (c) แต่ `≥ 15 นาที` → expire ตามเดิม + `logger.error` ขึ้นต้น `GROUP_BUY_PAYMENT_CHECK_GAVE_UP` + อีเมล `OPS_ALERT_EMAIL` (idempotency key `<template>-<membership_id>`; ไม่ตั้ง env → warn แล้วข้าม; ส่งล้ม → log error ไม่ทำให้ job ล้ม);
+    error ของ membership หนึ่งไม่หยุด membership อื่นในรอบ; guard `GB_PAYMENT_CLOSED` (กฎข้อ 42) และ deadline ที่ประกาศ**ไม่เปลี่ยน** (ไม่เผื่อเวลา — owner 2026-11-21); ไม่เรียก Stripe SDK ตรง
 
 ### Acceptance criteria (รอบ 40)
 - AC-62 (GB-20, กฎข้อ 42–43) integration http (mock Stripe provider ที่นับ `deletePayment`/`initiatePayment`) — **ล้มบน develop** ก่อน:
@@ -981,11 +990,23 @@ ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คื
   (b) `POST /admin/promotions/:id/rules/batch`, `/target-rules/batch` และ `DELETE /admin/promotions/:id` ของ promotion เดียวกัน → 400; (c) ต้นแบบ `GBT-*` และ promotion ปกติแก้ได้ (200);
   (d) สร้างกลุ่มใหม่หลังแก้ต้นแบบได้ส่วนลดใหม่ (regression Q5); (e) ลบแคมเปญ `draft` ยังสำเร็จ (regression);
   (f) `POST /admin/campaigns/:id/promotions { remove: [<GB-* id>] }` → 400; `POST /admin/campaigns/:id { ends_at }` ของ campaign ที่ผูกแคมเปญ group buy `active` → 400; campaign ที่ไม่เกี่ยวกับ group buy → 200
+- AC-68 (GB-20b, กฎข้อ 50) integration (mock **provider** ที่ตั้งผล `authorizePayment` ได้และนับ `authorizePayment`/`deletePayment`/`capturePayment`/`refundPayment` + mock notification; **ไม่ mock workflow ของ Medusa**, ไม่เรียก Stripe จริง;
+  เรียก job function ตรง — `pay_deadline_at` ตั้งในอดีตใน setup) — **ล้มบน develop+GB-20** ก่อน (a, c):
+  (a) membership `awaiting_payment` เลย deadline 1 นาที มี session `pending`, mock คืน `captured` (PI succeeded ที่ provider แต่ webhook ยังไม่มา) When รัน job Then `deletePayment` 0 ครั้ง, session ยังอยู่,
+      collection มี payment 1 รายการที่ `captured_at` ไม่ว่างและ capture 1 รายการ, membership `paid`, order `is_draft_order=false`, ไม่มี refund และไม่มี log `GROUP_BUY_PAID_WITHOUT_ORDER`;
+      แล้วรัน `processPaymentWorkflow` action `captured` ของ session เดิม (webhook มาช้า) Then ยังมี payment 1 / capture 1 / order transaction อ้าง capture นั้น 1 รายการ, membership `paid`, `capturePayment` ของ provider 0 ครั้ง;
+  (b) mock คืนสถานะ `requires_more` (Payment module จึง throw `NOT_ALLOWED` = ยังไม่จ่าย) When รัน job Then `deletePayment` 1 ครั้ง, session ถูกลบ, membership `cancelled`, collection `canceled`, ไม่มี payment (= AC-62e);
+      collection ไม่มี session → `authorizePayment` 0 ครั้ง และยกเลิกตามเดิม;
+  (c) mock throw `Error("provider down")` เลย deadline 1 นาที When รัน job Then membership `awaiting_payment`, session ยังอยู่, `deletePayment` 0 ครั้ง, log warn `GROUP_BUY_PAYMENT_CHECK_FAILED` 1 บรรทัด;
+      mock คืน `pending_authorization` → ผลเดียวกัน; เลย deadline 16 นาทีและยัง throw → membership `cancelled`, `deletePayment` ถูกเรียก, log error `GROUP_BUY_PAYMENT_CHECK_GAVE_UP` 1 บรรทัด,
+      notification ถึง `OPS_ALERT_EMAIL` 1 ฉบับ (รัน job ซ้ำ → ยัง 1); membership อื่นในรอบเดียวกันที่ mock คืน `captured` ยังได้ `paid`;
+  (d) regression: AC-62 (a)–(g) ผ่านทั้งหมด (mock ค่าเริ่มต้นของ AC-62 = ยังไม่จ่าย) และ guard 400 `GB_PAYMENT_CLOSED` หลัง deadline ไม่เปลี่ยน;
+  (e) unit helper `membershipPaymentCheckDecision(results, payDeadlineAt, now)` → `paid`/`unpaid`/`retry`/`give_up` ครบตาราง (paid ชนะ error/null; 14:59 → `retry`, 15:00 → `give_up`)
 
 ### Test plan (รอบ 40)
 | ระดับ | AC |
 |---|---|
-| integration http + unit | AC-62, AC-63, AC-65, AC-67 |
+| integration http + unit | AC-62, AC-63, AC-65, AC-67, AC-68 |
 | unit Vitest + e2e route mock + integration | AC-64 |
 | e2e + unit | AC-66 |
 
@@ -993,13 +1014,14 @@ ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คื
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | GB-20 | (GB-BUG-1 — เงิน) guard `GB_PAYMENT_CLOSED` + ยกเลิก session/collection ตอนหมดเวลาชำระ (กฎข้อ 42–43) | `src/api/store/payment-collections/group-buy-payment-guard.ts` (ใหม่), `src/api/middlewares.ts`, `src/jobs/group-buy-deadline.ts` หรือ workflow ที่ job เรียก, `src/workflows/group-buy/*` (helper ยกเลิก session), `src/api/error-handler.ts` (ถ้า 400 ไม่คง code), test integration | ~150 LOC + ~250 LOC test | AC-62 | ADR-024 accepted | `middlewares.ts` (PAY-8, PAY-9, GB-25) |
+| GB-20b | (เงิน — owner ไม่ยอมรับ race ของ GB-20) ตรวจสถานะ PI ที่ provider ก่อนยกเลิกตอนหมดเวลาชำระ: จ่ายแล้ว → capture + ได้ order, ยังไม่จ่าย → ยกเลิกตามเดิม, ตรวจไม่ได้ → ลองใหม่ ≤ 15 นาทีแล้วยกเลิก + alert (กฎข้อ 50) | `src/workflows/group-buy/membership-payment.ts` (`checkGroupBuyMembershipPaymentWorkflow` + step), `src/modules/group_buy/utils/membership-payment.ts` (helper ตัดสิน + constant), `src/jobs/group-buy-deadline.ts`, `src/modules/resend/templates.ts` (alert give-up), mock provider ใน integration-tests, test integration + unit | ~100 LOC + ~220 LOC test | AC-68 | **GB-20 (#435 merge)** | `membership-payment.ts` (GB-21 แตะ utils เดียวกัน), `templates.ts` (GB-21, GB-23), `group-buy-deadline.ts` (GB-20) |
 | GB-21 | (เงิน) คืนเงินอัตโนมัติเมื่อเงินเข้าหลัง membership ยกเลิก + alert มีผล refund + runbook (กฎข้อ 44) | `src/subscribers/group-buy-payment-captured.ts`, `src/modules/group_buy/utils/membership-payment.ts`, `src/workflows/group-buy/refund-cancelled-membership.ts` (ใหม่), `src/modules/resend/templates.ts`, `docs/ops/production.md` (หัวข้อ runbook เดิม), `src/__tests__/ops-runbook.unit.spec.ts`, test integration | ~150 LOC + ~250 LOC test | AC-63 | ADR-024 accepted ☑ (ใช้ `refundPaymentsWorkflow` — ไม่พึ่ง PAY-8 แล้ว) | `templates.ts` (GB-23 แตะ pay_url — คนละฟังก์ชัน) |
 | GB-22 | (storefront) หน้า pay ไม่หลอกว่า "ชำระแล้ว" เมื่อสิทธิ์ยกเลิก + รายการ account แสดง "กำลังยืนยัน" เมื่อจ่ายแล้วแต่ยังเป็น draft + GB-8 รายการคืน `payment_status` (กฎข้อ 45) | `apps/storefront/src/lib/util/order-pay.ts` (+ test), `apps/storefront/src/lib/util/group-buy-orders.ts` (+ test), component หน้า pay/รายการ account, `apps/backend/src/api/store/customers/me/group-buy/memberships/route.ts` (+ integration), e2e | ~120 LOC + ~200 LOC test | AC-64 | **GB-20** (code `GB_PAYMENT_CLOSED`) | — |
 | GB-23 | (backend เล็ก) `max_units_per_person ≤ max_quantity` ที่ API + `pay_url` มี `/th` (กฎข้อ 46–47) | `src/api/admin/group-buy/validators.ts`, `src/workflows/group-buy/campaign.ts`, `src/workflows/group-buy/group-outcome.ts`, constant ใน `src/lib/`, test | ~60 LOC + ~120 LOC test | AC-65 | PR เอกสารรอบ 40 | — |
 | GB-24 | (storefront) แคมเปญยังไม่เริ่มซ่อนฟอร์ม join + ลิงก์แชร์ `/th/g/<token>` (กฎข้อ 47, 49); qa | `apps/storefront/src/lib/util/group-page.ts` (+ test), `modules/group-buy/components/group-page/*`, e2e | ~60 LOC + ~120 LOC test | AC-66 | PR เอกสารรอบ 40 | — |
 | GB-25 | ล็อกส่วนลดของกลุ่ม — middleware กันแก้ promotion `GB-*` ที่ admin route (กฎข้อ 48) | `src/api/admin/promotions/group-buy-lock.ts` (ใหม่), `src/api/middlewares.ts`, test integration | ~70 LOC + ~180 LOC test | AC-67 | ADR-026 accepted, owner ตอบ Q24 | `middlewares.ts` |
 
-ลำดับ: GB-20 → GB-22; GB-21 อิสระ (หลัง ADR-024 accepted); GB-23 ∥ GB-24 ∥ GB-25 อิสระ (GB-25 sync `middlewares.ts` หลัง GB-20)
+ลำดับ: GB-20 → GB-22; GB-20 (#435) → GB-20b (∥ GB-22); GB-21 อิสระ (หลัง ADR-024 accepted); GB-23 ∥ GB-24 ∥ GB-25 อิสระ (GB-25 sync `middlewares.ts` หลัง GB-20)
 GB-22 ขยาย allow-list ของ GB-8 (`order.payment_status`) — บันทึกเป็นภาคผนวก 2026-11-21 ใน ADR-016 แล้ว
 
 ## Open questions

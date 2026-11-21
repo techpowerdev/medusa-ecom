@@ -1,6 +1,7 @@
 # ADR-024 group buy: กันการชำระหลังสิทธิ์ถูกยกเลิก + ยกเลิก PaymentIntent ที่ค้าง + คืนเงินอัตโนมัติ
 
-สถานะ: **accepted** (owner อนุมัติ 2026-11-21 — ฉบับที่แก้ตาม review #425 blocker 1–2; ทิศทางจากคำตัดสิน owner 2026-11-21 "กัน + คืนเงินอัตโนมัติ")
+สถานะ: **accepted** — owner อนุมัติ**ฉบับแรก** 2026-11-21 (ก่อน review #425; ทิศทาง "กัน + คืนเงินอัตโนมัติ"); ฉบับแก้ตาม review #425 blocker 1–2 (เพิ่ม "race ที่ยอมรับ") ถูกนำกลับไปถาม owner อีกครั้ง 2026-11-21
+→ owner **ไม่ยอมรับ race** และเลือกปิดด้วย GB-20b (ภาคผนวก 2026-11-21 ด้านล่าง — แทนย่อหน้า "race ที่ยอมรับ" ในผลที่ตามมา)
 เกี่ยวข้อง: ADR-015 (guard `PAYMENT_ALREADY_COMPLETED`, ตาข่าย D), ADR-016 (GB-8), spec 04 กฎข้อ 9, 22, 25, 26, 42–45 และ Q13 (เดิม = ก manual), spec 06 กฎข้อ 4, 7, 9;
 task GB-20, GB-21, GB-22 (spec 04 รอบ 40); แทนที่ส่วน "ไม่ refund อัตโนมัติ" ของ spec 04 กฎข้อ 25/26 และ Q13 **เฉพาะกรณีเงินเข้าหลัง membership ถูกยกเลิก**
 
@@ -53,3 +54,39 @@ task GB-20, GB-21, GB-22 (spec 04 รอบ 40); แทนที่ส่วน 
 - เพิ่มเส้นทางเงินอัตโนมัติหนึ่งเส้น (กันซ้ำด้วย lock + ยอดคงเหลือ; test ส่ง event ซ้ำ/พร้อมกัน และ refund draft order ที่ยกเลิกจริงไม่ mock workflow)
 - `middlewares.ts` มี middleware บน route เดียวกันหลายตัว (ลำดับตาม ADR-025) — ต้องคงที่และมี test
 - ความเสี่ยงที่เหลือ: Stripe ล่มตอน refund → `refund_failed` + runbook
+
+## ภาคผนวก 2026-11-21: ตรวจสถานะที่ provider ก่อนยกเลิก (GB-20b) — accepted (owner 2026-11-21)
+บริบท: owner ไม่ยอมรับ "race ที่ยอมรับ" ข้างบน (ลูกค้าจ่ายสำเร็จก่อน deadline แต่ webhook มาช้า → ถูกยกเลิกสิทธิ์และต้องรอ ops คืนเงินมือ) → ปิดด้วยการตรวจสถานะ PaymentIntent
+**ก่อน**ยกเลิก membership แทนการเผื่อเวลา ส่วนนี้แทนย่อหน้า "race ที่ยอมรับ" ในผลที่ตามมา (ข้อ (a), (c), (d) ไม่เปลี่ยน; (b) ยังทำเมื่อผลตรวจ = ยังไม่จ่าย)
+
+ข้อเท็จจริงจาก source 2.22.1 (ตรวจใน `node_modules`):
+- Payment module **ไม่มี** method สาธารณะสำหรับอ่านสถานะอย่างเดียว — `getStatus` อยู่ที่ `PaymentProviderService` ภายใน (`@medusajs/payment/dist/services/payment-provider.js:59-62`, เรียกผ่าน `paymentProviderService_` ที่ไม่ export)
+  method สาธารณะที่อ่านสถานะคือ **`paymentModule.authorizePaymentSession(id, context)`** (`payment-module.js:224-280`) → provider `authorizePayment` (`payment-provider.js:55-58`)
+  → Stripe `getPaymentStatus` (`payment-stripe/dist/core/stripe-base.js:129-139, 162-164` — `paymentIntents.retrieve` ไม่ห่อ error) → map สถานะ (`stripe-base.js:393-422`) — เส้นทางเดียวกับ guard ADR-015 A
+- ผลของ `authorizePaymentSession`: session มี payment + `authorized_at` แล้ว → คืน payment เดิม (idempotent, `:239-241`); `pending_authorization` (PI `processing` ของ async method) → update session แล้วคืน `null` (`:246-254`);
+  สถานะอื่นที่ไม่ใช่ `authorized`/`captured` (PI `requires_payment_method`/`requires_confirmation`/`requires_action`/`canceled`) → update session แล้ว throw `MedusaError` **`NOT_ALLOWED`** (`:255-263`);
+  `authorized`/`captured` → `authorizePaymentSession_` สร้าง payment + (ถ้า `captured`) capture แบบไม่เรียก provider ซ้ำ (`:281-313`, `:413-436`) แล้ว `maybeUpdatePaymentCollection_` (`:278`);
+  Stripe/network error → throw `Error` ธรรมดา (ไม่ใช่ `MedusaError`)
+- **ไม่ใช้ `authorizePaymentSessionStep`** ของ core-flows: กลืน error ที่ไม่ใช่ `MedusaError` แล้ว throw `PAYMENT_AUTHORIZATION_ERROR` (`core-flows/dist/payment/steps/authorize-payment-session.js:23-50`) จึงแยก "provider ล่ม" กับ "ยังไม่จ่าย" ไม่ได้
+  และ compensation เรียก `cancelPayment` (`:54-72`) — เหตุผลเดียวกับ ADR-015 A ข้อ 6 (เรียก module ตรงใน step ของเรา ไม่มี compensation ที่ยกเลิก payment)
+- `authorizePaymentSession` **ไม่ emit `payment.captured`** — event มาจาก `capturePaymentWorkflow` (`core-flows/dist/payment/workflows/capture-payment.js:53-56`) ซึ่ง `processPaymentWorkflow` เรียกต่อจาก authorize ใน branch autocapture
+  (`process-payment.js:114-144`); `capturePaymentWorkflow` บน payment ที่มี `captured_at` แล้วไม่สร้าง capture ใหม่และไม่เรียก provider (`payment-module.js:363-364`, `:427-436`) และ
+  `addOrderTransactionStep` ข้าม transaction ที่ `reference_id` ซ้ำ (`core-flows/dist/order/steps/add-order-transaction.js:16-38`) → webhook ที่มาทีหลังรันซ้ำได้ไม่เกิดของซ้อน
+- payment ที่สองของ session เดียวกันสร้างไม่ได้ (unique index `IDX_payment_payment_session_id_unique` — spec 06 หมายเหตุรอบ 6) → job กับ webhook ที่ authorize พร้อมกันได้ payment เดียว ฝั่งที่แพ้ได้ error (ไม่ใช่ `NOT_ALLOWED`)
+
+การตัดสินใจ — job หมดเวลาชำระ ก่อนเรียก `expireGroupBuyMembershipPaymentWorkflow` ของ membership ที่ collection มี session ที่ยังไม่มี payment: ตรวจทุก session ด้วย `authorizePaymentSession` แล้วตัดสินรวม
+1. **จ่ายแล้ว** (ได้ payment จาก session ใดก็ได้) → `capturePaymentWorkflow` ของ Medusa กับ payment นั้น (emit `payment.captured` แบบเดียวกับ branch autocapture) → subscriber เดิม (GB-5) ตั้ง `paid` + `convertDraftOrderWorkflow`
+   → **ไม่ยกเลิก** ไม่ลบ session ลูกค้าได้ order; job ไม่เรียก expire รอบนี้ (และ `shouldExpireMembershipPayment` ข้ามอยู่แล้วเพราะ collection ไม่อยู่ในกลุ่ม unpaid)
+2. **ยังไม่จ่าย** (ทุก session throw `NOT_ALLOWED`, หรือ collection ไม่มี session — ไม่เรียก provider) → expire ตามเดิม: ยกเลิก + (b) ลบ session (cancel PI)
+3. **ตรวจไม่ได้** (error อื่นจาก provider หรือได้ `null` = `pending_authorization`) → รอบนี้**ไม่ลบ ไม่ยกเลิก** + `logger.warn` บรรทัดเดียวขึ้นต้น `GROUP_BUY_PAYMENT_CHECK_FAILED` (membership, session, error) แล้วลองใหม่รอบถัดไป (job ทุก 1 นาที)
+   **เพดาน: 15 นาทีนับจาก `pay_deadline_at`** (≈ 15 รอบ — วัดจากเวลา ไม่ต้องเก็บตัวนับ ไม่มี data model ใหม่) — ยังตรวจไม่ได้เมื่อ `now − pay_deadline_at ≥ 15 นาที` → expire ตามเดิม
+   พร้อม `logger.error` ขึ้นต้น `GROUP_BUY_PAYMENT_CHECK_GAVE_UP` และอีเมลหา `OPS_ALERT_EMAIL` (idempotency key ต่อ membership — แบบเดียวกับ alert เดิม; ไม่ตั้ง env → warn แล้วข้าม; ส่งล้มไม่ทำให้ job ล้ม)
+   ให้ ops ตรวจ PI ใน Stripe ตาม runbook ADR-015 D (หลังยกเลิก ถ้า PI ยังจ่ายได้และ session ยังอยู่ → `payment.captured` → (c) คืนเงินอัตโนมัติ; ถ้า session ถูกลบแล้ว → ADR-015 D)
+- **ไม่เผื่อเวลา (owner เลือก 2026-11-21):** deadline ที่ประกาศยังเป็นจุดตัด guard `GB_PAYMENT_CLOSED` (a) ไม่เปลี่ยน — หลัง deadline สร้าง session ใหม่ไม่ได้ทันที; การตรวจนี้ไม่ให้สิทธิ์จ่ายเพิ่ม
+  แค่ไม่ยกเลิกเงินที่จ่ายสำเร็จ**แล้ว** (เหตุผล: เผื่อเวลาทำให้ deadline ที่ลูกค้าเห็นไม่ตรงความจริงและเลื่อนการคืนสต็อก/ปิดกลุ่ม ส่วนการตรวจที่ provider ปิด race ได้ตรงจุดกว่า)
+  ข้อยกเว้นที่รู้: ช่วงที่ provider ล่ม (ข้อ 3) PI ที่เปิดค้างก่อน deadline ยังจ่ายได้นานสุดถึงเพดาน — ถ้าจ่ายได้ รอบถัดไปเจอ "จ่ายแล้ว" → ได้ order
+- race ที่เหลือ: PI สำเร็จในช่วงมิลลิวินาทีระหว่างตรวจ (ยังไม่จ่าย) กับ `deletePayment` → ตกตาข่าย ADR-015 D (`PAYMENT_WEBHOOK_SESSION_NOT_FOUND` + อีเมล) เหมือน TOCTOU ของ ADR-015 A
+- ขอบเขต ADR-007/ADR-015: เป็นรูปแบบเดียวกับ guard ADR-015 A ("ตรวจผ่าน `authorizePaymentSession` ก่อนลบ session ที่ Medusa ยังรู้จัก") ขยายไปที่ job — **ไม่ใช่** reconciliation แบบ ADR-015 B
+  (ไม่ค้น PI ใน Stripe ที่ Medusa ไม่มี session) ไม่เรียก Stripe SDK ตรง ไม่สร้าง payment/capture นอก method/workflow ของ Medusa
+- ผลที่ตามมา: Stripe retrieve 1 ครั้งต่อ session ต่อรอบของ membership ที่หมดเวลา (≤ 50 ต่อรอบตาม batch เดิม); การยกเลิกช้ากว่า deadline ได้ ≤ 15 นาทีเฉพาะตอน provider ล่ม;
+  task **GB-20b** (spec 04 กฎข้อ 50, AC-68) หลัง GB-20
