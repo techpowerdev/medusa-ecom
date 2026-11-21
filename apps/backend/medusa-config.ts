@@ -11,8 +11,14 @@ const redisUrl = getRedisModulesUrl(process.env)
 
 // OPS-7 (AC-13, AC-17): production ขาด AFFILIATE_TOKEN_SECRET / STOREFRONT_URL → throw; นอก prod เตือนครั้งเดียวตอนบูต
 // OPS-13 (AC-20): production ที่ตั้ง ALLOW_TEST_PROVIDERS=true เตือนครั้งเดียวตอนบูต (ยังบูตได้ — CI ใช้)
-for (const warning of checkBootEnv(process.env)) {
-  console.warn(`[medusa-config] ${warning}`)
+// OPS-31 (AC-46a): `medusa db:migrate` fork process ลูก (db:migrate:search/scripts) ที่สืบทอด env แล้วโหลด config ซ้ำ
+// → guard ยังตรวจทุก process แต่ warning ออกครั้งเดียวทั้ง process tree (ตัวแปร env ส่งต่อให้ลูก)
+const bootWarnings = checkBootEnv(process.env)
+if (process.env.MEDUSA_CONFIG_WARNED !== 'true') {
+  for (const warning of bootWarnings) {
+    console.warn(`[medusa-config] ${warning}`)
+  }
+  process.env.MEDUSA_CONFIG_WARNED = 'true'
 }
 
 module.exports = defineConfig({

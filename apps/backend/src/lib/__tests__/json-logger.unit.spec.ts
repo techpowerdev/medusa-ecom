@@ -59,6 +59,37 @@ describe("buildJsonLogger (OPS-3, AC-18)", () => {
     expect(lines[0]).toEqual(expect.objectContaining({ worker_mode: "shared", message: "hello" }))
   })
 
+  // OPS-31 AC-46a: `medusa db:migrate` ตั้ง MEDUSA_WORKER_MODE=server เองก่อนโหลด config และส่งต่อให้ process ลูก
+  // (db:migrate:search, db:migrate:scripts) → log ของขั้น migrate ต้องไม่ติด worker_mode: server
+  it.each([["db:migrate"], ["db:migrate:search"], ["db:migrate:scripts"], ["db:sync-links"]])(
+    "AC-46a คำสั่ง %s → worker_mode: migrate แม้ MEDUSA_WORKER_MODE=server",
+    (command) => {
+      const { lines, stream } = capture()
+      const logger = buildJsonLogger(
+        { NODE_ENV: "production", MEDUSA_WORKER_MODE: "server" },
+        stream,
+        ["/usr/local/bin/node", "/app/node_modules/@medusajs/cli/cli.js", command]
+      )!
+
+      logger.info("Running migrations...")
+
+      expect(lines[0]).toEqual(expect.objectContaining({ worker_mode: "migrate" }))
+    }
+  )
+
+  it("AC-46a `medusa start` ยังได้ worker_mode ตาม env", () => {
+    const { lines, stream } = capture()
+    const logger = buildJsonLogger({ NODE_ENV: "production", MEDUSA_WORKER_MODE: "server" }, stream, [
+      "/usr/local/bin/node",
+      "/app/node_modules/.bin/medusa",
+      "start",
+    ])!
+
+    logger.info("hello")
+
+    expect(lines[0]).toEqual(expect.objectContaining({ worker_mode: "server" }))
+  })
+
   it("development → undefined (ใช้ logger ของ Medusa ตามเดิม: format CLI + spinner)", () => {
     expect(buildJsonLogger({ NODE_ENV: "development", MEDUSA_WORKER_MODE: "worker" })).toBeUndefined()
     expect(buildJsonLogger({})).toBeUndefined()

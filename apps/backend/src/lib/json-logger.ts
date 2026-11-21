@@ -12,14 +12,16 @@ type Env = Record<string, string | undefined>
  * ส่งเข้า Medusa ผ่าน option `logger` ของ `defineConfig` (ไม่แตะ logger/event bus ของ Medusa)
  * format เดียวกับ default ของ Medusa 2.22.1 (`@medusajs/cli/dist/reporter`) รวม `LOG_LEVEL`/`LOG_FILE`
  * development คืน `undefined` → Medusa ใช้ logger เดิม (format CLI + spinner)
+ * OPS-31 (AC-46a): คำสั่ง `medusa db:*` (รวม process ลูก db:migrate:search/scripts ที่ Medusa fork) → `worker_mode: "migrate"`
+ * เพราะ `medusa db:migrate` ตั้ง MEDUSA_WORKER_MODE=server เองก่อนโหลด config (ไม่ใช่ process server จริง)
  */
-export function buildJsonLogger(env: Env, stream?: Writable): Logger | undefined {
+export function buildJsonLogger(env: Env, stream?: Writable, argv: string[] = process.argv): Logger | undefined {
   const nodeEnv = env.NODE_ENV || "development"
   if (nodeEnv.startsWith("dev")) {
     return undefined
   }
 
-  const workerMode = env.MEDUSA_WORKER_MODE || "shared"
+  const workerMode = argv[2]?.startsWith("db:") ? "migrate" : env.MEDUSA_WORKER_MODE || "shared"
   const transports: winston.transport[] = [
     stream ? new winston.transports.Stream({ stream }) : new winston.transports.Console(),
   ]
