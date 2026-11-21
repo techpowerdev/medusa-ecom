@@ -2,6 +2,7 @@ import {
   createInstantSearchAdapter,
   type MedusaSdkLike,
 } from "@medusajs/instantsearch-adapter"
+import type { IndexUiState, StateMapping, UiState } from "instantsearch.js"
 
 import { sdk } from "@lib/config"
 
@@ -56,3 +57,46 @@ export const { searchClient } = createInstantSearchAdapter({
     `max_price_${currency}`,
   ]),
 })
+
+/**
+ * CORE-70 (spec 01 กฎข้อ 128a): หน้า `/search` (server) ใช้ `POST /store/search` ผ่าน adapter เดียวกับ drawer และ `/store`
+ * → คำค้นเดียวกันได้ชุดผลเดียวกัน; คืน id ตามลำดับผล + จำนวนทั้งหมด
+ */
+export const searchProductIds = async (query: string, limit: number) => {
+  const { results } = await searchClient.search([
+    { indexName: PRODUCT_INDEX_NAME, params: { query, hitsPerPage: limit } },
+  ])
+  const [result] = results
+  return { ids: result.hits.map((hit) => hit.objectID), count: result.nbHits }
+}
+
+type StoreRouteState = { q?: string } & Record<string, unknown>
+
+/**
+ * CORE-70 (spec 01 กฎข้อ 128b): URL ของ `/store` ใช้ `?q=` แทน `product[query]` ของ InstantSearch — ลิงก์ `/store?q=<คำ>`
+ * ตั้งคำค้นเริ่มต้น; ตัวกรองอื่นคงรูปแบบเดิมใต้ `product[...]` (URL เดิม `product[query]` ยังใช้ได้)
+ */
+export const storeStateMapping: StateMapping<UiState, StoreRouteState> = {
+  stateToRoute(uiState) {
+    const { configure: _configure, query, ...rest } =
+      uiState[PRODUCT_INDEX_NAME] ?? {}
+    return {
+      ...(query ? { q: query } : {}),
+      ...(Object.keys(rest).length ? { [PRODUCT_INDEX_NAME]: rest } : {}),
+    }
+  },
+  routeToState(route = {}) {
+    const index = route[PRODUCT_INDEX_NAME]
+    const { configure: _configure, ...state }: IndexUiState =
+      index && typeof index === "object" ? (index as IndexUiState) : {}
+    const q = Array.isArray(route.q) ? route.q[0] : route.q
+    if (typeof q === "string" && q) {
+      state.query = q
+    }
+    const uiState: UiState = {}
+    if (Object.keys(state).length) {
+      uiState[PRODUCT_INDEX_NAME] = state
+    }
+    return uiState
+  },
+}
