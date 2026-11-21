@@ -505,7 +505,7 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
 - AC-50 (EV-20, กฎข้อ 36) integration — **ล้มบน develop** ก่อน: (a) pool ที่มี code `available` 5 + `void` 1 ไม่มี order → DELETE 200, code ทั้ง 6 ถูก soft-delete, inventory level ของ variant ลดลง 5, `requires_shipping=true`;
   (b) pool ที่มี code `delivered` 1 → 400 ข้อความตาม 36a ทุกอย่างคงเดิม; (c) step ลด stock ล้ม (mock) → code/pool คืนครบ; (d) pool ว่าง → `low_stock=false`, `total_codes=0`; pool 5 available threshold 20 → `low_stock=true` (AC-15 เดิม);
   (e) reservation ค้าง 1 → 400 ข้อความตาม 36d ทุกอย่างคงเดิม, ลบ reservation แล้วลบได้; (f) job รายวันไม่ส่ง low-stock ของ pool ที่ไม่มี code
-- AC-51 (EV-21, กฎข้อ 37) e2e admin: ลบ pool ที่ไม่มีการส่ง → prompt แสดงจำนวน code → ยืนยัน → toast และ pool หายจากตาราง; dblclick ปุ่มยืนยัน → DELETE 1 ครั้ง (นับ request);
+- AC-51 ☑ (EV-21, กฎข้อ 37) e2e admin: ลบ pool ที่ไม่มีการส่ง → prompt แสดงจำนวน code → ยืนยัน → toast และ pool หายจากตาราง; dblclick ปุ่มยืนยัน → DELETE 1 ครั้ง (นับ request);
   pool ที่มี code ส่งแล้ว → toast error และ pool ยังอยู่; pool ใหม่ไม่มี code → เห็น badge "No codes" ไม่เห็น "Low stock"; menuitem หาด้วย role + ชื่อ (ADR-018)
 - AC-52 (EV-22, กฎข้อ 38) integration + e2e admin: order ที่ pool หมดตอน capture (backordered) → API ตามข้อ 38a คืนธงของ line นั้น (ล้มบน develop); หน้า order ใน admin เห็น `evoucher-backordered-badge` 1 ตัวต่อ line ที่ค้าง; หลัง resend สำเร็จ badge หาย
 

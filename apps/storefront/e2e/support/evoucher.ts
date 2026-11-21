@@ -22,9 +22,9 @@ export async function call(
   return res.json()
 }
 
-export type Voucher = { variantId: string; handle: string; partnerName: string; partnerId: string }
+export type Voucher = { variantId: string; handle: string; partnerName: string; partnerId: string; poolId: string }
 
-/** voucher variant (ไม่มี shipping profile) + pool + import `count` code (`code,pin,expires_at?`) ผ่าน admin API */
+/** voucher variant (ไม่มี shipping profile) + pool + import `count` code (`code,pin,expires_at?`) ผ่าน admin API (`count` 0 = pool ว่าง ไม่ import) */
 export async function createVoucher(
   request: APIRequestContext,
   admin: Headers,
@@ -68,6 +68,8 @@ export async function createVoucher(
     how_to_use: "แสดง code ที่แคชเชียร์",
     ...(pool.validity_note ? { validity_note: pool.validity_note } : {}),
   })
+  const voucher = { variantId, handle: product.handle, partnerName, partnerId: partner.id, poolId: created.pool.id as string }
+  if (count === 0) return voucher
   const expires = pool.expires_at ? `,${pool.expires_at}` : ""
   const imported = await request.post(`${BACKEND_URL}/admin/evoucher/pools/${created.pool.id}/import`, {
     headers: admin,
@@ -82,7 +84,7 @@ export async function createVoucher(
     },
   })
   expect(imported.status(), "import codes").toBe(200)
-  return { variantId, handle: product.handle, partnerName, partnerId: partner.id }
+  return voucher
 }
 
 /** cart digital-only (ไม่มีที่อยู่/shipping method, AC-3) → complete → capture โดย admin → payment.captured */
