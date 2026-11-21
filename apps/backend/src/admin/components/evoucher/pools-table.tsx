@@ -76,31 +76,42 @@ export const PoolsTable = () => {
   return (
     // กฎ 25: DataTable ไม่มี prop error → แสดง error ผ่าน emptyState คงหัวตาราง; testid เฉพาะตอนล้ม
     <div data-testid={loadFailed ? "evoucher-pools-error" : undefined}>
-      <PageOffsetGate prefix={PREFIX}>
-        <DataTable
-          data={data?.pools ?? []}
-          columns={columns}
-          getRowId={(pool) => pool.id}
-          rowCount={data?.count ?? 0}
-          isLoading={isLoading}
-          heading="E-voucher pools"
-          subHeading="Create a pool from a product variant page (Voucher pool widget), then import partner codes here."
-          prefix={PREFIX}
-          pageSize={PAGE_SIZE}
-          // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
-          enablePagination={!loadFailed}
-          enableSearch={false}
-          rowHref={(pool) => `/evouchers/pools/${pool.id}`}
-          emptyState={{
-            empty: loadFailed
-              ? { heading: "Could not load voucher pools", description: error?.message }
-              : {
-                  heading: "No voucher pools yet",
-                  description: "Open a product variant and create a voucher pool from the Voucher pool widget.",
-                },
-          }}
-        />
-      </PageOffsetGate>
+      {/* D1 (qa #454 — session หลักตัดสิน): prompt ปิดตั้งแต่คลิกแรกของ dblclick แล้วคลิกที่สองตกลงบนแถวใต้ปุ่มยืนยัน → rowHref พาไปหน้า pool
+          (อาจเป็น pool ที่เพิ่งลบ) — ไม่ให้คลิกถึงแถวระหว่างลบ (single-flight ยังทำงาน) หรือเป็นคลิกต่อเนื่อง (event.detail > 1 แบบ ADM-39);
+          คลิกเดียวที่แถวยังเปิดหน้า pool ตามเดิม (คลิกต่อเนื่องที่แถวเปิดหน้าตั้งแต่คลิกแรกอยู่แล้ว) */}
+      <div
+        onClickCapture={(e) => {
+          if (e.detail > 1 || deleteOnce.isPending()) {
+            e.stopPropagation()
+          }
+        }}
+      >
+        <PageOffsetGate prefix={PREFIX}>
+          <DataTable
+            data={data?.pools ?? []}
+            columns={columns}
+            getRowId={(pool) => pool.id}
+            rowCount={data?.count ?? 0}
+            isLoading={isLoading}
+            heading="E-voucher pools"
+            subHeading="Create a pool from a product variant page (Voucher pool widget), then import partner codes here."
+            prefix={PREFIX}
+            pageSize={PAGE_SIZE}
+            // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
+            enablePagination={!loadFailed}
+            enableSearch={false}
+            rowHref={(pool) => `/evouchers/pools/${pool.id}`}
+            emptyState={{
+              empty: loadFailed
+                ? { heading: "Could not load voucher pools", description: error?.message }
+                : {
+                    heading: "No voucher pools yet",
+                    description: "Open a product variant and create a voucher pool from the Voucher pool widget.",
+                  },
+            }}
+          />
+        </PageOffsetGate>
+      </div>
     </div>
   )
 }

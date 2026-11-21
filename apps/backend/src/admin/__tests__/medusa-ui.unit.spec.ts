@@ -222,6 +222,14 @@ describe("หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)
     expect(src).toMatch(/<PoolStockBadge\b/)
   })
 
+  // D1 (qa #454): คลิกที่สองของ dblclick ปุ่มยืนยันทะลุไปโดนแถว (rowHref) — ตารางกันการนำทางระหว่างลบ/คลิกต่อเนื่อง
+  it("pools-table.tsx กันคลิกแถวด้วย onClickCapture (event.detail > 1 หรือ deleteOnce.isPending())", () => {
+    const src = read("components/evoucher/pools-table.tsx")
+    expect(src).toMatch(/onClickCapture=\{/)
+    expect(src).toMatch(/\.detail > 1/)
+    expect(src).toMatch(/deleteOnce\.isPending\(\)/)
+  })
+
   it("components/evoucher/pool-delete.tsx ใช้ ActionMenu + usePrompt + toast + StatusBadge ของ Medusa และ createSingleFlight", () => {
     const src = read("components/evoucher/pool-delete.tsx")
     expect(importsFrom(src, "ActionMenu", "@medusajs/dashboard/components")).toBe(true)

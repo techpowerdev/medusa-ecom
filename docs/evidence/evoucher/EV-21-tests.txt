@@ -30,3 +30,21 @@ Tests:       1588 passed, 1588 total
 124 passed (3.0s)
 ### lint / typecheck
 pnpm lint: 0 errors (warning เดิมของ storefront); pnpm typecheck: ผ่าน (ไม่นับ .medusa/types ที่ medusa develop สร้างในเครื่อง)
+
+## รอบแก้ D1 (qa #454 — session หลักตัดสิน 2026-11-21): dblclick ยืนยันลบแล้วคลิกที่สองทะลุไปแถวใต้ปุ่ม → rowHref
+### RED (ก่อนแก้)
+unit:
+    Expected pattern: /onClickCapture=\{/
+    TypeError: run.isPending is not a function
+Tests:       2 failed, 244 skipped, 1 passed, 247 total
+e2e D1 (pools-table.tsx ของ commit ก่อนแก้ — ถูกพาไปหน้า 404 ของ pool จำลองใต้ปุ่ม):
+  1) [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:159:7 › D1: dblclick ยืนยันลบในตาราง pools ที่มีแถวใต้ปุ่ม › AC-51: dblclick ปุ่ม Delete ใน prompt → DELETE 1 ครั้ง และไม่ถูกพาไปหน้า pool ของแถวใต้ปุ่ม › Delete ของแถวแรก → dblclick ยืนยัน → DELETE 1 ครั้ง, toast และยังอยู่หน้า E-vouchers 
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 9
+    Received: 0
+  1 failed
+### GREEN (หลังแก้, merge origin/develop 6f24b96b แล้ว)
+e2e evoucher-admin-pool-delete.spec.ts:
+  4 passed (14.8s)
+admin unit: Test Suites 22 passed, Tests 552 passed
+storefront test:e2e:unit: 126 passed; lint 0 errors; typecheck ผ่าน; backend build (NODE_ENV=production) ผ่าน

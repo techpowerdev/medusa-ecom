@@ -149,3 +149,67 @@ test("AC-51: pool ใหม่ไม่มี code → badge No codes (ไม่
     expect(res.status()).toBe(404)
   })
 })
+
+// D1 (qa #454 — session หลักตัดสิน 2026-11-21): dialog ปิดตั้งแต่คลิกแรกของ dblclick แล้วคลิกที่สองตกลงบนแถวใต้ปุ่ม Delete
+// → rowHref พาไปหน้า pool (บางครั้งเป็น pool ที่เพิ่งลบ) — ตารางต้องไม่นำทางจากคลิกแถวระหว่างลบหรือคลิกที่ต่อจาก dblclick
+// จัดให้มีแถวใต้ปุ่ม: แทน GET รายการ pool ด้วย pool จริง (แถวแรก) + pool จำลอง 9 แถว (DB ของ e2e ใช้ร่วมกัน ลำดับไม่ตายตัว)
+test.describe("D1: dblclick ยืนยันลบในตาราง pools ที่มีแถวใต้ปุ่ม", () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test("AC-51: dblclick ปุ่ม Delete ใน prompt → DELETE 1 ครั้ง และไม่ถูกพาไปหน้า pool ของแถวใต้ปุ่ม", async ({ page, request, step }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const { poolId } = await createVoucher(request, admin, 2)
+    const { pool } = await call(request, admin, `${POOLS_PATH}/${poolId}`)
+    const fakes = Array.from({ length: 9 }, (_, i) => ({
+      ...pool,
+      id: `evpool_mock_d1_${i}`,
+      name: `Mock pool D1 ${i}`,
+      code_counts: { available: 50, allocated: 0, delivered: 0, void: 0 },
+      total_codes: 50,
+      low_stock: false,
+    }))
+    let deleted = false
+    await page.route(
+      (url) => url.pathname === POOLS_PATH,
+      async (route) => {
+        if (route.request().method() !== "GET") return route.fallback()
+        const pools = deleted ? fakes : [pool, ...fakes]
+        await route.fulfill({ json: { pools, count: pools.length, limit: 20, offset: 0 } })
+      }
+    )
+    const deletes = countDeletes(page, poolId)
+    page.on("response", (res) => {
+      if (res.request().method() === "DELETE" && res.ok()) deleted = true
+    })
+
+    await step("Delete ของแถวแรก → dblclick ยืนยัน → DELETE 1 ครั้ง, toast และยังอยู่หน้า E-vouchers", async () => {
+      await loginAdmin(page)
+      await openPoolsPageWith(page, 0)
+      const row = page.locator("tbody tr").filter({ hasText: pool.name })
+      // ตาราง Partners ในหน้าเดียวกันก็มี tbody tr — นับเฉพาะแถว pool จำลอง
+      const mockRows = page.locator("tbody tr").filter({ hasText: "Mock pool D1" })
+      await expect(row).toHaveCount(1)
+      await expect(mockRows).toHaveCount(9)
+      await (await rowAction(row, "evoucher-pool-row-actions", "Delete")).click()
+      const confirm = page.getByRole("alertdialog").getByRole("button", { name: "Delete" })
+      await expect(confirm).toBeVisible()
+      // ปุ่มยืนยันอยู่เหนือแถวของตารางจริง (เงื่อนไขของ D1)
+      const box = (await confirm.boundingBox())!
+      const under = await page.evaluate(
+        ([x, y]) => Array.from(document.querySelectorAll("tbody tr")).some((tr) => {
+          const r = tr.getBoundingClientRect()
+          return y >= r.top && y <= r.bottom && x >= r.left && x <= r.right
+        }),
+        [box.x + box.width / 2, box.y + box.height / 2]
+      )
+      expect(under).toBe(true)
+      await confirm.dblclick()
+      await expect(toast(page, "Voucher pool deleted")).toBeVisible()
+      await expect(row).toHaveCount(0)
+      await expect(mockRows).toHaveCount(9)
+      await expect(page).toHaveURL(/\/app\/evouchers(\?|$)/)
+      expect(deletes).toHaveLength(1)
+    })
+  })
+})
