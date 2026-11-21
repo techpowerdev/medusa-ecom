@@ -268,6 +268,26 @@ payment มีอยู่ใน Medusa และผูกกับ draft order 
   3. ไม่มี `refund_result` ในเหตุนี้ = subscriber เวอร์ชันก่อน GB-21 — ทำแบบข้อ 2
 แล้วแจ้งลูกค้า (อีเมลของ order) ว่าแปลงเป็นคำสั่งซื้อแล้ว/คืนเงินแล้ว และบันทึก incident (membership, order, payment, จำนวนเงิน, `reason`, การดำเนินการ, ผู้ทำ)
 
+## log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ (OPS-32)
+ที่มา: `completeCartWorkflow` ล้ม**หลัง** Stripe ตัดเงินแล้ว (เช่น flash เกินสิทธิ์ `FLASH_LIMIT_EXCEEDED`, สินค้า/e-voucher หมด, step หลัง hook ล้ม) →
+Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็มจำนวนเอง (refund note "Refunded due to cart completion failure") แล้วสร้าง payment session
+ใหม่ด้วย `data` ของ session เดิม ซึ่ง Stripe ปฏิเสธ → Medusa เขียน log ระดับ error สองบรรทัด**ทั้งที่คืนเงินสำเร็จแล้ว** (ADR-025 บริบท):
+- `Encountered an error when trying to recreate a payment session - [object Object] - Error: An error occurred in InitiatePayment … Invalid string: {…}`
+  (ท้ายบรรทัดมีข้อมูล billing ของลูกค้า — อย่าแปะ log นี้ลง ticket/แชตสาธารณะ)
+- `Error was thrown trying to refund payment - <payment_id> - [object Object]`
+
+ก่อนสองบรรทัดนี้ backend เขียน warn หนึ่งบรรทัดขึ้นต้น `CART_COMPLETION_FAILED_AFTER_PAYMENT` (`apps/backend/src/workflows/hooks/paid-completion-failure.ts`)
+มี `cart_id`, `payment_session_id`, `payment_id` และ `code` (code ของ error เช่น `FLASH_LIMIT_EXCEEDED`; `STEP_AFTER_VALIDATE_FAILED` = step หลัง hook ล้ม
+ดู error ของ workflow ในบรรทัดถัดไป) ใช้บรรทัดนี้เป็นจุดเริ่มตรวจ ไม่ใช่สอง log ของ Medusa
+1. `GET /admin/payments/<payment_id>` (id จาก warn หรือจากบรรทัด `Error was thrown trying to refund payment`) → ดู `refunds`:
+   มี refund note "Refunded due to cart completion failure" และยอดรวมเท่ายอดที่ capture = คืนเงินสำเร็จ
+2. ยืนยันใน Stripe dashboard (ดูอย่างเดียว): หน้า PI ของ payment นี้ส่วน Refunds มี refund เต็มจำนวน
+3. **ห้าม refund ซ้ำด้วยมือ** (ทั้ง Stripe dashboard และ script `refund-orphan-payment`) เมื่อข้อ 1–2 ครบแล้ว — ปิดเป็น incident ระดับข้อมูล (cart, payment, code)
+   ลูกค้าเห็นรายการตัดเงินและคืนเงินคู่กันในบัตร/แอปธนาคาร
+4. ข้อ 1 ไม่มี refund หรือยอดไม่ครบ (refund ที่ provider ล้มจริง) → ทำตามหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" กรณี "ไม่มี alert" ข้อ 3–4
+5. ถ้าไม่มี warn แต่มีสอง log ของ Medusa (เช่น backend เวอร์ชันก่อน OPS-32) ให้ทำข้อ 1–4 เช่นกัน; ลูกค้าที่จ่ายใหม่ใน cart เดิม → ADR-025 (PAY-9)
+ตอน bump `@medusajs/*` ตรวจว่าสอง log นี้ยังเกิด (spec 07 checklist bump ข้อ 11; integration `complete-after-payment-log.spec.ts`) แล้วปรับหัวข้อนี้
+
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
 - `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL` และ Alerts)

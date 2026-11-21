@@ -66,11 +66,11 @@ export const voidAvailableEvoucherCodesStep = createStep(
   }
 )
 
-type EvoucherStockLevel = { inventory_item_id: string; location_id: string }
+export type EvoucherStockLevel = { inventory_item_id: string; location_id: string }
 
 // EV-N1: อ่าน stocked/reserved ของ inventory level ของ pool — ใช้ร่วมกันระหว่างตรวจ reservation ของ admin void (ใต้ lock)
-// และ job รายวัน (อ่านอย่างเดียว ไม่ lock)
-const readEvoucherStock = async (
+// และ job รายวัน (อ่านอย่างเดียว ไม่ lock); EV-20 การลบ pool ตรวจ reservation ใต้ lock เดียวกัน
+export const readEvoucherStock = async (
   container: MedusaContainer,
   level: EvoucherStockLevel
 ): Promise<{ stocked: number; reserved: number }> => {

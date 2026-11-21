@@ -1,4 +1,4 @@
-import { productFiltersForScope, selectProductProgram, shareUrl, variantsInScope } from "../portal"
+import { cardEstimate, productFiltersForScope, selectProductProgram, shareUrl, variantsInScope } from "../portal"
 
 // AF-7 (spec 05 กฎ 16, Q2): ขอบเขตโปรแกรม → สินค้าบน portal ใช้กฎเดียวกับการคำนวณของ AF-3
 describe("productFiltersForScope", () => {
@@ -127,5 +127,47 @@ describe("selectProductProgram", () => {
   it("returns null when no program covers a variant", () => {
     expect(selectProductProgram("active", [])).toBeNull()
     expect(selectProductProgram("active", [{ program: P1, variant_ids: [] }])).toBeNull()
+  })
+})
+
+// AF-24 (spec 05 กฎ 48a, AC-56): ยอดประมาณการบนการ์ดจากราคาก่อน VAT ของ Medusa × อัตรา ปัด 2 ตำแหน่ง half-up
+describe("cardEstimate", () => {
+  const priced = (calculated_amount: number, calculated_amount_without_tax?: number) => ({
+    calculated_price: { calculated_amount, calculated_amount_without_tax, currency_code: "thb" },
+  })
+
+  it("uses the price before VAT: ฿590 incl. 7% at 10% → 55.14", () => {
+    expect(cardEstimate([priced(590, 590 / 1.07)], 10)).toEqual({
+      amount: 55.14,
+      currency_code: "thb",
+      excludes_tax: true,
+    })
+  })
+
+  it("takes the cheapest variant before VAT", () => {
+    expect(cardEstimate([priced(1070, 1000), priced(535, 500)], 10)?.amount).toEqual(50)
+  })
+
+  // ย้ายมาจาก estimateCommission ของ storefront (AF-8a) — storefront ไม่คำนวณเงินแล้ว
+  it.each([
+    [990, 15, 148.5],
+    [0.1, 5, 0.01], // 0.005 → half-up 0.01
+    [333.33, 12.5, 41.67], // 41.66625 → 41.67
+    [100.1, 3, 3], // 3.003 → 3.00
+    [1.15, 50, 0.58], // 0.575 → 0.58 (float ปกติให้ 0.57)
+  ])("rounds half-up without float error: %s × %s%% = %s", (price, rate, expected) => {
+    expect(cardEstimate([priced(price, price)], rate)?.amount).toEqual(expected)
+  })
+
+  it("falls back to the calculated price when Medusa gave no price before VAT", () => {
+    expect(cardEstimate([priced(990), priced(1000)], 15)).toEqual({
+      amount: 148.5,
+      currency_code: "thb",
+      excludes_tax: false,
+    })
+  })
+
+  it("returns null when no variant has a price", () => {
+    expect(cardEstimate([{ calculated_price: null }, {}], 10)).toBeNull()
   })
 })

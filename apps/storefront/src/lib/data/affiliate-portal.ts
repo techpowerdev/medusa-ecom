@@ -34,6 +34,8 @@ export type PortalProduct = {
   }
   program: { id: string; name: string; starts_at: string; ends_at: string; commission_value: number }
   rate_varies: boolean
+  /** AF-24 กฎ 48a: ยอดประมาณการต่อชิ้นที่ API คำนวณ (excludes_tax = คิดจากราคาก่อน VAT); null = ไม่แสดง (rate_varies/ไม่มีราคา) */
+  estimate: { amount: number; currency_code: string; excludes_tax: boolean } | null
   share_url: string
 }
 

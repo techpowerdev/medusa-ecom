@@ -400,6 +400,9 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
     พร้อม `flash-customer-limit-reached` "คุณใช้สิทธิ์ราคา flash ครบแล้ว"; ข้อความ `flash-customer-limit` "จำกัด N ชิ้นต่อคน (เหลือสิทธิ์ M ชิ้น)" แสดงเสมอเมื่อจำกัด;
     (b) cart + ขั้น review ของ checkout: line flash ที่ `quantity > remaining_for_customer` (รวมจำนวนของ line อื่นในแคมเปญเดียวกัน) แสดง `cart-flash-exceeds-customer-limit` ข้อความไทยบอกจำนวนที่ซื้อได้
     และปุ่ม "สั่งซื้อ" ในขั้น review **disabled** จนกว่าจะแก้จำนวน (กันก่อนตัดเงิน — ยังไม่ใช่ด่านจริง ด่านจริงคือ hook ตอน complete ตามกฎข้อ 2); ยังไม่ login → ไม่เรียก route และไม่เตือน
+    (FS-21 builder) ข้อความใช้คำว่า "แฟลชเซล" แทน "flash" (lint ห้ามอักษรละตินใน UI — CORE-4b1); ขั้น review แสดง `review-flash-exceeds-customer-limit` พร้อมลิงก์ไปตะกร้า;
+    PDP ดึงแคมเปญ + สิทธิ์ใน server action เดียว (`getProductFlash`) สถานะรอของปุ่ม (FS-16) จึงผูกกับ request เดียวเหมือนเดิม; ข้อจำกัดที่ยอมรับ: แคมเปญที่มีแต่ promotion order-level
+    ไม่อยู่ในผลของ FS-4 จึงไม่เตือน (hook ตอน complete ยังนับ); ไม่ login ไม่แสดง limit ต่อคน เพราะ FS-4 ไม่คืน `per_customer_limit`
 27. (FS-22 — storefront, ครอบ e-voucher ของ spec 02 ด้วย) complete cart ล้มหลังชำระด้วยบัตร/พร้อมเพย์ ด้วยเหตุโควตา/สต็อกหมด (`FLASH_LIMIT_EXCEEDED`, `FLASH_SOLD_OUT`, สต็อก inventory ไม่พอของ Medusa —
     builder ระบุ `type`/`code` จริงของ 2.22.1; ถ้าต้องเทียบข้อความให้เพิ่มในเช็กลิสต์ bump ของ spec 07) → error ใน helper เดียวของ CORE-4i แสดง `checkout-refunded-notice` ข้อความไทย
     "สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน ระบบคืนเงินเต็มจำนวนให้อัตโนมัติแล้ว (เข้าบัญชีตามรอบของธนาคาร) กรุณาปรับตะกร้าแล้วสั่งใหม่" แทน "ลองใหม่"

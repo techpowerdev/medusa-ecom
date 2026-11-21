@@ -318,15 +318,6 @@ medusaIntegrationTestRunner({
       expect(await stockedQuantity()).toBe(0)
     })
 
-    it("refuses to delete a pool that has codes", async () => {
-      const poolId = await createPool()
-      await importCsv(poolId, "P-1\n")
-      const res = await api
-        .delete(`/admin/evoucher/pools/${poolId}`, { headers })
-        .catch((e) => e.response)
-      expect(res.status).toBe(400)
-    })
-
     it("checks EVOUCHER_ENCRYPTION_KEY before touching data", async () => {
       const poolId = await createPool()
       const options = (service as unknown as { options_: { encryptionKey?: string } })

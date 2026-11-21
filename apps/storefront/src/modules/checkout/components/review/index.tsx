@@ -1,6 +1,7 @@
 "use client"
 
 import { STORE_NAME } from "@lib/store-content"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Heading, Text, clx } from "@modules/common/components/ui"
 
 import PaymentButton from "../payment-button"
@@ -10,10 +11,13 @@ import { HttpTypes } from "@medusajs/types"
 const Review = ({
   cart,
   deliveryDone,
+  flashLimitExceeded = false,
 }: {
   cart: HttpTypes.StoreCart
   /** CORE-35 (กฎข้อ 93): จาก checkout-form — deliveryStepDone กับรายการ option ที่กรองแล้ว */
   deliveryDone: boolean
+  /** FS-21 (spec 03 กฎข้อ 26b): จำนวน flash เกินสิทธิ์ต่อคนที่เหลือ → ปุ่มสั่งซื้อ disabled จนกว่าจะแก้ในตะกร้า */
+  flashLimitExceeded?: boolean
 }) => {
   const searchParams = useSearchParams()
 
@@ -58,9 +62,23 @@ const Review = ({
               </Text>
             </div>
           </div>
+          {flashLimitExceeded && (
+            <Text
+              className="txt-medium text-ui-fg-error mb-4"
+              role="alert"
+              data-testid="review-flash-exceeds-customer-limit"
+            >
+              จำนวนสินค้าแฟลชเซลในตะกร้าเกินสิทธิ์ที่คุณซื้อได้{" "}
+              <LocalizedClientLink href="/cart" className="underline">
+                กรุณาแก้จำนวนในตะกร้า
+              </LocalizedClientLink>{" "}
+              ก่อนสั่งซื้อ
+            </Text>
+          )}
           <PaymentButton
             cart={cart}
             deliveryDone={deliveryDone}
+            blocked={flashLimitExceeded}
             data-testid="submit-order-button"
           />
         </>

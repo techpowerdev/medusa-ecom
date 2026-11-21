@@ -12,7 +12,11 @@ import {
   MedusaError,
 } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { adjustInventoryLevelsStep } from "@medusajs/medusa/core-flows"
+import {
+  acquireLockStep,
+  adjustInventoryLevelsStep,
+  releaseLockStep,
+} from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
 import EvoucherModuleService from "../../modules/evoucher/service"
 import { parseEvoucherCsv } from "../../modules/evoucher/utils/csv"
@@ -33,6 +37,12 @@ type CodeRow = {
 }
 
 const CHUNK = 1000
+
+/** EV-20 (กฎข้อ 36b): lock ต่อ pool ที่ import และการลบ pool ถือร่วมกัน — กัน code ใหม่เข้า pool ที่กำลังถูกลบ */
+export const evoucherPoolLockKey = (poolId: string) => `evoucher-pool:${poolId}`
+// import ไฟล์ใหญ่ใช้เวลาเข้ารหัสนาน: รอได้ 30 วินาที; lock หมดอายุเองถ้า process ตายกลางทาง
+export const EVOUCHER_POOL_LOCK_TIMEOUT = 30
+export const EVOUCHER_POOL_LOCK_TTL = 300
 
 const chunks = <T>(items: T[]) =>
   Array.from({ length: Math.ceil(items.length / CHUNK) }, (_, i) =>
@@ -171,6 +181,14 @@ export const importEvoucherCodesWorkflow = createWorkflow(
   "import-evoucher-codes",
   function (input: ImportEvoucherCodesInput) {
     assertEvoucherKeyStep()
+    const lockKey = transform({ input }, ({ input }) => evoucherPoolLockKey(input.pool_id))
+    const lockOwnerId = transform({ input }, (_, { context }) => `evoucher-import:${context.transactionId}`)
+    acquireLockStep({
+      key: lockKey,
+      ownerId: lockOwnerId,
+      timeout: EVOUCHER_POOL_LOCK_TIMEOUT,
+      ttl: EVOUCHER_POOL_LOCK_TTL,
+    })
     const level = resolveEvoucherPoolInventoryStep({ pool_id: input.pool_id })
     const prepared = prepareEvoucherCodesStep(input)
     const inserted = insertEvoucherCodesStep(prepared)
@@ -182,6 +200,7 @@ export const importEvoucherCodesWorkflow = createWorkflow(
       adjustInventoryLevelsStep(adjustments)
     })
 
+    releaseLockStep({ key: lockKey, ownerId: lockOwnerId })
     const result = transform({ prepared, inserted }, ({ prepared, inserted }) => ({
       batch_ref: prepared.batch_ref,
       inserted,

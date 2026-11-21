@@ -1,0 +1,40 @@
+# OPS-32 (spec 07 AC-47) — log ชัดเมื่อ complete ล้มหลังจ่าย + runbook — ผล test 2026-11-21
+# Medusa 2.22.1, Node 22, Postgres 16 (Docker), Redis db 10
+
+## RED (ก่อนแก้) — unit (stub helper ว่าง + runbook ไม่มีหัวข้อ)
+  ● AC-47 runbook log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ › มีหัวข้อ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ (OPS-32)"
+  ● AC-47 runbook log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ › ระบุ warn ของเรา และสองข้อความของ Medusa
+  ● AC-47 runbook log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ › วิธีตรวจ: refunds ของ GET /admin/payments/:id และ PI ใน Stripe dashboard; ห้าม refund ซ้ำด้วยมือ
+  ● warnIfCompletionFailedAfterPayment (OPS-32) › payment captured แล้ว → warn 1 บรรทัดขึ้นต้น marker พร้อม cart_id, payment_session_id, payment_id, code และวิธีตรวจ
+  ● warnIfCompletionFailedAfterPayment (OPS-32) › query ล้ม → ไม่โยน error (ไม่บัง error เดิมของ complete) และ warn ที่ไม่ขึ้นต้น marker
+Tests:       5 failed, 18 passed, 23 total
+
+## RED (ก่อนแก้) — integration (complete-cart-validate.ts เดิม)
+    ✕ flash เกินสิทธิ์หลัง capture → warn 1 บรรทัด (cart_id, payment_session_id, code) ก่อน log ของ Medusa และคืนเงิน 1 รายการ (2334 ms)
+    ✕ step หลัง hook validate ล้มหลัง capture → warn 1 บรรทัด และคืนเงิน 1 รายการ (1935 ms)
+    ✓ complete ล้มก่อนมีการชำระ (ยังไม่ capture) → ไม่มี warn นี้ (1753 ms)
+    Expected length: 1
+    Received length: 0
+    Expected length: 1
+    Received length: 0
+Tests:       2 failed, 1 passed, 3 total
+
+## GREEN — integration: complete-after-payment-log.spec.ts + flash-sale-limits.spec.ts (regression)
+Test Suites: 2 passed, 2 total
+Tests:       14 passed, 14 total
+
+## GREEN — log จริงจาก integration (ลำดับ: warn ของเรา → สอง log ของ Medusa)
+      {"level":"warn","message":"CART_COMPLETION_FAILED_AFTER_PAYMENT cart_id=cart_01M7Y5JPT2D9CTPR7FZKY56YRK payment_session_id=payses_01M7Y5JQA9WSSXT916SNJJWQ8W payment_id=pay_01M7Y5JQB2K0GF26KG1YDRBKGW code=FLASH_LIMIT_EXCEEDED — Medusa refunds automatically; a following 'Error was thrown trying to refund payment' line comes from re-creating the payment session — verify refunds via GET /admin/payments/:id","timestamp":"2026-11-21 11:24:37"}
+      {"level":"error","message":"Encountered an error when trying to recreate a payment session - [object Object] - Error: An error occurred in InitiatePayment during creation of stripe payment intent: Invalid string: {\"id\":\"pm_ops32\",\"object\":\"payment_method\",\"billing_details\":{\"name\":\"Test Buyer\"}}.","timestamp":"2026-11-21 11:24:37"}
+      {"level":"error","message":"Error was thrown trying to refund payment - pay_01M7Y5JQB2K0GF26KG1YDRBKGW - [object Object]","timestamp":"2026-11-21 11:24:37"}
+      {"level":"warn","message":"CART_COMPLETION_FAILED_AFTER_PAYMENT cart_id=cart_01M7Y5JR354WSCDR2GNVBA0W74 payment_session_id=payses_01M7Y5JRDNDENN9AGN3KN5BA3T payment_id=pay_01M7Y5JRE3XGGSJXQTY9GP8Q89 code=STEP_AFTER_VALIDATE_FAILED — Medusa refunds automatically; a following 'Error was thrown trying to refund payment' line comes from re-creating the payment session — verify refunds via GET /admin/payments/:id","timestamp":"2026-11-21 11:24:38"}
+      {"level":"error","message":"Encountered an error when trying to recreate a payment session - [object Object] - Error: An error occurred in InitiatePayment during creation of stripe payment intent: Invalid string: {\"id\":\"pm_ops32\",\"object\":\"payment_method\",\"billing_details\":{\"name\":\"Test Buyer\"}}.","timestamp":"2026-11-21 11:24:38"}
+      {"level":"error","message":"Error was thrown trying to refund payment - pay_01M7Y5JRE3XGGSJXQTY9GP8Q89 - [object Object]","timestamp":"2026-11-21 11:24:38"}
+
+## GREEN — pnpm --filter backend test:unit
+Test Suites: 113 passed, 113 total
+Tests:       1504 passed, 1504 total
+
+## pnpm lint && pnpm typecheck: exit 0 (backend 0 errors, 2 warnings เดิม)
+## pnpm --filter backend build: exit 0
+## pnpm --filter storefront test:e2e:unit: 122 passed (1.2s)
