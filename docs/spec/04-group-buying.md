@@ -957,7 +957,7 @@ ADR: **ADR-024** (accepted 2026-11-21 — guard + ยกเลิก PI + คื
 49. (GB-24 — owner (ข)) หน้ากลุ่ม `/<cc>/g/<token>`: `campaign.starts_at > now` → ไม่แสดงฟอร์ม join/ตัวเลือกสินค้า/ปุ่มสร้างทีม แสดง `group-starts-at` "เริ่ม <วันเวลาไทย>" (backend ปฏิเสธอยู่แล้วตามกฎข้อ 10)
 
 ### Acceptance criteria (รอบ 40)
-- AC-62 (GB-20, กฎข้อ 42–43) integration http (mock Stripe provider ที่นับ `deletePayment`/`initiatePayment`) — **ล้มบน develop** ก่อน:
+- AC-62 (GB-20, กฎข้อ 42–43) ☑ (a–g ผ่าน: red บน develop 5 เคส — (a)/(b) ได้ 200 แทน 400, (e)/(f) provider `deletePayment` ไม่ถูกเรียก, (g) session ยังอยู่จึงไม่มี log `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` → green `group-buy-payment-closed.spec.ts` 7/7; unit guard + `isGroupBuyPaymentOpen` + ลำดับ middleware) integration http (mock Stripe provider ที่นับ `deletePayment`/`initiatePayment`) — **ล้มบน develop** ก่อน:
   (a) membership `awaiting_payment` เลย `pay_deadline_at` (job ยังไม่รัน) When เจ้าของ `POST .../payment-sessions` Then 400 code `GB_PAYMENT_CLOSED` และ provider ไม่ถูกเรียก;
   (b) membership `cancelled` → 400 แบบ (a); (c) membership `awaiting_payment` ก่อน deadline → 200 (regression AC-18 ของ spec 06); (d) collection ของ cart ปกติ → พฤติกรรมเดิม;
   (e) รัน job หมดเวลาชำระกับ membership ที่มี session `pending` Then provider `deletePayment` ถูกเรียก 1 ครั้งและ session ของ collection ถูกลบ (**ล้มบน develop** — session ยังอยู่) — membership `cancelled`, collection `canceled` (ผลเดิมของ `cancelOrderWorkflow`), **ไม่มี** log warn `GROUP_BUY_SESSION_CANCEL_FAILED`;
