@@ -106,6 +106,31 @@ medusaIntegrationTestRunner({
           expect(await listEmails(container, "order-placed", loud.id)).toHaveLength(1)
         })
 
+        // CORE-74 (กฎข้อ 132, AC-173): event ค้างใน queue ขณะ worker หยุด แล้ว order ถูกยกเลิกก่อน worker กลับมา
+        it("skips the order-placed email when the order is already canceled (AC-173)", async () => {
+          const container = getContainer()
+          const orderModule = container.resolve(Modules.ORDER)
+          const canceled = await createOrder(container)
+          await orderModule.cancel(canceled.id)
+          const placed = await createOrder(container)
+          const info = jest.spyOn(container.resolve(ContainerRegistrationKeys.LOGGER), "info")
+
+          try {
+            await emitAndWait(container, "order.placed", { id: canceled.id })
+            await emitAndWait(container, "order.placed", { id: placed.id })
+
+            const notificationModule = container.resolve(Modules.NOTIFICATION)
+            expect(await notificationModule.listNotifications({ resource_id: canceled.id })).toHaveLength(0)
+            expect(info).toHaveBeenCalledWith(
+              expect.stringContaining(`order_placed_email_skipped_canceled order_id=${canceled.id}`)
+            )
+            expect(await listEmails(container, "order-placed", placed.id)).toHaveLength(1)
+            expect(info).not.toHaveBeenCalledWith(expect.stringContaining(`order_id=${placed.id}`))
+          } finally {
+            info.mockRestore()
+          }
+        })
+
         it("does not send the same order-placed email twice", async () => {
           const container = getContainer()
           const order = await createOrder(container)
