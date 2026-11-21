@@ -1,0 +1,43 @@
+# ADM-41 (spec 08 กฎ 45, AC-46) — ผล test
+# เครื่อง local: backend prod build (`NODE_ENV=production pnpm --filter backend build` + `medusa start` ใน .medusa/server แบบ CI)
+# port 9154, DB medusa_adm41 (migrate + seed), Redis db 3, Playwright chromium, CI=1 (workers=1)
+# ข้อมูลของ test: affiliate ชื่อ 370 ตัว + อีเมล ≥ 80 ตัว, payout draft 1 แถว (reference 320 ตัว, period 45 วัน, id ยาวเท่า id จริง `affpay_` + 26 ตัว)
+# หมายเหตุการวัด: wrapper `affiliate-payouts-table` อยู่ใต้ div `overflow-hidden` ของ DataTable → `scrollWidth = clientWidth` เสมอ (ดู red ข้างล่าง
+# wrapper 1036/1036 ทั้งที่ตาราง 1400px) — test จึง assert ทั้ง wrapper และกล่องเลื่อน `overflow-auto` ของ DataTable ภายใน wrapper
+
+## RED — develop 0e5295de + test ใหม่เท่านั้น (ล้มที่ความกว้าง ไม่ใช่ locator/timeout)
+    Error: กล่องเลื่อน {"wrapper":{"scrollWidth":1036,"clientWidth":1036},"scroller":{"scrollWidth":1400,"clientWidth":1036},"table":1400.4375}
+    Error: กล่องเลื่อน {"wrapper":{"scrollWidth":1196,"clientWidth":1196},"scroller":{"scrollWidth":1400,"clientWidth":1196},"table":1400.4375}
+    Expected: <= 1037
+    Expected: <= 1197
+    Received:    1400
+    [chromium] › e2e/admin-table-long-text.spec.ts:509:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1280×800 › AC-46: payouts 1280 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม 
+    [chromium] › e2e/admin-table-long-text.spec.ts:509:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1440×900 › AC-46: payouts 1440 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม 
+    test-results/admin-table-long-text-ADM--2bede-ทุกแถวในจอ-tooltip-ชื่อเต็ม-chromium/test-failed-1.png
+    test-results/admin-table-long-text-ADM--95001-ทุกแถวในจอ-tooltip-ชื่อเต็ม-chromium/test-failed-1.png
+  1) [chromium] › e2e/admin-table-long-text.spec.ts:509:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1280×800 › AC-46: payouts 1280 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม › ตาราง Payouts ไม่ล้นแนวนอน (scrollWidth ≤ clientWidth + 1) 
+  2 failed
+  2) [chromium] › e2e/admin-table-long-text.spec.ts:509:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1440×900 › AC-46: payouts 1440 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม › ตาราง Payouts ไม่ล้นแนวนอน (scrollWidth ≤ clientWidth + 1) 
+[1/2] [chromium] › e2e/admin-table-long-text.spec.ts:509:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1280×800 › AC-46: payouts 1280 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม
+[2/2] [chromium] › e2e/admin-table-long-text.spec.ts:509:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1440×900 › AC-46: payouts 1440 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม
+
+## ผลวัดความกว้าง th (probe ชั่วคราว ไม่ commit — แถว paid ฿12,345.67 + reference ยาว + paid_at และแถว draft ของ test)
+# develop 0e5295de:  1280 ตาราง 1325px ในกล่อง 1036 (Status 88, … 52, Affiliate 274, Amount 93, Period 189, Paid at 156, Reference 201, Payout 273)
+#                    เมื่อ reference ยาวถึง maxSize 274 → ~1400px (manual เฟส 8 วัดได้ 1417px)
+# หลังแก้:           1280 ตาราง 1036 = กล่อง 1036 (Affiliate 150, Amount 93, Period 189, Paid at 158, Reference 124, Payout 124)
+#                    1440 ตาราง 1196 = กล่อง 1196; 1920 ตาราง 1576 = กล่อง 1576 (Affiliate/Reference/Payout คง 150/124/124 — ส่วนเกินไปที่ Amount/Period/Paid at)
+# ทางที่ลองแล้วไม่ใช้: Payout ตั้ง size แต่ไม่มีคอลัมน์ auto → ที่ 1920 Affiliate 225, Reference/Payout 160 (เกิน maxSize — กฎ 41c ยืนยันซ้ำ)
+
+## GREEN — admin-table-long-text.spec.ts ทั้งไฟล์ --repeat-each=3
+  33 passed (2.7m)
+
+## e2e admin ที่ใช้ตาราง Payouts / helper `insertDraftPayouts` (local, prod build)
+# admin-table-long-text, admin-row-menu-escape, affiliate-admin-names, affiliate-admin-payouts, affiliate-admin-tables,
+# affiliate-admin-row-actions, affiliate-admin-payout-create, affiliate-admin-forms, admin-create-double-submit, admin-list-create-action
+  52 passed (7.1m)
+
+## อื่นๆ
+# pnpm --filter storefront test:e2e:unit: 123 passed
+# pnpm --filter backend test:unit -- src/admin: 20 suites, 533 passed (ชุด unit เต็มของ backend ให้ CI รัน — เครื่องโหลดสูง และ task นี้ไม่แตะโค้ด backend นอก src/admin)
+# pnpm lint: 0 errors (warning เดิม); pnpm typecheck: ผ่าน (รันโดยไม่มี .medusa/types ที่ medusa start สร้างในเครื่อง แบบ CI —
+#   ถ้ามี types ที่ generate แล้ว integration-tests/http/complete-after-payment-log.spec.ts:213 ล้ม TS2531 ซึ่งไม่ใช่ไฟล์ของ task นี้)

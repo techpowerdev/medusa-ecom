@@ -62,34 +62,37 @@ export const programToForm = (p: Program): ProgramForm => ({
   variant_ids: p.scope?.variant_ids ?? [],
 })
 
-class FormError extends Error {
-  constructor(
-    message: string,
-    readonly field: ProgramFormField,
-  ) {
-    super(message)
-  }
-}
+export type ProgramFieldError = { field: ProgramFormField; message: string }
 
-const date = (value: Date | null, label: string, field: ProgramFormField) => {
+// ADM-42 (spec 08 กฎ 46): ตรวจครบทุกช่องแล้วคืน error ทั้งหมด (ตามลำดับช่องในฟอร์ม) — ไม่หยุดที่ช่องแรก
+// ให้ฟอร์ม setError ได้ทุกช่องในการกด Save ครั้งเดียว
+const date = (
+  errors: ProgramFieldError[],
+  value: Date | null,
+  label: string,
+  field: ProgramFormField,
+): Date | undefined => {
   if (!value) {
-    throw new FormError(`${label} is required`, field)
+    errors.push({ field, message: `${label} is required` })
+    return undefined
   }
   if (Number.isNaN(value.getTime())) {
-    throw new FormError(`${label} is invalid`, field)
+    errors.push({ field, message: `${label} is invalid` })
+    return undefined
   }
   return value
 }
 
 const number = (
+  errors: ProgramFieldError[],
   form: ProgramForm,
   field: "commission_value" | "attribution_window_days" | "hold_days" | "cap_per_order",
   message: string,
   ok: (n: number) => boolean,
-) => {
+): number => {
   const n = Number(form[field])
   if (!form[field].trim() || !Number.isFinite(n) || !ok(n)) {
-    throw new FormError(message, field)
+    errors.push({ field, message })
   }
   return n
 }
@@ -107,60 +110,60 @@ const toScope = (form: ProgramForm) => {
       }
 }
 
-const buildBody = (form: ProgramForm): ProgramBody => {
+export const toProgramBody = (form: ProgramForm): { body: ProgramBody } | { errors: ProgramFieldError[] } => {
+  const errors: ProgramFieldError[] = []
   const name = form.name.trim()
   if (!name) {
-    throw new FormError("Name is required", "name")
+    errors.push({ field: "name", message: "Name is required" })
   }
-  const starts_at = date(form.starts_at, "Start", "starts_at")
-  const ends_at = date(form.ends_at, "End", "ends_at")
-  if (ends_at.getTime() <= starts_at.getTime()) {
-    throw new FormError("End must be after start", "ends_at")
+  const starts_at = date(errors, form.starts_at, "Start", "starts_at")
+  const ends_at = date(errors, form.ends_at, "End", "ends_at")
+  if (starts_at && ends_at && ends_at.getTime() <= starts_at.getTime()) {
+    errors.push({ field: "ends_at", message: "End must be after start" })
   }
+  const commission_value = number(
+    errors,
+    form,
+    "commission_value",
+    "Commission must be above 0 and at most 100",
+    (n) => n > 0 && n <= 100,
+  )
+  const attribution_window_days = number(
+    errors,
+    form,
+    "attribution_window_days",
+    "Attribution window must be a whole number of at least 1",
+    (n) => Number.isInteger(n) && n >= 1,
+  )
+  const hold_days = number(
+    errors,
+    form,
+    "hold_days",
+    "Hold days must be a whole number of at least 0",
+    (n) => Number.isInteger(n) && n >= 0,
+  )
+  const cap_per_order = form.cap_per_order.trim()
+    ? number(errors, form, "cap_per_order", "Cap per order must be above 0", (n) => n > 0)
+    : null
   if (!form.all && !form.collection_ids.length && !form.category_ids.length && !form.variant_ids.length) {
-    throw new FormError("Select at least one collection or category", "collection_ids")
+    errors.push({ field: "collection_ids", message: "Select at least one collection or category" })
+  }
+  if (errors.length || !starts_at || !ends_at) {
+    return { errors }
   }
   return {
-    name,
-    starts_at,
-    ends_at,
-    commission_value: number(
-      form,
-      "commission_value",
-      "Commission must be above 0 and at most 100",
-      (n) => n > 0 && n <= 100,
-    ),
-    attribution_window_days: number(
-      form,
-      "attribution_window_days",
-      "Attribution window must be a whole number of at least 1",
-      (n) => Number.isInteger(n) && n >= 1,
-    ),
-    hold_days: number(
-      form,
-      "hold_days",
-      "Hold days must be a whole number of at least 0",
-      (n) => Number.isInteger(n) && n >= 0,
-    ),
-    cap_per_order: form.cap_per_order.trim()
-      ? number(form, "cap_per_order", "Cap per order must be above 0", (n) => n > 0)
-      : null,
-    announce_text: form.announce_text.trim() || null,
-    status: form.status,
-    scope: toScope(form),
-  }
-}
-
-export const toProgramBody = (
-  form: ProgramForm,
-): { body: ProgramBody } | { error: string; field: ProgramFormField } => {
-  try {
-    return { body: buildBody(form) }
-  } catch (e) {
-    if (e instanceof FormError) {
-      return { error: e.message, field: e.field }
-    }
-    throw e
+    body: {
+      name,
+      starts_at,
+      ends_at,
+      commission_value,
+      attribution_window_days,
+      hold_days,
+      cap_per_order,
+      announce_text: form.announce_text.trim() || null,
+      status: form.status,
+      scope: toScope(form),
+    },
   }
 }
 
