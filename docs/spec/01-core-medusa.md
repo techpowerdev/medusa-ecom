@@ -2905,7 +2905,7 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
 - AC-177 (CORE-78, กฎข้อ 136) e2e + unit: ลูกค้า 12 order + membership กลุ่ม 1 → หน้า 1 เห็นส่วนกลุ่ม, `?page=2` ไม่เห็น (ล้มบน develop+CORE-68); ลูกค้าที่มีแต่ membership กลุ่ม → overview เห็นลิงก์ "ดูทั้งหมด";
   `orders-pagination` ปุ่มหน้าปัจจุบันมี `aria-current="page"` และ `aria-label` ทุกปุ่มมีอักษรไทย; unit `pageFromSearchParam` ครอบกรณีของ `ordersPage`/`vouchersPagination` เดิมทั้งหมด
 - AC-178 (CORE-79, กฎข้อ 137) e2e 375×812: `register-login-link` `boundingBox().height ≥ 44`; กรอกอีเมลในฟอร์มสมัคร → กดลิงก์ → `email-input` ของฟอร์ม login มีค่าเดียวกัน (ล้มบน develop ทั้งสองข้อ)
-- AC-179 (CORE-80, กฎข้อ 138) unit + integration http — **ล้มบน develop** ก่อน: register `Foo.Bar@Example.COM` → `provider_identity.entity_id = "foo.bar@example.com"`; login ด้วย `FOO.bar@example.com` → 200;
+- ☑ AC-179 (CORE-80, กฎข้อ 138) unit + integration http — **ล้มบน develop** ก่อน (ผ่าน: red บน develop `fd39a681` 6/7 ล้ม → green `integration-tests/http/core-80-normalize-email.spec.ts` 7/7 + unit 12/12): register `Foo.Bar@Example.COM` → `provider_identity.entity_id = "foo.bar@example.com"`; login ด้วย `FOO.bar@example.com` → 200;
   register ซ้ำด้วยตัวพิมพ์ต่าง → 401 `Identity with email already exists`; `POST /admin/customers { email: "A@B.CO" }` → `a@b.co`; affiliate register แบบเดียวกัน; field อื่นใน body ไม่เปลี่ยน
 - AC-180 (CORE-81, กฎข้อ 139) integration (`medusa exec` ของ script หรือเรียก function ตรง): seed identity/customer/affiliate ตัวพิมพ์ใหญ่ 1 ชุด → dry-run พิมพ์ 3 แถว DB ไม่เปลี่ยน; `--apply` → ตัวเล็กครบและ login ด้วยตัวเล็กได้; รันซ้ำ → 0;
   seed คู่ชน (`A@x.co` + `a@x.co`) → exit ≠ 0 พร้อมรายการชน DB ไม่เปลี่ยน; step ที่สองล้ม (mock) → ค่าเดิมคืนครบ
