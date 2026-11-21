@@ -1,0 +1,37 @@
+GB-20b (spec 04 กฎข้อ 50, AC-68, ADR-024 ภาคผนวก 2026-11-21) — ผลทดสอบ 2026-11-21
+
+== RED (ก่อนเขียนโค้ด) unit membership-payment.unit.spec.ts ==
+    TypeError: (0 , _membershippayment.membershipPaymentCheckDecision) is not a function
+Tests:       24 failed, 57 passed, 81 total
+
+== RED integration group-buy-payment-check.spec.ts (บน develop 611afec1) ==
+    ✕ (a) PI succeeded at the provider but no webhook yet → job captures, membership paid, order placed; late webhook is a no-op (16228 ms)
+    ✕ (a2) payment found but convert fails → re-picked within 15 minutes without the provider; not re-captured past 15 minutes (1604 ms)
+    ✓ (b) PI requires_action (NOT_ALLOWED = unpaid) → session deleted, membership cancelled; no session → provider not called (1864 ms)
+    ✕ (c) provider down / pending_authorization / PI processing → retry: not cancelled, session kept, one warn per run (1314 ms)
+    ✕ (c) still unverifiable 16 minutes past the deadline → give up: cancel + error log + one ops email; another member paid in the same run (1354 ms)
+Tests:       4 failed, 1 passed, 5 total
+  ●  › (a) PI succeeded at the provider but no webhook yet → job captures, membership paid, order placed; late webhook is a no-op
+    Expected number of calls: 0
+    Received number of calls: 1
+  ●  › (a2) payment found but convert fails → re-picked within 15 minutes without the provider; not re-captured past 15 minutes
+    Expected: "awaiting_payment"
+    Received: "cancelled"
+  ●  › (c) provider down / pending_authorization / PI processing → retry: not cancelled, session kept, one warn per run
+    Expected: "awaiting_payment"
+    Received: "cancelled"
+  ●  › (c) still unverifiable 16 minutes past the deadline → give up: cancel + error log + one ops email; another member paid in the same run
+(เคส give-up ล้มรอบแรกเพราะ mock customer id ซ้ำใน test — แก้ test แล้ว)
+
+== GREEN integration ==
+PASS integration-tests/http/group-buy-payment.spec.ts (26.111 s)
+PASS integration-tests/http/group-buy-payment-closed.spec.ts (11.385 s)
+PASS integration-tests/http/group-buy-payment-check.spec.ts (14.462 s)
+Tests:       26 passed, 26 total
+group-buy-outcome.spec.ts: Tests: 11 passed, 11 total
+
+== GREEN unit (pnpm --filter backend test:unit) ==
+Test Suites: 115 passed, 115 total
+Tests:       1581 passed, 1581 total
+
+pnpm lint: 0 errors; pnpm typecheck: ผ่าน
