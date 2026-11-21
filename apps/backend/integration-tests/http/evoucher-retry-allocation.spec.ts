@@ -283,7 +283,11 @@ medusaIntegrationTestRunner({
         const res = await allocate(orderId)
 
         expect(res.status).toBe(200)
-        expect(res.data).toEqual({ allocated_line_item_ids: [lineId], backordered_line_item_ids: [] })
+        expect(res.data).toEqual({
+          allocated_line_item_ids: [lineId],
+          backordered_line_item_ids: [],
+          stuck_line_item_ids: [],
+        })
         const codes = await service.listEvoucherCodes({ order_id: orderId })
         expect(codes).toEqual([expect.objectContaining({ status: "delivered", order_line_item_id: lineId })])
         const delivered = await listEmails("evoucher.delivered")
@@ -312,7 +316,11 @@ medusaIntegrationTestRunner({
         const res = await allocate(orderId)
 
         expect(res.status).toBe(200)
-        expect(res.data).toEqual({ allocated_line_item_ids: [], backordered_line_item_ids: [lineId] })
+        expect(res.data).toEqual({
+          allocated_line_item_ids: [],
+          backordered_line_item_ids: [lineId],
+          stuck_line_item_ids: [],
+        })
         expect(await listEmails("evoucher-backordered")).toHaveLength(1)
         expect(await listEmails("evoucher.delivered")).toHaveLength(0)
         expect((await orderOf(orderId)).items![0]!.metadata).toMatchObject({ evoucher_backordered: true })
@@ -326,8 +334,50 @@ medusaIntegrationTestRunner({
         const res = await allocate(orderId)
 
         expect(res.status).toBe(200)
-        expect(res.data).toEqual({ allocated_line_item_ids: [], backordered_line_item_ids: [] })
+        expect(res.data).toEqual({
+          allocated_line_item_ids: [],
+          backordered_line_item_ids: [],
+          stuck_line_item_ids: [],
+        })
         expect(await listEmails("evoucher.delivered")).toHaveLength(1)
+        expect(await listEmails("evoucher-backordered")).toHaveLength(0)
+      })
+
+      // review #472: code `allocated` แต่ยังไม่ส่งมอบ (อีเมลล้ม) → ไม่ claim ซ้ำ (กฎข้อ 17) และแยกให้ widget ไม่บอกว่าส่งแล้ว
+      it("reports a line whose codes are allocated but not delivered as stuck", async () => {
+        const { variantId } = await createVoucher("STUCK-1\n")
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+        await captureAndWait(orderId)
+        const lineId = (await orderOf(orderId)).items![0]!.id
+        const codes = await service.listEvoucherCodes({ order_id: orderId })
+        await service.updateEvoucherCodes(
+          codes.map((c) => ({ id: c.id, status: "allocated" as const, delivered_at: null, delivered_to_email: null }))
+        )
+
+        const res = await allocate(orderId)
+
+        expect(res.status).toBe(200)
+        expect(res.data).toEqual({
+          allocated_line_item_ids: [],
+          backordered_line_item_ids: [],
+          stuck_line_item_ids: [lineId],
+        })
+        expect(await service.listEvoucherCodes({ order_id: orderId })).toHaveLength(1)
+        expect(await listEmails("evoucher.delivered")).toHaveLength(1)
+      })
+
+      // review #472 (กฎข้อ 2): allocate หลัง captured เท่านั้น — เช่น group buy ที่ payment ยัง authorized
+      it("rejects an order whose payment is not captured with 400 not_allowed and claims no code", async () => {
+        const { variantId, poolId } = await createVoucher("AUTH-1\n")
+        const { orderId } = await placeOrder([{ variant_id: variantId, quantity: 1 }])
+
+        const res = await allocate(orderId)
+
+        expect(res.status).toBe(400)
+        expect(res.data).toMatchObject({ type: "not_allowed", message: expect.stringMatching(/captured/i) })
+        expect(await service.listEvoucherCodes({ order_id: orderId })).toHaveLength(0)
+        expect(await service.listEvoucherCodes({ pool_id: poolId, status: "available" })).toHaveLength(1)
+        expect(await listEmails("evoucher.delivered")).toHaveLength(0)
       })
 
       it("rejects a canceled order with 400 not_allowed", async () => {
@@ -338,7 +388,7 @@ medusaIntegrationTestRunner({
         const res = await allocate(orderId)
 
         expect(res.status).toBe(400)
-        expect(res.data.type).toBe("not_allowed")
+        expect(res.data).toMatchObject({ type: "not_allowed", message: expect.stringMatching(/canceled/i) })
         expect(await service.listEvoucherCodes({ order_id: orderId })).toHaveLength(0)
       })
 
@@ -349,11 +399,12 @@ medusaIntegrationTestRunner({
           filters: { handle: "t-shirt" },
         })
         const { orderId } = await placeOrder([{ variant_id: data[0].variants[0].id, quantity: 1 }], [standardOptionId])
+        await captureAndWait(orderId)
 
         const res = await allocate(orderId)
 
         expect(res.status).toBe(400)
-        expect(res.data.type).toBe("not_allowed")
+        expect(res.data).toMatchObject({ type: "not_allowed", message: expect.stringMatching(/e-voucher/i) })
       })
 
       it("returns 404 for an unknown order", async () => {
