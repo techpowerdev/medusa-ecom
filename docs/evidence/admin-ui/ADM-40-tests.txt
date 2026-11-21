@@ -28,7 +28,7 @@ reload → `affiliates_q` คงอยู่, คลิกแท็บ Affiliate
 ## GREEN — e2e admin เดิมที่ใช้ list-table / ตาราง affiliate (9 ไฟล์: affiliate-admin-affiliates/tables/row-actions/names/payouts/programs/forms, admin-table-long-text, admin-row-menu-escape)
   42 passed (3.1m)
 
-## GREEN — static jest src/admin (หลังแก้)
+## GREEN — static jest src/admin (หลังแก้; diff แตะเฉพาะ src/admin — backend test:unit ชุดเต็มให้ CI รัน: เครื่องมี jest ของ agent อื่น 6 ชุดพร้อมกัน ~1 suite/นาที จึงหยุดหลัง 22 suite ผ่าน ไม่มี FAIL)
 Test Suites: 20 passed, 20 total
 Tests:       534 passed, 534 total
 
