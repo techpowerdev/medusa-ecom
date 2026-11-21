@@ -174,7 +174,8 @@ endpoint สมัคร event ตามรายการด้านล่า�
     ใช้คำ `apply` (ไม่มีขีด) — `medusa exec` ปฏิเสธ flag ที่ไม่รู้จัก (`--apply` → `Unknown argument`); แปลงเฉพาะ `customer.email`, `affiliate.email`
     และ identity `emailpass` ที่ผูก customer/affiliate — identity ของแอดมินไม่แตะ (Q-C13 = ก); พิมพ์เฉพาะ id ไม่พิมพ์อีเมล
     ถ้าพิมพ์ `ชน <ตาราง>: <id>, <id>` และ exit ≠ 0 = มีอีเมลที่ต่างกันแค่ตัวพิมพ์ภายใต้ unique เดิม (`provider_identity (entity_id, provider)`,
-    `customer (email, has_account)`, `affiliate.email`) — script ไม่แก้อะไรและไม่รวมบัญชีเอง: owner ตัดสินว่าเก็บบัญชีไหนแล้วแก้คู่ที่ชนด้วยมือก่อนรันใหม่
+    `customer (email, has_account)`, `affiliate.email`; identity ที่ soft-delete แล้วนับด้วยเพราะ index นี้ไม่ใช่ partial) — script ไม่แก้อะไรและไม่รวมบัญชีเอง: owner ตัดสินว่าเก็บบัญชีไหนแล้วแก้คู่ที่ชนด้วยมือก่อนรันใหม่;
+    apply ล้มด้วย `ชน unique index ระหว่าง apply` (มีคนสมัครแทรก) = workflow คืนค่าเดิมทุกตารางแล้ว — รัน dry-run ใหม่
 12. backfill ธง `evoucher_backordered` ของ order ก่อน EV-22: dry-run → `--apply` → dry-run ซ้ำได้ 0 แถว (คำสั่งเต็มเติมใน PR ของ EV-25)
 13. log ของ prod ไม่มี PII: ยืนยันว่า image มี OPS-33 (redact ใน `json-logger.ts`) แล้วค้น log ของ log platform ด้วยอีเมลลูกค้าทดสอบที่จ่ายแล้วถูกคืนเงิน (บรรทัด `recreate a payment session`) — ต้องไม่พบ
 14. วัดเวลา `POST /store/search` (body เดียวกับ storefront, คำค้นไทย 2–3 คำ + คำว่าง) กับ catalog ขนาดจริงบน DB ของ prod/staging แล้วบันทึก p95 — ถ้าสินค้าเกิน ~10,000 รายการ

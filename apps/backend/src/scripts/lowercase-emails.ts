@@ -41,7 +41,8 @@ export function planLowercase(rows: EmailRow[]): TablePlan {
 async function loadPlan(container: MedusaContainer): Promise<LowercasePlan> {
   const identities = await container
     .resolve(Modules.AUTH)
-    .listProviderIdentities({ provider: "emailpass" }, { relations: ["auth_identity"] })
+    // IDX_provider_identity_provider_entity_id ไม่ใช่ partial index → แถวที่ soft-delete แล้วยังชนได้ (นับตอนตรวจชน ไม่แปลง)
+    .listProviderIdentities({ provider: "emailpass" }, { relations: ["auth_identity"], withDeleted: true })
   const customers = await container
     .resolve(Modules.CUSTOMER)
     .listCustomers({}, { select: ["id", "email", "has_account"] })
@@ -52,12 +53,13 @@ async function loadPlan(container: MedusaContainer): Promise<LowercasePlan> {
     provider_identities: planLowercase(
       identities.map((identity) => {
         const meta = identity.auth_identity?.app_metadata ?? {}
+        const deleted = Boolean((identity as { deleted_at?: unknown }).deleted_at)
         return {
           id: identity.id,
           email: identity.entity_id,
           uniqueWith: identity.provider,
           // Q-C13 = ก: เฉพาะ identity ที่ผูก customer/affiliate และไม่ผูกแอดมิน
-          convert: !meta.user_id && Boolean(meta.customer_id || meta.affiliate_id),
+          convert: !deleted && !meta.user_id && Boolean(meta.customer_id || meta.affiliate_id),
         }
       })
     ),

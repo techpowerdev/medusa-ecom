@@ -61,3 +61,44 @@ pnpm lint: 0 errors (warning เดิมของไฟล์อื่น ไ�
 pnpm typecheck: ผ่าน
 pnpm --filter backend build: Backend build completed successfully
 pnpm --filter storefront test:e2e:unit: 131 passed
+
+== แก้ตาม review #475 (nit 1–2)
+-- RED (ก่อนแก้: listProviderIdentities ไม่เห็นแถว soft-delete; error ของ DB มีอีเมล)
+      ✕ counts them when checking collisions without converting them (439 ms)
+    unique violation during apply
+      ✕ provider_identities: rethrows without the email (595 ms)
+      ✕ customers: rethrows without the email (190 ms)
+    compensation
+      ○ skipped restores every original value when the second step fails
+
+  ●  › soft-deleted identities › counts them when checking collisions without converting them
+
+    Provider identity with entity_id: <email>, provider: emailpass, already exists.
+
+--
+  ●  › unique violation during apply › provider_identities: rethrows without the email
+
+    expect(received).toContain(expected) // indexOf
+
+--
+  ●  › unique violation during apply › customers: rethrows without the email
+
+    expect(received).toContain(expected) // indexOf
+
+--
+Tests:       3 failed, 4 skipped, 7 total
+Snapshots:   0 total
+Time:        7.952 s, estimated 88 s
+Ran all test suites matching /integration-tests\/http\/core-81-lowercase-emails.spec.ts/i with tests matching "soft-deleted|unique violation".
+
+-- GREEN integration-tests/http/core-81-lowercase-emails.spec.ts
+      ✓ prints the rows without writing, applies through the workflow, then finds nothing (747 ms)
+      ✓ converts affiliate identities but never admin identities (Q-C13 = ก) (541 ms)
+      ✓ stops with a non-zero exit and changes nothing under each unique index (676 ms)
+      ✓ counts them when checking collisions without converting them (274 ms)
+      ✓ provider_identities: rethrows without the email (525 ms)
+      ✓ customers: rethrows without the email (267 ms)
+      ✓ restores every original value when the second step fails (346 ms)
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+-- backend test:unit 124 suites / 1686 passed; lint/typecheck/build/storefront test:e2e:unit (131) ผ่าน

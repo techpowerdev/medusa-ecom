@@ -139,6 +139,83 @@ medusaIntegrationTestRunner({
       })
     })
 
+    describe("soft-deleted identities", () => {
+      // IDX_provider_identity_provider_entity_id ไม่ใช่ partial index — แถวที่ soft-delete แล้วยังชนได้ตอน apply
+      it("counts them when checking collisions without converting them", async () => {
+        await auth().createAuthIdentities([
+          { provider_identities: [{ provider: "emailpass", entity_id: "ghost@x.co" }], app_metadata: { customer_id: "cus_ghost" } },
+          { provider_identities: [{ provider: "emailpass", entity_id: "Ghost@x.co" }], app_metadata: { customer_id: "cus_live" } },
+        ])
+        const deletedId = (await identityOf("ghost@x.co")).id
+        const liveId = (await identityOf("Ghost@x.co")).id
+        await (auth() as unknown as { softDeleteProviderIdentities: (ids: string[]) => Promise<unknown> }).softDeleteProviderIdentities([
+          deletedId,
+        ])
+
+        const result = await lowercaseEmails(getContainer(), true)
+
+        expect(result.applied).toBe(false)
+        expect(result.plan.provider_identities.changes.map((c) => c.id)).toEqual([liveId])
+        expect(result.plan.provider_identities.collisions.map((ids) => [...ids].sort())).toEqual([[deletedId, liveId].sort()])
+        expect((await identityOf("Ghost@x.co")).id).toBe(liveId)
+      })
+    })
+
+    describe("unique violation during apply", () => {
+      // มีคนสมัครแทรกระหว่าง plan กับ apply: error ของ DB มีอีเมล — script ต้องโยนข้อความที่มีแค่ตาราง/id
+      const printedBy = (calls: unknown[][]) => calls.map((args) => args.map(String).join(" ")).join("\n")
+
+      it.each([
+        [
+          "provider_identities",
+          "listProviderIdentities",
+          async () => {
+            const { customerId } = await registerCustomer(api, await publishableKey(), "race@x.co", PASSWORD)
+            await setIdentityEmail("race@x.co", "Race@X.co")
+            await customers().updateCustomers(customerId, { email: "race-customer@x.co" })
+            return (await identityOf("Race@X.co")).id
+          },
+          () => auth().createAuthIdentities({
+            provider_identities: [{ provider: "emailpass", entity_id: "race@x.co" }],
+            app_metadata: { customer_id: "cus_race_other" },
+          }),
+        ],
+        [
+          "customers",
+          "listCustomers",
+          async () => (await customers().createCustomers({ email: "Race@X.co", has_account: true })).id,
+          () => customers().createCustomers({ email: "race@x.co", has_account: true }),
+        ],
+      ] as const)("%s: rethrows without the email", async (table, listMethod, seed, signUpInBetween) => {
+        const id = await seed()
+        const service = (table === "customers" ? customers() : auth()) as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>
+        const proto = Object.getPrototypeOf(service)
+        const original = proto[listMethod]
+        const list = jest.spyOn(proto, listMethod).mockImplementationOnce(async function (this: unknown, ...args: unknown[]) {
+          const rows = await original.apply(this, args)
+          await signUpInBetween()
+          return rows
+        })
+        const logger = getContainer().resolve(ContainerRegistrationKeys.LOGGER)
+        const spies = (["error", "warn", "info"] as const).map((level) => jest.spyOn(logger, level))
+
+        const error = await lowercaseEmailsScript({ container: getContainer(), args: ["apply"] }).then(
+          () => undefined,
+          (e: { message?: string; stack?: string }) => e
+        )
+        list.mockRestore()
+        const logged = spies.map((spy) => printedBy(spy.mock.calls)).join("\n")
+        spies.forEach((spy) => spy.mockRestore())
+
+        expect(error?.message).toContain(table)
+        expect(error?.message).toContain(id)
+        const visible = `${error?.message} ${error?.stack ?? ""} ${JSON.stringify(error)} ${logged}`.toLowerCase()
+        expect(visible).not.toContain("race@x.co")
+        const snap = await snapshot()
+        expect(table === "customers" ? snap.customers : snap.identities).toEqual(expect.arrayContaining(["Race@X.co", "race@x.co"]))
+      })
+    })
+
     describe("compensation", () => {
       it("restores every original value when the second step fails", async () => {
         await seedMixedCase()
