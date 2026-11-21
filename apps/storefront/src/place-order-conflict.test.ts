@@ -39,20 +39,21 @@ beforeEach(() => {
 })
 
 describe("placeOrder: 409 ตอน complete (FS-15)", () => {
-  it("FLASH_SOLD_OUT → คืน { error: code } ไม่ throw (ข้อความไทยของ code แปลงที่ UI — actionErrorMessage)", async () => {
+  // CORE-76 (spec 01 กฎข้อ 134 a2): ผลเป็น kind — ข้อความไทยของ code แปลงที่ UI (checkoutNotice)
+  it("FLASH_SOLD_OUT → คืน { kind: refunded, code } ไม่ throw", async () => {
     complete.mockRejectedValueOnce(fetchError("This flash sale is sold out"))
-    await expect(place()).resolves.toEqual({ error: "FLASH_SOLD_OUT" })
+    await expect(place()).resolves.toEqual({ kind: "refunded", code: "FLASH_SOLD_OUT" })
   })
 
-  it("FS-22 (spec 03 กฎข้อ 27): 400 สต็อกไม่พอตอน reserveInventory → { error: \"OUT_OF_STOCK\" }", async () => {
+  it("FS-22 (spec 03 กฎข้อ 27): 400 สต็อกไม่พอตอน reserveInventory → refunded OUT_OF_STOCK", async () => {
     complete.mockRejectedValueOnce(
       fetchError("Not enough stock available for item iitem_1 at location sloc_1", 400)
     )
-    await expect(place()).resolves.toEqual({ error: "OUT_OF_STOCK" })
+    await expect(place()).resolves.toEqual({ kind: "refunded", code: "OUT_OF_STOCK" })
   })
 
-  it("error อื่น → { error: \"failed\" } ไม่ throw (ผู้เรียกใช้ข้อความ fallback ของตัวเอง)", async () => {
+  it("error อื่น → { kind: \"failed\" } ไม่ throw (ผู้เรียกใช้ข้อความ fallback ของตัวเอง)", async () => {
     complete.mockRejectedValueOnce(fetchError("Payment sessions are required", 400))
-    await expect(place()).resolves.toEqual({ error: "failed" })
+    await expect(place()).resolves.toEqual({ kind: "failed" })
   })
 })

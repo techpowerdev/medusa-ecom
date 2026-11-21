@@ -90,6 +90,14 @@ describe("requestReturn เมื่อ location ไม่มีของ (CORE-
     expect(result.values).toEqual({ "quantity:L1": "2", "reason:L1": "rr_damaged", "quantity:L2": "0" })
   })
 
+  // CORE-76 (spec 01 กฎข้อ 134b, AC-175b): option ไม่มี stock location (CORE-55 `RETURN_NO_LOCATION_MESSAGE`) → ติดต่อร้านเช่นกัน
+  it("400 Return shipping option has no stock location → contactStore + ข้อความไทยไม่มี ลองใหม่", async () => {
+    backendRejects("Return shipping option has no stock location")
+    const result = await submit()
+    expect(result).toMatchObject({ success: false, contactStore: true, error: "ไม่สามารถสร้างคำขอคืนสินค้านี้ทางเว็บได้ กรุณาติดต่อร้าน" })
+    expect(result.error).not.toContain("ลองใหม่")
+  })
+
   it("error อื่น → ข้อความเดิม ไม่มี contactStore", async () => {
     backendRejects("Something else")
     const result = await submit()
