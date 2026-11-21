@@ -1,8 +1,10 @@
 import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import type { BigNumberInput } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, QueryContext } from "@medusajs/framework/utils"
+import { wrapProductsWithTaxPrices } from "@medusajs/medusa/api/store/products/helpers"
 import type { ProgramScope } from "../../../modules/affiliate/utils/commission"
 import {
+  cardEstimate,
   ProductCard,
   ProgramCoverage,
   productFiltersForScope,
@@ -16,7 +18,58 @@ import { GetAffiliateProductsSchemaType } from "../validators"
 
 // field ที่พอสำหรับตัดสินว่าโปรแกรมคลุม variant ใด (กฎ 16) — ไม่ดึงราคา/รูปของสินค้านอกหน้า
 const SCOPE_FIELDS = ["id", "collection_id", "categories.id", "variants.id"]
-const PRODUCT_FIELDS = ["id", "title", "handle", "thumbnail", "variants.id", "variants.title", "variants.calculated_price.*"]
+const PRODUCT_FIELDS = [
+  "id",
+  "title",
+  "handle",
+  "thumbnail",
+  "type_id",
+  "variants.id",
+  "variants.title",
+  "variants.calculated_price.*",
+]
+
+type EstimateVariants = Parameters<typeof cardEstimate>[0]
+type WrapRequest = Parameters<typeof wrapProductsWithTaxPrices>[0]
+type WrapProducts = Parameters<typeof wrapProductsWithTaxPrices>[1]
+
+/**
+ * กฎ 48a (AF-24): เติม `calculated_amount_without_tax` ด้วย helper ของ Store API ของ Medusa (ไม่คำนวณ VAT เอง)
+ * portal ไม่มี region ของผู้ซื้อ → ใช้ tax context ของ region ตั้งต้นของร้าน (หรือ region แรกของสกุลเงินร้าน) และประเทศแรกของ region
+ * ไม่มี region / ไม่เปิด automatic_taxes → ไม่เติม (การ์ดใช้ราคาที่ได้แทน)
+ */
+const addPricesWithoutTax = async (
+  req: AuthenticatedMedusaRequest<unknown, GetAffiliateProductsSchemaType>,
+  products: unknown[],
+  store: { default_region_id?: string | null } | undefined,
+  currency_code: string | undefined
+) => {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const filters = store?.default_region_id ? { id: store.default_region_id } : currency_code ? { currency_code } : null
+  if (!products.length || !filters) {
+    return
+  }
+  const {
+    data: [region],
+  } = await query.graph({
+    entity: "region",
+    fields: ["id", "automatic_taxes", "countries.iso_2"],
+    filters,
+    pagination: { order: { created_at: "ASC" }, take: 1 },
+  })
+  const country_code = region?.countries?.find((c) => c?.iso_2)?.iso_2
+  if (!region?.automatic_taxes || !country_code) {
+    return
+  }
+  const taxContext = {
+    taxInclusivityContext: { automaticTaxes: true },
+    taxLineContext: { address: { country_code }, locale: req.locale },
+  }
+  await wrapProductsWithTaxPrices(
+    { scope: req.scope, locale: req.locale, taxContext } as unknown as WrapRequest,
+    products as WrapProducts
+  )
+}
 
 /**
  * spec 05 API, กฎ 9, 16, 29: สินค้าของโปรแกรม published ที่ active/upcoming หนึ่งรายการต่อสินค้า
@@ -75,7 +128,7 @@ export async function GET(
 
   const {
     data: [store],
-  } = await query.graph({ entity: "store", fields: ["supported_currencies.*"] })
+  } = await query.graph({ entity: "store", fields: ["default_region_id", "supported_currencies.*"] })
   const currency_code = store?.supported_currencies?.find((c) => c?.is_default)?.currency_code
   const { data: pageProducts } = pageCards.length
     ? await query.graph({
@@ -85,6 +138,7 @@ export async function GET(
         ...(currency_code && { context: { variants: { calculated_price: QueryContext({ currency_code }) } } }),
       })
     : { data: [] }
+  await addPricesWithoutTax(req, pageProducts, store, currency_code)
   const productById = new Map(pageProducts.map((p) => [p.id, p]))
 
   const products = pageCards.flatMap(({ product_id, program, variant_ids, rate_varies }) => {
@@ -98,6 +152,9 @@ export async function GET(
         product: { ...product, variants },
         program,
         rate_varies,
+        // กฎ 35b: rate_varies → ไม่มียอดประมาณการ
+        // calculated_amount_without_tax ถูกเติมตอน runtime (addPricesWithoutTax) ไม่อยู่ใน type ที่ generate
+        estimate: rate_varies ? null : cardEstimate(variants as EstimateVariants, program.commission_value),
         share_url: shareUrl(process.env.STOREFRONT_URL, affiliate.code, product.handle),
       },
     ]

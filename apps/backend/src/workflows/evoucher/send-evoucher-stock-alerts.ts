@@ -10,7 +10,7 @@ import type { CreateNotificationDTO } from "@medusajs/framework/types"
 import { sendNotificationsStep } from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
 import EvoucherModuleService from "../../modules/evoucher/service"
-import { isLowStock } from "../../modules/evoucher/utils/stats"
+import { isPoolLowStock } from "../../modules/evoucher/utils/stats"
 import { EmailTemplates } from "../../modules/resend/templates"
 
 export type SendEvoucherStockAlertsInput = {
@@ -50,7 +50,8 @@ export const buildEvoucherStockAlertsStep = createStep(
 
     for (const pool of pools) {
       const available = counts[pool.id].available
-      if (!isLowStock(available, pool.low_stock_threshold)) {
+      // EV-20 (กฎข้อ 36c): pool ที่ไม่มี code เลยไม่แจ้ง — นิยามเดียวกับ route
+      if (!isPoolLowStock(counts[pool.id], pool.low_stock_threshold)) {
         continue
       }
       notifications.push({

@@ -41,7 +41,7 @@ let variantId: string
 let campaignId: string
 
 /**
- * ข้อมูล flash บน PDP ดึงผ่าน server action (`getActiveFlashSales`) — mock เฉพาะ POST ที่มี header next-action
+ * ข้อมูล flash บน PDP ดึงผ่าน server action (`getProductFlash` — FS-21 รวมสิทธิ์ต่อคน) — mock เฉพาะ POST ที่มี header next-action
  * และ body มี variant id ของสินค้านี้ (server action อื่นของหน้าไม่ถูกแตะ)
  */
 async function mockFlashAction(page: Page, handler: (route: Route) => Promise<void>) {

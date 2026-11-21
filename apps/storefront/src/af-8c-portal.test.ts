@@ -38,6 +38,8 @@ const item = (rate_varies: boolean, amounts: number[]): PortalProduct => ({
     commission_value: 10,
   },
   rate_varies,
+  // AF-24: ยอดประมาณการมาจาก API (ราคาต่ำสุด 100 × 10%)
+  estimate: rate_varies ? null : { amount: 10, currency_code: "thb", excludes_tax: true },
   share_url: "https://shop.test/r/ANN?p=shirt",
 })
 

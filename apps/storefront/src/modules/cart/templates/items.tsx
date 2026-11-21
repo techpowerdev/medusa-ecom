@@ -8,9 +8,14 @@ import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
 type ItemsTemplateProps = {
   cart?: HttpTypes.StoreCart
   flashExceeded?: Record<string, number>
+  flashCustomerLimit?: Record<string, number>
 }
 
-const ItemsTemplate = ({ cart, flashExceeded }: ItemsTemplateProps) => {
+const ItemsTemplate = ({
+  cart,
+  flashExceeded,
+  flashCustomerLimit,
+}: ItemsTemplateProps) => {
   const items = cart?.items
   return (
     <div>
@@ -58,6 +63,7 @@ const ItemsTemplate = ({ cart, flashExceeded }: ItemsTemplateProps) => {
                       item={item}
                       currencyCode={cart?.currency_code}
                       flashRemaining={flashExceeded?.[item.id]}
+                      flashCustomerRemaining={flashCustomerLimit?.[item.id]}
                     />
                   )
                 })

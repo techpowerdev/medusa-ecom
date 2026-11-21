@@ -24,7 +24,7 @@ vi.mock("@lib/data/cart", () => ({
 vi.mock("@lib/hooks/use-in-view", () => ({ useIntersection: () => true }))
 vi.mock("@modules/products/components/flash-sale", () => ({
   default: () => null,
-  useFlashOffer: () => ({ offer: null, loading: false }),
+  useFlashOffer: () => ({ offer: null, loading: false, allowances: [] }),
 }))
 vi.mock("@modules/products/components/product-price", () => ({ default: () => null }))
 vi.mock("@modules/products/components/product-actions/mobile-actions", () => ({

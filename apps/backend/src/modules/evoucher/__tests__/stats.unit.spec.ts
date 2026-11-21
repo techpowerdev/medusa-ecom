@@ -1,4 +1,4 @@
-import { isLowStock, toStatusCounts } from "../utils/stats"
+import { isLowStock, isPoolLowStock, toStatusCounts, totalCodes } from "../utils/stats"
 
 describe("toStatusCounts", () => {
   it("groups count rows per pool and fills missing statuses with 0", () => {
@@ -33,5 +33,24 @@ describe("isLowStock", () => {
   it("is not low at or above the threshold", () => {
     expect(isLowStock(20, 20)).toBe(false)
     expect(isLowStock(0, 0)).toBe(false)
+  })
+})
+
+// EV-20 (spec 02 กฎข้อ 36c): pool ที่ไม่มี code เลยไม่ขึ้น "Low stock"
+describe("totalCodes / isPoolLowStock", () => {
+  const counts = (available: number, rest = 0) => ({ available, allocated: 0, delivered: rest, void: 0 })
+
+  it("counts codes of every status", () => {
+    expect(totalCodes({ available: 2, allocated: 1, delivered: 3, void: 4 })).toBe(10)
+  })
+
+  it("is not low when the pool has no codes at all", () => {
+    expect(isPoolLowStock(counts(0), 20)).toBe(false)
+  })
+
+  it("is low when the pool has codes and available is below the threshold", () => {
+    expect(isPoolLowStock(counts(5), 20)).toBe(true)
+    expect(isPoolLowStock(counts(0, 3), 20)).toBe(true)
+    expect(isPoolLowStock(counts(20), 20)).toBe(false)
   })
 })
