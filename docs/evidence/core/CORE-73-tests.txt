@@ -19,48 +19,72 @@ AssertionError: expected '' to contain 'อีเมลนี้มีบัญ�
     Error: element(s) not found
   1 failed
 
-## GREEN — unit ของ task
- Test Files  3 passed (3)
-      Tests  21 passed (21)
+## RED — F-1 (qa #458: อีเมลต่างตัวพิมพ์เลี่ยงการกันซ้ำ) unit ก่อน normalize
+     × signup ด้วยตัวพิมพ์ใหญ่ของอีเมลลูกค้าเดิม → register/login ด้วยอีเมลตัวเล็ก และได้ email_exists 3ms
+     × signup อีเมลใหม่ตัวพิมพ์ปน → สร้าง customer ด้วยอีเมลตัวเล็ก 1ms
+     × login ด้วยตัวพิมพ์ใหญ่ของบัญชีตัวเล็ก → login ด้วยอีเมลตัวเล็ก 1ms
+     × affiliate portal login/register ส่งอีเมลตัวเล็ก (identity emailpass ชุดเดียวกับลูกค้า) 8ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected { email: '  Taken@EXAMPLE.com ', …(1) } to match object { email: 'taken@example.com' }
+AssertionError: expected { email: '  Taken@EXAMPLE.com ', …(3) } to match object { email: 'taken@example.com' }
+AssertionError: expected { email: '  Taken@EXAMPLE.com ', …(1) } to match object { email: 'taken@example.com' }
+AssertionError: expected '  Taken@EXAMPLE.com ' to be 'taken@example.com' // Object.is equality
+      Tests  4 failed | 7 passed (11)
+
+## RED — F-1 e2e บน storefront ก่อน normalize (สมัครด้วยตัวพิมพ์ใหญ่ → login เข้าบัญชีใหม่ ไม่เห็น register-email-exists)
+  ✘  1 [chromium] › e2e/core-73-register-existing-email.spec.ts:88:5 › AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้ (5.7s)
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    ../../../CORE-73-results-red-f1/core-73-register-existing--8e6ee--และ-login-เข้าบัญชีเดิมได้-chromium/test-failed-1.png
+  1 failed
 
 ## GREEN — vitest ทั้ง storefront
  Test Files  104 passed (104)
-      Tests  1224 passed (1224)
+      Tests  1228 passed (1228)
 
-## GREEN — e2e ของ task (--repeat-each=3)
-  ✓  1 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (3.0s)
-  ✓  2 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (3.1s)
-  ✓  3 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (3.2s)
-  ✓  6 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (1.2s)
-  ✓  4 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (1.5s)
-  ✓  5 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (1.5s)
-  6 passed (5.8s)
+## GREEN — e2e ของ task (--repeat-each=3, รวม F-1)
+  ✓  3 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (1.9s)
+  ✓  1 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (1.9s)
+  ✓  2 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (1.9s)
+  ✓  4 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (904ms)
+  ✓  6 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (985ms)
+  ✓  5 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (1.4s)
+  ✓  7 [chromium] › e2e/core-73-register-existing-email.spec.ts:88:5 › AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้ (1.1s)
+  ✓  8 [chromium] › e2e/core-73-register-existing-email.spec.ts:88:5 › AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้ (1.1s)
+  ✓  9 [chromium] › e2e/core-73-register-existing-email.spec.ts:88:5 › AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้ (1.1s)
+  9 passed (5.1s)
 
-## GREEN — e2e ที่เกี่ยวข้อง (auth/register/affiliate portal)
-  ✓   3 [chromium] › e2e/core-4f-auth-errors.spec.ts:8:5 › AC-98: login รหัสผ่านผิด / สมัครด้วยอีเมลที่มีบัญชีแล้ว → error ไทย และอีเมลยังอยู่ (2.3s)
-  ✓   5 [chromium] › e2e/register-policy-links.spec.ts:6:5 › AC-77: ลิงก์นโยบาย/ข้อกำหนดในฟอร์มสมัครชี้หน้าที่มีจริง (611ms)
-  ✓   2 [chromium] › e2e/core-73-register-existing-email.spec.ts:24:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (3.5s)
-  ✓   6 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (700ms)
-  ✓   4 [chromium] › e2e/affiliate-portal.spec.ts:74:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (4.1s)
-  ✓   1 [chromium] › e2e/core-4h-auth-reason.spec.ts:9:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (4.7s)
-  ✓   7 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (1.5s)
-  ✓   9 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (186ms)
-  ✓   8 [chromium] › e2e/affiliate-portal.spec.ts:169:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (1.5s)
-  ✓  10 [chromium] › e2e/affiliate-portal.spec.ts:197:5 › AF-21: สมัครด้วยรหัสคำสงวน → ข้อความไทย แก้รหัสแล้วสมัครซ้ำด้วยอีเมลเดิมสำเร็จ (AC-53) (626ms)
-  ✓  11 [chromium] › e2e/affiliate-portal.spec.ts:225:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (603ms)
-  ✓  12 [chromium] › e2e/affiliate-portal.spec.ts:248:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (705ms)
-  ✓  13 [chromium] › e2e/affiliate-portal.spec.ts:278:9 › AF-22 1280×800 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (643ms)
-  ✓  14 [chromium] › e2e/affiliate-portal.spec.ts:308:9 › AF-22 1280×800 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.1s)
-  ✓  15 [chromium] › e2e/affiliate-portal.spec.ts:278:9 › AF-22 375×812 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (596ms)
-  ✓  16 [chromium] › e2e/affiliate-portal.spec.ts:308:9 › AF-22 375×812 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.1s)
-  16 passed (14.1s)
+## GREEN — e2e ที่เกี่ยวข้อง (auth/register/affiliate portal/login return/buy login)
+  ✓   2 [chromium] › e2e/core-30-login-return.spec.ts:30:5 › AC-123: หน้ากลุ่ม — ไม่ login กด join → login พร้อม return_to → กลับหน้ากลุ่ม ไม่มี membership ใหม่ (2.3s)
+  ✓   3 [chromium] › e2e/affiliate-portal-pages.spec.ts:68:5 › AC-40: nav ของ portal → Programs, Earnings (reversed แยกติดลบ), Payouts ไม่มี reference, Profile (2.9s)
+  ✓   1 [chromium] › e2e/affiliate-portal.spec.ts:74:5 › AF-8a: login → แท็บได้ค่าคอมตอนนี้/เร็วๆ นี้ การ์ดเดียวต่อสินค้า และแชร์ลิงก์ (AC-9, AC-35) (3.0s)
+  ✓   5 [chromium] › e2e/core-30-login-return.spec.ts:52:5 › AC-123: return_to ถูกแก้เป็น URL ภายนอก → login แล้วอยู่ที่ /th/account (813ms)
+  ✓   4 [chromium] › e2e/core-14-buy-login.spec.ts:39:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า (3.7s)
+  ✓   9 [chromium] › e2e/core-14-buy-login.spec.ts:103:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404 (224ms)
+  ✓   7 [chromium] › e2e/affiliate-portal.spec.ts:169:5 › AF-8a: สมัคร affiliate ผ่าน portal → สถานะรออนุมัติ ยังไม่เห็นสินค้า (866ms)
+  ✓   6 [chromium] › e2e/affiliate-portal-pages.spec.ts:172:5 › AC-40: affiliate ที่ถูกระงับ → Products/Programs แสดง affiliate-status-notice, Earnings/Payouts เปิดได้ (1.3s)
+  ✓  11 [chromium] › e2e/affiliate-portal.spec.ts:197:5 › AF-21: สมัครด้วยรหัสคำสงวน → ข้อความไทย แก้รหัสแล้วสมัครซ้ำด้วยอีเมลเดิมสำเร็จ (AC-53) (855ms)
+  ✓  10 [chromium] › e2e/core-14-buy-login.spec.ts:126:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง (916ms)
+  ✓  12 [chromium] › e2e/core-4f-auth-errors.spec.ts:8:5 › AC-98: login รหัสผ่านผิด / สมัครด้วยอีเมลที่มีบัญชีแล้ว → error ไทย และอีเมลยังอยู่ (964ms)
+  ✓  13 [chromium] › e2e/affiliate-portal.spec.ts:225:5 › AF-8a: customer ที่ยังไม่สมัครแอฟฟิลิเอต login portal → ข้อความไทย ไม่ตั้ง session (review #135) (667ms)
+  ✓  15 [chromium] › e2e/register-policy-links.spec.ts:6:5 › AC-77: ลิงก์นโยบาย/ข้อกำหนดในฟอร์มสมัครชี้หน้าที่มีจริง (345ms)
+  ✓  17 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (348ms)
+  ✓  16 [chromium] › e2e/affiliate-portal.spec.ts:248:5 › AF-8a: affiliate ที่ถูกระงับ → ข้อความระงับ ไม่เห็นสินค้า (Q6) (725ms)
+  ✓  18 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (936ms)
+  ✓  19 [chromium] › e2e/affiliate-portal.spec.ts:278:9 › AF-22 1280×800 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (763ms)
+  ✓  20 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (218ms)
+  ✓  14 [chromium] › e2e/core-4h-auth-reason.spec.ts:9:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (2.8s)
+  ✓  21 [chromium] › e2e/affiliate-portal.spec.ts:308:9 › AF-22 1280×800 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.3s)
+  ✓  22 [chromium] › e2e/affiliate-portal.spec.ts:278:9 › AF-22 375×812 › AF-22: สมัครด้วยรหัสคำสงวน → ทุกช่องคงค่า แก้แค่รหัสแล้วเข้า portal (AC-54) (579ms)
+  ✓  23 [chromium] › e2e/affiliate-portal.spec.ts:308:9 › AF-22 375×812 › AF-22: login รหัสผ่านผิด → อีเมลคงค่า; ระหว่างส่งปุ่ม disabled และ double-click ส่ง POST ครั้งเดียว (AC-54) (2.1s)
+  ✓   8 [chromium] › e2e/core-30-login-return.spec.ts:61:5 › AC-123: หน้าแรก — ไม่ login กดสร้างทีม → login แล้วกลับ /th และจำนวนทีมไม่เพิ่ม (58.7s)
+  23 passed (1.0m)
 
 ## e2e:unit (project unit)
-  125 passed (1.5s)
+  125 passed (741ms)
 
 ## lint
 apps/storefront lint: 
 apps/storefront lint: Done
 ## typecheck storefront
-apps/storefront typecheck$ tsc --noEmit
-apps/storefront typecheck: Done
+$ tsc --noEmit

@@ -12,6 +12,8 @@ const customerRetrieve = vi.fn()
 const customerCreate = vi.fn()
 const setAuthToken = vi.fn()
 const removePendingCustomer = vi.fn()
+const clientFetch = vi.fn()
+const cookieSet = vi.fn()
 const actionState = vi.hoisted(() => ({ current: null as unknown }))
 
 vi.mock("@lib/config", () => ({
@@ -20,6 +22,7 @@ vi.mock("@lib/config", () => ({
       login: (...a: unknown[]) => authLogin(...a),
       register: (...a: unknown[]) => authRegister(...a),
     },
+    client: { fetch: (...a: unknown[]) => clientFetch(...a) },
     store: {
       customer: {
         retrieve: (...a: unknown[]) => customerRetrieve(...a),
@@ -40,6 +43,7 @@ vi.mock("@lib/data/cart", () => ({ addToCart: vi.fn() }))
 vi.mock("@lib/data/active-cart", () => ({ restoreActiveCart: vi.fn() }))
 vi.mock("@lib/util/server-cart", () => ({}))
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }))
+vi.mock("next/headers", () => ({ cookies: async () => ({ set: cookieSet, get: vi.fn(), delete: vi.fn() }) }))
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
   unstable_rethrow: vi.fn(),
@@ -161,5 +165,67 @@ describe("CORE-73: component register แสดง register-email-exists + regis
     const html = await render({ state: "error", error: "สมัครสมาชิกไม่สำเร็จ", email: EMAIL })
     expect(html).toContain('data-testid="register-error"')
     expect(html).not.toContain("register-email-exists")
+  })
+})
+
+// F-1 จาก qa #458 (session หลักตัดสิน 2026-11-21): emailpass ของ Medusa แยกตัวพิมพ์ → storefront normalize อีเมล
+// เป็น trim().toLowerCase() ทุกทางเข้า (สมัคร/login ของลูกค้า และ portal affiliate ที่ใช้ identity emailpass ชุดเดียวกัน)
+describe("CORE-73 F-1: normalize อีเมลก่อนส่ง auth ของ Medusa", () => {
+  const MIXED = "  Taken@EXAMPLE.com "
+  const LOWER = "taken@example.com"
+  const mixedForm = () => {
+    const f = form()
+    f.set("email", MIXED)
+    f.set("countryCode", "th")
+    f.set("name", "ทดสอบ")
+    f.set("code", "e2e-code")
+    return f
+  }
+
+  beforeEach(() => {
+    for (const m of [authLogin, authRegister, customerRetrieve, customerCreate, setAuthToken, clientFetch, cookieSet]) {
+      m.mockReset()
+    }
+  })
+
+  it("signup ด้วยตัวพิมพ์ใหญ่ของอีเมลลูกค้าเดิม → register/login ด้วยอีเมลตัวเล็ก และได้ email_exists", async () => {
+    identityExists()
+    authLogin.mockResolvedValue("customer-token")
+    customerRetrieve.mockResolvedValue({ customer: { id: "cus_1", email: LOWER } })
+    const { signup } = await import("@lib/data/customer")
+    const result = await signup(null, mixedForm())
+    expect(authRegister.mock.calls[0][2]).toMatchObject({ email: LOWER })
+    expect(authLogin.mock.calls[0][2]).toMatchObject({ email: LOWER })
+    expect(result).toMatchObject({ state: "error", reason: "email_exists", email: LOWER })
+    expect(setAuthToken).not.toHaveBeenCalled()
+  })
+
+  it("signup อีเมลใหม่ตัวพิมพ์ปน → สร้าง customer ด้วยอีเมลตัวเล็ก", async () => {
+    authRegister.mockResolvedValue("register-token")
+    authLogin.mockResolvedValueOnce("identity-only-token").mockResolvedValueOnce("customer-token")
+    customerRetrieve.mockRejectedValue(new FetchError("Unauthorized", "Unauthorized", 401))
+    customerCreate.mockResolvedValue({ customer: { id: "cus_new" } })
+    const { signup } = await import("@lib/data/customer")
+    expect(await signup(null, mixedForm())).toEqual({ state: "success" })
+    expect(customerCreate.mock.calls[0][0]).toMatchObject({ email: LOWER })
+    for (const call of authLogin.mock.calls) expect(call[2]).toMatchObject({ email: LOWER })
+  })
+
+  it("login ด้วยตัวพิมพ์ใหญ่ของบัญชีตัวเล็ก → login ด้วยอีเมลตัวเล็ก", async () => {
+    authLogin.mockResolvedValue("customer-token")
+    customerRetrieve.mockResolvedValue({ customer: { id: "cus_1", email: LOWER, metadata: {} } })
+    const { login } = await import("@lib/data/customer")
+    expect(await login(null, mixedForm())).toEqual({ state: "success" })
+    expect(authLogin.mock.calls[0][2]).toMatchObject({ email: LOWER })
+  })
+
+  it("affiliate portal login/register ส่งอีเมลตัวเล็ก (identity emailpass ชุดเดียวกับลูกค้า)", async () => {
+    clientFetch.mockResolvedValue({ token: "t", affiliate: { id: "aff_1" } })
+    const { affiliateLogin, affiliateRegister } = await import("@lib/data/affiliate-portal")
+    await affiliateLogin(null as never, mixedForm())
+    await affiliateRegister(null as never, mixedForm())
+    const authCalls = clientFetch.mock.calls.filter(([url]) => String(url).startsWith("/auth/affiliate/emailpass"))
+    expect(authCalls.length).toBeGreaterThanOrEqual(3)
+    for (const [, init] of authCalls) expect((init as { body: { email: string } }).body.email).toBe(LOWER)
   })
 })

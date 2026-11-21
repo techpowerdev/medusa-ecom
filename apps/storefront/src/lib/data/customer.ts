@@ -7,6 +7,7 @@ import {
 } from "@lib/util/error-message"
 import { MISSING_ADDRESS_MESSAGE, missingRequiredAddress } from "@lib/util/address-required"
 import { trimInvisible } from "@lib/util/trim-invisible"
+import { normalizeEmail } from "@lib/util/normalize-email"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
@@ -138,7 +139,7 @@ export async function signup(
 ): Promise<CustomerAuthState> {
   const password = formData.get("password") as string
   const customerForm = {
-    email: formData.get("email") as string,
+    email: normalizeEmail(formData.get("email")),
     first_name: formData.get("first_name") as string,
     last_name: formData.get("last_name") as string,
     phone: formData.get("phone") as string,
@@ -210,7 +211,7 @@ export async function login(
   _currentState: unknown,
   formData: FormData
 ): Promise<CustomerAuthState> {
-  const email = formData.get("email") as string
+  const email = normalizeEmail(formData.get("email"))
   const password = formData.get("password") as string
 
   return withEmail(

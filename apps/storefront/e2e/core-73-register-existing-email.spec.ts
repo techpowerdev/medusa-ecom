@@ -83,3 +83,34 @@ test("AC-172 (regression): อีเมลของบัญชี affiliate ท
     expect(cookies.find((c) => c.name === "_medusa_jwt")).toBeDefined()
   })
 })
+
+// F-1 (qa #458, session หลักตัดสิน 2026-11-21): emailpass ของ Medusa แยกตัวพิมพ์ → storefront normalize อีเมล
+test("AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้", async ({
+  page,
+  request,
+  step,
+  evidence,
+}) => {
+  const customer = await createCustomer(request, await publishableKey(request, await adminHeaders(request)))
+  const upper = customer.email.toUpperCase()
+  expect(upper).not.toBe(customer.email)
+
+  await step("สมัครด้วยอีเมลตัวพิมพ์ใหญ่ + รหัสเดิม → register-email-exists ไม่มี cookie _medusa_jwt", async () => {
+    await submitRegister(page, upper, customer.password)
+    await expect(page.getByTestId("register-email-exists")).toBeVisible()
+    await expect(page.getByTestId("register-login-link")).toBeVisible()
+    const cookies = await page.context().cookies()
+    expect(cookies.find((c) => c.name === "_medusa_jwt")).toBeUndefined()
+    await evidence("03-register-uppercase-email-exists")
+  })
+
+  await step("login ด้วยอีเมลตัวพิมพ์ใหญ่ของบัญชีตัวเล็ก → เข้าบัญชีเดิม (อีเมลที่แสดงเป็นตัวเล็ก)", async () => {
+    await page.getByTestId("register-login-link").click()
+    await expect(page.getByTestId("login-page")).toBeVisible()
+    await page.getByTestId("email-input").fill(upper)
+    await page.getByTestId("password-input").fill(customer.password)
+    await page.getByTestId("sign-in-button").click()
+    await expect(page.getByTestId("overview-page-wrapper")).toBeVisible()
+    await expect(page.getByTestId("customer-email")).toHaveAttribute("data-value", customer.email)
+  })
+})
