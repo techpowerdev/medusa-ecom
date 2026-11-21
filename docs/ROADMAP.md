@@ -479,6 +479,51 @@ owner ตัดสิน spec 08 Q1–Q6 (2026-10-28): ทำครบ ADM-1..9,
 **ไม่ทำ (owner 2026-11-21 — พฤติกรรมที่ยอมรับ)**: ฟอร์ม Refund ของ Medusa ค่าเริ่มต้นยอดเต็ม (dashboard core), ป้าย "(ICT)" บนเครื่อง UTC (เครื่องแอดมินตั้งเวลาไทย — ADR-018), หน้า order admin แสดงราคารวม VAT
 **ก่อน go-live (เพิ่มจากการทดสอบ — config ไม่ใช่ task)**: ตั้ง `OPS_ALERT_EMAIL`, `EVOUCHER_ADMIN_EMAIL`, `RESEND_API_KEY` (เฟส 3b/4); เก็บกวาดข้อมูลทดสอบใน DB dev ตามบันทึกการทดสอบ (ไม่เกี่ยวกับ prod)
 
+### รอบ 41 (owner ตัดสิน 2026-11-21 — follow-up รอบ 40 ทุกข้อทำใน release v0.3.0)
+ที่มา: follow-up รอบ 40 (review/qa #426–#465), คำตัดสิน owner 2026-11-21 ข้อ 1–22 + ข้อเพิ่มของ session หลัก (hygiene e2e CORE-75×FS-14, facet `/store`, คำค้นสั้น, review #464)
+PR ที่เปิดอยู่และต้อง merge ก่อน task ที่อ้าง: #462 CORE-68, #463 GB-25, #464 FS-22, #465 CORE-75, hotfix `fix/nav-cart-link-duplicate`
+แก้แล้วใน PR เอกสารรอบ 41 (ไม่ใช่ task): `docs/ops/production.md` (`worker_mode: "migrate"`, runbook collection ไม่มีเจ้าของหลัง PAY-9, เวลา refund ของ FS-22, Go-live ข้อ 10–14), spec 05 ชื่อ helper `wrapProductsWithTaxPrices`,
+spec 08 กฎ 41a/41c/43/44/45, spec 07 เช็กลิสต์ bump ข้อ 14–15 + ADR-025 ภาคผนวก (#17948), ADR-018 ภาคผนวก (ข้อยกเว้นที่ 3), ADR-026 ภาคผนวก; AC-49 ของ spec 02 ใช้ 100/10 แล้วตั้งแต่ PR เอกสารรอบ 40 (ไม่ต้องแก้)
+**CLAUDE.md** (owner อนุมัติ 2026-11-21): session หลักแก้เองใน PR เอกสารรอบ 41 — planner ไม่แตะ (ร่างข้อความอยู่ในรายงาน planner รอบ 41)
+| คลื่น | Task | spec | งาน | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|---|
+| A | OPS-33 | 07 | **PII** redact log ของ prod (`json-logger.ts`) | PR เอกสารรอบ 41 | — | ☐ |
+| A | EV-23 → EV-24 | 02 | route Retry allocation → ปุ่มใน widget order | EV-24 ← EV-23 | EV-24 ✓ | ☐ |
+| A | EV-25 | 02 | script backfill ธง backordered (dry-run/`--apply`) | PR เอกสารรอบ 41 | — | ☐ |
+| A | AF-25 ∥ AF-26 | 05 | admin summary pending สุทธิ ∥ `share_url` มี `/th` | PR เอกสารรอบ 41 | — | ☐ |
+| A | FS-23 | 03 | PDP หักจำนวนในตะกร้า + คนไม่ login เห็นจำกัดต่อคน | PR เอกสารรอบ 41 | ✓ | ☐ |
+| A | GB-27 ∥ GB-28 | 04 | ซ่อนนับถอยหลังก่อนเริ่ม ∥ nits GB-20b | PR เอกสารรอบ 41 | GB-27 ✓ | ☐ |
+| A | CORE-79 | 01 | ปุ่ม login บนมือถือ ≥ 44px + เติมอีเมล | PR เอกสารรอบ 41 | ✓ | ☐ |
+| A | ADM-43 ∥ ADM-44 ∥ ADM-45 → ADM-46 | 08 | ค้นด้วย code/แท็บใน URL ∥ ends_at + edit Drawer ∥ Payouts กว้างที่จอใหญ่ → Save disabled ระหว่างปิด + Enter ค้าง | ADM-46 ← ADM-44 | ✓ | ☐ |
+| A | OPS-34 ∥ PAY-13 | 07/06 | hygiene backend (tsconfig `.medusa`, nits #428–#434, PAY-9 404) ∥ e2e pay-9 จ่ายใหม่ไม่ flaky | PR เอกสารรอบ 41 | — | ☐ |
+| B | CORE-76 | 01 | **เงิน (UI)** notice คืนเงินเป็น state + 4xx หลังตัดบัตร + manual สต็อกไม่พอ + คืนสินค้าไม่มี location | FS-22 (#464) | ✓ | ☐ |
+| B | GB-26 | 04 | ล็อกการเพิ่ม/ถอด promotion ของ campaign group buy + clone ใช้ campaign จาก link | GB-25 (#463) | — | ☐ |
+| B | CORE-78 | 01 | orders: กลุ่มเฉพาะหน้า 1, "ดูทั้งหมด", a11y Pagination, helper แบ่งหน้าเดียว | CORE-68 (#462) | ✓ | ☐ |
+| B | CORE-77 | 01 | ป้ายตะกร้าไม่ค้างเมื่อโหลด cart ล้ม | hotfix `fix/nav-cart-link-duplicate` | ✓ | ☐ |
+| B | CORE-86 ∥ CORE-87 | 01 | e2e prefix core-75×fs14 ∥ หัว facet `/store` ไม่แสดง "(0)" ผิด | CORE-75 (#465) | CORE-87 ✓ | ☐ |
+| C | PAY-11 ∥ PAY-12 | 06 | **เงิน (UI)** PromptPay ทางสำรองไม่ค้าง + บอกเหตุ ∥ `/api/payment-return` → `error=refunded` + cart อ่าน `error` | FS-22, CORE-76 | ✓ | ☐ |
+| C | PAY-14 | 06 | (owner สั่ง 2026-11-21, review #468) ขั้น payment ไม่ติด session ชั่วคราวที่ชี้ PI จบแล้ว — สร้าง session ใหม่อัตโนมัติ/คลิกตัวเลือกเดิมได้, ไม่โชว์ error อังกฤษของ Stripe, ไม่ confirm PI เดิม | CORE-76 | ✓ | ☐ |
+| C | FS-24 | 03 | e2e race จริงทางบัตร (Stripe test mode) แทน route mock | FS-22, CORE-76 | — | ☐ |
+| A | PAY-10 | 06 | widget `order.details.before` แจ้ง refund ถูกกัน (Q-P11 = ก owner ตัดสิน 2026-11-21) | PAY-8 (#426) | ✓ | ☐ |
+| A | CORE-80 → CORE-81 | 01 | อีเมลตัวเล็กฝั่ง backend (เฉพาะ customer + affiliate — Q-C13 = ก owner 2026-11-21) → script แปลงอีเมลเก่า (dry-run, ตรวจชน) | CORE-81 ← CORE-80 | — | ☐ |
+| B | CORE-88 | 01 | ส่ง `typo_tolerance` เฉพาะคำค้น ≥ 3 อักขระ (Q-C15 = ก owner 2026-11-21) | CORE-75 (#465) | — | ☐ |
+| owner | CORE-85 | 01 | `/th/contact` ข้อมูลจริง | **owner ส่งข้อมูลติดต่อ** | ✓ | ☐ |
+| ท้าย | CORE-82 → CORE-83 → CORE-84 | 01 | จับ error ด้วย code ตาม ADR-028 (accepted owner 2026-11-21 — 3 PR ปิดท้ายรอบ + issue upstream): checkout/payment → account/returns/auth → group buy/flash/affiliate | task หน้าร้านที่แตะ helper เดียวกัน (82 ← CORE-76, PAY-11, PAY-12, PAY-14; 83 ← CORE-79, CORE-82; 84 ← FS-23, GB-27, CORE-83) | ✓ | ☐ |
+
+**owner ตัดสิน 2026-11-21**: Q-P11 = ก, Q-C13 = ก, Q-C14 = อนุมัติ ADR-028, Q-C15 = ก; owner ยืนยัน (2026-11-21 ตาม review #467) ให้ทำ **CORE-87** (หัว facet `/store`) และ **Go-live ข้อ 14** (วัด p95 ของ `POST /store/search` กับ catalog จริง เกิน ~10k สินค้าหรือ p95 > 300ms ต้องมี ADR) Go-live ข้อ 10 (`LC_CTYPE` — เงื่อนไขทางเทคนิคของ CORE-75) แจ้ง owner แล้ว รอยืนยัน; PAY-14 owner สั่งเพิ่ม 2026-11-21 (review #468) — เหลือรอเฉพาะข้อมูลติดต่อของ CORE-85; **issue upstream** (session หลักเปิด): js-sdk `FetchError` ไม่เก็บ `code`/`type` (ADR-028)
+**critical path (เงิน/PII ก่อน)**: PR เอกสารรอบ 41 → OPS-33 ∥ EV-23 ∥ EV-25 ∥ PAY-10 ∥ CORE-80 → (#464 merge) CORE-76 → PAY-11 ∥ PAY-12 ∥ PAY-14 ∥ FS-24 → CORE-81 → ที่เหลือ → CORE-82..84 ปิดท้าย
+**ไฟล์ร่วม** (ตัวที่ merge ทีหลัง merge `origin/develop` แล้วรอ CI ใหม่):
+- `apps/storefront/src/lib/data/cart.ts` + `lib/util/checkout-error.ts`/`insufficient-inventory.ts`: FS-22 → CORE-76 → (PAY-11 ∥ PAY-12 ∥ PAY-14 — PAY-14 แตะ `modules/checkout/components/payment` ด้วย) → CORE-82
+- `apps/backend/src/api/middlewares.ts`: GB-25 → GB-26, CORE-80, OPS-34 (ย้าย matcher), EV-23 (middleware/validator ของ route allocate ถ้าลงไฟล์นี้) — เก็บทั้งสองฝั่งเมื่อ conflict (CLAUDE.md)
+- `docs/ops/production.md`: CORE-81 (Go-live ข้อ 11), EV-25 (ข้อ 12), OPS-33 (ข้อ 13 + หมายเหตุ OPS-32) — คนละบรรทัด
+- `src/admin/components/affiliate/program-form.tsx`: ADM-44 → ADM-46; `src/admin/lib/single-flight.ts`: ADM-46 (EV-24 ใช้อย่างเดียว — ถ้า ADM-46 merge ก่อน EV-24 sync)
+- `src/admin/widgets/order-evouchers.tsx`: EV-24 เท่านั้น; `apps/storefront/e2e/admin-table-long-text.spec.ts`: ADM-45
+- `modules/layout/components/cart-dropdown` + `templates/nav`: hotfix → CORE-77; `account/@dashboard/orders/page.tsx`: CORE-68 → CORE-78
+- `lib/search-client.ts` + `store-refinements`: CORE-75 → CORE-87 ∥ CORE-88; `e2e/flash-sale-fs14.spec.ts`: CORE-75 → CORE-86
+- `src/modules/resend/templates.ts`: GB-28; `modules/products/components/product-actions`: FS-23; `group-page/index.tsx`: GB-27
+**คำแนะนำ dispatch**: คลื่น A ทำขนานได้ทันทีหลัง PR เอกสารรอบ 41 merge (จำกัด builder พร้อมกันตามเครื่อง — integration หนัก: OPS-33, EV-23, EV-25, OPS-34; เบา: AF-25/26, GB-27, CORE-79, ADM-43..45, PAY-13);
+คลื่น B เริ่มทีละตัวเมื่อ PR ที่อ้าง merge จริง (`gh pr view <n> --json state`); คลื่น C หลัง CORE-76; CORE-85 รอข้อมูลติดต่อจาก owner; CORE-82..84 ทำทีละ PR หลังทุก task หน้าร้านที่แตะ helper error merge
+
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)
 - **CORE-14e** nonce กันฟอร์ม no-JS ส่งซ้ำ (owner Q-F7 2026-10-27 — กรณี qty สองเท่า; กรณี cart ค้าง 2 ใบ planner รวมเข้า) — spec 01 Open questions รอบ 9
 - **OPS-3b** rate limiting (owner Q-O1 2026-10-27) — spec 07 AC-22, ข้อเสนอเดิมใน Q-O1

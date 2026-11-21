@@ -8,7 +8,7 @@
 - คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
 - ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
-  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น menuitem ของ `ActionMenu` และปุ่มใน `action` ของ `DataTable` ใน admin — ADR-018) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
+  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น menuitem ของ `ActionMenu`, ปุ่มใน `action` และ searchbox ของ `DataTable` ใน admin ที่หาด้วย role ภายใน wrapper ที่มี testid — ADR-018) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
   regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
 
 ## โปรเจกต์นี้คืออะไร
@@ -34,7 +34,7 @@ storefront จาก **Medusa Next.js Starter** เราขยายควา�
       archive** (ถูกแทนด้วย export แล้ว)
    ดึงข้อมูล: resource ของ Medusa ใช้ hook ของ dashboard; route ของเราเองใช้ JS SDK + Tanstack Query (query key + invalidate)
    ฟอร์ม: `Form` ของ dashboard + react-hook-form + zod (สร้าง = `FocusModal`, แก้ = `Drawer` แบบ state — ADR-018 Q5)
-   ปุ่มต่อแถวใช้ `ActionMenu` (testid ที่ trigger; e2e หา menuitem ด้วย role + ชื่อ) และปุ่มใน `action` ของ `DataTable` (หาด้วย role + ชื่อ
+   ปุ่มต่อแถวใช้ `ActionMenu` (testid ที่ trigger; e2e หา menuitem ด้วย role + ชื่อ) ปุ่มใน `action` และ searchbox ของ `DataTable` (หาด้วย role + ชื่อ
    ภายใน wrapper ที่มี testid) — ข้อยกเว้นของการหาด้วย `data-testid`;
    วันเวลาใช้ `DatePicker` (`granularity="minute"`) + `useDate` ตาม timezone ของเครื่องแบบ Medusa (เครื่องแอดมินตั้งเวลาไทย);
    เงินใช้ `getLocaleAmount` — ดู ADR-018
@@ -143,6 +143,9 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - port / DB / Redis db ของแต่ละ agent ต้องไม่ซ้ำกัน และปิด server + drop DB เมื่อเสร็จ
 - planner หลายตัวพร้อมกัน → ระบุไฟล์/เลข ADR ที่แต่ละตัวใช้ให้ชัด (เคยได้ ADR เลขเดียวกันสองฉบับ)
 - qa เขียน `REPORT.md` ไม่ได้ (harness) → qa ส่งเนื้อหากลับ session หลัก commit ลง branch ของ PR
+- ห้ามเปิด/อ่าน/`cat`/`grep`/`head` ไฟล์ `.env*` จริงทุกรูปแบบ แม้กรองเหลือแค่ชื่อตัวแปร — ดูชื่อตัวแปรจาก `.env.template`/`medusa-config.ts` (รอบ 40 secret เคยหลุดเข้า log)
+- ห้าม `git stash` (stash ใช้ร่วมกันทุก worktree — เคยสลับงานระหว่าง builder สองตัว)
+- Playwright ระบุ path เต็มของไฟล์ test (`e2e/<file>.spec.ts`) — ชื่อสั้นเคยไป match ชื่อโฟลเดอร์ worktree แล้วรันทั้งชุด
 - builder push ครั้งเดียวเมื่อพร้อมเปิด PR (ไม่ push ระหว่างทาง) และแก้ตาม review ให้ครบแล้ว push ครั้งเดียว — ทุก push รัน CI
   ชุดเต็มและ cancel run ก่อนหน้า
 - `develop` แดง (ตามนิยามด้านบน) → สั่ง builder ทุกตัวหยุด push จน hotfix merge (PR ที่ push ช่วงนั้นแดงเพราะ develop ไม่ใช่เพราะตัวเอง)

@@ -438,6 +438,39 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
 | FS-21 | (storefront) PDP/cart/review จำกัดจำนวนตามสิทธิ์ที่เหลือ + เตือนก่อนจ่าย (กฎข้อ 26); qa | `apps/storefront/src/lib/data/flash-sales.ts`, PDP `product-actions`, `modules/cart/components/item`, ขั้น review ของ checkout, e2e `fs-21-customer-limit.spec.ts` | ~150 LOC + ~200 LOC test | AC-28 | **FS-20** | `product-actions` (CORE ไม่มีงานร่วม) |
 | FS-22 | (storefront) ข้อความ "คืนเงินอัตโนมัติแล้ว" เมื่อแพ้ race flash/e-voucher หลังชำระ (กฎข้อ 27); qa | `apps/storefront/src/lib/util/friendly-error*.ts` / helper ของ CORE-4i, component ขั้น review, test | ~50 LOC + ~120 LOC test | AC-29 | PR เอกสารรอบ 40 | `lib/data/cart.ts` ร่วมกับ PAY-9 (คนละฟังก์ชัน — ตัวหลัง sync) |
 
+## Follow-up รอบ 41 (2026-11-21 — owner: PDP นับของในตะกร้า + คนไม่ login เห็นจำกัดต่อคน)
+ที่มา: qa FS-21 — PDP แสดงสิทธิ์ที่เหลือโดยไม่หักจำนวนที่อยู่ในตะกร้าแล้ว (ตะกร้า/review ยังกัน) และ FS-4 ไม่คืน `per_customer_limit` จึงไม่แสดงให้คนไม่ login;
+ทางชำระ PromptPay/3DS ที่แพ้ race (ต่อจาก FS-22) อยู่ใน spec 06 PAY-11/PAY-12
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 41)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| จำนวนใน cart | cart ของ starter (`retrieveCart`) | ใช้ตามเดิม (กฎข้อ 28b) |
+| limit ต่อคนของแคมเปญ | **ไม่มี** — `FlashSaleConfig.per_customer_limit` ของ module เรา | ขยาย response ของ FS-4 (กฎข้อ 28a) |
+
+### Business rules (รอบ 41)
+28. (FS-23) (a) `GET /store/flash-sales/active` คืน `per_customer_limit: number | null` ต่อแคมเปญ (ค่าของแคมเปญ ไม่ใช่ข้อมูลลูกค้า — route ยังสาธารณะตามเดิม, cache เดิม);
+    (b) PDP ลูกค้าที่ไม่ login และแคมเปญจำกัด → `flash-customer-limit` "จำกัด N ชิ้นต่อคน" (ไม่มีส่วน "เหลือสิทธิ์"); ไม่เรียก route ของ FS-20;
+    (c) PDP ลูกค้าที่ login: สิทธิ์ที่แสดง/จำนวนสูงสุด = `max(0, remaining_for_customer − จำนวนรวมของ line ในตะกร้าที่ variant อยู่ในแคมเปญเดียวกัน)` (แคมเปญของ line จาก `campaign_id` ใน response ของ FS-20 — ส่ง variant ของ line ในตะกร้าไปใน `variant_ids` ด้วย แบ่งชุดตาม FS-21);
+        = 0 → ปุ่มเพิ่มตะกร้า disabled + `flash-customer-limit-reached` ข้อความไทยบอกว่าสิทธิ์ที่เหลืออยู่ในตะกร้าแล้ว; ข้อความ `flash-customer-limit` แสดงจำนวนที่หักแล้ว; การคำนวณเป็น pure helper (unit)
+29. (FS-24 — review #464 ข้อ 1; แก้ความเข้าใจของกฎข้อ 27) `FLASH_*`/สต็อกไม่พอล้ม**ก่อน** authorize ใน `completeCartWorkflow` ที่ storefront เรียก — เงินที่ถูกตัดจึงถูกคืนในเส้นทางของ webhook
+    (`processPaymentWorkflow` → complete ล้ม → compensation คืนเงิน) ไม่ใช่ใน request ของ storefront → `checkout-refunded-notice` อาจขึ้น**ก่อน** refund จริงไม่กี่วินาที (ข้อความ "คืนเงิน…อัตโนมัติ" ยังถูก — ไม่เปลี่ยนถ้อยคำ);
+    runbook หัวข้อ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ" ระบุว่าลูกค้าอาจเห็นข้อความก่อน refund ปรากฏใน Stripe (แก้แล้วใน PR เอกสารรอบ 41);
+    test ของกฎข้อ 27 ส่วนทางบัตรต้องเป็น race จริงกับ Stripe test mode (แทน route mock — route mock คงไว้เฉพาะ unit/กรณีที่จำลองไม่ได้)
+
+### Acceptance criteria (รอบ 41)
+- AC-30 (FS-23, กฎข้อ 28) integration + unit + e2e — **ล้มบน develop** ก่อน: (a) integration: `GET /store/flash-sales/active` มี `per_customer_limit` = ค่าที่ตั้ง (null เมื่อไม่จำกัด) ไม่ต้องมี token;
+  (b) e2e ไม่ login: PDP ของแคมเปญ limit 2 เห็น `flash-customer-limit` มีเลข 2 และอักษรไทย; (c) e2e login limit 2 ไม่เคยซื้อ มีของในตะกร้า 1 ชิ้น → PDP เลือกได้สูงสุด 1; ตะกร้ามี 2 → ปุ่มเพิ่มตะกร้า disabled + `flash-customer-limit-reached`;
+  (d) unit helper ครอบ: ไม่มีของในตะกร้า, ของในตะกร้าคนละแคมเปญ (ไม่หัก), หลาย variant ในแคมเปญเดียว, ผลไม่ติดลบ
+- AC-31 (FS-24, กฎข้อ 29 — แทนส่วน e2e route mock ทางบัตรของ AC-29) e2e Stripe test mode (แบบ AC-22c ของ spec 06): สองลูกค้าแย่ง flash ชิ้นสุดท้าย (cap 1) ด้วยบัตร `4242…` —
+  ผู้แพ้เห็น `checkout-refunded-notice` (อักษรไทย) และภายใน 30 วินาที `GET /admin/payments/:id` ของผู้แพ้มี refund เต็มจำนวน; ไม่มี order ของผู้แพ้; ผู้ชนะได้ order; ห้าม `waitForTimeout`/เพิ่ม retries (poll ด้วย `expect.poll`)
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| FS-23 | FS-4 คืน `per_customer_limit` + PDP หักจำนวนในตะกร้า + คนไม่ login เห็นจำกัดต่อคน (กฎข้อ 28); qa | `apps/backend/src/api/store/flash-sales/active/route.ts`, `apps/storefront/src/lib/data/flash-sales.ts`, `lib/util/` helper สิทธิ์, PDP `product-actions`, test | ~80 LOC + ~200 LOC test | AC-30 | PR เอกสารรอบ 41 (FS-21 ☑) | `product-actions` |
+| FS-24 | (test) e2e race จริงทางบัตรของกฎข้อ 27 กับ Stripe test mode (กฎข้อ 29) | `apps/storefront/e2e/fs-24-card-race-refund.spec.ts` (ใหม่), `e2e/support/*` | ~150 LOC test | AC-31 | **FS-22 (#464)**, CORE-76 (notice เป็น state) | — |
+
 ## คำถามที่ยังเปิดอยู่
 - คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน
 - ~~Q1~~ ตัดสินแล้ว (owner, 2026-10-25): flash promotion ที่ยังไม่ได้บันทึก flash config (FS-5) ไม่มี exclusivity rule
