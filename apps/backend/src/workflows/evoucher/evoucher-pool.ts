@@ -7,9 +7,20 @@ import {
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
-import { updateInventoryItemsWorkflow } from "@medusajs/medusa/core-flows"
+import {
+  acquireLockStep,
+  adjustInventoryLevelsStep,
+  releaseLockStep,
+  updateInventoryItemsWorkflow,
+} from "@medusajs/medusa/core-flows"
 import { EVOUCHER_MODULE } from "../../modules/evoucher"
 import EvoucherModuleService from "../../modules/evoucher/service"
+import {
+  EVOUCHER_POOL_LOCK_TIMEOUT,
+  EVOUCHER_POOL_LOCK_TTL,
+  evoucherPoolLockKey,
+  resolveEvoucherPoolInventoryStep,
+} from "./import-evoucher-codes"
 
 export type CreateEvoucherPoolInput = {
   partner_id: string
@@ -132,21 +143,30 @@ export const updateEvoucherPoolStep = createStep(
   }
 )
 
+// EV-20 (กฎข้อ 36a/b): ลบ code ทั้งหมดของ pool (available/void) — 404 ถ้า pool ไม่มี, 400 ถ้ามี code ที่เคยจอง/ส่งให้ลูกค้า
+export const softDeleteUnissuedEvoucherCodesStep = createStep(
+  "soft-delete-unissued-evoucher-codes",
+  async (input: { pool_id: string }, { container }) => {
+    const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
+    await service.retrieveEvoucherPool(input.pool_id, { select: ["id"] })
+    // ISO string: compensation data ต้อง serialize ได้ (workflow engine แบบ Redis)
+    const deleted_at = new Date().toISOString()
+    const counts = await service.softDeleteUnissuedPoolCodes(input.pool_id, new Date(deleted_at))
+    return new StepResponse(counts, counts.total ? { pool_id: input.pool_id, deleted_at } : undefined)
+  },
+  async (data, { container }) => {
+    if (!data) {
+      return
+    }
+    const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
+    await service.restorePoolCodes(data.pool_id, new Date(data.deleted_at))
+  }
+)
+
 export const deleteEvoucherPoolStep = createStep(
   "delete-evoucher-pool",
   async (input: { id: string }, { container }) => {
     const service: EvoucherModuleService = container.resolve(EVOUCHER_MODULE)
-    await service.retrieveEvoucherPool(input.id, { select: ["id"] })
-    const [, codes] = await service.listAndCountEvoucherCodes(
-      { pool_id: input.id },
-      { select: ["id"], take: 1 }
-    )
-    if (codes > 0) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_ALLOWED,
-        "Pool has codes; only empty pools can be deleted"
-      )
-    }
     await service.softDeleteEvoucherPools(input.id)
     return new StepResponse(input.id, input.id)
   },
@@ -204,18 +224,40 @@ export const resolveEvoucherPoolInventoryItemsStep = createStep(
   }
 )
 
+// EV-20 (กฎข้อ 36): ลบ code ที่ยังไม่ถูกส่ง → ลด stock ตามจำนวน available → requires_shipping=true (กฎข้อ 15) → ลบ pool
+// ใต้ lock ของ pool เดียวกับ import (กัน code ใหม่เข้าระหว่างลบ); allocation ถูกกันด้วย row lock ของ UPDATE (ดู service)
 export const deleteEvoucherPoolWorkflow = createWorkflow(
   "delete-evoucher-pool",
   function (input: { id: string }) {
+    const lockKey = transform({ input }, ({ input }) => evoucherPoolLockKey(input.id))
+    const lockOwnerId = transform({ input }, (_, { context }) => `evoucher-pool-delete:${context.transactionId}`)
+    acquireLockStep({
+      key: lockKey,
+      ownerId: lockOwnerId,
+      timeout: EVOUCHER_POOL_LOCK_TIMEOUT,
+      ttl: EVOUCHER_POOL_LOCK_TTL,
+    })
+
     const itemIds = resolveEvoucherPoolInventoryItemsStep(input)
-    const deleted = deleteEvoucherPoolStep(input)
-    // กฎข้อ 15 (Q7 ค่าเริ่มต้น): คืน requires_shipping=true (ค่าเริ่มต้นของ Medusa); ถ้าล้ม ขั้นลบ restore pool
-    when({ itemIds }, ({ itemIds }) => itemIds.length > 0).then(() => {
+    const codes = softDeleteUnissuedEvoucherCodesStep({ pool_id: input.id })
+    // ขั้นใดล้มหลังจากนี้ compensation คืน code (และ stock/requires_shipping ที่ทำไปแล้ว)
+    when("lower-deleted-evoucher-pool-stock", { codes }, ({ codes }) => codes.available > 0).then(() => {
+      const level = resolveEvoucherPoolInventoryStep({ pool_id: input.id })
+      const adjustments = transform({ level, codes }, ({ level, codes }) => [
+        { ...level, adjustment: -codes.available },
+      ])
+      adjustInventoryLevelsStep(adjustments)
+    })
+    // กฎข้อ 15 (Q7 ค่าเริ่มต้น): คืน requires_shipping=true (ค่าเริ่มต้นของ Medusa)
+    when("restore-evoucher-requires-shipping", { itemIds }, ({ itemIds }) => itemIds.length > 0).then(() => {
       const updates = transform({ itemIds }, ({ itemIds }) =>
         itemIds.map((id) => ({ id, requires_shipping: true }))
       )
       updateInventoryItemsWorkflow.runAsStep({ input: { updates } })
     })
+    const deleted = deleteEvoucherPoolStep(input)
+
+    releaseLockStep({ key: lockKey, ownerId: lockOwnerId })
     return new WorkflowResponse(deleted)
   }
 )

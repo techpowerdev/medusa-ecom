@@ -152,6 +152,64 @@ class EvoucherModuleService extends MedusaService({
     )
   }
   /**
+   * EV-20 (กฎข้อ 36a/b): soft-delete code ทั้งหมดของ pool ใน UPDATE เดียว ถ้ามี code ที่เคยถูกจอง/ส่งให้ลูกค้า
+   * (`allocated`/`delivered` หรือมี `order_id`) → throw แล้ว transaction rollback (ไม่มีอะไรถูกลบ)
+   * UPDATE ล็อกแถว: claim ที่ถือแถวอยู่ทำให้ UPDATE รอจน commit แล้วเห็นสถานะใหม่ (ปฏิเสธ);
+   * claim ที่มาทีหลังข้ามแถวที่ล็อก (SKIP LOCKED) จึงไม่ได้ code ที่กำลังถูกลบ
+   */
+  @InjectManager()
+  async softDeleteUnissuedPoolCodes(
+    poolId: string,
+    deletedAt: Date,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<{ total: number; available: number }> {
+    return await this.softDeleteUnissuedPoolCodes_(poolId, deletedAt, sharedContext)
+  }
+
+  @InjectTransactionManager()
+  protected async softDeleteUnissuedPoolCodes_(
+    poolId: string,
+    deletedAt: Date,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<{ total: number; available: number }> {
+    const [row] = await sharedContext.transactionManager!.execute<
+      { total: string; available: string; issued: string }[]
+    >(
+      `WITH deleted AS (
+         UPDATE evoucher_code SET deleted_at = ?, updated_at = now()
+         WHERE pool_id = ? AND deleted_at IS NULL
+         RETURNING status, order_id
+       )
+       SELECT count(*) AS total,
+              count(*) FILTER (WHERE status = 'available') AS available,
+              count(*) FILTER (WHERE status IN ('allocated', 'delivered') OR order_id IS NOT NULL) AS issued
+       FROM deleted`,
+      [deletedAt, poolId]
+    )
+    if (Number(row.issued) > 0) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_ALLOWED,
+        "Pool has codes that were allocated or delivered to customers; it cannot be deleted"
+      )
+    }
+    return { total: Number(row.total), available: Number(row.available) }
+  }
+
+  /** compensation ของ softDeleteUnissuedPoolCodes: คืนเฉพาะ code ที่ถูกลบในรอบนั้น (deleted_at ตรงกัน) */
+  @InjectTransactionManager()
+  async restorePoolCodes(
+    poolId: string,
+    deletedAt: Date,
+    @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
+  ): Promise<void> {
+    await sharedContext.transactionManager!.execute(
+      `UPDATE evoucher_code SET deleted_at = NULL, updated_at = now()
+       WHERE pool_id = ? AND deleted_at = ?`,
+      [poolId, deletedAt]
+    )
+  }
+
+  /**
    * EV-4: claim code ให้ voucher line item ของ order แบบ atomic (spec 02 Workflows, AC-4, AC-7)
    * - advisory lock ต่อ order: event ซ้ำที่รันพร้อมกันจะไม่ allocate line item เดียวกันสองครั้ง
    * - line item ที่มี code แล้ว (allocated/delivered) → skipped (ถ้ายังแค่ allocated → stuck ด้วย)

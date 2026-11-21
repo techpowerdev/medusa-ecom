@@ -361,5 +361,122 @@ medusaIntegrationTestRunner({
         expect(await requiresShipping(other.inventoryItemId)).toBe(true)
       })
     })
+
+    // EV-20 (spec 02 กฎข้อ 36): ลบ pool ได้เมื่อยังไม่มี code ถูกส่ง/จองให้ลูกค้า → code ลบตาม + stock ลด
+    describe("AC-50 deleting a pool whose codes were never issued (rule 36)", () => {
+      const NOT_ALLOWED = "Pool has codes that were allocated or delivered to customers; it cannot be deleted"
+
+      const deletePool = (poolId: string) =>
+        api.delete(`/admin/evoucher/pools/${poolId}`, adminHeaders).catch((e) => e.response)
+
+      const codesOf = (poolId: string) =>
+        service.listEvoucherCodes({ pool_id: poolId }, { withDeleted: true, take: null })
+
+      // 5 available + 1 void (void ผ่าน admin route → stock ลดตามกฎข้อ 1) → stocked 5
+      const poolWithUnissuedCodes = async () => {
+        const voucher = await createVoucherVariant()
+        const pool = await postPool(voucher.variantId)
+        const poolId: string = pool.data.pool.id
+        await importCsv(poolId, "U-1\nU-2\nU-3\nU-4\nU-5\nU-6\n")
+        const [code] = await service.listEvoucherCodes({ pool_id: poolId })
+        await api.post(`/admin/evoucher/codes/${code.id}/void`, { reason: "partner recalled" }, adminHeaders)
+        expect(await level(voucher.inventoryItemId)).toEqual({ stocked: 5, reserved: 0 })
+        return { ...voucher, poolId }
+      }
+
+      it("(a) soft-deletes every available/void code, lowers stock by the available count and restores requires_shipping", async () => {
+        const { poolId, inventoryItemId, variantId } = await poolWithUnissuedCodes()
+
+        const res = await deletePool(poolId)
+
+        expect(res.status).toBe(200)
+        expect(res.data).toEqual({ id: poolId, object: "evoucher_pool", deleted: true })
+        const codes = await codesOf(poolId)
+        expect(codes).toHaveLength(6)
+        expect(codes.every((c) => c.deleted_at)).toBe(true)
+        expect(await level(inventoryItemId)).toEqual({ stocked: 0, reserved: 0 })
+        expect(await requiresShipping(inventoryItemId)).toBe(true)
+        expect(await poolsOf(variantId)).toHaveLength(0)
+      })
+
+      it.each([
+        ["delivered", { status: "delivered" as const, order_id: "order_ev20" }],
+        ["void with an order_id", { status: "void" as const, order_id: "order_ev20" }],
+      ])("(b) refuses (400) when a code is %s and changes nothing", async (_, update) => {
+        const { poolId, inventoryItemId, variantId } = await poolWithUnissuedCodes()
+        const [code] = await service.listEvoucherCodes({ pool_id: poolId, status: "available" })
+        await service.updateEvoucherCodes({ id: code.id, ...update })
+
+        const res = await deletePool(poolId)
+
+        expect(res.status).toBe(400)
+        expect(res.data).toMatchObject({ type: "not_allowed", message: NOT_ALLOWED })
+        const codes = await codesOf(poolId)
+        expect(codes).toHaveLength(6)
+        expect(codes.some((c) => c.deleted_at)).toBe(false)
+        expect(await level(inventoryItemId)).toEqual({ stocked: 5, reserved: 0 })
+        expect(await requiresShipping(inventoryItemId)).toBe(false)
+        expect(await poolsOf(variantId)).toHaveLength(1)
+      })
+
+      it("(c) restores the codes and the pool when the stock adjustment fails", async () => {
+        const { poolId, inventoryItemId, variantId } = await poolWithUnissuedCodes()
+        const inventory = container.resolve(Modules.INVENTORY)
+        const spy = jest.spyOn(inventory, "adjustInventory").mockRejectedValueOnce(new Error("inventory down"))
+        let res: { status: number }
+        try {
+          res = await deletePool(poolId)
+          expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ inventoryItemId, adjustment: -5 })])
+        } finally {
+          spy.mockRestore()
+        }
+
+        expect(res.status).toBeGreaterThanOrEqual(400)
+        const codes = await codesOf(poolId)
+        expect(codes).toHaveLength(6)
+        expect(codes.some((c) => c.deleted_at)).toBe(false)
+        expect(codes.map((c) => c.status).sort()).toEqual([...Array(5).fill("available"), "void"])
+        expect(await level(inventoryItemId)).toEqual({ stocked: 5, reserved: 0 })
+        expect(await requiresShipping(inventoryItemId)).toBe(false)
+        expect(await poolsOf(variantId)).toHaveLength(1)
+      })
+
+      it("(d) reports total_codes and low_stock=false for a pool without codes", async () => {
+        const empty = await postPool((await createVoucherVariant()).variantId)
+        const stocked = await postPool((await createVoucherVariant()).variantId)
+        await importCsv(stocked.data.pool.id, "L-1\nL-2\nL-3\nL-4\nL-5\n")
+
+        const one = await api.get(`/admin/evoucher/pools/${empty.data.pool.id}?fields=id`, adminHeaders)
+        const list = await api.get("/admin/evoucher/pools?fields=id,name", adminHeaders)
+
+        expect(one.data.pool).toMatchObject({ low_stock: false, total_codes: 0 })
+        const byId = Object.fromEntries(list.data.pools.map((p: { id: string }) => [p.id, p]))
+        expect(byId[empty.data.pool.id]).toMatchObject({ low_stock: false, total_codes: 0 })
+        expect(byId[stocked.data.pool.id]).toMatchObject({ low_stock: true, total_codes: 5 })
+      })
+
+      // กันลบพร้อมการขาย: ผลลัพธ์ต้องเป็นอย่างใดอย่างหนึ่ง — ลบสำเร็จและ order backordered หรือ order ได้ code และลบไม่ได้
+      it("never deletes a code that a concurrent allocation claimed", async () => {
+        const { poolId } = await poolWithUnissuedCodes()
+        const claim = () =>
+          service.claimCodesForOrder({
+            order_id: "order_ev20_race",
+            items: [{ line_item_id: "ordli_ev20_race", pool_id: poolId, quantity: 5 }],
+            expires_after: new Date(),
+          })
+
+        const [res, claimed] = await Promise.all([deletePool(poolId), claim()])
+
+        const codes = await codesOf(poolId)
+        if (res.status === 200) {
+          expect(claimed.backordered).toEqual(["ordli_ev20_race"])
+          expect(codes.every((c) => c.deleted_at)).toBe(true)
+        } else {
+          expect(res.status).toBe(400)
+          expect(claimed.allocated).toHaveLength(1)
+          expect(codes.filter((c) => c.status === "allocated" && !c.deleted_at)).toHaveLength(5)
+        }
+      })
+    })
   },
 })
