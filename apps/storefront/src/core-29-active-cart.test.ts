@@ -1,6 +1,6 @@
 import { FetchError } from "@medusajs/js-sdk"
 import { NextRequest } from "next/server"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // CORE-29 (spec 01 กฎข้อ 86, AC-122; ADR-019 ทางเลือก B): จำ id ตะกร้าหลักใน customer.metadata.active_cart_id
 // ทุกครั้งที่ตั้ง cookie `_medusa_cart_id` เป็น cart ใหม่ และกู้ตอน login เมื่อไม่มี cookie cart
@@ -184,12 +184,21 @@ describe("payment-return ตั้ง cookie cart (กฎข้อ 86a)", () => 
   })
 })
 
-// CORE-4i-b (กฎข้อ 72): placeOrder คืน { kind } (CORE-76) แทนการ throw — route อ่านผลแล้ว redirect order_failed เหมือนเดิม
-describe("payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b)", () => {
-  const succeededRequest = () =>
-    new NextRequest(
-      "http://shop.test/api/payment-return?cart_id=cart_pay&country_code=th&payment_intent=pi_1&payment_intent_client_secret=sec_1&redirect_status=succeeded"
-    )
+// CORE-4i-b (กฎข้อ 72): placeOrder คืน { kind } (CORE-76) แทนการ throw
+// PAY-12 (spec 06 กฎข้อ 14, AC-25): route แยกทางตาม kind — refunded → error=refunded, processing → อ่าน order ของ cart,
+// unauthorized → หน้า login พร้อม return path เดิม, อื่นๆ → error=order_failed (เดิม)
+describe("payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b, PAY-12)", () => {
+  const SUCCEEDED_PATH =
+    "/api/payment-return?cart_id=cart_pay&country_code=th&payment_intent=pi_1&payment_intent_client_secret=sec_1&redirect_status=succeeded"
+  const succeededRequest = () => new NextRequest(`http://shop.test${SUCCEEDED_PATH}`)
+  const conflict = (code: string, message = "x") =>
+    Object.assign(new FetchError(message, "Conflict", 409), { code })
+  const rethrowRedirects = async () => {
+    const { unstable_rethrow } = await import("next/navigation")
+    vi.mocked(unstable_rethrow).mockImplementation((e: unknown) => {
+      if (e instanceof Error && e.message.startsWith("REDIRECT ")) throw e
+    })
+  }
 
   beforeEach(() => {
     cartCookie = "cart_pay"
@@ -198,17 +207,67 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
     })
   })
 
+  afterEach(async () => {
+    const { unstable_rethrow } = await import("next/navigation")
+    vi.mocked(unstable_rethrow).mockReset() // implementation ของ rethrowRedirects ไม่รั่วไป describe อื่น
+  })
+
   it.each([
-    ["409 FLASH_SOLD_OUT", () => cartComplete.mockRejectedValue(Object.assign(new FetchError("x", "Conflict", 409), { code: "FLASH_SOLD_OUT" }))],
-    ["401", () => cartComplete.mockRejectedValue(new FetchError("x", "Unauthorized", 401))],
+    ["409 FLASH_SOLD_OUT", () => cartComplete.mockRejectedValue(conflict("FLASH_SOLD_OUT"))],
+    ["409 FLASH_LIMIT_EXCEEDED", () => cartComplete.mockRejectedValue(conflict("FLASH_LIMIT_EXCEEDED"))],
+    [
+      "400 สต็อกไม่พอตอน complete (ไม่มี code)",
+      () =>
+        cartComplete.mockRejectedValue(
+          new FetchError("Some variant does not have the required inventory", "Bad Request", 400)
+        ),
+    ],
+  ])("%s → kind refunded → /th/cart?error=refunded", async (_label, arrange) => {
+    arrange()
+    const { GET } = await import("./app/api/payment-return/route")
+    const res = await GET(succeededRequest())
+    expect(res.headers.get("location")).toBe("http://shop.test/th/cart?error=refunded")
+  })
+
+  it.each([
     ["500", () => cartComplete.mockRejectedValue(new FetchError("x", "Internal Server Error", 500))],
+    ["409 ไม่รู้จัก code", () => cartComplete.mockRejectedValue(conflict("SOMETHING_ELSE"))],
     ["cart ไม่ complete (type: cart)", () => cartComplete.mockResolvedValue({ type: "cart", cart: {}, error: { message: "declined" } })],
-  ])("%s → { kind } → /cart?error=order_failed", async (_label, arrange) => {
+  ])("%s → { kind: failed } → /cart?error=order_failed", async (_label, arrange) => {
     arrange()
     const { GET } = await import("./app/api/payment-return/route")
     const res = await GET(succeededRequest())
     expect(cartComplete).toHaveBeenCalledWith("cart_pay", {}, expect.anything())
     expect(res.headers.get("location")).toBe("http://shop.test/th/cart?error=order_failed")
+  })
+
+  it.each([401, 403])("%s → หน้า login พร้อม return path เดิม (ไม่ใช่ order_failed)", async (status) => {
+    cartComplete.mockRejectedValue(new FetchError("x", "Unauthorized", status))
+    const { GET } = await import("./app/api/payment-return/route")
+    const location = new URL((await GET(succeededRequest())).headers.get("location")!)
+    expect(`${location.origin}${location.pathname}`).toBe("http://shop.test/th/account")
+    expect(location.searchParams.get("return_to")).toBe(SUCCEEDED_PATH)
+  })
+
+  it("409 CART_COMPLETION_IN_PROGRESS + order มีแล้ว → หน้า order confirmed (ไม่ใช่ error=refunded)", async () => {
+    await rethrowRedirects()
+    cartComplete
+      .mockRejectedValueOnce(conflict("CART_COMPLETION_IN_PROGRESS"))
+      .mockResolvedValueOnce({ type: "order", order: { id: "order_1" } })
+    const { GET } = await import("./app/api/payment-return/route")
+    await expect(GET(succeededRequest())).rejects.toThrow("REDIRECT /th/order/order_1/confirmed")
+    expect(cartComplete).toHaveBeenCalledTimes(2)
+  })
+
+  it("409 CART_COMPLETION_IN_PROGRESS + ยังไม่มี order → /th/checkout?step=review (กลไก poll ของ PAY-6b)", async () => {
+    await rethrowRedirects()
+    cartComplete.mockRejectedValue(
+      new FetchError("Cart is already being completed by another request", "Conflict", 409)
+    )
+    const { GET } = await import("./app/api/payment-return/route")
+    const res = await GET(succeededRequest())
+    expect(res.headers.get("location")).toBe("http://shop.test/th/checkout?step=review")
+    expect(cartComplete).toHaveBeenCalledTimes(2)
   })
 
   it("ได้ order → redirect ของ Next ถูกส่งต่อ (unstable_rethrow) ไม่กลายเป็น order_failed", async () => {

@@ -3,6 +3,7 @@ import { placeOrder, PlaceOrderResult } from "@lib/data/cart"
 import { setCartCookie } from "@lib/data/active-cart"
 import { getAuthHeaders } from "@lib/data/cookies"
 import { safeCountryCode } from "@lib/util/digital-checkout"
+import { RETURN_TO_PARAM } from "@lib/util/login-return"
 import { HttpTypes } from "@medusajs/types"
 import { unstable_rethrow } from "next/navigation"
 import { NextRequest, NextResponse } from "next/server"
@@ -77,17 +78,31 @@ export async function GET(req: NextRequest) {
   }
 
   // CORE-4i-b (กฎข้อ 72): placeOrder ได้ order → redirect ไปหน้า confirmed (throw ของ Next — unstable_rethrow ส่งต่อ);
-  // ไม่ได้ order (409, cart ไม่ complete, 401/403, network) → คืน { kind } ไม่ throw (CORE-76; แยกทางตาม kind = PAY-12)
+  // ไม่ได้ order (409, cart ไม่ complete, 401/403, network) → คืน { kind } ไม่ throw (CORE-76)
   // error ที่ไม่คาด (เช่นอ่าน cookie ล้ม) นับเป็น "failed" — ผลเหมือนกันคือกลับไปหน้า cart
-  const outcome = await placeOrder(cartId, undefined, countryCode).catch(
-    (thrown: unknown): PlaceOrderResult => {
+  const place = () =>
+    placeOrder(cartId, undefined, countryCode).catch((thrown: unknown): PlaceOrderResult => {
       unstable_rethrow(thrown)
       console.error(thrown)
       return { kind: "failed" }
-    }
-  )
+    })
+  const outcome = await place()
 
-  // ทุก error (รวม code 409 และ unauthorized) → order_failed ข้อความเดียวที่หน้า cart
+  // PAY-12 (spec 06 กฎข้อ 14): แยกทางตาม kind
+  if (outcome.kind === "refunded") {
+    return NextResponse.redirect(`${origin}${prefix}/cart?error=refunded`)
+  }
+  if (outcome.kind === "unauthorized") {
+    const login = new URLSearchParams({ [RETURN_TO_PARAM]: `${req.nextUrl.pathname}${req.nextUrl.search}` })
+    return NextResponse.redirect(`${origin}${prefix}/account?${login}`)
+  }
+  if (outcome.kind === "processing") {
+    // อ่าน order ของ cart: complete ซ้ำของ Medusa คืน order เดิมเมื่อมี link order_cart แล้ว (completeCartWorkflow 2.22.1)
+    // → redirect หน้า confirmed (throw); ยังไม่มี → ขั้น review ซึ่ง poll ต่อด้วย placeOrder (PAY-6b)
+    await place()
+    return NextResponse.redirect(`${origin}${prefix}/checkout?step=review`)
+  }
+
   console.error("payment-return: cart not converted into an order", outcome)
   return NextResponse.redirect(`${origin}${prefix}/cart?error=order_failed`)
 }
