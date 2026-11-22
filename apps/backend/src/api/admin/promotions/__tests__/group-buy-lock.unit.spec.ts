@@ -3,10 +3,12 @@ import middlewares from "../../../middlewares"
 import {
   GROUP_BUY_CAMPAIGN_LOCKED_MESSAGE,
   GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE,
+  GROUP_BUY_TEMPLATE_CAMPAIGN_MESSAGE,
   GROUP_PROMOTION_LOCKED_MESSAGE,
   guardCampaignGroupPromotions,
   guardGroupBuyCampaign,
   guardGroupPromotion,
+  guardPromotionCampaign,
 } from "../group-buy-lock"
 
 // GB-25 (spec 04 กฎข้อ 48, AC-67, ADR-026): guard ด้วย mock query — พฤติกรรมจริงพิสูจน์ใน group-buy-promotion-lock.spec.ts
@@ -110,6 +112,70 @@ describe("guardGroupBuyCampaign", () => {
   )
 })
 
+// GB-29 (spec 04 กฎข้อ 54, AC-72, ADR-026 ภาคผนวกรอบ 41): campaign_id ของ promotion ที่ admin route
+describe("guardPromotionCampaign", () => {
+  function setupPromotion(rows: Record<string, Record<string, unknown>[]>, body: unknown, id?: string) {
+    const graph = jest.fn(async ({ entity }: { entity: string }) => ({ data: rows[entity] ?? [] }))
+    const services: Record<string, unknown> = { [ContainerRegistrationKeys.QUERY]: { graph } }
+    const req = { params: id ? { id } : {}, body, scope: { resolve: (key: string) => services[key] } } as any
+    return { req, next: jest.fn(), graph }
+  }
+  const template = { id: "p_tpl", campaign_id: "camp_gb", group_buy_campaign: { id: "gbc_1" } }
+  const normal = { id: "p_norm", campaign_id: null, group_buy_campaign: null }
+  const gbCampaign = { id: "camp_gb", group_buy_campaign: { id: "gbc_1" } }
+  const otherCampaign = { id: "camp_other", group_buy_campaign: null }
+
+  it.each([["camp_other"], [null]])("(1) ย้าย GBT-* ไป campaign_id=%p → NOT_ALLOWED ข้อความ template", async (campaignId) => {
+    const { req, next } = setupPromotion(
+      { promotion: [template], campaign: [otherCampaign] },
+      { campaign_id: campaignId },
+      "p_tpl"
+    )
+    await expect(guardPromotionCampaign(req, {} as any, next)).rejects.toMatchObject({
+      type: "not_allowed",
+      message: GROUP_BUY_TEMPLATE_CAMPAIGN_MESSAGE,
+    })
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it("(2) แก้ promotion อื่นให้ campaign_id เป็น campaign group buy → NOT_ALLOWED ข้อความ managed", async () => {
+    const { req, next } = setupPromotion({ promotion: [normal], campaign: [gbCampaign] }, { campaign_id: "camp_gb" }, "p_norm")
+    await expect(guardPromotionCampaign(req, {} as any, next)).rejects.toMatchObject({
+      type: "not_allowed",
+      message: GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE,
+    })
+  })
+
+  it("(2) สร้าง promotion (ไม่มี :id) ด้วย campaign_id ของ campaign group buy → NOT_ALLOWED", async () => {
+    const { req, next, graph } = setupPromotion({ campaign: [gbCampaign] }, { code: "X", campaign_id: "camp_gb" })
+    await expect(guardPromotionCampaign(req, {} as any, next)).rejects.toMatchObject({
+      type: "not_allowed",
+      message: GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE,
+    })
+    expect(graph.mock.calls.map(([arg]: any) => arg.entity)).toEqual(["campaign"])
+  })
+
+  it.each([
+    ["ไม่แตะ campaign_id (แก้ส่วนลดต้นแบบ — Q5)", { application_method: { value: 50 } }, "p_tpl", []],
+    ["body ว่าง", undefined, "p_tpl", []],
+    ["ส่ง campaign_id เดิมของต้นแบบ (ไม่เปลี่ยน)", { campaign_id: "camp_gb" }, "p_tpl", ["promotion"]],
+    ["promotion อื่นย้ายไป campaign ที่ไม่เกี่ยว", { campaign_id: "camp_other" }, "p_norm", ["promotion", "campaign"]],
+    ["promotion อื่นถอดออกจาก campaign", { campaign_id: null }, "p_norm", ["promotion"]],
+    ["สร้างด้วย campaign ที่ไม่เกี่ยว", { campaign_id: "camp_other" }, undefined, ["campaign"]],
+    ["สร้างโดยไม่มี campaign_id", { code: "X" }, undefined, []],
+    ["promotion ไม่พบ", { campaign_id: "camp_gb" }, "p_missing", ["promotion"]],
+  ])("%s → next()", async (_name, body, id, entities) => {
+    const { req, next, graph } = setupPromotion(
+      { promotion: id === "p_missing" ? [] : [template, normal].filter((p) => p.id === id), campaign: [otherCampaign] },
+      body,
+      id
+    )
+    await guardPromotionCampaign(req, {} as any, next)
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(graph.mock.calls.map(([arg]: any) => arg.entity)).toEqual(entities)
+  })
+})
+
 describe("ลงทะเบียนใน src/api/middlewares.ts", () => {
   // defineMiddlewares แปลง `method` เป็น `methods`
   const routes = (middlewares.routes ?? []) as { matcher: unknown; methods?: string[]; middlewares?: unknown[] }[]
@@ -124,5 +190,11 @@ describe("ลงทะเบียนใน src/api/middlewares.ts", () => {
     const route = find(matcher)
     expect(route?.methods).toEqual(methods)
     expect(route?.middlewares).toContain(guard)
+  })
+
+  // GB-29: route สร้าง/แก้ promotion รับ campaign_id — กันทั้งสองทาง
+  it.each(["/admin/promotions", "/admin/promotions/:id"])("%s POST → guardPromotionCampaign", (matcher) => {
+    const route = routes.find((r) => r.matcher === matcher && r.middlewares?.includes(guardPromotionCampaign))
+    expect(route?.methods).toEqual(["POST"])
   })
 })
