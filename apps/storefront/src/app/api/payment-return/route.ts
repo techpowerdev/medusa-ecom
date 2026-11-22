@@ -3,7 +3,7 @@ import { placeOrder, PlaceOrderResult } from "@lib/data/cart"
 import { setCartCookie } from "@lib/data/active-cart"
 import { getAuthHeaders } from "@lib/data/cookies"
 import { safeCountryCode } from "@lib/util/digital-checkout"
-import { loginPathForReturn } from "@lib/util/login-return"
+import { checkoutReviewPath, loginPathForReturn } from "@lib/util/login-return"
 import { HttpTypes } from "@medusajs/types"
 import { unstable_rethrow } from "next/navigation"
 import { NextRequest, NextResponse } from "next/server"
@@ -27,10 +27,10 @@ export async function GET(req: NextRequest) {
     NextResponse.redirect(`${origin}${prefix}/cart?error=payment_failed`)
   // PAY-12 (กฎข้อ 14; review/qa #481 D-1): session หมดอายุ → login แล้วกลับขั้น review — ผลการชำระยังไม่รู้จึงไม่บอกว่าล้ม;
   // ห้ามส่ง URL ของ route นี้เป็น return_to (มี payment_intent_client_secret) ไม่มี country → /account เฉยๆ
+  // D-2: ขั้น review มี cart_id → cart ถูก complete แล้ว (webhook ระหว่าง login ใหม่) หน้า checkout พาไปหน้า confirmed ของ order นั้น
+  const review = () => checkoutReviewPath(prefix, cartId ?? "")
   const signIn = () =>
-    NextResponse.redirect(
-      `${origin}${countryCode ? loginPathForReturn(countryCode, `/${countryCode}/checkout?step=review`) : "/account"}`
-    )
+    NextResponse.redirect(`${origin}${countryCode ? loginPathForReturn(countryCode, review()) : "/account"}`)
 
   if (!cartId || !paymentIntent || !paymentIntentClientSecret) {
     return rejected()
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
   // session หลักตัดสิน (#481): 5xx/network = ไม่รู้ผลการชำระ → ไม่บอกว่าล้ม; ขั้น review ทำ placeOrder/poll ต่อ (PAY-6b)
   // payment_failed เหลือเฉพาะที่รู้แน่ว่าไม่ได้จ่าย/ข้อมูลไม่ตรง (ไม่มี param, ไม่มี session/secret ไม่ตรง, 4xx อื่น, redirect_status=failed)
   if (!read.cart && (typeof read.status !== "number" || read.status >= 500)) {
-    return NextResponse.redirect(`${origin}${prefix}/checkout?step=review`)
+    return NextResponse.redirect(`${origin}${review()}`)
   }
   const { cart } = read
 
@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
     // → redirect หน้า confirmed (throw); ยังไม่มี → ขั้น review ซึ่ง poll ต่อด้วย placeOrder (PAY-6b)
     // ตั้งใจทิ้งผลครั้งที่สอง: kind ใดก็ตาม (processing/refunded/failed/unauthorized) ขั้น review จัดการจาก placeOrder ของตัวเองอยู่แล้ว
     await place()
-    return NextResponse.redirect(`${origin}${prefix}/checkout?step=review`)
+    return NextResponse.redirect(`${origin}${review()}`)
   }
 
   console.error("payment-return: cart not converted into an order", outcome)

@@ -242,7 +242,8 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
   })
 
   // review/qa #481 D-1: ห้ามส่ง client_secret ไปใน return_to → return path = ขั้น review (readReturnTo รับ) ไม่ใช่ URL ของ route นี้
-  const REVIEW_LOGIN = "http://shop.test/th/account?return_to=%2Fth%2Fcheckout%3Fstep%3Dreview"
+  // qa #481 D-2: มี cart_id (ไม่ใช่ secret) ให้หน้า checkout หา order เมื่อ cart ถูก complete ระหว่าง login ใหม่
+  const REVIEW_LOGIN = "http://shop.test/th/account?return_to=%2Fth%2Fcheckout%3Fstep%3Dreview%26cart_id%3Dcart_pay"
   const expectNoSecret = (location: string | null) => {
     expect(location).not.toContain("sec_1")
     expect(decodeURIComponent(location ?? "")).not.toContain("payment_intent_client_secret")
@@ -285,7 +286,7 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
     fetch.mockRejectedValue(error())
     const { GET } = await import("./app/api/payment-return/route")
     const location = (await GET(succeededRequest())).headers.get("location")
-    expect(location).toBe("http://shop.test/th/checkout?step=review")
+    expect(location).toBe("http://shop.test/th/checkout?step=review&cart_id=cart_pay")
     expectNoSecret(location)
     expect(cartComplete).not.toHaveBeenCalled()
   })
@@ -313,7 +314,7 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
     )
     const { GET } = await import("./app/api/payment-return/route")
     const res = await GET(succeededRequest())
-    expect(res.headers.get("location")).toBe("http://shop.test/th/checkout?step=review")
+    expect(res.headers.get("location")).toBe("http://shop.test/th/checkout?step=review&cart_id=cart_pay")
     expect(cartComplete).toHaveBeenCalledTimes(2)
   })
 

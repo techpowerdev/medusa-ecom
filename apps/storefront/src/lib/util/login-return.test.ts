@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { RETURN_TO_PARAM, isBuyReturnPath, loginPathForReturn, readReturnTo } from "./login-return"
+import { RETURN_TO_PARAM, checkoutReviewPath, isBuyReturnPath, loginPathForReturn, readReturnTo } from "./login-return"
 
 // CORE-14 (spec 01 AC-41, กฎ 25): /buy/[items] ต้องล็อกอินก่อน → หน้า login พร้อม return URL กลับ /buy/...
 const form = (entries: Record<string, string>) => {
@@ -95,8 +95,16 @@ describe("isBuyReturnPath", () => {
 
 // PAY-12 (review/qa #481 D-1): session หมดอายุระหว่าง 3DS → login แล้วกลับขั้น review ของ checkout (ไม่ส่ง client_secret)
 describe("readReturnTo — ขั้น review ของ checkout (PAY-12)", () => {
-  it("รับเฉพาะ /<cc>/checkout?step=review", () => {
-    expect(readReturnTo(form({ [RETURN_TO_PARAM]: "/th/checkout?step=review" }))).toBe("/th/checkout?step=review")
+  it("รับเฉพาะ /<cc>/checkout?step=review และแบบมี cart_id ของ Medusa (qa #481 D-2)", () => {
+    for (const value of ["/th/checkout?step=review", "/th/checkout?step=review&cart_id=cart_01KABCDEF123"]) {
+      expect(readReturnTo(form({ [RETURN_TO_PARAM]: value })), value).toBe(value)
+    }
+  })
+
+  it("checkoutReviewPath: มี cart_id เมื่อ id เป็นรูปแบบ cart ของ Medusa เท่านั้น", () => {
+    expect(checkoutReviewPath("/th", "cart_01KABC")).toBe("/th/checkout?step=review&cart_id=cart_01KABC")
+    expect(checkoutReviewPath("", "cart_01KABC")).toBe("/checkout?step=review&cart_id=cart_01KABC")
+    expect(checkoutReviewPath("/th", "../x")).toBe("/th/checkout?step=review")
   })
 
   it("ค่าอื่นของ checkout → null", () => {
@@ -107,6 +115,10 @@ describe("readReturnTo — ขั้น review ของ checkout (PAY-12)", () 
       "/th/checkout?step=review#x",
       "//evil.example/th/checkout?step=review",
       "/TH/checkout?step=review",
+      "/th/checkout?step=review&cart_id=",
+      "/th/checkout?step=review&cart_id=../x",
+      "/th/checkout?step=review&cart_id=cart_1&x=1",
+      "/th/checkout?step=review&cart_id=order_1",
     ]) {
       expect(readReturnTo(form({ [RETURN_TO_PARAM]: value })), value).toBeNull()
     }

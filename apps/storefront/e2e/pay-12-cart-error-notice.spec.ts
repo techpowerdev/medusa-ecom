@@ -1,9 +1,11 @@
-import { expect, test } from "./support/fixtures"
+import { BACKEND_URL, expect, test } from "./support/fixtures"
 import {
   STOREFRONT_COUNTRY as CC,
   adminHeaders,
   cartReadyForPayment,
+  completeCart,
   createCustomer,
+  ok,
   publishableKey,
   signInAs,
 } from "./support/medusa"
@@ -74,55 +76,74 @@ test("AC-25: cart-error-notice ภาษาไทยต่อค่า error แ
 })
 
 // review/qa #481 D-1: session หมดอายุระหว่าง 3DS แล้วกลับมาที่ /api/payment-return (succeeded) → หน้า login (ไม่ใช่ payment_failed)
-// และ client_secret ไม่หลุดไปใน URL/HTML ของหน้า login; login แล้วกลับขั้น review เพื่อจบ flow
-test("AC-25 (D-1): session หมดอายุ → login โดยไม่มี client_secret แล้วกลับขั้น review", async ({
+// และ client_secret ไม่หลุดไปใน URL/HTML ของหน้า login; login แล้วกลับขั้น review ของ cart เดิมเพื่อจบ flow
+// D-2: cart ถูก complete ไปแล้วก่อน login (เช่น webhook) → login แล้วได้หน้า order confirmed ของ order นั้น ไม่ใช่ 404
+test("AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow", async ({
   page,
   context,
   request,
   baseURL,
   step,
 }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
   const SECRET = "sec_pay12_should_not_leak"
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
-  const customer = await createCustomer(request, pk)
-  const cartId = await cartReadyForPayment(request, pk, customer)
-  const returnPath = `/api/payment-return?${new URLSearchParams({
-    cart_id: cartId,
-    country_code: CC,
-    payment_intent: "pi_pay12_expired",
-    payment_intent_client_secret: SECRET,
-    redirect_status: "succeeded",
-  })}`
-  const expectLoginWithoutSecret = async () => {
+
+  const run = async (mode: "no-jwt" | "bad-jwt", completed: boolean) => {
+    const customer = await createCustomer(request, pk)
+    const cartId = await cartReadyForPayment(request, pk, customer)
+    // แบบที่ storefront ทำจริง (CORE-29 setCartCookie → customer.metadata.active_cart_id)
+    await ok(
+      await request.post(`${BACKEND_URL}/store/customers/me`, {
+        headers: { "x-publishable-api-key": pk, authorization: `Bearer ${customer.token}` },
+        data: { metadata: { active_cart_id: cartId } },
+      }),
+      "active_cart_id"
+    )
+    const order = completed ? await completeCart(request, pk, customer, cartId) : null
+
+    await context.clearCookies()
+    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+    if (mode === "bad-jwt") {
+      await context.addCookies([{ name: "_medusa_jwt", value: "expired.invalid.token", url: baseURL! }])
+    }
+    await page.goto(
+      `/api/payment-return?${new URLSearchParams({
+        cart_id: cartId,
+        country_code: CC,
+        payment_intent: "pi_pay12_expired",
+        payment_intent_client_secret: SECRET,
+        redirect_status: "succeeded",
+      })}`
+    )
+
     await expect(page.getByTestId("login-page")).toBeVisible()
+    const url = new URL(page.url())
     expect(page.url()).not.toContain(SECRET)
     expect(decodeURIComponent(page.url())).not.toContain("payment_intent_client_secret")
-    expect(new URL(page.url()).pathname).toBe(`/${CC}/account`)
-    expect(new URL(page.url()).searchParams.get("return_to")).toBe(`/${CC}/checkout?step=review`)
+    expect(url.pathname).toBe(`/${CC}/account`)
+    expect(url.searchParams.get("return_to")).toBe(`/${CC}/checkout?step=review&cart_id=${cartId}`)
     const html = await page.content()
     expect(html).not.toContain(SECRET)
     expect(html).not.toContain("payment_intent_client_secret")
-  }
 
-  await step("(a) ไม่มี jwt → หน้า login ไม่ใช่ cart?error=payment_failed", async () => {
-    await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
-    await page.goto(returnPath)
-    await expectLoginWithoutSecret()
-  })
-
-  await step("(b) jwt เสีย → หน้า login; login แล้วกลับ /th/checkout?step=review", async () => {
-    await context.addCookies([
-      { name: "_medusa_jwt", value: "expired.invalid.token", url: baseURL! },
-      { name: "_medusa_cart_id", value: cartId, url: baseURL! },
-    ])
-    await page.goto(returnPath)
-    await expectLoginWithoutSecret()
     await page.getByTestId("email-input").fill(customer.email)
     await page.getByTestId("password-input").fill(customer.password)
     await page.getByTestId("sign-in-button").click()
-    await expect(page).toHaveURL((url) => url.pathname === `/${CC}/checkout` && url.search === "?step=review")
-  })
-})
+    if (order) {
+      await expect(page).toHaveURL((u) => u.pathname === `/${CC}/order/${order.id}/confirmed`)
+      await expect(page.getByTestId("order-complete-container")).toBeVisible()
+    } else {
+      await expect(page).toHaveURL(
+        (u) => u.pathname === `/${CC}/checkout` && u.searchParams.get("step") === "review" && u.searchParams.get("cart_id") === cartId
+      )
+      await expect(page.getByTestId("review-heading")).toBeVisible()
+    }
+  }
 
+  await step("(a) ไม่มี jwt → login → ขั้น review ของ cart เดิม", () => run("no-jwt", false))
+  await step("(b) jwt เสีย → login → ขั้น review ของ cart เดิม", () => run("bad-jwt", false))
+  await step("(c) D-2 ไม่มี jwt + cart complete แล้ว → login → หน้า order confirmed", () => run("no-jwt", true))
+  await step("(d) D-2 jwt เสีย + cart complete แล้ว → login → หน้า order confirmed", () => run("bad-jwt", true))
+})
