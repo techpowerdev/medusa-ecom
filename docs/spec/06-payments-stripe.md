@@ -371,6 +371,9 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
     (c) ไม่ confirm PI เดิมที่จบแล้ว และไม่ตัดเงินซ้ำ: session ใหม่ = PI ใหม่ (Stripe provider สร้างให้); PI `succeeded` ที่**ยังไม่ถูกคืนเงิน** → backend ตอบ `PAYMENT_ALREADY_COMPLETED` (ADR-015) จึงไม่สร้าง PI ใหม่;
         PI `succeeded` ที่**คืนครบแล้ว** (กรณีหลักของ PAY-14) → `PAYMENT_COLLECTION_RESET` แล้วได้ session ใหม่;
     (d) ถ้าเรียก `stripe.retrievePaymentIntent` ใน component ของขั้น payment ให้เพิ่มข้อยกเว้นที่ระบุเหตุผลใน `checkout-affiliate-coverage.test.ts` (test นี้ตรวจจุดที่เรียก Stripe ก่อน sync cookie `aff` — AF-3b)
+17. (PAY-15 — owner ตัดสิน 2026-11-22 จาก review #479; ต่อจากกฎข้อ 13) หลัง `promptpay-refunded` จากผล kind `refunded` ที่**รู้เหตุ** (`FLASH_SOLD_OUT`/`FLASH_LIMIT_EXCEEDED`/สต็อกไม่พอ/`PROMOTION_NOT_COMBINABLE` ฯลฯ — helper `promptPayFinishAction`)
+    → **ไม่แสดง**ปุ่ม "เริ่มชำระใหม่" (`promptpay-retry-button`) เพราะปุ่มนั้นสร้าง QR ใหม่บนตะกร้าเดิมที่ยังมีเหตุเดิมอยู่ (ลูกค้าจ่ายซ้ำแล้วถูกคืนซ้ำ) แต่แสดงลิงก์ "ไปที่ตะกร้า" (`promptpay-go-to-cart`, ข้อความไทย)
+    ไปที่ `/<cc>/cart` ให้ลูกค้าปรับตะกร้า/โค้ดส่วนลดตามข้อความ; refunded โดย**ไม่รู้เหตุ** (poll ของ PAY-6c) → คงปุ่ม "เริ่มชำระใหม่" และข้อความเดิม ไม่แสดง `promptpay-go-to-cart`
 
 ### Acceptance criteria (รอบ 41)
 - ☑ AC-23 (PAY-10, กฎข้อ 12) e2e admin: order ที่มี return request ค้าง → เห็น `order-refund-blocked` (ข้อความมี `active return`); ยกเลิก return request แล้ว reload → ไม่เห็น; order ปกติ → ไม่เห็น;
@@ -385,6 +388,8 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
   (c2) PI เดิม `succeeded` ที่**คืนครบแล้ว** → ได้ 409 `PAYMENT_COLLECTION_RESET` แล้ว retry ได้ collection + session ใหม่ (client secret ใหม่) และจ่ายได้;
   (d) integration race (กฎข้อ 16 a2): ยิง `POST .../payment-sessions` ระหว่าง compensation ถือ lock `cart_id` แล้ว session ชั่วคราวถูกลบ → ผลสุดท้ายฝั่งลูกค้าได้ session ใหม่ (ไม่ค้างที่ 404/500) ตามทางที่ builder เลือก
 - AC-26 (PAY-13, กฎข้อ 15) e2e `pay-9-refunded-cart-repay` `--repeat-each=5` ผ่านในเครื่อง/CI; static: ไม่มี `waitForTimeout` ใหม่ และ assertion ของ AC-22c เท่าเดิม (นับ `expect(` ของ step เดิมไม่ลด)
+- ☑ AC-28 (PAY-15, กฎข้อ 17) unit Vitest (helper บอกว่ากรณีไหนไปตะกร้า) + e2e route mock แบบ AC-24: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → เห็น `promptpay-refunded` และ `promptpay-go-to-cart` (อักษรไทย, href ลงท้าย `/th/cart`)
+  ไม่เห็น `promptpay-retry-button`; คลิก `promptpay-go-to-cart` → อยู่ที่ `/th/cart`; regression PAY-6c (poll เห็น refunded ไม่รู้เหตุ) → ยังเห็น `promptpay-retry-button` และไม่เห็น `promptpay-go-to-cart` (ล้มบน develop — ปุ่มเริ่มชำระใหม่แสดงทุกกรณี)
 
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
@@ -394,8 +399,9 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
 | PAY-12 | `/api/payment-return` → `error=refunded` + หน้า cart อ่าน `error` (กฎข้อ 14); qa | `app/api/payment-return/route.ts`, `app/[countryCode]/(main)/cart/page.tsx`/`modules/cart/templates`, `lib/util/cart-error.ts` (+ test), e2e | ~60 LOC + ~120 LOC test | AC-25 | **FS-22 (#464)**, **CORE-76** | `cart.ts` (ไม่แก้ — ใช้ผลของ CORE-76) |
 | PAY-13 | (test hygiene) e2e pay-9 จ่ายใหม่ไม่ flaky (กฎข้อ 15) | `apps/storefront/e2e/pay-9-refunded-cart-repay.spec.ts` | ~30 LOC | AC-26 | PR เอกสารรอบ 41 | — |
 | PAY-14 | ขั้น payment ไม่ติดกับ session ชั่วคราวที่ชี้ PI ที่จบแล้ว: สร้าง session ใหม่อัตโนมัติ/คลิกตัวเลือกเดิมได้ + ไม่โชว์ error อังกฤษของ Stripe (กฎข้อ 16); qa | `modules/checkout/components/payment/index.tsx`, `modules/checkout/components/payment-container`/Stripe wrapper, `lib/util/payment-session.ts` (+ test), `lib/data/cart.ts` (ถ้าต้อง), `checkout-affiliate-coverage.test.ts` (ข้อยกเว้น), backend `guardPaidStripeSession` ถ้าเลือกแก้ที่ guard (+ integration), e2e `pay-14-stale-session.spec.ts` | ~100 LOC + ~200 LOC test | AC-27 | **CORE-76** (ไฟล์เดียวกัน: `cart.ts`/helper error) | `cart.ts`, `payment/index.tsx` (PAY-11/12 — ตัวหลัง sync) |
+| PAY-15 | (owner ตัดสิน 2026-11-22 (review #479)) PromptPay refunded ที่รู้เหตุ: ซ่อน "เริ่มชำระใหม่" แสดงลิงก์ "ไปที่ตะกร้า" (กฎข้อ 17); qa | `modules/checkout/components/promptpay-payment/index.tsx`, `lib/util/promptpay-finish.ts` (+ test), e2e `pay-15-promptpay-go-to-cart.spec.ts`, regression `payments-promptpay-fallback-cap.spec.ts` | ~20 LOC + ~120 LOC test | AC-28 | **PAY-11 (#479)** | `promptpay-payment/index.tsx` |
 
-ลำดับ: PAY-13 ∥ PAY-10 อิสระ; CORE-76 → (PAY-11 ∥ PAY-12 ∥ PAY-14)
+ลำดับ: PAY-13 ∥ PAY-10 อิสระ; CORE-76 → (PAY-11 ∥ PAY-12 ∥ PAY-14); PAY-11 → PAY-15
 
 ### Open questions (รอบ 41)
 - ~~**Q-P11**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** widget `order.details.before` แจ้งเตือน (กฎข้อ 12) — คำถามเดิม: (PAY-10) owner สั่ง "ซ่อน/ปิดปุ่ม Refund เมื่อมี order change ค้าง" แต่ปุ่มเป็นของหน้า order ใน `@medusajs/dashboard` (เงื่อนไข disabled ฝังใน `order-detail` — ไม่มี injection/override ให้ extension):

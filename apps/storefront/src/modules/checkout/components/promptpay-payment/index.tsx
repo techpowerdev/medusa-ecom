@@ -7,7 +7,7 @@ import {
 } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
-import { promptPayFinishAction } from "@lib/util/promptpay-finish"
+import { PROMPTPAY_REFUNDED_UNKNOWN, PromptPayRefunded, promptPayFinishAction } from "@lib/util/promptpay-finish"
 import {
   PAYMENT_ALREADY_COMPLETED,
   PROMPTPAY_POLL_MS,
@@ -19,6 +19,7 @@ import {
   secondsLeft,
 } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Button, Text } from "@modules/common/components/ui"
 import { useStripe } from "@stripe/react-stripe-js"
 import { useParams, useRouter } from "next/navigation"
@@ -38,9 +39,6 @@ type Props = {
 type Qr = { image: string; deadline: number }
 
 const PAY_WITH_PROMPTPAY = "ชำระด้วยพร้อมเพย์"
-// PAY-6c: poll เห็นว่าเงินถูกคืนโดยไม่รู้เหตุ
-const REFUNDED_UNKNOWN_REASON =
-  "ชำระไม่สำเร็จ เงินจะคืนเข้าบัญชีของคุณตามรอบของธนาคาร กดเริ่มชำระใหม่เพื่อรับคิวอาร์โค้ดใหม่"
 
 /**
  * CORE-4i-b (กฎข้อ 72): สร้าง session พร้อมเพย์ใหม่ตอน QR หมดอายุ — 409 `PAYMENT_ALREADY_COMPLETED` → already-paid (PAY-6b),
@@ -91,8 +89,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   const [expired, setExpired] = useState(false)
   // PAY-6c (กฎข้อ 8): ทางสำรองครบเพดานแล้วยังไม่มี order / เงินถูกคืนโดย Medusa ระหว่างทางสำรอง
   const [delayed, setDelayed] = useState(false)
-  // ข้อความของ `promptpay-refunded` (PAY-11: เหตุจาก placeOrder ของทางสำรอง / PAY-6c: ไม่รู้เหตุ)
-  const [refunded, setRefunded] = useState<string | null>(null)
+  // `promptpay-refunded` (PAY-11: เหตุจาก placeOrder ของทางสำรอง → ไปตะกร้า PAY-15 / PAY-6c: ไม่รู้เหตุ → เริ่มชำระใหม่)
+  const [refunded, setRefunded] = useState<PromptPayRefunded | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const finishing = useRef(false)
@@ -130,11 +128,11 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
 
   // เงินถูกคืน (หรือจะถูกคืน) → หยุดทางสำรอง (awaitingOrder=false ล้าง timer poll; poll ที่ค้างอยู่ได้ "wait") แล้วโหลด cart ใหม่
   // Medusa คืนเงินและสร้าง session ใหม่ให้ (refundPaymentAndRecreatePaymentSessionWorkflow) → ให้เริ่มชำระใหม่
-  const stopRefunded = useCallback((text: string) => {
+  const stopRefunded = useCallback((next: PromptPayRefunded) => {
     completeFallback.current = false
     setAwaitingOrder(false)
     setError(null)
-    setRefunded(text)
+    setRefunded(next)
     router.refresh()
   }, [router])
 
@@ -153,7 +151,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     } finally {
       finishing.current = false
     }
-    if (action.kind === "refunded") return stopRefunded(action.text)
+    if (action.kind === "refunded") return stopRefunded(action)
     if (action.kind === "unauthorized") return router.push(`/${countryCode}/account`)
     // เช่นรอ lock ของ completeCartWorkflow ไม่ทัน (CART_COMPLETION_IN_PROGRESS) — poll รอบถัดไปจะลองใหม่ (order มีอยู่แล้ว)
     setError("ได้รับชำระเงินแล้ว ระบบกำลังสร้างคำสั่งซื้อของคุณ กรุณารอสักครู่…")
@@ -242,7 +240,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
         finish()
       } else if (action === "refunded") {
         clearInterval(timer)
-        stopRefunded(REFUNDED_UNKNOWN_REASON)
+        stopRefunded(PROMPTPAY_REFUNDED_UNKNOWN)
       } else if (action === "fail") {
         clearInterval(timer)
         setQr(null)
@@ -277,13 +275,27 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     )
   }
 
+  const refundedNotice = refunded && (
+    <Text className="txt-medium text-ui-fg-subtle mb-2" data-testid="promptpay-refunded">
+      {refunded.text}
+    </Text>
+  )
+
+  // PAY-15 (กฎข้อ 17): เหตุที่รู้ยังอยู่ในตะกร้าเดิม → ไม่มีปุ่มเริ่มชำระใหม่ ให้ไปปรับตะกร้าแทน
+  if (refunded?.goToCart) {
+    return (
+      <>
+        {refundedNotice}
+        <LocalizedClientLink href="/cart" data-testid="promptpay-go-to-cart">
+          <Button size="large">ไปที่ตะกร้า</Button>
+        </LocalizedClientLink>
+      </>
+    )
+  }
+
   return (
     <>
-      {refunded && (
-        <Text className="txt-medium text-ui-fg-subtle mb-2" data-testid="promptpay-refunded">
-          {refunded}
-        </Text>
-      )}
+      {refundedNotice}
       {expired && (
         <Text className="txt-medium text-ui-fg-subtle mb-2" data-testid="promptpay-expired">
           คิวอาร์โค้ดพร้อมเพย์หมดอายุแล้ว ตะกร้าของคุณยังอยู่ กดลองอีกครั้งเพื่อรับคิวอาร์โค้ดใหม่
