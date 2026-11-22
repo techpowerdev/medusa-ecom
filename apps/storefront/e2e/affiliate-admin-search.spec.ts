@@ -157,6 +157,20 @@ test.describe("ADM-43", () => {
       await expect(rows).toHaveCount(1)
     })
 
+    // qa #491 D-1: Radix Tabs (automatic) เรียก onValueChange ทั้ง mousedown และ focus ก่อน router commit → คลิกเดียวได้ 2 history entry
+    await step("คลิกแท็บ 1 ครั้ง = history 1 รายการ; back 1 ครั้งย้อนไปแท็บก่อนหน้า", async () => {
+      const before = await page.evaluate(() => history.length)
+      await tab("payouts").click()
+      await expect.poll(() => new URL(page.url()).searchParams.get("tab")).toBe("payouts")
+      expect(await page.evaluate(() => history.length)).toBe(before + 1)
+      await page.goBack()
+      await expect(tab("affiliates")).toHaveAttribute("aria-selected", "true")
+      expect(new URL(page.url()).searchParams.get("tab")).toBe("affiliates")
+      await page.goBack()
+      await expect(tab("ledger")).toHaveAttribute("aria-selected", "true")
+      expect(new URL(page.url()).searchParams.get("tab")).toBe("ledger")
+    })
+
     await step("tab ที่ไม่รู้จัก → Programs", async () => {
       await page.goto(`${BACKEND_URL}/app/affiliate?tab=nope`)
       await expect(tab("programs")).toHaveAttribute("aria-selected", "true")

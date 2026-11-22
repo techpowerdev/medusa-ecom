@@ -85,6 +85,8 @@ const TABS = [
 
 // ADM-43 (spec 08 กฎ 47c): แท็บที่เลือกอยู่ใน URL (`?tab=<key>`) — reload/แชร์ลิงก์กลับแท็บเดิม; ไม่มี/ค่าผิด → Programs
 // เขียนแบบ functional update ให้ `<prefix>_offset`/`affiliates_q` ของตารางคงอยู่
+// activationMode="manual" (qa #491 D-1): แบบ automatic Radix เรียก onValueChange ทั้งตอน mousedown และ focus ก่อน router commit
+// คลิกเดียวจึง push history 2 รายการ (back ต้องกด 2 ครั้ง) — manual เลือกแท็บด้วยคลิก/Enter/Space ครั้งเดียว ลูกศรแค่ย้ายโฟกัส
 const AffiliatePage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const active = TABS.find((t) => t.value === searchParams.get("tab"))?.value ?? TABS[0].value
@@ -97,7 +99,7 @@ const AffiliatePage = () => {
   return (
     <Container>
       <Header title="Affiliate" />
-      <Tabs value={active} onValueChange={selectTab}>
+      <Tabs value={active} onValueChange={selectTab} activationMode="manual">
         <Tabs.List className="px-6 py-4">
           {TABS.map((tab) => (
             <Tabs.Trigger key={tab.value} value={tab.value} data-testid={`affiliate-admin-tab-${tab.value}`}>

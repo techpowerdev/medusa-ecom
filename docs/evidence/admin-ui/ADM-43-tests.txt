@@ -140,3 +140,31 @@ Tests:       1726 passed, 1726 total
 ## lint / typecheck
 pnpm lint: exit 0 (0 errors; warning เดิมไม่อยู่ในไฟล์ที่ task นี้แตะ)
 pnpm typecheck: exit 0 (รันหลังลบ apps/backend/.medusa — types ที่ medusa build สร้างทำให้ integration-tests เดิม 6 จุดฟ้อง TS2531 ในเครื่อง; CI ไม่มีไฟล์นี้)
+
+## แก้ตาม qa #491 D-1 (2026-11-22): คลิกแท็บ 1 ครั้ง push history 2 รายการ
+สาเหตุ: Radix Tabs (activationMode automatic, @radix-ui/react-tabs 1.1.2) เรียก onValueChange ทั้ง onMouseDown และ onFocus — onFocus เกิดก่อน router commit (isSelected ยังเป็น false) → setSearchParams 2 ครั้ง
+แก้: Tabs activationMode="manual" (คลิก/Enter/Space เลือกแท็บครั้งเดียว ลูกศรย้ายโฟกัสเท่านั้น)
+
+### RED — step ใหม่ใน AC-48 (history ต่อคลิก + back 1 ครั้ง)
+  ✘  1 [chromium] › e2e/affiliate-admin-search.spec.ts:115:7 › ADM-43 › AC-48: แท็บ Affiliates อยู่ใน URL คงหลัง reload และค้นด้วย code ได้; tab ผิด → Programs (3.3s)
+    Expected: 12
+    Received: 13
+    > 165 |       expect(await page.evaluate(() => history.length)).toBe(before + 1)
+
+### GREEN — affiliate-admin-search.spec.ts --repeat-each=3
+  6 passed (30.6s)
+### GREEN — e2e admin เดิมที่เปิด /app/affiliate (16 ไฟล์, DATABASE_URL ตั้งแล้ว)
+  74 passed (3.0m)
+### storefront test:e2e:unit 145 passed; backend test:unit src/admin 564 passed; lint exit 0 (0 errors); typecheck exit 0
+
+## nit จาก review #491 (2026-11-22)
+1) integration: affiliate ชื่อ `Back\Slash` → q=`\` และ q=`k\s` ได้แถวนั้นแถวเดียว
+2) unit `affiliate-payout.unit.spec.ts` describe "AdminListAffiliates q": trim, ช่องว่างล้วน/ว่าง = undefined, escape % _ \
+### RED — เอา `\` ออกจาก regex ของ validator ชั่วคราว
+unit: Tests: 1 failed, 17 passed, 18 total
+      ✕ filters by q on code, trims q and treats % _ \ literally (AC-48) (482 ms)
+    > 325 |         expect(await search("\\")).toEqual({ ids: [slash.id], count: 1 })
+Tests:       1 failed, 38 skipped, 39 total
+### GREEN — คืน regex
+unit affiliate-payout.unit.spec.ts: Tests: 18 passed, 18 total
+integration affiliate-admin.spec.ts ทั้งไฟล์: Tests:       39 passed, 39 total

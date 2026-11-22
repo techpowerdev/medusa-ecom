@@ -320,6 +320,10 @@ medusaIntegrationTestRunner({
         const pct = await service.createAffiliates({ email: "pct@shop.test", name: "Ten%Off_Club", code: "pct", status: "active" })
         expect(await search("%")).toEqual({ ids: [pct.id], count: 1 })
         expect(await search("f_c")).toEqual({ ids: [pct.id], count: 1 })
+        // review #491: `\` ที่ไม่ escape กลายเป็น escape ของ `%` ท้าย pattern (`%\%`) → ไม่เจอแถวที่มี `\` — ล้มถ้าเอา `\` ออกจาก regex
+        const slash = await service.createAffiliates({ email: "slash@shop.test", name: "Back\\Slash", code: "slash", status: "active" })
+        expect(await search("\\")).toEqual({ ids: [slash.id], count: 1 })
+        expect(await search("k\\s")).toEqual({ ids: [slash.id], count: 1 })
       })
 
       // ADM-17 qa D-1: bulk import ได้ created_at เท่ากัน — แบ่งหน้าด้วย offset ต้องได้ทุก id ครั้งเดียว (มี id เป็นตัวตัดสิน)
