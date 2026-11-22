@@ -6,7 +6,7 @@ import {
 } from "../saturation-sampler"
 
 // OPS-20b (spec 07 AC-32): event-loop delay (+ รอ pool ของ knex) รายวินาที เป็น log debug ของ logger เดิม
-// histogram/timer สร้างเฉพาะเมื่อ LOG_LEVEL=debug — prod (ค่าเริ่มต้น info) ไม่มี timer
+// histogram/timer สร้างเฉพาะเมื่อ LOG_LEVEL=debug — prod (ค่าเริ่มต้น http ตั้งแต่ OPS-30) และ info ไม่มี timer
 const MS = 1e6 // histogram ของ perf_hooks เป็น nanosecond
 
 function fakes() {

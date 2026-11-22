@@ -562,7 +562,7 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
   (b) integration (แบบ AC-47a) ด้วยลูกค้าชื่อ/อีเมล/เบอร์/ที่อยู่ที่ tag ไว้ → stream ของ logger prod ไม่มีค่า tag ใดเลย และยังมีบรรทัด `CART_COMPLETION_FAILED_AFTER_PAYMENT` พร้อม `cart_id`; (c) logger development ไม่ redact (regression);
   (d) (owner ยืนยัน 2026-11-21, กฎข้อ 15 d) unit — **ล้มบน develop** ก่อน: `goLiveFailures` เมื่อ `datctype` เป็น `C`/`POSIX` → มีข้อ FAIL ที่บอก `datctype`, `pg_trgm` และภาษาไทย; `en_US.utf8`/`th_TH.UTF-8` ผ่าน;
   Go-live ข้อ 10 มีข้อความ "`check:go-live` ตรวจข้อนี้ให้อัตโนมัติ"; integration `prod-guards.spec.ts` (ผ่านครบ) รัน query `datctype` กับ DB จริง
-- AC-49 (OPS-34, กฎข้อ 16 รอบ 41) (a) สร้าง `apps/backend/.medusa/types/*.d.ts` จำลองที่ขัดกับ test แล้ว `pnpm --filter backend typecheck` ผ่าน; (b)–(h) test ที่แก้ผ่าน `--repeat-each`/รันซ้ำ 3 รอบ; static: ไม่มี `setTimeout`/`retries` ใหม่ใน test ที่แก้
+- AC-49 (OPS-34, กฎข้อ 16 รอบ 41) ☑ (a–h ผ่าน: typecheck red TS2531 ×6 → green, unit red 2 → green, integration (c) red 1 → green, (f) mutation red, (h) ลำดับบังคับ red 404, (b) เพิ่ม assertion — mutation ถอด lock ยังไม่ red ในเครื่อง; รันซ้ำ 3 รอบ) (a) สร้าง `apps/backend/.medusa/types/*.d.ts` จำลองที่ขัดกับ test แล้ว `pnpm --filter backend typecheck` ผ่าน; (b)–(h) test ที่แก้ผ่าน `--repeat-each`/รันซ้ำ 3 รอบ; static: ไม่มี `setTimeout`/`retries` ใหม่ใน test ที่แก้
 
 ### Checklist ตอน bump `@medusajs/*` — เพิ่ม (รอบ 41)
 (เลขข้อด้านล่างต่อจากเช็กลิสต์ bump ข้อ 1–13 — คนละชุดกับ "กฎข้อ 15–16 รอบ 41" ข้างบน; อ้างเป็น "เช็กลิสต์ bump ข้อ 14–17")

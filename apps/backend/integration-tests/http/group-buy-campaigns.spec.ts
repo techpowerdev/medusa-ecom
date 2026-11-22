@@ -965,6 +965,25 @@ medusaIntegrationTestRunner({
         expect(ok.status).toEqual(200)
         expect(ok.data.campaign.max_units_per_person).toEqual(2)
       })
+
+      // review #433: updateGroupBuyCampaignStep ตรวจสิทธิ์แก้ตามสถานะ (assertCampaignPatchAllowed) ก่อนตรวจกับ max_quantity
+      // ถ้าสลับลำดับ แคมเปญ active จะได้ invalid_data แทน not_allowed
+      it("active campaign + max_units_per_person over the template max_quantity → 400 not_allowed (status check first); value unchanged", async () => {
+        const created = await createViaApi({
+          max_units_per_person: 1,
+          application_method: { ...campaignInput().application_method, max_quantity: 2 },
+        })
+        expect((await setStatus(created.id, "active")).status).toEqual(200)
+
+        const response = await api
+          .post(`/admin/group-buy/campaigns/${created.id}`, { max_units_per_person: 3 }, headers)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("not_allowed")
+
+        const fetched = await api.get(`/admin/group-buy/campaigns/${created.id}`, headers)
+        expect(fetched.data.campaign.max_units_per_person).toEqual(1)
+      })
     })
   },
 })

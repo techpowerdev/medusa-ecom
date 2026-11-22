@@ -190,10 +190,37 @@ medusaIntegrationTestRunner({
       expect(await cartCollectionIds(cartId)).toEqual([])
     })
 
+    // review #445 nit 5: ถ้า request ที่สองผ่าน ownership หลัง link ถูกถอดแล้วจะได้ 404 (ถูกต้องตาม ADR-013) — test จึงจัดลำดับด้วยสัญญาณจริง
+    // ถือ lock `cart_id` ไว้จนทั้งสอง request ผ่าน ownership + pre-check แล้วมารอ acquireLockStep ของ reset workflow (owner คนละตัว)
+    // จึงปล่อย lock — ทั้งสองผ่าน ownership ก่อนถอด link เสมอ ไม่พึ่งจังหวะเวลา
     it("(a) two concurrent requests both get 409 PAYMENT_COLLECTION_RESET without 5xx", async () => {
       const { cartId, collectionId } = await refundedCart()
+      const locking = getContainer().resolve(Modules.LOCKING)
+      const acquire = locking.acquire.bind(locking)
+      const waitingOwners = new Set<string>()
+      let bothWaiting!: () => void
+      const waiting = new Promise<void>((resolve) => (bothWaiting = resolve))
+      jest.spyOn(locking, "acquire").mockImplementation((keys: any, args: any) => {
+        if (keys === cartId && String(args?.ownerId).startsWith("pay9-reset:")) {
+          waitingOwners.add(args.ownerId)
+          if (waitingOwners.size === 2) bothWaiting()
+        }
+        return acquire(keys, args)
+      })
+      let releaseCart!: () => void
+      let holding!: () => void
+      const holds = new Promise<void>((resolve) => (holding = resolve))
+      const held = locking.execute(cartId, () => {
+        holding()
+        return new Promise<void>((resolve) => (releaseCart = resolve))
+      })
+      await holds
 
-      const results = await Promise.all([newSession(collectionId), newSession(collectionId)])
+      const racing = Promise.all([newSession(collectionId), newSession(collectionId)])
+      await waiting
+      releaseCart()
+      await held
+      const results = await racing
 
       expect(results).toEqual([resetConflict, resetConflict])
       expect(await cartCollectionIds(cartId)).toEqual([])

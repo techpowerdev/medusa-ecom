@@ -8,6 +8,7 @@ import { adminPaymentMiddlewares } from './admin/payments/middlewares'
 import { adminPromotionLockMiddlewares } from './admin/promotions/group-buy-lock'
 import { storeEvoucherMiddlewares } from './store/evouchers/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
+import { storeCustomerMeMiddlewares } from './store/customers/me/middlewares'
 import { storeGroupBuyMiddlewares } from './store/group-buy/middlewares'
 import { businessErrorHandler } from './error-handler'
 import { storeOwnershipMiddlewares } from './store/ownership/middlewares'
@@ -42,6 +43,8 @@ export default defineMiddlewares({
     ...storeEvoucherMiddlewares,
     ...adminFlashSaleMiddlewares,
     ...storeFlashSaleMiddlewares,
+    // route ของเราใต้ /store/customers/me/* (FS-20 allowance)
+    ...storeCustomerMeMiddlewares,
     ...adminAffiliateMiddlewares,
     ...adminGroupBuyMiddlewares,
     ...storeGroupBuyMiddlewares,
