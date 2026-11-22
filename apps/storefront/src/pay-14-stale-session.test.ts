@@ -55,10 +55,19 @@ const cart = {
 let container: HTMLDivElement
 let root: Root
 
-const render = async () => {
+const cartWithSecret = (secret: string) =>
+  ({
+    ...(cart as object),
+    payment_collection: {
+      id: "pay_col_1",
+      payment_sessions: [{ provider_id: CARD, status: "pending", data: { client_secret: secret } }],
+    },
+  }) as never
+
+const render = async (props: unknown = cart) => {
   const { default: Payment } = await import("@modules/checkout/components/payment")
   await act(async () => {
-    root.render(createElement(Payment, { cart, availablePaymentMethods: [{ id: CARD }], deliveryDone: true }))
+    root.render(createElement(Payment, { cart: props as never, availablePaymentMethods: [{ id: CARD }], deliveryDone: true }))
   })
 }
 const byTestId = (id: string) => container.querySelector<HTMLElement>(`[data-testid="${id}"]`)
@@ -140,5 +149,101 @@ describe("PAY-14: ขั้น payment ไม่ติดกับ session ท�
     expect(initiatePaymentSession).toHaveBeenCalledTimes(1)
     expect(placeOrder).toHaveBeenCalledWith("cart_1", undefined, "th")
     expect(byTestId("payment-session-reset-notice")).toBeNull()
+  })
+})
+
+// review #482 nit 2 / train #483: สร้าง session ใหม่สำเร็จแต่ RSC refresh ไม่มาถึง → cart ใน props ยังชี้ PI เดิม (StripeCardFields
+// แสดง skeleton ค้างเพราะไม่ mount กับ PI ที่จบแล้ว) → ต้องไม่ค้างถาวร: 5 วินาที refresh อีกครั้ง, 10 วินาที → notice ให้ลองใหม่ (แบบกฎข้อ 71)
+describe("PAY-14: สร้าง session ใหม่แล้ว cart ใน props ไม่เปลี่ยน", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+    vi.useRealTimers()
+  })
+
+  const advance = async (ms: number) => {
+    await act(async () => {
+      vi.advanceTimersByTime(ms)
+    })
+  }
+
+  it("refresh ไม่มา → 5 วินาที refresh อีก 1 ครั้ง, 10 วินาที → payment-session-reset-notice (ไม่ค้าง skeleton)", async () => {
+    initiatePaymentSession.mockResolvedValue({ ok: true })
+    await render()
+    await click("stale")
+    expect(router.refresh).toHaveBeenCalledTimes(1)
+
+    await advance(5_000)
+    expect(router.refresh).toHaveBeenCalledTimes(2)
+    expect(byTestId("payment-session-reset-notice")).toBeNull()
+
+    await advance(5_000)
+    expect(byTestId("payment-session-reset-notice")).not.toBeNull()
+  })
+
+  it("cart ได้ session ใหม่ที่ 2 วินาที → ไม่ refresh เพิ่มและไม่มี notice หลัง 10 วินาที", async () => {
+    initiatePaymentSession.mockResolvedValue({ ok: true })
+    await render()
+    await click("stale")
+    await advance(2_000)
+    await render(cartWithSecret("pi_new_secret_y"))
+
+    await advance(10_000)
+    expect(router.refresh).toHaveBeenCalledTimes(1)
+    expect(byTestId("payment-session-reset-notice")).toBeNull()
+  })
+})
+
+// review #482 nit 1: กันกดซ้ำด้วย ref (state ของ render เดียวกันยังเป็น false) + ปุ่ม retry disabled ระหว่างสร้าง
+describe("PAY-14: กันสร้าง session ซ้ำ", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it("คลิก retry สองครั้งติดกัน (render เดียวกัน) → initiatePaymentSession ครั้งเดียว และปุ่มกดได้อีกเมื่อจบ", async () => {
+    initiatePaymentSession.mockResolvedValueOnce({ error: "failed" })
+    await render()
+    await click("stale")
+    let resolve!: (v: unknown) => void
+    initiatePaymentSession.mockReturnValueOnce(new Promise((r) => (resolve = r)))
+    const retry = byTestId("payment-session-retry")!
+    await act(async () => {
+      retry.click()
+      retry.click()
+    })
+    expect(initiatePaymentSession).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      resolve({ error: "failed" })
+    })
+    expect((byTestId("payment-session-retry") as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it("ระหว่างสร้าง session notice ถูกซ่อน → คลิก radio ซ้ำไม่สร้างเพิ่ม", async () => {
+    initiatePaymentSession.mockResolvedValueOnce({ error: "failed" })
+    await render()
+    await click("stale")
+    initiatePaymentSession.mockReturnValueOnce(new Promise(() => {}))
+    await act(async () => {
+      byTestId("payment-session-retry")!.click()
+    })
+    // notice ถูกซ่อนตอนเริ่มสร้าง → คลิก radio ซ้ำระหว่างรอก็ไม่สร้างเพิ่ม
+    await click("card-radio")
+    expect(initiatePaymentSession).toHaveBeenCalledTimes(2)
   })
 })

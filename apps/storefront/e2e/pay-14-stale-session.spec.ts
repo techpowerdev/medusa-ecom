@@ -59,8 +59,13 @@ async function cartWithStaleCardSession(
   await page.goto(`/${CC}/checkout?step=payment`)
   await page.getByTestId(`payment-option-${CARD_PROVIDER}`).click()
   const staleIntent = await sessionIntentId(request, pk, customer, cartId, CARD_PROVIDER)
+  // train #483 (run 44993099572): หน้าแรกยังตรวจ PI นี้อยู่ (props ได้ session หลัง backend) — ถ้ายกเลิกก่อนหน้านั้นตรวจเสร็จ
+  // หน้าแรกจะสร้าง session ใหม่เองโดยไม่ผ่าน route mock แล้วหน้าที่เปิดใหม่ได้ PI ที่ยังใช้ได้ → ปิดหน้าก่อนยกเลิก PI
+  await page.goto("about:blank")
   await cancelIntent(request, staleIntent)
   expect((await retrievePaymentIntent(request, staleIntent)).status).toBe("canceled")
+  // cart ยังชี้ PI ที่ยกเลิกแล้ว (ไม่มีหน้าใดสร้าง session ใหม่ระหว่างทาง)
+  expect(await hasNewIntent(request, customer, cartId, staleIntent)()).toBe(false)
   return { cartId, staleIntent }
 }
 

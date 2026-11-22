@@ -60,3 +60,33 @@ Tests:       8 skipped, 1 passed, 9 total
 
 == e2e (ต้องใช้ Stripe test key — เครื่องนี้ไม่มี key; CI เป็นผู้พิสูจน์) ==
 apps/storefront/e2e/pay-14-stale-session.spec.ts (playwright --list: 2 tests)
+
+== รอบแก้หลัง merge train #483 (run 44993099572, 2026-11-22) ==
+อาการ: e2e pay-14-stale-session.spec.ts:162 ไม่เจอ payment-session-reset-notice ภายใน 10 วินาที
+
+root cause (วิเคราะห์จาก trace.zip ของ artifact e2e-evidence — monotonic time ของ network):
+  1654721 POST action (หน้าแรก เลือกบัตร → สร้าง session PI1)
+  1655279 test ยกเลิก PI1 ผ่าน Stripe API (+281ms)
+  1655689 page.goto หน้า checkout ใหม่ (document ตอบใน 112ms)
+  1655747 POST action initiatePaymentSession → 500 (route mock ครั้งเดียว) ← ยิงจาก**หน้าแรก**ที่ยังไม่ถูกแทน
+          (หน้าแรกเพิ่งได้ session PI1 แล้ว Elements/ตัวตรวจ PI เห็น PI ที่ถูกยกเลิก → สร้างใหม่อัตโนมัติ); หน้าใหม่ยังไม่มี HTML
+  1656256 หน้าใหม่: elements/sessions 400 + retrieve PI1 (canceled) → สร้างอัตโนมัติ
+  1656333 POST action เดียวกัน (body เดียวกัน) → 200 เพราะ mock ใช้ไปแล้ว → PI2 mount, ไม่มี notice
+  → race ใน setup ของ test (ยกเลิก PI ขณะหน้าแรกยังมีชีวิต) ไม่ใช่บั๊กที่ลูกค้าเจอ; test 1 ก็เสี่ยงแบบเดียวกัน (sessionActions = 0)
+  แก้: ไป about:blank ก่อนยกเลิก PI และยืนยันว่า cart ยังชี้ PI เดิมก่อนเปิดหน้าใหม่
+  (red ของ e2e ทำในเครื่องไม่ได้ — ไม่มี Stripe key; หลักฐานคือ trace ข้างบน)
+
+แก้ตาม review nit (บั๊กจริงที่ลูกค้าเจอได้): สร้าง session ใหม่สำเร็จแต่ RSC refresh ไม่มา → StripeCardFields ค้าง skeleton ไม่มี notice
+  → ใช้แบบกฎข้อ 71: 5 วินาที refresh อีกครั้ง, 10 วินาที → payment-session-reset-notice; กันกดซ้ำด้วย ref + ปุ่ม retry disabled ระหว่างสร้าง
+
+-- RED (ก่อนแก้) --
+     × refresh ไม่มา → 5 วินาที refresh อีก 1 ครั้ง, 10 วินาที → payment-session-reset-notice (ไม่ค้าง skeleton) 4ms
+     × คลิก retry สองครั้งติดกัน (render เดียวกัน) → initiatePaymentSession ครั้งเดียว และปุ่มกดได้อีกเมื่อจบ 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to be called 2 times, but got 1 times
+AssertionError: expected "vi.fn()" to be called 2 times, but got 3 times
+      Tests  2 failed | 8 passed (10)
+
+-- GREEN --
+      Tests  10 passed (10)
+storefront vitest ทั้งชุด 1351 passed; test:e2e:unit 131 passed; tsc ผ่าน; lint ไม่มี warning ใหม่

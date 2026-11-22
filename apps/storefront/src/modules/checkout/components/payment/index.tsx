@@ -79,18 +79,27 @@ const Payment = ({
   // จ่ายแล้วยังไม่คืน → PAYMENT_ALREADY_COMPLETED → complete cart แบบรอ order ของ ADR-015 ไม่สร้าง PI ใหม่)
   const [sessionReset, setSessionReset] = useState(false)
   const autoRenewed = useRef(false)
+  const renewing = useRef(false)
+  // client secret ของ session ที่จบแล้วตอนสร้างใหม่สำเร็จ — cart ใน props ยังชี้ secret นี้ = RSC refresh ยังไม่มา (ไม่ค้าง skeleton ถาวร)
+  const [renewedFrom, setRenewedFrom] = useState<string | null>(null)
+  const activeSecret = (activeSession?.data?.client_secret as string | undefined) ?? null
+  const renewNotInCartYet = renewedFrom !== null && activeSecret === renewedFrom
   const { countryCode } = useParams()
   const placePaid = () => placeOrder(cart.id, undefined, countryCode as string)
   const paidOrder = usePlaceOrder(true, placePaid)
 
   const renewSession = async (method: string) => {
-    if (isLoading) return
+    if (renewing.current) return
+    renewing.current = true
+    const staleSecret = activeSecret
     setSessionReset(false)
     setError(null)
     setIsLoading(true)
     const result = await settleAction(initiatePaymentSession(cart, { provider_id: method }))
     setIsLoading(false)
+    renewing.current = false
     if ("ok" in result) {
+      setRenewedFrom(staleSecret)
       router.refresh()
     } else if (result.error === PAYMENT_ALREADY_COMPLETED) {
       await paidOrder.start()
@@ -100,6 +109,20 @@ const Payment = ({
       setSessionReset(true)
     }
   }
+
+  // แบบกฎข้อ 71 (CORE-19e): 5 วินาที refresh อีกครั้ง, 10 วินาทีให้ลูกค้าลองใหม่ด้วย notice เดิม
+  useEffect(() => {
+    if (!renewNotInCartYet) return
+    const refreshTimer = setTimeout(() => router.refresh(), 5_000)
+    const giveUpTimer = setTimeout(() => {
+      setRenewedFrom(null)
+      setSessionReset(true)
+    }, 10_000)
+    return () => {
+      clearTimeout(refreshTimer)
+      clearTimeout(giveUpTimer)
+    }
+  }, [renewNotInCartYet, router])
 
   const onStaleSession = () => {
     if (autoRenewed.current) {
@@ -339,6 +362,7 @@ const Payment = ({
               <Text>{SESSION_RESET}</Text>
               <button
                 onClick={() => renewSession(selectedPaymentMethod)}
+                disabled={isLoading}
                 className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
                 data-testid="payment-session-retry"
               >
