@@ -22,6 +22,12 @@ export function paymentSessionData(providerId: string): Record<string, unknown> 
   return undefined
 }
 
+/**
+ * PAY-14 (spec 06 กฎข้อ 16 a): PaymentIntent ที่จบแล้ว (ชำระแล้ว/ถูกยกเลิก — เช่น session ชั่วคราวระหว่าง compensation) → ห้าม mount
+ * Elements กับ PI นั้น ใช้ตัดสินแค่ "ห้าม mount" ไม่ตัดสินเรื่องเงิน (PI ที่ถูกคืนเงินยังเป็น `succeeded`) — backend ตัดสินตอนสร้าง session ใหม่
+ */
+export const intentIsTerminal = (status?: string) => status === "succeeded" || status === "canceled"
+
 /** หมดอายุ 10 นาทีนับจากเวลาสร้าง PaymentIntent (`created` เป็นวินาที) — reload หน้าไม่ยืดเวลา */
 export const promptPayDeadline = (intentCreatedSec: number) =>
   intentCreatedSec * 1000 + PROMPTPAY_TIMEOUT_MS

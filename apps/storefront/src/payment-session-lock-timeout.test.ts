@@ -16,6 +16,7 @@ const initiatePaymentSession = vi.fn()
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
   usePathname: () => "/th/checkout",
+  useParams: () => ({ countryCode: "th" }), // PAY-14: Payment ใช้ usePlaceOrder ของปุ่มชำระเงิน
   useSearchParams: () => new URLSearchParams("step=payment"),
 }))
 vi.mock("@lib/data/cart", () => ({
