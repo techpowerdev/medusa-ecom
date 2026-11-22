@@ -1,5 +1,6 @@
 import { expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, publishableKey } from "./support/medusa"
+import { isLoginFormBody, isServerAction } from "./support/server-action"
 import { THAI } from "./support/thai-text"
 
 // CORE-4h: spec 01 AC-105 (กฎข้อ 69) — กันกด login ซ้ำ, ฟอร์มสมัครที่ล้มคงค่า, error หน้า verify-account เป็นไทย
@@ -14,10 +15,11 @@ test("AC-105: dblclick login = action 1 ครั้ง, สมัครล้�
 }) => {
   const customer = await createCustomer(request, await publishableKey(request, await adminHeaders(request)))
 
-  // นับ server action ของหน้า (POST ที่มี header next-action)
+  // นับเฉพาะ action ของฟอร์ม login ด้วยอีเมลนี้ — หน้า login มี nav ที่ยิง retrieveCart เองหลัง hydrate (CORE-19a)
+  // ถ้า hydrate ช้ากว่าการ reset ตัวนับ การนับทุก next-action จะได้ 2 (สาเหตุเดียวกับ CORE-22 AC-84 ใน run 44993099572)
   let actionPosts = 0
   page.on("request", (req) => {
-    if (req.method() === "POST" && req.headers()["next-action"]) actionPosts++
+    if (isServerAction(req, (body) => isLoginFormBody(body, customer.email))) actionPosts++
   })
 
   await step("dblclick ปุ่ม login ด้วยรหัสผ่านผิด → action 1 ครั้ง และ login-error-message ไทย", async () => {

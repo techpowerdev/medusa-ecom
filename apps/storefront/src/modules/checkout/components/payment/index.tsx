@@ -1,11 +1,12 @@
 "use client"
 import { RadioGroup } from "@headlessui/react"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
-import { initiatePaymentSession } from "@lib/data/cart"
+import { initiatePaymentSession, placeOrder } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
-import { isPromptPay } from "@lib/util/payment-session"
+import { PAYMENT_ALREADY_COMPLETED, isPromptPay } from "@lib/util/payment-session"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
+import { PlaceOrderNotice, usePlaceOrder } from "@modules/checkout/components/payment-button"
 import PaymentContainer, {
   StripePaymentContainer,
 } from "@modules/checkout/components/payment-container"
@@ -18,10 +19,11 @@ import {
   clx,
 } from "@modules/common/components/ui"
 import { HttpTypes } from "@medusajs/types"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 const SESSION_FAILED = "ตั้งค่าการชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+const SESSION_RESET = "กรุณาเลือกวิธีชำระเงินอีกครั้ง"
 
 /** CORE-4i-b (กฎข้อ 72): สร้าง session แล้วคืนข้อความไทยเมื่อล้ม (`unauthorized` → SIGN_IN_AGAIN_MESSAGE), สำเร็จ → null */
 export const paymentSessionError = async (
@@ -71,6 +73,65 @@ const Payment = ({
   const pathname = usePathname()
 
   const isOpen = searchParams.get("step") === "payment"
+
+  // PAY-14 (spec 06 กฎข้อ 16): session ที่เลือกอยู่ชี้ PI ที่จบแล้ว (เช่น session ชั่วคราวระหว่าง compensation) → สร้าง session ใหม่
+  // อัตโนมัติ 1 ครั้ง ให้ backend ตัดสินตามลำดับ middleware ของ ADR-025 (คืนครบ → reset แล้ว retry ใน initiatePaymentSession;
+  // จ่ายแล้วยังไม่คืน → PAYMENT_ALREADY_COMPLETED → complete cart แบบรอ order ของ ADR-015 ไม่สร้าง PI ใหม่)
+  const [sessionReset, setSessionReset] = useState(false)
+  const autoRenewed = useRef(false)
+  const renewing = useRef(false)
+  // client secret ของ session ที่จบแล้วตอนสร้างใหม่สำเร็จ — cart ใน props ยังชี้ secret นี้ = RSC refresh ยังไม่มา (ไม่ค้าง skeleton ถาวร)
+  const [renewedFrom, setRenewedFrom] = useState<string | null>(null)
+  const activeSecret = (activeSession?.data?.client_secret as string | undefined) ?? null
+  const renewNotInCartYet = renewedFrom !== null && activeSecret === renewedFrom
+  const { countryCode } = useParams()
+  const placePaid = () => placeOrder(cart.id, undefined, countryCode as string)
+  const paidOrder = usePlaceOrder(true, placePaid)
+
+  const renewSession = async (method: string) => {
+    if (renewing.current) return
+    renewing.current = true
+    const staleSecret = activeSecret
+    setSessionReset(false)
+    setError(null)
+    setIsLoading(true)
+    const result = await settleAction(initiatePaymentSession(cart, { provider_id: method }))
+    setIsLoading(false)
+    renewing.current = false
+    if ("ok" in result) {
+      setRenewedFrom(staleSecret)
+      router.refresh()
+    } else if (result.error === PAYMENT_ALREADY_COMPLETED) {
+      await paidOrder.start()
+    } else if (result.error === "unauthorized") {
+      setError(actionErrorMessage(result.error, SESSION_FAILED))
+    } else {
+      setSessionReset(true)
+    }
+  }
+
+  // แบบกฎข้อ 71 (CORE-19e): 5 วินาที refresh อีกครั้ง, 10 วินาทีให้ลูกค้าลองใหม่ด้วย notice เดิม
+  useEffect(() => {
+    if (!renewNotInCartYet) return
+    const refreshTimer = setTimeout(() => router.refresh(), 5_000)
+    const giveUpTimer = setTimeout(() => {
+      setRenewedFrom(null)
+      setSessionReset(true)
+    }, 10_000)
+    return () => {
+      clearTimeout(refreshTimer)
+      clearTimeout(giveUpTimer)
+    }
+  }, [renewNotInCartYet, router])
+
+  const onStaleSession = () => {
+    if (autoRenewed.current) {
+      setSessionReset(true)
+      return
+    }
+    autoRenewed.current = true
+    renewSession(selectedPaymentMethod)
+  }
 
   const setPaymentMethod = async (method: string) => {
     setError(null)
@@ -234,7 +295,15 @@ const Payment = ({
                 onChange={(value: string) => setPaymentMethod(value)}
               >
                 {availablePaymentMethods.map((paymentMethod) => (
-                  <div key={paymentMethod.id}>
+                  <div
+                    key={paymentMethod.id}
+                    // PAY-14: คลิกตัวเลือกที่เลือกอยู่ไม่เรียก onChange ของ RadioGroup → สร้าง session ใหม่จากที่นี่
+                    onClick={
+                      sessionReset && paymentMethod.id === selectedPaymentMethod
+                        ? () => renewSession(paymentMethod.id)
+                        : undefined
+                    }
+                  >
                     {isStripeLike(paymentMethod.id) ? (
                       <StripePaymentContainer
                         paymentProviderId={paymentMethod.id}
@@ -242,6 +311,12 @@ const Payment = ({
                         paymentInfoMap={paymentInfoMap}
                         setError={setError}
                         setPaymentComplete={setPaymentComplete}
+                        clientSecret={
+                          activeSession?.provider_id === paymentMethod.id
+                            ? (activeSession.data?.client_secret as string | undefined)
+                            : undefined
+                        }
+                        onStaleSession={onStaleSession}
                       />
                     ) : (
                       <PaymentContainer
@@ -282,6 +357,20 @@ const Payment = ({
             }
             data-testid="payment-session-pending-error"
           />
+          {sessionReset && (
+            <div role="alert" className="pt-2 flex items-center gap-x-3 text-small-regular" data-testid="payment-session-reset-notice">
+              <Text>{SESSION_RESET}</Text>
+              <button
+                onClick={() => renewSession(selectedPaymentMethod)}
+                disabled={isLoading}
+                className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+                data-testid="payment-session-retry"
+              >
+                ลองอีกครั้ง
+              </button>
+            </div>
+          )}
+          <PlaceOrderNotice shown={paidOrder.shown} errorTestId="payment-session-order-error" />
 
           <Button
             size="large"

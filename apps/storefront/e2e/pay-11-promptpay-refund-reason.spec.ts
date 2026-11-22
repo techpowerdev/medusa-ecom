@@ -1,9 +1,6 @@
-import { Page, Route } from "@playwright/test"
-
 import { expect, test } from "./support/fixtures"
-import { Ctx, paidWhileQrShown } from "./support/promptpay-race"
-import { isCartIdActionBody } from "./support/server-action"
-import { HAS_STRIPE_UI, PROMPTPAY_PROVIDER } from "./support/stripe"
+import { Mocked, mockPlaceOrder, paidWhileQrShown } from "./support/promptpay-race"
+import { HAS_STRIPE_UI } from "./support/stripe"
 import { expectThai } from "./support/thai-text"
 
 // PAY-11 (spec 06 กฎข้อ 13, AC-24): ทางสำรอง PromptPay (`finish` → placeOrder) ได้ผลล้มที่รู้เหตุ → หยุด poll แล้วแสดง
@@ -14,51 +11,6 @@ import { expectThai } from "./support/thai-text"
 test.use({ evidenceTarget: { feature: "payments", taskId: "PAY-11" } })
 
 const NEED_UI = "ต้องตั้ง STRIPE_API_KEY (sk_test_) + NEXT_PUBLIC_STRIPE_KEY (pk_test_) ของบัญชี Stripe เดียวกัน"
-
-type Mocked = { placeOrders: number[]; polls: number[] }
-
-/**
- * หลัง storefront สร้าง session ใหม่ (renewPromptPaySession — มี provider id ใน body) action ที่รับ cart id อย่างเดียว:
- * id ที่เห็นตอน QR แสดง = poll (ผ่านจริง นับไว้), id อื่น = placeOrder → ตอบเป็น `outcome`
- */
-async function mockPlaceOrder(page: Page, ctx: Ctx, outcome: object): Promise<Mocked> {
-  const state = { renewed: false, pollActionIds: new Set<string>() }
-  const mocked: Mocked = { placeOrders: [], polls: [] }
-  await page.route(
-    (url) => url.pathname.includes("/checkout"),
-    async (route: Route) => {
-      const req = route.request()
-      const actionId = req.headers()["next-action"]
-      if (req.method() !== "POST" || !actionId) return route.fallback()
-      const body = req.postData() ?? ""
-      if (!isCartIdActionBody(body, ctx.cartId)) {
-        if (body.includes(PROMPTPAY_PROVIDER)) state.renewed = true
-        return route.fallback()
-      }
-      if (!state.renewed) {
-        state.pollActionIds.add(actionId)
-        return route.fallback()
-      }
-      if (state.pollActionIds.has(actionId)) {
-        mocked.polls.push(Date.now())
-        return route.fallback()
-      }
-      mocked.placeOrders.push(Date.now())
-      const pollId = Array.from(state.pollActionIds)[0]
-      const res = await route.fetch({
-        headers: { ...req.headers(), "next-action": pollId },
-        postData: JSON.stringify([ctx.cartId]),
-      })
-      const text = await res.text()
-      expect(text, "action poll คืนสถานะ pending").toContain('"pending"')
-      const headers = { ...res.headers() }
-      delete headers["content-length"]
-      await route.fulfill({ status: res.status(), headers, body: text.replace('"pending"', JSON.stringify(outcome)) })
-    }
-  )
-  await expect.poll(() => state.pollActionIds.size, { timeout: 30_000 }).toBeGreaterThan(0)
-  return mocked
-}
 
 test.describe("PromptPay ทางสำรองบอกเหตุคืนเงิน (AC-24)", () => {
   test.skip(!HAS_STRIPE_UI, NEED_UI)
