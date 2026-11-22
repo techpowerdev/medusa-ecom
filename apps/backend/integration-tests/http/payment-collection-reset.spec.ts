@@ -286,6 +286,54 @@ medusaIntegrationTestRunner({
       expect(await cartCollectionIds(cartId)).toEqual([collectionId])
     })
 
+    // PAY-14 (spec 06 กฎข้อ 16 a2, AC-27 d): ลูกค้าเปิดขั้น payment ระหว่าง compensation ของ completeCartWorkflow (ถือ lock cart_id)
+    // guardPaidStripeSession อ่าน session ชั่วคราว (pending, PI เดิม) ก่อนเข้า lock → ได้ lock แล้ว session ถูกลบไปแล้ว → NOT_FOUND
+    // ทางที่เลือก: storefront ถือ 404 เป็น "อ่าน collection ของ cart ใหม่แล้วลองซ้ำ 1 ครั้ง" — การลองซ้ำผ่าน reset middleware อีกรอบ
+    // ด้วยสถานะหลัง compensation จึงได้ PAYMENT_COLLECTION_RESET ตามลำดับ ADR-025 (แก้ที่ guard ให้ next() จะสร้าง session ใน collection
+    // ที่คืนเงินแล้ว เพราะ reset middleware ตัดสินไปแล้วนอก lock)
+    it("(PAY-14 d) session request during compensation → 404, the storefront retry gets a reset and then a new session", async () => {
+      const { cartId, collectionId, session } = await cartWithSession()
+      await refundAll(await pay(session))
+      const paymentModule = getContainer().resolve(Modules.PAYMENT)
+      await paymentModule.deletePaymentSession(session.id)
+      // session ชั่วคราวของ recreate (pending + PI ที่ retrieve ได้ succeeded) — ยังไม่มี payment จึงไม่ reset ตอนอ่านนอก lock
+      const temporary = await paymentModule.createPaymentSession(collectionId, {
+        provider_id: CARD,
+        amount: session.amount,
+        currency_code: "thb",
+        data: {},
+      })
+
+      const locking = getContainer().resolve(Modules.LOCKING)
+      const execute = locking.execute.bind(locking)
+      let guardWaiting!: () => void
+      const waiting = new Promise<void>((resolve) => (guardWaiting = resolve))
+      jest.spyOn(locking, "execute").mockImplementation((keys: any, job: any, args: any) => {
+        if (keys === cartId) guardWaiting()
+        return execute(keys, job, args)
+      })
+      let finishCompensation!: () => void
+      const compensation = execute(cartId, () => new Promise<void>((resolve) => (finishCompensation = resolve)))
+
+      const raced = newSession(collectionId)
+      await waiting
+      await paymentModule.deletePaymentSession(temporary.id)
+      finishCompensation()
+      await compensation
+
+      expect(await raced).toEqual({ status: 404, data: expect.objectContaining({ type: "not_found" }) })
+
+      // initiatePaymentSession ของ storefront: อ่าน collection ปัจจุบันของ cart (route ของ Medusa) แล้วลองซ้ำ
+      const { data: current } = await api.post("/store/payment-collections", { cart_id: cartId }, owner)
+      expect(current.payment_collection.id).toEqual(collectionId)
+      expect(await newSession(collectionId)).toEqual(resetConflict)
+      const { data: fresh } = await api.post("/store/payment-collections", { cart_id: cartId }, owner)
+      expect(fresh.payment_collection.id).not.toEqual(collectionId)
+      const created = await newSession(fresh.payment_collection.id)
+      expect(created.status).toEqual(200)
+      expect(created.data.payment_collection.payment_sessions).toHaveLength(1)
+    })
+
     it("(b) order collection (group buy) fully refunded → not reset", async () => {
       const { result: order } = await createOrderWorkflow(getContainer()).run({
         input: {

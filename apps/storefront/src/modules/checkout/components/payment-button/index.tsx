@@ -35,7 +35,7 @@ type Shown = CheckoutNotice | { kind: "delayed" }
  * `paid` = ตัดเงินแล้วก่อน complete (บัตรหลัง PaymentIntent succeeded/requires_capture — FS-22);
  * `order(retry)` = เรียก placeOrder ของปุ่ม (retry = รอบอ่านซ้ำของ processing)
  */
-const usePlaceOrder = (paid: boolean, order: (retry: boolean) => ReturnType<typeof placeOrder>) => {
+export const usePlaceOrder = (paid: boolean, order: (retry: boolean) => ReturnType<typeof placeOrder>) => {
   const router = useRouter()
   const { countryCode } = useParams()
   const [shown, setShown] = useState<Shown | null>(null)
@@ -74,7 +74,7 @@ const usePlaceOrder = (paid: boolean, order: (retry: boolean) => ReturnType<type
 }
 
 /** FS-22/CORE-76: notice คืนเงิน, กำลังดำเนินการ และติดต่อร้านเป็น state ของตัวเอง; ข้อความ error ใช้ ErrorMessage เดิม */
-const PlaceOrderNotice = ({ shown, errorTestId }: { shown: Shown | null; errorTestId: string }) => {
+export const PlaceOrderNotice = ({ shown, errorTestId }: { shown: Shown | null; errorTestId: string }) => {
   if (shown?.kind === "refunded") {
     return (
       <Text role="alert" className="pt-2 txt-medium text-ui-fg-base" data-testid="checkout-refunded-notice">

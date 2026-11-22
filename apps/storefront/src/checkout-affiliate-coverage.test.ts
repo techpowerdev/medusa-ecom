@@ -20,6 +20,9 @@ const GROUP_BUY_DIR = path.join(MODULES_DIR, "group-buy/components")
 const POLL_ALLOW_LIST: Record<string, string> = {
   "promptpay-payment/index.tsx#PromptPayCheckout.expire":
     "QR หมดเวลาแล้ว อ่านสถานะ PI เพื่อตัดสินว่าจะ poll ต่อหรือสร้าง session ใหม่เท่านั้น — ไม่ confirm/ไม่เริ่มการชำระ",
+  // PAY-14 (spec 06 กฎข้อ 16 d)
+  "payment-container/index.tsx#StripeCardFields":
+    "ก่อน mount Payment Element อ่านสถานะ PI ของ session ที่เลือกเพื่อตัดสินว่าห้าม mount (PI จบแล้ว) เท่านั้น — ไม่ confirm/ไม่เริ่มการชำระ; การชำระจริงเริ่มที่ confirmPayment ใน syncAffiliateBefore (กฎ 31a)",
 }
 
 /**
@@ -31,6 +34,8 @@ const PLACE_ORDER_ALLOW_LIST: Record<string, string> = {
     "เรียกหลัง stripe.confirmPayment สำเร็จ ซึ่งอยู่ใน syncAffiliateBefore แล้ว (กฎ 31a) — cart ถูก sync ก่อนเริ่มชำระ",
   "promptpay-payment/index.tsx#PromptPayCheckout.finish":
     "ทางสำรองหลังชำระพร้อมเพย์แล้ว (webhook complete cart ไปแล้ว) — sync เกิดก่อน retrievePaymentIntent/confirm ใน showQr (กฎ 31b)",
+  "payment/index.tsx#Payment.placePaid":
+    "PAY-14: backend ตอบ PAYMENT_ALREADY_COMPLETED (PI ของ session เดิมชำระแล้วผ่าน confirmPayment ใน syncAffiliateBefore) — complete cart แบบรอ order ของ ADR-015 ไม่เริ่มการชำระใหม่",
 }
 
 const ORDER_PAY_REASON =
