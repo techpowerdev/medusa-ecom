@@ -8,7 +8,6 @@ import {
   safeHttpUrl,
   voucherVariantsOf,
   vouchersHasNext,
-  vouchersPagination,
 } from "./evoucher"
 
 // EV-7b (spec 02 กฎข้อ 23, AC-36): บล็อกพาร์ทเนอร์บน PDP แสดงเฉพาะ variant ที่มี pool
@@ -107,23 +106,16 @@ describe("safeHttpUrl (กฎข้อ 26)", () => {
   })
 })
 
-describe("vouchersPagination (กฎข้อ 29a)", () => {
-  it("หน้าละ 20 รายการ และคำนวณ offset จาก ?page=", () => {
+// CORE-78 (spec 01 กฎข้อ 136d): การอ่าน ?page= ย้ายไป `pageFromSearchParam` (lib/util/pagination.test.ts)
+describe("vouchersHasNext (กฎข้อ 29a)", () => {
+  it("หน้าละ 20 รายการ", () => {
     expect(VOUCHERS_PAGE_SIZE).toBe(20)
-    expect(vouchersPagination(undefined)).toEqual({ page: 1, offset: 0 })
-    expect(vouchersPagination("2")).toEqual({ page: 2, offset: 20 })
-  })
-
-  it("?page= ที่ไม่ใช่จำนวนเต็มบวก → หน้า 1", () => {
-    for (const p of ["0", "-1", "abc", "1.5", "", ["2", "3"]]) {
-      expect(vouchersPagination(p as string), String(p)).toEqual({ page: 1, offset: 0 })
-    }
   })
 
   it("มีหน้าก่อน/ถัดไปตาม count", () => {
-    expect(vouchersHasNext({ page: 1, offset: 0 }, 25)).toBe(true)
-    expect(vouchersHasNext({ page: 2, offset: 20 }, 25)).toBe(false)
-    expect(vouchersHasNext({ page: 1, offset: 0 }, 20)).toBe(false)
+    expect(vouchersHasNext({ offset: 0 }, 25)).toBe(true)
+    expect(vouchersHasNext({ offset: 20 }, 25)).toBe(false)
+    expect(vouchersHasNext({ offset: 0 }, 20)).toBe(false)
   })
 })
 

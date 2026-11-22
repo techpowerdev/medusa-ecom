@@ -9,9 +9,11 @@ import { HttpTypes } from "@medusajs/types"
 type OverviewProps = {
   customer: HttpTypes.StoreCustomer | null
   orders: HttpTypes.StoreOrder[] | null
+  /** CORE-78 (กฎข้อ 136b): มี membership แบบกลุ่ม ≥ 1 → แสดง "ดูทั้งหมด" แม้ไม่มี order ปกติ */
+  hasGroupOrders?: boolean
 }
 
-const Overview = ({ customer, orders }: OverviewProps) => {
+const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) => {
   return (
     <div data-testid="overview-page-wrapper">
       <div className="hidden small:block">
@@ -72,7 +74,7 @@ const Overview = ({ customer, orders }: OverviewProps) => {
             <div className="flex flex-col gap-y-4">
               <div className="flex items-center justify-between gap-x-2">
                 <h3 className="text-large-semi">คำสั่งซื้อล่าสุด</h3>
-                {orders && orders.length > 0 && (
+                {((orders && orders.length > 0) || hasGroupOrders) && (
                   <LocalizedClientLink
                     href="/account/orders"
                     className="text-small-regular text-ui-fg-interactive hover:underline"
