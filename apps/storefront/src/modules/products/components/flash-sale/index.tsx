@@ -1,7 +1,8 @@
 "use client"
 
 import { getActiveFlashSales, getProductFlash } from "@lib/data/flash-sales"
-import type { FlashAllowance } from "@lib/util/flash-allowance"
+import { CART_UPDATED_EVENT } from "@lib/util/cart-events"
+import type { FlashAllowance, FlashCartLine } from "@lib/util/flash-allowance"
 import {
   type ActiveFlashSales,
   type CardFlash,
@@ -30,14 +31,21 @@ type FlashOfferState = { offer: FlashOffer | null; now: number }
  * FS-16 (กฎข้อ 21a): `loading` = request flash ของชุด variant ปัจจุบันยังไม่ตอบ (สำเร็จหรือ error) — HTML ฝั่ง server
  * (ฟอร์ม no-JS) ไม่อยู่ในสถานะรอ จึงนับเฉพาะหลัง hydrate
  * FS-21 (กฎข้อ 26a): `allowances` = สิทธิ์ต่อคนที่เหลือของ variant ในแคมเปญ (ไม่ login → []) — รอทั้งสอง request ก่อนปลด `loading`
+ * FS-23 (กฎข้อ 28c): `cartLines` = line ในตะกร้าของลูกค้า; ตะกร้าเปลี่ยน (`CART_UPDATED_EVENT`) → ดึงใหม่โดยไม่กลับไปสถานะรอ
  */
 export function useFlashOffer(
   product: HttpTypes.StoreProduct,
   region: HttpTypes.StoreRegion,
   variant?: HttpTypes.StoreProductVariant
-): FlashOfferState & { loading: boolean; allowances: FlashAllowance[] } {
+): FlashOfferState & {
+  loading: boolean
+  allowances: FlashAllowance[]
+  cartLines: FlashCartLine[]
+} {
   const [data, setData] = useState<ActiveFlashSales | null>(null)
   const [allowances, setAllowances] = useState<FlashAllowance[]>([])
+  const [cartLines, setCartLines] = useState<FlashCartLine[]>([])
+  const [cartVersion, setCartVersion] = useState(0)
   const [answeredKey, setAnsweredKey] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const hydrated = useSyncExternalStore(noopSubscribe, isClient, isServer)
@@ -48,18 +56,25 @@ export function useFlashOffer(
     const ids = (product.variants ?? []).map((v) => v.id)
     // server action ล้ม (เช่น 500) → reject: ถือว่าไม่มีข้อมูล flash แล้วปลดสถานะรอ ไม่ค้างปุ่ม
     getProductFlash(region.id, ids)
-      .catch(() => ({ data: null, allowances: [] }))
+      .catch(() => ({ data: null, allowances: [], cartLines: [] }))
       .then((res) => {
         if (alive) {
           setData(res.data)
           setAllowances(res.allowances)
+          setCartLines(res.cartLines)
           setAnsweredKey(key)
         }
       })
     return () => {
       alive = false
     }
-  }, [product.variants, region.id, key])
+  }, [product.variants, region.id, key, cartVersion])
+
+  useEffect(() => {
+    const reload = () => setCartVersion((v) => v + 1)
+    window.addEventListener(CART_UPDATED_EVENT, reload)
+    return () => window.removeEventListener(CART_UPDATED_EVENT, reload)
+  }, [])
 
   const offer = flashOfferForVariant(data, variant?.id, now)
   const ticking = !!offer
@@ -73,7 +88,13 @@ export function useFlashOffer(
     return () => clearInterval(timer)
   }, [ticking])
 
-  return { offer, now, loading: hydrated && answeredKey !== key, allowances }
+  return {
+    offer,
+    now,
+    loading: hydrated && answeredKey !== key,
+    allowances,
+    cartLines,
+  }
 }
 
 const noopSubscribe = () => () => {}

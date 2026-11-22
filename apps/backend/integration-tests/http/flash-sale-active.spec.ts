@@ -26,6 +26,7 @@ type FlashSale = {
   show_remaining: boolean
   sold_out: boolean
   remaining_units: number | null
+  per_customer_limit: number | null
 }
 type VariantPreview = {
   variant_id: string
@@ -200,6 +201,7 @@ medusaIntegrationTestRunner({
         show_remaining: true,
         sold_out: false,
         remaining_units: null, // ยังไม่ตั้ง total_cap
+        per_customer_limit: 2, // FS-23 (กฎข้อ 28a): ค่าของแคมเปญ ไม่ใช่ข้อมูลลูกค้า
       })
       expect(new Date(sale.ends_at!).getTime()).toBeGreaterThan(Date.now())
       expect(data.variants).toEqual([])
@@ -378,6 +380,29 @@ medusaIntegrationTestRunner({
         await setConfig({ total_cap: null, units_sold: 10, show_remaining: true })
         expect(await activeSale()).toMatchObject({ remaining_units: null, sold_out: false })
       })
+    })
+
+    // FS-23 (spec 03 กฎข้อ 28a, AC-30 a): ค่าของแคมเปญ — สาธารณะ ไม่ต้องมี token และไม่มีข้อมูลการใช้สิทธิ์ของลูกค้า
+    it("AC-30 (a): returns per_customer_limit of the campaign without a customer token (null when unlimited)", async () => {
+      const flashSale: FlashSaleModuleService = container.resolve(FLASH_SALE_MODULE)
+      const [config] = await flashSale.listFlashSaleConfigs({ campaign_id: activeCampaignId }, { select: ["id"] })
+      const activeSale = async () => {
+        const { status, data } = await api.get("/store/flash-sales/active", storeHeaders)
+        expect(status).toBe(200)
+        return (data.flash_sales as FlashSale[]).find((f) => f.id === activeCampaignId)!
+      }
+
+      const limited = await activeSale()
+      expect(limited.per_customer_limit).toBe(2)
+      expect(limited).not.toHaveProperty("used_units")
+      expect(limited).not.toHaveProperty("remaining_for_customer")
+
+      await flashSale.updateFlashSaleConfigs({ id: config.id, per_customer_limit: null })
+      try {
+        expect((await activeSale()).per_customer_limit).toBeNull()
+      } finally {
+        await flashSale.updateFlashSaleConfigs({ id: config.id, per_customer_limit: 2 })
+      }
     })
 
     it("rejects variant_ids without region_id", async () => {
