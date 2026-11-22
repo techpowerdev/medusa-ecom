@@ -126,6 +126,8 @@ test.describe("PromptPay ทางสำรองมีเพดาน + เง�
       expect(refundedResponses).toBeGreaterThanOrEqual(1)
       await expectThai(page, ["promptpay-refunded", "promptpay-retry-button"])
       await expect(page.getByTestId("promptpay-retry-button")).toBeEnabled()
+      // PAY-15 (กฎข้อ 17, AC-28): ไม่รู้เหตุ → คงปุ่มเริ่มชำระใหม่ ไม่มีลิงก์ไปตะกร้า
+      await expect(page.getByTestId("promptpay-go-to-cart")).toHaveCount(0)
       await expect(page.getByTestId("promptpay-awaiting-order")).toHaveCount(0)
       await expect(page.getByTestId("promptpay-order-delayed")).toHaveCount(0)
       await expect(page.getByTestId("promptpay-expired")).toHaveCount(0)

@@ -1,0 +1,153 @@
+# PAY-12 (spec 06 กฎข้อ 14, AC-25) — ผลทดสอบในเครื่อง 2026-11-22
+# backend medusa develop :9189, storefront next dev :8189, DB medusa_pay12 (seed), node 22
+
+## RED 1 — unit ก่อนแก้ route/helper (vitest src/core-29-active-cart.test.ts src/lib/util/cart-error.test.ts)
+         × 409 FLASH_SOLD_OUT → kind refunded → /th/cart?error=refunded 4ms
+         × 409 FLASH_LIMIT_EXCEEDED → kind refunded → /th/cart?error=refunded 1ms
+         × 400 สต็อกไม่พอตอน complete (ไม่มี code) → kind refunded → /th/cart?error=refunded 1ms
+         × 401 → หน้า login พร้อม return path เดิม (ไม่ใช่ order_failed) 1ms
+         × 403 → หน้า login พร้อม return path เดิม (ไม่ใช่ order_failed) 1ms
+         × 409 CART_COMPLETION_IN_PROGRESS + order มีแล้ว → หน้า order confirmed (ไม่ใช่ error=refunded) 2ms
+         × 409 CART_COMPLETION_IN_PROGRESS + ยังไม่มี order → /th/checkout?step=review (กลไก poll ของ PAY-6b) 0ms
+     FAIL  src/lib/util/cart-error.test.ts [ src/lib/util/cart-error.test.ts ]
+    Error: Cannot find module './cart-error' imported from apps/storefront/src/lib/util/cart-error.test.ts
+     FAIL  src/core-29-active-cart.test.ts > payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b, PAY-12) > 409 FLASH_SOLD_OUT → kind refunded → /th/cart?error=refunded
+     FAIL  src/core-29-active-cart.test.ts > payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b, PAY-12) > 409 FLASH_LIMIT_EXCEEDED → kind refunded → /th/cart?error=refunded
+     FAIL  src/core-29-active-cart.test.ts > payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b, PAY-12) > 400 สต็อกไม่พอตอน complete (ไม่มี code) → kind refunded → /th/cart?error=refunded
+    AssertionError: expected 'http://shop.test/th/cart?error=order_…' to be 'http://shop.test/th/cart?error=refund…' // Object.is equality
+     FAIL  src/core-29-active-cart.test.ts > payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b, PAY-12) > 401 → หน้า login พร้อม return path เดิม (ไม่ใช่ order_failed)
+     FAIL  src/core-29-active-cart.test.ts > payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b, PAY-12) > 403 → หน้า login พร้อม return path เดิม (ไม่ใช่ order_failed)
+    AssertionError: expected 'http://shop.test/th/cart' to be 'http://shop.test/th/account' // Object.is equality
+     FAIL  src/core-29-active-cart.test.ts > payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b, PAY-12) > 409 CART_COMPLETION_IN_PROGRESS + order มีแล้ว → หน้า order confirmed (ไม่ใช่ error=refunded)
+    AssertionError: promise resolved "Response { status: 307, statusText: '', headers: Headers { Location: 'http://shop.test/th/cart?error=order_failed' }, body: null, bodyUsed: false, ok: false, redirected: false, type: 'default', url: '' }" instead of rejecting
+     FAIL  src/core-29-active-cart.test.ts > payment-return หลัง Stripe สำเร็จ: ผลของ placeOrder (CORE-4i-b, PAY-12) > 409 CART_COMPLETION_IN_PROGRESS + ยังไม่มี order → /th/checkout?step=review (กลไก poll ของ PAY-6b)
+    AssertionError: expected 'http://shop.test/th/cart?error=order_…' to be 'http://shop.test/th/checkout?step=rev…' // Object.is equality
+     Test Files  2 failed (2)
+          Tests  7 failed | 21 passed (28)
+
+## RED 2 — e2e chromium ก่อนหน้า cart อ่าน error (e2e/pay-12-cart-error-notice.spec.ts)
+      ✘  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:19:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก (7.3s)
+      1) [chromium] › e2e/pay-12-cart-error-notice.spec.ts:19:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก › (a) ลูกค้าที่มีตะกร้า: ?error=refunded → ข้อความไทยเหนือรายการสินค้า 
+        Error: expect(locator).toBeVisible() failed
+        Locator: getByTestId('cart-error-notice')
+        Expected: visible
+        Timeout: 5000ms
+        Error: element(s) not found
+        Call log:
+
+## GREEN — e2e chromium e2e/pay-12-cart-error-notice.spec.ts
+    Running 1 test using 1 worker
+      ✓  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:19:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก (4.3s)
+      1 passed (5.0s)
+
+## GREEN — storefront vitest ทั้งชุด
+     Test Files  109 passed (109)
+          Tests  1346 passed (1346)
+
+## storefront test:e2e:unit
+    131 passed
+
+## lint (0 errors), typecheck ผ่าน, storefront next build ผ่าน
+
+# แก้ตาม qa #481 D-1 (2026-11-22): 401/403 ตอนอ่าน cart/complete → login + return_to=/th/checkout?step=review ไม่มี client_secret
+
+## RED 3 — unit ก่อนแก้ D-1 (core-29-active-cart.test.ts + login-return.test.ts)
+         × รับเฉพาะ /<cc>/checkout?step=review 3ms
+         × complete ตอบ 401 → หน้า login กลับขั้น review (ไม่มี client_secret ใน URL) 4ms
+         × complete ตอบ 403 → หน้า login กลับขั้น review (ไม่มี client_secret ใน URL) 2ms
+         × session หมดอายุ: อ่าน cart ตอบ 401 → หน้า login (ไม่ใช่ payment_failed) และไม่ complete 1ms
+         × session หมดอายุ: อ่าน cart ตอบ 403 → หน้า login (ไม่ใช่ payment_failed) และไม่ complete 1ms
+         × session หมดอายุและไม่มี country_code → /account ไม่มี return_to และไม่มี client_secret 1ms
+     Test Files  2 failed (2)
+          Tests  6 failed | 36 passed (42)
+
+## RED 4 — e2e D-1 บนโค้ดก่อนแก้ (ไม่มี jwt → ไปหน้า cart?error=payment_failed ไม่ใช่ login)
+      ✘  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:78:5 › AC-25 (D-1): session หมดอายุ → login โดยไม่มี client_secret แล้วกลับขั้น review (7.3s)
+      1) [chromium] › e2e/pay-12-cart-error-notice.spec.ts:78:5 › AC-25 (D-1): session หมดอายุ → login โดยไม่มี client_secret แล้วกลับขั้น review › (a) ไม่มี jwt → หน้า login ไม่ใช่ cart?error=payment_failed 
+        Error: expect(locator).toBeVisible() failed
+        Locator: getByTestId('login-page')
+        Expected: visible
+        Timeout: 5000ms
+        Error: element(s) not found
+        Call log:
+
+## GREEN — e2e chromium e2e/pay-12-cart-error-notice.spec.ts (2 tests)
+    Running 2 tests using 1 worker
+      ✓  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:19:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก (3.0s)
+      ✓  2 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:78:5 › AC-25 (D-1): session หมดอายุ → login โดยไม่มี client_secret แล้วกลับขั้น review (3.2s)
+      2 passed (7.5s)
+
+## GREEN — storefront vitest ทั้งชุด
+     Test Files  109 passed (109)
+          Tests  1352 passed (1352)
+    test:e2e:unit 131 passed; lint 0 errors; typecheck ผ่าน; next build ผ่าน
+
+# session หลักตัดสิน #481: อ่าน cart ล้มด้วย 5xx/network → /th/checkout?step=review (ไม่ใช่ payment_failed)
+
+## RED 5 — unit ก่อนแก้ (core-29-active-cart.test.ts)
+         × อ่าน cart ล้มด้วย 500 → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 4ms
+         × อ่าน cart ล้มด้วย 503 → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 0ms
+         × อ่าน cart ล้มด้วย network (TypeError ไม่มี status) → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 0ms
+     Test Files  1 failed (1)
+          Tests  3 failed | 32 passed (35)
+
+## GREEN — storefront vitest ทั้งชุด
+     Test Files  109 passed (109)
+          Tests  1355 passed (1355)
+    test:e2e:unit 131 passed; lint 0 errors; typecheck ผ่าน; next build ผ่าน
+
+# แก้ตาม qa #481 D-2 (2026-11-22): cart complete แล้วก่อน login ใหม่ → หน้า order confirmed (cart_id ใน return_to + หน้า checkout หา order ผ่าน GET /store/orders field cart.id)
+
+## RED 6 — unit ก่อนแก้ (core-29-active-cart + login-return + pay-12-checkout-return)
+         × รับเฉพาะ /<cc>/checkout?step=review และแบบมี cart_id ของ Medusa (qa #481 D-2) 3ms
+         × checkoutReviewPath: มี cart_id เมื่อ id เป็นรูปแบบ cart ของ Medusa เท่านั้น 0ms
+         × หา order ของลูกค้าที่ cart.id ตรง (list ของ Medusa ล่าสุดก่อน, field cart.id) 6ms
+         × ไม่พบ / API ล้ม → null 0ms
+         × ไม่มี cart (cookie ถูกล้างตอนไม่มี jwt, restore ข้าม cart ที่ complete) + มี order → หน้า confirmed 11ms
+         × cart ใน cookie complete แล้ว (jwt เสียแต่ cookie อยู่) → หน้า confirmed ไม่แสดง review ของ cart ที่ complete 4ms
+         × ไม่มี cart และหา order ไม่พบ → รายการคำสั่งซื้อ ไม่ใช่ 404 1ms
+         × complete ตอบ 401 → หน้า login กลับขั้น review (ไม่มี client_secret ใน URL) 3ms
+         × complete ตอบ 403 → หน้า login กลับขั้น review (ไม่มี client_secret ใน URL) 0ms
+         × session หมดอายุ: อ่าน cart ตอบ 401 → หน้า login (ไม่ใช่ payment_failed) และไม่ complete 0ms
+         × session หมดอายุ: อ่าน cart ตอบ 403 → หน้า login (ไม่ใช่ payment_failed) และไม่ complete 0ms
+         × อ่าน cart ล้มด้วย 500 → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 0ms
+         × อ่าน cart ล้มด้วย 503 → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 1ms
+         × อ่าน cart ล้มด้วย network (TypeError ไม่มี status) → /th/checkout?step=review (ไม่ใช่ payment_failed) และไม่ complete 0ms
+         × 409 CART_COMPLETION_IN_PROGRESS + ยังไม่มี order → /th/checkout?step=review (กลไก poll ของ PAY-6b) 0ms
+     Test Files  3 failed (3)
+          Tests  15 failed | 41 passed (56)
+
+## RED 7 — e2e บนโค้ดก่อนแก้ (ตรวจ return_to มี cart_id / D-2 behaviour: login แล้วค้างที่ /th/checkout?step=review ซึ่งเป็น 404)
+    Running 1 test using 1 worker
+      ✘  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:81:5 › AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow (2.5s)
+      1) [chromium] › e2e/pay-12-cart-error-notice.spec.ts:81:5 › AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow › (a) ไม่มี jwt → login → ขั้น review ของ cart เดิม 
+        Error: expect(received).toBe(expected) // Object.is equality
+        Expected: "/th/checkout?step=review&cart_id=cart_01M812HS3659F60ARHS4GS6A28"
+        Received: "/th/checkout?step=review"
+          124 |     expect(decodeURIComponent(page.url())).not.toContain("payment_intent_client_secret")
+          125 |     expect(url.pathname).toBe(`/${CC}/account`)
+        > 126 |     expect(url.searchParams.get("return_to")).toBe(`/${CC}/checkout?step=review&cart_id=${cartId}`)
+              |                                               ^
+          127 |     const html = await page.content()
+          128 |     expect(html).not.toContain(SECRET)
+    Running 1 test using 1 worker
+      ✘  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:81:5 › AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow (7.3s)
+      1) [chromium] › e2e/pay-12-cart-error-notice.spec.ts:81:5 › AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow › (c) D-2 ไม่มี jwt + cart complete แล้ว → login → หน้า order confirmed 
+        Error: expect(page).toHaveURL(expected) failed
+        Expected: predicate to succeed
+        Received: "http://localhost:8189/th/checkout?step=review"
+        Timeout:  5000ms
+          132 |     await page.getByTestId("sign-in-button").click()
+          133 |     if (order) {
+        > 134 |       await expect(page).toHaveURL((u) => u.pathname === `/${CC}/order/${order.id}/confirmed`)
+
+## GREEN — e2e chromium e2e/pay-12-cart-error-notice.spec.ts (2 tests; D-1/D-2 ครบ 4 step a-d)
+    Running 2 tests using 1 worker
+      ✓  1 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:21:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก (3.3s)
+      ✓  2 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:81:5 › AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow (7.4s)
+      2 passed (11.4s)
+
+## GREEN — storefront vitest ทั้งชุด
+     Test Files  111 passed (111)
+          Tests  1378 passed (1378)
+    test:e2e:unit 131 passed; lint 0 errors; typecheck ผ่าน; next build ผ่าน
