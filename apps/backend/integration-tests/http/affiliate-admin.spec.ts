@@ -861,6 +861,52 @@ medusaIntegrationTestRunner({
         )
         expect(response.data.summary).toHaveLength(4)
       })
+
+      // AF-25 (กฎ 49, AC-58): admin summary ใช้ pending สุทธิแบบเดียวกับ /affiliate/me/earnings (AF-24)
+      it("AC-58: nets pending reversals like the portal earnings", async () => {
+        const credentials = { email: "cal@example.com", password: "affiliate-password" }
+        const registered = await api.post("/auth/affiliate/emailpass/register", credentials)
+        const bearer = (token: string) => ({ headers: { authorization: `Bearer ${token}` } })
+        const { data: created } = await api.post(
+          "/affiliate/register",
+          { name: "cal", code: "cal" },
+          bearer(registered.data.token)
+        )
+        const calId = created.affiliate.id as string
+        await service.updateAffiliates({ id: calId, status: "active" })
+        const { data: login } = await api.post("/auth/affiliate/emailpass", credentials)
+
+        // ข้อมูลแบบ AC-57: line L pending ฿100 + reversal −฿100; line M approved ฿50 + reversal −฿50
+        await service.createAffiliateCommissionEntries([
+          entry(calId, 100, "pending", lastMonthMid, "oL"),
+          entry(calId, -100, "reversed", lastMonthMid, "oL"),
+          entry(calId, 50, "approved", lastMonthMid, "oM"),
+          entry(calId, -50, "reversed", lastMonthMid, "oM"),
+        ])
+
+        const window = `from=${lastMonthFrom.toISOString()}&to=${thisMonthFrom.toISOString()}`
+        const admin = await api.get(`/admin/affiliate/reports/summary?${window}`, { headers })
+        const cal = admin.data.summary
+          .filter((r: any) => r.affiliate_id === calId)
+          .map(({ affiliate_id: _, ...row }: any) => row)
+        expect(cal).toEqual([
+          { currency: "thb", status: "approved", amount: 50, count: 1 },
+          { currency: "thb", status: "pending", amount: 0, count: 1 },
+          { currency: "thb", status: "reversed", amount: -50, count: 1 },
+        ])
+
+        const portal = await api.get(`/affiliate/me/earnings?${window}`, bearer(login.token))
+        expect(cal).toEqual(portal.data.totals)
+
+        // affiliate อื่นไม่เปลี่ยน (ผลรวมทุกสถานะเท่าเดิม)
+        expect(admin.data.summary).toEqual(
+          expect.arrayContaining([
+            { affiliate_id: annId, currency: "thb", status: "approved", amount: 150, count: 2 },
+            { affiliate_id: annId, currency: "thb", status: "reversed", amount: -30, count: 1 },
+            { affiliate_id: annId, currency: "thb", status: "pending", amount: 20, count: 1 },
+          ])
+        )
+      })
     })
   },
 })

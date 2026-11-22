@@ -1,0 +1,71 @@
+# AF-25 — admin summary ใช้ pending สุทธิ (กฎ 49, AC-58)
+# วันที่ 2026-11-22, node v22, Postgres/Redis ในเครื่อง (Redis db 2)
+
+## RED (ก่อนแก้ route) — integration-tests/http/affiliate-admin.spec.ts -t AC-58
+      ✕ AC-58: nets pending reversals like the portal earnings (574 ms)
+    - Expected  - 3
+    + Received  + 3
+    -     "amount": 0,
+    +     "amount": 100,
+    -     "amount": -50,
+    -     "count": 1,
+    +     "amount": -150,
+    +     "count": 2,
+Tests:       1 failed, 38 skipped, 39 total
+
+## GREEN — integration-tests/http/affiliate-admin.spec.ts (ทั้งไฟล์)
+    ✓ requires an admin user (387 ms)
+      ✓ creates a draft program, lists, publishes and ends it (436 ms)
+      ✓ rejects an invalid window or rate (184 ms)
+      ✓ accepts attribution_window_days and hold_days = 36500 (AC-60) (195 ms)
+      ✓ deletes only draft programs (198 ms)
+        ✓ create or update with 2147483648 → 400 invalid_data; nothing changes (207 ms)
+        ✓ create or update with 36501 → 400 invalid_data; nothing changes (198 ms)
+        ✓ create or update with 2147483648 → 400 invalid_data; nothing changes (194 ms)
+        ✓ create or update with 36501 → 400 invalid_data; nothing changes (187 ms)
+      ✓ lists by status, approves, suspends and sets payout_info (193 ms)
+      ✓ filters by id or id[] (AC-45) (195 ms)
+      ✓ filters by q on name or email, case-insensitive (AC-21) (207 ms)
+      ✓ pages affiliates with identical created_at without duplicates or gaps (216 ms)
+      ✓ filters by several statuses and orders by name across pages (AC-29) (199 ms)
+      ✓ stores account_number without dashes or spaces (170 ms)
+      ✓ rejects payout_info with 9 digits (400) and keeps the stored value (165 ms)
+      ✓ rejects payout_info with 13 digits (400) and keeps the stored value (150 ms)
+      ✓ rejects payout_info with letters (400) and keeps the stored value (168 ms)
+      ✓ rejects payout_info with an extra key (400) and keeps the stored value (150 ms)
+      ✓ rejects payout_info with a missing field (400) and keeps the stored value (144 ms)
+      ✓ rejects payout_info with a blank field after trim (400) and keeps the stored value (163 ms)
+      ✓ rejects payout_info with a non-string field (400) and keeps the stored value (162 ms)
+      ✓ clears payout_info with null (162 ms)
+      ✓ returns 409 AFFILIATE_STATUS_CHANGED when expected_status is stale and changes nothing (185 ms)
+      ✓ lets only one of two concurrent approvals with the same expected_status through (174 ms)
+      ✓ lists ledger entries filtered by affiliate and status (168 ms)
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid (190 ms)
+      ✓ rolls entries back to approved when marking the payout paid fails (212 ms)
+      ✓ exposes ledger and payouts through Query (166 ms)
+      ✓ serializes concurrent payout creation so entries are paid out once (482 ms)
+      ✓ does not create a payout when the net is zero or negative (Q8) (205 ms)
+      ✓ cancels a draft payout and returns its entries to the pool (AC-19) (219 ms)
+      ✓ refuses to cancel a paid payout and leaves it unchanged (AC-19) (229 ms)
+      ✓ holds the affiliate payout lock through cancel compensation (AC-27) (1408 ms)
+      ✓ rejects cancelling a payout without an admin token (AC-27) (185 ms)
+      ✓ selects entries by rule 19 across payout rounds (AC-20) (165 ms)
+      ✓ filters payable entries in the database (rule 19) (186 ms)
+      ✓ summarizes the ledger per affiliate and status (163 ms)
+      ✓ AC-58: nets pending reversals like the portal earnings (309 ms)
+Test Suites: 1 passed, 1 total
+Tests:       39 passed, 39 total
+
+## integration-tests/http/affiliate-portal.spec.ts (regression AF-24/AC-57)
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+
+## test:unit
+Test Suites: 126 passed, 126 total
+Tests:       1731 passed, 1731 total
+
+## lint / typecheck / backend build / storefront test:e2e:unit
+pnpm lint: exit 0
+pnpm typecheck: exit 0
+pnpm --filter backend build: exit 0
+  145 passed (1.5s)
