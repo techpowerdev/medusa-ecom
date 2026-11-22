@@ -1,6 +1,12 @@
 import { Page, Response, expect, test } from "@playwright/test"
 
-import { isAddToCartBody, isCartIdActionBody, isServerAction, waitForServerAction } from "./server-action"
+import {
+  isAddToCartBody,
+  isCartIdActionBody,
+  isServerAction,
+  isUpdateCustomerBody,
+  waitForServerAction,
+} from "./server-action"
 
 // CORE-43 (spec 01 กฎข้อ 101a, AC-137): เลือก response ของ server action ให้ถูกตัว
 // หน้า PDP ยิง action อื่นเองระหว่างโหลด/หลังคลิก (เช่น ราคาตาม variant ที่ส่ง array ของ variant id) — ต้องไม่ถูกนับเป็นการเพิ่มลงตะกร้า
@@ -73,6 +79,32 @@ test.describe("isCartIdActionBody", () => {
   ]) {
     test(`ไม่นับ ${name}`, () => {
       expect(isCartIdActionBody(body, CART)).toBe(false)
+    })
+  }
+})
+
+// hotfix CORE-22 (AC-84): หน้า profile ยิง `retrieveCart(undefined, undefined, { fresh: true })` ของ nav เองหลัง hydrate
+// — นับเฉพาะ `updateCustomer(body)` ของ editor ชื่อ/เบอร์โทร
+test.describe("isUpdateCustomerBody", () => {
+  for (const [name, body] of [
+    ["updateCustomer({ phone })", '[{"phone":"0812345678"}]'],
+    ["updateCustomer({ phone: null })", '[{"phone":null}]'],
+    ["updateCustomer({ first_name, last_name })", '[{"first_name":"ก","last_name":"ข"}]'],
+  ]) {
+    test(`นับ ${name}`, () => {
+      expect(isUpdateCustomerBody(body)).toBe(true)
+    })
+  }
+
+  for (const [name, body] of [
+    ["retrieveCart(undefined, undefined, { fresh: true }) ของ nav", '["$undefined","$undefined",{"fresh":true}]'],
+    ["addToCart({ variantId, quantity })", '[{"variantId":"variant_A","quantity":1,"countryCode":"th"}]'],
+    ["getPromptPayState(cartId)", '["cart_1"]'],
+    ["body แบบ form-data", '------x\r\nContent-Disposition: form-data; name="email"\r\n'],
+    ["body ว่าง", ""],
+  ]) {
+    test(`ไม่นับ ${name}`, () => {
+      expect(isUpdateCustomerBody(body)).toBe(false)
     })
   }
 })

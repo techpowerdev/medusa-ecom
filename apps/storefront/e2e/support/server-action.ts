@@ -47,6 +47,25 @@ export const isCartIdActionBody = (body: string, cartId: string) => {
   }
 }
 
+/**
+ * body ของ `updateCustomer(body)` (editor ชื่อ/เบอร์โทรในหน้า profile) — argument เดียวเป็น object ของ field ลูกค้า
+ * ต่างจาก `retrieveCart(undefined, undefined, { fresh: true })` ที่ nav ยิงเองหลัง hydrate (CORE-19a) ซึ่งไม่ใช่การบันทึก
+ */
+export const isUpdateCustomerBody = (body: string) => {
+  try {
+    const args = JSON.parse(body)
+    const [arg] = args
+    return (
+      args.length === 1 &&
+      typeof arg === "object" &&
+      arg !== null &&
+      ["first_name", "last_name", "phone"].some((field) => field in arg)
+    )
+  } catch {
+    return false
+  }
+}
+
 /** เริ่มรอ **ก่อน** กดปุ่ม แล้ว await หลังกด — คืน response ของ action ที่ body ตรงเงื่อนไข */
 export const waitForServerAction = (page: Pick<Page, "waitForResponse">, matches?: (body: string) => boolean) =>
   page.waitForResponse((res: Response) => isServerAction(res.request(), matches))

@@ -7,6 +7,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { isServerAction, isUpdateCustomerBody } from "./support/server-action"
 import { THAI } from "./support/thai-text"
 
 // CORE-22: spec 01 กฎข้อ 46–48, AC-82, AC-83, AC-84 (defect ของ starter จาก qa #92)
@@ -84,6 +85,12 @@ test("AC-83, AC-84: profile เบอร์ว่างไม่แสดง nul
   ]
   const phone = page.getByTestId("account-phone-editor")
   const name = page.getByTestId("account-name-editor")
+  // นับเฉพาะ updateCustomer ตั้งแต่โหลดหน้า — nav ยิง retrieveCart เองหลัง hydrate (CORE-19a) ในจังหวะที่ไม่แน่นอน
+  // นับทุก action เคยทำให้ test นี้ล้มเป็นครั้งคราวเมื่อ hydrate ช้ากว่าการคลิก (CI #476, #483)
+  const updates: string[] = []
+  page.on("request", (req) => {
+    if (isServerAction(req, isUpdateCustomerBody)) updates.push(req.postData() ?? "")
+  })
 
   await step("AC-83: บล็อกเบอร์โทรไม่มี null/undefined", async () => {
     await page.goto(`/${CC}/account/profile`)
@@ -94,17 +101,13 @@ test("AC-83, AC-84: profile เบอร์ว่างไม่แสดง nul
   })
 
   await step("AC-84: คลิก แก้ไข เบอร์โทร → editor เบอร์เปิด, editor ชื่อปิด, ไม่มี request update", async () => {
-    const actions: string[] = []
-    page.on("request", (req) => {
-      if (req.method() === "POST" && req.headers()["next-action"]) actions.push(req.url())
-    })
     // starter: panel ที่ปิดของ editor ด้านบนยัง overflow-visible → ปุ่มบันทึกที่มองไม่เห็นบัง "แก้ไข" ของเบอร์โทร
     await phone.getByTestId("edit-button").click({ timeout: 10_000 })
     await expect(phone.getByTestId("edit-button")).toHaveAttribute("data-active", "true")
     await expect(phone.getByTestId("edit-panel")).toHaveAttribute("data-open", "true")
     await expect(phone.getByTestId("phone-input")).toBeVisible()
     await expect(name.getByTestId("edit-panel")).toHaveAttribute("data-open", "false")
-    expect(actions).toEqual([])
+    expect(updates).toEqual([])
     await evidence("02-profile-phone-editor-open")
   })
   await step("AC-84: editor ที่ปิดไม่รับ pointer (pointer-events none หรือ inert)", async () => {
