@@ -1,0 +1,37 @@
+# PAY-15 — ผล test (spec 06 กฎข้อ 17, AC-28) 2026-11-22
+
+## Red (ก่อนแก้ helper): vitest src/lib/util/promptpay-finish.test.ts
+     × 409 FLASH_SOLD_OUT → refunded พร้อมข้อความคืนเงินของกฎข้อ 27 4ms
+     × 409 FLASH_LIMIT_EXCEEDED → refunded พร้อมข้อความคืนเงินของกฎข้อ 27 1ms
+     × สต็อกไม่พอตอน complete (OUT_OF_STOCK) → refunded ข้อความกฎข้อ 27 1ms
+     × PROMOTION_NOT_COMBINABLE → refunded ข้อความเหตุโปรโมชัน (CORE-76) 0ms
+     × refunded รู้เหตุ FLASH_SOLD_OUT → goToCart (ซ่อนเริ่มชำระใหม่) 1ms
+     × refunded รู้เหตุ FLASH_LIMIT_EXCEEDED → goToCart (ซ่อนเริ่มชำระใหม่) 0ms
+     × refunded รู้เหตุ OUT_OF_STOCK → goToCart (ซ่อนเริ่มชำระใหม่) 0ms
+     × refunded รู้เหตุ PROMOTION_NOT_COMBINABLE → goToCart (ซ่อนเริ่มชำระใหม่) 0ms
+     × refunded ไม่รู้เหตุ (PAY-6c) → ไม่ไปตะกร้า คงข้อความเดิมที่ชวนกดเริ่มชำระใหม่ 0ms
+AssertionError: expected { kind: 'refunded', …(1) } to deeply equal { kind: 'refunded', …(2) }
+AssertionError: expected { kind: 'refunded', …(1) } to match object { kind: 'refunded', goToCart: true }
+TypeError: Cannot read properties of undefined (reading 'goToCart')
+ Test Files  1 failed (1)
+      Tests  9 failed | 8 passed (17)
+
+## Green: vitest src/lib/util/promptpay-finish.test.ts
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+
+## storefront unit ทั้งชุด (vitest run)
+ Test Files  109 passed (109)
+      Tests  1346 passed (1346)
+
+## playwright --project=unit
+  131 passed
+
+## pnpm lint && pnpm typecheck: exit 0 (0 errors; eslint ไฟล์ที่แตะ 0 warning)
+## storefront build (env ปลอม ไม่มี backend): Compiled successfully, exit 0
+
+## e2e
+- apps/storefront/e2e/pay-15-promptpay-go-to-cart.spec.ts (AC-28 รู้เหตุ → promptpay-go-to-cart, ไม่มี promptpay-retry-button, คลิกไป /th/cart)
+- regression PAY-6c: apps/storefront/e2e/payments-promptpay-fallback-cap.spec.ts (ไม่รู้เหตุ → ยังมี promptpay-retry-button, ไม่มี promptpay-go-to-cart)
+- pay-11 ใช้ mockPlaceOrder ที่ย้ายไป e2e/support/promptpay-race.ts (list ได้ครบ 3 test)
+ต้องใช้ Stripe test mode (paidWhileQrShown) — เครื่อง builder ไม่มี key จึง skip; CI (e2e) เป็นผู้พิสูจน์

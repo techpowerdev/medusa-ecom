@@ -1,7 +1,8 @@
-import { APIRequestContext, BrowserContext, Page } from "@playwright/test"
+import { APIRequestContext, BrowserContext, Page, Route } from "@playwright/test"
 
 import { expect } from "./fixtures"
 import { STOREFRONT_COUNTRY as CC, Customer, Headers, adminHeaders, createCustomer, publishableKey, signInAs } from "./medusa"
+import { isCartIdActionBody } from "./server-action"
 import {
   PROMPTPAY_PROVIDER,
   STRIPE_SECRET,
@@ -76,4 +77,50 @@ export async function paidWhileQrShown(page: Page, context: BrowserContext, requ
     .toBe("succeeded")
   await bank.close()
   return { admin, pk, customer, cartId, intentId, seen }
+}
+
+// PAY-11 (ย้ายมาใน PAY-15 เพื่อใช้ร่วมกัน): route mock ผลของ placeOrder ในทางสำรอง — ดูคำอธิบายใน pay-11-promptpay-refund-reason.spec.ts
+export type Mocked = { placeOrders: number[]; polls: number[] }
+
+/**
+ * หลัง storefront สร้าง session ใหม่ (renewPromptPaySession — มี provider id ใน body) action ที่รับ cart id อย่างเดียว:
+ * id ที่เห็นตอน QR แสดง = poll (ผ่านจริง นับไว้), id อื่น = placeOrder → ตอบเป็น `outcome`
+ */
+export async function mockPlaceOrder(page: Page, ctx: Ctx, outcome: object): Promise<Mocked> {
+  const state = { renewed: false, pollActionIds: new Set<string>() }
+  const mocked: Mocked = { placeOrders: [], polls: [] }
+  await page.route(
+    (url) => url.pathname.includes("/checkout"),
+    async (route: Route) => {
+      const req = route.request()
+      const actionId = req.headers()["next-action"]
+      if (req.method() !== "POST" || !actionId) return route.fallback()
+      const body = req.postData() ?? ""
+      if (!isCartIdActionBody(body, ctx.cartId)) {
+        if (body.includes(PROMPTPAY_PROVIDER)) state.renewed = true
+        return route.fallback()
+      }
+      if (!state.renewed) {
+        state.pollActionIds.add(actionId)
+        return route.fallback()
+      }
+      if (state.pollActionIds.has(actionId)) {
+        mocked.polls.push(Date.now())
+        return route.fallback()
+      }
+      mocked.placeOrders.push(Date.now())
+      const pollId = Array.from(state.pollActionIds)[0]
+      const res = await route.fetch({
+        headers: { ...req.headers(), "next-action": pollId },
+        postData: JSON.stringify([ctx.cartId]),
+      })
+      const text = await res.text()
+      expect(text, "action poll คืนสถานะ pending").toContain('"pending"')
+      const headers = { ...res.headers() }
+      delete headers["content-length"]
+      await route.fulfill({ status: res.status(), headers, body: text.replace('"pending"', JSON.stringify(outcome)) })
+    }
+  )
+  await expect.poll(() => state.pollActionIds.size, { timeout: 30_000 }).toBeGreaterThan(0)
+  return mocked
 }
