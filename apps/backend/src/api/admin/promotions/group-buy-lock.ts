@@ -14,6 +14,8 @@ export const GROUP_PROMOTION_LOCKED_MESSAGE =
   "This promotion belongs to a group-buy group; its discount is locked. Edit the campaign template for new groups."
 export const GROUP_BUY_CAMPAIGN_LOCKED_MESSAGE =
   "This campaign belongs to a group-buy campaign that is not a draft; it is locked. Change it under Group buying instead."
+export const GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE =
+  "This campaign belongs to a group-buy campaign; its promotions are managed by Group buying."
 
 const query = (req: MedusaRequest) => req.scope.resolve<RemoteQueryFunction>(ContainerRegistrationKeys.QUERY)
 
@@ -29,6 +31,15 @@ async function hasGroupPromotion(req: MedusaRequest, ids: string[]) {
   return data.some((p) => !!p.group_buy_group?.id)
 }
 
+async function linkedGroupBuyCampaign(req: MedusaRequest) {
+  const { data } = await query(req).graph({
+    entity: "campaign",
+    fields: ["id", "group_buy_campaign.id", "group_buy_campaign.status"],
+    filters: { id: req.params.id },
+  })
+  return data[0]?.group_buy_campaign
+}
+
 const lockedPromotion = () => new MedusaError(MedusaError.Types.NOT_ALLOWED, GROUP_PROMOTION_LOCKED_MESSAGE)
 
 export async function guardGroupPromotion(req: MedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) {
@@ -39,6 +50,7 @@ export async function guardGroupPromotion(req: MedusaRequest, _res: MedusaRespon
 }
 
 // POST /admin/campaigns/:id/promotions { add, remove } — ถอด/เพิ่ม promotion ของกลุ่มเปลี่ยน campaign (budget/ช่วงเวลา) ของส่วนลดนั้น
+// (เช็กก่อน campaign เพื่อคงข้อความ locked ของ GB-25 เมื่อแตะ GB-*)
 export async function guardCampaignGroupPromotions(
   req: MedusaRequest<{ add?: unknown; remove?: unknown }>,
   _res: MedusaResponse,
@@ -50,17 +62,17 @@ export async function guardCampaignGroupPromotions(
   if (await hasGroupPromotion(req, ids)) {
     throw lockedPromotion()
   }
+  // GB-26 (กฎข้อ 51a, ADR-026 ภาคผนวก): campaign ของแคมเปญ group buy → ห้ามเพิ่ม/ถอด promotion ใดๆ ทุกสถานะ
+  // ต้นแบบ/โค้ดกลุ่มถูกผูกโดย workflow ของเราที่ไม่ผ่าน route นี้
+  if (await linkedGroupBuyCampaign(req)) {
+    throw new MedusaError(MedusaError.Types.NOT_ALLOWED, GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE)
+  }
   next()
 }
 
 // POST/DELETE /admin/campaigns/:id — campaign ของแคมเปญ group buy ที่ไม่ใช่ draft: เปลี่ยน ends_at ทำให้กลุ่มเดิมผิดกฎข้อ 2/10
 export async function guardGroupBuyCampaign(req: MedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) {
-  const { data } = await query(req).graph({
-    entity: "campaign",
-    fields: ["id", "group_buy_campaign.status"],
-    filters: { id: req.params.id },
-  })
-  const status = data[0]?.group_buy_campaign?.status
+  const status = (await linkedGroupBuyCampaign(req))?.status
   if (status && status !== "draft") {
     throw new MedusaError(MedusaError.Types.NOT_ALLOWED, GROUP_BUY_CAMPAIGN_LOCKED_MESSAGE)
   }

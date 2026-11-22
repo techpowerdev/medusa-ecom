@@ -39,9 +39,11 @@ const cloneRules = (rules: TemplateRule[]): CreatePromotionRuleDTO[] =>
 
 // ADR-011 ข้อ 2: clone ต้นแบบเป็น GB-<token> — ระบุ status "active" เสมอ (ค่าเริ่มต้นของ Medusa คือ draft)
 // ต้นแบบสร้างเป็น type standard เสมอ (GB-2a) จึงไม่มี buy_rules ให้คัดลอก
+// GB-26 (กฎข้อ 51b, ADR-026 ภาคผนวก): campaignId มาจาก link group_buy_campaign.campaign (source of truth) ไม่ใช่ template.campaign_id
 export function buildGroupPromotionInput(
   template: TemplatePromotion,
-  token: string
+  token: string,
+  campaignId: string
 ): CreatePromotionDTO {
   const { type, target_type, allocation, value, currency_code, max_quantity, target_rules } =
     template.application_method
@@ -51,7 +53,7 @@ export function buildGroupPromotionInput(
     status: "active",
     is_automatic: false,
     is_tax_inclusive: template.is_tax_inclusive,
-    campaign_id: template.campaign_id,
+    campaign_id: campaignId,
     application_method: {
       type,
       target_type,
