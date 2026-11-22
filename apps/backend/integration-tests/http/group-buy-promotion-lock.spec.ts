@@ -1,5 +1,5 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
 import { createAdminUser } from "../helpers/admin"
 import {
@@ -8,6 +8,7 @@ import {
 } from "../../src/workflows/group-buy/campaign"
 import { setGroupBuyCampaignStatusWorkflow } from "../../src/workflows/group-buy/campaign-status"
 import { createGroupWorkflow } from "../../src/workflows/group-buy/create-group"
+import { GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE } from "../../src/api/admin/promotions/group-buy-lock"
 
 jest.setTimeout(180 * 1000)
 
@@ -27,7 +28,7 @@ const settle = (p: Promise<{ status: number; data: unknown }>): Promise<Res> =>
     }
   )
 
-// GB-25 (spec 04 กฎข้อ 48, AC-67, ADR-026): ล็อก promotion `GB-<token>` ของกลุ่มที่ admin route ของ Medusa
+// GB-25 (spec 04 กฎข้อ 48, AC-67, ADR-026) + GB-26 (กฎข้อ 51, AC-69, ADR-026 ภาคผนวก): ล็อก promotion `GB-<token>` ของกลุ่มที่ admin route ของ Medusa
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let headers: { headers: Record<string, string> }
@@ -202,6 +203,95 @@ medusaIntegrationTestRunner({
         const id = created.data.campaign.id
         expect((await settle(api.post(`/admin/campaigns/${id}`, { ends_at: endsAt }, headers))).status).toEqual(200)
         expect((await settle(api.delete(`/admin/campaigns/${id}`, headers))).status).toEqual(200)
+      })
+    })
+
+    describe("GB-26 campaign ของแคมเปญ group buy (กฎข้อ 51)", () => {
+      const createNormalPromotion = async (suffix: string) => {
+        const res = await settle(
+          api.post(
+            "/admin/promotions",
+            {
+              code: `GB26-${suffix}-${Date.now()}`,
+              type: "standard",
+              status: "active",
+              application_method: { type: "fixed", target_type: "order", value: 10, currency_code: "thb" },
+            },
+            headers
+          )
+        )
+        expect(res.status).toEqual(200)
+        return res.data.promotion.id as string
+      }
+
+      const campaignIdOf = async (id: string) => {
+        const { data } = await getContainer()
+          .resolve(ContainerRegistrationKeys.QUERY)
+          .graph({ entity: "promotion", fields: ["id", "campaign_id"], filters: { id } })
+        return data[0]?.campaign_id ?? null
+      }
+
+      const expectManaged = (res: Res) => {
+        expect(res.status).toEqual(400)
+        expect(res.data.type).toEqual("not_allowed")
+        expect(res.data.message).toEqual(GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE)
+      }
+
+      it.each([
+        ["draft", false],
+        ["active", true],
+      ])("(a) แคมเปญ %s: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน", async (_status, active) => {
+        const campaign = await createCampaign(active)
+        const normalId = await createNormalPromotion(String(active))
+        const url = `/admin/campaigns/${campaign.medusaCampaignId}/promotions`
+
+        expectManaged(await settle(api.post(url, { add: [normalId] }, headers)))
+        expectManaged(await settle(api.post(url, { remove: [campaign.templateId] }, headers)))
+
+        expect(await campaignIdOf(normalId)).toBeNull()
+        expect(await campaignIdOf(campaign.templateId)).toEqual(campaign.medusaCampaignId)
+      })
+
+      it("(a) campaign อื่น: เพิ่ม/ถอด promotion ปกติ → 200 (regression)", async () => {
+        const created = await settle(
+          api.post("/admin/campaigns", { name: "GB-26 other", campaign_identifier: `gb26-${Date.now()}` }, headers)
+        )
+        expect(created.status).toEqual(200)
+        const id = created.data.campaign.id
+        const normalId = await createNormalPromotion("other")
+
+        expect((await settle(api.post(`/admin/campaigns/${id}/promotions`, { add: [normalId] }, headers))).status).toEqual(200)
+        expect(await campaignIdOf(normalId)).toEqual(id)
+        expect((await settle(api.post(`/admin/campaigns/${id}/promotions`, { remove: [normalId] }, headers))).status).toEqual(200)
+        expect(await campaignIdOf(normalId)).toBeNull()
+      })
+
+      it("(b) สร้างกลุ่ม → GB-* อยู่ใน campaign ของ link", async () => {
+        const campaign = await createCampaign()
+        const promo = await createGroup(campaign.id)
+        expect(await campaignIdOf(promo.id)).toEqual(campaign.medusaCampaignId)
+      })
+
+      it("(b) ต้นแบบไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่ม invalid_data และไม่สร้าง GB-*", async () => {
+        const container = getContainer()
+        const campaign = await createCampaign()
+        const promotionModule = container.resolve(Modules.PROMOTION)
+        const [other] = await promotionModule.createCampaigns([
+          { name: "GB-26 stray", campaign_identifier: `gb26-stray-${Date.now()}` },
+        ])
+        // จำลองข้อมูลเพี้ยนจากการแก้ก่อนมีล็อก — ย้ายต้นแบบผ่าน module ตรง (ไม่ผ่าน route ที่ล็อก)
+        await promotionModule.updatePromotions([{ id: campaign.templateId, campaign_id: other.id }])
+
+        const err = await createGroupWorkflow(container)
+          .run({ input: { campaign_id: campaign.id, kind: "pool" } })
+          .then(
+            () => null,
+            (e: { type?: string; message?: string }) => ({ type: e?.type, message: e?.message })
+          )
+        expect(err?.type).toEqual("invalid_data")
+
+        const promotions = await promotionModule.listPromotions({}, { select: ["id", "code"] })
+        expect(promotions.filter((p) => p.code?.startsWith("GB-"))).toEqual([])
       })
     })
   },

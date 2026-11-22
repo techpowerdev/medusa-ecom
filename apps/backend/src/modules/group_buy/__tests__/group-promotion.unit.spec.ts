@@ -30,7 +30,7 @@ const template: TemplatePromotion = {
 // ADR-011 ข้อ 2 + spec 04 createGroupWorkflow ขั้น 4 (AC-20b): clone ต้นแบบ → GB-<token> status=active
 describe("buildGroupPromotionInput", () => {
   it("clones the template as an active, code-based GB-<token> promotion in the same campaign", () => {
-    expect(buildGroupPromotionInput(template, "TOKEN123")).toEqual({
+    expect(buildGroupPromotionInput(template, "TOKEN123", "camp_1")).toEqual({
       code: "GB-TOKEN123",
       type: "standard",
       status: "active",
@@ -66,7 +66,8 @@ describe("buildGroupPromotionInput", () => {
         },
         rules: [],
       },
-      "T"
+      "T",
+      "camp_1"
     )
     expect(fixed.application_method).toEqual({
       type: "fixed",
@@ -81,8 +82,13 @@ describe("buildGroupPromotionInput", () => {
     expect(fixed.is_tax_inclusive).toBe(false)
   })
 
+  // GB-26 (spec 04 กฎข้อ 51b, AC-69b, ADR-026 ภาคผนวก): link group_buy_campaign.campaign เป็น source of truth
+  it("uses the campaign id passed in (from the link) even when template.campaign_id differs", () => {
+    expect(buildGroupPromotionInput(template, "X", "camp_link").campaign_id).toEqual("camp_link")
+  })
+
   it("never reuses the template code or status", () => {
-    const input = buildGroupPromotionInput(template, "X")
+    const input = buildGroupPromotionInput(template, "X", "camp_1")
     expect(input.code).not.toEqual(template.code)
     expect(input.status).toEqual("active")
   })

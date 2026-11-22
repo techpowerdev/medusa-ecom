@@ -2,6 +2,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import middlewares from "../../../middlewares"
 import {
   GROUP_BUY_CAMPAIGN_LOCKED_MESSAGE,
+  GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE,
   GROUP_PROMOTION_LOCKED_MESSAGE,
   guardCampaignGroupPromotions,
   guardGroupBuyCampaign,
@@ -46,11 +47,47 @@ describe("guardCampaignGroupPromotions", () => {
     expect(graph.mock.calls[0]).toEqual([expect.objectContaining({ filters: { id: ["p_1", "p_2"] } })])
   })
 
-  it.each([[undefined], [{}], [{ add: "p_1" }]])("ไม่มี id ที่เป็น array (%p) → next() ไม่ query", async (body) => {
+  it.each([[undefined], [{}], [{ add: "p_1" }]])("ไม่มี id ที่เป็น array (%p) → ไม่ query promotion; campaign ไม่ผูก → next()", async (body) => {
     const { req, next, graph } = setup([], body)
     await guardCampaignGroupPromotions(req, {} as any, next)
     expect(next).toHaveBeenCalledTimes(1)
-    expect(graph).not.toHaveBeenCalled()
+    expect(graph.mock.calls.map(([arg]: any) => arg.entity)).toEqual(["campaign"])
+  })
+
+  // GB-26 (spec 04 กฎข้อ 51a, AC-69a, ADR-026 ภาคผนวก): campaign ที่ผูก group_buy_campaign → 400 ทุกกรณี ทุกสถานะ
+  function setupByEntity(rows: Record<string, Record<string, unknown>[]>, body?: unknown) {
+    const graph = jest.fn(async ({ entity }: { entity: string }) => ({ data: rows[entity] ?? [] }))
+    const services: Record<string, unknown> = { [ContainerRegistrationKeys.QUERY]: { graph } }
+    const req = { params: { id: "camp_1" }, body, scope: { resolve: (key: string) => services[key] } } as any
+    return { req, next: jest.fn(), graph }
+  }
+
+  it.each([
+    ["draft", { add: ["p_normal"] }],
+    ["active", { remove: ["p_template"] }],
+    ["ended", { add: ["p_normal"], remove: ["p_template"] }],
+  ])("campaign ของแคมเปญ group buy %s (%p) → NOT_ALLOWED ข้อความ managed by Group buying", async (status, body) => {
+    const { req, next } = setupByEntity(
+      {
+        promotion: [{ id: "p_normal", group_buy_group: null }, { id: "p_template", group_buy_group: null }],
+        campaign: [{ id: "camp_1", group_buy_campaign: { id: "gbc_1", status } }],
+      },
+      body
+    )
+    await expect(guardCampaignGroupPromotions(req, {} as any, next)).rejects.toMatchObject({
+      type: "not_allowed",
+      message: GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE,
+    })
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it("campaign ไม่ผูก group buy + promotion ปกติ → next()", async () => {
+    const { req, next } = setupByEntity(
+      { promotion: [{ id: "p_normal", group_buy_group: null }], campaign: [{ id: "camp_1", group_buy_campaign: null }] },
+      { add: ["p_normal"] }
+    )
+    await guardCampaignGroupPromotions(req, {} as any, next)
+    expect(next).toHaveBeenCalledTimes(1)
   })
 })
 
