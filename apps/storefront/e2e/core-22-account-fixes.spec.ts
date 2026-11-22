@@ -86,7 +86,7 @@ test("AC-83, AC-84: profile เบอร์ว่างไม่แสดง nul
   const phone = page.getByTestId("account-phone-editor")
   const name = page.getByTestId("account-name-editor")
   // นับเฉพาะ updateCustomer ตั้งแต่โหลดหน้า — nav ยิง retrieveCart เองหลัง hydrate (CORE-19a) ในจังหวะที่ไม่แน่นอน
-  // นับทุก action เคยทำให้ test นี้ล้มเป็นครั้งคราวเมื่อ hydrate ช้ากว่าการคลิก (CI #476, #483)
+  // นับทุก action เคยทำให้ test นี้ล้มเป็นครั้งคราวเมื่อ hydrate ช้ากว่าการคลิก (CI ของ #476 และ train #483 run 44993099572)
   const updates: string[] = []
   page.on("request", (req) => {
     if (isServerAction(req, isUpdateCustomerBody)) updates.push(req.postData() ?? "")

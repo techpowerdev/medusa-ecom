@@ -66,6 +66,17 @@ export const isUpdateCustomerBody = (body: string) => {
   }
 }
 
+/** ค่าของ field `name` ใน body multipart ของ `<form action>` (React ใส่ prefix `_<n>_` ให้ชื่อ field ของ action ที่ผูก state) */
+const formField = (body: string, name: string) =>
+  body.match(new RegExp(`name="(?:_\\d+_)?${name}"\\r\\n\\r\\n([^\\r]*)\\r\\n`))?.[1]
+
+/**
+ * body ของฟอร์ม login (`useActionState(login)` + `<form action>`) ที่ส่งด้วย `email` — มี field email ตรงกันและ password
+ * ไม่นับ `retrieveCart(undefined, undefined, { fresh: true })` ที่ nav ยิงเองหลัง hydrate บนหน้า login (อยู่ใน `(main)`)
+ */
+export const isLoginFormBody = (body: string, email: string) =>
+  formField(body, "email") === email && formField(body, "password") !== undefined
+
 /** เริ่มรอ **ก่อน** กดปุ่ม แล้ว await หลังกด — คืน response ของ action ที่ body ตรงเงื่อนไข */
 export const waitForServerAction = (page: Pick<Page, "waitForResponse">, matches?: (body: string) => boolean) =>
   page.waitForResponse((res: Response) => isServerAction(res.request(), matches))

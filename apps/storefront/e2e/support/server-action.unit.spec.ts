@@ -4,6 +4,7 @@ import {
   isAddToCartBody,
   isCartIdActionBody,
   isServerAction,
+  isLoginFormBody,
   isUpdateCustomerBody,
   waitForServerAction,
 } from "./server-action"
@@ -105,6 +106,32 @@ test.describe("isUpdateCustomerBody", () => {
   ]) {
     test(`ไม่นับ ${name}`, () => {
       expect(isUpdateCustomerBody(body)).toBe(false)
+    })
+  }
+})
+
+// hotfix CORE-4h (AC-105): หน้า login อยู่ใน (main) มี nav → retrieveCart ของ nav ยิงหลัง hydrate ปนกับ action ของฟอร์ม login
+// body จริงของ `<form action={formAction}>` (useActionState) เป็น multipart ที่ชื่อ field มี prefix `_<n>_`
+test.describe("isLoginFormBody", () => {
+  const EMAIL = "e2e-core6-1@example.com"
+  const field = (name: string, value: string) =>
+    `------x\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`
+  const LOGIN_FORM =
+    field("_1_$ACTION_REF_1", "") + field("_1_email", EMAIL) + field("_1_password", "pw-wrong") + field("0", '[null,"$K1"]')
+
+  test("นับ submit ของฟอร์ม login ด้วยอีเมลนั้น", () => {
+    expect(isLoginFormBody(LOGIN_FORM, EMAIL)).toBe(true)
+  })
+
+  for (const [name, body] of [
+    ["retrieveCart(undefined, undefined, { fresh: true }) ของ nav", '["$undefined","$undefined",{"fresh":true}]'],
+    ["ฟอร์มของอีเมลอื่น", LOGIN_FORM.replace(EMAIL, "other@example.com")],
+    ["อีเมลที่เป็น prefix ของอีกอีเมล", LOGIN_FORM.replace(EMAIL, `${EMAIL}.th`)],
+    ["ไม่มี field password", field("_1_email", EMAIL)],
+    ["body ว่าง", ""],
+  ]) {
+    test(`ไม่นับ ${name}`, () => {
+      expect(isLoginFormBody(body, EMAIL)).toBe(false)
     })
   }
 })
