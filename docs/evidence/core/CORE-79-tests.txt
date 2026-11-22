@@ -1,0 +1,62 @@
+# CORE-79 ผล test (spec 01 AC-178, กฎข้อ 137)
+
+## RED 1 — develop 7d47192f (ยังไม่แก้): register-login-link สูง 20px
+Running 1 test using 1 worker
+  ✘  1 [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login (2.1s)
+  1) [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login › สมัครด้วยอีเมลที่มีบัญชีแล้ว → เห็น register-login-link สูง ≥ 44px 
+    Error: expect(received).toBeGreaterThanOrEqual(expected)
+    Expected: >= 44
+    Received:    20
+      29 |     const box = await link.boundingBox()
+      30 |     expect(box).not.toBeNull()
+    > 31 |     expect(box!.height).toBeGreaterThanOrEqual(44)
+         |                         ^
+      32 |     expect(box!.width).toBeGreaterThanOrEqual(44)
+      33 |     await evidence("01-register-login-link-375")
+      34 |   })
+        at wt-CORE-79/apps/storefront/e2e/core-79-login-link-mobile.spec.ts:31:25
+
+## RED 2 — แก้ขนาดแล้ว ยังไม่เติมอีเมล: email-input ว่าง
+Running 1 test using 1 worker
+  ✘  1 [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login (7.1s)
+  1) [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login › กด register-login-link → ฟอร์ม login มีอีเมลเดิม ช่องรหัสผ่านว่าง 
+    Error: expect(locator).toHaveValue(expected) failed
+    Locator:  getByTestId('login-page').getByTestId('email-input')
+    Expected: "e2e-core6-1795295986123-234387@example.com"
+    Received: ""
+    Timeout:  5000ms
+    Call log:
+      - Expect "toHaveValue" getByTestId('login-page').getByTestId('email-input') with timeout 5000ms
+      - waiting for getByTestId('login-page').getByTestId('email-input')
+        14 × locator resolved to <input required="" type="email" name="email" placeholder=" " autocomplete="email" data-testid="email-input" title="กรุณากรอกอีเมลให้ถูกต้อง" class="pt-5 pb-1 block w-full h-12 px-4 mt-0 bg-ui-bg-field border rounded-md appearance-none focus:outline-none focus:ring-0 focus:shadow-borders-interactive-with-active border-ui-border-base hover:bg-ui-bg-field-hover"/>
+           - unexpected value ""
+      38 |     const login = page.getByTestId("login-page")
+
+## GREEN — CORE-79 + core-4h (serial)
+  ✓  1 [chromium] › e2e/core-4h-auth-reason.spec.ts:9:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (5.0s)
+  ✓  2 [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login (1.2s)
+  2 passed (7.6s)
+
+## GREEN — repeat-each=3: CORE-79 + CORE-73 (regression)
+  ✓   1 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (1.9s)
+  ✓   2 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (1.1s)
+  ✓   3 [chromium] › e2e/core-73-register-existing-email.spec.ts:88:5 › AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้ (1.5s)
+  ✓   4 [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login (1.4s)
+  ✓   5 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (1.9s)
+  ✓   6 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (1.6s)
+  ✓   7 [chromium] › e2e/core-73-register-existing-email.spec.ts:88:5 › AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้ (1.7s)
+  ✓   8 [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login (1.6s)
+  ✓   9 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (2.0s)
+  ✓  10 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (1.0s)
+  ✓  11 [chromium] › e2e/core-73-register-existing-email.spec.ts:88:5 › AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้ (1.6s)
+  ✓  12 [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login (1.3s)
+  12 passed (20.5s)
+
+## storefront vitest
+ Test Files  108 passed (108)
+      Tests  1329 passed (1329)
+
+## storefront test:e2e:unit
+  131 passed (1.0s)
+
+## storefront build: สำเร็จ; lint: 0 errors; storefront typecheck: ผ่าน

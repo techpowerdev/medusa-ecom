@@ -12,13 +12,20 @@ export enum LOGIN_VIEW {
 
 const LoginTemplate = () => {
   const [currentView, setCurrentView] = useState("sign-in")
+  // CORE-79 (กฎข้อ 137): อีเมลจากฟอร์มสมัครที่ส่งต่อให้ฟอร์ม login
+  const [loginEmail, setLoginEmail] = useState<string>()
+
+  const showView = (view: LOGIN_VIEW, email?: string) => {
+    setLoginEmail(email)
+    setCurrentView(view)
+  }
 
   return (
     <div className="w-full flex justify-start px-8 py-8">
       {currentView === "sign-in" ? (
-        <Login setCurrentView={setCurrentView} />
+        <Login setCurrentView={showView} defaultEmail={loginEmail} />
       ) : (
-        <Register setCurrentView={setCurrentView} />
+        <Register setCurrentView={showView} />
       )}
     </div>
   )

@@ -12,7 +12,7 @@ import { useSubmitOnce } from "@lib/hooks/use-submit-once"
 import { STORE_NAME } from "@lib/store-content"
 
 type Props = {
-  setCurrentView: (view: LOGIN_VIEW) => void
+  setCurrentView: (view: LOGIN_VIEW, email?: string) => void
 }
 
 const Register = ({ setCurrentView }: Props) => {
@@ -97,8 +97,16 @@ const Register = ({ setCurrentView }: Props) => {
             <span>{message.error}</span>{" "}
             <button
               type="button"
-              onClick={() => setCurrentView(LOGIN_VIEW.SIGN_IN)}
-              className="underline"
+              onClick={(e) => {
+                // CORE-79 (กฎข้อ 137): ส่งอีเมลที่อยู่ในช่องตอนกด (ผู้ใช้อาจแก้หลังส่งฟอร์ม) ไปเติมในฟอร์ม login
+                const email = e.currentTarget.form?.elements.namedItem("email")
+                setCurrentView(
+                  LOGIN_VIEW.SIGN_IN,
+                  email instanceof HTMLInputElement ? email.value : undefined
+                )
+              }}
+              // CORE-79 (กฎข้อ 137): พื้นที่แตะ ≥ 44×44px บนมือถือ
+              className="underline inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-2"
               data-testid="register-login-link"
             >
               เข้าสู่ระบบ
