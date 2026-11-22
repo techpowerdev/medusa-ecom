@@ -210,7 +210,7 @@ describe("หน้า /cart อ่าน cart แบบ fresh (กฎข้อ 
     retrieveCartData.mockResolvedValue({ id: "cart_1", items: [] })
     const { default: Cart } = await import("./app/[countryCode]/(main)/cart/page")
 
-    await Cart()
+    await Cart({ searchParams: Promise.resolve({}) })
 
     expect(retrieveCartData).toHaveBeenCalledWith(undefined, undefined, { fresh: true })
   })

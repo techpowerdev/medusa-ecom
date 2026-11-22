@@ -11,6 +11,7 @@ const CartTemplate = ({
   customer,
   flashExceeded,
   flashCustomerLimit,
+  errorNotice,
 }: {
   cart: HttpTypes.StoreCart | null
   customer: HttpTypes.StoreCustomer | null
@@ -18,10 +19,21 @@ const CartTemplate = ({
   flashExceeded?: Record<string, number>
   /** FS-21 (กฎข้อ 26b): line id → สิทธิ์ flash ที่เหลือของลูกค้า เมื่อจำนวนรวมในแคมเปญเกิน */
   flashCustomerLimit?: Record<string, number>
+  /** PAY-12 (spec 06 กฎข้อ 14): ข้อความไทยจาก `cartErrorNotice` — null = ไม่แสดง */
+  errorNotice?: string | null
 }) => {
   return (
     <div className="py-12">
       <div className="content-container" data-testid="cart-container">
+        {errorNotice && (
+          <p
+            role="alert"
+            className="txt-medium mb-6 rounded-rounded bg-ui-bg-subtle p-3 text-ui-fg-base"
+            data-testid="cart-error-notice"
+          >
+            {errorNotice}
+          </p>
+        )}
         {/* CORE-44 (กฎข้อ 102a): คอลัมน์ซ้ายหดได้ (minmax(0,1fr)) และช่วง small–ก่อน large ระยะห่างเล็กลง — คอลัมน์สรุปไม่ล้นที่ 1024 เมื่อมีส่วนลด */}
         {cart?.items?.length ? (
           <div className="grid grid-cols-1 small:grid-cols-[minmax(0,1fr)_360px] gap-x-10 large:gap-x-40">
