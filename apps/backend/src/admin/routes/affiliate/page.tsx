@@ -4,6 +4,7 @@ import { castNumber, getLocaleAmount } from "@medusajs/dashboard/lib"
 import { ReceiptPercent } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, Tabs } from "@medusajs/ui"
 import { useMemo } from "react"
+import { useSearchParams } from "react-router-dom"
 import { AffiliatesTable } from "../../components/affiliate/affiliates-table"
 import {
   AffiliateCell,
@@ -82,25 +83,37 @@ const TABS = [
   { value: "payouts", label: "Payouts", content: <PayoutsTable /> },
 ]
 
-const AffiliatePage = () => (
-  <Container>
-    <Header title="Affiliate" />
-    <Tabs defaultValue="programs">
-      <Tabs.List className="px-6 py-4">
+// ADM-43 (spec 08 กฎ 47c): แท็บที่เลือกอยู่ใน URL (`?tab=<key>`) — reload/แชร์ลิงก์กลับแท็บเดิม; ไม่มี/ค่าผิด → Programs
+// เขียนแบบ functional update ให้ `<prefix>_offset`/`affiliates_q` ของตารางคงอยู่
+const AffiliatePage = () => {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const active = TABS.find((t) => t.value === searchParams.get("tab"))?.value ?? TABS[0].value
+  const selectTab = (value: string) =>
+    setSearchParams((params) => {
+      params.set("tab", value)
+      return params
+    })
+
+  return (
+    <Container>
+      <Header title="Affiliate" />
+      <Tabs value={active} onValueChange={selectTab}>
+        <Tabs.List className="px-6 py-4">
+          {TABS.map((tab) => (
+            <Tabs.Trigger key={tab.value} value={tab.value} data-testid={`affiliate-admin-tab-${tab.value}`}>
+              {tab.label}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
         {TABS.map((tab) => (
-          <Tabs.Trigger key={tab.value} value={tab.value} data-testid={`affiliate-admin-tab-${tab.value}`}>
-            {tab.label}
-          </Tabs.Trigger>
+          <Tabs.Content key={tab.value} value={tab.value}>
+            {tab.content}
+          </Tabs.Content>
         ))}
-      </Tabs.List>
-      {TABS.map((tab) => (
-        <Tabs.Content key={tab.value} value={tab.value}>
-          {tab.content}
-        </Tabs.Content>
-      ))}
-    </Tabs>
-  </Container>
-)
+      </Tabs>
+    </Container>
+  )
+}
 
 export const config = defineRouteConfig({
   label: "Affiliate",

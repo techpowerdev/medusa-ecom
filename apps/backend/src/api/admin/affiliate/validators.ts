@@ -61,8 +61,15 @@ const affiliateStatus = z.enum(["pending", "active", "suspended"])
 // AF-14 (กฎ 38): filter id ค่าเดียวหรือ id[] — รูปเดียวกับ validator ของ Medusa core (เช่น AdminCustomersParams)
 // ADM-17 (spec 08 กฎ 21): q ค้น name/email ผ่าน .searchable() ของ model (combobox ของฟอร์ม payout)
 // ADM-24 (spec 08 กฎ 28a): status ค่าเดียวหรือ status[] (query.graph แปลง array เป็น $in)
+// ADM-43 (spec 08 กฎ 47b): q ถูก trim (ว่าง = ไม่มี q) และ escape `\` `%` `_` — free-text search ของ Medusa 2.22.1
+// (mikro-orm-free-text-search-filter) ใส่ token ลง `$ilike: %token%` ตรงๆ ไม่ escape; `\` คือ escape เริ่มต้นของ LIKE ใน Postgres
+const searchTerm = z
+  .string()
+  .optional()
+  .transform((value) => value?.trim().replace(/[\\%_]/g, "\\$&") || undefined)
+
 export const AdminListAffiliates = listParams().extend({
-  q: z.string().optional(),
+  q: searchTerm,
   id: z.union([z.string(), z.array(z.string())]).optional(),
   status: z.union([affiliateStatus, z.array(affiliateStatus)]).optional(),
 })
