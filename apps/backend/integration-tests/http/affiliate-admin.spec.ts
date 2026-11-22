@@ -292,6 +292,40 @@ medusaIntegrationTestRunner({
         expect(anonymous.status).toEqual(401)
       })
 
+      // ADM-43 (spec 08 กฎ 47, AC-48): q ค้น code ด้วย, trim, และ `%` `_` `\` เป็นตัวอักษรธรรมดา (ILIKE ของ Medusa ไม่ escape ให้)
+      it("filters by q on code, trims q and treats % _ \\ literally (AC-48)", async () => {
+        const ann = await service.createAffiliates({ email: "ann@shop.test", name: "Ann Lee", code: "annpromo", status: "active" })
+        await service.createAffiliates({ email: "bob@lee-mail.test", name: "Bob", code: "bobdeal", status: "active" })
+
+        const search = async (q: string) => {
+          const res = await api
+            .get(`/admin/affiliate/affiliates?q=${encodeURIComponent(q)}`, { headers })
+            .catch((e) => {
+              throw new Error(`${e.response?.status} ${JSON.stringify(e.response?.data)}`)
+            })
+          return { ids: res.data.affiliates.map((a: { id: string }) => a.id).sort(), count: res.data.count }
+        }
+
+        expect(await search("ANNPROMO")).toEqual({ ids: [ann.id], count: 1 })
+        expect(await search("  Ann Lee  ")).toEqual(await search("Ann Lee"))
+        expect(await search("  Ann Lee  ")).toEqual({ ids: [ann.id], count: 1 })
+        expect(await search("   ")).toMatchObject({ count: 2 })
+        // affiliate ทดสอบไม่มีอักขระเหล่านี้ → ไม่ใช่ wildcard ที่ตรงทุกแถว
+        expect(await search("%")).toEqual({ ids: [], count: 0 })
+        expect(await search("_")).toEqual({ ids: [], count: 0 })
+        expect(await search("\\")).toEqual({ ids: [], count: 0 })
+        expect(await search("ann_romo")).toEqual({ ids: [], count: 0 })
+
+        // มีอักขระนั้นจริง → ตรงตามตัวอักษร
+        const pct = await service.createAffiliates({ email: "pct@shop.test", name: "Ten%Off_Club", code: "pct", status: "active" })
+        expect(await search("%")).toEqual({ ids: [pct.id], count: 1 })
+        expect(await search("f_c")).toEqual({ ids: [pct.id], count: 1 })
+        // review #491: `\` ที่ไม่ escape กลายเป็น escape ของ `%` ท้าย pattern (`%\%`) → ไม่เจอแถวที่มี `\` — ล้มถ้าเอา `\` ออกจาก regex
+        const slash = await service.createAffiliates({ email: "slash@shop.test", name: "Back\\Slash", code: "slash", status: "active" })
+        expect(await search("\\")).toEqual({ ids: [slash.id], count: 1 })
+        expect(await search("k\\s")).toEqual({ ids: [slash.id], count: 1 })
+      })
+
       // ADM-17 qa D-1: bulk import ได้ created_at เท่ากัน — แบ่งหน้าด้วย offset ต้องได้ทุก id ครั้งเดียว (มี id เป็นตัวตัดสิน)
       it("pages affiliates with identical created_at without duplicates or gaps", async () => {
         const created = await service.createAffiliates(
