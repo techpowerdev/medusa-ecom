@@ -116,6 +116,7 @@ export async function GET(req: NextRequest) {
   if (outcome.kind === "processing") {
     // อ่าน order ของ cart: complete ซ้ำของ Medusa คืน order เดิมเมื่อมี link order_cart แล้ว (completeCartWorkflow 2.22.1)
     // → redirect หน้า confirmed (throw); ยังไม่มี → ขั้น review ซึ่ง poll ต่อด้วย placeOrder (PAY-6b)
+    // ตั้งใจทิ้งผลครั้งที่สอง: kind ใดก็ตาม (processing/refunded/failed/unauthorized) ขั้น review จัดการจาก placeOrder ของตัวเองอยู่แล้ว
     await place()
     return NextResponse.redirect(`${origin}${prefix}/checkout?step=review`)
   }
