@@ -21,6 +21,7 @@ const sale = (over: Partial<FlashSale> = {}): FlashSale => ({
   show_remaining: true,
   sold_out: false,
   remaining_units: null,
+  per_customer_limit: null,
   ...over,
 })
 
@@ -68,6 +69,7 @@ describe("pdpCustomerLimit (กฎข้อ 26a)", () => {
       limit: 1,
       remaining: 1,
       max: 1,
+      in_cart: 0,
     })
   })
 
@@ -79,7 +81,7 @@ describe("pdpCustomerLimit (กฎข้อ 26a)", () => {
   it("ใช้สิทธิ์ครบแล้ว → max 0", () => {
     expect(
       pdpCustomerLimit(offer(), [allowance({ per_customer_limit: 1, used_units: 1, remaining_for_customer: 0 })], "var_1")
-    ).toEqual({ limit: 1, remaining: 0, max: 0 })
+    ).toEqual({ limit: 1, remaining: 0, max: 0, in_cart: 0 })
   })
 
   it("ไม่จำกัดต่อคน / ไม่มี allowance ของ variant / ไม่มี offer → null", () => {
@@ -88,6 +90,66 @@ describe("pdpCustomerLimit (กฎข้อ 26a)", () => {
     ).toBeNull()
     expect(pdpCustomerLimit(offer(), [allowance({ variant_id: "var_2" })], "var_1")).toBeNull()
     expect(pdpCustomerLimit(null, [allowance()], "var_1")).toBeNull()
+  })
+
+  // FS-23 (กฎข้อ 28b): ไม่ login → ไม่มี allowance แต่แคมเปญจำกัด → แสดงเฉพาะ limit (ไม่มีสิทธิ์ที่เหลือ ไม่จำกัดตัวเลือก)
+  it("ไม่มี allowance ของ variant และแคมเปญจำกัดต่อคน → { limit, remaining: null, max: null }", () => {
+    expect(pdpCustomerLimit(offer({ per_customer_limit: 2 }), [], "var_1")).toEqual({
+      limit: 2,
+      remaining: null,
+      max: null,
+      in_cart: 0,
+    })
+    expect(pdpCustomerLimit(offer({ per_customer_limit: null }), [], "var_1")).toBeNull()
+  })
+})
+
+// FS-23 (spec 03 กฎข้อ 28c, AC-30 d): หักจำนวนของ line ในตะกร้าที่ variant อยู่ในแคมเปญเดียวกัน
+describe("pdpCustomerLimit + ของในตะกร้า (กฎข้อ 28c)", () => {
+  const allowances = [
+    allowance(),
+    allowance({ variant_id: "var_2" }),
+    allowance({ variant_id: "var_other", campaign_id: "camp_2", per_customer_limit: 5, remaining_for_customer: 5 }),
+  ]
+  const line = (variant_id: string | null, quantity: number) => ({ variant_id, quantity })
+
+  it("ไม่มีของในตะกร้า → ไม่หัก", () => {
+    expect(pdpCustomerLimit(offer(), allowances, "var_1", [])).toEqual({ limit: 2, remaining: 2, max: 2, in_cart: 0 })
+  })
+
+  it("ของในตะกร้าคนละแคมเปญ / ไม่อยู่ในแคมเปญ → ไม่หัก", () => {
+    expect(
+      pdpCustomerLimit(offer(), allowances, "var_1", [line("var_other", 3), line("var_plain", 4), line(null, 1)])
+    ).toEqual({ limit: 2, remaining: 2, max: 2, in_cart: 0 })
+  })
+
+  it("หลาย variant ในแคมเปญเดียว (รวม variant ที่เลือกเอง) → หักผลรวม", () => {
+    expect(pdpCustomerLimit(offer(), allowances, "var_1", [line("var_2", 1)])).toEqual({
+      limit: 2,
+      remaining: 1,
+      max: 1,
+      in_cart: 1,
+    })
+    expect(pdpCustomerLimit(offer(), allowances, "var_1", [line("var_1", 1), line("var_2", 1)])).toEqual({
+      limit: 2,
+      remaining: 0,
+      max: 0,
+      in_cart: 2,
+    })
+  })
+
+  it("ผลไม่ติดลบเมื่อของในตะกร้าเกินสิทธิ์ที่เหลือ", () => {
+    expect(
+      pdpCustomerLimit(offer(), [allowance({ used_units: 1, remaining_for_customer: 1 })], "var_1", [line("var_1", 3)])
+    ).toEqual({ limit: 2, remaining: 0, max: 0, in_cart: 3 })
+  })
+
+  it("ยังเคารพ remaining_units ของแคมเปญหลังหัก", () => {
+    expect(
+      pdpCustomerLimit(offer({ remaining_units: 1 }), [allowance({ per_customer_limit: 5, remaining_for_customer: 5 })], "var_1", [
+        line("var_1", 1),
+      ])?.max
+    ).toBe(1)
   })
 })
 

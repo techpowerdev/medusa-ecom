@@ -11,6 +11,8 @@ export type FlashSale = {
   show_remaining: boolean
   sold_out: boolean
   remaining_units: number | null
+  /** FS-23 (กฎข้อ 28a): limit ต่อคนของแคมเปญ (null = ไม่จำกัด) */
+  per_customer_limit: number | null
 }
 
 export type FlashVariantPrice = {

@@ -22,26 +22,49 @@ export function flashCampaignVariantIds(data: ActiveFlashSales | null): string[]
   )
 }
 
-export type PdpCustomerLimit = { limit: number; remaining: number; max: number }
+/** remaining/max = null → ไม่รู้สิทธิ์ของลูกค้า (ไม่ login) แสดงเฉพาะ limit; in_cart = จำนวนในตะกร้าที่หักแล้ว */
+export type PdpCustomerLimit = {
+  limit: number
+  remaining: number | null
+  max: number | null
+  in_cart: number
+}
+
+export type FlashCartLine = { variant_id?: string | null; quantity: number }
 
 /**
- * กฎข้อ 26a: variant ที่เลือกมีสิทธิ์ต่อคนจำกัด → จำนวนสูงสุดบน PDP = min(remaining_for_customer, remaining_units ถ้ามี)
- * ไม่มี offer flash / ไม่จำกัดต่อคน / ไม่มี allowance (ไม่ login) → null (ใช้ตัวเลือกเดิม)
+ * กฎข้อ 26a + 28c: variant ที่เลือกมีสิทธิ์ต่อคนจำกัด → สิทธิ์ที่เหลือ = max(0, remaining_for_customer − จำนวนรวมของ line
+ * ในตะกร้าที่ variant อยู่ในแคมเปญเดียวกัน (campaign_id จาก allowance)) และจำนวนสูงสุด = min(สิทธิ์ที่เหลือ, remaining_units ถ้ามี)
+ * กฎข้อ 28b: ไม่มี allowance ของ variant (ไม่ login) แต่แคมเปญจำกัด → { limit, remaining: null, max: null }
+ * ไม่มี offer flash / ไม่จำกัดต่อคน → null (ใช้ตัวเลือกเดิม)
  */
 export function pdpCustomerLimit(
   offer: FlashOffer | null,
   allowances: FlashAllowance[],
-  variantId: string | undefined
+  variantId: string | undefined,
+  cartLines: FlashCartLine[] = []
 ): PdpCustomerLimit | null {
-  const a = allowances.find((x) => x.variant_id === variantId)
-  if (!offer || a?.remaining_for_customer == null || a.per_customer_limit == null) {
+  if (!offer) {
     return null
   }
-  const remaining = a.remaining_for_customer
+  const a = allowances.find((x) => x.variant_id === variantId)
+  if (!a) {
+    const limit = offer.sale.per_customer_limit
+    return limit == null ? null : { limit, remaining: null, max: null, in_cart: 0 }
+  }
+  if (a.remaining_for_customer == null || a.per_customer_limit == null) {
+    return null
+  }
+  const campaignOf = new Map(allowances.map((x) => [x.variant_id, x.campaign_id]))
+  const in_cart = cartLines
+    .filter((l) => !!l.variant_id && campaignOf.get(l.variant_id) === a.campaign_id)
+    .reduce((sum, l) => sum + l.quantity, 0)
+  const remaining = Math.max(0, a.remaining_for_customer - in_cart)
   return {
     limit: a.per_customer_limit,
     remaining,
     max: Math.min(remaining, offer.sale.remaining_units ?? Infinity),
+    in_cart,
   }
 }
 

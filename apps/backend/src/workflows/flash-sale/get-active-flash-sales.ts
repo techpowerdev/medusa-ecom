@@ -55,6 +55,8 @@ export type ActiveFlashSale = {
   /** FS-7: จาก `FlashSaleConfig` (units_sold/total_cap) ไม่ใช่ campaign budget (กฎข้อ 4) */
   sold_out: boolean
   remaining_units: number | null
+  /** FS-23 (กฎข้อ 28a): ค่าของแคมเปญ (null = ไม่จำกัด) ไม่ใช่ข้อมูลการใช้สิทธิ์ของลูกค้า — route ยังสาธารณะ */
+  per_customer_limit: number | null
 }
 
 export type FlashVariantPrice = {
@@ -98,7 +100,17 @@ export const listActiveFlashSalesStep = createStep(
     const flashSale: FlashSaleModuleService = container.resolve(FLASH_SALE_MODULE)
     const configs = await flashSale.listFlashSaleConfigs(
       { campaign_id: [...new Set(promotions.map((p) => p.campaign!.id))] },
-      { select: ["campaign_id", "banner_text", "show_countdown", "show_remaining", "total_cap", "units_sold"] }
+      {
+        select: [
+          "campaign_id",
+          "banner_text",
+          "show_countdown",
+          "show_remaining",
+          "total_cap",
+          "units_sold",
+          "per_customer_limit",
+        ],
+      }
     )
     const configOf = new Map(configs.map((c) => [c.campaign_id, c]))
     const sales = new Map<string, ActiveFlashSale>()
@@ -124,6 +136,7 @@ export const listActiveFlashSalesStep = createStep(
           show_countdown: config.show_countdown,
           show_remaining: config.show_remaining,
           ...flashSaleAvailability(config),
+          per_customer_limit: config.per_customer_limit ?? null,
         })
       }
     }

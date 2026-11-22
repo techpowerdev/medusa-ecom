@@ -125,10 +125,12 @@ export default function ProductActions({
   // FS-13 (กฎข้อ 18): แคมเปญ flash ขายครบ cap แล้ว → checkout จะล้ม FLASH_SOLD_OUT จึงไม่ให้เพิ่มลง cart
   const canBuy = inStock && !flash.offer?.sale.sold_out
   // FS-21 (กฎข้อ 26a): สิทธิ์ต่อคนจำกัด → ตัวเลือกจำนวนไม่เกิน min(สิทธิ์ที่เหลือ, remaining_units); ใช้ครบแล้ว → ปุ่ม disabled
+  // FS-23 (กฎข้อ 28c): สิทธิ์ที่เหลือหักจำนวนในตะกร้าของแคมเปญเดียวกันแล้ว
   const customerLimit = pdpCustomerLimit(
     flash.offer,
     flash.allowances,
-    isValidVariant ? selectedVariant?.id : undefined
+    isValidVariant ? selectedVariant?.id : undefined,
+    flash.cartLines
   )
   const quantityOptions = pdpQuantityOptions(
     PDP_QUANTITY_OPTIONS,
