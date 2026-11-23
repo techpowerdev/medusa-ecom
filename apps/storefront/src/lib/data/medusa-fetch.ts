@@ -18,7 +18,10 @@ export async function medusaFetch<T>(path: string, body?: object): Promise<T> {
     locale = (await getLocaleHeader())["x-medusa-locale"]
   } catch {}
 
-  const res = await fetch(`${MEDUSA_BACKEND_URL}${path}`, {
+  // ต่อ path แบบ js-sdk (client.js `fetch_`): ตัด `/` ท้าย pathname ของ base และ `/` หน้า path (nit review #514)
+  const base = new URL(MEDUSA_BACKEND_URL)
+  const url = new URL(`${base.pathname.replace(/\/$/, "")}/${path.replace(/^\//, "")}`, base.origin)
+  const res = await fetch(url.href, {
     method: "POST",
     headers: {
       "content-type": "application/json",

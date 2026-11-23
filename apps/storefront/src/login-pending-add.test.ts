@@ -6,6 +6,8 @@ const redirect = vi.fn((url: string) => {
   throw new Error(`REDIRECT ${url}`)
 })
 
+// CORE-83: customer.ts import medusa-fetch (server-only)
+vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   sdk: {
     auth: { login: vi.fn().mockResolvedValue("tok") },

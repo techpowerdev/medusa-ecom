@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 
+import { MedusaApiError } from "./medusa-api-error"
+
 import {
   buildReturnRequest,
   canRequestReturn,
@@ -194,61 +196,61 @@ describe("returnWindowDaysOf", () => {
   })
 })
 
-// CORE-20c: error 400 ของ CORE-20b แปลเป็นข้อความไทย — FetchError ของ js-sdk เก็บแค่ message (ไม่มี code)
-// จึงรับได้ทั้ง `code` และ message คงที่ของ backend (กฎข้อ 37)
+// CORE-20c: error 400 ของ CORE-20b แปลเป็นข้อความไทย — CORE-83 (กฎข้อ 140, ADR-028): ตัดสินจาก `code` ของ
+// `MedusaApiError` (medusaFetch) เท่านั้น ข้อความอังกฤษของ backend ไม่มีผลแล้ว
 describe("returnErrorMessage", () => {
-  const fetchError = (message: string, status = 400) => Object.assign(new Error(message), { status })
+  const apiError = (code: string | null, message = "x", status = 400) =>
+    new MedusaApiError({ status, type: "invalid_data", code, message })
   const FALLBACK = "ส่งคำขอไม่สำเร็จ"
   const THAI = /[\u0E00-\u0E7F]/
+  const CODES = ["RETURN_ITEM_NOT_SHIPPABLE", "RETURN_ITEM_NOT_SHIPPED", "RETURN_WINDOW_EXPIRED"]
 
-  it.each([
-    ["RETURN_ITEM_NOT_SHIPPABLE", "Only shipped products of the order can be returned"],
-    ["RETURN_ITEM_NOT_SHIPPED", "Items that have not been shipped cannot be returned"],
-    ["RETURN_WINDOW_EXPIRED", "The return window for this order has expired"],
-  ])("%s → ข้อความไทยเฉพาะกรณี", (code, message) => {
-    const byMessage = returnErrorMessage(fetchError(message), FALLBACK)
-    const byCode = returnErrorMessage(Object.assign(fetchError("x"), { code }), FALLBACK)
-    expect(byMessage).toMatch(THAI)
-    expect(byMessage).not.toBe(FALLBACK)
-    expect(byMessage).not.toContain(message)
-    expect(byCode).toBe(byMessage)
+  it.each(CODES)("%s → ข้อความไทยเฉพาะกรณี", (code) => {
+    const text = returnErrorMessage(apiError(code), FALLBACK)
+    expect(text).toMatch(THAI)
+    expect(text).not.toBe(FALLBACK)
   })
 
   it("แต่ละ code ได้ข้อความต่างกัน", () => {
-    const texts = [
-      "Only shipped products of the order can be returned",
-      "Items that have not been shipped cannot be returned",
-      "The return window for this order has expired",
-    ].map((m) => returnErrorMessage(fetchError(m), FALLBACK))
-    expect(new Set(texts).size).toBe(3)
+    expect(new Set(CODES.map((c) => returnErrorMessage(apiError(c), FALLBACK))).size).toBe(3)
+  })
+
+  it("ข้อความอังกฤษเดิมของ backend แต่ไม่มี code → fallback (ไม่เทียบข้อความแล้ว)", () => {
+    expect(returnErrorMessage(apiError(null, "The return window for this order has expired"), FALLBACK)).toBe(FALLBACK)
   })
 
   it("401 → ให้เข้าสู่ระบบใหม่, error อื่น → fallback (ไม่ส่งข้อความอังกฤษของ Medusa)", () => {
-    expect(returnErrorMessage(fetchError("Unauthorized", 401), FALLBACK)).toBe("กรุณาเข้าสู่ระบบอีกครั้ง")
-    expect(returnErrorMessage(fetchError("Something else"), FALLBACK)).toBe(FALLBACK)
+    expect(returnErrorMessage(apiError(null, "Unauthorized", 401), FALLBACK)).toBe("กรุณาเข้าสู่ระบบอีกครั้ง")
+    expect(returnErrorMessage(apiError("OTHER", "Something else"), FALLBACK)).toBe(FALLBACK)
   })
 })
 
 // CORE-71 (spec 01 กฎข้อ 129, AC-170): backend (CORE-55) ปฏิเสธเมื่อ location ของ return option ไม่มี inventory level
-// → ลองใหม่ไม่ช่วย ต้องบอกให้ติดต่อร้าน; error อื่นไม่เข้ากรณีนี้
+// → ลองใหม่ไม่ช่วย ต้องบอกให้ติดต่อร้าน; error อื่นไม่เข้ากรณีนี้ — CORE-83: ตัดสินจาก code
 describe("isReturnNotStockedError", () => {
-  const fetchError = (message: string, status = 400) => Object.assign(new Error(message), { status })
+  const apiError = (code: string | null, status = 400) =>
+    new MedusaApiError({ status, type: "invalid_data", code, message: "x" })
 
-  it("400 + ข้อความคงที่ของ backend → true", () => {
-    expect(isReturnNotStockedError(fetchError("This item cannot be returned online"))).toBe(true)
+  it("400 + RETURN_ITEM_NOT_STOCKED → true", () => {
+    expect(isReturnNotStockedError(apiError("RETURN_ITEM_NOT_STOCKED"))).toBe(true)
   })
 
-  it("CORE-76 (กฎข้อ 134b): 400 + RETURN_NO_LOCATION_MESSAGE ของ backend → true", () => {
-    expect(isReturnNotStockedError(fetchError("Return shipping option has no stock location"))).toBe(true)
-    expect(isReturnNotStockedError(fetchError("Return shipping option has no stock location", 500))).toBe(false)
+  it("CORE-76 (กฎข้อ 134b): 400 + RETURN_NO_LOCATION → true", () => {
+    expect(isReturnNotStockedError(apiError("RETURN_NO_LOCATION"))).toBe(true)
+    expect(isReturnNotStockedError(apiError("RETURN_NO_LOCATION", 500))).toBe(false)
   })
 
-  it("error อื่น (ข้อความอื่น, 401, ข้อความเดียวกันแต่ไม่ใช่ 400, ไม่ใช่ object) → false", () => {
-    expect(isReturnNotStockedError(fetchError("The return window for this order has expired"))).toBe(false)
-    expect(isReturnNotStockedError(fetchError("Unauthorized", 401))).toBe(false)
-    expect(isReturnNotStockedError(fetchError("This item cannot be returned online", 500))).toBe(false)
+  it("error อื่น (code อื่น, ไม่มี code แม้ข้อความเดิม, 401, ไม่ใช่ object) → false", () => {
+    expect(isReturnNotStockedError(apiError("RETURN_WINDOW_EXPIRED"))).toBe(false)
+    expect(isReturnNotStockedError(apiError(null, 401))).toBe(false)
+    expect(
+      isReturnNotStockedError(
+        new MedusaApiError({ status: 400, type: "invalid_data", message: "This item cannot be returned online" })
+      )
+    ).toBe(false)
+    expect(isReturnNotStockedError(apiError("RETURN_ITEM_NOT_STOCKED", 500))).toBe(false)
     expect(isReturnNotStockedError(null)).toBe(false)
-    expect(isReturnNotStockedError("This item cannot be returned online")).toBe(false)
+    expect(isReturnNotStockedError("RETURN_ITEM_NOT_STOCKED")).toBe(false)
   })
 
   it("ข้อความที่ลูกค้าเห็นเป็นไทยและบอกให้ติดต่อร้าน ไม่บอกให้ลองใหม่", () => {
