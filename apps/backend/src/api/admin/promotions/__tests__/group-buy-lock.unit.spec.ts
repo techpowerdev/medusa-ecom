@@ -3,12 +3,16 @@ import middlewares from "../../../middlewares"
 import {
   GROUP_BUY_CAMPAIGN_LOCKED_MESSAGE,
   GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE,
+  GROUP_BUY_TEMPLATE_ACTIVATE_MESSAGE,
   GROUP_BUY_TEMPLATE_CAMPAIGN_MESSAGE,
+  GROUP_BUY_TEMPLATE_DELETE_MESSAGE,
   GROUP_PROMOTION_LOCKED_MESSAGE,
   guardCampaignGroupPromotions,
   guardGroupBuyCampaign,
   guardGroupPromotion,
   guardPromotionCampaign,
+  guardTemplateDelete,
+  guardTemplateStatus,
 } from "../group-buy-lock"
 
 // GB-25 (spec 04 กฎข้อ 48, AC-67, ADR-026): guard ด้วย mock query — พฤติกรรมจริงพิสูจน์ใน group-buy-promotion-lock.spec.ts
@@ -176,6 +180,73 @@ describe("guardPromotionCampaign", () => {
   })
 })
 
+// GB-30 (spec 04 กฎข้อ 55–56, AC-73, ADR-026 ภาคผนวก 2026-11-23): ต้นแบบ GBT-* ลบไม่ได้ และเปิดใช้ (status active) ไม่ได้
+describe("guardTemplateDelete / guardTemplateStatus", () => {
+  function setupTemplate(rows: Record<string, unknown>[], body?: unknown) {
+    const graph = jest.fn(async () => ({ data: rows }))
+    const services: Record<string, unknown> = { [ContainerRegistrationKeys.QUERY]: { graph } }
+    const req = { params: { id: "p_tpl" }, body, scope: { resolve: (key: string) => services[key] } } as any
+    return { req, next: jest.fn(), graph }
+  }
+  const template = (status: string) => ({
+    id: "p_tpl",
+    campaign_id: "camp_gb",
+    group_buy_campaign: { id: "gbc_1", status },
+  })
+  const normal = { id: "p_tpl", campaign_id: null, group_buy_campaign: null }
+
+  it.each(["draft", "active", "ended"])("DELETE ต้นแบบของแคมเปญ %s → NOT_ALLOWED ข้อความ cannot be deleted", async (status) => {
+    const { req, next } = setupTemplate([template(status)])
+    await expect(guardTemplateDelete(req, {} as any, next)).rejects.toMatchObject({
+      type: "not_allowed",
+      message: GROUP_BUY_TEMPLATE_DELETE_MESSAGE,
+    })
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it.each([[[normal]], [[]]])("DELETE promotion ที่ไม่ผูก template/ไม่พบ → next()", async (rows) => {
+    const { req, next } = setupTemplate(rows)
+    await guardTemplateDelete(req, {} as any, next)
+    expect(next).toHaveBeenCalledTimes(1)
+  })
+
+  it("DELETE GB-* → ข้อความ locked ของกฎข้อ 48 (guardGroupPromotion อยู่ก่อนบน matcher เดียวกัน)", async () => {
+    const { req, next } = setupTemplate([{ id: "p_tpl", group_buy_group: { id: "gbgrp_1" }, group_buy_campaign: null }])
+    await expect(guardGroupPromotion(req, {} as any, next)).rejects.toMatchObject({ message: GROUP_PROMOTION_LOCKED_MESSAGE })
+  })
+
+  it.each([
+    ["draft", { status: "active" }],
+    ["active", { status: "active", application_method: { value: 50 } }],
+    ["ended", { status: "active" }],
+  ])("POST ต้นแบบของแคมเปญ %s body %p → NOT_ALLOWED ข้อความ cannot be activated", async (status, body) => {
+    const { req, next } = setupTemplate([template(status)], body)
+    await expect(guardTemplateStatus(req, {} as any, next)).rejects.toMatchObject({
+      type: "not_allowed",
+      message: GROUP_BUY_TEMPLATE_ACTIVATE_MESSAGE,
+    })
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["ไม่มี key status", { application_method: { value: 50 } }],
+    ["body ว่าง", undefined],
+    ["status draft", { status: "draft" }],
+    ["status inactive", { status: "inactive" }],
+  ])("POST ต้นแบบ %s → next() โดยไม่ query", async (_name, body) => {
+    const { req, next, graph } = setupTemplate([template("active")], body)
+    await guardTemplateStatus(req, {} as any, next)
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(graph).not.toHaveBeenCalled()
+  })
+
+  it.each([[[normal]], [[]]])("POST status active ของ promotion ที่ไม่ผูก template/ไม่พบ → next()", async (rows) => {
+    const { req, next } = setupTemplate(rows, { status: "active" })
+    await guardTemplateStatus(req, {} as any, next)
+    expect(next).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("ลงทะเบียนใน src/api/middlewares.ts", () => {
   // defineMiddlewares แปลง `method` เป็น `methods`
   const routes = (middlewares.routes ?? []) as { matcher: unknown; methods?: string[]; middlewares?: unknown[] }[]
@@ -196,5 +267,21 @@ describe("ลงทะเบียนใน src/api/middlewares.ts", () => {
   it.each(["/admin/promotions", "/admin/promotions/:id"])("%s POST → guardPromotionCampaign", (matcher) => {
     const route = routes.find((r) => r.matcher === matcher && r.middlewares?.includes(guardPromotionCampaign))
     expect(route?.methods).toEqual(["POST"])
+  })
+
+  // GB-30: guard ลบอยู่บน DELETE /admin/promotions/:id เท่านั้น; guard status อยู่บน POST /admin/promotions/:id หลัง guard campaign_id
+  it.each([
+    ["guardTemplateDelete", guardTemplateDelete, "/admin/promotions/:id", ["DELETE"]],
+    ["guardTemplateStatus", guardTemplateStatus, "/admin/promotions/:id", ["POST"]],
+  ])("%s อยู่บน matcher เดียว", (_name, guard, matcher, methods) => {
+    const found = routes.filter((r) => r.middlewares?.includes(guard))
+    expect(found.map((r) => [r.matcher, r.methods])).toEqual([[matcher, methods]])
+  })
+
+  it("ลำดับบน POST /admin/promotions/:id: campaign_id (กฎข้อ 54) → status (กฎข้อ 56)", () => {
+    const route = routes.find((r) => r.matcher === "/admin/promotions/:id" && r.middlewares?.includes(guardTemplateStatus))
+    const list = route?.middlewares ?? []
+    expect(list.indexOf(guardPromotionCampaign)).toBeGreaterThanOrEqual(0)
+    expect(list.indexOf(guardPromotionCampaign)).toBeLessThan(list.indexOf(guardTemplateStatus))
   })
 })

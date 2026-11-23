@@ -51,12 +51,13 @@ describe("variantsInScope", () => {
 })
 
 describe("shareUrl", () => {
-  it("builds {storefront}/r/{code}?to=/products/{handle}", () => {
-    expect(shareUrl("https://shop.example/", "ann", "tee")).toEqual("https://shop.example/r/ann?to=/products/tee")
+  // AF-26 กฎ 50: มี country code (`/th`) หน้า `/r` แต่ `to` ไม่มี — route ของ storefront เติมเอง
+  it("builds {storefront}/th/r/{code}?to=/products/{handle}", () => {
+    expect(shareUrl("https://shop.example/", "ann", "tee")).toEqual("https://shop.example/th/r/ann?to=/products/tee")
   })
 
-  it("is a relative link when STOREFRONT_URL is not set", () => {
-    expect(shareUrl(undefined, "ann", "tee")).toEqual("/r/ann?to=/products/tee")
+  it("is a relative /th link when STOREFRONT_URL is not set", () => {
+    expect(shareUrl(undefined, "ann", "tee")).toEqual("/th/r/ann?to=/products/tee")
   })
 })
 

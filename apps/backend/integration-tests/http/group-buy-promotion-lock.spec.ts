@@ -11,6 +11,7 @@ import { createGroupWorkflow } from "../../src/workflows/group-buy/create-group"
 import {
   GROUP_BUY_CAMPAIGN_PROMOTIONS_MESSAGE,
   GROUP_BUY_TEMPLATE_CAMPAIGN_MESSAGE,
+  GROUP_PROMOTION_LOCKED_MESSAGE,
 } from "../../src/api/admin/promotions/group-buy-lock"
 
 jest.setTimeout(180 * 1000)
@@ -31,7 +32,7 @@ const settle = (p: Promise<{ status: number; data: unknown }>): Promise<Res> =>
     }
   )
 
-// GB-25 (spec 04 กฎข้อ 48, AC-67, ADR-026) + GB-26 (กฎข้อ 51, AC-69, ADR-026 ภาคผนวก) + GB-29 (กฎข้อ 54, AC-72): ล็อก promotion `GB-<token>` ของกลุ่มที่ admin route ของ Medusa
+// GB-25 (spec 04 กฎข้อ 48, AC-67, ADR-026) + GB-26 (กฎข้อ 51, AC-69, ADR-026 ภาคผนวก) + GB-29 (กฎข้อ 54, AC-72) + GB-30 (กฎข้อ 55–56, AC-73): ล็อก promotion `GB-<token>` ของกลุ่มที่ admin route ของ Medusa
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
     let headers: { headers: Record<string, string> }
@@ -389,6 +390,18 @@ medusaIntegrationTestRunner({
         expect(await campaignIdOf(id)).toEqual(otherId)
       })
 
+      it("GB-* ส่ง campaign_id → ข้อความ locked ของกฎข้อ 48 ก่อนกฎข้อ 54 (ลำดับ guard)", async () => {
+        const campaign = await createCampaign()
+        const promo = await createGroup(campaign.id)
+        const otherId = await createOtherCampaign()
+
+        expectNotAllowed(
+          await settle(api.post(`/admin/promotions/${promo.id}`, { campaign_id: otherId }, headers)),
+          GROUP_PROMOTION_LOCKED_MESSAGE
+        )
+        expect(await campaignIdOf(promo.id)).toEqual(campaign.medusaCampaignId)
+      })
+
       it("(e) route สร้างแคมเปญ group buy ของเรา (createGroupBuyCampaignWorkflow) ยังผูก GBT-* กับ campaign ได้", async () => {
         const res = await settle(api.post("/admin/group-buy/campaigns", campaignInput(), headers))
         expect(res.status).toEqual(200)
@@ -401,6 +414,132 @@ medusaIntegrationTestRunner({
           })
         expect(data[0].promotion?.code).toMatch(/^GBT-/)
         expect(await campaignIdOf(data[0].promotion!.id)).toEqual(data[0].campaign!.id)
+      })
+    })
+
+    describe("GB-30 ต้นแบบ GBT-* ลบ/เปิดใช้ไม่ได้ (กฎข้อ 55–56)", () => {
+      const promotionOf = async (id: string) => {
+        const { data } = await getContainer()
+          .resolve(ContainerRegistrationKeys.QUERY)
+          .graph({ entity: "promotion", fields: ["id", "status", "application_method.value"], filters: { id } })
+        return data[0] as { id: string; status: string; application_method?: { value: unknown } } | undefined
+      }
+
+      const templateIdOf = async (campaignId: string) => {
+        const { data } = await getContainer()
+          .resolve(ContainerRegistrationKeys.QUERY)
+          .graph({ entity: "group_buy_campaign", fields: ["id", "promotion.id"], filters: { id: campaignId } })
+        return data[0]?.promotion?.id
+      }
+
+      const expectNotAllowedContaining = (res: Res, text: string) => {
+        expect(res.status).toEqual(400)
+        expect(res.data.type).toEqual("not_allowed")
+        expect(res.data.message).toContain(text)
+      }
+
+      const createNormal = async (suffix: string, extra: Record<string, unknown> = {}) => {
+        const res = await settle(
+          api.post(
+            "/admin/promotions",
+            {
+              code: `GB30-${suffix}-${Date.now()}`,
+              type: "standard",
+              status: "draft",
+              application_method: { type: "fixed", target_type: "order", value: 10, currency_code: "thb" },
+              ...extra,
+            },
+            headers
+          )
+        )
+        expect(res.status).toEqual(200)
+        return res.data.promotion.id as string
+      }
+
+      it.each([
+        ["draft", false],
+        ["active", true],
+      ])("(a) แคมเปญ %s: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่", async (_s, active) => {
+        const campaign = await createCampaign(active)
+
+        expectNotAllowedContaining(
+          await settle(api.delete(`/admin/promotions/${campaign.templateId}`, headers)),
+          "cannot be deleted"
+        )
+        expect((await settle(api.get(`/admin/promotions/${campaign.templateId}`, headers))).status).toEqual(200)
+        expect(await templateIdOf(campaign.id)).toEqual(campaign.templateId)
+        if (active) {
+          const promo = await createGroup(campaign.id)
+          expect(promo.code).toMatch(/^GB-/)
+        }
+      })
+
+      it("(b) DELETE promotion ปกติ (ใน campaign ที่ไม่เกี่ยว และไม่อยู่ใน campaign) → 200 และ GET → 404", async () => {
+        const other = await settle(
+          api.post("/admin/campaigns", { name: "GB-30 other", campaign_identifier: `gb30-${Date.now()}` }, headers)
+        )
+        expect(other.status).toEqual(200)
+        const ids = [await createNormal("in", { campaign_id: other.data.campaign.id }), await createNormal("out")]
+
+        for (const id of ids) {
+          const res = await settle(api.delete(`/admin/promotions/${id}`, headers))
+          expect(res.status).toEqual(200)
+          expect(res.data.deleted).toEqual(true)
+          expect((await settle(api.get(`/admin/promotions/${id}`, headers))).status).toEqual(404)
+        }
+      })
+
+      it("(c) DELETE GB-* → ข้อความ locked ของกฎข้อ 48 (ไม่ใช่ข้อความ template)", async () => {
+        const campaign = await createCampaign()
+        const promo = await createGroup(campaign.id)
+        const res = await settle(api.delete(`/admin/promotions/${promo.id}`, headers))
+        expect(res.status).toEqual(400)
+        expect(res.data.message).toEqual(GROUP_PROMOTION_LOCKED_MESSAGE)
+      })
+
+      it("(d) ลบแคมเปญ draft ที่หน้า Group buying → 200 และต้นแบบถูกลบ (regression AC-67 (e))", async () => {
+        const campaign = await createCampaign(false)
+        expect((await settle(api.delete(`/admin/group-buy/campaigns/${campaign.id}`, headers))).status).toEqual(200)
+        expect((await settle(api.get(`/admin/promotions/${campaign.templateId}`, headers))).status).toEqual(404)
+      })
+
+      it.each([
+        ["draft", false],
+        ["active", true],
+      ])("(e) แคมเปญ %s: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน", async (_s, active) => {
+        const campaign = await createCampaign(active)
+        const url = `/admin/promotions/${campaign.templateId}`
+
+        expectNotAllowedContaining(await settle(api.post(url, { status: "active" }, headers)), "cannot be activated")
+        expectNotAllowedContaining(
+          await settle(api.post(url, { status: "active", application_method: { value: 45 } }, headers)),
+          "cannot be activated"
+        )
+        const template = await promotionOf(campaign.templateId)
+        expect(template?.status).toEqual("draft")
+        expect(Number(template?.application_method?.value)).toEqual(30)
+      })
+
+      it("(f) แก้ส่วนลดต้นแบบโดยไม่ส่ง status และตั้ง inactive → 200 ไม่เป็น active (Q5); ต้นแบบจาก route สร้างแคมเปญเป็น draft", async () => {
+        const created = await settle(api.post("/admin/group-buy/campaigns", campaignInput(), headers))
+        expect(created.status).toEqual(200)
+        const templateId = (await templateIdOf(created.data.campaign.id))!
+        expect((await promotionOf(templateId))?.status).toEqual("draft")
+
+        const url = `/admin/promotions/${templateId}`
+        expect((await settle(api.post(url, { application_method: { value: 40 } }, headers))).status).toEqual(200)
+        expect(await promotionOf(templateId)).toMatchObject({ status: "draft" })
+        expect(Number((await promotionOf(templateId))?.application_method?.value)).toEqual(40)
+
+        expect((await settle(api.post(url, { status: "inactive" }, headers))).status).toEqual(200)
+        expect((await promotionOf(templateId))?.status).toEqual("inactive")
+      })
+
+      it("(g) POST promotion ปกติ status active → 200 (regression)", async () => {
+        const id = await createNormal("activate")
+        const res = await settle(api.post(`/admin/promotions/${id}`, { status: "active" }, headers))
+        expect(res.status).toEqual(200)
+        expect((await promotionOf(id))?.status).toEqual("active")
       })
     })
   },

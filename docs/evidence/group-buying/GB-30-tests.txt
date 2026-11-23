@@ -1,0 +1,85 @@
+GB-30 — spec 04 กฎข้อ 55–56, AC-73, ADR-026 ภาคผนวก 2026-11-23
+
+== RED (ก่อนแก้, base origin/develop 7c6dd55c = develop+GB-29) — integration http group-buy-promotion-lock.spec.ts ==
+      ✓ (a) POST /admin/promotions/:id → 400 locked และค่าเดิมไม่เปลี่ยน (1341 ms)
+      ✓ (b) rules/batch, target-rules/batch, buy-rules/batch และ DELETE → 400 และ promotion ยังอยู่ (1570 ms)
+      ✓ (c)(d) ต้นแบบ GBT-* แก้ได้ และกลุ่มใหม่ได้ส่วนลดใหม่ กลุ่มเดิมคงเดิม (Q5) (1405 ms)
+      ✓ (c) promotion ปกติแก้และลบได้ (200) (1142 ms)
+      ✓ (e) ลบแคมเปญ draft ยังสำเร็จ (regression) (1212 ms)
+      ✓ (f) ถอด promotion GB-* ออกจาก campaign → 400; แก้/ลบ campaign ของแคมเปญ group buy active → 400 (906 ms)
+      ✓ (f) campaign ของแคมเปญ group buy draft และ campaign ที่ไม่เกี่ยว → 200 (797 ms)
+      ✓ (a) แคมเปญ draft: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (585 ms)
+      ✓ (a) แคมเปญ active: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (576 ms)
+      ✓ (a) campaign อื่น: เพิ่ม/ถอด promotion ปกติ → 200 (regression) (691 ms)
+      ✓ (b) สร้างกลุ่ม → GB-* อยู่ใน campaign ของ link (892 ms)
+      ✓ (b) ต้นแบบไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่ม invalid_data และไม่สร้าง GB-* (895 ms)
+      ✓ (a) แคมเปญ draft: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (1155 ms)
+      ✓ (a) แคมเปญ active: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (1288 ms)
+      ✓ (b) ย้าย promotion อื่นเข้า campaign group buy → 400; สร้าง promotion ใหม่ใน campaign group buy → 400 (1660 ms)
+      ✓ (c) แก้ส่วนลดต้นแบบโดยไม่แตะ campaign_id และส่ง campaign_id เดิม → 200 (Q5) (1272 ms)
+      ✓ (d) promotion อื่นกับ campaign ที่ไม่เกี่ยว: สร้าง/ย้าย/ถอด → 200 (regression) (1483 ms)
+      ✓ GB-* ส่ง campaign_id → ข้อความ locked ของกฎข้อ 48 ก่อนกฎข้อ 54 (ลำดับ guard) (1146 ms)
+      ✓ (e) route สร้างแคมเปญ group buy ของเรา (createGroupBuyCampaignWorkflow) ยังผูก GBT-* กับ campaign ได้ (2377 ms)
+      ✕ (a) แคมเปญ draft: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่ (1988 ms)
+      ✕ (a) แคมเปญ active: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่ (1983 ms)
+      ✓ (b) DELETE promotion ปกติ (ใน campaign ที่ไม่เกี่ยว และไม่อยู่ใน campaign) → 200 และ GET → 404 (2530 ms)
+      ✓ (c) DELETE GB-* → ข้อความ locked ของกฎข้อ 48 (ไม่ใช่ข้อความ template) (2564 ms)
+      ✓ (d) ลบแคมเปญ draft ที่หน้า Group buying → 200 และต้นแบบถูกลบ (regression AC-67 (e)) (1564 ms)
+      ✕ (e) แคมเปญ draft: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน (1478 ms)
+      ✕ (e) แคมเปญ active: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน (2062 ms)
+      ✓ (f) แก้ส่วนลดต้นแบบโดยไม่ส่ง status และตั้ง inactive → 200 ไม่เป็น active (Q5); ต้นแบบจาก route สร้างแคมเปญเป็น draft (2042 ms)
+      ✓ (g) POST promotion ปกติ status active → 200 (regression) (2219 ms)
+Tests:       4 failed, 24 passed, 28 total
+    Expected: 400
+    Received: 200
+    Expected: 400
+    Received: 200
+    Expected: 400
+    Received: 200
+    Expected: 400
+    Received: 200
+
+== RED — unit group-buy-lock.unit.spec.ts ==
+17 failed (guard ใหม่ + การลงทะเบียน matcher)
+    TypeError: (0 , _groupbuylock.guardTemplateDelete) is not a function
+    TypeError: (0 , _groupbuylock.guardTemplateDelete) is not a function
+
+== GREEN — integration http group-buy-promotion-lock.spec.ts ==
+      ✓ (a) POST /admin/promotions/:id → 400 locked และค่าเดิมไม่เปลี่ยน (7986 ms)
+      ✓ (b) rules/batch, target-rules/batch, buy-rules/batch และ DELETE → 400 และ promotion ยังอยู่ (7160 ms)
+      ✓ (c)(d) ต้นแบบ GBT-* แก้ได้ และกลุ่มใหม่ได้ส่วนลดใหม่ กลุ่มเดิมคงเดิม (Q5) (3494 ms)
+      ✓ (c) promotion ปกติแก้และลบได้ (200) (4609 ms)
+      ✓ (e) ลบแคมเปญ draft ยังสำเร็จ (regression) (6100 ms)
+      ✓ (f) ถอด promotion GB-* ออกจาก campaign → 400; แก้/ลบ campaign ของแคมเปญ group buy active → 400 (6302 ms)
+      ✓ (f) campaign ของแคมเปญ group buy draft และ campaign ที่ไม่เกี่ยว → 200 (1857 ms)
+      ✓ (a) แคมเปญ draft: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (2213 ms)
+      ✓ (a) แคมเปญ active: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (2918 ms)
+      ✓ (a) campaign อื่น: เพิ่ม/ถอด promotion ปกติ → 200 (regression) (4806 ms)
+      ✓ (b) สร้างกลุ่ม → GB-* อยู่ใน campaign ของ link (3172 ms)
+      ✓ (b) ต้นแบบไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่ม invalid_data และไม่สร้าง GB-* (4345 ms)
+      ✓ (a) แคมเปญ draft: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (2432 ms)
+      ✓ (a) แคมเปญ active: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (2121 ms)
+      ✓ (b) ย้าย promotion อื่นเข้า campaign group buy → 400; สร้าง promotion ใหม่ใน campaign group buy → 400 (3169 ms)
+      ✓ (c) แก้ส่วนลดต้นแบบโดยไม่แตะ campaign_id และส่ง campaign_id เดิม → 200 (Q5) (3600 ms)
+      ✓ (d) promotion อื่นกับ campaign ที่ไม่เกี่ยว: สร้าง/ย้าย/ถอด → 200 (regression) (2324 ms)
+      ✓ GB-* ส่ง campaign_id → ข้อความ locked ของกฎข้อ 48 ก่อนกฎข้อ 54 (ลำดับ guard) (2004 ms)
+      ✓ (e) route สร้างแคมเปญ group buy ของเรา (createGroupBuyCampaignWorkflow) ยังผูก GBT-* กับ campaign ได้ (2238 ms)
+      ✓ (a) แคมเปญ draft: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่ (2961 ms)
+      ✓ (a) แคมเปญ active: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่ (3222 ms)
+      ✓ (b) DELETE promotion ปกติ (ใน campaign ที่ไม่เกี่ยว และไม่อยู่ใน campaign) → 200 และ GET → 404 (1372 ms)
+      ✓ (c) DELETE GB-* → ข้อความ locked ของกฎข้อ 48 (ไม่ใช่ข้อความ template) (1961 ms)
+      ✓ (d) ลบแคมเปญ draft ที่หน้า Group buying → 200 และต้นแบบถูกลบ (regression AC-67 (e)) (1502 ms)
+      ✓ (e) แคมเปญ draft: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน (1981 ms)
+      ✓ (e) แคมเปญ active: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน (1272 ms)
+      ✓ (f) แก้ส่วนลดต้นแบบโดยไม่ส่ง status และตั้ง inactive → 200 ไม่เป็น active (Q5); ต้นแบบจาก route สร้างแคมเปญเป็น draft (1537 ms)
+      ✓ (g) POST promotion ปกติ status active → 200 (regression) (1674 ms)
+Tests:       28 passed, 28 total
+
+== GREEN — unit group-buy-lock.unit.spec.ts ==
+Tests:       52 passed, 52 total
+
+== unit ทั้งหมด (pnpm --filter backend test:unit) ==
+Test Suites: 126 passed, 126 total
+Tests:       1765 passed, 1765 total
+lint=0
+tc=0

@@ -1,0 +1,61 @@
+GB-28 — nits GB-20b: ข้อความ alert/log, ชื่อ step, idempotency อีเมล give-up, batch slot (spec 04 กฎข้อ 53, AC-71)
+base: origin/develop 7c6dd55c
+
+== RED (test ใหม่บน develop ก่อนแก้โค้ด) ==
+-- unit: group-buy-deadline + workflows/group-buy/membership-payment + resend/templates
+  ● group-buy-deadline job — expired membership payment check › logs a failed check as a check failure, not 'failed to expire membership', and does not expire it
+    Expected: false
+    Received: true
+  ● group-buy-deadline job — expired membership payment check › a retry membership does not take a batch slot: batch size N + 1 such + N decidable → N expired in one run
+    Expected: 50
+    Received: 6
+  ● group-buy-deadline job — expired membership payment check › a skip membership does not take a batch slot: batch size N + 1 such + N decidable → N expired in one run
+    Expected: 50
+    Received: 6
+  ● group-buy-deadline job — expired membership payment check › stops after N decided memberships (paid/unpaid/give_up count, checks that throw count too)
+    Expected: 50
+    Received: 35
+  ● renderEmailTemplate › group buy emails (GB-4) › payment-check give-up alert says the membership is being cancelled, not already cancelled
+    Expected substring: not "ยกเลิกสิทธิ์แล้ว"
+  ● membership-payment workflow/step names › no workflow shares its name with a step
+    - Expected  - 1
+    + Received  + 3
+Tests:       6 failed, 27 passed, 33 total
+
+-- integration http: group-buy-payment-check.spec.ts -t (d) (บน develop — ผ่านอยู่แล้ว: พิสูจน์ว่า idempotency ทำงานจริง)
+    ✓ (d) give-up runs twice (expire failed in the first run) → exactly one ops email in the notification module (40523 ms)
+Tests:       5 skipped, 1 passed, 6 total
+
+-- mutation (ถอด idempotency_key ของ alertPaymentCheckGaveUpStep ชั่วคราว): (d) ต้องล้ม
+    ✕ (d) give-up runs twice (expire failed in the first run) → exactly one ops email in the notification module (46815 ms)
+    Expected length: 1
+    Received length: 2
+Tests:       1 failed, 5 skipped, 6 total
+
+== GREEN ==
+-- unit ทั้งชุด (pnpm --filter backend test:unit)
+Test Suites: 127 passed, 127 total
+Tests:       1755 passed, 1755 total
+
+-- integration http: group-buy-payment-check.spec.ts (โค้ดสุดท้าย)
+    ✓ (a) PI succeeded at the provider but no webhook yet → job captures, membership paid, order placed; late webhook is a no-op (4164 ms)
+    ✓ (a2) payment found but convert fails → re-picked within 15 minutes without the provider; not re-captured past 15 minutes (2931 ms)
+    ✓ (b) PI requires_action (NOT_ALLOWED = unpaid) → session deleted, membership cancelled; no session → provider not called (2096 ms)
+    ✓ (c) provider down / pending_authorization / PI processing → retry: not cancelled, session kept, one warn per run (1140 ms)
+    ✓ (c) still unverifiable 16 minutes past the deadline → give up: cancel + error log + one ops email; another member paid in the same run (2162 ms)
+    ✓ (d) give-up runs twice (expire failed in the first run) → exactly one ops email in the notification module (32202 ms)
+Tests:       6 passed, 6 total
+
+-- integration http: group-buy-payment-check + group-buy-payment-closed + group-buy-payment (regression)
+Test Suites: 3 passed, 3 total
+Tests:       27 passed, 27 total
+
+-- pnpm lint: 0 errors; pnpm typecheck: ผ่าน; backend build: ผ่าน; storefront test:e2e:unit 145 passed
+
+== หลัง merge origin/develop (f01c0cee, รวม OPS-34 #497) ==
+-- unit ทั้งชุด
+Test Suites: 129 passed, 129 total
+Tests:       1758 passed, 1758 total
+-- integration http: group-buy-payment-check.spec.ts
+Tests:       6 passed, 6 total
+-- typecheck + backend build: ผ่าน

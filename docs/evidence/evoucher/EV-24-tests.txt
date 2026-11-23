@@ -1,0 +1,38 @@
+# EV-24 (AC-54, spec 02 กฎข้อ 40) — ผลการทดสอบ 2026-11-23 (base origin/develop 7c6dd55c, Node 22, Postgres 16, Redis db 5, backend medusa start :9240 build production)
+## RED — unit: evoucher-allocate.unit.spec.ts ก่อนมี lib/evoucher-allocate.ts
+FAIL src/admin/lib/__tests__/evoucher-allocate.unit.spec.ts
+    Cannot find module '../evoucher-allocate' from 'src/admin/lib/__tests__/evoucher-allocate.unit.spec.ts'
+Tests:       0 total
+
+## RED — e2e chromium: evoucher-admin-retry-allocation.spec.ts กับ build ก่อนแก้ widget
+  1) [chromium] › e2e/evoucher-admin-retry-allocation.spec.ts:40:5 › AC-54: order backordered → dblclick Retry allocation ส่ง POST 1 ครั้ง; หลัง import code กด → toast และ badge หาย › เปิดหน้า order backordered → เห็นปุ่ม Retry allocation 
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByTestId('evoucher-retry-allocation')
+    Error: element(s) not found
+    test-results/evoucher-admin-retry-alloc-b3c52-de-กด-→-toast-และ-badge-หาย-chromium/test-failed-1.png
+  1 failed
+  1 passed (28.1s)
+
+## GREEN — unit: evoucher-allocate.unit.spec.ts
+    ✓ reports success when every line got its codes (1 ms)
+    ✓ asks for more codes when a line is still backordered
+    ✓ never says allocated when a line has codes that were not delivered
+    ✓ mentions both problems when lines are backordered and stuck (1 ms)
+    ✓ shows the API message
+    ✓ falls back to a generic message when the API sent none
+Tests:       6 passed, 6 total
+
+## GREEN — backend test:unit ทั้งชุด
+Test Suites: 127 passed, 127 total
+Tests:       1754 passed, 1754 total
+
+## GREEN — e2e chromium: retry-allocation + backordered (EV-22) + resend (EV-5b/EV-13)
+  6 passed (23.2s)
+## GREEN — e2e chromium: retry-allocation --repeat-each=3 --workers=1
+  6 passed (37.7s)
+
+## storefront test:e2e:unit
+  146 passed (1.3s)
+
+## lint / typecheck
+pnpm lint: 0 errors; pnpm typecheck: ผ่าน (หลังลบ apps/backend/.medusa จาก build — ดู PR)
