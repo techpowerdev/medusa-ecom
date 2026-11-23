@@ -1,0 +1,50 @@
+# ADM-47 (spec 08 กฎ 51, AC-52) — ผล test
+base: origin/develop 59c6af18 | เครื่อง: backend medusa start (NODE_ENV=production build) :9203, DB medusa_r42_adm47, Chromium (Playwright 1.64.1)
+
+## RED — e2e admin-row-menu-return-focus.spec.ts บนโค้ด develop (เพิ่มแค่ test)
+  1) [chromium] › e2e/admin-row-menu-return-focus.spec.ts:38:5 › AC-52: partners — Edit จากเมนู … ปิดด้วย Cancel / Escape / Save สำเร็จ → focus ที่ปุ่ม … ของแถว › Cancel → focus ที่ปุ่ม … ของแถว 
+    Expected: "opener"
+    Received: "BODY"
+  2) [chromium] › e2e/admin-row-menu-return-focus.spec.ts:88:5 › AC-52: affiliates — Payout info จากเมนู … ปิดด้วย Escape (Drawer ไม่มีปุ่ม Cancel) / Save สำเร็จ → focus ที่ปุ่ม … ของแถว › Escape → focus ที่ปุ่ม … ของแถว 
+    Expected: "opener"
+    Received: "BODY"
+  3) [chromium] › e2e/admin-row-menu-return-focus.spec.ts:129:5 › AC-52: payouts — Mark paid จากเมนู … ปิดด้วย Keep as draft / Escape → focus ที่ปุ่ม … ของแถว; ยืนยันสำเร็จ → แถว paid ไม่มีปุ่ม … (กฎ 10) › Keep as draft (Cancel) → focus ที่ปุ่ม … ของแถว 
+    Expected: "opener"
+    Received: "BODY"
+  3 failed
+
+## RED — unit static (medusa-ui.unit.spec.ts -t "ADM-47|ADM-23") บนโค้ด develop
+    ✓ components/evoucher/codes-table.tsx: ใช้ isPastLastPage ของ lib/page-offset และแสดง loading (1 ms)
+    ✓ components/evoucher/partners-section.tsx: ใช้ isPastLastPage ของ lib/page-offset และแสดง loading
+    ✓ partners-section.tsx ไม่มี branch "No partners on this page"
+    ✕ PartnerActions: ActionMenu key={menuKey}, remountMenu() ก่อน onEdit และ Edit disabled: removing (1 ms)
+    ✕ components/affiliate/programs-table.tsx: ใช้ useRemountMenu() — ActionMenu key={menuKey} และ trigger affiliate-program-row-actions มี ref={trigger} (1 ms)
+    ✕ components/evoucher/partners-section.tsx: ใช้ useRemountMenu() — ActionMenu key={menuKey} และ trigger evoucher-partner-row-actions มี ref={trigger} (1 ms)
+    ✕ components/affiliate/payouts-table.tsx: ใช้ useRemountMenu() — ActionMenu key={menuKey} และ trigger affiliate-payout-row-actions มี ref={trigger} (1 ms)
+    ✕ components/affiliate/affiliates-table.tsx: ใช้ useRemountMenu() — ActionMenu key={menuKey} และ trigger affiliate-row-actions มี ref={trigger}
+    ✕ ไม่มี useReducer remount เมนูแบบ inline เหลือใน src/admin (logic อยู่ใน hook กลางตัวเดียว) (5 ms)
+    ✕ use-remount-menu: focus trigger ใน useLayoutEffect เมื่อ menuKey เปลี่ยน (ก่อน effect ของ FocusScope ในฟอร์ม)
+    ✓ components/affiliate/program-form.tsx: <Drawer.Content spread handler ของ useRestoreOpenerFocus
+    ✕ components/evoucher/partners-section.tsx: <Drawer.Content spread handler ของ useRestoreOpenerFocus (1 ms)
+    ✕ components/affiliate/mark-paid-prompt.tsx: <Prompt.Content spread handler ของ useRestoreOpenerFocus
+    ✕ components/affiliate/payout-info-drawer.tsx: <Drawer.Content spread handler ของ useRestoreOpenerFocus
+Tests:       10 failed, 238 skipped, 4 passed, 252 total
+
+## GREEN — e2e admin-row-menu-return-focus.spec.ts
+[1/3] [chromium] › e2e/admin-row-menu-return-focus.spec.ts:38:5 › AC-52: partners — Edit จากเมนู … ปิดด้วย Cancel / Escape / Save สำเร็จ → focus ที่ปุ่ม … ของแถว
+[2/3] [chromium] › e2e/admin-row-menu-return-focus.spec.ts:88:5 › AC-52: affiliates — Payout info จากเมนู … ปิดด้วย Escape (Drawer ไม่มีปุ่ม Cancel) / Save สำเร็จ → focus ที่ปุ่ม … ของแถว
+[3/3] [chromium] › e2e/admin-row-menu-return-focus.spec.ts:129:5 › AC-52: payouts — Mark paid จากเมนู … ปิดด้วย Keep as draft / Escape → focus ที่ปุ่ม … ของแถว; ยืนยันสำเร็จ → แถว paid ไม่มีปุ่ม … (กฎ 10)
+  3 passed (22.4s)
+
+## GREEN — e2e ทุก spec ที่อ้างหน้าที่แตะ (workers=2)
+admin-form-discard-prompt, admin-program-form-edit (programs ADM-44 ยังผ่าน), admin-row-menu-return-focus, admin-row-menu-escape, admin-table-long-text,
+affiliate-admin-{row-actions,forms,affiliates,payout-create,programs,payouts}, evoucher-admin-{partners,forms}, admin-modal-return-focus, admin-create-double-submit
+  88 passed (6.6m)
+
+## GREEN — unit src/admin (jest)
+Test Suites: 24 passed, 24 total
+Tests:       587 passed, 587 total
+
+## อื่นๆ
+pnpm --filter storefront test:e2e:unit: 152 passed
+pnpm --filter backend typecheck: ผ่าน | lint backend: 0 errors (5 warnings เดิมนอกไฟล์ที่แตะ) | storefront typecheck ผ่าน, lint 0 errors

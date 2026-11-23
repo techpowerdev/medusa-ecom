@@ -3,10 +3,11 @@ import { useDate } from "@medusajs/dashboard/hooks"
 import { ArrowPath, CheckCircle, EllipsisHorizontal, PencilSquare, XCircle } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useMemo, useReducer, useState } from "react"
+import { useMemo, useState } from "react"
 import { AdminAffiliate, affiliateKeys, updateAffiliate } from "../../lib/affiliate"
 import { affiliateAction } from "../../lib/affiliate-account"
 import { createSingleFlight } from "../../lib/single-flight"
+import { useRemountMenu } from "../common/use-remount-menu"
 import { AffiliateListTable, useAffiliateList } from "./list-table"
 import { PayoutInfoDrawer } from "./payout-info-drawer"
 
@@ -49,9 +50,8 @@ const AffiliateActions = ({
   const prompt = usePrompt()
   // instance คงที่ตลอดอายุ component (กฎ 4) — กด menuitem ซ้ำหรือกดระหว่าง prompt เปิด = ไม่ยิงซ้ำ
   const [actOnce] = useState(createSingleFlight)
-  // เปิด modal/drawer จาก menuitem: mount เมนูใหม่ใน commit เดียวกัน (ปิดทันทีไม่รอ animation) — ไม่งั้น Radix คนละสำเนา
-  // ของเมนูกับ modal คืนค่า pointer-events ของ body สลับกันจนหน้าเป็น `none` ค้างหลังปิด modal (คลิกอะไรไม่ได้)
-  const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
+  // เปิด Drawer จาก menuitem: remount เมนู (กฎ 27b) + focus ปุ่ม … ตัวใหม่ให้ Drawer คืน focus เมื่อปิด (spec 08 กฎ 51)
+  const { menuKey, remountMenu, trigger } = useRemountMenu()
   const update = useUpdateAffiliate()
 
   const action = affiliateAction(affiliate.status)
@@ -102,7 +102,7 @@ const AffiliateActions = ({
         },
       ]}
     >
-      <IconButton size="small" variant="transparent" data-testid="affiliate-row-actions">
+      <IconButton ref={trigger} size="small" variant="transparent" data-testid="affiliate-row-actions">
         <EllipsisHorizontal />
       </IconButton>
     </ActionMenu>

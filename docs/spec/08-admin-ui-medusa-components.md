@@ -1302,7 +1302,7 @@ Status: draft (☐ — รอ owner สั่งทำ)
     (b) nit #513: e2e `admin-create-double-submit.spec.ts` ขั้น (e) ใส่ flag `closesWithAnimation` แล้ว assert `seen.length > 0` สำหรับ partner/campaign/variant pool;
         `medusa-ui.unit.spec.ts` (~`:154`/`:439`) แยก assert `useSingleFlight()` + `disabled={submitLocked}` เฉพาะฟอร์มของกฎ 43 และแก้ชื่อ test (~`:435`); `groups-section.tsx` ใช้ `import { type KeyboardEvent }`
 ### Acceptance criteria (รอบ 42)
-- AC-52 (ADM-47, กฎ 51) e2e admin: เปิดฟอร์มจากเมนู `…` ของ partners/payouts/affiliates แล้วปิดด้วย Cancel และด้วยบันทึกสำเร็จ → `document.activeElement` คือ trigger `…` ของแถวเดิม (ล้มบน develop — `BODY`); programs (ADM-44) ยังผ่าน
+- AC-52 (ADM-47, กฎ 51) ☑ (red บน develop `59c6af18`: partners/affiliates/payouts ปิดแล้ว `BODY` ทั้ง 3 ตาราง → green e2e 3/3 + spec ที่อ้างหน้าเดียวกัน 88/88 รวม programs ของ ADM-44; hook กลาง `components/common/use-remount-menu.ts`; payouts บันทึกสำเร็จ = แถวเป็น paid ไม่มีปุ่ม `…` (กฎ 10) จึงตรวจว่า trigger หายแทน — Cancel/Escape คืน focus; Drawer ข้อมูลรับเงินไม่มีปุ่ม Cancel จึงใช้ Escape; `docs/evidence/admin-ui/ADM-47-tests.txt`) e2e admin: เปิดฟอร์มจากเมนู `…` ของ partners/payouts/affiliates แล้วปิดด้วย Cancel และด้วยบันทึกสำเร็จ → `document.activeElement` คือ trigger `…` ของแถวเดิม (ล้มบน develop — `BODY`); programs (ADM-44) ยังผ่าน
 - AC-53 (ADM-48, กฎ 52) e2e admin: focus Save ของแต่ละฟอร์มในกฎ 52a แล้ว dispatch `keydown Enter` 1 ครั้ง + `repeat: true` 5 ครั้ง → POST 1 ครั้ง และหลัง modal ปิดไม่มีฟอร์มว่างเปิดขึ้นใหม่ (ล้มบน develop);
   static ของ (b) ผ่าน และ mutation ลบ `disabled={submitLocked}` ของฟอร์มหนึ่ง → static ล้ม
 ### Tasks (รอบ 42)
