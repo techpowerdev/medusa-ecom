@@ -29,6 +29,16 @@ describe("listGroupBuyMemberships", () => {
     })
   })
 
+  it("CORE-92: ส่ง limit ที่ระบุแทนค่าเริ่มต้น (overview ใช้ 1)", async () => {
+    fetchMock.mockResolvedValue({ memberships: [], count: 0 })
+    const { listGroupBuyMemberships } = await import("@lib/data/group-buy")
+    await listGroupBuyMemberships(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/store/customers/me/group-buy/memberships",
+      expect.objectContaining({ query: { limit: 1 } })
+    )
+  })
+
   it("อ่านล้ม → null (ไม่ทำให้หน้า orders ล่ม)", async () => {
     fetchMock.mockImplementation(async () => {
       throw new FetchError("boom", "Internal Server Error", 500)

@@ -154,3 +154,102 @@ describe("group-buy-deadline job — expired membership payment check", () => {
     expect(checked).toEqual(BATCH)
   })
 })
+
+// GB-32 กฎข้อ 58 (a)(b), AC-75 (a)(b): เพดานตรวจกับ provider ต่อรอบ + อ่านซ้ำ skip 0 เมื่อ skip เกินจำนวนจริง
+// unit อย่างเดียว (AC-75 a ให้เลือกได้): ใช้ค่าคงที่ที่ export จริง (210 ราย) โดยไม่ต้องเพิ่มช่อง inject เพดานใน job เพื่อ test
+// fake service ทำ skip/take/$nin/order แบบ DB — สิ่งที่ integration จะพิสูจน์เพิ่มคือ query ของ DB ซึ่ง test GB-16/GB-20b ครอบอยู่แล้ว
+describe("group-buy-deadline job — payment check cap per tick (GB-32)", () => {
+  const { MAX_PAYMENT_CHECKS_PER_TICK } = jest.requireActual("../../modules/group_buy/utils/membership-payment")
+  const { checkGroupBuyMembershipPaymentWorkflow, expireGroupBuyMembershipPaymentWorkflow } = jest.requireMock(
+    "../../workflows/group-buy/membership-payment"
+  )
+  const logger = { error: jest.fn(), warn: jest.fn(), info: jest.fn() }
+  const fakeService = (ids: string[], count = ids.length) => ({
+    listAndCountGroupBuyGroups: jest.fn().mockResolvedValue([[], 0]),
+    listGroupBuyGroups: jest.fn().mockResolvedValue([]),
+    listAndCountGroupBuyMemberships: jest.fn().mockResolvedValue([[], count]),
+    listGroupBuyMemberships: jest.fn(async (filters: any, config: { skip?: number; take?: number }) => {
+      const excluded: string[] = filters.id?.$nin ?? []
+      const skip = config.skip ?? 0
+      return ids
+        .filter((id) => !excluded.includes(id))
+        .slice(skip, skip + (config.take ?? ids.length))
+        .map((id) => ({ id }))
+    }),
+    listAndCountGroupBuyCampaigns: jest.fn().mockResolvedValue([[], 0]),
+  })
+  const containerWith = (service: ReturnType<typeof fakeService>) =>
+    ({
+      resolve: (key: string) =>
+        ({
+          [ContainerRegistrationKeys.LOGGER]: logger,
+          [ContainerRegistrationKeys.QUERY]: { graph: jest.fn().mockResolvedValue({ data: [] }) },
+          [GROUP_BUY_MODULE]: service,
+        })[key],
+    }) as unknown as MedusaContainer
+  let checked: string[]
+  let expired: string[]
+  const mockDecision = (decision: string) => {
+    checkGroupBuyMembershipPaymentWorkflow.mockReturnValue({
+      run: async ({ input }: { input: { membership_id: string } }) => {
+        checked.push(input.membership_id)
+        return { result: { decision } }
+      },
+    })
+    expireGroupBuyMembershipPaymentWorkflow.mockReturnValue({
+      run: async ({ input }: { input: { membership_id: string } }) => {
+        expired.push(input.membership_id)
+        return { result: [] }
+      },
+    })
+  }
+  const atTick = (tick: number) => jest.useFakeTimers({ now: tick * 60_000, doNotFake: ["nextTick", "setImmediate", "queueMicrotask", "setTimeout", "setInterval", "clearTimeout", "clearInterval"] })
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    checked = []
+    expired = []
+  })
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it("cap = 4 × BATCH = 200 (Q26 = ก)", () => {
+    expect(MAX_PAYMENT_CHECKS_PER_TICK).toEqual(4 * 50)
+  })
+
+  it("(a) cap + 10 expired memberships, provider errors for all (retry) → one tick calls the provider exactly cap times; the next tick checks the rest", async () => {
+    const ids = Array.from({ length: MAX_PAYMENT_CHECKS_PER_TICK + 10 }, (_, i) => `gbmem_${String(i).padStart(3, "0")}`)
+    mockDecision("retry")
+    const service = fakeService(ids)
+
+    atTick(0)
+    await groupBuyDeadlineJob(containerWith(service))
+    expect(checked).toHaveLength(MAX_PAYMENT_CHECKS_PER_TICK)
+    expect(new Set(checked).size).toEqual(MAX_PAYMENT_CHECKS_PER_TICK)
+    const nin = service.listGroupBuyMemberships.mock.calls.map(([f]: any[]) => f.id?.$nin?.length ?? 0)
+    expect(Math.max(...nin)).toBeLessThanOrEqual(MAX_PAYMENT_CHECKS_PER_TICK)
+    const rest = ids.filter((id) => !checked.includes(id))
+    expect(rest).toHaveLength(10)
+
+    checked = []
+    atTick(1)
+    await groupBuyDeadlineJob(containerWith(service))
+    expect(checked).toHaveLength(MAX_PAYMENT_CHECKS_PER_TICK)
+    expect(checked.slice(0, rest.length).sort()).toEqual(rest)
+    expect(expired).toEqual([])
+  })
+
+  it("(b) count says 60 but the list at the rotated skip is empty (rows changed in between) → re-read with skip 0 and process", async () => {
+    const ids = ["gbmem_a", "gbmem_b", "gbmem_c"]
+    mockDecision("unpaid")
+    const service = fakeService(ids, 60)
+
+    atTick(1)
+    await groupBuyDeadlineJob(containerWith(service))
+
+    expect(service.listGroupBuyMemberships.mock.calls[0][1].skip).toBeGreaterThan(0)
+    expect(service.listGroupBuyMemberships).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ skip: 0 }))
+    expect(expired.sort()).toEqual(ids)
+  })
+})

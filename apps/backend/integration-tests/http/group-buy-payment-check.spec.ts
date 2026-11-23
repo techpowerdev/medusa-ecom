@@ -460,27 +460,33 @@ medusaIntegrationTestRunner({
       const session = await openSession(stuck)
       setIntent(session, new Error("provider down"))
       await pastDeadline(stuck, 16)
-      const locking = getContainer().resolve(Modules.LOCKING)
-      const realAcquire = locking.acquire.bind(locking)
-      const lockKey = `group_buy:membership:${stuck.membership_id}`
-      const acquire = jest.spyOn(locking, "acquire").mockImplementation((async (keys, ...rest) => {
-        if ([keys].flat().includes(lockKey)) {
-          throw new Error("lock busy")
+      // GB-32 กฎข้อ 58 (d): expire ล้มหลังได้ lock แล้ว (ไม่รอ LOCK_TIMEOUT ของ acquireLockStep) — ครั้งเดียว
+      const service = groupBuy()
+      const realUpdate = service.updateGroupBuyMemberships.bind(service)
+      let failExpire = true
+      const update = jest.spyOn(service, "updateGroupBuyMemberships").mockImplementation((async (data: any, ...rest: any[]) => {
+        if (failExpire && data?.id === stuck.membership_id && data?.status === "cancelled") {
+          failExpire = false
+          throw new Error("expire boom")
         }
-        return realAcquire(keys, ...rest)
-      }) as typeof locking.acquire)
+        return (realUpdate as any)(data, ...rest)
+      }) as any)
       const error = jest.spyOn(logger(), "error")
+      const started = Date.now()
 
       await runJob()
+      expect(failExpire).toBe(false)
       expect((await membershipOf(stuck)).status).toEqual("awaiting_payment")
       expect(loggedLines(error, GAVE_UP)).toHaveLength(1)
       expect(await gaveUpEmails()).toHaveLength(1)
 
-      acquire.mockRestore()
+      update.mockRestore()
       await runJob()
       expect((await membershipOf(stuck)).status).toEqual("cancelled")
       expect(loggedLines(error, GAVE_UP)).toHaveLength(2)
       expect(await gaveUpEmails()).toHaveLength(1)
+      // AC-75 (d): สองรอบของ job ไม่รอ LOCK_TIMEOUT (30 วินาที)
+      expect(Date.now() - started).toBeLessThan(5000)
     })
   },
 })

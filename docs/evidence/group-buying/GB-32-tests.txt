@@ -1,0 +1,98 @@
+GB-32 (spec 04 กฎข้อ 58, AC-75) — ผลทดสอบ 2026-11-24
+
+== RED บน develop (59c6af18) — unit job (a)(b) ==
+FAIL src/jobs/__tests__/group-buy-deadline.unit.spec.ts
+  group-buy-deadline job — expired membership filter
+    ✓ filters by group status succeeded and pay_deadline_at <= now (3 ms)
+  group-buy-deadline job — expired membership payment check
+    ✓ logs a failed check as a check failure, not 'failed to expire membership', and does not expire it (1 ms)
+    ✓ still logs 'failed to expire membership' when the expire workflow fails
+    ✓ a retry membership does not take a batch slot: batch size N + 1 such + N decidable → N expired in one run (1 ms)
+    ✓ a skip membership does not take a batch slot: batch size N + 1 such + N decidable → N expired in one run (1 ms)
+    ✓ stops after N decided memberships (paid/unpaid/give_up count, checks that throw count too)
+  group-buy-deadline job — payment check cap per tick (GB-32)
+    ✓ cap = 4 × BATCH = 200 (Q26 = ก)
+    ✕ (a) cap + 10 expired memberships, provider errors for all (retry) → one tick calls the provider exactly cap times; the next tick checks the rest (2 ms)
+    ✕ (b) count says 60 but the list at the rotated skip is empty (rows changed in between) → re-read with skip 0 and process (2 ms)
+  ● group-buy-deadline job — payment check cap per tick (GB-32) › (a) cap + 10 expired memberships, provider errors for all (retry) → one tick calls the provider exactly cap times; the next tick checks the rest
+    expect(received).toHaveLength(expected)
+    Expected length: 200
+    Received length: 210
+    Received array:  ["gbmem_000", "gbmem_001", "gbmem_002", "gbmem_003", "gbmem_004", "gbmem_005", "gbmem_006", "gbmem_007", "gbmem_008", "gbmem_009", …]
+      226 |     atTick(0)
+      227 |     await groupBuyDeadlineJob(containerWith(service))
+    > 228 |     expect(checked).toHaveLength(MAX_PAYMENT_CHECKS_PER_TICK)
+          |                     ^
+      229 |     expect(new Set(checked).size).toEqual(MAX_PAYMENT_CHECKS_PER_TICK)
+      230 |     const nin = service.listGroupBuyMemberships.mock.calls.map(([f]: any[]) => f.id?.$nin?.length ?? 0)
+      231 |     expect(Math.max(...nin)).toBeLessThanOrEqual(MAX_PAYMENT_CHECKS_PER_TICK)
+  ● group-buy-deadline job — payment check cap per tick (GB-32) › (b) count says 60 but the list at the rotated skip is empty (rows changed in between) → re-read with skip 0 and process
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+    Expected: Anything, ObjectContaining {"skip": 0}
+    Received: {"group": {"pay_deadline_at": {"$lte": 1970-01-01T00:01:00.000Z}, "status": "succeeded"}, "status": "awaiting_payment"}, {"order": {"joined_at": "ASC"}, "select": ["id"], "skip": 50, "take": 50}
+    Number of calls: 1
+      250 |
+      251 |     expect(service.listGroupBuyMemberships.mock.calls[0][1].skip).toBeGreaterThan(0)
+    > 252 |     expect(service.listGroupBuyMemberships).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ skip: 0 }))
+          |                                             ^
+      253 |     expect(expired.sort()).toEqual(ids)
+      254 |   })
+      255 | })
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 7 passed, 9 total
+Snapshots:   0 total
+Time:        1.676 s, estimated 2 s
+Ran all test suites matching /src\/jobs\/__tests__\/group-buy-deadline.unit.spec.ts/i.
+
+== RED บน develop — unit deleteMemberPaymentSessionsStep (c) ==
+FAIL src/workflows/group-buy/__tests__/membership-payment.unit.spec.ts
+  membership-payment workflow/step names
+    ✓ finds the check workflow and its step (6 ms)
+    ✓ no workflow shares its name with a step (1 ms)
+  deleteMemberPaymentSessionsStep — best-effort query
+    ✕ query.graph throws → warns GROUP_BUY_SESSION_CANCEL_FAILED and the workflow succeeds (21 ms)
+  ● deleteMemberPaymentSessionsStep — best-effort query › query.graph throws → warns GROUP_BUY_SESSION_CANCEL_FAILED and the workflow succeeds
+    expect(received).toEqual(expected) // deep equality
+    - Expected  -  1
+    + Received  + 26
+    - Array []
+    + Array [
+    +   Object {
+    +     "action": "delete-member-payment-sessions",
+    +     "error": Object {
+    +       "message": "db down",
+    +       "name": "Error",
+    +       "stack": "Error: db down
+
+== RED/baseline บน develop — integration (d) รอ LOCK_TIMEOUT ==
+    ✓ (d) give-up runs twice (expire failed in the first run) → exactly one ops email in the notification module (34578 ms)
+
+== GREEN — integration-tests/http/group-buy-payment-check.spec.ts ==
+    ✓ (a) PI succeeded at the provider but no webhook yet → job captures, membership paid, order placed; late webhook is a no-op (2282 ms)
+    ✓ (a2) payment found but convert fails → re-picked within 15 minutes without the provider; not re-captured past 15 minutes (2198 ms)
+    ✓ (b) PI requires_action (NOT_ALLOWED = unpaid) → session deleted, membership cancelled; no session → provider not called (3693 ms)
+    ✓ (c) provider down / pending_authorization / PI processing → retry: not cancelled, session kept, one warn per run (1154 ms)
+    ✓ (c) still unverifiable 16 minutes past the deadline → give up: cancel + error log + one ops email; another member paid in the same run (5173 ms)
+    ✓ (d) give-up runs twice (expire failed in the first run) → exactly one ops email in the notification module (6308 ms)
+Tests:       6 passed, 6 total
+Time:        42.997 s, estimated 57 s
+  (d) รันเดี่ยว: 2210 ms; ภายใน test assert ช่วงรัน job สองรอบ < 5000 ms
+
+== GREEN — integration-tests/http/group-buy-payment.spec.ts (เรียก job เดียวกัน)
+Tests:       14 passed, 14 total
+Time:        41.091 s
+
+== GREEN — integration-tests/http/group-buy-payment-closed.spec.ts (เรียก job เดียวกัน)
+Tests:       8 passed, 8 total
+Time:        22.539 s
+
+== GREEN — integration-tests/http/group-buy-outcome.spec.ts (เรียก job เดียวกัน)
+Tests:       11 passed, 11 total
+Time:        33.607 s
+
+== GREEN — backend test:unit ทั้งชุด ==
+Test Suites: 130 passed, 130 total
+Tests:       1790 passed, 1790 total
+
+== typecheck backend: ผ่าน; build backend: ผ่าน; storefront test:e2e:unit: 151 passed ==
+== lint backend: 0 error; ไม่มี warning step-id-kebab-case ใน membership-payment.ts (เหลือ 4 warning เดิมในไฟล์อื่น) ==
