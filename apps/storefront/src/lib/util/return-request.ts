@@ -1,4 +1,5 @@
 import { friendlyErrorMessage } from "./error-message"
+import { MedusaApiError } from "./medusa-api-error"
 
 // spec 01 CORE-20 (AC-65, Q-F5 owner 2026-10-26): เงื่อนไขแสดงปุ่ม/หน้าขอคืนสินค้า — กติกาเดียวกับที่ backend บังคับ
 // ตั้งแต่ CORE-20b (Q-F6) storefront ซ่อนสิ่งที่คืนไม่ได้ และแปล error ของ backend เป็นไทย (CORE-20c)
@@ -84,46 +85,28 @@ export const canRequestReturn = (
   now: Date = new Date()
 ) => returnableItemsNow(order, returnWindowDays, now).length > 0
 
-// error 400 ของ CORE-20b (`apps/backend/src/api/store/ownership/return-window.ts`) — `FetchError` ของ js-sdk เก็บแค่
-// message ไม่มี `code` จึงจับคู่ทั้ง code และ message คงที่ของ backend (กฎข้อ 37: message ไม่มีค่าจาก input)
-// contract test `src/return-window-contract.test.ts` อ่าน source ของ backend และล้มเมื่อข้อความเปลี่ยนโดยไม่แก้ map นี้ (กฎข้อ 66c)
-export const RETURN_ERRORS: { code: string; message: string; text: string }[] = [
-  {
-    code: "RETURN_ITEM_NOT_SHIPPABLE",
-    message: "Only shipped products of the order can be returned",
-    text: "สินค้าบางรายการไม่ต้องจัดส่ง (เช่น e-voucher) จึงขอคืนไม่ได้",
-  },
-  {
-    code: "RETURN_ITEM_NOT_SHIPPED",
-    message: "Items that have not been shipped cannot be returned",
-    text: "สินค้าบางรายการยังไม่ได้จัดส่ง จึงยังขอคืนไม่ได้",
-  },
-  {
-    code: "RETURN_WINDOW_EXPIRED",
-    message: "The return window for this order has expired",
-    text: "เลยระยะเวลาที่ขอคืนสินค้าได้แล้ว",
-  },
+// error 400 ของ CORE-20b (`apps/backend/src/api/store/ownership/return-window.ts`) — CORE-83 (กฎข้อ 140, ADR-028):
+// ตัดสินจาก `code` ของ `MedusaApiError` (`medusaFetch`) เท่านั้น; contract test `src/return-window-contract.test.ts`
+// อ่าน code จาก source ของ backend และล้มเมื่อ code เปลี่ยนโดยไม่แก้ map นี้ (กฎข้อ 66c)
+export const RETURN_ERRORS: { code: string; text: string }[] = [
+  { code: "RETURN_ITEM_NOT_SHIPPABLE", text: "สินค้าบางรายการไม่ต้องจัดส่ง (เช่น e-voucher) จึงขอคืนไม่ได้" },
+  { code: "RETURN_ITEM_NOT_SHIPPED", text: "สินค้าบางรายการยังไม่ได้จัดส่ง จึงยังขอคืนไม่ได้" },
+  { code: "RETURN_WINDOW_EXPIRED", text: "เลยระยะเวลาที่ขอคืนสินค้าได้แล้ว" },
 ]
 
-// CORE-71 (spec 01 กฎข้อ 129): CORE-55 (`return-location.ts`) ตอบ 400 invalid_data ข้อความคงที่ (ไม่มี code) เมื่อ location
-// ของ return option ไม่มี inventory level ของสินค้า — ลองใหม่ไม่ช่วย จึงให้ลูกค้าติดต่อร้าน (contract test ตรวจข้อความกับ backend)
+// CORE-71 (กฎข้อ 129) / CORE-76 (กฎข้อ 134b): CORE-55 (`return-location.ts`) ตอบ 400 เมื่อ location ของ return option
+// ไม่มี inventory level ของสินค้า หรือ option ไม่มี stock location — ลองใหม่ไม่ช่วย จึงให้ลูกค้าติดต่อร้าน
 export const RETURN_NOT_STOCKED = {
-  message: "This item cannot be returned online",
+  codes: ["RETURN_ITEM_NOT_STOCKED", "RETURN_NO_LOCATION"] as readonly string[],
   text: "ไม่สามารถสร้างคำขอคืนสินค้านี้ทางเว็บได้ กรุณาติดต่อร้าน",
 }
 
-// CORE-76 (spec 01 กฎข้อ 134b): return option ไม่มี stock location (`RETURN_NO_LOCATION_MESSAGE` ของ CORE-55) — ลองใหม่ไม่ช่วยเช่นกัน
-export const RETURN_NO_LOCATION = { message: "Return shipping option has no stock location" }
-
 /** 400 ที่ให้ลูกค้าติดต่อร้าน (`RETURN_NOT_STOCKED.text`): location ไม่มีของ หรือ option ไม่มี location */
-export const isReturnNotStockedError = (error: unknown) => {
-  const { status, message } = (typeof error === "object" && error ? error : {}) as { status?: unknown; message?: unknown }
-  return status === 400 && (message === RETURN_NOT_STOCKED.message || message === RETURN_NO_LOCATION.message)
-}
+export const isReturnNotStockedError = (error: unknown) =>
+  error instanceof MedusaApiError && error.status === 400 && RETURN_NOT_STOCKED.codes.includes(error.code ?? "")
 
 export const returnErrorMessage = (error: unknown, fallback: string) => {
-  const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown }
-  const known = RETURN_ERRORS.find((e) => e.code === code || e.message === message)
+  const known = error instanceof MedusaApiError ? RETURN_ERRORS.find((e) => e.code === error.code) : undefined
   return known ? known.text : friendlyErrorMessage(error, fallback)
 }
 

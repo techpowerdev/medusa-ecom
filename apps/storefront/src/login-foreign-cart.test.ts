@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const transferCart = vi.fn()
 const removeCartId = vi.fn()
 
+// CORE-83: customer.ts import medusa-fetch (server-only)
+vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   sdk: {
     auth: { login: vi.fn().mockResolvedValue("tok") },

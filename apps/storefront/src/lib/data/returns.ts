@@ -12,6 +12,7 @@ import {
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { getAuthHeaders, getCacheTag } from "./cookies"
+import { medusaFetch } from "./medusa-fetch"
 import { retrieveOrder } from "./orders"
 import { retrieveRegionUncached } from "./regions"
 
@@ -108,11 +109,8 @@ export async function requestReturn(
   }
 
   try {
-    await sdk.client.fetch("/store/returns", {
-      method: "POST",
-      body: buildReturnRequest({ orderId, optionId, lines }),
-      headers: { ...(await getAuthHeaders()) },
-    })
+    // CORE-83 (กฎข้อ 140, ADR-028): medusaFetch เพื่อได้ `code` ของ error (FetchError ของ js-sdk ทิ้ง code)
+    await medusaFetch("/store/returns", buildReturnRequest({ orderId, optionId, lines }))
   } catch (error) {
     if (isReturnNotStockedError(error)) {
       return { success: false, error: RETURN_NOT_STOCKED.text, contactStore: true, values }

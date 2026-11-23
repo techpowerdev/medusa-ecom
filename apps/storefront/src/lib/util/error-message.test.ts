@@ -51,6 +51,8 @@ describe("friendlyErrorMessage (qa D-1, D-3)", () => {
 const createAddress = vi.fn()
 const updateAddress = vi.fn()
 
+// CORE-83: customer.ts import medusa-fetch (server-only)
+vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   sdk: {
     auth: { verification: { confirm: vi.fn().mockRejectedValue(new Error("x")) } },

@@ -1,4 +1,5 @@
 import { FetchError } from "@medusajs/js-sdk"
+import { MedusaApiError } from "@lib/util/medusa-api-error"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -18,6 +19,13 @@ vi.mock("@lib/config", () => ({
       register: (...a: unknown[]) => authRegister(...a),
       verification: { confirm: (...a: unknown[]) => verificationConfirm(...a) },
     },
+  },
+}))
+// CORE-83 (กฎข้อ 140, ADR-028): register ผ่าน `medusaFetch` (ได้ type ของ error) — ส่งต่อให้ authRegister แบบ sdk.auth.register
+vi.mock("@lib/data/medusa-fetch", () => ({
+  medusaFetch: async (path: string, body: unknown) => {
+    if (path !== "/auth/customer/emailpass/register") throw new Error(`unexpected ${path}`)
+    return { token: await authRegister("customer", "emailpass", body) }
   },
 }))
 vi.mock("@lib/data/cookies", () => ({ setPendingCustomer: vi.fn(), removePendingCustomer: vi.fn() }))
@@ -85,7 +93,7 @@ describe("CORE-4h: reason ของ login และข้อความขอ�
 
   it("register ล้ม → คืนชื่อ/นามสกุล/เบอร์/อีเมลที่กรอกไว้ (กฎข้อ 69b)", async () => {
     authRegister.mockRejectedValue(
-      new FetchError("Identity with email already exists", "Unauthorized", 401)
+      new MedusaApiError({ status: 401, type: "unauthorized", message: "Identity with email already exists" })
     )
     authLogin.mockRejectedValue(unauthorized("Invalid email or password"))
     const { signup } = await import("@lib/data/customer")

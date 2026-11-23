@@ -2,61 +2,46 @@ import fs from "node:fs"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
-import { DEFAULT_RETURN_WINDOW_DAYS, RETURN_ERRORS, RETURN_NO_LOCATION, RETURN_NOT_STOCKED } from "@lib/util/return-request"
+import { DEFAULT_RETURN_WINDOW_DAYS, RETURN_ERRORS, RETURN_NOT_STOCKED } from "@lib/util/return-request"
 
 // CORE-20d (spec 01 กฎข้อ 66a/66c, AC-102): contract กับ backend ของ CORE-20b — อ่าน source ของ backend ตรง
-// `FetchError` ของ js-sdk เก็บแค่ message ไม่มี `code` → storefront จับคู่ด้วยข้อความคงที่ของ backend
-// test นี้ต้องล้มเมื่อ backend เปลี่ยนข้อความ/code/ค่าเริ่มต้นโดยไม่แก้ฝั่ง storefront
+// CORE-83 (กฎข้อ 140, ADR-028): storefront ตัดสินจาก `code` (medusaFetch) — contract เทียบ code ไม่เทียบข้อความ
+// test นี้ต้องล้มเมื่อ backend เปลี่ยน code/ค่าเริ่มต้นโดยไม่แก้ฝั่ง storefront
 const BACKEND_SRC = path.resolve(__dirname, "../../backend/src")
 const read = (file: string) => fs.readFileSync(path.join(BACKEND_SRC, file), "utf8")
 
-/** `{ code: RETURN_X, message: "..." }` ทุกคู่ใน return-window.ts (แปลงชื่อ const เป็นค่า string) */
-const backendReturnErrors = () => {
-  const source = read("api/store/ownership/return-window.ts")
-  const constants = new Map(
-    Array.from(source.matchAll(/export const (RETURN_\w+) = "([^"]+)"/g), ([, name, value]) => [name, value])
-  )
-  return Array.from(source.matchAll(/\{\s*code:\s*(RETURN_\w+),\s*message:\s*"([^"]+)"\s*\}/g), ([, name, message]) => ({
-    code: constants.get(name),
-    message,
-  }))
-}
+/** ค่าของ `export const RETURN_X = "..."` ในไฟล์ของ backend (ไม่รวมชื่อที่ลงท้าย _MESSAGE) */
+const backendCodes = (file: string) =>
+  Array.from(read(file).matchAll(/export const (RETURN_\w+) = "([^"]+)"/g))
+    .filter(([, name]) => !name.endsWith("_MESSAGE"))
+    .map(([, , value]) => value)
+    .sort()
 
 describe("contract: error code ของ POST /store/returns (CORE-20b)", () => {
-  it("อ่านคู่ code/message จาก backend ได้ครบ 3 code", () => {
-    expect(backendReturnErrors().map((e) => e.code).sort()).toEqual([
-      "RETURN_ITEM_NOT_SHIPPABLE",
-      "RETURN_ITEM_NOT_SHIPPED",
-      "RETURN_WINDOW_EXPIRED",
-    ])
+  it("code ของ return-window.ts ครบ 3 ตัว และ map ของ storefront มี code ตรงกันทุกตัว", () => {
+    const codes = backendCodes("api/store/ownership/return-window.ts")
+    expect(codes).toEqual(["RETURN_ITEM_NOT_SHIPPABLE", "RETURN_ITEM_NOT_SHIPPED", "RETURN_WINDOW_EXPIRED"])
+    expect(RETURN_ERRORS.map((e) => e.code).sort()).toEqual(codes)
   })
 
-  it("map ของ storefront มี code และข้อความตรงกับ backend ทุกตัว", () => {
-    const mapped = RETURN_ERRORS.map(({ code, message }) => ({ code, message }))
-    expect(mapped).toEqual(expect.arrayContaining(backendReturnErrors()))
-    expect(mapped).toHaveLength(backendReturnErrors().length)
+  it("map มีแค่ code + ข้อความไทย (ไม่มีข้อความอังกฤษของ backend)", () => {
+    for (const error of RETURN_ERRORS) {
+      expect(Object.keys(error).sort()).toEqual(["code", "text"])
+    }
   })
 })
 
-// CORE-71 (spec 01 กฎข้อ 129): ข้อความคงที่ของ CORE-55 (location ของ return option ไม่มี inventory level)
-describe("contract: error location ไม่มีของ (CORE-55)", () => {
-  it("ข้อความที่ storefront จับคู่ตรงกับ RETURN_ITEM_NOT_STOCKED_MESSAGE ของ backend", () => {
-    const match = read("api/store/ownership/return-location.ts").match(
-      /export const RETURN_ITEM_NOT_STOCKED_MESSAGE = "([^"]+)"/
-    )
-    expect(match, "RETURN_ITEM_NOT_STOCKED_MESSAGE ใน return-location.ts").not.toBeNull()
-    expect(RETURN_NOT_STOCKED.message).toBe(match![1])
+// CORE-71 (กฎข้อ 129) / CORE-76 (กฎข้อ 134b): location ของ return option ไม่มีของ หรือ option ไม่มี stock location (CORE-55)
+describe("contract: error ที่ให้ติดต่อร้าน (CORE-55 return-location.ts)", () => {
+  it("code ที่ storefront จับคู่ตรงกับ code ของ backend", () => {
+    expect(backendCodes("api/store/ownership/return-location.ts")).toEqual(["RETURN_ITEM_NOT_STOCKED", "RETURN_NO_LOCATION"])
+    expect([...RETURN_NOT_STOCKED.codes].sort()).toEqual(backendCodes("api/store/ownership/return-location.ts"))
   })
-})
 
-// CORE-76 (spec 01 กฎข้อ 134b, AC-175b): ข้อความคงที่เมื่อ return option ไม่มี stock location (CORE-55 กฎข้อ 113b)
-describe("contract: error return option ไม่มี stock location (CORE-55)", () => {
-  it("ข้อความที่ storefront จับคู่ตรงกับ RETURN_NO_LOCATION_MESSAGE ของ backend", () => {
-    const match = read("api/store/ownership/return-location.ts").match(
-      /export const RETURN_NO_LOCATION_MESSAGE = "([^"]+)"/
-    )
-    expect(match, "RETURN_NO_LOCATION_MESSAGE ใน return-location.ts").not.toBeNull()
-    expect(RETURN_NO_LOCATION.message).toBe(match![1])
+  it("backend throw ด้วย code (อาร์กิวเมนต์ที่ 3 ของ MedusaError) ทั้งสองจุด", () => {
+    const source = read("api/store/ownership/return-location.ts")
+    expect(source).toMatch(/RETURN_NO_LOCATION_MESSAGE,\s*RETURN_NO_LOCATION\)/)
+    expect(source).toMatch(/RETURN_ITEM_NOT_STOCKED_MESSAGE,\s*RETURN_ITEM_NOT_STOCKED\)/)
   })
 })
 

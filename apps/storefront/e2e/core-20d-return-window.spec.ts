@@ -3,6 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { Client } from "pg"
 
+import { MedusaApiError } from "../src/lib/util/medusa-api-error"
 import { returnErrorMessage, returnWindowDaysOf } from "../src/lib/util/return-request"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import {
@@ -32,12 +33,6 @@ const BACKEND_SRC = path.resolve(__dirname, "../../backend/src")
 const backendDefaultWindow = () => {
   const source = fs.readFileSync(path.join(BACKEND_SRC, "lib/region-store-policies.ts"), "utf8")
   return Number(source.match(/return_window_days:\s*(\d+)/)![1])
-}
-
-/** ข้อความคงที่ของ RETURN_WINDOW_EXPIRED จาก source ของ backend (CORE-20b) */
-const backendWindowExpiredMessage = () => {
-  const source = fs.readFileSync(path.join(BACKEND_SRC, "api/store/ownership/return-window.ts"), "utf8")
-  return source.match(/code:\s*RETURN_WINDOW_EXPIRED,\s*message:\s*"([^"]+)"/)![1]
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- payload ของ admin/store API ใน e2e */
@@ -293,6 +288,15 @@ test("AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อ�
   evidence,
 }) => {
   test.setTimeout(180_000)
+  // CORE-83 (กฎข้อ 140, ADR-028): storefront ตัดสินจาก code — ข้อความที่คาดคือผลของ code RETURN_WINDOW_EXPIRED
+  // (ข้อความอังกฤษของ backend ไม่มีผล) และต้องไม่ใช่ fallback ไม่งั้น route mock ด้านล่างตรวจ fallback แทน (review #517)
+  const FALLBACK = "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+  const expected = returnErrorMessage(
+    new MedusaApiError({ status: 400, type: "invalid_data", code: "RETURN_WINDOW_EXPIRED", message: "changed wording" }),
+    FALLBACK
+  )
+  expect(expected, "ข้อความของ RETURN_WINDOW_EXPIRED ต้องไม่ใช่ fallback").not.toBe(FALLBACK)
+
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
   const customer = await createCustomer(request, pk)
@@ -305,16 +309,13 @@ test("AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อ�
     data: { value: `core20d-${Date.now()}`, label: "สินค้าชำรุด" },
   })
   const reasonId: string = (await json(reasonRes, "return reason")).return_reason.id
-  const expected = returnErrorMessage(
-    Object.assign(new Error(backendWindowExpiredMessage()), { status: 400 }),
-    "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
-  )
 
   try {
     await step("route mock: ผลของ server action = backend ตอบ 400 RETURN_WINDOW_EXPIRED", async () => {
       // POST /store/returns ยิงจาก Next server จึง mock จาก browser ไม่ได้ (แบบ AC-100) — ดัก server action ของหน้า return:
       // ส่งต่อด้วย order id ที่ไม่มีจริง (action ล้มก่อนถึง backend และคืนค่าที่เลือกตามจริง) แล้วแทนข้อความ error
-      // ด้วยข้อความที่ storefront map จากข้อความคงที่ของ backend (unit `return-request-action.test.ts` ตรวจ FetchError 400 จริง)
+      // ด้วยข้อความที่ storefront map จาก code RETURN_WINDOW_EXPIRED (unit `return-request-action.test.ts` ตรวจว่า MedusaApiError
+      // 400 ที่มี code นี้จาก medusaFetch ได้ผลนี้; step ของ AC-102 (b) ตรวจว่า backend จริงตอบ code นี้)
       await page.route(
         (url) => url.pathname.endsWith(`/account/orders/details/${order.id}/return`),
         async (route) => {

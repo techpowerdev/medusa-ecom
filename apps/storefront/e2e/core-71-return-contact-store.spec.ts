@@ -22,7 +22,8 @@ const MISSING_ORDER_ERROR = '"error":"ไม่พบคำสั่งซื้
 /**
  * route mock ผลของ server action ส่งคำขอคืน: POST /store/returns ยิงจาก Next server จึง mock จาก browser ไม่ได้ (แบบ CORE-20d)
  * — ส่งต่อด้วย order id ที่ไม่มีจริง (action ล้มก่อนถึง backend และคืนค่าที่เลือกตามจริง) แล้วแทน error ใน payload
- * ด้วย `replacement` (unit `return-request-action.test.ts` ตรวจ FetchError 400 ของ backend จริงว่าได้ผลนี้)
+ * ด้วย `replacement` (unit `return-request-action.test.ts` ตรวจว่า MedusaApiError 400 ที่มี code `RETURN_ITEM_NOT_STOCKED`/`RETURN_NO_LOCATION`
+ * จาก medusaFetch ได้ผลนี้ — CORE-83; integration `store-returns-receive.spec.ts` ตรวจว่า backend ตอบ code นี้)
  */
 async function mockReturnAction(page: Page, orderId: string, replacement: string) {
   await page.route(
