@@ -29,6 +29,10 @@ describe("ข้อยกเว้น IDENTITY_EXISTS ของ helper (Medusa c
     expect(isUncodedMedusaError(identityExists({ status: 400 }), "IDENTITY_EXISTS")).toBe(false)
     expect(isUncodedMedusaError(identityExists({ type: "invalid_data" }), "IDENTITY_EXISTS")).toBe(false)
     expect(isUncodedMedusaError(identityExists({ message: "Invalid email or password" }), "IDENTITY_EXISTS")).toBe(false)
+    // ข้อความของ emailpass เป็นค่าคงที่ → เทียบเท่ากัน ไม่ใช่ prefix (nit review #517)
+    expect(
+      isUncodedMedusaError(identityExists({ message: "Identity with email already exists." }), "IDENTITY_EXISTS")
+    ).toBe(false)
     expect(
       isUncodedMedusaError(
         Object.assign(new Error("Identity with email already exists"), { status: 401 }),
@@ -70,7 +74,14 @@ describe("medusaFetch: base URL ที่มี / ท้าย", () => {
 })
 
 describe("static: กลุ่ม account/returns/auth ตัดสินจาก code (AC-181 b)", () => {
-  const GROUP = ["lib/data/customer.ts", "lib/data/returns.ts", "lib/util/return-request.ts"]
+  // รวม e2e กลุ่ม returns (review #517: core-20d เคยสร้างข้อความที่คาดจากข้อความอังกฤษของ backend)
+  const GROUP = [
+    "lib/data/customer.ts",
+    "lib/data/returns.ts",
+    "lib/util/return-request.ts",
+    "../e2e/core-20d-return-window.spec.ts",
+    "../e2e/core-71-return-contact-store.spec.ts",
+  ]
   const ENGLISH_MESSAGES = [
     "Identity with email already exists",
     "Only shipped products of the order can be returned",
@@ -86,6 +97,8 @@ describe("static: กลุ่ม account/returns/auth ตัดสินจา�
       expect(text, message).not.toContain(message)
     }
     expect(text).not.toMatch(/message\s*[!=]==|statusText/)
+    // ไม่อ่านข้อความอังกฤษคู่ code จาก source ของ backend (แบบ backendWindowExpiredMessage เดิมของ core-20d)
+    expect(text).not.toMatch(/code:\\s\*RETURN_|RETURN_\w+,\s*message/)
   })
 
   it("ข้อยกเว้น Identity with email already exists อยู่ใน helper", () => {

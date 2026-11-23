@@ -59,3 +59,34 @@ backend typecheck: ok
 ✖ 5 problems (0 errors, 5 warnings)
 
 ## ไม่ได้รันในเครื่อง (CI รัน): integration-tests/http/store-returns-receive.spec.ts (เพิ่มตรวจ code RETURN_ITEM_NOT_STOCKED), e2e กับ backend จริง (qa)
+
+## แก้ตาม review/qa #517 (2026-11-23)
+### RED — e2e core-20d (backend จริง :9290 + storefront dev :8290) เพิ่ม assert expected ≠ fallback โดยยังสร้าง expected จากข้อความอังกฤษแบบเดิม
+  ✓  1 [chromium] › e2e/core-20d-return-window.spec.ts:147:5 › AC-102 (a): region ไม่ตั้ง return_window_days → ปุ่มขอคืน, หน้า /returns และ JSON-LD ใช้ค่าเริ่มต้นของ backend (4.0s)
+  ✓  2 [chromium] › e2e/core-20d-return-window.spec.ts:224:5 › AC-102 (b): line A ส่งเมื่อ window + 1 วันก่อน, line B ส่งเมื่อวาน → ฟอร์มเลือกได้เฉพาะ B และ backend ตอบ 200 (3.4s)
+  ✘  3 [chromium] › e2e/core-20d-return-window.spec.ts:287:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก (1.1s)
+    Error: ข้อความของ RETURN_WINDOW_EXPIRED ต้องไม่ใช่ fallback
+    Expected: not "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+    test-results/core-20d-return-window-AC--8392d-ฟอร์มคงจำนวน-เหตุผลที่เลือก-chromium/test-failed-1.png
+  1 failed
+  2 passed (9.1s)
+### GREEN — e2e core-20d + core-71 (expected สร้างจาก MedusaApiError code RETURN_WINDOW_EXPIRED)
+  ✓  2 [chromium] › e2e/core-20d-return-window.spec.ts:142:5 › AC-102 (a): region ไม่ตั้ง return_window_days → ปุ่มขอคืน, หน้า /returns และ JSON-LD ใช้ค่าเริ่มต้นของ backend (3.4s)
+  ✓  1 [chromium] › e2e/core-71-return-contact-store.spec.ts:62:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error location ไม่มีของ → เห็น return-contact-store (ไทย + ลิงก์ /contact) ไม่เห็น ลองใหม่ (4.0s)
+  ✓  4 [chromium] › e2e/core-71-return-contact-store.spec.ts:93:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error อื่น → ข้อความเดิม (return-error) ไม่มี return-contact-store (2.1s)
+  ✓  3 [chromium] › e2e/core-20d-return-window.spec.ts:219:5 › AC-102 (b): line A ส่งเมื่อ window + 1 วันก่อน, line B ส่งเมื่อวาน → ฟอร์มเลือกได้เฉพาะ B และ backend ตอบ 200 (3.1s)
+  ✓  5 [chromium] › e2e/core-20d-return-window.spec.ts:282:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก (1.6s)
+  5 passed (8.9s)
+### พิสูจน์ว่า test จับการตัดสินผิดได้ — ชั่วคราวเปลี่ยน code ใน RETURN_ERRORS เป็น RETURN_WINDOW_EXPIRED_BROKEN (คืนแล้ว)
+  ✘  1 [chromium] › e2e/core-20d-return-window.spec.ts:282:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก (95ms)
+    Error: ข้อความของ RETURN_WINDOW_EXPIRED ต้องไม่ใช่ fallback
+    Expected: not "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+    test-results/core-20d-return-window-AC--8392d-ฟอร์มคงจำนวน-เหตุผลที่เลือก-chromium/test-failed-1.png
+  1 failed
+### RED nit — IDENTITY_EXISTS เทียบเท่ากัน: core-83 unit 1 failed | 11 passed ก่อนแก้ helper
+### GREEN — storefront vitest ทั้งชุด (node v22.23.3)
+ Test Files  116 passed (116)
+      Tests  1473 passed (1473)
+### GREEN — test:e2e:unit
+  151 passed (812ms)
+### typecheck/lint storefront: 0 error (28 warnings เดิม); backend ไม่ได้แก้ในรอบนี้
