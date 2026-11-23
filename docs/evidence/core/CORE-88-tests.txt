@@ -1,0 +1,64 @@
+# CORE-88 (spec 01 กฎข้อ 144, AC-185) — ผล test 2026-11-23 (local: integration runner บน Postgres ของ docker compose, Redis db 8)
+
+## RED (develop 7c6dd55c — search_options { match_strategy: "last", typo_tolerance: true } ทุก request)
+### integration: apps/backend/integration-tests/http/search-thai-substring.spec.ts (เพิ่มกรณี "ขา"/"  ขา  " → [] โดยยังใช้ body เดิม)
+    ✕ AC-174: คำไทยกลางคำ/ท้ายคำ/คำนำหน้าเจอสินค้าที่ตรง และคำที่ไม่เกี่ยวไม่เจอ (3589 ms)
+  ●  › AC-174: คำไทยกลางคำ/ท้ายคำ/คำนำหน้าเจอสินค้าที่ตรง และคำที่ไม่เกี่ยวไม่เจอ
+    expect(received).toEqual(expected) // deep equality
+    - Expected  -  2
+    + Received  + 10
+    @@ -1,15 +1,23 @@
+      Object {
+    -   "  ขา  ": Array [],
+    +   "  ขา  ": Array [
+    +     "e2e-core75-pants",
+    +     "sweatshirt",
+    +     "t-shirt",
+    +   ],
+        "shirt": Array [
+          "sweatshirt",
+          "t-shirt",
+        ],
+        "กางเกง": Array [
+    +     "e2e-core75-pants",
+    +   ],
+    +   "ขา": Array [
+          "e2e-core75-pants",
+    +     "sweatshirt",
+    +     "t-shirt",
+        ],
+    -   "ขา": Array [],
+        "ขายาว": Array [
+          "e2e-core75-pants",
+        ],
+        "ยีนส์": Array [
+          "e2e-core75-pants",
+      92 |         got[q] = (await search(q, headers)).sort()
+      93 |       }
+    > 94 |       expect(got).toEqual(Object.fromEntries(cases))
+         |                   ^
+      95 |
+      96 |       // เติมเว้นวรรคเอง: ผลใกล้เคียง (เสื้อสเวตเตอร์) หลุดมาได้ แต่สินค้าที่ตรงที่สุดต้องอยู่อันดับแรก
+      97 |       expect((await search("เสื้อ ยืด", headers))[0]).toBe("t-shirt")
+      at Object.toEqual (integration-tests/http/search-thai-substring.spec.ts:94:19)
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+### Vitest: apps/storefront/src/lib/search-client.test.ts
+     × คำค้น "ขา" (trim แล้ว < 3 code point) → ไม่ส่ง typo_tolerance 3ms
+     × คำค้น "  ขา  " (trim แล้ว < 3 code point) → ไม่ส่ง typo_tolerance 0ms
+     × คำค้น "ab" (trim แล้ว < 3 code point) → ไม่ส่ง typo_tolerance 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  3 failed | 16 passed (19)
+
+## GREEN (transformQuery ส่ง typo_tolerance เฉพาะคำค้นที่ trim แล้ว ≥ 3 code point)
+### integration
+    ✓ AC-174 + AC-185: คำไทยกลางคำ/ท้ายคำ/คำนำหน้าเจอสินค้าที่ตรง คำที่ไม่เกี่ยวและคำ 2 อักขระไม่เจอ (3789 ms)
+Tests:       1 passed, 1 total
+### Vitest: search-client.test.ts
+      Tests  19 passed (19)
+### Vitest storefront ทั้งชุด
+ Test Files  114 passed (114)
+      Tests  1428 passed (1428)
+### Playwright project unit (pnpm --filter storefront test:e2e:unit)
+  145 passed (3.0s)
+### lint (0 errors) + typecheck storefront/backend ผ่าน

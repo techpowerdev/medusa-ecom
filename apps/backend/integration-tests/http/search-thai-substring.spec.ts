@@ -6,9 +6,12 @@ import { getPublishableKey } from "../../src/scripts/print-publishable-key"
 
 jest.setTimeout(120 * 1000)
 
-// ต้องตรงกับ `additionalSearchParameters.search_options` ใน apps/storefront/src/lib/search-client.ts
-// (Vitest `search-client.test.ts` ตรวจว่า adapter ส่งค่านี้จริง)
-const SEARCH_OPTIONS = { match_strategy: "last", typo_tolerance: true }
+// ต้องตรงกับ `search_options` ที่ apps/storefront/src/lib/search-client.ts ส่ง (Vitest `search-client.test.ts` ตรวจว่า
+// adapter ส่งค่านี้จริง): CORE-88 (กฎข้อ 144) typo_tolerance เฉพาะคำค้นที่ trim แล้ว ≥ 3 code point
+const searchOptions = (q: string) =>
+  [...q.trim()].length >= 3
+    ? { match_strategy: "last", typo_tolerance: true }
+    : { match_strategy: "last" }
 
 // CORE-75 (spec 01 กฎข้อ 133, AC-174): ชื่อไทยไม่มีเว้นวรรค → parser ของ Postgres ได้ lexeme เดียว ค้นได้แค่คำนำหน้า
 // body เดียวกับที่ storefront ส่ง — seed: "เสื้อยืด Medusa" (t-shirt),
@@ -26,7 +29,7 @@ medusaIntegrationTestRunner({
               entity: "product",
               filters: { q },
               pagination: { take: 12, skip: 0 },
-              search_options: SEARCH_OPTIONS,
+              search_options: searchOptions(q),
             },
           ],
         },
@@ -38,7 +41,7 @@ medusaIntegrationTestRunner({
       )
     }
 
-    it("AC-174: คำไทยกลางคำ/ท้ายคำ/คำนำหน้าเจอสินค้าที่ตรง และคำที่ไม่เกี่ยวไม่เจอ", async () => {
+    it("AC-174 + AC-185: คำไทยกลางคำ/ท้ายคำ/คำนำหน้าเจอสินค้าที่ตรง คำที่ไม่เกี่ยวและคำ 2 อักขระไม่เจอ", async () => {
       const container = getContainer()
       await seedThailand({ container, args: [] })
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
@@ -83,6 +86,9 @@ medusaIntegrationTestRunner({
         // คำที่ไม่ควรเจอ
         ["หมวก", []],
         ["รองเท้า", []],
+        // CORE-88 (กฎข้อ 144, AC-185): คำ 2 อักขระไม่อยู่ในชื่อสินค้าใด — เดิม word_similarity กับ "ขนาด:M" ≈ 0.33 > 0.3 ได้ทั้ง catalog
+        ["ขา", []],
+        ["  ขา  ", []],
       ]
       const got: Record<string, string[]> = {}
       for (const [q] of cases) {
