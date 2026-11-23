@@ -1034,7 +1034,7 @@ GB-22 ขยาย allow-list ของ GB-8 (`order.payment_status`) — บั
 ## Follow-up รอบ 41 (2026-11-21 — owner: ทุกข้อใน release v0.3.0)
 ที่มา: owner ล็อก campaign ของแคมเปญ group buy ทั้งหมด (ต่อจาก GB-25) + review เสนอให้ clone `GB-*` ใช้ campaign จาก link; qa GB-24 (นับถอยหลัง "เหลือเวลา" ขึ้นตอนแคมเปญยังไม่เริ่ม); nits review #447 (GB-20b)
 ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเขตล็อก campaign)
-เพิ่มภายหลัง: GB-29 (owner ตัดสิน 2026-11-22 จาก review #488 — กฎข้อ 54, AC-72), GB-30 (owner สั่ง 2026-11-23 จากงานต่อเนื่องของ PR #493 — กฎข้อ 55, AC-73, ADR-026 ภาคผนวก 2026-11-23)
+เพิ่มภายหลัง: GB-29 (owner ตัดสิน 2026-11-22 จาก review #488 — กฎข้อ 54, AC-72), GB-30 (owner สั่ง 2026-11-23 จากงานต่อเนื่องของ PR #493 กัน DELETE ต้นแบบ — กฎข้อ 55; owner ตัดสินเพิ่มวันเดียวกัน กันเปิดใช้ต้นแบบ `status: "active"` — กฎข้อ 56; AC-73, ADR-026 ภาคผนวก 2026-11-23)
 
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 41)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
@@ -1043,6 +1043,7 @@ ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเข�
 | เพิ่ม/ถอด promotion ของ campaign | `POST /admin/campaigns/:id/promotions` ของ Medusa | ขยาย middleware ของ GB-25 (กฎข้อ 51a) |
 | ตั้ง `campaign_id` ตอนสร้าง/แก้ promotion | `POST /admin/promotions` และ `POST /admin/promotions/:id` ของ Medusa (ส่วน "Campaign" ของหน้า promotion ใช้ `useUpdatePromotion`) | ขยาย middleware ของ GB-25 (กฎข้อ 54) |
 | ลบ promotion | `DELETE /admin/promotions/:id` ของ Medusa (`deletePromotionsWorkflow`; ปุ่ม Delete ของ dashboard เรียก route นี้) — ตรวจ `@medusajs/medusa` 2.22.1: เป็น admin route เดียวที่ลบ promotion (`/rules/batch`, `/target-rules/batch`, `/buy-rules/batch` ลบเฉพาะ rule; `DELETE /admin/campaigns/:id` cascade เฉพาะ budget ไม่ลบ promotion; ไม่มี bulk delete) | ขยาย middleware ของ GB-25 บน matcher `DELETE /admin/promotions/:id` ที่ลงทะเบียนอยู่แล้ว (กฎข้อ 55) |
+| เปิดใช้ promotion (`status`) | `POST /admin/promotions/:id` ของ Medusa (`updatePromotionsWorkflow` → `updatePromotionsStatusWorkflow` เมื่อ `status` ต่างจากเดิม; ปุ่มเปลี่ยนสถานะของ dashboard เรียก route นี้); cart ใช้ได้เฉพาะ promotion `status: "active"` (`listActivePromotions` ของ promotion module) — ตรวจ 2.22.1: route อื่นเปลี่ยน status ไม่ได้ (rule batch ไม่มี `status`; `POST /admin/promotions` สร้าง promotion ใหม่ซึ่งไม่ใช่ต้นแบบ และ campaign group buy ถูกกันแล้วตามกฎข้อ 54; ไม่มี job เปิดใช้อัตโนมัติ) | ขยาย middleware ของ GB-25 (กฎข้อ 56) |
 | นับถอยหลัง | `Countdown` ของเรา (`modules/common/components/countdown`) | ใช้ตามเดิม (กฎข้อ 52) |
 
 ### Business rules (รอบ 41)
@@ -1065,6 +1066,12 @@ ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเข�
     `GB-*` ยังตอบข้อความ locked ของกฎข้อ 48 ก่อน (guard ของ GB-25 อยู่หน้า matcher เดียวกัน); promotion อื่น → `next()` (Medusa ลบตามเดิม);
     เส้นทางภายใน `DELETE /admin/group-buy/campaigns/:id` (`deleteGroupBuyCampaignWorkflow` ลบต้นแบบผ่าน `deletePromotionsWorkflow.runAsStep`) ไม่ผ่าน route นี้จึงยังลบแคมเปญ `draft` พร้อมต้นแบบได้;
     ใช้ `MiddlewareRoute` ของ Medusa ใน `adminPromotionLockMiddlewares` (ไม่แตะ `middlewares.ts`, ไม่เพิ่ม model/migration/workflow hook)
+56. (GB-30 — owner ตัดสินเพิ่ม 2026-11-23, ADR-026 ภาคผนวก 2026-11-23) ต้นแบบ `GBT-*` ต้องคง `status: "draft"` ตามที่ `createGroupBuyCampaignWorkflow` สร้าง (`workflows/group-buy/campaign.ts:281`;
+    ไม่มีโค้ดของเราเปลี่ยน status ต้นแบบ ส่วน clone `GB-*` สร้างเป็น `active` เอง — `group-promotion.ts:53`) เพราะต้นแบบ `active` ทำให้ลูกค้าใส่โค้ด `GBT-*` เป็นส่วนลดตรงได้โดยไม่เข้ากลุ่ม:
+    `POST /admin/promotions/:id` ของต้นแบบที่ผูกแคมเปญ group buy ที่ body มี `status: "active"` → 400 `not_allowed` **ทุกสถานะของแคมเปญ และไม่ว่าสถานะปัจจุบันของต้นแบบเป็นอะไร** (ทั้ง request ไม่ถูกบันทึก แม้มี field อื่นปนมา)
+    ข้อความอังกฤษ "This promotion is the template of a group-buy campaign and cannot be activated; customers would get its discount without joining a group.";
+    body ที่ไม่มี key `status` หรือ `status` เป็น `draft`/`inactive` → ผ่านไปกฎข้อ 54 ตามเดิม (แก้ส่วนลด/rule ของต้นแบบได้ตาม Q5); ลำดับ guard บน `POST /admin/promotions/:id`: `GB-*` locked (กฎข้อ 48) → `campaign_id` (กฎข้อ 54) → `status` (ข้อนี้)
+    — อ่าน link template ครั้งเดียวต่อ request ร่วมกับ guard ของ GB-29 ได้; promotion อื่น (ไม่ผูก template) → `next()`
 
 ### Acceptance criteria (รอบ 41)
 - AC-69 (GB-26, กฎข้อ 51) ☑ (a–b ผ่าน: red บน develop+GB-25 3 เคส — (a) draft/active ได้ 200 แทน 400, (b) ต้นแบบนอก campaign ได้กลุ่มแทน `invalid_data`; unit red 7 เคส → green `group-buy-promotion-lock.spec.ts` 12/12 (รวม AC-67 7/7) + `group-buy-groups.spec.ts` 18/18; unit 1731 — `docs/evidence/group-buying/GB-26-tests.txt`) integration http — **ล้มบน develop+GB-25** ก่อน: (a) campaign ของแคมเปญ group buy `draft` และ `active`: `POST /admin/campaigns/:id/promotions { add: [<promotion ปกติ>] }` → 400; `{ remove: [<GBT-* id>] }` → 400; ค่าเดิมไม่เปลี่ยน;
@@ -1075,12 +1082,17 @@ ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเข�
 - AC-72 (GB-29, กฎข้อ 54) integration http — **ล้มบน develop** ก่อน: (a) แคมเปญ `draft` และ `active`: `POST /admin/promotions/<GBT-* id> { campaign_id: <campaign อื่น> }` และ `{ campaign_id: null }` → 400 ข้อความ template และ `campaign_id` ของต้นแบบไม่เปลี่ยน;
   (b) `POST /admin/promotions/<promotion ปกติ> { campaign_id: <campaign group buy> }` → 400 และ `POST /admin/promotions { ..., campaign_id: <campaign group buy> }` → 400 ไม่สร้าง promotion (ข้อความกฎข้อ 51a); (c) แก้ส่วนลดต้นแบบโดยไม่ส่ง `campaign_id` และส่ง `campaign_id` เดิม → 200 (Q5);
   (d) promotion ปกติกับ campaign ที่ไม่เกี่ยว: สร้างใน campaign/ถอด/ย้ายกลับ → 200 (regression); (e) `POST /admin/group-buy/campaigns` (`createGroupBuyCampaignWorkflow`) → 200 และ `GBT-*` อยู่ใน campaign ของ link; unit guard ทุกแขนง + การลงทะเบียน matcher
-- AC-73 (GB-30, กฎข้อ 55) integration http (`group-buy-promotion-lock.spec.ts`) — **ล้มบน develop+GB-29** ก่อน: (a) แคมเปญ `draft` และ `active`: `DELETE /admin/promotions/<GBT-* id>` → 400 `type: "not_allowed"` ข้อความมี `template`;
+- AC-73 (GB-30, กฎข้อ 55–56) integration http (`group-buy-promotion-lock.spec.ts`) — **ล้มบน develop+GB-29** ก่อน: (a) แคมเปญ `draft` และ `active`: `DELETE /admin/promotions/<GBT-* id>` → 400 `type: "not_allowed"` ข้อความมี `cannot be deleted` (ไม่ใช้แค่ `template` เพราะข้อความของกฎข้อ 54 ก็มีคำนี้);
   แล้ว `GET /admin/promotions/<GBT-* id>` → 200 และ `query.graph` ของแคมเปญยังได้ `promotion.id` เดิม; แคมเปญ `active` สร้างกลุ่มใหม่ได้หลังพยายามลบ (regression แบบ AC-69 (b));
   (b) `DELETE /admin/promotions/<promotion ปกติ>` (ทั้งที่อยู่ใน campaign ที่ไม่เกี่ยวกับ group buy และไม่อยู่ใน campaign) → 200 `deleted: true` และ `GET` → 404 (regression);
   (c) `DELETE /admin/promotions/<GB-* id>` → 400 ข้อความมี `locked` (ข้อความของกฎข้อ 48 ไม่ใช่ข้อความ template — ลำดับ guard);
   (d) `DELETE /admin/group-buy/campaigns/<draft id>` → 200 และ `GET /admin/promotions/<GBT-* id>` → 404 (regression AC-67 (e));
-  unit: guard ทุกแขนง (ต้นแบบทุกสถานะ `draft`/`active`/`ended` → throw; ไม่ผูก → `next()`; `GB-*` → ข้อความ locked) + `adminPromotionLockMiddlewares` มี guard ใหม่บน `DELETE /admin/promotions/:id` (ไม่อยู่บน POST)
+  (e) (กฎข้อ 56) แคมเปญ `draft` และ `active`: `POST /admin/promotions/<GBT-* id> { status: "active" }` และ `{ status: "active", application_method: { value: <ค่าใหม่> } }` → 400 `type: "not_allowed"` ข้อความมี `cannot be activated`;
+  แล้ว `GET /admin/promotions/<GBT-* id>` → `status: "draft"` และ `application_method.value` เป็นค่าเดิม (ไม่บันทึกบางส่วน);
+  (f) (กฎข้อ 56, Q5) `POST /admin/promotions/<GBT-* id> { application_method: { value: <ค่าใหม่> } }` (ไม่ส่ง `status`) และ `{ status: "inactive" }` → 200 และ `status` เป็น `draft`/`inactive` ตามที่ส่ง ไม่เป็น `active`; ต้นแบบที่สร้างจาก `POST /admin/group-buy/campaigns` มี `status: "draft"`;
+  (g) (regression) `POST /admin/promotions/<promotion ปกติ> { status: "active" }` → 200 และ `status: "active"`;
+  unit: guard ทุกแขนง (DELETE: ต้นแบบทุกสถานะแคมเปญ `draft`/`active`/`ended` → throw, ไม่ผูก → `next()`, `GB-*` → ข้อความ locked; POST status: `active` → throw, ไม่มี key/`draft`/`inactive` → `next()`, ไม่ผูก → `next()`)
+  + `adminPromotionLockMiddlewares`: guard ลบอยู่บน `DELETE /admin/promotions/:id` เท่านั้น และ guard status อยู่บน `POST /admin/promotions/:id`
 
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
@@ -1089,7 +1101,7 @@ ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเข�
 | GB-27 | ซ่อนนับถอยหลังเมื่อแคมเปญยังไม่เริ่ม (กฎข้อ 52); qa | `modules/group-buy/components/group-page/index.tsx`, `lib/util/group-page.ts` (+ test), e2e | ~10 LOC + ~50 LOC test | AC-70 | PR เอกสารรอบ 41 (GB-24 ☑) | `group-page/index.tsx` |
 | GB-28 | nits GB-20b: ข้อความ alert/log, ชื่อ workflow, idempotency อีเมล, batch slot (กฎข้อ 53) | `src/workflows/group-buy/membership-payment.ts`, `src/jobs/group-buy-deadline.ts`, `src/modules/resend/templates.ts`, test | ~40 LOC + ~120 LOC test | AC-71 | PR เอกสารรอบ 41 (GB-20b ☑) | `templates.ts` |
 | GB-29 | ปิดทางอ้อม: `campaign_id` ของ `GBT-*` / promotion อื่นที่ admin route ของ promotion (กฎข้อ 54) — owner ตัดสิน 2026-11-22 (review #488) | `src/api/admin/promotions/group-buy-lock.ts` (ของ GB-25/26), integration | ~40 LOC + ~180 LOC test | AC-72 | **GB-26 (#488)** | `group-buy-lock.ts` |
-| GB-30 | กัน `DELETE /admin/promotions/:id` ของต้นแบบ `GBT-*` (กฎข้อ 55) — owner สั่ง 2026-11-23 (follow-up PR #493) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/group-buy-promotion-lock.spec.ts` | ~25 LOC + ~120 LOC test | AC-73 | **GB-29 (#493)** + PR เอกสาร GB-30 | `group-buy-lock.ts`, `group-buy-promotion-lock.spec.ts` |
+| GB-30 | กัน `DELETE /admin/promotions/:id` ของต้นแบบ `GBT-*` (กฎข้อ 55) + กันเปลี่ยน `status` ของต้นแบบเป็น `active` ผ่าน `POST /admin/promotions/:id` (กฎข้อ 56) — owner สั่ง/ตัดสินเพิ่ม 2026-11-23 (follow-up PR #493) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/group-buy-promotion-lock.spec.ts` | ~45 LOC + ~200 LOC test | AC-73 | **GB-29 (#493)** + PR เอกสาร GB-30 | `group-buy-lock.ts`, `group-buy-promotion-lock.spec.ts` |
 
 ## Open questions
 - ~~**Q24**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** ล็อก `GB-<token>` ตลอดอายุกลุ่ม (ADR-026 accepted) → GB-25 — คำถามเดิม: (รอบ 40, ADR-026) "ล็อกส่วนลดตอน join" ตีความว่า **ส่วนลดของกลุ่ม (`GB-<token>`) แก้ไม่ได้ตลอดอายุกลุ่ม** เพื่อให้สมาชิกกลุ่มเดียวกันได้ส่วนลดเท่ากัน (ส่วนลดของแต่ละคนถูก freeze ใน draft order ตอน join อยู่แล้ว — กฎข้อ 5)
