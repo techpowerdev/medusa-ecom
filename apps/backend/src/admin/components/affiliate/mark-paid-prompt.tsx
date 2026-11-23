@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { affiliateKeys, markPayoutPaid, Payout } from "../../lib/affiliate"
 import { markPaidBody } from "../../lib/affiliate-payout"
 import { createSingleFlight } from "../../lib/single-flight"
+import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 /**
  * AF-12c (spec 05 กฎ 37c): กล่องยืนยัน mark paid พร้อมช่อง `reference` (ไม่บังคับ)
@@ -18,6 +19,8 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
   const queryClient = useQueryClient()
   const form = useForm({ defaultValues: { reference: "" } })
   const [submitOnce] = useState(createSingleFlight)
+  // spec 08 กฎ 51: ปิดแล้ว focus กลับปุ่ม … ของแถว (Prompt แบบ state ไม่มี Prompt.Trigger — Radix คืน focus ให้ BODY)
+  const restoreFocus = useRestoreOpenerFocus()
 
   // mark paid เปลี่ยนทั้ง payout และ entry ของมัน (approved → paid)
   const refetch = () =>
@@ -49,7 +52,7 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
 
   return (
     <Prompt open variant="confirmation" onOpenChange={(open) => !open && !markPaid.isPending && onClose()}>
-      <Prompt.Content>
+      <Prompt.Content {...restoreFocus}>
         <Form {...form}>
           <KeyboundForm noValidate onSubmit={confirm}>
             <Prompt.Header>
