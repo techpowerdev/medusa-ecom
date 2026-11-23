@@ -6,7 +6,7 @@ import { STOREFRONT_COUNTRY as CC } from "./support/medusa"
 test("AC-77: ลิงก์นโยบาย/ข้อกำหนดในฟอร์มสมัครชี้หน้าที่มีจริง", async ({ page, request, step }) => {
   await step("ฟอร์มสมัคร", async () => {
     await page.goto(`/${CC}/account`)
-    await page.getByTestId("register-button").click()
+    await page.getByTestId("login-to-register-button").click()
     await expect(page.getByTestId("register-page")).toBeVisible()
     await expect(page.locator('a[href*="/content/"]')).toHaveCount(0)
   })

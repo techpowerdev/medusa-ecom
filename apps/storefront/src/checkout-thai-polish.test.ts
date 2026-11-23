@@ -82,7 +82,7 @@ describe("server action ของ checkout ไม่ส่งข้อควา�
     const form = new FormData()
     form.set("code", "NOPE")
     expectThaiNotRaw(await submitPromotionForm(null, form))
-    expect(update).toHaveBeenCalledWith("/store/carts/cart_1", { promo_codes: ["NOPE"] })
+    expect(update).toHaveBeenCalledWith("/store/carts/cart_1", { promo_codes: ["NOPE"] }, { authorization: "Bearer t" })
   })
 
   const cart = { id: "cart_1", payment_collection: { id: "pay_col_1" } } as never

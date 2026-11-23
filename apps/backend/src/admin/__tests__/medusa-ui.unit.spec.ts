@@ -773,7 +773,7 @@ describe("partners: clamp ไม่กระพริบ + PartnerActions แบ
   it("PartnerActions: ActionMenu key={menuKey}, remountMenu() ก่อน onEdit และ Edit disabled: removing", () => {
     const src = read(PARTNERS)
     expect(src).toMatch(/<ActionMenu\s+key=\{menuKey\}/)
-    expect(src).toMatch(/const \[menuKey, remountMenu\] = useReducer\(/)
+    expect(src).toMatch(/const \{ menuKey, remountMenu, trigger \} = useRemountMenu\(\)/)
     expect(src).toMatch(/label: "Edit",[^}]*disabled: removing,[^}]*onClick: \(\) => \{\s*remountMenu\(\)\s*onEdit\(partner\)/)
   })
 })
@@ -1046,6 +1046,51 @@ describe("คอลัมน์ actions ของ DataTable ปิด tooltip �
 
   it.each(actionColumns)("%s: .display({ id: \"actions\" }) มี meta: { ___truncateTooltip: false }", (_file, obj) => {
     expect(optsOut(obj)).toBe(true)
+  })
+})
+
+// ADM-47 (spec 08 กฎ 51, AC-52): ฟอร์มที่เปิดจากเมนู … ของ programs/partners/payouts/affiliates ปิดแล้ว focus ปุ่ม … ของแถว
+// — remount เมนู + focus trigger ตัวใหม่ผ่าน hook กลาง useRemountMenu (ย้ายจาก ProgramActions ของ ADM-44 เมื่อมีผู้ใช้ ≥ 2 ที่)
+// และ Content ของฟอร์ม (Drawer/Prompt) spread handler ของ useRestoreOpenerFocus เพื่อคืน focus ให้ trigger นั้น
+describe("เมนู … คืน focus หลังปิดฟอร์ม (spec 08 กฎ 51, AC-52, ADM-47)", () => {
+  const TABLES = [
+    ["components/affiliate/programs-table.tsx", "affiliate-program-row-actions"],
+    ["components/evoucher/partners-section.tsx", "evoucher-partner-row-actions"],
+    ["components/affiliate/payouts-table.tsx", "affiliate-payout-row-actions"],
+    ["components/affiliate/affiliates-table.tsx", "affiliate-row-actions"],
+  ]
+  // ฟอร์มที่เปิดจาก menuitem และ Content ของมัน
+  const FORMS = [
+    ["components/affiliate/program-form.tsx", "Drawer.Content"],
+    ["components/evoucher/partners-section.tsx", "Drawer.Content"],
+    ["components/affiliate/mark-paid-prompt.tsx", "Prompt.Content"],
+    ["components/affiliate/payout-info-drawer.tsx", "Drawer.Content"],
+  ]
+
+  it.each(TABLES)("%s: ใช้ useRemountMenu() — ActionMenu key={menuKey} และ trigger %s มี ref={trigger}", (file, testid) => {
+    const src = read(file)
+    expect(src).toMatch(/import \{ useRemountMenu \} from "\.\.\/common\/use-remount-menu"/)
+    expect(src).toMatch(/const \{ menuKey, remountMenu, trigger \} = useRemountMenu\(\)/)
+    expect(src).toMatch(/<ActionMenu\s+key=\{menuKey\}/)
+    expect(src).toMatch(new RegExp(`<IconButton ref=\\{trigger\\}[^>]*data-testid="${testid}"`))
+    expect(src).toMatch(/onClick: \(\) => \{\s*remountMenu\(\)/)
+  })
+
+  it("ไม่มี useReducer remount เมนูแบบ inline เหลือใน src/admin (logic อยู่ใน hook กลางตัวเดียว)", () => {
+    expect(adminFiles.filter((file) => /useReducer\(\(k: number\) => k \+ 1/.test(read(file)))).toEqual([
+      "components/common/use-remount-menu.ts",
+    ])
+  })
+
+  it("use-remount-menu: focus trigger ใน useLayoutEffect เมื่อ menuKey เปลี่ยน (ก่อน effect ของ FocusScope ในฟอร์ม)", () => {
+    const src = read("components/common/use-remount-menu.ts")
+    expect(src).toMatch(/useLayoutEffect\(\(\) => \{\s*if \(menuKey\) trigger\.current\?\.focus\(\)\s*\}, \[menuKey\]\)/)
+  })
+
+  it.each(FORMS)("%s: <%s spread handler ของ useRestoreOpenerFocus", (file, content) => {
+    const src = read(file)
+    expect(src).toMatch(/\bconst restoreFocus = useRestoreOpenerFocus\(\)/)
+    expect(src).toMatch(new RegExp(`<${content.replace(".", "\\.")}\\s+\\{\\.\\.\\.restoreFocus\\}`))
   })
 })
 

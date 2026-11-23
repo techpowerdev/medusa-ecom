@@ -660,11 +660,11 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่มีขอ
 51. (AF-27 — hygiene) ผู้เรียก `summarizeCommissionEntries` ทุกตัวส่ง `net_pending_reversals: true` แล้ว (`/affiliate/me/earnings`, `/admin/affiliate/reports/summary`) → ลบ flag และแขนง `grouped`
     (`src/modules/affiliate/service.ts` ~`:24-26`, ~`:139-144`) ให้การรวมแบบสุทธิ (กฎ 48b) เป็นพฤติกรรมเดียว; ผลของทั้งสอง route ไม่เปลี่ยน; test ที่เรียกแบบไม่ส่ง flag ปรับตาม
 ### Acceptance criteria (รอบ 42)
-- AC-60 (AF-27, กฎ 51) grep: ไม่มี `net_pending_reversals` ใน `apps/backend/src`; AC-57 และ AC-58 ผ่านโดยไม่แก้ค่าที่คาด; `pnpm --filter backend typecheck` ผ่าน
+- ☑ AC-60 (AF-27, กฎ 51) grep: ไม่มี `net_pending_reversals` ใน `apps/backend/src`; AC-57 และ AC-58 ผ่านโดยไม่แก้ค่าที่คาด; `pnpm --filter backend typecheck` ผ่าน
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| AF-27 | ลบโหมด grouped ของ `summarizeCommissionEntries` (กฎ 51) | `src/modules/affiliate/service.ts`, สอง route ข้างบน, test | ~−20 LOC | AC-60 | PR เอกสารปิดรอบ 41 | — |
+| AF-27 | ☑ #528 — ลบโหมด grouped ของ `summarizeCommissionEntries` (กฎ 51) | `src/modules/affiliate/service.ts`, สอง route ข้างบน, test | ~−20 LOC | AC-60 | PR เอกสารปิดรอบ 41 | — |
 
 ## Open questions (รอบ 32 — 2026-11-17)
 - ~~**Q21**~~ ✅ **owner ตอบ ก 2026-11-17** → `hold_days` และ `attribution_window_days` ≤ 36500 รวมใน GB-17 (spec 04 กฎข้อ 40 (ข), AC-60 (c)); คำถามเดิม:

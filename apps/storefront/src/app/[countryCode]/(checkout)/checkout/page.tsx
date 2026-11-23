@@ -23,7 +23,8 @@ export default async function Checkout(props: {
   // PAY-12 (spec 06 กฎข้อ 14; qa #481 D-2): กลับจาก /api/payment-return (มี cart_id) แต่ cart ถูก complete แล้ว — cookie ถูกล้าง
   // ตอนไม่มี jwt และ restoreActiveCart ข้าม cart ที่ complete, หรือ cookie ยังชี้ cart ที่ complete → หน้า confirmed ของ order นั้น
   // หา order ไม่พบ → รายการคำสั่งซื้อ (ลูกค้าจ่ายแล้ว — ไม่แสดง 404)
-  if (typeof cart_id === "string" && CART_ID_RE.test(cart_id) && (!cart || cart.completed_at)) {
+  // PAY-18 (กฎข้อ 20b): cookie ชี้ cart อื่น (cart.id ≠ cart_id) → ทางหา order เดียวกัน ไม่ render ขั้น review ของ cart อื่น
+  if (typeof cart_id === "string" && CART_ID_RE.test(cart_id) && (!cart || cart.completed_at || cart.id !== cart_id)) {
     const orderId = await findOrderIdByCart(cart_id)
     redirect(orderId ? `/${countryCode}/order/${orderId}/confirmed` : `/${countryCode}/account/orders`)
   }

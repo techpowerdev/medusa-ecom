@@ -16,7 +16,7 @@ test("AC-178: 375px register-login-link สูง ≥ 44px และกดแล
   await step("สมัครด้วยอีเมลที่มีบัญชีแล้ว → เห็น register-login-link สูง ≥ 44px", async () => {
     await page.goto(`/${CC}/account`)
     await expect(page.getByTestId("login-page")).toBeVisible()
-    await page.getByTestId("register-button").click()
+    await page.getByTestId("login-to-register-button").click()
     const form = page.getByTestId("register-page")
     await expect(form).toBeVisible()
     await form.getByTestId("first-name-input").fill("สมชาย")

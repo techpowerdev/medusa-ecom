@@ -4,10 +4,11 @@ import { castNumber, getLocaleAmount } from "@medusajs/dashboard/lib"
 import { CheckCircle, EllipsisHorizontal, XCircle } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useMemo, useReducer, useState } from "react"
+import { useMemo, useState } from "react"
 import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
 import { canCancelPayout, canMarkPaid } from "../../lib/affiliate-payout"
 import { createSingleFlight } from "../../lib/single-flight"
+import { useRemountMenu } from "../common/use-remount-menu"
 import { AffiliateCell, AffiliateListTable, useAffiliateList, useAffiliateNames } from "./list-table"
 import { MarkPaidPrompt } from "./mark-paid-prompt"
 import { PayoutFormModal } from "./payout-form"
@@ -25,9 +26,8 @@ const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p:
   const queryClient = useQueryClient()
   // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → กด Cancel ซ้ำถูกข้าม (กฎ 4)
   const [cancelOnce] = useState(createSingleFlight)
-  // เปิด modal/drawer จาก menuitem: mount เมนูใหม่ใน commit เดียวกัน (ปิดทันทีไม่รอ animation) — ไม่งั้น Radix คนละสำเนา
-  // ของเมนูกับ modal คืนค่า pointer-events ของ body สลับกันจนหน้าเป็น `none` ค้างหลังปิด modal (คลิกอะไรไม่ได้)
-  const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
+  // เปิดกล่อง mark paid จาก menuitem: remount เมนู (กฎ 27b) + focus ปุ่ม … ตัวใหม่ให้กล่องคืน focus เมื่อปิด (spec 08 กฎ 51)
+  const { menuKey, remountMenu, trigger } = useRemountMenu()
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("payouts") })
   const mutationKey = affiliateKeys.payoutAction(payout.id)
@@ -88,7 +88,7 @@ const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p:
   // แถวที่ไม่มี action (paid/cancelled) ไม่ render trigger (spec 08 กฎ 10)
   return actions.length ? (
     <ActionMenu key={menuKey} groups={[{ actions }]}>
-      <IconButton size="small" variant="transparent" data-testid="affiliate-payout-row-actions">
+      <IconButton ref={trigger} size="small" variant="transparent" data-testid="affiliate-payout-row-actions">
         <EllipsisHorizontal />
       </IconButton>
     </ActionMenu>

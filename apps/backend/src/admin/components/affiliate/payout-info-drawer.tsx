@@ -7,6 +7,7 @@ import { AdminAffiliate } from "../../lib/affiliate"
 import { PAYOUT_INFO_FIELDS, PayoutInfo, payoutInfoForm, payoutInfoSchema } from "../../lib/affiliate-account"
 import { createSingleFlight } from "../../lib/single-flight"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
+import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 const LABELS: Record<keyof PayoutInfo, string> = {
   bank_name: "Bank name",
@@ -68,10 +69,12 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
 
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่าง Save/Clear ไม่ปิด
   const confirmClose = useConfirmDiscard({ form, isPending: pending, onClose })
+  // spec 08 กฎ 51: ปิดแล้ว focus กลับปุ่ม … ของแถว (Drawer แบบ state ไม่มี Drawer.Trigger — Radix คืน focus ให้ BODY)
+  const restoreFocus = useRestoreOpenerFocus()
 
   return (
     <Drawer open onOpenChange={confirmClose}>
-      <Drawer.Content data-testid="affiliate-payout-info-drawer">
+      <Drawer.Content {...restoreFocus} data-testid="affiliate-payout-info-drawer">
         <Form {...form}>
           <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
             <Drawer.Header>

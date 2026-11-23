@@ -1,0 +1,66 @@
+# PAY-18 (spec 06 กฎข้อ 20, AC-31) — ผลทดสอบในเครื่อง 2026-11-24
+# backend medusa develop :9210, storefront next dev :8210, DB medusa_r42_pay18 (seed, Stripe key ปลอม), node 22
+
+## RED 1 — unit ก่อนแก้ route/หน้า checkout (vitest src/core-29-active-cart.test.ts src/pay-12-checkout-return.test.ts)
+         × cookie ชี้ cart อื่น (cart.id ≠ cart_id) → หา order ของ cart_id → หน้า confirmed 8ms
+         × cookie ชี้ cart อื่นและหา order ไม่พบ → รายการคำสั่งซื้อ 3ms
+         × redirect_status=failed + อ่าน cart 500 → /th/checkout?step=payment ไม่ complete 5ms
+         × redirect_status=failed + อ่าน cart 503 → /th/checkout?step=payment ไม่ complete 1ms
+         × redirect_status=failed + อ่าน cart network (TypeError ไม่มี status) → /th/checkout?step=payment ไม่ complete 0ms
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+     FAIL  src/core-29-active-cart.test.ts > payment-return อ่าน cart ไม่สำเร็จ (PAY-18) > redirect_status=failed + อ่าน cart 500 → /th/checkout?step=payment ไม่ complete
+     FAIL  src/core-29-active-cart.test.ts > payment-return อ่าน cart ไม่สำเร็จ (PAY-18) > redirect_status=failed + อ่าน cart 503 → /th/checkout?step=payment ไม่ complete
+     FAIL  src/core-29-active-cart.test.ts > payment-return อ่าน cart ไม่สำเร็จ (PAY-18) > redirect_status=failed + อ่าน cart network (TypeError ไม่มี status) → /th/checkout?step=payment ไม่ complete
+    AssertionError: expected 'http://shop.test/th/checkout?step=rev…' to be 'http://shop.test/th/checkout?step=pay…' // Object.is equality
+     FAIL  src/pay-12-checkout-return.test.ts > หน้า /checkout?step=review&cart_id= (กลับจาก payment-return) > cookie ชี้ cart อื่น (cart.id ≠ cart_id) → หา order ของ cart_id → หน้า confirmed
+    AssertionError: promise resolved "{ …(8) }" instead of rejecting
+     FAIL  src/pay-12-checkout-return.test.ts > หน้า /checkout?step=review&cart_id= (กลับจาก payment-return) > cookie ชี้ cart อื่นและหา order ไม่พบ → รายการคำสั่งซื้อ
+    AssertionError: promise resolved "{ …(8) }" instead of rejecting
+          Tests  5 failed | 50 passed (55)
+
+## RED 2 — e2e chromium ก่อนเพิ่ม CartErrorNotice (e2e/pay-18-cart-error-notice-clear.spec.ts)
+    
+    Running 1 test using 1 worker
+    
+      ✘  1 [chromium] › e2e/pay-18-cart-error-notice-clear.spec.ts:17:5 › AC-31: แก้จำนวนสำเร็จ → cart-error-notice หายและ URL ไม่มี error (13.5s)
+    
+    
+      1) [chromium] › e2e/pay-18-cart-error-notice-clear.spec.ts:17:5 › AC-31: แก้จำนวนสำเร็จ → cart-error-notice หายและ URL ไม่มี error › แก้จำนวนเป็น 2 สำเร็จ → notice หาย, URL ไม่มี error, history ไม่เพิ่ม 
+    
+        Error: expect(locator).toHaveCount(expected) failed
+    
+        Locator:  getByTestId('cart-error-notice')
+        Expected: 0
+        Received: 1
+        Timeout:  5000ms
+    
+        Call log:
+          - Expect "toHaveCount" getByTestId('cart-error-notice') with timeout 5000ms
+          - waiting for getByTestId('cart-error-notice')
+            14 × locator resolved to 1 element
+               - unexpected value "1"
+    
+    
+
+## GREEN — unit storefront ทั้งชุด (pnpm --filter storefront test:unit)
+     Test Files  117 passed (117)
+          Tests  1829 passed (1829)
+
+## GREEN — e2e chromium (spec ที่อ้างหน้า cart?error= / payment-return: pay-12 + pay-18)
+    
+    Running 3 tests using 2 workers
+    
+      ✓  2 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:21:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก (10.4s)
+      ✓  1 [chromium] › e2e/pay-18-cart-error-notice-clear.spec.ts:17:5 › AC-31: แก้จำนวนสำเร็จ → cart-error-notice หายและ URL ไม่มี error (11.1s)
+      ✓  3 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:81:5 › AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow (21.7s)
+    
+      3 passed (34.7s)
+
+## GREEN — pnpm --filter storefront test:e2e:unit
+      151 passed (2.0s)
+
+## typecheck/lint storefront
+    pnpm --filter storefront typecheck → exit 0
+    pnpm --filter storefront lint → 0 errors (warning เดิม 28 ไม่มีในไฟล์ที่แตะ)
+
+## ให้ CI พิสูจน์: flow ที่ใช้ Stripe จริง (payments-*.spec.ts, pay-9) และชุด e2e เต็ม

@@ -11,7 +11,7 @@ test.use({ evidenceTarget: { feature: "core", taskId: "CORE-73" } })
 const submitRegister = async (page: Page, email: string, password: string) => {
   await page.goto(`/${CC}/account`)
   await expect(page.getByTestId("login-page")).toBeVisible()
-  await page.getByTestId("register-button").click()
+  await page.getByTestId("login-to-register-button").click()
   const form = page.getByTestId("register-page")
   await expect(form).toBeVisible()
   await form.getByTestId("first-name-input").fill("สมชาย")

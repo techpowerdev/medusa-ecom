@@ -1,5 +1,5 @@
 import { STORE_CONTENT } from "@lib/store-content";
-import { Button, Heading } from "@modules/common/components/ui";
+import { buttonClassName, Heading } from "@modules/common/components/ui";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 
 // CORE-18: เนื้อหาจาก src/lib/store-content.ts (placeholder ไทย, TODO(owner-content))
@@ -24,8 +24,12 @@ const Hero = () => {
             {hero.subtitle}
           </Heading>
         </span>
-        <LocalizedClientLink href={hero.ctaHref} data-testid="hero-cta">
-          <Button variant="secondary">{hero.ctaLabel}</Button>
+        <LocalizedClientLink
+          href={hero.ctaHref}
+          className={buttonClassName({ variant: "secondary" })}
+          data-testid="hero-cta"
+        >
+          {hero.ctaLabel}
         </LocalizedClientLink>
       </div>
     </div>

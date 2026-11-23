@@ -284,4 +284,99 @@ describe("ลงทะเบียนใน src/api/middlewares.ts", () => {
     expect(list.indexOf(guardPromotionCampaign)).toBeGreaterThanOrEqual(0)
     expect(list.indexOf(guardPromotionCampaign)).toBeLessThan(list.indexOf(guardTemplateStatus))
   })
+
+  // GB-31 (spec 04 กฎข้อ 57b, AC-74b): entry ของ guardGroupPromotion อยู่ก่อน guardTemplateDelete บน DELETE /admin/promotions/:id
+  // → DELETE GB-* ได้ข้อความ locked (กฎข้อ 48) ก่อนข้อความ template (กฎข้อ 55)
+  it("ลำดับบน DELETE /admin/promotions/:id: GB-* locked (กฎข้อ 48) → ต้นแบบ (กฎข้อ 55)", () => {
+    const onDelete = routes.filter((r) => r.matcher === "/admin/promotions/:id" && r.methods?.includes("DELETE"))
+    const at = (guard: unknown) => onDelete.findIndex((r) => r.middlewares?.includes(guard))
+    expect(at(guardGroupPromotion)).toBeGreaterThanOrEqual(0)
+    expect(at(guardGroupPromotion)).toBeLessThan(at(guardTemplateDelete))
+  })
+
+  // GB-31 (กฎข้อ 57b, AC-74b): guard ทุกตัวบน matcher เดียวกันอ่าน link ครั้งเดียวต่อ request ต่อ entity (เดิม promotion :id ถูก query 2–3 ครั้ง)
+  describe("request เดียวผ่าน guard ทุกตัวตามลำดับที่ลงทะเบียน → query.graph 1 ครั้งต่อ entity", () => {
+    const guards = new Set<unknown>([
+      guardGroupPromotion,
+      guardCampaignGroupPromotions,
+      guardGroupBuyCampaign,
+      guardPromotionCampaign,
+      guardTemplateDelete,
+      guardTemplateStatus,
+    ])
+
+    // รัน guard ของเราตามลำดับใน middlewares.ts เหมือน router: หยุดเมื่อ guard ไม่เรียก next() หรือ throw
+    async function runChain(method: string, matcher: string, req: unknown) {
+      const chain = routes
+        .filter((r) => r.matcher === matcher && r.methods?.includes(method))
+        .flatMap((r) => (r.middlewares ?? []).filter((m) => guards.has(m))) as ((...args: unknown[]) => Promise<void>)[]
+      for (const guard of chain) {
+        let passed = false
+        await guard(req, {}, () => {
+          passed = true
+        })
+        if (!passed) {
+          return
+        }
+      }
+    }
+
+    function setupChain(rows: Record<string, Record<string, unknown>[]>, id: string, body?: unknown) {
+      const graph = jest.fn(async ({ entity }: { entity: string }) => ({ data: rows[entity] ?? [] }))
+      const services: Record<string, unknown> = { [ContainerRegistrationKeys.QUERY]: { graph } }
+      const req = { params: { id }, body, scope: { resolve: (key: string) => services[key] } } as any
+      const entities = () => graph.mock.calls.map(([arg]: any) => arg.entity)
+      return { req, graph, entities }
+    }
+    const template = { id: "p_tpl", campaign_id: "camp_gb", group_buy_group: null, group_buy_campaign: { id: "gbc_1" } }
+    const normal = { id: "p_norm", campaign_id: null, group_buy_group: null, group_buy_campaign: null }
+    const group = { id: "p_gb", campaign_id: "camp_gb", group_buy_group: { id: "gbgrp_1" }, group_buy_campaign: null }
+
+    it("POST ต้นแบบ { campaign_id เดิม, status: draft } → promotion 1 ครั้ง และผ่าน", async () => {
+      const { req, entities } = setupChain({ promotion: [template] }, "p_tpl", { campaign_id: "camp_gb", status: "draft" })
+      await runChain("POST", "/admin/promotions/:id", req)
+      expect(entities()).toEqual(["promotion"])
+    })
+
+    it("POST ต้นแบบ { campaign_id เดิม, status: active } → promotion 1 ครั้ง และ cannot be activated", async () => {
+      const { req, entities } = setupChain({ promotion: [template] }, "p_tpl", { campaign_id: "camp_gb", status: "active" })
+      await expect(runChain("POST", "/admin/promotions/:id", req)).rejects.toMatchObject({
+        message: GROUP_BUY_TEMPLATE_ACTIVATE_MESSAGE,
+      })
+      expect(entities()).toEqual(["promotion"])
+    })
+
+    it("POST promotion อื่น { campaign_id ใหม่, status: active } → promotion 1 + campaign 1 ครั้ง", async () => {
+      const { req, entities } = setupChain(
+        { promotion: [normal], campaign: [{ id: "camp_other", group_buy_campaign: null }] },
+        "p_norm",
+        { campaign_id: "camp_other", status: "active" }
+      )
+      await runChain("POST", "/admin/promotions/:id", req)
+      expect(entities().sort()).toEqual(["campaign", "promotion"])
+    })
+
+    it("POST GB-* { campaign_id } → ข้อความ locked และ promotion 1 ครั้ง", async () => {
+      const { req, entities } = setupChain({ promotion: [group] }, "p_gb", { campaign_id: null })
+      await expect(runChain("POST", "/admin/promotions/:id", req)).rejects.toMatchObject({
+        message: GROUP_PROMOTION_LOCKED_MESSAGE,
+      })
+      expect(entities()).toEqual(["promotion"])
+    })
+
+    it.each([
+      ["ต้นแบบ", template, GROUP_BUY_TEMPLATE_DELETE_MESSAGE],
+      ["GB-*", group, GROUP_PROMOTION_LOCKED_MESSAGE],
+    ])("DELETE %s → promotion 1 ครั้ง", async (_name, row, message) => {
+      const { req, entities } = setupChain({ promotion: [row] }, row.id)
+      await expect(runChain("DELETE", "/admin/promotions/:id", req)).rejects.toMatchObject({ message })
+      expect(entities()).toEqual(["promotion"])
+    })
+
+    it("DELETE promotion อื่น → promotion 1 ครั้ง และผ่าน", async () => {
+      const { req, entities } = setupChain({ promotion: [normal] }, "p_norm")
+      await runChain("DELETE", "/admin/promotions/:id", req)
+      expect(entities()).toEqual(["promotion"])
+    })
+  })
 })

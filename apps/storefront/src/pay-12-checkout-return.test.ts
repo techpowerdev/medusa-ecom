@@ -85,6 +85,22 @@ describe("หน้า /checkout?step=review&cart_id= (กลับจาก pay
     await expect(open(null, "cart_pay")).rejects.toThrow("REDIRECT /th/account/orders")
   })
 
+  // PAY-18 (spec 06 กฎข้อ 20b, AC-31): cookie ชี้ cart อื่น (เช่น cart ใหม่หลัง complete) → ทางหา order ของ cart_id ไม่ render review ของ cart อื่น
+  it("cookie ชี้ cart อื่น (cart.id ≠ cart_id) → หา order ของ cart_id → หน้า confirmed", async () => {
+    findOrder.mockResolvedValue("order_1")
+    await expect(open({ id: "cart_other", completed_at: null, items: [{ id: "i" }] }, "cart_pay")).rejects.toThrow(
+      "REDIRECT /th/order/order_1/confirmed"
+    )
+    expect(findOrder).toHaveBeenCalledWith("cart_pay")
+  })
+
+  it("cookie ชี้ cart อื่นและหา order ไม่พบ → รายการคำสั่งซื้อ", async () => {
+    findOrder.mockResolvedValue(null)
+    await expect(open({ id: "cart_other", completed_at: null, items: [{ id: "i" }] }, "cart_pay")).rejects.toThrow(
+      "REDIRECT /th/account/orders"
+    )
+  })
+
   it("cart ยังไม่ complete → render ขั้น review ตามเดิม ไม่ค้นหา order", async () => {
     await expect(open({ id: "cart_pay", completed_at: null, items: [{ id: "i" }] }, "cart_pay")).resolves.toBeTruthy()
     expect(findOrder).not.toHaveBeenCalled()

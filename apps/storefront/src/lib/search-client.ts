@@ -90,8 +90,11 @@ type StoreRouteState = { q?: string } & Record<string, unknown>
  */
 export const storeStateMapping: StateMapping<UiState, StoreRouteState> = {
   stateToRoute(uiState) {
-    const { configure: _configure, query, ...rest } =
-      uiState[PRODUCT_INDEX_NAME] ?? {}
+    const {
+      configure: _configure,
+      query,
+      ...rest
+    } = uiState[PRODUCT_INDEX_NAME] ?? {}
     return {
       ...(query ? { q: query } : {}),
       ...(Object.keys(rest).length ? { [PRODUCT_INDEX_NAME]: rest } : {}),

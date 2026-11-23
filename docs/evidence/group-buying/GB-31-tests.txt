@@ -1,0 +1,148 @@
+GB-31 (spec 04 กฎข้อ 57, AC-74) — ผลทดสอบในเครื่อง 2026-11-24 (develop 59c6af18)
+
+== RED 1: unit guard ก่อนแก้ group-buy-lock.ts (query.graph หลายครั้งต่อ entity) ==
+      ✕ POST ต้นแบบ { campaign_id เดิม, status: draft } → promotion 1 ครั้ง และผ่าน (1 ms)
+      ✕ POST ต้นแบบ { campaign_id เดิม, status: active } → promotion 1 ครั้ง และ cannot be activated
+      ✕ POST promotion อื่น { campaign_id ใหม่, status: active } → promotion 1 + campaign 1 ครั้ง
+      ✕ DELETE ต้นแบบ → promotion 1 ครั้ง
+      ✕ DELETE promotion อื่น → promotion 1 ครั้ง และผ่าน
+Tests:       5 failed, 55 passed, 60 total
+
+== RED 2 (AC-74a): mutation comment acquireLockStep/releaseLockStep ใน refund-cancelled-membership.ts:51,:59 → AC-63 (b) ล้ม ==
+      ✕ AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once (9208 ms)
+    Expected: 1
+    Received: 2
+    > 591 |         expect(moduleRefunds).toEqual(1)
+Tests:       1 failed, 13 skipped, 14 total
+  (log ของ Medusa ระหว่าง mutation: refund รอบสองถึง Payment module แล้วถูกปฏิเสธ:)
+  Error was thrown trying to cancel payment - pay_01M84RASYH96V6B13SFC6CD5DK - Error: You cannot refund more than what is captured on the payment.
+
+== RED 3 (AC-74c): mutation ถอด code GB_CART_EMPTY ใน utils/join.ts → test HTTP ใหม่ล้ม ==
+      ✕ empty cart → 400 invalid_data with code GB_CART_EMPTY, nothing created (5463 ms)
+    -   "code": "GB_CART_EMPTY",
+Tests:       1 failed, 39 skipped, 40 total
+
+== GREEN: AC-63 (b) รันซ้ำ 3 รอบ (lock คืนแล้ว) ==
+run 1
+      ✓ AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once (11315 ms)
+Tests:       13 skipped, 1 passed, 14 total
+run 2
+      ✓ AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once (10596 ms)
+Tests:       13 skipped, 1 passed, 14 total
+run 3
+      ✓ AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once (10320 ms)
+Tests:       13 skipped, 1 passed, 14 total
+
+== GREEN: integration-tests/http/group-buy-payment.spec.ts (ทั้งไฟล์) ==
+    ✓ AC-44: convert failed (out of stock) → ops restocks and converts via admin → membership paid; order.placed again is a no-op (17791 ms)
+    ✓ AC-44: admin converts while the collection is not completed → membership unchanged, info logged (16639 ms)
+    ✓ AC-44: normal GB-5 path (capture → paid → convert → order.placed) → GB-10 subscriber is a no-op under the membership lock; order-placed email still sent (7145 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (6018 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (4290 ms)
+    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (5470 ms)
+    ✓ out of stock at convert: convertDraftOrderWorkflow fails → membership compensated back to awaiting_payment, order stays draft (4690 ms)
+    ✓ orphan: payment captured after the membership was cancelled → ops alert once, membership stays cancelled (6466 ms)
+    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (7063 ms)
+      ✓ AC-63 (a): cancelled draft order captured later → one refund of the captured amount with the note, alert says refunded (6914 ms)
+      ✓ AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once (7202 ms)
+      ✓ AC-63 (c): provider refund throws (nothing recorded) → subscriber does not throw, alert says refund_failed (12368 ms)
+      ✓ AC-63 (c2): workflow throws after the provider refunded and the refund was recorded → alert says refunded, warn logged (11667 ms)
+      ✓ AC-63 (d): convert_failed → no refund (manual, AC-43/44 unchanged) (17560 ms)
+Tests:       14 passed, 14 total
+
+== GREEN: integration-tests/http/group-buy-promotion-lock.spec.ts (ทั้งไฟล์ — AC-67/69/72/73 รวม ended) ==
+      ✓ (a) POST /admin/promotions/:id → 400 locked และค่าเดิมไม่เปลี่ยน (3749 ms)
+      ✓ (b) rules/batch, target-rules/batch, buy-rules/batch และ DELETE → 400 และ promotion ยังอยู่ (4028 ms)
+      ✓ (c)(d) ต้นแบบ GBT-* แก้ได้ และกลุ่มใหม่ได้ส่วนลดใหม่ กลุ่มเดิมคงเดิม (Q5) (5865 ms)
+      ✓ (c) promotion ปกติแก้และลบได้ (200) (5778 ms)
+      ✓ (e) ลบแคมเปญ draft ยังสำเร็จ (regression) (7479 ms)
+      ✓ (f) ถอด promotion GB-* ออกจาก campaign → 400; แก้/ลบ campaign ของแคมเปญ group buy active → 400 (5253 ms)
+      ✓ (f) campaign ของแคมเปญ group buy draft และ campaign ที่ไม่เกี่ยว → 200 (4846 ms)
+      ✓ (a) แคมเปญ draft: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (5294 ms)
+      ✓ (a) แคมเปญ active: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (4547 ms)
+      ✓ (a) campaign อื่น: เพิ่ม/ถอด promotion ปกติ → 200 (regression) (5029 ms)
+      ✓ (b) สร้างกลุ่ม → GB-* อยู่ใน campaign ของ link (8391 ms)
+      ✓ (b) ต้นแบบไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่ม invalid_data และไม่สร้าง GB-* (6095 ms)
+      ✓ (a) แคมเปญ draft: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (19556 ms)
+      ✓ (a) แคมเปญ active: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (14482 ms)
+      ✓ (b) ย้าย promotion อื่นเข้า campaign group buy → 400; สร้าง promotion ใหม่ใน campaign group buy → 400 (6796 ms)
+      ✓ (c) แก้ส่วนลดต้นแบบโดยไม่แตะ campaign_id และส่ง campaign_id เดิม → 200 (Q5) (6738 ms)
+      ✓ (d) promotion อื่นกับ campaign ที่ไม่เกี่ยว: สร้าง/ย้าย/ถอด → 200 (regression) (11152 ms)
+      ✓ GB-* ส่ง campaign_id → ข้อความ locked ของกฎข้อ 48 ก่อนกฎข้อ 54 (ลำดับ guard) (13049 ms)
+      ✓ (e) route สร้างแคมเปญ group buy ของเรา (createGroupBuyCampaignWorkflow) ยังผูก GBT-* กับ campaign ได้ (6543 ms)
+      ✓ (a) แคมเปญ draft: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่ (8100 ms)
+      ✓ (a) แคมเปญ active: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่ (11271 ms)
+      ✓ (a) แคมเปญ ended: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่ (8002 ms)
+      ✓ (b) DELETE promotion ปกติ (ใน campaign ที่ไม่เกี่ยว และไม่อยู่ใน campaign) → 200 และ GET → 404 (6251 ms)
+      ✓ (c) DELETE GB-* → ข้อความ locked ของกฎข้อ 48 (ไม่ใช่ข้อความ template) (5708 ms)
+      ✓ (d) ลบแคมเปญ draft ที่หน้า Group buying → 200 และต้นแบบถูกลบ (regression AC-67 (e)) (4833 ms)
+      ✓ (e) แคมเปญ draft: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน (9952 ms)
+      ✓ (e) แคมเปญ active: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน (6366 ms)
+      ✓ (e) แคมเปญ ended: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน (6288 ms)
+      ✓ (f) แก้ส่วนลดต้นแบบโดยไม่ส่ง status และตั้ง inactive → 200 ไม่เป็น active (Q5); ต้นแบบจาก route สร้างแคมเปญเป็น draft (4687 ms)
+      ✓ (g) POST promotion ปกติ status active → 200 (regression) (4878 ms)
+Tests:       30 passed, 30 total
+  (หลังเปลี่ยน filter เป็น campaign.id ให้ผ่าน typecheck:)
+      ✓ (b) ต้นแบบไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่ม invalid_data และไม่สร้าง GB-* (1486 ms)
+
+== GREEN: integration-tests/http/group-buy-join.spec.ts (ทั้งไฟล์) ==
+      ✓ group_mode=pool → 403 (19026 ms)
+      ✓ group_mode=both → 201 team group owned by the caller with its own join_token and ends_at (22851 ms)
+      ✓ does not accept kind from the body → 400 (6757 ms)
+      ✓ create / join / leave without auth → 401 (4314 ms)
+      ✓ store POST /store/group-buy/groups and createGroupWorkflow → 400 code, no new GB- promotion; an existing group still joins 201 (8900 ms)
+      ✓ creates a draft order with the GB- discount, a membership and counters (7425 ms)
+      ✓ unknown token → 404 (2693 ms)
+      ✓ empty cart → 400 invalid_data with code GB_CART_EMPTY, nothing created (3840 ms)
+      ✓ cart with items outside the campaign → 409 GB_ITEMS_NOT_ELIGIBLE (3054 ms)
+      ✓ AC-4: max_people_per_group=2 → 3rd person 409; 2nd order of A 201 and progress_people stays 2 (16345 ms)
+      ✓ AC-5: max_units_per_person=1 and qty 2 → 409 (6121 ms)
+      ✓ AC-17: max_units_per_person=2 counts non-cancelled memberships only (19077 ms)
+      ✓ AC-13: max_total_orders=5 across 2 groups → 6th join (repeat order too) 409 (13706 ms)
+      ✓ AC-18: a member of G1 joining G2 of the same campaign → 409 GB_ALREADY_IN_OTHER_GROUP (5988 ms)
+      ✓ AC-14: SAVE10 on the cart → 409; SAVE10 after joining → 409; flash cart joins with GB- only (6132 ms)
+      ✓ AC-23: Medusa campaign starts_at moved to the future → 400 not_allowed, nothing left behind (5152 ms)
+      ✓ AC-23: GB- promotion inactive → 400 GB_DISCOUNT_NOT_APPLIED and the code does not stay on the cart (5487 ms)
+      ✓ counter update fails after the membership insert → transaction rolls back (no membership), order canceled, code removed, locks released (6655 ms)
+      ✓ GB-N1 (GB-3c): confirming the freeze order change fails → order change declined, no adjustment left on the draft order (3980 ms)
+      ✓ GB-N1 (GB-3c): declining the order change fails too → the confirm error is surfaced and the decline failure is logged (4905 ms)
+      ✓ AC-27: joining again with the same cart (same or other group) → 409 GB_CART_ALREADY_JOINED; a new cart → 201 (2736 ms)
+      ✓ campaign row gone while the group remains → 404 instead of a crash (review #68) (1305 ms)
+      ✓ AC-24: customer B joining with A's cart → 404 and nothing changes (1366 ms)
+        ✓ after joining → 400 not_allowed GB_CART_NOT_COMPLETABLE, cart not completed (2404 ms)
+        ✓ GB-<token> added through Medusa's promotions route without joining → 400 as well (2569 ms)
+      ✓ O_dig on a shippable line → 400 not_allowed with the code, nothing created; switching to O_std → 201 (3617 ms)
+      ✓ cart with both O_std and O_dig → 201 (5508 ms)
+      ✓ cart without any shipping method → 201 (rule 35c) (4157 ms)
+      ✓ every line requires_shipping = false + O_dig → 201 (4938 ms)
+      ✓ group full and O_dig → 409 GB_GROUP_FULL (409 comes first) (4928 ms)
+      ✓ AC-7: leaving one of two memberships keeps people; the last one decrements people; then join again (4680 ms)
+      ✓ AC-7: after leaving every membership the customer can join another group of the campaign (4578 ms)
+      ✓ AC-25: someone else's / unknown membership → 404; leaving twice → 400 without double decrement (4267 ms)
+      ✓ GB-N1: someone else's membership → 404 without taking the group lock (5416 ms)
+      ✓ AC-25: group no longer open → 400 and nothing changes (3544 ms)
+      ✓ open group whose ends_at has passed (deadline job not run yet) → 400 and nothing changes (5622 ms)
+      ✓ AC-25: cancelling the draft order fails → membership back to joined, counters restored, lock released (4638 ms)
+      ✓ AC-8: 20 concurrent joins, max_people_per_group=5 → exactly 5 people (9559 ms)
+      ✓ AC-13: 8 concurrent joins across 2 groups, max_total_orders=5 → exactly 5 (7156 ms)
+      ✓ AC-18: one customer joining G1 and G2 at the same time → exactly one succeeds (3345 ms)
+Tests:       40 passed, 40 total
+
+== GREEN: unit guard (src/api/admin/promotions) ==
+    ✓ ลำดับบน POST /admin/promotions/:id: campaign_id (กฎข้อ 54) → status (กฎข้อ 56)
+    ✓ ลำดับบน DELETE /admin/promotions/:id: GB-* locked (กฎข้อ 48) → ต้นแบบ (กฎข้อ 55) (1 ms)
+    request เดียวผ่าน guard ทุกตัวตามลำดับที่ลงทะเบียน → query.graph 1 ครั้งต่อ entity
+      ✓ POST ต้นแบบ { campaign_id เดิม, status: draft } → promotion 1 ครั้ง และผ่าน (1 ms)
+      ✓ POST ต้นแบบ { campaign_id เดิม, status: active } → promotion 1 ครั้ง และ cannot be activated
+      ✓ POST promotion อื่น { campaign_id ใหม่, status: active } → promotion 1 + campaign 1 ครั้ง (1 ms)
+      ✓ POST GB-* { campaign_id } → ข้อความ locked และ promotion 1 ครั้ง (1 ms)
+      ✓ DELETE ต้นแบบ → promotion 1 ครั้ง (1 ms)
+      ✓ DELETE GB-* → promotion 1 ครั้ง
+      ✓ DELETE promotion อื่น → promotion 1 ครั้ง และผ่าน (1 ms)
+Tests:       60 passed, 60 total
+
+== GREEN: pnpm --filter backend test:unit (ทั้งชุด) ==
+Test Suites: 130 passed, 130 total
+Tests:       1794 passed, 1794 total
+
+== pnpm --filter backend typecheck → exit 0; pnpm --filter backend lint → 0 errors (5 warnings เดิมบน develop ไม่ใช่ไฟล์ของ GB-31) ==

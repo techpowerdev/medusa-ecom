@@ -3,10 +3,11 @@ import { useDate } from "@medusajs/dashboard/hooks"
 import { EllipsisHorizontal, PencilSquare, Trash } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useLayoutEffect, useMemo, useReducer, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { affiliateKeys, deleteProgram, Program } from "../../lib/affiliate"
 import { canDeleteProgram } from "../../lib/affiliate-program-form"
 import { createSingleFlight } from "../../lib/single-flight"
+import { useRemountMenu } from "../common/use-remount-menu"
 import { AffiliateListTable, useAffiliateList } from "./list-table"
 import { ProgramFormModal } from "./program-form"
 
@@ -20,16 +21,8 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   const [deleteOnce] = useState(createSingleFlight)
-  // เปิด modal/drawer จาก menuitem: mount เมนูใหม่ใน commit เดียวกัน (ปิดทันทีไม่รอ animation) — ไม่งั้น Radix คนละสำเนา
-  // ของเมนูกับ modal คืนค่า pointer-events ของ body สลับกันจนหน้าเป็น `none` ค้างหลังปิด modal (คลิกอะไรไม่ได้)
-  const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
-  // qa #499 O-1 (spec 08 กฎ 38): การ remount ถอด trigger เดิมและ menuitem ที่ focus อยู่ → Drawer จำ opener ไม่ได้ (ปิดแล้ว focus = BODY)
-  // focus trigger ตัวใหม่ใน layout effect (ก่อน effect ของ FocusScope ใน Drawer) แบบที่ DropdownMenu คืน focus ให้ trigger เอง
-  // useRestoreOpenerFocus ของ Drawer จึงจำปุ่ม … ของแถวและคืน focus ให้เมื่อปิด
-  const trigger = useRef<HTMLButtonElement>(null)
-  useLayoutEffect(() => {
-    if (menuKey) trigger.current?.focus()
-  }, [menuKey])
+  // เปิด Drawer จาก menuitem: remount เมนู + focus ปุ่ม … ตัวใหม่ให้ Drawer จำเป็น opener (qa #499 O-1, spec 08 กฎ 38/51)
+  const { menuKey, remountMenu, trigger } = useRemountMenu()
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("programs") })
   const remove = useMutation({

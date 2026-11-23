@@ -360,6 +360,7 @@ medusaIntegrationTestRunner({
         const s = await shopper()
         const res = await settle(api.post("/store/group-buy/groups", { campaign_id: campaign.id }, s.headers))
         expect(res.status).toEqual(400)
+        expect(res.data.code).toEqual(CODE)
         expect(res.data.message).toContain(CODE)
 
         const { errors } = await createGroupWorkflow(getContainer()).run({
@@ -426,6 +427,21 @@ medusaIntegrationTestRunner({
         const s = await shopper()
         const res = await join("NOPE00000000", await cartFor(s), s)
         expect(res.status).toEqual(404)
+      })
+
+      // GB-31 (spec 04 กฎข้อ 57c, AC-74c): storefront ตัดสินจาก code (CORE-84, ADR-028) — HTTP ต้องส่ง code ออกมาจริง
+      it("empty cart → 400 invalid_data with code GB_CART_EMPTY, nothing created", async () => {
+        const campaign = await createCampaign()
+        const group = await poolGroup(campaign.id)
+        const s = await shopper()
+        const cartId = await cartFor(s, [])
+
+        const res = await join(group.join_token, cartId, s)
+        expect(res.status).toEqual(400)
+        expect(res.data).toEqual(expect.objectContaining({ type: "invalid_data", code: "GB_CART_EMPTY" }))
+        expect(await memberships({ group_id: group.id })).toEqual([])
+        expect(await ordersOf(s.customerId)).toEqual([])
+        expect(await progress(group.id)).toEqual([0, 0, 0])
       })
 
       it("cart with items outside the campaign → 409 GB_ITEMS_NOT_ELIGIBLE", async () => {
@@ -920,6 +936,7 @@ medusaIntegrationTestRunner({
         const res = await join(group.join_token, cartId, s)
         expect(res.status).toEqual(400)
         expect(res.data.type).toEqual("not_allowed")
+        expect(res.data.code).toEqual(CODE)
         expect(res.data.message).toContain(CODE)
         expect(await memberships({ group_id: group.id })).toEqual([])
         expect(await ordersOf(s.customerId)).toEqual([])
