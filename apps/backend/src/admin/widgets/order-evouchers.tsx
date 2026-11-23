@@ -1,5 +1,5 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { useDate } from "@medusajs/dashboard/hooks"
+import { ordersQueryKeys, useDate } from "@medusajs/dashboard/hooks"
 import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
 import { Badge, StatusBadge, Table, Text, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -7,6 +7,7 @@ import { useState } from "react"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { evoucherApi, evoucherKeys, STATUS_COLOR } from "../lib/evoucher"
+import { allocateErrorMessage, allocateResultToast } from "../lib/evoucher-allocate"
 import { canResendEvouchers, resendErrorMessage } from "../lib/evoucher-resend"
 import { backorderedItems } from "../lib/evoucher-status"
 import { createSingleFlight } from "../lib/single-flight"
@@ -35,6 +36,23 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
   })
   const onResend = () => resendOnce(() => resend.mutateAsync().catch(() => undefined))
 
+  // EV-24 (กฎข้อ 40): Retry allocation — disabled ระหว่างส่ง + single-flight; backend lock ต่อ order (EV-23)
+  // badge มาจาก `order.items[].metadata` ของหน้า order → invalidate query order ของ dashboard ด้วย (badge หายเมื่อ allocate ครบ)
+  const [allocateOnce] = useState(createSingleFlight)
+  const allocate = useMutation({
+    mutationFn: () => evoucherApi.allocateOrder(order.id),
+    onSuccess: (result) => {
+      const { variant, message } = allocateResultToast(result)
+      toast[variant](message)
+      queryClient.invalidateQueries({ queryKey: evoucherKeys.orderCodes(order.id) })
+      queryClient.invalidateQueries({ queryKey: ordersQueryKeys.details() })
+    },
+    onError: (err: Error) => {
+      toast.error(allocateErrorMessage(err))
+    },
+  })
+  const onAllocate = () => allocateOnce(() => allocate.mutateAsync().catch(() => undefined))
+
   // EV-22 (กฎข้อ 38b): line ที่ backordered ยังไม่มี code — ต้องเห็น widget แม้ order ไม่มี code เลย (order canceled ไม่แสดง)
   const backordered = backorderedItems(order)
 
@@ -47,13 +65,28 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
     <Container data-testid="evoucher-order-widget">
       <Header
         title="E-vouchers"
-        actions={
-          data && canResendEvouchers(data.codes)
+        actions={[
+          ...(backordered.length
             ? [
                 {
-                  type: "button",
+                  type: "button" as const,
                   props: {
-                    variant: "secondary",
+                    variant: "secondary" as const,
+                    "data-testid": "evoucher-retry-allocation",
+                    disabled: allocate.isPending,
+                    isLoading: allocate.isPending,
+                    onClick: onAllocate,
+                    children: "Retry allocation",
+                  },
+                },
+              ]
+            : []),
+          ...(data && canResendEvouchers(data.codes)
+            ? [
+                {
+                  type: "button" as const,
+                  props: {
+                    variant: "secondary" as const,
                     "data-testid": "evoucher-resend",
                     disabled: resend.isPending,
                     isLoading: resend.isPending,
@@ -62,8 +95,8 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
                   },
                 },
               ]
-            : []
-        }
+            : []),
+        ]}
       />
       {backordered.map((item) => (
         <div key={item.id} className="flex items-center justify-between gap-x-4 px-6 py-4">
