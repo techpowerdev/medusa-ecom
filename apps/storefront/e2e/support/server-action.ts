@@ -66,6 +66,19 @@ export const isUpdateCustomerBody = (body: string) => {
   }
 }
 
+/**
+ * body ของ `retrieveCart(undefined, undefined, { fresh: true })` ที่ CartDropdown ยิงเองหลัง hydrate (หน้า static) หรือหลัง
+ * event แก้ cart — ไม่ใช่ action ของหน้า; e2e ที่นับ action ของหน้าตัดตัวนี้ออก (CORE-91 กฎข้อ 147c)
+ */
+export const isNavCartReadBody = (body: string) => {
+  try {
+    const args = JSON.parse(body)
+    return args.length === 3 && args[0] === "$undefined" && args[1] === "$undefined" && args[2]?.fresh === true
+  } catch {
+    return false
+  }
+}
+
 /** ค่าของ field `name` ใน body multipart ของ `<form action>` (React ใส่ prefix `_<n>_` ให้ชื่อ field ของ action ที่ผูก state) */
 const formField = (body: string, name: string) =>
   body.match(new RegExp(`name="(?:_\\d+_)?${name}"\\r\\n\\r\\n([^\\r]*)\\r\\n`))?.[1]

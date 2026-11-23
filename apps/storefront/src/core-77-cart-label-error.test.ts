@@ -37,7 +37,8 @@ const render = async (pathname: string) => {
   nav.pathname = pathname
   const { default: CartDropdown } = await import("@modules/layout/components/cart-dropdown")
   await act(async () => {
-    root.render(createElement(CartDropdown, { cart: null }))
+    // หน้า static: server ไม่ส่ง cart (CORE-91 — `null` = server รู้ว่าไม่มี cart จึงไม่อ่านตอน mount)
+    root.render(createElement(CartDropdown, {}))
   })
 }
 

@@ -5,7 +5,7 @@ import { groupJoinActionMessage } from "../src/lib/util/group-join-error"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { addAddresses, cartWithItems, joinWith, poolGroup, type PoolGroupCtx } from "./support/group-buy"
 import { STOREFRONT_COUNTRY as CC, createCustomer, signInAs, type Customer } from "./support/medusa"
-import { waitForServerAction } from "./support/server-action"
+import { isNavCartReadBody, isServerAction, waitForServerAction } from "./support/server-action"
 import { expectThai } from "./support/thai-text"
 
 // GB-7a2 (spec 04 กฎข้อ 14c, 27, 29c–f, 31; AC-28 ส่วน e2e, AC-47): join จากหน้ากลุ่มด้วย cart ใหม่หลาย line
@@ -72,13 +72,14 @@ async function pickStandard(page: Page) {
 
 /**
  * server action ที่หน้ายิงหลังโหลดเสร็จ (header `next-action`) — prepare/join เกิดผ่าน server action เท่านั้น
- * (เริ่มนับหลัง networkidle: ปุ่มตะกร้าของ layout อ่าน cart ผ่าน server action ตอนโหลดเอง ไม่ใช่ของหน้ากลุ่ม)
+ * (เริ่มนับหลัง networkidle; CORE-91 กฎข้อ 147c: ไม่นับ retrieveCart ที่ปุ่มตะกร้าของ layout ยิงเอง ซึ่งไม่ใช่ของหน้ากลุ่ม
+ * และอาจมาหลัง networkidle เมื่อ hydrate ช้า — action อื่นยังนับทั้งหมด)
  */
 const recordActions = async (page: Page) => {
   await page.waitForLoadState("networkidle")
   const actions: string[] = []
   page.on("request", (r) => {
-    if (r.method() === "POST" && r.headers()["next-action"]) actions.push(r.url())
+    if (isServerAction(r, (body) => !isNavCartReadBody(body))) actions.push(r.url())
   })
   return actions
 }
