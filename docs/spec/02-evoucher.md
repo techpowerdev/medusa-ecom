@@ -500,22 +500,22 @@ EV-4 ส่งอีเมล backordered ตามกฎข้อ 9 (AC-17 ส�
     (b) widget หน้า order (zone `order.details.side.after` หรือ widget e-voucher เดิม `order-evouchers.tsx`) แสดง `StatusBadge` "Backordered — codes pending" ต่อ line ที่ค้าง (`evoucher-backordered-badge`)
 
 ### Acceptance criteria (รอบ 40)
-- AC-49 (EV-19, กฎข้อ 35) integration http — **ล้มบน develop** ก่อน: import **100** code ใน batch เดียว (created_at เท่ากัน — ตั้งด้วย SQL ใน test ถ้าจำเป็น) แล้วอ่าน `limit=10` ทีละหน้า 10 หน้า → ได้ id ไม่ซ้ำ 100 รายการ
+- ☑ AC-49 (EV-19, กฎข้อ 35) integration http — **ล้มบน develop** ก่อน: import **100** code ใน batch เดียว (created_at เท่ากัน — ตั้งด้วย SQL ใน test ถ้าจำเป็น) แล้วอ่าน `limit=10` ทีละหน้า 10 หน้า → ได้ id ไม่ซ้ำ 100 รายการ
   (แก้ตาม review รอบ 40: 30 แถวไม่พอให้ล้มบน develop — Postgres สลับลำดับแถวที่ค่า sort เท่ากันให้เห็นเมื่อจำนวนแถว > 2×(offset+limit) ซึ่งเปลี่ยนแผนเป็น top-N heapsort)
-- AC-50 (EV-20, กฎข้อ 36) integration — **ล้มบน develop** ก่อน: (a) pool ที่มี code `available` 5 + `void` 1 ไม่มี order → DELETE 200, code ทั้ง 6 ถูก soft-delete, inventory level ของ variant ลดลง 5, `requires_shipping=true`;
+- ☑ AC-50 (EV-20, กฎข้อ 36) integration — **ล้มบน develop** ก่อน: (a) pool ที่มี code `available` 5 + `void` 1 ไม่มี order → DELETE 200, code ทั้ง 6 ถูก soft-delete, inventory level ของ variant ลดลง 5, `requires_shipping=true`;
   (b) pool ที่มี code `delivered` 1 → 400 ข้อความตาม 36a ทุกอย่างคงเดิม; (c) step ลด stock ล้ม (mock) → code/pool คืนครบ; (d) pool ว่าง → `low_stock=false`, `total_codes=0`; pool 5 available threshold 20 → `low_stock=true` (AC-15 เดิม);
   (e) reservation ค้าง 1 → 400 ข้อความตาม 36d ทุกอย่างคงเดิม, ลบ reservation แล้วลบได้; (f) job รายวันไม่ส่ง low-stock ของ pool ที่ไม่มี code
 - AC-51 ☑ (EV-21, กฎข้อ 37) e2e admin: ลบ pool ที่ไม่มีการส่ง → prompt แสดงจำนวน code → ยืนยัน → toast และ pool หายจากตาราง; dblclick ปุ่มยืนยัน → DELETE 1 ครั้ง (นับ request);
   pool ที่มี code ส่งแล้ว → toast error และ pool ยังอยู่; pool ใหม่ไม่มี code → เห็น badge "No codes" ไม่เห็น "Low stock"; menuitem หาด้วย role + ชื่อ (ADR-018)
-- AC-52 (EV-22, กฎข้อ 38) integration + e2e admin: order ที่ pool หมดตอน capture (backordered) → API ตามข้อ 38a คืนธงของ line นั้น (ล้มบน develop); หน้า order ใน admin เห็น `evoucher-backordered-badge` 1 ตัวต่อ line ที่ค้าง; หลัง allocation สำเร็จ (ธงถูกล้าง) badge หาย — integration รัน allocate workflow ซ้ำหลัง import code (session หลักตัดสิน 2026-11-21: resend ของ EV-5b ไม่ allocate ใหม่ ข้อความเดิม "หลัง resend สำเร็จ" จึงอ้างพฤติกรรมที่ไม่มีจริง; ปุ่ม "Retry allocation" เป็นข้อเสนอให้ owner ตัดสินแยก)
+- ☑ AC-52 (EV-22, กฎข้อ 38) integration + e2e admin: order ที่ pool หมดตอน capture (backordered) → API ตามข้อ 38a คืนธงของ line นั้น (ล้มบน develop); หน้า order ใน admin เห็น `evoucher-backordered-badge` 1 ตัวต่อ line ที่ค้าง; หลัง allocation สำเร็จ (ธงถูกล้าง) badge หาย — integration รัน allocate workflow ซ้ำหลัง import code (session หลักตัดสิน 2026-11-21: resend ของ EV-5b ไม่ allocate ใหม่ ข้อความเดิม "หลัง resend สำเร็จ" จึงอ้างพฤติกรรมที่ไม่มีจริง; ปุ่ม "Retry allocation" เป็นข้อเสนอให้ owner ตัดสินแยก)
 
 ### Tasks (รอบ 40)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| EV-19 | (EV-M-12) `id` เป็น key เรียงรองของรายการ code (+ list อื่นของ e-voucher) (กฎข้อ 35) | `src/api/admin/evoucher/pools/[id]/codes/route.ts`, route list อื่นถ้าพบ, integration | ~10 LOC + ~80 LOC test | AC-49 | PR เอกสารรอบ 40 | — |
-| EV-20 | (backend) ลบ pool ที่ยังไม่ส่ง code + ลด stock + `low_stock`/`total_codes` (กฎข้อ 36) | `src/workflows/evoucher/evoucher-pool.ts`, `src/api/admin/evoucher/pools/*`, test | ~120 LOC + ~200 LOC test | AC-50 | PR เอกสารรอบ 40 | — |
-| EV-21 | (admin UI) ปุ่ม Delete + prompt + badge "No codes" (กฎข้อ 37); qa | `src/admin/routes/evouchers/pools/[id]/page.tsx`, `src/admin/components/evoucher/pools-table.tsx`, `src/admin/lib/evoucher.ts`, e2e admin | ~90 LOC + ~150 LOC test | AC-51 | **EV-20**, **ADM-39** (single-flight แบบใหม่) | `pools-table.tsx` |
-| EV-22 | ธง backordered เห็นใน admin (หาสาเหตุ metadata ว่าง + badge) (กฎข้อ 38); qa | `src/subscribers/evoucher-payment-captured.ts` หรือ workflow allocation, `src/api/admin/evoucher/orders/[id]/codes/route.ts`, `src/admin/widgets/order-evouchers.tsx`, test | ~80 LOC + ~150 LOC test | AC-52 | PR เอกสารรอบ 40 | `order-evouchers.tsx` (ADM-39 ถ้าแตะ single-flight ในไฟล์นี้ — ตัวหลัง sync) |
+| EV-19 | ☑ #427 — (EV-M-12) `id` เป็น key เรียงรองของรายการ code (+ list อื่นของ e-voucher) (กฎข้อ 35) | `src/api/admin/evoucher/pools/[id]/codes/route.ts`, route list อื่นถ้าพบ, integration | ~10 LOC + ~80 LOC test | AC-49 | PR เอกสารรอบ 40 | — |
+| EV-20 | ☑ #437 — (backend) ลบ pool ที่ยังไม่ส่ง code + ลด stock + `low_stock`/`total_codes` (กฎข้อ 36) | `src/workflows/evoucher/evoucher-pool.ts`, `src/api/admin/evoucher/pools/*`, test | ~120 LOC + ~200 LOC test | AC-50 | PR เอกสารรอบ 40 | — |
+| EV-21 | ☑ #454 — (admin UI) ปุ่ม Delete + prompt + badge "No codes" (กฎข้อ 37); qa | `src/admin/routes/evouchers/pools/[id]/page.tsx`, `src/admin/components/evoucher/pools-table.tsx`, `src/admin/lib/evoucher.ts`, e2e admin | ~90 LOC + ~150 LOC test | AC-51 | **EV-20**, **ADM-39** (single-flight แบบใหม่) | `pools-table.tsx` |
+| EV-22 | ☑ #446 — ธง backordered เห็นใน admin (หาสาเหตุ metadata ว่าง + badge) (กฎข้อ 38); qa | `src/subscribers/evoucher-payment-captured.ts` หรือ workflow allocation, `src/api/admin/evoucher/orders/[id]/codes/route.ts`, `src/admin/widgets/order-evouchers.tsx`, test | ~80 LOC + ~150 LOC test | AC-52 | PR เอกสารรอบ 40 | `order-evouchers.tsx` (ADM-39 ถ้าแตะ single-flight ในไฟล์นี้ — ตัวหลัง sync) |
 
 ## Follow-up รอบ 41 (2026-11-21 — owner อนุมัติปุ่ม "Retry allocation" + backfill ธง backordered ให้ order เก่า)
 ที่มา: EV-22 — allocation รันแค่ตอน `payment.captured` (resend ของ EV-5b ไม่ allocate ใหม่) → order ที่ backordered ค้างจนกว่าจะมีคนรัน workflow เอง;
@@ -536,6 +536,9 @@ order ก่อน EV-22 (เช่น #66) มีธงแค่ใน `order_l
     ไม่มี line ที่ backordered → 200 ผลว่าง (noop — ยิงซ้ำ/พร้อมกันได้ผลเดียวกัน ไม่ claim/อีเมลซ้ำ); ยัง backordered เพราะ code ไม่พอ → 200 พร้อม `backordered_line_item_ids` (ไม่ส่งอีเมล admin ซ้ำ — idempotency key เดิม)
 40. (EV-24 — admin) widget `order-evouchers.tsx` แสดงปุ่ม "Retry allocation" (`evoucher-retry-allocation`) เมื่อมี line ที่ backordered (กฎข้อ 38b) → POST ข้อ 39;
     disabled ระหว่างส่ง + single-flight (CLAUDE.md กันกดซ้ำ); สำเร็จ → `toast.success` ("Codes allocated" หรือ "Still backordered — import more codes first" เมื่อยังค้าง) แล้ว invalidate query ของ widget (badge หายเมื่อ allocate ครบ); 4xx → `toast.error` ข้อความจาก API
+    **(ปิดรอบ 41 — ข้อความที่ 3 ตามที่ EV-24 #504 ทำจริง, review #472)** `stuck_line_item_ids` ไม่ว่าง (code `allocated` แต่ส่งอีเมลไม่สำเร็จ — กฎข้อ 17) → **`toast.warning`** "Some codes were allocated but not emailed — use Resend email"
+    (ถ้ามี line ที่ยัง backordered ด้วย ข้อความ = "Still backordered — import more codes first. Some codes were allocated but not emailed — use Resend email") และ**ไม่**แสดง "Codes allocated";
+    การเลือกข้อความเป็น pure helper `allocateResultToast` (`src/admin/lib/evoucher-allocate.ts` + unit) — "Still backordered" อย่างเดียวยังเป็น `toast.success` (เปลี่ยนเป็น warning ใน EV-26 กฎข้อ 42a)
 41. (EV-25 — owner อนุมัติ backfill) script `apps/backend/src/scripts/backfill-evoucher-backordered-flags.ts` (`medusa exec`): หา line ที่ `order_line_item.metadata.evoucher_backordered === true` แต่ `order_item.metadata` ไม่มีธงนี้
     → ค่าเริ่มต้น dry-run พิมพ์ order/line id; `--apply` เขียนธงลง `order_item` ด้วยวิธีเดียวกับ EV-22 (helper ร่วม — export จาก step เดิม ไม่ copy) ไม่แตะ line ที่ไม่มีธง; รันซ้ำ → 0 แถว; เพิ่มบรรทัด go-live checklist พร้อมคำสั่งจริง
 
@@ -544,14 +547,37 @@ order ก่อน EV-22 (เช่น #66) มีธงแค่ใน `order_l
   ยิงพร้อมกัน 2 request → code ถูก claim ตามจำนวนเดียว อีเมลลูกค้า 1 ฉบับ ทั้งคู่ 200; ยังไม่ import → 200 `backordered_line_item_ids` และอีเมล admin ไม่เพิ่ม; order `canceled` → 400; ไม่มี token admin → 401;
   order ที่ payment ยังไม่ captured → 400 `not_allowed` และไม่มี code ถูก claim (review #472 — สอดคล้องกฎข้อ 2); line ที่ code `allocated` แต่ยังไม่ส่งมอบ → 200 `stuck_line_item_ids` มี line นั้น ไม่ claim/อีเมลซ้ำ (review #472)
 - AC-54 ☑ (EV-24, กฎข้อ 40) e2e admin: order backordered เห็น `evoucher-retry-allocation`; dblclick → POST 1 ครั้ง (นับ request); หลัง import code กด → toast และ `evoucher-backordered-badge` หาย; order ที่ไม่มี line ค้าง → ไม่เห็นปุ่ม
-- AC-55 (EV-25, กฎข้อ 41) integration: order ที่ตั้งธงเฉพาะใน `order_line_item.metadata` (จำลองข้อมูลก่อน EV-22) → dry-run พิมพ์ 1 แถว DB ไม่เปลี่ยน; `--apply` → `GET /admin/orders/:id?fields=*items` คืน `items[].metadata.evoucher_backordered = true`; รันซ้ำ → 0; line ที่ไม่มีธงไม่ถูกแตะ
+- ☑ AC-55 (EV-25, กฎข้อ 41) integration: order ที่ตั้งธงเฉพาะใน `order_line_item.metadata` (จำลองข้อมูลก่อน EV-22) → dry-run พิมพ์ 1 แถว DB ไม่เปลี่ยน; `--apply` → `GET /admin/orders/:id?fields=*items` คืน `items[].metadata.evoucher_backordered = true`; รันซ้ำ → 0; line ที่ไม่มีธงไม่ถูกแตะ
 
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| EV-23 | route Retry allocation (กฎข้อ 39) | `src/api/admin/evoucher/orders/[id]/allocate/route.ts` (ใหม่), middleware/validator ของ admin evoucher, integration | ~60 LOC + ~180 LOC test | AC-53 | PR เอกสารรอบ 41 | `src/api/middlewares.ts` ถ้าลงทะเบียน middleware ที่นี่ (GB-26, CORE-80, OPS-34 — ตัวหลัง sync) |
-| EV-24 | ปุ่ม Retry allocation ใน widget order (กฎข้อ 40); qa | `src/admin/widgets/order-evouchers.tsx`, `src/admin/lib/evoucher.ts`, e2e admin | ~50 LOC + ~100 LOC test | AC-54 | **EV-23** | `order-evouchers.tsx` |
-| EV-25 | script backfill ธง backordered (กฎข้อ 41) + บรรทัด go-live | `src/scripts/backfill-evoucher-backordered-flags.ts`, `src/workflows/evoucher/steps/update-evoucher-backordered-flags.ts` (export helper), `docs/ops/production.md` (Go-live ข้อ 12), integration | ~60 LOC + ~100 LOC test | AC-55 | PR เอกสารรอบ 41 | `production.md` (CORE-81, OPS-33 คนละบรรทัด) |
+| EV-23 | ☑ #472 — route Retry allocation (กฎข้อ 39) | `src/api/admin/evoucher/orders/[id]/allocate/route.ts` (ใหม่), middleware/validator ของ admin evoucher, integration | ~60 LOC + ~180 LOC test | AC-53 | PR เอกสารรอบ 41 | `src/api/middlewares.ts` ถ้าลงทะเบียน middleware ที่นี่ (GB-26, CORE-80, OPS-34 — ตัวหลัง sync) |
+| EV-24 | ☑ #504 — ปุ่ม Retry allocation ใน widget order (กฎข้อ 40); qa | `src/admin/widgets/order-evouchers.tsx`, `src/admin/lib/evoucher.ts`, e2e admin | ~50 LOC + ~100 LOC test | AC-54 | **EV-23** | `order-evouchers.tsx` |
+| EV-25 | ☑ #476 — script backfill ธง backordered (กฎข้อ 41) + บรรทัด go-live | `src/scripts/backfill-evoucher-backordered-flags.ts`, `src/workflows/evoucher/steps/update-evoucher-backordered-flags.ts` (export helper), `docs/ops/production.md` (Go-live ข้อ 12), integration | ~60 LOC + ~100 LOC test | AC-55 | PR เอกสารรอบ 41 | `production.md` (CORE-81, OPS-33 คนละบรรทัด) |
+
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — qa/review #504; ไม่บล็อก release v0.3.0)
+Status: draft (☐ — รอ owner สั่งทำ)
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 42)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| toast แบบเตือน | `toast.warning` ของ `@medusajs/ui` | ใช้ตามเดิม (กฎข้อ 42a) |
+### Business rules (รอบ 42)
+42. (EV-26 — admin hygiene) (a) (qa #504) ผล "Still backordered — import more codes first" (ไม่มี stuck) ใช้ `variant: "warning"` แทน `success` (ข้อความเดิม — ยังไม่ได้ส่ง code จึงไม่ใช่ผลสำเร็จ);
+    (b) (review #504; แก้ชื่อตาม review #520) helper ที่ซ้ำกันสองไฟล์ย้ายไป `e2e/support/evoucher.ts` (ผู้ใช้ 2 ที่):
+        ตั้ง stock ของ variant — `overstock` (`e2e/evoucher-admin-backordered.spec.ts:14-25`) กับ `setStock` (`e2e/evoucher-admin-retry-allocation.spec.ts:12-23`) เนื้อเหมือนกัน → helper ร่วมชื่อ **`setVariantStock`**
+        (ห้ามใช้ชื่อ `setStock` เพราะ `e2e/support/group-buy.ts:320` export `setStock` คนละ signature อยู่แล้ว);
+        อ่าน line ที่มีธง backordered — `flaggedVariants` (`backordered.spec.ts:28-31` คืน variant id) กับ `flaggedLines` (`retry-allocation.spec.ts:25-27` คืนจำนวน) ไม่ได้ซ้ำตรงตัว
+        → helper ร่วม **`backorderedItems(request, admin, orderId)`** คืน item ที่ `metadata.evoucher_backordered === true` แล้วผู้เรียก map เป็น `variant_id`/`length` เอง;
+    (c) `allocateErrorMessage` ใช้ตัวจัดข้อความเดียวกับ `evoucher-resend.ts` (`tidyStops`/HINT) — export จากที่เดิม ไม่ copy; ข้อความ 4xx ที่แสดงเท่าเดิมยกเว้นการจัดจุด/คำแนะนำ
+### Acceptance criteria (รอบ 42)
+- AC-56 (EV-26, กฎข้อ 42) unit `evoucher-allocate.unit.spec.ts`: backordered อย่างเดียว → `variant: "warning"` (ล้มบน develop — `success`); allocated อย่างเดียว → `success` "Codes allocated" (regression);
+  static — **ล้มบน develop** ก่อน: ไม่มีนิยาม `overstock`/`flaggedVariants` ใน `evoucher-admin-backordered.spec.ts` และไม่มี `setStock`/`flaggedLines` ใน `evoucher-admin-retry-allocation.spec.ts`;
+  ทั้งสองไฟล์ import `setVariantStock` และ `backorderedItems` จาก `e2e/support/evoucher.ts`; `e2e/support/evoucher.ts` ไม่ export ชื่อ `setStock`; unit ของ `allocateErrorMessage` กับข้อความที่ resend ใช้ได้ผลจัดรูปเดียวกัน; e2e AC-52/AC-54 ผ่าน
+### Tasks (รอบ 42)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| EV-26 | hygiene admin e-voucher: toast warning ของ backordered + helper e2e ร่วม + ตัวจัดข้อความ error ร่วม (กฎข้อ 42) | `src/admin/lib/evoucher-allocate.ts` (+ unit), `src/admin/lib/evoucher-resend.ts`, `src/admin/widgets/order-evouchers.tsx`, `apps/storefront/e2e/{evoucher-admin-retry-allocation,evoucher-admin-backordered}.spec.ts`, `e2e/support/evoucher.ts` | ~30 LOC + ~60 LOC test | AC-56 | PR เอกสารปิดรอบ 41 | — |
 
 ## คำถามที่ยังเปิดอยู่
 - ~~Q14~~ ตัดสินแล้ว (owner 2026-11-10): **(ก)** — กฎข้อ 33c–e, AC-47, EV-17; คำถามเดิม (รอบ 27, EV-17 กฎข้อ 33) ป้องกัน stock เกินเมื่อยกเลิก fulfillment ของ code ที่ส่งมอบแล้วด้วยทางใด:
