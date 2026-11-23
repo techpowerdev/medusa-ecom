@@ -2,11 +2,8 @@ import { Metadata } from "next"
 import Link from "next/link"
 
 import { listCustomerEvouchers } from "@lib/data/evouchers"
-import {
-  VOUCHERS_PAGE_SIZE,
-  vouchersHasNext,
-  vouchersPagination,
-} from "@lib/util/evoucher"
+import { VOUCHERS_PAGE_SIZE, vouchersHasNext } from "@lib/util/evoucher"
+import { pageFromSearchParam } from "@lib/util/pagination"
 import VoucherCard from "@modules/evoucher/components/voucher-card"
 
 export const metadata: Metadata = {
@@ -23,7 +20,7 @@ type Props = {
 
 export default async function Vouchers(props: Props) {
   // EV-7e (กฎข้อ 29a): หน้าละ 20 รายการตาม `?page=` — ไม่ตัดที่ 100
-  const pagination = vouchersPagination((await props.searchParams).page)
+  const pagination = pageFromSearchParam((await props.searchParams).page, VOUCHERS_PAGE_SIZE)
   const { evouchers, count } = await listCustomerEvouchers(
     VOUCHERS_PAGE_SIZE,
     pagination.offset

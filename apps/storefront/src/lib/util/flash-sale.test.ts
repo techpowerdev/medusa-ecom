@@ -27,6 +27,7 @@ const sale = (over: Partial<FlashSale> = {}): FlashSale => ({
   show_remaining: true,
   sold_out: false,
   remaining_units: 7,
+  per_customer_limit: null,
   ...over,
 })
 

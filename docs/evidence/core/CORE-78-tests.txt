@@ -1,0 +1,51 @@
+# CORE-78 — ผล test (spec 01 กฎข้อ 136, AC-177) — 2026-11-22, node v22.23.3, ในเครื่อง: backend :9195 (medusa start จาก build, DB medusa_core78, Redis db 2), storefront :8195 (next build + next start)
+
+## Red — unit Vitest ก่อนมี src/lib/util/pagination.ts (develop b1896690) — ล้มเพราะไม่มี module
+ (vitest: Failed to resolve import "./pagination" from "src/lib/util/pagination.test.ts")
+ Test Files  1 failed (1)
+      Tests  no tests
+
+## Red — e2e core-78 บน develop b1896690 (โค้ดก่อนแก้)
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Expected: "แบ่งหน้า"
+    Received: ""
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
+    Error: element(s) not found
+  2 failed
+
+## Red — e2e ชั่วคราว (ลบแล้ว) ลูกค้า 12 order + membership กลุ่ม เปิด ?page=2 → ส่วนกลุ่มยังแสดง (ล้มบน develop+CORE-68)
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 0
+    Received: 1
+
+  1 failed
+
+## Green — unit Vitest ทั้ง storefront (รวม pagination.test.ts + evoucher.test.ts)
+ Test Files  112 passed (112)
+      Tests  1405 passed (1405)
+
+## Green — e2e core-78 + core-68 (locator ปุ่มเปลี่ยนเป็น "หน้า 2") + group-buy-account-orders (2 skipped = ต้องใช้ Stripe UI key)
+[1/10] [chromium] › e2e/core-78-orders-page-cleanup.spec.ts:14:5 › AC-177: 12 order + membership กลุ่ม → ส่วนกลุ่มเฉพาะหน้า 1, Pagination มี aria-current และ aria-label ไทย
+[2/10] [chromium] › e2e/group-buy-account-orders.spec.ts:42:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › joined → รอกลุ่ม + ออกจากกลุ่ม (ยืนยันก่อน) → ยกเลิก และ membership cancelled
+[3/10] [chromium] › e2e/core-68-orders-pagination.spec.ts:22:5 › AC-167: ลูกค้า 12 order → หน้า 1 มี 10 แถว, หน้า 2 มี 2 แถว (เก่าสุดอยู่หน้า 2), หน้าเกิน → หน้าสุดท้าย
+[4/10] [chromium] › e2e/group-buy-account-orders.spec.ts:72:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › กลุ่มสำเร็จระหว่างเปิดหน้าอยู่ แล้วกดออก → error ไทย และรายการแสดงสถานะใหม่ (ชำระเงินภายใน)
+[5/10] [chromium] › e2e/group-buy-account-orders.spec.ts:95:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › awaiting_payment → ชำระเงินภายใน <deadline> และลิงก์ไปหน้าชำระเงินของ PAY-3b
+[6/10] [chromium] › e2e/group-buy-account-orders.spec.ts:121:7 › หน้า account: จ่ายแล้วแต่ยังเป็น draft (GB-22) › awaiting_payment + captured → group-order-processing ไม่มีลิงก์ชำระ
+[7/10] [chromium] › e2e/group-buy-account-orders.spec.ts:182:7 › หน้า account → หน้าชำระเงิน — Stripe test mode (AC-2, AC-16 พร้อมเพย์) › AC-2: บัตร 4242 จากลิงก์ในหน้า account → order ปกติ captured, membership paid และรายการแสดงชำระแล้ว
+[8/10] [chromium] › e2e/group-buy-account-orders.spec.ts:214:7 › หน้า account → หน้าชำระเงิน — Stripe test mode (AC-2, AC-16 พร้อมเพย์) › AC-16: พร้อมเพย์จากลิงก์ในหน้า account → QR → authorize test payment → order-pay-paid
+[9/10] [chromium] › e2e/core-68-orders-pagination.spec.ts:96:5 › AC-167: order ≤ 10 ใบ → ไม่แสดง orders-pagination
+[10/10] [chromium] › e2e/core-78-orders-page-cleanup.spec.ts:75:5 › AC-177: ลูกค้าที่มีแต่ membership กลุ่ม → overview เห็นลิงก์ ดูทั้งหมด
+  2 skipped
+  8 passed (1.0m)
+
+## Green — e2e หน้า vouchers ที่เกี่ยวข้อง (ev-7e-vouchers-partner, evoucher-storefront)
+[1/3] [chromium] › e2e/evoucher-storefront.spec.ts:16:5 › AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไทย ส่วนสินค้าปกติไม่มี
+[2/3] [chromium] › e2e/ev-7e-vouchers-partner.spec.ts:30:5 › AC-43: vouchers แบ่งหน้า 20 + support_contact, ลิงก์ javascript: ไม่ถูก render, PDP บล็อกเดียวระหว่างโหลด
+[3/3] [chromium] › e2e/evoucher-storefront.spec.ts:40:5 › AC-6 + AC-36: บัตรกำนัลของฉันแสดงเฉพาะ code ของตนเอง พร้อมปุ่มคัดลอก
+  3 passed (24.4s)
+
+## pnpm --filter storefront test:e2e:unit (ทั้ง project)
+  145 passed (980ms)
+
+## pnpm lint: 0 errors (warning เดิม 28 ไม่มีในไฟล์ที่แตะ) / pnpm typecheck: ผ่าน (exit 0)

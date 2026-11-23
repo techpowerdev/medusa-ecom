@@ -453,6 +453,9 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
     (b) PDP ลูกค้าที่ไม่ login และแคมเปญจำกัด → `flash-customer-limit` "จำกัด N ชิ้นต่อคน" (ไม่มีส่วน "เหลือสิทธิ์"); ไม่เรียก route ของ FS-20;
     (c) PDP ลูกค้าที่ login: สิทธิ์ที่แสดง/จำนวนสูงสุด = `max(0, remaining_for_customer − จำนวนรวมของ line ในตะกร้าที่ variant อยู่ในแคมเปญเดียวกัน)` (แคมเปญของ line จาก `campaign_id` ใน response ของ FS-20 — ส่ง variant ของ line ในตะกร้าไปใน `variant_ids` ด้วย แบ่งชุดตาม FS-21);
         = 0 → ปุ่มเพิ่มตะกร้า disabled + `flash-customer-limit-reached` ข้อความไทยบอกว่าสิทธิ์ที่เหลืออยู่ในตะกร้าแล้ว; ข้อความ `flash-customer-limit` แสดงจำนวนที่หักแล้ว; การคำนวณเป็น pure helper (unit)
+    (FS-23 builder) นับทุก line ในตะกร้าที่ allowance บอกว่า variant อยู่ในแคมเปญเดียวกัน (ไม่ดูว่า line ได้ adjustment flash หรือไม่ — ตามถ้อยคำกฎ);
+    PDP ดึงข้อมูลใหม่เมื่อตะกร้าเปลี่ยน (`CART_UPDATED_EVENT` หลังเพิ่มลงตะกร้า) โดยไม่กลับไปสถานะรอของ FS-16; `flash-customer-limit-reached` ใช้ข้อความ "อยู่ในตะกร้าแล้ว"
+    เฉพาะเมื่อมีของในตะกร้าถูกหัก (ซื้อครบจาก order แล้วคงข้อความ "ใช้สิทธิ์…ครบแล้ว" ของ FS-21); login แต่ request สิทธิ์ล้ม → แสดงแบบไม่ login (เฉพาะ limit)
 29. (FS-24 — review #464 ข้อ 1; แก้ความเข้าใจของกฎข้อ 27) `FLASH_*`/สต็อกไม่พอล้ม**ก่อน** authorize ใน `completeCartWorkflow` ที่ storefront เรียก — เงินที่ถูกตัดจึงถูกคืนในเส้นทางของ webhook
     (`processPaymentWorkflow` → complete ล้ม → compensation คืนเงิน) ไม่ใช่ใน request ของ storefront → `checkout-refunded-notice` อาจขึ้น**ก่อน** refund จริงไม่กี่วินาที (ข้อความ "คืนเงิน…อัตโนมัติ" ยังถูก — ไม่เปลี่ยนถ้อยคำ);
     runbook หัวข้อ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ" ระบุว่าลูกค้าอาจเห็นข้อความก่อน refund ปรากฏใน Stripe (แก้แล้วใน PR เอกสารรอบ 41);

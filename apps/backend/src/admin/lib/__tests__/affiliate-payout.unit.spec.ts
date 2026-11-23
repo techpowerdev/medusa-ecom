@@ -151,3 +151,22 @@ describe("ADM-24 static", () => {
     expect(comment).toMatch(/listConfig/)
   })
 })
+
+// ADM-43 (spec 08 กฎ 47b): q ถูก trim (ว่าง = ไม่มี q) และ escape `\` `%` `_` สำหรับ ILIKE ของ Medusa
+describe("AdminListAffiliates q", () => {
+  const q = (value: string | undefined) => AdminListAffiliates.parse({ q: value }).q
+
+  it("trims and drops a blank q", () => {
+    expect(q("  Ann Lee  ")).toBe("Ann Lee")
+    expect(q("   ")).toBeUndefined()
+    expect(q("")).toBeUndefined()
+    expect(q(undefined)).toBeUndefined()
+  })
+
+  it("escapes LIKE wildcards and the escape character", () => {
+    expect(q("%")).toBe("\\%")
+    expect(q("_")).toBe("\\_")
+    expect(q("\\")).toBe("\\\\")
+    expect(q(" 10%_off\\x ")).toBe("10\\%\\_off\\\\x")
+  })
+})

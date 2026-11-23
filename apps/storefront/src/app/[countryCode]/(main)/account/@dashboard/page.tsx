@@ -5,6 +5,7 @@ import Overview from "@modules/account/components/overview"
 import { notFound } from "next/navigation"
 import { retrieveCustomer } from "@lib/data/customer"
 import { listOrders } from "@lib/data/orders"
+import { listGroupBuyMemberships } from "@lib/data/group-buy"
 
 export const metadata: Metadata = {
   title: "บัญชีของฉัน",
@@ -23,7 +24,12 @@ export default async function OverviewTemplate({
   const { countryCode } = await params
   const customer = await retrieveCustomer().catch(() => null)
   // CORE-68 (กฎข้อ 126): overview แสดง 5 ล่าสุด + ลิงก์ "ดูทั้งหมด" ไปหน้า /account/orders ที่แบ่งหน้า
-  const orders = (await listOrders(5).catch(() => null))?.orders ?? null
+  // CORE-78 (กฎข้อ 136b): "ดูทั้งหมด" แสดงด้วยเมื่อมีแต่ membership แบบกลุ่ม
+  const [list, groupOrders] = await Promise.all([
+    listOrders(5).catch(() => null),
+    listGroupBuyMemberships(),
+  ])
+  const orders = list?.orders ?? null
 
   if (!customer) {
     notFound()
@@ -37,7 +43,11 @@ export default async function OverviewTemplate({
         searchParams={await searchParams}
         confirm
       />
-      <Overview customer={customer} orders={orders} />
+      <Overview
+        customer={customer}
+        orders={orders}
+        hasGroupOrders={(groupOrders?.memberships.length ?? 0) > 0}
+      />
     </>
   )
 }

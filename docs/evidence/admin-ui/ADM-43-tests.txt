@@ -1,0 +1,170 @@
+# ADM-43 (spec 08 กฎ 47, AC-48) ผล test 2026-11-22 บน develop b1896690 (backend prod build `NODE_ENV=production medusa build` + `medusa start` จาก .medusa/server ในเครื่อง port 9196, DB medusa_adm43, Redis db 3, workers=1)
+
+## RED 1 — integration affiliate-admin.spec.ts -t AC-48 บน develop (ยังไม่แก้ model/validator)
+      ✕ filters by q on code, trims q and treats % _ \ literally (AC-48) (511 ms)
+    - Expected  - 4
+    + Received  + 2
+
+      Object {
+    -   "count": 1,
+    -   "ids": Array [
+    -     "aff_01M817TCR64782BKPAZ4PENQA4",
+    -   ],
+    +   "count": 0,
+    +   "ids": Array [],
+      }
+
+      307 |         }
+      308 |
+    > 309 |         expect(await search("ANNPROMO")).toEqual({ ids: [ann.id], count: 1 })
+          |                                          ^
+      310 |         expect(await search("  Ann Lee  ")).toEqual(await search("Ann Lee"))
+      311 |         expect(await search("  Ann Lee  ")).toEqual({ ids: [ann.id], count: 1 })
+      312 |         expect(await search("   ")).toMatchObject({ count: 2 })
+
+      at Object.toEqual (integration-tests/http/affiliate-admin.spec.ts:309:42)
+Tests:       1 failed, 38 skipped, 39 total
+(สาเหตุถูกต้อง: code ไม่ searchable — q=ANNPROMO ไม่เจอ)
+
+## RED 2 — หลังเพิ่ม .searchable() ที่ code (ก่อนแก้ validator)
+      ✕ filters by q on code, trims q and treats % _ \ literally (AC-48) (700 ms)
+    - Expected  - 2
+    + Received  + 5
+
+      Object {
+    -   "count": 0,
+    -   "ids": Array [],
+    +   "count": 2,
+    +   "ids": Array [
+    +     "aff_01M817V51010KHATC9M25ND9HH",
+    +     "aff_01M817V512Q11JG3NZAAR6N51J",
+    +   ],
+      }
+
+      312 |         expect(await search("   ")).toMatchObject({ count: 2 })
+      313 |         // affiliate ทดสอบไม่มีอักขระเหล่านี้ → ไม่ใช่ wildcard ที่ตรงทุกแถว
+    > 314 |         expect(await search("%")).toEqual({ ids: [], count: 0 })
+          |                                   ^
+      315 |         expect(await search("_")).toEqual({ ids: [], count: 0 })
+      316 |         expect(await search("\\")).toEqual({ ids: [], count: 0 })
+(สาเหตุถูกต้อง: free-text search ของ Medusa 2.22.1 ใส่ token ลง `$ilike: %token%` ไม่ escape — q=% ตรงทุกแถว)
+
+## RED 3 — e2e affiliate-admin-search.spec.ts บน admin ของ develop (page.tsx ยังไม่แก้)
+  ✘  1 [chromium] › e2e/affiliate-admin-search.spec.ts:26:5 › AC-45: ค้นหาชื่อ affiliate → q ไปที่ API, เหลือ 1 แถว, อยู่ใน URL และคงหลัง reload; ล้างช่อง → แถวกลับ (2.0m)
+  ✘  2 [chromium] › e2e/affiliate-admin-search.spec.ts:114:7 › ADM-43 › AC-48: แท็บ Affiliates อยู่ใน URL คงหลัง reload และค้นด้วย code ได้; tab ผิด → Programs (10.0s)
+    test-results/affiliate-admin-search-AC--d43f8-ง-reload-ล้างช่อง-→-แถวกลับ-chromium/test-failed-1.png
+    test-results/affiliate-admin-search-ADM-ad1fa-code-ได้-tab-ผิด-→-Programs-chromium/test-failed-1.png
+  2) [chromium] › e2e/affiliate-admin-search.spec.ts:114:7 › ADM-43 › AC-48: แท็บ Affiliates อยู่ใน URL คงหลัง reload และค้นด้วย code ได้; tab ผิด → Programs › เลือกแท็บ Affiliates → URL มี tab=affiliates 
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: "affiliates"
+    Received: null
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+      129 |       await expect(tab("programs")).toHaveAttribute("aria-selected", "true")
+      130 |       await tab("affiliates").click()
+    > 131 |       await expect.poll(() => new URL(page.url()).searchParams.get("tab")).toBe("affiliates")
+          |                                                                            ^
+      132 |     })
+      133 |
+      134 |     await step("reload → แท็บ Affiliates ยังถูกเลือก (ไม่กลับ Programs)", async () => {
+        at /private/tmp/claude-501/-Users-redocean-Documents-Labs-medusajs-medusa-ecom/340ad7db-f6c6-4120-ab21-f1fd896d1e18/scratchpad/wt-ADM-43/apps/storefront/e2e/affiliate-admin-search.spec.ts:131:76
+(AC-45 เดิมแก้ step reload ให้รอ response ก่อน reload — บน develop แท็บไม่อยู่ใน URL ตารางจึงไม่โหลดหลัง reload → timeout)
+
+## db:generate affiliate
+Skipped. No changes detected in your models. → ไม่มี migration (searchable เป็น metadata ของ DML ไม่เปลี่ยน schema)
+
+## GREEN — integration affiliate-admin.spec.ts ทั้งไฟล์
+    ✓ requires an admin user (346 ms)
+      ✓ creates a draft program, lists, publishes and ends it (507 ms)
+      ✓ rejects an invalid window or rate (197 ms)
+      ✓ accepts attribution_window_days and hold_days = 36500 (AC-60) (180 ms)
+      ✓ deletes only draft programs (181 ms)
+        ✓ create or update with 2147483648 → 400 invalid_data; nothing changes (178 ms)
+        ✓ create or update with 36501 → 400 invalid_data; nothing changes (189 ms)
+        ✓ create or update with 2147483648 → 400 invalid_data; nothing changes (173 ms)
+        ✓ create or update with 36501 → 400 invalid_data; nothing changes (207 ms)
+      ✓ lists by status, approves, suspends and sets payout_info (190 ms)
+      ✓ filters by id or id[] (AC-45) (158 ms)
+      ✓ filters by q on name or email, case-insensitive (AC-21) (160 ms)
+      ✓ filters by q on code, trims q and treats % _ \ literally (AC-48) (189 ms)
+      ✓ pages affiliates with identical created_at without duplicates or gaps (300 ms)
+      ✓ filters by several statuses and orders by name across pages (AC-29) (187 ms)
+      ✓ stores account_number without dashes or spaces (160 ms)
+      ✓ rejects payout_info with 9 digits (400) and keeps the stored value (142 ms)
+      ✓ rejects payout_info with 13 digits (400) and keeps the stored value (134 ms)
+      ✓ rejects payout_info with letters (400) and keeps the stored value (142 ms)
+      ✓ rejects payout_info with an extra key (400) and keeps the stored value (162 ms)
+      ✓ rejects payout_info with a missing field (400) and keeps the stored value (150 ms)
+      ✓ rejects payout_info with a blank field after trim (400) and keeps the stored value (158 ms)
+      ✓ rejects payout_info with a non-string field (400) and keeps the stored value (167 ms)
+      ✓ clears payout_info with null (158 ms)
+      ✓ returns 409 AFFILIATE_STATUS_CHANGED when expected_status is stale and changes nothing (177 ms)
+      ✓ lets only one of two concurrent approvals with the same expected_status through (188 ms)
+      ✓ lists ledger entries filtered by affiliate and status (176 ms)
+      ✓ creates a draft payout of approved + reversed entries, then marks it paid (218 ms)
+      ✓ rolls entries back to approved when marking the payout paid fails (189 ms)
+      ✓ exposes ledger and payouts through Query (142 ms)
+      ✓ serializes concurrent payout creation so entries are paid out once (488 ms)
+      ✓ does not create a payout when the net is zero or negative (Q8) (230 ms)
+      ✓ cancels a draft payout and returns its entries to the pool (AC-19) (260 ms)
+      ✓ refuses to cancel a paid payout and leaves it unchanged (AC-19) (180 ms)
+      ✓ holds the affiliate payout lock through cancel compensation (AC-27) (1384 ms)
+      ✓ rejects cancelling a payout without an admin token (AC-27) (225 ms)
+      ✓ selects entries by rule 19 across payout rounds (AC-20) (207 ms)
+      ✓ filters payable entries in the database (rule 19) (177 ms)
+      ✓ summarizes the ledger per affiliate and status (168 ms)
+Tests:       39 passed, 39 total
+
+## GREEN — e2e affiliate-admin-search.spec.ts --repeat-each=3 --workers=1
+  ✓  1 [chromium] › e2e/affiliate-admin-search.spec.ts:26:5 › AC-45: ค้นหาชื่อ affiliate → q ไปที่ API, เหลือ 1 แถว, อยู่ใน URL และคงหลัง reload; ล้างช่อง → แถวกลับ (7.5s)
+  ✓  2 [chromium] › e2e/affiliate-admin-search.spec.ts:115:7 › ADM-43 › AC-48: แท็บ Affiliates อยู่ใน URL คงหลัง reload และค้นด้วย code ได้; tab ผิด → Programs (4.2s)
+  ✓  3 [chromium] › e2e/affiliate-admin-search.spec.ts:26:5 › AC-45: ค้นหาชื่อ affiliate → q ไปที่ API, เหลือ 1 แถว, อยู่ใน URL และคงหลัง reload; ล้างช่อง → แถวกลับ (11.6s)
+  ✓  4 [chromium] › e2e/affiliate-admin-search.spec.ts:115:7 › ADM-43 › AC-48: แท็บ Affiliates อยู่ใน URL คงหลัง reload และค้นด้วย code ได้; tab ผิด → Programs (4.7s)
+  ✓  5 [chromium] › e2e/affiliate-admin-search.spec.ts:26:5 › AC-45: ค้นหาชื่อ affiliate → q ไปที่ API, เหลือ 1 แถว, อยู่ใน URL และคงหลัง reload; ล้างช่อง → แถวกลับ (18.1s)
+  ✓  6 [chromium] › e2e/affiliate-admin-search.spec.ts:115:7 › ADM-43 › AC-48: แท็บ Affiliates อยู่ใน URL คงหลัง reload และค้นด้วย code ได้; tab ผิด → Programs (6.6s)
+  6 passed (57.8s)
+
+## GREEN — e2e admin เดิมที่เปิด /app/affiliate (16 ไฟล์: admin-create-double-submit, admin-dialog-title, admin-form-discard-prompt, admin-list-create-action, admin-modal-return-focus, admin-program-form-errors, admin-row-menu-escape, admin-table-long-text, affiliate-admin-affiliates/forms/names/payout-create/payouts/programs/row-actions/tables)
+  19 failed
+  55 passed (4.6m)
+รอบแรก 19 ล้มเพราะไม่ได้ตั้ง DATABASE_URL ให้ helper ของ e2e (SASL: client password must be a string) ไม่เกี่ยวกับโค้ด → รัน 10 ไฟล์ที่ล้มใหม่พร้อม DATABASE_URL:
+  55 passed (2.6m)
+
+## GREEN — backend test:unit ทั้งชุด
+Test Suites: 126 passed, 126 total
+Tests:       1726 passed, 1726 total
+
+## GREEN — storefront test:e2e:unit (ทั้ง project)
+  145 passed (1.1s)
+
+## lint / typecheck
+pnpm lint: exit 0 (0 errors; warning เดิมไม่อยู่ในไฟล์ที่ task นี้แตะ)
+pnpm typecheck: exit 0 (รันหลังลบ apps/backend/.medusa — types ที่ medusa build สร้างทำให้ integration-tests เดิม 6 จุดฟ้อง TS2531 ในเครื่อง; CI ไม่มีไฟล์นี้)
+
+## แก้ตาม qa #491 D-1 (2026-11-22): คลิกแท็บ 1 ครั้ง push history 2 รายการ
+สาเหตุ: Radix Tabs (activationMode automatic, @radix-ui/react-tabs 1.1.2) เรียก onValueChange ทั้ง onMouseDown และ onFocus — onFocus เกิดก่อน router commit (isSelected ยังเป็น false) → setSearchParams 2 ครั้ง
+แก้: Tabs activationMode="manual" (คลิก/Enter/Space เลือกแท็บครั้งเดียว ลูกศรย้ายโฟกัสเท่านั้น)
+
+### RED — step ใหม่ใน AC-48 (history ต่อคลิก + back 1 ครั้ง)
+  ✘  1 [chromium] › e2e/affiliate-admin-search.spec.ts:115:7 › ADM-43 › AC-48: แท็บ Affiliates อยู่ใน URL คงหลัง reload และค้นด้วย code ได้; tab ผิด → Programs (3.3s)
+    Expected: 12
+    Received: 13
+    > 165 |       expect(await page.evaluate(() => history.length)).toBe(before + 1)
+
+### GREEN — affiliate-admin-search.spec.ts --repeat-each=3
+  6 passed (30.6s)
+### GREEN — e2e admin เดิมที่เปิด /app/affiliate (16 ไฟล์, DATABASE_URL ตั้งแล้ว)
+  74 passed (3.0m)
+### storefront test:e2e:unit 145 passed; backend test:unit src/admin 564 passed; lint exit 0 (0 errors); typecheck exit 0
+
+## nit จาก review #491 (2026-11-22)
+1) integration: affiliate ชื่อ `Back\Slash` → q=`\` และ q=`k\s` ได้แถวนั้นแถวเดียว
+2) unit `affiliate-payout.unit.spec.ts` describe "AdminListAffiliates q": trim, ช่องว่างล้วน/ว่าง = undefined, escape % _ \
+### RED — เอา `\` ออกจาก regex ของ validator ชั่วคราว
+unit: Tests: 1 failed, 17 passed, 18 total
+      ✕ filters by q on code, trims q and treats % _ \ literally (AC-48) (482 ms)
+    > 325 |         expect(await search("\\")).toEqual({ ids: [slash.id], count: 1 })
+Tests:       1 failed, 38 skipped, 39 total
+### GREEN — คืน regex
+unit affiliate-payout.unit.spec.ts: Tests: 18 passed, 18 total
+integration affiliate-admin.spec.ts ทั้งไฟล์: Tests:       39 passed, 39 total
