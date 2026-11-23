@@ -51,3 +51,11 @@ Test Suites: 3 passed, 3 total
 Tests:       27 passed, 27 total
 
 -- pnpm lint: 0 errors; pnpm typecheck: ผ่าน; backend build: ผ่าน; storefront test:e2e:unit 145 passed
+
+== หลัง merge origin/develop (f01c0cee, รวม OPS-34 #497) ==
+-- unit ทั้งชุด
+Test Suites: 129 passed, 129 total
+Tests:       1758 passed, 1758 total
+-- integration http: group-buy-payment-check.spec.ts
+Tests:       6 passed, 6 total
+-- typecheck + backend build: ผ่าน
