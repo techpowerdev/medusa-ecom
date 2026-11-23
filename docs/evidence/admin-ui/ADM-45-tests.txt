@@ -1,0 +1,46 @@
+# ADM-45 (spec 08 กฎ 49, AC-50) — ผล test
+# เครื่อง local: backend `medusa develop` port 9260, DB medusa_adm45 (migrate + seed), Redis db 3, Playwright chromium
+# ข้อมูลของ test: affiliate ชื่อ 370 ตัว + อีเมล ≥ 80 ตัว, payout draft 1 แถว (reference 320 ตัว, period 45 วัน) — prefix adm45/a45 (กฎ 42f)
+# วิธีแก้: คอลัมน์ Affiliate `size: 150` (ไม่มี maxSize) + div ห่อใน cell `w-[126px] 2xl:w-[250px]` (className ของ cell ตามกฎ 49 — ไม่สร้าง component, ไม่วัดจอด้วย JS)
+# build: `pnpm --filter backend build` สำเร็จ, CSS ของ admin มี `@media(min-width:1536px){.2xl\:w-[250px]{width:250px}}`
+
+## RED — develop f01c0cee + test ใหม่เท่านั้น (ล้มที่ความกว้างของ cell ที่ 1920 ไม่ใช่ locator/timeout)
+      ✘  1 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1920×1080 › AC-50: payouts 1920 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม (2.9s)
+      ✓  2 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1440×900 › AC-50: payouts 1440 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม (2.4s)
+      ✓  3 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1280×800 › AC-50: payouts 1280 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม (2.1s)
+        Error: เนื้อหา cell Affiliate ที่ 1920
+        Expected: >= 240
+        Received:    126
+      1 failed
+      2 passed (8.8s)
+
+## ผลวัด (probe ชั่วคราว ไม่ commit) หลังแก้ --repeat-each=3 — 9/9 ผ่าน ค่าคงที่ทุกรอบ
+#   1920: เนื้อหา cell Affiliate 250px, ตาราง 1576 = กล่องเลื่อน 1576 (ไม่ล้น)
+#   1440: เนื้อหา cell Affiliate 126px, ตาราง 1196 = กล่องเลื่อน 1196
+#   1280: เนื้อหา cell Affiliate 126px, ตาราง 1036 = กล่องเลื่อน 1036
+
+## GREEN — admin-table-long-text.spec.ts ทั้งไฟล์ (ADM-35/37/38/41 regression + ADM-45)
+      ✓   1 [chromium] › e2e/admin-table-long-text.spec.ts:224:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (3.3s)
+      ✓   2 [chromium] › e2e/admin-table-long-text.spec.ts:240:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม (3.3s)
+      ✓   3 [chromium] › e2e/admin-table-long-text.spec.ts:300:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ (1.9s)
+      ✓   4 [chromium] › e2e/admin-table-long-text.spec.ts:325:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ (1.4s)
+      ✓   5 [chromium] › e2e/admin-table-long-text.spec.ts:341:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ (1.5s)
+      ✓   6 [chromium] › e2e/admin-table-long-text.spec.ts:356:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ (1.6s)
+      ✓   7 [chromium] › e2e/admin-table-long-text.spec.ts:377:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ (1.7s)
+      ✓   8 [chromium] › e2e/admin-table-long-text.spec.ts:442:7 › ADM-38: Ledger คอลัมน์ Affiliate ≤ 250px ทุกความกว้างจอ › AC-43a1: Ledger 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", เห็น Status (2.0s)
+      ✓   9 [chromium] › e2e/admin-table-long-text.spec.ts:465:9 › ADM-38: Ledger คอลัมน์ Affiliate ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-43a2: Ledger 1920 — คอลัมน์ Affiliate ≤ 250px, เห็น Status (1.7s)
+      ✓  10 [chromium] › e2e/admin-table-long-text.spec.ts:572:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1280×800 › AC-46: payouts 1280 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม (2.1s)
+      ✓  11 [chromium] › e2e/admin-table-long-text.spec.ts:572:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1440×900 › AC-46: payouts 1440 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม (2.0s)
+      ✓  12 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1920×1080 › AC-50: payouts 1920 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม (2.0s
+      ✓  13 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1440×900 › AC-50: payouts 1440 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม (2.0s)
+      ✓  14 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1280×800 › AC-50: payouts 1280 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม (2.0s)
+      14 passed (29.9s)
+
+## e2e admin อื่นที่ render ตาราง Payouts (CI=1, workers=1)
+# affiliate-admin-payouts, affiliate-admin-names, admin-row-menu-escape, affiliate-admin-tables, affiliate-admin-row-actions, affiliate-admin-payout-create
+      12 passed (52.3s)
+
+## อื่นๆ
+# pnpm --filter storefront test:e2e:unit: 145 passed
+# pnpm --filter backend test:unit: Tests:       1750 passed, 1750 total
+# pnpm --filter backend typecheck / storefront typecheck: ผ่าน; lint ทั้งสอง package: 0 error (warning เดิมไม่อยู่ในไฟล์ที่แตะ)
