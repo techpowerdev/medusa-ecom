@@ -1,6 +1,11 @@
 import { MedusaError } from "@medusajs/framework/utils"
 import type { MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { assignStoreReturnLocation, RETURN_ITEM_NOT_STOCKED_MESSAGE } from "../return-location"
+import {
+  assignStoreReturnLocation,
+  RETURN_ITEM_NOT_STOCKED,
+  RETURN_ITEM_NOT_STOCKED_MESSAGE,
+  RETURN_NO_LOCATION,
+} from "../return-location"
 import { storeOwnershipMiddlewares } from "../middlewares"
 import { validateStoreReturnWindow } from "../return-window"
 import { lockStoreReturnOrder } from "../return-lock"
@@ -92,9 +97,11 @@ describe("assignStoreReturnLocation", () => {
   it("rejects 400 invalid_data with a constant message when the option has no stock location (113b)", async () => {
     for (const rows of [{ shipping_option: [option(null)] }, { shipping_option: [] }]) {
       const t = setup(rows, validated())
-      await expect(t.run()).rejects.toEqual(
-        new MedusaError(MedusaError.Types.INVALID_DATA, "Return shipping option has no stock location")
-      )
+      await expect(t.run()).rejects.toMatchObject({
+        type: MedusaError.Types.INVALID_DATA,
+        code: RETURN_NO_LOCATION,
+        message: "Return shipping option has no stock location",
+      })
       expect(t.next).not.toHaveBeenCalled()
       expect((t.req.validatedBody as { location_id?: string }).location_id).toBeUndefined()
     }
@@ -113,8 +120,14 @@ describe("assignStoreReturnLocation", () => {
       },
       validated(["ordli_1", "ordli_2"])
     )
-    await expect(t.run()).rejects.toEqual(new MedusaError(MedusaError.Types.INVALID_DATA, RETURN_ITEM_NOT_STOCKED_MESSAGE))
+    await expect(t.run()).rejects.toMatchObject({
+      type: MedusaError.Types.INVALID_DATA,
+      code: RETURN_ITEM_NOT_STOCKED,
+      message: RETURN_ITEM_NOT_STOCKED_MESSAGE,
+    })
     expect(RETURN_ITEM_NOT_STOCKED_MESSAGE).toBe("This item cannot be returned online")
+    // CORE-83 (spec 01 กฎข้อ 140, ADR-028): storefront ตัดสินจาก code ไม่ใช่ข้อความ
+    expect([RETURN_ITEM_NOT_STOCKED, RETURN_NO_LOCATION]).toEqual(["RETURN_ITEM_NOT_STOCKED", "RETURN_NO_LOCATION"])
     expect(t.next).not.toHaveBeenCalled()
     expect(t.warn).toHaveBeenCalledWith(expect.stringContaining("order_1"))
     expect(t.warn).toHaveBeenCalledWith(expect.stringContaining("sloc_return"))
@@ -143,7 +156,11 @@ describe("assignStoreReturnLocation", () => {
       { shipping_option: [option("sloc_return")], order: [{ id: "order_1", items: [line("ordli_1", false, [])] }] },
       validated(["ordli_missing"])
     )
-    await expect(t.run()).rejects.toEqual(new MedusaError(MedusaError.Types.INVALID_DATA, RETURN_ITEM_NOT_STOCKED_MESSAGE))
+    await expect(t.run()).rejects.toMatchObject({
+      type: MedusaError.Types.INVALID_DATA,
+      code: RETURN_ITEM_NOT_STOCKED,
+      message: RETURN_ITEM_NOT_STOCKED_MESSAGE,
+    })
     expect(t.next).not.toHaveBeenCalled()
   })
 

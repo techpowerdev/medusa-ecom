@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 // CORE-4e (follow-up qa #109): login ไม่สำเร็จ → `login-error-message` เป็นไทย ไม่ใช่ "Invalid email or password" ดิบของ Medusa
 const authLogin = vi.fn()
 
+// CORE-83: customer.ts import medusa-fetch (server-only)
+vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   sdk: { auth: { login: (...a: unknown[]) => authLogin(...a) } },
 }))

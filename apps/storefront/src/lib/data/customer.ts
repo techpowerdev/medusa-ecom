@@ -10,6 +10,7 @@ import { trimInvisible } from "@lib/util/trim-invisible"
 import { normalizeEmail } from "@lib/util/normalize-email"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
+import { isUncodedMedusaError } from "@lib/util/medusa-api-error"
 import { revalidateTag } from "next/cache"
 import { redirect, unstable_rethrow } from "next/navigation"
 import {
@@ -36,6 +37,7 @@ import {
 import { isBuyReturnPath, readReturnTo } from "@lib/util/login-return"
 import { buyFromPermalink } from "@lib/util/server-cart"
 import { restoreActiveCart } from "./active-cart"
+import { medusaFetch } from "./medusa-fetch"
 
 export type CustomerAuthState =
   // CORE-4f (กฎข้อ 62): `email` = อีเมลที่กรอกไว้ ฟอร์ม login/register ใช้เป็น defaultValue ไม่ให้หายเมื่อล้ม
@@ -152,19 +154,17 @@ export async function signup(
 
   let identityExists = false
   try {
-    await sdk.auth.register("customer", "emailpass", {
+    // CORE-83 (กฎข้อ 140, ADR-028): medusaFetch เพื่อได้ `type` ของ error; token ของ register ไม่ใช้ (completeLogin ขอใหม่)
+    await medusaFetch<{ token: string }>("/auth/customer/emailpass/register", {
       email: customerForm.email,
       password,
     })
   } catch (error) {
-    const fetchError = error as FetchError
     // An existing identity (for example, an admin user with the same email) is
     // expected and handled: the customer can still log in to link a customer
     // record. Any other error is surfaced.
-    if (
-      fetchError.statusText !== "Unauthorized" ||
-      fetchError.message !== "Identity with email already exists"
-    ) {
+    // Medusa core ไม่มี code ให้ error นี้ → ข้อยกเว้น IDENTITY_EXISTS ของ helper (status + type + ข้อความ)
+    if (!isUncodedMedusaError(error, "IDENTITY_EXISTS")) {
       // CORE-4h (กฎข้อ 69a): 401 ของ register ไม่ได้แปลว่าต้องเข้าสู่ระบบใหม่ → ข้อความทั่วไปของการสมัคร
       return withEmail(
         { state: "error", error: SIGNUP_FAILED_MESSAGE },

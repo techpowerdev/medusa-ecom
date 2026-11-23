@@ -23,12 +23,12 @@ process.env.AFFILIATE_TOKEN_SECRET = "core55-integration-secret"
 // return option ให้เฉพาะ fulfillment ไม่ถึงตัว return → return จากหน้าเว็บมี location_id null และ admin รับของไม่ได้ (500)
 // server กำหนด location_id จาก option เอง (client ส่งไม่ได้ — CORE-16) และปฏิเสธตอนขอคืนเมื่อ item ไม่มี level ที่ location นั้น
 type Headers = { headers: Record<string, string> }
-type HttpError = { response?: { status: number; data?: { type?: string; message?: string } } }
+type HttpError = { response?: { status: number; data?: { type?: string; code?: string; message?: string } } }
 
 // กฎ CLAUDE.md: ไม่ปล่อย error ของ axios (circular) ออกจาก test
 const responseOf = (request: Promise<{ status: number; data: unknown }>) =>
   request.then(
-    ({ status, data }) => ({ status, data: data as { type?: string; message?: string } }),
+    ({ status, data }) => ({ status, data: data as { type?: string; code?: string; message?: string } }),
     (e: HttpError) => ({ status: e.response?.status, data: e.response?.data })
   )
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload ของ store API ใน test
@@ -365,9 +365,11 @@ medusaIntegrationTestRunner({
       const order = await placeOrder(variants.elsewhere)
       const fulfillments = await fulfillmentIds()
       const { status, data } = await requestReturn(order)
-      expect({ status, type: data?.type, message: data?.message }).toEqual({
+      // CORE-83 (spec 01 กฎข้อ 140): storefront ตัดสินจาก code
+      expect({ status, type: data?.type, code: data?.code, message: data?.message }).toEqual({
         status: 400,
         type: "invalid_data",
+        code: "RETURN_ITEM_NOT_STOCKED",
         message: "This item cannot be returned online",
       })
       expect(await returnsOf(order)).toEqual([])

@@ -31,6 +31,8 @@ const UNCODED_MEDUSA_ERRORS = {
   OUT_OF_STOCK_AT_RESERVE: { status: 400, type: "not_allowed", prefix: "Not enough stock available for item " },
   // `validateCartItemsStep` (core-flows/dist/cart/steps/validate-cart-items.js)
   EMPTY_CART_COMPLETION: { status: 400, type: "invalid_data", prefix: "Cannot complete a cart with no items" },
+  // CORE-83: register ด้วยอีเมลที่มี identity แล้ว (`@medusajs/auth-emailpass` services/emailpass.js → route register throw UNAUTHORIZED)
+  IDENTITY_EXISTS: { status: 401, type: "unauthorized", prefix: "Identity with email already exists" },
 } as const
 
 /** error ของ Medusa core ที่ไม่มี code ตามรายการข้อยกเว้น; อื่นๆ (ไม่ใช่ object, status/type ต่าง) → false */
