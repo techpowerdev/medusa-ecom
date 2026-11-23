@@ -44,3 +44,26 @@ TypeError: .toMatch() expects to receive a string, but got undefined
 - e2e/pay-15-promptpay-go-to-cart.spec.ts (AC-28 + AC-30b: poll ตอบ refunded ระหว่าง placeOrder ค้าง, MutationObserver ไม่เห็น promptpay-retry-button)
 - e2e/pay-11-promptpay-refund-reason.spec.ts (AC-24 + ไม่เห็น promptpay-retry-button)
 - regression: payments-promptpay-fallback-cap.spec.ts, payments-promptpay-already-paid.spec.ts, payments.spec.ts AC-3
+
+## แก้ตาม review #540 (2026-11-24)
+### blocker: mock race ของ pay-15 (CI run 45262340797 ล้มที่ pay-15:42)
+สาเหตุ: Next 16.3.8 ส่ง server action ทีละตัวตามคิว (`app-router-instance.js` `dispatchAction`/`runRemainingActions`) — mock เดิมค้าง placeOrder
+รอ poll ที่ตอบ refunded แต่ poll เข้าคิวหลัง placeOrder จึงไม่มาถึง route จนหมดเวลา fallback 30s
+mock ใหม่ (`refundedPollWhileFinishing` ใน e2e/support/promptpay-race.ts) จำลองลำดับที่เกิดได้จริงในคิว:
+1. placeOrder แรกของทางสำรองตอบ processing → poll ต่อ
+2. poll A ตอบ pending แต่ค้าง response 4.5s (> PROMPTPAY_POLL_MS 3s) → interval ส่ง poll B เข้าคิวหลัง A
+3. ปล่อย A → action complete → finish() ตั้ง finishing = true แล้ว placeOrder เข้าคิวหลัง B
+4. B ตอบ refunded ขณะ finishing แล้ว placeOrder ตอบ FLASH_SOLD_OUT
+pay-15 ตรวจ refundedPolls = 1 และ B มาถึงก่อน placeOrder ที่สอง; timeout ของ promptpay-refunded คืนเป็น 5s (นับจาก placeOrder ที่สอง)
+
+### red ของ e2e บนโค้ดเดิม — พิสูจน์ในเครื่องไม่ได้ (ไม่มี Stripe test key; e2e skip) กลไก:
+บนโค้ดเดิม (ไม่มี promptPayPollWhileFinishing ที่ promptpay-payment/index.tsx) ขั้น 4 poll B ได้ promptPayPollAction("refunded", completeFallback=true) = "refunded"
+→ clearInterval + stopRefunded(PROMPTPAY_REFUNDED_UNKNOWN) → awaitingOrder=false, refunded.goToCart=false → render `promptpay-retry-button`
+→ MutationObserver ของ paidWhileQrShown จด id นี้ใน seen ก่อน placeOrder ที่สองตอบแล้วเปลี่ยนเป็น promptpay-go-to-cart
+→ `expect(ctx.seen.has("promptpay-retry-button")).toBe(false)` ล้ม; โค้ดใหม่: finishing = true → "wait" ไม่เปลี่ยน state
+
+### nit: expired_card → ข้อความบัตรถูกปฏิเสธ (ใช้บัตรใบอื่น) แทนข้อมูลบัตรผิด
+Red (stripe-error.ts เดิม):
+ FAIL  src/lib/util/stripe-error.test.ts > stripeErrorMessage > บัตรถูกปฏิเสธ: บัตรหมดอายุ expired_card → STRIPE_CARD_DECLINED
+      Tests  1 failed | 16 passed (17)
+Green: storefront unit ทั้งชุด 122 files / 1883 passed; tsc ผ่าน; eslint ไฟล์ที่แตะ 0 error 0 warning; playwright --project=unit 160 passed

@@ -12,6 +12,7 @@ describe("stripeErrorMessage", () => {
     ["card_declined", { type: "card_error", code: "card_declined", decline_code: "generic_decline" }],
     ["insufficient_funds (decline_code)", { type: "card_error", code: "card_declined", decline_code: "insufficient_funds" }],
     ["ไม่มี code แต่มี decline_code", { type: "card_error", decline_code: "do_not_honor" }],
+    ["บัตรหมดอายุ expired_card", { type: "card_error", code: "expired_card" }],
   ])("บัตรถูกปฏิเสธ: %s → STRIPE_CARD_DECLINED", (_label, error) => {
     expect(stripeErrorMessage({ ...error, message: "Your card was declined." })).toBe(STRIPE_CARD_DECLINED)
   })
@@ -21,7 +22,6 @@ describe("stripeErrorMessage", () => {
     "invalid_number",
     "invalid_expiry_month",
     "invalid_expiry_year",
-    "expired_card",
     "incorrect_cvc",
     "invalid_cvc",
     "incorrect_zip",

@@ -10,7 +10,6 @@ const INVALID_CARD_CODES = new Set([
   "invalid_number",
   "invalid_expiry_month",
   "invalid_expiry_year",
-  "expired_card",
   "incorrect_cvc",
   "invalid_cvc",
   "incorrect_zip",
@@ -22,6 +21,9 @@ type StripeErrorLike = { type?: string; code?: string; decline_code?: string; me
 export const stripeErrorMessage = (error: StripeErrorLike): string => {
   if (error.type === "validation_error") return STRIPE_CARD_INVALID
   if (error.type !== "card_error") return STRIPE_PAYMENT_FAILED
-  if (error.code === "card_declined" || (!error.code && error.decline_code)) return STRIPE_CARD_DECLINED
+  // บัตรหมดอายุ = ข้อมูลที่กรอกถูกแต่ใช้บัตรนี้ไม่ได้ → ให้ใช้บัตรใบอื่น (review #540)
+  if (error.code === "card_declined" || error.code === "expired_card" || (!error.code && error.decline_code)) {
+    return STRIPE_CARD_DECLINED
+  }
   return error.code && INVALID_CARD_CODES.has(error.code) ? STRIPE_CARD_INVALID : STRIPE_PAYMENT_FAILED
 }

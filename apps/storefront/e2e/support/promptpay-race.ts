@@ -91,16 +91,34 @@ export async function paidWhileQrShown(
 // PAY-11 (ย้ายมาใน PAY-15 เพื่อใช้ร่วมกัน): route mock ผลของ placeOrder ในทางสำรอง — ดูคำอธิบายใน pay-11-promptpay-refund-reason.spec.ts
 export type Mocked = { placeOrders: number[]; polls: number[]; refundedPolls: number[] }
 
-/** PAY-17 (spec 06 กฎข้อ 19b): placeOrder ค้างไว้จนมี poll ตอบ `refunded` แล้ว (Medusa คืนเงินก่อน response ของ complete กลับ) */
+/**
+ * PAY-17 (spec 06 กฎข้อ 19b): ฉาก race ที่เกิดได้จริง — Next ส่ง server action ทีละตัวตามคิว (`dispatchAction`/`runRemainingActions`)
+ * poll (`getPromptPayState`) จึงตอบ `refunded` "ระหว่าง" placeOrder ไม่ได้ แต่ตอบได้ระหว่างที่ placeOrder รอคิวอยู่ (`finishing` = true แล้ว):
+ * 1. placeOrder แรกของทางสำรอง (จาก awaitOrder) ตอบ `processing` → finish ได้ retry ทางสำรองยัง poll ต่อ
+ * 2. poll A ตอบ `pending` แต่ค้าง response ไว้นานกว่า PROMPTPAY_POLL_MS → interval รอบถัดไปส่ง poll B เข้าคิวต่อหลัง A
+ * 3. ปล่อย A → client ได้ `complete` → `finish()` ตั้ง finishing = true แล้ว placeOrder เข้าคิวต่อหลัง B
+ * 4. B ตอบ `refunded` ขณะ finishing (โค้ดเดิม: stopRefunded ไม่รู้เหตุ → `promptpay-retry-button` โผล่) แล้ว placeOrder ตอบ `outcome`
+ */
 export type MockPlaceOrderOptions = { refundedPollWhileFinishing?: boolean }
 
-/** เวลาที่ค้าง placeOrder ไว้หลัง poll ตอบ refunded — พอให้ React render ผลของ poll ก่อน (ถ้ายังตัดสินจาก poll) */
-const HOLD_AFTER_REFUNDED_POLL_MS = 1_500
+/** ค้าง poll A นานกว่า PROMPTPAY_POLL_MS (3 วินาที) ให้ poll B เข้าคิวต่อหลัง A */
+const HOLD_POLL_A_MS = 4_500
+
+/** ตอบ action poll ของ cart ด้วยค่าจริงที่แทน `"pending"` ด้วย `replacement` (ค้าง `delayMs` ก่อนตอบ) */
+async function fulfillPoll(route: Route, replacement: string, delayMs = 0) {
+  const res = await route.fetch()
+  const text = await res.text()
+  expect(text, "action poll คืนสถานะ pending").toContain('"pending"')
+  const headers = { ...res.headers() }
+  delete headers["content-length"]
+  if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs))
+  await route.fulfill({ status: res.status(), headers, body: text.replace('"pending"', replacement) })
+}
 
 /**
  * หลัง storefront สร้าง session ใหม่ (renewPromptPaySession — มี provider id ใน body) action ที่รับ cart id อย่างเดียว:
  * id ที่เห็นตอน QR แสดง = poll (ผ่านจริง นับไว้), id อื่น = placeOrder → ตอบเป็น `outcome`
- * `refundedPollWhileFinishing`: ระหว่างค้าง placeOrder poll ตอบ `refunded` (แทน `"pending"`) — ฉาก race ของ PAY-17
+ * `refundedPollWhileFinishing`: ลำดับของ MockPlaceOrderOptions (placeOrder แรกตอบ `processing`, ตัวที่สองตอบ `outcome`)
  */
 export async function mockPlaceOrder(
   page: Page,
@@ -108,10 +126,8 @@ export async function mockPlaceOrder(
   outcome: object,
   options: MockPlaceOrderOptions = {}
 ): Promise<Mocked> {
-  const state = { renewed: false, pollActionIds: new Set<string>(), holding: false }
+  const state = { renewed: false, pollActionIds: new Set<string>(), racePolls: 0 }
   const mocked: Mocked = { placeOrders: [], polls: [], refundedPolls: [] }
-  let pollRefunded!: () => void
-  const refundedPoll = new Promise<void>((resolve) => (pollRefunded = resolve))
   await page.route(
     (url) => url.pathname.includes("/checkout"),
     async (route: Route) => {
@@ -129,24 +145,19 @@ export async function mockPlaceOrder(
       }
       if (state.pollActionIds.has(actionId)) {
         mocked.polls.push(Date.now())
-        if (!state.holding) return route.fallback()
-        const res = await route.fetch()
-        const text = await res.text()
-        expect(text, "action poll คืนสถานะ pending").toContain('"pending"')
-        const headers = { ...res.headers() }
-        delete headers["content-length"]
-        await route.fulfill({ status: res.status(), headers, body: text.replace('"pending"', '"refunded"') })
-        mocked.refundedPolls.push(Date.now())
-        pollRefunded()
-        return
+        // race: เฉพาะ poll หลัง placeOrder แรก และก่อน placeOrder ที่สอง
+        if (!options.refundedPollWhileFinishing || mocked.placeOrders.length !== 1) return route.fallback()
+        state.racePolls++
+        if (state.racePolls === 1) return fulfillPoll(route, '"pending"', HOLD_POLL_A_MS)
+        if (state.racePolls === 2) {
+          // เวลาที่ request ของ B มาถึง — placeOrder ที่สองต้องมาหลังจากนี้ (รอคิวหลัง B)
+          mocked.refundedPolls.push(Date.now())
+          return fulfillPoll(route, '"refunded"')
+        }
+        return route.fallback()
       }
       mocked.placeOrders.push(Date.now())
-      if (options.refundedPollWhileFinishing && mocked.placeOrders.length === 1) {
-        state.holding = true
-        await Promise.race([refundedPoll, new Promise((resolve) => setTimeout(resolve, 30_000))])
-        await new Promise((resolve) => setTimeout(resolve, HOLD_AFTER_REFUNDED_POLL_MS))
-        state.holding = false
-      }
+      const answer = options.refundedPollWhileFinishing && mocked.placeOrders.length === 1 ? { kind: "processing" } : outcome
       const pollId = Array.from(state.pollActionIds)[0]
       const res = await route.fetch({
         headers: { ...req.headers(), "next-action": pollId },
@@ -156,7 +167,7 @@ export async function mockPlaceOrder(
       expect(text, "action poll คืนสถานะ pending").toContain('"pending"')
       const headers = { ...res.headers() }
       delete headers["content-length"]
-      await route.fulfill({ status: res.status(), headers, body: text.replace('"pending"', JSON.stringify(outcome)) })
+      await route.fulfill({ status: res.status(), headers, body: text.replace('"pending"', JSON.stringify(answer)) })
     }
   )
   await expect.poll(() => state.pollActionIds.size, { timeout: 30_000 }).toBeGreaterThan(0)
