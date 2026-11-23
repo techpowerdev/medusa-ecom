@@ -498,6 +498,8 @@ spec 08 กฎ 41a/41c/43/44/45, spec 07 เช็กลิสต์ bump ข้
 | A | OPS-34 ∥ PAY-13 | 07/06 | hygiene backend (tsconfig `.medusa`, nits #428–#434, PAY-9 404) ∥ e2e pay-9 จ่ายใหม่ไม่ flaky | PR เอกสารรอบ 41 | — | ☐ |
 | B | CORE-76 | 01 | **เงิน (UI)** notice คืนเงินเป็น state + 4xx หลังตัดบัตร + manual สต็อกไม่พอ + คืนสินค้าไม่มี location | FS-22 (#464) | ✓ | ☐ |
 | B | GB-26 | 04 | ล็อกการเพิ่ม/ถอด promotion ของ campaign group buy + clone ใช้ campaign จาก link | GB-25 (#463) | — | ☐ |
+| B | GB-29 | 04 | (owner ตัดสิน 2026-11-22, review #488) กันเปลี่ยน `campaign_id` ของต้นแบบ `GBT-*` + กันย้าย/สร้าง promotion อื่นเข้า campaign group buy ผ่าน `/admin/promotions` (แก้ส่วนลดต้นแบบยังได้ — Q5) | GB-26 (#488) | — | ☐ (PR #493) |
+| B | GB-30 | 04 | (owner สั่ง 2026-11-23, follow-up #493) กัน `DELETE /admin/promotions/:id` ของต้นแบบ `GBT-*` → 400 `not_allowed` + (owner ตัดสินเพิ่ม 2026-11-23) กันเปลี่ยน `status` ต้นแบบเป็น `active` (~45 LOC + ~200 LOC test) | GB-29 (#493) + PR เอกสาร GB-30 | — | ☐ |
 | B | CORE-78 | 01 | orders: กลุ่มเฉพาะหน้า 1, "ดูทั้งหมด", a11y Pagination, helper แบ่งหน้าเดียว | CORE-68 (#462) | ✓ | ☐ |
 | B | CORE-77 | 01 | ป้ายตะกร้าไม่ค้างเมื่อโหลด cart ล้ม | hotfix `fix/nav-cart-link-duplicate` | ✓ | ☐ |
 | B | CORE-86 ∥ CORE-87 | 01 | e2e prefix core-75×fs14 ∥ หัว facet `/store` ไม่แสดง "(0)" ผิด | CORE-75 (#465) | CORE-87 ✓ | ☐ |
@@ -511,6 +513,7 @@ spec 08 กฎ 41a/41c/43/44/45, spec 07 เช็กลิสต์ bump ข้
 | ท้าย | CORE-82 → CORE-83 → CORE-84 | 01 | จับ error ด้วย code ตาม ADR-028 (accepted owner 2026-11-21 — 3 PR ปิดท้ายรอบ + issue upstream): checkout/payment → account/returns/auth → group buy/flash/affiliate | task หน้าร้านที่แตะ helper เดียวกัน (82 ← CORE-76, PAY-11, PAY-12, PAY-14; 83 ← CORE-79, CORE-82; 84 ← FS-23, GB-27, CORE-83) | ✓ | ☐ |
 
 **owner ตัดสิน 2026-11-21**: Q-P11 = ก, Q-C13 = ก, Q-C14 = อนุมัติ ADR-028, Q-C15 = ก; owner ยืนยัน (2026-11-21 ตาม review #467) ให้ทำ **CORE-87** (หัว facet `/store`) และ **Go-live ข้อ 14** (วัด p95 ของ `POST /store/search` กับ catalog จริง เกิน ~10k สินค้าหรือ p95 > 300ms ต้องมี ADR) Go-live ข้อ 10 (`LC_CTYPE` — เงื่อนไขทางเทคนิคของ CORE-75) owner ยืนยัน 2026-11-21 (`check:go-live` ตรวจ `datctype` ให้ใน OPS-33); PAY-14 owner สั่งเพิ่ม 2026-11-21 (review #468) — เหลือรอเฉพาะข้อมูลติดต่อของ CORE-85; **issue upstream** (session หลักเปิด): js-sdk `FetchError` ไม่เก็บ `code`/`type` (ADR-028)
+**owner ตัดสินเพิ่ม (group buy)**: 2026-11-22 GB-29 (review #488 — spec 04 กฎข้อ 54, AC-72); 2026-11-23 GB-30 (งานต่อเนื่องของ #493 กัน DELETE ต้นแบบ — spec 04 กฎข้อ 55; ตัดสินเพิ่มวันเดียวกัน กันเปิดใช้ต้นแบบ `status: "active"` เพราะลูกค้าจะใช้โค้ด `GBT-*` เป็นส่วนลดตรงได้โดยไม่เข้ากลุ่ม — กฎข้อ 56; AC-73, ADR-026 ภาคผนวก 2026-11-23)
 **critical path (เงิน/PII ก่อน)**: PR เอกสารรอบ 41 → OPS-33 ∥ EV-23 ∥ EV-25 ∥ PAY-10 ∥ CORE-80 → (#464 merge) CORE-76 → PAY-11 ∥ PAY-12 ∥ PAY-14 ∥ FS-24 → CORE-81 → ที่เหลือ → CORE-82..84 ปิดท้าย
 **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง merge `origin/develop` แล้วรอ CI ใหม่):
 - `apps/storefront/src/lib/data/cart.ts` + `lib/util/checkout-error.ts`/`insufficient-inventory.ts`: FS-22 → CORE-76 → (PAY-11 ∥ PAY-12 ∥ PAY-14 — PAY-14 แตะ `modules/checkout/components/payment` ด้วย) → CORE-82
@@ -521,6 +524,7 @@ spec 08 กฎ 41a/41c/43/44/45, spec 07 เช็กลิสต์ bump ข้
 - `modules/layout/components/cart-dropdown` + `templates/nav`: hotfix → CORE-77; `account/@dashboard/orders/page.tsx`: CORE-68 → CORE-78
 - `lib/search-client.ts` + `store-refinements`: CORE-75 → CORE-87 ∥ CORE-88; `e2e/flash-sale-fs14.spec.ts`: CORE-75 → CORE-86
 - `src/modules/resend/templates.ts`: GB-28; `modules/products/components/product-actions`: FS-23; `group-page/index.tsx`: GB-27
+- `src/api/admin/promotions/group-buy-lock.ts` + `integration-tests/http/group-buy-promotion-lock.spec.ts`: GB-25 → GB-26 → GB-29 → GB-30 (ทีละตัว — GB-30 แตก branch หลัง #493 merge)
 **คำแนะนำ dispatch**: คลื่น A ทำขนานได้ทันทีหลัง PR เอกสารรอบ 41 merge (จำกัด builder พร้อมกันตามเครื่อง — integration หนัก: OPS-33, EV-23, EV-25, OPS-34; เบา: AF-25/26, GB-27, CORE-79, ADM-43..45, PAY-13);
 คลื่น B เริ่มทีละตัวเมื่อ PR ที่อ้าง merge จริง (`gh pr view <n> --json state`); คลื่น C หลัง CORE-76; CORE-85 รอข้อมูลติดต่อจาก owner; CORE-82..84 ทำทีละ PR หลังทุก task หน้าร้านที่แตะ helper error merge
 

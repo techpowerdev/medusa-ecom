@@ -36,3 +36,13 @@
 - clone `GB-<token>` ใช้ campaign id จาก link `group_buy_campaign.campaign` แทน `template.campaign_id` — link เป็น source of truth ของความเป็นเจ้าของ; ต้นแบบที่ไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่มไม่ได้ (`invalid_data`)
 - (เพิ่ม 2026-11-22 — owner ตัดสินจาก review #488) ปิดทางอ้อมที่ admin route ของ promotion ด้วย: `POST /admin/promotions/:id` ที่เปลี่ยน `campaign_id` ของต้นแบบ `GBT-*` และ `POST /admin/promotions` / `POST /admin/promotions/:id` ที่ตั้ง `campaign_id` เป็น campaign ที่ผูก `group_buy_campaign` → 400 `not_allowed`; body ที่ไม่แตะ `campaign_id` (หรือส่งค่าเดิม) ผ่านได้ตาม Q5 — spec 04 กฎข้อ 54, GB-29
 - ไม่มีทางเลือกใหม่ให้ตัดสิน (owner สั่งแล้ว) — spec 04 กฎข้อ 51, GB-26
+
+## ภาคผนวก 2026-11-23 (planner รอบ 41 — owner สั่ง "กัน DELETE ไม่ให้ลบ promotion ต้นแบบ `GBT-*` ของ group buy" และตัดสินเพิ่ม "ห้ามเปลี่ยน status ต้นแบบเป็น active")
+- `DELETE /admin/promotions/:id` ของต้นแบบ `GBT-*` ที่ผูกแคมเปญ group buy → 400 `not_allowed` ทุกสถานะของแคมเปญ — แทนส่วน "ต้นแบบ `GBT-*` → `next()`" ของทางเลือก 1 **เฉพาะ DELETE** (POST แก้ส่วนลดของต้นแบบยังได้ตาม Q5)
+- เหตุผล: ลบต้นแบบแล้วแคมเปญสร้างกลุ่มใหม่ไม่ได้ (กฎข้อ 51b ต้องมีต้นแบบใน campaign ของ link) และหน้า Group buying อ้างต้นแบบที่หายไป; ทางลบที่ถูกต้องคือลบแคมเปญ `draft` ที่หน้า Group buying (`deleteGroupBuyCampaignWorkflow` ไม่ผ่าน route นี้)
+- ตรวจ `@medusajs/medusa` 2.22.1: `DELETE /admin/promotions/:id` เป็น admin route เดียวที่ลบ promotion (ไม่มี bulk delete; rule batch ลบเฉพาะ rule; ลบ campaign cascade เฉพาะ budget) — ใช้ matcher เดิมของ GB-25 ไม่เพิ่ม hook/model
+- ผลที่ตามมา: ต้นแบบของแคมเปญ `active`/`ended` ลบไม่ได้ตลอดไป (ไม่มีทางลบแคมเปญที่ไม่ใช่ `draft` อยู่แล้ว) — spec 04 กฎข้อ 55, GB-30
+- (owner ตัดสินเพิ่ม 2026-11-23) `POST /admin/promotions/:id` ของต้นแบบ `GBT-*` ที่ body มี `status: "active"` → 400 `not_allowed` ทุกสถานะของแคมเปญ — ต้นแบบคง `draft` ตามที่ workflow ของเราสร้าง;
+  เหตุผล: promotion module ของ Medusa ให้ cart ใช้ได้เฉพาะ promotion `active` — ต้นแบบที่ `active` กลายเป็นโค้ดส่วนลดตรงที่ลูกค้าใช้ได้โดยไม่เข้ากลุ่ม;
+  แก้ส่วนลด/rule หรือตั้ง `draft`/`inactive` ยังได้ (Q5); ตรวจ 2.22.1: เปลี่ยน status ได้ทาง `POST /admin/promotions/:id` เท่านั้น (rule batch ไม่มี `status`; สร้าง promotion ใหม่ไม่ใช่ต้นแบบและเข้า campaign group buy ไม่ได้ตามกฎข้อ 54; ไม่มี job เปิดใช้อัตโนมัติ)
+  — ไม่ใช้ hook `promotionsUpdated` (เหตุผลเดิมของทางเลือก 3) ใช้ middleware ชุดเดียวกับ GB-25/26/29 — spec 04 กฎข้อ 56, GB-30
