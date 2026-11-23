@@ -19,3 +19,40 @@ Running 2 tests using 1 worker
       Tests  1460 passed (1460)
   151 passed (test:e2e:unit ทั้ง project รวม evidence-budget)
 eslint: 0 errors (28 warnings เดิม ไม่มีในไฟล์ที่แตะ); tsc --noEmit: ผ่าน
+
+## แก้ตาม review #518 (REQUEST CHANGES)
+Blocker: AC-48 (`e2e/thai-ui-cart-order.spec.ts:80`) ตรวจ `policy-content` ทั้งก้อนของหน้า contact ซึ่งมีข้อมูลร้านเป็นละติน (อีเมล, LINE ID)
+แก้: หน้า contact ใน AC-48 ตรวจ `policy-title` + `contact-intro` + `contact-hours` (ไม่เพิ่มคำใน ALLOWED); ป้าย "ไลน์" ไม่มี "(LINE)" แล้ว core-85 ตรวจป้ายช่องทางไม่มีคำละติน; LINE URL `https://line.me/R/ti/p/%40khumkha`
+
+### RED (e2e) — head d63d7116
+  ✘  1 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (586ms)
+    Error: policy-content: "สอบถามเรื่องคำสั่งซื้อ การจัดส่ง หรือการคืนสินค้าได้ตามช่องทางด้านล่าง โปรดแจ้งเลขที่คำสั่งซื้อเพื่อให้เราช่วยเหลือได้รวดเร็วขึ้นอีเมลsupport@khumkha.comโทรศัพท์02-862-3331
+  1 failed
+
+### GREEN (e2e) — spec ที่แตะหน้า contact/policy (grep "contact\|policy" ยกเว้น admin-*/evoucher-admin-* ที่ match แค่ field support_contact ของ admin)
+  ✓   3 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px) 
+  ✓   2 [chromium] › e2e/core-23c-account-forms.spec.ts:61:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย 
+  ✓   5 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px) 
+  ✓   6 [chromium] › e2e/core-23c-account-forms.spec.ts:95:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย 
+  ✓   1 [chromium] › e2e/core-71-return-contact-store.spec.ts:61:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error location ไม่มีของ → เห็น return-contact-store (ไทย + ลิงก์ /contact) ไม่เห็น ลองใหม่ 
+  ✓   8 [chromium] › e2e/core-23c-account-forms.spec.ts:140:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย 
+  ✓   4 [chromium] › e2e/core-20d-return-window.spec.ts:147:5 › AC-102 (a): region ไม่ตั้ง return_window_days → ปุ่มขอคืน, หน้า /returns และ JSON-LD ใช้ค่าเริ่มต้นของ backend 
+  ✓  10 [chromium] › e2e/core-23c-account-forms.spec.ts:183:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์ 
+  ✓   9 [chromium] › e2e/core-71-return-contact-store.spec.ts:92:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error อื่น → ข้อความเดิม (return-error) ไม่มี return-contact-store 
+  ✓  13 [chromium] › e2e/core-85-contact-page.spec.ts:22:7 › AC-182: /th/contact มีช่องทางติดต่อจริงที่กดได้ (1280px) 
+  ✓   7 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว 
+  ✓  14 [chromium] › e2e/core-85-contact-page.spec.ts:22:7 › AC-182: /th/contact มีช่องทางติดต่อจริงที่กดได้ (375px) 
+  ✓  12 [chromium] › e2e/core-23c-account-forms.spec.ts:202:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact 
+  -  16 [chromium] › e2e/payments-promptpay-fallback-cap.spec.ts:47:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › complete cart ล้มทุกครั้ง → ยิงรวม ≤ 10 แล้วแสดง promptpay-order-delayed และหยุดยิง
+  -  17 [chromium] › e2e/payments-promptpay-fallback-cap.spec.ts:90:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › เงินถูกคืนระหว่างทางสำรอง → แสดง promptpay-refunded และปุ่มเริ่มชำระใหม่
+  ✓  18 [chromium] › e2e/register-policy-links.spec.ts:6:5 › AC-77: ลิงก์นโยบาย/ข้อกำหนดในฟอร์มสมัครชี้หน้าที่มีจริง 
+  ✓  20 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย 
+  ✓  11 [chromium] › e2e/core-20d-return-window.spec.ts:224:5 › AC-102 (b): line A ส่งเมื่อ window + 1 วันก่อน, line B ส่งเมื่อวาน → ฟอร์มเลือกได้เฉพาะ B และ backend ตอบ 200 
+  ✓  19 [chromium] › e2e/ev-7e-vouchers-partner.spec.ts:30:5 › AC-43: vouchers แบ่งหน้า 20 + support_contact, ลิงก์ javascript: ไม่ถูก render, PDP บล็อกเดียวระหว่างโหลด 
+  ✓  22 [chromium] › e2e/core-20d-return-window.spec.ts:287:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก 
+  ✓  15 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280 
+  ✓  21 [chromium] › e2e/thai-ui-cart-order.spec.ts:96:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch 
+  ✓  23 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280 
+  21 passed, 2 skipped (PromptPay Stripe — ไม่มี Stripe test key ในเครื่อง)
+
+### storefront: vitest 1460 passed (115 files); test:e2e:unit 151 passed; tsc ผ่าน; eslint 0 errors

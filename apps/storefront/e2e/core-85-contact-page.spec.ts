@@ -1,6 +1,6 @@
 import { expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC } from "./support/medusa"
-import { expectThai, THAI } from "./support/thai-text"
+import { expectThai, latinWordsOutsideAllowList, THAI } from "./support/thai-text"
 
 // CORE-85: spec 01 AC-182 (กฎข้อ 141) — หน้า /<cc>/contact แสดงช่องทางติดต่อจริงที่ owner ส่ง (2026-11-23)
 // แต่ละช่องทางมี testid contact-channel และมีลิงก์ mailto:/tel:/https:// ไม่มีเนื้อหาตัวอย่างของ starter
@@ -40,7 +40,10 @@ for (const viewport of [
       for (let i = 0; i < count; i++) {
         const channel = channels.nth(i)
         await expect(channel).toBeVisible()
-        expect((await channel.getByTestId("contact-channel-label").textContent()) ?? "").toMatch(THAI)
+        // ป้ายช่องทางเป็นไทยล้วน (ADR-014) — ค่าที่ลิงก์ (อีเมล, LINE ID) เป็นข้อมูลร้านจึงไม่ตรวจ
+        const label = (await channel.getByTestId("contact-channel-label").textContent()) ?? ""
+        expect(label).toMatch(THAI)
+        expect(latinWordsOutsideAllowList(label), label).toEqual([])
         const links = channel.locator("a")
         for (let j = 0; j < (await links.count()); j++) {
           const href = (await links.nth(j).getAttribute("href")) ?? ""
@@ -54,7 +57,7 @@ for (const viewport of [
       // ค่าที่ owner ส่ง (ตรวจว่าเป็นข้อมูลจริง ไม่ใช่ตัวอย่าง)
       await expect(page.locator('a[href="mailto:support@khumkha.com"]')).toBeVisible()
       await expect(page.locator('a[href="tel:+6628623331"]')).toBeVisible()
-      await expect(page.locator('a[href="https://line.me/R/ti/p/@khumkha"]')).toBeVisible()
+      await expect(page.locator('a[href="https://line.me/R/ti/p/%40khumkha"]')).toBeVisible()
       await expect(page.getByTestId("contact-hours")).toContainText("09:00")
     })
 

@@ -16,9 +16,9 @@ const CHANNELS: { label: string; value: string; href?: string; external?: boolea
   { label: "อีเมล", value: "support@khumkha.com", href: "mailto:support@khumkha.com" },
   { label: "โทรศัพท์", value: "02-862-3331", href: "tel:+6628623331" },
   {
-    label: "ไลน์ (LINE)",
+    label: "ไลน์",
     value: "@khumkha",
-    href: "https://line.me/R/ti/p/@khumkha",
+    href: "https://line.me/R/ti/p/%40khumkha",
     external: true,
   },
   {
