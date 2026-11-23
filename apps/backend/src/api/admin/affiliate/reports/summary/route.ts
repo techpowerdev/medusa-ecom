@@ -9,10 +9,7 @@ export async function GET(
   res: MedusaResponse
 ) {
   const service: AffiliateModuleService = req.scope.resolve(AFFILIATE_MODULE)
-  const summary = await service.summarizeCommissionEntries({
-    ...(req.validatedQuery as AdminAffiliateSummaryParams),
-    // กฎ 49 (AF-25): pending สุทธิแบบเดียวกับ /affiliate/me/earnings (กฎ 48b)
-    net_pending_reversals: true,
-  })
+  // กฎ 49 (AF-25): pending สุทธิแบบเดียวกับ /affiliate/me/earnings (กฎ 48b — พฤติกรรมเดียวของ service, กฎ 51)
+  const summary = await service.summarizeCommissionEntries(req.validatedQuery as AdminAffiliateSummaryParams)
   res.json({ summary })
 }

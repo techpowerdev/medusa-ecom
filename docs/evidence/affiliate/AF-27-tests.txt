@@ -1,0 +1,45 @@
+# AF-27 — ลบโหมด grouped ของ summarizeCommissionEntries (spec 05 กฎ 51, AC-60)
+# วันที่ 2026-11-24, node v22.23.3, base origin/develop 59c6af18
+
+## Red (ก่อนแก้ service — test เรียก service ตรงโดยไม่ส่ง flag คาดผลสุทธิเท่ากับ portal)
+$ jest integration-tests/http/affiliate-portal.spec.ts -t "AC-57"
+FAIL integration-tests/http/affiliate-portal.spec.ts (125.109 s)
+  ●  › GET /affiliate/me/programs, earnings, payouts › AC-57: nets reversals of still-pending lines into pending and keeps the grand total
+    - Expected  - 2
+    + Received  + 2
+      Object {
+        "approved": 50,
+    -   "pending": 40.1,
+    -   "reversed": -52.75,
+    +   "pending": 170.1,
+    +   "reversed": -182.75,
+      }
+      460 |         // กฎ 51 (AF-27): การรวมแบบสุทธิเป็นพฤติกรรมเดียวของ service — เรียกตรงโดยไม่ส่ง option ได้ผลเท่ากับ portal
+      461 |         const summary = await affiliates.summarizeCommissionEntries({ affiliate_id: id })
+    > 462 |         expect(Object.fromEntries(summary.map((r) => [r.status, r.amount]))).toEqual(byStatus)
+      463 |       })
+      464 |     })
+      465 |   },
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 15 skipped, 16 total
+
+## Green (หลังแก้) — affiliate-portal (AC-57) + affiliate-admin (AC-58 และ test summary เดิม)
+$ jest --runInBand integration-tests/http/affiliate-portal.spec.ts integration-tests/http/affiliate-admin.spec.ts
+PASS integration-tests/http/affiliate-portal.spec.ts (102.959 s)
+PASS integration-tests/http/affiliate-admin.spec.ts (205.825 s)
+Test Suites: 2 passed, 2 total
+Tests:       56 passed, 56 total
+Time:        310.902 s
+
+## AC-60 grep
+$ grep -rn net_pending_reversals apps/backend/src
+(ไม่พบ — exit 1)
+
+## typecheck / lint / unit
+$ pnpm --filter backend typecheck   -> exit 0
+$ pnpm --filter backend lint        -> 0 errors (5 warnings เดิมใน workflow อื่น ไม่ใช่ไฟล์ที่แตะ)
+$ pnpm --filter backend test:unit
+Test Suites: 130 passed, 130 total
+Tests:       1786 passed, 1786 total
+$ pnpm --filter storefront test:e2e:unit
+151 passed

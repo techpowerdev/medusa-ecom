@@ -17,12 +17,6 @@ export type CommissionSummaryFilters = {
   affiliate_id?: string
   from?: Date
   to?: Date
-  /**
-   * กฎ 48b (AF-24, portal): reversal ของ line `(order_id, line_item_id)` ที่ยังมี entry `pending` ถูกหักใน `pending`
-   * (ไม่ต่ำกว่า 0 ต่อ line ส่วนเกินคงอยู่ใน `reversed`) — ผลรวมทุกแถวเท่าเดิม; ไม่ตั้ง = GROUP BY status ตรงๆ
-   * (portal และ admin summary ตั้งค่านี้ทั้งคู่ — กฎ 49, AF-25)
-   */
-  net_pending_reversals?: boolean
 }
 
 export type PayableEntryFilters = {
@@ -104,6 +98,8 @@ class AffiliateModuleService extends MedusaService({
   }
 
   // Ledger totals per affiliate/currency/status aggregated in SQL (spec 05 non-functional); window is [from, to)
+  // กฎ 48b/51: reversal ของ line `(order_id, line_item_id)` ที่ยังมี entry `pending` ถูกหักใน `pending`
+  // (ไม่ต่ำกว่า 0 ต่อ line ส่วนเกินคงอยู่ใน `reversed`) — ผลรวมทุกแถวเท่าเดิม (portal และ admin summary — กฎ 49)
   @InjectManager()
   async summarizeCommissionEntries(
     filters: CommissionSummaryFilters = {},
@@ -136,12 +132,8 @@ class AffiliateModuleService extends MedusaService({
        SELECT affiliate_id, currency, status, SUM(amount)::text AS amount, SUM(n)::int AS count
        FROM t GROUP BY affiliate_id, currency, status
        ORDER BY affiliate_id, currency, status`
-    const grouped = `SELECT affiliate_id, currency, status, SUM(amount)::text AS amount, COUNT(*)::int AS count
-       FROM (${entries}) f
-       GROUP BY affiliate_id, currency, status
-       ORDER BY affiliate_id, currency, status`
     const rows = await sharedContext.manager!.execute<Record<string, string>[]>(
-      filters.net_pending_reversals ? netted : grouped,
+      netted,
       [
         filters.affiliate_id ?? null,
         filters.affiliate_id ?? null,
