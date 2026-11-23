@@ -294,8 +294,16 @@ medusaIntegrationTestRunner({
           )
         expect(err?.type).toEqual("invalid_data")
 
-        const promotions = await promotionModule.listPromotions({}, { select: ["id", "code"] })
-        expect(promotions.filter((p) => p.code?.startsWith("GB-"))).toEqual([])
+        // GB-31 (กฎข้อ 57b): ดูเฉพาะ campaign ของ test (ของแคมเปญ + campaign ที่ย้ายต้นแบบไป) และกลุ่มของแคมเปญนี้ ไม่ใช่ทั้ง DB
+        const promotions = await promotionModule.listPromotions(
+          { campaign: { id: [campaign.medusaCampaignId, other.id] } },
+          { select: ["id", "code"] }
+        )
+        expect(promotions.map((p) => p.code)).toEqual([expect.stringMatching(/^GBT-/)])
+        const { data: groups } = await container
+          .resolve(ContainerRegistrationKeys.QUERY)
+          .graph({ entity: "group_buy_group", fields: ["id", "promotion.code"], filters: { campaign_id: campaign.id } })
+        expect(groups).toEqual([])
       })
     })
 
@@ -456,11 +464,18 @@ medusaIntegrationTestRunner({
         return res.data.promotion.id as string
       }
 
-      it.each([
-        ["draft", false],
-        ["active", true],
-      ])("(a) แคมเปญ %s: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่", async (_s, active) => {
-        const campaign = await createCampaign(active)
+      // GB-31 (กฎข้อ 57b, AC-74b): ครบทุกสถานะ รวม ended (เดิม unit ครอบอย่างเดียว)
+      const campaignWithStatus = async (status: "draft" | "active" | "ended") => {
+        const campaign = await createCampaign(status !== "draft")
+        if (status === "ended") {
+          await setGroupBuyCampaignStatusWorkflow(getContainer()).run({ input: { id: campaign.id, status: "ended" } })
+        }
+        return campaign
+      }
+
+      it.each(["draft", "active", "ended"] as const)("(a) แคมเปญ %s: DELETE ต้นแบบ → 400 cannot be deleted และต้นแบบยังอยู่", async (status) => {
+        const campaign = await campaignWithStatus(status)
+        const active = status === "active"
 
         expectNotAllowedContaining(
           await settle(api.delete(`/admin/promotions/${campaign.templateId}`, headers)),
@@ -503,11 +518,8 @@ medusaIntegrationTestRunner({
         expect((await settle(api.get(`/admin/promotions/${campaign.templateId}`, headers))).status).toEqual(404)
       })
 
-      it.each([
-        ["draft", false],
-        ["active", true],
-      ])("(e) แคมเปญ %s: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน", async (_s, active) => {
-        const campaign = await createCampaign(active)
+      it.each(["draft", "active", "ended"] as const)("(e) แคมเปญ %s: POST ต้นแบบ status active (รวมแบบมี field อื่นปน) → 400 cannot be activated และไม่บันทึกบางส่วน", async (status) => {
+        const campaign = await campaignWithStatus(status)
         const url = `/admin/promotions/${campaign.templateId}`
 
         expectNotAllowedContaining(await settle(api.post(url, { status: "active" }, headers)), "cannot be activated")
