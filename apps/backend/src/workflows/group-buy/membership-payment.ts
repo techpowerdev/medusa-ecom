@@ -293,8 +293,9 @@ async function checkSession(container: MedusaContainer, session: any): Promise<S
   }
 }
 
+// GB-28 กฎข้อ 53 (c): ชื่อ step ต่างจากชื่อ workflow
 export const checkMembershipPaymentStep = createStep(
-  "check-group-buy-membership-payment",
+  "check-membership-payment",
   async (input: MembershipPaymentInput, { container }) => {
     const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
       entity: "group_buy_membership",

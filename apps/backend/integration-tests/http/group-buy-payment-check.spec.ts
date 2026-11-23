@@ -452,5 +452,35 @@ medusaIntegrationTestRunner({
       await runJob()
       expect(await gaveUpEmails()).toHaveLength(1)
     })
+
+    // GB-28 กฎข้อ 53 (d), AC-71 (d): give-up ซ้ำจริงสองรอบ (รอบแรก expire ล้ม → membership ยังรอชำระ) → อีเมลถึง ops 1 ฉบับ
+    // นับจาก notification module (idempotency_key ต่อ membership) ไม่ mock alert step
+    it("(d) give-up runs twice (expire failed in the first run) → exactly one ops email in the notification module", async () => {
+      const [stuck] = await awaitingPaymentMembers(1)
+      const session = await openSession(stuck)
+      setIntent(session, new Error("provider down"))
+      await pastDeadline(stuck, 16)
+      const locking = getContainer().resolve(Modules.LOCKING)
+      const realAcquire = locking.acquire.bind(locking)
+      const lockKey = `group_buy:membership:${stuck.membership_id}`
+      const acquire = jest.spyOn(locking, "acquire").mockImplementation((async (keys, ...rest) => {
+        if ([keys].flat().includes(lockKey)) {
+          throw new Error("lock busy")
+        }
+        return realAcquire(keys, ...rest)
+      }) as typeof locking.acquire)
+      const error = jest.spyOn(logger(), "error")
+
+      await runJob()
+      expect((await membershipOf(stuck)).status).toEqual("awaiting_payment")
+      expect(loggedLines(error, GAVE_UP)).toHaveLength(1)
+      expect(await gaveUpEmails()).toHaveLength(1)
+
+      acquire.mockRestore()
+      await runJob()
+      expect((await membershipOf(stuck)).status).toEqual("cancelled")
+      expect(loggedLines(error, GAVE_UP)).toHaveLength(2)
+      expect(await gaveUpEmails()).toHaveLength(1)
+    })
   },
 })
