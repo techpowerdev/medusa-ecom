@@ -443,7 +443,7 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
     (d) cart ที่ checkout page ใช้ต้องมี `payment_collection.captured_amount`/`refunded_amount` — builder ตรวจ field ที่ `retrieveCart` ได้จริง (2.22.1) ถ้าไม่มีให้เพิ่ม `+payment_collection.captured_amount,+payment_collection.refunded_amount`
         เฉพาะการเรียกของหน้า checkout (ไม่แตะ default fields ของหน้าอื่น); ไม่เพิ่ม store route; บัตร (Stripe Elements) อยู่นอกขอบเขต (PAY-9 reset collection ตอนเลือกวิธีใหม่อยู่แล้ว)
 ### Acceptance criteria (รอบ 42)
-- AC-29 (PAY-16, กฎข้อ 18) unit Vitest + e2e route mock (แบบ AC-27): (a) บังคับ notice แล้วเลือก manual → notice หาย และคลิก "ลองอีกครั้ง" ไม่มีอีกแล้ว/ไม่สร้าง session ของบัตร (ล้มบน develop);
+- ☑ AC-29 (PAY-16, กฎข้อ 18) unit Vitest + e2e route mock (แบบ AC-27): (a) บังคับ notice แล้วเลือก manual → notice หาย และคลิก "ลองอีกครั้ง" ไม่มีอีกแล้ว/ไม่สร้าง session ของบัตร (ล้มบน develop);
   (b) dblclick `payment-session-retry` → `POST .../payment-sessions` 1 ครั้ง; (c) route mock ให้ refresh ไม่มา → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton; (d) ระหว่างรอ order radio มี `disabled`
 - ☑ AC-30 (PAY-17, กฎข้อ 19) unit + e2e route mock: (a) `confirmPayment` คืน error `card_error`/`card_declined` ข้อความอังกฤษ → ข้อความที่มองเห็นเป็นอักษรไทย ไม่มีข้อความอังกฤษของ Stripe (ล้มบน develop);
   (b) unit ของตัวตัดสิน PromptPay: poll `refunded` ระหว่าง finishing → ไม่เปลี่ยน state; e2e AC-24/AC-28 ผ่าน และไม่เห็น `promptpay-retry-button` ระหว่างทาง (นับด้วย `MutationObserver`)

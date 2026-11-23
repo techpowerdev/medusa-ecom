@@ -3,7 +3,12 @@ import { RadioGroup } from "@headlessui/react"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession, placeOrder } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
-import { PAYMENT_ALREADY_COMPLETED, isPromptPay } from "@lib/util/payment-session"
+import {
+  PAYMENT_ALREADY_COMPLETED,
+  type SessionResetNotice,
+  isPromptPay,
+  sessionResetShown,
+} from "@lib/util/payment-session"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { PlaceOrderNotice, usePlaceOrder } from "@modules/checkout/components/payment-button"
@@ -77,13 +82,20 @@ const Payment = ({
   // PAY-14 (spec 06 กฎข้อ 16): session ที่เลือกอยู่ชี้ PI ที่จบแล้ว (เช่น session ชั่วคราวระหว่าง compensation) → สร้าง session ใหม่
   // อัตโนมัติ 1 ครั้ง ให้ backend ตัดสินตามลำดับ middleware ของ ADR-025 (คืนครบ → reset แล้ว retry ใน initiatePaymentSession;
   // จ่ายแล้วยังไม่คืน → PAYMENT_ALREADY_COMPLETED → complete cart แบบรอ order ของ ADR-015 ไม่สร้าง PI ใหม่)
-  const [sessionReset, setSessionReset] = useState(false)
+  // PAY-16 (กฎข้อ 18 a): notice ผูกกับวิธีและ client secret ตอนขึ้น — เปลี่ยนวิธีหรือ session ใหม่มาแล้วจึงหายเอง
+  const [sessionReset, setSessionReset] = useState<SessionResetNotice | null>(null)
   const autoRenewed = useRef(false)
   const renewing = useRef(false)
-  // client secret ของ session ที่จบแล้วตอนสร้างใหม่สำเร็จ — cart ใน props ยังชี้ secret นี้ = RSC refresh ยังไม่มา (ไม่ค้าง skeleton ถาวร)
-  const [renewedFrom, setRenewedFrom] = useState<string | null>(null)
+  // session ที่จบแล้วตอนสร้างใหม่สำเร็จ — cart ใน props ยังชี้ secret นี้ = RSC refresh ยังไม่มา (ไม่ค้าง skeleton ถาวร)
+  const [renewedFrom, setRenewedFrom] = useState<SessionResetNotice | null>(null)
   const activeSecret = (activeSession?.data?.client_secret as string | undefined) ?? null
-  const renewNotInCartYet = renewedFrom !== null && activeSecret === renewedFrom
+  // cart ที่ refresh มาไม่มี session pending (null) ก็ยังไม่ใช่ session ใหม่ — นับว่ายังรอ (review #541)
+  const renewNotInCartYet =
+    renewedFrom !== null && (activeSecret === null || activeSecret === renewedFrom.secret)
+  const resetShown = sessionResetShown(sessionReset, selectedPaymentMethod, activeSecret)
+  // PAY-16 (กฎข้อ 18 d): ระหว่างรอ order ของ PAYMENT_ALREADY_COMPLETED (ADR-015) ห้ามเปลี่ยนวิธีชำระ — รวม `delayed` (paidOrder.busy)
+  // โดยตั้งใจ: ชำระแล้วแต่ยังไม่มี order → เปลี่ยนวิธีก็ได้ PAYMENT_ALREADY_COMPLETED อีก ลูกค้าต้องติดต่อร้านตาม notice
+  const [awaitingPaidOrder, setAwaitingPaidOrder] = useState(false)
   const { countryCode } = useParams()
   const placePaid = () => placeOrder(cart.id, undefined, countryCode as string)
   const paidOrder = usePlaceOrder(true, placePaid)
@@ -91,42 +103,46 @@ const Payment = ({
   const renewSession = async (method: string) => {
     if (renewing.current) return
     renewing.current = true
-    const staleSecret = activeSecret
-    setSessionReset(false)
+    const stale = { method, secret: activeSecret }
+    setSessionReset(null)
     setError(null)
     setIsLoading(true)
     const result = await settleAction(initiatePaymentSession(cart, { provider_id: method }))
     setIsLoading(false)
     renewing.current = false
     if ("ok" in result) {
-      setRenewedFrom(staleSecret)
+      setRenewedFrom(stale)
       router.refresh()
     } else if (result.error === PAYMENT_ALREADY_COMPLETED) {
+      setAwaitingPaidOrder(true)
       await paidOrder.start()
+      setAwaitingPaidOrder(false)
     } else if (result.error === "unauthorized") {
       setError(actionErrorMessage(result.error, SESSION_FAILED))
     } else {
-      setSessionReset(true)
+      setSessionReset(stale)
     }
   }
 
-  // แบบกฎข้อ 71 (CORE-19e): 5 วินาที refresh อีกครั้ง, 10 วินาทีให้ลูกค้าลองใหม่ด้วย notice เดิม
+  // แบบกฎข้อ 71 (CORE-19e): 5 วินาที refresh อีกครั้ง, 10 วินาทีให้ลูกค้าลองใหม่ด้วย notice เดิม (PAY-16 c: ซ่อน skeleton ด้วย)
   useEffect(() => {
     if (!renewNotInCartYet) return
     const refreshTimer = setTimeout(() => router.refresh(), 5_000)
     const giveUpTimer = setTimeout(() => {
       setRenewedFrom(null)
-      setSessionReset(true)
+      setSessionReset(renewedFrom)
     }, 10_000)
     return () => {
       clearTimeout(refreshTimer)
       clearTimeout(giveUpTimer)
     }
-  }, [renewNotInCartYet, router])
+  }, [renewNotInCartYet, renewedFrom, router])
 
   const onStaleSession = () => {
+    // PAY-16 (กฎข้อ 18 b): ช่องบัตร mount ใหม่ระหว่าง renew แล้วเจอ PI เดิม — ให้ผลของ renew ที่กำลังรอตัดสิน
+    if (renewing.current) return
     if (autoRenewed.current) {
-      setSessionReset(true)
+      setSessionReset({ method: selectedPaymentMethod, secret: activeSecret })
       return
     }
     autoRenewed.current = true
@@ -135,6 +151,7 @@ const Payment = ({
 
   const setPaymentMethod = async (method: string) => {
     setError(null)
+    setSessionReset(null)
     setSelectedPaymentMethod(method)
     setAwaitingSessionFor(null)
     setSessionPendingError(false)
@@ -293,13 +310,14 @@ const Payment = ({
               <RadioGroup
                 value={selectedPaymentMethod}
                 onChange={(value: string) => setPaymentMethod(value)}
+                disabled={awaitingPaidOrder || paidOrder.busy}
               >
                 {availablePaymentMethods.map((paymentMethod) => (
                   <div
                     key={paymentMethod.id}
                     // PAY-14: คลิกตัวเลือกที่เลือกอยู่ไม่เรียก onChange ของ RadioGroup → สร้าง session ใหม่จากที่นี่
                     onClick={
-                      sessionReset && paymentMethod.id === selectedPaymentMethod
+                      resetShown && paymentMethod.id === selectedPaymentMethod
                         ? () => renewSession(paymentMethod.id)
                         : undefined
                     }
@@ -317,6 +335,8 @@ const Payment = ({
                             : undefined
                         }
                         onStaleSession={onStaleSession}
+                        // PAY-16 (กฎข้อ 18 c): notice ขึ้นแล้วไม่แสดง skeleton ค้างคู่กัน (session นี้ใช้ไม่ได้ — รอลูกค้าลองใหม่)
+                        fieldsHidden={resetShown}
                       />
                     ) : (
                       <PaymentContainer
@@ -357,7 +377,7 @@ const Payment = ({
             }
             data-testid="payment-session-pending-error"
           />
-          {sessionReset && (
+          {resetShown && (
             <div role="alert" className="pt-2 flex items-center gap-x-3 text-small-regular" data-testid="payment-session-reset-notice">
               <Text>{SESSION_RESET}</Text>
               <button
