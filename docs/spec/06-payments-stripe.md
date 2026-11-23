@@ -420,6 +420,7 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
 |---|---|---|
 | error ของการ confirm บัตร | Stripe.js `confirmPayment` คืน `error` (`type`/`code`/`decline_code`/`message` ตาม locale ของ Elements) — ไม่ใช่ของ Medusa | map เป็นไทยด้วย helper เดิมของ CORE-4i/PAY-14 (กฎข้อ 19) |
 | redirect หลังชำระ | route ของ starter `/api/payment-return` (ขยายแล้วใน PAY-12) | ใช้ตามเดิม (กฎข้อ 20) |
+| จำว่า cart นี้ "จ่ายแล้วถูกคืนเงิน" ข้าม reload/Back (Q-P12 = ข) | `payment_collection` ของ cart ใน Store API (`captured_amount`/`refunded_amount`, `completed_at` ของ cart) — Medusa `refundPaymentAndRecreatePaymentSessionWorkflow` คืนเงินแล้วสร้าง session ใหม่ใน**collection เดิม** สัญญาณจึงอยู่จนกว่า collection ถูกแทน (PAY-9/ADR-025 `PAYMENT_COLLECTION_RESET` ตอนสร้าง session ใหม่); `refreshPaymentCollectionForCartWorkflow` (core-flows 2.22.1) เมื่อยอดตะกร้าเปลี่ยน**ลบ session** ของ collection เดิม (ไม่สร้าง collection ใหม่); helper `promptPayPollState` ของ PAY-6c อ่านสัญญาณนี้อยู่แล้ว | ใช้ตามเดิม — ไม่เขียน `cart.metadata`, cookie หรือ storage ใหม่ (สัญญาณของ Medusa ล้างเองเมื่อ collection ถูก reset; metadata/cookie ต้องเขียนและล้างเอง) (กฎข้อ 21) |
 ### Business rules (รอบ 42)
 18. (PAY-16 — qa/review #482) ขั้น payment (`modules/checkout/components/payment/index.tsx`): (a) `payment-session-reset-notice` หายเมื่อเปลี่ยนวิธีชำระ (`setPaymentMethod`) หรือเมื่อ client secret ที่ใช้อยู่เปลี่ยน (session ใหม่มาแล้ว) —
         "ลองอีกครั้ง" หลังเปลี่ยนวิธีจึงไม่สร้าง session ของวิธีที่ไม่ได้เลือก; (b) guard กันยิงซ้ำของการ renew ใช้ ref (ไม่ใช่ state) และปุ่ม `payment-session-retry` `disabled` ระหว่าง renew;
@@ -430,6 +431,17 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
 20. (PAY-18 — re-review #481, qa #481) (a) `/api/payment-return` ที่ `redirect_status=failed` แล้วอ่าน cart ได้ 5xx/network → `/<cc>/checkout?step=payment` (รู้แน่ว่าจ่ายไม่สำเร็จ — ไม่ใช่ `step=review`); unit 401/403/5xx ตรวจว่าไม่เรียก `setCartCookie`;
     (b) หน้า checkout ที่มี `cart_id` ใน query ตัดสินด้วย `!cart || cart.completed_at || cart.id !== cart_id` (cookie ชี้ cart อื่น → ทางหา order ของกฎข้อ 14);
     (c) `cart-error-notice` หายเมื่อลูกค้าแก้ตะกร้าสำเร็จครั้งแรก (ลบ `error` ออกจาก URL ด้วย `router.replace` — ไม่เพิ่ม history)
+21. (PAY-19 — Q-P12 = ข owner ตัดสิน 2026-11-23; ต่อจากกฎข้อ 13/17) ปุ่มพร้อมเพย์ขั้น review (`promptpay-payment/index.tsx`) ตัดสินสถานะ "ถูกคืนเงินแล้ว" จาก cart ที่ render มาด้วย
+    (ไม่ใช่ state ใน memory อย่างเดียว) — นิยามเดียวกับ `promptPayPollState(cart) === "refunded"` (cart ยังไม่ `completed_at`, `payment_collection.captured_amount > 0` และ `refunded_amount ≥ captured_amount`; ใช้ helper เดิม ไม่เขียนเงื่อนไขซ้ำ):
+    (a) สัญญาณเป็นจริงและ component ไม่มี state `refunded`/`qr`/`awaitingOrder` ของรอบนี้ (เช่นหลัง reload หรือ Back จาก `/<cc>/cart`) → แสดง `promptpay-refunded` ข้อความ `REFUNDED_NOTICE` ของ `checkout-error.ts` (ไม่รู้เหตุหลัง reload)
+        พร้อม `promptpay-go-to-cart` แบบ PAY-15 และ**ไม่ render** ปุ่มจ่าย (`submit-order-button`) และ `promptpay-retry-button` — ไม่สร้าง QR/ไม่ confirm PI บนตะกร้าเดิม;
+    (b) state ในรอบเดียวกันมาก่อนสัญญาณ: `stopRefunded` ของ PAY-11/PAY-15 คงข้อความเหตุเดิม และ PAY-6c (poll ไม่รู้เหตุ) ยังแสดง `promptpay-retry-button` ตามกฎข้อ 17 แม้ `router.refresh()` นำสัญญาณมาแล้ว;
+        หลังกด "เริ่มชำระใหม่" ของ PAY-6c ระหว่างรอ QR (`submitting`) และเมื่อ QR แสดงแล้ว ไม่สลับกลับเป็น notice ของข้อ (a)
+    (c) สัญญาณหายเองเมื่อ collection ถูกแทน: ลูกค้าแก้ตะกร้าจนยอดเปลี่ยน (Medusa ลบ session) แล้วเลือกวิธีชำระในขั้น payment → `initiatePaymentSession` ได้ `PAYMENT_COLLECTION_RESET` แล้วสร้าง collection ใหม่ (กฎข้อ 11)
+        → ขั้น review แสดงปุ่มจ่ายตามปกติ; ตะกร้ายอดเท่าเดิม (เช่นเหตุหายเพราะเติมสต็อก) → ลูกค้าเลือกวิธีชำระใหม่ในขั้น payment ได้ (ถ้าเลือก provider เดิมแล้ว starter ไม่สร้าง session ใหม่
+        ให้เลือกวิธีอื่นก่อนแล้วกลับมา — builder ยืนยันทางที่ใช้ได้จริงและบันทึกใน PR); ไม่มีการล้างสัญญาณจากฝั่ง storefront เอง
+    (d) cart ที่ checkout page ใช้ต้องมี `payment_collection.captured_amount`/`refunded_amount` — builder ตรวจ field ที่ `retrieveCart` ได้จริง (2.22.1) ถ้าไม่มีให้เพิ่ม `+payment_collection.captured_amount,+payment_collection.refunded_amount`
+        เฉพาะการเรียกของหน้า checkout (ไม่แตะ default fields ของหน้าอื่น); ไม่เพิ่ม store route; บัตร (Stripe Elements) อยู่นอกขอบเขต (PAY-9 reset collection ตอนเลือกวิธีใหม่อยู่แล้ว)
 ### Acceptance criteria (รอบ 42)
 - AC-29 (PAY-16, กฎข้อ 18) unit Vitest + e2e route mock (แบบ AC-27): (a) บังคับ notice แล้วเลือก manual → notice หาย และคลิก "ลองอีกครั้ง" ไม่มีอีกแล้ว/ไม่สร้าง session ของบัตร (ล้มบน develop);
   (b) dblclick `payment-session-retry` → `POST .../payment-sessions` 1 ครั้ง; (c) route mock ให้ refresh ไม่มา → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton; (d) ระหว่างรอ order radio มี `disabled`
@@ -437,17 +449,25 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
   (b) unit ของตัวตัดสิน PromptPay: poll `refunded` ระหว่าง finishing → ไม่เปลี่ยน state; e2e AC-24/AC-28 ผ่าน และไม่เห็น `promptpay-retry-button` ระหว่างทาง (นับด้วย `MutationObserver`)
 - AC-31 (PAY-18, กฎข้อ 20) unit ของ route (แบบ AC-25): `redirect_status=failed` + อ่าน cart 500 → location `step=payment`; 401/403/5xx → `setCartCookie` ไม่ถูกเรียก; หน้า checkout `cart_id` ≠ cart ของ cookie → ทางหา order;
   e2e: เปิด `/th/cart?error=refunded` แล้วแก้จำนวนสำเร็จ → `cart-error-notice` หายและ URL ไม่มี `error` (ล้มบน develop)
+- AC-32 (PAY-19, กฎข้อ 21) unit Vitest ของตัวตัดสินสิ่งที่ render (pure helper รับ cart + state ของรอบนี้): สัญญาณ refunded + ไม่มี state → `go-to-cart` ข้อความ `REFUNDED_NOTICE`;
+  state `refunded` ไม่รู้เหตุ (PAY-6c) + สัญญาณ → `retry`; state รู้เหตุ → ข้อความเหตุเดิม; `qr`/`awaitingOrder`/`submitting` + สัญญาณ → ไม่ใช่ notice; `completed_at` หรือ `refunded_amount < captured_amount` → ปุ่มจ่าย;
+  e2e (backend + Stripe test mode จริง — ไม่ใช่ route mock เพราะ cart อ่านฝั่ง server): ชำระพร้อมเพย์ตอน QR แสดงแล้ว complete ของทางสำรองล้มจริงด้วย `FLASH_LIMIT_EXCEEDED` (ฉากของ `pay-9-refunded-cart-repay` + `paidWhileQrShown` ไม่ใช้ `mockPlaceOrder`)
+  จน Medusa คืนเงิน → เห็น `promptpay-refunded` + `promptpay-go-to-cart`; (a) `page.reload()` → ยังเห็นทั้งสองและไม่มี `submit-order-button`/`promptpay-retry-button` (ล้มบน develop — เห็น `submit-order-button`);
+  (b) คลิก `promptpay-go-to-cart` แล้ว `page.goBack()` → เหมือน (a); (c) แก้จำนวนในตะกร้า → ขั้น payment เลือกพร้อมเพย์ → ขั้น review เห็น `submit-order-button` ไม่เห็น `promptpay-refunded` และ cart มี payment collection id ใหม่ (อ่านผ่าน Store API);
+  regression: AC-24, AC-28 (route mock) และ `payments-promptpay-fallback-cap.spec.ts` (PAY-6c ยังเห็น `promptpay-retry-button`) ผ่าน
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | PAY-16 | สถานะขั้น payment: notice reset หายเมื่อเปลี่ยนวิธี, guard ref, timeout refresh, radio disabled ระหว่างรอ order (กฎข้อ 18); qa | `modules/checkout/components/payment/index.tsx`, `lib/util/payment-session.ts` (+ test), e2e `pay-14-stale-session.spec.ts` | ~50 LOC + ~120 LOC test | AC-29 | PR เอกสารปิดรอบ 41; **CORE-89** ถ้า merge ก่อน (ไฟล์เดียวกัน — ตัวหลัง sync) | `payment/index.tsx` |
 | PAY-17 | ข้อความไทยของ error Stripe ขั้น review + PromptPay poll ไม่ตัดสินระหว่าง finishing (กฎข้อ 19); qa | `modules/checkout/components/payment-button/index.tsx`, `promptpay-payment/index.tsx`, `lib/util/promptpay-finish.ts` (+ test), e2e | ~40 LOC + ~120 LOC test | AC-30 | PR เอกสารปิดรอบ 41; **CORE-90** (`promptpay-payment/index.tsx`) | `promptpay-payment/index.tsx`, `payment-button/index.tsx` (CORE-94 coverage test อ่านไฟล์นี้ — ไม่แก้) |
-| PAY-18 | `/api/payment-return` + checkout `cart_id` + notice ของ cart หายหลังแก้ตะกร้า (กฎข้อ 20); qa | `app/api/payment-return/route.ts` (+ test), checkout page, `modules/cart/templates` / `cart-error-notice`, e2e | ~30 LOC + ~100 LOC test | AC-31 | PR เอกสารปิดรอบ 41 | — |
+| PAY-18 | `/api/payment-return` + checkout `cart_id` + notice ของ cart หายหลังแก้ตะกร้า (กฎข้อ 20); qa | `app/api/payment-return/route.ts` (+ test), checkout page, `modules/cart/templates` / `cart-error-notice`, e2e | ~30 LOC + ~100 LOC test | AC-31 | PR เอกสารปิดรอบ 41 | checkout page (PAY-19 ถ้าต้องเพิ่ม field — ตัวหลัง sync) |
+| PAY-19 | (Q-P12 = ข owner 2026-11-23) PromptPay จำผล refunded ต่อ cart จากสถานะ payment collection ของ Medusa: reload/Back ยังเห็น notice คืนเงิน + ลิงก์ตะกร้าแทนปุ่มจ่าย (กฎข้อ 21); qa | `modules/checkout/components/promptpay-payment/index.tsx`, `lib/util/promptpay-finish.ts` (+ test), checkout page / field ของ `retrieveCart` เฉพาะหน้า checkout (ถ้าต้อง — กฎข้อ 21d), e2e ใหม่ `pay-19-promptpay-refunded-reload.spec.ts` (+ helper ใน `e2e/support/promptpay-race.ts`) | ~80 LOC + ~150 LOC test | AC-32 | PR เอกสาร owner 2026-11-23 (Q-P12); **PAY-17** (`promptpay-payment/index.tsx`, `promptpay-finish.ts` — PAY-17 ต่อจาก CORE-90); **PAY-18** ถ้าแตะ checkout page (ตัวหลัง sync) | `promptpay-payment/index.tsx`, `promptpay-finish.ts` (PAY-17), checkout page (PAY-18) |
 
-ลำดับ: PAY-18 อิสระ; PAY-16 ∥ PAY-17 (คนละไฟล์) — PAY-16 sync หลัง CORE-89, PAY-17 หลัง CORE-90
+ลำดับ: PAY-18 อิสระ; PAY-16 ∥ PAY-17 (คนละไฟล์) — PAY-16 sync หลัง CORE-89, PAY-17 หลัง CORE-90; PAY-19 หลัง PAY-17 (∥ PAY-16, PAY-18 — sync ถ้าแตะ checkout page)
 
 ### Open questions (รอบ 42)
-- **Q-P12** (review #484 — นอกกฎข้อ 17) หลัง `promptpay-refunded` ที่รู้เหตุ ถ้าลูกค้า **reload หรือกด Back จากตะกร้า** state "refunded" หายและหน้า checkout แสดงปุ่มจ่ายพร้อมเพย์ตามปกติบนตะกร้าเดิม (เหตุเดิมอาจยังอยู่ → จ่ายแล้วถูกคืนซ้ำ):
+- ~~**Q-P12**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ข) ทำ** → PAY-19 (กฎข้อ 21, AC-32) — เก็บด้วยสถานะ payment collection ของ Medusa แทน `cart.metadata`/cookie
+  ("ตะกร้าเปลี่ยน" = collection ถูกแทนตามกฎข้อ 21c) — คำถามเดิม: (review #484 — นอกกฎข้อ 17) หลัง `promptpay-refunded` ที่รู้เหตุ ถ้าลูกค้า **reload หรือกด Back จากตะกร้า** state "refunded" หายและหน้า checkout แสดงปุ่มจ่ายพร้อมเพย์ตามปกติบนตะกร้าเดิม (เหตุเดิมอาจยังอยู่ → จ่ายแล้วถูกคืนซ้ำ):
   (ก) **[Recommended]** ไม่ทำ — กรณีเกินสิทธิ์ FS-21/FS-23 ปิดปุ่มสั่งซื้อและเตือนในตะกร้า/review อยู่แล้ว เหลือเฉพาะ sold-out ที่เกิดใหม่ซึ่งหายาก และเงินถูกคืนอัตโนมัติเสมอ (ADR-015/compensation); ไม่มีงาน
   (ข) จำผล refunded ต่อ cart (เช่น `cart.metadata` หรือ cookie ที่มี cart id) แล้วแสดง notice + ซ่อนปุ่มจ่ายจนกว่าตะกร้าเปลี่ยน — ~80 LOC + e2e; ต้องกำหนดว่า "ตะกร้าเปลี่ยน" นับอะไร
 

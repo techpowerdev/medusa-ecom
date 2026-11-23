@@ -164,3 +164,12 @@ context ของ ui เช่น `TooltipProvider` ข้ามสำเนา�
 - **suffix `.before`/`.after` ของ zone ไม่มีผลกับตำแหน่ง** ใน dashboard 2.22.1 (`getWidgetsForSections` ทิ้ง suffix แล้ววาง widget ต่อท้ายคอลัมน์หลัก) → widget ที่ต้องอยู่ตำแหน่งใดให้ตั้ง `id` ใน `defineWidgetConfig`
   แล้วกำหนด system default layout ของ zone ผ่าน migration script (`setSystemDefaultLayoutConfiguration` ของ Settings module — แบบ `src/migration-scripts/order-refund-blocked-layout.ts`); แอดมินที่บันทึก layout ส่วนตัวไว้ก่อนเห็นตาม layout ของตัวเอง
 - ตรวจ widget ปัจจุบันบน develop `8d509076`: มีเพียง `order-refund-blocked.tsx` ที่ใช้ zone `*.before` (จัดตำแหน่งด้วย layout แล้ว); `order-evouchers.tsx` (`order.details`), `variant-evoucher-pool.tsx` (`product_variant.details.side`), `flash-sale-options.tsx` (`campaign.details`) ไม่พึ่ง suffix — ไม่มีงานเพิ่ม
+
+## ภาคผนวก 2026-11-23 (2) — ข้อยกเว้นที่ 4: element ในหน้าของ `@medusajs/dashboard` (owner ตัดสิน spec 08 Q13 = ก, 2026-11-23)
+- บริบท: e2e ของ PAY-10 (#471, AC-23 ของ spec 06) ต้องกด element ที่หน้า/route ของ Medusa เอง render (เช่นปุ่ม Cancel Return บนหน้า order, ฟอร์ม Create Return)
+  — extension ใส่ `data-testid` ให้ element เหล่านี้ไม่ได้ถ้าไม่ patch library (ขัดหลักการไม่แก้ library ของ ADR นี้) ทางเลือก (ข) "ใช้ API ของ Medusa ตั้งสถานะแทนการคลิก" ไม่ครอบ "widget หายเองเมื่อแอดมินกดในหน้า Medusa"
+- การตัดสินใจ: element ที่ render โดยหน้า/route ของ `@medusajs/dashboard` (ไม่ใช่โค้ดใน `src/admin/` ของเรา) หาด้วย role + ชื่อ (label อังกฤษของ dashboard) **ภายใน container ที่แคบที่สุดที่หาได้**
+  (เช่น `getByRole("dialog")`, section/การ์ดที่มี heading ของมัน หรือ wrapper testid ของ widget เราที่อยู่ใกล้ที่สุด) — ข้อยกเว้น**ที่ 4** ของการหาด้วย testid ต่อจาก menuitem ของ `ActionMenu`, ปุ่มใน `action` และ searchbox ของ `DataTable`
+- ขอบเขต: เฉพาะ e2e admin; element ใน `src/admin/` ของเรา (widget/route/component) ยังต้องมีและหาด้วย `data-testid` ตามเดิม; ไม่ใช้กับ storefront; ห้ามหาด้วยข้อความล้วนระดับทั้งหน้า (`page.getByText(...)`) โดยไม่มี container
+- ผล: CLAUDE.md หัวข้อ Language และข้อห้ามข้อ 1 แก้ประโยคข้อยกเว้นเป็น 4 ข้อ (owner อนุมัติ 2026-11-23); label ของ dashboard เปลี่ยนเมื่อ bump `@medusajs/*` → e2e ล้มใน CI ของ PR ที่ bump และแก้ locator ใน PR นั้น
+- ถ้า dashboard เวอร์ชันที่ bump ส่งต่อ/มี `data-testid` ให้ element นั้น → กลับไปใช้ testid
