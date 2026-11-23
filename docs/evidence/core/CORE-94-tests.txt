@@ -1,0 +1,68 @@
+# CORE-94 (spec 01 กฎข้อ 150, AC-191) — ผล test (2026-11-24)
+
+## RED บน develop 59c6af18 — cart cookie (b)
+     × updateLineItem → getAuthHeaders 1 ครั้ง และ request ส่ง authorization ชุดเดียวกัน 77ms
+     × applyPromotions → getAuthHeaders 1 ครั้ง และ request ส่ง authorization ชุดเดียวกัน 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+      Tests  2 failed (2)
+
+## RED บน develop — coverage ternary (c) + COMPARE (d)
+     × payment-button: placeManual ถูกนับเป็น ternary ของ retry ที่ทางครั้งแรกส่ง metadata 7ms
+       × 31c ternary ที่ทั้งสองทางเป็น undefined → ล้ม 2ms
+       × 31c ternary กลับทาง — ครั้งแรก (retry = false) ส่ง undefined → ล้ม 1ms
+       × 31c ternary ที่เงื่อนไขไม่ใช่ retry (ทางครั้งแรกอาจไม่ส่ง metadata) → ล้ม 0ms
+       × 31c ternary ของ retry ที่ไม่มี comment อธิบาย → ล้ม 0ms
+     × COMPARE จับ /full/.test(err.message) 7ms
+     × COMPARE จับ /full/i.test(error?.message ?? "") 1ms
+     × COMPARE จับ /full/.test((e as Error).message) 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  8 failed | 366 passed (374)
+
+## Mutation (c)/(d) หลังแก้ (revert แล้ว)
+=== mutation (c): placeManual ทางครั้งแรกส่ง undefined
+ .../storefront/src/modules/checkout/components/payment-button/index.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+     × source ใต้ modules/checkout/components, order-pay และ group-buy/components ผ่านเงื่อนไข (a)–(d) 131ms
+     × payment-button: placeManual ถูกนับเป็น ternary ของ retry ที่ทางครั้งแรกส่ง metadata 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
++     "rule": "31c: placeOrder ไม่ส่ง cart.metadata",
++     "rule": "31c: placeOrder ไม่ส่ง cart.metadata",
+      Tests  2 failed | 22 passed (24)
+=== mutation (c2): ลบ comment retry
+ apps/storefront/src/modules/checkout/components/payment-button/index.tsx | 1 -
+ 1 file changed, 1 deletion(-)
+     × source ใต้ modules/checkout/components, order-pay และ group-buy/components ผ่านเงื่อนไข (a)–(d) 195ms
+     × payment-button: placeManual ถูกนับเป็น ternary ของ retry ที่ทางครั้งแรกส่ง metadata 2ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
++     "rule": "31c: placeOrder ไม่ส่ง cart.metadata",
++     "rule": "31c: placeOrder ไม่ส่ง cart.metadata",
+      Tests  2 failed | 22 passed (24)
+=== mutation (d): เติม /x/.test(err.message) ใน lib/util/checkout-error.ts
+     × lib/util/checkout-error.ts 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 349 passed (350)
+=== mutation (d2): เติม .message.includes( 
+     × lib/util/checkout-error.ts 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 349 passed (350)
+
+## GREEN: test ของ task
+ Test Files  5 passed (5)
+      Tests  406 passed (406)
+
+## GREEN: prettier --check (2.8.8 ของ storefront)
+Checking formatting...
+All matched files use Prettier code style!
+
+## GREEN: storefront test:unit ทั้งชุด
+ Test Files  118 passed (118)
+      Tests  1836 passed (1836)
+
+## GREEN: storefront test:e2e:unit
+  151 passed (1.9s)
+
+## typecheck / lint (storefront)
+typecheck: ผ่าน
+
+lint: ✖ 28 problems (0 errors, 28 warnings) (warning ทั้งหมดมีอยู่แล้วบน develop — ไม่มีจากไฟล์ที่ task นี้แก้ ยกเว้น warning เดิมใน cart.ts บรรทัด applyGiftCard/removeDiscount/removeGiftCard)
