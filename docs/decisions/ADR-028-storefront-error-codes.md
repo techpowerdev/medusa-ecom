@@ -31,3 +31,13 @@
 - ข้อความไทยที่ลูกค้าเห็นไม่เปลี่ยน; test ตรวจ code ไม่ใช่ข้อความอังกฤษ
 - client ทางที่สองต้องดูแลคู่กับ SDK จนกว่า upstream แก้ (unit เทียบ header ทุกครั้งที่ bump)
 - issue upstream: session หลักเปิด (owner อนุมัติ 2026-11-21) — เพิ่มในเช็กลิสต์ bump ของ spec 07: ถ้า `FetchError` มี `code`/`type` แล้ว ย้ายกลับไปใช้ SDK และลบ helper
+
+## ภาคผนวก 2026-11-23 (สถานะ upstream — owner ตัดสินยังไม่เปิด issue)
+- ตรวจ `@medusajs/js-sdk` **2.23.0** (latest ณ 2026-11-22): `normalizeResponse` ยัง `throw new FetchError(message, statusText, status)` (`dist/esm/client.js:97-99`) และ `FetchError` มีแค่ `message`/`statusText`/`status` (`:108-114`) — ปัญหาเดิมยังอยู่ ไม่มี option ส่ง `fetch` หรือ interceptor
+- มีผู้รายงานแล้วแต่ถูกปิดโดยไม่แก้:
+  - issue medusajs/medusa#16770 "JS SDK drops code and type from API error responses" (label `type: bug`) — ปิด not planned 2026-09-28 เพราะ stale
+  - issue medusajs/medusa#16876 — ปิด 2026-09-19 เป็น duplicate ของ #16770
+  - PR medusajs/medusa#16769 `fix(js-sdk): preserve code and type…` — ปิดไม่ merge (stale)
+  - PR medusajs/medusa#16955 `fix(medusa-js): forward code and type…` — ปิดไม่ merge (ไม่ link issue ที่เปิดอยู่ตามกติกา repo)
+- owner ตัดสิน 2026-11-23: **ยังไม่เปิด issue/comment upstream** (แทนข้อ "issue upstream: session หลักเปิด" ในผลที่ตามมา) — ใช้ helper ของ CORE-82 (`lib/data/medusa-fetch.ts`) ต่อ; ร่างข้อความ issue อยู่ใน body ของ PR #514 ถ้าจะเปิดภายหลังให้ comment/อ้าง #16770 แทนการเปิดซ้ำ และต้องถาม owner ก่อน
+- เช็กลิสต์ bump ข้อ 16 ของ spec 07 ยังใช้ตามเดิม: ทุกครั้งที่ bump Medusa ตรวจ `FetchError` ว่ามี `code`/`type` หรือยัง
