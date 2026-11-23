@@ -3003,7 +3003,7 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
      (d) ไม่เปลี่ยนการตัดสินเรื่องเงิน (order มาจาก webhook ตาม ADR-015 — ข้อความไม่สัญญาว่ามี order แล้ว)
 
 ### Acceptance criteria (รอบ 42)
-- AC-186 (CORE-89, กฎข้อ 145) e2e 375×812 ขั้น review ของ manual payment: `boundingBox()` ของ `payment-details-summary` อยู่ใต้ `payment-method-summary` (y ≥ bottom ของตัวแรก) และกว้าง ≥ 300px (ล้มบน develop — คอลัมน์ `w-1/3` ~110px ตัดทีละคำ); 1280 → สองกล่องอยู่แถวเดียวกันเหมือนเดิม
+- ☑ AC-186 (CORE-89, กฎข้อ 145) e2e 375×812 ขั้น review ของ manual payment: `boundingBox()` ของ `payment-details-summary` อยู่ใต้ `payment-method-summary` (y ≥ bottom ของตัวแรก) และกว้าง ≥ 300px (ล้มบน develop — คอลัมน์ `w-1/3` ~110px ตัดทีละคำ); 1280 → สองกล่องอยู่แถวเดียวกันเหมือนเดิม (ผ่าน: red บน develop `59c6af18` ที่ 375 กล่องรายละเอียดอยู่แถวเดียวกัน y 753 < bottom 775 → green `e2e/core-89-payment-summary-mobile.spec.ts` 375/640/1280 3/3; breakpoint ใช้ `sm` ของ Tailwind = 640px ตามตัวเลขในกฎข้อ 145 — `small` ของ starter คือ 1024px แบบเดียวกับ CORE-38/GB-12)
 - AC-187 (CORE-90, กฎข้อ 146) e2e 375×812: `login-to-register-button` และ `register-to-login-button` `boundingBox().height ≥ 44` (ล้มบน develop); `page.getByTestId("register-button")` บนหน้า login view = 0 ตัว;
   keyboard: Tab จาก element ก่อนหน้าไป `promptpay-go-to-cart` และ `group-order-pay-link` หยุด 1 ครั้งต่อลิงก์ (ล้มบน develop — 2 ครั้ง); static: ไม่มี `<Button` เป็นลูกตรงของ `LocalizedClientLink` ใน `src/modules/**`
 - AC-188 (CORE-91, กฎข้อ 147) e2e route mock: หน่วง/ทำให้การอ่าน cart ของ nav ล้ม แล้ว hover `nav-cart-link` → ไม่มีข้อความ "ตะกร้าของคุณยังว่างอยู่" (ล้มบน develop); ตะกร้าว่างจริง → มีข้อความนี้;
@@ -3027,7 +3027,7 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| CORE-89 | สรุปขั้น payment ไม่ตัดคำที่ 375px (กฎข้อ 145); qa | `modules/checkout/components/payment/index.tsx`, e2e | ~10 LOC + ~50 LOC test | AC-186 | PR เอกสารปิดรอบ 41 | `payment/index.tsx` (PAY-16 — ตัวหลัง sync) |
+| CORE-89 | ☑ #524 — สรุปขั้น payment ไม่ตัดคำที่ 375px (กฎข้อ 145); qa | `modules/checkout/components/payment/index.tsx`, e2e | ~10 LOC + ~50 LOC test | AC-186 | PR เอกสารปิดรอบ 41 | `payment/index.tsx` (PAY-16 — ตัวหลัง sync) |
 | CORE-90 | a11y ปุ่มสลับฟอร์ม ≥ 44px + testid ไม่ซ้ำ + ลิงก์ไม่ซ้อนปุ่ม (กฎข้อ 146); qa | `modules/account/components/{login,register}/index.tsx`, `promptpay-payment/index.tsx`, `group-buy/components/account-group-orders/index.tsx`, e2e ที่ใช้ `register-button` | ~40 LOC + ~80 LOC test | AC-187 | PR เอกสารปิดรอบ 41 | `promptpay-payment/index.tsx` (PAY-17) |
 | CORE-91 | dropdown ตะกร้าไม่บอกว่าว่างระหว่างโหลด/ล้ม + ไม่อ่าน cart ซ้ำ + e2e นับเฉพาะ action (กฎข้อ 147); qa | `modules/layout/components/cart-dropdown/index.tsx`, `templates/nav`, e2e 3 ไฟล์ | ~40 LOC + ~100 LOC test | AC-188 | PR เอกสารปิดรอบ 41 | `cart-dropdown` |
 | CORE-92 | account overview/orders hygiene + a11y `SearchPagination` (กฎข้อ 148); qa | `account/@dashboard/{page,orders/page}.tsx`, `modules/store/components/store-hits/pagination.tsx`, e2e | ~40 LOC + ~80 LOC test | AC-189 | PR เอกสารปิดรอบ 41 | `orders/page.tsx` |
