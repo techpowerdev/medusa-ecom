@@ -20,7 +20,7 @@ import {
 } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Button, Text } from "@modules/common/components/ui"
+import { Button, buttonClassName, Text } from "@modules/common/components/ui"
 import { useStripe } from "@stripe/react-stripe-js"
 import { useParams, useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
@@ -286,8 +286,12 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     return (
       <>
         {refundedNotice}
-        <LocalizedClientLink href="/cart" data-testid="promptpay-go-to-cart">
-          <Button size="large">ไปที่ตะกร้า</Button>
+        <LocalizedClientLink
+          href="/cart"
+          className={buttonClassName({ size: "large" })}
+          data-testid="promptpay-go-to-cart"
+        >
+          ไปที่ตะกร้า
         </LocalizedClientLink>
       </>
     )

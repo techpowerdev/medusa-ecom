@@ -10,7 +10,7 @@ import { retrieveCart } from "@lib/data/cart"
 import { CART_UPDATED_EVENT } from "@lib/util/cart-events"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@modules/common/components/ui"
+import { Button, buttonClassName } from "@modules/common/components/ui"
 import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
 import LineItemPrice from "@modules/common/components/line-item-price"
@@ -251,14 +251,12 @@ const CartDropdown = ({
                       })}
                     </span>
                   </div>
-                  <LocalizedClientLink href="/cart" passHref>
-                    <Button
-                      className="w-full"
-                      size="large"
-                      data-testid="go-to-cart-button"
-                    >
-                      ไปที่ตะกร้า
-                    </Button>
+                  <LocalizedClientLink
+                    href="/cart"
+                    className={buttonClassName({ size: "large" }, "w-full")}
+                    data-testid="go-to-cart-button"
+                  >
+                    ไปที่ตะกร้า
                   </LocalizedClientLink>
                 </div>
               </>

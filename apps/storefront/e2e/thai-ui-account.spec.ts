@@ -22,7 +22,7 @@ test("AC-48: หน้า login และ register เป็นภาษาไ�
   })
 
   await step("register", async () => {
-    await page.getByTestId("register-button").click()
+    await page.getByTestId("login-to-register-button").click()
     await expectThai(page, ["register-page"])
   })
 })
