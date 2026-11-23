@@ -1,7 +1,8 @@
 import { APIRequestContext, Page } from "@playwright/test"
 
 import { REFUNDED_NOTICE } from "../src/lib/util/checkout-error"
-import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { expect, test } from "./support/fixtures"
+import { createFlashCampaign, createFlashProduct, endFlashCampaign } from "./support/flash-sale"
 import {
   STOREFRONT_COUNTRY as CC,
   Customer,
@@ -9,7 +10,6 @@ import {
   adminHeaders,
   cartReadyForPayment,
   createCustomer,
-  ok,
   placeOrder,
   publishableKey,
   signInAs,
@@ -24,7 +24,6 @@ import { CARD_PROVIDER, HAS_STRIPE_UI, STRIPE_SECRET, continueToReview, fillCard
 // complete เป็น server action ของ Next (request ฝั่ง server) จึง mock ด้วย page.route ไม่ได้ → ใช้ race จริง + Stripe test mode
 test.use({ evidenceTarget: { feature: "flash-sale", taskId: "FS-22" } })
 
-const PRICE = 1000
 const THAI = /[฀-๿]/
 
 let admin: Headers
@@ -36,46 +35,6 @@ async function stripeRefunds(request: APIRequestContext, intentId: string): Prom
   })
   expect(res.status(), `list refunds of ${intentId}`).toBe(200)
   return (await res.json()).data.map((r: { status: string }) => r.status)
-}
-
-/** สินค้าใหม่ 1 variant สต็อก `stock` ชิ้น คืน product/variant id */
-async function createProduct(request: APIRequestContext, tag: string, stock: number) {
-  const get = async (path: string) => ok(await request.get(`${BACKEND_URL}${path}`, { headers: admin }), path)
-  const run = `${Date.now()}`
-  const { sales_channels } = await get("/admin/sales-channels?limit=1")
-  const { shipping_profiles } = await get("/admin/shipping-profiles?type=default")
-  const { stock_locations } = await get("/admin/stock-locations?limit=1")
-  const { product } = await ok(
-    await request.post(`${BACKEND_URL}/admin/products?fields=id,*variants,*variants.inventory_items`, {
-      headers: admin,
-      data: {
-        title: `E2E FS22 ${tag} ${run}`,
-        handle: `e2e-fs22-${tag}-${run}`,
-        status: "published",
-        shipping_profile_id: shipping_profiles[0].id,
-        sales_channels: [{ id: sales_channels[0].id }],
-        options: [{ title: "Size", values: ["M"] }],
-        variants: [
-          {
-            title: "M",
-            sku: `FS22-${tag}-${run}`,
-            options: { Size: "M" },
-            manage_inventory: true,
-            prices: [{ currency_code: "thb", amount: PRICE }],
-          },
-        ],
-      },
-    }),
-    "create product"
-  )
-  await ok(
-    await request.post(
-      `${BACKEND_URL}/admin/inventory-items/${product.variants[0].inventory_items[0].inventory_item_id}/location-levels`,
-      { headers: admin, data: { location_id: stock_locations[0].id, stocked_quantity: stock } }
-    ),
-    "stock level"
-  )
-  return { productId: product.id as string, variantId: product.variants[0].id as string }
 }
 
 /** cart 1 ชิ้นของ `variant` ไปถึงขั้น review ด้วยบัตร 4242 คืน PaymentIntent id */
@@ -117,7 +76,7 @@ test("AC-29 (a): ชิ้นสุดท้ายถูกซื้อไปร
   evidence,
 }) => {
   test.setTimeout(180_000)
-  const { variantId } = await createProduct(request, "stock", 1)
+  const { variantId } = await createFlashProduct(request, admin, "FS22-stock", 1)
   const customer = await createCustomer(request, pk)
   await signInAs(context, baseURL!, customer)
   const cartId = await cartReadyForPayment(request, pk, customer, { variant: variantId, quantity: 1 })
@@ -150,49 +109,9 @@ test("AC-29 (b): total_cap ของ flash ครบระหว่างอย�
   step,
 }) => {
   test.setTimeout(180_000)
-  const { productId, variantId } = await createProduct(request, "flash", 100)
-  const run = `${Date.now()}`
-  const { campaign } = await ok(
-    await request.post(`${BACKEND_URL}/admin/campaigns`, {
-      headers: admin,
-      data: {
-        name: `FS-22 ${run}`,
-        campaign_identifier: `fs22-${run}`,
-        starts_at: new Date(Date.now() - 60 * 60_000).toISOString(),
-        ends_at: new Date(Date.now() + 60 * 60_000).toISOString(),
-      },
-    }),
-    "campaign"
-  )
+  const { productId, variantId } = await createFlashProduct(request, admin, "FS22-flash", 100)
+  const campaignId = await createFlashCampaign(request, admin, "FS22", productId, { total_cap: 1, show_countdown: true })
   try {
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/promotions`, {
-        headers: admin,
-        data: {
-          code: `FS22-FLASH-${run}`,
-          type: "standard",
-          status: "active",
-          is_automatic: true,
-          campaign_id: campaign.id,
-          application_method: {
-            type: "percentage",
-            target_type: "items",
-            allocation: "across",
-            value: 20,
-            target_rules: [{ attribute: "items.product.id", operator: "in", values: [productId] }],
-          },
-        },
-      }),
-      "promotion"
-    )
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/flash-sales/${campaign.id}/config`, {
-        headers: admin,
-        data: { total_cap: 1, show_countdown: true },
-      }),
-      "flash sale config"
-    )
-
     const customer = await createCustomer(request, pk)
     await signInAs(context, baseURL!, customer)
     const cartId = await cartReadyForPayment(request, pk, customer, { variant: variantId, quantity: 1 })
@@ -210,12 +129,6 @@ test("AC-29 (b): total_cap ของ flash ครบระหว่างอย�
       await expectRefundedNotice(page)
     })
   } finally {
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/campaigns/${campaign.id}`, {
-        headers: admin,
-        data: { ends_at: new Date(Date.now() - 60_000).toISOString() },
-      }),
-      "end campaign"
-    )
+    await endFlashCampaign(request, admin, campaignId)
   }
 })

@@ -1,0 +1,31 @@
+FS-25 (spec 03 กฎข้อ 30, AC-32) — e2e hygiene flash: helper ร่วม e2e/support/flash-sale.ts + PDP ?v_id=
+base: origin/develop 59c6af18 · เครื่อง local (backend :9208 dev, storefront :8208 dev, DB medusa_r42_fs25, ไม่มี Stripe key จริง)
+
+== RED (ก่อนแก้): pnpm --filter storefront exec playwright test --project=unit e2e/fs-25-flash-e2e-hygiene.unit.spec.ts
+    Error: fs-22-refunded-notice.spec.ts
+    Error: ENOENT: no such file or directory, open 'apps/storefront/e2e/support/flash-sale.ts'
+    Error: expect(received).toContain(expected) // indexOf
+  3 failed
+    [unit] › e2e/fs-25-flash-e2e-hygiene.unit.spec.ts:22:5 › AC-32: สามไฟล์ไม่สร้างสินค้า/แคมเปญ/โปรโมชัน flash เอง แต่ import จาก support/flash-sale 
+    [unit] › e2e/fs-25-flash-e2e-hygiene.unit.spec.ts:32:5 › AC-32: export ของ support/flash-sale ทุกตัวมีผู้ใช้จริง ≥ 2 ไฟล์ 
+    [unit] › e2e/fs-25-flash-e2e-hygiene.unit.spec.ts:41:5 › AC-32: e2e ของ FS-23 เปิด PDP ด้วย ?v_id= ทุกครั้ง (ไม่สมมติว่า variant แรกถูกเลือก) 
+  1 passed (987ms)
+
+== GREEN (หลังแก้): unit hygiene ของ FS-25
+[1/4] [unit] › e2e/fs-25-flash-e2e-hygiene.unit.spec.ts:22:5 › AC-32: สามไฟล์ไม่สร้างสินค้า/แคมเปญ/โปรโมชัน flash เอง แต่ import จาก support/flash-sale
+[2/4] [unit] › e2e/fs-25-flash-e2e-hygiene.unit.spec.ts:32:5 › AC-32: export ของ support/flash-sale ทุกตัวมีผู้ใช้จริง ≥ 2 ไฟล์
+[3/4] [unit] › e2e/fs-25-flash-e2e-hygiene.unit.spec.ts:41:5 › AC-32: e2e ของ FS-23 เปิด PDP ด้วย ?v_id= ทุกครั้ง (ไม่สมมติว่า variant แรกถูกเลือก)
+[4/4] [unit] › e2e/fs-25-flash-e2e-hygiene.unit.spec.ts:47:5 › AC-32: จำนวน expect ของแต่ละ test และแต่ละไฟล์ไม่ลด
+  4 passed (472ms)
+
+== pnpm --filter storefront test:e2e:unit (ทั้ง project)
+  155 passed (2.5s)
+
+== e2e chromium --repeat-each=3 --workers=1: fs-23 + fs-22 + pay-9 + fs-24
+   (fs-22/pay-9/fs-24 skip ในเครื่องเพราะไม่มี STRIPE_API_KEY/NEXT_PUBLIC_STRIPE_KEY ของบัญชี test — CI พิสูจน์ด้วย secret)
+  12 skipped
+  6 passed (33.6s)
+
+== typecheck/lint
+pnpm --filter storefront typecheck: ผ่าน (tsc --noEmit ไม่มี error)
+pnpm --filter storefront lint: 0 errors (28 warnings เดิมของ develop ไม่มีในไฟล์ที่แตะ)
