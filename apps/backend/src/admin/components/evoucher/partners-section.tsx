@@ -24,7 +24,7 @@ import {
 } from "../../lib/evoucher-partner-form"
 import { isUnauthorized } from "../../lib/fetch-error"
 import { isPastLastPage } from "../../lib/page-offset"
-import { createSingleFlight } from "../../lib/single-flight"
+import { createSingleFlight, useSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
 import { PageOffsetGate } from "../common/page-offset-gate"
@@ -149,7 +149,8 @@ export const PartnersSection = () => {
   })
   // spec 02 กฎข้อ 11 / spec 08 กฎ 4: dblclick / ⌘+Enter ซ้ำก่อน isPending เป็น true → request ครั้งเดียว
   // กฎ 43 (ADM-39): สำเร็จแล้ว lock ค้าง (hold) ระหว่าง modal/Drawer กำลังปิด — ปล่อย (release) ตอนเปิดฟอร์มใหม่
-  const [submitOnce] = useState(createSingleFlight)
+  // กฎ 50 (ADM-46): `submitLocked` = in-flight หรือ hold — Save disabled ตลอดช่วงแอนิเมชันปิด
+  const [submitOnce, submitLocked] = useSingleFlight()
   const [deleteOnce] = useState(createSingleFlight)
 
   const [count, setCount] = useState<number>()
@@ -259,7 +260,7 @@ export const PartnersSection = () => {
     <Button
       size="small"
       type="submit"
-      disabled={save.isPending}
+      disabled={submitLocked}
       isLoading={save.isPending}
       data-testid="evoucher-partner-save"
     >

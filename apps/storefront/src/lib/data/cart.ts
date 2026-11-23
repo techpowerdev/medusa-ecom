@@ -3,7 +3,6 @@
 import { sdk } from "@lib/config"
 import { friendlyErrorMessage } from "@lib/util/error-message"
 import { isDigitalOnlyCart, safeCountryCode } from "@lib/util/digital-checkout"
-import { isEmptyCartCompletion } from "@lib/util/empty-cart-completion"
 import medusaError from "@lib/util/medusa-error"
 import {
   ActionError,
@@ -14,6 +13,7 @@ import {
   paymentSessionResult,
 } from "@lib/util/action-result"
 import { INSUFFICIENT_INVENTORY, isInsufficientInventory } from "@lib/util/insufficient-inventory"
+import { isUncodedMedusaError } from "@lib/util/medusa-api-error"
 import { PlaceOrderOutcome, placeOrderOutcome } from "@lib/util/place-order-outcome"
 import { trimInvisible } from "@lib/util/trim-invisible"
 import { MISSING_ADDRESS_MESSAGE, missingRequiredAddress } from "@lib/util/address-required"
@@ -32,6 +32,7 @@ import { setCartCookie } from "./active-cart"
 import { syncCartAffiliateToken } from "./affiliate"
 import { getLocale } from "./locale-actions"
 import { createPaymentSession } from "./payment"
+import { medusaFetch } from "./medusa-fetch"
 import { loginPathForAddToCart } from "@lib/util/pending-add-to-cart"
 import { PAYMENT_COLLECTION_RESET, PromptPayPollState, promptPayPollState } from "@lib/util/payment-session"
 
@@ -217,7 +218,8 @@ export async function updateLineItem({
   }
 
   try {
-    await sdk.store.cart.updateLineItem(cartId, lineId, { quantity }, {}, headers)
+    // CORE-82 (กฎข้อ 140, ADR-028): medusaFetch ให้ code ของ error ที่ SDK ทิ้ง
+    await medusaFetch(`/store/carts/${cartId}/line-items/${lineId}`, { quantity })
   } catch (error) {
     // CORE-48 (กฎข้อ 106a): 400 stock ไม่พอของ Medusa → code ของตัวเอง (ไม่ใช่ 409 ของ CHECKOUT_CONFLICTS) ก่อน helper กลาง
     if (isInsufficientInventory(error)) {
@@ -435,7 +437,8 @@ export async function applyPromotions(codes: string[]): Promise<ApplyPromotionsR
 
   let cart: HttpTypes.StoreCart
   try {
-    cart = (await sdk.store.cart.update(cartId, { promo_codes: codes }, {}, headers)).cart
+    // CORE-82 (กฎข้อ 140, ADR-028): medusaFetch ให้ code ของ 409 ที่ SDK ทิ้ง
+    cart = (await medusaFetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, { promo_codes: codes })).cart
   } catch (error) {
     return actionFailure(error, ["PROMOTION_NOT_COMBINABLE"])
   }
@@ -625,10 +628,11 @@ export async function placeOrder(
 
   let cartRes: HttpTypes.StoreCompleteCartResponse
   try {
-    cartRes = await sdk.store.cart.complete(id, {}, headers)
+    // CORE-82 (กฎข้อ 140, ADR-028): medusaFetch ให้ code ของ error ที่ SDK ทิ้ง
+    cartRes = await medusaFetch<HttpTypes.StoreCompleteCartResponse>(`/store/carts/${id}/complete`)
   } catch (error) {
     // CORE-52 (กฎข้อ 110a): ตะกร้าถูกล้างจากอีกแท็บ — Medusa ไม่สร้าง order; พาไปหน้าตะกร้าแทนข้อความ error
-    if (isEmptyCartCompletion(error)) {
+    if (isUncodedMedusaError(error, "EMPTY_CART_COMPLETION")) {
       revalidateTag(await getCacheTag("carts"), { expire: 0 })
       const cartCountry = safeCountryCode(countryCode)
       redirect(`${cartCountry ? `/${cartCountry}` : ""}/cart`)

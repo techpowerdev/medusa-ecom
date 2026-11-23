@@ -1,4 +1,5 @@
 import { FetchError } from "@medusajs/js-sdk"
+import { MedusaApiError } from "@lib/util/medusa-api-error"
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -54,6 +55,8 @@ vi.mock("@lib/data/cookies", () => ({
   getPendingCustomer: vi.fn(),
   removePendingCustomer: vi.fn(),
 }))
+// CORE-82 (กฎข้อ 140, ADR-028): complete cart ผ่าน medusaFetch (path, body) — error เป็น MedusaApiError ที่มี code/type
+vi.mock("@lib/data/medusa-fetch", () => ({ medusaFetch: (...a: unknown[]) => cartComplete(...a) }))
 vi.mock("@lib/data/regions", () => ({
   getRegion: vi.fn().mockResolvedValue({ id: "reg_1" }),
   listRegions: vi.fn().mockResolvedValue([{ id: "reg_1", countries: [{ iso_2: "th" }] }]),
@@ -191,8 +194,7 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
   const SUCCEEDED_PATH =
     "/api/payment-return?cart_id=cart_pay&country_code=th&payment_intent=pi_1&payment_intent_client_secret=sec_1&redirect_status=succeeded"
   const succeededRequest = () => new NextRequest(`http://shop.test${SUCCEEDED_PATH}`)
-  const conflict = (code: string, message = "x") =>
-    Object.assign(new FetchError(message, "Conflict", 409), { code })
+  const conflict = (code: string) => new MedusaApiError({ status: 409, type: "conflict", code, message: "x" })
   const rethrowRedirects = async () => {
     const { unstable_rethrow } = await import("next/navigation")
     vi.mocked(unstable_rethrow).mockImplementation((e: unknown) => {
@@ -216,10 +218,10 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
     ["409 FLASH_SOLD_OUT", () => cartComplete.mockRejectedValue(conflict("FLASH_SOLD_OUT"))],
     ["409 FLASH_LIMIT_EXCEEDED", () => cartComplete.mockRejectedValue(conflict("FLASH_LIMIT_EXCEEDED"))],
     [
-      "400 สต็อกไม่พอตอน complete (ไม่มี code)",
+      "400 สต็อกไม่พอตอน reserveInventory (ไม่มี code — ข้อยกเว้นของ ADR-028)",
       () =>
         cartComplete.mockRejectedValue(
-          new FetchError("Some variant does not have the required inventory", "Bad Request", 400)
+          new MedusaApiError({ status: 400, type: "not_allowed", message: "Not enough stock available for item i at location l" })
         ),
     ],
   ])("%s → kind refunded → /th/cart?error=refunded", async (_label, arrange) => {
@@ -230,14 +232,14 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
   })
 
   it.each([
-    ["500", () => cartComplete.mockRejectedValue(new FetchError("x", "Internal Server Error", 500))],
+    ["500", () => cartComplete.mockRejectedValue(new MedusaApiError({ status: 500, message: "x" }))],
     ["409 ไม่รู้จัก code", () => cartComplete.mockRejectedValue(conflict("SOMETHING_ELSE"))],
     ["cart ไม่ complete (type: cart)", () => cartComplete.mockResolvedValue({ type: "cart", cart: {}, error: { message: "declined" } })],
   ])("%s → { kind: failed } → /cart?error=order_failed", async (_label, arrange) => {
     arrange()
     const { GET } = await import("./app/api/payment-return/route")
     const res = await GET(succeededRequest())
-    expect(cartComplete).toHaveBeenCalledWith("cart_pay", {}, expect.anything())
+    expect(cartComplete).toHaveBeenCalledWith("/store/carts/cart_pay/complete")
     expect(res.headers.get("location")).toBe("http://shop.test/th/cart?error=order_failed")
   })
 
@@ -250,7 +252,7 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
   }
 
   it.each([401, 403])("complete ตอบ %s → หน้า login กลับขั้น review (ไม่มี client_secret ใน URL)", async (status) => {
-    cartComplete.mockRejectedValue(new FetchError("x", "Unauthorized", status))
+    cartComplete.mockRejectedValue(new MedusaApiError({ status, type: "unauthorized", message: "x" }))
     const { GET } = await import("./app/api/payment-return/route")
     const location = (await GET(succeededRequest())).headers.get("location")
     expect(location).toBe(REVIEW_LOGIN)
@@ -309,9 +311,7 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
 
   it("409 CART_COMPLETION_IN_PROGRESS + ยังไม่มี order → /th/checkout?step=review (กลไก poll ของ PAY-6b)", async () => {
     await rethrowRedirects()
-    cartComplete.mockRejectedValue(
-      new FetchError("Cart is already being completed by another request", "Conflict", 409)
-    )
+    cartComplete.mockRejectedValue(conflict("CART_COMPLETION_IN_PROGRESS"))
     const { GET } = await import("./app/api/payment-return/route")
     const res = await GET(succeededRequest())
     expect(res.headers.get("location")).toBe("http://shop.test/th/checkout?step=review&cart_id=cart_pay")

@@ -154,7 +154,8 @@ describe("ฟอร์ม pilot ใช้ Form + KeyboundForm + zod (spec 08 AC-
       )
       expect(src).toMatch(/import\s*{[^}]*\buseForm\b[^}]*}\s*from\s*["']react-hook-form["']/)
       expect(src).toMatch(/import\s*{[^}]*\bzodResolver\b[^}]*}\s*from\s*["']@hookform\/resolvers\/zod["']/)
-      expect(src).toMatch(/useState\(createSingleFlight\)/)
+      // ADM-46 (กฎ 50): variant pool เป็นฟอร์มสร้างของกฎ 43 — useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+      expect(src).toMatch(/useState\(createSingleFlight\)|useSingleFlight\(\)/)
       expect(src).not.toMatch(/\b(toForm|EMPTY|parseLimit|setForm)\b/)
       expect(src).not.toMatch(/\buseRef\b/)
     }
@@ -281,7 +282,8 @@ describe("ฟอร์มสร้างแคมเปญ group buy ใช้ F
 
   it("create-campaign กันกดซ้ำด้วย useState(createSingleFlight) และไม่มี useRef", () => {
     const src = campaign()
-    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    // ADM-46 (กฎ 50): useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+    expect(src).toMatch(/useSingleFlight\(\)/)
     expect(src).not.toMatch(/\buseRef\b/)
   })
 
@@ -325,7 +327,8 @@ describe("ตาราง/ฟอร์ม partner ใช้ของ Medusa (spe
     expect(src).toMatch(/import\s*{[^}]*\bzodResolver\b[^}]*}\s*from\s*["']@hookform\/resolvers\/zod["']/)
     expect(src).toMatch(/raw:\s*true/)
     expect(src).toMatch(/\bnoValidate\b/)
-    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    // ADM-46 (กฎ 50): useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+    expect(src).toMatch(/useSingleFlight\(\)/)
     expect(src).not.toMatch(/\b(toForm|toBody|setForm)\b/)
     expect(src).not.toMatch(/\buseRef\b/)
     expect(src).not.toMatch(/toast\.error\("Name is required"\)/)
@@ -432,7 +435,8 @@ describe("ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, �
     expect(importsFrom(src, "Form", "@medusajs/dashboard/components")).toBe(true)
     expect(importsFrom(src, "KeyboundForm", "@medusajs/dashboard/components")).toBe(true)
     expect(importsFrom(src, "useForm", "react-hook-form")).toBe(true)
-    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    // ADM-46 (กฎ 50): ฟอร์มสร้างของกฎ 43 ใช้ useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+    expect(src).toMatch(/useState\(createSingleFlight\)|useSingleFlight\(\)/)
     expect(src).not.toMatch(/\bsetForm\b/)
     expect(src).not.toMatch(/useState(<[^>]*>)?\(\(?\s*(\(\)\s*=>\s*)?\(?(emptyProgramForm|payoutInfoForm|programToForm)/)
   })

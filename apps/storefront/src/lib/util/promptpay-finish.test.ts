@@ -9,7 +9,7 @@ import { PROMPTPAY_REFUNDED_UNKNOWN, promptPayFinishAction } from "./promptpay-f
 const THAI = /[\u0E00-\u0E7F]/
 const conflict = (code: string) => {
   const c = CHECKOUT_CONFLICTS.find((x) => x.code === code)!
-  return { status: 409, code: c.code, message: c.message }
+  return { status: 409, code: c.code, message: "x" }
 }
 
 describe("promptPayFinishAction", () => {
@@ -37,7 +37,7 @@ describe("promptPayFinishAction", () => {
   })
 
   it("409 CART_COMPLETION_IN_PROGRESS → retry (poll ต่อ ไม่แสดง refunded)", () => {
-    const outcome = placeOrderOutcome({ status: 409, ...CART_COMPLETION_IN_PROGRESS })
+    const outcome = placeOrderOutcome({ status: 409, code: CART_COMPLETION_IN_PROGRESS })
     expect(outcome).toEqual({ kind: "processing" })
     expect(promptPayFinishAction(outcome)).toEqual({ kind: "retry" })
   })

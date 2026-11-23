@@ -3,7 +3,6 @@ import { useComboboxData } from "@medusajs/dashboard/hooks"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button, DatePicker, Drawer, FocusModal, Heading, Input, Select, Switch, Text, Textarea, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
 import { useForm, type FieldErrors, type Resolver, type UseFormReturn } from "react-hook-form"
 import { sdk } from "../../lib/client"
 import { affiliateKeys, createProgram, Program, ProgramBody, updateProgram } from "../../lib/affiliate"
@@ -17,7 +16,7 @@ import {
   programToForm,
   toProgramBody,
 } from "../../lib/affiliate-program-form"
-import { createSingleFlight } from "../../lib/single-flight"
+import { useSingleFlight } from "../../lib/single-flight"
 import { keepModalOpenWhileComboboxExpanded } from "../../lib/combobox-escape"
 import { NumberInput } from "../common/number-input"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
@@ -248,7 +247,8 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
     defaultValues: program ? programToForm(program) : emptyProgramForm(),
   })
   // กฎ 43 (ADM-39): สำเร็จแล้ว hold lock จน component ถูกถอด (ปิด) — เปิดใหม่ mount ใหม่ (key) จึงได้ lock ใหม่ ไม่ต้อง release
-  const [submitOnce] = useState(createSingleFlight)
+  // กฎ 50 (ADM-46): `submitLocked` = in-flight หรือ hold — Save disabled จนถูกถอด
+  const [submitOnce, submitLocked] = useSingleFlight()
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("programs") })
 
@@ -282,7 +282,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
   const confirmClose = useConfirmDiscard({ form, isPending: save.isPending, onClose })
 
   const saveButton = (
-    <Button size="small" type="submit" isLoading={save.isPending} disabled={save.isPending} data-testid="affiliate-program-save">
+    <Button size="small" type="submit" isLoading={save.isPending} disabled={submitLocked} data-testid="affiliate-program-save">
       Save
     </Button>
   )

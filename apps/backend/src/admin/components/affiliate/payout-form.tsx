@@ -3,7 +3,6 @@ import { useComboboxData } from "@medusajs/dashboard/hooks"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button, DatePicker, FocusModal, Heading, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { affiliateKeys, createPayout, listAffiliateOptions } from "../../lib/affiliate"
 import {
@@ -14,7 +13,7 @@ import {
   toPayoutBody,
 } from "../../lib/affiliate-payout"
 import { isUnauthorized } from "../../lib/fetch-error"
-import { createSingleFlight } from "../../lib/single-flight"
+import { useSingleFlight } from "../../lib/single-flight"
 import { keepModalOpenWhileComboboxExpanded } from "../../lib/combobox-escape"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
 import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
@@ -40,7 +39,8 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
     defaultValues: { affiliate_id: "", ...defaultPayoutPeriod(new Date()) },
   })
   // กฎ 43 (ADM-39): สำเร็จแล้ว hold lock จน component ถูกถอด (ปิด) — เปิดใหม่ mount ใหม่ (render ตามเงื่อนไข) จึงได้ lock ใหม่ ไม่ต้อง release
-  const [submitOnce] = useState(createSingleFlight)
+  // กฎ 50 (ADM-46): `submitLocked` = in-flight หรือ hold — Save disabled จนถูกถอด
+  const [submitOnce, submitLocked] = useSingleFlight()
   // selectedValue: ตัวที่เลือกไว้ต้องอยู่ใน options แม้ค้นคำอื่นหรือปิด popover (label ไม่หาย)
   const options = useComboboxData({
     queryKey: [...affiliateKeys.list("affiliates"), "payout-options"],
@@ -100,7 +100,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
                   size="small"
                   type="submit"
                   isLoading={save.isPending}
-                  disabled={save.isPending}
+                  disabled={submitLocked}
                   data-testid="affiliate-payout-save"
                 >
                   Create

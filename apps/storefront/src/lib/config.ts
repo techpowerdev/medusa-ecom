@@ -3,11 +3,13 @@ import Medusa, { FetchArgs, FetchInput } from "@medusajs/js-sdk"
 
 // Defaults to standard port for Medusa server
 export const MEDUSA_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
+// CORE-82: ใช้ร่วมกับ `medusaFetch` (header เดียวกับ SDK)
+export const MEDUSA_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
 
 export const sdk = new Medusa({
   baseUrl: MEDUSA_BACKEND_URL,
   debug: process.env.NODE_ENV === "development",
-  publishableKey: process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY,
+  publishableKey: MEDUSA_PUBLISHABLE_KEY,
 })
 
 const originalFetch = sdk.client.fetch.bind(sdk.client)

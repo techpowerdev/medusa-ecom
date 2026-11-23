@@ -11,6 +11,7 @@ const revalidateTag = vi.fn((tag: string, _profile?: unknown) => {
 vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   MEDUSA_BACKEND_URL: "http://backend",
+  MEDUSA_PUBLISHABLE_KEY: "pk_test",
   sdk: { client: { fetch: (...a: unknown[]) => fetchSdk(...a) }, store: { cart: {} } },
 }))
 vi.mock("@lib/data/cookies", () => ({

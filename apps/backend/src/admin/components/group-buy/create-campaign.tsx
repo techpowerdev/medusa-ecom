@@ -15,7 +15,7 @@ import {
   newIdempotencyKey,
   toCampaignBody,
 } from "../../lib/group-buy-form"
-import { createSingleFlight } from "../../lib/single-flight"
+import { useSingleFlight } from "../../lib/single-flight"
 import { NumberInput } from "../common/number-input"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
 import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
@@ -93,7 +93,8 @@ export const CreateCampaign = ({
   })
   // spec 08 กฎ 4: dblclick / ⌘+Enter ซ้ำผ่าน validation พร้อมกันได้ — createSingleFlight ให้ POST ครั้งเดียว
   // กฎ 43 (ADM-39): สำเร็จแล้ว hold ระหว่าง modal กำลังปิด — release ตอนเปิดใหม่ (effect ด้านล่าง)
-  const [submitOnce] = useState(createSingleFlight)
+  // กฎ 50 (ADM-46): `submitLocked` = in-flight หรือ hold — Create disabled ตลอดช่วงแอนิเมชันปิด
+  const [submitOnce, submitLocked] = useSingleFlight()
   // GB-13 (กฎข้อ 33d): key เดียวต่อการเปิดฟอร์ม — submit ซ้ำหลัง network ล้มได้แคมเปญเดิม
   // ตั้งเมื่อ open เปลี่ยน false → true เท่านั้นด้วย newIdempotencyKey (GB-15: getRandomValues ใช้ได้ทั้ง http/https — ไม่ใช้ API ที่มีเฉพาะ secure context)
   const [idempotencyKey, setIdempotencyKey] = useState("")
@@ -179,7 +180,7 @@ export const CreateCampaign = ({
                   size="small"
                   type="submit"
                   isLoading={create.isPending}
-                  disabled={create.isPending}
+                  disabled={submitLocked}
                   data-testid="gb-campaign-create-submit"
                 >
                   Create

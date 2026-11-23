@@ -149,13 +149,11 @@ describe("static/contract (CORE-76)", () => {
     expect(source).not.toMatch(/REFUNDED_NOTICE\s*===/)
   })
 
-  // ข้อความ/code ต้องตรงกับ backend (`api/store/carts/errors.ts`) ซึ่งมี contract test กับ source ของ @medusajs/medusa อีกชั้น
-  it("CART_COMPLETION_IN_PROGRESS ตรงกับ backend", () => {
+  // code ต้องตรงกับ backend (`api/store/carts/errors.ts`) ซึ่งมี contract test ข้อความกับ source ของ @medusajs/medusa อีกชั้น
+  // CORE-82 (กฎข้อ 140, ADR-028): storefront ตัดสินจาก code อย่างเดียว — ไม่เก็บข้อความของ backend
+  it("CART_COMPLETION_IN_PROGRESS ตรงกับ code ของ backend", () => {
     const backend = read("../../backend/src/api/store/carts/errors.ts")
     const value = (name: string) => backend.match(new RegExp(`export const ${name} = "([^"]+)"`))?.[1]
-    expect(CART_COMPLETION_IN_PROGRESS).toEqual({
-      code: value("CART_COMPLETION_IN_PROGRESS"),
-      message: value("CART_COMPLETION_IN_PROGRESS_MESSAGE"),
-    })
+    expect(CART_COMPLETION_IN_PROGRESS).toBe(value("CART_COMPLETION_IN_PROGRESS"))
   })
 })

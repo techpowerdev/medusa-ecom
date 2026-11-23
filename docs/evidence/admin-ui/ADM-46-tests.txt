@@ -1,0 +1,55 @@
+# ADM-46 (spec 08 กฎ 50, AC-51) — ผล test
+base: origin/develop 53e758a2 | เครื่อง: backend dev :9280, DB medusa_adm46, Chromium (Playwright 1.64.1)
+
+## RED — unit helper (ก่อนแก้ single-flight.ts)
+  ● createSingleFlight isLocked/subscribe › is locked while fn runs and stays locked after hold() until release()
+  ● createSingleFlight isLocked/subscribe › unlocks after fn settles without hold() (request error / client validation)
+  ● createSingleFlight isLocked/subscribe › notifies subscribers on every lock change and stops after unsubscribe
+Tests:       3 failed, 8 passed, 11 total
+
+## RED — e2e admin-create-double-submit.spec.ts บนโค้ด develop (เพิ่มแค่ test)
+  ✘  1 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create partner (backend จริง — ADM-B1) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (5.2s)
+  ✓  2 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create program (backend จริง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (4.9s)
+  ✓  3 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (4.8s)
+  ✘  4 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create campaign (mock สำเร็จ — แคมเปญลบผ่าน API ไม่ได้) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (5.7s)
+  ✘  5 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (6.2s)
+  ✓  6 [chromium] › e2e/admin-create-double-submit.spec.ts:390:5 › AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้ (2.0s)
+  ✘  7 [chromium] › e2e/admin-create-double-submit.spec.ts:433:5 › AC-51 (b): Create pool group — กด Enter ค้าง (keydown repeat) = POST 1 ครั้ง; คลิกแยก 2 ครั้งหลัง response = 2 group (1.7s)
+  ✓  8 [chromium] › e2e/admin-create-double-submit.spec.ts:480:5 › AC-44: Import codes (หน้า pool) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; เลือกไฟล์ใหม่ import ได้ (5.0s)
+    Error: frame ที่ Save กดได้: [false,false,false,false,false,false,false,false,false,false]
+    test-results/admin-create-double-submit-93257-กดใหม่ได้-เปิดใหม่-Save-ได้-chromium/test-failed-1.png
+    Error: frame ที่ Save กดได้: [false,false,false,false,false,false,false,false,false,false,false,false]
+    test-results/admin-create-double-submit-6ce0c-กดใหม่ได้-เปิดใหม่-Save-ได้-chromium/test-failed-1.png
+    Error: frame ที่ Save กดได้: [false,false,false,false,false,false,false,false,false,false,false]
+    test-results/admin-create-double-submit-b01ee-กดใหม่ได้-เปิดใหม่-Save-ได้-chromium/test-failed-1.png
+    Expected length: 1
+    Received length: 2
+    test-results/admin-create-double-submit-98f71--ครั้งหลัง-response-2-group-chromium/test-failed-1.png
+  4 failed
+  4 passed (38.2s)
+
+## GREEN — unit helper
+single-flight.unit.spec.ts: Tests: 11 passed, 11 total
+
+## GREEN — e2e (ครั้งเดียว)
+  ✓  1 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create partner (backend จริง — ADM-B1) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (5.3s)
+  ✓  2 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create program (backend จริง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (4.7s)
+  ✓  3 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (4.7s)
+  ✓  4 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create campaign (mock สำเร็จ — แคมเปญลบผ่าน API ไม่ได้) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (5.6s)
+  ✓  5 [chromium] › e2e/admin-create-double-submit.spec.ts:287:7 › AC-44: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (6.2s)
+  ✓  6 [chromium] › e2e/admin-create-double-submit.spec.ts:390:5 › AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้ (1.9s)
+  ✓  7 [chromium] › e2e/admin-create-double-submit.spec.ts:433:5 › AC-51 (b): Create pool group — กด Enter ค้าง (keydown repeat) = POST 1 ครั้ง; คลิกแยก 2 ครั้งหลัง response = 2 group (1.7s)
+  ✓  8 [chromium] › e2e/admin-create-double-submit.spec.ts:480:5 › AC-44: Import codes (หน้า pool) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; เลือกไฟล์ใหม่ import ได้ (4.9s)
+  8 passed (36.4s)
+
+## GREEN — e2e --repeat-each=3
+  24 passed (1.9m)
+frames หลัง response (disabled ต่อ frame, รอบที่ 1): partner/campaign/variant pool = true ทุก frame (10–13 frame);
+program/payout = [] (component ถูกถอดทันทีเมื่อ onClose — ไม่มีแอนิเมชันปิด ปุ่มไม่อยู่ใน DOM หลัง response)
+
+## ชุดอื่น
+pnpm --filter backend test:unit: Tests:       1753 passed, 1753 total
+pnpm --filter storefront test:e2e:unit: 146 passed (1.0s)
+pnpm --filter backend typecheck / storefront typecheck: ผ่าน
+pnpm --filter backend lint / storefront lint: 0 errors (warning เดิมทั้งหมดอยู่นอกไฟล์ที่แตะ)
+pnpm --filter backend build: ผ่าน
