@@ -1314,7 +1314,8 @@ Status: draft (☐ — รอ owner สั่งทำ)
 ลำดับ: ADM-47 → ADM-48
 
 ### Open questions (รอบ 42)
-- **Q13** (re-review #471 — PAY-10) ข้อยกเว้นของการหาด้วย `data-testid` (`CLAUDE.md` + ADR-018) ครอบเฉพาะ menuitem ของ `ActionMenu`, ปุ่มใน `action` ของ `DataTable` และ searchbox ของ `DataTable` (ข้อยกเว้นที่ 3 — ADR-018 ภาคผนวก 2026-11-21)
+- ~~**Q13**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ก)** ข้อยกเว้นที่ 4 — ADR-018 ภาคผนวก 2026-11-23 (2) + `CLAUDE.md` (หัวข้อ Language และข้อห้ามข้อ 1) แก้ใน PR เอกสารเดียวกัน; ไม่มีโค้ดเปลี่ยน ไม่มี task — คำถามเดิม:
+  (re-review #471 — PAY-10) ข้อยกเว้นของการหาด้วย `data-testid` (`CLAUDE.md` + ADR-018) ครอบเฉพาะ menuitem ของ `ActionMenu`, ปุ่มใน `action` ของ `DataTable` และ searchbox ของ `DataTable` (ข้อยกเว้นที่ 3 — ADR-018 ภาคผนวก 2026-11-21)
   แต่ e2e ของ PAY-10 ต้องกด element ในหน้าของ Medusa เองที่ extension ใส่ testid ไม่ได้ (เช่นปุ่ม Cancel Return, ฟอร์ม Create Return ของ dashboard):
   (ก) **[Recommended]** ข้อยกเว้นที่ 4: element ที่ render โดยหน้า/route ของ `@medusajs/dashboard` (ไม่ใช่ `src/admin/` ของเรา) หาด้วย role + ชื่อภายใน container ที่แคบที่สุดที่หาได้ — บันทึกเป็นภาคผนวก ADR-018 และ session หลักแก้ประโยคข้อยกเว้นใน `CLAUDE.md` (ต้องให้ owner อนุมัติเพราะแตะ `CLAUDE.md`); ไม่มีโค้ดเปลี่ยน
   (ข) ไม่เพิ่มข้อยกเว้น — e2e ที่ต้องกดหน้า Medusa ใช้ API ของ Medusa ตั้งสถานะแทนการคลิก (ครอบ UI ของเราได้ แต่ไม่ครอบ "widget หายเองเมื่อแอดมินกดในหน้า Medusa" ของ AC-23)
