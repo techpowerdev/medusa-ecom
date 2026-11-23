@@ -131,8 +131,13 @@ export const StripePaymentContainer = ({
   selectedPaymentOptionId,
   paymentInfoMap,
   disabled = false,
+  fieldsHidden = false,
   ...fields
-}: Omit<PaymentContainerProps, "children"> & StripeFieldsProps) => {
+}: Omit<PaymentContainerProps, "children"> &
+  StripeFieldsProps & {
+    /** PAY-16 (spec 06 กฎข้อ 18 c): ไม่ render ช่องบัตร/skeleton (session ที่เลือกใช้ไม่ได้และรอลูกค้าลองใหม่) */
+    fieldsHidden?: boolean
+  }) => {
   const stripeReady = useContext(StripeContext)
 
   return (
@@ -143,6 +148,7 @@ export const StripePaymentContainer = ({
       disabled={disabled}
     >
       {selectedPaymentOptionId === paymentProviderId &&
+        !fieldsHidden &&
         (stripeReady ? <StripeCardFields {...fields} /> : <SkeletonCardDetails />)}
     </PaymentContainer>
   )

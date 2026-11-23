@@ -28,6 +28,13 @@ export function paymentSessionData(providerId: string): Record<string, unknown> 
  */
 export const intentIsTerminal = (status?: string) => status === "succeeded" || status === "canceled"
 
+/** PAY-16 (spec 06 กฎข้อ 18 a): notice "เลือกวิธีชำระอีกครั้ง" ของขั้น payment — วิธีที่เลือกและ client secret ตอน notice ขึ้น */
+export type SessionResetNotice = { method: string; secret: string | null }
+
+/** notice แสดงเฉพาะเมื่อยังเลือกวิธีเดิมและ cart ยังชี้ secret เดิม — เปลี่ยนวิธีหรือ session ใหม่มาแล้ว = หาย */
+export const sessionResetShown = (notice: SessionResetNotice | null, method: string, secret: string | null) =>
+  notice !== null && notice.method === method && notice.secret === secret
+
 /** หมดอายุ 10 นาทีนับจากเวลาสร้าง PaymentIntent (`created` เป็นวินาที) — reload หน้าไม่ยืดเวลา */
 export const promptPayDeadline = (intentCreatedSec: number) =>
   intentCreatedSec * 1000 + PROMPTPAY_TIMEOUT_MS
