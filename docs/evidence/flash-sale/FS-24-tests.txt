@@ -1,0 +1,20 @@
+# FS-24 (spec 03 กฎข้อ 29, AC-31) — ผล test (develop f01c0cee)
+
+## Red
+task นี้เป็น test ล้วน (AC-31 ไม่ได้กำหนดให้ล้มบน develop): พฤติกรรมของ FS-22/CORE-76 merge แล้ว ไม่มีโค้ด production ให้แก้
+ก่อน PR นี้ไม่มี e2e race จริงทางบัตร (สองลูกค้าแย่งชิ้นสุดท้ายพร้อมกัน) — AC-31 ไม่ถูกครอบ
+
+## e2e ในเครื่อง (ไม่มี Stripe test key — test skip ตามกติกา stripe-env.ts; race จริงพิสูจน์ใน CI job e2e ที่มี secret + stripe listen)
+$ npx playwright test --project=chromium e2e/fs-24-card-race-refund.spec.ts
+Running 1 test using 1 worker
+  -  1 [chromium] › e2e/fs-24-card-race-refund.spec.ts:125:5 › AC-31: สองลูกค้าแย่ง flash ชิ้นสุดท้าย (cap 1) ด้วยบัตร 4242 → ผู้ชนะได้ order, ผู้แพ้เห็น checkout-refunded-notice และได้ refund เต็มจำนวนภายใน 30 วินาที
+  1 skipped
+
+## pnpm --filter storefront test:e2e:unit
+  145 passed (806ms)
+
+## pnpm --filter storefront typecheck
+ผ่าน (exit 0)
+
+## eslint e2e/fs-24-card-race-refund.spec.ts
+ผ่าน (0 errors, 0 warnings)

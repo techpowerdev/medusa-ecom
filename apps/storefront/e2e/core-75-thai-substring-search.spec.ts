@@ -3,6 +3,7 @@ import { APIResponse, Locator, Page } from "@playwright/test"
 import { deleteAllThenExpectOk, expectNoneLeft } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, Headers, adminHeaders } from "./support/medusa"
+import { thaiRunWord } from "./support/search-word"
 
 // CORE-75 (spec 01 กฎข้อ 133, AC-174): คำไทยที่อยู่กลางชื่อ (ไม่มีเว้นวรรค) ค้นเจอทุกหน้า และ drawer, /search?q=, /store?q= ได้ผลชุดเดียวกัน
 // สินค้า 2 ชิ้นมีคำไทยเฉพาะของ run อยู่กลางชื่อ + 1 ชิ้นไม่มี; เทียบเป็น set ของ product handle
@@ -43,8 +44,8 @@ test.beforeAll(async ({ request }) => {
   const get = async (path: string) =>
     ok(await request.get(`${BACKEND_URL}${path}`, { headers: admin }), path)
   run = `${Date.now()}`
-  // คำไทยเฉพาะของ run (ตัวเลขแปลงเป็นพยัญชนะไทย) — วางกลางชื่อโดยไม่เว้นวรรค
-  word = run.replace(/\d/g, (d) => "กขคงจฉชซญด"[Number(d)])
+  // คำไทยเฉพาะของ run (ตัวเลขแปลงเป็นพยัญชนะไทย) — วางกลางชื่อโดยไม่เว้นวรรค; CORE-86: อักษรไม่ซ้ำกับ spec อื่น
+  word = thaiRunWord("core75", run)
 
   const { sales_channels } = await get("/admin/sales-channels?limit=1")
   const { shipping_profiles } = await get("/admin/shipping-profiles?type=default")

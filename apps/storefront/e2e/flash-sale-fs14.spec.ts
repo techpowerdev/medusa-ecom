@@ -7,6 +7,7 @@ import {
   Headers,
   adminHeaders,
 } from "./support/medusa"
+import { thaiRunWord } from "./support/search-word"
 
 // FS-14 (spec 03 กฎข้อ 19, AC-20): ราคา flash บนการ์ดของ `/store` (search hit), `/search` และ rail หน้าแรก
 // สินค้า X อยู่ในแคมเปญ (−20%: ฿800 จาก ฿1,000), สินค้า Y อยู่ collection เดียวกันแต่นอกแคมเปญ
@@ -115,7 +116,8 @@ test.beforeAll(async ({ request }) => {
   handleX = `e2e-fs14-x-${run}`
   handleY = `e2e-fs14-y-${run}`
   const x = await createProduct(titleX, handleX, `FS14-X-${run}`)
-  tagY = run.replace(/\d/g, (d) => "กขคงจฉชซญด"[Number(d)])
+  // CORE-86 (spec 01 กฎข้อ 142): อักษรไม่ซ้ำกับคำของ core-75 — ไม่ชนกันเมื่อรันหลาย worker
+  tagY = thaiRunWord("fs14", run)
   await createProduct(`${titleX} ราคาปกติ ${tagY}`, handleY, `FS14-Y-${run}`)
 
   const { campaign } = await post("/admin/campaigns", {
