@@ -10,26 +10,13 @@ import {
   signInAs,
   variantOf,
 } from "./support/medusa"
-import { isServerAction } from "./support/server-action"
+import { isNavCartReadBody, isServerAction } from "./support/server-action"
 
 // CORE-77 (spec 01 กฎข้อ 135, AC-176): อ่าน cart ของ nav ล้ม → "ตะกร้า" ไม่มีตัวเลข ไม่ค้าง aria-busy;
 // เลิกล้มแล้วเปลี่ยนหน้า → อ่านใหม่ (≤ 2 request ต่อการเปลี่ยนหน้า) เห็นจำนวนจริง
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-77" } })
 
 const QUANTITY = 2
-
-/**
- * body ของ `retrieveCart(undefined, undefined, { fresh: true })` ที่ CartDropdown ยิงเองหลัง hydrate — React เข้ารหัส
- * undefined เป็น `"$undefined"`
- */
-const isNavCartReadBody = (body: string) => {
-  try {
-    const args = JSON.parse(body)
-    return args.length === 3 && args[2]?.fresh === true
-  } catch {
-    return false
-  }
-}
 
 async function customerWithCart(request: APIRequestContext) {
   const admin = await adminHeaders(request)

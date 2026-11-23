@@ -5,6 +5,7 @@ import {
   isCartIdActionBody,
   isServerAction,
   isLoginFormBody,
+  isNavCartReadBody,
   isUpdateCustomerBody,
   waitForServerAction,
 } from "./server-action"
@@ -134,4 +135,16 @@ test.describe("isLoginFormBody", () => {
       expect(isLoginFormBody(body, EMAIL)).toBe(false)
     })
   }
+})
+
+// CORE-91 (spec 01 กฎข้อ 147c): e2e ที่นับ action ของหน้า ไม่นับ `retrieveCart` ที่ nav ยิงเองหลัง hydrate
+test("isNavCartReadBody: รับเฉพาะ retrieveCart(undefined, undefined, { fresh: true }) ของ CartDropdown", () => {
+  expect(isNavCartReadBody('["$undefined","$undefined",{"fresh":true}]')).toBe(true)
+  expect(isNavCartReadBody('[{"variantId":"variant_A","quantity":1,"countryCode":"th"}]')).toBe(false)
+  expect(isNavCartReadBody('["cart_1","$undefined"]')).toBe(false)
+  expect(isNavCartReadBody('["cart_1","$undefined",{"fresh":true}]')).toBe(false)
+  expect(isNavCartReadBody('["$undefined","$undefined",{"fresh":false}]')).toBe(false)
+  expect(isNavCartReadBody('[{"provider_id":"pp_promptpay"}]')).toBe(false)
+  expect(isNavCartReadBody("------x\r\nContent-Disposition: form-data")).toBe(false)
+  expect(isNavCartReadBody("")).toBe(false)
 })

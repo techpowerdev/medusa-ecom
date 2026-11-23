@@ -1,0 +1,74 @@
+# CORE-91 ผล test (spec 01 AC-188, กฎข้อ 147)
+
+## RED unit — develop 43a889b3 (ยังไม่แก้): vitest src/core-91-cart-dropdown-known.test.ts
+     × ระหว่างโหลด (หน้า static) → ไม่มีข้อความตะกร้าว่าง 191ms
+     × อ่านล้ม → ไม่มีข้อความตะกร้าว่าง และมีลิงก์ไปหน้าตะกร้า 7ms
+     × server บอกว่าไม่มี cart (null) → มีข้อความตะกร้าว่าง ป้าย (0) ไม่ busy 4ms
+     × server บอกว่าไม่มี cart → retrieveCart 0 ครั้งตอน mount; แก้ cart (event) แล้วจึงอ่าน 1 ครั้ง 2ms
+     × หน้า force-static (headers ว่าง ไม่มี request จริง) → undefined ให้ client อ่านเอง ไม่อ่าน cookie 3ms
+     × หน้า dynamic ไม่มี cookie cart → null (รู้แน่ว่าไม่มี cart) ไม่เรียก retrieveCart 0ms
+     × หน้า dynamic มี cookie แต่อ่าน cart ไม่ได้ (ล้ม/ไม่พบ) → undefined ให้ client อ่าน (ไม่บอกว่าว่าง) 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/core-91-cart-dropdown-known.test.ts > CORE-91 (a): dropdown ไม่บอกว่าว่างเมื่อยังไม่รู้ (กฎข้อ 147a) > ระหว่างโหลด (หน้า static) → ไม่มีข้อความตะกร้าว่าง
+AssertionError: expected 'ตะกร้า0ตะกร้าของคุณยังว่างอยู่ไปที่หน…' not to contain 'ตะกร้าของคุณยังว่างอยู่'
+ FAIL  src/core-91-cart-dropdown-known.test.ts > CORE-91 (a): dropdown ไม่บอกว่าว่างเมื่อยังไม่รู้ (กฎข้อ 147a) > อ่านล้ม → ไม่มีข้อความตะกร้าว่าง และมีลิงก์ไปหน้าตะกร้า
+AssertionError: expected 'ตะกร้า0ตะกร้าของคุณยังว่างอยู่ไปที่หน…' not to contain 'ตะกร้าของคุณยังว่างอยู่'
+ FAIL  src/core-91-cart-dropdown-known.test.ts > CORE-91 (a): dropdown ไม่บอกว่าว่างเมื่อยังไม่รู้ (กฎข้อ 147a) > server บอกว่าไม่มี cart (null) → มีข้อความตะกร้าว่าง ป้าย (0) ไม่ busy
+AssertionError: expected 'ตะกร้า' to be 'ตะกร้า (0)' // Object.is equality
+ FAIL  src/core-91-cart-dropdown-known.test.ts > CORE-91 (b): server ส่ง cart แล้วไม่อ่านซ้ำตอน mount (กฎข้อ 147b) > server บอกว่าไม่มี cart → retrieveCart 0 ครั้งตอน mount; แก้ cart (event) แล้วจึงอ่าน 1 ครั้ง
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+ FAIL  src/core-91-cart-dropdown-known.test.ts > CORE-91 (b): CartButton บอก CartDropdown ว่า server รู้ cart หรือไม่ > หน้า force-static (headers ว่าง ไม่มี request จริง) → undefined ให้ client อ่านเอง ไม่อ่าน cookie
+TypeError: Cannot read properties of undefined (reading 'catch')
+ FAIL  src/core-91-cart-dropdown-known.test.ts > CORE-91 (b): CartButton บอก CartDropdown ว่า server รู้ cart หรือไม่ > หน้า dynamic ไม่มี cookie cart → null (รู้แน่ว่าไม่มี cart) ไม่เรียก retrieveCart
+TypeError: Cannot read properties of undefined (reading 'catch')
+ FAIL  src/core-91-cart-dropdown-known.test.ts > CORE-91 (b): CartButton บอก CartDropdown ว่า server รู้ cart หรือไม่ > หน้า dynamic มี cookie แต่อ่าน cart ไม่ได้ (ล้ม/ไม่พบ) → undefined ให้ client อ่าน (ไม่บอกว่าว่าง)
+AssertionError: expected null to be undefined
+      Tests  7 failed | 3 passed (10)
+
+## RED unit — e2e/support/server-action.unit.spec.ts (ยังไม่มี isNavCartReadBody)
+  1 failed
+    [unit] › e2e/support/server-action.unit.spec.ts:141:5 › isNavCartReadBody: รับเฉพาะ retrieveCart(undefined, undefined, { fresh: true }) ของ CartDropdown 
+  25 passed (435ms)
+
+## RED e2e — storefront build จากโค้ด cart-button/cart-dropdown ของ develop 43a889b3
+  ✘  1 [chromium] › e2e/core-91-cart-dropdown-known.spec.ts:51:7 › AC-188: dropdown ตะกร้าใน nav (กฎข้อ 147) › (a) ระหว่างโหลด cart → hover ไม่มีข้อความตะกร้าว่าง (6.2s)
+  ✘  2 [chromium] › e2e/core-91-cart-dropdown-known.spec.ts:67:7 › AC-188: dropdown ตะกร้าใน nav (กฎข้อ 147) › (a) อ่าน cart ล้ม → hover ไม่มีข้อความตะกร้าว่าง (6.3s)
+  ✓  3 [chromium] › e2e/core-91-cart-dropdown-known.spec.ts:81:7 › AC-188: dropdown ตะกร้าใน nav (กฎข้อ 147) › (a) ตะกร้าว่างจริง → hover มีข้อความตะกร้าว่าง (510ms)
+  ✓  4 [chromium] › e2e/core-91-cart-dropdown-known.spec.ts:91:9 › AC-188: dropdown ตะกร้าใน nav (กฎข้อ 147) › (b) หน้า dynamic ที่ server ส่ง cart → CartDropdown อ่าน cart 0 ครั้งตอน mount (3.1s)
+  ✘  5 [chromium] › e2e/core-91-cart-dropdown-known.spec.ts:91:9 › AC-188: dropdown ตะกร้าใน nav (กฎข้อ 147) › (b) หน้า dynamic ที่ server ส่งว่าไม่มี cart → CartDropdown อ่าน cart 0 ครั้งตอน mount (968ms)
+    Error: expect(locator).not.toContainText(expected) failed
+    Expected substring: not "ตะกร้าของคุณยังว่างอยู่"
+    Received string: "ตะกร้า0ตะกร้าของคุณยังว่างอยู่ไปที่หน้าสินค้าทั้งหมดเลือกดูสินค้า"
+    test-results/core-91-cart-dropdown-know-a2db4-over-ไม่มีข้อความตะกร้าว่าง-chromium/test-failed-1.png
+    Error: expect(locator).not.toContainText(expected) failed
+    Expected substring: not "ตะกร้าของคุณยังว่างอยู่"
+    Received string: "ตะกร้า0ตะกร้าของคุณยังว่างอยู่ไปที่หน้าสินค้าทั้งหมดเลือกดูสินค้า"
+    test-results/core-91-cart-dropdown-know-c0d1a-over-ไม่มีข้อความตะกร้าว่าง-chromium/test-failed-1.png
+    Error: retrieveCart ของ CartDropdown ตอน mount
+    Expected: 0
+    Received: 1
+    test-results/core-91-cart-dropdown-know-0d904--อ่าน-cart-0-ครั้งตอน-mount-chromium/test-failed-1.png
+  3 failed
+  2 passed (18.3s)
+
+## GREEN
+vitest storefront ทั้งชุด: Test Files 119 passed (119), Tests 1858 passed (1858)
+  (รวม core-91 10/10, core-77 6/6 — render แบบหน้า static = ไม่ส่ง cart, core-26 5/5)
+test:e2e:unit (รวม evidence-budget, server-action.unit isNavCartReadBody): 161 passed
+e2e core-91-cart-dropdown-known.spec.ts --repeat-each=3: 15 passed
+
+## (c) e2e ที่นับ next-action --repeat-each=3 (core-4h-auth-reason, core-19b-continue-to-review, group-buy-join)
+  3 skipped
+  27 passed (53.6s)
+  (3 skipped = AC-64 PromptPay ต้องใช้ Stripe UI → พิสูจน์ใน CI)
+
+## e2e ที่อ้าง nav ตะกร้า (core-19a/19c/26/29/50/72/77, thai-ui-shell)
+  ✘  19 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (356ms)
+    Error: nav-menu-button width
+    test-results/core-50-nav-narrow-AC-145--5c6d7-ดง-ตำแหน่ง-ขนาดเท่า-develop-chromium/test-failed-1.png
+  1 failed
+  29 passed (28.4s)
+  (core-50 1280×800 ล้มในเครื่องเท่านั้น — font ของ macOS ตาม review #487; ใน CI Linux ผ่าน)
+
+## โหมด render ของ route (next build) ก่อน/หลังแก้ตรงกันทุก route (○ /[countryCode], ○ /[countryCode]/products/[handle] ยัง static)
+typecheck storefront: ผ่าน; eslint ไฟล์ที่แตะ: 0 error (warning refs-in-render ของ cart-dropdown มีอยู่เดิมบน develop)
