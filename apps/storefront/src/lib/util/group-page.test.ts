@@ -7,6 +7,7 @@ import {
   groupNotStarted,
   groupProgress,
   groupSharePath,
+  groupShowCountdown,
   removeFromSelection,
   selectionUnits,
   selectionVariantInfo,
@@ -108,6 +109,22 @@ describe("groupNotStarted", () => {
     expect(groupNotStarted(campaign({ starts_at: "2026-11-04T10:00:00Z" }), now)).toBe(false)
     expect(groupNotStarted(campaign({ starts_at: "2026-11-03T10:00:00Z" }), now)).toBe(false)
     expect(groupNotStarted(campaign({ starts_at: null }), now)).toBe(false)
+  })
+})
+
+// GB-27 (กฎข้อ 52, AC-70): นับถอยหลังแสดงเฉพาะกลุ่ม open ของแคมเปญที่เริ่มแล้ว
+describe("groupShowCountdown", () => {
+  const now = Date.parse("2026-11-04T10:00:00Z")
+  it("แคมเปญยังไม่เริ่ม → false แม้กลุ่ม open", () => {
+    expect(groupShowCountdown(group(), campaign({ starts_at: "2026-11-04T10:00:01Z" }), now)).toBe(false)
+  })
+  it("แคมเปญเริ่มแล้วหรือไม่มี starts_at และกลุ่ม open → true", () => {
+    expect(groupShowCountdown(group(), campaign({ starts_at: "2026-11-04T10:00:00Z" }), now)).toBe(true)
+    expect(groupShowCountdown(group(), campaign({ starts_at: null }), now)).toBe(true)
+  })
+  it("กลุ่มไม่ open → false", () => {
+    expect(groupShowCountdown(group({ status: "succeeded" }), campaign({ starts_at: null }), now)).toBe(false)
+    expect(groupShowCountdown(group({ status: "failed" }), campaign({ starts_at: null }), now)).toBe(false)
   })
 })
 

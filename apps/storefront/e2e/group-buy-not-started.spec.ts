@@ -53,3 +53,26 @@ test.describe("หน้ากลุ่ม: แคมเปญยังไม่
     await expect(page.getByTestId("group-starts-at")).toHaveCount(0)
   })
 })
+
+// GB-27 (spec 04 กฎข้อ 52, AC-70): แคมเปญยังไม่เริ่ม → ไม่มีนับถอยหลัง แสดงเฉพาะเวลาเริ่ม (setup แบบ AC-66a)
+test.describe("หน้ากลุ่ม: นับถอยหลังเมื่อแคมเปญยังไม่เริ่ม (AC-70)", () => {
+  test.use({ evidenceTarget: { feature: "group-buying", taskId: "GB-27" } })
+
+  test("(a) starts_at ในอนาคต → ไม่มี group-countdown มี group-starts-at", async ({ page, request, evidence }) => {
+    const ctx = await teamGroup(request, 3)
+    await moveStartsAt(ctx.promotionCampaignId, new Date(Date.now() + 24 * HOUR))
+
+    await page.goto(`/${CC}/g/${ctx.token}`)
+    await expect(page.getByTestId("group-starts-at")).toBeVisible()
+    await expect(page.getByTestId("group-countdown")).toHaveCount(0)
+    await evidence("01-no-countdown-before-start")
+  })
+
+  test("(b) แคมเปญเริ่มแล้ว → มี group-countdown ไม่มี group-starts-at", async ({ page, request }) => {
+    const ctx = await teamGroup(request, 3)
+
+    await page.goto(`/${CC}/g/${ctx.token}`)
+    await expect(page.getByTestId("group-countdown")).toBeVisible()
+    await expect(page.getByTestId("group-starts-at")).toHaveCount(0)
+  })
+})
