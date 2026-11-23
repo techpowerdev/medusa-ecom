@@ -495,10 +495,22 @@ medusaIntegrationTestRunner({
       const paymentOf = async (sessionId: string) => {
         const { data } = await query().graph({
           entity: "payment",
-          fields: ["id", "captures.raw_amount", "refunds.raw_amount", "refunds.note"],
+          fields: ["id", "captures.raw_amount", "refunds.raw_amount", "refunds.note", "refunds.status"],
           filters: { payment_session_id: sessionId },
         })
         return data[0] as any
+      }
+
+      // order transaction ของ refundPaymentsWorkflow (addOrderTransactionStep, reference "refund") — ถ้าไม่มี lock ของเรา รอบที่สองผ่าน
+      // validatePaymentsRefundStep (อ่านก่อนตัวแรก commit) แล้วเพิ่ม transaction −ยอด ซ้ำแม้ refund ที่ module ล้ม (review #428)
+      const refundTransactionsOf = async (orderId: string, paymentId: string) => {
+        const { data } = await query().graph({
+          entity: "order",
+          fields: ["id", "transactions.id", "transactions.reference", "transactions.reference_id"],
+          filters: { id: orderId },
+        })
+        const transactions: { reference: string; reference_id: string }[] = (data[0] as any)?.transactions ?? []
+        return transactions.filter((t) => t.reference === "refund" && t.reference_id === paymentId)
       }
 
       const alertOf = async (orderId: string) =>
@@ -545,9 +557,13 @@ medusaIntegrationTestRunner({
         await Promise.all([handle(), handle()])
 
         const payment = await paymentOf(session.id)
+        // นับเฉพาะ refund ที่ provider ยืนยันแล้ว (review #428) — refund ที่ล้มถูก soft-delete ส่วน pending ไม่ใช่เงินที่คืนจริง
+        const succeeded = payment.refunds.filter((r: { status: string }) => r.status === "succeeded")
+        expect(succeeded).toHaveLength(1)
         expect(payment.refunds).toHaveLength(1)
-        expect(MathBN.eq(sumRaw(payment.refunds), sumRaw(payment.captures))).toBe(true)
+        expect(MathBN.eq(sumRaw(succeeded), sumRaw(payment.captures))).toBe(true)
         expect(refund).toHaveBeenCalledTimes(1)
+        expect(await refundTransactionsOf(member.order_id, paymentId)).toHaveLength(1)
         const alerts = await alertOf(member.order_id)
         expect(alerts).toHaveLength(1)
         expect(alerts[0].data).toEqual(expect.objectContaining({ refund_result: "refunded" }))

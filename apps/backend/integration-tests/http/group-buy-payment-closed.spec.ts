@@ -299,6 +299,41 @@ medusaIntegrationTestRunner({
       expect(String(lines[0][0])).toContain(member.order_id)
     })
 
+    // review #429: ส่ง id ทั้งหมดใน deletePaymentSessionsWorkflow ครั้งเดียว → ลบได้บางตัวแล้ว validateDeletedPaymentSessionsStep throw
+    // → compensation ของ Medusa สร้าง session ที่ลบไปแล้วขึ้นใหม่ (PI ใหม่) บน collection ที่ canceled — ลบทีละ id ปิดเคสนี้
+    it("(f2) two pending sessions, provider fails on one → the other stays deleted (not recreated), one warn for the failed id", async () => {
+      const { member, sessionId: failing } = await expiredWithPendingSession()
+      const { id: collectionId } = await collectionOf(member.order_id)
+      const paymentModule = getContainer().resolve(Modules.PAYMENT)
+      const [first] = await paymentModule.listPaymentSessions({ id: failing })
+      const second = await paymentModule.createPaymentSession(collectionId, {
+        provider_id: PROMPTPAY,
+        amount: first.amount,
+        currency_code: "thb",
+        data: {},
+      })
+      expect((await collectionOf(member.order_id)).sessionIds.sort()).toEqual([failing, second.id].sort())
+      const failingIntent = (first.data as { id: string }).id
+      cancelIntent.mockImplementation(async (id: string) => {
+        if (id === failingIntent) {
+          throw new Error("stripe down")
+        }
+        return { id, object: "payment_intent", currency: "thb", status: "canceled" }
+      })
+      const createdBefore = (PaymentIntents.create as jest.Mock).mock.calls.length
+      const warn = jest.spyOn(logger(), "warn")
+
+      await groupBuyDeadlineJob(getContainer())
+
+      expect((await membershipOf(member)).status).toEqual("cancelled")
+      expect(PaymentIntents.create).toHaveBeenCalledTimes(createdBefore)
+      expect((await collectionOf(member.order_id)).sessionIds).toEqual([failing])
+      const lines = loggedLines(warn, SESSION_CANCEL_FAILED)
+      expect(lines).toHaveLength(1)
+      expect(String(lines[0][0])).toContain(failing)
+      expect(String(lines[0][0])).not.toContain(second.id)
+    })
+
     it("(g) accepted race: webhook payment_intent.succeeded for the deleted session → PAYMENT_WEBHOOK_SESSION_NOT_FOUND + one ops email, no payment/refund", async () => {
       const { sessionId } = await expiredWithPendingSession()
       await groupBuyDeadlineJob(getContainer())

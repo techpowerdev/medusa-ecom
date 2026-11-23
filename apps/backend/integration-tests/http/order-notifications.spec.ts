@@ -8,6 +8,8 @@ jest.setTimeout(60 * 1000)
 // CORE-3: subscriber ของ order.placed / shipment.created ส่งอีเมลผ่าน Notification Module ของ Medusa
 // ใน test ไม่มี RESEND_API_KEY → channel "email" fallback เป็น provider `local` ของ Medusa (ไม่เรียก API จริง)
 const CUSTOMER_EMAIL = "somchai@example.com"
+// prefix ของบรรทัด log ใน src/subscribers/order-placed.ts (CORE-74)
+const SKIPPED_CANCELED = "order_placed_email_skipped_canceled"
 
 const createOrder = async (container: MedusaContainer) => {
   const orderModule = container.resolve(Modules.ORDER)
@@ -121,11 +123,12 @@ medusaIntegrationTestRunner({
 
             const notificationModule = container.resolve(Modules.NOTIFICATION)
             expect(await notificationModule.listNotifications({ resource_id: canceled.id })).toHaveLength(0)
-            expect(info).toHaveBeenCalledWith(
-              expect.stringContaining(`order_placed_email_skipped_canceled order_id=${canceled.id}`)
-            )
+            // review #431: ตรวจเฉพาะบรรทัดที่ขึ้นต้นด้วย prefix ของ CORE-74 — log info อื่นที่มี order_id ของ order นี้ไม่ทำให้ล้ม
+            const skipped = info.mock.calls
+              .map(([message]) => String(message))
+              .filter((message) => message.startsWith(SKIPPED_CANCELED))
+            expect(skipped).toEqual([`${SKIPPED_CANCELED} order_id=${canceled.id}`])
             expect(await listEmails(container, "order-placed", placed.id)).toHaveLength(1)
-            expect(info).not.toHaveBeenCalledWith(expect.stringContaining(`order_id=${placed.id}`))
           } finally {
             info.mockRestore()
           }
