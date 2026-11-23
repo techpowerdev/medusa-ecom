@@ -1,0 +1,61 @@
+# CORE-86 ผล test (spec 01 AC-183, กฎข้อ 142)
+
+สาเหตุ: core-75 กับ fs14 แปลงเลข Date.now() เป็นอักษรไทยด้วยตารางเดียวกัน → สอง worker ได้คำที่ต่างกันแค่หลักท้าย
+ค้นแบบ word_similarity > 0.3 (CORE-75) จึงคืนสินค้า Y ของ fs14 ในผลค้นของ core-75
+วัดใน Postgres: ใส่คำนำหน้าต่างกัน 2 ตัวอักษรแต่ใช้ตารางเดียวกัน ยังได้ word_similarity 0.63–0.67 → คำนำหน้าอย่างเดียวไม่พอ
+แก้: helper e2e/support/search-word.ts — แต่ละ spec มีคำนำหน้าคงที่ + ชุดอักษรแทนตัวเลขของตัวเอง ไม่มีอักษรร่วมกัน (ไม่มี trigram ร่วม)
+
+## RED (unit) — helper ยังไม่มี
+Error: Cannot find module './search-word'
+Error: No tests found.
+
+## RED (e2e) — spec เดิมจาก develop f01c0cee รันพร้อมกัน --workers=2 --repeat-each=3 (คัดลอกเป็นไฟล์ชั่วคราว redcore86-a = core-75, redcore86-b = fs14)
+  15 passed (2.0m)
+  3 failed
+  ✘   2 [chromium] › e2e/redcore86-a.spec.ts:98:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (28.9s)
+  ✘   7 [chromium] › e2e/redcore86-a.spec.ts:98:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (28.8s)
+  ✘  14 [chromium] › e2e/redcore86-a.spec.ts:98:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (28.9s)
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+      Array [
+        "e2e-core75-a-1795420932246",
+        "e2e-core75-b-1795420932246",
+    +   "e2e-fs14-y-1795420932245",
+      ]
+
+## GREEN (e2e) — branch นี้ --workers=2 --repeat-each=3
+  ✓   2 [chromium] › e2e/flash-sale-fs14.spec.ts:164:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (763ms)
+  ✓   3 [chromium] › e2e/flash-sale-fs14.spec.ts:187:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (465ms)
+  ✓   1 [chromium] › e2e/core-75-thai-substring-search.spec.ts:99:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (1.2s)
+  ✓   4 [chromium] › e2e/core-75-thai-substring-search.spec.ts:127:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt (592ms)
+  ✓   5 [chromium] › e2e/flash-sale-fs14.spec.ts:202:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (956ms)
+  ✓   6 [chromium] › e2e/core-75-thai-substring-search.spec.ts:99:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (969ms)
+  ✓   8 [chromium] › e2e/core-75-thai-substring-search.spec.ts:127:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt (609ms)
+  ✓   9 [chromium] › e2e/flash-sale-fs14.spec.ts:164:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (401ms)
+  ✓  10 [chromium] › e2e/flash-sale-fs14.spec.ts:187:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (329ms)
+  ✓  11 [chromium] › e2e/flash-sale-fs14.spec.ts:202:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (908ms)
+  ✓  12 [chromium] › e2e/flash-sale-fs14.spec.ts:250:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (41.4s)
+  ✓   7 [chromium] › e2e/flash-sale-fs14.spec.ts:250:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (45.5s)
+  ✓  13 [chromium] › e2e/flash-sale-fs14.spec.ts:284:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง (5.3s)
+  ✓  14 [chromium] › e2e/flash-sale-fs14.spec.ts:284:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง (5.8s)
+  ✓  15 [chromium] › e2e/core-75-thai-substring-search.spec.ts:99:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (1.2s)
+  ✓  16 [chromium] › e2e/flash-sale-fs14.spec.ts:164:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (733ms)
+  ✓  18 [chromium] › e2e/flash-sale-fs14.spec.ts:187:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (368ms)
+  ✓  17 [chromium] › e2e/core-75-thai-substring-search.spec.ts:127:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt (560ms)
+  ✓  19 [chromium] › e2e/flash-sale-fs14.spec.ts:202:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (957ms)
+  ✓  20 [chromium] › e2e/flash-sale-fs14.spec.ts:250:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (53.3s)
+  ✓  21 [chromium] › e2e/flash-sale-fs14.spec.ts:284:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง (5.1s)
+  21 passed (1.9m)
+
+## GREEN (unit) — pnpm --filter storefront test:e2e:unit
+  ✓   98 [unit] › e2e/support/search-word.unit.spec.ts:17:7 › thaiRunWord › มีอย่างน้อยสอง scheme (core-75 และ fs14) และตัวเลข 10 ตัวไม่ซ้ำกันในแต่ละ scheme (0ms)
+  ✓  102 [unit] › e2e/support/search-word.unit.spec.ts:26:7 › thaiRunWord › คำนำหน้าต่างกันและไม่เป็น substring ของกัน (0ms)
+  ✓  105 [unit] › e2e/support/search-word.unit.spec.ts:36:7 › thaiRunWord › อักษรของสอง scheme ไม่ซ้ำกันเลย → คำจาก run ใกล้กัน/เดียวกันไม่มี trigram ร่วม (0ms)
+  ✓  107 [unit] › e2e/support/search-word.unit.spec.ts:58:7 › thaiRunWord › คำ = คำนำหน้า + ตัวเลขของ run แปลงเป็นอักษรไทยของ scheme (ไม่มีตัวเลขเหลือ) (0ms)
+  149 passed (792ms)
+
+## typecheck / lint (storefront)
+tsc --noEmit: ผ่าน; eslint: 0 error (warning เดิมของ repo ไม่มีในไฟล์ที่แตะ)
