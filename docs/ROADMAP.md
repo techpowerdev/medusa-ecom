@@ -9,7 +9,7 @@
 **เงื่อนไข release v0.3.0 ครบ** (owner เป็นผู้ merge `develop → main`) · planner ปิดรอบหลัง CORE-84 #519 / CORE-85 #518 merge (owner 2026-11-23) · คำตัดสิน owner 2026-11-23: ไม่ทำ migration ให้ต้นแบบ `GBT-*` ที่ active ก่อนกฎข้อ 56, ข้อมูลติดต่อ CORE-85 มาจาก owner, ยังไม่เปิด issue upstream ของ `FetchError` ·
 follow-up ที่ยังเป็นจริง → **รอบ 42 (☐ 19 task เสนอ — รอ owner สั่ง; release v0.3.1)** ในหัวข้อ "รอบ 42" ใต้ตาราง v0.3.0 ·
 **owner ตัดสิน 2026-11-23**: Q-R42 = ก (release v0.3.0 ตอนนี้ รอบ 42 ไป v0.3.1), spec 04 Q26 = ก (เพดาน 200 ต่อรอบ), spec 01 Q-C16 = ก (CORE-95), spec 06 Q-P12 = ข ทำ (PAY-19), spec 08 Q13 = ก (ข้อยกเว้น testid ที่ 4 — ADR-018 ภาคผนวก 2026-11-23 (2) + `CLAUDE.md`) ·
-`CLAUDE.md` เพิ่มบทเรียน 4 ข้อ (owner อนุมัติ 2026-11-23: Postgres container, `gh pr checks --watch`, รัน e2e ทุก spec ที่อ้างหน้าที่แก้, assert ข้อความ error ≠ fallback) · **ไม่มีคำถาม owner ค้าง** · ไม่มี ADR ใหม่ · ไม่มี PR เปิด (นอกจาก PR เอกสารนี้) ·
+`CLAUDE.md` เพิ่มบทเรียน 4 ข้อ (owner อนุมัติ 2026-11-23: Postgres container, `gh pr checks --watch`, รัน e2e ทุก spec ที่อ้างหน้าที่แก้, assert ข้อความ error ≠ fallback) · **ไม่มีคำถาม owner ค้าง** · ไม่มี ADR ใหม่ · PR เปิด: release PR #521 `develop → main` (owner merge + tag v0.3.0) และ PR เอกสารนี้ ·
 ก่อน go-live ยังต้องทำตาม Go-live checklist ของ `docs/ops/production.md` (ข้อ 10–14 รวมรัน `lowercase-emails.ts` และ backfill ธง backordered บน prod DB) ·
 (ประวัติ) **รอบ 40b (2026-11-21, เอกสารล้วน)**: owner ไม่ยอมรับ race ของ GB-20 (จ่ายก่อน deadline แต่ webhook มาช้า → ถูกยกเลิก) → เพิ่ม **GB-20b** (ตรวจสถานะ PI ก่อนยกเลิก — ADR-024 ภาคผนวก, spec 04 กฎข้อ 50/AC-68) หลัง GB-20 (#435) ในตาราง v0.3.0 ·
 แก้ nit review: spec 02 AC-49 (100 code), spec 08 กฎ 43 (pool group ไม่มี modal)
