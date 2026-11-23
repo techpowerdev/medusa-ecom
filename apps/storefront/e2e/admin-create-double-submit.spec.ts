@@ -117,6 +117,8 @@ type ModalForm = {
   /** ตอบสำเร็จด้วย mock (ดู routePosts) */
   ok?: Json
   open: (page: Page) => Promise<void>
+  /** ปุ่มที่เปิดฟอร์ม (ได้ focus คืนเมื่อปิด — useRestoreOpenerFocus) */
+  opener: (page: Page) => Locator
   /** กรอกค่าที่ผ่าน validation — `n` ต่างกันต่อขั้น */
   fill: (page: Page, n: number) => Promise<void>
   save: (page: Page) => Locator
@@ -125,7 +127,16 @@ type ModalForm = {
   cleanup: (ids: string[]) => Promise<void>
 }
 
-type ModalCase = { name: string; setup: (request: APIRequestContext, admin: Headers) => Promise<ModalForm> }
+/**
+ * `closesWithAnimation` = FocusModal ปิดด้วยแอนิเมชัน (ไม่ถูกถอดทันที) — ขั้น (e) ต้องมี frame หลัง response ให้ตรวจ (nit #513)
+ * `rule52a` = ฟอร์มในกฎ 52a (ADM-48) — ทดสอบ Enter ค้างบน Save (AC-53)
+ */
+type ModalCase = {
+  name: string
+  closesWithAnimation?: boolean
+  rule52a?: boolean
+  setup: (request: APIRequestContext, admin: Headers) => Promise<ModalForm>
+}
 
 const PARTNERS = "/admin/evoucher/partners"
 const PROGRAMS = "/admin/affiliate/programs"
@@ -133,13 +144,18 @@ const PROGRAMS = "/admin/affiliate/programs"
 const CASES: ModalCase[] = [
   {
     name: "Create partner (backend จริง — ADM-B1)",
+    closesWithAnimation: true,
+    rule52a: true,
     setup: async (request, admin) => {
       const tag = uniqueTag()
+      const opener = (page: Page) =>
+        page.getByTestId("evoucher-partners-table").getByRole("button", { name: "Create partner" })
       return {
         path: PARTNERS,
+        opener,
         open: async (page) => {
           await page.goto(`${BACKEND_URL}/app/evouchers`)
-          await page.getByTestId("evoucher-partners-table").getByRole("button", { name: "Create partner" }).click()
+          await opener(page).click()
         },
         fill: (page, n) => dialog(page).getByLabel("Name *", { exact: true }).fill(`ADM-39 partner ${tag} ${n}`),
         save: (page) => page.getByTestId("evoucher-partner-save"),
@@ -155,14 +171,18 @@ const CASES: ModalCase[] = [
   },
   {
     name: "Create program (backend จริง)",
+    rule52a: true,
     setup: async (request, admin) => {
       const tag = uniqueTag()
       const field = (page: Page, key: string) => page.getByTestId(`affiliate-program-field-${key}`)
+      const opener = (page: Page) =>
+        page.getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" })
       return {
         path: PROGRAMS,
+        opener,
         open: async (page) => {
           await page.goto(`${BACKEND_URL}/app/affiliate`)
-          await page.getByTestId("affiliate-programs-table").getByRole("button", { name: "Create program" }).click()
+          await opener(page).click()
         },
         fill: async (page, n) => {
           await field(page, "name").fill(`ADM-39 program ${tag} ${n}`)
@@ -183,16 +203,20 @@ const CASES: ModalCase[] = [
   },
   {
     name: "Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง)",
+    rule52a: true,
     setup: async (request, admin) => {
       const affiliate = await createActiveAffiliate(request, admin, { prefix: "e2e-adm39" })
       const field = (page: Page) => page.getByTestId("affiliate-payout-field-affiliate_id")
+      const opener = (page: Page) =>
+        page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" })
       return {
         path: "/admin/affiliate/payouts",
         ok: { payout: { id: "afpay_adm39_mock" } },
+        opener,
         open: async (page) => {
           await page.goto(`${BACKEND_URL}/app/affiliate`)
           await page.getByTestId("affiliate-admin-tab-payouts").click()
-          await page.getByTestId("affiliate-payouts-table").getByRole("button", { name: "Create payout" }).click()
+          await opener(page).click()
         },
         fill: async (page) => {
           await field(page).click()
@@ -210,6 +234,7 @@ const CASES: ModalCase[] = [
   },
   {
     name: "Create campaign (mock สำเร็จ — แคมเปญลบผ่าน API ไม่ได้)",
+    closesWithAnimation: true,
     setup: async (request, admin) => {
       const title = `ADM39 product ${uniqueTag()}`
       const { shipping_profiles } = await call(request, admin, "/admin/shipping-profiles?type=default")
@@ -221,12 +246,14 @@ const CASES: ModalCase[] = [
         variants: [{ title: "Default", options: { Default: "Default" }, prices: [{ currency_code: "thb", amount: 100 }] }],
       })
       const ends = new Date(Date.now() + 48 * HOUR + 7 * HOUR).toISOString().slice(0, 16)
+      const opener = (page: Page) => page.getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" })
       return {
         path: "/admin/group-buy/campaigns",
         ok: { campaign: { id: "gbcamp_adm39_mock" } },
+        opener,
         open: async (page) => {
           await page.goto(`${BACKEND_URL}/app/group-buying`)
-          await page.getByTestId("gb-campaigns-table").getByRole("button", { name: "Create campaign" }).click()
+          await opener(page).click()
         },
         fill: async (page, n) => {
           const values: Record<string, string> = { name: `ADM-39 campaign ${n}`, target_value: "3", discount_value: "10" }
@@ -250,6 +277,8 @@ const CASES: ModalCase[] = [
   },
   {
     name: "Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant)",
+    closesWithAnimation: true,
+    rule52a: true,
     setup: async (request, admin) => {
       const tag = uniqueTag()
       const { product } = await call(request, admin, "/admin/products", {
@@ -258,12 +287,14 @@ const CASES: ModalCase[] = [
         variants: [{ title: "500 THB", options: { Value: "500" }, prices: [{ currency_code: "thb", amount: 500 }] }],
       })
       const { partner } = await call(request, admin, PARTNERS, { name: `ADM-39 pool partner ${tag}` })
+      const opener = (page: Page) => page.getByRole("button", { name: "Create pool" })
       return {
         path: "/admin/evoucher/pools",
         ok: { pool: { id: "evpool_adm39_mock" } },
+        opener,
         open: async (page) => {
           await page.goto(`${BACKEND_URL}/app/products/${product.id}/variants/${product.variants[0].id}`)
-          await page.getByRole("button", { name: "Create pool" }).click()
+          await opener(page).click()
         },
         fill: async (page, n) => {
           await page.getByLabel("Partner *", { exact: true }).click()
@@ -354,8 +385,90 @@ for (const c of CASES) {
         await expect(dialog(page)).toHaveCount(0)
         const seen = await frames()
         test.info().annotations.push({ type: "AC-51 frames หลัง response", description: JSON.stringify(seen) })
+        // nit #513: modal ที่ปิดด้วยแอนิเมชันต้องมี frame ให้ตรวจ (ไม่งั้น assert ด้านล่างผ่านเปล่า)
+        if (c.closesWithAnimation) expect(seen.length, "มี frame หลัง response").toBeGreaterThan(0)
         expect(seen.filter((disabled) => !disabled), `frame ที่ Save กดได้: ${JSON.stringify(seen)}`).toEqual([])
         expect(posts).toHaveLength(5)
+      })
+    } finally {
+      await form.cleanup(ids)
+    }
+  })
+}
+
+/**
+ * นับ dialog ที่ถูกเพิ่มเข้า DOM นับจากจุดนี้ (MutationObserver) — ฟอร์มที่เปิดจาก repeat อาจถูกปิดทันทีด้วย repeat ถัดไป
+ * (focus เข้าไปที่ปุ่มปิด X ของ FocusModal) ตรวจแค่ "ตอนจบไม่มี dialog" จึงไม่พอ
+ */
+async function watchDialogOpens(page: Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __adm48: number }
+    w.__adm48 = 0
+    new MutationObserver((records) => {
+      for (const r of records) {
+        for (const node of Array.from(r.addedNodes)) {
+          if (node instanceof Element && (node.matches('[role="dialog"]') || node.querySelector('[role="dialog"]'))) w.__adm48++
+        }
+      }
+    }).observe(document.body, { childList: true, subtree: true })
+  })
+  return async () => {
+    // รอ 2 frame ให้ React render ผลของ keydown ที่เพิ่ง dispatch
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    return page.evaluate(() => (window as unknown as { __adm48: number }).__adm48)
+  }
+}
+
+// ADM-48 (spec 08 กฎ 52a, AC-53): กด Enter ค้างบน Save — keydown แรก submit; modal ปิดแล้ว focus คืนปุ่มเปิด (useRestoreOpenerFocus)
+// keydown ที่ repeat ต่อจากนั้นตกที่ปุ่มเปิด → ต้องไม่เปิดฟอร์มใหม่ (ล้มบน develop) และ focus ยังอยู่ที่ปุ่มเปิด (กฎ 38)
+// ส่ง repeat หลัง modal ปิดจบ = กรณีที่ lock/disabled ของ Save ไม่ช่วย (ปุ่ม Save ถูกถอดแล้ว)
+for (const c of CASES.filter((c) => c.rule52a)) {
+  test(`AC-53: ${c.name} — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่`, async ({
+    page,
+    request,
+    step,
+  }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const form = await c.setup(request, admin)
+    const posts = countPosts(page, form.path)
+    const ids: string[] = []
+    if (form.idOf) {
+      const idOf = form.idOf
+      page.on("response", async (res) => {
+        if (res.request().method() === "POST" && new URL(res.url()).pathname === form.path && res.status() === 200) {
+          ids.push(idOf(await res.json()))
+        }
+      })
+    }
+    await routePosts(page, form.path, form.ok)
+    try {
+      await step("focus Save → keydown Enter → response 200 → modal ปิด → keydown repeat 5 ครั้ง → keyup", async () => {
+        await loginAdmin(page)
+        await form.open(page)
+        await form.fill(page, 1)
+        await form.save(page).focus()
+        const created = postResponse(page, form.path)
+        await page.keyboard.down("Enter")
+        expect((await created).status()).toBe(200)
+        await expect(dialog(page)).toHaveCount(0)
+        await expect(form.opener(page)).toBeFocused()
+        const opened = await watchDialogOpens(page)
+        // keyboard.down ซ้ำโดยไม่ up = keydown ที่ repeat === true (แบบกดปุ่มค้างจริง)
+        for (let i = 0; i < 5; i++) {
+          await page.keyboard.down("Enter")
+        }
+        await page.keyboard.up("Enter")
+        expect(await opened(), "จำนวนครั้งที่ dialog เปิดขึ้นจาก keydown repeat").toBe(0)
+        await expect(dialog(page)).toHaveCount(0)
+        await expect(form.opener(page)).toBeFocused()
+        expect(posts).toHaveLength(1)
+      })
+
+      await step("ปล่อยแล้วกด Enter ใหม่ที่ปุ่มเปิด → เปิดฟอร์มได้ตามปกติ (ไม่กลืน keydown ที่ไม่ใช่ repeat)", async () => {
+        await page.keyboard.press("Enter")
+        await expect(openDialog(page)).toHaveCount(1)
+        expect(posts).toHaveLength(1)
       })
     } finally {
       await form.cleanup(ids)

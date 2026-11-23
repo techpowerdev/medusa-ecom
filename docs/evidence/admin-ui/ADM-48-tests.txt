@@ -1,0 +1,63 @@
+# ADM-48 (spec 08 กฎ 52, AC-53) — ผล test
+base: origin/develop 43a889b3 | เครื่อง: backend medusa start (NODE_ENV=production build) :9217, DB medusa_r42_adm48, Chromium (Playwright ของ repo)
+
+## RED — e2e admin-create-double-submit.spec.ts -g AC-53 บนโค้ด develop (เพิ่มแค่ test)
+  ✘  1 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create partner (backend จริง — ADM-B1) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (2.0s)
+  ✘  2 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create program (backend จริง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (1.7s)
+  ✘  3 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (1.7s)
+  ✘  4 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (2.4s)
+    Error: จำนวนครั้งที่ dialog เปิดขึ้นจาก keydown repeat
+    Expected: 0
+    Received: 1
+    test-results/admin-create-double-submit-14431-1-ครั้ง-และไม่เปิดฟอร์มใหม่-chromium/test-failed-1.png
+    Error: จำนวนครั้งที่ dialog เปิดขึ้นจาก keydown repeat
+    Expected: 0
+    Received: 1
+    test-results/admin-create-double-submit-605f6-1-ครั้ง-และไม่เปิดฟอร์มใหม่-chromium/test-failed-1.png
+    Error: จำนวนครั้งที่ dialog เปิดขึ้นจาก keydown repeat
+    Expected: 0
+    Received: 1
+    test-results/admin-create-double-submit-bf597-1-ครั้ง-และไม่เปิดฟอร์มใหม่-chromium/test-failed-1.png
+    Error: จำนวนครั้งที่ dialog เปิดขึ้นจาก keydown repeat
+    Expected: 0
+    Received: 1
+    test-results/admin-create-double-submit-4c895-1-ครั้ง-และไม่เปิดฟอร์มใหม่-chromium/test-failed-1.png
+  4 failed
+
+## RED — unit static (medusa-ui.unit.spec.ts -t "ADM-48|กฎ 43") บนโค้ด develop
+    ✓ components/evoucher/partners-section.tsx: const [submitOnce, submitLocked] = useSingleFlight() และ disabled={submitLocked} (1 ms)
+    ✓ components/affiliate/program-form.tsx: const [submitOnce, submitLocked] = useSingleFlight() และ disabled={submitLocked}
+    ✓ components/affiliate/payout-form.tsx: const [submitOnce, submitLocked] = useSingleFlight() และ disabled={submitLocked}
+    ✓ components/group-buy/create-campaign.tsx: const [submitOnce, submitLocked] = useSingleFlight() และ disabled={submitLocked}
+    ✓ widgets/variant-evoucher-pool.tsx: const [submitOnce, submitLocked] = useSingleFlight() และ disabled={submitLocked} (1 ms)
+    ✕ ADM-48 (กฎ 52a): คืน focus แล้วข้าม keydown Enter ที่ repeat บนปุ่มเปิดจน keyup/blur (Enter ค้างบน Save ไม่เปิดฟอร์มใหม่) (1 ms)
+Tests:       1 failed, 235 skipped, 23 passed, 259 total
+
+## mutation — ลบ disabled={submitLocked} ของ payout-form.tsx → static ล้ม (คืนค่าแล้ว)
+    ✕ components/affiliate/payout-form.tsx: const [submitOnce, submitLocked] = useSingleFlight() และ disabled={submitLocked} (1 ms)
+Tests:       1 failed, 254 skipped, 4 passed, 259 total
+
+## GREEN — e2e AC-53
+  ✓  1 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create partner (backend จริง — ADM-B1) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (2.1s)
+  ✓  2 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create program (backend จริง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (1.8s)
+  ✓  3 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (1.9s)
+  ✓  4 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (2.3s)
+  4 passed (8.9s)
+  --repeat-each=3: 12 passed
+
+## GREEN — e2e ทุก spec admin ที่อ้างหน้าที่แตะ (admin-*, affiliate-admin-*, evoucher-admin-*, group-buy-admin-*, flash-sale-admin-*; workers=2)
+  2 failed
+  165 passed (5.5m)
+  2 failed = admin-row-menu-return-focus.spec.ts ขั้น Escape (partners, payouts): กด Escape ระหว่าง modal/Drawer ยังเล่น animation เปิด แล้วไม่ปิด
+  (อาการเดียวกับที่ qa #526 พบ 3/15 — upstream, ไม่เกี่ยวกับ Enter) รันซ้ำ: workers=1 --repeat-each=5 → 15 passed;
+  workers=2 --repeat-each=3 (admin-row-menu-return-focus + admin-row-menu-escape) → 24 passed
+  admin-create-double-submit.spec.ts ทั้งไฟล์ (รวม AC-44/AC-51 ขั้น (e) ที่เพิ่ม closesWithAnimation) ผ่านในชุดนี้
+
+## unit backend (pnpm --filter backend test:unit)
+Test Suites: 130 passed, 130 total
+Tests:       1814 passed, 1814 total
+
+## storefront test:e2e:unit
+  160 passed (1.0s)
+
+## lint/typecheck: backend + storefront 0 error (warning เดิม ไม่มีในไฟล์ที่แตะ)

@@ -154,7 +154,7 @@ describe("ฟอร์ม pilot ใช้ Form + KeyboundForm + zod (spec 08 AC-
       )
       expect(src).toMatch(/import\s*{[^}]*\buseForm\b[^}]*}\s*from\s*["']react-hook-form["']/)
       expect(src).toMatch(/import\s*{[^}]*\bzodResolver\b[^}]*}\s*from\s*["']@hookform\/resolvers\/zod["']/)
-      // ADM-46 (กฎ 50): variant pool เป็นฟอร์มสร้างของกฎ 43 — useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+      // กันกดซ้ำด้วย single-flight — variant pool (ฟอร์มสร้างของกฎ 43) ตรวจ useSingleFlight + disabled แยกใน describe ของกฎ 50 (ADM-48)
       expect(src).toMatch(/useState\(createSingleFlight\)|useSingleFlight\(\)/)
       expect(src).not.toMatch(/\b(toForm|EMPTY|parseLimit|setForm)\b/)
       expect(src).not.toMatch(/\buseRef\b/)
@@ -430,12 +430,12 @@ describe("ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, �
     "components/affiliate/mark-paid-prompt.tsx",
   ]
 
-  it.each(FORMS)("%s ใช้ Form + KeyboundForm + useForm และกันกดซ้ำด้วย useState(createSingleFlight)", (file) => {
+  it.each(FORMS)("%s ใช้ Form + KeyboundForm + useForm และกันกดซ้ำด้วย single-flight (createSingleFlight หรือ useSingleFlight)", (file) => {
     const src = read(file)
     expect(importsFrom(src, "Form", "@medusajs/dashboard/components")).toBe(true)
     expect(importsFrom(src, "KeyboundForm", "@medusajs/dashboard/components")).toBe(true)
     expect(importsFrom(src, "useForm", "react-hook-form")).toBe(true)
-    // ADM-46 (กฎ 50): ฟอร์มสร้างของกฎ 43 ใช้ useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+    // ฟอร์มสร้างของกฎ 43 (program/payout) ตรวจ useSingleFlight + disabled แยกใน describe ของกฎ 50 (ADM-48)
     expect(src).toMatch(/useState\(createSingleFlight\)|useSingleFlight\(\)/)
     expect(src).not.toMatch(/\bsetForm\b/)
     expect(src).not.toMatch(/useState(<[^>]*>)?\(\(?\s*(\(\)\s*=>\s*)?\(?(emptyProgramForm|payoutInfoForm|programToForm)/)
@@ -1096,6 +1096,24 @@ describe("เมนู … คืน focus หลังปิดฟอร์ม 
 
 // spec 08 AC-39a, กฎ 38 (ADM-34): FocusModal แบบ state ไม่มี FocusModal.Trigger → Radix คืน focus ให้ปุ่มที่เปิดไม่ได้ (activeElement = BODY)
 // ทุก <FocusModal.Content ต้องได้ handler ของ useRestoreOpenerFocus (spread) — ไม่มี onCloseAutoFocus แบบ inline เหลือ
+// ADM-48 (nit #513): เฉพาะฟอร์มสร้างของกฎ 43 — useSingleFlight() และปุ่ม Save disabled ตาม lock (กฎ 50)
+describe("ฟอร์มสร้างของกฎ 43: Save disabled ตาม lock ของ useSingleFlight (spec 08 กฎ 50, AC-51/AC-53, ADM-46/ADM-48)", () => {
+  const CREATE_FORMS = [
+    "components/evoucher/partners-section.tsx",
+    "components/affiliate/program-form.tsx",
+    "components/affiliate/payout-form.tsx",
+    "components/group-buy/create-campaign.tsx",
+    "widgets/variant-evoucher-pool.tsx",
+  ]
+
+  it.each(CREATE_FORMS)("%s: const [submitOnce, submitLocked] = useSingleFlight() และ disabled={submitLocked}", (file) => {
+    const src = read(file)
+    expect(importsFrom(src, "useSingleFlight", "(\\.\\./)+lib/single-flight")).toBe(true)
+    expect(src).toMatch(/const \[submitOnce, submitLocked\] = useSingleFlight\(\)/)
+    expect(src).toMatch(/disabled=\{submitLocked\}/)
+  })
+})
+
 describe("FocusModal คืน focus ให้ปุ่มที่เปิดด้วย useRestoreOpenerFocus (spec 08 AC-39a, กฎ 38, ADM-34)", () => {
   /**
    * props ของทุก `<FocusModal.Content ...>` — ตัดแท็กที่ `>` ตัวแรกนอก `{}` (นับวงเล็บแบบ `balanced()` ข้างบน)
@@ -1165,5 +1183,15 @@ describe("FocusModal คืน focus ให้ปุ่มที่เปิด�
     expect(src).toMatch(/document\.activeElement instanceof HTMLElement/)
     expect(src).toMatch(/if \(opener\?\.isConnected\) \{\s*e\.preventDefault\(\)\s*opener\.focus\(\)/)
     expect(src).not.toMatch(/\buseRef\b/)
+  })
+
+  it("ADM-48 (กฎ 52a): คืน focus แล้วข้าม keydown Enter ที่ repeat บนปุ่มเปิดจน keyup/blur (Enter ค้างบน Save ไม่เปิดฟอร์มใหม่)", () => {
+    const src = read("components/common/use-restore-opener-focus.ts")
+    expect(src).toMatch(/opener\.focus\(\)\s*ignoreEnterRepeat\(opener\)/)
+    expect(src).toMatch(/if \(e\.repeat && e\.key === "Enter"\) e\.preventDefault\(\)/)
+    for (const event of ["keydown", "keyup", "blur"]) {
+      expect(src).toMatch(new RegExp(`el\\.addEventListener\\("${event}"`))
+      expect(src).toMatch(new RegExp(`el\\.removeEventListener\\("${event}"`))
+    }
   })
 })
