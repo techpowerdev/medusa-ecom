@@ -3,6 +3,7 @@
 import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
+import { unauthorizedLoginPath } from "@lib/util/login-notice"
 import { PROMPTPAY_FALLBACK_MAX_REQUESTS, PROMPTPAY_POLL_MS, isPromptPay } from "@lib/util/payment-session"
 import {
   CheckoutNotice,
@@ -31,7 +32,7 @@ type Shown = CheckoutNotice | { kind: "delayed" }
 
 /**
  * CORE-76: ยืนยันคำสั่งซื้อแล้วแสดงผลจาก kind (ไม่เทียบข้อความ): `unauthorized` → หน้า login `/<cc>/account` (ไม่มี return_to —
- * readReturnTo ไม่รับ path ของ checkout); `processing` → อ่านซ้ำทุก PROMPTPAY_POLL_MS ด้วย placeOrder (cart ที่ complete แล้วได้ order
+ * readReturnTo ไม่รับ path ของ checkout; CORE-95 กฎข้อ 151: `paid` → พร้อม `notice=payment_received`); `processing` → อ่านซ้ำทุก PROMPTPAY_POLL_MS ด้วย placeOrder (cart ที่ complete แล้วได้ order
  * เดิม → หน้า confirmed) รวมไม่เกิน PROMPTPAY_FALLBACK_MAX_REQUESTS ครั้ง (กลไก PAY-6b/6c) แล้ว `paid` → ติดต่อร้าน, ไม่ได้ตัดเงิน → ข้อความ fallback
  * `paid` = ตัดเงินแล้วก่อน complete (บัตรหลัง PaymentIntent succeeded/requires_capture — FS-22);
  * `order(retry)` = เรียก placeOrder ของปุ่ม (retry = รอบอ่านซ้ำของ processing)
@@ -47,7 +48,7 @@ export const usePlaceOrder = (paid: boolean, order: (retry: boolean) => ReturnTy
     const outcome = await completeOrder(order(attempts.current > 1))
     if (!outcome) return
     if (outcome.kind === "unauthorized") {
-      router.push(`/${countryCode}/account`)
+      router.push(unauthorizedLoginPath(countryCode as string, paid))
       return
     }
     const next = checkoutNotice(outcome, paid)
