@@ -12,6 +12,7 @@ const revalidateTag = vi.fn()
 vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   MEDUSA_BACKEND_URL: "http://backend",
+  MEDUSA_PUBLISHABLE_KEY: "pk_test",
   sdk: {
     client: { fetch: (...a: unknown[]) => fetchSdk(...a) },
     store: {
@@ -266,28 +267,36 @@ describe("renewPromptPaySession ผ่าน helper กลาง", () => {
 describe("placeOrder คืน { kind } แทนการ throw", () => {
   const place = async () => (await import("@lib/data/cart")).placeOrder("cart_1")
 
+  // CORE-82 (กฎข้อ 140, ADR-028): complete ผ่าน medusaFetch — ตัดสินจาก code ใน body ของ Store API ไม่ใช่ข้อความ
   it.each([
-    ["409 FLASH_SOLD_OUT", new FetchError("This flash sale is sold out", "Conflict", 409), { kind: "refunded", code: "FLASH_SOLD_OUT" }],
+    ["409 FLASH_SOLD_OUT", () => respond(409, { type: "conflict", code: "FLASH_SOLD_OUT", message: "x" }), { kind: "refunded", code: "FLASH_SOLD_OUT" }],
     [
       "409 PROMOTION_NOT_COMBINABLE",
-      new FetchError("This promotion can't be combined with the promotions already on the cart", "Conflict", 409),
+      () => respond(409, { type: "conflict", code: "PROMOTION_NOT_COMBINABLE", message: "x" }),
       { kind: "refunded", code: "PROMOTION_NOT_COMBINABLE" },
     ],
     [
       "409 CART_COMPLETION_IN_PROGRESS",
-      new FetchError("Cart is already being completed by another request", "Conflict", 409),
+      () => respond(409, { type: "conflict", code: "CART_COMPLETION_IN_PROGRESS", message: "x" }),
       { kind: "processing" },
     ],
-    ["FetchError 401", new FetchError("Unauthorized", "Unauthorized", 401), { kind: "unauthorized" }],
-    ["FetchError 400", new FetchError("Payment sessions are required", "Bad Request", 400), { kind: "failed" }],
-    ["network", new TypeError("fetch failed"), { kind: "failed" }],
-  ])("%s → %o", async (_label, error, expected) => {
-    complete.mockRejectedValueOnce(error)
+    [
+      "409 ข้อความ FLASH_SOLD_OUT ของ backend แต่ไม่มี code (ไม่เทียบข้อความแล้ว)",
+      () => respond(409, { type: "conflict", message: "This flash sale is sold out" }),
+      { kind: "failed" },
+    ],
+    ["401", () => respond(401, { type: "unauthorized", message: "Unauthorized" }), { kind: "unauthorized" }],
+    ["400 อื่น", () => respond(400, { type: "invalid_data", message: "Payment sessions are required" }), { kind: "failed" }],
+    ["network", () => vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed"))), { kind: "failed" }],
+  ])("%s → %o", async (_label, arrange, expected) => {
+    arrange()
     await expect(place()).resolves.toEqual(expected)
+    expect((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe("http://backend/store/carts/cart_1/complete")
+    expect(complete).not.toHaveBeenCalled()
   })
 
   it("Medusa คืน type cart (ชำระไม่ผ่าน ไม่ได้ order) → { kind: \"failed\" }", async () => {
-    complete.mockResolvedValueOnce({ type: "cart", cart: { id: "cart_1" }, error: { message: "x" } })
+    respond(200, { type: "cart", cart: { id: "cart_1" }, error: { message: "x" } })
     await expect(place()).resolves.toEqual({ kind: "failed" })
   })
 
@@ -298,7 +307,7 @@ describe("placeOrder คืน { kind } แทนการ throw", () => {
   })
 
   it("ได้ order → redirect ของ Next ยัง throw ได้", async () => {
-    complete.mockResolvedValueOnce({ type: "order", order: { id: "order_1", shipping_address: { country_code: "TH" } } })
+    respond(200, { type: "order", order: { id: "order_1", shipping_address: { country_code: "TH" } } })
     const { placeOrder } = await import("@lib/data/cart")
     await expect(placeOrder("cart_1", undefined, "th")).rejects.toThrow("REDIRECT /th/order/order_1/confirmed")
   })

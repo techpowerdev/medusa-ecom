@@ -1,0 +1,62 @@
+# CORE-82 (spec 01 กฎข้อ 140, AC-181 a+b กลุ่ม checkout/cart/payment, ADR-028) — ผล test 2026-11-23
+# local: backend :9290 (medusa develop, DB medusa_core82, Redis db 8), storefront :8290 (next build + start), Stripe key ปลอม (test ที่ต้องใช้ Stripe จริง skip — CI พิสูจน์)
+
+## RED (ก่อนเขียน helper — develop 58c1ce74): apps/storefront/src/core-82-medusa-fetch.test.ts → 17 failed | 3 passed (20)
+         × 4xx { type, code, message } → MedusaApiError มี status/type/code/message ครบ 66ms
+         × 4xx ไม่มี code (error ของ Medusa core) → code null, type ตาม body 4ms
+         × body ไม่ใช่ JSON → status ครบ, type/code null, message = statusText 3ms
+         × network error → throw error เดิม (แบบ SDK) ไม่ใช่ MedusaApiError 3ms
+         × 2xx → body JSON; POST ไป base URL + path พร้อม body JSON และไม่ตั้ง cache (CORE-4i-b) 3ms
+         × login + locale th 3ms
+         × login + ไม่มี cookie locale 3ms
+         × ไม่ login + locale en 3ms
+         × ไม่ login + ไม่มี locale 4ms
+         × ไม่มี body → ไม่ส่ง body (แบบ sdk.store.cart.complete) 3ms
+         × lib/util/checkout-error.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message 5ms
+         × lib/util/insufficient-inventory.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message 3ms
+         × lib/util/place-order-outcome.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message 2ms
+         × map 409 ตอน complete มีแค่ code + ข้อความไทย (ไม่มี field message) 19ms
+         × ข้อยกเว้นที่ไม่มี code อยู่ใน helper ที่เดียว 0ms
+         × ไม่มี fetch ตรงไป Store API นอก helper (createPaymentSession ย้ายเข้า medusaFetch — ADR-028) 0ms
+         × empty-cart-completion.ts ถูกแทนด้วยข้อยกเว้นของ helper 2ms
+
+## GREEN: apps/storefront/src/core-82-medusa-fetch.test.ts
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: error ของ Store API (AC-181 a) > 4xx { type, code, message } → MedusaApiError มี status/type/code/message ครบ
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: error ของ Store API (AC-181 a) > 4xx ไม่มี code (error ของ Medusa core) → code null, type ตาม body
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: error ของ Store API (AC-181 a) > body ไม่ใช่ JSON → status ครบ, type/code null, message = statusText
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: error ของ Store API (AC-181 a) > network error → throw error เดิม (แบบ SDK) ไม่ใช่ MedusaApiError
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: error ของ Store API (AC-181 a) > 2xx → body JSON; POST ไป base URL + path พร้อม body JSON และไม่ตั้ง cache (CORE-4i-b)
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: header เท่ากับ sdk.client.fetch (AC-181 a) > login + locale th
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: header เท่ากับ sdk.client.fetch (AC-181 a) > login + ไม่มี cookie locale
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: header เท่ากับ sdk.client.fetch (AC-181 a) > ไม่ login + locale en
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: header เท่ากับ sdk.client.fetch (AC-181 a) > ไม่ login + ไม่มี locale
+     ✓ src/core-82-medusa-fetch.test.ts > medusaFetch: header เท่ากับ sdk.client.fetch (AC-181 a) > ไม่มี body → ไม่ส่ง body (แบบ sdk.store.cart.complete)
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > lib/util/checkout-error.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > lib/util/insufficient-inventory.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > lib/util/place-order-outcome.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > lib/util/action-result.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > lib/data/cart.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > lib/data/payment.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > map 409 ตอน complete มีแค่ code + ข้อความไทย (ไม่มี field message)
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > ข้อยกเว้นที่ไม่มี code อยู่ใน helper ที่เดียว
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > ไม่มี fetch ตรงไป Store API นอก helper (createPaymentSession ย้ายเข้า medusaFetch — ADR-028)
+     ✓ src/core-82-medusa-fetch.test.ts > static: กลุ่ม checkout/cart/payment ตัดสินจาก code (AC-181 b) > empty-cart-completion.ts ถูกแทนด้วยข้อยกเว้นของ helper
+          Tests  20 passed (20)
+
+## vitest storefront ทั้งชุด (รวม test เดิมที่ย้ายไปตรวจ code: core-4i-cart-actions, core-48-cart-actions, core-4i-b-payment-actions,
+## core-29-active-cart, place-order-conflict, checkout-conflict-contract, place-order-outcome, checkout-error, insufficient-inventory, action-result, fs-22 ฯลฯ)
+     Test Files  115 passed (115)
+          Tests  1460 passed (1460)
+
+## e2e chromium กับ backend จริง (error ที่เคยจับด้วยข้อความ → code; ข้อความไทยเดิม)
+### core-48-cart-insufficient-stock (insufficient_inventory), core-76-place-order-outcome (reserveInventory ไม่มี code = ข้อยกเว้น, 409/401 route mock),
+### core-52-checkout-guards (ตะกร้าว่างตอน complete = ข้อยกเว้น), flash-sale-fs15 (409 FLASH_SOLD_OUT)
+      24 passed (31.7s)
+### flash-sale-storefront, payments-order-pay, pay-9-refunded-cart-repay, pay-12-cart-error-notice, fs-21-customer-limit, core-69-review-without-payment
+      5 skipped
+      29 passed (2.9m)
+
+## pnpm --filter storefront test:e2e:unit
+      147 passed (1.1s)
+
+## storefront typecheck: ผ่าน (tsc --noEmit ไม่มี error); lint: 0 errors (warning 28 รายการเดิม ไม่มีในไฟล์ใหม่)

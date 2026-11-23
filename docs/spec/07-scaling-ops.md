@@ -572,7 +572,7 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
 16. (ADR-028) ถ้า `FetchError` ของ `@medusajs/js-sdk` เก็บ `code`/`type` แล้ว → ย้ายผู้เรียก `lib/data/medusa-fetch.ts` กลับไปใช้ SDK แล้วลบ helper; ไม่งั้นตรวจว่า header ของ helper ยังเท่ากับของ SDK (unit AC-181a)
 17. (CORE-76) ข้อความ 409 ไม่มี code "Cart is already being completed by another request" ของ `POST /store/carts/:id/complete` (`@medusajs/medusa` `dist/api/store/carts/[id]/complete/route.js`) ยังเหมือนเดิม
     และ `errorHandler` ของ Medusa ยังเขียนทับข้อความ CONFLICT — contract test ฝั่ง backend (`src/api/__tests__/error-handler.unit.spec.ts`) ล้ม = แก้ `CART_COMPLETION_IN_PROGRESS_MESSAGE` (`src/api/store/carts/errors.ts`)
-    และ map ของ storefront (`lib/util/place-order-outcome.ts`) ให้ตรง แล้วตรวจ kind `processing` ของ `placeOrderOutcome` (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76)
+    แล้วตรวจ kind `processing` ของ `placeOrderOutcome` (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76; storefront ตัดสินจาก code อย่างเดียวตั้งแต่ CORE-82 — ไม่มี map ข้อความให้แก้)
 
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |

@@ -32,6 +32,8 @@ vi.mock("@lib/data/cookies", () => ({
   removeCartId: vi.fn(),
   setCartId: vi.fn(),
 }))
+// CORE-82 (กฎข้อ 140, ADR-028): applyPromotions เรียก Store API ผ่าน medusaFetch
+vi.mock("@lib/data/medusa-fetch", () => ({ medusaFetch: (...a: unknown[]) => update(...a) }))
 vi.mock("@lib/data/regions", () => ({ getRegion: vi.fn() }))
 vi.mock("@lib/data/locale-actions", () => ({ getLocale: vi.fn().mockResolvedValue(null) }))
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }))
@@ -74,12 +76,13 @@ describe("server action ของ checkout ไม่ส่งข้อควา�
     expectThaiNotRaw(await setAddresses(null, form))
   })
 
-  it("submitPromotionForm: SDK throw → ข้อความไทย", async () => {
+  it("submitPromotionForm: Store API throw → ข้อความไทย", async () => {
     update.mockRejectedValue(new Error(RAW))
     const { submitPromotionForm } = await import("@lib/data/cart")
     const form = new FormData()
     form.set("code", "NOPE")
     expectThaiNotRaw(await submitPromotionForm(null, form))
+    expect(update).toHaveBeenCalledWith("/store/carts/cart_1", { promo_codes: ["NOPE"] })
   })
 
   const cart = { id: "cart_1", payment_collection: { id: "pay_col_1" } } as never

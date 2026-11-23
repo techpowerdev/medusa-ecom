@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest"
 import { CHECKOUT_CONFLICTS } from "@lib/util/checkout-error"
 
 // FS-15 (spec 03 กฎข้อ 20c, AC-22): contract กับ backend — อ่าน source ของ backend ตรง (แบบ spec 01 กฎข้อ 66c)
-// `FetchError` ของ js-sdk 2.22.1 ไม่เก็บ `code` → storefront จับคู่ด้วยข้อความคงที่ของ backend
-// test นี้ต้องล้มเมื่อ backend เปลี่ยนข้อความ/code ของ 409 ตอน complete cart โดยไม่แก้ map ฝั่ง storefront
+// CORE-82 (spec 01 กฎข้อ 140, ADR-028): storefront ตัดสินจาก `code` (medusaFetch) → contract เทียบ code ไม่เทียบข้อความ
+// test นี้ต้องล้มเมื่อ backend เปลี่ยน/เพิ่ม code ของ 409 ตอน complete cart โดยไม่แก้ map ฝั่ง storefront
 const BACKEND_SRC = path.resolve(__dirname, "../../backend/src")
 const read = (file: string) => fs.readFileSync(path.join(BACKEND_SRC, file), "utf8")
 
@@ -37,10 +37,9 @@ describe("contract: 409 ของ POST /store/carts/:id/complete (FS-3, PROMO-1)
     ])
   })
 
-  it("map ของ storefront มี code และข้อความตรงกับ backend ทุกตัว", () => {
-    const mapped = CHECKOUT_CONFLICTS.map(({ code, message }) => ({ code, message }))
-    expect(mapped).toEqual(expect.arrayContaining(backendCompleteConflicts()))
-    expect(mapped).toHaveLength(backendCompleteConflicts().length)
+  it("map ของ storefront มี code ตรงกับ backend ทุกตัว (ไม่เทียบข้อความ)", () => {
+    const mapped = CHECKOUT_CONFLICTS.map(({ code }) => code).sort()
+    expect(mapped).toEqual(backendCompleteConflicts().map((e) => e.code).sort())
   })
 
   it("ทุก code ที่ map อยู่ใน allow-list 409 ของ error-handler (ไม่ถูกเขียนทับเป็นข้อความกลาง)", () => {

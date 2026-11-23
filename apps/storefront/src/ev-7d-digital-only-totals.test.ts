@@ -35,6 +35,8 @@ vi.mock("@lib/data/cookies", () => ({
   removeCartId: vi.fn(),
   setCartId: vi.fn(),
 }))
+// CORE-82 (กฎข้อ 140, ADR-028): mutation ที่ตัดสินจาก code เรียก Store API ผ่าน medusaFetch (path, body)
+vi.mock("@lib/data/medusa-fetch", () => ({ medusaFetch: (...a: unknown[]) => complete(...a) }))
 vi.mock("@lib/data/regions", () => ({ getRegion: vi.fn() }))
 vi.mock("@lib/data/locale-actions", () => ({ getLocale: vi.fn().mockResolvedValue(null) }))
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }))
