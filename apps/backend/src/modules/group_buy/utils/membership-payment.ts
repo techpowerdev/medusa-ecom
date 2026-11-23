@@ -128,3 +128,7 @@ export function membershipPaymentCheckDecision(
   }
   return expired ? "give_up" : "retry"
 }
+
+// GB-32 กฎข้อ 58 (a) (Q26 = ก owner 2026-11-23): job หมดเวลาชำระตรวจกับ provider ได้ไม่เกิน 4 × BATCH (50) รายต่อรอบ
+// นับทุกผล (paid/unpaid/retry/skip/give_up และที่ล้ม) — provider ล่มทุกรายถูกยิงไม่เกิน 200 ครั้ง/นาที
+export const MAX_PAYMENT_CHECKS_PER_TICK = 200

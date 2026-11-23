@@ -181,8 +181,22 @@ endpoint สมัคร event ตามรายการด้านล่า�
     `npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts apply` (log จำนวนก่อน/เขียน/หลัง — หลังต้องเป็น 0) → dry-run ซ้ำได้ `พบ 0 line`
     (ใช้คำ `apply` ไม่ใช่ `--apply` — `medusa exec` เป็น yargs strict ปฏิเสธ option ที่ไม่รู้จักด้วย `Unknown argument`)
 13. log ของ prod ไม่มี PII: ยืนยันว่า image มี OPS-33 (redact ใน `json-logger.ts`) แล้วค้น log ของ log platform ด้วยอีเมลลูกค้าทดสอบที่จ่ายแล้วถูกคืนเงิน (บรรทัด `recreate a payment session`) — ต้องไม่พบ
+    redact ครอบเฉพาะ log ที่ผ่าน `json-logger.ts` — access log ของ HTTP **ไม่ผ่าน** redact (OPS-35: Medusa 2.22.1 เขียนด้วย morgan ลง stdout ตรง
+    ใน `@medusajs/framework` `http/express-loader.js` ไม่ผ่าน logger ของเรา) และมี `path` (รวม query string), `status`, `client_ip`, `referrer`, `user_agent` —
+    query `q` ของหน้าค้นหาอาจมีข้อความที่ลูกค้าพิมพ์ (รวมอีเมล/เบอร์) log shipper จึงต้องเก็บ access log ภายใต้นโยบาย PII เดียวกับ log อื่น
+    (สิทธิ์เข้าถึง/ระยะเก็บ; ห้ามแปะลง ticket/แชตสาธารณะ)
 14. วัดเวลา `POST /store/search` (body เดียวกับ storefront, คำค้นไทย 2–3 คำ + คำว่าง) กับ catalog ขนาดจริงบน DB ของ prod/staging แล้วบันทึก p95 — ถ้าสินค้าเกิน ~10,000 รายการ
     (หรือ p95 เกิน 300ms) ต้องเขียน ADR เรื่องวิธีค้นหา (index/ provider) ก่อนเปิดร้าน (qa #465 — `typo_tolerance` ใช้ similarity ของ `pg_trgm` ทั้งตาราง)
+
+## หลัง go-live
+- widget `order-refund-blocked` (PAY-10) ขึ้นบนสุดของหน้า order ผ่าน system default layout ของ zone `order.details` (migration script
+  `order-refund-blocked-layout.ts`) — แอดมินที่บันทึก layout ส่วนตัว (Personal) ของหน้า order ไว้ก่อน PAY-10 จะเห็นตาม layout ของตัวเอง
+  (widget อยู่ท้ายคอลัมน์หลักใต้ Payments) ให้ reset layout ส่วนตัวของแอดมินคนนั้นกลับเป็นค่าเริ่มต้น (OPS-35, re-review #471):
+  dashboard 2.22.1 ไม่มีปุ่ม reset — ใช้ทางใดทางหนึ่ง
+  (1) แอดมินคนนั้นเปิดหน้า order → ปุ่ม "Customize layout" (ไอคอนบน top bar) → "Customize page" → เลือก "Personal" → ลาก `order-refund-blocked` ขึ้นบนสุด → Save;
+  (2) ล้าง layout ส่วนตัวทั้งหน้า (กลับไปใช้ default ของระบบ): ด้วย session ของแอดมินคนนั้นเรียก `DELETE /admin/layouts/order.details/configuration`
+  (route ของ Medusa — `clearLayoutConfigurationWorkflow`; ลบเฉพาะของ user ที่เรียก ไม่แตะ default ของระบบ)
+  แล้ว reload หน้า order ที่มี return/claim/exchange/edit ค้าง ว่า widget อยู่บนสุด
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
@@ -316,7 +330,7 @@ Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็ม�
 
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
-- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL` และ Alerts)
+- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL`, Alerts, redact/access log และหลัง go-live)
 - `pnpm --filter backend test:unit` — `src/lib/__tests__/json-logger.unit.spec.ts` (`worker_mode` ใน log JSON)
 - `pnpm --filter backend test:unit` — `src/__tests__/prod-guards.unit.spec.ts` (OPS-7 guards, env ใน `ci.yml`, หัวข้อ Go-live checklist)
 - `pnpm --filter backend test:unit` — `src/__tests__/backup-runbook.unit.spec.ts` (runbook backup/restore ใน `docs/ops/database.md`, OPS-5)

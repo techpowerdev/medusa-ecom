@@ -3,7 +3,10 @@ import { ContainerRegistrationKeys, defineFileConfig } from "@medusajs/framework
 import { scheduledJobsDisabled } from "../lib/scheduled-jobs"
 import { GROUP_BUY_MODULE } from "../modules/group_buy"
 import type GroupBuyModuleService from "../modules/group_buy/service"
-import type { MembershipPaymentCheckDecision } from "../modules/group_buy/utils/membership-payment"
+import {
+  MAX_PAYMENT_CHECKS_PER_TICK,
+  type MembershipPaymentCheckDecision,
+} from "../modules/group_buy/utils/membership-payment"
 import {
   deadlineBatchSkip,
   deadlineSettleLogLevel,
@@ -60,23 +63,30 @@ export default async function groupBuyDeadlineJob(container: MedusaContainer) {
   const [, expiredCount] = await service.listAndCountGroupBuyMemberships(expiredFilters, { select: ["id"], take: 1 })
   // GB-20b กฎข้อ 50: ตรวจสถานะที่ provider ก่อน — paid = capture (ไม่ expire), retry/skip = รอบถัดไป, unpaid/give_up = expire
   // GB-28 กฎข้อ 53 (e): retry/skip ไม่กิน slot — อ่านหน้าถัดไป (ไม่รวม id ที่ตรวจแล้ว) จนตัดสินได้ครบ BATCH หรือหมด
+  // GB-32 กฎข้อ 58 (a): ตรวจกับ provider ไม่เกิน MAX_PAYMENT_CHECKS_PER_TICK ต่อรอบ (นับทุกผล) → $nin ยาวไม่เกินเพดาน
+  // เกินเพดาน: หน้าต่างเริ่มหมุนทีละเพดาน แล้วอ่านต่อจากจุดเริ่มจนสุดก่อนวนกลับ skip 0 — รอบถัดไปตรวจรายที่เหลือก่อน
+  // (b): หน้าว่างที่ skip เดิม (จำนวนเปลี่ยนระหว่าง count กับ list) → อ่านซ้ำ skip 0 หนึ่งครั้งก่อน break
   const seen: string[] = []
   let settled = 0
-  while (settled < BATCH) {
+  let skip = deadlineBatchSkip(
+    expiredCount,
+    expiredCount > MAX_PAYMENT_CHECKS_PER_TICK ? MAX_PAYMENT_CHECKS_PER_TICK : BATCH,
+    tick
+  )
+  while (settled < BATCH && seen.length < MAX_PAYMENT_CHECKS_PER_TICK) {
     const page = await service.listGroupBuyMemberships(
       seen.length ? { ...expiredFilters, id: { $nin: seen } } : expiredFilters,
-      {
-        select: ["id"],
-        take: BATCH,
-        skip: seen.length ? 0 : deadlineBatchSkip(expiredCount, BATCH, tick),
-        order: { joined_at: "ASC" },
-      }
+      { select: ["id"], take: BATCH, skip, order: { joined_at: "ASC" } }
     )
     if (!page.length) {
-      break
+      if (!skip) {
+        break
+      }
+      skip = 0
+      continue
     }
     for (const membership of page) {
-      if (settled >= BATCH) {
+      if (settled >= BATCH || seen.length >= MAX_PAYMENT_CHECKS_PER_TICK) {
         break
       }
       seen.push(membership.id)

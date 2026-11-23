@@ -24,10 +24,10 @@ export default async function OverviewTemplate({
   const { countryCode } = await params
   const customer = await retrieveCustomer().catch(() => null)
   // CORE-68 (กฎข้อ 126): overview แสดง 5 ล่าสุด + ลิงก์ "ดูทั้งหมด" ไปหน้า /account/orders ที่แบ่งหน้า
-  // CORE-78 (กฎข้อ 136b): "ดูทั้งหมด" แสดงด้วยเมื่อมีแต่ membership แบบกลุ่ม
+  // CORE-78 (กฎข้อ 136b): "ดูทั้งหมด" แสดงด้วยเมื่อมีแต่ membership แบบกลุ่ม — CORE-92 (กฎข้อ 148b): อ่านแค่ 1 รายการพอ
   const [list, groupOrders] = await Promise.all([
     listOrders(5).catch(() => null),
-    listGroupBuyMemberships(),
+    listGroupBuyMemberships(1),
   ])
   const orders = list?.orders ?? null
 
