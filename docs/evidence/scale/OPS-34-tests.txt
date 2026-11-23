@@ -1,0 +1,107 @@
+OPS-34 — hygiene backend รวม (spec 07 กฎข้อ 16 รอบ 41, AC-49) — 2026-11-22, base origin/develop fe32fb87
+
+## (a) RED: tsc --noEmit เมื่อมี apps/backend/.medusa/types (copy จาก medusa develop ในเครื่อง) ก่อนแก้ tsconfig
+integration-tests/http/complete-after-payment-log.spec.ts(218,14): error TS2531: Object is possibly 'null'.
+integration-tests/http/complete-after-payment-log.spec.ts(219,14): error TS2531: Object is possibly 'null'.
+integration-tests/http/complete-after-payment-log.spec.ts(240,14): error TS2531: Object is possibly 'null'.
+integration-tests/http/payment-collection-reset.spec.ts(179,14): error TS2531: Object is possibly 'null'.
+integration-tests/http/payment-collection-reset.spec.ts(220,14): error TS2531: Object is possibly 'null'.
+integration-tests/http/payment-collection-reset.spec.ts(281,14): error TS2531: Object is possibly 'null'.
+
+## (a) GREEN: tsc --noEmit หลัง exclude .medusa/** (มี .medusa/types อยู่) → exit 0 ไม่มี error
+(ว่าง = ผ่าน) และหลัง pnpm --filter backend build (สร้าง .medusa/{server,types,client} ใหม่) tsc ยังผ่าน
+
+## RED unit (tsconfig + middleware placement) ก่อนแก้
+  ● backend tsconfig.json › does not pick up generated files under .medusa/ (types, server, admin)
+    - Expected  - 1
+    + Received  + 3
+    - Array []
+    + Array [
+    +   ".medusa/types/query-entry-points.d.ts",
+    > 33 |     expect(relative.filter((f) => f.startsWith(".medusa/"))).toEqual([])
+  ● Test suite failed to run
+    Cannot find module '../store/customers/me/middlewares' from 'src/api/__tests__/middlewares-placement.unit.spec.ts'
+Tests:       1 failed, 1 total
+
+## (c) RED integration (f2) ก่อนลบทีละ id
+    ✕ (f2) two pending sessions, provider fails on one → the other stays deleted (not recreated), one warn for the failed id (2324 ms)
+  ●  › (f2) two pending sessions, provider fails on one → the other stays deleted (not recreated), one warn for the failed id
+    Expected number of calls: 2
+    Received number of calls: 3
+Tests:       1 failed, 7 skipped, 8 total
+
+## (b) mutation: ถอด acquireLockStep/releaseLockStep ของ refundCancelledMembershipPaymentWorkflow → AC-63 (b) ยังผ่าน (ไม่ red ในเครื่อง — ดู PR)
+      ✓ AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once (1707 ms)
+Tests:       13 skipped, 1 passed, 14 total
+
+## (f) mutation: ย้าย assertCampaignPatchAllowed ไปหลังตรวจ max_quantity → test ใหม่ red
+      ✓ POST max_quantity=2, max_units_per_person=3 → 400 invalid_data; nothing is created (384 ms)
+      ✓ POST max_quantity=2, max_units_per_person=2 → 200 (429 ms)
+      ✓ POST max_quantity=2, max_units_per_person=1 → 200 (287 ms)
+      ✓ POST without max_units_per_person → 200 (272 ms)
+      ✓ POST without max_quantity (allocation across) and max_units_per_person=50 → 200 (274 ms)
+      ✓ updating a draft so max_units_per_person exceeds the template max_quantity → 400; value unchanged (309 ms)
+      ✕ active campaign + max_units_per_person over the template max_quantity → 400 not_allowed (status check first); value unchanged (293 ms)
+    Expected: "not_allowed"
+    Received: "invalid_data"
+Tests:       1 failed, 47 skipped, 6 passed, 54 total
+
+## (h) RED: test เดิมจาก develop ในลำดับที่ request ที่สองผ่าน ownership หลังถอด link (จังหวะที่ flake) → 404
+    ✕ (a) two concurrent requests both get 409 PAYMENT_COLLECTION_RESET without 5xx (1137 ms)
+    ○ skipped (a) after the reset the cart pays with a new collection → order has 1 collection and payment_status captured
+    - Expected  - 4
+    + Received  + 3
+          "status": 409,
+    -       "code": "PAYMENT_COLLECTION_RESET",
+    -       "type": "conflict",
+    +       "type": "not_found",
+    -     "status": 409,
+    +     "status": 404,
+Tests:       1 failed, 8 skipped, 9 total
+
+## GREEN unit ใหม่
+PASS src/lib/__tests__/saturation-sampler.unit.spec.ts
+PASS src/__tests__/tsconfig.unit.spec.ts
+PASS src/api/__tests__/middlewares-placement.unit.spec.ts
+Tests:       12 passed, 12 total
+
+## GREEN integration — 6 ไฟล์ที่แตะ รันเต็มไฟล์
+PASS integration-tests/http/group-buy-payment-closed.spec.ts (23.667 s)
+PASS integration-tests/http/group-buy-campaigns.spec.ts (50.192 s)
+PASS integration-tests/http/payment-collection-reset.spec.ts (23.803 s)
+PASS integration-tests/http/order-notifications.spec.ts (24.242 s)
+PASS integration-tests/http/flash-sale-allowance.spec.ts (22.81 s)
+PASS integration-tests/http/group-buy-payment.spec.ts (79.408 s)
+Test Suites: 6 passed, 6 total
+Tests:       96 passed, 96 total
+
+## GREEN รันซ้ำ 3 รอบ (test ที่แก้: f2, AC-63 (b), skips the order-placed email, status check first, two concurrent requests + flash-sale-allowance ทั้งไฟล์)
+=== รอบ 1
+Test Suites: 1 skipped, 5 passed, 5 of 6 total
+Tests:       91 skipped, 5 passed, 96 total
+=== รอบ 2
+Test Suites: 1 skipped, 5 passed, 5 of 6 total
+Tests:       91 skipped, 5 passed, 96 total
+=== รอบ 3
+Test Suites: 1 skipped, 5 passed, 5 of 6 total
+Tests:       91 skipped, 5 passed, 96 total
+=== flash-sale-allowance รอบ 1
+Tests:       4 passed, 4 total
+=== flash-sale-allowance รอบ 2
+Tests:       4 passed, 4 total
+=== flash-sale-allowance รอบ 3
+Tests:       4 passed, 4 total
+
+## unit backend ทั้งชุด
+Test Suites: 128 passed, 128 total
+Tests:       1734 passed, 1734 total
+
+## storefront test:e2e:unit
+  145 passed (2.4s)
+
+## lint (0 errors) / typecheck / build
+apps/backend lint: ✖ 6 problems (0 errors, 6 warnings)
+apps/storefront lint: ✖ 28 problems (0 errors, 28 warnings)
+pnpm typecheck (backend + storefront): ผ่าน; pnpm --filter backend build: ผ่าน
+
+## static: ไม่มี setTimeout/retries ใหม่ใน diff (git diff -U0 | grep setTimeout|retries → พบเฉพาะข้อความ AC ใน spec)

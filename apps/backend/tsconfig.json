@@ -23,13 +23,11 @@
     "swc": true
   },
   "include": [
-    "**/*",
-    ".medusa/types/*"
+    "**/*"
   ],
   "exclude": [
     "node_modules",
-    ".medusa/server",
-    ".medusa/admin",
+    ".medusa/**",
     "src/admin",
     ".cache",
     "eslint.config.*",

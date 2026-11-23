@@ -223,17 +223,18 @@ export const deleteMemberPaymentSessionsStep = createStep(
         .flatMap((c: any) => c?.payment_sessions ?? [])
         .filter((s: any) => s && !s.authorized_at && !s.payment)
         .map((s: any) => s.id)
-      if (!ids.length) {
-        continue
-      }
-      try {
-        await deletePaymentSessionsWorkflow(container).run({ input: { ids } })
-      } catch (error) {
-        container
-          .resolve(ContainerRegistrationKeys.LOGGER)
-          .warn(
-            `${GROUP_BUY_SESSION_CANCEL_FAILED} order=${order.id} sessions=${ids.join(",")}: ${(error as Error)?.message ?? error}`
-          )
+      // ทีละ id (review #429): ส่งหลาย id ในครั้งเดียวแล้วลบได้บางตัว → validateDeletedPaymentSessionsStep throw และ compensation
+      // ของ Medusa สร้าง session ที่ลบแล้วขึ้นใหม่ (PI ใหม่) บน collection ที่ canceled
+      for (const id of ids) {
+        try {
+          await deletePaymentSessionsWorkflow(container).run({ input: { ids: [id] } })
+        } catch (error) {
+          container
+            .resolve(ContainerRegistrationKeys.LOGGER)
+            .warn(
+              `${GROUP_BUY_SESSION_CANCEL_FAILED} order=${order.id} sessions=${id}: ${(error as Error)?.message ?? error}`
+            )
+        }
       }
     }
     return new StepResponse(undefined)
