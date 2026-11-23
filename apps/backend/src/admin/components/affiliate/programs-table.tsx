@@ -3,7 +3,7 @@ import { useDate } from "@medusajs/dashboard/hooks"
 import { EllipsisHorizontal, PencilSquare, Trash } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useMemo, useReducer, useState } from "react"
+import { useLayoutEffect, useMemo, useReducer, useRef, useState } from "react"
 import { affiliateKeys, deleteProgram, Program } from "../../lib/affiliate"
 import { canDeleteProgram } from "../../lib/affiliate-program-form"
 import { createSingleFlight } from "../../lib/single-flight"
@@ -23,6 +23,13 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
   // เปิด modal/drawer จาก menuitem: mount เมนูใหม่ใน commit เดียวกัน (ปิดทันทีไม่รอ animation) — ไม่งั้น Radix คนละสำเนา
   // ของเมนูกับ modal คืนค่า pointer-events ของ body สลับกันจนหน้าเป็น `none` ค้างหลังปิด modal (คลิกอะไรไม่ได้)
   const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
+  // qa #499 O-1 (spec 08 กฎ 38): การ remount ถอด trigger เดิมและ menuitem ที่ focus อยู่ → Drawer จำ opener ไม่ได้ (ปิดแล้ว focus = BODY)
+  // focus trigger ตัวใหม่ใน layout effect (ก่อน effect ของ FocusScope ใน Drawer) แบบที่ DropdownMenu คืน focus ให้ trigger เอง
+  // useRestoreOpenerFocus ของ Drawer จึงจำปุ่ม … ของแถวและคืน focus ให้เมื่อปิด
+  const trigger = useRef<HTMLButtonElement>(null)
+  useLayoutEffect(() => {
+    if (menuKey) trigger.current?.focus()
+  }, [menuKey])
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("programs") })
   const remove = useMutation({
@@ -75,14 +82,14 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
           : []),
       ]}
     >
-      <IconButton size="small" variant="transparent" data-testid="affiliate-program-row-actions">
+      <IconButton ref={trigger} size="small" variant="transparent" data-testid="affiliate-program-row-actions">
         <EllipsisHorizontal />
       </IconButton>
     </ActionMenu>
   )
 }
 
-// AF-12a (spec 05 กฎ 37a): แท็บ Programs — สร้าง/แก้ (FocusModal) และลบเฉพาะ draft (usePrompt) ผ่าน admin API ของ AF-5
+// AF-12a (spec 05 กฎ 37a): แท็บ Programs — สร้าง (FocusModal)/แก้ (Drawer — ADM-44) และลบเฉพาะ draft (usePrompt) ผ่าน admin API ของ AF-5
 export const ProgramsTable = () => {
   const { getFullDate } = useDate()
   const list = useAffiliateList<Program>("programs", "programs")
