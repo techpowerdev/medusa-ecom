@@ -19,7 +19,8 @@ export type CommissionSummaryFilters = {
   to?: Date
   /**
    * กฎ 48b (AF-24, portal): reversal ของ line `(order_id, line_item_id)` ที่ยังมี entry `pending` ถูกหักใน `pending`
-   * (ไม่ต่ำกว่า 0 ต่อ line ส่วนเกินคงอยู่ใน `reversed`) — ผลรวมทุกแถวเท่าเดิม; ไม่ตั้ง = GROUP BY status ตรงๆ (admin)
+   * (ไม่ต่ำกว่า 0 ต่อ line ส่วนเกินคงอยู่ใน `reversed`) — ผลรวมทุกแถวเท่าเดิม; ไม่ตั้ง = GROUP BY status ตรงๆ
+   * (portal และ admin summary ตั้งค่านี้ทั้งคู่ — กฎ 49, AF-25)
    */
   net_pending_reversals?: boolean
 }
