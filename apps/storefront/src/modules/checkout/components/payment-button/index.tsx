@@ -10,6 +10,7 @@ import {
   PlaceOrderOutcome,
   checkoutNotice,
 } from "@lib/util/place-order-outcome"
+import { stripeErrorMessage } from "@lib/util/stripe-error"
 import { HttpTypes } from "@medusajs/types"
 import { Button, Text } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
@@ -222,7 +223,8 @@ const StripePaymentButton = ({
           return
         }
 
-        setShown(error.message ? { kind: "error", text: error.message } : null)
+        // PAY-17 (spec 06 กฎข้อ 19a): ไม่แสดง error.message ของ Stripe — ข้อความไทยตาม type/code
+        setShown({ kind: "error", text: stripeErrorMessage(error) })
         setSubmitting(false)
         return
       }

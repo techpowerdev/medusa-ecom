@@ -1,0 +1,46 @@
+# PAY-17 — ผล test (spec 06 กฎข้อ 19, AC-30) 2026-11-24
+
+## Red รอบ 1 (ก่อนมี helper): vitest stripe-error.test.ts, pay-17-stripe-error-thai.test.ts, promptpay-finish.test.ts
+      Tests  5 failed | 17 passed (22)
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > complete ไม่ถูกเปลี่ยนไม่ว่า finishing หรือไม่
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > fail ไม่ถูกเปลี่ยนไม่ว่า finishing หรือไม่
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > refunded ระหว่าง finishing → wait (ไม่เปลี่ยน state)
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > refunded เมื่อไม่ได้ finishing → refunded (PAY-6c เดิม)
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > wait ไม่ถูกเปลี่ยนไม่ว่า finishing หรือไม่
+ FAIL  src/lib/util/stripe-error.test.ts [ src/lib/util/stripe-error.test.ts ]
+ FAIL  src/pay-17-stripe-error-thai.test.ts [ src/pay-17-stripe-error-thai.test.ts ]
+ Test Files  3 failed (3)
+Error: Cannot find module './stripe-error' imported from <worktree>/apps/storefront/src/lib/util/stripe-error.test.ts
+Error: Failed to resolve import "@lib/util/stripe-error" from "src/pay-17-stripe-error-thai.test.ts". Does the file exist?
+TypeError: promptPayPollWhileFinishing is not a function
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+## Red รอบ 2 (มี helper แต่ StripePaymentButton ยังแสดง error.message ตรง = พฤติกรรมของ develop)
+      Tests  3 failed | 38 passed (41)
+ FAIL  src/pay-17-stripe-error-thai.test.ts > StripePaymentButton: error ของ confirmPayment (AC-30a) > card_error/card_declined ข้อความอังกฤษ → ข้อความไทยของบัตรถูกปฏิเสธ ไม่มีข้อความของ Stripe และไม่ complete cart
+ FAIL  src/pay-17-stripe-error-thai.test.ts > StripePaymentButton: error ของ confirmPayment (AC-30a) > error ไม่มี message → ยังแสดงข้อความไทย (ไม่เงียบ)
+ Test Files  2 failed | 1 passed (3)
+AssertionError: expected 'Your card was declined.' to contain 'บัตรถูกปฏิเสธ กรุณาใช้บัตรใบอื่นหรือต…'
+AssertionError: expected 'ข้อมูลบัตรไม่ถูกต้อง กรุณาตรวจสอบเลขบ…' not to match /[A-Za-z]/
+TypeError: .toMatch() expects to receive a string, but got undefined
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+(ข้อ stripe-error.test.ts ที่ล้มในรอบนี้ = ข้อความเดิมมีคำว่า CVC — แก้เป็นไทยล้วนแล้ว)
+
+## Green: 3 ไฟล์ข้างบน
+ Test Files  3 passed (3)
+      Tests  41 passed (41)
+
+## storefront unit ทั้งชุด (vitest run)
+ Test Files  120 passed (120)
+      Tests  1873 passed (1873)
+
+## playwright --project=unit
+  160 passed
+
+## typecheck storefront (tsc --noEmit): exit 0; eslint ไฟล์ที่แตะ: 0 error 0 warning
+
+## e2e (ต้องใช้ Stripe test key — ไม่มีในเครื่อง builder; CI เป็นผู้พิสูจน์)
+- e2e/pay-17-stripe-error-thai.spec.ts (AC-30a) — ใหม่
+- e2e/pay-15-promptpay-go-to-cart.spec.ts (AC-28 + AC-30b: poll ตอบ refunded ระหว่าง placeOrder ค้าง, MutationObserver ไม่เห็น promptpay-retry-button)
+- e2e/pay-11-promptpay-refund-reason.spec.ts (AC-24 + ไม่เห็น promptpay-retry-button)
+- regression: payments-promptpay-fallback-cap.spec.ts, payments-promptpay-already-paid.spec.ts, payments.spec.ts AC-3

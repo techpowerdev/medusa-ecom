@@ -46,13 +46,22 @@ async function trackTestIds(page: Page, ids: string[]) {
   return seen
 }
 
-/** checkout → QR → ตัด webhook → ลูกค้าชำระสำเร็จ แต่ browser ยังเห็น PI เป็น requires_action */
-export async function paidWhileQrShown(page: Page, context: BrowserContext, request: APIRequestContext, baseURL: string): Promise<Ctx> {
+/**
+ * checkout → QR → ตัด webhook → ลูกค้าชำระสำเร็จ แต่ browser ยังเห็น PI เป็น requires_action
+ * `watch` = test id เพิ่มเติมที่จดใน `seen` (PAY-17: `promptpay-retry-button` ต้องไม่โผล่ระหว่างทาง)
+ */
+export async function paidWhileQrShown(
+  page: Page,
+  context: BrowserContext,
+  request: APIRequestContext,
+  baseURL: string,
+  watch: string[] = []
+): Promise<Ctx> {
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
   const customer = await createCustomer(request, pk)
   await signInAs(context, baseURL, customer)
-  const seen = await trackTestIds(page, ["promptpay-awaiting-order", "promptpay-expired"])
+  const seen = await trackTestIds(page, ["promptpay-awaiting-order", "promptpay-expired", ...watch])
 
   await page.clock.install()
   await checkoutToPayment(page, context, request, pk, customer, CC, PRODUCT)
@@ -80,15 +89,29 @@ export async function paidWhileQrShown(page: Page, context: BrowserContext, requ
 }
 
 // PAY-11 (ย้ายมาใน PAY-15 เพื่อใช้ร่วมกัน): route mock ผลของ placeOrder ในทางสำรอง — ดูคำอธิบายใน pay-11-promptpay-refund-reason.spec.ts
-export type Mocked = { placeOrders: number[]; polls: number[] }
+export type Mocked = { placeOrders: number[]; polls: number[]; refundedPolls: number[] }
+
+/** PAY-17 (spec 06 กฎข้อ 19b): placeOrder ค้างไว้จนมี poll ตอบ `refunded` แล้ว (Medusa คืนเงินก่อน response ของ complete กลับ) */
+export type MockPlaceOrderOptions = { refundedPollWhileFinishing?: boolean }
+
+/** เวลาที่ค้าง placeOrder ไว้หลัง poll ตอบ refunded — พอให้ React render ผลของ poll ก่อน (ถ้ายังตัดสินจาก poll) */
+const HOLD_AFTER_REFUNDED_POLL_MS = 1_500
 
 /**
  * หลัง storefront สร้าง session ใหม่ (renewPromptPaySession — มี provider id ใน body) action ที่รับ cart id อย่างเดียว:
  * id ที่เห็นตอน QR แสดง = poll (ผ่านจริง นับไว้), id อื่น = placeOrder → ตอบเป็น `outcome`
+ * `refundedPollWhileFinishing`: ระหว่างค้าง placeOrder poll ตอบ `refunded` (แทน `"pending"`) — ฉาก race ของ PAY-17
  */
-export async function mockPlaceOrder(page: Page, ctx: Ctx, outcome: object): Promise<Mocked> {
-  const state = { renewed: false, pollActionIds: new Set<string>() }
-  const mocked: Mocked = { placeOrders: [], polls: [] }
+export async function mockPlaceOrder(
+  page: Page,
+  ctx: Ctx,
+  outcome: object,
+  options: MockPlaceOrderOptions = {}
+): Promise<Mocked> {
+  const state = { renewed: false, pollActionIds: new Set<string>(), holding: false }
+  const mocked: Mocked = { placeOrders: [], polls: [], refundedPolls: [] }
+  let pollRefunded!: () => void
+  const refundedPoll = new Promise<void>((resolve) => (pollRefunded = resolve))
   await page.route(
     (url) => url.pathname.includes("/checkout"),
     async (route: Route) => {
@@ -106,9 +129,24 @@ export async function mockPlaceOrder(page: Page, ctx: Ctx, outcome: object): Pro
       }
       if (state.pollActionIds.has(actionId)) {
         mocked.polls.push(Date.now())
-        return route.fallback()
+        if (!state.holding) return route.fallback()
+        const res = await route.fetch()
+        const text = await res.text()
+        expect(text, "action poll คืนสถานะ pending").toContain('"pending"')
+        const headers = { ...res.headers() }
+        delete headers["content-length"]
+        await route.fulfill({ status: res.status(), headers, body: text.replace('"pending"', '"refunded"') })
+        mocked.refundedPolls.push(Date.now())
+        pollRefunded()
+        return
       }
       mocked.placeOrders.push(Date.now())
+      if (options.refundedPollWhileFinishing && mocked.placeOrders.length === 1) {
+        state.holding = true
+        await Promise.race([refundedPoll, new Promise((resolve) => setTimeout(resolve, 30_000))])
+        await new Promise((resolve) => setTimeout(resolve, HOLD_AFTER_REFUNDED_POLL_MS))
+        state.holding = false
+      }
       const pollId = Array.from(state.pollActionIds)[0]
       const res = await route.fetch({
         headers: { ...req.headers(), "next-action": pollId },

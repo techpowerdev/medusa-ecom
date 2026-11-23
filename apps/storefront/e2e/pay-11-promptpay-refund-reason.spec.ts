@@ -1,5 +1,5 @@
 import { expect, test } from "./support/fixtures"
-import { Mocked, mockPlaceOrder, paidWhileQrShown } from "./support/promptpay-race"
+import { Ctx, Mocked, mockPlaceOrder, paidWhileQrShown } from "./support/promptpay-race"
 import { HAS_STRIPE_UI } from "./support/stripe"
 import { expectThai } from "./support/thai-text"
 
@@ -10,6 +10,8 @@ import { expectThai } from "./support/thai-text"
 // เดียวกันซึ่งไม่มีผลข้างเคียง แล้วแทนค่าที่คืน `"pending"` ด้วยผลของ placeOrder — ไม่ต้องรู้รูปแบบ flight ของ Next
 test.use({ evidenceTarget: { feature: "payments", taskId: "PAY-11" } })
 
+// PAY-17 (spec 06 กฎข้อ 19b, AC-30b): ระหว่างทางไม่เห็นปุ่มเริ่มชำระใหม่ของ PAY-6c (MutationObserver ของ paidWhileQrShown)
+const RETRY = "promptpay-retry-button"
 const NEED_UI = "ต้องตั้ง STRIPE_API_KEY (sk_test_) + NEXT_PUBLIC_STRIPE_KEY (pk_test_) ของบัญชี Stripe เดียวกัน"
 
 test.describe("PromptPay ทางสำรองบอกเหตุคืนเงิน (AC-24)", () => {
@@ -25,9 +27,10 @@ test.describe("PromptPay ทางสำรองบอกเหตุคืน�
   }) => {
     test.setTimeout(240_000)
     let mocked!: Mocked
+    let ctx!: Ctx
 
     await step("Given ชำระแล้วตอน QR ยังแสดง, webhook ไม่มา และ complete ของทางสำรองตอบ FLASH_SOLD_OUT", async () => {
-      const ctx = await paidWhileQrShown(page, context, request, baseURL!)
+      ctx = await paidWhileQrShown(page, context, request, baseURL!, [RETRY])
       mocked = await mockPlaceOrder(page, ctx, { kind: "refunded", code: "FLASH_SOLD_OUT" })
     })
 
@@ -53,6 +56,7 @@ test.describe("PromptPay ทางสำรองบอกเหตุคืน�
       expect(mocked.polls.length).toBe(polls)
       expect(mocked.placeOrders.length).toBe(placeOrders)
       await expect(page.getByTestId("promptpay-refunded")).toBeVisible()
+      expect(ctx.seen.has(RETRY), `test id ที่เคยแสดง: ${JSON.stringify(Array.from(ctx.seen))}`).toBe(false)
     })
   })
 
