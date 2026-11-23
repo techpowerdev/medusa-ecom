@@ -1,0 +1,21 @@
+# CORE-85 ผล test (spec 01 AC-182, กฎข้อ 141)
+
+ข้อความตัวอย่างของ starter ที่ตรวจว่าไม่มี (จากหน้าเดิม CORE-1 + ฉบับแปล CORE-4c2): testid `policy-placeholder` (PlaceholderNotice "เนื้อหาหน้านี้เป็นข้อความตัวอย่าง…"), "ข้อความตัวอย่าง", "Questions about an order", "customer service", "example.com"
+
+## RED (e2e) — develop 1d83ccf1 ยังไม่แก้ (หน้าเดิมไม่มี contact-intro/contact-channel และยังมี PlaceholderNotice)
+    Error: element(s) not found
+      - contact-intro getByTestId('contact-intro').first() with timeout 5000ms
+    test-results/core-85-contact-page-AC-18-fa0cd-างติดต่อจริงที่กดได้-375px--chromium/test-failed-1.png
+  2 failed
+
+## GREEN (e2e) e2e/core-85-contact-page.spec.ts (backend dev :9300 + storefront dev :8300, seed ภูมิภาค th)
+Running 2 tests using 1 worker
+  ✓  1 [chromium] › e2e/core-85-contact-page.spec.ts:22:7 › AC-182: /th/contact มีช่องทางติดต่อจริงที่กดได้ (1280px) (703ms)
+  ✓  2 [chromium] › e2e/core-85-contact-page.spec.ts:22:7 › AC-182: /th/contact มีช่องทางติดต่อจริงที่กดได้ (375px) (550ms)
+  2 passed (1.8s)
+
+## storefront: vitest / test:e2e:unit / lint / typecheck
+ Test Files  115 passed (115)
+      Tests  1460 passed (1460)
+  151 passed (test:e2e:unit ทั้ง project รวม evidence-budget)
+eslint: 0 errors (28 warnings เดิม ไม่มีในไฟล์ที่แตะ); tsc --noEmit: ผ่าน
