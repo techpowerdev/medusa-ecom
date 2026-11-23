@@ -29,7 +29,7 @@ test("AC-98: login รหัสผ่านผิด / สมัครด้ว�
   })
 
   await step("สมัครด้วยอีเมลที่มีบัญชีแล้ว → register-email-exists ไทย (CORE-73), อีเมลยังอยู่", async () => {
-    await page.getByTestId("register-button").click()
+    await page.getByTestId("login-to-register-button").click()
     const form = page.getByTestId("register-page")
     await expect(form).toBeVisible()
     await form.getByTestId("first-name-input").fill("สมชาย")

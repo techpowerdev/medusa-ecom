@@ -40,7 +40,7 @@ test("AC-105: dblclick login = action 1 ครั้ง, สมัครล้�
   })
 
   await step("สมัครด้วยอีเมลที่มีบัญชีแล้ว → ชื่อ/นามสกุล/เบอร์/อีเมลยังอยู่ และ error ไทย", async () => {
-    await page.getByTestId("register-button").click()
+    await page.getByTestId("login-to-register-button").click()
     const form = page.getByTestId("register-page")
     await expect(form).toBeVisible()
     await form.getByTestId("first-name-input").fill("สมชาย")

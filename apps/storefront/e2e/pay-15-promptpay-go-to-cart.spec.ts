@@ -2,6 +2,7 @@ import { expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC } from "./support/medusa"
 import { Mocked, mockPlaceOrder, paidWhileQrShown } from "./support/promptpay-race"
 import { HAS_STRIPE_UI } from "./support/stripe"
+import { expectSingleTabStop } from "./support/keyboard"
 import { expectThai } from "./support/thai-text"
 
 // PAY-15 (spec 06 กฎข้อ 17, AC-28 — owner ตัดสิน 2026-11-22 จาก review #479): หลัง `promptpay-refunded` ที่รู้เหตุ (ทางสำรองของ PAY-11)
@@ -43,6 +44,10 @@ test.describe("PromptPay refunded ที่รู้เหตุ → ไปท�
       await expectThai(page, ["promptpay-refunded", "promptpay-go-to-cart"])
       await expect(page.getByTestId("promptpay-retry-button")).toHaveCount(0)
       await evidence("01-promptpay-go-to-cart")
+    })
+
+    await step("And Tab หยุดที่ลิงก์ไปที่ตะกร้าครั้งเดียว (CORE-90 กฎข้อ 146b, AC-187)", async () => {
+      await expectSingleTabStop(page.getByTestId("promptpay-go-to-cart"))
     })
 
     await step("When คลิกไปที่ตะกร้า → Then อยู่ที่หน้า /th/cart", async () => {

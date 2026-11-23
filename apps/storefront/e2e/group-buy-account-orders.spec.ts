@@ -4,6 +4,7 @@ import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { deleteAllThenExpectOk, expectNoneLeft } from "./support/cleanup"
 import { GroupBuyOrderCtx, STOCKED_HANDLE_PREFIX, groupBuyOrder, setStock, stockedProduct } from "./support/group-buy"
 import { adminHeaders, signInAs, STOREFRONT_COUNTRY as CC } from "./support/medusa"
+import { expectSingleTabStop } from "./support/keyboard"
 import { CARD_PROVIDER, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, authorizePromptPay, fillCard } from "./support/stripe"
 import { expectThai } from "./support/thai-text"
 
@@ -106,6 +107,8 @@ test.describe("หน้า account: คำสั่งซื้อแบบก�
     await expectThai(page, ["group-pay-deadline"])
     await expect(row.getByTestId("group-leave-button")).toHaveCount(0)
     await evidence("02-account-group-pay-deadline")
+    // CORE-90 (spec 01 กฎข้อ 146b, AC-187): ลิงก์ชำระเงินเป็นจุดหยุดของ Tab จุดเดียว (ไม่ซ้อน <button> ใน <a>)
+    await expectSingleTabStop(row.getByTestId("group-order-pay-link"))
 
     await row.getByTestId("group-order-pay-link").click()
     await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders/${ctx.orderId}/pay$`))

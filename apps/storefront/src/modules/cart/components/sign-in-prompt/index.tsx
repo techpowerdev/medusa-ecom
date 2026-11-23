@@ -1,4 +1,4 @@
-import { Button, Heading, Text } from "@modules/common/components/ui"
+import { buttonClassName, Heading, Text } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 const SignInPrompt = () => {
@@ -13,10 +13,12 @@ const SignInPrompt = () => {
         </Text>
       </div>
       <div>
-        <LocalizedClientLink href="/account">
-          <Button variant="secondary" className="h-10" data-testid="sign-in-button">
-            เข้าสู่ระบบ
-          </Button>
+        <LocalizedClientLink
+          href="/account"
+          className={buttonClassName({ variant: "secondary" }, "h-10")}
+          data-testid="sign-in-button"
+        >
+          เข้าสู่ระบบ
         </LocalizedClientLink>
       </div>
     </div>

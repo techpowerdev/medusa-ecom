@@ -58,11 +58,32 @@ export const Heading = forwardRef<HTMLHeadingElement, HeadingProps>(
 Heading.displayName = "Heading"
 
 // Button Component
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonStyle = {
   variant?: "primary" | "secondary" | "transparent"
   size?: "small" | "medium" | "large"
-  isLoading?: boolean
 }
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
+  ButtonStyle & {
+    isLoading?: boolean
+  }
+
+// CORE-90 (spec 01 กฎข้อ 146b): className ของปุ่ม ใช้กับลิงก์ที่หน้าตาเป็นปุ่มได้โดยไม่ซ้อน <button> ใน <a>
+export const buttonClassName = (
+  { variant = "primary", size = "medium" }: ButtonStyle = {},
+  className?: string
+) =>
+  clsx(
+    "inline-flex gap-2 items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+    variant === "primary" && "bg-black text-white hover:bg-gray-800",
+    variant === "secondary" &&
+      "bg-white text-black border border-gray-200 hover:bg-gray-50",
+    variant === "transparent" && "bg-transparent hover:bg-gray-100",
+    size === "small" && "h-8 px-3 text-sm",
+    size === "medium" && "h-10 px-4",
+    size === "large" && "h-12 px-6 text-lg",
+    className
+  )
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -81,17 +102,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        className={clsx(
-          "inline-flex gap-2 items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-          variant === "primary" && "bg-black text-white hover:bg-gray-800",
-          variant === "secondary" &&
-            "bg-white text-black border border-gray-200 hover:bg-gray-50",
-          variant === "transparent" && "bg-transparent hover:bg-gray-100",
-          size === "small" && "h-8 px-3 text-sm",
-          size === "medium" && "h-10 px-4",
-          size === "large" && "h-12 px-6 text-lg",
-          className
-        )}
+        className={buttonClassName({ variant, size }, className)}
         {...props}
       >
         {isLoading ? "กำลังดำเนินการ..." : children}

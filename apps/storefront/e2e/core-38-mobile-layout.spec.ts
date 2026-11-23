@@ -107,7 +107,7 @@ for (const viewport of [MOBILE, DESKTOP]) {
     })
 
     await step("register: กรอกครบแล้ว blur", async () => {
-      await page.getByTestId("login-page").getByTestId("register-button").click()
+      await page.getByTestId("login-page").getByTestId("login-to-register-button").click()
       const register = page.getByTestId("register-page")
       await expect(register).toBeVisible()
       await register.getByTestId("first-name-input").fill("สมชาย")

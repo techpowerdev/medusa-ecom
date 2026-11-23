@@ -3004,8 +3004,10 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
 
 ### Acceptance criteria (รอบ 42)
 - AC-186 (CORE-89, กฎข้อ 145) e2e 375×812 ขั้น review ของ manual payment: `boundingBox()` ของ `payment-details-summary` อยู่ใต้ `payment-method-summary` (y ≥ bottom ของตัวแรก) และกว้าง ≥ 300px (ล้มบน develop — คอลัมน์ `w-1/3` ~110px ตัดทีละคำ); 1280 → สองกล่องอยู่แถวเดียวกันเหมือนเดิม
-- AC-187 (CORE-90, กฎข้อ 146) e2e 375×812: `login-to-register-button` และ `register-to-login-button` `boundingBox().height ≥ 44` (ล้มบน develop); `page.getByTestId("register-button")` บนหน้า login view = 0 ตัว;
+- ☑ AC-187 (CORE-90, กฎข้อ 146) e2e 375×812: `login-to-register-button` และ `register-to-login-button` `boundingBox().height ≥ 44` (ล้มบน develop); `page.getByTestId("register-button")` บนหน้า login view = 0 ตัว;
   keyboard: Tab จาก element ก่อนหน้าไป `promptpay-go-to-cart` และ `group-order-pay-link` หยุด 1 ครั้งต่อลิงก์ (ล้มบน develop — 2 ครั้ง); static: ไม่มี `<Button` เป็นลูกตรงของ `LocalizedClientLink` ใน `src/modules/**`
+  (ผ่าน: red บน develop `59c6af18` — static พบ 11 จุด, `register-button` บนหน้า login = 1, Tab จาก `group-order-pay-link` หยุดซ้ำที่ `<button>` ข้างใน → green `e2e/core-90-auth-toggle.spec.ts` + `e2e/core-90-link-button.unit.spec.ts` + ขั้น Tab ใน `group-buy-account-orders.spec.ts`/`pay-15-promptpay-go-to-cart.spec.ts` (helper `e2e/support/keyboard.ts`; pay-15 ต้องใช้ Stripe UI → พิสูจน์ใน CI);
+  ลิงก์ที่เคยซ้อนปุ่มทั้ง 11 จุดใช้ `buttonClassName` บน `LocalizedClientLink` แทน — `Button` ของ storefront เป็น component ของเราเอง ไม่มี `asChild`)
 - AC-188 (CORE-91, กฎข้อ 147) e2e route mock: หน่วง/ทำให้การอ่าน cart ของ nav ล้ม แล้ว hover `nav-cart-link` → ไม่มีข้อความ "ตะกร้าของคุณยังว่างอยู่" (ล้มบน develop); ตะกร้าว่างจริง → มีข้อความนี้;
   หน้า dynamic ที่ server ส่ง cart แล้ว → request `retrieveCart` จาก `CartDropdown` = 0 ครั้งตอน mount; e2e สามไฟล์ใน (c) ผ่าน `--repeat-each=3`
 - AC-189 (CORE-92, กฎข้อ 148) e2e: ลูกค้าที่มีแต่ membership กลุ่ม → overview ไม่มีข้อความ "ยังไม่มีคำสั่งซื้อ" และมีลิงก์ "ดูทั้งหมด"; request GB-8 จาก overview มี `limit=1`;
