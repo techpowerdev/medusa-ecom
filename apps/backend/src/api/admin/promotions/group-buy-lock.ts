@@ -25,6 +25,21 @@ export const GROUP_BUY_TEMPLATE_ACTIVATE_MESSAGE =
 
 const query = (req: MedusaRequest) => req.scope.resolve<RemoteQueryFunction>(ContainerRegistrationKeys.QUERY)
 
+// GB-31 (กฎข้อ 57b): guard หลายตัวบน matcher เดียวกันใช้ผลอ่าน link ร่วมกัน — query.graph 1 ครั้งต่อ entity ต่อ request
+const lookups = new WeakMap<MedusaRequest, Map<string, Promise<unknown>>>()
+
+function once<T>(req: MedusaRequest, key: string, load: () => Promise<T>): Promise<T> {
+  let cache = lookups.get(req)
+  if (!cache) {
+    cache = new Map()
+    lookups.set(req, cache)
+  }
+  if (!cache.has(key)) {
+    cache.set(key, load())
+  }
+  return cache.get(key) as Promise<T>
+}
+
 async function hasGroupPromotion(req: MedusaRequest, ids: string[]) {
   if (!ids.length) {
     return false
@@ -37,29 +52,33 @@ async function hasGroupPromotion(req: MedusaRequest, ids: string[]) {
   return data.some((p) => !!p.group_buy_group?.id)
 }
 
-async function linkedGroupBuyCampaign(req: MedusaRequest, id = req.params.id) {
-  const { data } = await query(req).graph({
-    entity: "campaign",
-    fields: ["id", "group_buy_campaign.id", "group_buy_campaign.status"],
-    filters: { id },
+function linkedGroupBuyCampaign(req: MedusaRequest, id = req.params.id) {
+  return once(req, `campaign:${id}`, async () => {
+    const { data } = await query(req).graph({
+      entity: "campaign",
+      fields: ["id", "group_buy_campaign.id", "group_buy_campaign.status"],
+      filters: { id },
+    })
+    return data[0]?.group_buy_campaign
   })
-  return data[0]?.group_buy_campaign
 }
 
-// ต้นแบบ GBT-* = promotion ที่ผูก link template `promotion.group_buy_campaign` (GB-29/30)
-async function templatePromotion(req: MedusaRequest) {
-  const { data } = await query(req).graph({
-    entity: "promotion",
-    fields: ["id", "campaign_id", "group_buy_campaign.id"],
-    filters: { id: req.params.id },
+// promotion :id พร้อม link โค้ดกลุ่ม GB-* (`group_buy_group`) และต้นแบบ GBT-* (`group_buy_campaign` — GB-29/30)
+function promotionLinks(req: MedusaRequest) {
+  return once(req, `promotion:${req.params.id}`, async () => {
+    const { data } = await query(req).graph({
+      entity: "promotion",
+      fields: ["id", "campaign_id", "group_buy_group.id", "group_buy_campaign.id"],
+      filters: { id: req.params.id },
+    })
+    return data[0]
   })
-  return data[0]
 }
 
 const lockedPromotion = () => new MedusaError(MedusaError.Types.NOT_ALLOWED, GROUP_PROMOTION_LOCKED_MESSAGE)
 
 export async function guardGroupPromotion(req: MedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) {
-  if (await hasGroupPromotion(req, [req.params.id])) {
+  if ((await promotionLinks(req))?.group_buy_group?.id) {
     throw lockedPromotion()
   }
   next()
@@ -108,7 +127,7 @@ export async function guardPromotionCampaign(
   }
   const target = req.body.campaign_id ?? null
   if (req.params?.id) {
-    const promotion = await templatePromotion(req)
+    const promotion = await promotionLinks(req)
     if (!promotion || (promotion.campaign_id ?? null) === target) {
       return next()
     }
@@ -125,7 +144,7 @@ export async function guardPromotionCampaign(
 // GB-30 (กฎข้อ 55, ADR-026 ภาคผนวก 2026-11-23): DELETE ต้นแบบ GBT-* → 400 ทุกสถานะของแคมเปญ (ลบกลุ่มใหม่ไม่ได้)
 // ทางลบที่ถูกคือลบแคมเปญ draft ที่หน้า Group buying (deleteGroupBuyCampaignWorkflow ไม่ผ่าน route นี้)
 export async function guardTemplateDelete(req: MedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) {
-  if ((await templatePromotion(req))?.group_buy_campaign?.id) {
+  if ((await promotionLinks(req))?.group_buy_campaign?.id) {
     throw new MedusaError(MedusaError.Types.NOT_ALLOWED, GROUP_BUY_TEMPLATE_DELETE_MESSAGE)
   }
   next()
@@ -138,7 +157,7 @@ export async function guardTemplateStatus(
   _res: MedusaResponse,
   next: MedusaNextFunction
 ) {
-  if (req.body?.status === "active" && (await templatePromotion(req))?.group_buy_campaign?.id) {
+  if (req.body?.status === "active" && (await promotionLinks(req))?.group_buy_campaign?.id) {
     throw new MedusaError(MedusaError.Types.NOT_ALLOWED, GROUP_BUY_TEMPLATE_ACTIVATE_MESSAGE)
   }
   next()
