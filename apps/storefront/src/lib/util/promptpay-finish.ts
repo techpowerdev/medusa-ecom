@@ -27,3 +27,10 @@ export const promptPayFinishAction = (outcome: PlaceOrderOutcome | null | undefi
   }
   return { kind: "retry" }
 }
+
+/**
+ * PAY-17 (spec 06 กฎข้อ 19b): poll ที่เห็น `refunded` ระหว่าง `finish()` รอ placeOrder (`finishing`) ไม่ตัดสิน — ผลของ placeOrder ตัดสิน
+ * (รู้เหตุ → ลิงก์ไปตะกร้าของ PAY-15; ล้มแบบอื่น → poll รอบถัดไปเห็น refunded แล้วตัดสินแบบ PAY-6c)
+ */
+export const promptPayPollWhileFinishing = <A extends string>(action: A, finishing: boolean): A | "wait" =>
+  finishing && action === "refunded" ? "wait" : action

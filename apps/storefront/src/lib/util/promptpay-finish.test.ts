@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { CHECKOUT_CONFLICTS, OUT_OF_STOCK, REFUNDED_NOTICE } from "./checkout-error"
 import { CART_COMPLETION_IN_PROGRESS, PROMOTION_REFUNDED_NOTICE, placeOrderOutcome } from "./place-order-outcome"
-import { PROMPTPAY_REFUNDED_UNKNOWN, promptPayFinishAction } from "./promptpay-finish"
+import { PROMPTPAY_REFUNDED_UNKNOWN, promptPayFinishAction, promptPayPollWhileFinishing } from "./promptpay-finish"
 
 // PAY-11 (spec 06 กฎข้อ 13, AC-24): ผลของ placeOrder ในทางสำรอง PromptPay (finish) → สิ่งที่ component ทำ
 // refunded → หยุด poll + `promptpay-refunded` ข้อความกฎข้อ 27 ของ spec 03; processing / failed / network → poll ต่อ; 401/403 → login
@@ -72,5 +72,22 @@ describe("promptPayFinishAction", () => {
     expect(PROMPTPAY_REFUNDED_UNKNOWN.text).toBe(
       "ชำระไม่สำเร็จ เงินจะคืนเข้าบัญชีของคุณตามรอบของธนาคาร กดเริ่มชำระใหม่เพื่อรับคิวอาร์โค้ดใหม่"
     )
+  })
+})
+
+// PAY-17 (spec 06 กฎข้อ 19b, AC-30b): ผล poll ที่เห็น refunded ระหว่าง finish() รอ placeOrder ไม่ตัดสิน — ให้ผลของ placeOrder ตัดสิน
+// (กันปุ่มเริ่มชำระใหม่ของ PAY-6c โผล่ชั่วครู่ก่อนลิงก์ไปตะกร้าของ PAY-15)
+describe("promptPayPollWhileFinishing", () => {
+  it("refunded ระหว่าง finishing → wait (ไม่เปลี่ยน state)", () => {
+    expect(promptPayPollWhileFinishing("refunded", true)).toBe("wait")
+  })
+
+  it("refunded เมื่อไม่ได้ finishing → refunded (PAY-6c เดิม)", () => {
+    expect(promptPayPollWhileFinishing("refunded", false)).toBe("refunded")
+  })
+
+  it.each(["complete", "fail", "wait"] as const)("%s ไม่ถูกเปลี่ยนไม่ว่า finishing หรือไม่", (action) => {
+    expect(promptPayPollWhileFinishing(action, true)).toBe(action)
+    expect(promptPayPollWhileFinishing(action, false)).toBe(action)
   })
 })
