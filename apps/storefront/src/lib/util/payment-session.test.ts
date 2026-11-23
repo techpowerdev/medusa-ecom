@@ -6,6 +6,7 @@ import {
   promptPayFallbackAllowed,
   promptPayFallbackCanPoll,
   formatCountdown,
+  intentIsTerminal,
   isPromptPay,
   paymentSessionData,
   promptPayDeadline,
@@ -303,4 +304,17 @@ describe("promptPayFallbackAllowed (เพดานทางสำรอง)", (
       expect(run.used).toBeLessThanOrEqual(10)
     }
   })
+})
+
+// PAY-14 (spec 06 กฎข้อ 16 a, AC-27): PI ที่จบแล้ว → ห้าม mount Elements กับ PI นั้น (ให้ backend ตัดสินด้วยการสร้าง session ใหม่)
+describe("intentIsTerminal", () => {
+  it.each(["succeeded", "canceled"])("%s → true (reset)", (status) => {
+    expect(intentIsTerminal(status)).toBe(true)
+  })
+  it.each(["requires_payment_method", "requires_confirmation", "requires_action", "processing", "requires_capture", undefined])(
+    "%s → false (mount ได้)",
+    (status) => {
+      expect(intentIsTerminal(status)).toBe(false)
+    }
+  )
 })

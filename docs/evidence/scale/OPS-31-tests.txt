@@ -1,0 +1,51 @@
+# OPS-31 (spec 07 AC-46) — ผลทดสอบ 2026-11-21
+
+## ที่มา
+(a) @medusajs/medusa 2.22.1 dist/commands/db/migrate.js: main() ตั้ง process.env.MEDUSA_WORKER_MODE="server" แล้ว fork cli.js
+    db:migrate:search + db:migrate:scripts (env สืบทอด) — ทั้งสาม process โหลด medusa-config → warning 3 รอบ + worker_mode server
+(b) @medusajs/medusa loaders/index.js เรียก core-flows createDefaultsWorkflow ทุกครั้งที่บูต (รวม db:migrate:scripts)
+    → สร้าง "Default Publishable API Key" เมื่อยังไม่มี publishable key ก่อน seed สร้าง "Storefront" → 2 ตัว
+
+## RED (ก่อนแก้)
+### unit: jest prod-guards.unit.spec.ts json-logger.unit.spec.ts -t AC-46
+  ● AC-13 / AC-17 boot guards ใน medusa-config › AC-46a loading the config again with the inherited env (forked migrate child) does not repeat warnings
+  ● buildJsonLogger (OPS-3, AC-18) › AC-46a คำสั่ง db:migrate → worker_mode: migrate แม้ MEDUSA_WORKER_MODE=server
+  ● buildJsonLogger (OPS-3, AC-18) › AC-46a คำสั่ง db:migrate:search → worker_mode: migrate แม้ MEDUSA_WORKER_MODE=server
+  ● buildJsonLogger (OPS-3, AC-18) › AC-46a คำสั่ง db:migrate:scripts → worker_mode: migrate แม้ MEDUSA_WORKER_MODE=server
+  ● buildJsonLogger (OPS-3, AC-18) › AC-46a คำสั่ง db:sync-links → worker_mode: migrate แม้ MEDUSA_WORKER_MODE=server
+Tests:       5 failed, 71 skipped, 2 passed, 78 total
+### integration: seed.spec.ts -t AC-46b
+  ●  › AC-46b leaves exactly one active publishable key, titled Storefront and linked to the store sales channel
+    + Received  + 1
+    +   "Default Publishable API Key",
+Tests:       1 failed, 15 skipped, 16 total
+### image prod บน develop (เฟส 9 manual, browser-phase9/logs/migrate-A.log): [medusa-config] warning 3 รอบ (บรรทัด 10-11, 648-649, 664-665), 678 บรรทัดมี worker_mode server; prod seed → key 2 ตัว
+
+## GREEN (หลังแก้ + merge origin/develop 6f24b96b)
+### unit ทั้งชุด (ก่อน merge develop): pnpm --filter backend test:unit
+Test Suites: 117 passed, 117 total
+Tests:       1611 passed, 1611 total
+### unit ไฟล์ที่แตะ (หลัง merge)
+Tests:       78 passed, 78 total
+### integration: seed.spec.ts + seed-partial.spec.ts (หลัง merge)
+Test Suites: 2 passed, 2 total
+Tests:       19 passed, 19 total
+### lint + typecheck: exit 0; backend build (NODE_ENV=production + placeholder env): completed successfully
+### storefront test:e2e:unit: 125 passed (977ms)
+
+## image prod (docker compose -p r40ops31, env ปลอม แบบ tools/ops/smoke-worker-mode.sh, down -v แล้ว)
+migrate exit 0
+seed 1 exit 0
+seed 2 exit 0
+print exit 0
+down 0
+### migrate: บรรทัด [medusa-config] ทั้งหมด
+[medusa-config] EVOUCHER_ADMIN_EMAIL is not set — admin/ops alert emails are skipped
+[medusa-config] OPS_ALERT_EMAIL is not set — admin/ops alert emails are skipped
+[medusa-config] ALLOW_TEST_PROVIDERS=true in production — test provider guards are off (local email, pp_system_default in seed); CI/staging only
+บรรทัดที่มี "worker_mode":"server": 0
+บรรทัดที่มี "worker_mode":"migrate": 666
+### prod seed 2 ครั้งบน DB ว่าง → publishable key ทั้งหมด (title|active|token ย่อ|sales channel)
+Storefront|t|pk_19e…|Default Sales Channel
+print-publishable-key คืน token เดียวกับ key "Storefront": yes
+image ใน smoke build จาก tree ก่อน merge develop (develop 026d3027→6f24b96b ไม่แตะ medusa-config.ts, src/lib, src/scripts, Dockerfile, docker-compose.prod.yml)

@@ -1,0 +1,76 @@
+# CORE-77 ผล test (spec 01 AC-176, กฎข้อ 135)
+
+## RED unit — develop b1896690 (ยังไม่แก้): vitest src/core-77-cart-label-error.test.ts
+     × อ่านล้ม → "ตะกร้า" ไม่มีตัวเลขและไม่มี aria-busy 54ms
+     × อ่านล้มแล้ว pathname เปลี่ยน → อ่านใหม่ 1 ครั้ง สำเร็จแสดงจำนวนจริง 68ms
+     × อ่านใหม่ล้มซ้ำ → ไม่วนอ่านต่อจนกว่า pathname เปลี่ยนอีกครั้ง (ครั้งละ 1) 28ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected true to be false // Object.is equality
+- Expected
++ Received
+AssertionError: expected "vi.fn()" to be called 2 times, but got 1 times
+AssertionError: expected "vi.fn()" to be called 2 times, but got 1 times
+      Tests  3 failed | 3 passed (6)
+
+## RED e2e — develop b1896690 (ยังไม่แก้): ค้าง aria-busy="true"
+Running 1 test using 1 worker
+  ✘  1 [chromium] › e2e/core-77-cart-label-error.spec.ts:56:5 › AC-176: อ่าน cart ของ nav ล้ม (500) → "ตะกร้า" ไม่ค้าง aria-busy; เลิกล้มแล้วเปลี่ยนหน้า → เห็นจำนวนจริง (7.0s)
+  1) [chromium] › e2e/core-77-cart-label-error.spec.ts:56:5 › AC-176: อ่าน cart ของ nav ล้ม (500) → "ตะกร้า" ไม่ค้าง aria-busy; เลิกล้มแล้วเปลี่ยนหน้า → เห็นจำนวนจริง › อ่าน cart ล้ม → ภายใน 5 วินาที "ตะกร้า" ไม่มีตัวเลขและไม่มี aria-busy 
+    Error: expect(locator).not.toHaveAttribute() failed
+    Locator:  getByTestId('nav-cart-link')
+    Expected: not have attribute
+    Received: have attribute
+    Timeout:  5000ms
+    Call log:
+      - Expect "not toHaveAttribute" getByTestId('nav-cart-link') with timeout 5000ms
+      - waiting for getByTestId('nav-cart-link')
+        14 × locator resolved to <a href="/th/cart" aria-busy="true" data-testid="nav-cart-link" class="hover:text-ui-fg-base whitespace-nowrap">ตะกร้า</a>
+           - unexpected value "attribute present"
+      84 |     await expect.poll(() => reads, { message: "nav ยิงอ่าน cart แล้ว" }).toBeGreaterThan(0)
+      85 |     await expect(link).toHaveText("ตะกร้า")
+    > 86 |     await expect(link).not.toHaveAttribute("aria-busy")
+         |                            ^
+      87 |     await expect(link).toHaveAttribute("href", `/${CC}/cart`)
+      88 |     await evidence("failed-label")
+      89 |   })
+  1 failed
+    [chromium] › e2e/core-77-cart-label-error.spec.ts:56:5 › AC-176: อ่าน cart ของ nav ล้ม (500) → "ตะกร้า" ไม่ค้าง aria-busy; เลิกล้มแล้วเปลี่ยนหน้า → เห็นจำนวนจริง 
+
+## GREEN unit — vitest core-77 + core-26 (CartDropdown)
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+
+## GREEN storefront test:unit ทั้งชุด
+ Test Files  113 passed (113)
+      Tests  1411 passed (1411)
+
+## GREEN e2e (chromium, macOS ในเครื่อง) — core-77 + test อื่นที่แตะ nav-cart-link
+  ✓   2 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (1.2s)
+  ✓   5 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (1.1s)
+  ✓   1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (5.3s)
+  ✓   6 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (1.1s)
+  ✓   4 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ (5.5s)
+  ✓   8 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (1.3s)
+  ✘  10 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (1.3s)
+  ✓   7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (6.3s)
+  ✓   3 [chromium] › e2e/core-29-restore-cart.spec.ts:142:5 › AC-122: ลบ JWT → login ใหม่ได้ตะกร้าเดิม; cart ที่ complete แล้วไม่ถูกกู้; key อื่นใน metadata ยังอยู่ (16.0s)
+  ✓  11 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:94:5 › AC-171: ลูกค้ามี 2 ชิ้น + cart โหลดช้า 2 วินาที → ระหว่างรอไม่มี "(0)" หลังโหลดเป็น "(2)" (7.8s)
+  ✓  12 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (7.5s)
+  ✓  13 [chromium] › e2e/core-29-restore-cart.spec.ts:192:5 › AC-122: active_cart_id ของ A ชี้ cart ของ B → login สำเร็จ ไม่มี cookie cart และ cart ของ B ยังเป็นของ B (4.0s)
+  ✓  15 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (2.5s)
+  ✓  16 [chromium] › e2e/core-29-restore-cart.spec.ts:217:5 › AC-122: browser มี cookie cart D ของ A อยู่แล้วตอน login → cookie ยังเป็น D (ไม่ทับด้วย active_cart_id) (3.0s)
+  ✓  14 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:122:5 › AC-171: ตะกร้าว่างจริง (ไม่มี cart) → แสดง "ตะกร้า (0)" หลังโหลด (6.6s)
+  ✓  18 [chromium] › e2e/core-77-cart-label-error.spec.ts:56:5 › AC-176: อ่าน cart ของ nav ล้ม (500) → "ตะกร้า" ไม่ค้าง aria-busy; เลิกล้มแล้วเปลี่ยนหน้า → เห็นจำนวนจริง (1.8s)
+  ✓  19 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:150:7 › hotfix nav-cart-link: /th มี element ที่ testid nav-cart-link เพียงตัวเดียวทุกขณะระหว่าง stream (857ms)
+  ✓  20 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:150:7 › hotfix nav-cart-link: /th/store มี element ที่ testid nav-cart-link เพียงตัวเดียวทุกขณะระหว่าง stream (964ms)
+  ✓  17 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (4.2s)
+  ✓   9 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง (24.2s)
+  ✓  21 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (13.4s)
+  ✓  22 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (8.1s)
+  ✓  23 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:214:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (989ms)
+  1 failed
+  22 passed (51.8s)
+หมายเหตุ: core-50 1280×800 ล้มที่ nav-menu-button width ต่าง baseline 1.27px (font ของ macOS — ไม่เกี่ยวกับ cart; CI Linux เป็นแหล่ง baseline)
+
+## test:e2e:unit ทั้ง project
+  145 passed (1.5s)

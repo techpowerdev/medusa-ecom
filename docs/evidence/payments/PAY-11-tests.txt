@@ -1,0 +1,51 @@
+# PAY-11 — ผล test (spec 06 กฎข้อ 13, AC-24) 2026-11-22 04:22
+
+## Red (ก่อนเขียน helper): vitest src/lib/util/promptpay-finish.test.ts
+
+ RUN  v5.0.5 apps/storefront
+
+ ❯ src/lib/util/promptpay-finish.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/util/promptpay-finish.test.ts [ src/lib/util/promptpay-finish.test.ts ]
+Error: Cannot find module './promptpay-finish' imported from apps/storefront/src/lib/util/promptpay-finish.test.ts
+ ❯ src/lib/util/promptpay-finish.test.ts:5:1
+      3| import { CHECKOUT_CONFLICTS, OUT_OF_STOCK, REFUNDED_NOTICE } from "./c…
+      4| import { CART_COMPLETION_IN_PROGRESS, PROMOTION_REFUNDED_NOTICE, place…
+      5| import { promptPayFinishAction } from "./promptpay-finish"
+       | ^
+      6|
+      7| // PAY-11 (spec 06 กฎข้อ 13, AC-24): ผลของ placeOrder ในทางสำรอง Promp…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+
+## Green: vitest src/lib/util/promptpay-finish.test.ts
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > 409 FLASH_SOLD_OUT → refunded พร้อมข้อความคืนเงินของกฎข้อ 27 1ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > 409 FLASH_LIMIT_EXCEEDED → refunded พร้อมข้อความคืนเงินของกฎข้อ 27 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > สต็อกไม่พอตอน complete (OUT_OF_STOCK) → refunded ข้อความกฎข้อ 27 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > PROMOTION_NOT_COMBINABLE → refunded ข้อความเหตุโปรโมชัน (CORE-76) 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > ข้อความ refunded เป็นภาษาไทย มีคำว่า คืนเงิน 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > 409 CART_COMPLETION_IN_PROGRESS → retry (poll ต่อ ไม่แสดง refunded) 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > 5xx → retry (PAY-6b) 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > network (ไม่มี status) → retry (PAY-6b) 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > 409 อื่นที่ไม่อยู่ใน allow-list → retry (PAY-6b) 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > 401 → unauthorized (login ใหม่) 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > 403 → unauthorized (login ใหม่) 0ms
+ ✓ src/lib/util/promptpay-finish.test.ts > promptPayFinishAction > placeOrder ไม่คืนค่า (ได้ order = redirect) → retry 0ms
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+
+## storefront unit ทั้งชุด (vitest run)
+ Test Files  109 passed (109)
+      Tests  1341 passed (1341)
+
+## playwright --project=unit
+  131 passed (1.4s)
+
+## pnpm lint && pnpm typecheck: exit 0 (0 errors; warnings เดิมของ develop ไม่มีในไฟล์ที่แตะ)
+
+## e2e apps/storefront/e2e/pay-11-promptpay-refund-reason.spec.ts
+ต้องใช้ Stripe test mode (paidWhileQrShown) — เครื่อง builder ไม่มี key จึง skip; CI (e2e) เป็นผู้พิสูจน์

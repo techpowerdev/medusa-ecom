@@ -154,7 +154,8 @@ describe("ฟอร์ม pilot ใช้ Form + KeyboundForm + zod (spec 08 AC-
       )
       expect(src).toMatch(/import\s*{[^}]*\buseForm\b[^}]*}\s*from\s*["']react-hook-form["']/)
       expect(src).toMatch(/import\s*{[^}]*\bzodResolver\b[^}]*}\s*from\s*["']@hookform\/resolvers\/zod["']/)
-      expect(src).toMatch(/useState\(createSingleFlight\)/)
+      // ADM-46 (กฎ 50): variant pool เป็นฟอร์มสร้างของกฎ 43 — useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+      expect(src).toMatch(/useState\(createSingleFlight\)|useSingleFlight\(\)/)
       expect(src).not.toMatch(/\b(toForm|EMPTY|parseLimit|setForm)\b/)
       expect(src).not.toMatch(/\buseRef\b/)
     }
@@ -209,6 +210,37 @@ describe("หน้า e-voucher ใช้ของ Medusa (spec 08 AC-7, ADM-4)
     expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+components\/common\/header["']/)
   })
 
+  // EV-21 (spec 02 กฎข้อ 37): ลบ pool จาก ActionMenu ทั้งหน้า pool และตาราง pools — prompt/toast ของ @medusajs/ui,
+  // กันกดซ้ำด้วย single-flight และ badge "No codes" เป็น StatusBadge สีเทา
+  it.each([
+    ["routes/evouchers/pools/[id]/page.tsx", "evoucher-pool-actions"],
+    ["components/evoucher/pools-table.tsx", "evoucher-pool-row-actions"],
+  ])("%s: Delete อยู่ใน ActionMenu (trigger %s) ผ่าน PoolDeleteMenu + useState(createSingleFlight)", (file, testid) => {
+    const src = read(file)
+    expect(src).toContain(`data-testid="${testid}"`)
+    expect(src).toMatch(/<PoolDeleteMenu\b/)
+    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    expect(src).toMatch(/<PoolStockBadge\b/)
+  })
+
+  // D1 (qa #454): คลิกที่สองของ dblclick ปุ่มยืนยันทะลุไปโดนแถว (rowHref) — ตารางกันการนำทางระหว่างลบ/คลิกต่อเนื่อง
+  it("pools-table.tsx กันคลิกแถวด้วย onClickCapture (event.detail > 1 หรือ deleteOnce.isPending())", () => {
+    const src = read("components/evoucher/pools-table.tsx")
+    expect(src).toMatch(/onClickCapture=\{/)
+    expect(src).toMatch(/\.detail > 1/)
+    expect(src).toMatch(/deleteOnce\.isPending\(\)/)
+  })
+
+  it("components/evoucher/pool-delete.tsx ใช้ ActionMenu + usePrompt + toast + StatusBadge ของ Medusa และ createSingleFlight", () => {
+    const src = read("components/evoucher/pool-delete.tsx")
+    expect(importsFrom(src, "ActionMenu", "@medusajs/dashboard/components")).toBe(true)
+    expect(importsFrom(src, "usePrompt", "@medusajs/ui")).toBe(true)
+    expect(importsFrom(src, "toast", "@medusajs/ui")).toBe(true)
+    expect(importsFrom(src, "StatusBadge", "@medusajs/ui")).toBe(true)
+    expect(src).toMatch(/StatusBadge color="grey"/)
+    expect(src).toMatch(/createSingleFlight/)
+  })
+
   it("import-codes ใช้ Header และกันกดซ้ำด้วย useState(createSingleFlight) (useRef ใช้แค่อ้าง input file)", () => {
     const src = read("components/evoucher/import-codes.tsx")
     expect(src).toMatch(/from\s*["'](?:\.{1,2}\/)+common\/header["']/)
@@ -250,7 +282,8 @@ describe("ฟอร์มสร้างแคมเปญ group buy ใช้ F
 
   it("create-campaign กันกดซ้ำด้วย useState(createSingleFlight) และไม่มี useRef", () => {
     const src = campaign()
-    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    // ADM-46 (กฎ 50): useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+    expect(src).toMatch(/useSingleFlight\(\)/)
     expect(src).not.toMatch(/\buseRef\b/)
   })
 
@@ -294,7 +327,8 @@ describe("ตาราง/ฟอร์ม partner ใช้ของ Medusa (spe
     expect(src).toMatch(/import\s*{[^}]*\bzodResolver\b[^}]*}\s*from\s*["']@hookform\/resolvers\/zod["']/)
     expect(src).toMatch(/raw:\s*true/)
     expect(src).toMatch(/\bnoValidate\b/)
-    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    // ADM-46 (กฎ 50): useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+    expect(src).toMatch(/useSingleFlight\(\)/)
     expect(src).not.toMatch(/\b(toForm|toBody|setForm)\b/)
     expect(src).not.toMatch(/\buseRef\b/)
     expect(src).not.toMatch(/toast\.error\("Name is required"\)/)
@@ -374,6 +408,18 @@ describe("ตาราง affiliate ใช้ของ Medusa (spec 08 AC-2, AC-
   it("หน้า affiliate ใช้ Header ของ components/common", () => {
     expect(read("routes/affiliate/page.tsx")).toMatch(/from\s*["'](?:\.{1,2}\/)+components\/common\/header["']/)
   })
+
+  // ADM-40 (spec 08 กฎ 44, AC-45): ช่องค้นหาของ DataTable ของ dashboard (`<prefix>_q` ใน URL) — ไม่สร้าง input/debounce เอง
+  it("ค้นหา affiliates: q จาก useQueryParams + useDebouncedSearch ของ dashboard, reset offset ด้วย usePageOffset, เปิดเฉพาะแท็บ Affiliates", () => {
+    const src = read("components/affiliate/list-table.tsx")
+    expect(importsFrom(src, "useQueryParams", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(importsFrom(src, "useDebouncedSearch", "@medusajs/dashboard/hooks")).toBe(true)
+    expect(src).toMatch(/usePageOffset\(prefix, PAGE_SIZE, \{ count, resetOn: [a-z]+ \}\)/)
+    expect(src).not.toMatch(/<(Input|input)\b/)
+    expect(src).toMatch(/enableSearch=\{searchable && !loadFailed\}/)
+    const searchables = TABLES.filter((f) => /useAffiliateList[^(]*\([^)]*\{ searchable: true \}/.test(read(f)))
+    expect(searchables).toEqual(["components/affiliate/affiliates-table.tsx"])
+  })
 })
 
 describe("ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, กฎ 4, 5, 8, 11, 15, ADM-9)", () => {
@@ -389,7 +435,8 @@ describe("ฟอร์ม affiliate ใช้ของ Medusa (spec 08 AC-12, �
     expect(importsFrom(src, "Form", "@medusajs/dashboard/components")).toBe(true)
     expect(importsFrom(src, "KeyboundForm", "@medusajs/dashboard/components")).toBe(true)
     expect(importsFrom(src, "useForm", "react-hook-form")).toBe(true)
-    expect(src).toMatch(/useState\(createSingleFlight\)/)
+    // ADM-46 (กฎ 50): ฟอร์มสร้างของกฎ 43 ใช้ useSingleFlight = useState(createSingleFlight) + สถานะ lock ของปุ่ม Save
+    expect(src).toMatch(/useState\(createSingleFlight\)|useSingleFlight\(\)/)
     expect(src).not.toMatch(/\bsetForm\b/)
     expect(src).not.toMatch(/useState(<[^>]*>)?\(\(?\s*(\(\)\s*=>\s*)?\(?(emptyProgramForm|payoutInfoForm|programToForm)/)
   })

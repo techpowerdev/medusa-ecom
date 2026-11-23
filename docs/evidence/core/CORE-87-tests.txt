@@ -1,0 +1,41 @@
+# CORE-87 ผล test (spec 01 AC-184, กฎข้อ 143)
+
+สาเหตุ: ตัวเลขที่หัว facet option ไม่ได้อ่านจากผล facet เลย — เป็น `selectedCount` (จำนวนค่าที่ผู้ใช้เลือกในกลุ่มนั้น) จึงขึ้น (0) เมื่อยังไม่เลือก
+ผล facet ของ `POST /store/search` (ผ่าน `@medusajs/instantsearch-adapter` `adaptFacets`) มีเฉพาะ key `option_values` → { "<option>:<ค่า>": count } ไม่มีจำนวนสินค้าต่อ option → ตามกฎ 143 ไม่แสดงตัวเลขที่หัว
+
+## RED (unit) — develop fe32fb87 ยังไม่แก้
+     × สินค้า 2 ชิ้น option "ขนาด" ค่า F 3 / L 2 → หัวเป็น "ขนาด" ไม่มี "(0)" 62ms
+     × เลือกค่าแล้ว หัวก็ไม่แสดงจำนวนค่าที่เลือก (ไม่ใช่จำนวนสินค้า) 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+- Expected
++ Received
+-   "ขนาด",
++   "ขนาด(0)",
+- Expected
++ Received
+-   "ขนาด",
+-   "สี",
++   "ขนาด(1)",
++   "สี(0)",
+      Tests  2 failed (2)
+
+## RED (e2e) — develop fe32fb87 + เพิ่มเฉพาะ data-testid=option-refinement-title (ยังไม่แก้ตัวเลข)
+  ✘  1 [chromium] › e2e/core-87-facet-heading.spec.ts:80:5 › AC-184: หัว facet "ขนาด" ไม่มี "(0)" และตัวเลข (ถ้ามี) = 2 (1.2s)
+    Expected pattern: /^ขนาด(\(2\))?$/
+    Received string:  "ขนาด(0)"
+    test-results/core-87-facet-heading-AC-1-d4859-ด-ไม่มี-0-และตัวเลข-ถ้ามี-2-chromium/test-failed-1.png
+  1 failed
+
+## GREEN (unit) src/core-87-facet-heading.test.ts
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+
+## GREEN (e2e chromium) e2e/core-87-facet-heading.spec.ts — backend :9201 / storefront :8201 (DB medusa_core87)
+  ✓  1 [chromium] › e2e/core-87-facet-heading.spec.ts:80:5 › AC-184: หัว facet "ขนาด" ไม่มี "(0)" และตัวเลข (ถ้ามี) = 2 (1.2s)
+  1 passed (3.3s)
+
+## Regression
+- vitest storefront ทั้งชุด: Test Files 114 passed, Tests 1413 passed
+- playwright --project=unit ทั้ง project: 145 passed
+- e2e/core-store.spec.ts (chromium): 3 passed
+- pnpm lint: ผ่าน; pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน

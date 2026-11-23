@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 
 import { APIRequestContext, Request } from "@playwright/test"
 
+import { AFFILIATE_RESERVED_CODE_MESSAGE } from "../src/lib/util/affiliate-register-error"
 import { createActiveAffiliate } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, Headers, adminHeaders, createCustomer, publishableKey } from "./support/medusa"
@@ -111,11 +112,13 @@ test("AF-8a: login → แท็บได้ค่าคอมตอนนี้
     await expectThai(page, ["affiliate-tab-earning", "affiliate-tab-upcoming"])
   })
 
-  await step("AC-35: X มีการ์ดเดียว 15% ของ P3 ยอดประมาณการ ฿148.50 และไม่มี 'สูงสุด'", async () => {
+  // AF-24 กฎ 48a: ประมาณการจากราคาก่อน VAT — round(990 / 1.07 × 15%, 2) = ฿138.79 (เดิม ฿148.50 จากราคารวม VAT)
+  await step("AC-35: X มีการ์ดเดียว 15% ของ P3 ยอดประมาณการ ฿138.79 (ก่อน VAT) และไม่มี 'สูงสุด'", async () => {
     const card = page.locator(`[data-testid="affiliate-product-card"][data-handle="${X}"]`)
     await expect(card).toHaveCount(1)
     await expect(card.getByTestId("affiliate-rate")).toContainText("15%")
-    await expect(card.getByTestId("affiliate-estimate")).toContainText("฿148.50")
+    await expect(card.getByTestId("affiliate-estimate")).toContainText("฿138.79")
+    await expect(card.getByTestId("affiliate-estimate-basis")).toHaveText(THAI)
     await expect(card.getByTestId("affiliate-program-name")).toHaveText(p3)
     await expect(card.getByTestId("affiliate-program-dates")).toBeVisible()
     await expect(card.getByTestId("affiliate-rate-varies")).toHaveCount(0)
@@ -209,7 +212,8 @@ test("AF-21: สมัครด้วยรหัสคำสงวน → ข�
     await register("admin")
     await expect(page.getByTestId("affiliate-register-error")).toBeVisible()
     await expectThai(page, ["affiliate-register-error"])
-    await expect(page.getByTestId("affiliate-register-error")).toHaveText(/คำสงวน/)
+    // CORE-84 (กฎข้อ 140): ข้อความของ code AFFILIATE_CODE_RESERVED (≠ fallback "สมัครไม่สำเร็จ…")
+    await expect(page.getByTestId("affiliate-register-error")).toHaveText(AFFILIATE_RESERVED_CODE_MESSAGE)
     await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate/login(\\?|$)`))
   })
 
@@ -288,7 +292,7 @@ for (const viewport of [
           await page.getByTestId(testId).fill(value)
         }
         await page.getByTestId("affiliate-register-submit").click()
-        await expect(page.getByTestId("affiliate-register-error")).toBeVisible()
+        await expect(page.getByTestId("affiliate-register-error")).toHaveText(AFFILIATE_RESERVED_CODE_MESSAGE)
         await expectThai(page, ["affiliate-register-error"])
         for (const [testId, value] of Object.entries(values)) {
           await expect(page.getByTestId(testId), testId).toHaveValue(value)

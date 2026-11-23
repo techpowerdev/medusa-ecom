@@ -1,4 +1,5 @@
 import { sdk } from "./client"
+import type { AllocateResult } from "./evoucher-allocate"
 import type { CodeStatus } from "./evoucher-status"
 
 export { CODE_STATUSES, type CodeStatus } from "./evoucher-status"
@@ -29,6 +30,8 @@ export type Pool = {
   low_stock_threshold: number
   partner: { id: string; name: string }
   code_counts: Record<CodeStatus, number>
+  // EV-20 (กฎข้อ 36c): จำนวน code ทุกสถานะ — 0 = pool ว่าง (ไม่ขึ้น low stock)
+  total_codes: number
   low_stock: boolean
 }
 
@@ -101,6 +104,9 @@ export const evoucherApi = {
   retrievePool: (id: string) => sdk.client.fetch<{ pool: Pool }>(`${BASE}/pools/${id}`),
   createPool: (body: PoolInput) =>
     sdk.client.fetch<{ pool: Pool }>(`${BASE}/pools`, { method: "POST", body }),
+  // EV-20/EV-21 (กฎข้อ 36–37): 400 `not_allowed` เมื่อมี code ถูกส่ง/จอง หรือมี reservation ค้าง
+  deletePool: (id: string) =>
+    sdk.client.fetch(`${BASE}/pools/${id}`, { method: "DELETE" }),
 
   importCodes: (poolId: string, file: File) => {
     const form = new FormData()
@@ -124,4 +130,7 @@ export const evoucherApi = {
     sdk.client.fetch<{ order_id: string; code_count: number }>(`${BASE}/orders/${orderId}/resend`, {
       method: "POST",
     }),
+  // EV-24 (กฎข้อ 40): Retry allocation ของ line ที่ backordered (route EV-23 กฎข้อ 39)
+  allocateOrder: (orderId: string) =>
+    sdk.client.fetch<AllocateResult>(`${BASE}/orders/${orderId}/allocate`, { method: "POST" }),
 }

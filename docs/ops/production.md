@@ -75,9 +75,14 @@ handshake (kernel ตอบแทน) คำสั่งจึงแค่ค้
 ## Alerts
 log ของ backend เป็น JSON บรรทัดละหนึ่ง object (`NODE_ENV` ที่ไม่ใช่ development) ผ่าน logger ใน `apps/backend/src/lib/json-logger.ts`
 (OPS-3, spec 07 AC-18) — format เดียวกับ logger ของ Medusa (`level`, `message`, `timestamp`, `stack` เมื่อมี error) และเพิ่ม field
-`worker_mode` (`server` / `worker` / `shared`) จาก env `MEDUSA_WORKER_MODE` ของ container นั้น `LOG_LEVEL`/`LOG_FILE` ใช้ได้ตามเดิม
+`worker_mode` (`server` / `worker` / `shared`) จาก env `MEDUSA_WORKER_MODE` ของ container นั้น — ยกเว้นคำสั่ง `medusa db:*` (service `migrate` ของ compose prod
+รวม process ลูกที่ Medusa fork) ได้ `worker_mode: "migrate"` เสมอ (OPS-31: `medusa db:migrate` ตั้ง `MEDUSA_WORKER_MODE=server` เองก่อนโหลด config) `LOG_LEVEL`/`LOG_FILE` ใช้ได้ตามเดิม
 access log ของ HTTP (`request_id`, `status`, `duration` — จาก header `x-request-id` หรือ uuid ที่ Medusa สร้าง) Medusa เขียนเองโดยไม่ผ่าน
 logger นี้ จึงไม่มี `worker_mode` (มีเฉพาะบน server อยู่แล้ว)
+access log ออกที่ระดับ `http` → ต้องใช้ `LOG_LEVEL=http` (ค่าเริ่มต้นของ `docker-compose.prod.yml` ตั้งแต่ OPS-30) หรือละเอียดกว่า (`debug`);
+ตั้ง `LOG_LEVEL=info` (หรือ `warn`/`error`) จะไม่มี access log เลย (OPS-M-06)
+Medusa ไม่เขียน access log ของ `/health` ทุกระดับ (healthcheck ของ compose/load balancer จึงไม่ท่วม log) — ทดสอบว่ามี access log ด้วย route อื่น
+เช่น `GET /admin/users/me` ไม่มี token (ได้ 401; CI ตรวจใน job `docker-worker-mode`)
 
 | alert | เงื่อนไข (ตั้งใน log shipper / log platform ที่ใช้) | ระดับ | ขั้นตอนตอบสนอง |
 |---|---|---|---|
@@ -143,7 +148,7 @@ endpoint สมัคร event ตามรายการด้านล่า�
    pnpm --filter backend check:go-live      # ใน image: npx medusa exec ./src/scripts/check-go-live.ts
    ```
    ตรวจ `NODE_ENV=production`, `ALLOW_TEST_PROVIDERS` ไม่มีค่า ("ไม่ตั้ง" กับ "ตั้งเป็นค่าว่าง" นับเหมือนกัน ตามข้อ 3), `STRIPE_API_KEY` ไม่ว่างและไม่ขึ้นต้นด้วย `sk_test_`/`rk_test_`,
-   และไม่มี region ใดเปิด `pp_system_default` — ไม่ผ่านข้อใดพิมพ์ `check:go-live FAIL ...` ทีละข้อและ exit code ≠ 0; ผ่านครบ exit 0
+   ไม่มี region ใดเปิด `pp_system_default` และ `datctype` ของ DB ไม่เป็น `C`/`POSIX` (ข้อ 10) — ไม่ผ่านข้อใดพิมพ์ `check:go-live FAIL ...` ทีละข้อและ exit code ≠ 0; ผ่านครบ exit 0
    (region ที่ seed สร้างก่อน OPS-7 หรือ admin เปิดเองยังมี `pp_system_default` → ปิดใน admin → Settings → Regions แล้วรันใหม่)
 5. ค่าส่ง placeholder (Q-F1 ใน `docs/spec/01-core-medusa.md` ยังไม่ตัดสิน): seed ตั้งราคา shipping option "Standard" และ return option "Standard return" จาก `shipping_rate` (`DEFAULT_REGION_STORE_POLICIES`) = 10 THB placeholder — owner ตัดสินค่าจริงแล้วแก้ใน admin ก่อนเปิดร้าน (ราคาของ shipping option "Standard" และ "Standard return" แก้ที่ Settings → Locations & Shipping → location → service zone → shipping option นั้น → Edit prices; `shipping_rate` ที่หน้า storefront แสดงแก้ที่ Settings → Regions → region นั้น → Metadata — แก้ทั้งสองที่ให้ตรงกัน)
 6. บัญชี Stripe (live) เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (spec 06 Q1 — owner ยังไม่ยืนยัน 2026-11-09; ระหว่างนี้ใช้ test mode) — ตรวจใน Stripe Dashboard → Settings → Payment methods ว่า PromptPay เป็น "On" ก่อนเปิดร้าน
@@ -153,6 +158,31 @@ endpoint สมัคร event ตามรายการด้านล่า�
    (2) จ่ายพร้อมเพย์ (confirm PI ใน test mode) → ได้ order `payment_status=captured`; (3) จ่ายบัตร `4242…` → ได้ order;
    (4) log ของ server/worker ไม่มี `An error occurred in constructWebhookEvent` และไม่มี `payment-webhook-orphan: skipped`;
    (5) Dashboard แสดง delivery ของ endpoint ตอบ 200
+9. admin และ store API เข้าผ่าน **HTTPS** เท่านั้น (spec 07 Deliverables ข้อ 11): `NODE_ENV=production` ตั้ง session cookie เป็น `Secure`
+   → request ที่ไม่ใช่ https ไม่ได้ `Set-Cookie` และ login admin ไม่ติด; terminate TLS ที่ reverse proxy/load balancer ชั้นเดียวได้
+   (Medusa ตั้ง `trust proxy` = 1) โดย proxy ต้องส่ง header `X-Forwarded-Proto: https` มาที่ server; ห้ามตั้ง `cookieOptions.secure: false`
+   ทดสอบแบบ prod-like ในเครื่อง (`docker-compose.prod.yml` หรือ `medusa start` ของ build production) ก็เช่นกัน: เข้าผ่าน tunnel/reverse proxy ที่มี TLS
+   หรือ proxy ที่ส่ง `X-Forwarded-Proto: https` — เปิด `http://localhost:9000` ตรง ๆ จะ login admin ไม่ได้ (OPS-M-12)
+10. Postgres ของ prod ต้องมี `LC_CTYPE` ที่ไม่ใช่ `C`/`POSIX` (เช่น `en_US.utf8` หรือ `th_TH.utf8`) — `pg_trgm` ทิ้งอักษรไทยเมื่อ `LC_CTYPE=C` ทำให้ค้นคำไทยกลางคำไม่เจอ (CORE-75); `check:go-live` ตรวจข้อนี้ให้อัตโนมัติ (`datctype` ของ DB ปัจจุบันเป็น `C`/`POSIX` → FAIL — OPS-33, owner ยืนยัน 2026-11-21) หรือตรวจเองด้วย:
+    `psql "$DATABASE_URL" -c "SELECT datname, datctype FROM pg_database WHERE datname = current_database();"` — เป็น `C` → สร้าง DB ใหม่ด้วย locale ที่ถูกแล้ว restore (ตั้งที่ `initdb`/`CREATE DATABASE … LC_CTYPE`)
+11. แปลงอีเมลเดิมเป็นตัวเล็กก่อนเปิดร้าน (บัญชีที่สร้างก่อนแปลงอีเมลจะ login ไม่ได้ — CORE-73/CORE-80; CORE-81) รันบน container ของ server หรือ worker:
+    ```bash
+    npx medusa exec ./src/scripts/lowercase-emails.ts          # dry-run: พิมพ์จำนวน + id ที่ต้องแปลงต่อตาราง ไม่แก้ข้อมูล
+    npx medusa exec ./src/scripts/lowercase-emails.ts apply    # แปลงผ่าน workflow (ล้มกลางทาง → คืนค่าเดิมครบ)
+    npx medusa exec ./src/scripts/lowercase-emails.ts          # ต้องได้ 0 แถวทุกตาราง
+    ```
+    ใช้คำ `apply` (ไม่มีขีด) — `medusa exec` ปฏิเสธ flag ที่ไม่รู้จัก (`--apply` → `Unknown argument`); แปลงเฉพาะ `customer.email`, `affiliate.email`
+    และ identity `emailpass` ที่ผูก customer/affiliate — identity ของแอดมินไม่แตะ (Q-C13 = ก); พิมพ์เฉพาะ id ไม่พิมพ์อีเมล
+    ถ้าพิมพ์ `ชน <ตาราง>: <id>, <id>` และ exit ≠ 0 = มีอีเมลที่ต่างกันแค่ตัวพิมพ์ภายใต้ unique เดิม (`provider_identity (entity_id, provider)`,
+    `customer (email, has_account)`, `affiliate.email`; identity ที่ soft-delete แล้วนับด้วยเพราะ index นี้ไม่ใช่ partial) — script ไม่แก้อะไรและไม่รวมบัญชีเอง: owner ตัดสินว่าเก็บบัญชีไหนแล้วแก้คู่ที่ชนด้วยมือก่อนรันใหม่;
+    apply ล้มด้วย `ชน unique index ระหว่าง apply` (มีคนสมัครแทรก) = workflow คืนค่าเดิมทุกตารางแล้ว — รัน dry-run ใหม่
+12. backfill ธง `evoucher_backordered` ของ order ก่อน EV-22 (badge backordered ใน admin ไม่ขึ้นถ้าไม่รัน — EV-25): ใน container ของ backend (`apps/backend`)
+    `npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts` (dry-run พิมพ์ order/line ที่จะแก้) →
+    `npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts apply` (log จำนวนก่อน/เขียน/หลัง — หลังต้องเป็น 0) → dry-run ซ้ำได้ `พบ 0 line`
+    (ใช้คำ `apply` ไม่ใช่ `--apply` — `medusa exec` เป็น yargs strict ปฏิเสธ option ที่ไม่รู้จักด้วย `Unknown argument`)
+13. log ของ prod ไม่มี PII: ยืนยันว่า image มี OPS-33 (redact ใน `json-logger.ts`) แล้วค้น log ของ log platform ด้วยอีเมลลูกค้าทดสอบที่จ่ายแล้วถูกคืนเงิน (บรรทัด `recreate a payment session`) — ต้องไม่พบ
+14. วัดเวลา `POST /store/search` (body เดียวกับ storefront, คำค้นไทย 2–3 คำ + คำว่าง) กับ catalog ขนาดจริงบน DB ของ prod/staging แล้วบันทึก p95 — ถ้าสินค้าเกิน ~10,000 รายการ
+    (หรือ p95 เกิน 300ms) ต้องเขียน ADR เรื่องวิธีค้นหา (index/ provider) ก่อนเปิดร้าน (qa #465 — `typo_tolerance` ใช้ similarity ของ `pg_trgm` ทั้งตาราง)
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
@@ -241,15 +271,48 @@ subscriber `apps/backend/src/subscribers/group-buy-payment-captured.ts` (GB-5, s
 payment มีอยู่ใน Medusa และผูกกับ draft order ของกลุ่มแล้ว จึง refund ผ่าน admin ของ Medusa ได้ (`POST /admin/payments/<payment_id>/refund` /
 ปุ่ม Refund ในหน้า order) — **ห้าม refund ใน Stripe dashboard** และห้ามใช้ script `refund-orphan-payment` (script ปฏิเสธ payment ที่ผูก order)
 ก่อน refund ทุกครั้งดู `refunds` จาก `GET /admin/payments/<payment_id>` ถ้า refund ครบแล้วข้ามขั้น refund
+- **order ที่ถูกยกเลิกแล้ว** (`reason=membership_cancelled`): route/ปุ่ม Refund ของ admin (`refundPaymentWorkflow`) คืนเงินที่ provider **ก่อน** แล้วจึงสร้าง credit line
+  ซึ่งล้มด้วย `throwIfOrderIsCancelled` — ถ้า route ตอบ error **ห้ามกดคืนซ้ำ** ให้ตรวจยอดคืนก่อนเสมอ: `refunds` ใน `GET /admin/payments/<payment_id>`
+  และ Refunds ของ PI ใน Stripe dashboard (ดูอย่างเดียว) ถ้ายอดคืนครบแล้วถือว่าคืนสำเร็จ บันทึกใน incident
 - `reason=convert_failed` — capture ครบแต่ `convertDraftOrderWorkflow` ล้ม (ส่วนใหญ่สต็อกไม่พอ ดู `error`) membership ยังเป็น `awaiting_payment`,
   order ยังเป็น draft และ job หมดเวลาจะไม่ยกเลิก (collection `completed`) ไม่มีการลองใหม่อัตโนมัติ
   1. เติมสต็อกได้ → เติมใน admin → Inventory แล้วแปลงด้วย Medusa admin: Draft Orders → order นั้น → Convert to order
      (`POST /admin/draft-orders/<order_id>/convert-to-order`) จากนั้นตรวจว่า order อยู่ใน Orders และ fulfill ตามปกติ — membership ของกลุ่มยังแสดง
      `awaiting_payment` (ยังไม่มีทางอัปเดตจาก admin — follow-up ใน spec 04) ให้จดใน incident
   2. เติมสต็อกไม่ได้ → refund เต็มจำนวนตามวิธีด้านบน ห้าม convert หลัง refund
-- `reason=membership_cancelled` — capture มาหลัง membership ถูกยกเลิก (หมดเวลาชำระ) order ถูกยกเลิกแล้วหรือกำลังถูกยกเลิก: ถ้า capture เกิดก่อน
-  `cancelOrderWorkflow` ทำงาน Medusa refund ให้เองแล้ว — ดู `refunds` ก่อน ถ้ายังไม่ refund ให้ refund เต็มจำนวนตามวิธีด้านบน ห้ามคืนสถานะ membership เอง
+- `reason=membership_cancelled` — capture มาหลัง membership ถูกยกเลิก (หมดเวลาชำระ) order ถูกยกเลิกแล้วหรือกำลังถูกยกเลิก
+  subscriber **คืนเงินอัตโนมัติก่อนส่ง alert** (GB-21, ADR-024 c — `refundPaymentsWorkflow` ของ Medusa ยอดคงเหลือ note `Refunded: group buy membership cancelled`)
+  และ alert มี `refund_result` ที่ตัดสินจาก `refunds` ที่อ่านใหม่หลังคืนเงิน ห้ามคืนสถานะ membership เอง
+  1. `refund_result=refunded` — ตรวจ `refunds` ใน `GET /admin/payments/<payment_id>` ว่ายอดคืนรวมเท่ายอดที่ capture (มี note ข้างบน) แล้วแจ้งลูกค้าและปิด incident ไม่ต้อง refund เพิ่ม
+  2. `refund_failed` (เช่น Stripe ล่ม — log warn `group-buy-refund` มีสาเหตุ) — ตรวจ `refunds` ก่อนเสมอ (เงินอาจถูกคืนไปแล้วบางส่วนหรือทั้งหมด)
+     แล้ว refund ยอดที่เหลือตามวิธีด้านบนและข้อ **order ที่ถูกยกเลิกแล้ว** (route อาจตอบ error ทั้งที่คืนเงินสำเร็จ)
+  3. ไม่มี `refund_result` ในเหตุนี้ = subscriber เวอร์ชันก่อน GB-21 — ทำแบบข้อ 2
 แล้วแจ้งลูกค้า (อีเมลของ order) ว่าแปลงเป็นคำสั่งซื้อแล้ว/คืนเงินแล้ว และบันทึก incident (membership, order, payment, จำนวนเงิน, `reason`, การดำเนินการ, ผู้ทำ)
+
+## log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ (OPS-32)
+ที่มา: `completeCartWorkflow` ล้ม**หลัง** Stripe ตัดเงินแล้ว (เช่น flash เกินสิทธิ์ `FLASH_LIMIT_EXCEEDED`, สินค้า/e-voucher หมด, step หลัง hook ล้ม) →
+Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็มจำนวนเอง (refund note "Refunded due to cart completion failure") แล้วสร้าง payment session
+ใหม่ด้วย `data` ของ session เดิม ซึ่ง Stripe ปฏิเสธ → Medusa เขียน log ระดับ error สองบรรทัด**ทั้งที่คืนเงินสำเร็จแล้ว** (ADR-025 บริบท):
+- `Encountered an error when trying to recreate a payment session - [object Object] - Error: An error occurred in InitiatePayment … Invalid string: {…}`
+  (ท้ายบรรทัดมีข้อมูล billing ของลูกค้า — อย่าแปะ log นี้ลง ticket/แชตสาธารณะ; หลัง OPS-33 ค่าเหล่านี้ถูกแทนด้วย `[REDACTED]`)
+- `Error was thrown trying to refund payment - <payment_id> - [object Object]`
+
+ก่อนสองบรรทัดนี้ backend เขียน warn หนึ่งบรรทัดขึ้นต้น `CART_COMPLETION_FAILED_AFTER_PAYMENT` (`apps/backend/src/workflows/hooks/paid-completion-failure.ts`)
+มี `cart_id`, `payment_session_id`, `payment_id` และ `code` (code ของ error เช่น `FLASH_LIMIT_EXCEEDED`; `STEP_AFTER_VALIDATE_FAILED` = step หลัง hook ล้ม
+ดู error ของ workflow ในบรรทัดถัดไป) ใช้บรรทัดนี้เป็นจุดเริ่มตรวจ ไม่ใช่สอง log ของ Medusa
+1. `GET /admin/payments/<payment_id>` (id จาก warn หรือจากบรรทัด `Error was thrown trying to refund payment`) → ดู `refunds`:
+   มี refund note "Refunded due to cart completion failure" และยอดรวมเท่ายอดที่ capture = คืนเงินสำเร็จ
+2. ยืนยันใน Stripe dashboard (ดูอย่างเดียว): หน้า PI ของ payment นี้ส่วน Refunds มี refund เต็มจำนวน
+3. **ห้าม refund ซ้ำด้วยมือ** (ทั้ง Stripe dashboard และ script `refund-orphan-payment`) เมื่อข้อ 1–2 ครบแล้ว — ปิดเป็น incident ระดับข้อมูล (cart, payment, code)
+   ลูกค้าเห็นรายการตัดเงินและคืนเงินคู่กันในบัตร/แอปธนาคาร
+4. ข้อ 1 ไม่มี refund หรือยอดไม่ครบ (refund ที่ provider ล้มจริง) → ทำตามหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)" กรณี "ไม่มี alert" ข้อ 3–4
+5. ถ้าไม่มี warn แต่มีสอง log ของ Medusa (เช่น backend เวอร์ชันก่อน OPS-32) ให้ทำข้อ 1–4 เช่นกัน; ลูกค้าที่จ่ายใหม่ใน cart เดิม → ADR-025 (PAY-9)
+6. ลูกค้าแจ้งว่า "หน้าบอกคืนเงินแล้วแต่ยังไม่เห็นในแอปธนาคาร": `FLASH_*`/สต็อกไม่พอล้ม**ก่อน** authorize ใน request ของ storefront จึงคืนเงินในเส้นทางของ webhook
+   (`processPaymentWorkflow` → complete ล้ม → compensation) — ข้อความ `checkout-refunded-notice` อาจขึ้นก่อน refund จริงไม่กี่วินาที (spec 03 กฎข้อ 29) ตรวจตามข้อ 1–2 อีกครั้งหลัง 1–2 นาที ก่อนทำข้อ 4
+7. หลัง PAY-9 (ADR-025) ลูกค้าที่จ่ายใหม่ใน cart เดิม: payment collection **เดิม** (ที่มี payment ถูกคืน) ถูกถอด link ออกจาก cart แล้ว**ไม่มีเจ้าของ** (ไม่ผูก cart/order — ไม่เห็นในหน้า order ของ admin)
+   หลักฐานการคืนเงินดูจาก payment/refund เท่านั้น: `GET /admin/payments/<payment_id>` (id จาก warn `CART_COMPLETION_FAILED_AFTER_PAYMENT`) → `refunds` และ `payment_collection_id`;
+   order ใหม่ของลูกค้ามีเฉพาะ collection ใหม่ (`payment_status=captured`) — ห้ามลบ collection เดิมหรือแก้ DB ตรง ห้าม refund ซ้ำ
+ตอน bump `@medusajs/*` ตรวจว่าสอง log นี้ยังเกิด (spec 07 checklist bump ข้อ 11; integration `complete-after-payment-log.spec.ts`) แล้วปรับหัวข้อนี้
 
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`

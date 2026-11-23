@@ -241,11 +241,12 @@ medusaIntegrationTestRunner({
         for (const n of sent) {
           expect(n.data).toEqual(
             expect.objectContaining({
-              pay_url: expect.stringContaining(`/account/orders/${n.resource_id}/pay`),
+              // GB-23 (กฎข้อ 47): ลิงก์ชำระเงินมี country code ของ storefront
+              pay_url: expect.stringMatching(new RegExp(`/th/account/orders/${n.resource_id}/pay$`)),
             })
           )
           const rendered = must(renderEmailTemplate("group-buy-succeeded", n.data!), "rendered email")
-          expect(rendered.html).toContain(`/account/orders/${n.resource_id}/pay`)
+          expect(rendered.html).toContain(`/th/account/orders/${n.resource_id}/pay`)
         }
       })
 

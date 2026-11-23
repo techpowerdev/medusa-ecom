@@ -1,0 +1,92 @@
+# CORE-83 — storefront จับ error กลุ่ม account/returns/auth ด้วย code (spec 01 กฎข้อ 140, AC-181 b, ADR-028)
+# วันที่ 2026-11-23 base origin/develop 0d2c3538
+
+## RED (ก่อนแก้โค้ด) — storefront vitest ไฟล์ที่เกี่ยวข้อง
+⎯⎯⎯⎯⎯⎯ Failed Tests 25 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  7 failed (7)
+      Tests  25 failed | 52 passed (77)
+FAIL  src/auth-errors-thai.test.ts > action login/register คืน error ไทยและคงอีเมล (CORE-4f) > register ด้วยอีเมลที่มีบัญชีแล้ว (รหัสผ่านไม่ตรง) → บอกเป็นไทยว่าอีเมลนี้มีบัญชีแล้ว
+FAIL  src/core-4h-auth-reason.test.ts > CORE-4h: reason ของ login และข้อความของ register (กฎข้อ 69a) > register ล้ม → คืนชื่อ/นามสกุล/เบอร์/อีเมลที่กรอกไว้ (กฎข้อ 69b)
+FAIL  src/core-73-register-existing-email.test.ts > CORE-73: signup ด้วยอีเมลที่มีบัญชีแล้ว (กฎข้อ 131) > มี customer อยู่แล้ว + รหัสถูก → ไม่ตั้ง cookie ไม่สร้าง customer และคืน email_exists พร้อมค่าที่กรอก
+FAIL  src/core-73-register-existing-email.test.ts > CORE-73: signup ด้วยอีเมลที่มีบัญชีแล้ว (กฎข้อ 131) > มีบัญชีแล้ว + รหัสผิด → ข้อความเดียวกัน (ไม่บอกว่ารหัสถูก/ผิด)
+FAIL  src/core-73-register-existing-email.test.ts > CORE-73: signup ด้วยอีเมลที่มีบัญชีแล้ว (กฎข้อ 131) > identity มีอยู่แต่ยังไม่มี customer (affiliate) → สร้าง customer และเข้าสู่ระบบตามเดิม (regression)
+FAIL  src/core-73-register-existing-email.test.ts > CORE-73 F-1: normalize อีเมลก่อนส่ง auth ของ Medusa > signup ด้วยตัวพิมพ์ใหญ่ของอีเมลลูกค้าเดิม → register/login ด้วยอีเมลตัวเล็ก และได้ email_exists
+FAIL  src/core-83-account-returns-codes.test.ts > ข้อยกเว้น IDENTITY_EXISTS ของ helper (Medusa core ไม่มี code) > 401 unauthorized + ข้อความของ auth-emailpass → true
+FAIL  src/core-83-account-returns-codes.test.ts > ข้อยกเว้น IDENTITY_EXISTS ของ helper (Medusa core ไม่มี code) > status/type/ข้อความต่าง หรือ FetchError ที่ไม่มี type → false
+FAIL  src/core-83-account-returns-codes.test.ts > medusaFetch: base URL ที่มี / ท้าย > http://backend.test/ → URL เดียวกับ sdk.client.fetch
+FAIL  src/core-83-account-returns-codes.test.ts > medusaFetch: base URL ที่มี / ท้าย > http://backend.test/medusa/ → URL เดียวกับ sdk.client.fetch
+FAIL  src/core-83-account-returns-codes.test.ts > static: กลุ่ม account/returns/auth ตัดสินจาก code (AC-181 b) > lib/data/customer.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message/statusText
+FAIL  src/core-83-account-returns-codes.test.ts > static: กลุ่ม account/returns/auth ตัดสินจาก code (AC-181 b) > lib/util/return-request.ts ไม่มีข้อความอังกฤษของ backend และไม่เทียบ message/statusText
+FAIL  src/core-83-account-returns-codes.test.ts > static: กลุ่ม account/returns/auth ตัดสินจาก code (AC-181 b) > ข้อยกเว้น Identity with email already exists อยู่ใน helper
+FAIL  src/core-83-account-returns-codes.test.ts > static: กลุ่ม account/returns/auth ตัดสินจาก code (AC-181 b) > register และ POST /store/returns ใช้ medusaFetch ไม่ใช่ SDK
+FAIL  src/return-request-action.test.ts > requestReturn เมื่อ backend ปฏิเสธ (CORE-20d) > 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และคืนค่าที่เลือกไว้
+FAIL  src/return-request-action.test.ts > requestReturn เมื่อ backend ปฏิเสธ (CORE-20d) > region ไม่ตั้ง return_window_days → ใช้ค่าเริ่มต้นแล้วส่งถึง backend (ไม่ปฏิเสธเอง)
+FAIL  src/return-request-action.test.ts > requestReturn เมื่อ location ไม่มีของ (CORE-71) > 400 RETURN_ITEM_NOT_STOCKED → contactStore + ข้อความไทยไม่มี ลองใหม่ และคืนค่าที่เลือก
+FAIL  src/return-request-action.test.ts > requestReturn เมื่อ location ไม่มีของ (CORE-71) > 400 RETURN_NO_LOCATION → contactStore + ข้อความไทยไม่มี ลองใหม่
+FAIL  src/return-window-contract.test.ts > contract: error code ของ POST /store/returns (CORE-20b) > map มีแค่ code + ข้อความไทย (ไม่มีข้อความอังกฤษของ backend)
+FAIL  src/return-window-contract.test.ts > contract: error ที่ให้ติดต่อร้าน (CORE-55 return-location.ts) > code ที่ storefront จับคู่ตรงกับ code ของ backend
+FAIL  src/return-window-contract.test.ts > contract: error ที่ให้ติดต่อร้าน (CORE-55 return-location.ts) > backend throw ด้วย code (อาร์กิวเมนต์ที่ 3 ของ MedusaError) ทั้งสองจุด
+FAIL  src/lib/util/return-request.test.ts > returnErrorMessage > ข้อความอังกฤษเดิมของ backend แต่ไม่มี code → fallback (ไม่เทียบข้อความแล้ว)
+FAIL  src/lib/util/return-request.test.ts > isReturnNotStockedError > 400 + RETURN_ITEM_NOT_STOCKED → true
+FAIL  src/lib/util/return-request.test.ts > isReturnNotStockedError > CORE-76 (กฎข้อ 134b): 400 + RETURN_NO_LOCATION → true
+FAIL  src/lib/util/return-request.test.ts > isReturnNotStockedError > error อื่น (code อื่น, ไม่มี code แม้ข้อความเดิม, 401, ไม่ใช่ object) → false
+
+## RED — backend unit return-location.unit.spec.ts
+  ● assignStoreReturnLocation › rejects 400 when any managed line in the body has no level at the location, and logs order/location (113c)
+Tests:       1 failed, 8 passed, 9 total
+
+## GREEN — storefront vitest ทั้งชุด
+ Test Files  116 passed (116)
+      Tests  1471 passed (1471)
+
+## GREEN — backend unit src/api/store/ownership
+PASS src/api/store/ownership/__tests__/return-location.unit.spec.ts
+PASS src/api/store/ownership/__tests__/return-lock.unit.spec.ts
+PASS src/api/store/ownership/__tests__/return-window.unit.spec.ts
+PASS src/api/store/ownership/__tests__/return-shipping-option.unit.spec.ts
+PASS src/api/store/ownership/__tests__/return-overrides.unit.spec.ts
+PASS src/api/store/ownership/__tests__/query-cart.unit.spec.ts
+Test Suites: 6 passed, 6 total
+Tests:       51 passed, 51 total
+
+## GREEN — storefront test:e2e:unit
+  151 passed (808ms)
+
+## typecheck/lint
+storefront typecheck: ok
+✖ 28 problems (0 errors, 28 warnings)
+backend typecheck: ok
+✖ 5 problems (0 errors, 5 warnings)
+
+## ไม่ได้รันในเครื่อง (CI รัน): integration-tests/http/store-returns-receive.spec.ts (เพิ่มตรวจ code RETURN_ITEM_NOT_STOCKED), e2e กับ backend จริง (qa)
+
+## แก้ตาม review/qa #517 (2026-11-23)
+### RED — e2e core-20d (backend จริง :9290 + storefront dev :8290) เพิ่ม assert expected ≠ fallback โดยยังสร้าง expected จากข้อความอังกฤษแบบเดิม
+  ✓  1 [chromium] › e2e/core-20d-return-window.spec.ts:147:5 › AC-102 (a): region ไม่ตั้ง return_window_days → ปุ่มขอคืน, หน้า /returns และ JSON-LD ใช้ค่าเริ่มต้นของ backend (4.0s)
+  ✓  2 [chromium] › e2e/core-20d-return-window.spec.ts:224:5 › AC-102 (b): line A ส่งเมื่อ window + 1 วันก่อน, line B ส่งเมื่อวาน → ฟอร์มเลือกได้เฉพาะ B และ backend ตอบ 200 (3.4s)
+  ✘  3 [chromium] › e2e/core-20d-return-window.spec.ts:287:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก (1.1s)
+    Error: ข้อความของ RETURN_WINDOW_EXPIRED ต้องไม่ใช่ fallback
+    Expected: not "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+    test-results/core-20d-return-window-AC--8392d-ฟอร์มคงจำนวน-เหตุผลที่เลือก-chromium/test-failed-1.png
+  1 failed
+  2 passed (9.1s)
+### GREEN — e2e core-20d + core-71 (expected สร้างจาก MedusaApiError code RETURN_WINDOW_EXPIRED)
+  ✓  2 [chromium] › e2e/core-20d-return-window.spec.ts:142:5 › AC-102 (a): region ไม่ตั้ง return_window_days → ปุ่มขอคืน, หน้า /returns และ JSON-LD ใช้ค่าเริ่มต้นของ backend (3.4s)
+  ✓  1 [chromium] › e2e/core-71-return-contact-store.spec.ts:62:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error location ไม่มีของ → เห็น return-contact-store (ไทย + ลิงก์ /contact) ไม่เห็น ลองใหม่ (4.0s)
+  ✓  4 [chromium] › e2e/core-71-return-contact-store.spec.ts:93:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error อื่น → ข้อความเดิม (return-error) ไม่มี return-contact-store (2.1s)
+  ✓  3 [chromium] › e2e/core-20d-return-window.spec.ts:219:5 › AC-102 (b): line A ส่งเมื่อ window + 1 วันก่อน, line B ส่งเมื่อวาน → ฟอร์มเลือกได้เฉพาะ B และ backend ตอบ 200 (3.1s)
+  ✓  5 [chromium] › e2e/core-20d-return-window.spec.ts:282:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก (1.6s)
+  5 passed (8.9s)
+### พิสูจน์ว่า test จับการตัดสินผิดได้ — ชั่วคราวเปลี่ยน code ใน RETURN_ERRORS เป็น RETURN_WINDOW_EXPIRED_BROKEN (คืนแล้ว)
+  ✘  1 [chromium] › e2e/core-20d-return-window.spec.ts:282:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก (95ms)
+    Error: ข้อความของ RETURN_WINDOW_EXPIRED ต้องไม่ใช่ fallback
+    Expected: not "ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+    test-results/core-20d-return-window-AC--8392d-ฟอร์มคงจำนวน-เหตุผลที่เลือก-chromium/test-failed-1.png
+  1 failed
+### RED nit — IDENTITY_EXISTS เทียบเท่ากัน: core-83 unit 1 failed | 11 passed ก่อนแก้ helper
+### GREEN — storefront vitest ทั้งชุด (node v22.23.3)
+ Test Files  116 passed (116)
+      Tests  1473 passed (1473)
+### GREEN — test:e2e:unit
+  151 passed (812ms)
+### typecheck/lint storefront: 0 error (28 warnings เดิม); backend ไม่ได้แก้ในรอบนี้

@@ -9,6 +9,8 @@ import { pageOutOfRange } from "@lib/util/affiliate-portal"
 // หน้าเกินจำนวนของ Programs/Payouts
 const fetchMock = vi.fn()
 vi.mock("@lib/config", () => ({ sdk: { client: { fetch: (...a: unknown[]) => fetchMock(...a) } } }))
+// CORE-84: medusa-fetch (server-only) ถูก import โดย data function ของ affiliate/group buy — test นี้ไม่เรียก
+vi.mock("@lib/data/medusa-fetch", () => ({ medusaFetch: vi.fn() }))
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name === "_affiliate_jwt" ? { value: "tok" } : undefined) }),
 }))

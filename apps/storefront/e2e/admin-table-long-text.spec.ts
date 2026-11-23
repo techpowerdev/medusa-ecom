@@ -26,6 +26,8 @@ type Step = (title: string, body: () => Promise<void>) => Promise<void>
 
 /** ชื่อยาว 370 ตัวอักษร ไทยปนอังกฤษ — หลัง run tag เป็นช่วงไม่มีช่องว่างยาว ≥ 100 ตัว (ตัดบรรทัดไม่ได้) */
 const longName = (run: string) => `${run} ${"ชื่อยาวมากLongName".repeat(30)}`.slice(0, 370)
+/** reference ของ payout ≥ 300 ตัวอักษร ไทยปนอังกฤษ (ADM-37, ADM-41) */
+const longReference = (run: string) => `${run} ${"เลขอ้างอิงยาวLongReference".repeat(20)}`.slice(0, 320)
 /** ชื่อสั้น ≤ 20 ตัวอักษร (ไม่ถูกตัด) */
 const shortName = () => `S-${Math.random().toString(36).slice(2, 10)}`
 
@@ -259,8 +261,6 @@ test("AC-40a: affiliate programs — ชื่อยาวไม่ดันป�
 test.describe("ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ", () => {
   test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-37" } })
 
-  /** reference ของ payout ≥ 300 ตัวอักษร ไทยปนอังกฤษ */
-  const longReference = (run: string) => `${run} ${"เลขอ้างอิงยาวLongReference".repeat(20)}`.slice(0, 320)
   const AFFILIATE_PREFIX = { prefix: "adm37", code: "a37" }
 
   /** แถวข้อความยาว: เนื้อหาทุก cell ข้อความ ≤ 250px และถูกตัดจริง, ปุ่ม `…` ในจอโดยไม่เลื่อนแนวนอน */
@@ -475,4 +475,135 @@ test.describe("ADM-38: Ledger คอลัมน์ Affiliate ≤ 250px ทุ�
       }
     })
   })
+})
+
+// ADM-41 (spec 08 AC-46, กฎ 45): ตาราง Payouts ทั้งตารางไม่ล้นแนวนอนที่ 1280 และ 1440 (การทดสอบ manual เฟส 8: ตารางกว้าง 1417px
+// ต้องเลื่อนในตาราง) — ADM-37 จำกัดเฉพาะคอลัมน์ Affiliate/Reference แต่ผลรวมของทุกคอลัมน์ยังเกินกล่อง
+// วัดที่กล่องเลื่อนของ `DataTable` (div `overflow-auto` ภายใน wrapper `affiliate-payouts-table`) ด้วย: wrapper เองอยู่ใต้ div
+// `overflow-hidden` ของ DataTable จึง `scrollWidth` เท่ากับ `clientWidth` เสมอ (assert อย่างเดียวจะผ่านแม้ตารางล้น)
+
+/** scrollWidth/clientWidth ของ wrapper และของกล่องเลื่อนตัวแรกระหว่าง table กับ wrapper */
+const overflowOf = (wrapper: Locator) =>
+  wrapper.evaluate((el) => {
+    let box: HTMLElement | null = el.querySelector("table")
+    for (box = box?.parentElement ?? null; box && box !== el; box = box.parentElement) {
+      if (["auto", "scroll"].includes(getComputedStyle(box).overflowX)) break
+    }
+    const scroller = box && box !== el ? box : null
+    return {
+      wrapper: { scrollWidth: el.scrollWidth, clientWidth: el.clientWidth },
+      scroller: scroller ? { scrollWidth: scroller.scrollWidth, clientWidth: scroller.clientWidth } : null,
+      table: el.querySelector("table")?.getBoundingClientRect().width ?? -1,
+    }
+  })
+
+type Viewport = { width: number; height: number }
+
+/**
+ * payout draft ของ affiliate ชื่อยาวที่ `viewport`: ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม (AC-46)
+ * `affiliateCell` (ถ้ามี) ตรวจความกว้างของ cell Affiliate เพิ่ม (AC-50) ก่อนตรวจ tooltip — ข้อมูลของ run ใช้ prefix/code ต่อ task (กฎ 42f)
+ */
+async function expectPayoutsFit(
+  { page, request, step, evidence }: { page: Page; request: APIRequestContext; step: Step; evidence: (name: string) => Promise<void> },
+  viewport: Viewport,
+  { prefix, code, affiliateCell: checkAffiliateCell }: { prefix: string; code: string; affiliateCell?: (cell: Locator) => Promise<void> },
+) {
+  const admin = await adminHeaders(request)
+  const affiliate = await createLongAffiliate(request, admin, { prefix, code })
+  // แถวที่ใกล้ข้อมูลจริง: reference ยาว (ถูกตัดที่ maxSize), period หลายวัน, id ยาวเท่า id จริง — draft เพื่อให้มีปุ่ม … (กฎ 10)
+  const ids = await insertDraftPayouts(affiliate.id, 1, new Date(), { reference: longReference(tag(prefix)), periodDays: 45 })
+  try {
+    await loginAdmin(page)
+    await openTableAt(page, request, admin, PAYOUTS, ids[0])
+    const table = page.getByTestId(PAYOUTS.testid)
+    const row = table.locator("tbody tr", { hasText: ids[0] })
+    const affiliateCell = row.locator("td").filter({ has: page.getByTestId("affiliate-row-affiliate") })
+    // รอชื่อโหลด (ก่อนโหลดแสดง affiliate_id) — ความกว้างวัดหลังข้อความจริงอยู่ใน cell
+    await expect(affiliateCell).toContainText(affiliate.name, { timeout: 30_000 })
+
+    await step("ตาราง Payouts ไม่ล้นแนวนอน (scrollWidth ≤ clientWidth + 1)", async () => {
+      const o = await overflowOf(table)
+      expect(o.scroller, "กล่องเลื่อนของ DataTable ภายใน wrapper").not.toBeNull()
+      expect(o.wrapper.scrollWidth, `wrapper ${JSON.stringify(o)}`).toBeLessThanOrEqual(o.wrapper.clientWidth + 1)
+      expect(o.scroller!.scrollWidth, `กล่องเลื่อน ${JSON.stringify(o)}`).toBeLessThanOrEqual(o.scroller!.clientWidth + 1)
+      expect(await tableScrollLeft(table)).toBe(0)
+    })
+
+    await step("ปุ่ม … ของทุกแถวอยู่ในจอแนวนอน", async () => {
+      const buttons = table.getByTestId(PAYOUTS.trigger!)
+      // อย่างน้อยแถวของ test นี้ (draft) — กัน vacuous
+      expect(await buttons.count()).toBeGreaterThanOrEqual(1)
+      for (const button of await buttons.all()) {
+        const box = await button.boundingBox()
+        expect(box, "boundingBox ของปุ่ม …").not.toBeNull()
+        expect(box!.x).toBeGreaterThanOrEqual(0)
+        expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width)
+      }
+    })
+
+    if (checkAffiliateCell) await checkAffiliateCell(affiliateCell)
+
+    await step("hover cell Affiliate ที่ถูกตัด → tooltip ของ TruncatedCell แสดงชื่อเต็ม", async () => {
+      await row.locator("td").first().evaluate((td) => td.scrollIntoView({ block: "center", inline: "start" }))
+      const metrics = await cellMetrics(affiliateCell)
+      // ข้อความถูกตัดจริง (กัน tooltip ไม่ขึ้นเพราะชื่อไม่ยาวพอ)
+      expect(metrics.scrollWidth, "cell Affiliate ถูกตัด").toBeGreaterThan(metrics.clientWidth)
+      const tooltip = page.getByRole("tooltip").filter({ hasText: affiliate.name })
+      await affiliateCell.locator(".truncate").first().hover()
+      await expect(tooltip).toBeVisible()
+      await expect(tooltip).toHaveText(`${affiliate.name} ${affiliate.email}`)
+    })
+    await evidence(`01-payouts-fit-${viewport.width}`)
+  } finally {
+    await deleteAllThenExpectOk(request, admin, ids.map((id) => `/admin/affiliate/payouts/${id}`))
+  }
+}
+
+test.describe("ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440", () => {
+  test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-41" } })
+
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    test.describe(`${viewport.width}×${viewport.height}`, () => {
+      test.use({ viewport })
+
+      test(`AC-46: payouts ${viewport.width} — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม`, async ({ page, request, step, evidence }) => {
+        test.setTimeout(120_000)
+        await expectPayoutsFit({ page, request, step, evidence }, viewport, { prefix: "adm41", code: "a41" })
+      })
+    })
+  }
+})
+
+// ADM-45 (spec 08 AC-50, กฎ 49): คอลัมน์ Affiliate ของ Payouts ที่ ADM-41 ลดเหลือเนื้อหา 126px ทุกจอ (qa ADM-41: เห็นชื่อ ~15 ตัวแม้จอใหญ่)
+// → ที่ 1920 เนื้อหา cell กว้าง 240–250.5px (เพดานกฎ 41) ขณะที่ 1280/1440 ยังไม่ล้น (กฎ 45) และ tooltip ยังแสดงชื่อเต็ม
+test.describe("ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่", () => {
+  test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-45" } })
+  const WIDE_MIN = 240
+
+  for (const viewport of [
+    { width: 1920, height: 1080 },
+    { width: 1440, height: 900 },
+    { width: 1280, height: 800 },
+  ]) {
+    test.describe(`${viewport.width}×${viewport.height}`, () => {
+      test.use({ viewport })
+
+      test(`AC-50: payouts ${viewport.width} — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม`, async ({ page, request, step, evidence }) => {
+        test.setTimeout(120_000)
+        await expectPayoutsFit({ page, request, step, evidence }, viewport, {
+          prefix: "adm45",
+          code: "a45",
+          affiliateCell: (cell) =>
+            step(`เนื้อหา cell Affiliate ${viewport.width >= 1920 ? `∈ [${WIDE_MIN}, 250.5]` : "≤ 250.5"}px`, async () => {
+              const { content } = await cellMetrics(cell)
+              expect(content, "เนื้อหา cell Affiliate (ไม่รวม padding)").toBeLessThanOrEqual(CONTENT_MAX + 0.5)
+              if (viewport.width >= 1920) expect(content, "เนื้อหา cell Affiliate ที่ 1920").toBeGreaterThanOrEqual(WIDE_MIN)
+            }),
+        })
+      })
+    })
+  }
 })

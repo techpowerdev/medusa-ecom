@@ -1,0 +1,38 @@
+# GB-25 — ล็อก promotion GB-<token> ของกลุ่ม (spec 04 กฎข้อ 48, AC-67, ADR-026)
+# 2026-11-21 base origin/develop f1d5888f
+
+## RED — integration-tests/http/group-buy-promotion-lock.spec.ts ก่อนเพิ่ม middleware (develop)
+      ✕ (a) POST /admin/promotions/:id → 400 locked และค่าเดิมไม่เปลี่ยน (1106 ms)
+      ✕ (b) rules/batch, target-rules/batch, buy-rules/batch และ DELETE → 400 และ promotion ยังอยู่ (765 ms)
+      ✓ (c)(d) ต้นแบบ GBT-* แก้ได้ และกลุ่มใหม่ได้ส่วนลดใหม่ กลุ่มเดิมคงเดิม (Q5) (358 ms)
+      ✓ (c) promotion ปกติแก้และลบได้ (200) (395 ms)
+      ✓ (e) ลบแคมเปญ draft ยังสำเร็จ (regression) (322 ms)
+      ✕ (f) ถอด promotion GB-* ออกจาก campaign → 400; แก้/ลบ campaign ของแคมเปญ group buy active → 400 (335 ms)
+      ✓ (f) campaign ของแคมเปญ group buy draft และ campaign ที่ไม่เกี่ยว → 200 (303 ms)
+  ●  › promotion GB-<token> ของกลุ่ม › (a) POST /admin/promotions/:id → 400 locked และค่าเดิมไม่เปลี่ยน
+    Expected: 400
+    Received: 200
+  ●  › promotion GB-<token> ของกลุ่ม › (b) rules/batch, target-rules/batch, buy-rules/batch และ DELETE → 400 และ promotion ยังอยู่
+    Expected: 400
+    Received: 200
+  ●  › campaign ของ Medusa › (f) ถอด promotion GB-* ออกจาก campaign → 400; แก้/ลบ campaign ของแคมเปญ group buy active → 400
+    Expected: 400
+    Received: 200
+Tests:       3 failed, 4 passed, 7 total
+
+## GREEN — integration-tests/http/group-buy-promotion-lock.spec.ts หลังเพิ่ม middleware
+      ✓ (a) POST /admin/promotions/:id → 400 locked และค่าเดิมไม่เปลี่ยน (611 ms)
+      ✓ (b) rules/batch, target-rules/batch, buy-rules/batch และ DELETE → 400 และ promotion ยังอยู่ (722 ms)
+      ✓ (c)(d) ต้นแบบ GBT-* แก้ได้ และกลุ่มใหม่ได้ส่วนลดใหม่ กลุ่มเดิมคงเดิม (Q5) (479 ms)
+      ✓ (c) promotion ปกติแก้และลบได้ (200) (341 ms)
+      ✓ (e) ลบแคมเปญ draft ยังสำเร็จ (regression) (330 ms)
+      ✓ (f) ถอด promotion GB-* ออกจาก campaign → 400; แก้/ลบ campaign ของแคมเปญ group buy active → 400 (312 ms)
+      ✓ (f) campaign ของแคมเปญ group buy draft และ campaign ที่ไม่เกี่ยว → 200 (317 ms)
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+
+## unit — pnpm --filter backend test:unit (รวม src/api/admin/promotions/__tests__/group-buy-lock.unit.spec.ts 16 เคส)
+Test Suites: 121 passed, 121 total
+Tests:       1669 passed, 1669 total
+
+## lint + typecheck: ผ่าน (0 errors); backend build ผ่าน; storefront test:e2e:unit 127 passed

@@ -72,7 +72,8 @@ export const affiliateKeys = {
 
 export const listAffiliateResource = <K extends string, T>(
   resource: K,
-  query: { limit: number; offset: number },
+  // ADM-40: q รองรับเฉพาะ affiliates (ADM-17)
+  query: { limit: number; offset: number; q?: string },
 ) =>
   sdk.client.fetch<ListResponse<K, T>>(`/admin/affiliate/${resource}`, {
     query,

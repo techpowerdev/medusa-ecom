@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const fetchMock = vi.fn()
 
 vi.mock("@lib/config", () => ({ sdk: { client: { fetch: (...a: unknown[]) => fetchMock(...a) } } }))
+// CORE-84: medusa-fetch (server-only) ถูก import โดย data function ของ affiliate/group buy — test นี้ไม่เรียก
+vi.mock("@lib/data/medusa-fetch", () => ({ medusaFetch: vi.fn() }))
 vi.mock("@lib/data/cookies", () => ({ getAuthHeaders: async () => ({ authorization: "Bearer t" }) }))
 
 const THAI = /[฀-๿]/

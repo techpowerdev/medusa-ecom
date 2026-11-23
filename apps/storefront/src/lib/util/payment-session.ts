@@ -22,6 +22,12 @@ export function paymentSessionData(providerId: string): Record<string, unknown> 
   return undefined
 }
 
+/**
+ * PAY-14 (spec 06 กฎข้อ 16 a): PaymentIntent ที่จบแล้ว (ชำระแล้ว/ถูกยกเลิก — เช่น session ชั่วคราวระหว่าง compensation) → ห้าม mount
+ * Elements กับ PI นั้น ใช้ตัดสินแค่ "ห้าม mount" ไม่ตัดสินเรื่องเงิน (PI ที่ถูกคืนเงินยังเป็น `succeeded`) — backend ตัดสินตอนสร้าง session ใหม่
+ */
+export const intentIsTerminal = (status?: string) => status === "succeeded" || status === "canceled"
+
 /** หมดอายุ 10 นาทีนับจากเวลาสร้าง PaymentIntent (`created` เป็นวินาที) — reload หน้าไม่ยืดเวลา */
 export const promptPayDeadline = (intentCreatedSec: number) =>
   intentCreatedSec * 1000 + PROMPTPAY_TIMEOUT_MS
@@ -83,6 +89,8 @@ export function promptPayPollState(cart: PollableCart): PromptPayPollState {
 
 /** code ของ guard ฝั่ง backend (spec 06 กฎข้อ 7A): session เดิมชำระแล้ว ไม่ถูกลบ */
 export const PAYMENT_ALREADY_COMPLETED = "PAYMENT_ALREADY_COMPLETED"
+/** PAY-9 (spec 06 กฎข้อ 11, ADR-025): collection ของ cart ถูกคืนเงินครบ backend ถอด link แล้ว → สร้าง collection ใหม่แล้วลองซ้ำ 1 ครั้ง */
+export const PAYMENT_COLLECTION_RESET = "PAYMENT_COLLECTION_RESET"
 
 /**
  * ผลของการสร้าง session ใหม่ตอน QR หมดอายุที่ไม่สำเร็จ: 409 + code `PAYMENT_ALREADY_COMPLETED` = ชำระแล้ว → poll ต่อและ complete cart

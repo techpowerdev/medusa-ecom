@@ -1,10 +1,12 @@
 "use server"
 
-import { MEDUSA_BACKEND_URL, sdk } from "@lib/config"
+import { sdk } from "@lib/config"
+import { MedusaApiError } from "@lib/util/medusa-api-error"
 import { paymentSessionData } from "@lib/util/payment-session"
-import { PaymentSessionResult, paymentSessionResult } from "@lib/util/action-result"
+import { OrderPaySessionResult, orderPaySessionResult } from "@lib/util/order-pay"
 import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
+import { medusaFetch } from "./medusa-fetch"
 import { HttpTypes } from "@medusajs/types"
 
 export const listCartPaymentMethods = async (regionId: string) => {
@@ -40,35 +42,30 @@ export const listCartPaymentMethods = async (regionId: string) => {
 
 /**
  * PAY-6b/PAY-3b (spec 06 กฎข้อ 7A, 9): สร้าง session ด้วย `POST /store/payment-collections/:id/payment-sessions` ของ Medusa
- * คืน `status` (0 = network error) + `code` แทนการ throw — FetchError ของ js-sdk เก็บแค่ message และ error ของ server action
- * ถูกซ่อนข้อความใน production จึงอ่าน `code` ของ 409 ไม่ได้ (เหตุผลที่ใช้ fetch ตรงแทน sdk)
+ * คืน `status` (0 = network error) + `code` แทนการ throw — error ของ server action ถูกซ่อนข้อความใน production
+ * CORE-82 (spec 01 กฎข้อ 140, ADR-028): ผ่าน `medusaFetch` (FetchError ของ js-sdk ไม่เก็บ `code` ของ 409)
  */
 export async function createPaymentSession(
   collectionId: string,
   providerId: string
 ): Promise<{ status: number; code: string | null }> {
-  const res = await fetch(`${MEDUSA_BACKEND_URL}/store/payment-collections/${collectionId}/payment-sessions`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
-      ...(await getAuthHeaders()),
-    },
+  try {
     // กฎข้อ 5: provider บัตรขอ PaymentIntent แบบ card เท่านั้น
-    body: JSON.stringify({ provider_id: providerId, data: paymentSessionData(providerId) }),
-    // CORE-4i-b: ไม่ตั้ง `cache: "no-store"` — POST ไม่ถูก cache อยู่แล้ว และเมื่อใช้ใน action ของ checkout (initiatePaymentSession)
-    // cart ที่ render หลัง action ยังเป็นค่าก่อนสร้าง session แม้ revalidateTag แล้ว (e2e core-19b / thai-ui-checkout บน prod build)
-  }).catch(() => null)
-  if (!res) return { status: 0, code: null }
-  const body = res.ok ? null : await res.json().catch(() => null)
-  const code = typeof body?.code === "string" ? body.code : null
-  return { status: res.status, code }
+    await medusaFetch(`/store/payment-collections/${collectionId}/payment-sessions`, {
+      provider_id: providerId,
+      data: paymentSessionData(providerId),
+    })
+    return { status: 200, code: null }
+  } catch (error) {
+    return error instanceof MedusaApiError ? { status: error.status, code: error.code } : { status: 0, code: null }
+  }
 }
 
 /**
  * CORE-4i-b (spec 01 กฎข้อ 72, Q-C2 = (ก)): action ที่หน้า `/account/orders/:id/pay` เรียก — ผลของ `createPaymentSession`
  * ผ่าน helper กลาง รูปแบบเดียวกับ `initiatePaymentSession` ของ checkout (`{ ok: true } | { error }`)
  */
-export async function startPaymentSession(collectionId: string, providerId: string): Promise<PaymentSessionResult> {
-  return paymentSessionResult(await createPaymentSession(collectionId, providerId))
+export async function startPaymentSession(collectionId: string, providerId: string): Promise<OrderPaySessionResult> {
+  // GB-22 (spec 04 กฎข้อ 45a): + 400 `GB_PAYMENT_CLOSED` ของ guard GB-20
+  return orderPaySessionResult(await createPaymentSession(collectionId, providerId))
 }

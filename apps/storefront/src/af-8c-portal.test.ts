@@ -7,6 +7,8 @@ import type { PortalProduct } from "@lib/data/affiliate-portal"
 // AF-8c (spec 05 กฎ 35, 36, AC-41): การ์ด rate_varies ไม่แสดงยอดประมาณการ และ backend ล่ม → affiliate-portal-error
 const fetchMock = vi.fn()
 vi.mock("@lib/config", () => ({ sdk: { client: { fetch: (...a: unknown[]) => fetchMock(...a) } } }))
+// CORE-84: medusa-fetch (server-only) ถูก import โดย data function ของ affiliate/group buy — test นี้ไม่เรียก
+vi.mock("@lib/data/medusa-fetch", () => ({ medusaFetch: vi.fn() }))
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name === "_affiliate_jwt" ? { value: "tok" } : undefined) }),
 }))
@@ -38,6 +40,8 @@ const item = (rate_varies: boolean, amounts: number[]): PortalProduct => ({
     commission_value: 10,
   },
   rate_varies,
+  // AF-24: ยอดประมาณการมาจาก API (ราคาต่ำสุด 100 × 10%)
+  estimate: rate_varies ? null : { amount: 10, currency_code: "thb", excludes_tax: true },
   share_url: "https://shop.test/r/ANN?p=shirt",
 })
 

@@ -12,7 +12,7 @@ import { useSubmitOnce } from "@lib/hooks/use-submit-once"
 import { STORE_NAME } from "@lib/store-content"
 
 type Props = {
-  setCurrentView: (view: LOGIN_VIEW) => void
+  setCurrentView: (view: LOGIN_VIEW, email?: string) => void
 }
 
 const Register = ({ setCurrentView }: Props) => {
@@ -20,6 +20,8 @@ const Register = ({ setCurrentView }: Props) => {
   const onSubmit = useSubmitOnce(isPending)
   // CORE-4h (กฎข้อ 69b): สมัครล้มแล้วคงชื่อ/นามสกุล/เบอร์ (React 19 reset ฟอร์มกลับเป็น defaultValue หลัง action)
   const fields = message?.state === "error" ? message.fields : undefined
+  // CORE-73 (กฎข้อ 131): อีเมลมีบัญชีแล้ว (รหัสถูกหรือผิด) → ไม่ login ให้ แสดงลิงก์ไปฟอร์มเข้าสู่ระบบแทน error ทั่วไป
+  const emailExists = message?.state === "error" && message.reason === "email_exists"
 
   return (
     <div
@@ -87,10 +89,35 @@ const Register = ({ setCurrentView }: Props) => {
             data-testid="password-input"
           />
         </div>
-        <ErrorMessage
-          error={message?.state === "error" ? message.error : null}
-          data-testid="register-error"
-        />
+        {emailExists ? (
+          <div
+            className="pt-2 text-rose-500 text-small-regular"
+            data-testid="register-email-exists"
+          >
+            <span>{message.error}</span>{" "}
+            <button
+              type="button"
+              onClick={(e) => {
+                // CORE-79 (กฎข้อ 137): ส่งอีเมลที่อยู่ในช่องตอนกด (ผู้ใช้อาจแก้หลังส่งฟอร์ม) ไปเติมในฟอร์ม login
+                const email = e.currentTarget.form?.elements.namedItem("email")
+                setCurrentView(
+                  LOGIN_VIEW.SIGN_IN,
+                  email instanceof HTMLInputElement ? email.value : undefined
+                )
+              }}
+              // CORE-79 (กฎข้อ 137): พื้นที่แตะ ≥ 44×44px บนมือถือ
+              className="underline inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-2"
+              data-testid="register-login-link"
+            >
+              เข้าสู่ระบบ
+            </button>
+          </div>
+        ) : (
+          <ErrorMessage
+            error={message?.state === "error" ? message.error : null}
+            data-testid="register-error"
+          />
+        )}
         <span className="text-center text-ui-fg-base text-small-regular mt-6">
           การสร้างบัญชีกับ {STORE_NAME} ถือว่าคุณยอมรับ{" "}
           <LocalizedClientLink

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import { FetchError } from "@medusajs/js-sdk"
+import { MedusaApiError } from "@lib/util/medusa-api-error"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -39,6 +39,8 @@ vi.mock("@lib/data/cookies", () => ({
   removeCartId: vi.fn(),
   setCartId: vi.fn(),
 }))
+// CORE-82 (กฎข้อ 140, ADR-028): mutation ที่ตัดสินจาก code เรียก Store API ผ่าน medusaFetch (path, body)
+vi.mock("@lib/data/medusa-fetch", () => ({ medusaFetch: (...a: unknown[]) => complete(...a) }))
 vi.mock("@lib/data/regions", () => ({ getRegion: vi.fn() }))
 vi.mock("@lib/data/locale-actions", () => ({ getLocale: vi.fn().mockResolvedValue(null) }))
 vi.mock("@lib/data/affiliate", () => ({ syncCartAffiliateToken: vi.fn() }))
@@ -142,8 +144,9 @@ describe("setAddresses: ช่องบังคับที่เป็นช�
 })
 
 describe("placeOrder บน cart ที่ไม่มี item (กฎข้อ 110a)", () => {
-  // Medusa 2.22.1 `validateCartItemsStep` (core-flows/dist/cart/steps/validate-cart-items.js)
-  const empty = () => new FetchError("Cannot complete a cart with no items", "Bad Request", 400)
+  // Medusa 2.22.1 `validateCartItemsStep` (core-flows/dist/cart/steps/validate-cart-items.js) — ไม่มี code (ข้อยกเว้นของ ADR-028)
+  const empty = () =>
+    new MedusaApiError({ status: 400, type: "invalid_data", message: "Cannot complete a cart with no items" })
   const place = async (countryCode?: string) =>
     (await import("@lib/data/cart")).placeOrder("cart_1", undefined, countryCode)
 
@@ -157,9 +160,11 @@ describe("placeOrder บน cart ที่ไม่มี item (กฎข้อ 
     await expect(place("//example.org")).rejects.toThrow("REDIRECT /cart")
   })
 
-  it("400 อื่น → ยังคืน { error: \"failed\" }", async () => {
-    complete.mockRejectedValueOnce(new FetchError("Payment sessions are required", "Bad Request", 400))
-    await expect(place("th")).resolves.toEqual({ error: "failed" })
+  it("400 อื่น → ยังคืน { kind: \"failed\" }", async () => {
+    complete.mockRejectedValueOnce(
+      new MedusaApiError({ status: 400, type: "invalid_data", message: "Payment sessions are required" })
+    )
+    await expect(place("th")).resolves.toEqual({ kind: "failed" })
     expect(redirect).not.toHaveBeenCalled()
   })
 })
@@ -205,12 +210,12 @@ describe("หน้า /cart อ่าน cart แบบ fresh (กฎข้อ 
     vi.resetModules()
     vi.doMock("@lib/data/cart", () => ({ retrieveCart: (...a: unknown[]) => retrieveCartData(...a) }))
     vi.doMock("@lib/data/customer", () => ({ retrieveCustomer: vi.fn().mockResolvedValue(null) }))
-    vi.doMock("@lib/data/flash-sales", () => ({ getCartFlashExceeded: vi.fn().mockResolvedValue({}) }))
+    vi.doMock("@lib/data/flash-sales", () => ({ getCartFlashChecks: vi.fn().mockResolvedValue({ remaining: {}, customerLimit: {} }) }))
     vi.doMock("@modules/cart/templates", () => ({ default: () => null }))
     retrieveCartData.mockResolvedValue({ id: "cart_1", items: [] })
     const { default: Cart } = await import("./app/[countryCode]/(main)/cart/page")
 
-    await Cart()
+    await Cart({ searchParams: Promise.resolve({}) })
 
     expect(retrieveCartData).toHaveBeenCalledWith(undefined, undefined, { fresh: true })
   })

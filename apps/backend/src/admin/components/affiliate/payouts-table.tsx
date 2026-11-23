@@ -136,41 +136,53 @@ export const PayoutsTable = () => {
       actionsColumn,
       // ตำแหน่ง (AF-14): ชื่อ/อีเมล affiliate ถัดจากปุ่ม เพื่อให้อยู่ในจอที่ 1280px
       //
-      // ความกว้าง (spec 08 กฎ 41a, ADM-37): เนื้อหา 250px แบบกฎ 39 (ไม่ใช่คอลัมน์แรก: 250 + pr-6 = 274) — ชื่อ/อีเมลยาวถูกตัด
-      // ที่ขอบ cell และมี tooltip ของ TruncatedCell (AffiliateCell ห้ามตัดที่ลูกเอง — กฎ 41b)
+      // ความกว้าง (spec 08 กฎ 41a, ADM-37): ชื่อ/อีเมลยาวถูกตัดที่ขอบ cell และมี tooltip ของ TruncatedCell (AffiliateCell ห้ามตัดที่ลูกเอง — กฎ 41b)
+      // กฎ 45 (ADM-41): ตารางนี้มี 8 คอลัมน์ — เนื้อหา 250px ทำให้ผลรวมเกินกล่องตาราง (1036px ที่ 1280) จึงเหลือ 126 (+ pr-6 = 150)
+      // เผื่อข้อมูลจริงที่กว้างที่สุด (paid + ยอดหลักแสน + period/paid at วันที่สองหลัก) ให้ผลรวมความกว้างขั้นต่ำยังไม่เกิน 1036px
+      // กฎ 49 (ADM-45): จอ ≥ 1536 (`2xl`) เนื้อหา 250px — td ได้ width จาก `size` เป็นค่าตั้งต้น (คอลัมน์ไม่ใช่ auto จึงไม่รับส่วนเกินตามกฎ 41c)
+      // แล้วขยายตามความกว้างของ div ห่อด้านใน (ไม่มี maxSize — ถ้ามี td ถูกกดเหลือ 150 ทุกจอ); div ห่อไม่ตัด overflow เอง
+      // ข้อความจึงยังล้นไปถึง div `.truncate` ของ TruncatedCell → tooltip ชื่อเต็มเหมือนเดิม (กฎ 41b)
       columnHelper.accessor("affiliate_id", {
         header: "Affiliate",
-        size: 274,
-        maxSize: 274,
-        cell: ({ row }) => <AffiliateCell row={row.original} />,
+        size: 150,
+        cell: ({ row }) => (
+          <div className="w-[126px] 2xl:w-[250px]">
+            <AffiliateCell row={row.original} />
+          </div>
+        ),
       }),
+      // spec 08 กฎ 45 (ADM-41): Amount/Period/Paid at เป็นคอลัมน์ auto (`size: undefined` — ไม่งั้นได้ width 150 ค่าเริ่มต้นของ tanstack)
+      // รับความกว้างส่วนเกินที่จอกว้างแทนคอลัมน์ Payout (กฎ 41c) — ข้อความสั้นไม่ถูกตัด; ถ้าทุกคอลัมน์มี width Chrome แจกส่วนเกิน
+      // ตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
       columnHelper.accessor((row) => getLocaleAmount(castNumber(row.amount), row.currency), {
         id: "amount",
         header: "Amount",
+        size: undefined,
       }),
       columnHelper.accessor(
         (row) => `${getFullDate({ date: row.period_from })} – ${getFullDate({ date: row.period_to })}`,
-        { id: "period", header: "Period" },
+        { id: "period", header: "Period", size: undefined },
       ),
       columnHelper.accessor("paid_at", {
         header: "Paid at",
+        size: undefined,
         cell: ({ getValue }) => {
           const value = getValue()
           return value ? getFullDate({ date: value, includeTime: true }) : "-"
         },
       }),
-      // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
-      // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
-      // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
+      // spec 08 กฎ 39 (ADM-35): DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความจนปุ่ม … หลุดจอ — จำกัดด้วย size/maxSize
+      // (width/max-width ของ td แบบ border-box จึงบวก padding pr-6) ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell;
+      // กฎ 45 (ADM-41): เนื้อหา 100px (+ pr-6 = 124) แทน 250px ของกฎ 39 ให้ทั้งตารางไม่ล้นที่ 1280
       columnHelper.accessor("reference", {
         header: "Reference",
-        size: 274,
-        maxSize: 274,
+        size: 124,
+        maxSize: 124,
         cell: ({ getValue }) => getValue() ?? "-",
       }),
-      // spec 08 กฎ 41c (ADM-37, Q12 = ก): คอลัมน์สุดท้ายเป็น auto (ไม่มี width) รับความกว้างส่วนเกินที่จอกว้าง — ไม่งั้นทุก td ได้ width 150
-      // (ค่าเริ่มต้นของ tanstack) ผลรวมน้อยกว่าตาราง w-full แล้ว Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
-      columnHelper.accessor("id", { header: "Payout", size: undefined }),
+      // spec 08 กฎ 45 (ADM-41): id (`affpay_` + ULID ~250px) ถูกตัดที่เนื้อหา 100px (+ pr-6 = 124) พร้อม tooltip id เต็มของ TruncatedCell
+      // — ไม่เป็นคอลัมน์ auto ตามกฎ 41c แล้ว (คอลัมน์ auto กว้างไม่น้อยกว่าข้อความ → ตารางล้นที่ 1280); Amount/Period/Paid at รับส่วนเกินแทน
+      columnHelper.accessor("id", { header: "Payout", size: 124, maxSize: 124 }),
     ],
     [actionsColumn, getFullDate],
   )

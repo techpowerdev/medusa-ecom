@@ -1,9 +1,15 @@
 import { MathBN } from "@medusajs/framework/utils"
 import {
   convertedOrderAction,
+  GROUP_BUY_PAYMENT_CHECK_GIVE_UP_MINUTES,
+  isGroupBuyPaymentOpen,
+  membershipPaymentCheckDecision,
+  type PaymentSessionCheck,
   memberPaymentAmount,
   paidWithoutOrderAlertKey,
   paymentCapturedAction,
+  refundBalance,
+  refundResult,
   shouldSendPaidWithoutOrderAlert,
   shouldExpireMembershipPayment,
 } from "../utils/membership-payment"
@@ -106,5 +112,100 @@ describe("convertedOrderAction", () => {
     ["cancelled", false, ["completed"], "noop"],
   ] as const)("membership %s + is_draft_order=%s + collections %j → %s", (status, isDraft, collections, expected) => {
     expect(convertedOrderAction(status, isDraft, [...collections])).toEqual(expected)
+  })
+})
+
+// GB-20 กฎข้อ 42 (ADR-024 a): สร้าง payment session ได้เฉพาะ awaiting_payment ก่อน deadline และ collection ไม่ canceled
+describe("isGroupBuyPaymentOpen", () => {
+  const now = new Date("2026-11-21T10:00:00.000Z")
+  const before = "2026-11-21T10:00:01.000Z"
+  it.each([
+    ["awaiting_payment", before, "not_paid", true],
+    ["awaiting_payment", before, "awaiting", true],
+    ["awaiting_payment", "2026-11-21T10:00:00.000Z", "not_paid", false],
+    ["awaiting_payment", "2026-11-21T09:00:00.000Z", "not_paid", false],
+    ["awaiting_payment", null, "not_paid", false],
+    ["awaiting_payment", before, "canceled", false],
+    ["cancelled", before, "not_paid", false],
+    ["joined", before, "not_paid", false],
+    ["paid", before, "completed", false],
+  ] as const)("membership %s, deadline %s, collection %s → %s", (status, deadline, collection, expected) => {
+    expect(isGroupBuyPaymentOpen(status, deadline, now, collection)).toBe(expected)
+  })
+})
+
+// GB-21 กฎข้อ 44 (ADR-024 c): ยอดคงเหลือ = captured − refunded ด้วย MathBN จาก raw_* และผลตัดสินจากยอดคงเหลือที่อ่านใหม่
+describe("refundBalance", () => {
+  const raw = (value: string) => ({ raw_amount: { value, precision: 20 } })
+
+  it("subtracts refunds from captures with raw amounts (no float error: 300.30 − 100.10 − 200.20 = 0)", () => {
+    expect(MathBN.eq(refundBalance([raw("300.30")], [raw("100.10"), raw("200.20")]), 0)).toBe(true)
+  })
+
+  it("full balance when nothing is refunded; 0 when nothing is captured", () => {
+    expect(MathBN.eq(refundBalance([raw("700.05")], []), "700.05")).toBe(true)
+    expect(MathBN.eq(refundBalance(null, undefined), 0)).toBe(true)
+  })
+
+  it("falls back to amount when raw_amount is missing", () => {
+    expect(MathBN.eq(refundBalance([{ amount: 500 }], [{ amount: 200 }]), 300)).toBe(true)
+  })
+})
+
+describe("refundResult", () => {
+  it.each([
+    ["0", "refunded"],
+    ["-0.001", "refunded"],
+    ["0.01", "refund_failed"],
+    ["700", "refund_failed"],
+  ] as const)("balance %s → %s", (balance, expected) => {
+    expect(refundResult(MathBN.convert(balance))).toEqual(expected)
+  })
+})
+
+// GB-20b กฎข้อ 50 (AC-68 e, ADR-024 ภาคผนวก 2026-11-21): ผลตรวจทุก session ที่ provider → paid/unpaid/retry/give_up/skip
+describe("membershipPaymentCheckDecision", () => {
+  const deadline = new Date("2026-11-21T10:00:00.000Z")
+  const at = (minutes: number, seconds = 0) => new Date(deadline.getTime() + minutes * 60_000 + seconds * 1000)
+  const paid: PaymentSessionCheck = { outcome: "payment", existing: false }
+  const repick: PaymentSessionCheck = { outcome: "payment", existing: true }
+  const pending: PaymentSessionCheck = { outcome: "pending" }
+  const error: PaymentSessionCheck = { outcome: "error" }
+  const notAllowed = (status?: string): PaymentSessionCheck => ({ outcome: "not_allowed", status })
+  const processing = notAllowed("processing")
+
+  it("give-up ceiling is 15 minutes", () => {
+    expect(GROUP_BUY_PAYMENT_CHECK_GIVE_UP_MINUTES).toEqual(15)
+  })
+
+  it.each([
+    ["paid (first payment)", [paid], at(1), "paid"],
+    ["paid wins over error/null/processing/not_allowed", [error, pending, processing, notAllowed("requires_action"), paid], at(1), "paid"],
+    ["paid found first at 15:00 (worker down) is still paid", [paid], at(15), "paid"],
+    ["paid found first at 16:00 with errors is still paid", [error, paid], at(16), "paid"],
+    ["existing payment re-picked at 14:59 → paid (capture again)", [repick], at(14, 59), "paid"],
+    ["existing payment at 15:00 → skip (no capture, no expire)", [repick], at(15), "skip"],
+    ["existing payment at 15:00 + error → skip", [error, repick], at(15), "skip"],
+    ["new payment beats an existing one past 15:00", [repick, paid], at(16), "paid"],
+    ["no sessions → unpaid", [], at(1), "unpaid"],
+    ["not_allowed requires_action → unpaid", [notAllowed("requires_action")], at(1), "unpaid"],
+    ["not_allowed requires_payment_method → unpaid", [notAllowed("requires_payment_method")], at(1), "unpaid"],
+    ["not_allowed canceled → unpaid", [notAllowed("canceled")], at(1), "unpaid"],
+    ["not_allowed without data.status → unpaid", [notAllowed()], at(1), "unpaid"],
+    ["all not_allowed (mixed) → unpaid", [notAllowed("requires_action"), notAllowed("canceled")], at(20), "unpaid"],
+    ["not_allowed processing → retry", [processing], at(1), "retry"],
+    ["provider error → retry", [error], at(1), "retry"],
+    ["pending_authorization (null) → retry", [pending], at(1), "retry"],
+    ["unpaid + error → retry", [notAllowed("requires_action"), error], at(1), "retry"],
+    ["error at 14:59 → retry", [error], at(14, 59), "retry"],
+    ["error at 15:00 → give_up", [error], at(15), "give_up"],
+    ["processing at 16:00 → give_up", [processing], at(16), "give_up"],
+    ["pending at 15:00 → give_up", [pending], at(15), "give_up"],
+  ] as const)("%s", (_label, results, now, expected) => {
+    expect(membershipPaymentCheckDecision([...results], deadline, now)).toEqual(expected)
+  })
+
+  it("accepts an ISO string deadline", () => {
+    expect(membershipPaymentCheckDecision([error], deadline.toISOString(), at(15))).toEqual("give_up")
   })
 })

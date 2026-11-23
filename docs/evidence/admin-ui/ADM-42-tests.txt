@@ -1,0 +1,84 @@
+# ADM-42 — ผลทดสอบ (spec 08 กฎ 46, AC-47) 2026-11-21
+
+## RED บน develop 0e5295de (ก่อนแก้)
+### unit src/admin/lib/__tests__/affiliate-program-form.unit.spec.ts
+    ✓ builds a body that the admin create validator accepts, with defaults 7/14 and empty optionals as null (2 ms)
+    ✕ rejects ends_at not after starts_at before sending (1 ms)
+    ✕ rejects missing name, dates and out-of-range numbers (1 ms)
+    ✕ reports every invalid field at once in form order, including the cross-field end date and empty scope
+    ✕ reports both missing dates without comparing them (1 ms)
+    ✓ sends selected collections and categories when not all products
+    ✕ rejects a program that is not all-products and selects nothing (1 ms)
+    ✓ accepts not-all when only a category or only API-set variants exist
+    ✓ keeps existing variant_ids on edit, including when switching to all products (Q16) (1 ms)
+    ✓ converts stored ISO dates to Date for DatePicker
+    ✓ drops both dates when the form still holds the stored values, keeping the other fields
+    ✓ sends only the date that was edited (1 ms)
+    ✓ offers only forward transitions from the current status
+    ✓ is true only for draft programs (1 ms)
+    - Expected  - 5
+    + Received  + 1
+    - Expected  - 5
+    + Received  + 1
+    - Expected  - 29
+    + Received  +  1
+    - Expected  - 9
+    + Received  + 1
+    - Expected  - 5
+    + Received  + 1
+Tests:       5 failed, 9 passed, 14 total
+
+### e2e apps/storefront/e2e/admin-program-form-errors.spec.ts
+  ✘  1 [chromium] › e2e/admin-program-form-errors.spec.ts:15:5 › AC-47: ฟอร์ม Create program ว่าง + ends_at < starts_at กด Save ครั้งเดียว → error ใต้ name, commission, ends_at และ scope พร้อมกัน ไม่มี POST (18.2s)
+    Error: expect(locator).toHaveText(expected) failed
+    Locator: getByTestId('affiliate-program-error-ends_at')
+    Expected: "End must be after start"
+    Error: element(s) not found
+
+## GREEN
+### e2e (ใหม่ + ที่เกี่ยวข้อง) และ --repeat-each=3 ของ AC-47
+  ✓   1 [chromium] › e2e/admin-program-form-errors.spec.ts:15:5 › AC-47: ฟอร์ม Create program ว่าง + ends_at < starts_at กด Save ครั้งเดียว → error ใต้ name, commission, ends_at และ scope พร้อมกัน ไม่มี POST (8.4s)
+  ✓   2 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (10.1s)
+  ✓   4 [chromium] › e2e/affiliate-admin-forms.spec.ts:47:5 › AC-12: ปิด all โดยไม่เลือก scope → error ไม่มี request; collection ลำดับที่ 250 ค้นหาแล้วเลือกได้; starts_at ตีความตามเวลาเครื่อง (11.4s)
+  ✓   3 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create partner (backend จริง — ADM-B1) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (15.8s)
+  ✓   7 [chromium] › e2e/affiliate-admin-forms.spec.ts:132:5 › AC-12: แก้แค่ชื่อของโปรแกรมที่ starts_at/ends_at มีวินาที → body ไม่มีสองช่องนี้และค่าเดิมไม่ถูกปัด (5.6s)
+  ✓   6 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้างแคมเปญ — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (8.0s)
+  ✓   5 [chromium] › e2e/affiliate-admin-programs.spec.ts:26:5 › AC-42: สร้างด้วย dblclick ยิง POST ครั้งเดียว, แก้ commission คง variant_ids, status ตามกฎ 20, ลบเฉพาะ draft ผ่าน prompt (11.5s)
+  ✓   9 [chromium] › e2e/affiliate-admin-forms.spec.ts:168:5 › AC-12/AC-21: ฟอร์มสร้าง payout ค่าเริ่มต้นวันที่ 1 ของเดือนก่อน 00:00 ตามเวลาเครื่อง และค้น affiliate รายที่ 250 ด้วย q แล้วเลือกได้ (8.6s)
+  ✓  10 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง program — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (9.4s)
+  ✓   8 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create program (backend จริง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (14.9s)
+  ✓  11 [chromium] › e2e/affiliate-admin-forms.spec.ts:232:5 › AC-21: GET รายชื่อ affiliate ล้ม → error ใต้ช่อง affiliate ของฟอร์ม payout (ไม่ใช่รายการว่างเงียบ) (5.4s)
+  ✓  12 [chromium] › e2e/admin-form-discard-prompt.spec.ts:122:5 › AC-32: Drawer แก้ partner — กรอกแล้วคลิกปุ่ม close ของ Drawer → alertdialog; Escape 2 ครั้งติดกันที่ฟอร์มสร้าง → alertdialog ตัวเดียว; บันทึกสำเร็จไม่ถาม (4.8s)
+  ✓  14 [chromium] › e2e/affiliate-admin-forms.spec.ts:265:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: request เดียวต่อหน้ามีทั้ง active และ suspended + order=name และ option ตรงลำดับของ response (3.2s)
+  ✓  13 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (7.2s)
+  ✓  15 [chromium] › e2e/admin-form-discard-prompt.spec.ts:184:5 › AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d) (4.1s)
+  ✓  16 [chromium] › e2e/affiliate-admin-forms.spec.ts:332:7 › ADM-24: ตัวเลือก affiliate ของฟอร์ม payout › AC-29: GET รายการตัวเลือกตอบ 401 → ErrorBoundary พาไป /app/login (6.2s)
+  ✓  18 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง (7.8s)
+  ✓  19 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs ตอบ 500 → affiliate-list-error แทน "No programs yet" (6.9s)
+  ✓  17 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create campaign (mock สำเร็จ — แคมเปญลบผ่าน API ไม่ได้) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (14.4s)
+  ✓  20 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ programs GET programs network ล้ม (route.abort) → affiliate-list-error แทน "No programs yet" (4.5s)
+  ✓  22 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates ตอบ 500 → affiliate-list-error แทน "No affiliates yet" (5.8s)
+  ✓  23 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ affiliates GET affiliates network ล้ม (route.abort) → affiliate-list-error แทน "No affiliates yet" (5.3s)
+  ✓  21 [chromium] › e2e/admin-create-double-submit.spec.ts:260:7 › AC-44: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (13.0s)
+  ✓  24 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries ตอบ 500 → affiliate-list-error แทน "No commission entries yet" (7.2s)
+  ✓  25 [chromium] › e2e/admin-create-double-submit.spec.ts:325:5 › AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้ (8.6s)
+  ✓  26 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ ledger GET entries network ล้ม (route.abort) → affiliate-list-error แทน "No commission entries yet" (9.8s)
+  ✓  28 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts ตอบ 500 → affiliate-list-error แทน "No payouts yet" (14.6s)
+  ✓  27 [chromium] › e2e/admin-create-double-submit.spec.ts:386:5 › AC-44: Import codes (หน้า pool) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; เลือกไฟล์ใหม่ import ได้ (22.9s)
+  ✓  29 [chromium] › e2e/affiliate-admin-forms.spec.ts:381:11 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: แท็บ payouts GET payouts network ล้ม (route.abort) → affiliate-list-error แทน "No payouts yet" (5.0s)
+  ✓  30 [chromium] › e2e/affiliate-admin-forms.spec.ts:400:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: GET payouts ตอบ 401 → ErrorBoundary พาไป /app/login (5.5s)
+  ✓  31 [chromium] › e2e/affiliate-admin-forms.spec.ts:410:7 › ADM-21b: สถานะ error ของตาราง affiliate ทุกแท็บ › AC-26: ทุกแท็บตอบรายการว่าง → empty state เดิม ไม่มี affiliate-list-error (9.0s)
+  ✓  32 [chromium] › e2e/affiliate-admin-forms.spec.ts:430:7 › ADM-25: refetch ของตาราง affiliate ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Delete program (409) แล้ว GET programs ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี affiliate-list-error (8.8s)
+  ✓  33 [chromium] › e2e/affiliate-admin-forms.spec.ts:509:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31a: ฟอร์ม payout — Escape ขณะรายการ affiliate เปิดไม่ปิด modal และช่วงวันที่คงอยู่; เลือก option แล้ว Escape ปิด modal (4.1s)
+  ✓  34 [chromium] › e2e/affiliate-admin-forms.spec.ts:550:7 › ADM-26: Escape ของ Combobox ใน FocusModal › AC-31b: ฟอร์ม program — Escape ขณะรายการ scope เปิดไม่ปิด modal และชื่อคงอยู่; คลิก heading ปิดรายการแล้ว Escape ปิด modal (4.6s)
+  34 passed (2.4m)
+  3 passed (14.3s)
+
+### storefront test:e2e:unit
+  124 passed (3.6s)
+
+### lint: 0 errors; typecheck: exit 0
+
+### backend unit
+- ไฟล์ที่เกี่ยวข้อง: affiliate-program-form.unit.spec.ts + medusa-ui.unit.spec.ts (static ของฟอร์ม) — 2 suites, 245 passed
+- ชุดเต็ม: เครื่องโหลดสูง (agent อื่นรันพร้อมกัน) ผ่าน 38/116 suites ไม่มี FAIL แล้วหยุดเอง — ชุดเต็มให้ CI รัน (กติกา builder)

@@ -1,5 +1,5 @@
 // PAY-3b (spec 06 กฎข้อ 9): logic ล้วนของหน้า /account/orders/:id/pay — อ่านจาก response ของ GB-8 เท่านั้น ไม่มี I/O
-import type { PaymentSessionResult } from "./action-result"
+import { type PaymentSessionResult, paymentSessionResult } from "./action-result"
 import { PAYMENT_ALREADY_COMPLETED } from "./payment-session"
 
 export type GroupBuyPaymentSession = {
@@ -53,26 +53,53 @@ export const paymentSettled = ({ order }: GroupBuyOrder) =>
 export const payableCollection = ({ order }: GroupBuyOrder) =>
   order.payment_collections.find((c) => c.status !== "completed")
 
-export type OrderPayView = "paid" | "form" | "waiting" | "closed"
+export type OrderPayView = "paid" | "processing" | "form" | "waiting" | "closed"
 
-/** กฎข้อ 9 (b): ฟอร์มเฉพาะ awaiting_payment + now < pay_deadline_at + มี collection ที่ยังไม่ completed */
+/**
+ * กฎข้อ 9 (b): ฟอร์มเฉพาะ awaiting_payment + now < pay_deadline_at + มี collection ที่ยังไม่ completed
+ * GB-22 (spec 04 กฎข้อ 45a): membership `cancelled` → closed เสมอ แม้ collection completed (เงินเข้าหลังยกเลิกถูกคืนอัตโนมัติ — GB-21)
+ * GB-22 (session หลักตัดสิน 2026-11-21): paid = membership `paid` (แปลง order แล้ว) เท่านั้น; เงินเข้าแล้วแต่ยังเป็น draft → processing
+ * ข้อความเดียวกับหน้าบัญชี (กฎข้อ 45b)
+ */
 export function orderPayView(data: GroupBuyOrder, nowMs: number): OrderPayView {
-  if (data.membership.status === "paid" || paymentSettled(data)) return "paid"
+  if (data.membership.status === "cancelled") return "closed"
+  if (data.membership.status === "paid") return "paid"
+  if (paymentSettled(data)) return "processing"
   if (data.membership.status === "joined") return "waiting"
   const deadline = data.group.pay_deadline_at ? Date.parse(data.group.pay_deadline_at) : NaN
   const open = data.membership.status === "awaiting_payment" && nowMs < deadline
   return open && payableCollection(data) ? "form" : "closed"
 }
 
-export type SessionCreateOutcome = "created" | "already-paid" | "unauthorized" | "check-status"
+export const PROCESSING_MESSAGE = "ได้รับเงินแล้ว กำลังยืนยันคำสั่งซื้อ"
+
+export const REFUND_NOTICE_MESSAGE = "สิทธิ์นี้ถูกยกเลิกแล้ว หากมีการตัดเงิน ระบบคืนเงินเต็มจำนวนให้อัตโนมัติ (ตามรอบของธนาคาร)"
+
+/** GB-22 (กฎข้อ 45a): สิทธิ์ยกเลิกแล้วแต่มีการชำระ → แสดงข้อความคืนเงิน (`order-pay-refund-notice`) */
+export const showRefundNotice = (data: GroupBuyOrder) => data.membership.status === "cancelled" && hasPayment(data)
+
+/** code ของ guard GB-20 (spec 04 กฎข้อ 42): สิทธิ์ชำระปิดแล้ว — ไม่มี session ถูกสร้าง */
+export const GB_PAYMENT_CLOSED = "GB_PAYMENT_CLOSED"
+
+export type OrderPaySessionResult = PaymentSessionResult | { error: typeof GB_PAYMENT_CLOSED }
+
+/**
+ * ผลของการสร้าง session ของหน้า pay: 400 + `GB_PAYMENT_CLOSED` → code นั้น (GB-22 กฎข้อ 45a); อื่นๆ ตาม helper กลาง
+ * (`paymentSessionResult` — checkout ไม่ได้ code นี้ จึงไม่เพิ่มใน helper กลาง)
+ */
+export const orderPaySessionResult = (res: { status: number; code: string | null }): OrderPaySessionResult =>
+  res.status === 400 && res.code === GB_PAYMENT_CLOSED ? { error: GB_PAYMENT_CLOSED } : paymentSessionResult(res)
+
+export type SessionCreateOutcome = "created" | "already-paid" | "unauthorized" | "check-status" | "closed"
 
 /**
  * ผลของ action สร้าง session (CORE-4i-b: `{ ok } | { error }` จาก helper กลาง — `paymentSessionResult`):
- * 409 + code ของ guard → (d) poll GB-8; 401 → login; `failed` (non-2xx อื่นทุกแบบ/network) → (d2) ตัดสินจากสถานะ GB-8
+ * 409 + code ของ guard → (d) poll GB-8; 400 `GB_PAYMENT_CLOSED` → closed (GB-22); 401 → login; `failed` (non-2xx อื่นทุกแบบ/network) → (d2) ตัดสินจากสถานะ GB-8
  */
-export function sessionCreateOutcome(result: PaymentSessionResult): SessionCreateOutcome {
+export function sessionCreateOutcome(result: OrderPaySessionResult): SessionCreateOutcome {
   if ("ok" in result) return "created"
   if (result.error === PAYMENT_ALREADY_COMPLETED) return "already-paid"
+  if (result.error === GB_PAYMENT_CLOSED) return "closed"
   if (result.error === "unauthorized") return "unauthorized"
   return "check-status"
 }

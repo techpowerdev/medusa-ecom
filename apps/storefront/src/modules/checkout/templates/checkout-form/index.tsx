@@ -1,4 +1,5 @@
 import { retrieveCart } from "@lib/data/cart"
+import { getCartFlashChecks } from "@lib/data/flash-sales"
 import { listCartShippingMethods } from "@lib/data/fulfillment"
 import { listCartPaymentMethods } from "@lib/data/payment"
 import {
@@ -54,6 +55,10 @@ export default async function CheckoutForm({
     redirect(`${cc ? `/${cc}` : ""}/checkout?step=${redirectStep}`)
   }
   const deliveryDone = deliveryStepDone(current, options)
+  // FS-21 (spec 03 กฎข้อ 26b): เกินสิทธิ์ flash ต่อคน → disable ปุ่มสั่งซื้อก่อนตัดเงิน (ด่านจริงคือ hook ตอน complete)
+  const flashLimitExceeded =
+    step === "review" &&
+    Object.keys((await getCartFlashChecks(current)).customerLimit).length > 0
 
   return (
     <div className="w-full grid grid-cols-1 gap-y-8">
@@ -71,7 +76,11 @@ export default async function CheckoutForm({
         deliveryDone={deliveryDone}
       />
 
-      <Review cart={current} deliveryDone={deliveryDone} />
+      <Review
+        cart={current}
+        deliveryDone={deliveryDone}
+        flashLimitExceeded={flashLimitExceeded}
+      />
     </div>
   )
 }

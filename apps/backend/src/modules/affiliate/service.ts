@@ -17,6 +17,12 @@ export type CommissionSummaryFilters = {
   affiliate_id?: string
   from?: Date
   to?: Date
+  /**
+   * กฎ 48b (AF-24, portal): reversal ของ line `(order_id, line_item_id)` ที่ยังมี entry `pending` ถูกหักใน `pending`
+   * (ไม่ต่ำกว่า 0 ต่อ line ส่วนเกินคงอยู่ใน `reversed`) — ผลรวมทุกแถวเท่าเดิม; ไม่ตั้ง = GROUP BY status ตรงๆ
+   * (portal และ admin summary ตั้งค่านี้ทั้งคู่ — กฎ 49, AF-25)
+   */
+  net_pending_reversals?: boolean
 }
 
 export type PayableEntryFilters = {
@@ -103,15 +109,39 @@ class AffiliateModuleService extends MedusaService({
     filters: CommissionSummaryFilters = {},
     @MedusaContext() sharedContext: Context<SqlEntityManager> = {}
   ): Promise<CommissionSummaryRow[]> {
-    const rows = await sharedContext.manager!.execute<Record<string, string>[]>(
-      `SELECT affiliate_id, currency, status, SUM(amount)::text AS amount, COUNT(*)::int AS count
+    // ช่วงเวลา [from, to) กรองก่อนรวม ทั้ง entry และ reversal (หักกันเฉพาะที่อยู่ในช่วงเดียวกัน)
+    const entries = `SELECT affiliate_id, currency, status, order_id, line_item_id, amount
        FROM affiliate_commission_entry
        WHERE deleted_at IS NULL
          AND (?::text IS NULL OR affiliate_id = ?)
          AND (?::timestamptz IS NULL OR created_at >= ?)
-         AND (?::timestamptz IS NULL OR created_at < ?)
+         AND (?::timestamptz IS NULL OR created_at < ?)`
+    // ต่อ line: absorbed = ส่วนของ reversal (ติดลบ) ที่หักใน pending ได้ไม่เกินยอด pending ของ line
+    const netted = `WITH f AS (${entries}),
+       lines AS (
+         SELECT affiliate_id, currency,
+           COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) AS p,
+           COUNT(*) FILTER (WHERE status = 'pending') AS pc,
+           COALESCE(SUM(amount) FILTER (WHERE status = 'reversed'), 0) AS r,
+           COUNT(*) FILTER (WHERE status = 'reversed') AS rc
+         FROM f WHERE status IN ('pending', 'reversed')
+         GROUP BY affiliate_id, currency, order_id, line_item_id
+       ),
+       l AS (SELECT *, CASE WHEN pc > 0 THEN GREATEST(r, -GREATEST(p, 0)) ELSE 0 END AS absorbed FROM lines),
+       t AS (
+         SELECT affiliate_id, currency, status, amount, 1 AS n FROM f WHERE status NOT IN ('pending', 'reversed')
+         UNION ALL SELECT affiliate_id, currency, 'pending', p + absorbed, pc FROM l WHERE pc > 0
+         UNION ALL SELECT affiliate_id, currency, 'reversed', r - absorbed, rc FROM l WHERE rc > 0 AND r - absorbed <> 0
+       )
+       SELECT affiliate_id, currency, status, SUM(amount)::text AS amount, SUM(n)::int AS count
+       FROM t GROUP BY affiliate_id, currency, status
+       ORDER BY affiliate_id, currency, status`
+    const grouped = `SELECT affiliate_id, currency, status, SUM(amount)::text AS amount, COUNT(*)::int AS count
+       FROM (${entries}) f
        GROUP BY affiliate_id, currency, status
-       ORDER BY affiliate_id, currency, status`,
+       ORDER BY affiliate_id, currency, status`
+    const rows = await sharedContext.manager!.execute<Record<string, string>[]>(
+      filters.net_pending_reversals ? netted : grouped,
       [
         filters.affiliate_id ?? null,
         filters.affiliate_id ?? null,

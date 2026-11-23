@@ -299,6 +299,49 @@ describe("renderEmailTemplate", () => {
       expect(email!.html).toContain("group buy: เงินเข้าแต่ไม่มี order")
     })
 
+    // GB-21 กฎข้อ 44: alert เหตุ membership_cancelled มีผลการคืนเงินอัตโนมัติ
+    it.each(["refunded", "refund_failed"])("renders refund_result=%s in the paid-without-order ops alert", (result) => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER, {
+        reason: "membership_cancelled",
+        membership_id: "gbmem_01",
+        order_id: "order_01",
+        payment_id: "pay_01",
+        amount: "700",
+        refund_result: result,
+      })
+      expect(email!.html).toContain(`<b>${result}</b>`)
+      expect(email!.html).toContain("GET /admin/payments/pay_01")
+    })
+
+    // GB-20b กฎข้อ 50 (d): alert ถึง ops เมื่อตรวจสถานะที่ provider ไม่ได้จนเลย 15 นาที
+    it("renders the payment-check give-up ops alert with ids, deadline, error and the ADR-015 runbook (escaped)", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP, {
+        membership_id: "gbmem_<1>",
+        order_id: "order_01",
+        pay_deadline_at: "2026-11-21T10:00:00.000Z",
+        sessions: "payses_01",
+        error: "provider down",
+      })
+      expect(email!.subject).toContain("GROUP_BUY_PAYMENT_CHECK_GAVE_UP")
+      expect(email!.subject).toContain("order_01")
+      expect(email!.html).toContain("gbmem_&lt;1&gt;")
+      expect(email!.html).toContain("payses_01")
+      expect(email!.html).toContain("2026-11-21T10:00:00.000Z")
+      expect(email!.html).toContain("provider down")
+      expect(email!.html).toContain("เงินถูกตัดแต่ไม่มี order (ADR-015)")
+    })
+
+    // GB-28 กฎข้อ 53 (a), AC-71 (a): alert ส่งก่อน expire → ห้ามบอกว่ายกเลิกสิทธิ์แล้ว
+    it("payment-check give-up alert says the membership is being cancelled, not already cancelled", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP, {
+        membership_id: "gbmem_01",
+        order_id: "order_01",
+      })
+      expect(email!.subject).not.toContain("ยกเลิกสิทธิ์แล้ว")
+      expect(email!.html).not.toContain("ยกเลิกสิทธิ์แล้ว")
+      expect(email!.html).toContain("กำลังยกเลิกสิทธิ์ — ตรวจผลใน admin")
+    })
+
     // GB-5 (AC-10): อีเมล "หมดเวลาชำระเงิน"
     it("renders the payment-expired email in Thai with the order number", () => {
       const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAYMENT_EXPIRED, { order: data.order })

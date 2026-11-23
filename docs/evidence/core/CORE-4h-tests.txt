@@ -52,3 +52,48 @@ Red (แก้ hook/ฟอร์มชั่วคราวแล้วรัน
 Green (vitest ทั้ง storefront):
  Test Files  36 passed (36)
       Tests  395 passed (395)
+
+
+# hotfix (PR #485): e2e AC-105 นับเฉพาะ action ของฟอร์ม login — nav ยิง retrieveCart เองหลัง hydrate (สาเหตุเดียวกับ CORE-22 AC-84)
+# เครื่อง local: backend :9193, storefront :8193, DB medusa_hfcore22
+
+## probe (ไม่ commit) — body จริงบนหน้า login: retrieveCart ยิงก่อน reset ตัวนับเพียง ~55ms (ใกล้ race มาก)
+["$undefined","$undefined",{"fresh":true}]  แล้วตามด้วย multipart ที่มี field _1_email / _1_password ของฟอร์ม login
+
+## RED — probe ชั่วคราว: addInitScript หน่วงการส่ง retrieveCart 1 วินาที (จำลอง hydrate ช้า) --repeat-each=3
+OLD=2 LOGIN=1
+OLD=2 LOGIN=1
+OLD=2 LOGIN=1
+    Received: 2
+      30 |   console.log(`OLD=${oldCount} LOGIN=${loginCount}`)
+    test-results/tmp-hfcore22-probe-probe-r-203c1--retrieveCart-ของ-nav-มาช้า-chromium/test-failed-1.png
+    Received: 2
+      30 |   console.log(`OLD=${oldCount} LOGIN=${loginCount}`)
+    test-results/tmp-hfcore22-probe-probe-r-203c1--retrieveCart-ของ-nav-มาช้า-chromium-repeat1/test-failed-1.png
+    Received: 2
+      30 |   console.log(`OLD=${oldCount} LOGIN=${loginCount}`)
+    test-results/tmp-hfcore22-probe-probe-r-203c1--retrieveCart-ของ-nav-มาช้า-chromium-repeat2/test-failed-1.png
+  3 failed
+→ ตัวนับเดิม (ทุก next-action) ได้ 2 ทุกรอบ, isLoginFormBody ได้ 1 ทุกรอบ
+
+## RED — unit: isLoginFormBody ยังไม่มี
+  6 failed
+  19 passed (1.6s)
+
+## GREEN — core-4h-auth-reason + core-22-account-fixes --repeat-each=5
+  ✓   3 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (3.3s)
+  ✓   2 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (3.4s)
+  ✓   5 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (734ms)
+  ✓   4 [chromium] › e2e/core-4h-auth-reason.spec.ts:10:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (4.0s)
+  ✓   1 [chromium] › e2e/core-4h-auth-reason.spec.ts:10:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (4.1s)
+  ✓   6 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (941ms)
+  ✓   7 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (3.1s)
+  ✓   9 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (3.2s)
+  ✓  10 [chromium] › e2e/core-4h-auth-reason.spec.ts:10:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (3.1s)
+  ✓   8 [chromium] › e2e/core-4h-auth-reason.spec.ts:10:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (3.7s)
+  ✓  11 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (870ms)
+  ✓  12 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (800ms)
+  ✓  13 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (1.9s)
+  ✓  15 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (607ms)
+  ✓  14 [chromium] › e2e/core-4h-auth-reason.spec.ts:10:5 › AC-105: dblclick login = action 1 ครั้ง, สมัครล้มคงค่า, verify-account error ไทย (2.6s)
+  15 passed (12.0s)

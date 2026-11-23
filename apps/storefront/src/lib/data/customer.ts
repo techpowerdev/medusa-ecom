@@ -7,8 +7,10 @@ import {
 } from "@lib/util/error-message"
 import { MISSING_ADDRESS_MESSAGE, missingRequiredAddress } from "@lib/util/address-required"
 import { trimInvisible } from "@lib/util/trim-invisible"
+import { normalizeEmail } from "@lib/util/normalize-email"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
+import { isUncodedMedusaError } from "@lib/util/medusa-api-error"
 import { revalidateTag } from "next/cache"
 import { redirect, unstable_rethrow } from "next/navigation"
 import {
@@ -35,6 +37,7 @@ import {
 import { isBuyReturnPath, readReturnTo } from "@lib/util/login-return"
 import { buyFromPermalink } from "@lib/util/server-cart"
 import { restoreActiveCart } from "./active-cart"
+import { medusaFetch } from "./medusa-fetch"
 
 export type CustomerAuthState =
   // CORE-4f (กฎข้อ 62): `email` = อีเมลที่กรอกไว้ ฟอร์ม login/register ใช้เป็น defaultValue ไม่ให้หายเมื่อล้ม
@@ -44,7 +47,8 @@ export type CustomerAuthState =
       state: "error"
       error: string
       email?: string
-      reason?: "invalid_credentials"
+      // CORE-73 (กฎข้อ 131): `email_exists` = สมัครด้วยอีเมลที่มีบัญชีแล้ว → ฟอร์มสมัครแสดงลิงก์เข้าสู่ระบบ
+      reason?: "invalid_credentials" | "email_exists"
       fields?: { first_name: string; last_name: string; phone: string }
     }
   | { state: "verification_required"; email: string }
@@ -69,7 +73,7 @@ async function requestVerificationEmail(email: string, token: string) {
 // CORE-4f (กฎข้อ 62): ข้อความ error ของหน้า login/register เป็นไทยเสมอ ไม่ส่งข้อความอังกฤษของ auth provider
 const LOGIN_FAILED_MESSAGE = "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
 const SIGNUP_FAILED_MESSAGE = "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
-const EMAIL_TAKEN_MESSAGE = "อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบหรือใช้อีเมลอื่น"
+const EMAIL_TAKEN_MESSAGE = "อีเมลนี้มีบัญชีแล้ว"
 const VERIFY_FAILED_MESSAGE = "ลิงก์ยืนยันนี้ไม่ถูกต้องหรือหมดอายุแล้ว เข้าสู่ระบบเพื่อรับอีเมลยืนยันใหม่"
 
 const withEmail = (
@@ -137,7 +141,7 @@ export async function signup(
 ): Promise<CustomerAuthState> {
   const password = formData.get("password") as string
   const customerForm = {
-    email: formData.get("email") as string,
+    email: normalizeEmail(formData.get("email")),
     first_name: formData.get("first_name") as string,
     last_name: formData.get("last_name") as string,
     phone: formData.get("phone") as string,
@@ -150,19 +154,17 @@ export async function signup(
 
   let identityExists = false
   try {
-    await sdk.auth.register("customer", "emailpass", {
+    // CORE-83 (กฎข้อ 140, ADR-028): medusaFetch เพื่อได้ `type` ของ error; token ของ register ไม่ใช้ (completeLogin ขอใหม่)
+    await medusaFetch<{ token: string }>("/auth/customer/emailpass/register", {
       email: customerForm.email,
       password,
     })
   } catch (error) {
-    const fetchError = error as FetchError
     // An existing identity (for example, an admin user with the same email) is
     // expected and handled: the customer can still log in to link a customer
     // record. Any other error is surfaced.
-    if (
-      fetchError.statusText !== "Unauthorized" ||
-      fetchError.message !== "Identity with email already exists"
-    ) {
+    // Medusa core ไม่มี code ให้ error นี้ → ข้อยกเว้น IDENTITY_EXISTS ของ helper (status + type + ข้อความ)
+    if (!isUncodedMedusaError(error, "IDENTITY_EXISTS")) {
       // CORE-4h (กฎข้อ 69a): 401 ของ register ไม่ได้แปลว่าต้องเข้าสู่ระบบใหม่ → ข้อความทั่วไปของการสมัคร
       return withEmail(
         { state: "error", error: SIGNUP_FAILED_MESSAGE },
@@ -180,15 +182,19 @@ export async function signup(
 
   // Continue by logging in. The login response tells us whether the backend
   // requires email verification — we don't need a storefront-side flag.
-  const result = await completeLogin(customerForm.email, password)
-  // อีเมลมีบัญชีอยู่แล้วและรหัสผ่านไม่ตรง → บอกว่าอีเมลถูกใช้แล้ว แทน "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+  // CORE-73 (กฎข้อ 131): identity มีอยู่แล้ว → ห้าม login ให้ถ้ามี customer แล้ว (completeLogin คืน email_exists)
+  const result = await completeLogin(customerForm.email, password, {
+    rejectExistingCustomer: identityExists,
+  })
+  // อีเมลมีบัญชีอยู่แล้วและรหัสผ่านไม่ตรง → ข้อความเดียวกับรหัสถูก (ไม่บอกว่ารหัสถูก/ผิด)
   if (
     identityExists &&
     result?.state === "error" &&
-    result.reason === "invalid_credentials"
+    (result.reason === "invalid_credentials" || result.reason === "email_exists")
   ) {
+    await removePendingCustomer()
     return withEmail(
-      { state: "error", error: EMAIL_TAKEN_MESSAGE },
+      { state: "error", error: EMAIL_TAKEN_MESSAGE, reason: "email_exists" },
       customerForm.email,
       fields
     )
@@ -205,7 +211,7 @@ export async function login(
   _currentState: unknown,
   formData: FormData
 ): Promise<CustomerAuthState> {
-  const email = formData.get("email") as string
+  const email = normalizeEmail(formData.get("email"))
   const password = formData.get("password") as string
 
   return withEmail(
@@ -310,7 +316,8 @@ async function addPendingToCart(
 // email verification is enabled.
 async function completeLogin(
   email: string,
-  password: string
+  password: string,
+  opts: { rejectExistingCustomer?: boolean } = {}
 ): Promise<CustomerAuthState> {
   let result: Awaited<ReturnType<typeof sdk.auth.login>>
 
@@ -369,6 +376,11 @@ async function completeLogin(
     .retrieve({}, { authorization: `Bearer ${token}` })
     .then(({ customer }) => customer)
     .catch(() => null)
+
+  // CORE-73 (กฎข้อ 131): มาจากการสมัครด้วยอีเมลที่มี customer แล้ว → ไม่ตั้ง cookie (token ทิ้งไป)
+  if (existing && opts.rejectExistingCustomer) {
+    return { state: "error", error: EMAIL_TAKEN_MESSAGE, reason: "email_exists" }
+  }
 
   if (!existing) {
     const pending = await getPendingCustomer()

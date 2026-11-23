@@ -3,6 +3,7 @@ import { Reporter } from "@medusajs/cli/dist/reporter"
 import { createRequire } from "module"
 import type { Writable } from "stream"
 import winston from "winston"
+import { redactValue } from "./redact-pii"
 
 type Env = Record<string, string | undefined>
 
@@ -12,14 +13,16 @@ type Env = Record<string, string | undefined>
  * ส่งเข้า Medusa ผ่าน option `logger` ของ `defineConfig` (ไม่แตะ logger/event bus ของ Medusa)
  * format เดียวกับ default ของ Medusa 2.22.1 (`@medusajs/cli/dist/reporter`) รวม `LOG_LEVEL`/`LOG_FILE`
  * development คืน `undefined` → Medusa ใช้ logger เดิม (format CLI + spinner)
+ * OPS-31 (AC-46a): คำสั่ง `medusa db:*` (รวม process ลูก db:migrate:search/scripts ที่ Medusa fork) → `worker_mode: "migrate"`
+ * เพราะ `medusa db:migrate` ตั้ง MEDUSA_WORKER_MODE=server เองก่อนโหลด config (ไม่ใช่ process server จริง)
  */
-export function buildJsonLogger(env: Env, stream?: Writable): Logger | undefined {
+export function buildJsonLogger(env: Env, stream?: Writable, argv: string[] = process.argv): Logger | undefined {
   const nodeEnv = env.NODE_ENV || "development"
   if (nodeEnv.startsWith("dev")) {
     return undefined
   }
 
-  const workerMode = env.MEDUSA_WORKER_MODE || "shared"
+  const workerMode = argv[2]?.startsWith("db:") ? "migrate" : env.MEDUSA_WORKER_MODE || "shared"
   const transports: winston.transport[] = [
     stream ? new winston.transports.Stream({ stream }) : new winston.transports.Console(),
   ]
@@ -35,6 +38,13 @@ export function buildJsonLogger(env: Env, stream?: Writable): Logger | undefined
       winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
       winston.format.errors({ stack: true }),
       winston.format.splat(),
+      // OPS-33 (spec 07 กฎข้อ 15 รอบ 41): redact PII ใน message/stack/field อื่นก่อนเขียน JSON — development ไม่ผ่านทางนี้
+      winston.format((info) => {
+        for (const key of Object.keys(info)) {
+          info[key] = redactValue(info[key], key)
+        }
+        return info
+      })(),
       winston.format.json()
     ),
     transports,

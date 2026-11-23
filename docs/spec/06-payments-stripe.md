@@ -280,7 +280,180 @@ follow-up (ไม่ใช่ task บังคับ — ทำในงาน�
 - (รอบ 8) nit review #82 ของ PAY-6a (ย้าย constant `PAYMENT_ALREADY_COMPLETED` ไปไฟล์ errors, comment ใน test guard × webhook ว่าฝั่งที่แพ้ได้ 409/non-2xx ถือว่าผ่าน — รอบ 12: 400 `invalid_data` เมื่อ cancel สำเร็จ, 500 `unknown_error` กับ Stripe จริง)
   รวมในงานเล็ก GB-N1 (spec 04)
 
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual 2026-11 บน v0.2.0; owner สั่งแก้ก่อน go-live ใน release เดียว)
+ที่มา: เฟส 5 B-1 (refund ขณะมี order change ค้าง), O-2 (order #69 `payment_status=refunded` ทั้งที่จ่ายแล้ว), log หลอก ops (ดู spec 07 OPS-32)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| refund ของ admin | `POST /admin/payments/:id/refund` → `refundPaymentWorkflow` (2.22.1) — **แต่** refund Stripe ก่อน (`refund-payment.js:138`) แล้ว `createOrderRefundCreditLinesWorkflow` (`:183`) ล้มเมื่อ order มี active order change → admin เห็น 400 แต่เงินคืนจริง, ไม่ emit `payment.refunded` (`:188`) → `flash-sale-release.ts`/`affiliate-reversal.ts` ไม่ทำงาน | ขยาย: middleware กันก่อนเข้า route (กฎข้อ 10) — ไม่ patch workflow ของ Medusa; รายงาน upstream (session หลักถาม owner ก่อนเปิด issue) |
+| อ่าน order change ที่ค้าง | entity `order_change` (`status` `pending`/`requested` = active — ค่าเดียวกับที่ Medusa ใช้ตรวจ "already has an existing active order change") ผ่าน `query.graph` | ใช้ตามเดิม |
+| link payment → order | `payment.payment_collection` + link `order_payment_collection` | ใช้ตามเดิมผ่าน `query.graph` |
+| payment collection ของ cart | link `cart_payment_collection`, `POST /store/payment-collections` (storefront สร้างเองเมื่อ cart ไม่มี) | ใช้ตามเดิม (ADR-025) — dismiss link ด้วย workflow ของเรา + compensation |
+
+### Business rules (รอบ 40)
+10. (PAY-8 — B-1; owner "กันที่ backend" 2026-11-21) middleware บน `POST /admin/payments/:id/refund` (หลัง auth ของ admin ที่ Medusa ใส่ให้):
+    (a) หา order ของ payment (`payment.payment_collection` → `order_payment_collection`); ไม่มี order → `next()` (พฤติกรรมเดิม — script `refund-orphan-payment.ts` ใช้ `refundPaymentsWorkflow` ไม่ผ่าน route นี้อยู่แล้ว);
+    (b) order มี `order_change` ที่ `status ∈ {pending, requested}` (return/claim/exchange/order edit ที่ค้าง) → throw `MedusaError(NOT_ALLOWED, "Cannot refund while this order has an active return, claim, exchange or edit. Confirm or cancel it first.")`
+        → **400** ก่อนเรียก provider (ไม่มี refund ใน Stripe, payment ไม่เปลี่ยน); ไม่มี → `next()`;
+    (c) ข้อความอังกฤษ (admin) ห้ามเรียก Stripe ตรง; ไม่แตะ `refundPaymentWorkflow`; ลงทะเบียนใน admin middlewares ของเรา (ไฟล์ใหม่ `src/api/admin/payments/middlewares.ts` spread เข้า `middlewares.ts`)
+    (d) (แก้ตาม review #425) เส้นทาง refund อัตโนมัติของ group buy (ADR-024 ข้อ c) ใช้ `refundPaymentsWorkflow` ที่ไม่สร้าง credit line จึงไม่ผ่าน route นี้และไม่ต้องใช้ helper นี้
+    (e) รายงาน upstream เรื่อง `refundPaymentWorkflow` คืนเงินก่อนสร้าง credit line — **owner อนุมัติให้เปิด issue 2026-11-21** (session หลักเปิด; ร่างอยู่ใน PR body ของ PAY-8)
+11. (PAY-9 — O-2, ADR-025 accepted 2026-11-21) payment collection ของ **cart** ที่ยังไม่มี order และมี payment ที่ capture แล้วถูกคืนครบ (`MathBN` จาก `raw_*`) เมื่อลูกค้าสร้าง session ใหม่
+    (`POST /store/payment-collections/:id/payment-sessions`) → dismiss link cart ↔ collection (workflow + compensation, lock `cart_id`) แล้วตอบ **409** `{ type: "conflict", code: "PAYMENT_COLLECTION_RESET", message }`
+    (code ใน allow-list ของ PROMO-2); storefront (`initiatePaymentSession`) ได้ code นี้ → อ่าน cart ใหม่ แล้วเรียกซ้ำ **1 ครั้ง** (สร้าง collection ใหม่ด้วย route ของ Medusa) — ครั้งที่สองยังได้ code เดิม → error ไทยทั่วไป;
+    collection ที่ผูก order, ไม่มี payment, หรือมี payment ที่ยังไม่คืนครบ → `next()` (พฤติกรรมเดิม); ลำดับ middleware ตาม ADR-025
+
+### Acceptance criteria (รอบ 40)
+- ☑ AC-21 (PAY-8, กฎข้อ 10) integration http (admin JWT, mock Stripe provider ที่นับการเรียก `refundPayment`) — **ล้มบน develop** ก่อน:
+  (a) order captured ฿600 + return request ที่ยังไม่ confirm (`POST /admin/returns` + request) When `POST /admin/payments/:id/refund { amount: 100 }` Then 400 ข้อความมี `active return`, provider ไม่ถูกเรียก, `refunds` ของ payment ว่าง, `order.summary.refunded_total` = 0;
+  (b) order edit ที่ค้าง (`POST /admin/order-edits`) → 400 แบบ (a); (c) ยกเลิก return request แล้ว refund ฿100 → 200, `payment_status = partially_refunded`, credit line 1 รายการ และ event `payment.refunded` ถูก emit 1 ครั้ง (spy event bus);
+  (d) order ที่ไม่มี order change → 200 (regression ของ AC-6)
+- ☑ AC-22 (PAY-9, กฎข้อ 11) integration http + e2e — **ล้มบน develop** ก่อน:
+  (a) integration: cart ที่ collection มี payment captured ฿X แล้วถูกคืนครบด้วย `refundPaymentsWorkflow` (จำลองผลของ `compensatePaymentIfNeededStep`) When เจ้าของ cart `POST .../payment-sessions` Then 409 code `PAYMENT_COLLECTION_RESET`,
+      link `cart_payment_collection` ของ cart ว่าง, collection เดิมยังอยู่พร้อม refund; ยิงซ้ำพร้อมกัน 2 request → ทั้งคู่ 409 code เดิม ไม่มี error 5xx; หลัง `POST /store/payment-collections { cart_id }` + สร้าง session + complete → order มี payment collection **1** ชุด (ชุดใหม่) และ `payment_status = captured`;
+  (b) collection ที่มี payment captured ยังไม่คืน → ไม่ถูก reset (ผล AC-13 เดิม); collection ของ order (group buy) → ไม่ถูก reset;
+  (c) e2e (Stripe test mode): ลูกค้าอยู่ขั้น review ของ cart flash 1 ชิ้น (สิทธิ์ 1 — ปุ่มสั่งซื้อกดได้ ผ่านด่าน UI ของ FS-21 spec 03 กฎข้อ 26b) แล้วใช้สิทธิ์จาก cart อื่นผ่าน API (แบบสองแท็บ) → กดสั่งด้วยบัตร → capture แล้ว complete ล้ม `FLASH_LIMIT_EXCEEDED` → ถูกคืนเงิน → admin เพิ่มสิทธิ์ต่อคนแล้วจ่ายใหม่ใน cart เดิม → หน้า order confirmed (แก้ถ้อยคำ 2026-11-21 review #445: เดิม "ซื้อเกินสิทธิ์แล้วลดจำนวน" ซึ่ง FS-21 ปิดปุ่มสั่งซื้อก่อนตัดเงินแล้ว); `GET /admin/orders/:id` ได้ `payment_status = captured` และ payment collection 1 ชุด (แทน #69)
+
+### Test plan (รอบ 40)
+| ระดับ | AC |
+|---|---|
+| integration http (mock provider) | AC-21 |
+| integration http + e2e Stripe test mode | AC-22 |
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| PAY-8 | ☑ #426 — (B-1 — เงิน) middleware กัน refund ของ admin เมื่อ order มี active order change (กฎข้อ 10) + ร่าง issue upstream ใน PR body (owner อนุมัติเปิดแล้ว — session หลักเปิด) | `apps/backend/src/api/admin/payments/middlewares.ts` (ใหม่), `apps/backend/src/lib/active-order-change.ts` (ใหม่ + unit), `apps/backend/src/api/middlewares.ts`, `integration-tests/http/admin-refund-guard.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-21 | PR เอกสารรอบ 40 merge | `middlewares.ts` (GB-20, PAY-9, GB-25) |
+| PAY-9 | ☑ #445 — (O-2 — เงิน, ADR-025 accepted 2026-11-21) reset collection ของ cart ที่ถูกคืนเงิน (กฎข้อ 11) + storefront เรียก `initiatePaymentSession` ซ้ำ 1 ครั้งเมื่อได้ `PAYMENT_COLLECTION_RESET` | `apps/backend/src/api/store/payment-collections/refunded-collection-reset.ts` (ใหม่), `apps/backend/src/workflows/payment/reset-cart-payment-collection.ts` (ใหม่), `apps/backend/src/api/middlewares.ts`, `apps/backend/src/api/error-handler.ts` (allow-list), `apps/storefront/src/lib/data/cart.ts`, test integration + `apps/storefront/e2e/pay-9-refunded-cart-repay.spec.ts` | ~180 LOC + ~250 LOC test | AC-22 | **GB-20** (ลำดับ middleware บน route เดียวกัน), ADR-025 accepted ☑ | `middlewares.ts`, `cart.ts` (FS-22 แตะ error map ของ checkout — คนละฟังก์ชัน) |
+
+ลำดับ: PAY-8 ∥ GB-20 (คนละ route แต่ไฟล์ `middlewares.ts` ร่วม — ตัวที่ merge ทีหลัง sync) → PAY-9 (หลัง GB-20)
+
+## Follow-up รอบ 41 (2026-11-21 — owner: ทุกข้อใน release v0.3.0)
+ที่มา: review #426 (PAY-8 — admin เห็น toast 400 หลังกด Refund), FS-22 builder/review #464 (PromptPay `finish` ค้าง "กำลังสร้างคำสั่งซื้อ"; `/api/payment-return` ส่ง `/cart?error=order_failed` แต่หน้า cart ไม่อ่าน),
+qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ flaky — `sessionIntentId` ได้ `""` ระหว่าง Stripe ตอบ 500)
+
+### What Medusa already gives us (รอบ 41)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ปุ่ม Refund ของหน้า order | `@medusajs/dashboard` 2.22.1 `order-detail` — action `to: /orders/:id/refund?paymentId=…`, `disabled: !payment.captured_at \|\| !!payment.canceled_at \|\| totalRefunded >= payment.amount` (`dist/order-detail-ERHRK6W3.mjs:2420-2423`) — **ไม่มีจุดขยาย** ให้ซ่อน/ปิดจาก extension | ซ่อน/ปิดไม่ได้โดยไม่ patch → widget แจ้งเตือน (Q-P11 = ก owner ตัดสิน 2026-11-21) |
+| อ่าน order change ที่ค้าง | `useOrderPreview(id)` ของ `@medusajs/dashboard/hooks` (`dist/hooks.d.ts:779`) — `order.order_change` = active change (`getActiveOrderChange_` ของ order module: status pending/requested); หน้า order เรียกแบบเดียวกันจึงใช้ cache ร่วม และ mutation ของ return/claim/exchange/edit invalidate `preview(id)`. **ไม่ใช้** `useOrderChanges` (2.22.1: queryKey `changes(id)` ไม่รวม query → cache ชนกับ timeline จนหน้า order crash และ mutation เหล่านั้นไม่ invalidate key นี้ — review/qa #471) | ใช้ตามเดิม ห้ามส่ง query (กฎข้อ 12) |
+| แจ้งเตือนใน widget | injection zone `order.details.before`, `Alert`/`Container` ของ `@medusajs/ui` | ใช้ตามเดิม |
+| ตำแหน่ง widget บนหน้า order | dashboard 2.22.1 ทิ้ง suffix `.before`/`.after` (`getWidgetsForSections`) แล้ววาง widget ต่อท้ายคอลัมน์หลัก (ใต้ Payments) — ตำแหน่งปรับได้ด้วย layout configuration ของ zone (`id` ใน `defineWidgetConfig` + system default ของ Settings module `setSystemDefaultLayoutConfiguration`; แอดมินปรับเองได้ด้วย "Customize layout") | ขยาย: migration script ตั้ง default layout ของ `order.details` ให้ widget ขึ้นบนสุด (กฎข้อ 12) |
+| ทาง redirect ของ 3DS/PromptPay | route ของ starter `/api/payment-return` + `placeOrder` | ขยาย (กฎข้อ 14) |
+
+### Business rules (รอบ 41)
+12. (PAY-10 — Q-P11 = ก owner ตัดสิน 2026-11-21) widget `order.details.before` (`src/admin/widgets/order-refund-blocked.tsx`): เมื่อ order มี order change `status ∈ {pending, requested}` (`order_change` ของ `useOrderPreview(id)` ไม่ส่ง query — ค่าเดียวกับ middleware ของ PAY-8 กฎข้อ 10b; ขึ้น/หายเองเมื่อแอดมินเริ่ม/ยกเลิก/confirm change บนหน้าเดียวกันโดยไม่ reload;
+    ขึ้นบนสุดของคอลัมน์หลักในจอแรกผ่าน default layout ของ zone `order.details` ที่ migration script `src/migration-scripts/order-refund-blocked-layout.ts` ตั้ง — ไม่ทับตำแหน่งที่แอดมินกำหนดเอง; แอดมินที่บันทึก layout ส่วนตัวไว้ก่อนจะเห็นตาม layout ของตัวเอง)
+    แสดง `Alert` (variant warning, testid `order-refund-blocked`) ข้อความอังกฤษ "Refunds are blocked while this order has an active return, claim, exchange or edit. Confirm or cancel it first." + ชนิดของ change ที่ค้าง;
+    ไม่มี change ค้าง → ไม่ render อะไร; ไม่แตะปุ่ม Refund ของ Medusa (ยังกดได้ แล้ว middleware ของ PAY-8 ตอบ 400 ข้อความเดียวกันเป็น toast)
+13. (PAY-11 — ต่อจาก FS-22, spec 03 กฎข้อ 27/29) PromptPay ทางสำรอง `finish()` จัดผลด้วย helper `placeOrderOutcome` ของ CORE-76 (allow-list — spec 01 กฎข้อ 134 a2):
+    `processing` (409 code `CART_COMPLETION_IN_PROGRESS` — backend แปลงจาก 409 ไม่มี code ของ Medusa, spec 01 กฎข้อ 134 a2 (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76)) → poll ต่อตามเดิม; `unauthorized` (401/403) → login ใหม่ตามเดิม; kind `refunded` (`FLASH_*`/สต็อกไม่พอ/code ของ hook ใน allow-list) → หยุด poll ทันที
+    แล้วแสดง `promptpay-refunded` ข้อความตามกฎข้อ 27 ของ spec 03 (บอกเหตุผล "สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน… คืนเงินเต็มจำนวนให้อัตโนมัติ") แทนการค้าง "กำลังสร้างคำสั่งซื้อ";
+    poll ได้ `refunded` โดยไม่รู้เหตุ → ข้อความเดิมของ PAY-6c; network/5xx → poll ต่อตามเดิม (PAY-6b)
+14. (PAY-12) `/api/payment-return` (redirect off-site — 3DS/PromptPay redirect) ใช้ `placeOrderOutcome` เดียวกัน: kind `refunded` → `/<cc>/cart?error=refunded`;
+    `processing` → อ่าน order ของ cart: มี → หน้า order confirmed, ยังไม่มี → `/<cc>/checkout?step=review` (กลไก poll ของ PAY-6b); `unauthorized` → หน้า login พร้อม return path เดิม (review/qa #481 D-1: return path = `/<cc>/checkout?step=review` ที่ `readReturnTo` รับ — ห้ามส่ง URL ของ route ที่มี `payment_intent_client_secret`; 401/403 ตอนอ่าน cart ก่อน complete ไปทางนี้ด้วย ไม่ใช่ `payment_failed`; session หลักตัดสิน #481: อ่าน cart ล้มด้วย 5xx/network = ไม่รู้ผลการชำระ → `/<cc>/checkout?step=review` ให้ placeOrder/poll ทำต่อ ไม่บอกว่าชำระไม่สำเร็จ — `payment_failed` เหลือเฉพาะที่รู้แน่ว่าไม่ได้จ่าย/ข้อมูลไม่ตรง: `redirect_status=failed`, ไม่มี param, ไม่พบ session/secret ไม่ตรง, 4xx อื่น; qa #481 D-2: ทาง review ทุกทางของ route นี้ส่ง `cart_id` (id ของ Medusa ไม่ใช่ secret) ไปด้วย — `/<cc>/checkout?step=review&cart_id=<cart>`; หน้า checkout ที่มี `cart_id` แต่ไม่มี cart (cookie ถูกล้างตอนไม่มี jwt และ `restoreActiveCart` ข้าม cart ที่ complete) หรือ cart complete แล้ว → หา order ของลูกค้าที่ `cart.id` ตรง (`GET /store/orders` field `cart.id`) แล้วไปหน้า order confirmed, ไม่พบ → `/<cc>/account/orders` ไม่แสดง 404); error อื่น → `order_failed` (เดิม); ปฏิเสธ → `payment_failed` (เดิม);
+    หน้า `/<cc>/cart` อ่าน `error` ∈ {`refunded`, `order_failed`, `payment_failed`} แล้วแสดง `cart-error-notice` ข้อความไทยต่อค่า (`refunded` = ข้อความกฎข้อ 27 spec 03; `order_failed` = "สร้างคำสั่งซื้อไม่สำเร็จ หากมีการตัดเงิน ระบบจะคืนเงินให้อัตโนมัติ กรุณาตรวจสอบตะกร้าแล้วสั่งใหม่";
+    `payment_failed` = "ชำระเงินไม่สำเร็จ กรุณาเลือกวิธีชำระเงินอีกครั้ง"); ค่าอื่น → ไม่แสดง (ไม่ render ค่าจาก URL ตรง)
+15. (PAY-13 — test hygiene) e2e `pay-9-refunded-cart-repay.spec.ts` ขั้นจ่ายใหม่: รอ `sessionIntentId` ไม่ว่างด้วย `expect.poll` (หรือรอ response ของ `POST .../payment-sessions` ที่ 2xx) ก่อนใช้ค่า;
+    Stripe ตอบ 5xx ชั่วคราว → ลองสร้าง session ใหม่ตามทางที่ผู้ใช้ทำได้ (เช่นเลือกวิธีชำระอีกครั้ง) ไม่เกิน 2 ครั้ง; **ห้าม**ลดสิ่งที่ตรวจ (AC-22c ทุกข้อคงเดิม), ห้าม `waitForTimeout`/`retries`/เพิ่ม timeout ระดับ config
+16. (PAY-14 — owner สั่ง 2026-11-21, review #468 ยืนยัน; ไม่กระทบเงิน) complete ล้มหลังตัดบัตร แล้วลูกค้าเปิดขั้น payment ภายใน ~1 วินาทีระหว่าง compensation
+    (`refundPaymentAndRecreatePaymentSessionWorkflow` → `createPaymentSession_` บันทึก session `pending` ที่ชี้ PI เดิมก่อนเรียก Stripe แล้วค่อยลบ) → หน้าเลือก radio บัตรไว้แล้ว Stripe Elements ขึ้น error อังกฤษ "terminal state"
+    และคลิก radio เดิมไม่เรียก `onChange` → ติดจน reload (ขัด ADR-014):
+    (a) ขั้น payment ตรวจ PI ของ session ที่เลือกอยู่ (`stripe.retrievePaymentIntent(client_secret)` ฝั่ง client — มีอยู่แล้วใน PromptPay) หรือรับ error จาก Elements (`loaderror`/`confirmPayment` ที่บอกว่า PI จบแล้ว):
+        PI สถานะ `succeeded`/`canceled` หรือ Elements error → **ไม่** mount Elements กับ PI นั้น แล้วอ่าน cart ใหม่และเรียก `initiatePaymentSession` **ทุกครั้ง อัตโนมัติ 1 ครั้ง** — storefront ใช้สถานะ PI
+        แค่ตัดสินว่า "ห้าม mount" ไม่ตัดสินเรื่องเงิน (client แยก "จ่ายแล้วยังไม่คืน" กับ "คืนครบแล้ว" ไม่ได้ — PI ที่ถูกคืนยังเป็น `succeeded`); backend ตัดสินตามลำดับ middleware ของ ADR-025:
+        คืนครบแล้ว → 409 `PAYMENT_COLLECTION_RESET` → storefront retry 1 ครั้ง (กฎข้อ 11) ได้ collection/session ใหม่; จ่ายแล้วยังไม่คืน → 409 `PAYMENT_ALREADY_COMPLETED` → กลไกรอ order ของ ADR-015 (ไม่สร้าง PI ใหม่);
+        (a2) race ที่ต้องครอบ (review #467): `guardPaidStripeSession` อ่านรายการ session **ก่อน**เข้า lock `cart_id` ที่ compensation ถืออยู่ → ได้ lock แล้ว session ชั่วคราวถูกลบไปแล้ว → `NOT_FOUND` ถูก rethrow —
+             builder ยืนยันใน integration ก่อน แล้วแก้ที่ guard ให้อ่าน session ใหม่หลังได้ lock (session ที่หายไป = ข้ามการตรวจของ session นั้น) **หรือ** ให้ storefront ถือ 404 จาก `POST .../payment-sessions` เป็น "อ่าน cart แล้วลองใหม่ 1 ครั้ง" — เลือกทางเดียวและบันทึกใน PR;
+        ยังไม่ได้ → แสดงข้อความไทย `payment-session-reset-notice` "กรุณาเลือกวิธีชำระเงินอีกครั้ง" และการคลิก radio ที่เลือกอยู่ (หรือปุ่ม `payment-session-retry`) สร้าง session ใหม่ได้ (ไม่พึ่ง `onChange`);
+    (b) ข้อความ error ของ Stripe (ภาษาอังกฤษ) ไม่แสดงให้ลูกค้า — map เป็นข้อความไทยผ่าน helper เดิมของ CORE-4i;
+    (c) ไม่ confirm PI เดิมที่จบแล้ว และไม่ตัดเงินซ้ำ: session ใหม่ = PI ใหม่ (Stripe provider สร้างให้); PI `succeeded` ที่**ยังไม่ถูกคืนเงิน** → backend ตอบ `PAYMENT_ALREADY_COMPLETED` (ADR-015) จึงไม่สร้าง PI ใหม่;
+        PI `succeeded` ที่**คืนครบแล้ว** (กรณีหลักของ PAY-14) → `PAYMENT_COLLECTION_RESET` แล้วได้ session ใหม่;
+    (d) ถ้าเรียก `stripe.retrievePaymentIntent` ใน component ของขั้น payment ให้เพิ่มข้อยกเว้นที่ระบุเหตุผลใน `checkout-affiliate-coverage.test.ts` (test นี้ตรวจจุดที่เรียก Stripe ก่อน sync cookie `aff` — AF-3b)
+17. (PAY-15 — owner ตัดสิน 2026-11-22 จาก review #479; ต่อจากกฎข้อ 13) หลัง `promptpay-refunded` จากผล kind `refunded` ที่**รู้เหตุ** (`FLASH_SOLD_OUT`/`FLASH_LIMIT_EXCEEDED`/สต็อกไม่พอ/`PROMOTION_NOT_COMBINABLE` ฯลฯ — helper `promptPayFinishAction`)
+    → **ไม่แสดง**ปุ่ม "เริ่มชำระใหม่" (`promptpay-retry-button`) เพราะปุ่มนั้นสร้าง QR ใหม่บนตะกร้าเดิมที่ยังมีเหตุเดิมอยู่ (ลูกค้าจ่ายซ้ำแล้วถูกคืนซ้ำ) แต่แสดงลิงก์ "ไปที่ตะกร้า" (`promptpay-go-to-cart`, ข้อความไทย)
+    ไปที่ `/<cc>/cart` ให้ลูกค้าปรับตะกร้า/โค้ดส่วนลดตามข้อความ; refunded โดย**ไม่รู้เหตุ** (poll ของ PAY-6c) → คงปุ่ม "เริ่มชำระใหม่" และข้อความเดิม ไม่แสดง `promptpay-go-to-cart`
+
+### Acceptance criteria (รอบ 41)
+- ☑ AC-23 (PAY-10, กฎข้อ 12) e2e admin: order ที่มี return request ค้าง → เห็น `order-refund-blocked` (ข้อความมี `active return`); ยกเลิก return request แล้ว reload → ไม่เห็น; order ปกติ → ไม่เห็น;
+  (review/qa #471, hotfix หลัง #471) เริ่ม return ผ่านหน้า Create Return ของ Medusa → widget บนหน้า order ขึ้นเองโดยไม่ reload; ปิดฟอร์มโดยไม่ submit → Medusa ยกเลิก return request (`onClose` → `cancelReturnRequest` เมื่อฟอร์ม mount แล้ว) → widget หายเอง; กด Cancel Return ในหน้า order → หายเองโดยไม่ reload; ที่ 1280×720 widget อยู่ในจอแรกเต็มกล่องโดยไม่ scroll
+- ☑ AC-24 (PAY-11, กฎข้อ 13) unit Vitest (logic ของ finish/poll เป็น pure helper) + e2e route mock: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → ภายใน 5 วินาทีเห็น `promptpay-refunded` มีคำ "คืนเงิน" และไม่เห็น `promptpay-awaiting-order`; ไม่มี request poll เพิ่มหลังนั้น (ล้มบน develop+FS-22 — ค้าง awaiting); 409 `CART_COMPLETION_IN_PROGRESS` → ยัง poll และไม่เห็น `promptpay-refunded`
+- ☑ AC-25 (PAY-12, กฎข้อ 14) unit ของ route (แบบ `core-29-active-cart.test.ts:187-214`) + e2e: placeOrder kind `refunded` → location `/th/cart?error=refunded`; 409 `CART_COMPLETION_IN_PROGRESS` + order มีแล้ว → หน้า order confirmed (ไม่ใช่ `error=refunded`); 401 → หน้า login; เปิด `/th/cart?error=refunded|order_failed|payment_failed` → `cart-error-notice` อักษรไทยตามค่า; `?error=<script>` → ไม่แสดง (ล้มบน develop — หน้า cart ไม่อ่าน `error`)
+- ☑ AC-27 (PAY-14, กฎข้อ 16) unit Vitest (helper ตัดสิน "PI จบแล้ว → reset") + e2e (Stripe test mode หรือ route mock ที่ให้ cart คืน session `pending` ชี้ PI ที่ `succeeded`/`canceled` แล้ว) — **ล้มบน develop** ก่อน:
+  (a) เปิดขั้น payment → ภายใน 10 วินาทีมี `POST .../payment-sessions` ใหม่ 1 ครั้งและ Elements mount กับ client secret ใหม่ (ไม่ใช่ของ PI เดิม); บังคับให้การสร้างอัตโนมัติล้ม 1 ครั้ง (route mock 500) → เห็น `payment-session-reset-notice` แล้วคลิก radio บัตรที่เลือกอยู่ → สร้าง session ใหม่สำเร็จ;
+  (b) ตลอดขั้นตอนไม่มีข้อความ "terminal state" หรือข้อความอังกฤษของ Stripe ใน DOM ที่มองเห็น (ตรวจด้วย regex อักษรละตินบนข้อความ error ที่มองเห็น + อักษรไทย);
+  (c) ไม่มี request `confirmPayment` กับ PI เดิม (นับ request ไป `api.stripe.com/v1/payment_intents/<pi เดิม>/confirm` = 0); จ่ายด้วย session ใหม่แล้วได้ order 1 รายการ payment captured 1 รายการ;
+  (c1) PI เดิม `succeeded` ที่**ยังไม่ถูกคืนเงิน** (ยังไม่มี order) → storefront เรียก `initiatePaymentSession` แล้วได้ 409 `PAYMENT_ALREADY_COMPLETED` → ไม่มี session/PI ใหม่ และเข้ากลไกรอ order (ADR-015);
+  (c2) PI เดิม `succeeded` ที่**คืนครบแล้ว** → ได้ 409 `PAYMENT_COLLECTION_RESET` แล้ว retry ได้ collection + session ใหม่ (client secret ใหม่) และจ่ายได้;
+  (d) integration race (กฎข้อ 16 a2): ยิง `POST .../payment-sessions` ระหว่าง compensation ถือ lock `cart_id` แล้ว session ชั่วคราวถูกลบ → ผลสุดท้ายฝั่งลูกค้าได้ session ใหม่ (ไม่ค้างที่ 404/500) ตามทางที่ builder เลือก
+- ✕ AC-26 (PAY-13, กฎข้อ 15) e2e `pay-9-refunded-cart-repay` `--repeat-each=5` ผ่านในเครื่อง/CI; static: ไม่มี `waitForTimeout` ใหม่ และ assertion ของ AC-22c เท่าเดิม (นับ `expect(` ของ step เดิมไม่ลด)
+  — **ปิดโดยไม่มี PR แยก (ปิดรอบ 41 2026-11-23)**: hotfix #468 (merge ก่อน PR เอกสารรอบ 41) แก้ต้นเหตุ flaky — **เพิ่ม** การรอ execution ของ `complete-cart` จบทุกตัว (`cartCompletionSettled`, `e2e/support/cart-completion.ts`) ก่อนจ่ายใหม่
+    และเอา `expect.poll` ชั้นนอกออก; ส่วนแรกของกฎข้อ 15 (รอ `sessionIntentId` ไม่ว่าง) เป็นจริง**อยู่ก่อนแล้วตั้งแต่ PAY-2** (`dc4b2c13` — `e2e/support/stripe.ts:76-92` poll `pi_…` 15 วินาที; แก้ถ้อยคำตาม review #520);
+    ส่วน "ลองสร้าง session ใหม่เมื่อ Stripe 5xx" ไม่ทำ — ไม่พบ flaky ซ้ำหลัง #468 (ถ้าซ้ำ เปิด task ใหม่)
+- ☑ AC-28 (PAY-15, กฎข้อ 17) unit Vitest (helper บอกว่ากรณีไหนไปตะกร้า) + e2e route mock แบบ AC-24: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → เห็น `promptpay-refunded` และ `promptpay-go-to-cart` (อักษรไทย, href ลงท้าย `/th/cart`)
+  ไม่เห็น `promptpay-retry-button` (ล้มบน develop — ปุ่มเริ่มชำระใหม่แสดงทุกกรณี); คลิก `promptpay-go-to-cart` → อยู่ที่ `/th/cart`; regression PAY-6c (poll เห็น refunded ไม่รู้เหตุ) → ยังเห็น `promptpay-retry-button` และไม่เห็น `promptpay-go-to-cart`
+  (ปิดรอบ 41: ย้ายวงเล็บ "ล้มบน develop" มาไว้หลังส่วนที่ล้มจริงตาม review #484 — ส่วน regression ผ่านบน develop)
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| PAY-10 | ☑ #471 — widget แจ้งว่า refund ถูกกันเมื่อมี order change ค้าง (กฎข้อ 12); qa | `apps/backend/src/admin/widgets/order-refund-blocked.tsx` (ใหม่), e2e admin | ~50 LOC + ~80 LOC test | AC-23 | PR เอกสารรอบ 41 (Q-P11 = ก ☑), PAY-8 (#426) | — |
+| PAY-11 | ☑ #479 — PromptPay ทางสำรองหยุดค้างและบอกเหตุคืนเงิน (กฎข้อ 13); qa | `modules/checkout/components/promptpay-payment/index.tsx`, `lib/util/promptpay*.ts` (+ test), e2e | ~50 LOC + ~120 LOC test | AC-24 | **FS-22 (#464)**, **CORE-76** (kind `refunded`) | `cart.ts`/`checkout-error.ts` |
+| PAY-12 | ☑ #481 — `/api/payment-return` → `error=refunded` + หน้า cart อ่าน `error` (กฎข้อ 14); qa | `app/api/payment-return/route.ts`, `app/[countryCode]/(main)/cart/page.tsx`/`modules/cart/templates`, `lib/util/cart-error.ts` (+ test), e2e | ~60 LOC + ~120 LOC test | AC-25 | **FS-22 (#464)**, **CORE-76** | `cart.ts` (ไม่แก้ — ใช้ผลของ CORE-76) |
+| PAY-13 | ✕ ปิดโดย hotfix #468 (ไม่มี PR แยก — ดู AC-26) — (test hygiene) e2e pay-9 จ่ายใหม่ไม่ flaky (กฎข้อ 15) | `apps/storefront/e2e/pay-9-refunded-cart-repay.spec.ts` | ~30 LOC | AC-26 | PR เอกสารรอบ 41 | — |
+| PAY-14 | ☑ #482 — ขั้น payment ไม่ติดกับ session ชั่วคราวที่ชี้ PI ที่จบแล้ว: สร้าง session ใหม่อัตโนมัติ/คลิกตัวเลือกเดิมได้ + ไม่โชว์ error อังกฤษของ Stripe (กฎข้อ 16); qa | `modules/checkout/components/payment/index.tsx`, `modules/checkout/components/payment-container`/Stripe wrapper, `lib/util/payment-session.ts` (+ test), `lib/data/cart.ts` (ถ้าต้อง), `checkout-affiliate-coverage.test.ts` (ข้อยกเว้น), backend `guardPaidStripeSession` ถ้าเลือกแก้ที่ guard (+ integration), e2e `pay-14-stale-session.spec.ts` | ~100 LOC + ~200 LOC test | AC-27 | **CORE-76** (ไฟล์เดียวกัน: `cart.ts`/helper error) | `cart.ts`, `payment/index.tsx` (PAY-11/12 — ตัวหลัง sync) |
+| PAY-15 | ☑ #484 — (owner ตัดสิน 2026-11-22 (review #479)) PromptPay refunded ที่รู้เหตุ: ซ่อน "เริ่มชำระใหม่" แสดงลิงก์ "ไปที่ตะกร้า" (กฎข้อ 17); qa | `modules/checkout/components/promptpay-payment/index.tsx`, `lib/util/promptpay-finish.ts` (+ test), e2e `pay-15-promptpay-go-to-cart.spec.ts`, regression `payments-promptpay-fallback-cap.spec.ts` | ~20 LOC + ~120 LOC test | AC-28 | **PAY-11 (#479)** | `promptpay-payment/index.tsx` |
+
+ลำดับ: PAY-13 ∥ PAY-10 อิสระ; CORE-76 → (PAY-11 ∥ PAY-12 ∥ PAY-14); PAY-11 → PAY-15
+
+### Open questions (รอบ 41)
+- ~~**Q-P11**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** widget `order.details.before` แจ้งเตือน (กฎข้อ 12) — คำถามเดิม: (PAY-10) owner สั่ง "ซ่อน/ปิดปุ่ม Refund เมื่อมี order change ค้าง" แต่ปุ่มเป็นของหน้า order ใน `@medusajs/dashboard` (เงื่อนไข disabled ฝังใน `order-detail` — ไม่มี injection/override ให้ extension):
+  (ก) **[Recommended]** widget เตือนเหนือหน้า order (กฎข้อ 12) + toast 400 ของ PAY-8 ที่มีอยู่ — ไม่แตะ library, ~50 LOC; ปุ่มยังกดได้แต่เงินไม่ถูกคืนผิด (backend กันแล้ว)
+  (ข) patch `@medusajs/dashboard` ด้วย `pnpm patch` ให้ disabled เมื่อมี change ค้าง — ซ่อนจริง แต่ขัด ADR-018 (ห้าม patch library) ต้องมี ADR ใหม่และตรวจซ้ำทุก bump
+  (ค) ไม่ทำ — คง toast 400 ของ PAY-8
+
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review/qa #479, #481, #482, #484; ไม่บล็อก release v0.3.0)
+Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระทบเงิน (backend ADR-015/ADR-025 กันการตัดเงินซ้ำอยู่แล้ว) — UX/สถานะของหน้าร้านล้วน
+### What Medusa already gives us (รอบ 42)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| error ของการ confirm บัตร | Stripe.js `confirmPayment` คืน `error` (`type`/`code`/`decline_code`/`message` ตาม locale ของ Elements) — ไม่ใช่ของ Medusa | map เป็นไทยด้วย helper เดิมของ CORE-4i/PAY-14 (กฎข้อ 19) |
+| redirect หลังชำระ | route ของ starter `/api/payment-return` (ขยายแล้วใน PAY-12) | ใช้ตามเดิม (กฎข้อ 20) |
+### Business rules (รอบ 42)
+18. (PAY-16 — qa/review #482) ขั้น payment (`modules/checkout/components/payment/index.tsx`): (a) `payment-session-reset-notice` หายเมื่อเปลี่ยนวิธีชำระ (`setPaymentMethod`) หรือเมื่อ client secret ที่ใช้อยู่เปลี่ยน (session ใหม่มาแล้ว) —
+        "ลองอีกครั้ง" หลังเปลี่ยนวิธีจึงไม่สร้าง session ของวิธีที่ไม่ได้เลือก; (b) guard กันยิงซ้ำของการ renew ใช้ ref (ไม่ใช่ state) และปุ่ม `payment-session-retry` `disabled` ระหว่าง renew;
+    (c) renew สำเร็จแต่ RSC refresh ไม่มาภายใน 10 วินาที → เลิก skeleton แล้วแสดง `payment-session-reset-notice` (ไม่ค้าง); (d) ระหว่างรอ order ของ `PAYMENT_ALREADY_COMPLETED` (ADR-015) radio วิธีชำระ `disabled`
+19. (PAY-17 — review #482, #484) (a) `StripePaymentButton` ขั้น review (`payment-button/index.tsx` ~`:225`): `error.message` ของ Stripe ไม่แสดงตรง — map เป็นข้อความไทยด้วย helper เดิมที่ PAY-14 ใช้กับ Elements (กฎข้อ 16b) ตาม `error.type`/`code`
+        (บัตรถูกปฏิเสธ/ข้อมูลบัตรผิด/อื่นๆ); (b) PromptPay (`promptpay-payment/index.tsx`): ผล poll ที่เห็น `refunded` **ระหว่าง** `finish()` กำลังรอ `placeOrder` (`finishing.current`) ไม่ตัดสินผล — ให้ผลของ `placeOrder` ตัดสิน
+        (กันปุ่ม `promptpay-retry-button` โผล่ชั่วครู่ก่อน `promptpay-go-to-cart`); แก้ comment ที่ล้าสมัย (~`:129-130`)
+20. (PAY-18 — re-review #481, qa #481) (a) `/api/payment-return` ที่ `redirect_status=failed` แล้วอ่าน cart ได้ 5xx/network → `/<cc>/checkout?step=payment` (รู้แน่ว่าจ่ายไม่สำเร็จ — ไม่ใช่ `step=review`); unit 401/403/5xx ตรวจว่าไม่เรียก `setCartCookie`;
+    (b) หน้า checkout ที่มี `cart_id` ใน query ตัดสินด้วย `!cart || cart.completed_at || cart.id !== cart_id` (cookie ชี้ cart อื่น → ทางหา order ของกฎข้อ 14);
+    (c) `cart-error-notice` หายเมื่อลูกค้าแก้ตะกร้าสำเร็จครั้งแรก (ลบ `error` ออกจาก URL ด้วย `router.replace` — ไม่เพิ่ม history)
+### Acceptance criteria (รอบ 42)
+- AC-29 (PAY-16, กฎข้อ 18) unit Vitest + e2e route mock (แบบ AC-27): (a) บังคับ notice แล้วเลือก manual → notice หาย และคลิก "ลองอีกครั้ง" ไม่มีอีกแล้ว/ไม่สร้าง session ของบัตร (ล้มบน develop);
+  (b) dblclick `payment-session-retry` → `POST .../payment-sessions` 1 ครั้ง; (c) route mock ให้ refresh ไม่มา → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton; (d) ระหว่างรอ order radio มี `disabled`
+- AC-30 (PAY-17, กฎข้อ 19) unit + e2e route mock: (a) `confirmPayment` คืน error `card_error`/`card_declined` ข้อความอังกฤษ → ข้อความที่มองเห็นเป็นอักษรไทย ไม่มีข้อความอังกฤษของ Stripe (ล้มบน develop);
+  (b) unit ของตัวตัดสิน PromptPay: poll `refunded` ระหว่าง finishing → ไม่เปลี่ยน state; e2e AC-24/AC-28 ผ่าน และไม่เห็น `promptpay-retry-button` ระหว่างทาง (นับด้วย `MutationObserver`)
+- AC-31 (PAY-18, กฎข้อ 20) unit ของ route (แบบ AC-25): `redirect_status=failed` + อ่าน cart 500 → location `step=payment`; 401/403/5xx → `setCartCookie` ไม่ถูกเรียก; หน้า checkout `cart_id` ≠ cart ของ cookie → ทางหา order;
+  e2e: เปิด `/th/cart?error=refunded` แล้วแก้จำนวนสำเร็จ → `cart-error-notice` หายและ URL ไม่มี `error` (ล้มบน develop)
+### Tasks (รอบ 42)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| PAY-16 | สถานะขั้น payment: notice reset หายเมื่อเปลี่ยนวิธี, guard ref, timeout refresh, radio disabled ระหว่างรอ order (กฎข้อ 18); qa | `modules/checkout/components/payment/index.tsx`, `lib/util/payment-session.ts` (+ test), e2e `pay-14-stale-session.spec.ts` | ~50 LOC + ~120 LOC test | AC-29 | PR เอกสารปิดรอบ 41; **CORE-89** ถ้า merge ก่อน (ไฟล์เดียวกัน — ตัวหลัง sync) | `payment/index.tsx` |
+| PAY-17 | ข้อความไทยของ error Stripe ขั้น review + PromptPay poll ไม่ตัดสินระหว่าง finishing (กฎข้อ 19); qa | `modules/checkout/components/payment-button/index.tsx`, `promptpay-payment/index.tsx`, `lib/util/promptpay-finish.ts` (+ test), e2e | ~40 LOC + ~120 LOC test | AC-30 | PR เอกสารปิดรอบ 41; **CORE-90** (`promptpay-payment/index.tsx`) | `promptpay-payment/index.tsx`, `payment-button/index.tsx` (CORE-94 coverage test อ่านไฟล์นี้ — ไม่แก้) |
+| PAY-18 | `/api/payment-return` + checkout `cart_id` + notice ของ cart หายหลังแก้ตะกร้า (กฎข้อ 20); qa | `app/api/payment-return/route.ts` (+ test), checkout page, `modules/cart/templates` / `cart-error-notice`, e2e | ~30 LOC + ~100 LOC test | AC-31 | PR เอกสารปิดรอบ 41 | — |
+
+ลำดับ: PAY-18 อิสระ; PAY-16 ∥ PAY-17 (คนละไฟล์) — PAY-16 sync หลัง CORE-89, PAY-17 หลัง CORE-90
+
+### Open questions (รอบ 42)
+- **Q-P12** (review #484 — นอกกฎข้อ 17) หลัง `promptpay-refunded` ที่รู้เหตุ ถ้าลูกค้า **reload หรือกด Back จากตะกร้า** state "refunded" หายและหน้า checkout แสดงปุ่มจ่ายพร้อมเพย์ตามปกติบนตะกร้าเดิม (เหตุเดิมอาจยังอยู่ → จ่ายแล้วถูกคืนซ้ำ):
+  (ก) **[Recommended]** ไม่ทำ — กรณีเกินสิทธิ์ FS-21/FS-23 ปิดปุ่มสั่งซื้อและเตือนในตะกร้า/review อยู่แล้ว เหลือเฉพาะ sold-out ที่เกิดใหม่ซึ่งหายาก และเงินถูกคืนอัตโนมัติเสมอ (ADR-015/compensation); ไม่มีงาน
+  (ข) จำผล refunded ต่อ cart (เช่น `cart.metadata` หรือ cookie ที่มี cart id) แล้วแสดง notice + ซ่อนปุ่มจ่ายจนกว่าตะกร้าเปลี่ยน — ~80 LOC + e2e; ต้องกำหนดว่า "ตะกร้าเปลี่ยน" นับอะไร
+
 ## Open questions
+- ~~Q10~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-025 ทางเลือก 2** → PAY-9 เริ่มได้หลัง GB-20; คำถามเดิม (รอบ 40): อนุมัติ ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน)
+  หรือให้ storefront สร้าง cart ใหม่ (ไม่ครอบ client อื่น)
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
   — (2026-11-09, รอบ 25) owner **ยังไม่ยืนยัน**: ใช้ Stripe test mode ต่อไป; การยืนยันนี้เป็นข้อ 6 ใน "Go-live checklist" ของ `docs/ops/production.md` (ต้องทำก่อนเปิดร้านจริง) — ไม่มี task
 - ~~Q2~~ ตัดสินแล้ว (owner, 2026-10-25): production ห้าม `pp_system_default` แบบ D1 ของ ADR-010 (seed + `check:go-live`;

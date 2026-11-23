@@ -1,6 +1,6 @@
 # 07 Scaling และการปฏิบัติการ (operations)
 
-สถานะ: draft (ปิดรอบ 36 2026-11-18: ☑ OPS-28 #403, OPS-29 #407 (owner สั่งทำ 2026-11-18) — หัวข้อ "Follow-up รอบ 36" done; รอบ 36 2026-11-18: follow-up ของ OPS-27 #399 → OPS-28 (AC-43 — ขั้นตรวจ "ต้องไม่พบ" ใน CI ล้มเมื่อ grep error ไม่ผ่านเงียบ) → OPS-29 (AC-44 — ไม่มีไฟล์ test ที่ compile แล้วใน image) — หัวข้อ "Follow-up รอบ 36"; ปิดรอบ 35 2026-11-18: ☑ OPS-27 #399 — หัวข้อ "Follow-up รอบ 35" done; รอบ 35 2026-11-18: ผล qa ADM-22 (spec 08) — `medusa build` ที่ไม่ตั้ง `NODE_ENV` ได้ admin แบบ development (stack trace ในหน้า error) → owner ตัดสินข้อ ก "แก้ที่การ build" → OPS-27 (AC-42) ตั้ง `NODE_ENV=production` เฉพาะขั้น build ใน Dockerfile + CI + คำสั่ง prod-like ใน `CLAUDE.md` — หัวข้อ "Follow-up รอบ 35", Q-O6 = ก owner 2026-11-18 (วิธีให้ build ผ่าน guard ตอนโหลด config); รอบ 33 2026-11-17: owner ตัดสิน OPS-26 ต่อ = ก หยุด วัดบน staging เป็นรายการก่อน go-live (ท้ายหัวข้อ "Follow-up รอบ 32"), checklist bump ข้อ 10 (สวิตช์ `is_tax_inclusive` ของ dashboard — spec 01 CORE-64); ปิดรอบ 32 2026-11-17: ☑ OPS-26 #385 — AC-41 สรุปไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024, แก้กฎ (d) เป็น 10 × (n + 1) และข้อเท็จจริง `--cluster` ของ 2.22.1; รอบ 32 2026-11-17: Q-O5 = ก owner 2026-11-17 → OPS-26 (AC-41) วัด server 1 vs 2 process — หัวข้อ "Follow-up รอบ 32"; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
+สถานะ: draft (ปิดรอบ 36 2026-11-18: ☑ OPS-28 #403, OPS-29 #407 (owner สั่งทำ 2026-11-18) — หัวข้อ "Follow-up รอบ 36" done; รอบ 36 2026-11-18: follow-up ของ OPS-27 #399 → OPS-28 (AC-43 — ขั้นตรวจ "ต้องไม่พบ" ใน CI ล้มเมื่อ grep error ไม่ผ่านเงียบ) → OPS-29 (AC-44 — ไม่มีไฟล์ test ที่ compile แล้วใน image) — หัวข้อ "Follow-up รอบ 36"; ปิดรอบ 35 2026-11-18: ☑ OPS-27 #399 — หัวข้อ "Follow-up รอบ 35" done; รอบ 35 2026-11-18: ผล qa ADM-22 (spec 08) — `medusa build` ที่ไม่ตั้ง `NODE_ENV` ได้ admin แบบ development (stack trace ในหน้า error) → owner ตัดสินข้อ ก "แก้ที่การ build" → OPS-27 (AC-42) ตั้ง `NODE_ENV=production` เฉพาะขั้น build ใน Dockerfile + CI + คำสั่ง prod-like ใน `CLAUDE.md` — หัวข้อ "Follow-up รอบ 35", Q-O6 = ก owner 2026-11-18 (วิธีให้ build ผ่าน guard ตอนโหลด config); รอบ 33 2026-11-17: owner ตัดสิน OPS-26 ต่อ = ก หยุด วัดบน staging เป็นรายการก่อน go-live (ท้ายหัวข้อ "Follow-up รอบ 32"), checklist bump ข้อ 10 (สวิตช์ `is_tax_inclusive` ของ dashboard — spec 01 CORE-64); ปิดรอบ 32 2026-11-17: ☑ OPS-26 #385 — AC-41 สรุปไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 (→ ADR-027 — รอบ 40), แก้กฎ (d) เป็น 10 × (n + 1) และข้อเท็จจริง `--cluster` ของ 2.22.1; รอบ 32 2026-11-17: Q-O5 = ก owner 2026-11-17 → OPS-26 (AC-41) วัด server 1 vs 2 process — หัวข้อ "Follow-up รอบ 32"; ปิดรอบ 30/31 2026-11-14: ☑ OPS-25 #366, OPS-23 #371 — AC-38 สรุปคง default pool 10 ไม่เปิด ADR-020; ปิดรอบ 29 2026-11-13: ☑ OPS-22 #354, OPS-24 #356 — sync สถานะเท่านั้น; รอบ 26 2026-11-09: OPS-21 (AC-36 — **บล็อก release v0.1.0**), OPS-22 (AC-37), OPS-23 (AC-38 — owner Q-O4 = ก 2026-11-09); รอบ 21 2026-11-04: Deliverables ข้อ 11 — prod ต้องอยู่หลัง HTTPS เพราะ session cookie ของ admin เป็น `Secure` (qa #285 O-1, ไม่มี task); รอบ 17 2026-11-04: OPS-17c (AC-35) — nit review #242: stdout/stderr ของ `docker run` k6 ผ่าน redact + static test ที่เข้มขึ้น, ก่อน OPS-20b; รอบ 16 2026-11-04: OPS-17b (AC-34) — scan secret ก่อนพิมพ์ลง job log + redact console ของ k6, ทำก่อน OPS-20b; รอบ 13 2026-11-03: follow-up ของ OPS-18 #194 → OPS-17a (AC-33) + OPS-17 (AC-28 ส่วนรอบ 13), ลำดับ OPS-20a → OPS-17a → OPS-17 → OPS-20b)
 เป้าหมาย (เจ้าของ): รองรับผู้ใช้จำนวนมากได้ดี; พร้อมใช้งาน production ไม่ over-engineering: ทุกอย่าง
 ในนี้คือ production setup ตามเอกสารของ Medusa บวกกับ index อีกไม่กี่ตัวและ load test
 
@@ -55,7 +55,10 @@
     เป็น `{ sameSite: "lax", secure: true }` เป็นค่า default (`resolveSessionCookieSecurity` ใน `@medusajs/framework` http express loader; ตั้งทับได้ด้วย `projectConfig.cookieOptions`
     ตั้งแต่ v2.8.5 — https://docs.medusajs.com/learn/configurations/medusa-config) → login admin ผ่าน http ที่ไม่ใช่ localhost ไม่ติด (qa #285 ทำซ้ำด้วย `medusa start` บน 2.22.1);
     loader ตั้ง `app.set("trust proxy", 1)` แล้ว จึง terminate TLS ที่ reverse proxy/load balancer ชั้นเดียวได้ (proxy ต้องส่ง `X-Forwarded-Proto: https`);
-    **ห้าม**ตั้ง `cookieOptions.secure: false` ใน `medusa-config.ts` ที่ commit — ทดสอบแบบ prod ในเครื่องให้เปิดผ่าน `localhost` (หรือ tunnel HTTPS)
+    **ห้าม**ตั้ง `cookieOptions.secure: false` ใน `medusa-config.ts` ที่ commit — ~~ทดสอบแบบ prod ในเครื่องให้เปิดผ่าน `localhost` (หรือ tunnel HTTPS)~~
+    **(แก้รอบ 40 — OPS-M-12 ของการทดสอบ manual 2026-11-20 พิสูจน์ว่าผิด)** prod build ผ่าน `http://localhost` ก็ login admin ไม่ได้ (server ไม่ส่ง `Set-Cookie` เพราะ cookie `secure` และ request ไม่ใช่ https)
+    → ทดสอบแบบ prod ในเครื่องต้องเข้า admin ผ่าน **HTTPS** (tunnel/reverse proxy ที่มี TLS) **หรือ** reverse proxy ที่ส่ง header `X-Forwarded-Proto: https` มาที่ server (อาศัย `trust proxy` ข้างต้น);
+    `http://localhost` ตรงไปที่ `:9000` ใช้ไม่ได้ — คู่มือ/แผนทดสอบที่อ้างข้อนี้ต้องแก้ตาม (OPS-30 แก้ `docs/ops/production.md`)
     (ข้อมูล default มาจาก source ของ medusajs/medusa branch develop — ตอน bump `@medusajs/*` ให้ตรวจซ้ำตาม checklist ด้านล่าง)
 
 ## ความเสี่ยงที่ติดตาม (2026-10-26)
@@ -316,9 +319,9 @@ OPS-17 เริ่มได้; OPS-5 ☐ (ท้ายสุด); `DATABASE_PO
 ไม่เปิด task: integration ของ lock รันบน locking provider แบบ in-memory (#351) — production ใช้ `locking-redis` และ job `docker-worker-mode`/load test รันกับ Redis จริง (รายละเอียด spec 01 หัวข้อ "Follow-up รอบ 30")
 (ปิดรอบ 30/31, 2026-11-14) OPS-25 ☑ #366, OPS-23 ☑ #371 — ผล AC-38 (`docs/evidence/scale/OPS-23/REPORT.md`): คง default pool 10 ไม่เปิด ADR-020 (เลข ADR-020 ยังว่าง); ข้อเสนอเพิ่ม CPU ฝั่ง server/ลดงาน CPU ต่อ request ของ checkout รอ owner (ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31)")
 
-(รอบ 32, 2026-11-17) งาน CPU ของ checkout จากผล OPS-23 → Q-O5 = ก (owner 2026-11-17) → **OPS-26** ☐ (AC-41); เลข ADR-024 สงวนไว้เฉพาะเมื่อผลทำให้ต้องเปลี่ยนวิธี deploy prod (ยังไม่เขียน)
+(รอบ 32, 2026-11-17) งาน CPU ของ checkout จากผล OPS-23 → Q-O5 = ก (owner 2026-11-17) → **OPS-26** ☐ (AC-41); เลข ADR-024 (→ ADR-027 — รอบ 40) สงวนไว้เฉพาะเมื่อผลทำให้ต้องเปลี่ยนวิธี deploy prod (ยังไม่เขียน)
 
-(ปิดรอบ 32, 2026-11-17) OPS-26 ☑ #385 — ผล AC-41: ไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 (ดู "ผล OPS-26" ในหัวข้อ "Follow-up รอบ 32")
+(ปิดรอบ 32, 2026-11-17) OPS-26 ☑ #385 — ผล AC-41: ไม่เปลี่ยนวิธี deploy prod ไม่เปิด ADR-024 (→ ADR-027 — รอบ 40) (ดู "ผล OPS-26" ในหัวข้อ "Follow-up รอบ 32")
 
 (รอบ 35, 2026-11-18) ผล qa ADM-22 → owner ข้อ ก "แก้ที่การ build" → **OPS-27** ☑ #399 (AC-42; owner สั่งทำ 2026-11-18) — เริ่มหลัง PR เอกสารรอบ 35 #398 merge (owner ตอบ Q-O6 = ก 2026-11-18) (หัวข้อ "Follow-up รอบ 35")
 
@@ -334,11 +337,11 @@ Status: done (ปิดรอบ 32 2026-11-17 — OPS-26 ☑ #385; owner สั
 
 **กฎ (OPS-26)**: (a) `load-nightly.yml` มี `workflow_dispatch` input `server_processes` (ค่าเริ่มต้น `1`); `tools/load/run.sh` ส่งไปให้ container `server` รัน `medusa start --cluster <n>` เมื่อ n > 1 และคงคำสั่งเดิมทุกตัวอักษรเมื่อ n = 1 (nightly ตามตารางไม่เปลี่ยน);
 `--cluster` ใช้กับ `server` เท่านั้น ไม่ใช้กับ `worker`; (b) report บันทึกบรรทัด `server processes (OPS-26): <n>` และยืนยันจำนวน process จริง (เช่น `ps` ใน container หรือ log บูตของแต่ละ process); (c) sampler ของ server ที่ใช้ event-loop/pool ต่อ process รายงานแยกต่อ process หรือรวม (ระบุใน REPORT) — CPU ของ container รวมทุก process;
-(d) ค่า pool ต่อ process คง default 10 (ผลของ OPS-23) → connection รวม = 10 × (n + 1) (server n process + worker 1 — แก้ปิดรอบ 32 ตาม nit review #383; เดิมเขียน 10 × n) ต้องไม่เกิน `max_connections` 100 ของ Postgres; (e) ไม่เพิ่ม package/service; (f) ถ้าผลชี้ว่าควรเปลี่ยนวิธี deploy prod (เช่นใช้ `--cluster` ใน image แทน/คู่กับ replica ตาม Deliverables ข้อ 2) → ADR-024 สถานะ proposed แยก (เลขนี้เท่านั้น) — ไม่แก้ prod ใน PR นี้
+(d) ค่า pool ต่อ process คง default 10 (ผลของ OPS-23) → connection รวม = 10 × (n + 1) (server n process + worker 1 — แก้ปิดรอบ 32 ตาม nit review #383; เดิมเขียน 10 × n) ต้องไม่เกิน `max_connections` 100 ของ Postgres; (e) ไม่เพิ่ม package/service; (f) ถ้าผลชี้ว่าควรเปลี่ยนวิธี deploy prod (เช่นใช้ `--cluster` ใน image แทน/คู่กับ replica ตาม Deliverables ข้อ 2) → ADR-024 (→ ADR-027 — รอบ 40) สถานะ proposed แยก (เลขนี้เท่านั้น) — ไม่แก้ prod ใน PR นี้
 
 **AC-41 (OPS-26)** run `load-nightly` ด้วย `-f flash_burst=1 -f server_processes=1` และ `-f server_processes=2` บน commit เดียวกัน (ทีละ run ตาม concurrency group): gate AC-2/AC-3/AC-33 ผ่านทั้งสอง run (`failures: 0`, ไม่มี 5xx, ไม่ oversell);
 `docs/evidence/scale/OPS-26/REPORT.md` รูปแบบเดียวกับ OPS-23: ตาราง run/artifact, (a)–(e) median/p95 ของ AC-31, ตาราง AC-32 (CPU server, event-loop ต่อ process, รอ pool, connection) และข้อสรุปว่า (d)/(e)/(a) ลดหรือไม่ พร้อมข้อจำกัด (runner 4 vCPU ใช้ร่วมกับ k6);
-static (unit ที่มีอยู่ของ `tools/load` หรือ grep ใน CI): `run.sh` ไม่ใส่ `--cluster` เมื่อค่าเป็น 1/ว่าง; ไม่มีไฟล์ใต้ `apps/` เปลี่ยน; มี ADR-024 เฉพาะเมื่อข้อสรุปเสนอเปลี่ยนวิธี deploy
+static (unit ที่มีอยู่ของ `tools/load` หรือ grep ใน CI): `run.sh` ไม่ใส่ `--cluster` เมื่อค่าเป็น 1/ว่าง; ไม่มีไฟล์ใต้ `apps/` เปลี่ยน; มี ADR-024 (→ ADR-027 — รอบ 40) เฉพาะเมื่อข้อสรุปเสนอเปลี่ยนวิธี deploy
 
 | Task | งาน | ไฟล์ | ขนาด | Depends | ชนกับ |
 |---|---|---|---|---|---|
@@ -346,13 +349,13 @@ static (unit ที่มีอยู่ของ `tools/load` หรือ grep
 
 **ผล OPS-26 (ปิดรอบ 32 — `docs/evidence/scale/OPS-26/REPORT.md`)**: gate AC-2/AC-3/AC-33 ผ่านทั้ง 1 และ 2 process (ไม่ oversell);
 2 process ลด median ของ checkout (a) ราว 13% (40.5 → 35.4s; (b)/(c)/(d)/(e) ลดใกล้เคียงกัน) แต่**ยังไม่เกินช่วงแปรปรวน** (วัดค่าละ 1 run และ run 1 process ครั้งนี้ต่างจาก OPS-23 config เดียวกันมากกว่านั้น; runner 4 vCPU ใช้ร่วมกับ k6/Postgres/worker) —
-ที่เปลี่ยนชัดคือ CPU ของ server (~117% → ~216%) และรอ pool ต่อ process (ลดครึ่ง) → **ไม่เปลี่ยนวิธี deploy prod และไม่เปิด ADR-024** (เลขยังว่าง; Deliverables ข้อ 2 "prod: 2× server" คงเดิม);
+ที่เปลี่ยนชัดคือ CPU ของ server (~117% → ~216%) และรอ pool ต่อ process (ลดครึ่ง) → **ไม่เปลี่ยนวิธี deploy prod และไม่เปิด ADR-024** (เลขยังว่าง ณ ตอนนั้น — รอบ 40 ใช้เลขนี้แล้ว → ADR-027; Deliverables ข้อ 2 "prod: 2× server" คงเดิม);
 ข้อเท็จจริงของ 2.22.1 ที่พบ (ต้องบันทึกใน ADR ถ้าจะใช้ `--cluster` ใน prod): (1) `--cluster <n>` ต้องคู่ `--servers <n>` — ไม่ใส่ = process ลูกเป็น `workerMode` `shared` (รัน subscriber/job ด้วย) เพราะ primary ส่ง `workerMode` ทับ `MEDUSA_WORKER_MODE`;
 (2) process ที่ตายแล้ว primary fork ใหม่แต่ไม่บูต (`start.js:311–314`) → จำนวน process ที่รับ request ลดลงเงียบๆ จนกว่าจะ restart container; งานต่อ (วัดบน staging แยก k6 / profile CPU ของ checkout) รอ owner — ROADMAP หัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 32)"
 
 **(รอบ 33, 2026-11-17) owner ตัดสินข้อ (3) = ก "หยุด วัดตอนมี staging"**: OPS-26 จบที่ผลข้างบน ไม่มี task ต่อตอนนี้ (ไม่ profile CPU — Q-O5 ทาง ข ไม่ทำ) ·
 **รายการก่อนเปิดร้าน (go-live)**: เมื่อมี staging (ต้องมี ADR ก่อน — OPS-19/AC-30) วัด checkout แบบ AC-41 ซ้ำบน staging ที่ k6 อยู่คนละเครื่องกับระบบ เทียบจำนวน server process/replica ที่จะใช้จริง
-แล้วตัดสินวิธี deploy (ถ้าเปลี่ยนจาก Deliverables ข้อ 2 → ADR-024 proposed) — ไม่ต้องเพิ่มใน `docs/ops/production.md` จนกว่าจะมี ADR staging (บันทึกที่นี่และ ROADMAP "ก่อนเปิดร้านจริง")
+แล้วตัดสินวิธี deploy (ถ้าเปลี่ยนจาก Deliverables ข้อ 2 → ADR-024 (→ ADR-027 — รอบ 40) proposed) — ไม่ต้องเพิ่มใน `docs/ops/production.md` จนกว่าจะมี ADR staging (บันทึกที่นี่และ ROADMAP "ก่อนเปิดร้านจริง")
 
 ## Follow-up รอบ 35 (2026-11-18 — ผล qa ADM-22: admin ถูก build แบบ development)
 Status: done (owner ตัดสินข้อ ก "แก้ที่การ build" 2026-11-18 และสั่งทำ OPS-27 → ☑ #399 ปิดรอบ 35 2026-11-18) · Out of scope: แก้ loader หน้า pool (ADM-22b ไม่เปิด — spec 08 กฎ 26), patch `@medusajs/dashboard`/`@medusajs/cli`, แก้ `ErrorBoundary`,
@@ -384,7 +387,7 @@ build ด้วย `NODE_ENV=production` ไม่มี stack ทุกเค�
 | guard env ตอนโหลด config | ของเรา (ADR-010, OPS-7/21/24) | ใช้ตามเดิม ไม่แก้ — stage build ส่ง placeholder (กฎ b) |
 
 **ไม่เขียน ADR**: ไม่มีทางเลือกเชิงสถาปัตยกรรมใหม่ — เป็นการแก้ค่า build ให้ตรงกับที่ image ตั้งใจอยู่แล้ว (stage `runtime` เป็น production) โดย guard ของ ADR-010 ไม่เปลี่ยนความหมาย และ placeholder อยู่แค่ใน process ของ build;
-ถ้า owner เลือกทาง ข/ค ของ Q-O6 (เปลี่ยน guard หรือ config) จึงต้องมี ADR (ADR-024 ยังว่าง)
+ถ้า owner เลือกทาง ข/ค ของ Q-O6 (เปลี่ยน guard หรือ config) จึงต้องมี ADR (ADR-024 ยังว่าง ณ ตอนนั้น → รอบ 40: ใช้ ADR-027)
 
 **กฎ (OPS-27)**: (a) Dockerfile stage `build`: บรรทัด `RUN` ที่รัน `pnpm --filter @dtc/backend build` ตั้ง `NODE_ENV=production` แบบ inline ในคำสั่งนั้น — ห้ามใช้ `ENV`/`ARG` ตั้ง `NODE_ENV` ใน stage `base`/`build`;
 `RUN pnpm install --frozen-lockfile` (`:15`, ต้องได้ devDependencies) และ `RUN pnpm ... deploy --prod` (`:20`) ไม่ได้รับ `NODE_ENV=production`; stage `runtime` คง `ENV NODE_ENV=production`;
@@ -494,6 +497,118 @@ step ตรวจ image ของ `docker-worker-mode` มีการตรว�
 | OPS-28 | (รอบ 36 — review #399) ขั้นตรวจ "ต้องไม่พบ" ใน CI ล้มเมื่อ grep error (fail-closed) ผ่าน `tools/ci/assert-absent.sh` + test ของ script + step OPS-15 ล้มเมื่อไม่มี log (AC-43) — ☑ #403 (owner สั่งทำ 2026-11-18; ผลใน `docs/evidence/scale/OPS-28-tests.txt`) | `.github/workflows/ci.yml` (step ตรวจ image ของ `docker-worker-mode`, step build ของ `storefront-e2e`, step OPS-15, step ใหม่ใน `lint-typecheck`), `tools/ci/assert-absent.sh`, `tools/ci/assert-absent.test.sh`, `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` | ~120 LOC | PR เอกสารรอบ 36 merge; ไม่บล็อก release | ∥ ADM-30, ADM-31 (spec 08 — ไม่มีไฟล์ร่วม); OPS-29 ต่อจากตัวนี้ |
 | OPS-29 | (รอบ 36 — builder/qa/review #399) ไม่มีไฟล์ test ที่ compile แล้วใน image: `.dockerignore` ตัด `__tests__` + ขั้นตรวจ image ใน CI (AC-44) — ☑ #407 (owner สั่งทำ 2026-11-18; หลัง OPS-28 #403; ผลใน `docs/evidence/scale/OPS-29-tests.txt`) | `.dockerignore`, `.github/workflows/ci.yml` (step ตรวจ image ของ `docker-worker-mode`), `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` (+ `apps/backend/Dockerfile` เฉพาะเมื่อกฎ OPS-29 e ต้องใช้) | ~40 LOC | **OPS-28** (step เดียวกันของ `ci.yml` + describe ในไฟล์ static เดียวกัน); ไม่บล็อก release | ∥ ADM-30, ADM-31 |
 
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual เฟส 2/4/9 บน v0.2.0; owner สั่งแก้ใน release เดียว)
+ที่มา: OPS-M-06 (prod ไม่มี access log — compose ตั้ง `LOG_LEVEL=info` แต่ access log ของ Medusa ออกที่ระดับ `http`; ขัด `docs/ops/production.md:79`), OPS-M-12 (Deliverables ข้อ 11 — แก้แล้วในรอบนี้),
+log หลอก ops (`Error was thrown trying to refund payment … [object Object]` + `recreate a payment session … Invalid string billing_details` ทั้งที่คืนเงินสำเร็จ — ต้นเหตุ Medusa `compensatePaymentIfNeededStep`, ดู ADR-025 บริบท),
+migrate พิมพ์ warning ซ้ำ 3 รอบ + `worker_mode:"server"` ตอน migrate, prod seed สร้าง publishable key 2 ตัว
+**เลข ADR**: ADR-024 ที่หัวข้อ "Follow-up รอบ 32" สงวนไว้สำหรับการเปลี่ยนวิธี deploy prod ถูกใช้ในรอบ 40 แล้ว (group buy — ADR-024) → ADR ของวิธี deploy/staging ในอนาคตใช้**เลขว่างถัดไป (ADR-027)** แทนทุกที่ที่อ้าง ADR-024 ในหัวข้อรอบ 32/35
+owner อนุมัติ (2026-11-21) ให้ task ของรอบนี้แก้ `docs/ops/**` ในเรื่อง LOG_LEVEL/HTTPS (OPS-30) — task อื่นที่แตะ runbook (GB-21, OPS-32) แก้หัวข้อของตัวเองตามปกติ
+
+### Acceptance criteria (รอบ 40)
+- AC-45 (OPS-30) ☑ (a–c ผ่าน: static red 7 เคส → green 66/66; step CI ในเครื่อง compose `info` ล้ม exit 1 → `http` ผ่าน มีบรรทัด `"path":"/admin/users/me","status":401`; ผลใน `docs/evidence/scale/OPS-30-tests.txt`) (a) `docker-compose.prod.yml` ตั้ง `LOG_LEVEL: ${LOG_LEVEL:-http}`; unit ใน `load-lock-timing.unit.spec.ts:150-152` และ `instrumentation.unit.spec.ts` ที่ยึดค่า `info` แก้เป็น `http` (sampler ยังไม่สร้าง timer ที่ `http` — ผลเดิมของ `saturation-sampler.unit.spec.ts`);
+  (b) `docs/ops/production.md` หัวข้อ Alerts ระบุว่า access log ต้องใช้ `LOG_LEVEL=http` (ค่าเริ่มต้นของ compose) และเตือนว่า `info` จะไม่มี access log; หัวข้อ go-live/คำสั่ง prod-like ระบุ HTTPS หรือ `X-Forwarded-Proto: https` ตาม Deliverables ข้อ 11;
+  (c) `docker-worker-mode` (CI) ยืนยันว่ามีบรรทัด access log (`request_id`, `status`) จาก server หลังยิง **`GET /admin/users/me` ไม่มี token (ได้ 401)** หรือ `GET /store/regions` พร้อม publishable key 1 ครั้ง
+      (ล้มบน develop) — **ห้ามใช้ `/health`** เพราะ Medusa ข้าม access log ของ `/health` เสมอ (`framework/dist/http/express-loader.js:21,108-113` — review #425); unit อ่านไฟล์ตรวจ (a)(b)
+- AC-46 (OPS-31) ☑ (a–b ผ่าน: ที่มา (a) = `medusa db:migrate` fork `db:migrate:search`/`db:migrate:scripts` ที่โหลด config ซ้ำ + ตั้ง `MEDUSA_WORKER_MODE=server` เอง → แก้ที่ `medusa-config.ts`/`json-logger.ts`; (b) Medusa `createDefaultsWorkflow` สร้าง "Default Publishable API Key" ตอนบูต → seed ใช้ตัวนั้นเป็น "Storefront"; unit red 5 → green, integration red 1 → green, image prod: warning 1 ครั้ง/ข้อความ, `worker_mode:"server"` 0 บรรทัด, key 1 ตัว; ผลใน `docs/evidence/scale/OPS-31-tests.txt`) (a) `pnpm --filter backend db:migrate` ของ image prod พิมพ์ warning แต่ละข้อความ**ครั้งเดียว** และไม่มี `worker_mode:"server"` ในบรรทัดของขั้น migrate (builder หาที่มา — ถ้าเป็นพฤติกรรมของ Medusa ที่โหลด config หลายรอบ ให้แก้ที่โค้ดเรา เช่น guard/log ใน `medusa-config.ts` ที่รันซ้ำ; ทำไม่ได้โดยไม่ patch Medusa → บันทึกใน PR และ `docs/ops/production.md` ว่าเป็นของ Medusa แล้วปิดข้อ (a));
+  (b) prod seed (ใน image) รันบน DB ว่าง **2 ครั้ง** → มี publishable key ที่ไม่ revoke **1** ตัวชื่อ "Storefront" ผูก sales channel ของร้าน (ล้มบน develop ที่ได้ 2 ตัว) และ `print-publishable-key` คืนตัวนั้น
+- AC-47 (OPS-32) ☑ (a–c ผ่าน: integration red 2/3 → green 3/3, runbook unit red 3 → green; ร่าง issue อยู่ใน PR body) (a) เมื่อ `completeCartWorkflow` ล้มหลัง capture (handler `completeCartWorkflow.hooks.validate` throw หรือ step หลัง hook ล้ม) backend log **warn** 1 บรรทัดขึ้นต้น `CART_COMPLETION_FAILED_AFTER_PAYMENT`
+  พร้อม `cart_id`, `payment_session_id`, `code` และข้อความ "Medusa refunds automatically; a following 'Error was thrown trying to refund payment' line comes from re-creating the payment session — verify refunds via GET /admin/payments/:id"
+  (integration ด้วย mock provider: flash เกินสิทธิ์หลัง capture → มีบรรทัดนี้ 1 ครั้ง และ payment มี refund 1 รายการ); (b) `docs/ops/production.md` หัวข้อใหม่ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ" ระบุสองข้อความของ Medusa,
+  วิธีตรวจ (`GET /admin/payments/:id` → `refunds`, PI ใน Stripe), และ "ห้าม refund ซ้ำด้วยมือ" (unit runbook grep คำสำคัญ); (c) PR body มีร่าง issue upstream (refund แล้ว recreate session ด้วย `data` เดิม + log `[object Object]`) — **owner อนุมัติให้เปิด issue 2026-11-21** (session หลักเปิด)
+
+### Checklist ตอน bump `@medusajs/*` — เพิ่ม (รอบ 40)
+11. `compensatePaymentIfNeededStep`/`refundPaymentAndRecreatePaymentSessionWorkflow` ยัง refund แล้ว recreate ด้วย `data` เดิม และไม่สร้าง collection ใหม่ (ADR-025, OPS-32 ข้อความ log)
+12. `refundPaymentWorkflow` ยัง refund ก่อนสร้าง credit line (B-1 — ถ้า upstream แก้แล้ว พิจารณาถอด middleware ของ PAY-8)
+13. route ใหม่ใต้ `/admin/promotions/:id/*` และ `/admin/campaigns/:id*` อยู่ใต้ matcher ของ GB-25 (ADR-026); Medusa ยังข้าม access log ของ `/health` เท่านั้น (OPS-30 AC-45c); error/ข้อความของ Medusa ที่ FS-22 (สต็อกไม่พอ) และ CORE-73 (`Identity with email already exists`) ใช้ตัดสินยังเหมือนเดิม
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| OPS-30 | ☑ #432 — `LOG_LEVEL=http` ค่าเริ่มต้นของ compose prod + เอกสาร access log/HTTPS (owner อนุมัติแก้ `docs/ops/**`) + ขั้นตรวจ access log ใน CI | `docker-compose.prod.yml`, `docs/ops/production.md`, `apps/backend/src/__tests__/{load-lock-timing,instrumentation}.unit.spec.ts`, `.github/workflows/ci.yml` (`docker-worker-mode`), `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` | ~30 LOC + ~60 LOC test | AC-45 | PR เอกสารรอบ 40 | `docs/ops/production.md` (GB-21, OPS-32 คนละหัวข้อ — ตัวหลัง sync) |
+| OPS-31 | ☑ #457 — warning ซ้ำตอน migrate + publishable key เดียวใน prod seed | `apps/backend/medusa-config.ts` หรือ guard ที่ log, `apps/backend/src/scripts/seed*.ts`, test | ~60 LOC + ~100 LOC test | AC-46 | PR เอกสารรอบ 40 | `medusa-config.ts` (เก็บทั้งสองฝั่งถ้า conflict — CLAUDE.md) |
+| OPS-32 | ☑ #438 — log ชัดเมื่อ complete ล้มหลังจ่าย + runbook + ร่าง issue upstream | `apps/backend/src/workflows/hooks/complete-cart-validate.ts`, `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, integration | ~40 LOC + ~120 LOC test | AC-47 | PR เอกสารรอบ 40 | `complete-cart-validate.ts` (ไม่มี task อื่นในรอบนี้), `production.md` |
+
+## Follow-up รอบ 41 (2026-11-21 — owner: redact PII + hygiene + เอกสาร go-live ใน release v0.3.0)
+ที่มา: OPS-32 #438 (log Medusa `recreate a payment session … Invalid string: {…}` มีชื่อ/อีเมล/เบอร์/ที่อยู่ของลูกค้า), CORE-71 builder (typecheck ในเครื่องล้มเมื่อมี `apps/backend/.medusa/types`),
+nits review รอบ 40 (#428, #429, #431, #432, #433, #434), PAY-9 D-1 (#17948), qa #465 (เวลา query ของการค้นหา)
+**แก้แล้วใน PR เอกสารรอบ 41 (owner อนุมัติแก้ `docs/ops/**` 2026-11-21)**: `docs/ops/production.md` — `worker_mode: "migrate"` (OPS-31), runbook collection ที่ถูกถอด link หลัง PAY-9, หมายเหตุเวลา refund ของ FS-22,
+Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเมลตัวเล็ก, backfill ธง backordered, redact PII, เวลา query ค้นหากับ catalog จริง)
+
+### What Medusa already gives us (รอบ 41)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| logger ของ prod | `logger` ใน `medusa-config.ts` → `json-logger.ts` ของเรา (winston format เดียวกับ Medusa — OPS-3) — log ของ Medusa core (รวมบรรทัด recreate session) ผ่าน logger นี้ | extend: format redact ใน chain เดิม (กฎข้อ 15) — ไม่เพิ่ม log shipper/infra |
+| redact ใน winston | `winston.format((info) => …)` ที่ใช้อยู่แล้ว | ใช้ตามเดิม |
+
+### Business rules (รอบ 41)
+15. (OPS-33) format `redactPii` ใน `json-logger.ts` (ก่อน `json()`) แทนค่า PII ใน `message`, `stack` และ field string อื่นของ log ด้วย `[REDACTED]`:
+    (a) ทุกสตริงรูปอีเมล; (b) ค่าของ key `email`, `phone`, `name`, `first_name`, `last_name`, `company`, `address_1`, `address_2`, `line1`, `line2`, `city`, `province`, `state`, `postal_code` ในข้อความรูป JSON/JS object (`"key":"value"` และ `key: 'value'`);
+    (c) เบอร์โทรไทย (`0` + 8–9 หลัก, `+66…`) ที่มีขอบเขตเป็นอักขระที่ไม่ใช่ตัวอักษร/ตัวเลขทั้งสองข้าง (lookbehind/lookahead `[^A-Za-z0-9]` หรือต้น/ท้ายสตริง — ไม่ตัดเลขที่อยู่กลาง ULID เช่น `pay_01…`/`cart_01…`);
+    ไม่แตะ id (`cart_…`, `pay_…`, `pi_…`), `request_id`, จำนวนเงิน; pure function + unit จากตัวอย่างบรรทัดจริงที่ integration ของ OPS-32 (`complete-after-payment-log.spec.ts`) สร้าง;
+    development (logger ของ Medusa เดิม) ไม่เปลี่ยน; หมายเหตุ "ถูกแทนด้วย `[REDACTED]`" ใน runbook หัวข้อ OPS-32 แก้แล้วใน PR เอกสารรอบ 41 — OPS-33 แค่ตรวจว่าถ้อยคำยังตรงกับผลจริง
+    (review #473) regex ต้องทำงานแบบ linear กับข้อความยาว (อีเมล: เริ่ม match เฉพาะต้นช่วง + จำกัดความยาว local ≤ 64/label ≤ 63 — unit 100k ตัวอักษร);
+    key ใน (b) เทียบแบบไม่สนตัวพิมพ์และรวมค่าตัวเลข; เบอร์ใน (c) ไม่อยู่หลัง `.` (ทศนิยมของจำนวนเงิน); ไม่นับชื่อไฟล์ `image@2x.png` เป็นอีเมล; `Error`/`Map` ใน meta ถูก redact
+    (d) (owner ยืนยัน 2026-11-21) `check:go-live` (`src/scripts/check-go-live.ts`) ตรวจ `datctype` ของ DB ปัจจุบัน (`pg_database` ของ `current_database()`) — เป็น `C` หรือ `POSIX` → FAIL
+    พร้อมเหตุผล (pg_trgm ทิ้งอักษรไทยทั้งหมด `show_trgm('สเวตเตอร์')` ได้ `{}` → ค้นไทยกลางคำของ CORE-75 ใช้ไม่ได้); Go-live ข้อ 10 ของ `docs/ops/production.md` บอกว่าตรวจให้อัตโนมัติ
+16. (OPS-34 — hygiene backend รวม) (a) `apps/backend/tsconfig.json` exclude `.medusa/**` → `pnpm typecheck` ในเครื่องผ่านแม้มี `.medusa/types` (CI เดิมผ่านอยู่แล้ว);
+    (b) #428: assertion ของ test refund นับ order transaction ของ refund = 1 และนับเฉพาะ refund ที่สำเร็จ; (c) #429: ลบ session ทีละ id และ `query.graph` อยู่นอก try (พฤติกรรมเดิม);
+    (d) #431: assertion log แคบลงเป็นบรรทัดที่ขึ้นต้นด้วย prefix ที่ตรวจ; (e) #432: comment ระดับ log ของ saturation-sampler ตรงกับโค้ด; (f) #433: test ลำดับ `not_allowed` vs `invalid_data` ตรงกับ validator;
+    (g) #434: matcher `/store/customers/me/*` ของ flash ย้ายจาก `api/store/flash-sales/middlewares.ts` ไปไฟล์ middleware ของ path นั้น (พฤติกรรมเดิม); (h) test ยิงพร้อมกันของ PAY-9 ไม่ flake 404 (รอ link/collection ด้วยสัญญาณจริง)
+    — ไม่เปลี่ยนพฤติกรรม production ยกเว้นที่ระบุ; ห้ามเพิ่ม timeout/retries
+
+### Acceptance criteria (รอบ 41)
+- AC-48 (OPS-33, กฎข้อ 15 รอบ 41) ☑ (a–d ผ่าน: unit red 12 → green, integration AC-48b red 1 → green) unit + integration — **ล้มบน develop** ก่อน: (a) unit `redactPii` กับข้อความตัวอย่างจริงของบรรทัด recreate session → ไม่มีอีเมล/ชื่อ/เบอร์/ที่อยู่ของ fixture เหลือ, `pay_…`/`cart_…` ยังอยู่ครบ
+  (fixture มี id ที่มีเลขติดกัน ≥ 9 หลัก เช่น `pay_01M70812345678XYZ` → ไม่ถูกตัด);
+  (b) integration (แบบ AC-47a) ด้วยลูกค้าชื่อ/อีเมล/เบอร์/ที่อยู่ที่ tag ไว้ → stream ของ logger prod ไม่มีค่า tag ใดเลย และยังมีบรรทัด `CART_COMPLETION_FAILED_AFTER_PAYMENT` พร้อม `cart_id`; (c) logger development ไม่ redact (regression);
+  (d) (owner ยืนยัน 2026-11-21, กฎข้อ 15 d) unit — **ล้มบน develop** ก่อน: `goLiveFailures` เมื่อ `datctype` เป็น `C`/`POSIX` → มีข้อ FAIL ที่บอก `datctype`, `pg_trgm` และภาษาไทย; `en_US.utf8`/`th_TH.UTF-8` ผ่าน;
+  Go-live ข้อ 10 มีข้อความ "`check:go-live` ตรวจข้อนี้ให้อัตโนมัติ"; integration `prod-guards.spec.ts` (ผ่านครบ) รัน query `datctype` กับ DB จริง
+- AC-49 (OPS-34, กฎข้อ 16 รอบ 41) ☑ (a–h ผ่าน: typecheck red TS2531 ×6 → green, unit red 2 → green, integration (c) red 1 → green, (f) mutation red, (h) ลำดับบังคับ red 404, (b) เพิ่ม assertion — mutation ถอด lock ยังไม่ red ในเครื่อง; รันซ้ำ 3 รอบ) (a) สร้าง `apps/backend/.medusa/types/*.d.ts` จำลองที่ขัดกับ test แล้ว `pnpm --filter backend typecheck` ผ่าน; (b)–(h) test ที่แก้ผ่าน `--repeat-each`/รันซ้ำ 3 รอบ; static: ไม่มี `setTimeout`/`retries` ใหม่ใน test ที่แก้
+
+### Checklist ตอน bump `@medusajs/*` — เพิ่ม (รอบ 41)
+(เลขข้อด้านล่างต่อจากเช็กลิสต์ bump ข้อ 1–13 — คนละชุดกับ "กฎข้อ 15–16 รอบ 41" ข้างบน; อ้างเป็น "เช็กลิสต์ bump ข้อ 14–18" — ข้อ 18 เพิ่มปิดรอบ 41)
+14. (PAY-9 D-1 — **สำคัญ**) ถ้า upstream แก้ medusajs/medusa#17948 แล้ว `compensatePaymentIfNeededStep` สร้าง session ใหม่ได้สำเร็จ → collection เดิมมี session ใหม่ที่ไม่มี payment → guard ของ PAY-9 ไม่ reset
+    → อาการ O-2 (#69) กลับมา: characterization test `integration-tests/http/payment-collection-reset.spec.ts` (~`:256`) จะล้ม → ทบทวน ADR-025 (ภาคผนวก 2026-11-21) ก่อน merge bump
+15. (CORE-75/CORE-88) `typo_tolerance` ของ `POST /store/search` และเกณฑ์ similarity ใน provider ยังเหมือนเดิม (AC-174, AC-185 ผ่าน); `json-logger.ts` redact ยังครอบข้อความ recreate session ของเวอร์ชันใหม่ (AC-48b)
+16. (ADR-028) ถ้า `FetchError` ของ `@medusajs/js-sdk` เก็บ `code`/`type` แล้ว → ย้ายผู้เรียก `lib/data/medusa-fetch.ts` กลับไปใช้ SDK แล้วลบ helper; ไม่งั้นตรวจว่า header ของ helper ยังเท่ากับของ SDK (unit AC-181a)
+    **(ยืนยันปิดรอบ 41 2026-11-23 หลัง CORE-82..84 + ADR-028 ภาคผนวก 2026-11-23 — ข้อนี้ยังถูกต้อง เพิ่มรายละเอียด)**: ผู้เรียก `medusaFetch` = **ทุกไฟล์ที่ import `./medusa-fetch`** (หาด้วย grep ตอน bump — ห้ามใช้รายการนี้แทน grep); ณ ปิดรอบ 41 มี 7 ไฟล์ `lib/data/{payment,cart,returns,customer,group-join,group-buy,affiliate-portal}.ts`
+    (affiliate ส่ง `authHeaders` ของ actor `affiliate` — ถ้าย้ายกลับ SDK ต้องส่ง header นี้แทน); ย้ายกลับแล้วยังต้องคง class `MedusaApiError` หรือแทนด้วย error ของ SDK ที่มี `status/type/code` ให้ helper ตัดสินผลทุกตัวทำงานเหมือนเดิม;
+    ทุก bump ตรวจข้อความของข้อยกเว้น `UNCODED_MEDUSA_ERRORS` ใน `lib/util/medusa-api-error.ts` (`OUT_OF_STOCK_AT_RESERVE`, `EMPTY_CART_COMPLETION`, `IDENTITY_EXISTS`) กับ source ของ Medusa ที่ติดตั้ง (ซ้อนกับข้อ 13 — ข้อนี้คือรายการครบ);
+    ไม่มี issue upstream ที่เราเปิด (owner 2026-11-23 — ADR-028 ภาคผนวก) — ตอน bump ดูสถานะ medusajs/medusa#16770 และ PR ที่แก้ `FetchError`
+17. (CORE-76) ข้อความ 409 ไม่มี code "Cart is already being completed by another request" ของ `POST /store/carts/:id/complete` (`@medusajs/medusa` `dist/api/store/carts/[id]/complete/route.js`) ยังเหมือนเดิม
+    และ `errorHandler` ของ Medusa ยังเขียนทับข้อความ CONFLICT — contract test ฝั่ง backend (`src/api/__tests__/error-handler.unit.spec.ts`) ล้ม = แก้ `CART_COMPLETION_IN_PROGRESS_MESSAGE` (`src/api/store/carts/errors.ts`)
+    แล้วตรวจ kind `processing` ของ `placeOrderOutcome` (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76; storefront ตัดสินจาก code อย่างเดียวตั้งแต่ CORE-82 — ไม่มี map ข้อความให้แก้)
+18. (GB-30 — spec 04 กฎข้อ 55/56, review #498; เพิ่มปิดรอบ 41) ตรวจ `@medusajs/medusa` เวอร์ชันใหม่ว่ามี admin route หรือ job/workflow ที่เรียกจากภายนอกใหม่ที่**ลบ** promotion (เช่น bulk/batch delete, cascade จาก campaign)
+    หรือ**เปลี่ยน `status`** ของ promotion (เช่น batch status, `updatePromotionsStatusWorkflow` จาก route อื่น, job เปิดใช้ตาม `starts_at` ของ campaign) นอกจาก `DELETE /admin/promotions/:id` และ `POST /admin/promotions/:id` —
+    พบ → ต้นแบบ `GBT-*` ลบ/เปิดใช้ได้ทางใหม่: ขยาย guard ของ `adminPromotionLockMiddlewares` (`src/api/admin/promotions/group-buy-lock.ts`) ให้ครอบก่อน merge bump และเพิ่มเคสใน `integration-tests/http/group-buy-promotion-lock.spec.ts` (AC-73);
+    ตรวจด้วย grep `deletePromotionsWorkflow`/`updatePromotionsStatusWorkflow`/`status` ใน `dist/api/admin/promotions/**`, `dist/api/admin/campaigns/**` และ `@medusajs/core-flows` ส่วน promotion (ข้อ 13 ครอบเฉพาะ path ใต้ matcher เดิม)
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| OPS-33 | ☑ #473 — redact PII ใน logger prod (กฎข้อ 15 รอบ 41) + ตรวจถ้อยคำหมายเหตุ runbook/go-live ข้อ 13 ที่ PR เอกสารรอบ 41 เขียนไว้ + `check:go-live` ตรวจ `datctype` (กฎข้อ 15 d — owner ยืนยัน 2026-11-21) | `apps/backend/src/lib/json-logger.ts`, `src/lib/redact-pii.ts` (+ unit), `src/scripts/check-go-live.ts`, integration, `docs/ops/production.md` | ~60 LOC + ~150 LOC test | AC-48 | PR เอกสารรอบ 41 | `production.md` (CORE-81, EV-25 คนละบรรทัด) |
+| OPS-34 | ☑ #497 — hygiene backend รวม (กฎข้อ 16 รอบ 41) | `apps/backend/tsconfig.json`, test ตาม (b)–(h), `api/store/flash-sales/middlewares.ts` | ~40 LOC + ~150 LOC test | AC-49 | PR เอกสารรอบ 41 | `middlewares.ts` ถ้าย้าย matcher (CORE-80, GB-26 — ตัวหลัง sync) |
+
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review/re-review #473, #471; ไม่บล็อก release v0.3.0)
+Status: draft (☐ — รอ owner สั่งทำ) · แตะ `docs/ops/production.md` (นับเป็นโค้ดใน CI) — owner อนุมัติให้ task ops แก้หัวข้อของตัวเองตามแนวรอบ 40/41
+### What Medusa already gives us (รอบ 42)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| access log | Medusa 2.22.1 เขียน access log ที่ระดับ `http` (path + query + status) ผ่านทางของ Medusa เอง — builder ยืนยันว่าผ่าน logger ของเรา (`json-logger.ts`) หรือ stdout ตรง (review #473 บอกว่าตรง) | ไม่ patch — บันทึกใน runbook (กฎข้อ 17c รอบ 42) |
+| layout ของหน้า order | system default layout ของ zone `order.details` (migration script ของ PAY-10) + layout ส่วนตัวของแอดมิน ("Customize layout") | ใช้ตามเดิม — runbook บอกวิธี reset (กฎข้อ 17d รอบ 42) |
+### Business rules (รอบ 42)
+17. (กฎข้อ 17 รอบ 42 — คนละชุดกับเช็กลิสต์ bump ข้อ 17; OPS-35 — ช่องว่างของ redact + runbook) (a) `redactPii` (`src/lib/redact-pii.ts`) ครอบเพิ่ม: สตริงในเครื่องหมาย backtick ของ `util.inspect` (`` key: `value` ``), ค่าใน JSON ที่ escape ซ้อน (`\"email\":\"…\"`),
+        local part ของอีเมลที่มี `'` (เช่น `o'brien@…` ต้องไม่เหลือ `o'`); คงกติกา linear-time ของกฎข้อ 15 รอบ 41 (unit 100k ตัวอักษร) และไม่ตัด id/`request_id`/จำนวนเงิน;
+    (b) ไม่ redact ค่า non-PII ของ key `name`/`state` ที่เป็นชื่อ step/สถานะ workflow ไม่ได้ — ยอมรับตามกฎข้อ 15 (ไม่เปลี่ยน); `cause` ที่ non-enumerable ไม่ถูก log (ไม่ regression) — ไม่เปลี่ยน;
+    (c) `docs/ops/production.md` หัวข้อ redact (Go-live ข้อ 13): ระบุว่า access log ของ Medusa **ไม่ผ่าน** redact (ถ้า builder ยืนยันว่าตรง stdout) และมีเฉพาะ path/query/status — query ของหน้าค้นหา (`q`) อาจมีข้อความที่ลูกค้าพิมพ์; log shipper ต้องเก็บตามนโยบาย PII เดียวกัน;
+    (d) `docs/ops/production.md` runbook หลัง go-live: แอดมินที่บันทึก layout ส่วนตัวของหน้า order ไว้ก่อน PAY-10 จะไม่เห็น widget `order-refund-blocked` บนสุด → reset layout เป็นค่าเริ่มต้น ("Customize layout" → reset) (re-review #471)
+### Acceptance criteria (รอบ 42)
+- AC-50 (OPS-35, กฎข้อ 17 รอบ 42 — คนละชุดกับเช็กลิสต์ bump ข้อ 17) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture backtick `` email: `a.b@x.co` ``, JSON escape ซ้อน, `o'brien@example.com` → ไม่เหลือค่า fixture และไม่เหลือ `o'`; unit linear-time 100k ตัวอักษรเดิมยังผ่านโดยไม่เพิ่มเกณฑ์เวลา;
+  unit runbook (`ops-runbook.unit.spec.ts`) grep คำ "access log" ในหัวข้อ redact และ "Customize layout" ในหัวข้อหลัง go-live
+### Tasks (รอบ 42)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| OPS-35 | redact backtick/JSON escape/`'` + runbook access log และ reset layout (กฎข้อ 17 รอบ 42) | `apps/backend/src/lib/redact-pii.ts` (+ unit), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts` | ~20 LOC + ~60 LOC test | AC-50 | PR เอกสารปิดรอบ 41 | `production.md` |
+
 ## Open questions (รอบ 35)
 - **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):
   (ก) **[แนะนำ]** placeholder inline เฉพาะบรรทัด build ของ Dockerfile (กฎ b; ไม่มี `ALLOW_TEST_PROVIDERS`) — ไม่แตะโค้ด app/guard/ADR; ผลกระทบ: guard env ตัวใหม่ในอนาคตต้องเพิ่ม placeholder ที่ Dockerfile ด้วย (ลืม → job `docker-worker-mode` แดงทันที ไม่หลุดเงียบ), บรรทัด build ยาวขึ้น ~5 ตัวแปร
@@ -506,7 +621,7 @@ step ตรวจ image ของ `docker-worker-mode` มีการตรว�
   แต่ load-nightly บูต `server` 1 container 1 process (`tools/load/run.sh:100`, `docker-compose.prod.yml`) จึงยังไม่เคยวัดแบบที่ prod จะรัน; runner มาตรฐาน 4 vCPU ใช้ร่วมกับ k6/Postgres/Redis/worker (ข้อจำกัดของ Q-O3 a):
   (ก) **[แนะนำ]** OPS-26 วัดก่อนตัดสิน: เพิ่ม input `server_processes` (ค่าเริ่มต้น 1 = เดิม) ใน `load-nightly.yml` → `run.sh` ส่ง `--cluster <n>` ให้ container `server` (ไม่เพิ่ม service/infra — ใช้ flag ของ Medusa ที่ spec ระบุไว้แล้ว)
       แล้วเทียบ 1 vs 2 process ด้วยรูปแบบ AC-38 (gate AC-2/AC-3 ต้องผ่าน, (a)–(e), CPU, event-loop) — เหตุผล: ตอบได้ว่า scale-out ที่ Deliverables ข้อ 2 วางไว้ลด checkout ได้จริงไหมด้วยตัวเลขก่อนลงแรง profile;
-      ผลกระทบ: task ops ~40 LOC + REPORT (แบบ OPS-23), ไม่แตะโค้ด app; ถ้าผลให้เปลี่ยนวิธี deploy prod (เช่นใช้ `--cluster` ใน image แทน/คู่กับ replica) → ADR-024 proposed; ข้อจำกัด: 4 vCPU ร่วมกับ k6 อาจทำให้ผล 2 process ต่ำกว่าจริง
+      ผลกระทบ: task ops ~40 LOC + REPORT (แบบ OPS-23), ไม่แตะโค้ด app; ถ้าผลให้เปลี่ยนวิธี deploy prod (เช่นใช้ `--cluster` ใน image แทน/คู่กับ replica) → ADR-024 (→ ADR-027 — รอบ 40) proposed; ข้อจำกัด: 4 vCPU ร่วมกับ k6 อาจทำให้ผล 2 process ต่ำกว่าจริง
   (ข) profile ก่อน: รัน load-nightly ด้วย `node --cpu-prof` (หรือ `--prof`) บน server ช่วง checkout แล้วระบุงาน CPU ต่อ request (เช่น workflow/serialization/คำนวณ totals) เพื่อเปิด task ลดงาน — ผลกระทบ: task ops ~50 LOC + วิเคราะห์ profile,
       task แก้จริงตามมาอาจแตะ workflow ของ checkout/hook (ความเสี่ยงสูงกว่า) และอาจพบว่าเป็นงานภายใน Medusa ที่แก้ไม่ได้
   (ค) คงเดิมจนก่อนเปิดร้าน — gate ความถูกต้องผ่านทุก run (0 5xx, ไม่ oversell); เป้า p95 < 300ms ของ v1.0 ยังเป็น "รายงานอย่างเดียว" จนมี staging (Q-O3 a) — ผลกระทบ: ไม่มีงานตอนนี้; ความเสี่ยงเรื่องความเร็ว checkout ช่วง flash sale ย้ายไปตอนตั้ง prod จริง

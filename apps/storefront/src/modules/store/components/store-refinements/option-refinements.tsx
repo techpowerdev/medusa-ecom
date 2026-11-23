@@ -83,9 +83,6 @@ const OptionRefinements = () => {
     >
       {groups.map((group) => {
         const isOpen = !closedGroups.includes(group.title)
-        const selectedCount = group.values.filter(
-          (value) => value.isRefined
-        ).length
 
         return (
           <Accordion.Item
@@ -95,14 +92,14 @@ const OptionRefinements = () => {
           >
             <Accordion.Header>
               <Accordion.Trigger className="flex w-full items-center justify-between py-3 text-left">
-                <div className="flex items-center gap-2">
-                  <span className="txt-compact-small-plus text-ui-fg-base">
-                    {group.title}
-                  </span>
-                  <span className="txt-compact-small-plus text-ui-fg-muted">
-                    ({selectedCount})
-                  </span>
-                </div>
+                {/* CORE-87 (spec 01 กฎข้อ 143): ไม่มีตัวเลขที่หัว — facet ของ index มีจำนวนต่อ "<option>:<ค่า>" เท่านั้น
+                    ไม่มีจำนวนสินค้าต่อ option และรวมจากค่าย่อยไม่ได้ (สินค้าหนึ่งมีหลายค่า) */}
+                <span
+                  className="txt-compact-small-plus text-ui-fg-base"
+                  data-testid="option-refinement-title"
+                >
+                  {group.title}
+                </span>
                 <span
                   className={clsx(
                     "flex h-7 w-7 items-center justify-center text-ui-fg-muted transition-transform duration-150",

@@ -12,6 +12,7 @@ const revalidateTag = vi.fn()
 vi.mock("server-only", () => ({}))
 vi.mock("@lib/config", () => ({
   MEDUSA_BACKEND_URL: "http://backend",
+  MEDUSA_PUBLISHABLE_KEY: "pk_test",
   sdk: {
     client: { fetch: (...a: unknown[]) => fetchSdk(...a) },
     store: {
@@ -134,6 +135,119 @@ describe("initiatePaymentSession (checkout) ผ่าน helper กลาง —
   })
 })
 
+// PAY-9 (spec 06 กฎข้อ 11, AC-22, ADR-025): collection เดิมถูกคืนเงินครบแล้ว backend ถอด link → สร้าง collection ใหม่แล้วลองซ้ำ 1 ครั้ง
+describe("initiatePaymentSession — 409 PAYMENT_COLLECTION_RESET", () => {
+  const reset = () => new Response(JSON.stringify({ type: "conflict", code: "PAYMENT_COLLECTION_RESET", message: "x" }), { status: 409 })
+  const ok = () => new Response(JSON.stringify({ payment_collection: {} }), { status: 200 })
+  const calls = () => (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map(([url]) => url)
+
+  it("creates a new collection for the cart (Medusa route) and retries once → ok", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reset()).mockResolvedValueOnce(ok()))
+    fetchSdk.mockResolvedValueOnce({ payment_collection: { id: "pay_col_new" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ ok: true })
+
+    expect(fetchSdk).toHaveBeenCalledTimes(1)
+    expect(fetchSdk).toHaveBeenCalledWith(
+      "/store/payment-collections",
+      expect.objectContaining({ method: "POST", body: { cart_id: "cart_1" } })
+    )
+    expect(calls()).toEqual([
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+      "http://backend/store/payment-collections/pay_col_new/payment-sessions",
+    ])
+    expect(revalidateTag).toHaveBeenCalledWith("carts-t", { expire: 0 })
+  })
+
+  it("the retry gets PAYMENT_COLLECTION_RESET again → { error: failed } without a third attempt", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reset()).mockResolvedValueOnce(reset()))
+    fetchSdk.mockResolvedValueOnce({ payment_collection: { id: "pay_col_new" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ error: "failed" })
+    expect(fetchSdk).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    // review #445: cart ใน cache ยังชี้ collection เดิม (ถอดแล้ว → 404) — revalidate ทันทีแม้ลองซ้ำไม่สำเร็จ
+    expect(revalidateTag).toHaveBeenCalledWith("carts-t", { expire: 0 })
+  })
+
+  it("creating the new collection fails → error from the shared helper", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reset()))
+    fetchSdk.mockRejectedValueOnce(new FetchError("Unauthorized", "Unauthorized", 401))
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ error: "unauthorized" })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(revalidateTag).toHaveBeenCalledWith("carts-t", { expire: 0 })
+  })
+
+  it("renewPromptPaySession does not retry (QR renewal keeps its collection) → { error: failed }", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reset()))
+    const { renewPromptPaySession } = await import("@lib/data/cart")
+
+    await expect(renewPromptPaySession(cartWithCollection, PROMPTPAY)).resolves.toEqual({ error: "failed" })
+    expect(fetchSdk).not.toHaveBeenCalled()
+    expect(revalidateTag).toHaveBeenCalledWith("carts-t", { expire: 0 })
+  })
+})
+
+// PAY-14 (spec 06 กฎข้อ 16 a2, AC-27 d): สร้าง session ระหว่าง compensation ถือ lock cart_id → guard ได้ 404 (session ชั่วคราวถูกลบ)
+// → อ่าน collection ปัจจุบันของ cart แล้วลองซ้ำ 1 ครั้ง; การลองซ้ำได้ PAYMENT_COLLECTION_RESET → ลองซ้ำตามกฎข้อ 11 อีก 1 ครั้ง
+describe("initiatePaymentSession — 404 ระหว่าง compensation (PAY-14)", () => {
+  const status = (code: number, body: unknown = {}) => new Response(JSON.stringify(body), { status: code })
+  const reset = () => status(409, { type: "conflict", code: "PAYMENT_COLLECTION_RESET", message: "x" })
+  const calls = () => (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map(([url]) => url)
+
+  it("404 → reads the cart's current collection and retries once → ok", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(status(404, { type: "not_found" })).mockResolvedValueOnce(status(200)))
+    fetchSdk.mockResolvedValueOnce({ payment_collection: { id: "pay_col_1" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ ok: true })
+    expect(fetchSdk).toHaveBeenCalledWith("/store/payment-collections", expect.objectContaining({ body: { cart_id: "cart_1" } }))
+    expect(calls()).toEqual([
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+    ])
+  })
+
+  it("404 then PAYMENT_COLLECTION_RESET → new collection → ok (3 requests)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(status(404)).mockResolvedValueOnce(reset()).mockResolvedValueOnce(status(200))
+    )
+    fetchSdk
+      .mockResolvedValueOnce({ payment_collection: { id: "pay_col_1" } })
+      .mockResolvedValueOnce({ payment_collection: { id: "pay_col_new" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ ok: true })
+    expect(calls()).toEqual([
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+      "http://backend/store/payment-collections/pay_col_1/payment-sessions",
+      "http://backend/store/payment-collections/pay_col_new/payment-sessions",
+    ])
+  })
+
+  it("404 twice → { error: failed } without a third attempt", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(status(404)))
+    fetchSdk.mockResolvedValue({ payment_collection: { id: "pay_col_1" } })
+    const { initiatePaymentSession } = await import("@lib/data/cart")
+
+    await expect(initiatePaymentSession(cartWithCollection, { provider_id: CARD })).resolves.toEqual({ error: "failed" })
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("renewPromptPaySession does not retry a 404 → { error: failed }", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(status(404)))
+    const { renewPromptPaySession } = await import("@lib/data/cart")
+
+    await expect(renewPromptPaySession(cartWithCollection, PROMPTPAY)).resolves.toEqual({ error: "failed" })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("renewPromptPaySession ผ่าน helper กลาง", () => {
   it.each(sessionCases)("%s", async (_label, arrange, expected) => {
     arrange()
@@ -149,37 +263,51 @@ describe("renewPromptPaySession ผ่าน helper กลาง", () => {
   })
 })
 
-describe("placeOrder คืน { error } แทนการ throw", () => {
+// CORE-76 (กฎข้อ 134 a2): placeOrder คืน `{ kind }` จาก placeOrderOutcome (allow-list)
+describe("placeOrder คืน { kind } แทนการ throw", () => {
   const place = async () => (await import("@lib/data/cart")).placeOrder("cart_1")
 
+  // CORE-82 (กฎข้อ 140, ADR-028): complete ผ่าน medusaFetch — ตัดสินจาก code ใน body ของ Store API ไม่ใช่ข้อความ
   it.each([
-    ["409 FLASH_SOLD_OUT", new FetchError("This flash sale is sold out", "Conflict", 409), "FLASH_SOLD_OUT"],
+    ["409 FLASH_SOLD_OUT", () => respond(409, { type: "conflict", code: "FLASH_SOLD_OUT", message: "x" }), { kind: "refunded", code: "FLASH_SOLD_OUT" }],
     [
       "409 PROMOTION_NOT_COMBINABLE",
-      new FetchError("This promotion can't be combined with the promotions already on the cart", "Conflict", 409),
-      "PROMOTION_NOT_COMBINABLE",
+      () => respond(409, { type: "conflict", code: "PROMOTION_NOT_COMBINABLE", message: "x" }),
+      { kind: "refunded", code: "PROMOTION_NOT_COMBINABLE" },
     ],
-    ["FetchError 401", new FetchError("Unauthorized", "Unauthorized", 401), "unauthorized"],
-    ["FetchError 400", new FetchError("Payment sessions are required", "Bad Request", 400), "failed"],
-    ["network", new TypeError("fetch failed"), "failed"],
-  ])("%s → { error: %s }", async (_label, error, expected) => {
-    complete.mockRejectedValueOnce(error)
-    await expect(place()).resolves.toEqual({ error: expected })
+    [
+      "409 CART_COMPLETION_IN_PROGRESS",
+      () => respond(409, { type: "conflict", code: "CART_COMPLETION_IN_PROGRESS", message: "x" }),
+      { kind: "processing" },
+    ],
+    [
+      "409 ข้อความ FLASH_SOLD_OUT ของ backend แต่ไม่มี code (ไม่เทียบข้อความแล้ว)",
+      () => respond(409, { type: "conflict", message: "This flash sale is sold out" }),
+      { kind: "failed" },
+    ],
+    ["401", () => respond(401, { type: "unauthorized", message: "Unauthorized" }), { kind: "unauthorized" }],
+    ["400 อื่น", () => respond(400, { type: "invalid_data", message: "Payment sessions are required" }), { kind: "failed" }],
+    ["network", () => vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed"))), { kind: "failed" }],
+  ])("%s → %o", async (_label, arrange, expected) => {
+    arrange()
+    await expect(place()).resolves.toEqual(expected)
+    expect((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe("http://backend/store/carts/cart_1/complete")
+    expect(complete).not.toHaveBeenCalled()
   })
 
-  it("Medusa คืน type cart (ชำระไม่ผ่าน ไม่ได้ order) → { error: \"failed\" }", async () => {
-    complete.mockResolvedValueOnce({ type: "cart", cart: { id: "cart_1" }, error: { message: "x" } })
-    await expect(place()).resolves.toEqual({ error: "failed" })
+  it("Medusa คืน type cart (ชำระไม่ผ่าน ไม่ได้ order) → { kind: \"failed\" }", async () => {
+    respond(200, { type: "cart", cart: { id: "cart_1" }, error: { message: "x" } })
+    await expect(place()).resolves.toEqual({ kind: "failed" })
   })
 
-  it("ไม่มี cart id → { error: \"failed\" } ไม่ throw", async () => {
+  it("ไม่มี cart id → { kind: \"failed\" } ไม่ throw", async () => {
     getCartId.mockResolvedValueOnce(undefined)
     const { placeOrder } = await import("@lib/data/cart")
-    await expect(placeOrder()).resolves.toEqual({ error: "failed" })
+    await expect(placeOrder()).resolves.toEqual({ kind: "failed" })
   })
 
   it("ได้ order → redirect ของ Next ยัง throw ได้", async () => {
-    complete.mockResolvedValueOnce({ type: "order", order: { id: "order_1", shipping_address: { country_code: "TH" } } })
+    respond(200, { type: "order", order: { id: "order_1", shipping_address: { country_code: "TH" } } })
     const { placeOrder } = await import("@lib/data/cart")
     await expect(placeOrder("cart_1", undefined, "th")).rejects.toThrow("REDIRECT /th/order/order_1/confirmed")
   })

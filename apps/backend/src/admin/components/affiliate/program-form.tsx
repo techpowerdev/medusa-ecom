@@ -1,10 +1,9 @@
 import { Combobox, Form, KeyboundForm } from "@medusajs/dashboard/components"
 import { useComboboxData } from "@medusajs/dashboard/hooks"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Button, DatePicker, FocusModal, Heading, Input, Select, Switch, Text, Textarea, toast } from "@medusajs/ui"
+import { Button, DatePicker, Drawer, FocusModal, Heading, Input, Select, Switch, Text, Textarea, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
-import { useForm, type UseFormReturn } from "react-hook-form"
+import { useForm, type FieldErrors, type Resolver, type UseFormReturn } from "react-hook-form"
 import { sdk } from "../../lib/client"
 import { affiliateKeys, createProgram, Program, ProgramBody, updateProgram } from "../../lib/affiliate"
 import {
@@ -17,7 +16,7 @@ import {
   programToForm,
   toProgramBody,
 } from "../../lib/affiliate-program-form"
-import { createSingleFlight } from "../../lib/single-flight"
+import { useSingleFlight } from "../../lib/single-flight"
 import { keepModalOpenWhileComboboxExpanded } from "../../lib/combobox-escape"
 import { NumberInput } from "../common/number-input"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
@@ -92,22 +91,164 @@ const ScopeFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; prog
   )
 }
 
+// ADM-44 (spec 08 กฎ 48a): resolver ตรวจทั้งรูปค่า (zod) และกฎธุรกิจ (toProgramBody) — Save แสดง error ทุกช่องพร้อมกัน (กฎ 46)
+// และ RHF focus ช่องแรกที่ผิดเอง; หลัง Save ตรวจใหม่ตอนแก้ช่อง (reValidateMode) รวมช่องใน `deps` (ends_at เมื่อแก้ starts_at) ด้วยกฎเดียวกับตอน Save
+const zodProgramResolver = zodResolver(programFormSchema, PROGRAM_PARSE_OPTIONS, { raw: true })
+const programResolver: Resolver<ProgramForm> = async (values, context, options) => {
+  const parsed = await zodProgramResolver(values, context, options)
+  const result = toProgramBody(values)
+  if (!("errors" in result) && !Object.keys(parsed.errors).length) {
+    return parsed
+  }
+  const errors: FieldErrors<ProgramForm> = {}
+  if ("errors" in result) {
+    result.errors.forEach(({ field, message }) => (errors[field] ??= { type: "validate", message }))
+  }
+  return { values: {}, errors: { ...errors, ...parsed.errors } }
+}
+
+const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; program?: Program }) => {
+  const all = form.watch("all")
+  const variantCount = form.watch("variant_ids").length
+
+  return (
+    <>
+      <Form.Field
+        control={form.control}
+        name="name"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Name *</Form.Label>
+            <Form.Control>
+              <Input {...field} size="small" data-testid="affiliate-program-field-name" />
+            </Form.Control>
+            <Form.ErrorMessage data-testid="affiliate-program-error-name" />
+          </Form.Item>
+        )}
+      />
+      {DATES.map(({ key, label }) => (
+        <Form.Field
+          key={key}
+          control={form.control}
+          name={key}
+          // กฎ 48a: ends_at ขึ้นกับ starts_at — หลังกด Save แก้ starts_at แล้ว RHF ตรวจ ends_at ใหม่ทันที (error ข้ามช่องไม่ค้าง)
+          rules={key === "starts_at" ? { deps: ["ends_at"] } : undefined}
+          render={({ field: { ref, ...field } }) => (
+            <Form.Item>
+              <Form.Label>{label}</Form.Label>
+              {/* e2e กรอกผ่าน wrapper ที่มี testid เดิม (fillDatePicker — spec 08 กฎ 7b) */}
+              <div data-testid={`affiliate-program-field-${key}`}>
+                <Form.Control>
+                  <DatePicker
+                    {...field}
+                    // กฎ 48c: ref ของ DatePicker เป็น div ที่ focus ไม่ได้ — ให้ RHF (shouldFocus) focus segment แรกแทน
+                    ref={(el) => ref(el && { focus: () => el.querySelector<HTMLElement>('[role="spinbutton"]')?.focus() })}
+                    granularity="minute"
+                    shouldCloseOnSelect={false}
+                  />
+                </Form.Control>
+              </div>
+              <Form.ErrorMessage data-testid={`affiliate-program-error-${key}`} />
+            </Form.Item>
+          )}
+        />
+      ))}
+      {NUMBERS.map(({ key, label }) => (
+        <Form.Field
+          key={key}
+          control={form.control}
+          name={key}
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>{label}</Form.Label>
+              <Form.Control>
+                <NumberInput {...field} size="small" data-testid={`affiliate-program-field-${key}`} />
+              </Form.Control>
+              <Form.ErrorMessage data-testid={`affiliate-program-error-${key}`} />
+            </Form.Item>
+          )}
+        />
+      ))}
+      <Form.Field
+        control={form.control}
+        name="announce_text"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Announcement</Form.Label>
+            <Form.Control>
+              <Textarea {...field} data-testid="affiliate-program-field-announce_text" />
+            </Form.Control>
+          </Form.Item>
+        )}
+      />
+      <Form.Field
+        control={form.control}
+        name="status"
+        render={({ field: { onChange, ref, ...field } }) => (
+          <Form.Item>
+            <Form.Label>Status *</Form.Label>
+            {/* กฎ 20: แสดงเฉพาะสถานะที่เปลี่ยนไปได้จากสถานะปัจจุบัน */}
+            <Form.Control>
+              <Select {...field} size="small" onValueChange={onChange}>
+                <Select.Trigger ref={ref} data-testid="affiliate-program-field-status">
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  {allowedProgramStatuses(program?.status).map((s) => (
+                    <Select.Item key={s} value={s}>
+                      {s}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+            </Form.Control>
+          </Form.Item>
+        )}
+      />
+      <Form.Field
+        control={form.control}
+        name="all"
+        render={({ field: { value, onChange, ...field } }) => (
+          <Form.Item className="flex-row items-center gap-x-2 space-y-0">
+            <Form.Control>
+              <Switch
+                {...field}
+                checked={value}
+                onCheckedChange={(checked) => {
+                  form.clearErrors("collection_ids")
+                  onChange(checked)
+                }}
+                data-testid="affiliate-program-scope-all"
+              />
+            </Form.Control>
+            <Form.Label>All products</Form.Label>
+          </Form.Item>
+        )}
+      />
+      {!all && <ScopeFields form={form} program={program} />}
+      {/* Q16: variant_ids แก้ใน UI ไม่ได้ใน v1 — แสดงจำนวนและส่งค่าเดิมกลับเสมอ */}
+      <Text size="xsmall" className="text-ui-fg-subtle" data-testid="affiliate-program-variant-count">
+        Variants set via API: {variantCount} (kept as is; edit through the API)
+      </Text>
+    </>
+  )
+}
+
 /**
- * AF-12a (กฎ 37a): FocusModal สร้าง (program = undefined) หรือแก้โปรแกรม — ส่ง scope ทั้งก้อนโดยคง variant_ids เดิม (Q16)
- * เปิดเมื่อ `open`; component ถูก mount ใหม่ต่อการเปิดแต่ละครั้ง (key) จึงตั้งค่าฟอร์มเริ่มจาก props ได้เลย
- * ADM-9 (spec 08 AC-12, กฎ 8): Form + KeyboundForm ของ dashboard + zod (⌘/Ctrl+Enter ส่งได้); กฎธุรกิจยังอยู่ใน toProgramBody → form.setError
- * ADM-26 (กฎ 30c): Escape ขณะ Combobox ของ scope ขยายไม่ปิด modal (keepModalOpenWhileComboboxExpanded)
+ * AF-12a (กฎ 37a): สร้าง (program = undefined) ใน FocusModal หรือแก้โปรแกรมใน Drawer (ADM-44 กฎ 48b, ADR-018 Q5) — ส่ง scope ทั้งก้อนโดยคง variant_ids เดิม (Q16)
+ * เปิดเมื่อ mount; component ถูก mount ใหม่ต่อการเปิดแต่ละครั้ง (key) จึงตั้งค่าฟอร์มเริ่มจาก props ได้เลย
+ * ADM-9 (spec 08 AC-12, กฎ 8): Form + KeyboundForm ของ dashboard + zod (⌘/Ctrl+Enter ส่งได้); กฎธุรกิจของ toProgramBody อยู่ใน resolver (ADM-42/44)
+ * ADM-26 (กฎ 30c): Escape ขณะ Combobox ของ scope ขยายไม่ปิด modal/Drawer (keepModalOpenWhileComboboxExpanded)
  */
 export const ProgramFormModal = ({ program, onClose }: { program?: Program; onClose: () => void }) => {
   const queryClient = useQueryClient()
-  // resolver คืนค่าดิบ (raw) แบบ ADM-3/ADM-7 — schema ไม่มี transform จึงใช้ values ได้เลย
   const form = useForm<ProgramForm>({
-    resolver: zodResolver(programFormSchema, PROGRAM_PARSE_OPTIONS, { raw: true }),
+    resolver: programResolver,
     defaultValues: program ? programToForm(program) : emptyProgramForm(),
   })
-  const [submitOnce] = useState(createSingleFlight)
-  const all = form.watch("all")
-  const variantCount = form.watch("variant_ids").length
+  // กฎ 43 (ADM-39): สำเร็จแล้ว hold lock จน component ถูกถอด (ปิด) — เปิดใหม่ mount ใหม่ (key) จึงได้ lock ใหม่ ไม่ต้อง release
+  // กฎ 50 (ADM-46): `submitLocked` = in-flight หรือ hold — Save disabled จนถูกถอด
+  const [submitOnce, submitLocked] = useSingleFlight()
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("programs") })
 
@@ -125,14 +266,13 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
     },
   })
 
+  // resolver ผ่านแล้ว = toProgramBody ไม่มี error (เช็กไว้เพื่อ narrow type)
   const handleSubmit = form.handleSubmit((values) =>
     submitOnce(async () => {
       const result = toProgramBody(values)
-      if ("error" in result) {
-        form.setError(result.field, { message: result.error })
-        return
+      if (!("errors" in result)) {
+        await save.mutateAsync(result.body).then(submitOnce.hold, () => undefined)
       }
-      await save.mutateAsync(result.body).catch(() => undefined)
     })
   )
 
@@ -141,139 +281,62 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
   // ADM-27 (spec 08 กฎ 31): ฟอร์ม dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด (เงื่อนไขเดิม)
   const confirmClose = useConfirmDiscard({ form, isPending: save.isPending, onClose })
 
+  const saveButton = (
+    <Button size="small" type="submit" isLoading={save.isPending} disabled={submitLocked} data-testid="affiliate-program-save">
+      Save
+    </Button>
+  )
+
+  if (program) {
+    return (
+      <Drawer open onOpenChange={confirmClose}>
+        <Drawer.Content
+          {...restoreFocus}
+          onEscapeKeyDown={keepModalOpenWhileComboboxExpanded}
+          data-testid="affiliate-program-drawer"
+        >
+          <Form {...form}>
+            <KeyboundForm noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+              <Drawer.Header>
+                <Drawer.Title asChild>
+                  <Heading>Edit program</Heading>
+                </Drawer.Title>
+              </Drawer.Header>
+              <Drawer.Body className="flex flex-col gap-y-4 overflow-auto">
+                <ProgramFields form={form} program={program} />
+              </Drawer.Body>
+              <Drawer.Footer>
+                <div className="flex items-center justify-end gap-x-2">
+                  <Drawer.Close asChild>
+                    <Button size="small" variant="secondary" type="button" disabled={save.isPending}>
+                      Cancel
+                    </Button>
+                  </Drawer.Close>
+                  {saveButton}
+                </div>
+              </Drawer.Footer>
+            </KeyboundForm>
+          </Form>
+        </Drawer.Content>
+      </Drawer>
+    )
+  }
+
   return (
     <FocusModal open onOpenChange={confirmClose}>
       <FocusModal.Content {...restoreFocus} onEscapeKeyDown={keepModalOpenWhileComboboxExpanded}>
         <Form {...form}>
-          {/* noValidate: validation เป็นของ zod/toProgramBody (error ใต้ช่อง) ไม่ให้ browser ดัก input number ก่อน */}
+          {/* noValidate: validation เป็นของ resolver (error ใต้ช่อง) ไม่ให้ browser ดัก input number ก่อน */}
           <KeyboundForm noValidate onSubmit={handleSubmit} className="flex h-full flex-col overflow-hidden">
             <FocusModal.Header>
-              <div className="flex items-center justify-end gap-x-2">
-                <Button
-                  size="small"
-                  type="submit"
-                  isLoading={save.isPending}
-                  disabled={save.isPending}
-                  data-testid="affiliate-program-save"
-                >
-                  Save
-                </Button>
-              </div>
+              <div className="flex items-center justify-end gap-x-2">{saveButton}</div>
             </FocusModal.Header>
             <FocusModal.Body className="flex justify-center overflow-auto py-16">
               <div className="flex w-full max-w-lg flex-col gap-y-4">
                 <FocusModal.Title asChild>
-                  <Heading>{program ? "Edit program" : "Create program"}</Heading>
+                  <Heading>Create program</Heading>
                 </FocusModal.Title>
-                <Form.Field
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <Form.Item>
-                      <Form.Label>Name *</Form.Label>
-                      <Form.Control>
-                        <Input {...field} size="small" data-testid="affiliate-program-field-name" />
-                      </Form.Control>
-                      <Form.ErrorMessage data-testid="affiliate-program-error-name" />
-                    </Form.Item>
-                  )}
-                />
-                {DATES.map(({ key, label }) => (
-                  <Form.Field
-                    key={key}
-                    control={form.control}
-                    name={key}
-                    render={({ field }) => (
-                      <Form.Item>
-                        <Form.Label>{label}</Form.Label>
-                        {/* e2e กรอกผ่าน wrapper ที่มี testid เดิม (fillDatePicker — spec 08 กฎ 7b) */}
-                        <div data-testid={`affiliate-program-field-${key}`}>
-                          <Form.Control>
-                            <DatePicker {...field} granularity="minute" shouldCloseOnSelect={false} />
-                          </Form.Control>
-                        </div>
-                        <Form.ErrorMessage data-testid={`affiliate-program-error-${key}`} />
-                      </Form.Item>
-                    )}
-                  />
-                ))}
-                {NUMBERS.map(({ key, label }) => (
-                  <Form.Field
-                    key={key}
-                    control={form.control}
-                    name={key}
-                    render={({ field }) => (
-                      <Form.Item>
-                        <Form.Label>{label}</Form.Label>
-                        <Form.Control>
-                          <NumberInput {...field} size="small" data-testid={`affiliate-program-field-${key}`} />
-                        </Form.Control>
-                        <Form.ErrorMessage data-testid={`affiliate-program-error-${key}`} />
-                      </Form.Item>
-                    )}
-                  />
-                ))}
-                <Form.Field
-                  control={form.control}
-                  name="announce_text"
-                  render={({ field }) => (
-                    <Form.Item>
-                      <Form.Label>Announcement</Form.Label>
-                      <Form.Control>
-                        <Textarea {...field} data-testid="affiliate-program-field-announce_text" />
-                      </Form.Control>
-                    </Form.Item>
-                  )}
-                />
-                <Form.Field
-                  control={form.control}
-                  name="status"
-                  render={({ field: { onChange, ref, ...field } }) => (
-                    <Form.Item>
-                      <Form.Label>Status *</Form.Label>
-                      {/* กฎ 20: แสดงเฉพาะสถานะที่เปลี่ยนไปได้จากสถานะปัจจุบัน */}
-                      <Form.Control>
-                        <Select {...field} size="small" onValueChange={onChange}>
-                          <Select.Trigger ref={ref} data-testid="affiliate-program-field-status">
-                            <Select.Value />
-                          </Select.Trigger>
-                          <Select.Content>
-                            {allowedProgramStatuses(program?.status).map((s) => (
-                              <Select.Item key={s} value={s}>
-                                {s}
-                              </Select.Item>
-                            ))}
-                          </Select.Content>
-                        </Select>
-                      </Form.Control>
-                    </Form.Item>
-                  )}
-                />
-                <Form.Field
-                  control={form.control}
-                  name="all"
-                  render={({ field: { value, onChange, ...field } }) => (
-                    <Form.Item className="flex-row items-center gap-x-2 space-y-0">
-                      <Form.Control>
-                        <Switch
-                          {...field}
-                          checked={value}
-                          onCheckedChange={(checked) => {
-                            form.clearErrors("collection_ids")
-                            onChange(checked)
-                          }}
-                          data-testid="affiliate-program-scope-all"
-                        />
-                      </Form.Control>
-                      <Form.Label>All products</Form.Label>
-                    </Form.Item>
-                  )}
-                />
-                {!all && <ScopeFields form={form} program={program} />}
-                {/* Q16: variant_ids แก้ใน UI ไม่ได้ใน v1 — แสดงจำนวนและส่งค่าเดิมกลับเสมอ */}
-                <Text size="xsmall" className="text-ui-fg-subtle" data-testid="affiliate-program-variant-count">
-                  Variants set via API: {variantCount} (kept as is; edit through the API)
-                </Text>
+                <ProgramFields form={form} />
               </div>
             </FocusModal.Body>
           </KeyboundForm>

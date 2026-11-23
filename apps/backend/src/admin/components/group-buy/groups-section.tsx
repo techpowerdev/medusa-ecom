@@ -8,7 +8,7 @@ import {
   useDataTable,
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useMemo, useState } from "react"
+import { KeyboardEvent, useEffect, useMemo, useState } from "react"
 import { Container } from "../common/container"
 import { Header } from "../common/header"
 import { isUnauthorized } from "../../lib/fetch-error"
@@ -53,7 +53,17 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
     },
     onError: (e: Error) => toast.error(e.message),
   })
-  const onCreatePool = () => createOnce(() => createPool.mutateAsync().catch(() => undefined))
+  // กฎ 43 (ADM-39): ปุ่มนี้ไม่มี modal ให้ hold lock จนปิด และสร้าง pool group เพิ่มได้ตั้งใจ — คลิกที่สองของดับเบิลคลิก
+  // (detail ≥ 2 แม้ response กลับมาก่อน) ไม่สร้างซ้ำ; คลิกแยกครั้งใหม่สร้างได้ตามเดิม
+  const onCreatePool = (e: { detail: number }) => {
+    if (e.detail > 1) return
+    createOnce(() => createPool.mutateAsync().catch(() => undefined))
+  }
+  // กฎ 50 (ADM-46): Enter ค้างบนปุ่ม = keydown ที่ repeat → keyboard click (detail 0) ซ้ำหลัง response กลับ — ยกเลิก activation
+  // ของ keydown ที่ repeat; กด Enter ค้าง 1 ครั้ง = สร้าง 1 group (Space activate ตอน keyup จึงไม่ repeat)
+  const onCreatePoolKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (e.repeat) e.preventDefault()
+  }
 
   const columns = useMemo(
     () => [
@@ -120,6 +130,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
                     variant: "secondary",
                     "data-testid": "gb-create-pool-group",
                     onClick: onCreatePool,
+                    onKeyDown: onCreatePoolKeyDown,
                     isLoading: createPool.isPending,
                     disabled: createPool.isPending,
                     children: "Create pool group",

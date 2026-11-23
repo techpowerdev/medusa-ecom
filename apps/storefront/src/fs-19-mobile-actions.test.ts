@@ -19,7 +19,7 @@ vi.mock("@lib/hooks/use-in-view", () => ({ useIntersection: () => inView }))
 vi.mock("@modules/products/components/flash-sale", () => ({
   default: () => null,
   FlashPrice: () => null,
-  useFlashOffer: () => ({ offer: null, loading: flashLoading }),
+  useFlashOffer: () => ({ offer: null, loading: flashLoading, allowances: [] }),
 }))
 vi.mock("@modules/products/components/product-price", () => ({ default: () => null }))
 

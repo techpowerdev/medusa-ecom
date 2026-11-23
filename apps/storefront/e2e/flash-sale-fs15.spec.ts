@@ -224,8 +224,11 @@ test("AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkou
     await expect(error).toBeVisible({ timeout: 15_000 })
     await expect(error).toHaveText(text("FLASH_SOLD_OUT").text)
     await expect(error).toHaveText(THAI)
-    await expect(error).not.toContainText(text("FLASH_SOLD_OUT").message)
+    // CORE-82: map ไม่เก็บข้อความอังกฤษของ backend แล้ว — ตรวจว่าไม่มีข้อความ "This flash sale is sold out" รั่ว
+    await expect(error).not.toContainText(/sold out/i)
     await expect(error).not.toHaveText(text("FLASH_LIMIT_EXCEEDED").text)
+    // FS-22 (spec 03 กฎข้อ 27): manual payment ไม่มีการตัดเงิน → ไม่บอกว่าคืนเงิน
+    await expect(page.getByTestId("checkout-refunded-notice")).toHaveCount(0)
     await expect(page).toHaveURL(/\/checkout/)
     await evidence("03-review-flash-sold-out")
   })

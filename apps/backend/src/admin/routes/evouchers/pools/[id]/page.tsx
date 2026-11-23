@@ -1,12 +1,16 @@
 import { LayoutComposer, SectionRow } from "@medusajs/dashboard/components"
-import { Badge, Text } from "@medusajs/ui"
+import { EllipsisHorizontal } from "@medusajs/icons"
+import { Badge, IconButton, Text } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
-import { LoaderFunctionArgs, UIMatch, useLoaderData, useParams } from "react-router-dom"
+import { useState } from "react"
+import { LoaderFunctionArgs, UIMatch, useLoaderData, useNavigate, useParams } from "react-router-dom"
 import { Container } from "../../../../components/common/container"
 import { Header } from "../../../../components/common/header"
 import { CodesTable } from "../../../../components/evoucher/codes-table"
 import { ImportCodes } from "../../../../components/evoucher/import-codes"
+import { PoolDeleteMenu, PoolStockBadge } from "../../../../components/evoucher/pool-delete"
 import { CODE_STATUSES, evoucherApi, evoucherKeys, STATUS_COLOR } from "../../../../lib/evoucher"
+import { createSingleFlight } from "../../../../lib/single-flight"
 
 // EV-6: รายละเอียด pool — จำนวน code ต่อสถานะ, import CSV, รายการ code (masked) + reveal (audit)
 // ADM-4: LayoutComposer (core:single-column) + Header + SectionRow ของ dashboard
@@ -22,6 +26,13 @@ const PoolPage = () => {
     initialData,
   })
   const pool = data?.pool
+  // EV-21 (spec 02 กฎข้อ 37): ลบสำเร็จ → lock ค้าง (hold) ระหว่างกลับรายการ — pool นี้ไม่มีแล้ว ไม่ต้อง release
+  const navigate = useNavigate()
+  const [deleteOnce] = useState(createSingleFlight)
+  const onDeleted = () => {
+    deleteOnce.hold()
+    navigate("/evouchers")
+  }
 
   return (
     <LayoutComposer
@@ -35,23 +46,26 @@ const PoolPage = () => {
                 <Header
                   title={isLoading ? "Loading…" : (pool?.name ?? "")}
                   actions={[
-                    ...(pool?.low_stock
-                      ? [
-                          {
-                            type: "custom" as const,
-                            children: (
-                              <Badge size="2xsmall" color="red">
-                                Low stock (&lt; {pool.low_stock_threshold})
-                              </Badge>
-                            ),
-                          },
-                        ]
-                      : []),
+                    ...(pool ? [{ type: "custom" as const, children: <PoolStockBadge pool={pool} /> }] : []),
                     {
                       type: "button",
                       props: { variant: "secondary", children: "All pools" },
                       link: { to: "/evouchers" },
                     },
+                    ...(pool
+                      ? [
+                          {
+                            type: "custom" as const,
+                            children: (
+                              <PoolDeleteMenu pool={pool} deleteOnce={deleteOnce} onDeleted={onDeleted}>
+                                <IconButton size="small" variant="transparent" data-testid="evoucher-pool-actions">
+                                  <EllipsisHorizontal />
+                                </IconButton>
+                              </PoolDeleteMenu>
+                            ),
+                          },
+                        ]
+                      : []),
                   ]}
                 />
                 {pool && (

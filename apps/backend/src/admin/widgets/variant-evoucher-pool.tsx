@@ -18,7 +18,7 @@ import {
   type PoolFormBody,
   poolFormSchema,
 } from "../lib/evoucher-pool-form"
-import { createSingleFlight } from "../lib/single-flight"
+import { useSingleFlight } from "../lib/single-flight"
 
 // ตัวเลือก partner ของฟอร์ม Create pool คงเพดานเดิม (ทำเป็น Combobox ค้นหาได้นอกขอบเขต ADM-5)
 const PARTNER_SELECT_QUERY = { limit: 100, offset: 0 }
@@ -34,7 +34,9 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     resolver: zodResolver(poolFormSchema, POOL_PARSE_OPTIONS, { raw: true }),
     defaultValues: POOL_FORM_DEFAULTS,
   })
-  const [submitOnce] = useState(createSingleFlight)
+  // กฎ 43 (ADM-39): สำเร็จแล้ว hold ระหว่าง modal กำลังปิด — release ตอนเปิดใหม่
+  // กฎ 50 (ADM-46): `submitLocked` = in-flight หรือ hold — Save disabled ตลอดช่วงแอนิเมชันปิด
+  const [submitOnce, submitLocked] = useSingleFlight()
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: evoucherKeys.poolByVariant(variant.id),
@@ -65,7 +67,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   // กฎข้อ 11 (spec 02): dblclick / ⌘+Enter ซ้ำก่อน isPending เป็น true → POST ครั้งเดียว; error แสดงผ่าน onError แล้ว
   const submit = form.handleSubmit((values) =>
     submitOnce(() =>
-      create.mutateAsync(poolFormSchema.parse(values, POOL_PARSE_OPTIONS)).catch(() => undefined)
+      create.mutateAsync(poolFormSchema.parse(values, POOL_PARSE_OPTIONS)).then(submitOnce.hold, () => undefined)
     )
   )
 
@@ -115,7 +117,14 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
               ? [
                   {
                     type: "button",
-                    props: { variant: "secondary", onClick: () => setOpen(true), children: "Create pool" },
+                    props: {
+                      variant: "secondary",
+                      onClick: () => {
+                        submitOnce.release()
+                        setOpen(true)
+                      },
+                      children: "Create pool",
+                    },
                   },
                 ]
               : []
@@ -160,7 +169,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
             <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
               <FocusModal.Header>
                 <div className="flex items-center justify-end gap-x-2">
-                  <Button size="small" type="submit" disabled={create.isPending} isLoading={create.isPending}>
+                  <Button size="small" type="submit" disabled={submitLocked} isLoading={create.isPending}>
                     Save
                   </Button>
                 </div>

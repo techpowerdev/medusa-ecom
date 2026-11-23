@@ -2318,6 +2318,8 @@ none
 116. (CORE-58 — qa #353 O-1, re-review #353) (a) ช่องบังคับของ `setAddresses` (กฎข้อ 110b) ถือว่าว่างเมื่อไม่เหลืออักขระหลังตัด white space ของ JS **และ** zero-width `U+200B`, `U+200C`, `U+200D`, `U+2060`, `U+FEFF` → คืน `MISSING_ADDRESS_MESSAGE` ไม่เรียก `updateCart`;
      ค่าที่ส่งให้ `updateCart` ตัด white space และอักขระชุดนี้ที่หัว/ท้าย (คงอักขระกลางข้อความ) — ทำใน helper pure ของ `src/lib/util/` เพื่อ unit test (ไม่มี dependency ใหม่);
      (b) `normalize` ของข้อความ error เหลือที่เดียว — `insufficient-inventory.ts` และ `group-join-error.ts` import ตัวเดียวกับ `checkout-error.ts`/`empty-cart-completion.ts` (ตัวกลางรวม `.trim()` ของ `group-join-error` ไว้); ผลของ map และ contract test เดิมไม่เปลี่ยน
+     **(ปิดรอบ 41 — ล้าสมัย)** หลัง CORE-82..84 (กฎข้อ 140) ไม่มี `normalize` ของข้อความ error เหลือใน storefront แล้ว (map ข้อความถูกแทนด้วย code; CORE-84 ลบตัวสุดท้าย) — ข้อ (b) ไม่มีผลบังคับอีก
+     และ grep ของ AC ข้อนี้ที่หา `const normalize =` ผ่านโดยปริยาย; ข้อยกเว้นที่ยังเทียบข้อความอยู่ใน `lib/util/medusa-api-error.ts` ที่เดียว
 117. (CORE-59 — review #355/#358; ต่อจากกฎข้อ 111) (a) `core-4g-checkout-polish.spec.ts` cleanup ใน `finally` ใช้ `expect.soft` ทั้งสองตัว (ลบ promotion ล้มแล้วยังลบ campaign ต่อ และ error ของ `checkout()` ไม่ถูกกลบ) แบบกฎข้อ 111d;
      (b) `core-4j-e2e-hygiene.unit.spec.ts` นับ `request.delete(` จาก AST (helper ที่เดินโหนดเดียวกับ `uncheckedDeletes` คืนจำนวน call จริง) แล้ว test AC-111 assert `> 0` จากค่านั้นแทน regex บนข้อความ;
      (c) comment เหนือ `VALID_AFFILIATE_ARGS` ใน `core-46-e2e-hygiene.unit.spec.ts` ระบุข้อจำกัด: รับ object ซ้อนได้ 2 ชั้น และไม่รู้จัก `{` `}` `,` ใน string (tsc จับอาร์กิวเมนต์ผิดรูปอยู่แล้ว)
@@ -2760,3 +2762,284 @@ none
   `apps/backend/src/lib/region-store-policies.ts` เช่น `return_window_days`, `shipping_rate`) ลงใน region ที่สร้าง
   เพราะ migration script `region-store-policies.ts` เติมให้เฉพาะ region ที่มีอยู่แล้วตอน `db:migrate`
 - CORE-6: ต้องลบ `if: ${{ false }}` ของ job `storefront-e2e` ใน `.github/workflows/ci.yml` เพื่อเปิด e2e ใน CI
+
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual เฟส 3a/9 บน v0.2.0; owner สั่งแก้ทั้งหมดใน release เดียวก่อน go-live)
+Status: done (ปิดรอบ 41 2026-11-23 — ☑ ทุก task: CORE-68 #462, CORE-69 #449, CORE-70 #459, CORE-71 #448, CORE-72 #455, CORE-73 #458, CORE-74 #431, CORE-75 #465)
+Goal (owner's words): แก้ bug/UX ที่เจอในการทดสอบ manual — "10 ข้อ + ทุกข้อที่ต้องตัดสิน" รวมใน release เดียวแล้วค่อย go-live; owner 2026-11-21 เพิ่มเรื่องที่เคยเป็น follow-up ให้ทำในแผนเดียวกัน
+Out of scope: หน้า order ใน admin แสดงราคารวม VAT, ฟอร์ม Refund ของ Medusa ค่าเริ่มต้นยอดเต็ม, ป้าย (ICT) บนเครื่อง UTC (owner ไม่ทำ — พฤติกรรมที่ยอมรับ); แผนทดสอบ manual (Claude Docs) session หลักแก้เอง
+งานรอบ 40 ใน spec อื่น: spec 02 EV-19..22, spec 03 FS-20..22, spec 04 GB-20..25, spec 05 AF-24, spec 06 PAY-8..9, spec 07 OPS-30..32, spec 08 ADM-39..42
+
+### What Medusa already gives us (รอบ 40)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| รายการ order แบ่งหน้า | `GET /store/orders?limit&offset` คืน `count` (starter `listOrders(limit, offset)`) | ใช้ตามเดิม — เพิ่มแค่ UI แบ่งหน้า (กฎข้อ 126) |
+| ค้นหาสินค้า | `POST /store/search` (index + `@medusajs/instantsearch-adapter` — drawer, `/store`) และ `GET /store/products?q=` (หน้า `/search`) — **สองกลไก ผลต่างกัน** | ใช้ `/store/search` ทุกที่ (กฎข้อ 128, Q-C12) |
+| routing ของ InstantSearch | `routing`/`stateMapping` ของ `react-instantsearch` | ใช้ตามเดิม map `?q=` (กฎข้อ 128) |
+| ตรวจตัวตนที่มีอยู่ | `POST /auth/customer/emailpass/register` → 401 `Identity with email already exists`; token จาก login มี `actor_id` เมื่อมี customer แล้ว | ใช้ตามเดิม (กฎข้อ 131) |
+| สถานะ order ก่อนส่งอีเมล | `query.graph` entity `order` field `status` | ใช้ตามเดิม (กฎข้อ 132) |
+
+### Business rules (รอบ 40)
+126. (CORE-68) หน้า `/<cc>/account/orders` แสดง order ปกติหน้าละ 10 พร้อมแบ่งหน้าจาก `count` ของ Medusa (`orders-pagination`, `?page=` 1-based, หน้าเกินจำนวน → หน้าสุดท้าย) ใช้ component แบ่งหน้าเดิมของ starter (`modules/store/components/pagination`) ไม่สร้างใหม่;
+     หน้า overview ของ account คง 5 ล่าสุด + ลิงก์ "ดูทั้งหมด"; รายการ group buy (GB-8) คงเดิม
+127. (CORE-69) `?step=review` (หรือ step ใดที่ข้อมูลก่อนหน้ายังไม่ครบ) เมื่อ cart ยังไม่มี payment session ที่ใช้ได้ → redirect ไป `step=payment` (ขั้นแรกที่ยังไม่เสร็จ — ขยายกฎของ CORE-45 ให้ครอบขั้นชำระเงิน) ไม่ค้างหน้า review ที่ไม่มีปุ่ม
+128. (CORE-70 — owner "ผลตรงกัน + `/store` รับ `?q=`") (a) drawer, หน้า `/<cc>/search?q=` และ `/<cc>/store?q=` ใช้ `POST /store/search` เดียวกัน (adapter/`searchClient` เดิม) ด้วยพารามิเตอร์เดียวกัน → ผลชุดเดียวกัน;
+     builder หาสาเหตุที่ drawer ค้น "shirt" ไม่เจอ (เช่น `match_strategy`, field ที่ index, การตัดคำ) แล้วแก้ที่ config ของ index/adapter ไม่ใช่ทำ fallback ไป `GET /store/products?q`;
+     (b) `/store?q=<คำ>` ตั้งคำค้นเริ่มต้นของ InstantSearch (map `q` ↔ `product[query]` ใน `stateMapping`) และ URL ของ `/store` หลังพิมพ์ใช้ `q`; (c) หน้า `/search` คง SEO ปัจจุบัน (`robots: noindex`)
+129. (CORE-71) คืนสินค้าแล้วล้มเพราะ stock location ไม่มีของ (error ของ Medusa ที่ builder ระบุ type/code จริง) → ข้อความไทย "ไม่สามารถสร้างคำขอคืนสินค้านี้ทางเว็บได้ กรุณาติดต่อร้าน" + ลิงก์ `/contact` (`return-contact-store`) แทน "ลองใหม่"; error อื่นคงเดิม
+130. (CORE-72) ลิงก์ตะกร้าใน nav ไม่แสดง "(0)" ระหว่างโหลด: render แรกแสดง "ตะกร้า" ไม่มีตัวเลข (`aria-busy="true"`) จนรู้จำนวนจริง; ตะกร้าว่างจริงจึงแสดง "(0)"
+131. (CORE-73 — owner 2026-11-21 แทนพฤติกรรมเดิมของ starter ที่ login ให้เงียบๆ) สมัครด้วยอีเมลที่มี**บัญชีลูกค้าแล้ว** (register ได้ `Identity with email already exists` แล้ว login ด้วยรหัสที่กรอกได้ token ที่มี `actor_id`)
+     → **ไม่**ตั้ง cookie/session, ไม่สร้าง customer, แสดง `register-email-exists` "อีเมลนี้มีบัญชีแล้ว" + ลิงก์ไปหน้าเข้าสู่ระบบ (`register-login-link`) คงค่าที่กรอก (กฎข้อ 69b);
+     รหัสผิด → ข้อความเดียวกัน (ไม่บอกว่ารหัสถูก/ผิด); identity มีอยู่แต่**ยังไม่มี customer** (เช่นอีเมลเดียวกับบัญชี affiliate — `actor_id` ว่าง) → พฤติกรรมเดิม (ผูก customer ใหม่) — เทียบข้อความ Medusa ตามเดิมพร้อมเช็กลิสต์ bump (spec 07 ข้อ 13)
+132. (CORE-74 — owner) subscriber ที่ส่งอีเมล `order-placed` อ่าน `order.status` ใหม่ก่อนส่ง: `canceled` → ไม่ส่ง + log info `order_placed_email_skipped_canceled` (กรณี event ค้างใน queue ขณะ worker หยุดแล้ว order ถูกยกเลิกก่อน worker กลับมา);
+     สถานะอื่นส่งตามเดิม (รวม order ที่มาจาก group buy — spec 04 กฎข้อ 9)
+133. (CORE-75 — owner ตัดสิน 2026-11-21 หลัง review #459) ค้นคำไทยที่อยู่กลาง/ท้ายชื่อสินค้าได้ทุกหน้า: ทุก request ของ `searchClient` (drawer, `/<cc>/search`, `/<cc>/store`)
+     ส่ง `search_options.typo_tolerance: true` ของ Medusa — `@medusajs/search-postgres` เพิ่มเงื่อนไข `word_similarity(q, search_text) > 0.3` (pg_trgm ที่ migration ของ provider เปิดไว้) จาก lexeme เดียวของชื่อไทยที่ไม่เว้นวรรค;
+     ไม่เพิ่ม infra/tokenizer ไทย; ทุกหน้ายังได้ผลชุดเดียวกัน (กฎข้อ 128); ข้อแลกที่ยอมรับ: ผลใกล้เคียงหลุดมาได้ (จัดอันดับต่ำกว่าคำที่ตรง) และเป็น seq scan ต่อ query;
+     ข้อจำกัดที่ยอมรับ (วัดจริง): คำค้นสั้น ≤ 3 อักขระที่อยู่**กลาง**คำ (มีอักษรต่อทั้งหน้าและหลัง เช่น "ยืด" ใน "เสื้อยืดคอกลม") ได้ similarity 0.25 จึงไม่เจอ — ท้ายคำ ("เสื้อยืด Medusa") และคำ ≥ 4 อักขระเจอ;
+     ฐานข้อมูลต้องมี `LC_CTYPE` ที่รู้จักอักษรไทย (เช่น `en_US.utf8`/`C.UTF-8`) — `LC_CTYPE=C` ทำให้ pg_trgm ทิ้งอักษรไทยทั้งหมด (ค้นไทยกลางคำไม่ได้เลย)
+
+### Acceptance criteria (รอบ 40)
+- ☑ AC-167 (CORE-68, กฎข้อ 126) e2e: ลูกค้าที่มี 12 order → หน้า 1 มี 10 แถว, `orders-pagination` ไปหน้า 2 ได้ 2 แถว (order เก่าสุดอยู่หน้า 2) — ล้มบน develop (ไม่มีหน้า 2); unit ของการคำนวณ offset/page
+- ☑ AC-168 (CORE-69, กฎข้อ 127) e2e: cart ที่มีที่อยู่ + วิธีส่งแต่ไม่มี payment session เปิด `/th/checkout?step=review` → URL เป็น `step=payment` ภายใน 5 วินาที และเห็นตัวเลือกการชำระเงิน (ล้มบน develop)
+- ☑ AC-169 (CORE-70, กฎข้อ 128) e2e (สินค้า tag ตัวอักษร 2 ชิ้นชื่อมีคำเดียวกัน + 1 ชิ้นไม่มี): คำค้นเดียวกันได้ชุด product handle เดียวกันจาก drawer, `/th/search?q=`, `/th/store?q=` (เทียบ set);
+  seed "shirt" ใน drawer ได้ ≥ 1 ผล (ล้มบน develop); เปิด `/th/store?q=<คำ>` → ช่องค้นหามีคำนั้นและผลถูกกรอง (ล้มบน develop)
+- ☑ AC-170 (CORE-71, กฎข้อ 129) e2e route mock + unit: error stock location ของการคืน → เห็น `return-contact-store` (อักษรไทย + ลิงก์ `/contact`) ไม่เห็นข้อความ "ลองใหม่"; error อื่น → ข้อความเดิม
+- AC-171 (CORE-72, กฎข้อ 130) ☑ (ผ่าน: red บน develop `026d3027` — MutationObserver เห็น "ตะกร้า (0)" 11 ครั้งก่อน "(2)" → green `e2e/core-72-cart-count-no-flash.spec.ts` `--repeat-each=3`) e2e: หน่วง request cart 2 วินาที (route mock) ลูกค้าที่มี 2 ชิ้น → ระหว่างรอ `nav-cart-link` ไม่มีข้อความ "(0)" และหลังโหลดเป็น "(2)"; ตะกร้าว่าง → "(0)"
+- ☑ AC-172 (CORE-73, กฎข้อ 131) e2e + unit (mock SDK): สมัครด้วยอีเมลลูกค้าที่มีอยู่ + รหัสถูก → อยู่หน้าสมัคร เห็น `register-email-exists` + `register-login-link`, ไม่มี cookie `_medusa_jwt` (ล้มบน develop — login ให้); รหัสผิด → ข้อความเดียวกัน;
+  integration/unit: identity ของ affiliate ที่ยังไม่มี customer สมัครเป็นลูกค้าได้ (regression)
+- ☑ AC-173 (CORE-74, กฎข้อ 132) integration (mock notification): emit `order.placed` ของ order ที่ `canceled` แล้ว → ไม่มี notification `order-placed` และมี log info; order ปกติ → 1 ฉบับ (ล้มบน develop)
+- ☑ AC-174 (CORE-75, กฎข้อ 133) integration (`POST /store/search` ด้วย body เดียวกับ storefront, seed + สินค้า "กางเกงยีนส์ขายาว"): "ยืด" → t-shirt, "สเวตเตอร์" → sweatshirt, "ยีนส์"/"ขายาว" → กางเกง (ล้มก่อนแก้),
+  คำนำหน้า "เสื้อ"/"กางเกง" ไม่ถดถอย, "หมวก"/"รองเท้า" ไม่เจอ, "เสื้อ ยืด" อันดับแรกคือ t-shirt; Vitest: adapter ส่ง `typo_tolerance: true`;
+  e2e: คำไทยเฉพาะ run กลางชื่อ 2 ชิ้น + 1 ชิ้นไม่มี → drawer, `/th/search?q=`, `/th/store?q=` ได้ชุดเดียวกัน (ล้มบน develop); เวลา query กับสินค้า ~1000 รายการอยู่ใน PR
+
+### Test plan (รอบ 40)
+| ระดับ | AC |
+|---|---|
+| e2e + unit Vitest (+ qa สำหรับงาน UI) | AC-167, AC-168, AC-169, AC-170, AC-171, AC-172, AC-174 |
+| integration (`POST /store/search`) | AC-174 |
+| integration (mock notification) | AC-173 |
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| CORE-68 | ☑ #462 — แบ่งหน้า order ในหน้า account (กฎข้อ 126); qa | `apps/storefront/src/lib/data/orders.ts`, `app/[countryCode]/(main)/account/@dashboard/{page,orders/page}.tsx`, `modules/account/components/order-overview`, e2e | ~60 LOC + ~120 LOC test | AC-167 | PR เอกสารรอบ 40 | `orders/page.tsx` (GB-22 แตะรายการ group — คนละ component; ตัวหลัง sync) |
+| CORE-69 | ☑ #449 — `?step=review` ไม่มี payment session → `step=payment` (กฎข้อ 127); qa | `modules/checkout/templates/checkout-form` / util step ของ CORE-45, e2e | ~30 LOC + ~80 LOC test | AC-168 | PR เอกสารรอบ 40 | ขั้น review (FS-21 ปุ่ม disabled — คนละ condition; ตัวหลัง sync) |
+| CORE-70 | ☑ #459 — ค้นหาให้ผลตรงกันทุกที่ + `/store?q=` (กฎข้อ 128); qa | `apps/storefront/src/lib/search-client.ts`, `app/[countryCode]/(main)/search/page.tsx`, `modules/store/templates/index.tsx`, `modules/layout/components/search/*`, backend config index ถ้าต้อง, e2e | ~120 LOC + ~150 LOC test | AC-169 | PR เอกสารรอบ 40 (Q-C12 = ก ☑) | — |
+| CORE-71 | ☑ #448 — ข้อความคืนสินค้าเมื่อ location ไม่มีของ (กฎข้อ 129); qa | `modules/account/components/return*` / action ของ return, helper error, test | ~30 LOC + ~80 LOC test | AC-170 | PR เอกสารรอบ 40 | — |
+| CORE-72 | ☑ #455 — ตะกร้าไม่กระพริบ "(0)" (กฎข้อ 130); qa | `modules/layout/components/cart-button*`/`nav`, e2e | ~20 LOC + ~60 LOC test | AC-171 | PR เอกสารรอบ 40 | — |
+| CORE-73 | ☑ #458 — สมัครด้วยอีเมลที่มีบัญชี → "อีเมลนี้มีบัญชีแล้ว" ไม่ login ให้ (กฎข้อ 131); qa | `apps/storefront/src/lib/data/customer.ts`, `modules/account/components/register`, test | ~40 LOC + ~120 LOC test | AC-172 | PR เอกสารรอบ 40 | — |
+| CORE-74 | ☑ #431 — ไม่ส่ง `order-placed` ให้ order ที่ยกเลิกแล้ว (กฎข้อ 132) | `apps/backend/src/subscribers/order-placed*.ts`, integration | ~15 LOC + ~80 LOC test | AC-173 | PR เอกสารรอบ 40 | — |
+| CORE-75 | ☑ #465 — ค้นคำไทยกลาง/ท้ายคำได้ทุกหน้าด้วย `typo_tolerance` ของ Medusa (กฎข้อ 133 — owner ตัดสิน 2026-11-21); qa | `apps/storefront/src/lib/search-client.ts`, integration `search-thai-substring`, e2e (+ ปรับคำค้นของ `flash-sale-fs14` ที่อาศัยการไม่มีผลใกล้เคียง) | ~5 LOC + ~250 LOC test | AC-174 | CORE-70 (#459 ☑) | — |
+
+### Open questions (รอบ 40)
+- ~~**Q-C12**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** `POST /store/search` ทุกหน้า (กฎข้อ 128) — คำถามเดิม: (CORE-70) กลไกค้นหาเดียวที่ใช้ทุกที่: (ก) **[Recommended]** `POST /store/search` (index ของ Medusa — `/store` ใช้อยู่แล้วพร้อม facet/ราคา; แก้ config ให้ค้น "shirt" เจอ);
+  (ข) `GET /store/products?q=` (core ILIKE — หน้า `/search` ใช้อยู่) ทุกที่ — ต้องเขียน `/store` ใหม่โดยไม่มี facet ของ index (~300 LOC) ไม่แนะนำ
+
+## Follow-up รอบ 41 (2026-11-21 — คำตัดสิน owner: follow-up รอบ 40 ทุกข้อทำใน release v0.3.0)
+Status: done (ปิดรอบ 41 2026-11-23 — ☑ ทุก task: CORE-76 #474, CORE-77 #487, CORE-78 #489, CORE-79 #480, CORE-80 #470, CORE-81 #475, CORE-82 #514, CORE-83 #517, CORE-84 #519, CORE-85 #518, CORE-86 #510, CORE-87 #496, CORE-88 #501)
+Goal (owner's words): "ทุกข้อทำใน release v0.3.0" — ข้อความที่ลองใหม่ไม่ช่วย, ป้ายตะกร้าค้าง, หน้า orders ของ account, ปุ่ม login บนมือถือ, อีเมลตัวเล็กฝั่ง backend + แปลงข้อมูลเก่า,
+จับ error ด้วย code, หน้า `/th/contact` ข้อมูลจริง, e2e hygiene
+Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป็น hotfix `fix/nav-cart-link-duplicate` — session หลัก 2026-11-21); งานรอบ 41 ใน spec อื่น: 02 EV-23..25, 03 FS-23..24, 04 GB-26..28, 05 AF-25..26, 06 PAY-10..14, 07 OPS-33..34, 08 ADM-43..46
+เลขกฎ/AC ต่อจาก CORE-75 (#465 — กฎข้อ 133, AC-174)
+
+### What Medusa already gives us (รอบ 41)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| อีเมลตัวเล็ก | **ไม่มี** — `@medusajs/auth-emailpass` 2.22.1 ใช้ `email` ตามที่ส่งเป็น `entity_id` ตรงๆ (`dist/services/emailpass.js:53-69, 93-125`) และ customer module ไม่แปลง | extend: middleware ของเราก่อน route ของ Medusa (กฎข้อ 138) |
+| แก้ `entity_id` / อีเมล | `authModuleService.updateProviderIdentities({ id, entity_id })` (`types/dist/auth/common/auth-identity.d.ts:122-140`), `updateCustomersWorkflow`, service ของ module affiliate | ใช้ตามเดิมใน workflow + compensation (กฎข้อ 139) |
+| code ของ error จาก Store API | backend ส่ง `{ type, code, message }` แต่ `FetchError` ของ `@medusajs/js-sdk` 2.22.1 เก็บแค่ `message/statusText/status` (`dist/esm/client.js:96-112`) และอ่าน body ไปแล้วก่อน throw ไม่มี option ส่ง `fetch` เอง | custom ตาม ADR-028 (accepted — owner ตัดสิน 2026-11-21, กฎข้อ 140) |
+| แบ่งหน้า | `Pagination` ของ starter (`modules/store/components/pagination`), `count` ของ `GET /store/orders` | ใช้ตามเดิม + a11y (กฎข้อ 136) |
+| สถานะ cart ใน nav | `retrieveCart` ของ starter | ใช้ตามเดิม (กฎข้อ 135) |
+
+### Business rules (รอบ 41)
+134. (CORE-76 — รวม review #464 ข้อ 2) ข้อความที่ "ลองใหม่" ไม่ช่วย: (a) complete ด้วย manual payment (ไม่มีการตัดเงิน) ล้มด้วยสต็อกไม่พอ (`isOutOfStockAtCompletion` ของ FS-22) → แสดง `INSUFFICIENT_INVENTORY_MESSAGE`
+     (`lib/util/insufficient-inventory.ts` — บอกให้ลดจำนวน) แทนข้อความทั่วไป และไม่มีคำ "คืนเงิน";
+     (a2) ขั้น review ทางบัตร: notice คืนเงิน (`checkout-refunded-notice`) เป็น **state ของตัวเอง** (เช่น `{ kind: "refunded" }` จาก `placeOrder`) ไม่ผูกกับการเทียบ `errorMessage === REFUNDED_NOTICE`;
+         หลัง PaymentIntent `succeeded`/`requires_capture` จัดผลของ complete เป็น kind ด้วย **allow-list** (pure helper เดียว `placeOrderOutcome` — แก้ตาม review #467: "4xx ใดๆ" กว้างเกิน):
+         `refunded` = เฉพาะ error ที่รู้แน่ว่า workflow ล้มหลัง capture แล้ว Medusa คืนเงิน — `FLASH_LIMIT_EXCEEDED`, `FLASH_SOLD_OUT`, code อื่นใน `CHECKOUT_CONFLICTS` ของ hook complete และสต็อกไม่พอ (`isOutOfStockAtCompletion`);
+         `PROMOTION_NOT_COMBINABLE` เป็น `refunded` เช่นกันแต่ใช้ข้อความของตัวเอง "โปรโมชันที่ใช้ไม่สามารถใช้ร่วมกันได้ ระบบคืนเงินเต็มจำนวนให้อัตโนมัติแล้ว …" (`PROMOTION_REFUNDED_NOTICE`) ไม่ใช้ "สินค้า/สิทธิ์ราคาพิเศษหมด" (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76);
+         ทาง manual (ไม่ได้ตัดเงิน) kind `refunded` แสดงข้อความเดิมของ code / สต็อกไม่พอ → `INSUFFICIENT_INVENTORY_MESSAGE` (ข้อ a);
+         `processing` = 409 code `CART_COMPLETION_IN_PROGRESS` (webhook กำลัง complete cart นี้ — ปกติได้ order) (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76): route complete ของ Medusa 2.22.1 throw CONFLICT **ไม่มี code** ข้อความ
+         "Cart is already being completed by another request" แต่ `errorHandler` ของ Medusa เขียนทับข้อความ 409 เป็นข้อความกลาง (`invalid_state_error`) จึงไปไม่ถึง storefront —
+         `businessErrorHandler` ของ backend (`src/api/error-handler.ts`) จับข้อความนี้ (type `conflict` ไม่มี code) แล้วตอบ 409 `{ type: "conflict", code: "CART_COMPLETION_IN_PROGRESS", message }`;
+         constant อยู่ที่ `src/api/store/carts/errors.ts` ที่เดียว พร้อม contract test **ฝั่ง backend** เทียบกับ source ของ `@medusajs/medusa` `dist/api/store/carts/[id]/complete/route.js` (เช็กลิสต์ bump spec 07 ข้อ 17);
+         storefront ตัดสินจาก code — `FetchError` ของ js-sdk 2.22.1 ไม่เก็บ code จึงจับคู่ code **หรือ**ข้อความคงที่ของ backend แบบ `CHECKOUT_CONFLICTS` (contract test storefront↔backend) จนกว่า CORE-82 (ADR-028) ย้ายไปอ่าน code;
+         → อ่าน cart/order ใหม่: มี order → ไปหน้า order confirmed, ยังไม่มี → ข้อความ `checkout-processing-notice` "กำลังดำเนินการคำสั่งซื้อ กรุณารอสักครู่" แล้วอ่านซ้ำตามกลไก poll เดิมของ PAY-6b
+         (เรียก complete ซ้ำทุก `PROMPTPAY_POLL_MS` — cart ที่ complete แล้วได้ order เดิม; รวมไม่เกิน `PROMPTPAY_FALLBACK_MAX_REQUESTS` ครั้ง แล้วทางบัตร → `promptpay-order-delayed` (ติดต่อร้าน), manual → ข้อความ fallback เดิม) (ไม่ใช่ notice คืนเงิน);
+         `unauthorized` = 401 **และ 403** (คงพฤติกรรมเดิมของ `actionFailure` (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76)) → พาไปหน้า login `/<cc>/account` **ไม่มี `return_to`** (`readReturnTo` ไม่รับ path ของ checkout — ข้อจำกัดที่ยอมรับ (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76)) (ไม่ใช่ notice คืนเงิน);
+         ปุ่ม manual ใช้การจัดผลชุดเดียวกัน (refunded แสดงตามข้อ a เพราะไม่ได้ตัดเงิน);
+         error อื่น / network / 5xx / timeout → พฤติกรรมเดิม; PAY-11 และ PAY-12 ใช้ helper เดียวกันนี้ (spec 06 กฎข้อ 13–14);
+     (b) คืนสินค้าได้ 400 ข้อความ `RETURN_NO_LOCATION_MESSAGE` ("Return shipping option has no stock location" — `apps/backend/src/api/store/ownership/return-location.ts`) → แสดง `return-contact-store` แบบกฎข้อ 129
+     (export ข้อความจาก backend เป็น constant แล้ว contract test เทียบกับ storefront แบบ `RETURN_NOT_STOCKED`)
+135. (CORE-77) ลิงก์ตะกร้าใน nav เมื่ออ่าน cart **ล้ม** (throw/reject ของ server action หรือ fetch) → ป้าย "ตะกร้า" ไม่มีตัวเลข และ**ไม่มี** `aria-busy` (ไม่ค้างสถานะโหลด), ลิงก์ยังพาไป `/cart`;
+     อ่านใหม่อัตโนมัติ 1 ครั้งเมื่อ pathname เปลี่ยน (ไม่วนซ้ำ ไม่ตั้ง timer); สำเร็จ → ตัวเลขตามกฎข้อ 130
+136. (CORE-78) หน้า `/<cc>/account/orders` และ overview: (a) ส่วนคำสั่งซื้อแบบกลุ่ม (GB-8/GB-22) แสดงเฉพาะหน้า 1 (`page` ไม่ใช่ 1 → ไม่ render ส่วนนี้);
+     (b) overview แสดงลิงก์ "ดูทั้งหมด" เมื่อมี order ปกติ ≥ 1 **หรือ** membership แบบกลุ่ม ≥ 1 (เดิมเฉพาะ order ปกติ)
+         (ปิดรอบ 41 — review #489: นับ membership ทุกสถานะรวม `cancelled` โดยตั้งใจ เพราะหน้า orders แสดงรายการกลุ่มที่ยกเลิกด้วย);
+     (c) `Pagination` ของ starter: `nav` มี `aria-label="แบ่งหน้า"`, ปุ่มหน้าปัจจุบันมี `aria-current="page"`, ป้าย/`aria-label` ของปุ่มเป็นภาษาไทย (เช่น "หน้า 2") — ใช้ร่วมทุกหน้าที่ใช้ component นี้
+         (แก้ปิดรอบ 41 ตาม review #489: ผู้ใช้จริงคือ orders + หน้า collection/category; vouchers มี nav ของตัวเอง และ `/store` ใช้ `SearchPagination` ของ InstantSearch — a11y ของตัวนั้นอยู่ในกฎข้อ 148c);
+     (d) helper เดียว `pageFromSearchParam(page, pageSize)` (+ `totalPages`) ใน `lib/util/pagination.ts` แทน `ordersPage` (CORE-68) และ `vouchersPagination` (ผู้ใช้ 2 ที่ — CLAUDE.md ข้อ 3) ผลเดิมทุกกรณี (unit เดิมย้ายตาม)
+137. (CORE-79) ที่ 375px ปุ่ม `register-login-link` มีพื้นที่แตะสูง ≥ 44px; กดแล้วสลับเป็นฟอร์ม login ที่ช่อง `email-input` มีอีเมลที่กรอกในฟอร์มสมัคร (ช่องรหัสผ่านว่าง)
+138. (CORE-80) backend แปลงอีเมลเป็นตัวเล็ก (`trim().toLowerCase()` — pure helper `normalizeEmail` ที่เดียว) ก่อนถึง route ของ Medusa: field `email` และ `identifier` (reset password) ที่เป็น string ใน body ของ
+     (a) `POST /auth/{customer,affiliate}/emailpass`, `.../emailpass/register`, `.../emailpass/reset-password` — **เฉพาะ actor `customer` และ `affiliate`** (Q-C13 = ก owner ตัดสิน 2026-11-21: ไม่แตะ `/auth/user/*` ของแอดมิน); (b) `POST /store/customers`, `POST /admin/customers`, `POST /admin/customers/:id`;
+     (c) route ของเราที่รับอีเมลของ affiliate จาก body (builder ตรวจ — ปัจจุบัน affiliate อ่านอีเมลจาก auth identity) ไม่แตะ field อื่น; storefront ที่แปลงอยู่แล้ว (CORE-73) คงไว้
+139. (CORE-81) script `apps/backend/src/scripts/lowercase-emails.ts` (`medusa exec`): ค่าเริ่มต้น **dry-run** พิมพ์จำนวน/รายการ id ที่ `x ≠ lower(x)` ของ `provider_identity.entity_id` (provider `emailpass` ของ auth identity ที่ผูก customer หรือ affiliate เท่านั้น — Q-C13 = ก; identity ของแอดมินไม่แตะ),
+     `customer.email`, `affiliate.email`; **ชนกัน** (สองแถวขึ้นไปของตารางเดียวกันได้ค่าตัวเล็กเท่ากัน ภายใต้ unique เดิม: `(entity_id, provider)`, `(email, has_account)` ของ customer, `affiliate.email`) → พิมพ์รายการชนแล้ว exit ≠ 0 โดยไม่แก้อะไร;
+     คำ `apply` (`medusa exec … lowercase-emails.ts apply` — `medusa exec` ปฏิเสธ flag `--apply` ที่ไม่รู้จัก) แก้ผ่าน workflow ของเรา (step ต่อ module + compensation คืนค่าเดิม — ไม่ SQL ตรง) แล้วพิมพ์สรุป; unique violation ระหว่าง apply → ข้อความมีแค่ตาราง/id (ไม่มีอีเมล); ตรวจชนนับ identity ที่ soft-delete แล้วด้วย (unique `(entity_id, provider)` ไม่ใช่ partial); รันซ้ำหลัง apply → 0 แถว; ไม่ลบแถวใด
+140. (CORE-82..84 — **ADR-028 accepted**, owner ตัดสิน 2026-11-21: ทางเลือก 2 + 3, 3 PR ปิดท้ายรอบ) storefront ตัดสิน error ของ Store API ด้วย `code`/`type` แทนการเทียบข้อความ backend
+     ผ่าน helper เดียว `lib/data/medusa-fetch.ts` (`fetch` ตรง + header เดียวกับ SDK → `MedusaApiError { status, type, code, message }`) เฉพาะ mutation ที่ตัดสินจาก error; เปิด issue upstream ให้ `FetchError` เก็บ `code`/`type` (session หลักเปิด);
+     error ของ Medusa core ที่ไม่มี code (สต็อกไม่พอตอน complete, `Identity with email already exists`) ยังเทียบ `type` + ข้อความ (ข้อยกเว้นที่บันทึกใน helper);
+     เมื่อย้ายแต่ละกลุ่ม helper แล้วลบ map ข้อความของกลุ่มนั้น (เช่น `CHECKOUT_CONFLICTS`, `RETURN_ERRORS`, `insufficient-inventory.ts`) และ contract test เปลี่ยนเป็นเทียบ code; ข้อความไทยที่ลูกค้าเห็นไม่เปลี่ยน
+     **(ปิดรอบ 41 — ตำแหน่งโค้ดจริงหลัง CORE-82..84, review #514)** `medusaFetch` อยู่ที่ `lib/data/medusa-fetch.ts` (`server-only`; ผู้เรียก = **ทุกไฟล์ที่ import `./medusa-fetch`** (ตรวจด้วย grep — ณ ปิดรอบ 41 บน develop `8d509076` มี 7 ไฟล์ใน `lib/data/`: `payment.ts`, `cart.ts`, `returns.ts`, `customer.ts` (CORE-83 register), `group-join.ts`, `group-buy.ts` (CORE-84 สร้างกลุ่ม), `affiliate-portal.ts`)
+     — affiliate ส่ง token ของ actor `affiliate` ผ่านพารามิเตอร์ `authHeaders`; แก้ตาม review #520);
+     class `MedusaApiError` และ**รายการข้อยกเว้นที่เดียว** `UNCODED_MEDUSA_ERRORS` + `isUncodedMedusaError` อยู่ที่ `lib/util/medusa-api-error.ts` (แยกไฟล์ให้ helper ฝั่ง client import ได้):
+     `OUT_OF_STOCK_AT_RESERVE` (400 `not_allowed` prefix "Not enough stock available for item "), `EMPTY_CART_COMPLETION` (400 `invalid_data` prefix "Cannot complete a cart with no items"), `IDENTITY_EXISTS` (401 `unauthorized` ข้อความ "Identity with email already exists");
+     `insufficient-inventory.ts` ยังอยู่แต่ตัดสินจาก code `insufficient_inventory` + ข้อยกเว้น `OUT_OF_STOCK_AT_RESERVE` (ไม่มี map ข้อความ); ข้อยกเว้นใหม่ต้องเพิ่มใน `UNCODED_MEDUSA_ERRORS` เท่านั้น (static ของ AC-181 c สแกนการเทียบ `message` นอกสองไฟล์นี้)
+141. (CORE-85 — owner ส่งข้อมูลติดต่อ **2026-11-23**) หน้า `/<cc>/contact` แสดงช่องทางติดต่อจริงที่ owner ส่ง (อย่างน้อย 1 ช่องทางเป็นลิงก์ `mailto:`/`tel:`/URL — testid `contact-channel` ต่อช่องทาง) ไม่มีเนื้อหาตัวอย่างของ starter
+     (ค่าอยู่ใน `contact/page.tsx` ที่เดียว — ย้ายไป `lib/store-content.ts` เมื่อมีผู้ใช้ที่ 2 เช่น JSON-LD `contactPoint`/footer; builder #518)
+142. (CORE-86 — e2e hygiene, session หลัก 2026-11-21) `e2e/core-75-thai-substring-search.spec.ts` (~`:47`) และ `e2e/flash-sale-fs14.spec.ts` (~`:118`) ใช้ตารางแปลงเลขเป็นอักษรไทยชุดเดียวกัน → คำค้นชนกันเมื่อรันหลาย worker;
+     แต่ละ spec ใช้คำนำหน้าคงที่ของตัวเองที่ไม่เป็น substring ของอีกตัว — ไม่เปลี่ยนสิ่งที่ test ตรวจ
+     **(ปิดรอบ 41 — ตรงกับที่ทำจริงใน #510)** คำนำหน้าอย่างเดียวไม่พอ (word_similarity ~0.67 ยังชน) → แต่ละ spec มี**คำนำหน้า + ชุดอักษรแทนตัวเลขของตัวเอง**ที่ไม่มีอักษร/trigram ร่วมกับ spec อื่น
+     (`SEARCH_WORD_SCHEMES` ใน `e2e/support/search-word.ts` + unit `search-word.unit.spec.ts` ตรวจทุกคู่); e2e ใหม่ที่ค้นคำไทยเฉพาะ run ต้องเพิ่ม scheme ของตัวเองในไฟล์นี้
+143. (CORE-87 — qa #465; owner ยืนยันให้ทำ 2026-11-21) หน้า `/<cc>/store` หัวของ facet option (เช่น "ขนาด") ต้องไม่แสดงจำนวนที่ขัดกับค่าย่อย (เคสที่เจอ: หัว "ขนาด (0)" แต่ค่าย่อย F 3, L 2):
+     builder หาสาเหตุ (อ่าน count จาก key ไหนของผล facet ของ `POST /store/search`) แล้วแก้ให้ตัวเลขที่หัว = จำนวนสินค้าในผลปัจจุบันที่มีค่าใดค่าหนึ่งของ option นั้น;
+     ถ้าผลของ index ไม่มีตัวเลขนี้ → ไม่แสดงตัวเลขที่หัว (ไม่คำนวณเองจากผลรวมค่าย่อย เพราะสินค้าหนึ่งมีหลายค่า)
+144. (CORE-88 — Q-C15 = ก owner ตัดสิน 2026-11-21) คำค้นสั้น (เช่น 2 อักขระ "ขา") ไม่คืนสินค้าทั้ง catalog เพราะ `search_text` มีค่า option (เช่น "ขนาด:F") ที่ word_similarity ≈ 0.33 > เกณฑ์ 0.3 ของ `typo_tolerance` (CORE-75):
+     `searchClient` ส่ง `typo_tolerance` **เฉพาะ**คำค้นที่ trim แล้วยาว ≥ 3 อักขระ (นับ **code point** ด้วย `[...q].length` — "ขา" = 2, "ยืด" = 3; แก้ตาม review #467: นับ grapheme ได้ "ยืด" = 2 ทำให้ AC-174 regress); สั้นกว่า → ส่ง body แบบก่อน CORE-75 (ยอมรับ: คำ 2 อักขระกลางคำไทยไม่เจอ); ทุกหน้า (drawer, `/search`, `/store`) ใช้ helper เดียว
+
+### Acceptance criteria (รอบ 41)
+- ☑ AC-175 (CORE-76, กฎข้อ 134) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน: (a) complete ของ manual payment ตอบ 400 `Not enough stock available for item …` → ข้อความ = `INSUFFICIENT_INVENTORY_MESSAGE` ไม่มีคำ "คืนเงิน"; ทางบัตร → `checkout-refunded-notice` (regression FS-22);
+  (a2) unit `placeOrderOutcome`: `FLASH_SOLD_OUT`/`FLASH_LIMIT_EXCEEDED`/สต็อกไม่พอ → `refunded`; 400 `not_allowed` ที่ไม่อยู่ใน allow-list → **ไม่ใช่** `refunded` (พฤติกรรมเดิม); 409 `CART_COMPLETION_IN_PROGRESS` → `processing`; 401/403 → `unauthorized`; 500/network → ไม่ใช่ `refunded`;
+       e2e route mock: 409 `CART_COMPLETION_IN_PROGRESS` แล้ว order มีอยู่ → URL เป็นหน้า order confirmed ภายใน 10 วินาที, order ยังไม่มี → เห็น `checkout-processing-notice` ไม่เห็น `checkout-refunded-notice`; 401 → ไปหน้า login (ไม่เห็น `checkout-refunded-notice`);
+       component แสดง notice จาก kind ไม่ใช่จากข้อความ (static: ไม่มี `=== REFUNDED_NOTICE`); contract test **ฝั่ง backend**: constant ข้อความ "Cart is already being completed by another request" ตรงกับ source ของ `@medusajs/medusa` ที่ติดตั้ง และ CONFLICT ข้อความนี้ → 409 code `CART_COMPLETION_IN_PROGRESS` (unit `error-handler`); contract storefront↔backend ของ code/ข้อความ;
+  (b) `POST /store/returns` ตอบ 400 ข้อความ `RETURN_NO_LOCATION_MESSAGE` → เห็น `return-contact-store` ไม่มีคำ "ลองใหม่"; contract test ข้อความ backend = storefront
+- ☑ AC-176 (CORE-77, กฎข้อ 135) e2e route mock: ให้การอ่าน cart ของ nav ล้ม (500) → ภายใน 5 วินาที `nav-cart-link` มีข้อความ "ตะกร้า" ไม่มีวงเล็บตัวเลขและไม่มี attribute `aria-busy` (ล้มบน develop — ค้าง `aria-busy`); เลิก mock แล้วไปหน้าอื่น → เห็นจำนวนจริง; นับ request อ่าน cart ≤ 2 ต่อการเปลี่ยนหน้า (ผ่าน: red บน develop `b1896690` ค้าง `aria-busy="true"` + unit 3/6 ล้ม → green `e2e/core-77-cart-label-error.spec.ts` + unit `src/core-77-cart-label-error.test.ts` 6/6)
+- ☑ AC-177 (CORE-78, กฎข้อ 136) e2e + unit: ลูกค้า 12 order + membership กลุ่ม 1 → หน้า 1 เห็นส่วนกลุ่ม, `?page=2` ไม่เห็น (ล้มบน develop+CORE-68); ลูกค้าที่มีแต่ membership กลุ่ม → overview เห็นลิงก์ "ดูทั้งหมด";
+  `orders-pagination` ปุ่มหน้าปัจจุบันมี `aria-current="page"` และ `aria-label` ทุกปุ่มมีอักษรไทย; unit `pageFromSearchParam` ครอบกรณีของ `ordersPage`/`vouchersPagination` เดิมทั้งหมด (ผ่าน: red บน develop `b1896690` — `?page=2` ยังเห็น `group-orders`, ไม่มีลิงก์ "ดูทั้งหมด", `nav` ไม่มี `aria-label` → green `e2e/core-78-orders-page-cleanup.spec.ts` + `src/lib/util/pagination.test.ts`)
+- ☑ AC-178 (CORE-79, กฎข้อ 137) e2e 375×812: `register-login-link` `boundingBox().height ≥ 44`; กรอกอีเมลในฟอร์มสมัคร → กดลิงก์ → `email-input` ของฟอร์ม login มีค่าเดียวกัน (ล้มบน develop ทั้งสองข้อ) (ผ่าน: red บน develop `7d47192f` สูง 20px และ `email-input` ว่าง → green `e2e/core-79-login-link-mobile.spec.ts`)
+- ☑ AC-179 (CORE-80, กฎข้อ 138) unit + integration http — **ล้มบน develop** ก่อน (ผ่าน: red บน develop `fd39a681` 6/7 ล้ม → green `integration-tests/http/core-80-normalize-email.spec.ts` 7/7 + unit 12/12): register `Foo.Bar@Example.COM` → `provider_identity.entity_id = "foo.bar@example.com"`; login ด้วย `FOO.bar@example.com` → 200;
+  register ซ้ำด้วยตัวพิมพ์ต่าง → 401 `Identity with email already exists`; `POST /admin/customers { email: "A@B.CO" }` → `a@b.co`; affiliate register แบบเดียวกัน; field อื่นใน body ไม่เปลี่ยน
+- ☑ AC-180 (CORE-81, กฎข้อ 139) integration (`medusa exec` ของ script หรือเรียก function ตรง) (ผ่าน: red กับ stub 4/4 + unit 3/5 ล้ม → green `integration-tests/http/core-81-lowercase-emails.spec.ts` 4/4 + unit 5/5; แก้ตาม review #475: soft-delete + unique violation ไม่มี PII red 3/3 → green 7/7; `medusa exec` เป็น yargs strict จึงรับคำ `apply` แทน flag `--apply`): seed identity/customer/affiliate ตัวพิมพ์ใหญ่ 1 ชุด → dry-run พิมพ์ 3 แถว DB ไม่เปลี่ยน; `apply` → ตัวเล็กครบและ login ด้วยตัวเล็กได้; รันซ้ำ → 0;
+  seed คู่ชน (`A@x.co` + `a@x.co`) → exit ≠ 0 พร้อมรายการชน DB ไม่เปลี่ยน; step ที่สองล้ม (mock) → ค่าเดิมคืนครบ
+- AC-181 (CORE-82..84, กฎข้อ 140) ☑ (a)(b)(c) ครบ unit Vitest + e2e route mock ต่อกลุ่ม: (a) unit helper — response 4xx `{ type, code, message }` → `MedusaApiError` มี `code`/`type`/`status` ครบ; header (publishable key, auth, locale) เท่ากับที่ `sdk.client.fetch` ส่ง;
+  (b) ต่อ PR: ทุก error ที่กลุ่มนั้นเคยจับด้วยข้อความ → จับด้วย code แล้วข้อความไทยเดิม (e2e/unit เดิมผ่าน); static: ไม่มี map ข้อความอังกฤษของกลุ่มนั้นเหลือ ยกเว้นรายการข้อยกเว้นของ helper; (c) CORE-84 ปิดท้าย: ไม่มีการเทียบข้อความ backend นอกข้อยกเว้นทั้ง storefront
+  — ความคืบหน้า: CORE-82 (a) + (b) กลุ่ม checkout/cart/payment ผ่าน (unit `src/core-82-medusa-fetch.test.ts` red 17 → green 20; e2e เดิม core-48/core-76/core-52/fs15/payments-order-pay/pay-9/pay-12 ผ่านกับ backend จริง); CORE-83 (b) กลุ่ม account/returns/auth ผ่าน (register + `POST /store/returns` ผ่าน `medusaFetch`; backend CORE-55 ใส่ code `RETURN_ITEM_NOT_STOCKED`/`RETURN_NO_LOCATION`; `RETURN_ERRORS` เหลือ code + ข้อความไทย; `Identity with email already exists` เป็นข้อยกเว้น `IDENTITY_EXISTS` ของ helper; unit `src/core-83-account-returns-codes.test.ts` + test เดิม red 25 → green); CORE-84 (b) กลุ่ม group buy/flash/affiliate + (c) ผ่าน (join/สร้างทีม และ register ของ affiliate ผ่าน `medusaFetch` — affiliate ส่ง token ของ actor `affiliate` ผ่านพารามิเตอร์ `authHeaders`; backend ใส่ code `GB_CART_EMPTY` (join cart ว่าง) และ `AFFILIATE_CODE_RESERVED` (middleware ก่อน validator — refine ของ schema คงไว้ตาม AC-53 spec 05); `group-join-error.ts`/`affiliate-register-error.ts` เหลือ code + ข้อความไทย, ลบ `normalize`; identity ซ้ำของ affiliate ใช้ข้อยกเว้น `IDENTITY_EXISTS`; flash ไม่มีจุดเทียบข้อความเหลือ (409 ตอน complete อยู่ใน CORE-82); static (c) สแกน source ทั้ง storefront ว่าไม่เทียบ `message` นอก `medusa-api-error.ts`/`medusa-fetch.ts`; unit `src/core-84-gb-affiliate-codes.test.ts` red 14 → green; e2e group-buy-join/home-campaigns/affiliate-portal ผ่านกับ backend จริง โดย expected มาจาก code ≠ fallback)
+- ☑ AC-182 (CORE-85, กฎข้อ 141) e2e: `/th/contact` มี `contact-channel` ≥ 1 ที่ href ขึ้นต้น `mailto:`/`tel:`/`https://` และไม่มีข้อความตัวอย่างของ starter (รายการคำที่ builder ระบุจากหน้าเดิม); ตรวจอักษรไทย (ผ่าน: red บน develop `1d83ccf1` ไม่มี `contact-intro`/`contact-channel` และยังมี `policy-placeholder` → green `e2e/core-85-contact-page.spec.ts` 1280 + 375 px 2/2; คำตัวอย่างที่ตรวจ: `policy-placeholder`, "ข้อความตัวอย่าง", "Questions about an order", "customer service", "example.com"; ข้อมูลติดต่อจาก owner 2026-11-23)
+- ☑ AC-183 (CORE-86, กฎข้อ 142) unit/static: คำนำหน้าของสอง spec ต่างกันและไม่เป็น substring กัน; รันสอง spec พร้อมกัน `--workers=2 --repeat-each=3` ผ่าน (ผ่าน: red บน develop `f01c0cee` core-75 ล้ม 3/3 เพราะได้ `e2e-fs14-y-*` เพิ่มในผลค้น → green 21/21; คำนำหน้าอย่างเดียวยังได้ word_similarity ~0.67 จึงให้แต่ละ spec มีชุดอักษรแทนตัวเลขของตัวเองที่ไม่ซ้ำกันด้วย — helper `e2e/support/search-word.ts` + unit `search-word.unit.spec.ts` ตรวจทุกคู่ไม่มีอักษร/trigram ร่วม)
+- ☑ AC-184 (CORE-87, กฎข้อ 143) e2e (สินค้า tag 2 ชิ้นมี option "ขนาด" ค่า F/L) + unit ของ helper ที่อ่าน facet: หัว facet "ขนาด" ไม่มี "(0)" — ตัวเลข (ถ้ามี) = 2 ตามผลปัจจุบัน (ล้มบน develop+CORE-75) (ผ่าน: red บน develop `fe32fb87` หัวเป็น "ขนาด(0)" ทั้ง unit + e2e → green `e2e/core-87-facet-heading.spec.ts` + unit `src/core-87-facet-heading.test.ts` 2/2; สาเหตุ = หัวแสดงจำนวนค่าที่เลือก ไม่ใช่ค่าจาก facet และ facet ของ index มีแค่ `option_values` ต่อ "<option>:<ค่า>" จึงไม่แสดงตัวเลขที่หัว)
+- ☑ AC-185 (CORE-88, กฎข้อ 144) integration `POST /store/search` body เดียวกับ storefront บน seed: คำค้น 2 อักขระที่ไม่อยู่ในชื่อสินค้าใด (เช่น "ขา" กับ seed ที่ไม่มีคำนี้) → 0 hit (ล้มบน develop+CORE-75);
+  regression AC-174 ("ยืด", "สเวตเตอร์", "ยีนส์"/"ขายาว") ยังผ่าน; unit: "ขา" และ "  ขา  " (trim แล้ว 2 code point) → body ไม่มี `typo_tolerance`; "ยืด" (3 code point), "ยีนส์" และทุกคำของ AC-174 → มี (ผ่าน: red บน develop `7c6dd55c` — integration "ขา"/"  ขา  " ได้ทั้ง catalog 3 ชิ้น, unit 3 กรณีคำสั้นยังส่ง `typo_tolerance` → green integration `search-thai-substring` 1/1 + unit `search-client.test.ts` 19/19; ใช้ `transformQuery` ของ `@medusajs/instantsearch-adapter`)
+
+### Test plan (รอบ 41)
+| ระดับ | AC |
+|---|---|
+| unit Vitest + e2e (+ qa) | AC-175, AC-176, AC-177, AC-178, AC-182, AC-184 |
+| unit + integration http | AC-179, AC-180, AC-185 |
+| static/e2e | AC-183 |
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| CORE-76 | ☑ #474 — ข้อความสต็อกไม่พอของ manual payment + notice คืนเงินเป็น state ของตัวเอง (allow-list `refunded`/`processing`/`unauthorized` ด้วย `placeOrderOutcome`) + คืนสินค้า `NO_LOCATION_MESSAGE` → ติดต่อร้าน (กฎข้อ 134); qa | `apps/storefront/src/lib/data/cart.ts` (`placeOrder`), `apps/storefront/src/lib/util/{checkout-error,insufficient-inventory,return-request}.ts`, `modules/checkout/components/payment-button`, `apps/backend/src/api/store/ownership/return-location.ts` (export constant), test | ~70 LOC + ~150 LOC test | AC-175 | **FS-22 (#464)** | `cart.ts`/`checkout-error.ts` (PAY-11, PAY-12 — ตัวหลัง sync) |
+| CORE-77 | ☑ #487 — ป้ายตะกร้าไม่ค้างเมื่ออ่าน cart ล้ม (กฎข้อ 135); qa | `modules/layout/components/cart-dropdown/index.tsx`, `modules/layout/templates/nav/index.tsx`, e2e | ~30 LOC + ~80 LOC test | AC-176 | **hotfix `fix/nav-cart-link-duplicate`** (ไฟล์เดียวกัน) | nav/cart-dropdown |
+| CORE-78 | ☑ #489 — orders ของ account: กลุ่มเฉพาะหน้า 1 + "ดูทั้งหมด" + a11y ของ `Pagination` + helper แบ่งหน้าเดียว (กฎข้อ 136); qa | `app/[countryCode]/(main)/account/@dashboard/{page,orders/page,vouchers/page}.tsx`, `modules/store/components/pagination`, `lib/util/{pagination,orders-pagination,evoucher}.ts`, test | ~90 LOC + ~150 LOC test | AC-177 | **CORE-68 (#462)** | `orders/page.tsx` |
+| CORE-79 | ☑ #480 — ปุ่ม `register-login-link` ≥ 44px + เติมอีเมลในฟอร์ม login (กฎข้อ 137); qa | `modules/account/{templates/login-template.tsx,components/register,components/login}`, e2e | ~30 LOC + ~60 LOC test | AC-178 | PR เอกสารรอบ 41 | — |
+| CORE-80 | ☑ #470 — middleware อีเมลตัวเล็กฝั่ง backend (กฎข้อ 138) | `apps/backend/src/lib/normalize-email.ts` (+ unit), `apps/backend/src/api/middlewares.ts` (หรือไฟล์ middleware ย่อยที่ spread), integration | ~50 LOC + ~150 LOC test | AC-179 | PR เอกสารรอบ 41 (Q-C13 = ก ☑) | `middlewares.ts` (GB-26, OPS-34 — sync) |
+| CORE-81 | ☑ #475 — script แปลงอีเมลเก่าเป็นตัวเล็ก dry-run/`apply` + ตรวจชน (กฎข้อ 139) + บรรทัด go-live checklist ใส่คำสั่งจริง | `apps/backend/src/scripts/lowercase-emails.ts`, `apps/backend/src/workflows/lowercase-emails.ts`, `docs/ops/production.md` (Go-live ข้อ 11), integration | ~150 LOC + ~200 LOC test | AC-180 | **CORE-80** (ใช้ `normalizeEmail`) | `production.md` (OPS-33, EV-25 คนละบรรทัด) |
+| CORE-82..84 | ☑ CORE-82 #514, CORE-83 #517, CORE-84 #519 — จับ error ด้วย code ตาม ADR-028 แบ่งตามกลุ่ม helper: 82 = checkout/cart/payment, 83 = account/returns/auth, 84 = group buy/flash/affiliate (กฎข้อ 140); qa ต่อ PR | ตาม ADR-028 | ≤ ~350 LOC ต่อ PR | AC-181 | ADR-028 accepted ☑ (owner 2026-11-21); 82 ← CORE-76, PAY-11, PAY-12, PAY-14; 83 ← **CORE-82**, CORE-76, CORE-79; 84 ← **CORE-83**, FS-23, GB-27 | helper error ทุกกลุ่ม — ทำหลัง task หน้าร้านอื่นที่แตะ helper เดียวกัน |
+| CORE-85 | ☑ #518 — `/th/contact` ข้อมูลติดต่อจริง (กฎข้อ 141); qa | `app/[countryCode]/(main)/contact/page.tsx`, e2e | ~40 LOC + ~40 LOC test | AC-182 | **owner ส่งข้อมูลติดต่อ** (ส่งแล้ว 2026-11-23) | — |
+| CORE-86 | ☑ #510 — e2e hygiene คำนำหน้าคำค้นของ core-75 กับ fs14 (กฎข้อ 142) | `apps/storefront/e2e/core-75-thai-substring-search.spec.ts`, `e2e/flash-sale-fs14.spec.ts`, `e2e/support/*` | ~20 LOC | AC-183 | **CORE-75 (#465)** | `flash-sale-fs14.spec.ts` (FS-23 ถ้าแตะ — ไม่คาดว่าแตะ) |
+| CORE-87 | ☑ #496 — หัว facet `/store` ไม่แสดงจำนวนผิด (กฎข้อ 143); qa | `modules/store/components/store-refinements/*`, test | ~20 LOC + ~80 LOC test | AC-184 | **CORE-75 (#465)** | `store-refinements` (CORE-88 ถ้าแตะ) |
+| CORE-88 | ☑ #501 — ส่ง `typo_tolerance` เฉพาะคำค้น ≥ 3 อักขระ (กฎข้อ 144) | `apps/storefront/src/lib/search-client.ts` (+ unit), integration `search-thai-substring` | ~10 LOC + ~100 LOC test | AC-185 | **CORE-75 (#465)** (Q-C15 = ก ☑) | `search-client.ts` |
+
+ลำดับ: CORE-79, CORE-85 อิสระ; CORE-76 ← FS-22; CORE-87 ← CORE-75; CORE-88 ← CORE-75; CORE-77 ← hotfix; CORE-78 ← CORE-68; CORE-80 → CORE-81; CORE-86 ← CORE-75; CORE-82..84 ท้ายสุด (← ADR-028 + task หน้าร้านที่แตะ helper เดียวกัน)
+
+### Open questions (รอบ 41)
+- ~~**Q-C13**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** เฉพาะ customer + affiliate (กฎข้อ 138–139) — คำถามเดิม: (CORE-80/81) อีเมลตัวเล็กครอบ actor `user` (แอดมิน) ด้วยไหม — `/auth/*/emailpass*` ตามที่ owner เขียนรวม `/auth/user/emailpass`:
+  (ก) **[Recommended]** เฉพาะ `customer` + `affiliate` — เหตุผล: ปัญหาที่เจอคือลูกค้า/affiliate; แอดมินสร้างด้วย CLI/invite จำนวนน้อย ถ้า identity ของแอดมินเก็บตัวใหญ่แล้ว middleware แปลง → login admin ไม่ได้จนรัน script; ขนาดงานเท่ากัน
+  (ข) ทุก actor รวม `user` — script ข้อ 139 ต้องแปลง `user.email` และ identity ของ `user` ด้วย (+~30 LOC) และต้องรัน script ก่อน deploy middleware ไม่งั้นแอดมินที่มีตัวใหญ่ login ไม่ได้
+- ~~**Q-C14**~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-028** (ทางเลือก 2 + 3; CORE-82..84 เป็น 3 PR ปิดท้ายรอบ + เปิด issue upstream) — คำถามเดิม: (CORE-82..84) อนุมัติ ADR-028 (ทางจับ error ด้วย code)
+- ~~**Q-C15**~~ **ตัดสินแล้ว (owner 2026-11-21) = (ก)** ส่ง `typo_tolerance` เฉพาะคำค้น ≥ 3 อักขระ (กฎข้อ 144) — คำถามเดิม: (CORE-88 — qa #465) คำค้น 2 อักขระได้ทั้ง catalog (word_similarity ของ "ขา" กับ "ขนาด:F" ≈ 0.33 > 0.3) — เกณฑ์ 0.3 ฝังอยู่ใน provider ของ Medusa (ปรับต่อ request ไม่ได้ — builder ยืนยันจาก source ใน PR):
+  (ก) **[Recommended]** storefront ส่ง `typo_tolerance` เฉพาะคำค้นที่ยาว ≥ 3 อักขระ (code point — แก้ปิดรอบ 41 ให้ตรงกฎข้อ 144; เดิมเขียน grapheme ซึ่งนับ "ยืด" = 2) — ~10 LOC ใน `search-client.ts` ไม่แตะ provider;
+      ผลข้างเคียง: คำ 2 อักขระที่อยู่กลางคำไทย (เช่น "ขา" ใน "กางเกงขายาว") จะไม่เจอ (กลับไปเป็นพฤติกรรมก่อน CORE-75 สำหรับคำสั้น) — คำค้นจริงส่วนใหญ่ ≥ 3 อักขระ
+  (ข) ตัดค่า option ออกจาก `search_text` (ยังเป็น facet ได้) — แก้ต้นเหตุ คำ 2 อักขระกลางคำยังเจอ แต่ทำได้เฉพาะถ้า config ของ index ใน 2.22.1 แยก "ค้นได้" กับ "กรองได้" — ไม่งั้นต้อง patch provider (ต้องมี ADR, ตรวจทุก bump); ต้อง reindex; ~60 LOC + spike ตรวจความเป็นไปได้ก่อน
+  (ค) ยอมรับ — คำ 2 อักขระคืนผลกว้าง (เรียงตามความใกล้) ไม่มีงาน
+  (ง) กรองผลฝั่ง storefront — ไม่แนะนำ: count/facet/แบ่งหน้าจาก index ไม่ตรงกับรายการที่แสดง
+
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — follow-up ของ review/qa/builder #462–#519; ไม่บล็อก release v0.3.0 — Q-R42 = ก owner 2026-11-23: release v0.3.1)
+Status: draft (☐ ทุก task — รอ owner สั่งทำ; ดู ROADMAP "รอบ 42")
+Goal (owner's words): — (planner แปลง follow-up ที่ยังเป็นจริงบน develop `8d509076` เป็น task; owner ยังไม่สั่ง)
+Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=` (routing ของ InstantSearch — qa #489), งานรอบ 42 ใน spec อื่น: 02 EV-26, 03 FS-25, 04 GB-31..32, 05 AF-27, 06 PAY-16..18, 07 OPS-35, 08 ADM-47..48
+เลขกฎ/AC ต่อจาก CORE-88 (กฎข้อ 144, AC-185)
+
+### What Medusa already gives us (รอบ 42)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ปุ่ม/ลิงก์ของหน้าร้าน | `Button` ของ `@medusajs/ui`, `LocalizedClientLink` ของ starter | ใช้ตามเดิม — ลิงก์ที่หน้าตาเป็นปุ่มใช้ `asChild`/className ของ `Button` แทนการซ้อน `<button>` ใน `<a>` (กฎข้อ 146b) |
+| แบ่งหน้าผลค้นหา | `SearchPagination` ของเรา (`store-hits/pagination.tsx` — InstantSearch) | ขยาย a11y แบบ `Pagination` ของกฎข้อ 136c (กฎข้อ 148c) |
+| facet ของ index | `option_values` ต่อ "<option>:<ค่า>" (CORE-87 ยืนยัน) | ใช้ตามเดิม (กฎข้อ 149) |
+
+### Business rules (รอบ 42)
+145. (CORE-89 — qa #474, qa #514) ขั้น payment ที่ปิดแล้ว (สรุป "วิธีชำระเงิน"/"รายละเอียดการชำระเงิน" ใน `modules/checkout/components/payment/index.tsx` ~`:394–422`) ที่ความกว้าง < 640px (`small`) แสดงสองกล่องซ้อนกันเต็มความกว้าง
+     (ไม่ใช่ `w-1/3` คู่กัน) — ข้อความไม่ถูกตัดทีละคำ; ≥ 640px คงเดิม
+146. (CORE-90 — a11y, qa #480/#484, builder #480) (a) ปุ่มสลับฟอร์มท้ายหน้า login ("สมัครสมาชิก") และ register ("เข้าสู่ระบบ") มีพื้นที่แตะสูง ≥ 44px ที่ 375px และ testid ไม่ซ้ำกับปุ่ม submit:
+         ปุ่มสลับใน login = `login-to-register-button` (เดิม `register-button` ซ้ำกับ submit ของฟอร์มสมัคร), ปุ่มสลับใน register = `register-to-login-button` (เดิมไม่มี) — แก้ e2e ที่ใช้ `register-button` เพื่อสลับฟอร์มให้ใช้ testid ใหม่;
+     (b) ลิงก์ที่หน้าตาเป็นปุ่ม `promptpay-go-to-cart` (`promptpay-payment/index.tsx`) และ `group-order-pay-link` (`account-group-orders/index.tsx`) เป็น element ที่ focus ได้ตัวเดียว (ไม่ซ้อน `<button>` ใน `<a>`) — Tab หยุด 1 ครั้งต่อลิงก์; testid คงเดิมบน element ที่ focus;
+         builder grep รูปแบบ `<LocalizedClientLink …>\s*<Button` ทั้ง storefront แล้วแก้ทุกจุดที่พบ (รายการใน PR)
+147. (CORE-91 — review #487, hotfix #485) ตะกร้าใน nav: (a) ระหว่างโหลดหรือเมื่ออ่าน cart ล้ม (กฎข้อ 135) dropdown ที่เปิดด้วย hover/focus **ไม่**แสดงข้อความ "ตะกร้าของคุณยังว่างอยู่" ของ starter (แสดงเฉพาะเมื่อรู้แน่ว่าว่าง);
+     (b) หน้า dynamic ที่ server ส่ง cart มาแล้ว (รวมกรณี server บอกว่าไม่มี cart) `CartDropdown` ไม่เรียก `retrieveCart` ซ้ำตอน mount; (c) e2e ที่นับ request `next-action` ทั้งหมด
+     (`core-4h-auth-reason`, `core-19b-continue-to-review`, `group-buy-join` ของ storefront) นับเฉพาะ action ที่ test ตรวจ (แบบ hotfix #485) — ไม่ลดสิ่งที่ตรวจ
+148. (CORE-92 — review/qa #489) หน้า account: (a) overview ที่มีแต่ membership แบบกลุ่ม (ไม่มี order ปกติ) ไม่แสดง "ยังไม่มีคำสั่งซื้อ" คู่กับลิงก์ "ดูทั้งหมด"; (b) overview เรียก GB-8 ด้วย `limit=1` เพื่อตรวจว่ามี membership (เดิม 50);
+     (c) `SearchPagination` ของ `/store`: `nav` มี `aria-label="แบ่งหน้า"`, ปุ่มหน้าปัจจุบัน `aria-current="page"`, `aria-label` ของปุ่มเป็นไทย (แบบกฎข้อ 136c); (d) ลบ `eslint-disable` purity ที่ `orders/page.tsx` (~`:56`) โดยย้ายค่าที่ไม่ pure ออกจาก render
+149. (CORE-93 — review #496, qa #496) หน้า collection/category (`refinement-list/options-picker/index.tsx` ~`:96–113`) หัว option ไม่แสดง `({selectedCount})` แบบเดียวกับกฎข้อ 143;
+     chip "ป้ายกำกับ" ของตัวกรองที่เลือกตัดข้อความยาวด้วย `truncate` + `title` ไม่ตัดบรรทัดกลางคำ
+150. (CORE-94 — test/code hygiene storefront; review #474, #501, #514, #519, builder CORE-88) (a) `search-client.ts` + `search-client.test.ts` ผ่าน `prettier --check`; `it.each` เพิ่ม "หมวก", "รองเท้า", "เสื้อ ยืด";
+     (b) `cart.ts` `updateLineItem`/`applyPromotions` อ่าน cookie ครั้งเดียวต่อ action; (c) `checkout-affiliate-coverage.test.ts` จับผู้เรียก `placeOrder` ที่ส่ง metadata ผ่าน ternary (เช่น `payment-button/index.tsx:270` รอบ retry ส่ง `undefined`) — ตรวจว่าทุกทาง**ครั้งแรก**ส่ง metadata ของ cart และทาง retry มี comment อธิบาย;
+     (d) regex `COMPARE` ใน `core-84-gb-affiliate-codes.test.ts` จับรูป `/…/.test(err.message)` และ `.message.includes(` ด้วย (mutation: เติมรูปนี้ในไฟล์ใดก็ได้ → test ล้ม)
+151. (CORE-95 — Q-C16 = ก owner ตัดสิน 2026-11-23; review #474) ทางบัตรที่ PaymentIntent `succeeded`/`requires_capture` แล้ว `placeOrderOutcome` ได้ `unauthorized` (401/403 — session หมดระหว่างจ่าย):
+     (a) ปุ่มบัตร (`payment-button/index.tsx` แขนง `outcome.kind === "unauthorized"` ~`:48`) พาไป `/<cc>/account?notice=payment_received` แทน `/<cc>/account` เปล่า — **เฉพาะ**ทางบัตรที่จ่ายแล้ว (manual/PromptPay ที่ยังไม่จ่ายคงเดิม);
+     (b) หน้า login (`login-template`) อ่าน `notice` แบบ allow-list ค่าเดียว `payment_received` → แสดง `login-payment-received-notice` ข้อความไทย "ได้รับชำระเงินแล้ว กรุณาเข้าสู่ระบบเพื่อดูคำสั่งซื้อ" (ค่าอื่น → ไม่แสดง ไม่ render ค่าจาก URL);
+     (c) login สำเร็จจากหน้านี้ → ไป `/<cc>/account/orders` (ถ้า `readReturnTo` ไม่รับ path นี้ ให้ส่งเป็นค่าคงที่ฝั่ง server action ตาม `notice` ไม่รับ path จาก URL — ไม่เปิดช่อง open redirect);
+     (d) ไม่เปลี่ยนการตัดสินเรื่องเงิน (order มาจาก webhook ตาม ADR-015 — ข้อความไม่สัญญาว่ามี order แล้ว)
+
+### Acceptance criteria (รอบ 42)
+- AC-186 (CORE-89, กฎข้อ 145) e2e 375×812 ขั้น review ของ manual payment: `boundingBox()` ของ `payment-details-summary` อยู่ใต้ `payment-method-summary` (y ≥ bottom ของตัวแรก) และกว้าง ≥ 300px (ล้มบน develop — คอลัมน์ `w-1/3` ~110px ตัดทีละคำ); 1280 → สองกล่องอยู่แถวเดียวกันเหมือนเดิม
+- AC-187 (CORE-90, กฎข้อ 146) e2e 375×812: `login-to-register-button` และ `register-to-login-button` `boundingBox().height ≥ 44` (ล้มบน develop); `page.getByTestId("register-button")` บนหน้า login view = 0 ตัว;
+  keyboard: Tab จาก element ก่อนหน้าไป `promptpay-go-to-cart` และ `group-order-pay-link` หยุด 1 ครั้งต่อลิงก์ (ล้มบน develop — 2 ครั้ง); static: ไม่มี `<Button` เป็นลูกตรงของ `LocalizedClientLink` ใน `src/modules/**`
+- AC-188 (CORE-91, กฎข้อ 147) e2e route mock: หน่วง/ทำให้การอ่าน cart ของ nav ล้ม แล้ว hover `nav-cart-link` → ไม่มีข้อความ "ตะกร้าของคุณยังว่างอยู่" (ล้มบน develop); ตะกร้าว่างจริง → มีข้อความนี้;
+  หน้า dynamic ที่ server ส่ง cart แล้ว → request `retrieveCart` จาก `CartDropdown` = 0 ครั้งตอน mount; e2e สามไฟล์ใน (c) ผ่าน `--repeat-each=3`
+- AC-189 (CORE-92, กฎข้อ 148) e2e: ลูกค้าที่มีแต่ membership กลุ่ม → overview ไม่มีข้อความ "ยังไม่มีคำสั่งซื้อ" และมีลิงก์ "ดูทั้งหมด"; request GB-8 จาก overview มี `limit=1`;
+  `/th/store` ที่มี ≥ 2 หน้า: `nav` ของ `SearchPagination` มี `aria-label` อักษรไทย และปุ่มหน้าปัจจุบัน `aria-current="page"` (ล้มบน develop); `pnpm lint` ไม่มี `eslint-disable` ใน `orders/page.tsx`
+- AC-190 (CORE-93, กฎข้อ 149) e2e หน้า collection ที่สินค้ามี option "ขนาด": หัว "ขนาด" ไม่มีวงเล็บตัวเลข (ล้มบน develop — "(0)"); เลือก tag ชื่อยาว 80 ตัว → chip สูง 1 บรรทัดและมี `title` = ชื่อเต็ม
+- AC-191 (CORE-94, กฎข้อ 150) `prettier --check` ของสองไฟล์ผ่าน; unit `search-client.test.ts` มีคำทั้งสามใน `it.each`; unit ของ `cart.ts` นับการเรียก `getAuthHeaders`/cookie ต่อ action = 1;
+  mutation ของ (c) และ (d) (แนบใน PR): เอา metadata ออกจากทางครั้งแรก → coverage test ล้ม; เพิ่ม `/x/.test(err.message)` ในไฟล์ storefront → `core-84` ล้ม
+- AC-192 (CORE-95, กฎข้อ 151) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน: (a) ทางบัตร PI `succeeded` (Stripe test mode หรือ mock แบบ AC-175) + complete ตอบ 401 → URL `/th/account?notice=payment_received`
+  และเห็น `login-payment-received-notice` อักษรไทย; (b) login แล้ว URL เป็น `/th/account/orders`; (c) `/th/account?notice=<script>` และ `?notice=x` → ไม่มี notice; (d) manual + 401 → `/th/account` ไม่มี `notice` (regression CORE-76);
+  unit: helper เลือกปลายทางตาม (ทางชำระ, kind) ครบตาราง
+
+### Test plan (รอบ 42)
+| ระดับ | AC |
+|---|---|
+| e2e (+ qa) | AC-186, AC-187, AC-188, AC-189, AC-190 |
+| unit/static + mutation | AC-191 |
+| unit Vitest + e2e route mock (+ qa) | AC-192 |
+
+### Tasks (รอบ 42)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| CORE-89 | สรุปขั้น payment ไม่ตัดคำที่ 375px (กฎข้อ 145); qa | `modules/checkout/components/payment/index.tsx`, e2e | ~10 LOC + ~50 LOC test | AC-186 | PR เอกสารปิดรอบ 41 | `payment/index.tsx` (PAY-16 — ตัวหลัง sync) |
+| CORE-90 | a11y ปุ่มสลับฟอร์ม ≥ 44px + testid ไม่ซ้ำ + ลิงก์ไม่ซ้อนปุ่ม (กฎข้อ 146); qa | `modules/account/components/{login,register}/index.tsx`, `promptpay-payment/index.tsx`, `group-buy/components/account-group-orders/index.tsx`, e2e ที่ใช้ `register-button` | ~40 LOC + ~80 LOC test | AC-187 | PR เอกสารปิดรอบ 41 | `promptpay-payment/index.tsx` (PAY-17) |
+| CORE-91 | dropdown ตะกร้าไม่บอกว่าว่างระหว่างโหลด/ล้ม + ไม่อ่าน cart ซ้ำ + e2e นับเฉพาะ action (กฎข้อ 147); qa | `modules/layout/components/cart-dropdown/index.tsx`, `templates/nav`, e2e 3 ไฟล์ | ~40 LOC + ~100 LOC test | AC-188 | PR เอกสารปิดรอบ 41 | `cart-dropdown` |
+| CORE-92 | account overview/orders hygiene + a11y `SearchPagination` (กฎข้อ 148); qa | `account/@dashboard/{page,orders/page}.tsx`, `modules/store/components/store-hits/pagination.tsx`, e2e | ~40 LOC + ~80 LOC test | AC-189 | PR เอกสารปิดรอบ 41 | `orders/page.tsx` |
+| CORE-93 | หัว option ของ collection/category + chip ป้ายกำกับ (กฎข้อ 149); qa | `modules/store/components/refinement-list/options-picker/index.tsx`, chip ของตัวกรอง, e2e | ~15 LOC + ~60 LOC test | AC-190 | PR เอกสารปิดรอบ 41 | `refinement-list` |
+| CORE-94 | hygiene storefront: prettier/it.each ของ search, cookie ครั้งเดียว, coverage guard, regex COMPARE (กฎข้อ 150) | `lib/search-client.ts` (+ test), `lib/data/cart.ts`, `checkout-affiliate-coverage.test.ts`, `core-84-gb-affiliate-codes.test.ts` | ~30 LOC + ~80 LOC test | AC-191 | PR เอกสารปิดรอบ 41 | `cart.ts` |
+
+| CORE-95 | (Q-C16 = ก owner 2026-11-23) จ่ายบัตรแล้ว session หมด → notice "ได้รับชำระเงินแล้ว…" บนหน้า login แล้วไปหน้า orders (กฎข้อ 151); qa | `modules/checkout/components/payment-button/index.tsx`, `lib/util/` helper ปลายทาง (+ test), `modules/account/templates/login-template.tsx`, server action login ใน `lib/data/customer.ts`, e2e | ~40 LOC + ~100 LOC test | AC-192 | PR เอกสารปิดรอบ 41; **PAY-17** (`payment-button/index.tsx`) | `payment-button/index.tsx` (PAY-17, test ของ CORE-94), `customer.ts`, `login-template.tsx` (CORE-90 แตะ `login/index.tsx` คนละไฟล์) |
+
+ลำดับ: CORE-89..94 อิสระ (คลื่น A); CORE-95 หลัง PAY-17 (คลื่น C — ไฟล์ `payment-button/index.tsx`); ไฟล์ร่วมข้าม spec: `payment/index.tsx` CORE-89 → PAY-16, `promptpay-payment/index.tsx` CORE-90 → PAY-17
+
+### Open questions (รอบ 42)
+- ~~**Q-C16**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ก)** → CORE-95 (กฎข้อ 151, AC-192) — คำถามเดิม: (review #474 — CORE-76 ทางบัตร) ลูกค้าจ่ายบัตรสำเร็จ (PI `succeeded`) แล้ว `placeOrder` ได้ 401/403 (session หมดระหว่างจ่าย) → `placeOrderOutcome` = `unauthorized` → พาไปหน้า login **โดยไม่มีข้อความว่ารับเงินแล้ว**
+  (webhook ยัง complete cart และได้ order ตามปกติ — เงินไม่หาย แต่ลูกค้าอาจจ่ายซ้ำหรือกังวล):
+  (ก) **[Recommended — owner เลือก]** CORE-95: ทางบัตรที่ PI จ่ายแล้วเท่านั้น พาไปหน้า login พร้อม notice ไทย "ได้รับชำระเงินแล้ว กรุณาเข้าสู่ระบบเพื่อดูคำสั่งซื้อ" และหลัง login ไป `/<cc>/account/orders` (~40 LOC + e2e route mock; param `notice` แบบ allow-list ตามกฎข้อ 151 — แก้ปิดรอบ 41: storefront ไม่มีกลไก `reason` เดิมให้ใช้)
+  (ข) คงเดิม — กรณีเกิดยาก (token หมดอายุระหว่างกรอกบัตร) และ order ถูกสร้างจาก webhook อยู่แล้ว

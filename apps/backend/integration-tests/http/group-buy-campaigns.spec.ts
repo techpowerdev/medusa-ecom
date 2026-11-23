@@ -889,5 +889,101 @@ medusaIntegrationTestRunner({
         expect(fetched.data.campaign.max_total_orders).toEqual(10)
       })
     })
+
+    // GB-23 (spec 04 กฎข้อ 46, AC-65 a/b): max_units_per_person ≤ application_method.max_quantity เมื่อมีทั้งสองค่า
+    describe("max_units_per_person vs max_quantity (AC-65)", () => {
+      const campaignCount = async () => {
+        const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
+        const { data } = await query.graph({ entity: "group_buy_campaign", fields: ["id"] })
+        return data.length
+      }
+
+      const withMaxQuantity = (max_quantity: number, data: Partial<CreateGroupBuyCampaignInput> = {}) =>
+        campaignInput({
+          ...data,
+          application_method: { ...campaignInput().application_method, max_quantity },
+        })
+
+      it("POST max_quantity=2, max_units_per_person=3 → 400 invalid_data; nothing is created", async () => {
+        const before = await campaignCount()
+        const response = await api
+          .post("/admin/group-buy/campaigns", withMaxQuantity(2, { max_units_per_person: 3 }), headers)
+          .catch((e) => e.response)
+
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(response.data.message).toContain("max_units_per_person")
+        expect(await campaignCount()).toEqual(before)
+      })
+
+      it.each([2, 1])("POST max_quantity=2, max_units_per_person=%p → 200", async (maxUnits) => {
+        const response = await api
+          .post("/admin/group-buy/campaigns", withMaxQuantity(2, { max_units_per_person: maxUnits }), headers)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(200)
+        expect(response.data.campaign.max_units_per_person).toEqual(maxUnits)
+      })
+
+      it("POST without max_units_per_person → 200", async () => {
+        const response = await api
+          .post("/admin/group-buy/campaigns", withMaxQuantity(2), headers)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(200)
+      })
+
+      it("POST without max_quantity (allocation across) and max_units_per_person=50 → 200", async () => {
+        const { max_quantity: _omit, ...method } = campaignInput().application_method
+        const response = await api
+          .post(
+            "/admin/group-buy/campaigns",
+            campaignInput({ max_units_per_person: 50, application_method: { ...method, allocation: "across" } }),
+            headers
+          )
+          .catch((e) => e.response)
+        expect(response.status).toEqual(200)
+      })
+
+      it("updating a draft so max_units_per_person exceeds the template max_quantity → 400; value unchanged", async () => {
+        const created = await createViaApi({
+          max_units_per_person: 1,
+          application_method: { ...campaignInput().application_method, max_quantity: 2 },
+        })
+
+        const response = await api
+          .post(`/admin/group-buy/campaigns/${created.id}`, { max_units_per_person: 3 }, headers)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("invalid_data")
+        expect(response.data.message).toContain("max_units_per_person")
+
+        const fetched = await api.get(`/admin/group-buy/campaigns/${created.id}`, headers)
+        expect(fetched.data.campaign.max_units_per_person).toEqual(1)
+
+        const ok = await api
+          .post(`/admin/group-buy/campaigns/${created.id}`, { max_units_per_person: 2 }, headers)
+          .catch((e) => e.response)
+        expect(ok.status).toEqual(200)
+        expect(ok.data.campaign.max_units_per_person).toEqual(2)
+      })
+
+      // review #433: updateGroupBuyCampaignStep ตรวจสิทธิ์แก้ตามสถานะ (assertCampaignPatchAllowed) ก่อนตรวจกับ max_quantity
+      // ถ้าสลับลำดับ แคมเปญ active จะได้ invalid_data แทน not_allowed
+      it("active campaign + max_units_per_person over the template max_quantity → 400 not_allowed (status check first); value unchanged", async () => {
+        const created = await createViaApi({
+          max_units_per_person: 1,
+          application_method: { ...campaignInput().application_method, max_quantity: 2 },
+        })
+        expect((await setStatus(created.id, "active")).status).toEqual(200)
+
+        const response = await api
+          .post(`/admin/group-buy/campaigns/${created.id}`, { max_units_per_person: 3 }, headers)
+          .catch((e) => e.response)
+        expect(response.status).toEqual(400)
+        expect(response.data.type).toEqual("not_allowed")
+
+        const fetched = await api.get(`/admin/group-buy/campaigns/${created.id}`, headers)
+        expect(fetched.data.campaign.max_units_per_person).toEqual(1)
+      })
+    })
   },
 })

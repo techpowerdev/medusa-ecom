@@ -1073,6 +1073,9 @@ none
 ### Business rules (รอบ 38)
 41. (ADM-37 — owner สั่งทำ 2026-11-19; qa #416 O-1/O-3, builder #416) คอลัมน์ข้อความในตารางที่มีเมนูต่อแถวกว้างไม่เกิน 250px ทุกความกว้างจอ:
     (a) payouts คอลัมน์ `affiliate_id` ("Affiliate") ตั้ง `size: 274, maxSize: 274` (ไม่ใช่คอลัมน์แรก — ค่าเดียวกับกฎ 39a) ใน column def ของ `payouts-table.tsx`; คงลำดับคอลัมน์ (ปุ่มอยู่คอลัมน์ 2 — รอบ 10);
+        **(แก้รอบ 41)** ADM-41 (กฎ 45) ลดเป็น `size/maxSize: 150` (Reference/Payout 124) เพื่อไม่ล้นที่ 1280 — ความกว้างที่จอใหญ่ตามกฎ 49 (ADM-45) แทนค่า 274 ของข้อนี้;
+        **(แก้ปิดรอบ 41 ตามโค้ดหลัง ADM-45 #507)** คอลัมน์ Affiliate ตอนนี้ตั้ง `size: 150` **ไม่มี `maxSize`** (มี maxSize แล้ว td ถูกกดเหลือ 150 ทุกจอ) + div ห่อเนื้อหาใน cell `w-[126px] 2xl:w-[250px]`
+        (`payouts-table.tsx` ~`:142–149`) — Reference/Payout ยัง `size/maxSize: 124`;
     (b) tooltip ของ `TruncatedCell` ต้องขึ้นเมื่อชื่อ/อีเมลถูกตัด: **ห้าม**ใส่ `truncate`/`overflow-hidden`/`max-w-*` ที่ลูกของ `AffiliateCell` (overflow ของลูกถูกตัดก่อนถึง div ของ Medusa → `scrollWidth` ไม่เกิน → tooltip หาย);
         ข้อความจึงถูกตัดที่ขอบ cell โดยอาจไม่มี "…" (`text-overflow` มีผลกับ inline content ของ div นั้นเท่านั้น) — ยอมรับ; ใส่ `{" "}` ระหว่าง `Text` ชื่อกับอีเมลใน `AffiliateCell`
         ให้ tooltip เป็น "ชื่อ อีเมล" (whitespace ระหว่างลูกของ flex container ไม่ render — หน้าตาเท่าเดิม; Ledger ได้ผลเดียวกัน); ถ้า (a) กับ (b) จริงพร้อมกันไม่ได้ → **หยุดและรายงาน planner** (ไม่สร้าง component, ไม่ใช้ `title`, ไม่ patch library);
@@ -1080,6 +1083,7 @@ none
         + comment อ้างกฎนี้ (**Q12 = ก owner 2026-11-19**; เดิมสั่งคอลัมน์ actions ตามข้อเสนอ builder #416 — ปิดรอบ 38 แก้ถ้อยคำ); คอลัมน์ actions คงขนาดเริ่มต้นของ tanstack (150) และ meta เดิม (d);
         ผล #418 ที่ 1920 (`docs/evidence/admin-ui/ADM-37-tests.txt`): ส่วนเกินอยู่ท้ายตาราง (programs Hold days 507px, affiliates Joined 458px), ช่องว่างหลังปุ่ม `…` programs 122px, affiliates 122px, payouts 91px;
         payouts กว้างพอดีเนื้อหาจึงคอลัมน์สุดท้ายไม่รับส่วนเกิน (qa #418 O-1 — ยอมรับ ไม่เกินความกว้างเริ่มต้นของคอลัมน์ actions);
+        **(แก้รอบ 41)** payouts หลัง ADM-41: คอลัมน์ auto คือ Amount/Period/Paid at (`size: undefined`) และ `id` ("Payout") `size/maxSize: 124` — ไม่ใช่คอลัมน์สุดท้ายตามข้อนี้แล้ว (กฎ 45, 49);
     (d) คงเดิม: `meta: { ___truncateTooltip: false }` ของคอลัมน์ actions (กฎ 37 — static AC-38a), `size`/`maxSize` ของกฎ 39a, testid, `cell` คงที่ข้าม render (กฎ 20a), กันกดซ้ำ; ไม่สร้าง component/helper ใหม่ (ตั้ง option inline แบบ partners)
 
 ### Acceptance criteria (รอบ 38)
@@ -1174,6 +1178,146 @@ none
 | Task | งาน | ไฟล์ที่แตะ | ขนาด | Viewport | AC | Depends | ชนกับงานที่กำลังทำ |
 |---|---|---|---|---|---|---|---|
 | ADM-38 | (owner สั่งทำ 2026-11-19 ก "แก้แบบ ADM-37" — qa #418 O-2 + nit review #418) Ledger คอลัมน์ Affiliate `size`/`maxSize` 274 + คอลัมน์สุดท้าย Status `size: undefined` + wrapper testid `affiliate-ledger-table` + `tag()` prefix ต่อ task + แยก comment AF-14/กฎ 41a ใน payouts (กฎ 42); red→green 3 ขั้น: (1) develop + เฉพาะ wrapper (d) → AC-43a ล้มที่เนื้อหา cell Affiliate > 250.5 (~2580px) ทั้ง 1280/1920 (ห้ามล้มที่ locator/timeout), (2) + (a) บันทึกผลวัด 1280 (Status) และ 1920, (3) + (c) green; `createLongAffiliate`/`longEmail` ขึ้นระดับไฟล์รับ prefix ต่อ task; qa — ☑ #421 (red ขั้น (1) 2589.5px → ขั้น (2) 261.9/409.1px → ขั้น (3) green; qa 1280/1440/1920 td Affiliate 274px, Status auto 174/334/734px, defect ไม่พบ; O-1 + nit review → ROADMAP ปิดรอบ 39) | `apps/backend/src/admin/routes/affiliate/page.tsx`, `apps/backend/src/admin/components/affiliate/payouts-table.tsx` (comment เท่านั้น), `apps/storefront/e2e/admin-table-long-text.spec.ts`, `apps/storefront/e2e/support/affiliate.ts` (`insertApprovedEntry` คืน id), `docs/evidence/admin-ui/ADM-38-tests.txt`, `docs/evidence/admin-ui/ADM-38/REPORT.md` (qa — session หลัก commit) | ~10 LOC โค้ด + ~90 LOC test | 1280×800, 1920×1080 | AC-43 | PR เอกสารรอบ 39 merge; ไม่บล็อก release | ไม่มี PR เปิด — ไม่ชน |
+
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual เฟส 2/7/8 บน v0.2.0; owner สั่งแก้ใน release เดียว)
+ที่มา: ADM-B1 (ADM-M-14 ไม่ผ่าน — Create partner ดับเบิลคลิกเว้น 80–150ms หรือ ⌘+Enter/Save ซ้ำระหว่าง `FocusModal` กำลังปิด → POST 2 ครั้ง partner ซ้ำ; ขัด CLAUDE.md กฎกันกดซ้ำ),
+หน้า Affiliates ไม่มีช่องค้นหา (200+ ราย), ตาราง Payouts กว้าง 1417px ที่ 1280/1440, ฟอร์ม program แสดง error ทีละช่อง
+**ข้อเท็จจริงที่ตรวจบน develop `87cb20df` (แก้ข้อมูลใน brief)**: backend `GET /admin/affiliate/affiliates` **รับ `q` แล้ว** (ADM-17, `validators.ts:62-65` — `.searchable()` name/email) และ list ทุกตัวของ affiliate มี `tiebreakById` (ADM-24, `apps/backend/src/api/admin/affiliate/middlewares.ts:72-85`)
+→ งานค้นหาเป็นฝั่ง UI อย่างเดียว และไม่ต้องแก้การเรียงของ Affiliates; การเรียงที่ต้องแก้คือ e-voucher (spec 02 EV-19)
+ไม่ทำ (owner 2026-11-21): ฟอร์ม Refund ของ Medusa ค่าเริ่มต้นยอดเต็ม (ของ dashboard core), ป้าย "(ICT)" บนเครื่อง UTC (เครื่องแอดมินตั้งเวลาไทย — ADR-018), หน้า order แสดงราคารวม VAT
+
+### What Medusa already gives us (รอบ 40)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ปิดฟอร์มหลังบันทึก | `FocusModal` (`@medusajs/ui`) + `RouteFocusModal`/`useRouteModal` ของ `@medusajs/dashboard/components` (ปิดเมื่อสำเร็จ) | ใช้ `FocusModal` แบบ state ตามเดิม (ADR-018 Q5) — ขยาย lock ของเราให้ค้างจนปิด (กฎ 43) |
+| ช่องค้นหาของตาราง | `DataTable` ของ `@medusajs/ui` (`search` state + `DataTable.Search`), `useDebouncedSearch`/`useQueryParams` ของ `@medusajs/dashboard/hooks` | ใช้ตามเดิม (กฎ 44) — ไม่สร้าง input เอง |
+| ความกว้างคอลัมน์ | column `size`/`maxSize` + คอลัมน์ auto (บทเรียนรอบ 39) | ใช้ตามเดิม (กฎ 45) |
+| แสดง error ทุกช่อง | `Form` ของ dashboard + react-hook-form `mode`/`criteriaMode`, `handleSubmit` ตรวจทั้ง schema | ใช้ตามเดิม (กฎ 46) |
+
+### Business rules (รอบ 40)
+43. (ADM-39 — ADM-B1) กันกดซ้ำของฟอร์ม**สร้าง**ทุกตัวใน `src/admin/` ที่ปิด `FocusModal` หลังสำเร็จ: lock ไม่ถูกปล่อยเมื่อ request สำเร็จ แต่ค้างจน modal ปิด (unmount/`open=false`) แล้ว reset ตอนเปิดใหม่;
+    request ล้ม → ปล่อยทันที (ลองใหม่ได้); ปุ่ม Save `disabled` + ⌘/Ctrl+Enter ผ่าน lock เดียวกัน; แก้ที่ helper เดียว `admin/lib/single-flight.ts` (เช่น option `holdOnSuccess` หรือ `release()` ที่เรียกตอนปิด)
+    ไม่ copy ต่อฟอร์ม — ครอบ: partner (`partners-section.tsx`), program (`program-form.tsx`/`programs-table.tsx`), payout (`payout-form.tsx`), campaign (`create-campaign.tsx`),
+    variant pool (`variant-evoucher-pool.tsx`), import codes (`import-codes.tsx`) และฟอร์มสร้างอื่นที่ builder พบด้วย grep `createSingleFlight` (รายการใน PR พร้อมเหตุผลของตัวที่ไม่ต้องแก้ — เช่น prompt ที่ไม่ใช่ modal);
+    **pool group (`components/group-buy/groups-section.tsx` — แก้ path รอบ 41 ตาม review #430; ไม่ใช่ e-voucher)** เป็นปุ่มสร้างที่ไม่มี modal (แก้ตาม review รอบ 40 ให้ตรงกับ ADM-39): **ไม่** hold lock จนปิด —
+    lock เฉพาะระหว่าง request in-flight (ปล่อยเมื่อ response กลับ) + ข้ามคลิกที่สองของดับเบิลคลิก (`event.detail > 1`) — คลิกแยกครั้งหลัง response กลับสร้าง group เพิ่มได้ตามตั้งใจ (AC-44 (a) ใช้กับปุ่มนี้; (b)/(d) ไม่เกี่ยว);
+    การกด Enter ค้างบนปุ่ม (keyboard click มี `detail = 0`) → กฎ 50 (ADM-46)
+44. (ADM-40) ตาราง Affiliates (`affiliates-table.tsx`) มีช่องค้นหาของ `DataTable` (แก้รอบ 41: `DataTable.Search` ของ dashboard ใส่ `data-testid` ไม่ได้ → e2e หาด้วย
+    `getByTestId("affiliate-affiliates-table").getByRole("searchbox")` — ข้อยกเว้นที่ 3 ของการหาด้วย testid, ADR-018 ภาคผนวก 2026-11-21; เดิมเขียน testid `affiliates-search` ซึ่งไม่มีจริง) → ส่ง `q` (debounce ตาม helper ของ dashboard) + reset offset เป็น 0 + เก็บใน URL (`affiliates_q`) แบบ offset ของ ADM-10;
+    ผลว่าง → empty state ของ "ไม่พบผล" ของ Medusa (ไม่ใช่ "No affiliates"); ข้อความอังกฤษ
+45. (ADM-41) ตาราง Payouts ไม่ล้นแนวนอนที่ 1280 และ 1440 (`scrollWidth ≤ clientWidth` ของ**กล่องเลื่อน `overflow-auto` ของ `DataTable` ภายใน** wrapper `affiliate-payouts-table` — แก้รอบ 41 ตามที่ ADM-41 วัดจริง:
+    wrapper อยู่ใต้ div `overflow-hidden` จึง `scrollWidth = clientWidth` เสมอ) — ลดคอลัมน์ข้อความด้วย `size`/`maxSize` + คอลัมน์ auto ตามบทเรียนรอบ 39
+    (คง tooltip ของ `TruncatedCell`); ถ้าต้องซ่อนคอลัมน์ให้ย้ายข้อมูลไปที่ drawer/รายละเอียด ไม่ตัดข้อมูลทิ้ง (ระบุใน PR)
+46. (ADM-42) ฟอร์ม program (สร้าง/แก้) กด Save ด้วยค่าที่ผิดหลายช่อง → แสดง `Form.ErrorMessage` **ทุกช่องที่ผิดพร้อมกัน** ในครั้งเดียว (รวม refine ข้ามช่อง เช่น `ends_at > starts_at` และ scope ว่าง) — ไม่ใช่ทีละช่อง;
+    400 จาก API ที่ map เข้าช่องได้ → ใต้ช่อง ที่เหลือ → toast (แบบกฎ 36e)
+
+### Acceptance criteria (รอบ 40)
+- AC-44 (ADM-39, กฎ 43) ☑ (a–d ผ่าน: red บน develop `73148c83` partner POST 2 ครั้ง, campaign 2 (ทั้ง (a) และ (b)), pool group 2 → green 7/7, `--repeat-each=3` 21/21; unit helper 7/7; `docs/evidence/admin-ui/ADM-39-tests.txt`) e2e admin — **ล้มบน develop** ก่อน (partner ซ้ำ 2 แถว): ทุกฟอร์มในกฎ 43: (a) dblclick Save เว้น 100ms → POST 1 ครั้ง; (b) Save แล้วกด ⌘/Ctrl+Enter ซ้ำทันทีหลัง response ระหว่าง modal ปิด → POST 1 ครั้ง;
+  (c) API ตอบ 500 (route mock) → กด Save ได้อีกและ POST ครั้งที่ 2 เกิด; (d) เปิดฟอร์มใหม่หลังสร้างสำเร็จ → Save กดได้; unit jest ของ helper ครอบ hold/release/error; นับ request ด้วย `page.on("request")`
+- AC-45 (ADM-40, กฎ 44) ☑ (red บน develop `cb934dac`: ไม่มีช่องค้นหาในตาราง Affiliates → green `--repeat-each=3` 3/3 รวม reset offset จากหน้า 2 และ empty state "No results"; หลัง reload ต้องคลิกแท็บ Affiliates เพราะแท็บไม่อยู่ใน URL; `docs/evidence/admin-ui/ADM-40-tests.txt`) e2e admin: affiliate 3 ราย (tag ตัวอักษรตามกฎ 33) พิมพ์ชื่อหนึ่งราย → รอ response ที่ `pathname === "/admin/affiliate/affiliates"` และ `q` ตรง แล้ว assert `count` = 1 และตารางมี 1 แถว; URL มี `affiliates_q`; reload แล้วผลคงเดิม; ล้างช่อง → แถวกลับ
+- AC-46 (ADM-41, กฎ 45) ☑ (red บน develop `0e5295de`: กล่องเลื่อนของ DataTable ใน wrapper `scrollWidth` 1400 > `clientWidth` 1036/1196 ที่ 1280/1440 → green 2/2; ทั้งไฟล์ `admin-table-long-text.spec.ts` 11/11 — wrapper เองอยู่ใต้ div `overflow-hidden` ของ DataTable จึง `scrollWidth = clientWidth` เสมอ test วัดกล่องเลื่อนภายใน wrapper ด้วย; `docs/evidence/admin-ui/ADM-41-tests.txt`) e2e admin ที่ 1280×800 และ 1440×900 ด้วย payout ที่ affiliate ชื่อยาว 370 ตัว: wrapper `affiliate-payouts-table` `scrollWidth ≤ clientWidth + 1`, ปุ่ม `…` ของทุกแถวอยู่ในจอ, tooltip ยังแสดงชื่อเต็ม (ล้มบน develop: 1417px)
+- AC-47 (ADM-42, กฎ 46) ☑ (red บน develop `0e5295de` เห็นแค่ error ของ name → green: error 4 ช่องพร้อมกัน ไม่มี POST, `--repeat-each=3` 3/3; unit `toProgramBody` คืน error ทุกช่อง; `docs/evidence/admin-ui/ADM-42-tests.txt`) e2e admin: ฟอร์ม Create program ว่าง + `ends_at < starts_at` กด Save ครั้งเดียว → error ใต้ช่อง name, commission, ends_at และ scope พร้อมกัน (นับ `Form.ErrorMessage` ที่มองเห็น ≥ 4) และไม่มี POST (ล้มบน develop ที่เห็นทีละช่อง)
+
+### Test plan (รอบ 40)
+| ระดับ | AC |
+|---|---|
+| unit jest + e2e admin + qa | AC-44 |
+| e2e admin + qa | AC-45, AC-46, AC-47 |
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| ADM-39 | ☑ #430 — (ADM-B1) lock ของฟอร์มสร้างค้างจน modal ปิด — ทุกฟอร์ม (กฎ 43); qa | `src/admin/lib/single-flight.ts` (+ unit), ฟอร์มในกฎ 43, e2e `admin-create-double-submit.spec.ts` (ใหม่) | ~60 LOC + ~250 LOC test (เกิน ~400 → แยก ADM-39a evoucher+affiliate / ADM-39b group buy+widget) | AC-44 | PR เอกสารรอบ 40 | หลายไฟล์ admin — **merge ก่อน** ADM-40/41/42, EV-21 |
+| ADM-40 | ☑ #442 — ช่องค้นหา Affiliates (UI อย่างเดียว) (กฎ 44); qa | `src/admin/components/affiliate/affiliates-table.tsx`, e2e | ~40 LOC + ~100 LOC test | AC-45 | ADM-39 (`affiliates-table.tsx` ใช้ single-flight) | — |
+| ADM-41 | ☑ #452 — ตาราง Payouts ไม่ล้นที่ 1280/1440 (กฎ 45); qa | `src/admin/components/affiliate/payouts-table.tsx`, `e2e/admin-table-long-text.spec.ts` | ~20 LOC + ~80 LOC test | AC-46 | ADM-39 (`payouts-table.tsx`) | `admin-table-long-text.spec.ts` |
+| ADM-42 | ☑ #451 — error ทุกช่องพร้อมกันในฟอร์ม program (กฎ 46); qa | `src/admin/components/affiliate/program-form.tsx`, `src/admin/lib/affiliate-*form*.ts`, e2e | ~40 LOC + ~100 LOC test | AC-47 | ADM-39 (`program-form.tsx`) | — |
+
+ลำดับ: ADM-39 → (ADM-40 ∥ ADM-41 ∥ ADM-42 ∥ EV-21 ของ spec 02)
+
+## Follow-up รอบ 41 (2026-11-21 — owner: ทุกข้อใน release v0.3.0)
+ที่มา: qa ADM-40 (ค้นด้วย code ไม่เจอ, `%`/`_` เป็น wildcard, ช่องว่างไม่ trim, แท็บ Affiliate ไม่อยู่ใน URL), qa ADM-42 (error ของ ends_at ค้างหลังแก้ starts_at; ฟอร์ม edit program เป็น FocusModal ขัด Q5; nit `shouldFocus` ของ DatePicker),
+qa ADM-41 (คอลัมน์ Affiliate ของ Payouts 150px เห็นชื่อ ~15 ตัวแม้จอใหญ่), ADM-39 เสนอ (Save ยังกดได้ระหว่างแอนิเมชันปิด), review #430 (Enter ค้างบนปุ่ม pool group)
+แก้ถ้อยคำแล้วใน PR เอกสารรอบ 41: กฎ 41a/41c (ค่าหลัง ADM-41), กฎ 43 (path/ข้อความ pool group), กฎ 44 (searchbox — ข้อยกเว้นที่ 3), กฎ 45 (วัดกล่อง overflow-auto)
+งาน admin ของรอบนี้ใน spec อื่น: spec 02 EV-24 (ปุ่ม Retry allocation), spec 06 PAY-10 (widget refund ถูกกัน)
+
+### What Medusa already gives us (รอบ 41)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ค้นหาหลาย field | `.searchable()` ของ data model (`q` → ILIKE ของ field ที่ searchable — ADM-17) | ใช้ตามเดิม เพิ่ม `code` (กฎ 47) |
+| แท็บ | `Tabs` ของ `@medusajs/ui` (controlled `value`), `useSearchParams` ของ react-router ใน admin | ใช้ตามเดิม (กฎ 47c) |
+| ฟอร์มแก้ไข | `Drawer` ของ `@medusajs/ui` + `Form` ของ `@medusajs/dashboard/components` (ADR-018 Q5) | ใช้ตามเดิม (กฎ 48) |
+| re-validate ข้ามช่อง | react-hook-form `trigger(name)` | ใช้ตามเดิม (กฎ 48a) |
+| ความกว้างคอลัมน์ | column `size`/`maxSize` ของ `DataTable` | ใช้ตามเดิม — ไม่สร้าง component (กฎ 49) |
+
+### Business rules (รอบ 41)
+47. (ADM-43) (a) `GET /admin/affiliate/affiliates?q=` ค้น `code` ด้วย (เพิ่ม `.searchable()` ที่ `code` ของ model — builder ยืนยันด้วย `db:generate` ว่าไม่มี migration; มี → บันทึกใน PR);
+    (b) validator: `q` ถูก `trim()` — ว่างหลัง trim = ไม่มี `q`; `%`, `_` และ `\` ในคำค้นเป็นตัวอักษรธรรมดา (escape ตามที่ query ของ Medusa ใช้ — builder ตรวจว่า Medusa escape ให้หรือไม่ก่อนเพิ่มเอง ไม่ escape ซ้ำ);
+    (c) แท็บของหน้า Affiliate (Programs/Affiliates/Ledger/Payouts) อยู่ใน URL (`?tab=<key>`) — reload/แชร์ลิงก์กลับแท็บเดิม; ไม่มี/ค่าผิด → Programs; ค่า `<prefix>_offset`/`affiliates_q` เดิมคงอยู่
+48. (ADM-44) ฟอร์ม program: (a) เปลี่ยน `starts_at` ขณะ `ends_at` มี error → `trigger("ends_at")` ทันที (error ข้ามช่องหายเมื่อแก้ถูก ไม่ต้องกด Save); (b) ฟอร์ม**แก้ไข** program เป็น `Drawer` แบบ state (ADR-018 Q5)
+    ใช้ field/validation/กันกดซ้ำ/prompt ก่อนปิด (กฎ 31)/`useRestoreOpenerFocus` เดิม — ฟอร์มสร้างคง `FocusModal`; testid ของ field คงเดิม (testid ของ container ใหม่ระบุใน PR); (c) nit ADM-42: `DatePicker` ที่ error ได้ focus เมื่อ Save (`shouldFocus`) ตามที่ `Form` ของ dashboard รองรับ
+49. (ADM-45 — แทนค่า 150 ของกฎ 45 ที่จอใหญ่) คอลัมน์ Affiliate ของ Payouts: ที่ 1920×1080 เนื้อหากว้าง ≥ 240px และ ≤ 250.5px (เพดานกฎ 41); ที่ 1280/1440 ยังไม่ล้น (กฎ 45) และปุ่ม `…` อยู่ในจอ; tooltip เดิม;
+    ทำด้วย option ของ `DataTable`/className ของ cell เท่านั้น — ถ้าต้องสร้าง component/วัดจอเองด้วย JS → **หยุดและรายงาน planner**; แก้ comment ที่ขัดกันใน `payouts-table.tsx` (~`:168–170` "250px" vs "100px")
+50. (ADM-46) ฟอร์มสร้างทุกตัวของกฎ 43: ปุ่ม Save `disabled` ตลอดช่วงที่ lock ถูก hold (สำเร็จแล้วระหว่างแอนิเมชันปิด) ไม่ใช่แค่ไม่ยิง request — อ่านสถานะจาก helper `single-flight.ts` เดียว (ไม่ copy);
+    ปุ่ม pool group (`components/group-buy/groups-section.tsx`): keyboard click ที่มาจากการกดปุ่มค้าง (`keydown` ที่ `repeat === true`) ถูกข้าม — กด Enter ค้าง 1 ครั้ง = สร้าง 1 group
+    (ฟอร์ม program ใช้ไฟล์ร่วมกับ ADM-44 — ตัวหลัง sync)
+
+### Acceptance criteria (รอบ 41)
+- AC-48 (ADM-43, กฎ 47) ☑ (red บน develop `b1896690`: integration `q=ANNPROMO` ได้ 0 และหลังเพิ่ม `.searchable()` `q=%` ได้ทุกแถว (Medusa 2.22.1 ไม่ escape); e2e คลิกแท็บ Affiliates แล้ว URL ไม่มี `tab` → green integration `affiliate-admin.spec.ts` 39/39, e2e `--repeat-each=3` 6/6 (รวม AC-45 เดิมที่แก้ step reload); `db:generate affiliate` = ไม่มี migration; `docs/evidence/admin-ui/ADM-43-tests.txt`) integration http + e2e admin — **ล้มบน develop** ก่อน: (a) `q=<code>` ได้ affiliate นั้น (count 1); `q="  <name>  "` = ผลเดียวกับไม่มีช่องว่าง; `q="%"` และ `q="_"` ได้ 0 (affiliate ทดสอบไม่มีอักขระนี้) ไม่ใช่ทั้งหมด;
+  (b) e2e: เลือกแท็บ Affiliates → URL มี `tab=affiliates` → reload → แท็บ Affiliates ยังถูกเลือก (ล้มบน develop — กลับ Programs); searchbox หาด้วย role ใน wrapper (กฎ 44)
+- AC-49 (ADM-44, กฎ 48) ☑ (red บน develop `8471f3c0`: (c) focus ไม่อยู่ที่ DatePicker ของ ends_at, (a) เมื่อตัด assert focus ออก error ของ ends_at ค้างหลังเลื่อน starts_at, (b) ไม่มี Drawer `affiliate-program-drawer` → green `--repeat-each=3` 6/6; Drawer = role `dialog` ที่มี testid `affiliate-program-drawer` และ class `sm:max-w-[560px]` ของ `Drawer.Content`; `docs/evidence/admin-ui/ADM-44-tests.txt`) e2e admin: (a) ตั้ง `ends_at < starts_at` กด Save → error ใต้ ends_at; เลื่อน `starts_at` ให้ก่อน ends_at → error หายภายใน 1 วินาทีโดยไม่กด Save (ล้มบน develop);
+  (b) เปิดแก้ไข program → เห็น `Drawer` (role `dialog` ที่มี class/attribute ของ Drawer ตามที่ builder ระบุ) ไม่ใช่ FocusModal; Save แก้ได้ 1 PATCH/POST (dblclick); Escape ขณะ dirty → prompt (กฎ 31) — e2e เดิมของ edit program ผ่านหลังแก้ locator
+- AC-50 (ADM-45, กฎ 49) ☑ (red บน develop `f01c0cee`: เนื้อหา cell Affiliate ที่ 1920 = 126px → green: 1920 = 250px, 1440/1280 = 126px, ตารางเท่ากล่องเลื่อน 1576/1196/1036, `--repeat-each=3` 9/9; ทั้งไฟล์ `admin-table-long-text.spec.ts` 14/14 — `size: 150` ไม่มี maxSize + div ห่อใน cell `w-[126px] 2xl:w-[250px]`; `docs/evidence/admin-ui/ADM-45-tests.txt`) e2e ใน `admin-table-long-text.spec.ts` ที่ 1920×1080 / 1440×900 / 1280×800 ด้วย affiliate ชื่อยาว: 1920 เนื้อหา cell Affiliate ∈ [240, 250.5]px (ล้มบน develop — ~126px); 1280/1440 กล่อง overflow-auto `scrollWidth ≤ clientWidth + 1` และปุ่ม `…` อยู่ในจอ; tooltip แสดงชื่อเต็ม
+- AC-51 (ADM-46, กฎ 50) ☑ (red บน develop `53e758a2`: (a) Save ของ partner/campaign/variant pool กดได้ทุก frame หลัง response, (b) Enter ค้าง → POST 2 ครั้ง; unit `isLocked`/`subscribe` ไม่มี → green unit helper 11/11, e2e 8/8 และ `--repeat-each=3` 24/24; program/payout ถูกถอดทันทีเมื่อปิด (ไม่มี frame ให้ตรวจ — disabled ผ่าน helper เดียวกัน); import codes disabled อยู่แล้วด้วย `!file`; `docs/evidence/admin-ui/ADM-46-tests.txt`) e2e admin + unit helper: (a) ทุกฟอร์มในกฎ 43: หลัง POST สำเร็จ ระหว่าง modal ปิด ปุ่ม Save มี `disabled` (ตรวจ attribute ใน `requestAnimationFrame` ถัดจาก response) — ล้มบน develop+ADM-39;
+  (b) โฟกัสปุ่มสร้าง pool group แล้ว dispatch `keydown Enter` ซ้ำ 5 ครั้ง (`repeat: true` หลังครั้งแรก) → POST 1 ครั้ง; คลิกแยก 2 ครั้งหลัง response → 2 group (regression กฎ 43)
+
+### Test plan (รอบ 41)
+| ระดับ | AC |
+|---|---|
+| integration http + e2e admin + qa | AC-48 |
+| e2e admin + qa | AC-49, AC-50 |
+| unit jest + e2e admin + qa | AC-51 |
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| ADM-43 | ☑ #491 — ค้น Affiliates ด้วย code + trim/escape + แท็บใน URL (กฎ 47); qa | `src/modules/affiliate/models/affiliate.ts`, `src/api/admin/affiliate/validators.ts`, `src/admin/routes/affiliate/page.tsx` (Tabs), e2e `affiliate-admin-search.spec.ts`, integration | ~40 LOC + ~150 LOC test | AC-48 | PR เอกสารรอบ 41 | `routes/affiliate/page.tsx` |
+| ADM-44 | ☑ #499 — ends_at re-validate + ฟอร์มแก้ program เป็น Drawer + nit shouldFocus (กฎ 48); qa | `src/admin/components/affiliate/program-form.tsx`, `programs-table.tsx`, e2e | ~120 LOC + ~120 LOC test | AC-49 | PR เอกสารรอบ 41 | `program-form.tsx` (ADM-46) |
+| ADM-45 | ☑ #507 — คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ (กฎ 49); qa | `src/admin/components/affiliate/payouts-table.tsx`, `e2e/admin-table-long-text.spec.ts` | ~20 LOC + ~80 LOC test | AC-50 | PR เอกสารรอบ 41 | `admin-table-long-text.spec.ts` |
+| ADM-46 | ☑ #513 — Save disabled ระหว่างปิด modal ทุกฟอร์มสร้าง + Enter ค้างบนปุ่ม pool group (กฎ 50); qa | `src/admin/lib/single-flight.ts` (+ unit), ฟอร์มในกฎ 43, `components/group-buy/groups-section.tsx`, e2e `admin-create-double-submit.spec.ts` | ~60 LOC + ~150 LOC test | AC-51 | **ADM-44** (`program-form.tsx`) | ฟอร์มสร้างทุกตัว (EV-24 ใช้ single-flight — คนละไฟล์) |
+
+ลำดับ: ADM-43 ∥ ADM-44 ∥ ADM-45 → ADM-46 (หลัง ADM-44)
+
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — builder ADM-44, qa/review #513; ไม่บล็อก release v0.3.0)
+Status: draft (☐ — รอ owner สั่งทำ)
+### What Medusa already gives us (รอบ 42)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| คืน focus หลังปิดฟอร์ม | `useRestoreOpenerFocus` ของเรา (ADM-34, `components/common/`) + การ remount เมนู `ActionMenu` (`key={menuKey}`) | ขยายแบบที่ ADM-44 ทำกับ programs (focus ปุ่ม `…` ตัวใหม่ใน `useLayoutEffect` เมื่อ `menuKey` เปลี่ยน) — ไม่สร้าง hook ใหม่ถ้ามีผู้ใช้ตัวเดิมพอ (กฎ 51) |
+| keyboard repeat | `KeyboardEvent.repeat` ของ DOM | ใช้ตามเดิม (กฎ 52) |
+### Business rules (รอบ 42)
+51. (ADM-47 — builder ADM-44, a11y) ฟอร์มที่เปิดจากเมนู `…` ในตาราง partners, payouts และ affiliates: ปิด (บันทึก/ยกเลิก/Escape) แล้ว focus ไปที่ปุ่ม `…` ของแถวเดิม (ตัวที่ remount ใหม่) ไม่หลุดไป `BODY` — วิธีเดียวกับ programs ของ ADM-44;
+    helper ที่ใช้ร่วม ≥ 2 ที่ย้ายไป `src/admin/components/common/` (CLAUDE.md); ไม่ patch library
+52. (ADM-48 — qa/review #513) (a) กด Enter ค้างบน Save ของฟอร์มสร้าง (partner/program/payout/variant pool) แล้ว modal ปิด → `keydown` ที่ `repeat === true` ซึ่งตกไปที่ปุ่มเปิดที่ได้ focus คืน **ไม่**เปิดฟอร์มใหม่
+        (ข้าม repeat ที่ปุ่มเปิด หรือคืน focus หลัง `keyup` — builder เลือกทางเดียวแล้วใช้ทุกฟอร์มผ่าน helper เดียว);
+    (b) nit #513: e2e `admin-create-double-submit.spec.ts` ขั้น (e) ใส่ flag `closesWithAnimation` แล้ว assert `seen.length > 0` สำหรับ partner/campaign/variant pool;
+        `medusa-ui.unit.spec.ts` (~`:154`/`:439`) แยก assert `useSingleFlight()` + `disabled={submitLocked}` เฉพาะฟอร์มของกฎ 43 และแก้ชื่อ test (~`:435`); `groups-section.tsx` ใช้ `import { type KeyboardEvent }`
+### Acceptance criteria (รอบ 42)
+- AC-52 (ADM-47, กฎ 51) e2e admin: เปิดฟอร์มจากเมนู `…` ของ partners/payouts/affiliates แล้วปิดด้วย Cancel และด้วยบันทึกสำเร็จ → `document.activeElement` คือ trigger `…` ของแถวเดิม (ล้มบน develop — `BODY`); programs (ADM-44) ยังผ่าน
+- AC-53 (ADM-48, กฎ 52) e2e admin: focus Save ของแต่ละฟอร์มในกฎ 52a แล้ว dispatch `keydown Enter` 1 ครั้ง + `repeat: true` 5 ครั้ง → POST 1 ครั้ง และหลัง modal ปิดไม่มีฟอร์มว่างเปิดขึ้นใหม่ (ล้มบน develop);
+  static ของ (b) ผ่าน และ mutation ลบ `disabled={submitLocked}` ของฟอร์มหนึ่ง → static ล้ม
+### Tasks (รอบ 42)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| ADM-47 | focus กลับปุ่ม `…` หลังปิดฟอร์มจากเมนูของ partners/payouts/affiliates (กฎ 51); qa | `src/admin/components/evoucher/partners-section.tsx`, `components/affiliate/{payouts-table,affiliates-table}.tsx`, `components/common/*` (ถ้าย้าย helper), e2e | ~40 LOC + ~100 LOC test | AC-52 | PR เอกสารปิดรอบ 41 | ไฟล์ตาราง (ADM-48 ถ้าแตะ — ตัวหลัง sync) |
+| ADM-48 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit e2e/static ของ #513 (กฎ 52); qa | `src/admin/lib/single-flight.ts` หรือ helper คืน focus, ฟอร์มสร้างในกฎ 52a, `e2e/admin-create-double-submit.spec.ts`, `medusa-ui.unit.spec.ts`, `groups-section.tsx` | ~40 LOC + ~120 LOC test | AC-53 | **ADM-47** (ปุ่มเปิด/คืน focus ในไฟล์ตารางเดียวกัน) | ฟอร์มสร้างทุกตัว |
+
+ลำดับ: ADM-47 → ADM-48
+
+### Open questions (รอบ 42)
+- **Q13** (re-review #471 — PAY-10) ข้อยกเว้นของการหาด้วย `data-testid` (`CLAUDE.md` + ADR-018) ครอบเฉพาะ menuitem ของ `ActionMenu`, ปุ่มใน `action` ของ `DataTable` และ searchbox ของ `DataTable` (ข้อยกเว้นที่ 3 — ADR-018 ภาคผนวก 2026-11-21)
+  แต่ e2e ของ PAY-10 ต้องกด element ในหน้าของ Medusa เองที่ extension ใส่ testid ไม่ได้ (เช่นปุ่ม Cancel Return, ฟอร์ม Create Return ของ dashboard):
+  (ก) **[Recommended]** ข้อยกเว้นที่ 4: element ที่ render โดยหน้า/route ของ `@medusajs/dashboard` (ไม่ใช่ `src/admin/` ของเรา) หาด้วย role + ชื่อภายใน container ที่แคบที่สุดที่หาได้ — บันทึกเป็นภาคผนวก ADR-018 และ session หลักแก้ประโยคข้อยกเว้นใน `CLAUDE.md` (ต้องให้ owner อนุมัติเพราะแตะ `CLAUDE.md`); ไม่มีโค้ดเปลี่ยน
+  (ข) ไม่เพิ่มข้อยกเว้น — e2e ที่ต้องกดหน้า Medusa ใช้ API ของ Medusa ตั้งสถานะแทนการคลิก (ครอบ UI ของเราได้ แต่ไม่ครอบ "widget หายเองเมื่อแอดมินกดในหน้า Medusa" ของ AC-23)
 
 ## Open questions
 - ~~**Q12**~~ **ตัดสินแล้ว (owner 2026-11-19 ก่อน ADM-37 เริ่ม) = (ก)** คอลัมน์สุดท้ายเป็น auto — ทำแล้วใน ADM-37 #418 (กฎ 41c) — คำถามเดิม:

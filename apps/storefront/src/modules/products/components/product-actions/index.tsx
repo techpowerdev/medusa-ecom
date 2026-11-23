@@ -19,7 +19,9 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import FlashSale, { useFlashOffer } from "../flash-sale"
 import FlashQtyExceedsRemaining from "../flash-sale/qty-exceeds-remaining"
+import FlashCustomerLimit from "../flash-sale/customer-limit"
 import { flashQtyExceeded } from "@lib/util/flash-sale"
+import { pdpCustomerLimit, pdpQuantityOptions } from "@lib/util/flash-allowance"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
 
@@ -122,8 +124,22 @@ export default function ProductActions({
   )
   // FS-13 (กฎข้อ 18): แคมเปญ flash ขายครบ cap แล้ว → checkout จะล้ม FLASH_SOLD_OUT จึงไม่ให้เพิ่มลง cart
   const canBuy = inStock && !flash.offer?.sale.sold_out
+  // FS-21 (กฎข้อ 26a): สิทธิ์ต่อคนจำกัด → ตัวเลือกจำนวนไม่เกิน min(สิทธิ์ที่เหลือ, remaining_units); ใช้ครบแล้ว → ปุ่ม disabled
+  // FS-23 (กฎข้อ 28c): สิทธิ์ที่เหลือหักจำนวนในตะกร้าของแคมเปญเดียวกันแล้ว
+  const customerLimit = pdpCustomerLimit(
+    flash.offer,
+    flash.allowances,
+    isValidVariant ? selectedVariant?.id : undefined,
+    flash.cartLines
+  )
+  const quantityOptions = pdpQuantityOptions(
+    PDP_QUANTITY_OPTIONS,
+    customerLimit?.max ?? null
+  )
+  const qty = Math.min(quantity, quantityOptions[quantityOptions.length - 1])
+  const limitReached = customerLimit?.max === 0
   // FS-15 (กฎข้อ 20a): จำนวนเกิน remaining_units ของแคมเปญ → complete ล้มแน่นอน จึงไม่ให้เพิ่มจนกว่าจะลดจำนวน
-  const flashRemaining = flashQtyExceeded(flash.offer, quantity)
+  const flashRemaining = flashQtyExceeded(flash.offer, qty)
 
   const actionsRef = useRef<HTMLDivElement>(null)
 
@@ -143,7 +159,7 @@ export default function ProductActions({
     try {
       await addToCart({
         variantId: selectedVariant.id,
-        quantity,
+        quantity: qty,
         countryCode,
       })
       notifyCartUpdated()
@@ -215,7 +231,7 @@ export default function ProductActions({
             <span>จำนวน</span>
             <select
               name="quantity"
-              value={quantity}
+              value={qty}
               onChange={(e) =>
                 setQuantity(clampLineItemQuantity(e.target.value))
               }
@@ -229,7 +245,7 @@ export default function ProductActions({
               className="border border-ui-border-base bg-ui-bg-subtle rounded-md px-3 py-1.5"
               data-testid="product-quantity-select"
             >
-              {PDP_QUANTITY_OPTIONS.map((q) => (
+              {quantityOptions.map((q) => (
                 <option key={q} value={q}>
                   {q}
                 </option>
@@ -238,6 +254,7 @@ export default function ProductActions({
           </label>
 
           <FlashQtyExceedsRemaining remaining={flashRemaining} />
+          <FlashCustomerLimit limit={customerLimit} />
 
           {selectedVariant && isValidVariant && (
             <p
@@ -257,6 +274,7 @@ export default function ProductActions({
               isAdding ||
               !isValidVariant ||
               flashRemaining != null ||
+              limitReached ||
               flash.loading
             }
             // FS-16 (กฎข้อ 21a): รอข้อมูล flash (sold_out/remaining) ก่อนให้กด
@@ -289,7 +307,7 @@ export default function ProductActions({
           updateOptions={setOptionValue}
           inStock={canBuy}
           isValidVariant={!!isValidVariant}
-          qtyExceeded={flashRemaining != null}
+          qtyExceeded={flashRemaining != null || limitReached}
           flashOffer={flash.offer}
           flashLoading={flash.loading}
           handleAddToCart={handleAddToCart}

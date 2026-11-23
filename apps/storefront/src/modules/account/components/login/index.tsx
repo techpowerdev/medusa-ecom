@@ -10,9 +10,11 @@ import { useActionState } from "react"
 
 type Props = {
   setCurrentView: (view: LOGIN_VIEW) => void
+  // CORE-79 (กฎข้อ 137): อีเมลที่กรอกในฟอร์มสมัคร (มาจากลิงก์ register-login-link)
+  defaultEmail?: string
 }
 
-const Login = ({ setCurrentView }: Props) => {
+const Login = ({ setCurrentView, defaultEmail }: Props) => {
   const [message, formAction, isPending] = useActionState(login, null)
   const onSubmit = useSubmitOnce(isPending)
 
@@ -46,7 +48,7 @@ const Login = ({ setCurrentView }: Props) => {
             required
             data-testid="email-input"
             // CORE-4f (กฎข้อ 62): ล้มแล้วคงอีเมลเดิม — React 19 reset ฟอร์มกลับเป็น defaultValue หลัง action
-            defaultValue={message?.state === "error" ? message.email : undefined}
+            defaultValue={message?.state === "error" ? message.email : defaultEmail}
           />
           <Input
             label="รหัสผ่าน"

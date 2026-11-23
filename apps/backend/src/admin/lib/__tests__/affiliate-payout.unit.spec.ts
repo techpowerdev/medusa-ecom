@@ -145,9 +145,28 @@ describe("ADM-24 static", () => {
   })
 
   it("comment เหนือ tiebreakById เตือนว่าไม่แก้ req.listConfig.order", () => {
-    const middlewares = src("../api/admin/affiliate/middlewares.ts")
-    const head = middlewares.slice(0, middlewares.indexOf("const tiebreakById"))
+    const middlewares = src("../lib/tiebreak-by-id.ts")
+    const head = middlewares.slice(0, middlewares.indexOf("export const tiebreakById"))
     const comment = head.slice(head.lastIndexOf("\n\n"))
     expect(comment).toMatch(/listConfig/)
+  })
+})
+
+// ADM-43 (spec 08 กฎ 47b): q ถูก trim (ว่าง = ไม่มี q) และ escape `\` `%` `_` สำหรับ ILIKE ของ Medusa
+describe("AdminListAffiliates q", () => {
+  const q = (value: string | undefined) => AdminListAffiliates.parse({ q: value }).q
+
+  it("trims and drops a blank q", () => {
+    expect(q("  Ann Lee  ")).toBe("Ann Lee")
+    expect(q("   ")).toBeUndefined()
+    expect(q("")).toBeUndefined()
+    expect(q(undefined)).toBeUndefined()
+  })
+
+  it("escapes LIKE wildcards and the escape character", () => {
+    expect(q("%")).toBe("\\%")
+    expect(q("_")).toBe("\\_")
+    expect(q("\\")).toBe("\\\\")
+    expect(q(" 10%_off\\x ")).toBe("10\\%\\_off\\\\x")
   })
 })

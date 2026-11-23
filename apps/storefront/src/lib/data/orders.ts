@@ -40,6 +40,7 @@ export const listOrders = async (
   }
 
   // CORE-20c (กฎข้อ 60): ไม่ cache แบบเดียวกับ retrieveOrder — สถานะ return/การส่งเปลี่ยนจากฝั่ง admin
+  // CORE-68 (กฎข้อ 126): คืน count ของ Medusa ด้วย — หน้า /account/orders ใช้แบ่งหน้า
   return sdk.client
     .fetch<HttpTypes.StoreOrderListResponse>(`/store/orders`, {
       method: "GET",
@@ -53,6 +54,26 @@ export const listOrders = async (
       headers,
       cache: "no-store",
     })
-    .then(({ orders }) => orders)
+    .then(({ orders, count }) => ({ orders, count }))
     .catch((err) => medusaError(err))
+}
+
+/**
+ * PAY-12 (spec 06 กฎข้อ 14; qa #481 D-2): order ของลูกค้าที่สร้างจาก cart นี้ (field `cart.id` = link order_cart ของ Medusa)
+ * — store API กรองด้วย cart ไม่ได้ จึงอ่าน order ล่าสุดของลูกค้า (order ที่เพิ่ง complete อยู่ต้นรายการ); ไม่พบ/ล้ม → null
+ */
+export const findOrderIdByCart = async (cartId: string): Promise<string | null> => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  return sdk.client
+    .fetch<{ orders: { id: string; cart?: { id: string } | null }[] }>(`/store/orders`, {
+      method: "GET",
+      query: { limit: 10, order: "-created_at", fields: "id,cart.id" },
+      headers,
+      cache: "no-store",
+    })
+    .then(({ orders }) => orders.find((order) => order.cart?.id === cartId)?.id ?? null)
+    .catch(() => null)
 }

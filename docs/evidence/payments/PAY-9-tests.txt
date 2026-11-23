@@ -1,0 +1,140 @@
+# PAY-9 (spec 06 กฎข้อ 11, AC-22, ADR-025) — ผลทดสอบในเครื่อง 2026-11-21 (node v22.23.3)
+
+## RED (ก่อนแก้)
+### unit backend
+FAIL src/api/__tests__/error-handler.unit.spec.ts
+FAIL src/api/store/payment-collections/__tests__/refunded-collection-reset.unit.spec.ts
+    Cannot find module '../../../../workflows/payment/reset-cart-payment-collection' from 'src/api/store/payment-collections/__tests__/refunded-collection-reset.unit.spec.ts'
+FAIL src/lib/__tests__/refunded-payments.unit.spec.ts
+    Cannot find module '../refunded-payments' from 'src/lib/__tests__/refunded-payments.unit.spec.ts'
+Tests:       1 failed, 27 passed, 28 total
+### integration: payment-collection-reset.spec.ts บน develop (ไม่มี middleware)
+    ✕ (a) refunded cart collection → 409 PAYMENT_COLLECTION_RESET, link dismissed, old collection keeps its refund (974 ms)
+    ✕ (a) two concurrent requests both get 409 PAYMENT_COLLECTION_RESET without 5xx (1033 ms)
+    ✕ (a) after the reset the cart pays with a new collection → order has 1 collection and payment_status captured (1032 ms)
+    ✓ (b) captured payment not refunded → not reset (PAY-6 guard answers PAYMENT_ALREADY_COMPLETED as in AC-13) (1424 ms)
+    ✓ (b) order collection (group buy) fully refunded → not reset (513 ms)
+    -     "code": "PAYMENT_COLLECTION_RESET",
+    +     "code": "PAYMENT_ALREADY_COMPLETED",
+    -       "code": "PAYMENT_COLLECTION_RESET",
+    +       "code": "PAYMENT_ALREADY_COMPLETED",
+    -       "code": "PAYMENT_COLLECTION_RESET",
+    +       "code": "PAYMENT_ALREADY_COMPLETED",
+    -     "code": "PAYMENT_COLLECTION_RESET",
+    +     "code": "PAYMENT_ALREADY_COMPLETED",
+Tests:       3 failed, 2 passed, 5 total
+### integration: O-2 state (session ถูกลบโดย compensation) เมื่อถอด middleware ออกจาก middlewares.ts
+    ✕ (a) O-2 state: compensation deleted the refunded session → still reset — ได้ 200 { payment_collection: ... } (สร้าง session ใหม่ใน collection เดิม = บั๊ก #69)
+### vitest storefront (core-4i-b-payment-actions.test.ts)
+     × creates a new collection for the cart (Medusa route) and retries once → ok 4ms
+     × the retry gets PAYMENT_COLLECTION_RESET again → { error: failed } without a third attempt 0ms
+     × creating the new collection fails → error from the shared helper 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  3 failed | 44 passed (47)
+
+## GREEN
+### integration http
+PASS integration-tests/http/payment-collection-reset.spec.ts (98.207 s)
+PASS integration-tests/http/payment-session-guard.spec.ts (193.637 s)
+Tests:       20 passed, 20 total
+รันซ้ำ payment-collection-reset.spec.ts 3 รอบ: 5/5, 5/5, 5/5 (ก่อนเพิ่มเคส O-2 state)
+PASS integration-tests/http/group-buy-payment.spec.ts (29.583 s)
+PASS integration-tests/http/store-ownership.spec.ts (14.693 s)
+PASS integration-tests/http/group-buy-payment-closed.spec.ts (22.613 s)
+Tests:       29 passed, 29 total
+### unit backend (ทั้งชุด)
+Test Suites: 117 passed, 117 total
+Tests:       1575 passed, 1575 total
+### storefront
+vitest: Test Files 101 passed (101), Tests 1189 passed (1189)
+playwright --project=unit: 123 passed
+### lint / typecheck
+pnpm lint: 0 errors (warning เดิม 3 backend / 28 storefront); pnpm typecheck: ผ่าน
+
+## e2e AC-22c (Stripe test mode) — apps/storefront/e2e/pay-9-refunded-cart-repay.spec.ts
+ในเครื่องไม่มี Stripe key → skip; พิสูจน์บน CI + qa
+### build
+pnpm --filter backend build: ผ่าน
+
+## รอบแก้หลัง APPROVE (2026-11-21 — คำขอของ session หลัก + qa D-1)
+### RED
+integration (implementation เดิม ใน worktree ชั่วคราว + test ใหม่):
+    ✕ (b) refunded collection that still has a session without a payment (paid, webhook not yet arrived) → not reset (11933 ms)
+    Expected: not "PAYMENT_COLLECTION_RESET" (ได้ PAYMENT_COLLECTION_RESET — reset ทั้งที่มี session ที่ยังรอ payment)
+unit backend: hasUnpaidSession is not a function (6 failed); middleware ไม่ข้ามเมื่อมี session รอ payment
+vitest storefront:
+     × the retry gets PAYMENT_COLLECTION_RESET again → { error: failed } without a third attempt 3ms
+     × creating the new collection fails → error from the shared helper 1ms
+     × renewPromptPaySession does not retry (QR renewal keeps its collection) → { error: failed } 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  3 failed | 44 passed (47)
+### GREEN
+PASS integration-tests/http/payment-collection-reset.spec.ts (43.591 s)
+    ✓ (a) refunded cart collection → 409 PAYMENT_COLLECTION_RESET, link dismissed, old collection keeps its refund (3054 ms)
+    ✓ (a) O-2 state: compensation deleted the refunded session → still reset (guardPaidStripeSession would let it through) (3788 ms)
+    ✓ (a) two concurrent requests both get 409 PAYMENT_COLLECTION_RESET without 5xx (3245 ms)
+    ✓ (a) after the reset the cart pays with a new collection → order has 1 collection and payment_status captured (3196 ms)
+    ✓ (b) captured payment not refunded → not reset (PAY-6 guard answers PAYMENT_ALREADY_COMPLETED as in AC-13) (3790 ms)
+    ✓ (b) refunded collection that still has a session without a payment (paid, webhook not yet arrived) → not reset (2069 ms)
+    ✓ (D-1) Medusa recreate succeeds after the refund → pending session in the old collection → not reset (2127 ms)
+    ✓ (b) order collection (group buy) fully refunded → not reset (819 ms)
+Tests:       8 passed, 8 total
+PASS integration-tests/http/payment-session-guard.spec.ts (52.265 s)
+(D-1) เป็น characterization test: recreate สำเร็จ → ไม่ reset (อ้าง medusajs/medusa#17948)
+unit backend ที่เกี่ยว (refunded-payments, payment-collections, error-handler, workflows, return-lock): 15 suites / 146 passed
+  (ชุดเต็มรอบนี้ return-lock.unit.spec.ts ล้มด้วย timeout 471 วิ ตอนเครื่องรับโหลดหนัก load ~8.5 — รันแยกผ่าน; ชุดเต็มให้ CI รัน)
+vitest storefront: Test Files 103 passed, Tests 1204 passed; playwright --project=unit: 123 passed
+typecheck backend + storefront: ผ่าน; lint: 0 errors
+
+## รอบแก้ review #445 ครั้งที่ 2 (e2e AC-22c ล้มบน CI run 44879093475 หลัง FS-21)
+สาเหตุ: FS-21 (spec 03 กฎข้อ 26b) ปิด submit-order-button เมื่อ cart มี flash เกินสิทธิ์ต่อคน → test เดิม (cart 2 ชิ้น สิทธิ์ 1) กดสั่งไม่ได้ → timeout 240s
+แก้: cart 1 ชิ้น สิทธิ์ 1 ไปถึง review (ปุ่มกดได้) → ลูกค้าคนเดิมใช้สิทธิ์จาก cart อื่นผ่าน API → กดสั่ง → capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED
+     → คืนเงิน → admin เพิ่มสิทธิ์เป็น 2 → จ่ายใหม่ใน cart เดิม; แก้ถ้อยคำ AC-22c ใน spec 06 ให้ตรง
+ในเครื่อง: playwright --list พบ 1 test, tsc/eslint ผ่าน, playwright --project=unit 125 passed; ไม่มี Stripe key → ต้องให้ CI พิสูจน์
+
+
+# hotfix PAY-9 (AC-22c) e2e ล้มเป็นครั้งคราว — evidence (รอบแก้ตาม review #468, 2026-11-21T13:56Z)
+
+## CI ที่ล้ม — pay-9-refunded-cart-repay.spec.ts step 'จ่ายใหม่ด้วยบัตรใน cart เดิม' → support/stripe.ts:90 ได้ "" เกิน 15s
+- attempt 1 ของ run 44896944640 (#463), 44897048477 (#464), 44902940179 (#466); run 44907726201 (#468 รอบแรก — เงื่อนไขรอเดิมผิด)
+
+## timeline จาก trace ของ CI (GET /store/carts และ /admin/payments ของ test)
+run 44902940179: 22.984 Stripe refund ✓ → 23.201 goto payment → 23.455 [authorized PI1] → 23.657 [pending PI1] → 23.976 []
+run 44907726201: 16.217 admin payments: capture 810 + refund 810 บันทึกแล้ว; 16.228 [authorized PI1] → helper รอบแรกตัดสินว่าจบ
+                 16.366 goto payment → ไม่มี server action หลังคลิก (radio บัตรถูกเลือกจาก session pending ชั่วคราว) → 16.993 []
+
+## ยืนยันลำดับของ Medusa 2.22.1 ด้วย integration test (Stripe mock เฉพาะ network, gate ที่ Refunds.create และ recreate)
+$ DB_HOST=localhost DB_USERNAME=medusa DB_PASSWORD=medusa pnpm --filter backend test:integration:http integration-tests/http/complete-after-payment-log.spec.ts
+    ✓ flash เกินสิทธิ์หลัง capture → warn 1 บรรทัด (cart_id, payment_session_id, code) ก่อน log ของ Medusa และคืนเงิน 1 รายการ (1287 ms)
+    ✓ step หลัง hook validate ล้มหลัง capture → warn 1 บรรทัด และคืนเงิน 1 รายการ (1244 ms)
+    ✓ PAY-9 hotfix: ระหว่าง compensation execution ของ complete-cart ยังไม่จบแม้ refund ถูกบันทึกแล้ว; จบแล้วไม่มี session ที่อ้าง PI เดิม (919 ms)
+    ✓ complete ล้มก่อนมีการชำระ (ยังไม่ capture) → ไม่มี warn นี้ (778 ms)
+Tests:       4 passed, 4 total
+- ตอนเรียก Stripe refund: refunds=1, sessions=[authorized PI1], execution complete-cart = waiting_to_compensate
+- ตอน recreate: มี [pending PI1]; execution ยัง waiting_to_compensate
+- จบ: execution = reverted, ไม่มี session ที่อ้าง PI1, recreate ด้วย PI1 = 2 ครั้ง (createPaymentSessionStep + compensation ของ deletePaymentSessionsStep)
+
+## red — unit test ของสัญญาณใหม่ (ก่อนเขียน helper)
+$ npx playwright test --project=unit e2e/support/cart-completion.unit.spec.ts
+Error: Cannot find module './cart-completion'
+Require stack:
+- apps/storefront/e2e/support/cart-completion.unit.spec.ts
+
+## green
+$ npx playwright test --project=unit e2e/support/cart-completion.unit.spec.ts
+Running 4 tests using 1 worker
+  ✓  1 [unit] › e2e/support/cart-completion.unit.spec.ts:10:5 › ยังไม่มี execution ของ cart นี้ → ยังไม่จบ (3ms)
+  ✓  2 [unit] › e2e/support/cart-completion.unit.spec.ts:15:5 › Stripe คืนเงินแล้วแต่ compensation ยังทำงาน (waiting_to_compensate) → ยังไม่จบ (1ms)
+  ✓  3 [unit] › e2e/support/cart-completion.unit.spec.ts:19:5 › complete ของ storefront จบแล้ว แต่ complete ที่ webhook สั่งยังไม่จบ → ยังไม่จบ (1ms)
+  ✓  4 [unit] › e2e/support/cart-completion.unit.spec.ts:25:5 › ทุก execution ของ cart นี้อยู่ในสถานะจบ → จบ (execution ของ cart อื่นไม่นับ) (2ms)
+  4 passed (272ms)
+
+$ npx playwright test --project=chromium --list e2e/pay-9-refunded-cart-repay.spec.ts
+Total: 1 test in 1 file
+(ในเครื่องไม่มี Stripe test key → e2e นี้ skip; พิสูจน์ใน CI ของ PR)
+
+$ pnpm lint && pnpm typecheck
+apps/backend lint: ✖ 6 problems (0 errors, 6 warnings)
+apps/storefront lint: ✖ 28 problems (0 errors, 28 warnings)
+apps/storefront typecheck: Done
+apps/backend typecheck: Done

@@ -3,9 +3,12 @@
 import { sdk } from "@lib/config"
 import type { PortalTab } from "@lib/util/affiliate-portal"
 import { affiliateRegisterError } from "@lib/util/affiliate-register-error"
+import { isUncodedMedusaError } from "@lib/util/medusa-api-error"
+import { normalizeEmail } from "@lib/util/normalize-email"
 import { cookies as nextCookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { cache } from "react"
+import { medusaFetch } from "./medusa-fetch"
 
 // AF-8a (spec 05 กฎ 17): portal เรียก `/affiliate/*` จาก server side ของ Next เท่านั้น
 // token ของ actor `affiliate` อยู่ใน httpOnly cookie แยกจาก `_medusa_jwt` ของ customer (session แยกกัน)
@@ -34,6 +37,8 @@ export type PortalProduct = {
   }
   program: { id: string; name: string; starts_at: string; ends_at: string; commission_value: number }
   rate_varies: boolean
+  /** AF-24 กฎ 48a: ยอดประมาณการต่อชิ้นที่ API คำนวณ (excludes_tax = คิดจากราคาก่อน VAT); null = ไม่แสดง (rate_varies/ไม่มีราคา) */
+  estimate: { amount: number; currency_code: string; excludes_tax: boolean } | null
   share_url: string
 }
 
@@ -165,7 +170,7 @@ const portalPath = (formData: FormData) => `/${formData.get("countryCode")}/affi
 export async function affiliateLogin(_state: AffiliateAuthState, formData: FormData): Promise<AffiliateAuthState> {
   let token: string
   try {
-    token = await login(String(formData.get("email")), String(formData.get("password")))
+    token = await login(normalizeEmail(formData.get("email")), String(formData.get("password")))
   } catch (error) {
     return {
       error: statusOf(error) === 401 ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" : "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
@@ -191,20 +196,16 @@ export async function affiliateLogin(_state: AffiliateAuthState, formData: FormD
  * → login ใหม่เพื่อได้ token ที่มี actor_id; อีเมลที่มี identity อยู่แล้ว (เช่น เป็น customer) ใช้รหัสผ่านเดิม login แทน
  */
 export async function affiliateRegister(_state: AffiliateAuthState, formData: FormData): Promise<AffiliateAuthState> {
-  const email = String(formData.get("email"))
+  const email = normalizeEmail(formData.get("email"))
   const password = String(formData.get("password"))
   const failed = { error: "สมัครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }
 
+  // CORE-84 (กฎข้อ 140, ADR-028): medusaFetch เพื่อได้ `type`/`code` ของ error; `{}` = ไม่ส่ง JWT ของลูกค้า (แบบ sdk.client.fetch เดิม)
   let token: string
   try {
-    token = (
-      await sdk.client.fetch<{ token: string }>("/auth/affiliate/emailpass/register", {
-        method: "POST",
-        body: { email, password },
-      })
-    ).token
+    token = (await medusaFetch<{ token: string }>("/auth/affiliate/emailpass/register", { email, password }, {})).token
   } catch (error) {
-    if (statusOf(error) !== 401) {
+    if (!isUncodedMedusaError(error, "IDENTITY_EXISTS")) {
       return failed
     }
     try {
@@ -215,11 +216,11 @@ export async function affiliateRegister(_state: AffiliateAuthState, formData: Fo
   }
 
   try {
-    await sdk.client.fetch("/affiliate/register", {
-      method: "POST",
-      headers: { authorization: `Bearer ${token}` },
-      body: { name: formData.get("name"), code: formData.get("code") },
-    })
+    await medusaFetch(
+      "/affiliate/register",
+      { name: formData.get("name"), code: formData.get("code") },
+      { authorization: `Bearer ${token}` }
+    )
   } catch (error) {
     return {
       error: affiliateRegisterError(error, "สมัครไม่สำเร็จ รหัสแนะนำนี้อาจถูกใช้แล้ว หรืออีเมลนี้สมัครแอฟฟิลิเอตไว้แล้ว"),

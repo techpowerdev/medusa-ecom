@@ -47,9 +47,12 @@ export default async function Nav() {
                 <LocalizedClientLink
                   className="hover:text-ui-fg-base flex gap-2 whitespace-nowrap"
                   href="/cart"
-                  data-testid="nav-cart-link"
+                  data-testid="nav-cart-link-loading"
+                  aria-busy="true"
                 >
-                  ตะกร้า (0)
+                  {/* CORE-72 (กฎข้อ 130): ยังไม่รู้จำนวน — ไม่แสดง "(0)"
+                      testid แยกจาก nav-cart-link: ระหว่าง stream fallback นี้อยู่พร้อมกับ CartDropdown ใน <div hidden> */}
+                  ตะกร้า
                 </LocalizedClientLink>
               }
             >

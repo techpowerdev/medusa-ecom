@@ -122,6 +122,22 @@ describe("AC-16 runbook ใน docs/ops/production.md", () => {
     expect(gb).toContain("/app/orders/<order_id>")
   })
 
+  // GB-21 กฎข้อ 44 (AC-63 e): membership_cancelled คืนเงินอัตโนมัติ — alert บอกผล refunded/refund_failed และให้ตรวจ refunds ก่อนปิด/คืนซ้ำ
+  it("กรณี group buy: อธิบายผล refunded/refund_failed ของการคืนเงินอัตโนมัติ และให้ตรวจ GET /admin/payments", () => {
+    const gb = subsection(body!, GB_TITLE)
+    for (const word of ["refunded", "refund_failed", "GET /admin/payments", "Refunded: group buy membership cancelled"]) {
+      expect(gb).toContain(word)
+    }
+  })
+
+  // GB-21 (review แผนรอบ 40): POST /admin/payments/:id/refund บน draft order ที่ยกเลิกอาจคืนเงินที่ provider สำเร็จแล้วแต่ route ตอบ error
+  it("กรณี group buy: refund ผ่าน admin ตอบ error → ตรวจยอดคืนใน payment/Stripe ก่อนคืนซ้ำ", () => {
+    const gb = subsection(body!, GB_TITLE)
+    expect(gb).toContain("throwIfOrderIsCancelled")
+    expect(gb).toMatch(/ตอบ error[^\n]*ห้ามกดคืนซ้ำ/)
+    expect(gb).toContain("Refunds ของ PI")
+  })
+
   // GB-10 กฎข้อ 25 (f) (AC-44 รอบ 13): ขอบเนื้อหาจบก่อนหัวข้อ ### ถัดไป — ขั้นตรวจที่อยู่ในหัวข้อถัดไปไม่นับ
   it("หัวข้อ group buy ตัดถึงหัวข้อถัดไป: ขั้นตรวจที่อยู่นอกหัวข้อไม่นับ (fixture) และหัวข้อจริงไม่มีหัวข้ออื่นปน", () => {
     const fixture = [
@@ -162,5 +178,49 @@ describe("AC-18 หัวข้อ Alerts ใน docs/ops/production.md", () => 
 
   it("ระบุขั้นตอนตอบสนอง: restart worker", () => {
     expect(body).toContain("restart worker")
+  })
+})
+
+// OPS-30: spec 07 AC-45b — access log ของ Medusa ออกที่ระดับ `http` และ admin prod ต้องอยู่หลัง HTTPS (Deliverables ข้อ 11)
+describe("AC-45b access log และ HTTPS ใน docs/ops/production.md", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const alerts = section(doc, "Alerts") ?? ""
+  const goLive = section(doc, "Go-live checklist") ?? ""
+
+  it("หัวข้อ Alerts: access log ต้องใช้ LOG_LEVEL=http (ค่าเริ่มต้นของ compose) และเตือนว่า info ไม่มี access log", () => {
+    expect(alerts).toContain("`LOG_LEVEL=http`")
+    expect(alerts).toMatch(/ค่าเริ่มต้นของ `docker-compose\.prod\.yml`/)
+    expect(alerts).toMatch(/`LOG_LEVEL=info`[^\n]*ไม่มี access log/)
+    expect(alerts).toMatch(/`\/health`/)
+  })
+
+  it("หัวข้อ Go-live checklist: admin/API ผ่าน HTTPS หรือ proxy ที่ส่ง X-Forwarded-Proto: https และ http://localhost ตรงไป :9000 login ไม่ได้", () => {
+    expect(goLive).toMatch(/HTTPS/)
+    expect(goLive).toContain("X-Forwarded-Proto: https")
+    expect(goLive).toMatch(/`http:\/\/localhost:9000`[^\n]*login admin ไม่ได้/)
+  })
+})
+
+// OPS-32: spec 07 AC-47 (b) — log ของ Medusa ที่ดูเหมือนคืนเงินล้มทั้งที่คืนสำเร็จ (complete ล้มหลัง capture)
+describe("AC-47 runbook log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const body = section(doc, "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ (OPS-32)")
+
+  it('มีหัวข้อ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ (OPS-32)"', () => {
+    expect(body).not.toBeNull()
+  })
+
+  it("ระบุ warn ของเรา และสองข้อความของ Medusa", () => {
+    expect(body).toContain("CART_COMPLETION_FAILED_AFTER_PAYMENT")
+    expect(body).toContain("Error was thrown trying to refund payment")
+    expect(body).toContain("[object Object]")
+    expect(body).toContain("recreate a payment session")
+    expect(body).toContain("Invalid string")
+  })
+
+  it("วิธีตรวจ: refunds ของ GET /admin/payments/:id และ PI ใน Stripe dashboard; ห้าม refund ซ้ำด้วยมือ", () => {
+    for (const word of ["GET /admin/payments/", "refunds", "Refunded due to cart completion failure", "Stripe dashboard", "ห้าม refund ซ้ำด้วยมือ"]) {
+      expect(body).toContain(word)
+    }
   })
 })

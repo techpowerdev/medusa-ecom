@@ -4,13 +4,19 @@ import { adminAffiliateMiddlewares } from './admin/affiliate/middlewares'
 import { adminEvoucherMiddlewares } from './admin/evoucher/middlewares'
 import { adminFlashSaleMiddlewares } from './admin/flash-sales/middlewares'
 import { adminGroupBuyMiddlewares } from './admin/group-buy/middlewares'
+import { adminPaymentMiddlewares } from './admin/payments/middlewares'
+import { adminPromotionLockMiddlewares } from './admin/promotions/group-buy-lock'
 import { storeEvoucherMiddlewares } from './store/evouchers/middlewares'
 import { storeFlashSaleMiddlewares } from './store/flash-sales/middlewares'
+import { storeCustomerMeMiddlewares } from './store/customers/me/middlewares'
 import { storeGroupBuyMiddlewares } from './store/group-buy/middlewares'
 import { businessErrorHandler } from './error-handler'
 import { storeOwnershipMiddlewares } from './store/ownership/middlewares'
 import { guardPaidStripeSession } from './store/payment-collections/stripe-session-guard'
+import { guardGroupBuyPaymentWindow } from './store/payment-collections/group-buy-payment-guard'
+import { resetRefundedCartPaymentCollection } from './store/payment-collections/refunded-collection-reset'
 import { checkoutPhaseTiming } from './store/carts/checkout-phase-timing'
+import { normalizeEmailMiddlewares } from './normalize-email'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
 // the route narrows it to published products in the key's sales channels.
@@ -28,6 +34,8 @@ export default defineMiddlewares({
         }),
       ],
     },
+    // CORE-80 (spec 01 กฎข้อ 138): อีเมลตัวเล็กก่อนถึง auth/customer route ของ Medusa (customer + affiliate เท่านั้น)
+    ...normalizeEmailMiddlewares,
     // Affiliate portal: separate `affiliate` actor type (spec 05, AC-12, AC-18, กฎ 18, Q6)
     ...affiliatePortalMiddlewares,
     ...adminEvoucherMiddlewares,
@@ -35,9 +43,15 @@ export default defineMiddlewares({
     ...storeEvoucherMiddlewares,
     ...adminFlashSaleMiddlewares,
     ...storeFlashSaleMiddlewares,
+    // route ของเราใต้ /store/customers/me/* (FS-20 allowance)
+    ...storeCustomerMeMiddlewares,
     ...adminAffiliateMiddlewares,
     ...adminGroupBuyMiddlewares,
     ...storeGroupBuyMiddlewares,
+    // PAY-8 (spec 06 กฎข้อ 10): กัน refund ของ admin เมื่อ order มี active order change (B-1)
+    ...adminPaymentMiddlewares,
+    // GB-25 (spec 04 กฎข้อ 48, ADR-026): ล็อก promotion `GB-<token>` ของกลุ่ม + campaign ของแคมเปญ group buy ที่ไม่ใช่ draft
+    ...adminPromotionLockMiddlewares,
     // CORE-6 (spec 01 "ไม่มี guest"): cart + checkout ต้องมี customer ที่ล็อกอิน (AC-6)
     {
       matcher: '/store/carts*',
@@ -50,10 +64,12 @@ export default defineMiddlewares({
     // CORE-12 (ADR-013): cart/payment collection/shipping options/order ต้องเป็นของ customer ที่ล็อกอิน
     ...storeOwnershipMiddlewares,
     // PAY-6 (spec 06 กฎข้อ 7A, ADR-015): ระบุ method จึงรันหลัง auth + ownership ที่ไม่ระบุ method (ADR-013, AC-13g)
+    // GB-20 (spec 04 กฎข้อ 42, ADR-024 a): guard ช่วงชำระของ group buy ก่อน guardPaidStripeSession — ลำดับตาม ADR-025
+    // PAY-9 (spec 06 กฎข้อ 11, ADR-025): reset collection ของ cart ที่ถูกคืนเงินครบ — หลัง GB guard ก่อน guardPaidStripeSession
     {
       method: ['POST'],
       matcher: '/store/payment-collections/:id/payment-sessions',
-      middlewares: [guardPaidStripeSession],
+      middlewares: [guardGroupBuyPaymentWindow, resetRefundedCartPaymentCollection, guardPaidStripeSession],
     },
     // OPS-20a (spec 07 AC-31): เวลาเข้า/finish ของ complete (log debug เฉพาะ load run) — หลัง auth + ownership แบบเดียวกับ PAY-6
     {

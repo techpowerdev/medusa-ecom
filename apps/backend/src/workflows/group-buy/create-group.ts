@@ -31,7 +31,7 @@ type CampaignForGroup = {
   status: GroupBuyCampaignStatus
   group_mode: "pool" | "team" | "both"
   team_duration_hours: number | null
-  campaign?: { starts_at?: string | Date | null; ends_at?: string | Date | null } | null
+  campaign?: { id: string; starts_at?: string | Date | null; ends_at?: string | Date | null } | null
   promotion?: TemplatePromotion | null
 }
 
@@ -71,6 +71,7 @@ export const prepareGroupBuyGroupStep = createStep(
         "status",
         "group_mode",
         "team_duration_hours",
+        "campaign.id",
         "campaign.starts_at",
         "campaign.ends_at",
         ...TEMPLATE_FIELDS.map((f) => `promotion.${f}`),
@@ -106,9 +107,18 @@ export const prepareGroupBuyGroupStep = createStep(
     // กฎข้อ 30b: ต้นแบบถูกแก้เป็นหลายสินค้า/ไม่มี scope ระหว่าง active → ไม่ clone (กลุ่มเดิมไม่กระทบ)
     assertSingleProductScope(campaign.promotion.application_method.target_rules, MedusaError.Types.NOT_ALLOWED)
 
+    // กฎข้อ 51b: ต้นแบบต้องอยู่ใน campaign ของแคมเปญ (link) — กันข้อมูลเพี้ยนจากการย้ายต้นแบบก่อนมีล็อก (GB-26)
+    const promotionCampaignId = campaign.campaign?.id
+    if (!promotionCampaignId || campaign.promotion.campaign_id !== promotionCampaignId) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "The template promotion is not in the campaign of this group-buy campaign"
+      )
+    }
+
     const token = generateJoinToken()
     return new StepResponse({
-      promotion: buildGroupPromotionInput(campaign.promotion, token),
+      promotion: buildGroupPromotionInput(campaign.promotion, token, promotionCampaignId),
       group: {
         campaign_id: campaign.id,
         kind: input.kind,

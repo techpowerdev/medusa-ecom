@@ -40,7 +40,7 @@ export default async function GroupTokenPage(props: Props) {
     <GroupPage
       view={view}
       product={product}
-      shareUrl={`${origin}${groupSharePath(token)}`}
+      shareUrl={`${origin}${groupSharePath(countryCode, token)}`}
       addresses={customer ? (customer.addresses ?? []) : null}
       // เวลาของ request ใช้เริ่มนับถอยหลัง (server component render ครั้งเดียวต่อ request)
       // eslint-disable-next-line react-hooks/purity

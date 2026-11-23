@@ -1,0 +1,70 @@
+FS-23 (spec 03 กฎข้อ 28, AC-30) — ผล test ในเครื่อง 2026-11-22 (base origin/develop b1896690; backend :9197 medusa develop, storefront :8197 next dev, DB medusa_fs23, Redis db 4)
+RED = test ใหม่รันบน source ของ develop (ถอด diff ของ src ออกชั่วคราวด้วย git diff/checkout แล้ว git apply กลับ)
+
+== RED (a): integration flash-sale-active.spec.ts บนโค้ด develop — ยังไม่มี per_customer_limit ==
+    ✕ lists only running flash campaigns with countdown data, publicly (no customer auth) (959 ms)
+    ✓ returns flash_price from the Promotion module for exclusive flash promotions only (2025 ms)
+    ✓ matches the real cart line total on tax-inclusive THB (fixed 100 excl. VAT = 107 off) (1817 ms)
+    ✓ matches the real cart line total for a tax-inclusive promotion (no double VAT) (2252 ms)
+    ✓ ignores order-level flash promotions in flash_price (only target_type items) (1099 ms)
+    ✓ only prices variants sold in the publishable key's sales channels (984 ms)
+    ✕ AC-30 (a): returns per_customer_limit of the campaign without a customer token (null when unlimited) (554 ms)
+    ✓ rejects variant_ids without region_id (381 ms)
+    ✓ rejects more than 24 variant_ids (bounded computeActions per request) (493 ms)
+      ✓ (a) counts units, not orders: units_sold=7 vs budget usage 5 → remaining_units=3, no remaining_usage (656 ms)
+      ✓ (b) units_sold reaches total_cap → remaining_units=0, sold_out=true (637 ms)
+      ✓ (c) total_cap lowered below units_sold → remaining_units clamps at 0, sold_out=true (464 ms)
+      ✓ (d) show_remaining=false hides remaining_units but keeps sold_out; no total_cap → never sold out (678 ms)
+Tests:       2 failed, 11 passed, 13 total
+
+== RED (d): unit Vitest flash-allowance.test.ts บนโค้ด develop ==
+     × สูงสุด = remaining_for_customer เมื่อไม่รู้ remaining_units 4ms
+     × ใช้สิทธิ์ครบแล้ว → max 0 1ms
+     × ไม่มี allowance ของ variant และแคมเปญจำกัดต่อคน → { limit, remaining: null, max: null } 0ms
+     × ไม่มีของในตะกร้า → ไม่หัก 0ms
+     × ของในตะกร้าคนละแคมเปญ / ไม่อยู่ในแคมเปญ → ไม่หัก 1ms
+     × หลาย variant ในแคมเปญเดียว (รวม variant ที่เลือกเอง) → หักผลรวม 1ms
+     × ผลไม่ติดลบเมื่อของในตะกร้าเกินสิทธิ์ที่เหลือ 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  7 failed | 13 passed (20)
+
+== RED (b): e2e fs-23 บนโค้ด develop ==
+  ✘  1 [chromium] › e2e/fs-23-pdp-cart-aware-limit.spec.ts:108:5 › AC-30 (b): ไม่ login → PDP เห็น flash-customer-limit มีเลข 2 และอักษรไทย (6.5s)
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByTestId('flash-customer-limit')
+    Expected: visible
+    Error: element(s) not found
+  1 failed
+
+== RED (c): e2e fs-23 (c) บนโค้ด develop — PDP ไม่หักของในตะกร้า ==
+  ✘  1 [chromium] › e2e/fs-23-pdp-cart-aware-limit.spec.ts:121:5 › AC-30 (c): login limit 2 มีของในตะกร้า 1 ชิ้น → PDP เลือกได้สูงสุด 1; ตะกร้ามี 2 → ปุ่ม disabled + flash-customer-limit-reached (8.0s)
+    Error: expect(locator).toContainText(expected) failed
+    Locator: getByTestId('flash-customer-limit')
+    Expected substring: "1"
+    Received string:    "จำกัด 2 ชิ้นต่อคน (เหลือสิทธิ์ 2 ชิ้น)"
+  1 failed
+
+== GREEN: integration flash-sale-active.spec.ts + flash-sale-allowance.spec.ts ==
+Test Suites: 2 passed, 2 total
+Tests:       17 passed, 17 total
+
+== GREEN: e2e fs-23 ==
+  ✓  1 [chromium] › e2e/fs-23-pdp-cart-aware-limit.spec.ts:108:5 › AC-30 (b): ไม่ login → PDP เห็น flash-customer-limit มีเลข 2 และอักษรไทย (920ms)
+  ✓  2 [chromium] › e2e/fs-23-pdp-cart-aware-limit.spec.ts:121:5 › AC-30 (c): login limit 2 มีของในตะกร้า 1 ชิ้น → PDP เลือกได้สูงสุด 1; ตะกร้ามี 2 → ปุ่ม disabled + flash-customer-limit-reached (3.3s)
+  2 passed (5.1s)
+
+== GREEN: e2e fs-23 --repeat-each=3 ==
+  6 passed (12.8s)
+
+== regression: e2e fs-21, flash-sale-fs13/15/16, flash-sale-storefront, core-24 ==
+  20 passed (45.4s)
+
+== unit ทั้ง project ==
+storefront vitest: Tests 1411 passed (1411)
+backend jest: Tests: 1726 passed, 1726 total
+storefront test:e2e:unit: 145 passed (7.3s)
+
+== lint / typecheck / build ==
+pnpm lint: 0 errors (warning เดิม ไม่มีในบรรทัดที่แก้)
+tsc --noEmit (backend + storefront): ผ่าน
+pnpm --filter storefront build: ผ่าน

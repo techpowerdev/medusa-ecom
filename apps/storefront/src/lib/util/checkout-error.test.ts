@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest"
 
 import { CHECKOUT_CONFLICTS, checkoutConflictMessage } from "./checkout-error"
+import { MedusaApiError } from "./medusa-api-error"
 
 // FS-15 (spec 03 กฎข้อ 20c, AC-22): 409 ตอน complete cart → ข้อความไทยเฉพาะของแต่ละ code
-// `FetchError` ของ js-sdk 2.22.1 เก็บแค่ message/status ไม่มี `code` → จับคู่ด้วยข้อความคงที่ของ backend
-const fetchError = (message: string, status = 409) =>
-  Object.assign(new Error(message), { status, statusText: "Conflict" })
+// CORE-82 (spec 01 กฎข้อ 140, ADR-028): จับคู่ด้วย `code` ของ `MedusaApiError` เท่านั้น — ข้อความของ backend ไม่มีผล
+const apiError = (message: string, code: string | null = null, status = 409) =>
+  new MedusaApiError({ status, type: "conflict", code, message })
 
 const THAI = /[฀-๿]/
 
@@ -19,13 +20,12 @@ describe("checkoutConflictMessage", () => {
   })
 
   it.each(CHECKOUT_CONFLICTS)(
-    "$code: จับคู่ด้วย message ของ backend และด้วย code → ข้อความไทย ไม่มีข้อความอังกฤษของ backend",
-    ({ code, message, text }) => {
-      const byMessage = checkoutConflictMessage(fetchError(message))
-      expect(byMessage).toBe(text)
-      expect(byMessage).toMatch(THAI)
-      expect(byMessage).not.toContain(message)
-      expect(checkoutConflictMessage(Object.assign(fetchError("x"), { code }))).toBe(text)
+    "$code: จับคู่ด้วย code → ข้อความไทย",
+    ({ code, text }) => {
+      const byCode = checkoutConflictMessage(apiError("x", code))
+      expect(byCode).toBe(text)
+      expect(byCode).toMatch(THAI)
+      expect(checkoutConflictMessage({ code })).toBe(text)
     }
   )
 
@@ -34,13 +34,13 @@ describe("checkoutConflictMessage", () => {
     expect(new Set(texts).size).toBe(texts.length)
   })
 
-  it("message ที่ medusaError แต่งแล้ว (ตัวใหญ่ + จุดท้าย) ยังจับคู่ได้", () => {
-    const soldOut = CHECKOUT_CONFLICTS.find((c) => c.code === "FLASH_SOLD_OUT")!
-    expect(checkoutConflictMessage(new Error(`${soldOut.message}.`))).toBe(soldOut.text)
+  it("ข้อความของ backend แต่ไม่มี code → null (ไม่เทียบข้อความแล้ว — CORE-82)", () => {
+    expect(checkoutConflictMessage(apiError("This flash sale is sold out"))).toBeNull()
+    expect(checkoutConflictMessage(new Error("This flash sale is sold out"))).toBeNull()
   })
 
   it("error อื่น / ไม่ใช่ error → null (ผู้เรียกใช้ข้อความเดิม)", () => {
-    expect(checkoutConflictMessage(fetchError("Payment sessions are required"))).toBeNull()
+    expect(checkoutConflictMessage(apiError("Payment sessions are required", "SOMETHING_ELSE"))).toBeNull()
     expect(checkoutConflictMessage(null)).toBeNull()
     expect(checkoutConflictMessage("FLASH_SOLD_OUT")).toBeNull()
   })

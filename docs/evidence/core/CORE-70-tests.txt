@@ -1,0 +1,63 @@
+# CORE-70 (spec 01 กฎข้อ 128, AC-169) — ผล test 2026-11-21 (เครื่อง local: backend :9170 medusa develop, storefront :8170 next dev, DB medusa_core70)
+
+## RED (โค้ด develop 6f24b96b + test ใหม่)
+### backend integration: integration-tests/http/search-handle.spec.ts
+    ✕ AC-169: POST /store/search q "shirt" แบบที่ instantsearch-adapter ส่ง → ได้สินค้า seed handle t-shirt (1106 ms)
+    Expected value: "t-shirt"
+    Received array: []
+Tests:       1 failed, 1 total
+### storefront unit (Vitest): src/lib/search-client.test.ts
+     × routeToState: ?q=<คำ> → คำค้นของ index product 2ms
+     × routeToState: q ร่วมกับตัวกรองอื่นของ index เดิม 0ms
+     × routeToState: URL เดิม product[query] ยังใช้ได้ และไม่มี q → ไม่ตั้งคำค้น 0ms
+     × stateToRoute: คำค้นออกเป็น q ส่วนตัวกรองคงอยู่ใต้ product (ไม่มี configure) 0ms
+     × stateToRoute: ไม่มีคำค้น → ไม่มี q 0ms
+     × ส่ง POST /store/search ด้วย q + match_strategy เดียวกับ drawer แล้วคืน id ตามลำดับผล + จำนวนทั้งหมด 1ms
+TypeError: Cannot read properties of undefined (reading 'routeToState')
+TypeError: Cannot read properties of undefined (reading 'routeToState')
+### e2e chromium: e2e/core-70-unified-search.spec.ts (รันทีละ test เพราะ serial)
+  ✘  1 [chromium] › e2e/core-70-unified-search.spec.ts:95:5 › AC-169: คำค้นเดียวกันได้ชุดสินค้าเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (9.8s)
+    Error: expect(locator).toHaveValue(expected) failed
+    Expected: "corezetabhjfcfccjahcg"
+    Received: ""
+    test-results/core-70-unified-search-AC--64dcb-th-search-q-และ-th-store-q--chromium/test-failed-1.png
+  1 failed
+    Error: expect(page).toHaveURL(expected) failed
+    Expected pattern: /[?&]q=corezetabhjfcfcdajcbh(&|$)/
+    Received string:  "http://localhost:8170/th/store?product%5Bquery%5D=corezetabhjfcfcdajcbh"
+    test-results/core-70-unified-search-AC--b8881-ำค้นใน-th-store-→-URL-ใช้-q-chromium/test-failed-1.png
+  1 failed
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
+    test-results/core-70-unified-search-AC--b9fe5-ินค้า-seed-อย่างน้อย-1-ชิ้น-chromium/test-failed-1.png
+  1 failed
+หมายเหตุ: รอบ red ของ test "shirt" ใช้ assertion รุ่นแรก (drawer ต้องมี search-results) — รุ่นสุดท้ายเพิ่มการเทียบกับ /th/search?q=shirt (develop: /search ได้ 2 ผลจาก GET /store/products?q=, drawer 0)
+
+## GREEN (branch feat/CORE-70-unified-search)
+### backend integration (search-handle + search-thb + search-option-deleted)
+PASS integration-tests/http/search-handle.spec.ts
+PASS integration-tests/http/search-option-deleted.spec.ts
+PASS integration-tests/http/search-thb.spec.ts
+Tests:       3 passed, 3 total
+### e2e chromium: e2e/core-70-unified-search.spec.ts
+  ✓  1 [chromium] › e2e/core-70-unified-search.spec.ts:95:5 › AC-169: คำค้นเดียวกันได้ชุดสินค้าเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (1.9s)
+  ✓  2 [chromium] › e2e/core-70-unified-search.spec.ts:124:5 › AC-169: พิมพ์คำค้นใน /th/store → URL ใช้ q (1.2s)
+  ✓  3 [chromium] › e2e/core-70-unified-search.spec.ts:135:5 › AC-169: drawer ค้น "shirt" ได้สินค้า seed อย่างน้อย 1 ชิ้น และตรงกับ /th/search?q=shirt (1.6s)
+  3 passed (5.9s)
+### e2e ที่เกี่ยวข้อง: core-store, core-15-store-search-error, core-15b-search-drawer-error, thai-ui-pages, flash-sale-fs14, store-thb-price
+    Error: expect(page).toHaveURL(expected) failed
+    test-results/core-store-AC-6-guest-กด-A-fa523--ล็อกอินแล้วสินค้าเข้า-cart-chromium/test-failed-1.png
+  1 failed
+  14 passed (1.2m)
+  1 passed (4.9s)
+(core-store AC-6 ล้ม 1 ครั้งในรอบแรกเพราะ next dev compile PDP ครั้งแรก — รันซ้ำผ่าน ไม่เกี่ยวกับ task นี้; บรรทัด "1 passed" สุดท้ายคือรันซ้ำ)
+### storefront unit (Vitest ทั้ง project)
+ Test Files  103 passed (103)
+      Tests  1223 passed (1223)
+### storefront playwright project unit
+125 passed
+### backend unit
+Test Suites: 117 passed, 117 total
+Tests:       1604 passed, 1604 total
+### lint / typecheck / build
+pnpm lint: 0 errors (warning เดิม); pnpm typecheck (backend + storefront): ผ่าน; backend build + storefront build: ผ่าน

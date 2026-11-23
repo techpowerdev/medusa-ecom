@@ -228,6 +228,7 @@ Payout
     (variant ที่ไม่อยู่ในโปรแกรมนั้นไม่ถูกนำมาคิด) — AF-8 ห้ามคำนวณอัตราใหม่ที่ storefront
     (c) dedupe ทำใน API ก่อน paging (`count` = จำนวนสินค้าไม่ซ้ำ) ไม่ทำที่ storefront
     (d) ยอดประมาณการ ฿ บนการ์ด = ราคาปัจจุบัน × อัตราใน (a)/(b) ปัด 2 ตำแหน่ง half-up (กฎ 11) ไม่รวม cap
+        **(แก้รอบ 40 — owner 2026-11-21 "แสดงตามยอดจริง")** "ราคาปัจจุบัน" = ราคา**ก่อน VAT** (ฐานเดียวกับการคิดค่าคอมจริง) — กฎ 48a
 30. (รอบ 9, AF-10 — follow-up review #90) ตาข่ายกันพลาดของ reversal จาก cancel: reversal ของ AF-4 retry ใต้ lock ได้ราว 40 วินาที ถ้า DB ล่มนานกว่านั้น event หายและ entry
     `pending` ของ order ที่ยกเลิกจะถูก approve → maturity job รายวัน (AF-4) ก่อน approve ให้อ่าน `order.status` ของ entry ที่ครบกำหนด; order `canceled` และยอดสุทธิของ line > 0
     → สร้าง reversal ตามกฎ 28a (ใต้ lock `affiliate-attribution:<order_id>` ตามกฎ 27, idempotent กับ reversal ที่ subscriber สร้าง) แทนการ approve และ log warn `affiliate_cancel_reconciled`
@@ -249,7 +250,7 @@ Payout
     จาก `GET /affiliate/me/programs` แสดงชื่อ, อัตรา, วันที่, ป้าย active/upcoming, `announce_text`), Earnings (`/affiliate/earnings`: ยอดรวมต่อสถานะจาก `GET /affiliate/me/earnings`
     ใน `affiliate-earnings-pending|approved|paid|reversed` เป็น ฿ — (แก้ตาม review #152) API รวมยอด `GROUP BY status` (`summarizeCommissionEntries`) จึงคืนแถว `reversed`
     **แยก** เป็นยอดติดลบ และ `markPayoutPaid` เปลี่ยนเฉพาะ `approved → paid` (reversed ไม่ย้ายสถานะ) → แสดงแถว `affiliate-earnings-reversed` ตามค่าที่ API ให้ (ติดลบ, ข้อความไทยอธิบายว่าเป็นยอด
-    ที่ถูกหักจากการยกเลิก/คืนเงิน) แยกจากสามสถานะ; storefront **ไม่**คำนวณหักลบหรือรวมยอดเอง (ไม่ทำคณิตเงินที่ storefront); สถานะที่ API ไม่คืนแถวแสดง ฿0), Payouts (`/affiliate/payouts`: แถว `affiliate-payout-row`
+    ที่ถูกหักจากการยกเลิก/คืนเงิน) แยกจากสามสถานะ **(แก้รอบ 40 — owner 2026-11-21: `pending` เป็นยอดสุทธิหลังหัก reversal ของ entry ที่ยัง pending และแถว reversed เหลือเฉพาะ reversal ของ entry ที่ approved/paid แล้ว — คำนวณใน API, กฎ 48b)**; storefront **ไม่**คำนวณหักลบหรือรวมยอดเอง (ไม่ทำคณิตเงินที่ storefront); สถานะที่ API ไม่คืนแถวแสดง ฿0), Payouts (`/affiliate/payouts`: แถว `affiliate-payout-row`
     จาก `GET /affiliate/me/payouts` แสดงงวด, ยอด, สถานะ, `paid_at` — ไม่มี `reference` ตาม Q14), Profile (`/affiliate/profile`: ชื่อ, อีเมล, code, `affiliate-default-link` =
     `{storefront}/r/{code}` พร้อมปุ่มคัดลอก, `affiliate-payout-info-status` จาก `has_payout_info` ตามกฎ 34); สิทธิ์ตาม Q6: route ที่ API ตอบ 403 (เช่น `suspended` เปิด Products/Programs,
     `pending` เปิดหน้าใดนอกจาก Profile) → แสดง `affiliate-status-notice` ข้อความไทยตามสถานะ ไม่ใช่หน้า error; ข้อความไทยตรงในโค้ด + path ใหม่ใน ESLint rule (ADR-014)
@@ -324,8 +325,11 @@ Payout
 45. (รอบ 27, AF-21 — qa AF-M-02 บน develop `84b9e610`; ทำให้กฎ 14 + Q4 เป็นจริง) `POST /affiliate/register` ปฏิเสธ `code` ที่เป็นคำสงวน `admin, affiliate, store, auth, api, app, www, support, shop`:
     (a) ตรวจใน `PostAffiliateRegisterSchema` (`src/api/affiliate/validators.ts`) ระดับ field `code` — คง object schema ไว้เพราะ `zodValidator` ของ Medusa เรียก `.strict()`; เทียบแบบไม่สนตัวพิมพ์ (`code.toLowerCase()`);
     (b) `r` ของ Q4 ไม่อยู่ในรายการ เพราะ regex ของกฎ 14 บังคับ ≥ 3 ตัวอยู่แล้ว;
-    (c) ตอบ 400 `invalid_data` ข้อความคงที่ `"This referral code is reserved"` (Medusa นำหน้าด้วย `Invalid request:`) ไม่ต่อค่าจาก input;
-    (d) storefront: `affiliateRegister` (`lib/data/affiliate-portal.ts:222`) จับข้อความนี้ด้วย helper pure ใน `lib/util/` แล้วแสดง "รหัสแนะนำนี้เป็นคำสงวน กรุณาเลือกรหัสอื่น" ที่ `affiliate-register-error`; error อื่นคงข้อความเดิม (`FetchError` ไม่มี `code` จึงจับจากข้อความแบบ CORE-20d และมี contract test);
+    (c) ตอบ 400 `invalid_data` ข้อความคงที่ `"This referral code is reserved"` ไม่ต่อค่าจาก input
+        — **(แก้ปิดรอบ 41 ตาม CORE-84 #519)** พร้อม **code `AFFILIATE_CODE_RESERVED`** (`src/modules/affiliate/errors.ts`) จาก middleware `rejectReservedAffiliateCode` (`src/api/affiliate/middlewares.ts`) ที่อยู่**ก่อน** `validateAndTransformBody`
+          (error ของ zod validator ไม่มี code) จึงไม่มีคำนำหน้า `Invalid request:` แล้ว; refine ใน `PostAffiliateRegisterSchema` คงไว้เป็นชั้นที่สอง (unit ของ AC-53 ตรวจ schema ตรง);
+    (d) storefront: `affiliateRegister` (`lib/data/affiliate-portal.ts`) เรียกผ่าน `medusaFetch` (spec 01 กฎข้อ 140) แล้ว helper pure `affiliateRegisterError` (`lib/util/affiliate-register-error.ts`) **ตัดสินจาก code `AFFILIATE_CODE_RESERVED`**
+        (แก้ปิดรอบ 41 — เดิมจับจากข้อความเพราะ `FetchError` ไม่มี `code`) แล้วแสดง "รหัสแนะนำนี้เป็นคำสงวน กรุณาเลือกรหัสอื่น" ที่ `affiliate-register-error`; error อื่นคงข้อความเดิม; contract test เทียบ code กับ `errors.ts` ของ backend;
     (e) ไม่ backfill: แถวและลิงก์ `/r/<code>` ที่มีอยู่แล้วทำงานต่อ; AF-M-03 ไม่อยู่ในกฎนี้ (ตัดสินรอบ 28 → กฎ 13/AC-15)
 46. (ปิดรอบ 27, AF-22 — qa #334; ตามแนว spec 01 กฎข้อ 61/CORE-23b) ฟอร์มสมัครและเข้าสู่ระบบของ portal (`modules/affiliate/components/auth-forms/index.tsx`) ใช้ `<form action={...}>` ของ React 19 ซึ่ง reset ฟอร์มหลัง action แม้ล้ม → หลัง error ผู้ใช้ต้องกรอกใหม่หมด:
     (a) ทั้งสองฟอร์มใช้ `onSubmit={submitWithoutReset(action)}` (`lib/util/submit-without-reset.ts` ที่มีอยู่) แทน `action=` — หลัง error ทุกช่องคงค่าที่ผู้ใช้กรอก (รวมรหัสผ่าน) และ error แสดงที่ `affiliate-register-error`/`affiliate-login-error` ตามเดิม;
@@ -476,8 +480,8 @@ Payout
   `document.documentElement.scrollWidth ≤ viewport`; Given ชื่อสั้น (≤ 20 ตัว) + รหัสสั้น ที่ 1280 Then y-center ของ `affiliate-header-name` กับ `affiliate-logout` ต่างกัน < 5px (หน้าตาเดิม);
   test ส่วนป้าย/รหัสต้อง fail กับโค้ดก่อนแก้ (แนบผลใน PR); AC-51 และ AC-50 ผ่านโดยไม่แก้ locator; `--repeat-each=3` ผ่านทุกรอบ (e2e)
 - AC-53 (AF-21, กฎ 45) unit jest ใหม่ `src/api/affiliate/__tests__/validators.unit.spec.ts`: `PostAffiliateRegisterSchema.safeParse` กับคำสงวนทั้ง 9 คำ → `success=false` และมี issue ข้อความ `"This referral code is reserved"`; `"ADMIN"`, `"AdMin"` → `success=false` และมี issue เดียวกัน; `"admin1"`, `"my-shop"`, `"ann"` → `success=true` (ล้มบน develop);
-  integration (`affiliate-auth.spec.ts`): `POST /affiliate/register` ด้วยโทเคนใหม่และ `code: "admin"` → 400 `invalid_data`, `message` มี `This referral code is reserved`, ไม่มี affiliate ที่ `code = "admin"`; `code: "admin1"` → 200;
-  Vitest: helper คืนข้อความไทย (ตรง regex อักษรไทย) กับ error ที่มีข้อความนี้ และคืนข้อความเดิมกับ error อื่น; contract: ข้อความใน helper ตรงกับใน `validators.ts`;
+  integration (`affiliate-auth.spec.ts`): `POST /affiliate/register` ด้วยโทเคนใหม่และ `code: "admin"` → 400 `invalid_data`, **`code: "AFFILIATE_CODE_RESERVED"`** (เพิ่มปิดรอบ 41 — CORE-84), `message` มี `This referral code is reserved`, ไม่มี affiliate ที่ `code = "admin"`; `code: "admin1"` → 200;
+  Vitest: helper คืนข้อความไทย (ตรง regex อักษรไทย) กับ error ที่มี **code `AFFILIATE_CODE_RESERVED`** (แม้ข้อความอังกฤษเปลี่ยน) และคืนข้อความเดิมกับ error อื่น; contract: code ใน helper ตรงกับ `src/modules/affiliate/errors.ts` และ middleware ใช้ code นี้ (แก้ปิดรอบ 41 — เดิมเทียบข้อความกับ `validators.ts`);
   e2e (`affiliate-portal.spec.ts`): สมัครด้วย `affiliate-register-code` = `admin` → `affiliate-register-error` visible ข้อความไทย ไม่พาเข้า portal; แก้เป็นรหัสไม่ซ้ำแล้วส่งอีเมลเดิมซ้ำ → เข้า portal สำเร็จ; AC-1..AC-52 ที่เกี่ยวกับ register ยังผ่าน
 - AC-54 (AF-22, กฎ 46) e2e (ต่อจาก `affiliate-portal.spec.ts`, 1280×800 และ 375×812): Given ฟอร์มสมัครกรอก `affiliate-register-name`, `affiliate-register-code` = `admin` (คำสงวนตาม AF-21), `affiliate-register-email`, `affiliate-register-password` When กด `affiliate-register-submit`
   Then `affiliate-register-error` visible (อักษรไทย) และทั้งสี่ช่อง `toHaveValue` ค่าเดิมที่กรอก — **ล้มบน develop** (ช่องว่าง); When แก้เฉพาะ `affiliate-register-code` เป็นรหัสไม่ซ้ำแล้วกดอีกครั้ง Then เข้า portal (ไม่ต้องกรอกช่องอื่นใหม่);
@@ -599,6 +603,68 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
   approved/paid แล้ว — แก้ 2026-10-26, AC-28) ที่ยังไม่อยู่ใน `entry_ids` ของ payout ใด; ยอดสุทธิ ≤ 0 → ไม่สร้าง payout ยกยอดไปรอบถัดไป
 - Q9 (2026-10-25, AF-9) ยกเลิก payout `draft` = soft-delete (ไม่เพิ่มสถานะ `cancelled`)
 - กฎ 20 ให้ตรงกับโค้ดของ PR #35 (`draft → ended` ตรงได้)
+
+## Follow-up รอบ 40 (2026-11-21 — การทดสอบ manual O3 + เฟส 7; owner "แสดงตามยอดจริง")
+ที่มา: portal ประมาณค่าคอม ฿59 (คิดจากราคารวม VAT) แต่ได้จริง ฿55.14 (ก่อน VAT); Earnings "รอตรวจสอบ" แสดงยอดก่อนหัก reversal; B-1 (refund ขณะมี return ค้างไม่ reverse ค่าคอม) แก้ที่ spec 06 PAY-8
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 40)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| ราคาก่อน VAT ของ variant | `calculated_price.calculated_amount_without_tax` — **ไม่ได้มาจาก `query.graph` ตรงๆ** แต่ Store API เติมให้ผ่าน helper `wrapProductsWithTaxPrices` (`@medusajs/medusa/api/store/products/helpers` — แก้ชื่อรอบ 41 ตามที่ AF-24 ใช้จริง `src/api/affiliate/products/route.ts:4`) จาก tax context (region + `country_code`) — review #425 | ใช้ helper นี้ (หรืออ่านผ่าน Store API) ไม่คำนวณ VAT เอง |
+| รวมยอด | `summarizeCommissionEntries` ของ module เรา | ขยาย (กฎ 48b) |
+
+### Business rules (รอบ 40)
+48. (AF-24) (a) `GET /affiliate/products` คืนยอดประมาณการต่อการ์ดจากราคา**ก่อน VAT** (field ของ Medusa ตามตาราง) × อัตรา ปัด 2 ตำแหน่ง half-up ด้วย `MathBN` — คำนวณใน API (storefront ไม่ทำคณิตเงิน);
+    ป้ายบนการ์ด "ค่าคอมโดยประมาณ (คิดจากราคาก่อน VAT)"; ไม่มีราคาก่อน VAT (เช่นไม่มี tax rate) → ใช้ราคาที่ได้และป้ายเดิม
+    (b) `GET /affiliate/me/earnings`: `pending` = ผลรวม entry `pending` + ผลรวม entry `reversed` ที่ `(order_id, line_item_id)` ตรงกับ entry ที่ยัง `pending` (ยอดติดลบ) — ไม่ต่ำกว่า 0 ต่อ line;
+    `reversed` = เฉพาะ reversal ที่ไม่ได้ถูกนับใน `pending`; ผลรวมทุกแถวเท่ากับก่อนแก้ (ไม่มีเงินหาย/ซ้ำ); `approved`/`paid` ไม่เปลี่ยน; ข้อความใต้ `affiliate-earnings-pending` "หักรายการยกเลิก/คืนเงินแล้ว"
+
+### Acceptance criteria (รอบ 40)
+- ☑ AC-56 (AF-24, กฎ 48a) integration http — **ล้มบน develop** ก่อน: สินค้าราคา ฿590 (รวม VAT 7%) โปรแกรม 10% → การ์ดได้ประมาณการ = `round(590 / 1.07 × 0.10, 2)` = 55.14 (ตรงกับ entry จริงเมื่อซื้อ 1 ชิ้นใน e2e เดียวกัน);
+  storefront (unit Vitest) แสดงค่าจาก API ไม่คำนวณเอง
+- ☑ AC-57 (AF-24, กฎ 48b) integration: entry pending ฿100 ของ line L + reversal −฿100 ของ L → `pending=0`, `reversed=0`; entry approved ฿50 ของ line M + reversal −฿50 → `approved=50`, `reversed=−50`;
+  ผลรวม pending+approved+paid+reversed เท่ากับผลรวม `amount` ทุก entry (ล้มบน develop ที่ `pending=100`, `reversed=−150` — −100 ของ line L + −50 ของ line M; แก้ตัวเลขปิดรอบ 41 ตาม review #495 เดิมเขียน −100)
+
+### Tasks (รอบ 40)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| AF-24 | ☑ #439 — ประมาณการค่าคอมจากราคาก่อน VAT + `pending` สุทธิหลัง reversal (กฎ 48); qa | `src/api/affiliate/products/route.ts`, `src/modules/affiliate/service.ts` (`summarizeCommissionEntries`), storefront `modules/affiliate/**` (ป้าย), test | ~100 LOC + ~200 LOC test | AC-56, AC-57 | PR เอกสารรอบ 40 | — |
+(หมายเหตุ: AF-24 เคยถูกอ้างเป็นเลขสำรองใน Q21 รอบ 32 แต่ไม่ได้ใช้ — Q21 รวมใน GB-17 แล้ว จึงใช้เลขนี้)
+
+## Follow-up รอบ 41 (2026-11-21 — owner: รายงาน admin ใช้ pending สุทธิแบบ portal + ลิงก์แชร์มี `/th`)
+ที่มา: review #439 (AF-24 — `GET /admin/affiliate/reports/summary` ยังรวมแบบเดิม), GB-23 เสนอ (`share_url` ของ `GET /affiliate/products` = `<STOREFRONT_URL>/r/<code>?…` ไม่มี country)
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 41)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| ยอดสุทธิ | `summarizeCommissionEntries({ net_pending_reversals: true })` ของ module เรา (AF-24) | ใช้ตามเดิม (กฎ 49) |
+| country ของลิงก์ | constant `STOREFRONT_COUNTRY_CODE` (`src/lib/storefront.ts`, GB-23); route `/[countryCode]/r/[code]` ของ storefront เติม country ให้ `to` เอง (`affiliateLandingPath`) | ใช้ตามเดิม (กฎ 50) |
+
+### Business rules (รอบ 41)
+49. (AF-25) `GET /admin/affiliate/reports/summary` ใช้ `net_pending_reversals: true` แบบเดียวกับ `GET /affiliate/me/earnings` (กฎ 48b) → `pending`/`reversed` ของ affiliate เดียวกันในช่วงเดียวกันเท่ากับ portal; ผลรวมทุกสถานะเท่าเดิม
+50. (AF-26) `share_url` = `<STOREFRONT_URL>/<STOREFRONT_COUNTRY_CODE>/r/<code>?to=/products/<handle>` (`to` คงไม่มี country — route ของ storefront เติมเอง); `STOREFRONT_URL` ไม่ตั้ง → path สัมพัทธ์ `/th/r/<code>?…`
+
+### Acceptance criteria (รอบ 41)
+- ☑ AC-58 (AF-25, กฎ 49) integration http — **ล้มบน develop** ก่อน: ข้อมูลแบบ AC-57 → admin summary ของ affiliate นั้น `pending=0`, `reversed=0` สำหรับ line L และเท่ากับผลของ `/affiliate/me/earnings` ทุกสถานะ (ล้มบน develop ที่ `pending=100`, `reversed=−150` ของยอดรวม — −100 คือส่วนของ line L, −50 ของ line M; แก้ปิดรอบ 41 ตาม review #495)
+- ☑ AC-59 (AF-26, กฎ 50) unit `shareUrl` + integration: `share_url` match `^https?://[^/]+/th/r/<code>\?to=/products/<handle>$`; ไม่ตั้ง env → `/th/r/<code>?to=…` (แก้ assertion เดิม `portal.unit.spec.ts:55,59`)
+
+### Tasks (รอบ 41)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| AF-25 | ☑ #495 — admin summary ใช้ pending สุทธิ (กฎ 49) | `src/api/admin/affiliate/reports/summary/route.ts`, integration | ~5 LOC + ~80 LOC test | AC-58 | PR เอกสารรอบ 41 | — |
+| AF-26 | ☑ #502 — `share_url` มี `/th` (กฎ 50) | `src/modules/affiliate/utils/portal.ts`, unit + integration | ~5 LOC + ~40 LOC test | AC-59 | PR เอกสารรอบ 41 | — |
+
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review #495; ไม่บล็อก release v0.3.0)
+Status: draft (☐ — รอ owner สั่งทำ) · ไม่มีของ Medusa ที่เกี่ยว (โค้ดของ module เรา)
+### Business rules (รอบ 42)
+51. (AF-27 — hygiene) ผู้เรียก `summarizeCommissionEntries` ทุกตัวส่ง `net_pending_reversals: true` แล้ว (`/affiliate/me/earnings`, `/admin/affiliate/reports/summary`) → ลบ flag และแขนง `grouped`
+    (`src/modules/affiliate/service.ts` ~`:24-26`, ~`:139-144`) ให้การรวมแบบสุทธิ (กฎ 48b) เป็นพฤติกรรมเดียว; ผลของทั้งสอง route ไม่เปลี่ยน; test ที่เรียกแบบไม่ส่ง flag ปรับตาม
+### Acceptance criteria (รอบ 42)
+- AC-60 (AF-27, กฎ 51) grep: ไม่มี `net_pending_reversals` ใน `apps/backend/src`; AC-57 และ AC-58 ผ่านโดยไม่แก้ค่าที่คาด; `pnpm --filter backend typecheck` ผ่าน
+### Tasks (รอบ 42)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| AF-27 | ลบโหมด grouped ของ `summarizeCommissionEntries` (กฎ 51) | `src/modules/affiliate/service.ts`, สอง route ข้างบน, test | ~−20 LOC | AC-60 | PR เอกสารปิดรอบ 41 | — |
 
 ## Open questions (รอบ 32 — 2026-11-17)
 - ~~**Q21**~~ ✅ **owner ตอบ ก 2026-11-17** → `hold_days` และ `attribution_window_days` ≤ 36500 รวมใน GB-17 (spec 04 กฎข้อ 40 (ข), AC-60 (c)); คำถามเดิม:

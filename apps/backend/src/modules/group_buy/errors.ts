@@ -6,6 +6,8 @@ export const GB_UNITS_LIMIT_EXCEEDED = "GB_UNITS_LIMIT_EXCEEDED"
 export const GB_ITEMS_NOT_ELIGIBLE = "GB_ITEMS_NOT_ELIGIBLE"
 // owner 2026-10-26: cart หนึ่งใบ join ได้ครั้งเดียว และ cart ที่มี GB-* complete ไม่ได้ (ส่วนลดกลุ่มใช้ผ่าน draft order เท่านั้น)
 export const GB_CART_ALREADY_JOINED = "GB_CART_ALREADY_JOINED"
+// 400 INVALID_DATA: join ด้วย cart ว่าง — CORE-84 (spec 01 กฎข้อ 140, ADR-028) ให้ storefront ตัดสินจาก code ไม่ใช่ข้อความ
+export const GB_CART_EMPTY = "GB_CART_EMPTY"
 // 400 NOT_ALLOWED (กฎข้อ 14a, AC-26) — ไม่อยู่ใน BUSINESS_CONFLICT_CODES
 export const GB_CART_NOT_COMPLETABLE = "GB_CART_NOT_COMPLETABLE"
 // 400 NOT_ALLOWED (กฎข้อ 5, AC-23) — ไม่ใช่ 409 จึงห้ามอยู่ใน BUSINESS_CONFLICT_CODES
@@ -14,6 +16,8 @@ export const GB_DISCOUNT_NOT_APPLIED = "GB_DISCOUNT_NOT_APPLIED"
 export const GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED = "GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED"
 // 400 NOT_ALLOWED (กฎข้อ 35, AC-54): shipping method ของ cart ไม่ครอบ shipping profile ของสินค้า — ไม่ใช่ 409
 export const GB_SHIPPING_PROFILE_NOT_COVERED = "GB_SHIPPING_PROFILE_NOT_COVERED"
+// 400 NOT_ALLOWED (กฎข้อ 42, AC-62, ADR-024 a): สร้าง payment session ของ draft order หลังสิทธิ์ชำระปิดแล้ว — ไม่ใช่ 409
+export const GB_PAYMENT_CLOSED = "GB_PAYMENT_CLOSED"
 // ภายใน (ไม่ใช่ HTTP): deadline job เลือกผลจาก snapshot นอก lock แต่ใต้ lock ผลเปลี่ยนแล้ว (review #89) — job log เป็น warn
 export const GB_DEADLINE_OUTCOME_CHANGED = "GB_DEADLINE_OUTCOME_CHANGED"
 

@@ -1,4 +1,6 @@
+import type { BigNumberInput } from "@medusajs/framework/types"
 import { MathBN } from "@medusajs/framework/utils"
+import { STOREFRONT_COUNTRY_CODE } from "../../../lib/storefront"
 import { byCommissionPreference, isLineItemInScope, ProgramScope, RankedProgram as CommissionRanked } from "./commission"
 
 type ScopedProduct<V> = {
@@ -44,9 +46,44 @@ export const variantsInScope = <V extends { id: string }>(scope: ProgramScope, p
   )
 }
 
-/** `{storefront}/r/{code}?to=/products/{handle}` (spec 05 API) — ไม่มี STOREFRONT_URL → ลิงก์ relative */
+/**
+ * `{storefront}/{country}/r/{code}?to=/products/{handle}` (spec 05 กฎ 50, AF-26) — ไม่มี STOREFRONT_URL → ลิงก์ relative
+ * `to` ไม่มี country เพราะ route `/[countryCode]/r/[code]` ของ storefront เติมให้เอง
+ */
 export const shareUrl = (storefrontUrl: string | undefined, code: string, handle: string) =>
-  `${(storefrontUrl ?? "").replace(/\/+$/, "")}/r/${code}?to=/products/${handle}`
+  `${(storefrontUrl ?? "").replace(/\/+$/, "")}/${STOREFRONT_COUNTRY_CODE}/r/${code}?to=/products/${handle}`
+
+type PricedVariant = {
+  calculated_price?: {
+    calculated_amount?: BigNumberInput | null
+    calculated_amount_without_tax?: BigNumberInput | null
+    currency_code?: string | null
+  } | null
+}
+export type CardEstimate = { amount: number; currency_code: string; excludes_tax: boolean }
+
+/**
+ * กฎ 29d + 48a (AF-24): ยอดประมาณการต่อชิ้น = ราคาก่อน VAT ต่ำสุดของ variant × อัตรา ปัด 2 ตำแหน่ง half-up
+ * (ตัวเดียวกับ calculateCommission) ไม่รวม cap — ราคาก่อน VAT มาจาก Medusa (`calculated_amount_without_tax`)
+ * ถ้า variant ใดไม่มี → ใช้ `calculated_amount` ทุกตัวและ excludes_tax=false; ไม่มีราคาเลย → null
+ */
+export const cardEstimate = (variants: PricedVariant[], rate: BigNumberInput): CardEstimate | null => {
+  const prices = variants.flatMap(({ calculated_price: p }) =>
+    p && p.calculated_amount != null && p.currency_code ? [{ ...p, currency_code: p.currency_code }] : []
+  )
+  if (!prices.length) {
+    return null
+  }
+  const excludes_tax = prices.every((p) => p.calculated_amount_without_tax != null)
+  const base = prices
+    .map((p) => ({
+      amount: MathBN.convert((excludes_tax ? p.calculated_amount_without_tax : p.calculated_amount)!),
+      currency_code: p.currency_code,
+    }))
+    .reduce((min, p) => (MathBN.lt(p.amount, min.amount) ? p : min))
+  const amount = MathBN.convert(MathBN.div(MathBN.mult(base.amount, rate), 100), 2)
+  return { amount: amount.toNumber(), currency_code: base.currency_code, excludes_tax }
+}
 
 export type PortalTab = "active" | "upcoming"
 export type RankedProgram = CommissionRanked & { id: string }

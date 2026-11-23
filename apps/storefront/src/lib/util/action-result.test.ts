@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { actionErrorMessage, actionFailure } from "@lib/util/action-result"
 import { CHECKOUT_CONFLICTS } from "@lib/util/checkout-error"
 import { SIGN_IN_AGAIN_MESSAGE } from "@lib/util/error-message"
+import { MedusaApiError } from "@lib/util/medusa-api-error"
 
 // CORE-4i (spec 01 กฎข้อ 72, AC-110): helper กลางแปลง error ของ SDK → ผลแบบมีโครงสร้างของ server action
 // และแปลงผล → ข้อความไทยฝั่ง UI (unauthorized ใช้ SIGN_IN_AGAIN_MESSAGE ตัวเดียวทั้งเว็บ)
@@ -25,16 +26,23 @@ describe("actionFailure (กฎข้อ 72)", () => {
     expect(actionFailure(error)).toEqual({ error: "failed" })
   })
 
-  it("409 ที่ code อยู่ในรายการที่ผู้เรียกแยก → คืน code นั้น (FetchError ไม่มี code จึงเทียบข้อความของ backend)", () => {
-    const error = new FetchError(NOT_COMBINABLE.message, "Conflict", 409)
-    expect(actionFailure(error, ["PROMOTION_NOT_COMBINABLE"])).toEqual({
+  // CORE-82 (spec 01 กฎข้อ 140, ADR-028): code มาจาก MedusaApiError ของ medusaFetch — ไม่เทียบข้อความของ backend
+  const notCombinable = () =>
+    new MedusaApiError({ status: 409, type: "conflict", code: NOT_COMBINABLE.code, message: "x" })
+
+  it("409 ที่ code อยู่ในรายการที่ผู้เรียกแยก → คืน code นั้น", () => {
+    expect(actionFailure(notCombinable(), ["PROMOTION_NOT_COMBINABLE"])).toEqual({
       error: "PROMOTION_NOT_COMBINABLE",
     })
   })
 
+  it("FetchError ข้อความของ backend (ไม่มี code) → \"failed\" (ไม่เทียบข้อความแล้ว)", () => {
+    const error = new FetchError("This promotion can't be combined with the promotions already on the cart", "Conflict", 409)
+    expect(actionFailure(error, ["PROMOTION_NOT_COMBINABLE"])).toEqual({ error: "failed" })
+  })
+
   it("code ที่ผู้เรียกไม่ได้ขอแยก → \"failed\"", () => {
-    const error = new FetchError(NOT_COMBINABLE.message, "Conflict", 409)
-    expect(actionFailure(error)).toEqual({ error: "failed" })
+    expect(actionFailure(notCombinable())).toEqual({ error: "failed" })
   })
 
   it("object ที่มี code (ผลของ fetch ตรง) → คืน code ที่ขอแยก", () => {

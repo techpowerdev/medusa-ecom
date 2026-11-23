@@ -4,25 +4,10 @@ import {
   cardPrice,
   countdownText,
   earningsByStatus,
-  estimateCommission,
   portalPage,
   portalTab,
   priceVaries,
 } from "./affiliate-portal"
-
-// AF-8a (spec 05 กฎ 29d): ยอดประมาณการบนการ์ด = ราคาปัจจุบัน × อัตรา ปัด 2 ตำแหน่ง half-up (กฎ 11) ไม่รวม cap
-describe("estimateCommission", () => {
-  it.each([
-    [990, 15, 148.5],
-    [590, 10, 59],
-    [0.1, 5, 0.01], // 0.005 → half-up 0.01
-    [333.33, 12.5, 41.67], // 41.66625 → 41.67
-    [100.1, 3, 3], // 3.003 → 3.00
-    [1.15, 50, 0.58], // 0.575 → 0.58 (float ปกติให้ 0.57)
-  ])("ราคา %s × อัตรา %s = %s", (price, rate, expected) => {
-    expect(estimateCommission(price, rate)).toBe(expected)
-  })
-})
 
 describe("cardPrice", () => {
   const v = (amount: number | null, currency_code = "thb") => ({

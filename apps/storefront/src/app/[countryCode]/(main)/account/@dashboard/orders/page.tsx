@@ -1,22 +1,47 @@
 import { Metadata } from "next"
 
 import OrderOverview from "@modules/account/components/order-overview"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { listOrders } from "@lib/data/orders"
 import { listGroupBuyMemberships } from "@lib/data/group-buy"
 import { showOrdersEmptyState } from "@lib/util/group-buy-orders"
+import { pageFromSearchParam, totalPages as pageCount } from "@lib/util/pagination"
 import AccountGroupOrders from "@modules/group-buy/components/account-group-orders"
+import { Pagination } from "@modules/store/components/pagination"
 
 export const metadata: Metadata = {
   title: "คำสั่งซื้อ",
   description: "ภาพรวมคำสั่งซื้อที่ผ่านมาของคุณ",
 }
 
-export default async function Orders() {
-  const [orders, groupOrders] = await Promise.all([listOrders(), listGroupBuyMemberships()])
+// CORE-68 (กฎข้อ 126): หน้าละ 10
+const ORDERS_PAGE_SIZE = 10
 
-  if (!orders) {
+type Props = {
+  params: Promise<{ countryCode: string }>
+  searchParams: Promise<{ page?: string | string[] }>
+}
+
+export default async function Orders(props: Props) {
+  // CORE-68 (กฎข้อ 126): ?page= 1-based หน้าละ 10 จาก count ของ Medusa
+  const { page, offset } = pageFromSearchParam((await props.searchParams).page, ORDERS_PAGE_SIZE)
+  // CORE-78 (กฎข้อ 136a): ส่วนคำสั่งซื้อแบบกลุ่มอยู่เฉพาะหน้า 1 — หน้าอื่นไม่ต้องอ่าน GB-8
+  const [list, groupOrders] = await Promise.all([
+    listOrders(ORDERS_PAGE_SIZE, offset),
+    page === 1 ? listGroupBuyMemberships() : null,
+  ])
+
+  if (!list) {
     notFound()
+  }
+
+  const { orders, count } = list
+  const totalPages = pageCount(count, ORDERS_PAGE_SIZE)
+  // หน้าเกินจำนวน → หน้าสุดท้าย
+  if (page > totalPages) {
+    const { countryCode } = await props.params
+    const last = totalPages > 1 ? `?page=${totalPages}` : ""
+    redirect(`/${countryCode}/account/orders${last}`)
   }
 
   return (
@@ -29,11 +54,14 @@ export default async function Orders() {
       </div>
       {/* GB-7b: เวลาของ request ใช้ตัดสินสถานะ (server component render ครั้งเดียวต่อ request) */}
       {/* eslint-disable-next-line react-hooks/purity */}
-      <AccountGroupOrders data={groupOrders} now={Date.now()} />
+      {page === 1 && <AccountGroupOrders data={groupOrders} now={Date.now()} />}
       {/* GB-12 (กฎข้อ 32e + คำตัดสิน owner): empty state เฉพาะเมื่อรู้แน่ว่าไม่มีทั้ง order ปกติและแบบกลุ่ม (GB-8 ล้ม → ไม่แสดง) */}
       {(orders.length > 0 || showOrdersEmptyState(orders, groupOrders)) && (
         <div>
           <OrderOverview orders={orders} />
+          {totalPages > 1 && (
+            <Pagination page={page} totalPages={totalPages} data-testid="orders-pagination" />
+          )}
         </div>
       )}
     </div>

@@ -28,8 +28,16 @@ const CartDropdown = ({
   cart?: HttpTypes.StoreCart | null
 }) => {
   // Statically rendered pages can't read the cart cookie, so the cart is loaded in the browser.
-  const [clientCart, setClientCart] = useState<HttpTypes.StoreCart | null>(null)
+  // CORE-72 (กฎข้อ 130): `undefined` = ยังโหลดไม่เสร็จ (ไม่รู้จำนวน) ต่างจาก `null` = ไม่มี cart จริง
+  const [clientCart, setClientCart] = useState<
+    HttpTypes.StoreCart | null | undefined
+  >(undefined)
   const cartState = serverCart ?? clientCart
+  // CORE-77 (กฎข้อ 135): อ่านล้ม → เลิก busy (ป้าย "ตะกร้า" ไม่มีตัวเลข) แล้วอ่านใหม่ 1 ครั้งเมื่อ pathname เปลี่ยน
+  const [loadFailed, setLoadFailed] = useState(false)
+  const retryLoad = useRef<(() => void) | null>(null)
+  const countUnknown = cartState === undefined
+  const loading = countUnknown && !loadFailed
   const [activeTimer, setActiveTimer] = useState<NodeJS.Timer | undefined>(
     undefined
   )
@@ -60,12 +68,17 @@ const CartDropdown = ({
             isInitialLoad = false
           }
           setClientCart(cart)
+          setLoadFailed(false)
         })
-        .catch(() => {})
+        .catch(() => setLoadFailed(true))
 
     load()
+    retryLoad.current = load
     window.addEventListener(CART_UPDATED_EVENT, load)
-    return () => window.removeEventListener(CART_UPDATED_EVENT, load)
+    return () => {
+      retryLoad.current = null
+      window.removeEventListener(CART_UPDATED_EVENT, load)
+    }
   }, [serverCart])
 
   const timedOpen = () => {
@@ -95,6 +108,18 @@ const CartDropdown = ({
 
   const pathname = usePathname()
 
+  // อ่านใหม่เฉพาะตอน pathname เปลี่ยนขณะอ่านล้มอยู่ — ไม่วนซ้ำ ไม่ตั้ง timer และไม่ยิงเพิ่มเมื่ออ่านสำเร็จแล้ว
+  const lastPathname = useRef(pathname)
+  useEffect(() => {
+    if (lastPathname.current === pathname) {
+      return
+    }
+    lastPathname.current = pathname
+    if (loadFailed) {
+      retryLoad.current?.()
+    }
+  }, [pathname, loadFailed])
+
   // open cart dropdown when modifying the cart items, but only if we're not on the cart page
   useEffect(() => {
     if (itemRef.current !== totalItems && !pathname.includes("/cart")) {
@@ -113,7 +138,10 @@ const CartDropdown = ({
             className="hover:text-ui-fg-base whitespace-nowrap"
             href="/cart"
             data-testid="nav-cart-link"
-          >{`ตะกร้า (${totalItems})`}</LocalizedClientLink>
+            aria-busy={loading || undefined}
+          >
+            {countUnknown ? "ตะกร้า" : `ตะกร้า (${totalItems})`}
+          </LocalizedClientLink>
         </PopoverButton>
         <Transition
           show={cartDropdownOpen}

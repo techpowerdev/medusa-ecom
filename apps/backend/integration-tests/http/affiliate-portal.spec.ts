@@ -195,11 +195,14 @@ medusaIntegrationTestRunner({
         expect(item.program).toEqual(
           expect.objectContaining({ id: p2.id, name: "P2", commission_value: 12, starts_at: tomorrow.toISOString() })
         )
-        expect(item.share_url).toEqual("https://shop.example/r/ann?to=/products/af7-in-c-1")
+        // AF-26 กฎ 50 (AC-59): ลิงก์แชร์มี country code; `to` ไม่มี (route ของ storefront เติมเอง)
+        expect(item.share_url).toMatch(/^https?:\/\/[^/]+\/th\/r\/ann\?to=\/products\/af7-in-c-1$/)
         expect(item.product.variants).toHaveLength(2)
         expect(item.product.variants[0].calculated_price).toEqual(
           expect.objectContaining({ calculated_amount: 500, currency_code: "thb" })
         )
+        // AF-24 กฎ 48a: ไม่มี region/tax rate → ประมาณการจากราคาที่ได้ (500 × 12%) และไม่อ้างว่าเป็นราคาก่อน VAT
+        expect(item.estimate).toEqual({ amount: 60, currency_code: "thb", excludes_tax: false })
 
         const active = await api.get("/affiliate/products?status=active", bearer(token))
         expect(active.data.products).toEqual([])
@@ -302,6 +305,8 @@ medusaIntegrationTestRunner({
           expect.objectContaining({ program: expect.objectContaining({ id: p2.id, commission_value: 15 }), rate_varies: true })
         )
         expect(data.products[0].product.variants.map((v: any) => v.id).sort()).toEqual([x1.id, x2.id].sort())
+        // กฎ 35b: rate_varies → ไม่มียอดประมาณการ
+        expect(data.products[0].estimate).toBeNull()
       })
 
       it("rejects an unknown status", async () => {
@@ -409,6 +414,56 @@ medusaIntegrationTestRunner({
         expect(payouts.data.payouts[0].entry_ids).toBeUndefined()
         // AC-32 (AF-7b, owner 2026-10-27): ไม่ส่ง reference ให้ affiliate
         expect(payouts.data.payouts[0]).not.toHaveProperty("reference")
+      })
+
+      // AF-24 (กฎ 48b, AC-57): pending สุทธิหลังหัก reversal ของ line ที่ยัง pending; reversed เหลือเฉพาะของ approved/paid
+      it("AC-57: nets reversals of still-pending lines into pending and keeps the grand total", async () => {
+        const { token, id } = await loginAffiliate("hal", "active")
+        const entry = (order_id: string, line_item_id: string | null, amount: number, status: string) => ({
+          affiliate_id: id,
+          program_id: "affprog_x",
+          order_id,
+          line_item_id,
+          amount,
+          currency: "thb",
+          status: status as any,
+        })
+        const entries = [
+          entry("order_l", "item_l", 100, "pending"),
+          entry("order_l", "item_l", -100, "reversed"),
+          entry("order_m", "item_m", 50, "approved"),
+          entry("order_m", "item_m", -50, "reversed"),
+          // reversal เกินยอด pending ของ line → pending ของ line เป็น 0 ส่วนเกินคงอยู่ใน reversed (ไม่มีเงินหาย)
+          entry("order_n", "item_n", 30, "pending"),
+          entry("order_n", "item_n", -20.5, "reversed"),
+          entry("order_n", "item_n", -12.25, "reversed"),
+          // line เดียวกันแต่คนละ order ไม่ถูกนำมาหักกัน
+          entry("order_o", "item_n", 40.1, "pending"),
+        ]
+        await affiliates.createAffiliateCommissionEntries(entries)
+
+        const { data } = await api.get("/affiliate/me/earnings", bearer(token))
+        const byStatus = Object.fromEntries(data.totals.map((t: any) => [t.status, t.amount]))
+        expect(byStatus).toEqual({ pending: 40.1, approved: 50, reversed: -52.75 })
+        const sum = (xs: number[]) => xs.reduce((a, b) => a + Math.round(b * 100), 0)
+        expect(sum(Object.values(byStatus) as number[])).toEqual(sum(entries.map((e) => e.amount)))
+
+        // AC-57 ตามตัวอักษร: pending ฿100 + reversal −฿100 ของ line เดียวกัน → pending=0 ไม่มียอด reversed
+        const only = await loginAffiliate("ivy", "active")
+        await affiliates.createAffiliateCommissionEntries([
+          { ...entry("order_l2", "item_l2", 100, "pending"), affiliate_id: only.id },
+          { ...entry("order_l2", "item_l2", -100, "reversed"), affiliate_id: only.id },
+        ])
+        const { data: netted } = await api.get("/affiliate/me/earnings", bearer(only.token))
+        expect(netted.totals).toEqual([{ currency: "thb", status: "pending", amount: 0, count: 1 }])
+
+        // admin summary ยังเป็นยอด GROUP BY status ตามเดิม (กฎ 48b ครอบเฉพาะ portal)
+        const summary = await affiliates.summarizeCommissionEntries({ affiliate_id: id })
+        expect(Object.fromEntries(summary.map((r) => [r.status, r.amount]))).toEqual({
+          pending: 170.1,
+          approved: 50,
+          reversed: -182.75,
+        })
       })
     })
   },

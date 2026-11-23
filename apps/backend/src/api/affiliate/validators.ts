@@ -1,9 +1,10 @@
 import { z } from "@medusajs/framework/zod"
 
 // AF-21 (spec 05 กฎ 45 + Q4): คำสงวน เทียบแบบไม่สนตัวพิมพ์; `r` ไม่อยู่ในรายการเพราะ regex บังคับ ≥ 3 ตัวอยู่แล้ว
-// ข้อความคงที่ (storefront จับด้วยข้อความ — contract test ใน `affiliate-register-error.test.ts`) ไม่ต่อค่าจาก input
+// ข้อความคงที่ ไม่ต่อค่าจาก input; storefront ตัดสินจาก code `AFFILIATE_CODE_RESERVED` (CORE-84 — middleware ใน middlewares.ts)
 const RESERVED_CODES = new Set(["admin", "affiliate", "store", "auth", "api", "app", "www", "support", "shop"])
 export const RESERVED_CODE_MESSAGE = "This referral code is reserved"
+export const isReservedAffiliateCode = (code: unknown) => typeof code === "string" && RESERVED_CODES.has(code.toLowerCase())
 
 // code is the public slug in tracking links (`/r/<code>`); คง object schema เพราะ zodValidator ของ Medusa เรียก `.strict()`
 export const PostAffiliateRegisterSchema = z.object({
@@ -11,7 +12,7 @@ export const PostAffiliateRegisterSchema = z.object({
   code: z
     .string()
     .regex(/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/, "code must be a 3-32 char lowercase slug")
-    .refine((code) => !RESERVED_CODES.has(code.toLowerCase()), RESERVED_CODE_MESSAGE),
+    .refine((code) => !isReservedAffiliateCode(code), RESERVED_CODE_MESSAGE),
 })
 
 export type PostAffiliateRegisterSchemaType = z.infer<typeof PostAffiliateRegisterSchema>

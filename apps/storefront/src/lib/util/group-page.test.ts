@@ -4,8 +4,10 @@ import {
   addToSelection,
   groupDiscountValue,
   groupJoinable,
+  groupNotStarted,
   groupProgress,
   groupSharePath,
+  groupShowCountdown,
   removeFromSelection,
   selectionUnits,
   selectionVariantInfo,
@@ -90,8 +92,39 @@ describe("groupDiscountValue", () => {
 })
 
 describe("groupSharePath", () => {
-  it("ลิงก์แชร์ /g/<token> (middleware เติม country เอง — กฎข้อ 29b)", () => {
-    expect(groupSharePath("ab c")).toBe("/g/ab%20c")
+  // GB-24 (กฎข้อ 47, AC-66b): ลิงก์แชร์มี country code ของหน้าปัจจุบัน
+  it("ลิงก์แชร์ /<cc>/g/<token>", () => {
+    expect(groupSharePath("th", "tok_1")).toBe("/th/g/tok_1")
+    expect(groupSharePath("th", "ab c")).toBe("/th/g/ab%20c")
+  })
+})
+
+// GB-24 (กฎข้อ 49, AC-66a): แคมเปญที่ยังไม่ถึง starts_at ซ่อนฟอร์ม join
+describe("groupNotStarted", () => {
+  const now = Date.parse("2026-11-04T10:00:00Z")
+  it("starts_at ในอนาคต → true", () => {
+    expect(groupNotStarted(campaign({ starts_at: "2026-11-04T10:00:01Z" }), now)).toBe(true)
+  })
+  it("starts_at ถึงแล้ว/ผ่านแล้ว หรือไม่มี → false", () => {
+    expect(groupNotStarted(campaign({ starts_at: "2026-11-04T10:00:00Z" }), now)).toBe(false)
+    expect(groupNotStarted(campaign({ starts_at: "2026-11-03T10:00:00Z" }), now)).toBe(false)
+    expect(groupNotStarted(campaign({ starts_at: null }), now)).toBe(false)
+  })
+})
+
+// GB-27 (กฎข้อ 52, AC-70): นับถอยหลังแสดงเฉพาะกลุ่ม open ของแคมเปญที่เริ่มแล้ว
+describe("groupShowCountdown", () => {
+  const now = Date.parse("2026-11-04T10:00:00Z")
+  it("แคมเปญยังไม่เริ่ม → false แม้กลุ่ม open", () => {
+    expect(groupShowCountdown(group(), campaign({ starts_at: "2026-11-04T10:00:01Z" }), now)).toBe(false)
+  })
+  it("แคมเปญเริ่มแล้วหรือไม่มี starts_at และกลุ่ม open → true", () => {
+    expect(groupShowCountdown(group(), campaign({ starts_at: "2026-11-04T10:00:00Z" }), now)).toBe(true)
+    expect(groupShowCountdown(group(), campaign({ starts_at: null }), now)).toBe(true)
+  })
+  it("กลุ่มไม่ open → false", () => {
+    expect(groupShowCountdown(group({ status: "succeeded" }), campaign({ starts_at: null }), now)).toBe(false)
+    expect(groupShowCountdown(group({ status: "failed" }), campaign({ starts_at: null }), now)).toBe(false)
   })
 })
 

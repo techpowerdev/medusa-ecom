@@ -3,9 +3,12 @@ import {
   GROUP_STATUS_LABEL,
   groupDiscountValue,
   groupJoinable,
+  groupNotStarted,
   groupProgress,
+  groupShowCountdown,
   type PublicGroupBuyGroupView,
 } from "@lib/util/group-page"
+import { formatDateTime } from "@lib/util/date"
 import { HttpTypes } from "@medusajs/types"
 import Countdown from "@modules/common/components/countdown"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -28,9 +31,12 @@ type Props = {
 export default function GroupPage({ view: { group, campaign }, product, shareUrl, addresses, now }: Props) {
   const progress = groupProgress(group, campaign)
   const discount = groupDiscountValue(campaign.discount)
-  const open = group.status === "open"
   // กฎข้อ 29e: ปุ่ม join และลิงก์แชร์ซ่อนเมื่อกลุ่มไม่ open หรือเลย ends_at แล้ว (job อาจยังไม่ตัดสิน)
   const joinable = groupJoinable(group, now)
+  // GB-24 (กฎข้อ 49): แคมเปญยังไม่เริ่ม → ไม่มีฟอร์ม join แสดงเวลาเริ่มแทน
+  const notStarted = groupNotStarted(campaign, now)
+  // GB-27 (กฎข้อ 52): แคมเปญยังไม่เริ่ม → ไม่มีนับถอยหลัง (แสดงเฉพาะ group-starts-at)
+  const showCountdown = groupShowCountdown(group, campaign, now)
   const price = product ? getProductPrice({ product }).cheapestPrice : null
 
   return (
@@ -91,7 +97,7 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
         <p className="text-base-regular" data-testid="group-member-count">
           สมาชิก <span className="tabular-nums">{group.progress_people}</span> คน
         </p>
-        {open && (
+        {showCountdown && (
           <Countdown
             endsAt={group.ends_at}
             now={now}
@@ -102,8 +108,14 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
         )}
       </section>
 
+      {notStarted && campaign.starts_at && (
+        <p className="text-base-semi" data-testid="group-starts-at">
+          เริ่ม {formatDateTime(campaign.starts_at)}
+        </p>
+      )}
+
       {/* mount ไว้แม้หมดเวลา (joinable=false) เพื่อคง error ของ join ที่เพิ่งล้ม — qa #238 D2 */}
-      {product && (
+      {product && !notStarted && (
         <GroupJoin
           token={group.join_token}
           product={product}

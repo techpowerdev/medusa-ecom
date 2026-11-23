@@ -81,7 +81,12 @@ test("AC-48: หน้า policy ทั้ง 5 เป็นภาษาไท�
   for (const name of POLICY_PAGES) {
     await step(`/${name}`, async () => {
       await page.goto(`/${CC}/${name}`)
-      await expectThai(page, ["policy-title", "policy-content"])
+      // CORE-85: หน้า contact มีข้อมูลติดต่อของร้าน (อีเมล, LINE ID) ที่เป็นละติน ไม่ใช่ข้อความ UI → ตรวจเฉพาะส่วนข้อความไทย
+      // (AC-182 ใน core-85-contact-page.spec.ts ตรวจไทยของ intro/hours/ป้ายช่องทางไว้แล้ว)
+      await expectThai(
+        page,
+        name === "contact" ? ["policy-title", "contact-intro", "contact-hours"] : ["policy-title", "policy-content"]
+      )
       expect(await page.title()).toMatch(THAI)
       if (name === "shipping") await evidence("4c2-01-policy-shipping-th")
     })
