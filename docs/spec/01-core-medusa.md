@@ -2991,8 +2991,9 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
      (`core-4h-auth-reason`, `core-19b-continue-to-review`, `group-buy-join` ของ storefront) นับเฉพาะ action ที่ test ตรวจ (แบบ hotfix #485) — ไม่ลดสิ่งที่ตรวจ
 148. (CORE-92 — review/qa #489) หน้า account: (a) overview ที่มีแต่ membership แบบกลุ่ม (ไม่มี order ปกติ) ไม่แสดง "ยังไม่มีคำสั่งซื้อ" คู่กับลิงก์ "ดูทั้งหมด"; (b) overview เรียก GB-8 ด้วย `limit=1` เพื่อตรวจว่ามี membership (เดิม 50);
      (c) `SearchPagination` ของ `/store`: `nav` มี `aria-label="แบ่งหน้า"`, ปุ่มหน้าปัจจุบัน `aria-current="page"`, `aria-label` ของปุ่มเป็นไทย (แบบกฎข้อ 136c); (d) ลบ `eslint-disable` purity ที่ `orders/page.tsx` (~`:56`) โดยย้ายค่าที่ไม่ pure ออกจาก render
-149. (CORE-93 — review #496, qa #496) หน้า collection/category (`refinement-list/options-picker/index.tsx` ~`:96–113`) หัว option ไม่แสดง `({selectedCount})` แบบเดียวกับกฎข้อ 143;
-     chip "ป้ายกำกับ" ของตัวกรองที่เลือกตัดข้อความยาวด้วย `truncate` + `title` ไม่ตัดบรรทัดกลางคำ
+149. (CORE-93 — review #496, qa #496; แก้ถ้อยคำตาม owner Q-C17 = ก 2026-11-24) (a) หัว option ของ `OptionsPicker` (`refinement-list/options-picker/index.tsx` ~`:96–113`) ไม่แสดง `({selectedCount})` แบบเดียวกับกฎข้อ 143
+     — component นี้ถูกซ่อนบนหน้า collection/category ด้วย `hideOptionsPicker` (ค่าจาก starter) จึงแก้ที่ component เท่านั้น **ห้าม**ลบ `hideOptionsPicker` หรือเปลี่ยนพฤติกรรมหน้า collection/category;
+     (b) chip ของตัวกรองที่เลือกบน `/<cc>/store` (`store-refinements/current-refinements.tsx` — รวม chip "ป้ายกำกับ") ตัดข้อความยาวด้วย `truncate` บรรทัดเดียว + `title` = ข้อความเต็มของ chip ไม่ตัดบรรทัดกลางคำ
 150. (CORE-94 — test/code hygiene storefront; review #474, #501, #514, #519, builder CORE-88) (a) `search-client.ts` + `search-client.test.ts` ผ่าน `prettier --check`; `it.each` เพิ่ม "หมวก", "รองเท้า", "เสื้อ ยืด";
      (b) `cart.ts` `updateLineItem`/`applyPromotions` อ่าน cookie ครั้งเดียวต่อ action; (c) `checkout-affiliate-coverage.test.ts` จับผู้เรียก `placeOrder` ที่ส่ง metadata ผ่าน ternary (เช่น `payment-button/index.tsx:270` รอบ retry ส่ง `undefined`) — ตรวจว่าทุกทาง**ครั้งแรก**ส่ง metadata ของ cart และทาง retry มี comment อธิบาย;
      (d) regex `COMPARE` ใน `core-84-gb-affiliate-codes.test.ts` จับรูป `/…/.test(err.message)` และ `.message.includes(` ด้วย (mutation: เติมรูปนี้ในไฟล์ใดก็ได้ → test ล้ม)
@@ -3012,7 +3013,8 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
   หน้า dynamic ที่ server ส่ง cart แล้ว → request `retrieveCart` จาก `CartDropdown` = 0 ครั้งตอน mount; e2e สามไฟล์ใน (c) ผ่าน `--repeat-each=3`
 - AC-189 (CORE-92, กฎข้อ 148) e2e: ลูกค้าที่มีแต่ membership กลุ่ม → overview ไม่มีข้อความ "ยังไม่มีคำสั่งซื้อ" และมีลิงก์ "ดูทั้งหมด"; request GB-8 จาก overview มี `limit=1`;
   `/th/store` ที่มี ≥ 2 หน้า: `nav` ของ `SearchPagination` มี `aria-label` อักษรไทย และปุ่มหน้าปัจจุบัน `aria-current="page"` (ล้มบน develop); `pnpm lint` ไม่มี `eslint-disable` ใน `orders/page.tsx`
-- AC-190 (CORE-93, กฎข้อ 149) e2e หน้า collection ที่สินค้ามี option "ขนาด": หัว "ขนาด" ไม่มีวงเล็บตัวเลข (ล้มบน develop — "(0)"); เลือก tag ชื่อยาว 80 ตัว → chip สูง 1 บรรทัดและมี `title` = ชื่อเต็ม
+- ☑ AC-190 (CORE-93, กฎข้อ 149; แก้ตาม owner Q-C17 = ก 2026-11-24) (a) unit Vitest แบบ `core-87-facet-heading.test.ts` render `OptionsPicker` ที่มี option "ขนาด": หัว "ขนาด" ไม่มีวงเล็บตัวเลขทั้งก่อนและหลังเลือกค่า (ล้มบน develop — "ขนาด(2)", "สี(0)");
+  (b) e2e `/th/store` กรองด้วย tag ชื่อยาว 80 ตัว → ข้อความใน chip "ป้ายกำกับ" อยู่บรรทัดเดียวและ chip มี `title` = "ป้ายกำกับ: <ชื่อเต็ม>" (ล้มบน develop — 4 บรรทัด ไม่มี `title`) (ผ่าน: red บน develop `59c6af18` ทั้ง unit 2/2 + e2e → green unit `src/core-93-options-picker-heading.test.ts` 2/2 + `e2e/core-93-label-chip.spec.ts`; e2e ของ `/store` เดิม core-70/75/87 ผ่าน)
 - ☑ AC-191 (CORE-94, กฎข้อ 150) `prettier --check` ของสองไฟล์ผ่าน; unit `search-client.test.ts` มีคำทั้งสามใน `it.each`; unit ของ `cart.ts` นับการเรียก `getAuthHeaders`/cookie ต่อ action = 1;
   mutation ของ (c) และ (d) (แนบใน PR): เอา metadata ออกจากทางครั้งแรก → coverage test ล้ม; เพิ่ม `/x/.test(err.message)` ในไฟล์ storefront → `core-84` ล้ม
 - AC-192 (CORE-95, กฎข้อ 151) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน: (a) ทางบัตร PI `succeeded` (Stripe test mode หรือ mock แบบ AC-175) + complete ตอบ 401 → URL `/th/account?notice=payment_received`
