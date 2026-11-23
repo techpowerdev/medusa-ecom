@@ -1,5 +1,6 @@
 import { APIRequestContext, APIResponse, Locator, Page } from "@playwright/test"
 
+import { groupJoinActionMessage } from "../src/lib/util/group-join-error"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, Customer, Headers, adminHeaders, createCustomer, publishableKey, signInAs, variantOf } from "./support/medusa"
@@ -284,6 +285,10 @@ test("AC-48: POST สร้างทีมตอบ 400 (ต้นแบบถ�
 
   const card = cardOf(page, ids.g3)
   await card.getByTestId("group-create-team-button").click()
+  // CORE-84 (กฎข้อ 140): ข้อความของ code GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED (≠ "ปิดรับแล้ว" ของ 400 ที่ไม่มี code)
+  await expect(page.getByTestId("group-create-team-error")).toHaveText(
+    groupJoinActionMessage("GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED")
+  )
   await expectThai(page, ["group-create-team-error"])
   await expect(page).toHaveURL(new RegExp(`/${CC}$`))
   await expect(card.getByTestId("group-create-team-button")).toBeEnabled()

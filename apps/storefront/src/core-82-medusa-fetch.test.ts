@@ -144,6 +144,21 @@ describe("medusaFetch: header เท่ากับ sdk.client.fetch (AC-181 a)"
     expect(viaHelper.headers["x-publishable-api-key"]).toBe("pk_test_core82")
   })
 
+  // CORE-84: route ของ affiliate ส่ง token ของ actor `affiliate` แทน JWT ของลูกค้า — header อื่นเหมือนเดิม
+  it.each([
+    ["token ของ affiliate", { authorization: "Bearer aff_tok" }],
+    ["ไม่ส่ง auth", {}],
+  ])("authHeaders (%s) แทน getAuthHeaders", async (_label, auth) => {
+    fetchMock.mockImplementation(async () => ok())
+    const { medusaFetch } = await load()
+    await medusaFetch("/affiliate/register", { code: "ann" })
+    const viaCustomer = lastRequest().headers
+    await medusaFetch("/affiliate/register", { code: "ann" }, auth)
+    const { authorization: _customer, ...rest } = viaCustomer
+    expect(_customer).toBe("Bearer jwt_1")
+    expect(lastRequest().headers).toEqual({ ...rest, ...auth })
+  })
+
   it("ไม่มี body → ไม่ส่ง body (แบบ sdk.store.cart.complete)", async () => {
     fetchMock.mockImplementation(async () => ok())
     const { medusaFetch } = await load()

@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 
 import { APIRequestContext, Request } from "@playwright/test"
 
+import { AFFILIATE_RESERVED_CODE_MESSAGE } from "../src/lib/util/affiliate-register-error"
 import { createActiveAffiliate } from "./support/affiliate"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, Headers, adminHeaders, createCustomer, publishableKey } from "./support/medusa"
@@ -211,7 +212,8 @@ test("AF-21: สมัครด้วยรหัสคำสงวน → ข�
     await register("admin")
     await expect(page.getByTestId("affiliate-register-error")).toBeVisible()
     await expectThai(page, ["affiliate-register-error"])
-    await expect(page.getByTestId("affiliate-register-error")).toHaveText(/คำสงวน/)
+    // CORE-84 (กฎข้อ 140): ข้อความของ code AFFILIATE_CODE_RESERVED (≠ fallback "สมัครไม่สำเร็จ…")
+    await expect(page.getByTestId("affiliate-register-error")).toHaveText(AFFILIATE_RESERVED_CODE_MESSAGE)
     await expect(page).toHaveURL(new RegExp(`/${CC}/affiliate/login(\\?|$)`))
   })
 
@@ -290,7 +292,7 @@ for (const viewport of [
           await page.getByTestId(testId).fill(value)
         }
         await page.getByTestId("affiliate-register-submit").click()
-        await expect(page.getByTestId("affiliate-register-error")).toBeVisible()
+        await expect(page.getByTestId("affiliate-register-error")).toHaveText(AFFILIATE_RESERVED_CODE_MESSAGE)
         await expectThai(page, ["affiliate-register-error"])
         for (const [testId, value] of Object.entries(values)) {
           await expect(page.getByTestId(testId), testId).toHaveValue(value)

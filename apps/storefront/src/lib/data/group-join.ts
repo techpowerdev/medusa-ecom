@@ -9,6 +9,7 @@ import { createCartWithItems, resolveRegion } from "@lib/util/server-cart"
 import { getAuthHeaders } from "./cookies"
 import { retrieveCustomer } from "./customer"
 import { calculatePriceForShippingOption, listCartShippingMethods } from "./fulfillment"
+import { medusaFetch } from "./medusa-fetch"
 
 // GB-7a2 (spec 04 กฎข้อ 29c, 31): server action ของการ join จากหน้ากลุ่ม — แยกจาก group-buy.ts (ใช้ server-cart ที่เป็น server-only)
 
@@ -82,13 +83,8 @@ export async function prepareGroupCart(input: {
  * error → code ของ GB-7a2a ผ่าน `groupJoinFailure` (ข้อความไทยแปลงฝั่ง client)
  */
 export async function joinGroupBuy(token: string, cartId: string): Promise<{ ok: true } | { error: GroupJoinActionError }> {
-  return sdk.client
-    .fetch(`/store/group-buy/groups/${encodeURIComponent(token)}/join`, {
-      method: "POST",
-      body: { cart_id: cartId },
-      headers: await getAuthHeaders(),
-      cache: "no-store",
-    })
+  // CORE-84 (กฎข้อ 140, ADR-028): medusaFetch เพื่อได้ `code` ของ error
+  return medusaFetch(`/store/group-buy/groups/${encodeURIComponent(token)}/join`, { cart_id: cartId })
     .then(() => ({ ok: true as const }))
     .catch(groupJoinFailure)
 }

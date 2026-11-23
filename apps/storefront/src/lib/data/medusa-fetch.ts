@@ -12,7 +12,8 @@ import { getAuthHeaders } from "./cookies"
  * ไม่ตั้ง `cache`: POST ไม่ถูก cache และ `no-store` ใน action ทำให้ cart ที่ render หลัง action ค้างค่าเดิม (CORE-4i-b)
  * เมื่อ `FetchError` เก็บ code/type แล้ว (issue upstream) ย้ายกลับไปใช้ SDK และลบไฟล์นี้ (เช็กลิสต์ bump ของ spec 07)
  */
-export async function medusaFetch<T>(path: string, body?: object): Promise<T> {
+// CORE-84: `authHeaders` แทน header ของลูกค้า (`getAuthHeaders`) — route ของ affiliate ใช้ token ของ actor `affiliate` (`{}` = ไม่ส่ง)
+export async function medusaFetch<T>(path: string, body?: object, authHeaders?: Record<string, string>): Promise<T> {
   let locale: string | null = null
   try {
     locale = (await getLocaleHeader())["x-medusa-locale"]
@@ -28,7 +29,7 @@ export async function medusaFetch<T>(path: string, body?: object): Promise<T> {
       accept: "application/json",
       ...(MEDUSA_PUBLISHABLE_KEY ? { "x-publishable-api-key": MEDUSA_PUBLISHABLE_KEY } : {}),
       ...(locale ? { "x-medusa-locale": locale } : {}),
-      ...(await getAuthHeaders()),
+      ...(authHeaders ?? (await getAuthHeaders())),
     },
     credentials: "omit",
     ...(body ? { body: JSON.stringify(body) } : {}),

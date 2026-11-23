@@ -13,6 +13,7 @@ import type { PublicGroupBuyGroupView } from "@lib/util/group-page"
 import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import { teamCreateFailure, type ActiveGroupBuyCampaign, type CreateTeamResult } from "@lib/util/home-campaigns"
 import { getAuthHeaders } from "./cookies"
+import { medusaFetch } from "./medusa-fetch"
 
 /**
  * PAY-3b (spec 06 กฎข้อ 9a): draft order ของกลุ่มผ่าน membership ของลูกค้า — route อ่านอย่างเดียวของ GB-8 (ADR-016)
@@ -97,13 +98,8 @@ export async function listActiveGroupBuyCampaigns(): Promise<ActiveGroupBuyCampa
 export async function createGroupBuyTeam(campaignId: string): Promise<CreateTeamResult> {
   const headers = await getAuthHeaders()
   if (!("authorization" in headers)) return { error: "unauthorized" }
-  return sdk.client
-    .fetch<{ group: { join_token: string } }>(`/store/group-buy/groups`, {
-      method: "POST",
-      headers,
-      body: { campaign_id: campaignId },
-      cache: "no-store",
-    })
+  // CORE-84 (กฎข้อ 140, ADR-028): medusaFetch เพื่อได้ `code` ของ error (header ของลูกค้าจาก getAuthHeaders เหมือนกัน)
+  return medusaFetch<{ group: { join_token: string } }>("/store/group-buy/groups", { campaign_id: campaignId })
     .then(({ group }): CreateTeamResult => ({ ok: true, token: group.join_token }))
     .catch(teamCreateFailure)
 }
