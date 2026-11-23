@@ -86,3 +86,39 @@ describe("createSingleFlight isPending", () => {
     expect(run.isPending()).toBe(false)
   })
 })
+
+// ADM-46 (spec 08 กฎ 50, AC-51): ปุ่ม Save disabled ตลอดช่วงที่ lock ถูก hold (ระหว่างแอนิเมชันปิด) — React อ่านสถานะผ่าน subscribe/isLocked
+describe("createSingleFlight isLocked/subscribe", () => {
+  it("is locked while fn runs and stays locked after hold() until release()", async () => {
+    const run = createSingleFlight()
+    expect(run.isLocked()).toBe(false)
+    let resolve!: () => void
+    const done = run(() => new Promise<void>((r) => (resolve = r)).then(run.hold))
+    expect(run.isLocked()).toBe(true)
+    resolve()
+    await done
+    expect(run.isLocked()).toBe(true)
+    run.release()
+    expect(run.isLocked()).toBe(false)
+  })
+
+  it("unlocks after fn settles without hold() (request error / client validation)", async () => {
+    const run = createSingleFlight()
+    await expect(run(() => Promise.reject(new Error("500")))).rejects.toThrow("500")
+    expect(run.isLocked()).toBe(false)
+    await run(async () => undefined)
+    expect(run.isLocked()).toBe(false)
+  })
+
+  it("notifies subscribers on every lock change and stops after unsubscribe", async () => {
+    const run = createSingleFlight()
+    const seen: boolean[] = []
+    const unsubscribe = run.subscribe(() => seen.push(run.isLocked()))
+    await run(async () => run.hold())
+    run.release()
+    expect(seen).toEqual([true, true, true, false])
+    unsubscribe()
+    await run(async () => undefined)
+    expect(seen).toHaveLength(4)
+  })
+})

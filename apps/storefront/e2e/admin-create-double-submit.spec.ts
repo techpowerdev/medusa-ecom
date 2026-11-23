@@ -70,6 +70,33 @@ async function humanDoubleClick(page: Page, target: Locator, afterResponse: () =
 const postResponse = (page: Page, path: string) =>
   page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === path)
 
+/**
+ * ADM-46 (spec 08 กฎ 50, AC-51 (a)): เริ่มเฝ้าปุ่มก่อนคลิก — ทุก requestAnimationFrame หลัง response ของ POST `path` กลับ
+ * (resource timing ของ fetch ที่เริ่มหลังจุดนี้) บันทึก `disabled` ของปุ่มจนปุ่มถูกถอดจาก DOM (modal ปิดจบ) หรือครบ 3 วินาที
+ * ตรวจใน browser เอง เพราะ waitForResponse ฝั่ง node มาถึงช้ากว่า frame ที่ต้องดู; คืน disabled ของทุก frame ที่ปุ่มยังอยู่
+ */
+async function watchDisabledAfterResponse(target: Locator, path: string) {
+  const handle = await target.elementHandle()
+  if (!handle) throw new Error("watchDisabledAfterResponse: ไม่พบปุ่ม")
+  await handle.evaluate((button, path) => {
+    const since = performance.now()
+    const responded = () =>
+      performance
+        .getEntriesByType("resource")
+        .some((e) => e.startTime >= since && new URL(e.name).pathname === path && (e as PerformanceResourceTiming).responseEnd > 0)
+    const frames: boolean[] = []
+    ;(window as unknown as { __adm46: Promise<boolean[]> }).__adm46 = new Promise((resolve) => {
+      const tick = () => {
+        if (!button.isConnected || performance.now() - since > 3000) return resolve(frames)
+        if (responded()) frames.push((button as HTMLButtonElement).disabled)
+        requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    })
+  }, path)
+  return () => target.page().evaluate(() => (window as unknown as { __adm46: Promise<boolean[]> }).__adm46)
+}
+
 const dialog = (page: Page) => page.getByRole("dialog")
 /** modal เริ่มปิดแล้ว (data-state=closed ระหว่างแอนิเมชัน) หรือถูกถอดไปแล้ว — ไม่มี dialog ที่ open */
 const openDialog = (page: Page) => page.locator('[role="dialog"][data-state="open"]')
@@ -316,19 +343,28 @@ for (const c of CASES) {
         await expect(dialog(page)).toHaveCount(0)
         expect(posts).toHaveLength(4)
       })
+
+      await step("(e) AC-51: หลัง POST สำเร็จ ระหว่าง modal ปิด ปุ่ม Save disabled ทุก frame (กฎ 50)", async () => {
+        await form.open(page)
+        await form.fill(page, 4)
+        const frames = await watchDisabledAfterResponse(form.save(page), form.path)
+        const created = postResponse(page, form.path)
+        await form.save(page).click()
+        expect((await created).status()).toBe(200)
+        await expect(dialog(page)).toHaveCount(0)
+        const seen = await frames()
+        test.info().annotations.push({ type: "AC-51 frames หลัง response", description: JSON.stringify(seen) })
+        expect(seen.filter((disabled) => !disabled), `frame ที่ Save กดได้: ${JSON.stringify(seen)}`).toEqual([])
+        expect(posts).toHaveLength(5)
+      })
     } finally {
       await form.cleanup(ids)
     }
   })
 }
 
-test("AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้", async ({
-  page,
-  request,
-  step,
-}) => {
-  test.setTimeout(120_000)
-  const admin = await adminHeaders(request)
+/** แคมเปญ pool ที่ active ของ seed (t-shirt) — `status("ended")` จบแคมเปญใน cleanup */
+async function createActivePoolCampaign(request: APIRequestContext, admin: Headers) {
   const { products } = await call(request, admin, "/admin/products?handle=t-shirt&fields=id")
   const { campaign } = await call(request, admin, "/admin/group-buy/campaigns", {
     name: `ADM-39 pool ${uniqueTag()}`,
@@ -348,6 +384,17 @@ test("AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ
   })
   const status = (next: string) => call(request, admin, `/admin/group-buy/campaigns/${campaign.id}/status`, { status: next })
   await status("active")
+  return { campaign, status }
+}
+
+test("AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้", async ({
+  page,
+  request,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const admin = await adminHeaders(request)
+  const { campaign, status } = await createActivePoolCampaign(request, admin)
   const path = `/admin/group-buy/campaigns/${campaign.id}/groups`
   const posts = countPosts(page, path)
   // mock สำเร็จ: POST จริงช้ากว่า 100ms (workflow) คลิกที่สองจึงโดน lock ระหว่างรอเสมอ — response เร็ว = กรณีที่ ADM-B1 เกิด
@@ -371,6 +418,53 @@ test("AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ
       expect((await failed).status()).toBe(500)
       await expect(button).toBeEnabled()
       for (const expected of [3, 4]) {
+        const created = postResponse(page, path)
+        await button.click()
+        expect((await created).status()).toBe(200)
+        await expect(button).toBeEnabled()
+        expect(posts).toHaveLength(expected)
+      }
+    })
+  } finally {
+    await status("ended").catch((e: Error) => expect.soft(e.message, "จบแคมเปญของ test").toBe(""))
+  }
+})
+
+test("AC-51 (b): Create pool group — กด Enter ค้าง (keydown repeat) = POST 1 ครั้ง; คลิกแยก 2 ครั้งหลัง response = 2 group", async ({
+  page,
+  request,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const admin = await adminHeaders(request)
+  const { campaign, status } = await createActivePoolCampaign(request, admin)
+  const path = `/admin/group-buy/campaigns/${campaign.id}/groups`
+  const posts = countPosts(page, path)
+  // mock สำเร็จแบบเคส AC-44: response เร็ว = keydown ที่ repeat มาถึงหลัง response กลับแล้ว (กรณีที่ lock in-flight ไม่ช่วย)
+  await routePosts(page, path, { group: { id: "gbgrp_adm46_mock" } })
+  const button = page.getByTestId("gb-create-pool-group")
+  try {
+    await step("โฟกัสปุ่มแล้วกด Enter ค้าง: keydown แรก → response กลับ → keydown repeat อีก 4 ครั้ง → POST 1 ครั้ง", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/group-buying/${campaign.id}`)
+      await expect(button).toBeEnabled()
+      await button.focus()
+      const created = postResponse(page, path)
+      await page.keyboard.down("Enter")
+      expect((await created).status()).toBe(200)
+      await expect(button).toBeEnabled()
+      await button.focus()
+      // keyboard.down ซ้ำโดยไม่ up = keydown ที่ repeat === true (แบบกดปุ่มค้างจริง)
+      for (let i = 0; i < 4; i++) {
+        await page.keyboard.down("Enter")
+      }
+      await page.keyboard.up("Enter")
+      await expect(button).toBeEnabled()
+      expect(posts).toHaveLength(1)
+    })
+
+    await step("คลิกแยก 2 ครั้งหลัง response → POST 2 ครั้ง (regression กฎ 43)", async () => {
+      for (const expected of [2, 3]) {
         const created = postResponse(page, path)
         await button.click()
         expect((await created).status()).toBe(200)
@@ -420,10 +514,15 @@ test("AC-44: Import codes (หน้า pool) — ดับเบิลคลิ
     const failed = postResponse(page, path)
     await button.click()
     expect((await failed).status()).toBe(500)
+    // AC-51 (a) (กฎ 50): ไม่มี modal — สำเร็จแล้วปุ่ม Import disabled ทุก frame หลัง response จนเลือกไฟล์ใหม่
+    const frames = await watchDisabledAfterResponse(button, path)
     const created = postResponse(page, path)
     await button.click()
     expect((await created).status()).toBe(200)
     await expect(page.getByTestId("evoucher-import-result")).toContainText("Imported 1 codes")
     expect(posts).toHaveLength(3)
+    const seen = await frames()
+    expect(seen.length, "มี frame หลัง response").toBeGreaterThan(0)
+    expect(seen.filter((disabled) => !disabled), `frame ที่ Import กดได้: ${JSON.stringify(seen)}`).toEqual([])
   })
 })
