@@ -80,6 +80,13 @@ export const groupSharePath = (countryCode: string, token: string) =>
 export const groupNotStarted = (campaign: Pick<PublicGroupBuyCampaign, "starts_at">, now: number) =>
   !!campaign.starts_at && Date.parse(campaign.starts_at) > now
 
+/** GB-27 (กฎข้อ 52): นับถอยหลังแสดงเฉพาะกลุ่ม `open` ของแคมเปญที่เริ่มแล้ว — ก่อนเริ่มแสดงเฉพาะ `group-starts-at` */
+export const groupShowCountdown = (
+  group: Pick<PublicGroupBuyGroup, "status">,
+  campaign: Pick<PublicGroupBuyCampaign, "starts_at">,
+  now: number
+) => group.status === "open" && !groupNotStarted(campaign, now)
+
 /** GB-7a2 (กฎข้อ 29e): ปุ่ม join และลิงก์แชร์ — กลุ่ม `open` และยังไม่เลย `ends_at` (job อาจยังไม่ตัดสินกลุ่มที่หมดเวลา) */
 export const groupJoinable = (group: Pick<PublicGroupBuyGroup, "status" | "ends_at">, now: number) =>
   group.status === "open" && !!group.ends_at && Date.parse(group.ends_at) > now
