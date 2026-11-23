@@ -82,7 +82,7 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
   )
 }
 
-// AF-12a (spec 05 กฎ 37a): แท็บ Programs — สร้าง/แก้ (FocusModal) และลบเฉพาะ draft (usePrompt) ผ่าน admin API ของ AF-5
+// AF-12a (spec 05 กฎ 37a): แท็บ Programs — สร้าง (FocusModal)/แก้ (Drawer — ADM-44) และลบเฉพาะ draft (usePrompt) ผ่าน admin API ของ AF-5
 export const ProgramsTable = () => {
   const { getFullDate } = useDate()
   const list = useAffiliateList<Program>("programs", "programs")
