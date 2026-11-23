@@ -23,6 +23,7 @@ import {
   sessionIntentId,
 } from "./support/stripe"
 import { WorkflowExecution, cartCompletionSettled } from "./support/cart-completion"
+import { createFlashCampaign, createFlashProduct, endFlashCampaign } from "./support/flash-sale"
 
 // PAY-9 (spec 06 กฎข้อ 11, AC-22 c, ADR-025 — O-2 #69): ลูกค้าอยู่หน้า review (ปุ่มกดได้ — ผ่านด่าน UI ของ FS-21 กฎข้อ 26b)
 // แล้วใช้สิทธิ์ flash จาก cart อื่นผ่าน API (แบบสองแท็บ) → กดสั่งด้วยบัตร → capture แล้ว complete ล้ม FLASH_LIMIT_EXCEEDED
@@ -30,8 +31,6 @@ import { WorkflowExecution, cartCompletionSettled } from "./support/cart-complet
 // และ payment_status = captured (ไม่ใช่ refunded)
 // Stripe test mode จริง; สร้างสินค้า/แคมเปญเฉพาะของ test นี้และปิดแคมเปญเมื่อจบ; หา element ด้วย data-testid (ADR-014)
 test.use({ evidenceTarget: { feature: "payments", taskId: "PAY-9" } })
-
-const PRICE = 1000
 
 let admin: Headers
 let pk: string
@@ -46,86 +45,30 @@ async function stripeRefunds(request: APIRequestContext, intentId: string): Prom
   return (await res.json()).data
 }
 
+/** flash config ของแคมเปญ: สิทธิ์ต่อคน `perCustomerLimit` ชิ้น (total_cap 50) */
+const flashConfig = (perCustomerLimit: number) => ({ per_customer_limit: perCustomerLimit, total_cap: 50, show_countdown: true })
+
 test.beforeAll(async ({ request }) => {
   test.skip(!HAS_STRIPE_UI, "ต้องตั้ง STRIPE_API_KEY (sk_test_) + NEXT_PUBLIC_STRIPE_KEY (pk_test_) ของบัญชี Stripe เดียวกัน")
   admin = await adminHeaders(request)
   pk = await publishableKey(request, admin)
-  const get = async (path: string) => ok(await request.get(`${BACKEND_URL}${path}`, { headers: admin }), path)
-  const post = async (path: string, data: object) =>
-    ok(await request.post(`${BACKEND_URL}${path}`, { headers: admin, data }), path)
-  const run = `${Date.now()}`
-
-  const { sales_channels } = await get("/admin/sales-channels?limit=1")
-  const { shipping_profiles } = await get("/admin/shipping-profiles?type=default")
-  const { stock_locations } = await get("/admin/stock-locations?limit=1")
-
-  const { product } = await post("/admin/products?fields=id,*variants,*variants.inventory_items", {
-    title: `E2E PAY9 ${run}`,
-    handle: `e2e-pay9-${run}`,
-    status: "published",
-    shipping_profile_id: shipping_profiles[0].id,
-    sales_channels: [{ id: sales_channels[0].id }],
-    options: [{ title: "Size", values: ["M"] }],
-    variants: [
-      {
-        title: "M",
-        sku: `PAY9-${run}`,
-        options: { Size: "M" },
-        manage_inventory: true,
-        prices: [{ currency_code: "thb", amount: PRICE }],
-      },
-    ],
-  })
-  variantId = product.variants[0].id
-  await post(
-    `/admin/inventory-items/${product.variants[0].inventory_items[0].inventory_item_id}/location-levels`,
-    { location_id: stock_locations[0].id, stocked_quantity: 100 }
-  )
-
-  const { campaign } = await post("/admin/campaigns", {
-    name: `PAY-9 ${run}`,
-    campaign_identifier: `pay9-${run}`,
-    starts_at: new Date(Date.now() - 60 * 60_000).toISOString(),
-    ends_at: new Date(Date.now() + 60 * 60_000).toISOString(),
-  })
-  campaignId = campaign.id
-  await post("/admin/promotions", {
-    code: `PAY9-FLASH-${run}`,
-    type: "standard",
-    status: "active",
-    is_automatic: true,
-    campaign_id: campaignId,
-    application_method: {
-      type: "percentage",
-      target_type: "items",
-      allocation: "across",
-      value: 20,
-      target_rules: [{ attribute: "items.product.id", operator: "in", values: [product.id] }],
-    },
-  })
-  await setLimit(request, 1)
+  const product = await createFlashProduct(request, admin, "PAY9", 100)
+  variantId = product.variantId
+  campaignId = await createFlashCampaign(request, admin, "PAY9", product.productId, flashConfig(1))
 })
 
 async function setLimit(request: APIRequestContext, perCustomerLimit: number) {
   await ok(
     await request.post(`${BACKEND_URL}/admin/flash-sales/${campaignId}/config`, {
       headers: admin,
-      data: { per_customer_limit: perCustomerLimit, total_cap: 50, show_countdown: true },
+      data: flashConfig(perCustomerLimit),
     }),
     "flash sale config"
   )
 }
 
 test.afterAll(async ({ request }) => {
-  if (campaignId) {
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/campaigns/${campaignId}`, {
-        headers: admin,
-        data: { ends_at: new Date(Date.now() - 60_000).toISOString() },
-      }),
-      "end campaign"
-    )
-  }
+  if (campaignId) await endFlashCampaign(request, admin, campaignId)
 })
 
 test("AC-22c: ใช้สิทธิ์ flash จาก cart อื่นระหว่างอยู่หน้า review → จ่ายด้วยบัตรแล้วถูกคืนเงิน → จ่ายใหม่ใน cart เดิม → order captured มี payment collection ชุดเดียว", async ({

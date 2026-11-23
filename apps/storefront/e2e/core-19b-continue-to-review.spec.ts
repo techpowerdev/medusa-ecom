@@ -9,6 +9,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { isNavCartReadBody, isServerAction } from "./support/server-action"
 import { HAS_STRIPE_UI, PROMPTPAY_PROVIDER, cartPaymentState } from "./support/stripe"
 
 // CORE-19b: spec 01 AC-64 — กด "Continue to review" (submit-payment-button) ครั้งเดียวต้องไปขั้น review ทุกรอบ
@@ -90,9 +91,10 @@ test("AC-64: PromptPay — กดครั้งเดียวทันที�
       await page.goto(`/${CC}/checkout?step=payment`)
 
       // server action ที่ browser ยิงหลังเลือกวิธีชำระ: ต้องมีแค่การสร้าง session ตอนเลือก (กดซ้อน = สร้างซ้ำ, PI แรกถูก cancel)
+      // CORE-91 (กฎข้อ 147c): ไม่นับ retrieveCart ที่ nav ยิงเอง (ไม่ใช่ action ของขั้น payment) — action อื่นยังนับทั้งหมด
       let serverActions = 0
       const countAction = (req: Request) => {
-        if (req.method() === "POST" && req.headers()["next-action"]) serverActions++
+        if (isServerAction(req, (body) => !isNavCartReadBody(body))) serverActions++
       }
       await clickContinueAsSoonAsEnabled(page)
       page.on("request", countAction)

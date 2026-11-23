@@ -2,6 +2,7 @@ import { APIRequestContext, Page } from "@playwright/test"
 
 import { REFUNDED_NOTICE } from "../src/lib/util/checkout-error"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { createFlashCampaign, createFlashProduct, endFlashCampaign } from "./support/flash-sale"
 import {
   STOREFRONT_COUNTRY as CC,
   Customer,
@@ -24,53 +25,12 @@ import { THAI } from "./support/thai-text"
 // สร้างสินค้า/แคมเปญเฉพาะของ test นี้และปิดแคมเปญเมื่อจบ; หา element ด้วย data-testid (ADR-014)
 test.use({ evidenceTarget: { feature: "flash-sale", taskId: "FS-24" } })
 
-const PRICE = 1000
-
 let admin: Headers
 let pk: string
 
 type Racer = { page: Page; customer: Customer; cartId: string; sessionId: string; total: number }
 
 const storeHeaders = (customer: Customer) => ({ authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk })
-
-/** สินค้าใหม่ 1 variant (สต็อก 100) + แคมเปญ flash ลด 20% total_cap 1 ที่เริ่มแล้ว คืน variant + campaign id */
-async function lastFlashUnit(request: APIRequestContext) {
-  const get = async (path: string) => ok(await request.get(`${BACKEND_URL}${path}`, { headers: admin }), path)
-  const post = async (path: string, data: object) =>
-    ok(await request.post(`${BACKEND_URL}${path}`, { headers: admin, data }), path)
-  const run = `${Date.now()}`
-  const { sales_channels } = await get("/admin/sales-channels?limit=1")
-  const { shipping_profiles } = await get("/admin/shipping-profiles?type=default")
-  const { stock_locations } = await get("/admin/stock-locations?limit=1")
-  const { product } = await post("/admin/products?fields=id,*variants,*variants.inventory_items", {
-    title: `E2E FS24 ${run}`,
-    handle: `e2e-fs24-${run}`,
-    status: "published",
-    shipping_profile_id: shipping_profiles[0].id,
-    sales_channels: [{ id: sales_channels[0].id }],
-    options: [{ title: "Size", values: ["M"] }],
-    variants: [
-      {
-        title: "M",
-        sku: `FS24-${run}`,
-        options: { Size: "M" },
-        manage_inventory: true,
-        prices: [{ currency_code: "thb", amount: PRICE }],
-      },
-    ],
-  })
-  await post(`/admin/inventory-items/${product.variants[0].inventory_items[0].inventory_item_id}/location-levels`, {
-    location_id: stock_locations[0].id,
-    stocked_quantity: 100,
-  })
-  const { campaign } = await post("/admin/campaigns", {
-    name: `FS-24 ${run}`,
-    campaign_identifier: `fs24-${run}`,
-    starts_at: new Date(Date.now() - 60 * 60_000).toISOString(),
-    ends_at: new Date(Date.now() + 60 * 60_000).toISOString(),
-  })
-  return { variantId: product.variants[0].id as string, productId: product.id as string, campaignId: campaign.id as string, run }
-}
 
 /** ลูกค้าใหม่ใน browser context ของตัวเอง: cart 1 ชิ้นถึงขั้น review ด้วยบัตร 4242 (ปุ่มสั่งซื้อกดได้) */
 async function racerAtReview(page: Page, request: APIRequestContext, baseURL: string, variantId: string): Promise<Racer> {
@@ -130,37 +90,11 @@ test("AC-31: สองลูกค้าแย่ง flash ชิ้นสุด
   step,
 }, testInfo) => {
   test.setTimeout(240_000)
-  const { variantId, productId, campaignId, run } = await lastFlashUnit(request)
+  // สินค้าใหม่ (สต็อก 100) + แคมเปญ flash ลด 20% total_cap 1 ที่เริ่มแล้ว
+  const { productId, variantId } = await createFlashProduct(request, admin, "FS24", 100)
+  const campaignId = await createFlashCampaign(request, admin, "FS24", productId, { total_cap: 1, show_countdown: true })
   const other = await browser.newContext({ baseURL })
   try {
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/promotions`, {
-        headers: admin,
-        data: {
-          code: `FS24-FLASH-${run}`,
-          type: "standard",
-          status: "active",
-          is_automatic: true,
-          campaign_id: campaignId,
-          application_method: {
-            type: "percentage",
-            target_type: "items",
-            allocation: "across",
-            value: 20,
-            target_rules: [{ attribute: "items.product.id", operator: "in", values: [productId] }],
-          },
-        },
-      }),
-      "promotion"
-    )
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/flash-sales/${campaignId}/config`, {
-        headers: admin,
-        data: { total_cap: 1, show_countdown: true },
-      }),
-      "flash sale config"
-    )
-
     let racers: Racer[] = []
     await step("ลูกค้า A และ B (คนละ browser context) ไปถึงขั้น review ด้วยบัตร 4242", async () => {
       racers = [
@@ -208,12 +142,6 @@ test("AC-31: สองลูกค้าแย่ง flash ชิ้นสุด
     })
   } finally {
     await other.close()
-    await ok(
-      await request.post(`${BACKEND_URL}/admin/campaigns/${campaignId}`, {
-        headers: admin,
-        data: { ends_at: new Date(Date.now() - 60_000).toISOString() },
-      }),
-      "end campaign"
-    )
+    await endFlashCampaign(request, admin, campaignId)
   }
 })
