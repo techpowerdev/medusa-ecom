@@ -18,7 +18,7 @@ import {
   type PoolFormBody,
   poolFormSchema,
 } from "../lib/evoucher-pool-form"
-import { createSingleFlight } from "../lib/single-flight"
+import { useSingleFlight } from "../lib/single-flight"
 
 // ตัวเลือก partner ของฟอร์ม Create pool คงเพดานเดิม (ทำเป็น Combobox ค้นหาได้นอกขอบเขต ADM-5)
 const PARTNER_SELECT_QUERY = { limit: 100, offset: 0 }
@@ -35,7 +35,8 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     defaultValues: POOL_FORM_DEFAULTS,
   })
   // กฎ 43 (ADM-39): สำเร็จแล้ว hold ระหว่าง modal กำลังปิด — release ตอนเปิดใหม่
-  const [submitOnce] = useState(createSingleFlight)
+  // กฎ 50 (ADM-46): `submitLocked` = in-flight หรือ hold — Save disabled ตลอดช่วงแอนิเมชันปิด
+  const [submitOnce, submitLocked] = useSingleFlight()
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: evoucherKeys.poolByVariant(variant.id),
@@ -168,7 +169,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
             <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
               <FocusModal.Header>
                 <div className="flex items-center justify-end gap-x-2">
-                  <Button size="small" type="submit" disabled={create.isPending} isLoading={create.isPending}>
+                  <Button size="small" type="submit" disabled={submitLocked} isLoading={create.isPending}>
                     Save
                   </Button>
                 </div>
