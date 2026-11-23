@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, defineFileConfig } from "@medusajs/framework
 import { scheduledJobsDisabled } from "../lib/scheduled-jobs"
 import { GROUP_BUY_MODULE } from "../modules/group_buy"
 import type GroupBuyModuleService from "../modules/group_buy/service"
+import type { MembershipPaymentCheckDecision } from "../modules/group_buy/utils/membership-payment"
 import {
   deadlineBatchSkip,
   deadlineSettleLogLevel,
@@ -57,24 +58,51 @@ export default async function groupBuyDeadlineJob(container: MedusaContainer) {
     group: { status: "succeeded" as const, pay_deadline_at: { $lte: now } },
   }
   const [, expiredCount] = await service.listAndCountGroupBuyMemberships(expiredFilters, { select: ["id"], take: 1 })
-  const expired = await service.listGroupBuyMemberships(expiredFilters, {
-    select: ["id"],
-    take: BATCH,
-    skip: deadlineBatchSkip(expiredCount, BATCH, tick),
-    order: { joined_at: "ASC" },
-  })
   // GB-20b กฎข้อ 50: ตรวจสถานะที่ provider ก่อน — paid = capture (ไม่ expire), retry/skip = รอบถัดไป, unpaid/give_up = expire
-  for (const membership of expired) {
-    try {
-      const { result: check } = await checkGroupBuyMembershipPaymentWorkflow(container).run({
-        input: { membership_id: membership.id },
-      })
-      if (check.decision !== "unpaid" && check.decision !== "give_up") {
+  // GB-28 กฎข้อ 53 (e): retry/skip ไม่กิน slot — อ่านหน้าถัดไป (ไม่รวม id ที่ตรวจแล้ว) จนตัดสินได้ครบ BATCH หรือหมด
+  const seen: string[] = []
+  let settled = 0
+  while (settled < BATCH) {
+    const page = await service.listGroupBuyMemberships(
+      seen.length ? { ...expiredFilters, id: { $nin: seen } } : expiredFilters,
+      {
+        select: ["id"],
+        take: BATCH,
+        skip: seen.length ? 0 : deadlineBatchSkip(expiredCount, BATCH, tick),
+        order: { joined_at: "ASC" },
+      }
+    )
+    if (!page.length) {
+      break
+    }
+    for (const membership of page) {
+      if (settled >= BATCH) {
+        break
+      }
+      seen.push(membership.id)
+      let decision: MembershipPaymentCheckDecision
+      try {
+        const { result } = await checkGroupBuyMembershipPaymentWorkflow(container).run({
+          input: { membership_id: membership.id },
+        })
+        decision = result.decision
+      } catch (error) {
+        settled++
+        logger.error(`group-buy-deadline: failed to check payment of membership ${membership.id}: ${(error as Error).message}`)
         continue
       }
-      await expireGroupBuyMembershipPaymentWorkflow(container).run({ input: { membership_id: membership.id } })
-    } catch (error) {
-      logger.error(`group-buy-deadline: failed to expire membership ${membership.id}: ${(error as Error).message}`)
+      if (decision === "retry" || decision === "skip") {
+        continue
+      }
+      settled++
+      if (decision === "paid") {
+        continue
+      }
+      try {
+        await expireGroupBuyMembershipPaymentWorkflow(container).run({ input: { membership_id: membership.id } })
+      } catch (error) {
+        logger.error(`group-buy-deadline: failed to expire membership ${membership.id}: ${(error as Error).message}`)
+      }
     }
   }
 

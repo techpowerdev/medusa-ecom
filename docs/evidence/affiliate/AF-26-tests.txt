@@ -1,0 +1,65 @@
+# AF-26 (spec 05 กฎ 50, AC-59) — ผลทดสอบ 2026-11-23
+
+## RED (ก่อนแก้ portal.ts) — unit portal.unit.spec.ts
+  ● shareUrl › builds {storefront}/th/r/{code}?to=/products/{handle}
+    Expected: "https://shop.example/th/r/ann?to=/products/tee"
+    Received: "https://shop.example/r/ann?to=/products/tee"
+  ● shareUrl › is a relative /th link when STOREFRONT_URL is not set
+    Expected: "/th/r/ann?to=/products/tee"
+    Received: "/r/ann?to=/products/tee"
+Tests:       2 failed, 22 passed, 24 total
+
+## RED — integration http affiliate-portal.spec.ts
+      ✓ returns 401 without a token (1552 ms)
+      ✓ returns 401 without a token when the path differs only in case (1003 ms)
+      ✓ returns 401 for a customer token (554 ms)
+      ✓ pending reaches only /affiliate/me (577 ms)
+      ✓ suspended reads me, earnings and payouts but not programs or products (547 ms)
+      ✓ active reaches every portal route (580 ms)
+      ✕ AC-13: an upcoming program lists its collection's products; draft programs never show (488 ms)
+      ✓ rule 16 / Q2: active scope is the union of variants, collections and direct categories (524 ms)
+      ✓ pages through unique products ordered by their program's starts_at (831 ms)
+      ✓ AC-34: one card per product with the rate it really earns (rule 29) (518 ms)
+      ✓ AC-34: variants earning different rates show the highest with rate_varies (447 ms)
+      ✓ rejects an unknown status (568 ms)
+      ✓ lists published programs that are active or upcoming with their state (591 ms)
+      ✓ pages programs and payouts with limit/offset (511 ms)
+      ✓ returns only the caller's earnings totals by status within [from, to) and own payouts (780 ms)
+      ✓ AC-57: nets reversals of still-pending lines into pending and keeps the grand total (835 ms)
+    Expected pattern: /^https?:\/\/[^/]+\/th\/r\/ann\?to=\/products\/af7-in-c-1$/
+    Received string:  "https://shop.example/r/ann?to=/products/af7-in-c-1"
+Tests:       1 failed, 15 passed, 16 total
+
+## GREEN — integration http affiliate-portal.spec.ts
+      ✓ returns 401 without a token (1131 ms)
+      ✓ returns 401 without a token when the path differs only in case (1941 ms)
+      ✓ returns 401 for a customer token (1095 ms)
+      ✓ pending reaches only /affiliate/me (1026 ms)
+      ✓ suspended reads me, earnings and payouts but not programs or products (860 ms)
+      ✓ active reaches every portal route (1510 ms)
+      ✓ AC-13: an upcoming program lists its collection's products; draft programs never show (3258 ms)
+      ✓ rule 16 / Q2: active scope is the union of variants, collections and direct categories (2944 ms)
+      ✓ pages through unique products ordered by their program's starts_at (3253 ms)
+      ✓ AC-34: one card per product with the rate it really earns (rule 29) (3066 ms)
+      ✓ AC-34: variants earning different rates show the highest with rate_varies (2051 ms)
+      ✓ rejects an unknown status (2445 ms)
+      ✓ lists published programs that are active or upcoming with their state (2718 ms)
+      ✓ pages programs and payouts with limit/offset (3062 ms)
+      ✓ returns only the caller's earnings totals by status within [from, to) and own payouts (2484 ms)
+      ✓ AC-57: nets reversals of still-pending lines into pending and keeps the grand total (2036 ms)
+Tests:       16 passed, 16 total
+
+## GREEN — unit (src/modules/affiliate + flash-sale-preview ที่ timeout เพราะเครื่องโหลดสูงตอนรันชุดเต็ม)
+PASS src/modules/affiliate/utils/__tests__/portal.unit.spec.ts (5.89 s)
+PASS src/modules/affiliate/utils/__tests__/attribution.unit.spec.ts
+PASS src/lib/__tests__/flash-sale-preview.unit.spec.ts
+PASS src/modules/affiliate/utils/__tests__/reversal.unit.spec.ts
+PASS src/modules/affiliate/utils/__tests__/commission.unit.spec.ts
+PASS src/modules/affiliate/utils/__tests__/token.unit.spec.ts
+PASS src/modules/affiliate/utils/__tests__/payout.unit.spec.ts
+Test Suites: 7 passed, 7 total
+Tests:       105 passed, 105 total
+
+## อื่นๆ
+pnpm lint: 0 errors; pnpm typecheck: ผ่าน; pnpm --filter backend build: ผ่าน; pnpm --filter storefront test:e2e:unit: 145 passed
+หมายเหตุ: unit ชุดเต็ม (126 ไฟล์) ช้าในเครื่องที่โหลดสูง — ให้ CI รัน

@@ -1,4 +1,5 @@
 import { sdk } from "./client"
+import type { AllocateResult } from "./evoucher-allocate"
 import type { CodeStatus } from "./evoucher-status"
 
 export { CODE_STATUSES, type CodeStatus } from "./evoucher-status"
@@ -129,4 +130,7 @@ export const evoucherApi = {
     sdk.client.fetch<{ order_id: string; code_count: number }>(`${BASE}/orders/${orderId}/resend`, {
       method: "POST",
     }),
+  // EV-24 (กฎข้อ 40): Retry allocation ของ line ที่ backordered (route EV-23 กฎข้อ 39)
+  allocateOrder: (orderId: string) =>
+    sdk.client.fetch<AllocateResult>(`${BASE}/orders/${orderId}/allocate`, { method: "POST" }),
 }

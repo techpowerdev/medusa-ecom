@@ -1,5 +1,6 @@
 import type { BigNumberInput } from "@medusajs/framework/types"
 import { MathBN } from "@medusajs/framework/utils"
+import { STOREFRONT_COUNTRY_CODE } from "../../../lib/storefront"
 import { byCommissionPreference, isLineItemInScope, ProgramScope, RankedProgram as CommissionRanked } from "./commission"
 
 type ScopedProduct<V> = {
@@ -45,9 +46,12 @@ export const variantsInScope = <V extends { id: string }>(scope: ProgramScope, p
   )
 }
 
-/** `{storefront}/r/{code}?to=/products/{handle}` (spec 05 API) — ไม่มี STOREFRONT_URL → ลิงก์ relative */
+/**
+ * `{storefront}/{country}/r/{code}?to=/products/{handle}` (spec 05 กฎ 50, AF-26) — ไม่มี STOREFRONT_URL → ลิงก์ relative
+ * `to` ไม่มี country เพราะ route `/[countryCode]/r/[code]` ของ storefront เติมให้เอง
+ */
 export const shareUrl = (storefrontUrl: string | undefined, code: string, handle: string) =>
-  `${(storefrontUrl ?? "").replace(/\/+$/, "")}/r/${code}?to=/products/${handle}`
+  `${(storefrontUrl ?? "").replace(/\/+$/, "")}/${STOREFRONT_COUNTRY_CODE}/r/${code}?to=/products/${handle}`
 
 type PricedVariant = {
   calculated_price?: {

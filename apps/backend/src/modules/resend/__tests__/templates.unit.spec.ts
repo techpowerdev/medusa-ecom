@@ -331,6 +331,17 @@ describe("renderEmailTemplate", () => {
       expect(email!.html).toContain("เงินถูกตัดแต่ไม่มี order (ADR-015)")
     })
 
+    // GB-28 กฎข้อ 53 (a), AC-71 (a): alert ส่งก่อน expire → ห้ามบอกว่ายกเลิกสิทธิ์แล้ว
+    it("payment-check give-up alert says the membership is being cancelled, not already cancelled", () => {
+      const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP, {
+        membership_id: "gbmem_01",
+        order_id: "order_01",
+      })
+      expect(email!.subject).not.toContain("ยกเลิกสิทธิ์แล้ว")
+      expect(email!.html).not.toContain("ยกเลิกสิทธิ์แล้ว")
+      expect(email!.html).toContain("กำลังยกเลิกสิทธิ์ — ตรวจผลใน admin")
+    })
+
     // GB-5 (AC-10): อีเมล "หมดเวลาชำระเงิน"
     it("renders the payment-expired email in Thai with the order number", () => {
       const email = renderEmailTemplate(EmailTemplates.GROUP_BUY_PAYMENT_EXPIRED, { order: data.order })

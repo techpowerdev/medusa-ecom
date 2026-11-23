@@ -1,0 +1,34 @@
+# GB-27 (spec 04 กฎข้อ 52; AC-70) — ผล test ในเครื่อง 2026-11-23
+# backend medusa develop :9261 (DB medusa_gb27, Redis db 4) + storefront next dev :8261
+
+## RED (ก่อนแก้โค้ด) — unit Vitest src/lib/util/group-page.test.ts
+      Tests  3 failed | 18 passed (21)
+ FAIL  src/lib/util/group-page.test.ts > groupShowCountdown > แคมเปญยังไม่เริ่ม → false แม้กลุ่ม open
+TypeError: groupShowCountdown is not a function
+ FAIL  src/lib/util/group-page.test.ts > groupShowCountdown > แคมเปญเริ่มแล้วหรือไม่มี starts_at และกลุ่ม open → true
+TypeError: groupShowCountdown is not a function
+ FAIL  src/lib/util/group-page.test.ts > groupShowCountdown > กลุ่มไม่ open → false
+
+## RED (ก่อนแก้โค้ด) — e2e chromium e2e/group-buy-not-started.spec.ts
+  (a) AC-70 ล้มที่ spec.ts:67 `expect(getByTestId("group-countdown")).toHaveCount(0)` — unexpected value "1" (หน้ายังแสดงนับถอยหลังทั้งที่แสดง group-starts-at)
+  1 failed
+  3 passed (10.9s)
+
+## GREEN — unit Vitest (storefront ทั้งหมด)
+ Test Files  114 passed (114)
+      Tests  1422 passed (1422)
+
+## GREEN — e2e chromium (AC-70 + regression AC-66)
+  ✓  1 [chromium] › e2e/group-buy-not-started.spec.ts:32:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (a) starts_at ในอนาคต → ไม่มีฟอร์ม join แสดงเวลาเริ่มเป็นภาษาไทย (1.1s)
+  ✓  2 [chromium] › e2e/group-buy-not-started.spec.ts:46:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (b) แคมเปญเริ่มแล้ว → group-share-link เป็น /th/g/<token> และมีฟอร์ม join (760ms)
+  ✓  3 [chromium] › e2e/group-buy-not-started.spec.ts:61:7 › หน้ากลุ่ม: นับถอยหลังเมื่อแคมเปญยังไม่เริ่ม (AC-70) › (a) starts_at ในอนาคต → ไม่มี group-countdown มี group-starts-at (717ms)
+  ✓  4 [chromium] › e2e/group-buy-not-started.spec.ts:71:7 › หน้ากลุ่ม: นับถอยหลังเมื่อแคมเปญยังไม่เริ่ม (AC-70) › (b) แคมเปญเริ่มแล้ว → มี group-countdown ไม่มี group-starts-at (698ms)
+  4 passed (3.8s)
+
+## GREEN — regression หน้ากลุ่ม (AC-16a นับถอยหลังของแคมเปญที่เริ่มแล้ว)
+  ✓  1 [chromium] › e2e/group-buy-group-page.spec.ts:17:7 › หน้ากลุ่ม (AC-16a) › ไม่ login: จำนวนสมาชิก ความคืบหน้า นับถอยหลัง ลิงก์แชร์ และ reload หลังคนที่ 3 join (6.6s)
+  ✓  2 [chromium] › e2e/group-buy-group-page.spec.ts:60:7 › หน้ากลุ่ม (AC-16a) › 375px: ไม่เลื่อนแนวนอน (3.8s)
+  ✓  3 [chromium] › e2e/group-buy-group-page.spec.ts:71:7 › หน้ากลุ่ม (AC-16a) › token ไม่มีจริง → หน้าไม่พบ (527ms)
+  3 passed (11.7s)
+
+## storefront: test:e2e:unit 145 passed; lint 0 errors (ไฟล์ที่แตะไม่มี warning); typecheck ผ่าน
