@@ -127,3 +127,26 @@ export const waitDelivered = (request: APIRequestContext, admin: Headers, orderI
       { timeout: 30_000 }
     )
     .toEqual(Array(count).fill("delivered"))
+
+/**
+ * EV-22/EV-24 (EV-26 กฎข้อ 42b): ตั้ง stocked_quantity ของ variant โดยตรง — stock เกินจำนวน code (stock คลาดเคลื่อน)
+ * ทำให้ checkout ผ่านแต่ claim ได้ไม่ครบตอน capture (ชื่อไม่ใช่ `setStock` เพราะ support/group-buy.ts export ชื่อนั้นคนละ signature)
+ */
+export async function setVariantStock(request: APIRequestContext, admin: Headers, handle: string, stocked: number) {
+  const { products } = await call(
+    request,
+    admin,
+    `/admin/products?handle=${handle}&fields=variants.inventory_items.inventory_item_id`
+  )
+  const inventoryItemId: string = products[0].variants[0].inventory_items[0].inventory_item_id
+  const { stock_locations } = await call(request, admin, "/admin/stock-locations?limit=1")
+  await call(request, admin, `/admin/inventory-items/${inventoryItemId}/location-levels/${stock_locations[0].id}`, {
+    stocked_quantity: stocked,
+  })
+}
+
+/** EV-26 (กฎข้อ 42b): item ของ order ที่มีธง backordered ตาม Admin API (`*items` แบบเดียวกับหน้า order ของ dashboard) */
+export async function backorderedItems(request: APIRequestContext, admin: Headers, orderId: string): Promise<Json[]> {
+  const { order } = await call(request, admin, `/admin/orders/${orderId}?fields=*items`)
+  return order.items.filter((i: Json) => i.metadata?.evoucher_backordered === true)
+}

@@ -1,34 +1,14 @@
-import { APIRequestContext } from "@playwright/test"
-
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
-import { call, createVoucher, Json, placeCapturedOrder } from "./support/evoucher"
+import { backorderedItems, call, createVoucher, Json, placeCapturedOrder, setVariantStock } from "./support/evoucher"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
-import { Headers, adminHeaders, createCustomer, publishableKey } from "./support/medusa"
+import { adminHeaders, createCustomer, publishableKey } from "./support/medusa"
 
 // EV-22 (spec 02 กฎข้อ 38, AC-52): line ที่ code ไม่พอตอน capture (backordered) เห็น badge บน widget E-vouchers ของหน้า order
 // stock ของ variant B ถูกตั้งเกินจำนวน code (stock คลาดเคลื่อน) → order B qty 2 ผ่าน checkout แต่ claim ได้ไม่ครบ
 // การล้างธงหลัง allocation สำเร็จพิสูจน์ใน integration-tests/http/evoucher-allocate.spec.ts (admin ไม่มีปุ่มสั่ง allocate ซ้ำ)
 test.use({ ...ADMIN_UI_OPTIONS, evidenceTarget: { feature: "evoucher", taskId: "EV-22" } })
 
-/** stock ของ variant เกินจำนวน code (stock คลาดเคลื่อน) → checkout ผ่านแต่ claim ได้ไม่ครบตอน capture */
-const overstock = async (request: APIRequestContext, admin: Headers, handle: string, stocked: number) => {
-  const { products } = await call(
-    request,
-    admin,
-    `/admin/products?handle=${handle}&fields=variants.inventory_items.inventory_item_id`
-  )
-  const inventoryItemId: string = products[0].variants[0].inventory_items[0].inventory_item_id
-  const { stock_locations } = await call(request, admin, "/admin/stock-locations?limit=1")
-  await call(request, admin, `/admin/inventory-items/${inventoryItemId}/location-levels/${stock_locations[0].id}`, {
-    stocked_quantity: stocked,
-  })
-}
-
-/** variant ของ line ที่มีธง backordered ตาม Admin API (`*items` แบบเดียวกับหน้า order ของ dashboard) */
-const flaggedVariants = async (request: APIRequestContext, admin: Headers, orderId: string) => {
-  const { order } = await call(request, admin, `/admin/orders/${orderId}?fields=*items`)
-  return order.items.filter((i: Json) => i.metadata?.evoucher_backordered === true).map((i: Json) => i.variant_id)
-}
+const variantIds = (items: Json[]) => items.map((i) => i.variant_id)
 
 test("AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว", async ({
   page,
@@ -43,7 +23,7 @@ test("AC-52: order ที่มี line backordered 1 line → widget แสด�
   const a = await createVoucher(request, admin, 1)
   const b = await createVoucher(request, admin, 1)
 
-  await overstock(request, admin, b.handle, 2)
+  await setVariantStock(request, admin, b.handle, 2)
 
   const store = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
   const { regions } = await call(request, store, "/store/regions")
@@ -66,7 +46,9 @@ test("AC-52: order ที่มี line backordered 1 line → widget แสด�
   await call(request, admin, `/admin/payments/${order.payment_collections[0].payments[0].id}/capture`, {})
 
   // EV-4 ทำงานแบบ async (subscriber payment.captured): line A ได้ code, line B ถูก mark — ธงต้องมาทาง Admin API (กฎข้อ 38a)
-  await expect.poll(() => flaggedVariants(request, admin, orderId), { timeout: 30_000 }).toEqual([b.variantId])
+  await expect
+    .poll(() => backorderedItems(request, admin, orderId).then(variantIds), { timeout: 30_000 })
+    .toEqual([b.variantId])
 
   await step("เปิดหน้า order → badge backordered 1 ตัว และตาราง code มี 1 แถว (line A)", async () => {
     await loginAdmin(page)
@@ -90,13 +72,15 @@ test("AC-52: order ที่ยกเลิกแล้วแม้ line ยั�
   const pk = await publishableKey(request, admin)
   const customer = await createCustomer(request, pk)
   const voucher = await createVoucher(request, admin, 1)
-  await overstock(request, admin, voucher.handle, 2)
+  await setVariantStock(request, admin, voucher.handle, 2)
   const orderId = await placeCapturedOrder(request, admin, pk, customer, voucher.variantId, 2)
-  await expect.poll(() => flaggedVariants(request, admin, orderId), { timeout: 30_000 }).toEqual([voucher.variantId])
+  await expect
+    .poll(() => backorderedItems(request, admin, orderId).then(variantIds), { timeout: 30_000 })
+    .toEqual([voucher.variantId])
   await call(request, admin, `/admin/orders/${orderId}/cancel`, {})
   const { order } = await call(request, admin, `/admin/orders/${orderId}?fields=status`)
   expect(order.status).toBe("canceled")
-  expect(await flaggedVariants(request, admin, orderId)).toEqual([voucher.variantId])
+  expect(await backorderedItems(request, admin, orderId).then(variantIds)).toEqual([voucher.variantId])
 
   await step("เปิดหน้า order ที่ยกเลิกแล้ว → ไม่มี badge backordered (ไม่มี code → ไม่มี widget)", async () => {
     await loginAdmin(page)
