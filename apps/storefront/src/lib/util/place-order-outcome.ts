@@ -1,13 +1,10 @@
-import { OUT_OF_STOCK, REFUNDED_NOTICE, checkoutConflictCode, checkoutConflictMessage, normalize } from "./checkout-error"
+import { OUT_OF_STOCK, REFUNDED_NOTICE, checkoutConflictCode, checkoutConflictMessage } from "./checkout-error"
 import { INSUFFICIENT_INVENTORY_MESSAGE, isOutOfStockAtCompletion } from "./insufficient-inventory"
 
 // CORE-76 (spec 01 กฎข้อ 134 a2 — session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76): backend ตอบ 409 code นี้แทนข้อความกลาง
 // ของ Medusa เมื่อ workflow complete ของ cart เดียวกันยังรันอยู่ (`apps/backend/src/api/store/carts/errors.ts`)
-// `FetchError` ของ js-sdk 2.22.1 ไม่เก็บ `code` จึงจับคู่ code หรือข้อความคงที่แบบ `CHECKOUT_CONFLICTS` จนกว่า CORE-82 (ADR-028)
-export const CART_COMPLETION_IN_PROGRESS = {
-  code: "CART_COMPLETION_IN_PROGRESS",
-  message: "Cart is already being completed by another request",
-}
+// CORE-82 (กฎข้อ 140, ADR-028): ตัดสินจาก `code` ของ `MedusaApiError` (`medusaFetch`) — ไม่เทียบข้อความ
+export const CART_COMPLETION_IN_PROGRESS = "CART_COMPLETION_IN_PROGRESS"
 
 /**
  * ผลที่ไม่ได้ order ของ `placeOrder` (ได้ order = redirect ของ Next):
@@ -22,22 +19,15 @@ export type PlaceOrderOutcome =
 
 /** allow-list: error ของ `POST /store/carts/:id/complete` → kind; error อื่น (4xx อื่น, 5xx, network) → `failed` */
 export const placeOrderOutcome = (error: unknown): PlaceOrderOutcome => {
-  const { status, code, message } = (typeof error === "object" && error !== null ? error : {}) as {
+  const { status, code } = (typeof error === "object" && error !== null ? error : {}) as {
     status?: unknown
     code?: unknown
-    message?: unknown
   }
   if (status === 401 || status === 403) return { kind: "unauthorized" }
   if (isOutOfStockAtCompletion(error)) return { kind: "refunded", code: OUT_OF_STOCK }
   const conflict = checkoutConflictCode(error)
   if (conflict) return { kind: "refunded", code: conflict }
-  if (
-    status === 409 &&
-    (code === CART_COMPLETION_IN_PROGRESS.code ||
-      (typeof message === "string" && normalize(message) === normalize(CART_COMPLETION_IN_PROGRESS.message)))
-  ) {
-    return { kind: "processing" }
-  }
+  if (status === 409 && code === CART_COMPLETION_IN_PROGRESS) return { kind: "processing" }
   return { kind: "failed" }
 }
 

@@ -13,8 +13,8 @@ export type ActionResult<C extends string = never, T extends object = object> =
   | { error: ActionError<C> }
 
 /**
- * แปลง error ของ SDK (`FetchError`) หรือผลของ fetch ตรง (`{ status, code }`) → `{ error }`:
- * 401/403 → `"unauthorized"`, code ที่รู้จักและอยู่ใน `codes` → code นั้น, อื่นๆ (5xx, network) → `"failed"`
+ * แปลง error ของ SDK (`FetchError`) หรือ `MedusaApiError` ของ `medusaFetch` → `{ error }`:
+ * 401/403 → `"unauthorized"`, code ที่รู้จัก (จาก `code` — CORE-82) และอยู่ใน `codes` → code นั้น, อื่นๆ (5xx, network) → `"failed"`
  */
 export function actionFailure<C extends string = never>(
   error: unknown,

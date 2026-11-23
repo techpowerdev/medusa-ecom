@@ -24,7 +24,8 @@ describe("trimInvisible (กฎข้อ 116a)", () => {
 describe("normalize ตัวกลาง (กฎข้อ 116b)", () => {
   const read = (file: string) => readFileSync(path.join(__dirname, "lib/util", file), "utf8")
 
-  it.each(["insufficient-inventory.ts", "group-join-error.ts"])("%s ไม่ประกาศ normalize เอง", (file) => {
+  // CORE-82 (กฎข้อ 140): insufficient-inventory.ts ตัดสินจาก code แล้ว ไม่เทียบข้อความ — เหลือ group-join-error (CORE-84)
+  it.each(["group-join-error.ts"])("%s ไม่ประกาศ normalize เอง", (file) => {
     const source = read(file)
     expect(source).not.toContain("const normalize =")
     expect(source).toMatch(/import \{[^}]*\bnormalize\b[^}]*\} from "\.\/checkout-error"/)

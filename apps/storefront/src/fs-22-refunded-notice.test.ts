@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { CHECKOUT_CONFLICTS, OUT_OF_STOCK, REFUNDED_NOTICE } from "@lib/util/checkout-error"
 import { isOutOfStockAtCompletion } from "@lib/util/insufficient-inventory"
+import { MedusaApiError } from "@lib/util/medusa-api-error"
 import { PROMOTION_REFUNDED_NOTICE } from "@lib/util/place-order-outcome"
 
 // FS-22 (spec 03 กฎข้อ 27, AC-29): complete cart ล้มหลังตัดเงินด้วยเหตุโควตา/สต็อกหมด → `checkout-refunded-notice`
@@ -36,15 +37,22 @@ const payButton = () => import("@modules/checkout/components/payment-button")
 
 describe("isOutOfStockAtCompletion (สต็อก inventory ไม่พอตอน complete)", () => {
   it.each([
-    ["400 ข้อความ reserveInventory ของ Medusa", { status: 400, message: NOT_ENOUGH }],
-    ["FetchError ของ js-sdk", new FetchError(NOT_ENOUGH, "Bad Request", 400)],
-    ["400 insufficient_inventory (confirmInventory)", { status: 400, message: "Some variant does not have the required inventory" }],
+    // CORE-82 (กฎข้อ 140, ADR-028): reserveInventory ไม่มี code → ข้อยกเว้นของ helper (status + type + prefix ข้อความ)
+    ["400 not_allowed ข้อความ reserveInventory ของ Medusa", { status: 400, type: "not_allowed", message: NOT_ENOUGH }],
+    [
+      "MedusaApiError ของ medusaFetch",
+      new MedusaApiError({ status: 400, type: "not_allowed", message: NOT_ENOUGH }),
+    ],
+    ["400 code insufficient_inventory (confirmInventory)", { status: 400, type: "not_allowed", code: "insufficient_inventory", message: "x" }],
   ])("%s → true", (_label, error) => {
     expect(isOutOfStockAtCompletion(error)).toBe(true)
   })
 
   it.each([
-    ["409 ข้อความเดียวกัน", { status: 409, message: NOT_ENOUGH }],
+    ["409 ข้อความเดียวกัน", { status: 409, type: "not_allowed", message: NOT_ENOUGH }],
+    ["400 ข้อความเดียวกันแต่ type อื่น", { status: 400, type: "invalid_data", message: NOT_ENOUGH }],
+    ["FetchError ของ js-sdk (ไม่มี type)", new FetchError(NOT_ENOUGH, "Bad Request", 400)],
+    ["400 ข้อความ confirmInventory ไม่มี code", { status: 400, type: "not_allowed", message: "Some variant does not have the required inventory" }],
     ["400 ข้อความอื่น", { status: 400, message: "Payment sessions are required" }],
     ["null", null],
     ["string", NOT_ENOUGH],
