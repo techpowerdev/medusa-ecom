@@ -1,0 +1,90 @@
+# OPS-35 (spec 07 กฎข้อ 17 รอบ 42, AC-50) — ผล test
+# วันที่ 2026-11-24, base origin/develop 59c6af18
+
+## RED (ก่อนแก้ redact-pii.ts / production.md — test ใหม่เท่านั้น)
+คำสั่ง: TEST_TYPE=unit jest src/lib/__tests__/redact-pii.unit.spec.ts src/__tests__/ops-runbook.unit.spec.ts
+Tests:       7 failed, 45 passed, 52 total
+  ✕ redactPii › ค่าในเครื่องหมาย backtick ของ util.inspect (สตริงที่มีทั้ง ' และ ")
+  ✕ redactPii › JSON ที่ escape ซ้อน (JSON อยู่ในสตริงของ JSON อีกชั้น)
+  ✕ redactPii › อีเมลที่ local part มี ' (ข้อความธรรมดา / ใน quote เดี่ยว / ใน quote คู่) ไม่เหลือ o'  (x3)
+  ✕ AC-50 runbook › Go-live ข้อ 13 (redact): access log ...
+  ✕ AC-50 runbook › มีหัวข้อ "หลัง go-live" ...
+รายละเอียด:
+  Expected substring: not "O'Brien"
+  Received string:        "{ email: `[REDACTED]`, name: `O'Brien \"Bob\"`, company: `ACME`, id: `cus_01K08`, total: 1999 }"
+  Expected substring: not "Somchai"
+  Received string:        "{\"message\":\"{\\\"email\\\":\\\"[REDACTED]\\\",\\\"name\\\":\\\"Somchai Jaidee\\\",\\\"phone\\\":\\\"[REDACTED]\\\",\\\"id\\\":\\\"cart_01JX0912345678ABCD\\\"}\"}"
+  Expected substring: not "o'"
+  Received string:        "refund for o'[REDACTED] done"
+  Expected substring: not "o'"
+  Received string:        "to: 'o'[REDACTED]'"
+  Expected substring: not "o'"
+  Received string:        "to: \"o'[REDACTED]\""
+  Expected substring: "access log"
+  Received string:    "13. log ของ prod ไม่มี PII: ยืนยันว่า image มี OPS-33 (redact ใน `json-logger.ts`) แล้วค้น log ของ log platform ด้วยอีเมลลูกค้าทดสอบที่จ่ายแล้วถูกคืนเงิน (บรรทัด `recreate a payment session`) — ต้องไม่พบ"
+  Received: null
+
+## GREEN (หลังแก้)
+PASS src/lib/__tests__/redact-pii.unit.spec.ts
+    ✓ บรรทัด recreate a payment session → ไม่มีชื่อ/อีเมล/เบอร์/ที่อยู่เหลือ แต่ id ยังอยู่ครบ
+    ✓ อีเมลทุกที่ในข้อความ (ไม่ต้องมี key)
+    ✓ ค่าของ key ในรูป JS object (util.inspect) และ Ruby hash
+    ✓ key ที่ลงท้ายเหมือนกันแต่ไม่อยู่ในรายการไม่ถูกแตะ
+    ✓ เบอร์โทรไทยที่มีขอบเขต (0812345678)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (021234567)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (+66812345678)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (ต้นสตริง)
+    ✓ เลขกลาง ULID/id และตัวเลขที่ไม่ใช่เบอร์ไม่ถูกตัด
+    ✓ ทศนิยมยาวและชื่อไฟล์ที่มี @ ไม่ถูกตัด
+    ✓ key PII ไม่สนตัวพิมพ์ และค่าที่เป็นตัวเลขใต้ key PII ถูก redact
+    ✓ ค่าในเครื่องหมาย backtick ของ util.inspect (สตริงที่มีทั้ง ' และ ")
+    ✓ JSON ที่ escape ซ้อน (JSON อยู่ในสตริงของ JSON อีกชั้น)
+    ✓ อีเมลที่ local part มี ' (ข้อความธรรมดา) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote เดี่ยว) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote คู่) ไม่เหลือ o'
+    ✓ ข้อความยาว (a ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (404 ของ id ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (จุดและขีดติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (a' ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (backslash 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (escape quote ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII
+    ✓ Error และ Map ที่ส่งเป็น meta ถูก redact (ไม่หลุดเป็นค่าเดิม)
+    ✓ message, stack/cause และ field อื่นของ log ไม่มี PII แต่มี worker_mode, level และ id ครบ
+    ✓ ไม่แก้ object ของผู้เรียก (redact บนสำเนา)
+    ✓ AC-48c development → undefined (Medusa ใช้ logger เดิมซึ่งไม่ redact)
+PASS src/__tests__/ops-runbook.unit.spec.ts
+    ✓ มีหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)"
+    ✓ อ้าง alert และ code ของ guard
+    ✓ ระบุขั้นตอน: ค้น PI ใน Stripe dashboard, ยืนยันไม่มี order, refund เต็มจำนวน, แจ้งลูกค้า, บันทึก incident
+    ✓ มีกรณีไม่มี alert: ให้ลูกค้าเปิดหน้า checkout อีกครั้ง (storefront เรียก complete ตาม AC-12b)
+    ✓ กรณีไม่มี alert ที่ refund ใน Stripe: ปิดทางที่ cart จะถูก complete ทีหลัง (review #97)
+    ✓ กรณีมี alert: ตรวจ Refunds ของ PI ก่อน และถ้าพบ payment ใน Medusa ให้ใช้ script ห้ามใช้ dashboard (review #97 r3)
+    ✓ AC-16b กรณีไม่มี alert: ตรวจก่อน refund แล้ว refund ผ่าน script refund-orphan-payment ไม่ใช่ Stripe dashboard (ADR-015 ภาคผนวก 2)
+    ✓ มีหัวข้อย่อยกรณี guard fail closed ถาวร (retrieve PI ไม่ได้)
+    ✓ ไม่แนะนำแก้ DB ด้วย SQL ตรง
+    ✓ กรณี group buy: alert GROUP_BUY_PAID_WITHOUT_ORDER ทั้งสองสาเหตุ และขั้นตอนที่ admin ทำได้
+    ✓ กรณี group buy: ขั้นตรวจ draft/membership มาก่อนขั้น refund และมี URL /app/orders/
+    ✓ กรณี group buy: อธิบายผล refunded/refund_failed ของการคืนเงินอัตโนมัติ และให้ตรวจ GET /admin/payments
+    ✓ กรณี group buy: refund ผ่าน admin ตอบ error → ตรวจยอดคืนใน payment/Stripe ก่อนคืนซ้ำ
+    ✓ หัวข้อ group buy ตัดถึงหัวข้อถัดไป: ขั้นตรวจที่อยู่นอกหัวข้อไม่นับ (fixture) และหัวข้อจริงไม่มีหัวข้ออื่นปน
+    ✓ มีบรรทัด OPS_ALERT_EMAIL=
+    ✓ มีหัวข้อ "Alerts"
+    ✓ มีกฎที่ match สตริง `Error running event bus worker` กรองด้วย level error และ worker_mode worker
+    ✓ ระบุขั้นตอนตอบสนอง: restart worker
+    ✓ หัวข้อ Alerts: access log ต้องใช้ LOG_LEVEL=http (ค่าเริ่มต้นของ compose) และเตือนว่า info ไม่มี access log
+    ✓ หัวข้อ Go-live checklist: admin/API ผ่าน HTTPS หรือ proxy ที่ส่ง X-Forwarded-Proto: https และ http://localhost ตรงไป :9000 login ไม่ได้
+    ✓ มีหัวข้อ "log ที่ดูเหมือนคืนเงินล้มแต่สำเร็จ (OPS-32)"
+    ✓ ระบุ warn ของเรา และสองข้อความของ Medusa
+    ✓ วิธีตรวจ: refunds ของ GET /admin/payments/:id และ PI ใน Stripe dashboard; ห้าม refund ซ้ำด้วยมือ
+    ✓ Go-live ข้อ 13 (redact): access log ของ Medusa ไม่ผ่าน redact, มี path/query และ q ของหน้าค้นหา, log shipper ใช้นโยบาย PII เดียวกัน
+    ✓ มีหัวข้อ "หลัง go-live" ที่บอกวิธี reset layout หน้า order (widget order-refund-blocked)
+Test Suites: 2 passed, 2 total
+Tests:       52 passed, 52 total
+
+## ชุดเต็ม pnpm --filter backend test:unit
+Test Suites: 130 passed, 130 total
+Tests:       1796 passed, 1796 total
+
+## pnpm --filter backend typecheck → ผ่าน; pnpm --filter backend lint → 0 errors (warning 5 รายการเดิมของ develop ไม่ใช่ไฟล์ที่แตะ)
+## pnpm --filter storefront test:e2e:unit → 151 passed

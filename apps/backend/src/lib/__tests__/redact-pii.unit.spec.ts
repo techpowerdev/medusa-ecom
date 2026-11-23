@@ -106,12 +106,55 @@ describe("redactPii (OPS-33, AC-48a)", () => {
     )
   })
 
+  // OPS-35 (spec 07 กฎข้อ 17a รอบ 42, AC-50): ช่องว่างที่ review #473 พบ
+  it("ค่าในเครื่องหมาย backtick ของ util.inspect (สตริงที่มีทั้ง ' และ \")", () => {
+    const out = redactPii("{ email: `a.b@x.co`, name: `O'Brien \"Bob\"`, company: `ACME`, id: `cus_01K08`, total: 1999 }")
+    for (const value of ["a.b@x.co", "O'Brien", "Bob", "ACME"]) {
+      expect(out).not.toContain(value)
+    }
+    expect(out).toBe("{ email: `[REDACTED]`, name: `[REDACTED]`, company: `[REDACTED]`, id: `cus_01K08`, total: 1999 }")
+  })
+
+  it("JSON ที่ escape ซ้อน (JSON อยู่ในสตริงของ JSON อีกชั้น)", () => {
+    const inner = JSON.stringify({ email: "somchai.jaidee@example.co.th", name: "Somchai Jaidee", phone: "+66812345678", id: CART_ID })
+    const once = JSON.stringify({ message: inner })
+    const twice = JSON.stringify({ message: once })
+    for (const text of [once, twice]) {
+      const out = redactPii(text)
+      for (const value of ["somchai", "Somchai", "Jaidee", "+66812345678"]) {
+        expect(out).not.toContain(value)
+      }
+      expect(out).toContain(CART_ID)
+      // ผลยังเป็น JSON ที่ parse ได้ (quote ที่ escape ถูกคงไว้ครบคู่)
+      expect(() => JSON.parse(out)).not.toThrow()
+    }
+    expect(redactPii(once)).toContain('\\"name\\":\\"[REDACTED]\\"')
+    expect(redactPii('{\\"name\\":\\"O\\\\\\"Brien\\",\\"state\\":\\"Bangkok\\"}')).toBe(
+      '{\\"name\\":\\"[REDACTED]\\",\\"state\\":\\"[REDACTED]\\"}'
+    )
+  })
+
+  it.each([
+    ["ข้อความธรรมดา", "refund for o'brien@example.com done", "refund for [REDACTED] done"],
+    ["ใน quote เดี่ยว", "to: 'o'brien@example.com'", "to: '[REDACTED]'"],
+    ["ใน quote คู่", 'to: "o\'brien@example.com"', 'to: "[REDACTED]"'],
+  ])("อีเมลที่ local part มี ' (%s) ไม่เหลือ o'", (_name, input, expected) => {
+    const out = redactPii(input)
+    expect(out).not.toContain("o'")
+    expect(out).not.toContain("brien")
+    expect(out).toBe(expected)
+  })
+
   // review #473 (blocker): EMAIL เดิม backtrack แบบ O(n²) กับช่วง [A-Za-z0-9._%+-] ยาว → block event loop ทุกบรรทัด log
   // (errorHandler ของ Medusa log `req.path` ของ client ที่ไม่ login ได้) — วัดขนาดงาน ไม่ใช่ timeout เข้มงวด
   it.each([
     ["a ติดกัน 100k ตัว", "a".repeat(100_000)],
     ["404 ของ id ยาว", `Error 404 at /store/products/prod_${"A".repeat(16_000)}: Product with id: prod_${"A".repeat(16_000)} was not found`],
     ["จุดและขีดติดกัน 100k ตัว", "a.b-".repeat(25_000)],
+    // OPS-35: local part ที่มี ' และ backslash ยาว (JSON escape ซ้อน) ต้องยัง linear
+    ["a' ติดกัน 100k ตัว", "a'".repeat(50_000)],
+    ["backslash 100k ตัว", "\\".repeat(100_000)],
+    ["escape quote ไม่ปิด", `\\"name\\":\\"${"x\\\\".repeat(25_000)}`],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     const started = performance.now()
     expect(redactPii(text)).toBe(text)

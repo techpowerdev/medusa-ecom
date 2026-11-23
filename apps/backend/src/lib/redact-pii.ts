@@ -20,26 +20,32 @@ export const PII_KEYS = [
   "postal_code",
 ]
 
-// (b) ค่าของ key (ไม่สนตัวพิมพ์) ใน JSON (`"key":"v"`), JS object/util.inspect (`key: 'v'`) และ Ruby hash ที่ Stripe ใช้ใน error
+// (b) ค่าของ key (ไม่สนตัวพิมพ์) ใน JSON (`"key":"v"`), JS object/util.inspect (`key: 'v'` และ `` key: `v` `` — OPS-35) และ Ruby hash ที่ Stripe ใช้ใน error
 // (`"key"=>"v"`) — ทั้งค่า string และตัวเลข (`postal_code: 10110`); alternation ไม่ซ้อนทับกัน จึงทำงานแบบ linear
+// OPS-35: JSON ที่ escape ซ้อน (`\"key\":\"v\"`, ≤ 7 backslash) — quote ของค่าคือ backslash + `"` ชุดเดียวกับที่ปิด; ภายในค่า
+// token เป็น "backslash ต่อกัน + อักขระ" หรืออักขระเดียว (แตกได้แบบเดียว → ไม่ backtrack); ค่าที่ลงท้ายด้วย backslash อาจ redact เกิน (ทางปลอดภัย)
 const KEY_VALUE = new RegExp(
-  `((?<![A-Za-z0-9_$])(["']?)(?:${PII_KEYS.join("|")})\\2\\s*(?::|=>)\\s*)(?:(["'])(?:\\\\.|(?!\\3)[^\\\\])*\\3|\\d+(?:\\.\\d+)?(?![\\w.]))`,
+  `((?<![A-Za-z0-9_$])(\\\\{0,7}["']|)(?:${PII_KEYS.join("|")})\\2\\s*(?::|=>)\\s*)` +
+    `(?:(["'\`])(?:\\\\.|(?!\\3)[^\\\\])*\\3|(\\\\{1,7}")(?:(?!\\4)(?:\\\\+[^\\\\]|[^\\\\]))*\\4|\\d+(?:\\.\\d+)?(?![\\w.]))`,
   "gi"
 )
 // (a) สตริงรูปอีเมล — เริ่ม match ได้เฉพาะต้นช่วงอักขระ local และจำกัดความยาวตาม RFC 5321 (local ≤ 64, label ≤ 63)
 // กัน backtrack แบบ O(n²) กับช่วงยาวที่ไม่มี `@` (review #473: errorHandler ของ Medusa log `req.path` จาก client ที่ไม่ login)
+// OPS-35: local part มี `'` ได้ (`o'brien@…`) แต่ต้องขึ้นต้นด้วยอักขระอื่น (ไม่กลืน quote เปิดของ util.inspect) — `'` ไม่อยู่ใน lookbehind
+// จึงเริ่ม match ได้หลัง `'` ด้วย แต่ยังจำกัด local ≤ 64 ต่อจุดเริ่ม (linear)
 // TLD ต้องเป็นตัวอักษร ≥ 2 และไม่ใช่นามสกุลไฟล์รูป/asset (`image@2x.png`)
 const EMAIL =
-  /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,8}\.[A-Za-z]{2,63}(?<!\.(?:png|jpe?g|gif|svg|webp|avif|ico|bmp|css|js|map))(?![A-Za-z0-9-])/g
+  /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-][A-Za-z0-9._%+'-]{0,63}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,8}\.[A-Za-z]{2,63}(?<!\.(?:png|jpe?g|gif|svg|webp|avif|ico|bmp|css|js|map))(?![A-Za-z0-9-])/g
 // (c) เบอร์ไทย `0` + 8–9 หลัก หรือ `+66` + 8–9 หลัก ที่ขอบทั้งสองข้างไม่ใช่ตัวอักษร/ตัวเลข (ไม่ตัดเลขกลาง ULID ของ id)
 // และไม่อยู่หลัง `.` (ไม่ตัดทศนิยมของจำนวนเงิน เช่น raw_amount `1.0666666667`)
 const THAI_PHONE = /(?<![A-Za-z0-9.])(?:0|\+66)\d{8,9}(?![A-Za-z0-9])/g
 
 export function redactPii(text: string): string {
   return text
-    .replace(KEY_VALUE, (_match, prefix: string, _keyQuote: string, quote?: string) =>
-      quote ? `${prefix}${quote}${REDACTED}${quote}` : `${prefix}${REDACTED}`
-    )
+    .replace(KEY_VALUE, (_match, prefix: string, _keyQuote: string, quote?: string, escapedQuote?: string) => {
+      const q = quote ?? escapedQuote
+      return q ? `${prefix}${q}${REDACTED}${q}` : `${prefix}${REDACTED}`
+    })
     .replace(EMAIL, REDACTED)
     .replace(THAI_PHONE, REDACTED)
 }

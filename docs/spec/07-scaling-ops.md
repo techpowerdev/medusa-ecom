@@ -602,7 +602,7 @@ Status: draft (☐ — รอ owner สั่งทำ) · แตะ `docs/ops/p
     (c) `docs/ops/production.md` หัวข้อ redact (Go-live ข้อ 13): ระบุว่า access log ของ Medusa **ไม่ผ่าน** redact (ถ้า builder ยืนยันว่าตรง stdout) และมีเฉพาะ path/query/status — query ของหน้าค้นหา (`q`) อาจมีข้อความที่ลูกค้าพิมพ์; log shipper ต้องเก็บตามนโยบาย PII เดียวกัน;
     (d) `docs/ops/production.md` runbook หลัง go-live: แอดมินที่บันทึก layout ส่วนตัวของหน้า order ไว้ก่อน PAY-10 จะไม่เห็น widget `order-refund-blocked` บนสุด → reset layout เป็นค่าเริ่มต้น ("Customize layout" → reset) (re-review #471)
 ### Acceptance criteria (รอบ 42)
-- AC-50 (OPS-35, กฎข้อ 17 รอบ 42 — คนละชุดกับเช็กลิสต์ bump ข้อ 17) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture backtick `` email: `a.b@x.co` ``, JSON escape ซ้อน, `o'brien@example.com` → ไม่เหลือค่า fixture และไม่เหลือ `o'`; unit linear-time 100k ตัวอักษรเดิมยังผ่านโดยไม่เพิ่มเกณฑ์เวลา;
+- AC-50 (OPS-35, กฎข้อ 17 รอบ 42 — คนละชุดกับเช็กลิสต์ bump ข้อ 17) ☑ (unit red 7 → green: redact 5 + runbook 2; linear-time เดิม 3 กรณีผ่านที่เกณฑ์ 200ms เดิม + เพิ่ม 3 กรณี) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture backtick `` email: `a.b@x.co` ``, JSON escape ซ้อน, `o'brien@example.com` → ไม่เหลือค่า fixture และไม่เหลือ `o'`; unit linear-time 100k ตัวอักษรเดิมยังผ่านโดยไม่เพิ่มเกณฑ์เวลา;
   unit runbook (`ops-runbook.unit.spec.ts`) grep คำ "access log" ในหัวข้อ redact และ "Customize layout" ในหัวข้อหลัง go-live
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
