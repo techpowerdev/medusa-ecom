@@ -101,15 +101,18 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
               key={`${refinement.attribute}:${refinement.operator ?? ""}:${
                 refinement.value
               }`}
+              className="min-w-0 max-w-full"
             >
+              {/* CORE-93 (กฎข้อ 149): ชื่อยาว (เช่น tag) ตัดด้วย truncate บรรทัดเดียว และ title บอกข้อความเต็ม */}
               <button
                 onClick={() => refine(refinement)}
                 aria-label={`ลบตัวกรอง ${label}`}
-                className="border-ui-border-interactive text-ui-fg-base border text-small-regular h-8 rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-ui-bg-base-hover"
+                title={label}
+                className="border-ui-border-interactive text-ui-fg-base border text-small-regular h-8 max-w-full rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-ui-bg-base-hover"
                 data-testid="remove-refinement"
               >
-                {label}
-                <XMarkMini className="text-ui-fg-muted" />
+                <span className="truncate">{label}</span>
+                <XMarkMini className="shrink-0 text-ui-fg-muted" />
               </button>
             </li>
           )
