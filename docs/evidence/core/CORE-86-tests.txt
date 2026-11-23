@@ -59,3 +59,7 @@ Error: No tests found.
 
 ## typecheck / lint (storefront)
 tsc --noEmit: ผ่าน; eslint: 0 error (warning เดิมของ repo ไม่มีในไฟล์ที่แตะ)
+
+## GREEN (e2e) หลัง merge origin/develop 53e758a2 (รวม CORE-88 #501) — --workers=2 --repeat-each=3
+  21 passed (2.1m)
+test:e2e:unit: 150 passed; tsc ผ่าน; eslint 0 error
