@@ -1,0 +1,54 @@
+# ADM-44 (spec 08 กฎ 48, AC-49) ผล test 2026-11-23 — backend `medusa develop -p 9200` ในเครื่อง, DB medusa_adm44, Redis db 3, chromium
+
+## RED 1 — e2e admin-program-form-edit.spec.ts กับ src ของ develop 8471f3c0 (worktree ชั่วคราว ไม่มีการแก้ src)
+(สาเหตุถูกต้อง: (c) DatePicker ของ ends_at ไม่ได้ focus เมื่อ Save; (b) แก้ไข program ยังเป็น FocusModal ไม่มี Drawer affiliate-program-drawer)
+  ✘  1 [chromium] › e2e/admin-program-form-edit.spec.ts:25:5 › AC-49a/48c: ends_at < starts_at กด Save → error ใต้ ends_at และ focus ที่ ends_at; เลื่อน starts_at ให้ถูก → error หายโดยไม่กด Save (14.9s)
+  ✘  2 [chromium] › e2e/admin-program-form-edit.spec.ts:63:5 › AC-49b: แก้ไข program เปิดใน Drawer — Escape ขณะ dirty ถาม prompt, dblclick Save ยิง POST 1 ครั้ง (8.1s)
+    Error: expect(locator).toBeFocused() failed
+    Locator:  getByTestId('affiliate-program-field-ends_at').getByRole('spinbutton').first()
+    Expected: focused
+    Received: inactive
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByRole('dialog', { includeHidden: true }).and(getByTestId('affiliate-program-drawer'))
+    Expected: visible
+    Error: element(s) not found
+  2 failed
+
+## RED 2 — test เดียวกันบน develop 8471f3c0 โดยตัดบรรทัด assert focus (toBeFocused) ออก เพื่อให้ถึง step ของกฎ 48a
+(สาเหตุถูกต้อง: (a) เลื่อน starts_at ให้ก่อน ends_at แล้ว error ของ ends_at ยังค้าง)
+  ✘  1 [chromium] › e2e/admin-program-form-edit.spec.ts (ตัด toBeFocused):25:5 › AC-49a/48c: ends_at < starts_at กด Save → error ใต้ ends_at และ focus ที่ ends_at; เลื่อน starts_at ให้ถูก → error หายโดยไม่กด Save (4.0s)
+  1) [chromium] › e2e/admin-program-form-edit.spec.ts (ตัด toBeFocused):25:5 › AC-49a/48c: ends_at < starts_at กด Save → error ใต้ ends_at และ focus ที่ ends_at; เลื่อน starts_at ให้ถูก → error หายโดยไม่กด Save › เลื่อน starts_at ไปก่อน ends_at → error ของ ends_at หายภายใน 1 วินาทีโดยไม่กด Save 
+    Error: expect(locator).toHaveCount(expected) failed
+    Locator:  getByTestId('affiliate-program-error-ends_at')
+    Expected: 0
+    Received: 1
+  1 failed
+
+## GREEN — branch feat/ADM-44-program-form (merge develop 8471f3c0 แล้ว) --repeat-each=3
+  ✓  3 [chromium] › e2e/admin-program-form-edit.spec.ts:25:5 › AC-49a/48c: ends_at < starts_at กด Save → error ใต้ ends_at และ focus ที่ ends_at; เลื่อน starts_at ให้ถูก → error หายโดยไม่กด Save (7.9s)
+  ✓  1 [chromium] › e2e/admin-program-form-edit.spec.ts:25:5 › AC-49a/48c: ends_at < starts_at กด Save → error ใต้ ends_at และ focus ที่ ends_at; เลื่อน starts_at ให้ถูก → error หายโดยไม่กด Save (7.9s)
+  ✓  2 [chromium] › e2e/admin-program-form-edit.spec.ts:25:5 › AC-49a/48c: ends_at < starts_at กด Save → error ใต้ ends_at และ focus ที่ ends_at; เลื่อน starts_at ให้ถูก → error หายโดยไม่กด Save (8.0s)
+  ✓  4 [chromium] › e2e/admin-program-form-edit.spec.ts:63:5 › AC-49b: แก้ไข program เปิดใน Drawer — Escape ขณะ dirty ถาม prompt, dblclick Save ยิง POST 1 ครั้ง (5.0s)
+  ✓  5 [chromium] › e2e/admin-program-form-edit.spec.ts:63:5 › AC-49b: แก้ไข program เปิดใน Drawer — Escape ขณะ dirty ถาม prompt, dblclick Save ยิง POST 1 ครั้ง (5.1s)
+  ✓  6 [chromium] › e2e/admin-program-form-edit.spec.ts:63:5 › AC-49b: แก้ไข program เปิดใน Drawer — Escape ขณะ dirty ถาม prompt, dblclick Save ยิง POST 1 ครั้ง (5.1s)
+  6 passed (14.2s)
+
+## REGRESSION — e2e admin ที่แตะฟอร์ม/ตาราง program (11 ไฟล์, workers=1)
+  59 passed (4.6m)
+   7 e2e/admin-create-double-submit.spec.ts
+   4 e2e/admin-dialog-title.spec.ts
+   6 e2e/admin-form-discard-prompt.spec.ts
+   3 e2e/admin-list-create-action.spec.ts
+   8 e2e/admin-modal-return-focus.spec.ts
+   1 e2e/admin-program-form-errors.spec.ts
+   5 e2e/admin-row-menu-escape.spec.ts
+  19 e2e/affiliate-admin-forms.spec.ts
+   1 e2e/affiliate-admin-programs.spec.ts
+   3 e2e/affiliate-admin-row-actions.spec.ts
+   2 e2e/affiliate-admin-search.spec.ts
+
+## unit / e2e:unit / typecheck / lint
+backend test:unit: Tests:       1733 passed, 1733 total
+storefront test:e2e:unit:   146 passed (1.2s)
+pnpm typecheck: ผ่าน (exit 0 — รันหลังย้าย .medusa/types ที่ medusa develop สร้างออก แบบเดียวกับ CI) | pnpm lint: ผ่าน (0 errors)
+backend build: ผ่าน (medusa build)
