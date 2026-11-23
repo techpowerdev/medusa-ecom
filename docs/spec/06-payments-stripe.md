@@ -447,7 +447,7 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
   (b) dblclick `payment-session-retry` → `POST .../payment-sessions` 1 ครั้ง; (c) route mock ให้ refresh ไม่มา → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton; (d) ระหว่างรอ order radio มี `disabled`
 - AC-30 (PAY-17, กฎข้อ 19) unit + e2e route mock: (a) `confirmPayment` คืน error `card_error`/`card_declined` ข้อความอังกฤษ → ข้อความที่มองเห็นเป็นอักษรไทย ไม่มีข้อความอังกฤษของ Stripe (ล้มบน develop);
   (b) unit ของตัวตัดสิน PromptPay: poll `refunded` ระหว่าง finishing → ไม่เปลี่ยน state; e2e AC-24/AC-28 ผ่าน และไม่เห็น `promptpay-retry-button` ระหว่างทาง (นับด้วย `MutationObserver`)
-- AC-31 (PAY-18, กฎข้อ 20) unit ของ route (แบบ AC-25): `redirect_status=failed` + อ่าน cart 500 → location `step=payment`; 401/403/5xx → `setCartCookie` ไม่ถูกเรียก; หน้า checkout `cart_id` ≠ cart ของ cookie → ทางหา order;
+- ☑ AC-31 (PAY-18, กฎข้อ 20) unit ของ route (แบบ AC-25): `redirect_status=failed` + อ่าน cart 500 → location `step=payment`; 401/403/5xx → `setCartCookie` ไม่ถูกเรียก; หน้า checkout `cart_id` ≠ cart ของ cookie → ทางหา order;
   e2e: เปิด `/th/cart?error=refunded` แล้วแก้จำนวนสำเร็จ → `cart-error-notice` หายและ URL ไม่มี `error` (ล้มบน develop)
 - AC-32 (PAY-19, กฎข้อ 21) unit Vitest ของตัวตัดสินสิ่งที่ render (pure helper รับ cart + state ของรอบนี้): สัญญาณ refunded + ไม่มี state → `go-to-cart` ข้อความ `REFUNDED_NOTICE`;
   state `refunded` ไม่รู้เหตุ (PAY-6c) + สัญญาณ → `retry`; state รู้เหตุ → ข้อความเหตุเดิม; `qr`/`awaitingOrder`/`submitting` + สัญญาณ → ไม่ใช่ notice; `completed_at` หรือ `refunded_amount < captured_amount` → ปุ่มจ่าย;
