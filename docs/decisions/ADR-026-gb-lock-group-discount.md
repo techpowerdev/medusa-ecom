@@ -34,8 +34,8 @@
 - ขยายข้อ campaign ด้านบน: `POST /admin/campaigns/:id/promotions` ของ campaign ที่ผูก `group_buy_campaign` → 400 **ทุกกรณี** (เพิ่มหรือถอด promotion ใดก็ได้ ทุกสถานะของแคมเปญ) ไม่ใช่เฉพาะ `GB-*` —
   เหตุผล: ต้นแบบ `GBT-*` ถูกผูกกับ campaign โดย workflow ของเรา; ถอดต้นแบบ/ใส่ promotion อื่นทำให้ส่วนลดหรืองบของ campaign ไม่ตรงกับหน้า Group buying; การแก้ส่วนลดของต้นแบบยังทำได้ที่ promotion (Q5)
 - clone `GB-<token>` ใช้ campaign id จาก link `group_buy_campaign.campaign` แทน `template.campaign_id` — link เป็น source of truth ของความเป็นเจ้าของ; ต้นแบบที่ไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่มไม่ได้ (`invalid_data`)
-- ไม่มีทางเลือกใหม่ให้ตัดสิน (owner สั่งแล้ว) — spec 04 กฎข้อ 51, GB-26
 - (เพิ่ม 2026-11-22 — owner ตัดสินจาก review #488) ปิดทางอ้อมที่ admin route ของ promotion ด้วย: `POST /admin/promotions/:id` ที่เปลี่ยน `campaign_id` ของต้นแบบ `GBT-*` และ `POST /admin/promotions` / `POST /admin/promotions/:id` ที่ตั้ง `campaign_id` เป็น campaign ที่ผูก `group_buy_campaign` → 400 `not_allowed`; body ที่ไม่แตะ `campaign_id` (หรือส่งค่าเดิม) ผ่านได้ตาม Q5 — spec 04 กฎข้อ 54, GB-29
+- ไม่มีทางเลือกใหม่ให้ตัดสิน (owner สั่งแล้ว) — spec 04 กฎข้อ 51, GB-26
 
 ## ภาคผนวก 2026-11-23 (planner รอบ 41 — owner สั่ง "กัน DELETE ไม่ให้ลบ promotion ต้นแบบ `GBT-*` ของ group buy" และตัดสินเพิ่ม "ห้ามเปลี่ยน status ต้นแบบเป็น active")
 - `DELETE /admin/promotions/:id` ของต้นแบบ `GBT-*` ที่ผูกแคมเปญ group buy → 400 `not_allowed` ทุกสถานะของแคมเปญ — แทนส่วน "ต้นแบบ `GBT-*` → `next()`" ของทางเลือก 1 **เฉพาะ DELETE** (POST แก้ส่วนลดของต้นแบบยังได้ตาม Q5)

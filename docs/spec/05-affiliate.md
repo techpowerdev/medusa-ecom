@@ -642,7 +642,7 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 50. (AF-26) `share_url` = `<STOREFRONT_URL>/<STOREFRONT_COUNTRY_CODE>/r/<code>?to=/products/<handle>` (`to` คงไม่มี country — route ของ storefront เติมเอง); `STOREFRONT_URL` ไม่ตั้ง → path สัมพัทธ์ `/th/r/<code>?…`
 
 ### Acceptance criteria (รอบ 41)
-- AC-58 (AF-25, กฎ 49) integration http — **ล้มบน develop** ก่อน: ข้อมูลแบบ AC-57 → admin summary ของ affiliate นั้น `pending=0`, `reversed=0` สำหรับ line L และเท่ากับผลของ `/affiliate/me/earnings` ทุกสถานะ (ล้มบน develop ที่ `pending=100`, `reversed=−100`)
+- ☑ AC-58 (AF-25, กฎ 49) integration http — **ล้มบน develop** ก่อน: ข้อมูลแบบ AC-57 → admin summary ของ affiliate นั้น `pending=0`, `reversed=0` สำหรับ line L และเท่ากับผลของ `/affiliate/me/earnings` ทุกสถานะ (ล้มบน develop ที่ `pending=100`, `reversed=−100`)
 - AC-59 (AF-26, กฎ 50) unit `shareUrl` + integration: `share_url` match `^https?://[^/]+/th/r/<code>\?to=/products/<handle>$`; ไม่ตั้ง env → `/th/r/<code>?to=…` (แก้ assertion เดิม `portal.unit.spec.ts:55,59`)
 
 ### Tasks (รอบ 41)
