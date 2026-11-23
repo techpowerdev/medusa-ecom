@@ -30,6 +30,7 @@ const ok = async (res: APIResponse, what: string): Promise<any> => {
 let admin: Headers
 let pk: string
 let handle: string
+let variantM: string
 let variantL: string
 let campaignId: string
 
@@ -67,7 +68,10 @@ test.beforeAll(async ({ request }) => {
       stocked_quantity: 100,
     })
   }
-  variantL = product.variants.find((v: { title: string }) => v.title === "L").id
+  // FS-25 (กฎข้อ 30b): ลำดับ variants ไม่คงที่ → PDP เปิดด้วย `?v_id=` ของ M เสมอ (ไม่สมมติว่า variant แรกถูกเลือก)
+  const idOf = (title: string) => product.variants.find((v: { title: string }) => v.title === title).id
+  variantM = idOf("M")
+  variantL = idOf("L")
 
   const { campaign } = await post("/admin/campaigns", {
     name: `FS-23 ${run}`,
@@ -107,7 +111,7 @@ test.afterAll(async ({ request }) => {
 
 test("AC-30 (b): ไม่ login → PDP เห็น flash-customer-limit มีเลข 2 และอักษรไทย", async ({ page, step, evidence }) => {
   await step("PDP: จำกัด 2 ชิ้นต่อคน ไม่มีข้อความครบสิทธิ์ และปุ่มเพิ่มลงตะกร้ากดได้", async () => {
-    await page.goto(`/${CC}/products/${handle}`)
+    await page.goto(`/${CC}/products/${handle}?v_id=${variantM}`)
     const limit = page.getByTestId("flash-customer-limit")
     await expect(limit).toBeVisible()
     await expect(limit).toHaveText(THAI)
@@ -128,12 +132,12 @@ test("AC-30 (c): login limit 2 มีของในตะกร้า 1 ชิ�
 }) => {
   const customer = await createCustomer(request, pk)
   await signInAs(context, baseURL!, customer)
-  // variant L อยู่ในแคมเปญเดียวกับ M (variant ตั้งต้นของ PDP) → นับรวมสิทธิ์ของแคมเปญ
+  // variant L อยู่ในแคมเปญเดียวกับ M (variant ที่ PDP เลือกผ่าน `?v_id=`) → นับรวมสิทธิ์ของแคมเปญ
   const cartId = await cartReadyForPayment(request, pk, customer, { variant: variantL, quantity: 1 })
   await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
 
   await step("PDP: ตัวเลือกจำนวนมีแค่ 1 และสิทธิ์ที่เหลือหักของในตะกร้าแล้ว", async () => {
-    await page.goto(`/${CC}/products/${handle}`)
+    await page.goto(`/${CC}/products/${handle}?v_id=${variantM}`)
     const limit = page.getByTestId("flash-customer-limit")
     await expect(limit).toHaveText(THAI)
     await expect(limit).toContainText("2")
