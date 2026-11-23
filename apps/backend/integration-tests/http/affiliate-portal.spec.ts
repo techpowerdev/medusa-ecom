@@ -195,7 +195,8 @@ medusaIntegrationTestRunner({
         expect(item.program).toEqual(
           expect.objectContaining({ id: p2.id, name: "P2", commission_value: 12, starts_at: tomorrow.toISOString() })
         )
-        expect(item.share_url).toEqual("https://shop.example/r/ann?to=/products/af7-in-c-1")
+        // AF-26 กฎ 50 (AC-59): ลิงก์แชร์มี country code; `to` ไม่มี (route ของ storefront เติมเอง)
+        expect(item.share_url).toMatch(/^https?:\/\/[^/]+\/th\/r\/ann\?to=\/products\/af7-in-c-1$/)
         expect(item.product.variants).toHaveLength(2)
         expect(item.product.variants[0].calculated_price).toEqual(
           expect.objectContaining({ calculated_amount: 500, currency_code: "thb" })
