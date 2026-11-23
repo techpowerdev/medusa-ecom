@@ -391,8 +391,9 @@ const Payment = ({
 
         <div className={isOpen ? "hidden" : "block"}>
           {cart && paymentReady && activeSession ? (
-            <div className="flex items-start gap-x-1 w-full">
-              <div className="flex flex-col w-1/3">
+            // CORE-89 (กฎข้อ 145): < 640px ซ้อนกันเต็มความกว้าง (w-1/3 คู่กันที่ 375px ตัดทีละคำ); ≥ 640px (`sm` ของ Tailwind — `small` ของ starter คือ 1024px) แถวเดียวเหมือนเดิม
+            <div className="flex flex-col sm:flex-row items-start gap-y-4 sm:gap-x-1 w-full">
+              <div className="flex flex-col w-full sm:w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
                   วิธีชำระเงิน
                 </Text>
@@ -404,7 +405,7 @@ const Payment = ({
                     activeSession?.provider_id}
                 </Text>
               </div>
-              <div className="flex flex-col w-1/3">
+              <div className="flex flex-col w-full sm:w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
                   รายละเอียดการชำระเงิน
                 </Text>
