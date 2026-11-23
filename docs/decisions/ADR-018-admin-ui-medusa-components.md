@@ -156,3 +156,11 @@ context ของ ui เช่น `TooltipProvider` ข้ามสำเนา�
 - การตัดสินใจ: e2e หาช่องค้นหาด้วย `page.getByTestId("<wrapper ของตาราง>").getByRole("searchbox")` — ข้อยกเว้น**ที่ 3** ของการหาด้วย testid (ต่อจาก menuitem ของ `ActionMenu` และปุ่มใน `action`)
 - ผล: spec 08 กฎ 44 แก้ testid `affiliates-search` (ไม่มีจริง) เป็น locator นี้; ตารางที่จะมีช่องค้นหาในอนาคตใช้แบบเดียวกัน; CLAUDE.md หัวข้อ Language แก้ประโยคข้อยกเว้นเป็นสามข้อ (session หลักแก้ — owner อนุมัติ 2026-11-21)
 - ถ้า bump แล้ว search ส่งต่อ `data-testid` ได้ → กลับไปใช้ testid และตัดข้อยกเว้นนี้
+
+## ภาคผนวก 2026-11-23 — บทเรียนจาก PAY-10 (#471) เรื่อง hook และ injection zone ของ dashboard 2.22.1 (ปิดรอบ 41; ไม่เปลี่ยนการตัดสินใจ)
+- **hook ของ `@medusajs/dashboard/hooks` บางตัว queryKey ไม่รวม query**: `useOrderChanges(id, query)` ใช้ key `changes(id)` → เรียกด้วย query ต่างกันในหน้าเดียวกัน cache ชนกับ timeline ของหน้า order จนหน้า crash
+  และ mutation ของ return/claim/exchange/edit ไม่ invalidate key นี้ → ก่อนใช้ hook ของ dashboard **พร้อม query ของเราเอง** ให้ตรวจ queryKey ใน `dist` ก่อน;
+  ถ้า key ไม่รวม query ให้ใช้ hook ที่หน้า Medusa ใช้อยู่แล้วแบบไม่ส่ง query (PAY-10 ใช้ `useOrderPreview(id)`) หรือ `useQuery` + JS SDK ด้วย key ต่อท้าย query key factory ของ dashboard (ลำดับข้อ "ดึงข้อมูล" ของการตัดสินใจเดิมยังใช้ได้)
+- **suffix `.before`/`.after` ของ zone ไม่มีผลกับตำแหน่ง** ใน dashboard 2.22.1 (`getWidgetsForSections` ทิ้ง suffix แล้ววาง widget ต่อท้ายคอลัมน์หลัก) → widget ที่ต้องอยู่ตำแหน่งใดให้ตั้ง `id` ใน `defineWidgetConfig`
+  แล้วกำหนด system default layout ของ zone ผ่าน migration script (`setSystemDefaultLayoutConfiguration` ของ Settings module — แบบ `src/migration-scripts/order-refund-blocked-layout.ts`); แอดมินที่บันทึก layout ส่วนตัวไว้ก่อนเห็นตาม layout ของตัวเอง
+- ตรวจ widget ปัจจุบันบน develop `8d509076`: มีเพียง `order-refund-blocked.tsx` ที่ใช้ zone `*.before` (จัดตำแหน่งด้วย layout แล้ว); `order-evouchers.tsx` (`order.details`), `variant-evoucher-pool.tsx` (`product_variant.details.side`), `flash-sale-options.tsx` (`campaign.details`) ไม่พึ่ง suffix — ไม่มีงานเพิ่ม

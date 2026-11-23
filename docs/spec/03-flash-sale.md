@@ -416,12 +416,12 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
     "กำลังสร้างคำสั่งซื้อ" จนสถานะเป็น refunded (เสนอเป็น task ต่อ); `/api/payment-return` (redirect off-site) ยังพาไป `/cart?error=order_failed` ซึ่งหน้า cart ยังไม่อ่าน (เสนอเป็น task ต่อ)
 
 ### Acceptance criteria (รอบ 40)
-- AC-27 (FS-20, กฎข้อ 25) integration http — **ล้มบน develop** ก่อน (404): แคมเปญ `per_customer_limit=2` ลูกค้าซื้อไปแล้ว 1 ชิ้น → `remaining_for_customer=1`, `used_units=1`; ลูกค้าอื่น → 2;
+- ☑ AC-27 (FS-20, กฎข้อ 25) integration http — **ล้มบน develop** ก่อน (404): แคมเปญ `per_customer_limit=2` ลูกค้าซื้อไปแล้ว 1 ชิ้น → `remaining_for_customer=1`, `used_units=1`; ลูกค้าอื่น → 2;
   ไม่มี limit → `null`; variant นอกแคมเปญไม่อยู่ใน response; ไม่มี token → 401; ไม่มี `region_id` / ไม่มี `variant_ids` / เกิน 24 → 400; หลัง cancel order ที่คืนโควตา (FS-2) → กลับเป็น 2
-- AC-28 (FS-21, กฎข้อ 26) e2e (ลูกค้า login เจ้าของ cart) — **ล้มบน develop** ก่อน: (a) limit 1 ยังไม่เคยซื้อ → PDP เลือกจำนวนได้สูงสุด 1 และเห็น `flash-customer-limit`;
+- ☑ AC-28 (FS-21, กฎข้อ 26) e2e (ลูกค้า login เจ้าของ cart) — **ล้มบน develop** ก่อน: (a) limit 1 ยังไม่เคยซื้อ → PDP เลือกจำนวนได้สูงสุด 1 และเห็น `flash-customer-limit`;
   (b) ซื้อครบแล้ว → `add-product-button` disabled + `flash-customer-limit-reached`; (c) cart มี line flash qty 2 (เพิ่มก่อนแคมเปญเริ่ม/ผ่าน API) → `/th/cart` มี `cart-flash-exceeds-customer-limit`
   และขั้น review ปุ่ม `submit-order-button` disabled ไม่มี request `POST /store/carts/*/complete`; แก้จำนวนเป็น 1 → ปุ่มกดได้; หาด้วย `data-testid` + ตรวจอักษรไทย
-- AC-29 (FS-22, กฎข้อ 27) e2e route mock + unit Vitest: complete ตอบ 409 `FLASH_LIMIT_EXCEEDED` / `FLASH_SOLD_OUT` / error สต็อกไม่พอ → เห็น `checkout-refunded-notice` (อักษรไทย มีคำว่า "คืนเงิน") ไม่เห็นข้อความ "ลองใหม่";
+- ☑ AC-29 (FS-22, กฎข้อ 27) e2e route mock + unit Vitest: complete ตอบ 409 `FLASH_LIMIT_EXCEEDED` / `FLASH_SOLD_OUT` / error สต็อกไม่พอ → เห็น `checkout-refunded-notice` (อักษรไทย มีคำว่า "คืนเงิน") ไม่เห็นข้อความ "ลองใหม่";
   error อื่น → ข้อความเดิม; unit ของ helper map ครบทุกกรณี
 
 ### Test plan (รอบ 40)
@@ -434,9 +434,9 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
 ### Tasks (รอบ 40)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| FS-20 | (backend) route สิทธิ์ flash ที่เหลือของลูกค้า (กฎข้อ 25) | `apps/backend/src/api/store/customers/me/flash-sales/allowance/route.ts` (ใหม่), helper ใน `src/modules/flash_sale/utils/`, validator/middleware ใน `src/api/store/flash-sales/` (hook `flash-sale-reservation.ts` ไม่เปลี่ยน — session หลักตัดสิน 2026-11-21), test | ~90 LOC + ~150 LOC test | AC-27 | PR เอกสารรอบ 40 | — |
-| FS-21 | (storefront) PDP/cart/review จำกัดจำนวนตามสิทธิ์ที่เหลือ + เตือนก่อนจ่าย (กฎข้อ 26); qa | `apps/storefront/src/lib/data/flash-sales.ts`, PDP `product-actions`, `modules/cart/components/item`, ขั้น review ของ checkout, e2e `fs-21-customer-limit.spec.ts` | ~150 LOC + ~200 LOC test | AC-28 | **FS-20** | `product-actions` (CORE ไม่มีงานร่วม) |
-| FS-22 | (storefront) ข้อความ "คืนเงินอัตโนมัติแล้ว" เมื่อแพ้ race flash/e-voucher หลังชำระ (กฎข้อ 27); qa | `apps/storefront/src/lib/util/friendly-error*.ts` / helper ของ CORE-4i, component ขั้น review, test | ~50 LOC + ~120 LOC test | AC-29 | PR เอกสารรอบ 40 | `lib/data/cart.ts` ร่วมกับ PAY-9 (คนละฟังก์ชัน — ตัวหลัง sync) |
+| FS-20 | ☑ #434 — (backend) route สิทธิ์ flash ที่เหลือของลูกค้า (กฎข้อ 25) | `apps/backend/src/api/store/customers/me/flash-sales/allowance/route.ts` (ใหม่), helper ใน `src/modules/flash_sale/utils/`, validator/middleware ใน `src/api/store/flash-sales/` (hook `flash-sale-reservation.ts` ไม่เปลี่ยน — session หลักตัดสิน 2026-11-21), test | ~90 LOC + ~150 LOC test | AC-27 | PR เอกสารรอบ 40 | — |
+| FS-21 | ☑ #441 — (storefront) PDP/cart/review จำกัดจำนวนตามสิทธิ์ที่เหลือ + เตือนก่อนจ่าย (กฎข้อ 26); qa | `apps/storefront/src/lib/data/flash-sales.ts`, PDP `product-actions`, `modules/cart/components/item`, ขั้น review ของ checkout, e2e `fs-21-customer-limit.spec.ts` | ~150 LOC + ~200 LOC test | AC-28 | **FS-20** | `product-actions` (CORE ไม่มีงานร่วม) |
+| FS-22 | ☑ #464 — (storefront) ข้อความ "คืนเงินอัตโนมัติแล้ว" เมื่อแพ้ race flash/e-voucher หลังชำระ (กฎข้อ 27); qa | `apps/storefront/src/lib/util/friendly-error*.ts` / helper ของ CORE-4i, component ขั้น review, test | ~50 LOC + ~120 LOC test | AC-29 | PR เอกสารรอบ 40 | `lib/data/cart.ts` ร่วมกับ PAY-9 (คนละฟังก์ชัน — ตัวหลัง sync) |
 
 ## Follow-up รอบ 41 (2026-11-21 — owner: PDP นับของในตะกร้า + คนไม่ login เห็นจำกัดต่อคน)
 ที่มา: qa FS-21 — PDP แสดงสิทธิ์ที่เหลือโดยไม่หักจำนวนที่อยู่ในตะกร้าแล้ว (ตะกร้า/review ยังกัน) และ FS-4 ไม่คืน `per_customer_limit` จึงไม่แสดงให้คนไม่ login;
@@ -462,17 +462,29 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
     test ของกฎข้อ 27 ส่วนทางบัตรต้องเป็น race จริงกับ Stripe test mode (แทน route mock — route mock คงไว้เฉพาะ unit/กรณีที่จำลองไม่ได้)
 
 ### Acceptance criteria (รอบ 41)
-- AC-30 (FS-23, กฎข้อ 28) integration + unit + e2e — **ล้มบน develop** ก่อน: (a) integration: `GET /store/flash-sales/active` มี `per_customer_limit` = ค่าที่ตั้ง (null เมื่อไม่จำกัด) ไม่ต้องมี token;
+- ☑ AC-30 (FS-23, กฎข้อ 28) integration + unit + e2e — **ล้มบน develop** ก่อน: (a) integration: `GET /store/flash-sales/active` มี `per_customer_limit` = ค่าที่ตั้ง (null เมื่อไม่จำกัด) ไม่ต้องมี token;
   (b) e2e ไม่ login: PDP ของแคมเปญ limit 2 เห็น `flash-customer-limit` มีเลข 2 และอักษรไทย; (c) e2e login limit 2 ไม่เคยซื้อ มีของในตะกร้า 1 ชิ้น → PDP เลือกได้สูงสุด 1; ตะกร้ามี 2 → ปุ่มเพิ่มตะกร้า disabled + `flash-customer-limit-reached`;
   (d) unit helper ครอบ: ไม่มีของในตะกร้า, ของในตะกร้าคนละแคมเปญ (ไม่หัก), หลาย variant ในแคมเปญเดียว, ผลไม่ติดลบ
-- AC-31 (FS-24, กฎข้อ 29 — แทนส่วน e2e route mock ทางบัตรของ AC-29) e2e Stripe test mode (แบบ AC-22c ของ spec 06): สองลูกค้าแย่ง flash ชิ้นสุดท้าย (cap 1) ด้วยบัตร `4242…` —
+- ☑ AC-31 (FS-24, กฎข้อ 29 — แทนส่วน e2e route mock ทางบัตรของ AC-29) e2e Stripe test mode (แบบ AC-22c ของ spec 06): สองลูกค้าแย่ง flash ชิ้นสุดท้าย (cap 1) ด้วยบัตร `4242…` —
   ผู้แพ้เห็น `checkout-refunded-notice` (อักษรไทย) และภายใน 30 วินาที `GET /admin/payments/:id` ของผู้แพ้มี refund เต็มจำนวน; ไม่มี order ของผู้แพ้; ผู้ชนะได้ order; ห้าม `waitForTimeout`/เพิ่ม retries (poll ด้วย `expect.poll`)
 
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| FS-23 | FS-4 คืน `per_customer_limit` + PDP หักจำนวนในตะกร้า + คนไม่ login เห็นจำกัดต่อคน (กฎข้อ 28); qa | `apps/backend/src/api/store/flash-sales/active/route.ts`, `apps/storefront/src/lib/data/flash-sales.ts`, `lib/util/` helper สิทธิ์, PDP `product-actions`, test | ~80 LOC + ~200 LOC test | AC-30 | PR เอกสารรอบ 41 (FS-21 ☑) | `product-actions` |
-| FS-24 | (test) e2e race จริงทางบัตรของกฎข้อ 27 กับ Stripe test mode (กฎข้อ 29) | `apps/storefront/e2e/fs-24-card-race-refund.spec.ts` (ใหม่), `e2e/support/*` | ~150 LOC test | AC-31 | **FS-22 (#464)**, CORE-76 (notice เป็น state) | — |
+| FS-23 | ☑ #490 — FS-4 คืน `per_customer_limit` + PDP หักจำนวนในตะกร้า + คนไม่ login เห็นจำกัดต่อคน (กฎข้อ 28); qa | `apps/backend/src/api/store/flash-sales/active/route.ts`, `apps/storefront/src/lib/data/flash-sales.ts`, `lib/util/` helper สิทธิ์, PDP `product-actions`, test | ~80 LOC + ~200 LOC test | AC-30 | PR เอกสารรอบ 41 (FS-21 ☑) | `product-actions` |
+| FS-24 | ☑ #509 — (test) e2e race จริงทางบัตรของกฎข้อ 27 กับ Stripe test mode (กฎข้อ 29) | `apps/storefront/e2e/fs-24-card-race-refund.spec.ts` (ใหม่), `e2e/support/*` | ~150 LOC test | AC-31 | **FS-22 (#464)**, CORE-76 (notice เป็น state) | — |
+
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — qa/review #490, #509; ไม่บล็อก release v0.3.0)
+Status: draft (☐ — รอ owner สั่งทำ) · ไม่มีของ Medusa ที่เกี่ยว (test hygiene ล้วน)
+### Business rules (รอบ 42)
+30. (FS-25 — e2e hygiene) (a) (FS-24 #509) helper สร้างสินค้า/แคมเปญ flash ที่ซ้ำใน `e2e/fs-22-refunded-notice.spec.ts`, `e2e/pay-9-refunded-cart-repay.spec.ts`, `e2e/fs-24-card-race-refund.spec.ts` ย้ายไป `e2e/support/` ไฟล์เดียว (ผู้ใช้ 3 ที่);
+    (b) (qa #490) e2e ของ FS-23 เปิด PDP ด้วย `?v_id=<variant>` แทนการสมมติว่า variant แรกถูกเลือก (ลำดับ variants ไม่คงที่); (c) ไม่เปลี่ยนสิ่งที่ test ตรวจ, ห้าม `waitForTimeout`/retries
+### Acceptance criteria (รอบ 42)
+- AC-32 (FS-25, กฎข้อ 30) static: ไม่มีนิยามฟังก์ชันสร้างแคมเปญ flash ซ้ำในสามไฟล์ (import จาก `e2e/support/`); e2e ของ FS-23 ใช้ `?v_id=`; สาม spec + FS-23 ผ่าน `--repeat-each=3`; จำนวน `expect(` ของแต่ละ test ไม่ลด
+### Tasks (รอบ 42)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| FS-25 | e2e hygiene flash: helper ร่วม + PDP `?v_id=` (กฎข้อ 30) | `apps/storefront/e2e/{fs-22-refunded-notice,pay-9-refunded-cart-repay,fs-24-card-race-refund,fs-23-pdp-cart-aware-limit}.spec.ts`, `e2e/support/*` | ~80 LOC (ส่วนใหญ่ย้าย) | AC-32 | PR เอกสารปิดรอบ 41 | — |
 
 ## คำถามที่ยังเปิดอยู่
 - คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน

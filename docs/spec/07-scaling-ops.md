@@ -524,9 +524,9 @@ owner อนุมัติ (2026-11-21) ให้ task ของรอบนี
 ### Tasks (รอบ 40)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| OPS-30 | `LOG_LEVEL=http` ค่าเริ่มต้นของ compose prod + เอกสาร access log/HTTPS (owner อนุมัติแก้ `docs/ops/**`) + ขั้นตรวจ access log ใน CI | `docker-compose.prod.yml`, `docs/ops/production.md`, `apps/backend/src/__tests__/{load-lock-timing,instrumentation}.unit.spec.ts`, `.github/workflows/ci.yml` (`docker-worker-mode`), `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` | ~30 LOC + ~60 LOC test | AC-45 | PR เอกสารรอบ 40 | `docs/ops/production.md` (GB-21, OPS-32 คนละหัวข้อ — ตัวหลัง sync) |
-| OPS-31 | warning ซ้ำตอน migrate + publishable key เดียวใน prod seed | `apps/backend/medusa-config.ts` หรือ guard ที่ log, `apps/backend/src/scripts/seed*.ts`, test | ~60 LOC + ~100 LOC test | AC-46 | PR เอกสารรอบ 40 | `medusa-config.ts` (เก็บทั้งสองฝั่งถ้า conflict — CLAUDE.md) |
-| OPS-32 | log ชัดเมื่อ complete ล้มหลังจ่าย + runbook + ร่าง issue upstream | `apps/backend/src/workflows/hooks/complete-cart-validate.ts`, `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, integration | ~40 LOC + ~120 LOC test | AC-47 | PR เอกสารรอบ 40 | `complete-cart-validate.ts` (ไม่มี task อื่นในรอบนี้), `production.md` |
+| OPS-30 | ☑ #432 — `LOG_LEVEL=http` ค่าเริ่มต้นของ compose prod + เอกสาร access log/HTTPS (owner อนุมัติแก้ `docs/ops/**`) + ขั้นตรวจ access log ใน CI | `docker-compose.prod.yml`, `docs/ops/production.md`, `apps/backend/src/__tests__/{load-lock-timing,instrumentation}.unit.spec.ts`, `.github/workflows/ci.yml` (`docker-worker-mode`), `apps/backend/src/__tests__/ci-workflow.unit.spec.ts` | ~30 LOC + ~60 LOC test | AC-45 | PR เอกสารรอบ 40 | `docs/ops/production.md` (GB-21, OPS-32 คนละหัวข้อ — ตัวหลัง sync) |
+| OPS-31 | ☑ #457 — warning ซ้ำตอน migrate + publishable key เดียวใน prod seed | `apps/backend/medusa-config.ts` หรือ guard ที่ log, `apps/backend/src/scripts/seed*.ts`, test | ~60 LOC + ~100 LOC test | AC-46 | PR เอกสารรอบ 40 | `medusa-config.ts` (เก็บทั้งสองฝั่งถ้า conflict — CLAUDE.md) |
+| OPS-32 | ☑ #438 — log ชัดเมื่อ complete ล้มหลังจ่าย + runbook + ร่าง issue upstream | `apps/backend/src/workflows/hooks/complete-cart-validate.ts`, `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, integration | ~40 LOC + ~120 LOC test | AC-47 | PR เอกสารรอบ 40 | `complete-cart-validate.ts` (ไม่มี task อื่นในรอบนี้), `production.md` |
 
 ## Follow-up รอบ 41 (2026-11-21 — owner: redact PII + hygiene + เอกสาร go-live ใน release v0.3.0)
 ที่มา: OPS-32 #438 (log Medusa `recreate a payment session … Invalid string: {…}` มีชื่อ/อีเมล/เบอร์/ที่อยู่ของลูกค้า), CORE-71 builder (typecheck ในเครื่องล้มเมื่อมี `apps/backend/.medusa/types`),
@@ -565,20 +565,49 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
 - AC-49 (OPS-34, กฎข้อ 16 รอบ 41) ☑ (a–h ผ่าน: typecheck red TS2531 ×6 → green, unit red 2 → green, integration (c) red 1 → green, (f) mutation red, (h) ลำดับบังคับ red 404, (b) เพิ่ม assertion — mutation ถอด lock ยังไม่ red ในเครื่อง; รันซ้ำ 3 รอบ) (a) สร้าง `apps/backend/.medusa/types/*.d.ts` จำลองที่ขัดกับ test แล้ว `pnpm --filter backend typecheck` ผ่าน; (b)–(h) test ที่แก้ผ่าน `--repeat-each`/รันซ้ำ 3 รอบ; static: ไม่มี `setTimeout`/`retries` ใหม่ใน test ที่แก้
 
 ### Checklist ตอน bump `@medusajs/*` — เพิ่ม (รอบ 41)
-(เลขข้อด้านล่างต่อจากเช็กลิสต์ bump ข้อ 1–13 — คนละชุดกับ "กฎข้อ 15–16 รอบ 41" ข้างบน; อ้างเป็น "เช็กลิสต์ bump ข้อ 14–17")
+(เลขข้อด้านล่างต่อจากเช็กลิสต์ bump ข้อ 1–13 — คนละชุดกับ "กฎข้อ 15–16 รอบ 41" ข้างบน; อ้างเป็น "เช็กลิสต์ bump ข้อ 14–18" — ข้อ 18 เพิ่มปิดรอบ 41)
 14. (PAY-9 D-1 — **สำคัญ**) ถ้า upstream แก้ medusajs/medusa#17948 แล้ว `compensatePaymentIfNeededStep` สร้าง session ใหม่ได้สำเร็จ → collection เดิมมี session ใหม่ที่ไม่มี payment → guard ของ PAY-9 ไม่ reset
     → อาการ O-2 (#69) กลับมา: characterization test `integration-tests/http/payment-collection-reset.spec.ts` (~`:256`) จะล้ม → ทบทวน ADR-025 (ภาคผนวก 2026-11-21) ก่อน merge bump
 15. (CORE-75/CORE-88) `typo_tolerance` ของ `POST /store/search` และเกณฑ์ similarity ใน provider ยังเหมือนเดิม (AC-174, AC-185 ผ่าน); `json-logger.ts` redact ยังครอบข้อความ recreate session ของเวอร์ชันใหม่ (AC-48b)
 16. (ADR-028) ถ้า `FetchError` ของ `@medusajs/js-sdk` เก็บ `code`/`type` แล้ว → ย้ายผู้เรียก `lib/data/medusa-fetch.ts` กลับไปใช้ SDK แล้วลบ helper; ไม่งั้นตรวจว่า header ของ helper ยังเท่ากับของ SDK (unit AC-181a)
+    **(ยืนยันปิดรอบ 41 2026-11-23 หลัง CORE-82..84 + ADR-028 ภาคผนวก 2026-11-23 — ข้อนี้ยังถูกต้อง เพิ่มรายละเอียด)**: ผู้เรียก `medusaFetch` ณ ปิดรอบ 41 = `lib/data/{payment,cart,returns,group-join,affiliate-portal}.ts`
+    (affiliate ส่ง `authHeaders` ของ actor `affiliate` — ถ้าย้ายกลับ SDK ต้องส่ง header นี้แทน); ย้ายกลับแล้วยังต้องคง class `MedusaApiError` หรือแทนด้วย error ของ SDK ที่มี `status/type/code` ให้ helper ตัดสินผลทุกตัวทำงานเหมือนเดิม;
+    ทุก bump ตรวจข้อความของข้อยกเว้น `UNCODED_MEDUSA_ERRORS` ใน `lib/util/medusa-api-error.ts` (`OUT_OF_STOCK_AT_RESERVE`, `EMPTY_CART_COMPLETION`, `IDENTITY_EXISTS`) กับ source ของ Medusa ที่ติดตั้ง (ซ้อนกับข้อ 13 — ข้อนี้คือรายการครบ);
+    ไม่มี issue upstream ที่เราเปิด (owner 2026-11-23 — ADR-028 ภาคผนวก) — ตอน bump ดูสถานะ medusajs/medusa#16770 และ PR ที่แก้ `FetchError`
 17. (CORE-76) ข้อความ 409 ไม่มี code "Cart is already being completed by another request" ของ `POST /store/carts/:id/complete` (`@medusajs/medusa` `dist/api/store/carts/[id]/complete/route.js`) ยังเหมือนเดิม
     และ `errorHandler` ของ Medusa ยังเขียนทับข้อความ CONFLICT — contract test ฝั่ง backend (`src/api/__tests__/error-handler.unit.spec.ts`) ล้ม = แก้ `CART_COMPLETION_IN_PROGRESS_MESSAGE` (`src/api/store/carts/errors.ts`)
     แล้วตรวจ kind `processing` ของ `placeOrderOutcome` (session หลักตัดสิน 2026-11-21 ตามรายงาน builder CORE-76; storefront ตัดสินจาก code อย่างเดียวตั้งแต่ CORE-82 — ไม่มี map ข้อความให้แก้)
+18. (GB-30 — spec 04 กฎข้อ 55/56, review #498; เพิ่มปิดรอบ 41) ตรวจ `@medusajs/medusa` เวอร์ชันใหม่ว่ามี admin route หรือ job/workflow ที่เรียกจากภายนอกใหม่ที่**ลบ** promotion (เช่น bulk/batch delete, cascade จาก campaign)
+    หรือ**เปลี่ยน `status`** ของ promotion (เช่น batch status, `updatePromotionsStatusWorkflow` จาก route อื่น, job เปิดใช้ตาม `starts_at` ของ campaign) นอกจาก `DELETE /admin/promotions/:id` และ `POST /admin/promotions/:id` —
+    พบ → ต้นแบบ `GBT-*` ลบ/เปิดใช้ได้ทางใหม่: ขยาย guard ของ `adminPromotionLockMiddlewares` (`src/api/admin/promotions/group-buy-lock.ts`) ให้ครอบก่อน merge bump และเพิ่มเคสใน `integration-tests/http/group-buy-promotion-lock.spec.ts` (AC-73);
+    ตรวจด้วย grep `deletePromotionsWorkflow`/`updatePromotionsStatusWorkflow`/`status` ใน `dist/api/admin/promotions/**`, `dist/api/admin/campaigns/**` และ `@medusajs/core-flows` ส่วน promotion (ข้อ 13 ครอบเฉพาะ path ใต้ matcher เดิม)
 
 ### Tasks (รอบ 41)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| OPS-33 | redact PII ใน logger prod (กฎข้อ 15 รอบ 41) + ตรวจถ้อยคำหมายเหตุ runbook/go-live ข้อ 13 ที่ PR เอกสารรอบ 41 เขียนไว้ + `check:go-live` ตรวจ `datctype` (กฎข้อ 15 d — owner ยืนยัน 2026-11-21) | `apps/backend/src/lib/json-logger.ts`, `src/lib/redact-pii.ts` (+ unit), `src/scripts/check-go-live.ts`, integration, `docs/ops/production.md` | ~60 LOC + ~150 LOC test | AC-48 | PR เอกสารรอบ 41 | `production.md` (CORE-81, EV-25 คนละบรรทัด) |
-| OPS-34 | hygiene backend รวม (กฎข้อ 16 รอบ 41) | `apps/backend/tsconfig.json`, test ตาม (b)–(h), `api/store/flash-sales/middlewares.ts` | ~40 LOC + ~150 LOC test | AC-49 | PR เอกสารรอบ 41 | `middlewares.ts` ถ้าย้าย matcher (CORE-80, GB-26 — ตัวหลัง sync) |
+| OPS-33 | ☑ #473 — redact PII ใน logger prod (กฎข้อ 15 รอบ 41) + ตรวจถ้อยคำหมายเหตุ runbook/go-live ข้อ 13 ที่ PR เอกสารรอบ 41 เขียนไว้ + `check:go-live` ตรวจ `datctype` (กฎข้อ 15 d — owner ยืนยัน 2026-11-21) | `apps/backend/src/lib/json-logger.ts`, `src/lib/redact-pii.ts` (+ unit), `src/scripts/check-go-live.ts`, integration, `docs/ops/production.md` | ~60 LOC + ~150 LOC test | AC-48 | PR เอกสารรอบ 41 | `production.md` (CORE-81, EV-25 คนละบรรทัด) |
+| OPS-34 | ☑ #497 — hygiene backend รวม (กฎข้อ 16 รอบ 41) | `apps/backend/tsconfig.json`, test ตาม (b)–(h), `api/store/flash-sales/middlewares.ts` | ~40 LOC + ~150 LOC test | AC-49 | PR เอกสารรอบ 41 | `middlewares.ts` ถ้าย้าย matcher (CORE-80, GB-26 — ตัวหลัง sync) |
+
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review/re-review #473, #471; ไม่บล็อก release v0.3.0)
+Status: draft (☐ — รอ owner สั่งทำ) · แตะ `docs/ops/production.md` (นับเป็นโค้ดใน CI) — owner อนุมัติให้ task ops แก้หัวข้อของตัวเองตามแนวรอบ 40/41
+### What Medusa already gives us (รอบ 42)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| access log | Medusa 2.22.1 เขียน access log ที่ระดับ `http` (path + query + status) ผ่านทางของ Medusa เอง — builder ยืนยันว่าผ่าน logger ของเรา (`json-logger.ts`) หรือ stdout ตรง (review #473 บอกว่าตรง) | ไม่ patch — บันทึกใน runbook (กฎข้อ 17c) |
+| layout ของหน้า order | system default layout ของ zone `order.details` (migration script ของ PAY-10) + layout ส่วนตัวของแอดมิน ("Customize layout") | ใช้ตามเดิม — runbook บอกวิธี reset (กฎข้อ 17d) |
+### Business rules (รอบ 42)
+17. (OPS-35 — ช่องว่างของ redact + runbook) (a) `redactPii` (`src/lib/redact-pii.ts`) ครอบเพิ่ม: สตริงในเครื่องหมาย backtick ของ `util.inspect` (`` key: `value` ``), ค่าใน JSON ที่ escape ซ้อน (`\"email\":\"…\"`),
+        local part ของอีเมลที่มี `'` (เช่น `o'brien@…` ต้องไม่เหลือ `o'`); คงกติกา linear-time ของกฎข้อ 15 (unit 100k ตัวอักษร) และไม่ตัด id/`request_id`/จำนวนเงิน;
+    (b) ไม่ redact ค่า non-PII ของ key `name`/`state` ที่เป็นชื่อ step/สถานะ workflow ไม่ได้ — ยอมรับตามกฎข้อ 15 (ไม่เปลี่ยน); `cause` ที่ non-enumerable ไม่ถูก log (ไม่ regression) — ไม่เปลี่ยน;
+    (c) `docs/ops/production.md` หัวข้อ redact (Go-live ข้อ 13): ระบุว่า access log ของ Medusa **ไม่ผ่าน** redact (ถ้า builder ยืนยันว่าตรง stdout) และมีเฉพาะ path/query/status — query ของหน้าค้นหา (`q`) อาจมีข้อความที่ลูกค้าพิมพ์; log shipper ต้องเก็บตามนโยบาย PII เดียวกัน;
+    (d) `docs/ops/production.md` runbook หลัง go-live: แอดมินที่บันทึก layout ส่วนตัวของหน้า order ไว้ก่อน PAY-10 จะไม่เห็น widget `order-refund-blocked` บนสุด → reset layout เป็นค่าเริ่มต้น ("Customize layout" → reset) (re-review #471)
+### Acceptance criteria (รอบ 42)
+- AC-50 (OPS-35, กฎข้อ 17) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture backtick `` email: `a.b@x.co` ``, JSON escape ซ้อน, `o'brien@example.com` → ไม่เหลือค่า fixture และไม่เหลือ `o'`; unit linear-time 100k ตัวอักษรเดิมยังผ่านโดยไม่เพิ่มเกณฑ์เวลา;
+  unit runbook (`ops-runbook.unit.spec.ts`) grep คำ "access log" ในหัวข้อ redact และ "Customize layout" ในหัวข้อหลัง go-live
+### Tasks (รอบ 42)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| OPS-35 | redact backtick/JSON escape/`'` + runbook access log และ reset layout (กฎข้อ 17 รอบ 42) | `apps/backend/src/lib/redact-pii.ts` (+ unit), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts` | ~20 LOC + ~60 LOC test | AC-50 | PR เอกสารปิดรอบ 41 | `production.md` |
 
 ## Open questions (รอบ 35)
 - **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):
