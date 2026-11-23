@@ -52,3 +52,36 @@ backend test:unit: Tests:       1733 passed, 1733 total
 storefront test:e2e:unit:   146 passed (1.2s)
 pnpm typecheck: ผ่าน (exit 0 — รันหลังย้าย .medusa/types ที่ medusa develop สร้างออก แบบเดียวกับ CI) | pnpm lint: ผ่าน (0 errors)
 backend build: ผ่าน (medusa build)
+
+# รอบ 2 (แก้ตาม review/qa #499) 2026-11-23 — backend `medusa develop -p 9200`, DB medusa_adm44, Redis db 3
+
+## RED O-1 — e2e ใหม่ 'qa #499 O-1' บน head เดิม 46125c6f (ยังไม่แก้ programs-table)
+  ✘  1 [chromium] › e2e/admin-program-form-edit.spec.ts:156:5 › qa #499 O-1 (กฎ 38): ปิด Drawer แก้ไข (Cancel ไม่ dirty / Escape / Save สำเร็จ) → focus กลับปุ่ม … ของแถว ไม่ใช่ BODY (14.6s)
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: "opener"
+    Received: "BODY"
+  1 failed
+
+## baseline develop 8471f3c0 (ฟอร์มแก้เป็น FocusModal) — probe ปิดฟอร์มแก้ที่เปิดจากเมนู … แล้วดู document.activeElement
+DEVRESULT Escape=BODY,Save=BODY
+(มีอาการเดิมบน develop: Escape/Save → BODY)
+
+## qa O-2 — probe 5 รอบต่อฟอร์ม: dirty → Cancel → Continue editing → คลิกนอก Drawer ทันที (ผลต่อรอบ: prompt/none, focus หลัง Leave)
+head เดิม (ก่อนแก้ O-1):
+RESULT program none,focus=BODY,none,focus=BODY,none,focus=BODY,none,focus=BODY,none,focus=BODY
+RESULT partner none,focus=BODY,none,focus=BODY,none,focus=BODY,none,focus=BODY,none,focus=BODY   (PartnersSection — Drawer เดิมบน develop)
+หลังแก้ O-1 + focus ช่องใน Drawer ก่อนคลิกนอก:
+RESULT program prompt,focus=opener,none,focus=opener,none,focus=opener,prompt,focus=opener,none,focus=opener
+RESULT partner prompt,focus=BODY,none,focus=BODY,none,focus=BODY,none,focus=BODY,prompt,focus=BODY
+→ คลิกนอกครั้งแรกทันทีหลัง Continue editing ไม่มีผลเหมือนกันทั้ง Drawer ของ PR นี้และ PartnersSection บน develop (usePrompt ของ @medusajs/ui 4.2.8) — ไม่แก้ใน PR นี้ เสนอเป็น task แยก
+
+## GREEN — admin-program-form-edit.spec.ts --repeat-each=3
+  9 passed (14.9s)
+
+## REGRESSION — e2e admin 12 ไฟล์ (workers=1)
+  62 passed (3.1m)
+
+## e2e:unit / typecheck / lint
+storefront test:e2e:unit:   146 passed (1.2s)
+pnpm typecheck: ผ่าน | pnpm lint: 0 errors
+backend test:unit: Tests:       1733 passed, 1733 total (รอบแรกล้ม 3 ใน prod-guards.unit.spec.ts เพราะ shell มี env ของเครื่องที่ใช้รัน backend — รันใหม่โดยไม่มี env นั้นแล้วผ่าน)

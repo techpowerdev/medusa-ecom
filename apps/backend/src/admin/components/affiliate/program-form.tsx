@@ -93,7 +93,7 @@ const ScopeFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; prog
 }
 
 // ADM-44 (spec 08 กฎ 48a): resolver ตรวจทั้งรูปค่า (zod) และกฎธุรกิจ (toProgramBody) — Save แสดง error ทุกช่องพร้อมกัน (กฎ 46)
-// และ RHF focus ช่องแรกที่ผิดเอง; ตรวจใหม่ตอนแก้ช่อง (reValidateMode) และ trigger("ends_at") ได้ผลเดียวกับตอน Save
+// และ RHF focus ช่องแรกที่ผิดเอง; หลัง Save ตรวจใหม่ตอนแก้ช่อง (reValidateMode) รวมช่องใน `deps` (ends_at เมื่อแก้ starts_at) ด้วยกฎเดียวกับตอน Save
 const zodProgramResolver = zodResolver(programFormSchema, PROGRAM_PARSE_OPTIONS, { raw: true })
 const programResolver: Resolver<ProgramForm> = async (values, context, options) => {
   const parsed = await zodProgramResolver(values, context, options)
@@ -132,7 +132,9 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
           key={key}
           control={form.control}
           name={key}
-          render={({ field: { ref, onChange, ...field } }) => (
+          // กฎ 48a: ends_at ขึ้นกับ starts_at — หลังกด Save แก้ starts_at แล้ว RHF ตรวจ ends_at ใหม่ทันที (error ข้ามช่องไม่ค้าง)
+          rules={key === "starts_at" ? { deps: ["ends_at"] } : undefined}
+          render={({ field: { ref, ...field } }) => (
             <Form.Item>
               <Form.Label>{label}</Form.Label>
               {/* e2e กรอกผ่าน wrapper ที่มี testid เดิม (fillDatePicker — spec 08 กฎ 7b) */}
@@ -142,13 +144,6 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
                     {...field}
                     // กฎ 48c: ref ของ DatePicker เป็น div ที่ focus ไม่ได้ — ให้ RHF (shouldFocus) focus segment แรกแทน
                     ref={(el) => ref(el && { focus: () => el.querySelector<HTMLElement>('[role="spinbutton"]')?.focus() })}
-                    onChange={(value) => {
-                      onChange(value)
-                      // กฎ 48a: ends_at ขึ้นกับ starts_at — หลังกด Save แล้วตรวจ ends_at ใหม่ทันที (error ข้ามช่องไม่ค้าง)
-                      if (key === "starts_at" && form.formState.isSubmitted) {
-                        void form.trigger("ends_at")
-                      }
-                    }}
                     granularity="minute"
                     shouldCloseOnSelect={false}
                   />

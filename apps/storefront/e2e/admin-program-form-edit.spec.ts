@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test"
+import { APIRequestContext, Page } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, fillDatePicker, loginAdmin, rowAction } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
@@ -124,5 +124,90 @@ test("AC-49b: แก้ไข program เปิดใน Drawer — Escape ข�
   } finally {
     const res = await request.delete(`${BACKEND_URL}${path}`, { headers: admin })
     expect(res.ok(), `ลบ program ${program.id}`).toBe(true)
+  }
+})
+
+// qa #499 O-1 (spec 08 กฎ 38): ฟอร์มแก้ program (Drawer) เปิดจาก ActionMenu ของแถว — ปิดแล้ว focus กลับปุ่ม … ของแถว
+const createProgram = async (request: APIRequestContext, admin: Record<string, string>, name: string) => {
+  const { program } = await ok(
+    await request.post(`${BACKEND_URL}${PROGRAMS}`, {
+      headers: admin,
+      data: {
+        name,
+        starts_at: new Date(Date.now() + 10 * DAY).toISOString(),
+        ends_at: new Date(Date.now() + 20 * DAY).toISOString(),
+        commission_value: 5,
+        scope: { all: true },
+      },
+    }),
+    "สร้าง program",
+  )
+  return program as { id: string }
+}
+
+const deleteProgram = async (request: APIRequestContext, admin: Record<string, string>, id: string) => {
+  const res = await request.delete(`${BACKEND_URL}${PROGRAMS}/${id}`, { headers: admin })
+  expect(res.ok(), `ลบ program ${id}`).toBe(true)
+}
+
+const editDrawer = (page: Page) =>
+  page.getByRole("dialog", { includeHidden: true }).and(page.getByTestId("affiliate-program-drawer"))
+
+test("qa #499 O-1 (กฎ 38): ปิด Drawer แก้ไข (Cancel ไม่ dirty / Escape / Leave ของ prompt / Save สำเร็จ) → focus กลับปุ่ม … ของแถว ไม่ใช่ BODY", async ({
+  page,
+  request,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const admin = await adminHeaders(request)
+  const name = `ADM-44 focus ${uniqueTag()}`
+  const program = await createProgram(request, admin, name)
+  const row = page.getByTestId("affiliate-programs-table").getByRole("row").filter({ hasText: name })
+  const trigger = row.getByTestId("affiliate-program-row-actions")
+  const focused = () =>
+    trigger.evaluate((el) => (el === document.activeElement ? "opener" : (document.activeElement?.tagName ?? "null")))
+  const open = async () => {
+    await (await rowAction(row, "affiliate-program-row-actions", "Edit")).click()
+    await expect(editDrawer(page)).toBeVisible()
+  }
+
+  try {
+    await loginAdmin(page)
+    await page.goto(`${BACKEND_URL}/app/affiliate`)
+
+    await step("Cancel (ไม่ dirty) → focus ที่ปุ่ม … ของแถว", async () => {
+      await open()
+      await editDrawer(page).getByRole("button", { name: "Cancel" }).click()
+      await expect(editDrawer(page)).toHaveCount(0)
+      await expect.poll(focused).toBe("opener")
+    })
+
+    await step("Escape (ไม่ dirty) → focus ที่ปุ่ม … ของแถว", async () => {
+      await open()
+      await page.keyboard.press("Escape")
+      await expect(editDrawer(page)).toHaveCount(0)
+      await expect.poll(focused).toBe("opener")
+    })
+
+    await step("dirty → Escape → prompt → Leave → focus ที่ปุ่ม … ของแถว", async () => {
+      await open()
+      await editDrawer(page).getByTestId("affiliate-program-field-name").fill(`${name} draft`)
+      await page.keyboard.press("Escape")
+      await expect(alert(page)).toBeVisible()
+      await alert(page).getByRole("button", { name: "Leave" }).click()
+      await expect(editDrawer(page)).toHaveCount(0)
+      await expect.poll(focused).toBe("opener")
+    })
+
+    await step("Save สำเร็จ → focus ที่ปุ่ม … ของแถว", async () => {
+      await open()
+      await editDrawer(page).getByTestId("affiliate-program-field-name").fill(name)
+      await editDrawer(page).getByTestId("affiliate-program-field-announce_text").fill("focus")
+      await editDrawer(page).getByTestId("affiliate-program-save").click()
+      await expect(editDrawer(page)).toHaveCount(0)
+      await expect.poll(focused).toBe("opener")
+    })
+  } finally {
+    await deleteProgram(request, admin, program.id)
   }
 })
