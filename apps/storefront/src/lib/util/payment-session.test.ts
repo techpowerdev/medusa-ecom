@@ -332,9 +332,12 @@ describe("sessionResetShown", () => {
     expect(sessionResetShown(notice, "pp_system_default", "pi_old_secret")).toBe(false)
   })
 
-  it("client secret เปลี่ยน (session ใหม่มาแล้ว) หรือไม่มี session → ไม่แสดง", () => {
+  it("client secret เปลี่ยน (session ใหม่มาแล้ว) → ไม่แสดง", () => {
     expect(sessionResetShown(notice, "pp_stripe_stripe", "pi_new_secret")).toBe(false)
-    expect(sessionResetShown(notice, "pp_stripe_stripe", null)).toBe(false)
+  })
+
+  it("review #541: cart ไม่มี session pending (เช่น session เดิมถูก cancel) ไม่ใช่ session ใหม่ → ยังแสดง", () => {
+    expect(sessionResetShown(notice, "pp_stripe_stripe", null)).toBe(true)
   })
 
   it("ไม่มี notice → ไม่แสดง", () => {

@@ -89,9 +89,12 @@ const Payment = ({
   // session ที่จบแล้วตอนสร้างใหม่สำเร็จ — cart ใน props ยังชี้ secret นี้ = RSC refresh ยังไม่มา (ไม่ค้าง skeleton ถาวร)
   const [renewedFrom, setRenewedFrom] = useState<SessionResetNotice | null>(null)
   const activeSecret = (activeSession?.data?.client_secret as string | undefined) ?? null
-  const renewNotInCartYet = renewedFrom !== null && activeSecret === renewedFrom.secret
+  // cart ที่ refresh มาไม่มี session pending (null) ก็ยังไม่ใช่ session ใหม่ — นับว่ายังรอ (review #541)
+  const renewNotInCartYet =
+    renewedFrom !== null && (activeSecret === null || activeSecret === renewedFrom.secret)
   const resetShown = sessionResetShown(sessionReset, selectedPaymentMethod, activeSecret)
-  // PAY-16 (กฎข้อ 18 d): ระหว่างรอ order ของ PAYMENT_ALREADY_COMPLETED (ADR-015) ห้ามเปลี่ยนวิธีชำระ
+  // PAY-16 (กฎข้อ 18 d): ระหว่างรอ order ของ PAYMENT_ALREADY_COMPLETED (ADR-015) ห้ามเปลี่ยนวิธีชำระ — รวม `delayed` (paidOrder.busy)
+  // โดยตั้งใจ: ชำระแล้วแต่ยังไม่มี order → เปลี่ยนวิธีก็ได้ PAYMENT_ALREADY_COMPLETED อีก ลูกค้าต้องติดต่อร้านตาม notice
   const [awaitingPaidOrder, setAwaitingPaidOrder] = useState(false)
   const { countryCode } = useParams()
   const placePaid = () => placeOrder(cart.id, undefined, countryCode as string)

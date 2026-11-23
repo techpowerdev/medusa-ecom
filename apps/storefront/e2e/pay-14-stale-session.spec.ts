@@ -182,15 +182,20 @@ test("AC-27 a: สร้างอัตโนมัติล้ม 1 ครั�
 })
 
 // PAY-16 (spec 06 กฎข้อ 18, AC-29): สถานะขั้น payment หลังเจอ session ที่ชี้ PI ที่จบแล้ว — ฉากเดียวกับ AC-27 (Stripe test mode จริง)
-// + route mock ผลของ server action: ผลของ action สร้าง session ส่งต่อด้วย provider ที่ไม่มีจริง (backend ตอบ error ก่อนแตะ session — ไม่มีผลข้างเคียง)
-// แล้วแทน `"error":"failed"` ใน payload (แบบ CORE-76) — cart ใน props จึงยังชี้ PI เดิมเสมอ
+// + route mock ผลของ server action สร้าง session: ตอบจาก browser เองโดยไม่ส่งต่อไป backend (review #541: การส่งต่อไป backend
+// ด้วย provider ปลอมยังผ่าน guard ที่ทำให้ session เดิมเป็น canceled) — cart ใน backend จึงยังชี้ PI เดิมเสมอ
 const MANUAL = "pp_system_default"
-const FAILED = '"error":"failed"'
+
+/**
+ * payload ของ server action ที่ไม่ revalidate (รูปแบบเดียวกับที่ Next 16 ตอบจริง: แถว 0 = `{"a":"$@1","f":""…}`, แถว 1 = ผลของ action)
+ * `f` ว่าง = ไม่มี flight data → หน้าไม่ได้ cart ใหม่จาก action นี้
+ */
+const actionPayload = (result: object) => `0:{"a":"$@1","f":"","q":"","i":false,"b":"pay16"}\n1:${JSON.stringify(result)}\n`
 
 type CardActions = { calls: number }
 
-/** action สร้าง session ของบัตร: ครั้งที่ n (นับจาก 1) ใช้ `plan(n)` — "fail" = 500, string = แทนผลด้วยค่านั้น, undefined = ผ่านจริง */
-async function mockCardSessions(page: Page, plan: (n: number) => "fail" | string | undefined): Promise<CardActions> {
+/** action สร้าง session ของบัตร: ครั้งที่ n (นับจาก 1) ใช้ `plan(n)` — "fail" = 500, object = ตอบเป็นผลนั้น (ไม่ถึง backend), undefined = ผ่านจริง */
+async function mockCardSessions(page: Page, plan: (n: number) => "fail" | object | undefined): Promise<CardActions> {
   const seen: CardActions = { calls: 0 }
   await page.route(`**/${CC}/checkout**`, async (route) => {
     const req = route.request()
@@ -198,10 +203,7 @@ async function mockCardSessions(page: Page, plan: (n: number) => "fail" | string
     const action = plan(++seen.calls)
     if (action === undefined) return route.fallback()
     if (action === "fail") return route.fulfill({ status: 500, body: "" })
-    const response = await route.fetch({ postData: (req.postData() ?? "").replaceAll(CARD_PROVIDER, "pp_pay16_missing") })
-    const text = await response.text()
-    expect(text, "action สร้าง session ด้วย provider ที่ไม่มีจริงคืน failed").toContain(FAILED)
-    return route.fulfill({ response, body: text.replace(FAILED, action) })
+    return route.fulfill({ status: 200, contentType: "text/x-component", body: actionPayload(action) })
   })
   return seen
 }
@@ -256,7 +258,7 @@ test.describe("PAY-16 (AC-29)", () => {
     })
   })
 
-  test("AC-29 c: สร้าง session ใหม่ 'สำเร็จ' แต่ cart ไม่ได้ session ใหม่ → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton", async ({
+  test("AC-29 c: สร้าง session ใหม่ 'สำเร็จ' แต่ cart ไม่ได้ session ใหม่ → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton แล้วกดลองอีกครั้งได้", async ({
     page,
     context,
     request,
@@ -266,8 +268,9 @@ test.describe("PAY-16 (AC-29)", () => {
   }) => {
     test.setTimeout(120_000)
     const customer = await createCustomer(request, pk)
-    await cartWithStaleCardSession(page, context, request, baseURL!, customer)
-    const actions = await mockCardSessions(page, () => '"ok":true')
+    const { cartId, staleIntent } = await cartWithStaleCardSession(page, context, request, baseURL!, customer)
+    // ครั้งแรก (อัตโนมัติ) ตอบ ok โดยไม่สร้าง session จริง; ครั้งต่อไป (กดลองอีกครั้ง) ผ่านจริง
+    const actions = await mockCardSessions(page, (n) => (n === 1 ? { ok: true } : undefined))
 
     await step("เปิดขั้น payment → renew อัตโนมัติ 'สำเร็จ' ระหว่างรอเห็น skeleton ของช่องบัตร", async () => {
       await page.goto(`/${CC}/checkout?step=payment`)
@@ -284,6 +287,15 @@ test.describe("PAY-16 (AC-29)", () => {
       await expectNoStripeEnglish(page)
       await evidence("02-notice-without-skeleton")
     })
+
+    await step("กด payment-session-retry → action สร้าง session ใหม่ 1 ครั้ง, cart ได้ PI ใหม่, notice หาย และ Elements mount", async () => {
+      await page.getByTestId("payment-session-retry").click()
+      await expect.poll(hasNewIntent(request, customer, cartId, staleIntent), { timeout: 15_000 }).toBe(true)
+      expect(actions.calls).toBe(2)
+      await expect(page.getByTestId("payment-session-reset-notice")).toHaveCount(0)
+      await fillCard(page, "4242424242424242")
+      await expectNoStripeEnglish(page)
+    })
   })
 
   test("AC-29 d: PAYMENT_ALREADY_COMPLETED → ระหว่างรอ order radio วิธีชำระ disabled", async ({
@@ -297,7 +309,7 @@ test.describe("PAY-16 (AC-29)", () => {
     test.setTimeout(120_000)
     const customer = await createCustomer(request, pk)
     const { cartId } = await cartWithStaleCardSession(page, context, request, baseURL!, customer)
-    await mockCardSessions(page, () => '"error":"PAYMENT_ALREADY_COMPLETED"')
+    await mockCardSessions(page, () => ({ error: "PAYMENT_ALREADY_COMPLETED" }))
     // placeOrder ของการรอ order: ส่งต่อด้วย cart id ที่ไม่มีจริง (`kind: failed`) แล้วแทนเป็น processing = รอ order ต่อ (แบบ CORE-76)
     const placeOrders = { calls: 0 }
     await page.route(`**/${CC}/checkout**`, async (route) => {

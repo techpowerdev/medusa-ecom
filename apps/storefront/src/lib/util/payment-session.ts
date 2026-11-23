@@ -31,9 +31,12 @@ export const intentIsTerminal = (status?: string) => status === "succeeded" || s
 /** PAY-16 (spec 06 กฎข้อ 18 a): notice "เลือกวิธีชำระอีกครั้ง" ของขั้น payment — วิธีที่เลือกและ client secret ตอน notice ขึ้น */
 export type SessionResetNotice = { method: string; secret: string | null }
 
-/** notice แสดงเฉพาะเมื่อยังเลือกวิธีเดิมและ cart ยังชี้ secret เดิม — เปลี่ยนวิธีหรือ session ใหม่มาแล้ว = หาย */
+/**
+ * notice แสดงจนกว่าลูกค้าเปลี่ยนวิธี หรือ session ใหม่มาแล้ว (cart ชี้ secret อื่นที่ไม่ใช่ null) — cart ไม่มี session pending
+ * (เช่น session เดิมถูก cancel ระหว่างทาง — review #541) ไม่ใช่ session ใหม่ จึงยังแสดงให้ลองใหม่ได้
+ */
 export const sessionResetShown = (notice: SessionResetNotice | null, method: string, secret: string | null) =>
-  notice !== null && notice.method === method && notice.secret === secret
+  notice !== null && notice.method === method && (secret === null || secret === notice.secret)
 
 /** หมดอายุ 10 นาทีนับจากเวลาสร้าง PaymentIntent (`created` เป็นวินาที) — reload หน้าไม่ยืดเวลา */
 export const promptPayDeadline = (intentCreatedSec: number) =>

@@ -60,6 +60,14 @@ const cartWithSecret = (secret: string) =>
     },
   }) as never
 const cart = cartWithSecret("pi_old_secret_x")
+// session เดิมถูก cancel (ไม่มี session pending) — ไม่ใช่ session ใหม่
+const cartWithoutPendingSession = {
+  ...(cart as object),
+  payment_collection: {
+    id: "pay_col_1",
+    payment_sessions: [{ provider_id: CARD, status: "canceled", data: { client_secret: "pi_old_secret_x" } }],
+  },
+} as never
 
 let container: HTMLDivElement
 let root: Root
@@ -122,6 +130,15 @@ describe("PAY-16 (AC-29): สถานะขั้น payment", () => {
     expect(byTestId("payment-session-reset-notice")).toBeNull()
   })
 
+  it("(a) review #541: notice แล้ว cart ใน props ไม่มี session pending (session เดิมถูก cancel) → notice ยังอยู่และไม่ค้าง skeleton", async () => {
+    await withResetNotice()
+    await render(cartWithoutPendingSession)
+
+    expect(byTestId("payment-session-reset-notice")).not.toBeNull()
+    expect(byTestId("payment-session-retry")).not.toBeNull()
+    expect(byTestId("card-option")!.dataset.fieldsHidden).toBe("true")
+  })
+
   it("(b) ตรวจพบ PI จบแล้วซ้ำระหว่าง renew กำลังรอ → ไม่ขึ้น notice ซ้อน ไม่สร้าง session เพิ่ม", async () => {
     await withResetNotice()
     initiatePaymentSession.mockReturnValueOnce(new Promise(() => {}))
@@ -152,6 +169,20 @@ describe("PAY-16 (AC-29): สถานะขั้น payment", () => {
     initiatePaymentSession.mockReturnValueOnce(new Promise(() => {}))
     await click("payment-session-retry")
     expect(byTestId("card-option")!.dataset.fieldsHidden).toBe("false")
+  })
+
+  it("(c) review #541: renew สำเร็จแต่ cart ที่ refresh มาไม่มี session pending → 10 วินาที notice และซ่อนช่องบัตร", async () => {
+    vi.useFakeTimers()
+    initiatePaymentSession.mockResolvedValue({ ok: true })
+    await render()
+    await click("stale")
+    await render(cartWithoutPendingSession)
+    await act(async () => {
+      vi.advanceTimersByTime(10_000)
+    })
+
+    expect(byTestId("payment-session-reset-notice")).not.toBeNull()
+    expect(byTestId("card-option")!.dataset.fieldsHidden).toBe("true")
   })
 
   it("(d) PAYMENT_ALREADY_COMPLETED → ระหว่างรอ order radio disabled; complete ไม่สำเร็จ → เลือกได้อีก", async () => {

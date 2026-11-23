@@ -50,9 +50,35 @@ TypeError: sessionResetShown is not a function
   65 passed (4.5m)
 skipped = test ที่ต้องใช้ Stripe test mode (รวม AC-27 เดิมและ AC-29 a-d ใหม่ใน pay-14-stale-session.spec.ts) — CI พิสูจน์
 
--- probe กลไก route mock (spec ชั่วคราว ลบแล้ว): action สร้าง session ด้วย provider ที่ไม่มีจริง --
-payload จริง: 0:{"a":"$@1","f":"","q":"?step=payment","i":false,"b":"<build>"} / 1:{"error":"failed"}
-→ ไม่มี flight data (f ว่าง) และแทน "error":"failed" ได้ — ใช้ใน AC-29 c (แทนเป็น "ok":true) และ d (PAYMENT_ALREADY_COMPLETED)
+-- (รอบแรก — ถูกแทนในรอบแก้ review #541) probe ส่งต่อ action ด้วย provider ปลอม: สมมติฐาน "ไม่มีผลข้างเคียง" ผิด
+   (guardPaidStripeSession ทำให้ session เดิมเป็น canceled ก่อน throw) → CI run 45264215689 AC-29 c/d ล้ม
 
 หมายเหตุ red ของ e2e: ทำในเครื่องไม่ได้ (ไม่มี Stripe key) — AC-29 a บน develop ล้มที่ notice ยังอยู่หลังเลือก manual (unit (a) ยืนยัน),
 d ล้มที่ radio ไม่ disabled (unit (d) ยืนยัน); c ใช้ testid skeleton-card-details ที่เพิ่มใน PR นี้ (red ด้วย unit (c))
+
+== รอบแก้ review #541 (2026-11-24) ==
+blocker 1 (d): PaymentContainer ส่ง disabled={false} ทับ disabled ของ RadioGroup (headless 2.2.10) → ส่ง `disabled || undefined`
+blocker 2 (c): cart ไม่มี session pending (secret null) ไม่ใช่ session ใหม่ → sessionResetShown ยังแสดง, renewNotInCartYet นับ null ว่ายังรอ
+e2e: route mock ของ action สร้าง session ตอบจาก browser เอง (payload ปลอม `0:{"a":"$@1","f":""…}` / `1:<ผล>`) ไม่ส่งต่อ backend;
+     AC-29 c เพิ่มขั้นกด payment-session-retry → action จริง 1 ครั้ง, PI ใหม่, notice หาย, Elements mount (qa #541)
+
+-- RED (test ใหม่กับ head c8914bed ของ PR) --
+     × review #541: cart ไม่มี session pending (เช่น session เดิมถูก cancel) ไม่ใช่ session ใหม่ → ยังแสดง 3ms
+     × (d) RadioGroup disabled → ทุกตัวเลือก aria-disabled 18ms
+     × (a) review #541: notice แล้ว cart ใน props ไม่มี session pending (session เดิมถูก cancel) → notice ยังอยู่และไม่ค้าง skeleton 6ms
+     × (c) review #541: renew สำเร็จแต่ cart ที่ refresh มาไม่มี session pending → 10 วินาที notice และซ่อนช่องบัตร 2ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected null to be 'true' // Object.is equality
+AssertionError: expected null not to be null
+AssertionError: expected null not to be null
+AssertionError: expected false to be true // Object.is equality
+ Test Files  3 failed (3)
+      Tests  4 failed | 53 passed (57)
+
+-- GREEN --
+ Test Files  4 passed (4)
+      Tests  67 passed (67)
+-- vitest ทั้ง storefront: Test Files 122 passed, Tests 1874 passed; tsc ผ่าน; eslint 0 error
+-- probe payload ปลอมในเครื่อง (spec ชั่วคราว ลบแล้ว, manual provider): ผล {ok:true} ถูกอ่านเป็น ok (รอ session แล้ว pending error ที่ 10 วินาที)
+   และ cart ใน backend ไม่มี payment session (SESSIONS []) = ไม่ถึง backend — 1 passed
+-- e2e ในเครื่องรอบแก้ (24 spec ที่อ้างขั้น payment): 65 passed, 24 skipped (Stripe) — AC-29 a-d พิสูจน์ใน CI
