@@ -208,17 +208,27 @@ export const GROUP_BUY_SESSION_CANCEL_FAILED = "GROUP_BUY_SESSION_CANCEL_FAILED"
 export const deleteMemberPaymentSessionsStep = createStep(
   "delete-member-payment-sessions",
   async (members: Member[], { container }) => {
-    const { data: orders } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
-      entity: "order",
-      fields: [
-        "id",
-        "payment_collections.payment_sessions.id",
-        "payment_collections.payment_sessions.authorized_at",
-        "payment_collections.payment_sessions.payment.id",
-      ],
-      filters: { id: members.map((m) => m.order_id) },
-    })
-    for (const order of orders as any[]) {
+    const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+    // GB-32 กฎข้อ 58 (c): อ่าน session ล้มก็อยู่ใน best-effort เดียวกัน — ไม่ให้ compensate membership/order ที่ยกเลิกแล้ว
+    let orders: any[]
+    try {
+      ;({ data: orders } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
+        entity: "order",
+        fields: [
+          "id",
+          "payment_collections.payment_sessions.id",
+          "payment_collections.payment_sessions.authorized_at",
+          "payment_collections.payment_sessions.payment.id",
+        ],
+        filters: { id: members.map((m) => m.order_id) },
+      }))
+    } catch (error) {
+      logger.warn(
+        `${GROUP_BUY_SESSION_CANCEL_FAILED} orders=${members.map((m) => m.order_id).join(",")}: ${(error as Error)?.message ?? error}`
+      )
+      return new StepResponse(undefined)
+    }
+    for (const order of orders) {
       const ids: string[] = (order.payment_collections ?? [])
         .flatMap((c: any) => c?.payment_sessions ?? [])
         .filter((s: any) => s && !s.authorized_at && !s.payment)
@@ -229,11 +239,7 @@ export const deleteMemberPaymentSessionsStep = createStep(
         try {
           await deletePaymentSessionsWorkflow(container).run({ input: { ids: [id] } })
         } catch (error) {
-          container
-            .resolve(ContainerRegistrationKeys.LOGGER)
-            .warn(
-              `${GROUP_BUY_SESSION_CANCEL_FAILED} order=${order.id} sessions=${id}: ${(error as Error)?.message ?? error}`
-            )
+          logger.warn(`${GROUP_BUY_SESSION_CANCEL_FAILED} order=${order.id} sessions=${id}: ${(error as Error)?.message ?? error}`)
         }
       }
     }
@@ -349,7 +355,8 @@ export const checkMembershipPaymentStep = createStep(
 )
 
 // alert give-up ถึง OPS_ALERT_EMAIL แบบ best-effort: ไม่ตั้ง env → warn แล้วข้าม; ส่งล้ม → log error ไม่ทำให้ job ล้ม
-export const alertPaymentCheckGaveUpStep = createStep(
+// GB-32 กฎข้อ 58 (e): ชื่อตัวแปรตาม step id เดิม (lint step-id-kebab-case) — ไม่เปลี่ยน id ที่ workflow engine เก็บไว้
+export const alertGroupBuyPaymentCheckGaveUpStep = createStep(
   "alert-group-buy-payment-check-gave-up",
   async (result: MembershipPaymentCheckResult, { container }) => {
     const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -394,7 +401,7 @@ export const checkGroupBuyMembershipPaymentWorkflow = createWorkflow(
         .config({ name: "capture-group-buy-paid-payment" })
     })
     when("alert-group-buy-payment-check-gave-up", { result }, ({ result }) => result.decision === "give_up").then(() => {
-      alertPaymentCheckGaveUpStep(result)
+      alertGroupBuyPaymentCheckGaveUpStep(result)
     })
     return new WorkflowResponse(result)
   }

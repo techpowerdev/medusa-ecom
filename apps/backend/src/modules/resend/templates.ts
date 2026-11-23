@@ -422,7 +422,7 @@ const renderGroupBuyPaidWithoutOrder = (data: Record<string, unknown>): Rendered
   return { subject, html: layout(subject, body) }
 }
 
-// GB-20b กฎข้อ 50 (d): ข้อมูลจาก alertPaymentCheckGaveUpStep ใน src/workflows/group-buy/membership-payment.ts
+// GB-20b กฎข้อ 50 (d): ข้อมูลจาก alertGroupBuyPaymentCheckGaveUpStep ใน src/workflows/group-buy/membership-payment.ts
 // GB-28 กฎข้อ 53 (a): alert ส่งก่อน expire workflow — ยังไม่รู้ผลการยกเลิก
 const renderGroupBuyPaymentCheckGaveUp = (data: Record<string, unknown>): RenderedEmail => {
   const subject = `[ด่วน] GROUP_BUY_PAYMENT_CHECK_GAVE_UP: ตรวจสถานะการชำระไม่ได้ กำลังยกเลิกสิทธิ์ order ${String(data.order_id ?? "")}`
