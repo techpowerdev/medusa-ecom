@@ -480,11 +480,11 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่มีขอ
 30. (FS-25 — e2e hygiene) (a) (FS-24 #509) helper สร้างสินค้า/แคมเปญ flash ที่ซ้ำใน `e2e/fs-22-refunded-notice.spec.ts`, `e2e/pay-9-refunded-cart-repay.spec.ts`, `e2e/fs-24-card-race-refund.spec.ts` ย้ายไป `e2e/support/` ไฟล์เดียว (ผู้ใช้ 3 ที่);
     (b) (qa #490) e2e ของ FS-23 เปิด PDP ด้วย `?v_id=<variant>` แทนการสมมติว่า variant แรกถูกเลือก (ลำดับ variants ไม่คงที่); (c) ไม่เปลี่ยนสิ่งที่ test ตรวจ, ห้าม `waitForTimeout`/retries
 ### Acceptance criteria (รอบ 42)
-- AC-32 (FS-25, กฎข้อ 30) static: ไม่มีนิยามฟังก์ชันสร้างแคมเปญ flash ซ้ำในสามไฟล์ (import จาก `e2e/support/`); e2e ของ FS-23 ใช้ `?v_id=`; สาม spec + FS-23 ผ่าน `--repeat-each=3`; จำนวน `expect(` ของแต่ละ test ไม่ลด
+- ☑ AC-32 (FS-25, กฎข้อ 30) static: ไม่มีนิยามฟังก์ชันสร้างแคมเปญ flash ซ้ำในสามไฟล์ (import จาก `e2e/support/`); e2e ของ FS-23 ใช้ `?v_id=`; สาม spec + FS-23 ผ่าน `--repeat-each=3`; จำนวน `expect(` ของแต่ละ test ไม่ลด (ผ่าน: static `fs-25-flash-e2e-hygiene.unit.spec.ts` 3 ล้มบน develop → green; สาม spec ที่ใช้ Stripe + FS-23 ผ่าน 3 รอบใน CI ของ #531 — rerun job storefront-e2e ของ run 45238724229 ครบ 3 ครั้ง 469 passed 0 skipped ทุกรอบ; ในเครื่อง FS-23 `--repeat-each=3` 6/6)
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| FS-25 | e2e hygiene flash: helper ร่วม + PDP `?v_id=` (กฎข้อ 30) | `apps/storefront/e2e/{fs-22-refunded-notice,pay-9-refunded-cart-repay,fs-24-card-race-refund,fs-23-pdp-cart-aware-limit}.spec.ts`, `e2e/support/*` | ~80 LOC (ส่วนใหญ่ย้าย) | AC-32 | PR เอกสารปิดรอบ 41 | — |
+| FS-25 | ☑ #531 — e2e hygiene flash: helper ร่วม + PDP `?v_id=` (กฎข้อ 30) | `apps/storefront/e2e/{fs-22-refunded-notice,pay-9-refunded-cart-repay,fs-24-card-race-refund,fs-23-pdp-cart-aware-limit}.spec.ts`, `e2e/support/*` | ~80 LOC (ส่วนใหญ่ย้าย) | AC-32 | PR เอกสารปิดรอบ 41 | — |
 
 ## คำถามที่ยังเปิดอยู่
 - คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน
