@@ -5,7 +5,7 @@ import { fieldErrorMap } from "./form-validation"
 // AF-12a (spec 05 กฎ 37a): ค่าฟอร์มโปรแกรม ↔ body ของ POST /admin/affiliate/programs(/:id)
 // pure — import แค่ type เพื่อให้ unit test ตรวจกับ validator ของ AF-5 ได้
 // ADM-9 (spec 08 กฎ 5, 8): schema ตรวจรูปค่า (วันเวลาเป็น Date จาก DatePicker ตาม timezone ของเครื่องแอดมิน),
-// กฎธุรกิจอยู่ใน toProgramBody แล้ว map error เข้า form.setError
+// กฎธุรกิจอยู่ใน toProgramBody — resolver ของฟอร์ม (program-form.tsx, ADM-44) map error เข้าแต่ละช่อง
 export const programFormSchema = z.object({
   name: z.string(),
   starts_at: z.date().nullable(),

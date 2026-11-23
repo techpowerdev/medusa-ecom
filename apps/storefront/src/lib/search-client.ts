@@ -36,6 +36,8 @@ export const indexedCurrency = (currencyCode: string) => {
 export const priceAttribute = (field: PriceField, currencyCode: string) =>
   `${field}_${indexedCurrency(currencyCode)}`
 
+const TYPO_TOLERANCE_MIN_LENGTH = 3
+
 /**
  * Shared by the navbar search drawer and the store listing. An empty query
  * searches rather than short-circuiting, which is what the listing needs to
@@ -45,13 +47,20 @@ export const { searchClient } = createInstantSearchAdapter({
   sdk: sdk as unknown as MedusaSdkLike,
   path: "/store/search",
   additionalSearchParameters: {
-    search_options: {
-      match_strategy: "last",
-      // CORE-75 (spec 01 กฎข้อ 133): ชื่อไทยไม่เว้นวรรคเป็น lexeme เดียว ค้นได้แค่คำนำหน้า — typo tolerance ของ
-      // `@medusajs/search-postgres` เพิ่ม `word_similarity(q, search_text) > 0.3` (pg_trgm) จึงเจอคำกลาง/ท้ายคำ
-      typo_tolerance: true,
-    },
+    search_options: { match_strategy: "last" },
   },
+  // CORE-75 (spec 01 กฎข้อ 133): ชื่อไทยไม่เว้นวรรคเป็น lexeme เดียว ค้นได้แค่คำนำหน้า — typo tolerance ของ
+  // `@medusajs/search-postgres` เพิ่ม `word_similarity(q, search_text) > 0.3` (pg_trgm) จึงเจอคำกลาง/ท้ายคำ
+  // CORE-88 (กฎข้อ 144): ส่งเฉพาะคำค้นที่ trim แล้ว ≥ 3 code point — คำสั้นอย่าง "ขา" คล้าย "ขนาด:F" ใน search_text
+  // (≈ 0.33) จนได้ทั้ง catalog; นับ code point (`Array.from` = `[...q]`) ไม่ใช่ grapheme ("ยืด" = 3 ไม่ใช่ 2)
+  transformQuery: (query) =>
+    Array.from(query.filters?.q?.trim() ?? "").length >=
+    TYPO_TOLERANCE_MIN_LENGTH
+      ? {
+          ...query,
+          search_options: { ...query.search_options, typo_tolerance: true },
+        }
+      : query,
   // Range widgets read `facets_stats`, which the adapter only produces for
   // fields listed here. The price fields are declared with a `stats` facet on
   // the index, which is what makes the stats available at all.

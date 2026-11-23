@@ -114,23 +114,38 @@ describe("searchProductIds (CORE-70)", () => {
     })
   })
 
-  // CORE-75 (spec 01 กฎข้อ 133, AC-174): ทุกหน้าส่ง typo_tolerance ของ Medusa (pg_trgm word_similarity) → คำไทยกลางคำเจอ
-  it("ส่ง search_options.typo_tolerance: true ทุก request", async () => {
+  const searchOptionsFor = async (q: string) => {
     const fetch = vi.mocked(sdk.client.fetch)
     fetch.mockClear()
     fetch.mockResolvedValueOnce({
       results: [{ hits: [], metadata: { skip: 0, take: 24, count: 0 } }],
     })
 
-    await searchProductIds("ยืด", 24)
+    await searchProductIds(q, 24)
 
     const [, init] = fetch.mock.calls[0] as [
       string,
       { body: { queries: { search_options?: Record<string, unknown> }[] } },
     ]
-    expect(init.body.queries[0].search_options).toEqual({
-      match_strategy: "last",
-      typo_tolerance: true,
-    })
-  })
+    return init.body.queries[0].search_options
+  }
+
+  // CORE-75 (spec 01 กฎข้อ 133, AC-174) + CORE-88 (กฎข้อ 144, AC-185): typo_tolerance ของ Medusa (pg_trgm word_similarity)
+  // ส่งเฉพาะคำค้นที่ trim แล้ว ≥ 3 code point — คำไทยกลางคำเจอ แต่คำ 2 อักขระไม่คืนทั้ง catalog
+  it.each(["ยืด", "สเวตเตอร์", "ยีนส์", "ขายาว", "เสื้อ", "กางเกง", "shirt"])(
+    "คำค้น %j (≥ 3 code point) → ส่ง typo_tolerance: true",
+    async (q) => {
+      expect(await searchOptionsFor(q)).toEqual({
+        match_strategy: "last",
+        typo_tolerance: true,
+      })
+    }
+  )
+
+  it.each(["ขา", "  ขา  ", "ab"])(
+    "คำค้น %j (trim แล้ว < 3 code point) → ไม่ส่ง typo_tolerance",
+    async (q) => {
+      expect(await searchOptionsFor(q)).toEqual({ match_strategy: "last" })
+    }
+  )
 })
