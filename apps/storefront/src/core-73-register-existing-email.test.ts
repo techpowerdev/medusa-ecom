@@ -33,8 +33,12 @@ vi.mock("@lib/config", () => ({
   },
 }))
 // CORE-83 (กฎข้อ 140, ADR-028): register ผ่าน `medusaFetch` (ได้ type ของ error) — ส่งต่อให้ authRegister แบบ sdk.auth.register
+// CORE-84: register ของ affiliate ผ่าน medusaFetch ด้วย — ส่งต่อให้ clientFetch แบบ sdk.client.fetch เดิม
 vi.mock("@lib/data/medusa-fetch", () => ({
   medusaFetch: async (path: string, body: unknown) => {
+    if (path.startsWith("/auth/affiliate/") || path === "/affiliate/register") {
+      return clientFetch(path, { method: "POST", body })
+    }
     if (path !== "/auth/customer/emailpass/register") throw new Error(`unexpected ${path}`)
     return { token: await authRegister("customer", "emailpass", body) }
   },

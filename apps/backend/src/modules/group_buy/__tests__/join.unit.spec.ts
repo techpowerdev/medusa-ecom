@@ -132,9 +132,10 @@ describe("assertJoinAllowed", () => {
     }
   })
 
-  it("rejects an empty cart (INVALID_DATA)", () => {
+  // CORE-84 (spec 01 กฎข้อ 140, ADR-028): code ให้ storefront ตัดสิน empty_cart แทนการเทียบข้อความ
+  it("rejects an empty cart (INVALID_DATA, code GB_CART_EMPTY)", () => {
     expect(() => assertJoinAllowed(check({ cartUnits: 0 }))).toThrow(
-      expect.objectContaining({ type: MedusaError.Types.INVALID_DATA })
+      expect.objectContaining({ type: MedusaError.Types.INVALID_DATA, code: "GB_CART_EMPTY" })
     )
   })
 })

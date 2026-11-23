@@ -4,6 +4,7 @@ import { STORE_RESOURCE_NOT_FOUND } from "../../../lib/store-ownership"
 import {
   GB_ALREADY_IN_OTHER_GROUP,
   GB_CART_ALREADY_JOINED,
+  GB_CART_EMPTY,
   GB_GROUP_FULL,
   GB_ITEMS_NOT_ELIGIBLE,
   GB_MAX_TOTAL_ORDERS_REACHED,
@@ -49,7 +50,7 @@ export function assertJoinAllowed(c: JoinCheck): { isNewPerson: boolean } {
     throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "The group is no longer open for joining")
   }
   if (c.cartUnits <= 0) {
-    throw new MedusaError(MedusaError.Types.INVALID_DATA, "The cart has no items")
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, "The cart has no items", GB_CART_EMPTY)
   }
   // กฎข้อ 14b: cart ที่มี GB-* อยู่แล้ว = เคย join (หรือใส่ code กลุ่มเอง) — ตรวจก่อน PROMOTION_NOT_COMBINABLE
   if (c.cartManualCodes.some(isGroupBuyCode)) {

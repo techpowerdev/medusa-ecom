@@ -115,6 +115,8 @@ medusaIntegrationTestRunner({
 
         expect(error.response.status).toEqual(400)
         expect(error.response.data.type).toEqual("invalid_data")
+        // CORE-84 (spec 01 กฎข้อ 140, ADR-028): storefront ตัดสินจาก code
+        expect(error.response.data.code).toEqual("AFFILIATE_CODE_RESERVED")
         expect(error.response.data.message).toContain("This referral code is reserved")
         const affiliates = getContainer().resolve<AffiliateModuleService>(AFFILIATE_MODULE)
         expect(await affiliates.listAffiliates({ code: "admin" })).toHaveLength(0)

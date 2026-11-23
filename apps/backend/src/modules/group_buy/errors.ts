@@ -6,6 +6,8 @@ export const GB_UNITS_LIMIT_EXCEEDED = "GB_UNITS_LIMIT_EXCEEDED"
 export const GB_ITEMS_NOT_ELIGIBLE = "GB_ITEMS_NOT_ELIGIBLE"
 // owner 2026-10-26: cart หนึ่งใบ join ได้ครั้งเดียว และ cart ที่มี GB-* complete ไม่ได้ (ส่วนลดกลุ่มใช้ผ่าน draft order เท่านั้น)
 export const GB_CART_ALREADY_JOINED = "GB_CART_ALREADY_JOINED"
+// 400 INVALID_DATA: join ด้วย cart ว่าง — CORE-84 (spec 01 กฎข้อ 140, ADR-028) ให้ storefront ตัดสินจาก code ไม่ใช่ข้อความ
+export const GB_CART_EMPTY = "GB_CART_EMPTY"
 // 400 NOT_ALLOWED (กฎข้อ 14a, AC-26) — ไม่อยู่ใน BUSINESS_CONFLICT_CODES
 export const GB_CART_NOT_COMPLETABLE = "GB_CART_NOT_COMPLETABLE"
 // 400 NOT_ALLOWED (กฎข้อ 5, AC-23) — ไม่ใช่ 409 จึงห้ามอยู่ใน BUSINESS_CONFLICT_CODES

@@ -16,10 +16,6 @@ export const CHECKOUT_CONFLICTS: { code: string; text: string }[] = [
   },
 ]
 
-// medusaError ทำตัวแรกเป็นตัวใหญ่และต่อ "." ท้ายข้อความ — ตัดออกก่อนเทียบ
-// CORE-58 (กฎข้อ 116b): ตัวกลางของ map ข้อความ error ที่ยังไม่ย้ายไป code (group-join-error — CORE-84)
-export const normalize = (message: string) => message.trim().replace(/\.$/, "").toLowerCase()
-
 const knownConflict = (error: unknown) => {
   const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined
   return CHECKOUT_CONFLICTS.find((c) => c.code === code)
