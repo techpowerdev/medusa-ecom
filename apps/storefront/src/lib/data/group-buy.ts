@@ -33,11 +33,14 @@ export async function retrieveGroupBuyOrder(orderId: string): Promise<GroupBuyOr
  * GB-7b: membership ทั้งหมดของลูกค้า (รวม cancelled) — route อ่านอย่างเดียวของ GB-8; ไม่ cache (สถานะเปลี่ยนจาก job/webhook)
  * อ่านล้ม → null (หน้า orders ยังแสดงคำสั่งซื้อปกติได้)
  */
-export async function listGroupBuyMemberships(): Promise<{ memberships: GroupBuyMembership[]; count: number } | null> {
+export async function listGroupBuyMemberships(
+  // CORE-92 (spec 01 กฎข้อ 148b): overview ต้องรู้แค่ว่ามี membership หรือไม่ → ส่ง 1
+  limit: number = GROUP_BUY_MEMBERSHIPS_LIMIT
+): Promise<{ memberships: GroupBuyMembership[]; count: number } | null> {
   return sdk.client
     .fetch<{ memberships: GroupBuyMembership[]; count: number }>(`/store/customers/me/group-buy/memberships`, {
       method: "GET",
-      query: { limit: GROUP_BUY_MEMBERSHIPS_LIMIT },
+      query: { limit },
       headers: await getAuthHeaders(),
       cache: "no-store",
     })

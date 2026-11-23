@@ -93,9 +93,6 @@ const OptionsPicker = ({
           }
 
           const isOpen = openItems.includes(option.id)
-          const selectedCount = values.filter((value) =>
-            selectedValueIds.includes(value.id)
-          ).length
 
           return (
             <Accordion.Item
@@ -105,14 +102,10 @@ const OptionsPicker = ({
             >
               <Accordion.Header>
                 <Accordion.Trigger className="flex w-full items-center justify-between py-3 text-left">
-                  <div className="flex items-center gap-2">
-                    <span className="txt-compact-small-plus text-ui-fg-base">
-                      {option.title || "ตัวเลือก"}
-                    </span>
-                    <span className="txt-compact-small-plus text-ui-fg-muted">
-                      ({selectedCount})
-                    </span>
-                  </div>
+                  {/* CORE-93 (กฎข้อ 149): ไม่แสดงจำนวนที่หัว แบบเดียวกับกฎข้อ 143 */}
+                  <span className="txt-compact-small-plus text-ui-fg-base">
+                    {option.title || "ตัวเลือก"}
+                  </span>
                   <span
                     className={clsx(
                       "flex h-7 w-7 items-center justify-center text-ui-fg-muted transition-transform duration-150",

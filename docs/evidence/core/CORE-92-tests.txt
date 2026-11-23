@@ -1,0 +1,113 @@
+# CORE-92 (spec 01 กฎข้อ 148, AC-189) — ผล test ในเครื่อง 2026-11-24 บน origin/develop 59c6af18
+
+## RED (ก่อนแก้ — โค้ดของ develop)
+### unit vitest src/core-92-overview-pagination.test.ts + src/group-buy-account-actions.test.ts
+     × มีแต่ membership กลุ่ม → ไม่มี no-orders-message แต่มีลิงก์ ดูทั้งหมด 125ms
+     × overview เรียก GB-8 ด้วย limit 1 (ต้องรู้แค่ว่ามี membership หรือไม่) 1ms
+     × nav มี aria-label ไทย, ปุ่มหน้าปัจจุบันเท่านั้นที่มี aria-current=page, aria-label ของปุ่มเป็นไทย 5ms
+     × จุดไข่ปลาซ่อนจาก screen reader 2ms
+     × ไม่มี eslint-disable 0ms
+     × CORE-92: ส่ง limit ที่ระบุแทนค่าเริ่มต้น (overview ใช้ 1) 4ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/core-92-overview-pagination.test.ts > overview ของบัญชี (กฎข้อ 148a/148b) > มีแต่ membership กลุ่ม → ไม่มี no-orders-message แต่มีลิงก์ ดูทั้งหมด
+AssertionError: expected 1 to be +0 // Object.is equality
+ FAIL  src/core-92-overview-pagination.test.ts > overview ของบัญชี (กฎข้อ 148a/148b) > overview เรียก GB-8 ด้วย limit 1 (ต้องรู้แค่ว่ามี membership หรือไม่)
+AssertionError: expected "vi.fn()" to be called with arguments: [ 1 ]
+ FAIL  src/core-92-overview-pagination.test.ts > SearchPagination ของ /store (กฎข้อ 148c) > nav มี aria-label ไทย, ปุ่มหน้าปัจจุบันเท่านั้นที่มี aria-current=page, aria-label ของปุ่มเป็นไทย
+AssertionError: expected '<div class="flex justify-center w-ful…' to match /<nav[^>]*aria-label="แบ่งหน้า"[^>]*da…/
+ FAIL  src/core-92-overview-pagination.test.ts > SearchPagination ของ /store (กฎข้อ 148c) > จุดไข่ปลาซ่อนจาก screen reader
+AssertionError: expected '<span class="txt-xlarge-plus text-ui-…' to contain 'aria-hidden="true"'
+ FAIL  src/core-92-overview-pagination.test.ts > orders/page.tsx (กฎข้อ 148d) > ไม่มี eslint-disable
+AssertionError: expected 'import { Metadata } from "next"\n\nim…' not to match /eslint-disable/
+ FAIL  src/group-buy-account-actions.test.ts > listGroupBuyMemberships > CORE-92: ส่ง limit ที่ระบุแทนค่าเริ่มต้น (overview ใช้ 1)
+AssertionError: expected "vi.fn()" to be called with arguments: [ …(2) ]
+      Tests  6 failed | 9 passed (15)
+
+### e2e e2e/core-92-overview-pagination.spec.ts (storefront build จาก src ของ develop)
+  ✘  1 [chromium] › e2e/core-92-overview-pagination.spec.ts:35:5 › AC-189: ลูกค้าที่มีแต่ membership กลุ่ม → overview ไม่มี ยังไม่มีคำสั่งซื้อ แต่มีลิงก์ ดูทั้งหมด (9.0s)
+  ✘  2 [chromium] › e2e/core-92-overview-pagination.spec.ts:55:5 › AC-189: /store ที่มี ≥ 2 หน้า → nav ของ SearchPagination มี aria-label ไทย และปุ่มหน้าปัจจุบัน aria-current=page (6.0s)
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 0
+    Received: 1
+    Error: expect(locator).toHaveJSProperty(expected) failed
+    Expected: "NAV"
+    Received: "DIV"
+  2 failed
+
+## GREEN (หลังแก้)
+### unit vitest ทั้ง storefront
+Test Files  118 passed (118)
+Tests  1825 passed (1825)
+
+### e2e CORE-92 + core-68 + core-78
+  ✓  2 [chromium] › e2e/core-92-overview-pagination.spec.ts:35:5 › AC-189: ลูกค้าที่มีแต่ membership กลุ่ม → overview ไม่มี ยังไม่มีคำสั่งซื้อ แต่มีลิงก์ ดูทั้งหมด (3.8s)
+  ✓  4 [chromium] › e2e/core-92-overview-pagination.spec.ts:55:5 › AC-189: /store ที่มี ≥ 2 หน้า → nav ของ SearchPagination มี aria-label ไทย และปุ่มหน้าปัจจุบัน aria-current=page (1.0s)
+  ✓  3 [chromium] › e2e/core-68-orders-pagination.spec.ts:22:5 › AC-167: ลูกค้า 12 order → หน้า 1 มี 10 แถว, หน้า 2 มี 2 แถว (เก่าสุดอยู่หน้า 2), หน้าเกิน → หน้าสุดท้าย (48.4s)
+  ✓  1 [chromium] › e2e/core-78-orders-page-cleanup.spec.ts:14:5 › AC-177: 12 order + membership กลุ่ม → ส่วนกลุ่มเฉพาะหน้า 1, Pagination มี aria-current และ aria-label ไทย (48.8s)
+  ✓  6 [chromium] › e2e/core-78-orders-page-cleanup.spec.ts:75:5 › AC-177: ลูกค้าที่มีแต่ membership กลุ่ม → overview เห็นลิงก์ ดูทั้งหมด (3.4s)
+  ✓  5 [chromium] › e2e/core-68-orders-pagination.spec.ts:96:5 › AC-167: order ≤ 10 ใบ → ไม่แสดง orders-pagination (4.9s)
+  6 passed (55.3s)
+
+### e2e ทุก spec ที่อ้างหน้า overview/orders/store (21 ไฟล์, --workers=2)
+  ✓   1 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (7.1s)
+  ✓   2 [chromium] › e2e/core-15-store-search-error.spec.ts:11:5 › AC-54, AC-55: /store/search ตอบ 500 → หยุดยิงซ้ำ แสดง products-error ไทย และกลับมาปกติเมื่อ search ใช้ได้ (8.4s)
+  ✓   3 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (2.1s)
+  ✓   4 [chromium] › e2e/core-15-store-search-error.spec.ts:62:7 › AC-69: browser locale en-US › ป้ายช่วงราคาใต้ slider แสดง ฿ ไม่มี THB ทั้งก่อนและหลังลาก (1.6s)
+  ✓   5 [chromium] › e2e/core-23b-account-progress.spec.ts:17:5 › AC-97: คลิกเมนู orders → account-nav-pending แสดงก่อนหน้าใหม่ (4.3s)
+  ✓   7 [chromium] › e2e/core-23b-account-progress.spec.ts:56:5 › AC-97: บันทึกเบอร์โทรล้ม (500) → input ยังเป็นค่าที่พิมพ์ (1.5s)
+  ✓   6 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (13.4s)
+  ✓   9 [chromium] › e2e/core-70-unified-search.spec.ts:95:5 › AC-169: คำค้นเดียวกันได้ชุดสินค้าเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (2.9s)
+  ✓  10 [chromium] › e2e/core-70-unified-search.spec.ts:124:5 › AC-169: พิมพ์คำค้นใน /th/store → URL ใช้ q (1.3s)
+  ✓  11 [chromium] › e2e/core-70-unified-search.spec.ts:135:5 › AC-169: drawer ค้น "shirt" ได้สินค้า seed อย่างน้อย 1 ชิ้น และตรงกับ /th/search?q=shirt (2.2s)
+  ✓  12 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:94:5 › AC-171: ลูกค้ามี 2 ชิ้น + cart โหลดช้า 2 วินาที → ระหว่างรอไม่มี "(0)" หลังโหลดเป็น "(2)" (6.5s)
+  ✓  13 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:122:5 › AC-171: ตะกร้าว่างจริง (ไม่มี cart) → แสดง "ตะกร้า (0)" หลังโหลด (5.9s)
+  ✓  14 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:150:7 › hotfix nav-cart-link: /th มี element ที่ testid nav-cart-link เพียงตัวเดียวทุกขณะระหว่าง stream (826ms)
+  ✓  15 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:150:7 › hotfix nav-cart-link: /th/store มี element ที่ testid nav-cart-link เพียงตัวเดียวทุกขณะระหว่าง stream (1.2s)
+  ✓  16 [chromium] › e2e/core-73-register-existing-email.spec.ts:25:5 › AC-172: สมัครด้วยอีเมลที่มีบัญชีแล้ว → ไม่ login ให้ แสดงอีเมลนี้มีบัญชีแล้ว + ลิงก์เข้าสู่ระบบ (2.4s)
+  ✓  17 [chromium] › e2e/core-73-register-existing-email.spec.ts:71:5 › AC-172 (regression): อีเมลของบัญชี affiliate ที่ยังไม่มี customer → สมัครเป็นลูกค้าได้ตามเดิม (2.2s)
+  ✓  18 [chromium] › e2e/core-73-register-existing-email.spec.ts:88:5 › AC-172 (F-1): อีเมลตัวพิมพ์ใหญ่ของบัญชีเดิม → สมัครไม่ได้ (อีเมลนี้มีบัญชีแล้ว) และ login เข้าบัญชีเดิมได้ (2.7s)
+  ✓  19 [chromium] › e2e/core-75-thai-substring-search.spec.ts:99:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (3.6s)
+  ✓  20 [chromium] › e2e/core-75-thai-substring-search.spec.ts:127:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt (1.5s)
+  ✓   8 [chromium] › e2e/core-68-orders-pagination.spec.ts:22:5 › AC-167: ลูกค้า 12 order → หน้า 1 มี 10 แถว, หน้า 2 มี 2 แถว (เก่าสุดอยู่หน้า 2), หน้าเกิน → หน้าสุดท้าย (1.1m)
+  ✓  22 [chromium] › e2e/core-68-orders-pagination.spec.ts:96:5 › AC-167: order ≤ 10 ใบ → ไม่แสดง orders-pagination (7.4s)
+  ✓  23 [chromium] › e2e/core-79-login-link-mobile.spec.ts:8:5 › AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login (2.0s)
+  ✓  24 [chromium] › e2e/core-87-facet-heading.spec.ts:80:5 › AC-184: หัว facet "ขนาด" ไม่มี "(0)" และตัวเลข (ถ้ามี) = 2 (863ms)
+  ✓  25 [chromium] › e2e/core-92-overview-pagination.spec.ts:30:5 › AC-189: ลูกค้าที่มีแต่ membership กลุ่ม → overview ไม่มี ยังไม่มีคำสั่งซื้อ แต่มีลิงก์ ดูทั้งหมด (3.0s)
+  ✓  26 [chromium] › e2e/core-92-overview-pagination.spec.ts:50:5 › AC-189: /store ที่มี ≥ 2 หน้า → nav ของ SearchPagination มี aria-label ไทย และปุ่มหน้าปัจจุบัน aria-current=page (895ms)
+  ✓  27 [chromium] › e2e/flash-sale-fs14.spec.ts:165:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.9s)
+  ✓  28 [chromium] › e2e/flash-sale-fs14.spec.ts:188:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.1s)
+  ✓  29 [chromium] › e2e/flash-sale-fs14.spec.ts:203:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (2.2s)
+  ✓  21 [chromium] › e2e/core-78-orders-page-cleanup.spec.ts:14:5 › AC-177: 12 order + membership กลุ่ม → ส่วนกลุ่มเฉพาะหน้า 1, Pagination มี aria-current และ aria-label ไทย (1.4m)
+  ✓  31 [chromium] › e2e/core-78-orders-page-cleanup.spec.ts:75:5 › AC-177: ลูกค้าที่มีแต่ membership กลุ่ม → overview เห็นลิงก์ ดูทั้งหมด (3.8s)
+  ✓  32 [chromium] › e2e/group-buy-account-orders.spec.ts:42:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › joined → รอกลุ่ม + ออกจากกลุ่ม (ยืนยันก่อน) → ยกเลิก และ membership cancelled (4.8s)
+  ✓  33 [chromium] › e2e/group-buy-account-orders.spec.ts:72:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › กลุ่มสำเร็จระหว่างเปิดหน้าอยู่ แล้วกดออก → error ไทย และรายการแสดงสถานะใหม่ (ชำระเงินภายใน) (3.6s)
+  ✓  34 [chromium] › e2e/group-buy-account-orders.spec.ts:95:7 › หน้า account: คำสั่งซื้อแบบกลุ่ม (AC-16) › awaiting_payment → ชำระเงินภายใน <deadline> และลิงก์ไปหน้าชำระเงินของ PAY-3b (3.3s)
+  ✓  30 [chromium] › e2e/flash-sale-fs14.spec.ts:251:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.0m)
+  ✓  35 [chromium] › e2e/group-buy-account-orders.spec.ts:121:7 › หน้า account: จ่ายแล้วแต่ยังเป็น draft (GB-22) › awaiting_payment + captured → group-order-processing ไม่มีลิงก์ชำระ (8.9s)
+  -  37 [chromium] › e2e/group-buy-account-orders.spec.ts:182:7 › หน้า account → หน้าชำระเงิน — Stripe test mode (AC-2, AC-16 พร้อมเพย์) › AC-2: บัตร 4242 จากลิงก์ในหน้า account → order ปกติ captured, membership paid และรายการแสดงชำระแล้ว
+  -  38 [chromium] › e2e/group-buy-account-orders.spec.ts:214:7 › หน้า account → หน้าชำระเงิน — Stripe test mode (AC-2, AC-16 พร้อมเพย์) › AC-16: พร้อมเพย์จากลิงก์ในหน้า account → QR → authorize test payment → order-pay-paid
+  ✓  36 [chromium] › e2e/flash-sale-fs14.spec.ts:285:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง (6.4s)
+  ✓  39 [chromium] › e2e/group-buy-ui-polish.spec.ts:35:7 › GB-12: UI ของ group buy (AC-51) › group-selection แสดงชื่อสินค้า + variant และราคาต่อชิ้นตาม GET /store/products (2.7s)
+  ✓  40 [chromium] › e2e/store-content.spec.ts:46:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (3.8s)
+  ✓  41 [chromium] › e2e/group-buy-ui-polish.spec.ts:83:7 › GB-12: UI ของ group buy (AC-51) › 375px: กล่องยืนยันออกจากกลุ่มสองแถว ปุ่มไม่ตัดคำ ไม่ล้นจอ; 639px สองแถว, 640/768/1280px แถวเดียว; ไม่มี no-orders-container (3.6s)
+  ✓  42 [chromium] › e2e/store-content.spec.ts:88:5 › AC-61, AC-74: title/description ของหน้า login และ profile ใช้ชื่อร้าน ไม่มีชื่อ starter (1.9s)
+  ✓  43 [chromium] › e2e/group-buy-ui-polish.spec.ts:139:7 › GB-12: UI ของ group buy (AC-51) › ลูกค้าที่ไม่มีทั้ง order ปกติและคำสั่งซื้อแบบกลุ่ม → no-orders-container 1 อัน (1.0s)
+  ✓  45 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย (539ms)
+  ✓  44 [chromium] › e2e/store-thb-price.spec.ts:9:5 › AC-28: การ์ดสินค้าทุกใบบน /th/store แสดงราคาเป็น ฿ (796ms)
+  ✓  47 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย (1.0s)
+  ✓  46 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย (2.8s)
+  ✓  49 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย (367ms)
+  ✓  50 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (3.4s)
+  ✓  51 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (702ms)
+  ✓  52 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (1.6s)
+  ✓  48 [chromium] › e2e/thai-ui-cart-order.spec.ts:96:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch (9.9s)
+  2 skipped
+  50 passed (3.2m)
+(skipped 2 = Stripe test mode ที่ไม่มี key ในเครื่อง)
+
+### e2e:unit (playwright project unit)
+  151 passed (3.1s)
+
+### lint / typecheck (storefront)
+pnpm --filter storefront lint: 0 errors (warning เดิมทั้งหมด ไม่มีในไฟล์ที่แตะ)
+pnpm --filter storefront typecheck: ผ่าน

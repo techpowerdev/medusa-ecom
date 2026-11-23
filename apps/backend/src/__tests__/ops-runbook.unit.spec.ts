@@ -224,3 +224,28 @@ describe("AC-47 runbook log ที่ดูเหมือนคืนเงิ�
     }
   })
 })
+
+// OPS-35: spec 07 AC-50 (กฎข้อ 17c/d รอบ 42) — access log ไม่ผ่าน redact และ reset layout หน้า order หลัง go-live
+describe("AC-50 runbook redact และหลัง go-live", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const goLive = section(doc, "Go-live checklist") ?? ""
+  const redact = goLive.split(/\r?\n(?=\d+\. )/).find((item) => item.startsWith("13. ")) ?? ""
+  const afterGoLive = section(doc, "หลัง go-live")
+
+  it("Go-live ข้อ 13 (redact): access log ของ Medusa ไม่ผ่าน redact, มี path/query และ q ของหน้าค้นหา, log shipper ใช้นโยบาย PII เดียวกัน", () => {
+    expect(redact).toContain("access log")
+    expect(redact).toMatch(/access log[^\n]*\*\*ไม่ผ่าน\*\* redact/)
+    expect(redact).toContain("stdout")
+    expect(redact).toContain("`q`")
+    expect(redact).toContain("log shipper")
+    expect(redact).toContain("นโยบาย PII")
+  })
+
+  it('มีหัวข้อ "หลัง go-live" ที่บอกวิธี reset layout หน้า order (widget order-refund-blocked)', () => {
+    expect(afterGoLive).not.toBeNull()
+    expect(afterGoLive).toContain("Customize layout")
+    expect(afterGoLive).toContain("order-refund-blocked")
+    expect(afterGoLive).toContain("PAY-10")
+    expect(afterGoLive).toMatch(/reset/i)
+  })
+})
