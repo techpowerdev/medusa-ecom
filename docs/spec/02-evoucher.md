@@ -577,7 +577,7 @@ Status: draft (☐ — รอ owner สั่งทำ)
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| EV-26 | hygiene admin e-voucher: toast warning ของ backordered + helper e2e ร่วม + ตัวจัดข้อความ error ร่วม (กฎข้อ 42) | `src/admin/lib/evoucher-allocate.ts` (+ unit), `src/admin/lib/evoucher-resend.ts`, `src/admin/widgets/order-evouchers.tsx`, `apps/storefront/e2e/{evoucher-admin-retry-allocation,evoucher-admin-backordered}.spec.ts`, `e2e/support/evoucher.ts` | ~30 LOC + ~60 LOC test | AC-56 | PR เอกสารปิดรอบ 41 | — |
+| EV-26 | ☑ #527 — hygiene admin e-voucher: toast warning ของ backordered + helper e2e ร่วม + ตัวจัดข้อความ error ร่วม (กฎข้อ 42) | `src/admin/lib/evoucher-allocate.ts` (+ unit), `src/admin/lib/evoucher-resend.ts`, `src/admin/widgets/order-evouchers.tsx`, `apps/storefront/e2e/{evoucher-admin-retry-allocation,evoucher-admin-backordered}.spec.ts`, `e2e/support/evoucher.ts` | ~30 LOC + ~60 LOC test | AC-56 | PR เอกสารปิดรอบ 41 | — |
 
 ## คำถามที่ยังเปิดอยู่
 - ~~Q14~~ ตัดสินแล้ว (owner 2026-11-10): **(ก)** — กฎข้อ 33c–e, AC-47, EV-17; คำถามเดิม (รอบ 27, EV-17 กฎข้อ 33) ป้องกัน stock เกินเมื่อยกเลิก fulfillment ของ code ที่ส่งมอบแล้วด้วยทางใด:

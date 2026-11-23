@@ -1308,7 +1308,7 @@ Status: draft (☐ — รอ owner สั่งทำ)
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| ADM-47 | focus กลับปุ่ม `…` หลังปิดฟอร์มจากเมนูของ partners/payouts/affiliates (กฎ 51); qa | `src/admin/components/evoucher/partners-section.tsx`, `components/affiliate/{payouts-table,affiliates-table}.tsx`, `components/common/*` (ถ้าย้าย helper), e2e | ~40 LOC + ~100 LOC test | AC-52 | PR เอกสารปิดรอบ 41 | ไฟล์ตาราง (ADM-48 ถ้าแตะ — ตัวหลัง sync) |
+| ADM-47 | ☑ #526 — focus กลับปุ่ม `…` หลังปิดฟอร์มจากเมนูของ partners/payouts/affiliates (กฎ 51); qa | `src/admin/components/evoucher/partners-section.tsx`, `components/affiliate/{payouts-table,affiliates-table}.tsx`, `components/common/*` (ถ้าย้าย helper), e2e | ~40 LOC + ~100 LOC test | AC-52 | PR เอกสารปิดรอบ 41 | ไฟล์ตาราง (ADM-48 ถ้าแตะ — ตัวหลัง sync) |
 | ADM-48 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit e2e/static ของ #513 (กฎ 52); qa | `src/admin/lib/single-flight.ts` หรือ helper คืน focus, ฟอร์มสร้างในกฎ 52a, `e2e/admin-create-double-submit.spec.ts`, `medusa-ui.unit.spec.ts`, `groups-section.tsx` | ~40 LOC + ~120 LOC test | AC-53 | **ADM-47** (ปุ่มเปิด/คืน focus ในไฟล์ตารางเดียวกัน) | ฟอร์มสร้างทุกตัว |
 
 ลำดับ: ADM-47 → ADM-48

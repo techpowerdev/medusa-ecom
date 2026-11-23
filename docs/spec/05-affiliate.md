@@ -664,7 +664,7 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่มีขอ
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| AF-27 | ☑ — ลบโหมด grouped ของ `summarizeCommissionEntries` (กฎ 51) | `src/modules/affiliate/service.ts`, สอง route ข้างบน, test | ~−20 LOC | AC-60 | PR เอกสารปิดรอบ 41 | — |
+| AF-27 | ☑ #528 — ลบโหมด grouped ของ `summarizeCommissionEntries` (กฎ 51) | `src/modules/affiliate/service.ts`, สอง route ข้างบน, test | ~−20 LOC | AC-60 | PR เอกสารปิดรอบ 41 | — |
 
 ## Open questions (รอบ 32 — 2026-11-17)
 - ~~**Q21**~~ ✅ **owner ตอบ ก 2026-11-17** → `hold_days` และ `attribution_window_days` ≤ 36500 รวมใน GB-17 (spec 04 กฎข้อ 40 (ข), AC-60 (c)); คำถามเดิม:

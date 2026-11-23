@@ -1134,7 +1134,7 @@ Status: draft (☐ — รอ owner สั่งทำ; Q26 = ก owner 2026-11-
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| GB-31 | ☑ — test/lock hygiene: พิสูจน์ lock ของ AC-63b, guard อ่าน link ครั้งเดียว, test ลำดับ/ended/ขอบเขต, assert code ของ join + `GB_CART_EMPTY` (กฎข้อ 57) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/{group-buy-payment,group-buy-promotion-lock,group-buy-join}.spec.ts` | ~30 LOC + ~150 LOC test | AC-74 | PR เอกสารปิดรอบ 41 | `group-buy-lock.ts` |
+| GB-31 | ☑ #529 — test/lock hygiene: พิสูจน์ lock ของ AC-63b, guard อ่าน link ครั้งเดียว, test ลำดับ/ended/ขอบเขต, assert code ของ join + `GB_CART_EMPTY` (กฎข้อ 57) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/{group-buy-payment,group-buy-promotion-lock,group-buy-join}.spec.ts` | ~30 LOC + ~150 LOC test | AC-74 | PR เอกสารปิดรอบ 41 | `group-buy-lock.ts` |
 | GB-32 | job หมดเวลาชำระ: เพดานตรวจต่อรอบ 200 (Q26 = ก) + อ่านซ้ำเมื่อ skip เกิน + query.graph best-effort + test เร็วขึ้น + lint (กฎข้อ 58) | `src/jobs/group-buy-deadline.ts`, `src/workflows/group-buy/membership-payment.ts`, `src/modules/group_buy/utils/membership-payment.ts`, test | ~40 LOC + ~120 LOC test | AC-75 | PR เอกสารปิดรอบ 41 (Q26 = ก ☑ owner 2026-11-23) | `group-buy-deadline.ts`, `membership-payment.ts` |
 
 ลำดับ: GB-31 ∥ GB-32 (ไม่มีไฟล์ร่วม)
