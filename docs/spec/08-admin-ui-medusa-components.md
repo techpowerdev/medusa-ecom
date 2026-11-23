@@ -1260,7 +1260,7 @@ qa ADM-41 (คอลัมน์ Affiliate ของ Payouts 150px เห็น�
     (ฟอร์ม program ใช้ไฟล์ร่วมกับ ADM-44 — ตัวหลัง sync)
 
 ### Acceptance criteria (รอบ 41)
-- AC-48 (ADM-43, กฎ 47) integration http + e2e admin — **ล้มบน develop** ก่อน: (a) `q=<code>` ได้ affiliate นั้น (count 1); `q="  <name>  "` = ผลเดียวกับไม่มีช่องว่าง; `q="%"` และ `q="_"` ได้ 0 (affiliate ทดสอบไม่มีอักขระนี้) ไม่ใช่ทั้งหมด;
+- AC-48 (ADM-43, กฎ 47) ☑ (red บน develop `b1896690`: integration `q=ANNPROMO` ได้ 0 และหลังเพิ่ม `.searchable()` `q=%` ได้ทุกแถว (Medusa 2.22.1 ไม่ escape); e2e คลิกแท็บ Affiliates แล้ว URL ไม่มี `tab` → green integration `affiliate-admin.spec.ts` 39/39, e2e `--repeat-each=3` 6/6 (รวม AC-45 เดิมที่แก้ step reload); `db:generate affiliate` = ไม่มี migration; `docs/evidence/admin-ui/ADM-43-tests.txt`) integration http + e2e admin — **ล้มบน develop** ก่อน: (a) `q=<code>` ได้ affiliate นั้น (count 1); `q="  <name>  "` = ผลเดียวกับไม่มีช่องว่าง; `q="%"` และ `q="_"` ได้ 0 (affiliate ทดสอบไม่มีอักขระนี้) ไม่ใช่ทั้งหมด;
   (b) e2e: เลือกแท็บ Affiliates → URL มี `tab=affiliates` → reload → แท็บ Affiliates ยังถูกเลือก (ล้มบน develop — กลับ Programs); searchbox หาด้วย role ใน wrapper (กฎ 44)
 - AC-49 (ADM-44, กฎ 48) e2e admin: (a) ตั้ง `ends_at < starts_at` กด Save → error ใต้ ends_at; เลื่อน `starts_at` ให้ก่อน ends_at → error หายภายใน 1 วินาทีโดยไม่กด Save (ล้มบน develop);
   (b) เปิดแก้ไข program → เห็น `Drawer` (role `dialog` ที่มี class/attribute ของ Drawer ตามที่ builder ระบุ) ไม่ใช่ FocusModal; Save แก้ได้ 1 PATCH/POST (dblclick); Escape ขณะ dirty → prompt (กฎ 31) — e2e เดิมของ edit program ผ่านหลังแก้ locator

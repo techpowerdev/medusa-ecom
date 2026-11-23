@@ -147,6 +147,7 @@ describe("hasHomeCampaigns (AC-48: ไม่มีแคมเปญ → ไม�
             show_remaining: false,
             sold_out: false,
             remaining_units: null,
+            per_customer_limit: null,
           },
         ],
         []

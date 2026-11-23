@@ -71,16 +71,8 @@ export const safeHttpUrl = (url: string | null | undefined): string | null => {
 /** EV-7e (spec 02 กฎข้อ 29a): หน้า /account/vouchers แบ่งหน้าละ 20 ตาม `?page=` */
 export const VOUCHERS_PAGE_SIZE = 20
 
-export const vouchersPagination = (page: string | string[] | undefined) => {
-  const n =
-    typeof page === "string" && /^[1-9]\d*$/.test(page) ? Number(page) : 1
-  return { page: n, offset: (n - 1) * VOUCHERS_PAGE_SIZE }
-}
-
-export const vouchersHasNext = (
-  { offset }: ReturnType<typeof vouchersPagination>,
-  count: number
-) => offset + VOUCHERS_PAGE_SIZE < count
+export const vouchersHasNext = ({ offset }: { offset: number }, count: number) =>
+  offset + VOUCHERS_PAGE_SIZE < count
 
 /** variant แบบย่อสำหรับบล็อกพาร์ทเนอร์ — null เมื่อไม่มี variant ใดเป็น voucher */
 export const voucherVariantsOf = (variants?: VariantWithPool[] | null) =>

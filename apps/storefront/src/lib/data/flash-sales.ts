@@ -4,6 +4,7 @@ import { sdk } from "@lib/config"
 import { CATALOG_REVALIDATE_SECONDS } from "@lib/util/catalog-cache"
 import {
   type FlashAllowance,
+  type FlashCartLine,
   cartCustomerLimitExceeded,
   flashCampaignVariantIds,
 } from "@lib/util/flash-allowance"
@@ -14,6 +15,7 @@ import {
   mergeActiveFlashSales,
 } from "@lib/util/flash-sale"
 import { HttpTypes } from "@medusajs/types"
+import { retrieveCart } from "./cart"
 import { getAuthHeaders } from "./cookies"
 
 // FS-6: endpoint ของ FS-4/FS-7 รับ variant_ids ได้ไม่เกิน 24 ตัวต่อครั้ง
@@ -88,14 +90,37 @@ export async function getFlashAllowances(
 /**
  * FS-21 (กฎข้อ 26a): ข้อมูล flash ของ PDP ใน server action เดียว — แคมเปญ/ราคา (FS-4) + สิทธิ์ต่อคนของ variant ในแคมเปญ
  * (ไม่ login → allowances = []) ให้สถานะรอของปุ่ม (FS-16) ผูกกับ request เดียวเหมือนเดิม
+ * FS-23 (กฎข้อ 28c): สินค้าอยู่ในแคมเปญและลูกค้า login → อ่าน line ในตะกร้า แล้วส่ง variant ของ line ไปถามสิทธิ์ด้วย
+ * (allowance บอก `campaign_id` ของ line) ให้ PDP หักจำนวนที่อยู่ในตะกร้า
  */
 export async function getProductFlash(
   regionId: string,
   variantIds: string[]
-): Promise<{ data: ActiveFlashSales | null; allowances: FlashAllowance[] }> {
+): Promise<{
+  data: ActiveFlashSales | null
+  allowances: FlashAllowance[]
+  cartLines: FlashCartLine[]
+}> {
   const data = await getActiveFlashSales(regionId, variantIds)
-  const allowances = await getFlashAllowances(regionId, flashCampaignVariantIds(data))
-  return { data, allowances }
+  const campaignVariantIds = flashCampaignVariantIds(data)
+  const cartLines = campaignVariantIds.length ? await customerCartLines() : []
+  const allowances = await getFlashAllowances(regionId, [
+    ...campaignVariantIds,
+    ...cartLines.flatMap((l) => (l.variant_id ? [l.variant_id] : [])),
+  ])
+  return { data, allowances, cartLines }
+}
+
+/** FS-23: line ของตะกร้าปัจจุบัน (no-store) เฉพาะลูกค้าที่ login — ไม่ login/ไม่มีตะกร้า/ล้ม → [] (ไม่หัก) */
+async function customerCartLines(): Promise<FlashCartLine[]> {
+  const headers = await getAuthHeaders()
+  if (!("authorization" in headers)) {
+    return []
+  }
+  const cart = await retrieveCart(undefined, "id,items.id,items.variant_id,items.quantity", {
+    fresh: true,
+  })
+  return (cart?.items ?? []).map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }))
 }
 
 export type CartFlashChecks = {

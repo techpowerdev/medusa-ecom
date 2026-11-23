@@ -77,11 +77,11 @@ test("AC-45: ค้นหาชื่อ affiliate → q ไปที่ API, �
   })
 
   await step("reload → ช่องค้นหาและผลคงเดิม", async () => {
-    await page.reload()
-    // แท็บที่เลือกไม่อยู่ใน URL (Tabs ของหน้า Affiliate เริ่มที่ Programs เสมอ — นอก scope ADM-40) แต่ affiliates_q ยังอยู่
-    expect(new URL(page.url()).searchParams.get("affiliates_q")).toBe(term)
+    // ADM-43 (กฎ 47c): แท็บอยู่ใน URL — reload แล้วตาราง Affiliates โหลดเองทันที จึงรอ response ตั้งแต่ก่อน reload
     const searched = listed(page, term)
-    await page.getByTestId("affiliate-admin-tab-affiliates").click()
+    await page.reload()
+    expect(new URL(page.url()).searchParams.get("affiliates_q")).toBe(term)
+    await expect(page.getByTestId("affiliate-admin-tab-affiliates")).toHaveAttribute("aria-selected", "true")
     expect((await (await searched).json()).count).toBe(1)
     await expect(search).toHaveValue(term)
     await expect(rows).toHaveCount(1)
@@ -105,5 +105,75 @@ test("AC-45: ค้นหาชื่อ affiliate → q ไปที่ API, �
       await expect(table.getByRole("row").filter({ hasText: `${tag} ${name}` })).toBeVisible()
     }
     await expect.poll(() => new URL(page.url()).searchParams.has("affiliates_q")).toBe(false)
+  })
+})
+
+// ADM-43 (spec 08 กฎ 47, AC-48 (b)): ค้นด้วย code ได้ และแท็บที่เลือกอยู่ใน URL (`?tab=`) — reload แล้วไม่เด้งกลับ Programs
+test.describe("ADM-43", () => {
+  test.use({ evidenceTarget: { feature: "admin-ui", taskId: "ADM-43" } })
+
+  test("AC-48: แท็บ Affiliates อยู่ใน URL คงหลัง reload และค้นด้วย code ได้; tab ผิด → Programs", async ({ page, request, step }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    // กฎ 33: tag ตัวอักษรล้วน; code ไม่อยู่ในชื่อ/อีเมล — ผลที่ได้มาจาก code เท่านั้น
+    const tag = `adm${String(Date.now()).replace(/\d/g, (digit) => "abcdefghij"[Number(digit)])}`
+    const code = `${tag}xray`
+    await createActiveAffiliate(request, admin, { name: `ADM43 ${tag} target`, code, email: `${tag}-target@example.com` })
+    await createActiveAffiliate(request, admin, { name: `ADM43 ${tag} other`, code: `${tag}yank`, email: `${tag}-other@example.com` })
+    const table = page.getByTestId("affiliate-affiliates-table")
+    const rows = table.locator("tbody tr")
+    const tab = (key: string) => page.getByTestId(`affiliate-admin-tab-${key}`)
+
+    await step("เลือกแท็บ Affiliates → URL มี tab=affiliates", async () => {
+      await loginAdmin(page)
+      await page.goto(`${BACKEND_URL}/app/affiliate`)
+      await expect(tab("programs")).toHaveAttribute("aria-selected", "true")
+      await tab("affiliates").click()
+      await expect.poll(() => new URL(page.url()).searchParams.get("tab")).toBe("affiliates")
+    })
+
+    await step("reload → แท็บ Affiliates ยังถูกเลือก (ไม่กลับ Programs)", async () => {
+      await page.reload()
+      await expect(tab("affiliates")).toHaveAttribute("aria-selected", "true")
+      await expect(table.getByRole("row").filter({ hasText: `${tag} target` })).toBeVisible({ timeout: 30_000 })
+    })
+
+    await step("ค้นด้วย code → count 1 แถวเดียว; tab และ affiliates_q อยู่ใน URL พร้อมกัน", async () => {
+      const searched = listed(page, code)
+      await table.getByRole("searchbox").fill(code)
+      expect((await (await searched).json()).count).toBe(1)
+      await expect(rows).toHaveCount(1)
+      await expect(rows.first()).toContainText(`${tag} target`)
+      await expect.poll(() => new URL(page.url()).searchParams.get("affiliates_q")).toBe(code)
+      expect(new URL(page.url()).searchParams.get("tab")).toBe("affiliates")
+    })
+
+    await step("สลับแท็บแล้วกลับมา → affiliates_q เดิมยังอยู่", async () => {
+      await tab("ledger").click()
+      await expect.poll(() => new URL(page.url()).searchParams.get("tab")).toBe("ledger")
+      expect(new URL(page.url()).searchParams.get("affiliates_q")).toBe(code)
+      await tab("affiliates").click()
+      await expect(table.getByRole("searchbox")).toHaveValue(code)
+      await expect(rows).toHaveCount(1)
+    })
+
+    // qa #491 D-1: Radix Tabs (automatic) เรียก onValueChange ทั้ง mousedown และ focus ก่อน router commit → คลิกเดียวได้ 2 history entry
+    await step("คลิกแท็บ 1 ครั้ง = history 1 รายการ; back 1 ครั้งย้อนไปแท็บก่อนหน้า", async () => {
+      const before = await page.evaluate(() => history.length)
+      await tab("payouts").click()
+      await expect.poll(() => new URL(page.url()).searchParams.get("tab")).toBe("payouts")
+      expect(await page.evaluate(() => history.length)).toBe(before + 1)
+      await page.goBack()
+      await expect(tab("affiliates")).toHaveAttribute("aria-selected", "true")
+      expect(new URL(page.url()).searchParams.get("tab")).toBe("affiliates")
+      await page.goBack()
+      await expect(tab("ledger")).toHaveAttribute("aria-selected", "true")
+      expect(new URL(page.url()).searchParams.get("tab")).toBe("ledger")
+    })
+
+    await step("tab ที่ไม่รู้จัก → Programs", async () => {
+      await page.goto(`${BACKEND_URL}/app/affiliate?tab=nope`)
+      await expect(tab("programs")).toHaveAttribute("aria-selected", "true")
+    })
   })
 })

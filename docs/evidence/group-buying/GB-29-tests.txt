@@ -1,0 +1,96 @@
+GB-29 — spec 04 กฎข้อ 54, AC-72, ADR-026 ภาคผนวกรอบ 41 (2026-11-22)
+
+== RED (ก่อนแก้, base origin/develop fe32fb87) — integration http group-buy-promotion-lock.spec.ts ==
+      ✓ (a) POST /admin/promotions/:id → 400 locked และค่าเดิมไม่เปลี่ยน (560 ms)
+      ✓ (b) rules/batch, target-rules/batch, buy-rules/batch และ DELETE → 400 และ promotion ยังอยู่ (482 ms)
+      ✓ (c)(d) ต้นแบบ GBT-* แก้ได้ และกลุ่มใหม่ได้ส่วนลดใหม่ กลุ่มเดิมคงเดิม (Q5) (367 ms)
+      ✓ (c) promotion ปกติแก้และลบได้ (200) (284 ms)
+      ✓ (e) ลบแคมเปญ draft ยังสำเร็จ (regression) (255 ms)
+      ✓ (f) ถอด promotion GB-* ออกจาก campaign → 400; แก้/ลบ campaign ของแคมเปญ group buy active → 400 (344 ms)
+      ✓ (f) campaign ของแคมเปญ group buy draft และ campaign ที่ไม่เกี่ยว → 200 (271 ms)
+      ✓ (a) แคมเปญ draft: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (259 ms)
+      ✓ (a) แคมเปญ active: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (315 ms)
+      ✓ (a) campaign อื่น: เพิ่ม/ถอด promotion ปกติ → 200 (regression) (260 ms)
+      ✓ (b) สร้างกลุ่ม → GB-* อยู่ใน campaign ของ link (283 ms)
+      ✓ (b) ต้นแบบไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่ม invalid_data และไม่สร้าง GB-* (288 ms)
+      ✕ (a) แคมเปญ draft: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (267 ms)
+      ✕ (a) แคมเปญ active: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (268 ms)
+      ✕ (b) ย้าย promotion อื่นเข้า campaign group buy → 400; สร้าง promotion ใหม่ใน campaign group buy → 400 (280 ms)
+      ✓ (c) แก้ส่วนลดต้นแบบโดยไม่แตะ campaign_id และส่ง campaign_id เดิม → 200 (Q5) (312 ms)
+      ✓ (d) promotion อื่นกับ campaign ที่ไม่เกี่ยว: สร้าง/ย้าย/ถอด → 200 (regression) (274 ms)
+      ✓ (e) route สร้างแคมเปญ group buy ของเรา (createGroupBuyCampaignWorkflow) ยังผูก GBT-* กับ campaign ได้ (336 ms)
+Tests:       3 failed, 15 passed, 18 total
+    Expected: 400
+    Received: 200
+    Expected: 400
+    Received: 200
+    Expected: 400
+    Received: 200
+
+== RED — unit group-buy-lock.unit.spec.ts ==
+Tests:       14 failed, 20 passed, 34 total
+    TypeError: (0 , _groupbuylock.guardPromotionCampaign) is not a function
+
+== GREEN — integration http group-buy-promotion-lock.spec.ts ==
+      ✓ (a) POST /admin/promotions/:id → 400 locked และค่าเดิมไม่เปลี่ยน (531 ms)
+      ✓ (b) rules/batch, target-rules/batch, buy-rules/batch และ DELETE → 400 และ promotion ยังอยู่ (449 ms)
+      ✓ (c)(d) ต้นแบบ GBT-* แก้ได้ และกลุ่มใหม่ได้ส่วนลดใหม่ กลุ่มเดิมคงเดิม (Q5) (347 ms)
+      ✓ (c) promotion ปกติแก้และลบได้ (200) (308 ms)
+      ✓ (e) ลบแคมเปญ draft ยังสำเร็จ (regression) (282 ms)
+      ✓ (f) ถอด promotion GB-* ออกจาก campaign → 400; แก้/ลบ campaign ของแคมเปญ group buy active → 400 (310 ms)
+      ✓ (f) campaign ของแคมเปญ group buy draft และ campaign ที่ไม่เกี่ยว → 200 (278 ms)
+      ✓ (a) แคมเปญ draft: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (284 ms)
+      ✓ (a) แคมเปญ active: เพิ่ม promotion ปกติ → 400, ถอด GBT-* → 400 และค่าเดิมไม่เปลี่ยน (299 ms)
+      ✓ (a) campaign อื่น: เพิ่ม/ถอด promotion ปกติ → 200 (regression) (233 ms)
+      ✓ (b) สร้างกลุ่ม → GB-* อยู่ใน campaign ของ link (319 ms)
+      ✓ (b) ต้นแบบไม่อยู่ใน campaign ของแคมเปญ → สร้างกลุ่ม invalid_data และไม่สร้าง GB-* (312 ms)
+      ✓ (a) แคมเปญ draft: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (240 ms)
+      ✓ (a) แคมเปญ active: ย้ายต้นแบบ GBT-* ไป campaign อื่นหรือถอดออก → 400 และ campaign เดิมคงอยู่ (254 ms)
+      ✓ (b) ย้าย promotion อื่นเข้า campaign group buy → 400; สร้าง promotion ใหม่ใน campaign group buy → 400 (292 ms)
+      ✓ (c) แก้ส่วนลดต้นแบบโดยไม่แตะ campaign_id และส่ง campaign_id เดิม → 200 (Q5) (323 ms)
+      ✓ (d) promotion อื่นกับ campaign ที่ไม่เกี่ยว: สร้าง/ย้าย/ถอด → 200 (regression) (271 ms)
+      ✓ (e) route สร้างแคมเปญ group buy ของเรา (createGroupBuyCampaignWorkflow) ยังผูก GBT-* กับ campaign ได้ (346 ms)
+Tests:       18 passed, 18 total
+
+== GREEN — unit group-buy-lock.unit.spec.ts ==
+    ✓ promotion ที่ผูก group_buy_group → NOT_ALLOWED ข้อความ locked (2 ms)
+    ✓ promotion อื่น/ไม่พบ → next() (1 ms)
+    ✓ promotion อื่น/ไม่พบ → next()
+    ✓ รวม id จาก add + remove แล้ว query ครั้งเดียว (1 ms)
+    ✓ ไม่มี id ที่เป็น array (undefined) → ไม่ query promotion; campaign ไม่ผูก → next()
+    ✓ ไม่มี id ที่เป็น array ({}) → ไม่ query promotion; campaign ไม่ผูก → next()
+    ✓ ไม่มี id ที่เป็น array ({"add": "p_1"}) → ไม่ query promotion; campaign ไม่ผูก → next()
+    ✓ campaign ของแคมเปญ group buy draft ({"add": [Array]}) → NOT_ALLOWED ข้อความ managed by Group buying
+    ✓ campaign ของแคมเปญ group buy active ({"remove": [Array]}) → NOT_ALLOWED ข้อความ managed by Group buying
+    ✓ campaign ของแคมเปญ group buy ended ({"add": [Array], "remove": [Array]}) → NOT_ALLOWED ข้อความ managed by Group buying
+    ✓ campaign ไม่ผูก group buy + promotion ปกติ → next() (1 ms)
+    ✓ campaign ของแคมเปญ group buy active → NOT_ALLOWED
+    ✓ campaign ของแคมเปญ group buy ended → NOT_ALLOWED
+    ✓ draft/ไม่เกี่ยว group buy/ไม่พบ → next()
+    ✓ draft/ไม่เกี่ยว group buy/ไม่พบ → next()
+    ✓ draft/ไม่เกี่ยว group buy/ไม่พบ → next()
+    ✓ (1) ย้าย GBT-* ไป campaign_id="camp_other" → NOT_ALLOWED ข้อความ template (1 ms)
+    ✓ (1) ย้าย GBT-* ไป campaign_id=null → NOT_ALLOWED ข้อความ template (1 ms)
+    ✓ (2) แก้ promotion อื่นให้ campaign_id เป็น campaign group buy → NOT_ALLOWED ข้อความ managed
+    ✓ (2) สร้าง promotion (ไม่มี :id) ด้วย campaign_id ของ campaign group buy → NOT_ALLOWED
+    ✓ ไม่แตะ campaign_id (แก้ส่วนลดต้นแบบ — Q5) → next()
+    ✓ body ว่าง → next()
+    ✓ ส่ง campaign_id เดิมของต้นแบบ (ไม่เปลี่ยน) → next() (1 ms)
+    ✓ promotion อื่นย้ายไป campaign ที่ไม่เกี่ยว → next()
+    ✓ promotion อื่นถอดออกจาก campaign → next()
+    ✓ สร้างด้วย campaign ที่ไม่เกี่ยว → next()
+    ✓ สร้างโดยไม่มี campaign_id → next()
+    ✓ promotion ไม่พบ → next()
+    ✓ /admin/promotions/:id
+    ✓ /admin/promotions/:id/* (1 ms)
+    ✓ /admin/campaigns/:id/promotions
+    ✓ /admin/campaigns/:id
+    ✓ /admin/promotions POST → guardPromotionCampaign
+    ✓ /admin/promotions/:id POST → guardPromotionCampaign
+Tests:       34 passed, 34 total
+
+== GREEN — pnpm --filter backend test:unit (ทั้งชุด) ==
+Test Suites: 126 passed, 126 total
+Tests:       1745 passed, 1745 total
+
+== pnpm lint / pnpm typecheck / pnpm --filter backend build: exit 0 ทั้งหมด (storefront lint 0 errors, 28 warnings เดิม) ==
