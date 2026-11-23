@@ -388,8 +388,9 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
   (c2) PI เดิม `succeeded` ที่**คืนครบแล้ว** → ได้ 409 `PAYMENT_COLLECTION_RESET` แล้ว retry ได้ collection + session ใหม่ (client secret ใหม่) และจ่ายได้;
   (d) integration race (กฎข้อ 16 a2): ยิง `POST .../payment-sessions` ระหว่าง compensation ถือ lock `cart_id` แล้ว session ชั่วคราวถูกลบ → ผลสุดท้ายฝั่งลูกค้าได้ session ใหม่ (ไม่ค้างที่ 404/500) ตามทางที่ builder เลือก
 - ✕ AC-26 (PAY-13, กฎข้อ 15) e2e `pay-9-refunded-cart-repay` `--repeat-each=5` ผ่านในเครื่อง/CI; static: ไม่มี `waitForTimeout` ใหม่ และ assertion ของ AC-22c เท่าเดิม (นับ `expect(` ของ step เดิมไม่ลด)
-  — **ปิดโดยไม่มี PR แยก (ปิดรอบ 41 2026-11-23)**: hotfix #468 (merge ก่อน PR เอกสารรอบ 41) แก้ต้นเหตุ flaky — รอ execution ของ `complete-cart` จบทุกตัว (`cartCompletionSettled`) ก่อนจ่ายใหม่ และ `sessionIntentId` (`e2e/support/stripe.ts:76-92`)
-    รอ `pi_…` ด้วย `expect.poll` 15 วินาทีแล้ว (ส่วนแรกของกฎข้อ 15); ส่วน "ลองสร้าง session ใหม่เมื่อ Stripe 5xx" ไม่ทำ — ไม่พบ flaky ซ้ำหลัง #468 (ถ้าซ้ำ เปิด task ใหม่)
+  — **ปิดโดยไม่มี PR แยก (ปิดรอบ 41 2026-11-23)**: hotfix #468 (merge ก่อน PR เอกสารรอบ 41) แก้ต้นเหตุ flaky — **เพิ่ม** การรอ execution ของ `complete-cart` จบทุกตัว (`cartCompletionSettled`, `e2e/support/cart-completion.ts`) ก่อนจ่ายใหม่
+    และเอา `expect.poll` ชั้นนอกออก; ส่วนแรกของกฎข้อ 15 (รอ `sessionIntentId` ไม่ว่าง) เป็นจริง**อยู่ก่อนแล้วตั้งแต่ PAY-2** (`dc4b2c13` — `e2e/support/stripe.ts:76-92` poll `pi_…` 15 วินาที; แก้ถ้อยคำตาม review #520);
+    ส่วน "ลองสร้าง session ใหม่เมื่อ Stripe 5xx" ไม่ทำ — ไม่พบ flaky ซ้ำหลัง #468 (ถ้าซ้ำ เปิด task ใหม่)
 - ☑ AC-28 (PAY-15, กฎข้อ 17) unit Vitest (helper บอกว่ากรณีไหนไปตะกร้า) + e2e route mock แบบ AC-24: complete ของทางสำรองตอบ 409 `FLASH_SOLD_OUT` → เห็น `promptpay-refunded` และ `promptpay-go-to-cart` (อักษรไทย, href ลงท้าย `/th/cart`)
   ไม่เห็น `promptpay-retry-button` (ล้มบน develop — ปุ่มเริ่มชำระใหม่แสดงทุกกรณี); คลิก `promptpay-go-to-cart` → อยู่ที่ `/th/cart`; regression PAY-6c (poll เห็น refunded ไม่รู้เหตุ) → ยังเห็น `promptpay-retry-button` และไม่เห็น `promptpay-go-to-cart`
   (ปิดรอบ 41: ย้ายวงเล็บ "ล้มบน develop" มาไว้หลังส่วนที่ล้มจริงตาม review #484 — ส่วน regression ผ่านบน develop)

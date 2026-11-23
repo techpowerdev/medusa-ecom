@@ -7,7 +7,8 @@
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
 **ปิดรอบ 41 (2026-11-23, เอกสารล้วน) — สถานะล่าสุด**: merge เข้า develop แล้ว (☑ — รอ release v0.3.0): ทุก task ของหัวข้อ "Release v0.3.0" (รอบ 40 — 31 task + CORE-75 #465) และ "รอบ 41" (CORE-76..88, OPS-33/34, EV-23..25, PAY-10..12/14/15, GB-26..30, FS-23/24, AF-25/26, ADM-43..46) — PAY-13 ✕ ปิดโดย hotfix #468 ·
 **เงื่อนไข release v0.3.0 ครบ** (owner เป็นผู้ merge `develop → main`) · planner ปิดรอบหลัง CORE-84 #519 / CORE-85 #518 merge (owner 2026-11-23) · คำตัดสิน owner 2026-11-23: ไม่ทำ migration ให้ต้นแบบ `GBT-*` ที่ active ก่อนกฎข้อ 56, ข้อมูลติดต่อ CORE-85 มาจาก owner, ยังไม่เปิด issue upstream ของ `FetchError` ·
-follow-up ที่ยังเป็นจริง → **รอบ 42 (☐ 17 task เสนอ — รอ owner สั่ง; ไม่บล็อก v0.3.0)** ในหัวข้อ "รอบ 42" ใต้ตาราง v0.3.0 · **คำถาม owner**: Q-R42, spec 04 Q26, spec 01 Q-C16, spec 06 Q-P12, spec 08 Q13 · ไม่มี ADR ใหม่ · ไม่มี PR เปิด (นอกจาก PR เอกสารนี้) ·
+follow-up ที่ยังเป็นจริง → **รอบ 42 (☐ 18 task เสนอ — รอ owner สั่ง; release v0.3.1)** ในหัวข้อ "รอบ 42" ใต้ตาราง v0.3.0 ·
+**owner ตัดสิน 2026-11-23**: Q-R42 = ก (release v0.3.0 ตอนนี้ รอบ 42 ไป v0.3.1), spec 04 Q26 = ก (เพดาน 200 ต่อรอบ), spec 01 Q-C16 = ก (CORE-95) · **คำถาม owner ที่ยังเปิด**: spec 06 Q-P12, spec 08 Q13 · ไม่มี ADR ใหม่ · ไม่มี PR เปิด (นอกจาก PR เอกสารนี้) ·
 ก่อน go-live ยังต้องทำตาม Go-live checklist ของ `docs/ops/production.md` (ข้อ 10–14 รวมรัน `lowercase-emails.ts` และ backfill ธง backordered บน prod DB) ·
 (ประวัติ) **รอบ 40b (2026-11-21, เอกสารล้วน)**: owner ไม่ยอมรับ race ของ GB-20 (จ่ายก่อน deadline แต่ webhook มาช้า → ถูกยกเลิก) → เพิ่ม **GB-20b** (ตรวจสถานะ PI ก่อนยกเลิก — ADR-024 ภาคผนวก, spec 04 กฎข้อ 50/AC-68) หลัง GB-20 (#435) ในตาราง v0.3.0 ·
 แก้ nit review: spec 02 AC-49 (100 code), spec 08 กฎ 43 (pool group ไม่มี modal)
@@ -541,7 +542,7 @@ planner ปิดรอบหลัง CORE-84 (#519) และ CORE-85 (#518) m
 spec 06 AC-28 (วงเล็บ "ล้มบน develop"), spec 07 เช็กลิสต์ bump ข้อ 16 (ยืนยัน + รายละเอียด) และข้อ 18 ใหม่ (route/job ที่ลบหรือเปลี่ยน status ของ promotion — review #498), ADR-018 ภาคผนวก 2026-11-23 (บทเรียน PAY-10 #471) ·
 ไม่มี ADR ใหม่ (ADR-029 ไม่ใช้) · ไม่มี PR เปิด (นอกจาก PR นี้)
 
-### รอบ 42 (เสนอ — ปิดรอบ 41 2026-11-23; ☐ รอ owner สั่งทำ; **ไม่บล็อก release v0.3.0** — ดู Q-R42)
+### รอบ 42 (เสนอ — ปิดรอบ 41 2026-11-23; ☐ รอ owner สั่งทำ; **release v0.3.1** — Q-R42 = ก owner 2026-11-23, ไม่บล็อก v0.3.0)
 ที่มา: follow-up ของ review/qa/builder #462–#519 ที่ตรวจแล้วว่ายังเป็นจริงบน develop `8d509076` · one task one PR · nit ไฟล์เดียวกันรวมเป็น task hygiene เดียว · เลขกฎ/AC อยู่ในหัวข้อ "Follow-up รอบ 42" ของแต่ละ spec
 | คลื่น | Task | spec | งาน | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|---|
@@ -554,7 +555,7 @@ spec 06 AC-28 (วงเล็บ "ล้มบน develop"), spec 07 เช็�
 | A | EV-26 | 02 | toast warning ของ "Still backordered" + helper e2e ร่วม + ตัวจัดข้อความ error ร่วม | PR เอกสารปิดรอบ 41 | — | ☐ |
 | A | FS-25 | 03 | e2e hygiene flash: helper ร่วม 3 ไฟล์ + PDP `?v_id=` | PR เอกสารปิดรอบ 41 | — | ☐ |
 | A | GB-31 | 04 | พิสูจน์ lock ของ AC-63b + guard อ่าน link ครั้งเดียว + test ลำดับ/ended/ขอบเขต + assert code ของ join + `GB_CART_EMPTY` | PR เอกสารปิดรอบ 41 | — | ☐ |
-| A | GB-32 | 04 | job หมดเวลาชำระ: เพดานตรวจต่อรอบ (**Q26**) + อ่านซ้ำเมื่อ skip เกิน + `query.graph` best-effort + test เร็ว + lint | PR เอกสารปิดรอบ 41 + Q26 | — | ☐ |
+| A | GB-32 | 04 | job หมดเวลาชำระ: เพดานตรวจต่อรอบ 200 (Q26 = ก) + อ่านซ้ำเมื่อ skip เกิน + `query.graph` best-effort + test เร็ว + lint | PR เอกสารปิดรอบ 41 | — | ☐ |
 | A | AF-27 | 05 | ลบโหมด grouped ของ `summarizeCommissionEntries` | PR เอกสารปิดรอบ 41 | — | ☐ |
 | A | PAY-18 | 06 | `/api/payment-return` failed+5xx → `step=payment`, checkout `cart_id` ≠ cookie, notice ของ cart หายหลังแก้ตะกร้า | PR เอกสารปิดรอบ 41 | ✓ | ☐ |
 | A | OPS-35 | 07 | redact backtick/JSON escape/`'` + runbook access log และ reset layout | PR เอกสารปิดรอบ 41 | — | ☐ |
@@ -562,11 +563,12 @@ spec 06 AC-28 (วงเล็บ "ล้มบน develop"), spec 07 เช็�
 | B | PAY-16 | 06 | สถานะขั้น payment: notice reset หายเมื่อเปลี่ยนวิธี, guard ref, timeout refresh, radio disabled ระหว่างรอ order | CORE-89 (`payment/index.tsx`) | ✓ | ☐ |
 | B | PAY-17 | 06 | ข้อความไทยของ error Stripe ขั้น review + PromptPay poll ไม่ตัดสินระหว่าง finishing | CORE-90 (`promptpay-payment/index.tsx`) | ✓ | ☐ |
 | B | ADM-48 | 08 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit e2e/static ของ #513 | ADM-47 (ไฟล์ตาราง/คืน focus) | ✓ | ☐ |
+| C | CORE-95 | 01 | (Q-C16 = ก owner 2026-11-23) จ่ายบัตรแล้ว session หมด → notice "ได้รับชำระเงินแล้ว…" บนหน้า login แล้วไปหน้า orders | PAY-17 (`payment-button/index.tsx`) | ✓ | ☐ |
 
 **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง merge `origin/develop` แล้วรอ CI ใหม่): `modules/checkout/components/payment/index.tsx` CORE-89 → PAY-16 · `promptpay-payment/index.tsx` CORE-90 → PAY-17 ·
-`payment-button/index.tsx` PAY-17 (CORE-94 แตะเฉพาะ test ที่อ่านไฟล์นี้ — ถ้า PAY-17 ย้ายบรรทัด `placeManual` ให้ CORE-94 sync) · ไฟล์ตาราง admin `partners-section.tsx`/`payouts-table.tsx`/`affiliates-table.tsx` ADM-47 → ADM-48 ·
+`payment-button/index.tsx` PAY-17 → CORE-95 (CORE-94 แตะเฉพาะ test ที่อ่านไฟล์นี้ — ถ้า PAY-17/CORE-95 ย้ายบรรทัด `placeManual` ให้ CORE-94 sync) · `lib/data/customer.ts` CORE-95 (server action login) · ไฟล์ตาราง admin `partners-section.tsx`/`payouts-table.tsx`/`affiliates-table.tsx` ADM-47 → ADM-48 ·
 `lib/data/cart.ts` CORE-94 เท่านั้น · `docs/ops/production.md` OPS-35 เท่านั้น · `group-buy-lock.ts` GB-31 เท่านั้น; `group-buy-deadline.ts`/`membership-payment.ts` GB-32 เท่านั้น
-**คำแนะนำ dispatch**: คลื่น A ขนานได้ทันทีหลัง PR นี้ merge และ owner สั่ง (integration หนัก: GB-31, GB-32, OPS-35 — จำกัดพร้อมกันตามเครื่อง; เบา: AF-27, EV-26, FS-25, CORE-94); คลื่น B เริ่มเมื่อ dependency merge จริง; GB-32 ข้อ (a) รอ Q26
+**คำแนะนำ dispatch**: คลื่น A ขนานได้ทันทีหลัง PR นี้ merge และ owner สั่ง (integration หนัก: GB-31, GB-32, OPS-35 — จำกัดพร้อมกันตามเครื่อง; เบา: AF-27, EV-26, FS-25, CORE-94); คลื่น B เริ่มเมื่อ dependency merge จริง; คลื่น C (CORE-95) หลัง PAY-17 merge
 **ไม่ทำ/backlog (พร้อมเหตุผล — ตรวจบน develop `8d509076`)**:
 - (#491) `%`/`_` ของ `q` ใน route อื่น — route ของเราที่รับ `q` มีแค่ affiliates (แก้แล้ว ADM-43); ที่เหลือคือ route core ของ Medusa (`/admin/products` ของ product picker) → ไม่ patch
 - (qa #519) ข้อความของ `GB_CAMPAIGN_SINGLE_PRODUCT_REQUIRED` ขึ้นต้นด้วยชื่อ code — `SINGLE_PRODUCT_MESSAGE` ใช้ร่วมกับ zod validator ของ admin ที่ไม่มี field `code` (prefix คือทางเดียวที่ admin/API client เห็น code) → คงไว้
@@ -582,8 +584,8 @@ spec 06 AC-28 (วงเล็บ "ล้มบน develop"), spec 07 เช็�
 - (#466/#468 nits) timeout 15s ใน `core-72:169`, `expect.poll` ชั้นนอก 30s ไม่มีผล, test `/th` ไม่ red ก่อนแก้ — test ผ่านและเสถียรแล้ว ไม่แตะ · (review #509) ลูกค้า/สินค้าของ e2e ไม่ถูกลบ (DB ของ CI ใช้ครั้งเดียว)
 - upstream/Medusa ไม่แก้: tooltip `TruncatedCell` ค้าง/บังแถว (qa #507, #421), คลิกนอก Drawer ครั้งแรกหลัง "Continue editing" (qa #499 O-2), ⌘/Ctrl+Enter ใน segment ของ `DatePicker` (qa #499 O-3), วินาทีของ `starts_at` ที่สร้างผ่าน API (qa #499 O-4)
 - (followups รอบ 13–39 ที่ไม่ได้ระบุในรอบนี้) คงอยู่ในหัวข้อ "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31–39)" ท้ายไฟล์ตามเดิม — owner ยังไม่สั่ง
-**คำถาม owner (รอบ 42)**: Q-R42 (ข้างล่าง), spec 04 Q26 (เพดานตรวจต่อรอบของ GB-32), spec 01 Q-C16 (ข้อความหลังจ่ายบัตรแล้ว session หมด), spec 06 Q-P12 (reload หลัง `promptpay-refunded`), spec 08 Q13 (ข้อยกเว้น testid ที่ 4 — แตะ `CLAUDE.md`/ADR-018)
-- **Q-R42** รอบ 42 อยู่ใน release ไหน: (ก) **[Recommended]** release v0.3.0 ตามที่เป็น (เงื่อนไขครบแล้ว) แล้ว go-live; รอบ 42 เป็น release ถัดไป (v0.3.1) — ไม่มีข้อใดกระทบเงิน/ความปลอดภัย (เงินถูกกันที่ backend แล้ว) และไม่ให้ go-live ช้าเพื่อ hygiene;
+**คำถาม owner (รอบ 42)**: ตัดสินแล้ว 2026-11-23 — Q-R42 = ก, spec 04 Q26 = ก (เพดาน 200), spec 01 Q-C16 = ก (CORE-95) · **ยังเปิด**: spec 06 Q-P12 (reload หลัง `promptpay-refunded` — Recommended ก ไม่ทำ), spec 08 Q13 (ข้อยกเว้น testid ที่ 4 — แตะ `CLAUDE.md`/ADR-018; Recommended ก)
+- ~~**Q-R42**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ก)** release v0.3.0 ตอนนี้ รอบ 42 ไป v0.3.1 — คำถามเดิม: รอบ 42 อยู่ใน release ไหน: (ก) **[Recommended]** release v0.3.0 ตามที่เป็น (เงื่อนไขครบแล้ว) แล้ว go-live; รอบ 42 เป็น release ถัดไป (v0.3.1) — ไม่มีข้อใดกระทบเงิน/ความปลอดภัย (เงินถูกกันที่ backend แล้ว) และไม่ให้ go-live ช้าเพื่อ hygiene;
   (ข) รวมรอบ 42 ใน v0.3.0 ก่อน release — go-live ช้าออกไปตามจำนวน task (17 PR); (ค) ทำเฉพาะข้อที่ลูกค้าเห็น (CORE-89..93, PAY-16..18, ADM-47..48) ก่อน v0.3.0 ที่เหลือไป v0.3.1
 
 ## Backlog หลัง v1.0 (owner ตัดสินเลื่อน — ไม่มี AC จนกว่าจะกลับมาทำ)

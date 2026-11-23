@@ -564,11 +564,16 @@ Status: draft (☐ — รอ owner สั่งทำ)
 | toast แบบเตือน | `toast.warning` ของ `@medusajs/ui` | ใช้ตามเดิม (กฎข้อ 42a) |
 ### Business rules (รอบ 42)
 42. (EV-26 — admin hygiene) (a) (qa #504) ผล "Still backordered — import more codes first" (ไม่มี stuck) ใช้ `variant: "warning"` แทน `success` (ข้อความเดิม — ยังไม่ได้ส่ง code จึงไม่ใช่ผลสำเร็จ);
-    (b) (review #504) `setStock`/`flaggedLines` ที่ซ้ำใน `e2e/evoucher-admin-retry-allocation.spec.ts:12-22` กับ `e2e/evoucher-admin-backordered.spec.ts:14-26` ย้ายไป `e2e/support/evoucher.ts` (ผู้ใช้ 2 ที่);
+    (b) (review #504; แก้ชื่อตาม review #520) helper ที่ซ้ำกันสองไฟล์ย้ายไป `e2e/support/evoucher.ts` (ผู้ใช้ 2 ที่):
+        ตั้ง stock ของ variant — `overstock` (`e2e/evoucher-admin-backordered.spec.ts:14-25`) กับ `setStock` (`e2e/evoucher-admin-retry-allocation.spec.ts:12-23`) เนื้อเหมือนกัน → helper ร่วมชื่อ **`setVariantStock`**
+        (ห้ามใช้ชื่อ `setStock` เพราะ `e2e/support/group-buy.ts:320` export `setStock` คนละ signature อยู่แล้ว);
+        อ่าน line ที่มีธง backordered — `flaggedVariants` (`backordered.spec.ts:28-31` คืน variant id) กับ `flaggedLines` (`retry-allocation.spec.ts:25-27` คืนจำนวน) ไม่ได้ซ้ำตรงตัว
+        → helper ร่วม **`backorderedItems(request, admin, orderId)`** คืน item ที่ `metadata.evoucher_backordered === true` แล้วผู้เรียก map เป็น `variant_id`/`length` เอง;
     (c) `allocateErrorMessage` ใช้ตัวจัดข้อความเดียวกับ `evoucher-resend.ts` (`tidyStops`/HINT) — export จากที่เดิม ไม่ copy; ข้อความ 4xx ที่แสดงเท่าเดิมยกเว้นการจัดจุด/คำแนะนำ
 ### Acceptance criteria (รอบ 42)
 - AC-56 (EV-26, กฎข้อ 42) unit `evoucher-allocate.unit.spec.ts`: backordered อย่างเดียว → `variant: "warning"` (ล้มบน develop — `success`); allocated อย่างเดียว → `success` "Codes allocated" (regression);
-  static: ไม่มีนิยาม `setStock`/`flaggedLines` ในไฟล์ e2e สองไฟล์ (import จาก `e2e/support/evoucher.ts`); unit ของ `allocateErrorMessage` กับข้อความที่ resend ใช้ได้ผลจัดรูปเดียวกัน; e2e AC-52/AC-54 ผ่าน
+  static — **ล้มบน develop** ก่อน: ไม่มีนิยาม `overstock`/`flaggedVariants` ใน `evoucher-admin-backordered.spec.ts` และไม่มี `setStock`/`flaggedLines` ใน `evoucher-admin-retry-allocation.spec.ts`;
+  ทั้งสองไฟล์ import `setVariantStock` และ `backorderedItems` จาก `e2e/support/evoucher.ts`; `e2e/support/evoucher.ts` ไม่ export ชื่อ `setStock`; unit ของ `allocateErrorMessage` กับข้อความที่ resend ใช้ได้ผลจัดรูปเดียวกัน; e2e AC-52/AC-54 ผ่าน
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|

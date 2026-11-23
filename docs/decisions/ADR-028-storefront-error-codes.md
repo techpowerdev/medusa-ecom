@@ -44,7 +44,7 @@
 
 ## ภาคผนวก 2026-11-23 (ปิดรอบ 41 — สภาพหลัง CORE-82..84 merge; review #514)
 - CORE-82 #514, CORE-83 #517, CORE-84 #519 merge ครบ → การตัดสินใจข้างบนทำแล้วทั้งหมด ไม่เปลี่ยนการตัดสินใจ
-- ตำแหน่งจริง: helper `medusaFetch` = `apps/storefront/src/lib/data/medusa-fetch.ts` (`server-only`; POST เท่านั้น, ไม่ตั้ง `cache`; `authHeaders` แทน header ลูกค้าได้ — ใช้กับ actor `affiliate`);
+- ตำแหน่งจริง: helper `medusaFetch` = `apps/storefront/src/lib/data/medusa-fetch.ts` (ผู้เรียก = ทุกไฟล์ที่ import `./medusa-fetch` — 7 ไฟล์ใน `lib/data/` ณ วันนี้ ดู spec 01 กฎข้อ 140; `server-only`; POST เท่านั้น, ไม่ตั้ง `cache`; `authHeaders` แทน header ลูกค้าได้ — ใช้กับ actor `affiliate`);
   class `MedusaApiError` + **รายการข้อยกเว้นที่เดียว** `UNCODED_MEDUSA_ERRORS`/`isUncodedMedusaError` = `apps/storefront/src/lib/util/medusa-api-error.ts` (แยกไฟล์เพื่อให้ helper ฝั่ง client import ได้)
   — ข้อยกเว้น ณ วันนี้: `OUT_OF_STOCK_AT_RESERVE`, `EMPTY_CART_COMPLETION`, `IDENTITY_EXISTS` (ข้อ "Medusa core error ที่ไม่มี code" ของการตัดสินใจ)
 - backend เพิ่ม code ให้ error ของเราที่เคยไม่มี: `RETURN_ITEM_NOT_STOCKED`/`RETURN_NO_LOCATION` (CORE-83), `GB_CART_EMPTY`, `AFFILIATE_CODE_RESERVED` (middleware ก่อน validator — CORE-84)

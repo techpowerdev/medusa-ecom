@@ -1107,7 +1107,7 @@ ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเข�
 | GB-30 | ☑ #503 — กัน `DELETE /admin/promotions/:id` ของต้นแบบ `GBT-*` (กฎข้อ 55) + กันเปลี่ยน `status` ของต้นแบบเป็น `active` ผ่าน `POST /admin/promotions/:id` (กฎข้อ 56) — owner สั่ง/ตัดสินเพิ่ม 2026-11-23 (follow-up PR #493) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/group-buy-promotion-lock.spec.ts` | ~45 LOC + ~200 LOC test | AC-73 | **GB-29 (#493)** + PR เอกสาร GB-30 | `group-buy-lock.ts`, `group-buy-promotion-lock.spec.ts` |
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review/qa #488, #497, #503, #505, #519; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ; GB-32 ข้อ (a) รอ Q26)
+Status: draft (☐ — รอ owner สั่งทำ; Q26 = ก owner 2026-11-23 — GB-32 ไม่ติดคำถามแล้ว; release v0.3.1 ตาม Q-R42)
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 42)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
@@ -1120,7 +1120,7 @@ Status: draft (☐ — รอ owner สั่งทำ; GB-32 ข้อ (a) ร�
         unit เคส `DELETE GB-*` ตรวจลำดับ entry ของ matcher DELETE (แบบที่ POST ตรวจ index); integration ของ AC-73 เพิ่มแคมเปญ `ended` (unit ครอบอยู่แล้ว);
         integration (b) ของ AC-69 กรอง `GB-*` เฉพาะแคมเปญของ test ไม่ใช่ทั้ง DB;
     (c) (review #519) `integration-tests/http/group-buy-join.spec.ts` (~`:363`, ~`:923`) assert `res.data.code` คู่กับ `message`; เพิ่ม HTTP test ของ `GB_CART_EMPTY` (join ด้วย cart ว่าง → 400 code นี้)
-58. (GB-32 — job หมดเวลาชำระ; review #505, GB-28 builder) (a) **(รอ Q26)** จำนวน membership ที่ตรวจกับ provider ต่อรอบของ `group-buy-deadline` มีเพดาน `MAX_PAYMENT_CHECKS_PER_TICK` (ค่าตาม Q26)
+58. (GB-32 — job หมดเวลาชำระ; review #505, GB-28 builder) (a) (Q26 = ก owner 2026-11-23) จำนวน membership ที่ตรวจกับ provider ต่อรอบของ `group-buy-deadline` มีเพดาน `MAX_PAYMENT_CHECKS_PER_TICK = 4 × BATCH = 200`
         นับทุกผล (`paid`/`unpaid`/`retry`/`skip`/`give_up`) — ถึงเพดานแล้วหยุดรอบนั้น ที่เหลือรอบถัดไป; `$nin` ของ id ที่ตรวจแล้วจึงยาวไม่เกินเพดาน;
     (b) `group-buy-deadline.ts` (~`:71`): ถ้าจำนวนเปลี่ยนระหว่าง count กับ list จน `skip` ≥ จำนวนจริงแล้วหน้าแรกว่าง → อ่านซ้ำด้วย `skip: 0` 1 ครั้งก่อน break (ไม่ข้ามรอบทั้งที่มีงาน);
     (c) `deleteMemberPaymentSessionsStep` (`membership-payment.ts:211`) ย้าย `query.graph` เข้า best-effort เดียวกับการลบ session (ล้ม → warn `GROUP_BUY_SESSION_CANCEL_FAILED` แล้วไปต่อ — ตาม comment `:205` ที่บอกว่า best-effort; membership/order ที่ยกเลิกแล้วไม่ถูก compensate);
@@ -1128,19 +1128,19 @@ Status: draft (☐ — รอ owner สั่งทำ; GB-32 ข้อ (a) ร�
 ### Acceptance criteria (รอบ 42)
 - AC-74 (GB-31, กฎข้อ 57) integration + unit: (a) mutation ถอด lock → AC-63 (b) ล้ม (แนบใน PR), คืนแล้วผ่าน `--repeat-each`/รัน 3 รอบ; (b) spy `query.graph` ของ guard: request เดียว = 1 ครั้งต่อ entity; AC-67/69/72/73 ผ่านครบ (รวมแคมเปญ `ended`);
   (c) assertion `code` ของ join + test `GB_CART_EMPTY` → 400 `code: "GB_CART_EMPTY"`
-- AC-75 (GB-32, กฎข้อ 58) unit + integration: (a) (หลัง Q26) membership หมดเวลา `เพดาน + 10` ราย provider ตอบ error ทุกราย → รอบเดียวเรียก provider = เพดาน (ล้มบน develop — เรียกทุกราย); รอบถัดไปตรวจที่เหลือ;
+- AC-75 (GB-32, กฎข้อ 58) unit + integration: (a) membership หมดเวลา `เพดาน + 10` ราย (unit ใช้ค่าคงที่ที่ export — ไม่ต้องสร้าง 210 รายใน integration; integration ใช้เพดานที่ inject ได้ในต้นทุนต่ำ หรือ unit อย่างเดียวถ้า builder ระบุเหตุผล) provider ตอบ error ทุกราย → รอบเดียวเรียก provider = เพดาน (ล้มบน develop — เรียกทุกราย); รอบถัดไปตรวจที่เหลือ;
   (b) unit ของ loop: count 60 แต่ list ได้ 0 ที่ skip เดิม → อ่าน `skip: 0` แล้วประมวลผลได้; (c) mock `query.graph` throw → log `GROUP_BUY_SESSION_CANCEL_FAILED` และ workflow ไม่ล้ม (ล้มบน develop);
   (d) เวลาของ test (d) ≤ 5 วินาที; (e) `pnpm lint` ไม่มี warning `step-id-kebab-case` ในไฟล์นี้
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | GB-31 | test/lock hygiene: พิสูจน์ lock ของ AC-63b, guard อ่าน link ครั้งเดียว, test ลำดับ/ended/ขอบเขต, assert code ของ join + `GB_CART_EMPTY` (กฎข้อ 57) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/{group-buy-payment,group-buy-promotion-lock,group-buy-join}.spec.ts` | ~30 LOC + ~150 LOC test | AC-74 | PR เอกสารปิดรอบ 41 | `group-buy-lock.ts` |
-| GB-32 | job หมดเวลาชำระ: เพดานตรวจต่อรอบ (Q26) + อ่านซ้ำเมื่อ skip เกิน + query.graph best-effort + test เร็วขึ้น + lint (กฎข้อ 58) | `src/jobs/group-buy-deadline.ts`, `src/workflows/group-buy/membership-payment.ts`, `src/modules/group_buy/utils/membership-payment.ts`, test | ~40 LOC + ~120 LOC test | AC-75 | PR เอกสารปิดรอบ 41 + **Q26** (ทำ (b)–(e) ได้ก่อนถ้า owner ตอบ "ไม่มีเพดาน") | `group-buy-deadline.ts`, `membership-payment.ts` |
+| GB-32 | job หมดเวลาชำระ: เพดานตรวจต่อรอบ 200 (Q26 = ก) + อ่านซ้ำเมื่อ skip เกิน + query.graph best-effort + test เร็วขึ้น + lint (กฎข้อ 58) | `src/jobs/group-buy-deadline.ts`, `src/workflows/group-buy/membership-payment.ts`, `src/modules/group_buy/utils/membership-payment.ts`, test | ~40 LOC + ~120 LOC test | AC-75 | PR เอกสารปิดรอบ 41 (Q26 = ก ☑ owner 2026-11-23) | `group-buy-deadline.ts`, `membership-payment.ts` |
 
 ลำดับ: GB-31 ∥ GB-32 (ไม่มีไฟล์ร่วม)
 
 ### Open questions (รอบ 42)
-- **Q26** (review #505 — GB-28) job `group-buy-deadline` ตรวจสถานะการชำระกับ provider **ไม่มีเพดานต่อรอบ**: เมื่อ provider ล่มทุกรายเป็น `retry` loop อ่านหน้าถัดไปจนหมด (กฎข้อ 53e) → เรียก provider เท่าจำนวนผู้ที่หมดเวลาทุกนาทีนาน 15 นาที
+- ~~**Q26**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ก)** เพดาน 200 ต่อรอบ → GB-32 กฎข้อ 58a — คำถามเดิม: (review #505 — GB-28) job `group-buy-deadline` ตรวจสถานะการชำระกับ provider **ไม่มีเพดานต่อรอบ**: เมื่อ provider ล่มทุกรายเป็น `retry` loop อ่านหน้าถัดไปจนหมด (กฎข้อ 53e) → เรียก provider เท่าจำนวนผู้ที่หมดเวลาทุกนาทีนาน 15 นาที
   และ membership ที่ `skip` ถาวร (payment เดิมเลย 15 นาทีแต่ยัง `awaiting_payment`) ถูกตรวจทุกนาทีเมื่อรายที่ตัดสินได้ < 50:
   (ก) **[Recommended]** เพดาน `4 × BATCH = 200` ครั้งต่อรอบ (กฎข้อ 58a) — แคมเปญใหญ่ 1,000 รายที่หมดเวลาพร้อมกันตรวจครบใน ~5 นาที (ก่อน give-up 15 นาที) และ provider ล่มไม่ถูกยิงเกิน 200 ครั้ง/นาที; ~10 LOC
   (ข) เพดาน `BATCH = 50` — เบาที่สุด แต่ 1,000 รายใช้ 20 นาที เกินหน้าต่าง 15 นาทีของ give-up (บางรายถูก give-up ทั้งที่ยังไม่ได้ตรวจครั้งที่สอง)

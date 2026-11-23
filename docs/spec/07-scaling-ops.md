@@ -570,7 +570,7 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
     → อาการ O-2 (#69) กลับมา: characterization test `integration-tests/http/payment-collection-reset.spec.ts` (~`:256`) จะล้ม → ทบทวน ADR-025 (ภาคผนวก 2026-11-21) ก่อน merge bump
 15. (CORE-75/CORE-88) `typo_tolerance` ของ `POST /store/search` และเกณฑ์ similarity ใน provider ยังเหมือนเดิม (AC-174, AC-185 ผ่าน); `json-logger.ts` redact ยังครอบข้อความ recreate session ของเวอร์ชันใหม่ (AC-48b)
 16. (ADR-028) ถ้า `FetchError` ของ `@medusajs/js-sdk` เก็บ `code`/`type` แล้ว → ย้ายผู้เรียก `lib/data/medusa-fetch.ts` กลับไปใช้ SDK แล้วลบ helper; ไม่งั้นตรวจว่า header ของ helper ยังเท่ากับของ SDK (unit AC-181a)
-    **(ยืนยันปิดรอบ 41 2026-11-23 หลัง CORE-82..84 + ADR-028 ภาคผนวก 2026-11-23 — ข้อนี้ยังถูกต้อง เพิ่มรายละเอียด)**: ผู้เรียก `medusaFetch` ณ ปิดรอบ 41 = `lib/data/{payment,cart,returns,group-join,affiliate-portal}.ts`
+    **(ยืนยันปิดรอบ 41 2026-11-23 หลัง CORE-82..84 + ADR-028 ภาคผนวก 2026-11-23 — ข้อนี้ยังถูกต้อง เพิ่มรายละเอียด)**: ผู้เรียก `medusaFetch` = **ทุกไฟล์ที่ import `./medusa-fetch`** (หาด้วย grep ตอน bump — ห้ามใช้รายการนี้แทน grep); ณ ปิดรอบ 41 มี 7 ไฟล์ `lib/data/{payment,cart,returns,customer,group-join,group-buy,affiliate-portal}.ts`
     (affiliate ส่ง `authHeaders` ของ actor `affiliate` — ถ้าย้ายกลับ SDK ต้องส่ง header นี้แทน); ย้ายกลับแล้วยังต้องคง class `MedusaApiError` หรือแทนด้วย error ของ SDK ที่มี `status/type/code` ให้ helper ตัดสินผลทุกตัวทำงานเหมือนเดิม;
     ทุก bump ตรวจข้อความของข้อยกเว้น `UNCODED_MEDUSA_ERRORS` ใน `lib/util/medusa-api-error.ts` (`OUT_OF_STOCK_AT_RESERVE`, `EMPTY_CART_COMPLETION`, `IDENTITY_EXISTS`) กับ source ของ Medusa ที่ติดตั้ง (ซ้อนกับข้อ 13 — ข้อนี้คือรายการครบ);
     ไม่มี issue upstream ที่เราเปิด (owner 2026-11-23 — ADR-028 ภาคผนวก) — ตอน bump ดูสถานะ medusajs/medusa#16770 และ PR ที่แก้ `FetchError`
@@ -593,16 +593,16 @@ Status: draft (☐ — รอ owner สั่งทำ) · แตะ `docs/ops/p
 ### What Medusa already gives us (รอบ 42)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
-| access log | Medusa 2.22.1 เขียน access log ที่ระดับ `http` (path + query + status) ผ่านทางของ Medusa เอง — builder ยืนยันว่าผ่าน logger ของเรา (`json-logger.ts`) หรือ stdout ตรง (review #473 บอกว่าตรง) | ไม่ patch — บันทึกใน runbook (กฎข้อ 17c) |
-| layout ของหน้า order | system default layout ของ zone `order.details` (migration script ของ PAY-10) + layout ส่วนตัวของแอดมิน ("Customize layout") | ใช้ตามเดิม — runbook บอกวิธี reset (กฎข้อ 17d) |
+| access log | Medusa 2.22.1 เขียน access log ที่ระดับ `http` (path + query + status) ผ่านทางของ Medusa เอง — builder ยืนยันว่าผ่าน logger ของเรา (`json-logger.ts`) หรือ stdout ตรง (review #473 บอกว่าตรง) | ไม่ patch — บันทึกใน runbook (กฎข้อ 17c รอบ 42) |
+| layout ของหน้า order | system default layout ของ zone `order.details` (migration script ของ PAY-10) + layout ส่วนตัวของแอดมิน ("Customize layout") | ใช้ตามเดิม — runbook บอกวิธี reset (กฎข้อ 17d รอบ 42) |
 ### Business rules (รอบ 42)
-17. (OPS-35 — ช่องว่างของ redact + runbook) (a) `redactPii` (`src/lib/redact-pii.ts`) ครอบเพิ่ม: สตริงในเครื่องหมาย backtick ของ `util.inspect` (`` key: `value` ``), ค่าใน JSON ที่ escape ซ้อน (`\"email\":\"…\"`),
-        local part ของอีเมลที่มี `'` (เช่น `o'brien@…` ต้องไม่เหลือ `o'`); คงกติกา linear-time ของกฎข้อ 15 (unit 100k ตัวอักษร) และไม่ตัด id/`request_id`/จำนวนเงิน;
+17. (กฎข้อ 17 รอบ 42 — คนละชุดกับเช็กลิสต์ bump ข้อ 17; OPS-35 — ช่องว่างของ redact + runbook) (a) `redactPii` (`src/lib/redact-pii.ts`) ครอบเพิ่ม: สตริงในเครื่องหมาย backtick ของ `util.inspect` (`` key: `value` ``), ค่าใน JSON ที่ escape ซ้อน (`\"email\":\"…\"`),
+        local part ของอีเมลที่มี `'` (เช่น `o'brien@…` ต้องไม่เหลือ `o'`); คงกติกา linear-time ของกฎข้อ 15 รอบ 41 (unit 100k ตัวอักษร) และไม่ตัด id/`request_id`/จำนวนเงิน;
     (b) ไม่ redact ค่า non-PII ของ key `name`/`state` ที่เป็นชื่อ step/สถานะ workflow ไม่ได้ — ยอมรับตามกฎข้อ 15 (ไม่เปลี่ยน); `cause` ที่ non-enumerable ไม่ถูก log (ไม่ regression) — ไม่เปลี่ยน;
     (c) `docs/ops/production.md` หัวข้อ redact (Go-live ข้อ 13): ระบุว่า access log ของ Medusa **ไม่ผ่าน** redact (ถ้า builder ยืนยันว่าตรง stdout) และมีเฉพาะ path/query/status — query ของหน้าค้นหา (`q`) อาจมีข้อความที่ลูกค้าพิมพ์; log shipper ต้องเก็บตามนโยบาย PII เดียวกัน;
     (d) `docs/ops/production.md` runbook หลัง go-live: แอดมินที่บันทึก layout ส่วนตัวของหน้า order ไว้ก่อน PAY-10 จะไม่เห็น widget `order-refund-blocked` บนสุด → reset layout เป็นค่าเริ่มต้น ("Customize layout" → reset) (re-review #471)
 ### Acceptance criteria (รอบ 42)
-- AC-50 (OPS-35, กฎข้อ 17) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture backtick `` email: `a.b@x.co` ``, JSON escape ซ้อน, `o'brien@example.com` → ไม่เหลือค่า fixture และไม่เหลือ `o'`; unit linear-time 100k ตัวอักษรเดิมยังผ่านโดยไม่เพิ่มเกณฑ์เวลา;
+- AC-50 (OPS-35, กฎข้อ 17 รอบ 42 — คนละชุดกับเช็กลิสต์ bump ข้อ 17) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture backtick `` email: `a.b@x.co` ``, JSON escape ซ้อน, `o'brien@example.com` → ไม่เหลือค่า fixture และไม่เหลือ `o'`; unit linear-time 100k ตัวอักษรเดิมยังผ่านโดยไม่เพิ่มเกณฑ์เวลา;
   unit runbook (`ops-runbook.unit.spec.ts`) grep คำ "access log" ในหัวข้อ redact และ "Customize layout" ในหัวข้อหลัง go-live
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |

@@ -2890,7 +2890,8 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
      ผ่าน helper เดียว `lib/data/medusa-fetch.ts` (`fetch` ตรง + header เดียวกับ SDK → `MedusaApiError { status, type, code, message }`) เฉพาะ mutation ที่ตัดสินจาก error; เปิด issue upstream ให้ `FetchError` เก็บ `code`/`type` (session หลักเปิด);
      error ของ Medusa core ที่ไม่มี code (สต็อกไม่พอตอน complete, `Identity with email already exists`) ยังเทียบ `type` + ข้อความ (ข้อยกเว้นที่บันทึกใน helper);
      เมื่อย้ายแต่ละกลุ่ม helper แล้วลบ map ข้อความของกลุ่มนั้น (เช่น `CHECKOUT_CONFLICTS`, `RETURN_ERRORS`, `insufficient-inventory.ts`) และ contract test เปลี่ยนเป็นเทียบ code; ข้อความไทยที่ลูกค้าเห็นไม่เปลี่ยน
-     **(ปิดรอบ 41 — ตำแหน่งโค้ดจริงหลัง CORE-82..84, review #514)** `medusaFetch` อยู่ที่ `lib/data/medusa-fetch.ts` (`server-only`; ผู้เรียก: `payment.ts`, `cart.ts`, `returns.ts`, `group-join.ts`, `affiliate-portal.ts` — affiliate ส่ง token ของ actor `affiliate` ผ่านพารามิเตอร์ `authHeaders`);
+     **(ปิดรอบ 41 — ตำแหน่งโค้ดจริงหลัง CORE-82..84, review #514)** `medusaFetch` อยู่ที่ `lib/data/medusa-fetch.ts` (`server-only`; ผู้เรียก = **ทุกไฟล์ที่ import `./medusa-fetch`** (ตรวจด้วย grep — ณ ปิดรอบ 41 บน develop `8d509076` มี 7 ไฟล์ใน `lib/data/`: `payment.ts`, `cart.ts`, `returns.ts`, `customer.ts` (CORE-83 register), `group-join.ts`, `group-buy.ts` (CORE-84 สร้างกลุ่ม), `affiliate-portal.ts`)
+     — affiliate ส่ง token ของ actor `affiliate` ผ่านพารามิเตอร์ `authHeaders`; แก้ตาม review #520);
      class `MedusaApiError` และ**รายการข้อยกเว้นที่เดียว** `UNCODED_MEDUSA_ERRORS` + `isUncodedMedusaError` อยู่ที่ `lib/util/medusa-api-error.ts` (แยกไฟล์ให้ helper ฝั่ง client import ได้):
      `OUT_OF_STOCK_AT_RESERVE` (400 `not_allowed` prefix "Not enough stock available for item "), `EMPTY_CART_COMPLETION` (400 `invalid_data` prefix "Cannot complete a cart with no items"), `IDENTITY_EXISTS` (401 `unauthorized` ข้อความ "Identity with email already exists");
      `insufficient-inventory.ts` ยังอยู่แต่ตัดสินจาก code `insufficient_inventory` + ข้อยกเว้น `OUT_OF_STOCK_AT_RESERVE` (ไม่มี map ข้อความ); ข้อยกเว้นใหม่ต้องเพิ่มใน `UNCODED_MEDUSA_ERRORS` เท่านั้น (static ของ AC-181 c สแกนการเทียบ `message` นอกสองไฟล์นี้)
@@ -2965,10 +2966,10 @@ Out of scope: flaky `nav-cart-link` 2 ตัวที่ 375px (แยกเป�
   (ค) ยอมรับ — คำ 2 อักขระคืนผลกว้าง (เรียงตามความใกล้) ไม่มีงาน
   (ง) กรองผลฝั่ง storefront — ไม่แนะนำ: count/facet/แบ่งหน้าจาก index ไม่ตรงกับรายการที่แสดง
 
-## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — follow-up ของ review/qa/builder #462–#519; ไม่บล็อก release v0.3.0)
+## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — follow-up ของ review/qa/builder #462–#519; ไม่บล็อก release v0.3.0 — Q-R42 = ก owner 2026-11-23: release v0.3.1)
 Status: draft (☐ ทุก task — รอ owner สั่งทำ; ดู ROADMAP "รอบ 42")
 Goal (owner's words): — (planner แปลง follow-up ที่ยังเป็นจริงบน develop `8d509076` เป็น task; owner ยังไม่สั่ง)
-Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=` (routing ของ InstantSearch — qa #489), ข้อความหลังจ่ายบัตรแล้ว session หมด (รอ Q-C16), งานรอบ 42 ใน spec อื่น: 02 EV-26, 03 FS-25, 04 GB-31..32, 05 AF-27, 06 PAY-16..18, 07 OPS-35, 08 ADM-47..48
+Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=` (routing ของ InstantSearch — qa #489), งานรอบ 42 ใน spec อื่น: 02 EV-26, 03 FS-25, 04 GB-31..32, 05 AF-27, 06 PAY-16..18, 07 OPS-35, 08 ADM-47..48
 เลขกฎ/AC ต่อจาก CORE-88 (กฎข้อ 144, AC-185)
 
 ### What Medusa already gives us (รอบ 42)
@@ -2989,12 +2990,17 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
      (b) หน้า dynamic ที่ server ส่ง cart มาแล้ว (รวมกรณี server บอกว่าไม่มี cart) `CartDropdown` ไม่เรียก `retrieveCart` ซ้ำตอน mount; (c) e2e ที่นับ request `next-action` ทั้งหมด
      (`core-4h-auth-reason`, `core-19b-continue-to-review`, `group-buy-join` ของ storefront) นับเฉพาะ action ที่ test ตรวจ (แบบ hotfix #485) — ไม่ลดสิ่งที่ตรวจ
 148. (CORE-92 — review/qa #489) หน้า account: (a) overview ที่มีแต่ membership แบบกลุ่ม (ไม่มี order ปกติ) ไม่แสดง "ยังไม่มีคำสั่งซื้อ" คู่กับลิงก์ "ดูทั้งหมด"; (b) overview เรียก GB-8 ด้วย `limit=1` เพื่อตรวจว่ามี membership (เดิม 50);
-     (c) `SearchPagination` ของ `/store`: `nav` มี `aria-label="แบ่งหน้า"`, ปุ่มหน้าปัจจุบัน `aria-current="page"`, `aria-label` ของปุ่มเป็นไทย (แบบกฎข้อ 136c); (d) ลบ `eslint-disable` purity ที่ `orders/page.tsx` (~`:52`) โดยย้ายค่าที่ไม่ pure ออกจาก render
+     (c) `SearchPagination` ของ `/store`: `nav` มี `aria-label="แบ่งหน้า"`, ปุ่มหน้าปัจจุบัน `aria-current="page"`, `aria-label` ของปุ่มเป็นไทย (แบบกฎข้อ 136c); (d) ลบ `eslint-disable` purity ที่ `orders/page.tsx` (~`:56`) โดยย้ายค่าที่ไม่ pure ออกจาก render
 149. (CORE-93 — review #496, qa #496) หน้า collection/category (`refinement-list/options-picker/index.tsx` ~`:96–113`) หัว option ไม่แสดง `({selectedCount})` แบบเดียวกับกฎข้อ 143;
      chip "ป้ายกำกับ" ของตัวกรองที่เลือกตัดข้อความยาวด้วย `truncate` + `title` ไม่ตัดบรรทัดกลางคำ
 150. (CORE-94 — test/code hygiene storefront; review #474, #501, #514, #519, builder CORE-88) (a) `search-client.ts` + `search-client.test.ts` ผ่าน `prettier --check`; `it.each` เพิ่ม "หมวก", "รองเท้า", "เสื้อ ยืด";
      (b) `cart.ts` `updateLineItem`/`applyPromotions` อ่าน cookie ครั้งเดียวต่อ action; (c) `checkout-affiliate-coverage.test.ts` จับผู้เรียก `placeOrder` ที่ส่ง metadata ผ่าน ternary (เช่น `payment-button/index.tsx:270` รอบ retry ส่ง `undefined`) — ตรวจว่าทุกทาง**ครั้งแรก**ส่ง metadata ของ cart และทาง retry มี comment อธิบาย;
      (d) regex `COMPARE` ใน `core-84-gb-affiliate-codes.test.ts` จับรูป `/…/.test(err.message)` และ `.message.includes(` ด้วย (mutation: เติมรูปนี้ในไฟล์ใดก็ได้ → test ล้ม)
+151. (CORE-95 — Q-C16 = ก owner ตัดสิน 2026-11-23; review #474) ทางบัตรที่ PaymentIntent `succeeded`/`requires_capture` แล้ว `placeOrderOutcome` ได้ `unauthorized` (401/403 — session หมดระหว่างจ่าย):
+     (a) ปุ่มบัตร (`payment-button/index.tsx` แขนง `outcome.kind === "unauthorized"` ~`:48`) พาไป `/<cc>/account?notice=payment_received` แทน `/<cc>/account` เปล่า — **เฉพาะ**ทางบัตรที่จ่ายแล้ว (manual/PromptPay ที่ยังไม่จ่ายคงเดิม);
+     (b) หน้า login (`login-template`) อ่าน `notice` แบบ allow-list ค่าเดียว `payment_received` → แสดง `login-payment-received-notice` ข้อความไทย "ได้รับชำระเงินแล้ว กรุณาเข้าสู่ระบบเพื่อดูคำสั่งซื้อ" (ค่าอื่น → ไม่แสดง ไม่ render ค่าจาก URL);
+     (c) login สำเร็จจากหน้านี้ → ไป `/<cc>/account/orders` (ถ้า `readReturnTo` ไม่รับ path นี้ ให้ส่งเป็นค่าคงที่ฝั่ง server action ตาม `notice` ไม่รับ path จาก URL — ไม่เปิดช่อง open redirect);
+     (d) ไม่เปลี่ยนการตัดสินเรื่องเงิน (order มาจาก webhook ตาม ADR-015 — ข้อความไม่สัญญาว่ามี order แล้ว)
 
 ### Acceptance criteria (รอบ 42)
 - AC-186 (CORE-89, กฎข้อ 145) e2e 375×812 ขั้น review ของ manual payment: `boundingBox()` ของ `payment-details-summary` อยู่ใต้ `payment-method-summary` (y ≥ bottom ของตัวแรก) และกว้าง ≥ 300px (ล้มบน develop — คอลัมน์ `w-1/3` ~110px ตัดทีละคำ); 1280 → สองกล่องอยู่แถวเดียวกันเหมือนเดิม
@@ -3007,12 +3013,16 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
 - AC-190 (CORE-93, กฎข้อ 149) e2e หน้า collection ที่สินค้ามี option "ขนาด": หัว "ขนาด" ไม่มีวงเล็บตัวเลข (ล้มบน develop — "(0)"); เลือก tag ชื่อยาว 80 ตัว → chip สูง 1 บรรทัดและมี `title` = ชื่อเต็ม
 - AC-191 (CORE-94, กฎข้อ 150) `prettier --check` ของสองไฟล์ผ่าน; unit `search-client.test.ts` มีคำทั้งสามใน `it.each`; unit ของ `cart.ts` นับการเรียก `getAuthHeaders`/cookie ต่อ action = 1;
   mutation ของ (c) และ (d) (แนบใน PR): เอา metadata ออกจากทางครั้งแรก → coverage test ล้ม; เพิ่ม `/x/.test(err.message)` ในไฟล์ storefront → `core-84` ล้ม
+- AC-192 (CORE-95, กฎข้อ 151) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน: (a) ทางบัตร PI `succeeded` (Stripe test mode หรือ mock แบบ AC-175) + complete ตอบ 401 → URL `/th/account?notice=payment_received`
+  และเห็น `login-payment-received-notice` อักษรไทย; (b) login แล้ว URL เป็น `/th/account/orders`; (c) `/th/account?notice=<script>` และ `?notice=x` → ไม่มี notice; (d) manual + 401 → `/th/account` ไม่มี `notice` (regression CORE-76);
+  unit: helper เลือกปลายทางตาม (ทางชำระ, kind) ครบตาราง
 
 ### Test plan (รอบ 42)
 | ระดับ | AC |
 |---|---|
 | e2e (+ qa) | AC-186, AC-187, AC-188, AC-189, AC-190 |
 | unit/static + mutation | AC-191 |
+| unit Vitest + e2e route mock (+ qa) | AC-192 |
 
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
@@ -3024,10 +3034,12 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
 | CORE-93 | หัว option ของ collection/category + chip ป้ายกำกับ (กฎข้อ 149); qa | `modules/store/components/refinement-list/options-picker/index.tsx`, chip ของตัวกรอง, e2e | ~15 LOC + ~60 LOC test | AC-190 | PR เอกสารปิดรอบ 41 | `refinement-list` |
 | CORE-94 | hygiene storefront: prettier/it.each ของ search, cookie ครั้งเดียว, coverage guard, regex COMPARE (กฎข้อ 150) | `lib/search-client.ts` (+ test), `lib/data/cart.ts`, `checkout-affiliate-coverage.test.ts`, `core-84-gb-affiliate-codes.test.ts` | ~30 LOC + ~80 LOC test | AC-191 | PR เอกสารปิดรอบ 41 | `cart.ts` |
 
-ลำดับ: ทุกตัวอิสระ (คลื่นเดียว); ไฟล์ร่วมข้าม spec: `payment/index.tsx` CORE-89 → PAY-16, `promptpay-payment/index.tsx` CORE-90 → PAY-17
+| CORE-95 | (Q-C16 = ก owner 2026-11-23) จ่ายบัตรแล้ว session หมด → notice "ได้รับชำระเงินแล้ว…" บนหน้า login แล้วไปหน้า orders (กฎข้อ 151); qa | `modules/checkout/components/payment-button/index.tsx`, `lib/util/` helper ปลายทาง (+ test), `modules/account/templates/login-template.tsx`, server action login ใน `lib/data/customer.ts`, e2e | ~40 LOC + ~100 LOC test | AC-192 | PR เอกสารปิดรอบ 41; **PAY-17** (`payment-button/index.tsx`) | `payment-button/index.tsx` (PAY-17, test ของ CORE-94), `customer.ts`, `login-template.tsx` (CORE-90 แตะ `login/index.tsx` คนละไฟล์) |
+
+ลำดับ: CORE-89..94 อิสระ (คลื่น A); CORE-95 หลัง PAY-17 (คลื่น C — ไฟล์ `payment-button/index.tsx`); ไฟล์ร่วมข้าม spec: `payment/index.tsx` CORE-89 → PAY-16, `promptpay-payment/index.tsx` CORE-90 → PAY-17
 
 ### Open questions (รอบ 42)
-- **Q-C16** (review #474 — CORE-76 ทางบัตร) ลูกค้าจ่ายบัตรสำเร็จ (PI `succeeded`) แล้ว `placeOrder` ได้ 401/403 (session หมดระหว่างจ่าย) → `placeOrderOutcome` = `unauthorized` → พาไปหน้า login **โดยไม่มีข้อความว่ารับเงินแล้ว**
+- ~~**Q-C16**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ก)** → CORE-95 (กฎข้อ 151, AC-192) — คำถามเดิม: (review #474 — CORE-76 ทางบัตร) ลูกค้าจ่ายบัตรสำเร็จ (PI `succeeded`) แล้ว `placeOrder` ได้ 401/403 (session หมดระหว่างจ่าย) → `placeOrderOutcome` = `unauthorized` → พาไปหน้า login **โดยไม่มีข้อความว่ารับเงินแล้ว**
   (webhook ยัง complete cart และได้ order ตามปกติ — เงินไม่หาย แต่ลูกค้าอาจจ่ายซ้ำหรือกังวล):
-  (ก) **[Recommended]** CORE-95: ทางบัตรที่ PI จ่ายแล้วเท่านั้น พาไป `/<cc>/account?reason=payment_received` → หน้า login แสดง notice ไทย "ได้รับชำระเงินแล้ว กรุณาเข้าสู่ระบบเพื่อดูคำสั่งซื้อ" และหลัง login ไป `/<cc>/account/orders` (~40 LOC + e2e route mock; ใช้กลไก `reason` เดิมของ CORE-4h)
+  (ก) **[Recommended — owner เลือก]** CORE-95: ทางบัตรที่ PI จ่ายแล้วเท่านั้น พาไปหน้า login พร้อม notice ไทย "ได้รับชำระเงินแล้ว กรุณาเข้าสู่ระบบเพื่อดูคำสั่งซื้อ" และหลัง login ไป `/<cc>/account/orders` (~40 LOC + e2e route mock; param `notice` แบบ allow-list ตามกฎข้อ 151 — แก้ปิดรอบ 41: storefront ไม่มีกลไก `reason` เดิมให้ใช้)
   (ข) คงเดิม — กรณีเกิดยาก (token หมดอายุระหว่างกรอกบัตร) และ order ถูกสร้างจาก webhook อยู่แล้ว
