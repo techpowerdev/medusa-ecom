@@ -437,10 +437,14 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
     (a) แสดง `review-refunded-notice` ข้อความ `REFUNDED_NOTICE` ของ `checkout-error.ts` (หลัง reload ไม่รู้เหตุ) + ลิงก์ "ไปที่ตะกร้า" `review-refunded-go-to-cart` (→ `/<cc>/cart`)
         **แทน**ปุ่ม disabled "กรุณาเลือกวิธีชำระเงิน" — ครอบ reload, Back จาก `/<cc>/cart` และ RSC หลัง `router.refresh()` ของ PAY-11/15 (`stopRefunded`) ที่ทำให้ component พร้อมเพย์หลุดไป (notice ไม่หาย);
         ส่วนแสดงผลใช้ component ร่วม `refunded-go-to-cart` กับ PAY-15 (`promptpay-refunded`/`promptpay-go-to-cart` เดิมไม่เปลี่ยน)
-    (b) ยังมี session (เช่น route mock ของ AC-24/AC-28 หรือ PAY-6c ที่ยังไม่ refresh) → component ของ provider ตัดสินตามเดิม (กฎข้อ 13/17/19) — PAY-19 ไม่แตะ state ใน `promptpay-payment/index.tsx`
+    (b) ยังมี session (เช่น route mock ของ AC-24/AC-28) → component ของ provider ตัดสินตามเดิม (กฎข้อ 13/17/19) — PAY-19 ไม่แตะ state ใน `promptpay-payment/index.tsx`;
+        แต่เมื่อ RSC หลัง `router.refresh()` ไม่มี session แล้ว component พร้อมเพย์หลุดไปทั้งก้อน: `promptpay-refunded`/`promptpay-go-to-cart` ของ PAY-15 และ `promptpay-retry-button`
+        ของ PAY-6c (หลัง `stopRefunded(PROMPTPAY_REFUNDED_UNKNOWN)`) **ถูกแทนด้วย** `review-refunded-notice` + `review-refunded-go-to-cart` (ไม่มีปุ่มเริ่มชำระใหม่ — ไม่มี session ให้สร้าง QR อยู่แล้ว)
     (c) ขั้น payment ไม่เปลี่ยน: ลูกค้าเลือกวิธีชำระแล้วจ่ายใหม่ได้ตามเดิม (`initiatePaymentSession` ได้ `PAYMENT_COLLECTION_RESET` → collection ใหม่ → สัญญาณหาย, กฎข้อ 11) ไม่ว่าจะแก้ตะกร้าหรือไม่;
         ไม่มีการล้างสัญญาณจากฝั่ง storefront เอง; ไม่ขึ้นกับ provider (บัตรที่ refresh แล้วไม่มี session ได้ notice เดียวกัน)
     (d) ไม่เพิ่ม field ของ `retrieveCart` (default `*payment_collection` มี `captured_amount`/`refunded_amount` แล้ว — e2e ตรวจด้วย Store API) และไม่เพิ่ม store route
+    (e) **มาก่อนกฎข้อ 127 ของ spec 01 เฉพาะกรณีนี้** (session หลักตัดสิน 2026-11-24 ตามเจตนา Q-P13 = ก): `checkoutRedirectStep` ไม่ส่ง `step=review` ไปขั้น payment
+        เมื่อขั้นก่อนหน้าเสร็จแล้วและ `refundedWithoutSession(cart)` เป็นจริง (ไม่งั้น reload/Back ถูก redirect ไป payment และไม่เห็น notice); กรณีอื่นของกฎข้อ 127 คงเดิม
 ### Acceptance criteria (รอบ 42)
 - ☑ AC-29 (PAY-16, กฎข้อ 18) unit Vitest + e2e route mock (แบบ AC-27): (a) บังคับ notice แล้วเลือก manual → notice หาย และคลิก "ลองอีกครั้ง" ไม่มีอีกแล้ว/ไม่สร้าง session ของบัตร (ล้มบน develop);
   (b) dblclick `payment-session-retry` → `POST .../payment-sessions` 1 ครั้ง; (c) route mock ให้ refresh ไม่มา → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton; (d) ระหว่างรอ order radio มี `disabled`
@@ -448,7 +452,7 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
   (b) unit ของตัวตัดสิน PromptPay: poll `refunded` ระหว่าง finishing → ไม่เปลี่ยน state; e2e AC-24/AC-28 ผ่าน และไม่เห็น `promptpay-retry-button` ระหว่างทาง (นับด้วย `MutationObserver`)
 - ☑ AC-31 (PAY-18, กฎข้อ 20) unit ของ route (แบบ AC-25): `redirect_status=failed` + อ่าน cart 500 → location `step=payment`; 401/403/5xx → `setCartCookie` ไม่ถูกเรียก; หน้า checkout `cart_id` ≠ cart ของ cookie → ทางหา order;
   e2e: เปิด `/th/cart?error=refunded` แล้วแก้จำนวนสำเร็จ → `cart-error-notice` หายและ URL ไม่มี `error` (ล้มบน develop)
-- ☑ AC-32 (PAY-19, กฎข้อ 21 — Q-P13 = ก) unit Vitest ของ `refundedWithoutSession`: ไม่มี session (`[]`/ไม่มี field) + คืนครบ → true; ยังมี session → false; `completed_at` → false;
+- AC-32 (PAY-19, กฎข้อ 21 — Q-P13 = ก) unit Vitest ของ `refundedWithoutSession`: ไม่มี session (`[]`/ไม่มี field) + คืนครบ → true; ยังมี session → false; `completed_at` → false;
   `refunded_amount < captured_amount` / `captured_amount = 0` (collection ใหม่) / ไม่มี collection → false;
   e2e (backend + Stripe test mode จริง — ไม่ใช่ route mock เพราะ cart อ่านฝั่ง server) `pay-19-promptpay-refunded-reload.spec.ts`: ชำระพร้อมเพย์ตอน QR แสดง (`paidWhileQrShown` กับสินค้า flash ของ test)
   แล้วใช้สิทธิ์ flash จาก cart อื่น → complete ของทางสำรองล้มจริงด้วย `FLASH_LIMIT_EXCEEDED` จน Medusa คืนเงิน (Store API: คืนครบ, session = `[]`) → หลัง `router.refresh()` เห็น `review-refunded-notice` + `review-refunded-go-to-cart`
