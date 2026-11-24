@@ -6,9 +6,9 @@
 
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
-- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 17/19 task (CORE-95 ◐ #546 รอ qa, PAY-19 ☐ รอ #546 merge)
+- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 18/19 task (PAY-19 ◐ #548 แก้ตาม review/qa)
 - **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 42 (ดูหัวข้อ "คำถามที่รอ owner" สำหรับเรื่องก่อน go-live)
-- **ขั้นต่อไป**: CORE-95 merge → PAY-19 → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
+- **ขั้นต่อไป**: PAY-19 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
 
 ### Release
 
@@ -52,15 +52,15 @@
 | B | PAY-16 | 06 | สถานะขั้น payment: notice/guard/timeout/radio | CORE-89 | ☑ #541 |
 | B | PAY-17 | 06 | ข้อความไทยของ error Stripe ขั้น review + PromptPay poll | CORE-90 | ☑ #540 |
 | B | ADM-48 | 08 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit #513 | ADM-47 | ☑ #542 |
-| C | CORE-95 | 01 | จ่ายบัตรแล้ว session หมด → notice บนหน้า login แล้วไป orders (Q-C16 = ก) | PAY-17 | ◐ #546 (reviewer APPROVE, รอ qa) |
-| C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (ขอบเขตย่อตาม Q-P13 = ก) | PAY-17, CORE-95 (#546) | ☐ |
+| C | CORE-95 | 01 | จ่ายบัตรแล้ว session หมด → notice บนหน้า login แล้วไป orders (Q-C16 = ก) | PAY-17 | ☑ #546 |
+| C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (ขอบเขตย่อตาม Q-P13 = ก) | PAY-17, CORE-95 (#546) | ◐ #548 |
 
 - merge train: #537 (CORE-89, CORE-90, ADM-47, EV-26, AF-27, GB-31, CORE-94, PAY-18) · #538 (CORE-93, GB-32, CORE-92, OPS-35) ·
-  #543 (FS-25, CORE-91) · #544 (PAY-17, ADM-48) · #545 (PAY-16)
+  #543 (FS-25, CORE-91) · #544 (PAY-17, ADM-48) · #545 (PAY-16) · CORE-95 #546 (merge ตรง)
 - **PAY-19 (owner Q-P13 = ก 2026-11-24)**: ตัดสินที่ `PaymentButton` ขั้น review เมื่อไม่มี session + คืนเงินครบ
   (เพราะ `refundPaymentAndRecreatePaymentSessionWorkflow` สร้าง session ใหม่ไม่สำเร็จ) — spec 06 กฎ 21/AC-32 แก้ใน PR ของ PAY-19
-- **ไฟล์ร่วมที่เหลือ**: `payment-button/index.tsx` CORE-95 → PAY-19 (PAY-19 แตก branch หลัง #546 merge)
-- **ปิดรอบ**: CORE-95 + PAY-19 merge → planner ปิดรอบ 42 → owner merge `develop → main` = v0.3.1
+- **ไฟล์ร่วมที่เหลือ**: `payment-button/index.tsx` CORE-95 → PAY-19 (#546 merge แล้ว — PAY-19 #548 แก้ต่อ)
+- **ปิดรอบ**: PAY-19 merge → planner ปิดรอบ 42 → owner merge `develop → main` = v0.3.1
 - **คำตัดสิน owner ของรอบ**: 2026-11-23 Q-R42 = ก, spec 04 Q26 = ก, spec 01 Q-C16 = ก, spec 06 Q-P12 = ข (ทำ PAY-19),
   spec 08 Q13 = ก (ข้อยกเว้น testid ที่ 4 — ADR-018 ภาคผนวก + `CLAUDE.md`) · 2026-11-24 spec 01 Q-C17 = ก (CORE-93), spec 06 Q-P13 = ก (PAY-19)
 - งาน/ไม่ทำ/ไฟล์ร่วมฉบับเต็มตอนเสนอรอบ: history หัวข้อ "รอบ 42"
@@ -107,7 +107,7 @@
 | Admin UI ใช้ component ของ Medusa | 08 | 🚀 | 41 🚀 | ADR-018; ADM-22/36 เป็นผลตรวจไม่มี PR |
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
-| รอบ 42 | 01–08 | ◐ | 17 ☑ + 1 ◐ + 1 ☐ | → v0.3.1 |
+| รอบ 42 | 01–08 | ◐ | 18 ☑ + 1 ◐ | → v0.3.1 |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
 
