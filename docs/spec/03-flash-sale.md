@@ -475,7 +475,7 @@ PROMO-2 ∥ FS-2/FS-4/FS-5/FS-7 (แตะ hook ไฟล์เดียวก�
 | FS-24 | ☑ #509 — (test) e2e race จริงทางบัตรของกฎข้อ 27 กับ Stripe test mode (กฎข้อ 29) | `apps/storefront/e2e/fs-24-card-race-refund.spec.ts` (ใหม่), `e2e/support/*` | ~150 LOC test | AC-31 | **FS-22 (#464)**, CORE-76 (notice เป็น state) | — |
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — qa/review #490, #509; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ) · ไม่มีของ Medusa ที่เกี่ยว (test hygiene ล้วน)
+Status: done (☑ FS-25 #531 — ปิดรอบ 42 2026-11-24) · ไม่มีของ Medusa ที่เกี่ยว (test hygiene ล้วน)
 ### Business rules (รอบ 42)
 30. (FS-25 — e2e hygiene) (a) (FS-24 #509) helper สร้างสินค้า/แคมเปญ flash ที่ซ้ำใน `e2e/fs-22-refunded-notice.spec.ts`, `e2e/pay-9-refunded-cart-repay.spec.ts`, `e2e/fs-24-card-race-refund.spec.ts` ย้ายไป `e2e/support/` ไฟล์เดียว (ผู้ใช้ 3 ที่);
     (b) (qa #490) e2e ของ FS-23 เปิด PDP ด้วย `?v_id=<variant>` แทนการสมมติว่า variant แรกถูกเลือก (ลำดับ variants ไม่คงที่); (c) ไม่เปลี่ยนสิ่งที่ test ตรวจ, ห้าม `waitForTimeout`/retries
@@ -485,6 +485,20 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่มีขอ
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | FS-25 | ☑ #531 — e2e hygiene flash: helper ร่วม + PDP `?v_id=` (กฎข้อ 30) | `apps/storefront/e2e/{fs-22-refunded-notice,pay-9-refunded-cart-repay,fs-24-card-race-refund,fs-23-pdp-cart-aware-limit}.spec.ts`, `e2e/support/*` | ~80 LOC (ส่วนใหญ่ย้าย) | AC-32 | PR เอกสารปิดรอบ 41 | — |
+
+## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
+Status: draft · ที่มา: FS-25 #531 (builder) และ review #531 — ตรวจบน develop `599009b6` · ไม่มีของ Medusa ที่เกี่ยว (test hygiene ล้วน)
+### Business rules (รอบ 43)
+31. (FS-26 — e2e hygiene ต่อจากกฎข้อ 30) (a) `stripeRefunds` ที่ซ้ำใน `e2e/fs-22-refunded-notice.spec.ts`, `e2e/pay-9-refunded-cart-repay.spec.ts`, `e2e/payments-refund.spec.ts` (คืนค่าคนละรูป) ย้ายไป `e2e/support/` ตัวเดียวที่คืน refund ทั้งก้อน (ผู้เรียก map เอง);
+    (b) `e2e/fs-23-pdp-cart-aware-limit.spec.ts` ใช้ `ok` และ `createFlashCampaign` ของ `e2e/support/` (นอกกฎข้อ 30a เดิม);
+    (c) `createFlashCampaign` (`e2e/support/flash-sale.ts` ~`:100`) ห่อ `endFlashCampaign` ใน catch ด้วย `.catch(() => {})` ไม่ให้ error ของการปิดกลบ error เดิม; (d) ไม่เปลี่ยนสิ่งที่ test ตรวจ, ห้าม `waitForTimeout`/retries
+### Acceptance criteria (รอบ 43)
+- AC-33 (FS-26, กฎข้อ 31) static (แบบ `fs-25-flash-e2e-hygiene.unit.spec.ts`): ไม่มีนิยาม `stripeRefunds`/`ok` ใน spec ทั้งสี่ไฟล์ (ล้มบน develop); unit ของ helper: สร้างโปรโมชันล้ม + `endFlashCampaign` ล้ม → error ที่โยนคือ error ของการสร้าง (ล้มบน develop);
+  จำนวน `expect(` ของแต่ละ test ไม่ลด; สี่ spec ผ่านใน CI (ใช้ Stripe)
+### Tasks (รอบ 43)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| FS-26 | e2e hygiene flash: `stripeRefunds`/`ok` ร่วม + catch ของ `createFlashCampaign` (กฎข้อ 31) | ไฟล์ในกฎข้อ 31, `e2e/support/*` | ~60 LOC (ส่วนใหญ่ย้าย) | AC-33 | PR เอกสารปิดรอบ 42 | — |
 
 ## คำถามที่ยังเปิดอยู่
 - คำถามเรื่อง guest ได้ข้อสรุปแล้ว: ต้องล็อกอินทั่วทั้งร้าน

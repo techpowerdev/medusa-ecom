@@ -21,6 +21,7 @@ follow-up เก่า (Backlog follow-up + ปิดรอบ 30/31–39) อ�
 12. รอบ 41 — ตาราง task, คำตัดสิน owner, ไฟล์ร่วม, ปิดรอบ 41
 13. รอบ 42 (ฉบับเสนอ 2026-11-23 — สถานะในตารางยังเป็น ☐ ตามวันที่บันทึก) — ไฟล์ร่วม, dispatch, ไม่ทำ/backlog, คำถาม owner
 14. Backlog หลัง v1.0 (สำเนา ณ วันย้าย — ฉบับปัจจุบันอยู่ใน ROADMAP)
+15. รอบ 42 — ผลจริง (ย้ายจาก ROADMAP ตอนปิดรอบ 42, 2026-11-24) — ตาราง 21 task พร้อม PR, merge train, คำตัดสิน owner, ไม่ทำของรอบ 43
 
 ## บันทึกสถานะและประวัติรายรอบ (เดิมอยู่หัวไฟล์ ROADMAP)
 
@@ -32,10 +33,10 @@ follow-up เก่า (Backlog follow-up + ปิดรอบ 30/31–39) อ�
 **release v0.3.0 แล้ว (2026-11-24)** — PR #521 `develop → main` (merge commit `47c3e545`, tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0)): ทุก task ในตาราง "Release v0.3.0" (รอบ 40) และ "รอบ 41" ที่เคยเป็น ☑ เปลี่ยนเป็น 🚀 (PAY-13 คง ✕; บรรทัดประวัติคงสัญลักษณ์ ณ วันที่บันทึก; รอบ 42 ยัง ☐) · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป (v0.3.1) ·
 **release v0.2.0 แล้ว (2026-11-19)** — PR #423 `develop → main` (merge commit `e274d387`, tag `v0.2.0`): ทุก task ในตาราง milestone/Admin UI ที่เคยเป็น ☑ เปลี่ยนเป็น 🚀 (บรรทัดประวัติคงสัญลักษณ์ ณ วันที่บันทึก) · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
 **release v0.1.0 แล้ว (2026-11-11)** — PR #342 `develop → main` (merge commit `15fce017`, tag `v0.1.0`): ทุก task ที่เคยเป็น ☑ ใน ROADMAP เปลี่ยนเป็น 🚀 · task ที่ merge เข้า develop หลังจากนี้ใช้ ☑ จนถึง release ถัดไป ·
-**สถานะล่าสุด (2026-11-24)**: ไม่มี PR เปิด (นอกจาก PR เอกสารนี้) · รอบ 42 (☐ 19 task) รอ owner สั่ง → release v0.3.1 · ไม่มีคำถาม owner ค้าง · ก่อน go-live ยังต้องทำ Go-live checklist ใน `docs/ops/production.md` ·
+**สถานะล่าสุด (2026-11-24)**: ไม่มี PR เปิด (นอกจาก PR เอกสารนี้) · รอบ 42 (☐ 19 task ณ วันนั้น — ภายหลังเพิ่มเป็น 21 task ☑ ครบ 2026-11-24, ดูหัวข้อ "รอบ 42 — ผลจริง" ท้ายไฟล์) → release v0.3.1 · ไม่มีคำถาม owner ค้าง · ก่อน go-live ยังต้องทำ Go-live checklist ใน `docs/ops/production.md` ·
 (ประวัติ) **ปิดรอบ 41 (2026-11-23, เอกสารล้วน)**: merge เข้า develop แล้ว (☑ — ณ วันนั้นรอ release v0.3.0; release แล้ว 2026-11-24): ทุก task ของหัวข้อ "Release v0.3.0" (รอบ 40 — 31 task + CORE-75 #465) และ "รอบ 41" (CORE-76..88, OPS-33/34, EV-23..25, PAY-10..12/14/15, GB-26..30, FS-23/24, AF-25/26, ADM-43..46) — PAY-13 ✕ ปิดโดย hotfix #468 ·
 **เงื่อนไข release v0.3.0 ครบ** (owner เป็นผู้ merge `develop → main`) · planner ปิดรอบหลัง CORE-84 #519 / CORE-85 #518 merge (owner 2026-11-23) · คำตัดสิน owner 2026-11-23: ไม่ทำ migration ให้ต้นแบบ `GBT-*` ที่ active ก่อนกฎข้อ 56, ข้อมูลติดต่อ CORE-85 มาจาก owner, ยังไม่เปิด issue upstream ของ `FetchError` ·
-follow-up ที่ยังเป็นจริง → **รอบ 42 (☐ 19 task เสนอ — รอ owner สั่ง; release v0.3.1)** ในหัวข้อ "รอบ 42" ใต้ตาราง v0.3.0 ·
+follow-up ที่ยังเป็นจริง → **รอบ 42 (☐ 19 task เสนอ — รอ owner สั่ง; release v0.3.1; ผลจริง 21 task ☑ ครบ 2026-11-24)** ในหัวข้อ "รอบ 42" ใต้ตาราง v0.3.0 ·
 **owner ตัดสิน 2026-11-23**: Q-R42 = ก (release v0.3.0 ตอนนี้ รอบ 42 ไป v0.3.1), spec 04 Q26 = ก (เพดาน 200 ต่อรอบ), spec 01 Q-C16 = ก (CORE-95), spec 06 Q-P12 = ข ทำ (PAY-19), spec 08 Q13 = ก (ข้อยกเว้น testid ที่ 4 — ADR-018 ภาคผนวก 2026-11-23 (2) + `CLAUDE.md`) ·
 `CLAUDE.md` เพิ่มบทเรียน 4 ข้อ (owner อนุมัติ 2026-11-23: Postgres container, `gh pr checks --watch`, รัน e2e ทุก spec ที่อ้างหน้าที่แก้, assert ข้อความ error ≠ fallback) · **ไม่มีคำถาม owner ค้าง** · ไม่มี ADR ใหม่ · (ณ 2026-11-23 PR เปิดคือ release PR #521 — owner merge แล้ว 2026-11-24) ·
 ก่อน go-live ยังต้องทำตาม Go-live checklist ของ `docs/ops/production.md` (ข้อ 10–14 รวมรัน `lowercase-emails.ts` และ backfill ธง backordered บน prod DB) ·
@@ -628,4 +629,59 @@ spec 06 AC-28 (วงเล็บ "ล้มบน develop"), spec 07 เช็�
 - **FS-9** ใส่ exclusivity rule ให้ automatic promotion ใหม่อัตโนมัติ (owner 2026-10-27: ไม่ทำใน v1 — admin กด Save ใน widget ของ FS-5 เอง) — spec 03 AC-15 (ยกเลิก)
 
 - **resolve-product-ids แบ่งหน้า** `query.graph` ของ option กลางที่ผูกหลายสินค้า (planner รอบ 13, review #200) — spec 01 รอบ 13 "ไม่ทำ/ยอมรับ"; ทำเมื่อ option เดียวผูกสินค้าหลักร้อยจริง
+
+## รอบ 42 — ผลจริง (ปิดรอบ 2026-11-24 → release v0.3.1)
+
+ย้ายจาก `docs/ROADMAP.md` ตอนปิดรอบ 42 (develop `599009b6`) · ฉบับเสนอ (19 task) อยู่หัวข้อ "รอบ 42" ด้านบน · เลขกฎ/AC อยู่ในหัวข้อ "Follow-up รอบ 42" ของแต่ละ spec
+
+| คลื่น | Task | spec | งาน (สั้น) | Depends | สถานะ |
+|---|---|---|---|---|---|
+| A | CORE-89 | 01 | สรุปขั้น payment ไม่ตัดคำที่ 375px | — | ☑ #524 |
+| A | CORE-90 | 01 | a11y ปุ่มสลับ login/register ≥ 44px + testid ไม่ซ้ำ | — | ☑ #525 |
+| A | CORE-91 | 01 | dropdown ตะกร้าไม่บอกว่าว่างระหว่างโหลด/ล้ม | — | ☑ #539 |
+| A | CORE-92 | 01 | overview/orders hygiene + a11y `SearchPagination` | — | ☑ #535 |
+| A | CORE-93 | 01 | chip ป้ายกำกับบน `/store` + หัว `OptionsPicker` ไม่แสดง `(n)` (Q-C17 = ก) | — | ☑ #533 |
+| A | CORE-94 | 01 | hygiene storefront (search, `cart.ts`, metadata, `COMPARE`) | — | ☑ #530 |
+| A | EV-26 | 02 | toast "Still backordered" + helper e2e/ข้อความ error ร่วม | — | ☑ #527 |
+| A | FS-25 | 03 | e2e hygiene flash: helper ร่วม + PDP `?v_id=` | — | ☑ #531 |
+| A | GB-31 | 04 | พิสูจน์ lock AC-63b + guard อ่าน link ครั้งเดียว + test | — | ☑ #529 |
+| A | GB-32 | 04 | job หมดเวลาชำระ: เพดาน 200 ต่อรอบ (Q26 = ก) | — | ☑ #534 |
+| A | AF-27 | 05 | ลบโหมด grouped ของ `summarizeCommissionEntries` | — | ☑ #528 |
+| A | PAY-18 | 06 | `/api/payment-return` failed+5xx → `step=payment` + notice ตะกร้า | — | ☑ #532 |
+| A | OPS-35 | 07 | redact backtick/JSON escape/`'` + runbook | — | ☑ #536 |
+| A | ADM-47 | 08 | focus กลับปุ่ม `…` หลังปิดฟอร์มจากเมนู | — | ☑ #526 |
+| B | PAY-16 | 06 | สถานะขั้น payment: notice/guard/timeout/radio | CORE-89 | ☑ #541 |
+| B | PAY-17 | 06 | ข้อความไทยของ error Stripe ขั้น review + PromptPay poll | CORE-90 | ☑ #540 |
+| B | ADM-48 | 08 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit #513 | ADM-47 | ☑ #542 |
+| C | CORE-95 | 01 | จ่ายบัตรแล้ว session หมด → notice บนหน้า login แล้วไป orders (Q-C16 = ก) | PAY-17 | ☑ #546 |
+| C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (Q-P13 = ก) | PAY-17, CORE-95 | ☑ #548 |
+| D | PAY-20 | 06 | job ตรวจ refund ล้ม/ค้าง → alert `OPS_ALERT_EMAIL` (ADR-029 ก) | ADR-029 | ☑ #550 |
+| D | PAY-21 | 06 | webhook `refund.failed`/`refund.updated` → alert (ADR-029 ข) | PAY-20 | ☑ #551 |
+
+- merge train: #537 (CORE-89, CORE-90, ADM-47, EV-26, AF-27, GB-31, CORE-94, PAY-18) · #538 (CORE-93, GB-32, CORE-92, OPS-35) · #543 (FS-25, CORE-91) ·
+  #544 (PAY-17, ADM-48) · #545 (PAY-16) · merge ตรง: CORE-95 #546, PAY-19 #548, PAY-20 #550, PAY-21 #551 · เอกสาร: #547 (ROADMAP แบบสั้น + `history.md`), #549 (ADR-029)
+- จาก 19 task ที่เสนอ เพิ่ม PAY-20/21 (owner Q-P17 = ทำใน v0.3.1 → ADR-029 accepted ก+ข 2026-11-24)
+- คำตัดสิน owner: 2026-11-23 Q-R42 = ก, spec 04 Q26 = ก, spec 01 Q-C16 = ก, spec 06 Q-P12 = ข, spec 08 Q13 = ก ·
+  2026-11-24 spec 01 Q-C17 = ก, spec 06 Q-P13 = ก, Q-P14 = ข, Q-P15 (secret `E2E_PROMPTPAY_REFUND_EMAIL`), Q-P16, Q-P17, Q-P18 = ก+ข, Q-P19 = ก, Q-P20 = ไม่เปิด issue
+- session หลักตัดสิน 2026-11-24 (PAY-19 D-2): spec 06 กฎข้อ 21(e) มาก่อนกฎข้อ 127 ของ spec 01 เฉพาะกรณี `refundedWithoutSession` (บันทึกในกฎข้อ 127 แล้ว)
+- ข้อเท็จจริงที่พบ (Stripe test mode 2026-11-24): refund พร้อมเพย์เป็น `requires_action` + Stripe ส่งอีเมลขอบัญชีรับเงินคืน — บัญชีที่ยังไม่ยื่น account application ส่งได้เฉพาะอีเมลของบัญชี → Go-live ข้อ 16
+- ปิดรอบ 42 (PR เอกสารนี้) แก้ถ้อยคำ spec ให้ตรงโค้ด (ไม่ใช่ task): spec 01 กฎข้อ 127 (ข้อยกเว้น D-2), 145 (`sm`), 151e (`PAYMENT_ALREADY_COMPLETED`), ตาราง "What Medusa gives" รอบ 42 (`Button` ไม่ใช่ของ `@medusajs/ui`),
+  ~~Q-C17~~; spec 05 แถว/กฎ 49 (flag ลบใน AF-27); spec 06 ~~Q-P17~~, Q1 (account application); spec 07 ข้อ 9 (`OPS_ALERT_EMAIL`), กฎ 17c/17d รอบ 42; spec 08 AC-52 (Mark as paid);
+  Status ของหัวข้อรอบ 42 ทุก spec = done; `docs/ops/production.md` Go-live ข้อ 16
+
+**ไม่ทำ/backlog จาก follow-up รอบ 42 (ตรวจบน develop `599009b6` — พร้อมเหตุผล)**:
+- (CORE-90 #525) e2e `affiliate-last-click` เกิน 30s ตอนเครื่อง load สูง (ผ่านเดี่ยว 23.4s) · (review #487/#539) `core-50` ที่ 1280 ล้มบน macOS เพราะ font — CI Linux ผ่าน → เฝ้าดู CI
+- (qa #526, #542, builder ADM-48) Escape ระหว่าง animation เปิด FocusModal/Drawer, toast "… created" บังปุ่ม Save ที่ 1280, Escape ภายใน ~1s หลังสร้าง — upstream Radix/Medusa (แนวเดียวกับ spec 08 Q11)
+- (review #526) e2e `admin-row-menu-return-focus` ไม่ลบข้อมูลที่สร้าง · (re-review #548) รหัสผ่านลูกค้า test เดาได้ — DB ของ CI ใช้ครั้งเดียว (แบบ review #509)
+- (review #527) static ev-26 ไม่จับนิยามด้วย `let`, `e2e/support/evoucher.ts` ไม่ตรง prettier (เดิม) — ครอบรูปที่ใช้จริงแล้ว; จัด prettier เมื่อมีงานแตะไฟล์
+- (CORE-93 #533) ลบ `OptionsPicker` ที่ไม่มีหน้าไหนแสดง — owner Q-C17 = ก เพิ่งให้แก้ที่ component และคง `hideOptionsPicker`; ทบทวนเมื่อ bump starter หรือ owner สั่ง
+- (qa/review #532) ใส่/ลบโค้ดส่วนลดไม่ล้าง `cart-error-notice` — กฎข้อ 20c ของ spec 06 นับเฉพาะการแก้รายการ; ผลกระทบต่ำ
+- (review #546) URL ที่มีทั้ง `notice` + `add_variant` ข้าม pending add เงียบ · (qa #546) `?notice=payment_received&notice=x` แสดง notice — ข้อความคงที่ ไม่มีผลความปลอดภัย (ยอมรับ)
+- (PAY-19) e2e PAY-11/15 แบบ Stripe จริงหลัง refresh — AC-32 ของ PAY-19 พิสูจน์กลไกเดียวกันด้วย Stripe จริงแล้ว; ข้อความเฉพาะเหตุขึ้นกับ spec 06 Q-P22
+- (re-review #548) `CONTACT_SELECTORS` ไม่รวม `billing-email-input`/`shipping-contact-email` — กันไว้แล้วด้วยการซ่อนกล่อง
+- (review #528) `affiliate/service.ts` คืน `amount: Number(r.amount)` (เดิม) — ยังไม่มีผู้บวกต่อ; มีเมื่อไรต้องใช้ `MathBN` (CLAUDE.md)
+- (PAY-21 #551) ตัวคูณสกุลเงินแบบ Stripe (ISK/HUF) — ร้านรับ THB อย่างเดียว · (review #536) escape ≥ 4 ชั้นไม่ redact — ยอมรับ (OPS-36 ระบุ ≤ 3 ชั้น)
+- (review #540) `expired_card` จัดผิดกลุ่ม — ตรวจแล้วอยู่แขนงบัตรถูกปฏิเสธ (`stripe-error.ts:25`) ปิด · (review #549) AC-33a/ขนาด PAY-20 — จัดการใน #550 แล้ว
+- (review #534) spec 04 AC-75 ผล red/green ยาวแทรกหน้า AC — คงไว้ (เป็นหลักฐาน)
+- บทเรียนกระบวนการ (เช่น `test:integration:http -- <path>` ไม่กรองไฟล์, mock RadioGroup ทั้งก้อน, คิว server action ของ Next 16, retry แถว failure ของ Notification module) → session หลักนำไป `CLAUDE.md` (ไม่ใช่ task)
 

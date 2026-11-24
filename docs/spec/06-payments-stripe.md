@@ -414,7 +414,7 @@ qa/review #445 (e2e `pay-9-refunded-cart-repay` step จ่ายใหม่ fl
   (ค) ไม่ทำ — คง toast 400 ของ PAY-8
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review/qa #479, #481, #482, #484; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระทบเงิน (backend ADR-015/ADR-025 กันการตัดเงินซ้ำอยู่แล้ว) — UX/สถานะของหน้าร้านล้วน
+Status: done (☑ PAY-16..19 merge แล้ว — ปิดรอบ 42 2026-11-24) · ไม่กระทบเงิน (backend ADR-015/ADR-025 กันการตัดเงินซ้ำอยู่แล้ว) — UX/สถานะของหน้าร้านล้วน
 ### What Medusa already gives us (รอบ 42)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
@@ -485,7 +485,7 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
 - ~~**Q-P16**~~ **ตัดสินแล้ว (owner 2026-11-24)** ข้อความคืนเงินของพร้อมเพย์บอกให้ตรวจอีเมลเพื่อกรอกบัญชีรับเงินคืน (กฎข้อ 21f) บัตรคงเดิม; การแจ้ง ops เมื่อคืนเงินล้ม/`refund.failed` = PAY-20 (ADR-029) ไม่อยู่ใน PAY-19
 
 ## Follow-up รอบ 42 — คืนเงินล้ม/ค้าง (ADR-029; owner Q-P17 = ทำใน v0.3.1, 2026-11-24)
-Status: accepted (owner 2026-11-24: ADR-029 accepted ก+ข, Q-P19 = ก, Q-P20 = ไม่เปิด issue) · ที่มา: PAY-19 #548 (CI) — PromptPay ฿810 ตัดเงินแล้วไม่ถูกคืน มีแค่ log · กฎข้อ 21/AC-32 เป็นของ PAY-19 ไม่แตะ
+Status: done (☑ PAY-20 #550, PAY-21 #551 — ปิดรอบ 42 2026-11-24; owner 2026-11-24: ADR-029 accepted ก+ข, Q-P19 = ก, Q-P20 = ไม่เปิด issue) · ที่มา: PAY-19 #548 (CI) — PromptPay ฿810 ตัดเงินแล้วไม่ถูกคืน มีแค่ log · กฎข้อ 21/AC-32 เป็นของ PAY-19 ไม่แตะ
 Goal (owner): ระบบต้องรู้เมื่อการคืนเงินล้มหรือค้าง
 Out of scope: แก้สถานะเงินใน Medusa อัตโนมัติ, refund ซ้ำอัตโนมัติ, แจ้งลูกค้าอัตโนมัติ, widget admin, แก้ข้อความหน้าร้าน (PAY-11/15/19), refund ที่ `requires_action` (รอลูกค้ากรอกบัญชี = ปกติ)
 ### What Medusa already gives us (คืนเงินล้ม/ค้าง)
@@ -551,10 +551,11 @@ Out of scope: แก้สถานะเงินใน Medusa อัตโน�
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | PAY-20 | ☑ #550 — (เงิน — ADR-029 ก) job ตรวจ refund ที่ล้ม/ค้าง + helper `sendOpsAlert` + template `refund-failed` + runbook (กฎข้อ 22) | `apps/backend/src/jobs/refund-failure-scan.ts` (ใหม่), `src/lib/ops-alert.ts` (ใหม่ + unit), `src/lib/refund-alerts.ts` (classifier + unit), `src/modules/resend/templates.ts` (+ test), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/refund-failure-scan.spec.ts` (ใหม่) | ~150 LOC + ~250 LOC test | AC-33 | PR เอกสารนี้ (ADR-029 accepted ☑) | `templates.ts`, `production.md` (PAY-21 — ตัวหลัง) |
-| PAY-21 | (เงิน — ADR-029 ข) subscriber `refund.failed`/`refund.updated` + event ใน Stripe webhooks/`ci.yml` + runbook/checklist (กฎข้อ 23) | `apps/backend/src/subscribers/stripe-refund-webhook.ts` (ใหม่), `docs/ops/production.md`, `.github/workflows/ci.yml` (`events=`), `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/stripe-refund-webhook.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-34 | **PAY-20** (helper + template + หัวข้อ runbook) | `ci.yml` (PAY-19 #548 ถ้าแก้ — ตัวหลัง sync) |
+| PAY-21 | ☑ #551 — (เงิน — ADR-029 ข) subscriber `refund.failed`/`refund.updated` + event ใน Stripe webhooks/`ci.yml` + runbook/checklist (กฎข้อ 23) | `apps/backend/src/subscribers/stripe-refund-webhook.ts` (ใหม่), `docs/ops/production.md`, `.github/workflows/ci.yml` (`events=`), `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/stripe-refund-webhook.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-34 | **PAY-20** (helper + template + หัวข้อ runbook) | `ci.yml` (PAY-19 #548 ถ้าแก้ — ตัวหลัง sync) |
 
 ลำดับ: PAY-20 ∥ PAY-19 (คนละ app) → PAY-21
 ### Open questions (คืนเงินล้ม/ค้าง)
+- ~~**Q-P17**~~ **ตัดสินแล้ว (owner 2026-11-24) = ทำใน v0.3.1** → ADR-029 + PAY-20/21 — คำถามเดิม: แจ้ง ops เมื่อคืนเงินล้ม + รับ `refund.updated`/`refund.failed` ทำใน release นี้หรือหลัง go-live
 - ~~**Q-P18**~~ **ตัดสินแล้ว (owner 2026-11-24) = (ก+ข)** ADR-029 accepted → PAY-20 + PAY-21 — คำถามเดิม: อนุมัติ ADR-029 ทางเลือกใด:
   (ก+ข) **[Recommended]** job ตรวจแถว refund ของ Medusa (ล้มทันที/ค้าง) + webhook `refund.failed`/`refund.updated` (ล้มภายหลัง) — ครอบทั้งสองช่อง ไม่มี infra ใหม่ ~230 LOC + test (PAY-20, PAY-21);
   (ก) job อย่างเดียว — ไม่รู้เมื่อพร้อมเพย์/บัตรล้มหลัง Stripe รับ refund แล้ว; (ข) webhook อย่างเดียว — ไม่รู้กรณีที่เกิดจริงใน #548 (Stripe ปฏิเสธตั้งแต่สร้าง refund)
@@ -562,11 +563,69 @@ Out of scope: แก้สถานะเงินใน Medusa อัตโน�
   เปลี่ยน refund ที่สำเร็จเป็นล้ม); (ข) เปิด task ปรับยอดหลัง go-live (ต้อง ADR ใหม่ — แตะข้อมูลของ Payment module)
 - ~~**Q-P20**~~ **ตัดสินแล้ว (owner 2026-11-24) = ไม่เปิด issue upstream** — บันทึกไว้ใน ADR-029 อย่างเดียว (PAY-20 ไม่ต้องร่าง issue) — คำถามเดิม: เปิด issue ที่ Medusa เรื่อง `refundPaymentsStep` กลืน error ของ provider และ `refundPaymentsWorkflow` เพิ่ม order transaction ของ refund ที่ล้ม
 
+## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
+Status: draft · ที่มา: review/qa/builder #532, #540, #541, #546, #548, #550, #551 ที่ยังเป็นจริงบน develop `599009b6`
+Out of scope: จำเหตุของการคืนเงินข้าม reload (Q-P22), สกุลเงินอื่นนอก THB (PAY-21 ใช้ `decimal_digits` ของ ISO — ตัวคูณของ Stripe ต่างใน ISK/HUF; ทบทวนเมื่อเปิดสกุลเงินอื่น)
+### What Medusa already gives us (รอบ 43)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| redirect หลัง Stripe | route `/api/payment-return` ของ starter (ขยายใน PAY-12/18) | ใช้ตามเดิม (กฎข้อ 25) |
+| อีเมลถึง ops + กันส่งซ้ำ | Notification module + `idempotency_key`; helper `sendOpsAlert` ของเรา (PAY-20 — soft-delete แถว `failure` ก่อนส่งใหม่ เพราะ 2.22.1 ส่งซ้ำแถว failure ไม่ได้) | ย้ายผู้ใช้เดิมมาใช้ helper (กฎข้อ 27) |
+| error ของ Stripe.js | `confirmPayment`/`confirmPromptPayPayment` คืน `error` (`type`/`code`) | map ด้วย `stripeErrorMessage` เดิมของ PAY-17 (กฎข้อ 28) |
+### Business rules (รอบ 43)
+25. (PAY-22 — re-review/qa #532, CORE-95 #546; ข้อ c ขึ้นกับ Q-P21) `/api/payment-return` (`app/api/payment-return/route.ts`):
+    (a) เทียบ `redirect_status` แบบไม่สนตัวพิมพ์ (`FAILED` = `failed`);
+    (b) อ่าน cart ได้ 401/403 และ `redirect_status=failed` → หน้า login ที่ `return_to` = `/<cc>/checkout?step=payment` (เดิมกลับ `step=review`);
+    (c) (ถ้า Q-P21 = ก) 401/403 และ `redirect_status=succeeded` → `/<cc>/account?notice=payment_received` ผ่าน helper ของ CORE-95 (`lib/util/login-notice.ts`) แล้ว login ไป `/<cc>/account/orders` (spec 01 กฎข้อ 151c); สถานะอื่นคงเดิม
+26. (PAY-23 — review #550, #551; ข้อ c ขึ้นกับ Q-P23) alert ของการคืนเงิน:
+    (a) `stripe-refund-webhook` ส่ง `source: "stripe"` ใน data ของ template `refund-failed` (ADR-029; job ของ PAY-20 ส่ง `"medusa"`);
+    (b) log error เมื่อ lock/ส่งล้มใน subscriber ไม่ขึ้นต้นด้วย `STRIPE_REFUND_FAILED` (code สงวนให้ alert จริง) — ขึ้นต้น `stripe-refund-webhook: alert failed`;
+    (c) (ถ้า Q-P23 = ก) กฎข้อ 22a เรียง**ใหม่ก่อน** (`created_at` DESC) คงเพดาน 200 และ warn `REFUND_SCAN_TRUNCATED`; แก้ประโยคใน runbook "คืนเงินล้ม/ค้าง (ADR-029)" ให้ตรง;
+    (d) test ผูก `order_id` ของ alert `REFUND_FAILED` กับ order จริง (refund ล้มของ order ที่ยกเลิก)
+27. (PAY-24 — กฎข้อ 22d) ผู้ส่งอีเมลหา `OPS_ALERT_EMAIL` เดิม 3 ที่ใช้ `sendOpsAlert`: `subscribers/payment-webhook-orphan.ts` (key ใหม่ `payment-webhook-session-not-found:<payment_intent>` — Stripe ส่ง event ซ้ำ = อีเมลเดียว),
+    `subscribers/group-buy-payment-captured.ts` และ `workflows/group-buy/membership-payment.ts` (alert give-up) คง key เดิม; code/template/ผู้รับ/ข้อมูลเท่าเดิม; log ขึ้นต้นด้วย code เดิม;
+    ส่งล้มแล้วส่งใหม่ได้อีเมลเดียว (ได้จากการ soft-delete แถว failure ของ helper)
+28. (PAY-25 — PAY-17 #540, review #540) error ของ Stripe ที่ `promptpay-payment/open-qr.ts` (~`:31`) และ `order/components/order-pay/pay-buttons.tsx` (~`:35`) ใช้ `stripeErrorMessage` (ไม่แสดง `error.message` ภาษาอังกฤษของ Stripe ตรง)
+### Acceptance criteria (รอบ 43)
+- AC-35 (PAY-22, กฎข้อ 25) unit ของ route (แบบ AC-31): ทุกคู่ {401, 403} × {`failed`, `FAILED`, `succeeded`, ไม่มีค่า} → location ตามกฎ (ล้มบน develop — `failed` + 401 ได้ `step=review`, `FAILED` + 5xx ได้ `step=review`);
+  ทุกแขนง 401/403 ไม่เรียก `setCartCookie`; (ถ้า Q-P21 = ก) `succeeded` + 401 → `?notice=payment_received` และ login ไป `/th/account/orders` (unit ของ helper CORE-95)
+- AC-36 (PAY-23, กฎข้อ 26) integration `stripe-refund-webhook.spec.ts`: data ของ notification มี `source: "stripe"` (ล้มบน develop); mock locking throw → ไม่มี log บรรทัดใดขึ้นต้น `STRIPE_REFUND_FAILED`;
+  `refund-failure-scan.spec.ts`: refund ล้มของ order ที่ยกเลิก → data `order_id` = id ของ order; (ถ้า Q-P23 = ก) แถวที่ใหม่ที่สุดในชุด 201 แถวถูกตรวจ และ unit runbook ตรงประโยคใหม่
+- AC-37 (PAY-24, กฎข้อ 27) static: สามไฟล์ไม่มี `process.env.OPS_ALERT_EMAIL`/`createNotifications` ตรง (ใช้ `sendOpsAlert`); test เดิมของ PAY-6b, GB-20b, GB-23 ผ่านโดยไม่แก้ค่าที่คาด;
+  webhook orphan ของ PI เดียวกันมา 2 ครั้ง → notification 1 รายการ; mock notification provider ล้มครั้งแรกแล้วสำเร็จ → แถวที่ไม่ใช่ failure = 1 และรอบที่สามไม่ส่งเพิ่ม
+- AC-38 (PAY-25, กฎข้อ 28) unit Vitest: `openQr` เมื่อ Stripe คืน error ภาษาอังกฤษ → message เป็นอักษรไทย (ล้มบน develop); `PayButtons` (route mock แบบ AC-30) error `card_declined` → ข้อความที่มองเห็นเป็นไทย ไม่มีข้อความของ Stripe
+### Test plan (รอบ 43)
+| ระดับ | AC |
+|---|---|
+| unit Vitest (route, helper, component) | AC-35, AC-38 |
+| integration http/modules + unit/static | AC-36, AC-37 |
+### Tasks (รอบ 43)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| PAY-22 | `/api/payment-return`: ตัวพิมพ์ของ `redirect_status`, failed + 401 → `step=payment`, (Q-P21) notice `payment_received` (กฎข้อ 25) | `app/api/payment-return/route.ts` (+ test), `lib/util/login-notice.ts` (ถ้า Q-P21 = ก) | ~20 LOC + ~80 LOC test | AC-35 | PR เอกสารปิดรอบ 42; **Q-P21** | — |
+| PAY-23 | (เงิน) alert คืนเงิน: `source`, prefix ของ log, (Q-P23) เรียงใหม่ก่อน, test `order_id` (กฎข้อ 26) | `src/subscribers/stripe-refund-webhook.ts`, `src/jobs/refund-failure-scan.ts`, `docs/ops/production.md` (ถ้า Q-P23 = ก), test | ~15 LOC + ~80 LOC test | AC-36 | PR เอกสารปิดรอบ 42; **Q-P23** | `production.md` (OPS-37 — ตัวหลัง sync) |
+| PAY-24 | (เงิน) ย้ายผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่มาใช้ `sendOpsAlert` (กฎข้อ 27) | ไฟล์ในกฎข้อ 27, test | ~−30 LOC + ~80 LOC test | AC-37 | PR เอกสารปิดรอบ 42 | `membership-payment.ts` (GB-33 แตะเฉพาะ test — ไม่ชน) |
+| PAY-25 | ข้อความไทยของ error Stripe ตอนเปิด QR และหน้าจ่าย order (กฎข้อ 28); qa | ไฟล์ในกฎข้อ 28 (+ test) | ~10 LOC + ~60 LOC test | AC-38 | PR เอกสารปิดรอบ 42 | — |
+
+ลำดับ: ทั้งสี่ตัวขนานกันได้ (∥) — PAY-22/23 รอคำตอบ Q-P21/Q-P23 (ถ้าไม่ตอบ ทำเฉพาะข้อที่ไม่ขึ้นกับคำถาม)
+### Open questions (รอบ 43)
+- **Q-P21** (CORE-95 #546) กลับจาก Stripe redirect (`/api/payment-return`) แล้ว session หมด (401/403) ลูกค้าเห็นหน้า login เปล่า ไม่มี notice "ได้รับชำระเงินแล้ว" แบบ CORE-95:
+  (ก) **[Recommended]** เพิ่มใน PAY-22 เฉพาะ `redirect_status=succeeded` (กฎข้อ 25c) — ทางเดียวกับปุ่มบัตรของ CORE-95 ~10 LOC ใช้ helper เดิม; ข้อความไม่สัญญาว่ามี order (order มาจาก webhook ตาม ADR-015);
+  (ข) ไม่เพิ่ม — redirect เกิดเฉพาะบัตร 3DS/พร้อมเพย์บนมือถือ และ session หมดระหว่างนั้นหายาก; PAY-22 ทำแค่ (a)(b)
+- **Q-P22** (PAY-19 #548, review #548) หลัง reload ข้อความคืนเงินเฉพาะเหตุ (เช่นโปรโมชันใช้ไม่ได้ของ CORE-76, สิทธิ์ flash) กลายเป็น `REVIEW_REFUNDED_NOTICE` ทั่วไป (กฎข้อ 21a — Store API ไม่บอกเหตุ):
+  (ก) **[Recommended]** คงไว้ — ลูกค้ายังรู้ว่าคืนเงินแล้วและไปแก้ที่ตะกร้าได้ (ตะกร้าเตือนเหตุของ FS-21/CORE-76 อยู่แล้ว); ไม่เก็บสถานะใหม่ (ตรง Q-P13 = ก); ไม่มีงาน;
+  (ข) จำเหตุต่อ cart (`cart.metadata` ฝั่ง backend ตอน compensation) แล้วแสดงข้อความเดิมหลัง reload — ~100 LOC + integration; ขัดหลัก "ไม่เขียน metadata" ของ Q-P13 จึงต้องมี ADR
+- **Q-P23** (review #550) job `refund-failure-scan` เรียงเก่าก่อน + เพดาน 200: ถ้ามีแถว failed/pending เกิน 200 ใน 7 วัน แถว**ใหม่**ไม่ถูกตรวจจนแถวเก่าพ้น 7 วัน (มีแค่ warn `REFUND_SCAN_TRUNCATED`):
+  (ก) **[Recommended]** เรียงใหม่ก่อน (กฎข้อ 26c) — refund ที่ล้มใหม่ถูกแจ้งภายใน 15 นาทีเสมอ; ที่หลุดคือแถวเก่าซึ่งรอบก่อนแจ้งไปแล้ว; ~2 LOC + test; ถ้าล้มพร้อมกันเกิน 200 ใน 15 นาที แถวเก่าสุดของชุดนั้นเหลือแค่ warn (runbook ให้ตรวจมือ);
+  (ข) อ่านทีละหน้าจนครบหน้าต่าง 7 วัน — ไม่หลุดเลย แต่เหตุการณ์ใหญ่ส่งอีเมลหลายร้อยฉบับในรอบเดียว ~20 LOC;
+  (ค) คงเดิม — ยอมรับตามที่เขียนใน runbook แล้ว
+
 ## Open questions
 - ~~Q10~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-025 ทางเลือก 2** → PAY-9 เริ่มได้หลัง GB-20; คำถามเดิม (รอบ 40): อนุมัติ ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน)
   หรือให้ storefront สร้าง cart ใหม่ (ไม่ครอบ client อื่น)
 - Q1 ยืนยันว่าบัญชี Stripe เป็นนิติบุคคลไทยและเปิดใช้ PromptPay แล้ว (จำเป็นสำหรับ AC-4 ใน test mode)
   — (2026-11-09, รอบ 25) owner **ยังไม่ยืนยัน**: ใช้ Stripe test mode ต่อไป; การยืนยันนี้เป็นข้อ 6 ใน "Go-live checklist" ของ `docs/ops/production.md` (ต้องทำก่อนเปิดร้านจริง) — ไม่มี task
+  — (ปิดรอบ 42, 2026-11-24) เพิ่ม Go-live ข้อ 16: บัญชี live ต้องยื่น account application ให้เสร็จ ไม่งั้น refund พร้อมเพย์ส่งอีเมลขอเลขบัญชีถึงลูกค้าไม่ได้ (Q-P14/Q-P15)
 - ~~Q2~~ ตัดสินแล้ว (owner, 2026-10-25): production ห้าม `pp_system_default` แบบ D1 ของ ADR-010 (seed + `check:go-live`;
   ไม่กัน admin เปิดเอง) — กฎข้อ 6
 - ~~Q3~~ ตัดสินแล้ว (owner, 2026-10-26): **คงเดิมใน v1** — เวลา 10 นาทีของ PromptPay นับจาก `created` ของ PaymentIntent

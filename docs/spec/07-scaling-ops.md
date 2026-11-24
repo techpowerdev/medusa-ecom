@@ -47,7 +47,8 @@
    - `STOREFRONT_URL` — origin ของ storefront (เช่น `https://shop.example.com` ไม่มี `/` ท้าย) ที่ backend ใช้สร้างลิงก์ชำระเงิน `/account/orders/:id/pay` ในอีเมล
      "กลุ่มสำเร็จ" ของ GB-4 (spec 04) — ไม่ตั้ง = GB-4 (#89) ใส่ลิงก์เป็น path อย่างเดียว (ลูกค้ากดจากอีเมลไม่ได้) และ production มีเพียง
      `storefrontUrlWarning` → fail-fast ใน OPS-7 (AC-17)
-   - `OPS_ALERT_EMAIL` — mailbox รับ alert `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` (ADR-015, spec 06 กฎข้อ 7D, PAY-6; แยกจาก `EVOUCHER_ADMIN_EMAIL`)
+   - `OPS_ALERT_EMAIL` — mailbox รับ alert ของ ops: `PAYMENT_WEBHOOK_SESSION_NOT_FOUND` (ADR-015, spec 06 กฎข้อ 7D, PAY-6), `GROUP_BUY_PAID_WITHOUT_ORDER`/`GROUP_BUY_PAYMENT_CHECK_GAVE_UP` (spec 04),
+     `REFUND_FAILED`/`REFUND_STUCK`/`STRIPE_REFUND_FAILED` (ADR-029, spec 06 กฎข้อ 22–23 — PAY-20/21) — แยกจาก `EVOUCHER_ADMIN_EMAIL` (แก้ถ้อยคำปิดรอบ 42 ตาม PAY-20 #550)
    - Stripe webhook endpoint เดียว (`/hooks/payment/stripe_stripe`, ADR-023) ต้องสมัคร event ตามรายการใน `docs/ops/production.md` หัวข้อ "Stripe webhooks" (OPS-10)
 10. Runbook ลำดับ release: migrate → รีสตาร์ต backend (server + worker, reindex search ตอนบูต) → ตรวจ index → ปล่อย storefront
     (`docs/ops/production.md` หัวข้อ "ลำดับ release"; spec 01 กฎข้อ 15) — เพิ่มใน docs 2026-10-26 ไม่มี task โค้ด
@@ -589,7 +590,7 @@ Go-live checklist ข้อ 10–14 (LC_CTYPE ของ Postgres, อีเม�
 | OPS-34 | ☑ #497 — hygiene backend รวม (กฎข้อ 16 รอบ 41) | `apps/backend/tsconfig.json`, test ตาม (b)–(h), `api/store/flash-sales/middlewares.ts` | ~40 LOC + ~150 LOC test | AC-49 | PR เอกสารรอบ 41 | `middlewares.ts` ถ้าย้าย matcher (CORE-80, GB-26 — ตัวหลัง sync) |
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review/re-review #473, #471; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ) · แตะ `docs/ops/production.md` (นับเป็นโค้ดใน CI) — owner อนุมัติให้ task ops แก้หัวข้อของตัวเองตามแนวรอบ 40/41
+Status: done (☑ OPS-35 #536 — ปิดรอบ 42 2026-11-24) · แตะ `docs/ops/production.md` (นับเป็นโค้ดใน CI) — owner อนุมัติให้ task ops แก้หัวข้อของตัวเองตามแนวรอบ 40/41
 ### What Medusa already gives us (รอบ 42)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
@@ -599,8 +600,8 @@ Status: draft (☐ — รอ owner สั่งทำ) · แตะ `docs/ops/p
 17. (กฎข้อ 17 รอบ 42 — คนละชุดกับเช็กลิสต์ bump ข้อ 17; OPS-35 — ช่องว่างของ redact + runbook) (a) `redactPii` (`src/lib/redact-pii.ts`) ครอบเพิ่ม: สตริงในเครื่องหมาย backtick ของ `util.inspect` (`` key: `value` ``), ค่าใน JSON ที่ escape ซ้อน (`\"email\":\"…\"`),
         local part ของอีเมลที่มี `'` (เช่น `o'brien@…` ต้องไม่เหลือ `o'`); คงกติกา linear-time ของกฎข้อ 15 รอบ 41 (unit 100k ตัวอักษร) และไม่ตัด id/`request_id`/จำนวนเงิน;
     (b) ไม่ redact ค่า non-PII ของ key `name`/`state` ที่เป็นชื่อ step/สถานะ workflow ไม่ได้ — ยอมรับตามกฎข้อ 15 (ไม่เปลี่ยน); `cause` ที่ non-enumerable ไม่ถูก log (ไม่ regression) — ไม่เปลี่ยน;
-    (c) `docs/ops/production.md` หัวข้อ redact (Go-live ข้อ 13): ระบุว่า access log ของ Medusa **ไม่ผ่าน** redact (ถ้า builder ยืนยันว่าตรง stdout) และมีเฉพาะ path/query/status — query ของหน้าค้นหา (`q`) อาจมีข้อความที่ลูกค้าพิมพ์; log shipper ต้องเก็บตามนโยบาย PII เดียวกัน;
-    (d) `docs/ops/production.md` runbook หลัง go-live: แอดมินที่บันทึก layout ส่วนตัวของหน้า order ไว้ก่อน PAY-10 จะไม่เห็น widget `order-refund-blocked` บนสุด → reset layout เป็นค่าเริ่มต้น ("Customize layout" → reset) (re-review #471)
+    (c) `docs/ops/production.md` หัวข้อ redact (Go-live ข้อ 13): ระบุว่า access log ของ Medusa **ไม่ผ่าน** redact (ถ้า builder ยืนยันว่าตรง stdout) — มี path (รวม query), status, `client_ip`, `referrer` (อาจมี `?q=` ของหน้าค้นหา) และ `user_agent` (แก้ถ้อยคำปิดรอบ 42 ตามที่ OPS-35 พบ: morgan ของ Medusa 2.22.1) — query ของหน้าค้นหา (`q`) อาจมีข้อความที่ลูกค้าพิมพ์; log shipper ต้องเก็บตามนโยบาย PII เดียวกัน;
+    (d) `docs/ops/production.md` runbook หลัง go-live: แอดมินที่บันทึก layout ส่วนตัวของหน้า order ไว้ก่อน PAY-10 จะไม่เห็น widget `order-refund-blocked` บนสุด → ให้ widget กลับบนสุด (re-review #471) — แก้ถ้อยคำปิดรอบ 42: dashboard 2.22.1 **ไม่มีปุ่ม reset** จึงใช้ "Customize layout" แบบ Personal ลาก widget ขึ้นเอง หรือ `DELETE /admin/layouts/order.details/configuration` ด้วย session ของแอดมินคนนั้น (ตามที่ OPS-35 เขียนใน runbook)
 ### Acceptance criteria (รอบ 42)
 - AC-50 (OPS-35, กฎข้อ 17 รอบ 42 — คนละชุดกับเช็กลิสต์ bump ข้อ 17) ☑ (unit red 7 → green: redact 5 + runbook 2; linear-time เดิม 3 กรณีผ่านที่เกณฑ์ 200ms เดิม + เพิ่ม 3 กรณี) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture backtick `` email: `a.b@x.co` ``, JSON escape ซ้อน, `o'brien@example.com` → ไม่เหลือค่า fixture และไม่เหลือ `o'`; unit linear-time 100k ตัวอักษรเดิมยังผ่านโดยไม่เพิ่มเกณฑ์เวลา;
   unit runbook (`ops-runbook.unit.spec.ts`) grep คำ "access log" ในหัวข้อ redact และ "Customize layout" ในหัวข้อหลัง go-live
@@ -608,6 +609,37 @@ Status: draft (☐ — รอ owner สั่งทำ) · แตะ `docs/ops/p
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | OPS-35 | ☑ #536 — redact backtick/JSON escape/`'` + runbook access log และ reset layout (กฎข้อ 17 รอบ 42) | `apps/backend/src/lib/redact-pii.ts` (+ unit), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts` | ~20 LOC + ~60 LOC test | AC-50 | PR เอกสารปิดรอบ 41 | `production.md` |
+
+## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
+Status: draft · ที่มา: review #536, #548, GB-32 #534 (builder) — ตรวจบน develop `599009b6` · OPS-36 เป็น**ช่องรั่วของ PII ใน log** (Go-live ข้อ 13) — เสนอให้เสร็จก่อน go-live (ROADMAP คำถาม Q-R43)
+### What Medusa already gives us (รอบ 43)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| logger ของ prod | `logger` ใน `medusa-config.ts` → `json-logger.ts` ของเรา (OPS-33) | ขยาย `redactPii` ตามเดิม (กฎข้อ 18 รอบ 43) |
+| ล้าง layout ส่วนตัว | `DELETE /admin/layouts/:zone/configuration` (`clearLayoutConfigurationWorkflow`) | ใช้ตามเดิมใน runbook (กฎข้อ 19 รอบ 43) |
+| lint ของ workflow/step/module | `@medusajs/eslint-plugin` (`step-id-kebab-case` ฯลฯ) | แก้ตามกฎ ไม่เปลี่ยน id ที่ engine เก็บ (กฎข้อ 20 รอบ 43) |
+### Business rules (รอบ 43)
+18. (OPS-36 — review #536) `redactPii` (`src/lib/redact-pii.ts`): (a) ค่าของ key PII ใน JSON ที่ escape ซ้อนและ**ลงท้ายด้วย backslash** ต้องไม่ทำให้ค่าของ key ถัดไปหลุด (เคสที่พบ: `city` "Bangkok" ไม่ถูก redact) — comment ~`:26` "redact เกิน (ทางปลอดภัย)" แก้ให้ตรงพฤติกรรม;
+    (b) ระบุใน comment + unit ว่ารองรับ escape ซ้อน ≤ 3 ชั้น (≥ 4 ชั้นไม่ redact — ยอมรับ); (c) ค่าที่ `util.inspect` ตัดเป็นหลายท่อน (`'…' +\n '…'` เมื่อสตริงมี `\n`) ถูก redact ทุกท่อน;
+    (d) คง linear-time (unit 100k ตัวอักษรเดิม) และไม่ตัด id/`request_id`/จำนวนเงิน
+19. (OPS-37 — review #536, #548) (a) `docs/ops/production.md` "หลัง go-live": ยืนยันบน browser ว่า widget `order-refund-blocked` ของแอดมินที่มี layout ส่วนตัวอยู่ตำแหน่งใด แล้วแก้ถ้อยคำ "อยู่ท้ายคอลัมน์หลักใต้ Payments" ให้ตรง;
+        ทาง (2) ให้คำสั่งที่รันได้ทันทีใน DevTools console ของหน้า admin (`fetch("/admin/layouts/order.details/configuration", { method: "DELETE", credentials: "include" })`);
+    (b) `.github/workflows/ci.yml` job ที่บูต backend ให้ e2e เก็บ log เต็มของ backend เป็น artifact (retention 14 วัน — CLAUDE.md ข้อ 6) นอกเหนือจาก tail 200 บรรทัดเดิม (tail ไม่ครอบช่วง test — review #548)
+20. (OPS-38 — GB-32 #534 builder) `pnpm --filter backend lint` ไม่มี warning ใน `src/workflows/group-buy/campaign.ts` (~`:177` step id), `src/workflows/group-buy/refund-cancelled-membership.ts` (~`:48` workflow id),
+    `src/lib/json-logger.ts` (import path ภายใน build ของ package) และ `src/modules/evoucher/service.ts` (method ที่ใช้ manager แต่ขาด `@InjectManager`) — **id ของ step/workflow ที่ engine เก็บห้ามเปลี่ยน** (เปลี่ยนชื่อตัวแปรแทน แบบกฎข้อ 58e ของ spec 04; ถ้าต้องเปลี่ยน id → หยุดและรายงาน)
+### Acceptance criteria (รอบ 43)
+- AC-51 (OPS-36, กฎข้อ 18 รอบ 43) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture JSON escape ซ้อนที่ค่า `email` ลงท้ายด้วย `\\` ตามด้วย `"city":"Bangkok"` → ไม่เหลือค่า email และไม่เหลือ "Bangkok";
+  escape 1–3 ชั้น redact ครบ; สตริงหลายท่อนของ `util.inspect` (`address_1` ที่มี `\n`) ไม่เหลือท่อนใด; unit linear-time เดิมผ่านโดยไม่เพิ่มเกณฑ์เวลา
+- AC-52 (OPS-37, กฎข้อ 19 รอบ 43) unit `ops-runbook.unit.spec.ts`: หัวข้อ "หลัง go-live" มี `method: "DELETE"` และ `credentials: "include"`; unit `ci-workflow.unit.spec.ts`: job ที่บูต backend สำหรับ e2e มี `actions/upload-artifact` ของไฟล์ log backend ที่ `retention-days: 14`
+- AC-53 (OPS-38, กฎข้อ 20 รอบ 43) output ของ `pnpm --filter backend lint` (แนบก่อน/หลังใน PR) ไม่มี warning ในสี่ไฟล์; unit: id ของ step/workflow ที่แตะ (`createStep`/`createWorkflow` อาร์กิวเมนต์แรก) เท่าค่าบน develop; test เดิมของ evoucher ผ่าน
+### Tasks (รอบ 43)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| OPS-36 | (PII — ก่อน go-live) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด, ≤ 3 ชั้น, สตริงหลายท่อน (กฎข้อ 18 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit) | ~20 LOC + ~60 LOC test | AC-51 | PR เอกสารปิดรอบ 42 | — |
+| OPS-37 | runbook หลัง go-live (ตำแหน่ง widget + คำสั่ง DELETE) + log backend เต็มเป็น artifact ของ CI (กฎข้อ 19 รอบ 43) | `docs/ops/production.md`, `.github/workflows/ci.yml`, `src/__tests__/{ops-runbook,ci-workflow}.unit.spec.ts` | ~15 LOC + ~30 LOC test | AC-52 | PR เอกสารปิดรอบ 42 | `production.md` (PAY-23 ถ้า Q-P23 = ก — ตัวหลัง sync) |
+| OPS-38 | backend lint warning 4 ไฟล์ โดยไม่เปลี่ยน id ของ step/workflow (กฎข้อ 20 รอบ 43) | ไฟล์ในกฎข้อ 20 รอบ 43, unit | ~15 LOC + ~30 LOC test | AC-53 | PR เอกสารปิดรอบ 42 | — |
+
+ลำดับ: OPS-36 ∥ OPS-37 ∥ OPS-38
 
 ## Open questions (รอบ 35)
 - **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):

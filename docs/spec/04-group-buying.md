@@ -1107,7 +1107,7 @@ ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเข�
 | GB-30 | ☑ #503 — กัน `DELETE /admin/promotions/:id` ของต้นแบบ `GBT-*` (กฎข้อ 55) + กันเปลี่ยน `status` ของต้นแบบเป็น `active` ผ่าน `POST /admin/promotions/:id` (กฎข้อ 56) — owner สั่ง/ตัดสินเพิ่ม 2026-11-23 (follow-up PR #493) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/group-buy-promotion-lock.spec.ts` | ~45 LOC + ~200 LOC test | AC-73 | **GB-29 (#493)** + PR เอกสาร GB-30 | `group-buy-lock.ts`, `group-buy-promotion-lock.spec.ts` |
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review/qa #488, #497, #503, #505, #519; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ; Q26 = ก owner 2026-11-23 — GB-32 ไม่ติดคำถามแล้ว; release v0.3.1 ตาม Q-R42)
+Status: done (☑ GB-31 #529, GB-32 #534 — ปิดรอบ 42 2026-11-24; Q26 = ก owner 2026-11-23; release v0.3.1 ตาม Q-R42)
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 42)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
@@ -1138,6 +1138,20 @@ Status: draft (☐ — รอ owner สั่งทำ; Q26 = ก owner 2026-11-
 | GB-32 | ☑ #534 — job หมดเวลาชำระ: เพดานตรวจต่อรอบ 200 (Q26 = ก) + อ่านซ้ำเมื่อ skip เกิน + query.graph best-effort + test เร็วขึ้น + lint (กฎข้อ 58) | `src/jobs/group-buy-deadline.ts`, `src/workflows/group-buy/membership-payment.ts`, `src/modules/group_buy/utils/membership-payment.ts`, test | ~40 LOC + ~120 LOC test | AC-75 | PR เอกสารปิดรอบ 41 (Q26 = ก ☑ owner 2026-11-23) | `group-buy-deadline.ts`, `membership-payment.ts` |
 
 ลำดับ: GB-31 ∥ GB-32 (ไม่มีไฟล์ร่วม)
+
+## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
+Status: draft · ที่มา: review #529, #534 — ตรวจบน develop `599009b6` · ใช้ของ Medusa ตามเดิม (Locking module, `listAndCount`) ไม่มีของใหม่ · lint warning ของ `campaign.ts`/`refund-cancelled-membership.ts` อยู่ใน OPS-38 (spec 07)
+### Business rules (รอบ 43)
+59. (GB-33 — test hygiene backend) (a) (review #529) integration (b) ของ AC-69 ใน `integration-tests/http/group-buy-promotion-lock.spec.ts` (~`:298`) เพิ่ม promotion ปกติที่อยู่นอกแคมเปญของ test เพื่อพิสูจน์ว่า filter `GB-*` ของ test ทำงาน;
+    (b) (review #529) `once()` ใน `src/api/admin/promotions/group-buy-lock.ts` ที่ cache promise ที่ reject — เขียน comment ว่าตั้งใจ (อายุเท่า request เดียว);
+    (c) (review #534) test (d) ของ AC-71 ใน `group-buy-payment-check.spec.ts` ใช้เกณฑ์เวลา `< LOCK_TIMEOUT` (import ค่าคงที่ ไม่ใช่ `5000` ตายตัว — runner ช้าไม่ flaky) และรายงานเวลาที่วัดได้ใน evidence;
+    (d) (review #534) `src/jobs/group-buy-deadline.ts` (~`:79`) comment กรณีแถวหายระหว่างรอบ (อ่านซ้ำ `skip: 0` ของกฎข้อ 58b)
+### Acceptance criteria (รอบ 43)
+- AC-76 (GB-33, กฎข้อ 59) mutation (แนบใน PR): ถอด filter `GB-*` ของ test (b) → test ล้ม (บน develop ผ่านทั้งที่ถอด); test (d) อ้างค่าคงที่ `LOCK_TIMEOUT` ที่ export (static grep ไม่มี `5000`); unit/integration เดิมของ AC-69/AC-71/AC-75 ผ่านโดยไม่แก้ค่าที่คาด
+### Tasks (รอบ 43)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| GB-33 | test hygiene group buy: พิสูจน์ filter ของ AC-69b, comment `once()`/แถวหาย, เกณฑ์เวลาผูก `LOCK_TIMEOUT` (กฎข้อ 59) | ไฟล์ในกฎข้อ 59 | ~10 LOC + ~40 LOC test | AC-76 | PR เอกสารปิดรอบ 42 | — |
 
 ### Open questions (รอบ 42)
 - ~~**Q26**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ก)** เพดาน 200 ต่อรอบ → GB-32 กฎข้อ 58a — คำถามเดิม: (review #505 — GB-28) job `group-buy-deadline` ตรวจสถานะการชำระกับ provider **ไม่มีเพดานต่อรอบ**: เมื่อ provider ล่มทุกรายเป็น `retry` loop อ่านหน้าถัดไปจนหมด (กฎข้อ 53e) → เรียก provider เท่าจำนวนผู้ที่หมดเวลาทุกนาทีนาน 15 นาที

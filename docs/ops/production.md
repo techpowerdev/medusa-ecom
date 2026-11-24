@@ -193,6 +193,10 @@ endpoint สมัคร event ตามรายการด้านล่า�
 15. webhook endpoint live (`/hooks/payment/stripe_stripe`) สมัคร `refund.updated` และ `refund.failed` ด้วย (หัวข้อ "Stripe webhooks", PAY-21 — ไม่สมัคร = ไม่รู้ว่า refund ล้มภายหลัง)
     แล้วทดสอบใน test mode: จ่ายด้วยบัตร `4000 0000 0000 5126` → refund (Stripe รับแล้วล้มภายหลัง) → ต้องได้อีเมล `STRIPE_REFUND_FAILED` ถึง `OPS_ALERT_EMAIL`
     และ log ของ server/worker ไม่มี `stripe-refund-webhook: skipped`
+16. บัญชี Stripe live ยื่น account application (ข้อมูลธุรกิจ/ผู้มีอำนาจ/บัญชีรับเงิน ใน Stripe Dashboard) ให้เสร็จและได้รับอนุมัติก่อนเปิดร้าน —
+    refund ของพร้อมเพย์เป็น `requires_action`: Stripe ส่งอีเมลขอเลขบัญชีรับเงินคืนถึงลูกค้า ซึ่งบัญชีที่ยังไม่เสร็จส่งได้เฉพาะอีเมลของบัญชีเอง
+    (หลักฐาน 2026-11-24 บนบัญชี test ของ CI: อีเมลลูกค้าอื่นได้ error `Cannot send email…` → Medusa กลืน error ไม่มี refund — spec 06 Q-P14/Q-P15, ADR-029)
+    ตรวจหลังอนุมัติ: refund พร้อมเพย์ 1 รายการไปยังอีเมลที่ไม่ใช่อีเมลบัญชี → refund เป็น `requires_action` (ไม่ error) และ job `refund-failure-scan` ไม่แจ้ง `REFUND_FAILED`
 
 ## หลัง go-live
 - widget `order-refund-blocked` (PAY-10) ขึ้นบนสุดของหน้า order ผ่าน system default layout ของ zone `order.details` (migration script
