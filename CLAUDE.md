@@ -119,7 +119,7 @@ pnpm --filter storefront build && pnpm --filter storefront start
   แล้วรอจนกว่าจะ merge จริง (เช็กด้วย `gh pr view <n> --json state`) ห้ามแตก branch จาก PR ที่ยังไม่ merge
   และห้ามอ่าน spec จาก branch ที่ยังไม่ merge แทน
 
-## บทเรียนที่ต้องไม่ทำผิดซ้ำ (จากรอบ 2026-10-25/26)
+## บทเรียนที่ต้องไม่ทำผิดซ้ำ (จากรอบ 2026-10-25/26 ถึงรอบ 42)
 **การ merge และ CI (session หลัก)**
 - ก่อน merge **ทุก** job (`gh pr checks <n> --watch`) ต้องเป็น `SUCCESS` หรือ `SKIPPED` ตามที่ `classify-changes.sh`
   ตัดสิน — ห้ามมี FAILURE/CANCELLED/ค่าว่าง (conclusion ว่างใน `statusCheckRollup` = ยังรันอยู่ ไม่ใช่ผ่าน)
@@ -159,6 +159,16 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - CI ข้าม job หนักให้อัตโนมัติ: PR เอกสารล้วนรันแค่ `lint-typecheck` (ยกเว้น `docs/ops/**` ซึ่งนับเป็นโค้ด backend เพราะ unit test อ่านไฟล์เหล่านี้); PR ที่แก้แค่ `apps/storefront/**` ข้าม `backend-tests`/`docker-worker-mode`
   (กติกาใน `tools/ci/classify-changes.sh`) push ไป `main` รันครบเสมอ
 - PR ที่แก้หลัง APPROVE (หรือหลัง REQUEST CHANGES) ต้อง re-review สั้นๆ ก่อน merge; หลัง rebase ใช้ `git range-diff`
+- `pnpm --filter backend test:integration:http -- <path>` **ไม่กรองไฟล์** รันชุดเต็ม ~45 นาที (รอบ 42 เกิด 2 ครั้ง) — รันไฟล์เดียวด้วย
+  `cd apps/backend && TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules ./node_modules/.bin/jest <path เต็ม>`
+- ห้าม `playwright install` เวอร์ชันอื่น/ลบ browser ใน `~/Library/Caches/ms-playwright` (ใช้ร่วมทุก agent — รอบ 42 Chromium หายกลางงาน)
+- builder ต้องโหลด skill ของ Medusa ก่อนเริ่ม ถ้าเรียกไม่ได้ให้ตรวจ API จาก source ใน `node_modules` และระบุใน PR body
+- PR ที่ไม่ได้ติ๊กแถว task ตอน merge (เลี่ยง CI รอบเพิ่ม) ต้องระบุชัดว่า PR ไหนรับไปติ๊ก (PR ถัดไปหรือ PR ปิดรอบ) และ PR ปิดรอบไล่ตรวจทุกแถว
+- เมื่อ owner ตัดสินจนถ้อยคำ AC เปลี่ยน ให้ระบุให้ชัดว่า builder หรือ planner เป็นคนแก้ spec (กัน conflict); AC ที่อยู่ติดกันใน spec
+  (เช่น AC-189/190/191) จะ conflict เมื่อหลาย PR ติ๊กพร้อมกัน — ตอน sync/train เก็บทุกฝั่ง
+- แก้ไฟล์ที่มีอักษรไทย/สัญลักษณ์ (☑ —) ด้วย python (`encoding='utf-8'`) หรือ perl แบบ byte (ไม่มี `-CSD`) — `perl -CSD` โดยไม่มี `use utf8`
+  เข้ารหัสอักษรในคำสั่งซ้ำจนเป็น "â" (รอบ 42 train #543 เกือบหลุด)
+- ก่อน merge ต้องเห็นทุก job จบจริงใน `gh run view --json jobs` ไม่ใช่แค่ `gh pr checks` (รอบ 42 #551 job `changes` ค้าง pending ใน checks ทั้งที่ run จบ success)
 
 **โค้ดและ test**
 - key ของ `MedusaService({...})` ต้องตรงกับชื่อ model (Query ตั้งชื่อ method จากชื่อ entity) และมี test `query.graph`
@@ -177,6 +187,16 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - ก่อน push งานที่แก้หน้าใดของ storefront/admin ต้องรัน e2e **ทุก** spec ที่อ้างหน้านั้น (grep path/testid ใน `apps/storefront/e2e/`)
   ไม่ใช่แค่ spec ของ task (CORE-85: AC-48 ของ `thai-ui-cart-order` ล้มใน CI)
 - e2e ที่ assert ข้อความ error ต้องสร้างค่าที่คาดจาก code จริง และ assert ว่าไม่เท่ากับข้อความ fallback (CORE-83 D1)
+- unit ที่ mock component UI ทั้งก้อน (เช่น `RadioGroup` ของ headless UI) พลาด bug จริงได้ (`disabled={false}` ทับค่าของกลุ่ม — PAY-16 #541)
+  ให้ render headless component ของจริงแล้วตรวจ `aria-*`
+- Next 16 ส่ง server action ทีละตัวตามคิว — e2e ที่จำลอง race ระหว่าง action สองตัว (เช่น poll กับ placeOrder) ต้องจำลองลำดับคิวที่เกิดได้จริง
+  (PAY-17 #540) และ route mock ที่ส่ง server action ต่อไป backend ยังมีผลข้างเคียงจริง (เช่น `authorizePaymentSession` เปลี่ยน session เป็น
+  canceled ก่อน throw — PAY-16 #541) ถ้าไม่ต้องการให้ตอบจาก browser แทน
+- Medusa 2.22.1: `refundPaymentsStep` กลืน error ของ provider (log อย่างเดียว) — คืนเงินล้มจะเงียบ (ADR-029: job `refund-failure-scan` + webhook
+  `refund.failed`); Notification module ส่งซ้ำแถว `failure` ด้วย `idempotency_key` ไม่ได้ (ส่งซ้ำไม่หยุด) — แจ้ง ops ผ่าน `sendOpsAlert` เท่านั้น
+- คืนเงิน PromptPay ของ Stripe เป็น async (`requires_action` — Stripe อีเมลลูกค้าขอเลขบัญชี) และ Medusa นับ refunded ทันที; บัญชี Stripe test
+  ส่งอีเมลได้เฉพาะอีเมลบัญชี → e2e ที่คืนเงินพร้อมเพย์จริงใช้อีเมลลูกค้าจาก secret `E2E_PROMPTPAY_REFUND_EMAIL` (repo public — ห้ามอีเมลนี้
+  ลงโค้ด/log/evidence, ปิด trace ของ spec นั้น และเปิดดู PNG ก่อน commit)
 
 ## Agents (`.claude/agents/`)
 - `planner` — แปลงเป้าหมายเป็น/อัปเดต spec + task list + ADR ไม่เขียนโค้ด

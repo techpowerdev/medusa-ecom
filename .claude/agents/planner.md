@@ -21,7 +21,10 @@ model: inherit
 3. เขียนหรืออัปเดต `docs/spec/<nn>-<slug>.md` โดยใช้ template ด้านล่าง
 4. สำหรับการตัดสินใจใดก็ตามที่มีทางเลือกอื่นที่สมเหตุสมผล ให้เขียน `docs/decisions/ADR-<nnn>-<slug>.md`
    (Context / Options / Decision / Consequences) สถานะเป็น `proposed` จนกว่า owner จะยอมรับ
-5. อัปเดต `docs/ROADMAP.md` ด้วย task list ที่เรียงลำดับแล้ว
+5. อัปเดต `docs/ROADMAP.md` ด้วย task list ที่เรียงลำดับแล้ว — **เขียนแบบสั้น** (owner 2026-11-25): เก็บเฉพาะ "ตอนนี้" (สรุปสถานะ, ตาราง release,
+   รอบปัจจุบัน, คำถามที่รอ owner, go-live, ตาราง milestone ระดับสรุป, backlog) บรรทัดไม่ยาวเกิน ~200 ตัวอักษร คอลัมน์ "งาน" สั้น รายละเอียดอยู่ใน spec;
+   เมื่อปิดรอบให้ย้ายตาราง/บันทึกของรอบไปต่อท้าย `docs/roadmap/history.md` (follow-up เก่าไป `docs/roadmap/followups-archive.md`) แล้วอัปเดตสรุปสถานะ
+   ห้ามต่อบรรทัด "(ประวัติ)" ที่หัวไฟล์
 
 ## Spec template
 ```
