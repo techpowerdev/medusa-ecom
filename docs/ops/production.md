@@ -328,9 +328,40 @@ Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็ม�
    order ใหม่ของลูกค้ามีเฉพาะ collection ใหม่ (`payment_status=captured`) — ห้ามลบ collection เดิมหรือแก้ DB ตรง ห้าม refund ซ้ำ
 ตอน bump `@medusajs/*` ตรวจว่าสอง log นี้ยังเกิด (spec 07 checklist bump ข้อ 11; integration `complete-after-payment-log.spec.ts`) แล้วปรับหัวข้อนี้
 
+## คืนเงินล้ม/ค้าง (ADR-029)
+ที่มา: Medusa 2.22.1 `refundPaymentsWorkflow` (ทางคืนเงินของ complete cart ล้มหลังตัดเงิน, admin ยกเลิก order, GB-21, script `refund-orphan-payment`)
+**กลืน error** ของ provider — เขียนแค่ log `Error was thrown trying to cancel payment - <payment_id> - …` ไม่มี event; Payment module เก็บแถว refund
+`failed` (soft-delete) หรือ `pending` (ระหว่างรอ provider) ไว้ job `refund-failure-scan` (worker, ทุก 15 นาที, `apps/backend/src/jobs/refund-failure-scan.ts`)
+ตรวจแถวย้อนหลัง 7 วัน แล้วเขียน log error ขึ้นต้นด้วย code (มี `refund_id`, `payment_id`, `amount`, `currency_code`, `provider_id`, `cart_id`/`order_id`, `note`)
+และส่งอีเมล template `refund-failed` หา `OPS_ALERT_EMAIL` ครั้งเดียวต่อแถว refund (ไม่ตั้ง env → log error ซ้ำทุกรอบจนพ้น 7 วัน + warn)
+เกิน 200 แถวต่อรอบ → warn `REFUND_SCAN_TRUNCATED`: job ตรวจเฉพาะ 200 แถวที่เก่าที่สุด และแถวที่แจ้งแล้ว/คืนครบแล้วยังนับอยู่จนพ้น 7 วัน
+**แถวที่ใหม่กว่าจะไม่ถูกตรวจจนกว่าแถวเก่าพ้นช่วง 7 วัน** — ตรวจ refund ที่ล้ม/ค้างด้วยมือ (`GET /admin/payments/<payment_id>` ของ payment ที่มี log `Error was thrown trying to cancel payment`)
+อีเมลที่ส่งล้ม (Resend ล่ม/429) ถูกส่งใหม่รอบถัดไปจนสำเร็จหนึ่งฉบับ (แถว notification ที่ล้มถูก soft-delete ก่อนส่งใหม่)
+
+### `REFUND_FAILED` — provider ปฏิเสธ refund และ payment ยังมียอดที่ไม่ถูกคืน
+1. `GET /admin/payments/<payment_id>` → ดู `captures`/`refunds` ว่ายอดคงเหลือ (captured − refunded) ยังเท่าไร และหา log `Error was thrown trying to cancel payment`
+   ของ payment นั้นเพื่อดูสาเหตุจาก provider
+2. collection **ไม่ผูก order** (`cart_id` ใน alert, `order_id` ว่าง) → script `refund-orphan-payment` ตามหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)"
+   (`medusa exec ./src/scripts/refund-orphan-payment.ts <payment_id>`)
+3. collection **ผูก order** → Refund ใน admin ที่หน้า order (ยอดที่เหลือ)
+4. Stripe ปฏิเสธซ้ำ (เช่นพร้อมเพย์ "Cannot send email" — Stripe ส่งอีเมลขอเลขบัญชีลูกค้าไม่ได้) → คืนนอก Stripe (โอนเงิน) แล้ว note ใน order (ถ้ามี)
+   และบันทึก incident (payment, จำนวนเงิน, วิธีคืน, ผู้ทำ)
+5. order ที่ยกเลิกแล้ว refund ล้ม: Medusa เพิ่ม order transaction ของ refund **แม้ refund ล้ม** → ยอด refund ใน order ไม่ตรงเงินจริง — note ไว้ใน order และ incident
+
+### `REFUND_STUCK` — แถว refund `pending` ไม่ขยับเกิน 60 นาที (process ตายระหว่างรอ provider = ไม่รู้ผล)
+**ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน**คืนซ้ำ (กันคืนสองครั้ง): มี refund ของยอดนี้แล้ว → ไม่ต้องคืนเพิ่ม note + incident; ไม่มี → ทำตาม `REFUND_FAILED` ข้อ 2–4
+
+### ข้อจำกัดของ job (อ่านก่อนตัดสิน)
+- job ตัดสินว่า "คืนสำเร็จภายหลัง" จากยอด captured − refunded ของ payment เท่านั้น ไม่ได้จับคู่ refund ที่ล้มกับ refund ที่สำเร็จ — กรณี **partial refund**
+  (เช่น คืนบางรายการสำเร็จจนยอดเหลือ 0 จากเหตุอื่น) แถวที่ล้มจะไม่ถูกแจ้ง และแถวที่ล้มเมื่อยอดยังเหลือจากการคืนบางส่วนที่ตั้งใจ (คืนบางรายการ) จะถูกแจ้ง
+  ทั้งที่อาจไม่ต้องคืนเพิ่ม — ตรวจตามข้อ 1 ทุกครั้ง
+- refund ที่ล้มจาก Refund ใน admin (`refundPaymentWorkflow`) ก็ถูกแจ้งด้วย (admin เห็น toast error อยู่แล้ว) — ถ้า admin คืนใหม่สำเร็จแล้วยอดเหลือ 0 จะไม่ถูกแจ้ง
+- ไม่เห็น refund ที่ Stripe รับแล้วล้มภายหลัง (Medusa บันทึก `succeeded` ทันที) — ส่วนนั้นเป็นของ webhook (PAY-21)
+- ตอน bump `@medusajs/*` integration `refund-failure-scan.spec.ts` ยืนยันว่า workflow ยังกลืน error และแถว `failed` ยังอ่านได้ด้วย `withDeleted` — ล้ม = ทบทวน ADR-029
+
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
-- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL`, Alerts, redact/access log และหลัง go-live)
+- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL`, Alerts, redact/access log, หลัง go-live และคืนเงินล้ม/ค้าง ADR-029)
 - `pnpm --filter backend test:unit` — `src/lib/__tests__/json-logger.unit.spec.ts` (`worker_mode` ใน log JSON)
 - `pnpm --filter backend test:unit` — `src/__tests__/prod-guards.unit.spec.ts` (OPS-7 guards, env ใน `ci.yml`, หัวข้อ Go-live checklist)
 - `pnpm --filter backend test:unit` — `src/__tests__/backup-runbook.unit.spec.ts` (runbook backup/restore ใน `docs/ops/database.md`, OPS-5)

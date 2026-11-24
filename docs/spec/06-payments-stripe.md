@@ -526,7 +526,7 @@ Out of scope: แก้สถานะเงินใน Medusa อัตโน�
         `4000 0000 0000 5126` (refund แล้วล้มภายหลัง) ว่าอีเมลถึง `OPS_ALERT_EMAIL`
 24. ข้อความหน้าร้าน "คืนเงิน" ของ PAY-11/15/19 = ระบบเริ่มคืนเงิน ไม่ใช่เงินถึงแล้ว — ไม่แก้ในรอบนี้ (ADR-029 "ผลที่ตามมา")
 ### Acceptance criteria (คืนเงินล้ม/ค้าง)
-- AC-33 (PAY-20, กฎข้อ 22) integration (mock payment provider ที่ `refundPayment` throw ได้, `OPS_ALERT_EMAIL=ops@x.test`, mock notification provider):
+- ☑ AC-33 (PAY-20, กฎข้อ 22) integration (mock payment provider ที่ `refundPayment` throw ได้, `OPS_ALERT_EMAIL=ops@x.test`, mock notification provider):
   (a) payment captured บน collection ของ cart ที่ไม่มี order → `refundPaymentsWorkflow` ขณะ provider throw → workflow ไม่ throw และ result ไม่มี payment นั้น (ยืนยันพฤติกรรม 2.22.1 — ล้มเมื่อ bump เปลี่ยน);
       `scanRefundFailures` → notification 1 รายการ `to="ops@x.test"` template `refund-failed` ที่ data มี `payment_id` + `amount` และ log error ขึ้นต้น `REFUND_FAILED`; รันซ้ำ → ยัง 1 รายการและไม่มี log error เพิ่ม;
   (b) refund ล้มแล้วคืนสำเร็จภายหลัง (provider กลับมาปกติ) ก่อน scan → 0 notification;
