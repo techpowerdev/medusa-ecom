@@ -17,6 +17,7 @@ import {
   promptPayRenewalOutcome,
   promptPaySession,
   secondsLeft,
+  sessionResetShown,
 } from "./payment-session"
 
 // PAY-2 (spec 06 กฎข้อ 5, AC-9): session ของ provider บัตรต้องขอ PaymentIntent แบบ card เท่านั้น
@@ -317,4 +318,29 @@ describe("intentIsTerminal", () => {
       expect(intentIsTerminal(status)).toBe(false)
     }
   )
+})
+
+// PAY-16 (spec 06 กฎข้อ 18 a, AC-29 a): notice "เลือกวิธีชำระอีกครั้ง" ผูกกับวิธีที่เลือกและ client secret ตอนขึ้น
+describe("sessionResetShown", () => {
+  const notice = { method: "pp_stripe_stripe", secret: "pi_old_secret" }
+
+  it("ยังเลือกวิธีเดิมและ cart ยังชี้ secret เดิม → แสดง", () => {
+    expect(sessionResetShown(notice, "pp_stripe_stripe", "pi_old_secret")).toBe(true)
+  })
+
+  it("เปลี่ยนวิธีชำระแล้ว → ไม่แสดง", () => {
+    expect(sessionResetShown(notice, "pp_system_default", "pi_old_secret")).toBe(false)
+  })
+
+  it("client secret เปลี่ยน (session ใหม่มาแล้ว) → ไม่แสดง", () => {
+    expect(sessionResetShown(notice, "pp_stripe_stripe", "pi_new_secret")).toBe(false)
+  })
+
+  it("review #541: cart ไม่มี session pending (เช่น session เดิมถูก cancel) ไม่ใช่ session ใหม่ → ยังแสดง", () => {
+    expect(sessionResetShown(notice, "pp_stripe_stripe", null)).toBe(true)
+  })
+
+  it("ไม่มี notice → ไม่แสดง", () => {
+    expect(sessionResetShown(null, "pp_stripe_stripe", "pi_old_secret")).toBe(false)
+  })
 })
