@@ -6,9 +6,9 @@
 
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
-- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 18/19 task (PAY-19 ◐ #548 แก้ตาม review/qa)
-- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 42 (ดูหัวข้อ "คำถามที่รอ owner" สำหรับเรื่องก่อน go-live)
-- **ขั้นต่อไป**: PAY-19 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
+- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 18/21 task (PAY-19 ◐ #548; PAY-20/21 ☐ คลื่น D)
+- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 42 (ADR-029 accepted 2026-11-24)
+- **ขั้นต่อไป**: PAY-19 + PAY-20 → PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
 
 ### Release
 
@@ -17,7 +17,7 @@
 | v0.1.0 | 🚀 | 2026-11-11 | #342 (`15fce017`), tag `v0.1.0` | ร้านค้าหลัก + task ทุกตัวที่ merge ถึงวันนั้น (เงื่อนไข: CORE-12/12b/17/18, OPS-21, EV-15, CORE-55) |
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
-| v0.3.1 | ◐ กำลังทำ | — | — | รอบ 42 (19 task) — ตารางด้านล่าง |
+| v0.3.1 | ◐ กำลังทำ | — | — | รอบ 42 (21 task) — ตารางด้านล่าง |
 | go-live | ☐ | — | — | หลัง v0.3.1 + Go-live checklist (หัวข้อ "ก่อนเปิดร้านจริง") |
 | v1.0.0 | ☐ ยังไม่กำหนดเงื่อนไขใหม่ | — | — | ป้ายเดิมของ M7; ป้าย v0.3.0–v1.0 ของ M3–M7 เป็นแผนเดิมก่อนรวม release ไม่ผูกกับเลข release จริง |
 
@@ -54,15 +54,21 @@
 | B | ADM-48 | 08 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit #513 | ADM-47 | ☑ #542 |
 | C | CORE-95 | 01 | จ่ายบัตรแล้ว session หมด → notice บนหน้า login แล้วไป orders (Q-C16 = ก) | PAY-17 | ☑ #546 |
 | C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (ขอบเขตย่อตาม Q-P13 = ก) | PAY-17, CORE-95 (#546) | ◐ #548 |
+| D | PAY-20 | 06 | job ตรวจ refund ล้ม/ค้าง → alert `OPS_ALERT_EMAIL` (ADR-029 ก) — ต้องทำก่อน go-live | — (ADR-029 ☑) | ☐ |
+| D | PAY-21 | 06 | webhook `refund.failed`/`refund.updated` → alert (ADR-029 ข) — ต้องทำก่อน go-live | PAY-20 | ☐ |
 
 - merge train: #537 (CORE-89, CORE-90, ADM-47, EV-26, AF-27, GB-31, CORE-94, PAY-18) · #538 (CORE-93, GB-32, CORE-92, OPS-35) ·
   #543 (FS-25, CORE-91) · #544 (PAY-17, ADM-48) · #545 (PAY-16) · CORE-95 #546 (merge ตรง)
 - **PAY-19 (owner Q-P13 = ก 2026-11-24)**: ตัดสินที่ `PaymentButton` ขั้น review เมื่อไม่มี session + คืนเงินครบ
   (เพราะ `refundPaymentAndRecreatePaymentSessionWorkflow` สร้าง session ใหม่ไม่สำเร็จ) — spec 06 กฎ 21/AC-32 แก้ใน PR ของ PAY-19
-- **ไฟล์ร่วมที่เหลือ**: `payment-button/index.tsx` CORE-95 → PAY-19 (#546 merge แล้ว — PAY-19 #548 แก้ต่อ)
-- **ปิดรอบ**: PAY-19 merge → planner ปิดรอบ 42 → owner merge `develop → main` = v0.3.1
+- **ไฟล์ร่วมที่เหลือ**: `payment-button/index.tsx` CORE-95 → PAY-19 (#546 merge แล้ว — PAY-19 #548 แก้ต่อ) ·
+  `ci.yml` PAY-19 → PAY-21 (ตัวหลัง sync) · `templates.ts`/`production.md` PAY-20 → PAY-21
+- **คลื่น D (ADR-029, spec 06 กฎ 22–24)**: PAY-20 ∥ PAY-19 (คนละ app) → PAY-21
+- **ปิดรอบ**: PAY-19 + PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` = v0.3.1
 - **คำตัดสิน owner ของรอบ**: 2026-11-23 Q-R42 = ก, spec 04 Q26 = ก, spec 01 Q-C16 = ก, spec 06 Q-P12 = ข (ทำ PAY-19),
-  spec 08 Q13 = ก (ข้อยกเว้น testid ที่ 4 — ADR-018 ภาคผนวก + `CLAUDE.md`) · 2026-11-24 spec 01 Q-C17 = ก (CORE-93), spec 06 Q-P13 = ก (PAY-19)
+  spec 08 Q13 = ก (ข้อยกเว้น testid ที่ 4 — ADR-018 ภาคผนวก + `CLAUDE.md`) · 2026-11-24 spec 01 Q-C17 = ก (CORE-93), spec 06 Q-P13 = ก (PAY-19),
+  spec 06 Q-P14 = ข, Q-P15, Q-P16 (PAY-19), Q-P17 = ทำใน v0.3.1 (→ ADR-029, PAY-20/21), Q-P18 = ก+ข (ADR-029 accepted),
+  Q-P19 = ก (ไม่แก้ยอดอัตโนมัติ), Q-P20 = ไม่เปิด issue upstream
 - งาน/ไม่ทำ/ไฟล์ร่วมฉบับเต็มตอนเสนอรอบ: history หัวข้อ "รอบ 42"
 
 ## คำถามที่รอ owner
@@ -77,7 +83,7 @@
 
 ## ก่อนเปิดร้านจริง (go-live)
 
-ทำตาม `docs/ops/production.md` หัวข้อ "Go-live checklist" ข้อ 1–14 บน prod (รวม `check:go-live`) โดยเฉพาะข้อที่เพิ่มในรอบ 40–41:
+ทำตาม `docs/ops/production.md` หัวข้อ "Go-live checklist" ข้อ 1–14 (+ ข้อ 15 หลัง PAY-21) บน prod (รวม `check:go-live`) โดยเฉพาะข้อที่เพิ่มในรอบ 40–41:
 
 | ข้อ | งาน | ที่มา |
 |---|---|---|
@@ -86,6 +92,7 @@
 | 12 | backfill ธง `evoucher_backordered` | EV-25 |
 | 13 | log ของ prod ไม่มี PII | OPS-33 |
 | 14 | วัด p95 `POST /store/search` กับ catalog จริง (> ~10k สินค้าหรือ p95 > 300ms → ADR) | CORE-75 |
+| 15 | endpoint live สมัคร `refund.updated`/`refund.failed` + ทดสอบบัตร `4000 0000 0000 5126` ว่า alert ถึง ops (ข้อที่ PAY-21 เพิ่ม) | PAY-21, ADR-029 |
 
 เพิ่มเติม (ไม่ใช่ task): ข้อ 5–6 ตามคำถามด้านบน · smoke test บน production (`check:go-live` + `tools/ops/smoke-*.sh`) ·
 ตั้ง `OPS_ALERT_EMAIL`, `EVOUCHER_ADMIN_EMAIL`, `RESEND_API_KEY` · วัด OPS-26 ซ้ำบน staging (ต้องมี ADR-027 ก่อน)
@@ -107,7 +114,7 @@
 | Admin UI ใช้ component ของ Medusa | 08 | 🚀 | 41 🚀 | ADR-018; ADM-22/36 เป็นผลตรวจไม่มี PR |
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
-| รอบ 42 | 01–08 | ◐ | 18 ☑ + 1 ◐ | → v0.3.1 |
+| รอบ 42 | 01–08 | ◐ | 18 ☑ + 1 ◐ + 2 ☐ | → v0.3.1 |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
 
