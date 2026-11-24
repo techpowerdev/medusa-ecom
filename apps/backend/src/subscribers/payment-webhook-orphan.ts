@@ -1,6 +1,7 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import type { ProviderWebhookPayload } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules, PaymentActions, PaymentWebhookEvents } from "@medusajs/framework/utils"
+import { sendOpsAlert } from "../lib/ops-alert"
 import { EmailTemplates } from "../modules/resend/templates"
 
 // PAY-6b (spec 06 กฎข้อ 7D, ADR-015 D): ตาข่ายสำรอง — webhook ชำระแล้ว (captured/authorized) แต่ payment session ถูกลบไปแล้ว
@@ -60,24 +61,18 @@ export default async function paymentWebhookOrphanHandler({
       `amount=${alert.amount} payment_intent=${alert.payment_intent} — ดู runbook "เงินถูกตัดแต่ไม่มี order (ADR-015)"`
   )
 
-  const to = process.env.OPS_ALERT_EMAIL?.trim()
-  if (!to) {
-    logger.warn(`${PAYMENT_WEBHOOK_SESSION_NOT_FOUND}: OPS_ALERT_EMAIL is not set — skipping the ops alert email`)
-    return
-  }
-  try {
-    await container.resolve(Modules.NOTIFICATION).createNotifications({
-      to,
-      channel: "email",
-      template: EmailTemplates.PAYMENT_WEBHOOK_ORPHAN,
-      data: alert,
-      resource_id: alert.payment_intent ?? sessionId,
-      resource_type: "payment_intent",
-    })
-  } catch (error) {
-    // ห้ามทำ subscriber ล้ม (กฎข้อ 7D) — log ด้านบนยังเป็น alert อยู่
-    logger.error(`${PAYMENT_WEBHOOK_SESSION_NOT_FOUND}: OPS_ALERT_EMAIL send failed: ${errorMessage(error)}`)
-  }
+  // PAY-24 (กฎข้อ 27): ส่งผ่าน sendOpsAlert — key ต่อ PaymentIntent (Stripe ส่ง event ซ้ำ = อีเมลเดียว; ส่งล้มแล้ว event ถัดไปส่งใหม่ได้)
+  // ไม่ throw (กฎข้อ 7D) — log ด้านบนยังเป็น alert อยู่
+  const resourceId = alert.payment_intent ?? sessionId
+  await sendOpsAlert(container, {
+    code: PAYMENT_WEBHOOK_SESSION_NOT_FOUND,
+    template: EmailTemplates.PAYMENT_WEBHOOK_ORPHAN,
+    idempotency_key: `payment-webhook-session-not-found:${resourceId}`,
+    resource_type: "payment_intent",
+    resource_id: resourceId,
+    data: alert,
+    logged: true,
+  })
 }
 
 export const config: SubscriberConfig = {

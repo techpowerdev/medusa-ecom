@@ -1,6 +1,7 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { sendOpsAlert } from "../lib/ops-alert"
 import { GROUP_BUY_MODULE } from "../modules/group_buy"
 import type GroupBuyModuleService from "../modules/group_buy/service"
 import { EmailTemplates } from "../modules/resend/templates"
@@ -68,24 +69,16 @@ async function alertPaidWithoutOrder(container: MedusaContainer, alert: PaidWith
       `refund_result=${alert.refund_result ?? ""} error=${alert.error ?? ""} ` +
       `— ดู runbook "group buy: เงินเข้าแต่ไม่มี order"`
   )
-  const to = process.env.OPS_ALERT_EMAIL?.trim()
-  if (!to) {
-    logger.warn(`${GROUP_BUY_PAID_WITHOUT_ORDER}: OPS_ALERT_EMAIL is not set — skipping the ops alert email`)
-    return
-  }
-  try {
-    await container.resolve(Modules.NOTIFICATION).createNotifications({
-      to,
-      channel: "email",
-      template: EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER,
-      data: alert,
-      resource_id: alert.order_id,
-      resource_type: "order",
-      idempotency_key: paidWithoutOrderAlertKey(alert.membership_id, alert.reason),
-    })
-  } catch (error) {
-    logger.error(`${GROUP_BUY_PAID_WITHOUT_ORDER}: OPS_ALERT_EMAIL send failed: ${errorMessage(error)}`)
-  }
+  // PAY-24 (spec 06 กฎข้อ 27): ส่งผ่าน sendOpsAlert (key เดิม) — ส่งล้มแล้ว event ถัดไปส่งใหม่ได้อีเมลเดียว; ไม่ throw
+  await sendOpsAlert(container, {
+    code: GROUP_BUY_PAID_WITHOUT_ORDER,
+    template: EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER,
+    idempotency_key: paidWithoutOrderAlertKey(alert.membership_id, alert.reason),
+    resource_type: "order",
+    resource_id: alert.order_id,
+    data: alert,
+    logged: true,
+  })
 }
 
 // spec 04 (GB-5): payment captured บน collection ของ draft order กลุ่ม → membership paid + แปลง order (AC-2, AC-37)

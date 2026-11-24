@@ -83,4 +83,21 @@ describe("sendOpsAlert", () => {
     await expect(sendOpsAlert(container, alert, { OPS_ALERT_EMAIL: "ops@x.test" })).resolves.toBe("failed")
     expect(logger.error.mock.calls.some(([msg]) => /^REFUND_FAILED: OPS_ALERT_EMAIL send failed: resend down/.test(String(msg)))).toBe(true)
   })
+
+  // PAY-24 (กฎข้อ 27): ผู้ส่งเดิมเขียน log บรรทัด code ของตัวเองแล้ว (รูปแบบเดิมที่ ops/test ใช้) — helper ไม่ log ซ้ำ
+  it("logged: true → no alert log line from the helper, email still sent with data unchanged", async () => {
+    await expect(sendOpsAlert(container, { ...alert, logged: true }, { OPS_ALERT_EMAIL: "ops@x.test" })).resolves.toBe("sent")
+
+    expect(logger.error).not.toHaveBeenCalled()
+    expect(notification.createNotifications).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { code: "REFUND_FAILED", ...alert.data } })
+    )
+  })
+
+  it("logged: true and OPS_ALERT_EMAIL not set → warn only", async () => {
+    await expect(sendOpsAlert(container, { ...alert, logged: true }, {})).resolves.toBe("skipped")
+
+    expect(logger.error).not.toHaveBeenCalled()
+    expect(String(logger.warn.mock.calls[0][0])).toMatch(/^REFUND_FAILED: OPS_ALERT_EMAIL is not set/)
+  })
 })
