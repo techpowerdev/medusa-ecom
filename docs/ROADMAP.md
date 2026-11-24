@@ -6,9 +6,9 @@
 
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
-- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 18/21 task (PAY-19 ◐ #548; PAY-20/21 ☐ คลื่น D)
+- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 19/21 task (PAY-20 ◐ builder, PAY-21 ☐ ← PAY-20)
 - **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 42 (ADR-029 accepted 2026-11-24)
-- **ขั้นต่อไป**: PAY-19 + PAY-20 → PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
+- **ขั้นต่อไป**: PAY-20 → PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
 
 ### Release
 
@@ -53,7 +53,7 @@
 | B | PAY-17 | 06 | ข้อความไทยของ error Stripe ขั้น review + PromptPay poll | CORE-90 | ☑ #540 |
 | B | ADM-48 | 08 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit #513 | ADM-47 | ☑ #542 |
 | C | CORE-95 | 01 | จ่ายบัตรแล้ว session หมด → notice บนหน้า login แล้วไป orders (Q-C16 = ก) | PAY-17 | ☑ #546 |
-| C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (ขอบเขตย่อตาม Q-P13 = ก) | PAY-17, CORE-95 (#546) | ◐ #548 |
+| C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (ขอบเขตย่อตาม Q-P13 = ก) | PAY-17, CORE-95 (#546) | ☑ #548 |
 | D | PAY-20 | 06 | job ตรวจ refund ล้ม/ค้าง → alert `OPS_ALERT_EMAIL` (ADR-029 ก) — ต้องทำก่อน go-live | — (ADR-029 ☑) | ☐ |
 | D | PAY-21 | 06 | webhook `refund.failed`/`refund.updated` → alert (ADR-029 ข) — ต้องทำก่อน go-live | PAY-20 | ☐ |
 
@@ -64,7 +64,7 @@
 - **ไฟล์ร่วมที่เหลือ**: `payment-button/index.tsx` CORE-95 → PAY-19 (#546 merge แล้ว — PAY-19 #548 แก้ต่อ) ·
   `ci.yml` PAY-19 → PAY-21 (ตัวหลัง sync) · `templates.ts`/`production.md` PAY-20 → PAY-21
 - **คลื่น D (ADR-029, spec 06 กฎ 22–24)**: PAY-20 ∥ PAY-19 (คนละ app) → PAY-21
-- **ปิดรอบ**: PAY-19 + PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` = v0.3.1
+- **ปิดรอบ**: PAY-20 + PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` = v0.3.1
 - **คำตัดสิน owner ของรอบ**: 2026-11-23 Q-R42 = ก, spec 04 Q26 = ก, spec 01 Q-C16 = ก, spec 06 Q-P12 = ข (ทำ PAY-19),
   spec 08 Q13 = ก (ข้อยกเว้น testid ที่ 4 — ADR-018 ภาคผนวก + `CLAUDE.md`) · 2026-11-24 spec 01 Q-C17 = ก (CORE-93), spec 06 Q-P13 = ก (PAY-19),
   spec 06 Q-P14 = ข, Q-P15, Q-P16 (PAY-19), Q-P17 = ทำใน v0.3.1 (→ ADR-029, PAY-20/21), Q-P18 = ก+ข (ADR-029 accepted),
@@ -114,7 +114,7 @@
 | Admin UI ใช้ component ของ Medusa | 08 | 🚀 | 41 🚀 | ADR-018; ADM-22/36 เป็นผลตรวจไม่มี PR |
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
-| รอบ 42 | 01–08 | ◐ | 18 ☑ + 1 ◐ + 2 ☐ | → v0.3.1 |
+| รอบ 42 | 01–08 | ◐ | 19 ☑ + 1 ◐ + 1 ☐ | → v0.3.1 |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
 

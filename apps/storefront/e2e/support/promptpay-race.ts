@@ -1,7 +1,16 @@
 import { APIRequestContext, BrowserContext, Page, Route } from "@playwright/test"
 
 import { expect } from "./fixtures"
-import { STOREFRONT_COUNTRY as CC, Customer, Headers, adminHeaders, createCustomer, publishableKey, signInAs } from "./medusa"
+import {
+  STOREFRONT_COUNTRY as CC,
+  Customer,
+  Headers,
+  adminHeaders,
+  cartReadyForPayment,
+  createCustomer,
+  publishableKey,
+  signInAs,
+} from "./medusa"
 import { isCartIdActionBody } from "./server-action"
 import {
   PROMPTPAY_PROVIDER,
@@ -49,22 +58,31 @@ async function trackTestIds(page: Page, ids: string[]) {
 /**
  * checkout → QR → ตัด webhook → ลูกค้าชำระสำเร็จ แต่ browser ยังเห็น PI เป็น requires_action
  * `watch` = test id เพิ่มเติมที่จดใน `seen` (PAY-17: `promptpay-retry-button` ต้องไม่โผล่ระหว่างทาง)
+ * `variant` (PAY-19): สร้าง cart ที่พร้อมจ่ายของ variant นี้ผ่าน Store API แล้วเข้าขั้น payment ตรง (แบบ pay-9) แทนการไล่ PDP ของ t-shirt
+ * `customer` (PAY-19 Q-P15): ใช้ลูกค้าที่เตรียมไว้ (อีเมลที่ Stripe ส่งอีเมลขอบัญชีรับเงินคืนได้) แทนการสมัครใหม่
  */
 export async function paidWhileQrShown(
   page: Page,
   context: BrowserContext,
   request: APIRequestContext,
   baseURL: string,
-  watch: string[] = []
+  watch: string[] = [],
+  { variant, customer: given }: { variant?: string; customer?: Customer } = {}
 ): Promise<Ctx> {
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
-  const customer = await createCustomer(request, pk)
+  const customer = given ?? (await createCustomer(request, pk))
   await signInAs(context, baseURL, customer)
   const seen = await trackTestIds(page, ["promptpay-awaiting-order", "promptpay-expired", ...watch])
 
   await page.clock.install()
-  await checkoutToPayment(page, context, request, pk, customer, CC, PRODUCT)
+  if (variant) {
+    const id = await cartReadyForPayment(request, pk, customer, { variant, quantity: 1 })
+    await context.addCookies([{ name: "_medusa_cart_id", value: id, url: baseURL }])
+    await page.goto(`/${CC}/checkout?step=payment`)
+  } else {
+    await checkoutToPayment(page, context, request, pk, customer, CC, PRODUCT)
+  }
   const cartId = await cartIdOf(context)
   await page.getByTestId(`payment-option-${PROMPTPAY_PROVIDER}`).click()
   await continueToReview(page)

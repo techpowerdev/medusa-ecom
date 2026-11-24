@@ -24,12 +24,12 @@ import {
   secondsLeft,
 } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Button, buttonClassName, Text } from "@modules/common/components/ui"
+import { Button, Text } from "@modules/common/components/ui"
 import { useStripe } from "@stripe/react-stripe-js"
 import { useParams, useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import ErrorMessage from "../error-message"
+import RefundedGoToCart from "../refunded-go-to-cart"
 import { openQr } from "./open-qr"
 import PromptPayOrderDelayed from "./order-delayed"
 import PromptPayQr from "./qr-panel"
@@ -290,18 +290,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
 
   // PAY-15 (กฎข้อ 17): เหตุที่รู้ยังอยู่ในตะกร้าเดิม → ไม่มีปุ่มเริ่มชำระใหม่ ให้ไปปรับตะกร้าแทน
   if (refunded?.goToCart) {
-    return (
-      <>
-        {refundedNotice}
-        <LocalizedClientLink
-          href="/cart"
-          className={buttonClassName({ size: "large" })}
-          data-testid="promptpay-go-to-cart"
-        >
-          ไปที่ตะกร้า
-        </LocalizedClientLink>
-      </>
-    )
+    return <RefundedGoToCart text={refunded.text} noticeTestId="promptpay-refunded" linkTestId="promptpay-go-to-cart" />
   }
 
   return (

@@ -14,6 +14,7 @@ import {
   promptPayPollState,
   promptPayPollAction,
   promptPayQrImage,
+  refundedWithoutSession,
   promptPayRenewalOutcome,
   promptPaySession,
   secondsLeft,
@@ -342,5 +343,33 @@ describe("sessionResetShown", () => {
 
   it("ไม่มี notice → ไม่แสดง", () => {
     expect(sessionResetShown(null, "pp_stripe_stripe", "pi_old_secret")).toBe(false)
+  })
+})
+
+// PAY-19 (spec 06 กฎข้อ 21, AC-32 — owner Q-P13 = ก): Medusa คืนเงินแล้วสร้าง session ใหม่ไม่สำเร็จ → collection ไม่มี session
+// ขั้น review ตัดสินจาก cart ที่ render มา: ไม่มี session + collection ถูกคืนเงินครบ (สัญญาณเดียวกับ promptPayPollState) → notice คืนเงิน + ลิงก์ตะกร้า
+describe("refundedWithoutSession", () => {
+  const refunded = { captured_amount: 1000, refunded_amount: 1000 }
+
+  it("ไม่มี session + คืนเงินครบ → true (reload/Back/หลัง router.refresh)", () => {
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: { ...refunded, payment_sessions: [] } })).toBe(true)
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: refunded })).toBe(true)
+  })
+
+  it("ยังมี session → false (component ของ provider ตัดสินเอง)", () => {
+    expect(
+      refundedWithoutSession({ completed_at: null, payment_collection: { ...refunded, payment_sessions: [{ status: "pending" }] } })
+    ).toBe(false)
+  })
+
+  it("cart complete แล้ว → false", () => {
+    expect(refundedWithoutSession({ completed_at: "2026-11-24T00:00:00Z", payment_collection: refunded })).toBe(false)
+  })
+
+  it("คืนไม่ครบ / ยังไม่ capture (collection ใหม่) / ไม่มี collection → false", () => {
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: { captured_amount: 1000, refunded_amount: 999 } })).toBe(false)
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: { captured_amount: 0, refunded_amount: 0 } })).toBe(false)
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: null })).toBe(false)
+    expect(refundedWithoutSession(null)).toBe(false)
   })
 })

@@ -9,9 +9,22 @@ export type PromptPayRefunded = { text: string; goToCart: boolean }
 /** PAY-11 (spec 06 กฎข้อ 13): สิ่งที่ทางสำรอง PromptPay ทำต่อหลัง placeOrder */
 export type PromptPayFinishAction = ({ kind: "refunded" } & PromptPayRefunded) | { kind: "unauthorized" } | { kind: "retry" }
 
+/**
+ * PAY-19 (spec 06 กฎข้อ 21f — owner Q-P16 2026-11-24): refund ของพร้อมเพย์ผ่าน Stripe ต้องให้ลูกค้ากรอกบัญชีรับเงินคืนจากอีเมล
+ * (refund สถานะ `requires_action`) — ข้อความพร้อมเพย์จึงบอกให้ตรวจอีเมล ไม่ใช่ "เข้าบัญชีตามรอบของธนาคาร" แบบบัตร
+ */
+const PROMPTPAY_REFUND_EMAIL =
+  "เราเริ่มคืนเงินเต็มจำนวนแล้ว ผู้ให้บริการชำระเงินจะส่งอีเมลถึงอีเมลที่ใช้สั่งซื้อเพื่อให้คุณกรอกบัญชีรับเงินคืน กรุณาตรวจอีเมล"
+
+/** เหตุสินค้า/สิทธิ์ราคาพิเศษหมดหรือสต็อกไม่พอ (คู่กับ REFUNDED_NOTICE ของบัตร) */
+export const PROMPTPAY_REFUNDED_NOTICE = `สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน ${PROMPTPAY_REFUND_EMAIL} แล้วปรับตะกร้าก่อนสั่งใหม่`
+
+/** เหตุโปรโมชันใช้ร่วมกันไม่ได้ (คู่กับ PROMOTION_REFUNDED_NOTICE ของบัตร) */
+export const PROMPTPAY_PROMOTION_REFUNDED_NOTICE = `โปรโมชันที่ใช้ไม่สามารถใช้ร่วมกันได้ ${PROMPTPAY_REFUND_EMAIL} แล้วปรับโค้ดส่วนลดก่อนสั่งใหม่`
+
 /** PAY-6c: poll เห็นว่าเงินถูกคืนโดยไม่รู้เหตุ → ให้เริ่มชำระใหม่บนตะกร้าเดิม */
 export const PROMPTPAY_REFUNDED_UNKNOWN: PromptPayRefunded = {
-  text: "ชำระไม่สำเร็จ เงินจะคืนเข้าบัญชีของคุณตามรอบของธนาคาร กดเริ่มชำระใหม่เพื่อรับคิวอาร์โค้ดใหม่",
+  text: `ชำระไม่สำเร็จ ${PROMPTPAY_REFUND_EMAIL} กดเริ่มชำระใหม่เพื่อรับคิวอาร์โค้ดใหม่`,
   goToCart: false,
 }
 
@@ -23,7 +36,10 @@ export const promptPayFinishAction = (outcome: PlaceOrderOutcome | null | undefi
   if (outcome?.kind === "unauthorized") return { kind: "unauthorized" }
   if (outcome?.kind === "refunded") {
     const notice = checkoutNotice(outcome, true)
-    if (notice.kind === "refunded") return { kind: "refunded", text: notice.text, goToCart: true }
+    if (notice.kind === "refunded") {
+      const text = outcome.code === "PROMOTION_NOT_COMBINABLE" ? PROMPTPAY_PROMOTION_REFUNDED_NOTICE : PROMPTPAY_REFUNDED_NOTICE
+      return { kind: "refunded", text, goToCart: true }
+    }
   }
   return { kind: "retry" }
 }
