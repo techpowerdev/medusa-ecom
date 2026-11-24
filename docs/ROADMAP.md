@@ -7,7 +7,7 @@
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
 - **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 18/21 task (PAY-19 ◐ #548; PAY-20/21 ☐ คลื่น D)
-- **รอ owner ตัดสิน**: ADR-029 + spec 06 Q-P18–Q-P20 (คืนเงินล้ม/ค้าง — บล็อก PAY-20/21)
+- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 42 (ADR-029 accepted 2026-11-24)
 - **ขั้นต่อไป**: PAY-19 + PAY-20 → PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
 
 ### Release
@@ -54,7 +54,7 @@
 | B | ADM-48 | 08 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit #513 | ADM-47 | ☑ #542 |
 | C | CORE-95 | 01 | จ่ายบัตรแล้ว session หมด → notice บนหน้า login แล้วไป orders (Q-C16 = ก) | PAY-17 | ☑ #546 |
 | C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (ขอบเขตย่อตาม Q-P13 = ก) | PAY-17, CORE-95 (#546) | ◐ #548 |
-| D | PAY-20 | 06 | job ตรวจ refund ล้ม/ค้าง → alert `OPS_ALERT_EMAIL` (ADR-029 ก) — ต้องทำก่อน go-live | ADR-029 accepted (Q-P18) | ☐ |
+| D | PAY-20 | 06 | job ตรวจ refund ล้ม/ค้าง → alert `OPS_ALERT_EMAIL` (ADR-029 ก) — ต้องทำก่อน go-live | — (ADR-029 ☑) | ☐ |
 | D | PAY-21 | 06 | webhook `refund.failed`/`refund.updated` → alert (ADR-029 ข) — ต้องทำก่อน go-live | PAY-20 | ☐ |
 
 - merge train: #537 (CORE-89, CORE-90, ADM-47, EV-26, AF-27, GB-31, CORE-94, PAY-18) · #538 (CORE-93, GB-32, CORE-92, OPS-35) ·
@@ -67,12 +67,13 @@
 - **ปิดรอบ**: PAY-19 + PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` = v0.3.1
 - **คำตัดสิน owner ของรอบ**: 2026-11-23 Q-R42 = ก, spec 04 Q26 = ก, spec 01 Q-C16 = ก, spec 06 Q-P12 = ข (ทำ PAY-19),
   spec 08 Q13 = ก (ข้อยกเว้น testid ที่ 4 — ADR-018 ภาคผนวก + `CLAUDE.md`) · 2026-11-24 spec 01 Q-C17 = ก (CORE-93), spec 06 Q-P13 = ก (PAY-19),
-  spec 06 Q-P14 = ข, Q-P15, Q-P16 (PAY-19), Q-P17 = ทำใน v0.3.1 (→ ADR-029, PAY-20/21)
+  spec 06 Q-P14 = ข, Q-P15, Q-P16 (PAY-19), Q-P17 = ทำใน v0.3.1 (→ ADR-029, PAY-20/21), Q-P18 = ก+ข (ADR-029 accepted),
+  Q-P19 = ก (ไม่แก้ยอดอัตโนมัติ), Q-P20 = ไม่เปิด issue upstream
 - งาน/ไม่ทำ/ไฟล์ร่วมฉบับเต็มตอนเสนอรอบ: history หัวข้อ "รอบ 42"
 
 ## คำถามที่รอ owner
 
-- **รอบ 42**: ADR-029 (proposed) + spec 06 Q-P18 (ทางเลือก — Recommended ก+ข), Q-P19 (ไม่แก้ยอดใน Medusa), Q-P20 (issue upstream)
+- **รอบ 42**: ไม่มีคำถามค้าง
 - **follow-up เก่า (รอบ 30–39)**: ข้อ "ก. ต้องให้ owner ตัดสิน" ปิดครบทุกรอบ — ข้อ ข/ค (hygiene/backlog) ยังไม่มี task
   รอ owner สั่ง ดู [`followups-archive.md`](roadmap/followups-archive.md)
 - **ต้องตัดสินก่อน go-live** (ไม่บล็อก v0.3.1):

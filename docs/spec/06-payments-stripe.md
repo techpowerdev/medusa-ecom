@@ -472,7 +472,7 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
   (ข) จำผล refunded ต่อ cart (เช่น `cart.metadata` หรือ cookie ที่มี cart id) แล้วแสดง notice + ซ่อนปุ่มจ่ายจนกว่าตะกร้าเปลี่ยน — ~80 LOC + e2e; ต้องกำหนดว่า "ตะกร้าเปลี่ยน" นับอะไร
 
 ## Follow-up รอบ 42 — คืนเงินล้ม/ค้าง (ADR-029; owner Q-P17 = ทำใน v0.3.1, 2026-11-24)
-Status: draft (รอ owner ตัดสิน Q-P18 / ADR-029) · ที่มา: PAY-19 #548 (CI) — PromptPay ฿810 ตัดเงินแล้วไม่ถูกคืน มีแค่ log · กฎข้อ 21/AC-32 เป็นของ PAY-19 ไม่แตะ
+Status: accepted (owner 2026-11-24: ADR-029 accepted ก+ข, Q-P19 = ก, Q-P20 = ไม่เปิด issue) · ที่มา: PAY-19 #548 (CI) — PromptPay ฿810 ตัดเงินแล้วไม่ถูกคืน มีแค่ log · กฎข้อ 21/AC-32 เป็นของ PAY-19 ไม่แตะ
 Goal (owner): ระบบต้องรู้เมื่อการคืนเงินล้มหรือค้าง
 Out of scope: แก้สถานะเงินใน Medusa อัตโนมัติ, refund ซ้ำอัตโนมัติ, แจ้งลูกค้าอัตโนมัติ, widget admin, แก้ข้อความหน้าร้าน (PAY-11/15/19), refund ที่ `requires_action` (รอลูกค้ากรอกบัญชี = ปกติ)
 ### What Medusa already gives us (คืนเงินล้ม/ค้าง)
@@ -537,17 +537,17 @@ Out of scope: แก้สถานะเงินใน Medusa อัตโน�
 ### Tasks (คืนเงินล้ม/ค้าง)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| PAY-20 | (เงิน — ADR-029 ก) job ตรวจ refund ที่ล้ม/ค้าง + helper `sendOpsAlert` + template `refund-failed` + runbook (กฎข้อ 22) | `apps/backend/src/jobs/refund-failure-scan.ts` (ใหม่), `src/lib/ops-alert.ts` (ใหม่ + unit), `src/lib/refund-alerts.ts` (classifier + unit), `src/modules/resend/templates.ts` (+ test), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/refund-failure-scan.spec.ts` (ใหม่) | ~150 LOC + ~250 LOC test | AC-33 | PR เอกสารนี้; **ADR-029 accepted (Q-P18)** | `templates.ts`, `production.md` (PAY-21 — ตัวหลัง) |
-| PAY-21 | (เงิน — ADR-029 ข) subscriber `refund.failed`/`refund.updated` + event ใน Stripe webhooks/`ci.yml` + runbook/checklist (กฎข้อ 23) | `apps/backend/src/subscribers/stripe-refund-webhook.ts` (ใหม่), `docs/ops/production.md`, `.github/workflows/ci.yml` (`events=`), `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/stripe-refund-webhook.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-34 | **PAY-20** (helper + template + หัวข้อ runbook); ADR-029 accepted ทางเลือกที่มี ข | `ci.yml` (PAY-19 #548 ถ้าแก้ — ตัวหลัง sync) |
+| PAY-20 | (เงิน — ADR-029 ก) job ตรวจ refund ที่ล้ม/ค้าง + helper `sendOpsAlert` + template `refund-failed` + runbook (กฎข้อ 22) | `apps/backend/src/jobs/refund-failure-scan.ts` (ใหม่), `src/lib/ops-alert.ts` (ใหม่ + unit), `src/lib/refund-alerts.ts` (classifier + unit), `src/modules/resend/templates.ts` (+ test), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/refund-failure-scan.spec.ts` (ใหม่) | ~150 LOC + ~250 LOC test | AC-33 | PR เอกสารนี้ (ADR-029 accepted ☑) | `templates.ts`, `production.md` (PAY-21 — ตัวหลัง) |
+| PAY-21 | (เงิน — ADR-029 ข) subscriber `refund.failed`/`refund.updated` + event ใน Stripe webhooks/`ci.yml` + runbook/checklist (กฎข้อ 23) | `apps/backend/src/subscribers/stripe-refund-webhook.ts` (ใหม่), `docs/ops/production.md`, `.github/workflows/ci.yml` (`events=`), `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/stripe-refund-webhook.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-34 | **PAY-20** (helper + template + หัวข้อ runbook) | `ci.yml` (PAY-19 #548 ถ้าแก้ — ตัวหลัง sync) |
 
-ลำดับ: PAY-20 ∥ PAY-19 (คนละ app) → PAY-21; ถ้า owner เลือกแค่ ข → PAY-21 ย้าย helper/template/หัวข้อ runbook มาไว้ในตัวเอง (Depends เหลือ ADR-029)
+ลำดับ: PAY-20 ∥ PAY-19 (คนละ app) → PAY-21
 ### Open questions (คืนเงินล้ม/ค้าง)
-- **Q-P18** อนุมัติ ADR-029 ทางเลือกใด:
+- ~~**Q-P18**~~ **ตัดสินแล้ว (owner 2026-11-24) = (ก+ข)** ADR-029 accepted → PAY-20 + PAY-21 — คำถามเดิม: อนุมัติ ADR-029 ทางเลือกใด:
   (ก+ข) **[Recommended]** job ตรวจแถว refund ของ Medusa (ล้มทันที/ค้าง) + webhook `refund.failed`/`refund.updated` (ล้มภายหลัง) — ครอบทั้งสองช่อง ไม่มี infra ใหม่ ~230 LOC + test (PAY-20, PAY-21);
   (ก) job อย่างเดียว — ไม่รู้เมื่อพร้อมเพย์/บัตรล้มหลัง Stripe รับ refund แล้ว; (ข) webhook อย่างเดียว — ไม่รู้กรณีที่เกิดจริงใน #548 (Stripe ปฏิเสธตั้งแต่สร้าง refund)
-- **Q-P19** refund ที่ Stripe แจ้งล้มภายหลัง (ข): ข้อมูลใน Medusa ยังนับว่าคืนแล้ว — (ก) **[Recommended]** ไม่แก้ใน v0.3.1: ops note ใน order + incident ตาม runbook (Medusa 2.22.1 ไม่มี API
+- ~~**Q-P19**~~ **ตัดสินแล้ว (owner 2026-11-24) = (ก)** ops จัดการตาม runbook ไม่แก้ยอดอัตโนมัติใน v0.3.1 — คำถามเดิม: refund ที่ Stripe แจ้งล้มภายหลัง (ข): ข้อมูลใน Medusa ยังนับว่าคืนแล้ว — (ก) **[Recommended]** ไม่แก้ใน v0.3.1: ops note ใน order + incident ตาม runbook (Medusa 2.22.1 ไม่มี API
   เปลี่ยน refund ที่สำเร็จเป็นล้ม); (ข) เปิด task ปรับยอดหลัง go-live (ต้อง ADR ใหม่ — แตะข้อมูลของ Payment module)
-- **Q-P20** เปิด issue upstream ที่ Medusa: `refundPaymentsStep` กลืน error ของ provider และ `refundPaymentsWorkflow` เพิ่ม order transaction ของ refund ที่ล้ม — (ก) **[Recommended]** เปิด (session หลักเปิด; ร่างใน PR body ของ PAY-20); (ข) ไม่เปิด
+- ~~**Q-P20**~~ **ตัดสินแล้ว (owner 2026-11-24) = ไม่เปิด issue upstream** — บันทึกไว้ใน ADR-029 อย่างเดียว (PAY-20 ไม่ต้องร่าง issue) — คำถามเดิม: เปิด issue ที่ Medusa เรื่อง `refundPaymentsStep` กลืน error ของ provider และ `refundPaymentsWorkflow` เพิ่ม order transaction ของ refund ที่ล้ม
 
 ## Open questions
 - ~~Q10~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-025 ทางเลือก 2** → PAY-9 เริ่มได้หลัง GB-20; คำถามเดิม (รอบ 40): อนุมัติ ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน)

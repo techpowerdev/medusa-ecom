@@ -1,6 +1,6 @@
 # ADR-029 ระบบต้องรู้เมื่อการคืนเงินล้มหรือค้าง (alert ถึง ops)
 
-สถานะ: **proposed** (planner 2026-11-24 ตามคำสั่ง owner Q-P17 = ทำใน v0.3.1; รอ owner เลือกทางเลือก — spec 06 Q-P18)
+สถานะ: **accepted** (owner 2026-11-24 — ทางเลือก **ก + ข** (spec 06 Q-P18); Q-P19 = ก ไม่แก้ยอดใน Medusa อัตโนมัติ; Q-P20 = ไม่เปิด issue upstream — บันทึกไว้ใน ADR นี้อย่างเดียว; เสนอโดย planner ตามคำสั่ง Q-P17 = ทำใน v0.3.1)
 เลข: ADR-027 สงวนให้ ADR วิธี deploy/staging จึงใช้ 029
 เกี่ยวข้อง: ADR-015 (alert `OPS_ALERT_EMAIL`, script `refund-orphan-payment.ts`), ADR-023 (webhook endpoint เดียว), ADR-024 (GB auto-refund), ADR-025,
 spec 06 กฎข้อ 4/7D/13/17/21 และหัวข้อ "Follow-up รอบ 42 — การคืนเงินล้ม/ค้าง" (กฎข้อ 22–24, PAY-20/PAY-21), spec 07 (`OPS_ALERT_EMAIL`)
@@ -46,8 +46,8 @@ spec 06 กฎข้อ 4/7D/13/17/21 และหัวข้อ "Follow-up ร
 - **ฉ. job เรียก Stripe API ตรวจ refund ที่ `requires_action` นานเกิน N วัน** — ขัดกฎข้อ 4 ของ spec 06 (ห้ามเรียก Stripe ตรงนอก provider) และ Stripe ส่ง `refund.failed`
   เองเมื่อหมดอายุ (ข) — ไม่เลือก
 
-## การตัดสินใจ (เสนอ)
-**Recommended: ก + ข** (สองช่องที่ไม่ทับกัน: ก = refund ที่ไม่เคยถึง/ไม่รู้ผลที่ Stripe, ข = refund ที่ Stripe รับแล้วล้มภายหลัง) — ส่งมอบเป็น PAY-20 (ก) และ PAY-21 (ข)
+## การตัดสินใจ
+**ก + ข** (owner อนุมัติ 2026-11-24) (สองช่องที่ไม่ทับกัน: ก = refund ที่ไม่เคยถึง/ไม่รู้ผลที่ Stripe, ข = refund ที่ Stripe รับแล้วล้มภายหลัง) — ส่งมอบเป็น PAY-20 (ก) และ PAY-21 (ข)
 - alert ใช้ helper เดียว `src/lib/ops-alert.ts` (ผู้ใช้จริง 2 ที่ = PAY-20, PAY-21 — ตามกฎ abstraction) + template อีเมลเดียว `refund-failed` (ระบุแหล่ง `medusa`/`stripe`)
 - **ไม่**แก้สถานะเงินใน Medusa อัตโนมัติ, ไม่ refund ซ้ำอัตโนมัติ, ไม่แจ้งลูกค้าอัตโนมัติ — ops ทำตาม runbook ใหม่ใน `docs/ops/production.md`
   ("คืนเงินล้ม/ค้าง (ADR-029)") ซึ่งใช้ทางที่มีอยู่: `refund-orphan-payment.ts` (payment ไม่ผูก order), Refund ใน admin (ผูก order), หรือคืนนอก Stripe แล้วบันทึก incident
@@ -59,10 +59,10 @@ spec 06 กฎข้อ 4/7D/13/17/21 และหัวข้อ "Follow-up ร
   คืนเงิน (การจ่ายซ้ำถูกกันโดย guard `PAYMENT_ALREADY_COMPLETED` ของ ADR-015 — ไม่ตัดเงินซ้ำ); ADR นี้ทำให้ ops รู้ภายใน ~15 นาทีแล้วติดต่อลูกค้า — ไม่แก้ข้อความหน้าร้าน
   (ข้อความพร้อมเพย์ของ Q-P16 "เริ่มคืนเงินแล้ว Stripe จะส่งอีเมล…" สอดคล้องกับ `requires_action` อยู่แล้ว)
 - **`requires_action` ไม่ใช่ alert**: refund พร้อมเพย์ที่รอลูกค้ากรอกบัญชีถือว่าปกติ; ถ้าลูกค้าไม่กรอกจนหมดอายุ Stripe ส่ง `refund.failed` → alert ของ PAY-21
-- ข้อมูลใน Medusa หลัง refund ล้มภายหลัง (ข) ยังแสดง refunded — ops บันทึก incident และ note ใน order; การปรับยอดใน Medusa อยู่นอกขอบเขต (spec 06 Q-P19)
+- ข้อมูลใน Medusa หลัง refund ล้มภายหลัง (ข) ยังแสดง refunded — ops บันทึก incident และ note ใน order; การปรับยอดใน Medusa อยู่นอกขอบเขต (owner Q-P19 = ก 2026-11-24)
 - GB-21 มี alert `refund_failed` ของตัวเองอยู่แล้ว → refund GB ที่ล้มได้อีเมลสองฉบับ (คนละบริบท) — ยอมรับ
 - **bump `@medusajs/*`**: integration test ของ PAY-20 ยืนยันว่า (1) `refundPaymentsWorkflow` ยังกลืน error (ถ้า Medusa แก้ให้ throw → ทบทวน ADR นี้และผู้เรียกของเรา)
   (2) แถว failed ยังอ่านได้ด้วย withDeleted — ล้ม = หยุด bump
-- **upstream**: เสนอเปิด issue ที่ Medusa เรื่อง `refundPaymentsStep` กลืน error และ `refundPaymentsWorkflow` เพิ่ม order transaction ของ refund ที่ล้ม (session หลักถาม owner ก่อนเปิด — spec 06 Q-P20)
+- **upstream**: ไม่เปิด issue (owner Q-P20 2026-11-24) — บันทึกปัญหาของ Medusa ไว้ใน ADR นี้: `refundPaymentsStep` กลืน error และ `refundPaymentsWorkflow` เพิ่ม order transaction ของ refund ที่ล้ม
 - **go-live**: PAY-20/PAY-21 อยู่ใน v0.3.1 (ก่อน go-live); endpoint ของ live mode ต้องสมัคร `refund.updated` + `refund.failed` และตั้ง `OPS_ALERT_EMAIL` (go-live checklist ข้อใหม่ที่ PAY-21 เพิ่ม)
 - การย้อนกลับ: ลบ job/subscriber และ event ใน Dashboard — ไม่มี migration
