@@ -33,5 +33,13 @@ export const checkoutConflictCode = (error: unknown): string | null =>
 // `placeOrderOutcome` คืน code นี้จาก `isOutOfStockAtCompletion` (ไม่อยู่ใน CHECKOUT_CONFLICTS — error ของ Medusa ไม่ใช่ 409 ของเรา)
 export const OUT_OF_STOCK = "OUT_OF_STOCK"
 
+/**
+ * PAY-19 (spec 06 กฎข้อ 21a — owner Q-P16 2026-11-24): notice ขั้น review เมื่อ collection คืนเงินครบและไม่มี session (reload/Back)
+ * ไม่รู้ว่าจ่ายด้วยบัตรหรือพร้อมเพย์ (Store API ไม่มี payment ของ collection) → บอกทั้งสองทาง
+ */
+export const REVIEW_REFUNDED_NOTICE =
+  "การชำระเงินของตะกร้านี้ไม่สำเร็จ เราเริ่มคืนเงินเต็มจำนวนแล้ว — ชำระด้วยบัตร เงินจะเข้าบัญชีตามรอบของธนาคาร; " +
+  "ชำระด้วยพร้อมเพย์ ผู้ให้บริการชำระเงินจะส่งอีเมลให้คุณกรอกบัญชีรับเงินคืน กรุณาตรวจอีเมล — กรุณาปรับตะกร้าแล้วสั่งใหม่"
+
 export const REFUNDED_NOTICE =
   "สินค้า/สิทธิ์ราคาพิเศษหมดระหว่างชำระเงิน ระบบคืนเงินเต็มจำนวนให้อัตโนมัติแล้ว (เข้าบัญชีตามรอบของธนาคาร) กรุณาปรับตะกร้าแล้วสั่งใหม่"

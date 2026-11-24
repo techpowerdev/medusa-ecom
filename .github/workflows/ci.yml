@@ -271,6 +271,8 @@ jobs:
       STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
       NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
       NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
+      # PAY-19 (spec 06 Q-P15): อีเมลลูกค้าของ e2e ที่คืนเงินพร้อมเพย์จริง = อีเมลบัญชี Stripe test (ส่งอีเมลขอบัญชีรับเงินคืนได้) — ไม่ตั้ง = skip
+      E2E_PROMPTPAY_REFUND_EMAIL: ${{ secrets.E2E_PROMPTPAY_REFUND_EMAIL }}
       JWT_SECRET: test
       COOKIE_SECRET: test
       # AF-2: secret ของ cookie `aff` (spec 05) — `medusa start` = production: ไม่ตั้ง = บูตไม่ขึ้น (OPS-7 AC-13)
@@ -379,6 +381,8 @@ jobs:
       - if: failure()
         run: |
           tail -n 200 /tmp/backend.log 2>/dev/null || echo "(ไม่มี /tmp/backend.log — backend ยังไม่ได้เริ่ม)"
+          # PAY-19 D-1 (#548): บรรทัด refund/compensation ทั้งไฟล์ (tail 200 ไม่ครอบช่วงของ test ที่ล้ม)
+          grep -n -E "trying to|[Rr]efund" /tmp/backend.log 2>/dev/null | tail -n 100 || true
           tail -n 50 /tmp/stripe-listen.log 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()

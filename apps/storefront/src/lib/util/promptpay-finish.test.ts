@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest"
 
 import { CHECKOUT_CONFLICTS, OUT_OF_STOCK, REFUNDED_NOTICE } from "./checkout-error"
 import { CART_COMPLETION_IN_PROGRESS, PROMOTION_REFUNDED_NOTICE, placeOrderOutcome } from "./place-order-outcome"
-import { PROMPTPAY_REFUNDED_UNKNOWN, promptPayFinishAction, promptPayPollWhileFinishing } from "./promptpay-finish"
+import {
+  PROMPTPAY_PROMOTION_REFUNDED_NOTICE,
+  PROMPTPAY_REFUNDED_NOTICE,
+  PROMPTPAY_REFUNDED_UNKNOWN,
+  promptPayFinishAction,
+  promptPayPollWhileFinishing,
+} from "./promptpay-finish"
 
 // PAY-11 (spec 06 กฎข้อ 13, AC-24): ผลของ placeOrder ในทางสำรอง PromptPay (finish) → สิ่งที่ component ทำ
 // refunded → หยุด poll + `promptpay-refunded` ข้อความกฎข้อ 27 ของ spec 03; processing / failed / network → poll ต่อ; 401/403 → login
@@ -15,17 +21,17 @@ const conflict = (code: string) => {
 describe("promptPayFinishAction", () => {
   it.each(["FLASH_SOLD_OUT", "FLASH_LIMIT_EXCEEDED"])("409 %s → refunded พร้อมข้อความคืนเงินของกฎข้อ 27", (code) => {
     const action = promptPayFinishAction(placeOrderOutcome(conflict(code)))
-    expect(action).toEqual({ kind: "refunded", text: REFUNDED_NOTICE, goToCart: true })
+    expect(action).toEqual({ kind: "refunded", text: PROMPTPAY_REFUNDED_NOTICE, goToCart: true })
   })
 
   it("สต็อกไม่พอตอน complete (OUT_OF_STOCK) → refunded ข้อความกฎข้อ 27", () => {
     const action = promptPayFinishAction({ kind: "refunded", code: OUT_OF_STOCK })
-    expect(action).toEqual({ kind: "refunded", text: REFUNDED_NOTICE, goToCart: true })
+    expect(action).toEqual({ kind: "refunded", text: PROMPTPAY_REFUNDED_NOTICE, goToCart: true })
   })
 
   it("PROMOTION_NOT_COMBINABLE → refunded ข้อความเหตุโปรโมชัน (CORE-76)", () => {
     const action = promptPayFinishAction({ kind: "refunded", code: "PROMOTION_NOT_COMBINABLE" })
-    expect(action).toEqual({ kind: "refunded", text: PROMOTION_REFUNDED_NOTICE, goToCart: true })
+    expect(action).toEqual({ kind: "refunded", text: PROMPTPAY_PROMOTION_REFUNDED_NOTICE, goToCart: true })
   })
 
   it("ข้อความ refunded เป็นภาษาไทย มีคำว่า คืนเงิน", () => {
@@ -67,11 +73,28 @@ describe("promptPayFinishAction", () => {
     }
   )
 
-  it("refunded ไม่รู้เหตุ (PAY-6c) → ไม่ไปตะกร้า คงข้อความเดิมที่ชวนกดเริ่มชำระใหม่", () => {
+  it("refunded ไม่รู้เหตุ (PAY-6c) → ไม่ไปตะกร้า ข้อความชวนกดเริ่มชำระใหม่", () => {
     expect(PROMPTPAY_REFUNDED_UNKNOWN.goToCart).toBe(false)
-    expect(PROMPTPAY_REFUNDED_UNKNOWN.text).toBe(
-      "ชำระไม่สำเร็จ เงินจะคืนเข้าบัญชีของคุณตามรอบของธนาคาร กดเริ่มชำระใหม่เพื่อรับคิวอาร์โค้ดใหม่"
-    )
+    expect(PROMPTPAY_REFUNDED_UNKNOWN.text).toContain("เริ่มชำระใหม่")
+  })
+
+  // PAY-19 (spec 06 กฎข้อ 21f — owner Q-P16 2026-11-24): refund ของพร้อมเพย์ต้องให้ลูกค้ากรอกบัญชีรับเงินคืนผ่านอีเมลของผู้ให้บริการชำระเงิน
+  // ข้อความพร้อมเพย์บอกให้ตรวจอีเมล ไม่บอกว่าเงินเข้าบัญชีตามรอบธนาคารแล้ว (ข้อความของบัตร REFUNDED_NOTICE คงเดิม)
+  it.each([
+    ["PROMPTPAY_REFUNDED_NOTICE", PROMPTPAY_REFUNDED_NOTICE],
+    ["PROMPTPAY_PROMOTION_REFUNDED_NOTICE", PROMPTPAY_PROMOTION_REFUNDED_NOTICE],
+    ["PROMPTPAY_REFUNDED_UNKNOWN", PROMPTPAY_REFUNDED_UNKNOWN.text],
+  ])("%s: ไทย บอกให้ตรวจอีเมลเพื่อกรอกบัญชีรับเงินคืน ไม่มีคำละติน และไม่อ้างรอบธนาคาร", (_name, text) => {
+    expect(text).toMatch(THAI)
+    expect(text).toMatch(/ตรวจอีเมล/)
+    expect(text).toMatch(/บัญชีรับเงินคืน/)
+    expect(text).not.toMatch(/ตามรอบของธนาคาร/)
+    expect(text).not.toMatch(/[A-Za-z]{2,}/)
+  })
+
+  it("ข้อความบัตรคงเดิม (REFUNDED_NOTICE / PROMOTION_REFUNDED_NOTICE ยังอ้างรอบธนาคาร)", () => {
+    expect(REFUNDED_NOTICE).toMatch(/ตามรอบของธนาคาร/)
+    expect(PROMOTION_REFUNDED_NOTICE).toMatch(/ตามรอบของธนาคาร/)
   })
 })
 

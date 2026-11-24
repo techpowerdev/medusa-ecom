@@ -97,6 +97,14 @@ export function promptPayPollState(cart: PollableCart): PromptPayPollState {
   return "pending"
 }
 
+/**
+ * PAY-19 (spec 06 กฎข้อ 21 — owner Q-P13 = ก): Medusa คืนเงินแล้วสร้าง session ใหม่ด้วย data เดิมไม่สำเร็จ (Stripe ตอบ Invalid string)
+ * collection จึงเหลือแต่ยอดที่คืนครบและไม่มี session → ขั้น review แสดง notice คืนเงิน + ลิงก์ตะกร้าแทนปุ่ม "กรุณาเลือกวิธีชำระเงิน"
+ * ยังมี session = component ของ provider ตัดสินเอง; สัญญาณหายเองเมื่อเลือกวิธีชำระใหม่ (PAY-9 สร้าง collection ใหม่)
+ */
+export const refundedWithoutSession = (cart: PollableCart): boolean =>
+  !cart?.payment_collection?.payment_sessions?.length && promptPayPollState(cart) === "refunded"
+
 /** code ของ guard ฝั่ง backend (spec 06 กฎข้อ 7A): session เดิมชำระแล้ว ไม่ถูกลบ */
 export const PAYMENT_ALREADY_COMPLETED = "PAYMENT_ALREADY_COMPLETED"
 /** PAY-9 (spec 06 กฎข้อ 11, ADR-025): collection ของ cart ถูกคืนเงินครบ backend ถอด link แล้ว → สร้าง collection ใหม่แล้วลองซ้ำ 1 ครั้ง */
