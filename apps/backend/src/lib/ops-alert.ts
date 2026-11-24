@@ -18,6 +18,7 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 
 /**
  * มี notification ของ key นี้ที่ไม่ใช่ failure แล้ว → "duplicate" (ไม่ log/ไม่ส่ง); ไม่งั้น `logger.error` หนึ่งบรรทัดขึ้นต้นด้วย code
+ * (แถว failure เดิมถูก soft-delete ก่อนส่งใหม่)
  * แล้วส่งอีเมล — ไม่ตั้ง OPS_ALERT_EMAIL → warn "skipped"; ส่งล้ม → log error "failed" (ไม่ throw)
  */
 export async function sendOpsAlert(
@@ -48,6 +49,12 @@ export async function sendOpsAlert(
     return "skipped"
   }
   try {
+    // review #550: Medusa 2.22.1 ส่งซ้ำแถว `failure` เดิมไม่ได้ (ส่งด้วย id ใหม่แล้ว update แถวที่ไม่มี → NOT_FOUND แถวเดิมค้าง failure
+    // → ส่งซ้ำทุกรอบ) — soft-delete แถวที่ล้มก่อน (unique index ของ idempotency_key ไม่นับแถวที่ลบ) ให้ Medusa สร้างแถวใหม่ตามปกติ
+    const failed = existing.map((n) => n.id)
+    if (failed.length) {
+      await notification.softDeleteNotifications(failed)
+    }
     await notification.createNotifications({
       to,
       channel: "email",

@@ -188,6 +188,54 @@ medusaIntegrationTestRunner({
         expect(warnLog.mock.calls.some(([msg]) => String(msg).includes("OPS_ALERT_EMAIL is not set"))).toBe(true)
       })
 
+      it("(d) the email provider fails once → retried next run with exactly one success email, then never again (review #550)", async () => {
+        const container = getContainer()
+        const { paymentId } = await capturedCartPayment(container)
+        await failedRefund(container, paymentId)
+        // ล้มที่ระดับ provider ของ Notification module (ไม่ใช่ createNotifications) → เกิดแถว notification `failure` จริง
+        const send = jest
+          .spyOn((container.resolve(Modules.NOTIFICATION) as any).notificationProviderService_, "send")
+          .mockRejectedValueOnce(new Error("resend down"))
+
+        for (let run = 0; run < 4; run++) {
+          await scanRefundFailures(container)
+        }
+
+        expect(send).toHaveBeenCalledTimes(2)
+        const emails = await opsEmails()
+        expect(emails).toHaveLength(1)
+        expect(emails[0].status).toEqual("success")
+        expect(emails[0].data).toEqual(expect.objectContaining({ payment_id: paymentId }))
+        expect(alertLogs("REFUND_FAILED")).toHaveLength(2)
+        expect(errorLog.mock.calls.filter(([msg]) => /send failed/.test(String(msg)))).toHaveLength(1)
+      })
+
+      it("(a) payment of an order → alert carries order_id", async () => {
+        const container = getContainer()
+        const payment = container.resolve(Modules.PAYMENT)
+        const [collection] = await payment.createPaymentCollections([{ currency_code: "thb", amount: 400 }])
+        const order = await container.resolve(Modules.ORDER).createOrders({ currency_code: "thb", email: "a@x.test", items: [] })
+        await container.resolve(ContainerRegistrationKeys.LINK).create({
+          [Modules.ORDER]: { order_id: order.id },
+          [Modules.PAYMENT]: { payment_collection_id: collection.id },
+        })
+        const session = await payment.createPaymentSession(collection.id, {
+          provider_id: PROVIDER,
+          currency_code: "thb",
+          amount: 400,
+          data: {},
+        })
+        const authorized = await payment.authorizePaymentSession(session.id, {})
+        await payment.capturePayment({ payment_id: authorized!.id })
+        await failedRefund(container, authorized!.id, 400)
+
+        await scanRefundFailures(container)
+
+        const emails = await opsEmails()
+        expect(emails).toHaveLength(1)
+        expect(emails[0].data).toEqual(expect.objectContaining({ payment_id: authorized!.id, order_id: order.id, cart_id: null }))
+      })
+
       it("(d) notification provider throws on the first of two rows → job does not throw, logs error, second row is still sent", async () => {
         const container = getContainer()
         const first = await capturedCartPayment(container)

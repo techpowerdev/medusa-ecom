@@ -334,7 +334,9 @@ Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็ม�
 `failed` (soft-delete) หรือ `pending` (ระหว่างรอ provider) ไว้ job `refund-failure-scan` (worker, ทุก 15 นาที, `apps/backend/src/jobs/refund-failure-scan.ts`)
 ตรวจแถวย้อนหลัง 7 วัน แล้วเขียน log error ขึ้นต้นด้วย code (มี `refund_id`, `payment_id`, `amount`, `currency_code`, `provider_id`, `cart_id`/`order_id`, `note`)
 และส่งอีเมล template `refund-failed` หา `OPS_ALERT_EMAIL` ครั้งเดียวต่อแถว refund (ไม่ตั้ง env → log error ซ้ำทุกรอบจนพ้น 7 วัน + warn)
-เกิน 200 แถวต่อรอบ → warn `REFUND_SCAN_TRUNCATED` (รอบถัดไปตรวจต่อ)
+เกิน 200 แถวต่อรอบ → warn `REFUND_SCAN_TRUNCATED`: job ตรวจเฉพาะ 200 แถวที่เก่าที่สุด และแถวที่แจ้งแล้ว/คืนครบแล้วยังนับอยู่จนพ้น 7 วัน
+**แถวที่ใหม่กว่าจะไม่ถูกตรวจจนกว่าแถวเก่าพ้นช่วง 7 วัน** — ตรวจ refund ที่ล้ม/ค้างด้วยมือ (`GET /admin/payments/<payment_id>` ของ payment ที่มี log `Error was thrown trying to cancel payment`)
+อีเมลที่ส่งล้ม (Resend ล่ม/429) ถูกส่งใหม่รอบถัดไปจนสำเร็จหนึ่งฉบับ (แถว notification ที่ล้มถูก soft-delete ก่อนส่งใหม่)
 
 ### `REFUND_FAILED` — provider ปฏิเสธ refund และ payment ยังมียอดที่ไม่ถูกคืน
 1. `GET /admin/payments/<payment_id>` → ดู `captures`/`refunds` ว่ายอดคงเหลือ (captured − refunded) ยังเท่าไร และหา log `Error was thrown trying to cancel payment`
