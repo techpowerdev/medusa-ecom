@@ -59,6 +59,7 @@ async function trackTestIds(page: Page, ids: string[]) {
  * checkout → QR → ตัด webhook → ลูกค้าชำระสำเร็จ แต่ browser ยังเห็น PI เป็น requires_action
  * `watch` = test id เพิ่มเติมที่จดใน `seen` (PAY-17: `promptpay-retry-button` ต้องไม่โผล่ระหว่างทาง)
  * `variant` (PAY-19): สร้าง cart ที่พร้อมจ่ายของ variant นี้ผ่าน Store API แล้วเข้าขั้น payment ตรง (แบบ pay-9) แทนการไล่ PDP ของ t-shirt
+ * `customer` (PAY-19 Q-P15): ใช้ลูกค้าที่เตรียมไว้ (อีเมลที่ Stripe ส่งอีเมลขอบัญชีรับเงินคืนได้) แทนการสมัครใหม่
  */
 export async function paidWhileQrShown(
   page: Page,
@@ -66,11 +67,11 @@ export async function paidWhileQrShown(
   request: APIRequestContext,
   baseURL: string,
   watch: string[] = [],
-  variant?: string
+  { variant, customer: given }: { variant?: string; customer?: Customer } = {}
 ): Promise<Ctx> {
   const admin = await adminHeaders(request)
   const pk = await publishableKey(request, admin)
-  const customer = await createCustomer(request, pk)
+  const customer = given ?? (await createCustomer(request, pk))
   await signInAs(context, baseURL, customer)
   const seen = await trackTestIds(page, ["promptpay-awaiting-order", "promptpay-expired", ...watch])
 

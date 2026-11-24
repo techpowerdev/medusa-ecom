@@ -1,9 +1,19 @@
 import { APIRequestContext, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
-import { STOREFRONT_COUNTRY as CC, Headers, adminHeaders, ok, placeOrder } from "./support/medusa"
+import crypto from "node:crypto"
+
+import {
+  STOREFRONT_COUNTRY as CC,
+  Customer,
+  Headers,
+  adminHeaders,
+  ok,
+  placeOrder,
+  publishableKey,
+} from "./support/medusa"
 import { Ctx, paidWhileQrShown } from "./support/promptpay-race"
-import { HAS_STRIPE_UI, PROMPTPAY_PROVIDER, STRIPE_SECRET, cartPaymentState, continueToReview } from "./support/stripe"
+import { HAS_STRIPE_UI, PROMPTPAY_PROVIDER, STRIPE_SECRET, continueToReview } from "./support/stripe"
 import { WorkflowExecution, cartCompletionSettled } from "./support/cart-completion"
 import { createFlashCampaign, createFlashProduct, endFlashCampaign } from "./support/flash-sale"
 import { expectThai } from "./support/thai-text"
@@ -13,7 +23,15 @@ import { expectThai } from "./support/thai-text"
 // ฉากจริง (ไม่ใช่ route mock — cart อ่านฝั่ง server): ชำระพร้อมเพย์ตอน QR แสดง (webhook ไม่มา) แล้วใช้สิทธิ์ flash จาก cart อื่นผ่าน API
 // → QR ครบ 10 นาที → guard ตอบ PAYMENT_ALREADY_COMPLETED → ทางสำรอง placeOrder จริงล้ม FLASH_LIMIT_EXCEEDED → Medusa คืนเงิน
 // Stripe test mode จริง; สินค้า/แคมเปญเฉพาะของ test นี้และปิดแคมเปญเมื่อจบ; หา element ด้วย data-testid (ADR-014)
-test.use({ evidenceTarget: { feature: "payments", taskId: "PAY-19" } })
+// Q-P15 (owner 2026-11-24): refund พร้อมเพย์ของ Stripe ส่งอีเมลขอบัญชีรับเงินคืน — บัญชี test ส่งได้เฉพาะอีเมลของบัญชี
+// → ลูกค้าของ test ใช้อีเมลจาก secret `E2E_PROMPTPAY_REFUND_EMAIL` (ไม่ตั้ง = skip); repo public: ไม่ log อีเมล,
+// ปิด trace (DOM/network มีอีเมล) และซ่อนกล่องข้อมูลติดต่อใน screenshot
+test.use({ evidenceTarget: { feature: "payments", taskId: "PAY-19" }, trace: "off" })
+
+const REFUND_EMAIL = process.env.E2E_PROMPTPAY_REFUND_EMAIL ?? ""
+const NEED_EMAIL = "ต้องตั้ง E2E_PROMPTPAY_REFUND_EMAIL (อีเมลของบัญชี Stripe test — refund พร้อมเพย์ส่งอีเมลขอบัญชีรับเงินคืน)"
+/** กล่องที่แสดงอีเมลของ cart ในหน้า checkout (addresses) */
+const CONTACT_SELECTORS = ['[data-testid="billing-contact-summary"]', '[data-testid="shipping-contact-summary"]', '[data-testid="shipping-email-input"]']
 
 const NEED_UI = "ต้องตั้ง STRIPE_API_KEY (sk_test_) + NEXT_PUBLIC_STRIPE_KEY (pk_test_) ของบัญชี Stripe เดียวกัน"
 const NOTICE = "review-refunded-notice"
@@ -28,6 +46,7 @@ let campaignId: string
 
 test.beforeAll(async ({ request }) => {
   test.skip(!HAS_STRIPE_UI, NEED_UI)
+  test.skip(!REFUND_EMAIL, NEED_EMAIL)
   admin = await adminHeaders(request)
   const product = await createFlashProduct(request, admin, "PAY19", 100)
   variantId = product.variantId
@@ -59,47 +78,31 @@ async function collectionOf(request: APIRequestContext, ctx: Ctx): Promise<Colle
 }
 
 /**
- * D-1 (qa/review #548 — owner Q-P14 = ข): หลักฐานว่าทำไม `refunded_amount` ของ collection เป็น 0 — พิมพ์ลง stdout ของ CI เสมอ
- * payment + captures/refunds ของ Medusa (Admin API — refund ที่ provider ล้มถูก soft-delete จึงไม่เห็นที่นี่),
- * collection ของ cart และ refund ฝั่ง Stripe ของ PaymentIntent (status/failure_reason — key ของ CI เท่านั้น แบบ pay-9)
+ * ลูกค้าที่อีเมล = `REFUND_EMAIL` (อีเมลซ้ำได้ครั้งเดียวต่อ DB): รหัสผ่านได้จากอีเมล (DB ของ test เท่านั้น) → สมัครไม่ได้เพราะมีแล้ว = login
  */
-async function logRefundEvidence(request: APIRequestContext, ctx: Ctx, sessionId: string) {
-  const payments = await request.get(
-    `${BACKEND_URL}/admin/payments?payment_session_id=${sessionId}&fields=id,amount,captured_at,canceled_at,*captures,*refunds`,
-    { headers: ctx.admin }
-  )
-  const cart = await request.get(
-    `${BACKEND_URL}/store/carts/${ctx.cartId}?fields=id,completed_at,payment_collection.id,payment_collection.status,` +
-      "payment_collection.captured_amount,payment_collection.refunded_amount,*payment_collection.payment_sessions",
-    { headers: { authorization: `Bearer ${ctx.customer.token}`, "x-publishable-api-key": ctx.pk } }
-  )
-  const refunds = await request.get(`https://api.stripe.com/v1/refunds?payment_intent=${ctx.intentId}`, {
+async function refundEmailCustomer(request: APIRequestContext, pk: string): Promise<Customer> {
+  const email = REFUND_EMAIL
+  const password = crypto.createHash("sha256").update(`pay-19:${email}`).digest("hex")
+  const reg = await request.post(`${BACKEND_URL}/auth/customer/emailpass/register`, { data: { email, password } })
+  if (reg.ok()) {
+    const created = await request.post(`${BACKEND_URL}/store/customers`, {
+      headers: { authorization: `Bearer ${(await reg.json()).token}`, "x-publishable-api-key": pk },
+      data: { email, first_name: "Somchai", last_name: "Jaidee" },
+    })
+    expect(created.status(), "create customer").toBe(200)
+  }
+  const login = await request.post(`${BACKEND_URL}/auth/customer/emailpass`, { data: { email, password } })
+  expect(login.status(), "customer login (อีเมลของ refund)").toBe(200)
+  return { email, password, token: (await login.json()).token }
+}
+
+/** สถานะ refund ฝั่ง Stripe ของ PaymentIntent (key ของ CI แบบ pay-9) — คืนเฉพาะ status ไม่คืน next_action ที่มีอีเมล */
+async function stripeRefundStatuses(request: APIRequestContext, intentId: string): Promise<string[]> {
+  const res = await request.get(`https://api.stripe.com/v1/refunds?payment_intent=${intentId}`, {
     headers: { authorization: `Bearer ${STRIPE_SECRET}` },
   })
-  const stripeRefunds = refunds.ok()
-    ? ((await refunds.json()).data as Record<string, unknown>[]).map((r) => ({
-        id: r.id,
-        status: r.status,
-        amount: r.amount,
-        failure_reason: r.failure_reason,
-        next_action: r.next_action,
-        destination_details: r.destination_details,
-      }))
-    : { status: refunds.status(), body: await refunds.text() }
-  console.log(
-    "PAY-19 D-1 evidence",
-    JSON.stringify(
-      {
-        intent: ctx.intentId,
-        session: sessionId,
-        payments: payments.ok() ? (await payments.json()).payments : { status: payments.status() },
-        cart: cart.ok() ? (await cart.json()).cart : { status: cart.status() },
-        stripe_refunds: stripeRefunds,
-      },
-      null,
-      2
-    )
-  )
+  expect(res.status(), `list refunds of ${intentId}`).toBe(200)
+  return ((await res.json()).data as { status: string }[]).map((r) => r.status)
 }
 
 /** notice คืนเงินของขั้น review: เห็นข้อความไทย + ลิงก์ไป /th/cart และไม่มีปุ่มจ่าย/เริ่มชำระใหม่ */
@@ -123,16 +126,18 @@ test("AC-32: PromptPay ถูกคืนเงินจริง → ขั้�
   test.setTimeout(300_000)
   let ctx!: Ctx
   let firstCollection: string | undefined
-  let sessionId = ""
   // ขอบล่างของ execution ที่อ่าน (เผื่อนาฬิกา DB/runner ต่างกัน)
   const startedAt = new Date(Date.now() - 60_000).toISOString()
 
   await step("Given ชำระพร้อมเพย์ตอน QR แสดง (webhook ไม่มา) แล้วลูกค้าใช้สิทธิ์ flash จาก cart อื่นผ่าน API", async () => {
-    ctx = await paidWhileQrShown(page, context, request, baseURL!, [], variantId)
+    await page.addInitScript((selectors: string[]) => {
+      const style = document.createElement("style")
+      style.textContent = `${selectors.join(",")} { visibility: hidden !important; }`
+      document.documentElement.appendChild(style)
+    }, CONTACT_SELECTORS)
+    const customer = await refundEmailCustomer(request, await publishableKey(request, admin))
+    ctx = await paidWhileQrShown(page, context, request, baseURL!, [], { variant: variantId, customer })
     firstCollection = (await collectionOf(request, ctx)).id
-    const { sessions } = await cartPaymentState(request, ctx.pk, ctx.customer, ctx.cartId)
-    sessionId = sessions.find((s) => s.provider_id === PROMPTPAY_PROVIDER)?.id ?? ""
-    expect(sessionId, "session พร้อมเพย์ที่จ่ายแล้ว").toBeTruthy()
     expect(firstCollection, "payment collection แรกของ cart").toBeTruthy()
     await placeOrder(request, ctx.pk, ctx.customer, { variant: variantId, quantity: 1 })
   })
@@ -151,7 +156,10 @@ test("AC-32: PromptPay ถูกคืนเงินจริง → ขั้�
         )
       ).workflow_executions
     await expect.poll(async () => cartCompletionSettled(await executions(), ctx.cartId), { timeout: 90_000 }).toBe(true)
-    await logRefundEvidence(request, ctx, sessionId)
+    // Q-P15: Stripe สร้าง refund ได้ (พร้อมเพย์ = requires_action รอลูกค้ากรอกบัญชีจากอีเมล) — Medusa นับว่าคืนแล้วทันทีที่สร้างสำเร็จ
+    const statuses = await stripeRefundStatuses(request, ctx.intentId)
+    expect(statuses, "refund ของ PaymentIntent ฝั่ง Stripe").toHaveLength(1)
+    expect(["requires_action", "pending", "succeeded"]).toContain(statuses[0])
     const state = await collectionOf(request, ctx)
     expect(state.completed).toBe(false)
     expect(state.captured).toBeGreaterThan(0)

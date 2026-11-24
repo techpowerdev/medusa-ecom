@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { CHECKOUT_CONFLICTS, checkoutConflictMessage } from "./checkout-error"
+import { CHECKOUT_CONFLICTS, REVIEW_REFUNDED_NOTICE, checkoutConflictMessage } from "./checkout-error"
 import { MedusaApiError } from "./medusa-api-error"
 
 // FS-15 (spec 03 กฎข้อ 20c, AC-22): 409 ตอน complete cart → ข้อความไทยเฉพาะของแต่ละ code
@@ -43,5 +43,16 @@ describe("checkoutConflictMessage", () => {
     expect(checkoutConflictMessage(apiError("Payment sessions are required", "SOMETHING_ELSE"))).toBeNull()
     expect(checkoutConflictMessage(null)).toBeNull()
     expect(checkoutConflictMessage("FLASH_SOLD_OUT")).toBeNull()
+  })
+})
+
+// PAY-19 (spec 06 กฎข้อ 21a — owner Q-P16 2026-11-24): notice ขั้น review หลัง reload ไม่รู้ว่าจ่ายด้วยวิธีไหน (collection ไม่มี session)
+// → บอกทั้งสองทาง: บัตรเข้าบัญชีตามรอบธนาคาร, พร้อมเพย์ตรวจอีเมลเพื่อกรอกบัญชีรับเงินคืน
+describe("REVIEW_REFUNDED_NOTICE", () => {
+  it("ไทย ไม่มีคำละติน บอกทางของบัตรและพร้อมเพย์", () => {
+    expect(REVIEW_REFUNDED_NOTICE).toMatch(THAI)
+    expect(REVIEW_REFUNDED_NOTICE).not.toMatch(/[A-Za-z]{2,}/)
+    expect(REVIEW_REFUNDED_NOTICE).toMatch(/บัตร[^]*ตามรอบของธนาคาร/)
+    expect(REVIEW_REFUNDED_NOTICE).toMatch(/พร้อมเพย์[^]*ตรวจอีเมล/)
   })
 })

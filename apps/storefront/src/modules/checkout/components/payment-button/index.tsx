@@ -4,7 +4,7 @@ import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import { unauthorizedLoginPath } from "@lib/util/login-notice"
-import { REFUNDED_NOTICE } from "@lib/util/checkout-error"
+import { REVIEW_REFUNDED_NOTICE } from "@lib/util/checkout-error"
 import {
   PROMPTPAY_FALLBACK_MAX_REQUESTS,
   PROMPTPAY_POLL_MS,
@@ -131,7 +131,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   // → ข้อความคืนเงิน + ลิงก์ตะกร้าแทนปุ่ม disabled; ขั้น payment ยังเลือกวิธีชำระใหม่ได้ (PAY-9 สร้าง collection ใหม่)
   if (refundedWithoutSession(cart)) {
     return (
-      <RefundedGoToCart text={REFUNDED_NOTICE} noticeTestId="review-refunded-notice" linkTestId="review-refunded-go-to-cart" />
+      <RefundedGoToCart text={REVIEW_REFUNDED_NOTICE} noticeTestId="review-refunded-notice" linkTestId="review-refunded-go-to-cart" />
     )
   }
 

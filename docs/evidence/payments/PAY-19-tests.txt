@@ -31,3 +31,13 @@ D-2 green: Tests 73 passed (73)
 pnpm --filter storefront test:unit → Tests 1950 passed; test:e2e:unit → 165 passed; typecheck ผ่าน; lint 0 errors
 D-1: e2e pay-19 พิมพ์ "PAY-19 D-1 evidence" (Admin payments + refunds, collection ของ cart, refund ฝั่ง Stripe) ลง stdout ของ CI
      และ ci.yml ตอนล้ม grep "trying to|refund" ทั้ง /tmp/backend.log — assertion เดิมคงไว้ (รอบนี้ล้มได้)
+
+== D-1 สาเหตุ (CI run 45337457353, backend log) ==
+"Error was thrown trying to cancel payment - pay_… - Error: An error occurred in refundPayment: Cannot send email. In order to complete this refund,
+ we must collect refund details through email. …" → Stripe ไม่สร้าง refund (stripe_refunds: []), Medusa refunds: [], collection completed, sessions []
+แก้: ลูกค้า e2e ใช้อีเมลจาก secret E2E_PROMPTPAY_REFUND_EMAIL (Q-P15) — refund จะเป็น requires_action
+
+== Q-P16 ข้อความพร้อมเพย์ (red → green) ==
+red: vitest promptpay-finish.test.ts + checkout-error.test.ts → Failed Tests 8 (PROMPTPAY_* / REVIEW_REFUNDED_NOTICE ยังไม่มี)
+green: 34 passed; storefront test:unit 126 files / 1955 passed; test:e2e:unit 165 passed; typecheck ผ่าน; lint 0 errors
+e2e ในเครื่อง: core-69, core-52, core-19b (บัตร) 18 passed; skipped: pay-19 (ไม่มี Stripe/อีเมล), core-19b PromptPay
