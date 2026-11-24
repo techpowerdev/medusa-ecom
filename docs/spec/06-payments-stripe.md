@@ -534,7 +534,7 @@ Out of scope: แก้สถานะเงินใน Medusa อัตโน�
   (d) ไม่ตั้ง env → 0 notification + log warn; notification provider throw กับแถวแรกของสองแถว → job ไม่ throw, log error, แถวที่สองยังถูกส่ง; ไม่มี refund/payment/order ใหม่ทุกกรณี;
   (e) unit: ตัวจัดประเภทแบบ pure (แถว refund + ยอด → alert) ครบกรณีกฎข้อ 22b; static: source ของ job/helper ไม่ import `stripe`;
   (f) unit อ่าน `docs/ops/production.md`: มีหัวข้อ "คืนเงินล้ม/ค้าง (ADR-029)" ที่มีคำ `REFUND_FAILED`, `REFUND_STUCK`, `refund-orphan-payment`, "ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน"
-- AC-34 (PAY-21, กฎข้อ 23) integration http (payload ลงนามแบบ `payment-webhook-orphan.spec.ts` → `POST /hooks/payment/stripe_stripe`):
+- ☑ AC-34 (PAY-21, กฎข้อ 23) integration http (payload ลงนามแบบ `payment-webhook-orphan.spec.ts` → `POST /hooks/payment/stripe_stripe`):
   (a) `refund.failed` ของ `re_x` (PI `pi_x`, 81000 THB satang) → notification 1 รายการ key `stripe-refund-failed:re_x` data `amount` = 810, `payment_intent` = `pi_x`, มี `failure_reason`
       + log error ขึ้นต้น `STRIPE_REFUND_FAILED`; ส่งซ้ำ + `refund.updated` status `failed` ของ `re_x` → ยัง 1 รายการ;
   (b) `refund.updated` status `canceled` ของ `re_y` → 1 รายการ; status `requires_action`/`pending`/`succeeded` → 0;
@@ -550,7 +550,7 @@ Out of scope: แก้สถานะเงินใน Medusa อัตโน�
 ### Tasks (คืนเงินล้ม/ค้าง)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| PAY-20 | (เงิน — ADR-029 ก) job ตรวจ refund ที่ล้ม/ค้าง + helper `sendOpsAlert` + template `refund-failed` + runbook (กฎข้อ 22) | `apps/backend/src/jobs/refund-failure-scan.ts` (ใหม่), `src/lib/ops-alert.ts` (ใหม่ + unit), `src/lib/refund-alerts.ts` (classifier + unit), `src/modules/resend/templates.ts` (+ test), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/refund-failure-scan.spec.ts` (ใหม่) | ~150 LOC + ~250 LOC test | AC-33 | PR เอกสารนี้ (ADR-029 accepted ☑) | `templates.ts`, `production.md` (PAY-21 — ตัวหลัง) |
+| PAY-20 | ☑ #550 — (เงิน — ADR-029 ก) job ตรวจ refund ที่ล้ม/ค้าง + helper `sendOpsAlert` + template `refund-failed` + runbook (กฎข้อ 22) | `apps/backend/src/jobs/refund-failure-scan.ts` (ใหม่), `src/lib/ops-alert.ts` (ใหม่ + unit), `src/lib/refund-alerts.ts` (classifier + unit), `src/modules/resend/templates.ts` (+ test), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/refund-failure-scan.spec.ts` (ใหม่) | ~150 LOC + ~250 LOC test | AC-33 | PR เอกสารนี้ (ADR-029 accepted ☑) | `templates.ts`, `production.md` (PAY-21 — ตัวหลัง) |
 | PAY-21 | (เงิน — ADR-029 ข) subscriber `refund.failed`/`refund.updated` + event ใน Stripe webhooks/`ci.yml` + runbook/checklist (กฎข้อ 23) | `apps/backend/src/subscribers/stripe-refund-webhook.ts` (ใหม่), `docs/ops/production.md`, `.github/workflows/ci.yml` (`events=`), `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/stripe-refund-webhook.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-34 | **PAY-20** (helper + template + หัวข้อ runbook) | `ci.yml` (PAY-19 #548 ถ้าแก้ — ตัวหลัง sync) |
 
 ลำดับ: PAY-20 ∥ PAY-19 (คนละ app) → PAY-21
