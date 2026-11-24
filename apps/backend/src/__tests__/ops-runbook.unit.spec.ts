@@ -249,3 +249,32 @@ describe("AC-50 runbook redact และหลัง go-live", () => {
     expect(afterGoLive).toMatch(/reset/i)
   })
 })
+
+// PAY-20: spec 06 AC-33f (กฎข้อ 22f, ADR-029) — runbook คืนเงินล้ม/ค้าง
+describe("AC-33f runbook คืนเงินล้ม/ค้าง (ADR-029)", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const body = section(doc, "คืนเงินล้ม/ค้าง (ADR-029)")
+
+  it('มีหัวข้อ "คืนเงินล้ม/ค้าง (ADR-029)"', () => {
+    expect(body).not.toBeNull()
+  })
+
+  it("อ้าง code ของ alert, script refund-orphan-payment และให้ตรวจ Stripe Dashboard ก่อนคืนซ้ำ", () => {
+    for (const word of ["REFUND_FAILED", "REFUND_STUCK", "refund-orphan-payment", "ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน"]) {
+      expect(body).toContain(word)
+    }
+  })
+
+  it("ระบุทางของ order (Refund ใน admin), ยอดคงเหลือ, log ของ Medusa และข้อจำกัดของการเดายอด (review #549)", () => {
+    for (const word of [
+      "GET /admin/payments/",
+      "Error was thrown trying to cancel payment",
+      "Refund ใน admin",
+      "incident",
+      "order transaction",
+      "partial refund",
+    ]) {
+      expect(body).toContain(word)
+    }
+  })
+})

@@ -1,0 +1,49 @@
+# PAY-20 (spec 06 กฎข้อ 22, AC-33, ADR-029 ก) — ผลทดสอบในเครื่อง 2026-11-24 (node v22.23.3)
+
+## RED (ก่อนแก้)
+### unit backend
+FAIL src/lib/__tests__/refund-alerts.unit.spec.ts
+    Cannot find module '../refund-alerts' from 'src/lib/__tests__/refund-alerts.unit.spec.ts'
+FAIL src/__tests__/ops-runbook.unit.spec.ts
+      263 |     for (const word of ["REFUND_FAILED", "REFUND_STUCK", "refund-orphan-payment", "ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน"]) {
+FAIL src/lib/__tests__/ops-alert.unit.spec.ts
+    Cannot find module '../ops-alert' from 'src/lib/__tests__/ops-alert.unit.spec.ts'
+FAIL src/modules/resend/__tests__/templates.unit.spec.ts
+      273 |       expect(email!.subject).toContain("REFUND_FAILED")
+      283 |       const email = renderEmailTemplate(EmailTemplates.REFUND_FAILED, { code: "REFUND_STUCK", refund_id: "ref_2", payment_id: "pay_2" })
+Test Suites: 4 failed, 4 total
+Tests:       5 failed, 50 passed, 55 total
+### integration: refund-failure-scan.spec.ts
+FAIL integration-tests/http/refund-failure-scan.spec.ts
+    Cannot find module '../../src/jobs/refund-failure-scan' from 'integration-tests/http/refund-failure-scan.spec.ts'
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+
+## GREEN
+### unit ของ task (classifier, sendOpsAlert, template refund-failed, runbook AC-33f, static ไม่ import stripe)
+PASS src/lib/__tests__/ops-alert.unit.spec.ts
+PASS src/modules/resend/__tests__/templates.unit.spec.ts
+PASS src/lib/__tests__/refund-alerts.unit.spec.ts
+PASS src/__tests__/ops-runbook.unit.spec.ts
+Test Suites: 4 passed, 4 total
+Tests:       77 passed, 77 total
+### unit backend ทั้งชุด (pnpm --filter backend test:unit)
+Test Suites: 132 passed, 132 total
+Tests:       1856 passed, 1856 total
+### integration http: refund-failure-scan.spec.ts (AC-33a–d)
+PASS integration-tests/http/refund-failure-scan.spec.ts (10.82 s)
+      ✓ job config: name, every 15 minutes (473 ms)
+      ✓ (a) provider throws → refundPaymentsWorkflow swallows it (2.22.1) and leaves a soft-deleted failed refund row (571 ms)
+      ✓ (a) failed refund → one REFUND_FAILED email + error log; running again sends and logs nothing more (439 ms)
+      ✓ (b) refund failed then succeeded later (provider back to normal) → no alert (404 ms)
+      ✓ (c) pending refund row: +30 minutes → nothing; +61 minutes → one REFUND_STUCK (410 ms)
+      ✓ (c) failed refund older than 7 days from now → nothing (376 ms)
+      ✓ (d) OPS_ALERT_EMAIL not set → no notification + warn (error log still written) (381 ms)
+      ✓ (d) notification provider throws on the first of two rows → job does not throw, logs error, second row is still sent (457 ms)
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+
+## อื่นๆ
+- pnpm --filter backend typecheck: ผ่าน
+- pnpm --filter backend lint: 0 errors (4 warnings เดิมในไฟล์ที่ไม่ได้แตะ)
+- pnpm --filter backend build: ผ่าน
