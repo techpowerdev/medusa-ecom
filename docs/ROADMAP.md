@@ -6,9 +6,9 @@
 
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
-- **ตอนนี้**: รอบ 42 เสร็จ 21/21 task (☑ develop `599009b6`) — release **v0.3.1** รอ OPS-36, PAY-23, PAY-24 ของรอบ 43 (owner 2026-11-25)
+- **ตอนนี้**: รอบ 42 เสร็จ 21/21 task (☑ develop `599009b6`) — release **v0.3.1** พร้อม — OPS-36 #554, PAY-23 #555, PAY-24 #556 merge แล้ว รอ owner merge `develop → main`
 - **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 (ตอบครบ 2026-11-25) — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
-- **ขั้นต่อไป**: OPS-36 + PAY-23 + PAY-24 merge → owner merge v0.3.1 (`develop → main`) → go-live (checklist ข้อ 1–16) → **v1.0.0**
+- **ขั้นต่อไป**: owner merge v0.3.1 (`develop → main`) → go-live (checklist ข้อ 1–16) → **v1.0.0**
 
 ### Release
 
@@ -17,7 +17,7 @@
 | v0.1.0 | 🚀 | 2026-11-11 | #342 (`15fce017`), tag `v0.1.0` | ร้านค้าหลัก + task ทุกตัวที่ merge ถึงวันนั้น (เงื่อนไข: CORE-12/12b/17/18, OPS-21, EV-15, CORE-55) |
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
-| v0.3.1 | ◐ รอ OPS-36, PAY-23, PAY-24 | — | — | รอบ 42 (21 task ☑ — history หัวข้อ "รอบ 42 — ผลจริง") + 3 task ก่อน go-live ของรอบ 43 (Q-R43-ฉ = ก แก้เพิ่ม owner 2026-11-25) |
+| v0.3.1 | ☑ พร้อม — รอ owner merge | — | — | รอบ 42 (21 task ☑ — history หัวข้อ "รอบ 42 — ผลจริง") + 3 task ก่อน go-live ของรอบ 43 (Q-R43-ฉ = ก แก้เพิ่ม owner 2026-11-25) |
 | go-live | ☐ | — | — | หลัง v0.3.1 + Go-live checklist ข้อ 1–16 |
 | v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
 | หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 13 task |
@@ -40,9 +40,9 @@ Depends "—" = เฉพาะ PR เอกสารปิดรอบ 42 · �
 
 | Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
-| OPS-36 | 07 | (PII) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด + หลายท่อน | — | — | ☐ |
-| PAY-23 | 06 | (เงิน) alert คืนเงิน: `source`, prefix log, เรียงใหม่ก่อน (Q-P23 = ก), `order_id` | — | — | ☐ |
-| PAY-24 | 06 | (เงิน) ผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่ใช้ `sendOpsAlert` | — | — | ☐ |
+| OPS-36 | 07 | (PII) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด + หลายท่อน | — | — | ☑ #554 |
+| PAY-23 | 06 | (เงิน) alert คืนเงิน: `source`, prefix log, เรียงใหม่ก่อน (Q-P23 = ก), `order_id` | — | — | ☑ #555 |
+| PAY-24 | 06 | (เงิน) ผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่ใช้ `sendOpsAlert` | — | — | ☑ #556 |
 
 ### หลัง go-live (☐ รอ owner สั่ง)
 
@@ -90,7 +90,7 @@ Depends "—" = เฉพาะ PR เอกสารปิดรอบ 42 · �
 | 10 | Postgres prod `LC_CTYPE` ไม่ใช่ `C`/`POSIX` (`check:go-live` ตรวจ) | CORE-75, OPS-33 |
 | 11 | รัน `lowercase-emails.ts` แปลงอีเมลเดิมเป็นตัวเล็ก | CORE-80/81 |
 | 12 | backfill ธง `evoucher_backordered` | EV-25 |
-| 13 | log ของ prod ไม่มี PII (access log ไม่ผ่าน redact — OPS-35; ช่องรั่วที่เหลือปิดใน OPS-36 ของ v0.3.1) | OPS-33, OPS-35, OPS-36 |
+| 13 | log ของ prod ไม่มี PII (access log ไม่ผ่าน redact — OPS-35; OPS-36 ของ v0.3.1 ปิดช่องหลัก; ยังเหลือ `\'` ใน JSON escape และ PII ใน array — follow-up) | OPS-33, OPS-35, OPS-36 |
 | 14 | วัด p95 `POST /store/search` กับ catalog จริง (> ~10k สินค้าหรือ p95 > 300ms → ADR) | CORE-75 |
 | 15 | endpoint live สมัคร `refund.updated`/`refund.failed` + ทดสอบบัตร `4000 0000 0000 5126` ว่า alert ถึง ops | PAY-21, ADR-029 |
 | 16 | บัญชี Stripe live ยื่น account application ให้เสร็จ (refund พร้อมเพย์ต้องส่งอีเมลขอบัญชีถึงลูกค้า) | PAY-19 (Q-P14/15), ปิดรอบ 42 |
@@ -115,8 +115,8 @@ Depends "—" = เฉพาะ PR เอกสารปิดรอบ 42 · �
 | Admin UI ใช้ component ของ Medusa | 08 | 🚀 | 41 🚀 | ADR-018; ADM-22/36 เป็นผลตรวจไม่มี PR |
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
-| รอบ 42 | 01–08 | ☑ | 21 ☑ | → v0.3.1 (รอ OPS-36, PAY-23, PAY-24 แล้ว owner merge); ADR-029 |
-| รอบ 43 | 01, 03, 04, 06–08 | ☐ | 16 ☐ | 3 ตัว → v0.3.1 ก่อน go-live; 13 ตัวหลัง go-live |
+| รอบ 42 | 01–08 | ☑ | 21 ☑ | → v0.3.1 (รอ owner merge); ADR-029 |
+| รอบ 43 | 01, 03, 04, 06–08 | ◐ | 3 ☑ + 13 ☐ | 3 ตัว ☑ → v0.3.1; 13 ตัวหลัง go-live |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
 

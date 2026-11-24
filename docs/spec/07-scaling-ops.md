@@ -635,7 +635,7 @@ Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน
 ### Tasks (รอบ 43)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| OPS-36 | (PII — v0.3.1 ก่อน go-live) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด, ≤ 3 ชั้น, สตริงหลายท่อน (กฎข้อ 18 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit) | ~20 LOC + ~60 LOC test | AC-51 | PR เอกสารปิดรอบ 42 | — |
+| OPS-36 | ☑ #554 — (PII — v0.3.1 ก่อน go-live) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด, ≤ 3 ชั้น, สตริงหลายท่อน (กฎข้อ 18 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit) | ~20 LOC + ~60 LOC test | AC-51 | PR เอกสารปิดรอบ 42 | — |
 | OPS-37 | runbook หลัง go-live (ตำแหน่ง widget + คำสั่ง DELETE) + log backend เต็มเป็น artifact ของ CI (กฎข้อ 19 รอบ 43) | `docs/ops/production.md`, `.github/workflows/ci.yml`, `src/__tests__/{ops-runbook,ci-workflow}.unit.spec.ts` | ~15 LOC + ~30 LOC test | AC-52 | PR เอกสารปิดรอบ 42 | `production.md` (PAY-23 — ตัวหลัง sync) |
 | OPS-38 | backend lint warning 4 ไฟล์ โดยไม่เปลี่ยน id ของ step/workflow (กฎข้อ 20 รอบ 43) | ไฟล์ในกฎข้อ 20 รอบ 43, unit | ~15 LOC + ~30 LOC test | AC-53 | PR เอกสารปิดรอบ 42 | — |
 
