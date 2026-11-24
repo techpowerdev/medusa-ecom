@@ -77,6 +77,8 @@ export default async function stripeRefundWebhookHandler({
       resource_type: "payment_intent",
       resource_id: refund.payment_intent ?? refund.id!,
       data: {
+        // PAY-23 (กฎข้อ 26a, ADR-029): แยกที่มาจาก job refund-failure-scan (`"medusa"`) ใน template เดียวกัน
+        source: "stripe",
         refund_id: refund.id,
         payment_intent: refund.payment_intent ?? null,
         amount: refund.amount === undefined ? null : fromSmallestUnit(refund.amount, currency || "thb"),
@@ -89,7 +91,8 @@ export default async function stripeRefundWebhookHandler({
     // Stripe ส่ง refund.updated กับ refund.failed ของ refund เดียวกันพร้อมกัน — lock ต่อ refund ให้ตัวหลังเห็นแถวของตัวแรก
     await container.resolve(Modules.LOCKING).execute(key, alert, { timeout: 30 })
   } catch (error) {
-    logger.error(`${STRIPE_REFUND_FAILED}: stripe-refund-webhook failed for ${refund.id}: ${errorMessage(error)}`)
+    // PAY-23 (กฎข้อ 26b): ไม่ขึ้นต้นด้วย STRIPE_REFUND_FAILED — code สงวนให้ alert จริง (sendOpsAlert) ที่ ops ค้นใน log
+    logger.error(`stripe-refund-webhook: alert failed for ${refund.id}: ${errorMessage(error)}`)
   }
 }
 

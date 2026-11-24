@@ -344,8 +344,9 @@ Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็ม�
 `failed` (soft-delete) หรือ `pending` (ระหว่างรอ provider) ไว้ job `refund-failure-scan` (worker, ทุก 15 นาที, `apps/backend/src/jobs/refund-failure-scan.ts`)
 ตรวจแถวย้อนหลัง 7 วัน แล้วเขียน log error ขึ้นต้นด้วย code (มี `refund_id`, `payment_id`, `amount`, `currency_code`, `provider_id`, `cart_id`/`order_id`, `note`)
 และส่งอีเมล template `refund-failed` หา `OPS_ALERT_EMAIL` ครั้งเดียวต่อแถว refund (ไม่ตั้ง env → log error ซ้ำทุกรอบจนพ้น 7 วัน + warn)
-เกิน 200 แถวต่อรอบ → warn `REFUND_SCAN_TRUNCATED`: job ตรวจเฉพาะ 200 แถวที่เก่าที่สุด และแถวที่แจ้งแล้ว/คืนครบแล้วยังนับอยู่จนพ้น 7 วัน
-**แถวที่ใหม่กว่าจะไม่ถูกตรวจจนกว่าแถวเก่าพ้นช่วง 7 วัน** — ตรวจ refund ที่ล้ม/ค้างด้วยมือ (`GET /admin/payments/<payment_id>` ของ payment ที่มี log `Error was thrown trying to cancel payment`)
+เกิน 200 แถวต่อรอบ → warn `REFUND_SCAN_TRUNCATED`: job ตรวจเฉพาะ 200 แถวที่ใหม่ที่สุด (เรียง `created_at` ใหม่ก่อน — spec 06 กฎข้อ 26c) refund ที่เพิ่งล้มจึงถูกแจ้งภายในรอบเสมอ
+แถวที่เก่ากว่านั้นไม่ถูกตรวจในรอบนั้น (ปกติถูกแจ้งไปแล้วในรอบก่อน แต่ถ้าล้มพร้อมกันเกิน 200 แถวใน 15 นาที แถวเก่าของชุดนั้นมีแค่ warn)
+— ตรวจ refund ที่ล้ม/ค้างด้วยมือ (`GET /admin/payments/<payment_id>` ของ payment ที่มี log `Error was thrown trying to cancel payment`)
 อีเมลที่ส่งล้ม (Resend ล่ม/429) ถูกส่งใหม่รอบถัดไปจนสำเร็จหนึ่งฉบับ (แถว notification ที่ล้มถูก soft-delete ก่อนส่งใหม่)
 
 ### `REFUND_FAILED` — provider ปฏิเสธ refund และ payment ยังมียอดที่ไม่ถูกคืน
@@ -368,6 +369,8 @@ Medusa **ยังแสดงว่าคืนแล้ว** (บันทึ�
    (Medusa นับยอดนี้ว่าคืนแล้ว ยอดคงเหลือจึงไม่พอ/ทำให้คืนเกิน)
 3. note ใน order (วิธีคืนจริง, วันที่, ผู้ทำ) และบันทึก incident — ยอด refund ใน Medusa จะไม่ตรงเงินจริงตลอดไป
 อีเมลเดียวต่อ refund (key `stripe-refund-failed:<refund_id>`) แม้ Stripe ส่งทั้งสอง event/ส่งซ้ำ; signature ผิด → warn `stripe-refund-webhook: skipped` ไม่ alert
+อีเมลมี `source: "stripe"` (alert จาก job = `"medusa"`); lock/อ่าน notification ล้ม → log error `stripe-refund-webhook: alert failed for <refund_id>` (ไม่ใช่ alert
+— ไม่ได้ส่งอีเมล) → ตรวจ refund นั้นใน Stripe Dashboard แล้วทำตามข้อ 1–3
 
 ### ข้อจำกัดของ job (อ่านก่อนตัดสิน)
 - job ตัดสินว่า "คืนสำเร็จภายหลัง" จากยอด captured − refunded ของ payment เท่านั้น ไม่ได้จับคู่ refund ที่ล้มกับ refund ที่สำเร็จ — กรณี **partial refund**
