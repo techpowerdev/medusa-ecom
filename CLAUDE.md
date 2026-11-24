@@ -123,6 +123,8 @@ pnpm --filter storefront build && pnpm --filter storefront start
 **การ merge และ CI (session หลัก)**
 - ก่อน merge **ทุก** job (`gh pr checks <n> --watch`) ต้องเป็น `SUCCESS` หรือ `SKIPPED` ตามที่ `classify-changes.sh`
   ตัดสิน — ห้ามมี FAILURE/CANCELLED/ค่าว่าง (conclusion ว่างใน `statusCheckRollup` = ยังรันอยู่ ไม่ใช่ผ่าน)
+  ถ้า job ค้างสถานะ pending/in_progress ทั้งที่ conclusion เป็น success ให้ยืนยันด้วย `gh run view <run> --json status,conclusion` ว่า run เป็น
+  `completed`/`success` ก่อน merge (รอบ 42 #551 job `changes` ค้างแบบนี้)
 - `gh pr checks <n> --watch` อาจจบก่อนทุก job เสร็จ → ตรวจซ้ำจนไม่มี IN_PROGRESS/QUEUED/conclusion ว่าง ก่อนถือว่าเขียว
 - merge ทีละตัว: ก่อน merge แต่ละ PR ต้อง merge `origin/develop` เข้า branch ของ PR (sync) แล้วรอ CI ของ PR นั้นเขียว
   — CI ไม่รันบน push ไป `develop` แล้ว (ทดสอบ tree เดียวกับ PR ที่ sync แล้วซ้ำ) ด่าน "develop เขียว" จึงคือ PR ที่ sync
@@ -159,16 +161,15 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - CI ข้าม job หนักให้อัตโนมัติ: PR เอกสารล้วนรันแค่ `lint-typecheck` (ยกเว้น `docs/ops/**` ซึ่งนับเป็นโค้ด backend เพราะ unit test อ่านไฟล์เหล่านี้); PR ที่แก้แค่ `apps/storefront/**` ข้าม `backend-tests`/`docker-worker-mode`
   (กติกาใน `tools/ci/classify-changes.sh`) push ไป `main` รันครบเสมอ
 - PR ที่แก้หลัง APPROVE (หรือหลัง REQUEST CHANGES) ต้อง re-review สั้นๆ ก่อน merge; หลัง rebase ใช้ `git range-diff`
-- `pnpm --filter backend test:integration:http -- <path>` **ไม่กรองไฟล์** รันชุดเต็ม ~45 นาที (รอบ 42 เกิด 2 ครั้ง) — รันไฟล์เดียวด้วย
-  `cd apps/backend && TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules ./node_modules/.bin/jest <path เต็ม>`
+- integration ในเครื่องรันทีละไฟล์เท่านั้น: `cd apps/backend && TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules
+  ./node_modules/.bin/jest --forceExit <path เต็ม>` และเช็กด้วย `--listTests` ก่อนว่าได้ 1 ไฟล์ (รอบ 42 มี agent รันชุดเต็ม ~45 นาทีโดยไม่ตั้งใจ 2 ครั้ง)
 - ห้าม `playwright install` เวอร์ชันอื่น/ลบ browser ใน `~/Library/Caches/ms-playwright` (ใช้ร่วมทุก agent — รอบ 42 Chromium หายกลางงาน)
-- builder ต้องโหลด skill ของ Medusa ก่อนเริ่ม ถ้าเรียกไม่ได้ให้ตรวจ API จาก source ใน `node_modules` และระบุใน PR body
+- ถ้าเรียก skill ของ Medusa ไม่ได้ ให้ตรวจ API จาก source ใน `node_modules` แทน และระบุใน PR body
 - PR ที่ไม่ได้ติ๊กแถว task ตอน merge (เลี่ยง CI รอบเพิ่ม) ต้องระบุชัดว่า PR ไหนรับไปติ๊ก (PR ถัดไปหรือ PR ปิดรอบ) และ PR ปิดรอบไล่ตรวจทุกแถว
 - เมื่อ owner ตัดสินจนถ้อยคำ AC เปลี่ยน ให้ระบุให้ชัดว่า builder หรือ planner เป็นคนแก้ spec (กัน conflict); AC ที่อยู่ติดกันใน spec
   (เช่น AC-189/190/191) จะ conflict เมื่อหลาย PR ติ๊กพร้อมกัน — ตอน sync/train เก็บทุกฝั่ง
 - แก้ไฟล์ที่มีอักษรไทย/สัญลักษณ์ (☑ —) ด้วย python (`encoding='utf-8'`) หรือ perl แบบ byte (ไม่มี `-CSD`) — `perl -CSD` โดยไม่มี `use utf8`
   เข้ารหัสอักษรในคำสั่งซ้ำจนเป็น "â" (รอบ 42 train #543 เกือบหลุด)
-- ก่อน merge ต้องเห็นทุก job จบจริงใน `gh run view --json jobs` ไม่ใช่แค่ `gh pr checks` (รอบ 42 #551 job `changes` ค้าง pending ใน checks ทั้งที่ run จบ success)
 
 **โค้ดและ test**
 - key ของ `MedusaService({...})` ต้องตรงกับชื่อ model (Query ตั้งชื่อ method จากชื่อ entity) และมี test `query.graph`
@@ -193,7 +194,9 @@ pnpm --filter storefront build && pnpm --filter storefront start
   (PAY-17 #540) และ route mock ที่ส่ง server action ต่อไป backend ยังมีผลข้างเคียงจริง (เช่น `authorizePaymentSession` เปลี่ยน session เป็น
   canceled ก่อน throw — PAY-16 #541) ถ้าไม่ต้องการให้ตอบจาก browser แทน
 - Medusa 2.22.1: `refundPaymentsStep` กลืน error ของ provider (log อย่างเดียว) — คืนเงินล้มจะเงียบ (ADR-029: job `refund-failure-scan` + webhook
-  `refund.failed`); Notification module ส่งซ้ำแถว `failure` ด้วย `idempotency_key` ไม่ได้ (ส่งซ้ำไม่หยุด) — แจ้ง ops ผ่าน `sendOpsAlert` เท่านั้น
+  `refund.failed`); Notification module เมื่อเจอแถวเดิมของ `idempotency_key` ที่เป็น `failure`
+  จะส่งไป provider จริงด้วย id ใหม่แต่ไม่สร้างแถว (update หาไม่เจอ → แถวค้าง `failure`) → ทุกครั้งที่เรียกส่งอีเมลจริงซ้ำ — แจ้ง ops ผ่าน `sendOpsAlert`
+  (soft-delete แถว `failure` ก่อนส่ง) เท่านั้น
 - คืนเงิน PromptPay ของ Stripe เป็น async (`requires_action` — Stripe อีเมลลูกค้าขอเลขบัญชี) และ Medusa นับ refunded ทันที; บัญชี Stripe test
   ส่งอีเมลได้เฉพาะอีเมลบัญชี → e2e ที่คืนเงินพร้อมเพย์จริงใช้อีเมลลูกค้าจาก secret `E2E_PROMPTPAY_REFUND_EMAIL` (repo public — ห้ามอีเมลนี้
   ลงโค้ด/log/evidence, ปิด trace ของ spec นั้น และเปิดดู PNG ก่อน commit)
