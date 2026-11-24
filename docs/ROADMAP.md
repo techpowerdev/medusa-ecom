@@ -6,9 +6,9 @@
 
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
-- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 19/21 task (PAY-20 ◐ builder, PAY-21 ☐ ← PAY-20)
+- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 20/21 task (PAY-21 ◐ builder)
 - **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 42 (ADR-029 accepted 2026-11-24)
-- **ขั้นต่อไป**: PAY-20 → PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
+- **ขั้นต่อไป**: PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
 
 ### Release
 
@@ -54,7 +54,7 @@
 | B | ADM-48 | 08 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit #513 | ADM-47 | ☑ #542 |
 | C | CORE-95 | 01 | จ่ายบัตรแล้ว session หมด → notice บนหน้า login แล้วไป orders (Q-C16 = ก) | PAY-17 | ☑ #546 |
 | C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (ขอบเขตย่อตาม Q-P13 = ก) | PAY-17, CORE-95 (#546) | ☑ #548 |
-| D | PAY-20 | 06 | job ตรวจ refund ล้ม/ค้าง → alert `OPS_ALERT_EMAIL` (ADR-029 ก) — ต้องทำก่อน go-live | — (ADR-029 ☑) | ☐ |
+| D | PAY-20 | 06 | job ตรวจ refund ล้ม/ค้าง → alert `OPS_ALERT_EMAIL` (ADR-029 ก) — ต้องทำก่อน go-live | — (ADR-029 ☑) | ☑ #550 |
 | D | PAY-21 | 06 | webhook `refund.failed`/`refund.updated` → alert (ADR-029 ข) — ต้องทำก่อน go-live | PAY-20 | ☐ |
 
 - merge train: #537 (CORE-89, CORE-90, ADM-47, EV-26, AF-27, GB-31, CORE-94, PAY-18) · #538 (CORE-93, GB-32, CORE-92, OPS-35) ·

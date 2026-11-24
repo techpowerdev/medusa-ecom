@@ -349,7 +349,7 @@ jobs:
           echo "STRIPE_WEBHOOK_SECRET=$whsec" >> "$GITHUB_ENV"
           # Stripe CLI รุ่นใหม่ (apt) บังคับ --events ไม่งั้นจบทันทีด้วย "must specify events to forward"
           # ต้องตรงกับ docs/ops/production.md หัวข้อ "Stripe webhooks" (OPS-10: tools/ci/check-stripe-events.sh)
-          events=payment_intent.created,payment_intent.processing,payment_intent.requires_action,payment_intent.amount_capturable_updated,payment_intent.partially_funded,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled
+          events=payment_intent.created,payment_intent.processing,payment_intent.requires_action,payment_intent.amount_capturable_updated,payment_intent.partially_funded,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,refund.updated,refund.failed
           stripe version
           # ADR-023: endpoint เดียว /hooks/payment/stripe_stripe รับ event ของทั้งบัตรและ PromptPay (ตรงกับ prod)
           nohup stripe listen --skip-update --events "$events" --forward-to "localhost:9000/hooks/payment/stripe_stripe" \

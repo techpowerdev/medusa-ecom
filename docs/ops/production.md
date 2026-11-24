@@ -122,7 +122,7 @@ backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDER
 `stripe-webhook.spec.ts`, PAY-7 — ต้องผ่านทุกครั้งที่ bump `@medusajs/*`)
 endpoint สมัคร event ตามรายการด้านล่าง = event ที่ `getWebhookActionAndData` ของ `@medusajs/payment-stripe` 2.22.1 จัดการ
 (event อื่นได้ `not_supported` — สมัครเกินไม่พังแต่เปลือง request) ทุก event ต้องมี `metadata.session_id` ที่ Medusa ใส่ตอนสร้าง PaymentIntent
-ไม่งั้นถูกนับเป็น `not_supported`
+ไม่งั้นถูกนับเป็น `not_supported` — ยกเว้น `refund.*` สองรายการท้ายที่ subscriber `stripe-refund-webhook` ของเราจัดการแทน (ADR-029 ข)
 - `payment_intent.created` — pending (หรือ pending authorization เมื่อเป็น async payment method)
 - `payment_intent.processing` — เหมือน `created`
 - `payment_intent.requires_action` — requires more (เช่น รอสแกน QR PromptPay / 3DS)
@@ -131,6 +131,9 @@ endpoint สมัคร event ตามรายการด้านล่า�
 - `payment_intent.succeeded` — successful (complete cart / capture)
 - `payment_intent.payment_failed` — failed
 - `payment_intent.canceled` — canceled
+- `refund.updated` — Medusa คืน `not_supported` (refund ไม่มี `metadata.session_id`) — subscriber `stripe-refund-webhook` ของเราอ่าน body ที่ provider ตรวจ signature แล้ว:
+  status `failed`/`canceled` → alert `STRIPE_REFUND_FAILED` (PAY-21, ADR-029 ข)
+- `refund.failed` — เหมือน `refund.updated` (refund ที่ Stripe รับแล้วล้มภายหลัง; ทั้งสอง event ของ refund เดียวกัน = อีเมลเดียว)
 
 รายการนี้ต้องเท่ากับ `events=` ของขั้น `stripe listen` ใน `.github/workflows/ci.yml` (ตรวจใน job `lint-typecheck` ด้วย
 `tools/ci/check-stripe-events.sh`, OPS-10) — bump `@medusajs/*` ให้ตรวจ `getWebhookActionAndData` ใหม่แล้วแก้ทั้งสองที่
@@ -187,6 +190,9 @@ endpoint สมัคร event ตามรายการด้านล่า�
     (สิทธิ์เข้าถึง/ระยะเก็บ; ห้ามแปะลง ticket/แชตสาธารณะ)
 14. วัดเวลา `POST /store/search` (body เดียวกับ storefront, คำค้นไทย 2–3 คำ + คำว่าง) กับ catalog ขนาดจริงบน DB ของ prod/staging แล้วบันทึก p95 — ถ้าสินค้าเกิน ~10,000 รายการ
     (หรือ p95 เกิน 300ms) ต้องเขียน ADR เรื่องวิธีค้นหา (index/ provider) ก่อนเปิดร้าน (qa #465 — `typo_tolerance` ใช้ similarity ของ `pg_trgm` ทั้งตาราง)
+15. webhook endpoint live (`/hooks/payment/stripe_stripe`) สมัคร `refund.updated` และ `refund.failed` ด้วย (หัวข้อ "Stripe webhooks", PAY-21 — ไม่สมัคร = ไม่รู้ว่า refund ล้มภายหลัง)
+    แล้วทดสอบใน test mode: จ่ายด้วยบัตร `4000 0000 0000 5126` → refund (Stripe รับแล้วล้มภายหลัง) → ต้องได้อีเมล `STRIPE_REFUND_FAILED` ถึง `OPS_ALERT_EMAIL`
+    และ log ของ server/worker ไม่มี `stripe-refund-webhook: skipped`
 
 ## หลัง go-live
 - widget `order-refund-blocked` (PAY-10) ขึ้นบนสุดของหน้า order ผ่าน system default layout ของ zone `order.details` (migration script
@@ -350,6 +356,14 @@ Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็ม�
 
 ### `REFUND_STUCK` — แถว refund `pending` ไม่ขยับเกิน 60 นาที (process ตายระหว่างรอ provider = ไม่รู้ผล)
 **ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน**คืนซ้ำ (กันคืนสองครั้ง): มี refund ของยอดนี้แล้ว → ไม่ต้องคืนเพิ่ม note + incident; ไม่มี → ทำตาม `REFUND_FAILED` ข้อ 2–4
+
+### `STRIPE_REFUND_FAILED` — Stripe รับ refund แล้วล้มภายหลัง (webhook `refund.failed`/`refund.updated`, PAY-21)
+Medusa **ยังแสดงว่าคืนแล้ว** (บันทึก refund `succeeded` ตอน Stripe รับ — ไม่แก้ยอดอัตโนมัติ, Q-P19) แต่เงินกลับเข้า balance ของ Stripe ลูกค้ายังไม่ได้เงิน
+1. ค้น PaymentIntent (`payment_intent` ใน alert) ใน Stripe Dashboard → ดู refund (`refund_id`) และ `failure_reason` (เช่นบัตรถูกยกเลิก/ปิดบัญชี)
+2. ติดต่อลูกค้าเพื่อหาช่องทางคืน → คืนใหม่ใน Stripe Dashboard (ถ้าวิธีชำระยังรับได้) หรือคืนนอก Stripe (โอนเงิน) — **ห้ามกด Refund ใน admin ซ้ำ**
+   (Medusa นับยอดนี้ว่าคืนแล้ว ยอดคงเหลือจึงไม่พอ/ทำให้คืนเกิน)
+3. note ใน order (วิธีคืนจริง, วันที่, ผู้ทำ) และบันทึก incident — ยอด refund ใน Medusa จะไม่ตรงเงินจริงตลอดไป
+อีเมลเดียวต่อ refund (key `stripe-refund-failed:<refund_id>`) แม้ Stripe ส่งทั้งสอง event/ส่งซ้ำ; signature ผิด → warn `stripe-refund-webhook: skipped` ไม่ alert
 
 ### ข้อจำกัดของ job (อ่านก่อนตัดสิน)
 - job ตัดสินว่า "คืนสำเร็จภายหลัง" จากยอด captured − refunded ของ payment เท่านั้น ไม่ได้จับคู่ refund ที่ล้มกับ refund ที่สำเร็จ — กรณี **partial refund**
