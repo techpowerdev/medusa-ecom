@@ -22,6 +22,7 @@ import {
   retrievePaymentIntent,
   sessionIntentId,
 } from "./support/stripe"
+import { isCartIdActionBody } from "./support/server-action"
 import { THAI, latinWordsOutsideAllowList } from "./support/thai-text"
 
 // PAY-14 (spec 06 กฎข้อ 16, AC-27 a/b/c): session บัตรที่เลือกอยู่ชี้ PaymentIntent ที่จบแล้ว (แบบ session ชั่วคราวระหว่าง compensation)
@@ -177,5 +178,160 @@ test("AC-27 a: สร้างอัตโนมัติล้ม 1 ครั�
     await expect(page.getByTestId("payment-session-reset-notice")).toHaveCount(0)
     await fillCard(page, "4242424242424242")
     await expectNoStripeEnglish(page)
+  })
+})
+
+// PAY-16 (spec 06 กฎข้อ 18, AC-29): สถานะขั้น payment หลังเจอ session ที่ชี้ PI ที่จบแล้ว — ฉากเดียวกับ AC-27 (Stripe test mode จริง)
+// + route mock ผลของ server action สร้าง session: ตอบจาก browser เองโดยไม่ส่งต่อไป backend (review #541: การส่งต่อไป backend
+// ด้วย provider ปลอมยังผ่าน guard ที่ทำให้ session เดิมเป็น canceled) — cart ใน backend จึงยังชี้ PI เดิมเสมอ
+const MANUAL = "pp_system_default"
+
+/**
+ * payload ของ server action ที่ไม่ revalidate (รูปแบบเดียวกับที่ Next 16 ตอบจริง: แถว 0 = `{"a":"$@1","f":""…}`, แถว 1 = ผลของ action)
+ * `f` ว่าง = ไม่มี flight data → หน้าไม่ได้ cart ใหม่จาก action นี้
+ */
+const actionPayload = (result: object) => `0:{"a":"$@1","f":"","q":"","i":false,"b":"pay16"}\n1:${JSON.stringify(result)}\n`
+
+type CardActions = { calls: number }
+
+/** action สร้าง session ของบัตร: ครั้งที่ n (นับจาก 1) ใช้ `plan(n)` — "fail" = 500, object = ตอบเป็นผลนั้น (ไม่ถึง backend), undefined = ผ่านจริง */
+async function mockCardSessions(page: Page, plan: (n: number) => "fail" | object | undefined): Promise<CardActions> {
+  const seen: CardActions = { calls: 0 }
+  await page.route(`**/${CC}/checkout**`, async (route) => {
+    const req = route.request()
+    if (!isCardSessionAction(req)) return route.fallback()
+    const action = plan(++seen.calls)
+    if (action === undefined) return route.fallback()
+    if (action === "fail") return route.fulfill({ status: 500, body: "" })
+    return route.fulfill({ status: 200, contentType: "text/x-component", body: actionPayload(action) })
+  })
+  return seen
+}
+
+test.describe("PAY-16 (AC-29)", () => {
+  test.use({ evidenceTarget: { feature: "payments", taskId: "PAY-16" } })
+
+  test("AC-29 a: notice แล้วเลือก manual → notice และปุ่มลองอีกครั้งหาย ไม่สร้าง session ของบัตรเพิ่ม", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const customer = await createCustomer(request, pk)
+    await cartWithStaleCardSession(page, context, request, baseURL!, customer)
+    const actions = await mockCardSessions(page, () => "fail")
+
+    await step("สร้างอัตโนมัติล้ม → payment-session-reset-notice", async () => {
+      await page.goto(`/${CC}/checkout?step=payment`)
+      await expect(page.getByTestId("payment-session-reset-notice")).toBeVisible({ timeout: 10_000 })
+      expect(actions.calls).toBe(1)
+    })
+
+    await step("เลือก manual → notice หาย ไม่มีปุ่มลองอีกครั้ง และไม่มี action สร้าง session ของบัตร", async () => {
+      await page.getByTestId(`payment-option-${MANUAL}`).click()
+      await expect(page.getByTestId("payment-session-reset-notice")).toHaveCount(0)
+      await expect(page.getByTestId("payment-session-retry")).toHaveCount(0)
+      await expect(page.getByTestId("submit-payment-button")).toBeEnabled()
+      expect(actions.calls).toBe(1)
+      await evidence("01-notice-gone-after-manual")
+    })
+  })
+
+  test("AC-29 b: dblclick ปุ่มลองอีกครั้ง → สร้าง session 1 ครั้ง แล้วได้ PI ใหม่", async ({ page, context, request, baseURL, step }) => {
+    test.setTimeout(120_000)
+    const customer = await createCustomer(request, pk)
+    const { cartId, staleIntent } = await cartWithStaleCardSession(page, context, request, baseURL!, customer)
+    const actions = await mockCardSessions(page, (n) => (n === 1 ? "fail" : undefined))
+
+    await step("notice ขึ้นหลังสร้างอัตโนมัติล้ม แล้ว dblclick payment-session-retry", async () => {
+      await page.goto(`/${CC}/checkout?step=payment`)
+      await page.getByTestId("payment-session-retry").dblclick({ timeout: 10_000 })
+    })
+
+    await step("action สร้าง session หลัง notice = 1 ครั้ง และ cart ได้ PI ใหม่", async () => {
+      await expect.poll(hasNewIntent(request, customer, cartId, staleIntent), { timeout: 15_000 }).toBe(true)
+      await fillCard(page, "4242424242424242")
+      expect(actions.calls).toBe(2)
+    })
+  })
+
+  test("AC-29 c: สร้าง session ใหม่ 'สำเร็จ' แต่ cart ไม่ได้ session ใหม่ → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton แล้วกดลองอีกครั้งได้", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const customer = await createCustomer(request, pk)
+    const { cartId, staleIntent } = await cartWithStaleCardSession(page, context, request, baseURL!, customer)
+    // ครั้งแรก (อัตโนมัติ) ตอบ ok โดยไม่สร้าง session จริง; ครั้งต่อไป (กดลองอีกครั้ง) ผ่านจริง
+    const actions = await mockCardSessions(page, (n) => (n === 1 ? { ok: true } : undefined))
+
+    await step("เปิดขั้น payment → renew อัตโนมัติ 'สำเร็จ' ระหว่างรอเห็น skeleton ของช่องบัตร", async () => {
+      await page.goto(`/${CC}/checkout?step=payment`)
+      await expect.poll(() => actions.calls, { timeout: 10_000 }).toBe(1)
+      await expect(page.getByTestId("skeleton-card-details")).toBeVisible()
+    })
+
+    await step("ภายใน 12 วินาที → notice ไทย และไม่มี skeleton ค้าง", async () => {
+      const notice = page.getByTestId("payment-session-reset-notice")
+      await expect(notice).toBeVisible({ timeout: 12_000 })
+      await expect(notice).toHaveText(THAI)
+      await expect(page.getByTestId("skeleton-card-details")).toHaveCount(0)
+      expect(actions.calls).toBe(1)
+      await expectNoStripeEnglish(page)
+      await evidence("02-notice-without-skeleton")
+    })
+
+    await step("กด payment-session-retry → action สร้าง session ใหม่ 1 ครั้ง, cart ได้ PI ใหม่, notice หาย และ Elements mount", async () => {
+      await page.getByTestId("payment-session-retry").click()
+      await expect.poll(hasNewIntent(request, customer, cartId, staleIntent), { timeout: 15_000 }).toBe(true)
+      expect(actions.calls).toBe(2)
+      await expect(page.getByTestId("payment-session-reset-notice")).toHaveCount(0)
+      await fillCard(page, "4242424242424242")
+      await expectNoStripeEnglish(page)
+    })
+  })
+
+  test("AC-29 d: PAYMENT_ALREADY_COMPLETED → ระหว่างรอ order radio วิธีชำระ disabled", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const customer = await createCustomer(request, pk)
+    const { cartId } = await cartWithStaleCardSession(page, context, request, baseURL!, customer)
+    await mockCardSessions(page, () => ({ error: "PAYMENT_ALREADY_COMPLETED" }))
+    // placeOrder ของการรอ order: ส่งต่อด้วย cart id ที่ไม่มีจริง (`kind: failed`) แล้วแทนเป็น processing = รอ order ต่อ (แบบ CORE-76)
+    const placeOrders = { calls: 0 }
+    await page.route(`**/${CC}/checkout**`, async (route) => {
+      const req = route.request()
+      const body = req.postData() ?? ""
+      // placeOrder(cart.id, undefined, countryCode) — body มี country code ด้วย
+      const isPlaceOrder = isCartIdActionBody(body, cartId) && body.includes(`"${CC}"`)
+      if (req.method() !== "POST" || !req.headers()["next-action"] || !isPlaceOrder) return route.fallback()
+      placeOrders.calls++
+      const response = await route.fetch({ postData: body.replaceAll(cartId, "cart_pay16_missing") })
+      const text = await response.text()
+      expect(text).toContain('"kind":"failed"')
+      return route.fulfill({ response, body: text.replace('"kind":"failed"', '"kind":"processing"') })
+    })
+
+    await step("เปิดขั้น payment → backend ตอบชำระแล้ว → รอ order (processing) และ radio ทุกตัว disabled", async () => {
+      await page.goto(`/${CC}/checkout?step=payment`)
+      await expect(page.getByTestId("checkout-processing-notice")).toBeVisible({ timeout: 15_000 })
+      expect(placeOrders.calls).toBeGreaterThan(0)
+      await expect(page.getByTestId(`payment-option-${CARD_PROVIDER}`)).toBeDisabled()
+      await expect(page.getByTestId(`payment-option-${MANUAL}`)).toBeDisabled()
+      await evidence("03-radio-disabled-awaiting-order")
+    })
   })
 })
