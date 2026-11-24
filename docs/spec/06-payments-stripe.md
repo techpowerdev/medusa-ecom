@@ -471,6 +471,84 @@ Status: draft (☐ — รอ owner สั่งทำ) · ไม่กระท
   (ก) **[Recommended]** ไม่ทำ — กรณีเกินสิทธิ์ FS-21/FS-23 ปิดปุ่มสั่งซื้อและเตือนในตะกร้า/review อยู่แล้ว เหลือเฉพาะ sold-out ที่เกิดใหม่ซึ่งหายาก และเงินถูกคืนอัตโนมัติเสมอ (ADR-015/compensation); ไม่มีงาน
   (ข) จำผล refunded ต่อ cart (เช่น `cart.metadata` หรือ cookie ที่มี cart id) แล้วแสดง notice + ซ่อนปุ่มจ่ายจนกว่าตะกร้าเปลี่ยน — ~80 LOC + e2e; ต้องกำหนดว่า "ตะกร้าเปลี่ยน" นับอะไร
 
+## Follow-up รอบ 42 — คืนเงินล้ม/ค้าง (ADR-029; owner Q-P17 = ทำใน v0.3.1, 2026-11-24)
+Status: draft (รอ owner ตัดสิน Q-P18 / ADR-029) · ที่มา: PAY-19 #548 (CI) — PromptPay ฿810 ตัดเงินแล้วไม่ถูกคืน มีแค่ log · กฎข้อ 21/AC-32 เป็นของ PAY-19 ไม่แตะ
+Goal (owner): ระบบต้องรู้เมื่อการคืนเงินล้มหรือค้าง
+Out of scope: แก้สถานะเงินใน Medusa อัตโนมัติ, refund ซ้ำอัตโนมัติ, แจ้งลูกค้าอัตโนมัติ, widget admin, แก้ข้อความหน้าร้าน (PAY-11/15/19), refund ที่ `requires_action` (รอลูกค้ากรอกบัญชี = ปกติ)
+### What Medusa already gives us (คืนเงินล้ม/ค้าง)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| รู้ว่า refund ที่ provider ล้ม | `refundPaymentsStep` 2.22.1 **กลืน error** (log อย่างเดียว) — ผู้เรียก: `compensatePaymentIfNeededStep`, `cancelOrderWorkflow`, GB-21, script ADR-015; ไม่มี hook/event | ไม่มี → custom (กฎข้อ 22) |
+| ร่องรอย refund ที่ล้ม/ค้าง | Payment module เก็บแถว `refund` `status=failed` แบบ soft-delete และ `pending` ระหว่างรอ provider (`RefundStatus`, `payment-module.js:439-470`); อ่านด้วย `listRefunds`/`query.graph` + withDeleted | ใช้ตามเดิม (อ่านอย่างเดียว) |
+| ผล async ของ Stripe refund | `getWebhookActionAndData` ตรวจ signature แล้วคืน `not_supported` สำหรับ `refund.*` (ไม่มี `metadata.session_id`); core subscriber ข้าม | ขยาย: subscriber ของเราอ่าน body ที่ตรวจแล้ว (กฎข้อ 23, แบบ `payment-webhook-orphan.ts`) |
+| scheduled job | `src/jobs` ของ Medusa (worker รันอยู่แล้ว) + `scheduledJobsDisabled` ของ OPS-15b | ใช้ตามเดิม |
+| อีเมลถึง ops + กันส่งซ้ำ | Notification module (Resend) + `idempotency_key` (`notification-module-service.js:39-55`) | ใช้ตามเดิม |
+| คืนเงินซ้ำเมื่อ ops ตัดสิน | `refund-orphan-payment.ts` (ADR-015), Refund ของ admin (`refundPaymentWorkflow` + guard PAY-8) | ใช้ตามเดิมใน runbook |
+### Business rules (คืนเงินล้ม/ค้าง)
+22. (PAY-20 — ADR-029 ก) job `src/jobs/refund-failure-scan.ts` (cron `*/15 * * * *`, ชื่อ `refund-failure-scan`, ข้ามเมื่อ `scheduledJobsDisabled()`) เรียกฟังก์ชันที่ export
+    `scanRefundFailures(container, now = new Date())` (test เรียกตรง):
+    (a) อ่านแถว `refund` ที่ `created_at ≥ now − 7 วัน` และ `status ∈ {failed, pending}` รวมแถวที่ soft-delete (`listRefunds` + `withDeleted` หรือ `query.graph` — builder ยืนยัน
+        ว่าได้แถว failed จริง; ห้าม SQL ตรง) เรียงเก่าก่อน ไม่เกิน 200 แถวต่อรอบ (เกิน → log warn `REFUND_SCAN_TRUNCATED`);
+    (b) `failed` และ payment นั้นยังเหลือ `captured − refunded` > 0 (`MathBN` จาก `raw_amount`, นับเฉพาะ refund ที่ไม่ถูกลบ) → alert code `REFUND_FAILED`; เหลือ 0 (คืนสำเร็จภายหลัง) → ไม่ alert;
+        `pending` ที่ไม่ถูกลบและ `updated_at ≤ now − 60 นาที` → alert code `REFUND_STUCK`;
+    (c) alert ต่อแถว refund: idempotency key `refund-alert:<refund_id>` — มี notification ของ key นี้ที่ไม่ใช่ `failure` แล้ว → ข้าม (ไม่ log/ไม่ส่งซ้ำ); ไม่งั้น `logger.error`
+        หนึ่งบรรทัดขึ้นต้นด้วย code พร้อม `refund_id`, `payment_id`, `amount`, `currency_code`, `provider_id`, `cart_id`/`order_id` (จาก `query.graph` ถ้าหาได้), `note`
+        แล้วส่งอีเมล template `refund-failed` ถึง `OPS_ALERT_EMAIL` (`resource_type: "payment"`, `resource_id: payment_id`); ไม่ตั้ง env → log warn ข้ามการส่ง
+        (log error ซ้ำทุกรอบจนพ้น 7 วัน — ยอมรับ, `checkBootEnv` เตือนตอนบูตอยู่แล้ว); ส่งล้ม → log error แล้วทำแถวถัดไป — job ไม่ throw;
+    (d) helper `src/lib/ops-alert.ts` (`sendOpsAlert`: trim env, warn เมื่อไม่ตั้ง, catch การส่ง, ส่ง `idempotency_key`) ใช้ใน PAY-20 และ PAY-21 — ผู้ใช้เดิม 3 ที่ไม่ย้ายใน task นี้;
+    (e) อ่านอย่างเดียว: ไม่สร้าง/แก้ refund/payment/order, ไม่ import `stripe`;
+    (f) runbook ใหม่ใน `docs/ops/production.md` หัวข้อ **"คืนเงินล้ม/ค้าง (ADR-029)"**: `REFUND_FAILED` → ดูยอดคงเหลือใน `GET /admin/payments/:id` + log `Error was thrown trying to cancel payment`
+        ของ payment นั้น → collection ไม่ผูก order ใช้ `refund-orphan-payment.ts`, ผูก order ใช้ Refund ใน admin; Stripe ปฏิเสธซ้ำ (เช่นพร้อมเพย์ส่งอีเมลขอบัญชีไม่ได้) → คืนนอก Stripe
+        แล้ว note ใน order + บันทึก incident; `REFUND_STUCK` → **ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน**คืนซ้ำ (กันคืนสองครั้ง); order ที่ยกเลิกแล้ว refund ล้ม → ยอด refund ใน order
+        ไม่ตรงเงินจริง (Medusa เพิ่ม order transaction แม้ refund ล้ม) ให้ note ไว้
+23. (PAY-21 — ADR-029 ข) subscriber `src/subscribers/stripe-refund-webhook.ts` บน `PaymentWebhookEvents.WebhookReceived` (subscriberId `stripe-refund-webhook`):
+    (a) ทำงานเฉพาะ `provider` ขึ้นต้นด้วย `stripe` และ `type` ของ body ∈ {`refund.failed`, `refund.updated`} — อื่นๆ return ทันทีโดยไม่เรียก provider; แปลง `rawData` แบบ Buffer เหมือน `payment-webhook-orphan.ts`;
+    (b) เรียก `paymentModule.getWebhookActionAndData(input)` เพื่อตรวจ signature เท่านั้น — throw → log warn `stripe-refund-webhook: skipped` แล้ว return (ไม่ alert);
+    (c) `refund.failed` หรือ `refund.updated` ที่ `data.object.status ∈ {failed, canceled}` → `sendOpsAlert` code `STRIPE_REFUND_FAILED` key `stripe-refund-failed:<refund id>` (event ซ้ำ/ทั้งสอง type ของ refund
+        เดียวกัน = อีเมลเดียว) data: `refund_id`, `payment_intent`, `amount` (หน่วยหลักตามทศนิยมของสกุลเงิน ด้วย `MathBN`), `currency`, `status`, `failure_reason`; สถานะอื่น → ไม่ทำอะไร;
+    (d) ไม่ throw, ไม่เขียน DB, ไม่ import `stripe`;
+    (e) เพิ่ม `refund.updated`, `refund.failed` ใน `docs/ops/production.md` "Stripe webhooks" (ระบุว่า Medusa คืน `not_supported` และ subscriber ของเราจัดการ) และ `events=` ของ `stripe listen`
+        ใน `.github/workflows/ci.yml` (OPS-10 ตรวจว่าเซตตรงกัน); runbook ข้อ 22f เพิ่ม `STRIPE_REFUND_FAILED` (Medusa ยังแสดง refunded แต่เงินกลับเข้า balance ของ Stripe → ติดต่อลูกค้า คืนใหม่
+        ใน Stripe Dashboard หรือนอก Stripe, note ใน order, incident); Go-live checklist ข้อใหม่: endpoint live สมัคร `refund.updated`/`refund.failed` และทดสอบใน test mode ด้วยบัตร
+        `4000 0000 0000 5126` (refund แล้วล้มภายหลัง) ว่าอีเมลถึง `OPS_ALERT_EMAIL`
+24. ข้อความหน้าร้าน "คืนเงิน" ของ PAY-11/15/19 = ระบบเริ่มคืนเงิน ไม่ใช่เงินถึงแล้ว — ไม่แก้ในรอบนี้ (ADR-029 "ผลที่ตามมา")
+### Acceptance criteria (คืนเงินล้ม/ค้าง)
+- AC-33 (PAY-20, กฎข้อ 22) integration (mock payment provider ที่ `refundPayment` throw ได้, `OPS_ALERT_EMAIL=ops@x.test`, mock notification provider):
+  (a) payment captured บน collection ของ cart ที่ไม่มี order → `refundPaymentsWorkflow` ขณะ provider throw → workflow ไม่ throw และ result ไม่มี payment นั้น (ยืนยันพฤติกรรม 2.22.1 — ล้มเมื่อ bump เปลี่ยน);
+      `scanRefundFailures` → notification 1 รายการ `to="ops@x.test"` template `refund-failed` ที่ data มี `payment_id` + `amount` และ log error ขึ้นต้น `REFUND_FAILED`; รันซ้ำ → ยัง 1 รายการและไม่มี log error เพิ่ม;
+  (b) refund ล้มแล้วคืนสำเร็จภายหลัง (provider กลับมาปกติ) ก่อน scan → 0 notification;
+  (c) แถว `pending` (builder สร้างด้วยวิธีที่มีจริง) + `now` = +61 นาที → `REFUND_STUCK` 1 รายการ; `now` = +30 นาที → 0; แถว failed ที่ `created_at` เก่ากว่า 7 วันจาก `now` → 0;
+  (d) ไม่ตั้ง env → 0 notification + log warn; notification provider throw กับแถวแรกของสองแถว → job ไม่ throw, log error, แถวที่สองยังถูกส่ง; ไม่มี refund/payment/order ใหม่ทุกกรณี;
+  (e) unit: ตัวจัดประเภทแบบ pure (แถว refund + ยอด → alert) ครบกรณีกฎข้อ 22b; static: source ของ job/helper ไม่ import `stripe`;
+  (f) unit อ่าน `docs/ops/production.md`: มีหัวข้อ "คืนเงินล้ม/ค้าง (ADR-029)" ที่มีคำ `REFUND_FAILED`, `REFUND_STUCK`, `refund-orphan-payment`, "ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน"
+- AC-34 (PAY-21, กฎข้อ 23) integration http (payload ลงนามแบบ `payment-webhook-orphan.spec.ts` → `POST /hooks/payment/stripe_stripe`):
+  (a) `refund.failed` ของ `re_x` (PI `pi_x`, 81000 THB satang) → notification 1 รายการ key `stripe-refund-failed:re_x` data `amount` = 810, `payment_intent` = `pi_x`, มี `failure_reason`
+      + log error ขึ้นต้น `STRIPE_REFUND_FAILED`; ส่งซ้ำ + `refund.updated` status `failed` ของ `re_x` → ยัง 1 รายการ;
+  (b) `refund.updated` status `canceled` ของ `re_y` → 1 รายการ; status `requires_action`/`pending`/`succeeded` → 0;
+  (c) signature ผิด → 0 notification + log warn; `payment_intent.succeeded` ปกติ → subscriber นี้ไม่เรียก notification; ไม่มี payment/refund/order ใหม่ทุกกรณี;
+  (d) static: `tools/ci/check-stripe-events.sh` ผ่าน (เซต event ใน doc = `ci.yml` รวม `refund.updated`, `refund.failed`); source ของ subscriber ไม่ import `stripe`;
+      unit อ่าน `production.md`: runbook มี `STRIPE_REFUND_FAILED` และ checklist มี `4000 0000 0000 5126`
+### Test plan (คืนเงินล้ม/ค้าง)
+| ระดับ | AC |
+|---|---|
+| unit (classifier, static import, runbook/checklist grep) | AC-33e–f, AC-34d |
+| integration modules/http (mock provider + mock notification) | AC-33a–d, AC-34a–c |
+| CI static (`check-stripe-events.sh` ใน `lint-typecheck`) | AC-34d |
+### Tasks (คืนเงินล้ม/ค้าง)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| PAY-20 | (เงิน — ADR-029 ก) job ตรวจ refund ที่ล้ม/ค้าง + helper `sendOpsAlert` + template `refund-failed` + runbook (กฎข้อ 22) | `apps/backend/src/jobs/refund-failure-scan.ts` (ใหม่), `src/lib/ops-alert.ts` (ใหม่ + unit), `src/lib/refund-alerts.ts` (classifier + unit), `src/modules/resend/templates.ts` (+ test), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/refund-failure-scan.spec.ts` (ใหม่) | ~150 LOC + ~250 LOC test | AC-33 | PR เอกสารนี้; **ADR-029 accepted (Q-P18)** | `templates.ts`, `production.md` (PAY-21 — ตัวหลัง) |
+| PAY-21 | (เงิน — ADR-029 ข) subscriber `refund.failed`/`refund.updated` + event ใน Stripe webhooks/`ci.yml` + runbook/checklist (กฎข้อ 23) | `apps/backend/src/subscribers/stripe-refund-webhook.ts` (ใหม่), `docs/ops/production.md`, `.github/workflows/ci.yml` (`events=`), `src/__tests__/ops-runbook.unit.spec.ts`, `integration-tests/http/stripe-refund-webhook.spec.ts` (ใหม่) | ~80 LOC + ~200 LOC test | AC-34 | **PAY-20** (helper + template + หัวข้อ runbook); ADR-029 accepted ทางเลือกที่มี ข | `ci.yml` (PAY-19 #548 ถ้าแก้ — ตัวหลัง sync) |
+
+ลำดับ: PAY-20 ∥ PAY-19 (คนละ app) → PAY-21; ถ้า owner เลือกแค่ ข → PAY-21 ย้าย helper/template/หัวข้อ runbook มาไว้ในตัวเอง (Depends เหลือ ADR-029)
+### Open questions (คืนเงินล้ม/ค้าง)
+- **Q-P18** อนุมัติ ADR-029 ทางเลือกใด:
+  (ก+ข) **[Recommended]** job ตรวจแถว refund ของ Medusa (ล้มทันที/ค้าง) + webhook `refund.failed`/`refund.updated` (ล้มภายหลัง) — ครอบทั้งสองช่อง ไม่มี infra ใหม่ ~230 LOC + test (PAY-20, PAY-21);
+  (ก) job อย่างเดียว — ไม่รู้เมื่อพร้อมเพย์/บัตรล้มหลัง Stripe รับ refund แล้ว; (ข) webhook อย่างเดียว — ไม่รู้กรณีที่เกิดจริงใน #548 (Stripe ปฏิเสธตั้งแต่สร้าง refund)
+- **Q-P19** refund ที่ Stripe แจ้งล้มภายหลัง (ข): ข้อมูลใน Medusa ยังนับว่าคืนแล้ว — (ก) **[Recommended]** ไม่แก้ใน v0.3.1: ops note ใน order + incident ตาม runbook (Medusa 2.22.1 ไม่มี API
+  เปลี่ยน refund ที่สำเร็จเป็นล้ม); (ข) เปิด task ปรับยอดหลัง go-live (ต้อง ADR ใหม่ — แตะข้อมูลของ Payment module)
+- **Q-P20** เปิด issue upstream ที่ Medusa: `refundPaymentsStep` กลืน error ของ provider และ `refundPaymentsWorkflow` เพิ่ม order transaction ของ refund ที่ล้ม — (ก) **[Recommended]** เปิด (session หลักเปิด; ร่างใน PR body ของ PAY-20); (ข) ไม่เปิด
+
 ## Open questions
 - ~~Q10~~ **ตัดสินแล้ว (owner 2026-11-21) = อนุมัติ ADR-025 ทางเลือก 2** → PAY-9 เริ่มได้หลัง GB-20; คำถามเดิม (รอบ 40): อนุมัติ ADR-025 (reset payment collection ของ cart ที่ถูกคืนเงิน)
   หรือให้ storefront สร้าง cart ใหม่ (ไม่ครอบ client อื่น)
