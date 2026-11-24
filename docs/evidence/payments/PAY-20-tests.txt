@@ -29,7 +29,7 @@ Test Suites: 4 passed, 4 total
 Tests:       77 passed, 77 total
 ### unit backend ทั้งชุด (pnpm --filter backend test:unit)
 Test Suites: 132 passed, 132 total
-Tests:       1856 passed, 1856 total
+Tests:       1857 passed, 1857 total
 ### integration http: refund-failure-scan.spec.ts (AC-33a–d)
 PASS integration-tests/http/refund-failure-scan.spec.ts (10.82 s)
       ✓ job config: name, every 15 minutes (473 ms)
@@ -47,3 +47,54 @@ Tests:       8 passed, 8 total
 - pnpm --filter backend typecheck: ผ่าน
 - pnpm --filter backend lint: 0 errors (4 warnings เดิมในไฟล์ที่ไม่ได้แตะ)
 - pnpm --filter backend build: ผ่าน
+
+## รอบแก้ review #550 (2026-11-24) — blocker: อีเมลส่งซ้ำทุกรอบเมื่อ provider ของ notification ล้มครั้งเดียว
+### RED (ก่อนแก้)
+#### integration: refund-failure-scan.spec.ts (เพิ่ม test ล้มที่ notificationProviderService_.send + test order_id)
+      ✓ job config: name, every 15 minutes (1191 ms)
+      ✓ (a) provider throws → refundPaymentsWorkflow swallows it (2.22.1) and leaves a soft-deleted failed refund row (1626 ms)
+      ✓ (a) failed refund → one REFUND_FAILED email + error log; running again sends and logs nothing more (1026 ms)
+      ✓ (b) refund failed then succeeded later (provider back to normal) → no alert (1016 ms)
+      ✓ (c) pending refund row: +30 minutes → nothing; +61 minutes → one REFUND_STUCK (529 ms)
+      ✓ (c) failed refund older than 7 days from now → nothing (478 ms)
+      ✓ (d) OPS_ALERT_EMAIL not set → no notification + warn (error log still written) (971 ms)
+      ✕ (d) the email provider fails once → retried next run with exactly one success email, then never again (review #550) (667 ms)
+      ✓ (a) payment of an order → alert carries order_id (508 ms)
+      ✓ (d) notification provider throws on the first of two rows → job does not throw, logs error, second row is still sent (995 ms)
+    Expected number of calls: 2
+    Received number of calls: 4
+Tests:       1 failed, 9 passed, 10 total
+#### unit: ops-alert.unit.spec.ts
+    ✕ a previous failed notification of the key → soft-deleted before alerting again (review #550: Medusa 2.22.1 cannot retry it in place)
+Tests:       1 failed, 6 passed, 7 total
+### GREEN (หลังแก้ + merge origin/develop)
+#### integration: refund-failure-scan.spec.ts
+{"level":"error","message":"REFUND_FAILED source=medusa refund_id=ref_01M8716CE9XVR34SZ0W3PCHNZ9 payment_id=pay_01M8716CBBSKTCC9A61YQK203H amount=500 currency_code=thb provider_id=pp_system_default cart_id=cart_01M8716C9WXT16WDPX8B14RQWH order_id=null note=null","timestamp":"2026-11-24 22:01:08","worker_mode":"shared"}
+{"level":"info","message":"Attempting to send a notification to: 'ops@x.test' on the channel: 'email' with template: 'refund-failed' and data: '{\"code\":\"REFUND_FAILED\",\"source\":\"medusa\",\"refund_id\":\"ref_01M8716CE9XVR34SZ0W3PCHNZ9\",\"payment_id\":\"pay_01M8716CBBSKTCC9A61YQK203H\",\"amount\":\"500\",\"currency_code\":\"thb\",\"provider_id\":\"pp_system_default\",\"cart_id\":\"cart_01M8716C9WXT16WDPX8B14RQWH\",\"order_id\":null,\"note\":null}'","timestamp":"2026-11-24 22:01:08"}
+{"level":"error","message":"REFUND_FAILED source=medusa refund_id=ref_01M8716DXC1J6Y9XSBW9XS2DH6 payment_id=pay_01M8716DTM0MV2HX0JXD1VT7DP amount=500 currency_code=thb provider_id=pp_system_default cart_id=cart_01M8716DSHCZZ92ZQKRSGWWS3F order_id=null note=null","timestamp":"2026-11-24 22:01:10","worker_mode":"shared"}
+{"level":"warn","message":"REFUND_FAILED: OPS_ALERT_EMAIL is not set — skipping the ops alert email","timestamp":"2026-11-24 22:01:10","worker_mode":"shared"}
+{"level":"error","message":"REFUND_FAILED source=medusa refund_id=ref_01M8716E77E07B76ZQCQ1KHBMJ payment_id=pay_01M8716E5EQE55VNMNGDG3HQ7G amount=500 currency_code=thb provider_id=pp_system_default cart_id=cart_01M8716E460NVFXXVF41QG54GF order_id=null note=null","timestamp":"2026-11-24 22:01:10","worker_mode":"shared"}
+{"level":"error","message":"REFUND_FAILED: OPS_ALERT_EMAIL send failed: Failed to send notification with id noti_01M8716E7TPYH0GSBSART47HMW:\nresend down","timestamp":"2026-11-24 22:01:10","worker_mode":"shared"}
+{"level":"error","message":"REFUND_FAILED source=medusa refund_id=ref_01M8716E77E07B76ZQCQ1KHBMJ payment_id=pay_01M8716E5EQE55VNMNGDG3HQ7G amount=500 currency_code=thb provider_id=pp_system_default cart_id=cart_01M8716E460NVFXXVF41QG54GF order_id=null note=null","timestamp":"2026-11-24 22:01:10","worker_mode":"shared"}
+{"level":"info","message":"Attempting to send a notification to: 'ops@x.test' on the channel: 'email' with template: 'refund-failed' and data: '{\"code\":\"REFUND_FAILED\",\"source\":\"medusa\",\"refund_id\":\"ref_01M8716E77E07B76ZQCQ1KHBMJ\",\"payment_id\":\"pay_01M8716E5EQE55VNMNGDG3HQ7G\",\"amount\":\"500\",\"currency_code\":\"thb\",\"provider_id\":\"pp_system_default\",\"cart_id\":\"cart_01M8716E460NVFXXVF41QG54GF\",\"order_id\":null,\"note\":null}'","timestamp":"2026-11-24 22:01:10"}
+{"level":"error","message":"REFUND_FAILED source=medusa refund_id=ref_01M8716EMGS0M8V7VJX77WHAGA payment_id=pay_01M8716EK1P8DB9JRTFM4HKCRT amount=400 currency_code=thb provider_id=pp_system_default cart_id=null order_id=order_01M8716EGWMRGYAE5ENREZEQ00 note=null","timestamp":"2026-11-24 22:01:10","worker_mode":"shared"}
+{"level":"info","message":"Attempting to send a notification to: 'ops@x.test' on the channel: 'email' with template: 'refund-failed' and data: '{\"code\":\"REFUND_FAILED\",\"source\":\"medusa\",\"refund_id\":\"ref_01M8716EMGS0M8V7VJX77WHAGA\",\"payment_id\":\"pay_01M8716EK1P8DB9JRTFM4HKCRT\",\"amount\":\"400\",\"currency_code\":\"thb\",\"provider_id\":\"pp_system_default\",\"cart_id\":null,\"order_id\":\"order_01M8716EGWMRGYAE5ENREZEQ00\",\"note\":null}'","timestamp":"2026-11-24 22:01:10"}
+{"level":"error","message":"REFUND_FAILED source=medusa refund_id=ref_01M8716EYTARCTF0RNK18ZBCXQ payment_id=pay_01M8716EX7Z643BXD2JDQJR9ZE amount=500 currency_code=thb provider_id=pp_system_default cart_id=cart_01M8716EVK84ZYAR204X5ACD40 order_id=null note=null","timestamp":"2026-11-24 22:01:11","worker_mode":"shared"}
+{"level":"error","message":"REFUND_FAILED: OPS_ALERT_EMAIL send failed: resend down","timestamp":"2026-11-24 22:01:11","worker_mode":"shared"}
+{"level":"error","message":"REFUND_FAILED source=medusa refund_id=ref_01M8716F0QC82S0YKXZNDCRXYQ payment_id=pay_01M8716EZHH2RDWRRW0H4H4M51 amount=300 currency_code=thb provider_id=pp_system_default cart_id=cart_01M8716EZ140D6QKQKYS8TSEMK order_id=null note=null","timestamp":"2026-11-24 22:01:11","worker_mode":"shared"}
+{"level":"info","message":"Attempting to send a notification to: 'ops@x.test' on the channel: 'email' with template: 'refund-failed' and data: '{\"code\":\"REFUND_FAILED\",\"source\":\"medusa\",\"refund_id\":\"ref_01M8716F0QC82S0YKXZNDCRXYQ\",\"payment_id\":\"pay_01M8716EZHH2RDWRRW0H4H4M51\",\"amount\":\"300\",\"currency_code\":\"thb\",\"provider_id\":\"pp_system_default\",\"cart_id\":\"cart_01M8716EZ140D6QKQKYS8TSEMK\",\"order_id\":null,\"note\":null}'","timestamp":"2026-11-24 22:01:11"}
+PASS integration-tests/http/refund-failure-scan.spec.ts (11.398 s)
+      ✓ job config: name, every 15 minutes (482 ms)
+      ✓ (a) provider throws → refundPaymentsWorkflow swallows it (2.22.1) and leaves a soft-deleted failed refund row (590 ms)
+      ✓ (a) failed refund → one REFUND_FAILED email + error log; running again sends and logs nothing more (442 ms)
+      ✓ (b) refund failed then succeeded later (provider back to normal) → no alert (402 ms)
+      ✓ (c) pending refund row: +30 minutes → nothing; +61 minutes → one REFUND_STUCK (322 ms)
+      ✓ (c) failed refund older than 7 days from now → nothing (363 ms)
+      ✓ (d) OPS_ALERT_EMAIL not set → no notification + warn (error log still written) (338 ms)
+      ✓ (d) the email provider fails once → retried next run with exactly one success email, then never again (review #550) (369 ms)
+      ✓ (a) payment of an order → alert carries order_id (385 ms)
+      ✓ (d) notification provider throws on the first of two rows → job does not throw, logs error, second row is still sent (404 ms)
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+#### unit backend ทั้งชุด: Test Suites 132 passed; Tests 1857 passed
+- typecheck/lint (0 errors)/build backend ผ่าน; storefront test:e2e:unit ผ่าน

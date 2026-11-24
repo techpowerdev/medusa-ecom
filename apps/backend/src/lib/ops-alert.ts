@@ -53,7 +53,8 @@ export async function sendOpsAlert(
     // → ส่งซ้ำทุกรอบ) — soft-delete แถวที่ล้มก่อน (unique index ของ idempotency_key ไม่นับแถวที่ลบ) ให้ Medusa สร้างแถวใหม่ตามปกติ
     const failed = existing.map((n) => n.id)
     if (failed.length) {
-      await notification.softDeleteNotifications(failed)
+      // softDeleteNotifications มีใน MedusaService ของ Notification module แต่ INotificationModuleService ของ 2.22.1 ไม่ประกาศ
+      await (notification as unknown as { softDeleteNotifications(ids: string[]): Promise<unknown> }).softDeleteNotifications(failed)
     }
     await notification.createNotifications({
       to,
