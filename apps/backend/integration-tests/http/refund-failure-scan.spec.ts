@@ -1,8 +1,8 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import { refundPaymentsWorkflow } from "@medusajs/medusa/core-flows"
+import { cancelOrderWorkflow, refundPaymentsWorkflow } from "@medusajs/medusa/core-flows"
 import type { Logger, MedusaContainer } from "@medusajs/framework/types"
-import refundFailureScanJob, { config, scanRefundFailures } from "../../src/jobs/refund-failure-scan"
+import refundFailureScanJob, { config, REFUND_SCAN_LIMIT, scanRefundFailures } from "../../src/jobs/refund-failure-scan"
 
 jest.setTimeout(60 * 1000)
 
@@ -210,7 +210,7 @@ medusaIntegrationTestRunner({
         expect(errorLog.mock.calls.filter(([msg]) => /send failed/.test(String(msg)))).toHaveLength(1)
       })
 
-      it("(a) payment of an order → alert carries order_id", async () => {
+      it("(PAY-23, AC-36) admin cancels an order and the refund fails → REFUND_FAILED alert carries that order's id", async () => {
         const container = getContainer()
         const payment = container.resolve(Modules.PAYMENT)
         const [collection] = await payment.createPaymentCollections([{ currency_code: "thb", amount: 400 }])
@@ -227,13 +227,44 @@ medusaIntegrationTestRunner({
         })
         const authorized = await payment.authorizePaymentSession(session.id, {})
         await payment.capturePayment({ payment_id: authorized!.id })
-        await failedRefund(container, authorized!.id, 400)
+        // ทางจริงของ order ที่ยกเลิก: cancelOrderWorkflow → refundCapturedPaymentsWorkflow → refundPaymentsWorkflow (provider ปฏิเสธ)
+        jest.spyOn(provider(container), "refundPayment").mockRejectedValueOnce(new Error("Cannot send email"))
+        await cancelOrderWorkflow(container).run({ input: { order_id: order.id } })
+        expect((await container.resolve(Modules.ORDER).retrieveOrder(order.id)).status).toEqual("canceled")
+        expect(await payment.listRefunds({ payment_id: authorized!.id }, { withDeleted: true })).toEqual([
+          expect.objectContaining({ status: "failed" }),
+        ])
 
         await scanRefundFailures(container)
 
         const emails = await opsEmails()
         expect(emails).toHaveLength(1)
-        expect(emails[0].data).toEqual(expect.objectContaining({ payment_id: authorized!.id, order_id: order.id, cart_id: null }))
+        expect(emails[0].data).toEqual(
+          expect.objectContaining({ code: "REFUND_FAILED", payment_id: authorized!.id, order_id: order.id, cart_id: null })
+        )
+        expect(String(alertLogs("REFUND_FAILED")[0]?.[0])).toContain(`order_id=${order.id}`)
+      })
+
+      it("(PAY-23, AC-36) more than 200 rows → newest first: the newest of 201 is checked, warn REFUND_SCAN_TRUNCATED", async () => {
+        const container = getContainer()
+        const { paymentId } = await capturedCartPayment(container)
+        const payment = container.resolve(Modules.PAYMENT) as any
+        const older = await payment.createRefunds(
+          Array.from({ length: REFUND_SCAN_LIMIT }, () => ({ payment_id: paymentId, amount: 1 }))
+        )
+        // created_at ของ batch เดียวกันเท่ากัน (now() ของ transaction) — ดันแถวเก่าไป 1 วันก่อนให้แถวสุดท้ายใหม่ที่สุดชัดเจน
+        await container
+          .resolve(ContainerRegistrationKeys.PG_CONNECTION)("refund")
+          .whereIn("id", older.map((r: { id: string }) => r.id))
+          .update({ created_at: new Date(Date.now() - 24 * 60 * MINUTE) })
+        const [newest] = await payment.createRefunds([{ payment_id: paymentId, amount: 1 }])
+
+        await scanRefundFailures(container, new Date(Date.now() + 61 * MINUTE))
+
+        const alerted = (await opsEmails()).map((n) => (n.data as { refund_id?: string }).refund_id)
+        expect(alerted).toHaveLength(REFUND_SCAN_LIMIT)
+        expect(alerted).toContain(newest.id)
+        expect(warnLog.mock.calls.filter(([msg]) => String(msg).startsWith("REFUND_SCAN_TRUNCATED"))).toHaveLength(1)
       })
 
       it("(d) notification provider throws on the first of two rows → job does not throw, logs error, second row is still sent", async () => {
@@ -252,7 +283,8 @@ medusaIntegrationTestRunner({
         expect(errorLog.mock.calls.some(([msg]) => /OPS_ALERT_EMAIL send failed: resend down/.test(String(msg)))).toBe(true)
         const emails = await opsEmails()
         expect(emails).toHaveLength(1)
-        expect(emails[0].data).toEqual(expect.objectContaining({ payment_id: second.paymentId, amount: "300" }))
+        // เรียงใหม่ก่อน (PAY-23 กฎข้อ 26c): แถวของ second ถูกตรวจก่อนและส่งล้ม → แถวของ first ยังถูกส่ง
+        expect(emails[0].data).toEqual(expect.objectContaining({ payment_id: first.paymentId, amount: "500" }))
         expect(await snapshot()).toEqual(before)
       })
     })

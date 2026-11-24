@@ -112,6 +112,27 @@ medusaIntegrationTestRunner({
         }
       }
 
+      /** เรียก subscriber ตรง (event data แบบที่ route emit: rawData เป็น Buffer ที่ serialize แล้ว) */
+      function runHandler(type: string, refundId: string) {
+        const body = refundEvent(type, { id: refundId, status: "failed" })
+        const payload = JSON.stringify(body)
+        const signature = new Stripe("sk_test_signing_only").webhooks.generateTestHeaderString({
+          payload,
+          secret: process.env.STRIPE_WEBHOOK_SECRET,
+        })
+        return stripeRefundWebhookHandler({
+          event: {
+            name: PaymentWebhookEvents.WebhookReceived,
+            data: {
+              provider: "stripe_stripe",
+              payload: { data: body, rawData: Buffer.from(payload).toJSON(), headers: { "stripe-signature": signature } },
+            },
+          },
+          container: getContainer(),
+          pluginOptions: {},
+        } as any)
+      }
+
       const notifications = () => getContainer().resolve(Modules.NOTIFICATION).listNotifications({})
       const refundAlerts = async () => (await notifications()).filter((n) => n.template === TEMPLATE)
       const alertLogs = () => errorLog.mock.calls.filter(([msg]) => String(msg).startsWith("STRIPE_REFUND_FAILED "))
@@ -158,6 +179,7 @@ medusaIntegrationTestRunner({
         expect(email.data).toEqual(
           expect.objectContaining({
             code: "STRIPE_REFUND_FAILED",
+            source: "stripe",
             refund_id: "re_x",
             payment_intent: "pi_x",
             amount: 810,
@@ -191,32 +213,27 @@ medusaIntegrationTestRunner({
 
       it("(a) refund.failed and refund.updated of one refund processed concurrently (Redis event bus) → one email, no send-failure log", async () => {
         // เรียก subscriber ตรงพร้อมกันสองตัว (event data แบบที่ route emit: rawData เป็น Buffer) — จำลอง worker ของ event bus แบบ Redis
-        const run = (type: string) => {
-          const body = refundEvent(type, { id: "re_z", status: "failed" })
-          const payload = JSON.stringify(body)
-          const signature = new Stripe("sk_test_signing_only").webhooks.generateTestHeaderString({
-            payload,
-            secret: process.env.STRIPE_WEBHOOK_SECRET,
-          })
-          return stripeRefundWebhookHandler({
-            event: {
-              name: PaymentWebhookEvents.WebhookReceived,
-              data: {
-                provider: "stripe_stripe",
-                payload: { data: body, rawData: Buffer.from(payload).toJSON(), headers: { "stripe-signature": signature } },
-              },
-            },
-            container: getContainer(),
-            pluginOptions: {},
-          } as any)
-        }
+        const run = (type: string) => runHandler(type, "re_z")
 
         await Promise.all([run("refund.failed"), run("refund.updated"), run("refund.failed")])
 
         const alerts = await refundAlerts()
         expect(alerts.map(keyOf)).toEqual(["stripe-refund-failed:re_z"])
         expect(alertLogs()).toHaveLength(1)
-        expect(errorLog.mock.calls.filter(([msg]) => /send failed|stripe-refund-webhook failed/.test(String(msg)))).toHaveLength(0)
+        expect(errorLog.mock.calls.filter(([msg]) => /send failed|stripe-refund-webhook: alert failed/.test(String(msg)))).toHaveLength(0)
+      })
+
+      it("(PAY-23, AC-36) locking throws → error log does not start with STRIPE_REFUND_FAILED (reserved for real alerts)", async () => {
+        jest.spyOn(getContainer().resolve(Modules.LOCKING), "execute").mockRejectedValueOnce(new Error("lock timeout"))
+
+        await runHandler("refund.failed", "re_lock")
+
+        const lines = errorLog.mock.calls.map(([msg]) => String(msg))
+        expect(lines.filter((line) => line.startsWith("STRIPE_REFUND_FAILED"))).toEqual([])
+        expect(lines.filter((line) => line.startsWith("stripe-refund-webhook: alert failed"))).toEqual([
+          expect.stringContaining("re_lock"),
+        ])
+        expect(await refundAlerts()).toHaveLength(0)
       })
 
       it("(b) refund.updated canceled → one email; requires_action/pending/succeeded → none", async () => {

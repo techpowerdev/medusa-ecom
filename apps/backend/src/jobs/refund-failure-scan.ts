@@ -38,14 +38,15 @@ export async function scanRefundFailures(container: MedusaContainer, now: Date =
       select: ["id", "status", "amount", "raw_amount", "payment_id", "note", "created_at", "updated_at", "deleted_at"],
       withDeleted: true,
       take: REFUND_SCAN_LIMIT + 1,
-      order: { created_at: "ASC" },
+      // PAY-23 (กฎข้อ 26c, Q-P23 = ก): ใหม่ก่อน — refund ที่เพิ่งล้มถูกแจ้งภายในรอบเสมอ แถวเก่าที่หลุดถูกแจ้งไปแล้วในรอบก่อน
+      order: { created_at: "DESC" },
     }
   )) as unknown as RefundRow[]
   if (refunds.length > REFUND_SCAN_LIMIT) {
-    // เรียงเก่าก่อน (กฎ 22a) และแถวที่แจ้งแล้ว/คืนครบแล้วยังอยู่ในผลจนพ้น 7 วัน → แถวที่ใหม่กว่า 200 แถวแรกไม่ถูกตรวจจนกว่าแถวเก่าพ้นช่วง
+    // เรียงใหม่ก่อน (กฎข้อ 26c) → แถวที่เก่ากว่า 200 แถวล่าสุดไม่ถูกตรวจในรอบนี้ (ปกติถูกแจ้งไปแล้วในรอบก่อน)
     logger.warn(
-      `REFUND_SCAN_TRUNCATED more than ${REFUND_SCAN_LIMIT} failed/pending refunds in 7 days — newer refunds are NOT checked ` +
-        `until older ones leave the 7-day window; check refunds manually (runbook "คืนเงินล้ม/ค้าง (ADR-029)")`
+      `REFUND_SCAN_TRUNCATED more than ${REFUND_SCAN_LIMIT} failed/pending refunds in 7 days — only the newest ` +
+        `${REFUND_SCAN_LIMIT} are checked; check older refunds manually (runbook "คืนเงินล้ม/ค้าง (ADR-029)")`
     )
   }
   const rows = refunds.slice(0, REFUND_SCAN_LIMIT)
