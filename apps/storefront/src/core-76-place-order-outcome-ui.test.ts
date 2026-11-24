@@ -12,7 +12,7 @@ import { CART_COMPLETION_IN_PROGRESS, PROCESSING_NOTICE } from "@lib/util/place-
 
 // CORE-76 (spec 01 กฎข้อ 134, AC-175): ปุ่มยืนยันคำสั่งซื้อแสดงผลจาก kind ของ placeOrder (ไม่ใช่การเทียบข้อความ)
 // (a) manual + สต็อกไม่พอ → INSUFFICIENT_INVENTORY_MESSAGE; (a2) processing → checkout-processing-notice แล้วอ่านซ้ำทุก
-// PROMPTPAY_POLL_MS (กลไกเดียวกับ PAY-6b); unauthorized → หน้า login `/<cc>/account` (ไม่มี return_to — กฎข้อ 134 a2)
+// PROMPTPAY_POLL_MS (กลไกเดียวกับ PAY-6b); unauthorized → หน้า login `/<cc>/account` (ไม่มี return_to — กฎข้อ 134 a2; บัตร + notice ตาม CORE-95)
 const placeOrder = vi.fn()
 const confirmPayment = vi.fn()
 const push = vi.fn()
@@ -132,10 +132,14 @@ describe("ปุ่มยืนยันคำสั่งซื้อ: notice �
     expect(placeOrder).toHaveBeenCalledTimes(2)
   })
 
-  it.each([CARD, MANUAL])("%s: unauthorized → ไปหน้า login /th/account ไม่มี notice คืนเงิน", async (provider) => {
+  // CORE-95 (กฎข้อ 151): บัตรที่ตัดเงินแล้ว → หน้า login พร้อม notice=payment_received; manual คงเดิม
+  it.each([
+    [CARD, "/th/account?notice=payment_received"],
+    [MANUAL, "/th/account"],
+  ])("%s: unauthorized → ไปหน้า login %s ไม่มี notice คืนเงิน", async (provider, path) => {
     placeOrder.mockResolvedValueOnce({ kind: "unauthorized" })
     await renderAndSubmit(provider)
-    expect(push).toHaveBeenCalledWith("/th/account")
+    expect(push).toHaveBeenCalledWith(path)
     expect(byTestId("checkout-refunded-notice")).toBeNull()
   })
 })
