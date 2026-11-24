@@ -207,6 +207,33 @@ describe("redactPii (OPS-33, AC-48a)", () => {
     expect(out).toBe(`{\n  address_1: '[REDACTED]',\n  city: '[REDACTED]',\n  id: '${CART_ID}',\n  amount: 1999\n}`)
   })
 
+  // review #554 (blocker): ผล util.inspect หลายท่อนที่ถูก JSON.stringify ซ้อน 1–3 ชั้น (เช่น `Invalid string: {…}` ของ OPS-32 ใน JSON log)
+  // newline ระหว่างท่อนกลายเป็น `\n` ที่ escape และท่อนที่ใช้ `"` กลายเป็น `\"…\"`
+  it.each([1, 2, 3])("สตริงหลายท่อนของ util.inspect ใน JSON escape %i ชั้น ถูก redact ทุกท่อน", (levels) => {
+    const inspected =
+      "Invalid string: " +
+      inspect(
+        {
+          billing_details: { address: { line1: `${"y".repeat(80)}\nSomchai`, city: "BKK" } },
+          address_1: `${"x".repeat(80)}\nit's Sukhumvit\nJaidee`,
+          address_2: `it's ${"z".repeat(80)}\nKhlong Toei\nToei's "Soi" 4`,
+          id: CART_ID,
+          amount: 1999,
+        },
+        { depth: 5 }
+      )
+    expect(inspected).toContain(`\n    "it's Sukhumvit\\n"`) // มีท่อนที่ใช้ " จริง
+    expect(inspected).toContain(`address_2: "it's`) // ท่อนแรกใช้ " ได้ด้วย
+    const out = redactPii(nest({ msg: inspected }, levels - 1))
+
+    for (const pii of ["Somchai", "BKK", "Sukhumvit", "Jaidee", "Khlong", "Toei", "Soi"]) {
+      expect(out).not.toContain(pii)
+    }
+    const msg = (unnest(out, levels - 1) as { msg: string }).msg
+    expect(msg).toContain(`id: '${CART_ID}'`)
+    expect(msg).toContain("amount: 1999")
+  })
+
   it.each([
     ["ข้อความธรรมดา", "refund for o'brien@example.com done", "refund for [REDACTED] done"],
     ["ใน quote เดี่ยว", "to: 'o'brien@example.com'", "to: '[REDACTED]'"],
@@ -243,6 +270,11 @@ describe("redactPii (OPS-33, AC-48a)", () => {
     ["escape 3 ชั้น quote ภายในยาว", `${L3}"name${L3}":${L3}"${`${"\\".repeat(15)}"x`.repeat(6_000)}`],
     ["สตริงหลายท่อนไม่ปิด", `name: 'a'${" + 'a'".repeat(16_000)} + '${"x".repeat(10_000)}`],
     ["key PII ซ้ำไม่ปิด", `\\"name\\":\\"x`.repeat(10_000)],
+    // review #554: ตัวคั่น/ท่อนของ util.inspect ที่ escape
+    ["ช่วง backslash ยาวหลังค่า", `name: 'a'${"\\".repeat(100_000)}`],
+    ["ท่อน escape ไม่ปิด", `\\"name\\":\\"a\\" +\\n ${"\\".repeat(50_000)}"${"x".repeat(50_000)}`],
+    ["ท่อน escape ซ้ำ", `name: 'a'${" +\\n \\\"b\\\"".repeat(10_000)} +\\n \\\"`],
+    ["escaped newline ยาวไม่มี +", `name: 'a'${"\\\\n".repeat(30_000)}`],
   ])("ข้อความยาวที่มี key PII (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     const started = performance.now()
     redactPii(text)
