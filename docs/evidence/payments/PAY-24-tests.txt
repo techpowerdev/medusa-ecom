@@ -1,0 +1,95 @@
+PAY-24 (spec 06 กฎข้อ 27, AC-37) — ผลทดสอบในเครื่อง 2026-11-25 (base origin/develop b3fabfcc)
+Node 22.23.3, Postgres 16 (docker compose), integration รันทีละไฟล์ด้วย jest ตรง (--listTests = 1 ไฟล์)
+
+== RED (ก่อนแก้โค้ด — test ใหม่เท่านั้นที่ล้ม ด้วยเหตุที่ถูกต้อง) ==
+-- unit: src/lib/__tests__/ops-alert*.unit.spec.ts
+  ● sendOpsAlert › logged: true → no alert log line from the helper, email still sent with data unchanged
+  ● sendOpsAlert › logged: true and OPS_ALERT_EMAIL not set → warn only
+Tests:       8 failed, 7 passed, 15 total
+-- integration: payment-webhook-orphan.spec.ts
+      ✓ listens to payment.webhook_received with its own subscriberId (2061 ms)
+      ✓ session not found (payment_intent.succeeded) → error log + one email to OPS_ALERT_EMAIL with the PI id (1093 ms)
+      ✓ session not found (payment_intent.amount_capturable_updated) → error log + one email to OPS_ALERT_EMAIL with the PI id (616 ms)
+      ✓ session exists → no log and no email (659 ms)
+      ✓ not a captured/authorized action → no log and no email (843 ms)
+      ✓ invalid signature → subscriber does not throw, logs a warning, no alert (496 ms)
+      ✓ OPS_ALERT_EMAIL not set → error log, warn log, no notification (358 ms)
+      ✓ notification provider throws → subscriber does not throw and logs an error (330 ms)
+      ✕ Stripe delivers the orphan event twice for the same PaymentIntent → one email (idempotency key per PI) (333 ms)
+      ✕ the email provider fails once → the next event sends exactly one successful email, a third sends nothing (391 ms)
+    Expected length: 1
+    Received length: 2
+    Expected number of calls: 2
+    Received number of calls: 3
+Tests:       2 failed, 8 passed, 10 total
+-- integration: group-buy-payment-check.spec.ts (-t 'give-up alert email fails')
+    ✕ give-up alert email fails at the notification provider once → next give-up sends exactly one success email, a third sends nothing (3219 ms)
+    Expected number of calls: 2
+    Received number of calls: 3
+Tests:       1 failed, 6 skipped, 7 total
+-- integration: group-buy-payment.spec.ts (-t 'orphan alert email fails')
+    ✕ orphan alert email fails at the notification provider once → re-emit sends exactly one success email, a third emit sends nothing (4437 ms)
+    Expected length: 2
+    Received length: 3
+Tests:       1 failed, 14 skipped, 15 total
+   (Notification 2.22.1 ส่งแถว failure ซ้ำทุกรอบ: provider send ถูกเรียก 3 ครั้งจาก 3 รอบ)
+
+== GREEN (หลังแก้) ==
+-- integration: payment-webhook-orphan.spec.ts (ทั้งไฟล์)
+      ✓ listens to payment.webhook_received with its own subscriberId (549 ms)
+      ✓ session not found (payment_intent.succeeded) → error log + one email to OPS_ALERT_EMAIL with the PI id (597 ms)
+      ✓ session not found (payment_intent.amount_capturable_updated) → error log + one email to OPS_ALERT_EMAIL with the PI id (259 ms)
+      ✓ session exists → no log and no email (296 ms)
+      ✓ not a captured/authorized action → no log and no email (245 ms)
+      ✓ invalid signature → subscriber does not throw, logs a warning, no alert (279 ms)
+      ✓ OPS_ALERT_EMAIL not set → error log, warn log, no notification (311 ms)
+      ✓ notification provider throws → subscriber does not throw and logs an error (317 ms)
+      ✓ Stripe delivers the orphan event twice for the same PaymentIntent → one email (idempotency key per PI) (263 ms)
+      ✓ the email provider fails once → the next event sends exactly one successful email, a third sends nothing (370 ms)
+Tests:       10 passed, 10 total
+-- integration: group-buy-payment-check.spec.ts (ทั้งไฟล์)
+    ✓ (a) PI succeeded at the provider but no webhook yet → job captures, membership paid, order placed; late webhook is a no-op (2475 ms)
+    ✓ (a2) payment found but convert fails → re-picked within 15 minutes without the provider; not re-captured past 15 minutes (2909 ms)
+    ✓ (b) PI requires_action (NOT_ALLOWED = unpaid) → session deleted, membership cancelled; no session → provider not called (2204 ms)
+    ✓ (c) provider down / pending_authorization / PI processing → retry: not cancelled, session kept, one warn per run (1148 ms)
+    ✓ (c) still unverifiable 16 minutes past the deadline → give up: cancel + error log + one ops email; another member paid in the same run (2224 ms)
+    ✓ (d) give-up runs twice (expire failed in the first run) → exactly one ops email in the notification module (2369 ms)
+    ✓ give-up alert email fails at the notification provider once → next give-up sends exactly one success email, a third sends nothing (1862 ms)
+Tests:       7 passed, 7 total
+-- integration: group-buy-payment.spec.ts (ทั้งไฟล์)
+    ✓ AC-44: convert failed (out of stock) → ops restocks and converts via admin → membership paid; order.placed again is a no-op (2834 ms)
+    ✓ AC-44: admin converts while the collection is not completed → membership unchanged, info logged (2067 ms)
+    ✓ AC-44: normal GB-5 path (capture → paid → convert → order.placed) → GB-10 subscriber is a no-op under the membership lock; order-placed email still sent (1420 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000 (review #100): collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1379 ms)
+    ✓ AC-37 + AC-2 (API) ฿1,000.07: collection = order.total rounded to 2 dp; capture completes it, converts the draft order, membership paid (1386 ms)
+    ✓ payment.captured twice is idempotent: membership stays paid and the order is converted once (1225 ms)
+    ✓ out of stock at convert: convertDraftOrderWorkflow fails → membership compensated back to awaiting_payment, order stays draft (1495 ms)
+    ✓ orphan: payment captured after the membership was cancelled → ops alert once, membership stays cancelled (1276 ms)
+    ✓ orphan alert email fails at the notification provider once → re-emit sends exactly one success email, a third emit sends nothing (1882 ms)
+    ✓ AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched (2685 ms)
+      ✓ AC-63 (a): cancelled draft order captured later → one refund of the captured amount with the note, alert says refunded (1273 ms)
+      ✓ AC-63 (b): payment.captured handled twice concurrently → refunded once (total = captured), provider called once (1852 ms)
+      ✓ AC-63 (c): provider refund throws (nothing recorded) → subscriber does not throw, alert says refund_failed (1244 ms)
+      ✓ AC-63 (c2): workflow throws after the provider refunded and the refund was recorded → alert says refunded, warn logged (1085 ms)
+      ✓ AC-63 (d): convert_failed → no refund (manual, AC-43/44 unchanged) (1079 ms)
+Tests:       15 passed, 15 total
+-- integration: group-buy-payment-closed.spec.ts (ทั้งไฟล์)
+    ✓ (a) awaiting_payment past pay_deadline_at (job not run yet) → 400 GB_PAYMENT_CLOSED, provider not called (1362 ms)
+    ✓ (b) membership cancelled → 400 GB_PAYMENT_CLOSED, provider not called (1474 ms)
+    ✓ (c) awaiting_payment before the deadline → 200 with a Stripe session (regression spec 06 AC-18) (1223 ms)
+    ✓ (d) collection of a normal cart → unchanged behaviour (200) (806 ms)
+    ✓ (e) payment-deadline job deletes the pending session through the provider; membership cancelled, collection canceled (1370 ms)
+    ✓ (f) provider deletePayment throws → membership/order still cancelled, one warn GROUP_BUY_SESSION_CANCEL_FAILED (1279 ms)
+    ✓ (f2) two pending sessions, provider fails on one → the other stays deleted (not recreated), one warn for the failed id (1019 ms)
+    ✓ (g) accepted race: webhook payment_intent.succeeded for the deleted session → PAYMENT_WEBHOOK_SESSION_NOT_FOUND + one ops email, no payment/refund (882 ms)
+Tests:       8 passed, 8 total
+-- unit: pnpm --filter backend test:unit (ทั้งชุด)
+   รอบแรก 2 failed: group-buy-payment-captured.unit.spec.ts — mock Notification ไม่มี listNotifications (helper อ่าน key ก่อนส่ง)
+   แก้: เพิ่ม listNotifications ใน mock (ไม่แก้ค่าที่คาด) → ไฟล์ที่เกี่ยวข้อง Tests: 26 passed, 26 total
+   ชุดเต็มหลังแก้ mock: Test Suites 133 passed; Tests 1870 passed, 1870 total
+
+== static / build ==
+pnpm --filter backend typecheck: exit 0
+pnpm --filter backend lint: 0 errors (4 warnings เดิมในไฟล์ที่ไม่ได้แตะ)
+pnpm --filter backend build: exit 0
+pnpm --filter storefront test:e2e:unit: 165 passed
