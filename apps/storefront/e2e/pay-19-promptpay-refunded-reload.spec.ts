@@ -3,7 +3,7 @@ import { APIRequestContext, Page } from "@playwright/test"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, Headers, adminHeaders, ok, placeOrder } from "./support/medusa"
 import { Ctx, paidWhileQrShown } from "./support/promptpay-race"
-import { HAS_STRIPE_UI, PROMPTPAY_PROVIDER, continueToReview } from "./support/stripe"
+import { HAS_STRIPE_UI, PROMPTPAY_PROVIDER, STRIPE_SECRET, cartPaymentState, continueToReview } from "./support/stripe"
 import { WorkflowExecution, cartCompletionSettled } from "./support/cart-completion"
 import { createFlashCampaign, createFlashProduct, endFlashCampaign } from "./support/flash-sale"
 import { expectThai } from "./support/thai-text"
@@ -58,6 +58,50 @@ async function collectionOf(request: APIRequestContext, ctx: Ctx): Promise<Colle
   }
 }
 
+/**
+ * D-1 (qa/review #548 — owner Q-P14 = ข): หลักฐานว่าทำไม `refunded_amount` ของ collection เป็น 0 — พิมพ์ลง stdout ของ CI เสมอ
+ * payment + captures/refunds ของ Medusa (Admin API — refund ที่ provider ล้มถูก soft-delete จึงไม่เห็นที่นี่),
+ * collection ของ cart และ refund ฝั่ง Stripe ของ PaymentIntent (status/failure_reason — key ของ CI เท่านั้น แบบ pay-9)
+ */
+async function logRefundEvidence(request: APIRequestContext, ctx: Ctx, sessionId: string) {
+  const payments = await request.get(
+    `${BACKEND_URL}/admin/payments?payment_session_id=${sessionId}&fields=id,amount,captured_at,canceled_at,*captures,*refunds`,
+    { headers: ctx.admin }
+  )
+  const cart = await request.get(
+    `${BACKEND_URL}/store/carts/${ctx.cartId}?fields=id,completed_at,payment_collection.id,payment_collection.status,` +
+      "payment_collection.captured_amount,payment_collection.refunded_amount,*payment_collection.payment_sessions",
+    { headers: { authorization: `Bearer ${ctx.customer.token}`, "x-publishable-api-key": ctx.pk } }
+  )
+  const refunds = await request.get(`https://api.stripe.com/v1/refunds?payment_intent=${ctx.intentId}`, {
+    headers: { authorization: `Bearer ${STRIPE_SECRET}` },
+  })
+  const stripeRefunds = refunds.ok()
+    ? ((await refunds.json()).data as Record<string, unknown>[]).map((r) => ({
+        id: r.id,
+        status: r.status,
+        amount: r.amount,
+        failure_reason: r.failure_reason,
+        next_action: r.next_action,
+        destination_details: r.destination_details,
+      }))
+    : { status: refunds.status(), body: await refunds.text() }
+  console.log(
+    "PAY-19 D-1 evidence",
+    JSON.stringify(
+      {
+        intent: ctx.intentId,
+        session: sessionId,
+        payments: payments.ok() ? (await payments.json()).payments : { status: payments.status() },
+        cart: cart.ok() ? (await cart.json()).cart : { status: cart.status() },
+        stripe_refunds: stripeRefunds,
+      },
+      null,
+      2
+    )
+  )
+}
+
 /** notice คืนเงินของขั้น review: เห็นข้อความไทย + ลิงก์ไป /th/cart และไม่มีปุ่มจ่าย/เริ่มชำระใหม่ */
 async function expectRefundedReview(page: Page) {
   await expect(page.getByTestId(NOTICE)).toBeVisible({ timeout: 30_000 })
@@ -79,12 +123,16 @@ test("AC-32: PromptPay ถูกคืนเงินจริง → ขั้�
   test.setTimeout(300_000)
   let ctx!: Ctx
   let firstCollection: string | undefined
+  let sessionId = ""
   // ขอบล่างของ execution ที่อ่าน (เผื่อนาฬิกา DB/runner ต่างกัน)
   const startedAt = new Date(Date.now() - 60_000).toISOString()
 
   await step("Given ชำระพร้อมเพย์ตอน QR แสดง (webhook ไม่มา) แล้วลูกค้าใช้สิทธิ์ flash จาก cart อื่นผ่าน API", async () => {
     ctx = await paidWhileQrShown(page, context, request, baseURL!, [], variantId)
     firstCollection = (await collectionOf(request, ctx)).id
+    const { sessions } = await cartPaymentState(request, ctx.pk, ctx.customer, ctx.cartId)
+    sessionId = sessions.find((s) => s.provider_id === PROMPTPAY_PROVIDER)?.id ?? ""
+    expect(sessionId, "session พร้อมเพย์ที่จ่ายแล้ว").toBeTruthy()
     expect(firstCollection, "payment collection แรกของ cart").toBeTruthy()
     await placeOrder(request, ctx.pk, ctx.customer, { variant: variantId, quantity: 1 })
   })
@@ -103,6 +151,7 @@ test("AC-32: PromptPay ถูกคืนเงินจริง → ขั้�
         )
       ).workflow_executions
     await expect.poll(async () => cartCompletionSettled(await executions(), ctx.cartId), { timeout: 90_000 }).toBe(true)
+    await logRefundEvidence(request, ctx, sessionId)
     const state = await collectionOf(request, ctx)
     expect(state.completed).toBe(false)
     expect(state.captured).toBeGreaterThan(0)

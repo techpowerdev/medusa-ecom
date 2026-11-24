@@ -22,3 +22,12 @@ pnpm --filter storefront lint → 0 errors (warning เดิม 28 รายก
 core-69-review-without-payment (3) ✓, core-89-payment-summary-mobile (3) ✓, core-4e-checkout-polish AC-91 ✓, core-19b AC-64 (บัตร/manual) ✓
 skipped (ต้องใช้ Stripe): pay-19-promptpay-refunded-reload AC-32, core-19b AC-64 PromptPay
   8 passed, 2 skipped (34.3s)
+
+== รอบแก้ #548 (qa D-2 + review nit + D-1 เก็บหลักฐาน) ==
+D-2 red: vitest src/ev-7c-digital-only-checkout.test.ts
+  × review + collection คืนเงินครบ + ไม่มี session → ไม่ redirect (PAY-19)
+  Tests  1 failed | 72 passed (73)
+D-2 green: Tests 73 passed (73)
+pnpm --filter storefront test:unit → Tests 1950 passed; test:e2e:unit → 165 passed; typecheck ผ่าน; lint 0 errors
+D-1: e2e pay-19 พิมพ์ "PAY-19 D-1 evidence" (Admin payments + refunds, collection ของ cart, refund ฝั่ง Stripe) ลง stdout ของ CI
+     และ ci.yml ตอนล้ม grep "trying to|refund" ทั้ง /tmp/backend.log — assertion เดิมคงไว้ (รอบนี้ล้มได้)

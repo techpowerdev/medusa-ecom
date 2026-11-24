@@ -379,6 +379,8 @@ jobs:
       - if: failure()
         run: |
           tail -n 200 /tmp/backend.log 2>/dev/null || echo "(ไม่มี /tmp/backend.log — backend ยังไม่ได้เริ่ม)"
+          # PAY-19 D-1 (#548): บรรทัด refund/compensation ทั้งไฟล์ (tail 200 ไม่ครอบช่วงของ test ที่ล้ม)
+          grep -n -E "trying to|[Rr]efund" /tmp/backend.log 2>/dev/null | tail -n 100 || true
           tail -n 50 /tmp/stripe-listen.log 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
