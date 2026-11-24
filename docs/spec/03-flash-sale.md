@@ -487,7 +487,7 @@ Status: done (☑ FS-25 #531 — ปิดรอบ 42 2026-11-24) · ไม่�
 | FS-25 | ☑ #531 — e2e hygiene flash: helper ร่วม + PDP `?v_id=` (กฎข้อ 30) | `apps/storefront/e2e/{fs-22-refunded-notice,pay-9-refunded-cart-repay,fs-24-card-race-refund,fs-23-pdp-cart-aware-limit}.spec.ts`, `e2e/support/*` | ~80 LOC (ส่วนใหญ่ย้าย) | AC-32 | PR เอกสารปิดรอบ 41 | — |
 
 ## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
-Status: draft · ที่มา: FS-25 #531 (builder) และ review #531 — ตรวจบน develop `599009b6` · ไม่มีของ Medusa ที่เกี่ยว (test hygiene ล้วน)
+Status: draft (☐ หลัง go-live — รอ owner สั่ง; Q-R43-ฉ = ก owner 2026-11-25) · ที่มา: FS-25 #531 (builder) และ review #531 — ตรวจบน develop `599009b6` · ไม่มีของ Medusa ที่เกี่ยว (test hygiene ล้วน)
 ### Business rules (รอบ 43)
 31. (FS-26 — e2e hygiene ต่อจากกฎข้อ 30) (a) `stripeRefunds` ที่ซ้ำใน `e2e/fs-22-refunded-notice.spec.ts`, `e2e/pay-9-refunded-cart-repay.spec.ts`, `e2e/payments-refund.spec.ts` (คืนค่าคนละรูป) ย้ายไป `e2e/support/` ตัวเดียวที่คืน refund ทั้งก้อน (ผู้เรียก map เอง);
     (b) `e2e/fs-23-pdp-cart-aware-limit.spec.ts` ใช้ `ok` และ `createFlashCampaign` ของ `e2e/support/` (นอกกฎข้อ 30a เดิม);

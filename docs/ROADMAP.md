@@ -1,14 +1,14 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-24 (ปิดรอบ 42) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-25 (ปิดรอบ 42 + คำตอบ owner Q-R43) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
-- **ตอนนี้**: รอบ 42 เสร็จ 21/21 task (☑ develop `599009b6`) — **รอ owner merge release v0.3.1** (`develop → main`)
-- **รอ owner ตัดสิน**: ชุดคำถาม Q-R43 + คำถามใน spec ของรอบ 43 (หัวข้อ "คำถามที่รอ owner")
-- **ขั้นต่อไป**: owner merge v0.3.1 → owner ตอบ Q-R43 → รอบ 43 ตามที่ตอบ → go-live (checklist ข้อ 1–16)
+- **ตอนนี้**: รอบ 42 เสร็จ 21/21 task (☑ develop `599009b6`) — release **v0.3.1** รอ OPS-36, PAY-23, PAY-24 ของรอบ 43 (owner 2026-11-25)
+- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 (ตอบครบ 2026-11-25) — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
+- **ขั้นต่อไป**: OPS-36 + PAY-23 + PAY-24 merge → owner merge v0.3.1 (`develop → main`) → go-live (checklist ข้อ 1–16) → **v1.0.0**
 
 ### Release
 
@@ -17,10 +17,12 @@
 | v0.1.0 | 🚀 | 2026-11-11 | #342 (`15fce017`), tag `v0.1.0` | ร้านค้าหลัก + task ทุกตัวที่ merge ถึงวันนั้น (เงื่อนไข: CORE-12/12b/17/18, OPS-21, EV-15, CORE-55) |
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
-| v0.3.1 | ☑ ครบ — รอ owner merge | — | — | รอบ 42 (21 task — ตารางใน history หัวข้อ "รอบ 42 — ผลจริง") |
-| รอบ 43 | ☐ เสนอ | — | — | 16 task — release ตามคำตอบ Q-R43-ฉ |
-| go-live | ☐ | — | — | หลัง v0.3.1 (+ ส่วนของรอบ 43 ตาม Q-R43-ฉ) + Go-live checklist |
-| v1.0.0 | ☐ ยังไม่กำหนดเงื่อนไข | — | — | Q-R43-จ (ป้าย v0.3.0–v1.0 ของ M3–M7 เป็นแผนเดิม ไม่ผูกกับเลข release จริง) |
+| v0.3.1 | ◐ รอ OPS-36, PAY-23, PAY-24 | — | — | รอบ 42 (21 task ☑ — history หัวข้อ "รอบ 42 — ผลจริง") + 3 task ก่อน go-live ของรอบ 43 (Q-R43-ฉ = ก แก้เพิ่ม owner 2026-11-25) |
+| go-live | ☐ | — | — | หลัง v0.3.1 + Go-live checklist ข้อ 1–16 |
+| v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
+| หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 13 task |
+
+ป้าย release ในหัวข้อ M3–M7 ของ history (v0.3.0 … v1.0.0 🎯) เป็นแผนเดิมก่อนรวม release — ไม่ผูกกับเลข release จริงในตารางนี้
 
 ### สัญลักษณ์
 
@@ -29,10 +31,20 @@
 - `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12)
 - task ที่ merge หลัง v0.3.0 ใช้ ☑ จนถึง release v0.3.1 · บันทึกประวัติคงสัญลักษณ์ ณ วันที่บันทึก
 
-## รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่ง)
+## รอบ 43 (ปิดรอบ 42 2026-11-24; owner ตอบ Q-R43 2026-11-25)
 
 ที่มา: follow-up ของ review/qa/builder #524–#551 ที่ยังจริงบน develop `599009b6` · เลขกฎ/AC อยู่ในหัวข้อ "Follow-up รอบ 43" ของแต่ละ spec ·
 Depends "—" = เฉพาะ PR เอกสารปิดรอบ 42 · ทุกตัวขนานกันได้ (∥) เว้นที่ระบุ
+
+### ก่อน go-live → v0.3.1 (owner สั่งทำแล้ว 2026-11-25)
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|
+| OPS-36 | 07 | (PII) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด + หลายท่อน | — | — | ☐ |
+| PAY-23 | 06 | (เงิน) alert คืนเงิน: `source`, prefix log, เรียงใหม่ก่อน (Q-P23 = ก), `order_id` | — | — | ☐ |
+| PAY-24 | 06 | (เงิน) ผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่ใช้ `sendOpsAlert` | — | — | ☐ |
+
+### หลัง go-live (☐ รอ owner สั่ง)
 
 | Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
@@ -43,42 +55,28 @@ Depends "—" = เฉพาะ PR เอกสารปิดรอบ 42 · �
 | CORE-100 | 01 | hygiene storefront: purity 3 ไฟล์, coverage/`COMPARE`, e2e chip, unit กฎ 151e | — | — | ☐ |
 | FS-26 | 03 | e2e hygiene flash: `stripeRefunds`/`ok` ร่วม + catch ของ helper | — | — | ☐ |
 | GB-33 | 04 | test hygiene: filter ของ AC-69b, เกณฑ์เวลาผูก `LOCK_TIMEOUT`, comment | — | — | ☐ |
-| PAY-22 | 06 | `/api/payment-return`: `FAILED`, failed+401 → `step=payment`, notice (Q-P21) | Q-P21 | — | ☐ |
-| PAY-23 | 06 | (เงิน) alert คืนเงิน: `source`, prefix log, เรียงใหม่ก่อน (Q-P23), `order_id` | Q-P23 | — | ☐ |
-| PAY-24 | 06 | (เงิน) ผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่ใช้ `sendOpsAlert` | — | — | ☐ |
+| PAY-22 | 06 | `/api/payment-return`: `FAILED`, failed+401 → `step=payment`, notice เมื่อ `succeeded` (Q-P21 = ก) | — | — | ☐ |
 | PAY-25 | 06 | ข้อความไทยของ error Stripe ตอนเปิด QR + หน้าจ่าย order | — | ✓ | ☐ |
-| OPS-36 | 07 | (PII) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด + หลายท่อน | — | — | ☐ |
 | OPS-37 | 07 | runbook หลัง go-live (คำสั่ง DELETE) + log backend เต็มเป็น artifact CI | — | — | ☐ |
 | OPS-38 | 07 | backend lint warning 4 ไฟล์ (ไม่เปลี่ยน id ของ step/workflow) | — | — | ☐ |
 | ADM-49 | 08 | focus หลัง Mark as paid → แถวถัดไป/ปุ่ม Create payout | — | ✓ | ☐ |
 | ADM-50 | 08 | test hygiene admin: static ผูกปุ่ม Save, unit hook, e2e campaign | — | — | ☐ |
 
-- **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `docs/ops/production.md` OPS-37 ↔ PAY-23 (ถ้า Q-P23 = ก) · `components/common/*` ADM-49 ↔ ADM-50 ·
+- **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `docs/ops/production.md` PAY-23 → OPS-37 · `components/common/*` ADM-49 ↔ ADM-50 ·
   static ของ CORE-99 พบจุดใน nav → ให้ CORE-97 แก้ · `ci.yml` OPS-37 เท่านั้น · `cart.ts` CORE-97 เท่านั้น
-- **ควรก่อน go-live** (ข้อเสนอใน Q-R43-ฉ): OPS-36 (PII ใน log — Go-live ข้อ 13), PAY-23, PAY-24 (alert เงิน)
-- integration หนัก: PAY-23, PAY-24, GB-33 — จำกัดพร้อมกันตามเครื่อง
+- integration หนัก: PAY-23, PAY-24 (v0.3.1), GB-33 — จำกัดพร้อมกันตามเครื่อง
 - ไม่ทำ/backlog ของรอบนี้ (พร้อมเหตุผล): history หัวข้อ "รอบ 42 — ผลจริง"
 
 ## คำถามที่รอ owner
 
-ตอบเป็นชุดได้ (ตัวเลือกแรก = Recommended) · คำถามใน spec: spec 06 **Q-P21** (notice ของ payment-return), **Q-P22** (ข้อความเฉพาะเหตุหลัง reload),
-**Q-P23** (job refund เรียงใหม่ก่อน), spec 01 **Q-C18** (overview นับกลุ่มที่ยกเลิก)
-
-- **Q-R43-ง** กติกาเขียน ROADMAP แบบสั้นใน `.claude/agents/planner.md` ข้อ 5 (planner #547 เสนอ):
-  (ก) **[Recommended]** เพิ่ม: ROADMAP เก็บแค่สรุปสถานะ, ตาราง release, ตารางรอบปัจจุบัน (แถวละบรรทัด), คำถาม, go-live, milestone;
-  ปิดรอบ → ย้ายตาราง/บันทึกไป `history.md` — กันไฟล์โตกลับเป็นพันบรรทัด; แก้ไฟล์ agent 1 ย่อหน้า (session หลักทำตามที่ owner อนุมัติ);
-  (ข) ไม่เขียน — ใช้ตามแบบอย่างในไฟล์ (planner รุ่นถัดไปอาจเขียนยาวกลับ)
-- **Q-R43-จ** เงื่อนไขของ v1.0.0 (ป้ายเดิม M3–M7 ไม่ตรง release จริง):
-  (ก) **[Recommended]** v1.0.0 = release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน prod ผ่าน — ผูกเลขกับเหตุการณ์ที่วัดได้; backlog ⏸ คงหลัง v1.0;
-  (ข) v1.0.0 หลัง go-live + backlog ⏸ บางตัว (OPS-3b rate limit, OPS-3c Sentry, OPS-19 staging) — ต้องเปลี่ยนคำตัดสิน 2026-10-27/11-03 และ OPS-19 ต้องมี ADR staging;
-  (ค) ยังไม่กำหนด
-- **Q-R43-ฉ** รอบ 43 อยู่ใน release ไหน/ทำเมื่อไร:
-  (ก) **[Recommended]** merge v0.3.1 ตอนนี้ → ทำ OPS-36, PAY-23, PAY-24 เป็น v0.3.2 ก่อน go-live (PII/alert เงิน, ~3 PR) → go-live → ที่เหลือ 13 task หลัง go-live (v0.4.0) —
-  go-live ไม่รอ hygiene/a11y ที่ไม่กระทบเงิน;
-  (ข) ทั้งรอบ 43 (16 PR) ก่อน go-live เป็น v0.3.2 — go-live ช้าออกไปตามจำนวน PR;
-  (ค) go-live ด้วย v0.3.1 แล้วทำรอบ 43 ทั้งหมดหลังจากนั้น — ช่องรั่ว PII ของ OPS-36 อยู่บน prod จนแก้ (ขัดเจตนา Go-live ข้อ 13)
+- **รอบ 43**: ไม่มีคำถามค้าง — คำตัดสิน owner 2026-11-25:
+  - ~~Q-R43-ฉ~~ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task (OPS-36, PAY-23, PAY-24) รวมใน v0.3.1 ไม่แยก v0.3.2 — v0.3.1 รอ 3 task นี้ merge ก่อน owner merge `develop → main`;
+    อีก 13 task หลัง go-live (☐ รอ owner สั่ง)
+  - ~~Q-R43-จ~~ = ก: v1.0.0 = release แรกที่เปิดร้านจริง (Go-live checklist ครบ + smoke test บน production ผ่าน); backlog ⏸ คงหลัง v1.0
+  - ~~Q-R43-ง~~ = ก: เพิ่มกติกา ROADMAP แบบสั้นใน `.claude/agents/planner.md` ข้อ 5 — session หลักทำใน PR บทเรียน
+  - spec 06 ~~Q-P21~~ = ก (PAY-22), ~~Q-P22~~ = คงไว้, ~~Q-P23~~ = เรียงใหม่ก่อน (PAY-23); spec 01 ~~Q-C18~~ = คงไว้
 - **follow-up เก่า (รอบ 30–39)**: ข้อ ข/ค (hygiene/backlog) ยังไม่มี task รอ owner สั่ง — [`followups-archive.md`](roadmap/followups-archive.md)
-- **ต้องตัดสินก่อน go-live** (ไม่บล็อก v0.3.1):
+- **ต้องตัดสินก่อน go-live** (คำถามเดิม — ไม่บล็อก v0.3.1):
   1. spec 06 Q1 — บัญชี Stripe live นิติบุคคลไทย + เปิด PromptPay + ยื่น account application (Go-live ข้อ 6, 16; owner ยังไม่ยืนยัน)
   2. spec 01 Q-F1 — ค่าส่งจริงแทน ฿10 placeholder (Go-live ข้อ 5)
   3. staging (ADR-027 ยังไม่เขียน) — ต้องมีก่อนวัด checkout แบบ OPS-26 ซ้ำบน staging และก่อน OPS-19 ⏸
@@ -92,7 +90,7 @@ Depends "—" = เฉพาะ PR เอกสารปิดรอบ 42 · �
 | 10 | Postgres prod `LC_CTYPE` ไม่ใช่ `C`/`POSIX` (`check:go-live` ตรวจ) | CORE-75, OPS-33 |
 | 11 | รัน `lowercase-emails.ts` แปลงอีเมลเดิมเป็นตัวเล็ก | CORE-80/81 |
 | 12 | backfill ธง `evoucher_backordered` | EV-25 |
-| 13 | log ของ prod ไม่มี PII (access log ไม่ผ่าน redact — OPS-35; ช่องรั่วที่เหลือ = OPS-36) | OPS-33, OPS-35 |
+| 13 | log ของ prod ไม่มี PII (access log ไม่ผ่าน redact — OPS-35; ช่องรั่วที่เหลือปิดใน OPS-36 ของ v0.3.1) | OPS-33, OPS-35, OPS-36 |
 | 14 | วัด p95 `POST /store/search` กับ catalog จริง (> ~10k สินค้าหรือ p95 > 300ms → ADR) | CORE-75 |
 | 15 | endpoint live สมัคร `refund.updated`/`refund.failed` + ทดสอบบัตร `4000 0000 0000 5126` ว่า alert ถึง ops | PAY-21, ADR-029 |
 | 16 | บัญชี Stripe live ยื่น account application ให้เสร็จ (refund พร้อมเพย์ต้องส่งอีเมลขอบัญชีถึงลูกค้า) | PAY-19 (Q-P14/15), ปิดรอบ 42 |
@@ -117,8 +115,8 @@ Depends "—" = เฉพาะ PR เอกสารปิดรอบ 42 · �
 | Admin UI ใช้ component ของ Medusa | 08 | 🚀 | 41 🚀 | ADR-018; ADM-22/36 เป็นผลตรวจไม่มี PR |
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
-| รอบ 42 | 01–08 | ☑ | 21 ☑ | → v0.3.1 (รอ owner merge); ADR-029 |
-| รอบ 43 | 01, 03, 04, 06–08 | ☐ เสนอ | 16 ☐ | รอ Q-R43 |
+| รอบ 42 | 01–08 | ☑ | 21 ☑ | → v0.3.1 (รอ OPS-36, PAY-23, PAY-24 แล้ว owner merge); ADR-029 |
+| รอบ 43 | 01, 03, 04, 06–08 | ☐ | 16 ☐ | 3 ตัว → v0.3.1 ก่อน go-live; 13 ตัวหลัง go-live |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
 

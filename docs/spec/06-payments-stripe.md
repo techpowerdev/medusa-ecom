@@ -501,7 +501,7 @@ Out of scope: แก้สถานะเงินใน Medusa อัตโน�
 22. (PAY-20 — ADR-029 ก) job `src/jobs/refund-failure-scan.ts` (cron `*/15 * * * *`, ชื่อ `refund-failure-scan`, ข้ามเมื่อ `scheduledJobsDisabled()`) เรียกฟังก์ชันที่ export
     `scanRefundFailures(container, now = new Date())` (test เรียกตรง):
     (a) อ่านแถว `refund` ที่ `created_at ≥ now − 7 วัน` และ `status ∈ {failed, pending}` รวมแถวที่ soft-delete (`listRefunds` + `withDeleted` หรือ `query.graph` — builder ยืนยัน
-        ว่าได้แถว failed จริง; ห้าม SQL ตรง) เรียงเก่าก่อน ไม่เกิน 200 แถวต่อรอบ (เกิน → log warn `REFUND_SCAN_TRUNCATED`);
+        ว่าได้แถว failed จริง; ห้าม SQL ตรง) เรียงเก่าก่อน (**เปลี่ยนเป็นใหม่ก่อนใน PAY-23 — กฎข้อ 26c, Q-P23 = ก owner 2026-11-25**) ไม่เกิน 200 แถวต่อรอบ (เกิน → log warn `REFUND_SCAN_TRUNCATED`);
     (b) `failed` และ payment นั้นยังเหลือ `captured − refunded` > 0 (`MathBN` จาก `raw_amount`, นับเฉพาะ refund ที่ไม่ถูกลบ) → alert code `REFUND_FAILED`; เหลือ 0 (คืนสำเร็จภายหลัง) → ไม่ alert;
         `pending` ที่ไม่ถูกลบและ `updated_at ≤ now − 60 นาที` → alert code `REFUND_STUCK`;
     (c) alert ต่อแถว refund: idempotency key `refund-alert:<refund_id>` — มี notification ของ key นี้ที่ไม่ใช่ `failure` แล้ว → ข้าม (ไม่ log/ไม่ส่งซ้ำ); ไม่งั้น `logger.error`
@@ -564,8 +564,8 @@ Out of scope: แก้สถานะเงินใน Medusa อัตโน�
 - ~~**Q-P20**~~ **ตัดสินแล้ว (owner 2026-11-24) = ไม่เปิด issue upstream** — บันทึกไว้ใน ADR-029 อย่างเดียว (PAY-20 ไม่ต้องร่าง issue) — คำถามเดิม: เปิด issue ที่ Medusa เรื่อง `refundPaymentsStep` กลืน error ของ provider และ `refundPaymentsWorkflow` เพิ่ม order transaction ของ refund ที่ล้ม
 
 ## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
-Status: draft · ที่มา: review/qa/builder #532, #540, #541, #546, #548, #550, #551 ที่ยังเป็นจริงบน develop `599009b6`
-Out of scope: จำเหตุของการคืนเงินข้าม reload (Q-P22), สกุลเงินอื่นนอก THB (PAY-21 ใช้ `decimal_digits` ของ ISO — ตัวคูณของ Stripe ต่างใน ISK/HUF; ทบทวนเมื่อเปิดสกุลเงินอื่น)
+Status: accepted สำหรับ PAY-23, PAY-24 (owner สั่งทำก่อน go-live — Q-R43-ฉ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task รวมใน v0.3.1) · PAY-22, PAY-25 draft (☐ หลัง go-live — รอ owner สั่ง) · ที่มา: review/qa/builder #532, #540, #541, #546, #548, #550, #551 ที่ยังเป็นจริงบน develop `599009b6`
+Out of scope: จำเหตุของการคืนเงินข้าม reload (Q-P22 = คงไว้), สกุลเงินอื่นนอก THB (PAY-21 ใช้ `decimal_digits` ของ ISO — ตัวคูณของ Stripe ต่างใน ISK/HUF; ทบทวนเมื่อเปิดสกุลเงินอื่น)
 ### What Medusa already gives us (รอบ 43)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
@@ -573,14 +573,14 @@ Out of scope: จำเหตุของการคืนเงินข้า
 | อีเมลถึง ops + กันส่งซ้ำ | Notification module + `idempotency_key`; helper `sendOpsAlert` ของเรา (PAY-20 — soft-delete แถว `failure` ก่อนส่งใหม่ เพราะ 2.22.1 ส่งซ้ำแถว failure ไม่ได้) | ย้ายผู้ใช้เดิมมาใช้ helper (กฎข้อ 27) |
 | error ของ Stripe.js | `confirmPayment`/`confirmPromptPayPayment` คืน `error` (`type`/`code`) | map ด้วย `stripeErrorMessage` เดิมของ PAY-17 (กฎข้อ 28) |
 ### Business rules (รอบ 43)
-25. (PAY-22 — re-review/qa #532, CORE-95 #546; ข้อ c ขึ้นกับ Q-P21) `/api/payment-return` (`app/api/payment-return/route.ts`):
+25. (PAY-22 — re-review/qa #532, CORE-95 #546; ข้อ c ตาม Q-P21 = ก owner 2026-11-25) `/api/payment-return` (`app/api/payment-return/route.ts`):
     (a) เทียบ `redirect_status` แบบไม่สนตัวพิมพ์ (`FAILED` = `failed`);
     (b) อ่าน cart ได้ 401/403 และ `redirect_status=failed` → หน้า login ที่ `return_to` = `/<cc>/checkout?step=payment` (เดิมกลับ `step=review`);
-    (c) (ถ้า Q-P21 = ก) 401/403 และ `redirect_status=succeeded` → `/<cc>/account?notice=payment_received` ผ่าน helper ของ CORE-95 (`lib/util/login-notice.ts`) แล้ว login ไป `/<cc>/account/orders` (spec 01 กฎข้อ 151c); สถานะอื่นคงเดิม
-26. (PAY-23 — review #550, #551; ข้อ c ขึ้นกับ Q-P23) alert ของการคืนเงิน:
+    (c) 401/403 และ `redirect_status=succeeded` → `/<cc>/account?notice=payment_received` ผ่าน helper ของ CORE-95 (`lib/util/login-notice.ts`) แล้ว login ไป `/<cc>/account/orders` (spec 01 กฎข้อ 151c); สถานะอื่นคงเดิม
+26. (PAY-23 — review #550, #551; ข้อ c ตาม Q-P23 = ก owner 2026-11-25 — แทนคำว่า "เรียงเก่าก่อน" ของกฎข้อ 22a) alert ของการคืนเงิน:
     (a) `stripe-refund-webhook` ส่ง `source: "stripe"` ใน data ของ template `refund-failed` (ADR-029; job ของ PAY-20 ส่ง `"medusa"`);
     (b) log error เมื่อ lock/ส่งล้มใน subscriber ไม่ขึ้นต้นด้วย `STRIPE_REFUND_FAILED` (code สงวนให้ alert จริง) — ขึ้นต้น `stripe-refund-webhook: alert failed`;
-    (c) (ถ้า Q-P23 = ก) กฎข้อ 22a เรียง**ใหม่ก่อน** (`created_at` DESC) คงเพดาน 200 และ warn `REFUND_SCAN_TRUNCATED`; แก้ประโยคใน runbook "คืนเงินล้ม/ค้าง (ADR-029)" ให้ตรง;
+    (c) กฎข้อ 22a เรียง**ใหม่ก่อน** (`created_at` DESC) คงเพดาน 200 และ warn `REFUND_SCAN_TRUNCATED`; แก้ประโยคใน runbook "คืนเงินล้ม/ค้าง (ADR-029)" ให้ตรง;
     (d) test ผูก `order_id` ของ alert `REFUND_FAILED` กับ order จริง (refund ล้มของ order ที่ยกเลิก)
 27. (PAY-24 — กฎข้อ 22d) ผู้ส่งอีเมลหา `OPS_ALERT_EMAIL` เดิม 3 ที่ใช้ `sendOpsAlert`: `subscribers/payment-webhook-orphan.ts` (key ใหม่ `payment-webhook-session-not-found:<payment_intent>` — Stripe ส่ง event ซ้ำ = อีเมลเดียว),
     `subscribers/group-buy-payment-captured.ts` และ `workflows/group-buy/membership-payment.ts` (alert give-up) คง key เดิม; code/template/ผู้รับ/ข้อมูลเท่าเดิม; log ขึ้นต้นด้วย code เดิม;
@@ -588,9 +588,9 @@ Out of scope: จำเหตุของการคืนเงินข้า
 28. (PAY-25 — PAY-17 #540, review #540) error ของ Stripe ที่ `promptpay-payment/open-qr.ts` (~`:31`) และ `order/components/order-pay/pay-buttons.tsx` (~`:35`) ใช้ `stripeErrorMessage` (ไม่แสดง `error.message` ภาษาอังกฤษของ Stripe ตรง)
 ### Acceptance criteria (รอบ 43)
 - AC-35 (PAY-22, กฎข้อ 25) unit ของ route (แบบ AC-31): ทุกคู่ {401, 403} × {`failed`, `FAILED`, `succeeded`, ไม่มีค่า} → location ตามกฎ (ล้มบน develop — `failed` + 401 ได้ `step=review`, `FAILED` + 5xx ได้ `step=review`);
-  ทุกแขนง 401/403 ไม่เรียก `setCartCookie`; (ถ้า Q-P21 = ก) `succeeded` + 401 → `?notice=payment_received` และ login ไป `/th/account/orders` (unit ของ helper CORE-95)
+  ทุกแขนง 401/403 ไม่เรียก `setCartCookie`; `succeeded` + 401 → `?notice=payment_received` และ login ไป `/th/account/orders` (unit ของ helper CORE-95)
 - AC-36 (PAY-23, กฎข้อ 26) integration `stripe-refund-webhook.spec.ts`: data ของ notification มี `source: "stripe"` (ล้มบน develop); mock locking throw → ไม่มี log บรรทัดใดขึ้นต้น `STRIPE_REFUND_FAILED`;
-  `refund-failure-scan.spec.ts`: refund ล้มของ order ที่ยกเลิก → data `order_id` = id ของ order; (ถ้า Q-P23 = ก) แถวที่ใหม่ที่สุดในชุด 201 แถวถูกตรวจ และ unit runbook ตรงประโยคใหม่
+  `refund-failure-scan.spec.ts`: refund ล้มของ order ที่ยกเลิก → data `order_id` = id ของ order; แถวที่ใหม่ที่สุดในชุด 201 แถวถูกตรวจ และ unit runbook ตรงประโยคใหม่
 - AC-37 (PAY-24, กฎข้อ 27) static: สามไฟล์ไม่มี `process.env.OPS_ALERT_EMAIL`/`createNotifications` ตรง (ใช้ `sendOpsAlert`); test เดิมของ PAY-6b, GB-20b, GB-23 ผ่านโดยไม่แก้ค่าที่คาด;
   webhook orphan ของ PI เดียวกันมา 2 ครั้ง → notification 1 รายการ; mock notification provider ล้มครั้งแรกแล้วสำเร็จ → แถวที่ไม่ใช่ failure = 1 และรอบที่สามไม่ส่งเพิ่ม
 - AC-38 (PAY-25, กฎข้อ 28) unit Vitest: `openQr` เมื่อ Stripe คืน error ภาษาอังกฤษ → message เป็นอักษรไทย (ล้มบน develop); `PayButtons` (route mock แบบ AC-30) error `card_declined` → ข้อความที่มองเห็นเป็นไทย ไม่มีข้อความของ Stripe
@@ -602,20 +602,20 @@ Out of scope: จำเหตุของการคืนเงินข้า
 ### Tasks (รอบ 43)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| PAY-22 | `/api/payment-return`: ตัวพิมพ์ของ `redirect_status`, failed + 401 → `step=payment`, (Q-P21) notice `payment_received` (กฎข้อ 25) | `app/api/payment-return/route.ts` (+ test), `lib/util/login-notice.ts` (ถ้า Q-P21 = ก) | ~20 LOC + ~80 LOC test | AC-35 | PR เอกสารปิดรอบ 42; **Q-P21** | — |
-| PAY-23 | (เงิน) alert คืนเงิน: `source`, prefix ของ log, (Q-P23) เรียงใหม่ก่อน, test `order_id` (กฎข้อ 26) | `src/subscribers/stripe-refund-webhook.ts`, `src/jobs/refund-failure-scan.ts`, `docs/ops/production.md` (ถ้า Q-P23 = ก), test | ~15 LOC + ~80 LOC test | AC-36 | PR เอกสารปิดรอบ 42; **Q-P23** | `production.md` (OPS-37 — ตัวหลัง sync) |
-| PAY-24 | (เงิน) ย้ายผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่มาใช้ `sendOpsAlert` (กฎข้อ 27) | ไฟล์ในกฎข้อ 27, test | ~−30 LOC + ~80 LOC test | AC-37 | PR เอกสารปิดรอบ 42 | `membership-payment.ts` (GB-33 แตะเฉพาะ test — ไม่ชน) |
-| PAY-25 | ข้อความไทยของ error Stripe ตอนเปิด QR และหน้าจ่าย order (กฎข้อ 28); qa | ไฟล์ในกฎข้อ 28 (+ test) | ~10 LOC + ~60 LOC test | AC-38 | PR เอกสารปิดรอบ 42 | — |
+| PAY-22 | (หลัง go-live) `/api/payment-return`: ตัวพิมพ์ของ `redirect_status`, failed + 401 → `step=payment`, notice `payment_received` เมื่อ `succeeded` (กฎข้อ 25) | `app/api/payment-return/route.ts` (+ test), `lib/util/login-notice.ts` | ~20 LOC + ~80 LOC test | AC-35 | PR เอกสารปิดรอบ 42 (Q-P21 = ก ☑) | — |
+| PAY-23 | (v0.3.1 ก่อน go-live; เงิน) alert คืนเงิน: `source`, prefix ของ log, เรียงใหม่ก่อน, test `order_id` (กฎข้อ 26) | `src/subscribers/stripe-refund-webhook.ts`, `src/jobs/refund-failure-scan.ts`, `docs/ops/production.md`, test | ~15 LOC + ~80 LOC test | AC-36 | PR เอกสารปิดรอบ 42 (Q-P23 = ก ☑) | `production.md` (OPS-37 — ตัวหลัง sync) |
+| PAY-24 | (v0.3.1 ก่อน go-live; เงิน) ย้ายผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่มาใช้ `sendOpsAlert` (กฎข้อ 27) | ไฟล์ในกฎข้อ 27, test | ~−30 LOC + ~80 LOC test | AC-37 | PR เอกสารปิดรอบ 42 | `membership-payment.ts` (GB-33 แตะเฉพาะ test — ไม่ชน) |
+| PAY-25 | (หลัง go-live) ข้อความไทยของ error Stripe ตอนเปิด QR และหน้าจ่าย order (กฎข้อ 28); qa | ไฟล์ในกฎข้อ 28 (+ test) | ~10 LOC + ~60 LOC test | AC-38 | PR เอกสารปิดรอบ 42 | — |
 
-ลำดับ: ทั้งสี่ตัวขนานกันได้ (∥) — PAY-22/23 รอคำตอบ Q-P21/Q-P23 (ถ้าไม่ตอบ ทำเฉพาะข้อที่ไม่ขึ้นกับคำถาม)
+ลำดับ: ทั้งสี่ตัวขนานกันได้ (∥) — v0.3.1 ก่อน go-live: PAY-23 ∥ PAY-24 (owner สั่งแล้ว 2026-11-25); PAY-22, PAY-25 หลัง go-live (☐ รอ owner สั่ง)
 ### Open questions (รอบ 43)
-- **Q-P21** (CORE-95 #546) กลับจาก Stripe redirect (`/api/payment-return`) แล้ว session หมด (401/403) ลูกค้าเห็นหน้า login เปล่า ไม่มี notice "ได้รับชำระเงินแล้ว" แบบ CORE-95:
+- ~~**Q-P21**~~ **ตัดสินแล้ว (owner 2026-11-25) = (ก)** notice `payment_received` เฉพาะ `redirect_status=succeeded` → PAY-22 กฎข้อ 25c — คำถามเดิม: (CORE-95 #546) กลับจาก Stripe redirect (`/api/payment-return`) แล้ว session หมด (401/403) ลูกค้าเห็นหน้า login เปล่า ไม่มี notice "ได้รับชำระเงินแล้ว" แบบ CORE-95:
   (ก) **[Recommended]** เพิ่มใน PAY-22 เฉพาะ `redirect_status=succeeded` (กฎข้อ 25c) — ทางเดียวกับปุ่มบัตรของ CORE-95 ~10 LOC ใช้ helper เดิม; ข้อความไม่สัญญาว่ามี order (order มาจาก webhook ตาม ADR-015);
   (ข) ไม่เพิ่ม — redirect เกิดเฉพาะบัตร 3DS/พร้อมเพย์บนมือถือ และ session หมดระหว่างนั้นหายาก; PAY-22 ทำแค่ (a)(b)
-- **Q-P22** (PAY-19 #548, review #548) หลัง reload ข้อความคืนเงินเฉพาะเหตุ (เช่นโปรโมชันใช้ไม่ได้ของ CORE-76, สิทธิ์ flash) กลายเป็น `REVIEW_REFUNDED_NOTICE` ทั่วไป (กฎข้อ 21a — Store API ไม่บอกเหตุ):
+- ~~**Q-P22**~~ **ตัดสินแล้ว (owner 2026-11-25) = (ก) คงไว้** ไม่จำเหตุเฉพาะหลัง refresh ไม่มี task — คำถามเดิม: (PAY-19 #548, review #548) หลัง reload ข้อความคืนเงินเฉพาะเหตุ (เช่นโปรโมชันใช้ไม่ได้ของ CORE-76, สิทธิ์ flash) กลายเป็น `REVIEW_REFUNDED_NOTICE` ทั่วไป (กฎข้อ 21a — Store API ไม่บอกเหตุ):
   (ก) **[Recommended]** คงไว้ — ลูกค้ายังรู้ว่าคืนเงินแล้วและไปแก้ที่ตะกร้าได้ (ตะกร้าเตือนเหตุของ FS-21/CORE-76 อยู่แล้ว); ไม่เก็บสถานะใหม่ (ตรง Q-P13 = ก); ไม่มีงาน;
   (ข) จำเหตุต่อ cart (`cart.metadata` ฝั่ง backend ตอน compensation) แล้วแสดงข้อความเดิมหลัง reload — ~100 LOC + integration; ขัดหลัก "ไม่เขียน metadata" ของ Q-P13 จึงต้องมี ADR
-- **Q-P23** (review #550) job `refund-failure-scan` เรียงเก่าก่อน + เพดาน 200: ถ้ามีแถว failed/pending เกิน 200 ใน 7 วัน แถว**ใหม่**ไม่ถูกตรวจจนแถวเก่าพ้น 7 วัน (มีแค่ warn `REFUND_SCAN_TRUNCATED`):
+- ~~**Q-P23**~~ **ตัดสินแล้ว (owner 2026-11-25) = (ก)** เรียงใหม่ก่อน → PAY-23 กฎข้อ 26c — คำถามเดิม: (review #550) job `refund-failure-scan` เรียงเก่าก่อน + เพดาน 200: ถ้ามีแถว failed/pending เกิน 200 ใน 7 วัน แถว**ใหม่**ไม่ถูกตรวจจนแถวเก่าพ้น 7 วัน (มีแค่ warn `REFUND_SCAN_TRUNCATED`):
   (ก) **[Recommended]** เรียงใหม่ก่อน (กฎข้อ 26c) — refund ที่ล้มใหม่ถูกแจ้งภายใน 15 นาทีเสมอ; ที่หลุดคือแถวเก่าซึ่งรอบก่อนแจ้งไปแล้ว; ~2 LOC + test; ถ้าล้มพร้อมกันเกิน 200 ใน 15 นาที แถวเก่าสุดของชุดนั้นเหลือแค่ warn (runbook ให้ตรวจมือ);
   (ข) อ่านทีละหน้าจนครบหน้าต่าง 7 วัน — ไม่หลุดเลย แต่เหตุการณ์ใหญ่ส่งอีเมลหลายร้อยฉบับในรอบเดียว ~20 LOC;
   (ค) คงเดิม — ยอมรับตามที่เขียนใน runbook แล้ว

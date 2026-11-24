@@ -1315,7 +1315,7 @@ Status: done (☑ ADM-47 #526, ADM-48 #542 — ปิดรอบ 42 2026-11-24)
 ลำดับ: ADM-47 → ADM-48
 
 ## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
-Status: draft · ที่มา: ADM-47 #526 (builder), review #542, ADM-48 #542 (builder) — ตรวจบน develop `599009b6`
+Status: draft (☐ หลัง go-live — รอ owner สั่ง; Q-R43-ฉ = ก owner 2026-11-25) · ที่มา: ADM-47 #526 (builder), review #542, ADM-48 #542 (builder) — ตรวจบน develop `599009b6`
 ### What Medusa already gives us (รอบ 43)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|

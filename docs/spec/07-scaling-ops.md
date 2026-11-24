@@ -611,7 +611,7 @@ Status: done (☑ OPS-35 #536 — ปิดรอบ 42 2026-11-24) · แตะ
 | OPS-35 | ☑ #536 — redact backtick/JSON escape/`'` + runbook access log และ reset layout (กฎข้อ 17 รอบ 42) | `apps/backend/src/lib/redact-pii.ts` (+ unit), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts` | ~20 LOC + ~60 LOC test | AC-50 | PR เอกสารปิดรอบ 41 | `production.md` |
 
 ## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
-Status: draft · ที่มา: review #536, #548, GB-32 #534 (builder) — ตรวจบน develop `599009b6` · OPS-36 เป็น**ช่องรั่วของ PII ใน log** (Go-live ข้อ 13) — เสนอให้เสร็จก่อน go-live (ROADMAP คำถาม Q-R43)
+Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน go-live — Q-R43-ฉ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task รวมใน v0.3.1) · OPS-37, OPS-38 draft (☐ หลัง go-live — รอ owner สั่ง) · ที่มา: review #536, #548, GB-32 #534 (builder) — ตรวจบน develop `599009b6` · OPS-36 เป็น**ช่องรั่วของ PII ใน log** (Go-live ข้อ 13)
 ### What Medusa already gives us (รอบ 43)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
@@ -619,13 +619,13 @@ Status: draft · ที่มา: review #536, #548, GB-32 #534 (builder) — �
 | ล้าง layout ส่วนตัว | `DELETE /admin/layouts/:zone/configuration` (`clearLayoutConfigurationWorkflow`) | ใช้ตามเดิมใน runbook (กฎข้อ 19 รอบ 43) |
 | lint ของ workflow/step/module | `@medusajs/eslint-plugin` (`step-id-kebab-case` ฯลฯ) | แก้ตามกฎ ไม่เปลี่ยน id ที่ engine เก็บ (กฎข้อ 20 รอบ 43) |
 ### Business rules (รอบ 43)
-18. (OPS-36 — review #536) `redactPii` (`src/lib/redact-pii.ts`): (a) ค่าของ key PII ใน JSON ที่ escape ซ้อนและ**ลงท้ายด้วย backslash** ต้องไม่ทำให้ค่าของ key ถัดไปหลุด (เคสที่พบ: `city` "Bangkok" ไม่ถูก redact) — comment ~`:26` "redact เกิน (ทางปลอดภัย)" แก้ให้ตรงพฤติกรรม;
+18. (กฎข้อ 18 รอบ 43 — คนละชุดกับเช็กลิสต์ bump ข้อ 18; OPS-36 — review #536) `redactPii` (`src/lib/redact-pii.ts`): (a) ค่าของ key PII ใน JSON ที่ escape ซ้อนและ**ลงท้ายด้วย backslash** ต้องไม่ทำให้ค่าของ key ถัดไปหลุด (เคสที่พบ: `city` "Bangkok" ไม่ถูก redact) — comment ~`:26` "redact เกิน (ทางปลอดภัย)" แก้ให้ตรงพฤติกรรม;
     (b) ระบุใน comment + unit ว่ารองรับ escape ซ้อน ≤ 3 ชั้น (≥ 4 ชั้นไม่ redact — ยอมรับ); (c) ค่าที่ `util.inspect` ตัดเป็นหลายท่อน (`'…' +\n '…'` เมื่อสตริงมี `\n`) ถูก redact ทุกท่อน;
     (d) คง linear-time (unit 100k ตัวอักษรเดิม) และไม่ตัด id/`request_id`/จำนวนเงิน
-19. (OPS-37 — review #536, #548) (a) `docs/ops/production.md` "หลัง go-live": ยืนยันบน browser ว่า widget `order-refund-blocked` ของแอดมินที่มี layout ส่วนตัวอยู่ตำแหน่งใด แล้วแก้ถ้อยคำ "อยู่ท้ายคอลัมน์หลักใต้ Payments" ให้ตรง;
+19. (กฎข้อ 19 รอบ 43 — คนละชุดกับเช็กลิสต์ bump; OPS-37 — review #536, #548) (a) `docs/ops/production.md` "หลัง go-live": ยืนยันบน browser ว่า widget `order-refund-blocked` ของแอดมินที่มี layout ส่วนตัวอยู่ตำแหน่งใด แล้วแก้ถ้อยคำ "อยู่ท้ายคอลัมน์หลักใต้ Payments" ให้ตรง;
         ทาง (2) ให้คำสั่งที่รันได้ทันทีใน DevTools console ของหน้า admin (`fetch("/admin/layouts/order.details/configuration", { method: "DELETE", credentials: "include" })`);
     (b) `.github/workflows/ci.yml` job ที่บูต backend ให้ e2e เก็บ log เต็มของ backend เป็น artifact (retention 14 วัน — CLAUDE.md ข้อ 6) นอกเหนือจาก tail 200 บรรทัดเดิม (tail ไม่ครอบช่วง test — review #548)
-20. (OPS-38 — GB-32 #534 builder) `pnpm --filter backend lint` ไม่มี warning ใน `src/workflows/group-buy/campaign.ts` (~`:177` step id), `src/workflows/group-buy/refund-cancelled-membership.ts` (~`:48` workflow id),
+20. (กฎข้อ 20 รอบ 43 — คนละชุดกับเช็กลิสต์ bump; OPS-38 — GB-32 #534 builder) `pnpm --filter backend lint` ไม่มี warning ใน `src/workflows/group-buy/campaign.ts` (~`:177` step id), `src/workflows/group-buy/refund-cancelled-membership.ts` (~`:48` workflow id),
     `src/lib/json-logger.ts` (import path ภายใน build ของ package) และ `src/modules/evoucher/service.ts` (method ที่ใช้ manager แต่ขาด `@InjectManager`) — **id ของ step/workflow ที่ engine เก็บห้ามเปลี่ยน** (เปลี่ยนชื่อตัวแปรแทน แบบกฎข้อ 58e ของ spec 04; ถ้าต้องเปลี่ยน id → หยุดและรายงาน)
 ### Acceptance criteria (รอบ 43)
 - AC-51 (OPS-36, กฎข้อ 18 รอบ 43) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture JSON escape ซ้อนที่ค่า `email` ลงท้ายด้วย `\\` ตามด้วย `"city":"Bangkok"` → ไม่เหลือค่า email และไม่เหลือ "Bangkok";
@@ -635,11 +635,11 @@ Status: draft · ที่มา: review #536, #548, GB-32 #534 (builder) — �
 ### Tasks (รอบ 43)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| OPS-36 | (PII — ก่อน go-live) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด, ≤ 3 ชั้น, สตริงหลายท่อน (กฎข้อ 18 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit) | ~20 LOC + ~60 LOC test | AC-51 | PR เอกสารปิดรอบ 42 | — |
-| OPS-37 | runbook หลัง go-live (ตำแหน่ง widget + คำสั่ง DELETE) + log backend เต็มเป็น artifact ของ CI (กฎข้อ 19 รอบ 43) | `docs/ops/production.md`, `.github/workflows/ci.yml`, `src/__tests__/{ops-runbook,ci-workflow}.unit.spec.ts` | ~15 LOC + ~30 LOC test | AC-52 | PR เอกสารปิดรอบ 42 | `production.md` (PAY-23 ถ้า Q-P23 = ก — ตัวหลัง sync) |
+| OPS-36 | (PII — v0.3.1 ก่อน go-live) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด, ≤ 3 ชั้น, สตริงหลายท่อน (กฎข้อ 18 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit) | ~20 LOC + ~60 LOC test | AC-51 | PR เอกสารปิดรอบ 42 | — |
+| OPS-37 | runbook หลัง go-live (ตำแหน่ง widget + คำสั่ง DELETE) + log backend เต็มเป็น artifact ของ CI (กฎข้อ 19 รอบ 43) | `docs/ops/production.md`, `.github/workflows/ci.yml`, `src/__tests__/{ops-runbook,ci-workflow}.unit.spec.ts` | ~15 LOC + ~30 LOC test | AC-52 | PR เอกสารปิดรอบ 42 | `production.md` (PAY-23 — ตัวหลัง sync) |
 | OPS-38 | backend lint warning 4 ไฟล์ โดยไม่เปลี่ยน id ของ step/workflow (กฎข้อ 20 รอบ 43) | ไฟล์ในกฎข้อ 20 รอบ 43, unit | ~15 LOC + ~30 LOC test | AC-53 | PR เอกสารปิดรอบ 42 | — |
 
-ลำดับ: OPS-36 ∥ OPS-37 ∥ OPS-38
+ลำดับ: OPS-36 ∥ OPS-37 ∥ OPS-38 — OPS-36 ใน v0.3.1 ก่อน go-live (owner สั่งแล้ว 2026-11-25); OPS-37, OPS-38 หลัง go-live (☐ รอ owner สั่ง)
 
 ## Open questions (รอบ 35)
 - **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):

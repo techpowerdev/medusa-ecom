@@ -1140,7 +1140,7 @@ Status: done (☑ GB-31 #529, GB-32 #534 — ปิดรอบ 42 2026-11-24; Q
 ลำดับ: GB-31 ∥ GB-32 (ไม่มีไฟล์ร่วม)
 
 ## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
-Status: draft · ที่มา: review #529, #534 — ตรวจบน develop `599009b6` · ใช้ของ Medusa ตามเดิม (Locking module, `listAndCount`) ไม่มีของใหม่ · lint warning ของ `campaign.ts`/`refund-cancelled-membership.ts` อยู่ใน OPS-38 (spec 07)
+Status: draft (☐ หลัง go-live — รอ owner สั่ง; Q-R43-ฉ = ก owner 2026-11-25) · ที่มา: review #529, #534 — ตรวจบน develop `599009b6` · ใช้ของ Medusa ตามเดิม (Locking module, `listAndCount`) ไม่มีของใหม่ · lint warning ของ `campaign.ts`/`refund-cancelled-membership.ts` อยู่ใน OPS-38 (spec 07)
 ### Business rules (รอบ 43)
 59. (GB-33 — test hygiene backend) (a) (review #529) integration (b) ของ AC-69 ใน `integration-tests/http/group-buy-promotion-lock.spec.ts` (~`:298`) เพิ่ม promotion ปกติที่อยู่นอกแคมเปญของ test เพื่อพิสูจน์ว่า filter `GB-*` ของ test ทำงาน;
     (b) (review #529) `once()` ใน `src/api/admin/promotions/group-buy-lock.ts` ที่ cache promise ที่ reject — เขียน comment ว่าตั้งใจ (อายุเท่า request เดียว);

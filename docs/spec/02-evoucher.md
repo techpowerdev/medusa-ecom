@@ -557,7 +557,7 @@ order ก่อน EV-22 (เช่น #66) มีธงแค่ใน `order_l
 | EV-25 | ☑ #476 — script backfill ธง backordered (กฎข้อ 41) + บรรทัด go-live | `src/scripts/backfill-evoucher-backordered-flags.ts`, `src/workflows/evoucher/steps/update-evoucher-backordered-flags.ts` (export helper), `docs/ops/production.md` (Go-live ข้อ 12), integration | ~60 LOC + ~100 LOC test | AC-55 | PR เอกสารรอบ 41 | `production.md` (CORE-81, OPS-33 คนละบรรทัด) |
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — qa/review #504; ไม่บล็อก release v0.3.0)
-Status: done (☑ EV-26 #527 — ปิดรอบ 42 2026-11-24; รอบ 43 ไม่มี task ของ spec นี้ — nit ของ #527 อยู่ใน ROADMAP "รอบ 43" ไม่ทำ)
+Status: done (☑ EV-26 #527 — ปิดรอบ 42 2026-11-24; รอบ 43 ไม่มี task ของ spec นี้ — nit ของ #527 อยู่ในรายการไม่ทำของ `docs/roadmap/history.md` หัวข้อ "รอบ 42 — ผลจริง")
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 42)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|

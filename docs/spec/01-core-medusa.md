@@ -3062,8 +3062,8 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
 - ~~**Q-C17**~~ **ตัดสินแล้ว (owner 2026-11-24) = (ก)** → กฎข้อ 149/AC-190 แก้ตามของจริง (หัว `OptionsPicker` ตรวจด้วย unit เพราะซ่อนบน collection/category ด้วย `hideOptionsPicker`; chip ป้ายกำกับตรวจ e2e บน `/th/store`) — บันทึกปิดรอบ 42
 
 ## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
-Status: draft · ที่มา: review/qa/builder #524–#546 ที่ยังเป็นจริงบน develop `599009b6` · เลขกฎ/AC ต่อจาก CORE-95 (กฎข้อ 151, AC-192)
-Out of scope: ลบ `OptionsPicker` (ดู ROADMAP "รอบ 43" ไม่ทำ), งานรอบ 43 ใน spec อื่น (03 FS-26, 04 GB-33, 06 PAY-22..25, 07 OPS-36..38, 08 ADM-49..50)
+Status: draft (☐ หลัง go-live — รอ owner สั่ง; Q-R43-ฉ = ก owner 2026-11-25) · ที่มา: review/qa/builder #524–#546 ที่ยังเป็นจริงบน develop `599009b6` · เลขกฎ/AC ต่อจาก CORE-95 (กฎข้อ 151, AC-192)
+Out of scope: ลบ `OptionsPicker` (ดูรายการไม่ทำใน `docs/roadmap/history.md` หัวข้อ "รอบ 42 — ผลจริง"), งานรอบ 43 ใน spec อื่น (03 FS-26, 04 GB-33, 06 PAY-22..25, 07 OPS-36..38, 08 ADM-49..50)
 ### What Medusa already gives us (รอบ 43)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
@@ -3118,6 +3118,6 @@ Out of scope: ลบ `OptionsPicker` (ดู ROADMAP "รอบ 43" ไม่ท
 
 ลำดับ: ทั้งห้าตัวขนานกันได้ (∥) — ไม่มีไฟล์ร่วมกันเว้นแต่ static ของ CORE-99 พบจุดใน nav (ให้ CORE-97 แก้)
 ### Open questions (รอบ 43)
-- **Q-C18** (review #535 — แจ้ง owner ตอนปิดรอบ) overview นับ "มีคำสั่งซื้อกลุ่ม" จาก GB-8 รวม membership ที่ `cancelled` (ความหมายเดิมของ CORE-78/กฎข้อ 136b) → ลูกค้าที่มีแต่กลุ่มที่ยกเลิกเห็นลิงก์ "ดูทั้งหมด" ไม่เห็น "ยังไม่มีคำสั่งซื้อ":
+- ~~**Q-C18**~~ **ตัดสินแล้ว (owner 2026-11-25) = (ก) คงไว้** ไม่มี task — คำถามเดิม: (review #535 — แจ้ง owner ตอนปิดรอบ) overview นับ "มีคำสั่งซื้อกลุ่ม" จาก GB-8 รวม membership ที่ `cancelled` (ความหมายเดิมของ CORE-78/กฎข้อ 136b) → ลูกค้าที่มีแต่กลุ่มที่ยกเลิกเห็นลิงก์ "ดูทั้งหมด" ไม่เห็น "ยังไม่มีคำสั่งซื้อ":
   (ก) **[Recommended]** คงไว้ — หน้า orders แสดง membership ที่ยกเลิกด้วย (ลูกค้าดูประวัติ/การคืนเงินได้) สองหน้าจึงตรงกัน; ไม่มีงาน;
   (ข) ไม่นับ `cancelled` — ต้องเพิ่ม filter ใน GB-8 หรือฝั่ง storefront ~15 LOC + test และ overview จะต่างจากหน้า orders
