@@ -1,14 +1,14 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-24 · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-25 (ปิดรอบ 42 + คำตอบ owner Q-R43) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
-- **ตอนนี้**: รอบ 42 → release **v0.3.1** — เสร็จ 20/21 task (PAY-21 ◐ builder)
-- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 42 (ADR-029 accepted 2026-11-24)
-- **ขั้นต่อไป**: PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` (v0.3.1) → go-live
+- **ตอนนี้**: รอบ 42 เสร็จ 21/21 task (☑ develop `599009b6`) — release **v0.3.1** รอ OPS-36, PAY-23, PAY-24 ของรอบ 43 (owner 2026-11-25)
+- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 (ตอบครบ 2026-11-25) — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
+- **ขั้นต่อไป**: OPS-36 + PAY-23 + PAY-24 merge → owner merge v0.3.1 (`develop → main`) → go-live (checklist ข้อ 1–16) → **v1.0.0**
 
 ### Release
 
@@ -17,9 +17,12 @@
 | v0.1.0 | 🚀 | 2026-11-11 | #342 (`15fce017`), tag `v0.1.0` | ร้านค้าหลัก + task ทุกตัวที่ merge ถึงวันนั้น (เงื่อนไข: CORE-12/12b/17/18, OPS-21, EV-15, CORE-55) |
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
-| v0.3.1 | ◐ กำลังทำ | — | — | รอบ 42 (21 task) — ตารางด้านล่าง |
-| go-live | ☐ | — | — | หลัง v0.3.1 + Go-live checklist (หัวข้อ "ก่อนเปิดร้านจริง") |
-| v1.0.0 | ☐ ยังไม่กำหนดเงื่อนไขใหม่ | — | — | ป้ายเดิมของ M7; ป้าย v0.3.0–v1.0 ของ M3–M7 เป็นแผนเดิมก่อนรวม release ไม่ผูกกับเลข release จริง |
+| v0.3.1 | ◐ รอ OPS-36, PAY-23, PAY-24 | — | — | รอบ 42 (21 task ☑ — history หัวข้อ "รอบ 42 — ผลจริง") + 3 task ก่อน go-live ของรอบ 43 (Q-R43-ฉ = ก แก้เพิ่ม owner 2026-11-25) |
+| go-live | ☐ | — | — | หลัง v0.3.1 + Go-live checklist ข้อ 1–16 |
+| v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
+| หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 13 task |
+
+ป้าย release ในหัวข้อ M3–M7 ของ history (v0.3.0 … v1.0.0 🎯) เป็นแผนเดิมก่อนรวม release — ไม่ผูกกับเลข release จริงในตารางนี้
 
 ### สัญลักษณ์
 
@@ -28,78 +31,76 @@
 - `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12)
 - task ที่ merge หลัง v0.3.0 ใช้ ☑ จนถึง release v0.3.1 · บันทึกประวัติคงสัญลักษณ์ ณ วันที่บันทึก
 
-## รอบ 42 → release v0.3.1 (รอบปัจจุบัน)
+## รอบ 43 (ปิดรอบ 42 2026-11-24; owner ตอบ Q-R43 2026-11-25)
 
-ที่มา: follow-up ของ review/qa/builder #462–#519 (ตรวจบน develop `8d509076`) · owner สั่งทำ · เลขกฎ/AC อยู่ในหัวข้อ
-"Follow-up รอบ 42" ของแต่ละ spec · ไม่บล็อก v0.3.0 (Q-R42 = ก) · Depends "—" = เฉพาะ PR เอกสารปิดรอบ 41 (merge แล้ว)
+ที่มา: follow-up ของ review/qa/builder #524–#551 ที่ยังจริงบน develop `599009b6` · เลขกฎ/AC อยู่ในหัวข้อ "Follow-up รอบ 43" ของแต่ละ spec ·
+Depends "—" = เฉพาะ PR เอกสารปิดรอบ 42 · ทุกตัวขนานกันได้ (∥) เว้นที่ระบุ
 
-| คลื่น | Task | spec | งาน (สั้น) | Depends | สถานะ |
+### ก่อน go-live → v0.3.1 (owner สั่งทำแล้ว 2026-11-25)
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
-| A | CORE-89 | 01 | สรุปขั้น payment ไม่ตัดคำที่ 375px | — | ☑ #524 |
-| A | CORE-90 | 01 | a11y ปุ่มสลับ login/register ≥ 44px + testid ไม่ซ้ำ | — | ☑ #525 |
-| A | CORE-91 | 01 | dropdown ตะกร้าไม่บอกว่าว่างระหว่างโหลด/ล้ม | — | ☑ #539 |
-| A | CORE-92 | 01 | overview/orders hygiene + a11y `SearchPagination` | — | ☑ #535 |
-| A | CORE-93 | 01 | chip ป้ายกำกับบน `/store` + หัว `OptionsPicker` ไม่แสดง `(n)` (Q-C17 = ก) | — | ☑ #533 |
-| A | CORE-94 | 01 | hygiene storefront (search, `cart.ts`, metadata, `COMPARE`) | — | ☑ #530 |
-| A | EV-26 | 02 | toast "Still backordered" + helper e2e/ข้อความ error ร่วม | — | ☑ #527 |
-| A | FS-25 | 03 | e2e hygiene flash: helper ร่วม + PDP `?v_id=` | — | ☑ #531 |
-| A | GB-31 | 04 | พิสูจน์ lock AC-63b + guard อ่าน link ครั้งเดียว + test | — | ☑ #529 |
-| A | GB-32 | 04 | job หมดเวลาชำระ: เพดาน 200 ต่อรอบ (Q26 = ก) | — | ☑ #534 |
-| A | AF-27 | 05 | ลบโหมด grouped ของ `summarizeCommissionEntries` | — | ☑ #528 |
-| A | PAY-18 | 06 | `/api/payment-return` failed+5xx → `step=payment` + notice ตะกร้า | — | ☑ #532 |
-| A | OPS-35 | 07 | redact backtick/JSON escape/`'` + runbook | — | ☑ #536 |
-| A | ADM-47 | 08 | focus กลับปุ่ม `…` หลังปิดฟอร์มจากเมนู | — | ☑ #526 |
-| B | PAY-16 | 06 | สถานะขั้น payment: notice/guard/timeout/radio | CORE-89 | ☑ #541 |
-| B | PAY-17 | 06 | ข้อความไทยของ error Stripe ขั้น review + PromptPay poll | CORE-90 | ☑ #540 |
-| B | ADM-48 | 08 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit #513 | ADM-47 | ☑ #542 |
-| C | CORE-95 | 01 | จ่ายบัตรแล้ว session หมด → notice บนหน้า login แล้วไป orders (Q-C16 = ก) | PAY-17 | ☑ #546 |
-| C | PAY-19 | 06 | PromptPay คืนเงินครบ: notice + ลิงก์ตะกร้าแทนปุ่มจ่าย (ขอบเขตย่อตาม Q-P13 = ก) | PAY-17, CORE-95 (#546) | ☑ #548 |
-| D | PAY-20 | 06 | job ตรวจ refund ล้ม/ค้าง → alert `OPS_ALERT_EMAIL` (ADR-029 ก) — ต้องทำก่อน go-live | — (ADR-029 ☑) | ☑ #550 |
-| D | PAY-21 | 06 | webhook `refund.failed`/`refund.updated` → alert (ADR-029 ข) — ต้องทำก่อน go-live | PAY-20 | ☐ |
+| OPS-36 | 07 | (PII) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด + หลายท่อน | — | — | ☐ |
+| PAY-23 | 06 | (เงิน) alert คืนเงิน: `source`, prefix log, เรียงใหม่ก่อน (Q-P23 = ก), `order_id` | — | — | ☐ |
+| PAY-24 | 06 | (เงิน) ผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่ใช้ `sendOpsAlert` | — | — | ☐ |
 
-- merge train: #537 (CORE-89, CORE-90, ADM-47, EV-26, AF-27, GB-31, CORE-94, PAY-18) · #538 (CORE-93, GB-32, CORE-92, OPS-35) ·
-  #543 (FS-25, CORE-91) · #544 (PAY-17, ADM-48) · #545 (PAY-16) · CORE-95 #546 (merge ตรง)
-- **PAY-19 (owner Q-P13 = ก 2026-11-24)**: ตัดสินที่ `PaymentButton` ขั้น review เมื่อไม่มี session + คืนเงินครบ
-  (เพราะ `refundPaymentAndRecreatePaymentSessionWorkflow` สร้าง session ใหม่ไม่สำเร็จ) — spec 06 กฎ 21/AC-32 แก้ใน PR ของ PAY-19
-- **ไฟล์ร่วมที่เหลือ**: `payment-button/index.tsx` CORE-95 → PAY-19 (#546 merge แล้ว — PAY-19 #548 แก้ต่อ) ·
-  `ci.yml` PAY-19 → PAY-21 (ตัวหลัง sync) · `templates.ts`/`production.md` PAY-20 → PAY-21
-- **คลื่น D (ADR-029, spec 06 กฎ 22–24)**: PAY-20 ∥ PAY-19 (คนละ app) → PAY-21
-- **ปิดรอบ**: PAY-20 + PAY-21 merge → planner ปิดรอบ 42 → owner merge `develop → main` = v0.3.1
-- **คำตัดสิน owner ของรอบ**: 2026-11-23 Q-R42 = ก, spec 04 Q26 = ก, spec 01 Q-C16 = ก, spec 06 Q-P12 = ข (ทำ PAY-19),
-  spec 08 Q13 = ก (ข้อยกเว้น testid ที่ 4 — ADR-018 ภาคผนวก + `CLAUDE.md`) · 2026-11-24 spec 01 Q-C17 = ก (CORE-93), spec 06 Q-P13 = ก (PAY-19),
-  spec 06 Q-P14 = ข, Q-P15, Q-P16 (PAY-19), Q-P17 = ทำใน v0.3.1 (→ ADR-029, PAY-20/21), Q-P18 = ก+ข (ADR-029 accepted),
-  Q-P19 = ก (ไม่แก้ยอดอัตโนมัติ), Q-P20 = ไม่เปิด issue upstream
-- งาน/ไม่ทำ/ไฟล์ร่วมฉบับเต็มตอนเสนอรอบ: history หัวข้อ "รอบ 42"
+### หลัง go-live (☐ รอ owner สั่ง)
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|
+| CORE-96 | 01 | สรุปขั้น payment ไม่ตัดคำทุกความกว้าง + บัตรของขวัญ + `renewedFrom` | — | ✓ | ☐ |
+| CORE-97 | 01 | nav ตะกร้า: ลิงก์ไม่ซ้อนปุ่ม, ป้ายไม่ค้างหลัง logout, backend ล่มไม่บอก (0) | — | ✓ | ☐ |
+| CORE-98 | 01 | overview GB-8 ล้ม/`<ul>` ว่าง + a11y `SearchPagination` + จำนวน toggle ลดราคา | — | ✓ | ☐ |
+| CORE-99 | 01 | a11y ลิงก์/ปุ่ม: static ครอบทุกรูป, "." ปุ่มสลับ, testid `cart-sign-in-link` | — | ✓ | ☐ |
+| CORE-100 | 01 | hygiene storefront: purity 3 ไฟล์, coverage/`COMPARE`, e2e chip, unit กฎ 151e | — | — | ☐ |
+| FS-26 | 03 | e2e hygiene flash: `stripeRefunds`/`ok` ร่วม + catch ของ helper | — | — | ☐ |
+| GB-33 | 04 | test hygiene: filter ของ AC-69b, เกณฑ์เวลาผูก `LOCK_TIMEOUT`, comment | — | — | ☐ |
+| PAY-22 | 06 | `/api/payment-return`: `FAILED`, failed+401 → `step=payment`, notice เมื่อ `succeeded` (Q-P21 = ก) | — | — | ☐ |
+| PAY-25 | 06 | ข้อความไทยของ error Stripe ตอนเปิด QR + หน้าจ่าย order | — | ✓ | ☐ |
+| OPS-37 | 07 | runbook หลัง go-live (คำสั่ง DELETE) + log backend เต็มเป็น artifact CI | — | — | ☐ |
+| OPS-38 | 07 | backend lint warning 4 ไฟล์ (ไม่เปลี่ยน id ของ step/workflow) | — | — | ☐ |
+| ADM-49 | 08 | focus หลัง Mark as paid → แถวถัดไป/ปุ่ม Create payout | — | ✓ | ☐ |
+| ADM-50 | 08 | test hygiene admin: static ผูกปุ่ม Save, unit hook, e2e campaign | — | — | ☐ |
+
+- **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `docs/ops/production.md` PAY-23 → OPS-37 · `components/common/*` ADM-49 ↔ ADM-50 ·
+  static ของ CORE-99 พบจุดใน nav → ให้ CORE-97 แก้ · `ci.yml` OPS-37 เท่านั้น · `cart.ts` CORE-97 เท่านั้น
+- integration หนัก: PAY-23, PAY-24 (v0.3.1), GB-33 — จำกัดพร้อมกันตามเครื่อง
+- ไม่ทำ/backlog ของรอบนี้ (พร้อมเหตุผล): history หัวข้อ "รอบ 42 — ผลจริง"
 
 ## คำถามที่รอ owner
 
-- **รอบ 42**: ไม่มีคำถามค้าง
-- **follow-up เก่า (รอบ 30–39)**: ข้อ "ก. ต้องให้ owner ตัดสิน" ปิดครบทุกรอบ — ข้อ ข/ค (hygiene/backlog) ยังไม่มี task
-  รอ owner สั่ง ดู [`followups-archive.md`](roadmap/followups-archive.md)
-- **ต้องตัดสินก่อน go-live** (ไม่บล็อก v0.3.1):
-  1. spec 06 Q1 — บัญชี Stripe live เป็นนิติบุคคลไทยและเปิด PromptPay (Go-live ข้อ 6; owner ยังไม่ยืนยัน)
+- **รอบ 43**: ไม่มีคำถามค้าง — คำตัดสิน owner 2026-11-25:
+  - ~~Q-R43-ฉ~~ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task (OPS-36, PAY-23, PAY-24) รวมใน v0.3.1 ไม่แยก v0.3.2 — v0.3.1 รอ 3 task นี้ merge ก่อน owner merge `develop → main`;
+    อีก 13 task หลัง go-live (☐ รอ owner สั่ง)
+  - ~~Q-R43-จ~~ = ก: v1.0.0 = release แรกที่เปิดร้านจริง (Go-live checklist ครบ + smoke test บน production ผ่าน); backlog ⏸ คงหลัง v1.0
+  - ~~Q-R43-ง~~ = ก: เพิ่มกติกา ROADMAP แบบสั้นใน `.claude/agents/planner.md` ข้อ 5 — session หลักทำใน PR บทเรียน
+  - spec 06 ~~Q-P21~~ = ก (PAY-22), ~~Q-P22~~ = คงไว้, ~~Q-P23~~ = เรียงใหม่ก่อน (PAY-23); spec 01 ~~Q-C18~~ = คงไว้
+- **follow-up เก่า (รอบ 30–39)**: ข้อ ข/ค (hygiene/backlog) ยังไม่มี task รอ owner สั่ง — [`followups-archive.md`](roadmap/followups-archive.md)
+- **ต้องตัดสินก่อน go-live** (คำถามเดิม — ไม่บล็อก v0.3.1):
+  1. spec 06 Q1 — บัญชี Stripe live นิติบุคคลไทย + เปิด PromptPay + ยื่น account application (Go-live ข้อ 6, 16; owner ยังไม่ยืนยัน)
   2. spec 01 Q-F1 — ค่าส่งจริงแทน ฿10 placeholder (Go-live ข้อ 5)
   3. staging (ADR-027 ยังไม่เขียน) — ต้องมีก่อนวัด checkout แบบ OPS-26 ซ้ำบน staging และก่อน OPS-19 ⏸
 
 ## ก่อนเปิดร้านจริง (go-live)
 
-ทำตาม `docs/ops/production.md` หัวข้อ "Go-live checklist" ข้อ 1–14 (+ ข้อ 15 หลัง PAY-21) บน prod (รวม `check:go-live`) โดยเฉพาะข้อที่เพิ่มในรอบ 40–41:
+ทำตาม `docs/ops/production.md` หัวข้อ "Go-live checklist" ข้อ 1–16 บน prod (รวม `check:go-live`) โดยเฉพาะข้อที่เพิ่มในรอบ 40–42:
 
 | ข้อ | งาน | ที่มา |
 |---|---|---|
 | 10 | Postgres prod `LC_CTYPE` ไม่ใช่ `C`/`POSIX` (`check:go-live` ตรวจ) | CORE-75, OPS-33 |
 | 11 | รัน `lowercase-emails.ts` แปลงอีเมลเดิมเป็นตัวเล็ก | CORE-80/81 |
 | 12 | backfill ธง `evoucher_backordered` | EV-25 |
-| 13 | log ของ prod ไม่มี PII | OPS-33 |
+| 13 | log ของ prod ไม่มี PII (access log ไม่ผ่าน redact — OPS-35; ช่องรั่วที่เหลือปิดใน OPS-36 ของ v0.3.1) | OPS-33, OPS-35, OPS-36 |
 | 14 | วัด p95 `POST /store/search` กับ catalog จริง (> ~10k สินค้าหรือ p95 > 300ms → ADR) | CORE-75 |
-| 15 | endpoint live สมัคร `refund.updated`/`refund.failed` + ทดสอบบัตร `4000 0000 0000 5126` ว่า alert ถึง ops (ข้อที่ PAY-21 เพิ่ม) | PAY-21, ADR-029 |
+| 15 | endpoint live สมัคร `refund.updated`/`refund.failed` + ทดสอบบัตร `4000 0000 0000 5126` ว่า alert ถึง ops | PAY-21, ADR-029 |
+| 16 | บัญชี Stripe live ยื่น account application ให้เสร็จ (refund พร้อมเพย์ต้องส่งอีเมลขอบัญชีถึงลูกค้า) | PAY-19 (Q-P14/15), ปิดรอบ 42 |
 
 เพิ่มเติม (ไม่ใช่ task): ข้อ 5–6 ตามคำถามด้านบน · smoke test บน production (`check:go-live` + `tools/ops/smoke-*.sh`) ·
 ตั้ง `OPS_ALERT_EMAIL`, `EVOUCHER_ADMIN_EMAIL`, `RESEND_API_KEY` · วัด OPS-26 ซ้ำบน staging (ต้องมี ADR-027 ก่อน)
 
 ## Milestone ภาพรวม
 
-รายการ task ทุกตัวพร้อมเลข PR: [`history.md`](roadmap/history.md) (หัวข้อ M0–M7, Admin UI, Release v0.3.0, รอบ 41)
+รายการ task ทุกตัวพร้อมเลข PR: [`history.md`](roadmap/history.md) (หัวข้อ M0–M7, Admin UI, Release v0.3.0, รอบ 41, รอบ 42 — ผลจริง)
 
 | Milestone | spec | สถานะ | task | หมายเหตุ |
 |---|---|---|---|---|
@@ -114,7 +115,8 @@
 | Admin UI ใช้ component ของ Medusa | 08 | 🚀 | 41 🚀 | ADR-018; ADM-22/36 เป็นผลตรวจไม่มี PR |
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
-| รอบ 42 | 01–08 | ◐ | 19 ☑ + 1 ◐ + 1 ☐ | → v0.3.1 |
+| รอบ 42 | 01–08 | ☑ | 21 ☑ | → v0.3.1 (รอ OPS-36, PAY-23, PAY-24 แล้ว owner merge); ADR-029 |
+| รอบ 43 | 01, 03, 04, 06–08 | ☐ | 16 ☐ | 3 ตัว → v0.3.1 ก่อน go-live; 13 ตัวหลัง go-live |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
 
@@ -139,6 +141,7 @@
 |---|---|
 | บรรทัดสถานะ/ประวัติรายรอบ (รอบ 12–41), "ก่อนเปิดร้านจริง (go-live)" ฉบับเดิม | [`history.md`](roadmap/history.md) หัวข้อ "บันทึกสถานะและประวัติรายรอบ" |
 | M0–M7, Admin UI, Release v0.3.0, รอบ 41, รอบ 42 (ฉบับเสนอ) | [`history.md`](roadmap/history.md) ชื่อหัวข้อเดิม |
+| "รอบ 42 → release v0.3.1 (รอบปัจจุบัน)" (ตาราง 21 task, merge train, คำตัดสิน) | [`history.md`](roadmap/history.md) หัวข้อ "รอบ 42 — ผลจริง" |
 | "Backlog follow-up" / "หัวข้อ Backlog" | [`followups-archive.md`](roadmap/followups-archive.md) |
 | "follow-up ที่รอ planner รอบถัดไป (ปิดรอบ 30/31–39)" | [`followups-archive.md`](roadmap/followups-archive.md) ชื่อหัวข้อเดิม |
 
