@@ -1,0 +1,24 @@
+PAY-19 (spec 06 กฎข้อ 21, AC-32 — owner Q-P13 = ก 2026-11-24) — ผลทดสอบในเครื่อง (2026-11-24, base develop d9fadb5d)
+
+== ข้อเท็จจริงที่ทำให้เปลี่ยนขอบเขต (Q-P13) ==
+backend integration `integration-tests/http/complete-after-payment-log.spec.ts -t "PAY-9 hotfix"` (รันไฟล์เดียวด้วย jest ตรง, log ชั่วคราวไม่ commit)
+  PAY19-AFTER []        ← หลัง compensation ของ complete-cart: payment_sessions ของ collection เดิม = [] (recreate ด้วย data เดิมล้ม — Invalid string)
+  Tests: 4 skipped, 1 passed, 5 total
+
+== Red (ก่อนเขียน refundedWithoutSession) ==
+vitest src/lib/util/payment-session.test.ts
+  TypeError: refundedWithoutSession is not a function
+  Test Files  1 failed (1)
+  Tests  4 failed | 46 passed (50)
+
+== Green ==
+vitest src/lib/util/payment-session.test.ts → Tests 50 passed (50)
+pnpm --filter storefront test:unit → Test Files 126 passed (126), Tests 1947 passed (1947)
+pnpm --filter storefront test:e2e:unit → 165 passed
+pnpm --filter storefront typecheck → ผ่าน (tsc --noEmit ไม่มี error)
+pnpm --filter storefront lint → 0 errors (warning เดิม 28 รายการ ไม่มีในไฟล์ที่ PR นี้แตะ)
+
+== e2e ในเครื่อง (backend :9219 + storefront :8219, Stripe dummy — spec ที่ต้องใช้ Stripe ถูก skip ให้ CI พิสูจน์) ==
+core-69-review-without-payment (3) ✓, core-89-payment-summary-mobile (3) ✓, core-4e-checkout-polish AC-91 ✓, core-19b AC-64 (บัตร/manual) ✓
+skipped (ต้องใช้ Stripe): pay-19-promptpay-refunded-reload AC-32, core-19b AC-64 PromptPay
+  8 passed, 2 skipped (34.3s)

@@ -4,7 +4,13 @@ import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import { unauthorizedLoginPath } from "@lib/util/login-notice"
-import { PROMPTPAY_FALLBACK_MAX_REQUESTS, PROMPTPAY_POLL_MS, isPromptPay } from "@lib/util/payment-session"
+import { REFUNDED_NOTICE } from "@lib/util/checkout-error"
+import {
+  PROMPTPAY_FALLBACK_MAX_REQUESTS,
+  PROMPTPAY_POLL_MS,
+  isPromptPay,
+  refundedWithoutSession,
+} from "@lib/util/payment-session"
 import {
   CheckoutNotice,
   PROCESSING_NOTICE,
@@ -20,6 +26,7 @@ import React, { useEffect, useRef, useState } from "react"
 import ErrorMessage from "../error-message"
 import PromptPayPaymentButton from "../promptpay-payment"
 import PromptPayOrderDelayed from "../promptpay-payment/order-delayed"
+import RefundedGoToCart from "../refunded-go-to-cart"
 
 /**
  * CORE-4i-b (กฎข้อ 72) / CORE-76 (กฎข้อ 134 a2): ผลของ placeOrder — สำเร็จ = redirect ของ Next (ไม่มีผล) → null,
@@ -119,6 +126,14 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     !deliveryDone
 
   const paymentSession = cart.payment_collection?.payment_sessions?.[0]
+
+  // PAY-19 (spec 06 กฎข้อ 21 — Q-P13 = ก): Medusa คืนเงินแล้วไม่มี session เหลือ (reload/Back/หลัง router.refresh ของ PAY-11/15)
+  // → ข้อความคืนเงิน + ลิงก์ตะกร้าแทนปุ่ม disabled; ขั้น payment ยังเลือกวิธีชำระใหม่ได้ (PAY-9 สร้าง collection ใหม่)
+  if (refundedWithoutSession(cart)) {
+    return (
+      <RefundedGoToCart text={REFUNDED_NOTICE} noticeTestId="review-refunded-notice" linkTestId="review-refunded-go-to-cart" />
+    )
+  }
 
   switch (true) {
     case isStripeLike(paymentSession?.provider_id):
