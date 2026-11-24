@@ -1,4 +1,5 @@
 import { Writable } from "stream"
+import { inspect } from "util"
 import { redactPii, redactValue } from "../redact-pii"
 import { buildJsonLogger } from "../json-logger"
 
@@ -134,6 +135,78 @@ describe("redactPii (OPS-33, AC-48a)", () => {
     )
   })
 
+  // OPS-36 (spec 07 กฎข้อ 18 รอบ 43, AC-51): review #536
+  const nest = (value: unknown, levels: number): string => {
+    let text = JSON.stringify(value)
+    for (let i = 0; i < levels; i++) {
+      text = JSON.stringify({ m: text })
+    }
+    return text
+  }
+  const unnest = (text: string, levels: number): unknown => {
+    let value = JSON.parse(text)
+    for (let i = 0; i < levels; i++) {
+      value = JSON.parse(value.m)
+    }
+    return value
+  }
+
+  it("ค่า email ลงท้ายด้วย backslash ใน JSON escape ซ้อน ไม่ทำให้ city ถัดไปหลุด (เคส review #536)", () => {
+    const text = JSON.stringify({ m: JSON.stringify({ email: "Som\\", city: "Bangkok", id: "cart_123" }) })
+    const out = redactPii(text)
+
+    expect(out).not.toContain("Som")
+    expect(out).not.toContain("Bangkok")
+    expect(unnest(out, 1)).toEqual({ email: "[REDACTED]", city: "[REDACTED]", id: "cart_123" })
+  })
+
+  it.each([0, 1, 2, 3])("escape %i ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย", (levels) => {
+    const value = {
+      name: "Som\\",
+      first_name: 'O"Brien\\\\',
+      last_name: '\\"',
+      city: "Bangkok",
+      address_1: "99/1\nSukhumvit",
+      id: CART_ID,
+      amount: 1999,
+    }
+    const out = redactPii(nest(value, levels))
+
+    for (const pii of ["Som", "Brien", "Bangkok", "Sukhumvit"]) {
+      expect(out).not.toContain(pii)
+    }
+    expect(unnest(out, levels)).toEqual({
+      name: "[REDACTED]",
+      first_name: "[REDACTED]",
+      last_name: "[REDACTED]",
+      city: "[REDACTED]",
+      address_1: "[REDACTED]",
+      id: CART_ID,
+      amount: 1999,
+    })
+  })
+
+  it("escape ≥ 4 ชั้นไม่ redact ค่าของ key (ยอมรับตามกฎข้อ 18b รอบ 43) และไม่ทำให้ข้อความเสีย", () => {
+    const text = nest({ name: "Somchai", id: CART_ID }, 4)
+    expect(redactPii(text)).toBe(text)
+  })
+
+  it("สตริงหลายท่อนของ util.inspect (address_1 ที่มี \\n) ถูก redact ทุกท่อน", () => {
+    const text = inspect({
+      address_1: "99/1 Sukhumvit Soi 4 Khlong Toei Khlong Toei Thailand long text here 1234567890 abcdefghijklmnop\nSomchai Jaidee\nit's line",
+      city: "Bangkok",
+      id: CART_ID,
+      amount: 1999,
+    })
+    expect(text).toContain("' +\n") // ยืนยันว่า util.inspect ตัดเป็นหลายท่อนจริง
+    const out = redactPii(text)
+
+    for (const pii of ["Sukhumvit", "Somchai", "Jaidee", "it's", "Bangkok"]) {
+      expect(out).not.toContain(pii)
+    }
+    expect(out).toBe(`{\n  address_1: '[REDACTED]',\n  city: '[REDACTED]',\n  id: '${CART_ID}',\n  amount: 1999\n}`)
+  })
+
   it.each([
     ["ข้อความธรรมดา", "refund for o'brien@example.com done", "refund for [REDACTED] done"],
     ["ใน quote เดี่ยว", "to: 'o'brien@example.com'", "to: '[REDACTED]'"],
@@ -155,9 +228,24 @@ describe("redactPii (OPS-33, AC-48a)", () => {
     ["a' ติดกัน 100k ตัว", "a'".repeat(50_000)],
     ["backslash 100k ตัว", "\\".repeat(100_000)],
     ["escape quote ไม่ปิด", `\\"name\\":\\"${"x\\\\".repeat(25_000)}`],
+    // OPS-36: backslash + quote ที่ไม่ใช่ quote ปิด และสตริงหลายท่อนที่ไม่ปิด
+    ["escape quote ภายในค่า ไม่ปิด", `\\"name\\":\\"${'\\\\\\"x'.repeat(20_000)}`],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     const started = performance.now()
     expect(redactPii(text)).toBe(text)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+
+  // OPS-36: input ที่ match key แล้วต้องไล่ค่ายาว (ผลถูก redact บางส่วน จึงวัดเฉพาะเวลา)
+  const L3 = "\\".repeat(7)
+  it.each([
+    ["escape 3 ชั้น ไม่ปิด", `${L3}"name${L3}":${L3}"${"\\".repeat(100_000)}`],
+    ["escape 3 ชั้น quote ภายในยาว", `${L3}"name${L3}":${L3}"${`${"\\".repeat(15)}"x`.repeat(6_000)}`],
+    ["สตริงหลายท่อนไม่ปิด", `name: 'a'${" + 'a'".repeat(16_000)} + '${"x".repeat(10_000)}`],
+    ["key PII ซ้ำไม่ปิด", `\\"name\\":\\"x`.repeat(10_000)],
+  ])("ข้อความยาวที่มี key PII (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
+    const started = performance.now()
+    redactPii(text)
     expect(performance.now() - started).toBeLessThan(200)
   })
 })

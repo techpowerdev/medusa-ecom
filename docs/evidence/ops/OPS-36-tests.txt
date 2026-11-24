@@ -1,0 +1,93 @@
+# OPS-36 — redact-pii (spec 07 กฎข้อ 18 รอบ 43, AC-51)
+# คำสั่ง: cd apps/backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest src/lib/__tests__/redact-pii.unit.spec.ts
+
+## RED (test ใหม่บนโค้ด develop b3fabfcc)
+    ✓ บรรทัด recreate a payment session → ไม่มีชื่อ/อีเมล/เบอร์/ที่อยู่เหลือ แต่ id ยังอยู่ครบ (2 ms)
+    ✓ อีเมลทุกที่ในข้อความ (ไม่ต้องมี key)
+    ✓ ค่าของ key ในรูป JS object (util.inspect) และ Ruby hash
+    ✓ key ที่ลงท้ายเหมือนกันแต่ไม่อยู่ในรายการไม่ถูกแตะ
+    ✓ เบอร์โทรไทยที่มีขอบเขต (0812345678)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (021234567)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (+66812345678)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (ต้นสตริง) (1 ms)
+    ✓ เลขกลาง ULID/id และตัวเลขที่ไม่ใช่เบอร์ไม่ถูกตัด
+    ✓ ทศนิยมยาวและชื่อไฟล์ที่มี @ ไม่ถูกตัด
+    ✓ key PII ไม่สนตัวพิมพ์ และค่าที่เป็นตัวเลขใต้ key PII ถูก redact
+    ✓ ค่าในเครื่องหมาย backtick ของ util.inspect (สตริงที่มีทั้ง ' และ ") (1 ms)
+    ✓ JSON ที่ escape ซ้อน (JSON อยู่ในสตริงของ JSON อีกชั้น)
+    ✕ ค่า email ลงท้ายด้วย backslash ใน JSON escape ซ้อน ไม่ทำให้ city ถัดไปหลุด (เคส review #536) (1 ms)
+    ✓ escape 0 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✕ escape 1 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✕ escape 2 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✕ escape 3 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย (2 ms)
+    ✓ escape ≥ 4 ชั้นไม่ redact ค่าของ key (ยอมรับตามกฎข้อ 18b รอบ 43) และไม่ทำให้ข้อความเสีย
+    ✕ สตริงหลายท่อนของ util.inspect (address_1 ที่มี \n) ถูก redact ทุกท่อน
+    ✓ อีเมลที่ local part มี ' (ข้อความธรรมดา) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote เดี่ยว) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote คู่) ไม่เหลือ o'
+    ✓ ข้อความยาว (a ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (404 ของ id ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (จุดและขีดติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (a' ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (11 ms)
+    ✓ ข้อความยาว (backslash 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (4 ms)
+    ✓ ข้อความยาว (escape quote ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (escape quote ภายในค่า ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาวที่มี key PII (escape 3 ชั้น ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (4 ms)
+    ✓ ข้อความยาวที่มี key PII (escape 3 ชั้น quote ภายในยาว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาวที่มี key PII (สตริงหลายท่อนไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาวที่มี key PII (key PII ซ้ำไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII
+    ✓ Error และ Map ที่ส่งเป็น meta ถูก redact (ไม่หลุดเป็นค่าเดิม) (1 ms)
+    ✓ message, stack/cause และ field อื่นของ log ไม่มี PII แต่มี worker_mode, level และ id ครบ (3 ms)
+    ✓ ไม่แก้ object ของผู้เรียก (redact บนสำเนา) (1 ms)
+    ✓ AC-48c development → undefined (Medusa ใช้ logger เดิมซึ่งไม่ redact)
+Tests:       5 failed, 34 passed, 39 total
+
+## GREEN (หลังแก้)
+    ✓ บรรทัด recreate a payment session → ไม่มีชื่อ/อีเมล/เบอร์/ที่อยู่เหลือ แต่ id ยังอยู่ครบ (2 ms)
+    ✓ อีเมลทุกที่ในข้อความ (ไม่ต้องมี key) (1 ms)
+    ✓ ค่าของ key ในรูป JS object (util.inspect) และ Ruby hash
+    ✓ key ที่ลงท้ายเหมือนกันแต่ไม่อยู่ในรายการไม่ถูกแตะ
+    ✓ เบอร์โทรไทยที่มีขอบเขต (0812345678)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (021234567) (1 ms)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (+66812345678)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (ต้นสตริง)
+    ✓ เลขกลาง ULID/id และตัวเลขที่ไม่ใช่เบอร์ไม่ถูกตัด
+    ✓ ทศนิยมยาวและชื่อไฟล์ที่มี @ ไม่ถูกตัด
+    ✓ key PII ไม่สนตัวพิมพ์ และค่าที่เป็นตัวเลขใต้ key PII ถูก redact
+    ✓ ค่าในเครื่องหมาย backtick ของ util.inspect (สตริงที่มีทั้ง ' และ ") (1 ms)
+    ✓ JSON ที่ escape ซ้อน (JSON อยู่ในสตริงของ JSON อีกชั้น)
+    ✓ ค่า email ลงท้ายด้วย backslash ใน JSON escape ซ้อน ไม่ทำให้ city ถัดไปหลุด (เคส review #536)
+    ✓ escape 0 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย (1 ms)
+    ✓ escape 1 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape 2 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape 3 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape ≥ 4 ชั้นไม่ redact ค่าของ key (ยอมรับตามกฎข้อ 18b รอบ 43) และไม่ทำให้ข้อความเสีย
+    ✓ สตริงหลายท่อนของ util.inspect (address_1 ที่มี 
+    ✓ อีเมลที่ local part มี ' (ข้อความธรรมดา) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote เดี่ยว) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote คู่) ไม่เหลือ o'
+    ✓ ข้อความยาว (a ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (404 ของ id ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (จุดและขีดติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (a' ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (10 ms)
+    ✓ ข้อความยาว (backslash 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (escape quote ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (escape quote ภายในค่า ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาวที่มี key PII (escape 3 ชั้น ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (4 ms)
+    ✓ ข้อความยาวที่มี key PII (escape 3 ชั้น quote ภายในยาว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาวที่มี key PII (สตริงหลายท่อนไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาวที่มี key PII (key PII ซ้ำไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII (1 ms)
+    ✓ Error และ Map ที่ส่งเป็น meta ถูก redact (ไม่หลุดเป็นค่าเดิม) (5 ms)
+    ✓ message, stack/cause และ field อื่นของ log ไม่มี PII แต่มี worker_mode, level และ id ครบ (5 ms)
+    ✓ ไม่แก้ object ของผู้เรียก (redact บนสำเนา)
+    ✓ AC-48c development → undefined (Medusa ใช้ logger เดิมซึ่งไม่ redact) (1 ms)
+Tests:       39 passed, 39 total
+
+## ชุดอื่น
+pnpm --filter backend test:unit: Test Suites 132 passed, Tests 1874 passed
+pnpm --filter backend lint: 0 errors, 4 warnings (เดิมบน develop — ไม่มีในไฟล์ที่แตะ; OPS-38)
+pnpm --filter backend typecheck: ผ่าน
+pnpm --filter storefront test:e2e:unit: 165 passed
+fuzz ชั่วคราว (ไม่ commit): 20,000 ค่าแบบสุ่มจากอักขระ backslash, quote 3 แบบ, a, newline, , : { } ใน escape 0–3 ชั้น → ไม่หลุด/parse กลับได้ครบ
