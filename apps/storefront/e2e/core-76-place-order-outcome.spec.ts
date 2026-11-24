@@ -202,6 +202,8 @@ test.describe("AC-175: ผลของการยืนยันคำสั่
       await page.getByTestId("submit-order-button").click()
       await expect(page).toHaveURL(new RegExp(`/${CC}/account$`), { timeout: 30_000 })
       await expect(page.getByTestId("checkout-refunded-notice")).toHaveCount(0)
+      // CORE-95 (กฎข้อ 151a, AC-192 d): manual ยังไม่ตัดเงิน → URL ไม่มี notice (ด้านบน) และไม่มี notice ได้รับชำระเงิน
+      await expect(page.getByTestId("login-payment-received-notice")).toHaveCount(0)
     })
   })
 })

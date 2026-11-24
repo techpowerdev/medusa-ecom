@@ -35,6 +35,7 @@ import {
   readPendingAddToCart,
 } from "@lib/util/pending-add-to-cart"
 import { isBuyReturnPath, readReturnTo } from "@lib/util/login-return"
+import { loginNoticeRedirect } from "@lib/util/login-notice"
 import { buyFromPermalink } from "@lib/util/server-cart"
 import { restoreActiveCart } from "./active-cart"
 import { medusaFetch } from "./medusa-fetch"
@@ -232,6 +233,11 @@ async function continueAfterAuth(
   result: CustomerAuthState
 ): Promise<CustomerAuthState> {
   const returnTo = readReturnTo(formData)
+  // CORE-95 (กฎข้อ 151c): จ่ายบัตรแล้ว session หมด → หน้า orders (ค่าคงที่จาก notice ที่ผ่าน allow-list ไม่รับ path จากฟอร์ม)
+  const noticeTo = loginNoticeRedirect(formData)
+  if (result?.state === "success" && !returnTo && noticeTo) {
+    redirect(noticeTo)
+  }
   if (result?.state === "success" && returnTo && !isBuyReturnPath(returnTo)) {
     redirect(returnTo)
   }

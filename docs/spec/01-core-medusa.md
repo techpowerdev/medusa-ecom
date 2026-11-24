@@ -3022,9 +3022,14 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
   (b) e2e `/th/store` กรองด้วย tag ชื่อยาว 80 ตัว → ข้อความใน chip "ป้ายกำกับ" อยู่บรรทัดเดียวและ chip มี `title` = "ป้ายกำกับ: <ชื่อเต็ม>" (ล้มบน develop — 4 บรรทัด ไม่มี `title`) (ผ่าน: red บน develop `59c6af18` ทั้ง unit 2/2 + e2e → green unit `src/core-93-options-picker-heading.test.ts` 2/2 + `e2e/core-93-label-chip.spec.ts`; e2e ของ `/store` เดิม core-70/75/87 ผ่าน)
 - ☑ AC-191 (CORE-94, กฎข้อ 150) `prettier --check` ของสองไฟล์ผ่าน; unit `search-client.test.ts` มีคำทั้งสามใน `it.each`; unit ของ `cart.ts` นับการเรียก `getAuthHeaders`/cookie ต่อ action = 1;
   mutation ของ (c) และ (d) (แนบใน PR): เอา metadata ออกจากทางครั้งแรก → coverage test ล้ม; เพิ่ม `/x/.test(err.message)` ในไฟล์ storefront → `core-84` ล้ม
-- AC-192 (CORE-95, กฎข้อ 151) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน: (a) ทางบัตร PI `succeeded` (Stripe test mode หรือ mock แบบ AC-175) + complete ตอบ 401 → URL `/th/account?notice=payment_received`
+- ☑ AC-192 (CORE-95, กฎข้อ 151) unit Vitest + e2e route mock — **ล้มบน develop** ก่อน: (a) ทางบัตร PI `succeeded` (Stripe test mode หรือ mock แบบ AC-175) + complete ตอบ 401 → URL `/th/account?notice=payment_received`
   และเห็น `login-payment-received-notice` อักษรไทย; (b) login แล้ว URL เป็น `/th/account/orders`; (c) `/th/account?notice=<script>` และ `?notice=x` → ไม่มี notice; (d) manual + 401 → `/th/account` ไม่มี `notice` (regression CORE-76);
   unit: helper เลือกปลายทางตาม (ทางชำระ, kind) ครบตาราง
+  (ผ่าน: red บน develop `b9421ecf` unit 4/30 ล้ม (บัตร + unauthorized ได้ `/th/account`, ไม่มี notice/hidden input, login ไม่ไป orders) + `core-76` แถวบัตร + e2e (a)(b) ล้ม
+  → green unit `src/core-95-payment-received-notice.test.ts` 30/30 (ตาราง {บัตร, manual} × {unauthorized, failed, processing, refunded} บน `PaymentButton` จริง)
+  + e2e `e2e/core-95-payment-received-notice.spec.ts`; (a) ทางบัตรจริง = บัตร 4242 แล้วลบ `_medusa_jwt` ก่อนกดยืนยัน (complete ได้ 401 จริง ไม่ mock) ต้องใช้ Stripe UI → พิสูจน์ใน CI;
+  (d) เพิ่มตรวจ notice = 0 ใน `core-76-place-order-outcome.spec.ts` (a2) 401; helper `lib/util/login-notice.ts` — ฟอร์ม login ส่ง `notice` + `country_code` แบบ hidden
+  เฉพาะเมื่อผ่าน allow-list และ server action ใช้ `return_to` ที่ผ่าน `readReturnTo` ก่อน notice; country ผิดรูป → `/account/orders`)
 
 ### Test plan (รอบ 42)
 | ระดับ | AC |
@@ -3043,7 +3048,7 @@ Out of scope: เปลี่ยน URL ของ `/store` เป็น `?page=`
 | CORE-93 | ☑ #533 — หัว option ของ `OptionsPicker` (unit; ซ่อนบน collection/category — Q-C17 = ก) + chip ป้ายกำกับ (กฎข้อ 149); qa | `modules/store/components/refinement-list/options-picker/index.tsx`, chip ของตัวกรอง, e2e | ~15 LOC + ~60 LOC test | AC-190 | PR เอกสารปิดรอบ 41 | `refinement-list` |
 | CORE-94 | ☑ #530 — hygiene storefront: prettier/it.each ของ search, cookie ครั้งเดียว, coverage guard, regex COMPARE (กฎข้อ 150) | `lib/search-client.ts` (+ test), `lib/data/cart.ts`, `checkout-affiliate-coverage.test.ts`, `core-84-gb-affiliate-codes.test.ts` | ~30 LOC + ~80 LOC test | AC-191 | PR เอกสารปิดรอบ 41 | `cart.ts` |
 
-| CORE-95 | (Q-C16 = ก owner 2026-11-23) จ่ายบัตรแล้ว session หมด → notice "ได้รับชำระเงินแล้ว…" บนหน้า login แล้วไปหน้า orders (กฎข้อ 151); qa | `modules/checkout/components/payment-button/index.tsx`, `lib/util/` helper ปลายทาง (+ test), `modules/account/templates/login-template.tsx`, server action login ใน `lib/data/customer.ts`, e2e | ~40 LOC + ~100 LOC test | AC-192 | PR เอกสารปิดรอบ 41; **PAY-17** (`payment-button/index.tsx`) | `payment-button/index.tsx` (PAY-17, test ของ CORE-94), `customer.ts`, `login-template.tsx` (CORE-90 แตะ `login/index.tsx` คนละไฟล์) |
+| CORE-95 | ☑ #546 — (Q-C16 = ก owner 2026-11-23) จ่ายบัตรแล้ว session หมด → notice "ได้รับชำระเงินแล้ว…" บนหน้า login แล้วไปหน้า orders (กฎข้อ 151); qa | `modules/checkout/components/payment-button/index.tsx`, `lib/util/` helper ปลายทาง (+ test), `modules/account/templates/login-template.tsx`, server action login ใน `lib/data/customer.ts`, e2e | ~40 LOC + ~100 LOC test | AC-192 | PR เอกสารปิดรอบ 41; **PAY-17** (`payment-button/index.tsx`) | `payment-button/index.tsx` (PAY-17, test ของ CORE-94), `customer.ts`, `login-template.tsx` (CORE-90 แตะ `login/index.tsx` คนละไฟล์) |
 
 ลำดับ: CORE-89..94 อิสระ (คลื่น A); CORE-95 หลัง PAY-17 (คลื่น C — ไฟล์ `payment-button/index.tsx`); ไฟล์ร่วมข้าม spec: `payment/index.tsx` CORE-89 → PAY-16, `promptpay-payment/index.tsx` CORE-90 → PAY-17
 
