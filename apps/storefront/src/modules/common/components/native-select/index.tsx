@@ -1,5 +1,5 @@
-import { ChevronUpDown } from "@medusajs/icons"
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
+import { ChevronsUpDown } from "lucide-react"
 import {
   SelectHTMLAttributes,
   forwardRef,
@@ -41,11 +41,11 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
         <div
           onFocus={() => innerRef.current?.focus()}
           onBlur={() => innerRef.current?.blur()}
-          className={clx(
+          className={cn(
             "relative flex items-center text-base-regular",
             className,
             {
-              "text-ui-fg-muted": isPlaceholder,
+              "text-muted-foreground": isPlaceholder,
             }
           )}
         >
@@ -55,7 +55,7 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
             {...props}
             // CORE-4g (กฎข้อ 63d): กรอบอยู่ที่ <select> และยืดเต็มความสูงของ wrapper — ผู้เรียกกำหนดความสูงผ่าน className
             // (เช่น CountrySelect ใช้ h-12 เท่า Input) แล้วกล่องของ element ที่มี data-testid สูงเท่ากัน
-            className="appearance-none flex-1 self-stretch min-w-0 border border-ui-border-base bg-ui-bg-subtle rounded-md hover:bg-ui-bg-field-hover px-4 py-2.5 transition-colors duration-150 outline-hidden"
+            className="appearance-none flex-1 self-stretch min-w-0 border border-input bg-muted rounded-md hover:bg-accent px-4 py-2.5 transition-colors duration-150 outline-hidden focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             <option disabled value="">
               {placeholder}
@@ -63,7 +63,7 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
             {children}
           </select>
           <span className="absolute right-4 inset-y-0 flex items-center pointer-events-none ">
-            <ChevronUpDown />
+            <ChevronsUpDown className="size-4" />
           </span>
         </div>
       </div>

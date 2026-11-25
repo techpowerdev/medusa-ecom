@@ -57,7 +57,7 @@ b. `clsx` + `tailwind-merge` ใน `src/lib/utils.ts` แบบเดิมข�
    accordion/slider เดิมย้ายเป็น `accordion`/`slider` ของ shadcn
 5. **map primitive**: headless `Dialog` (modal ที่อยู่) → `Dialog`; headless `Dialog`/`Popover` ที่เป็นแผงเต็มจอ (side menu, search drawer, mobile actions) → `Sheet`;
    `Popover` (cart dropdown) → `Popover`; `Listbox` → `Select`; `Disclosure` → `Collapsible`; `RadioGroup`/`Radio` → `RadioGroup`/`RadioGroupItem`;
-   **`<select>` native คงเป็น native** ผ่าน `native-select` ของ shadcn (e2e ใช้ `selectOption`, ฟอร์ม server action อ่าน `FormData`); `Input`/`Label` ของ shadcn เป็น element native อยู่แล้ว
+   **`<select>` native คงเป็น native** ด้วย `<select>` ของเราเองที่จัด style ด้วย token (แก้ 2026-11-26: `NativeSelect` ของ shadcn มี wrapper `w-fit` ตายตัว ใช้ไม่ได้) (e2e ใช้ `selectOption`, ฟอร์ม server action อ่าน `FormData`); `Input`/`Label` ของ shadcn เป็น element native อยู่แล้ว
 6. **icons**: `lucide-react` แทน `@medusajs/icons` (ตาราง map ใน spec 09 กฎ 6); icon SVG ที่ starter เขียนเองใน `src/modules/common/icons/*` อยู่นอกขอบเขต
 7. **theme / brand (ADR-008 ข้อ 4 — เจตนาคงเดิม วิธีเปลี่ยน)**: palette `--color-brand` + `--color-brand-50..900` (ค่า hex เดิม) อยู่ใน `@theme` เป็นที่เดียวที่ owner แก้;
    token ของ shadcn ชี้ไปที่ brand: `--primary: var(--color-brand-900)`, `--primary-foreground: var(--color-brand-50)`, `--ring: var(--color-brand-400)`

@@ -12,7 +12,6 @@ const LEGACY_CSS = path.join(SRC, "styles", "legacy-medusa.css")
 // ไม่สร้างนิยามให้ เพื่อไม่ให้หน้าตาเปลี่ยน; task เจ้าของไฟล์ (5x) ลบ class เหล่านี้ตอนย้าย
 const NO_STYLE_IN_PRESET = [
   "txt-compact-plus",
-  "txt-ui-fg-base",
   "text-ui-fg-medium-plus",
   "shadow-borders-interactive",
   "shadow-borders-strong-with-shadow",

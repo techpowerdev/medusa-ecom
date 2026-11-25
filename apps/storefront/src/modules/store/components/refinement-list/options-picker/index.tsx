@@ -1,12 +1,16 @@
 "use client"
 
-import * as Accordion from "@radix-ui/react-accordion"
 import { useEffect, useState } from "react"
 
-import { ChevronDownMini } from "@medusajs/icons"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { cn } from "@/lib/utils"
 import { sdk } from "@lib/config"
 import { HttpTypes } from "@medusajs/types"
-import clsx from "clsx"
 
 type OptionsPickerProps = {
   selectedValueIds: string[]
@@ -57,11 +61,11 @@ const OptionsPicker = ({
   return (
     <div className="flex flex-col gap-y-4">
       <div className="flex items-center justify-between px-1">
-        <span className="txt-compact-small-plus text-ui-fg-subtle">
+        <span className="text-sm font-medium leading-5 text-muted-foreground">
           ตัวเลือกสินค้า
         </span>
       </div>
-      <Accordion.Root
+      <Accordion
         type="multiple"
         value={openItems}
         onValueChange={(values) => setOpenItems(values as string[])}
@@ -92,33 +96,20 @@ const OptionsPicker = ({
             setOptionValueIds(Array.from(new Set(nextSelections)))
           }
 
-          const isOpen = openItems.includes(option.id)
-
           return (
-            <Accordion.Item
+            <AccordionItem
               key={option.id}
               value={option.id}
-              className="overflow-hidden"
+              className="overflow-hidden border-b-0"
             >
-              <Accordion.Header>
-                <Accordion.Trigger className="flex w-full items-center justify-between py-3 text-left">
-                  {/* CORE-93 (กฎข้อ 149): ไม่แสดงจำนวนที่หัว แบบเดียวกับกฎข้อ 143 */}
-                  <span className="txt-compact-small-plus text-ui-fg-base">
-                    {option.title || "ตัวเลือก"}
-                  </span>
-                  <span
-                    className={clsx(
-                      "flex h-7 w-7 items-center justify-center text-ui-fg-muted transition-transform duration-150",
-                      {
-                        "rotate-180": isOpen,
-                      }
-                    )}
-                  >
-                    <ChevronDownMini />
-                  </span>
-                </Accordion.Trigger>
-              </Accordion.Header>
-              <Accordion.Content className="pb-4 pt-1">
+              {/* SFUI-4: chevron มาจาก AccordionTrigger ของ shadcn (หมุนเมื่อเปิดด้วย data-state) */}
+              <AccordionTrigger className="items-center py-3">
+                {/* CORE-93 (กฎข้อ 149): ไม่แสดงจำนวนที่หัว แบบเดียวกับกฎข้อ 143 */}
+                <span className="text-sm font-medium leading-5 text-foreground">
+                  {option.title || "ตัวเลือก"}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-4 pt-1">
                 <div className="flex flex-wrap gap-2">
                   {values.map((value) => {
                     const isSelected = selectedValueIds.includes(value.id)
@@ -127,14 +118,11 @@ const OptionsPicker = ({
                       <button
                         key={value.id}
                         onClick={() => toggleValue(value.id)}
-                        className={clsx(
-                          "border-ui-border-base border text-small-regular h-10 rounded-rounded px-3 flex items-center transition-colors duration-150",
-                          {
-                            "border-ui-border-interactive text-ui-fg-base":
-                              isSelected,
-                            "text-ui-fg-muted hover:text-ui-fg-base":
-                              !isSelected,
-                          }
+                        className={cn(
+                          "border-border border text-small-regular h-10 rounded-rounded px-3 flex items-center transition-colors duration-150",
+                          isSelected
+                            ? "border-primary text-foreground"
+                            : "text-muted-foreground hover:text-foreground"
                         )}
                         aria-pressed={isSelected}
                       >
@@ -143,11 +131,11 @@ const OptionsPicker = ({
                     )
                   })}
                 </div>
-              </Accordion.Content>
-            </Accordion.Item>
+              </AccordionContent>
+            </AccordionItem>
           )
         })}
-      </Accordion.Root>
+      </Accordion>
     </div>
   )
 }

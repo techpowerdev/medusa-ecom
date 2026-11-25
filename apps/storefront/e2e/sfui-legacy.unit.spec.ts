@@ -48,75 +48,6 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-3a": [
-    "src/modules/account/components/address-card/add-address.tsx",
-    "src/modules/account/components/address-card/edit-address-modal.tsx",
-    "src/modules/common/components/modal/index.tsx",
-  ],
-  "SFUI-3b": [
-    "src/modules/layout/components/search/drawer.tsx",
-    "src/modules/layout/components/search/hit.tsx",
-    "src/modules/layout/components/search/index.tsx",
-    "src/modules/layout/components/side-menu/index.tsx",
-    "src/modules/products/components/product-actions/mobile-actions.tsx",
-  ],
-  "SFUI-3c": [
-    "src/modules/account/components/account-info/index.tsx",
-    "src/modules/checkout/components/address-select/index.tsx",
-    "src/modules/layout/components/cart-dropdown/index.tsx",
-    "src/modules/layout/components/country-select/index.tsx",
-  ],
-  "SFUI-3d": [
-    "src/core-19f-continue-after-timeout.test.ts",
-    "src/lib/constants.tsx",
-    "src/modules/checkout/components/payment-container/index.tsx",
-    "src/modules/checkout/components/payment/index.tsx",
-    "src/pay-14-stale-session.test.ts",
-    "src/pay-16-payment-container.test.ts",
-    "src/pay-16-payment-step-state.test.ts",
-    "src/payment-session-lock-timeout.test.ts",
-  ],
-  "SFUI-3e": [
-    "src/core-4i-b-ui-results.test.ts",
-    "src/modules/checkout/components/shipping/index.tsx",
-    "src/modules/order/components/order-pay/index.tsx",
-  ],
-  "SFUI-4": [
-    "src/modules/products/components/product-tabs/accordion.tsx",
-    "src/modules/store/components/refinement-list/options-picker/index.tsx",
-    "src/modules/store/components/store-refinements/option-refinements.tsx",
-    "src/modules/store/components/store-refinements/price-range.tsx",
-    "src/modules/store/components/store-refinements/refinement-group.tsx",
-  ],
-  "SFUI-5a": [
-    "src/app/[countryCode]/(main)/contact/page.tsx",
-    "src/app/[countryCode]/(main)/not-found.tsx",
-    "src/app/[countryCode]/(main)/shipping/page.tsx",
-    "src/app/[countryCode]/(main)/verify-account/page.tsx",
-    "src/app/not-found.tsx",
-    "src/modules/common/components/cart-totals/index.tsx",
-    "src/modules/common/components/checkbox/index.tsx",
-    "src/modules/common/components/copy-button/index.tsx",
-    "src/modules/common/components/delete-button/index.tsx",
-    "src/modules/common/components/divider/index.tsx",
-    "src/modules/common/components/filter-radio-group/index.tsx",
-    "src/modules/common/components/input/index.tsx",
-    "src/modules/common/components/interactive-link/index.tsx",
-    "src/modules/common/components/line-item-options/index.tsx",
-    "src/modules/common/components/line-item-price/index.tsx",
-    "src/modules/common/components/line-item-unit-price/index.tsx",
-    "src/modules/common/components/native-select/index.tsx",
-    "src/modules/layout/components/cart-mismatch-banner/index.tsx",
-    "src/modules/layout/templates/footer/index.tsx",
-    "src/modules/layout/templates/nav/index.tsx",
-    "src/modules/policies/templates/index.tsx",
-    "src/modules/shipping/components/free-shipping-price-nudge/index.tsx",
-    "src/modules/skeletons/components/skeleton-card-details/index.tsx",
-    "src/modules/skeletons/components/skeleton-cart-item/index.tsx",
-    "src/modules/skeletons/components/skeleton-line-item/index.tsx",
-    "src/modules/skeletons/components/skeleton-product-preview/index.tsx",
-    "src/modules/skeletons/templates/skeleton-cart-page/index.tsx",
-  ],
   "SFUI-5c": [
     "src/app/[countryCode]/(checkout)/layout.tsx",
     "src/app/[countryCode]/(checkout)/not-found.tsx",
@@ -246,9 +177,10 @@ test("AC-6: ตัวแปรดิบของ preset var(--fg-*/--bg-*/--bord
   expect(PRESET_RAW_VAR.test("var(--fg-muted)")).toBe(true)
 })
 
-test("AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์", () => {
-  expect(PENDING["SFUI-5a"]).toEqual(
-    expect.arrayContaining(["src/app/not-found.tsx", "src/modules/common/components/interactive-link/index.tsx"])
-  )
+test("AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์ (หรือย้ายเสร็จแล้ว — ไม่มี pattern)", () => {
+  // SFUI-5a ย้ายเสร็จ: not-found/InteractiveLink ใช้ token ของ shadcn แทน var(--fg-interactive)
+  for (const file of ["src/app/not-found.tsx", "src/modules/common/components/interactive-link/index.tsx"]) {
+    expect(hasForbiddenPattern(file, readSource(file)), file).toBe(false)
+  }
   expect(PENDING["SFUI-5c"]).toContain("src/modules/checkout/components/discount-code/index.tsx")
 })

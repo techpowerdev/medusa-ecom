@@ -1,8 +1,18 @@
 "use client"
 
-import { Plus } from "@medusajs/icons"
-import { Button, Heading } from "@modules/common/components/ui"
+import { Plus, X } from "lucide-react"
 import { useActionState, useEffect, useState } from "react"
+
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 import { addCustomerAddress } from "@lib/data/customer"
 import useToggleState from "@lib/hooks/use-toggle-state"
@@ -11,7 +21,6 @@ import { withActionFallback } from "@lib/util/action-fallback"
 import { submitWithoutReset } from "@lib/util/submit-without-reset"
 import CountrySelect from "@modules/checkout/components/country-select"
 import Input from "@modules/common/components/input"
-import Modal from "@modules/common/components/modal"
 
 // CORE-23c (กฎข้อ 74a): action ล้ม (5xx/network) → error ไทยในฟอร์ม ไม่ใช่หน้า error ทั้งหน้า
 const saveAddress = withActionFallback(addCustomerAddress)
@@ -51,96 +60,110 @@ const AddAddress = ({
   }, [formState])
 
   return (
-    <>
-      <button
-        className="border border-ui-border-base rounded-rounded p-5 min-h-[220px] h-full w-full flex flex-col justify-between"
-        onClick={open}
-        data-testid="add-address-button"
-      >
-        <span className="text-base-semi">เพิ่มที่อยู่ใหม่</span>
-        <Plus />
-      </button>
+    // SFUI-3a (spec 09 กฎ 4, 11): modal ที่อยู่ → Dialog ของ shadcn (Radix) — Escape/คลิกนอก dialog ปิดผ่าน onOpenChange
+    // ปุ่มเปิดเป็น DialogTrigger (focus กลับปุ่มเมื่อปิด) และใช้ปุ่มปิดของเราเพื่อคง testid `close-modal-button`
+    <Dialog open={state} onOpenChange={(next) => (next ? open() : close())}>
+      <DialogTrigger asChild>
+        <button
+          className="border border-border rounded-rounded p-5 min-h-[220px] h-full w-full flex flex-col justify-between"
+          data-testid="add-address-button"
+        >
+          <span className="text-base-semi">เพิ่มที่อยู่ใหม่</span>
+          <Plus className="size-4" />
+        </button>
+      </DialogTrigger>
 
-      <Modal isOpen={state} close={close} data-testid="add-address-modal">
-        <Modal.Title>
-          <Heading className="mb-2">เพิ่มที่อยู่</Heading>
-        </Modal.Title>
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
+        data-testid="add-address-modal"
+      >
+        <div className="flex items-center justify-between">
+          <DialogTitle className="text-2xl font-semibold">เพิ่มที่อยู่</DialogTitle>
+          <DialogClose
+            className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            aria-label="ปิด"
+            data-testid="close-modal-button"
+          >
+            <X className="size-5" />
+          </DialogClose>
+        </div>
+        <DialogDescription className="sr-only">
+          กรอกข้อมูลที่อยู่ใหม่แล้วกดบันทึก
+        </DialogDescription>
         <form onSubmit={onSubmit}>
-          <Modal.Body>
-            <div className="flex flex-col gap-y-2">
-              <div className="grid grid-cols-2 gap-x-2">
-                <Input
-                  label="ชื่อ"
-                  name="first_name"
-                  required
-                  autoComplete="given-name"
-                  data-testid="first-name-input"
-                />
-                <Input
-                  label="นามสกุล"
-                  name="last_name"
-                  required
-                  autoComplete="family-name"
-                  data-testid="last-name-input"
-                />
-              </div>
+          <div className="flex flex-col gap-y-2">
+            <div className="grid grid-cols-2 gap-x-2">
               <Input
-                label="บริษัท"
-                name="company"
-                autoComplete="organization"
-                data-testid="company-input"
-              />
-              <Input
-                label="ที่อยู่"
-                name="address_1"
+                label="ชื่อ"
+                name="first_name"
                 required
-                autoComplete="address-line1"
-                data-testid="address-1-input"
+                autoComplete="given-name"
+                data-testid="first-name-input"
               />
               <Input
-                label="อาคาร ห้อง ฯลฯ"
-                name="address_2"
-                autoComplete="address-line2"
-                data-testid="address-2-input"
-              />
-              <div className="grid grid-cols-[144px_1fr] gap-x-2">
-                <Input
-                  label="รหัสไปรษณีย์"
-                  name="postal_code"
-                  required
-                  autoComplete="postal-code"
-                  data-testid="postal-code-input"
-                />
-                <Input
-                  label="เขต/อำเภอ"
-                  name="city"
-                  required
-                  autoComplete="locality"
-                  data-testid="city-input"
-                />
-              </div>
-              <Input
-                label="จังหวัด"
-                name="province"
-                autoComplete="address-level1"
-                data-testid="state-input"
-              />
-              <CountrySelect
-                region={region}
-                name="country_code"
+                label="นามสกุล"
+                name="last_name"
                 required
-                autoComplete="country"
-                data-testid="country-select"
-              />
-              <Input
-                label="เบอร์โทรศัพท์"
-                name="phone"
-                autoComplete="phone"
-                data-testid="phone-input"
+                autoComplete="family-name"
+                data-testid="last-name-input"
               />
             </div>
-          </Modal.Body>
-          {/* CORE-23c: Modal.Body เป็น flex แถว — error อยู่ใต้ฟอร์มไม่ใช่ข้างช่อง */}
+            <Input
+              label="บริษัท"
+              name="company"
+              autoComplete="organization"
+              data-testid="company-input"
+            />
+            <Input
+              label="ที่อยู่"
+              name="address_1"
+              required
+              autoComplete="address-line1"
+              data-testid="address-1-input"
+            />
+            <Input
+              label="อาคาร ห้อง ฯลฯ"
+              name="address_2"
+              autoComplete="address-line2"
+              data-testid="address-2-input"
+            />
+            <div className="grid grid-cols-[144px_1fr] gap-x-2">
+              <Input
+                label="รหัสไปรษณีย์"
+                name="postal_code"
+                required
+                autoComplete="postal-code"
+                data-testid="postal-code-input"
+              />
+              <Input
+                label="เขต/อำเภอ"
+                name="city"
+                required
+                autoComplete="locality"
+                data-testid="city-input"
+              />
+            </div>
+            <Input
+              label="จังหวัด"
+              name="province"
+              autoComplete="address-level1"
+              data-testid="state-input"
+            />
+            <CountrySelect
+              region={region}
+              name="country_code"
+              required
+              autoComplete="country"
+              data-testid="country-select"
+            />
+            <Input
+              label="เบอร์โทรศัพท์"
+              name="phone"
+              autoComplete="phone"
+              data-testid="phone-input"
+            />
+          </div>
           {formState.error && (
             <div
               className="text-rose-500 text-small-regular py-2"
@@ -149,25 +172,23 @@ const AddAddress = ({
               {formState.error}
             </div>
           )}
-          <Modal.Footer>
-            <div className="flex gap-3 mt-6">
-              <Button
-                type="reset"
-                variant="secondary"
-                onClick={close}
-                className="h-10"
-                data-testid="cancel-button"
-              >
-                ยกเลิก
-              </Button>
-              <Button type="submit" isLoading={isPending} data-testid="save-button">
-                บันทึก
-              </Button>
-            </div>
-          </Modal.Footer>
+          <DialogFooter className="mt-6">
+            <Button
+              type="reset"
+              variant="outline"
+              onClick={close}
+              className="h-10"
+              data-testid="cancel-button"
+            >
+              ยกเลิก
+            </Button>
+            <Button type="submit" isLoading={isPending} data-testid="save-button">
+              บันทึก
+            </Button>
+          </DialogFooter>
         </form>
-      </Modal>
-    </>
+      </DialogContent>
+    </Dialog>
   )
 }
 

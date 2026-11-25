@@ -1,5 +1,5 @@
-import { ArrowUpRightMini } from "@medusajs/icons"
-import { Text } from "@modules/common/components/ui"
+import { ArrowUpRight } from "lucide-react"
+
 import LocalizedClientLink from "../localized-client-link"
 type InteractiveLinkProps = {
   href: string
@@ -20,11 +20,8 @@ const InteractiveLink = ({
       onClick={onClick}
       {...props}
     >
-      <Text className="text-ui-fg-interactive">{children}</Text>
-      <ArrowUpRightMini
-        className="group-hover:rotate-45 ease-in-out duration-150"
-        color="var(--fg-interactive)"
-      />
+      <p className="text-sm leading-[1.4rem] text-primary">{children}</p>
+      <ArrowUpRight className="size-4 text-primary group-hover:rotate-45 ease-in-out duration-150" />
     </LocalizedClientLink>
   )
 }

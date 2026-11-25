@@ -1,0 +1,108 @@
+# SFUI-4 — ผล test ในเครื่อง (2026-11-26, Node v22.23.3, pnpm 12.15.0, macOS)
+# spec: docs/spec/09-storefront-shadcn-ui.md (กฎ 3–5, 10, 15–16, 19; AC-6 ลบ key SFUI-4, AC-14), ADR-030 ข้อ 3, 5
+# shadcn: pnpm dlx shadcn@4.23.1 add accordion slider (สร้าง 2 ไฟล์ ไม่แก้ package.json/lockfile/globals.css)
+# backend: DB medusa_sfui4, Redis db 15, :9150 (seed CORE-2) · storefront: next build (prod) + next start :8150
+
+## Red (ก่อนแก้): npx playwright test --project=unit e2e/sfui-4-store.unit.spec.ts
+  10 failed — ทุกไฟล์ของ task ยัง import @radix-ui/react-* / clsx, ไม่ import จาก @/components/ui/*, และไฟล์ CLI import cn จาก package "cn"
+
+## pnpm --filter storefront test:e2e:unit (project unit ทั้งหมด) — เฉพาะ SFUI-4 / SFUI legacy + สรุป
+  ✓   31 [unit] › e2e/evidence-budget.unit.spec.ts:9:5 › โฟลเดอร์ evidence ทุก feature/task อยู่ตาม convention และอยู่ในงบ (14ms)
+  ✓   52 [unit] › e2e/sfui-4-store.unit.spec.ts:34:7 › AC-14: modules/products/components/product-tabs/accordion.tsx ไม่ import @radix-ui/*, radix-ui หรือ clsx (7ms)
+  ✓   55 [unit] › e2e/sfui-4-store.unit.spec.ts:34:7 › AC-14: modules/store/components/refinement-list/options-picker/index.tsx ไม่ import @radix-ui/*, radix-ui หรือ clsx (4ms)
+  ✓   59 [unit] › e2e/sfui-4-store.unit.spec.ts:34:7 › AC-14: modules/store/components/store-refinements/option-refinements.tsx ไม่ import @radix-ui/*, radix-ui หรือ clsx (2ms)
+  ✓   62 [unit] › e2e/sfui-4-store.unit.spec.ts:34:7 › AC-14: modules/store/components/store-refinements/price-range.tsx ไม่ import @radix-ui/*, radix-ui หรือ clsx (2ms)
+  ✓   63 [unit] › e2e/sfui-4-store.unit.spec.ts:34:7 › AC-14: modules/store/components/store-refinements/refinement-group.tsx ไม่ import @radix-ui/*, radix-ui หรือ clsx (1ms)
+  ✓   64 [unit] › e2e/sfui-4-store.unit.spec.ts:43:7 › AC-14: modules/products/components/product-tabs/accordion.tsx import Accordion จาก @/components/ui/accordion (1ms)
+  ✓   65 [unit] › e2e/sfui-4-store.unit.spec.ts:43:7 › AC-14: modules/store/components/refinement-list/options-picker/index.tsx import Accordion จาก @/components/ui/accordion (2ms)
+  ✓   67 [unit] › e2e/sfui-4-store.unit.spec.ts:43:7 › AC-14: modules/store/components/store-refinements/option-refinements.tsx import Accordion จาก @/components/ui/accordion (2ms)
+  ✓   69 [unit] › e2e/sfui-4-store.unit.spec.ts:50:7 › AC-14: modules/store/components/store-refinements/price-range.tsx import Slider จาก @/components/ui/slider (3ms)
+  ✓   70 [unit] › e2e/sfui-4-store.unit.spec.ts:56:5 › AC-14 (กฎ 2–3): accordion/slider จาก CLI ใช้ cn ของ @/lib/utils (5ms)
+  ✓   71 [unit] › e2e/sfui-legacy.unit.spec.ts:223:5 › AC-6 (a): ทุกไฟล์ที่มี pattern ต้องห้ามอยู่ใน PENDING ของ task ใด task หนึ่ง (194ms)
+  ✓   96 [unit] › e2e/sfui-legacy.unit.spec.ts:228:5 › AC-6 (b): ทุกไฟล์ใน PENDING ยังมีอยู่และยังมี pattern (ย้ายเสร็จแล้วต้องลบออกจากรายการ) (18ms)
+  ✓  101 [unit] › e2e/sfui-legacy.unit.spec.ts:235:5 › AC-6 (c): key ของ PENDING เป็น task ที่ยังไม่ merge เท่านั้น และไม่มีไฟล์ซ้ำข้าม task (1ms)
+  ✓  104 [unit] › e2e/sfui-legacy.unit.spec.ts:241:5 › AC-6: ตัวจับ class ของ preset แยก variant/important/opacity และไม่นับ class ของ Tailwind ปกติ (3ms)
+  ✓  108 [unit] › e2e/sfui-legacy.unit.spec.ts:263:5 › AC-6: ตัวแปรดิบของ preset var(--fg-*/--bg-*/--border-*) ในไฟล์ที่ไม่ใช่ test นับเป็น pattern ต้องห้าม (1ms)
+  ✓  111 [unit] › e2e/sfui-legacy.unit.spec.ts:272:5 › AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์ (0ms)
+  ✓  113 [unit] › e2e/sfui-legacy-css.unit.spec.ts:44:5 › AC-2: มีไฟล์ legacy-medusa.css และ globals.css import ไฟล์นี้ (1ms)
+  ✓  118 [unit] › e2e/sfui-legacy-css.unit.spec.ts:51:5 › AC-2: ทุก class ของ preset ที่ใช้ใน src/** มีนิยามใน legacy-medusa.css (1ms)
+  ✓  120 [unit] › e2e/sfui-legacy-css.unit.spec.ts:63:5 › AC-2: legacy-medusa.css ไม่มีชื่อที่ไม่ถูกใช้ใน src/** (1ms)
+  ✓  125 [unit] › e2e/sfui-legacy-css.unit.spec.ts:76:5 › AC-2: ชื่อใน NO_STYLE_IN_PRESET ยังถูกใช้จริง (ลบออกเมื่อ task เจ้าของไฟล์ย้ายเสร็จ) (1ms)
+  ✓  128 [unit] › e2e/sfui-legacy-css.unit.spec.ts:80:5 › AC-2: map class → นิยามที่ต้องมี (1ms)
+  ✓  133 [unit] › e2e/sfui-legacy-css.unit.spec.ts:116:5 › AC-2: ทุก var(--…) ที่ src/** อ้างตรงมีนิยามใน src/styles/*.css (ยกเว้นของ Tailwind/next/font/Radix) (22ms)
+  ✓  144 [unit] › e2e/sfui-legacy-css.unit.spec.ts:124:5 › AC-2: ตัวแปรดิบใน :root ของ legacy-medusa.css ถูกอ้างจริงทุกตัว (ไม่มีชื่อที่ไม่ถูกใช้) (20ms)
+  202 passed (1.8s)
+
+## pnpm --filter storefront test:unit — core-93 (OptionsPicker บน Accordion ของ shadcn ใน jsdom) + theme-css (legacy-medusa.css)
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > ขึ้นต้นด้วย @import "tailwindcss" และ import ชั้นเข้ากันได้ legacy-medusa.css 0ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > สี/เงา ui-* generate ได้ 15ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > ring ที่ไม่ระบุสีเป็น blue-500/50 แบบ v3 และตัวแปรดิบ --fg-* ของ preset อยู่ใน :root 10ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > ขอบเริ่มต้นเป็นสี --color-ui-border-base แบบ preset เดิม (v4 เริ่มต้นเป็น currentColor) 21ms
+ ✓ src/core-93-options-picker-heading.test.ts > CORE-93: หัว option ของ OptionsPicker ไม่แสดงจำนวน > ยังไม่เลือกค่า → หัวเป็น "ขนาด"/"สี" ไม่มี "(0)" 304ms
+ ✓ src/core-93-options-picker-heading.test.ts > CORE-93: หัว option ของ OptionsPicker ไม่แสดงจำนวน > เลือกค่าแล้ว หัวก็ไม่แสดงจำนวนค่าที่เลือก — ค่าย่อยยังบอกสถานะด้วย aria-pressed 7ms
+
+## pnpm --filter storefront test:unit (Vitest ทั้งหมด)
+ Test Files  128 passed (128)
+      Tests  1999 passed (1999)
+
+## pnpm --filter storefront typecheck / lint / build
+typecheck: exit 0 · lint: exit 0 (0 errors, 28 warnings เดิม — ไฟล์ของ task มีแค่ react-hooks/set-state-in-effect บรรทัด useEffect เดิมที่ไม่ได้แก้) · next build (prod): exit 0
+
+## e2e (prod build, chromium) — sfui-mobile-390 รันก่อนบน DB สะอาด
+  ✓  1 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน (37.2s)
+  1 passed (39.4s)
+
+## e2e ใหม่: e2e/sfui-4-store.spec.ts (AC-14)
+  ✓  1 [chromium] › e2e/sfui-4-store.spec.ts:9:5 › AC-14: Enter บนหัว filter เปิด/ปิดเนื้อหา และ ArrowRight บน thumb ช่วงราคาเปลี่ยนค่า (1.5s)
+  ✓  2 [chromium] › e2e/sfui-4-store.spec.ts:64:5 › AC-14: แท็บบน PDP เป็น Accordion — ปุ่มมีชื่อไทย และ Enter เปิดเนื้อหา (3.0s)
+  2 passed (6.3s)
+
+## e2e เดิมที่อ้าง /store, testid ของ filter/ช่วงราคา/แท็บ PDP และ PDP (ไม่แก้ test — กฎ 19)
+  ✓   2 [chromium] › e2e/core-24-pdp-quantity.spec.ts:33:5 › AC-94: (JS) เลือก 3 ใน product-quantity-select แล้วกดเพิ่มลง cart → cart มี line qty 3 (7.6s)
+  ✓   3 [chromium] › e2e/core-15-store-search-error.spec.ts:11:5 › AC-54, AC-55: /store/search ตอบ 500 → หยุดยิงซ้ำ แสดง products-error ไทย และกลับมาปกติเมื่อ search ใช้ได้ (7.5s)
+  ✓   6 [chromium] › e2e/core-15-store-search-error.spec.ts:62:7 › AC-69: browser locale en-US › ป้ายช่วงราคาใต้ slider แสดง ฿ ไม่มี THB ทั้งก่อนและหลังลาก (1.6s)
+  ✓   4 [chromium] › e2e/core-14b-add-variant.spec.ts:41:7 › ปิด JavaScript › AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3 (12.5s)
+  ✓   1 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:48:5 › AC-116: เลือก S → M แล้วกดเพิ่มทันที (ไม่รอ v_id) → line ใน cart เป็น M; หลังเพิ่ม S แล้วสลับเป็น M ทันทีก็ยังได้ M (14.8s)
+  ✓   9 [chromium] › e2e/core-25-pdp-option-reset.spec.ts:100:7 › viewport 375×812 › AC-116: แถบปุ่มมือถือไม่ทับ add-product-button เมื่อปุ่มหลักอยู่ในจอ (ก่อนและหลัง hydrate) (1.2s)
+  ✓   5 [chromium] › e2e/core-24-pdp-quantity.spec.ts:70:7 › ปิด JavaScript › AC-94: (no-JS, ไม่ล็อกอิน) เลือก 2 แล้ว submit และ login → cart มี qty 2 (11.1s)
+  ✓   8 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS เปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS on) (8.2s)
+  ✓  12 [chromium] › e2e/core-14b-add-variant.spec.ts:95:9 › AC-45 (JS ปิด) › AC-45: ล็อกอินแล้วเปิด /account?add_variant=<ไม่มีจริง> → add-variant-error และ cart ไม่เปลี่ยน (JS off) (12.6s)
+  ✘   7 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (24.9s)
+  ✓  11 [chromium] › e2e/core-24-pdp-quantity.spec.ts:101:5 › qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-cart-error ภาษาไทย ปุ่มและตัวเลือกจำนวนใช้ต่อได้ (16.6s)
+  ✓  13 [chromium] › e2e/core-70-unified-search.spec.ts:95:5 › AC-169: คำค้นเดียวกันได้ชุดสินค้าเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (2.5s)
+  ✓  14 [chromium] › e2e/core-75-thai-substring-search.spec.ts:99:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (2.0s)
+  ✓  16 [chromium] › e2e/core-70-unified-search.spec.ts:124:5 › AC-169: พิมพ์คำค้นใน /th/store → URL ใช้ q (1.2s)
+  ✓  17 [chromium] › e2e/core-75-thai-substring-search.spec.ts:127:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt (1.4s)
+  ✓  18 [chromium] › e2e/core-70-unified-search.spec.ts:135:5 › AC-169: drawer ค้น "shirt" ได้สินค้า seed อย่างน้อย 1 ชิ้น และตรงกับ /th/search?q=shirt (1.1s)
+  ✓  19 [chromium] › e2e/core-87-facet-heading.spec.ts:80:5 › AC-184: หัว facet "ขนาด" ไม่มี "(0)" และตัวเลข (ถ้ามี) = 2 (551ms)
+  ✓  15 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:94:5 › AC-171: ลูกค้ามี 2 ชิ้น + cart โหลดช้า 2 วินาที → ระหว่างรอไม่มี "(0)" หลังโหลดเป็น "(2)" (7.8s)
+  ✓  20 [chromium] › e2e/core-92-overview-pagination.spec.ts:35:5 › AC-189: ลูกค้าที่มีแต่ membership กลุ่ม → overview ไม่มี ยังไม่มีคำสั่งซื้อ แต่มีลิงก์ ดูทั้งหมด (2.6s)
+  ✓  21 [chromium] › e2e/core-93-label-chip.spec.ts:88:5 › AC-190: chip ป้ายกำกับชื่อยาว 80 ตัว อยู่บรรทัดเดียวและมี title = ข้อความเต็ม (714ms)
+  ✓  23 [chromium] › e2e/core-92-overview-pagination.spec.ts:55:5 › AC-189: /store ที่มี ≥ 2 หน้า → nav ของ SearchPagination มี aria-label ไทย และปุ่มหน้าปัจจุบัน aria-current=page (723ms)
+  ✓  24 [chromium] › e2e/flash-sale-fs14.spec.ts:165:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (678ms)
+  ✓  26 [chromium] › e2e/flash-sale-fs14.spec.ts:188:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (374ms)
+  ✓  10 [chromium] › e2e/core-67-sale-price-strikethrough.spec.ts:110:5 › AC-166b: price list แบบ sale แสดงราคาเดิม (compare_at_unit_price) ขีดฆ่าใน /cart, preview และ order-completed ไม่ซ้อนกับ promotion (32.0s)
+  ✓  27 [chromium] › e2e/flash-sale-fs14.spec.ts:203:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (1.0s)
+  ✓  22 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:122:5 › AC-171: ตะกร้าว่างจริง (ไม่มี cart) → แสดง "ตะกร้า (0)" หลังโหลด (5.3s)
+  ✓  30 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:150:7 › hotfix nav-cart-link: /th มี element ที่ testid nav-cart-link เพียงตัวเดียวทุกขณะระหว่าง stream (502ms)
+  ✓  25 [chromium] › e2e/flash-sale-fs19.spec.ts:129:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ (3.9s)
+  ✓  31 [chromium] › e2e/core-72-cart-count-no-flash.spec.ts:150:7 › hotfix nav-cart-link: /th/store มี element ที่ testid nav-cart-link เพียงตัวเดียวทุกขณะระหว่าง stream (581ms)
+  ✓  28 [chromium] › e2e/sfui-2-brand.spec.ts:8:5 › AC-4 (2): ปุ่ม add-product-button บน PDP มีสีพื้น brand-900 ผ่าน --primary (2.3s)
+  ✓  34 [chromium] › e2e/store-thb-price.spec.ts:9:5 › AC-28: การ์ดสินค้าทุกใบบน /th/store แสดงราคาเป็น ฿ (782ms)
+  ✓  32 [chromium] › e2e/flash-sale-fs19.spec.ts:171:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที (1.7s)
+  ✓  35 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย (2.3s)
+  ✓  33 [chromium] › e2e/store-content.spec.ts:46:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย (3.4s)
+  ✓  36 [chromium] › e2e/flash-sale-fs19.spec.ts:194:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก (1.8s)
+  ✓  37 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย (469ms)
+  ✓  38 [chromium] › e2e/store-content.spec.ts:88:5 › AC-61, AC-74: title/description ของหน้า login และ profile ใช้ชื่อร้าน ไม่มีชื่อ starter (735ms)
+  ✓  40 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย (612ms)
+  ✓  39 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter (2.6s)
+  ✓  29 [chromium] › e2e/flash-sale-fs14.spec.ts:251:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (57.6s)
+  ✓  41 [chromium] › e2e/flash-sale-fs14.spec.ts:285:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง (4.8s)
+    Error: expect(locator).toBeVisible() failed
+    test-results/core-4e-checkout-polish-AC-89705-l-ของ-popup-label-ไม่ทับค่า-chromium/test-failed-1.png
+  1 failed
+  40 passed (1.9m)
+# core-4e AC-91 ล้มที่ขั้น delivery ของ checkout (delivery-options-container ไม่ขึ้นใน 5s ขณะรันขนานกับ spec อื่น) — ไม่เกี่ยวกับไฟล์ของ task; รันซ้ำเดี่ยวผ่าน:
+  ✓  1 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (6.2s)
+  1 passed (6.7s)

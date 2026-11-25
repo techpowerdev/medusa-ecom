@@ -26,12 +26,12 @@ vi.mock("@modules/checkout/components/payment-container", () => ({
   default: () => null,
   StripePaymentContainer: () => null,
 }))
-// RadioGroup ของ headlessui → ปุ่มธรรมดาที่เลือก PromptPay (สิ่งที่ทดสอบคือการล็อกของปุ่ม Continue)
-vi.mock("@headlessui/react", async () => {
+// RadioGroup ของ shadcn (SFUI-3d) → ปุ่มธรรมดาที่เลือก PromptPay ผ่าน onValueChange (สิ่งที่ทดสอบคือการล็อกของปุ่ม Continue)
+vi.mock("@/components/ui/radio-group", async () => {
   const { createElement: h } = await import("react")
   return {
-    RadioGroup: ({ onChange }: { onChange: (v: string) => void }) =>
-      h("button", { "data-testid": "select-promptpay", onClick: () => onChange(PROMPTPAY) }),
+    RadioGroup: ({ onValueChange }: { onValueChange: (v: string) => void }) =>
+      h("button", { "data-testid": "select-promptpay", onClick: () => onValueChange(PROMPTPAY) }),
   }
 })
 
