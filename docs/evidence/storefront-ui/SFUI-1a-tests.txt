@@ -63,3 +63,14 @@
   1 failed
   67 passed (1.3m)
 ล้ม 1: core-50-nav-narrow AC-145 1280×800 nav-menu-button width ต่าง 1.27px จาก DESKTOP_BASELINE ที่วัดบน chromium Linux (comment ใน spec: macOS render ข้อความไทยกว้างต่าง ~1.3px) — ไม่ใช่ผลของ task นี้ ต้องยืนยันใน CI (Linux)
+
+## รอบแก้ตาม review (REQUEST CHANGES) — 2026-11-26
+- Red: sfui-legacy-css.unit.spec.ts ข้อใหม่ "ทุก var(--…) ที่ src/** อ้างตรงมีนิยาม" ล้มก่อนแก้ด้วย
+  --fg-interactive (src/app/not-found.tsx, interactive-link/index.tsx), --fg-muted (discount-code/index.tsx)
+- Green: legacy-medusa.css เพิ่ม :root --fg-interactive / --fg-muted (ค่า light ของ ui-preset 2.22.1) + --default-ring-color แบบ v3
+- test:e2e:unit (project unit ทั้งหมด): 185 passed (รวม evidence-budget)
+- test:unit (Vitest): 125 files, 1961 tests passed (theme-css.test.ts 13)
+- typecheck: ผ่าน · lint: 0 errors, 28 warnings (เท่า develop) · build (production): ผ่าน
+- probe หน้า 404 (/th/no-such-page): stroke ของลูกศร InteractiveLink = rgb(59, 130, 246) (ก่อนแก้ = ไม่มีค่า)
+- e2e chromium: thai-ui-shell, thai-ui-pages, thai-ui-cart-order, thai-ui-account, core-40-discount-action-race,
+  ui-preset-font, sfui-mobile-390 — 13 passed

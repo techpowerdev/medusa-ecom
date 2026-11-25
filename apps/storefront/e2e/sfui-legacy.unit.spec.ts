@@ -47,7 +47,10 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-2": [],
+  // shim ส่งต่อไป shadcn ใน SFUI-2 (`clx` = `cn`, ไม่ import clsx แล้ว) — ลบทั้งโฟลเดอร์ใน SFUI-6
+  "SFUI-2": [
+    "src/modules/common/components/ui/index.tsx",
+  ],
   "SFUI-3a": [
     "src/modules/account/components/address-card/add-address.tsx",
     "src/modules/account/components/address-card/edit-address-modal.tsx",
@@ -220,7 +223,6 @@ const PENDING: Partial<Record<Task, string[]>> = {
   ],
   "SFUI-6": [
     "src/modules/common/components/radio/index.tsx",
-    "src/modules/common/components/ui/index.tsx",
   ],
 }
 

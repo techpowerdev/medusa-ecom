@@ -173,6 +173,14 @@ describe("legacy-medusa.css — ชั้นเข้ากันได้ขอ
     expect(css).toMatch(/\.group\[data-state="open"\]|:where\(\.group\)\[data-state="open"\]|\.group\)\[data-state="open"\]/)
   })
 
+  it("ring ที่ไม่ระบุสีเป็น blue-500/50 แบบ v3 และตัวแปรดิบ --fg-* ของ preset อยู่ใน :root", async () => {
+    const root = await compile(["ring-2"])
+    expect(declsOf(root, ".ring-2")["--tw-ring-shadow"]).toContain("rgb(59 130 246 / 0.5)")
+    const rootDecls = declsOf(root, ":root")
+    expect(rootDecls["--fg-interactive"]).toBe("rgba(59, 130, 246, 1)")
+    expect(rootDecls["--fg-muted"]).toBe("rgba(113, 113, 122, 1)")
+  })
+
   it("ขอบเริ่มต้นเป็นสี --color-ui-border-base แบบ preset เดิม (v4 เริ่มต้นเป็น currentColor)", async () => {
     const root = await compile([])
     let found = false
