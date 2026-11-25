@@ -81,13 +81,6 @@ const PENDING: Partial<Record<Task, string[]>> = {
     "src/modules/checkout/components/shipping/index.tsx",
     "src/modules/order/components/order-pay/index.tsx",
   ],
-  "SFUI-4": [
-    "src/modules/products/components/product-tabs/accordion.tsx",
-    "src/modules/store/components/refinement-list/options-picker/index.tsx",
-    "src/modules/store/components/store-refinements/option-refinements.tsx",
-    "src/modules/store/components/store-refinements/price-range.tsx",
-    "src/modules/store/components/store-refinements/refinement-group.tsx",
-  ],
   "SFUI-5a": [
     "src/app/[countryCode]/(main)/contact/page.tsx",
     "src/app/[countryCode]/(main)/not-found.tsx",
