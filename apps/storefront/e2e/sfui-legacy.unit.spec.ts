@@ -48,24 +48,6 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-3a": [
-    "src/modules/account/components/address-card/add-address.tsx",
-    "src/modules/account/components/address-card/edit-address-modal.tsx",
-    "src/modules/common/components/modal/index.tsx",
-  ],
-  "SFUI-3b": [
-    "src/modules/layout/components/search/drawer.tsx",
-    "src/modules/layout/components/search/hit.tsx",
-    "src/modules/layout/components/search/index.tsx",
-    "src/modules/layout/components/side-menu/index.tsx",
-    "src/modules/products/components/product-actions/mobile-actions.tsx",
-  ],
-  "SFUI-3c": [
-    "src/modules/account/components/account-info/index.tsx",
-    "src/modules/checkout/components/address-select/index.tsx",
-    "src/modules/layout/components/cart-dropdown/index.tsx",
-    "src/modules/layout/components/country-select/index.tsx",
-  ],
   "SFUI-3e": ["src/modules/checkout/components/shipping/index.tsx"],
   "SFUI-4": [
     "src/modules/products/components/product-tabs/accordion.tsx",
