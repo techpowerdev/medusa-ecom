@@ -361,10 +361,37 @@ describe("redactPii (OPS-39, AC-54)", () => {
     expect(out).toContain(CART_ID)
   })
 
+  // review #559 (re-review blocker): ค่าที่ไม่ใช่ PII ลงท้ายด้วยรูป `<pii-key>: [` ต้องไม่ทำให้ key ถัดไปหลุด (develop ไม่หลุด)
+  const OPENERS = ["name: [", "city: [ '", 'phone: ["x", ', "Name: [1, ", 'name: ["', "address_1: [\n", "email: [ 'a', "]
+  const FORMS: [string, (value: object) => string][] = [
+    ["inspect", (value) => inspect(value)],
+    ["JSON", (value) => JSON.stringify(value)],
+    ["JSON pretty-print", (value) => JSON.stringify(value, null, 2)],
+  ]
+  it.each(OPENERS.flatMap((opener) => FORMS.flatMap(([form, render]) => [0, 1, 2, 3].map((levels) => [opener, form, levels, render] as const))))(
+    "(b) note ลงท้าย %j (%s, escape %i ชั้น) ไม่ทำให้ key ถัดไปหลุด",
+    (opener, _form, levels, render) => {
+      const out = redactPii(wrap(render({ note: opener, city: "Bangkok", phone: "77777", name: ["Somchai"], id: "cart_1" }), levels))
+
+      for (const pii of ["Bangkok", "77777", "Somchai"]) {
+        expect(out).not.toContain(pii)
+      }
+      expect(out).toContain("cart_1")
+    }
+  )
+
+  it("(b) สมาชิกที่ไม่แบน (null/true/false) ไม่ทำให้สมาชิกตัวหลังหลุด", () => {
+    const out = redactPii(inspect({ name: ["Somchai", null, true, false, "Jaidee"], id: CART_ID }))
+    expect(out).not.toContain("Somchai")
+    expect(out).not.toContain("Jaidee")
+    expect(out).toContain(CART_ID)
+  })
+
   // (c) fuzz: seed คงที่ — ถ้าล้ม ข้อความจะพิมพ์ seed, case และ input (JSON) เพื่อทำซ้ำได้
   const SEED = 0x0b5_39
   const MARK = "PIIMARK"
   const FUZZ_KEYS = ["name", "first_name", "address_1", "city", "email", "postal_code"]
+  const FUZZ_OPENERS = ["name: [", "city: [ '", 'phone: ["x", ', "Name: [1, ", 'name: ["', "email: [ 'a', ", "first_name: [\n  "]
   const FUZZ_CHARS = ["'", '"', "`", "\\", "\n", "[", "]", ",", ":", " ", "a", "Z", "x"]
   /** mulberry32 — PRNG แบบ seed คงที่ */
   const prng = (seed: number) => () => {
@@ -393,6 +420,10 @@ describe("redactPii (OPS-39, AC-54)", () => {
     for (let i = 0; i < 600; i++) {
       const id = `cart_${i.toString(36)}FZ`
       const obj: Record<string, unknown> = {}
+      // ค่าที่ไม่ใช่ PII ลงท้ายด้วยรูปเปิด array ของ key PII (review #559) ครึ่งหนึ่งของ case — วางก่อน key PII
+      if (i % 2 === 0) {
+        obj.note = randomString(false).replace(MARK, "") + FUZZ_OPENERS[int(FUZZ_OPENERS.length)]
+      }
       for (const key of FUZZ_KEYS.filter(() => rand() < 0.4).concat(FUZZ_KEYS[i % FUZZ_KEYS.length])) {
         // บังคับให้มี array ยาว (> 6 สมาชิก) ทุก 5 case และสตริงยาวที่มี \n ทุก 3 case
         const longArray = i % 5 === 0
@@ -440,6 +471,12 @@ describe("redactPii (OPS-39, AC-54)", () => {
     ["สมาชิก + ท่อนยาวไม่มี ] ไม่มีช่องว่าง", fill("", String.raw`name: ["+\"`)],
     ["สมาชิกสองตัว + ท่อนที่ escape", fill("", String.raw`\"name: [""+`)],
     ["สมาชิก ' + ท่อนที่ escape 2 ชั้น", fill("", String.raw`\\\"name: ["'+`)],
+    // re-review #559: guard รูป `<pii-key>:` ในสมาชิก/กิ่ง \' — ต้องยัง linear
+    ["note ลงท้าย name: [ ซ้ำ (JSON)", fill("", '{"note":"name: [","city":"Bangkok","id":"cart_1"}')],
+    ["note ลงท้าย city: [ ' ซ้ำ (inspect)", fill("", String.raw`{ note: 'city: [ \'', city: 'Bangkok', id: 'cart_1' }`)],
+    ["array ของ null ไม่มี ]", fill("name: [ ", "null, ")],
+    ["สมาชิกที่มี key PII ข้างใน ไม่ปิด", fill("name: [ 'a", " name: x")],
+    ["\\' ชั้น 1 ที่มี key PII ข้างใน", fill(String.raw`name: 'it\\'s \"x\"`, " city: y")],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     expect(text.length).toBeGreaterThanOrEqual(100_000)
     const started = performance.now()
