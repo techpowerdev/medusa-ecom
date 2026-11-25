@@ -1,11 +1,12 @@
 import { expect, test } from "./support/fixtures"
 
-// spec 01 "Follow-up จาก review/qa" business rule 14, AC-25 (CORE-8)
-test.use({ evidenceTarget: { feature: "core", taskId: "CORE-8" } })
+// SFUI-1a (spec 09 กฎ 8, AC-3 — แทน spec 01 AC-25 ของ CORE-8): หลังเลิก @medusajs/ui-preset ฟอนต์มาจาก `--font-sans` ใน @theme
+// ทุก element หลัก (body, h1, h2, p, button, input) และ class txt-*/*-webs ที่ยังเหลือ ต้องได้ Noto Sans Thai ก่อน Inter
+test.use({ evidenceTarget: { feature: "storefront-ui", taskId: "SFUI-1a" } })
 
-type FontSample = { className: string; fontFamily: string }
+type FontSample = { label: string; fontFamily: string }
 
-test("class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter", async ({
+test("AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter", async ({
   page,
   step,
   evidence,
@@ -17,30 +18,29 @@ test("class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก
     await page.waitForLoadState("networkidle")
   })
 
-  await step(
-    "อ่าน computed font-family ของทุก element ที่ใช้ class ของ ui-preset",
-    async () => {
-      samples = await page.evaluate(() =>
-        Array.from(document.querySelectorAll<HTMLElement>("[class]"))
-          .filter((el) =>
-            Array.from(el.classList).some((c) => /(^|:)txt-|-webs$/.test(c))
-          )
-          .map((el) => ({
-            className: el.className,
-            fontFamily: getComputedStyle(el).fontFamily,
-          }))
-      )
+  await step("อ่าน computed font-family ของ element หลักและ class typography ของ preset", async () => {
+    samples = await page.evaluate(() => {
+      const font = (el: Element) => getComputedStyle(el).fontFamily
+      const tags = ["body", "h1", "h2", "p", "button", "input"].flatMap((selector) => {
+        const el = document.querySelector(selector)
+        return el ? [{ label: selector, fontFamily: font(el) }] : []
+      })
+      const legacy = Array.from(document.querySelectorAll<HTMLElement>("[class]"))
+        .filter((el) => Array.from(el.classList).some((c) => /(^|:)txt-|-webs$/.test(c)))
+        .map((el) => ({ label: el.className, fontFamily: font(el) }))
+      return [...tags, ...legacy]
+    })
 
-      expect(samples.length).toBeGreaterThan(0)
-      for (const { className, fontFamily } of samples) {
-        const noto = fontFamily.indexOf("Noto Sans Thai")
-        const inter = fontFamily.indexOf("Inter")
-        expect(noto, `${className}: ${fontFamily}`).toBeGreaterThanOrEqual(0)
-        if (inter >= 0) {
-          expect(noto, `${className}: ${fontFamily}`).toBeLessThan(inter)
-        }
+    expect(samples.length).toBeGreaterThan(0)
+    expect(samples.map((s) => s.label)).toContain("body")
+    for (const { label, fontFamily } of samples) {
+      const noto = fontFamily.indexOf("Noto Sans Thai")
+      const inter = fontFamily.indexOf("Inter")
+      expect(noto, `${label}: ${fontFamily}`).toBeGreaterThanOrEqual(0)
+      if (inter >= 0) {
+        expect(noto, `${label}: ${fontFamily}`).toBeLessThan(inter)
       }
-      await evidence("01-home-noto-sans-thai")
     }
-  )
+    await evidence("01-home-noto-sans-thai")
+  })
 })

@@ -82,7 +82,7 @@ const Item = ({
     >
       {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ชื่อสินค้า/จำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 (รวมยอดหลักหมื่นมีทศนิยม — qa #278 D-1) — ≥ small คงเดิม */}
       <Table.Cell
-        className={clx("!pl-0 p-4 pr-2 small:pr-4 w-24", {
+        className={clx("pl-0! p-4 pr-2 small:pr-4 w-24", {
           "max-small:block max-small:w-auto max-small:row-span-2": card,
         })}
       >
@@ -122,11 +122,11 @@ const Item = ({
             "max-small:block max-small:min-w-0 max-small:pt-0": card,
           })}
         >
-          {/* qa #142 D-2 (CORE-19c): `!contents` ให้ปุ่มลบและข้อความ error เป็น flex item ของแถวนี้ — error ขึ้นบรรทัดใหม่กว้างเต็ม w-28 */}
+          {/* qa #142 D-2 (CORE-19c): `contents!` ให้ปุ่มลบและข้อความ error เป็น flex item ของแถวนี้ — error ขึ้นบรรทัดใหม่กว้างเต็ม w-28 */}
           <div className="flex flex-wrap gap-2 items-center w-28">
             <DeleteButton
               id={item.id}
-              className="!contents"
+              className="contents!"
               data-testid="product-delete-button"
             />
             <CartItemSelect
@@ -161,13 +161,13 @@ const Item = ({
       )}
 
       <Table.Cell
-        className={clx("!pr-0", {
+        className={clx("pr-0!", {
           "max-small:block max-small:pl-2 max-small:pt-0 max-small:whitespace-nowrap":
             card,
         })}
       >
         <span
-          className={clx("!pr-0", {
+          className={clx("pr-0!", {
             "flex flex-col items-end h-full justify-center": type === "preview",
           })}
         >

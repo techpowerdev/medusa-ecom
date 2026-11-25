@@ -1,22 +1,256 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@import "tailwindcss";
+/* SFUI-1a: ชั้นเข้ากันได้ชั่วคราวของ @medusajs/ui-preset (ลบใน SFUI-6) */
+@import "./legacy-medusa.css";
 
-@layer utilities {
+/*
+  SFUI-1a (spec 09 กฎ 1, 7, 8; ADR-030 ข้อ 1, 7, 8): Tailwind v4 แบบ CSS-first — ค่า theme เดิมจาก tailwind.config.js
+  ย้ายมาเป็น @theme (ชื่อ class เดิมใช้ได้เหมือนเดิม)
+*/
+@theme {
+  /* [CORE-4a] ADR-008 ข้อ 4: brand tokens แบบ placeholder (โทนเทากลาง) owner เปลี่ยนค่าที่นี่ที่เดียว
+     โดยไม่ต้องแก้ component (ใช้ผ่าน class เช่น bg-brand, text-brand-700) */
+  --color-brand: #525252;
+  --color-brand-50: #FAFAFA;
+  --color-brand-100: #F5F5F5;
+  --color-brand-200: #E5E5E5;
+  --color-brand-300: #D4D4D4;
+  --color-brand-400: #A3A3A3;
+  --color-brand-500: #737373;
+  --color-brand-600: #525252;
+  --color-brand-700: #404040;
+  --color-brand-800: #262626;
+  --color-brand-900: #171717;
+
+  --color-grey-0: #FFFFFF;
+  --color-grey-5: #F9FAFB;
+  --color-grey-10: #F3F4F6;
+  --color-grey-20: #E5E7EB;
+  --color-grey-30: #D1D5DB;
+  --color-grey-40: #9CA3AF;
+  --color-grey-50: #6B7280;
+  --color-grey-60: #4B5563;
+  --color-grey-70: #374151;
+  --color-grey-80: #1F2937;
+  --color-grey-90: #111827;
+
+  --radius-soft: 2px;
+  --radius-base: 4px;
+  --radius-rounded: 8px;
+  --radius-large: 16px;
+  --radius-circle: 9999px;
+
+  --container-8xl: 100rem;
+
+  --breakpoint-2xsmall: 320px;
+  --breakpoint-xsmall: 512px;
+  --breakpoint-small: 1024px;
+  --breakpoint-medium: 1280px;
+  --breakpoint-large: 1440px;
+  --breakpoint-xlarge: 1680px;
+  --breakpoint-2xlarge: 1920px;
+
+  /* v3 ตั้ง fontSize.3xl เป็น "2rem" อย่างเดียว (ไม่มี line-height) */
+  --text-3xl: 2rem;
+  --text-3xl--line-height: initial;
+
+  --animate-ring: ring 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  --animate-fade-in-right: fade-in-right 0.3s cubic-bezier(0.5, 0, 0.5, 1) forwards;
+  --animate-fade-in-top: fade-in-top 0.2s cubic-bezier(0.5, 0, 0.5, 1) forwards;
+  --animate-fade-out-top: fade-out-top 0.2s cubic-bezier(0.5, 0, 0.5, 1) forwards;
+  --animate-accordion-open: accordion-slide-down 300ms cubic-bezier(0.87, 0, 0.13, 1) forwards;
+  --animate-accordion-close: accordion-slide-up 300ms cubic-bezier(0.87, 0, 0.13, 1) forwards;
+  --animate-enter: enter 200ms ease-out;
+  --animate-slide-in: slide-in 1.2s cubic-bezier(0.41, 0.73, 0.51, 1.02);
+  --animate-leave: leave 150ms ease-in forwards;
+
+  @keyframes ring {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes fade-in-right {
+    0% {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes fade-in-top {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes fade-out-top {
+    0% {
+      height: 100%;
+    }
+    99% {
+      height: 0;
+    }
+    100% {
+      visibility: hidden;
+    }
+  }
+  @keyframes accordion-slide-up {
+    0% {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+    100% {
+      height: 0;
+      opacity: 0;
+    }
+  }
+  @keyframes accordion-slide-down {
+    0% {
+      min-height: 0;
+      max-height: 0;
+      opacity: 0;
+    }
+    100% {
+      min-height: var(--radix-accordion-content-height);
+      max-height: none;
+      opacity: 1;
+    }
+  }
+  @keyframes enter {
+    0% {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes leave {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+  }
+  @keyframes slide-in {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+}
+
+/* กฎ 8 (แทน CORE-8): Noto Sans Thai จาก next/font (src/app/layout.tsx, --font-noto-sans-thai) เป็นฟอนต์ตัวแรก */
+@theme inline {
+  --font-sans: var(--font-noto-sans-thai), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ค่าเริ่มต้นของ Tailwind v3 ที่ v4 เปลี่ยน (คงหน้าตาเดิมระหว่างย้าย) */
+@layer base {
+  body {
+    @apply font-sans;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility no-scrollbar {
   /* Chrome, Safari and Opera */
-  .no-scrollbar::-webkit-scrollbar {
+  &::-webkit-scrollbar {
     display: none;
   }
 
-  .no-scrollbar::-webkit-scrollbar-track {
+  &::-webkit-scrollbar-track {
     background-color: transparent;
   }
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
 
-  .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
-  }
+@utility content-container {
+  @apply max-w-[1440px] w-full mx-auto px-6;
+}
 
+@utility contrast-btn {
+  @apply px-4 py-2 border border-black rounded-full hover:bg-black hover:text-white transition-colors duration-200 ease-in;
+}
+
+@utility text-xsmall-regular {
+  @apply text-[10px] leading-4 font-normal;
+}
+
+@utility text-small-regular {
+  @apply text-xs leading-5 font-normal;
+}
+
+@utility text-small-semi {
+  @apply text-xs leading-5 font-semibold;
+}
+
+@utility text-base-regular {
+  @apply text-sm leading-6 font-normal;
+}
+
+@utility text-base-semi {
+  @apply text-sm leading-6 font-semibold;
+}
+
+@utility text-large-regular {
+  @apply text-base leading-6 font-normal;
+}
+
+@utility text-large-semi {
+  @apply text-base leading-6 font-semibold;
+}
+
+@utility text-xl-regular {
+  @apply text-2xl leading-[36px] font-normal;
+}
+
+@utility text-xl-semi {
+  @apply text-2xl leading-[36px] font-semibold;
+}
+
+@utility text-2xl-regular {
+  @apply text-[30px] leading-[48px] font-normal;
+}
+
+@utility text-2xl-semi {
+  @apply text-[30px] leading-[48px] font-semibold;
+}
+
+@utility text-3xl-regular {
+  @apply text-[32px] leading-[44px] font-normal;
+}
+
+@utility text-3xl-semi {
+  @apply text-[32px] leading-[44px] font-semibold;
+}
+
+
+@layer utilities {
   input:focus ~ label,
   input:not(:placeholder-shown) ~ label {
     @apply -translate-y-3 text-xsmall-regular;
@@ -47,67 +281,5 @@
   input[type="search"]::-webkit-search-results-button,
   input[type="search"]::-webkit-search-results-decoration {
     -webkit-appearance: none;
-  }
-}
-
-@layer components {
-  .content-container {
-    @apply max-w-[1440px] w-full mx-auto px-6;
-  }
-
-  .contrast-btn {
-    @apply px-4 py-2 border border-black rounded-full hover:bg-black hover:text-white transition-colors duration-200 ease-in;
-  }
-
-  .text-xsmall-regular {
-    @apply text-[10px] leading-4 font-normal;
-  }
-
-  .text-small-regular {
-    @apply text-xs leading-5 font-normal;
-  }
-
-  .text-small-semi {
-    @apply text-xs leading-5 font-semibold;
-  }
-
-  .text-base-regular {
-    @apply text-sm leading-6 font-normal;
-  }
-
-  .text-base-semi {
-    @apply text-sm leading-6 font-semibold;
-  }
-
-  .text-large-regular {
-    @apply text-base leading-6 font-normal;
-  }
-
-  .text-large-semi {
-    @apply text-base leading-6 font-semibold;
-  }
-
-  .text-xl-regular {
-    @apply text-2xl leading-[36px] font-normal;
-  }
-
-  .text-xl-semi {
-    @apply text-2xl leading-[36px] font-semibold;
-  }
-
-  .text-2xl-regular {
-    @apply text-[30px] leading-[48px] font-normal;
-  }
-
-  .text-2xl-semi {
-    @apply text-[30px] leading-[48px] font-semibold;
-  }
-
-  .text-3xl-regular {
-    @apply text-[32px] leading-[44px] font-normal;
-  }
-
-  .text-3xl-semi {
-    @apply text-[32px] leading-[44px] font-semibold;
   }
 }
