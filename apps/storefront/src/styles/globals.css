@@ -1,6 +1,10 @@
 @import "tailwindcss";
 /* SFUI-1a: ชั้นเข้ากันได้ชั่วคราวของ @medusajs/ui-preset (ลบใน SFUI-6) */
 @import "./legacy-medusa.css";
+/* SFUI-1b (ADR-030 ข้อ 10): animation ของ shadcn (แทน tailwindcss-animate ที่มากับ preset)
+   ไม่ import "shadcn/tailwind.css" ที่ CLI ใส่ให้ — ต้องติดตั้ง package shadcn เป็น dependency (ADR-030: CLI ใช้ผ่าน dlx เท่านั้น)
+   และไม่มี dark mode (กฎ 7) จึงตัด custom variant ของ dark กับ token ชุดมืดที่ CLI สร้างออก */
+@import "tw-animate-css";
 
 /*
   SFUI-1a (spec 09 กฎ 1, 7, 8; ADR-030 ข้อ 1, 7, 8): Tailwind v4 แบบ CSS-first — ค่า theme เดิมจาก tailwind.config.js
@@ -157,12 +161,51 @@
 /* กฎ 8 (แทน CORE-8): Noto Sans Thai จาก next/font (src/app/layout.tsx, --font-noto-sans-thai) เป็นฟอนต์ตัวแรก */
 @theme inline {
   --font-sans: var(--font-noto-sans-thai), ui-sans-serif, system-ui, sans-serif;
+  /* SFUI-1b: token ของ shadcn (สร้างโดย shadcn init) → utility เช่น bg-primary, ring-ring, border-input */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 /* ค่าเริ่มต้นของ Tailwind v3 ที่ v4 เปลี่ยน (คงหน้าตาเดิมระหว่างย้าย) */
 @layer base {
   body {
-    @apply font-sans;
+    @apply font-sans bg-background text-foreground;
   }
 
   input::placeholder,
@@ -173,6 +216,9 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+  * {
+    @apply border-border outline-ring/50;
   }
 }
 
@@ -249,7 +295,6 @@
   @apply text-[32px] leading-[44px] font-semibold;
 }
 
-
 @layer utilities {
   input:focus ~ label,
   input:not(:placeholder-shown) ~ label {
@@ -282,4 +327,41 @@
   input[type="search"]::-webkit-search-results-decoration {
     -webkit-appearance: none;
   }
+}
+
+/* SFUI-1b (spec 09 กฎ 7; ADR-030 ข้อ 7): token ของ shadcn ค่า neutral จาก shadcn init
+   ยกเว้น --primary / --primary-foreground / --ring ที่ชี้ไปที่ brand (ADR-008 ข้อ 4 — owner แก้สีที่ @theme ที่เดียว) */
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: var(--color-brand-900);
+  --primary-foreground: var(--color-brand-50);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: var(--color-brand-400);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }

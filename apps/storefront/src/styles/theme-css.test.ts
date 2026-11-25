@@ -243,15 +243,31 @@ describe("globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7
       "rounded-md",
       "animate-in",
     ])
-    expect(declsOf(compiled, ".bg-primary")["background-color"]).toBe("var(--color-primary)")
-    expect(declsOf(compiled, ".text-primary-foreground").color).toBe("var(--color-primary-foreground)")
-    expect(declsOf(compiled, ".ring-ring")["--tw-ring-color"]).toBe("var(--color-ring)")
-    expect(declsOf(compiled, ".bg-background")["background-color"]).toBe("var(--color-background)")
-    expect(declsOf(compiled, ".border-input")["border-color"]).toBe("var(--color-input)")
+    // @theme inline → utility อ้าง token ของ :root ตรง
+    expect(declsOf(compiled, ".bg-primary")["background-color"]).toBe("var(--primary)")
+    expect(declsOf(compiled, ".text-primary-foreground").color).toBe("var(--primary-foreground)")
+    expect(declsOf(compiled, ".ring-ring")["--tw-ring-color"]).toBe("var(--ring)")
+    expect(declsOf(compiled, ".bg-background")["background-color"]).toBe("var(--background)")
+    expect(declsOf(compiled, ".border-input")["border-color"]).toBe("var(--input)")
     expect(declsOf(compiled, ".rounded-md")["border-radius"]).toBeDefined()
     expect(declsOf(compiled, ".animate-in").animation).toBeDefined()
-    // @theme inline: --color-primary ชี้ var(--primary) ที่ :root
     expect(cssVar(globals, "--color-primary")).toBe("var(--primary)")
     expect(cssVar(globals, "--color-ring")).toBe("var(--ring)")
+  })
+
+  it("หลัง compile ตัวแปร brand ที่ --primary/--primary-foreground/--ring อ้างถูก emit จริง (ไม่หายเพราะไม่มี class ใช้)", async () => {
+    const compiled = await compile(["bg-primary"])
+    const emitted: Record<string, string> = {}
+    compiled.walkDecls(/^--color-brand-/, (decl) => {
+      emitted[decl.prop] = decl.value
+    })
+    expect(emitted["--color-brand-900"]).toBe("#171717")
+    expect(emitted["--color-brand-50"]).toBe("#FAFAFA")
+    expect(emitted["--color-brand-400"]).toBe("#A3A3A3")
+  })
+
+  it("ไม่มี @custom-variant dark และไม่ import shadcn/tailwind.css (ADR-030: CLI ไม่เป็น dependency)", () => {
+    expect(globals).not.toMatch(/@custom-variant\s+dark/)
+    expect(globals).not.toMatch(/@import\s+"shadcn\//)
   })
 })

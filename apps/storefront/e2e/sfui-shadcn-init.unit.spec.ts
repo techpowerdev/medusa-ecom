@@ -71,6 +71,6 @@ test("AC-7: vitest.config.mts มี alias \"@\" → src และ include ค�
   expect(source).toMatch(/"@"\s*:\s*path\.resolve\(\s*__dirname\s*,\s*"src"\s*\)/)
   const include = source.match(/include\s*:\s*\[([^\]]*)\]/)
   expect(include, "test.include").not.toBeNull()
-  const globs = [...include![1].matchAll(/"([^"]+)"/g)].map((m) => m[1])
+  const globs = Array.from(include![1].matchAll(/"([^"]+)"/g), (m) => m[1])
   expect(globs).toEqual(expect.arrayContaining(["src/**/*.test.ts", "src/**/*.test.tsx"]))
 })
