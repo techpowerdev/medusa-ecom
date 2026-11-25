@@ -185,17 +185,21 @@ export function legacyClassNames(file: string, source: string): string[] {
 
 export const isTestFile = (file: string) => /\.test\.tsx?$/.test(file)
 
+/** ตัวแปรดิบของ preset (`:root` จาก addBase — ชั้นเข้ากันได้คืนให้ใน legacy-medusa.css) ที่โค้ดอ้างตรง */
+export const PRESET_RAW_VAR = /var\(--(?:fg|bg|border)-[\w-]+/
+
+/** กฎ 15: import ต้องห้าม (ทุกไฟล์) หรือ class/ตัวแปรดิบของ preset (เฉพาะไฟล์ที่ไม่ใช่ test) */
+export function hasForbiddenPattern(file: string, source: string): boolean {
+  if (FORBIDDEN_IMPORT.test(source)) return true
+  if (isTestFile(file)) return false
+  return PRESET_RAW_VAR.test(source) || legacyClassNames(file, source).length > 0
+}
+
 /** ไฟล์ `src/**` (รวม test) ที่มี pattern ต้องห้ามของกฎ 15 */
 export function filesWithForbiddenPattern(): string[] {
-  const all = [
-    ...sourceFiles(),
-    ...allTestFiles(),
-  ].sort()
-  return all.filter((file) => {
-    const source = readSource(file)
-    if (FORBIDDEN_IMPORT.test(source)) return true
-    return !isTestFile(file) && legacyClassNames(file, source).length > 0
-  })
+  return [...sourceFiles(), ...allTestFiles()]
+    .sort()
+    .filter((file) => hasForbiddenPattern(file, readSource(file)))
 }
 
 function allTestFiles(dir: string = SRC): string[] {
