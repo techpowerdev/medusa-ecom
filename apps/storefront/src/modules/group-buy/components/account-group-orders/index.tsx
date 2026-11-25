@@ -3,7 +3,7 @@ import { GroupBuyMembership, GroupBuyMembershipView, groupBuyMembershipView } fr
 import { convertToLocale } from "@lib/util/money"
 import { PROCESSING_MESSAGE, REFUND_NOTICE_MESSAGE } from "@lib/util/order-pay"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Button } from "@modules/common/components/ui"
+import { buttonClassName } from "@modules/common/components/ui"
 import LeaveGroupButton from "./leave-button"
 
 type Props = {
@@ -92,13 +92,21 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
       )}
       <div className="flex flex-wrap justify-end gap-2">
         {view.kind === "pay" && (
-          <LocalizedClientLink href={`/account/orders/${m.order_id}/pay`} data-testid="group-order-pay-link">
-            <Button>ชำระเงิน</Button>
+          <LocalizedClientLink
+            href={`/account/orders/${m.order_id}/pay`}
+            className={buttonClassName()}
+            data-testid="group-order-pay-link"
+          >
+            ชำระเงิน
           </LocalizedClientLink>
         )}
         {view.kind === "paid" && view.orderDetails && (
-          <LocalizedClientLink href={`/account/orders/details/${m.order_id}`} data-testid="group-order-details-link">
-            <Button variant="secondary">ดูรายละเอียด</Button>
+          <LocalizedClientLink
+            href={`/account/orders/details/${m.order_id}`}
+            className={buttonClassName({ variant: "secondary" })}
+            data-testid="group-order-details-link"
+          >
+            ดูรายละเอียด
           </LocalizedClientLink>
         )}
         <LeaveGroupButton membershipId={m.id} canLeave={view.canLeave} />

@@ -1,0 +1,58 @@
+# CORE-95 (spec 01 กฎข้อ 151, AC-192) — ผล test ในเครื่อง 2026-11-24 บน origin/develop b9421ecf
+
+## RED (ก่อนแก้ — โค้ดของ develop)
+### unit ขั้น 1: core-76 แถวบัตร + core-95 (ยังไม่มี helper)
+ FAIL  src/core-95-payment-received-notice.test.ts [ src/core-95-payment-received-notice.test.ts ]
+Error: Failed to resolve import "@lib/util/login-notice" from "src/core-95-payment-received-notice.test.ts". Does the file exist?
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/core-76-place-order-outcome-ui.test.ts > ปุ่มยืนยันคำสั่งซื้อ: notice จาก kind (CORE-76) > pp_stripe_stripe: unauthorized → ไปหน้า login /th/account?notice=payment_received ไม่มี notice คืนเงิน
+AssertionError: expected "vi.fn()" to be called with arguments: [ Array(1) ]
+Received:
+-   "/th/account?notice=payment_received",
++   "/th/account",
+      Tests  1 failed | 9 passed (10)
+
+### unit ขั้น 2: มี helper แล้ว — component/server action ยังเป็นของ develop
+     × pp_stripe_stripe + {"kind":"unauthorized"} → "/th/account?notice=payment_received" 51ms
+     × บัตร PI requires_capture (error.payment_intent) + unauthorized → notice=payment_received 1ms
+     × notice=payment_received → login-payment-received-notice ไทย + ฟอร์ม login ส่ง notice ต่อ 93ms
+     × login สำเร็จพร้อม notice=payment_received → /th/account/orders 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  4 failed | 26 passed (30)
+
+### e2e e2e/core-95-payment-received-notice.spec.ts (storefront build จาก src ของ develop)
+  ✘  2 [chromium] › e2e/core-95-payment-received-notice.spec.ts:61:5 › (a)(b) notice=payment_received → notice ไทย แล้ว login ไป /th/account/orders (5.6s)
+  ✓  3 [chromium] › e2e/core-95-payment-received-notice.spec.ts:79:7 › (c) notice=<script>alert(1)</script> → ไม่มี notice ไม่ render ค่าจาก URL (182ms)
+  ✓  4 [chromium] › e2e/core-95-payment-received-notice.spec.ts:79:7 › (c) notice=x → ไม่มี notice ไม่ render ค่าจาก URL (159ms)
+  ✓  5 [chromium] › e2e/core-95-payment-received-notice.spec.ts:94:5 › login ปกติ (ไม่มี notice) → คงอยู่หน้า /th/account (ไม่ไปหน้า orders) (619ms)
+    Error: expect(locator).toHaveText(expected) failed
+    Error: element(s) not found
+  1 failed
+  1 skipped
+  3 passed (7.5s)
+
+## GREEN
+### unit vitest ทั้ง storefront
+ Test Files  124 passed (124)
+      Tests  1924 passed (1924)
+
+### e2e core-95 + core-76 (E2E_SAVE_EVIDENCE=1; (a) ทางบัตรจริง skip — ไม่มี Stripe key ในเครื่อง → CI)
+  ✓  3 [chromium] › e2e/core-95-payment-received-notice.spec.ts:61:5 › (a)(b) notice=payment_received → notice ไทย แล้ว login ไป /th/account/orders (884ms)
+  ✓  4 [chromium] › e2e/core-95-payment-received-notice.spec.ts:79:7 › (c) notice=<script>alert(1)</script> → ไม่มี notice ไม่ render ค่าจาก URL (164ms)
+  ✓  5 [chromium] › e2e/core-95-payment-received-notice.spec.ts:79:7 › (c) notice=x → ไม่มี notice ไม่ render ค่าจาก URL (165ms)
+  ✓  6 [chromium] › e2e/core-95-payment-received-notice.spec.ts:94:5 › login ปกติ (ไม่มี notice) → คงอยู่หน้า /th/account (ไม่ไปหน้า orders) (613ms)
+  ✓  2 [chromium] › e2e/core-76-place-order-outcome.spec.ts:122:7 › AC-175: ผลของการยืนยันคำสั่งซื้อในขั้น review › (a) manual: ชิ้นสุดท้ายถูกซื้อไประหว่างอยู่ขั้น review → ข้อความให้ลดจำนวน ไม่มีคำ คืนเงิน (3.5s)
+  ✓  7 [chromium] › e2e/core-76-place-order-outcome.spec.ts:148:7 › AC-175: ผลของการยืนยันคำสั่งซื้อในขั้น review › (a2) 409 กำลัง complete อยู่ แล้ว order มีอยู่ → หน้า order confirmed ภายใน 10 วินาที (5.2s)
+  ✓  8 [chromium] › e2e/core-76-place-order-outcome.spec.ts:173:7 › AC-175: ผลของการยืนยันคำสั่งซื้อในขั้น review › (a2) 409 กำลัง complete อยู่ และยังไม่มี order → checkout-processing-notice ไม่ใช่ notice คืนเงิน (5.8s)
+  ✓  9 [chromium] › e2e/core-76-place-order-outcome.spec.ts:197:7 › AC-175: ผลของการยืนยันคำสั่งซื้อในขั้น review › (a2) 401 (session หมดอายุ) → หน้า login ไม่เห็น notice คืนเงิน (2.2s)
+  1 skipped
+  8 passed (17.2s)
+
+### e2e ที่อ้างหน้า login/account (23 spec)
+  4 skipped
+  80 passed (3.3m)
+
+### playwright --project=unit
+  165 passed (1.1s)
+
+### typecheck storefront: ผ่าน (tsc --noEmit); eslint ไฟล์ที่แตะ: 0 error 0 warning

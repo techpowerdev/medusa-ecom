@@ -8,7 +8,7 @@
 - คง **ภาษาอังกฤษ** สำหรับ: โค้ด, ชื่อตัวแปร/ไฟล์/branch, คำสั่ง, ชื่อ API/module ของ Medusa และศัพท์เทคนิค
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
 - ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
-  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น menuitem ของ `ActionMenu`, ปุ่มใน `action` และ searchbox ของ `DataTable` ใน admin ที่หาด้วย role ภายใน wrapper ที่มี testid — ADR-018) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
+  เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น 4 ข้อใน admin — ADR-018: menuitem ของ `ActionMenu`, ปุ่มใน `action` และ searchbox ของ `DataTable` (`getByTestId("<wrapper>").getByRole("searchbox")`) ที่หาด้วย role ภายใน wrapper ที่มี testid และ element ในหน้าของ `@medusajs/dashboard` ที่ extension ใส่ testid ไม่ได้ ที่หาด้วย role + ชื่อภายใน container ที่แคบที่สุด) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
   regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
 
 ## โปรเจกต์นี้คืออะไร
@@ -34,8 +34,9 @@ storefront จาก **Medusa Next.js Starter** เราขยายควา�
       archive** (ถูกแทนด้วย export แล้ว)
    ดึงข้อมูล: resource ของ Medusa ใช้ hook ของ dashboard; route ของเราเองใช้ JS SDK + Tanstack Query (query key + invalidate)
    ฟอร์ม: `Form` ของ dashboard + react-hook-form + zod (สร้าง = `FocusModal`, แก้ = `Drawer` แบบ state — ADR-018 Q5)
-   ปุ่มต่อแถวใช้ `ActionMenu` (testid ที่ trigger; e2e หา menuitem ด้วย role + ชื่อ) ปุ่มใน `action` และ searchbox ของ `DataTable` (หาด้วย role + ชื่อ
-   ภายใน wrapper ที่มี testid) — ข้อยกเว้นของการหาด้วย `data-testid`;
+   ปุ่มต่อแถวใช้ `ActionMenu` (testid ที่ trigger; e2e หา menuitem ด้วย role + ชื่อ) ปุ่มใน `action` ของ `DataTable` (หาด้วย role + ชื่อ
+   ภายใน wrapper ที่มี testid), searchbox ของ `DataTable` (`getByTestId("<wrapper>").getByRole("searchbox")`) และ element ในหน้าของ
+   `@medusajs/dashboard` ที่ extension ใส่ testid ไม่ได้ (role + ชื่อภายใน container ที่แคบที่สุด) — ข้อยกเว้น 4 ข้อของการหาด้วย `data-testid`;
    วันเวลาใช้ `DatePicker` (`granularity="minute"`) + `useDate` ตาม timezone ของเครื่องแบบ Medusa (เครื่องแอดมินตั้งเวลาไทย);
    เงินใช้ `getLocaleAmount` — ดู ADR-018
    ห้ามเขียน component/hook/helper ซ้ำกับข้างบน (ตาราง, แบ่งหน้า, prompt, toast, client API, formatter เงิน/วันที่, form field)
@@ -118,10 +119,13 @@ pnpm --filter storefront build && pnpm --filter storefront start
   แล้วรอจนกว่าจะ merge จริง (เช็กด้วย `gh pr view <n> --json state`) ห้ามแตก branch จาก PR ที่ยังไม่ merge
   และห้ามอ่าน spec จาก branch ที่ยังไม่ merge แทน
 
-## บทเรียนที่ต้องไม่ทำผิดซ้ำ (จากรอบ 2026-10-25/26)
+## บทเรียนที่ต้องไม่ทำผิดซ้ำ (จากรอบ 2026-10-25/26 ถึงรอบ 42)
 **การ merge และ CI (session หลัก)**
 - ก่อน merge **ทุก** job (`gh pr checks <n> --watch`) ต้องเป็น `SUCCESS` หรือ `SKIPPED` ตามที่ `classify-changes.sh`
   ตัดสิน — ห้ามมี FAILURE/CANCELLED/ค่าว่าง (conclusion ว่างใน `statusCheckRollup` = ยังรันอยู่ ไม่ใช่ผ่าน)
+  ถ้า job ค้างสถานะ pending/in_progress ทั้งที่ conclusion เป็น success ให้ยืนยันด้วย `gh run view <run> --json status,conclusion` ว่า run เป็น
+  `completed`/`success` ก่อน merge (รอบ 42 #551 job `changes` ค้างแบบนี้)
+- `gh pr checks <n> --watch` อาจจบก่อนทุก job เสร็จ → ตรวจซ้ำจนไม่มี IN_PROGRESS/QUEUED/conclusion ว่าง ก่อนถือว่าเขียว
 - merge ทีละตัว: ก่อน merge แต่ละ PR ต้อง merge `origin/develop` เข้า branch ของ PR (sync) แล้วรอ CI ของ PR นั้นเขียว
   — CI ไม่รันบน push ไป `develop` แล้ว (ทดสอบ tree เดียวกับ PR ที่ sync แล้วซ้ำ) ด่าน "develop เขียว" จึงคือ PR ที่ sync
   กับ develop ล่าสุดและ CI เขียว; ถ้าสิ่งที่ develop เปลี่ยนนับจาก merge-base เป็นเอกสารล้วนตามนิยามของ
@@ -141,6 +145,8 @@ pnpm --filter storefront build && pnpm --filter storefront start
   และ merge/rebase `origin/develop` ครั้งเดียวก่อน push ห้ามไล่ develop
 - ไฟล์ชั่วคราวใน scratchpad ต้องมี task id ในชื่อ (`pr-body-<TASK>.md`) — เคยเขียนทับกัน
 - port / DB / Redis db ของแต่ละ agent ต้องไม่ซ้ำกัน และปิด server + drop DB เมื่อเสร็จ
+- qa/reviewer/builder ใช้ Postgres ผ่าน container `medusa-ecom-postgres-1` เท่านั้น ห้าม DROP/สร้าง DB ใน container อื่นหรือ DB ที่ไม่ใช่ของตัวเอง
+  — drop เฉพาะ DB ที่ชื่อมี task id ของตัวเอง (เคย DROP ผิด container)
 - planner หลายตัวพร้อมกัน → ระบุไฟล์/เลข ADR ที่แต่ละตัวใช้ให้ชัด (เคยได้ ADR เลขเดียวกันสองฉบับ)
 - qa เขียน `REPORT.md` ไม่ได้ (harness) → qa ส่งเนื้อหากลับ session หลัก commit ลง branch ของ PR
 - ห้ามเปิด/อ่าน/`cat`/`grep`/`head` ไฟล์ `.env*` จริงทุกรูปแบบ แม้กรองเหลือแค่ชื่อตัวแปร — ดูชื่อตัวแปรจาก `.env.template`/`medusa-config.ts` (รอบ 40 secret เคยหลุดเข้า log)
@@ -155,6 +161,15 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - CI ข้าม job หนักให้อัตโนมัติ: PR เอกสารล้วนรันแค่ `lint-typecheck` (ยกเว้น `docs/ops/**` ซึ่งนับเป็นโค้ด backend เพราะ unit test อ่านไฟล์เหล่านี้); PR ที่แก้แค่ `apps/storefront/**` ข้าม `backend-tests`/`docker-worker-mode`
   (กติกาใน `tools/ci/classify-changes.sh`) push ไป `main` รันครบเสมอ
 - PR ที่แก้หลัง APPROVE (หรือหลัง REQUEST CHANGES) ต้อง re-review สั้นๆ ก่อน merge; หลัง rebase ใช้ `git range-diff`
+- integration ในเครื่องรันทีละไฟล์เท่านั้น: `cd apps/backend && TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules
+  ./node_modules/.bin/jest --forceExit <path เต็ม>` และเช็กด้วย `--listTests` ก่อนว่าได้ 1 ไฟล์ (รอบ 42 มี agent รันชุดเต็ม ~45 นาทีโดยไม่ตั้งใจ 2 ครั้ง)
+- ห้าม `playwright install` เวอร์ชันอื่น/ลบ browser ใน `~/Library/Caches/ms-playwright` (ใช้ร่วมทุก agent — รอบ 42 Chromium หายกลางงาน)
+- ถ้าเรียก skill ของ Medusa ไม่ได้ ให้ตรวจ API จาก source ใน `node_modules` แทน และระบุใน PR body
+- PR ที่ไม่ได้ติ๊กแถว task ตอน merge (เลี่ยง CI รอบเพิ่ม) ต้องระบุชัดว่า PR ไหนรับไปติ๊ก (PR ถัดไปหรือ PR ปิดรอบ) และ PR ปิดรอบไล่ตรวจทุกแถว
+- เมื่อ owner ตัดสินจนถ้อยคำ AC เปลี่ยน ให้ระบุให้ชัดว่า builder หรือ planner เป็นคนแก้ spec (กัน conflict); AC ที่อยู่ติดกันใน spec
+  (เช่น AC-189/190/191) จะ conflict เมื่อหลาย PR ติ๊กพร้อมกัน — ตอน sync/train เก็บทุกฝั่ง
+- แก้ไฟล์ที่มีอักษรไทย/สัญลักษณ์ (☑ —) ด้วย python (`encoding='utf-8'`) หรือ perl แบบ byte (ไม่มี `-CSD`) — `perl -CSD` โดยไม่มี `use utf8`
+  เข้ารหัสอักษรในคำสั่งซ้ำจนเป็น "â" (รอบ 42 train #543 เกือบหลุด)
 
 **โค้ดและ test**
 - key ของ `MedusaService({...})` ต้องตรงกับชื่อ model (Query ตั้งชื่อ method จากชื่อ entity) และมี test `query.graph`
@@ -170,6 +185,21 @@ pnpm --filter storefront build && pnpm --filter storefront start
   ให้สร้างข้อมูลที่ test ต้องใช้ใน `beforeEach` (หรือสร้างใน test นั้นเอง)
 - อย่าปล่อย error ของ axios หลุดออกจาก test (object มี circular reference → serialize เป็น JSON ไม่ได้ ทำให้ jest worker crash)
   ให้ catch แล้วห่อเป็น `Error` ธรรมดาที่มีเฉพาะ status/body เช่น `` new Error(`${status} ${JSON.stringify(data)}`) ``
+- ก่อน push งานที่แก้หน้าใดของ storefront/admin ต้องรัน e2e **ทุก** spec ที่อ้างหน้านั้น (grep path/testid ใน `apps/storefront/e2e/`)
+  ไม่ใช่แค่ spec ของ task (CORE-85: AC-48 ของ `thai-ui-cart-order` ล้มใน CI)
+- e2e ที่ assert ข้อความ error ต้องสร้างค่าที่คาดจาก code จริง และ assert ว่าไม่เท่ากับข้อความ fallback (CORE-83 D1)
+- unit ที่ mock component UI ทั้งก้อน (เช่น `RadioGroup` ของ headless UI) พลาด bug จริงได้ (`disabled={false}` ทับค่าของกลุ่ม — PAY-16 #541)
+  ให้ render headless component ของจริงแล้วตรวจ `aria-*`
+- Next 16 ส่ง server action ทีละตัวตามคิว — e2e ที่จำลอง race ระหว่าง action สองตัว (เช่น poll กับ placeOrder) ต้องจำลองลำดับคิวที่เกิดได้จริง
+  (PAY-17 #540) และ route mock ที่ส่ง server action ต่อไป backend ยังมีผลข้างเคียงจริง (เช่น `authorizePaymentSession` เปลี่ยน session เป็น
+  canceled ก่อน throw — PAY-16 #541) ถ้าไม่ต้องการให้ตอบจาก browser แทน
+- Medusa 2.22.1: `refundPaymentsStep` กลืน error ของ provider (log อย่างเดียว) — คืนเงินล้มจะเงียบ (ADR-029: job `refund-failure-scan` + webhook
+  `refund.failed`); Notification module เมื่อเจอแถวเดิมของ `idempotency_key` ที่เป็น `failure`
+  จะส่งไป provider จริงด้วย id ใหม่แต่ไม่สร้างแถว (update หาไม่เจอ → แถวค้าง `failure`) → ทุกครั้งที่เรียกส่งอีเมลจริงซ้ำ — แจ้ง ops ผ่าน `sendOpsAlert`
+  (soft-delete แถว `failure` ก่อนส่ง) เท่านั้น
+- คืนเงิน PromptPay ของ Stripe เป็น async (`requires_action` — Stripe อีเมลลูกค้าขอเลขบัญชี) และ Medusa นับ refunded ทันที; บัญชี Stripe test
+  ส่งอีเมลได้เฉพาะอีเมลบัญชี → e2e ที่คืนเงินพร้อมเพย์จริงใช้อีเมลลูกค้าจาก secret `E2E_PROMPTPAY_REFUND_EMAIL` (repo public — ห้ามอีเมลนี้
+  ลงโค้ด/log/evidence, ปิด trace ของ spec นั้น และเปิดดู PNG ก่อน commit)
 
 ## Agents (`.claude/agents/`)
 - `planner` — แปลงเป้าหมายเป็น/อัปเดต spec + task list + ADR ไม่เขียนโค้ด

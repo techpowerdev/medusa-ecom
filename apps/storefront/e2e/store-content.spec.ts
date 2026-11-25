@@ -60,7 +60,7 @@ test("AC-61, AC-67: ไม่มีข้อความ/ลิงก์ขอ�
 
   await step("account: หน้าสมัครสมาชิกไม่มีข้อความของ starter", async () => {
     await page.goto(`/${CC}/account`)
-    await page.getByTestId("register-button").click()
+    await page.getByTestId("login-to-register-button").click()
     await expect(page.getByTestId("register-page")).toBeVisible()
     const text = await page.evaluate(storefrontText, BACKEND_DATA_TEST_IDS)
     expect(text).not.toMatch(STARTER_TEXT)

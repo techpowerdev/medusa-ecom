@@ -64,6 +64,8 @@ type ScanResult = {
   >
   /** key ของ allow-list ที่ถูกใช้จริง — กัน allow-list ค้าง */
   usedAllowKeys: Set<string>
+  /** CORE-94: placeOrder ที่ส่ง metadata ผ่าน `retry ? undefined : <metadata>` */
+  retryKeys: string[]
 }
 
 const calleeName = (call: ts.CallExpression): string | undefined => {
@@ -155,15 +157,43 @@ const unwrap = (e: ts.Expression): ts.Expression =>
     ? unwrap(e.expression)
     : e
 
-/** AF-N3 (กฎ 40e/31c): argument ของ metadata มีจริง และไม่ใช่ `undefined` / `void …` */
-const passesMetadata = (call: ts.CallExpression): boolean => {
-  const arg = call.arguments[1]
-  if (!arg) return false
+const isUndefinedArg = (e: ts.Expression) => (ts.isIdentifier(e) && e.text === "undefined") || ts.isVoidExpression(e)
+
+/**
+ * ค่า metadata ที่ไม่ใช่ `undefined` / `void …` — CORE-94 (กฎข้อ 150c): ternary ต้องส่งทั้งสองทาง
+ * เว้นรูป `retry ? undefined : <metadata>` (ตรวจแยกใน `metadataArg`)
+ */
+const isMetadataValue = (arg: ts.Expression): boolean => {
   const e = unwrap(arg)
-  return !(ts.isIdentifier(e) && e.text === "undefined") && !ts.isVoidExpression(e)
+  if (ts.isConditionalExpression(e)) return isMetadataValue(e.whenTrue) && isMetadataValue(e.whenFalse)
+  return !isUndefinedArg(e)
 }
 
-const isUndefinedArg = (e: ts.Expression) => (ts.isIdentifier(e) && e.text === "undefined") || ts.isVoidExpression(e)
+/** comment ก่อน statement ที่ครอบ call อธิบายทาง retry (มีคำว่า retry หรือ อ่านซ้ำ) */
+const hasRetryComment = (call: ts.CallExpression): boolean => {
+  let n: ts.Node = call
+  while (n.parent && !ts.isSourceFile(n.parent) && !ts.isBlock(n.parent)) n = n.parent
+  const text = n.getSourceFile().getFullText()
+  const comments = ts.getLeadingCommentRanges(text, n.getFullStart()) ?? []
+  return comments.some((c) => /retry|อ่านซ้ำ/i.test(text.slice(c.pos, c.end)))
+}
+
+/**
+ * AF-N3 (กฎ 40e/31c): argument ของ metadata มีจริง และไม่ใช่ `undefined` / `void …`
+ * CORE-94 (กฎข้อ 150c): `<cond> ? undefined : <metadata>` ผ่านได้เฉพาะเมื่อ cond เป็นตัวแปร retry (ครั้งแรก = false → ส่ง metadata)
+ * และมี comment อธิบายทาง retry — คืน "retry" เพื่อให้ test ยืนยันว่า guard เห็นจุดเรียกจริง
+ */
+const metadataArg = (call: ts.CallExpression): "ok" | "retry" | "missing" => {
+  const arg = call.arguments[1]
+  if (!arg) return "missing"
+  const e = unwrap(arg)
+  if (ts.isConditionalExpression(e) && isUndefinedArg(unwrap(e.whenTrue))) {
+    const cond = unwrap(e.condition)
+    const isRetry = ts.isIdentifier(cond) && /retry/i.test(cond.text)
+    return isRetry && isMetadataValue(e.whenFalse) && hasRetryComment(call) ? "retry" : "missing"
+  }
+  return isMetadataValue(e) ? "ok" : "missing"
+}
 
 /** GB-7a2 (AC-47): cart ที่ส่งให้ `syncAffiliateBefore(` มี `metadata` — object literal ต้องมี key `metadata` ที่ไม่ใช่ undefined */
 const syncPassesMetadata = (sync: ts.CallExpression): boolean => {
@@ -185,6 +215,7 @@ function scan(relFile: string, code: string): ScanResult {
     violations: [],
     counts: { confirmPayment: 0, confirmPromptPayPayment: 0, openQr: 0, placeOrder: 0, retrievePaymentIntent: 0, joinGroupBuy: 0 },
     usedAllowKeys: new Set(),
+    retryKeys: [],
   }
 
   const visit = (n: ts.Node) => {
@@ -214,7 +245,9 @@ function scan(relFile: string, code: string): ScanResult {
       } else if (name === "placeOrder") {
         // (c) ต้องส่ง cart.metadata ให้ placeOrder sync ภายใน — เว้น completion หลังชำระที่อยู่ใน allow-list
         result.counts.placeOrder++
-        if (!passesMetadata(n)) {
+        const metadata = metadataArg(n)
+        if (metadata === "retry") result.retryKeys.push(key)
+        if (metadata === "missing") {
           if (key in PLACE_ORDER_ALLOW_LIST) result.usedAllowKeys.add(key)
           else result.violations.push({ key, rule: "31c: placeOrder ไม่ส่ง cart.metadata", line })
         }
@@ -250,6 +283,7 @@ const scanComponents = () => {
     violations: [],
     counts: { confirmPayment: 0, confirmPromptPayPayment: 0, openQr: 0, placeOrder: 0, retrievePaymentIntent: 0, joinGroupBuy: 0 },
     usedAllowKeys: new Set(),
+    retryKeys: [],
   }
   const files = [
     ...sourceFiles(COMPONENTS_DIR).map((f) => [COMPONENTS_DIR, f]),
@@ -288,6 +322,14 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
         expect(usedAllowKeys.has(key), `allow-list ค้าง: ${key}`).toBe(true)
       }
     }
+  })
+
+  // CORE-94 (กฎข้อ 150c): guard ของ ternary ต้องเห็นทาง retry ของปุ่ม manual จริง (ไม่ผ่านแบบว่างเปล่า)
+  it("payment-button: placeManual ถูกนับเป็น ternary ของ retry ที่ทางครั้งแรกส่ง metadata", () => {
+    const rel = "payment-button/index.tsx"
+    const result = scan(rel, fs.readFileSync(path.join(COMPONENTS_DIR, rel), "utf8"))
+    expect(result.violations).toEqual([])
+    expect(result.retryKeys).toContain(`${rel}#ManualTestPaymentButton.placeManual`)
   })
 
   describe("positive control (fixture) — กรณีไม่ครอบต้องถูกจับ", () => {
@@ -345,6 +387,38 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
         `const ManualTestPaymentButton = () => { const onPaymentCompleted = async () => {
            await placeOrder(cart.id, void 0)
          } }`,
+      ],
+      // CORE-94 (กฎข้อ 150c, AC-191): metadata ผ่าน ternary — ทางครั้งแรกต้องส่ง metadata ของ cart, ทาง retry ต้องมี comment
+      [
+        "31c",
+        "ternary ที่ทั้งสองทางเป็น undefined",
+        `const ManualTestPaymentButton = () => {
+           // รอบอ่านซ้ำ (retry) ไม่ sync อีก
+           const placeManual = (retry: boolean) => placeOrder(cart.id, retry ? undefined : undefined)
+         }`,
+      ],
+      [
+        "31c",
+        "ternary กลับทาง — ครั้งแรก (retry = false) ส่ง undefined",
+        `const ManualTestPaymentButton = () => {
+           // รอบอ่านซ้ำ (retry) ไม่ sync อีก
+           const placeManual = (retry: boolean) => placeOrder(cart.id, retry ? cart.metadata : undefined)
+         }`,
+      ],
+      [
+        "31c",
+        "ternary ที่เงื่อนไขไม่ใช่ retry (ทางครั้งแรกอาจไม่ส่ง metadata)",
+        `const ManualTestPaymentButton = () => {
+           // รอบอ่านซ้ำ (retry) ไม่ sync อีก
+           const placeManual = (paid: boolean) => placeOrder(cart.id, paid ? undefined : cart.metadata)
+         }`,
+      ],
+      [
+        "31c",
+        "ternary ของ retry ที่ไม่มี comment อธิบาย",
+        `const ManualTestPaymentButton = () => {
+           const placeManual = (retry: boolean) => placeOrder(cart.id, retry ? undefined : (cart.metadata ?? null))
+         }`,
       ],
       // AF-N3 (กฎ 40e, AC-47): sync ในฟังก์ชันอื่นที่ประกาศก่อน (ซ้อนอยู่ข้างใน) ไม่นับเป็น sync ของฟังก์ชันนี้
       [
@@ -439,6 +513,9 @@ describe("ทุกจุดเริ่มชำระผ่าน syncAffiliat
         const onPaymentCompleted = async () => {
           await placeOrder(cart.id, cart.metadata ?? null)
         }
+        // รอบอ่านซ้ำ (retry) ไม่ sync อีก — sync แล้วตอนกดครั้งแรก
+        const placeManual = (retry: boolean) => placeOrder(cart.id, retry ? undefined : (cart.metadata ?? null))
+        const placeBoth = (fresh: boolean) => placeOrder(cart.id, fresh ? cart.metadata : (cart.metadata ?? null))
         const join = async () => {
           await syncAffiliateBefore(cart, () => joinGroupBuy(token, cart.id))
         }

@@ -151,13 +151,33 @@ describe("contract: code ของ backend (AC-181 b)", () => {
 // AC-181 c: ทั้ง storefront ไม่เทียบข้อความ error ของ backend นอกข้อยกเว้นของ helper
 describe("static: ไม่มีการเทียบข้อความ backend นอกข้อยกเว้น (AC-181 c)", () => {
   const ALLOWED = ["lib/util/medusa-api-error.ts", "lib/data/medusa-fetch.ts"]
-  const COMPARE = /(?<!typeof )\bmessage\b\s*[!=]==?|\bmessage\??\.(includes|startsWith|endsWith|match|toLowerCase|trim)\(|\.test\(\s*(text|message)\b/
+  // CORE-94 (กฎข้อ 150d): `.test(` จับ message/text ที่อยู่ใน argument ทั้งบรรทัด (เช่น `.test(err.message)`, `.test((e as Error).message)`)
+  const COMPARE = /(?<!typeof )\bmessage\b\s*[!=]==?|\bmessage\??\.(includes|startsWith|endsWith|match|toLowerCase|trim)\(|\.test\([^;\n]*?\b(text|message)\b/
   const files = walk(__dirname).map((f) => path.relative(__dirname, f))
 
   it("ตรวจไฟล์ source ของ lib/modules/app (ไม่ว่าง)", () => {
     expect(files.length).toBeGreaterThan(100)
     expect(files).toContain("lib/util/group-join-error.ts")
   })
+
+  // CORE-94 (กฎข้อ 150d, AC-191): positive control ของ regex — รูปที่ review #519 พบว่าหลุด ต้องถูกจับ
+  it.each([
+    "/full/.test(err.message)",
+    "/full/i.test(error?.message ?? \"\")",
+    "/full/.test((e as Error).message)",
+    "if (err.message.includes(\"full\")) {}",
+    "e?.message?.includes(\"full\")",
+    "error.message === \"full\"",
+  ])("COMPARE จับ %s", (code) => {
+    expect(code).toMatch(COMPARE)
+  })
+
+  it.each(["typeof message === \"string\"", "/^\\d+$/.test(value)", "toast(message)"])(
+    "COMPARE ไม่จับ %s",
+    (code) => {
+      expect(code).not.toMatch(COMPARE)
+    }
+  )
 
   it.each(files.filter((f) => !ALLOWED.includes(f)))("%s", (file) => {
     expect(read(file)).not.toMatch(COMPARE)

@@ -139,7 +139,10 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                     )
                   })
                 ) : (
-                  <span data-testid="no-orders-message">ยังไม่มีคำสั่งซื้อ</span>
+                  // CORE-92 (กฎข้อ 148a): มีแต่ membership แบบกลุ่ม → ไม่บอกว่า "ยังไม่มีคำสั่งซื้อ" (มีลิงก์ "ดูทั้งหมด" แทน)
+                  !hasGroupOrders && (
+                    <span data-testid="no-orders-message">ยังไม่มีคำสั่งซื้อ</span>
+                  )
                 )}
               </ul>
             </div>

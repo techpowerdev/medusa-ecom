@@ -17,6 +17,9 @@ export const metadata: Metadata = {
 // CORE-68 (กฎข้อ 126): หน้าละ 10
 const ORDERS_PAGE_SIZE = 10
 
+// GB-7b: เวลาของ request ใช้ตัดสินสถานะ — CORE-92 (กฎข้อ 148d): อ่านคู่กับข้อมูล GB-8 นอก render (กฎ react-hooks/purity ไม่ต้องปิด)
+const loadGroupOrders = async () => ({ data: await listGroupBuyMemberships(), now: Date.now() })
+
 type Props = {
   params: Promise<{ countryCode: string }>
   searchParams: Promise<{ page?: string | string[] }>
@@ -28,7 +31,7 @@ export default async function Orders(props: Props) {
   // CORE-78 (กฎข้อ 136a): ส่วนคำสั่งซื้อแบบกลุ่มอยู่เฉพาะหน้า 1 — หน้าอื่นไม่ต้องอ่าน GB-8
   const [list, groupOrders] = await Promise.all([
     listOrders(ORDERS_PAGE_SIZE, offset),
-    page === 1 ? listGroupBuyMemberships() : null,
+    page === 1 ? loadGroupOrders() : null,
   ])
 
   if (!list) {
@@ -52,11 +55,9 @@ export default async function Orders(props: Props) {
           ดูคำสั่งซื้อที่ผ่านมาและสถานะ รวมถึงขอคืนหรือเปลี่ยนสินค้าได้หากต้องการ
         </p>
       </div>
-      {/* GB-7b: เวลาของ request ใช้ตัดสินสถานะ (server component render ครั้งเดียวต่อ request) */}
-      {/* eslint-disable-next-line react-hooks/purity */}
-      {page === 1 && <AccountGroupOrders data={groupOrders} now={Date.now()} />}
+      {groupOrders && <AccountGroupOrders data={groupOrders.data} now={groupOrders.now} />}
       {/* GB-12 (กฎข้อ 32e + คำตัดสิน owner): empty state เฉพาะเมื่อรู้แน่ว่าไม่มีทั้ง order ปกติและแบบกลุ่ม (GB-8 ล้ม → ไม่แสดง) */}
-      {(orders.length > 0 || showOrdersEmptyState(orders, groupOrders)) && (
+      {(orders.length > 0 || showOrdersEmptyState(orders, groupOrders?.data ?? null)) && (
         <div>
           <OrderOverview orders={orders} />
           {totalPages > 1 && (

@@ -1,0 +1,64 @@
+# CORE-93 (spec 01 กฎข้อ 149, AC-190 — owner Q-C17 = ก 2026-11-24) ผล test
+# base: origin/develop 59c6af18; backend :9211 / storefront :8211 (next dev), DB medusa_r42_core93
+
+## RED (บน develop ก่อนแก้) — unit src/core-93-options-picker-heading.test.ts
+
+ FAIL  src/core-93-options-picker-heading.test.ts > CORE-93: หัว option ของ OptionsPicker ไม่แสดงจำนวน > เลือกค่าแล้ว หัวก็ไม่แสดงจำนวนค่าที่เลือก — ค่าย่อยยังบอกสถานะด้วย aria-pressed
+AssertionError: expected [ 'ขนาด(2)', 'สี(0)' ] to deeply equal [ 'ขนาด', 'สี' ]
+
+- Expected
++ Received
+
+  [
+-   "ขนาด",
+-   "สี",
++   "ขนาด(2)",
++   "สี(0)",
+  ]
+
+ ❯ src/core-93-options-picker-heading.test.ts:70:24
+     68|   it("เลือกค่าแล้ว หัวก็ไม่แสดงจำนวนค่าที่เลือก — ค่าย่อยยังบอกสถานะด้…
+     69|     await render(["v_f", "v_l"])
+     70|     expect(headings()).toEqual(["ขนาด", "สี"])
+       |                        ^
+     71|     expect(container.textContent).not.toMatch(/\(\d+\)/)
+     72|     expect(container.querySelectorAll('button[aria-pressed="true"]')).…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  01:33:13
+   Duration  940ms (environment 61%, tests 31%, import 4%, transform 3%)
+
+
+## RED (บน develop ก่อนแก้) — e2e e2e/core-93-label-chip.spec.ts
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Expected: "ป้ายกำกับ: e2e-core93-1795458974775-ป้ายกำกับยาวมาก-ป้ายกำกับยาวมาก-ป้ายกำกับยาวมาก-ป้ายกำก"
+    Received: ""
+    Error: จำนวนบรรทัดของข้อความใน chip
+    Expected: 1
+    Received: 4
+    > 122 |     expect.soft(lines, "จำนวนบรรทัดของข้อความใน chip").toBe(1)
+    test-results/core-93-label-chip-AC-190--a8001-ดียวและมี-title-ข้อความเต็ม-chromium/test-failed-1.png
+  1 failed
+
+## GREEN — unit storefront ทั้งชุด (vitest)
+ Test Files  118 passed (118)
+      Tests  1819 passed (1819)
+
+## GREEN — e2e ที่อ้างหน้า /store (core-70, core-75, core-87, core-93)
+  ✓  3 [chromium] › e2e/core-93-label-chip.spec.ts:82:5 › AC-190: chip ป้ายกำกับชื่อยาว 80 ตัว อยู่บรรทัดเดียวและมี title = ข้อความเต็ม (5.3s)
+  ✓  1 [chromium] › e2e/core-87-facet-heading.spec.ts:80:5 › AC-184: หัว facet "ขนาด" ไม่มี "(0)" และตัวเลข (ถ้ามี) = 2 (5.4s)
+  ✓  4 [chromium] › e2e/core-70-unified-search.spec.ts:95:5 › AC-169: คำค้นเดียวกันได้ชุดสินค้าเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (24.2s)
+  ✓  2 [chromium] › e2e/core-75-thai-substring-search.spec.ts:99:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (24.5s)
+  ✓  5 [chromium] › e2e/core-70-unified-search.spec.ts:124:5 › AC-169: พิมพ์คำค้นใน /th/store → URL ใช้ q (5.4s)
+  ✓  6 [chromium] › e2e/core-75-thai-substring-search.spec.ts:127:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt (7.8s)
+  ✓  7 [chromium] › e2e/core-70-unified-search.spec.ts:135:5 › AC-169: drawer ค้น "shirt" ได้สินค้า seed อย่างน้อย 1 ชิ้น และตรงกับ /th/search?q=shirt (8.5s)
+  7 passed (45.6s)
+
+## GREEN — e2e:unit ทั้ง project
+  151 passed (4.5s)
+
+## typecheck/lint storefront: tsc --noEmit ผ่าน; eslint 0 errors (warning เดิมทั้งหมด ไม่มีจากไฟล์ที่แตะยกเว้น set-state-in-effect เดิมของ options-picker:49)

@@ -54,7 +54,11 @@ export async function GET(req: NextRequest) {
   // session หลักตัดสิน (#481): 5xx/network = ไม่รู้ผลการชำระ → ไม่บอกว่าล้ม; ขั้น review ทำ placeOrder/poll ต่อ (PAY-6b)
   // payment_failed เหลือเฉพาะที่รู้แน่ว่าไม่ได้จ่าย/ข้อมูลไม่ตรง (ไม่มี param, ไม่มี session/secret ไม่ตรง, 4xx อื่น, redirect_status=failed)
   if (!read.cart && (typeof read.status !== "number" || read.status >= 500)) {
-    return NextResponse.redirect(`${origin}${review()}`)
+    // PAY-18 (spec 06 กฎข้อ 20a): redirect_status=failed = รู้แน่ว่าจ่ายไม่สำเร็จ → ขั้น payment ไม่ใช่ review
+    // (ไม่ส่งพารามิเตอร์ของ Stripe ต่อ — ยังไม่ได้ยืนยัน session กับ cart)
+    return NextResponse.redirect(
+      redirectStatus === "failed" ? `${origin}${prefix}/checkout?step=payment` : `${origin}${review()}`
+    )
   }
   const { cart } = read
 

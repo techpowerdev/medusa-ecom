@@ -637,11 +637,11 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 41)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
-| ยอดสุทธิ | `summarizeCommissionEntries({ net_pending_reversals: true })` ของ module เรา (AF-24) | ใช้ตามเดิม (กฎ 49) |
+| ยอดสุทธิ | `summarizeCommissionEntries({ net_pending_reversals: true })` ของ module เรา (AF-24) — flag ถูกลบใน AF-27 #528 (ยอดสุทธิเป็นค่าเดียวแล้ว, กฎ 51) | ใช้ตามเดิม (กฎ 49) |
 | country ของลิงก์ | constant `STOREFRONT_COUNTRY_CODE` (`src/lib/storefront.ts`, GB-23); route `/[countryCode]/r/[code]` ของ storefront เติม country ให้ `to` เอง (`affiliateLandingPath`) | ใช้ตามเดิม (กฎ 50) |
 
 ### Business rules (รอบ 41)
-49. (AF-25) `GET /admin/affiliate/reports/summary` ใช้ `net_pending_reversals: true` แบบเดียวกับ `GET /affiliate/me/earnings` (กฎ 48b) → `pending`/`reversed` ของ affiliate เดียวกันในช่วงเดียวกันเท่ากับ portal; ผลรวมทุกสถานะเท่าเดิม
+49. (AF-25) `GET /admin/affiliate/reports/summary` ใช้ `net_pending_reversals: true` แบบเดียวกับ `GET /affiliate/me/earnings` (กฎ 48b) → `pending`/`reversed` ของ affiliate เดียวกันในช่วงเดียวกันเท่ากับ portal; ผลรวมทุกสถานะเท่าเดิม (หลัง AF-27 #528 ไม่มี flag แล้ว — พฤติกรรมนี้เป็นค่าเดียวของ `summarizeCommissionEntries`)
 50. (AF-26) `share_url` = `<STOREFRONT_URL>/<STOREFRONT_COUNTRY_CODE>/r/<code>?to=/products/<handle>` (`to` คงไม่มี country — route ของ storefront เติมเอง); `STOREFRONT_URL` ไม่ตั้ง → path สัมพัทธ์ `/th/r/<code>?…`
 
 ### Acceptance criteria (รอบ 41)
@@ -655,16 +655,16 @@ follow-up review AF-2 (#66, 2026-10-26): fail-fast `AFFILIATE_TOKEN_SECRET` ใ�
 | AF-26 | ☑ #502 — `share_url` มี `/th` (กฎ 50) | `src/modules/affiliate/utils/portal.ts`, unit + integration | ~5 LOC + ~40 LOC test | AC-59 | PR เอกสารรอบ 41 | — |
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review #495; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ) · ไม่มีของ Medusa ที่เกี่ยว (โค้ดของ module เรา)
+Status: done (☑ AF-27 #528 — ปิดรอบ 42 2026-11-24) · ไม่มีของ Medusa ที่เกี่ยว (โค้ดของ module เรา)
 ### Business rules (รอบ 42)
 51. (AF-27 — hygiene) ผู้เรียก `summarizeCommissionEntries` ทุกตัวส่ง `net_pending_reversals: true` แล้ว (`/affiliate/me/earnings`, `/admin/affiliate/reports/summary`) → ลบ flag และแขนง `grouped`
     (`src/modules/affiliate/service.ts` ~`:24-26`, ~`:139-144`) ให้การรวมแบบสุทธิ (กฎ 48b) เป็นพฤติกรรมเดียว; ผลของทั้งสอง route ไม่เปลี่ยน; test ที่เรียกแบบไม่ส่ง flag ปรับตาม
 ### Acceptance criteria (รอบ 42)
-- AC-60 (AF-27, กฎ 51) grep: ไม่มี `net_pending_reversals` ใน `apps/backend/src`; AC-57 และ AC-58 ผ่านโดยไม่แก้ค่าที่คาด; `pnpm --filter backend typecheck` ผ่าน
+- ☑ AC-60 (AF-27, กฎ 51) grep: ไม่มี `net_pending_reversals` ใน `apps/backend/src`; AC-57 และ AC-58 ผ่านโดยไม่แก้ค่าที่คาด; `pnpm --filter backend typecheck` ผ่าน
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| AF-27 | ลบโหมด grouped ของ `summarizeCommissionEntries` (กฎ 51) | `src/modules/affiliate/service.ts`, สอง route ข้างบน, test | ~−20 LOC | AC-60 | PR เอกสารปิดรอบ 41 | — |
+| AF-27 | ☑ #528 — ลบโหมด grouped ของ `summarizeCommissionEntries` (กฎ 51) | `src/modules/affiliate/service.ts`, สอง route ข้างบน, test | ~−20 LOC | AC-60 | PR เอกสารปิดรอบ 41 | — |
 
 ## Open questions (รอบ 32 — 2026-11-17)
 - ~~**Q21**~~ ✅ **owner ตอบ ก 2026-11-17** → `hold_days` และ `attribution_window_days` ≤ 36500 รวมใน GB-17 (spec 04 กฎข้อ 40 (ข), AC-60 (c)); คำถามเดิม:

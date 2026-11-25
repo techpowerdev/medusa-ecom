@@ -13,7 +13,7 @@ import {
   usePrompt,
 } from "@medusajs/ui"
 import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useMemo, useReducer, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { evoucherApi, evoucherKeys, Partner, PartnerInput } from "../../lib/evoucher"
 import {
@@ -29,6 +29,7 @@ import { Container } from "../common/container"
 import { usePageOffset } from "../common/use-page-offset"
 import { PageOffsetGate } from "../common/page-offset-gate"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
+import { useRemountMenu } from "../common/use-remount-menu"
 import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 const columnHelper = createDataTableColumnHelper<Partner>()
@@ -80,9 +81,8 @@ const PartnerActions = ({
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   const removing = useIsMutating({ mutationKey: DELETE_KEY }) > 0
-  // เปิด Drawer จาก menuitem: mount เมนูใหม่ใน commit เดียวกัน (แบบ ProgramActions) — ไม่งั้น Radix ของเมนูกับ Drawer
-  // คืนค่า pointer-events ของ body สลับกันจนค้าง `none` หลังปิด Drawer (spec 08 กฎ 27b)
-  const [menuKey, remountMenu] = useReducer((k: number) => k + 1, 0)
+  // เปิด Drawer จาก menuitem: remount เมนู (spec 08 กฎ 27b) + focus ปุ่ม … ตัวใหม่ให้ Drawer คืน focus เมื่อปิด (กฎ 51)
+  const { menuKey, remountMenu, trigger } = useRemountMenu()
   const remove = useMutation({
     mutationKey: DELETE_KEY,
     mutationFn: () => evoucherApi.deletePartner(partner.id),
@@ -128,7 +128,7 @@ const PartnerActions = ({
         },
       ]}
     >
-      <IconButton size="small" variant="transparent" data-testid="evoucher-partner-row-actions">
+      <IconButton ref={trigger} size="small" variant="transparent" data-testid="evoucher-partner-row-actions">
         <EllipsisHorizontal />
       </IconButton>
     </ActionMenu>
@@ -244,7 +244,7 @@ export const PartnersSection = () => {
     )
   )
 
-  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด
+  // ADM-34 (spec 08 กฎ 38): ปิดแล้ว focus กลับปุ่มที่เปิด — ตัวเดียวใช้ทั้ง modal สร้างและ Drawer แก้ (เปิดพร้อมกันไม่ได้; กฎ 51)
   const restoreFocus = useRestoreOpenerFocus()
   // ADM-27 (spec 08 กฎ 31): ฟอร์มเดียวของ modal สร้างและ Drawer แก้ — dirty ถามก่อนปิด; ระหว่างบันทึกไม่ปิด
   const confirmClose = useConfirmDiscard({
@@ -327,7 +327,7 @@ export const PartnersSection = () => {
       </FocusModal>
 
       <Drawer open={!!editing} onOpenChange={confirmClose}>
-        <Drawer.Content>
+        <Drawer.Content {...restoreFocus}>
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">
               <Drawer.Header>

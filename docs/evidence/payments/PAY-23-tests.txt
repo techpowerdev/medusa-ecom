@@ -1,0 +1,68 @@
+# PAY-23 (spec 06 กฎข้อ 26, AC-36, ADR-029 follow-up) — ผลทดสอบในเครื่อง 2026-11-25 (node v22.23.3)
+
+## RED (ก่อนแก้ — test ใหม่บนโค้ดของ develop b3fabfcc)
+### unit: ops-runbook.unit.spec.ts -t AC-36
+    ✕ ระบุว่า job ตรวจ 200 แถวที่ใหม่ที่สุด และแถวเก่าที่หลุดต้องตรวจด้วยมือ (1 ms)
+    Expected substring: "200 แถวที่ใหม่ที่สุด"
+    > 288 |     expect(body).toContain("200 แถวที่ใหม่ที่สุด")
+Tests:       1 failed, 33 skipped, 34 total
+### integration: stripe-refund-webhook.spec.ts
+      ✓ listens to payment.webhook_received with its own subscriberId (1351 ms)
+      ✕ (a) refund.failed → one email with amount in baht; repeats and refund.updated failed of the same refund → still one (6565 ms)
+      ✓ (a) refund.failed and refund.updated of one refund processed concurrently (Redis event bus) → one email, no send-failure log (629 ms)
+      ✕ (PAY-23, AC-36) locking throws → error log does not start with STRIPE_REFUND_FAILED (reserved for real alerts) (425 ms)
+      ✓ (b) refund.updated canceled → one email; requires_action/pending/succeeded → none (6691 ms)
+      ✓ (c) invalid signature → warn, no alert (6752 ms)
+      ✓ (c) payment_intent.succeeded → this subscriber sends nothing (orphan alert proves the event was processed) (6846 ms)
+Tests:       2 failed, 5 passed, 7 total
+    (a) data ไม่มี source: "stripe" (Expected ObjectContaining มี source / Received ไม่มี)
+    +   "STRIPE_REFUND_FAILED: stripe-refund-webhook failed for re_lock: lock timeout",
+### integration: refund-failure-scan.spec.ts
+      ✓ job config: name, every 15 minutes (622 ms)
+      ✓ (a) provider throws → refundPaymentsWorkflow swallows it (2.22.1) and leaves a soft-deleted failed refund row (792 ms)
+      ✓ (a) failed refund → one REFUND_FAILED email + error log; running again sends and logs nothing more (499 ms)
+      ✓ (b) refund failed then succeeded later (provider back to normal) → no alert (496 ms)
+      ✓ (c) pending refund row: +30 minutes → nothing; +61 minutes → one REFUND_STUCK (628 ms)
+      ✓ (c) failed refund older than 7 days from now → nothing (496 ms)
+      ✓ (d) OPS_ALERT_EMAIL not set → no notification + warn (error log still written) (629 ms)
+      ✓ (d) the email provider fails once → retried next run with exactly one success email, then never again (review #550) (414 ms)
+      ✓ (PAY-23, AC-36) admin cancels an order and the refund fails → REFUND_FAILED alert carries that order's id (896 ms)
+      ✕ (PAY-23, AC-36) more than 200 rows → newest first: the newest of 201 is checked, warn REFUND_SCAN_TRUNCATED (1621 ms)
+      ✓ (d) notification provider throws on the first of two rows → job does not throw, logs error, second row is still sent (728 ms)
+Tests:       1 failed, 10 passed, 11 total
+    (เรียงเก่าก่อน) Expected value: <id ของแถวใหม่ที่สุด> ไม่อยู่ใน 200 แถวที่ถูกแจ้ง
+
+## GREEN
+### integration: stripe-refund-webhook.spec.ts
+PASS integration-tests/http/stripe-refund-webhook.spec.ts (45.296 s)
+      ✓ listens to payment.webhook_received with its own subscriberId (619 ms)
+      ✓ (a) refund.failed → one email with amount in baht; repeats and refund.updated failed of the same refund → still one (12278 ms)
+      ✓ (a) refund.failed and refund.updated of one refund processed concurrently (Redis event bus) → one email, no send-failure log (939 ms)
+      ✓ (PAY-23, AC-36) locking throws → error log does not start with STRIPE_REFUND_FAILED (reserved for real alerts) (458 ms)
+      ✓ (b) refund.updated canceled → one email; requires_action/pending/succeeded → none (6621 ms)
+      ✓ (c) invalid signature → warn, no alert (7177 ms)
+      ✓ (c) payment_intent.succeeded → this subscriber sends nothing (orphan alert proves the event was processed) (7114 ms)
+Tests:       7 passed, 7 total
+### integration: refund-failure-scan.spec.ts
+(เคส (d) สองแถวเดิมเปลี่ยนค่าที่คาดเป็นแถวของ first — เรียงใหม่ก่อนทำให้แถวของ second ถูกตรวจก่อนและส่งล้ม)
+PASS integration-tests/http/refund-failure-scan.spec.ts (23.82 s)
+      ✓ job config: name, every 15 minutes (943 ms)
+      ✓ (a) provider throws → refundPaymentsWorkflow swallows it (2.22.1) and leaves a soft-deleted failed refund row (793 ms)
+      ✓ (a) failed refund → one REFUND_FAILED email + error log; running again sends and logs nothing more (430 ms)
+      ✓ (b) refund failed then succeeded later (provider back to normal) → no alert (942 ms)
+      ✓ (c) pending refund row: +30 minutes → nothing; +61 minutes → one REFUND_STUCK (746 ms)
+      ✓ (c) failed refund older than 7 days from now → nothing (595 ms)
+      ✓ (d) OPS_ALERT_EMAIL not set → no notification + warn (error log still written) (993 ms)
+      ✓ (d) the email provider fails once → retried next run with exactly one success email, then never again (review #550) (671 ms)
+      ✓ (PAY-23, AC-36) admin cancels an order and the refund fails → REFUND_FAILED alert carries that order's id (710 ms)
+      ✓ (PAY-23, AC-36) more than 200 rows → newest first: the newest of 201 is checked, warn REFUND_SCAN_TRUNCATED (1626 ms)
+      ✓ (d) notification provider throws on the first of two rows → job does not throw, logs error, second row is still sent (502 ms)
+Tests:       11 passed, 11 total
+### unit: pnpm --filter backend test:unit
+Test Suites: 132 passed, 132 total
+Tests:       1863 passed, 1863 total
+
+## อื่นๆ
+- pnpm --filter backend typecheck: ผ่าน
+- pnpm --filter backend lint: 0 errors (4 warnings เดิมของ develop ไม่ใช่ไฟล์ที่แตะ)
+- pnpm --filter backend build: ผ่าน

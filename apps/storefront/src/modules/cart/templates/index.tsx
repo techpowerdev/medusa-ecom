@@ -3,6 +3,7 @@ import Summary from "./summary"
 import EmptyCartMessage from "../components/empty-cart-message"
 import SignInPrompt from "../components/sign-in-prompt"
 import FlashCodeNotice from "../components/flash-code-notice"
+import CartErrorNotice from "../components/cart-error-notice"
 import Divider from "@modules/common/components/divider"
 import { HttpTypes } from "@medusajs/types"
 
@@ -26,13 +27,10 @@ const CartTemplate = ({
     <div className="py-12">
       <div className="content-container" data-testid="cart-container">
         {errorNotice && (
-          <p
-            role="alert"
-            className="txt-medium mb-6 rounded-rounded bg-ui-bg-subtle p-3 text-ui-fg-base"
-            data-testid="cart-error-notice"
-          >
-            {errorNotice}
-          </p>
+          <CartErrorNotice
+            message={errorNotice}
+            itemsKey={(cart?.items ?? []).map((item) => `${item.id}:${item.quantity}`).sort().join(",")}
+          />
         )}
         {/* CORE-44 (กฎข้อ 102a): คอลัมน์ซ้ายหดได้ (minmax(0,1fr)) และช่วง small–ก่อน large ระยะห่างเล็กลง — คอลัมน์สรุปไม่ล้นที่ 1024 เมื่อมีส่วนลด */}
         {cart?.items?.length ? (

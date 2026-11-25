@@ -421,6 +421,39 @@ medusaIntegrationTestRunner({
       await expectOpsAlert(member, "membership_cancelled")
     })
 
+    // PAY-24 (spec 06 กฎข้อ 27, AC-37): alert ผ่าน sendOpsAlert — ส่งล้มที่ provider ของ Notification module แล้ว event ถัดไปส่งใหม่ได้อีเมลเดียว
+    it("orphan alert email fails at the notification provider once → re-emit sends exactly one success email, a third emit sends nothing", async () => {
+      const { joined } = await succeededGroup(1)
+      const [member] = joined
+      const providers = (getContainer().resolve(Modules.NOTIFICATION) as any).notificationProviderService_
+      const realSend = providers.send.bind(providers)
+      let failed = false
+      const send = jest.spyOn(providers, "send").mockImplementation((async (provider: unknown, n: { template?: string }) => {
+        if (n?.template === "group-buy-paid-without-order" && !failed) {
+          failed = true
+          throw new Error("resend down")
+        }
+        return realSend(provider, n)
+      }) as any)
+      try {
+        const pending = { ...member, cancelFirst: true }
+        const session = await pay(pending, ["payment.captured"])
+        expect(failed).toBe(true)
+        await reemitCaptured(session.id)
+        await reemitCaptured(session.id)
+
+        const alertSends = send.mock.calls.filter(([, n]) => (n as { template?: string })?.template === "group-buy-paid-without-order")
+        expect(alertSends).toHaveLength(2)
+        await expectOpsAlert(member, "membership_cancelled")
+        const [alert] = await getContainer()
+          .resolve(Modules.NOTIFICATION)
+          .listNotifications({ template: "group-buy-paid-without-order", resource_id: member.order_id })
+        expect(alert.status).toEqual("success")
+      } finally {
+        send.mockRestore()
+      }
+    })
+
     it("AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched", async () => {
       const { group, joined } = await succeededGroup(2, { pay_within_hours: 1 })
       const [paid, unpaid] = joined
@@ -548,6 +581,38 @@ medusaIntegrationTestRunner({
         const { id: paymentId } = await paymentOf(session.id)
         await payments().capturePayment({ payment_id: paymentId })
         const refund = jest.spyOn(provider(), "refundPayment")
+
+        // GB-31 (spec 04 กฎข้อ 57a, AC-74a): บังคับให้สองรอบซ้อนกันด้วยสัญญาณจริง ไม่พึ่งจังหวะ —
+        // รอบแรกถูกพักที่ Payment module refundPayment (ก่อนสร้าง refund row) จนกว่ารอบที่สองจะ
+        // (1) พยายามเอา lock ของ payment เดียวกัน (มี lock: รอจนรอบแรกปล่อย แล้วอ่านยอดคงเหลือ 0 → noop) หรือ
+        // (2) มาถึง refundPayment เอง (ไม่มี lock: อ่านยอดคงเหลือ > 0 พร้อมกับรอบแรก แล้วยิง refund ซ้ำ — ที่ไม่คืนเงินสองครั้ง
+        //     เป็นเพราะ row lock ใน Payment module + การกันซ้ำของ addOrderTransactionStep ไม่ใช่ lock ของเรา)
+        // mutation ถอด acquireLockStep/releaseLockStep → (2) → assertion lockAttempts/moduleRefunds/noop ล้ม
+        const lockKey = `group_buy:refund:${paymentId}`
+        let overlap!: () => void
+        const overlapped = new Promise<void>((resolve) => (overlap = resolve))
+        const locking = getContainer().resolve(Modules.LOCKING)
+        const acquire = locking.acquire.bind(locking)
+        let lockAttempts = 0
+        jest.spyOn(locking, "acquire").mockImplementation((async (keys: string | string[], ...rest: any[]) => {
+          if ([keys].flat().includes(lockKey) && ++lockAttempts >= 2) {
+            overlap()
+          }
+          return (acquire as any)(keys, ...rest)
+        }) as any)
+        const paymentModule = payments()
+        const refundPayment = paymentModule.refundPayment.bind(paymentModule)
+        let moduleRefunds = 0
+        jest.spyOn(paymentModule, "refundPayment").mockImplementation((async (data: any, ...rest: any[]) => {
+          if (++moduleRefunds === 1) {
+            await overlapped
+          } else {
+            overlap()
+          }
+          return (refundPayment as any)(data, ...rest)
+        }) as any)
+
+        const info = jest.spyOn(logger(), "info")
         const handle = () =>
           groupBuyPaymentCapturedHandler({
             event: { name: "payment.captured", data: { id: paymentId } },
@@ -555,6 +620,10 @@ medusaIntegrationTestRunner({
           } as any)
 
         await Promise.all([handle(), handle()])
+        // รอบที่สองไม่ถึง Payment module และจบเป็น noop ใต้ lock หลังแย่ง lock ขณะรอบแรกถืออยู่ (ซ้อนกันจริง)
+        expect(moduleRefunds).toEqual(1)
+        expect(loggedWith(info, `payment_id=${paymentId}`, "already fully refunded")).toBe(true)
+        expect(lockAttempts).toBeGreaterThanOrEqual(2)
 
         const payment = await paymentOf(session.id)
         // นับเฉพาะ refund ที่ provider ยืนยันแล้ว (review #428) — refund ที่ล้มถูก soft-delete ส่วน pending ไม่ใช่เงินที่คืนจริง

@@ -1,6 +1,6 @@
 "use client"
 
-import { Button, Heading } from "@modules/common/components/ui"
+import { buttonClassName, Heading } from "@modules/common/components/ui"
 
 import CartTotals from "@modules/common/components/cart-totals"
 import Divider from "@modules/common/components/divider"
@@ -30,9 +30,10 @@ const Summary = ({ cart }: SummaryProps) => {
       <CartTotals totals={cart} />
       <LocalizedClientLink
         href={"/checkout?step=" + step}
+        className={buttonClassName({}, "w-full h-10")}
         data-testid="checkout-button"
       >
-        <Button className="w-full h-10">ไปชำระเงิน</Button>
+        ไปชำระเงิน
       </LocalizedClientLink>
     </div>
   )

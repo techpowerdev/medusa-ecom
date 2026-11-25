@@ -329,6 +329,42 @@ describe("payment-return หลัง Stripe สำเร็จ: ผลของ
   })
 })
 
+// PAY-18 (spec 06 กฎข้อ 20a, AC-31): redirect_status=failed = รู้แน่ว่าจ่ายไม่สำเร็จ → อ่าน cart ล้ม 5xx/network ก็กลับขั้น payment
+// (ไม่ใช่ step=review); อ่าน cart ไม่สำเร็จ (401/403/5xx/network) → ไม่ตั้ง cookie cart (ยังไม่ได้ยืนยันว่า cart_id เป็นของลูกค้า)
+describe("payment-return อ่าน cart ไม่สำเร็จ (PAY-18)", () => {
+  const request = (status: "failed" | "succeeded") =>
+    new NextRequest(
+      `http://shop.test/api/payment-return?cart_id=cart_pay&country_code=th&payment_intent=pi_1&payment_intent_client_secret=sec_1&redirect_status=${status}`
+    )
+  const serverErrors: [string, () => Error][] = [
+    ["500", () => new FetchError("x", "Internal Server Error", 500)],
+    ["503", () => new FetchError("x", "Service Unavailable", 503)],
+    ["network (TypeError ไม่มี status)", () => new TypeError("fetch failed")],
+  ]
+
+  it.each(serverErrors)("redirect_status=failed + อ่าน cart %s → /th/checkout?step=payment ไม่ complete", async (_label, error) => {
+    fetch.mockRejectedValue(error())
+    const { GET } = await import("./app/api/payment-return/route")
+    const location = (await GET(request("failed"))).headers.get("location")
+    expect(location).toBe("http://shop.test/th/checkout?step=payment")
+    expect(cartComplete).not.toHaveBeenCalled()
+  })
+
+  it.each<[string, () => Error]>([
+    ...serverErrors,
+    ["401", () => new FetchError("x", "Unauthorized", 401)],
+    ["403", () => new FetchError("x", "Forbidden", 403)],
+  ])("อ่าน cart %s → ไม่เรียก setCartCookie (ทั้ง failed และ succeeded)", async (_label, error) => {
+    fetch.mockRejectedValue(error())
+    const { GET } = await import("./app/api/payment-return/route")
+    for (const status of ["failed", "succeeded"] as const) {
+      await GET(request(status))
+    }
+    expect(setCartId).not.toHaveBeenCalled()
+    expect(customerUpdate).not.toHaveBeenCalled()
+  })
+})
+
 describe("กู้ตะกร้าตอน login (กฎข้อ 86b, 86c)", () => {
   const login = async () => {
     const { login } = await import("@lib/data/customer")

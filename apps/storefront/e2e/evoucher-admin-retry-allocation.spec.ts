@@ -1,31 +1,13 @@
 import { APIRequestContext } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
-import { call, createVoucher, Json, placeCapturedOrder, waitDelivered } from "./support/evoucher"
+import { backorderedItems, createVoucher, placeCapturedOrder, setVariantStock, waitDelivered } from "./support/evoucher"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { Headers, adminHeaders, createCustomer, publishableKey } from "./support/medusa"
 
 // EV-24 (spec 02 กฎข้อ 40, AC-54): ปุ่ม "Retry allocation" (evoucher-retry-allocation) บน widget E-vouchers ของหน้า order
 // order backordered: pool ว่าง + stock คลาดเคลื่อน (stock 1 ไม่มี code) → checkout ผ่านแต่ claim ไม่ได้ตอน capture (แบบ EV-22)
 test.use({ ...ADMIN_UI_OPTIONS, evidenceTarget: { feature: "evoucher", taskId: "EV-24" } })
-
-const setStock = async (request: APIRequestContext, admin: Headers, handle: string, stocked: number) => {
-  const { products } = await call(
-    request,
-    admin,
-    `/admin/products?handle=${handle}&fields=variants.inventory_items.inventory_item_id`
-  )
-  const inventoryItemId: string = products[0].variants[0].inventory_items[0].inventory_item_id
-  const { stock_locations } = await call(request, admin, "/admin/stock-locations?limit=1")
-  await call(request, admin, `/admin/inventory-items/${inventoryItemId}/location-levels/${stock_locations[0].id}`, {
-    stocked_quantity: stocked,
-  })
-}
-
-const flaggedLines = async (request: APIRequestContext, admin: Headers, orderId: string) => {
-  const { order } = await call(request, admin, `/admin/orders/${orderId}?fields=*items`)
-  return order.items.filter((i: Json) => i.metadata?.evoucher_backordered === true).length
-}
 
 const importCode = async (request: APIRequestContext, admin: Headers, poolId: string) => {
   const res = await request.post(`${BACKEND_URL}/admin/evoucher/pools/${poolId}/import`, {
@@ -48,10 +30,12 @@ test("AC-54: order backordered → dblclick Retry allocation ส่ง POST 1 �
   const pk = await publishableKey(request, admin)
   const customer = await createCustomer(request, pk)
   const voucher = await createVoucher(request, admin, 0)
-  await setStock(request, admin, voucher.handle, 1)
+  await setVariantStock(request, admin, voucher.handle, 1)
   const orderId = await placeCapturedOrder(request, admin, pk, customer, voucher.variantId, 1)
   // EV-4 ทำงานแบบ async (subscriber payment.captured) — pool ว่างจึงถูก mark backordered
-  await expect.poll(() => flaggedLines(request, admin, orderId), { timeout: 30_000 }).toBe(1)
+  await expect
+    .poll(() => backorderedItems(request, admin, orderId).then((items) => items.length), { timeout: 30_000 })
+    .toBe(1)
 
   const allocatePath = `/admin/evoucher/orders/${orderId}/allocate`
   const posts: string[] = []

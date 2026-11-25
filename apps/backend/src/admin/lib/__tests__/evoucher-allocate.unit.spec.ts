@@ -1,4 +1,5 @@
 import { allocateErrorMessage, allocateResultToast } from "../evoucher-allocate"
+import { resendErrorMessage } from "../evoucher-resend"
 
 // EV-24 (spec 02 กฎข้อ 40): toast หลังกด Retry allocation ตาม response ของ POST /admin/evoucher/orders/:id/allocate (กฎข้อ 39)
 const result = (r: Partial<Record<"allocated" | "backordered" | "stuck", string[]>>) => ({
@@ -15,9 +16,10 @@ describe("allocateResultToast", () => {
     })
   })
 
-  it("asks for more codes when a line is still backordered", () => {
+  // EV-26 (กฎข้อ 42a, AC-56): ยังไม่ได้ส่ง code จึงไม่ใช่ผลสำเร็จ → warning (ข้อความเดิม)
+  it("warns to import more codes when a line is still backordered", () => {
     expect(allocateResultToast(result({ allocated: ["li_1"], backordered: ["li_2"] }))).toEqual({
-      variant: "success",
+      variant: "warning",
       message: "Still backordered — import more codes first",
     })
   })
@@ -46,6 +48,17 @@ describe("allocateErrorMessage", () => {
   })
 
   it("falls back to a generic message when the API sent none", () => {
-    expect(allocateErrorMessage(new Error(" "))).toMatch(/could not allocate/i)
+    expect(allocateErrorMessage(new Error(" "))).toBe(
+      "Could not allocate e-voucher codes. Try again or check the server logs."
+    )
+  })
+
+  // EV-26 (กฎข้อ 42c, AC-56): จัดจุด/คำแนะนำด้วยตัวจัดข้อความเดียวกับ resend (`tidyStops` ของ evoucher-resend.ts)
+  it.each([
+    "Cannot allocate e-voucher codes (payment not captured.). Try again or check the server logs.",
+    "Cannot allocate e-voucher codes: order canceled.. Try again or check the logs.",
+    "Cannot allocate e-voucher codes for a canceled order",
+  ])("formats %p the same way as the resend toast", (raw) => {
+    expect(allocateErrorMessage(new Error(raw))).toBe(resendErrorMessage(new Error(raw)))
   })
 })

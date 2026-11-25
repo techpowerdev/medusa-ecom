@@ -457,13 +457,9 @@ medusaIntegrationTestRunner({
         const { data: netted } = await api.get("/affiliate/me/earnings", bearer(only.token))
         expect(netted.totals).toEqual([{ currency: "thb", status: "pending", amount: 0, count: 1 }])
 
-        // admin summary ยังเป็นยอด GROUP BY status ตามเดิม (กฎ 48b ครอบเฉพาะ portal)
+        // กฎ 51 (AF-27): การรวมแบบสุทธิเป็นพฤติกรรมเดียวของ service — เรียกตรงโดยไม่ส่ง option ได้ผลเท่ากับ portal
         const summary = await affiliates.summarizeCommissionEntries({ affiliate_id: id })
-        expect(Object.fromEntries(summary.map((r) => [r.status, r.amount]))).toEqual({
-          pending: 170.1,
-          approved: 50,
-          reversed: -182.75,
-        })
+        expect(Object.fromEntries(summary.map((r) => [r.status, r.amount]))).toEqual(byStatus)
       })
     })
   },

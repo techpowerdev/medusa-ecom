@@ -14,9 +14,11 @@ import {
   promptPayPollState,
   promptPayPollAction,
   promptPayQrImage,
+  refundedWithoutSession,
   promptPayRenewalOutcome,
   promptPaySession,
   secondsLeft,
+  sessionResetShown,
 } from "./payment-session"
 
 // PAY-2 (spec 06 กฎข้อ 5, AC-9): session ของ provider บัตรต้องขอ PaymentIntent แบบ card เท่านั้น
@@ -317,4 +319,57 @@ describe("intentIsTerminal", () => {
       expect(intentIsTerminal(status)).toBe(false)
     }
   )
+})
+
+// PAY-16 (spec 06 กฎข้อ 18 a, AC-29 a): notice "เลือกวิธีชำระอีกครั้ง" ผูกกับวิธีที่เลือกและ client secret ตอนขึ้น
+describe("sessionResetShown", () => {
+  const notice = { method: "pp_stripe_stripe", secret: "pi_old_secret" }
+
+  it("ยังเลือกวิธีเดิมและ cart ยังชี้ secret เดิม → แสดง", () => {
+    expect(sessionResetShown(notice, "pp_stripe_stripe", "pi_old_secret")).toBe(true)
+  })
+
+  it("เปลี่ยนวิธีชำระแล้ว → ไม่แสดง", () => {
+    expect(sessionResetShown(notice, "pp_system_default", "pi_old_secret")).toBe(false)
+  })
+
+  it("client secret เปลี่ยน (session ใหม่มาแล้ว) → ไม่แสดง", () => {
+    expect(sessionResetShown(notice, "pp_stripe_stripe", "pi_new_secret")).toBe(false)
+  })
+
+  it("review #541: cart ไม่มี session pending (เช่น session เดิมถูก cancel) ไม่ใช่ session ใหม่ → ยังแสดง", () => {
+    expect(sessionResetShown(notice, "pp_stripe_stripe", null)).toBe(true)
+  })
+
+  it("ไม่มี notice → ไม่แสดง", () => {
+    expect(sessionResetShown(null, "pp_stripe_stripe", "pi_old_secret")).toBe(false)
+  })
+})
+
+// PAY-19 (spec 06 กฎข้อ 21, AC-32 — owner Q-P13 = ก): Medusa คืนเงินแล้วสร้าง session ใหม่ไม่สำเร็จ → collection ไม่มี session
+// ขั้น review ตัดสินจาก cart ที่ render มา: ไม่มี session + collection ถูกคืนเงินครบ (สัญญาณเดียวกับ promptPayPollState) → notice คืนเงิน + ลิงก์ตะกร้า
+describe("refundedWithoutSession", () => {
+  const refunded = { captured_amount: 1000, refunded_amount: 1000 }
+
+  it("ไม่มี session + คืนเงินครบ → true (reload/Back/หลัง router.refresh)", () => {
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: { ...refunded, payment_sessions: [] } })).toBe(true)
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: refunded })).toBe(true)
+  })
+
+  it("ยังมี session → false (component ของ provider ตัดสินเอง)", () => {
+    expect(
+      refundedWithoutSession({ completed_at: null, payment_collection: { ...refunded, payment_sessions: [{ status: "pending" }] } })
+    ).toBe(false)
+  })
+
+  it("cart complete แล้ว → false", () => {
+    expect(refundedWithoutSession({ completed_at: "2026-11-24T00:00:00Z", payment_collection: refunded })).toBe(false)
+  })
+
+  it("คืนไม่ครบ / ยังไม่ capture (collection ใหม่) / ไม่มี collection → false", () => {
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: { captured_amount: 1000, refunded_amount: 999 } })).toBe(false)
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: { captured_amount: 0, refunded_amount: 0 } })).toBe(false)
+    expect(refundedWithoutSession({ completed_at: null, payment_collection: null })).toBe(false)
+    expect(refundedWithoutSession(null)).toBe(false)
+  })
 })

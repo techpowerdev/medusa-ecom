@@ -1288,7 +1288,7 @@ qa ADM-41 (คอลัมน์ Affiliate ของ Payouts 150px เห็น�
 ลำดับ: ADM-43 ∥ ADM-44 ∥ ADM-45 → ADM-46 (หลัง ADM-44)
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — builder ADM-44, qa/review #513; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ)
+Status: done (☑ ADM-47 #526, ADM-48 #542 — ปิดรอบ 42 2026-11-24)
 ### What Medusa already gives us (รอบ 42)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
@@ -1302,19 +1302,44 @@ Status: draft (☐ — รอ owner สั่งทำ)
     (b) nit #513: e2e `admin-create-double-submit.spec.ts` ขั้น (e) ใส่ flag `closesWithAnimation` แล้ว assert `seen.length > 0` สำหรับ partner/campaign/variant pool;
         `medusa-ui.unit.spec.ts` (~`:154`/`:439`) แยก assert `useSingleFlight()` + `disabled={submitLocked}` เฉพาะฟอร์มของกฎ 43 และแก้ชื่อ test (~`:435`); `groups-section.tsx` ใช้ `import { type KeyboardEvent }`
 ### Acceptance criteria (รอบ 42)
-- AC-52 (ADM-47, กฎ 51) e2e admin: เปิดฟอร์มจากเมนู `…` ของ partners/payouts/affiliates แล้วปิดด้วย Cancel และด้วยบันทึกสำเร็จ → `document.activeElement` คือ trigger `…` ของแถวเดิม (ล้มบน develop — `BODY`); programs (ADM-44) ยังผ่าน
-- AC-53 (ADM-48, กฎ 52) e2e admin: focus Save ของแต่ละฟอร์มในกฎ 52a แล้ว dispatch `keydown Enter` 1 ครั้ง + `repeat: true` 5 ครั้ง → POST 1 ครั้ง และหลัง modal ปิดไม่มีฟอร์มว่างเปิดขึ้นใหม่ (ล้มบน develop);
+- AC-52 (ADM-47, กฎ 51) ☑ (red บน develop `59c6af18`: partners/affiliates/payouts ปิดแล้ว `BODY` ทั้ง 3 ตาราง → green e2e 3/3 + spec ที่อ้างหน้าเดียวกัน 88/88 รวม programs ของ ADM-44; hook กลาง `components/common/use-remount-menu.ts`; payouts บันทึกสำเร็จ = แถวเป็น paid ไม่มีปุ่ม `…` (กฎ 10) จึงตรวจว่า trigger หายแทน — Cancel/Escape คืน focus; Drawer ข้อมูลรับเงินไม่มีปุ่ม Cancel จึงใช้ Escape; `docs/evidence/admin-ui/ADM-47-tests.txt`) e2e admin: เปิดฟอร์มจากเมนู `…` ของ partners/payouts/affiliates แล้วปิดด้วย Cancel และด้วยบันทึกสำเร็จ → `document.activeElement` คือ trigger `…` ของแถวเดิม (ล้มบน develop — `BODY`); programs (ADM-44) ยังผ่าน
+  — แก้ถ้อยคำปิดรอบ 42 (review #526): ยกเว้น "Mark as paid" ของ payouts ที่บันทึกสำเร็จ — แถวเป็น paid และไม่มีปุ่ม `…` ตามกฎ 10 จึงตรวจว่า trigger หาย (ตามที่ #526 ทำ); focus หลังกรณีนี้เป็นของ ADM-49 (กฎ 53)
+- AC-53 (ADM-48, กฎ 52) ☑ (red บน develop `43a889b3`: ทั้ง 4 ฟอร์ม keydown repeat หลัง modal ปิดตกที่ปุ่มเปิดแล้วเปิดฟอร์มใหม่ 1 ครั้ง — repeat ถัดไปโดนปุ่ม X ของ FocusModal จนปิดเอง จึงนับ dialog ที่ถูกเพิ่มด้วย MutationObserver ไม่ใช่แค่ตอนจบ → green 4/4 และ `--repeat-each=3` 12/12; ทางที่เลือก = ข้าม Enter ที่ repeat บนปุ่มเปิดใน `useRestoreOpenerFocus` (helper คืน focus ตัวเดียวที่ทุกฟอร์มใช้) จน keyup/blur; static ใหม่ 5 ฟอร์มของกฎ 43 + mutation ลบ `disabled={submitLocked}` ของ payout → ล้ม; `docs/evidence/admin-ui/ADM-48-tests.txt`) e2e admin: focus Save ของแต่ละฟอร์มในกฎ 52a แล้ว dispatch `keydown Enter` 1 ครั้ง + `repeat: true` 5 ครั้ง → POST 1 ครั้ง และหลัง modal ปิดไม่มีฟอร์มว่างเปิดขึ้นใหม่ (ล้มบน develop);
   static ของ (b) ผ่าน และ mutation ลบ `disabled={submitLocked}` ของฟอร์มหนึ่ง → static ล้ม
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| ADM-47 | focus กลับปุ่ม `…` หลังปิดฟอร์มจากเมนูของ partners/payouts/affiliates (กฎ 51); qa | `src/admin/components/evoucher/partners-section.tsx`, `components/affiliate/{payouts-table,affiliates-table}.tsx`, `components/common/*` (ถ้าย้าย helper), e2e | ~40 LOC + ~100 LOC test | AC-52 | PR เอกสารปิดรอบ 41 | ไฟล์ตาราง (ADM-48 ถ้าแตะ — ตัวหลัง sync) |
-| ADM-48 | Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit e2e/static ของ #513 (กฎ 52); qa | `src/admin/lib/single-flight.ts` หรือ helper คืน focus, ฟอร์มสร้างในกฎ 52a, `e2e/admin-create-double-submit.spec.ts`, `medusa-ui.unit.spec.ts`, `groups-section.tsx` | ~40 LOC + ~120 LOC test | AC-53 | **ADM-47** (ปุ่มเปิด/คืน focus ในไฟล์ตารางเดียวกัน) | ฟอร์มสร้างทุกตัว |
+| ADM-47 | ☑ #526 — focus กลับปุ่ม `…` หลังปิดฟอร์มจากเมนูของ partners/payouts/affiliates (กฎ 51); qa | `src/admin/components/evoucher/partners-section.tsx`, `components/affiliate/{payouts-table,affiliates-table}.tsx`, `components/common/*` (ถ้าย้าย helper), e2e | ~40 LOC + ~100 LOC test | AC-52 | PR เอกสารปิดรอบ 41 | ไฟล์ตาราง (ADM-48 ถ้าแตะ — ตัวหลัง sync) |
+| ADM-48 | ☑ #542 — Enter ค้างบน Save ไม่เปิดฟอร์มใหม่ + nit e2e/static ของ #513 (กฎ 52); qa | `src/admin/lib/single-flight.ts` หรือ helper คืน focus, ฟอร์มสร้างในกฎ 52a, `e2e/admin-create-double-submit.spec.ts`, `medusa-ui.unit.spec.ts`, `groups-section.tsx` | ~40 LOC + ~120 LOC test | AC-53 | **ADM-47** (ปุ่มเปิด/คืน focus ในไฟล์ตารางเดียวกัน) | ฟอร์มสร้างทุกตัว |
 
 ลำดับ: ADM-47 → ADM-48
 
+## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
+Status: draft (☐ หลัง go-live — รอ owner สั่ง; Q-R43-ฉ = ก owner 2026-11-25) · ที่มา: ADM-47 #526 (builder), review #542, ADM-48 #542 (builder) — ตรวจบน develop `599009b6`
+### What Medusa already gives us (รอบ 43)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ปุ่มต่อแถว / ปุ่มสร้าง | `ActionMenu` (`@medusajs/dashboard/components`), `action` ของ `DataTable` (`@medusajs/ui`) | ใช้ตามเดิม — คืน focus ด้วย hook กลางเดิม `components/common/use-remount-menu.ts`/`useRestoreOpenerFocus` (กฎ 53) ไม่สร้าง hook ใหม่ |
+### Business rules (รอบ 43)
+53. (ADM-49 — ADM-47 #526) payouts: "Mark as paid" สำเร็จแล้วแถวไม่มีปุ่ม `…` (กฎ 10) → focus ไปที่ trigger `…` ของแถวถัดไปที่ยังมีเมนู ถ้าไม่มี → ปุ่ม Create payout ใน `action` ของ `DataTable` (ไม่หลุดไป `BODY`)
+54. (ADM-50 — test hygiene admin; review #542, builder ADM-48) (a) static `disabled={submitLocked}` ของ `medusa-ui.unit.spec.ts` ผูกกับปุ่ม submit (Save) ของแต่ละฟอร์ม ไม่ match ที่ใดก็ได้ในไฟล์;
+    (b) static ของ `useRestoreOpenerFocus` ไม่ตรวจข้อความในซอร์สตรงตัว — ตรวจพฤติกรรมด้วย unit ของ hook (keydown `repeat` บนปุ่มเปิดถูกข้ามจน keyup/blur);
+    (c) e2e AC-53 เพิ่มฟอร์ม Create campaign (group buy) และกรณีปิดด้วยเมาส์แล้วกด Enter ใหม่ (`repeat: false`) ที่ปุ่มเปิด → เปิดฟอร์มได้ตามปกติ; (d) `MutationObserver` ใน e2e `disconnect` เมื่อจบทุกทาง
+### Acceptance criteria (รอบ 43)
+- AC-54 (ADM-49, กฎ 53) e2e admin: payouts สองแถวที่ยังไม่ paid → Mark as paid แถวแรกสำเร็จ → `document.activeElement` คือ trigger `…` ของแถวที่สอง; แถวสุดท้าย → ปุ่ม Create payout (ล้มบน develop — `BODY`)
+- AC-55 (ADM-50, กฎ 54) mutation (แนบใน PR): ย้าย `disabled={submitLocked}` จากปุ่ม Save ไปปุ่มอื่นในไฟล์ → static ล้ม (บน develop ผ่าน); unit ของ hook: Enter `repeat: true` บนปุ่มเปิดถูกข้าม และ Enter `repeat: false` หลัง keyup เปิดได้;
+  e2e AC-53 ครอบ 5 ฟอร์ม (รวม Create campaign) + กรณี Enter ใหม่ผ่าน `--repeat-each=3`
+### Tasks (รอบ 43)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| ADM-49 | focus หลัง Mark as paid ไปแถวถัดไป/ปุ่ม Create payout (กฎ 53); qa | `src/admin/components/affiliate/payouts-table.tsx`, `components/common/*` (ถ้าแตะ hook), e2e `admin-row-menu-return-focus.spec.ts` | ~20 LOC + ~60 LOC test | AC-54 | PR เอกสารปิดรอบ 42 | `components/common/*` (ADM-50 — ตัวหลัง sync) |
+| ADM-50 | test hygiene admin: static ผูกปุ่ม Save, unit ของ hook, e2e campaign + Enter ใหม่, disconnect (กฎ 54) | `medusa-ui.unit.spec.ts`, unit ของ hook, `e2e/admin-create-double-submit.spec.ts` | ~10 LOC + ~100 LOC test | AC-55 | PR เอกสารปิดรอบ 42 | — |
+
+ลำดับ: ADM-49 ∥ ADM-50
+
 ### Open questions (รอบ 42)
-- **Q13** (re-review #471 — PAY-10) ข้อยกเว้นของการหาด้วย `data-testid` (`CLAUDE.md` + ADR-018) ครอบเฉพาะ menuitem ของ `ActionMenu`, ปุ่มใน `action` ของ `DataTable` และ searchbox ของ `DataTable` (ข้อยกเว้นที่ 3 — ADR-018 ภาคผนวก 2026-11-21)
+- ~~**Q13**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ก)** ข้อยกเว้นที่ 4 — ADR-018 ภาคผนวก 2026-11-23 (2) + `CLAUDE.md` (หัวข้อ Language และข้อห้ามข้อ 1) แก้ใน PR เอกสารเดียวกัน; ไม่มีโค้ดเปลี่ยน ไม่มี task — คำถามเดิม:
+  (re-review #471 — PAY-10) ข้อยกเว้นของการหาด้วย `data-testid` (`CLAUDE.md` + ADR-018) ครอบเฉพาะ menuitem ของ `ActionMenu`, ปุ่มใน `action` ของ `DataTable` และ searchbox ของ `DataTable` (ข้อยกเว้นที่ 3 — ADR-018 ภาคผนวก 2026-11-21)
   แต่ e2e ของ PAY-10 ต้องกด element ในหน้าของ Medusa เองที่ extension ใส่ testid ไม่ได้ (เช่นปุ่ม Cancel Return, ฟอร์ม Create Return ของ dashboard):
   (ก) **[Recommended]** ข้อยกเว้นที่ 4: element ที่ render โดยหน้า/route ของ `@medusajs/dashboard` (ไม่ใช่ `src/admin/` ของเรา) หาด้วย role + ชื่อภายใน container ที่แคบที่สุดที่หาได้ — บันทึกเป็นภาคผนวก ADR-018 และ session หลักแก้ประโยคข้อยกเว้นใน `CLAUDE.md` (ต้องให้ owner อนุมัติเพราะแตะ `CLAUDE.md`); ไม่มีโค้ดเปลี่ยน
   (ข) ไม่เพิ่มข้อยกเว้น — e2e ที่ต้องกดหน้า Medusa ใช้ API ของ Medusa ตั้งสถานะแทนการคลิก (ครอบ UI ของเราได้ แต่ไม่ครอบ "widget หายเองเมื่อแอดมินกดในหน้า Medusa" ของ AC-23)

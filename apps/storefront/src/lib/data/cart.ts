@@ -218,8 +218,8 @@ export async function updateLineItem({
   }
 
   try {
-    // CORE-82 (กฎข้อ 140, ADR-028): medusaFetch ให้ code ของ error ที่ SDK ทิ้ง
-    await medusaFetch(`/store/carts/${cartId}/line-items/${lineId}`, { quantity })
+    // CORE-82 (กฎข้อ 140, ADR-028): medusaFetch ให้ code ของ error ที่ SDK ทิ้ง; CORE-94: ส่ง header ที่อ่านแล้ว (ไม่อ่าน cookie ซ้ำ)
+    await medusaFetch(`/store/carts/${cartId}/line-items/${lineId}`, { quantity }, headers)
   } catch (error) {
     // CORE-48 (กฎข้อ 106a): 400 stock ไม่พอของ Medusa → code ของตัวเอง (ไม่ใช่ 409 ของ CHECKOUT_CONFLICTS) ก่อน helper กลาง
     if (isInsufficientInventory(error)) {
@@ -438,7 +438,8 @@ export async function applyPromotions(codes: string[]): Promise<ApplyPromotionsR
   let cart: HttpTypes.StoreCart
   try {
     // CORE-82 (กฎข้อ 140, ADR-028): medusaFetch ให้ code ของ 409 ที่ SDK ทิ้ง
-    cart = (await medusaFetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, { promo_codes: codes })).cart
+    // CORE-94 (กฎข้อ 150b): ส่ง header ที่อ่านแล้ว (ไม่อ่าน cookie ซ้ำ)
+    cart = (await medusaFetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, { promo_codes: codes }, headers)).cart
   } catch (error) {
     return actionFailure(error, ["PROMOTION_NOT_COMBINABLE"])
   }

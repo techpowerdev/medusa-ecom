@@ -292,6 +292,28 @@ describe("checkoutRedirectStep(step, cart, options) — step ที่ใช้�
     expect(checkoutRedirectStep("review", giftCard as unknown as HttpTypes.StoreCart, filtered)).toBeNull()
   })
 
+  // PAY-19 (spec 06 กฎข้อ 21 — มาก่อนกฎข้อ 127 เฉพาะกรณีนี้; session หลักตัดสิน 2026-11-24 ตามเจตนา Q-P13 = ก):
+  // collection ถูกคืนเงินครบและไม่มี session → คงอยู่ขั้น review เพื่อแสดง notice คืนเงิน + ลิงก์ตะกร้า
+  const refundedCollection = (captured: number, refunded: number) =>
+    ({
+      ...fixtures["มีที่อยู่ + Standard"],
+      payment_collection: { captured_amount: captured, refunded_amount: refunded, payment_sessions: [] },
+    }) as unknown as HttpTypes.StoreCart
+
+  it("review + collection คืนเงินครบ + ไม่มี session → ไม่ redirect (PAY-19)", () => {
+    expect(checkoutRedirectStep("review", refundedCollection(810, 810), filtered)).toBeNull()
+  })
+
+  it("review + collection คืนไม่ครบ / ยังไม่ capture + ไม่มี session → payment (กฎข้อ 127 เดิม)", () => {
+    expect(checkoutRedirectStep("review", refundedCollection(810, 0), filtered)).toBe("payment")
+    expect(checkoutRedirectStep("review", refundedCollection(0, 0), filtered)).toBe("payment")
+  })
+
+  it("review + collection คืนเงินครบ แต่ยังไม่มีที่อยู่ → address (ขั้นก่อนหน้ามาก่อน)", () => {
+    const cart = { ...refundedCollection(810, 810), shipping_address: null } as unknown as HttpTypes.StoreCart
+    expect(checkoutRedirectStep("review", cart, filtered)).toBe("address")
+  })
+
   it("payment + ไม่มี session → ไม่ redirect (ขั้นที่ต้องเลือกวิธีชำระ)", () => {
     expect(checkoutRedirectStep("payment", fixtures["มีที่อยู่ + Standard"], filtered)).toBeNull()
   })

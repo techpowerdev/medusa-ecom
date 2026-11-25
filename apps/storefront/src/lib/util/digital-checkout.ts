@@ -1,5 +1,6 @@
 import { HttpTypes } from "@medusajs/types"
 
+import { refundedWithoutSession } from "./payment-session"
 import { selectedShippingOptionId } from "./shipping-options"
 
 // EV-7c (spec 02 กฎข้อ 24): cart ที่ทุก line requires_shipping=false (e-voucher) ข้ามขั้น delivery
@@ -64,6 +65,7 @@ export function paymentStepDone(cart: ReviewCart) {
  * - ไม่มี step / ไม่ใช่ address|delivery|payment|review แบบตรงตัว → ขั้นแรกที่ยังไม่เสร็จ
  * - address → ไม่ redirect เสมอ; delivery → redirect เมื่อยังไม่มีที่อยู่ หรือ cart digital-only (ไม่มีขั้น delivery)
  * - payment/review → กฎข้อ 99 (ขั้นก่อนหน้ายังไม่เสร็จ); review ที่ยังไม่มี payment session ที่ใช้ได้ → payment (กฎข้อ 127)
+ *   ยกเว้น collection คืนเงินครบและไม่มี session → คงขั้น review (PAY-19, spec 06 กฎข้อ 21)
  * ปลายทาง address/delivery(มีที่อยู่)/payment(พร้อมจ่าย) ไม่เข้าเงื่อนไขซ้ำ จึงไม่วน
  */
 export function checkoutRedirectStep(
@@ -80,7 +82,8 @@ export function checkoutRedirectStep(
     case "payment":
       return first === "payment" ? null : first
     case "review":
-      return first === "payment" && paymentStepDone(cart) ? null : first
+      // PAY-19 (spec 06 กฎข้อ 21 — มาก่อนกฎข้อ 127 เฉพาะกรณีนี้): คืนเงินครบ + ไม่มี session → คงขั้น review ให้เห็น notice คืนเงิน
+      return first === "payment" && (paymentStepDone(cart) || refundedWithoutSession(cart)) ? null : first
     default:
       return first
   }

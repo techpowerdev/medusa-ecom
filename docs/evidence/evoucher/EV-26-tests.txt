@@ -1,0 +1,46 @@
+# EV-26 — ผลทดสอบ (spec docs/spec/02-evoucher.md กฎข้อ 42, AC-56) — 2026-11-24
+
+## RED (ก่อนแก้โค้ด บน develop 59c6af18 + test ใหม่)
+### backend unit: src/admin/lib/__tests__/evoucher-allocate.unit.spec.ts
+    ✓ reports success when every line got its codes (2 ms)
+    ✕ warns to import more codes when a line is still backordered (2 ms)
+    ✓ never says allocated when a line has codes that were not delivered
+    ✓ mentions both problems when lines are backordered and stuck (1 ms)
+    ✓ shows the API message (2 ms)
+    ✓ falls back to a generic message when the API sent none
+    ✕ formats "Cannot allocate e-voucher codes (payment not captured.). Try again or check the server logs." the same way as the resend toast (1 ms)
+    ✕ formats "Cannot allocate e-voucher codes: order canceled.. Try again or check the logs." the same way as the resend toast
+    ✓ formats "Cannot allocate e-voucher codes for a canceled order" the same way as the resend toast (1 ms)
+    Expected: "Cannot allocate e-voucher codes (payment not captured). Try again or check the server logs."
+    Received: "Cannot allocate e-voucher codes (payment not captured.). Try again or check the server logs."
+    Expected: "Cannot allocate e-voucher codes: order canceled. Try again or check the logs."
+    Received: "Cannot allocate e-voucher codes: order canceled.. Try again or check the logs."
+Tests:       3 failed, 6 passed, 9 total
+
+### storefront e2e unit (static): e2e/ev-26-evoucher-e2e-helpers.unit.spec.ts
+  ✘  1 [unit] › e2e/ev-26-evoucher-e2e-helpers.unit.spec.ts:15:7 › AC-56: evoucher-admin-backordered.spec.ts ไม่นิยาม overstock/flaggedVariants เอง และ import setVariantStock + backorderedItems จาก support (7ms)
+  ✘  2 [unit] › e2e/ev-26-evoucher-e2e-helpers.unit.spec.ts:15:7 › AC-56: evoucher-admin-retry-allocation.spec.ts ไม่นิยาม setStock/flaggedLines เอง และ import setVariantStock + backorderedItems จาก support (6ms)
+  ✘  3 [unit] › e2e/ev-26-evoucher-e2e-helpers.unit.spec.ts:25:5 › AC-56: support/evoucher.ts export setVariantStock + backorderedItems และไม่ export ชื่อ setStock (ชนกับ support/group-buy.ts) (9ms)
+  3 failed
+
+## GREEN
+### backend test:unit (ทั้งชุด)
+Test Suites: 130 passed, 130 total
+Tests:       1789 passed, 1789 total
+
+### storefront test:e2e:unit (ทั้ง project)
+  154 passed (3.2s)
+
+### e2e chromium (backend medusa develop :9206, DB แยก) — AC-52 / AC-54 + resend (spec ที่ใช้ widget เดียวกัน)
+  ✓  1 [chromium] › e2e/evoucher-admin-backordered.spec.ts:13:5 › AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว (10.3s)
+  ✓  2 [chromium] › e2e/evoucher-admin-backordered.spec.ts:65:5 › AC-52: order ที่ยกเลิกแล้วแม้ line ยังมีธง backordered → ไม่มี evoucher-backordered-badge (6.4s)
+  ✓  3 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ (7.3s)
+  ✓  4 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id (12.1s)
+  ✓  5 [chromium] › e2e/evoucher-admin-retry-allocation.spec.ts:22:5 › AC-54: order backordered → dblclick Retry allocation ส่ง POST 1 ครั้ง; หลัง import code กด → toast และ badge หาย (8.0s)
+  ✓  6 [chromium] › e2e/evoucher-admin-retry-allocation.spec.ts:78:5 › AC-54: order ที่ไม่มี line ค้าง → ไม่เห็นปุ่ม Retry allocation (5.7s)
+  6 passed (53.7s)
+
+### lint / typecheck
+pnpm --filter backend lint: 0 errors (warning เดิมของ develop)
+pnpm --filter backend typecheck: ผ่าน (tsc + admin tsconfig)
+pnpm --filter storefront lint: 0 errors; pnpm --filter storefront typecheck: ผ่าน

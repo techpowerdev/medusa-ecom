@@ -102,7 +102,7 @@ describe("searchProductIds (CORE-70)", () => {
     expect(fetch).toHaveBeenCalledTimes(1)
     const [path, init] = fetch.mock.calls[0] as [
       string,
-      { method: string; body: { queries: Record<string, unknown>[] } },
+      { method: string; body: { queries: Record<string, unknown>[] } }
     ]
     expect(path).toBe("/store/search")
     expect(init.method).toBe("POST")
@@ -125,22 +125,30 @@ describe("searchProductIds (CORE-70)", () => {
 
     const [, init] = fetch.mock.calls[0] as [
       string,
-      { body: { queries: { search_options?: Record<string, unknown> }[] } },
+      { body: { queries: { search_options?: Record<string, unknown> }[] } }
     ]
     return init.body.queries[0].search_options
   }
 
   // CORE-75 (spec 01 กฎข้อ 133, AC-174) + CORE-88 (กฎข้อ 144, AC-185): typo_tolerance ของ Medusa (pg_trgm word_similarity)
   // ส่งเฉพาะคำค้นที่ trim แล้ว ≥ 3 code point — คำไทยกลางคำเจอ แต่คำ 2 อักขระไม่คืนทั้ง catalog
-  it.each(["ยืด", "สเวตเตอร์", "ยีนส์", "ขายาว", "เสื้อ", "กางเกง", "shirt"])(
-    "คำค้น %j (≥ 3 code point) → ส่ง typo_tolerance: true",
-    async (q) => {
-      expect(await searchOptionsFor(q)).toEqual({
-        match_strategy: "last",
-        typo_tolerance: true,
-      })
-    }
-  )
+  it.each([
+    "ยืด",
+    "สเวตเตอร์",
+    "ยีนส์",
+    "ขายาว",
+    "เสื้อ",
+    "กางเกง",
+    "หมวก",
+    "รองเท้า",
+    "เสื้อ ยืด",
+    "shirt",
+  ])("คำค้น %j (≥ 3 code point) → ส่ง typo_tolerance: true", async (q) => {
+    expect(await searchOptionsFor(q)).toEqual({
+      match_strategy: "last",
+      typo_tolerance: true,
+    })
+  })
 
   it.each(["ขา", "  ขา  ", "ab"])(
     "คำค้น %j (trim แล้ว < 3 code point) → ไม่ส่ง typo_tolerance",

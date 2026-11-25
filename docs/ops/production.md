@@ -122,7 +122,7 @@ backend ที่บูตใน production พร้อม `ALLOW_TEST_PROVIDER
 `stripe-webhook.spec.ts`, PAY-7 — ต้องผ่านทุกครั้งที่ bump `@medusajs/*`)
 endpoint สมัคร event ตามรายการด้านล่าง = event ที่ `getWebhookActionAndData` ของ `@medusajs/payment-stripe` 2.22.1 จัดการ
 (event อื่นได้ `not_supported` — สมัครเกินไม่พังแต่เปลือง request) ทุก event ต้องมี `metadata.session_id` ที่ Medusa ใส่ตอนสร้าง PaymentIntent
-ไม่งั้นถูกนับเป็น `not_supported`
+ไม่งั้นถูกนับเป็น `not_supported` — ยกเว้น `refund.*` สองรายการท้ายที่ subscriber `stripe-refund-webhook` ของเราจัดการแทน (ADR-029 ข)
 - `payment_intent.created` — pending (หรือ pending authorization เมื่อเป็น async payment method)
 - `payment_intent.processing` — เหมือน `created`
 - `payment_intent.requires_action` — requires more (เช่น รอสแกน QR PromptPay / 3DS)
@@ -131,6 +131,9 @@ endpoint สมัคร event ตามรายการด้านล่า�
 - `payment_intent.succeeded` — successful (complete cart / capture)
 - `payment_intent.payment_failed` — failed
 - `payment_intent.canceled` — canceled
+- `refund.updated` — Medusa คืน `not_supported` (refund ไม่มี `metadata.session_id`) — subscriber `stripe-refund-webhook` ของเราอ่าน body ที่ provider ตรวจ signature แล้ว:
+  status `failed`/`canceled` → alert `STRIPE_REFUND_FAILED` (PAY-21, ADR-029 ข)
+- `refund.failed` — เหมือน `refund.updated` (refund ที่ Stripe รับแล้วล้มภายหลัง; ทั้งสอง event ของ refund เดียวกัน = อีเมลเดียว)
 
 รายการนี้ต้องเท่ากับ `events=` ของขั้น `stripe listen` ใน `.github/workflows/ci.yml` (ตรวจใน job `lint-typecheck` ด้วย
 `tools/ci/check-stripe-events.sh`, OPS-10) — bump `@medusajs/*` ให้ตรวจ `getWebhookActionAndData` ใหม่แล้วแก้ทั้งสองที่
@@ -181,8 +184,29 @@ endpoint สมัคร event ตามรายการด้านล่า�
     `npx medusa exec ./src/scripts/backfill-evoucher-backordered-flags.ts apply` (log จำนวนก่อน/เขียน/หลัง — หลังต้องเป็น 0) → dry-run ซ้ำได้ `พบ 0 line`
     (ใช้คำ `apply` ไม่ใช่ `--apply` — `medusa exec` เป็น yargs strict ปฏิเสธ option ที่ไม่รู้จักด้วย `Unknown argument`)
 13. log ของ prod ไม่มี PII: ยืนยันว่า image มี OPS-33 (redact ใน `json-logger.ts`) แล้วค้น log ของ log platform ด้วยอีเมลลูกค้าทดสอบที่จ่ายแล้วถูกคืนเงิน (บรรทัด `recreate a payment session`) — ต้องไม่พบ
+    redact ครอบเฉพาะ log ที่ผ่าน `json-logger.ts` — access log ของ HTTP **ไม่ผ่าน** redact (OPS-35: Medusa 2.22.1 เขียนด้วย morgan ลง stdout ตรง
+    ใน `@medusajs/framework` `http/express-loader.js` ไม่ผ่าน logger ของเรา) และมี `path` (รวม query string), `status`, `client_ip`, `referrer`, `user_agent` —
+    query `q` ของหน้าค้นหาอาจมีข้อความที่ลูกค้าพิมพ์ (รวมอีเมล/เบอร์) log shipper จึงต้องเก็บ access log ภายใต้นโยบาย PII เดียวกับ log อื่น
+    (สิทธิ์เข้าถึง/ระยะเก็บ; ห้ามแปะลง ticket/แชตสาธารณะ)
 14. วัดเวลา `POST /store/search` (body เดียวกับ storefront, คำค้นไทย 2–3 คำ + คำว่าง) กับ catalog ขนาดจริงบน DB ของ prod/staging แล้วบันทึก p95 — ถ้าสินค้าเกิน ~10,000 รายการ
     (หรือ p95 เกิน 300ms) ต้องเขียน ADR เรื่องวิธีค้นหา (index/ provider) ก่อนเปิดร้าน (qa #465 — `typo_tolerance` ใช้ similarity ของ `pg_trgm` ทั้งตาราง)
+15. webhook endpoint live (`/hooks/payment/stripe_stripe`) สมัคร `refund.updated` และ `refund.failed` ด้วย (หัวข้อ "Stripe webhooks", PAY-21 — ไม่สมัคร = ไม่รู้ว่า refund ล้มภายหลัง)
+    แล้วทดสอบใน test mode: จ่ายด้วยบัตร `4000 0000 0000 5126` → refund (Stripe รับแล้วล้มภายหลัง) → ต้องได้อีเมล `STRIPE_REFUND_FAILED` ถึง `OPS_ALERT_EMAIL`
+    และ log ของ server/worker ไม่มี `stripe-refund-webhook: skipped`
+16. บัญชี Stripe live ยื่น account application (ข้อมูลธุรกิจ/ผู้มีอำนาจ/บัญชีรับเงิน ใน Stripe Dashboard) ให้เสร็จและได้รับอนุมัติก่อนเปิดร้าน —
+    refund ของพร้อมเพย์เป็น `requires_action`: Stripe ส่งอีเมลขอเลขบัญชีรับเงินคืนถึงลูกค้า ซึ่งบัญชีที่ยังไม่เสร็จส่งได้เฉพาะอีเมลของบัญชีเอง
+    (หลักฐาน 2026-11-24 บนบัญชี test ของ CI: อีเมลลูกค้าอื่นได้ error `Cannot send email…` → Medusa กลืน error ไม่มี refund — spec 06 Q-P14/Q-P15, ADR-029)
+    ตรวจหลังอนุมัติ: refund พร้อมเพย์ 1 รายการไปยังอีเมลที่ไม่ใช่อีเมลบัญชี → refund เป็น `requires_action` (ไม่ error) และ job `refund-failure-scan` ไม่แจ้ง `REFUND_FAILED`
+
+## หลัง go-live
+- widget `order-refund-blocked` (PAY-10) ขึ้นบนสุดของหน้า order ผ่าน system default layout ของ zone `order.details` (migration script
+  `order-refund-blocked-layout.ts`) — แอดมินที่บันทึก layout ส่วนตัว (Personal) ของหน้า order ไว้ก่อน PAY-10 จะเห็นตาม layout ของตัวเอง
+  (widget อยู่ท้ายคอลัมน์หลักใต้ Payments) ให้ reset layout ส่วนตัวของแอดมินคนนั้นกลับเป็นค่าเริ่มต้น (OPS-35, re-review #471):
+  dashboard 2.22.1 ไม่มีปุ่ม reset — ใช้ทางใดทางหนึ่ง
+  (1) แอดมินคนนั้นเปิดหน้า order → ปุ่ม "Customize layout" (ไอคอนบน top bar) → "Customize page" → เลือก "Personal" → ลาก `order-refund-blocked` ขึ้นบนสุด → Save;
+  (2) ล้าง layout ส่วนตัวทั้งหน้า (กลับไปใช้ default ของระบบ): ด้วย session ของแอดมินคนนั้นเรียก `DELETE /admin/layouts/order.details/configuration`
+  (route ของ Medusa — `clearLayoutConfigurationWorkflow`; ลบเฉพาะของ user ที่เรียก ไม่แตะ default ของระบบ)
+  แล้ว reload หน้า order ที่มี return/claim/exchange/edit ค้าง ว่า widget อยู่บนสุด
 
 ## ลำดับ release (backend ก่อน storefront)
 ใช้ทุก release และ**บังคับ**เมื่อ migration หรือ field ของ search index เปลี่ยน (เช่น `PRICE_CURRENCIES`, spec 01 กฎข้อ 15):
@@ -314,9 +338,51 @@ Medusa 2.22.1 `compensatePaymentIfNeededStep` คืนเงินเต็ม�
    order ใหม่ของลูกค้ามีเฉพาะ collection ใหม่ (`payment_status=captured`) — ห้ามลบ collection เดิมหรือแก้ DB ตรง ห้าม refund ซ้ำ
 ตอน bump `@medusajs/*` ตรวจว่าสอง log นี้ยังเกิด (spec 07 checklist bump ข้อ 11; integration `complete-after-payment-log.spec.ts`) แล้วปรับหัวข้อนี้
 
+## คืนเงินล้ม/ค้าง (ADR-029)
+ที่มา: Medusa 2.22.1 `refundPaymentsWorkflow` (ทางคืนเงินของ complete cart ล้มหลังตัดเงิน, admin ยกเลิก order, GB-21, script `refund-orphan-payment`)
+**กลืน error** ของ provider — เขียนแค่ log `Error was thrown trying to cancel payment - <payment_id> - …` ไม่มี event; Payment module เก็บแถว refund
+`failed` (soft-delete) หรือ `pending` (ระหว่างรอ provider) ไว้ job `refund-failure-scan` (worker, ทุก 15 นาที, `apps/backend/src/jobs/refund-failure-scan.ts`)
+ตรวจแถวย้อนหลัง 7 วัน แล้วเขียน log error ขึ้นต้นด้วย code (มี `refund_id`, `payment_id`, `amount`, `currency_code`, `provider_id`, `cart_id`/`order_id`, `note`)
+และส่งอีเมล template `refund-failed` หา `OPS_ALERT_EMAIL` ครั้งเดียวต่อแถว refund (ไม่ตั้ง env → log error ซ้ำทุกรอบจนพ้น 7 วัน + warn)
+เกิน 200 แถวต่อรอบ → warn `REFUND_SCAN_TRUNCATED`: job ตรวจเฉพาะ 200 แถวที่ใหม่ที่สุด (เรียง `created_at` ใหม่ก่อน — spec 06 กฎข้อ 26c) refund ที่เพิ่งล้มจึงถูกแจ้งภายในรอบเสมอ
+แถวที่เก่ากว่านั้นไม่ถูกตรวจในรอบนั้น (ปกติถูกแจ้งไปแล้วในรอบก่อน แต่ถ้าล้มพร้อมกันเกิน 200 แถวใน 15 นาที แถวเก่าของชุดนั้นมีแค่ warn)
+— ตรวจ refund ที่ล้ม/ค้างด้วยมือ (`GET /admin/payments/<payment_id>` ของ payment ที่มี log `Error was thrown trying to cancel payment`)
+อีเมลที่ส่งล้ม (Resend ล่ม/429) ถูกส่งใหม่รอบถัดไปจนสำเร็จหนึ่งฉบับ (แถว notification ที่ล้มถูก soft-delete ก่อนส่งใหม่)
+
+### `REFUND_FAILED` — provider ปฏิเสธ refund และ payment ยังมียอดที่ไม่ถูกคืน
+1. `GET /admin/payments/<payment_id>` → ดู `captures`/`refunds` ว่ายอดคงเหลือ (captured − refunded) ยังเท่าไร และหา log `Error was thrown trying to cancel payment`
+   ของ payment นั้นเพื่อดูสาเหตุจาก provider
+2. collection **ไม่ผูก order** (`cart_id` ใน alert, `order_id` ว่าง) → script `refund-orphan-payment` ตามหัวข้อ "เงินถูกตัดแต่ไม่มี order (ADR-015)"
+   (`medusa exec ./src/scripts/refund-orphan-payment.ts <payment_id>`)
+3. collection **ผูก order** → Refund ใน admin ที่หน้า order (ยอดที่เหลือ)
+4. Stripe ปฏิเสธซ้ำ (เช่นพร้อมเพย์ "Cannot send email" — Stripe ส่งอีเมลขอเลขบัญชีลูกค้าไม่ได้) → คืนนอก Stripe (โอนเงิน) แล้ว note ใน order (ถ้ามี)
+   และบันทึก incident (payment, จำนวนเงิน, วิธีคืน, ผู้ทำ)
+5. order ที่ยกเลิกแล้ว refund ล้ม: Medusa เพิ่ม order transaction ของ refund **แม้ refund ล้ม** → ยอด refund ใน order ไม่ตรงเงินจริง — note ไว้ใน order และ incident
+
+### `REFUND_STUCK` — แถว refund `pending` ไม่ขยับเกิน 60 นาที (process ตายระหว่างรอ provider = ไม่รู้ผล)
+**ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน**คืนซ้ำ (กันคืนสองครั้ง): มี refund ของยอดนี้แล้ว → ไม่ต้องคืนเพิ่ม note + incident; ไม่มี → ทำตาม `REFUND_FAILED` ข้อ 2–4
+
+### `STRIPE_REFUND_FAILED` — Stripe รับ refund แล้วล้มภายหลัง (webhook `refund.failed`/`refund.updated`, PAY-21)
+Medusa **ยังแสดงว่าคืนแล้ว** (บันทึก refund `succeeded` ตอน Stripe รับ — ไม่แก้ยอดอัตโนมัติ, Q-P19) แต่เงินกลับเข้า balance ของ Stripe ลูกค้ายังไม่ได้เงิน
+1. ค้น PaymentIntent (`payment_intent` ใน alert) ใน Stripe Dashboard → ดู refund (`refund_id`) และ `failure_reason` (เช่นบัตรถูกยกเลิก/ปิดบัญชี)
+2. ติดต่อลูกค้าเพื่อหาช่องทางคืน → คืนใหม่ใน Stripe Dashboard (ถ้าวิธีชำระยังรับได้) หรือคืนนอก Stripe (โอนเงิน) — **ห้ามกด Refund ใน admin ซ้ำ**
+   (Medusa นับยอดนี้ว่าคืนแล้ว ยอดคงเหลือจึงไม่พอ/ทำให้คืนเกิน)
+3. note ใน order (วิธีคืนจริง, วันที่, ผู้ทำ) และบันทึก incident — ยอด refund ใน Medusa จะไม่ตรงเงินจริงตลอดไป
+อีเมลเดียวต่อ refund (key `stripe-refund-failed:<refund_id>`) แม้ Stripe ส่งทั้งสอง event/ส่งซ้ำ; signature ผิด → warn `stripe-refund-webhook: skipped` ไม่ alert
+อีเมลมี `source: "stripe"` (alert จาก job = `"medusa"`); lock/อ่าน notification ล้ม → log error `stripe-refund-webhook: alert failed for <refund_id>` (ไม่ใช่ alert
+— ไม่ได้ส่งอีเมล) → ตรวจ refund นั้นใน Stripe Dashboard แล้วทำตามข้อ 1–3
+
+### ข้อจำกัดของ job (อ่านก่อนตัดสิน)
+- job ตัดสินว่า "คืนสำเร็จภายหลัง" จากยอด captured − refunded ของ payment เท่านั้น ไม่ได้จับคู่ refund ที่ล้มกับ refund ที่สำเร็จ — กรณี **partial refund**
+  (เช่น คืนบางรายการสำเร็จจนยอดเหลือ 0 จากเหตุอื่น) แถวที่ล้มจะไม่ถูกแจ้ง และแถวที่ล้มเมื่อยอดยังเหลือจากการคืนบางส่วนที่ตั้งใจ (คืนบางรายการ) จะถูกแจ้ง
+  ทั้งที่อาจไม่ต้องคืนเพิ่ม — ตรวจตามข้อ 1 ทุกครั้ง
+- refund ที่ล้มจาก Refund ใน admin (`refundPaymentWorkflow`) ก็ถูกแจ้งด้วย (admin เห็น toast error อยู่แล้ว) — ถ้า admin คืนใหม่สำเร็จแล้วยอดเหลือ 0 จะไม่ถูกแจ้ง
+- ไม่เห็น refund ที่ Stripe รับแล้วล้มภายหลัง (Medusa บันทึก `succeeded` ทันที) — ส่วนนั้นเป็นของ webhook (PAY-21)
+- ตอน bump `@medusajs/*` integration `refund-failure-scan.spec.ts` ยืนยันว่า workflow ยังกลืน error และแถว `failed` ยังอ่านได้ด้วย `withDeleted` — ล้ม = ทบทวน ADR-029
+
 ## ตรวจสอบ
 - `pnpm --filter backend test:unit` — `src/__tests__/medusa-config.infra.unit.spec.ts`
-- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL` และ Alerts)
+- `pnpm --filter backend test:unit` — `src/__tests__/ops-runbook.unit.spec.ts` (หัวข้อ ADR-015, `OPS_ALERT_EMAIL`, Alerts, redact/access log, หลัง go-live และคืนเงินล้ม/ค้าง ADR-029)
 - `pnpm --filter backend test:unit` — `src/lib/__tests__/json-logger.unit.spec.ts` (`worker_mode` ใน log JSON)
 - `pnpm --filter backend test:unit` — `src/__tests__/prod-guards.unit.spec.ts` (OPS-7 guards, env ใน `ci.yml`, หัวข้อ Go-live checklist)
 - `pnpm --filter backend test:unit` — `src/__tests__/backup-runbook.unit.spec.ts` (runbook backup/restore ใน `docs/ops/database.md`, OPS-5)

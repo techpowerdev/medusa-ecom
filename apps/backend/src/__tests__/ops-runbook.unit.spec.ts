@@ -224,3 +224,101 @@ describe("AC-47 runbook log ที่ดูเหมือนคืนเงิ�
     }
   })
 })
+
+// OPS-35: spec 07 AC-50 (กฎข้อ 17c/d รอบ 42) — access log ไม่ผ่าน redact และ reset layout หน้า order หลัง go-live
+describe("AC-50 runbook redact และหลัง go-live", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const goLive = section(doc, "Go-live checklist") ?? ""
+  const redact = goLive.split(/\r?\n(?=\d+\. )/).find((item) => item.startsWith("13. ")) ?? ""
+  const afterGoLive = section(doc, "หลัง go-live")
+
+  it("Go-live ข้อ 13 (redact): access log ของ Medusa ไม่ผ่าน redact, มี path/query และ q ของหน้าค้นหา, log shipper ใช้นโยบาย PII เดียวกัน", () => {
+    expect(redact).toContain("access log")
+    expect(redact).toMatch(/access log[^\n]*\*\*ไม่ผ่าน\*\* redact/)
+    expect(redact).toContain("stdout")
+    expect(redact).toContain("`q`")
+    expect(redact).toContain("log shipper")
+    expect(redact).toContain("นโยบาย PII")
+  })
+
+  it('มีหัวข้อ "หลัง go-live" ที่บอกวิธี reset layout หน้า order (widget order-refund-blocked)', () => {
+    expect(afterGoLive).not.toBeNull()
+    expect(afterGoLive).toContain("Customize layout")
+    expect(afterGoLive).toContain("order-refund-blocked")
+    expect(afterGoLive).toContain("PAY-10")
+    expect(afterGoLive).toMatch(/reset/i)
+  })
+})
+
+// PAY-20: spec 06 AC-33f (กฎข้อ 22f, ADR-029) — runbook คืนเงินล้ม/ค้าง
+describe("AC-33f runbook คืนเงินล้ม/ค้าง (ADR-029)", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const body = section(doc, "คืนเงินล้ม/ค้าง (ADR-029)")
+
+  it('มีหัวข้อ "คืนเงินล้ม/ค้าง (ADR-029)"', () => {
+    expect(body).not.toBeNull()
+  })
+
+  it("อ้าง code ของ alert, script refund-orphan-payment และให้ตรวจ Stripe Dashboard ก่อนคืนซ้ำ", () => {
+    for (const word of ["REFUND_FAILED", "REFUND_STUCK", "refund-orphan-payment", "ตรวจ refund ของ PI ใน Stripe Dashboard ก่อน"]) {
+      expect(body).toContain(word)
+    }
+  })
+
+  it("ระบุทางของ order (Refund ใน admin), ยอดคงเหลือ, log ของ Medusa และข้อจำกัดของการเดายอด (review #549)", () => {
+    for (const word of [
+      "GET /admin/payments/",
+      "Error was thrown trying to cancel payment",
+      "Refund ใน admin",
+      "incident",
+      "order transaction",
+      "partial refund",
+    ]) {
+      expect(body).toContain(word)
+    }
+  })
+})
+
+// PAY-23: spec 06 AC-36 (กฎข้อ 26c, Q-P23 = ก) — job เรียงใหม่ก่อน runbook ต้องไม่บอกว่าตรวจแถวเก่าก่อน
+describe("AC-36 runbook REFUND_SCAN_TRUNCATED เรียงใหม่ก่อน (ADR-029)", () => {
+  const body = section(readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8"), "คืนเงินล้ม/ค้าง (ADR-029)") ?? ""
+
+  it("ระบุว่า job ตรวจ 200 แถวที่ใหม่ที่สุด และแถวเก่าที่หลุดต้องตรวจด้วยมือ", () => {
+    expect(body).toContain("REFUND_SCAN_TRUNCATED")
+    expect(body).toContain("200 แถวที่ใหม่ที่สุด")
+    expect(body).not.toContain("เก่าที่สุด")
+    expect(body).not.toContain("แถวที่ใหม่กว่าจะไม่ถูกตรวจ")
+  })
+})
+
+// PAY-21: spec 06 AC-34d (กฎข้อ 23e, ADR-029 ข) — event refund ของ Stripe, runbook STRIPE_REFUND_FAILED, go-live checklist
+describe("AC-34d Stripe refund webhook (ADR-029 ข)", () => {
+  const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")
+  const ci = readFileSync(path.join(repoRoot, ".github/workflows/ci.yml"), "utf8")
+  const webhooks = section(doc, "Stripe webhooks") ?? ""
+  const runbook = section(doc, "คืนเงินล้ม/ค้าง (ADR-029)") ?? ""
+  const checklist = section(doc, "Go-live checklist") ?? ""
+  const ciEvents = (ci.match(/^\s*events=(.*)$/m)?.[1] ?? "").split(",").map((e) => e.trim())
+
+  it.each(["refund.updated", "refund.failed"])("%s อยู่ในหัวข้อ Stripe webhooks และ events= ของ ci.yml", (event) => {
+    expect(webhooks).toMatch(new RegExp(`^- \`${event.replace(".", "\\.")}\``, "m"))
+    expect(ciEvents).toContain(event)
+  })
+
+  it("หัวข้อ Stripe webhooks บอกว่า Medusa คืน not_supported และ subscriber stripe-refund-webhook จัดการ", () => {
+    expect(webhooks).toContain("stripe-refund-webhook")
+    expect(webhooks).toContain("not_supported")
+  })
+
+  it("runbook มี STRIPE_REFUND_FAILED และ checklist ให้ทดสอบด้วยบัตร 4000 0000 0000 5126", () => {
+    expect(runbook).toContain("STRIPE_REFUND_FAILED")
+    expect(checklist).toContain("4000 0000 0000 5126")
+    expect(checklist).toContain("refund.failed")
+    expect(checklist).toContain("OPS_ALERT_EMAIL")
+  })
+
+  it("source ของ subscriber ไม่ import stripe (อ่าน body ที่ provider ตรวจ signature แล้ว)", () => {
+    const source = readFileSync(path.resolve(__dirname, "../subscribers/stripe-refund-webhook.ts"), "utf8")
+    expect(source).not.toMatch(/from\s+["']stripe["']|require\(\s*["']stripe["']\s*\)/)
+  })
+})

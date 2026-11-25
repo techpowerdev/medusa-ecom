@@ -28,6 +28,16 @@ export function paymentSessionData(providerId: string): Record<string, unknown> 
  */
 export const intentIsTerminal = (status?: string) => status === "succeeded" || status === "canceled"
 
+/** PAY-16 (spec 06 กฎข้อ 18 a): notice "เลือกวิธีชำระอีกครั้ง" ของขั้น payment — วิธีที่เลือกและ client secret ตอน notice ขึ้น */
+export type SessionResetNotice = { method: string; secret: string | null }
+
+/**
+ * notice แสดงจนกว่าลูกค้าเปลี่ยนวิธี หรือ session ใหม่มาแล้ว (cart ชี้ secret อื่นที่ไม่ใช่ null) — cart ไม่มี session pending
+ * (เช่น session เดิมถูก cancel ระหว่างทาง — review #541) ไม่ใช่ session ใหม่ จึงยังแสดงให้ลองใหม่ได้
+ */
+export const sessionResetShown = (notice: SessionResetNotice | null, method: string, secret: string | null) =>
+  notice !== null && notice.method === method && (secret === null || secret === notice.secret)
+
 /** หมดอายุ 10 นาทีนับจากเวลาสร้าง PaymentIntent (`created` เป็นวินาที) — reload หน้าไม่ยืดเวลา */
 export const promptPayDeadline = (intentCreatedSec: number) =>
   intentCreatedSec * 1000 + PROMPTPAY_TIMEOUT_MS
@@ -86,6 +96,14 @@ export function promptPayPollState(cart: PollableCart): PromptPayPollState {
   if (sessions.some((s) => s.status === "canceled" || s.status === "error")) return "failed"
   return "pending"
 }
+
+/**
+ * PAY-19 (spec 06 กฎข้อ 21 — owner Q-P13 = ก): Medusa คืนเงินแล้วสร้าง session ใหม่ด้วย data เดิมไม่สำเร็จ (Stripe ตอบ Invalid string)
+ * collection จึงเหลือแต่ยอดที่คืนครบและไม่มี session → ขั้น review แสดง notice คืนเงิน + ลิงก์ตะกร้าแทนปุ่ม "กรุณาเลือกวิธีชำระเงิน"
+ * ยังมี session = component ของ provider ตัดสินเอง; สัญญาณหายเองเมื่อเลือกวิธีชำระใหม่ (PAY-9 สร้าง collection ใหม่)
+ */
+export const refundedWithoutSession = (cart: PollableCart): boolean =>
+  !cart?.payment_collection?.payment_sessions?.length && promptPayPollState(cart) === "refunded"
 
 /** code ของ guard ฝั่ง backend (spec 06 กฎข้อ 7A): session เดิมชำระแล้ว ไม่ถูกลบ */
 export const PAYMENT_ALREADY_COMPLETED = "PAYMENT_ALREADY_COMPLETED"

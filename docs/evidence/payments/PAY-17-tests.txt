@@ -1,0 +1,69 @@
+# PAY-17 — ผล test (spec 06 กฎข้อ 19, AC-30) 2026-11-24
+
+## Red รอบ 1 (ก่อนมี helper): vitest stripe-error.test.ts, pay-17-stripe-error-thai.test.ts, promptpay-finish.test.ts
+      Tests  5 failed | 17 passed (22)
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > complete ไม่ถูกเปลี่ยนไม่ว่า finishing หรือไม่
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > fail ไม่ถูกเปลี่ยนไม่ว่า finishing หรือไม่
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > refunded ระหว่าง finishing → wait (ไม่เปลี่ยน state)
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > refunded เมื่อไม่ได้ finishing → refunded (PAY-6c เดิม)
+ FAIL  src/lib/util/promptpay-finish.test.ts > promptPayPollWhileFinishing > wait ไม่ถูกเปลี่ยนไม่ว่า finishing หรือไม่
+ FAIL  src/lib/util/stripe-error.test.ts [ src/lib/util/stripe-error.test.ts ]
+ FAIL  src/pay-17-stripe-error-thai.test.ts [ src/pay-17-stripe-error-thai.test.ts ]
+ Test Files  3 failed (3)
+Error: Cannot find module './stripe-error' imported from <worktree>/apps/storefront/src/lib/util/stripe-error.test.ts
+Error: Failed to resolve import "@lib/util/stripe-error" from "src/pay-17-stripe-error-thai.test.ts". Does the file exist?
+TypeError: promptPayPollWhileFinishing is not a function
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+## Red รอบ 2 (มี helper แต่ StripePaymentButton ยังแสดง error.message ตรง = พฤติกรรมของ develop)
+      Tests  3 failed | 38 passed (41)
+ FAIL  src/pay-17-stripe-error-thai.test.ts > StripePaymentButton: error ของ confirmPayment (AC-30a) > card_error/card_declined ข้อความอังกฤษ → ข้อความไทยของบัตรถูกปฏิเสธ ไม่มีข้อความของ Stripe และไม่ complete cart
+ FAIL  src/pay-17-stripe-error-thai.test.ts > StripePaymentButton: error ของ confirmPayment (AC-30a) > error ไม่มี message → ยังแสดงข้อความไทย (ไม่เงียบ)
+ Test Files  2 failed | 1 passed (3)
+AssertionError: expected 'Your card was declined.' to contain 'บัตรถูกปฏิเสธ กรุณาใช้บัตรใบอื่นหรือต…'
+AssertionError: expected 'ข้อมูลบัตรไม่ถูกต้อง กรุณาตรวจสอบเลขบ…' not to match /[A-Za-z]/
+TypeError: .toMatch() expects to receive a string, but got undefined
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+(ข้อ stripe-error.test.ts ที่ล้มในรอบนี้ = ข้อความเดิมมีคำว่า CVC — แก้เป็นไทยล้วนแล้ว)
+
+## Green: 3 ไฟล์ข้างบน
+ Test Files  3 passed (3)
+      Tests  41 passed (41)
+
+## storefront unit ทั้งชุด (vitest run)
+ Test Files  120 passed (120)
+      Tests  1873 passed (1873)
+
+## playwright --project=unit
+  160 passed
+
+## typecheck storefront (tsc --noEmit): exit 0; eslint ไฟล์ที่แตะ: 0 error 0 warning
+
+## e2e (ต้องใช้ Stripe test key — ไม่มีในเครื่อง builder; CI เป็นผู้พิสูจน์)
+- e2e/pay-17-stripe-error-thai.spec.ts (AC-30a) — ใหม่
+- e2e/pay-15-promptpay-go-to-cart.spec.ts (AC-28 + AC-30b: poll ตอบ refunded ระหว่าง placeOrder ค้าง, MutationObserver ไม่เห็น promptpay-retry-button)
+- e2e/pay-11-promptpay-refund-reason.spec.ts (AC-24 + ไม่เห็น promptpay-retry-button)
+- regression: payments-promptpay-fallback-cap.spec.ts, payments-promptpay-already-paid.spec.ts, payments.spec.ts AC-3
+
+## แก้ตาม review #540 (2026-11-24)
+### blocker: mock race ของ pay-15 (CI run 45262340797 ล้มที่ pay-15:42)
+สาเหตุ: Next 16.3.8 ส่ง server action ทีละตัวตามคิว (`app-router-instance.js` `dispatchAction`/`runRemainingActions`) — mock เดิมค้าง placeOrder
+รอ poll ที่ตอบ refunded แต่ poll เข้าคิวหลัง placeOrder จึงไม่มาถึง route จนหมดเวลา fallback 30s
+mock ใหม่ (`refundedPollWhileFinishing` ใน e2e/support/promptpay-race.ts) จำลองลำดับที่เกิดได้จริงในคิว:
+1. placeOrder แรกของทางสำรองตอบ processing → poll ต่อ
+2. poll A ตอบ pending แต่ค้าง response 4.5s (> PROMPTPAY_POLL_MS 3s) → interval ส่ง poll B เข้าคิวหลัง A
+3. ปล่อย A → action complete → finish() ตั้ง finishing = true แล้ว placeOrder เข้าคิวหลัง B
+4. B ตอบ refunded ขณะ finishing แล้ว placeOrder ตอบ FLASH_SOLD_OUT
+pay-15 ตรวจ refundedPolls = 1 และ B มาถึงก่อน placeOrder ที่สอง; timeout ของ promptpay-refunded คืนเป็น 5s (นับจาก placeOrder ที่สอง)
+
+### red ของ e2e บนโค้ดเดิม — พิสูจน์ในเครื่องไม่ได้ (ไม่มี Stripe test key; e2e skip) กลไก:
+บนโค้ดเดิม (ไม่มี promptPayPollWhileFinishing ที่ promptpay-payment/index.tsx) ขั้น 4 poll B ได้ promptPayPollAction("refunded", completeFallback=true) = "refunded"
+→ clearInterval + stopRefunded(PROMPTPAY_REFUNDED_UNKNOWN) → awaitingOrder=false, refunded.goToCart=false → render `promptpay-retry-button`
+→ MutationObserver ของ paidWhileQrShown จด id นี้ใน seen ก่อน placeOrder ที่สองตอบแล้วเปลี่ยนเป็น promptpay-go-to-cart
+→ `expect(ctx.seen.has("promptpay-retry-button")).toBe(false)` ล้ม; โค้ดใหม่: finishing = true → "wait" ไม่เปลี่ยน state
+
+### nit: expired_card → ข้อความบัตรถูกปฏิเสธ (ใช้บัตรใบอื่น) แทนข้อมูลบัตรผิด
+Red (stripe-error.ts เดิม):
+ FAIL  src/lib/util/stripe-error.test.ts > stripeErrorMessage > บัตรถูกปฏิเสธ: บัตรหมดอายุ expired_card → STRIPE_CARD_DECLINED
+      Tests  1 failed | 16 passed (17)
+Green: storefront unit ทั้งชุด 122 files / 1883 passed; tsc ผ่าน; eslint ไฟล์ที่แตะ 0 error 0 warning; playwright --project=unit 160 passed

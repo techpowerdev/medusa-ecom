@@ -253,6 +253,39 @@ describe("renderEmailTemplate", () => {
     })
   })
 
+  // PAY-20 (spec 06 กฎข้อ 22c, ADR-029): อีเมล ops เมื่อคืนเงินล้ม/ค้าง — template เดียวใช้ร่วม PAY-21 (ระบุแหล่งใน data)
+  describe("refund-failed", () => {
+    it("renders the code, refund/payment ids, amount, cart/order and the ADR-029 runbook title (escaped)", () => {
+      const email = renderEmailTemplate(EmailTemplates.REFUND_FAILED, {
+        code: "REFUND_FAILED",
+        source: "medusa",
+        refund_id: "ref_1",
+        payment_id: "pay_<1>",
+        amount: "810",
+        currency_code: "thb",
+        provider_id: "pp_stripe-promptpay_stripe",
+        cart_id: "cart_1",
+        order_id: null,
+        note: "Refunded due to cart completion failure",
+      })
+
+      expect(email).not.toBeNull()
+      expect(email!.subject).toContain("REFUND_FAILED")
+      expect(email!.subject).toContain("pay_<1>")
+      for (const text of ["ref_1", "pay_&lt;1&gt;", "810", "thb", "pp_stripe-promptpay_stripe", "cart_1", "medusa", "Refunded due to cart completion failure"]) {
+        expect(email!.html).toContain(text)
+      }
+      expect(email!.html).not.toContain("pay_<1>")
+      expect(email!.html).toContain("คืนเงินล้ม/ค้าง (ADR-029)")
+    })
+
+    it("skips rows that are not present (e.g. order_id of a cart payment)", () => {
+      const email = renderEmailTemplate(EmailTemplates.REFUND_FAILED, { code: "REFUND_STUCK", refund_id: "ref_2", payment_id: "pay_2" })
+      expect(email!.subject).toContain("REFUND_STUCK")
+      expect(email!.html).not.toContain("Order:")
+    })
+  })
+
   // GB-4 (spec 04 กฎข้อ 9): อีเมลถึงสมาชิกกลุ่ม — ข้อความไทย (ADR-014)
   describe("group buy emails (GB-4)", () => {
     const data = {

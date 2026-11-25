@@ -8,7 +8,7 @@ import {
   useDataTable,
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { KeyboardEvent, useEffect, useMemo, useState } from "react"
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react"
 import { Container } from "../common/container"
 import { Header } from "../common/header"
 import { isUnauthorized } from "../../lib/fetch-error"

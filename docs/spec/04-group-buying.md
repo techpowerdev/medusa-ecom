@@ -1107,7 +1107,7 @@ ADR: ADR-026 **ภาคผนวก 2026-11-21** (ขยายขอบเข�
 | GB-30 | ☑ #503 — กัน `DELETE /admin/promotions/:id` ของต้นแบบ `GBT-*` (กฎข้อ 55) + กันเปลี่ยน `status` ของต้นแบบเป็น `active` ผ่าน `POST /admin/promotions/:id` (กฎข้อ 56) — owner สั่ง/ตัดสินเพิ่ม 2026-11-23 (follow-up PR #493) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/group-buy-promotion-lock.spec.ts` | ~45 LOC + ~200 LOC test | AC-73 | **GB-29 (#493)** + PR เอกสาร GB-30 | `group-buy-lock.ts`, `group-buy-promotion-lock.spec.ts` |
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — review/qa #488, #497, #503, #505, #519; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ; Q26 = ก owner 2026-11-23 — GB-32 ไม่ติดคำถามแล้ว; release v0.3.1 ตาม Q-R42)
+Status: done (☑ GB-31 #529, GB-32 #534 — ปิดรอบ 42 2026-11-24; Q26 = ก owner 2026-11-23; release v0.3.1 ตาม Q-R42)
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 42)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
@@ -1126,18 +1126,32 @@ Status: draft (☐ — รอ owner สั่งทำ; Q26 = ก owner 2026-11-
     (c) `deleteMemberPaymentSessionsStep` (`membership-payment.ts:211`) ย้าย `query.graph` เข้า best-effort เดียวกับการลบ session (ล้ม → warn `GROUP_BUY_SESSION_CANCEL_FAILED` แล้วไปต่อ — ตาม comment `:205` ที่บอกว่า best-effort; membership/order ที่ยกเลิกแล้วไม่ถูก compensate);
     (d) test (d) ของ AC-71 ไม่รอ `LOCK_TIMEOUT` (ให้ expire ล้มหลังได้ lock แทน) — เวลาไม่เกิน ~5 วินาที; (e) lint warning `step-id-kebab-case` ของ `alert-group-buy-payment-check-gave-up` หายโดยไม่เปลี่ยน id ที่ workflow engine เก็บไว้ (ถ้าต้องเปลี่ยน id → หยุดและรายงาน เพราะ execution ค้างข้าม deploy หา step ไม่เจอ)
 ### Acceptance criteria (รอบ 42)
-- AC-74 (GB-31, กฎข้อ 57) integration + unit: (a) mutation ถอด lock → AC-63 (b) ล้ม (แนบใน PR), คืนแล้วผ่าน `--repeat-each`/รัน 3 รอบ; (b) spy `query.graph` ของ guard: request เดียว = 1 ครั้งต่อ entity; AC-67/69/72/73 ผ่านครบ (รวมแคมเปญ `ended`);
+- AC-74 (GB-31, กฎข้อ 57) ☑ (a–c ผ่าน: (a) mutation ถอด lock → AC-63 (b) red (`refundPayment` ของ Payment module ถูกเรียก 2 ครั้ง) → คืนแล้ว green 3 รอบ; (b) unit guard red 5 เคส (query ซ้ำ) → green 60/60, `group-buy-promotion-lock.spec.ts` 30/30 รวม `ended`; (c) mutation ถอด code → `GB_CART_EMPTY` red → green `group-buy-join.spec.ts` 40/40; unit 1794 — `docs/evidence/group-buying/GB-31-tests.txt`) integration + unit: (a) mutation ถอด lock → AC-63 (b) ล้ม (แนบใน PR), คืนแล้วผ่าน `--repeat-each`/รัน 3 รอบ; (b) spy `query.graph` ของ guard: request เดียว = 1 ครั้งต่อ entity; AC-67/69/72/73 ผ่านครบ (รวมแคมเปญ `ended`);
   (c) assertion `code` ของ join + test `GB_CART_EMPTY` → 400 `code: "GB_CART_EMPTY"`
-- AC-75 (GB-32, กฎข้อ 58) unit + integration: (a) membership หมดเวลา `เพดาน + 10` ราย (unit ใช้ค่าคงที่ที่ export — ไม่ต้องสร้าง 210 รายใน integration; integration ใช้เพดานที่ inject ได้ในต้นทุนต่ำ หรือ unit อย่างเดียวถ้า builder ระบุเหตุผล) provider ตอบ error ทุกราย → รอบเดียวเรียก provider = เพดาน (ล้มบน develop — เรียกทุกราย); รอบถัดไปตรวจที่เหลือ;
+- AC-75 (GB-32, กฎข้อ 58) ☑ (a–e ผ่าน: red บน develop — (a) unit 210 ราย provider ล้มทุกราย รอบเดียวเรียก 210 ครั้ง (เพดาน 200), (b) count 60 list ว่างที่ skip 50 → ไม่อ่านซ้ำ, (c) unit `query.graph` throw → workflow ล้ม `db down`, (d) integration 34.6 วินาที (รอ `LOCK_TIMEOUT`) → green: (a) รอบแรก 200 ราย รอบถัดไปตรวจ 10 รายที่เหลือก่อน + `$nin` ≤ 200 (unit อย่างเดียว — ใช้ค่าคงที่ที่ export จริง ไม่เพิ่มช่อง inject เพดานใน job เพื่อ test), (d) 2.2 วินาที (expire ล้มหลังได้ lock), (e) lint ไม่มี warning `step-id-kebab-case` (เปลี่ยนชื่อตัวแปรเป็น `alertGroupBuyPaymentCheckGaveUpStep` id เดิม) — `docs/evidence/group-buying/GB-32-tests.txt`) unit + integration: (a) membership หมดเวลา `เพดาน + 10` ราย (unit ใช้ค่าคงที่ที่ export — ไม่ต้องสร้าง 210 รายใน integration; integration ใช้เพดานที่ inject ได้ในต้นทุนต่ำ หรือ unit อย่างเดียวถ้า builder ระบุเหตุผล) provider ตอบ error ทุกราย → รอบเดียวเรียก provider = เพดาน (ล้มบน develop — เรียกทุกราย); รอบถัดไปตรวจที่เหลือ;
   (b) unit ของ loop: count 60 แต่ list ได้ 0 ที่ skip เดิม → อ่าน `skip: 0` แล้วประมวลผลได้; (c) mock `query.graph` throw → log `GROUP_BUY_SESSION_CANCEL_FAILED` และ workflow ไม่ล้ม (ล้มบน develop);
   (d) เวลาของ test (d) ≤ 5 วินาที; (e) `pnpm lint` ไม่มี warning `step-id-kebab-case` ในไฟล์นี้
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| GB-31 | test/lock hygiene: พิสูจน์ lock ของ AC-63b, guard อ่าน link ครั้งเดียว, test ลำดับ/ended/ขอบเขต, assert code ของ join + `GB_CART_EMPTY` (กฎข้อ 57) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/{group-buy-payment,group-buy-promotion-lock,group-buy-join}.spec.ts` | ~30 LOC + ~150 LOC test | AC-74 | PR เอกสารปิดรอบ 41 | `group-buy-lock.ts` |
-| GB-32 | job หมดเวลาชำระ: เพดานตรวจต่อรอบ 200 (Q26 = ก) + อ่านซ้ำเมื่อ skip เกิน + query.graph best-effort + test เร็วขึ้น + lint (กฎข้อ 58) | `src/jobs/group-buy-deadline.ts`, `src/workflows/group-buy/membership-payment.ts`, `src/modules/group_buy/utils/membership-payment.ts`, test | ~40 LOC + ~120 LOC test | AC-75 | PR เอกสารปิดรอบ 41 (Q26 = ก ☑ owner 2026-11-23) | `group-buy-deadline.ts`, `membership-payment.ts` |
+| GB-31 | ☑ #529 — test/lock hygiene: พิสูจน์ lock ของ AC-63b, guard อ่าน link ครั้งเดียว, test ลำดับ/ended/ขอบเขต, assert code ของ join + `GB_CART_EMPTY` (กฎข้อ 57) | `src/api/admin/promotions/group-buy-lock.ts` (+ unit), `integration-tests/http/{group-buy-payment,group-buy-promotion-lock,group-buy-join}.spec.ts` | ~30 LOC + ~150 LOC test | AC-74 | PR เอกสารปิดรอบ 41 | `group-buy-lock.ts` |
+| GB-32 | ☑ #534 — job หมดเวลาชำระ: เพดานตรวจต่อรอบ 200 (Q26 = ก) + อ่านซ้ำเมื่อ skip เกิน + query.graph best-effort + test เร็วขึ้น + lint (กฎข้อ 58) | `src/jobs/group-buy-deadline.ts`, `src/workflows/group-buy/membership-payment.ts`, `src/modules/group_buy/utils/membership-payment.ts`, test | ~40 LOC + ~120 LOC test | AC-75 | PR เอกสารปิดรอบ 41 (Q26 = ก ☑ owner 2026-11-23) | `group-buy-deadline.ts`, `membership-payment.ts` |
 
 ลำดับ: GB-31 ∥ GB-32 (ไม่มีไฟล์ร่วม)
+
+## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
+Status: draft (☐ หลัง go-live — รอ owner สั่ง; Q-R43-ฉ = ก owner 2026-11-25) · ที่มา: review #529, #534 — ตรวจบน develop `599009b6` · ใช้ของ Medusa ตามเดิม (Locking module, `listAndCount`) ไม่มีของใหม่ · lint warning ของ `campaign.ts`/`refund-cancelled-membership.ts` อยู่ใน OPS-38 (spec 07)
+### Business rules (รอบ 43)
+59. (GB-33 — test hygiene backend) (a) (review #529) integration (b) ของ AC-69 ใน `integration-tests/http/group-buy-promotion-lock.spec.ts` (~`:298`) เพิ่ม promotion ปกติที่อยู่นอกแคมเปญของ test เพื่อพิสูจน์ว่า filter `GB-*` ของ test ทำงาน;
+    (b) (review #529) `once()` ใน `src/api/admin/promotions/group-buy-lock.ts` ที่ cache promise ที่ reject — เขียน comment ว่าตั้งใจ (อายุเท่า request เดียว);
+    (c) (review #534) test (d) ของ AC-71 ใน `group-buy-payment-check.spec.ts` ใช้เกณฑ์เวลา `< LOCK_TIMEOUT` (import ค่าคงที่ ไม่ใช่ `5000` ตายตัว — runner ช้าไม่ flaky) และรายงานเวลาที่วัดได้ใน evidence;
+    (d) (review #534) `src/jobs/group-buy-deadline.ts` (~`:79`) comment กรณีแถวหายระหว่างรอบ (อ่านซ้ำ `skip: 0` ของกฎข้อ 58b)
+### Acceptance criteria (รอบ 43)
+- AC-76 (GB-33, กฎข้อ 59) mutation (แนบใน PR): ถอด filter `GB-*` ของ test (b) → test ล้ม (บน develop ผ่านทั้งที่ถอด); test (d) อ้างค่าคงที่ `LOCK_TIMEOUT` ที่ export (static grep ไม่มี `5000`); unit/integration เดิมของ AC-69/AC-71/AC-75 ผ่านโดยไม่แก้ค่าที่คาด
+### Tasks (รอบ 43)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| GB-33 | test hygiene group buy: พิสูจน์ filter ของ AC-69b, comment `once()`/แถวหาย, เกณฑ์เวลาผูก `LOCK_TIMEOUT` (กฎข้อ 59) | ไฟล์ในกฎข้อ 59 | ~10 LOC + ~40 LOC test | AC-76 | PR เอกสารปิดรอบ 42 | — |
 
 ### Open questions (รอบ 42)
 - ~~**Q26**~~ **ตัดสินแล้ว (owner 2026-11-23) = (ก)** เพดาน 200 ต่อรอบ → GB-32 กฎข้อ 58a — คำถามเดิม: (review #505 — GB-28) job `group-buy-deadline` ตรวจสถานะการชำระกับ provider **ไม่มีเพดานต่อรอบ**: เมื่อ provider ล่มทุกรายเป็น `retry` loop อ่านหน้าถัดไปจนหมด (กฎข้อ 53e) → เรียก provider เท่าจำนวนผู้ที่หมดเวลาทุกนาทีนาน 15 นาที

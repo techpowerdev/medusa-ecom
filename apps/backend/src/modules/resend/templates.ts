@@ -21,6 +21,8 @@ export const EmailTemplates = {
   GROUP_BUY_PAID_WITHOUT_ORDER: "group-buy-paid-without-order",
   // GB-20b (spec 04 กฎข้อ 50 d): อีเมลถึง OPS_ALERT_EMAIL เมื่อตรวจสถานะการชำระที่ provider ไม่ได้จนเลยเพดาน 15 นาที
   GROUP_BUY_PAYMENT_CHECK_GAVE_UP: "group-buy-payment-check-gave-up",
+  // PAY-20 (spec 06 กฎข้อ 22c, ADR-029): อีเมลถึง OPS_ALERT_EMAIL เมื่อคืนเงินล้ม/ค้าง (PAY-21 ใช้ร่วม — data.source บอกแหล่ง)
+  REFUND_FAILED: "refund-failed",
 } as const
 
 /** EV-4: code/PIN ใน notification.data เป็น ciphertext — provider ส่งฟังก์ชันถอดรหัสมาตอน render */
@@ -422,7 +424,7 @@ const renderGroupBuyPaidWithoutOrder = (data: Record<string, unknown>): Rendered
   return { subject, html: layout(subject, body) }
 }
 
-// GB-20b กฎข้อ 50 (d): ข้อมูลจาก alertPaymentCheckGaveUpStep ใน src/workflows/group-buy/membership-payment.ts
+// GB-20b กฎข้อ 50 (d): ข้อมูลจาก alertGroupBuyPaymentCheckGaveUpStep ใน src/workflows/group-buy/membership-payment.ts
 // GB-28 กฎข้อ 53 (a): alert ส่งก่อน expire workflow — ยังไม่รู้ผลการยกเลิก
 const renderGroupBuyPaymentCheckGaveUp = (data: Record<string, unknown>): RenderedEmail => {
   const subject = `[ด่วน] GROUP_BUY_PAYMENT_CHECK_GAVE_UP: ตรวจสถานะการชำระไม่ได้ กำลังยกเลิกสิทธิ์ order ${String(data.order_id ?? "")}`
@@ -440,6 +442,36 @@ const renderGroupBuyPaymentCheckGaveUp = (data: Record<string, unknown>): Render
   return { subject, html: layout(subject, body) }
 }
 
+// PAY-20 (ADR-029): ข้อมูลจาก sendOpsAlert (src/lib/ops-alert.ts) — แสดงเฉพาะ field ที่มีค่า
+const REFUND_ALERT_ROWS: [string, string][] = [
+  ["Source", "source"],
+  ["Refund", "refund_id"],
+  ["Payment", "payment_id"],
+  ["PaymentIntent", "payment_intent"],
+  ["Amount", "amount"],
+  ["Currency", "currency_code"],
+  ["Currency", "currency"],
+  ["Provider", "provider_id"],
+  ["Cart", "cart_id"],
+  ["Order", "order_id"],
+  ["Status", "status"],
+  ["Failure reason", "failure_reason"],
+  ["Note", "note"],
+]
+
+const renderRefundFailed = (data: Record<string, unknown>): RenderedEmail => {
+  const code = String(data.code ?? "REFUND_FAILED")
+  const subject = `[ด่วน] ${code}: คืนเงินไม่สำเร็จหรือค้าง ${String(data.payment_id ?? data.payment_intent ?? "")}`
+  const rows = REFUND_ALERT_ROWS.filter(([, key]) => data[key] !== undefined && data[key] !== null && data[key] !== "")
+    .map(([label, key]) => `<li>${label}: <b>${escapeHtml(data[key])}</b></li>`)
+    .join("")
+  const body =
+    `<h1 style="font-size:20px">การคืนเงินล้มหรือค้าง — ลูกค้าอาจยังไม่ได้เงินคืน</h1>` +
+    `<ul>${rows}</ul>` +
+    `<p>ทำตาม runbook "คืนเงินล้ม/ค้าง (ADR-029)" ใน docs/ops/production.md</p>`
+  return { subject, html: layout(subject, body) }
+}
+
 const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderContext) => RenderedEmail> = {
   [EmailTemplates.ORDER_PLACED]: renderOrderPlaced,
   [EmailTemplates.ORDER_SHIPPED]: renderOrderShipped,
@@ -454,6 +486,7 @@ const renderers: Record<string, (data: Record<string, unknown>, ctx?: RenderCont
   [EmailTemplates.GROUP_BUY_PAYMENT_EXPIRED]: renderGroupBuyPaymentExpired,
   [EmailTemplates.GROUP_BUY_PAID_WITHOUT_ORDER]: renderGroupBuyPaidWithoutOrder,
   [EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP]: renderGroupBuyPaymentCheckGaveUp,
+  [EmailTemplates.REFUND_FAILED]: renderRefundFailed,
 }
 
 export const renderEmailTemplate = (

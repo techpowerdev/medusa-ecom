@@ -7,7 +7,12 @@ import {
 } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
-import { PROMPTPAY_REFUNDED_UNKNOWN, PromptPayRefunded, promptPayFinishAction } from "@lib/util/promptpay-finish"
+import {
+  PROMPTPAY_REFUNDED_UNKNOWN,
+  PromptPayRefunded,
+  promptPayFinishAction,
+  promptPayPollWhileFinishing,
+} from "@lib/util/promptpay-finish"
 import {
   PAYMENT_ALREADY_COMPLETED,
   PROMPTPAY_POLL_MS,
@@ -19,12 +24,12 @@ import {
   secondsLeft,
 } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Button, Text } from "@modules/common/components/ui"
 import { useStripe } from "@stripe/react-stripe-js"
 import { useParams, useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import ErrorMessage from "../error-message"
+import RefundedGoToCart from "../refunded-go-to-cart"
 import { openQr } from "./open-qr"
 import PromptPayOrderDelayed from "./order-delayed"
 import PromptPayQr from "./qr-panel"
@@ -126,8 +131,9 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     return true
   }, [giveUp])
 
-  // เงินถูกคืน (หรือจะถูกคืน) → หยุดทางสำรอง (awaitingOrder=false ล้าง timer poll; poll ที่ค้างอยู่ได้ "wait") แล้วโหลด cart ใหม่
-  // Medusa คืนเงินและสร้าง session ใหม่ให้ (refundPaymentAndRecreatePaymentSessionWorkflow) → ให้เริ่มชำระใหม่
+  // เงินถูกคืน (หรือจะถูกคืน) → หยุดทางสำรอง (completeFallback=false: poll ที่ค้างอยู่ได้ "wait" ไม่เขียนทับเหตุ;
+  // awaitingOrder=false ล้าง timer poll) แล้วโหลด cart ใหม่ — Medusa คืนเงินและสร้าง session ใหม่ให้
+  // (refundPaymentAndRecreatePaymentSessionWorkflow); สิ่งที่แสดงต่อตาม `next`: รู้เหตุ → ไปที่ตะกร้า (PAY-15), ไม่รู้เหตุ → เริ่มชำระใหม่ (PAY-6c)
   const stopRefunded = useCallback((next: PromptPayRefunded) => {
     completeFallback.current = false
     setAwaitingOrder(false)
@@ -235,7 +241,8 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       }
       // อ่านสถานะล้ม (network) = ยังไม่รู้ → ถือเป็น pending แล้วรอบถัดไปลองใหม่
       const state = await getPromptPayState(cart.id).catch(() => "pending" as const)
-      const action = promptPayPollAction(state, completeFallback.current)
+      // PAY-17 (กฎข้อ 19b): finish() กำลังรอ placeOrder → refunded ของ poll ไม่ตัดสิน ให้ผลของ placeOrder ตัดสิน
+      const action = promptPayPollWhileFinishing(promptPayPollAction(state, completeFallback.current), finishing.current)
       if (action === "complete") {
         finish()
       } else if (action === "refunded") {
@@ -283,14 +290,7 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
 
   // PAY-15 (กฎข้อ 17): เหตุที่รู้ยังอยู่ในตะกร้าเดิม → ไม่มีปุ่มเริ่มชำระใหม่ ให้ไปปรับตะกร้าแทน
   if (refunded?.goToCart) {
-    return (
-      <>
-        {refundedNotice}
-        <LocalizedClientLink href="/cart" data-testid="promptpay-go-to-cart">
-          <Button size="large">ไปที่ตะกร้า</Button>
-        </LocalizedClientLink>
-      </>
-    )
+    return <RefundedGoToCart text={refunded.text} noticeTestId="promptpay-refunded" linkTestId="promptpay-go-to-cart" />
   }
 
   return (

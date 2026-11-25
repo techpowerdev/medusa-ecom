@@ -1,0 +1,43 @@
+# PAY-21 (spec 06 กฎข้อ 23, AC-34, ADR-029 ข) — ผลทดสอบในเครื่อง 2026-11-24 (node v22.23.3)
+
+## RED (ก่อนแก้)
+### unit: ops-runbook.unit.spec.ts -t AC-34d
+    ✕ refund.updated อยู่ในหัวข้อ Stripe webhooks และ events= ของ ci.yml (1 ms)
+    ✕ refund.failed อยู่ในหัวข้อ Stripe webhooks และ events= ของ ci.yml
+    ✕ หัวข้อ Stripe webhooks บอกว่า Medusa คืน not_supported และ subscriber stripe-refund-webhook จัดการ
+    ✕ runbook มี STRIPE_REFUND_FAILED และ checklist ให้ทดสอบด้วยบัตร 4000 0000 0000 5126
+    ✕ source ของ subscriber ไม่ import stripe (อ่าน body ที่ provider ตรวจ signature แล้ว)
+Tests:       5 failed, 28 skipped, 33 total
+### integration: stripe-refund-webhook.spec.ts (subscriber stub ที่ไม่ทำอะไร)
+      ✓ (c) payment_intent.succeeded → this subscriber sends nothing (orphan alert proves the event was processed) (6769 ms)
+      ✓ listens to payment.webhook_received with its own subscriberId (1226 ms)
+      ✕ (a) refund.failed → one email with amount in baht; repeats and refund.updated failed of the same refund → still one (31071 ms)
+      ✕ (b) refund.updated canceled → one email; requires_action/pending/succeeded → none (30908 ms)
+      ✕ (c) invalid signature → warn, no alert (30783 ms)
+    > 125 |         throw new Error("timed out waiting for the webhook event to be processed")
+    timed out waiting for the webhook event to be processed
+Tests:       3 failed, 2 passed, 5 total
+### integration: เคส concurrent เมื่อถอด lock ต่อ refund ออก (พิสูจน์ว่า lock จำเป็น)
+      ✕ (a) refund.failed and refund.updated of one refund processed concurrently (Redis event bus) → one email, no send-failure log (901 ms)
+    Expected length: 1
+    Received length: 3
+Tests:       1 failed, 5 skipped, 6 total
+
+## GREEN
+### integration: stripe-refund-webhook.spec.ts (POST /hooks/payment/stripe_stripe แบบลงนาม + เรียก subscriber พร้อมกัน)
+PASS integration-tests/http/stripe-refund-webhook.spec.ts (42.101 s)
+      ✓ listens to payment.webhook_received with its own subscriberId (589 ms)
+      ✓ (a) refund.failed → one email with amount in baht; repeats and refund.updated failed of the same refund → still one (12020 ms)
+      ✓ (a) refund.failed and refund.updated of one refund processed concurrently (Redis event bus) → one email, no send-failure log (650 ms)
+      ✓ (b) refund.updated canceled → one email; requires_action/pending/succeeded → none (6541 ms)
+      ✓ (c) invalid signature → warn, no alert (6751 ms)
+      ✓ (c) payment_intent.succeeded → this subscriber sends nothing (orphan alert proves the event was processed) (6707 ms)
+Tests:       6 passed, 6 total
+### unit backend ทั้งชุด (pnpm --filter backend test:unit)
+Test Suites: 132 passed, 132 total
+Tests:       1862 passed, 1862 total
+### static
+- tools/ci/check-stripe-events.sh: ok: Stripe webhook events ตรงกัน (10 event)
+- tools/ci/check-stripe-events.test.sh: 9/9 passed
+- pnpm --filter backend typecheck: ผ่าน; pnpm --filter backend lint: 0 error (4 warning เดิมนอกไฟล์ของ task)
+- pnpm --filter backend build: สำเร็จ; pnpm --filter storefront test:e2e:unit: 165 passed

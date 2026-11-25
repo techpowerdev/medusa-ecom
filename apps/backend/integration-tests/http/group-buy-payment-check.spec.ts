@@ -10,6 +10,7 @@ import { setGroupBuyCampaignStatusWorkflow } from "../../src/workflows/group-buy
 import { createGroupWorkflow } from "../../src/workflows/group-buy/create-group"
 import { GROUP_BUY_GROUP_SUCCEEDED } from "../../src/workflows/group-buy/join-group"
 import groupBuyDeadlineJob from "../../src/jobs/group-buy-deadline"
+import { checkGroupBuyMembershipPaymentWorkflow } from "../../src/workflows/group-buy/membership-payment"
 import { GROUP_BUY_MODULE } from "../../src/modules/group_buy"
 import type GroupBuyModuleService from "../../src/modules/group_buy/service"
 
@@ -460,27 +461,64 @@ medusaIntegrationTestRunner({
       const session = await openSession(stuck)
       setIntent(session, new Error("provider down"))
       await pastDeadline(stuck, 16)
-      const locking = getContainer().resolve(Modules.LOCKING)
-      const realAcquire = locking.acquire.bind(locking)
-      const lockKey = `group_buy:membership:${stuck.membership_id}`
-      const acquire = jest.spyOn(locking, "acquire").mockImplementation((async (keys, ...rest) => {
-        if ([keys].flat().includes(lockKey)) {
-          throw new Error("lock busy")
+      // GB-32 กฎข้อ 58 (d): expire ล้มหลังได้ lock แล้ว (ไม่รอ LOCK_TIMEOUT ของ acquireLockStep) — ครั้งเดียว
+      const service = groupBuy()
+      const realUpdate = service.updateGroupBuyMemberships.bind(service)
+      let failExpire = true
+      const update = jest.spyOn(service, "updateGroupBuyMemberships").mockImplementation((async (data: any, ...rest: any[]) => {
+        if (failExpire && data?.id === stuck.membership_id && data?.status === "cancelled") {
+          failExpire = false
+          throw new Error("expire boom")
         }
-        return realAcquire(keys, ...rest)
-      }) as typeof locking.acquire)
+        return (realUpdate as any)(data, ...rest)
+      }) as any)
       const error = jest.spyOn(logger(), "error")
+      const started = Date.now()
 
       await runJob()
+      expect(failExpire).toBe(false)
       expect((await membershipOf(stuck)).status).toEqual("awaiting_payment")
       expect(loggedLines(error, GAVE_UP)).toHaveLength(1)
       expect(await gaveUpEmails()).toHaveLength(1)
 
-      acquire.mockRestore()
+      update.mockRestore()
       await runJob()
       expect((await membershipOf(stuck)).status).toEqual("cancelled")
       expect(loggedLines(error, GAVE_UP)).toHaveLength(2)
       expect(await gaveUpEmails()).toHaveLength(1)
+      // AC-75 (d): สองรอบของ job ไม่รอ LOCK_TIMEOUT (30 วินาที)
+      expect(Date.now() - started).toBeLessThan(5000)
+    })
+
+    // PAY-24 (spec 06 กฎข้อ 27, AC-37): alert give-up ผ่าน sendOpsAlert (key เดิม `group-buy-payment-check-gave-up-<membership>`)
+    // ส่งล้มที่ provider ของ Notification module ครั้งแรก → give-up รอบถัดไปส่งใหม่ได้อีเมลเดียว รอบที่สามไม่ส่งเพิ่ม
+    it("give-up alert email fails at the notification provider once → next give-up sends exactly one success email, a third sends nothing", async () => {
+      const [stuck] = await awaitingPaymentMembers(1)
+      const session = await openSession(stuck)
+      setIntent(session, new Error("provider down"))
+      await pastDeadline(stuck, 16)
+      const send = jest
+        .spyOn((getContainer().resolve(Modules.NOTIFICATION) as any).notificationProviderService_, "send")
+        .mockRejectedValueOnce(new Error("resend down"))
+      const error = jest.spyOn(logger(), "error")
+
+      for (let run = 0; run < 3; run++) {
+        const { result } = await checkGroupBuyMembershipPaymentWorkflow(getContainer()).run({
+          input: { membership_id: stuck.membership_id },
+        })
+        expect(result.decision).toEqual("give_up")
+      }
+
+      expect(send).toHaveBeenCalledTimes(2)
+      const emails = await gaveUpEmails()
+      expect(emails).toHaveLength(1)
+      expect(emails[0].status).toEqual("success")
+      expect((emails[0] as { idempotency_key?: string }).idempotency_key).toEqual(`${GAVE_UP_TEMPLATE}-${stuck.membership_id}`)
+      expect(emails[0]).toEqual(expect.objectContaining({ resource_type: "order", resource_id: stuck.order_id }))
+      expect(emails[0].data).toEqual(expect.objectContaining({ membership_id: stuck.membership_id, order_id: stuck.order_id }))
+      // บรรทัด GAVE_UP มาจาก check step ครั้งเดียวต่อรอบ (helper ไม่ log ซ้ำ)
+      expect(loggedLines(error, `${GAVE_UP} `)).toHaveLength(3)
+      expect(error.mock.calls.filter(([msg]) => /OPS_ALERT_EMAIL send failed/.test(String(msg)))).toHaveLength(1)
     })
   },
 })

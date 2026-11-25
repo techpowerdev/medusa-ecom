@@ -557,7 +557,7 @@ order ก่อน EV-22 (เช่น #66) มีธงแค่ใน `order_l
 | EV-25 | ☑ #476 — script backfill ธง backordered (กฎข้อ 41) + บรรทัด go-live | `src/scripts/backfill-evoucher-backordered-flags.ts`, `src/workflows/evoucher/steps/update-evoucher-backordered-flags.ts` (export helper), `docs/ops/production.md` (Go-live ข้อ 12), integration | ~60 LOC + ~100 LOC test | AC-55 | PR เอกสารรอบ 41 | `production.md` (CORE-81, OPS-33 คนละบรรทัด) |
 
 ## Follow-up รอบ 42 (ปิดรอบ 41 2026-11-23 — qa/review #504; ไม่บล็อก release v0.3.0)
-Status: draft (☐ — รอ owner สั่งทำ)
+Status: done (☑ EV-26 #527 — ปิดรอบ 42 2026-11-24; รอบ 43 ไม่มี task ของ spec นี้ — nit ของ #527 อยู่ในรายการไม่ทำของ `docs/roadmap/history.md` หัวข้อ "รอบ 42 — ผลจริง")
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 42)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
@@ -571,13 +571,13 @@ Status: draft (☐ — รอ owner สั่งทำ)
         → helper ร่วม **`backorderedItems(request, admin, orderId)`** คืน item ที่ `metadata.evoucher_backordered === true` แล้วผู้เรียก map เป็น `variant_id`/`length` เอง;
     (c) `allocateErrorMessage` ใช้ตัวจัดข้อความเดียวกับ `evoucher-resend.ts` (`tidyStops`/HINT) — export จากที่เดิม ไม่ copy; ข้อความ 4xx ที่แสดงเท่าเดิมยกเว้นการจัดจุด/คำแนะนำ
 ### Acceptance criteria (รอบ 42)
-- AC-56 (EV-26, กฎข้อ 42) unit `evoucher-allocate.unit.spec.ts`: backordered อย่างเดียว → `variant: "warning"` (ล้มบน develop — `success`); allocated อย่างเดียว → `success` "Codes allocated" (regression);
+- ☑ AC-56 (EV-26, กฎข้อ 42) unit `evoucher-allocate.unit.spec.ts`: backordered อย่างเดียว → `variant: "warning"` (ล้มบน develop — `success`); allocated อย่างเดียว → `success` "Codes allocated" (regression);
   static — **ล้มบน develop** ก่อน: ไม่มีนิยาม `overstock`/`flaggedVariants` ใน `evoucher-admin-backordered.spec.ts` และไม่มี `setStock`/`flaggedLines` ใน `evoucher-admin-retry-allocation.spec.ts`;
   ทั้งสองไฟล์ import `setVariantStock` และ `backorderedItems` จาก `e2e/support/evoucher.ts`; `e2e/support/evoucher.ts` ไม่ export ชื่อ `setStock`; unit ของ `allocateErrorMessage` กับข้อความที่ resend ใช้ได้ผลจัดรูปเดียวกัน; e2e AC-52/AC-54 ผ่าน
 ### Tasks (รอบ 42)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| EV-26 | hygiene admin e-voucher: toast warning ของ backordered + helper e2e ร่วม + ตัวจัดข้อความ error ร่วม (กฎข้อ 42) | `src/admin/lib/evoucher-allocate.ts` (+ unit), `src/admin/lib/evoucher-resend.ts`, `src/admin/widgets/order-evouchers.tsx`, `apps/storefront/e2e/{evoucher-admin-retry-allocation,evoucher-admin-backordered}.spec.ts`, `e2e/support/evoucher.ts` | ~30 LOC + ~60 LOC test | AC-56 | PR เอกสารปิดรอบ 41 | — |
+| EV-26 | ☑ #527 — hygiene admin e-voucher: toast warning ของ backordered + helper e2e ร่วม + ตัวจัดข้อความ error ร่วม (กฎข้อ 42) | `src/admin/lib/evoucher-allocate.ts` (+ unit), `src/admin/lib/evoucher-resend.ts`, `src/admin/widgets/order-evouchers.tsx`, `apps/storefront/e2e/{evoucher-admin-retry-allocation,evoucher-admin-backordered}.spec.ts`, `e2e/support/evoucher.ts` | ~30 LOC + ~60 LOC test | AC-56 | PR เอกสารปิดรอบ 41 | — |
 
 ## คำถามที่ยังเปิดอยู่
 - ~~Q14~~ ตัดสินแล้ว (owner 2026-11-10): **(ก)** — กฎข้อ 33c–e, AC-47, EV-17; คำถามเดิม (รอบ 27, EV-17 กฎข้อ 33) ป้องกัน stock เกินเมื่อยกเลิก fulfillment ของ code ที่ส่งมอบแล้วด้วยทางใด:

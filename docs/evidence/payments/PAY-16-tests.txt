@@ -1,0 +1,84 @@
+PAY-16 (spec 06 กฎข้อ 18, AC-29) — ผล test (2026-11-24, worktree feat/PAY-16-payment-step-state จาก develop 43a889b3)
+
+== RED (ก่อนแก้: test ใหม่กับโค้ดของ develop) ==
+-- vitest: src/pay-16-payment-step-state.test.ts + src/lib/util/payment-session.test.ts --
+     × ยังเลือกวิธีเดิมและ cart ยังชี้ secret เดิม → แสดง 3ms
+     × เปลี่ยนวิธีชำระแล้ว → ไม่แสดง 0ms
+     × client secret เปลี่ยน (session ใหม่มาแล้ว) หรือไม่มี session → ไม่แสดง 0ms
+     × ไม่มี notice → ไม่แสดง 0ms
+     × (a) notice แล้วเลือก manual → notice และปุ่มลองอีกครั้งหาย ไม่สร้าง session ของบัตรเพิ่ม 510ms
+     × (a) notice แล้ว cart ใน props ได้ client secret ใหม่ → notice หาย 5ms
+     × (b) ตรวจพบ PI จบแล้วซ้ำระหว่าง renew กำลังรอ → ไม่ขึ้น notice ซ้อน ไม่สร้าง session เพิ่ม 11ms
+     × (c) renew สำเร็จแต่ refresh ไม่มา → ก่อน 10 วินาทีรอ (ช่องบัตรยังแสดง), 10 วินาที → notice และซ่อนช่องบัตร (ไม่ค้าง skeleton) 18ms
+     × (d) PAYMENT_ALREADY_COMPLETED → ระหว่างรอ order radio disabled; complete ไม่สำเร็จ → เลือกได้อีก 12ms
+     × (d) placeOrder ตอบ processing (รอ order ต่อ) → radio ยัง disabled 8ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/pay-16-payment-step-state.test.ts > PAY-16 (AC-29): สถานะขั้น payment > (a) notice แล้วเลือก manual → notice และปุ่มลองอีกครั้งหาย ไม่สร้าง session ของบัตรเพิ่ม
+AssertionError: expected <div role="alert" …(2)>…(2)</div> to be null
+ FAIL  src/pay-16-payment-step-state.test.ts > PAY-16 (AC-29): สถานะขั้น payment > (a) notice แล้ว cart ใน props ได้ client secret ใหม่ → notice หาย
+AssertionError: expected <div role="alert" …(2)>…(2)</div> to be null
+ FAIL  src/pay-16-payment-step-state.test.ts > PAY-16 (AC-29): สถานะขั้น payment > (b) ตรวจพบ PI จบแล้วซ้ำระหว่าง renew กำลังรอ → ไม่ขึ้น notice ซ้อน ไม่สร้าง session เพิ่ม
+AssertionError: expected <div role="alert" …(2)>…(2)</div> to be null
+ FAIL  src/pay-16-payment-step-state.test.ts > PAY-16 (AC-29): สถานะขั้น payment > (c) renew สำเร็จแต่ refresh ไม่มา → ก่อน 10 วินาทีรอ (ช่องบัตรยังแสดง), 10 วินาที → notice และซ่อนช่องบัตร (ไม่ค้าง skeleton)
+AssertionError: expected 'false' to be 'true' // Object.is equality
+ FAIL  src/pay-16-payment-step-state.test.ts > PAY-16 (AC-29): สถานะขั้น payment > (d) PAYMENT_ALREADY_COMPLETED → ระหว่างรอ order radio disabled; complete ไม่สำเร็จ → เลือกได้อีก
+AssertionError: expected 'false' to be 'true' // Object.is equality
+ FAIL  src/pay-16-payment-step-state.test.ts > PAY-16 (AC-29): สถานะขั้น payment > (d) placeOrder ตอบ processing (รอ order ต่อ) → radio ยัง disabled
+AssertionError: expected 'false' to be 'true' // Object.is equality
+ FAIL  src/lib/util/payment-session.test.ts > sessionResetShown > ยังเลือกวิธีเดิมและ cart ยังชี้ secret เดิม → แสดง
+TypeError: sessionResetShown is not a function
+ FAIL  src/lib/util/payment-session.test.ts > sessionResetShown > เปลี่ยนวิธีชำระแล้ว → ไม่แสดง
+TypeError: sessionResetShown is not a function
+ FAIL  src/lib/util/payment-session.test.ts > sessionResetShown > client secret เปลี่ยน (session ใหม่มาแล้ว) หรือไม่มี session → ไม่แสดง
+TypeError: sessionResetShown is not a function
+ FAIL  src/lib/util/payment-session.test.ts > sessionResetShown > ไม่มี notice → ไม่แสดง
+TypeError: sessionResetShown is not a function
+ Test Files  2 failed (2)
+      Tests  10 failed | 41 passed (51)
+
+== GREEN (หลังแก้) ==
+-- vitest: pay-16 + payment-session + regression pay-14 --
+ Test Files  3 passed (3)
+      Tests  61 passed (61)
+-- vitest ทั้ง storefront: Test Files 119 passed, Tests 1858 passed
+-- playwright --project=unit: 160 passed
+-- tsc --noEmit (storefront): ผ่าน; eslint ไฟล์ที่แตะ: 0 error (warning เดิม set-state-in-effect ที่ payment/index.tsx บรรทัด setError(null) ไม่ได้แตะ)
+
+== e2e ในเครื่อง (backend :9215 build production + storefront :8215, ไม่มี Stripe key จริง) ==
+-- 24 spec ที่อ้างขั้น payment (grep payment-option-/submit-payment-button/payment-session-/step=payment) --
+  24 skipped
+  65 passed (4.5m)
+skipped = test ที่ต้องใช้ Stripe test mode (รวม AC-27 เดิมและ AC-29 a-d ใหม่ใน pay-14-stale-session.spec.ts) — CI พิสูจน์
+
+-- (รอบแรก — ถูกแทนในรอบแก้ review #541) probe ส่งต่อ action ด้วย provider ปลอม: สมมติฐาน "ไม่มีผลข้างเคียง" ผิด
+   (guardPaidStripeSession ทำให้ session เดิมเป็น canceled ก่อน throw) → CI run 45264215689 AC-29 c/d ล้ม
+
+หมายเหตุ red ของ e2e: ทำในเครื่องไม่ได้ (ไม่มี Stripe key) — AC-29 a บน develop ล้มที่ notice ยังอยู่หลังเลือก manual (unit (a) ยืนยัน),
+d ล้มที่ radio ไม่ disabled (unit (d) ยืนยัน); c ใช้ testid skeleton-card-details ที่เพิ่มใน PR นี้ (red ด้วย unit (c))
+
+== รอบแก้ review #541 (2026-11-24) ==
+blocker 1 (d): PaymentContainer ส่ง disabled={false} ทับ disabled ของ RadioGroup (headless 2.2.10) → ส่ง `disabled || undefined`
+blocker 2 (c): cart ไม่มี session pending (secret null) ไม่ใช่ session ใหม่ → sessionResetShown ยังแสดง, renewNotInCartYet นับ null ว่ายังรอ
+e2e: route mock ของ action สร้าง session ตอบจาก browser เอง (payload ปลอม `0:{"a":"$@1","f":""…}` / `1:<ผล>`) ไม่ส่งต่อ backend;
+     AC-29 c เพิ่มขั้นกด payment-session-retry → action จริง 1 ครั้ง, PI ใหม่, notice หาย, Elements mount (qa #541)
+
+-- RED (test ใหม่กับ head c8914bed ของ PR) --
+     × review #541: cart ไม่มี session pending (เช่น session เดิมถูก cancel) ไม่ใช่ session ใหม่ → ยังแสดง 3ms
+     × (d) RadioGroup disabled → ทุกตัวเลือก aria-disabled 18ms
+     × (a) review #541: notice แล้ว cart ใน props ไม่มี session pending (session เดิมถูก cancel) → notice ยังอยู่และไม่ค้าง skeleton 6ms
+     × (c) review #541: renew สำเร็จแต่ cart ที่ refresh มาไม่มี session pending → 10 วินาที notice และซ่อนช่องบัตร 2ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected null to be 'true' // Object.is equality
+AssertionError: expected null not to be null
+AssertionError: expected null not to be null
+AssertionError: expected false to be true // Object.is equality
+ Test Files  3 failed (3)
+      Tests  4 failed | 53 passed (57)
+
+-- GREEN --
+ Test Files  4 passed (4)
+      Tests  67 passed (67)
+-- vitest ทั้ง storefront: Test Files 122 passed, Tests 1874 passed; tsc ผ่าน; eslint 0 error
+-- probe payload ปลอมในเครื่อง (spec ชั่วคราว ลบแล้ว, manual provider): ผล {ok:true} ถูกอ่านเป็น ok (รอ session แล้ว pending error ที่ 10 วินาที)
+   และ cart ใน backend ไม่มี payment session (SESSIONS []) = ไม่ถึง backend — 1 passed
+-- e2e ในเครื่องรอบแก้ (24 spec ที่อ้างขั้น payment): 65 passed, 24 skipped (Stripe) — AC-29 a-d พิสูจน์ใน CI

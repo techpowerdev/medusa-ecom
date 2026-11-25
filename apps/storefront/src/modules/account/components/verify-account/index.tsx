@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Button } from "@modules/common/components/ui"
+import { buttonClassName } from "@modules/common/components/ui"
 import { confirmEmailVerification } from "@lib/data/customer"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
@@ -50,8 +50,8 @@ const VerifyAccount = () => {
           <p className="text-base-regular text-ui-fg-base">
             ยืนยันอีเมลเรียบร้อยแล้ว คุณเข้าสู่ระบบบัญชีได้แล้ว
           </p>
-          <LocalizedClientLink href="/account">
-            <Button variant="primary">ไปหน้าเข้าสู่ระบบ</Button>
+          <LocalizedClientLink href="/account" className={buttonClassName()}>
+            ไปหน้าเข้าสู่ระบบ
           </LocalizedClientLink>
         </>
       )}
@@ -64,8 +64,11 @@ const VerifyAccount = () => {
           >
             ลิงก์ยืนยันนี้ไม่ถูกต้องหรือหมดอายุแล้ว เข้าสู่ระบบเพื่อรับอีเมลยืนยันใหม่
           </p>
-          <LocalizedClientLink href="/account">
-            <Button variant="secondary">ไปหน้าเข้าสู่ระบบ</Button>
+          <LocalizedClientLink
+            href="/account"
+            className={buttonClassName({ variant: "secondary" })}
+          >
+            ไปหน้าเข้าสู่ระบบ
           </LocalizedClientLink>
         </>
       )}

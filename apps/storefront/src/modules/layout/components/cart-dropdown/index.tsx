@@ -10,7 +10,7 @@ import { retrieveCart } from "@lib/data/cart"
 import { CART_UPDATED_EVENT } from "@lib/util/cart-events"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@modules/common/components/ui"
+import { Button, buttonClassName } from "@modules/common/components/ui"
 import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
 import LineItemPrice from "@modules/common/components/line-item-price"
@@ -32,7 +32,8 @@ const CartDropdown = ({
   const [clientCart, setClientCart] = useState<
     HttpTypes.StoreCart | null | undefined
   >(undefined)
-  const cartState = serverCart ?? clientCart
+  // CORE-91 (กฎข้อ 147b): `serverCart` = `undefined` คือหน้า static (server ไม่รู้) ส่วน `null` = server รู้ว่าไม่มี cart
+  const cartState = clientCart === undefined ? serverCart : serverCart ?? clientCart
   // CORE-77 (กฎข้อ 135): อ่านล้ม → เลิก busy (ป้าย "ตะกร้า" ไม่มีตัวเลข) แล้วอ่านใหม่ 1 ครั้งเมื่อ pathname เปลี่ยน
   const [loadFailed, setLoadFailed] = useState(false)
   const retryLoad = useRef<(() => void) | null>(null)
@@ -57,7 +58,9 @@ const CartDropdown = ({
       return
     }
 
-    let isInitialLoad = true
+    // server รู้ว่าไม่มี cart → ไม่อ่านซ้ำตอน mount แต่ยังอ่านเมื่อ cart ถูกแก้ (event)
+    const serverKnows = serverCart === null
+    let isInitialLoad = !serverKnows
     // `fresh`: this runs right after a cart mutation, before Next has applied its cache revalidation.
     const load = () =>
       retrieveCart(undefined, undefined, { fresh: true })
@@ -72,7 +75,9 @@ const CartDropdown = ({
         })
         .catch(() => setLoadFailed(true))
 
-    load()
+    if (!serverKnows) {
+      load()
+    }
     retryLoad.current = load
     window.addEventListener(CART_UPDATED_EVENT, load)
     return () => {
@@ -161,7 +166,28 @@ const CartDropdown = ({
             <div className="p-4 flex items-center justify-center">
               <h3 className="text-large-semi">ตะกร้า</h3>
             </div>
-            {cartState && cartState.items?.length ? (
+            {countUnknown ? (
+              // CORE-91 (กฎข้อ 147a): ยังไม่รู้ (กำลังโหลด/อ่านล้ม) → ไม่บอกว่าตะกร้าว่าง
+              <div className="flex py-16 flex-col gap-y-4 items-center justify-center">
+                {loading ? (
+                  <span data-testid="nav-cart-dropdown-loading" aria-busy="true">
+                    กำลังโหลดตะกร้า…
+                  </span>
+                ) : (
+                  <>
+                    <span data-testid="nav-cart-dropdown-error">
+                      ยังโหลดตะกร้าไม่ได้
+                    </span>
+                    <LocalizedClientLink
+                      href="/cart"
+                      className={buttonClassName()}
+                    >
+                      ดูตะกร้า
+                    </LocalizedClientLink>
+                  </>
+                )}
+              </div>
+            ) : cartState && cartState.items?.length ? (
               <>
                 <div className="overflow-y-scroll max-h-[402px] px-4 grid grid-cols-1 gap-y-8 no-scrollbar p-px">
                   {cartState.items
@@ -251,14 +277,12 @@ const CartDropdown = ({
                       })}
                     </span>
                   </div>
-                  <LocalizedClientLink href="/cart" passHref>
-                    <Button
-                      className="w-full"
-                      size="large"
-                      data-testid="go-to-cart-button"
-                    >
-                      ไปที่ตะกร้า
-                    </Button>
+                  <LocalizedClientLink
+                    href="/cart"
+                    className={buttonClassName({ size: "large" }, "w-full")}
+                    data-testid="go-to-cart-button"
+                  >
+                    ไปที่ตะกร้า
                   </LocalizedClientLink>
                 </div>
               </>
