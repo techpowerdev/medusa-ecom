@@ -1,9 +1,10 @@
-import { CreditCard, Scan } from "@medusajs/icons"
 import Bancontact from "@modules/common/icons/bancontact"
 import Ideal from "@modules/common/icons/ideal"
 import PayPal from "@modules/common/icons/paypal"
+import { CreditCard, QrCode } from "lucide-react"
 import React from "react"
 
+// SFUI-3d (spec 09 กฎ 6): icon จาก lucide-react (CreditCard → CreditCard, Scan → QrCode)
 /* Map of payment provider_id to their title and icon. Add in any payment providers you want to use. */
 export const paymentInfoMap: Record<
   string,
@@ -13,16 +14,16 @@ export const paymentInfoMap: Record<
   // CORE-4e (กฎข้อ 54): พร้อมเพย์ใช้ "พร้อมเพย์" แบบเดียว
   pp_stripe_stripe: {
     title: "บัตรเครดิต/เดบิต",
-    icon: <CreditCard />,
+    icon: <CreditCard className="size-4" />,
   },
   // PAY-2 (spec 06): PromptPay ผ่าน Stripe — QR + poll ใน PromptPayPaymentButton
   "pp_stripe-promptpay_stripe": {
     title: "พร้อมเพย์",
-    icon: <Scan />,
+    icon: <QrCode className="size-4" />,
   },
   "pp_medusa-payments_default": {
     title: "บัตรเครดิต/เดบิต",
-    icon: <CreditCard />,
+    icon: <CreditCard className="size-4" />,
   },
   "pp_stripe-ideal_stripe": {
     title: "iDeal",
@@ -38,7 +39,7 @@ export const paymentInfoMap: Record<
   },
   pp_system_default: {
     title: "ชำระเงินแบบแมนนวล",
-    icon: <CreditCard />,
+    icon: <CreditCard className="size-4" />,
   },
   // Add more payment providers here
 }
