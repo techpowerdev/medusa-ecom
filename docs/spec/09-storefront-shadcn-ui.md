@@ -96,7 +96,7 @@ none
 20. ตาราง map ของ shim (SFUI-5x, 3x): `Text` → `<p className="text-sm">` (หรือ `<span>`/`<div>` ตาม `as`); `Heading` h1/h2/h3 → `<hN className="text-3xl|text-2xl|text-xl font-semibold">`;
     `Container` → `<div className="rounded-lg bg-card p-4">`; `Badge color` → shadcn `Badge` (`grey`→`secondary`, `red`→`destructive`, อื่น → `outline` + `bg-<สี>-100 text-<สี>-700`);
     `IconBadge` → `Badge variant="secondary"`; `IconButton` → `Button variant="ghost" size="icon"`; `Button` `primary|secondary|transparent` → `default|outline|ghost`,
-    `small|medium|large` → `sm|default|lg`; `buttonClassName(o, c)` → `cn(buttonVariants(o), c)`; `clx` → `cn`; `Label`/`Input`/`Table.*` → shadcn ชื่อเดียวกัน
+    `small|medium|large` → `sm|default|lg`; `buttonClassName(o, c)` → `cn(buttonVariants(o), c)`; `clx` → `cn`; `Label`/`Input`/`Table.*` → shadcn ชื่อเดียวกัน (shim ส่ง `px-4` ให้ `TableHead` และ `p-4` ให้ `TableCell` และ `Text` ค่าเริ่มต้น `text-sm leading-[1.4rem]` ที่ไม่ทับ `txt-*`/`h*-webs` ของผู้เรียก)
     (`Table.Header`→`TableHeader`, `.Body`→`TableBody`, `.Row`→`TableRow`, `.Head`/`.HeaderCell`→`TableHead`, `.Cell`→`TableCell`); `Button isLoading` → prop `isLoading` ที่เพิ่มใน
     `src/components/ui/button.tsx` (SFUI-2 — แสดง "กำลังดำเนินการ..." + disabled ตามเดิม)
     `Checkbox` (shim native → shadcn, ใน `common/components/checkbox/index.tsx` ของ SFUI-5a; ผู้ใช้เดียวคือ `checkout/components/shipping-address/index.tsx:212` `name="same_as_billing"`):
@@ -106,12 +106,12 @@ none
     `RadioGroup` ใน `common/components/filter-radio-group/index.tsx` (SFUI-5a; sort/filter ของ store): `<RadioGroup value={value} onValueChange={handleChange} data-testid={dataTestId}>`
     + `RadioGroupItem value id className="sr-only"` (ไม่ใช้ `hidden` — `display:none` ทำให้ label คลิกไม่ถึง) + `Label htmlFor` ที่คง `data-testid="radio-label"` และ `data-active` เดิม;
     `EllipseMiniSolid` → `Circle` ตามกฎ 6
-21. map class (SFUI-5x, 3x): `txt-*xsmall*`→`text-xs`, `txt-*small*`/`txt-*medium*`→`text-sm`, `txt-*large*`→`text-base`, `txt-*xlarge*`→`text-lg`, `-plus`→`+ font-medium`, `compact`→`+ leading-5`;
+21. map class (SFUI-5x, 3x): `txt-*xsmall*`→`text-xs`, `txt-*small*`→`text-sm`, `txt-*medium*`→`text-sm leading-[1.4rem]` (คง line-height 22.4px เดิม — core-38), `txt-*large*`→`text-base`, `txt-*xlarge*`→`text-lg`, `-plus`→`+ font-medium`, `compact`→`+ leading-5`;
     `h1-webs`→`text-6xl font-medium`, `h2-webs`→`text-5xl font-medium`, `h3-webs`→`text-4xl font-medium`; `text-ui-fg-base`→`text-foreground`, `text-ui-fg-subtle`/`-muted`→`text-muted-foreground`,
     `text-ui-fg-disabled`→`text-muted-foreground/60`, `text-ui-fg-interactive`→`text-primary underline-offset-4`, `text-ui-fg-error`→`text-destructive`, `text-ui-fg-on-color`/`-on-inverted`→`text-primary-foreground`,
     `bg-ui-bg-base`/`-field`→`bg-background`, `bg-ui-bg-subtle`/`-component`→`bg-muted`, `bg-ui-bg-interactive`→`bg-primary`, `bg-ui-bg-disabled`→`bg-muted opacity-50`,
     `border-ui-border-base`/`-strong`→`border-border`/`border-input`, `shadow-borders-*`→`border border-input` (+ `ring-[3px] ring-ring/50` แบบ focus), `shadow-elevation-*`→`shadow-sm`/`shadow-md`,
-    `ui-tag-<สี>-*`→`<สี>-100`/`<สี>-700`; ชื่อที่ไม่อยู่ในตาราง → token ของ shadcn ที่ใกล้ที่สุด (บันทึกใน PR)
+    `ui-tag-<สี>-*`→`<สี>-100`/`<สี>-700`; ชื่อที่ไม่อยู่ในตาราง → token ของ shadcn ที่ใกล้ที่สุด (บันทึกใน PR); **กฎ 19 ชนะกฎ 20/21**: ถ้าการ map ทำให้ e2e เดิมล้ม (ขนาด/ตำแหน่ง/ระยะ) ให้คงค่าเดิมด้วย utility ของ Tailwind แทน เช่น `TableHead` ของ cart/order/skeleton คง `px-4` และ `TableCell` คง `p-4` (shim ส่งให้แล้วตั้งแต่ SFUI-2; เมื่อย้ายไปใช้ shadcn ตรงต้องใส่เอง — core-42/47) (ตัดสิน 2026-11-26 จาก triage)
 
 ## Acceptance criteria (Given/When/Then, numbered AC-1..n)
 - AC-1 (SFUI-1a, 1b, 6; กฎ 1–3) static `e2e/sfui-deps.unit.spec.ts`: Given `apps/storefront/package.json` Then เวอร์ชันตรงตาราง ADR-030 ข้อ 10 แบบ exact ตามขั้น
