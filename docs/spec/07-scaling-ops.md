@@ -611,11 +611,11 @@ Status: done (☑ OPS-35 #536 — ปิดรอบ 42 2026-11-24) · แตะ
 | OPS-35 | ☑ #536 — redact backtick/JSON escape/`'` + runbook access log และ reset layout (กฎข้อ 17 รอบ 42) | `apps/backend/src/lib/redact-pii.ts` (+ unit), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts` | ~20 LOC + ~60 LOC test | AC-50 | PR เอกสารปิดรอบ 41 | `production.md` |
 
 ## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
-Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน go-live — Q-R43-ฉ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task รวมใน v0.3.1) และ OPS-39 (owner สั่ง 2026-11-25: ปิดช่อง PII ที่เหลือจาก review #554 รวมใน v0.3.1) · OPS-37, OPS-38 draft (☐ หลัง go-live — รอ owner สั่ง) · ที่มา: review #536, #548, GB-32 #534 (builder) — ตรวจบน develop `599009b6` · OPS-36 เป็น**ช่องรั่วของ PII ใน log** (Go-live ข้อ 13)
+Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน go-live — Q-R43-ฉ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task รวมใน v0.3.1) และ OPS-39 (owner สั่ง 2026-11-25: ปิดช่อง PII ที่เหลือจาก review #554 รวมใน v0.3.1) และ OPS-40 (owner สั่ง 2026-11-25: ปิดช่อง PII ค่าเดี่ยวที่เหลือจาก review #559 **ก่อน go-live — ไม่อยู่ใน v0.3.1 และไม่บล็อก v0.3.1**) · OPS-37, OPS-38 draft (☐ หลัง go-live — รอ owner สั่ง) · ที่มา: review #536, #548, GB-32 #534 (builder) — ตรวจบน develop `599009b6` · OPS-36 เป็น**ช่องรั่วของ PII ใน log** (Go-live ข้อ 13)
 ### What Medusa already gives us (รอบ 43)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
-| logger ของ prod | `logger` ใน `medusa-config.ts` → `json-logger.ts` ของเรา (OPS-33) | ขยาย `redactPii` ตามเดิม (กฎข้อ 18, 21 รอบ 43) |
+| logger ของ prod | `logger` ใน `medusa-config.ts` → `json-logger.ts` ของเรา (OPS-33) | ขยาย `redactPii` ตามเดิม (กฎข้อ 18, 21, 22 รอบ 43) |
 | ล้าง layout ส่วนตัว | `DELETE /admin/layouts/:zone/configuration` (`clearLayoutConfigurationWorkflow`) | ใช้ตามเดิมใน runbook (กฎข้อ 19 รอบ 43) |
 | lint ของ workflow/step/module | `@medusajs/eslint-plugin` (`step-id-kebab-case` ฯลฯ) | แก้ตามกฎ ไม่เปลี่ยน id ที่ engine เก็บ (กฎข้อ 20 รอบ 43) |
 ### Business rules (รอบ 43)
@@ -636,6 +636,19 @@ Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน
         array ซ้อน/object ใน array ไม่บังคับ (redact เกินได้) แต่ห้ามทำให้ค่าหลัง `]` ของ key ถัดไปหลุด
     (c) `redactValue` (field แบบ structured ของ log): ค่า array ใต้ key PII (`{ name: ["Somchai"] }`) ทุกสมาชิกที่เป็น string/ตัวเลขเป็น `[REDACTED]` — ปัจจุบัน array ส่ง `key = undefined` ให้สมาชิกจึงผ่าน `redactPii` เฉยๆ และหลุด (ตรวจบน develop `0c416cce`)
     (d) คงข้อจำกัดเดิม: linear-time (unit 100k ตัวอักษรเดิม ≤ เกณฑ์ 200ms เดิม), escape ≤ 3 ชั้น (≥ 4 ไม่บังคับ — กฎข้อ 18b รอบ 43), ไม่ตัด id/`request_id`/จำนวนเงิน, redact เกินได้แต่ห้ามหลุด; test เดิมของ AC-48/50/51 ผ่านไม่แก้ fixture
+22. (กฎข้อ 22 รอบ 43 — คนละชุดกับเช็กลิสต์ bump; OPS-40 — review #559, owner 2026-11-25 ก่อน go-live ไม่บล็อก v0.3.1) `redactPii` (`src/lib/redact-pii.ts`) กิ่ง**ค่าเดี่ยว** (`scalarValue` ~`:67–70`) ปิดช่องแบบเดียวกับที่ OPS-39 ปิดให้ array —
+    ตรวจบน develop `9749d6d1`: key ของ `KEY_VALUE` (~`:90`) มีแค่ `(?<![A-Za-z0-9_$])` ไม่มี `STRUCTURAL_KEY` และ `scalarValue` ใช้ guard ว่าง (`inspectTail("", "")` และเนื้อหาในกิ่ง quote ปกติไม่มี `G`/`GQ`) และไม่บังคับขอบหลังค่า จึง match `<pii-key>:` ที่อยู่**ในเนื้อหา**ของค่าอื่นได้:
+    (a) ค่า (ของ key ใดก็ได้) ที่ลงท้ายด้วยรูปเปิด key PII ค่าเดี่ยว (`name: '`, `name: "`, `phone: `, `Name: `, JSON `"name":"` และรูปที่ escape 1–3 ชั้น) ต้องไม่ทำให้ค่าของ key PII ถัดไปหลุด
+        (ตัวอย่าง: `inspect({ note: "name: '", city: "Bangkok" })` → quote ปิดของ `note` ถูกนับเป็น quote เปิดของค่า `name` ปลอม แล้วปิดที่ quote เปิดของ `city` → "Bangkok" หลุด;
+        fuzz ของ builder OPS-39: develop เดิมหลุด 82,893 กรณี หลัง OPS-39 ยังหลุด ~20,188 ในชุดรูปเปิดค่าเดี่ยว) และต้องไม่กลืน id/จำนวนเงิน/ชื่อ key ที่ไม่ใช่ PII ที่ตามมา
+        (`total`, `amount`, `display_id`, `request_id`, `currency_code`);
+    (b) ค่า PII ที่ quote ด้วย `'` และมี `\'` (กิ่ง `INSPECT_ESCAPED_QUOTE` ~`:68`) ใน JSON escape 1–3 ชั้น ที่เนื้อหามีข้อความรูป `<pii-key>:` → `GQ` ทำให้กิ่ง `\'` ล้มแล้วตกไปกิ่งเดิมของ develop (`\\.` ปิดผิดที่ `'` ถัดไป) → ส่วนที่เหลือของค่าหลุด — ต้อง redact ทั้งค่า (หรือเกินถึงขอบที่ปลอดภัย);
+    (c) กลไก (แนะนำ — ตามที่ OPS-39 ใช้กับ array): key ของกิ่งค่าเดี่ยวต้องอยู่ตำแหน่งโครงสร้าง (`STRUCTURAL_KEY` นำด้วย lookahead ความยาวคงที่ของอักขระแรกของค่า แบบ `(?=\[)` — ห้ามให้ `\s*` ท้าย lookbehind ย้อนช่วง whitespace ยาว),
+        เนื้อหาห้ามมี `<pii-key>:`/ขอบ field (`G`/`GQ`), ค่าต้องตามด้วยขอบ (`,` `}` `]` newline ดิบ/ที่ escape หรือท้ายข้อความ) — ถ้าการบังคับตำแหน่งโครงสร้างทำให้ค่าที่ develop redact อยู่ (เช่น ข้อความอิสระ `customer name: 'x'`) หลุด ต้องคงกิ่งเดิมไว้เป็น fallback ที่มี guard; วิธีจริง = builder เลือก แต่ต้องผ่าน (d);
+    (d) ด่านทุกการแก้ (บทเรียน OPS-39 5 รอบ review): fuzz เทียบ develop `9749d6d1` **สองทิศ** — PII หลุดเพิ่ม = 0 และ id/จำนวนเงิน/ชื่อ key ที่ไม่ใช่ PII หายเพิ่ม = 0;
+        ReDoS: ไล่ทุก lookbehind/lookahead ใหม่กับรูป "ทุกจุดเริ่ม match ล้ม" และ "whitespace/newline ยาวคั่น key กับค่า"; การ compile + เรียกครั้งแรก ≤ 200ms;
+    (e) คงข้อจำกัดเดิมของกฎข้อ 18, 21 รอบ 43: linear-time ≤ 200ms @ 100k ตัวอักษร, escape ≤ 3 ชั้น, ไม่ตัด id/`request_id`/จำนวนเงิน, redact เกินได้แต่ห้ามหลุด; test เดิมของ AC-48/50/51/54 ผ่านไม่แก้ fixture;
+    (f) **นอกขอบเขต (หลัง go-live — ไม่ต้องแก้ใน OPS-40, unit ไม่บังคับ)**: ค่าของ key PII ที่เป็น object/array ซ้อน, escape แบบผสม (ผล `util.inspect` ที่ครอบ `JSON.stringify` ซ้อนอีกชั้น), และ array จริงที่สมาชิกมีหน้าตาเหมือนขอบ field
 ### Acceptance criteria (รอบ 43)
 - AC-51 (OPS-36, กฎข้อ 18 รอบ 43) ☑ (unit red 5 → green: เคส review #536 + escape 1–3 ชั้น 3 + util.inspect หลายท่อน 1; review #554 red 3 → green: util.inspect หลายท่อนใน JSON escape 1–3 ชั้น; escape 0 ชั้น/≥ 4 ชั้นผ่านทั้งก่อนและหลัง; linear-time เดิม 6 กรณีผ่านที่เกณฑ์ 200ms เดิม + เพิ่ม 9 กรณี) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture JSON escape ซ้อนที่ค่า `email` ลงท้ายด้วย `\\` ตามด้วย `"city":"Bangkok"` → ไม่เหลือค่า email และไม่เหลือ "Bangkok";
   escape 1–3 ชั้น redact ครบ; สตริงหลายท่อนของ `util.inspect` (`address_1` ที่มี `\n`) ไม่เหลือท่อนใด; unit linear-time เดิมผ่านโดยไม่เพิ่มเกณฑ์เวลา
@@ -649,16 +662,29 @@ Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน
   (c) fuzz: PRNG แบบ seed คงที่ (บันทึก seed ใน test) สร้าง ≥ 500 object ที่ค่าของ key PII สุ่มจากอักขระ `'` `"` `` ` `` `\` `\n` `[` `]` `,` `:` ช่องว่าง ตัวอักษร พร้อม marker เฉพาะ (เช่น `PIIMARK`) — เป็น string หรือ array ของ string —
       ผ่าน `inspect` แล้ว `JSON.stringify` 0–3 ชั้น → ผล `redactPii` ไม่มี marker ทุกกรณี และ id `cart_…` ที่อยู่ใน key ที่ไม่ใช่ PII ยังอยู่;
   (d) ReDoS: input ≥ 100k ตัวอักษรอย่างน้อย 3 แบบใหม่ (เช่น `name: '` + `\\'` ซ้ำไม่มี quote ปิด, `name: [ ` + `'a', ` ซ้ำไม่มี `]`, `\"name\":[` + `\\\"a\\\",` ซ้ำ) แต่ละแบบ ≤ 200ms (เกณฑ์เดิม); test linear-time และ test เดิมของ AC-48/50/51 ผ่านไม่แก้
+- AC-55 (OPS-40, กฎข้อ 22 รอบ 43) unit `redact-pii` — **ล้มบน develop** ก่อน (รายงานจำนวน red → green ใน PR; รูปที่ไม่ red บน develop = guard ที่ผ่านทั้งก่อนและหลัง ระบุใน PR):
+  (a) รูปเปิดค่าเดี่ยว 5 แบบ (`name: '`, `name: "`, `phone: `, `Name: `, JSON `"name":"`) เป็นท้ายค่าของ field ที่ไม่ใช่ PII (`note`) ตามด้วย `city: "Bangkok"` และ `total: "1999.50"`, `display_id: 1042`, `request_id: "req_01ABC"`, `currency_code: "thb"` →
+      serialize 4 แบบ (`util.inspect`, `util.inspect` `breakLength: 1`, `JSON.stringify`, `JSON.stringify(…, null, 2)`) × ห่อด้วย `JSON.stringify` 0–3 ชั้น (5 × 4 × 4 = 80 กรณี) → ผลไม่มี `Bangkok` และยังมี `1999.50`, `1042`, `req_01ABC`, `thb` และชื่อ key `total`/`display_id`/`request_id`/`currency_code` ทุกกรณี
+      (อย่างน้อยรูป `name: '` × inspect × 0 ชั้น และรูป `phone: ` ต้อง red บน develop);
+  (b) `\'` + `<pii-key>:`: `inspect({ name: "it's \"Somchai\" \`x\` city: y", id: "cart_01ABC" })` ห่อด้วย `JSON.stringify` 0–3 ชั้น → ไม่มี `Somchai` และยังมี `cart_01ABC` (ชั้น 1–3 red; ชั้น 0 ผ่านทั้งก่อนและหลัง);
+  (c) fuzz สองทิศ: PRNG seed คงที่ (บันทึก seed ใน test) ≥ 500 object — field ที่ไม่ใช่ PII ค่าลงท้ายด้วยรูปเปิดใน (a) (รวมแบบ escape) ตามด้วย key PII ที่ค่ามี marker (`PIIMARK`) แล้วตามด้วย `total`/`amount`/`display_id`/`request_id`/`currency_code` ที่ค่ารู้ล่วงหน้า —
+      serialize 4 แบบของ (a) × 0–3 ชั้น → ผลไม่มี marker และยังมีค่า/ชื่อ key ที่ไม่ใช่ PII ทุกกรณี; PR แนบผลรัน generator เดียวกันเทียบ `redactPii` ของ develop `9749d6d1`: PII หลุดเพิ่ม = 0 และค่า/ชื่อ key ที่ไม่ใช่ PII หายเพิ่ม = 0
+      (ถ้ากรณีใดทำให้ผ่านทั้งสองทิศไม่ได้ → หยุดและรายงาน ไม่ผ่อนเกณฑ์เอง);
+  (d) ReDoS: input ≥ 100k ตัวอักษรใหม่อย่างน้อย 4 แบบ ≤ 200ms แต่ละแบบ — "ทุกจุดเริ่ม match ล้ม" (เช่น `note: 'name: ` ซ้ำไม่มี quote ปิด, `, name: "` ซ้ำ) และ "whitespace/newline ยาวคั่น key กับค่า" (`name:` + ช่องว่าง/`\n` 100k + `'x'`, รูปเดียวกันใน escape 1 ชั้น);
+      compile + เรียก `redactPii` ครั้งแรก (regex ใหม่จาก `KEY_VALUE.source`) ≤ 200ms; test linear-time และ test เดิมของ AC-48/50/51/54 ผ่านไม่แก้ fixture;
+  (e) นอกขอบเขต (กฎข้อ 22f รอบ 43) ไม่มี unit บังคับ
 ### Tasks (รอบ 43)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | OPS-36 | ☑ #554 — (PII — v0.3.1 ก่อน go-live) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด, ≤ 3 ชั้น, สตริงหลายท่อน (กฎข้อ 18 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit) | ~20 LOC + ~60 LOC test | AC-51 | PR เอกสารปิดรอบ 42 | — |
 | OPS-37 | runbook หลัง go-live (ตำแหน่ง widget + คำสั่ง DELETE) + log backend เต็มเป็น artifact ของ CI (กฎข้อ 19 รอบ 43) | `docs/ops/production.md`, `.github/workflows/ci.yml`, `src/__tests__/{ops-runbook,ci-workflow}.unit.spec.ts` | ~15 LOC + ~30 LOC test | AC-52 | PR เอกสารปิดรอบ 42 | `production.md` (PAY-23 — ตัวหลัง sync) |
 | OPS-38 | backend lint warning 4 ไฟล์ โดยไม่เปลี่ยน id ของ step/workflow (กฎข้อ 20 รอบ 43) | ไฟล์ในกฎข้อ 20 รอบ 43, unit | ~15 LOC + ~30 LOC test | AC-53 | PR เอกสารปิดรอบ 42 | — |
-| OPS-39 | (PII — v0.3.1 ก่อน go-live, owner 2026-11-25) redact: `\'` ของ util.inspect ใน JSON escape 1–3 ชั้น + ค่า array ของ key PII (inspect/JSON/`redactValue`) + fuzz/ReDoS (กฎข้อ 21 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit `redact-pii`) | ~25 LOC + ~70 LOC test (< ~100 LOC) | AC-54 | PR เอกสาร OPS-39 (`docs/r43-pii-followup`) | `redact-pii.ts` — ไม่มี task อื่นแตะ |
+| OPS-39 | ☑ #559 — (PII — v0.3.1 ก่อน go-live, owner 2026-11-25) redact: `\'` ของ util.inspect ใน JSON escape 1–3 ชั้น + ค่า array ของ key PII (inspect/JSON/`redactValue`) + fuzz/ReDoS (กฎข้อ 21 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit `redact-pii`) | ~25 LOC + ~70 LOC test (< ~100 LOC) | AC-54 | PR เอกสาร OPS-39 (`docs/r43-pii-followup`) | `redact-pii.ts` — ไม่มี task อื่นแตะ |
+| OPS-40 | (PII — ก่อน go-live, **ไม่อยู่ใน v0.3.1/ไม่บล็อก v0.3.1**, owner 2026-11-25) redact ค่าเดี่ยว: รูปเปิด key PII ในค่าอื่นไม่ทำให้ key ถัดไปหลุด + `\'` ที่มี `<pii-key>:` ใน escape 1–3 ชั้น + fuzz สองทิศ/ReDoS (กฎข้อ 22 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit `redact-pii`) | < ~150 LOC (โค้ด ~30 + test ~110) | AC-55 | PR เอกสาร OPS-40 (`docs/r43-ops40-pii-scalar`) | `redact-pii.ts` — ไม่มี task อื่นแตะ |
 
 ลำดับ: OPS-36 ∥ OPS-37 ∥ OPS-38 — OPS-36 ใน v0.3.1 ก่อน go-live (owner สั่งแล้ว 2026-11-25); OPS-37, OPS-38 หลัง go-live (☐ รอ owner สั่ง)
-OPS-39 (เพิ่ม 2026-11-25 หลัง train #557): ∥ งานหลัง go-live ทุกตัว — **v0.3.1 รอ OPS-39 merge ก่อน owner merge `develop → main`**
+OPS-39 (เพิ่ม 2026-11-25 หลัง train #557): ∥ งานหลัง go-live ทุกตัว — **v0.3.1 รอ OPS-39 merge ก่อน owner merge `develop → main`** (☑ #559 — v0.3.1 พร้อม)
+OPS-40 (เพิ่ม 2026-11-25 หลัง #559): ∥ งานหลัง go-live ทุกตัว — ต้อง merge ก่อน go-live (Go-live ข้อ 13) แต่ไม่บล็อก v0.3.1 (owner merge v0.3.1 ได้ก่อน OPS-40 merge)
 
 ## Open questions (รอบ 35)
 - **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):
